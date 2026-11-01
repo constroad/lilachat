@@ -1,5 +1,5 @@
 import { ContactNoteBannerWeb } from '../routines/ContactNoteBannerWeb';
-import type { NotificationLevel } from '@lilachat/shared';
+import type { NotificationLevel, WinkId } from '@lilachat/shared';
 import { alreadyGreeted, newAlbumId } from '@lilachat/shared';
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { PanelDeInfo } from './info/PanelDeInfo';
@@ -182,13 +182,14 @@ export function ConversacionConAcciones(
     const person = cardPersonOf({ userId, detail: detalle, names: nombres, myUserId: yo });
     if (person) personCard.show(person);
   }, [detalle, nombres, yo, personCard.show]);
-  const contexto = useMemo<ContextoDeLaConversacion>(
-    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto: openPhoto, onViewPerson: showPerson, onVerPdf: setPdfAbierto, onGreet: greet, canGreet, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editReminder, destacados: destacados.seqs, onStickerAction: chat.encrypted ? undefined : onStickerAction, flat, badgeOf, isAppOf }),
-    [yo, props.jwt, chat, detalle, nombres, photos, citado, onAccion, openPhoto, showPerson, greet, canGreet, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editReminder, destacados.seqs, onStickerAction, flat, badgeOf, isAppOf]
-  );
-
   // Nudges and winks: in a 1:1 (not the chat with yourself), or a group whose admin allows them (José, 21/10).
   const funAllowed = chat.kind === 'direct' ? !chat.propio : chat.kind === 'group' && chat.funAllowed === true;
+  const sendWink = useCallback((wink: WinkId) => void sync.sendWink(chat.id, wink).then((result) => result.ok || onAviso(result.motivo)), [sync, chat.id, onAviso]);
+  const contexto = useMemo<ContextoDeLaConversacion>(
+    () => ({ yo, jwt: props.jwt, chat, detalle, nombres, photos, citado, onAccion, onVerFoto: openPhoto, onViewPerson: showPerson, onVerPdf: setPdfAbierto, onGreet: greet, canGreet, puedeFijar, fijados: seqsFijados, onAbrirHilo: chat.encrypted ? undefined : abrirHilo, hiloConNuevas: hilos.hiloConNuevas, onReaccionar: chat.encrypted ? undefined : onReaccionar, onEditarRecordatorio: editReminder, destacados: destacados.seqs, onStickerAction: chat.encrypted ? undefined : onStickerAction, flat, badgeOf, isAppOf, onReturnWink: funAllowed ? sendWink : undefined }),
+    [yo, props.jwt, chat, detalle, nombres, photos, citado, onAccion, openPhoto, showPerson, greet, canGreet, puedeFijar, seqsFijados, abrirHilo, hilos.hiloConNuevas, onReaccionar, editReminder, destacados.seqs, onStickerAction, flat, badgeOf, isAppOf, funAllowed, sendWink]
+  );
+
   // Calls: a 1:1 with a person, never with yourself or an installed app (a bot does not answer).
   const otherId = chat.kind === 'direct' && !chat.propio ? chat.memberIds.find((id) => id !== yo) : undefined;
   const canCall = Boolean(otherId) && detalle?.pills.get(otherId ?? '')?.role !== 'app';
@@ -210,7 +211,7 @@ export function ConversacionConAcciones(
         onCall={canCall ? (video) => calls.call(chat.id, chat.name ?? chat.phone ?? 'Llamada', video) : groupCall ? (video) => calls.callGroup(chat.id, chat.name ?? 'Grupo', video) : undefined}
         callStrip={groupCall ? <GroupCallStripFor chatId={chat.id} chatName={chat.name ?? 'Grupo'} /> : undefined}
         callExtras={canCall ? <CallExtrasMenu jwt={props.jwt} chat={{ id: chat.id, name: chat.name ?? chat.phone ?? 'Conversación' }} /> : undefined}
-        onWink={funAllowed ? (wink) => void sync.sendWink(chat.id, wink).then((result) => result.ok || onAviso(result.motivo)) : undefined}
+        onWink={funAllowed ? sendWink : undefined}
         mencionables={mencionables}
         onOutsideMentions={outsideMentions.notify}
         avisoDeMencion={<OutsideMentionNotice outside={outsideMentions} />}

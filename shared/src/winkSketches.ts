@@ -1,6 +1,7 @@
 import { DANCES } from './winkDances.js';
 import { danceTrack, type ActorKey, type Sketch } from './winkTimeline.js';
 import { SEASONAL_SKETCHES } from './winkSketchesSeasonal.js';
+import { ATTACK_SKETCHES } from './winkSketchesAttack.js';
 import { rocker } from './winkSketchesRocker.js';
 import { appearAt, beats, character, FLOOR_Y, OFF_LEFT, OFF_RIGHT, pump, popIn, prop, rig, SIZE, STANDARD_MS, sway, turn, walk, wiggle, wink } from './winkSketchKit.js';
 import type { CharacterWinkId, SiteWinkId } from './winks.js';
@@ -547,6 +548,7 @@ function rainy(): Sketch {
 export const WINK_SKETCHES: Record<SketchWinkId, Sketch> = {
   rainy: rainy(),
   ...SEASONAL_SKETCHES,
+  ...ATTACK_SKETCHES,
   rocker: rocker(),
   piggy: piggy(),
   balloon: balloon(),

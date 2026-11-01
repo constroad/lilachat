@@ -3,6 +3,7 @@ import { WINK_SKETCHES } from './winkSketches.js';
 import { seasonOf, type WinkSeason } from './winkSeasons.js';
 import type { ScreenEffect } from './winkTimeline.js';
 import { MORE_EMOJI_WINKS, type MoreEmojiWinkId } from './winkEmojis.js';
+import { ATTACK_TILES, type AttackWinkId } from './winkSketchesAttack.js';
 
 /**
  * Winks, like MSN Messenger's (backlog 3, José 21/10): a full-screen animation
@@ -14,7 +15,8 @@ import { MORE_EMOJI_WINKS, type MoreEmojiWinkId } from './winkEmojis.js';
  * so the app and the web, sender and receiver, see the same. PURE: the app,
  * the web and the server use it.
  */
-export type CharacterWinkId = 'piggy' | 'balloon' | 'worker' | 'cuppa' | 'sweetheart' | 'bear' | 'kitty' | 'puppy' | 'panda' | 'brick' | 'rainy' | 'rocker' | HalloweenWinkId | ChristmasWinkId | LaterSeasonsWinkId;
+export type CharacterWinkId = 'piggy' | 'balloon' | 'worker' | 'cuppa' | 'sweetheart' | 'bear' | 'kitty' | 'puppy' | 'panda' | 'brick' | 'rainy' | 'rocker' | HalloweenWinkId | ChristmasWinkId | LaterSeasonsWinkId | AttackWinkId;
+export type { AttackWinkId };
 /** Pending 73: the Halloween ones (sheet `r151-halloween`). */
 export type HalloweenWinkId = 'pumpkin' | 'vampire' | 'mummy' | 'witch' | 'ghost';
 /** Pending 73: the Christmas ones (sheet `r152-navidad`). */
@@ -33,10 +35,10 @@ export type WinkMotion = 'rise' | 'burst' | 'rain';
 export type WinkSound =
   | 'chime' | 'pop' | 'clap' | 'horn' | 'groove' | 'rock'
   | 'ting' | 'boing' | 'smooch' | 'whoosh' | 'splash' | 'drip' | 'knock' | 'glass' | 'thump' | 'squeeze'
-  | 'cheer' | 'partyhorn' | 'laugh' | 'yawn' | 'snore' | 'alarm' | 'rumble' | 'sizzle' | 'whistle' | 'crash';
-export const WINK_SOUNDS: readonly WinkSound[] = ['chime', 'pop', 'clap', 'horn', 'groove', 'rock', 'ting', 'boing', 'smooch', 'whoosh', 'splash', 'drip', 'knock', 'glass', 'thump', 'squeeze', 'cheer', 'partyhorn', 'laugh', 'yawn', 'snore', 'alarm', 'rumble', 'sizzle', 'whistle', 'crash'];
-/** The «Guiños» panel shows them in these three groups. */
-export type WinkGroup = 'characters' | 'site' | 'emoji' | 'season';
+  | 'cheer' | 'partyhorn' | 'laugh' | 'yawn' | 'snore' | 'alarm' | 'rumble' | 'sizzle' | 'whistle' | 'crash' | 'buzz';
+export const WINK_SOUNDS: readonly WinkSound[] = ['chime', 'pop', 'clap', 'horn', 'groove', 'rock', 'ting', 'boing', 'smooch', 'whoosh', 'splash', 'drip', 'knock', 'glass', 'thump', 'squeeze', 'cheer', 'partyhorn', 'laugh', 'yawn', 'snore', 'alarm', 'rumble', 'sizzle', 'whistle', 'crash', 'buzz'];
+/** The «Guiños» panel groups (and the season's, when one is on). */
+export type WinkGroup = 'attack' | 'characters' | 'site' | 'emoji' | 'season';
 
 /** `particlesAt`: the share of the wink the particles fly in (none without it). */
 type WinkBase = { id: WinkId; name: string; group: WinkGroup; particles: readonly string[]; motion: WinkMotion; durationMs: number; particlesAt?: readonly [number, number]; season?: WinkSeason };
@@ -54,7 +56,26 @@ const character = (id: CharacterWinkId | SiteWinkId, name: string, group: WinkGr
 const MORE_EMOJI_WINK_MS = 2600;
 const emoji = (id: EmojiWinkId, name: string, hero: string, particles: readonly string[], motion: WinkMotion, durationMs: number, sound: WinkSound): EmojiWink => ({ id, name, group: 'emoji', kind: 'emoji', hero, particles, motion, durationMs, sound, particlesAt: [0, 1] });
 
+/** «Te ataco» (José, 02/11: winks that hit the screen and beg to be sent back), in the panel's order. */
+const ATTACKS: readonly [AttackWinkId, string][] = [
+  ['hit-slipper', 'Chancletazo'],
+  ['hit-pie', 'Pastelazo'],
+  ['hit-bucket', 'Baldazo'],
+  ['hit-tomato', 'Tomatazo'],
+  ['hit-egg', 'Huevazo'],
+  ['hit-pillow', 'Almohadazo'],
+  ['hit-ball', 'Pelotazo'],
+  ['hit-foam', 'Espumazo'],
+  ['hit-flour', 'Harinazo'],
+  ['hit-swatter', 'Matamoscas'],
+  ['hit-knock', 'Toc toc'],
+  ['hit-kiss', 'Besote'],
+];
+/** Only the big kiss throws particles: the rest are drawn whole. */
+const ATTACK_PARTICLES: Partial<Record<AttackWinkId, readonly string[]>> = { 'hit-kiss': ['💋', '❤️'] };
+
 export const WINKS: readonly Wink[] = [
+  ...ATTACKS.map(([id, name]) => character(id, name, 'attack', ATTACK_PARTICLES[id] ?? [], 'burst', ATTACK_TILES[id])),
   // Our own party pig (José, 21/10: «gordito moviendo y enseñando el rabo»), adult humor, not a kids' mascot.
   character('piggy', 'Chancho fiestero', 'characters', ['🎵', '🎶', '✨'], 'rise'),
   // MSN's best one, our way (José, 21/10: «¿dónde está el globo que te enviaban?»).
@@ -153,8 +174,13 @@ export function winkTileIsProp(wink: CharacterWink): boolean {
 export function winkPanelGroups(now: Date): { key: string; title: string; winks: Wink[] }[] {
   const season = seasonOf(now);
   const seasonal = season ? [{ key: season.season, title: season.title, winks: WINKS.filter((wink) => wink.season === season.season) }] : [];
-  const usual = ([['characters', 'Personajes'], ['site', 'Obra y pistas'], ['emoji', 'Emojis']] as const).map(([group, title]) => ({ key: group, title, winks: WINKS.filter((wink) => wink.group === group && !wink.season) }));
+  const usual = ([['attack', 'Te ataco'], ['characters', 'Personajes'], ['site', 'Obra y pistas'], ['emoji', 'Emojis']] as const).map(([group, title]) => ({ key: group, title, winks: WINKS.filter((wink) => wink.group === group && !wink.season) }));
   return [...seasonal, ...usual].filter((group) => group.winks.length > 0);
+}
+
+/** «Devolver» (José, 02/11): an attack someone sent me can be sent straight back. */
+export function canReturnWink(params: { wink: string | undefined; mine: boolean }): boolean {
+  return !params.mine && winkById(params.wink)?.group === 'attack';
 }
 
 export function winkById(id: string | undefined): Wink | undefined {

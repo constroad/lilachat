@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Heart, Play, Vibrate } from 'lucide-react';
-import { FUN_LIVE_MS, formatClock, funMessageToPlay, funToPlayInRow, highestSeq, shouldPlayFun, winkById, winkCardLines, winkRowSound, winkTileIsProp, type FunPlace, type FunToPlay, type Wink, type WinkId } from '@lilachat/shared';
+import { Heart, Play, Undo2, Vibrate } from 'lucide-react';
+import { FUN_LIVE_MS, canReturnWink, formatClock, funMessageToPlay, funToPlayInRow, highestSeq, shouldPlayFun, winkById, winkCardLines, winkRowSound, winkTileIsProp, type FunPlace, type FunToPlay, type Wink, type WinkId } from '@lilachat/shared';
 import { WinkOverlay } from './WinkOverlay';
 import { funSeenFloor, rememberFunSeen, rememberRowPlayed, rowPlayedSeq } from './funSeen';
 import { WinkCharacter } from './WinkCharacter';
@@ -167,8 +167,10 @@ export function NudgeLine({ seq, mine, author, at }: { seq: number; mine: boolea
  * see which wink it was): the character (or the emoji)
  * on the left, who sent it and which wink on the right, and «Ver otra vez».
  */
-export function WinkLine({ seq, wink, mine, author, at }: { seq: number; wink?: string; mine: boolean; author?: string; at?: string }) {
+export function WinkLine({ seq, wink, mine, author, at, onReturn }: { seq: number; wink?: string; mine: boolean; author?: string; at?: string; onReturn?: (wink: WinkId) => void }) {
   const known = winkById(wink);
+  const [returned, setReturned] = useState(false);
+  const returnable = Boolean(known && onReturn && canReturnWink({ wink, mine }));
   const lines = winkCardLines({ wink, mine, author, time: at ? formatClock(at) : undefined });
   return (
     <div data-testid={`linea-guino-${seq}`} className={`my-2 flex ${mine ? 'justify-end' : 'justify-start'}`}>
@@ -179,12 +181,21 @@ export function WinkLine({ seq, wink, mine, author, at }: { seq: number; wink?: 
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           <span className="text-[14px] font-semibold">{lines.who}</span>
           {lines.detail ? <span className="text-[12px] text-on-surface-variant">{lines.detail}</span> : null}
+          <span className="mt-1 flex flex-wrap gap-2">
           {known ? (
-            <button type="button" data-testid={`ver-guino-${seq}`} onClick={() => replayWink(seq, known.id)} className="mt-1 inline-flex h-8 items-center gap-1.5 self-start rounded-full border border-outline/20 px-3 text-[13px] font-semibold text-primary hover:bg-background">
+            <button type="button" data-testid={`ver-guino-${seq}`} onClick={() => replayWink(seq, known.id)} className="inline-flex h-8 items-center gap-1.5 self-start rounded-full border border-outline/20 px-3 text-[13px] font-semibold text-primary hover:bg-background">
               <Play size={13} />
               Ver otra vez
             </button>
           ) : null}
+          {returnable && known ? (
+            // «Devolver» (José, 02/11): an attack begs to be sent back.
+            <button type="button" data-testid={`devolver-guino-${seq}`} disabled={returned} onClick={() => { setReturned(true); onReturn?.(known.id); }} className="inline-flex h-8 items-center gap-1.5 rounded-full bg-primary px-3 text-[13px] font-semibold text-on-primary hover:opacity-90 disabled:opacity-60">
+              <Undo2 size={13} />
+              {returned ? 'Devuelto' : 'Devolver'}
+            </button>
+          ) : null}
+          </span>
         </span>
       </div>
     </div>

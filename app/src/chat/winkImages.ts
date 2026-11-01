@@ -1033,4 +1033,238 @@ export const WINK_IMAGES: Record<string, WinkImages> = {
       'body': require('../../assets/guinos/anger-cloud-body.webp'),
     },
   },
+  'slipper': {
+    tile: require('../../assets/guinos/slipper-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/slipper-body.webp'),
+    },
+  },
+  'slipper-mark': {
+    tile: require('../../assets/guinos/slipper-mark-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/slipper-mark-body.webp'),
+    },
+  },
+  'cream-pie': {
+    tile: require('../../assets/guinos/cream-pie-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/cream-pie-body.webp'),
+    },
+  },
+  'cream-splat': {
+    tile: require('../../assets/guinos/cream-splat-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/cream-splat-body.webp'),
+    },
+  },
+  'cherry': {
+    tile: require('../../assets/guinos/cherry-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/cherry-body.webp'),
+    },
+  },
+  'bucket': {
+    tile: require('../../assets/guinos/bucket-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/bucket-body.webp'),
+    },
+  },
+  'water-wave': {
+    tile: require('../../assets/guinos/water-wave-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/water-wave-body.webp'),
+    },
+  },
+  'glass-drops': {
+    tile: require('../../assets/guinos/glass-drops-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/glass-drops-body.webp'),
+    },
+  },
+  'tomato': {
+    tile: require('../../assets/guinos/tomato-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/tomato-body.webp'),
+    },
+  },
+  'tomato-splat': {
+    tile: require('../../assets/guinos/tomato-splat-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/tomato-splat-body.webp'),
+    },
+  },
+  'tomato-stem': {
+    tile: require('../../assets/guinos/tomato-stem-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/tomato-stem-body.webp'),
+    },
+  },
+  'egg': {
+    tile: require('../../assets/guinos/egg-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/egg-body.webp'),
+    },
+  },
+  'eggshell': {
+    tile: require('../../assets/guinos/eggshell-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/eggshell-body.webp'),
+    },
+  },
+  'fried-egg': {
+    tile: require('../../assets/guinos/fried-egg-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/fried-egg-body.webp'),
+    },
+  },
+  'pillow': {
+    tile: require('../../assets/guinos/pillow-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/pillow-body.webp'),
+    },
+  },
+  'feather': {
+    tile: require('../../assets/guinos/feather-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/feather-body.webp'),
+    },
+  },
+  'feather-burst': {
+    tile: require('../../assets/guinos/feather-burst-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/feather-burst-body.webp'),
+    },
+  },
+  'soccer-ball': {
+    tile: require('../../assets/guinos/soccer-ball-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/soccer-ball-body.webp'),
+    },
+  },
+  'glass-star-crack': {
+    tile: require('../../assets/guinos/glass-star-crack-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/glass-star-crack-body.webp'),
+    },
+  },
+  'glass-shard': {
+    tile: require('../../assets/guinos/glass-shard-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/glass-shard-body.webp'),
+    },
+  },
+  'foam-can': {
+    tile: require('../../assets/guinos/foam-can-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/foam-can-body.webp'),
+    },
+  },
+  'foam-stream': {
+    tile: require('../../assets/guinos/foam-stream-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/foam-stream-body.webp'),
+    },
+  },
+  'foam-blob': {
+    tile: require('../../assets/guinos/foam-blob-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/foam-blob-body.webp'),
+    },
+  },
+  'flour-hand': {
+    tile: require('../../assets/guinos/flour-hand-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/flour-hand-body.webp'),
+    },
+  },
+  'flour-cloud': {
+    tile: require('../../assets/guinos/flour-cloud-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/flour-cloud-body.webp'),
+    },
+  },
+  'flour-dust': {
+    tile: require('../../assets/guinos/flour-dust-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/flour-dust-body.webp'),
+    },
+  },
+  'fly': {
+    tile: require('../../assets/guinos/fly-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/fly-body.webp'),
+    },
+  },
+  'swatter': {
+    tile: require('../../assets/guinos/swatter-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/swatter-body.webp'),
+    },
+  },
+  'fly-path': {
+    tile: require('../../assets/guinos/fly-path-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/fly-path-body.webp'),
+    },
+  },
+  'knock-finger': {
+    tile: require('../../assets/guinos/knock-finger-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/knock-finger-body.webp'),
+    },
+  },
+  'peeking-eye': {
+    tile: require('../../assets/guinos/peeking-eye-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/peeking-eye-body.webp'),
+    },
+  },
+  'fog-question': {
+    tile: require('../../assets/guinos/fog-question-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/fog-question-body.webp'),
+    },
+  },
+  'big-lips': {
+    tile: require('../../assets/guinos/big-lips-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/big-lips-body.webp'),
+    },
+  },
+  'lipstick-mark': {
+    tile: require('../../assets/guinos/lipstick-mark-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/lipstick-mark-body.webp'),
+    },
+  },
+  'tiny-heart': {
+    tile: require('../../assets/guinos/tiny-heart-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/tiny-heart-body.webp'),
+    },
+  },
+  'raw-egg': {
+    tile: require('../../assets/guinos/raw-egg-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/raw-egg-body.webp'),
+    },
+  },
+  'steam': {
+    tile: require('../../assets/guinos/steam-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/steam-body.webp'),
+    },
+  },
+  'sorry-sign': {
+    tile: require('../../assets/guinos/sorry-sign-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/sorry-sign-body.webp'),
+    },
+  },
+  'haha-text': {
+    tile: require('../../assets/guinos/haha-text-tile.webp'),
+    parts: {
+      'body': require('../../assets/guinos/haha-text-body.webp'),
+    },
+  },
 };

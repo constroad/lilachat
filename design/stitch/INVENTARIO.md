@@ -210,13 +210,16 @@ José, 02/11: «¿te parece que son graciosos y que los usuarios lo usarán? Deb
 | r02nov-telenovela-c | `screens/27c18a7dc7564888bfbef100f45f84d5` | evil-twin, tear-actress, mother-in-law | big-tear, violin, fan | Rechazado |
 | r02nov-telenovela-d | `screens/25b270019c85488687110069a21766dc` | objector, shocked-face, back-from-dead | what, withered-flowers, wedding-ring | Rechazado |
 
-## Guiños «Te ataco» (02/11/2026, pendiente de aprobación de José)
+## Guiños «Te ataco» (02/11/2026, aprobados por José e implementados)
 
 José eligió esta dirección tras rechazar la Telenovela: el guiño le pega a la pantalla de quien lo recibe. Guion de 3 cuadros por guiño (entrada, impacto, remate) y utilería suelta. Generador `.stitch-work/attack_sheet.py`; ids en `design/stitch/registro.jsonl`.
 
 | Slug | Pantalla | Guiños | Utilería (`data-prop`) | Estado |
 | --- | --- | --- | --- | --- |
-| r02nov-ataque-a | `screens/f66f06df2d8f485abf0de0fe9d700b88` | Chancletazo, Pastelazo, Baldazo | slipper, slipper-mark, cream-pie, cream-splat, cherry, bucket, water-wave, glass-drops | Por aprobar |
-| r02nov-ataque-b | `screens/31e0cad365f9414ea9480f7cd0ff201a` | Tomatazo, Huevazo, Almohadazo | tomato, tomato-splat, tomato-stem, egg, eggshell, fried-egg, pillow, feather, feather-burst | Por aprobar |
-| r02nov-ataque-c | `screens/f8dbd8663c8c411ca8ebe4d5e485458e` | Pelotazo, Espumazo, Harinazo | soccer-ball, glass-star-crack, glass-shard, foam-can, foam-stream, foam-blob, flour-hand, flour-cloud, flour-dust | Por aprobar |
-| r02nov-ataque-d | `screens/0132feaee9ed4b9a868c8d9d2d3f7569` | Matamoscas, Toc toc, Besote | fly, swatter, fly-path, knock-finger, peeking-eye, fog-question, big-lips, lipstick-mark, tiny-heart | Por aprobar |
+| r02nov-ataque-a | `screens/f66f06df2d8f485abf0de0fe9d700b88` | Chancletazo, Pastelazo, Baldazo | slipper, slipper-mark, cream-pie, cream-splat, cherry, bucket, water-wave, glass-drops | Aprobado |
+| r02nov-ataque-b | `screens/31e0cad365f9414ea9480f7cd0ff201a` | Tomatazo, Huevazo, Almohadazo | tomato, tomato-splat, tomato-stem, egg, eggshell, fried-egg, pillow, feather, feather-burst | Aprobado |
+| r02nov-ataque-c | `screens/f8dbd8663c8c411ca8ebe4d5e485458e` | Pelotazo, Espumazo, Harinazo | soccer-ball, glass-star-crack, glass-shard, foam-can, foam-stream, foam-blob, flour-hand, flour-cloud, flour-dust | Aprobado |
+| r02nov-ataque-d | `screens/0132feaee9ed4b9a868c8d9d2d3f7569` | Matamoscas, Toc toc, Besote | fly, swatter, fly-path, knock-finger, peeking-eye, fog-question, big-lips, lipstick-mark, tiny-heart | Aprobado |
+| r02nov-ataque-fix | `screens/97d5b34ebf4d45afbdec1aa8b6230c83` | Piezas flojas redibujadas | slipper, slipper-mark, cream-pie, pillow, feather-burst, foam-can, foam-blob, flour-cloud, flour-dust (cream-splat salió como muela: va a mano) | Aprobado |
+
+A mano, en `.stitch-work/out/winks/r02nov-ataque-hand.html` (después de las hojas, así gana): `cream-splat`, `raw-egg`, `steam`, `sorry-sign`, `haha-text` y `water-wave`. El corazón de Stitch traía carita (prohibido): el Besote usa el `heart` de siempre.

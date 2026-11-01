@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { Pressable, Text, Vibration, View } from 'react-native';
 import { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming, type SharedValue } from 'react-native-reanimated';
-import { Heart, Play, Vibrate } from 'lucide-react-native';
+import { Heart, Play, Undo2, Vibrate } from 'lucide-react-native';
 import { WinkCharacter } from './WinkCharacter';
 import { funSeenFloor, rememberFunSeen, rememberRowPlayed, rowPlayedSeq, useFunLedgerReady } from './funSeen';
 import { getSocket } from './socketClient';
@@ -9,7 +9,7 @@ import { chatsEnMemoria, suscribirChatsEnMemoria } from './chatsGuardados';
 import { funAvailable } from './funAvailable';
 import { playWinkCues, shakeScreen, startWink, stopFun } from './FunScreen';
 import { closeEmojiPanel } from './emojiPanel';
-import { FUN_LIVE_MS, NUDGE_SHAKE, formatClock, funMessageToPlay, funToPlayInRow, highestSeq, shouldPlayFun, winkById, winkCardLines, winkTileIsProp, type FunPlace, type FunToPlay, type WinkId } from '@lilachat/shared';
+import { FUN_LIVE_MS, NUDGE_SHAKE, canReturnWink, formatClock, funMessageToPlay, funToPlayInRow, highestSeq, shouldPlayFun, winkById, winkCardLines, winkTileIsProp, type FunPlace, type FunToPlay, type WinkId } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 
 const SEND_TIMEOUT_MS = 8000;
@@ -199,12 +199,31 @@ export function NudgeLine(props: { seq: number; mine: boolean; author?: string; 
 /** The wink's thumbnail in its card (dp); a character (240 × 320) fits by its height, a prop (square) by its side. */
 const WINK_THUMB = 64;
 
+type ReturnState = 'idle' | 'sending' | 'sent' | 'failed';
+const RETURN_LABEL: Record<ReturnState, string> = { idle: 'Devolver', sending: 'Devolviendo…', sent: 'Devuelto', failed: 'No salió, reintenta' };
+
+/** «Devolver» (José, 02/11): an attack someone sent me goes straight back to the same chat. */
+function ReturnWinkButton(props: { seq: number; chatId: string; wink: WinkId }) {
+  const palette = useColores();
+  const [state, setState] = useState<ReturnState>('idle');
+  const send = () => {
+    setState('sending');
+    void sendWink(props.chatId, props.wink).then((result) => setState(result.ok ? 'sent' : 'failed'));
+  };
+  return (
+    <Pressable testID={`devolver-guino-${props.seq}`} hitSlop={10} disabled={state === 'sending' || state === 'sent'} onPress={send} className={`h-8 flex-row items-center gap-1.5 rounded-full bg-primary px-3 ${state === 'sent' ? 'opacity-60' : ''}`}>
+      <Undo2 size={13} color={palette['on-primary']} />
+      <Text className="text-[13px] font-semibold text-on-primary">{RETURN_LABEL[state]}</Text>
+    </Pressable>
+  );
+}
+
 /**
  * A wink in the chat as a card with its THUMBNAIL (José, 21/10: a thumbnail to
  * see which wink it was): the character (or the emoji)
  * on the left, who sent it and which wink on the right, and «Ver otra vez».
  */
-export function WinkLine(props: { seq: number; wink?: string; mine: boolean; author?: string; at?: string }) {
+export function WinkLine(props: { seq: number; wink?: string; mine: boolean; author?: string; at?: string; chatId?: string }) {
   const palette = useColores();
   const known = winkById(props.wink);
   const lines = winkCardLines({ wink: props.wink, mine: props.mine, author: props.author, time: props.at ? formatClock(props.at) : undefined });
@@ -217,10 +236,13 @@ export function WinkLine(props: { seq: number; wink?: string; mine: boolean; aut
         <Text className="text-[14px] font-semibold text-on-surface">{lines.who}</Text>
         {lines.detail ? <Text className="text-[12px] text-on-surface-variant">{lines.detail}</Text> : null}
         {known ? (
-          <Pressable testID={`ver-guino-${props.seq}`} hitSlop={10} onPress={() => replayWink(props.seq, known.id)} className="mt-1 h-8 flex-row items-center gap-1.5 self-start rounded-full border border-outline/20 px-3">
-            <Play size={13} color={palette.primary} />
-            <Text className="text-[13px] font-semibold text-primary">Ver otra vez</Text>
-          </Pressable>
+          <View className="mt-1 flex-row flex-wrap gap-2">
+            <Pressable testID={`ver-guino-${props.seq}`} hitSlop={10} onPress={() => replayWink(props.seq, known.id)} className="h-8 flex-row items-center gap-1.5 self-start rounded-full border border-outline/20 px-3">
+              <Play size={13} color={palette.primary} />
+              <Text className="text-[13px] font-semibold text-primary">Ver otra vez</Text>
+            </Pressable>
+            {props.chatId && canReturnWink({ wink: props.wink, mine: props.mine }) ? <ReturnWinkButton seq={props.seq} chatId={props.chatId} wink={known.id} /> : null}
+          </View>
         ) : null}
       </View>
     </View>

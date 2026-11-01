@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NUDGE_SHAKE, funMessageToPlay, FUN_LIVE_MS, funNoticeText, isWinkId, shouldPlayFun, WINKS, winkById, winkCardLines, winkCues, winkParticles, winkRowSound } from './winks.js';
+import { NUDGE_SHAKE, canReturnWink, funMessageToPlay, FUN_LIVE_MS, funNoticeText, isWinkId, shouldPlayFun, WINKS, winkById, winkCardLines, winkCues, winkPanelGroups, winkParticles, winkRowSound } from './winks.js';
 
 describe('the wink catalog', () => {
   it('characters, construction ones and the first emoji ones, each with a name and its length', () => {
@@ -37,6 +37,37 @@ describe('the wink catalog', () => {
     expect(winkById('balloon')).toMatchObject({ name: 'Globo de agua', kind: 'character', tile: 'balloon' });
     expect(winkById('hearts')).toMatchObject({ name: 'Corazones', kind: 'emoji', hero: '❤️' });
     expect(winkById('nope')).toBeUndefined();
+  });
+});
+
+describe('«Te ataco» (José 02/11: winks that hit the screen of whoever gets them)', () => {
+  it('twelve attacks in their own group, each a sketch of 6 to 7 s with its own tile', () => {
+    // Arrange
+    const attacks = WINKS.filter((wink) => wink.group === 'attack');
+    // Assert
+    expect(attacks.map((wink) => wink.name)).toEqual(['Chancletazo', 'Pastelazo', 'Baldazo', 'Tomatazo', 'Huevazo', 'Almohadazo', 'Pelotazo', 'Espumazo', 'Harinazo', 'Matamoscas', 'Toc toc', 'Besote']);
+    for (const wink of attacks) {
+      expect(wink.kind, wink.id).toBe('character');
+      if (wink.kind === 'character') expect(wink.tile, wink.id).toBeDefined();
+    }
+  });
+
+  it('is the first group of the panel, after the season when one is on', () => {
+    // Act
+    const quiet = winkPanelGroups(new Date('2026-09-10T15:00:00Z')).map((group) => group.title);
+    const halloween = winkPanelGroups(new Date('2026-10-30T15:00:00Z')).map((group) => group.title);
+    // Assert
+    expect(quiet[0]).toBe('Te ataco');
+    expect(halloween[1]).toBe('Te ataco');
+  });
+
+  it('«Devolver» is offered only on an attack someone sent me', () => {
+    expect(canReturnWink({ wink: 'hit-slipper', mine: false })).toBe(true);
+    expect(canReturnWink({ wink: 'hit-slipper', mine: true })).toBe(false);
+    expect(canReturnWink({ wink: 'piggy', mine: false })).toBe(false);
+    expect(canReturnWink({ wink: 'angry', mine: false })).toBe(false);
+    expect(canReturnWink({ wink: 'nope', mine: false })).toBe(false);
+    expect(canReturnWink({ wink: undefined, mine: false })).toBe(false);
   });
 });
 

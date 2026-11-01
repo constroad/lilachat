@@ -173,8 +173,8 @@ function NudgeFromContext({ seq, mine, senderId, at }: { seq: number; mine: bool
 
 /** The wink line, the same way (José, 21/10). */
 function WinkFromContext({ seq, wink, mine, senderId, at }: { seq: number; wink?: string; mine: boolean; senderId: string; at: string }) {
-  const { nombres } = useConversacion();
-  return <WinkLine seq={seq} wink={wink} mine={mine} author={nombres.get(senderId)} at={at} />;
+  const { nombres, onReturnWink } = useConversacion();
+  return <WinkLine seq={seq} wink={wink} mine={mine} author={nombres.get(senderId)} at={at} onReturn={onReturnWink} />;
 }
 
 function AuthorName({ senderId, clientKey }: { senderId: string; clientKey: string }) {

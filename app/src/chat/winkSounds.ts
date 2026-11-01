@@ -32,6 +32,7 @@ const SOUND_FILES: Record<WinkSound, number> = {
   sizzle: require('../../assets/sonidos/wink-sizzle.mp3'),
   whistle: require('../../assets/sonidos/wink-whistle.mp3'),
   crash: require('../../assets/sonidos/wink-crash.mp3'),
+  buzz: require('../../assets/sonidos/wink-buzz.mp3'),
 };
 /** The players playing now. Each one is released when it ends: 26 sounds kept alive were 26 media players in memory (José, 21/10: the app felt slow). */
 const playing = new Set<AudioPlayer>();

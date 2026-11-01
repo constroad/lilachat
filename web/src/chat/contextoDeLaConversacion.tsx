@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { AgendaReminder } from '@lilachat/shared';
+import type { AgendaReminder, WinkId } from '@lilachat/shared';
 import type { DetalleDelChat } from './useDetalleDelChat';
 import type { ChatSummary, MensajeEnPantalla } from './types';
 
@@ -56,6 +56,8 @@ export type ContextoDeLaConversacion = {
   onStickerAction?: (mensaje: MensajeEnPantalla, action: StickerAction) => void;
   /** Editar un recordatorio del chat (W3c). Sin esto (sin permiso), la tarjeta no ofrece editar. */
   onEditarRecordatorio?: (recordatorio: AgendaReminder) => void;
+  /** «Devolver» on an attack wink (José, 02/11): send it straight back. Without it (winks off here), the card does not offer it. */
+  onReturnWink?: (wink: WinkId) => void;
 };
 
 export const ConversacionContext = createContext<ContextoDeLaConversacion | null>(null);

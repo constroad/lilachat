@@ -24,7 +24,7 @@ describe('seasonal winks (pending 73)', () => {
     // Assert
     expect(october[0]?.title).toBe('Halloween');
     expect(october[0]?.winks.length).toBeGreaterThanOrEqual(5);
-    expect(march.map((group) => group.title)).toEqual(['Personajes', 'Obra y pistas', 'Emojis']);
+    expect(march.map((group) => group.title)).toEqual(['Te ataco', 'Personajes', 'Obra y pistas', 'Emojis']);
     expect(march.flatMap((group) => group.winks).some((wink) => wink.season)).toBe(false);
   });
 

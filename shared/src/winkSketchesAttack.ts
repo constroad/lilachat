@@ -287,7 +287,7 @@ const FLIGHT = [
   [0.43, 0.5, 0.5],
 ] as const;
 
-/** The swatter: a fly buzzes around, lands, ¡PLAF!… the swatter lifts, no fly: it is up there laughing. */
+/** The swatter: a fly buzzes around and lands, the swatter slams down… and lifts with no fly under it: it is up there laughing. */
 function swatterHit(): Sketch {
   const durationMs = STANDARD_MS;
   const fly = prop('fly', [{ at: 0, x: -0.45, y: 0.3, scale: 0.2, opacity: 0 }, { at: 0.02, opacity: 1 }, ...FLIGHT.map(([at, x, y]) => ({ at, x, y })), ...sway('rotate', 0.02, 0.43, durationMs, 18, 100, 0), ...sway('rotate', 0.44, 0.51, durationMs, 10, 80, 0), ...vanishAt(0.515)]);

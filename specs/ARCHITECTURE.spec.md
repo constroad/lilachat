@@ -5107,11 +5107,14 @@ Cobranza Lilachat 31-10» → Servicios → «QA Liquidación Lilachat 31-10».
   movimiento.
 - La liquidación QA ya llega en `reports` y sale en Informes bajo «1 de
   noviembre».
-- Pendiente en Portal, pedido a agentes: «Generar informe de servicio» devuelve
-  la liquidación guardada sin regenerarla, con el mismo archivo byte a byte. Un
-  pago registrado después no aparecería, y el arreglo de la fecha del pago
-  (4cf5c340) no se ve en un PDF ya guardado. Además llega rotulada «Informe de
-  obra».
+- «Generar informe de servicio» devuelve la liquidación guardada mientras el
+  servicio no cambió. Esto es a propósito: cada pago o cambio de ítems mueve el
+  `updatedAt` del servicio, y entonces Portal genera una liquidación nueva con
+  los pagos al día (`liquidationFor`). Solo una foto de voucher subida sin tocar
+  el pago no genera otra.
+- La liquidación llegaba rotulada «Informe de obra». Portal e2135572 la nombra
+  «Liquidación final del servicio», como el portal del cliente. Está commiteado
+  y espera el OK de José para el push.
 
 ## 180. Canal del cliente: informes por día, cubicaje, obra, inicio, «Recordatorio», enlaces y PDF que se genera (31/10/2026, servidor + OTA + web)
 

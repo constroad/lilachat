@@ -4995,6 +4995,41 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 182. La app entera en «Algo se rompió en esta pantalla» por una respuesta sin cuerpo (01/11/2026, OTA + web)
+
+**Qué vio José (11:31).** Toda la app en «Algo se rompió en esta pantalla»;
+«Reintentar» volvía a caer. En `chat-err.log` hubo 8 reportes iguales entre
+11:31:20 y 11:31:40, de `lilachat@0.1.175+8f3a86c5`, pantalla `app`:
+`Cannot read property 'some' of undefined` en `useSpacesUi` ← `TabsShell`.
+Fue 6 s después de que el teléfono aplicara la OTA 8f3a86c5 (venía de la
+17c601d8). El server no se reinició en esa ventana (pid desde las 10:27).
+
+**La causa.** `jsonCall` (app) hacía `response.json().catch(() => ({}))`. Un
+2xx con el cuerpo cortado por la red, o con una página HTML en el camino,
+salía como `{ ok: true, data: {} }`. `useMySpaces` guardaba
+`response.data.workspaces`, o sea `undefined`. `useSpacesUi` hace
+`spaces === null ? null : spaces.some(…)` al renderizar, y la pantalla raíz
+caía. El store no se volvía a pedir hasta reiniciar la app, así que
+«Reintentar» no podía salir.
+
+**El arreglo (OTA 20d9eb0f, git 5ecb5fd).**
+- `jsonCall` lee el cuerpo como texto. Vacío es éxito (`{}`, un 204).
+  Ilegible o no JSON es `{ ok: false, message: 'Sin conexión…' }`. Vale
+  para las 75 llamadas de la app. Test `app/src/api/jsonCall.test.ts`.
+- `workspacesOf` (shared) valida la lista de `GET /api/workspaces`. La usan la
+  app y la web: una respuesta que no es la lista deja la que había.
+  Test en `shared/src/workspaces.test.ts`.
+
+**Verificado.** Gates y rn-smoke en verde. Emulador con «Código en uso:
+Actualización 20d9eb0f»: lista de Constroad, canal CARCELI (Servicios con
+inicio y enlaces) y `#general` con sus mensajes, sin `[crash]` en logcat. El
+2xx sin cuerpo no se reprodujo en el emulador (el server de producción no lo
+devuelve a pedido); lo cubren los dos tests.
+
+**Deuda.** Varias llamadas de la web repiten `json().catch(() => ({}))` fuera
+de `api.ts` (`spacesApi`, `commandsApi`, `stickersApi`…). La de espacios ya
+está protegida por `workspacesOf`; el resto queda para unificarlo.
+
 ## 181. Los botones del canal del cliente sin interruptor, despachos dentro del pedido y registros por día (01/11/2026, servidor + OTA + web)
 
 José, 01/11: «ya lo aprobé… ¿por qué no puedo ver estos puntos en la app?».

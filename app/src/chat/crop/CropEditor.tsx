@@ -11,8 +11,13 @@ import { CropFooter, CropHeader, RatioBar } from './CropControls';
 /** How far from a corner or an edge a finger still grabs it (a fingertip is ~44 dp). */
 const REACH = 24;
 const MIN_SIZE = 64;
-/** Room around the photo so the corners can be grabbed at the border. */
-const PADDING = 20;
+/** Room above and below the photo so the corners can be grabbed at the border. */
+const PADDING_Y = 20;
+/**
+ * Room at the sides: wider than Android's back gesture (24–40 dp by its
+ * sensitivity). At 20 dp a finger on a left corner closed the crop (emulator, 01/11).
+ */
+const PADDING_X = 40;
 
 /**
  * Crop and turn a photo before sending it, like WhatsApp (José 01/11). Over
@@ -30,8 +35,8 @@ export function CropEditor(props: { photo: FotoElegida; onCancel: () => void; on
   const sideways = rotation % 180 !== 0;
   const bounds = useMemo(() => {
     if (!preview || !box) return null;
-    const fitted = fitContain(sideways ? preview.height : preview.width, sideways ? preview.width : preview.height, box.width - PADDING * 2, box.height - PADDING * 2);
-    return { ...fitted, x: fitted.x + PADDING, y: fitted.y + PADDING };
+    const fitted = fitContain(sideways ? preview.height : preview.width, sideways ? preview.width : preview.height, box.width - PADDING_X * 2, box.height - PADDING_Y * 2);
+    return { ...fitted, x: fitted.x + PADDING_X, y: fitted.y + PADDING_Y };
   }, [preview, box, sideways]);
   useEffect(() => {
     if (bounds) setCrop(aspectCrop(bounds, aspect));

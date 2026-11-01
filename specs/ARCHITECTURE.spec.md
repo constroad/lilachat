@@ -4995,6 +4995,61 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 183. Recortar y girar la foto antes de enviarla, como WhatsApp (01/11/2026, OTA)
+
+José, 01/11: «al tomar una foto en la app no hay forma de recortar la imagen
+como se hace en WhatsApp».
+
+**Qué hace.** En «Enviar fotos» (cámara o galería) aparece el botón de
+recorte sobre cada foto (no en videos). Abre «Recortar» encima de la misma
+pantalla: foto en negro, marco blanco con tercios y esquinas, sombra afuera.
+- Esquinas y bordes cambian el tamaño; adentro, el marco se mueve. Nunca sale
+  de la foto ni baja de 64 dp.
+- Proporciones: Libre, Cuadrado, 4:3, 3:4, 16:9. Con una fija, las esquinas
+  la conservan y los bordes no hacen nada.
+- Girar a la izquierda de a 90°. «Restablecer» vuelve a Libre y sin giro.
+- «Listo» reemplaza la foto por el recorte y conserva su texto. «Atrás» o la
+  X cierran el recorte, no la foto.
+
+**Cómo está hecho (`app/src/chat/crop/`).**
+- `cropMath.ts`: todo lo que se calcula, puro y con test (`cropMath.test.ts`,
+  10 casos): encajar la foto, qué toma el dedo, arrastrar, proporciones,
+  giro, fracción y píxeles.
+- `cropPhoto.ts`: la pantalla dibuja una copia de 1080 px del mismo
+  decodificador (expo-image-manipulator), nunca la foto de 12 MP. El corte
+  viaja como **fracción** y se aplica a la foto original girada: lo que se ve
+  es lo que se corta. Sin cambios, vuelve la foto tal cual. Se guarda JPEG
+  0,92 (PNG si era PNG); la cola de envío la aligera después, salvo «HD».
+- `CropEditor.tsx`, `CropFrame.tsx`, `CropControls.tsx`: la pantalla, el
+  marco (solo dibuja) y las barras.
+
+**El dedo se mide desde la pantalla, no desde la vista tocada.** La primera
+OTA (e0119abb) abría el recorte pero ninguna esquina se movía: `locationX` es
+relativo a la vista bajo el dedo, y expo-image ignora `pointerEvents`, así que
+la foto se quedaba con el toque. Ahora el área mide su lugar con `measure`
+(al dibujarse y en cada toque) y el dedo se resta de `pageX/pageY`.
+
+**Las esquinas lejos del gesto «atrás».** Con 20 dp a los lados, tomar la
+esquina izquierda de una foto girada (ocupa todo el ancho) disparaba el gesto
+«atrás» de Android y cerraba el recorte. Ahora hay 40 dp a los lados (el gesto
+mide 24–40 dp según su sensibilidad) y 20 dp arriba y abajo.
+
+**Verificado en el emulador (OTA 4e8997aa, git 5fb9c35), Test #general.**
+Cámara → recortar: la esquina superior se arrastró (+233, +565 px), el marco se
+movió y se detuvo en el borde, la esquina inferior achicó el marco; girar dejó
+la foto apaisada y «Cuadrado» un marco de 460×459 px. Recorte girado alrededor
+de la hora del emulador → «Listo» mostró solo ese pedazo, girado y grande; la
+burbuja enviada respetó la forma (1,1:1). Se borró con «Eliminar para todos».
+«Atrás» con el recorte abierto lo cerró sin perder la foto.
+
+**Tests del server estables (84cf664).** Los «Parse Error» y los tiempos
+agotados al azar venían de supertest: escuchaba en `[::]:P` y llamaba a
+`127.0.0.1:P`. En macOS, `[::]:P` convive con el `127.0.0.1:P` de otro proceso
+(el mongod de pruebas, el emulador), y el pedido llegaba a ese otro.
+`server/test/setup/supertestOnLoopback.ts` hace que el servidor de cada test
+escuche en `127.0.0.1` y que el pedido espere a que escuche
+(`listenOnLoopback.test.ts`, 3 casos). Suite 1206/1206.
+
 ## 182. La app entera en «Algo se rompió en esta pantalla» por una respuesta sin cuerpo (01/11/2026, OTA + web)
 
 **Qué vio José (11:31).** Toda la app en «Algo se rompió en esta pantalla»;

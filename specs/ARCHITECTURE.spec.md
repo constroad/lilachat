@@ -5100,6 +5100,19 @@ Cobranza Lilachat 31-10» → Servicios → «QA Liquidación Lilachat 31-10».
   informe de servicio» deja la respuesta bajo el botón, sin abrir el ⚡. Portal
   devuelve la misma liquidación, no crea otra.
 
+**Portal publicado (release 20261101-100018-4cf5c340, con el OK de José).**
+- Backfill de Constroad: 9 clientes reenviados. En la base de Lilachat, 22 de
+  22 servicios tienen `startedAt`. En la app, CARCELI SAC muestra «Inicio 5 set»
+  e «Inicio 14 oct». TEST COMPANY no se reenvió: se actualiza con su próximo
+  movimiento.
+- La liquidación QA ya llega en `reports` y sale en Informes bajo «1 de
+  noviembre».
+- Pendiente en Portal, pedido a agentes: «Generar informe de servicio» devuelve
+  la liquidación guardada sin regenerarla, con el mismo archivo byte a byte. Un
+  pago registrado después no aparecería, y el arreglo de la fecha del pago
+  (4cf5c340) no se ve en un PDF ya guardado. Además llega rotulada «Informe de
+  obra».
+
 ## 180. Canal del cliente: informes por día, cubicaje, obra, inicio, «Recordatorio», enlaces y PDF que se genera (31/10/2026, servidor + OTA + web)
 
 José probó el canal de CONSORCIO EL ALMIRANTE en el teléfono y pidió ocho cosas. Seis

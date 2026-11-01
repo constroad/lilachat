@@ -28,5 +28,7 @@ export default defineConfig({
     // Los de socket levantan servidores reales y son más lentos que el default.
     testTimeout: 20_000,
     hookTimeout: 30_000,
+    // supertest calls the app where nothing else of the tests listens: see the file (01/11).
+    setupFiles: ['./test/setup/supertestOnIpv6Loopback.ts'],
   },
 });

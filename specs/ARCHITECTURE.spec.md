@@ -5112,6 +5112,9 @@ Cobranza Lilachat 31-10» → Servicios → «QA Liquidación Lilachat 31-10».
   `updatedAt` del servicio, y entonces Portal genera una liquidación nueva con
   los pagos al día (`liquidationFor`). Solo una foto de voucher subida sin tocar
   el pago no genera otra.
+  Comprobado: con un segundo pago QA (S/ 10, QA-0002) salió
+  LIQ-SRV-2026-11-01T15-13-41-872Z.pdf con los dos pagos, fechas 31/10/2026 y
+  01/11/2026 (4cf5c340), y a pagar S/ 9,770.
 - La liquidación llegaba rotulada «Informe de obra». Portal e2135572 la nombra
   «Liquidación final del servicio», como el portal del cliente. Está commiteado
   y espera el OK de José para el push.

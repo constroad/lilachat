@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { ActivityIndicator, PanResponder, View } from 'react-native';
 import { Image } from 'expo-image';
 import { reportarError } from '../../ui/reportarError';
@@ -36,7 +36,8 @@ export function CropEditor(props: { photo: FotoElegida; onCancel: () => void; on
   useEffect(() => {
     if (bounds) setCrop(aspectCrop(bounds, aspect));
   }, [bounds, aspect]);
-  const gesture = useCropGesture({ crop, bounds, aspect }, setCrop);
+  const area = useRef<View>(null);
+  const gesture = useCropGesture({ crop, bounds, aspect }, setCrop, area);
 
   const reset = () => {
     setRotation(0);
@@ -59,7 +60,17 @@ export function CropEditor(props: { photo: FotoElegida; onCancel: () => void; on
   return (
     <View className="absolute inset-0 bg-black" testID="pantalla-recortar">
       <CropHeader onCancel={props.onCancel} onReset={reset} onRotate={() => setRotation(nextRotation)} />
-      <View testID="area-de-recorte" className="flex-1" onLayout={(event) => setBox({ width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height })} {...gesture.panHandlers}>
+      <View
+        ref={area}
+        testID="area-de-recorte"
+        className="flex-1"
+        collapsable={false}
+        onLayout={(event) => {
+          setBox({ width: event.nativeEvent.layout.width, height: event.nativeEvent.layout.height });
+          gesture.locate();
+        }}
+        {...gesture.responder.panHandlers}
+      >
         {preview && bounds ? <TurnedPhoto preview={preview} bounds={bounds} rotation={rotation} /> : <ActivityIndicator color="white" style={{ flex: 1 }} />}
         {crop && bounds ? <CropFrame crop={crop} bounds={bounds} /> : null}
       </View>
@@ -90,19 +101,31 @@ function useCropPreview(photo: FotoElegida): { preview: CropPreview | null; fail
   return { preview, failed };
 }
 
-/** The finger on a corner, an edge or inside the frame; read from a ref so the responder is made once. */
-function useCropGesture(state: { crop: Rect | null; bounds: Rect | null; aspect: number | null }, setCrop: (crop: Rect) => void) {
+/**
+ * The finger on a corner, an edge or inside the frame; read from a ref so the
+ * responder is made once. Measured from the root view: `locationX` is relative
+ * to the view under the finger, and expo-image ignores `pointerEvents`, so the
+ * photo took the touch and no corner was ever grabbed (emulator, 01/11).
+ */
+function useCropGesture(state: { crop: Rect | null; bounds: Rect | null; aspect: number | null }, setCrop: (crop: Rect) => void, area: RefObject<View | null>) {
   const live = useRef(state);
   live.current = state;
   const grab = useRef<{ handle: Handle; start: Rect } | null>(null);
-  return useMemo(
+  const origin = useRef({ x: 0, y: 0 });
+  // Same frame as a touch's pageX/pageY; again on every touch, in case the screen moved since the layout.
+  const locate = useCallback(() => area.current?.measure((_x, _y, _width, _height, pageX, pageY) => (origin.current = { x: pageX, y: pageY })), [area]);
+  const responder = useMemo(
     () =>
       PanResponder.create({
         onStartShouldSetPanResponder: (event) => {
           const { crop } = live.current;
-          const handle = crop ? handleAt(crop, event.nativeEvent.locationX, event.nativeEvent.locationY, REACH) : null;
+          const handle = crop ? handleAt(crop, event.nativeEvent.pageX - origin.current.x, event.nativeEvent.pageY - origin.current.y, REACH) : null;
           grab.current = handle && crop ? { handle, start: crop } : null;
           return grab.current !== null;
+        },
+        onStartShouldSetPanResponderCapture: () => {
+          locate();
+          return false;
         },
         onPanResponderMove: (_event, move) => {
           const { bounds, aspect } = live.current;
@@ -111,8 +134,9 @@ function useCropGesture(state: { crop: Rect | null; bounds: Rect | null; aspect:
         onPanResponderRelease: () => (grab.current = null),
         onPanResponderTerminate: () => (grab.current = null),
       }),
-    [setCrop],
+    [setCrop, locate],
   );
+  return { responder, locate };
 }
 
 /** The preview turned in place: the bounds are already the turned shape, so a sideways photo swaps its sides. */

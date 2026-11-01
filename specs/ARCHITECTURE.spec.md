@@ -5012,7 +5012,7 @@ interruptor:
 | --- | --- | --- |
 | `crear_enlace_cliente` | «Enlace del cliente» y «Crear enlace del pedido» | el canal |
 | `crear_enlace_de_servicio` | «Enlace del servicio» | el canal |
-| `informe_de_servicio` | «Generar informe de servicio» | el canal |
+| `informe_de_servicio` | «Generar informe de servicio» en Informes | el espacio |
 | `registrar_pago` | «Registrar pago» en Cobranza | el espacio |
 
 - **Quién las usa.** Los admins del espacio, en cada canal de cliente.
@@ -5022,8 +5022,12 @@ interruptor:
   tiene su botón.
 - **Código.** `CLIENT_CHANNEL_BUTTONS` y `worksAt()` en
   `shared/src/appItems.ts`, que el server usa en el menú y al invocar.
-  - `registrar_pago` corre desde el espacio porque Portal la rechaza dentro de
-    un grupo.
+  - El pago y el informe corren desde el espacio, con respuesta privada.
+    Portal los rechaza dentro de un grupo porque traen montos. En el E2E del
+    01/11, el informe pedido desde el canal respondió «Portal no lo permitió:
+    esa consulta no se responde en un grupo».
+  - Los dos usan el mismo botón: `SpaceActionButton` (app) y
+    `SpaceActionButtonWeb` (web), con `serviceValuesOf()`.
   - Los botones leen `channelButtonRows()`; el ⚡ lee `chatActionRows()`, que
     ya no las trae.
 - **En «Comandos y acciones»** salen «Encendido», con «Funciona en el canal de

@@ -1,12 +1,12 @@
 import { useCallback, useState } from 'react';
-import { ChevronLeft, ExternalLink, FileText } from 'lucide-react';
-import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { ChevronLeft, ExternalLink, FileText, Plus } from 'lucide-react';
+import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, PAYMENT_ACTION, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { usePortalFileViewer } from './PortalFileViewer';
 import type { OpenSheetFile } from './RecordSheetWeb';
 import { RecordSheetWeb } from './RecordSheetWeb';
-import { RegisterPaymentWeb } from './RegisterPaymentWeb';
 import { ServiceBillingWeb } from './ServiceBillingWeb';
 import { ServiceStagesWeb } from './ServiceStagesWeb';
+import { SpaceActionButtonWeb } from './SpaceActionButtonWeb';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
 import { useReportPdf } from './useReportPdf';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
@@ -77,15 +77,16 @@ type OpenSheet = { tab: DetailTabKey; id: string };
 const orderLinkAction = (links: ChannelLinks | undefined, top: OpenSheet | undefined, target: ServiceAskTarget) =>
   links?.can('order') && top?.tab === 'orders' ? { label: 'Crear enlace del pedido', onPress: () => links.open({ kind: 'order', clientId: target.clientId, orderId: top.id }) } : undefined;
 
-/** Above the tab (José 31/10): «Registrar pago» in Cobranza; «Generar informe de servicio» in Informes while Portal's tool exists. */
-function TabActions({ tab, links, target, serviceId, onPaid }: { tab: DetailTabKey; links?: ChannelLinks; target: ServiceAskTarget; serviceId: string; onPaid: () => void }) {
-  if (tab === 'billing') return <RegisterPaymentWeb jwt={target.jwt} spaceId={target.spaceId} serviceId={serviceId} onPaid={onPaid} />;
-  if (tab !== 'reports' || !links?.can('serviceReport')) return null;
-  return (
-    <button type="button" data-testid="generar-informe-servicio" onClick={() => links.open({ kind: 'serviceReport', clientId: target.clientId, serviceId })} className="flex h-11 w-full items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 text-left text-sm font-semibold text-primary hover:bg-primary/15">
-      <FileText size={16} /> Generar informe de servicio
-    </button>
-  );
+/**
+ * Above the tab (José 31/10): «Registrar pago» in Cobranza and «Generar informe
+ * de servicio» in Informes. Both run from the space (Portal refuses them in a
+ * group), and an answered one asks the detail again.
+ */
+function TabActions({ tab, target, serviceId, onAnswered }: { tab: DetailTabKey; target: ServiceAskTarget; serviceId: string; onAnswered: () => void }) {
+  const common = { jwt: target.jwt, spaceId: target.spaceId, values: serviceValuesOf(serviceId), onAnswered };
+  if (tab === 'billing') return <SpaceActionButtonWeb {...common} actionKey={PAYMENT_ACTION} label="Registrar pago" testId="registrar-pago" Icon={Plus} />;
+  if (tab === 'reports') return <SpaceActionButtonWeb {...common} actionKey={SERVICE_REPORT_ACTION} label="Generar informe de servicio" testId="generar-informe-servicio" Icon={FileText} />;
+  return null;
 }
 
 /** Dispatches whose order did not come in the 100 Portal sent (José 01/11: they live inside their order). */
@@ -135,7 +136,7 @@ function DetailTabs({ detail, target, serviceId, links, onPaid }: { detail: Serv
           <button key={one.key} type="button" role="tab" aria-selected={tab === one.key} data-testid={`pestana-detalle-${one.key}`} onClick={(event) => { setTab(one.key); event.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); }} className={`h-9 shrink-0 rounded-lg px-3 text-sm ${tab === one.key ? 'bg-primary font-semibold text-on-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>{one.label}</button>
         ))}
       </div>
-      <TabActions tab={tab} links={links} target={target} serviceId={serviceId} onPaid={onPaid} />
+      <TabActions tab={tab} target={target} serviceId={serviceId} onAnswered={onPaid} />
       <TabBody detail={detail} tab={tab} onOpen={openRow} onOpenFile={viewer.open} />
       {tab === 'orders' ? <OrphanDispatches detail={detail} onOpen={openDispatch} onOpenFile={viewer.open} /> : null}
       {viewer.viewer}

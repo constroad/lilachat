@@ -1,7 +1,7 @@
 import { answerOfOutcome, type CommandGroup, type CommandOutcome, type EphemeralAnswer } from './botCommands.js';
 import type { AppForm, FormField, FormValues, GeoPoint } from './appForms.js';
 import { liveSelfieFieldOf } from './appForms.js';
-import { CLIENT_LINK_ACTION, clientChannelButtonOf, hasOwnSpacePlace, SERVICE_LINK_ACTION, SERVICE_REPORT_ACTION } from './appItems.js';
+import { CLIENT_LINK_ACTION, clientChannelButtonOf, hasOwnSpacePlace, SERVICE_LINK_ACTION } from './appItems.js';
 
 /**
  * The actions of the apps (R160): the rows of «Acciones rápidas» (the space's ⚡,
@@ -72,16 +72,13 @@ export function shortcutValuesOf(raw: unknown): ShortcutValues | null | undefine
 /**
  * Portal's link actions (agentes 31/10): the client's or an order's link asks
  * what Portal's modal asks (tabs, days); a service's has an action of its own.
- * The service report (LIQ-SRV, «Liquidación Final del Servicio») is
- * `informe_de_servicio`: quote, executed, payments and balance.
  */
 export type LinkTarget =
   | { kind: 'client'; clientId: string }
   | { kind: 'order'; clientId: string; orderId: string }
-  | { kind: 'service'; clientId: string; serviceId: string }
-  | { kind: 'serviceReport'; clientId: string; serviceId: string };
+  | { kind: 'service'; clientId: string; serviceId: string };
 
-const LINK_ACTIONS: Record<LinkTarget['kind'], string> = { client: CLIENT_LINK_ACTION, order: CLIENT_LINK_ACTION, service: SERVICE_LINK_ACTION, serviceReport: SERVICE_REPORT_ACTION };
+const LINK_ACTIONS: Record<LinkTarget['kind'], string> = { client: CLIENT_LINK_ACTION, order: CLIENT_LINK_ACTION, service: SERVICE_LINK_ACTION };
 
 const linkValuesOf = (target: LinkTarget): ShortcutValues => {
   if (target.kind === 'client') return { alcance: 'cliente', clienteId: target.clientId };
@@ -110,13 +107,15 @@ export function channelLinksOf(actions: readonly ShortcutRow[], run: (row: Short
 }
 
 /**
- * Registering a payment from Cobranza (José 31/10: admins only, no approval
- * step; Portal 2d0bdea2). Portal refuses it inside a group, and the client's
- * channel is one: it runs from the space (not in its ⚡), with the service filled in.
+ * What a service's space button carries: «Registrar pago» (José 31/10: admins
+ * only, no approval step; Portal 2d0bdea2) and «Generar informe de servicio»
+ * (LIQ-SRV: quote, executed, payments and balance). Portal refuses both inside
+ * a group, and the client's channel is one: they run from the space (not in
+ * its ⚡), with the service filled in.
  */
-export const paymentValuesOf = (serviceId: string): ShortcutValues => ({ servicioId: serviceId });
+export const serviceValuesOf = (serviceId: string): ShortcutValues => ({ servicioId: serviceId });
 
-/** The answers that came back since the last look, once each: after a payment the detail is asked again. */
+/** The answers that came back since the last look, once each: after a payment or a report the detail is asked again. */
 export const answeredSince = (answers: readonly Pick<EphemeralAnswer, 'commandId' | 'state'>[], seen: ReadonlySet<string>): string[] =>
   answers.filter((answer) => answer.state === 'answered' && !seen.has(answer.commandId)).map((answer) => answer.commandId);
 

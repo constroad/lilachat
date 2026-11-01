@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { answeredSince, channelButtonRows, channelLinksOf, chatActionRows, chatHasActionPlace, evidenceLine, formSubmitOutcome, geoPointOf, linkActionOf, paymentValuesOf, photoStampLines, placedActionRow, precisionLabel, quickActionRows, shortcutRows, shortcutValuesOf, submitLabelOf } from './appActions.js';
+import { answeredSince, channelButtonRows, channelLinksOf, chatActionRows, chatHasActionPlace, evidenceLine, formSubmitOutcome, geoPointOf, linkActionOf, serviceValuesOf, photoStampLines, placedActionRow, precisionLabel, quickActionRows, shortcutRows, shortcutValuesOf, submitLabelOf } from './appActions.js';
 import type { FormField } from './appForms.js';
 import type { CommandGroup, CommandOutcome } from './botCommands.js';
 
@@ -171,21 +171,8 @@ describe('a link from a client\'s channel (José 31/10: «crear el enlace del pe
 });
 
 describe('the service report and the payment (agentes 31/10: informe_de_servicio, registrar_pago)', () => {
-  it('«Generar informe de servicio» runs informe_de_servicio with the service, and only shows while the server lists it', () => {
-    // Arrange
-    const run = vi.fn();
-    const on = channelButtonRows([{ appId: 'p1', appName: 'Portal', commands: [], shortcuts: [{ key: 'informe_de_servicio', name: 'Informe de servicio' }] }]);
-    // Act
-    channelLinksOf(on, run).open({ kind: 'serviceReport', clientId: 'cli-1', serviceId: 'srv-3' });
-    // Assert
-    expect(run).toHaveBeenCalledWith(expect.objectContaining({ key: 'informe_de_servicio' }), { servicioId: 'srv-3' });
-    // Until Portal publishes it and José approves it in agentes, the server has no row: no button.
-    expect(channelLinksOf([], run).can('serviceReport')).toBe(false);
-    expect(channelLinksOf(on, run).can('service')).toBe(false);
-  });
-
-  it('a payment opens with the service; from an order it is that order\'s service (no pedidoId in this version)', () => {
-    expect(paymentValuesOf('srv-3')).toEqual({ servicioId: 'srv-3' });
+  it('a payment or a service report opens with the service; from an order it is that order\'s service (no pedidoId in this version)', () => {
+    expect(serviceValuesOf('srv-3')).toEqual({ servicioId: 'srv-3' });
   });
 
   it('answeredSince: the answers that came back since the last look, once each; a form or a failure is not a payment', () => {
@@ -234,5 +221,6 @@ describe('the client\'s channel buttons stay out of the ⚡ (José 01/11)', () =
     expect(buttons.map((row) => row.key)).toEqual(['crear_enlace_cliente', 'registrar_pago', 'informe_de_servicio']);
     expect(channelLinksOf(buttons, vi.fn()).can('order')).toBe(true);
     expect(placedActionRow(portal, 'registrar_pago')).toMatchObject({ key: 'registrar_pago' });
+    expect(placedActionRow(portal, 'informe_de_servicio')).toMatchObject({ key: 'informe_de_servicio' });
   });
 });

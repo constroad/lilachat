@@ -117,22 +117,32 @@ describe('ServiceDetailWeb', () => {
     expect(open).toHaveBeenCalledWith({ kind: 'order', clientId: 'cli-cvs', orderId: 'o1' });
   });
 
-  it('Informes has «Generar informe de servicio» while informe_de_servicio is on in the channel (agentes 31/10: LIQ-SRV)', async () => {
+  it('«Generar informe de servicio» runs informe_de_servicio from the space with the service: Portal refuses it in a group (01/11)', async () => {
     // Arrange
-    vi.stubGlobal('fetch', reply({ detail }));
-    const open = vi.fn();
-    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} links={{ can: (kind) => kind === 'serviceReport', open }} />);
-    // Act
+    const groups = [{ appId: 'p1', appName: 'Portal', commands: [], shortcuts: [{ key: 'informe_de_servicio', name: 'Informe de servicio' }] }];
+    const answered = { commandId: 'c2', appId: 'p1', appName: 'Portal', outcome: 'ephemeral', response: { responseType: 'ephemeral', text: 'Tu informe está listo' } };
+    const fetchMock = vi.fn(async (url: string) => {
+      const body = String(url).includes('/commands?place=space') ? { groups } : String(url).endsWith('/shortcuts') ? answered : { detail };
+      return new Response(JSON.stringify(body), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
     fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
-    fireEvent.click(screen.getByTestId('generar-informe-servicio'));
+    // Act
+    fireEvent.click(await screen.findByTestId('generar-informe-servicio'));
     // Assert
-    expect(open).toHaveBeenCalledWith({ kind: 'serviceReport', clientId: 'cli-cvs', serviceId: 'srv-318' });
+    expect(await screen.findByText('Tu informe está listo')).toBeInTheDocument();
+    const shortcut = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/shortcuts')) as unknown as [string, RequestInit];
+    expect(shortcut[0]).toContain('/api/workspaces/s1/shortcuts');
+    expect(JSON.parse(String(shortcut[1].body))).toMatchObject({ app_id: 'p1', shortcut: 'informe_de_servicio', values: { servicioId: 'srv-318' } });
   });
 
-  it('no «Generar informe de servicio» while the tool does not exist', async () => {
-    vi.stubGlobal('fetch', reply({ detail }));
-    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} links={{ can: () => false, open: vi.fn() }} />);
+  it('no «Generar informe de servicio» while the server does not offer it to that person', async () => {
+    const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(String(url).includes('/commands?place=space') ? { groups: [] } : { detail }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
     fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
+    await vi.waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/commands?place=space'))).toBe(true));
     expect(screen.queryByTestId('generar-informe-servicio')).toBeNull();
   });
 
@@ -202,7 +212,8 @@ describe('ServiceDetailWeb', () => {
     // Arrange
     const withReport = { ...detail, reports: [{ id: 'r9', title: 'Control de compactación', status: { label: 'Publicado', tone: 'ok' } }], totals: { ...detail.totals, reports: 1 } };
     const bodies = [{ detail: withReport }, { pdf: { status: 'generating', retryAfterS: 1 } }, { pdf: { status: 'ready', pdfUrl: 'https://lila.constroad.com/r9.pdf' } }];
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify(bodies.shift()), { status: 200 }));
+    // Informes also asks the space for its button; that answer is not one of these.
+    const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(String(url).includes('/commands?place=space') ? { groups: [] } : bodies.shift()), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
     render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
     fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
@@ -212,7 +223,8 @@ describe('ServiceDetailWeb', () => {
     // Assert
     expect(await screen.findByText('Generando el PDF…')).toBeInTheDocument();
     expect(await screen.findByTestId('abrir-pdf-ficha', {}, { timeout: 3000 })).toHaveAttribute('href', 'https://lila.constroad.com/r9.pdf');
-    expect(String((fetchMock.mock.calls[1] as unknown as [string])[0])).toContain('/api/workspaces/s1/clients/cli-cvs/services/srv-318/reports/r9/pdf');
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    const portalCalls = fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => !url.includes('/commands?place=space'));
+    expect(portalCalls[1]).toContain('/api/workspaces/s1/clients/cli-cvs/services/srv-318/reports/r9/pdf');
+    expect(portalCalls).toHaveLength(3);
   });
 });

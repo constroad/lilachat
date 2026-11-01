@@ -67,13 +67,14 @@ type ChannelButton = { line: string; runsFrom: 'channel' | 'space' };
  * Their button is their place (José 01/11: «ya lo aprobé» and he saw none:
  * they waited for a switch nobody turned on). They need no switch: the
  * space's admins use them in every client's channel, and «Quién puede usarlo»
- * widens it. Portal refuses registrar_pago inside a group, so its button runs
- * it from the space.
+ * widens it. Portal refuses the payment and the service report inside a group
+ * (they carry amounts; agentes 01/11: «esa consulta no se responde en un
+ * grupo»), so their buttons run them from the space, with a private answer.
  */
 const CLIENT_CHANNEL_BUTTONS = new Map<string, ChannelButton>([
   [CLIENT_LINK_ACTION, { line: '«Enlace del cliente» y el del pedido', runsFrom: 'channel' }],
   [SERVICE_LINK_ACTION, { line: '«Enlace del servicio»', runsFrom: 'channel' }],
-  [SERVICE_REPORT_ACTION, { line: '«Generar informe de servicio»', runsFrom: 'channel' }],
+  [SERVICE_REPORT_ACTION, { line: '«Generar informe de servicio» en Informes', runsFrom: 'space' }],
   [PAYMENT_ACTION, { line: '«Registrar pago» en Cobranza', runsFrom: 'space' }],
 ]);
 

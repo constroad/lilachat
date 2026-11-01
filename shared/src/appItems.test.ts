@@ -148,8 +148,8 @@ describe('the buttons of a client\'s channel (José 01/11: «ya lo aprobé» and
     // Act / Assert
     expect(worksAt('shortcut', 'crear_enlace_cliente', ALL_OFF, client)).toBe(true);
     expect(worksAt('shortcut', 'crear_enlace_de_servicio', ALL_OFF, client)).toBe(true);
-    expect(worksAt('shortcut', 'informe_de_servicio', ALL_OFF, client)).toBe(true);
-    // Portal refuses registrar_pago inside a group: its button runs it from the space.
+    // Portal refuses the payment and the report inside a group (amounts): their buttons run them from the space.
+    expect(worksAt('shortcut', 'informe_de_servicio', ALL_OFF, 'space')).toBe(true);
     expect(worksAt('shortcut', 'registrar_pago', ALL_OFF, 'space')).toBe(true);
   });
 
@@ -158,6 +158,7 @@ describe('the buttons of a client\'s channel (José 01/11: «ya lo aprobé» and
     expect(worksAt('shortcut', 'crear_enlace_cliente', ALL_OFF, { chatId: CAJA })).toBe(false);
     expect(worksAt('shortcut', 'crear_enlace_cliente', ALL_OFF, 'space')).toBe(false);
     expect(worksAt('shortcut', 'registrar_pago', ALL_OFF, client)).toBe(false);
+    expect(worksAt('shortcut', 'informe_de_servicio', ALL_OFF, client)).toBe(false);
     expect(worksAt('shortcut', 'informe_de_servicio', ALL_OFF, 'direct')).toBe(false);
     expect(worksAt('shortcut', 'informe_de_servicio', { ...ALL_OFF, direct: true }, 'direct')).toBe(true);
   });

@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
-import { ChevronLeft, ExternalLink, FileText } from 'lucide-react-native';
-import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, serviceStageLine, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orphanDispatchesOf, reportGroups, type ChannelLinks, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { ChevronLeft, ExternalLink, FileText, Plus } from 'lucide-react-native';
+import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, PAYMENT_ACTION, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orphanDispatchesOf, reportGroups, type ChannelLinks, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
 import { RecordSheet } from './RecordSheet';
-import { RegisterPayment } from './RegisterPayment';
 import { ServiceBilling } from './ServiceBilling';
 import { ServiceStages } from './ServiceStages';
+import { SpaceActionButton } from './SpaceActionButton';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
 import { useFileViewer } from './useFileViewer';
 import { useReportPdf } from './useReportPdf';
@@ -125,17 +125,16 @@ type OpenSheet = { tab: DetailTabKey; id: string };
 const orderLinkAction = (links: ChannelLinks | undefined, top: OpenSheet | undefined, target: ServiceAskTarget) =>
   links?.can('order') && top?.tab === 'orders' ? { label: 'Crear enlace del pedido', onPress: () => links.open({ kind: 'order', clientId: target.clientId, orderId: top.id }) } : undefined;
 
-/** Above the tab (José 31/10): «Registrar pago» in Cobranza; «Generar informe de servicio» in Informes while Portal's tool exists. */
-function TabActions({ tab, links, target, serviceId, onPaid }: { tab: DetailTabKey; links?: ChannelLinks; target: ServiceAskTarget; serviceId: string; onPaid: () => void }) {
-  const colors = useColores();
-  if (tab === 'billing') return <RegisterPayment jwt={target.jwt} spaceId={target.spaceId} serviceId={serviceId} onPaid={onPaid} />;
-  if (tab !== 'reports' || !links?.can('serviceReport')) return null;
-  return (
-    <Pressable testID="generar-informe-servicio" onPress={() => links.open({ kind: 'serviceReport', clientId: target.clientId, serviceId })} className="min-h-[48px] flex-row items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 px-3">
-      <FileText size={18} color={colors.primary} />
-      <Text className="flex-1 text-[15px] font-semibold text-primary">Generar informe de servicio</Text>
-    </Pressable>
-  );
+/**
+ * Above the tab (José 31/10): «Registrar pago» in Cobranza and «Generar informe
+ * de servicio» in Informes. Both run from the space (Portal refuses them in a
+ * group), and an answered one asks the detail again.
+ */
+function TabActions({ tab, target, serviceId, onAnswered }: { tab: DetailTabKey; target: ServiceAskTarget; serviceId: string; onAnswered: () => void }) {
+  const common = { jwt: target.jwt, spaceId: target.spaceId, values: serviceValuesOf(serviceId), onAnswered };
+  if (tab === 'billing') return <SpaceActionButton {...common} actionKey={PAYMENT_ACTION} label="Registrar pago" testID="registrar-pago" Icon={Plus} />;
+  if (tab === 'reports') return <SpaceActionButton {...common} actionKey={SERVICE_REPORT_ACTION} label="Generar informe de servicio" testID="generar-informe-servicio" Icon={FileText} />;
+  return null;
 }
 
 function DetailTabs({ detail, target, serviceId, onOpenFile, links, onPaid }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void; links?: ChannelLinks; onPaid: () => void }) {
@@ -157,7 +156,7 @@ function DetailTabs({ detail, target, serviceId, onOpenFile, links, onPaid }: { 
   return (
     <>
       <TabStrip detail={detail} tab={tab} onTab={setTab} />
-      <TabActions tab={tab} links={links} target={target} serviceId={serviceId} onPaid={onPaid} />
+      <TabActions tab={tab} target={target} serviceId={serviceId} onAnswered={onPaid} />
       {tab === 'billing' && detail.billing ? <ServiceBilling billing={detail.billing} invoices={invoicesOf(detail)} onOpenFile={onOpenFile} /> : (
         <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">
           {!rows.length ? <Text className="p-4 text-[14px] text-on-surface-variant">{DETAIL_EMPTY[tab]}</Text> : tab === 'reports' ? <ReportDays detail={detail} onOpen={openRow} onOpenFile={onOpenFile} /> : rows.map((row) => <RowView key={row.id} row={row} onOpen={openRow} onOpenFile={onOpenFile} />)}

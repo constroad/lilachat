@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { answerOfOutcome, COMMAND_LIMITS, formKeyOf, unknownCommandMessage, giveUpPending, giveUpWaiting, isAckBody, markWaiting, commandOf, matchCommands, replaceAnswer, sharedByLine, validateFormReply, parseSlashInput, slashQuery, validateBotCommands, validateCommandResponse, withAnswer, withNotice, type CommandGroup } from './botCommands.js';
+import { answerOfOutcome, COMMAND_LIMITS, formKeyOf, unknownCommandMessage, giveUpPending, giveUpWaiting, isAckBody, markWaiting, commandOf, matchCommands, noticeIsFor, replaceAnswer, sharedByLine, validateFormReply, parseSlashInput, slashQuery, validateBotCommands, validateCommandResponse, withAnswer, withNotice, type CommandGroup } from './botCommands.js';
 
 /** The slash commands contract, `specs/BOTS-API.spec.md` §c. */
 describe('command registry', () => {
@@ -114,6 +114,32 @@ describe('ephemeral answers', () => {
 
   it('a notice for a dismissed command still shows up, without its name', () => {
     expect(withNotice([], { chatId: 'x', commandId: 'c9', appId: 'a1', appName: 'Inframaq', response: { responseType: 'ephemeral', text: 'tarde' } })[0]).toMatchObject({ commandId: 'c9', command: '', state: 'answered' });
+  });
+});
+
+describe('a late answer goes to the place that asked (01/11: the service report opened the ⚡ too)', () => {
+  const notice = { workspaceId: 'w1', commandId: 'c1', appId: 'a1', appName: 'Portal', response: { responseType: 'ephemeral' as const, text: 'Tu informe está listo' } };
+  const asked = { commandId: 'c1', appName: 'Portal', command: '', state: 'form' as const };
+  const space = { workspaceId: 'w1' };
+
+  it('in a chat, any answer of that chat, even one already dismissed', () => {
+    expect(noticeIsFor([], { ...notice, chatId: 'x' }, { chatId: 'x' })).toBe(true);
+    expect(noticeIsFor([asked], { ...notice, chatId: 'y' }, { chatId: 'x' })).toBe(false);
+  });
+
+  it('in the space, only the place that started that command', () => {
+    expect(noticeIsFor([asked], notice, space)).toBe(true);
+    expect(noticeIsFor([], notice, space)).toBe(false);
+    expect(noticeIsFor([{ ...asked, commandId: 'c2' }], notice, space)).toBe(false);
+  });
+
+  it('in the space, one still being sent takes it: the answer can beat its own request (#80)', () => {
+    expect(noticeIsFor([{ ...asked, commandId: 'sending-1', state: 'pending' }], notice, space)).toBe(true);
+  });
+
+  it('a chat\'s answer or another space\'s never lands in the space', () => {
+    expect(noticeIsFor([asked], { ...notice, chatId: 'x' }, space)).toBe(false);
+    expect(noticeIsFor([asked], { ...notice, workspaceId: 'w2' }, space)).toBe(false);
   });
 });
 

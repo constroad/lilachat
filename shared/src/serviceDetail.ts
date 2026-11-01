@@ -299,13 +299,19 @@ export function detailRows(detail: ServiceDetail, tab: DetailTabKey): DetailRow[
   return [];
 }
 
-/** «Mostrando 100 de 148» when Portal has more than it sent; the rest is in Portal. */
-export const moreInPortal = (shown: number, total: number): string | null => (total > shown ? `Mostrando ${shown} de ${total}` : null);
+/** «Mostrando 100 de 148» when Portal has more than it sent; the rest is in Portal. An empty list says it itself. */
+export const moreInPortal = (shown: number, total: number): string | null => (total > shown && shown > 0 ? `Mostrando ${shown} de ${total}` : null);
 
 const TAB_NAMES: Record<DetailTabKey, string> = { orders: 'Pedidos', dispatches: 'Despachos', reports: 'Informes', quotes: 'Cotizaciones', billing: 'Cobranza' };
 
 /** What an empty tab says. */
 export const DETAIL_EMPTY: Record<DetailTabKey, string> = { orders: 'Este servicio todavía no tiene pedidos.', dispatches: 'Todavía no hay despachos.', reports: 'Todavía no hay informes.', quotes: 'Sin cotizaciones.', billing: 'Sin cobranza.' };
+
+/** «Todavía no hay» only when Portal counts none: it can count some it did not send (01/11: «Informes · 1» over an empty list). */
+export function detailEmptyText(tab: DetailTabKey, totals: DetailTotals): string {
+  const total = tab === 'billing' ? 0 : (totals[tab] ?? 0);
+  return total > 0 ? `Hay ${total} en el Portal que todavía no ${total === 1 ? 'llega' : 'llegan'} aquí.` : DETAIL_EMPTY[tab];
+}
 
 /**
  * The detail's tabs with Portal's real counts; the money ones only when they

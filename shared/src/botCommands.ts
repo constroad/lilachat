@@ -237,6 +237,21 @@ export function withNotice(list: readonly EphemeralAnswer[], notice: CommandNoti
   return withAnswer(list, { commandId: notice.commandId, appName: notice.appName, command: known?.command ?? '', ...(known?.action ? { action: known.action } : {}), ...(known?.avatarUrl ? { avatarUrl: known.avatarUrl } : {}), state: notice.response.form ? 'form' : 'answered', response: notice.response, ...(notice.errors ? { errors: notice.errors } : {}) });
 }
 
+/** The placeholder a command carries until its request returns its id. */
+const SENDING = 'sending-';
+
+/**
+ * Where a late answer shows. A chat has one place, so it takes any of its own,
+ * even a dismissed one. The space has several (the ⚡, the clients' picker, a
+ * service's buttons): each takes only what it started, or what arrives while
+ * one is still being sent, since the answer can beat its own request (#80).
+ */
+export function noticeIsFor(list: readonly EphemeralAnswer[], notice: CommandNotice, scope: CommandScope): boolean {
+  if ('chatId' in scope) return notice.chatId === scope.chatId;
+  if (notice.chatId || notice.workspaceId !== scope.workspaceId) return false;
+  return list.some((entry) => entry.commandId === notice.commandId || entry.commandId.startsWith(SENDING));
+}
+
 /** A command still «working…» after this long gave up (pending 103: agentes never answered and the card stayed forever). */
 export const PENDING_GIVE_UP_MS = 45_000;
 

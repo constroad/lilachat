@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronLeft, ExternalLink, FileText, Plus } from 'lucide-react-native';
-import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, PAYMENT_ACTION, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orphanDispatchesOf, reportGroups, type ChannelLinks, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, PAYMENT_ACTION, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orphanDispatchesOf, reportGroups, type ChannelLinks, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
 import { RecordSheet } from './RecordSheet';
@@ -159,7 +159,7 @@ function DetailTabs({ detail, target, serviceId, onOpenFile, links, onPaid }: { 
       <TabActions tab={tab} target={target} serviceId={serviceId} onAnswered={onPaid} />
       {tab === 'billing' && detail.billing ? <ServiceBilling billing={detail.billing} invoices={invoicesOf(detail)} onOpenFile={onOpenFile} /> : (
         <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">
-          {!rows.length ? <Text className="p-4 text-[14px] text-on-surface-variant">{DETAIL_EMPTY[tab]}</Text> : tab === 'reports' ? <ReportDays detail={detail} onOpen={openRow} onOpenFile={onOpenFile} /> : rows.map((row) => <RowView key={row.id} row={row} onOpen={openRow} onOpenFile={onOpenFile} />)}
+          {!rows.length ? <Text className="p-4 text-[14px] text-on-surface-variant">{detailEmptyText(tab, detail.totals)}</Text> : tab === 'reports' ? <ReportDays detail={detail} onOpen={openRow} onOpenFile={onOpenFile} /> : rows.map((row) => <RowView key={row.id} row={row} onOpen={openRow} onOpenFile={onOpenFile} />)}
         </View>
       )}
       {tab === 'orders' ? <OrphanDispatches detail={detail} onOpen={openDispatch} onOpenFile={onOpenFile} /> : null}

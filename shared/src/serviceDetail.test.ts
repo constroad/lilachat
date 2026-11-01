@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detailRows, detailTabs, moreInPortal, orphanDispatchesOf, recordDays, reportGroups, serviceDetailOf } from './serviceDetail.js';
+import { detailEmptyText, detailRows, detailTabs, moreInPortal, orphanDispatchesOf, recordDays, reportGroups, serviceDetailOf } from './serviceDetail.js';
 
 /** The detail of a client's service (José, 30/10: «qué informes hay, qué pedidos, qué despachos»), from `client.service.requested`. */
 const body = {
@@ -73,6 +73,8 @@ describe('rows and tabs', () => {
   it('«100 de 148» only when Portal has more than it sent; quotes only when they came', () => {
     expect(moreInPortal(100, 148)).toBe('Mostrando 100 de 148');
     expect(moreInPortal(3, 3)).toBeNull();
+    // An empty list says it itself (01/11: «Mostrando 0 de 1» under «Todavía no hay informes»).
+    expect(moreInPortal(0, 1)).toBeNull();
     expect(detailTabs(serviceDetailOf(body)!).map((tab) => tab.label)).toEqual(['Pedidos · 148', 'Informes · 1']);
     // José 30/10 night: Cotizaciones and Cobranza go first.
     expect(detailTabs({ ...serviceDetailOf(body)!, quotes: [], totals: { orders: 0, dispatches: 0, reports: 0, quotes: 2 } }).map((tab) => tab.key)).toEqual(['quotes', 'orders', 'reports']);
@@ -144,5 +146,19 @@ describe('recordDays (José 01/11: «tampoco están agrupados los informes por f
 
   it('no records, no days', () => {
     expect(recordDays([])).toEqual([]);
+  });
+});
+
+describe('an empty tab with Portal counting some (01/11: «Informes · 1» over «Todavía no hay informes»)', () => {
+  const none = { orders: 0, dispatches: 0, reports: 0 };
+  it('says none yet only when Portal counts none', () => {
+    expect(detailEmptyText('reports', none)).toBe('Todavía no hay informes.');
+    expect(detailEmptyText('orders', none)).toBe('Este servicio todavía no tiene pedidos.');
+    expect(detailEmptyText('billing', { ...none, reports: 2 })).toBe('Sin cobranza.');
+  });
+
+  it('says how many are in Portal when none came', () => {
+    expect(detailEmptyText('reports', { ...none, reports: 1 })).toBe('Hay 1 en el Portal que todavía no llega aquí.');
+    expect(detailEmptyText('orders', { ...none, orders: 3 })).toBe('Hay 3 en el Portal que todavía no llegan aquí.');
   });
 });

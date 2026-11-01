@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { ChevronLeft, ExternalLink, FileText, Plus } from 'lucide-react';
-import { CLIENT_SERVICE_STATUS_LABELS, DETAIL_EMPTY, PAYMENT_ACTION, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, PAYMENT_ACTION, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { usePortalFileViewer } from './PortalFileViewer';
 import type { OpenSheetFile } from './RecordSheetWeb';
 import { RecordSheetWeb } from './RecordSheetWeb';
@@ -107,7 +107,7 @@ function TabBody({ detail, tab, onOpen, onOpenFile }: { detail: ServiceDetail; t
   const rows = detailRows(detail, tab);
   return (
     <ul className="divide-y divide-outline/10 overflow-hidden rounded-xl border border-outline/15 bg-surface">
-      {!rows.length ? <li className="p-4 text-sm text-on-surface-variant">{DETAIL_EMPTY[tab]}</li> : tab === 'reports' ? <ReportDays detail={detail} onOpen={onOpen} onOpenFile={onOpenFile} /> : rows.map((row) => <RowView key={row.id} row={row} onOpen={onOpen} onOpenFile={onOpenFile} />)}
+      {!rows.length ? <li className="p-4 text-sm text-on-surface-variant">{detailEmptyText(tab, detail.totals)}</li> : tab === 'reports' ? <ReportDays detail={detail} onOpen={onOpen} onOpenFile={onOpenFile} /> : rows.map((row) => <RowView key={row.id} row={row} onOpen={onOpen} onOpenFile={onOpenFile} />)}
     </ul>
   );
 }

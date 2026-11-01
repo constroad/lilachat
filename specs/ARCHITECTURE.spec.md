@@ -5066,6 +5066,36 @@ agrupados los informes por fecha de un servicio».
 - Hay un caso abierto con agentes: «QA Cobranza Lilachat 31-10» se tocó
   después del arreglo (01/11 01:33 UTC) y sigue sin fecha.
 
+**E2E en el emulador (OTA 1a920287, git 566ee43).** Espacio Test → «QA
+Cobranza Lilachat 31-10» → Servicios → «QA Liquidación Lilachat 31-10».
+- Pedidos: cada pedido lleva el número de despachos antes de la obra, que es
+  larga y antes se cortaba.
+- Informes → «Generar informe de servicio» abre el formulario desde el
+  espacio, con el servicio puesto. «Enviando…» y, a los ~20 s, llega «Tu
+  informe está listo» con el PDF.
+- El PDF cuadra: total S/ 10,030 con IGV, pagado S/ 250 (QA-0001), a pagar
+  S/ 9,780 y el voucher en el panel.
+
+**Lo que la prueba sacó.**
+- *La respuesta abría también el ⚡ del espacio.* El ⚡, el selector de
+  clientes y los botones del servicio comparten el alcance del espacio. Una
+  respuesta tardía entraba en todos, y el ⚡ se abre solo cuando recibe una.
+  Ahora cada lugar se queda solo con lo que empezó, o con lo que llega mientras
+  manda uno, porque la respuesta puede ganarle a su propio pedido (#80).
+  Es `noticeIsFor(list, notice, scope)` en `shared/botCommands.ts`, para la app
+  y la web. Un chat sigue tomando cualquier respuesta suya.
+- *«Informes · 1» sobre «Todavía no hay informes» y «Mostrando 0 de 1».* Portal
+  cuenta la liquidación en `totals.reports`. La mandaba sin `date` (no tiene
+  `executionDate`) y agentes la descartaba. La lista vacía ahora dice «Hay 1 en
+  el Portal que todavía no llega aquí» (`detailEmptyText`), y el «Mostrando 0
+  de N» ya no sale.
+  - Portal 6a66343a: un informe sin fecha lleva el día de Lima de su
+    `createdAt`, en `date` y en el título.
+  - Portal 4cf5c340: el PDF imprime la fecha del pago como dd/mm/aaaa en Lima.
+    Antes salía «2026-10-31T17:00:00.000Z».
+  - Los dos están commiteados en Portal y sin push: esperan el OK de José,
+    igual que `started_at` (47514b81) y el backfill.
+
 ## 180. Canal del cliente: informes por día, cubicaje, obra, inicio, «Recordatorio», enlaces y PDF que se genera (31/10/2026, servidor + OTA + web)
 
 José probó el canal de CONSORCIO EL ALMIRANTE en el teléfono y pidió ocho cosas. Seis

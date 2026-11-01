@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { answerOfOutcome, formSubmitOutcome, giveUpPending, giveUpWaiting, markWaiting, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, WRITE_GIVE_UP_MS, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type ShortcutRow, type ShortcutValues } from '@lilachat/shared';
+import { answerOfOutcome, formSubmitOutcome, giveUpPending, giveUpWaiting, markWaiting, noticeIsFor, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, WRITE_GIVE_UP_MS, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type ShortcutRow, type ShortcutValues } from '@lilachat/shared';
 import type { ApiResult } from '../../api';
 import { currentSocket } from '../../useSocket';
 import { previewAppForm, refreshAppForm, runShortcut, submitAppForm, uploadFormPhoto } from './commandsApi';
@@ -7,8 +7,6 @@ import { previewAppForm, refreshAppForm, runShortcut, submitAppForm, uploadFormP
 export type AppAnswers = ReturnType<typeof useAppAnswers>;
 
 const scopeKey = (scope: CommandScope) => ('chatId' in scope ? `c:${scope.chatId}` : `s:${scope.workspaceId}`);
-/** A late answer belongs here: the chat's, or the space's when it came from the ⚡ (no chat). */
-const noticeIsFor = (notice: CommandNotice, scope: CommandScope) => ('chatId' in scope ? notice.chatId === scope.chatId : !notice.chatId && notice.workspaceId === scope.workspaceId);
 
 /**
  * What the apps answered only to me in one place (a chat, or the space's ⚡):
@@ -23,6 +21,9 @@ export function useAppAnswers(params: { jwt?: string; scope: CommandScope | null
   // Its owner builds the scope on every render; the socket listener follows its key.
   const scopeRef = useRef(scope);
   scopeRef.current = scope;
+  // Read by the socket listener: in the space, a late answer is only this place's if it started it.
+  const answersRef = useRef(answers);
+  answersRef.current = answers;
 
   useEffect(() => {
     setAnswers([]);
@@ -98,7 +99,7 @@ export function useAppAnswers(params: { jwt?: string; scope: CommandScope | null
     const socket = currentSocket();
     if (!socket || !key || !jwt) return;
     const onNotice = (notice: CommandNotice) => {
-      if (!scopeRef.current || !noticeIsFor(notice, scopeRef.current)) return;
+      if (!scopeRef.current || !noticeIsFor(answersRef.current, notice, scopeRef.current)) return;
       setAnswers((list) => withNotice(list, notice));
       if (notice.response.form) setOpenFormId(notice.commandId);
     };

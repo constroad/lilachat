@@ -4995,6 +4995,66 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 185. «Te ataco»: 12 guiños que le pegan a la pantalla del otro, y «Devolver» (02/11/2026, servidor + OTA + web)
+
+José rechazó la Telenovela («¿te parece que son graciosos y que los usuarios
+lo usarán? Debe enganchar… está horrible»). Un tema que hay que conocer no se
+manda en un chat. Eligió «Te ataco» entre tres direcciones: cada guiño le pega
+a la pantalla de quien lo recibe, y pide la revancha. Aprobó los guiones
+(«sí, están bien, impleméntalos de una vez»).
+
+**Los 12 (`shared/winkSketchesAttack.ts`, 6,5 s cada uno).** Entrada, impacto
+contra el vidrio con efecto de pantalla, y remate después del 60 %:
+
+| Guiño | Remate |
+|---|---|
+| Chancletazo | Queda la marca roja de la suela… y llega la segunda chancla |
+| Pastelazo | La crema chorrea y cae una cereza que rebota |
+| Baldazo | Cascada, gotas en el vidrio y el balde vacío cae con un «clonk» |
+| Tomatazo | La pulpa resbala y cae solo el tallito |
+| Huevazo | La yema resbala cruda y la pantalla la fríe (vapor y chisporroteo) |
+| Almohadazo | Dos golpes, estallido de plumas y la última hace cosquillas: la pantalla tiembla |
+| Pelotazo | Queda incrustada en el vidrio rajado, cae, y «¡Fue sin querer!» |
+| Espumazo | La lata rocía la pantalla y termina en un «pfff» con una burbujita |
+| Harinazo | Nube blanca y un dedo escribe «JA JA» en el polvo |
+| Matamoscas | El matamoscas baja… la mosca no está: vuelve riéndose («¡JA JA!») |
+| Toc toc | Un dedo golpea el vidrio, un ojo mira adentro y el vaho dibuja un «?» |
+| Besote | Labios que se aplastan como ventosa y dejan la marca, con un corazón |
+
+- Grupo `attack` en el panel: el primero, después de la temporada si hay una.
+  La miniatura es lo que se tira (`ATTACK_TILES`).
+- Sonido nuevo `buzz` (la mosca), sintetizado con ffmpeg como los demás.
+- Pruebas: `winkSketchesAttack.test.ts` (impacto con efecto antes de la
+  mitad, remate después del 60 %, la segunda chancla, el huevo que se fríe,
+  la mosca que se escapa) y las generales de `winkSketches.test.ts`.
+
+**Arte.** Guiones `r02nov-ataque-a…d` y la hoja redibujada `r02nov-ataque-fix`
+(Stitch), más seis piezas a mano (`.stitch-work/out/winks/r02nov-ataque-hand.html`):
+la crema (Stitch la dibujó como una muela), huevo crudo, vapor, el cartel,
+el «¡JA JA!» y la cascada. El corazón de Stitch traía carita (prohibido): el
+Besote usa el `heart` de siempre. El extractor se corrió con todas las hojas
+viejas en orden y dio el mismo `winkArt.ts` byte a byte antes de sumar las
+nuevas. Imágenes de Android: solo las 78 nuevas (las viejas se re-codificaban
+distinto y se dejaron como estaban).
+
+**«Devolver».** En la tarjeta de un ataque que me mandaron, al lado de «Ver
+otra vez». Manda el mismo guiño al mismo chat (`canReturnWink` en shared; app
+`ReturnWinkButton`; web por `onReturnWink` del contexto, solo donde los guiños
+están permitidos). Queda «Devuelto»; si no sale, «No salió, reintenta».
+
+**Un guiño se elige y se borra (app).** La tarjeta de un guiño o un zumbido no
+respondía a mantener presionado: no había forma de borrarlo. Ahora
+`SelectableFunLine` la elige como a cualquier mensaje. La web sigue sin menú
+para guiños.
+
+**Verificado en el emulador (OTA f6a63a64 y a0e6ff20, git ef47c2c), Test
+#general.** El panel muestra «Te ataco» con las 12 miniaturas. Se mandaron
+Chancletazo (gira, golpea, cae, marca roja y la segunda chancla), Huevazo
+(cáscara, yema cruda que resbala, huevo frito con vapor) y Matamoscas (zigzag,
+golpe, sin mosca, «¡JA JA!»), con capturas cuadro a cuadro. Se borraron los
+tres con «Eliminar para todos». «Devolver» solo tiene pruebas de la web (5):
+en QA hay una sola cuenta, y un guiño propio no se devuelve.
+
 ## 184. Stickers de a dos, emojis en una sola vista, «/» para comandos y 78 emojis animados (02/11/2026, servidor + OTA + web)
 
 José, 02/11, con una captura de «Lokillos»: «los stickers se muestran uno tras
@@ -5039,7 +5099,7 @@ los tres monos, manos, cosas (fuego, cien, gol, salud, quincena…) y animales.
 Cada uno con su emoji, partículas, movimiento y un sonido de los que ya están.
 En la app van de a 4 por fila.
 
-**Telenovela (pendiente de aprobación).** 12 personajes nuevos en Stitch
+**Telenovela (rechazada, ver §185).** 12 personajes nuevos en Stitch
 (`r02nov-telenovela-a…d`, ids en INVENTARIO y `design/stitch/registro.jsonl`).
 Se animan cuando José los apruebe.
 

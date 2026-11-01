@@ -1,9 +1,9 @@
 import type { WinkMotion, WinkSound } from './winks.js';
 
 /**
- * More emoji winks (José 02/11: «no está el enojado, los monos… agrega casi
- * todos»): a big emoji that pops with its particles and its sound, like the
- * first eight. [id, name, hero, particles, motion, sound].
+ * More emoji winks (José 02/11 missed the angry face and the monkeys, and asked
+ * for almost all of them): a big emoji that pops with its particles and its
+ * sound, like the first eight. [id, name, hero, particles, motion, sound].
  */
 export const MORE_EMOJI_WINKS = [
   // Faces

@@ -31,6 +31,7 @@ export * from './chatLists.js';
 export * from './scheduledCall.js';
 export * from './presenceMode.js';
 export * from './albums.js';
+export * from './stickerRows.js';
 export * from './birthdays.js';
 export * from './conciliarMensajes.js';
 export * from './notaDeVoz.js';

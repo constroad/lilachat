@@ -1,5 +1,5 @@
 import { useCallback, useMemo, type ComponentProps } from 'react';
-import { albumLayout, alreadyGreeted, isHiddenNotice } from '@lilachat/shared';
+import { albumLayout, alreadyGreeted, isHiddenNotice, stickerRowLayout, type AlbumRole } from '@lilachat/shared';
 import { formatDayLabel, isAnimatedImage, memberBadge, miReaccion, canOpenThread, puedeReaccionar, replyOpensThread, resolveDeliveryState, startsNewDay, usesFlatLayout, type MemberPill } from '@lilachat/shared';
 import { DivisorNoLeidos } from './useDivisorNoLeidos';
 import { neighboursForGrouping } from './divisorNoLeidos';
@@ -12,6 +12,7 @@ import { FLAT_INDENT, FlatMessageRow } from './FlatMessageRow';
 import { drawsAsFlatRow } from './rowKinds';
 import { useGroupsAsList } from '../ui/groupsAsList';
 import { convertGifToSticker } from './gifs/gifOptions';
+import { StickerPair } from './stickers/StickerMessage';
 
 type PropsDeFila = ComponentProps<typeof MessageRow>;
 
@@ -74,6 +75,8 @@ export function useDibujarFila(p: {
     const bySeq = new Map(confirmed.map((row) => [row.seq, row]));
     return { roles: albumLayout(confirmed), bySeq };
   }, [rows]);
+  // Stickers sent in a row (José, 02/11): two side by side; the flat rows keep each apart.
+  const stickerPairs = useMemo(() => (flat ? new Map<number, AlbumRole>() : stickerRowLayout(rows.map((row) => (isPending(row) ? {} : row)), { dividerSeq: divisorSeq ?? undefined })), [rows, flat, divisorSeq]);
   const { onResponderEnHilo } = p;
   /** «Responder» from the row, the swipe and the selection bar: ONE route (pending 110). */
   const reply = useCallback(
@@ -91,6 +94,11 @@ export function useDibujarFila(p: {
       // The rest of an album is in its first card; a notice deleted for everyone is not drawn.
       if (albumRole?.role === 'member' || (!isPending(item) && isHiddenNotice(item))) return <></>;
       const album = albumRole?.role === 'head' ? albumRole.seqs.map((seq) => albums.bySeq.get(seq)).filter((one): one is ChatMessage => Boolean(one)) : undefined;
+      const stickerRole = isPending(item) ? undefined : stickerPairs.get(item.seq);
+      if (stickerRole?.role === 'member') return <></>;
+      const pair = pairOf(stickerRole, albums.bySeq);
+      // The reaction bar goes over whichever of the pair is selected.
+      const target: Row = pair?.find((one) => elegidos.size === 1 && elegidos.has(one.seq)) ?? item;
       // The day chip reads the real previous row; grouping reads it through the unread divider, which cuts the block.
       const realPrevious = rows[index - 1];
       const { previous, next } = neighboursForGrouping(rows, index, divisorSeq);
@@ -98,11 +106,11 @@ export function useDibujarFila(p: {
       const previousAt = realPrevious ? (isPending(realPrevious) ? realPrevious.queuedAt : realPrevious.at) : undefined;
       const mia = isPending(item) || item.senderId === yo;
       const conAvatar = esGrupo && !mia;
-      const withBar = !isPending(item) && elegidos.size === 1 && elegidos.has(item.seq) && puedeReaccionar({ seq: item.seq, deletedAt: item.deletedAt, kind: item.kind, system: item.system, cifrado: encrypted });
+      const withBar = !isPending(target) && elegidos.size === 1 && elegidos.has(target.seq) && puedeReaccionar({ seq: target.seq, deletedAt: target.deletedAt, kind: target.kind, system: target.system, cifrado: encrypted });
       // «Responder en hilo» bajo los emojis: suelta la selección y abre el hilo.
-      const withThread = withBar && !isPending(item) && canOpenThread({ seq: item.seq, kind: item.kind, system: item.system, hiloDe: item.hiloDe, deletedAt: item.deletedAt, cifrado: encrypted });
+      const withThread = withBar && !isPending(target) && canOpenThread({ seq: target.seq, kind: target.kind, system: target.system, hiloDe: target.hiloDe, deletedAt: target.deletedAt, cifrado: encrypted });
       // A GIF (José, 22/10): «Convertir en sticker animado» under the emojis; not in a secret chat, where it is encrypted.
-      const withGifSticker = withBar && !encrypted && !isPending(item) && !item.deletedAt && isAnimatedImage(item.media?.mime);
+      const withGifSticker = withBar && !encrypted && !isPending(target) && !target.deletedAt && isAnimatedImage(target.media?.mime);
       // A highlighted notice sits in the middle: so do its bar, reactions and thread chip (21/10).
       const centered = !isPending(item) && item.kind === 'system';
       const flatRow = flat && drawsAsFlatRow(item);
@@ -112,8 +120,20 @@ export function useDibujarFila(p: {
         <>
           {startsNewDay(at, previousAt) ? <DaySeparator label={formatDayLabel(at)} /> : null}
           {!isPending(item) && item.seq === divisorSeq ? <DivisorNoLeidos cantidad={noLeidosAlAbrir} /> : null}
-          {withBar ? <BarraDeReacciones seq={item.seq} mia={mia} conAvatar={false} centered={centered} indent={indent} miEmoji={miReaccion(item.reacciones, yo)} onElegir={onReaccionar} onMas={onMasEmojis} onHilo={withThread ? (seq) => { onSeleccionar?.(seq); onAbrirHilo(seq); } : undefined} onGifSticker={withGifSticker ? (seq) => { onSeleccionar?.(seq); void convertGifToSticker(jwt, item.chatId, seq); } : undefined} /> : null}
-          {flatRow ? (
+          {withBar && !isPending(target) ? <BarraDeReacciones seq={target.seq} mia={mia} conAvatar={false} centered={centered} indent={indent} miEmoji={miReaccion(target.reacciones, yo)} onElegir={onReaccionar} onMas={onMasEmojis} onHilo={withThread ? (seq) => { onSeleccionar?.(seq); onAbrirHilo(seq); } : undefined} onGifSticker={withGifSticker ? (seq) => { onSeleccionar?.(seq); void convertGifToSticker(jwt, target.chatId, seq); } : undefined} /> : null}
+          {pair ? (
+            <StickerPair
+              items={pair}
+              mine={mia}
+              jwt={jwt}
+              delivery={(seq) => (mia ? resolveDeliveryState({ seq, otherReadSeq: leidoHasta, otherDeliveredSeq: entregadoHasta }) : 'sent')}
+              starred={(seq) => destacados.has(seq)}
+              selected={(seq) => elegidos.has(seq) || seq === resaltado || seq === seqBuscado}
+              author={esGrupo && !mia ? { name: nombres.get(senderId) ?? '', photo: fotos.get(senderId) } : undefined}
+              onSelect={onSeleccionar}
+              selecting={enSeleccion}
+            />
+          ) : flatRow ? (
             <FlatMessageRow
               item={item}
               previous={previous}
@@ -189,7 +209,14 @@ export function useDibujarFila(p: {
         </>
       );
     },
-    [rows, albums, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, flat, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir, citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, reply, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas, onReaccionar, onMasEmojis, onVerReacciones, destacados, onGreet, p.onShowPerson]
+    [rows, albums, stickerPairs, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, flat, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir, citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, reply, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas, onReaccionar, onMasEmojis, onVerReacciones, destacados, onGreet, p.onShowPerson]
   );
   return { dibujarFila: drawRow, reply };
+}
+
+/** The two stickers of a pair's first row, when both are loaded. */
+function pairOf(role: AlbumRole | undefined, bySeq: ReadonlyMap<number, ChatMessage>): readonly [ChatMessage, ChatMessage] | undefined {
+  if (role?.role !== 'head') return undefined;
+  const [first, second] = role.seqs.map((seq) => bySeq.get(seq));
+  return first && second ? [first, second] : undefined;
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Alert, Pressable, Text, ToastAndroid, View } from 'react-native';
+import { Alert, Pressable, Text, ToastAndroid, useWindowDimensions, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { ANIMATED_STICKER_PLAY_MS, formatClock, stickerIsAnimated, type DeliveryState } from '@lilachat/shared';
@@ -23,7 +23,7 @@ const SIDE = 160;
 /** How much wider than the sticker its quote may be. */
 const QUOTE_EXTRA_WIDTH = 60;
 
-export function StickerMessage(props: {
+type StickerProps = {
   item: ChatMessage;
   mine: boolean;
   jwt: string;
@@ -36,10 +36,10 @@ export function StickerMessage(props: {
   onReply?: (seq: number, previewText: string, mine: boolean) => void;
   /** A sticker sent as a reply shows what it answers above it, as WhatsApp does (20/10). */
   quote?: ReactNode;
-}) {
+};
+
+export function StickerMessage(props: StickerProps) {
   const { item, mine } = props;
-  const animated = useAnimatedStop(item.media?.url, false, item.media?.animated === true);
-  const showOptions = () => showStickerOptions(props.jwt, item, mine);
   return (
     <DeslizarParaResponder habilitado={!props.selecting && Boolean(props.onReply)} onResponder={() => props.onReply?.(item.seq, 'Sticker', mine)}>
       <View testID={`sticker-${item.seq}`} className={`-mx-3 flex-row items-end gap-2 px-3 pt-3 ${mine ? 'justify-end' : ''} ${props.selected ? 'bg-primary/15' : ''}`}>
@@ -47,22 +47,63 @@ export function StickerMessage(props: {
         <View>
           {props.author?.name ? <Text className="mb-0.5 px-1 text-[13px] font-semibold text-on-surface-variant" numberOfLines={1}>{props.author.name}</Text> : null}
           {props.quote ? <View className="mb-1 rounded-xl border border-outline/15 bg-surface px-2 pb-1 pt-2" style={{ maxWidth: SIDE + QUOTE_EXTRA_WIDTH }}>{props.quote}</View> : null}
-          <Pressable
-            onPress={() => (props.selecting ? props.onSelect?.(item.seq) : animated.stopped ? animated.replay() : showOptions())}
-            onLongPress={() => {
-              void Haptics.selectionAsync();
-              props.onSelect?.(item.seq);
-            }}
-            delayLongPress={350}
-          >
-            <Image ref={animated.ref} source={{ uri: item.media?.url }} style={{ width: SIDE, height: SIDE }} contentFit="contain" recyclingKey={item.clientKey} transition={120} />
-          </Pressable>
-          <View className={`mt-0.5 rounded-full bg-black/35 px-1.5 py-0.5 ${mine ? 'self-end' : 'self-start'}`}>
-            <MetaDeMensaje hora={formatClock(item.at)} mia={mine} entrega={props.delivery} id={String(item.seq)} sobreFoto destacado={props.starred} />
-          </View>
+          <StickerCell item={item} mine={mine} jwt={props.jwt} delivery={props.delivery} starred={props.starred} side={SIDE} selecting={props.selecting} onSelect={props.onSelect} />
         </View>
       </View>
     </DeslizarParaResponder>
+  );
+}
+
+/** Room the row keeps for its margins and the gap between the two. */
+const PAIR_CHROME = 32;
+
+/**
+ * Two stickers one person sent in a row, side by side (José, 02/11, like
+ * WhatsApp; `stickerRowLayout`). Each keeps its own time, tap and long press;
+ * reply goes through the selection bar, since a swipe could not tell which.
+ */
+export function StickerPair(props: Omit<StickerProps, 'item' | 'quote' | 'selected' | 'starred' | 'delivery'> & { items: readonly [ChatMessage, ChatMessage]; selected: (seq: number) => boolean; starred: (seq: number) => boolean; delivery: (seq: number) => DeliveryState }) {
+  const { width } = useWindowDimensions();
+  const avatar = props.author ? AVATAR_DE_AUTOR + 8 : 0;
+  const side = Math.min(SIDE, Math.floor((width - PAIR_CHROME - avatar) / 2));
+  return (
+    <View testID={`stickers-${props.items[0].seq}`} className={`-mx-3 flex-row items-end gap-2 px-3 pt-3 ${props.mine ? 'justify-end' : ''}`}>
+      {props.author ? <Avatar nombre={props.author.name} foto={props.author.photo} tamano={AVATAR_DE_AUTOR} /> : null}
+      <View>
+        {props.author?.name ? <Text className="mb-0.5 px-1 text-[13px] font-semibold text-on-surface-variant" numberOfLines={1}>{props.author.name}</Text> : null}
+        <View className="flex-row gap-2">
+          {props.items.map((item) => (
+            <View key={item.seq} testID={`sticker-${item.seq}`} className={`rounded-2xl ${props.selected(item.seq) ? 'bg-primary/15' : ''}`}>
+              <StickerCell item={item} mine={props.mine} jwt={props.jwt} delivery={props.delivery(item.seq)} starred={props.starred(item.seq)} side={side} selecting={props.selecting} onSelect={props.onSelect} />
+            </View>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/** The sticker itself and its time under it: a tap keeps it (or replays it), a long press selects it. */
+function StickerCell(props: { item: ChatMessage; mine: boolean; jwt: string; delivery: DeliveryState; starred: boolean; side: number; selecting: boolean; onSelect?: (seq: number) => void }) {
+  const { item, mine } = props;
+  const animated = useAnimatedStop(item.media?.url, false, item.media?.animated === true);
+  const showOptions = () => showStickerOptions(props.jwt, item, mine);
+  return (
+    <>
+      <Pressable
+        onPress={() => (props.selecting ? props.onSelect?.(item.seq) : animated.stopped ? animated.replay() : showOptions())}
+        onLongPress={() => {
+          void Haptics.selectionAsync();
+          props.onSelect?.(item.seq);
+        }}
+        delayLongPress={350}
+      >
+        <Image ref={animated.ref} source={{ uri: item.media?.url }} style={{ width: props.side, height: props.side }} contentFit="contain" recyclingKey={item.clientKey} transition={120} />
+      </Pressable>
+      <View className={`mt-0.5 rounded-full bg-black/35 px-1.5 py-0.5 ${mine ? 'self-end' : 'self-start'}`}>
+        <MetaDeMensaje hora={formatClock(item.at)} mia={mine} entrega={props.delivery} id={String(item.seq)} sobreFoto destacado={props.starred} />
+      </View>
+    </>
   );
 }
 

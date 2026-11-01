@@ -68,8 +68,8 @@ type ChannelButton = { line: string; runsFrom: 'channel' | 'space' };
  * they waited for a switch nobody turned on). They need no switch: the
  * space's admins use them in every client's channel, and «Quién puede usarlo»
  * widens it. Portal refuses the payment and the service report inside a group
- * (they carry amounts; agentes 01/11: «esa consulta no se responde en un
- * grupo»), so their buttons run them from the space, with a private answer.
+ * (they carry amounts; seen in the E2E of 01/11), so their buttons run them
+ * from the space, with a private answer.
  */
 const CLIENT_CHANNEL_BUTTONS = new Map<string, ChannelButton>([
   [CLIENT_LINK_ACTION, { line: '«Enlace del cliente» y el del pedido', runsFrom: 'channel' }],

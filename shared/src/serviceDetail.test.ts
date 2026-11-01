@@ -46,7 +46,8 @@ describe('rows and tabs', () => {
     // Act
     const [row] = detailRows(detail, 'orders');
     // Assert
-    expect(row!.line).toBe('24 m³ · 12 oct · Obra Grau · 1 despacho');
+    // A long site gets cut at the end of the line, so the count goes before it.
+    expect(row!.line).toBe('24 m³ · 12 oct · 1 despacho · Obra Grau');
   });
 
   it('a dispatch reads the plate, then quantity · day and hour in Lima · driver, with its guide', () => {

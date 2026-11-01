@@ -225,8 +225,8 @@ const fileOf = (url: string | undefined, label: string) => (url ? { file: { url,
 const urlOf = (url: string | undefined) => (url ? { url } : {});
 
 const dispatchCount = (count: number) => (count ? `${count} ${count === 1 ? 'despacho' : 'despachos'}` : undefined);
-// José 31/10: «los pedidos no muestran la obra»; 01/11: its dispatches live inside it.
-const orderRow = (order: ServiceOrder, dispatches: number): DetailRow => ({ id: order.id, title: order.product ?? 'Pedido', line: joined([amount(order.quantity, order.unit), order.date ? dayOf(order.date) : 'sin fecha', order.site, dispatchCount(dispatches)]), status: order.status, ...urlOf(order.url) });
+// José 31/10: «los pedidos no muestran la obra»; 01/11: its dispatches live inside it. The count goes before the site, which may be long and gets cut.
+const orderRow = (order: ServiceOrder, dispatches: number): DetailRow => ({ id: order.id, title: order.product ?? 'Pedido', line: joined([amount(order.quantity, order.unit), order.date ? dayOf(order.date) : 'sin fecha', dispatchCount(dispatches), order.site]), status: order.status, ...urlOf(order.url) });
 const dispatchesOf = (detail: Pick<ServiceDetail, 'dispatches'>, orderId: string) => detail.dispatches.filter((one) => one.orderId === orderId);
 
 /** The dispatches whose order did not come (Portal sends up to 100 of each): listed apart in «Pedidos», not lost. */

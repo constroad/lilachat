@@ -5043,6 +5043,18 @@ En la app van de a 4 por fila.
 (`r02nov-telenovela-a…d`, ids en INVENTARIO y `design/stitch/registro.jsonl`).
 Se animan cuando José los apruebe.
 
+**Verificado en el emulador (OTA 0b8a95d8, git d704493), espacio Test, chat
+con Inframaq (admin).**
+- «/» y ⚡ con el campo vacío. «/» abrió «Comandos rápidos» con los 6
+  comandos de Inframaq; el campo se vació después.
+- Panel de emojis: búsqueda, barra de categorías y una sola lista. El ícono
+  de animales saltó a «Animales y naturaleza» y quedó marcado.
+- Guiños: Enojado, Furioso, Indignado, Llorando… de a 4 por fila; más abajo
+  los monos, «Bien», Despegue, Gol, Salud, Torta, Bomba. No se envió nada.
+- Stickers de a dos: solo con los tests de `stickerRowLayout`. Las burbujas
+  existen únicamente en los chats Personales de la cuenta real de QA, y ahí
+  no se manda nada de prueba.
+
 ## 183. Recortar y girar la foto antes de enviarla, como WhatsApp (01/11/2026, OTA)
 
 José, 01/11: «al tomar una foto en la app no hay forma de recortar la imagen

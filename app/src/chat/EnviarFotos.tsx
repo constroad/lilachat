@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type MutableRefObject } from 'react';
 import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { Modal } from '../ui/Modal';
 import { Image } from 'expo-image';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import { Send, Video, X } from 'lucide-react-native';
+import { Crop, Send, Video, X } from 'lucide-react-native';
 import { armarEnvioDeFotos, quitarFoto, type FotoAEnviar, type FotoElegida } from './envioDeFotos';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
+import { CropEditor } from './crop/CropEditor';
 
 /**
  * Antes de mandar fotos: verlas, sacar alguna y ponerle su pie a cada una,
@@ -20,6 +21,8 @@ export function EnviarFotos(props: {
   onEnviar: (fotos: FotoAEnviar[], opciones: { hd: boolean }) => void;
   /** Dentro de la cámara (20/10): sin su propio modal, encima de la vista, como WhatsApp. */
   embebido?: boolean;
+  /** Embedded, the camera's modal takes «back»: while cropping it closes the crop, not the photo (01/11). */
+  backRef?: MutableRefObject<(() => void) | null>;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
@@ -28,6 +31,8 @@ export function EnviarFotos(props: {
   const [pies, setPies] = useState<Record<string, string>>({});
   /** Mandar la original, sin achicar (como el «HD» de WhatsApp). */
   const [hd, setHd] = useState(false);
+  /** La foto que se está recortando (01/11, como WhatsApp). */
+  const [recortando, setRecortando] = useState<FotoElegida | null>(null);
 
   // Cada vez que se abre con fotos nuevas, arranca de cero.
   useEffect(() => {
@@ -35,10 +40,27 @@ export function EnviarFotos(props: {
     setActual(0);
     setPies({});
     setHd(false);
+    setRecortando(null);
   }, [props.fotos]);
+  const { backRef } = props;
+  useEffect(() => {
+    if (!backRef) return;
+    backRef.current = recortando ? () => setRecortando(null) : null;
+    return () => {
+      backRef.current = null;
+    };
+  }, [backRef, recortando]);
 
   const vista = fotos[actual];
   const esVideo = (foto?: FotoElegida) => Boolean(foto?.mimeType?.startsWith('video/'));
+
+  // The cut photo takes the place of the original and keeps its caption.
+  const alRecortar = (original: FotoElegida, recortada: FotoElegida) => {
+    setRecortando(null);
+    if (recortada.uri === original.uri) return;
+    setFotos((antes) => antes.map((foto) => (foto.uri === original.uri ? recortada : foto)));
+    setPies(({ [original.uri]: pie, ...resto }) => (pie === undefined ? resto : { ...resto, [recortada.uri]: pie }));
+  };
 
   const quitar = (indice: number) => {
     const resultado = quitarFoto(fotos, indice, actual);
@@ -57,6 +79,11 @@ export function EnviarFotos(props: {
         <Text className="flex-1 text-base font-semibold" style={{ color: 'white' }}>
           {fotos.length === 1 ? '1 foto' : `${fotos.length} fotos`}
         </Text>
+        {vista && !esVideo(vista) ? (
+          <Pressable testID="btn-recortar" accessibilityLabel="Recortar y girar" onPress={() => setRecortando(vista)} className="h-11 w-11 items-center justify-center">
+            <Crop size={22} color="white" />
+          </Pressable>
+        ) : null}
         <Pressable
           testID="btn-hd"
           accessibilityRole="switch"
@@ -139,12 +166,13 @@ export function EnviarFotos(props: {
           <Send size={20} color={colores['on-primary']} />
         </Pressable>
       </View>
+      {recortando ? <CropEditor photo={recortando} onCancel={() => setRecortando(null)} onDone={(recortada) => alRecortar(recortando, recortada)} /> : null}
     </KeyboardAvoidingView>
   );
   if (props.embebido) return props.fotos.length > 0 ? <View className="absolute inset-0">{contenido}</View> : null;
   return (
     // Fundido y no deslizamiento (20/10): desde la cámara, la foto aparece en el acto.
-    <Modal visible={props.fotos.length > 0} animationType="fade" onRequestClose={props.onCancelar}>
+    <Modal visible={props.fotos.length > 0} animationType="fade" onRequestClose={() => (recortando ? setRecortando(null) : props.onCancelar())}>
       {contenido}
     </Modal>
   );

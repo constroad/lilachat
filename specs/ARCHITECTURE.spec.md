@@ -5004,31 +5004,50 @@ INVENTARIO.
 Fue 6 s después de que el teléfono aplicara la OTA 8f3a86c5 (venía de la
 17c601d8). El server no se reinició en esa ventana (pid desde las 10:27).
 
-**La causa.** `jsonCall` (app) hacía `response.json().catch(() => ({}))`. Un
-2xx con el cuerpo cortado por la red, o con una página HTML en el camino,
-salía como `{ ok: true, data: {} }`. `useMySpaces` guardaba
-`response.data.workspaces`, o sea `undefined`. `useSpacesUi` hace
-`spaces === null ? null : spaces.some(…)` al renderizar, y la pantalla raíz
-caía. El store no se volvía a pedir hasta reiniciar la app, así que
-«Reintentar» no podía salir.
+**La causa (encontrada a las 12:25 con un registro temporal en el server).**
+Cada GET /api/workspaces del teléfono de José volvía **304**: Express ponía
+ETag a todo JSON, la caché HTTP del teléfono mandaba `If-None-Match`, y la
+copia que guardaba estaba vacía. `jsonCall` (app) hacía
+`response.json().catch(() => ({}))`, así que un cuerpo vacío salía como
+`{ ok: true, data: {} }`. `useMySpaces` guardaba `response.data.workspaces`
+(`undefined`) y `useSpacesUi` hacía `spaces.some(…)` al renderizar: caía la
+pantalla raíz, y «Reintentar» no salía porque nadie volvía a pedir. Además se
+borró la copia local de espacios del teléfono (se guardó sin la lista).
 
-**El arreglo (OTA 20d9eb0f, git 5ecb5fd).**
-- `jsonCall` lee el cuerpo como texto. Vacío es éxito (`{}`, un 204).
-  Ilegible o no JSON es `{ ok: false, message: 'Sin conexión…' }`. Vale
-  para las 75 llamadas de la app. Test `app/src/api/jsonCall.test.ts`.
-- `workspacesOf` (shared) valida la lista de `GET /api/workspaces`. La usan la
-  app y la web: una respuesta que no es la lista deja la que había.
-  Test en `shared/src/workspaces.test.ts`.
+**Por qué el emulador no lo mostró.** Misma cuenta, mismos 304, pero su caché
+tenía una copia buena y su copia local de espacios seguía intacta. La primera
+lectura («un cuerpo cortado por la red») era falsa: la falla volvía en cada
+apertura, y eso no lo hace un corte.
 
-**Verificado.** Gates y rn-smoke en verde. Emulador con «Código en uso:
-Actualización 20d9eb0f»: lista de Constroad, canal CARCELI (Servicios con
-inicio y enlaces) y `#general` con sus mensajes, sin `[crash]` en logcat. El
-2xx sin cuerpo no se reprodujo en el emulador (el server de producción no lo
-devuelve a pedido); lo cubren los dos tests.
+**El arreglo.**
+- **Server (eb489dc, en vivo 12:57):** `app.set('etag', false)` y
+  `jsonWithoutCache` en `/api`: todo JSON va con `Cache-Control: no-store` y
+  sin los encabezados condicionales del pedido, así que nunca hay 304. Los
+  archivos (`/api/media`, `/api/ota`) conservan su propia caché. Test
+  `server/test/apiNoCache.test.ts` (incluye `If-None-Match: *`, que Express
+  contesta 304 aun sin ETag). No necesitó actualización en el teléfono.
+- **App (OTA 20d9eb0f, git 5ecb5fd):** `jsonCall` lee el texto: vacío es `{}`
+  (204), ilegible es «Sin conexión». Test `app/src/api/jsonCall.test.ts`.
+- **App y web:** `workspacesOf` (shared) valida la lista; si no llega, queda
+  la anterior. Test en `shared/src/workspaces.test.ts`.
+- **App (OTA 10d9f43c, git 54615a9):** la hoja «Cambiar de espacio» pedía la
+  lista 4–5 veces por segundo mientras estaba abierta (`onOpen` nuevo en cada
+  render). Ahora es estable.
+
+**Cómo llegó la OTA al teléfono roto.** Con la pantalla raíz caída, solo la
+revisión nativa al abrir (`ON_LOAD`) baja la actualización, y la aplica en la
+apertura siguiente. José la cerraba a los 5 s y la descarga de 10 MB se
+cortaba («Premature close» en el server). Hubo que dejarla abierta 1–2 min.
+
+**Verificado.** Gates y rn-smoke en verde. Emulador con «Actualización
+10d9f43c»: «Cambiar de espacio» lista Personal, Constroad, Inframaq, Test y
+Constructora Andes, sin `[crash]`. En vivo: `/api/health` responde
+`cache-control: no-store` y sin ETag.
 
 **Deuda.** Varias llamadas de la web repiten `json().catch(() => ({}))` fuera
-de `api.ts` (`spacesApi`, `commandsApi`, `stickersApi`…). La de espacios ya
-está protegida por `workspacesOf`; el resto queda para unificarlo.
+de `api.ts` (`spacesApi`, `commandsApi`, `stickersApi`…). Dos tests del server
+fallan a veces bajo carga con «Parse Error: Expected HTTP/» (puerto efímero de
+supertest); pasan solos.
 
 ## 181. Los botones del canal del cliente sin interruptor, despachos dentro del pedido y registros por día (01/11/2026, servidor + OTA + web)
 

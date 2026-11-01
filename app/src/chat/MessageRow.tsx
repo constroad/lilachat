@@ -32,7 +32,7 @@ export { MetaDeMensaje } from './MetaDeMensaje';
 import type { ChatMessage } from './useChat';
 import { useColores } from '../ui/tema';
 import { TarjetaDelChat } from './TarjetaDelChat';
-import { NudgeLine, WinkLine } from './nudge';
+import { NudgeLine, SelectableFunLine, WinkLine } from './nudge';
 import { StickerMessage } from './stickers/StickerMessage';
 import { Avatar } from '../ui/Avatar';
 import { MessageMedia } from './MessageMedia';
@@ -148,8 +148,14 @@ function FilaDeMensaje({
     return <GroupNotice item={item} myUserId={myUserId} onGreet={onGreet} />;
   }
   // The MSN nudge (backlog 3): a line, not a bubble.
-  if (drawsAsFunLine(item) && !isPending(item) && item.kind === 'zumbido') return <NudgeLine seq={item.seq} mine={item.senderId === myUserId} author={nombreAutor} at={item.at} />;
-  if (drawsAsFunLine(item) && !isPending(item) && item.kind === 'guino') return <WinkLine seq={item.seq} wink={item.wink} mine={item.senderId === myUserId} author={nombreAutor} at={item.at} chatId={item.chatId} />;
+  if (drawsAsFunLine(item) && !isPending(item)) {
+    const mine = item.senderId === myUserId;
+    return (
+      <SelectableFunLine seq={item.seq} selecting={enSeleccion} selected={Boolean(seleccionado)} onSelect={onSeleccionar}>
+        {item.kind === 'zumbido' ? <NudgeLine seq={item.seq} mine={mine} author={nombreAutor} at={item.at} /> : <WinkLine seq={item.seq} wink={item.wink} mine={mine} author={nombreAutor} at={item.at} chatId={item.chatId} />}
+      </SelectableFunLine>
+    );
+  }
   // La encuesta o el evento publicados en el chat (18/10): una tarjeta para
   // votar o confirmar, no una burbuja de texto.
   // Deleted for everyone, it is a deleted message (22/10).

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Pressable, Text, Vibration, View } from 'react-native';
 import { useAnimatedStyle, useReducedMotion, useSharedValue, withSequence, withTiming, type SharedValue } from 'react-native-reanimated';
 import { Heart, Play, Undo2, Vibrate } from 'lucide-react-native';
@@ -178,6 +178,19 @@ export function useFunActions(params: { chatId: string; isGroup: boolean; isDraf
  * tint, theirs on the left.
  */
 const sideOf = (mine: boolean) => (mine ? 'self-end bg-primary/10' : 'self-start bg-surface');
+
+/**
+ * A nudge or wink line is selected like any message (02/11: with «Te ataco»
+ * they pile up, and there was no way to delete one): a long press selects it,
+ * and while selecting a tap toggles it.
+ */
+export function SelectableFunLine(props: { seq: number; selecting: boolean; selected: boolean; onSelect?: (seq: number) => void; children: ReactNode }) {
+  return (
+    <Pressable testID={`fila-divertida-${props.seq}`} onLongPress={() => props.onSelect?.(props.seq)} delayLongPress={350} onPress={props.selecting ? () => props.onSelect?.(props.seq) : undefined} className={`-mx-3 px-3 ${props.selected ? 'bg-primary/15' : ''}`}>
+      {props.children}
+    </Pressable>
+  );
+}
 
 /** «Ana te mandó un zumbido» / «Mandaste un zumbido». */
 export function NudgeLine(props: { seq: number; mine: boolean; author?: string; at?: string }) {

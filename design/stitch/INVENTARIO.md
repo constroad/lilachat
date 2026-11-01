@@ -197,13 +197,26 @@ Proyecto 15540754270713720465. Capturas `design/stitch/<slug>.png` (móvil), `-t
 | h-03-consumo-visor-lectura | Fotos de la lectura en el visor con «Elegir esta lectura» | 5e69e9d8377a482f819fba73d8898ba1 · 2ceebcb60a734f6cb0bc573691dcae90 · c84abcdd2b4f46a289d9addf5479bd81 | §176 | hecho, con «Elegir esta opción» (el visor no sabe que es una lectura) |
 | h-04-consumo-resumen | Resumen en vivo arriba de «Enviar» (cifras, aviso, filas por tanque, pedidos) | 0da416f046324157a93d8275c1a0d5e8 · ece708f413ca47ec935bf25f764526e0 · 79c6afd4702d4ee4b0900086d6e1135b | §176 | hecho con los bloques del kit; sin «Revisado hace 2 s» |
 
-## Guiños «Telenovela» (02/11/2026, pendiente de aprobación de José)
+## Guiños «Telenovela» (02/11/2026, RECHAZADOS por José)
 
 José, 02/11: «agrega más guiños, ya están quedando muy aburridos… mínimo 10 en una categoría nueva; preséntamelos antes de implementar». Generador `.stitch-work/telenovela_sheet.py`; ids en `design/stitch/registro.jsonl`.
 
+José, 02/11: «¿te parece que son graciosos y que los usuarios lo usarán? Debe enganchar… no telenovelas, está horrible». Un tema que hay que conocer no se manda en un chat. Eligió «Te ataco» (abajo).
+
 | Slug | Pantalla | Personajes (`data-wink`) | Utilería (`data-prop`) | Estado |
 | --- | --- | --- | --- | --- |
-| r02nov-telenovela-a | `screens/fe4eeeac6649428d90f255d35e446601` | slap-villain, fainting-lady, don-rodolfo | hand-mark, armchair, baby-photo | Por aprobar |
-| r02nov-telenovela-b | `screens/f033458dbe754667b176969b9f3af154` | laughing-villain, amnesia-galan, letter-reader | lightning, question, letter | Por aprobar |
-| r02nov-telenovela-c | `screens/27c18a7dc7564888bfbef100f45f84d5` | evil-twin, tear-actress, mother-in-law | big-tear, violin, fan | Por aprobar |
-| r02nov-telenovela-d | `screens/25b270019c85488687110069a21766dc` | objector, shocked-face, back-from-dead | what, withered-flowers, wedding-ring | Por aprobar |
+| r02nov-telenovela-a | `screens/fe4eeeac6649428d90f255d35e446601` | slap-villain, fainting-lady, don-rodolfo | hand-mark, armchair, baby-photo | Rechazado |
+| r02nov-telenovela-b | `screens/f033458dbe754667b176969b9f3af154` | laughing-villain, amnesia-galan, letter-reader | lightning, question, letter | Rechazado |
+| r02nov-telenovela-c | `screens/27c18a7dc7564888bfbef100f45f84d5` | evil-twin, tear-actress, mother-in-law | big-tear, violin, fan | Rechazado |
+| r02nov-telenovela-d | `screens/25b270019c85488687110069a21766dc` | objector, shocked-face, back-from-dead | what, withered-flowers, wedding-ring | Rechazado |
+
+## Guiños «Te ataco» (02/11/2026, pendiente de aprobación de José)
+
+José eligió esta dirección tras rechazar la Telenovela: el guiño le pega a la pantalla de quien lo recibe. Guion de 3 cuadros por guiño (entrada, impacto, remate) y utilería suelta. Generador `.stitch-work/attack_sheet.py`; ids en `design/stitch/registro.jsonl`.
+
+| Slug | Pantalla | Guiños | Utilería (`data-prop`) | Estado |
+| --- | --- | --- | --- | --- |
+| r02nov-ataque-a | `screens/f66f06df2d8f485abf0de0fe9d700b88` | Chancletazo, Pastelazo, Baldazo | slipper, slipper-mark, cream-pie, cream-splat, cherry, bucket, water-wave, glass-drops | Por aprobar |
+| r02nov-ataque-b | `screens/31e0cad365f9414ea9480f7cd0ff201a` | Tomatazo, Huevazo, Almohadazo | tomato, tomato-splat, tomato-stem, egg, eggshell, fried-egg, pillow, feather, feather-burst | Por aprobar |
+| r02nov-ataque-c | `screens/f8dbd8663c8c411ca8ebe4d5e485458e` | Pelotazo, Espumazo, Harinazo | soccer-ball, glass-star-crack, glass-shard, foam-can, foam-stream, foam-blob, flour-hand, flour-cloud, flour-dust | Por aprobar |
+| r02nov-ataque-d | `screens/0132feaee9ed4b9a868c8d9d2d3f7569` | Matamoscas, Toc toc, Besote | fly, swatter, fly-path, knock-finger, peeking-eye, fog-question, big-lips, lipstick-mark, tiny-heart | Por aprobar |

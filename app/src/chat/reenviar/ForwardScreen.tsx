@@ -15,7 +15,7 @@ import { reportarError } from '../../ui/reportarError';
 import { queueMessage } from '../outboxStore';
 import { encolarArchivo } from '../colaDeArchivos';
 import { leerFrecuencias } from './frecuenciasDeEnvio';
-import { knownChats } from './knownChats';
+import { useKnownChats } from './knownChats';
 import type { ChatSummary } from '../../api/client';
 import type { SharedFile } from './incomingShare';
 
@@ -51,7 +51,7 @@ type SendParams = Pick<ForwardScreenProps, 'steps' | 'files' | 'token' | 'onErro
 export function ForwardScreen(props: ForwardScreenProps) {
   const colors = useColores();
   const insets = useMargenes();
-  const picker = useTargetPicker(props.visible);
+  const picker = useTargetPicker(props.visible, props.token);
   const [sending, setSending] = useState(false);
 
   const send = async () => {
@@ -90,7 +90,7 @@ export function ForwardScreen(props: ForwardScreenProps) {
 }
 
 /** The search, the chosen chats and the extra note; all of it starts over each time the screen opens. */
-function useTargetPicker(visible: boolean) {
+function useTargetPicker(visible: boolean, token: string) {
   const [query, setQuery] = useState('');
   const [chosen, setChosen] = useState<string[]>([]);
   const [note, setNote] = useState('');
@@ -102,7 +102,8 @@ function useTargetPicker(visible: boolean) {
     setNote('');
     void leerFrecuencias().then(setFrequencies);
   }, [visible]);
-  const possible = useMemo(() => (visible ? possibleTargets() : []), [visible]);
+  const known = useKnownChats(token, visible);
+  const possible = useMemo(() => (visible ? possibleTargets(known) : []), [visible, known]);
   const rows = useMemo(() => targetRows(possible, frequencies, query), [possible, frequencies, query]);
   const names = chosen.map((id) => possible.find((chat) => chat.id === id)?.nombre ?? '');
   const toggle = (id: string) => {
@@ -113,9 +114,9 @@ function useTargetPicker(visible: boolean) {
   return { query, setQuery, chosen, names, note, setNote, rows, toggle };
 }
 
-function possibleTargets(): ChatParaReenviar[] {
+function possibleTargets(known: readonly ChatSummary[]): ChatParaReenviar[] {
   const phoneBook = agendaPorTelefono();
-  const chats = knownChats().map((chat) => targetOf(chat, phoneBook));
+  const chats = known.map((chat) => targetOf(chat, phoneBook));
   return chats.some((chat) => chat.propio) ? chats : [...chats, { id: NEW_SELF, nombre: 'Tú', subtitulo: 'Envíate un mensaje', propio: true }];
 }
 

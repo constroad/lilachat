@@ -3,7 +3,8 @@ import { FlatList, Pressable, Text, TextInput, ToastAndroid, View } from 'react-
 import { Modal } from '../../ui/Modal';
 import * as Crypto from 'expo-crypto';
 import { ArrowLeft, Check, NotebookPen, Search, Send, Users } from 'lucide-react-native';
-import { alternarDestino, buildOutboxItem, destinosDeReenvio, MAXIMO_DE_DESTINOS, nombreDeContacto, type ChatParaReenviar, type Frecuencias, type PasoDeReenvio } from '@lilachat/shared';
+import { alternarDestino, buildOutboxItem, destinosDeReenvio, MAXIMO_DE_DESTINOS, nombreDeContacto } from '@lilachat/shared';
+import type { ChatParaReenviar, Frecuencias, PasoDeReenvio } from '@lilachat/shared';
 import { reenviarMensajeA } from '../../api/client';
 import { createChat } from '../../contacts/contactsApi';
 import { agendaPorTelefono } from '../../contacts/agendaEnMemoria';

@@ -7,7 +7,7 @@ import { ProgramarMensajeModal } from './ProgramarMensajeModal';
 import { ProgramadosDelChat } from './ProgramadosDelChat';
 import { ChatQueue } from './ChatQueue';
 import type { FlashListRef } from '@shopify/flash-list';
-import { ChatBottom } from './ChatBottom';
+import { ChatBottom, ChatKeyboardArea } from './ChatBottom';
 import type { MencionEnMensaje } from '@lilachat/shared';
 import { chatHasActionPlace, clientHeaderSubtitle, personOfMember } from '@lilachat/shared';
 import { useFunActions } from './nudge';
@@ -434,7 +434,7 @@ export function ChatScreen({
       {fijar.franja}{esGrupoChat ? <GroupCallStrip chatId={chatId} chatName={nombreVisible} me={credential.userId} /> : null}{channelWork.tabs}<ContactNoteBanner chatId={chatId} jwt={credential.jwt} note={grupo.contactNote} />
       </View>
       {/* Keyboard like Telegram (20/10): see `useScrollConTeclado`; the bar rides on the keyboard or the emoji panel in `ChatBottom`. */}
-      <View style={{ flex: 1, zIndex: 1 }}>
+      <ChatKeyboardArea style={{ flex: 1, zIndex: 1 }}>
       {fijar.hoja}{channelWork.panel}
 
       {encrypted || esBorrador ? null : <BirthdayCard chatId={chatId} chatName={chatName} isGroup={esGrupoChat} me={credential.userId} messages={messages} names={nombresDelGrupo} photos={fotosDelGrupo} onReact={(emoji) => void send(emoji)} onGreet={(text) => composerRef.current?.insertEmoji(text)} />}
@@ -594,7 +594,7 @@ export function ChatScreen({
         tarjetas={<ChatInfoCards chatId={chatId} jwt={credential.jwt} yo={credential.userId} encrypted={Boolean(encrypted)} pinned={{ fijados: fijar.fijados, textoDe: fijar.textoDe, onVerTodos: () => { setVerDetalle(false); fijar.verTodos(); } }} nameOf={nombreDe} starredCount={destacados.seqs.size} onGoTo={(seq) => { setVerDetalle(false); alTocarCita(seq); }} />}
       />
       ) : null}
-    </View>
+    </ChatKeyboardArea>
     </View></OverlayHost></SpaceEmojisProvider>
   );
 }

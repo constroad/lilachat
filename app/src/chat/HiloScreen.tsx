@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import { Modal } from '../ui/Modal';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useScrollConTeclado } from './useScrollConTeclado';
+import { ChatKeyboardArea } from './ChatBottom';
 import { ArrowLeft, Check, ClipboardCheck, Send, Smile, Square, SquareCheck, X } from 'lucide-react-native';
 import { checklistMembers, deleteBeforeCursor, formatClock, memberBadge, usesFlatLayout, miReaccion, primerEnlace, puedeEditar, puedeReaccionar, resolveDeliveryState, type DeliveryState, type MemberPill } from '@lilachat/shared';
 import type { MencionElegida, MencionEnMensaje } from '@lilachat/shared';
@@ -202,6 +203,7 @@ export function HiloScreen(props: {
 
   return (
     <Modal visible={props.raiz !== null} animationType="slide" onRequestClose={props.onCerrar}>
+      <ChatKeyboardArea style={{ flex: 1 }}>
       <View className="flex-1 bg-background" testID="pantalla-hilo">
         <View className="flex-row items-center gap-2 border-b border-outline/10 bg-surface px-2 pb-2" style={{ paddingTop: margenes.cabecera }}>
           <Pressable testID="btn-cerrar-hilo" accessibilityLabel="Volver al chat" onPress={props.onCerrar} className="h-11 w-11 items-center justify-center">
@@ -342,6 +344,7 @@ export function HiloScreen(props: {
         </View>
         </KeyboardStickyView>
       </View>
+      </ChatKeyboardArea>
       {reacciones.hojas}
       {props.raiz ? (
         <CreateChecklistScreen visible={creatingChecklist} jwt={props.jwt} chat={{ id: props.chatId, name: props.chatName }} threadOf={props.raiz.seq} onClose={() => {

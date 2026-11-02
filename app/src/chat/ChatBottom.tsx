@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode, type RefObject } from 'react';
+import { Platform, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { runOnJS, useAnimatedStyle } from 'react-native-reanimated';
-import { useKeyboardHandler, useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
+import { KeyboardGestureArea, useKeyboardHandler, useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
 import type { WinkId } from '@lilachat/shared';
 import type { ComposerHandle } from './Composer';
 import { EmojiStickerPanel } from './stickers/EmojiStickerPanel';
@@ -11,6 +12,24 @@ import { coveredAbove } from '../ui/overlays';
 
 /** After entering a chat, when the hidden emoji panel is built (the chat is already on screen). */
 const PREMOUNT_MS = 1200;
+/** The writing bar over the keyboard (48 dp pill and its padding): a finger that reaches it starts moving the keyboard. */
+const WRITING_BAR_DP = 60;
+
+/**
+ * Plan 1, F3: the keyboard closes by dragging the conversation down, like
+ * Telegram on iPhone. The list scrolls with the finger as always; once the
+ * finger reaches the bar, the keyboard follows it, and letting go closes it or
+ * sends it back up. The scroll keeps the reading position (`persistent`).
+ * Android 11+; on iPhone it is the scroll's `keyboardDismissMode` (plan 2).
+ */
+export function ChatKeyboardArea(props: { style: StyleProp<ViewStyle>; children: ReactNode }) {
+  if (Platform.OS !== 'android') return <View style={props.style}>{props.children}</View>;
+  return (
+    <KeyboardGestureArea style={props.style} interpolator="ios" offset={WRITING_BAR_DP} testID="zona-teclado">
+      {props.children}
+    </KeyboardGestureArea>
+  );
+}
 
 /**
  * How high the bottom of the conversation goes: the keyboard (as the

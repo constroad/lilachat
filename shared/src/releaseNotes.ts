@@ -17,6 +17,17 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.178',
+    // Everyone: plan 1 of fluidity, F3 + F4, and José's «enviar un sticker aún se siente tosco» (02/11).
+    audience: 'all',
+    items: [
+      'Arrastra el chat hacia abajo para cerrar el teclado, como en Telegram.',
+      'El sticker aparece apenas lo tocas, y la grilla ya no se mueve bajo tu dedo.',
+      'Los guiños y zumbidos se ven en el acto y el panel se cierra solo.',
+      'Pestañas, contactos, menciones y botones responden al toque al instante.',
+    ],
+  },
+  {
     version: '0.1.177',
     // Everyone: plan 1 of fluidity, F1 + F2 (José, 02/11: «que se sienta como Telegram»).
     audience: 'all',

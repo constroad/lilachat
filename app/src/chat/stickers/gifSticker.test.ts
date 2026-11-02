@@ -3,6 +3,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@react-native-async-storage/async-storage', () => ({ default: { getItem: vi.fn(async () => null), setItem: vi.fn(async () => undefined) } }));
 vi.mock('../subidaXhr', () => ({ subirPorXhr: vi.fn() }));
 vi.mock('../../api/client', () => ({ BASE_URL: 'https://qa.test' }));
+// The panel's open state and the frame monitor live on the UI side (Reanimated, React Native).
+vi.mock('../emojiPanel', () => ({ isEmojiPanelOpen: () => false, useEmojiPanelOpen: () => false }));
+vi.mock('../../diagnostico/frameMonitor', () => ({ beginInteraction: vi.fn(), SEND_FRAME_WINDOW_MS: 600 }));
 
 const { stickerFromGif } = await import('./stickersApi');
 const { saveGifSticker } = await import('./useStickers');

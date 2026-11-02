@@ -44,7 +44,6 @@
     "expo-video": "~57.0.3",
     "js-sha256": "^1.0.0",
     "lucide-react-native": "^1.33.0",
-    "moti": "^0.30.0",
     "nativewind": "^4.2.6",
     "react": "19.2.3",
     "react-native": "0.86.2",

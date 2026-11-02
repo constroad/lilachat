@@ -17,19 +17,19 @@ export function HojaDeFijarMensaje(props: { visible: boolean; onFijar: (duracion
       <Text className="mt-1 text-[15px] leading-6 text-on-surface-variant">Se ve arriba del chat para todos. Puedes desfijarlo cuando quieras.</Text>
       <View className="mt-4">
         {OPCIONES.map((opcion) => {
-          const activa = opcion === elegida;
+          const active = opcion === elegida;
           return (
             <Pressable
               key={opcion}
               testID={`duracion-${opcion}`}
               accessibilityRole="radio"
-              accessibilityState={{ selected: activa }}
+              accessibilityState={{ selected: active }}
               onPress={() => setElegida(opcion)}
-              className={`-mx-6 min-h-[56px] flex-row items-center justify-between px-6 ${activa ? 'bg-primary/[0.06]' : ''}`}
+              className={`-mx-6 min-h-[56px] flex-row items-center justify-between px-6 ${active ? 'bg-primary/[0.06]' : ''}`}
             >
               <Text className="text-base text-on-surface">{ETIQUETAS_DE_DURACION[opcion]}</Text>
-              <View className={`h-6 w-6 items-center justify-center rounded-full border-2 ${activa ? 'border-primary' : 'border-outline/60'}`}>
-                {activa ? <View className="h-3 w-3 rounded-full bg-primary" /> : null}
+              <View className={`h-6 w-6 items-center justify-center rounded-full border-2 ${active ? 'border-primary' : 'border-outline/60'}`}>
+                {active ? <View className="h-3 w-3 rounded-full bg-primary" /> : null}
               </View>
             </Pressable>
           );

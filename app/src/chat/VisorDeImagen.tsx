@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View, type ViewToken, useWindowDimensions } from 'react-native';
 import { Modal } from '../ui/Modal';
 import { Image } from 'expo-image';
@@ -152,16 +152,16 @@ type VisorProps = {
 };
 
 export function VisorDeImagen(props: VisorProps) {
-  const abierto = props.foto !== null;
+  const isOpen = props.foto !== null;
   // From the tap until the photo lands (plan 1, F0): the viewer measures its own opening.
   useEffect(() => {
-    if (abierto) beginInteraction(VIEWER_FRAME_WINDOW);
-  }, [abierto]);
+    if (isOpen) beginInteraction(VIEWER_FRAME_WINDOW);
+  }, [isOpen]);
   // Back plays the way out too: the body that owns it answers.
   const closeRef = useRef<(() => void) | null>(null);
   return (
     <Modal
-      visible={abierto}
+      visible={isOpen}
       animationType="none"
       statusBarTranslucent
       fullWindow
@@ -189,167 +189,171 @@ function ViewerBody({
   action,
   closeRef,
 }: VisorProps & { foto: FotoDelVisor; closeRef: MutableRefObject<(() => void) | null> }) {
-  const margenes = useMargenes();
-  const { width: ancho, height: alto } = useWindowDimensions();
-  const pager = useRef<FlatList<FotoDelVisor>>(null);
-  const [conZoom, setConZoom] = useState(false);
-  const [conBarras, setConBarras] = useState(true);
-  const lista = otras && otras.length > 0 ? otras : [foto];
-  const indice = indiceDeFoto(lista, foto.seq);
-  const indiceVisible = useRef(indice);
-  const transition = useViewerTransition({ photo: foto, screen: { width: ancho, height: alto }, onClosed: onCerrar });
+  const margins = useMargenes();
+  const { width, height } = useWindowDimensions();
+  const [zoomed, setZoomed] = useState(false);
+  const [barsShown, setBarsShown] = useState(true);
+  const photos = otras && otras.length > 0 ? otras : [foto];
+  const index = indiceDeFoto(photos, foto.seq);
+  const { pager, onPageChange } = usePagerSync(index, onCambiar);
+  const transition = useViewerTransition({ photo: foto, screen: { width, height }, onClosed: onCerrar });
   const { close: closeWith, drag } = transition;
   // A zoomed photo would jump back to full size before flying: it fades instead.
-  const close = useCallback(() => closeWith({ fade: conZoom }), [closeWith, conZoom]);
+  const close = useCallback(() => closeWith({ fade: zoomed }), [closeWith, zoomed]);
   closeRef.current = close;
   useEffect(() => () => void (closeRef.current = null), [closeRef]);
 
-  // Un cambio que viene de AFUERA (la tira) mueve el pager; uno que nació de
-  // deslizar ya está en su lugar y no se toca.
-  useEffect(() => {
-    if (indice === indiceVisible.current) return;
-    indiceVisible.current = indice;
-    pager.current?.scrollToIndex({ index: indice, animated: false });
-  }, [foto, indice]);
-
-  const onCambiarRef = useRef(onCambiar);
-  onCambiarRef.current = onCambiar;
-  const alCambiarDePagina = useRef(({ viewableItems }: { viewableItems: ViewToken<FotoDelVisor>[] }) => {
-    const visible = viewableItems[0];
-    if (!visible || visible.index === null || visible.index === indiceVisible.current) return;
-    indiceVisible.current = visible.index;
-    onCambiarRef.current?.(visible.item);
-  }).current;
-
-  const dibujar = useCallback(
-    ({ item, index }: { item: FotoDelVisor; index: number }) => (
+  const renderPage = useCallback(
+    ({ item, index: at }: { item: FotoDelVisor; index: number }) => (
       <Pagina
         foto={item}
-        activa={index === indice}
-        ancho={ancho}
-        alto={alto}
-        onZoom={setConZoom}
+        activa={at === index}
+        ancho={width}
+        alto={height}
+        onZoom={setZoomed}
         onCerrar={close}
-        onToque={() => setConBarras((v) => !v)}
+        onToque={() => setBarsShown((shown) => !shown)}
         onAbrirArchivo={onAbrirArchivo}
-        drag={index === indice ? drag : undefined}
+        drag={at === index ? drag : undefined}
       />
     ),
-    [indice, ancho, alto, close, onAbrirArchivo, drag]
+    [index, width, height, close, onAbrirArchivo, drag]
   );
 
   const inFlight = transition.flight !== null;
+  const bars = barsShown && !inFlight;
   return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <Animated.View pointerEvents="none" style={[FILL, { backgroundColor: '#000000' }, transition.backdropStyle]} />
-        <Animated.View style={[{ flex: 1 }, transition.fadeStyle]}>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Animated.View pointerEvents="none" style={[FILL, { backgroundColor: '#000000' }, transition.backdropStyle]} />
+      <Animated.View style={[{ flex: 1 }, transition.fadeStyle]}>
         {/* While the copy flies the real pager waits underneath, already loading the full photo. */}
         <View style={{ flex: 1, opacity: inFlight ? 0 : 1 }}>
           <FlatList
             ref={pager}
             testID="visor-pager"
-            data={lista}
+            data={photos}
             keyExtractor={(item) => String(item.seq)}
-            renderItem={dibujar}
+            renderItem={renderPage}
             horizontal
             pagingEnabled
-            scrollEnabled={!conZoom}
+            scrollEnabled={!zoomed}
             showsHorizontalScrollIndicator={false}
-            initialScrollIndex={indice}
-            getItemLayout={(_, i) => ({ length: ancho, offset: ancho * i, index: i })}
-            onViewableItemsChanged={alCambiarDePagina}
+            initialScrollIndex={index}
+            getItemLayout={(_, at) => ({ length: width, offset: width * at, index: at })}
+            onViewableItemsChanged={onPageChange}
             viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
             windowSize={3}
             initialNumToRender={1}
             maxToRenderPerBatch={2}
-            extraData={indice}
+            extraData={index}
           />
-
-        {/* Cabecera flotante. El cierre NUNCA se comprime y tiene 44 px: un
-            visor sin salida visible deja como única opción el botón físico. */}
-        {conBarras && !inFlight ? (
-          <Animated.View entering={FadeIn.duration(BARS_FADE_MS)} exiting={FadeOut.duration(BARS_FADE_MS)} style={{ paddingTop: margenes.cabecera, backgroundColor: 'rgba(0,0,0,0.45)' }} className="absolute left-0 right-0 top-0 flex-row items-center gap-2 px-2 pb-2">
-            <Pressable testID="btn-cerrar-visor" accessibilityLabel="Cerrar la imagen" onPress={close} className="h-11 w-11 shrink-0 items-center justify-center">
-              <X size={24} color="#ffffff" />
-            </Pressable>
-            <View className="min-w-0 flex-1">
-              <Text numberOfLines={1} style={{ color: '#ffffff' }} className="text-base font-semibold" testID="visor-autor">
-                {foto.autor}
-              </Text>
-              <Text style={{ color: '#c9c9c9' }} className="text-[11px]">
-                {lista.length > 1 ? `${indice + 1} de ${lista.length} · ${foto.cuando}` : foto.cuando}
-              </Text>
-            </View>
-            {onMakeSticker && foto.mime === 'image/gif' ? (
-              <Pressable testID="btn-gif-a-sticker" accessibilityLabel="Convertir en sticker animado" onPress={() => onMakeSticker(foto)} className="h-11 w-11 shrink-0 items-center justify-center">
-                <Sticker size={21} color="#ffffff" />
-              </Pressable>
-            ) : null}
-            {onDescargar ? (
-              <Pressable testID="btn-descargar-foto" accessibilityLabel="Descargar" onPress={() => onDescargar(foto)} className="h-11 w-11 shrink-0 items-center justify-center">
-                <Download size={21} color="#ffffff" />
-              </Pressable>
-            ) : null}
-            {onCompartir ? (
-              <Pressable testID="btn-compartir-foto" accessibilityLabel="Compartir" onPress={() => onCompartir(foto)} className="h-11 w-11 shrink-0 items-center justify-center">
-                <Share2 size={20} color="#ffffff" />
-              </Pressable>
-            ) : null}
-            {/* Eliminar SOLO si es mía: el server rechaza borrar lo ajeno. */}
-            {foto.mia && onEliminar ? (
-              <Pressable testID="btn-eliminar-foto" accessibilityLabel="Eliminar" onPress={() => onEliminar(foto)} className="h-11 w-11 shrink-0 items-center justify-center">
-                <Trash2 size={20} color="#ff6b6b" />
-              </Pressable>
-            ) : null}
-          </Animated.View>
-        ) : null}
-
-        <View className="absolute bottom-0 left-0 right-0" style={{ paddingBottom: margenes.pie }}>
-          {aviso ? (
-            <View className="items-center px-4 pb-2">
-              <Text testID="aviso-visor" style={{ color: '#ffffff' }} className="rounded-full bg-black/70 px-4 py-2 text-sm">
-                {aviso}
-              </Text>
-            </View>
+          {bars ? (
+            <ViewerHeader photo={foto} position={photos.length > 1 ? `${index + 1} de ${photos.length} · ` : ''} top={margins.cabecera} onClose={close} actions={{ onMakeSticker, onDescargar, onCompartir, onEliminar }} />
           ) : null}
-
-          {action ? (
-            <View className="items-center px-4 pb-3">
-              <Pressable testID="visor-accion" onPress={action.onPress} className="h-12 items-center justify-center rounded-full bg-white px-6">
-                <Text style={{ color: '#000000' }} className="text-[15px] font-semibold">{action.label}</Text>
-              </Pressable>
-            </View>
-          ) : null}
-
-          {/* «Compartido en el chat»: saltar entre fotos sin cerrar el visor. */}
-          {conBarras && !inFlight && lista.length > 1 ? (
-            <Animated.View entering={FadeIn.duration(BARS_FADE_MS)} exiting={FadeOut.duration(BARS_FADE_MS)} style={{ backgroundColor: 'rgba(0,0,0,0.45)' }} className="pt-2">
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-3 pb-2">
-                {lista.map((otra) => (
-                  <Pressable
-                    key={otra.seq}
-                    testID={`visor-tira-${otra.seq}`}
-                    onPress={() => onCambiar?.(otra)}
-                    className="mr-2 overflow-hidden rounded"
-                    style={{ opacity: otra.seq === foto.seq ? 1 : 0.5 }}
-                  >
-                    {otra.miniatura ? (
-                      <Image source={{ uri: otra.miniatura }} style={{ width: 52, height: 52 }} contentFit="cover" recyclingKey={String(otra.seq)} />
-                    ) : (
-                      <View style={{ width: 52, height: 52 }} className="items-center justify-center bg-white/10">
-                        <FileText size={20} color="#ffffff" />
-                      </View>
-                    )}
-                  </Pressable>
-                ))}
-              </ScrollView>
-            </Animated.View>
-          ) : null}
+          <ViewerFooter photo={foto} photos={bars ? photos : []} bottom={margins.pie} notice={aviso} action={action} onPick={onCambiar} />
         </View>
+      </Animated.View>
+      {transition.flight ? <FlyingPhoto flight={transition.flight} progress={transition.progress} /> : null}
+    </GestureHandlerRootView>
+  );
+}
+
+/**
+ * The pager and the strip agree on the photo in sight. A change from OUTSIDE
+ * (the strip) moves the pager; one born from swiping is already in place.
+ */
+function usePagerSync(index: number, onPick: ((photo: FotoDelVisor) => void) | undefined) {
+  const pager = useRef<FlatList<FotoDelVisor>>(null);
+  const visibleIndex = useRef(index);
+  useEffect(() => {
+    if (index === visibleIndex.current) return;
+    visibleIndex.current = index;
+    pager.current?.scrollToIndex({ index, animated: false });
+  }, [index]);
+  const onPickRef = useRef(onPick);
+  onPickRef.current = onPick;
+  const onPageChange = useRef(({ viewableItems }: { viewableItems: ViewToken<FotoDelVisor>[] }) => {
+    const visible = viewableItems[0];
+    if (!visible || visible.index === null || visible.index === visibleIndex.current) return;
+    visibleIndex.current = visible.index;
+    onPickRef.current?.(visible.item);
+  }).current;
+  return { pager, onPageChange };
+}
+
+type HeaderActions = Pick<VisorProps, 'onMakeSticker' | 'onDescargar' | 'onCompartir' | 'onEliminar'>;
+
+/** Floating header. Close never shrinks and is 44 px: a viewer with no visible way out leaves only the hardware button. */
+function ViewerHeader(props: { photo: FotoDelVisor; position: string; top: number; onClose: () => void; actions: HeaderActions }) {
+  const { photo, actions } = props;
+  return (
+    <Animated.View entering={FadeIn.duration(BARS_FADE_MS)} exiting={FadeOut.duration(BARS_FADE_MS)} style={{ paddingTop: props.top, backgroundColor: 'rgba(0,0,0,0.45)' }} className="absolute left-0 right-0 top-0 flex-row items-center gap-2 px-2 pb-2">
+      <Pressable testID="btn-cerrar-visor" accessibilityLabel="Cerrar la imagen" onPress={props.onClose} className="h-11 w-11 shrink-0 items-center justify-center">
+        <X size={24} color="#ffffff" />
+      </Pressable>
+      <View className="min-w-0 flex-1">
+        <Text numberOfLines={1} style={{ color: '#ffffff' }} className="text-base font-semibold" testID="visor-autor">
+          {photo.autor}
+        </Text>
+        <Text style={{ color: '#c9c9c9' }} className="text-[11px]">
+          {props.position}
+          {photo.cuando}
+        </Text>
+      </View>
+      {actions.onMakeSticker && photo.mime === 'image/gif' ? <HeaderButton testID="btn-gif-a-sticker" label="Convertir en sticker animado" onPress={() => actions.onMakeSticker?.(photo)} icon={<Sticker size={21} color="#ffffff" />} /> : null}
+      {actions.onDescargar ? <HeaderButton testID="btn-descargar-foto" label="Descargar" onPress={() => actions.onDescargar?.(photo)} icon={<Download size={21} color="#ffffff" />} /> : null}
+      {actions.onCompartir ? <HeaderButton testID="btn-compartir-foto" label="Compartir" onPress={() => actions.onCompartir?.(photo)} icon={<Share2 size={20} color="#ffffff" />} /> : null}
+      {/* Delete ONLY when it is mine: the server refuses to delete someone else's. */}
+      {photo.mia && actions.onEliminar ? <HeaderButton testID="btn-eliminar-foto" label="Eliminar" onPress={() => actions.onEliminar?.(photo)} icon={<Trash2 size={20} color="#ff6b6b" />} /> : null}
+    </Animated.View>
+  );
+}
+
+function HeaderButton(props: { testID: string; label: string; onPress: () => void; icon: ReactNode }) {
+  return (
+    <Pressable testID={props.testID} accessibilityLabel={props.label} onPress={props.onPress} className="h-11 w-11 shrink-0 items-center justify-center">
+      {props.icon}
+    </Pressable>
+  );
+}
+
+/** The notice, the form's option and «shared in the chat» (jump between photos without closing). `photos` empty = no strip. */
+function ViewerFooter(props: { photo: FotoDelVisor; photos: FotoDelVisor[]; bottom: number; notice?: string; action?: VisorProps['action']; onPick?: (photo: FotoDelVisor) => void }) {
+  const { photo, action } = props;
+  return (
+    <View className="absolute bottom-0 left-0 right-0" style={{ paddingBottom: props.bottom }}>
+      {props.notice ? (
+        <View className="items-center px-4 pb-2">
+          <Text testID="aviso-visor" style={{ color: '#ffffff' }} className="rounded-full bg-black/70 px-4 py-2 text-sm">
+            {props.notice}
+          </Text>
         </View>
+      ) : null}
+      {action ? (
+        <View className="items-center px-4 pb-3">
+          <Pressable testID="visor-accion" onPress={action.onPress} className="h-12 items-center justify-center rounded-full bg-white px-6">
+            <Text style={{ color: '#000000' }} className="text-[15px] font-semibold">{action.label}</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {props.photos.length > 1 ? (
+        <Animated.View entering={FadeIn.duration(BARS_FADE_MS)} exiting={FadeOut.duration(BARS_FADE_MS)} style={{ backgroundColor: 'rgba(0,0,0,0.45)' }} className="pt-2">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-3 pb-2">
+            {props.photos.map((other) => (
+              <Pressable key={other.seq} testID={`visor-tira-${other.seq}`} onPress={() => props.onPick?.(other)} className="mr-2 overflow-hidden rounded" style={{ opacity: other.seq === photo.seq ? 1 : 0.5 }}>
+                {other.miniatura ? (
+                  <Image source={{ uri: other.miniatura }} style={{ width: 52, height: 52 }} contentFit="cover" recyclingKey={String(other.seq)} />
+                ) : (
+                  <View style={{ width: 52, height: 52 }} className="items-center justify-center bg-white/10">
+                    <FileText size={20} color="#ffffff" />
+                  </View>
+                )}
+              </Pressable>
+            ))}
+          </ScrollView>
         </Animated.View>
-        {transition.flight ? <FlyingPhoto flight={transition.flight} progress={transition.progress} /> : null}
-      </GestureHandlerRootView>
+      ) : null}
+    </View>
   );
 }
 

@@ -111,8 +111,8 @@ describe('fotosDelChat', () => {
 
   it('without real dimensions there is no proportion (never NaN or zero)', () => {
     const broken = [conFoto(6, ANA), { ...conFoto(7, ANA), media: { ...conFoto(7, ANA).media, width: 0, height: 900 } }];
-    const fotos = fotosDelChat(broken, { yo: YO, esGrupo: false, nombres: new Map(), nombreDelChat: 'Ana' });
-    expect(fotos.map((foto) => foto.aspecto)).toEqual([undefined, undefined]);
+    const photos = fotosDelChat(broken, { yo: YO, esGrupo: false, nombres: new Map(), nombreDelChat: 'Ana' });
+    expect(photos.map((photo) => photo.aspecto)).toEqual([undefined, undefined]);
   });
 
   it('el archivo completo, la miniatura aparte, y «Tú» en lo propio', () => {

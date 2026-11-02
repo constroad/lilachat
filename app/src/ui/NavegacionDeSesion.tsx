@@ -22,6 +22,7 @@ import { CallLinkOpener } from '../chat/scheduledCall/CallLinkOpener';
 import { useColores, useTema } from './tema';
 import { chatAbiertoDe, chatQueSeVe } from './rutas';
 import { useAbrirDesdeAviso } from './useAbrirDesdeAviso';
+import { IncomingShareHost } from '../chat/reenviar/IncomingShareHost';
 import type { EntryPoint } from './destinoDeAviso';
 import { ErrorBoundary } from './ErrorBoundary';
 import { useDisposicion } from './useDisposicion';
@@ -174,6 +175,8 @@ export function NavegacionDeSesion(props: {
     <ProveedorDeLlamadas jwt={props.credential.jwt} me={props.credential.userId} onOpenChat={openCallChat}>
     {/* Pending 63: a reminder that rang full screen, over any screen. */}
     <ReminderAlarmHost jwt={props.credential.jwt} />
+    {/* «Compartir» from another app (José, 02/11): pick the chats, over any screen. */}
+    <IncomingShareHost jwt={props.credential.jwt} onOpenChat={openCallChat} />
     <WhatsNewHost />
     <SilentUpdateHost />
     <NavigationContainer ref={navegacion} theme={tema} onStateChange={alCambiar}>

@@ -12,7 +12,10 @@ import { useMargenes } from '../../ui/useMargenes';
 import { useColores } from '../../ui/tema';
 import { chatsEnMemoria } from '../chatsGuardados';
 import { queueMessage } from '../outboxStore';
+import { encolarArchivo } from '../colaDeArchivos';
 import { leerFrecuencias } from './frecuenciasDeEnvio';
+import type { SharedFile } from './incomingShare';
+import { reportarError } from '../../ui/reportarError';
 
 /** El «Tú» que todavía no existe: se crea al mandar (`kind: 'yo'`). */
 const TU_NUEVO = 'tu-nuevo';
@@ -43,7 +46,20 @@ function destinosPosibles(): ChatParaReenviar[] {
  * mensaje sale por separado y en orden (el texto por la cola; la foto o el
  * archivo, por referencia).
  */
-export function PantallaDeReenviar(props: { visible: boolean; pasos: PasoDeReenvio[]; token: string; onCerrar: () => void; onReenviado: (nombres: string[]) => void; onError: (texto: string) => void }) {
+export function PantallaDeReenviar(props: {
+  visible: boolean;
+  pasos: PasoDeReenvio[];
+  /** Files another app shared (José, 02/11): they go by the file queue, like a photo from the gallery. */
+  archivos?: readonly SharedFile[];
+  /** «Compartir en» when another app shared it; «Reenviar a» by default. */
+  titulo?: string;
+  /** What is being shared, under the title until a chat is chosen. */
+  resumen?: string;
+  token: string;
+  onCerrar: () => void;
+  onReenviado: (nombres: string[], ids: string[]) => void;
+  onError: (texto: string) => void;
+}) {
   const colores = useColores();
   const margenes = useMargenes();
   const [busqueda, setBusqueda] = useState('');
@@ -85,6 +101,7 @@ export function PantallaDeReenviar(props: { visible: boolean; pasos: PasoDeReenv
       const item = buildOutboxItem({ chatId, clientKey: Crypto.randomUUID(), text: paso.texto, queuedAt: new Date().toISOString() });
       if (item) await queueMessage(item);
     }
+    if (!(await queueSharedFiles(chatId, props.archivos ?? []))) return props.onError('No se pudo preparar un archivo compartido.'), false;
     const extra = mensaje.trim() ? buildOutboxItem({ chatId, clientKey: Crypto.randomUUID(), text: mensaje.trim(), queuedAt: new Date().toISOString() }) : null;
     if (extra) await queueMessage(extra);
     return true;
@@ -93,6 +110,7 @@ export function PantallaDeReenviar(props: { visible: boolean; pasos: PasoDeReenv
   const enviar = async () => {
     if (enviando || elegidos.length === 0) return;
     setEnviando(true);
+    const enviadosA: string[] = [];
     for (const id of elegidos) {
       let destino = id;
       if (id === TU_NUEVO) {
@@ -104,9 +122,10 @@ export function PantallaDeReenviar(props: { visible: boolean; pasos: PasoDeReenv
         destino = creado.data.chatId;
       }
       if (!(await enviarA(destino))) return setEnviando(false);
+      enviadosA.push(destino);
     }
     setEnviando(false);
-    props.onReenviado(nombres);
+    props.onReenviado(nombres, enviadosA);
   };
 
   return (
@@ -117,8 +136,12 @@ export function PantallaDeReenviar(props: { visible: boolean; pasos: PasoDeReenv
             <ArrowLeft size={22} color={colores['on-surface']} />
           </Pressable>
           <View className="flex-1">
-            <Text className="text-[18px] font-semibold text-on-surface">Reenviar a</Text>
-            {elegidos.length ? <Text className="text-[13px] text-on-surface-variant">{elegidos.length === 1 ? '1 seleccionado' : `${elegidos.length} seleccionados`}</Text> : null}
+            <Text className="text-[18px] font-semibold text-on-surface">{props.titulo ?? 'Reenviar a'}</Text>
+            {elegidos.length ? (
+              <Text className="text-[13px] text-on-surface-variant">{elegidos.length === 1 ? '1 seleccionado' : `${elegidos.length} seleccionados`}</Text>
+            ) : props.resumen ? (
+              <Text testID="resumen-compartido" numberOfLines={1} className="text-[13px] text-on-surface-variant">{props.resumen}</Text>
+            ) : null}
           </View>
         </View>
         <View className="mx-4 my-3 flex-row items-center gap-2 rounded-full bg-surface-variant/60 px-4">
@@ -154,6 +177,17 @@ export function PantallaDeReenviar(props: { visible: boolean; pasos: PasoDeReenv
       </View>
     </Modal>
   );
+}
+
+/** Each shared file to the persisted file queue: its bubble shows at once and it uploads when there is network. */
+async function queueSharedFiles(chatId: string, files: readonly SharedFile[]): Promise<boolean> {
+  try {
+    for (const file of files) await encolarArchivo({ chatId, ...file });
+    return true;
+  } catch (error) {
+    reportarError('compartir-archivo', error);
+    return false;
+  }
 }
 
 function FilaDeDestino(props: { chat: ChatParaReenviar; elegido: boolean; onAlternar: () => void }) {

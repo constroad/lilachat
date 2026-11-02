@@ -17,6 +17,17 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.176',
+    // Everyone: Lilachat as a share target from other apps (José, 02/11), and the «Te ataco» winks.
+    audience: 'all',
+    items: [
+      'Lilachat aparece al tocar «Compartir» en YouTube, Instagram, TikTok, Facebook y cualquier otra app.',
+      'Comparte un enlace, fotos, videos o archivos y elige hasta 5 chats para mandarlos.',
+      'Si lo mandas a un solo chat, ese chat se abre para que sigas la conversación.',
+      'Guiños nuevos en «Te ataco»: chancletazo, pastelazo, huevazo y más, con «Devolver» para responder.',
+    ],
+  },
+  {
     version: '0.1.175',
     // Everyone: phone screen sharing and the launch crash guard; spaces get the service detail (José, 30/10).
     audience: 'all',

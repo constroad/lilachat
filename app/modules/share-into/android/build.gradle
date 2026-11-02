@@ -1,0 +1,29 @@
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+apply plugin: 'maven-publish'
+
+group = 'expo.modules.shareinto'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.shareinto"
+  compileSdk 36
+  defaultConfig { minSdk 24 }
+  kotlinOptions { jvmTarget = "17" }
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+}
+
+repositories {
+  mavenCentral()
+  google()
+}
+
+dependencies {
+  implementation project(':expo-modules-core')
+  // `IntentCompat`: the same parcelable read on every Android version.
+  implementation 'androidx.core:core:1.16.0'
+  implementation "org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}"
+}

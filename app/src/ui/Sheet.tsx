@@ -31,9 +31,13 @@ export function Sheet(props: {
   /** Padding and the like for the card; the shape and surface are fixed. */
   className?: string;
   dragArea?: 'card' | 'handle';
+  /** The tallest it gets (a gallery inside); without it, as tall as its content. */
+  maxHeight?: number;
+  /** Room under the content, above the system bar; 16 by default. */
+  bottomRoom?: number;
   children: ReactNode;
 }) {
-  const { visible, onClose, dragArea = 'card' } = props;
+  const { visible, onClose, dragArea = 'card', maxHeight, bottomRoom = BOTTOM_ROOM } = props;
   const margins = useMargenes();
   const drag = useSharedValue(0);
   const height = useSharedValue(0);
@@ -68,7 +72,7 @@ export function Sheet(props: {
     <Animated.View
       entering={slideIn}
       exiting={SlideOutDown.duration(SLIDE_MS)}
-      style={[cardStyle, { paddingBottom: margins.pie + BOTTOM_ROOM }]}
+      style={[cardStyle, { paddingBottom: margins.pie + bottomRoom, ...(maxHeight ? { maxHeight } : {}) }]}
       className={`rounded-t-3xl bg-surface ${props.className ?? ''}`}
       onLayout={(event) => {
         height.value = event.nativeEvent.layout.height;

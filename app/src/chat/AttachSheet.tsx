@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { FlatList, Linking, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
-import { Modal } from '../ui/Modal';
+import { Sheet } from '../ui/Sheet';
 import { Image } from 'expo-image';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { ArrowLeft, BarChart3, Bell, CalendarDays, ClipboardCheck, FileText, Image as ImageIcon, LayoutGrid, type LucideIcon, MapPin, Send, UserRound } from 'lucide-react-native';
@@ -22,6 +22,8 @@ const SEND_BUTTON_ROOM = 88;
 const STRIP_SIDE = 72;
 const STRIP_COUNT = 12;
 const SHEET_PADDING = 20;
+/** The sheet never covers more than this of the screen. */
+const SHEET_MAX_FRACTION = 0.85;
 /** A 4-column grid (design `m-01`): «Organizar» has four with the checklist (21/10). */
 const OPTION_COLUMNS = 4;
 type Access = 'unknown' | MediaAccess;
@@ -179,81 +181,78 @@ export function AttachSheet(props: {
   const canSeePhotos = access === 'granted' || access === 'limited';
 
   return (
-    <Modal visible={props.visible} transparent animationType="slide" onRequestClose={props.onClose}>
-      <Pressable className="flex-1 bg-black/40" onPress={props.onClose} accessibilityLabel="Cerrar" />
-      <View className="rounded-t-3xl bg-surface pt-3" style={{ paddingBottom: margins.pie, maxHeight: height * 0.85 }} testID="attach-sheet">
-        <View className="mb-2 h-1.5 w-11 self-center rounded-full bg-outline/30" />
-        {allPhotos ? (
-          <>
-            <View className="flex-row items-center gap-1 px-2 pb-2">
-              <Pressable testID="attach-volver" accessibilityLabel="Volver" onPress={() => setAllPhotos(false)} className="h-11 w-11 items-center justify-center rounded-full">
-                <ArrowLeft size={22} color={colors['on-surface']} />
-              </Pressable>
-              <Text className="text-[16px] font-bold text-on-surface">Fotos y videos</Text>
-            </View>
-            {limitedBanner}
-            <FlatList
-              testID="attach-galeria-reciente"
-              data={assets}
-              numColumns={COLUMNS}
-              keyExtractor={(asset) => asset.id}
-              columnWrapperStyle={{ gap: GAP }}
-              contentContainerStyle={{ gap: GAP, paddingBottom: selected.length ? SEND_BUTTON_ROOM : 0 }}
-              ListEmptyComponent={<Text className="px-5 py-6 text-center text-[13px] text-on-surface-variant">{emptyText}</Text>}
-              onEndReached={() => void loadMore()}
-              onEndReachedThreshold={LOAD_MORE_THRESHOLD}
-              renderItem={({ item }) => <MediaTile asset={item} side={side} order={selected.indexOf(item.id)} onPress={() => pickToggle(item.id)} />}
-            />
-          </>
-        ) : (
-          <ScrollView contentContainerStyle={{ paddingBottom: selected.length ? SEND_BUTTON_ROOM : 8 }}>
-            {sections.map((section, index) => (
-              <View key={section.title} className={`mx-5 py-3 ${index > 0 ? 'border-t border-outline/15' : ''}`}>
-                <Kicker>{section.title}</Kicker>
-                <View className="mt-3 flex-row" style={{ marginHorizontal: -SHEET_PADDING / 2 }}>
-                  {section.options.map(({ key, label, Icon, action, testID }) => (
-                    <Pressable key={key} testID={testID} onPress={() => run(action)} className="items-center" style={{ width: optionWidth }}>
-                      <View className="h-14 w-14 items-center justify-center rounded-full border border-outline/15 bg-primary/10">
-                        <Icon size={22} color={colors.primary} />
-                      </View>
-                      <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} className="mt-1.5 text-[13px] font-medium text-on-surface">{label}</Text>
-                    </Pressable>
-                  ))}
-                </View>
+    // Plan 1, F1: in the app's window; dragged down by its handle (the gallery inside scrolls).
+    <Sheet visible={props.visible} onClose={props.onClose} testID="attach-sheet" dragArea="handle" maxHeight={height * SHEET_MAX_FRACTION} bottomRoom={0}>
+      {allPhotos ? (
+        <>
+          <View className="flex-row items-center gap-1 px-2 pb-2">
+            <Pressable testID="attach-volver" accessibilityLabel="Volver" onPress={() => setAllPhotos(false)} className="h-11 w-11 items-center justify-center rounded-full">
+              <ArrowLeft size={22} color={colors['on-surface']} />
+            </Pressable>
+            <Text className="text-[16px] font-bold text-on-surface">Fotos y videos</Text>
+          </View>
+          {limitedBanner}
+          <FlatList
+            testID="attach-galeria-reciente"
+            data={assets}
+            numColumns={COLUMNS}
+            keyExtractor={(asset) => asset.id}
+            columnWrapperStyle={{ gap: GAP }}
+            contentContainerStyle={{ gap: GAP, paddingBottom: selected.length ? SEND_BUTTON_ROOM : 0 }}
+            ListEmptyComponent={<Text className="px-5 py-6 text-center text-[13px] text-on-surface-variant">{emptyText}</Text>}
+            onEndReached={() => void loadMore()}
+            onEndReachedThreshold={LOAD_MORE_THRESHOLD}
+            renderItem={({ item }) => <MediaTile asset={item} side={side} order={selected.indexOf(item.id)} onPress={() => pickToggle(item.id)} />}
+          />
+        </>
+      ) : (
+        <ScrollView contentContainerStyle={{ paddingBottom: selected.length ? SEND_BUTTON_ROOM : 8 }}>
+          {sections.map((section, index) => (
+            <View key={section.title} className={`mx-5 py-3 ${index > 0 ? 'border-t border-outline/15' : ''}`}>
+              <Kicker>{section.title}</Kicker>
+              <View className="mt-3 flex-row" style={{ marginHorizontal: -SHEET_PADDING / 2 }}>
+                {section.options.map(({ key, label, Icon, action, testID }) => (
+                  <Pressable key={key} testID={testID} onPress={() => run(action)} className="items-center" style={{ width: optionWidth }}>
+                    <View className="h-14 w-14 items-center justify-center rounded-full border border-outline/15 bg-primary/10">
+                      <Icon size={22} color={colors.primary} />
+                    </View>
+                    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} className="mt-1.5 text-[13px] font-medium text-on-surface">{label}</Text>
+                  </Pressable>
+                ))}
               </View>
-            ))}
-            <View className="border-t border-outline/15 pt-3" style={{ marginHorizontal: SHEET_PADDING }}>
-              <Kicker>Fotos recientes</Kicker>
             </View>
-            <View className="pt-3">
-              {limitedBanner}
-              {permissionPrompt}
-              {canSeePhotos ? (
-                assets.length === 0 ? (
-                  <Text className="px-5 py-4 text-center text-[13px] text-on-surface-variant">{emptyText}</Text>
-                ) : (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} testID="attach-tira-reciente" contentContainerStyle={{ gap: 8, paddingHorizontal: SHEET_PADDING }}>
-                    {assets.slice(0, STRIP_COUNT).map((asset) => (
-                      <MediaTile key={asset.id} asset={asset} side={STRIP_SIDE} rounded order={selected.indexOf(asset.id)} onPress={() => pickToggle(asset.id)} />
-                    ))}
-                    <Pressable testID="attach-ver-galeria" onPress={() => setAllPhotos(true)} className="items-center justify-center gap-1 rounded-xl border border-dashed border-primary/50" style={{ width: STRIP_SIDE, height: STRIP_SIDE }}>
-                      <LayoutGrid size={20} color={colors.primary} />
-                      <Text className="text-[11px] font-bold text-primary">Ver todas</Text>
-                    </Pressable>
-                  </ScrollView>
-                )
-              ) : null}
-            </View>
-          </ScrollView>
-        )}
-        {selected.length ? (
-          <Pressable testID="attach-enviar" onPress={sendSelected} className="absolute bottom-0 right-4 h-14 flex-row items-center gap-2 rounded-full bg-primary px-5" style={{ marginBottom: margins.pie + 12 }}>
-            <Send size={20} color={colors['on-primary']} />
-            <Text className="text-[15px] font-semibold text-on-primary">Enviar {selected.length}</Text>
-          </Pressable>
-        ) : null}
-      </View>
-    </Modal>
+          ))}
+          <View className="border-t border-outline/15 pt-3" style={{ marginHorizontal: SHEET_PADDING }}>
+            <Kicker>Fotos recientes</Kicker>
+          </View>
+          <View className="pt-3">
+            {limitedBanner}
+            {permissionPrompt}
+            {canSeePhotos ? (
+              assets.length === 0 ? (
+                <Text className="px-5 py-4 text-center text-[13px] text-on-surface-variant">{emptyText}</Text>
+              ) : (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} testID="attach-tira-reciente" contentContainerStyle={{ gap: 8, paddingHorizontal: SHEET_PADDING }}>
+                  {assets.slice(0, STRIP_COUNT).map((asset) => (
+                    <MediaTile key={asset.id} asset={asset} side={STRIP_SIDE} rounded order={selected.indexOf(asset.id)} onPress={() => pickToggle(asset.id)} />
+                  ))}
+                  <Pressable testID="attach-ver-galeria" onPress={() => setAllPhotos(true)} className="items-center justify-center gap-1 rounded-xl border border-dashed border-primary/50" style={{ width: STRIP_SIDE, height: STRIP_SIDE }}>
+                    <LayoutGrid size={20} color={colors.primary} />
+                    <Text className="text-[11px] font-bold text-primary">Ver todas</Text>
+                  </Pressable>
+                </ScrollView>
+              )
+            ) : null}
+          </View>
+        </ScrollView>
+      )}
+      {selected.length ? (
+        <Pressable testID="attach-enviar" onPress={sendSelected} className="absolute bottom-0 right-4 h-14 flex-row items-center gap-2 rounded-full bg-primary px-5" style={{ marginBottom: margins.pie + 12 }}>
+          <Send size={20} color={colors['on-primary']} />
+          <Text className="text-[15px] font-semibold text-on-primary">Enviar {selected.length}</Text>
+        </Pressable>
+      ) : null}
+    </Sheet>
   );
 }
 

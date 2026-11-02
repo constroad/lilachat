@@ -1,8 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 import { History, MessageSquarePlus } from 'lucide-react-native';
-import { Modal } from '../ui/Modal';
+import { Sheet } from '../ui/Sheet';
 import { useColores } from '../ui/tema';
-import { useMargenes } from '../ui/useMargenes';
 
 /**
  * Adding someone to a group or channel (José 30/10): may they read what was
@@ -10,17 +9,13 @@ import { useMargenes } from '../ui/useMargenes';
  */
 export function HistoryChoiceSheet(props: { name: string | null; onChoose: (history: boolean) => void; onClose: () => void }) {
   const colors = useColores();
-  const margins = useMargenes();
   return (
-    <Modal visible={props.name !== null} transparent animationType="fade" onRequestClose={props.onClose}>
-      <Pressable className="flex-1 bg-black/40" onPress={props.onClose} accessibilityLabel="Cancelar" />
-      <View testID="pregunta-historial" className="rounded-t-2xl bg-surface px-5 pt-5" style={{ paddingBottom: margins.pie + 8 }}>
-        <Text className="text-base font-bold text-on-surface">{`¿${props.name ?? ''} puede ver el historial?`}</Text>
-        <Text className="mb-4 mt-1 text-[13px] text-on-surface-variant">Elige qué mensajes ve al entrar.</Text>
-        <ChoiceRow testID="historial-todo" title="Sí, todo" detail="Lee los mensajes y archivos de antes." onPress={() => props.onChoose(true)} icon={<History size={20} color={colors.primary} />} />
-        <ChoiceRow testID="historial-desde-ahora" title="No, solo desde ahora" detail="Ve lo que se escriba después de entrar." onPress={() => props.onChoose(false)} icon={<MessageSquarePlus size={20} color={colors['on-surface-variant']} />} />
-      </View>
-    </Modal>
+    <Sheet visible={props.name !== null} onClose={props.onClose} testID="pregunta-historial" className="px-5 pt-2">
+      <Text className="text-base font-bold text-on-surface">{`¿${props.name ?? ''} puede ver el historial?`}</Text>
+      <Text className="mb-4 mt-1 text-[13px] text-on-surface-variant">Elige qué mensajes ve al entrar.</Text>
+      <ChoiceRow testID="historial-todo" title="Sí, todo" detail="Lee los mensajes y archivos de antes." onPress={() => props.onChoose(true)} icon={<History size={20} color={colors.primary} />} />
+      <ChoiceRow testID="historial-desde-ahora" title="No, solo desde ahora" detail="Ve lo que se escriba después de entrar." onPress={() => props.onChoose(false)} icon={<MessageSquarePlus size={20} color={colors['on-surface-variant']} />} />
+    </Sheet>
   );
 }
 

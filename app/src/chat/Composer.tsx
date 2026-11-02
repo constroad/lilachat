@@ -1,7 +1,7 @@
 import { memo, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import { BackHandler, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { beginInteraction, useRenderCost } from '../diagnostico/frameMonitor';
+import { beginInteraction, SEND_FRAME_WINDOW_MS, useRenderCost } from '../diagnostico/frameMonitor';
 import { Camera, Keyboard as Teclado, Paperclip, Send, Smile, X } from 'lucide-react-native';
 import { duracionDeVoz, insertarEnTexto, type MencionEnMensaje, type Seleccion } from '@lilachat/shared';
 import type { MencionElegida } from '@lilachat/shared';
@@ -29,8 +29,6 @@ import { AppFormSheet } from './commands/AppFormSheet';
 import { ChatQuickActions } from './commands/ChatQuickActions';
 import { SlashCommandsButton } from './commands/SlashCommandsButton';
 
-/** How long after the tap on send the frames are counted (plan 1, F0). */
-const SEND_FRAME_WINDOW_MS = 600;
 
 /** Cuánto se espera tras la última tecla para guardar el borrador. */
 const ESPERA_PARA_GUARDAR_MS = 500;

@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addRecentSticker, packLibrary, STICKER_PACKS, type LibrarySticker } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
+import { addMediaInFlight, HANDOVER_MS, removeMediaInFlight, stickerAsQueuedFile } from '../gifs/gifsInFlight';
+import { isEmojiPanelOpen, useEmojiPanelOpen } from '../emojiPanel';
+import { beginInteraction, SEND_FRAME_WINDOW_MS } from '../../diagnostico/frameMonitor';
 import { keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, stickerFromGif, uploadGifSticker, uploadSticker, type StickerTarget } from './stickersApi';
 
 const RECENTS_KEY = 'lilachat.stickers.recientes';
@@ -85,22 +88,44 @@ export function useStickers(jwt: string) {
     void readRecents().then(setRecents);
   }, [reload]);
 
-  const markUsed = useCallback((id: string) => {
-    setRecents((before) => {
-      const after = addRecentSticker(before, id);
+  // While the emoji panel is open the grid stays still (02/11): a «Recientes» row appearing on top pushed
+  // the stickers down under the finger. The new order shows the next time it opens.
+  const panelOpen = useEmojiPanelOpen();
+  const latestRecents = useRef<string[] | null>(null);
+  useEffect(() => {
+    if (panelOpen || !latestRecents.current) return;
+    setRecents(latestRecents.current);
+    latestRecents.current = null;
+  }, [panelOpen]);
+  const markUsed = useCallback(
+    (id: string) => {
+      const after = addRecentSticker(latestRecents.current ?? recents, id);
       AsyncStorage.setItem(RECENTS_KEY, JSON.stringify(after)).catch(() => setError('No se pudieron guardar los recientes.'));
-      return after;
-    });
-  }, []);
+      if (isEmojiPanelOpen()) latestRecents.current = after;
+      else setRecents(after);
+    },
+    [recents]
+  );
 
   const replace = setCachedLibrary;
   const withSticker = (sticker: LibrarySticker) => [sticker, ...(cachedLibrary ?? []).filter((one) => one.id !== sticker.id)];
 
   const send = async (chatId: string, sticker: LibrarySticker, target?: StickerTarget) => {
+    beginInteraction('enviar-sticker', SEND_FRAME_WINDOW_MS);
     markUsed(sticker.id);
-    const response = await sendSticker(jwt, chatId, sticker.id, `st-${sticker.id}-${Date.now().toString(36)}`, target);
-    if (!response.ok) setError(response.reason);
-    return response.ok;
+    const clientKey = `st-${sticker.id}-${Date.now().toString(36)}`;
+    // In the chat at once (José, 02/11: «aún se siente tosco»): it showed up after the server's round
+    // trip. A sticker that goes only to a thread waits there, not in the chat.
+    const inChat = target?.hiloDe === undefined || target.enElChat === true;
+    if (inChat) addMediaInFlight(chatId, stickerAsQueuedFile(sticker, chatId, clientKey, new Date().toISOString()));
+    const response = await sendSticker(jwt, chatId, sticker.id, clientKey, target);
+    if (!response.ok) {
+      removeMediaInFlight(clientKey);
+      setError(response.reason);
+      return false;
+    }
+    setTimeout(() => removeMediaInFlight(clientKey), HANDOVER_MS);
+    return true;
   };
 
   /** What the editor built: uploaded to «Mis stickers» (and sent, if asked, by the caller). */

@@ -66,6 +66,8 @@ export type PendingMessage = {
   mediaAlto?: number;
   /** 0→1 de esa subida, para pintar el velo de progreso encima. */
   progreso?: number;
+  /** A sticker on its way (02/11): drawn as a sticker, not as a photo bubble. */
+  sticker?: boolean;
   /** E3: respuesta pendiente en el hilo de este `seq`. */
   hiloDe?: number;
   enElChat?: boolean;

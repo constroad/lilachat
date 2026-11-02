@@ -9,7 +9,8 @@ import { chatsEnMemoria, suscribirChatsEnMemoria } from './chatsGuardados';
 import { funAvailable } from './funAvailable';
 import { playWinkCues, shakeScreen, startWink, stopFun } from './FunScreen';
 import { closeEmojiPanel } from './emojiPanel';
-import { FUN_LIVE_MS, NUDGE_SHAKE, canReturnWink, formatClock, funMessageToPlay, funToPlayInRow, highestSeq, shouldPlayFun, winkById, winkCardLines, winkTileIsProp, type FunPlace, type FunToPlay, type WinkId } from '@lilachat/shared';
+import { beginInteraction } from '../diagnostico/frameMonitor';
+import { FUN_LIVE_MS, NUDGE_SHAKE, canReturnWink, consumeLocalPlay, formatClock, funMessageToPlay, funToPlayInRow, highestSeq, shouldPlayFun, winkById, winkCardLines, winkTileIsProp, type FunPlace, type FunToPlay, type LocalFunPlay, type WinkId } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 
 const SEND_TIMEOUT_MS = 8000;
@@ -48,6 +49,20 @@ export function replayWink(seq: number, wink: WinkId): void {
 /** «Ver otra vez» on a nudge (José, 21/10: «no hay forma de reproducir el zumbido» without sending another). */
 export function replayNudge(seq: number): void {
   replayListeners.forEach((listener) => listener({ seq, kind: 'zumbido', mine: true }));
+}
+
+/**
+ * Mine plays on the tap (José, 02/11: «aún se siente tosco»): waiting for the
+ * server's copy left the panel open and the screen still for a round trip.
+ * The copy that comes back uses up this play (`consumeLocalPlay`).
+ */
+let localPlays: LocalFunPlay[] = [];
+/** The seq of a play that has no message yet. */
+const TAP_SEQ = 0;
+const tapListeners = new Set<ReplayListener>();
+function playOnTap(fun: { kind: 'zumbido' } | { kind: 'guino'; wink: WinkId }): void {
+  localPlays = [...localPlays, { ...fun, at: Date.now() }];
+  tapListeners.forEach((listener) => listener({ ...fun, seq: TAP_SEQ, mine: true }));
 }
 
 /** Whether I muted this chat, live from the chat list. */
@@ -132,15 +147,21 @@ export function useFunPlayback(params: { messages: readonly { seq: number; kind?
     seen.current = Math.max(seen.current, highestSeq(messages));
     rememberFunSeen(chatId, seen.current);
     if (!fun) return;
+    const local = consumeLocalPlay(localPlays, fun, Date.now());
+    localPlays = local.plays;
+    if (!local.replay) return;
     // One line per automatic play: «it played again» is answered by logcat (pending 107).
     console.log(`[fun] ${fun.kind} ${fun.seq} plays in chat ${chatId}`);
     play(fun, 'chat');
   }, [ready, messages, me, chatId, readAtOpen, play]);
   useEffect(() => {
     const listener: ReplayListener = (fun) => play(fun, 'replay');
+    const onTap: ReplayListener = (fun) => play(fun, 'chat');
     replayListeners.add(listener);
+    tapListeners.add(onTap);
     return () => {
       replayListeners.delete(listener);
+      tapListeners.delete(onTap);
     };
   }, [play]);
   // Leaving the chat ends what plays (José, 21/10: «incluso fuera del chat se reproduce»).
@@ -160,12 +181,16 @@ export function useFunActions(params: { chatId: string; isGroup: boolean; isDraf
     () =>
       allowed
         ? {
-            onNudge: () => void sendNudge(chatId).then((result) => result.ok || onError(result.reason)),
-            onWink: (wink: WinkId) =>
-              void sendWink(chatId, wink).then((result) => {
-                if (result.ok) closeEmojiPanel(false);
-                else onError(result.reason);
-              }),
+            onNudge: () => {
+              playOnTap({ kind: 'zumbido' });
+              void sendNudge(chatId).then((result) => result.ok || onError(result.reason));
+            },
+            onWink: (wink: WinkId) => {
+              beginInteraction('enviar-guino');
+              closeEmojiPanel(false);
+              playOnTap({ kind: 'guino', wink });
+              void sendWink(chatId, wink).then((result) => result.ok || onError(result.reason));
+            },
           }
         : {},
     [allowed, chatId, onError]

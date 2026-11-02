@@ -4,13 +4,13 @@ import { Image } from 'expo-image';
 import { GIF_SUGGESTIONS, type GifResult } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { searchGifs, sendGif } from './gifsApi';
-import { addGifInFlight, gifAsQueuedFile, removeGifInFlight } from './gifsInFlight';
+import { addMediaInFlight, gifAsQueuedFile, HANDOVER_MS, removeMediaInFlight } from './gifsInFlight';
+import { beginInteraction, SEND_FRAME_WINDOW_MS } from '../../diagnostico/frameMonitor';
 
 const SEARCH_DEBOUNCE_MS = 400;
 const TILE_HEIGHT = 120;
 const PAGE = 24;
 /** After the server answered, the pending bubble waits this much for the real one (the socket echo) before going. */
-const HANDOVER_MS = 1500;
 /** «Tendencias» is the empty search: GIPHY's trending. */
 export const GIF_CHIPS = [{ label: 'Tendencias', q: '' }, ...GIF_SUGGESTIONS.map((label) => ({ label, q: label }))];
 
@@ -40,17 +40,18 @@ export function useGifSend(jwt: string, chatId: string) {
   const [error, setError] = useState<string | null>(null);
   const send = async (gif: GifResult) => {
     setError(null);
+    beginInteraction('enviar-gif', SEND_FRAME_WINDOW_MS);
     const clientKey = `gif-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     // In the chat at once, as GIPHY's preview «sending» (22/10): the server takes a few seconds to store it.
-    addGifInFlight(chatId, gifAsQueuedFile(gif, chatId, clientKey, new Date().toISOString()));
+    addMediaInFlight(chatId, gifAsQueuedFile(gif, chatId, clientKey, new Date().toISOString()));
     const result = await sendGif(jwt, chatId, gif.id, clientKey);
     if (!result.ok) {
-      removeGifInFlight(clientKey);
+      removeMediaInFlight(clientKey);
       setError(result.message ?? 'No se pudo mandar el GIF.');
       return false;
     }
     // The real message arrived by the socket by now (or arrives in a moment): it takes the bubble's place.
-    setTimeout(() => removeGifInFlight(clientKey), HANDOVER_MS);
+    setTimeout(() => removeMediaInFlight(clientKey), HANDOVER_MS);
     return true;
   };
   return { send, error };

@@ -1,6 +1,7 @@
 import { compareOrdinal, formatClock, tamanoDeBurbuja } from '@lilachat/shared';
 import { isAnimatedImage, opensInPhotoViewer } from '@lilachat/shared';
 import type { ArchivoEnCola } from './colaDeArchivosMotor';
+import type { ServerMessage } from './socketClient';
 
 /**
  * Lo puro de las filas de la conversación (FL2, spec §45): de qué tipo es cada
@@ -195,6 +196,26 @@ export function filaDeArchivoEnCola(archivo: ArchivoEnCola, progreso?: number) {
     body: archivo.caption,
     progreso,
     fallo: archivo.fallo,
+    sticker: archivo.sticker,
+  };
+}
+
+/**
+ * A sticker on its way, as the sticker message it will be (02/11): mine, with
+ * the image the panel showed and its `clientKey`, so the real one takes the
+ * same cell. `seq` 0: it has none yet. A pending row that is not a sticker: null.
+ */
+export function pendingStickerItem(row: { clientKey: string; queuedAt: string; sticker?: boolean; mediaUri?: string; mediaMime?: string; mediaAncho?: number; mediaAlto?: number }, me: string, chatId: string): ServerMessage | null {
+  if (!row.sticker || !row.mediaUri) return null;
+  return {
+    _id: row.clientKey,
+    chatId,
+    seq: 0,
+    senderId: me,
+    clientKey: row.clientKey,
+    kind: 'sticker',
+    at: row.queuedAt,
+    media: { mediaId: row.clientKey, url: row.mediaUri, mime: row.mediaMime, width: row.mediaAncho, height: row.mediaAlto },
   };
 }
 

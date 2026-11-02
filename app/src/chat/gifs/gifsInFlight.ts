@@ -1,4 +1,4 @@
-import type { GifResult } from '@lilachat/shared';
+import type { GifResult, LibrarySticker } from '@lilachat/shared';
 import type { ArchivoEnCola } from '../colaDeArchivosMotor';
 
 /**
@@ -7,8 +7,11 @@ import type { ArchivoEnCola } from '../colaDeArchivosMotor';
  * GIPHY and stores it before answering; meanwhile the bubble is GIPHY's
  * preview, «sending», in the same lane as a photo being uploaded. When the
  * real message arrives (same `clientKey`) the pending one gives way.
+ * A sticker waits the same way (José, 02/11: «aún se siente tosco»).
  */
 type InFlight = { chatId: string; file: ArchivoEnCola };
+/** After the server answered, how long the pending bubble stays: the real one arrives by the socket and takes its cell. */
+export const HANDOVER_MS = 1500;
 let inFlight: InFlight[] = [];
 const listeners = new Set<() => void>();
 const announce = () => listeners.forEach((listener) => listener());
@@ -18,21 +21,26 @@ export function gifAsQueuedFile(gif: GifResult, chatId: string, clientKey: strin
   return { clientKey, chatId, uri: gif.previewUrl, fileName: `giphy-${gif.id}.gif`, mimeType: 'image/gif', sizeBytes: 0, width: gif.width || undefined, height: gif.height || undefined, queuedAt, intentos: 0 };
 }
 
-export function addGifInFlight(chatId: string, file: ArchivoEnCola): void {
+/** The pending sticker: the image the panel already showed (cached), drawn as a sticker. */
+export function stickerAsQueuedFile(sticker: LibrarySticker, chatId: string, clientKey: string, queuedAt: string): ArchivoEnCola {
+  return { clientKey, chatId, uri: sticker.url, fileName: 'sticker.webp', mimeType: sticker.mime, sizeBytes: 0, width: sticker.width, height: sticker.height, queuedAt, intentos: 0, sticker: true };
+}
+
+export function addMediaInFlight(chatId: string, file: ArchivoEnCola): void {
   inFlight = [...inFlight, { chatId, file }];
   announce();
 }
 
-export function removeGifInFlight(clientKey: string): void {
+export function removeMediaInFlight(clientKey: string): void {
   const next = inFlight.filter((one) => one.file.clientKey !== clientKey);
   if (next.length === inFlight.length) return;
   inFlight = next;
   announce();
 }
 
-export const gifsInFlightOf = (chatId: string): ArchivoEnCola[] => inFlight.filter((one) => one.chatId === chatId).map((one) => one.file);
+export const mediaInFlightOf = (chatId: string): ArchivoEnCola[] => inFlight.filter((one) => one.chatId === chatId).map((one) => one.file);
 
-export function subscribeGifsInFlight(listener: () => void): () => void {
+export function subscribeMediaInFlight(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
 }

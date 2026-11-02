@@ -73,6 +73,9 @@ export function endInteractionAfterPaint(name: string): void {
   requestAnimationFrame(() => endInteraction(name));
 }
 
+/** A send's window: the pending bubble, the scroll and the field emptying. */
+export const SEND_FRAME_WINDOW_MS = 600;
+
 /** Labeled JS work (ms) inside the open interactions (F4: where the time of a send goes). Free when none is open. */
 export function measureWork(label: string, ms: number): void {
   if (windows.sampling) windows.work(label, ms);

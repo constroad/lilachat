@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { citadosPorSeq, pendientesEnOrden, claveDeFila, filaDeArchivoEnCola, fotosDelChat, sinPendientesConfirmados, tipoDeFila, type FilaMinima, anchoDeBurbujaConFoto, miniaturaDe } from './filasDelChat';
+import { citadosPorSeq, pendientesEnOrden, claveDeFila, filaDeArchivoEnCola, pendingStickerItem, fotosDelChat, sinPendientesConfirmados, tipoDeFila, type FilaMinima, anchoDeBurbujaConFoto, miniaturaDe } from './filasDelChat';
 
 const msj = (seq: number, cambios: Partial<FilaMinima> = {}): FilaMinima => ({
   seq,
@@ -267,5 +267,47 @@ describe('isThumblessVideo (QA 22/10)', () => {
     expect(isThumblessVideo({ url: '/v.mp4', mime: 'video/mp4', thumbUrl: '/t.jpg' })).toBe(false);
     expect(isThumblessVideo({ url: '/a.jpg', mime: 'image/jpeg' })).toBe(false);
     expect(isThumblessVideo({ mime: 'video/mp4' })).toBe(false);
+  });
+});
+
+/**
+ * José, 02/11: «al enviar un sticker aún se siente tosco». It showed up after
+ * the server's round trip, and the row jumped twice. Now it waits in the chat
+ * as a sticker (no bubble, its size), in the same cell the real one takes.
+ */
+describe('a sticker on its way', () => {
+  const file = {
+    clientKey: 'st-6ada82b05a210fa4025f6a2c-mhz1',
+    chatId: '6adbb02ec9d066b069307eb6',
+    uri: 'https://lilachat.constroad.com/media/stickers/6ada82b0.webp',
+    fileName: 'sticker.webp',
+    mimeType: 'image/webp',
+    sizeBytes: 0,
+    width: 512,
+    height: 512,
+    queuedAt: '2026-11-02T17:00:00.000Z',
+    intentos: 0,
+    sticker: true,
+  };
+
+  it('its pending row says it is a sticker', () => {
+    expect(filaDeArchivoEnCola(file)).toMatchObject({ clientKey: file.clientKey, pending: true, sticker: true, mediaUri: file.uri });
+  });
+
+  it('is drawn as a sticker message of mine, with the image the panel already loaded', () => {
+    const item = pendingStickerItem(filaDeArchivoEnCola(file), 'me-1', file.chatId);
+    expect(item).toMatchObject({
+      seq: 0,
+      chatId: file.chatId,
+      senderId: 'me-1',
+      clientKey: file.clientKey,
+      kind: 'sticker',
+      at: file.queuedAt,
+      media: { url: file.uri, mime: 'image/webp', width: 512, height: 512 },
+    });
+  });
+
+  it('a photo on its way is not a sticker', () => {
+    expect(pendingStickerItem(filaDeArchivoEnCola({ ...file, sticker: undefined, mimeType: 'image/jpeg' }), 'me-1', file.chatId)).toBeNull();
   });
 });

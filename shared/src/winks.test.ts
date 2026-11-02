@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NUDGE_SHAKE, canReturnWink, funMessageToPlay, FUN_LIVE_MS, funNoticeText, isWinkId, shouldPlayFun, WINKS, winkById, winkCardLines, winkCues, winkPanelGroups, winkParticles, winkRowSound } from './winks.js';
+import { NUDGE_SHAKE, canReturnWink, consumeLocalPlay, funMessageToPlay, FUN_LIVE_MS, funNoticeText, isWinkId, shouldPlayFun, WINKS, winkById, winkCardLines, winkCues, winkPanelGroups, winkParticles, winkRowSound } from './winks.js';
 
 describe('the wink catalog', () => {
   it('characters, construction ones and the first emoji ones, each with a name and its length', () => {
@@ -223,5 +223,48 @@ describe('NUDGE_SHAKE', () => {
     expect(totalMs).toBeLessThanOrEqual(2100);
     expect(NUDGE_SHAKE.stepMs).toBeLessThan(75);
     expect(NUDGE_SHAKE.path.at(-1)).toBe(0);
+  });
+});
+
+/**
+ * José, 02/11: «al enviar un sticker aún se siente tosco; pruébalo con guiño».
+ * My wink or nudge plays on the tap, not after the server's round trip; its
+ * copy that comes back through the socket must not play it a second time.
+ */
+describe('consumeLocalPlay (what I already played on the tap)', () => {
+  const NOW = 1_000_000;
+  const mineWink = { seq: 90, kind: 'guino' as const, wink: WINKS[0].id, mine: true };
+
+  it('the server copy of my wink, just played on the tap, does not replay and uses the play up', () => {
+    const result = consumeLocalPlay([{ kind: 'guino', wink: WINKS[0].id, at: NOW - 400 }], mineWink, NOW);
+    expect(result).toEqual({ replay: false, plays: [] });
+  });
+
+  it('someone else\'s wink always plays', () => {
+    const plays = [{ kind: 'guino' as const, wink: WINKS[0].id, at: NOW - 400 }];
+    expect(consumeLocalPlay(plays, { ...mineWink, mine: false }, NOW)).toEqual({ replay: true, plays });
+  });
+
+  it('a different wink of mine is not the one I played', () => {
+    const plays = [{ kind: 'guino' as const, wink: WINKS[1].id, at: NOW - 400 }];
+    expect(consumeLocalPlay(plays, mineWink, NOW).replay).toBe(true);
+  });
+
+  it('a nudge matches a nudge, with no wink to compare', () => {
+    expect(consumeLocalPlay([{ kind: 'zumbido', at: NOW - 100 }], { seq: 91, kind: 'zumbido', mine: true }, NOW)).toEqual({ replay: false, plays: [] });
+  });
+
+  it('a local play older than the live window is forgotten (the send failed and nothing came back)', () => {
+    expect(consumeLocalPlay([{ kind: 'guino', wink: WINKS[0].id, at: NOW - FUN_LIVE_MS - 1 }], mineWink, NOW)).toEqual({ replay: true, plays: [] });
+  });
+
+  it('two quick sends of the same wink: each copy uses up one play', () => {
+    const plays = [
+      { kind: 'guino' as const, wink: WINKS[0].id, at: NOW - 900 },
+      { kind: 'guino' as const, wink: WINKS[0].id, at: NOW - 300 },
+    ];
+    const first = consumeLocalPlay(plays, mineWink, NOW);
+    expect(first.replay).toBe(false);
+    expect(consumeLocalPlay(first.plays, { ...mineWink, seq: 92 }, NOW)).toEqual({ replay: false, plays: [] });
   });
 });

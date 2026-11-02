@@ -288,6 +288,23 @@ export function funMessageToPlay(messages: readonly { seq: number; kind?: string
   return newest;
 }
 
+/** A nudge or wink of mine that played on the tap, before the server's round trip (02/11). */
+export type LocalFunPlay = { kind: 'zumbido' | 'guino'; wink?: WinkId; at: number };
+
+/**
+ * Whether a nudge or wink that arrives must play. Mine already played on the
+ * tap: its copy from the server uses up that play instead of starting it
+ * again. A local play older than the live window is forgotten (the send failed
+ * and nothing will come back).
+ */
+export function consumeLocalPlay(plays: readonly LocalFunPlay[], fun: FunToPlay, now: number): { replay: boolean; plays: LocalFunPlay[] } {
+  const fresh = plays.filter((play) => now - play.at <= FUN_LIVE_MS);
+  if (!fun.mine) return { replay: true, plays: fresh };
+  const index = fresh.findIndex((play) => play.kind === fun.kind && (fun.kind !== 'guino' || play.wink === fun.wink));
+  if (index < 0) return { replay: true, plays: fresh };
+  return { replay: false, plays: [...fresh.slice(0, index), ...fresh.slice(index + 1)] };
+}
+
 /** Where a nudge or wink plays: in the open chat, on a row of the chat list, or again from «Ver otra vez». */
 export type FunPlace = 'chat' | 'row' | 'replay';
 

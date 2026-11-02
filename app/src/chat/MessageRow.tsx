@@ -20,7 +20,7 @@ import {
 } from '@lilachat/shared';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { nombreLimpio } from './archivoDescargado';
-import { anchoDeBurbujaConFoto, miniaturaDe, type Citado } from './filasDelChat';
+import { anchoDeBurbujaConFoto, miniaturaDe, pendingStickerItem, type Citado } from './filasDelChat';
 import {
   formatClock,
   groupsWithPrevious,
@@ -175,6 +175,10 @@ function FilaDeMensaje({
       />
     );
   }
+
+  // A sticker on its way (02/11) is already a sticker; `selecting`: a tap does nothing until it has a seq.
+  const waitingSticker = isPending(item) && jwt ? pendingStickerItem(item, myUserId, '') : null;
+  if (waitingSticker && jwt) return <StickerMessage item={waitingSticker} mine jwt={jwt} delivery="pending" starred={false} selecting selected={false} />;
 
   // A sticker (20/10): no bubble, the time on top; as a reply, the quote above it.
   if (!isPending(item) && item.kind === 'sticker' && item.media?.url && !item.deletedAt && jwt) {

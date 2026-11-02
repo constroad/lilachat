@@ -18,7 +18,7 @@ import { previewDeMensaje, quoteAction } from './MessageRow';
 import { drawsAsCard, hasBotCard, isPending, sharedContactOf, sharedLocationOf, type Row } from './rowKinds';
 import { LocationCard } from './location/LocationCard';
 import { ContactCard } from './contactCard/ContactCard';
-import type { Citado } from './filasDelChat';
+import { pendingStickerItem, type Citado } from './filasDelChat';
 import { CardBody } from './TarjetaDelChat';
 import { showStickerOptions, useAnimatedStop } from './stickers/StickerMessage';
 import { showGifOptions } from './gifs/gifOptions';
@@ -84,7 +84,8 @@ function FlatRow(props: {
   const meta = { hora: formatClock(atOf(item)), mia: mine, entrega: props.delivery ?? (isPending(item) ? ('pending' as const) : ('sent' as const)), id, fallido: Boolean(failed), editado: !isPending(item) && Boolean(item.editedAt) && !deleted, destacado: Boolean(props.starred), flat: true };
   // Deleted for everyone it reads as a deleted message, like in the bubble layout (found in the QA cleanup of 25/10).
   const card = drawsAsCard(item) && !isPending(item) && props.jwt ? item : null;
-  const sticker = !isPending(item) && item.kind === 'sticker' && item.media?.url && !deleted && props.jwt ? item : null;
+  // A sticker on its way is already a sticker (02/11): the real one takes its place without a jump.
+  const sticker = deleted || !props.jwt ? null : isPending(item) ? pendingStickerItem(item, props.myUserId, '') : item.kind === 'sticker' && item.media?.url ? item : null;
   const animated = useAnimatedStop(sticker?.media?.url, false, sticker?.media?.animated === true);
   const press = isPending(item) ? (failed ? () => props.onFailed?.(item.clientKey, failed) : undefined) : props.selecting ? () => props.onSelect?.(item.seq) : undefined;
   const select = () => {
@@ -139,7 +140,7 @@ function FlatRow(props: {
               <CardBody item={card} jwt={props.jwt!} yo={props.myUserId} everyName={props.everyName} selecting={props.selecting} onSelect={props.onSelect} />
             </View>
           ) : sticker ? (
-            <Pressable testID={`sticker-${sticker.seq}`} onPress={() => (props.selecting ? props.onSelect?.(sticker.seq) : animated.stopped ? animated.replay() : showStickerOptions(props.jwt!, sticker, mine))} className="self-start">
+            <Pressable testID={`sticker-${sticker.seq}`} onPress={isPending(item) ? undefined : () => (props.selecting ? props.onSelect?.(sticker.seq) : animated.stopped ? animated.replay() : showStickerOptions(props.jwt!, sticker, mine))} className="self-start">
               <Image ref={animated.ref} source={{ uri: sticker.media!.url }} style={{ width: FLAT_STICKER, height: FLAT_STICKER }} contentFit="contain" recyclingKey={sticker.clientKey} />
             </Pressable>
           ) : (

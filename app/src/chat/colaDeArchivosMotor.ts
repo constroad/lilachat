@@ -38,6 +38,8 @@ export type ArchivoEnCola = {
    * ya, con la `uri` original; se sube recién con la copia lista.
    */
   preparando?: boolean;
+  /** A sticker on its way (02/11): it waits in the chat as a sticker, not as a photo bubble. */
+  sticker?: boolean;
 };
 
 export type DecisionDeSubida = { accion: 'confirmar' } | { accion: 'reintentar'; esperaMs: number } | { accion: 'fallar'; motivo: string };

@@ -129,6 +129,9 @@ const INTERACTION_LABELS: Record<string, string> = {
   'teclado-abrir': 'Abrir el teclado',
   'teclado-cerrar': 'Cerrar el teclado',
   enviar: 'Enviar un mensaje',
+  'enviar-sticker': 'Enviar un sticker',
+  'enviar-gif': 'Enviar un GIF',
+  'enviar-guino': 'Mandar un guiño',
 };
 
 /** Where the JS time of an interaction went (F4): renders of each screen, the queue, the encryption. */

@@ -10,6 +10,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { FunScreen } from './src/chat/FunScreen';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { ErrorBoundary } from './src/ui/ErrorBoundary';
+import { FrameMonitorHost } from './src/diagnostico/FrameMonitorHost';
 import './global.css';
 import { listChats, olvidarPushDeEsteTelefono, refreshSession } from './src/api/client';
 import { olvidarCola } from './src/chat/outboxStore';
@@ -106,6 +107,7 @@ export default function App() {
     // deslizar-para-responder y el teclado sincronizado no funcionan.
     <GestureHandlerRootView style={{ flex: 1 }}>
     <KeyboardProvider>
+    <FrameMonitorHost />
     <SafeAreaProvider>
       <ProveedorTema>
         {/* Envuelve TODO: un error de render dejaba la pantalla en blanco sin

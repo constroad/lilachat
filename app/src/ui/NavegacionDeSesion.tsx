@@ -16,6 +16,7 @@ import { chatsEnMemoria } from '../chat/chatsGuardados';
 import { ProveedorDeLlamadas } from '../calls/ProveedorDeLlamadas';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { iniciarCronometro } from '../diagnostico/diagnostico';
+import { beginInteraction } from '../diagnostico/frameMonitor';
 import { TabsShell } from './TabsShell';
 import { FullScreenCallsPrompt } from './FullScreenCallsPrompt';
 import { CallLinkOpener } from '../chat/scheduledCall/CallLinkOpener';
@@ -215,6 +216,7 @@ export function NavegacionDeSesion(props: {
               }
               onOpenChat={(chat, irASeq, openThread) => {
                 iniciarCronometro('abrir-chat');
+                beginInteraction('abrir-chat');
                 if (dosPaneles) abrirEnPanel(chat, { irASeq, openThread });
                 else navigation.navigate('Chat', { chat, irASeq, openThread });
               }}

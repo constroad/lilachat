@@ -202,7 +202,7 @@ export function VisorDeImagen({
   );
 
   return (
-    <Modal visible={Boolean(foto)} animationType="fade" statusBarTranslucent onRequestClose={onCerrar} testID="visor-imagen">
+    <Modal visible={Boolean(foto)} animationType="fade" statusBarTranslucent onRequestClose={onCerrar} testID="visor-imagen" frameWindow="abrir-foto">
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#000000' }}>
         {foto ? (
           <FlatList

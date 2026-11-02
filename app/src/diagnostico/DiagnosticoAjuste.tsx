@@ -7,6 +7,7 @@ import { useColores } from '../ui/tema';
 import { FilaDeAjuste } from '../ui/FilaDeAjuste';
 import { useMargenes } from '../ui/useMargenes';
 import { enviarDiagnostico, leerDiagnostico, limpiarDiagnostico } from './diagnostico';
+import { summarizeFrames, type FrameSummary } from './frames';
 import type { EntradaDiagnostico } from './motor';
 import { describeRunningCode } from '../updates/runningCode';
 
@@ -33,6 +34,7 @@ export function DiagnosticoAjuste() {
   const [entradas, setEntradas] = useState<EntradaDiagnostico[]>([]);
   const [enviando, setEnviando] = useState(false);
   const [aviso, setAviso] = useState('');
+  const fluidez = summarizeFrames(entradas);
 
   const abrir = useCallback(() => {
     setAviso('');
@@ -103,6 +105,7 @@ export function DiagnosticoAjuste() {
                 {aviso}
               </Text>
             ) : null}
+            {fluidez.length > 0 ? <FluidityBlock summary={fluidez} /> : null}
             {entradas.length === 0 ? (
               <Text className="text-sm text-on-surface-variant" testID="diag-vacio">
                 Todavía no se registró nada. Si algo falla o va lento, aparece acá.
@@ -114,6 +117,43 @@ export function DiagnosticoAjuste() {
         </View>
       </Modal>
     </>
+  );
+}
+
+/** More dropped frames than this, in the median, is what a hand feels as «se traba». */
+const FELT_FRAME_DROPS = 3;
+const INTERACTION_LABELS: Record<string, string> = {
+  'abrir-chat': 'Abrir un chat',
+  'abrir-foto': 'Abrir una foto',
+  'abrir-hoja': 'Abrir una hoja',
+  'teclado-abrir': 'Abrir el teclado',
+  'teclado-cerrar': 'Cerrar el teclado',
+  enviar: 'Enviar un mensaje',
+};
+
+/**
+ * «Fluidez» (plan 1, F0): dropped frames per interaction, median and worst
+ * case, on the JS thread and on the UI thread. The number that is compared
+ * before and after each phase of the plan.
+ */
+function FluidityBlock({ summary }: { summary: FrameSummary[] }) {
+  return (
+    <View className="gap-2 rounded-lg border border-outline/10 bg-surface p-3" testID="diag-fluidez">
+      <Text className="text-[11px] font-semibold tracking-wide text-on-surface-variant">FLUIDEZ · CUADROS CAÍDOS (MEDIANA · PEOR)</Text>
+      {summary.map((row) => (
+        <View key={row.name} className="flex-row items-center justify-between gap-2">
+          <Text className="flex-1 text-sm text-on-surface">
+            {INTERACTION_LABELS[row.name] ?? row.name} · {row.count}×
+          </Text>
+          <Text className={row.jsMedian > FELT_FRAME_DROPS ? 'text-sm font-semibold text-error' : 'text-sm text-on-surface'}>
+            JS {row.jsMedian} · {row.jsWorst}
+          </Text>
+          <Text className={row.uiMedian > FELT_FRAME_DROPS ? 'text-sm font-semibold text-error' : 'text-sm text-on-surface'}>
+            UI {row.uiMedian} · {row.uiWorst}
+          </Text>
+        </View>
+      ))}
+    </View>
   );
 }
 

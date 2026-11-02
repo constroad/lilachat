@@ -22,7 +22,9 @@ export function VideoEmbedPlayer(props: { video: VideoEmbed | null; link: string
   const video = props.video;
   const size = video ? fitVideo(video.aspect, { width: screen.width, height: screen.height - CHROME_HEIGHT - margins.cabecera }) : null;
   const [saving, setSaving] = useState(false);
-  useEffect(() => setSaving(false), [video]);
+  useEffect(() => {
+    setSaving(false);
+  }, [video]);
   const keepInside = (request: WebViewNavigation & { isTopFrame?: boolean }) => {
     if (request.isTopFrame === false || request.url === 'about:blank' || request.url.startsWith(VIDEO_PLAYER_ORIGIN)) return true;
     void Linking.openURL(request.url);

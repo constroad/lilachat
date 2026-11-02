@@ -120,15 +120,21 @@ export function NavegacionDeSesion(props: {
       navegacion.navigate('Chat', { chat, irASeq });
     }
   }, [dosPaneles, abrirEnPanel, cerrarPanel]);
-  // «Enviar mensaje» during a call (pending 106): its chat, while the call goes on minimized.
-  const openCallChat = useCallback(
-    (chatId: string) => {
-      const chat = chatsEnMemoria()?.find((one) => one.id === chatId);
-      if (!chat) return;
+  // A chat on top of the list, or in the side panel of a wide screen.
+  const openChatScreen = useCallback(
+    (chat: ChatSummary) => {
       if (dosPaneles) abrirEnPanel(chat, {});
       else if (navegacion.isReady()) navegacion.navigate('Chat', { chat });
     },
     [dosPaneles, abrirEnPanel]
+  );
+  // «Enviar mensaje» during a call (pending 106): its chat, while the call goes on minimized.
+  const openCallChat = useCallback(
+    (chatId: string) => {
+      const chat = chatsEnMemoria()?.find((one) => one.id === chatId);
+      if (chat) openChatScreen(chat);
+    },
+    [openChatScreen]
   );
   // La pestaña que pide una notificación de la agenda; `n` la vuelve a pedir
   // aunque ya se hubiera pedido antes.
@@ -176,7 +182,7 @@ export function NavegacionDeSesion(props: {
     {/* Pending 63: a reminder that rang full screen, over any screen. */}
     <ReminderAlarmHost jwt={props.credential.jwt} />
     {/* «Compartir» from another app (José, 02/11): pick the chats, over any screen. */}
-    <IncomingShareHost jwt={props.credential.jwt} onOpenChat={openCallChat} />
+    <IncomingShareHost jwt={props.credential.jwt} onOpenChat={openChatScreen} />
     <WhatsNewHost />
     <SilentUpdateHost />
     <NavigationContainer ref={navegacion} theme={tema} onStateChange={alCambiar}>

@@ -8,6 +8,8 @@ import { mySpaces } from './spacesApi';
 const currentSpaceStore = createPrefStore<string | null>('lilachat.pref.space', (stored) => stored || null, null, (value) => value ?? '');
 export const useCurrentSpaceId = currentSpaceStore.use;
 export const setCurrentSpaceId = currentSpaceStore.set;
+/** The space the Chats tab shows right now, outside React (what «Compartir en» lists first). */
+export const getCurrentSpaceId = currentSpaceStore.get;
 
 /** My spaces, shared by the header and the switcher; asked again when the switcher opens. */
 let spaces: ClientWorkspace[] | null = null;

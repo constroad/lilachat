@@ -12,10 +12,11 @@ import { Avatar } from '../../ui/Avatar';
 import { useMargenes } from '../../ui/useMargenes';
 import { useColores } from '../../ui/tema';
 import { reportarError } from '../../ui/reportarError';
-import { chatsEnMemoria } from '../chatsGuardados';
 import { queueMessage } from '../outboxStore';
 import { encolarArchivo } from '../colaDeArchivos';
 import { leerFrecuencias } from './frecuenciasDeEnvio';
+import { knownChats } from './knownChats';
+import type { ChatSummary } from '../../api/client';
 import type { SharedFile } from './incomingShare';
 
 /** The «Tú» chat that does not exist yet: it is created when sending (`kind: 'yo'`). */
@@ -114,9 +115,15 @@ function useTargetPicker(visible: boolean) {
 
 function possibleTargets(): ChatParaReenviar[] {
   const phoneBook = agendaPorTelefono();
-  const chats = (chatsEnMemoria() ?? []).map((chat) => ({
+  const chats = knownChats().map((chat) => targetOf(chat, phoneBook));
+  return chats.some((chat) => chat.propio) ? chats : [...chats, { id: NEW_SELF, nombre: 'Tú', subtitulo: 'Envíate un mensaje', propio: true }];
+}
+
+function targetOf(chat: ChatSummary, phoneBook: ReturnType<typeof agendaPorTelefono>): ChatParaReenviar {
+  const contactName = nombreDeContacto({ delServidor: chat.name, telefono: chat.phone, agenda: phoneBook }) || 'Chat';
+  return {
     id: chat.id,
-    nombre: chat.propio ? 'Tú' : nombreDeContacto({ delServidor: chat.name, telefono: chat.phone, agenda: phoneBook }) || 'Chat',
+    nombre: chat.propio ? 'Tú' : chat.channel ? `#${chat.name ?? 'canal'}` : contactName,
     subtitulo: chat.propio ? 'Envíate un mensaje' : chat.kind === 'notas' ? 'Solo tú lo ves' : chat.lastMessage?.body?.split('\n')[0],
     esGrupo: chat.kind === 'group',
     esBorrador: chat.kind === 'notas' && !chat.propio,
@@ -124,8 +131,7 @@ function possibleTargets(): ChatParaReenviar[] {
     cifrado: chat.encrypted,
     ultimoEn: chat.lastMessage?.at,
     avatarUrl: chat.avatarUrl,
-  }));
-  return chats.some((chat) => chat.propio) ? chats : [...chats, { id: NEW_SELF, nombre: 'Tú', subtitulo: 'Envíate un mensaje', propio: true }];
+  };
 }
 
 function targetRows(possible: ChatParaReenviar[], frequencies: Frecuencias, query: string): Row[] {

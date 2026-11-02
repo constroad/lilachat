@@ -97,9 +97,9 @@ export function useChat(params: {
   baseLeido?: number;
   baseEntregado?: number;
 }) {
-  // Nace con lo que quedó en memoria de la última vez (FL12, §49 #2) o, fuera
-  // de esa memoria, con el disco leído en este mismo render (plan 1, F5a): el
-  // chat entra pintado en vez de vacío, mientras la red confirma.
+  // Born from the memory of the last visit (FL12, §49 #2) or, outside it, from
+  // the disk read in this same render (plan 1, F5a): the chat slides in painted
+  // instead of empty, while the network confirms.
   const [firstPage] = useState(() =>
     firstPageOf(chatsEnMemoria.de(params.chatId), () => readLastPageSync(params.chatId, PAGINA_DE_SANEO))
   );

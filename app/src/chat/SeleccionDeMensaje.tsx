@@ -229,6 +229,7 @@ export function SeleccionDeMensaje(params: {
                   setMenuAbierto(false);
                   botones[accion].onPress();
                 }}
+                android_ripple={{ color: colores.outline }}
                 className="min-h-[48px] flex-row items-center gap-3 px-4"
               >
                 {botones[accion].icono}
@@ -262,11 +263,13 @@ export function SeleccionDeMensaje(params: {
 }
 
 function Accion(props: { testID: string; etiqueta: string; onPress: () => void; children: React.ReactNode }) {
+  const colores = useColores();
   return (
     <Pressable
       testID={props.testID}
       accessibilityLabel={props.etiqueta}
       onPress={props.onPress}
+      android_ripple={{ color: colores.outline, borderless: true, radius: 22 }}
       className="h-11 w-11 items-center justify-center"
     >
       {props.children}

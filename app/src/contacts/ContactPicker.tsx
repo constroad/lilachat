@@ -218,6 +218,7 @@ export function ContactPicker({
                     key={contact.id}
                     testID={`contacto-${contact.id}`}
                     onPress={() => onToggle(contact)}
+                    android_ripple={{ color: colores.outline }}
                     className={`min-h-[64px] flex-row items-center gap-3 px-4 py-2.5 ${
                       elegido ? 'bg-primary/[0.07]' : ''
                     }`}

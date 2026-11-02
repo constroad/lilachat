@@ -89,11 +89,13 @@ export function BarraDeSeleccionDeChats(props: {
 }
 
 function Accion(props: { testID: string; etiqueta: string; onPress: () => void; children: React.ReactNode }) {
+  const colores = useColores();
   return (
     <Pressable
       testID={props.testID}
       accessibilityLabel={props.etiqueta}
       onPress={props.onPress}
+      android_ripple={{ color: colores.outline, borderless: true, radius: 22 }}
       className="h-11 w-11 items-center justify-center"
     >
       {props.children}

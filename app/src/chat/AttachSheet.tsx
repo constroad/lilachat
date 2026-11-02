@@ -212,7 +212,7 @@ export function AttachSheet(props: {
               <Kicker>{section.title}</Kicker>
               <View className="mt-3 flex-row" style={{ marginHorizontal: -SHEET_PADDING / 2 }}>
                 {section.options.map(({ key, label, Icon, action, testID }) => (
-                  <Pressable key={key} testID={testID} onPress={() => run(action)} className="items-center" style={{ width: optionWidth }}>
+                  <Pressable key={key} testID={testID} onPress={() => run(action)} android_ripple={{ color: colors.outline, borderless: true, radius: 36 }} className="items-center" style={{ width: optionWidth }}>
                     <View className="h-14 w-14 items-center justify-center rounded-full border border-outline/15 bg-primary/10">
                       <Icon size={22} color={colors.primary} />
                     </View>

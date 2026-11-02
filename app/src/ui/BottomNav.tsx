@@ -65,6 +65,7 @@ export function BottomNav({
             key={key}
             testID={`tab-${key}`}
             onPress={() => onChange(key)}
+            android_ripple={{ color: colores.outline, borderless: true }}
             className={vertical ? 'min-h-[64px] items-center justify-center gap-0.5' : 'min-h-[44px] flex-1 items-center justify-center gap-0.5'}
           >
             <View>

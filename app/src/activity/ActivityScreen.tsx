@@ -48,7 +48,7 @@ export function ActivityScreen(props: { /** As a tab of the bar (22/10): no wind
               {section.items.some((item) => item.unread) ? <Text className="text-[13px] font-semibold text-primary">{`${section.items.filter((item) => item.unread).length} nuevas`}</Text> : null}
             </View>
             {section.items.map((item) => (
-              <Pressable key={`${item.chatId}:${item.seq}`} testID={`actividad-item-${item.seq}`} onPress={() => props.onOpen(item, tab)} className="mb-3 rounded-2xl border border-outline/15 bg-surface p-4">
+              <Pressable key={`${item.chatId}:${item.seq}`} testID={`actividad-item-${item.seq}`} onPress={() => props.onOpen(item, tab)} android_ripple={{ color: colors.outline }} className="mb-3 overflow-hidden rounded-2xl border border-outline/15 bg-surface p-4">
                 <View className="flex-row items-start gap-3">
                   <Avatar nombre={nameOf(item.author)} tamano={44} />
                   <View className="min-w-0 flex-1">

@@ -117,7 +117,7 @@ type MensajeConMedia = {
   deletedAt?: string;
   /** A sticker is an image too, and does not go in the viewer (22/10). */
   kind?: string;
-  media?: { url?: string; thumbUrl?: string; mime?: string; fileName?: string };
+  media?: { url?: string; thumbUrl?: string; mime?: string; fileName?: string; width?: number; height?: number };
 };
 
 /**
@@ -170,6 +170,8 @@ export function fotosDelChat(
         autor: mia ? 'Tú' : (deUnGrupo ?? contexto.nombreDelChat),
         cuando: formatClock(new Date(mensaje.at)),
         miniatura,
+        // Plan 1, F2: the viewer grows the photo out of its bubble into this shape.
+        ...(media.width && media.height && media.width > 0 && media.height > 0 ? { aspecto: media.width / media.height } : {}),
       },
     ];
   });

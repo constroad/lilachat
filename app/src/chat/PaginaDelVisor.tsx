@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Image } from 'expo-image';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming, type SharedValue } from 'react-native-reanimated';
 import { debeCerrar, desplazamientoPermitido, zoomAcotado, zoomDelDobleToque } from './visor';
 
 /** Debajo de esto el pellizco cuenta como «volvió al tamaño real». */
@@ -32,6 +32,7 @@ export function PaginaDelVisor({
   onZoom,
   onCerrar,
   onToque,
+  drag,
 }: {
   url: string;
   /** What the bubble already showed (in cache): it fills the screen while the full photo arrives, instead of black (José, 21/10). */
@@ -43,6 +44,12 @@ export function PaginaDelVisor({
   onZoom: (conZoom: boolean) => void;
   onCerrar: () => void;
   onToque: () => void;
+  /**
+   * The viewer's drag (plan 1, F2): the black behind fades with it and the
+   * chat shows through, so the photo itself stays opaque. Without it the page
+   * fades itself, as before.
+   */
+  drag?: SharedValue<number>;
 }) {
   const [conZoom, setConZoom] = useState(false);
   const zoom = useSharedValue(1);
@@ -51,7 +58,9 @@ export function PaginaDelVisor({
   const y = useSharedValue(0);
   const xInicial = useSharedValue(0);
   const yInicial = useSharedValue(0);
-  const arrastre = useSharedValue(0);
+  const ownDrag = useSharedValue(0);
+  const arrastre = drag ?? ownDrag;
+  const fadesItself = !drag;
 
   const avisarZoom = (hay: boolean) => {
     setConZoom(hay);
@@ -138,7 +147,7 @@ export function PaginaDelVisor({
   const gesto = Gesture.Simultaneous(pellizco, recorrer, cerrar, Gesture.Exclusive(dobleToque, toque));
 
   const estilo = useAnimatedStyle(() => ({
-    opacity: 1 - Math.min(Math.abs(arrastre.value) / DISTANCIA_DE_DESVANECIDO, 0.5),
+    opacity: fadesItself ? 1 - Math.min(Math.abs(arrastre.value) / DISTANCIA_DE_DESVANECIDO, 0.5) : 1,
     transform: [{ translateX: x.value }, { translateY: y.value + arrastre.value }, { scale: zoom.value }],
   }));
 

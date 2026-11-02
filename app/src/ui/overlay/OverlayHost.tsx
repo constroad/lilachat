@@ -22,11 +22,15 @@ export type OverlayHostHandle = {
 
 const OverlayHostContext = createContext<OverlayHostHandle | null>(null);
 export const useOverlayHost = () => useContext(OverlayHostContext);
+/** The session's host: what must cover the whole window (the photo viewer), even on a tablet's chat pane. */
+const RootOverlayHostContext = createContext<OverlayHostHandle | null>(null);
+export const useRootOverlayHost = () => useContext(RootOverlayHostContext);
 
 let lastOverlayId = 0;
 export const newOverlayId = () => ++lastOverlayId;
 
 export function OverlayHost(props: { children: ReactNode }) {
+  const outer = useRootOverlayHost();
   const [layers, setLayers] = useState<Layer[]>([]);
   const handle = useMemo<OverlayHostHandle>(
     () => ({
@@ -50,13 +54,18 @@ export function OverlayHost(props: { children: ReactNode }) {
   // Each node is the layer itself (`OverlayModal`'s animated view): removed as a
   // direct child, its exit animation runs.
   return (
-    <OverlayHostContext.Provider value={handle}>
-      <View style={styles.host}>
-        {props.children}
-        {layers.map((layer) => layer.node)}
-      </View>
-    </OverlayHostContext.Provider>
+    <RootOverlayHostContext.Provider value={outer ?? handle}>
+      <OverlayHostContext.Provider value={handle}>
+        <View style={styles.host}>
+          {props.children}
+          {layers.map((layer) => layer.node)}
+        </View>
+      </OverlayHostContext.Provider>
+    </RootOverlayHostContext.Provider>
   );
 }
 
 const styles = StyleSheet.create({ host: { flex: 1 } });
+
+/** Above every layer: what must cover even an open sheet (the app lock). */
+export const ABOVE_OVERLAYS = { zIndex: 1000, elevation: 1000 } as const;

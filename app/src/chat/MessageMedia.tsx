@@ -12,6 +12,22 @@ import { copiaLocalDe } from './colaDeArchivos';
 import { isThumblessVideo, miniaturaDe } from './filasDelChat';
 import { isFileMime, isPending, isVoiceMime, photoStyle, type Row } from './rowKinds';
 import { useColores } from '../ui/tema';
+import { openFromBubble } from './photoOrigin';
+
+/** Full photos already asked for on a touch: a scroll over the same photo does not ask again. */
+const prefetched = new Set<string>();
+
+/**
+ * Plan 1, F2: the full photo starts downloading when the finger lands, not when
+ * the viewer asks for it. To disk only: holding decoded photos in memory for
+ * every touch would cost a low-end phone what the viewer needs.
+ */
+function prefetchFullPhoto(media: { url?: string; mime?: string } | undefined): void {
+  const url = media?.url;
+  if (!url || !(media.mime ?? '').startsWith('image/') || isAnimatedImage(media.mime) || prefetched.has(url)) return;
+  prefetched.add(url);
+  void Image.prefetch(url, 'disk');
+}
 
 /**
  * What a message carries besides its text: a voice note, a file card, a photo
@@ -74,7 +90,8 @@ export function MessageMedia({ item, mine, selecting, onSelect, onOpen, onGifTap
             onSelect?.(item.seq);
           }}
           delayLongPress={350}
-          onPress={() => {
+          onPressIn={() => !isPending(item) && !selecting && !item.media?.sealed && prefetchFullPhoto(item.media)}
+          onPress={(event) => {
             if (isPending(item)) return;
             // A GIF plays again and offers to become my sticker (José, 22/10), on the same tap.
             if (gif && !selecting && onGifTap) {
@@ -83,7 +100,7 @@ export function MessageMedia({ item, mine, selecting, onSelect, onOpen, onGifTap
             }
             if (gifStop.stopped && !selecting) return gifStop.replay();
             if (selecting) onSelect?.(item.seq);
-            else onOpen?.(item.seq);
+            else openFromBubble(event, item.seq, onOpen);
           }}
         >
           {miniaturaDe(item.media) ? (

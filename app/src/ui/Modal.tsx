@@ -3,7 +3,7 @@ import { Modal as NativeModal, type ModalProps } from 'react-native';
 import { openOverlay } from './overlays';
 import { beginInteraction, endInteractionAfterPaint } from '../diagnostico/frameMonitor';
 import { OverlayModal } from './overlay/OverlayModal';
-import { useOverlayHost } from './overlay/OverlayHost';
+import { useOverlayHost, useRootOverlayHost } from './overlay/OverlayHost';
 
 /** Every sheet is measured as «abrir-hoja» (plan 1, F0); the photo viewer names its own window. */
 const DEFAULT_FRAME_WINDOW = 'abrir-hoja';
@@ -32,10 +32,13 @@ export const useOverlayLevel = () => useContext(OverlayLevel);
  * modal and sends its keyboard event. Shown in the same render, or one render
  * later, the event won the race and the chat still jumped (emulator, 20/10).
  */
-export function Modal(props: ModalProps & { frameWindow?: string; measured?: boolean }) {
-  const { frameWindow = DEFAULT_FRAME_WINDOW, measured = true, onShow, ...modalProps } = props;
+export function Modal(props: ModalProps & { frameWindow?: string; measured?: boolean; fullWindow?: boolean }) {
+  const { frameWindow = DEFAULT_FRAME_WINDOW, measured = true, fullWindow = false, onShow, ...modalProps } = props;
   const level = useContext(OverlayLevel);
-  const host = useOverlayHost();
+  // `fullWindow`: the session's host, not the nearest (a tablet draws the chat in a pane).
+  const nearest = useOverlayHost();
+  const root = useRootOverlayHost();
+  const host = fullWindow ? root : nearest;
   const visible = props.visible ?? true;
   const [counted, setCounted] = useState(false);
   useEffect(() => {

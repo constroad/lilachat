@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View, type ViewToken, useWindowDimensions } from 'react-native';
 import { Modal } from '../ui/Modal';
 import { Image } from 'expo-image';
@@ -12,6 +12,13 @@ import { copiaLocalDe } from './colaDeArchivos';
 import { PaginaDelVisor } from './PaginaDelVisor';
 import { indiceDeFoto } from './visor';
 import { useEvent } from 'expo';
+import Animated, { FadeIn, FadeOut, type SharedValue } from 'react-native-reanimated';
+import { beginInteraction } from '../diagnostico/frameMonitor';
+import { FlyingPhoto, useViewerTransition, VIEWER_FRAME_WINDOW } from './ViewerTransition';
+
+/** The bars come and go softly (plan 1, F2), instead of popping. */
+const BARS_FADE_MS = 150;
+const FILL = { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 } as const;
 
 /** Seconds buffered before a video starts: Android waits two by default, and that reads as «it loads, then it plays». */
 const VIDEO_START_BUFFER_S = 0.5;
@@ -58,6 +65,8 @@ export type FotoDelVisor = {
   miniatura?: string;
   /** What I sent opens from its copy on the phone (`copiaLocalDe`). */
   clientKey?: string;
+  /** Width / height, when known: the shape the photo grows into out of its bubble (plan 1, F2). */
+  aspecto?: number;
 };
 
 /**
@@ -120,19 +129,7 @@ function Reproductor({ url, poster, author }: { url: string; poster?: string; au
   );
 }
 
-export function VisorDeImagen({
-  foto,
-  otras,
-  onCerrar,
-  onCambiar,
-  onDescargar,
-  onCompartir,
-  onEliminar,
-  onAbrirArchivo,
-  onMakeSticker,
-  aviso,
-  action,
-}: {
+type VisorProps = {
   foto: FotoDelVisor | null;
   /** Todas las fotos del chat, de la MÁS VIEJA a la más nueva (como el chat). */
   otras?: FotoDelVisor[];
@@ -152,26 +149,65 @@ export function VisorDeImagen({
   aviso?: string;
   /** A form's option seen here: «Elegir esta opción» (design h-03). */
   action?: { label: string; onPress: () => void };
-}) {
+};
+
+export function VisorDeImagen(props: VisorProps) {
+  const abierto = props.foto !== null;
+  // From the tap until the photo lands (plan 1, F0): the viewer measures its own opening.
+  useEffect(() => {
+    if (abierto) beginInteraction(VIEWER_FRAME_WINDOW);
+  }, [abierto]);
+  // Back plays the way out too: the body that owns it answers.
+  const closeRef = useRef<(() => void) | null>(null);
+  return (
+    <Modal
+      visible={abierto}
+      animationType="none"
+      statusBarTranslucent
+      fullWindow
+      measured={false}
+      onRequestClose={() => (closeRef.current ?? props.onCerrar)()}
+      testID="visor-imagen"
+    >
+      {props.foto ? <ViewerBody {...props} foto={props.foto} closeRef={closeRef} /> : null}
+    </Modal>
+  );
+}
+
+/** Mounted with the layer: the opening starts on its first frame (in-window overlays mount a render later). */
+function ViewerBody({
+  foto,
+  otras,
+  onCerrar,
+  onCambiar,
+  onDescargar,
+  onCompartir,
+  onEliminar,
+  onAbrirArchivo,
+  onMakeSticker,
+  aviso,
+  action,
+  closeRef,
+}: VisorProps & { foto: FotoDelVisor; closeRef: MutableRefObject<(() => void) | null> }) {
   const margenes = useMargenes();
   const { width: ancho, height: alto } = useWindowDimensions();
   const pager = useRef<FlatList<FotoDelVisor>>(null);
   const [conZoom, setConZoom] = useState(false);
   const [conBarras, setConBarras] = useState(true);
-  const lista = otras && otras.length > 0 ? otras : foto ? [foto] : [];
-  const indice = foto ? indiceDeFoto(lista, foto.seq) : 0;
+  const lista = otras && otras.length > 0 ? otras : [foto];
+  const indice = indiceDeFoto(lista, foto.seq);
   const indiceVisible = useRef(indice);
-
-  // Al abrir, con las barras a la vista.
-  const abierto = foto !== null;
-  useEffect(() => {
-    if (abierto) setConBarras(true);
-  }, [abierto]);
+  const transition = useViewerTransition({ photo: foto, screen: { width: ancho, height: alto }, onClosed: onCerrar });
+  const { close: closeWith, drag } = transition;
+  // A zoomed photo would jump back to full size before flying: it fades instead.
+  const close = useCallback(() => closeWith({ fade: conZoom }), [closeWith, conZoom]);
+  closeRef.current = close;
+  useEffect(() => () => void (closeRef.current = null), [closeRef]);
 
   // Un cambio que viene de AFUERA (la tira) mueve el pager; uno que nació de
   // deslizar ya está en su lugar y no se toca.
   useEffect(() => {
-    if (!foto || indice === indiceVisible.current) return;
+    if (indice === indiceVisible.current) return;
     indiceVisible.current = indice;
     pager.current?.scrollToIndex({ index: indice, animated: false });
   }, [foto, indice]);
@@ -193,18 +229,22 @@ export function VisorDeImagen({
         ancho={ancho}
         alto={alto}
         onZoom={setConZoom}
-        onCerrar={onCerrar}
+        onCerrar={close}
         onToque={() => setConBarras((v) => !v)}
         onAbrirArchivo={onAbrirArchivo}
+        drag={index === indice ? drag : undefined}
       />
     ),
-    [indice, ancho, alto, onCerrar, onAbrirArchivo]
+    [indice, ancho, alto, close, onAbrirArchivo, drag]
   );
 
+  const inFlight = transition.flight !== null;
   return (
-    <Modal visible={Boolean(foto)} animationType="fade" statusBarTranslucent onRequestClose={onCerrar} testID="visor-imagen" frameWindow="abrir-foto">
-      <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#000000' }}>
-        {foto ? (
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <Animated.View pointerEvents="none" style={[FILL, { backgroundColor: '#000000' }, transition.backdropStyle]} />
+        <Animated.View style={[{ flex: 1 }, transition.fadeStyle]}>
+        {/* While the copy flies the real pager waits underneath, already loading the full photo. */}
+        <View style={{ flex: 1, opacity: inFlight ? 0 : 1 }}>
           <FlatList
             ref={pager}
             testID="visor-pager"
@@ -224,13 +264,12 @@ export function VisorDeImagen({
             maxToRenderPerBatch={2}
             extraData={indice}
           />
-        ) : null}
 
         {/* Cabecera flotante. El cierre NUNCA se comprime y tiene 44 px: un
             visor sin salida visible deja como única opción el botón físico. */}
-        {conBarras && foto ? (
-          <View style={{ paddingTop: margenes.cabecera, backgroundColor: 'rgba(0,0,0,0.45)' }} className="absolute left-0 right-0 top-0 flex-row items-center gap-2 px-2 pb-2">
-            <Pressable testID="btn-cerrar-visor" accessibilityLabel="Cerrar la imagen" onPress={onCerrar} className="h-11 w-11 shrink-0 items-center justify-center">
+        {conBarras && !inFlight ? (
+          <Animated.View entering={FadeIn.duration(BARS_FADE_MS)} exiting={FadeOut.duration(BARS_FADE_MS)} style={{ paddingTop: margenes.cabecera, backgroundColor: 'rgba(0,0,0,0.45)' }} className="absolute left-0 right-0 top-0 flex-row items-center gap-2 px-2 pb-2">
+            <Pressable testID="btn-cerrar-visor" accessibilityLabel="Cerrar la imagen" onPress={close} className="h-11 w-11 shrink-0 items-center justify-center">
               <X size={24} color="#ffffff" />
             </Pressable>
             <View className="min-w-0 flex-1">
@@ -262,7 +301,7 @@ export function VisorDeImagen({
                 <Trash2 size={20} color="#ff6b6b" />
               </Pressable>
             ) : null}
-          </View>
+          </Animated.View>
         ) : null}
 
         <View className="absolute bottom-0 left-0 right-0" style={{ paddingBottom: margenes.pie }}>
@@ -283,8 +322,8 @@ export function VisorDeImagen({
           ) : null}
 
           {/* «Compartido en el chat»: saltar entre fotos sin cerrar el visor. */}
-          {conBarras && lista.length > 1 ? (
-            <View style={{ backgroundColor: 'rgba(0,0,0,0.45)' }} className="pt-2">
+          {conBarras && !inFlight && lista.length > 1 ? (
+            <Animated.View entering={FadeIn.duration(BARS_FADE_MS)} exiting={FadeOut.duration(BARS_FADE_MS)} style={{ backgroundColor: 'rgba(0,0,0,0.45)' }} className="pt-2">
               <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-3 pb-2">
                 {lista.map((otra) => (
                   <Pressable
@@ -292,7 +331,7 @@ export function VisorDeImagen({
                     testID={`visor-tira-${otra.seq}`}
                     onPress={() => onCambiar?.(otra)}
                     className="mr-2 overflow-hidden rounded"
-                    style={{ opacity: otra.seq === foto?.seq ? 1 : 0.5 }}
+                    style={{ opacity: otra.seq === foto.seq ? 1 : 0.5 }}
                   >
                     {otra.miniatura ? (
                       <Image source={{ uri: otra.miniatura }} style={{ width: 52, height: 52 }} contentFit="cover" recyclingKey={String(otra.seq)} />
@@ -304,11 +343,13 @@ export function VisorDeImagen({
                   </Pressable>
                 ))}
               </ScrollView>
-            </View>
+            </Animated.View>
           ) : null}
         </View>
+        </View>
+        </Animated.View>
+        {transition.flight ? <FlyingPhoto flight={transition.flight} progress={transition.progress} /> : null}
       </GestureHandlerRootView>
-    </Modal>
   );
 }
 
@@ -322,6 +363,8 @@ function Pagina(props: {
   onCerrar: () => void;
   onToque: () => void;
   onAbrirArchivo?: (foto: FotoDelVisor) => void;
+  /** The viewer's drag, on the page in sight only: the black behind follows it. */
+  drag?: SharedValue<number>;
 }) {
   const { foto, ancho, alto } = props;
   if (esArchivoSuelto(foto.mime)) {
@@ -375,6 +418,7 @@ function Pagina(props: {
       onZoom={props.onZoom}
       onCerrar={props.onCerrar}
       onToque={props.onToque}
+      drag={props.drag}
     />
   );
 }

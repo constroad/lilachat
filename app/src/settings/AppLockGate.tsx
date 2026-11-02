@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Fingerprint } from 'lucide-react-native';
 import { Logo } from '../ui/Logo';
 import { useColores } from '../ui/tema';
+import { ABOVE_OVERLAYS } from '../ui/overlay/OverlayHost';
 import { useAppLock } from './appLock';
 
 /** Covers the chats while the app lock asks (pending 9); calls stay above it, like WhatsApp. */
@@ -14,7 +15,8 @@ export function AppLockGate() {
   }, [locked, unlock]);
   if (!locked) return null;
   return (
-    <View testID="bloqueo-de-la-app" style={[StyleSheet.absoluteFill, { backgroundColor: colores.background }]} className="items-center justify-center gap-4 px-8">
+    // Above the sheets too: since plan 1 (F1) they are views of this window, and a sheet open when the app locked showed over the lock.
+    <View testID="bloqueo-de-la-app" style={[StyleSheet.absoluteFill, ABOVE_OVERLAYS, { backgroundColor: colores.background }]} className="items-center justify-center gap-4 px-8">
       <Logo tamano={56} />
       <Text className="text-[18px] font-bold text-on-surface">Lilachat está bloqueado</Text>
       <Text className="text-center text-[14px] text-on-surface-variant">Usa tu huella, tu rostro o el bloqueo del teléfono para entrar.</Text>

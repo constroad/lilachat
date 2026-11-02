@@ -5,6 +5,7 @@ import { Play } from 'lucide-react-native';
 import { albumGrid } from '@lilachat/shared';
 import { miniaturaDe } from './filasDelChat';
 import type { ChatMessage } from './useChat';
+import { openFromBubble } from './photoOrigin';
 
 /** The album's share of the screen width (pending 70). */
 const ALBUM_SHARE = 0.75;
@@ -40,7 +41,7 @@ export function AlbumGrid(props: { items: readonly ChatMessage[]; selecting?: bo
           <Pressable
             key={item.seq}
             testID={`album-foto-${item.seq}`}
-            onPress={() => (props.selecting ? props.onSelect?.(head.seq) : props.onOpen?.(item.seq))}
+            onPress={(event) => (props.selecting ? props.onSelect?.(head.seq) : openFromBubble(event, item.seq, props.onOpen))}
             onLongPress={() => {
               void Haptics.selectionAsync();
               props.onSelect?.(head.seq);

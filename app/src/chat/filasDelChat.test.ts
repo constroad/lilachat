@@ -103,6 +103,18 @@ describe('fotosDelChat', () => {
     ...extra,
   });
 
+  it('carries the photo proportion, so the viewer zooms it out of its bubble (plan 1, F2)', () => {
+    const wide = { ...conFoto(5, ANA), media: { ...conFoto(5, ANA).media, width: 1600, height: 1200 } };
+    const [foto] = fotosDelChat([wide], { yo: YO, esGrupo: false, nombres: new Map(), nombreDelChat: 'Ana' });
+    expect(foto?.aspecto).toBeCloseTo(4 / 3);
+  });
+
+  it('without real dimensions there is no proportion (never NaN or zero)', () => {
+    const broken = [conFoto(6, ANA), { ...conFoto(7, ANA), media: { ...conFoto(7, ANA).media, width: 0, height: 900 } }];
+    const fotos = fotosDelChat(broken, { yo: YO, esGrupo: false, nombres: new Map(), nombreDelChat: 'Ana' });
+    expect(fotos.map((foto) => foto.aspecto)).toEqual([undefined, undefined]);
+  });
+
   it('el archivo completo, la miniatura aparte, y «Tú» en lo propio', () => {
     const [foto] = fotosDelChat([conFoto(1, YO)], { yo: YO, esGrupo: false, nombres: new Map(), nombreDelChat: 'Ana' });
 

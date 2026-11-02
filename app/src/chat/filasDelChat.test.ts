@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { citadosPorSeq, pendientesEnOrden, claveDeFila, filaDeArchivoEnCola, pendingStickerItem, fotosDelChat, sinPendientesConfirmados, tipoDeFila, type FilaMinima, anchoDeBurbujaConFoto, miniaturaDe } from './filasDelChat';
+import { citadosPorSeq, pendientesEnOrden, claveDeFila, filaDeArchivoEnCola, fotosDelChat, sinPendientesConfirmados, tipoDeFila, type FilaMinima, anchoDeBurbujaConFoto, miniaturaDe } from './filasDelChat';
+import { pendingStickerItem } from './filasDelChat';
 
 const msj = (seq: number, cambios: Partial<FilaMinima> = {}): FilaMinima => ({
   seq,

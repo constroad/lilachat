@@ -8,7 +8,8 @@ import { ProgramadosDelChat } from './ProgramadosDelChat';
 import { ChatQueue } from './ChatQueue';
 import type { FlashListRef } from '@shopify/flash-list';
 import { ChatBottom, ChatKeyboardArea } from './ChatBottom';
-import { chatHasActionPlace, clientHeaderSubtitle, personOfMember, type MencionEnMensaje } from '@lilachat/shared';
+import type { MencionEnMensaje } from '@lilachat/shared';
+import { chatHasActionPlace, clientHeaderSubtitle, personOfMember } from '@lilachat/shared';
 import { useRenderCost } from '../diagnostico/frameMonitor';
 import { useFunActions } from './nudge';
 import { useCallBack } from './useCallBack';
@@ -83,7 +84,6 @@ const MARGEN_CON_TECLADO = 8;
  * en acento; la ajena a la izquierda en superficie — y la esquina-cola de 4px
  * apunta al emisor, que es el token `rounded-tail` de Vivid Pulse.
  */
-
 export function ChatScreen({
   chatId,
   chatName,

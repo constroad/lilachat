@@ -19,6 +19,8 @@ import { FlyingPhoto, useViewerTransition, VIEWER_FRAME_WINDOW } from './ViewerT
 /** The bars come and go softly (plan 1, F2), instead of popping. */
 const BARS_FADE_MS = 150;
 const FILL = { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 } as const;
+/** Three pages alive at most: the one in sight and its neighbours. */
+const PAGER_WINDOW = { windowSize: 3, initialNumToRender: 1, maxToRenderPerBatch: 2 } as const;
 
 /** Seconds buffered before a video starts: Android waits two by default, and that reads as «it loads, then it plays». */
 const VIDEO_START_BUFFER_S = 0.5;
@@ -236,15 +238,13 @@ function ViewerBody({
             renderItem={renderPage}
             horizontal
             pagingEnabled
+            {...PAGER_WINDOW}
             scrollEnabled={!zoomed}
             showsHorizontalScrollIndicator={false}
             initialScrollIndex={index}
             getItemLayout={(_, at) => ({ length: width, offset: width * at, index: at })}
             onViewableItemsChanged={onPageChange}
             viewabilityConfig={{ itemVisiblePercentThreshold: 60 }}
-            windowSize={3}
-            initialNumToRender={1}
-            maxToRenderPerBatch={2}
             extraData={index}
           />
           {bars ? (

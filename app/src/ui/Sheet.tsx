@@ -24,7 +24,7 @@ const SNAP_BACK = { damping: 18, stiffness: 200 };
 const DRAG_START_PX = 12;
 const BOTTOM_ROOM = 16;
 
-export function Sheet(props: {
+type SheetProps = {
   visible: boolean;
   onClose: () => void;
   testID?: string;
@@ -36,19 +36,29 @@ export function Sheet(props: {
   /** Room under the content, above the system bar; 16 by default. */
   bottomRoom?: number;
   children: ReactNode;
-}) {
-  const { visible, onClose, dragArea = 'card', maxHeight, bottomRoom = BOTTOM_ROOM } = props;
+};
+
+/** Closed, a sheet is nothing: no gesture and no animated styles (a chat holds several, and each render paid for them). */
+export function Sheet(props: SheetProps) {
+  return (
+    <Modal visible={props.visible} transparent animationType="none" onRequestClose={props.onClose} measured={false}>
+      {props.visible ? <SheetBody {...props} /> : null}
+    </Modal>
+  );
+}
+
+/** Mounted on every opening: it starts from rest, with no drag left over. */
+function SheetBody(props: SheetProps) {
+  const { onClose, dragArea = 'card', maxHeight, bottomRoom = BOTTOM_ROOM } = props;
   const margins = useMargenes();
   const drag = useSharedValue(0);
   const height = useSharedValue(0);
   const shown = useSharedValue(0);
 
   useEffect(() => {
-    if (!visible) return;
-    drag.value = 0;
     shown.value = withTiming(1, { duration: BACKDROP_MS });
     beginInteraction(FRAME_WINDOW);
-  }, [visible, drag, shown]);
+  }, [shown]);
 
   const pan = Gesture.Pan()
     .activeOffsetY([-DRAG_START_PX, DRAG_START_PX])
@@ -91,14 +101,14 @@ export function Sheet(props: {
   );
 
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} measured={false}>
+    <>
       <Animated.View style={[styles.backdrop, backdropStyle]} exiting={FadeOut.duration(BACKDROP_MS)}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Cerrar" />
       </Animated.View>
       <View style={styles.bottom} pointerEvents="box-none">
         {dragArea === 'card' ? <GestureDetector gesture={pan}>{card}</GestureDetector> : card}
       </View>
-    </Modal>
+    </>
   );
 }
 

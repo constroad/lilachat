@@ -17,6 +17,17 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.177',
+    // Everyone: plan 1 of fluidity, F1 + F2 (José, 02/11: «que se sienta como Telegram»).
+    audience: 'all',
+    items: [
+      'Al tocar una foto, crece desde su burbuja; al cerrarla, vuelve a su lugar.',
+      'Arrastra una foto hacia abajo para cerrarla: el chat aparece detrás.',
+      'Adjuntar, fijar, avisos y la ficha de una persona se abren al instante y se cierran arrastrando.',
+      'Abrir y cerrar el teclado en un chat es más fluido.',
+    ],
+  },
+  {
     version: '0.1.176',
     // Everyone: Lilachat as a share target from other apps (José, 02/11), and the «Te ataco» winks.
     audience: 'all',

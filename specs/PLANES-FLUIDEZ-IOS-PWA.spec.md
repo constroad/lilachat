@@ -197,13 +197,13 @@ esté vigente ese día.
 
 ## 5. Avance
 
-### Estado por fase (02/11/2026, 16:00)
+### Estado por fase (02/11/2026, 17:45)
 
 | Fase | Estado | Falta |
 | --- | --- | --- |
 | F0 Medir | **Hecha.** En `main`, OTA `f4ca42ef` en vivo, probada en el emulador | 2 min en el teléfono de José para el número real |
-| F1 Fuera los modales | **En curso** (rama `fluidez-f1`). Host en la misma ventana, capas animadas, puente de contextos, `Sheet` con arrastre, hoja de avisos migrada | E2E en el emulador (APK de prueba compilando), medir contra §5.1, pasar las otras 31 hojas a `Sheet`, borrar `overlays`/`freeze`, OTA |
-| F2 Visor de fotos | Motor del zoom desde la burbuja escrito con tests (fuera del repo hasta cerrar F1) | Cablearlo en la burbuja y el visor |
+| F1 Fuera los modales | **Hecha** (APK 0.1.177). Host en la misma ventana (sesión y chat), capas animadas, puente de contextos, `Sheet` con arrastre: avisos, clip, fijar, ficha de persona, historial y acciones de miembro. El bloqueo de la app queda sobre todas las capas | Pasar las otras ~26 hojas a `Sheet` (cada una con su E2E). `overlays.ts` y el congelado se QUEDAN: una hoja con campo de texto sube el teclado igual (§5.3) |
+| F2 Visor de fotos | **Hecha** (APK 0.1.177). La foto crece desde su burbuja y vuelve a ella; arrastre que muestra el chat; foto completa pedida al apoyar el dedo; barras con fundido | El número en el teléfono de José (el emulador captura fotos negras, §5.3) |
 | F3 Teclado | Pendiente | Cierre arrastrando, salto al cerrar, sin `runOnJS` al terminar |
 | F4 Toque y envío | Pendiente | Enviar traba el JS ~0,5 s (§5.1); ripple nativo en filas y botones |
 | F5a Lectura síncrona | Pendiente | Chat frío pintado en el primer cuadro; borrar `memoriaDeChats` |
@@ -217,6 +217,7 @@ esté vigente ese día.
 | 02/11/2026 | F0 | Código en `main` (46177fb): motor `diagnostico/frames.ts` con tests, samplers JS (rAF) y UI (frame callback de Reanimated) en `frameMonitor.ts` + `FrameMonitorHost`, ventanas abrir-chat · teclado-abrir/cerrar · abrir-foto · abrir-hoja · enviar, bloque «Fluidez» en Ajustes › Diagnóstico. Pendiente: OTA, línea base en el emulador (`gfxinfo`) y 2 min del teléfono de José |
 | 02/11/2026 | F0 | OTA `f4ca42ef` publicada y verificada en vivo (runtime 62ff8b1c, git 46177fb); rn-smoke 3/3 limpio, heap 24 MB. E2E en `lilafotos-qa`: el bloque «Fluidez» de Diagnóstico muestra las seis interacciones. Línea base en §5.1 |
 | 02/11/2026 | F1 | Rama `fluidez-f1`: `ui/overlay/OverlayHost` (raíz de la sesión y del chat) + `OverlayModal` (capas con slide/fade de Reanimated, atrás cierra la de arriba); el wrapper `ui/Modal` usa el host más cercano, con interruptor `IN_WINDOW_OVERLAYS`. `ui/Sheet` con arrastre para cerrar (`sheetGesture`, tests) y la hoja de avisos migrada. Pendiente: E2E en el emulador, medir contra F0, migrar las 31 hojas restantes, borrar `overlays`/`freeze` |
+| 02/11/2026 | F1 + F2 | APK 0.1.177 (178): hojas en la misma ventana con arrastre, foto que crece desde su burbuja (vuelo por `transform`), arrastre que muestra el chat, foto completa pedida al apoyar el dedo. E2E en el emulador, rn-smoke 3/3, medida en §5.3. Publicada en LilaStore |
 
 ### 5.1 Línea base (02/11/2026, antes de F1)
 
@@ -286,3 +287,39 @@ el fondo), hilo a pantalla completa con el teclado (la barra sobre el teclado),
 hoja de renombrar con foco automático y botones sobre el teclado, el chat de
 atrás conserva su posición al cerrar el hilo. Sin caídas ni errores de JS.
 QA: 6 mensajes de prueba borrados con «Eliminar para todos».
+
+### 5.3 F1 + F2 en el APK 0.1.177 (02/11/2026, 17:30)
+
+APK de release 0.1.177 (178) instalado en `lilafotos-qa`, mismo guion que §5.1.
+
+| Interacción | Jank antes (§5.1) | Jank 0.1.177 | p99 antes | p99 0.1.177 |
+| --- | --- | --- | --- | --- |
+| Abrir #general | 14 · 16 | **7 · 9** | 65 · 85 ms | **57 · 101 ms** |
+| Abrir una foto (y volver) | sin medir | 5 · 8 de ~25 | sin medir | 81 · 101 ms |
+
+El peor cuadro al abrir el chat volvió a su sitio: el arreglo de `layers.ts`
+(§5.2) era la causa. Abrir una foto no tiene línea base porque F0 no lo medía
+con `gfxinfo`; queda como base de las próximas fases.
+
+**E2E funcional de F2 en el emulador** (grabación de pantalla, cuadro a
+cuadro): la copia de la foto sale del tamaño de la burbuja y crece hasta la
+pantalla en ~250 ms; «atrás» y el arrastre la devuelven a su burbuja; las
+barras aparecen con fundido al terminar. La hoja del clip se cierra
+arrastrando desde el asa. rn-smoke: 3 aperturas en frío limpias sobre el APK
+publicado, heap 24 MB.
+
+**Límite del emulador:** la cámara del emulador captura fotos negras y la
+galería no carga miniaturas, así que el vuelo se verificó con fotos negras
+sobre fondo negro. Se ve el borde de la copia creciendo, no el contenido. El
+número y la sensación reales salen del teléfono de José.
+
+**Decisiones:**
+- La copia vuela solo con `transform` (escala y traslación, con una escala
+  inversa adentro para recortar). Animar `left/top/width/height` no se
+  aplicaba cuadro a cuadro en Fabric y la foto «saltaba».
+- `openFromBubble` espera la medida de la burbuja (hasta 100 ms) antes de
+  abrir. Sin medida, abre igual con fundido.
+- `overlays.ts` y el congelado de la lista se QUEDAN: una hoja con un campo de
+  texto sube el teclado y la lista de atrás no debe re-medirse.
+
+QA: las 2 fotos de prueba (seq 82 y 83) borradas con «Eliminar para todos».

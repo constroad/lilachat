@@ -4995,6 +4995,52 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 188. Fluidez como Telegram: hojas en la misma ventana y la foto que crece desde su burbuja (02/11/2026, APK 0.1.177)
+
+Plan 1 de `specs/PLANES-FLUIDEZ-IOS-PWA.spec.md`, fases F1 y F2. Números y E2E en su §5.
+
+**Hojas y paneles sin segunda ventana (F1).**
+
+- `ui/overlay/OverlayHost`: un host en la raíz de la sesión y otro en el chat
+  (el del chat lleva sus emojis propios). `ui/Modal` dibuja en el host más
+  cercano con `OverlayModal`; `fullWindow` usa el de la sesión (el visor: en
+  tablet el chat es un panel). Atrás cierra la capa de arriba. El interruptor
+  `IN_WINDOW_OVERLAYS` vuelve al `Modal` de React Native por OTA.
+- `contextBridge` lleva a la capa los contextos que están entre el host y la
+  hoja (márgenes seguros, `BottomRoom`, acciones de tarjeta).
+- `layers.ts` (tests): sacar una capa que no está devuelve la MISMA lista; si
+  no, cada hoja cerrada redibujaba el host en cada render.
+- `ui/Sheet`: fondo que se atenúa, tarjeta que sube y arrastre para cerrar
+  (`sheetGesture`, tests). Cerrada no existe: `SheetBody` se monta al abrir.
+  Ya la usan avisos, clip (arrastre solo desde el asa), fijar, ficha de
+  persona, historial y acciones de miembro.
+- El bloqueo de la app (`AppLockGate`) va con `ABOVE_OVERLAYS`: una hoja
+  abierta al bloquearse ya no queda encima.
+- Se queda `overlays.ts` y el congelado de la lista: una hoja con campo de
+  texto sube el teclado igual, y sin congelar el chat de atrás lo seguiría.
+
+**La foto que crece desde su burbuja (F2).**
+
+- `openFromBubble` (`photoOrigin.ts`, tests) mide la burbuja al tocarla y
+  abre después; si la medida no llega, abre a los 100 ms y la foto se
+  desvanece. La foto completa se pide al apoyar el dedo (`Image.prefetch` a
+  disco, una vez por URL).
+- `fotosDelChat` suma `aspecto` (ancho / alto del medio). `fittedBox` da
+  dónde aterriza la foto.
+- `ViewerTransition.tsx`: `useViewerTransition` (250 ms al abrir, 220 al
+  cerrar) y `FlyingPhoto`. La copia vuela con transform: el recorte se
+  ubica donde aterriza y `frameTransform` lo escala y traslada, con la foto
+  contraescalada para conservar su forma. Animar `left/top/width/height` no
+  se aplicaba cuadro a cuadro (grabado a 60 fps en el emulador).
+- `VisorDeImagen` es un `Modal` delgado; `ViewerBody` se monta con la capa,
+  así la apertura empieza en su primer cuadro. Cerrar (X, atrás, arrastre)
+  hace el camino inverso y recién al final llama a `onCerrar`.
+- El arrastre del visor lo comparte la página visible (`drag`): el negro de
+  atrás se aclara y aparece el chat (`openingProgress`, a media pantalla ya
+  no hay negro). Un video, una foto a la que se llegó deslizando o una foto
+  con zoom se desvanecen.
+- Las barras entran y salen con fundido (`ViewerHeader`, `ViewerFooter`).
+
 ## 187. «Descargar» en el reproductor de videos: se guarda en la app de la red (01/11/2026, OTA)
 
 José pidió bajar videos de YouTube, Instagram, TikTok y Facebook desde un botón. Le

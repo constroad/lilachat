@@ -5044,8 +5044,20 @@ están permitidos). Queda «Devuelto»; si no sale, «No salió, reintenta».
 
 **Un guiño se elige y se borra (app).** La tarjeta de un guiño o un zumbido no
 respondía a mantener presionado: no había forma de borrarlo. Ahora
-`SelectableFunLine` la elige como a cualquier mensaje. La web sigue sin menú
-para guiños.
+`SelectableFunLine` la elige como a cualquier mensaje.
+
+**Y en la web, desde su menú (git 985cf3d + c5bff1a).** La tarjeta de un
+guiño o un zumbido lleva la flecha del menú del mensaje, que aparece al pasar
+el mouse: a la izquierda si es mía, a la derecha si no. Trae solo lo que
+sirve: «Info» si es mía y «Eliminar» (para todos si es mía, para mí siempre).
+Lo decide `accionesDeMensaje` con `funLine` (shared, 2 tests; web, 3). No
+ofrece responder, copiar, reenviar, fijar ni destacar: no hay texto que
+citar. «Info» decía «Archivo»; ahora dice «Guiño» o «Zumbido», como la lista.
+Deuda: la selección de la app todavía no pasa `funLine` y ofrece las acciones
+de siempre. Verificado en la web en vivo (`index-ffFM24G4.js`), Test
+#general: un Pastelazo y un zumbido mandados desde la web muestran la flecha,
+el menú trae solo «Info» y «Eliminar», «Info» dice «Guiño», y «Eliminar para
+todos» deja «Se eliminó este mensaje» en los dos.
 
 **Verificado en el emulador (OTA f6a63a64 y a0e6ff20, git ef47c2c), Test
 #general.** El panel muestra «Te ataco» con las 12 miniaturas. Se mandaron

@@ -142,3 +142,16 @@ describe('responder en hilo', () => {
   });
 });
 
+
+/** José, 02/11: a nudge or a wink line is deleted like any message; it has no text to reply to, copy or forward. */
+describe('accionesDeMensaje — a nudge or a wink line', () => {
+  const base = { mio: true, eliminado: false, conTexto: false, esMedia: false, chatSecreto: false, editable: false, puedeFijar: true, funLine: true };
+
+  it('mine: only its info and deleting it, for everyone or for me', () => {
+    expect(accionesDeMensaje(base)).toEqual({ responder: false, copiar: false, reenviar: false, editar: false, info: true, eliminarParaTodos: true, eliminarParaMi: true, fijar: null, hilo: false, destacar: null });
+  });
+
+  it('someone else’s: only deleting it for me', () => {
+    expect(accionesDeMensaje({ ...base, mio: false })).toEqual({ responder: false, copiar: false, reenviar: false, editar: false, info: false, eliminarParaTodos: false, eliminarParaMi: true, fijar: null, hilo: false, destacar: null });
+  });
+});

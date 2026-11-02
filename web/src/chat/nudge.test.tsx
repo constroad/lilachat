@@ -66,3 +66,38 @@ describe('«Devolver» on a wink', () => {
     expect(screen.queryByTestId('devolver-guino-9')).toBeNull();
   });
 });
+
+/** José, 02/11: a nudge or a wink line has the message menu, to delete it like in the app. */
+describe('the menu of a nudge or a wink line', () => {
+  const wink = (senderId: string) => ({ ...nudge(senderId), clientKey: `g-${senderId}`, kind: 'guino', wink: 'hit-slipper' }) as MensajeEnPantalla;
+  const open = (clientKey: string) => {
+    const trigger = screen.getByTestId(`menu-${clientKey}`);
+    fireEvent.keyDown(trigger, { key: 'Enter' });
+  };
+
+  it('deletes my wink, and offers its info but nothing to reply to or copy', async () => {
+    // Arrange
+    const onAccion = vi.fn();
+    const message = wink('yo');
+    draw(message, true, { onAccion });
+    // Act
+    open('g-yo');
+    fireEvent.click(await screen.findByTestId('accion-eliminar'));
+    // Assert
+    expect(onAccion).toHaveBeenCalledWith(message, 'eliminar');
+  });
+
+  it('someone else’s nudge: only «Eliminar»', async () => {
+    draw(nudge('w'), false);
+    open('z-w');
+    await screen.findByTestId('accion-eliminar');
+    expect(screen.queryByTestId('accion-responder')).toBeNull();
+    expect(screen.queryByTestId('accion-info')).toBeNull();
+    expect(screen.queryByTestId('accion-destacar')).toBeNull();
+  });
+
+  it('a wink still sending has no menu yet', () => {
+    draw({ ...wink('yo'), estado: 'enviando' } as MensajeEnPantalla, true);
+    expect(screen.queryByTestId('menu-g-yo')).toBeNull();
+  });
+});

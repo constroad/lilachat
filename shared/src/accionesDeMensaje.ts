@@ -40,10 +40,13 @@ export function accionesDeMensaje(params: {
   esRespuestaDeHilo?: boolean;
   /** Ya lo destaqué: la acción es quitar la estrella. */
   destacado?: boolean;
+  /** A nudge or a wink line (José, 02/11): nothing to reply to, copy or forward, only deleted. */
+  funLine?: boolean;
 }): AccionesDeMensaje {
   if (params.eliminado) {
     return { responder: false, copiar: false, reenviar: false, editar: false, info: false, eliminarParaTodos: false, eliminarParaMi: true, fijar: null, hilo: false, destacar: null };
   }
+  if (params.funLine) return { ...NINGUNA, info: params.mio, eliminarParaTodos: params.mio, eliminarParaMi: true };
   return {
     responder: true,
     copiar: params.conTexto,

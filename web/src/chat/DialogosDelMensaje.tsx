@@ -7,6 +7,9 @@ import { Overlay, PrimaryButton } from '../ui/Overlay';
 import type { ResultadoDeAccion } from '../sync/envioPorSocket';
 import type { ChatSummary, MensajeEnPantalla } from './types';
 
+/** What «Info» shows for a line with no text (José, 02/11: a wink read «Archivo»), like the chat list. */
+const FUN_PREVIEW: Partial<Record<string, string>> = { zumbido: 'Zumbido', guino: 'Guiño' };
+
 const BOTON_SECUNDARIO = 'flex min-h-[44px] w-full items-center justify-center rounded-xl border border-outline/25 px-4 text-sm font-semibold hover:bg-background';
 
 /** Eliminar, como WhatsApp: «para todos» solo lo propio; «para mí» siempre. */
@@ -62,7 +65,7 @@ export function DialogoInfo(props: { chatId: string; mensaje: MensajeEnPantalla;
   }, [props.chatId, props.mensaje.seq, props.jwt]);
   return (
     <Overlay title="Info del mensaje" onClose={props.onCerrar}>
-      <p className="mb-4 line-clamp-3 rounded-lg bg-background px-3 py-2 text-sm">{props.mensaje.body ?? 'Archivo'}</p>
+      <p className="mb-4 line-clamp-3 rounded-lg bg-background px-3 py-2 text-sm">{props.mensaje.body ?? FUN_PREVIEW[props.mensaje.kind] ?? 'Archivo'}</p>
       {error ? <p role="alert" className="text-sm text-error">{error}</p> : null}
       {miembros === null && !error ? <div className="h-16 animate-pulse rounded-lg bg-background" /> : null}
       {GRUPOS.map(({ estado, titulo }) => {

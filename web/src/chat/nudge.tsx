@@ -147,9 +147,10 @@ export function useFunInRow(chat: { id: string; muted?: boolean; lastMessage: { 
 }
 
 /** «Ana te mandó un zumbido» / «Mandaste un zumbido», on the side of who sent it, like messages (José, 21/10). */
-export function NudgeLine({ seq, mine, author, at }: { seq: number; mine: boolean; author?: string; at?: string }) {
+export function NudgeLine({ seq, mine, author, at, menu }: { seq: number; mine: boolean; author?: string; at?: string; /** The message menu, to delete it (José, 02/11). */ menu?: ReactNode }) {
   return (
-    <div data-testid="linea-zumbido" className={`my-1.5 flex ${mine ? 'justify-end' : 'justify-start'}`}>
+    <div data-testid="linea-zumbido" className={`group my-1.5 flex items-center gap-1 ${mine ? 'justify-end' : 'justify-start'}`}>
+      {mine ? menu : null}
       <span className={`inline-flex max-w-[88%] flex-wrap items-center gap-x-2 gap-y-0.5 rounded-2xl border border-primary/20 px-3 py-1 text-[13px] font-semibold ${mine ? 'bg-primary/10' : 'bg-surface'}`}>
         <span className="grid h-6 w-6 place-items-center rounded-full bg-primary text-on-primary"><Vibrate size={13} /></span>
         {mine ? 'Mandaste un zumbido' : author ? `${author} te mandó un zumbido` : 'Te mandaron un zumbido'}
@@ -158,6 +159,7 @@ export function NudgeLine({ seq, mine, author, at }: { seq: number; mine: boolea
           Ver otra vez
         </button>
       </span>
+      {mine ? null : menu}
     </div>
   );
 }
@@ -167,13 +169,14 @@ export function NudgeLine({ seq, mine, author, at }: { seq: number; mine: boolea
  * see which wink it was): the character (or the emoji)
  * on the left, who sent it and which wink on the right, and «Ver otra vez».
  */
-export function WinkLine({ seq, wink, mine, author, at, onReturn }: { seq: number; wink?: string; mine: boolean; author?: string; at?: string; onReturn?: (wink: WinkId) => void }) {
+export function WinkLine({ seq, wink, mine, author, at, onReturn, menu }: { seq: number; wink?: string; mine: boolean; author?: string; at?: string; onReturn?: (wink: WinkId) => void; /** The message menu, to delete it (José, 02/11). */ menu?: ReactNode }) {
   const known = winkById(wink);
   const [returned, setReturned] = useState(false);
   const returnable = Boolean(known && onReturn && canReturnWink({ wink, mine }));
   const lines = winkCardLines({ wink, mine, author, time: at ? formatClock(at) : undefined });
   return (
-    <div data-testid={`linea-guino-${seq}`} className={`my-2 flex ${mine ? 'justify-end' : 'justify-start'}`}>
+    <div data-testid={`linea-guino-${seq}`} className={`group my-2 flex items-center gap-1 ${mine ? 'justify-end' : 'justify-start'}`}>
+      {mine ? menu : null}
       <div className={`flex w-[300px] max-w-[88%] items-center gap-3 rounded-2xl border border-primary/20 p-2.5 ${mine ? 'bg-primary/10' : 'bg-surface'}`}>
         <span className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-primary/10">
           {known?.kind === 'character' ? <WinkCharacter wink={known} size={winkTileIsProp(known) ? 50 : 40} /> : known ? <span className="text-[30px] leading-none">{known.hero}</span> : <Heart size={22} className="text-primary" />}
@@ -198,6 +201,7 @@ export function WinkLine({ seq, wink, mine, author, at, onReturn }: { seq: numbe
           </span>
         </span>
       </div>
+      {mine ? null : menu}
     </div>
   );
 }

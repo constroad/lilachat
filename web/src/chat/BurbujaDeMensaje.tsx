@@ -62,8 +62,9 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
   if (mensaje.kind === 'system' && mensaje.system?.evento === 'llamada') return <LineaDeLlamada mensaje={mensaje} />;
   if (mensaje.kind === 'system') return <LineaDeSistema mensaje={mensaje} />;
   // Deleted for everyone, a nudge or a wink is a deleted message, not its line (22/10).
-  if (mensaje.kind === 'zumbido' && !mensaje.deletedAt) return <NudgeFromContext seq={mensaje.seq} mine={mio} senderId={mensaje.senderId} at={mensaje.at} />;
-  if (mensaje.kind === 'guino' && !mensaje.deletedAt) return <WinkFromContext seq={mensaje.seq} wink={mensaje.wink} mine={mio} senderId={mensaje.senderId} at={mensaje.at} />;
+  // Their menu deletes them like in the app (José, 02/11).
+  if (mensaje.kind === 'zumbido' && !mensaje.deletedAt) return <NudgeFromContext seq={mensaje.seq} mine={mio} senderId={mensaje.senderId} at={mensaje.at} menu={<MenuDelMensaje mensaje={mensaje} mio={mio} />} />;
+  if (mensaje.kind === 'guino' && !mensaje.deletedAt) return <WinkFromContext seq={mensaje.seq} wink={mensaje.wink} mine={mio} senderId={mensaje.senderId} at={mensaje.at} menu={<MenuDelMensaje mensaje={mensaje} mio={mio} />} />;
   if (props.flat) return <FlatMessage {...props} />;
   return (
     <div data-testid={`mensaje-${mensaje.clientKey}`} className={`group flex items-start gap-1 ${agrupado ? 'mt-1' : 'mt-3'} ${mio ? 'flex-row-reverse' : ''}`}>
@@ -166,15 +167,15 @@ function FlatMessage(props: Props) {
 }
 
 /** The nudge line with the author's name as this person knows them. */
-function NudgeFromContext({ seq, mine, senderId, at }: { seq: number; mine: boolean; senderId: string; at: string }) {
+function NudgeFromContext({ seq, mine, senderId, at, menu }: { seq: number; mine: boolean; senderId: string; at: string; menu: ReactNode }) {
   const { nombres } = useConversacion();
-  return <NudgeLine seq={seq} mine={mine} author={nombres.get(senderId)} at={at} />;
+  return <NudgeLine seq={seq} mine={mine} author={nombres.get(senderId)} at={at} menu={menu} />;
 }
 
 /** The wink line, the same way (José, 21/10). */
-function WinkFromContext({ seq, wink, mine, senderId, at }: { seq: number; wink?: string; mine: boolean; senderId: string; at: string }) {
+function WinkFromContext({ seq, wink, mine, senderId, at, menu }: { seq: number; wink?: string; mine: boolean; senderId: string; at: string; menu: ReactNode }) {
   const { nombres, onReturnWink } = useConversacion();
-  return <WinkLine seq={seq} wink={wink} mine={mine} author={nombres.get(senderId)} at={at} onReturn={onReturnWink} />;
+  return <WinkLine seq={seq} wink={wink} mine={mine} author={nombres.get(senderId)} at={at} onReturn={onReturnWink} menu={menu} />;
 }
 
 function AuthorName({ senderId, clientKey }: { senderId: string; clientKey: string }) {

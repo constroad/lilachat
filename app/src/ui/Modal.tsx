@@ -32,8 +32,8 @@ export const useOverlayLevel = () => useContext(OverlayLevel);
  * modal and sends its keyboard event. Shown in the same render, or one render
  * later, the event won the race and the chat still jumped (emulator, 20/10).
  */
-export function Modal(props: ModalProps & { frameWindow?: string }) {
-  const { frameWindow = DEFAULT_FRAME_WINDOW, onShow, ...modalProps } = props;
+export function Modal(props: ModalProps & { frameWindow?: string; measured?: boolean }) {
+  const { frameWindow = DEFAULT_FRAME_WINDOW, measured = true, onShow, ...modalProps } = props;
   const level = useContext(OverlayLevel);
   const host = useOverlayHost();
   const visible = props.visible ?? true;
@@ -41,7 +41,8 @@ export function Modal(props: ModalProps & { frameWindow?: string }) {
   useEffect(() => {
     if (!visible) return;
     // From the moment it is asked for until Android shows it: the frames of «abrir-hoja».
-    beginInteraction(frameWindow);
+    // `measured: false` = the child measures itself (`Sheet` ends at its own slide).
+    if (measured) beginInteraction(frameWindow);
     const release = openOverlay();
     let frame = requestAnimationFrame(() => {
       frame = requestAnimationFrame(() => setCounted(true));
@@ -51,9 +52,9 @@ export function Modal(props: ModalProps & { frameWindow?: string }) {
       setCounted(false);
       setTimeout(release, RELEASE_AFTER_CLOSE_MS);
     };
-  }, [visible, frameWindow]);
+  }, [visible, frameWindow, measured]);
   const shown = (event: Parameters<NonNullable<ModalProps['onShow']>>[0]) => {
-    endInteractionAfterPaint(frameWindow);
+    if (measured) endInteractionAfterPaint(frameWindow);
     onShow?.(event);
   };
   if (host && IN_WINDOW_OVERLAYS) {

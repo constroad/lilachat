@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BackHandler, StyleSheet, View } from 'react-native';
+import { removeLayer, replaceOrAppend } from './layers';
 
 /**
  * Where the in-window overlays are drawn (plan 1, F1). A sheet or a full-screen
@@ -25,17 +26,13 @@ export const useOverlayHost = () => useContext(OverlayHostContext);
 let lastOverlayId = 0;
 export const newOverlayId = () => ++lastOverlayId;
 
-function replaceOrAppend(layers: Layer[], layer: Layer): Layer[] {
-  const present = layers.some((existing) => existing.id === layer.id);
-  return present ? layers.map((existing) => (existing.id === layer.id ? layer : existing)) : [...layers, layer];
-}
-
 export function OverlayHost(props: { children: ReactNode }) {
   const [layers, setLayers] = useState<Layer[]>([]);
   const handle = useMemo<OverlayHostHandle>(
     () => ({
       mount: (id, node, onBack) => setLayers((current) => replaceOrAppend(current, { id, node, onBack })),
-      unmount: (id) => setLayers((current) => current.filter((layer) => layer.id !== id)),
+      // A closed sheet says «remove me» on every render: the same array back skips the redraw.
+      unmount: (id) => setLayers((current) => removeLayer(current, id)),
     }),
     []
   );

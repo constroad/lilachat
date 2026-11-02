@@ -197,6 +197,92 @@ esté vigente ese día.
 
 ## 5. Avance
 
+### Estado por fase (02/11/2026, 16:00)
+
+| Fase | Estado | Falta |
+| --- | --- | --- |
+| F0 Medir | **Hecha.** En `main`, OTA `f4ca42ef` en vivo, probada en el emulador | 2 min en el teléfono de José para el número real |
+| F1 Fuera los modales | **En curso** (rama `fluidez-f1`). Host en la misma ventana, capas animadas, puente de contextos, `Sheet` con arrastre, hoja de avisos migrada | E2E en el emulador (APK de prueba compilando), medir contra §5.1, pasar las otras 31 hojas a `Sheet`, borrar `overlays`/`freeze`, OTA |
+| F2 Visor de fotos | Motor del zoom desde la burbuja escrito con tests (fuera del repo hasta cerrar F1) | Cablearlo en la burbuja y el visor |
+| F3 Teclado | Pendiente | Cierre arrastrando, salto al cerrar, sin `runOnJS` al terminar |
+| F4 Toque y envío | Pendiente | Enviar traba el JS ~0,5 s (§5.1); ripple nativo en filas y botones |
+| F5a Lectura síncrona | Pendiente | Chat frío pintado en el primer cuadro; borrar `memoriaDeChats` |
+| F5b SQLCipher | Pendiente | Va en el próximo APK |
+| F6 Higiene | Pendiente | `moti`, `useLegacyPackaging`, umbral en `rn-perf` |
+
+### Bitácora
+
 | Fecha | Fase | Estado |
 | --- | --- | --- |
-| 02/11/2026 | F0 | En curso: contador de cuadros + resumen en Diagnóstico |
+| 02/11/2026 | F0 | Código en `main` (46177fb): motor `diagnostico/frames.ts` con tests, samplers JS (rAF) y UI (frame callback de Reanimated) en `frameMonitor.ts` + `FrameMonitorHost`, ventanas abrir-chat · teclado-abrir/cerrar · abrir-foto · abrir-hoja · enviar, bloque «Fluidez» en Ajustes › Diagnóstico. Pendiente: OTA, línea base en el emulador (`gfxinfo`) y 2 min del teléfono de José |
+| 02/11/2026 | F0 | OTA `f4ca42ef` publicada y verificada en vivo (runtime 62ff8b1c, git 46177fb); rn-smoke 3/3 limpio, heap 24 MB. E2E en `lilafotos-qa`: el bloque «Fluidez» de Diagnóstico muestra las seis interacciones. Línea base en §5.1 |
+| 02/11/2026 | F1 | Rama `fluidez-f1`: `ui/overlay/OverlayHost` (raíz de la sesión y del chat) + `OverlayModal` (capas con slide/fade de Reanimated, atrás cierra la de arriba); el wrapper `ui/Modal` usa el host más cercano, con interruptor `IN_WINDOW_OVERLAYS`. `ui/Sheet` con arrastre para cerrar (`sheetGesture`, tests) y la hoja de avisos migrada. Pendiente: E2E en el emulador, medir contra F0, migrar las 31 hojas restantes, borrar `overlays`/`freeze` |
+
+### 5.1 Línea base (02/11/2026, antes de F1)
+
+Emulador `lilafotos-qa` (Pixel 6, Android 15), APK 0.1.176 de release con la OTA
+`f4ca42ef`, espacio Test, canal #general. Dos fuentes: `dumpsys gfxinfo` (cuadros
+del sistema con jank, por interacción, 5 repeticiones) y el propio contador de F0
+(cuadros que no llegaron en el hilo JS y en el de UI). El emulador no es un
+teléfono: sirve para comparar antes y después en la misma máquina; el número que
+vale para José sale de su teléfono.
+
+**gfxinfo** (cuadros con jank por interacción; mediana · peor):
+
+| Interacción | Jank | p99 |
+| --- | --- | --- |
+| Abrir #general (en la memoria de 10 chats) | 14 · 16 de ~70 | 65 · 85 ms |
+| Abrir el teclado | 10 · 14 | 150 · 400 ms |
+| Cerrar el teclado | 15 · 23 | 200 · 450 ms |
+| Menú de la cabecera (`Modal` fade) | 12 · 18 de ~61 | 85 · 109 ms |
+| Clip (`Modal` slide) | 8 · 14 de ~55 | 101 · 250 ms |
+| Enviar un texto | 13 · 13 de ~28 | 65 · 117 ms |
+
+**Contador de F0** (cuadros caídos; mediana · peor):
+
+| Interacción | Veces | JS | UI |
+| --- | --- | --- | --- |
+| Abrir un chat | 6 | 0 · 4 | 0 · 4 |
+| Abrir una hoja | 12 | 5 · 19 | 4 · 15 |
+| Enviar un mensaje | 4 | **29 · 88** | 5 · 8 |
+| Abrir el teclado | 9 | 14 · 31 | 10 · 24 |
+| Cerrar el teclado | 8 | 12 · 15 | 8 · 14 |
+
+**Hallazgo nuevo: enviar traba el hilo JS ~0,5 s** (29 cuadros de mediana en la
+ventana de 600 ms). El usuario no lo ve como «la burbuja tarda» porque la burbuja
+pendiente sale antes, pero todo lo que depende del JS en ese medio segundo
+(scroll, teclado, el próximo toque) se congela. Pasa a ser el primer ítem de F4
+(nombre nuevo: «F4 Toque y envío»): perfilar qué corre al enviar (persistencia de
+la cola, cifrado y guardado en SQLite, re-render de la lista) y sacarlo del
+camino del toque.
+
+Abrir #general da 0 en JS porque ese chat está en `memoriaDeChats`; un chat frío
+se mide en F5a.
+
+### 5.2 F1 medida (02/11/2026, 16:05, APK de prueba de la rama `fluidez-f1`)
+
+Mismo emulador, mismo guion y mismo canal que §5.1. El emulador arrancó limpio
+(su instantánea), así que el primer «abrir chat» de la tanda vino frío.
+
+| Interacción | Jank antes | Jank con F1 | p99 antes | p99 con F1 |
+| --- | --- | --- | --- | --- |
+| Abrir #general | 14 · 16 | **7 · 7** | 65 · 85 ms | **300 · 450 ms** |
+| Abrir el teclado | 10 · 14 | 7 · 10 | 150 · 400 ms | **32 · 150 ms** |
+| Cerrar el teclado | 15 · 23 | **6 · 7** | 200 · 450 ms | **32 · 48 ms** |
+| Menú de la cabecera | 12 · 18 | **4 · 5** | 85 · 109 ms | **32 · 57 ms** |
+| Clip | 8 · 14 | 7 · 12 | 101 · 250 ms | 77 · 97 ms |
+| Enviar un texto | 13 · 13 | 8 · 13 | 65 · 117 ms | 65 · 97 ms |
+
+Todo mejora menos el peor cuadro al abrir el chat. La causa estaba en el
+host: cada hoja CERRADA del chat le pedía «sácame» en cada render, y el host
+recibía siempre una lista nueva y se redibujaba de gusto. `layers.ts` devuelve
+la MISMA lista cuando no hay nada que sacar (test). Se vuelve a medir en el
+próximo APK de prueba.
+
+**E2E funcional de F1 en el emulador:** menú de la cabecera (fundido, dentro de
+la ventana), «atrás» cierra solo la capa de arriba, detalle del chat como capa,
+hoja de avisos encima del detalle (se cierra arrastrando, con «atrás» y tocando
+el fondo), hilo a pantalla completa con el teclado (la barra sobre el teclado),
+hoja de renombrar con foco automático y botones sobre el teclado, el chat de
+atrás conserva su posición al cerrar el hilo. Sin caídas ni errores de JS.
+QA: 6 mensajes de prueba borrados con «Eliminar para todos».

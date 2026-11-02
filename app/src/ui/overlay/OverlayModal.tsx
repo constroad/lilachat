@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { StyleSheet, type ModalProps } from 'react-native';
 import Animated, { FadeIn, FadeOut, runOnJS, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { newOverlayId, type OverlayHostHandle } from './OverlayHost';
+import { useContextBridge } from './contextBridge';
 
 /**
  * `Modal` drawn by an `OverlayHost` instead of a second window (plan 1, F1).
@@ -25,6 +26,8 @@ type Props = Pick<ModalProps, 'visible' | 'animationType' | 'onRequestClose' | '
 export function OverlayModal(props: Props) {
   const { host, visible, animationType, onRequestClose, onShown, testID, children } = props;
   const id = useRef(newOverlayId()).current;
+  // The host is higher in the tree: the providers between it and here travel with the layer.
+  const bridge = useContextBridge();
   // The host keeps a snapshot of the callbacks; the latest render's ones answer.
   const latest = useRef({ onRequestClose, onShown });
   latest.current = { onRequestClose, onShown };
@@ -37,7 +40,7 @@ export function OverlayModal(props: Props) {
     host.mount(
       id,
       <Layer key={id} animationType={animationType} testID={testID} onShown={() => latest.current.onShown?.()}>
-        {children}
+        {bridge(children)}
       </Layer>,
       () => latest.current.onRequestClose?.(BACK_EVENT)
     );

@@ -4995,6 +4995,77 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 186. Lilachat como destino de «Compartir» desde YouTube, Instagram, TikTok, Facebook y cualquier app (01/11/2026, APK 0.1.176)
+
+José: «¿Por qué en Facebook, Instagram, YouTube o TikTok, cuando quiero
+compartir algo, no aparece Lilachat?». Causa: la app no declaraba ningún
+filtro `SEND`, así que Android no la ofrecía. Es nativo: va en APK, no por OTA.
+
+**Qué entra (git 0610242, 553bc64, e684c9f, bf2cf00, 80166a4).**
+
+- `app.json › intentFilters`: `SEND` y `SEND_MULTIPLE` con `*/*` y categoría
+  `DEFAULT`. Lilachat sale en la hoja de «Compartir» de cualquier app.
+- Módulo local `app/modules/share-into` (autolink por el nombre del archivo
+  `ShareIntoPackage.kt`). Un `ReactActivityLifecycleListener` lee el intent en
+  `onCreate`, `onResume` y `onNewIntent`: `onResume` cubre el intent que Expo
+  suelta mientras carga (DEPLOY §4-bis.9). Al atenderlo lo vacía (acción
+  `MAIN`, sin extras ni `clipData`): girar la pantalla o volver de Recientes no
+  lo comparte otra vez. Ignora `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY`.
+- **Seguridad:** todo lo compartido es de NO confianza. Solo se aceptan URIs
+  `content://` de OTRA app. Se bloquean `file://` y el proveedor propio de
+  Lilachat: si no, una app podía hacer que Lilachat subiera sus propios
+  archivos privados. Máximo 10 archivos. El nombre se reduce al último segmento
+  (`../../etc/passwd` → `passwd`) y el tamaño se mide después de copiar.
+- Motor puro `app/src/chat/reenviar/incomingShare.ts` (7 tests). Arma el plan:
+  - Con un enlace de YouTube, que llega con su título como asunto, se manda
+    solo el enlace, como WhatsApp.
+  - El asunto vale solo si no hay texto ni archivos.
+  - Con archivos, el texto va como pie del primero.
+  - El resumen bajo el título dice «1 foto», «3 videos», «2 archivos» o la
+    primera línea del texto.
+- `ForwardScreen.tsx` reemplaza a `PantallaDeReenviar.tsx`. Es una sola
+  pantalla para «Reenviar» y para «Compartir en», con hasta 5 chats.
+- `knownChats.ts`: los chats del espacio abierto primero, luego los
+  personales, sin duplicados. `useKnownChats` usa `useCached`. Si la app
+  arranca en frío por un «Compartir», la caché del espacio todavía está vacía;
+  sin esto solo salían los chats personales.
+- `IncomingShareHost.tsx`, montado en `NavegacionDeSesion`: si se manda a un
+  solo chat, cambia al espacio de ese chat y lo abre.
+
+**Descargar el video de esas redes:** no entra. José pidió verlo adentro
+(ya existe desde la 0.1.152) y además una forma de bajarlo. Se le propusieron dos
+caminos y falta su elección:
+1. Un «Descargar» que abre la app de la red, donde ya existe «Guardar».
+2. Bajarlo en el servidor con yt-dlp en la mini, con límites. Va contra los
+   términos de uso, y YouTube puede bloquear la IP.
+
+**Verificado (01/11, emulador `lilafotos-qa`, APK final 0.1.176/177):**
+
+- La hoja de «Compartir» muestra Lilachat primero.
+- Un enlace de YouTube compartido:
+  - «Compartir en» muestra solo el enlace, sin el asunto.
+  - Se mandó a Test `#general`.
+  - Salió «Enviado a #general» y se abrió ese chat.
+  - El mensaje llegó con la vista previa de YouTube.
+- Una foto compartida desde la app Archivos:
+  - «Compartir en» mostró «1 foto».
+  - Se subió a Test `#general` (`estado sent`).
+- Los dos mensajes se borraron con «Eliminar para todos».
+- El archivo de prueba se borró del emulador.
+- La app volvió al espacio Constroad.
+- `rn-smoke`: 3 aperturas en frío limpias.
+- LilaStore:
+  - Publicada 0.1.176 (177), `/d/6ae7f9fa3a5e366dfa9560a0`.
+  - La API y la descarga real coinciden: sha256 `432c6914…4381`, 42 950 616 bytes.
+
+**Trampa de la prueba:** `adb shell am start -a SEND --eu android.intent.extra.STREAM
+content://media/... --grant-read-uri-permission` NO llega a la app. El shell no
+puede conceder lectura de una foto de MediaStore que no es suya. El selector de
+Android falla con `SecurityException` en `UriGrantsManagerService` y no
+abre nada. Parece un bug de Lilachat y no lo es. La prueba de archivos se hace
+desde una app real: Archivos (DocumentsUI) → mantener presionado → Compartir.
+Google Fotos pide iniciar sesión en el emulador.
+
 ## 185. «Te ataco»: 12 guiños que le pegan a la pantalla del otro, y «Devolver» (02/11/2026, servidor + OTA + web)
 
 José rechazó la Telenovela («¿te parece que son graciosos y que los usuarios

@@ -585,6 +585,9 @@ APK 0.1.172: versionCode 173, runtime `14d9450c`, publicado en LilaStore `stable
 APK 0.1.173: versionCode 174, runtime `110ed71a`, con «Contestar» desde el bloqueo como broadcast (pendiente 114).
 (`https://lilastore.constroad.com/d/6ae1e472c97a234c836c302b`, 42 178 868 bytes). `minVersionCode`
 sigue en 0: obligar a actualizar es decisión de José. Resultados del E2E: ARCHITECTURE §137 (B4).
+APK 0.1.176: versionCode 177, runtime `62ff8b1c`, publicado en LilaStore `stable` el 01/11/2026
+(`https://lilastore.constroad.com/d/6ae7f9fa3a5e366dfa9560a0`, 42 950 616 bytes): Lilachat como destino
+de «Compartir» (ARCHITECTURE §186). `minVersionCode` sigue en 0.
 
 ## 5. Errores conocidos y arreglo
 

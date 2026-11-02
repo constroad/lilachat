@@ -4995,6 +4995,57 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 187. «Descargar» en el reproductor de videos: se guarda en la app de la red (01/11/2026, OTA)
+
+José pidió bajar videos de YouTube, Instagram, TikTok y Facebook desde un botón. Le
+ofrecí dos caminos:
+1. Guardarlo en la app de la red.
+2. Bajarlo con yt-dlp en la mini.
+
+Eligió el 1: «no queremos que alguna red nos bloquee». **Nuestro servidor no descarga
+nada.**
+
+**Qué entra (git 343bada + b86fd3f, OTA `86358f32`, runtime `62ff8b1c`).**
+
+- `videoSaveHint(provider)` en `shared/src/videoEmbed.ts` (3 tests). Da los pasos por
+  red y dice si el video queda en el teléfono:
+  - TikTok: «Compartir» → «Guardar video».
+  - Instagram: «Compartir» → «Descargar», solo en reels de cuentas públicas que lo permiten.
+  - Facebook: «···» → la opción de descargar.
+  - En esas tres, si la opción no aparece, el texto dice que el autor o la red no lo
+    permiten. Terminan con «compártelo a Lilachat», por §186.
+  - YouTube no deja un archivo en la galería; su «Descargar» es solo sin conexión dentro
+    de su app. Se dice así y no se promete otra cosa.
+- `VideoEmbedPlayer.tsx`:
+  - Abajo del video hay un botón «Descargar» (`btn-descargar-video`).
+  - Abre una hoja (`guia-descargar-video`) con los pasos, «Abrir en <red>» y «Cerrar».
+  - «Abrir en <red>» abre el enlace; Android lo manda a la app nativa si está instalada.
+  - La hoja se cierra sola al cambiar de video.
+- Los nombres de los menús los cambian las redes. Por eso cada paso dice qué hacer si
+  la opción falta. Las fuentes públicas no coinciden en los nombres exactos; consulta
+  del 01/11.
+- **Solo en el teléfono.** La web no lo tiene: guardar en la galería y volver por
+  «Compartir» es un flujo del teléfono.
+
+**Verificado (01/11, emulador `lilafotos-qa`, APK 0.1.176 + OTA `86358f32`):**
+
+- `rn-smoke`: 3 aperturas en frío limpias.
+- Se mandó un enlace de YouTube a Test `#general` y se abrió el reproductor.
+- «Descargar» mostró «Descargar de YouTube» con los dos pasos de YouTube.
+- «Abrir en YouTube» abrió la app nativa de YouTube (`com.google.android.youtube`).
+- Al volver, la hoja seguía abierta; «Cerrar» la cerró.
+- El mensaje se borró con «Eliminar para todos» y la app volvió al espacio Constroad.
+- Las variantes de TikTok, Instagram y Facebook quedan cubiertas por los tests del motor,
+  no por el emulador, que no tiene esas apps.
+
+**Trampa del emulador:**
+
+- `lilafotos-qa` arranca desde una instantánea del 30/10 que trae su propio disco. Al
+  apagarlo con `-no-snapshot-save`, lo instalado después se pierde.
+- Este arranque volvió con el APK 0.1.175 aunque la 0.1.176 ya se había instalado.
+- Antes de `rn-smoke` o de un OTA, mira `dumpsys package com.lilachat.app | grep versionCode`.
+  Si no es el del APK vigente, haz `adb install -r` de ese APK.
+
 ## 186. Lilachat como destino de «Compartir» desde YouTube, Instagram, TikTok, Facebook y cualquier app (01/11/2026, APK 0.1.176)
 
 José: «¿Por qué en Facebook, Instagram, YouTube o TikTok, cuando quiero
@@ -5032,12 +5083,8 @@ filtro `SEND`, así que Android no la ofrecía. Es nativo: va en APK, no por OTA
 - `IncomingShareHost.tsx`, montado en `NavegacionDeSesion`: si se manda a un
   solo chat, cambia al espacio de ese chat y lo abre.
 
-**Descargar el video de esas redes:** no entra. José pidió verlo adentro
-(ya existe desde la 0.1.152) y además una forma de bajarlo. Se le propusieron dos
-caminos y falta su elección:
-1. Un «Descargar» que abre la app de la red, donde ya existe «Guardar».
-2. Bajarlo en el servidor con yt-dlp en la mini, con límites. Va contra los
-   términos de uso, y YouTube puede bloquear la IP.
+**Descargar el video de esas redes:** José eligió guardarlo en la app de la red, sin
+descargas en nuestro servidor (§187).
 
 **Verificado (01/11, emulador `lilafotos-qa`, APK final 0.1.176/177):**
 

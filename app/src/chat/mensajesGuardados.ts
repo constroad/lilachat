@@ -17,6 +17,8 @@ import {
 import type { ChatMessage } from './useChat';
 import { chatIdsAMigrar, PREFIJO_CACHE_VIEJA } from './migracionDeCache';
 import { chatsEnMemoria } from './memoriaDeChats';
+import { chatMoved, closedBase, ensureChatMoved, forgetLegacyRows, moveAllChats, openEncryptedBase } from './messageBaseV2';
+import { messagesOfRows, rowOfMessage, type StoredRow } from './storedRows';
 import { measureWork } from '../diagnostico/frameMonitor';
 
 /**
@@ -61,6 +63,11 @@ let migracion: Promise<void> | null = null;
 /** The key once read and the migration once done (plan 1, F5a): the sync read needs them in hand. */
 let keyInHand: Uint8Array | null = null;
 let migrated = false;
+/** Version 2 (plan 1, F5b): a SQLCipher base with the rows in clear. `false` = version 1, envelopes in JS. */
+let plainRows = false;
+let opening: Promise<SQLite.SQLiteDatabase> | null = null;
+/** The background move from version 1 waits for the start to settle. */
+const MOVE_DELAY_MS = 3000;
 
 /**
  * Toda escritura pasa por UNA cola: SQLite admite una transacción por conexión,
@@ -119,19 +126,45 @@ function abrirBase(): SQLite.SQLiteDatabase {
   return base;
 }
 
+/** Version 2 when this binary has SQLCipher (plan 1, F5b); version 1 otherwise. */
+function currentBase(): Promise<SQLite.SQLiteDatabase> {
+  if (base) return Promise.resolve(base);
+  if (!opening) opening = openCurrentBase().finally(() => (opening = null));
+  return opening;
+}
+
+async function openCurrentBase(): Promise<SQLite.SQLiteDatabase> {
+  const key = await claveDeCache();
+  const encrypted = key ? openEncryptedBase(key) : null;
+  if (!key || !encrypted) return abrirBase();
+  base = encrypted;
+  plainRows = true;
+  setTimeout(() => void moveAllChats(key, writeMoved).catch(() => undefined), MOVE_DELAY_MS);
+  return encrypted;
+}
+
+/** Rows moved from version 1 never overwrite what version 2 already has: those are newer. */
+function writeMoved(chatId: string, messages: readonly ChatMessage[]): Promise<number> {
+  // Rejecting stops the move before its version 1 rows are deleted.
+  if (!base || !keyInHand) return Promise.reject(new Error('store_closed'));
+  return escribirFilas(base, keyInHand, chatId, messages, generacion, 'IGNORE');
+}
+
 /**
  * Abrir la base y, la primera vez, volcar la caché vieja. Todo lo público pasa
  * por acá, así que la migración corre una sola vez por proceso y antes de
  * cualquier lectura — sin eso, abrir un chat migrado a medias mostraría menos
  * de lo que ya se tenía.
  */
-async function listo(): Promise<SQLite.SQLiteDatabase | null> {
+async function listo(chatId?: string): Promise<SQLite.SQLiteDatabase | null> {
   try {
-    const abierta = abrirBase();
+    const abierta = await currentBase();
     const session = generacion;
     if (!migracion) migracion = migrarCacheVieja(abierta);
     await migracion;
     if (session === generacion) migrated = true;
+    // A chat still in version 1 moves before anyone reads or changes it in version 2.
+    if (chatId && plainRows && keyInHand) await ensureChatMoved(chatId, keyInHand, writeMoved);
     return abierta;
   } catch {
     return null;
@@ -174,13 +207,13 @@ async function escribirFilas(
   // Cifrar por lotes que CEDEN el hilo (FL12, §49 #5): una página del
   // hidratador eran 100 cifrados seguidos en JS puro, decenas de ms sin dibujar
   // justo mientras se scrollea. Un mensaje solo (lo más común) no cede nunca.
-  const filas: { seq: number; sobre: string }[] = [];
+  const filas: StoredRow[] = [];
   await porLotes(
     mensajes,
     LOTE_DE_CIFRADO,
     async (lote) => {
       const startedAt = performance.now();
-      for (const mensaje of lote) filas.push({ seq: mensaje.seq, sobre: JSON.stringify(cerrarCache(clave, mensaje)) });
+      for (const mensaje of lote) filas.push(plainRows ? rowOfMessage(mensaje) : { seq: mensaje.seq, body: null, json: JSON.stringify(cerrarCache(clave, mensaje)) });
       measureWork('cifrar', performance.now() - startedAt);
     },
     cederAlHilo
@@ -190,12 +223,9 @@ async function escribirFilas(
     if (deEstaSesion !== generacion) return;
     await abrirTransaccion(abierta, async () => {
       for (const fila of filas) {
-        const { changes } = await abierta.runAsync(
-          `INSERT OR ${conflicto} INTO mensajes (chatId, seq, sobre) VALUES (?, ?, ?)`,
-          chatId,
-          fila.seq,
-          fila.sobre
-        );
+        const { changes } = plainRows
+          ? await abierta.runAsync(`INSERT OR ${conflicto} INTO mensajes (chatId, seq, sobre, body) VALUES (?, ?, ?, ?)`, chatId, fila.seq, fila.json, fila.body)
+          : await abierta.runAsync(`INSERT OR ${conflicto} INTO mensajes (chatId, seq, sobre) VALUES (?, ?, ?)`, chatId, fila.seq, fila.json);
         escritas += changes;
       }
     });
@@ -209,6 +239,7 @@ async function abrirTransaccion(abierta: SQLite.SQLiteDatabase, tarea: () => Pro
 }
 
 function abrirFilas(clave: Uint8Array, filas: Fila[]): ChatMessage[] {
+  if (plainRows) return messagesOfRows<ChatMessage>(filas.map((fila) => ({ json: fila.sobre })));
   const mensajes: ChatMessage[] = [];
   for (const fila of filas) {
     const mensaje = abrirCache<ChatMessage>(clave, JSON.parse(fila.sobre) as Envelope);
@@ -231,7 +262,7 @@ export async function leerMensajesGuardados(
   opciones: { limite?: number; antesDe?: number } = {}
 ): Promise<ChatMessage[] | null> {
   try {
-    const [abierta, clave] = await Promise.all([listo(), claveDeCache()]);
+    const [abierta, clave] = await Promise.all([listo(chatId), claveDeCache()]);
     if (!abierta || !clave) return null;
 
     const condicion = opciones.antesDe ? ' AND seq < ?' : '';
@@ -266,7 +297,7 @@ export async function leerMensajesGuardados(
  * async read covers it. The cost lands in the open interaction as `leer-chat`.
  */
 export function readLastPageSync(chatId: string, limit: number): ChatMessage[] | null {
-  if (!keyInHand || !migrated || !base) return null;
+  if (!keyInHand || !migrated || !base || (plainRows && !chatMoved(chatId))) return null;
   try {
     const startedAt = performance.now();
     const rows = base
@@ -303,7 +334,7 @@ export async function leerTodosLosMensajes(
   ceder: () => Promise<void> = cederAlHilo
 ): Promise<ChatMessage[] | null> {
   try {
-    const [abierta, clave] = await Promise.all([listo(), claveDeCache()]);
+    const [abierta, clave] = await Promise.all([listo(chatId), claveDeCache()]);
     if (!abierta || !clave) return null;
     const mensajes: ChatMessage[] = [];
     let despuesDe = 0;
@@ -362,7 +393,7 @@ export async function importarMensajes(
   ceder: () => Promise<void> = cederAlHilo
 ): Promise<number | null> {
   const deEstaSesion = generacion;
-  const [abierta, clave] = await Promise.all([listo(), claveDeCache()]);
+  const [abierta, clave] = await Promise.all([listo(chatId), claveDeCache()]);
   if (!abierta || !clave) return null;
   return porLotes(
     mensajes,
@@ -399,7 +430,7 @@ export async function eliminarMensajesGuardados(chatId: string, seqs: readonly n
   if (seqs.length === 0) return;
   chatsEnMemoria.drop(chatId, seqs);
   try {
-    const abierta = await listo();
+    const abierta = await listo(chatId);
     if (!abierta) return;
     const marcas = seqs.map(() => '?').join(',');
     const deEstaSesion = generacion;
@@ -419,7 +450,7 @@ export async function eliminarMensajesGuardados(chatId: string, seqs: readonly n
  */
 async function reescribirGuardado(chatId: string, seq: number, cambio: (mensaje: ChatMessage) => ChatMessage): Promise<void> {
   try {
-    const [abierta, clave] = await Promise.all([listo(), claveDeCache()]);
+    const [abierta, clave] = await Promise.all([listo(chatId), claveDeCache()]);
     if (!abierta || !clave) return;
 
     const fila = await abierta.getFirstAsync<Fila>(
@@ -455,7 +486,7 @@ export function saveEditedMessage(chatId: string, seq: number, change: { body: s
 /** El cursor de sincronización de un chat: hasta qué `seq` ya se tiene. `null` = nada guardado. */
 export async function ultimoSeqGuardado(chatId: string): Promise<number | null> {
   try {
-    const abierta = await listo();
+    const abierta = await listo(chatId);
     if (!abierta) return null;
     const fila = await abierta.getFirstAsync<{ ultimo: number | null }>(
       'SELECT MAX(seq) AS ultimo FROM mensajes WHERE chatId = ?',
@@ -470,7 +501,7 @@ export async function ultimoSeqGuardado(chatId: string): Promise<number | null> 
 /** Todos los `seq` guardados de un chat, para que el hidratador encuentre los huecos. */
 export async function seqsGuardados(chatId: string): Promise<number[] | null> {
   try {
-    const abierta = await listo();
+    const abierta = await listo(chatId);
     if (!abierta) return null;
     const filas = await abierta.getAllAsync<{ seq: number }>(
       'SELECT seq FROM mensajes WHERE chatId = ? ORDER BY seq ASC',
@@ -501,7 +532,7 @@ export function precargarChat(chatId: string): void {
 export async function olvidarMensajesDelChat(chatId: string): Promise<void> {
   chatsEnMemoria.olvidar(chatId);
   try {
-    const abierta = await listo();
+    const abierta = await listo(chatId);
     if (!abierta) return;
     const deEstaSesion = generacion;
     await enCola(async () => {
@@ -525,8 +556,9 @@ export async function olvidarMensajes(): Promise<void> {
   generacion += 1;
   chatsEnMemoria.olvidarTodo();
   try {
-    const abierta = abrirBase();
+    const abierta = await currentBase();
     await enCola(() => abierta.runAsync('DELETE FROM mensajes'));
+    if (plainRows) await forgetLegacyRows();
     const viejas = (await AsyncStorage.getAllKeys()).filter((clave) => clave.startsWith(PREFIJO_CACHE_VIEJA));
     if (viejas.length > 0) await AsyncStorage.multiRemove(viejas);
     await SecureStore.deleteItemAsync(CLAVE_SECRETA, OPCIONES);
@@ -538,6 +570,9 @@ export async function olvidarMensajes(): Promise<void> {
     migracion = null;
     keyInHand = null;
     migrated = false;
+    // Version 2 was opened with the key just deleted: the next session opens it with its own.
+    if (plainRows) base = closedBase(base);
+    plainRows = false;
   }
 }
 
@@ -550,6 +585,7 @@ export async function resumenDelAlmacen(): Promise<{ chatId: string; ultimoSeq: 
   try {
     const abierta = await listo();
     if (!abierta) return [];
+    if (plainRows && keyInHand) await moveAllChats(keyInHand, writeMoved);
     return await abierta.getAllAsync<{ chatId: string; ultimoSeq: number; cantidad: number }>(
       'SELECT chatId, MAX(seq) AS ultimoSeq, COUNT(*) AS cantidad FROM mensajes GROUP BY chatId ORDER BY chatId'
     );

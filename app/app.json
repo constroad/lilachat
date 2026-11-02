@@ -134,7 +134,12 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "expo-sqlite",
+      [
+        "expo-sqlite",
+        {
+          "useSQLCipher": true
+        }
+      ],
       "expo-background-task",
       [
         "expo-camera",

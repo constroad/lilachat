@@ -391,6 +391,16 @@ cd /Users/josezamora/projects/lilachat/app && ls -t dist/lilachat-*.apk | tail -
 
 ## 4-bis. Actualizaciones OTA (solo JavaScript, sin APK nuevo)
 
+> **02/11/2026 — la OTA pasa a LilaStore.** Decisión de José: LilaStore aloja la
+> OTA de Expo de todas las apps RN (`lilastore/specs/features/OTA-CENTRALIZADA.md`),
+> con tokens `lso_` por app que se crean, revocan y regeneran desde su consola y
+> su APK, y `lila ota publish` / `lila ota cert` en lila-cli 0.12.0. Esta sección
+> describe lo que corre HOY y sigue valiendo hasta migrar. La migración se hace
+> después, con José: `lila ota cert lilachat certs/certificate.crt`, `updates.url`
+> → `https://lilastore.constroad.com/api/v1/apps/lilachat/ota/manifest`, APK nuevo
+> (cambia el runtime), y recién ahí borrar `server/src/ota`, `scripts/ota-publish.mts`
+> y el `OTA_PUBLISH_TOKEN` del `.env` en Torre.
+
 Desde la 0.1.171 la app trae `expo-updates` apuntando a nuestro propio server
 (`https://lilachat.constroad.com/api/ota/manifest`, sin EAS). Un cambio **solo de JavaScript o
 assets** llega a los teléfonos en silencio; un cambio **nativo** sigue necesitando un APK.

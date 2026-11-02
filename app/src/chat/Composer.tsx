@@ -1,7 +1,7 @@
 import { memo, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import { BackHandler, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { beginInteraction } from '../diagnostico/frameMonitor';
+import { beginInteraction, useRenderCost } from '../diagnostico/frameMonitor';
 import { Camera, Keyboard as Teclado, Paperclip, Send, Smile, X } from 'lucide-react-native';
 import { duracionDeVoz, insertarEnTexto, type MencionEnMensaje, type Seleccion } from '@lilachat/shared';
 import type { MencionElegida } from '@lilachat/shared';
@@ -112,6 +112,7 @@ export const Composer = memo(function Composer(props: {
    */
   modoSecreto?: 'bloqueado' | 'sealed';
 }) {
+  useRenderCost('compositor');
   const colores = useColores();
   // The bar is one point above the bubble (16 at Mediana, as it was).
   const font = useChatFont();

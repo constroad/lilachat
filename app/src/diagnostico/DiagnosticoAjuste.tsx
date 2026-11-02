@@ -131,6 +131,16 @@ const INTERACTION_LABELS: Record<string, string> = {
   enviar: 'Enviar un mensaje',
 };
 
+/** Where the JS time of an interaction went (F4): renders of each screen, the queue, the encryption. */
+const WORK_LABELS: Record<string, string> = {
+  chat: 'Chat',
+  'lista-chats': 'Lista',
+  'lista-espacio': 'Lista del espacio',
+  compositor: 'Barra',
+  cola: 'Cola',
+  cifrar: 'Cifrado',
+};
+
 /**
  * «Fluidez» (plan 1, F0): dropped frames per interaction, median and worst
  * case, on the JS thread and on the UI thread. The number that is compared
@@ -141,7 +151,7 @@ function FluidityBlock({ summary }: { summary: FrameSummary[] }) {
     <View className="gap-2 rounded-lg border border-outline/10 bg-surface p-3" testID="diag-fluidez">
       <Text className="text-[11px] font-semibold tracking-wide text-on-surface-variant">FLUIDEZ · CUADROS CAÍDOS (MEDIANA · PEOR)</Text>
       {summary.map((row) => (
-        <View key={row.name} className="flex-row items-center justify-between gap-2">
+        <View key={row.name} className="flex-row flex-wrap items-center justify-between gap-x-2">
           <Text className="flex-1 text-sm text-on-surface">
             {INTERACTION_LABELS[row.name] ?? row.name} · {row.count}×
           </Text>
@@ -151,6 +161,11 @@ function FluidityBlock({ summary }: { summary: FrameSummary[] }) {
           <Text className={row.uiMedian > FELT_FRAME_DROPS ? 'text-sm font-semibold text-error' : 'text-sm text-on-surface'}>
             UI {row.uiMedian} · {row.uiWorst}
           </Text>
+          {row.work.length > 0 ? (
+            <Text className="w-full text-[11px] text-on-surface-variant" testID={`diag-trabajo-${row.name}`}>
+              {row.work.map((work) => `${WORK_LABELS[work.label] ?? work.label} ${work.count}× ${work.ms} ms`).join(' · ')}
+            </Text>
+          ) : null}
         </View>
       ))}
     </View>

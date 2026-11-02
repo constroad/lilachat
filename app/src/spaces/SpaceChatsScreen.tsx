@@ -20,6 +20,7 @@ import { useSpaceClients } from './clients/useSpaceClients';
 import { ClientsSection } from './clients/ClientsSection';
 import { ArchivedClientsScreen } from './clients/ArchivedClientsScreen';
 import { askMuteDuration } from '../chat/askMuteDuration';
+import { useRenderCost } from '../diagnostico/frameMonitor';
 
 /** Several messages in a row reload the list once. */
 const RELOAD_DELAY_MS = 600;
@@ -37,6 +38,7 @@ const isInMyChatList = (chatId: string) => Boolean(chatsEnMemoria()?.some((chat)
 export type WorkspaceLink = 'directory' | 'members' | 'requests' | 'settings';
 
 export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; myUserId: string; active: boolean; openChatId: string | null; reloadKey?: number; onOpenChat: (chat: ChatSummary) => void; onChannels: () => void; onInvite: () => void; onWorkspace: (link: WorkspaceLink) => void; onNewDirect: () => void; onChats?: (chats: ChatSummary[]) => void; onRefresh?: () => void; onActivity: (tab: ActivityType) => void; apps?: SpaceApps; onExploreApps?: () => void }) {
+  useRenderCost('lista-espacio');
   const colors = useColores();
   const { space, jwt, myUserId, onOpenChat } = props;
   const [refreshing, setRefreshing] = useState(false);

@@ -13,13 +13,21 @@ import type { EntradaDiagnostico, EntradaPerf } from './motor';
  */
 export type Thread = 'js' | 'ui';
 export type FrameStats = { frames: number; dropped: number; worstMs: number };
-export type FrameReport = { name: string; durationMs: number; js: FrameStats; ui: FrameStats };
-export type FrameSummary = { name: string; count: number; jsMedian: number; jsWorst: number; uiMedian: number; uiWorst: number };
+/** Labeled JS work inside a window (a screen's render, the queue, the disk): total ms and how many times. */
+export type WorkTotals = Record<string, { ms: number; count: number }>;
+export type FrameReport = { name: string; durationMs: number; js: FrameStats; ui: FrameStats; work?: WorkTotals };
+export type WorkSummary = { label: string; ms: number; count: number };
+export type FrameSummary = { name: string; count: number; jsMedian: number; jsWorst: number; uiMedian: number; uiWorst: number; work: WorkSummary[] };
 
 /** A window nobody closes (the screen never painted what we waited for) still reports. */
 export const MAX_WINDOW_MS = 2_000;
 /** Prefix of the perf entries this engine writes; the summary reads it back. */
 export const FRAMES_OP_PREFIX = 'cuadros:';
+/** In a perf entry's `extra`: the ms (`w:`) and the times (`n:`) of each work label. */
+const WORK_MS_PREFIX = 'w:';
+const WORK_COUNT_PREFIX = 'n:';
+/** The summary shows only the costliest labels of each interaction. */
+const WORK_IN_SUMMARY = 3;
 const DEFAULT_INTERVAL_MS = 1000 / 60;
 /** The vsync interval is inferred from the window itself, between 165 Hz and 50 Hz. */
 const MIN_INTERVAL_MS = 6;
@@ -46,7 +54,7 @@ export function frameStats(deltas: readonly number[]): FrameStats {
   return { frames: deltas.length, dropped, worstMs: Math.round(worstMs) };
 }
 
-type OpenWindow = { startedAt: number; limitMs: number; js: number[]; ui: number[] };
+type OpenWindow = { startedAt: number; limitMs: number; js: number[]; ui: number[]; work: WorkTotals };
 
 /** The open interactions. Time is injected: the monitor passes `Date.now()`, the tests pass what they want. */
 export class FrameWindows {
@@ -61,7 +69,16 @@ export class FrameWindows {
 
   /** Opens (or restarts) the window of an interaction. */
   begin(name: string, now: number, limitMs = MAX_WINDOW_MS): void {
-    this.open.set(name, { startedAt: now, limitMs, js: [], ui: [] });
+    this.open.set(name, { startedAt: now, limitMs, js: [], ui: [], work: {} });
+  }
+
+  /** Labeled JS work, added to every open window. Nothing open: it belongs to no interaction. */
+  work(label: string, ms: number): void {
+    if (!(ms >= 0)) return;
+    for (const window of this.open.values()) {
+      const total = window.work[label] ?? { ms: 0, count: 0 };
+      window.work[label] = { ms: total.ms + ms, count: total.count + 1 };
+    }
   }
 
   /** One frame of a thread, `deltaMs` after the previous one. Windows past their limit close here. */
@@ -77,7 +94,7 @@ export class FrameWindows {
     const window = this.open.get(name);
     if (!window) return;
     this.open.delete(name);
-    this.onReport({ name, durationMs: now - window.startedAt, js: frameStats(window.js), ui: frameStats(window.ui) });
+    this.onReport({ name, durationMs: now - window.startedAt, js: frameStats(window.js), ui: frameStats(window.ui), work: window.work });
   }
 }
 
@@ -88,8 +105,17 @@ export function framesEntry(report: FrameReport, cuando: number): EntradaPerf {
     cuando,
     op: `${FRAMES_OP_PREFIX}${report.name}`,
     ms: report.durationMs,
-    extra: { js: report.js.dropped, ui: report.ui.dropped, jsWorst: report.js.worstMs, uiWorst: report.ui.worstMs, frames: report.ui.frames },
+    extra: { js: report.js.dropped, ui: report.ui.dropped, jsWorst: report.js.worstMs, uiWorst: report.ui.worstMs, frames: report.ui.frames, ...workExtra(report.work) },
   };
+}
+
+function workExtra(work: WorkTotals = {}): Record<string, number> {
+  const extra: Record<string, number> = {};
+  for (const [label, total] of Object.entries(work)) {
+    extra[`${WORK_MS_PREFIX}${label}`] = Math.round(total.ms);
+    extra[`${WORK_COUNT_PREFIX}${label}`] = total.count;
+  }
+  return extra;
 }
 
 /** Upper median: the middle element of the sorted values (for an even count, the higher one). */
@@ -100,13 +126,14 @@ function upperMedian(values: readonly number[]): number {
 
 /** Per interaction: how many times it was measured, and the median and worst drops of each thread. */
 export function summarizeFrames(entries: readonly EntradaDiagnostico[]): FrameSummary[] {
-  const byName = new Map<string, { js: number[]; ui: number[] }>();
+  const byName = new Map<string, { js: number[]; ui: number[]; extras: Record<string, number>[] }>();
   for (const entry of entries) {
     if (entry.tipo !== 'perf' || !entry.op.startsWith(FRAMES_OP_PREFIX)) continue;
     const name = entry.op.slice(FRAMES_OP_PREFIX.length);
-    const group = byName.get(name) ?? { js: [], ui: [] };
+    const group = byName.get(name) ?? { js: [], ui: [], extras: [] };
     group.js.push(entry.extra?.js ?? 0);
     group.ui.push(entry.extra?.ui ?? 0);
+    group.extras.push(entry.extra ?? {});
     byName.set(name, group);
   }
   return [...byName.entries()]
@@ -118,5 +145,20 @@ export function summarizeFrames(entries: readonly EntradaDiagnostico[]): FrameSu
       jsWorst: Math.max(...group.js),
       uiMedian: upperMedian(group.ui),
       uiWorst: Math.max(...group.ui),
+      work: summarizeWork(group.extras),
     }));
+}
+
+/** Per label, the median ms and times across the measurements (absent counts 0); the costliest first. */
+function summarizeWork(extras: readonly Record<string, number>[]): WorkSummary[] {
+  const labels = new Set(extras.flatMap((extra) => Object.keys(extra).filter((key) => key.startsWith(WORK_MS_PREFIX)).map((key) => key.slice(WORK_MS_PREFIX.length))));
+  return [...labels]
+    .map((label) => ({
+      label,
+      ms: upperMedian(extras.map((extra) => extra[`${WORK_MS_PREFIX}${label}`] ?? 0)),
+      count: upperMedian(extras.map((extra) => extra[`${WORK_COUNT_PREFIX}${label}`] ?? 0)),
+    }))
+    .filter((work) => work.ms > 0)
+    .sort((a, b) => b.ms - a.ms)
+    .slice(0, WORK_IN_SUMMARY);
 }

@@ -40,6 +40,7 @@ import { agendaPorTelefono, suscribirAgenda } from '../contacts/agendaEnMemoria'
 import { isSpaceChat } from '../spaces/spaceCache';
 import { ReadAllRow } from './ReadAllRow';
 import { askMuteDuration } from './askMuteDuration';
+import { useRenderCost } from '../diagnostico/frameMonitor';
 
 /**
  * La lista de chats (diseño Stitch «Lilachat: Chats»).
@@ -62,6 +63,7 @@ export function ChatListScreen({
   /** El chat abierto encima (FL1): sus mensajes se leen al llegar. */
   chatAbierto?: string | null;
 }) {
+  useRenderCost('lista-chats');
   const colores = useColores();
   /** Lo escrito y no mandado en cada chat (FL9): «Borrador: …» en la fila. */
   const borradores = useBorradores();

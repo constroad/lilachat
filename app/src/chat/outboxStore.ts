@@ -10,6 +10,7 @@ import {
 } from '@lilachat/shared';
 import { alConectar, sendOverSocket } from './socketClient';
 import { anotarEnvio } from './reenviar/frecuenciasDeEnvio';
+import { measureWork } from '../diagnostico/frameMonitor';
 
 /**
  * La cola de salida, PERSISTIDA.
@@ -77,8 +78,10 @@ export function hydrateOutbox(): Promise<void> {
 }
 
 export async function queueMessage(item: OutboxItem): Promise<void> {
+  const startedAt = performance.now();
   queue = enqueue(queue, item);
   notify();
+  measureWork('cola', performance.now() - startedAt);
   // Los «Chats frecuentes» al reenviar salen de acá (20/10).
   void anotarEnvio(item.chatId);
   await persist();

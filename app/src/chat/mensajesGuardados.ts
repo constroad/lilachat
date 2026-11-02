@@ -17,6 +17,7 @@ import {
 import type { ChatMessage } from './useChat';
 import { chatIdsAMigrar, PREFIJO_CACHE_VIEJA } from './migracionDeCache';
 import { chatsEnMemoria } from './memoriaDeChats';
+import { measureWork } from '../diagnostico/frameMonitor';
 
 /**
  * El almacén de mensajes del teléfono (F12.0): SQLite, una fila por mensaje,
@@ -166,7 +167,9 @@ async function escribirFilas(
     mensajes,
     LOTE_DE_CIFRADO,
     async (lote) => {
+      const startedAt = performance.now();
       for (const mensaje of lote) filas.push({ seq: mensaje.seq, sobre: JSON.stringify(cerrarCache(clave, mensaje)) });
+      measureWork('cifrar', performance.now() - startedAt);
     },
     cederAlHilo
   );

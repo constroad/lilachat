@@ -167,8 +167,8 @@ describe('summarizeFrames (the «Fluidez» block in Diagnóstico)', () => {
     ]);
 
     expect(summary).toEqual([
-      { name: 'abrir-chat', count: 3, jsMedian: 4, jsWorst: 9, uiMedian: 1, uiWorst: 3 },
-      { name: 'teclado-abrir', count: 1, jsMedian: 1, jsWorst: 1, uiMedian: 0, uiWorst: 0 },
+      { name: 'abrir-chat', count: 3, jsMedian: 4, jsWorst: 9, uiMedian: 1, uiWorst: 3, work: [] },
+      { name: 'teclado-abrir', count: 1, jsMedian: 1, jsWorst: 1, uiMedian: 0, uiWorst: 0, work: [] },
     ]);
   });
 
@@ -180,5 +180,84 @@ describe('summarizeFrames (the «Fluidez» block in Diagnóstico)', () => {
 
   it('nothing measured: empty', () => {
     expect(summarizeFrames([])).toEqual([]);
+  });
+});
+
+/**
+ * F4 needs to know WHERE the JS time goes (sending dropped 29 frames, §5.1):
+ * labeled work (a screen's render, the queue, the disk) is added to every open
+ * window and travels with its report.
+ */
+describe('work inside an interaction', () => {
+  const windows = () => {
+    const onReport = vi.fn<(report: FrameReport) => void>();
+    return { onReport, windows: new FrameWindows(onReport) };
+  };
+
+  it('adds up the time and the times of each label while the window is open', () => {
+    const { onReport, windows: w } = windows();
+    w.begin('enviar', 0);
+    w.work('chat-render', 40);
+    w.work('chat-render', 35.6);
+    w.work('cola', 3);
+    w.end('enviar', 600);
+
+    expect(onReport.mock.calls[0][0].work).toEqual({ 'chat-render': { ms: 75.6, count: 2 }, cola: { ms: 3, count: 1 } });
+  });
+
+  it('work with no window open is not kept for the next one', () => {
+    const { onReport, windows: w } = windows();
+    w.work('chat-render', 90);
+    w.begin('enviar', 0);
+    w.end('enviar', 600);
+
+    expect(onReport.mock.calls[0][0].work).toEqual({});
+  });
+
+  it('two windows open at once both count it', () => {
+    const { onReport, windows: w } = windows();
+    w.begin('enviar', 0);
+    w.begin('teclado-cerrar', 0);
+    w.work('lista-render', 12);
+    w.end('enviar', 100);
+    w.end('teclado-cerrar', 100);
+
+    expect(onReport.mock.calls.map(([report]) => report.work)).toEqual([{ 'lista-render': { ms: 12, count: 1 } }, { 'lista-render': { ms: 12, count: 1 } }]);
+  });
+
+  it('a negative or broken duration is ignored', () => {
+    const { onReport, windows: w } = windows();
+    w.begin('enviar', 0);
+    w.work('chat-render', -5);
+    w.work('chat-render', Number.NaN);
+    w.end('enviar', 100);
+
+    expect(onReport.mock.calls[0][0].work).toEqual({});
+  });
+
+  it('goes to the log as rounded ms and a count per label', () => {
+    const report: FrameReport = {
+      name: 'enviar',
+      durationMs: 600,
+      js: { frames: 10, dropped: 29, worstMs: 200 },
+      ui: { frames: 30, dropped: 5, worstMs: 50 },
+      work: { 'chat-render': { ms: 75.6, count: 2 } },
+    };
+    expect(framesEntry(report, 1).extra).toEqual({ js: 29, ui: 5, jsWorst: 200, uiWorst: 50, frames: 30, 'w:chat-render': 76, 'n:chat-render': 2 });
+  });
+
+  it('the summary keeps the three costliest labels by median ms (a missing label counts 0)', () => {
+    const entry = (extra: Record<string, number>): EntradaDiagnostico => ({ tipo: 'perf', cuando: 1, op: 'cuadros:enviar', ms: 600, extra: { js: 1, ui: 0, ...extra } });
+    const [summary] = summarizeFrames([
+      entry({ 'w:chat-render': 120, 'n:chat-render': 4, 'w:cola': 10, 'n:cola': 1, 'w:disco': 30, 'n:disco': 1, 'w:lista-render': 60, 'n:lista-render': 2 }),
+      entry({ 'w:chat-render': 100, 'n:chat-render': 3, 'w:cola': 8, 'n:cola': 1, 'w:lista-render': 50, 'n:lista-render': 2 }),
+      entry({ 'w:chat-render': 140, 'n:chat-render': 4, 'w:cola': 9, 'n:cola': 1, 'w:disco': 20, 'n:disco': 1, 'w:lista-render': 70, 'n:lista-render': 2 }),
+    ]);
+
+    expect(summary.work).toEqual([
+      { label: 'chat-render', ms: 120, count: 4 },
+      { label: 'lista-render', ms: 60, count: 2 },
+      { label: 'disco', ms: 20, count: 1 },
+    ]);
   });
 });

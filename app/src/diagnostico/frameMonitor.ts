@@ -1,3 +1,4 @@
+import { useLayoutEffect } from 'react';
 import { registrarPerf } from './diagnostico';
 import { FrameWindows, framesEntry, type FrameReport } from './frames';
 
@@ -70,4 +71,21 @@ export function endInteraction(name: string): void {
 /** Closes the window after the next frame: what we waited for is painted and that frame counts. */
 export function endInteractionAfterPaint(name: string): void {
   requestAnimationFrame(() => endInteraction(name));
+}
+
+/** Labeled JS work (ms) inside the open interactions (F4: where the time of a send goes). Free when none is open. */
+export function measureWork(label: string, ms: number): void {
+  if (windows.sampling) windows.work(label, ms);
+}
+
+/**
+ * The cost of a screen's render: from the start of its function to its layout
+ * effects, so its subtree rendered and committed. Counted only inside an open
+ * interaction; outside, two `performance.now()` per render.
+ */
+export function useRenderCost(label: string): void {
+  const startedAt = performance.now();
+  useLayoutEffect(() => {
+    measureWork(label, performance.now() - startedAt);
+  });
 }

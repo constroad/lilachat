@@ -8,8 +8,8 @@ import { ProgramadosDelChat } from './ProgramadosDelChat';
 import { ChatQueue } from './ChatQueue';
 import type { FlashListRef } from '@shopify/flash-list';
 import { ChatBottom, ChatKeyboardArea } from './ChatBottom';
-import type { MencionEnMensaje } from '@lilachat/shared';
-import { chatHasActionPlace, clientHeaderSubtitle, personOfMember } from '@lilachat/shared';
+import { chatHasActionPlace, clientHeaderSubtitle, personOfMember, type MencionEnMensaje } from '@lilachat/shared';
+import { useRenderCost } from '../diagnostico/frameMonitor';
 import { useFunActions } from './nudge';
 import { useCallBack } from './useCallBack';
 import { AttachSheet } from './AttachSheet';
@@ -101,6 +101,7 @@ export function ChatScreen({
   esBorrador = false, workspaceId, appId,
   onBack,
 }: PropsDelChat) {
+  useRenderCost('chat');
   const colores = useColores();
   const margenes = useMargenes();
   const secreto = useSecretChat({
@@ -433,7 +434,6 @@ export function ChatScreen({
 
       {fijar.franja}{esGrupoChat ? <GroupCallStrip chatId={chatId} chatName={nombreVisible} me={credential.userId} /> : null}{channelWork.tabs}<ContactNoteBanner chatId={chatId} jwt={credential.jwt} note={grupo.contactNote} />
       </View>
-      {/* Keyboard like Telegram (20/10): see `useScrollConTeclado`; the bar rides on the keyboard or the emoji panel in `ChatBottom`. */}
       <ChatKeyboardArea style={{ flex: 1, zIndex: 1 }}>
       {fijar.hoja}{channelWork.panel}
 

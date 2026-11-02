@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { forgetPhotoOrigin, openFromBubble, photoOriginOf, rememberPhotoOrigin } from './photoOrigin';
 
 /**
@@ -42,6 +42,7 @@ describe('photoOrigin', () => {
 
 describe('openFromBubble (the tap on a photo)', () => {
   beforeEach(() => forgetPhotoOrigin());
+  afterEach(() => vi.useRealTimers());
   const tapOn = (rect: [number, number, number, number]) => ({
     currentTarget: { measureInWindow: (done: (...r: [number, number, number, number]) => void) => done(...rect) },
   });
@@ -57,6 +58,28 @@ describe('openFromBubble (the tap on a photo)', () => {
     openFromBubble({ currentTarget: 7 }, 12, (seq) => opened.push(seq));
     expect(opened).toEqual([12]);
     expect(photoOriginOf(12)).toBeUndefined();
+  });
+
+  it('a measurement that answers later still arrives before the opening (the viewer needs the place)', () => {
+    vi.useFakeTimers();
+    let answer: (() => void) | undefined;
+    const late = { currentTarget: { measureInWindow: (done: (...r: [number, number, number, number]) => void) => (answer = () => done(40, 600, 220, 160)) } };
+    const opened: (number | undefined)[] = [];
+    openFromBubble(late, 12, (seq) => opened.push(photoOriginOf(seq)?.y));
+    expect(opened).toEqual([]);
+    answer?.();
+    expect(opened).toEqual([600]);
+    vi.advanceTimersByTime(500);
+    expect(opened).toEqual([600]);
+  });
+
+  it('a measurement that never answers still opens, a moment later (it fades in)', () => {
+    vi.useFakeTimers();
+    const silent = { currentTarget: { measureInWindow: () => undefined } };
+    const opened: number[] = [];
+    openFromBubble(silent, 12, (seq) => opened.push(seq));
+    vi.advanceTimersByTime(150);
+    expect(opened).toEqual([12]);
   });
 
   it('with nothing to open, nothing is measured', () => {

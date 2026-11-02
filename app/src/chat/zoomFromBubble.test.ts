@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fittedBox, interpolateRect, openingProgress, type Rect } from './zoomFromBubble';
+import { fittedBox, frameTransform, interpolateRect, openingProgress, type Rect } from './zoomFromBubble';
 
 /**
  * Plan 1, F2: the photo grows out of its bubble, as in Telegram. A frame with
@@ -68,5 +68,38 @@ describe('openingProgress (dragging an open photo down to close it)', () => {
 
   it('a screen with no height yet counts as open', () => {
     expect(openingProgress(50, 0)).toBe(1);
+  });
+});
+
+describe('frameTransform (the flight with transforms only, no layout per frame)', () => {
+  const target: Rect = { x: 0, y: 300, width: 400, height: 200 };
+
+  it('at the target nothing moves or scales', () => {
+    expect(frameTransform(target, target)).toEqual({ translateX: 0, translateY: 0, scaleX: 1, scaleY: 1, innerScaleX: 1, innerScaleY: 1 });
+  });
+
+  it('a bubble with the same shape: the clip and the photo shrink alike', () => {
+    const half = frameTransform({ x: 100, y: 350, width: 200, height: 100 }, target);
+    expect(half).toEqual({ translateX: 0, translateY: 0, scaleX: 0.5, scaleY: 0.5, innerScaleX: 1, innerScaleY: 1 });
+  });
+
+  it('a square bubble crops a wide photo: the photo keeps its shape and covers the clip', () => {
+    const square = frameTransform({ x: 40, y: 600, width: 100, height: 100 }, target);
+    expect(square.scaleX).toBeCloseTo(0.25);
+    expect(square.scaleY).toBeCloseTo(0.5);
+    // Seen through the clip, the photo is scaled 0.5 both ways: 200 x 100, covering the 100 x 100 bubble.
+    expect(square.scaleX * square.innerScaleX).toBeCloseTo(0.5);
+    expect(square.scaleY * square.innerScaleY).toBeCloseTo(0.5);
+  });
+
+  it('moves the centre of the clip onto the centre of the bubble', () => {
+    const moved = frameTransform({ x: 40, y: 600, width: 100, height: 100 }, target);
+    expect(moved.translateX).toBeCloseTo(90 - 200);
+    expect(moved.translateY).toBeCloseTo(650 - 400);
+  });
+
+  it('a target with no size yet never divides by zero', () => {
+    const none = frameTransform({ x: 0, y: 0, width: 10, height: 10 }, { x: 0, y: 0, width: 0, height: 0 });
+    expect(Object.values(none).every(Number.isFinite)).toBe(true);
   });
 });

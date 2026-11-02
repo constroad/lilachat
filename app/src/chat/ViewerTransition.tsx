@@ -4,7 +4,7 @@ import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming
 import { endInteraction } from '../diagnostico/frameMonitor';
 import { copiaLocalDe } from './colaDeArchivos';
 import { photoOriginOf } from './photoOrigin';
-import { fittedBox, interpolateRect, openingProgress, type Rect, type Size } from './zoomFromBubble';
+import { fittedBox, frameTransform, interpolateRect, openingProgress, type Rect, type Size } from './zoomFromBubble';
 
 /**
  * The photo viewer's way in and out (plan 1, F2), as Telegram's: a copy of the
@@ -16,8 +16,6 @@ const OPEN_MS = 250;
 const CLOSE_MS = 220;
 /** Decelerating, like a thrown card: fast out of the bubble, soft on landing. */
 const EASE = Easing.bezier(0.2, 0, 0, 1);
-/** The bubble's corners (`rounded-xl`): the copy leaves with them and loses them as it grows. */
-const BUBBLE_CORNER = 12;
 /** The frame window of F0 closes when the photo lands, not when the layer mounts. */
 export const VIEWER_FRAME_WINDOW = 'abrir-foto';
 
@@ -73,15 +71,26 @@ export function useViewerTransition(args: { photo: ZoomablePhoto; screen: Size; 
   return { flight, progress, drag, close, backdropStyle, fadeStyle };
 }
 
-/** The flying copy: a clipping frame between the bubble and the screen, the photo covering it. */
+/**
+ * The flying copy: a clip laid out where the photo lands, scaled to look like
+ * the bubble and back, with the photo inside scaled so it keeps its shape.
+ * Transforms only: they run on the UI thread every frame without a layout pass.
+ */
 export function FlyingPhoto({ flight, progress }: { flight: Flight; progress: SharedValue<number> }) {
-  const style = useAnimatedStyle(() => {
-    const rect = interpolateRect(flight.from, flight.to, progress.value);
-    return { left: rect.x, top: rect.y, width: rect.width, height: rect.height, borderRadius: BUBBLE_CORNER * Math.max(0, 1 - progress.value) };
+  const { from, to } = flight;
+  const clipStyle = useAnimatedStyle(() => {
+    const step = frameTransform(interpolateRect(from, to, progress.value), to);
+    return { transform: [{ translateX: step.translateX }, { translateY: step.translateY }, { scaleX: step.scaleX }, { scaleY: step.scaleY }] };
+  });
+  const photoStyle = useAnimatedStyle(() => {
+    const step = frameTransform(interpolateRect(from, to, progress.value), to);
+    return { transform: [{ scaleX: step.innerScaleX }, { scaleY: step.innerScaleY }] };
   });
   return (
-    <Animated.View pointerEvents="none" testID="visor-zoom" style={[{ position: 'absolute', overflow: 'hidden' }, style]}>
-      <Image source={{ uri: flight.uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={0} cachePolicy="memory-disk" />
+    <Animated.View pointerEvents="none" testID="visor-zoom" style={[{ position: 'absolute', left: to.x, top: to.y, width: to.width, height: to.height, overflow: 'hidden' }, clipStyle]}>
+      <Animated.View style={[{ width: '100%', height: '100%' }, photoStyle]}>
+        <Image source={{ uri: flight.uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" transition={0} cachePolicy="memory-disk" />
+      </Animated.View>
     </Animated.View>
   );
 }

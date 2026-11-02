@@ -45,3 +45,24 @@ export function openingProgress(dragY: number, screenHeight: number): number {
   if (screenHeight <= 0) return 1;
   return Math.max(0, 1 - Math.abs(dragY) / (screenHeight * VANISH_AT_SCREEN_FRACTION));
 }
+
+/**
+ * The flight with transforms only (no layout per frame, which Fabric does not
+ * apply frame by frame). A clip laid out at `to` is scaled to look like
+ * `rect`; the photo inside is scaled back so it keeps its shape and covers the
+ * clip, as the bubble crops it.
+ */
+export function frameTransform(rect: Rect, to: Rect) {
+  'worklet';
+  const scaleX = to.width > 0 ? rect.width / to.width : 1;
+  const scaleY = to.height > 0 ? rect.height / to.height : 1;
+  const cover = Math.max(scaleX, scaleY);
+  return {
+    translateX: rect.x + rect.width / 2 - (to.x + to.width / 2),
+    translateY: rect.y + rect.height / 2 - (to.y + to.height / 2),
+    scaleX,
+    scaleY,
+    innerScaleX: scaleX > 0 ? cover / scaleX : 1,
+    innerScaleY: scaleY > 0 ? cover / scaleY : 1,
+  };
+}

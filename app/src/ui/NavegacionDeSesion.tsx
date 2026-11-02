@@ -16,6 +16,7 @@ import { chatsEnMemoria } from '../chat/chatsGuardados';
 import { ProveedorDeLlamadas } from '../calls/ProveedorDeLlamadas';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { iniciarCronometro } from '../diagnostico/diagnostico';
+import { OverlayHost } from './overlay/OverlayHost';
 import { beginInteraction } from '../diagnostico/frameMonitor';
 import { TabsShell } from './TabsShell';
 import { FullScreenCallsPrompt } from './FullScreenCallsPrompt';
@@ -180,6 +181,7 @@ export function NavegacionDeSesion(props: {
   return (
     // Las llamadas envuelven toda la sesión: suenan en cualquier pantalla (FL8).
     <ProveedorDeLlamadas jwt={props.credential.jwt} me={props.credential.userId} onOpenChat={openCallChat}>
+    <OverlayHost>
     {/* Pending 63: a reminder that rang full screen, over any screen. */}
     <ReminderAlarmHost jwt={props.credential.jwt} />
     {/* «Compartir» from another app (José, 02/11): pick the chats, over any screen. */}
@@ -242,6 +244,7 @@ export function NavegacionDeSesion(props: {
     <AppLockGate />
     <FullScreenCallsPrompt />
     <CallLinkOpener jwt={props.credential.jwt} />
+    </OverlayHost>
     </ProveedorDeLlamadas>
   );
 }

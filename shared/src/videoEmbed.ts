@@ -77,6 +77,23 @@ export function videoEmbedFor(link: string): VideoEmbed | null {
   return null;
 }
 
+/** How to keep a video: in the network's own app, never downloaded by our server (José, 01/11). */
+export type VideoSaveHint = { savesToPhone: boolean; steps: string[] };
+
+const SHARE_BACK = 'Cuando esté en tu galería, compártelo a Lilachat.';
+
+// Menu names change between versions: each hint says what to do when the option is missing.
+const SAVE_HINTS: Record<VideoProvider, VideoSaveHint> = {
+  tiktok: { savesToPhone: true, steps: ['Toca «Compartir» y luego «Guardar video».', 'Si «Guardar video» no aparece, el autor no permite descargarlo.', SHARE_BACK] },
+  instagram: { savesToPhone: true, steps: ['En el reel, toca «Compartir» y busca «Descargar».', 'Solo se puede en reels de cuentas públicas que lo permiten.', SHARE_BACK] },
+  facebook: { savesToPhone: true, steps: ['Toca «···» y busca la opción para descargar el video.', 'Si no aparece, Facebook no lo permite en ese video.', SHARE_BACK] },
+  youtube: { savesToPhone: false, steps: ['YouTube no deja guardar el video en tu galería.', 'Con «Descargar» solo lo ves sin conexión dentro de la app de YouTube.'] },
+};
+
+export function videoSaveHint(provider: VideoProvider): VideoSaveHint {
+  return SAVE_HINTS[provider];
+}
+
 /** The only origins the web lets into a frame besides its own (its CSP `frame-src`). */
 export const VIDEO_EMBED_ORIGINS = ['https://www.youtube-nocookie.com', 'https://www.tiktok.com', 'https://www.instagram.com', 'https://www.facebook.com'] as const;
 

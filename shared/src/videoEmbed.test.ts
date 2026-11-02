@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fitVideo, videoEmbedFor, videoPlayerHtml } from './videoEmbed.js';
+import { fitVideo, videoEmbedFor, videoPlayerHtml, videoSaveHint } from './videoEmbed.js';
 
 describe('videoEmbedFor (pending 6)', () => {
   it('plays YouTube links, short links and Shorts in the privacy-enhanced player', () => {
@@ -46,5 +46,34 @@ describe('the player page and its size', () => {
     expect(fitVideo(16 / 9, { width: 360, height: 700 })).toEqual({ width: 360, height: 203 });
     expect(fitVideo(9 / 16, { width: 360, height: 600 })).toEqual({ width: 338, height: 600 });
     expect(fitVideo(16 / 9, { width: 800, height: 360 })).toEqual({ width: 640, height: 360 });
+  });
+});
+
+/** José, 01/11: download from a «Descargar» button, without anything that could get the server blocked. */
+describe('videoSaveHint', () => {
+  it('TikTok, Instagram and Facebook save to the phone: the steps end in sharing it to Lilachat', () => {
+    for (const provider of ['tiktok', 'instagram', 'facebook'] as const) {
+      // Act
+      const hint = videoSaveHint(provider);
+      // Assert
+      expect(hint.savesToPhone).toBe(true);
+      expect(hint.steps.length).toBeGreaterThanOrEqual(2);
+      expect(hint.steps.at(-1)).toMatch(/compártelo a Lilachat/);
+    }
+  });
+
+  it('says what to do when the option is missing: the author or the network does not allow it', () => {
+    expect(videoSaveHint('tiktok').steps.join(' ')).toMatch(/«Guardar video».*no aparece/);
+    expect(videoSaveHint('instagram').steps.join(' ')).toMatch(/cuentas públicas/);
+    expect(videoSaveHint('facebook').steps.join(' ')).toMatch(/no aparece/);
+  });
+
+  it('YouTube does not leave a file on the phone, and says so instead of promising it', () => {
+    // Act
+    const hint = videoSaveHint('youtube');
+    // Assert
+    expect(hint.savesToPhone).toBe(false);
+    expect(hint.steps.join(' ')).toMatch(/no deja guardar/);
+    expect(hint.steps.join(' ')).not.toMatch(/Lilachat/);
   });
 });

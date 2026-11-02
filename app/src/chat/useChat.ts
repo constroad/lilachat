@@ -2,12 +2,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { decidirCargaAnterior } from './paginacion';
 import { hidratarChat } from './hidratador';
 import { useAcuses } from './useAcuses';
-import { addMissingBySeq, chatsEnMemoria } from './memoriaDeChats';
+import { addMissingBySeq, chatsEnMemoria, firstPageOf } from './memoriaDeChats';
 import { listOlderMessages } from '../api/client';
 import {
   conciliarPaginaGuardada,
   guardarMensajes,
   leerMensajesGuardados,
+  readLastPageSync,
   ultimoSeqGuardado,
 } from './mensajesGuardados';
 import * as Crypto from 'expo-crypto';
@@ -96,9 +97,14 @@ export function useChat(params: {
   baseLeido?: number;
   baseEntregado?: number;
 }) {
-  // Nace con lo que quedó en memoria de la última vez (FL12, §49 #2): el chat
-  // entra pintado en vez de vacío, mientras el disco y la red confirman.
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [...(chatsEnMemoria.de(params.chatId) ?? [])]);
+  // Nace con lo que quedó en memoria de la última vez (FL12, §49 #2) o, fuera
+  // de esa memoria, con el disco leído en este mismo render (plan 1, F5a): el
+  // chat entra pintado en vez de vacío, mientras la red confirma.
+  const [firstPage] = useState(() =>
+    firstPageOf(chatsEnMemoria.de(params.chatId), () => readLastPageSync(params.chatId, PAGINA_DE_SANEO))
+  );
+  const pageReadSync = useRef(firstPage.fromDisk ? params.chatId : null);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [...firstPage.messages]);
   useEffect(() => {
     chatsEnMemoria.recordar(params.chatId, messages);
   }, [params.chatId, messages]);
@@ -161,6 +167,11 @@ export function useChat(params: {
    * el scroll hacia arriba, del disco primero.
    */
   useEffect(() => {
+    // The same page was read in the mounting render: reading it again would decrypt it twice mid-slide.
+    if (pageReadSync.current === params.chatId) {
+      pageReadSync.current = null;
+      return;
+    }
     let vigente = true;
     void leerMensajesGuardados(params.chatId, { limite: PAGINA_DE_SANEO }).then((guardados) => {
       if (!vigente || !guardados || guardados.length === 0) return;

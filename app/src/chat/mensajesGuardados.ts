@@ -58,6 +58,9 @@ type Fila = { seq: number; sobre: string };
 let base: SQLite.SQLiteDatabase | null = null;
 let clavePrometida: Promise<Uint8Array | null> | null = null;
 let migracion: Promise<void> | null = null;
+/** The key once read and the migration once done (plan 1, F5a): the sync read needs them in hand. */
+let keyInHand: Uint8Array | null = null;
+let migrated = false;
 
 /**
  * Toda escritura pasa por UNA cola: SQLite admite una transacción por conexión,
@@ -76,14 +79,15 @@ let generacion = 0;
 /** La clave del almacén; se crea la primera vez y no cambia hasta cerrar sesión. */
 function claveDeCache(): Promise<Uint8Array | null> {
   if (!clavePrometida) {
+    const session = generacion;
     clavePrometida = (async () => {
       try {
         const guardada = await SecureStore.getItemAsync(CLAVE_SECRETA, OPCIONES);
-        if (guardada) return base64ToBytes(guardada);
+        if (guardada) return keepKeyInHand(base64ToBytes(guardada), session);
 
         const nueva = Crypto.getRandomBytes(32);
         await SecureStore.setItemAsync(CLAVE_SECRETA, bytesToBase64(nueva), OPCIONES);
-        return nueva;
+        return keepKeyInHand(nueva, session);
       } catch {
         // Sin llavero no se guarda nada: preferible perder el almacén a escribir
         // los mensajes en claro.
@@ -92,6 +96,12 @@ function claveDeCache(): Promise<Uint8Array | null> {
     })();
   }
   return clavePrometida;
+}
+
+/** Only for the session that asked: a key read before a logout must not open the next one's rows. */
+function keepKeyInHand(key: Uint8Array, session: number): Uint8Array {
+  if (session === generacion) keyInHand = key;
+  return key;
 }
 
 function abrirBase(): SQLite.SQLiteDatabase {
@@ -118,8 +128,10 @@ function abrirBase(): SQLite.SQLiteDatabase {
 async function listo(): Promise<SQLite.SQLiteDatabase | null> {
   try {
     const abierta = abrirBase();
+    const session = generacion;
     if (!migracion) migracion = migrarCacheVieja(abierta);
     await migracion;
+    if (session === generacion) migrated = true;
     return abierta;
   } catch {
     return null;
@@ -245,6 +257,33 @@ export async function leerMensajesGuardados(
   } catch {
     return null;
   }
+}
+
+/**
+ * The last `limit` messages of a chat, read and decrypted in the calling render
+ * (plan 1, F5a): the chat is born painted, also outside the ten in memory.
+ * `null` = not ready (key or migration still pending) or the base failed; the
+ * async read covers it. The cost lands in the open interaction as `leer-chat`.
+ */
+export function readLastPageSync(chatId: string, limit: number): ChatMessage[] | null {
+  if (!keyInHand || !migrated || !base) return null;
+  try {
+    const startedAt = performance.now();
+    const rows = base
+      .getAllSync<Fila>('SELECT seq, sobre FROM mensajes WHERE chatId = ? ORDER BY seq DESC LIMIT ?', chatId, limit)
+      .reverse();
+    const messages = abrirFilas(keyInHand, rows);
+    measureWork('leer-chat', performance.now() - startedAt);
+    return messages;
+  } catch {
+    return null;
+  }
+}
+
+/** At session start (plan 1, F5a): the key and the base are in hand before the first chat opens. */
+export function warmUpStore(): void {
+  void listo();
+  void claveDeCache();
 }
 
 /** Filas por lectura al respaldar: cada una se descifra en el hilo de JS. */
@@ -497,6 +536,8 @@ export async function olvidarMensajes(): Promise<void> {
     // La próxima sesión nace con clave nueva y vuelve a mirar la caché vieja.
     clavePrometida = null;
     migracion = null;
+    keyInHand = null;
+    migrated = false;
   }
 }
 

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { addMissingBySeq, MemoriaDeChats } from './memoriaDeChats';
+import { describe, expect, it, vi } from 'vitest';
+import { addMissingBySeq, firstPageOf, MemoriaDeChats } from './memoriaDeChats';
 
 /**
  * FL12 (§49 #2): el chat entraba VACÍO deslizándose y las burbujas llegaban
@@ -119,5 +119,32 @@ describe('addMissingBySeq (safety net when memory and disk disagree, e.g. offlin
   it('returns the same array when nothing is missing (no re-render, no scroll)', () => {
     const current = [message(1), message(2)];
     expect(addMissingBySeq(current, [message(2)])).toBe(current);
+  });
+});
+
+/**
+ * Plan 1, F5a: a chat outside the ten in memory opened empty and its bubbles
+ * came 0.3–0.8 s later (async disk read + decrypt). Now the disk is read in
+ * the render that mounts the chat, and the async read is skipped for that page.
+ */
+describe('firstPageOf (the first page of a chat, in the mounting render)', () => {
+  const message = (seq: number) => ({ seq });
+
+  it('takes the memory copy and does not touch the disk', () => {
+    const readDisk = vi.fn(() => [message(9)]);
+    expect(firstPageOf([message(1)], readDisk)).toEqual({ messages: [message(1)], fromDisk: false });
+    expect(readDisk).not.toHaveBeenCalled();
+  });
+
+  it('reads the disk when the chat is not in memory', () => {
+    expect(firstPageOf(null, () => [message(1), message(2)])).toEqual({ messages: [message(1), message(2)], fromDisk: true });
+  });
+
+  it('starts empty and leaves the page to the async read when the disk is not ready', () => {
+    expect(firstPageOf(null, () => null)).toEqual({ messages: [], fromDisk: false });
+  });
+
+  it('counts an empty disk as read: the async read would bring the same nothing', () => {
+    expect(firstPageOf(null, () => [])).toEqual({ messages: [], fromDisk: true });
   });
 });

@@ -5,7 +5,7 @@ import * as Clipboard from 'expo-clipboard';
 import { Copy, CornerUpLeft, EllipsisVertical, Forward, Info, MessagesSquare, Pencil, Pin, PinOff, Star, StarOff, Trash2, X } from 'lucide-react-native';
 import { puedeEditar } from '@lilachat/shared';
 import { accionesDeMensaje, accionesDeVarios, planDeReenvio, textoParaCopiar } from '@lilachat/shared';
-import { PantallaDeReenviar } from './reenviar/PantallaDeReenviar';
+import { ForwardScreen } from './reenviar/ForwardScreen';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import type { ChatMessage } from './useChat';
@@ -245,13 +245,13 @@ export function SeleccionDeMensaje(params: {
         jwt={params.jwt}
         onCerrar={() => setViendoInfo(false)}
       />
-      <PantallaDeReenviar
+      <ForwardScreen
         visible={reenviando}
-        pasos={planDeReenvio(mensajes.map((uno) => ({ ...uno, chatId: params.chatId })))}
+        steps={planDeReenvio(mensajes.map((uno) => ({ ...uno, chatId: params.chatId })))}
         token={params.jwt}
         onError={params.onError}
-        onCerrar={() => setReenviando(false)}
-        onReenviado={(nombres) => {
+        onClose={() => setReenviando(false)}
+        onSent={(nombres) => {
           setReenviando(false);
           params.onCancelar();
           avisar(`Reenviado a ${nombres.join(', ')}`);

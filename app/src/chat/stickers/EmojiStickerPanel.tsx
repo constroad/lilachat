@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, ToastAndroid, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Delete, ImagePlay, Smile, Sparkles, Sticker } from 'lucide-react-native';
@@ -31,7 +31,7 @@ function prefetchCutoutModel() {
  * Emoji · Stickers · GIF · Guiños tabs (icons only) and the backspace key, like WhatsApp. It owns the
  * «Crear sticker» editor: the result goes to «Mis stickers» and to THIS chat.
  */
-export function EmojiStickerPanel(props: {
+export const EmojiStickerPanel = memo(function EmojiStickerPanel(props: {
   jwt: string;
   chatId: string;
   chatName: string;
@@ -128,4 +128,4 @@ export function EmojiStickerPanel(props: {
       <CreateSticker key={editorSession} visible={creating} chatName={props.chatName} onClose={closeEditor} onSave={stickers.save} onSend={(sticker) => stickers.send(props.chatId, sticker, { ...props.thread, replyToSeq: props.replyTo?.() })} />
     </View>
   );
-}
+});

@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addRecentSticker, packLibrary, STICKER_PACKS, type LibrarySticker } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { addMediaInFlight, HANDOVER_MS, removeMediaInFlight, stickerAsQueuedFile } from '../gifs/gifsInFlight';
-import { isEmojiPanelOpen, useEmojiPanelOpen } from '../emojiPanel';
+import { isEmojiPanelOpen, subscribeEmojiPanel } from '../emojiPanel';
 import { beginInteraction, SEND_FRAME_WINDOW_MS } from '../../diagnostico/frameMonitor';
 import { keepFromMessage, keepFromPack, listStickers, removeSticker, sendSticker, setFavorite, stickerFromGif, uploadGifSticker, uploadSticker, type StickerTarget } from './stickersApi';
 
@@ -89,14 +89,18 @@ export function useStickers(jwt: string) {
   }, [reload]);
 
   // While the emoji panel is open the grid stays still (02/11): a «Recientes» row appearing on top pushed
-  // the stickers down under the finger. The new order shows the next time it opens.
-  const panelOpen = useEmojiPanelOpen();
+  // the stickers down under the finger. The new order shows the next time it opens. Subscribed without a
+  // render: closing the panel with a wink redrew the whole sticker grid for nothing (F4).
   const latestRecents = useRef<string[] | null>(null);
-  useEffect(() => {
-    if (panelOpen || !latestRecents.current) return;
-    setRecents(latestRecents.current);
-    latestRecents.current = null;
-  }, [panelOpen]);
+  useEffect(
+    () =>
+      subscribeEmojiPanel(() => {
+        if (isEmojiPanelOpen() || !latestRecents.current) return;
+        setRecents(latestRecents.current);
+        latestRecents.current = null;
+      }),
+    []
+  );
   const markUsed = useCallback(
     (id: string) => {
       const after = addRecentSticker(latestRecents.current ?? recents, id);

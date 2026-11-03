@@ -102,11 +102,12 @@ export function resetEmojiPanel() {
   setOpen(false);
 }
 
-const subscribe = (listener: Listener) => {
+/** Told on each opening and closing, without a render: for whoever only reacts to the change (02/11, F4). */
+export function subscribeEmojiPanel(listener: Listener): () => void {
   listeners.add(listener);
   return () => {
     listeners.delete(listener);
   };
-};
-export const useEmojiPanelOpen = () => useSyncExternalStore(subscribe, () => open, () => open);
+}
+export const useEmojiPanelOpen = () => useSyncExternalStore(subscribeEmojiPanel, () => open, () => open);
 

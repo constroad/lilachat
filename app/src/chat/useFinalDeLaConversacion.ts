@@ -3,7 +3,7 @@ import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent } from 'rea
 import type { FlashListRef } from '@shopify/flash-list';
 import { downButtonCount, followsMyNewRow, unreadBelow } from '@lilachat/shared';
 import { PosicionEnLaLista } from './finalDeLaConversacion';
-import { contentAtEnd, PANEL_MOVE_MS, useEmojiPanelOpen } from './emojiPanel';
+import { contentAtEnd, isEmojiPanelOpen, PANEL_MOVE_MS, subscribeEmojiPanel } from './emojiPanel';
 
 /**
  * Dónde está la conversación respecto de su final (FL2/FL3).
@@ -92,15 +92,19 @@ export function useFinalDeLaConversacion<T>(
 
   // The emoji panel closed: its room is gone and, at the end, the end comes down with it. With a
   // message added while it was open (José, 21/10: a sticker), the list stayed up with a gap below.
-  const panelOpen = useEmojiPanelOpen();
-  const panelWasOpen = useRef(panelOpen);
+  // Subscribed without a render: closing the panel redrew the whole list in the wink's commit (F4, 02/11).
   useEffect(() => {
-    const closed = panelWasOpen.current && !panelOpen;
-    panelWasOpen.current = panelOpen;
-    if (!closed || !cercaDelFinal.current) return;
-    const follow = setTimeout(() => listaRef.current?.scrollToEnd({ animated: true }), PANEL_MOVE_MS + PANEL_SETTLE_MS);
-    return () => clearTimeout(follow);
-  }, [panelOpen, listaRef]);
+    let follow: ReturnType<typeof setTimeout> | undefined;
+    const leave = subscribeEmojiPanel(() => {
+      if (isEmojiPanelOpen() || !cercaDelFinal.current) return;
+      clearTimeout(follow);
+      follow = setTimeout(() => listaRef.current?.scrollToEnd({ animated: true }), PANEL_MOVE_MS + PANEL_SETTLE_MS);
+    });
+    return () => {
+      leave();
+      clearTimeout(follow);
+    };
+  }, [listaRef]);
 
   // What I send is always seen (22/10): a new last row of mine takes the list down, wherever it was.
   const lastMine = useRef<string | null | undefined>(undefined);

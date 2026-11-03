@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useState, type ReactNode, type RefObject } from 'react';
 import { Platform, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { runOnJS, useAnimatedStyle } from 'react-native-reanimated';
 import { KeyboardGestureArea, useKeyboardHandler, useReanimatedKeyboardAnimation } from 'react-native-keyboard-controller';
@@ -70,7 +70,12 @@ export function ChatBottom(props: {
     const later = setTimeout(() => setUsed(true), PREMOUNT_MS);
     return () => clearTimeout(later);
   }, []);
-  const { coveredMargin } = props;
+  const { coveredMargin, composerRef } = props;
+  // Stable, so the memoized panel does not redraw when the panel opens or closes, nor with each message (F4, 02/11).
+  const pickEmoji = useCallback((emoji: string) => composerRef.current?.insertEmoji(emoji), [composerRef]);
+  const backspace = useCallback(() => composerRef.current?.backspace(), [composerRef]);
+  const replyTo = useCallback(() => composerRef.current?.replyingTo(), [composerRef]);
+  const stickerSent = useCallback(() => composerRef.current?.replyDone(), [composerRef]);
   const barStyle = useBottomLiftStyle(coveredMargin);
   const height = panelHeight();
   const panelStyle = useAnimatedStyle(() => ({ transform: [{ translateY: height - panelShown.value }] }), [height]);
@@ -104,10 +109,10 @@ export function ChatBottom(props: {
             chatId={props.chat.id}
             chatName={props.chat.name}
             withStickers={props.chat.withStickers}
-            onPickEmoji={(emoji) => props.composerRef.current?.insertEmoji(emoji)}
-            onBackspace={() => props.composerRef.current?.backspace()}
-            replyTo={() => props.composerRef.current?.replyingTo()}
-            onStickerSent={() => props.composerRef.current?.replyDone()}
+            onPickEmoji={pickEmoji}
+            onBackspace={backspace}
+            replyTo={replyTo}
+            onStickerSent={stickerSent}
             onWink={props.chat.onWink}
             onNudge={props.chat.onNudge}
           />

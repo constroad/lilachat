@@ -219,7 +219,8 @@ describe('checklist, second round', () => {
   it('ticks are told once, a moment later, to the author (offline), and not to who ticked', async () => {
     const sent: { tokens: string[]; title: string; body: string }[] = [];
     setPushSender({ send: async (message) => void sent.push(message), sendDatos: async () => undefined });
-    configureTaskNotices({ waitMs: 30 });
+    // The window opens on the first tick: with 30 ms the second request sometimes landed after it, and two notices went out.
+    configureTaskNotices({ waitMs: 500 });
     await DeviceModel.deleteMany({});
     await DeviceModel.create([{ deviceId: 'da', userId: ana, platform: 'android', pushToken: 'tok-ana' }, { deviceId: 'db', userId: beto, platform: 'android', pushToken: 'tok-beto' }]);
     const { body } = await create(ana);
@@ -229,8 +230,7 @@ describe('checklist, second round', () => {
     await request(app).post(`/api/agenda/checklists/${body.id}/items/${first!.id}/toggle`).set(jwtOf(beto));
     await request(app).post(`/api/agenda/checklists/${body.id}/items/${second!.id}/toggle`).set(jwtOf(beto));
     expect(sent).toHaveLength(0);
-    await new Promise((resolve) => setTimeout(resolve, 150));
-    expect(sent).toHaveLength(1);
+    await vi.waitFor(() => expect(sent).toHaveLength(1), { timeout: 3000 });
     expect(sent[0]).toMatchObject({ tokens: ['tok-ana'], body: 'Beto completó «Vaciado de losa» (2 de 2 listas)' });
   });
 });

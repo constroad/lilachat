@@ -1,6 +1,6 @@
 import { albumLayout, alreadyGreeted, formatDayLabel, isHiddenNotice, resolveDeliveryState, startsNewDay, stickerRowLayout, type AlbumRole, type DeliveryState } from '@lilachat/shared';
 import { neighboursForGrouping } from './divisorNoLeidos';
-import { claveDeFila, tipoDeFila, type Citado, type TipoDeFila } from './filasDelChat';
+import { claveDeFila, tipoDeFila, type Citado } from './filasDelChat';
 import { shallowEqual } from './keptValues';
 import { isPending, type Row } from './rowKinds';
 import type { ChatMessage } from './useChat';
@@ -54,7 +54,7 @@ type Layout = {
   greeting: readonly { seq?: number; senderId?: string; pending?: boolean }[];
 };
 
-const NO_ROLES: ReadonlyMap<number, AlbumRole> = new Map();
+const NO_LAYOUT: ReadonlyMap<number, AlbumRole> = new Map();
 
 /** One cell per row, in the same order (the list scrolls by index). */
 export function buildMessageCells(rows: readonly Row[], context: CellContext): { cells: MessageCell[]; bySeq: ReadonlyMap<number, ChatMessage> } {
@@ -62,8 +62,8 @@ export function buildMessageCells(rows: readonly Row[], context: CellContext): {
   const bySeq = new Map(confirmed.map((row) => [row.seq, row]));
   const layout: Layout = {
     bySeq,
-    albums: context.flat ? NO_ROLES : albumLayout(confirmed),
-    pairs: context.flat ? NO_ROLES : stickerRowLayout(rows.map((row) => (isPending(row) ? {} : row)), { dividerSeq: context.dividerSeq ?? undefined }),
+    albums: context.flat ? NO_LAYOUT : albumLayout(confirmed),
+    pairs: context.flat ? NO_LAYOUT : stickerRowLayout(rows.map((row) => (isPending(row) ? {} : row)), { dividerSeq: context.dividerSeq ?? undefined }),
     greeting: rows.map((row) => (isPending(row) ? { senderId: context.myUserId, pending: true } : row)),
   };
   return { cells: rows.map((_row, index) => cellAt(rows, index, context, layout)), bySeq };
@@ -161,4 +161,4 @@ export function keepCells(previous: readonly MessageCell[] | undefined, next: re
 
 /** The list's key and recycling type of a cell: its row's. */
 export const cellKey = (cell: MessageCell): string => claveDeFila(cell.row);
-export const cellType = (cell: MessageCell): TipoDeFila => tipoDeFila(cell.row);
+export const cellType = (cell: MessageCell): ReturnType<typeof tipoDeFila> => tipoDeFila(cell.row);

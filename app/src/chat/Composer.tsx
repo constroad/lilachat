@@ -289,7 +289,7 @@ export const Composer = memo(function Composer(props: {
 
   const sealedMode = props.modoSecreto === 'sealed';
 
-  const enviarAhora = () => {
+  const enviar = () => {
     const texto = textoRef.current;
     limpiarCampo();
     programarBorrador();
@@ -320,7 +320,7 @@ export const Composer = memo(function Composer(props: {
     });
   };
   // The tap itself, labeled: a text drops 30 JS frames with only ~35 ms of named work (§5.8).
-  const enviar = () => timed('tocar-enviar', enviarAhora);
+  const sendTimed = () => timed('tocar-enviar', enviar);
 
   // La píldora de escribir: el emoji a la izquierda y clip y cámara a la
   // derecha, como el diseño y WhatsApp. Con texto escrito, clip y cámara se
@@ -536,7 +536,7 @@ export const Composer = memo(function Composer(props: {
                 accessibilityLabel="Enviar"
                 disabled={!forma.conTexto}
                 onLongPress={sealedMode ? undefined : () => props.onProgramar(textoRef.current.trim())}
-                onPress={enviar}
+                onPress={sendTimed}
                 className={`h-12 w-12 items-center justify-center rounded-full bg-primary ${forma.conTexto ? '' : 'opacity-40'}`}
               >
                 <Send size={20} color={colores['on-primary']} />

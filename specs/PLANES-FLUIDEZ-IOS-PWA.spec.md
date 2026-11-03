@@ -359,6 +359,19 @@ en la ventana y trabajo con nombre):
 El emulador varía entre corridas: los ms sirven para ver QUÉ trabaja, no para
 compararlos uno a uno.
 
+**Con la OTA `adc809df` (botón emoji aislado, 02/11/2026, 19:53),** recién
+arrancada la app:
+
+| Interacción | Antes de la OTA | Con la OTA |
+| --- | --- | --- |
+| Enviar un sticker | 23 · Barra 2× 77 ms | **15** · Chat 1× 302 ms, Barra **1×** 122 ms |
+| Mandar un guiño | 161 · Barra 2× 328 ms | 232 · Chat 1× 520 ms, Barra **1×** 301 ms |
+
+La barra se dibuja una vez en vez de dos. El guiño sigue siendo lo más
+pesado: montar la animación y su fila cuesta ~500 ms de JS, y la barra
+desmonta el panel en ese mismo commit. Es el primer punto de la próxima
+iteración.
+
 **Hallazgos y arreglos:**
 
 1. **La lista del espacio de ATRÁS se redibujaba con cada mensaje del chat
@@ -379,6 +392,9 @@ compararlos uno a uno.
    emulador): los archivos en vuelo y la ventana de filas viven en
    `ChatScreen`. Se bajan a la lista en la próxima iteración, junto con
    callbacks estables para la barra.
+5. **Pendiente (F4):** el guiño monta su animación y su fila en el mismo
+   commit en que se cierra el panel (Chat 520 ms con la OTA). Montarlo un
+   cuadro después del cierre, o precargar sus partes al abrir la pestaña.
 
 **E2E del teclado (F3):** con el teclado compacto del emulador, el arrastre
 hacia abajo lo cierra y la barra baja con él. Falta verlo con un teclado
@@ -389,6 +405,6 @@ daemon disappeared»: el vigilante de memoria detuvo tres daemons (7,9 GB),
 dos de ellos ociosos de builds anteriores. Antes de compilar: `./gradlew
 --stop` (o confirmar que no quedan daemons de otra sesión trabajando).
 
-QA: los 7 mensajes de prueba en #general de Test (stickers, GIF y guiños,
-seq 86 a 92) borrados con «Eliminar para todos». El «asdasdads» no es de QA
+QA: los 9 mensajes de prueba en #general de Test (stickers, GIF y guiños,
+seq 86 a 94) borrados con «Eliminar para todos». El «asdasdads» no es de QA
 y quedó.

@@ -1,8 +1,8 @@
-import { memo, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
-import { BackHandler, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
+import { memo, useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
+import { Pressable, Text, TextInput, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { beginInteraction, SEND_FRAME_WINDOW_MS, useRenderCost } from '../diagnostico/frameMonitor';
-import { Camera, Keyboard as Teclado, Paperclip, Send, Smile, X } from 'lucide-react-native';
+import { Camera, Paperclip, Send, X } from 'lucide-react-native';
 import { duracionDeVoz, insertarEnTexto, type MencionEnMensaje, type Seleccion } from '@lilachat/shared';
 import type { MencionElegida } from '@lilachat/shared';
 import { deleteBeforeCursor, formKeyOf } from '@lilachat/shared';
@@ -20,7 +20,7 @@ import { useMenciones, type MentionableMember } from './useMenciones';
 import { SugerenciasDeMencion } from './SugerenciasDeMencion';
 import { useEmojiShortcode } from './emojiShortcode/useEmojiShortcode';
 import { EmojiSuggestions } from './emojiShortcode/EmojiSuggestions';
-import { closeEmojiPanel, openEmojiPanel, useEmojiPanelOpen } from './emojiPanel';
+import { EmojiToggle } from './EmojiToggle';
 import { VistaPreviaAlEscribir } from './VistaPreviaAlEscribir';
 import type { ChatCommands } from './commands/useChatCommands';
 import { CommandPanel } from './commands/CommandPanel';
@@ -181,24 +181,8 @@ export const Composer = memo(function Composer(props: {
   const [textoConLink, setTextoConLink] = useState('');
   const menciones = useMenciones(props.miembros);
   const emojis = useEmojiShortcode();
-  const emojiPanelOpen = useEmojiPanelOpen();
-  // Back with the panel open closes it, like the keyboard; it does not leave the chat.
-  useEffect(() => {
-    if (!emojiPanelOpen) return;
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      closeEmojiPanel(false);
-      return true;
-    });
-    return () => sub.remove();
-  }, [emojiPanelOpen]);
-  const alternarEmojis = () => {
-    // To the keyboard: it rises over the panel, which leaves once it is up (`ChatBottom`).
-    if (emojiPanelOpen) return inputRef.current?.focus();
-    // From the keyboard: the panel is already whole behind it while it goes down; nothing moves.
-    const keyboardUp = Keyboard.isVisible();
-    openEmojiPanel(keyboardUp);
-    if (keyboardUp) Keyboard.dismiss();
-  };
+  // The panel's state lives in `EmojiToggle`: here it re-rendered the whole bar on every open and close.
+  const focusInput = useCallback(() => inputRef.current?.focus(), []);
   /** What the emoji panel types, always with this render's text and cursor. */
   const typeFromPanel = useRef({ insert: (_emoji: string) => {}, back: () => {} });
   typeFromPanel.current = {
@@ -341,15 +325,7 @@ export const Composer = memo(function Composer(props: {
   // esconden y el campo gana ancho.
   const campoDeTexto = (
     <View className="min-w-0 flex-1 flex-row items-end rounded-3xl border border-outline/15 bg-background pr-1">
-      <Pressable
-        testID="btn-emojis"
-        accessibilityLabel={emojiPanelOpen ? 'Volver al teclado' : 'Emojis'}
-        onPress={alternarEmojis}
-        android_ripple={{ color: colores.outline, borderless: true, radius: 20 }}
-        className="h-[46px] w-11 items-center justify-center"
-      >
-        {emojiPanelOpen ? <Teclado size={21} color={colores.outline} /> : <Smile size={21} color={colores.outline} />}
-      </Pressable>
+      <EmojiToggle onKeyboard={focusInput} />
       <TextInput
         key={inicial.version}
         ref={inputRef}

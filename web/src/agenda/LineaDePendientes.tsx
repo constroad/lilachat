@@ -70,7 +70,7 @@ export function LineaDePendientes({ jwt, me, onEditarRecordatorio }: { jwt: stri
     return fallo ? <p role="alert" className="py-4 text-center text-sm text-error">{fallo}</p> : <div data-testid="pendientes-cargando" className="h-24 animate-pulse rounded-xl bg-background" />;
   }
   if (secciones.length === 0 && !linea?.apagados.length) {
-    return <p data-testid="pendientes-vacio" className="py-6 text-center text-sm leading-5 text-on-surface-variant">Nada pendiente. Los eventos y recordatorios de tus chats aparecen acá, por cuándo tocan.</p>;
+    return <p data-testid="pendientes-vacio" className="py-6 text-center text-sm leading-5 text-on-surface-variant">Nada pendiente. Los eventos y recordatorios de tus chats aparecen aquí, por cuándo tocan.</p>;
   }
   return (
     <div className={selected ? 'md:grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] md:gap-6' : ''}>

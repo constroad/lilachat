@@ -108,7 +108,7 @@ export function DiagnosticoAjuste() {
             {fluidez.length > 0 ? <FluidityBlock summary={fluidez} /> : null}
             {entradas.length === 0 ? (
               <Text className="text-sm text-on-surface-variant" testID="diag-vacio">
-                Todavía no se registró nada. Si algo falla o va lento, aparece acá.
+                Todavía no se registró nada. Si algo falla o va lento, aparece aquí.
               </Text>
             ) : (
               entradas.map((entrada) => <FilaDeDiagnostico key={`${entrada.cuando}-${entrada.tipo}`} entrada={entrada} />)

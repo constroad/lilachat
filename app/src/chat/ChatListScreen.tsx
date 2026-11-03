@@ -442,7 +442,7 @@ export function ChatListScreen({
           </View>
           <Text className="mt-4 text-lg font-semibold text-on-surface">Sin conversaciones</Text>
           <Text className="mt-1 text-center text-sm leading-5 text-on-surface-variant">
-            Cuando alguien te escriba, la conversación aparece acá.
+            Cuando alguien te escriba, la conversación aparece aquí.
           </Text>
         </View>
       ) : (

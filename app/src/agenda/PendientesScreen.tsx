@@ -51,7 +51,7 @@ export function PendientesScreen(props: { credential: Credential; recarga: numbe
               <ListTodo size={28} color={colores.primary} />
             </View>
             <Text className="mt-4 text-lg font-semibold text-on-surface">Nada pendiente</Text>
-            <Text className="mt-1 text-center text-sm leading-5 text-on-surface-variant">Los eventos y recordatorios de tus chats aparecen acá, por cuándo tocan.</Text>
+            <Text className="mt-1 text-center text-sm leading-5 text-on-surface-variant">Los eventos y recordatorios de tus chats aparecen aquí, por cuándo tocan.</Text>
           </View>
         </ScrollView>
       ) : (

@@ -63,7 +63,7 @@ export function ListaDeDestacados(props: { visible: boolean; jwt: string; yo: st
             <View className="items-center px-8 py-8" testID="destacados-vacio">
               <Star size={28} color={colores.primary} />
               <Text className="mt-3 text-[15px] font-semibold text-on-surface">Sin mensajes destacados</Text>
-              <Text className="mt-1 text-center text-[13px] text-on-surface-variant">Mantén presionado un mensaje y toca la estrella para guardarlo acá. Solo tú lo ves.</Text>
+              <Text className="mt-1 text-center text-[13px] text-on-surface-variant">Mantén presionado un mensaje y toca la estrella para guardarlo aquí. Solo tú lo ves.</Text>
             </View>
           ) : null}
           {lista?.map((destacado) => (

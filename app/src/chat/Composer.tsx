@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { beginInteraction, SEND_FRAME_WINDOW_MS, useRenderCost } from '../diagnostico/frameMonitor';
+import { beginInteraction, SEND_FRAME_WINDOW_MS, timed, useRenderCost } from '../diagnostico/frameMonitor';
 import { Camera, Paperclip, Send, X } from 'lucide-react-native';
 import { duracionDeVoz, insertarEnTexto, type MencionEnMensaje, type Seleccion } from '@lilachat/shared';
 import type { MencionElegida } from '@lilachat/shared';
@@ -289,7 +289,7 @@ export const Composer = memo(function Composer(props: {
 
   const sealedMode = props.modoSecreto === 'sealed';
 
-  const enviar = () => {
+  const enviarAhora = () => {
     const texto = textoRef.current;
     limpiarCampo();
     programarBorrador();
@@ -319,6 +319,8 @@ export const Composer = memo(function Composer(props: {
       else if (!outcome) ponerTexto(texto);
     });
   };
+  // The tap itself, labeled: a text drops 30 JS frames with only ~35 ms of named work (§5.8).
+  const enviar = () => timed('tocar-enviar', enviarAhora);
 
   // La píldora de escribir: el emoji a la izquierda y clip y cámara a la
   // derecha, como el diseño y WhatsApp. Con texto escrito, clip y cámara se

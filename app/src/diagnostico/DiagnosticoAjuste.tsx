@@ -144,6 +144,13 @@ const WORK_LABELS: Record<string, string> = {
   cifrar: 'Cifrado',
   'leer-chat': 'Disco',
   fila: 'Filas',
+  celda: 'Celdas',
+  'tocar-enviar': 'Toque',
+  'ir-al-final': 'Ir al final',
+  scroll: 'Scroll',
+  tamano: 'Tamaño',
+  'cola-confirmar': 'Confirmar',
+  eco: 'Eco',
 };
 
 /**

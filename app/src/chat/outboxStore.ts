@@ -10,7 +10,7 @@ import {
 } from '@lilachat/shared';
 import { alConectar, sendOverSocket } from './socketClient';
 import { anotarEnvio } from './reenviar/frecuenciasDeEnvio';
-import { measureWork } from '../diagnostico/frameMonitor';
+import { measureWork, timed } from '../diagnostico/frameMonitor';
 
 /**
  * La cola de salida, PERSISTIDA.
@@ -154,8 +154,10 @@ export async function drainOutbox(): Promise<DrainReport> {
         enElChat: item.enElChat,
       });
       const effect = resolveOutcome(item, outcome);
-      queue = applyEffect(queue, effect);
-      notify();
+      timed('cola-confirmar', () => {
+        queue = applyEffect(queue, effect);
+        notify();
+      });
       await persist();
 
       if (effect.action === 'confirm') {

@@ -14,6 +14,7 @@ import { useGroupsAsList } from '../ui/groupsAsList';
 import { convertGifToSticker } from './gifs/gifOptions';
 import { StickerPair } from './stickers/StickerMessage';
 import { useKeptValues } from './keptValues';
+import { measureWork } from '../diagnostico/frameMonitor';
 
 type PropsDeFila = ComponentProps<typeof MessageRow>;
 
@@ -100,6 +101,8 @@ export function useDibujarFila(p: {
   );
   const drawRow = useCallback(
     ({ item, index }: { item: Row; index: number }) => {
+      // How many cells FlashList draws in a send: its own re-renders are not in «Chat» (§5.8).
+      measureWork('celda', 0);
       // The flat (Slack) rows keep each photo apart.
       const albumRole = isPending(item) || flat ? undefined : albums.roles.get(item.seq);
       // The rest of an album is in its first card; a notice deleted for everyone is not drawn.

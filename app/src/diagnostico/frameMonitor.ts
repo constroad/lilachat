@@ -81,6 +81,16 @@ export function measureWork(label: string, ms: number): void {
   if (windows.sampling) windows.work(label, ms);
 }
 
+/** Runs `work` and labels its JS time inside the open interactions: the steps of a send (F4, 03/11). */
+export function timed<T>(label: string, work: () => T): T {
+  const startedAt = performance.now();
+  try {
+    return work();
+  } finally {
+    measureWork(label, performance.now() - startedAt);
+  }
+}
+
 /**
  * The cost of a screen's render: from the start of its function to its layout
  * effects, so its subtree rendered and committed. Counted only inside an open

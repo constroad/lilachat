@@ -10,7 +10,7 @@ import type { FlashListRef } from '@shopify/flash-list';
 import { ChatBottom, ChatKeyboardArea } from './ChatBottom';
 import type { MencionEnMensaje } from '@lilachat/shared';
 import { chatHasActionPlace, clientHeaderSubtitle, personOfMember } from '@lilachat/shared';
-import { useRenderCost } from '../diagnostico/frameMonitor';
+import { timed, useRenderCost } from '../diagnostico/frameMonitor';
 import { useFunActions } from './nudge';
 import { useCallBack } from './useCallBack';
 import { AttachSheet } from './AttachSheet';
@@ -183,7 +183,7 @@ export function ChatScreen({
     async (texto: string, respondeA?: number, menciones?: (texto: string) => MencionEnMensaje[]) => {
       cancelarRespuesta();
       // Lo que mando yo SIEMPRE se ve: aunque estuviera leyendo arriba.
-      requestAnimationFrame(() => listaRef.current?.scrollToEnd({ animated: true }));
+      requestAnimationFrame(() => timed('ir-al-final', () => listaRef.current?.scrollToEnd({ animated: true })));
       const resultado = await send(texto, respondeA, menciones);
       // Si NO se pudo cifrar, no salió y se dice: en un chat con candado, callar engaña.
       if (resultado?.ok) return true;

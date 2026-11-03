@@ -15,6 +15,7 @@ import { useColores } from '../ui/tema';
 import type { OpeningPlace } from './useDivisorNoLeidos';
 import { MAX_HIDDEN_MS, RevealWhenSettled, SETTLE_MS } from './revealWhenSettled';
 import { useFunPlayback } from './nudge';
+import { timed } from '../diagnostico/frameMonitor';
 
 /** The emoji panel's room under the conversation (`emojiPanel`). */
 const EMOJI_PANEL_ROOM = { held: roomHeld, lift: contentLift, drop: contentDrop, atEnd: contentAtEnd };
@@ -172,7 +173,7 @@ export function ListaDeMensajes(props: {
         // pantalla), lo que llega o se manda baja la lista solo, como
         // WhatsApp. Leyendo arriba, no mueve nada.
         maintainVisibleContentPosition={inWindow ? { startRenderingFromBottom: false } : { startRenderingFromBottom: true, ...(props.holdPosition ? {} : { autoscrollToBottomThreshold: 0.2 }) }}
-        onScroll={alScrollear}
+        onScroll={(event) => timed('scroll', () => alScrollear(event))}
         onScrollBeginDrag={() => {
           props.anchor?.drop();
           alEmpezarArrastre();
@@ -180,11 +181,13 @@ export function ListaDeMensajes(props: {
         onScrollEndDrag={alTerminarArrastre}
         onMomentumScrollBegin={alEmpezarArrastre}
         onMomentumScrollEnd={alTerminarArrastre}
-        onContentSizeChange={(width, height) => {
-          onSize(height);
-          alCambiarTamaño(width, height);
-          props.anchor?.keep();
-        }}
+        onContentSizeChange={(width, height) =>
+          timed('tamano', () => {
+            onSize(height);
+            alCambiarTamaño(width, height);
+            props.anchor?.keep();
+          })
+        }
         scrollEventThrottle={100}
         ListHeaderComponent={
           props.cargandoAnteriores ? (

@@ -35,6 +35,7 @@ import { useAvisoDeEscribiendo } from './useAvisoDeEscribiendo';
 import { useResumenesDeHilos } from './useResumenesDeHilos';
 import { useCambiosDeMensajes } from './useCambiosDeMensajes';
 import { useEscribiendoDelChat } from './useEscribiendoDelChat';
+import { timed } from '../diagnostico/frameMonitor';
 
 /**
  * El estado vivo de un chat: mensajes confirmados + lo que está en la cola.
@@ -426,13 +427,14 @@ export function useChat(params: {
     };
     const onDisconnect = () => alive && setConnected(false);
     /** Un mensaje confirmado, venga del socket o de la respuesta de una subida (`mergeBySeq` deduplica). */
-    const incorporar = (message: ServerMessage) => {
-      cursors.current = advanceCursors(cursors.current, [
-        { chatId: message.chatId, messages: [message] },
-      ]);
-      setMessages((current) => mergeBySeq(current, [message as ChatMessage]));
-      void guardarMensajes(params.chatId, [message as ChatMessage]);
-    };
+    const incorporar = (message: ServerMessage) =>
+      timed('eco', () => {
+        cursors.current = advanceCursors(cursors.current, [
+          { chatId: message.chatId, messages: [message] },
+        ]);
+        setMessages((current) => mergeBySeq(current, [message as ChatMessage]));
+        void guardarMensajes(params.chatId, [message as ChatMessage]);
+      });
     const dejarDeOirSubidas = suscribirConfirmados((message) => alive && message.chatId === params.chatId && incorporar(message));
     const onNew = (message: ServerMessage) => {
       if (!alive || message.chatId !== params.chatId) return;

@@ -207,13 +207,13 @@ async function escribirFilas(
   // Cifrar por lotes que CEDEN el hilo (FL12, §49 #5): una página del
   // hidratador eran 100 cifrados seguidos en JS puro, decenas de ms sin dibujar
   // justo mientras se scrollea. Un mensaje solo (lo más común) no cede nunca.
-  const filas: StoredRow[] = [];
+  const rows: StoredRow[] = [];
   await porLotes(
     mensajes,
     LOTE_DE_CIFRADO,
     async (lote) => {
       const startedAt = performance.now();
-      for (const mensaje of lote) filas.push(plainRows ? rowOfMessage(mensaje) : { seq: mensaje.seq, body: null, json: JSON.stringify(cerrarCache(clave, mensaje)) });
+      for (const message of lote) rows.push(plainRows ? rowOfMessage(message) : { seq: message.seq, body: null, json: JSON.stringify(cerrarCache(clave, message)) });
       measureWork('cifrar', performance.now() - startedAt);
     },
     cederAlHilo
@@ -222,10 +222,10 @@ async function escribirFilas(
   await enCola(async () => {
     if (deEstaSesion !== generacion) return;
     await abrirTransaccion(abierta, async () => {
-      for (const fila of filas) {
+      for (const row of rows) {
         const { changes } = plainRows
-          ? await abierta.runAsync(`INSERT OR ${conflicto} INTO mensajes (chatId, seq, sobre, body) VALUES (?, ?, ?, ?)`, chatId, fila.seq, fila.json, fila.body)
-          : await abierta.runAsync(`INSERT OR ${conflicto} INTO mensajes (chatId, seq, sobre) VALUES (?, ?, ?)`, chatId, fila.seq, fila.json);
+          ? await abierta.runAsync(`INSERT OR ${conflicto} INTO mensajes (chatId, seq, sobre, body) VALUES (?, ?, ?, ?)`, chatId, row.seq, row.json, row.body)
+          : await abierta.runAsync(`INSERT OR ${conflicto} INTO mensajes (chatId, seq, sobre) VALUES (?, ?, ?)`, chatId, row.seq, row.json);
         escritas += changes;
       }
     });

@@ -23,11 +23,13 @@ beforeEach(() => {
 
 describe('what this phone already played survives a restart (pending 107, José 28/10)', () => {
   it('a nudge played in «Lokillos» does not play again after closing and reopening the app', async () => {
-    // Arrange
-    vi.useFakeTimers();
+    // Arrange: only the delayed save runs on fake timers. Importing the module under them timed out
+    // when the machine was loaded (gates, 02/11): the loader waits on real timers.
     const before = await startApp();
+    vi.useFakeTimers();
     before.rememberFunSeen('lokillos', 52);
     await vi.runAllTimersAsync();
+    vi.useRealTimers();
     // Act
     const after = await startApp();
     // Assert: the group's read cursor lags at 35 (pending 108), the ledger says 52.

@@ -26,6 +26,37 @@ function prefetchCutoutModel() {
   subjectCutout.prepare().catch((error: unknown) => reportarError('EmojiStickerPanel.prefetch', error));
 }
 
+type PanelTabItem = { key: PanelTab; label: string; Icon: typeof Smile };
+
+/** Icons only, in one capsule, like WhatsApp (pending 59): the label stays for TalkBack. */
+function PanelTabBar(props: { tabs: readonly PanelTabItem[]; active: PanelTab; onTab: (key: PanelTab) => void; onBackspace: () => void }) {
+  const colors = useColores();
+  return (
+    <View className="flex-row items-center gap-2 border-b border-outline/10 py-1.5 pl-3">
+      <View className="h-10 flex-1 flex-row overflow-hidden rounded-full border border-outline/20">
+        {props.tabs.map(({ key, label, Icon }) => {
+          const active = props.active === key;
+          const tint = active ? colors.primary : colors['on-surface-variant'];
+          return (
+            <Pressable key={key} testID={`pestana-panel-${key}`} accessibilityRole="tab" accessibilityLabel={label} accessibilityState={{ selected: active }} onPress={() => props.onTab(key)} className={`flex-1 items-center justify-center ${active ? 'bg-primary/15' : ''}`}>
+              {key === 'gifs' ? (
+                <View className="rounded border-[1.5px] px-1" style={{ borderColor: tint }}>
+                  <Text style={{ color: tint }} className="text-[10px] font-extrabold tracking-wider">GIF</Text>
+                </View>
+              ) : (
+                <Icon size={20} color={tint} />
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
+      <Pressable testID="btn-borrar-emoji" accessibilityLabel="Borrar" onPress={props.onBackspace} className="h-11 w-12 items-center justify-center">
+        <Delete size={20} color={colors['on-surface-variant']} />
+      </Pressable>
+    </View>
+  );
+}
+
 /**
  * The panel that replaces the keyboard (design `s1-app-panel-stickers`):
  * Emoji · Stickers · GIF · Guiños tabs (icons only) and the backspace key, like WhatsApp. It owns the
@@ -47,7 +78,6 @@ export const EmojiStickerPanel = memo(function EmojiStickerPanel(props: {
   onWink?: (wink: WinkId) => void;
   onNudge?: () => void;
 }) {
-  const colors = useColores();
   const { onWink } = props;
   const [creating, setCreating] = useState(false);
   /** A new editor each time (its layers and brushes do not leak into the next sticker); it stays mounted to slide out. */
@@ -65,7 +95,7 @@ export const EmojiStickerPanel = memo(function EmojiStickerPanel(props: {
     ToastAndroid.show('Convirtiendo en sticker…', ToastAndroid.SHORT);
     ToastAndroid.show(await saveGifSticker(props.jwt, { uri: gif.uri }), ToastAndroid.SHORT);
   }, [props.jwt]);
-  const tabs: { key: PanelTab; label: string; Icon: typeof Smile }[] = [
+  const tabs: PanelTabItem[] = [
     { key: 'emoji', label: 'Emoji', Icon: Smile },
     ...(props.withStickers ? [{ key: 'stickers' as const, label: 'Stickers', Icon: Sticker }] : []),
     ...(gifs ? [{ key: 'gifs' as const, label: 'GIF', Icon: ImagePlay }] : []),
@@ -80,40 +110,15 @@ export const EmojiStickerPanel = memo(function EmojiStickerPanel(props: {
   }, [tab]);
   return (
     <View style={{ flex: 1 }}>
-      {/* Icons only, in one capsule, like WhatsApp (pending 59): the label stays for TalkBack. */}
-      <View className="flex-row items-center gap-2 border-b border-outline/10 py-1.5 pl-3">
-        <View className="h-10 flex-1 flex-row overflow-hidden rounded-full border border-outline/20">
-          {tabs.map(({ key, label, Icon }) => {
-            const active = tab === key;
-            const tint = active ? colors.primary : colors['on-surface-variant'];
-            return (
-              <Pressable
-                key={key}
-                testID={`pestana-panel-${key}`}
-                accessibilityRole="tab"
-                accessibilityLabel={label}
-                accessibilityState={{ selected: active }}
-                onPress={() => {
-                  setTab(key);
-                  if (key === 'stickers') prefetchCutoutModel();
-                }}
-                className={`flex-1 items-center justify-center ${active ? 'bg-primary/15' : ''}`}
-              >
-                {key === 'gifs' ? (
-                  <View className="rounded border-[1.5px] px-1" style={{ borderColor: tint }}>
-                    <Text style={{ color: tint }} className="text-[10px] font-extrabold tracking-wider">GIF</Text>
-                  </View>
-                ) : (
-                  <Icon size={20} color={tint} />
-                )}
-              </Pressable>
-            );
-          })}
-        </View>
-        <Pressable testID="btn-borrar-emoji" accessibilityLabel="Borrar" onPress={props.onBackspace} className="h-11 w-12 items-center justify-center">
-          <Delete size={20} color={colors['on-surface-variant']} />
-        </Pressable>
-      </View>
+      <PanelTabBar
+        tabs={tabs}
+        active={tab}
+        onTab={(key) => {
+          setTab(key);
+          if (key === 'stickers') prefetchCutoutModel();
+        }}
+        onBackspace={props.onBackspace}
+      />
       {tab === 'emoji' ? (
         <PanelDeEmojis onElegir={props.onPickEmoji} />
       ) : tab === 'gifs' ? (

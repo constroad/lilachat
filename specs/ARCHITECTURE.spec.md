@@ -4995,6 +4995,45 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 189. Fluidez: teclado que se cierra arrastrando, envío al instante y la lista de atrás quieta (02/11/2026, APK 0.1.178)
+
+Plan 1 de `specs/PLANES-FLUIDEZ-IOS-PWA.spec.md`, fases F3, F4 y F6. Números y
+E2E en su §5.4.
+
+**Teclado (F3).** `ChatKeyboardArea` (`ChatBottom.tsx`) envuelve el chat y el
+hilo en un `KeyboardGestureArea` (interpolador «ios», desplazamiento del alto
+de la barra): arrastrar la conversación hacia el teclado lo cierra.
+
+**Envío (F4).**
+
+- Sticker: `stickerAsQueuedFile` lo pone en vuelo (`gifsInFlight.ts`, ahora
+  `addMediaInFlight`/`removeMediaInFlight`) y `pendingStickerItem`
+  (`filasDelChat.ts`) lo dibuja como sticker pendiente en la MISMA celda que
+  la real (`k-${clientKey}`), así no salta al confirmarse. Los recientes
+  quedan quietos mientras el panel está abierto (`useStickers`).
+- Guiño y zumbido: se reproducen al tocar (`playOnTap`, `nudge.tsx`) y el
+  panel se cierra solo. El eco del server se descuenta del registro local
+  (`consumeLocalPlay`, `shared/src/winks.ts`, tests) y no se repite.
+- Lista de atrás: tapada por un chat, la lista del espacio sostiene lo que
+  muestra (`useCached(..., held)`, `heldEntry.ts`). En Fabric,
+  react-navigation no congela la pantalla de abajo (`isBelowFocused`).
+- Panel que se cierra: `contentDrop` (`emojiPanel.ts`) devuelve el espacio
+  del panel y `useScrollConTeclado` baja el contenido con él, en el hilo de
+  UI, si la lista estaba al final (`contentAtEnd`, lo pone
+  `useFinalDeLaConversacion`).
+- `EmojiToggle`: el único componente que escucha al panel; la barra ya no se
+  redibuja al abrirlo o cerrarlo.
+- Ripple nativo (`android_ripple`) en la barra de abajo, las barras de
+  selección, adjuntar, contactos, menciones y actividad.
+
+**Diagnóstico (F0 ampliado).** `measureWork(label, ms)` y `useRenderCost`
+(`frameMonitor.ts`) suman el trabajo de JS con nombre dentro de cada ventana
+(chat, lista, lista del espacio, barra, cola, cifrado). El resumen muestra los
+tres que más pesan por interacción (`summarizeWork`, tests). Ventanas nuevas:
+enviar sticker, enviar GIF y mandar guiño.
+
+**Higiene (F6).** Fuera `moti` (0 usos).
+
 ## 188. Fluidez como Telegram: hojas en la misma ventana y la foto que crece desde su burbuja (02/11/2026, APK 0.1.177)
 
 Plan 1 de `specs/PLANES-FLUIDEZ-IOS-PWA.spec.md`, fases F1 y F2. Números y E2E en su §5.

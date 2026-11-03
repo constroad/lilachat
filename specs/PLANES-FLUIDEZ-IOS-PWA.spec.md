@@ -197,18 +197,18 @@ esté vigente ese día.
 
 ## 5. Avance
 
-### Estado por fase (02/11/2026, 17:45)
+### Estado por fase (02/11/2026, 19:30)
 
 | Fase | Estado | Falta |
 | --- | --- | --- |
 | F0 Medir | **Hecha.** En `main`, OTA `f4ca42ef` en vivo, probada en el emulador | 2 min en el teléfono de José para el número real |
 | F1 Fuera los modales | **Hecha** (APK 0.1.177). Host en la misma ventana (sesión y chat), capas animadas, puente de contextos, `Sheet` con arrastre: avisos, clip, fijar, ficha de persona, historial y acciones de miembro. El bloqueo de la app queda sobre todas las capas | Pasar las otras ~26 hojas a `Sheet` (cada una con su E2E). `overlays.ts` y el congelado se QUEDAN: una hoja con campo de texto sube el teclado igual (§5.3) |
 | F2 Visor de fotos | **Hecha** (APK 0.1.177). La foto crece desde su burbuja y vuelve a ella; arrastre que muestra el chat; foto completa pedida al apoyar el dedo; barras con fundido | El número en el teléfono de José (el emulador captura fotos negras, §5.3) |
-| F3 Teclado | Pendiente | Cierre arrastrando, salto al cerrar, sin `runOnJS` al terminar |
-| F4 Toque y envío | Pendiente | Enviar traba el JS ~0,5 s (§5.1); ripple nativo en filas y botones |
-| F5a Lectura síncrona | Pendiente | Chat frío pintado en el primer cuadro; borrar `memoriaDeChats` |
-| F5b SQLCipher | Pendiente | Va en el próximo APK |
-| F6 Higiene | Pendiente | `moti`, `useLegacyPackaging`, umbral en `rn-perf` |
+| F3 Teclado | **Hecha** (APK 0.1.178). El teclado se cierra arrastrando el chat (y el hilo) hacia abajo; al cerrarse el panel de emojis el chat baja con él en el hilo de UI (§5.4) | Probarlo con un teclado completo en el teléfono de José (el emulador usa el compacto) |
+| F4 Toque y envío | **En curso** (APK 0.1.178 + OTA). Ripple nativo; sticker, GIF y guiño con burbuja o animación al instante; la lista de atrás ya no se redibuja con cada mensaje; el botón emoji/teclado es el único que escucha al panel. Sticker de 63 a 23 cuadros de JS caídos, GIF de 37 a 3 (§5.4) | El chat entero se redibuja al enviar (130–340 ms en el emulador): bajar los archivos en vuelo y la ventana de filas a la lista; callbacks estables para la barra |
+| F5a Lectura síncrona | **Código listo** en la rama `fluidez-f5` (tests). La clave y la base quedan en mano al iniciar la sesión y `useChat` nace con la última página leída en su render (`readLastPageSync`) | Medir `leer-chat` en un chat frío; recién ahí decidir si se borra `memoriaDeChats` |
+| F5b SQLCipher | **Código listo** en la rama `fluidez-f5` (tests de lo puro). Base `lilachat-v2.db` cifrada entera con la misma clave (cruda, sin PBKDF2), filas en claro adentro con el texto en su columna; mudanza chat por chat, la fila de v1 se borra después de quedar en v2; sin SQLCipher en el binario sigue v1 | APK 0.1.179: E2E de la mudanza con historial real en el emulador, cierre de sesión y reapertura |
+| F6 Higiene | **En parte**: fuera `moti` (0.1.178) | `useLegacyPackaging` (medir descarga contra instalación); umbral de F0 en `rn-perf`, que vive en constroad-skills |
 
 ### Bitácora
 
@@ -218,6 +218,8 @@ esté vigente ese día.
 | 02/11/2026 | F0 | OTA `f4ca42ef` publicada y verificada en vivo (runtime 62ff8b1c, git 46177fb); rn-smoke 3/3 limpio, heap 24 MB. E2E en `lilafotos-qa`: el bloque «Fluidez» de Diagnóstico muestra las seis interacciones. Línea base en §5.1 |
 | 02/11/2026 | F1 | Rama `fluidez-f1`: `ui/overlay/OverlayHost` (raíz de la sesión y del chat) + `OverlayModal` (capas con slide/fade de Reanimated, atrás cierra la de arriba); el wrapper `ui/Modal` usa el host más cercano, con interruptor `IN_WINDOW_OVERLAYS`. `ui/Sheet` con arrastre para cerrar (`sheetGesture`, tests) y la hoja de avisos migrada. Pendiente: E2E en el emulador, medir contra F0, migrar las 31 hojas restantes, borrar `overlays`/`freeze` |
 | 02/11/2026 | F1 + F2 | APK 0.1.177 (178): hojas en la misma ventana con arrastre, foto que crece desde su burbuja (vuelo por `transform`), arrastre que muestra el chat, foto completa pedida al apoyar el dedo. E2E en el emulador, rn-smoke 3/3, medida en §5.3. Publicada en LilaStore |
+| 02/11/2026 | F3 + F4 + F6 | APK 0.1.178 (179): teclado que se cierra arrastrando, ripple nativo, sticker con burbuja al instante, guiño y zumbido al tocar, lista de atrás sostenida, panel que baja con el contenido, fuera `moti`. El diagnóstico dice dónde se va el JS de cada interacción. E2E grabado cuadro a cuadro, rn-smoke 3/3 (heap 22 MB), medida en §5.4. El botón emoji aislado va por OTA |
+| 02/11/2026 | F5a + F5b | Rama `fluidez-f5`: lectura síncrona de la última página y base SQLCipher con mudanza chat por chat. Sale en el APK 0.1.179 |
 
 ### 5.1 Línea base (02/11/2026, antes de F1)
 
@@ -323,3 +325,70 @@ número y la sensación reales salen del teléfono de José.
   texto sube el teclado y la lista de atrás no debe re-medirse.
 
 QA: las 2 fotos de prueba (seq 82 y 83) borradas con «Eliminar para todos».
+
+### 5.4 F3 + F4 y el envío de stickers en el APK 0.1.178 (02/11/2026, 19:30)
+
+José: «al enviar un sticker aún se siente tosco, no es fluido; pruébalo con
+guiño, GIF, etc.». Emulador `lilafotos-qa`, APK de release 0.1.178 (179),
+espacio Test, canal #general, grabación de pantalla a 30 cuadros.
+
+**Antes (0.1.177, misma grabación):** el sticker aparecía a los ~600 ms y la
+lista daba dos saltos (primero la cabecera, después la imagen); la fila
+«Recientes» se reacomodaba bajo el dedo; el guiño esperaba la respuesta del
+server para cerrar el panel y se reproducía con el eco.
+
+**Lo que se ve en 0.1.178:**
+
+| Acción | 0.1.177 | 0.1.178 |
+| --- | --- | --- |
+| Sticker: burbuja en pantalla | ~600 ms, dos saltos | ~130 ms, un solo movimiento, sin salto al confirmarse |
+| Guiño: empieza la animación | con el eco del server | 1–2 cuadros después del toque; el panel se cierra solo |
+| Guiño: el chat al cerrarse el panel | (no se miraba) | baja con el panel, sin hueco |
+| GIF: burbuja en pantalla | sin medir | ~250–300 ms (la vista previa del GIF se decodifica) |
+| Teclado | solo se cerraba con atrás | se cierra arrastrando el chat hacia abajo |
+
+**Dónde se iba el JS al enviar** (Diagnóstico › Fluidez, cuadros de JS caídos
+en la ventana y trabajo con nombre):
+
+| Interacción | Primer build | Con los arreglos |
+| --- | --- | --- |
+| Enviar un sticker | 63 · Chat 2× 132 ms, Lista del espacio 2× 79 ms, Barra 2× 41 ms | **23** · Chat 2× 183 ms, Barra 2× 77 ms |
+| Enviar un GIF | 37 · Chat 257 ms, Barra 44 ms | **3** · Chat 127 ms, Barra 60 ms |
+| Mandar un guiño | 119 · Lista del espacio 2× 207 ms, Barra 2× 168 ms, Chat 157 ms | 161 · Chat 343 ms, Barra 2× 328 ms (la ventana incluye el montaje del guiño) |
+
+El emulador varía entre corridas: los ms sirven para ver QUÉ trabaja, no para
+compararlos uno a uno.
+
+**Hallazgos y arreglos:**
+
+1. **La lista del espacio de ATRÁS se redibujaba con cada mensaje del chat
+   abierto.** En Fabric, react-navigation nunca congela la pantalla de abajo
+   (`isBelowFocused`), así que el `freezeOnBlur` de «Inicio» (FL12) no hacía
+   nada. Tapada por un chat (no al lado, en tablet), la lista sostiene lo que
+   muestra (`useCached(..., held)`, `heldEntry.ts` con tests) y se pone al día
+   al volver.
+2. **Al cerrarse el panel con un guiño, la lista quedaba arriba con un hueco
+   blanco 330 ms y después saltaba.** El espacio del panel se achicaba en el
+   hilo de UI, pero el recorte nativo del scroll esperaba un commit de React,
+   y el JS estaba montando el guiño. Ahora, al final del chat, el contenido
+   baja con el panel cuadro a cuadro (`contentDrop`, `panelDrop.ts` con tests).
+3. **La barra se redibujaba al abrir y cerrar el panel** solo para cambiar el
+   ícono. El botón emoji/teclado es ahora un componente propio
+   (`EmojiToggle`), el único que escucha al panel. Sale por OTA.
+4. **Pendiente (F4):** el chat entero se redibuja al enviar (130–340 ms en el
+   emulador): los archivos en vuelo y la ventana de filas viven en
+   `ChatScreen`. Se bajan a la lista en la próxima iteración, junto con
+   callbacks estables para la barra.
+
+**E2E del teclado (F3):** con el teclado compacto del emulador, el arrastre
+hacia abajo lo cierra y la barra baja con él. Falta verlo con un teclado
+completo en un teléfono.
+
+**Build:** el primer intento de recompilar murió a los 2 min con «Gradle build
+daemon disappeared»: el vigilante de memoria detuvo tres daemons (7,9 GB),
+dos de ellos ociosos de builds anteriores. Antes de compilar: `./gradlew
+--stop` (o confirmar que no quedan daemons de otra sesión trabajando).
+
+QA: los 7 mensajes de prueba en #general de Test (stickers, GIF y guiños,
+seq 86 a 92) borrados con «Eliminar para todos». El «asdasdads» no es de QA
+y quedó.

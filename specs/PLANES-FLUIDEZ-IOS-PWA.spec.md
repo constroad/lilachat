@@ -197,7 +197,7 @@ esté vigente ese día.
 
 ## 5. Avance
 
-### Estado por fase (02/11/2026, 20:55)
+### Estado por fase (02/11/2026, 22:45)
 
 | Fase | Estado | Falta |
 | --- | --- | --- |
@@ -205,7 +205,7 @@ esté vigente ese día.
 | F1 Fuera los modales | **Hecha** (APK 0.1.177). Host en la misma ventana (sesión y chat), capas animadas, puente de contextos, `Sheet` con arrastre: avisos, clip, fijar, ficha de persona, historial y acciones de miembro. El bloqueo de la app queda sobre todas las capas | Pasar las otras ~26 hojas a `Sheet` (cada una con su E2E). `overlays.ts` y el congelado se QUEDAN: una hoja con campo de texto sube el teclado igual (§5.3) |
 | F2 Visor de fotos | **Hecha** (APK 0.1.177). La foto crece desde su burbuja y vuelve a ella; arrastre que muestra el chat; foto completa pedida al apoyar el dedo; barras con fundido | El número en el teléfono de José (el emulador captura fotos negras, §5.3) |
 | F3 Teclado | **Hecha** (APK 0.1.178). El teclado se cierra arrastrando el chat (y el hilo) hacia abajo; al cerrarse el panel de emojis el chat baja con él en el hilo de UI (§5.4) | Probarlo con un teclado completo en el teléfono de José (el emulador usa el compacto) |
-| F4 Toque y envío | **En curso** (APK 0.1.178 y 0.1.179). Ripple nativo; sticker, GIF y guiño con burbuja o animación al instante; la lista de atrás ya no se redibuja con cada mensaje; el botón emoji/teclado es el único que escucha al panel; cerrar el panel no redibuja la grilla ni la lista. Sticker de 63 a 17 cuadros de JS caídos, GIF de 37 a 3, guiño de 232 a 57 (§5.4, §5.5) | El chat entero se redibuja al enviar (130–340 ms en el emulador): bajar los archivos en vuelo y la ventana de filas a la lista; callbacks estables para la barra |
+| F4 Toque y envío | **En curso** (APK 0.1.178 y 0.1.179). Ripple nativo; sticker, GIF y guiño con burbuja o animación al instante; la lista de atrás ya no se redibuja con cada mensaje; el botón emoji/teclado es el único que escucha al panel; cerrar el panel no redibuja la grilla ni la lista; la barra no se redibuja con el eco (OTA). Sticker de 63 a 17 cuadros de JS caídos, GIF de 37 a 3, guiño de 232 a 57 (§5.4, §5.5) | El chat entero se redibuja al enviar (130–340 ms en el emulador): bajar los archivos en vuelo y la ventana de filas a la lista; callbacks estables para la barra |
 | F5a Lectura síncrona | **Hecha** (APK 0.1.179). Abrir un chat: mediana de 0 cuadros de JS caídos (antes 12, §5.5). La clave y la base quedan en mano al iniciar la sesión y `useChat` nace con la última página leída en su render (`readLastPageSync`) | `leer-chat` no aparece entre los trabajos con nombre de la ventana: medirlo en el teléfono de José y recién ahí decidir si se borra `memoriaDeChats` |
 | F5b SQLCipher | **Hecha** (APK 0.1.179, E2E de la mudanza en §5.5). Base `lilachat-v2.db` cifrada entera con la misma clave (cruda, sin PBKDF2), filas en claro adentro con el texto en su columna; mudanza chat por chat, la fila de v1 se borra después de quedar en v2; sin SQLCipher en el binario sigue v1 | Cerrar sesión y volver a entrar (no se probó: pide un código por WhatsApp a la cuenta real de José); +2,3 MB de APK |
 | F6 Higiene | **En parte**: fuera `moti` (0.1.178) | `useLegacyPackaging` (medir descarga contra instalación); umbral de F0 en `rn-perf`, que vive en constroad-skills |
@@ -464,3 +464,32 @@ chat. Cerrar sesión y volver a entrar con la base nueva queda sin probar.
 
 QA: el guiño y el sticker de la medida (seq 95 y 96) borrados con «Eliminar
 para todos». El emulador quedó en el espacio Constroad, con wifi y datos.
+
+### 5.6 La barra deja de redibujarse con el eco (OTA `1df5c376`, 02/11/2026, 22:40)
+
+Los comandos del chat (`useChatCommandsWithActions`) y sus respuestas
+(`useAppAnswers`) devolvían un objeto nuevo en cada render, y pegar una imagen
+era una flecha en línea. La barra está memorizada, pero esas tres props
+cambiaban siempre: se redibujaba con cada mensaje que llegaba. Ahora los dos
+objetos van en `useMemo` y `pastePhoto` sale estable de `useAdjuntosDelChat`.
+
+Tres textos en #general de Test, antes y después de la OTA (Diagnóstico ›
+Fluidez, «Enviar un mensaje»):
+
+| | Antes | Con la OTA |
+| --- | --- | --- |
+| Barra | 2× 116 ms | **1× 13 ms** (solo el campo que se vacía) |
+| Chat | 1× 654 ms | 1× 437 ms |
+| Cuadros JS (mediana · peor) | 0 · 38 | 21 · 36 |
+
+La mediana de cuadros es ruido del emulador con tres envíos; lo que se movió de
+verdad es la barra. Abrir el chat en frío mostró «Disco 1× 68 ms»: es
+`leer-chat` (F5a). El resumen usa la mediana de todas las aperturas, y las
+que salen de memoria lo dejan en cero. Por eso casi nunca se ve.
+
+**Sigue (F4):** el chat entero (`ChatScreen`) se redibuja con el eco del
+server. La causa es que los mensajes viven en su estado. Bajarlos a la lista es
+una refactorización aparte.
+
+QA: los 6 textos de la medida (seq 97 a 102) borrados con «Eliminar para
+todos». La app quedó en Constroad. rn-smoke 3/3 antes de publicar.

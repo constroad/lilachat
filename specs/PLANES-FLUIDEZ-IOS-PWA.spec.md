@@ -197,7 +197,7 @@ esté vigente ese día.
 
 ## 5. Avance
 
-### Estado por fase (02/11/2026, 19:30)
+### Estado por fase (02/11/2026, 20:55)
 
 | Fase | Estado | Falta |
 | --- | --- | --- |
@@ -205,9 +205,9 @@ esté vigente ese día.
 | F1 Fuera los modales | **Hecha** (APK 0.1.177). Host en la misma ventana (sesión y chat), capas animadas, puente de contextos, `Sheet` con arrastre: avisos, clip, fijar, ficha de persona, historial y acciones de miembro. El bloqueo de la app queda sobre todas las capas | Pasar las otras ~26 hojas a `Sheet` (cada una con su E2E). `overlays.ts` y el congelado se QUEDAN: una hoja con campo de texto sube el teclado igual (§5.3) |
 | F2 Visor de fotos | **Hecha** (APK 0.1.177). La foto crece desde su burbuja y vuelve a ella; arrastre que muestra el chat; foto completa pedida al apoyar el dedo; barras con fundido | El número en el teléfono de José (el emulador captura fotos negras, §5.3) |
 | F3 Teclado | **Hecha** (APK 0.1.178). El teclado se cierra arrastrando el chat (y el hilo) hacia abajo; al cerrarse el panel de emojis el chat baja con él en el hilo de UI (§5.4) | Probarlo con un teclado completo en el teléfono de José (el emulador usa el compacto) |
-| F4 Toque y envío | **En curso** (APK 0.1.178 + OTA). Ripple nativo; sticker, GIF y guiño con burbuja o animación al instante; la lista de atrás ya no se redibuja con cada mensaje; el botón emoji/teclado es el único que escucha al panel. Sticker de 63 a 23 cuadros de JS caídos, GIF de 37 a 3 (§5.4) | El chat entero se redibuja al enviar (130–340 ms en el emulador): bajar los archivos en vuelo y la ventana de filas a la lista; callbacks estables para la barra |
-| F5a Lectura síncrona | **En `main`** para el APK 0.1.179 (tests). La clave y la base quedan en mano al iniciar la sesión y `useChat` nace con la última página leída en su render (`readLastPageSync`) | Medir `leer-chat` en un chat frío; recién ahí decidir si se borra `memoriaDeChats` |
-| F5b SQLCipher | **En `main`** para el APK 0.1.179 (tests de lo puro). Base `lilachat-v2.db` cifrada entera con la misma clave (cruda, sin PBKDF2), filas en claro adentro con el texto en su columna; mudanza chat por chat, la fila de v1 se borra después de quedar en v2; sin SQLCipher en el binario sigue v1 | APK 0.1.179: E2E de la mudanza con historial real en el emulador, cierre de sesión y reapertura |
+| F4 Toque y envío | **En curso** (APK 0.1.178 y 0.1.179). Ripple nativo; sticker, GIF y guiño con burbuja o animación al instante; la lista de atrás ya no se redibuja con cada mensaje; el botón emoji/teclado es el único que escucha al panel; cerrar el panel no redibuja la grilla ni la lista. Sticker de 63 a 17 cuadros de JS caídos, GIF de 37 a 3, guiño de 232 a 57 (§5.4, §5.5) | El chat entero se redibuja al enviar (130–340 ms en el emulador): bajar los archivos en vuelo y la ventana de filas a la lista; callbacks estables para la barra |
+| F5a Lectura síncrona | **Hecha** (APK 0.1.179). Abrir un chat: mediana de 0 cuadros de JS caídos (antes 12, §5.5). La clave y la base quedan en mano al iniciar la sesión y `useChat` nace con la última página leída en su render (`readLastPageSync`) | `leer-chat` no aparece entre los trabajos con nombre de la ventana: medirlo en el teléfono de José y recién ahí decidir si se borra `memoriaDeChats` |
+| F5b SQLCipher | **Hecha** (APK 0.1.179, E2E de la mudanza en §5.5). Base `lilachat-v2.db` cifrada entera con la misma clave (cruda, sin PBKDF2), filas en claro adentro con el texto en su columna; mudanza chat por chat, la fila de v1 se borra después de quedar en v2; sin SQLCipher en el binario sigue v1 | Cerrar sesión y volver a entrar (no se probó: pide un código por WhatsApp a la cuenta real de José); +2,3 MB de APK |
 | F6 Higiene | **En parte**: fuera `moti` (0.1.178) | `useLegacyPackaging` (medir descarga contra instalación); umbral de F0 en `rn-perf`, que vive en constroad-skills |
 
 ### Bitácora
@@ -220,7 +220,7 @@ esté vigente ese día.
 | 02/11/2026 | F1 + F2 | APK 0.1.177 (178): hojas en la misma ventana con arrastre, foto que crece desde su burbuja (vuelo por `transform`), arrastre que muestra el chat, foto completa pedida al apoyar el dedo. E2E en el emulador, rn-smoke 3/3, medida en §5.3. Publicada en LilaStore |
 | 02/11/2026 | F3 + F4 + F6 | APK 0.1.178 (179): teclado que se cierra arrastrando, ripple nativo, sticker con burbuja al instante, guiño y zumbido al tocar, lista de atrás sostenida, panel que baja con el contenido, fuera `moti`. El diagnóstico dice dónde se va el JS de cada interacción. E2E grabado cuadro a cuadro, rn-smoke 3/3 (heap 22 MB), medida en §5.4. El botón emoji aislado va por OTA |
 | 02/11/2026 | F5a + F5b | Rama `fluidez-f5`: lectura síncrona de la última página y base SQLCipher con mudanza chat por chat. Sale en el APK 0.1.179 |
-| 02/11/2026 | F4 + F5 | `main` para el APK 0.1.179 (180): F5a y F5b integradas; cerrar el panel ya no redibuja la grilla de stickers ni la lista del chat (los dos se suscriben al panel sin estado, `subscribeEmojiPanel` con tests; panel memorizado con callbacks estables); el guiño entra un cuadro después del cierre del panel; textos vacíos con «aquí». Pendiente: build (el emulador y Gradle los tiene Lila Speak), E2E de la mudanza, medida y publicación |
+| 02/11/2026 | F4 + F5 | `main` para el APK 0.1.179 (180): F5a y F5b integradas; cerrar el panel ya no redibuja la grilla de stickers ni la lista del chat (los dos se suscriben al panel sin estado, `subscribeEmojiPanel` con tests; panel memorizado con callbacks estables); el guiño entra un cuadro después del cierre del panel; textos vacíos con «aquí». E2E de la mudanza con el historial real del emulador, rn-smoke 3/3 (heap 19 MB), medida en §5.5. Publicada en LilaStore |
 
 ### 5.1 Línea base (02/11/2026, antes de F1)
 
@@ -409,3 +409,58 @@ dos de ellos ociosos de builds anteriores. Antes de compilar: `./gradlew
 QA: los 9 mensajes de prueba en #general de Test (stickers, GIF y guiños,
 seq 86 a 94) borrados con «Eliminar para todos». El «asdasdads» no es de QA
 y quedó.
+
+### 5.5 F4 + F5 en el APK 0.1.179 (02/11/2026, 20:50)
+
+Emulador `lilafotos-qa`, APK de release 0.1.179 (180) instalado encima de
+0.1.178 con `adb install -r`, sin borrar datos.
+
+**La mudanza a SQLCipher (F5b):**
+
+| Comprobación | Resultado |
+| --- | --- |
+| Antes | `lilachat.db` 2,4 MB + WAL 4,1 MB: 2921 mensajes de 36 chats |
+| Primer arranque | `lilachat.db` desaparece; queda `lilachat-v2.db` (todo en su WAL al principio, 2,9 MB) |
+| Leerla sin la clave | `sqlite3`: «file is not a database». El WAL no deja ver texto en claro («Constroad»: 0 coincidencias) |
+| Historial | Los canales de Test muestran las mismas filas que antes (#general 74–94, planta 43–49) |
+| Arranque en frío y sin red | Mismo historial, leído solo del disco cifrado |
+| Novedades | La hoja «Lilachat 0.1.179» aparece una vez al abrir |
+| rn-smoke | 3/3 en frío, heap 19 MB |
+
+El APK pesa 43,2 MB: 2,3 MB más que 0.1.178, por SQLCipher y su OpenSSL.
+
+**Diagnóstico › Fluidez** (cuadros de JS caídos, mediana · peor):
+
+| Interacción | 0.1.178 (+ OTA) | 0.1.179 |
+| --- | --- | --- |
+| Abrir un chat | 12 · 12 | **0** · 10 (8 aperturas) |
+| Mandar un guiño | 232 · Chat 520 ms, Barra 301 ms, UI 19 | **57** · Chat 225 ms, Barra 60 ms, UI 5 |
+| Enviar un sticker | 15 · Chat 302 ms | 17 · Chat 378 ms (igual: el ruido del emulador) |
+
+**Qué cambió:**
+
+1. **Cerrar el panel redibujaba la grilla de stickers y la lista del chat.**
+   Los recientes de stickers y el «bajar al final» de la lista escuchaban el
+   estado del panel con `useSyncExternalStore` solo para reaccionar al
+   cierre. Ahora se suscriben sin estado (`subscribeEmojiPanel`, con tests) y
+   el panel va memorizado con callbacks estables: al cerrarlo con un guiño
+   solo se dibuja el botón emoji/teclado.
+2. **El guiño entra un cuadro después del cierre.** Montar el sketch cuesta
+   cientos de ms de JS; en el mismo commit que el cierre, el panel tardaba en
+   empezar a bajar.
+3. **El chat frío nace pintado (F5a)** y **la base pasa a SQLCipher (F5b)**:
+   abrir un chat ya no espera a descifrar sobres en JavaScript.
+
+**Gates:** los primeros dieron rojo por tres cosas que no eran del cambio
+visible: dos nombres en español de F5b, el panel memorizado contado como
+función nueva de 98 líneas (la barra de pestañas salió a `PanelTabBar`), y
+el test de `funSeen`, que importaba el módulo con relojes falsos y vencía a
+los 5 s con la Mac cargada (load 89: el Gradle de Lila Speak, mis gates y
+vitest). Ahora solo el guardado corre con relojes falsos.
+
+**Sigue (F4):** el chat entero se redibuja con el eco del server (Chat
+200–380 ms por envío). La lista del espacio se dibuja 2 veces al abrir un
+chat. Cerrar sesión y volver a entrar con la base nueva queda sin probar.
+
+QA: el guiño y el sticker de la medida (seq 95 y 96) borrados con «Eliminar
+para todos». El emulador quedó en el espacio Constroad, con wifi y datos.

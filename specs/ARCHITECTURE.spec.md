@@ -4995,6 +4995,30 @@ f-06 Drive, f-07 canal que nace con la cotización (descartado por José: no se 
 en móvil y escritorio. Los ids están en `.stitch-work/index.json` y en
 INVENTARIO.
 
+## 190. Fluidez: base de mensajes en SQLCipher, chat frío pintado y guiño sin trabar el panel (02/11/2026, APK 0.1.179)
+
+- **Base del teléfono (F5b):** `chat/messageBaseV2.ts` abre `lilachat-v2.db`
+  con SQLCipher (plugin `expo-sqlite` con `useSQLCipher`) y la misma clave de
+  32 bytes en crudo (`PRAGMA key = "x'…'"`, sin PBKDF2). Adentro las filas van
+  en claro: `sobre` guarda el JSON del mensaje y `body` su texto. Si el
+  binario no trae SQLCipher (`PRAGMA cipher_version` vacío) se sigue con la
+  base 1. Una clave que no abre la base (`file is not a database`) la borra
+  con su WAL y la crea de nuevo; un disco lleno o una base ocupada nunca la
+  borran (`isWrongKeyError`, con tests).
+- **Mudanza:** chat por chat, de a 100 filas, cediendo el hilo; la fila de la
+  base 1 se borra después de quedar escrita en la 2. Quien necesita un chat lo
+  muda primero (`singleFlight` por chat); al terminar, `lilachat.db` se borra.
+  E2E en §5.5 de `PLANES-FLUIDEZ-IOS-PWA.spec.md`.
+- **Chat frío (F5a):** `useChat` nace con la última página leída del disco en
+  su primer render (`readLastPageSync`, `firstPageOf`); la clave y la base se
+  abren al iniciar la sesión (`warmUpStore`).
+- **Panel de emojis:** `subscribeEmojiPanel` avisa aperturas y cierres sin
+  render. Lo usan los recientes de stickers y el «bajar al final» de la
+  lista; `EmojiStickerPanel` va memorizado, con su barra de pestañas en
+  `PanelTabBar`. El guiño propio se reproduce un cuadro después de cerrar el
+  panel.
+- El APK pesa 2,3 MB más (43,2 MB).
+
 ## 189. Fluidez: teclado que se cierra arrastrando, envío al instante y la lista de atrás quieta (02/11/2026, APK 0.1.178)
 
 Plan 1 de `specs/PLANES-FLUIDEZ-IOS-PWA.spec.md`, fases F3, F4 y F6. Números y

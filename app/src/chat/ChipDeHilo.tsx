@@ -15,6 +15,15 @@ const MONTADO = -8;
 /** El `gap-2` entre el avatar del autor y su burbuja (dp): el chip arranca donde la burbuja. */
 const SEPARACION_DEL_AVATAR = 8;
 
+/** Where the chip's row sits: under the bubble, in the middle under a notice, or after the avatar in a flat row. */
+function chipRowLayout(placement: { mia: boolean; conAvatar: boolean; centered?: boolean; indent?: number }): { className: string; style?: { paddingLeft: number } } {
+  const flat = placement.indent !== undefined;
+  const justify = placement.centered ? 'justify-center' : placement.mia && !flat ? 'justify-end' : '';
+  const className = `${flat ? 'mt-1' : '-mt-0.5'} flex-row ${justify}`;
+  if (flat) return { className, style: { paddingLeft: placement.indent ?? 0 } };
+  return { className, style: placement.conAvatar && !placement.centered ? { paddingLeft: AVATAR_DE_AUTOR + SEPARACION_DEL_AVATAR } : undefined };
+}
+
 /**
  * Debajo de la raíz de un hilo (E3, 20/10; diseño `e3-app-chip-hilo`): los
  * últimos que respondieron, «4 respuestas · última 10:42», un punto si hay
@@ -44,7 +53,7 @@ export const ChipDeHilo = memo(function ChipDeHilo(props: {
   const [cantidad, ...resto] = texto.split(' · ');
   const flat = props.indent !== undefined;
   return (
-    <View className={`${props.indent !== undefined ? 'mt-1' : '-mt-0.5'} flex-row ${props.centered ? 'justify-center' : props.mia && props.indent === undefined ? 'justify-end' : ''}`} style={props.indent !== undefined ? { paddingLeft: props.indent } : props.conAvatar && !props.centered ? { paddingLeft: AVATAR_DE_AUTOR + SEPARACION_DEL_AVATAR } : undefined}>
+    <View {...chipRowLayout(props)}>
       <Pressable
         testID={`chip-hilo-${props.seq}`}
         accessibilityRole="button"

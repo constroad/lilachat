@@ -76,10 +76,10 @@ export function useDibujarFila(p: {
   const albums = useMemo(() => {
     const confirmed = rows.filter((row): row is ChatMessage => !isPending(row));
     const bySeq = new Map(confirmed.map((row) => [row.seq, row]));
-    const roles = albumLayout(confirmed);
+    const layout = albumLayout(confirmed);
     const heads = new Map<number, ChatMessage[]>();
-    for (const [seq, role] of roles) if (role.role === 'head') heads.set(seq, role.seqs.map((one) => bySeq.get(one)).filter((one): one is ChatMessage => Boolean(one)));
-    return { roles, bySeq, heads };
+    for (const [seq, role] of layout) if (role.role === 'head') heads.set(seq, role.seqs.map((one) => bySeq.get(one)).filter((one): one is ChatMessage => Boolean(one)));
+    return { roles: layout, bySeq, heads };
   }, [rows]);
   // The same for the photos of each album.
   const albumHeads = useKeptValues(albums.heads);

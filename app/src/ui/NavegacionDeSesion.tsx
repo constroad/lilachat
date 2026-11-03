@@ -13,6 +13,7 @@ import type { ChatSummary } from '../api/client';
 import type { Credential } from '../auth/credentialStore';
 import { ChatScreen } from '../chat/ChatScreen';
 import { chatsEnMemoria } from '../chat/chatsGuardados';
+import { warmUpStore } from '../chat/mensajesGuardados';
 import { ProveedorDeLlamadas } from '../calls/ProveedorDeLlamadas';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { iniciarCronometro } from '../diagnostico/diagnostico';
@@ -108,6 +109,10 @@ export function NavegacionDeSesion(props: {
     [avisarAbierto]
   );
 
+  // The store key and base in hand before the first chat opens (plan 1, F5a).
+  useEffect(() => {
+    warmUpStore();
+  }, []);
   // Al girar una tablet chica, el chat pasa del stack al panel y al revés.
   useEffect(() => {
     if (!navegacion.isReady()) return;

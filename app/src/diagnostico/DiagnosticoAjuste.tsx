@@ -142,6 +142,7 @@ const WORK_LABELS: Record<string, string> = {
   compositor: 'Barra',
   cola: 'Cola',
   cifrar: 'Cifrado',
+  'leer-chat': 'Disco',
 };
 
 /**

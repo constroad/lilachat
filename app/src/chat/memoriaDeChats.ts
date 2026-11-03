@@ -84,5 +84,20 @@ export function addMissingBySeq<T extends { seq: number }>(current: T[], stored:
   return [...current, ...missing].sort((first, second) => first.seq - second.seq);
 }
 
+/** The first page of a chat and whether it came from the disk (then the async read skips it). */
+export type FirstPage<T> = { messages: readonly T[]; fromDisk: boolean };
+
+/**
+ * The first page of a chat, in the render that mounts it (plan 1, F5a): the
+ * memory copy if there is one, else the disk read in that same render. `null`
+ * from the disk means not ready yet (key or migration pending): the async read
+ * covers it.
+ */
+export function firstPageOf<T>(inMemory: readonly T[] | null, readDisk: () => readonly T[] | null): FirstPage<T> {
+  if (inMemory) return { messages: inMemory, fromDisk: false };
+  const stored = readDisk();
+  return stored ? { messages: stored, fromDisk: true } : { messages: [], fromDisk: false };
+}
+
 /** Diez chats, cincuenta mensajes: la primera pantalla de los que más se abren. */
 export const chatsEnMemoria = new MemoriaDeChats<ChatMessage>({ chats: 10, mensajes: 50 });

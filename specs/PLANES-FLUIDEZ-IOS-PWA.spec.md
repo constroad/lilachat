@@ -197,7 +197,7 @@ esté vigente ese día.
 
 ## 5. Avance
 
-### Estado por fase (02/11/2026, 22:45)
+### Estado por fase (03/11/2026, 00:05)
 
 | Fase | Estado | Falta |
 | --- | --- | --- |
@@ -205,7 +205,7 @@ esté vigente ese día.
 | F1 Fuera los modales | **Hecha** (APK 0.1.177). Host en la misma ventana (sesión y chat), capas animadas, puente de contextos, `Sheet` con arrastre: avisos, clip, fijar, ficha de persona, historial y acciones de miembro. El bloqueo de la app queda sobre todas las capas | Pasar las otras ~26 hojas a `Sheet` (cada una con su E2E). `overlays.ts` y el congelado se QUEDAN: una hoja con campo de texto sube el teclado igual (§5.3) |
 | F2 Visor de fotos | **Hecha** (APK 0.1.177). La foto crece desde su burbuja y vuelve a ella; arrastre que muestra el chat; foto completa pedida al apoyar el dedo; barras con fundido | El número en el teléfono de José (el emulador captura fotos negras, §5.3) |
 | F3 Teclado | **Hecha** (APK 0.1.178). El teclado se cierra arrastrando el chat (y el hilo) hacia abajo; al cerrarse el panel de emojis el chat baja con él en el hilo de UI (§5.4) | Probarlo con un teclado completo en el teléfono de José (el emulador usa el compacto) |
-| F4 Toque y envío | **En curso** (APK 0.1.178 y 0.1.179). Ripple nativo; sticker, GIF y guiño con burbuja o animación al instante; la lista de atrás ya no se redibuja con cada mensaje; el botón emoji/teclado es el único que escucha al panel; cerrar el panel no redibuja la grilla ni la lista; la barra no se redibuja con el eco (OTA). Sticker de 63 a 17 cuadros de JS caídos, GIF de 37 a 3, guiño de 232 a 57 (§5.4, §5.5) | El chat entero se redibuja al enviar (130–340 ms en el emulador): bajar los archivos en vuelo y la ventana de filas a la lista; callbacks estables para la barra |
+| F4 Toque y envío | **En curso** (APK 0.1.178 y 0.1.179). Ripple nativo; sticker, GIF y guiño con burbuja o animación al instante; la lista de atrás ya no se redibuja con cada mensaje; el botón emoji/teclado es el único que escucha al panel; cerrar el panel no redibuja la grilla ni la lista; la barra no se redibuja con el eco (OTA); un envío dibuja 2 filas y no todas las montadas, y el chat baja de 437 a 222 ms (OTA `eaa9ac0d`). Sticker de 63 a 17 cuadros de JS caídos, GIF de 37 a 3, guiño de 232 a 57 (§5.4 a §5.7) | `ChatScreen` sigue con 3 renders por envío (los mensajes viven en su estado); la lista del espacio se dibuja 2 veces al abrir un chat; cuadros caídos al enviar sin medir con la Mac libre |
 | F5a Lectura síncrona | **Hecha** (APK 0.1.179). Abrir un chat: mediana de 0 cuadros de JS caídos (antes 12, §5.5). La clave y la base quedan en mano al iniciar la sesión y `useChat` nace con la última página leída en su render (`readLastPageSync`) | `leer-chat` no aparece entre los trabajos con nombre de la ventana: medirlo en el teléfono de José y recién ahí decidir si se borra `memoriaDeChats` |
 | F5b SQLCipher | **Hecha** (APK 0.1.179, E2E de la mudanza en §5.5). Base `lilachat-v2.db` cifrada entera con la misma clave (cruda, sin PBKDF2), filas en claro adentro con el texto en su columna; mudanza chat por chat, la fila de v1 se borra después de quedar en v2; sin SQLCipher en el binario sigue v1 | Cerrar sesión y volver a entrar (no se probó: pide un código por WhatsApp a la cuenta real de José); +2,3 MB de APK |
 | F6 Higiene | **En parte**: fuera `moti` (0.1.178) | `useLegacyPackaging` (medir descarga contra instalación); umbral de F0 en `rn-perf`, que vive en constroad-skills |
@@ -220,6 +220,7 @@ esté vigente ese día.
 | 02/11/2026 | F1 + F2 | APK 0.1.177 (178): hojas en la misma ventana con arrastre, foto que crece desde su burbuja (vuelo por `transform`), arrastre que muestra el chat, foto completa pedida al apoyar el dedo. E2E en el emulador, rn-smoke 3/3, medida en §5.3. Publicada en LilaStore |
 | 02/11/2026 | F3 + F4 + F6 | APK 0.1.178 (179): teclado que se cierra arrastrando, ripple nativo, sticker con burbuja al instante, guiño y zumbido al tocar, lista de atrás sostenida, panel que baja con el contenido, fuera `moti`. El diagnóstico dice dónde se va el JS de cada interacción. E2E grabado cuadro a cuadro, rn-smoke 3/3 (heap 22 MB), medida en §5.4. El botón emoji aislado va por OTA |
 | 02/11/2026 | F5a + F5b | Rama `fluidez-f5`: lectura síncrona de la última página y base SQLCipher con mudanza chat por chat. Sale en el APK 0.1.179 |
+| 03/11/2026 | F4 | OTA `eaa9ac0d` (runtime 51e099b7, git aa2d248): un mensaje nuevo redibuja solo su fila. Tocar una cita y responder salen de refs; álbumes y citas iguales conservan su objeto (`keptValues`, con tests); pastilla de reacciones, chip del hilo y celda del sticker memorizados. Diagnóstico cuenta «Filas N×». rn-smoke 3/3 (heap 19 MB), medida en §5.7 |
 | 02/11/2026 | F4 + F5 | `main` para el APK 0.1.179 (180): F5a y F5b integradas; cerrar el panel ya no redibuja la grilla de stickers ni la lista del chat (los dos se suscriben al panel sin estado, `subscribeEmojiPanel` con tests; panel memorizado con callbacks estables); el guiño entra un cuadro después del cierre del panel; textos vacíos con «aquí». E2E de la mudanza con el historial real del emulador, rn-smoke 3/3 (heap 19 MB), medida en §5.5. Publicada en LilaStore |
 
 ### 5.1 Línea base (02/11/2026, antes de F1)
@@ -493,3 +494,51 @@ una refactorización aparte.
 
 QA: los 6 textos de la medida (seq 97 a 102) borrados con «Eliminar para
 todos». La app quedó en Constroad. rn-smoke 3/3 antes de publicar.
+
+### 5.7 Un envío redibuja su fila, no todas (OTA `eaa9ac0d`, 03/11/2026, 00:00)
+
+Cada fila es `memo`, pero dos de sus props cambiaban con cada mensaje:
+
+- **Tocar una cita.** El salto dependía de `releaseFromEnd`, una flecha nueva
+  de `ChatScreen` en cada render. Ahora `useIrAMensaje` lee esa flecha y
+  `onNoEsta` de un ref.
+- **Responder.** Dependía de los álbumes, que se rearman con cada fila nueva.
+  Ahora los lee de un ref.
+
+Además, cada render armaba un arreglo nuevo para cada álbum y un objeto nuevo
+para cada cita. `keepUnchanged` (`chat/keptValues.ts`, con tests) devuelve el
+objeto anterior cuando nada cambió. La pastilla de reacciones recibe el `seq`
+en vez de una flecha. La pastilla, el chip del hilo y la celda del sticker van
+memorizados.
+
+Para medirlo, Diagnóstico cuenta las filas que se dibujan dentro de la ventana
+(`useRenderCount('fila')`, «Filas N×»). Es un conteo sin tiempo: el resumen
+lo muestra después de los tres costos más altos.
+
+Tres textos en #general de Test (Diagnóstico › Fluidez, «Enviar un mensaje»):
+
+| | Antes (OTA `1df5c376`) | Con la OTA `eaa9ac0d` |
+| --- | --- | --- |
+| Filas dibujadas por envío | todas las montadas (84 a 105: hasta 22) | **2** (la nueva y la anterior, que cambia de grupo) |
+| Chat | 1× 437 ms | 3× 222 ms |
+| Barra | 1× 13 ms | 1× 13 ms |
+| Cuadros JS (mediana · peor) | 21 · 36 | 31 · 53 |
+
+**Los cuadros caídos no son comparables.** La medida corrió con la Mac en
+load average 20, con el render de Lila Speak (tres procesos `node` al 250 %).
+El conteo de filas no depende de la carga, y es lo que prueba el arreglo. Los
+cuadros se vuelven a medir con la Mac libre, o en el teléfono de José.
+
+**Sigue (F4):**
+
+- `ChatScreen` hace 3 renders por envío: el pendiente, la confirmación y el
+  eco. Los mensajes viven en su estado. Bajarlos a la lista es la
+  refactorización que queda.
+- Al abrir un chat, «Lista del espacio 2× 165 ms»: la lista de atrás se dibuja
+  dos veces.
+
+QA: los 3 textos (seq 103 a 105) borrados con «Eliminar para todos». La app
+quedó en Constroad. rn-smoke 3/3 antes de publicar. El test intermitente
+`checklistRoutes` (avisos de dos tildes, 1 de 5 corridas) se arregló en el
+mismo push: la ventana del aviso pasó de 30 a 500 ms y se espera con
+`vi.waitFor`.

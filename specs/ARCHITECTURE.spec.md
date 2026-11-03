@@ -1272,6 +1272,16 @@ Ahora `onStartReached` pide la anterior, con `chat/paginacion.ts` decidiendo:
 Y no se trae el histórico al abrir: arrastrar años de mensajes en cada apertura
 es justo lo que hace que una app se sienta pesada.
 
+### 22.4 Una celda por fila en la conversación (03/11/2026)
+
+FlashList vuelve a pedir una celda cuando cambia su `item` o su `renderItem`.
+El dibujo de fila dependía de los mensajes, así que cada envío pedía las ~50
+celdas montadas tres veces (147 llamadas para 2 filas que cambiaban). Ahora la
+lista recibe `cells` (`app/src/chat/messageCells.ts`): una por fila, con
+vecinos, día, divisor, álbum, par de stickers, checks, cita, saludo e hilo. Una
+celda igual conserva su objeto y el dibujo (`drawMessageCell.tsx`) solo depende
+del chat. Medida y detalle en `PLANES-FLUIDEZ-IOS-PWA.spec.md` §5.9.
+
 ## 23. Registro abierto (26/08/2026)
 
 Wilson instaló Lilachat y no le llegaba el código. La causa no era el envío: el

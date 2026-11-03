@@ -197,15 +197,15 @@ esté vigente ese día.
 
 ## 5. Avance
 
-### Estado por fase (03/11/2026, 01:20)
+### Estado por fase (03/11/2026, 03:50)
 
 | Fase | Estado | Falta |
 | --- | --- | --- |
 | F0 Medir | **Hecha.** En `main`, OTA `f4ca42ef` en vivo, probada en el emulador | 2 min en el teléfono de José para el número real |
-| F1 Fuera los modales | **Hecha** (APK 0.1.177). Host en la misma ventana (sesión y chat), capas animadas, puente de contextos, `Sheet` con arrastre: avisos, clip, fijar, ficha de persona, historial y acciones de miembro; con la OTA `ad44c54e`, siete más (§5.8). El bloqueo de la app queda sobre todas las capas | Pasar las otras ~19 hojas a `Sheet` (cada una con su E2E); E2E pendiente de 4 de las 7 nuevas (§5.8). `overlays.ts` y el congelado se QUEDAN: una hoja con campo de texto sube el teclado igual (§5.3) |
+| F1 Fuera los modales | **Hecha** (APK 0.1.177). Host en la misma ventana (sesión y chat), capas animadas, puente de contextos, `Sheet` con arrastre: avisos, clip, fijar, ficha de persona, historial y acciones de miembro; con la OTA `ad44c54e`, siete más (§5.8), y «Programar mensaje» con la OTA `84a5591b` (§5.9). El bloqueo de la app queda sobre todas las capas | Pasar las otras ~18 hojas a `Sheet` (cada una con su E2E); E2E pendiente de 4 de las 7 de §5.8. `overlays.ts` y el congelado se QUEDAN: una hoja con campo de texto sube el teclado igual (§5.3) |
 | F2 Visor de fotos | **Hecha** (APK 0.1.177). La foto crece desde su burbuja y vuelve a ella; arrastre que muestra el chat; foto completa pedida al apoyar el dedo; barras con fundido | El número en el teléfono de José (el emulador captura fotos negras, §5.3) |
 | F3 Teclado | **Hecha** (APK 0.1.178). El teclado se cierra arrastrando el chat (y el hilo) hacia abajo; al cerrarse el panel de emojis el chat baja con él en el hilo de UI (§5.4) | Probarlo con un teclado completo en el teléfono de José (el emulador usa el compacto) |
-| F4 Toque y envío | **En curso** (APK 0.1.178 y 0.1.179). Ripple nativo; sticker, GIF y guiño con burbuja o animación al instante; la lista de atrás ya no se redibuja con cada mensaje; el botón emoji/teclado es el único que escucha al panel; cerrar el panel no redibuja la grilla ni la lista; la barra no se redibuja con el eco (OTA); un envío dibuja 2 filas y no todas las montadas, y el chat baja de 437 a 222 ms (OTA `eaa9ac0d`). Sticker de 63 a 17 cuadros de JS caídos, GIF de 37 a 3, guiño de 232 a 57 (§5.4 a §5.7) | Con la Mac libre un texto sigue tirando 30 cuadros de JS y el trabajo con nombre suma ~35 ms: falta encontrar el resto (§5.8). `ChatScreen` hace 3 renders por envío; la lista del espacio se dibuja 2 veces al abrir un chat |
+| F4 Toque y envío | **En curso** (APK 0.1.178 y 0.1.179). Ripple nativo; sticker, GIF y guiño con burbuja o animación al instante; la lista de atrás ya no se redibuja con cada mensaje; el botón emoji/teclado es el único que escucha al panel; cerrar el panel no redibuja la grilla ni la lista; la barra no se redibuja con el eco (OTA); un envío dibuja 2 filas y no todas las montadas, y el chat baja de 437 a 222 ms (OTA `eaa9ac0d`); FlashList pide 4 celdas por envío y no 147 (OTA `cdc96f59`, §5.9). Sticker de 63 a 17 cuadros de JS caídos, GIF de 37 a 3, guiño de 232 a 57 (§5.4 a §5.7) | Medir con la Mac libre (las medidas de §5.9 son con carga ~22). `ChatScreen` hace 3 renders por envío y cuesta casi todo lo que queda (Chat 3× 141 ms bajo carga); la lista del espacio se dibuja 2 veces al abrir un chat |
 | F5a Lectura síncrona | **Hecha** (APK 0.1.179). Abrir un chat: mediana de 0 cuadros de JS caídos (antes 12, §5.5). La clave y la base quedan en mano al iniciar la sesión y `useChat` nace con la última página leída en su render (`readLastPageSync`) | `leer-chat` no aparece entre los trabajos con nombre de la ventana: medirlo en el teléfono de José y recién ahí decidir si se borra `memoriaDeChats` |
 | F5b SQLCipher | **Hecha** (APK 0.1.179, E2E de la mudanza en §5.5). Base `lilachat-v2.db` cifrada entera con la misma clave (cruda, sin PBKDF2), filas en claro adentro con el texto en su columna; mudanza chat por chat, la fila de v1 se borra después de quedar en v2; sin SQLCipher en el binario sigue v1 | Cerrar sesión y volver a entrar (no se probó: pide un código por WhatsApp a la cuenta real de José); +2,3 MB de APK |
 | F6 Higiene | **En parte**: fuera `moti` (0.1.178) | `useLegacyPackaging` (medir descarga contra instalación); umbral de F0 en `rn-perf`, que vive en constroad-skills |
@@ -221,6 +221,7 @@ esté vigente ese día.
 | 02/11/2026 | F3 + F4 + F6 | APK 0.1.178 (179): teclado que se cierra arrastrando, ripple nativo, sticker con burbuja al instante, guiño y zumbido al tocar, lista de atrás sostenida, panel que baja con el contenido, fuera `moti`. El diagnóstico dice dónde se va el JS de cada interacción. E2E grabado cuadro a cuadro, rn-smoke 3/3 (heap 22 MB), medida en §5.4. El botón emoji aislado va por OTA |
 | 02/11/2026 | F5a + F5b | Rama `fluidez-f5`: lectura síncrona de la última página y base SQLCipher con mudanza chat por chat. Sale en el APK 0.1.179 |
 | 03/11/2026 | F1 + F4 | OTA `ad44c54e` (runtime 51e099b7, git 986c228): siete hojas más con arrastre (§5.8). E2E de Cambiar de espacio, ⚡ del espacio y Compartir ubicación: se cierran arrastrando, tocando el fondo y con atrás. Medida limpia del envío: 30 cuadros de JS con ~35 ms de trabajo con nombre, y no es el teclado. rn-smoke 3/3 (heap 21 MB) |
+| 03/11/2026 | F1 + F4 | OTA `84a5591b` (git afbd775): cada paso del envío de un texto con nombre y «Programar mensaje» con arrastre (cierra arrastrando, tocando el fondo y con atrás; el borrador queda). La medida mostró 147 celdas pedidas por envío. OTA `cdc96f59` (git 6fd6fdb): una celda por fila con lo que cambia su aspecto (`messageCells`, 16 tests) y el dibujo en `drawMessageCell`; 4 celdas por envío. rn-smoke 3/3 antes de cada OTA (heap 18 y 28 MB), medida en §5.9 |
 | 03/11/2026 | F4 | OTA `eaa9ac0d` (runtime 51e099b7, git aa2d248): un mensaje nuevo redibuja solo su fila. Tocar una cita y responder salen de refs; álbumes y citas iguales conservan su objeto (`keptValues`, con tests); pastilla de reacciones, chip del hilo y celda del sticker memorizados. Diagnóstico cuenta «Filas N×». rn-smoke 3/3 (heap 19 MB), medida en §5.7 |
 | 02/11/2026 | F4 + F5 | `main` para el APK 0.1.179 (180): F5a y F5b integradas; cerrar el panel ya no redibuja la grilla de stickers ni la lista del chat (los dos se suscriben al panel sin estado, `subscribeEmojiPanel` con tests; panel memorizado con callbacks estables); el guiño entra un cuadro después del cierre del panel; textos vacíos con «aquí». E2E de la mudanza con el historial real del emulador, rn-smoke 3/3 (heap 19 MB), medida en §5.5. Publicada en LilaStore |
 
@@ -586,3 +587,62 @@ del socket, el `scrollToEnd`) en la próxima OTA y medir de nuevo.
 QA: los 9 textos de las medidas (seq 106 a 114) borrados con «Eliminar para
 todos». La app quedó en Constroad. rn-smoke 3/3 (heap 21 MB) antes de
 publicar.
+
+### 5.9 FlashList pedía todas las celdas en cada envío (OTA `84a5591b` y `cdc96f59`, 03/11/2026, 03:50)
+
+**Los pasos con nombre** (OTA `84a5591b`, git afbd775, 3 textos en #general
+de Test). La Mac estaba con load average ~22 por otra sesión compilando: los
+milisegundos no se comparan con §5.8, las cuentas sí.
+
+| Paso | Por envío |
+| --- | --- |
+| Toque en enviar | 1 ms |
+| Cola, confirmar, eco del socket, cifrado | < 1 ms cada uno |
+| `scrollToEnd`, scroll, cambio de tamaño | < 1 ms cada uno |
+| Chat (3 renders) | 159 ms |
+| Filas que se redibujan | 2 |
+| Celdas que FlashList vuelve a pedir | **147** |
+
+El camino del texto es barato. Lo caro estaba en la lista: FlashList vuelve a
+llamar al dibujo de una celda cuando cambia su `item` o su `renderItem`. El
+dibujo dependía de `rows`, y `rows` cambia 3 veces por envío (pendiente,
+confirmado, eco). Con unas 50 celdas montadas (las lápidas de QA son bajas)
+eran 147 llamadas para redibujar 2 filas.
+
+**Arreglo** (git b6ad5db y 6fd6fdb). `messageCells.ts` arma una celda por fila
+con todo lo que cambia su aspecto: vecinos (el divisor corta el bloque), chip
+del día, divisor de no leídos, álbum, par de stickers, checks, cita, saludo e
+hilo con novedades. Una celda igual conserva su objeto (`keepCells`), y si
+nada cambió, el arreglo entero. El dibujo (`drawMessageCell.tsx`) solo depende
+de lo que es del chat (quién soy, nombres, selección, callbacks). Ya no usa el
+índice: una página vieja que entra arriba no redibuja lo que está en pantalla.
+
+**Medida después** (OTA `cdc96f59`, misma carga ~22, 3 textos):
+
+| | Antes (`84a5591b`) | Después (`cdc96f59`) |
+| --- | --- | --- |
+| Celdas pedidas por envío | 147 | 4 |
+| Cuadros JS (mediana · peor) | 53 · 73 | 34 · 64 |
+| Cuadros UI (mediana · peor) | 3 · 8 | 14 · 14 |
+| Chat | 3× 159 ms | 3× 141 ms |
+
+Las filas se siguen agrupando bien: el texto nuevo se cuelga del anterior sin
+repetir el nombre, y el chip «Hoy» queda donde va (captura del emulador). Los
+cuadros UI subieron con la Mac cargada: hay que repetirlo con la Mac libre
+antes de leerlo como regresión. **Sigue:** `ChatScreen` hace 3 renders por
+envío y es casi todo el JS que queda.
+
+**«Programar mensaje»** (OTA `84a5591b`): se abre con un toque largo en
+enviar.
+
+| Hoja | Arrastre | Fondo | Atrás |
+| --- | --- | --- | --- |
+| Programar mensaje | cierra | cierra | cierra |
+
+El borrador queda en el campo al cerrar. No se tocó «Programar».
+
+QA: los 6 textos de las medidas (seq 115 a 120) borrados con «Eliminar para
+todos»; el borrador de la prueba se borró sin enviarlo. La app quedó en
+Constroad. rn-smoke 3/3 antes de cada OTA; el primer intento de `cdc96f59`
+dio 502 (el server se redesplegaba por el push) y se repitió el smoke antes
+de volver a publicar.

@@ -17,6 +17,16 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.179',
+    // Everyone: plan 1 of fluidity, F4 + F5 (the message base in SQLCipher, the chat painted from disk).
+    audience: 'all',
+    items: [
+      'Los chats se abren ya pintados, sin esperar a leer el teléfono.',
+      'Los mensajes guardados en tu teléfono quedan cifrados por completo y se leen más rápido.',
+      'Al mandar un guiño, el panel se cierra sin trabarse.',
+    ],
+  },
+  {
     version: '0.1.178',
     // Everyone: plan 1 of fluidity, F3 + F4, and José's «enviar un sticker aún se siente tosco» (02/11).
     audience: 'all',

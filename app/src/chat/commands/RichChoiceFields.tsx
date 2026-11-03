@@ -3,14 +3,12 @@ import { FlatList, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Check, ChevronDown, Image as ImageIcon, Lock, X } from 'lucide-react-native';
 import type { ChoiceOption, FormField } from '@lilachat/shared';
-import { Modal } from '../../ui/Modal';
+import { Sheet } from '../../ui/Sheet';
 import { useColores } from '../../ui/tema';
-import { useMargenes } from '../../ui/useMargenes';
 import { useFileViewer } from '../../spaces/clients/useFileViewer';
 import { ErrorLine, Label } from './AppFormFields';
 
 type FieldProps<K extends FormField['kind']> = { field: Extract<FormField, { kind: K }>; value: unknown; error?: string; onChange: (value: unknown) => void };
-const SHEET_MAX_SHARE = '85%';
 const ROW_HEIGHT = 76;
 
 /** Whether a choice needs the rich list: a thumbnail to see, or an option that shows but cannot be picked. */
@@ -110,7 +108,6 @@ export function RichChoiceField({ field, value, error, onChange }: FieldProps<'c
 
 function RichChoiceSheet(props: { field: Extract<FormField, { kind: 'choice' }>; value: string | null; onPick: (value: string) => void; onClose: () => void }) {
   const colors = useColores();
-  const margins = useMargenes();
   const [draft, setDraft] = useState(props.value);
   const viewer = useFileViewer();
   const showPhotos = (option: ChoiceOption) => {
@@ -119,36 +116,32 @@ function RichChoiceSheet(props: { field: Extract<FormField, { kind: 'choice' }>;
     if (files[0]) viewer.open(files[0], files, option.disabled ? undefined : { label: 'Elegir esta opción', onPress: () => props.onPick(option.value) });
   };
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={props.onClose}>
-      <Pressable className="flex-1 bg-black/40" onPress={props.onClose} accessibilityLabel="Cerrar" />
-      <View testID={`hoja-${props.field.name}`} className="rounded-t-3xl bg-surface pt-3" style={{ paddingBottom: margins.pie + 8, maxHeight: SHEET_MAX_SHARE }}>
-        <View className="mb-2 h-1.5 w-11 self-center rounded-full bg-outline/30" />
-        <View className="flex-row items-center px-4">
-          <Text className="flex-1 text-[20px] font-bold text-on-surface">{props.field.label}</Text>
-          <Pressable onPress={props.onClose} accessibilityLabel="Cerrar" className="h-11 w-11 items-center justify-center rounded-full bg-background"><X size={20} color={colors['on-surface-variant']} /></Pressable>
-        </View>
-        {props.field.options.some((option) => option.photos?.length) ? <Text className="px-4 pb-1 text-[13px] text-on-surface-variant">Toca la miniatura para ver las fotos.</Text> : null}
-        <FlatList
-          data={props.field.options}
-          keyExtractor={(option) => option.value}
-          getItemLayout={(_data, index) => ({ length: ROW_HEIGHT, offset: ROW_HEIGHT * index, index })}
-          renderItem={({ item: option }) => (
-            <View className={`flex-row items-center gap-3 px-4 ${draft === option.value ? 'bg-primary/[0.06]' : ''}`} style={{ height: ROW_HEIGHT }}>
-              <Thumb option={option} size={56} onOpen={() => showPhotos(option)} />
-              <Pressable testID={`opcion-${props.field.name}-${option.value}`} accessibilityRole="radio" accessibilityState={{ selected: draft === option.value, disabled: Boolean(option.disabled) }} onPress={() => !option.disabled && setDraft(option.value)} className="min-w-0 flex-1 flex-row items-center gap-2">
-                <OptionText option={option} />
-                {draft === option.value ? <Check size={20} color={colors.primary} /> : null}
-              </Pressable>
-            </View>
-          )}
-        />
-        <View className="px-4 pt-2">
-          <Pressable testID={`elegir-${props.field.name}`} disabled={!draft} onPress={() => draft && props.onPick(draft)} className={`h-14 items-center justify-center rounded-2xl bg-primary ${draft ? '' : 'opacity-50'}`}>
-            <Text className="text-[17px] font-bold text-on-primary">Elegir</Text>
-          </Pressable>
-        </View>
-        {viewer.viewer}
+    <Sheet visible onClose={props.onClose} testID={`hoja-${props.field.name}`} className="max-h-[85%]" dragArea="handle" bottomRoom={8}>
+      <View className="flex-row items-center px-4">
+        <Text className="flex-1 text-[20px] font-bold text-on-surface">{props.field.label}</Text>
+        <Pressable onPress={props.onClose} accessibilityLabel="Cerrar" className="h-11 w-11 items-center justify-center rounded-full bg-background"><X size={20} color={colors['on-surface-variant']} /></Pressable>
       </View>
-    </Modal>
+      {props.field.options.some((option) => option.photos?.length) ? <Text className="px-4 pb-1 text-[13px] text-on-surface-variant">Toca la miniatura para ver las fotos.</Text> : null}
+      <FlatList
+        data={props.field.options}
+        keyExtractor={(option) => option.value}
+        getItemLayout={(_data, index) => ({ length: ROW_HEIGHT, offset: ROW_HEIGHT * index, index })}
+        renderItem={({ item: option }) => (
+          <View className={`flex-row items-center gap-3 px-4 ${draft === option.value ? 'bg-primary/[0.06]' : ''}`} style={{ height: ROW_HEIGHT }}>
+            <Thumb option={option} size={56} onOpen={() => showPhotos(option)} />
+            <Pressable testID={`opcion-${props.field.name}-${option.value}`} accessibilityRole="radio" accessibilityState={{ selected: draft === option.value, disabled: Boolean(option.disabled) }} onPress={() => !option.disabled && setDraft(option.value)} className="min-w-0 flex-1 flex-row items-center gap-2">
+              <OptionText option={option} />
+              {draft === option.value ? <Check size={20} color={colors.primary} /> : null}
+            </Pressable>
+          </View>
+        )}
+      />
+      <View className="px-4 pt-2">
+        <Pressable testID={`elegir-${props.field.name}`} disabled={!draft} onPress={() => draft && props.onPick(draft)} className={`h-14 items-center justify-center rounded-2xl bg-primary ${draft ? '' : 'opacity-50'}`}>
+          <Text className="text-[17px] font-bold text-on-primary">Elegir</Text>
+        </Pressable>
+      </View>
+      {viewer.viewer}
+    </Sheet>
   );
 }

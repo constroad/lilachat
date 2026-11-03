@@ -3,9 +3,8 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { Banknote, Bell, Check, ChevronDown, CloudSun, Database, FileText, Package, TriangleAlert, Truck, UserCheck, type LucideIcon } from 'lucide-react-native';
 import type { NoticeIcon, TopicRoute } from '@lilachat/shared';
 import { topicPrivacyHint } from '@lilachat/shared';
-import { Modal } from '../../ui/Modal';
+import { Sheet } from '../../ui/Sheet';
 import { useColores } from '../../ui/tema';
-import { useMargenes } from '../../ui/useMargenes';
 import { appTopics, saveAppTopics, testAppTopics, type AppItems, type AppTopics } from '../spacesApi';
 
 const ICONS: Record<NoticeIcon, LucideIcon> = { attendance: UserCheck, tank: Database, material: Package, truck: Truck, weather: CloudSun, cash: Banknote, document: FileText, alert: TriangleAlert };
@@ -107,23 +106,18 @@ export function NoticeTopicsSection(props: { jwt: string; spaceId: string; appId
 
 function ChannelPicker(props: { topic: TopicRoute; channels: Channel[]; current: string | null; onPick: (id: string | null) => void; onClose: () => void }) {
   const colors = useColores();
-  const margins = useMargenes();
   const options = [...props.channels.map((channel) => ({ id: channel.id as string | null, label: `# ${channel.name}${channel.private ? ' (privado)' : ''}` })), { id: null, label: 'Sin canal' }];
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={props.onClose}>
-      <Pressable className="flex-1 bg-black/40" onPress={props.onClose} accessibilityLabel="Cerrar" />
-      <View testID="selector-canal" className="max-h-[70%] rounded-t-3xl bg-surface pt-3" style={{ paddingBottom: margins.pie + 8 }}>
-        <View className="mb-2 h-1.5 w-11 self-center rounded-full bg-outline/30" />
-        <Text className="px-4 pb-2 text-[16px] font-bold text-on-surface">{`¿Dónde llega «${props.topic.name}»?`}</Text>
-        <ScrollView>
-          {options.map((option) => (
-            <Pressable key={option.id ?? 'none'} testID={`opcion-canal-${option.id ?? 'ninguno'}`} onPress={() => props.onPick(option.id)} className="min-h-[52px] flex-row items-center gap-3 border-t border-outline/10 px-4">
-              <Text className={`flex-1 text-[16px] ${option.id ? 'text-on-surface' : 'italic text-on-surface-variant'}`}>{option.label}</Text>
-              {props.current === option.id ? <Check size={18} color={colors.primary} /> : null}
-            </Pressable>
-          ))}
-        </ScrollView>
-      </View>
-    </Modal>
+    <Sheet visible onClose={props.onClose} testID="selector-canal" className="max-h-[70%]" dragArea="handle" bottomRoom={8}>
+      <Text className="px-4 pb-2 text-[16px] font-bold text-on-surface">{`¿Dónde llega «${props.topic.name}»?`}</Text>
+      <ScrollView>
+        {options.map((option) => (
+          <Pressable key={option.id ?? 'none'} testID={`opcion-canal-${option.id ?? 'ninguno'}`} onPress={() => props.onPick(option.id)} className="min-h-[52px] flex-row items-center gap-3 border-t border-outline/10 px-4">
+            <Text className={`flex-1 text-[16px] ${option.id ? 'text-on-surface' : 'italic text-on-surface-variant'}`}>{option.label}</Text>
+            {props.current === option.id ? <Check size={18} color={colors.primary} /> : null}
+          </Pressable>
+        ))}
+      </ScrollView>
+    </Sheet>
   );
 }

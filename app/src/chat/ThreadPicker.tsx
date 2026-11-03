@@ -1,6 +1,5 @@
-import { Pressable, View } from 'react-native';
-import { Modal } from '../ui/Modal';
-import { useMargenes } from '../ui/useMargenes';
+import { View } from 'react-native';
+import { Sheet } from '../ui/Sheet';
 import { EmojiStickerPanel } from './stickers/EmojiStickerPanel';
 
 /** Height of the sheet (dp): the tabs and a keyboard-sized grid. */
@@ -24,11 +23,10 @@ export function ThreadPicker(props: {
   onStickerSent: () => void;
   onClose: () => void;
 }) {
-  const margins = useMargenes();
   return (
-    <Modal visible={props.visible} transparent animationType="slide" onRequestClose={props.onClose}>
-      <Pressable testID="cerrar-selector-hilo" accessibilityLabel="Cerrar" onPress={props.onClose} className="flex-1 bg-black/30" />
-      <View testID="selector-hilo" className="rounded-t-2xl bg-surface" style={{ height: SHEET_HEIGHT + margins.pie, paddingBottom: margins.pie }}>
+    // Only the handle drags: the grid inside scrolls.
+    <Sheet visible={props.visible} onClose={props.onClose} testID="selector-hilo" dragArea="handle" bottomRoom={0}>
+      <View style={{ height: SHEET_HEIGHT }}>
         <EmojiStickerPanel
           jwt={props.jwt}
           chatId={props.chatId}
@@ -40,6 +38,6 @@ export function ThreadPicker(props: {
           onStickerSent={props.onStickerSent}
         />
       </View>
-    </Modal>
+    </Sheet>
   );
 }

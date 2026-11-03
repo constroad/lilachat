@@ -5,6 +5,9 @@ import DateTimePicker, { type DateTimePickerEvent } from '@react-native-communit
 import { CalendarClock, X } from 'lucide-react-native';
 import { useColores } from '../ui/tema';
 
+/** One formatter for the whole app: Hermes builds one per call with `toLocaleTimeString(…, options)`. */
+const TIME_FORMAT = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
+
 /**
  * Programar un mensaje: se elige CUÁNDO y el server lo envía solo (F11).
  *
@@ -82,7 +85,7 @@ export function ProgramarMensajeModal({
         >
           <Text className="text-[11px] text-on-surface-variant">Hora</Text>
           <Text className="text-sm font-semibold text-on-surface">
-            {cuando.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {TIME_FORMAT.format(cuando)}
           </Text>
         </Pressable>
       </View>

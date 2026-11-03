@@ -43,6 +43,10 @@ export const roomHeld = makeMutable(0);
 
 /** How much the content has gone up with the panel in this opening (0 between openings). */
 export const contentLift = makeMutable(0);
+/** The room still to give back while the panel slides out (0 otherwise): the list comes down with it. */
+export const contentDrop = makeMutable(0);
+/** Whether the conversation sits at its end (`useFinalDeLaConversacion`): only then it comes down with the panel. */
+export const contentAtEnd = makeMutable(true);
 
 /** The panel is as tall as the last keyboard: switching between them moves nothing. */
 export const panelHeight = () => (keyboardHeight >= MIN_KEYBOARD_HEIGHT ? keyboardHeight : DEFAULT_PANEL_HEIGHT);
@@ -82,8 +86,11 @@ export function closeEmojiPanel(keyboardUp: boolean) {
     roomHeld.value = 0;
   } else {
     panelShown.value = withTiming(0, { duration: MOVE_MS, easing: EASING });
-    // Frame by frame with the panel: at the end the native list follows down; reading above, nothing moves.
+    // Frame by frame with the panel; reading above, nothing moves. The native list only clamped its
+    // offset at the next React commit: with the JS busy (a wink mounting) 330 ms of empty space (02/11).
     roomHeld.value = withTiming(0, { duration: MOVE_MS, easing: EASING });
+    contentDrop.value = room();
+    contentDrop.value = withTiming(0, { duration: MOVE_MS, easing: EASING });
   }
   setOpen(false);
 }

@@ -2,17 +2,20 @@ import { createContext, forwardRef, useCallback, useContext, useEffect, useMemo,
 import { Keyboard, type LayoutChangeEvent, type ScrollViewProps } from 'react-native';
 import { KeyboardChatScrollView } from 'react-native-keyboard-controller';
 import Reanimated, { makeMutable, scrollTo, useAnimatedReaction, useAnimatedRef, useScrollViewOffset, useSharedValue, type SharedValue } from 'react-native-reanimated';
+import { offsetWhileDropping } from './panelDrop';
 import { useOverlayLevel } from '../ui/Modal';
 import { coveredAbove, subscribeOverlays } from '../ui/overlays';
 
 const NO_ROOM = makeMutable(0);
+const NOT_AT_END = makeMutable(false);
 /**
  * Room that something other than the keyboard takes under the list (the emoji
  * panel, `emojiPanel`): `held` stays while a keyboard comes or goes behind it,
  * without moving anything; `lift` is how much the content goes up while it
  * appears. Without a provider (the thread), none.
  */
-export const BottomRoom = createContext<{ held: SharedValue<number>; lift: SharedValue<number> }>({ held: NO_ROOM, lift: NO_ROOM });
+type Room = { held: SharedValue<number>; lift: SharedValue<number>; drop: SharedValue<number>; atEnd: SharedValue<boolean> };
+export const BottomRoom = createContext<Room>({ held: NO_ROOM, lift: NO_ROOM, drop: NO_ROOM, atEnd: NOT_AT_END });
 
 type ScrollRef = ComponentRef<typeof KeyboardChatScrollView>;
 
@@ -21,16 +24,32 @@ type ScrollRef = ComponentRef<typeof KeyboardChatScrollView>;
  * the start + lift», absolute, on the UI thread (an increment per frame read a
  * stale offset and ended short). Gives the ref to put on the scroll.
  */
-function useFollowLift(lift: SharedValue<number>, forwarded: ForwardedRef<ScrollRef>) {
+function useFollowLift(room: Room, forwarded: ForwardedRef<ScrollRef>) {
   const scrollRef = useAnimatedRef<Reanimated.ScrollView>();
   const offset = useScrollViewOffset(scrollRef);
   const start = useSharedValue(0);
+  const { lift, drop, atEnd } = room;
   useAnimatedReaction(
     () => lift.value,
     (current, previous) => {
       if (previous === null || current <= 0) return;
       if (previous <= 0) start.value = offset.value;
       scrollTo(scrollRef, 0, start.value + current, false);
+    }
+  );
+  // Closing at the end, the content comes down with the panel on this thread (-1 = not following).
+  const dropFrom = useSharedValue(-1);
+  const dropRoom = useSharedValue(0);
+  useAnimatedReaction(
+    () => drop.value,
+    (current, previous) => {
+      if (previous === null || current >= previous) return;
+      if (dropFrom.value < 0 && atEnd.value) {
+        dropFrom.value = offset.value;
+        dropRoom.value = previous;
+      }
+      if (dropFrom.value >= 0) scrollTo(scrollRef, 0, offsetWhileDropping(dropFrom.value, dropRoom.value, current), false);
+      if (current <= 0) dropFrom.value = -1;
     }
   );
   return useCallback(
@@ -68,7 +87,7 @@ export function useScrollConTeclado(sinSubir: number) {
         // Read here, inside the list: the thread's list lives inside its modal (level 1).
         const covered = useFrozenWhileCovered();
         const room = useContext(BottomRoom);
-        const setRef = useFollowLift(room.lift, ref);
+        const setRef = useFollowLift(room, ref);
         const { onLayout } = props;
         const alMedir = (evento: LayoutChangeEvent) => {
           setMedido(true);

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { applyMyReads, createSessionCache, type ActivityItem, type ActivityType, type CacheEntry, type ClientChannel, type ClientWorkspaceMember, type SessionCache, type SpaceAppDirectory } from '@lilachat/shared';
+import { entryWhileHeld, type ShownEntry } from './heldEntry';
 import type { JsonResult } from '../api/jsonCall';
 import type { ChatSummary } from '../api/client';
 import { appDirectory, spaceActivity, spaceChannels, spaceChats, spaceMembers } from './spacesApi';
@@ -102,11 +103,16 @@ async function hydrateFromDisk<T>(cache: SessionCache<T>, key: string): Promise<
 const NONE: CacheEntry<never> = Object.freeze({ loading: false });
 
 /** The screen's data: what is cached at once, refreshed behind when old; `refresh` asks again now. */
-export function useCached<T>(cache: SessionCache<T>, key: string | null, fetcher: () => Promise<T>, active = true): CacheEntry<T> & { refresh: () => void } {
+export function useCached<T>(cache: SessionCache<T>, key: string | null, fetcher: () => Promise<T>, active = true, held = false): CacheEntry<T> & { refresh: () => void } {
   const latest = useRef(fetcher);
   latest.current = fetcher;
   const subscribe = useCallback((listener: () => void) => (key ? cache.subscribe(key, listener) : () => undefined), [cache, key]);
-  const entry = useSyncExternalStore(subscribe, () => (key ? cache.get(key) : (NONE as CacheEntry<T>)));
+  // Held (a chat covers the list, plan 1, F4): the same entry while covered, the cache's on return.
+  const shown = useRef<ShownEntry<CacheEntry<T>> | null>(null);
+  const entry = useSyncExternalStore(subscribe, () => {
+    shown.current = entryWhileHeld(held, shown.current, key ?? '', key ? cache.get(key) : (NONE as CacheEntry<T>));
+    return shown.current.entry;
+  });
   useEffect(() => {
     if (!key || !active) return;
     void hydrateFromDisk(cache, key).then(() => cache.revalidate(key, () => latest.current()));

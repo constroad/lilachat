@@ -3,7 +3,7 @@ import { Keyboard, type NativeScrollEvent, type NativeSyntheticEvent } from 'rea
 import type { FlashListRef } from '@shopify/flash-list';
 import { downButtonCount, followsMyNewRow, unreadBelow } from '@lilachat/shared';
 import { PosicionEnLaLista } from './finalDeLaConversacion';
-import { PANEL_MOVE_MS, useEmojiPanelOpen } from './emojiPanel';
+import { contentAtEnd, PANEL_MOVE_MS, useEmojiPanelOpen } from './emojiPanel';
 
 /**
  * Dónde está la conversación respecto de su final (FL2/FL3).
@@ -37,6 +37,8 @@ export function useFinalDeLaConversacion<T>(
   const [abajoLejos, setAbajoLejos] = useState(false);
   const fijarCerca = useCallback((cerca: boolean) => {
     cercaDelFinal.current = cerca;
+    // The UI thread needs it too: closing the emoji panel at the end, the content comes down with it.
+    if (contentAtEnd.value !== cerca) contentAtEnd.value = cerca;
     setAbajoLejos((antes) => (antes === !cerca ? antes : !cerca));
   }, []);
   const alScrollear = useCallback(
@@ -117,6 +119,7 @@ export function useFinalDeLaConversacion<T>(
   const releaseFromEnd = useCallback(() => {
     posicion.releaseFromEnd();
     cercaDelFinal.current = false;
+    contentAtEnd.value = false;
     setReachedEnd(false);
   }, [posicion]);
 

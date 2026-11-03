@@ -21,6 +21,7 @@ import { ClientsSection } from './clients/ClientsSection';
 import { ArchivedClientsScreen } from './clients/ArchivedClientsScreen';
 import { askMuteDuration } from '../chat/askMuteDuration';
 import { useRenderCost } from '../diagnostico/frameMonitor';
+import { useDisposicion } from '../ui/useDisposicion';
 
 /** Several messages in a row reload the list once. */
 const RELOAD_DELAY_MS = 600;
@@ -47,7 +48,9 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The space's list (and its chips) paints at once from what was seen and refreshes behind (22/10).
   const key = `${space.id}:chats`;
-  const page = useCached(spaceChatsCache, key, fetchSpaceChats(jwt, space.id));
+  // Covered by an open chat (not beside it, on a tablet): its messages show here on return (plan 1, F4).
+  const { dosPaneles } = useDisposicion();
+  const page = useCached(spaceChatsCache, key, fetchSpaceChats(jwt, space.id), true, props.openChatId !== null && !dosPaneles);
   const chats = page.value?.chats ?? null;
   const activity = page.value?.activity ?? NO_ACTIVITY;
   const failed = !page.value && Boolean(page.error);

@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { BottomRoom, useScrollConTeclado } from './useScrollConTeclado';
 import { useBottomLiftStyle } from './ChatBottom';
-import { contentLift, roomHeld } from './emojiPanel';
+import { contentAtEnd, contentDrop, contentLift, roomHeld } from './emojiPanel';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { ChevronDown } from 'lucide-react-native';
 import type { Row } from './MessageRow';
@@ -17,7 +17,7 @@ import { MAX_HIDDEN_MS, RevealWhenSettled, SETTLE_MS } from './revealWhenSettled
 import { useFunPlayback } from './nudge';
 
 /** The emoji panel's room under the conversation (`emojiPanel`). */
-const EMOJI_PANEL_ROOM = { held: roomHeld, lift: contentLift };
+const EMOJI_PANEL_ROOM = { held: roomHeld, lift: contentLift, drop: contentDrop, atEnd: contentAtEnd };
 /**
  * The list is shown once it is placed (José, 20/10 and 21/10: on entering it
  * painted, then jumped). It waits for its first layout AND for its content

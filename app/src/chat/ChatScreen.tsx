@@ -21,7 +21,7 @@ import { CatchUpBanner } from './CatchUpBanner';
 import { cuantosParaPonerAlDia } from './ponerAlDia';
 import { SecretChatBanner } from '../crypto/SecretChatBanner';
 import { useSecretChat } from '../crypto/useSecretChat';
-import { previewDeMensaje, type Row } from './MessageRow';
+import { previewDeMensaje } from './MessageRow';
 import { abrirConOtraApp } from './guardarYCompartir';
 import { Composer, type ComposerHandle } from './Composer';
 import { useChatCommandsWithActions } from './commands/useChatCommands';
@@ -51,7 +51,7 @@ import { usePersonCard } from './personCard/usePersonCard';
 import { ComposerLocked } from './FueraDelGrupo';
 import { useChatSubtitle } from './useChatSubtitle';
 import { usePresenceStatus } from './presenceStatus';
-import { useDibujarFila } from './useDibujarFila';
+import { useDibujarFila, type MessageCell } from './useDibujarFila';
 import { useUltimaVez } from './useUltimaVez';
 import { ListaDeMensajes } from './ListaDeMensajes';
 import { useRespuestaYEdicion } from './useRespuestaYEdicion';
@@ -230,7 +230,7 @@ export function ChatScreen({
    * La lista, para poder mandarla al final: con MENOS contenido que pantalla
    * el ancla al fondo dejaba la última fila debajo de la barra de escribir.
    */
-  const listaRef = useRef<FlashListRef<Row> | null>(null);
+  const listaRef = useRef<FlashListRef<MessageCell> | null>(null);
   // The rows on screen: the live end, or a window around an old message (pending 44).
   const clipSharing = useClipSharing({ jwt: credential.jwt, chatId, encrypted: Boolean(encrypted), onError: setMediaError });
   const ventana = useChatWindow({ jwt: credential.jwt, chatId, encrypted: Boolean(encrypted), messages, hilos, ocultos, archivosEnCola, listaRef, onNoEsta: setMediaError, onThread: hilos.abrir });
@@ -335,7 +335,7 @@ export function ChatScreen({
       personCard.show(personOfMember({ member: grupo.members.find((one) => one.id === userId) ?? { id: userId }, displayName: nombresDelGrupo.get(userId), pill: grupo.roles.get(userId), isMe: userId === credential.userId })),
     [personCard.show, grupo.members, grupo.roles, nombresDelGrupo, credential.userId]
   );
-  const { dibujarFila, reply: responder } = useDibujarFila({
+  const { dibujarFila, cells, reply: responder } = useDibujarFila({
     rows,
     yo: credential.userId,
     jwt: credential.jwt,
@@ -473,7 +473,7 @@ export function ChatScreen({
       <AccionesDeTarjetaContext.Provider value={accionesDeTarjeta}>
         <ListaDeMensajes
           listaRef={listaRef}
-          rows={rows}
+          rows={rows} cells={cells}
           mensajes={messages}
           yo={credential.userId} chatId={chatId} readSeqAtOpen={readSeq ?? 0} holdPosition={busqueda.activo || resaltado !== null} releaseRef={releaseRef} anchor={anchor}
           dibujarFila={dibujarFila}

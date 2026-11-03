@@ -8,6 +8,7 @@ import { sinOcultos } from './ocultos';
 import { useWithoutDisappeared } from './useWithoutDisappeared';
 import { planNotInList } from './planNotInList';
 import { isPending, type Row } from './rowKinds';
+import type { MessageCell } from './messageCells';
 import type { ChatMessage, PendingMessage } from './useChat';
 import type { useArchivosDelChat } from './useArchivosDelChat';
 import type { OpeningPlace } from './useDivisorNoLeidos';
@@ -29,7 +30,7 @@ export function useChatWindow(p: {
   hilos: { delChat: ChatMessage[]; pendientesDelChat: PendingMessage[] };
   ocultos: ReadonlySet<number>;
   archivosEnCola: ReturnType<typeof useArchivosDelChat>;
-  listaRef: MutableRefObject<FlashListRef<Row> | null>;
+  listaRef: MutableRefObject<FlashListRef<MessageCell> | null>;
   onNoEsta: (texto: string) => void;
   onThread: (root: number) => void;
 }) {

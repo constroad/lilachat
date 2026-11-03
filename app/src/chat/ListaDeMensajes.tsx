@@ -7,7 +7,8 @@ import { contentAtEnd, contentDrop, contentLift, roomHeld } from './emojiPanel';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { ChevronDown } from 'lucide-react-native';
 import type { Row } from './MessageRow';
-import { claveDeFila, tipoDeFila } from './filasDelChat';
+import { claveDeFila } from './filasDelChat';
+import { cellKey, cellType, type MessageCell } from './messageCells';
 import { isPending } from './rowKinds';
 import { FondoDelChat } from './FondoDelChat';
 import { useFinalDeLaConversacion } from './useFinalDeLaConversacion';
@@ -73,15 +74,17 @@ function useRevealWhenPlaced(hasRows: boolean, onPlaced: () => OpeningPlace, onA
  * pantalla: acá solo vive cómo se desplaza.
  */
 export function ListaDeMensajes(props: {
-  listaRef: RefObject<FlashListRef<Row> | null>;
+  listaRef: RefObject<FlashListRef<MessageCell> | null>;
   rows: Row[];
+  /** One per row, kept while equal (`messageCells`): what the list draws. */
+  cells: readonly MessageCell[];
   /** Para contar los que llegaron mientras se leía arriba. */
   mensajes: readonly { seq: number; senderId: string; kind?: string; wink?: string }[];
   yo: string;
   /** Nudges and winks: whose chat it is and what I had read when it opened (`useFunPlayback`). */
   chatId: string;
   readSeqAtOpen: number;
-  dibujarFila: (info: { item: Row; index: number }) => ReactElement;
+  dibujarFila: (info: { item: MessageCell }) => ReactElement;
   /** Al terminar de montar: el momento exacto en que la lista ya midió. */
   onListo: () => OpeningPlace;
   /** Grows when the list went to the first unread after opening (they arrived late, 22/10): it stops following the end. */
@@ -151,7 +154,7 @@ export function ListaDeMensajes(props: {
         key={`${rows.length > 0 ? 'con-filas' : 'vacia'}-${props.ventana?.viewId ?? 0}`}
         ref={listaRef}
         renderScrollComponent={scrollDelChat}
-        data={rows}
+        data={props.cells}
         onLoad={onLoad}
         testID="lista-mensajes"
         /**
@@ -202,10 +205,10 @@ export function ListaDeMensajes(props: {
             </Text>
           ) : null
         }
-        keyExtractor={claveDeFila}
+        keyExtractor={cellKey}
         contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 8 }}
         renderItem={props.dibujarFila}
-        getItemType={tipoDeFila}
+        getItemType={cellType}
       />
       </BottomRoom.Provider>
       </View>

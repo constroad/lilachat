@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import type { FlashListRef } from '@shopify/flash-list';
 import { isPending, type Row } from './MessageRow';
+import type { MessageCell } from './messageCells';
 import { anchorFor, anchoredIndex, type JumpAnchor } from './anchorAfterJump';
 import type { OpeningPlace } from './useDivisorNoLeidos';
 
@@ -18,7 +19,7 @@ const VIEW_POSITION = 0.4;
  */
 export function useIrAMensaje(params: {
   rows: Row[];
-  listaRef: MutableRefObject<FlashListRef<Row> | null>;
+  listaRef: MutableRefObject<FlashListRef<MessageCell> | null>;
   irASeq?: number;
   /** Changes with every tap on a notice: with the chat already open, it jumps to `irASeq` again. */
   requestedAt?: number;

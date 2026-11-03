@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import type { FlashListRef } from '@shopify/flash-list';
 import { divisorDesdeLeido, seqDelDivisor } from './divisorNoLeidos';
 import { isPending, type Row } from './MessageRow';
+import type { MessageCell } from './messageCells';
 
 /** Where the list was placed on opening: at the end, or away from it (the unread divider, a searched message). */
 export type OpeningPlace = 'end' | 'away';
@@ -20,7 +21,7 @@ export function useDivisorNoLeidos(params: {
   noLeidos: number;
   /** Hasta dónde había leído al abrir (del server); sin él, se cuenta desde el final. */
   leidoHasta?: number;
-  listaRef: RefObject<FlashListRef<Row> | null>;
+  listaRef: RefObject<FlashListRef<MessageCell> | null>;
 }): { divisorSeq: number | null; noLeidos: number; irAlInicio: () => OpeningPlace; placedLate: number } {
   const noLeidosAlAbrir = useRef(params.noLeidos).current;
   const leidoAlAbrir = useRef(params.leidoHasta).current;

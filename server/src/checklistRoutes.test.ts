@@ -190,7 +190,8 @@ describe('checklist, second round', () => {
     expect(edited.status).toBe(200);
     expect(edited.body.checklist).toMatchObject({ title: 'Vaciado del 4.º piso', othersCanMark: false, othersCanAdd: true });
     expect((await MessageModel.findOne({ chatId, 'ref.id': body.id }).lean())?.body).toBe('Checklist: Vaciado del 4.º piso');
-    expect(changes.some((one) => one.change.tipo === 'checklist' && String(one.change.id) === body.id)).toBe(true);
+    // The card notice goes out after the response: under load (gates, 02/11) it arrived after the assertion.
+    await vi.waitFor(() => expect(changes.some((one) => one.change.tipo === 'checklist' && String(one.change.id) === body.id)).toBe(true));
   });
 
   it('deleting it deletes its card for everyone, like a deleted message, and unpins it', async () => {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Modal } from '../ui/Modal';
+import { Sheet } from '../ui/Sheet';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { CalendarClock, X } from 'lucide-react-native';
 import { useColores } from '../ui/tema';
@@ -49,72 +49,67 @@ export function ProgramarMensajeModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCerrar}>
-      <Pressable className="flex-1 justify-end bg-black/40" onPress={onCerrar}>
-        {/* El toque en la hoja no cierra: solo el fondo. */}
-        <Pressable className="rounded-t-3xl bg-surface p-5" onPress={() => {}} testID="modal-programar">
-          <View className="mb-3 flex-row items-center gap-2">
-            <CalendarClock size={18} color={colores.primary} />
-            <Text className="flex-1 text-base font-bold text-on-surface">Programar mensaje</Text>
-            <Pressable onPress={onCerrar} testID="prog-cerrar" className="h-11 w-11 items-center justify-center">
-              <X size={18} color={colores['on-surface-variant']} />
-            </Pressable>
-          </View>
-
-          <View className="mb-4 rounded-xl bg-surface-variant p-3">
-            <Text className="text-sm text-on-surface" numberOfLines={3}>
-              {texto}
-            </Text>
-          </View>
-
-          <View className="flex-row gap-3">
-            <Pressable
-              testID="prog-fecha"
-              onPress={() => setPicker('date')}
-              className="flex-1 rounded-xl border border-outline/20 p-3"
-            >
-              <Text className="text-[11px] text-on-surface-variant">Fecha</Text>
-              <Text className="text-sm font-semibold text-on-surface">
-                {cuando.toLocaleDateString()}
-              </Text>
-            </Pressable>
-            <Pressable
-              testID="prog-hora"
-              onPress={() => setPicker('time')}
-              className="flex-1 rounded-xl border border-outline/20 p-3"
-            >
-              <Text className="text-[11px] text-on-surface-variant">Hora</Text>
-              <Text className="text-sm font-semibold text-on-surface">
-                {cuando.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </Text>
-            </Pressable>
-          </View>
-
-          {enElPasado ? (
-            <Text className="mt-2 text-[11px] text-error">Elige un momento futuro.</Text>
-          ) : null}
-
-          <Pressable
-            testID="btn-programar"
-            disabled={enElPasado}
-            onPress={() => onProgramar(cuando)}
-            className={`mb-2 mt-4 min-h-[48px] items-center justify-center rounded-xl ${
-              enElPasado ? 'bg-primary/40' : 'bg-primary'
-            }`}
-          >
-            <Text className="text-sm font-bold text-on-primary">Programar</Text>
-          </Pressable>
-
-          {picker ? (
-            <DateTimePicker
-              value={cuando}
-              mode={picker}
-              onChange={alCambiar}
-              minimumDate={picker === 'date' ? new Date() : undefined}
-            />
-          ) : null}
+    <Sheet visible={visible} onClose={onCerrar} testID="modal-programar" className="px-5">
+      <View className="mb-3 mt-2 flex-row items-center gap-2">
+        <CalendarClock size={18} color={colores.primary} />
+        <Text className="flex-1 text-base font-bold text-on-surface">Programar mensaje</Text>
+        <Pressable onPress={onCerrar} testID="prog-cerrar" className="h-11 w-11 items-center justify-center">
+          <X size={18} color={colores['on-surface-variant']} />
         </Pressable>
+      </View>
+
+      <View className="mb-4 rounded-xl bg-surface-variant p-3">
+        <Text className="text-sm text-on-surface" numberOfLines={3}>
+          {texto}
+        </Text>
+      </View>
+
+      <View className="flex-row gap-3">
+        <Pressable
+          testID="prog-fecha"
+          onPress={() => setPicker('date')}
+          className="flex-1 rounded-xl border border-outline/20 p-3"
+        >
+          <Text className="text-[11px] text-on-surface-variant">Fecha</Text>
+          <Text className="text-sm font-semibold text-on-surface">
+            {cuando.toLocaleDateString()}
+          </Text>
+        </Pressable>
+        <Pressable
+          testID="prog-hora"
+          onPress={() => setPicker('time')}
+          className="flex-1 rounded-xl border border-outline/20 p-3"
+        >
+          <Text className="text-[11px] text-on-surface-variant">Hora</Text>
+          <Text className="text-sm font-semibold text-on-surface">
+            {cuando.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </Text>
+        </Pressable>
+      </View>
+
+      {enElPasado ? (
+        <Text className="mt-2 text-[11px] text-error">Elige un momento futuro.</Text>
+      ) : null}
+
+      <Pressable
+        testID="btn-programar"
+        disabled={enElPasado}
+        onPress={() => onProgramar(cuando)}
+        className={`mb-2 mt-4 min-h-[48px] items-center justify-center rounded-xl ${
+          enElPasado ? 'bg-primary/40' : 'bg-primary'
+        }`}
+      >
+        <Text className="text-sm font-bold text-on-primary">Programar</Text>
       </Pressable>
-    </Modal>
+
+      {picker ? (
+        <DateTimePicker
+          value={cuando}
+          mode={picker}
+          onChange={alCambiar}
+          minimumDate={picker === 'date' ? new Date() : undefined}
+        />
+      ) : null}
+    </Sheet>
   );
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { answerOfOutcome, formSubmitOutcome, giveUpPending, giveUpWaiting, markWaiting, noticeIsFor, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, WRITE_GIVE_UP_MS, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type ShortcutRow, type ShortcutValues } from '@lilachat/shared';
 import type { JsonResult } from '../../api/jsonCall';
 import { getSocket } from '../socketClient';
@@ -138,5 +138,9 @@ export function useAppAnswers(params: { jwt: string; scope: CommandScope | null 
     };
   }, []);
   const openForm = answers.find((entry) => entry.commandId === openFormId && entry.state === 'form') ?? null;
-  return { answers, track, runAction, uploadPhoto, submitForm, refreshForm, previewForm, dismiss, removeAnswer, say, openForm, showForm: setOpenFormId };
+  // One object while nothing changes: the bar is memoized and a new one redrew it with every message (F4, 02/11).
+  return useMemo(
+    () => ({ answers, track, runAction, uploadPhoto, submitForm, refreshForm, previewForm, dismiss, removeAnswer, say, openForm, showForm: setOpenFormId }),
+    [answers, track, runAction, uploadPhoto, submitForm, refreshForm, previewForm, dismiss, removeAnswer, say, openForm]
+  );
 }

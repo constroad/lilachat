@@ -106,7 +106,12 @@ export function useChatCommands(params: { jwt: string; chatId: string; workspace
   const buttons = useMemo(() => channelButtonRows(groups), [groups]);
   /** The «/» button shows only where this chat has commands (José 02/11). */
   const hasCommands = useMemo(() => groups.some((group) => group.commands.length > 0), [groups]);
-  return { enabled: Boolean(workspaceId), hasCommands, suggestions, onType, runIfCommand, answers: appAnswers.answers, dismiss: appAnswers.dismiss, appAnswers, actions, buttons, loadActions: load, share: params.shareable ? share : undefined };
+  const shareable = params.shareable;
+  // Stable while nothing changes, like `useAppAnswers`: the memoized bar receives it (F4, 02/11).
+  return useMemo(
+    () => ({ enabled: Boolean(workspaceId), hasCommands, suggestions, onType, runIfCommand, answers: appAnswers.answers, dismiss: appAnswers.dismiss, appAnswers, actions, buttons, loadActions: load, share: shareable ? share : undefined }),
+    [workspaceId, hasCommands, suggestions, onType, runIfCommand, appAnswers, actions, buttons, load, shareable, share]
+  );
 }
 
 /** A channel or the chat with an app also asks for its actions on open, for its ⚡ (R31/10); a person's chat asks nothing. */

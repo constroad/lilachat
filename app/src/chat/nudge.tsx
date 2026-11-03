@@ -188,7 +188,8 @@ export function useFunActions(params: { chatId: string; isGroup: boolean; isDraf
             onWink: (wink: WinkId) => {
               beginInteraction('enviar-guino');
               closeEmojiPanel(false);
-              playOnTap({ kind: 'guino', wink });
+              // A frame later: the panel starts sliding out before the sketch mounts (~500 ms of JS, F4 02/11).
+              requestAnimationFrame(() => playOnTap({ kind: 'guino', wink }));
               void sendWink(chatId, wink).then((result) => result.ok || onError(result.reason));
             },
           }

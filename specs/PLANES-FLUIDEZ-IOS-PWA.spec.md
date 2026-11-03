@@ -197,15 +197,15 @@ esté vigente ese día.
 
 ## 5. Avance
 
-### Estado por fase (03/11/2026, 00:05)
+### Estado por fase (03/11/2026, 01:20)
 
 | Fase | Estado | Falta |
 | --- | --- | --- |
 | F0 Medir | **Hecha.** En `main`, OTA `f4ca42ef` en vivo, probada en el emulador | 2 min en el teléfono de José para el número real |
-| F1 Fuera los modales | **Hecha** (APK 0.1.177). Host en la misma ventana (sesión y chat), capas animadas, puente de contextos, `Sheet` con arrastre: avisos, clip, fijar, ficha de persona, historial y acciones de miembro. El bloqueo de la app queda sobre todas las capas | Pasar las otras ~26 hojas a `Sheet` (cada una con su E2E). `overlays.ts` y el congelado se QUEDAN: una hoja con campo de texto sube el teclado igual (§5.3) |
+| F1 Fuera los modales | **Hecha** (APK 0.1.177). Host en la misma ventana (sesión y chat), capas animadas, puente de contextos, `Sheet` con arrastre: avisos, clip, fijar, ficha de persona, historial y acciones de miembro; con la OTA `ad44c54e`, siete más (§5.8). El bloqueo de la app queda sobre todas las capas | Pasar las otras ~19 hojas a `Sheet` (cada una con su E2E); E2E pendiente de 4 de las 7 nuevas (§5.8). `overlays.ts` y el congelado se QUEDAN: una hoja con campo de texto sube el teclado igual (§5.3) |
 | F2 Visor de fotos | **Hecha** (APK 0.1.177). La foto crece desde su burbuja y vuelve a ella; arrastre que muestra el chat; foto completa pedida al apoyar el dedo; barras con fundido | El número en el teléfono de José (el emulador captura fotos negras, §5.3) |
 | F3 Teclado | **Hecha** (APK 0.1.178). El teclado se cierra arrastrando el chat (y el hilo) hacia abajo; al cerrarse el panel de emojis el chat baja con él en el hilo de UI (§5.4) | Probarlo con un teclado completo en el teléfono de José (el emulador usa el compacto) |
-| F4 Toque y envío | **En curso** (APK 0.1.178 y 0.1.179). Ripple nativo; sticker, GIF y guiño con burbuja o animación al instante; la lista de atrás ya no se redibuja con cada mensaje; el botón emoji/teclado es el único que escucha al panel; cerrar el panel no redibuja la grilla ni la lista; la barra no se redibuja con el eco (OTA); un envío dibuja 2 filas y no todas las montadas, y el chat baja de 437 a 222 ms (OTA `eaa9ac0d`). Sticker de 63 a 17 cuadros de JS caídos, GIF de 37 a 3, guiño de 232 a 57 (§5.4 a §5.7) | `ChatScreen` sigue con 3 renders por envío (los mensajes viven en su estado); la lista del espacio se dibuja 2 veces al abrir un chat; cuadros caídos al enviar sin medir con la Mac libre |
+| F4 Toque y envío | **En curso** (APK 0.1.178 y 0.1.179). Ripple nativo; sticker, GIF y guiño con burbuja o animación al instante; la lista de atrás ya no se redibuja con cada mensaje; el botón emoji/teclado es el único que escucha al panel; cerrar el panel no redibuja la grilla ni la lista; la barra no se redibuja con el eco (OTA); un envío dibuja 2 filas y no todas las montadas, y el chat baja de 437 a 222 ms (OTA `eaa9ac0d`). Sticker de 63 a 17 cuadros de JS caídos, GIF de 37 a 3, guiño de 232 a 57 (§5.4 a §5.7) | Con la Mac libre un texto sigue tirando 30 cuadros de JS y el trabajo con nombre suma ~35 ms: falta encontrar el resto (§5.8). `ChatScreen` hace 3 renders por envío; la lista del espacio se dibuja 2 veces al abrir un chat |
 | F5a Lectura síncrona | **Hecha** (APK 0.1.179). Abrir un chat: mediana de 0 cuadros de JS caídos (antes 12, §5.5). La clave y la base quedan en mano al iniciar la sesión y `useChat` nace con la última página leída en su render (`readLastPageSync`) | `leer-chat` no aparece entre los trabajos con nombre de la ventana: medirlo en el teléfono de José y recién ahí decidir si se borra `memoriaDeChats` |
 | F5b SQLCipher | **Hecha** (APK 0.1.179, E2E de la mudanza en §5.5). Base `lilachat-v2.db` cifrada entera con la misma clave (cruda, sin PBKDF2), filas en claro adentro con el texto en su columna; mudanza chat por chat, la fila de v1 se borra después de quedar en v2; sin SQLCipher en el binario sigue v1 | Cerrar sesión y volver a entrar (no se probó: pide un código por WhatsApp a la cuenta real de José); +2,3 MB de APK |
 | F6 Higiene | **En parte**: fuera `moti` (0.1.178) | `useLegacyPackaging` (medir descarga contra instalación); umbral de F0 en `rn-perf`, que vive en constroad-skills |
@@ -220,6 +220,7 @@ esté vigente ese día.
 | 02/11/2026 | F1 + F2 | APK 0.1.177 (178): hojas en la misma ventana con arrastre, foto que crece desde su burbuja (vuelo por `transform`), arrastre que muestra el chat, foto completa pedida al apoyar el dedo. E2E en el emulador, rn-smoke 3/3, medida en §5.3. Publicada en LilaStore |
 | 02/11/2026 | F3 + F4 + F6 | APK 0.1.178 (179): teclado que se cierra arrastrando, ripple nativo, sticker con burbuja al instante, guiño y zumbido al tocar, lista de atrás sostenida, panel que baja con el contenido, fuera `moti`. El diagnóstico dice dónde se va el JS de cada interacción. E2E grabado cuadro a cuadro, rn-smoke 3/3 (heap 22 MB), medida en §5.4. El botón emoji aislado va por OTA |
 | 02/11/2026 | F5a + F5b | Rama `fluidez-f5`: lectura síncrona de la última página y base SQLCipher con mudanza chat por chat. Sale en el APK 0.1.179 |
+| 03/11/2026 | F1 + F4 | OTA `ad44c54e` (runtime 51e099b7, git 986c228): siete hojas más con arrastre (§5.8). E2E de Cambiar de espacio, ⚡ del espacio y Compartir ubicación: se cierran arrastrando, tocando el fondo y con atrás. Medida limpia del envío: 30 cuadros de JS con ~35 ms de trabajo con nombre, y no es el teclado. rn-smoke 3/3 (heap 21 MB) |
 | 03/11/2026 | F4 | OTA `eaa9ac0d` (runtime 51e099b7, git aa2d248): un mensaje nuevo redibuja solo su fila. Tocar una cita y responder salen de refs; álbumes y citas iguales conservan su objeto (`keptValues`, con tests); pastilla de reacciones, chip del hilo y celda del sticker memorizados. Diagnóstico cuenta «Filas N×». rn-smoke 3/3 (heap 19 MB), medida en §5.7 |
 | 02/11/2026 | F4 + F5 | `main` para el APK 0.1.179 (180): F5a y F5b integradas; cerrar el panel ya no redibuja la grilla de stickers ni la lista del chat (los dos se suscriben al panel sin estado, `subscribeEmojiPanel` con tests; panel memorizado con callbacks estables); el guiño entra un cuadro después del cierre del panel; textos vacíos con «aquí». E2E de la mudanza con el historial real del emulador, rn-smoke 3/3 (heap 19 MB), medida en §5.5. Publicada en LilaStore |
 
@@ -542,3 +543,46 @@ quedó en Constroad. rn-smoke 3/3 antes de publicar. El test intermitente
 `checklistRoutes` (avisos de dos tildes, 1 de 5 corridas) se arregló en el
 mismo push: la ventana del aviso pasó de 30 a 500 ms y se espera con
 `vi.waitFor`.
+
+### 5.8 Siete hojas más y el envío medido con la Mac libre (OTA `ad44c54e`, 03/11/2026, 01:15)
+
+**Hojas.** Pasan a `Sheet`: Agregar a lista, el ⚡ del espacio y del chat
+(`QuickActionsSheet`), Cambiar de espacio, Compartir ubicación, emojis y
+stickers del hilo (`ThreadPicker`), el canal de un tema de una app
+(`ChannelPicker`) y las opciones con fotos de un formulario
+(`RichChoiceSheet`). Las que tienen una lista adentro se arrastran desde el
+asa, para no pelear con el scroll. Cada una conserva su testID.
+
+| Hoja | Arrastre | Fondo | Atrás |
+| --- | --- | --- | --- |
+| Cambiar de espacio | cierra | cierra | cierra |
+| ⚡ del espacio | cierra | cierra | cierra |
+| Compartir ubicación | cierra | cierra | cierra |
+
+Faltan en el emulador: el ⚡ del chat (es el mismo componente que el del
+espacio, pero #general de Test no tiene acciones), Agregar a lista (pide la
+lista personal de José), emojis del hilo (#general de Test no tiene hilos),
+el canal de un tema y las opciones con fotos (piden una app con temas y un
+formulario con fotos en Test). Al abrir Compartir ubicación, Android pidió el
+permiso de ubicación: se rechazó, y la hoja se abre igual.
+
+**El envío con la Mac libre** (load average 2,5, OTA `eaa9ac0d`, #general de
+Test):
+
+| | Teclado abierto (5 envíos) | Teclado cerrado (4 envíos) |
+| --- | --- | --- |
+| Cuadros JS (mediana · peor) | 30 · 36 | 29 · 33 |
+| Cuadros UI | 0 · 2 | 0 · 0 |
+| Trabajo con nombre | Chat 3× 29 ms · Barra 5 ms · Filas 2× | Chat 3× 31 ms · Barra 5 ms · Filas 2× |
+
+El trabajo que el diagnóstico sabe nombrar suma unos 35 ms. La ventana dura
+600 ms (36 cuadros) y se caen 30: casi medio segundo de JS sin nombre. No es
+el teclado. Tampoco son los efectos que miran los mensajes, que son baratos,
+ni guardar en la base: las escrituras son asíncronas y el cifrado mide ~0 ms.
+Un GIF (que no pasa por la cola) tira 3. **Sigue:** poner nombre a cada paso
+del camino del texto (el toque en enviar, la cola y su `drainOutbox`, el eco
+del socket, el `scrollToEnd`) en la próxima OTA y medir de nuevo.
+
+QA: los 9 textos de las medidas (seq 106 a 114) borrados con «Eliminar para
+todos». La app quedó en Constroad. rn-smoke 3/3 (heap 21 MB) antes de
+publicar.

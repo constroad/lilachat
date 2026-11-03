@@ -1,4 +1,4 @@
-import { useCallback, useMemo, type ComponentProps } from 'react';
+import { useCallback, useMemo, useRef, type ComponentProps } from 'react';
 import { albumLayout, alreadyGreeted, isHiddenNotice, stickerRowLayout, type AlbumRole } from '@lilachat/shared';
 import { formatDayLabel, isAnimatedImage, memberBadge, miReaccion, canOpenThread, puedeReaccionar, replyOpensThread, resolveDeliveryState, startsNewDay, usesFlatLayout, type MemberPill } from '@lilachat/shared';
 import { DivisorNoLeidos } from './useDivisorNoLeidos';
@@ -13,6 +13,7 @@ import { drawsAsFlatRow } from './rowKinds';
 import { useGroupsAsList } from '../ui/groupsAsList';
 import { convertGifToSticker } from './gifs/gifOptions';
 import { StickerPair } from './stickers/StickerMessage';
+import { useKeptValues } from './keptValues';
 
 type PropsDeFila = ComponentProps<typeof MessageRow>;
 
@@ -66,26 +67,36 @@ export function useDibujarFila(p: {
   const { rows, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir } = p;
   // Groups as flat rows, like Slack (design `s-01`): always in a company space, on request in a personal group.
   const flat = usesFlatLayout({ kind: esGrupo ? 'group' : 'direct', workspaceId: p.workspaceId }, { groupsAsList: useGroupsAsList() });
-  const { citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas } = p;
+  const { elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas } = p;
+  // A new message rebuilt every quote: the unchanged ones keep their object and their row bails out (F4, 02/11).
+  const citados = useKeptValues(p.citados);
   const { onReaccionar, onMasEmojis, onVerReacciones, destacados } = p;
   const { onGreet } = p;
   // Photos sent together (pending 12): the first draws the album, the others nothing.
   const albums = useMemo(() => {
     const confirmed = rows.filter((row): row is ChatMessage => !isPending(row));
     const bySeq = new Map(confirmed.map((row) => [row.seq, row]));
-    return { roles: albumLayout(confirmed), bySeq };
+    const roles = albumLayout(confirmed);
+    const heads = new Map<number, ChatMessage[]>();
+    for (const [seq, role] of roles) if (role.role === 'head') heads.set(seq, role.seqs.map((one) => bySeq.get(one)).filter((one): one is ChatMessage => Boolean(one)));
+    return { roles, bySeq, heads };
   }, [rows]);
+  // The same for the photos of each album.
+  const albumHeads = useKeptValues(albums.heads);
+  const albumsRef = useRef(albums);
+  albumsRef.current = albums;
   // Stickers sent in a row (José, 02/11): two side by side; the flat rows keep each apart.
   const stickerPairs = useMemo(() => (flat ? new Map<number, AlbumRole>() : stickerRowLayout(rows.map((row) => (isPending(row) ? {} : row)), { dividerSeq: divisorSeq ?? undefined })), [rows, flat, divisorSeq]);
   const { onResponderEnHilo } = p;
   /** «Responder» from the row, the swipe and the selection bar: ONE route (pending 110). */
   const reply = useCallback(
     (seq: number, preview: string, mine: boolean) => {
-      const message = albums.bySeq.get(seq);
+      // Read from the ref: with `albums` as a dependency every message changed it, and every row redrew (F4, 02/11).
+      const message = albumsRef.current.bySeq.get(seq);
       if (message && !encrypted && onResponderEnHilo && replyOpensThread({ flat, message })) return onResponderEnHilo(seq);
       onResponder?.(seq, preview, mine);
     },
-    [albums, encrypted, flat, onResponder, onResponderEnHilo]
+    [encrypted, flat, onResponder, onResponderEnHilo]
   );
   const drawRow = useCallback(
     ({ item, index }: { item: Row; index: number }) => {
@@ -93,7 +104,7 @@ export function useDibujarFila(p: {
       const albumRole = isPending(item) || flat ? undefined : albums.roles.get(item.seq);
       // The rest of an album is in its first card; a notice deleted for everyone is not drawn.
       if (albumRole?.role === 'member' || (!isPending(item) && isHiddenNotice(item))) return <></>;
-      const album = albumRole?.role === 'head' ? albumRole.seqs.map((seq) => albums.bySeq.get(seq)).filter((one): one is ChatMessage => Boolean(one)) : undefined;
+      const album = albumRole?.role === 'head' && !isPending(item) ? albumHeads.get(item.seq) : undefined;
       const stickerRole = isPending(item) ? undefined : stickerPairs.get(item.seq);
       if (stickerRole?.role === 'member') return <></>;
       const pair = pairOf(stickerRole, albums.bySeq);
@@ -189,7 +200,7 @@ export function useDibujarFila(p: {
           />
           )}
           {!isPending(item) && item.reacciones?.length && !item.deletedAt ? (
-            <PastillaDeReacciones id={String(item.seq)} reacciones={item.reacciones} yo={yo} mia={mia} conAvatar={conAvatar} centered={centered} indent={indent} onTocar={() => onVerReacciones(item.seq)} />
+            <PastillaDeReacciones id={String(item.seq)} reacciones={item.reacciones} yo={yo} mia={mia} conAvatar={conAvatar} centered={centered} indent={indent} seq={item.seq} onTocar={onVerReacciones} />
           ) : null}
           {!isPending(item) && item.hilo && item.hilo.respuestas > 0 && !item.deletedAt ? (
             <ChipDeHilo
@@ -209,7 +220,7 @@ export function useDibujarFila(p: {
         </>
       );
     },
-    [rows, albums, stickerPairs, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, flat, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir, citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, reply, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas, onReaccionar, onMasEmojis, onVerReacciones, destacados, onGreet, p.onShowPerson]
+    [rows, albums, albumHeads, stickerPairs, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, flat, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir, citados, elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, reply, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas, onReaccionar, onMasEmojis, onVerReacciones, destacados, onGreet, p.onShowPerson]
   );
   return { dibujarFila: drawRow, reply };
 }

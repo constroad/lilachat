@@ -246,6 +246,39 @@ describe('work inside an interaction', () => {
     expect(framesEntry(report, 1).extra).toEqual({ js: 29, ui: 5, jsWorst: 200, uiWorst: 50, frames: 30, 'w:chat-render': 76, 'n:chat-render': 2 });
   });
 
+  it('a count with no time (rows redrawn by a send) shows after the timed labels', () => {
+    const entry = (extra: Record<string, number>): EntradaDiagnostico => ({ tipo: 'perf', cuando: 1, op: 'cuadros:enviar', ms: 600, extra: { js: 1, ui: 0, ...extra } });
+    const [summary] = summarizeFrames([
+      entry({ 'w:chat': 120, 'n:chat': 1, 'w:cola': 10, 'n:cola': 1, 'w:disco': 30, 'n:disco': 1, 'w:barra': 5, 'n:barra': 1, 'w:fila': 0, 'n:fila': 2 }),
+      entry({ 'w:chat': 100, 'n:chat': 1, 'w:cola': 8, 'n:cola': 1, 'w:disco': 20, 'n:disco': 1, 'w:barra': 4, 'n:barra': 1, 'w:fila': 0, 'n:fila': 1 }),
+      entry({ 'w:chat': 140, 'n:chat': 1, 'w:cola': 9, 'n:cola': 1, 'w:disco': 25, 'n:disco': 1, 'w:barra': 6, 'n:barra': 1 }),
+    ]);
+
+    expect(summary.work).toEqual([
+      { label: 'chat', ms: 120, count: 1 },
+      { label: 'disco', ms: 25, count: 1 },
+      { label: 'cola', ms: 9, count: 1 },
+      { label: 'fila', ms: 0, count: 1 },
+    ]);
+  });
+
+  it('a count absent from most windows has a median of 0 and does not show', () => {
+    const entry = (extra: Record<string, number>): EntradaDiagnostico => ({ tipo: 'perf', cuando: 1, op: 'cuadros:enviar', ms: 600, extra: { js: 1, ui: 0, ...extra } });
+    const [summary] = summarizeFrames([entry({ 'w:chat': 120, 'n:chat': 1, 'w:fila': 0, 'n:fila': 3 }), entry({ 'w:chat': 100, 'n:chat': 1 }), entry({ 'w:chat': 90, 'n:chat': 1 })]);
+
+    expect(summary.work).toEqual([{ label: 'chat', ms: 100, count: 1 }]);
+  });
+
+  it('a zero duration is a count, not ignored', () => {
+    const { onReport, windows: w } = windows();
+    w.begin('enviar', 0);
+    w.work('fila', 0);
+    w.work('fila', 0);
+    w.end('enviar', 100);
+
+    expect(onReport.mock.calls[0][0].work).toEqual({ fila: { ms: 0, count: 2 } });
+  });
+
   it('the summary keeps the three costliest labels by median ms (a missing label counts 0)', () => {
     const entry = (extra: Record<string, number>): EntradaDiagnostico => ({ tipo: 'perf', cuando: 1, op: 'cuadros:enviar', ms: 600, extra: { js: 1, ui: 0, ...extra } });
     const [summary] = summarizeFrames([

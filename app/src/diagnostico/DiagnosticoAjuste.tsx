@@ -143,6 +143,7 @@ const WORK_LABELS: Record<string, string> = {
   cola: 'Cola',
   cifrar: 'Cifrado',
   'leer-chat': 'Disco',
+  fila: 'Filas',
 };
 
 /**
@@ -167,7 +168,7 @@ function FluidityBlock({ summary }: { summary: FrameSummary[] }) {
           </Text>
           {row.work.length > 0 ? (
             <Text className="w-full text-[11px] text-on-surface-variant" testID={`diag-trabajo-${row.name}`}>
-              {row.work.map((work) => `${WORK_LABELS[work.label] ?? work.label} ${work.count}× ${work.ms} ms`).join(' · ')}
+              {row.work.map((work) => `${WORK_LABELS[work.label] ?? work.label} ${work.count}×${work.ms > 0 ? ` ${work.ms} ms` : ''}`).join(' · ')}
             </Text>
           ) : null}
         </View>

@@ -261,7 +261,7 @@ export function HiloScreen(props: {
                       onSelect={toggleBar}
                     />
                     {confirmada?.reacciones?.length && !confirmada.deletedAt ? (
-                      <PastillaDeReacciones id={`hilo-${confirmada.seq}`} reacciones={confirmada.reacciones} yo={props.yo} mia={mia} conAvatar={false} indent={FLAT_INDENT} onTocar={() => reacciones.verReacciones(confirmada.seq)} />
+                      <PastillaDeReacciones id={`hilo-${confirmada.seq}`} reacciones={confirmada.reacciones} yo={props.yo} mia={mia} conAvatar={false} indent={FLAT_INDENT} seq={confirmada.seq} onTocar={reacciones.verReacciones} />
                     ) : null}
                   </View>
                 );
@@ -283,7 +283,7 @@ export function HiloScreen(props: {
                     onLongPress={confirmada && puedeReaccionar({ seq: confirmada.seq, deletedAt: confirmada.deletedAt, kind: confirmada.kind }) ? () => setBarraEn((antes) => (antes === confirmada.seq ? null : confirmada.seq)) : undefined}
                   />
                   {confirmada?.reacciones?.length && !confirmada.deletedAt ? (
-                    <PastillaDeReacciones id={`hilo-${confirmada.seq}`} reacciones={confirmada.reacciones} yo={props.yo} mia={mia} conAvatar={false} onTocar={() => reacciones.verReacciones(confirmada.seq)} />
+                    <PastillaDeReacciones id={`hilo-${confirmada.seq}`} reacciones={confirmada.reacciones} yo={props.yo} mia={mia} conAvatar={false} seq={confirmada.seq} onTocar={reacciones.verReacciones} />
                   ) : null}
                 </View>
               );

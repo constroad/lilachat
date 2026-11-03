@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { resumenDeReacciones, type Reaccion } from '@lilachat/shared';
 import { AVATAR_DE_AUTOR } from '../burbuja';
@@ -11,8 +12,9 @@ const EMOJIS_VISIBLES = 3;
 /**
  * Las reacciones montadas sobre el borde inferior de la burbuja (20/10; diseño
  * `f1-app-reacciones`): «👍 2 · ❤️ 1». Tocarla abre quién reaccionó.
+ * Memoized, with the seq instead of a closure: a new message does not redraw it (F4, 02/11).
  */
-export function PastillaDeReacciones(props: { id: string; reacciones: readonly Reaccion[] | undefined; yo: string; mia: boolean; conAvatar: boolean; onTocar: () => void; /** Under a highlighted notice, in the middle (21/10). */ centered?: boolean; /** In a flat row (Slack format): on the left, after the avatar, below the text. */ indent?: number }) {
+export const PastillaDeReacciones = memo(function PastillaDeReacciones(props: { id: string; seq: number; reacciones: readonly Reaccion[] | undefined; yo: string; mia: boolean; conAvatar: boolean; onTocar: (seq: number) => void; /** Under a highlighted notice, in the middle (21/10). */ centered?: boolean; /** In a flat row (Slack format): on the left, after the avatar, below the text. */ indent?: number }) {
   const grupos = resumenDeReacciones(props.reacciones, props.yo);
   if (grupos.length === 0) return null;
   const total = grupos.reduce((suma, grupo) => suma + grupo.cuantos, 0);
@@ -24,7 +26,7 @@ export function PastillaDeReacciones(props: { id: string; reacciones: readonly R
         testID={`pastilla-reacciones-${props.id}`}
         accessibilityRole="button"
         accessibilityLabel={`Reacciones: ${etiqueta}. Ver quién reaccionó`}
-        onPress={props.onTocar}
+        onPress={() => props.onTocar(props.seq)}
         className={`min-h-[28px] flex-row items-center gap-1 rounded-full border px-2 ${grupos.some((grupo) => grupo.mia) ? 'border-primary/30 bg-surface' : 'border-outline/15 bg-surface'}`}
       >
         {visibles.map((grupo, indice) => (
@@ -38,4 +40,4 @@ export function PastillaDeReacciones(props: { id: string; reacciones: readonly R
       </Pressable>
     </View>
   );
-}
+});

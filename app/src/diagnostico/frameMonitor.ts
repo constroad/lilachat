@@ -92,3 +92,10 @@ export function useRenderCost(label: string): void {
     measureWork(label, performance.now() - startedAt);
   });
 }
+
+/** How many times a component committed inside the open interactions, with no time: the rows a send redrew (F4). */
+export function useRenderCount(label: string): void {
+  useLayoutEffect(() => {
+    measureWork(label, 0);
+  });
+}

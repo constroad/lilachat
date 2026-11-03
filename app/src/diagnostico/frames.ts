@@ -149,16 +149,17 @@ export function summarizeFrames(entries: readonly EntradaDiagnostico[]): FrameSu
     }));
 }
 
-/** Per label, the median ms and times across the measurements (absent counts 0); the costliest first. */
+/**
+ * Per label, the median ms and times across the measurements (absent counts 0):
+ * the costliest first, then the counts with no time (rows a send redrew, F4).
+ */
 function summarizeWork(extras: readonly Record<string, number>[]): WorkSummary[] {
   const labels = new Set(extras.flatMap((extra) => Object.keys(extra).filter((key) => key.startsWith(WORK_MS_PREFIX)).map((key) => key.slice(WORK_MS_PREFIX.length))));
-  return [...labels]
-    .map((label) => ({
-      label,
-      ms: upperMedian(extras.map((extra) => extra[`${WORK_MS_PREFIX}${label}`] ?? 0)),
-      count: upperMedian(extras.map((extra) => extra[`${WORK_COUNT_PREFIX}${label}`] ?? 0)),
-    }))
-    .filter((work) => work.ms > 0)
-    .sort((a, b) => b.ms - a.ms)
-    .slice(0, WORK_IN_SUMMARY);
+  const work = [...labels].map((label) => ({
+    label,
+    ms: upperMedian(extras.map((extra) => extra[`${WORK_MS_PREFIX}${label}`] ?? 0)),
+    count: upperMedian(extras.map((extra) => extra[`${WORK_COUNT_PREFIX}${label}`] ?? 0)),
+  }));
+  const timed = work.filter((one) => one.ms > 0).sort((a, b) => b.ms - a.ms).slice(0, WORK_IN_SUMMARY);
+  return [...timed, ...work.filter((one) => one.ms === 0 && one.count > 0)];
 }

@@ -31,6 +31,7 @@ export { MetaDeMensaje } from './MetaDeMensaje';
 
 import type { ChatMessage } from './useChat';
 import { useColores } from '../ui/tema';
+import { useRenderCount } from '../diagnostico/frameMonitor';
 import { TarjetaDelChat } from './TarjetaDelChat';
 import { NudgeLine, SelectableFunLine, WinkLine } from './nudge';
 import { StickerMessage } from './stickers/StickerMessage';
@@ -134,6 +135,7 @@ function FilaDeMensaje({
   /** Tapping someone else's photo or name in a group opens their card (José, 25/10/2026). */
   onShowPerson?: (userId: string) => void;
 }) {
+  useRenderCount('fila');
   const colores = useColores();
   // Which photo of an album is showing: on the first one, swiping right replies (pending 70).
 

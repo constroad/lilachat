@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChevronRight } from 'lucide-react-native';
 import { textoDelChipDeHilo, type ResumenDeHiloEnCliente } from '@lilachat/shared';
@@ -19,7 +20,7 @@ const SEPARACION_DEL_AVATAR = 8;
  * últimos que respondieron, «4 respuestas · última 10:42», un punto si hay
  * nuevas y la flecha. Tocarlo abre el hilo.
  */
-export function ChipDeHilo(props: {
+export const ChipDeHilo = memo(function ChipDeHilo(props: {
   seq: number;
   /** `chatId:seq`: the bubble's width under that key (`bubbleWidths.ts`). */
   bubbleKey: string;
@@ -71,4 +72,4 @@ export function ChipDeHilo(props: {
       </Pressable>
     </View>
   );
-}
+});

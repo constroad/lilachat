@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Alert, Pressable, Text, ToastAndroid, useWindowDimensions, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -83,8 +83,12 @@ export function StickerPair(props: Omit<StickerProps, 'item' | 'quote' | 'select
   );
 }
 
-/** The sticker itself and its time under it: a tap keeps it (or replays it), a long press selects it. */
-function StickerCell(props: { item: ChatMessage; mine: boolean; jwt: string; delivery: DeliveryState; starred: boolean; side: number; selecting: boolean; onSelect?: (seq: number) => void }) {
+/**
+ * The sticker itself and its time under it: a tap keeps it (or replays it), a
+ * long press selects it. Memoized: the pair redraws with every message, its
+ * stickers only when theirs changed (F4, 02/11).
+ */
+const StickerCell = memo(function StickerCell(props: { item: ChatMessage; mine: boolean; jwt: string; delivery: DeliveryState; starred: boolean; side: number; selecting: boolean; onSelect?: (seq: number) => void }) {
   const { item, mine } = props;
   const animated = useAnimatedStop(item.media?.url, false, item.media?.animated === true);
   const showOptions = () => showStickerOptions(props.jwt, item, mine);
@@ -105,7 +109,7 @@ function StickerCell(props: { item: ChatMessage; mine: boolean; jwt: string; del
       </View>
     </>
   );
-}
+});
 
 /** A tap on a sticker in the chat: keep it as a favorite, or someone else's in «Mis stickers». */
 export function showStickerOptions(jwt: string, item: ChatMessage, mine: boolean): void {

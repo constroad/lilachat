@@ -7,6 +7,7 @@ import { TEXTO_ELIMINADO, formatClock, groupsWithPrevious, primerEnlace, sharedB
 import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
 import { useChatFont } from '../ui/chatFont';
+import { useRenderCount } from '../diagnostico/frameMonitor';
 import { DeslizarParaResponder } from './DeslizarParaResponder';
 import { CitaDeRespuesta } from './CitaDeRespuesta';
 import { MetaDeMensaje } from './MetaDeMensaje';
@@ -71,6 +72,7 @@ function FlatRow(props: {
   /** Tapping someone else's photo or name opens their card (José, 25/10/2026). */
   onShowPerson?: (userId: string) => void;
 }) {
+  useRenderCount('fila');
   const colors = useColores();
   const font = useChatFont();
   const { item, previous } = props;

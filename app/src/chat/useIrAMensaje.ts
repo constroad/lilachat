@@ -32,8 +32,11 @@ export function useIrAMensaje(params: {
    */
   releaseFromEnd?: () => void;
 }) {
-  const { rows, listaRef, irASeq, requestedAt, irAlInicio, onNoEsta, releaseFromEnd } = params;
+  const { rows, listaRef, irASeq, requestedAt, irAlInicio } = params;
   const [resaltado, setResaltado] = useState<number | null>(null);
+  // The latest callbacks: ChatScreen passes new arrows each render, and the jump reaches every row (F4, 02/11).
+  const latestParams = useRef(params);
+  latestParams.current = params;
 
   // The latest rows: the second pass and the anchor look the target up again (rows arrive late after a cold start).
   const rowsRef = useRef(rows);
@@ -61,7 +64,7 @@ export function useIrAMensaje(params: {
     (seq: number): boolean => {
       const indice = indexOfSeq(seq);
       if (indice < 0) return false;
-      releaseFromEnd?.();
+      latestParams.current.releaseFromEnd?.();
       // At once, not animated: the animation reported its own «drag» while still at the end, and the list
       // stuck to it again (E2E, 22/10). An instant jump leaves the end in one step, like WhatsApp's search.
       scrollTo(indice);
@@ -71,16 +74,16 @@ export function useIrAMensaje(params: {
       setTimeout(keepAnchor, SEGUNDO_PASE_MS);
       return true;
     },
-    [indexOfSeq, scrollTo, keepAnchor, releaseFromEnd]
+    [indexOfSeq, scrollTo, keepAnchor]
   );
 
   const saltarA = useCallback(
     (seq: number, siNoEsta: string) => {
-      if (!irAMensaje(seq)) return onNoEsta(siNoEsta, seq);
+      if (!irAMensaje(seq)) return latestParams.current.onNoEsta(siNoEsta, seq);
       setResaltado(seq);
       setTimeout(() => setResaltado((actual) => (actual === seq ? null : actual)), RESALTADO_MS);
     },
-    [irAMensaje, onNoEsta]
+    [irAMensaje]
   );
 
   const alTocarCita = useCallback((seq: number) => saltarA(seq, 'El mensaje original está más arriba: sube para cargarlo.'), [saltarA]);

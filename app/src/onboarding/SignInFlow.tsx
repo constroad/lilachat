@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { formatPhoneDisplay } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
+import { markNotesSeen } from '../settings/WhatsNewHost';
 import { markWelcomeSeen } from '../spaces/welcomeSeen';
 import { YourSpacesScreen } from '../spaces/YourSpacesScreen';
 import { EmailCodeScreen } from './EmailCodeScreen';
@@ -17,8 +18,13 @@ type Step =
   | { name: 'spaces'; credential: Credential; account: string };
 
 /** The way in (spec INGRESO-POR-ESPACIO): email and code like Slack, the phone as an option, then the spaces. */
-export function SignInFlow({ onDone }: { onDone: (credential: Credential) => void }) {
+export function SignInFlow(props: { onDone: (credential: Credential) => void }) {
   const [step, setStep] = useState<Step>({ name: 'entry' });
+  // Nothing is «new» to someone who just arrived.
+  const onDone = (credential: Credential) => {
+    markNotesSeen();
+    props.onDone(credential);
+  };
 
   if (step.name === 'email-code') {
     return <EmailCodeScreen email={step.email} onBack={() => setStep({ name: 'entry' })} onDone={(credential) => setStep({ name: 'spaces', credential, account: step.email })} />;
@@ -35,7 +41,7 @@ export function SignInFlow({ onDone }: { onDone: (credential: Credential) => voi
     return <OtpScreen phone={step.phone} onBack={() => setStep({ name: 'phone', personal: step.personal })} onDone={finish} />;
   }
   if (step.name === 'spaces') {
-    return <YourSpacesScreen credential={step.credential} account={step.account} onEnter={() => onDone(step.credential)} />;
+    return <YourSpacesScreen credential={step.credential} account={step.account} onEnter={onDone} />;
   }
   return (
     <WorkspaceEntryScreen

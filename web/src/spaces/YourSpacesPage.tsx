@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChevronRight, CirclePlus, RectangleEllipsis } from 'lucide-react';
-import { invitedByLine, membersLabel, owesItsName, spacesToOpen, type ClientWorkspace, type SpaceInvitation } from '@lilachat/shared';
+import { invitedByLine, membersLabel, owesItsName, spacesToOpen, type ClientWorkspace, type MyProfile, type SpaceInvitation } from '@lilachat/shared';
 import type { Credential } from '../api';
 import { CreateUserPage } from '../profile/CreateUserPage';
 import { Logo } from '../ui/Logo';
@@ -21,7 +21,7 @@ const LOAD_ERROR = 'No se pudieron cargar tus espacios.';
  * «Tus espacios de trabajo» on the web (design `i-03-tus-espacios`). A new account
  * writes its name BEFORE accepting, so the space hears «Ana se unió».
  */
-export function YourSpacesPage(props: { credential: Credential; account: string; onEnter: () => void }) {
+export function YourSpacesPage(props: { credential: Credential; account: string; onEnter: (credential: Credential) => void }) {
   const { credential, onEnter } = props;
   const jwt = credential.jwt;
   const [lists, setLists] = useState<Lists | null>(null);
@@ -29,6 +29,7 @@ export function YourSpacesPage(props: { credential: Credential; account: string;
   const [sheet, setSheet] = useState<'join' | 'create' | null>(null);
   const [accepting, setAccepting] = useState<string | null>(null);
   const [naming, setNaming] = useState<Naming | null>(null);
+  const ownName = useRef(credential.name);
 
   const load = useCallback(async () => {
     setError('');
@@ -41,8 +42,8 @@ export function YourSpacesPage(props: { credential: Credential; account: string;
   const leave = useCallback((spaceId: string | null) => {
     markWelcomeSeen();
     setCurrentSpaceId(spaceId);
-    onEnter();
-  }, [onEnter]);
+    onEnter({ ...credential, name: ownName.current });
+  }, [credential, onEnter]);
 
   const afterName = (space: EnteredSpace, next: () => void) => (owesItsName(credential) ? setNaming({ space, next }) : next());
 
@@ -57,7 +58,8 @@ export function YourSpacesPage(props: { credential: Credential; account: string;
   };
 
   if (naming) {
-    const finish = () => {
+    const finish = (profile: MyProfile) => {
+      ownName.current = profile.name ?? undefined;
       setNaming(null);
       naming.next();
     };

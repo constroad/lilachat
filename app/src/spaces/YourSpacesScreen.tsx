@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronRight, CirclePlus, RectangleEllipsis } from 'lucide-react-native';
-import { invitedByLine, membersLabel, owesItsName, spacesToOpen, type ClientWorkspace, type SpaceInvitation } from '@lilachat/shared';
+import { invitedByLine, membersLabel, owesItsName, spacesToOpen, type ClientWorkspace, type MyProfile, type SpaceInvitation } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { CreateUserScreen } from '../onboarding/CreateUserScreen';
 import { Logo } from '../ui/Logo';
@@ -27,7 +27,7 @@ const LOAD_ERROR = 'No se pudieron cargar tus espacios.';
  * code or a new space. A new account writes its name BEFORE accepting, so the
  * space hears «Ana se unió» (`welcomeToGeneral` stays quiet without a name).
  */
-export function YourSpacesScreen(props: { credential: Credential; account: string; onEnter: () => void }) {
+export function YourSpacesScreen(props: { credential: Credential; account: string; onEnter: (credential: Credential) => void }) {
   const colors = useColores();
   const margins = useMargenes();
   const { credential, onEnter } = props;
@@ -36,6 +36,7 @@ export function YourSpacesScreen(props: { credential: Credential; account: strin
   const [sheet, setSheet] = useState<Sheet>(null);
   const [accepting, setAccepting] = useState<string | null>(null);
   const [naming, setNaming] = useState<Naming | null>(null);
+  const ownName = useRef(credential.name);
 
   const load = useCallback(async () => {
     setError('');
@@ -48,8 +49,8 @@ export function YourSpacesScreen(props: { credential: Credential; account: strin
   const leave = useCallback((spaceId: string | null) => {
     markWelcomeSeen();
     setCurrentSpaceId(spaceId);
-    onEnter();
-  }, [onEnter]);
+    onEnter({ ...credential, name: ownName.current });
+  }, [credential, onEnter]);
 
   const afterName = (space: EnteredSpace, next: () => void) => (owesItsName(credential) ? setNaming({ space, next }) : next());
 
@@ -64,7 +65,8 @@ export function YourSpacesScreen(props: { credential: Credential; account: strin
   };
 
   if (naming) {
-    const finish = () => {
+    const finish = (profile: MyProfile) => {
+      ownName.current = profile.name;
       setNaming(null);
       naming.next();
     };

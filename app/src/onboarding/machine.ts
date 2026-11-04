@@ -12,9 +12,6 @@ export function credentialOfSignIn(signedIn: SignedIn, deviceId: string): Creden
   return { userId: user.id, deviceId, deviceSecret, jwt, phone: user.phone, name: user.name, avatarUrl: user.avatarUrl ?? null };
 }
 
-/** «0:42», as design `i-02` writes it. */
-export const countdownLabel = (seconds: number): string => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-
 /** Coerciona y normaliza igual que el server: lo que se manda es lo que él ve. */
 export function normalizeEmailInput(rawEmail: unknown): string {
   if (typeof rawEmail !== 'string') return '';

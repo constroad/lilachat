@@ -90,6 +90,8 @@ describe('sign-in by workspace on the web', () => {
     await userEvent.click(screen.getByTestId('btn-entrar-espacio'));
     await waitFor(() => expect(onReady).toHaveBeenCalled());
     expect(server.calls.indexOf('PUT /me/profile')).toBeLessThan(server.calls.indexOf('POST /workspaces/invitations/i1/accept'));
+    expect(onReady).toHaveBeenCalledWith(expect.objectContaining({ name: 'Ana Torres' }));
+    expect(localStorage.getItem('lilachat.novedades.vista')).toBeTruthy();
     expect(openSpaceId()).toBe('s2');
   });
 

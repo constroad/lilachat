@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { invitedByLine, owesItsName, spacesToOpen, canChangeRole, canDeactivate, canManageMembers, joinCodePrefix, makeJoinCode, normalizeChannelName, normalizeJoinCode, statusAfterJoin, workspacesOf } from './workspaces.js';
+import { countdownLabel, invitedByLine, owesItsName, spacesToOpen, canChangeRole, canDeactivate, canManageMembers, joinCodePrefix, makeJoinCode, normalizeChannelName, normalizeJoinCode, statusAfterJoin, workspacesOf } from './workspaces.js';
 
 /** E1 (José, 20/10): personal account plus company spaces; join with a code or be added by phone. */
 describe('join code', () => {
@@ -98,6 +98,12 @@ describe('sign-in by workspace (spec INGRESO-POR-ESPACIO)', () => {
     expect(owesItsName({ phone: 'mail:abc', name: '  ' })).toBe(true);
     expect(owesItsName({ phone: 'mail:abc', name: 'Ana' })).toBe(false);
     expect(owesItsName({ phone: '902049935', name: null })).toBe(false);
+  });
+
+  it('writes the wait as minutes and two digits of seconds', () => {
+    expect(countdownLabel(60)).toBe('1:00');
+    expect(countdownLabel(42)).toBe('0:42');
+    expect(countdownLabel(5)).toBe('0:05');
   });
 
   it('says who invited, and still reads well when that account is gone', () => {

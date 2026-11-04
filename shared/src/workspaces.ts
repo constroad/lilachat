@@ -126,6 +126,9 @@ export const owesItsName = (account: { name?: string | null; phone: string }): b
 
 export const invitedByLine = (invitation: Pick<SpaceInvitation, 'invitedBy'>): string => (invitation.invitedBy ? `Te invitó ${invitation.invitedBy}` : 'Te invitaron a este espacio');
 
+/** «0:42», as design `i-02` writes the wait to ask for the code again. */
+export const countdownLabel = (seconds: number): string => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+
 /** An email invitation waiting for «Unirme» (design i-03). */
 export type SpaceInvitation = { id: string; workspace: { id: string; name: string; logoUrl?: string }; invitedBy: string | null };
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Smartphone } from 'lucide-react';
-import { normalizeEmail } from '@lilachat/shared';
+import { countdownLabel, normalizeEmail } from '@lilachat/shared';
 import { api, deviceId, type Credential } from '../api';
 import { Logo } from '../ui/Logo';
 
@@ -74,13 +74,13 @@ export function EmailSignIn(props: { onVerified: (credential: Credential, email:
           <p className="text-[15px] font-semibold leading-6">{email}</p>
           <label className="relative mt-7 flex justify-between">
             {Array.from({ length: CODE_LENGTH }, (_unused, index) => (
-              <span key={index} className={`grid h-14 w-12 place-items-center rounded-xl border bg-surface text-2xl font-semibold ${index === code.length ? 'border-primary' : 'border-outline/25'}`}>{code[index] ?? ''}</span>
+              <span key={index} className={`grid h-14 w-12 place-items-center rounded-lg border bg-surface text-2xl font-semibold ${index === code.length ? 'border-primary' : 'border-outline/25'}`}>{code[index] ?? ''}</span>
             ))}
             <input ref={codeRef} data-testid="input-codigo" aria-label="Código" inputMode="numeric" autoComplete="one-time-code" maxLength={CODE_LENGTH} value={code} onChange={(event) => onCode(event.target.value)} className="absolute inset-0 opacity-0" />
           </label>
           {error ? <p data-testid="error-acceso" className="mt-3 text-sm text-error">{error}</p> : null}
           <button type="button" data-testid="btn-reenviar" disabled={busy || seconds > 0} onClick={() => void request()} className="mt-5 block py-2 text-sm font-semibold text-primary disabled:font-normal disabled:text-on-surface-variant">
-            {seconds > 0 ? `Reenviar el código en 0:${String(seconds).padStart(2, '0')}` : 'Reenviar el código'}
+            {seconds > 0 ? `Reenviar el código en ${countdownLabel(seconds)}` : 'Reenviar el código'}
           </button>
           <button type="button" data-testid="btn-cambiar-correo" onClick={() => setSent(false)} className="block py-2 text-[15px] font-semibold text-primary">Cambiar de correo</button>
         </div>
@@ -108,7 +108,7 @@ export function EmailSignIn(props: { onVerified: (credential: Credential, email:
             setError('');
           }}
           onKeyDown={(event) => event.key === 'Enter' && void request()}
-          className="mt-2 h-12 w-full rounded-xl border border-outline/25 bg-surface px-4 text-base outline-none placeholder:text-on-surface-variant focus:border-primary"
+          className="mt-2 h-12 w-full rounded-lg border border-outline/25 bg-surface px-4 text-base outline-none placeholder:text-on-surface-variant focus:border-primary"
         />
         {error ? <p data-testid="error-acceso" className="mt-2 text-sm text-error">{error}</p> : null}
         <button type="button" data-testid="btn-continuar-correo" disabled={busy} onClick={() => void request()} className="mt-4 h-12 w-full rounded-lg bg-primary text-sm font-bold text-on-primary disabled:opacity-40">{busy ? 'Enviando…' : 'Continuar'}</button>

@@ -9,6 +9,8 @@ import { versionActual } from './versionApi';
 
 const SEEN_KEY = 'lilachat.novedades.vista';
 
+export const markNotesSeen = (): void => void AsyncStorage.setItem(SEEN_KEY, versionActual()).catch(() => undefined);
+
 /**
  * «Novedades» after updating (pending 66, José 23/10), like WhatsApp Web's:
  * what the version brings, once, then «Entendido». The notes come from the
@@ -26,7 +28,7 @@ export function WhatsNewHost() {
   }, [current]);
   const close = () => {
     setNotes([]);
-    void AsyncStorage.setItem(SEEN_KEY, current).catch(() => undefined);
+    markNotesSeen();
   };
   if (notes.length === 0) return null;
   return (

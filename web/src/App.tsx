@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { isRealPhone } from '@lilachat/shared';
+import { isRealPhone, type MyProfile } from '@lilachat/shared';
 import { AdminUsersScreen } from './admin/AdminUsersScreen';
 import { AccessScreens } from './auth/AccessScreens';
 import { CodigoParaLaApp } from './auth/CodigoParaLaApp';
@@ -37,7 +37,14 @@ export function App() {
   // Waiting for the profile answer: nothing, rather than the chats for an instant and then the form.
   if (profileGate.checking) return null;
   if (profileGate.incomplete) {
-    if (!isRealPhone(sesion.credential.phone)) return <CreateUserPage jwt={sesion.credential.jwt} email={profileGate.incomplete.email} onDone={profileGate.done} />;
+    if (!isRealPhone(sesion.credential.phone)) {
+      const { credential } = sesion;
+      const named = (profile: MyProfile) => {
+        sesion.entrar({ ...credential, name: profile.name ?? undefined });
+        profileGate.done();
+      };
+      return <CreateUserPage jwt={credential.jwt} email={profileGate.incomplete.email} onDone={named} />;
+    }
     return <CompleteProfileScreen jwt={sesion.credential.jwt} profile={profileGate.incomplete} onDone={profileGate.done} />;
   }
   // Installing an app (agentes' Lila) in a space: after signing in it comes back to this same address.

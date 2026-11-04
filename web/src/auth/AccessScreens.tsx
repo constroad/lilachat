@@ -4,6 +4,7 @@ import { peekPendingJoin } from '../spaces/pendingJoin';
 import { peekPendingCallLink } from '../calls/pendingCallLink';
 import type { Credential } from '../api';
 import { markWelcomeSeen } from '../spaces/welcomeSeen';
+import { markNotesSeen } from '../ui/WhatsNewDialog';
 import { YourSpacesPage } from '../spaces/YourSpacesPage';
 import { EmailSignIn } from './EmailSignIn';
 import { IngresoPorTelefono } from './IngresoPorTelefono';
@@ -25,14 +26,19 @@ export function AccessScreens({ onReady }: { onReady: (credential: Credential) =
   const [arrived, setArrived] = useState<{ credential: Credential; account: string } | null>(null);
   const [invited] = useState(() => peekPendingJoin() !== null);
   const [calledIn] = useState(() => peekPendingCallLink() !== null);
+  // Nothing is «new» to someone who just arrived.
+  const ready = (credential: Credential) => {
+    markNotesSeen();
+    onReady(credential);
+  };
   // A join or a call link already says where this person goes.
-  const arrive = (credential: Credential, account: string) => (invited || calledIn ? onReady(credential) : setArrived({ credential, account }));
+  const arrive = (credential: Credential, account: string) => (invited || calledIn ? ready(credential) : setArrived({ credential, account }));
   const fromPhone = (credential: Credential) => {
     if (door === 'phone') return arrive(credential, formatPhoneDisplay(credential.phone));
     markWelcomeSeen();
-    onReady(credential);
+    ready(credential);
   };
-  if (arrived) return <YourSpacesPage credential={arrived.credential} account={arrived.account} onEnter={() => onReady(arrived.credential)} />;
+  if (arrived) return <YourSpacesPage credential={arrived.credential} account={arrived.account} onEnter={ready} />;
   return (
     <>
       {invited ? <JoinLinkBanner /> : null}
@@ -41,7 +47,7 @@ export function AccessScreens({ onReady }: { onReady: (credential: Credential) =
           <span className="font-semibold">Te enviaron un enlace de llamada.</span> Entra con tu correo o tu número y se abrirá la llamada.
         </p>
       ) : null}
-      {door === 'qr' ? <PantallaDeVincular onReady={onReady} onUsarTelefono={() => setDoor('email')} /> : null}
+      {door === 'qr' ? <PantallaDeVincular onReady={ready} onUsarTelefono={() => setDoor('email')} /> : null}
       {door === 'email' ? <EmailSignIn onVerified={arrive} onUsePhone={() => setDoor('phone')} onUsePersonal={() => setDoor('personal')} onUseQr={() => setDoor('qr')} /> : null}
       {door === 'phone' || door === 'personal' ? <IngresoPorTelefono onReady={fromPhone} onUsarQr={() => setDoor('qr')} onBack={() => setDoor('email')} /> : null}
     </>

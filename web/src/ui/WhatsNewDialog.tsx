@@ -15,6 +15,14 @@ function readSeen(): string | null {
   }
 }
 
+export function markNotesSeen(): void {
+  try {
+    window.localStorage.setItem(SEEN_KEY, WEB_VERSION);
+  } catch {
+    // Without storage it shows again next time, nothing worse.
+  }
+}
+
 /**
  * «Novedades» after the web updates (pending 66, José 23/10), like WhatsApp
  * Web's «What's new»: once per version, then «Entendido». Same catalog as the
@@ -25,11 +33,7 @@ export function WhatsNewDialog() {
   if (notes.length === 0) return null;
   const close = () => {
     setNotes([]);
-    try {
-      window.localStorage.setItem(SEEN_KEY, WEB_VERSION);
-    } catch {
-      // Without storage it shows again next time, nothing worse.
-    }
+    markNotesSeen();
   };
   return (
     <Overlay

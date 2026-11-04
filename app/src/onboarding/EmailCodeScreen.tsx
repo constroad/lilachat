@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import { ArrowLeft } from 'lucide-react-native';
+import { countdownLabel } from '@lilachat/shared';
 import { requestEmailSignIn, verifyEmailSignIn } from '../api/client';
 import { saveCredential, type Credential } from '../auth/credentialStore';
 import { obtenerDeviceIdEstable } from '../auth/deviceId';
 import { useColores } from '../ui/tema';
 import { useMargenes } from '../ui/useMargenes';
-import { countdownLabel, credentialOfSignIn, mapVerifyFailure, shouldAutoSubmitOtp } from './machine';
+import { credentialOfSignIn, mapVerifyFailure, shouldAutoSubmitOtp } from './machine';
 import { OtpBoxes } from './OtpBoxes';
 import { useCountdown } from './useCountdown';
 import { useHardwareBack } from './useHardwareBack';

@@ -139,7 +139,7 @@ describe('SpaceChatList', () => {
   it('channels, groups and direct messages in sections, folded with the arrow, with the code to copy at the foot', async () => {
     const onOpenChat = vi.fn();
     render(list([chat('c1', { name: 'planta', channel: { visibility: 'public' }, unread: 3 }), chat('c2', { name: 'general', channel: { visibility: 'public' } }), chat('g1', { name: 'Compras de obra' }), chat('d1', { kind: 'direct', name: 'Ana Torres' })], { onOpenChat }));
-    expect(screen.getByTestId('seccion-channels')).toHaveTextContent(/general.*planta/);
+    expect(await screen.findByTestId('seccion-channels')).toHaveTextContent(/general.*planta/);
     expect(screen.getByTestId('seccion-groups')).toHaveTextContent('Compras de obra');
     expect(screen.getByTestId('seccion-directs')).toHaveTextContent('Ana Torres');
     expect(screen.getByTestId('titulo-espacio')).toHaveTextContent('3 miembros · Construcción');
@@ -149,6 +149,18 @@ describe('SpaceChatList', () => {
     await userEvent.click(screen.getByTestId('plegar-channels'));
     await userEvent.click(screen.getByTestId('canal-fila-c1'));
     expect(onOpenChat).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }));
+  });
+
+  it('a client channel never shows in «Canales» while its client is on the way, so nothing jumps (José 04/11)', async () => {
+    // Arrange
+    answers['/clients'] = { status: 200, body: { clients: [{ id: 'k1', name: 'Vía Sur', chat_id: 'c1', status: 'active', services: [] }] } };
+    // Act
+    render(list([chat('c1', { name: 'via-sur', channel: { visibility: 'private' } }), chat('c2', { name: 'general', channel: { visibility: 'public' } })], { jwt: 'token' }));
+    // Assert
+    expect(screen.getByTestId('espacio-cargando')).toBeInTheDocument();
+    expect(screen.queryByTestId('canal-fila-c1')).toBeNull();
+    expect(await screen.findByTestId('seccion-channels')).toHaveTextContent('general');
+    expect(screen.queryByTestId('canal-fila-c1')).toBeNull();
   });
 
   it('the space links live in the title menu, not in a section on top of the list (José 30/10)', async () => {
@@ -178,26 +190,26 @@ describe('SpaceChatList', () => {
     expect(screen.queryByTestId('aviso-solicitudes')).toBeNull();
   });
 
-  it('a space creates channels, not groups (pending 109, José 28/10): no «Nuevo grupo» and no empty «Grupos»', () => {
+  it('a space creates channels, not groups (pending 109, José 28/10): no «Nuevo grupo» and no empty «Grupos»', async () => {
     // Arrange: a space with a channel and a direct message, no groups.
     render(list([chat('c1', { name: 'general', channel: { visibility: 'public' } }), chat('d1', { kind: 'direct', name: 'Ana Torres' })]));
     // Assert
-    expect(screen.getByTestId('nuevo-channels')).toBeInTheDocument();
+    expect(await screen.findByTestId('nuevo-channels')).toBeInTheDocument();
     expect(screen.getByTestId('nuevo-directs')).toBeInTheDocument();
     expect(screen.queryByTestId('seccion-groups')).toBeNull();
     expect(screen.queryByTestId('nuevo-groups')).toBeNull();
   });
 
-  it('a group made before the rule still shows, without a button to make more', () => {
+  it('a group made before the rule still shows, without a button to make more', async () => {
     render(list([chat('g1', { name: 'Compras de obra' })]));
-    expect(screen.getByTestId('seccion-groups')).toHaveTextContent('Compras de obra');
+    expect(await screen.findByTestId('seccion-groups')).toHaveTextContent('Compras de obra');
     expect(screen.queryByTestId('nuevo-groups')).toBeNull();
   });
 
   it('an empty space invites to the channels and to the team; a failed load offers to retry', async () => {
     const onChannels = vi.fn();
     const { unmount } = render(list([], { onChannels }));
-    expect(screen.getByTestId('espacio-vacio')).toHaveTextContent('Bienvenido a QA Obra');
+    expect(await screen.findByTestId('espacio-vacio')).toHaveTextContent('Bienvenido a QA Obra');
     await userEvent.click(screen.getByTestId('espacio-ver-canales'));
     expect(onChannels).toHaveBeenCalled();
     unmount();

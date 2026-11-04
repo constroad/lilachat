@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useSyncExternalStore } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { applyMyReads, createSessionCache, type ActivityItem, type ActivityType, type CacheEntry, type ClientChannel, type ClientWorkspaceMember, type SessionCache, type SpaceAppDirectory } from '@lilachat/shared';
+import { applyMyReads, createSessionCache, type ActivityItem, type ActivityType, type CacheEntry, type ClientChannel, type ClientWorkspaceMember, type SpaceClient, type SessionCache, type SpaceAppDirectory } from '@lilachat/shared';
 import { entryWhileHeld, type ShownEntry } from './heldEntry';
 import type { JsonResult } from '../api/jsonCall';
 import type { ChatSummary } from '../api/client';
@@ -39,9 +39,11 @@ export const memberListsCache = cacheOf<MemberLists>();
 export const activityCache = cacheOf<ActivityPage>();
 export const channelsCache = cacheOf<ClientChannel[]>();
 export const spaceChatsCache = cacheOf<SpaceChatsPage>();
+/** The space's client channels: the list needs them for its first paint, so they come from disk like the chats (04/11). */
+export const clientsCache = cacheOf<SpaceClient[]>();
 /** The space's apps (R158, design e-24): the list's «Apps», the directory and the head of a 1:1 with an app read the same copy. */
 export const appDirectoryCache = cacheOf<SpaceAppDirectory>();
-const ALL: SessionCache<unknown>[] = [membersCache, memberListsCache, activityCache, channelsCache, spaceChatsCache, appDirectoryCache] as SessionCache<unknown>[];
+const ALL: SessionCache<unknown>[] = [membersCache, memberListsCache, activityCache, channelsCache, spaceChatsCache, clientsCache, appDirectoryCache] as SessionCache<unknown>[];
 
 /**
  * The chats of my spaces this phone has seen: an event of one of them is not a

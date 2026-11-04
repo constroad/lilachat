@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recordsByService, serviceStageLine, archivedBanner, clientChatIds, clientHeaderSubtitle, clientRowSubtitle, dayLabel, filterArchivedClients, filterServices, pageLiveClients, splitClients, CLIENTS_PAGE, CLIENTS_PREVIEW, type SpaceClient } from './spaceClients.js';
+import { clientsOfEntry, spaceListReady, recordsByService, serviceStageLine, archivedBanner, clientChatIds, clientHeaderSubtitle, clientRowSubtitle, dayLabel, filterArchivedClients, filterServices, pageLiveClients, splitClients, CLIENTS_PAGE, CLIENTS_PREVIEW, type SpaceClient } from './spaceClients.js';
 
 /** Pending 21 (§157): the client channels in the space list and «Archivados» (designs f-01, f-02, f-03). */
 const now = new Date('2026-10-29T15:00:00Z');
@@ -112,6 +112,23 @@ describe('recordsByService', () => {
     expect(grouped.get('s1')!.map((one) => one.seq)).toEqual([9, 5]);
     expect(grouped.get('s2')!.map((one) => one.seq)).toEqual([7]);
     expect(grouped.get('s3')).toBeUndefined();
+  });
+});
+
+describe('the space list waits for its clients (José 04/11: «muestra varios y después los recorta»)', () => {
+  it('is not ready while the clients are unknown: their channels would sit in «Canales» and then leave', () => {
+    expect(spaceListReady({ chats: [], clients: null })).toBe(false);
+    expect(spaceListReady({ chats: null, clients: [] })).toBe(false);
+    expect(spaceListReady({ chats: [], clients: [] })).toBe(true);
+  });
+
+  it('paints what it already saw, even when the refresh fails', () => {
+    expect(clientsOfEntry({ value: ['a'], error: 'sin red' })).toEqual(['a']);
+  });
+
+  it('waits for the first answer, and a failed one is an empty list, not a wait forever', () => {
+    expect(clientsOfEntry({})).toBeNull();
+    expect(clientsOfEntry({ error: 'sin red' })).toEqual([]);
   });
 });
 

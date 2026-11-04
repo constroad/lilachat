@@ -124,6 +124,20 @@ export function filterArchivedClients<T extends ClientChat>(archived: readonly C
 }
 
 /** The client list starts short (José 29/10: «los últimos 3 o 4»); «Ver más» opens a page at a time. */
+/**
+ * The list paints once it knows the clients: before that, their channels sit in
+ * «Canales» and jump to «Clientes», which starts with `CLIENTS_PREVIEW`
+ * (José 04/11: «muestra varios y después los recorta a 5 o 6»).
+ */
+export const spaceListReady = (list: { chats: readonly unknown[] | null; clients: readonly unknown[] | null }): boolean => list.chats !== null && list.clients !== null;
+
+const NO_CLIENTS: never[] = [];
+
+/** What the cache holds, or `null` on the first wait; a first answer that failed is an empty list, never a wait forever. */
+export function clientsOfEntry<T>(entry: { value?: T[]; error?: string }): T[] | null {
+  return entry.value ?? (entry.error ? NO_CLIENTS : null);
+}
+
 export const CLIENTS_PREVIEW = 4;
 export const CLIENTS_PAGE = 10;
 

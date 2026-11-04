@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Archive, AtSign, ChevronDown, ChevronRight, Copy, Hash, Lock, MessagesSquare, PanelLeftClose, Plus, Search, Settings, UserPlus, type LucideIcon } from 'lucide-react';
-import { clientChatIds, formatChatTimestamp, spaceSections, splitArchived, splitClients, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
+import { clientChatIds, formatChatTimestamp, spaceListReady, spaceSections, splitArchived, splitClients, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { ChatRow } from '../chat/FilaDeChat';
 import { copiarTexto } from '../chat/copiarTexto';
@@ -65,6 +65,7 @@ export function SpaceChatList(props: Props) {
   const clients = useSpaceClients(props.jwt, space.id, useMemo(() => (chats ?? []).filter((chat) => chat.kind === 'group').map((chat) => chat.id).join(','), [chats]));
   const [foldedClients, setFoldedClients] = useState(false);
   const [openArchivedClients, setOpenArchivedClients] = useState(false);
+  const ready = spaceListReady({ chats, clients });
   const clientIds = useMemo(() => clientChatIds(clients ?? []), [clients]);
   const sections = useMemo(() => {
     const text = query.trim().toLowerCase();
@@ -113,8 +114,8 @@ export function SpaceChatList(props: Props) {
         {props.failed && chats === null ? (
           <button type="button" onClick={props.onRetry} className="mx-3 mt-2 w-[calc(100%-24px)] rounded-xl bg-error/10 px-4 py-3 text-left text-[13px] text-error">No se pudo cargar el espacio. Toca para reintentar.</button>
         ) : null}
-        {chats === null && !props.failed ? <div data-testid="espacio-cargando" className="space-y-2 px-3 pt-1">{[0, 1, 2, 3].map((index) => <div key={index} className="h-10 animate-pulse rounded-lg bg-background" />)}</div> : null}
-        {chats !== null && chats.length === 0 && !query ? (
+        {!ready && !props.failed ? <div data-testid="espacio-cargando" className="space-y-2 px-3 pt-1">{[0, 1, 2, 3].map((index) => <div key={index} className="h-10 animate-pulse rounded-lg bg-background" />)}</div> : null}
+        {ready && chats?.length === 0 && !query ? (
           <div data-testid="espacio-vacio" className="mx-3 mt-2 rounded-xl border border-outline/15 p-4">
             <p className="font-bold">{`Bienvenido a ${space.name}`}</p>
             <p className="mt-1 text-[13px] text-on-surface-variant">Únete a un canal o crea el primero, e invita a tu equipo.</p>
@@ -124,10 +125,10 @@ export function SpaceChatList(props: Props) {
             </div>
           </div>
         ) : null}
-        {chats !== null ? (
+        {ready ? (
           <ClientsSection jwt={props.jwt} spaceId={space.id} live={clientSplit.live} query={query} archived={clientSplit.archived.length} archivedUnread={clientSplit.archivedUnread} folded={foldedClients} onToggle={() => setFoldedClients((before) => !before)} selectedChatId={props.selectedChatId} onOpen={props.onOpenChat} onArchived={() => setOpenArchivedClients(true)} />
         ) : null}
-        {chats !== null && (chats.length > 0 || query)
+        {ready && (chats?.length || query)
           ? sections.map((section) => section.key === 'apps' ? (
               props.apps ? <AppsSection key="apps" chats={section.chats} apps={props.apps} folded={folded.has('apps')} onToggle={() => toggle('apps')} selectedChatId={props.selectedChatId} onOpenChat={props.onOpenChat} /> : null
             ) : (

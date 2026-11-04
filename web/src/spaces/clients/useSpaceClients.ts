@@ -32,7 +32,8 @@ export function useSpaceClients(jwt: string | undefined, spaceId: string, chatsK
     setClients(null);
   }, [spaceId]);
   useEffect(() => {
-    if (!jwt) return;
+    // Without a session nobody will answer, and the list waits for this.
+    if (!jwt) return setClients([]);
     const controller = new AbortController();
     void api<{ clients: SpaceClient[] }>(`/workspaces/${spaceId}/clients`, { jwt, signal: controller.signal }).then((response) => {
       if (controller.signal.aborted) return;

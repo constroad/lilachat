@@ -411,6 +411,8 @@ Detalle en `specs/INGRESO-POR-ESPACIO.spec.md`. Lo que cambia en esta sección:
   nunca al parar con la X, y va a la velocidad de la anterior. El chat abierto le dice al reproductor
   qué sigue (`useVoiceNoteQueue`, app y web). Al salir del chat la cola sigue con la nota en curso y
   el siguiente chat abierto la reemplaza. Una nota de un hilo no sigue a ninguna.
+  E2E en el emulador (OTA `5179d0eb`, #general de Test): dos notas de 3 s, tocar la primera y la
+  segunda arranca sola al terminar. La web tiene los mismos tests, sin E2E en navegador.
 - **Bloque `people`** (`shared/src/botBlocks.ts`): hasta 40 nombres; la tarjeta muestra 8
   con avatar y nombre corto (`peopleOnCard`), y el detalle los muestra todos. `times`, opcional y
   paralelo a `names`, trae la hora de cada persona (`BOTS-API.spec.md` §c-duodecies).
@@ -7108,6 +7110,10 @@ minimizada. Una llamada de voz se bloquea como cualquier otra. La app usa `useCa
 etiqueta `call`, sobre `createScreenHold` (`ui/screenHold.ts`, el mismo motor de la grabación). La web
 usa `useScreenWakeLock` con la Wake Lock API, y la vuelve a pedir al regresar a la pestaña, porque el
 navegador la suelta al ocultarla. El grupo cuenta con `group.call.video`.
+E2E en el emulador: videollamada grupal en #general de Test, sin personas que timbren. Android tomó
+`WindowManager/displayId:0` (`SCREEN_BRIGHT_WAKE_LOCK`) al entrar y lo soltó al colgar, aunque la llamada
+vive en un Modal: su ventana es `fmt=TRANSPARENT`, no tapa la actividad que lleva `KEEP_SCREEN_ON`. Falta
+verla en un teléfono real y en una llamada 1:1; la web solo tiene tests.
 
 **Tests**: `shared/call.test.ts` (6, «answering»), `callMedia.test.ts` (leyenda),
 `cicloDeLlamada.test.ts` (3), `test/callSignaling.test.ts` (socket y HTTP), `llamadaNativa.test.ts`

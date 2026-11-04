@@ -600,6 +600,9 @@ APK 0.1.176: versionCode 177, runtime `62ff8b1c`, publicado en LilaStore `stable
 de «Compartir» (ARCHITECTURE §186). `minVersionCode` sigue en 0.
 APK 0.1.180: versionCode 181, runtime `79221c17`, publicado en LilaStore `stable` el 04/11/2026 sin OTA aparte: subir la versión cambia el runtime, así que el código nuevo llega con el APK.
 
+OTA `5179d0eb` del 04/11/2026 sobre el runtime `79221c17` (git `36b0890`): solo llega a la 0.1.180. Lleva los arreglos del
+formulario, audios seguidos, videollamada sin bloqueo, delta del tanque y hora por persona.
+
 ## 5. Errores conocidos y arreglo
 
 | Síntoma | Causa | Arreglo |

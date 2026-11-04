@@ -40,6 +40,22 @@ export function rejectsSession(reason: string): boolean {
   return reason === SESSION_REJECTED;
 }
 
+function createRetryTimer({ setTimer, clearTimer }: Pick<RenewerOptions<unknown>, 'setTimer' | 'clearTimer'>) {
+  let timer: Timer | null = null;
+  const cancel = () => {
+    if (timer !== null) clearTimer(timer);
+    timer = null;
+  };
+  const schedule = (run: () => void, ms: number) => {
+    cancel();
+    timer = setTimer(() => {
+      timer = null;
+      run();
+    }, ms);
+  };
+  return { cancel, schedule, pending: () => timer !== null };
+}
+
 /**
  * Keeps the JWT alive while the process lives. It was renewed only at boot, and a
  * server that refuses a handshake is not retried by socket.io: 27 h later the app
@@ -51,34 +67,20 @@ export function createSessionRenewer<Session>(options: RenewerOptions<Session>):
   let booting = false;
   let inFlight = false;
   let rejected = false;
-  let timer: Timer | null = null;
   let generation = 0;
-
-  const cancelTimer = () => {
-    if (timer !== null) options.clearTimer(timer);
-    timer = null;
-  };
-
-  const retryLater = (ms: number) => {
-    cancelTimer();
-    timer = options.setTimer(() => {
-      timer = null;
-      attempt();
-    }, ms);
-  };
+  const retry = createRetryTimer(options);
 
   const settle = (result: RenewalResult<Session> | null) => {
-    if (result === null) {
-      rejected = false;
-    } else if (result.ok) {
-      rejected = false;
+    if (result && !result.ok && !result.revoked) {
+      retry.schedule(attempt, RENEW_RETRY_MS);
+      return;
+    }
+    rejected = false;
+    if (result?.ok) {
       renewedAt = options.now();
       options.onRenewed(result.session);
-    } else if (result.revoked) {
-      rejected = false;
+    } else if (result) {
       options.onRevoked();
-    } else {
-      retryLater(RENEW_RETRY_MS);
     }
   };
 
@@ -86,10 +88,10 @@ export function createSessionRenewer<Session>(options: RenewerOptions<Session>):
     if (inFlight || booting) return;
     const waited = attemptedAt === null ? RENEW_RETRY_MS : options.now() - attemptedAt;
     if (waited < RENEW_RETRY_MS) {
-      if (timer === null) retryLater(RENEW_RETRY_MS - waited);
+      if (!retry.pending()) retry.schedule(attempt, RENEW_RETRY_MS - waited);
       return;
     }
-    cancelTimer();
+    retry.cancel();
     inFlight = true;
     attemptedAt = options.now();
     const startedIn = generation;
@@ -112,7 +114,7 @@ export function createSessionRenewer<Session>(options: RenewerOptions<Session>):
       if (renewed) {
         rejected = false;
         renewedAt = options.now();
-        cancelTimer();
+        retry.cancel();
       } else if (rejected) {
         attempt();
       }
@@ -124,7 +126,7 @@ export function createSessionRenewer<Session>(options: RenewerOptions<Session>):
       rejected = true;
       attempt();
     },
-    pause: cancelTimer,
+    pause: retry.cancel,
     forget: () => {
       generation += 1;
       renewedAt = null;
@@ -132,7 +134,7 @@ export function createSessionRenewer<Session>(options: RenewerOptions<Session>):
       booting = false;
       inFlight = false;
       rejected = false;
-      cancelTimer();
+      retry.cancel();
     },
   };
 }

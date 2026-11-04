@@ -3,11 +3,10 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { Phone, Video, X } from 'lucide-react-native';
 import { nextHalfHour, scheduledCallTitle } from '@lilachat/shared';
 import { agendaPost } from '../../agenda/agendaApi';
-import { Modal } from '../../ui/Modal';
+import { Sheet } from '../../ui/Sheet';
 import { Segmentado } from '../../ui/Segmentado';
 import { SelectorDeCuando } from '../../ui/SelectorDeCuando';
 import { useColores } from '../../ui/tema';
-import { useMargenes } from '../../ui/useMargenes';
 
 /** The reminder of a scheduled call: just before it, not an hour like an event. */
 const REMIND_MINUTES_BEFORE = 5;
@@ -24,7 +23,6 @@ const KINDS = [
  */
 export function ScheduleCallScreen(props: { visible: boolean; jwt: string; chat: { id: string; name: string }; onClose: () => void }) {
   const colors = useColores();
-  const margins = useMargenes();
   const [kind, setKind] = useState<'voice' | 'video'>('voice');
   const [title, setTitle] = useState('');
   const [titleTouched, setTitleTouched] = useState(false);
@@ -56,38 +54,34 @@ export function ScheduleCallScreen(props: { visible: boolean; jwt: string; chat:
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={props.onClose}>
-      <Pressable className="flex-1 bg-black/40" onPress={props.onClose} accessibilityLabel="Cerrar" />
-      <View testID="programar-llamada" className="rounded-t-3xl bg-surface px-4 pt-3" style={{ paddingBottom: margins.pie + 8 }}>
-        <View className="mb-2 h-1.5 w-11 self-center rounded-full bg-outline/30" />
-        <View className="mb-3 flex-row items-center">
-          <Text className="flex-1 text-lg font-bold text-on-surface">Programar llamada</Text>
-          <Pressable testID="btn-cerrar-programar-llamada" accessibilityLabel="Cerrar" onPress={props.onClose} className="h-11 w-11 items-center justify-center">
-            <X size={20} color={colors['on-surface-variant']} />
-          </Pressable>
-        </View>
-        <Segmentado opciones={KINDS} valor={kind} onCambiar={setKind} />
-        <TextInput
-          testID="campo-titulo-llamada"
-          value={title}
-          onChangeText={(text) => {
-            setTitle(text);
-            setTitleTouched(true);
-            setError('');
-          }}
-          placeholder="Nombre de la llamada"
-          placeholderTextColor={colors['on-surface-variant']}
-          className="mt-3 min-h-[48px] rounded-xl border border-outline/30 px-4 text-[15px] text-on-surface"
-        />
-        <View className="mt-3">
-          <SelectorDeCuando valor={when} onCambiar={setWhen} prefijo="llamada" />
-        </View>
-        <Text className="mt-2 text-[12px] text-on-surface-variant">Les avisamos a los dos 5 minutos antes. Pueden unirse desde 10 minutos antes.</Text>
-        {error ? <Text testID="error-programar-llamada" className="mt-2 text-[13px] text-error">{error}</Text> : null}
-        <Pressable testID="btn-programar-llamada" disabled={saving} onPress={() => void schedule()} className={`mt-4 min-h-[48px] items-center justify-center rounded-full bg-primary ${saving ? 'opacity-60' : ''}`}>
-          <Text className="text-sm font-semibold text-on-primary">{saving ? 'Programando…' : 'Programar'}</Text>
+    <Sheet visible={visible} onClose={props.onClose} testID="programar-llamada" className="px-4" dragArea="handle" bottomRoom={8} avoidKeyboard>
+      <View className="mb-3 flex-row items-center">
+        <Text className="flex-1 text-lg font-bold text-on-surface">Programar llamada</Text>
+        <Pressable testID="btn-cerrar-programar-llamada" accessibilityLabel="Cerrar" onPress={props.onClose} className="h-11 w-11 items-center justify-center">
+          <X size={20} color={colors['on-surface-variant']} />
         </Pressable>
       </View>
-    </Modal>
+      <Segmentado opciones={KINDS} valor={kind} onCambiar={setKind} />
+      <TextInput
+        testID="campo-titulo-llamada"
+        value={title}
+        onChangeText={(text) => {
+          setTitle(text);
+          setTitleTouched(true);
+          setError('');
+        }}
+        placeholder="Nombre de la llamada"
+        placeholderTextColor={colors['on-surface-variant']}
+        className="mt-3 min-h-[48px] rounded-xl border border-outline/30 px-4 text-[15px] text-on-surface"
+      />
+      <View className="mt-3">
+        <SelectorDeCuando valor={when} onCambiar={setWhen} prefijo="llamada" />
+      </View>
+      <Text className="mt-2 text-[12px] text-on-surface-variant">Les avisamos a los dos 5 minutos antes. Pueden unirse desde 10 minutos antes.</Text>
+      {error ? <Text testID="error-programar-llamada" className="mt-2 text-[13px] text-error">{error}</Text> : null}
+      <Pressable testID="btn-programar-llamada" disabled={saving} onPress={() => void schedule()} className={`mt-4 min-h-[48px] items-center justify-center rounded-full bg-primary ${saving ? 'opacity-60' : ''}`}>
+        <Text className="text-sm font-semibold text-on-primary">{saving ? 'Programando…' : 'Programar'}</Text>
+      </Pressable>
+    </Sheet>
   );
 }

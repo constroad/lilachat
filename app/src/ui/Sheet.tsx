@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, type DimensionValue } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import Animated, { FadeOut, runOnJS, SlideInDown, SlideOutDown, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { Modal } from './Modal';
 import { useMargenes } from './useMargenes';
@@ -32,16 +33,24 @@ type SheetProps = {
   className?: string;
   dragArea?: 'card' | 'handle';
   /** The tallest it gets (a gallery inside); without it, as tall as its content. */
-  maxHeight?: number;
+  maxHeight?: DimensionValue;
+  /** One height whatever it holds: a search list that must not jump while typing. */
+  height?: DimensionValue;
   /** Room under the content, above the system bar; 16 by default. */
   bottomRoom?: number;
+  /** The back button, when it does not simply close: a typed text is not thrown away. */
+  onBack?: () => void;
+  /** The card rises with the keyboard: a sheet with a text field. */
+  avoidKeyboard?: boolean;
+  /** `background` for a sheet of cards. */
+  tone?: 'surface' | 'background';
   children: ReactNode;
 };
 
 /** Closed, a sheet is nothing: no gesture and no animated styles (a chat holds several, and each render paid for them). */
 export function Sheet(props: SheetProps) {
   return (
-    <Modal visible={props.visible} transparent animationType="none" onRequestClose={props.onClose} measured={false}>
+    <Modal visible={props.visible} transparent animationType="none" onRequestClose={props.onBack ?? props.onClose} measured={false}>
       {props.visible ? <SheetBody {...props} /> : null}
     </Modal>
   );
@@ -49,7 +58,7 @@ export function Sheet(props: SheetProps) {
 
 /** Mounted on every opening: it starts from rest, with no drag left over. */
 function SheetBody(props: SheetProps) {
-  const { onClose, dragArea = 'card', maxHeight, bottomRoom = BOTTOM_ROOM } = props;
+  const { onClose, dragArea = 'card', maxHeight, height: fixedHeight, bottomRoom = BOTTOM_ROOM, avoidKeyboard = false, tone = 'surface' } = props;
   const margins = useMargenes();
   const drag = useSharedValue(0);
   const height = useSharedValue(0);
@@ -82,8 +91,8 @@ function SheetBody(props: SheetProps) {
     <Animated.View
       entering={slideIn}
       exiting={SlideOutDown.duration(SLIDE_MS)}
-      style={[cardStyle, { paddingBottom: margins.pie + bottomRoom, ...(maxHeight ? { maxHeight } : {}) }]}
-      className={`rounded-t-3xl bg-surface ${props.className ?? ''}`}
+      style={[cardStyle, { paddingBottom: margins.pie + bottomRoom, ...(maxHeight ? { maxHeight } : {}), ...(fixedHeight ? { height: fixedHeight } : {}) }]}
+      className={`rounded-t-3xl ${tone === 'surface' ? 'bg-surface' : 'bg-background'} ${props.className ?? ''}`}
       onLayout={(event) => {
         height.value = event.nativeEvent.layout.height;
       }}
@@ -100,14 +109,21 @@ function SheetBody(props: SheetProps) {
     </Animated.View>
   );
 
+  const draggable = dragArea === 'card' ? <GestureDetector gesture={pan}>{card}</GestureDetector> : card;
   return (
     <>
       <Animated.View style={[styles.backdrop, backdropStyle]} exiting={FadeOut.duration(BACKDROP_MS)}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Cerrar" />
       </Animated.View>
-      <View style={styles.bottom} pointerEvents="box-none">
-        {dragArea === 'card' ? <GestureDetector gesture={pan}>{card}</GestureDetector> : card}
-      </View>
+      {avoidKeyboard ? (
+        <KeyboardAvoidingView behavior="padding" style={styles.bottom} pointerEvents="box-none">
+          {draggable}
+        </KeyboardAvoidingView>
+      ) : (
+        <View style={styles.bottom} pointerEvents="box-none">
+          {draggable}
+        </View>
+      )}
     </>
   );
 }

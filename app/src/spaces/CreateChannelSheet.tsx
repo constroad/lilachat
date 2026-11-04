@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { CircleCheck, Hash, Lock, Plus } from 'lucide-react-native';
 import { normalizeChannelName, type ChannelVisibility, type ClientChannel, type ClientWorkspace } from '@lilachat/shared';
-import { Modal } from '../ui/Modal';
+import { Sheet } from '../ui/Sheet';
 import { useColores } from '../ui/tema';
-import { useMargenes } from '../ui/useMargenes';
 import { createChannel } from './spacesApi';
 
 const DESCRIPTION_MAX = 200;
@@ -17,7 +16,6 @@ const DESCRIPTION_MAX = 200;
  */
 export function CreateChannelSheet(props: { visible: boolean; jwt: string; space: ClientWorkspace; onCreated: (channel: ClientChannel) => void; onClose: () => void }) {
   const colors = useColores();
-  const margins = useMargenes();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState<ChannelVisibility>('public');
@@ -53,43 +51,38 @@ export function CreateChannelSheet(props: { visible: boolean; jwt: string; space
   );
 
   return (
-    <Modal visible={props.visible} transparent animationType="slide" onRequestClose={() => !name && props.onClose()}>
-      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-        <Pressable className="flex-1 bg-black/40" onPress={props.onClose} accessibilityLabel="Cerrar" />
-        <View testID="hoja-crear-canal" className="max-h-[90%] rounded-t-3xl bg-surface" style={{ paddingBottom: margins.pie + 8 }}>
-          <ScrollView contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
-            <View className="flex-row items-start">
-              <View className="flex-1">
-                <Text className="text-[12px] font-bold uppercase tracking-widest text-primary">Nuevo canal</Text>
-                <Text className="text-[24px] font-bold text-on-surface">Crear canal</Text>
-              </View>
-              <Pressable testID="crear-canal-descartar" onPress={props.onClose} className="min-h-[44px] justify-center px-2">
-                <Text className="text-[15px] font-semibold text-primary">Descartar</Text>
-              </Pressable>
-            </View>
-            <Text className="mt-1 text-[14px] text-on-surface-variant">{`Los canales ordenan los temas de obra, cuadrillas y despachos de ${props.space.name}.`}</Text>
-            <Text className="mb-2 mt-5 text-[12px] font-bold uppercase tracking-widest text-on-surface">Nombre del canal</Text>
-            <View className={`min-h-[52px] flex-row items-center rounded-xl border bg-background px-3 ${slug ? 'border-primary' : 'border-outline/25'}`}>
-              <Text className="mr-1 text-[18px] text-primary">#</Text>
-              <TextInput testID="input-nombre-canal" value={name} onChangeText={(value) => { setName(value); setError(''); }} autoCapitalize="none" autoCorrect={false} placeholder="obra-surco" placeholderTextColor={colors['on-surface-variant']} className="flex-1 text-[17px] text-on-surface" />
-              {slug ? <CircleCheck size={20} color={colors['en-linea']} /> : null}
-            </View>
-            <Text className="mt-1.5 text-[12px] text-on-surface-variant">{slug && slug !== name.trim() ? `Quedará como #${slug}` : 'Minúsculas, números o guiones, sin espacios.'}</Text>
-            <Text className="mb-2 mt-4 text-[12px] font-bold uppercase tracking-widest text-on-surface">Descripción</Text>
-            <TextInput testID="input-descripcion-canal" value={description} onChangeText={setDescription} maxLength={DESCRIPTION_MAX} multiline placeholder="Coordinación diaria de la obra Surco" placeholderTextColor={colors['on-surface-variant']} className="min-h-[72px] rounded-xl border border-outline/25 bg-background px-3 py-2.5 text-[15px] text-on-surface" />
-            <Text className="mb-2 mt-4 text-[12px] font-bold uppercase tracking-widest text-on-surface">Privacidad del canal</Text>
-            <View className="flex-row gap-3">
-              {choice('public', 'Público', 'Cualquiera del espacio puede unirse.', Hash)}
-              {choice('private', 'Privado', 'Solo por invitación.', Lock)}
-            </View>
-            {error ? <Text testID="error-crear-canal" className="mt-3 text-[13px] text-error">{error}</Text> : null}
-            <Pressable testID="btn-confirmar-canal" disabled={!slug || busy} onPress={() => void create()} className={`mt-5 min-h-[54px] flex-row items-center justify-center gap-2 rounded-2xl bg-primary ${!slug || busy ? 'opacity-50' : ''}`}>
-              <Plus size={20} color={colors['on-primary']} />
-              <Text className="text-[17px] font-bold text-on-primary">{busy ? 'Creando…' : 'Crear canal'}</Text>
-            </Pressable>
-          </ScrollView>
+    <Sheet visible={props.visible} onClose={props.onClose} onBack={() => !name && props.onClose()} testID="hoja-crear-canal" className="max-h-[90%]" dragArea="handle" bottomRoom={8} avoidKeyboard>
+      <ScrollView contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
+        <View className="flex-row items-start">
+          <View className="flex-1">
+            <Text className="text-[12px] font-bold uppercase tracking-widest text-primary">Nuevo canal</Text>
+            <Text className="text-[24px] font-bold text-on-surface">Crear canal</Text>
+          </View>
+          <Pressable testID="crear-canal-descartar" onPress={props.onClose} className="min-h-[44px] justify-center px-2">
+            <Text className="text-[15px] font-semibold text-primary">Descartar</Text>
+          </Pressable>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+        <Text className="mt-1 text-[14px] text-on-surface-variant">{`Los canales ordenan los temas de obra, cuadrillas y despachos de ${props.space.name}.`}</Text>
+        <Text className="mb-2 mt-5 text-[12px] font-bold uppercase tracking-widest text-on-surface">Nombre del canal</Text>
+        <View className={`min-h-[52px] flex-row items-center rounded-xl border bg-background px-3 ${slug ? 'border-primary' : 'border-outline/25'}`}>
+          <Text className="mr-1 text-[18px] text-primary">#</Text>
+          <TextInput testID="input-nombre-canal" value={name} onChangeText={(value) => { setName(value); setError(''); }} autoCapitalize="none" autoCorrect={false} placeholder="obra-surco" placeholderTextColor={colors['on-surface-variant']} className="flex-1 text-[17px] text-on-surface" />
+          {slug ? <CircleCheck size={20} color={colors['en-linea']} /> : null}
+        </View>
+        <Text className="mt-1.5 text-[12px] text-on-surface-variant">{slug && slug !== name.trim() ? `Quedará como #${slug}` : 'Minúsculas, números o guiones, sin espacios.'}</Text>
+        <Text className="mb-2 mt-4 text-[12px] font-bold uppercase tracking-widest text-on-surface">Descripción</Text>
+        <TextInput testID="input-descripcion-canal" value={description} onChangeText={setDescription} maxLength={DESCRIPTION_MAX} multiline placeholder="Coordinación diaria de la obra Surco" placeholderTextColor={colors['on-surface-variant']} className="min-h-[72px] rounded-xl border border-outline/25 bg-background px-3 py-2.5 text-[15px] text-on-surface" />
+        <Text className="mb-2 mt-4 text-[12px] font-bold uppercase tracking-widest text-on-surface">Privacidad del canal</Text>
+        <View className="flex-row gap-3">
+          {choice('public', 'Público', 'Cualquiera del espacio puede unirse.', Hash)}
+          {choice('private', 'Privado', 'Solo por invitación.', Lock)}
+        </View>
+        {error ? <Text testID="error-crear-canal" className="mt-3 text-[13px] text-error">{error}</Text> : null}
+        <Pressable testID="btn-confirmar-canal" disabled={!slug || busy} onPress={() => void create()} className={`mt-5 min-h-[54px] flex-row items-center justify-center gap-2 rounded-2xl bg-primary ${!slug || busy ? 'opacity-50' : ''}`}>
+          <Plus size={20} color={colors['on-primary']} />
+          <Text className="text-[17px] font-bold text-on-primary">{busy ? 'Creando…' : 'Crear canal'}</Text>
+        </Pressable>
+      </ScrollView>
+    </Sheet>
   );
 }

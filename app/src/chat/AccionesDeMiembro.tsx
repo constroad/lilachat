@@ -1,9 +1,8 @@
 import { Pressable, Text, View } from 'react-native';
-import { Modal } from '../ui/Modal';
+import { Sheet } from '../ui/Sheet';
 import { ShieldCheck, ShieldOff, UserMinus } from 'lucide-react-native';
 import type { AccionDeMiembro } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
-import { useMargenes } from '../ui/useMargenes';
 
 /**
  * Qué hacer con un participante del grupo.
@@ -51,59 +50,50 @@ export function AccionesDeMiembro({
   onCerrar: () => void;
 }) {
   const colores = useColores();
-  const margenes = useMargenes();
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCerrar}>
-      <Pressable className="flex-1 bg-black/40" onPress={onCerrar} accessibilityLabel="Cerrar" />
-      <View
-        testID="acciones-miembro"
-        className="rounded-t-xl bg-surface px-5 pt-3"
-        style={{ paddingBottom: margenes.pie }}
-      >
-        <View className="mb-3 h-1.5 w-11 self-center rounded-full bg-outline/30" />
-        {/* De quién se está hablando. Sin el nombre, una hoja que dice «Sacar
-            del grupo» no aclara a quién, y en una lista de participantes eso es
-            justo lo que hay que saber antes de tocar. */}
-        <Text className="mb-2 text-base font-bold text-on-surface" numberOfLines={1}>
-          {nombre}
-        </Text>
-        {acciones.map((accion) => {
-          const esDestructiva = accion === 'sacar';
-          const Icono =
-            accion === 'hacer-admin' ? ShieldCheck : accion === 'dejar-admin' ? ShieldOff : UserMinus;
-          return (
-            <Pressable
-              key={accion}
-              testID={`accion-${accion}`}
-              onPress={() => {
-                onCerrar();
-                onElegir(accion);
-              }}
-              className="min-h-[56px] flex-row items-center gap-4"
+    <Sheet visible={visible} onClose={onCerrar} testID="acciones-miembro" className="px-5" bottomRoom={0}>
+      {/* De quién se está hablando. Sin el nombre, una hoja que dice «Sacar
+          del grupo» no aclara a quién, y en una lista de participantes eso es
+          justo lo que hay que saber antes de tocar. */}
+      <Text className="mb-2 mt-3 text-base font-bold text-on-surface" numberOfLines={1}>
+        {nombre}
+      </Text>
+      {acciones.map((accion) => {
+        const esDestructiva = accion === 'sacar';
+        const Icono =
+          accion === 'hacer-admin' ? ShieldCheck : accion === 'dejar-admin' ? ShieldOff : UserMinus;
+        return (
+          <Pressable
+            key={accion}
+            testID={`accion-${accion}`}
+            onPress={() => {
+              onCerrar();
+              onElegir(accion);
+            }}
+            className="min-h-[56px] flex-row items-center gap-4"
+          >
+            <View
+              className={`h-11 w-11 items-center justify-center rounded-full ${
+                esDestructiva ? 'bg-error/10' : 'bg-primary/10'
+              }`}
             >
-              <View
-                className={`h-11 w-11 items-center justify-center rounded-full ${
-                  esDestructiva ? 'bg-error/10' : 'bg-primary/10'
-                }`}
+              <Icono size={20} color={esDestructiva ? colores.error : colores.primary} />
+            </View>
+            <View className="min-w-0 flex-1">
+              <Text
+                className="text-[15px] font-semibold"
+                style={{ color: esDestructiva ? colores.error : colores['on-surface'] }}
               >
-                <Icono size={20} color={esDestructiva ? colores.error : colores.primary} />
-              </View>
-              <View className="min-w-0 flex-1">
-                <Text
-                  className="text-[15px] font-semibold"
-                  style={{ color: esDestructiva ? colores.error : colores['on-surface'] }}
-                >
-                  {(esApp && accion === 'sacar' ? APP_REMOVAL : TEXTOS[accion]).etiqueta}
-                </Text>
-                <Text className="text-[12px] text-on-surface-variant">
-                  {(esApp && accion === 'sacar' ? APP_REMOVAL : TEXTOS[accion]).detalle}
-                </Text>
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
-    </Modal>
+                {(esApp && accion === 'sacar' ? APP_REMOVAL : TEXTOS[accion]).etiqueta}
+              </Text>
+              <Text className="text-[12px] text-on-surface-variant">
+                {(esApp && accion === 'sacar' ? APP_REMOVAL : TEXTOS[accion]).detalle}
+              </Text>
+            </View>
+          </Pressable>
+        );
+      })}
+    </Sheet>
   );
 }

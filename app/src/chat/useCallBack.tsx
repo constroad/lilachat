@@ -2,9 +2,8 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { AlarmClock } from 'lucide-react-native';
 import { callBackOptions, callBackTitle } from '@lilachat/shared';
-import { Modal } from '../ui/Modal';
+import { Sheet } from '../ui/Sheet';
 import { useColores } from '../ui/tema';
-import { useMargenes } from '../ui/useMargenes';
 import { agendaPost } from '../agenda/agendaApi';
 
 const TIME = new Intl.DateTimeFormat('es-PE', { hour: 'numeric', minute: '2-digit', hourCycle: 'h12' });
@@ -61,28 +60,23 @@ function whenText(date: Date): string {
 /** The quick times of «Recordarme devolverla» (`callBackOptions`), in a sheet like the other chat sheets. */
 function CallBackSheet(props: { visible: boolean; name: string; onPick: (date: Date) => void; onClose: () => void }) {
   const colors = useColores();
-  const margins = useMargenes();
   // Computed when it opens: «En 15 min» counts from then.
   const options = useMemo(() => (props.visible ? callBackOptions(new Date()) : []), [props.visible]);
   return (
-    <Modal visible={props.visible} transparent animationType="slide" onRequestClose={props.onClose}>
-      <Pressable className="flex-1 bg-black/40" onPress={props.onClose} accessibilityLabel="Cerrar" />
-      <View testID="hoja-devolver" className="rounded-t-xl bg-surface px-5 pt-3" style={{ paddingBottom: margins.pie }}>
-        <View className="mb-3 h-1.5 w-11 self-center rounded-full bg-outline/30" />
-        <Text className="text-base font-bold text-on-surface">Recordarme devolverla</Text>
-        <Text className="mb-2 text-[13px] text-on-surface-variant" numberOfLines={1}>
-          {callBackTitle(props.name)}
-        </Text>
-        {options.map((option) => (
-          <Pressable key={option.id} testID={`devolver-${option.id}`} onPress={() => props.onPick(option.date)} className="min-h-[56px] flex-row items-center gap-4">
-            <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/10">
-              <AlarmClock size={20} color={colors.primary} />
-            </View>
-            <Text className="flex-1 text-[15px] font-semibold text-on-surface">{option.label}</Text>
-            <Text className="text-[13px] text-on-surface-variant">{TIME.format(option.date)}</Text>
-          </Pressable>
-        ))}
-      </View>
-    </Modal>
+    <Sheet visible={props.visible} onClose={props.onClose} testID="hoja-devolver" className="px-5" bottomRoom={0}>
+      <Text className="mt-3 text-base font-bold text-on-surface">Recordarme devolverla</Text>
+      <Text className="mb-2 text-[13px] text-on-surface-variant" numberOfLines={1}>
+        {callBackTitle(props.name)}
+      </Text>
+      {options.map((option) => (
+        <Pressable key={option.id} testID={`devolver-${option.id}`} onPress={() => props.onPick(option.date)} className="min-h-[56px] flex-row items-center gap-4">
+          <View className="h-11 w-11 items-center justify-center rounded-full bg-primary/10">
+            <AlarmClock size={20} color={colors.primary} />
+          </View>
+          <Text className="flex-1 text-[15px] font-semibold text-on-surface">{option.label}</Text>
+          <Text className="text-[13px] text-on-surface-variant">{TIME.format(option.date)}</Text>
+        </Pressable>
+      ))}
+    </Sheet>
   );
 }

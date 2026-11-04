@@ -1,12 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { KeyboardAvoidingView, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { CalendarClock, Check, Trash2, X } from 'lucide-react-native';
 import { CHECKLIST_LIMITS, activeDueChoice, shortPersonName, taskDueLabel, taskDueOptions, type ChecklistItem } from '@lilachat/shared';
-import { Modal } from '../ui/Modal';
+import { Sheet } from '../ui/Sheet';
 import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
-import { useMargenes } from '../ui/useMargenes';
 
 export type TaskEdit = { text: string; assignee: string | null; dueAt: string | null };
 export type ChecklistMember = { id: string; name: string };
@@ -21,7 +20,6 @@ const PICKED_DUE_HOUR = 18;
  */
 export function TaskSheet(props: { item: ChecklistItem | null; members: readonly ChecklistMember[]; canRemove: boolean; onSave: (edit: TaskEdit) => void; onRemove: () => void; onClose: () => void }) {
   const colors = useColores();
-  const margins = useMargenes();
   const { item } = props;
   const [text, setText] = useState('');
   const [assignee, setAssignee] = useState<string | null>(null);
@@ -61,13 +59,9 @@ export function TaskSheet(props: { item: ChecklistItem | null; members: readonly
   };
 
   return (
-    <Modal visible={item !== null} transparent animationType="slide" onRequestClose={props.onClose}>
-      {/* Editing the text opens the keyboard: the sheet rises with it. */}
-      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-      <Pressable className="flex-1 bg-black/40" onPress={props.onClose} accessibilityLabel="Cerrar" />
+    <Sheet visible={item !== null} onClose={props.onClose} testID="hoja-tarea" className="px-5" dragArea="handle" bottomRoom={8} avoidKeyboard>
       {item ? (
-        <View testID="hoja-tarea" className="rounded-t-3xl bg-surface px-5 pt-3" style={{ paddingBottom: margins.pie + 8 }}>
-          <View className="mb-3 h-1.5 w-11 self-center rounded-full bg-outline/30" />
+        <>
           <View className="flex-row items-start gap-3 border-b border-outline/15 pb-3">
             <View className="flex-1">
               <Text className="text-[11px] font-bold uppercase tracking-wider text-primary">Editar tarea</Text>
@@ -107,9 +101,8 @@ export function TaskSheet(props: { item: ChecklistItem | null; members: readonly
             ) : null}
           </View>
           {picking ? <DateTimePicker value={dueAt ? new Date(dueAt) : new Date()} mode="date" minimumDate={new Date()} onChange={onPicked} /> : null}
-        </View>
+        </>
       ) : null}
-      </KeyboardAvoidingView>
-    </Modal>
+    </Sheet>
   );
 }

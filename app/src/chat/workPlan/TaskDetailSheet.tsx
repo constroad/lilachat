@@ -3,10 +3,9 @@ import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, View } fr
 import { CalendarDays, Check, Download, FileText, Plus, RotateCcw, X } from 'lucide-react-native';
 import { formatClock, taskActivity, taskDueState, type ChecklistItem, type TaskEvidence, type WorkStage } from '@lilachat/shared';
 import { agendaPatch, agendaPost } from '../../agenda/agendaApi';
-import { Modal } from '../../ui/Modal';
+import { Sheet } from '../../ui/Sheet';
 import { Avatar } from '../../ui/Avatar';
 import { useColores } from '../../ui/tema';
-import { useMargenes } from '../../ui/useMargenes';
 import { TaskSheet, type ChecklistMember, type TaskEdit } from '../TaskSheet';
 import { attachEvidence, detachEvidence, type EvidenceSource } from './evidenceUpload';
 
@@ -39,7 +38,6 @@ type Props = {
  */
 export function TaskDetailSheet(props: Props) {
   const colors = useColores();
-  const margins = useMargenes();
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -71,11 +69,10 @@ export function TaskDetailSheet(props: Props) {
   };
 
   return (
-    <Modal visible={props.open !== null} transparent animationType="slide" onRequestClose={props.onClose}>
-      <Pressable className="flex-1 bg-black/40" onPress={props.onClose} accessibilityLabel="Cerrar" />
+    <>
+    <Sheet visible={resolved !== null} onClose={props.onClose} testID="hoja-detalle-tarea" className="max-h-[88%]" dragArea="handle" bottomRoom={8} tone="background">
       {resolved ? (
-        <View testID="hoja-detalle-tarea" className="max-h-[88%] rounded-t-3xl bg-background" style={{ paddingBottom: margins.pie + 8 }}>
-          <View className="mb-1 mt-3 h-1.5 w-11 self-center rounded-full bg-outline/30" />
+        <>
           <Header resolved={resolved} channelName={props.channelName} onClose={props.onClose} />
           <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
             <Facts resolved={resolved} nameOf={props.nameOf} />
@@ -89,10 +86,11 @@ export function TaskDetailSheet(props: Props) {
             </Pressable>
             <ToggleButton done={Boolean(resolved.item.doneBy)} busy={busy === 'marcar'} onPress={toggle} colors={colors} />
           </View>
-        </View>
+        </>
       ) : null}
+    </Sheet>
       <TaskSheet item={editing ? (resolved?.item ?? null) : null} members={props.members} canRemove={false} onSave={(edit) => { setEditing(false); save(edit); }} onRemove={() => setEditing(false)} onClose={() => setEditing(false)} />
-    </Modal>
+    </>
   );
 }
 

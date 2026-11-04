@@ -23,6 +23,7 @@ import { TabsShell } from './TabsShell';
 import { FullScreenCallsPrompt } from './FullScreenCallsPrompt';
 import { CallLinkOpener } from '../chat/scheduledCall/CallLinkOpener';
 import { useColores, useTema } from './tema';
+import { reportOpenChat } from '../chat/openChatNow';
 import { chatAbiertoDe, chatQueSeVe } from './rutas';
 import { useAbrirDesdeAviso } from './useAbrirDesdeAviso';
 import { IncomingShareHost } from '../chat/reenviar/IncomingShareHost';
@@ -76,17 +77,16 @@ export function NavegacionDeSesion(props: {
   const pestana = useRef<Tab>('chats');
   const enPanelRef = useRef(enPanel);
   enPanelRef.current = enPanel;
-  const avisarAbierto = useCallback(
-    () =>
-      onChatAbierto(
-        chatQueSeVe({
-          deLaPila: navegacion.isReady() ? chatAbiertoDe(navegacion.getRootState()) : null,
-          enPanel: enPanelRef.current?.chat.id ?? null,
-          pestana: pestana.current,
-        })
-      ),
-    [onChatAbierto]
-  );
+  const avisarAbierto = useCallback(() => {
+    const chatId = chatQueSeVe({
+      deLaPila: navegacion.isReady() ? chatAbiertoDe(navegacion.getRootState()) : null,
+      enPanel: enPanelRef.current?.chat.id ?? null,
+      pestana: pestana.current,
+    });
+    reportOpenChat(chatId);
+    onChatAbierto(chatId);
+  }, [onChatAbierto]);
+  useEffect(() => () => reportOpenChat(null), []);
   const alCambiar = useCallback(() => avisarAbierto(), [avisarAbierto]);
   const abrirEnPanel = useCallback(
     (chat: ChatSummary, entry: ChatEntry = {}) => {

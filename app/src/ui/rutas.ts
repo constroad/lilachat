@@ -22,3 +22,8 @@ export function chatQueSeVe(params: { deLaPila: string | null; enPanel: string |
   if (params.deLaPila) return params.deLaPila;
   return params.pestana === 'chats' ? params.enPanel : null;
 }
+
+/** Whether a chat is on top of the list: not beside it, on a tablet. */
+export function listCovered(params: { chatOpen: boolean; focused: boolean; twoPanes: boolean }): boolean {
+  return !params.twoPanes && (params.chatOpen || !params.focused);
+}

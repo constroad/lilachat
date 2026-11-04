@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { BackHandler, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { Archive, AtSign, ChevronDown, ChevronRight, Hash, Inbox, Lock, MessagesSquare, Plus, Search, UserPlus } from 'lucide-react-native';
 import { aplicarMensajeALista, canManageMembers, clientChatIds, formatChatTimestamp, marcarLeido, nombreDeContacto, spaceSections, splitArchived, splitClients, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
@@ -8,6 +8,7 @@ import { BarraDeSeleccionDeChats } from '../chat/BarraDeSeleccionDeChats';
 import { FilaDeChat, PendingMarker } from '../chat/FilaDeChat';
 import { useAccionesDeSeleccion } from '../chat/useAccionesDeSeleccion';
 import { useChatSelection } from '../chat/useChatSelection';
+import { openChatNow } from '../chat/openChatNow';
 import { getSocket } from '../chat/socketClient';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useAlVolver } from '../ui/useAlVolver';
@@ -50,7 +51,7 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
   const key = `${space.id}:chats`;
   // Covered by an open chat (not beside it, on a tablet): its messages show here on return (plan 1, F4).
   const { dosPaneles } = useDisposicion();
-  const page = useCached(spaceChatsCache, key, fetchSpaceChats(jwt, space.id), true, props.openChatId !== null && !dosPaneles);
+  const page = useCached(spaceChatsCache, key, fetchSpaceChats(jwt, space.id), true, () => openChatNow() !== null && !dosPaneles);
   const chats = page.value?.chats ?? null;
   const activity = page.value?.activity ?? NO_ACTIVITY;
   const failed = !page.value && Boolean(page.error);
@@ -72,8 +73,6 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
    * changed one or a possible mention or thread asks the server, once per burst.
    * Before, ANY message, also of personal chats, reloaded the list and the chips.
    */
-  const openChat = useRef(props.openChatId);
-  openChat.current = props.openChatId;
   useEffect(() => {
     const socket = getSocket();
     const reloadSoon = () => {
@@ -92,7 +91,7 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
         if (!isSpaceChat(message.chatId) && !isInMyChatList(message.chatId)) reloadSoon();
         return;
       }
-      patchChats((current) => aplicarMensajeALista(current, message, myUserId, openChat.current));
+      patchChats((current) => aplicarMensajeALista(current, message, myUserId, openChatNow()));
       if (message.hiloDe !== undefined || message.body?.includes('@')) reloadSoon();
     };
     const onChanged = (frame: { chatId?: string }) => {
@@ -250,6 +249,19 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
     </ScrollView>
   );
 }
+
+/**
+ * The list under an open chat waits for the return. It redrew twice during the
+ * opening animation, with the focus and with the open chat, and took the thread
+ * from the chat being mounted (plan 1, F4). What arrives meanwhile stays in the
+ * cache: `useCached` is held, and the first render after coming back shows it.
+ */
+export const CoverableSpaceChats = memo(
+  function CoverableSpaceChats({ covered: _covered, ...props }: ComponentProps<typeof SpaceChatsScreen> & { covered: boolean }) {
+    return <SpaceChatsScreen {...props} />;
+  },
+  (_previous, next) => next.covered
+);
 
 /** A channel as a short row (design `s-03`): «# name», bold with something new, and its time, count or dot. */
 function ChannelRow(props: { chat: ChatSummary; open: boolean; onOpen: () => void }) {

@@ -8,7 +8,7 @@ import { connectSocket } from '../chat/socketClient';
 import { avisarMensaje, prepararAvisos } from '../chat/avisoLocal';
 import { iniciarServicio } from '../../modules/servicio-socket/src';
 import { ChatListScreen } from '../chat/ChatListScreen';
-import { SpaceChatsScreen } from '../spaces/SpaceChatsScreen';
+import { CoverableSpaceChats } from '../spaces/SpaceChatsScreen';
 import { findSpaceChat } from '../spaces/spacesApi';
 import { refreshPendingInChats } from '../chat/pendingInChats';
 import { isSpaceChat } from '../spaces/spaceCache';
@@ -41,6 +41,7 @@ import { visitadasCon } from './pestanas';
 import { useAlVolver } from './useAlVolver';
 import { usePendientesDeAgenda } from '../agenda/usePendientesDeAgenda';
 import { useIsFocused } from '@react-navigation/native';
+import { listCovered } from './rutas';
 import { decidirAtras } from './botonAtras';
 import { aplicarAcuseALista, debeRecargarAlConectar, nombreDeContacto, type AcuseEnVivo } from '@lilachat/shared';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
@@ -428,7 +429,7 @@ export function TabsShell({
           />
           <ErrorBoundary pantalla="lista">
           {espacios.current ? (
-            <SpaceChatsScreen key={espacios.current.id} space={espacios.current} jwt={credential.jwt} myUserId={credential.userId} active={tab === 'chats'} openChatId={chatAbierto} onOpenChat={onOpenChat} onChannels={espacios.openChannels} onInvite={espacios.openInvite} {...espacios.listProps} />
+            <CoverableSpaceChats key={espacios.current.id} covered={listCovered({ chatOpen: chatAbierto !== null, focused: enFoco, twoPanes: dosPaneles })} space={espacios.current} jwt={credential.jwt} myUserId={credential.userId} active={tab === 'chats'} openChatId={chatAbierto} onOpenChat={onOpenChat} onChannels={espacios.openChannels} onInvite={espacios.openInvite} {...espacios.listProps} />
           ) : (
           <ChatListScreen
             credential={credential}

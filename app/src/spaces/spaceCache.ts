@@ -103,14 +103,16 @@ async function hydrateFromDisk<T>(cache: SessionCache<T>, key: string): Promise<
 const NONE: CacheEntry<never> = Object.freeze({ loading: false });
 
 /** The screen's data: what is cached at once, refreshed behind when old; `refresh` asks again now. */
-export function useCached<T>(cache: SessionCache<T>, key: string | null, fetcher: () => Promise<T>, active = true, held = false): CacheEntry<T> & { refresh: () => void } {
+const notHeld = () => false;
+
+export function useCached<T>(cache: SessionCache<T>, key: string | null, fetcher: () => Promise<T>, active = true, held: () => boolean = notHeld): CacheEntry<T> & { refresh: () => void } {
   const latest = useRef(fetcher);
   latest.current = fetcher;
   const subscribe = useCallback((listener: () => void) => (key ? cache.subscribe(key, listener) : () => undefined), [cache, key]);
   // Held (a chat covers the list, plan 1, F4): the same entry while covered, the cache's on return.
   const shown = useRef<ShownEntry<CacheEntry<T>> | null>(null);
   const entry = useSyncExternalStore(subscribe, () => {
-    shown.current = entryWhileHeld(held, shown.current, key ?? '', key ? cache.get(key) : (NONE as CacheEntry<T>));
+    shown.current = entryWhileHeld(held(), shown.current, key ?? '', key ? cache.get(key) : (NONE as CacheEntry<T>));
     return shown.current.entry;
   });
   useEffect(() => {

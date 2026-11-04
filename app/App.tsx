@@ -25,7 +25,8 @@ import {
 import { PhoneScreen } from './src/onboarding/PhoneScreen';
 import { OtpScreen } from './src/onboarding/OtpScreen';
 import { NavegacionDeSesion } from './src/ui/NavegacionDeSesion';
-import { conCredencialNueva, entraSinEsperar } from './src/auth/arranque';
+import { conCredencialNueva, entraSinEsperar, withRefreshedSession } from './src/auth/arranque';
+import { useSessionRenewal } from './src/auth/useSessionRenewal';
 import { connectSocket, disconnectSocket, pauseSocket, resumeSocket } from './src/chat/socketClient';
 import { leerChatsGuardados, olvidarChats } from './src/chat/chatsGuardados';
 import { forgetAllSpaces } from './src/spaces/spaceCache';
@@ -55,6 +56,27 @@ import {
 import { detenerServicio, iniciarServicio } from './modules/servicio-socket/src';
 import type { ChatSummary } from './src/api/client';
 import { ANCHO_MAXIMO_DE_FORMULARIO } from './src/ui/disposicion';
+
+/** Revoked for real: back to sign-up with no keys that open nothing. The chats go with the credential: who someone talks to is not inherited by the next person on this phone. */
+async function forgetRevokedSession(): Promise<void> {
+  disconnectSocket();
+  olvidarAgenda();
+  await Promise.all([
+    clearCredential(),
+    olvidarCola(),
+    olvidarArchivos(),
+    olvidarChats(),
+    forgetAllSpaces(),
+    forgetMySpaces(),
+    Promise.resolve(forgetPendingInChats()),
+    olvidarMensajes(),
+    olvidarBorradores(),
+    olvidarPassphrase(),
+    olvidarLibro(),
+    olvidarEstadoDeRespaldo(),
+    desregistrarTareaDeFondo(),
+  ]);
+}
 
 /**
  * Boot (F1): credencial guardada → refrescar sesión → adentro.
@@ -160,6 +182,18 @@ function Contenido() {
    * parpadeo en la bandeja es justo lo que se está tratando de sacar.
    */
   const [segundoPlano, setSegundoPlano] = useState<boolean | null>(null);
+  const sessionRenewer = useSessionRenewal({
+    hasSession: haySesion,
+    alwaysConnected: segundoPlano === true,
+    onRenewed: (credential) => {
+      setBoot((actual) => conCredencialNueva(actual, credential));
+      connectSocket(credential.jwt);
+    },
+    onRevoked: () => {
+      setChatAbierto(null);
+      void forgetRevokedSession().then(() => setBoot({ phase: 'email' }));
+    },
+  });
 
   useEffect(() => {
     void leerSegundoPlano().then(setSegundoPlano);
@@ -348,50 +382,27 @@ function Contenido() {
     const sinEsperar = entraSinEsperar(stored);
     if (sinEsperar) setBoot({ phase: 'home', credential: stored });
 
+    sessionRenewer.bootStarted();
     const session = await refreshSession({
       deviceId: stored.deviceId,
       deviceSecret: stored.deviceSecret,
     });
+    sessionRenewer.bootFinished(session.ok);
     if (session.ok) {
-      // El refresh también REPARA: una credencial guardada por una versión
-      // vieja puede no tener `userId`, y sin él la pantalla no distingue los
-      // mensajes propios de los ajenos — se veían todos como recibidos.
-      const refreshed = {
-        ...stored,
-        jwt: session.data.jwt,
-        ...(session.data.user
-          ? { userId: session.data.user.id, name: session.data.user.name, avatarUrl: session.data.user.avatarUrl ?? null }
-          : {}),
-      };
+      const refreshed = withRefreshedSession(stored, session.data);
       await saveCredential(refreshed);
       if (sinEsperar) setBoot((actual) => conCredencialNueva(actual, refreshed));
       else setBoot({ phase: 'home', credential: refreshed });
       return;
     }
     if (session.status === 401) {
-      // Revocado de verdad: se vuelve al alta, sin llaves que no abren.
-      // La caché de chats se borra con la credencial: la lista de con quién
-      // habla alguien no se hereda al siguiente que entre en este teléfono.
-      disconnectSocket();
-      await Promise.all([
-        clearCredential(),
-        olvidarChats(),
-        forgetAllSpaces(),
-        forgetMySpaces(),
-        Promise.resolve(forgetPendingInChats()),
-        olvidarMensajes(),
-        olvidarBorradores(),
-        olvidarPassphrase(),
-        olvidarLibro(),
-        olvidarEstadoDeRespaldo(),
-        desregistrarTareaDeFondo(),
-      ]);
+      await forgetRevokedSession();
       setBoot({ phase: 'email' });
       return;
     }
     // 503 / sin red: se sigue con lo que hay.
     if (!sinEsperar) setBoot({ phase: 'home', credential: stored });
-  }, []);
+  }, [sessionRenewer]);
 
   useEffect(() => {
     void start();
@@ -443,6 +454,7 @@ function Contenido() {
             // vivo con un JWT que ya no vale y reconecta en bucle.
             // El server deja de empujar a este teléfono ANTES de soltar el JWT.
             void olvidarPushDeEsteTelefono(boot.credential.jwt);
+            sessionRenewer.forget();
             disconnectSocket();
             setChatAbierto(null);
             void olvidarCola();

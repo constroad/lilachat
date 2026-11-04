@@ -4,7 +4,9 @@ import type { MencionEnMensaje, MessageRef, ResumenDeHiloEnCliente, Reaccion } f
 import { avisarTarjeta, refrescarTodas } from '@lilachat/shared';
 import { io, type Socket } from 'socket.io-client';
 import { pausaDelSocket, queHacerConElSocket, type PausaDelSocket } from './servicioDeConexion';
-import { registrarPerf } from '../diagnostico/diagnostico';
+import { registrarError, registrarPerf } from '../diagnostico/diagnostico';
+import { rejectsSession } from '../auth/sessionRenewal';
+import { createConnectErrorLog } from './connectErrorLog';
 import { answerAgendaRequest, answerFullAgendaRequest } from '../contacts/webAgendaRelay';
 import { listenPresence } from './presenceStore';
 import { listenPresenceStatus } from './presenceStatus';
@@ -115,6 +117,16 @@ export function alConectar(listener: () => void): () => void {
   return () => alConectarListeners.delete(listener);
 }
 
+/** Who renews the session when the server refuses the socket for it: socket.io does not retry that refusal. */
+const sessionRejectedListeners = new Set<() => void>();
+
+export function onSessionRejected(listener: () => void): () => void {
+  sessionRejectedListeners.add(listener);
+  return () => sessionRejectedListeners.delete(listener);
+}
+
+const connectErrors = createConnectErrorLog((reason) => void registrarError(reason, 'socket'));
+
 /** The socket says its build too: `build` in its auth, read by the server's handshake check. */
 function socketBuild(): { build?: string } {
   const header = buildHeader();
@@ -142,9 +154,12 @@ export function connectSocket(token: string): Socket {
   });
   // Below LilaStore's minimum the server refuses the socket (backlog 32): the update hook checks at once.
   socket.on('connect_error', (error: Error) => {
+    connectErrors.failed(error.message);
     if (error.message === 'update_required') reportStatus(UPDATE_REQUIRED_STATUS);
+    if (rejectsSession(error.message)) for (const listener of sessionRejectedListeners) listener();
   });
   socket.on('connect', () => {
+    connectErrors.connected();
     for (const listener of alConectarListeners) listener();
     // Lo que cambió con el socket pausado: las tarjetas montadas se vuelven a pedir.
     refrescarTodas();

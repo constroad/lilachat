@@ -21,3 +21,11 @@ export function conCredencialNueva<B extends { phase: string; credential?: Crede
   if (estado.phase !== 'home' && estado.phase !== 'chat') return estado;
   return { ...estado, credential: credencial };
 }
+
+type RefreshedSession = { jwt: string; user?: { id: string; name: string | null; avatarUrl?: string | null } };
+
+/** The refresh also REPAIRS: a credential saved by an old version may lack `userId`, and without it every message reads as received. */
+export function withRefreshedSession(stored: Credential, session: RefreshedSession): Credential {
+  const { jwt, user } = session;
+  return { ...stored, jwt, ...(user ? { userId: user.id, name: user.name, avatarUrl: user.avatarUrl ?? null } : {}) };
+}

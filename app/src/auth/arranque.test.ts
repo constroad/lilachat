@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Credential } from './credentialStore';
-import { conCredencialNueva, entraSinEsperar } from './arranque';
+import { conCredencialNueva, entraSinEsperar, withRefreshedSession } from './arranque';
 
 const credencial = (cambios: Partial<Credential> = {}): Credential => ({
   userId: '665f1a2b3c4d5e6f70818293',
@@ -54,5 +54,27 @@ describe('conCredencialNueva', () => {
     const estado = { phase: 'email' as const };
 
     expect(conCredencialNueva(estado, credencial())).toBe(estado);
+  });
+});
+
+describe('withRefreshedSession', () => {
+  it('the new token replaces the old one and the device keys stay', () => {
+    // Arrange
+    const stored = credencial();
+    // Act
+    const refreshed = withRefreshedSession(stored, { jwt: 'jwt-nuevo' });
+    // Assert
+    expect(refreshed).toEqual({ ...stored, jwt: 'jwt-nuevo' });
+  });
+
+  /** An old version saved without `userId`: without it, every message reads as received. */
+  it('the refresh also repairs who the person is', () => {
+    // Arrange
+    const stored = credencial({ userId: '' });
+    const user = { id: '665f1a2b3c4d5e6f70818293', name: 'Ana', phone: '902049935' };
+    // Act
+    const refreshed = withRefreshedSession(stored, { jwt: 'jwt-nuevo', user });
+    // Assert
+    expect(refreshed).toMatchObject({ userId: user.id, name: 'Ana', avatarUrl: null });
   });
 });

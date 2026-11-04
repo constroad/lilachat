@@ -197,7 +197,7 @@ esté vigente ese día.
 
 ## 5. Avance
 
-### Estado por fase (04/11/2026, 08:00)
+### Estado por fase (04/11/2026, 11:50)
 
 > **Corrección del 04/11.** Las cifras de cuadros caídos (JS y UI) de §5.1 a §5.9
 > y de esta tabla están infladas: el medidor contaba cuadros normales como
@@ -207,13 +207,13 @@ esté vigente ese día.
 | Fase | Estado | Falta |
 | --- | --- | --- |
 | F0 Medir | **Hecha.** En `main`, OTA `f4ca42ef` en vivo, probada en el emulador | 2 min en el teléfono de José para el número real |
-| F1 Fuera los modales | **Hecha** (APK 0.1.177). Host en la misma ventana (sesión y chat), capas animadas, puente de contextos, `Sheet` con arrastre: avisos, clip, fijar, ficha de persona, historial y acciones de miembro; con la OTA `ad44c54e`, siete más (§5.8), y «Programar mensaje» con la OTA `84a5591b` (§5.9). El bloqueo de la app queda sobre todas las capas | Pasar las otras ~18 hojas a `Sheet` (cada una con su E2E); E2E pendiente de 4 de las 7 de §5.8. `overlays.ts` y el congelado se QUEDAN: una hoja con campo de texto sube el teclado igual (§5.3) |
+| F1 Fuera los modales | **Hecha** (APK 0.1.177). Host en la misma ventana (sesión y chat), capas animadas, puente de contextos, `Sheet` con arrastre: avisos, clip, fijar, ficha de persona, historial y acciones de miembro; con la OTA `ad44c54e`, siete más (§5.8), y «Programar mensaje» con la OTA `84a5591b` (§5.9). El bloqueo de la app queda sobre todas las capas | Con las OTA `7f968756`, `2ab8381a` y `0fafe027`, 17 hojas más y el teclado sobre una hoja (§5.11). Faltan 6 E2E sin escenario real, y `AppFormSheet`, `CallControls` y `CallReactions` siguen en `Modal` a propósito. `overlays.ts` y el congelado se QUEDAN: una hoja con campo de texto sube el teclado igual (§5.3) |
 | F2 Visor de fotos | **Hecha** (APK 0.1.177). La foto crece desde su burbuja y vuelve a ella; arrastre que muestra el chat; foto completa pedida al apoyar el dedo; barras con fundido | El número en el teléfono de José (el emulador captura fotos negras, §5.3) |
 | F3 Teclado | **Hecha** (APK 0.1.178). El teclado se cierra arrastrando el chat (y el hilo) hacia abajo; al cerrarse el panel de emojis el chat baja con él en el hilo de UI (§5.4) | Probarlo con un teclado completo en el teléfono de José (el emulador usa el compacto) |
-| F4 Toque y envío | **En curso** (APK 0.1.178 y 0.1.179). Ripple nativo; sticker, GIF y guiño con burbuja o animación al instante; la lista de atrás ya no se redibuja con cada mensaje; el botón emoji/teclado es el único que escucha al panel; cerrar el panel no redibuja la grilla ni la lista; la barra no se redibuja con el eco (OTA); un envío dibuja 2 filas y no todas las montadas, y el chat baja de 437 a 222 ms (OTA `eaa9ac0d`); FlashList pide 4 celdas por envío y no 147 (OTA `cdc96f59`, §5.9). Sticker de 63 a 17 cuadros de JS caídos, GIF de 37 a 3, guiño de 232 a 57 (§5.4 a §5.7) | Medir con la Mac libre (las medidas de §5.9 son con carga ~22). `ChatScreen` hace 3 renders por envío y cuesta casi todo lo que queda (Chat 3× 141 ms bajo carga); la lista del espacio se dibuja 2 veces al abrir un chat |
-| F5a Lectura síncrona | **Hecha** (APK 0.1.179). Abrir un chat: mediana de 0 cuadros de JS caídos (antes 12, §5.5). La clave y la base quedan en mano al iniciar la sesión y `useChat` nace con la última página leída en su render (`readLastPageSync`) | `leer-chat` no aparece entre los trabajos con nombre de la ventana: medirlo en el teléfono de José y recién ahí decidir si se borra `memoriaDeChats` |
+| F4 Toque y envío | **En curso** (APK 0.1.178 y 0.1.179). Ripple nativo; sticker, GIF y guiño con burbuja o animación al instante; la lista de atrás ya no se redibuja con cada mensaje; el botón emoji/teclado es el único que escucha al panel; cerrar el panel no redibuja la grilla ni la lista; la barra no se redibuja con el eco (OTA); un envío dibuja 2 filas y no todas las montadas, y el chat baja de 437 a 222 ms (OTA `eaa9ac0d`); FlashList pide 4 celdas por envío y no 147 (OTA `cdc96f59`, §5.9). Sticker de 63 a 17 cuadros de JS caídos, GIF de 37 a 3, guiño de 232 a 57 (§5.4 a §5.7) | Medir con la Mac libre (las de §5.10 son con carga ~20) y decidir ahí si se bajan los 3 renders de `ChatScreen` por envío. La lista del espacio ya no se dibuja al abrir un chat (§5.11) |
+| F5a Lectura síncrona | **Hecha** (APK 0.1.179). El «mediana de 0 cuadros de JS caídos» de §5.5 era un artefacto del medidor: falta repetirlo con la ventana corregida (§5.11). La clave y la base quedan en mano al iniciar la sesión y `useChat` nace con la última página leída en su render (`readLastPageSync`) | `leer-chat` no aparece entre los trabajos con nombre de la ventana: medirlo en el teléfono de José y recién ahí decidir si se borra `memoriaDeChats` |
 | F5b SQLCipher | **Hecha** (APK 0.1.179, E2E de la mudanza en §5.5). Base `lilachat-v2.db` cifrada entera con la misma clave (cruda, sin PBKDF2), filas en claro adentro con el texto en su columna; mudanza chat por chat, la fila de v1 se borra después de quedar en v2; sin SQLCipher en el binario sigue v1 | Cerrar sesión y volver a entrar (no se probó: pide un código por WhatsApp a la cuenta real de José); +2,3 MB de APK |
-| F6 Higiene | **En parte**: fuera `moti` (0.1.178) | `useLegacyPackaging` (medir descarga contra instalación); umbral de F0 en `rn-perf`, que vive en constroad-skills |
+| F6 Higiene | **Casi hecha**: fuera `moti` (0.1.178); `useLegacyPackaging` se queda en `true`, medido en §5.11 | Umbral de F0 en `rn-perf`, que vive en constroad-skills |
 
 ### Bitácora
 
@@ -230,6 +230,8 @@ esté vigente ese día.
 | 03/11/2026 | F4 | OTA `eaa9ac0d` (runtime 51e099b7, git aa2d248): un mensaje nuevo redibuja solo su fila. Tocar una cita y responder salen de refs; álbumes y citas iguales conservan su objeto (`keptValues`, con tests); pastilla de reacciones, chip del hilo y celda del sticker memorizados. Diagnóstico cuenta «Filas N×». rn-smoke 3/3 (heap 19 MB), medida en §5.7 |
 | 02/11/2026 | F4 + F5 | `main` para el APK 0.1.179 (180): F5a y F5b integradas; cerrar el panel ya no redibuja la grilla de stickers ni la lista del chat (los dos se suscriben al panel sin estado, `subscribeEmojiPanel` con tests; panel memorizado con callbacks estables); el guiño entra un cuadro después del cierre del panel; textos vacíos con «aquí». E2E de la mudanza con el historial real del emulador, rn-smoke 3/3 (heap 19 MB), medida en §5.5. Publicada en LilaStore |
 | 04/11/2026 | F0 + F4 | OTA `6af04d38` (runtime 51e099b7, git 9753a37): medidor de cuadros corregido (§5.10) y la sesión que se renueva sola, con el socket rechazado que se recupera (ARCHITECTURE §6.4). rn-smoke 3/3; E2E de reconexión con la cola en el emulador |
+| 04/11/2026 | F1 + F4 | OTA `7f968756` y `2ab8381a` (runtime 51e099b7, la segunda con git 0883a5b): la lista del espacio no se redibuja al abrir un chat, 17 hojas más en `Sheet` y el medidor cuenta la pausa de montar un chat (§5.11) |
+| 04/11/2026 | F1 | OTA `0fafe027` (runtime 51e099b7, git e77fdd4): una hoja sin campo de texto cierra el teclado. Server: borrar un fijado avisa al chat, E2E en Test con la franja que se va sola. rn-smoke 3/3. Un intento anterior falló con 502 porque el server se redesplegaba tras el push: no publicó nada (§5.11) |
 
 ### 5.1 Línea base (02/11/2026, antes de F1)
 
@@ -679,3 +681,88 @@ de `ChatScreen`.
 
 QA: los 5 textos de esta medida y de la prueba de reconexión (seq 131 a 135)
 borrados con «Eliminar para todos». rn-smoke 3/3 antes del OTA.
+
+### 5.11 La lista del espacio, las últimas hojas y el teclado sobre una hoja (OTA `7f968756`, `2ab8381a` y `0fafe027`, 04/11/2026)
+
+**La lista del espacio dejó de redibujarse al abrir un chat.** Antes salía en
+«Abrir un chat» como `Lista del espacio 2× 286 ms`. `SpaceChatsScreen` queda
+envuelta en un `memo` que no pasa mientras la tapa un chat (`listCovered`, con
+test), y `useCached` retiene su valor en ese rato. `openChatNow()` avisa el chat
+abierto antes de la transición. En 3 aperturas: `Chat 3× 95 ms · Barra 3× 64 ms`
+y la lista ya no aparece. Al volver hace 1 render de 74 ms, medido con la Mac a
+load ~27.
+
+**17 hojas pasaron a `Sheet`.** Info del mensaje, destacados, fijados, reacciones,
+emojis, programados, acciones de miembro, detalle de evento, volver a llamar,
+opciones del checklist, tarea, detalle de tarea, editor de listas, llamada
+programada, crear canal, horario de una app y selector con buscador. Quedan en
+`Modal` a propósito `CallControls` y `CallReactions` (no se prueban sin llamar a
+alguien real) y `AppFormSheet` (confirma antes de cerrar y lleva su propio
+teclado).
+
+**El bug que apareció en el E2E.** La hoja vive en la ventana de la app, así que
+el teclado la tapa. Con el teclado abierto, «Programar» quedaba debajo y no se
+podía tocar. `Sheet` ahora tiene `keyboard`: `dismiss` (por defecto) lo cierra,
+`avoid` sube con él en las hojas con campo de texto y `keep` lo deja como está en
+la búsqueda del selector.
+
+**Otro bug, del server.** Borrar para todos un mensaje fijado lo sacaba de la
+base sin avisar. Los fijados viajan con la lista de chats, así que la franja
+seguía arriba con un mensaje que ya no existía, hasta recargar. Ahora el borrado
+dice si sacó un fijado (`unpinned`) y solo entonces manda `chat.changed`. El
+filtro por `fijados.seq` hace falta: con `timestamps`, un `$pull` cuenta como
+modificado aunque no saque nada, y el test lo mostró.
+
+**El medidor cerraba antes de tiempo.** «Abrir un chat» marcaba JS 0·0·0 ms: la
+ventana se cerraba en el primer pintado y el primer delta se descartaba. La
+ventana dura ahora 600 ms y la pausa antes del primer cuadro cuenta. El «mediana
+0 cuadros» de F5a era ese artefacto. La lectura síncrona sigue en pie (`Chat` 95
+ms, sin esperas), pero ese número no vale.
+
+**E2E en el emulador.** Cada hoja: arrastre · toque en el fondo · atrás.
+
+| Hoja | Arrastre | Fondo | Atrás | Teclado |
+| --- | --- | --- | --- | --- |
+| Programar (teclado abierto) | | | | lo cierra; el botón queda en y 2016 y se toca |
+| Programados | cierra | cierra | cierra | |
+| Info del mensaje | cierra | cierra | cierra | |
+| Destacados | cierra | cierra | cierra | |
+| Reacciones | cierra | cierra | cierra | |
+| Emojis | cierra | sin repetir | cierra | |
+| Fijados | cierra | cierra | cierra | |
+| Opciones del checklist | cierra | cierra | cierra | sube, y 1261 → 439 |
+| Editar tarea | cierra | cierra | cierra | sube, y 1126 → 304 |
+| Detalle de tarea | cierra | cierra | cierra | |
+| Crear canal | cierra | cierra | cierra; con texto pide descartar | sube, y 1060 → 658 |
+| Editor de listas | cierra | cierra | cierra | sube; Guardar queda visible |
+
+**Sin E2E, y por qué.** Selector con buscador y horario de una app: Test no tiene
+acciones y los formularios reales de Constroad no se tocan. Detalle de evento: la
+cuenta no tiene eventos. Llamada programada: solo existe en un 1:1. Volver a
+llamar: hace falta una llamada perdida real. Acciones de miembro: Test tiene un
+solo miembro. Son 6 de 17; quedan para el uso real.
+
+**F6, `useLegacyPackaging`: se queda en `true`.** Medido sobre el APK 0.1.179: las
+32 `.so` pesan 44,7 MB sueltas y 17,6 MB comprimidas. Pasarlo a `false` sumaría
+27 MB a cada descarga (45,3 → 72,4 MB, +60 %) y ahorraría 17,6 MB en el teléfono.
+La app carga las mismas librerías en los dos casos, así que no cambia la fluidez.
+Una descarga más pesada por datos móviles sale peor.
+
+**Para retomar (trabajo pausado por José el 04/11, 11:50).**
+
+1. Medir «Abrir un chat» con la ventana corregida. No se hizo: la Mac siguió con
+   load 30 a 70 toda la mañana.
+2. Repetir la medida de §5.10 con la Mac libre y decidir ahí si se bajan los 3
+   renders de `ChatScreen` por envío.
+3. El barrido de mensajes temporales saca el fijado sin avisar
+   (`disappearingMessages.ts`, `sweepChat`): el mismo hueco del borrado, sin
+   arreglar. La franja queda hasta recargar.
+4. Del teléfono de José: 2 min de uso y «Enviar problema» (F0, F2, F5a), un
+   teclado completo (F3), salir y entrar (F5b).
+5. De constroad-skills: el umbral de F0 en `rn-perf`.
+6. Sin probar en un teléfono: el rechazo del token vencido y la renovación por
+   tiempo (`sesion-renovada`, §5.10).
+
+QA: seq 131 a 136, 138 y 139 de #general de Test borrados con «Eliminar para
+todos». Quedan dos líneas «Fijaste un mensaje» (seq 137 y 140): el intento de
+borrar la 140 no terminó. El programado F1-prog-2 quedó cancelado.

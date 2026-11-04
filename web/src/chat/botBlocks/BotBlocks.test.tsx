@@ -28,6 +28,30 @@ describe('BotCardView with the kit', () => {
   });
 });
 
+describe('people on a card (José, 04/11: initials alone say nothing)', () => {
+  const attendance = validateBotCard({
+    kicker: 'ASISTENCIA',
+    title: 'Vinieron',
+    fields: [],
+    blocks: [{ type: 'people', names: ['Jensen Castillo Ruiz', 'Darío Paredes'], more: 2 }],
+    detail: { title: 'Asistencia de hoy', blocks: [{ type: 'people', names: ['Jensen Castillo Ruiz', 'Darío Paredes'], more: 2 }] },
+  });
+
+  it('writes the short name on the card and the whole name in its detail', () => {
+    if (!attendance.ok) throw new Error(attendance.message);
+    render(<BotCardView card={attendance.card} chatId="c" seq={1} jwt="j" />);
+    const onCard = screen.getByTestId('bloque-personas').textContent;
+    expect(onCard).toContain('Jensen C.');
+    expect(onCard).toContain('Darío P.');
+    expect(onCard).toContain('+2');
+    expect(onCard).not.toContain('Castillo');
+    fireEvent.click(screen.getByTestId('tarjeta-ver-detalle'));
+    const inDetail = screen.getByTestId('detalle-tarjeta').textContent;
+    expect(inDetail).toContain('Jensen Castillo Ruiz');
+    expect(inDetail).toContain('y 2 más');
+  });
+});
+
 describe('the weather block (pending 96, design e-33)', () => {
   const weather = validateBotCard({
     kicker: 'INFRAMAQ · CLIMA',

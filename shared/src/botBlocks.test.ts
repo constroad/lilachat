@@ -1,8 +1,35 @@
 import { describe, expect, it } from 'vitest';
-import { barColumns, barFractions, linePath, tankFill, tankPercent, validateBotBlocks, BLOCK_LIMITS } from './botBlocks.js';
+import { barColumns, barFractions, linePath, peopleOnCard, tankFill, tankPercent, validateBotBlocks, BLOCK_LIMITS, PEOPLE_ON_CARD } from './botBlocks.js';
 import { validateBotCard } from './bots.js';
 
 /** The card kit (§118.4, José 23/10): what agents and webhooks can draw in a card, validated once for server, app and web. */
+describe('the level of a tank (José, 04/11: «dice el delta pero la gráfica parece llena»)', () => {
+  it('draws a third of a tank as a third, and the percent says the same', () => {
+    expect(tankFill(0.32, 76)).toEqual({ y: 52, height: 24 });
+    expect(tankPercent(0.32)).toBe('32 %');
+  });
+});
+
+describe('people on a card (José, 04/11: «¿sirve solo ver las iniciales?»)', () => {
+  it('keeps the first ones on the card and counts the rest with what the app already counted', () => {
+    const names = Array.from({ length: PEOPLE_ON_CARD + 4 }, (_, index) => `Persona ${index}`);
+    const shown = peopleOnCard({ names, more: 3 });
+    expect(shown.names).toHaveLength(PEOPLE_ON_CARD);
+    expect(shown.more).toBe(7);
+  });
+
+  it('counts nothing when everybody fits', () => {
+    expect(peopleOnCard({ names: ['Ana Díaz'] })).toEqual({ names: ['Ana Díaz'], more: 0 });
+  });
+
+  it('accepts the whole crew, because the detail lists everybody', () => {
+    const names = Array.from({ length: BLOCK_LIMITS.people + 5 }, (_, index) => `Persona ${index}`);
+    const result = validateBotBlocks([{ type: 'people', names }], BLOCK_LIMITS.detailBlocks);
+    expect(BLOCK_LIMITS.people).toBeGreaterThanOrEqual(BLOCK_LIMITS.rows);
+    expect(result).toMatchObject({ ok: true, blocks: [{ type: 'people', names: names.slice(0, BLOCK_LIMITS.people) }] });
+  });
+});
+
 describe('the tank as the r155 design shows it (José, 24/10: like Portal\'s WhatsApp report)', () => {
   it('keeps the verdict in words and writes the fill as a percent', () => {
     const result = validateBotBlocks([{ type: 'tank', items: [{ name: 'INFRA PEN 2', level: 0.22, min: 0.25, value: '35 cm', sub: '18 m³ prod. disponibles', status: 'Bajo', tone: 'error' }] }], BLOCK_LIMITS.cardBlocks);

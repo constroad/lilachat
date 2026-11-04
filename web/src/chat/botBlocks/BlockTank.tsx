@@ -42,7 +42,7 @@ function TankFacts({ tank, big }: { tank: TankItem; big: boolean }) {
 export function BlockTank({ items }: { items: TankItem[] }) {
   const [open, setOpen] = useState<TankItem | null>(null);
   const sheet = open?.detail
-    ? createPortal(<Overlay title={open.detail.title} onClose={() => setOpen(null)} wide><div data-testid="detalle-tanque" className="space-y-3"><BotBlocksView blocks={open.detail.blocks} /></div></Overlay>, document.body)
+    ? createPortal(<Overlay title={open.detail.title} onClose={() => setOpen(null)} wide><div data-testid="detalle-tanque" className="space-y-3"><BotBlocksView blocks={open.detail.blocks} detail /></div></Overlay>, document.body)
     : null;
   if (items.length === 1) {
     const tank = items[0]!;

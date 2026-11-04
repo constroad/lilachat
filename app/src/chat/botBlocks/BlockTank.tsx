@@ -47,7 +47,7 @@ export function BlockTank({ items }: { items: TankItem[] }) {
   const [open, setOpen] = useState<TankItem | null>(null);
   const sheet = open?.detail ? (
     <PantallaEnModal visible titulo={open.detail.title} onCerrar={() => setOpen(null)} testIDCerrar="detalle-tanque-cerrar">
-      <View testID="detalle-tanque" className="gap-3 px-4 pb-8 pt-2"><BotBlocksView blocks={open.detail.blocks} /></View>
+      <View testID="detalle-tanque" className="gap-3 px-4 pb-8 pt-2"><BotBlocksView blocks={open.detail.blocks} detail /></View>
     </PantallaEnModal>
   ) : null;
   if (items.length === 1) {

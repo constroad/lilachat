@@ -1,6 +1,6 @@
 import { Linking, Pressable, Text, View } from 'react-native';
 import { Paperclip } from 'lucide-react-native';
-import type { BotBlock } from '@lilachat/shared';
+import { peopleOnCard, shortPersonName, type BotBlock } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { useColores } from '../../ui/tema';
 import { BlockChart } from './BlockChart';
@@ -9,6 +9,38 @@ import { BlockWeather } from './BlockWeather';
 import { TONE_CLASS, TONE_COLOR } from './tones';
 
 const PEOPLE_SIZE = 26;
+type PeopleBlock = Extract<BotBlock, { type: 'people' }>;
+
+/** On the card: who it is at a glance, face and short name (José, 04/11). */
+function PeopleOnCard({ block }: { block: PeopleBlock }) {
+  const { names, more } = peopleOnCard(block);
+  return (
+    <View testID="bloque-personas" className="flex-row flex-wrap items-center" style={{ gap: 8 }}>
+      {names.map((name, index) => (
+        <View key={`${name}-${index}`} className="flex-row items-center gap-1.5">
+          <Avatar nombre={name} tamano={PEOPLE_SIZE} />
+          <Text numberOfLines={1} className="text-[13px] text-on-surface">{shortPersonName(name)}</Text>
+        </View>
+      ))}
+      {more ? <Text className="text-[12px] text-on-surface-variant">+{more}</Text> : null}
+    </View>
+  );
+}
+
+/** In the detail: everybody with their whole name, one per row. */
+function PeopleList({ block }: { block: PeopleBlock }) {
+  return (
+    <View testID="bloque-personas">
+      {block.names.map((name, index) => (
+        <View key={`${name}-${index}`} className={`min-h-[44px] flex-row items-center gap-3 py-1.5 ${index ? 'border-t border-outline/10' : ''}`}>
+          <Avatar nombre={name} tamano={PEOPLE_SIZE} />
+          <Text className="min-w-0 flex-1 text-[14px] text-on-surface">{name}</Text>
+        </View>
+      ))}
+      {block.more ? <Text className="py-2 text-[13px] text-on-surface-variant">{`y ${block.more} más`}</Text> : null}
+    </View>
+  );
+}
 
 /** Rows for the detail: label and value, an optional mini bar and a second line (districts, today's readings, who is missing). */
 function Rows({ rows }: { rows: Extract<BotBlock, { type: 'rows' }>['rows'] }) {
@@ -77,12 +109,7 @@ function Block({ block }: { block: BotBlock }) {
     case 'rows':
       return <Rows rows={block.rows} />;
     case 'people':
-      return (
-        <View testID="bloque-personas" className="flex-row items-center">
-          {block.names.map((name, index) => <View key={`${name}-${index}`} style={{ marginLeft: index ? -6 : 0 }}><Avatar nombre={name} tamano={PEOPLE_SIZE} /></View>)}
-          {block.more ? <Text className="ml-2 text-[12px] text-on-surface-variant">+{block.more}</Text> : null}
-        </View>
-      );
+      return <PeopleOnCard block={block} />;
     case 'attachments':
       return (
         <Pressable testID="bloque-adjuntos" onPress={() => void Linking.openURL(block.url)} className="min-h-[36px] flex-row items-center gap-1.5 self-start rounded-full border border-outline/20 px-3">
@@ -96,10 +123,10 @@ function Block({ block }: { block: BotBlock }) {
 }
 
 /** The kit's blocks (§118.4), one under the other with the card's rhythm. */
-export function BotBlocksView({ blocks }: { blocks: readonly BotBlock[] }) {
+export function BotBlocksView({ blocks, detail = false }: { blocks: readonly BotBlock[]; detail?: boolean }) {
   return (
     <View className="gap-3">
-      {blocks.map((block, index) => <Block key={`${block.type}-${index}`} block={block} />)}
+      {blocks.map((block, index) => (detail && block.type === 'people' ? <PeopleList key={`${block.type}-${index}`} block={block} /> : <Block key={`${block.type}-${index}`} block={block} />))}
     </View>
   );
 }

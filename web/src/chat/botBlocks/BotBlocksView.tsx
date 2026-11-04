@@ -1,10 +1,33 @@
 import { Paperclip } from 'lucide-react';
-import type { BotBlock } from '@lilachat/shared';
+import { peopleOnCard, shortPersonName, type BotBlock } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { BlockChart } from './BlockChart';
 import { BlockTank } from './BlockTank';
 import { BlockWeather } from './BlockWeather';
 import { TONE } from './tones';
+
+type PeopleBlock = Extract<BotBlock, { type: 'people' }>;
+
+/** On the card: who it is at a glance, face and short name (José, 04/11). */
+function PeopleOnCard({ block }: { block: PeopleBlock }) {
+  const { names, more } = peopleOnCard(block);
+  return (
+    <div data-testid="bloque-personas" className="flex flex-wrap items-center gap-2">
+      {names.map((name, index) => <span key={`${name}-${index}`} className="inline-flex items-center gap-1.5 text-[13px]"><Avatar name={name} size={26} />{shortPersonName(name)}</span>)}
+      {more ? <span className="text-[12px] text-on-surface-variant">+{more}</span> : null}
+    </div>
+  );
+}
+
+/** In the detail: everybody with their whole name, one per row. */
+function PeopleList({ block }: { block: PeopleBlock }) {
+  return (
+    <div data-testid="bloque-personas" className="divide-y divide-outline/10">
+      {block.names.map((name, index) => <div key={`${name}-${index}`} className="flex min-h-[44px] items-center gap-3 py-1.5 text-[14px]"><Avatar name={name} size={26} /><span className="min-w-0 flex-1">{name}</span></div>)}
+      {block.more ? <p className="py-2 text-[13px] text-on-surface-variant">{`y ${block.more} más`}</p> : null}
+    </div>
+  );
+}
 
 function Rows({ rows }: { rows: Extract<BotBlock, { type: 'rows' }>['rows'] }) {
   return (
@@ -63,12 +86,7 @@ function Block({ block }: { block: BotBlock }) {
     case 'rows':
       return <Rows rows={block.rows} />;
     case 'people':
-      return (
-        <div data-testid="bloque-personas" className="flex items-center">
-          {block.names.map((name, index) => <span key={`${name}-${index}`} className={index ? '-ml-1.5' : ''}><Avatar name={name} size={26} /></span>)}
-          {block.more ? <span className="ml-2 text-[12px] text-on-surface-variant">+{block.more}</span> : null}
-        </div>
-      );
+      return <PeopleOnCard block={block} />;
     case 'attachments':
       return (
         <a data-testid="bloque-adjuntos" href={block.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-9 items-center gap-1.5 self-start rounded-full border border-outline/20 px-3 text-[13px] font-semibold hover:bg-background">
@@ -81,6 +99,6 @@ function Block({ block }: { block: BotBlock }) {
 }
 
 /** The kit's blocks (§118.4), one under the other with the card's rhythm. */
-export function BotBlocksView({ blocks }: { blocks: readonly BotBlock[] }) {
-  return <div className="flex flex-col gap-3">{blocks.map((block, index) => <Block key={`${block.type}-${index}`} block={block} />)}</div>;
+export function BotBlocksView({ blocks, detail = false }: { blocks: readonly BotBlock[]; detail?: boolean }) {
+  return <div className="flex flex-col gap-3">{blocks.map((block, index) => (detail && block.type === 'people' ? <PeopleList key={`${block.type}-${index}`} block={block} /> : <Block key={`${block.type}-${index}`} block={block} />))}</div>;
 }

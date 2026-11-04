@@ -27,7 +27,7 @@ export type BotBlock =
   | { type: 'attachments'; count: number; label: string; url: string }
   | WeatherBlock;
 
-export const BLOCK_LIMITS = { cardBlocks: 8, detailBlocks: 12, chips: 6, points: 31, tanks: 12, rows: 40, people: 8, label: 40, short: 24, text: 200, url: 500, cardBytes: 16_000 };
+export const BLOCK_LIMITS = { cardBlocks: 8, detailBlocks: 12, chips: 6, points: 31, tanks: 12, rows: 40, people: 40, label: 40, short: 24, text: 200, url: 500, cardBytes: 16_000 };
 const TONES: readonly CardTone[] = ['ok', 'warn', 'error', 'info', 'neutral'];
 const KINDS: readonly ChartKind[] = ['bar-h', 'bar-v', 'line'];
 
@@ -148,6 +148,14 @@ export function linePath(values: readonly number[], width: number, height: numbe
   const bottom = Math.min(...values);
   const span = top - bottom || 1;
   return values.map((value, index) => `${index === 0 ? 'M' : 'L'}${Math.round((index / (values.length - 1)) * width)},${Math.round(((top - value) / span) * height)}`).join(' ');
+}
+
+type PeopleBlock = Extract<BotBlock, { type: 'people' }>;
+/** A card stops here; its detail lists everybody. */
+export const PEOPLE_ON_CARD = 8;
+
+export function peopleOnCard(block: Pick<PeopleBlock, 'names' | 'more'>): { names: string[]; more: number } {
+  return { names: block.names.slice(0, PEOPLE_ON_CARD), more: (block.more ?? 0) + Math.max(0, block.names.length - PEOPLE_ON_CARD) };
 }
 
 /** The liquid inside a tank of `height`: where it starts and how tall it is. */

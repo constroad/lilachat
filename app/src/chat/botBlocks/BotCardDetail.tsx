@@ -19,7 +19,7 @@ export function BotCardDetail(props: { card: BotCard; visible: boolean; onClose:
             {[card.kicker, card.updatedAt ? `Actualizado ${formatClock(card.updatedAt)}` : ''].filter(Boolean).join(' · ')}
           </Text>
         ) : null}
-        <BotBlocksView blocks={card.detail.blocks} />
+        <BotBlocksView blocks={card.detail.blocks} detail />
       </View>
     </PantallaEnModal>
   );

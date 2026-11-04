@@ -223,3 +223,7 @@ José eligió esta dirección tras rechazar la Telenovela: el guiño le pega a l
 | r02nov-ataque-fix | `screens/97d5b34ebf4d45afbdec1aa8b6230c83` | Piezas flojas redibujadas | slipper, slipper-mark, cream-pie, pillow, feather-burst, foam-can, foam-blob, flour-cloud, flour-dust (cream-splat salió como muela: va a mano) | Aprobado |
 
 A mano, en `.stitch-work/out/winks/r02nov-ataque-hand.html` (después de las hojas, así gana): `cream-splat`, `raw-egg`, `steam`, `sorry-sign`, `haha-text` y `water-wave`. El corazón de Stitch traía carita (prohibido): el Besote usa el `heart` de siempre.
+| `i-01-entrar-app.png` | I · Primer ingreso por correo, patrón Slack · Móvil (`screens/751093dabbfa4affba9ef41a27a5dfe1`) · pendiente de aprobar por José |
+| `i-02-codigo-correo-app.png` | I · Código enviado al correo · Móvil (`screens/2a6227a5eaa94603a3cfe8af1a6b4916`) · pendiente de aprobar por José |
+| `i-03-tus-espacios-app.png` | I · Tus espacios de trabajo e invitaciones · Móvil (`screens/562f0b08fcfe4edb887ca7bdf4603f0d`) · pendiente de aprobar por José |
+| `i-04-crea-tu-usuario-app.png` | I · Crear el usuario al entrar a un espacio · Móvil (`screens/ac8b685553074d4bae1be561bf507116`) · pendiente de aprobar por José |

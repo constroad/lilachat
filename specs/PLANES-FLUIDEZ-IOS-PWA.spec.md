@@ -232,6 +232,7 @@ esté vigente ese día.
 | 04/11/2026 | F0 + F4 | OTA `6af04d38` (runtime 51e099b7, git 9753a37): medidor de cuadros corregido (§5.10) y la sesión que se renueva sola, con el socket rechazado que se recupera (ARCHITECTURE §6.4). rn-smoke 3/3; E2E de reconexión con la cola en el emulador |
 | 04/11/2026 | F1 + F4 | OTA `7f968756` y `2ab8381a` (runtime 51e099b7, la segunda con git 0883a5b): la lista del espacio no se redibuja al abrir un chat, 17 hojas más en `Sheet` y el medidor cuenta la pausa de montar un chat (§5.11) |
 | 04/11/2026 | F1 | OTA `0fafe027` (runtime 51e099b7, git e77fdd4): una hoja sin campo de texto cierra el teclado. Server: borrar un fijado avisa al chat, E2E en Test con la franja que se va sola. rn-smoke 3/3. Un intento anterior falló con 502 porque el server se redesplegaba tras el push: no publicó nada (§5.11) |
+| 04/11/2026 | F4 | OTA `6f187a1e` (runtime 51e099b7, git dd75848): la lista del espacio pinta una sola vez, con los canales de cliente ya en su sección, y la app guarda los clientes en disco. Antes salían todos en «Canales» y saltaban a «Clientes». rn-smoke 3/3. Va con el bloque de personas por nombre y `audience` en los atajos (pedidos de Agentes) |
 
 ### 5.1 Línea base (02/11/2026, antes de F1)
 

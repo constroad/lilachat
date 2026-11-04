@@ -1,0 +1,88 @@
+# Ingreso por espacio de trabajo (04/11/2026)
+
+> Pedido de José por Agentes: al instalar la app pide el teléfono, y debería
+> pedir entrar a un espacio de trabajo y crear el usuario desde ahí. Decisión
+> del mismo día: seguir el patrón de Slack, dejar teléfono y código como opción,
+> y mantener un enlace discreto para usar la app sin espacio.
+>
+> **Estado:** diseños generados, pendientes de aprobación de José. Sin código.
+
+## 1. Cómo lo hace Slack
+
+Se entra con correo y código. Después aparecen los espacios, y una invitación se
+acepta con «Join» junto al nombre del espacio. Quien entra por primera vez escribe
+su nombre completo. Crear un espacio es una opción después de confirmar el correo.
+
+Fuentes: [Sign in to Slack](https://slack.com/help/articles/212681477-Sign-in-to-Slack),
+[Join a Slack workspace](https://slack.com/help/articles/212675257-Join-a-Slack-workspace),
+[Create a Slack workspace](https://slack.com/help/articles/206845317-Create-a-Slack-workspace).
+La ayuda de Slack no detalla la lista de invitaciones en el teléfono: esa parte
+sale de su versión de escritorio.
+
+## 2. El flujo en Lilachat
+
+1. **Entra a tu espacio de trabajo** (`i-01`): correo y «Continuar». Debajo,
+   «Entrar con mi número de teléfono» y, al pie, «Usar sin espacio de trabajo».
+2. **Código** (`i-02`): 6 dígitos, reenvío y «Cambiar de correo». Con teléfono es
+   la pantalla de hoy.
+3. **Tus espacios de trabajo** (`i-03`): los espacios de la persona con «Abrir»,
+   las invitaciones con «Unirme», «Unirme con un código» y «Crear un espacio».
+4. **Crea tu usuario** (`i-04`): solo la primera vez. Nombre completo y foto
+   opcional, sin contraseña.
+
+«Usar sin espacio de trabajo» lleva al ingreso por teléfono de hoy y a los chats
+personales. Quien ya tiene sesión no ve nada de esto.
+
+| Pantalla | Diseño Stitch | Estado |
+| --- | --- | --- |
+| Entra a tu espacio | `screens/751093dabbfa4affba9ef41a27a5dfe1` | Nueva |
+| Código por correo | `screens/2a6227a5eaa94603a3cfe8af1a6b4916` | Nueva |
+| Tus espacios | `screens/562f0b08fcfe4edb887ca7bdf4603f0d` | Nueva |
+| Crea tu usuario | `screens/ac8b685553074d4bae1be561bf507116` | Nueva |
+| Unirse con código | `e-02` | Ya existe |
+| Solicitud enviada | `e-03` | Ya existe |
+| Crear un espacio | `e-04` | Ya existe |
+
+## 3. Lo que hay hoy
+
+- `constroad-auth` acepta correo o teléfono en `destino`: no hay que cambiarlo.
+- El registro está abierto (`REGISTRO_ABIERTO` en `authRoutes.ts`).
+- `/otp/request` y `/otp/verify` solo reciben `phone`. El correo es un respaldo de
+  una cuenta que ya tiene teléfono.
+- Las invitaciones por teléfono se reclaman al entrar (`claimPhoneInvites`), y
+  existen las de correo (`workspaceEmailInvites.ts`).
+
+## 4. El riesgo: el teléfono es la identidad
+
+`users.phone` es obligatorio y único. La palabra aparece en 69 archivos del server
+(272 líneas) y en 281 de los clientes (624 líneas). Volverlo opcional toca chats
+1:1, agenda, avisos, invitaciones y el panel de admin, con usuarios reales encima.
+
+**Propuesta:** no volverlo opcional. Una cuenta creada por correo guarda en `phone`
+una clave interna, como ya hacen los bots («its `phone` is an internal key»). Una
+función de `shared` dice si es un teléfono real, y la interfaz no lo muestra ni lo
+cruza con la agenda. Esas cuentas tienen el correo verificado por el código.
+
+## 5. Fases
+
+| Fase | Qué | Sale por |
+| --- | --- | --- |
+| I1 | Server: `/otp/request` y `/otp/verify` con `email`; entra una cuenta con ese correo verificado | Server |
+| I2 | Server: cuenta nueva por correo con clave interna; reclamar invitaciones por correo; lista de espacios e invitaciones | Server |
+| I3 | App: las cuatro pantallas y el orden nuevo | APK, para que quien instala la vea desde el inicio |
+| I4 | Web: las mismas pantallas | Server |
+| I5 | Revisión de la clave interna en perfil, directorio, agenda, avisos y admin | Server y OTA |
+
+## 6. Cómo se prueba
+
+- OTP de QA solo con el 902049935, y los códigos por correo no llegan al emulador.
+- Una cuenta de prueba no se crea en producción, y el `.env` del repo apunta a
+  producción. El E2E del alta corre con server local y base propia en
+  `10.0.2.2`, con `constroad-auth` falso, como en los tests del server.
+- La ruta real por correo necesita una cuenta que José elija o una prueba suya en
+  su teléfono.
+
+## 7. Decisiones pendientes de José
+
+1. Aprobar las cuatro pantallas.
+2. Aprobar la clave interna de §4, o pedir la migración completa a `phone` opcional.

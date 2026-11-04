@@ -119,4 +119,35 @@ describe('tapping a tank opens its detail (José, 24/10)', () => {
     fireEvent.click(screen.getByTestId('tarjeta-ver-detalle'));
     expect(screen.getByTestId('detalle-tarjeta').textContent).toContain('Carlos Dario Paredes07:12');
   });
+
+  describe('where they signed, and the photo (José, 04/11)', () => {
+    const photo = 'https://inframaq.constroad.com/api/public/marca/abc?sig=1';
+    const map = 'https://maps.google.com/?q=-12.02,-77.02';
+    const people = { type: 'people', names: ['Carlos Dario Paredes', 'Jensen Stewen'], evidence: [{ photo, place: 'Planta Huachipa', map }] };
+    const renderDetail = () => {
+      const attendance = validateBotCard({ title: 'Asistencia', fields: [], blocks: [people], detail: { title: 'Detalle', blocks: [people] } });
+      if (!attendance.ok) throw new Error(attendance.message);
+      render(<BotCardView card={attendance.card} chatId="c" seq={1} jwt="j" />);
+    };
+
+    it('the card stays light: faces and names, no photo', () => {
+      renderDetail();
+      expect(screen.queryByRole('img', { name: 'Foto de Carlos Dario Paredes' })).toBeNull();
+    });
+
+    it('the detail shows the photo and the place, and the place opens the map', () => {
+      renderDetail();
+      fireEvent.click(screen.getByTestId('tarjeta-ver-detalle'));
+      expect(screen.getByRole('img', { name: 'Foto de Carlos Dario Paredes' })).toHaveAttribute('src', photo);
+      expect(screen.getByRole('link', { name: 'Planta Huachipa' })).toHaveAttribute('href', map);
+    });
+
+    it('a photo that no longer loads falls back to the initials', () => {
+      renderDetail();
+      fireEvent.click(screen.getByTestId('tarjeta-ver-detalle'));
+      fireEvent.error(screen.getByRole('img', { name: 'Foto de Carlos Dario Paredes' }));
+      expect(screen.queryByRole('img', { name: 'Foto de Carlos Dario Paredes' })).toBeNull();
+      expect(screen.getByTestId('detalle-tarjeta').textContent).toContain('Carlos Dario Paredes');
+    });
+  });
 });

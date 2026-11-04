@@ -1,4 +1,5 @@
 import type { CardTone } from './bots.js';
+import type { ViewableFile } from './fileViewer.js';
 import { validateWeatherBlock, type WeatherBlock } from './weatherBlock.js';
 
 /**
@@ -15,6 +16,8 @@ export type TankItemBase = { name: string; level: number; min?: number; value: s
 export type TankDetailBlock = Exclude<BotBlock, { type: 'tank' }> | { type: 'tank'; items: TankItemBase[] };
 /** Tapping the tank opens it (José, 24/10): the big tank, its level, minimum, last reading. */
 export type TankItem = TankItemBase & { detail?: { title: string; blocks: TankDetailBlock[] } };
+/** What backs a mark, for a command's detail (José, 04/11): the photo and where it was signed. */
+export type PersonEvidence = { photo?: string; place?: string; map?: string };
 export type BotBlock =
   | { type: 'metric'; value: string; unit?: string; label?: string; tone: CardTone }
   | { type: 'chips'; items: { label: string; sub?: string; tone: CardTone }[] }
@@ -24,7 +27,7 @@ export type BotBlock =
   | { type: 'text'; text: string; tone: CardTone }
   | { type: 'rows'; rows: { label: string; value: string; sub?: string; bar?: number; tone: CardTone }[] }
   /** `times[i]` is the time of `names[i]`, as the app wrote it; '' when that person has none (José, 04/11). */
-  | { type: 'people'; names: string[]; times?: string[]; more?: number }
+  | { type: 'people'; names: string[]; times?: string[]; evidence?: PersonEvidence[]; more?: number }
   | { type: 'attachments'; count: number; label: string; url: string }
   | WeatherBlock;
 
@@ -84,12 +87,37 @@ function attachmentsBlock(raw: Record<string, unknown>): Result<BotBlock> {
   return { ok: true, value: { type: 'attachments', count, label: text(raw.label, BLOCK_LIMITS.short) || (count === 1 ? '1 adjunto' : `${count} adjuntos`), url } };
 }
 
-/** A blank name goes with its time: each time stays with its person. */
+const httpsLink = (value: unknown): string => {
+  const clean = text(value, BLOCK_LIMITS.url);
+  return clean.startsWith('https://') ? clean : '';
+};
+
+function evidenceOf(raw: unknown): PersonEvidence {
+  const sent = record(raw);
+  const photo = httpsLink(sent.photo);
+  const map = httpsLink(sent.map);
+  return { ...(photo ? { photo } : {}), ...withText('place', sent.place, BLOCK_LIMITS.label), ...(map ? { map } : {}) };
+}
+
+/** A blank name goes with its time and its evidence: each one stays with its person. */
 function peopleBlock(raw: Record<string, unknown>): Result<BotBlock> {
   const sentTimes = Array.isArray(raw.times) ? raw.times : [];
-  const people = list(raw.names, BLOCK_LIMITS.people).map((name, index) => ({ name: text(name, BLOCK_LIMITS.label), time: text(sentTimes[index], BLOCK_LIMITS.short) })).filter((person) => person.name);
+  const sentEvidence = Array.isArray(raw.evidence) ? raw.evidence : [];
+  const people = list(raw.names, BLOCK_LIMITS.people)
+    .map((name, index) => ({ name: text(name, BLOCK_LIMITS.label), time: text(sentTimes[index], BLOCK_LIMITS.short), evidence: evidenceOf(sentEvidence[index]) }))
+    .filter((person) => person.name);
   const times = people.map((person) => person.time);
-  return { ok: true, value: { type: 'people', names: people.map((person) => person.name), ...(times.some(Boolean) ? { times } : {}), ...(Number(raw.more) > 0 ? { more: Math.floor(Number(raw.more)) } : {}) } };
+  const evidence = people.map((person) => person.evidence);
+  return {
+    ok: true,
+    value: {
+      type: 'people',
+      names: people.map((person) => person.name),
+      ...(times.some(Boolean) ? { times } : {}),
+      ...(evidence.some((one) => Object.keys(one).length) ? { evidence } : {}),
+      ...(Number(raw.more) > 0 ? { more: Math.floor(Number(raw.more)) } : {}),
+    },
+  };
 }
 
 /** One block as the server keeps it, or null for an unknown type (ignored, not an error: newer apps may send more). */
@@ -169,6 +197,17 @@ export function peopleOnCard(block: Pick<PeopleBlock, 'names' | 'more'>): { name
 
 /** The time of the person at `index`; '' when the app did not send one. */
 export const personTime = (block: Pick<PeopleBlock, 'times'>, index: number): string => block.times?.[index] ?? '';
+
+/** The photo and the place of the person at `index`; empty when the app sent none. */
+export const personEvidence = (block: Pick<PeopleBlock, 'evidence'>, index: number): PersonEvidence => block.evidence?.[index] ?? {};
+
+/** Those with a photo, as the viewer swipes through them. */
+export function peoplePhotos(block: Pick<PeopleBlock, 'names' | 'evidence'>): ViewableFile[] {
+  return block.names.flatMap((name, index) => {
+    const url = personEvidence(block, index).photo;
+    return url ? [{ url, name: `Foto de ${name}`, mime: 'image/jpeg' }] : [];
+  });
+}
 
 /** The liquid inside a tank of `height`: where it starts and how tall it is. */
 export function tankFill(level: number, height: number): { y: number; height: number } {

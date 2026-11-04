@@ -1,5 +1,7 @@
-import { Paperclip } from 'lucide-react';
-import { peopleOnCard, personTime, shortPersonName, type BotBlock } from '@lilachat/shared';
+import { useState } from 'react';
+import { MapPin, Paperclip } from 'lucide-react';
+import { peopleOnCard, peoplePhotos, personEvidence, personTime, shortPersonName, type BotBlock, type PersonEvidence } from '@lilachat/shared';
+import { usePortalFileViewer } from '../../spaces/clients/PortalFileViewer';
 import { Avatar } from '../../ui/Avatar';
 import { BlockChart } from './BlockChart';
 import { BlockTank } from './BlockTank';
@@ -19,12 +21,51 @@ function PeopleOnCard({ block }: { block: PeopleBlock }) {
   );
 }
 
-/** In the detail: everybody with their whole name, one per row. */
+/** The photo of a mark; once its link expires, the initials again. */
+function MarkPhoto(props: { name: string; url: string; onOpen: () => void }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <Avatar name={props.name} size={26} />;
+  return (
+    <button type="button" data-testid="foto-de-marca" onClick={props.onOpen} className="shrink-0">
+      <img src={props.url} alt={`Foto de ${props.name}`} loading="lazy" referrerPolicy="no-referrer" onError={() => setFailed(true)} className="h-12 w-12 rounded-[10px] object-cover" />
+    </button>
+  );
+}
+
+/** Where it was signed; with a map link it opens the map. */
+function MarkPlace({ evidence }: { evidence: PersonEvidence }) {
+  const { map, place } = evidence;
+  if (!map && !place) return null;
+  const label = <><MapPin size={13} aria-hidden className="shrink-0" /><span className="truncate">{place ?? 'Ver en el mapa'}</span></>;
+  if (!map) return <span data-testid="lugar-de-marca" className="mt-0.5 flex items-center gap-1 text-[12px] text-on-surface-variant">{label}</span>;
+  return <a data-testid="lugar-de-marca" href={map} target="_blank" rel="noopener noreferrer" className="mt-0.5 flex w-fit max-w-full items-center gap-1 text-[12px] font-semibold text-primary">{label}</a>;
+}
+
+/** In the detail: everybody with their whole name, one per row, and what backs their mark when the app sends it (José, 04/11). */
 function PeopleList({ block }: { block: PeopleBlock }) {
+  const viewer = usePortalFileViewer();
+  const photos = peoplePhotos(block);
+  const show = (url: string) => {
+    const file = photos.find((one) => one.url === url);
+    if (file) viewer.open(file, photos);
+  };
   return (
     <div data-testid="bloque-personas" className="divide-y divide-outline/10">
-      {block.names.map((name, index) => <div key={`${name}-${index}`} className="flex min-h-[44px] items-center gap-3 py-1.5 text-[14px]"><Avatar name={name} size={26} /><span className="min-w-0 flex-1">{name}</span>{personTime(block, index) ? <span className="text-[13px] font-semibold tabular-nums">{personTime(block, index)}</span> : null}</div>)}
+      {block.names.map((name, index) => {
+        const evidence = personEvidence(block, index);
+        return (
+          <div key={`${name}-${index}`} className="flex min-h-[44px] items-center gap-3 py-1.5 text-[14px]">
+            {evidence.photo ? <MarkPhoto name={name} url={evidence.photo} onOpen={() => show(evidence.photo ?? '')} /> : <Avatar name={name} size={26} />}
+            <div className="min-w-0 flex-1">
+              <span className="block">{name}</span>
+              <MarkPlace evidence={evidence} />
+            </div>
+            {personTime(block, index) ? <span className="text-[13px] font-semibold tabular-nums">{personTime(block, index)}</span> : null}
+          </div>
+        );
+      })}
       {block.more ? <p className="py-2 text-[13px] text-on-surface-variant">{`y ${block.more} más`}</p> : null}
+      {viewer.viewer}
     </div>
   );
 }

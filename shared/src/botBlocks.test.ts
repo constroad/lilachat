@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { barColumns, barFractions, linePath, peopleOnCard, personTime, tankDeltaTrend, tankFill, tankPercent, validateBotBlocks, BLOCK_LIMITS, PEOPLE_ON_CARD } from './botBlocks.js';
+import { barColumns, barFractions, linePath, peopleOnCard, peoplePhotos, personEvidence, personTime, tankDeltaTrend, tankFill, tankPercent, validateBotBlocks, BLOCK_LIMITS, PEOPLE_ON_CARD } from './botBlocks.js';
 import { validateBotCard } from './bots.js';
 
 /** The card kit (§118.4, José 23/10): what agents and webhooks can draw in a card, validated once for server, app and web. */
@@ -152,5 +152,46 @@ describe('which way a tank went', () => {
 
   it('a text without a sign has no arrow', () => {
     expect(tankDeltaTrend('Sin cambios')).toBeNull();
+  });
+});
+
+/** José, 04/11: «no podemos ver donde firmaron la asistencia los trabajadores. ni las fotos». */
+describe('what backs a mark', () => {
+  const photo = 'https://inframaq.constroad.com/api/public/marca/abc?sig=1';
+  const map = 'https://maps.google.com/?q=-12.02,-77.02';
+  const people = (raw: Record<string, unknown>) => {
+    const result = validateBotBlocks([{ type: 'people', ...raw }], BLOCK_LIMITS.detailBlocks);
+    if (!result.ok) throw new Error(result.message);
+    return result.blocks[0] as Extract<(typeof result.blocks)[number], { type: 'people' }>;
+  };
+
+  it('each person keeps their photo and where they signed', () => {
+    const block = people({ names: ['Carlos Dario', 'Jensen Stewen'], evidence: [{ photo, place: 'Planta Huachipa', map }, { place: 'Obra Ate' }] });
+    expect(personEvidence(block, 0)).toEqual({ photo, place: 'Planta Huachipa', map });
+    expect(personEvidence(block, 1)).toEqual({ place: 'Obra Ate' });
+  });
+
+  it('a blank name takes its evidence with it, so nobody shows the photo of another', () => {
+    const block = people({ names: ['Ana', ' ', 'Beto'], evidence: [{ place: 'A' }, { place: 'B' }, { place: 'C' }] });
+    expect(block.names).toEqual(['Ana', 'Beto']);
+    expect(personEvidence(block, 1)).toEqual({ place: 'C' });
+  });
+
+  it('only an https link opens: anything else is dropped and the rest stays', () => {
+    const block = people({ names: ['Ana'], evidence: [{ photo: 'http://x/a.jpg', map: 'javascript:alert(1)', place: 'Planta' }] });
+    expect(personEvidence(block, 0)).toEqual({ place: 'Planta' });
+  });
+
+  it('a block with nothing to show stays as the installed apps know it', () => {
+    expect(people({ names: ['Ana'], evidence: [{}, 'x'] })).toEqual({ type: 'people', names: ['Ana'] });
+    expect(personEvidence({}, 0)).toEqual({});
+  });
+
+  it('the viewer swipes through those who have a photo, each with their name', () => {
+    const block = people({ names: ['Ana', 'Beto', 'Caro'], evidence: [{ photo }, { place: 'Planta' }, { photo: `${photo}2` }] });
+    expect(peoplePhotos(block)).toEqual([
+      { url: photo, name: 'Foto de Ana', mime: 'image/jpeg' },
+      { url: `${photo}2`, name: 'Foto de Caro', mime: 'image/jpeg' },
+    ]);
   });
 });

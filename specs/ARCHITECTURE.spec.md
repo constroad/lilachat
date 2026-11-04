@@ -416,6 +416,8 @@ Detalle en `specs/INGRESO-POR-ESPACIO.spec.md`. Lo que cambia en esta sección:
 - **Bloque `people`** (`shared/src/botBlocks.ts`): hasta 40 nombres; la tarjeta muestra 8
   con avatar y nombre corto (`peopleOnCard`), y el detalle los muestra todos. `times`, opcional y
   paralelo a `names`, trae la hora de cada persona (`BOTS-API.spec.md` §c-duodecies).
+  `evidence`, también paralelo, trae la foto y dónde firmó, y solo se dibuja en el detalle:
+  `MarkPhoto` abre el visor (`peoplePhotos`) y `MarkPlace` abre el mapa.
 - **Clientes de un espacio**: `clientsCache` en `app/src/spaces/spaceCache.ts`, y la lista
   espera a chats y clientes (`spaceListReady`) para no saltar al cargar.
 - **`audience` en los atajos del ⚡** (`AppShortcut`): `everyone` o `admins`, como valor por

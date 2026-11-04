@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
-import { Paperclip } from 'lucide-react-native';
-import { peopleOnCard, personTime, shortPersonName, type BotBlock } from '@lilachat/shared';
+import { Image } from 'expo-image';
+import { MapPin, Paperclip } from 'lucide-react-native';
+import { peopleOnCard, peoplePhotos, personEvidence, personTime, shortPersonName, type BotBlock, type PersonEvidence } from '@lilachat/shared';
+import { useFileViewer } from '../../spaces/clients/useFileViewer';
 import { Avatar } from '../../ui/Avatar';
 import { useColores } from '../../ui/tema';
 import { BlockChart } from './BlockChart';
@@ -9,6 +12,7 @@ import { BlockWeather } from './BlockWeather';
 import { TONE_CLASS, TONE_COLOR } from './tones';
 
 const PEOPLE_SIZE = 26;
+const MARK_PHOTO_SIZE = 48;
 type PeopleBlock = Extract<BotBlock, { type: 'people' }>;
 
 /** On the card: who it is at a glance, face and short name (José, 04/11). */
@@ -28,18 +32,55 @@ function PeopleOnCard({ block }: { block: PeopleBlock }) {
   );
 }
 
-/** In the detail: everybody with their whole name, one per row. */
+/** The photo of a mark; once its link expires, the initials again. */
+function MarkPhoto(props: { name: string; url: string; onOpen: () => void }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <Avatar nombre={props.name} tamano={PEOPLE_SIZE} />;
+  return (
+    <Pressable testID="foto-de-marca" accessibilityRole="imagebutton" accessibilityLabel={`Foto de ${props.name}`} onPress={props.onOpen}>
+      <Image source={{ uri: props.url }} onError={() => setFailed(true)} contentFit="cover" style={{ width: MARK_PHOTO_SIZE, height: MARK_PHOTO_SIZE, borderRadius: 10 }} />
+    </Pressable>
+  );
+}
+
+/** Where it was signed; with a map link it opens the map. */
+function MarkPlace({ evidence }: { evidence: PersonEvidence }) {
+  const colors = useColores();
+  const { map, place } = evidence;
+  if (!map && !place) return null;
+  return (
+    <Pressable testID="lugar-de-marca" disabled={!map} accessibilityRole={map ? 'link' : undefined} onPress={() => map && void Linking.openURL(map)} className="mt-0.5 flex-row items-center gap-1 self-start">
+      <MapPin size={13} color={colors[map ? 'primary' : 'on-surface-variant']} />
+      <Text numberOfLines={1} className={`shrink text-[12px] ${map ? 'font-semibold text-primary' : 'text-on-surface-variant'}`}>{place ?? 'Ver en el mapa'}</Text>
+    </Pressable>
+  );
+}
+
+/** In the detail: everybody with their whole name, one per row, and what backs their mark when the app sends it (José, 04/11). */
 function PeopleList({ block }: { block: PeopleBlock }) {
+  const viewer = useFileViewer();
+  const photos = peoplePhotos(block);
+  const show = (url: string) => {
+    const file = photos.find((one) => one.url === url);
+    if (file) viewer.open(file, photos);
+  };
   return (
     <View testID="bloque-personas">
-      {block.names.map((name, index) => (
-        <View key={`${name}-${index}`} className={`min-h-[44px] flex-row items-center gap-3 py-1.5 ${index ? 'border-t border-outline/10' : ''}`}>
-          <Avatar nombre={name} tamano={PEOPLE_SIZE} />
-          <Text className="min-w-0 flex-1 text-[14px] text-on-surface">{name}</Text>
-          {personTime(block, index) ? <Text className="text-[13px] font-semibold text-on-surface" style={{ fontVariant: ['tabular-nums'] }}>{personTime(block, index)}</Text> : null}
-        </View>
-      ))}
+      {block.names.map((name, index) => {
+        const evidence = personEvidence(block, index);
+        return (
+          <View key={`${name}-${index}`} className={`min-h-[44px] flex-row items-center gap-3 py-1.5 ${index ? 'border-t border-outline/10' : ''}`}>
+            {evidence.photo ? <MarkPhoto name={name} url={evidence.photo} onOpen={() => show(evidence.photo ?? '')} /> : <Avatar nombre={name} tamano={PEOPLE_SIZE} />}
+            <View className="min-w-0 flex-1">
+              <Text className="text-[14px] text-on-surface">{name}</Text>
+              <MarkPlace evidence={evidence} />
+            </View>
+            {personTime(block, index) ? <Text className="text-[13px] font-semibold text-on-surface" style={{ fontVariant: ['tabular-nums'] }}>{personTime(block, index)}</Text> : null}
+          </View>
+        );
+      })}
       {block.more ? <Text className="py-2 text-[13px] text-on-surface-variant">{`y ${block.more} más`}</Text> : null}
+      {viewer.viewer}
     </View>
   );
 }

@@ -894,6 +894,26 @@ acepta `times`, opcional y paralelo a `names`:
 - `names` no cambia. Un server o una APK que no conocen `times` lo ignoran y dibujan
   los nombres como siempre.
 
+### Dónde firmó y la foto (`evidence`)
+
+José, 04/11: en `/asistencia` no se ve dónde firmaron ni las fotos. `evidence`, opcional
+y paralelo a `names`, lleva lo que respalda cada marca:
+```
+{ "type": "people", "names": ["Carlos Dario Paredes"], "times": ["07:12"],
+  "evidence": [ { "photo": "https://…", "place": "Planta Huachipa", "map": "https://maps.google.com/?q=-12.02,-77.02" } ] }
+```
+- Solo se dibuja en el `detail`: la foto como miniatura, que abre el visor, y el lugar
+  debajo del nombre, que abre `map`. En la tarjeta quedan la cara y el nombre.
+- `photo` y `map` tienen que ser `https://`, hasta 500 caracteres; otra cosa se descarta.
+  `place` hasta 40. Sin `place`, el enlace dice «Ver en el mapa».
+- La foto la pide el teléfono de quien mira, sin sesión de la app: `photo` tiene que abrir
+  sola, con un enlace firmado. Si ya no abre, vuelven las iniciales.
+- Es dato personal: va solo en la respuesta del comando, con `shareable: false`, nunca en
+  un aviso al canal, y solo para quien tiene permiso de ver asistencia. Lilachat no puede
+  decidir esto: lo garantiza la app que arma la tarjeta.
+- Una tarjeta pesa hasta 16 KB contando su detalle.
+- Un server o una APK que no conocen `evidence` lo ignoran.
+
 El `delta` de un tanque va destacado desde el mismo día: acento, tamaño propio y una
 flecha si empieza con `−`, `-` o `+`. El texto lo escribe la app, hasta 24 caracteres.
 

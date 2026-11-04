@@ -439,6 +439,62 @@ sobrevive reintentos; respuesta duplicada = ÉXITO; 401 vacía la cola; 4xx
 permanente descarta con motivo visible (anti-wedge); persiste en
 expo-sqlite/IndexedDB.
 
+### 6.4 La sesión mientras el proceso vive (04/11/2026)
+
+El JWT dura 24 h (`SESSION_TTL`, `server/src/sessions.ts`). La app lo renovaba
+solo al arrancar, así que un proceso vivo más de 24 h se quedaba con un token
+vencido.
+
+**El incidente.** En el emulador, el 04/11, un proceso vivo 27 h 26 min quedó en
+«Conectando…» con el server sano y la cola con el reloj. socket.io no reintenta
+un handshake que el server rechaza: da `connect_error`, deja `active = false` y
+nadie vuelve a llamar. Se reprodujo contra producción con un token inventado:
+1 intento, `unauthorized` a los 877 ms y ningún reintento en 12 s. Reiniciar lo
+curaba porque el arranque renueva. No hay registro del momento exacto en que
+cayó el socket: por eso ahora se anota el motivo.
+
+**Cómo funciona ahora.**
+
+| Qué pasa | Qué hace la app |
+| --- | --- |
+| Vuelve a primer plano y pasaron 12 h de la última renovación | Renueva antes de que venza |
+| El server rechaza el socket (`unauthorized`) | Renueva al instante, aunque la sesión parezca reciente |
+| Sin señal, o el server rechaza también el token nuevo | Reintenta cada 30 s, nunca en bucle |
+| 401 al renovar | Dispositivo revocado: borra la sesión, igual que al arrancar |
+| Sale de primer plano | Para los reintentos, salvo con «Conexión permanente» |
+| Se cierra sesión con una renovación en el aire | Descarta la respuesta y no guarda nada |
+
+Código: `app/src/auth/sessionRenewal.ts` (motor puro), `useSessionRenewal.ts`,
+`socketClient.ts` (`onSessionRejected`) y `connectErrorLog.ts`. La conducta de
+socket.io en la que se apoya tiene su test contra un socket real:
+`server/src/socketRefusal.test.ts`. La web ya se recuperaba sola
+(`web/src/useSocket.ts`).
+
+**Diagnóstico.** Cada `connect_error` queda con origen `socket`: solo letras, sin
+números ni direcciones, y una línea por motivo y caída. `sesion-renovada` anota
+cuánto tardó cada renovación.
+
+**Ventanas conocidas.**
+
+- Si la renovación termina mientras sigue en vuelo un handshake con el token
+  viejo, ese intento falla y el socket espera hasta 30 s.
+- Si la app sale al fondo justo cuando llega la renovación, el socket se
+  reconecta atrás (el mismo camino del arranque) y ese rato no hay push.
+- REST no renueva por su cuenta: una app 24 h seguidas en primer plano, sin ir
+  al fondo, llega con el token vencido hasta que el socket se cae o vuelve.
+- Con la red de vuelta, reconectar puede tardar hasta 30 s: es la espera de
+  socket.io (`reconnectionDelayMax`). La app no escucha el regreso de la red.
+
+**Probado** (OTA `6af04d38`, emulador, Test #general). Con la app abierta se cortó
+wifi y datos 63 s y se mandó un texto: quedó en la cola y el aviso de conexión
+visible. Al volver la red reconectó en 35 s con el mismo proceso, el texto salió
+solo y Diagnóstico anotó una línea: `ERROR · socket · websocket error`.
+
+**No probado en la app instalada.** El rechazo por token vencido: no se puede
+vencer un JWT real ni mover el reloj del emulador. Lo cubren el motor y el test
+contra socket.io real. La renovación por tiempo se verá como `sesion-renovada`
+en Diagnóstico, al volver a la app 12 h o más después de abrirla.
+
 ## 7. Modelo de datos (Mongo, `lilachat_db`)
 
 ```ts

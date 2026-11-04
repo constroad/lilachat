@@ -197,7 +197,12 @@ esté vigente ese día.
 
 ## 5. Avance
 
-### Estado por fase (03/11/2026, 03:50)
+### Estado por fase (04/11/2026, 08:00)
+
+> **Corrección del 04/11.** Las cifras de cuadros caídos (JS y UI) de §5.1 a §5.9
+> y de esta tabla están infladas: el medidor contaba cuadros normales como
+> caídos (§5.10). Los milisegundos con nombre, las cuentas de celdas y filas y
+> `gfxinfo` siguen valiendo.
 
 | Fase | Estado | Falta |
 | --- | --- | --- |
@@ -224,6 +229,7 @@ esté vigente ese día.
 | 03/11/2026 | F1 + F4 | OTA `84a5591b` (git afbd775): cada paso del envío de un texto con nombre y «Programar mensaje» con arrastre (cierra arrastrando, tocando el fondo y con atrás; el borrador queda). La medida mostró 147 celdas pedidas por envío. OTA `cdc96f59` (git 6fd6fdb): una celda por fila con lo que cambia su aspecto (`messageCells`, 16 tests) y el dibujo en `drawMessageCell`; 4 celdas por envío. rn-smoke 3/3 antes de cada OTA (heap 18 y 28 MB), medida en §5.9 |
 | 03/11/2026 | F4 | OTA `eaa9ac0d` (runtime 51e099b7, git aa2d248): un mensaje nuevo redibuja solo su fila. Tocar una cita y responder salen de refs; álbumes y citas iguales conservan su objeto (`keptValues`, con tests); pastilla de reacciones, chip del hilo y celda del sticker memorizados. Diagnóstico cuenta «Filas N×». rn-smoke 3/3 (heap 19 MB), medida en §5.7 |
 | 02/11/2026 | F4 + F5 | `main` para el APK 0.1.179 (180): F5a y F5b integradas; cerrar el panel ya no redibuja la grilla de stickers ni la lista del chat (los dos se suscriben al panel sin estado, `subscribeEmojiPanel` con tests; panel memorizado con callbacks estables); el guiño entra un cuadro después del cierre del panel; textos vacíos con «aquí». E2E de la mudanza con el historial real del emulador, rn-smoke 3/3 (heap 19 MB), medida en §5.5. Publicada en LilaStore |
+| 04/11/2026 | F0 + F4 | OTA `6af04d38` (runtime 51e099b7, git 9753a37): medidor de cuadros corregido (§5.10) y la sesión que se renueva sola, con el socket rechazado que se recupera (ARCHITECTURE §6.4). rn-smoke 3/3; E2E de reconexión con la cola en el emulador |
 
 ### 5.1 Línea base (02/11/2026, antes de F1)
 
@@ -622,15 +628,12 @@ de lo que es del chat (quién soy, nombres, selección, callbacks). Ya no usa el
 | | Antes (`84a5591b`) | Después (`cdc96f59`) |
 | --- | --- | --- |
 | Celdas pedidas por envío | 147 | 4 |
-| Cuadros JS (mediana · peor) | 53 · 73 | 34 · 64 |
-| Cuadros UI (mediana · peor) | 3 · 8 | 14 · 14 |
 | Chat | 3× 159 ms | 3× 141 ms |
 
 Las filas se siguen agrupando bien: el texto nuevo se cuelga del anterior sin
-repetir el nombre, y el chip «Hoy» queda donde va (captura del emulador). Los
-cuadros UI subieron con la Mac cargada: hay que repetirlo con la Mac libre
-antes de leerlo como regresión. **Sigue:** `ChatScreen` hace 3 renders por
-envío y es casi todo el JS que queda.
+repetir el nombre, y el chip «Hoy» queda donde va (captura del emulador). Esta
+tabla traía también cuadros JS y UI: se quitaron porque el medidor estaba mal
+(§5.10), y «53 → 34» no era una mejora medida.
 
 **«Programar mensaje»** (OTA `84a5591b`): se abre con un toque largo en
 enviar.
@@ -646,3 +649,33 @@ todos»; el borrador de la prueba se borró sin enviarlo. La app quedó en
 Constroad. rn-smoke 3/3 antes de cada OTA; el primer intento de `cdc96f59`
 dio 502 (el server se redesplegaba por el push) y se repitió el smoke antes
 de volver a publicar.
+
+### 5.10 El medidor contaba cuadros de más (OTA `6af04d38`, 04/11/2026)
+
+**El error.** El intervalo de pantalla salía del delta más corto de la ventana.
+Un solo cuadro pegado al anterior lo bajaba a 8 ms, y los cuadros normales de
+16 ms contaban como caídos. El test lo mostró: 35 de 70 caídos en una ventana
+sana. Ahora sale de la mediana alta (git 9ff267b), y Diagnóstico suma la pausa
+más larga del hilo JS en milisegundos.
+
+**Qué se cae y qué queda.** Se caen todas las cifras de cuadros caídos anteriores,
+incluida la mejora «53 → 34» de §5.9. Quedan los pasos con nombre, las celdas
+(147 → 4), las filas (2) y `gfxinfo`.
+
+**Medida con el medidor corregido** (3 textos en #general de Test, teclado
+abierto, app conectada). La Mac estaba con load average ~20 por otra sesión:
+sirve como techo, no como número final.
+
+| Interacción | JS: mediana · peor · pausa más larga | UI: mediana · peor |
+| --- | --- | --- |
+| Enviar un mensaje | 9 · 10 · 89 ms | 9 · 11 |
+| Abrir el teclado | 2 · 3 · 51 ms | 2 · 7 |
+| Cerrar el teclado | 3 · 4 · 98 ms | 2 · 3 |
+| Abrir una hoja | 4 · 4 · 67 ms | 4 · 4 |
+
+El envío sigue en 4 celdas y 2 filas, y `Chat` en 3 renders y 126 ms. **Sigue:**
+repetirla con la Mac libre antes de decidir si vale la pena bajar los 3 renders
+de `ChatScreen`.
+
+QA: los 5 textos de esta medida y de la prueba de reconexión (seq 131 a 135)
+borrados con «Eliminar para todos». rn-smoke 3/3 antes del OTA.

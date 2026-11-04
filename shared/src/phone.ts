@@ -35,8 +35,20 @@ export function toInternationalPhone(input: unknown): string {
   return local ? `51${local}` : '';
 }
 
+const INTERNAL_KEY = /^(mail|app):/;
+
+/**
+ * The `phone` of an account born from an email (spec INGRESO-POR-ESPACIO §4). The
+ * field is required and unique, so it keeps a key, as bots do. It stays inside.
+ */
+export const internalPhoneKey = (accountId: string): string => `mail:${accountId}`;
+
+/** False for an internal key: nothing to show, dial or match against the contacts. */
+export const isRealPhone = (phone: unknown): boolean => !INTERNAL_KEY.test(String(phone ?? '')) && Boolean(normalizePeruPhone(phone));
+
 /** Como se lee en pantalla: `987 654 321`. */
 export function formatPhoneDisplay(input: unknown): string {
+  if (INTERNAL_KEY.test(String(input ?? ''))) return '';
   const local = normalizePeruPhone(input);
   if (!local) return String(input ?? '');
   return `${local.slice(0, 3)} ${local.slice(3, 6)} ${local.slice(6)}`;

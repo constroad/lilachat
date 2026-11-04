@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import mongoose from 'mongoose';
 import type { AuthClient } from './authClient.js';
 import { esDispositivoVinculado, normalizePeruPhone } from '@lilachat/shared';
@@ -7,12 +7,14 @@ import {
   GENERIC_VERIFY_ERROR,
   backupEmailOf,
   decideOtpRequest,
+  normalizeEmail,
   resolveOtpTarget,
   resolveVerifyTargets,
 } from './invitationGate.js';
 import { claimPhoneInvites } from './workspaces.js';
 import { announceJoin } from './joinNotice.js';
-import { DeviceModel, InvitationModel, UserModel } from './models.js';
+import { accountOfEmail } from './emailAccounts.js';
+import { DeviceModel, InvitationModel, UserModel, type User } from './models.js';
 import { signSession } from './sessions.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { alertarServidor } from './alertaTelegram.js';
@@ -36,6 +38,29 @@ import { avisarCambioDeVinculos, desconectarDispositivo } from './socket.js';
  * de poder entrar.
  */
 const REGISTRO_ABIERTO = true;
+
+/** The service did not refuse the code: it did not answer, and that is a retry. */
+function refuseCode(res: Response, codigo: string) {
+  if (codigo === 'sin_respuesta' || codigo === 'sin_configurar') {
+    return res.status(503).json({ message: 'No se pudo verificar. Inténtalo de nuevo.' });
+  }
+  return res.status(401).json(GENERIC_VERIFY_ERROR);
+}
+
+/** How every sign-in ends: the device stays with its account and the session opens. */
+async function openSession(req: Request, res: Response, user: User, deviceId: string, deviceSecret?: string) {
+  await DeviceModel.findOneAndUpdate({ deviceId }, { deviceId, userId: user._id, lastSeenAt: new Date() }, { upsert: true });
+  // La web (W0): el secreto va en una cookie HttpOnly y NO en el cuerpo.
+  const esWeb = req.body?.cliente === 'web';
+  if (esWeb && deviceSecret) {
+    res.setHeader('Set-Cookie', cookieDeDispositivo({ deviceId, deviceSecret, segura: pedidoSeguro(req) }));
+  }
+  return res.status(200).json({
+    ...(esWeb ? {} : { deviceSecret }),
+    jwt: signSession({ userId: String(user._id), deviceId, email: user.email ?? user.phone }),
+    user: { id: String(user._id), name: user.name ?? null, phone: user.phone, avatarUrl: user.avatarUrl ? toAbsoluteMediaUrl(user.avatarUrl) : null },
+  });
+}
 
 export function buildAuthRouter(authClient: AuthClient): Router {
   const router = Router();
@@ -125,12 +150,7 @@ export function buildAuthRouter(authClient: AuthClient): Router {
       if (verified.ok) break;
       verified = await authClient.verifyCode(target, code, deviceId);
     }
-    if (!verified.ok) {
-      if (verified.codigo === 'sin_respuesta' || verified.codigo === 'sin_configurar') {
-        return res.status(503).json({ message: 'No se pudo verificar. Inténtalo de nuevo.' });
-      }
-      return res.status(401).json(GENERIC_VERIFY_ERROR);
-    }
+    if (!verified.ok) return refuseCode(res, verified.codigo);
 
     const name = typeof req.body?.name === 'string' ? req.body.name.trim() : undefined;
     const user = await UserModel.findOneAndUpdate(
@@ -146,22 +166,29 @@ export function buildAuthRouter(authClient: AuthClient): Router {
     void announceJoin(user._id).catch((error) => console.error('[se-unio] no se pudo avisar:', error instanceof Error ? error.message : error));
     // Spaces that added this phone before it had an account (E1): it joins them now.
     await claimPhoneInvites(user._id, phone).catch((error) => console.error('[workspaces] no se pudieron reclamar invitaciones:', error instanceof Error ? error.message : error));
-    await DeviceModel.findOneAndUpdate(
-      { deviceId },
-      { deviceId, userId: user._id, lastSeenAt: new Date() },
-      { upsert: true }
-    );
+    return openSession(req, res, user, deviceId, verified.valor.secreto);
+  });
 
-    // La web (W0): el secreto va en una cookie HttpOnly y NO en el cuerpo.
-    const esWeb = req.body?.cliente === 'web';
-    if (esWeb && verified.valor.secreto) {
-      res.setHeader('Set-Cookie', cookieDeDispositivo({ deviceId, deviceSecret: verified.valor.secreto, segura: pedidoSeguro(req) }));
+  /** Sign-in by email (spec INGRESO-POR-ESPACIO): same anti-enumeration answer as the phone. */
+  router.post('/email/request', async (req, res) => {
+    const email = normalizeEmail(req.body?.email);
+    if (!email) return res.status(400).json({ message: 'Escribe un correo válido.' });
+    const sent = await authClient.requestCode(email);
+    if (!sent.ok) {
+      console.error(`[auth] pedido de código falló por email (${sent.codigo})`);
+      alertarServidor('email/request', new Error(`No se pudo enviar el código de acceso: ${sent.codigo}`));
     }
-    return res.status(200).json({
-      ...(esWeb ? {} : { deviceSecret: verified.valor.secreto }),
-      jwt: signSession({ userId: String(user._id), deviceId, email: user.email ?? phone }),
-      user: { id: String(user._id), name: user.name ?? null, phone, avatarUrl: user.avatarUrl ? toAbsoluteMediaUrl(user.avatarUrl) : null },
-    });
+    return res.status(200).json(GENERIC_OTP_RESPONSE);
+  });
+
+  router.post('/email/verify', async (req, res) => {
+    const email = normalizeEmail(req.body?.email);
+    const code = String(req.body?.code ?? '').trim();
+    const deviceId = String(req.body?.deviceId ?? '').trim();
+    if (!email || !code || !deviceId) return res.status(400).json({ message: 'Faltan datos.' });
+    const verified = await authClient.verifyCode(email, code, deviceId);
+    if (!verified.ok) return refuseCode(res, verified.codigo);
+    return openSession(req, res, await accountOfEmail(email), deviceId, verified.valor.secreto);
   });
 
   router.post('/session', async (req, res) => {

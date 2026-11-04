@@ -35,8 +35,8 @@ export function normalizeEmail(raw: unknown): string {
   return email.length <= EMAIL_MAX && EMAIL.test(email) ? email : '';
 }
 
-export function profileMissing(profile: { name?: string | null; birthday?: Birthday | null }): ProfileField[] {
-  return [...(profile.name?.trim() ? [] : ['name' as const]), ...(profile.birthday ? [] : ['birthday' as const])];
+export function profileMissing(profile: { name?: string | null; birthday?: Birthday | null; birthdayOptional?: boolean }): ProfileField[] {
+  return [...(profile.name?.trim() ? [] : ['name' as const]), ...(profile.birthday || profile.birthdayOptional ? [] : ['birthday' as const])];
 }
 
 /** The backup is the one thing that asks for a verified email: it is where the account is reached to get its copy back. */

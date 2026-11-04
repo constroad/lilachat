@@ -18,7 +18,7 @@ import {
   WorkspaceError,
 } from './workspaces.js';
 import { createChannel, deleteChannel, joinChannel, listChannels } from './workspaceChannels.js';
-import { emailInvitesOf, inviteByEmail, revokeEmailInvite } from './workspaceEmailInvites.js';
+import { acceptInvitation, emailInvitesOf, invitationsOf, inviteByEmail, revokeEmailInvite } from './workspaceEmailInvites.js';
 import { type MediaUploader } from './mediaClient.js';
 import { defaultMediaUploader } from './localMediaUploader.js';
 import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
@@ -59,6 +59,8 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
   router.post('/', handled(async (req, res) => res.status(201).json({ workspace: await createWorkspace(me(req), req.body ?? {}) })));
   router.get('/preview/:code', limited, handled(async (req, res) => res.json(await previewByCode(req.params.code))));
   router.post('/join', limited, handled(async (req, res) => res.json(await joinByCode(me(req), req.body?.code))));
+  router.get('/invitations', handled(async (req, res) => res.json({ invitations: await invitationsOf(me(req)) })));
+  router.post('/invitations/:id/accept', handled(async (req, res) => res.json(await acceptInvitation(req.params.id!, me(req)))));
   // The logo (design e1-12): an image, kept relative like every media and served absolute.
   router.post('/:id/logo', multerDeAvatar.single('file'), handled(async (req, res) => {
     await logoEditor(req.params.id!, me(req));

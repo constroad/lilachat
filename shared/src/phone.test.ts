@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatPhoneDisplay, normalizePeruPhone, toInternationalPhone } from './phone.js';
+import { formatPhoneDisplay, internalPhoneKey, isRealPhone, normalizePeruPhone, toInternationalPhone } from './phone.js';
 
 describe('normalizePeruPhone', () => {
   it('acepta el celular escrito como sea', () => {
@@ -43,5 +43,22 @@ describe('formatPhoneDisplay', () => {
 
   it('lo que no es número se muestra tal cual, sin inventar formato', () => {
     expect(formatPhoneDisplay('abc')).toBe('abc');
+  });
+});
+
+describe('internal key of an email account (spec INGRESO-POR-ESPACIO §4)', () => {
+  it('is not a real phone, not even when its digits would form one', () => {
+    expect(isRealPhone(internalPhoneKey('902049935'))).toBe(false);
+    expect(isRealPhone('app:902049935:1')).toBe(false);
+    expect(isRealPhone(undefined)).toBe(false);
+  });
+
+  it('a stored phone is a real phone', () => {
+    expect(isRealPhone('902049935')).toBe(true);
+  });
+
+  it('never shows on screen', () => {
+    expect(formatPhoneDisplay(internalPhoneKey('6adbb02ec9d066b069307eb4'))).toBe('');
+    expect(formatPhoneDisplay('902049935')).toBe('902 049 935');
   });
 });

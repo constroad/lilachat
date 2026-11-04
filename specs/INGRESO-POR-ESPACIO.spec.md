@@ -5,7 +5,7 @@
 > del mismo día: seguir el patrón de Slack, dejar teléfono y código como opción,
 > y mantener un enlace discreto para usar la app sin espacio.
 >
-> **Estado:** diseños generados, pendientes de aprobación de José. Sin código.
+> **Estado:** pantallas y clave interna aprobadas por José el 04/11. En construcción.
 
 ## 1. Cómo lo hace Slack
 
@@ -63,12 +63,27 @@ una clave interna, como ya hacen los bots («its `phone` is an internal key»). 
 función de `shared` dice si es un teléfono real, y la interfaz no lo muestra ni lo
 cruza con la agenda. Esas cuentas tienen el correo verificado por el código.
 
+### Lo que quedó decidido al construirlo
+
+- **Rutas aparte para el correo.** Las de teléfono no cambian: una app vieja sigue
+  entrando igual. Las dos terminan en la misma función, `openSession`.
+- **La clave interna** es `mail:<uuid>` (`internalPhoneKey`). `isRealPhone` dice si
+  un `phone` es de verdad, y `formatPhoneDisplay` devuelve vacío para una clave.
+- **El correo es único entre cuentas.** Quien prueba el código se queda con él,
+  y la cuenta que lo tenía sin verificar lo suelta, como en `profileRoutes.ts`.
+- **La invitación por correo espera a «Unirme»**, como el Join de Slack. Entrar por
+  correo no une a nadie. Verificar el correo en el perfil sigue uniendo solo.
+- **El cumpleaños no se le pide a una cuenta de correo.** `i-04` pide solo el nombre,
+  así que `missing` no incluye `birthday` si el `phone` es una clave interna.
+- **Si el registro se cierra**, `/email/verify` también tiene que cerrarse: hoy crea
+  la cuenta sin mirar `REGISTRO_ABIERTO`.
+
 ## 5. Fases
 
 | Fase | Qué | Sale por |
 | --- | --- | --- |
-| I1 | Server: `/otp/request` y `/otp/verify` con `email`; entra una cuenta con ese correo verificado | Server |
-| I2 | Server: cuenta nueva por correo con clave interna; reclamar invitaciones por correo; lista de espacios e invitaciones | Server |
+| I1 | Server: `/api/auth/email/request` y `/api/auth/email/verify`; entra la cuenta que verificó ese correo | Server. **Hecho** |
+| I2 | Server: cuenta nueva por correo con clave interna; `GET /api/workspaces/invitations` y `POST /api/workspaces/invitations/:id/accept` | Server. **Hecho** |
 | I3 | App: las cuatro pantallas y el orden nuevo | APK, para que quien instala la vea desde el inicio |
 | I4 | Web: las mismas pantallas | Server |
 | I5 | Revisión de la clave interna en perfil, directorio, agenda, avisos y admin | Server y OTA |
@@ -82,7 +97,7 @@ cruza con la agenda. Esas cuentas tienen el correo verificado por el código.
 - La ruta real por correo necesita una cuenta que José elija o una prueba suya en
   su teléfono.
 
-## 7. Decisiones pendientes de José
+## 7. Decisiones de José (04/11)
 
-1. Aprobar las cuatro pantallas.
-2. Aprobar la clave interna de §4, o pedir la migración completa a `phone` opcional.
+1. Las cuatro pantallas: aprobadas.
+2. La clave interna de §4: aprobada, sin agregar complejidad innecesaria.

@@ -1,5 +1,5 @@
 import { Router, type Request, type Response } from 'express';
-import { normalizeEmail, profileMissing, validarNombreDePerfil, validateBirthday, type Birthday } from '@lilachat/shared';
+import { isRealPhone, normalizeEmail, profileMissing, validarNombreDePerfil, validateBirthday, type Birthday } from '@lilachat/shared';
 import type { AuthClient } from './authClient.js';
 import { announceJoin } from './joinNotice.js';
 import { claimEmailInvites } from './workspaceEmailInvites.js';
@@ -33,7 +33,8 @@ function profileView(user: ProfileUser) {
     emailVerified,
     birthday: user.birthday ?? null,
     birthdayVisible: user.birthdayVisible !== false,
-    missing: profileMissing({ name: user.name, birthday: user.birthday }),
+    // «Crea tu usuario» (design i-04) asks for the name alone: the birthday belongs to the phone accounts.
+    missing: profileMissing({ name: user.name, birthday: user.birthday, birthdayOptional: !isRealPhone(user.phone) }),
   };
 }
 

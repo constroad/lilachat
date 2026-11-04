@@ -1,8 +1,9 @@
 import { Types } from 'mongoose';
-import { canManageMembers } from '@lilachat/shared';
+import { canManageMembers, type SpaceInvitation } from '@lilachat/shared';
 import { normalizeEmail } from './invitationGate.js';
+import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { UserModel } from './models.js';
-import { WorkspaceEmailInviteModel, WorkspaceMemberModel, type WorkspaceMember } from './workspaceModels.js';
+import { WorkspaceEmailInviteModel, WorkspaceMemberModel, WorkspaceModel, type WorkspaceMember } from './workspaceModels.js';
 import { welcomeToGeneral } from './workspaceGeneral.js';
 import { noticeSpacesChanged } from './workspaceNotices.js';
 import { actorIn, cleanText, ONLY_ADMINS, WorkspaceError } from './workspaces.js';
@@ -87,4 +88,40 @@ export async function claimEmailInvites(userId: Types.ObjectId, email: string): 
   }
   await WorkspaceEmailInviteModel.deleteMany({ _id: { $in: invites.map((invite) => invite._id) } });
   return admitted;
+}
+
+async function verifiedAccount(userId: Types.ObjectId) {
+  return UserModel.findOne({ _id: userId, emailVerifiedAt: { $exists: true } }).select('_id phone email').lean();
+}
+
+/** «Tus espacios» (design i-03): whoever signs in by email sees them and chooses, like Slack's Join. */
+export async function invitationsOf(userId: Types.ObjectId): Promise<SpaceInvitation[]> {
+  const account = await verifiedAccount(userId);
+  if (!account?.email) return [];
+  const invites = await WorkspaceEmailInviteModel.find({ email: account.email }).sort({ createdAt: 1 }).lean();
+  const [workspaces, inviters] = await Promise.all([
+    WorkspaceModel.find({ _id: { $in: invites.map((invite) => invite.workspaceId) } }).select('name logoUrl').lean(),
+    UserModel.find({ _id: { $in: invites.map((invite) => invite.addedBy) } }).select('name').lean(),
+  ]);
+  const spaces = new Map(workspaces.map((workspace) => [String(workspace._id), workspace]));
+  const names = new Map(inviters.map((inviter) => [String(inviter._id), inviter.name]));
+  return invites.flatMap((invite) => {
+    const space = spaces.get(String(invite.workspaceId));
+    if (!space) return [];
+    const logoUrl = space.logoUrl ? toAbsoluteMediaUrl(space.logoUrl) : undefined;
+    return [{ id: String(invite._id), workspace: { id: String(space._id), name: space.name, ...(logoUrl ? { logoUrl } : {}) }, invitedBy: names.get(String(invite.addedBy)) ?? null }];
+  });
+}
+
+export async function acceptInvitation(inviteId: string, userId: Types.ObjectId): Promise<{ workspaceId: string }> {
+  const account = await verifiedAccount(userId);
+  const invite = account?.email && Types.ObjectId.isValid(inviteId) ? await WorkspaceEmailInviteModel.findOne({ _id: inviteId, email: account.email }).lean() : null;
+  if (!account || !invite) throw new WorkspaceError(404, 'Esa invitación ya no está.');
+  try {
+    await admitAccount(invite.workspaceId, account, invite.addedBy, fieldsOf(invite));
+  } finally {
+    // Someone deactivated in that space gets the refusal once: the invitation does not stay stuck.
+    await WorkspaceEmailInviteModel.deleteOne({ _id: invite._id });
+  }
+  return { workspaceId: String(invite.workspaceId) };
 }

@@ -116,6 +116,9 @@ export type ClientWorkspaceMember = {
 };
 
 /** What a code shows before joining (`GET /api/workspaces/preview/:code`). */
+/** An email invitation waiting for «Unirme» (design i-03). */
+export type SpaceInvitation = { id: string; workspace: { id: string; name: string; logoUrl?: string }; invitedBy: string | null };
+
 export type WorkspacePreview = { id: string; name: string; rubro?: string; logoUrl?: string; members: number; joinPolicy: JoinPolicy };
 
 /** A channel of a space as exploring lists it (design `e2-15-explorar-canales`). */

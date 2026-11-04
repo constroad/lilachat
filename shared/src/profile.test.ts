@@ -31,6 +31,8 @@ describe('profile', () => {
     expect(profileMissing({})).toEqual(['name', 'birthday']);
     expect(profileMissing({ name: ' ', birthday: { day: 29, month: 8 } })).toEqual(['name']);
     expect(profileMissing({ name: 'José', birthday: { day: 29, month: 8 } })).toEqual([]);
+    expect(profileMissing({ name: 'Ana', birthdayOptional: true })).toEqual([]);
+    expect(profileMissing({ birthdayOptional: true })).toEqual(['name']);
   });
 
   it('the birthday as people say it', () => {

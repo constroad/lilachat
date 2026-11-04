@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Pressable, ScrollView, Text, ToastAndroid, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { ArrowLeft, Briefcase, Calendar, Copy, Hash, MessageCircle, Smartphone } from 'lucide-react-native';
-import { formatPhoneDisplay, joinedLabel, type ClientWorkspace, type ClientWorkspaceMember } from '@lilachat/shared';
+import { formatPhoneDisplay, isRealPhone, joinedLabel, type ClientWorkspace, type ClientWorkspaceMember } from '@lilachat/shared';
 import { Modal } from '../ui/Modal';
 import { useColores } from '../ui/tema';
 import { useMargenes } from '../ui/useMargenes';
@@ -67,9 +67,9 @@ export function MemberProfileScreen(props: { space: ClientWorkspace; member: Cli
           <View className="mt-4 rounded-2xl border border-outline/15 bg-surface px-4 pb-1 pt-4">
             <Text className="text-[11px] font-bold uppercase tracking-widest text-primary">Datos</Text>
             <Text className="mb-2 text-[17px] font-bold text-on-surface">Información laboral</Text>
-            {row(Smartphone, 'Teléfono', formatPhoneDisplay(member.phone), (
+            {isRealPhone(member.phone) ? row(Smartphone, 'Teléfono', formatPhoneDisplay(member.phone), (
               <Pressable testID="perfil-copiar-telefono" onPress={() => void copyPhone()} accessibilityLabel="Copiar teléfono" className="h-11 w-11 items-center justify-center"><Copy size={18} color={colors.primary} /></Pressable>
-            ))}
+            )) : null}
             {member.joinedAt ? row(Calendar, 'Se unió', joinedLabel(member.joinedAt)) : null}
             {member.area ? row(Briefcase, 'Área', member.area) : null}
           </View>

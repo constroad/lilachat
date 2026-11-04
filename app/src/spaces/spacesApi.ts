@@ -1,5 +1,5 @@
 import type { AppLink } from '@lilachat/shared';
-import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, SpaceAppDirectory, TopicRoute, AppChannel, AppItemRow, AppItemSetting, AppSchedules, ScheduleRow, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
+import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, SpaceInvitation, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, SpaceAppDirectory, TopicRoute, AppChannel, AppItemRow, AppItemSetting, AppSchedules, ScheduleRow, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
 import { BASE_URL, type ChatSummary } from '../api/client';
 import { jsonCall } from '../api/jsonCall';
 import { subirFotoRedonda } from '../chat/fotoDeGrupo';
@@ -9,6 +9,8 @@ const url = (path: string) => `${BASE_URL}/api/workspaces${path}`;
 const post = (body: Record<string, unknown>) => ({ method: 'POST', body: JSON.stringify(body) });
 
 export const mySpaces = (jwt: string) => jsonCall<{ workspaces: ClientWorkspace[] }>(url(''), jwt);
+export const spaceInvitations = (jwt: string) => jsonCall<{ invitations: SpaceInvitation[] }>(url('/invitations'), jwt);
+export const acceptSpaceInvitation = (jwt: string, invitationId: string) => jsonCall<{ workspaceId: string }>(url(`/invitations/${invitationId}/accept`), jwt, post({}));
 export const previewSpace = (jwt: string, code: string) => jsonCall<WorkspacePreview>(url(`/preview/${encodeURIComponent(code)}`), jwt);
 export const joinSpace = (jwt: string, code: string) => jsonCall<{ workspaceId: string; status: WorkspaceMemberStatus }>(url('/join'), jwt, post({ code }));
 export const createSpace = (jwt: string, input: { name: string; rubro?: string; joinPolicy: JoinPolicy }) => jsonCall<{ workspace: ClientWorkspace }>(url(''), jwt, post(input));

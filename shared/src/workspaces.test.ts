@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canChangeRole, canDeactivate, canManageMembers, joinCodePrefix, makeJoinCode, normalizeChannelName, normalizeJoinCode, statusAfterJoin, workspacesOf } from './workspaces.js';
+import { invitedByLine, owesItsName, spacesToOpen, canChangeRole, canDeactivate, canManageMembers, joinCodePrefix, makeJoinCode, normalizeChannelName, normalizeJoinCode, statusAfterJoin, workspacesOf } from './workspaces.js';
 
 /** E1 (José, 20/10): personal account plus company spaces; join with a code or be added by phone. */
 describe('join code', () => {
@@ -84,5 +84,24 @@ describe('workspacesOf (01/11: «Algo se rompió en esta pantalla» on José\'s 
     expect(workspacesOf({})).toBeNull();
     expect(workspacesOf(null)).toBeNull();
     expect(workspacesOf({ workspaces: 'x' })).toBeNull();
+  });
+});
+
+describe('sign-in by workspace (spec INGRESO-POR-ESPACIO)', () => {
+  it('offers to open only the active spaces', () => {
+    const spaces = [{ id: 'a', status: 'active' as const }, { id: 'b', status: 'pending' as const }, { id: 'c', status: 'deactivated' as const }];
+    expect(spacesToOpen(spaces).map((space) => space.id)).toEqual(['a']);
+  });
+
+  it('only an email account without a name owes it', () => {
+    expect(owesItsName({ phone: 'mail:abc', name: null })).toBe(true);
+    expect(owesItsName({ phone: 'mail:abc', name: '  ' })).toBe(true);
+    expect(owesItsName({ phone: 'mail:abc', name: 'Ana' })).toBe(false);
+    expect(owesItsName({ phone: '902049935', name: null })).toBe(false);
+  });
+
+  it('says who invited, and still reads well when that account is gone', () => {
+    expect(invitedByLine({ invitedBy: 'Darío Paredes' })).toBe('Te invitó Darío Paredes');
+    expect(invitedByLine({ invitedBy: null })).toBe('Te invitaron a este espacio');
   });
 });

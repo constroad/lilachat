@@ -1,3 +1,4 @@
+import type { SignedIn } from '../onboarding/machine';
 /**
  * Cliente del lilachat-server. Sin imports de react-native (testeable en
  * vitest); el `fetch` se puede inyectar en los tests.
@@ -193,22 +194,20 @@ export const reportBackupAttempt = (token: string, reason: 'sin_passphrase') => 
 export const huellasDeRespaldoQueFaltan = (token: string, huellas: string[]) =>
   authed<{ faltan: string[]; invalidas: string[] }>('POST', '/api/respaldos/huellas', token, { huellas });
 
+export type { SignedIn };
+
 export const requestOtp = (phone: string, preferEmail = false, fetchImpl?: FetchLike) =>
   post<{ message: string }>('/api/auth/otp/request', { phone, preferEmail }, fetchImpl);
 
 export const verifyOtp = (
   params: { phone: string; code: string; deviceId: string; name?: string },
   fetchImpl?: FetchLike
-) =>
-  post<{
-    deviceSecret: string;
-    jwt: string;
-    user: { id: string; name: string | null; phone: string; avatarUrl?: string | null };
-  }>(
-    '/api/auth/otp/verify',
-    params,
-    fetchImpl
-  );
+) => post<SignedIn>('/api/auth/otp/verify', params, fetchImpl);
+
+/** Sign-in by email (spec INGRESO-POR-ESPACIO): the phone stays an option. */
+export const requestEmailSignIn = (email: string, fetchImpl?: FetchLike) => post<{ message: string }>('/api/auth/email/request', { email }, fetchImpl);
+
+export const verifyEmailSignIn = (params: { email: string; code: string; deviceId: string }, fetchImpl?: FetchLike) => post<SignedIn>('/api/auth/email/verify', params, fetchImpl);
 
 export type ChatSummary = {
   id: string;

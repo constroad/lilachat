@@ -1,9 +1,11 @@
 import { useEffect } from 'react';
+import { isRealPhone } from '@lilachat/shared';
 import { AdminUsersScreen } from './admin/AdminUsersScreen';
 import { AccessScreens } from './auth/AccessScreens';
 import { CodigoParaLaApp } from './auth/CodigoParaLaApp';
 import { InstallAppScreen } from './apps/InstallAppScreen';
 import { CompleteProfileScreen } from './profile/CompleteProfileScreen';
+import { CreateUserPage } from './profile/CreateUserPage';
 import { useProfileGate } from './profile/useProfileGate';
 import { registrarServiceWorker } from './pwa/serviceWorker';
 import { markWorkerWaiting } from './ui/webUpdate';
@@ -34,7 +36,10 @@ export function App() {
   if (!sesion.credential) return <AccessScreens onReady={sesion.entrar} />;
   // Waiting for the profile answer: nothing, rather than the chats for an instant and then the form.
   if (profileGate.checking) return null;
-  if (profileGate.incomplete) return <CompleteProfileScreen jwt={sesion.credential.jwt} profile={profileGate.incomplete} onDone={profileGate.done} />;
+  if (profileGate.incomplete) {
+    if (!isRealPhone(sesion.credential.phone)) return <CreateUserPage jwt={sesion.credential.jwt} email={profileGate.incomplete.email} onDone={profileGate.done} />;
+    return <CompleteProfileScreen jwt={sesion.credential.jwt} profile={profileGate.incomplete} onDone={profileGate.done} />;
+  }
   // Installing an app (agentes' Lila) in a space: after signing in it comes back to this same address.
   if (window.location.pathname === '/instalar-app') {
     return sesion.credential.jwt ? <InstallAppScreen jwt={sesion.credential.jwt} search={window.location.search} onRedirect={(url) => window.location.assign(url)} /> : null;

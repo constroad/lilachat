@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { ArrowLeft, BadgeCheck, ChevronLeft, ChevronRight, Search } from 'lucide-react';
-import { adminDevicesLabel, adminJoinedLabel, adminLastSeenLabel, adminUsersQuery, adminUsersRange, type AdminUser, type AdminUsersPage } from '@lilachat/shared';
+import { adminDevicesLabel, adminJoinedLabel, adminLastSeenLabel, adminUsersQuery, adminUsersRange, formatPhoneDisplay, type AdminUser, type AdminUsersPage } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { Logo } from '../ui/Logo';
 import { getAdminUsers } from './adminApi';
@@ -153,7 +153,7 @@ function UserList({ users }: { users: AdminUser[] }) {
             <Avatar name={user.name ?? user.phone} foto={user.avatarUrl ?? undefined} size={36} />
             <div className="min-w-0">
               <p className="truncate font-semibold">{user.name ?? 'Sin nombre'}</p>
-              <p className="font-mono text-[12px] text-on-surface-variant">{user.phone}</p>
+              <p className="font-mono text-[12px] text-on-surface-variant">{formatPhoneDisplay(user.phone)}</p>
             </div>
           </div>
           <Cell label="Correo">

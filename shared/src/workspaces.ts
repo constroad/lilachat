@@ -3,6 +3,8 @@
  * spaces of the companies they belong to. Pure rules shared by the server and
  * the clients.
  */
+import { isRealPhone } from './phone.js';
+
 export type WorkspaceRole = 'owner' | 'admin' | 'member' | 'guest';
 export type WorkspaceMemberStatus = 'active' | 'pending' | 'invited' | 'deactivated';
 export type JoinPolicy = 'open' | 'approval';
@@ -116,6 +118,14 @@ export type ClientWorkspaceMember = {
 };
 
 /** What a code shows before joining (`GET /api/workspaces/preview/:code`). */
+/** What «Tus espacios» offers to open (design i-03): a request still waiting or a removed access do not open. */
+export const spacesToOpen = <Space extends Pick<ClientWorkspace, 'status'>>(spaces: Space[]): Space[] => spaces.filter((space) => space.status === 'active');
+
+/** Only an account born from an email writes its name in «Crea tu usuario» (design i-04); a phone account has its own form. */
+export const owesItsName = (account: { name?: string | null; phone: string }): boolean => !isRealPhone(account.phone) && !account.name?.trim();
+
+export const invitedByLine = (invitation: Pick<SpaceInvitation, 'invitedBy'>): string => (invitation.invitedBy ? `Te invitó ${invitation.invitedBy}` : 'Te invitaron a este espacio');
+
 /** An email invitation waiting for «Unirme» (design i-03). */
 export type SpaceInvitation = { id: string; workspace: { id: string; name: string; logoUrl?: string }; invitedBy: string | null };
 

@@ -50,7 +50,7 @@ function refuseCode(res: Response, codigo: string) {
 /** How every sign-in ends: the device stays with its account and the session opens. */
 async function openSession(req: Request, res: Response, user: User, deviceId: string, deviceSecret?: string) {
   await DeviceModel.findOneAndUpdate({ deviceId }, { deviceId, userId: user._id, lastSeenAt: new Date() }, { upsert: true });
-  // La web (W0): el secreto va en una cookie HttpOnly y NO en el cuerpo.
+  // The web (W0): the secret goes in an HttpOnly cookie, never in the body.
   const esWeb = req.body?.cliente === 'web';
   if (esWeb && deviceSecret) {
     res.setHeader('Set-Cookie', cookieDeDispositivo({ deviceId, deviceSecret, segura: pedidoSeguro(req) }));

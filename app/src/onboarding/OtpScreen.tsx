@@ -1,11 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, type TextInput, View } from 'react-native';
 import { ShieldCheck } from 'lucide-react-native';
 import { formatPhoneDisplay } from '@lilachat/shared';
 import { requestOtp, verifyOtp } from '../api/client';
 import { saveCredential, type Credential } from '../auth/credentialStore';
 import { obtenerDeviceIdEstable } from '../auth/deviceId';
-import { isCompleteOtp, mapVerifyFailure, shouldAutoSubmitOtp } from './machine';
+import { credentialOfSignIn, isCompleteOtp, mapVerifyFailure, shouldAutoSubmitOtp } from './machine';
+import { OtpBoxes } from './OtpBoxes';
+import { useCountdown } from './useCountdown';
+import { useHardwareBack } from './useHardwareBack';
 import { useColores } from '../ui/tema';
 
 /**
@@ -37,15 +40,11 @@ export function OtpScreen({
    * sin ella se puede tocar «Reenviar» sin parar, y cada toque le gasta un
    * correo a constroad-auth y consume el tope por destino.
    */
-  const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
+  const { secondsLeft, restart } = useCountdown(RESEND_SECONDS);
   const [sentByEmail, setSentByEmail] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
-  useEffect(() => {
-    if (secondsLeft <= 0) return;
-    const timer = setTimeout(() => setSecondsLeft((value) => value - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [secondsLeft]);
+  useHardwareBack(onBack);
 
   const verify = async (candidate: string) => {
     if (!isCompleteOtp(candidate) || verifying) return;
@@ -58,15 +57,7 @@ export function OtpScreen({
       setError(mapVerifyFailure(result.status, result.message));
       return;
     }
-    const credential: Credential = {
-      userId: result.data.user.id,
-      deviceId,
-      deviceSecret: result.data.deviceSecret,
-      jwt: result.data.jwt,
-      phone,
-      name: result.data.user.name,
-      avatarUrl: result.data.user.avatarUrl ?? null,
-    };
+    const credential = credentialOfSignIn(result.data, deviceId);
     await saveCredential(credential);
     onDone(credential);
   };
@@ -92,43 +83,7 @@ export function OtpScreen({
         Si tu número tiene acceso, te llegó un código al {formatPhoneDisplay(phone)}.
       </Text>
 
-      {/* SEIS CAJAS, como el diseño. Un solo input con letter-spacing se ve
-          parecido de lejos pero no muestra en qué dígito va uno.
-          El input real es invisible y captura el teclado; las cajas son la
-          representación — es el patrón estándar y evita seis estados. */}
-      <Pressable
-        testID="cajas-otp"
-        onPress={() => inputRef.current?.focus()}
-        className="mt-8 flex-row justify-between"
-      >
-        {Array.from({ length: 6 }, (_unused, index) => {
-          const digit = code[index] ?? '';
-          const active = index === code.length;
-          return (
-            <View
-              key={index}
-              testID={`otp-caja-${index}`}
-              className={`h-14 w-[46px] items-center justify-center rounded-lg border bg-surface ${
-                active ? 'border-primary' : digit ? 'border-outline/40' : 'border-outline/20'
-              }`}
-            >
-              <Text className="text-2xl font-semibold text-on-surface">{digit}</Text>
-            </View>
-          );
-        })}
-      </Pressable>
-
-      <TextInput
-        ref={inputRef}
-        testID="input-otp"
-        className="absolute h-px w-px opacity-0"
-        keyboardType="number-pad"
-        autoComplete="one-time-code"
-        autoFocus
-        maxLength={6}
-        value={code}
-        onChangeText={onChange}
-      />
+      <OtpBoxes code={code} inputRef={inputRef} onChange={onChange} />
 
       {error ? (
         <Text className="mt-3 text-sm text-error" testID="error-otp">
@@ -176,7 +131,7 @@ export function OtpScreen({
         disabled={sentByEmail}
         onPress={() => {
           setSentByEmail(true);
-          setSecondsLeft(RESEND_SECONDS);
+          restart();
           void requestOtp(phone, true);
         }}
         className="mt-6 min-h-[44px] items-center justify-center"
@@ -190,7 +145,7 @@ export function OtpScreen({
         testID="btn-reenviar"
         disabled={secondsLeft > 0}
         onPress={() => {
-          setSecondsLeft(RESEND_SECONDS);
+          restart();
           void requestOtp(phone);
         }}
         className="mt-4 min-h-[44px] items-center justify-center"

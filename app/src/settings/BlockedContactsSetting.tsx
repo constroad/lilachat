@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Ban } from 'lucide-react-native';
-import { blockedListEmptyText } from '@lilachat/shared';
+import { blockedListEmptyText, formatPhoneDisplay } from '@lilachat/shared';
 import { FilaDeAjuste } from '../ui/FilaDeAjuste';
 import { PantallaEnModal } from '../ui/PantallaEnModal';
 import { listBlockedPeople, unblockPerson, type BlockedPerson } from './blockedApi';
@@ -41,7 +41,7 @@ export function BlockedContactsSetting({ jwt }: { jwt: string }) {
           <View key={person.id} testID={`bloqueado-${person.id}`} className="min-h-[56px] flex-row items-center gap-3 border-b border-outline/10 py-2">
             <View className="min-w-0 flex-1">
               <Text className="text-[15px] font-semibold text-on-surface" numberOfLines={1}>{person.name ?? person.phone}</Text>
-              {person.name ? <Text className="text-[13px] text-on-surface-variant">{person.phone}</Text> : null}
+              {person.name ? <Text className="text-[13px] text-on-surface-variant">{formatPhoneDisplay(person.phone)}</Text> : null}
             </View>
             <Pressable testID={`btn-desbloquear-${person.id}`} accessibilityRole="button" onPress={() => void unblock(person)} className="min-h-[40px] justify-center rounded-full border border-outline/20 px-4">
               <Text className="text-[14px] font-semibold text-primary">Desbloquear</Text>

@@ -11,6 +11,8 @@
  */
 export const COUNTRY_PREFIX = '+51';
 
+const INTERNAL_KEY = /^(mail|app):/;
+
 /**
  * Devuelve el número local de 9 dígitos, o `''` si no es válido.
  *
@@ -20,6 +22,7 @@ export const COUNTRY_PREFIX = '+51';
  * invertido y el bug vivió hasta que un test lo destapó.)
  */
 export function normalizePeruPhone(input: unknown): string {
+  if (INTERNAL_KEY.test(String(input ?? ''))) return '';
   const digits = String(input ?? '').replace(/\D/g, '');
   const withoutLeadingZeros = digits.replace(/^0+/, '');
   const local =
@@ -35,8 +38,6 @@ export function toInternationalPhone(input: unknown): string {
   return local ? `51${local}` : '';
 }
 
-const INTERNAL_KEY = /^(mail|app):/;
-
 /**
  * The `phone` of an account born from an email (spec INGRESO-POR-ESPACIO §4). The
  * field is required and unique, so it keeps a key, as bots do. It stays inside.
@@ -44,7 +45,7 @@ const INTERNAL_KEY = /^(mail|app):/;
 export const internalPhoneKey = (accountId: string): string => `mail:${accountId}`;
 
 /** False for an internal key: nothing to show, dial or match against the contacts. */
-export const isRealPhone = (phone: unknown): boolean => !INTERNAL_KEY.test(String(phone ?? '')) && Boolean(normalizePeruPhone(phone));
+export const isRealPhone = (phone: unknown): boolean => Boolean(normalizePeruPhone(phone));
 
 /** Como se lee en pantalla: `987 654 321`. */
 export function formatPhoneDisplay(input: unknown): string {

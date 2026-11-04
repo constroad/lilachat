@@ -53,6 +53,11 @@ describe('internal key of an email account (spec INGRESO-POR-ESPACIO §4)', () =
     expect(isRealPhone(undefined)).toBe(false);
   });
 
+  it('never normalizes into a number, however its digits fall', () => {
+    expect(normalizePeruPhone(internalPhoneKey('9a0b2c0d4e9f9g3h5'))).toBe('');
+    expect(toInternationalPhone(internalPhoneKey('902049935'))).toBe('');
+  });
+
   it('a stored phone is a real phone', () => {
     expect(isRealPhone('902049935')).toBe(true);
   });

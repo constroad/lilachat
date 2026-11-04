@@ -2,6 +2,18 @@
  * Reglas del alta (Lilachat F1). Motor PURO — sin imports de react-native:
  * corre en vitest en milisegundos; el componente solo dibuja (rn-app-loop §2).
  */
+import type { Credential } from '../auth/credentialStore';
+
+/** What the server answers on any sign-in. */
+export type SignedIn = { deviceSecret: string; jwt: string; user: { id: string; name: string | null; phone: string; avatarUrl?: string | null } };
+
+export function credentialOfSignIn(signedIn: SignedIn, deviceId: string): Credential {
+  const { deviceSecret, jwt, user } = signedIn;
+  return { userId: user.id, deviceId, deviceSecret, jwt, phone: user.phone, name: user.name, avatarUrl: user.avatarUrl ?? null };
+}
+
+/** «0:42», as design `i-02` writes it. */
+export const countdownLabel = (seconds: number): string => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 
 /** Coerciona y normaliza igual que el server: lo que se manda es lo que él ve. */
 export function normalizeEmailInput(rawEmail: unknown): string {

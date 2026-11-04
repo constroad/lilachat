@@ -41,7 +41,7 @@ export function PantallaDeVincular({ onReady, onUsarTelefono }: { onReady: (cred
             ))}
           </ol>
           <button type="button" data-testid="btn-usar-telefono" onClick={onUsarTelefono} className="mt-8 self-start py-2 text-[15px] font-semibold text-primary hover:underline">
-            Entrar con número de teléfono
+            Entrar con mi correo o teléfono
           </button>
           <p className="mt-auto flex items-start gap-3 border-t border-outline/10 pt-6 text-[13px] leading-5 text-on-surface-variant">
             <Lock size={16} className="mt-0.5 shrink-0" />

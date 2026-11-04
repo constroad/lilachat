@@ -75,6 +75,16 @@ cruza con la agenda. Esas cuentas tienen el correo verificado por el código.
   correo no une a nadie. Verificar el correo en el perfil sigue uniendo solo.
 - **El cumpleaños no se le pide a una cuenta de correo.** `i-04` pide solo el nombre,
   así que `missing` no incluye `birthday` si el `phone` es una clave interna.
+- **El nombre se pide antes de aceptar.** `welcomeToGeneral` no avisa sin nombre, así
+  que «Unirme» pasa primero por `i-04` y recién acepta. Lo mismo con «Abrir» y «Crear
+  un espacio». Quien se une con un código pasa por `i-04` al entrar, sin el aviso.
+- **`i-03` solo aparece después del código.** Quien abre la app con sesión va directo
+  a sus chats, y una cuenta sin nombre que cierra la app ve `i-04` al volver.
+- **Una clave nunca se normaliza a un número**, aunque sus dígitos formen uno: lo
+  corta `normalizePeruPhone`, así que tampoco llega a los bots ni al directorio.
+- **Sin teléfono no hay fila de teléfono** en la ficha del miembro.
+- **En la web el escritorio sigue abriendo por el QR**, como WhatsApp Web. Su enlace
+  ahora lleva al correo, y un enlace de invitación o de llamada salta `i-03`.
 - **Si el registro se cierra**, `/email/verify` también tiene que cerrarse: hoy crea
   la cuenta sin mirar `REGISTRO_ABIERTO`.
 
@@ -84,8 +94,8 @@ cruza con la agenda. Esas cuentas tienen el correo verificado por el código.
 | --- | --- | --- |
 | I1 | Server: `/api/auth/email/request` y `/api/auth/email/verify`; entra la cuenta que verificó ese correo | Server. **Hecho** |
 | I2 | Server: cuenta nueva por correo con clave interna; `GET /api/workspaces/invitations` y `POST /api/workspaces/invitations/:id/accept` | Server. **Hecho** |
-| I3 | App: las cuatro pantallas y el orden nuevo | APK, para que quien instala la vea desde el inicio |
-| I4 | Web: las mismas pantallas | Server |
+| I3 | App: las cuatro pantallas y el orden nuevo (`SignInFlow`) | APK para quien instala y OTA para quien ya la tiene |
+| I4 | Web: las mismas pantallas (`EmailSignIn`, `YourSpacesPage`, `CreateUserPage`) | Server |
 | I5 | Revisión de la clave interna en perfil, directorio, agenda, avisos y admin | Server y OTA |
 
 ## 6. Cómo se prueba

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
-import { ArrowRight } from 'lucide-react-native';
+import { ArrowLeft, ArrowRight } from 'lucide-react-native';
 import { COUNTRY_PREFIX, normalizePeruPhone } from '@lilachat/shared';
 import { requestOtp } from '../api/client';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { Logo } from '../ui/Logo';
+import { useHardwareBack } from './useHardwareBack';
 
 /**
  * Alta paso 1 (diseño «Registro: Teléfono»).
@@ -23,7 +24,7 @@ import { Logo } from '../ui/Logo';
  * SIEMPRE avanza al paso del código con la respuesta genérica: esta pantalla no
  * sabe (ni puede saber) quién está invitado.
  */
-export function PhoneScreen({ onCodeRequested }: { onCodeRequested: (phone: string) => void }) {
+export function PhoneScreen({ onCodeRequested, onBack }: { onCodeRequested: (phone: string) => void; onBack: () => void }) {
   const colores = useColores();
   const margenes = useMargenes();
   const [rawPhone, setRawPhone] = useState('');
@@ -31,6 +32,7 @@ export function PhoneScreen({ onCodeRequested }: { onCodeRequested: (phone: stri
   const [error, setError] = useState('');
 
   const phone = normalizePeruPhone(rawPhone);
+  useHardwareBack(onBack);
 
   const submit = async () => {
     if (!phone || sending) return;
@@ -47,6 +49,9 @@ export function PhoneScreen({ onCodeRequested }: { onCodeRequested: (phone: stri
 
   return (
     <View className="flex-1 justify-between bg-background px-6 " style={{ paddingTop: margenes.cabecera + 44, paddingBottom: margenes.pie }} testID="pantalla-telefono">
+      <Pressable testID="btn-atras-telefono" accessibilityRole="button" accessibilityLabel="Volver" onPress={onBack} className="absolute left-4 h-11 w-11 items-center justify-center" style={{ top: margenes.cabecera + 8 }}>
+        <ArrowLeft size={24} color={colores['on-surface']} />
+      </Pressable>
       <View className="flex-1 justify-center">
         <View className="items-center">
           <Logo tamano={72} />

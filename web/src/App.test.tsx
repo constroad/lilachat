@@ -52,7 +52,7 @@ describe('App', () => {
   it('sin credencial muestra el acceso', () => {
     render(<App />);
 
-    expect(screen.getByTestId('input-telefono')).toBeInTheDocument();
+    expect(screen.getByTestId('input-correo')).toBeInTheDocument();
     expect(screen.queryByTestId('panel-lista')).not.toBeInTheDocument();
   });
 
@@ -93,6 +93,7 @@ describe('App', () => {
 
     render(<App />);
 
+    await userEvent.click(screen.getByTestId('btn-sin-espacio'));
     await userEvent.type(screen.getByTestId('input-telefono'), '902049935');
     await userEvent.click(screen.getByTestId('btn-continuar'));
     await waitFor(() => expect(screen.getByTestId('input-codigo')).toBeInTheDocument());
@@ -114,7 +115,7 @@ describe('App', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.getByTestId('input-telefono')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('input-correo')).toBeInTheDocument());
     expect(localStorage.getItem('lilachat.credential')).toBeNull();
   });
 
@@ -171,7 +172,7 @@ describe('la sesión se renueva sola', () => {
 
     render(<App />);
 
-    await waitFor(() => expect(screen.queryByTestId('input-telefono')).toBeNull());
+    await waitFor(() => expect(screen.queryByTestId('input-correo')).toBeNull());
     await waitFor(() => expect(localStorage.getItem('lilachat.credential')).toBeNull());
     expect(cuerpos[0]).toEqual({ cliente: 'web', deviceId: 'device-1', deviceSecret: 'secreto-del-navegador' });
     const guardado = localStorage.getItem('lilachat.perfil') ?? '';
@@ -199,7 +200,7 @@ describe('la sesión se renueva sola', () => {
     render(<App />);
 
     await waitFor(() => expect(renovaciones).toBeGreaterThanOrEqual(2));
-    expect(screen.queryByTestId('input-telefono')).toBeNull();
+    expect(screen.queryByTestId('input-correo')).toBeNull();
   });
 
   /**
@@ -215,7 +216,7 @@ describe('la sesión se renueva sola', () => {
 
     render(<App />);
 
-    expect(await screen.findByTestId('input-telefono')).toBeInTheDocument();
+    expect(await screen.findByTestId('input-correo')).toBeInTheDocument();
   });
 });
 
@@ -245,7 +246,7 @@ describe('sin sesión viva, se reintenta sola', () => {
     await vi.advanceTimersByTimeAsync(16_000);
 
     expect(intentos).toBeGreaterThanOrEqual(2);
-    expect(screen.queryByTestId('input-telefono')).toBeNull();
+    expect(screen.queryByTestId('input-correo')).toBeNull();
     vi.useRealTimers();
   });
 });
@@ -273,7 +274,7 @@ describe('sesión cerrada desde el teléfono', () => {
     revocada = true;
     manejadorDe('disconnect')?.('io server disconnect');
 
-    expect(await screen.findByTestId('input-telefono')).toBeInTheDocument();
+    expect(await screen.findByTestId('input-correo')).toBeInTheDocument();
     expect(localStorage.getItem('lilachat.perfil')).toBeNull();
   });
 
@@ -295,7 +296,7 @@ describe('sesión cerrada desde el teléfono', () => {
 
     await waitFor(() => expect(socketFalso.connect).toHaveBeenCalled());
     expect(renovaciones).toBeGreaterThanOrEqual(2);
-    expect(screen.queryByTestId('input-telefono')).toBeNull();
+    expect(screen.queryByTestId('input-correo')).toBeNull();
   });
 
   it('un corte de red (no del server) NO cierra nada', async () => {
@@ -309,6 +310,6 @@ describe('sesión cerrada desde el teléfono', () => {
     manejadorDe('disconnect')?.('transport close');
     await new Promise((listo) => setTimeout(listo, 50));
     expect(renovar.mock.calls.length).toBe(antes);
-    expect(screen.queryByTestId('input-telefono')).toBeNull();
+    expect(screen.queryByTestId('input-correo')).toBeNull();
   });
 });

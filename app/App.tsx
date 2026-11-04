@@ -22,8 +22,8 @@ import {
   saveCredential,
   type Credential,
 } from './src/auth/credentialStore';
-import { PhoneScreen } from './src/onboarding/PhoneScreen';
-import { OtpScreen } from './src/onboarding/OtpScreen';
+import { CreateUserScreen } from './src/onboarding/CreateUserScreen';
+import { SignInFlow } from './src/onboarding/SignInFlow';
 import { NavegacionDeSesion } from './src/ui/NavegacionDeSesion';
 import { conCredencialNueva, entraSinEsperar, withRefreshedSession } from './src/auth/arranque';
 import { useSessionRenewal } from './src/auth/useSessionRenewal';
@@ -46,7 +46,7 @@ import { RestaurarRespaldo } from './src/settings/RestaurarRespaldo';
 import type { ChatMessage } from './src/chat/useChat';
 import { decidirServicio } from './src/chat/servicioDeConexion';
 import { agendaPorTelefono, olvidarAgenda, precargarAgenda } from './src/contacts/agendaEnMemoria';
-import { nombreDeContacto } from '@lilachat/shared';
+import { isRealPhone, nombreDeContacto } from '@lilachat/shared';
 import { ProveedorTema, useColores, useTema } from './src/ui/tema';
 import {
   guardarSegundoPlano,
@@ -109,7 +109,6 @@ async function chatsParaHidratar(jwt: string): Promise<ChatSummary[]> {
 type Boot =
   | { phase: 'loading' }
   | { phase: 'email' }
-  | { phase: 'otp'; phone: string }
   | { phase: 'home'; credential: Credential };
 
 /**
@@ -422,19 +421,15 @@ function Contenido() {
       ) : boot.phase === 'email' ? (
         // En tablet, la entrada centrada con ancho de formulario (FL10).
         <View style={FORMULARIO_CENTRADO}>
-          <PhoneScreen onCodeRequested={(phone) => setBoot({ phase: 'otp', phone })} />
-        </View>
-      ) : boot.phase === 'otp' ? (
-        <View style={FORMULARIO_CENTRADO}>
-          <OtpScreen
-            phone={boot.phone}
-            onBack={() => setBoot({ phase: 'email' })}
-            onDone={(credential) => setBoot({ phase: 'home', credential })}
-          />
+          <SignInFlow onDone={(credential) => setBoot({ phase: 'home', credential })} />
         </View>
       ) : boot.phase === 'home' && profileGate.incomplete ? (
         <View style={FORMULARIO_CENTRADO}>
-          <CompleteProfileScreen credential={boot.credential} profile={profileGate.incomplete} onDone={profileGate.done} />
+          {isRealPhone(boot.credential.phone) ? (
+            <CompleteProfileScreen credential={boot.credential} profile={profileGate.incomplete} onDone={profileGate.done} />
+          ) : (
+            <CreateUserScreen credential={boot.credential} email={profileGate.incomplete.email} onDone={profileGate.done} />
+          )}
         </View>
       ) : boot.phase === 'home' ? (
         <>

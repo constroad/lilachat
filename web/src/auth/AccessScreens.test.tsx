@@ -53,11 +53,11 @@ describe('AccessScreens (W5)', () => {
     servidorDeVinculacion();
     render(<AccessScreens onReady={vi.fn()} />);
 
-    expect(screen.getByTestId('input-telefono')).toBeInTheDocument();
+    expect(screen.getByTestId('input-correo')).toBeInTheDocument();
     await userEvent.click(screen.getByTestId('btn-usar-qr'));
     expect(await screen.findByTestId('cuadro-qr')).toBeInTheDocument();
     await userEvent.click(screen.getByTestId('btn-usar-telefono'));
-    expect(screen.getByTestId('input-telefono')).toBeInTheDocument();
+    expect(screen.getByTestId('input-correo')).toBeInTheDocument();
   });
 
   it('«Mantener la sesión iniciada» apagado viaja al canjear', async () => {

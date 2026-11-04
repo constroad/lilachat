@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Ban } from 'lucide-react';
-import { blockedListEmptyText } from '@lilachat/shared';
+import { blockedListEmptyText, formatPhoneDisplay } from '@lilachat/shared';
 import { listBlockedPeople, unblockPerson, type BlockedPerson } from './blockedApi';
 
 /** «Contactos bloqueados» in the settings panel (pending 9): opens in place, read when opened. */
@@ -31,7 +31,7 @@ export function BlockedContactsChoice(props: { jwt: string; onNotice: (text: str
           {people?.length === 0 ? <p className="py-2 text-xs text-on-surface-variant">{blockedListEmptyText}</p> : null}
           {people?.map((person) => (
             <div key={person.id} className="flex min-h-[40px] items-center gap-2 border-t border-outline/10 py-1">
-              <span className="min-w-0 flex-1 truncate text-sm">{person.name ?? person.phone}</span>
+              <span className="min-w-0 flex-1 truncate text-sm">{person.name ?? formatPhoneDisplay(person.phone)}</span>
               <button type="button" data-testid={`btn-desbloquear-${person.id}`} onClick={() => void unblock(person)} className="rounded-full px-2 py-1 text-xs font-semibold text-primary hover:bg-background">
                 Desbloquear
               </button>

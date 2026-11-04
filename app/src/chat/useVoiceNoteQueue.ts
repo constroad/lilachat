@@ -22,5 +22,7 @@ export function noteAfter(finishedId: string, { chatId, rows, names, photos }: Q
 export function useVoiceNoteQueue(source: QueueSource): void {
   const latest = useRef(source);
   latest.current = source;
-  useEffect(() => setVoiceNoteQueue((finishedId) => noteAfter(finishedId, latest.current)), []);
+  useEffect(() => {
+    setVoiceNoteQueue((finishedId) => noteAfter(finishedId, latest.current));
+  }, []);
 }

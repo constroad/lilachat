@@ -34,7 +34,7 @@ const { playVoiceNote, setVoiceNoteQueue, stopVoiceNote } = await import('./voic
 const note = { id: 'c1:1', url: 'file:///1.m4a', authorName: 'Ana', durationS: 10, rate: 1.5, startShare: null };
 const finish = () => players.at(-1)?.listener?.({ isLoaded: true, duration: 10, currentTime: 10, playing: false, didJustFinish: true });
 
-/** José, 04/11: audios seguidos, uno detrás del otro, como WhatsApp. */
+/** José, 04/11: voice notes in a row play one after the other, like WhatsApp. */
 describe('voice notes in a row', () => {
   beforeEach(() => {
     players.length = 0;

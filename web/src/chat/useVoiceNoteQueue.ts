@@ -19,5 +19,7 @@ export function noteAfter(finishedId: string, { chatId, messages, names }: Queue
 export function useVoiceNoteQueue(source: QueueSource): void {
   const latest = useRef(source);
   latest.current = source;
-  useEffect(() => setVoiceNoteQueue((finishedId) => noteAfter(finishedId, latest.current)), []);
+  useEffect(() => {
+    setVoiceNoteQueue((finishedId) => noteAfter(finishedId, latest.current));
+  }, []);
 }

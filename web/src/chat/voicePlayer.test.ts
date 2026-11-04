@@ -3,7 +3,7 @@ import { playVoiceNote, resetVoicePlayerForTests, setVoiceNoteQueue, stopVoiceNo
 
 const note = { id: 'c1:1', chatId: 'c1', url: 'https://x/1.m4a', authorName: 'Ana', durationS: 10, rate: 1.5, startShare: null };
 
-/** José, 04/11: audios seguidos, uno detrás del otro, como WhatsApp. */
+/** José, 04/11: voice notes in a row play one after the other, like WhatsApp. */
 describe('voice notes in a row (web)', () => {
   let played: HTMLMediaElement[];
 

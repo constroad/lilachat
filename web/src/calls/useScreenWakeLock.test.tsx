@@ -4,7 +4,7 @@ import { useScreenWakeLock } from './useScreenWakeLock';
 
 type FakeLock = { released: boolean; release: ReturnType<typeof vi.fn> };
 
-/** José, 04/11: en una videollamada la pantalla no se bloquea, también en la web. */
+/** José, 04/11: a video call does not let the screen lock, on the web too. */
 describe('useScreenWakeLock', () => {
   let locks: FakeLock[];
   let request: ReturnType<typeof vi.fn>;

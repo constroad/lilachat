@@ -7,7 +7,7 @@ import { markWelcomeSeen } from '../spaces/welcomeSeen';
 import { markNotesSeen } from '../ui/WhatsNewDialog';
 import { YourSpacesPage } from '../spaces/YourSpacesPage';
 import { EmailSignIn } from './EmailSignIn';
-import { IngresoPorTelefono } from './IngresoPorTelefono';
+import { PhoneSignIn } from './IngresoPorTelefono';
 import { PantallaDeVincular } from './PantallaDeVincular';
 
 /**
@@ -49,7 +49,7 @@ export function AccessScreens({ onReady }: { onReady: (credential: Credential) =
       ) : null}
       {door === 'qr' ? <PantallaDeVincular onReady={ready} onUsarTelefono={() => setDoor('email')} /> : null}
       {door === 'email' ? <EmailSignIn onVerified={arrive} onUsePhone={() => setDoor('phone')} onUsePersonal={() => setDoor('personal')} onUseQr={() => setDoor('qr')} /> : null}
-      {door === 'phone' || door === 'personal' ? <IngresoPorTelefono onReady={fromPhone} onUsarQr={() => setDoor('qr')} onBack={() => setDoor('email')} /> : null}
+      {door === 'phone' || door === 'personal' ? <PhoneSignIn onReady={fromPhone} onUseQr={() => setDoor('qr')} onBack={() => setDoor('email')} /> : null}
     </>
   );
 }

@@ -37,7 +37,9 @@ export function YourSpacesPage(props: { credential: Credential; account: string;
     if (spaces.ok && invitations.ok) setLists({ spaces: spacesToOpen(spaces.data.workspaces), invitations: invitations.data.invitations });
     else setError(LOAD_ERROR);
   }, [jwt]);
-  useEffect(() => void load(), [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const leave = useCallback((spaceId: string | null) => {
     markWelcomeSeen();

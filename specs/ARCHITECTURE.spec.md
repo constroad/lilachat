@@ -390,6 +390,28 @@ Lo que constroad-auth sigue quitando del plan: OTP propio, rate limits de
 envío, hash de credenciales de device. `devices` local queda como espejo
 liviano (pushToken, plataforma, lastSeenAt).
 
+### Ingreso por espacio de trabajo (04/11/2026)
+
+Detalle en `specs/INGRESO-POR-ESPACIO.spec.md`. Lo que cambia en esta sección:
+
+- La primera pantalla es correo y código (`SignInFlow` en la app, `AccessScreens` en la
+  web). El teléfono queda como opción y «Usar sin espacio de trabajo» va a los chats.
+- `POST /api/auth/email/request` y `/email/verify` conviven con `/otp/*`, y las dos rutas
+  terminan en `openSession`.
+- Una cuenta nacida de un correo guarda `mail:<uuid>` en `users.phone`. `isRealPhone`
+  distingue, y `normalizePeruPhone` nunca devuelve un número para una clave.
+- `GET /api/workspaces/invitations` y `POST …/invitations/:id/accept`: la invitación por
+  correo espera a «Unirme» cuando se entra por correo.
+
+### Otros cambios del 04/11/2026
+
+- **Bloque `people`** (`shared/src/botBlocks.ts`): hasta 40 nombres; la tarjeta muestra 8
+  con avatar y nombre corto (`peopleOnCard`), y el detalle los muestra todos.
+- **Clientes de un espacio**: `clientsCache` en `app/src/spaces/spaceCache.ts`, y la lista
+  espera a chats y clientes (`spaceListReady`) para no saltar al cargar.
+- **`audience` en los atajos del ⚡** (`AppShortcut`): `everyone` o `admins`, como valor por
+  defecto de quién ve cada atajo. Lo que elija el admin en el ⚡ sigue mandando.
+
 ## 6. Protocolo real-time (análisis WA/TG → nuestro diseño)
 
 | | WhatsApp | Telegram (MTProto 2.0) |

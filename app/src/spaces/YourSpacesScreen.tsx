@@ -44,7 +44,9 @@ export function YourSpacesScreen(props: { credential: Credential; account: strin
     if (spaces.ok && invitations.ok) setLists({ spaces: spacesToOpen(spaces.data.workspaces), invitations: invitations.data.invitations });
     else setError(LOAD_ERROR);
   }, [credential.jwt]);
-  useEffect(() => void load(), [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const leave = useCallback((spaceId: string | null) => {
     markWelcomeSeen();
@@ -85,28 +87,7 @@ export function YourSpacesScreen(props: { credential: Credential; account: strin
 
         {error ? <Text testID="error-espacios" className="mt-4 text-sm text-error" onPress={() => void load()}>{error}{error === LOAD_ERROR ? ' Toca para reintentar.' : ''}</Text> : null}
         {!lists && !error ? <ActivityIndicator testID="cargando-espacios" className="mt-10" color={colors.primary} /> : null}
-        {lists?.spaces.length ? (
-          <Section title="Tus espacios">
-            {lists.spaces.map((space) => (
-              <SpaceCard key={space.id} space={space} subtitle={membersLabel(space.members)}>
-                <Pressable testID={`abrir-espacio-${space.id}`} accessibilityRole="button" onPress={() => afterName(space, () => leave(space.id))} className="min-h-[40px] items-center justify-center rounded-lg border border-outline/30 px-4">
-                  <Text className="text-[14px] font-semibold text-on-surface">Abrir</Text>
-                </Pressable>
-              </SpaceCard>
-            ))}
-          </Section>
-        ) : null}
-        {lists?.invitations.length ? (
-          <Section title="Invitaciones">
-            {lists.invitations.map((invitation) => (
-              <SpaceCard key={invitation.id} space={invitation.workspace} subtitle={invitedByLine(invitation)}>
-                <Pressable testID={`unirme-espacio-${invitation.id}`} accessibilityRole="button" disabled={accepting !== null} onPress={() => afterName(invitation.workspace, () => void accept(invitation))} className="min-h-[40px] min-w-[76px] items-center justify-center rounded-lg bg-primary px-4">
-                  {accepting === invitation.id ? <ActivityIndicator size="small" color={colors['on-primary']} /> : <Text className="text-[14px] font-bold text-on-primary">Unirme</Text>}
-                </Pressable>
-              </SpaceCard>
-            ))}
-          </Section>
-        ) : null}
+        {lists ? <SpaceLists lists={lists} accepting={accepting} onOpen={(space) => afterName(space, () => leave(space.id))} onJoin={(invitation) => afterName(invitation.workspace, () => void accept(invitation))} /> : null}
 
         <View className="mt-6 border-t border-outline/20 pt-2">
           <LinkRow testID="btn-unirme-codigo" title="Unirme con un código" Icon={RectangleEllipsis} onPress={() => setSheet('join')} />
@@ -121,6 +102,37 @@ export function YourSpacesScreen(props: { credential: Credential; account: strin
       <JoinSpaceScreen visible={sheet === 'join'} jwt={credential.jwt} onJoined={leave} onClose={() => setSheet(null)} />
       <CreateSpaceScreen visible={sheet === 'create'} jwt={credential.jwt} onCreated={(space) => afterName(space, () => leave(space.id))} onJoinInstead={() => setSheet('join')} onClose={() => setSheet(null)} />
     </View>
+  );
+}
+
+function SpaceLists(props: { lists: Lists; accepting: string | null; onOpen: (space: ClientWorkspace) => void; onJoin: (invitation: SpaceInvitation) => void }) {
+  const colors = useColores();
+  const { spaces, invitations } = props.lists;
+  return (
+    <>
+      {spaces.length ? (
+        <Section title="Tus espacios">
+          {spaces.map((space) => (
+            <SpaceCard key={space.id} space={space} subtitle={membersLabel(space.members)}>
+              <Pressable testID={`abrir-espacio-${space.id}`} accessibilityRole="button" onPress={() => props.onOpen(space)} className="min-h-[40px] items-center justify-center rounded-lg border border-outline/30 px-4">
+                <Text className="text-[14px] font-semibold text-on-surface">Abrir</Text>
+              </Pressable>
+            </SpaceCard>
+          ))}
+        </Section>
+      ) : null}
+      {invitations.length ? (
+        <Section title="Invitaciones">
+          {invitations.map((invitation) => (
+            <SpaceCard key={invitation.id} space={invitation.workspace} subtitle={invitedByLine(invitation)}>
+              <Pressable testID={`unirme-espacio-${invitation.id}`} accessibilityRole="button" disabled={props.accepting !== null} onPress={() => props.onJoin(invitation)} className="min-h-[40px] min-w-[76px] items-center justify-center rounded-lg bg-primary px-4">
+                {props.accepting === invitation.id ? <ActivityIndicator size="small" color={colors['on-primary']} /> : <Text className="text-[14px] font-bold text-on-primary">Unirme</Text>}
+              </Pressable>
+            </SpaceCard>
+          ))}
+        </Section>
+      ) : null}
+    </>
   );
 }
 

@@ -17,6 +17,17 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.180',
+    // Everyone: the sign-in by workspace (spec INGRESO-POR-ESPACIO).
+    audience: 'all',
+    items: [
+      'Ahora entras con tu correo de trabajo y un código, como en Slack. El teléfono sigue siendo una opción.',
+      'Después del código ves tus espacios y tus invitaciones, y te unes con un toque.',
+      'Quien entra por primera vez solo escribe su nombre. La foto es opcional.',
+      'La lista de un espacio ya no salta cuando terminan de cargar los clientes.',
+    ],
+  },
+  {
     version: '0.1.179',
     // Everyone: plan 1 of fluidity, F4 + F5 (the message base in SQLCipher, the chat painted from disk).
     audience: 'all',

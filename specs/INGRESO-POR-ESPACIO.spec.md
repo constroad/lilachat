@@ -5,7 +5,7 @@
 > del mismo día: seguir el patrón de Slack, dejar teléfono y código como opción,
 > y mantener un enlace discreto para usar la app sin espacio.
 >
-> **Estado:** pantallas y clave interna aprobadas por José el 04/11. En construcción.
+> **Estado:** I1 a I5 hechas y probadas de punta a punta el 04/11. Sale en la 0.1.180.
 
 ## 1. Cómo lo hace Slack
 
@@ -95,7 +95,7 @@ cruza con la agenda. Esas cuentas tienen el correo verificado por el código.
 | I1 | Server: `/api/auth/email/request` y `/api/auth/email/verify`; entra la cuenta que verificó ese correo | Server. **Hecho** |
 | I2 | Server: cuenta nueva por correo con clave interna; `GET /api/workspaces/invitations` y `POST /api/workspaces/invitations/:id/accept` | Server. **Hecho** |
 | I3 | App: las cuatro pantallas y el orden nuevo (`SignInFlow`) | APK para quien instala y OTA para quien ya la tiene |
-| I4 | Web: las mismas pantallas (`EmailSignIn`, `YourSpacesPage`, `CreateUserPage`) | Server |
+| I4 | Web: las mismas pantallas (`EmailSignIn`, `YourSpacesPage`, `CreateUserPage`; la puerta del número es `PhoneSignIn`) | Server |
 | I5 | Revisión de la clave interna en perfil, directorio, agenda, avisos y admin | Server y OTA |
 
 ## 6. Cómo se prueba
@@ -106,6 +106,34 @@ cruza con la agenda. Esas cuentas tienen el correo verificado por el código.
   `10.0.2.2`, con `constroad-auth` falso, como en los tests del server.
 - La ruta real por correo necesita una cuenta que José elija o una prueba suya en
   su teléfono.
+
+### Resultado del E2E (04/11)
+
+Server local con base propia y `constroad-auth` falso, nada en producción.
+
+| Dónde | Recorrido | Resultado |
+| --- | --- | --- |
+| Web, 375 px | Cuenta nueva: correo, código, invitación, nombre y adentro del espacio | Pasó |
+| Web, 375 px | Recarga: la sesión sigue y no vuelve a pedir nada | Pasó |
+| Web, 375 px | QR, correo, código y «Abrir» con la cuenta que ya existe | Pasó |
+| Emulador | Cuenta nueva: `i-01`, `i-02`, `i-03`, `i-04` y adentro de CONSTROAD | Pasó |
+
+El E2E web encontró cuatro cosas, ya arregladas: el reenvío decía «0:60», las casillas
+salían muy redondas, las iniciales salían de la clave interna hasta recargar, y a una
+cuenta recién creada le salía «Novedades».
+
+**Cómo se prueba en Android sin tocar la sesión de QA:** un build de debug con
+`applicationIdSuffix ".e2e"` y `package_name` igual en `google-services.json`, instalado
+junto a la app real. Metro en el 8082 con `EXPO_PUBLIC_API_URL=http://10.0.2.2:4003`.
+Los dos archivos de `android/` se restauran después, y el build deja ~1 GB en
+`node_modules/*/android/build`.
+
+**Sin probar:** la foto opcional de `i-04`, «Unirme con un código» y «Crear un espacio»
+desde `i-03` en el emulador, y el correo real de `constroad-auth`, que necesita una cuenta
+que José elija o una prueba suya en su teléfono.
+
+**Pendiente de decidir:** al entrar, la app pide el permiso de contactos también a una
+cuenta de correo, que no cruza nada con la agenda.
 
 ## 7. Decisiones de José (04/11)
 

@@ -27,10 +27,10 @@ export function StatusLine(props: { status: Status }) {
   return props.status.line ? <Text className={`mt-2 text-[13px] ${props.status.error ? 'text-error' : 'text-en-linea'}`}>{props.status.line}</Text> : null;
 }
 
-export function SaveButton(props: { testID: string; disabled: boolean; busy: boolean; onPress: () => void; label?: string; secondary?: boolean }) {
+export function SaveButton(props: { testID: string; disabled: boolean; busy: boolean; onPress: () => void; label?: string; /** What a screen reader says when the label alone is ambiguous. */ accessibilityLabel?: string; secondary?: boolean }) {
   const colors = useColores();
   return (
-    <Pressable testID={props.testID} disabled={props.disabled || props.busy} onPress={props.onPress} className={`min-h-[48px] flex-1 flex-row items-center justify-center gap-2 rounded-xl ${props.secondary ? 'border border-outline/25' : 'bg-primary'} ${props.disabled || props.busy ? 'opacity-40' : ''}`}>
+    <Pressable testID={props.testID} accessibilityLabel={props.accessibilityLabel} disabled={props.disabled || props.busy} onPress={props.onPress} className={`min-h-[48px] flex-1 flex-row items-center justify-center gap-2 rounded-xl ${props.secondary ? 'border border-outline/25' : 'bg-primary'} ${props.disabled || props.busy ? 'opacity-40' : ''}`}>
       {props.busy && !props.secondary ? <ActivityIndicator size="small" color={colors['on-primary']} /> : null}
       <Text className={`text-[15px] font-semibold ${props.secondary ? 'text-on-surface' : 'text-on-primary'}`}>{props.label ?? 'Guardar'}</Text>
     </Pressable>

@@ -15,6 +15,8 @@ type PanelProps = { jwt: string; spaceId: string; appId: string; appName: string
  */
 export function AppCommandsPanel(props: PanelProps) {
   const [items, setItems] = useState<AppItems | null>(null);
+  const [itemsFailed, setItemsFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
   const [schedules, setSchedules] = useState<AppSchedules | null>(null);
   const [members, setMembers] = useState<ClientWorkspaceMember[]>([]);
   const [draft, setDraft] = useState<ScheduleDraft | null>(null);
@@ -28,8 +30,11 @@ export function AppCommandsPanel(props: PanelProps) {
   useEffect(() => {
     let alive = true;
     setItems(null);
+    setItemsFailed(false);
     void appItems(props.jwt, props.spaceId, props.appId).then((result) => {
-      if (alive && result.ok) setItems(result.data);
+      if (!alive) return;
+      if (result.ok) setItems(result.data);
+      else setItemsFailed(true);
     });
     void spaceMembers(props.jwt, props.spaceId).then((result) => {
       if (alive && result.ok) setMembers(result.data.members);
@@ -38,7 +43,7 @@ export function AppCommandsPanel(props: PanelProps) {
     return () => {
       alive = false;
     };
-  }, [props.jwt, props.spaceId, props.appId, readSchedules]);
+  }, [props.jwt, props.spaceId, props.appId, readSchedules, attempt]);
 
   const commandOf = (command: string) => items?.items.find((row) => row.kind === 'command' && row.key === command);
   const fromSuggestion = (suggestion: SuggestedSchedule) => {
@@ -47,6 +52,12 @@ export function AppCommandsPanel(props: PanelProps) {
   };
   return (
     <>
+      {itemsFailed ? (
+        <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-outline/15 px-3 py-2.5 text-[14px]">
+          <span>No se pudieron leer los comandos.</span>
+          <button type="button" data-testid="comandos-reintentar" onClick={() => setAttempt((count) => count + 1)} className="shrink-0 font-semibold text-primary hover:underline">Reintentar</button>
+        </div>
+      ) : null}
       {items && items.items.length ? <AppItemsSection {...props} state={items} members={members} onSaved={setItems} onProgram={(row) => setDraft({ command: row.key, shareable: row.shareable !== false })} /> : null}
       {schedules ? <AppSchedulesSection {...props} state={schedules} onChanged={readSchedules} onSuggestion={fromSuggestion} /> : null}
       {draft && items ? <ScheduleSheet {...props} draft={draft} channels={items.channels} onClose={() => setDraft(null)} onCreated={() => { setDraft(null); readSchedules(); }} /> : null}

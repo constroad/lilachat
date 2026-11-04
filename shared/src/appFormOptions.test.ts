@@ -175,3 +175,27 @@ describe('previewReplyOf', () => {
     expect(previewReplyOf('basura')).toEqual({ blocks: [], errors: {} });
   });
 });
+
+describe('a form that grows when its owner is picked (agentes bcf4966: Inframaq reception)', () => {
+  const owner: FormSchemaProperty = { type: 'string', title: '¿De quién es?', oneOf: [{ const: 'acme', title: 'Acme' }], 'x-refresh': true };
+  const plate: FormSchemaProperty = { type: 'string', title: 'Fletero o placa' };
+  const cubes: FormSchemaProperty = { type: 'number', title: 'Cubos' };
+  const material: FormSchemaProperty = { type: 'string', title: 'Material', oneOf: [{ const: 'm1', title: 'Arena 1' }] };
+
+  it('keeps what was typed and shows the new fields in the order the app sent', () => {
+    // Arrange
+    const typed = { duenoId: 'acme', fletero: 'ABC-123', m3: 12 };
+    const grown = formFields(form({ duenoId: owner, materialId: material, fletero: plate, m3: cubes }));
+    // Act
+    const kept = keptAfterRefresh(grown, typed);
+    // Assert
+    expect(kept).toEqual(typed);
+    expect(grown.map((field) => field.name)).toEqual(['duenoId', 'materialId', 'fletero', 'm3']);
+  });
+
+  it('drops a pick the new owner does not offer, and nothing typed', () => {
+    const typed = { duenoId: 'acme', materialId: 'gone', fletero: 'ABC-123', m3: 12 };
+    const grown = formFields(form({ duenoId: owner, materialId: material, fletero: plate, m3: cubes }));
+    expect(keptAfterRefresh(grown, typed)).toEqual({ duenoId: 'acme', fletero: 'ABC-123', m3: 12 });
+  });
+});

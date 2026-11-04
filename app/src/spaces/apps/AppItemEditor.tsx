@@ -39,7 +39,7 @@ export function AppItemEditor(props: EditorProps) {
           <Text className="flex-1 text-[15px] font-semibold text-primary">Programar {row.name} automáticamente</Text>
         </Pressable>
       ) : null}
-      {props.canEdit ? <View className="flex-row"><SaveButton testID={`guardar-${row.key}`} disabled={!props.changed} busy={props.status?.busy ?? false} onPress={props.onSave} label={`Guardar cambios de ${row.name}`} /></View> : null}
+      {props.canEdit ? <View className="flex-row"><SaveButton testID={`guardar-${row.key}`} disabled={!props.changed} busy={props.status?.busy ?? false} onPress={props.onSave} label="Guardar cambios" accessibilityLabel={`Guardar cambios de ${row.name}`} /></View> : null}
       {props.status ? <StatusLine status={props.status} /> : null}
     </View>
   );

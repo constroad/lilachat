@@ -129,9 +129,14 @@ junto a la app real. Metro en el 8082 con `EXPO_PUBLIC_API_URL=http://10.0.2.2:4
 Los dos archivos de `android/` se restauran después, y el build deja ~1 GB en
 `node_modules/*/android/build`.
 
-**Sin probar:** la foto opcional de `i-04`, «Unirme con un código» y «Crear un espacio»
-desde `i-03` en el emulador, y el correo real de `constroad-auth`, que necesita una cuenta
-que José elija o una prueba suya en su teléfono.
+**Correo real (04/11):** con `jose.test@yopmail.com` el código llegó en unos 18 s, y un
+código equivocado da 401 en la ruta real. El botón del correo apunta a
+`chat.constroad.com/login/callback`, que muestra la web de Constroad y no Lilachat, y la web
+tampoco recibe `?d=&c=`. Arreglarlo pide agregar el host nuevo a los `enlaces` de la llave en
+Torre. Falta escribir el código real: crea una cuenta en producción y lo hace José.
+
+**Sin probar:** la foto opcional de `i-04`, y «Unirme con un código» y «Crear un espacio»
+desde `i-03` en el emulador.
 
 **Pendiente de decidir:** al entrar, la app pide el permiso de contactos también a una
 cuenta de correo, que no cruza nada con la agenda.

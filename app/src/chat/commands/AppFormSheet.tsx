@@ -140,7 +140,7 @@ function SheetHeader(props: { answer: EphemeralAnswer; onClose: () => void }) {
     <View className="flex-row items-center gap-3 border-b border-outline/10 px-4 pb-3 pt-3">
       {answer.avatarUrl ? <AppLogo avatarUrl={answer.avatarUrl} size={40} /> : <Avatar nombre={answer.appName} tamano={40} bot />}
       <View className="min-w-0 flex-1">
-        <Text className="text-[18px] font-bold text-on-surface" numberOfLines={1}>{answer.response?.form?.title}</Text>
+        <Text className="text-[18px] font-bold text-on-surface" numberOfLines={2}>{answer.response?.form?.title}</Text>
         <Text className="text-[13px] text-on-surface-variant" numberOfLines={1}>{`${answer.appName} · hoy, ${today}`}</Text>
       </View>
       <Pressable testID="btn-cerrar-formulario" accessibilityLabel="Cerrar" onPress={props.onClose} hitSlop={8} className="h-11 w-11 items-center justify-center">
@@ -159,9 +159,9 @@ function FormIntro(props: { answer: EphemeralAnswer; refreshing: boolean; clock:
       {answer.response?.text ? <Text testID="formulario-texto" className="rounded-xl bg-primary/10 px-3 py-2.5 text-[15px] text-on-surface">{answer.response.text}</Text> : null}
       {answer.response?.form?.intro ? <Text className="text-[15px] text-on-surface-variant">{answer.response.form.intro}</Text> : null}
       {props.clock ? (
-        <View className="items-center rounded-2xl border border-outline/15 py-4">
-          <Text className="text-[40px] font-bold text-on-surface" style={{ fontVariant: ['tabular-nums'] }}>{CLOCK.format(new Date())}</Text>
-          {props.personName ? <Text className="mt-1 rounded-lg border border-outline/15 px-3 py-1 text-[14px] text-on-surface">{props.personName}</Text> : null}
+        <View testID="formulario-hora" className="flex-row items-center justify-between gap-3 rounded-xl border border-outline/15 px-3 py-2">
+          <Text className="text-[20px] font-bold text-on-surface" style={{ fontVariant: ['tabular-nums'] }}>{CLOCK.format(new Date())}</Text>
+          {props.personName ? <Text className="flex-shrink text-[14px] text-on-surface-variant" numberOfLines={1}>{props.personName}</Text> : null}
         </View>
       ) : null}
     </>

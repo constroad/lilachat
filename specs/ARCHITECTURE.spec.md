@@ -5828,6 +5828,12 @@ rechazaba todo «Registrar consumo» como «Portal no pudo responder.». E2E en 
 emulador: abre, el x-refresh re-pide al cambiar «Desde» y el x-preview resume.
 No se envió nada, y «Registrar consumo» quedó apagado otra vez en Test.
 
+**Formulario de registro compacto (04/11, recepción de Inframaq):** la hora y el nombre van
+en una fila y dejan de ocupar medio móvil, y el título usa hasta dos líneas. Un formulario
+que crece al elegir el dueño conserva lo escrito (`keptAfterRefresh`, con test) y deja caer
+solo lo que el dueño nuevo no ofrece. «Comandos» dice si su lista no cargó y ofrece
+«Reintentar»: antes la pestaña quedaba en blanco.
+
 **Exportar chat (B7), como WhatsApp.**
 - `GET /api/chats/:id/export?tz=America/Lima` devuelve un `.txt`: una línea
   por mensaje, «31/10/2026, 14:05 - Ana: texto». El formato vive en

@@ -87,9 +87,9 @@ function FormIntro(props: { answer: EphemeralAnswer; refreshing: boolean; clock:
         <span>{answer.appName} · hoy, {today.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
       </div>
       {props.clock ? (
-        <div className="rounded-2xl border border-outline/15 py-4 text-center">
-          <p className="text-4xl font-bold tabular-nums tracking-tight">{today.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })}</p>
-          {props.personName ? <p className="mx-auto mt-2 w-fit rounded-lg border border-outline/15 px-3 py-1 text-[13px]">{props.personName}</p> : null}
+        <div data-testid="formulario-hora" className="flex items-center justify-between gap-3 rounded-xl border border-outline/15 px-3 py-2">
+          <p className="text-xl font-bold tabular-nums tracking-tight">{today.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })}</p>
+          {props.personName ? <p className="min-w-0 truncate text-[13px] text-on-surface-variant">{props.personName}</p> : null}
         </div>
       ) : null}
     </>

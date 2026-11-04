@@ -75,24 +75,7 @@ export function YourSpacesPage(props: { credential: Credential; account: string;
         <h1 className="mt-6 text-[26px] font-bold leading-8 tracking-tight">Tus espacios de trabajo</h1>
         <p className="mt-1 text-[15px] text-on-surface-variant">{props.account}</p>
         {error ? <button type="button" data-testid="error-espacios" onClick={() => void load()} className="mt-4 block text-left text-sm text-error">{error}{error === LOAD_ERROR ? ' Reintentar' : ''}</button> : null}
-        {lists?.spaces.length ? (
-          <Section title="Tus espacios">
-            {lists.spaces.map((space) => (
-              <SpaceCard key={space.id} space={space} subtitle={membersLabel(space.members)}>
-                <button type="button" data-testid={`abrir-espacio-${space.id}`} onClick={() => afterName(space, () => leave(space.id))} className="h-10 rounded-lg border border-outline/30 px-4 text-sm font-semibold hover:bg-surface-variant/50">Abrir</button>
-              </SpaceCard>
-            ))}
-          </Section>
-        ) : null}
-        {lists?.invitations.length ? (
-          <Section title="Invitaciones">
-            {lists.invitations.map((invitation) => (
-              <SpaceCard key={invitation.id} space={invitation.workspace} subtitle={invitedByLine(invitation)}>
-                <button type="button" data-testid={`unirme-espacio-${invitation.id}`} disabled={accepting !== null} onClick={() => afterName(invitation.workspace, () => void accept(invitation))} className="h-10 rounded-lg bg-primary px-4 text-sm font-bold text-on-primary disabled:opacity-50">Unirme</button>
-              </SpaceCard>
-            ))}
-          </Section>
-        ) : null}
+        {lists ? <SpaceLists lists={lists} accepting={accepting} onOpen={(space) => afterName(space, () => leave(space.id))} onJoin={(invitation) => afterName(invitation.workspace, () => void accept(invitation))} /> : null}
         <div className="mt-6 border-t border-outline/20 pt-2">
           <LinkRow testId="btn-unirme-codigo" title="Unirme con un código" icon={<RectangleEllipsis size={22} />} onClick={() => setSheet('join')} />
           <LinkRow testId="btn-crear-espacio-ingreso" title="Crear un espacio" icon={<CirclePlus size={22} />} onClick={() => setSheet('create')} />
@@ -102,6 +85,32 @@ export function YourSpacesPage(props: { credential: Credential; account: string;
       {sheet === 'join' ? <JoinSpaceDialog jwt={jwt} onJoined={leave} onClose={() => setSheet(null)} /> : null}
       {sheet === 'create' ? <CreateSpaceDialog jwt={jwt} onCreated={(space) => afterName(space, () => leave(space.id))} onJoinInstead={() => setSheet('join')} onClose={() => setSheet(null)} /> : null}
     </main>
+  );
+}
+
+function SpaceLists(props: { lists: Lists; accepting: string | null; onOpen: (space: ClientWorkspace) => void; onJoin: (invitation: SpaceInvitation) => void }) {
+  const { spaces, invitations } = props.lists;
+  return (
+    <>
+      {spaces.length ? (
+        <Section title="Tus espacios">
+          {spaces.map((space) => (
+            <SpaceCard key={space.id} space={space} subtitle={membersLabel(space.members)}>
+              <button type="button" data-testid={`abrir-espacio-${space.id}`} onClick={() => props.onOpen(space)} className="h-10 rounded-lg border border-outline/30 px-4 text-sm font-semibold hover:bg-surface-variant/50">Abrir</button>
+            </SpaceCard>
+          ))}
+        </Section>
+      ) : null}
+      {invitations.length ? (
+        <Section title="Invitaciones">
+          {invitations.map((invitation) => (
+            <SpaceCard key={invitation.id} space={invitation.workspace} subtitle={invitedByLine(invitation)}>
+              <button type="button" data-testid={`unirme-espacio-${invitation.id}`} disabled={props.accepting !== null} onClick={() => props.onJoin(invitation)} className="h-10 rounded-lg bg-primary px-4 text-sm font-bold text-on-primary disabled:opacity-50">Unirme</button>
+            </SpaceCard>
+          ))}
+        </Section>
+      ) : null}
+    </>
   );
 }
 

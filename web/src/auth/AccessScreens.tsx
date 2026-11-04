@@ -7,7 +7,7 @@ import { markWelcomeSeen } from '../spaces/welcomeSeen';
 import { markNotesSeen } from '../ui/WhatsNewDialog';
 import { YourSpacesPage } from '../spaces/YourSpacesPage';
 import { EmailSignIn } from './EmailSignIn';
-import { PhoneSignIn } from './IngresoPorTelefono';
+import { IngresoPorTelefono } from './IngresoPorTelefono';
 import { PantallaDeVincular } from './PantallaDeVincular';
 
 /**
@@ -49,7 +49,14 @@ export function AccessScreens({ onReady }: { onReady: (credential: Credential) =
       ) : null}
       {door === 'qr' ? <PantallaDeVincular onReady={ready} onUsarTelefono={() => setDoor('email')} /> : null}
       {door === 'email' ? <EmailSignIn onVerified={arrive} onUsePhone={() => setDoor('phone')} onUsePersonal={() => setDoor('personal')} onUseQr={() => setDoor('qr')} /> : null}
-      {door === 'phone' || door === 'personal' ? <PhoneSignIn onReady={fromPhone} onUseQr={() => setDoor('qr')} onBack={() => setDoor('email')} /> : null}
+      {door === 'phone' || door === 'personal' ? (
+        <>
+          <IngresoPorTelefono onReady={fromPhone} onUsarQr={() => setDoor('qr')} />
+          <button type="button" data-testid="btn-atras-telefono" onClick={() => setDoor('email')} className="fixed inset-x-0 bottom-3 mx-auto w-fit py-2 text-sm text-on-surface-variant hover:underline">
+            Entrar con mi correo
+          </button>
+        </>
+      ) : null}
     </>
   );
 }

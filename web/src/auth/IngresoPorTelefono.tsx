@@ -12,7 +12,7 @@ import { api, deviceId, type Credential } from '../api';
  */
 const CODE_LENGTH = 6;
 
-export function PhoneSignIn({ onReady, onUseQr, onBack }: { onReady: (credential: Credential) => void; onUseQr: () => void; onBack: () => void }) {
+export function IngresoPorTelefono({ onReady, onUsarQr }: { onReady: (credential: Credential) => void; onUsarQr: () => void }) {
   const [phone, setPhone] = useState('');
   const [sent, setSent] = useState(false);
   const [code, setCode] = useState('');
@@ -196,13 +196,10 @@ export function PhoneSignIn({ onReady, onUseQr, onBack }: { onReady: (credential
         <button
           type="button"
           data-testid="btn-usar-qr"
-          onClick={onUseQr}
+          onClick={onUsarQr}
           className="mt-8 w-full py-2 text-sm font-semibold text-primary hover:underline"
         >
           Vincular con el código QR del teléfono
-        </button>
-        <button type="button" data-testid="btn-atras-telefono" onClick={onBack} className="mt-2 w-full py-2 text-sm text-on-surface-variant hover:underline">
-          Entrar con mi correo
         </button>
       </div>
     </main>

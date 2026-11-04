@@ -95,7 +95,7 @@ cruza con la agenda. Esas cuentas tienen el correo verificado por el código.
 | I1 | Server: `/api/auth/email/request` y `/api/auth/email/verify`; entra la cuenta que verificó ese correo | Server. **Hecho** |
 | I2 | Server: cuenta nueva por correo con clave interna; `GET /api/workspaces/invitations` y `POST /api/workspaces/invitations/:id/accept` | Server. **Hecho** |
 | I3 | App: las cuatro pantallas y el orden nuevo (`SignInFlow`) | APK para quien instala y OTA para quien ya la tiene |
-| I4 | Web: las mismas pantallas (`EmailSignIn`, `YourSpacesPage`, `CreateUserPage`; la puerta del número es `PhoneSignIn`) | Server |
+| I4 | Web: las mismas pantallas (`EmailSignIn`, `YourSpacesPage`, `CreateUserPage`) | Server |
 | I5 | Revisión de la clave interna en perfil, directorio, agenda, avisos y admin | Server y OTA |
 
 ## 6. Cómo se prueba

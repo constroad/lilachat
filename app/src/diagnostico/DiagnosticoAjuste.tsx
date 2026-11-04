@@ -161,14 +161,14 @@ const WORK_LABELS: Record<string, string> = {
 function FluidityBlock({ summary }: { summary: FrameSummary[] }) {
   return (
     <View className="gap-2 rounded-lg border border-outline/10 bg-surface p-3" testID="diag-fluidez">
-      <Text className="text-[11px] font-semibold tracking-wide text-on-surface-variant">FLUIDEZ · CUADROS CAÍDOS (MEDIANA · PEOR)</Text>
+      <Text className="text-[11px] font-semibold tracking-wide text-on-surface-variant">FLUIDEZ · CUADROS CAÍDOS (MEDIANA · PEOR · PAUSA MÁS LARGA)</Text>
       {summary.map((row) => (
         <View key={row.name} className="flex-row flex-wrap items-center justify-between gap-x-2">
           <Text className="flex-1 text-sm text-on-surface">
             {INTERACTION_LABELS[row.name] ?? row.name} · {row.count}×
           </Text>
           <Text className={row.jsMedian > FELT_FRAME_DROPS ? 'text-sm font-semibold text-error' : 'text-sm text-on-surface'}>
-            JS {row.jsMedian} · {row.jsWorst}
+            JS {row.jsMedian} · {row.jsWorst} · {row.jsLongestMs} ms
           </Text>
           <Text className={row.uiMedian > FELT_FRAME_DROPS ? 'text-sm font-semibold text-error' : 'text-sm text-on-surface'}>
             UI {row.uiMedian} · {row.uiWorst}

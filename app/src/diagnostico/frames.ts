@@ -17,7 +17,7 @@ export type FrameStats = { frames: number; dropped: number; worstMs: number };
 export type WorkTotals = Record<string, { ms: number; count: number }>;
 export type FrameReport = { name: string; durationMs: number; js: FrameStats; ui: FrameStats; work?: WorkTotals };
 export type WorkSummary = { label: string; ms: number; count: number };
-export type FrameSummary = { name: string; count: number; jsMedian: number; jsWorst: number; uiMedian: number; uiWorst: number; work: WorkSummary[] };
+export type FrameSummary = { name: string; count: number; jsMedian: number; jsWorst: number; jsLongestMs: number; uiMedian: number; uiWorst: number; work: WorkSummary[] };
 
 /** A window nobody closes (the screen never painted what we waited for) still reports. */
 export const MAX_WINDOW_MS = 2_000;
@@ -35,11 +35,14 @@ const MAX_INTERVAL_MS = 20;
 /** A frame later than this many intervals missed at least one vsync; below it is jitter. */
 const DROP_FACTOR = 1.5;
 
-/** The shortest delta is a frame that made its vsync: that is the display's interval. */
+/**
+ * The middle delta is a frame that made its vsync: that is the display's interval.
+ * Not the shortest (F4, 04/11): one frame landing 8 ms after a render made every
+ * normal 16.7 ms frame a drop, and a smooth send read 35 dropped frames of 36.
+ */
 function inferInterval(deltas: readonly number[]): number {
   if (deltas.length === 0) return DEFAULT_INTERVAL_MS;
-  const shortest = Math.min(...deltas);
-  return Math.min(MAX_INTERVAL_MS, Math.max(MIN_INTERVAL_MS, shortest));
+  return Math.min(MAX_INTERVAL_MS, Math.max(MIN_INTERVAL_MS, upperMedian(deltas)));
 }
 
 /** Frames painted, frames that never came, and the longest wait, from the deltas (ms) between frames. */
@@ -143,6 +146,8 @@ export function summarizeFrames(entries: readonly EntradaDiagnostico[]): FrameSu
       count: group.js.length,
       jsMedian: upperMedian(group.js),
       jsWorst: Math.max(...group.js),
+      // The longest wait, measured and not inferred: the check on the dropped frames.
+      jsLongestMs: Math.max(...group.extras.map((extra) => extra.jsWorst ?? 0)),
       uiMedian: upperMedian(group.ui),
       uiWorst: Math.max(...group.ui),
       work: summarizeWork(group.extras),

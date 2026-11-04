@@ -37,6 +37,25 @@ describe('frameStats', () => {
     expect(frameStats([16, 17, 18, 16, 17]).dropped).toBe(0);
   });
 
+  it.each([12, 8, 6, 3])('one frame that lands %d ms after the last does not turn the normal frames into drops (F4, 04/11)', (early) => {
+    // Arrange: a window of normal frames, and one that catches up right after a render
+    const deltas = [...steady(AT_60HZ, 35), early];
+    // Act
+    const stats = frameStats(deltas);
+    // Assert
+    expect(stats.dropped).toBe(0);
+  });
+
+  it('a real stall still counts when a frame also lands early', () => {
+    // Arrange: a 500 ms stall, then the frame that catches up
+    const deltas = [...steady(AT_60HZ, 10), 500, 6, ...steady(AT_60HZ, 10)];
+    // Act
+    const stats = frameStats(deltas);
+    // Assert
+    expect(stats.dropped).toBe(29);
+    expect(stats.worstMs).toBe(500);
+  });
+
   it('a window where every frame is late still counts drops (interval clamped to 50 Hz)', () => {
     expect(frameStats(steady(40, 5)).dropped).toBe(5);
   });
@@ -167,8 +186,8 @@ describe('summarizeFrames (the «Fluidez» block in Diagnóstico)', () => {
     ]);
 
     expect(summary).toEqual([
-      { name: 'abrir-chat', count: 3, jsMedian: 4, jsWorst: 9, uiMedian: 1, uiWorst: 3, work: [] },
-      { name: 'teclado-abrir', count: 1, jsMedian: 1, jsWorst: 1, uiMedian: 0, uiWorst: 0, work: [] },
+      { name: 'abrir-chat', count: 3, jsMedian: 4, jsWorst: 9, jsLongestMs: 90, uiMedian: 1, uiWorst: 3, work: [] },
+      { name: 'teclado-abrir', count: 1, jsMedian: 1, jsWorst: 1, jsLongestMs: 10, uiMedian: 0, uiWorst: 0, work: [] },
     ]);
   });
 

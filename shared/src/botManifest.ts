@@ -1,6 +1,6 @@
 import { cutAtWord } from './textCut.js';
 import { validateSuggestedSchedules, type SuggestedSchedule } from './appSchedules.js';
-import { validateBotCommands, type AppShortcut, type BotCommand } from './botCommands.js';
+import { SHORTCUT_AUDIENCES, validateBotCommands, type AppShortcut, type BotCommand } from './botCommands.js';
 import { isNoticeIcon, NOTICE_TOPIC_LIMITS, TOPIC_KEY, type NoticeTopic } from './noticeTopics.js';
 
 /**
@@ -112,7 +112,9 @@ function validateShortcuts(raw: unknown): AppShortcut[] | { ok: false; message: 
     const shortcutName = oneLine(item.name, MANIFEST_LIMITS.shortcutName);
     if (!/^[a-z][a-z0-9_-]+$/.test(shortcutKey) || shortcutKey.length > MANIFEST_LIMITS.key || !shortcutName) return { ok: false, message: `El atajo «${shortcutKey}» necesita una «key» en minúsculas (a-z, 0-9, _ o -) y un «name».` };
     const description = oneLine(item.description, MANIFEST_LIMITS.shortcutDescription);
-    shortcuts.push({ key: shortcutKey, name: shortcutName, ...(description ? { description } : {}) });
+    const audience = SHORTCUT_AUDIENCES.find((one) => one === item.audience);
+    if (item.audience !== undefined && !audience) return { ok: false, message: `El atajo «${shortcutKey}» lleva «audience» everyone o admins.` };
+    shortcuts.push({ key: shortcutKey, name: shortcutName, ...(description ? { description } : {}), ...(audience ? { audience } : {}) });
   }
   return shortcuts;
 }

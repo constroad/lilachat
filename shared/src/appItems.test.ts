@@ -7,6 +7,26 @@ const CAJA = '6ad8b0cb30ce97957f4acc05';
 const ANA = '6ad8b0cb30ce97957f4acc06';
 const LUIS = '6ad8b0cb30ce97957f4acc07';
 
+describe('the audience an app suggests for its shortcut (José, 04/11: attendance for all, tanks for whoever we choose)', () => {
+  it('fills «Quién puede usarlo» with everyone, and it still starts off', () => {
+    expect(itemSettingOf(undefined, 'shortcut', 'marcar_asistencia', false, 'everyone')).toEqual({ ...ALL_OFF, who: { kind: 'everyone' } });
+  });
+
+  it('stays with the admins when the app says so or says nothing', () => {
+    expect(itemSettingOf(undefined, 'shortcut', 'medir_tanque', false, 'admins').who).toEqual({ kind: 'admins' });
+    expect(itemSettingOf(undefined, 'shortcut', 'medir_tanque').who).toEqual({ kind: 'admins' });
+  });
+
+  it('never beats what the space\'s admin chose', () => {
+    const stored = { [itemKey('shortcut', 'marcar_asistencia')]: { who: { kind: 'admins' as const } } };
+    expect(itemSettingOf(stored, 'shortcut', 'marcar_asistencia', false, 'everyone').who).toEqual({ kind: 'admins' });
+  });
+
+  it('does not touch an installation not migrated yet', () => {
+    expect(itemSettingOf(undefined, 'shortcut', 'medir_tanque', true, 'admins').who).toEqual({ kind: 'everyone' });
+  });
+});
+
 describe('the setting of a command or an action', () => {
   it('untouched: off everywhere, and only admins once turned on (José, 28/10)', () => {
     expect(itemSettingOf(undefined, 'shortcut', 'marcar_asistencia')).toEqual(ALL_OFF);

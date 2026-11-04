@@ -16,7 +16,10 @@ import { validateBotCard, type BotCard } from './bots.js';
  */
 export type BotCommand = { command: string; description: string; usageHint?: string; schedulable?: true; shareable?: false };
 /** An action of the composer's «+» (R160, design e-29): tapping it is like a command without typing it. */
-export type AppShortcut = { key: string; name: string; description?: string };
+/** Who the app suggests for its shortcut, until the space's admin chooses; it never turns it on (José, 04/11). */
+export const SHORTCUT_AUDIENCES = ['everyone', 'admins'] as const;
+export type ShortcutAudience = (typeof SHORTCUT_AUDIENCES)[number];
+export type AppShortcut = { key: string; name: string; description?: string; audience?: ShortcutAudience };
 export type CommandGroup = { appId: string; appName: string; commands: BotCommand[]; avatarUrl?: string; shortcuts?: AppShortcut[] };
 /** `form` (R160): the answer is a form only the asker sees; sending it is their confirmation. */
 export type CommandResponseType = 'ephemeral' | 'in_channel' | 'form';

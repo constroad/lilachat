@@ -24,7 +24,7 @@ export async function itemRowsOf(installation: Installation): Promise<{ items: A
   const legacy = !stored?.itemsV2;
   return {
     items: [
-      ...(app?.shortcuts ?? []).map((entry) => ({ kind: 'shortcut' as const, key: entry.key, name: entry.name, ...(entry.description ? { description: entry.description } : {}), ...itemSettingOf(settings, 'shortcut', entry.key, legacy) })),
+      ...(app?.shortcuts ?? []).map((entry) => ({ kind: 'shortcut' as const, key: entry.key, name: entry.name, ...(entry.description ? { description: entry.description } : {}), ...itemSettingOf(settings, 'shortcut', entry.key, legacy, entry.audience) })),
       ...(app?.commands ?? []).map((entry) => ({ kind: 'command' as const, key: entry.command, name: `/${entry.command}`, description: entry.description, ...(entry.schedulable ? { schedulable: true as const } : {}), ...(entry.shareable === false ? { shareable: false as const } : {}), ...itemSettingOf(settings, 'command', entry.command, legacy) })),
     ],
     channels: channels.map((one) => ({ id: String(one._id), name: one.name ?? '', private: one.channel?.visibility !== 'public' })),

@@ -400,7 +400,7 @@ día, la hora o ambos. Hasta 20 campos.
   decidió») va con `shareable: false`: Lilachat no puede saber qué respuesta
   es un rechazo, y sin eso ofrece «Enviar al canal» sobre un error.
 
-**Acciones.** El manifiesto declara `shortcuts: [{ key, name, description? }]`
+**Acciones.** El manifiesto declara `shortcuts: [{ key, name, description?, audience? }]`
 (hasta 10; nombre ≤ 40, descripción ≤ 80). Un manifiesto sin ellas las borra.
 Al tocar una llega `shortcut.invoked { shortcut, command_id, channel, user }`
 y se responde igual que a un comando (casi siempre con su formulario).
@@ -408,6 +408,10 @@ y se responde igual que a un comando (casi siempre con su formulario).
 - Desde el ⚡ de la cabecera del espacio: `channel: null`, como los atajos
   globales de Slack. Una respuesta `in_channel` sin canal se muestra solo a
   quien la pidió.
+
+`audience` (`everyone` o `admins`, 04/11) sugiere quién la usa: llena «Quién puede
+usarlo» hasta que el admin del espacio elija. Sin el campo vale `admins`. Nunca la
+enciende: toda acción nace apagada, y el server sigue validando cada uso.
 
 **Del lado de Lilachat.** `POST /api/chats/:chatId/shortcuts` y `POST
 /api/workspaces/:id/shortcuts` (`{ app_id, shortcut }`); un comando global

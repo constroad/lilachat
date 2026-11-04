@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { availableTo, canManageMembers, COMMAND_LIMITS, formLevelOf, isAckBody, itemSettingOf, mayUseItem, shortcutValuesOf, validateCommandResponse, validateFormReply, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope, type ShortcutValues, worksAt } from '@lilachat/shared';
+import { availableTo, canManageMembers, COMMAND_LIMITS, formLevelOf, isAckBody, itemSettingOf, mayUseItem, shortcutValuesOf, validateCommandResponse, validateFormReply, type ShortcutAudience, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope, type ShortcutValues, worksAt } from '@lilachat/shared';
 import { ChatModel, type Chat } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { callBotWebhook, isRestarting, recordLastDelivery, type WebhookReply } from './botEvents.js';
@@ -98,13 +98,13 @@ export async function commandGroupsOf(workspaceId: string, userId: Types.ObjectI
   return apps
     .map((app) => {
       const installation = byApp.get(String(app._id))!;
-      const open = (kind: 'command' | 'shortcut', key: string) => {
-        const setting = itemSettingOf(installation.itemSettings, kind, key, !installation.itemsV2);
+      const open = (kind: 'command' | 'shortcut', key: string, audience?: ShortcutAudience) => {
+        const setting = itemSettingOf(installation.itemSettings, kind, key, !installation.itemsV2, audience);
         if (!place) return mayUseItem(setting, person) && onSomewhere(setting);
         return availableTo(kind, key, setting, place === 'space' ? 'space' : itemPlaceOf(chat, installation, clientChat), person);
       };
       const commands = (app.commands ?? []).filter((entry) => open('command', entry.command));
-      const shortcuts = (app.shortcuts ?? []).filter((entry) => open('shortcut', entry.key));
+      const shortcuts = (app.shortcuts ?? []).filter((entry) => open('shortcut', entry.key, entry.audience));
       return { appId: String(app._id), appName: app.name, commands, ...(app.avatarUrl ? { avatarUrl: app.avatarUrl } : {}), shortcuts };
     })
     .filter((group) => group.commands.length > 0 || group.shortcuts.length > 0);
@@ -191,7 +191,8 @@ async function invokeApp(userId: Types.ObjectId, scope: CommandScope, appId: unk
   const offered = trigger.kind === 'command' ? app?.commands?.some((entry) => entry.command === name) : app?.shortcuts?.some((entry) => entry.key === name);
   const installation = app && offered ? await BotInstallationModel.findOne({ appId: app._id, workspaceId: place.workspaceId, revokedAt: { $exists: false } }).lean() : null;
   if (!app || !installation) return notFound();
-  const setting = itemSettingOf(installation.itemSettings, trigger.kind, name, !installation.itemsV2);
+  const audience = trigger.kind === 'shortcut' ? app.shortcuts?.find((entry) => entry.key === name)?.audience : undefined;
+  const setting = itemSettingOf(installation.itemSettings, trigger.kind, name, !installation.itemsV2, audience);
   // Checked here, not only in the menu: an old client or a direct call skips the menu (§2.2).
   const [member, clientChat] = await Promise.all([WorkspaceMemberModel.findOne({ workspaceId: place.workspaceId, userId, status: 'active' }).select('role').lean(), place.chat ? isClientChat(place.chat._id) : false]);
   const label = trigger.kind === 'command' ? `/${name}` : `«${app.shortcuts?.find((entry) => entry.key === name)?.name ?? name}»`;

@@ -71,6 +71,12 @@ describe('app manifest', () => {
     expect(result.ok && result.manifest.developer!.length).toBeLessThanOrEqual(MANIFEST_LIMITS.developer);
   });
 
+  it('a shortcut may suggest who uses it; anything else refuses the manifest', () => {
+    const accepted = validateAppManifest({ ...manifest, shortcuts: [{ key: 'marcar', name: 'Marcar', audience: 'everyone' }, { key: 'medir', name: 'Medir' }] });
+    expect(accepted.ok && accepted.manifest.shortcuts).toEqual([{ key: 'marcar', name: 'Marcar', audience: 'everyone' }, { key: 'medir', name: 'Medir' }]);
+    expect(validateAppManifest({ ...manifest, shortcuts: [{ key: 'medir', name: 'Medir', audience: 'nadie' }] }).ok).toBe(false);
+  });
+
   it('shortcuts for the «+» menu: cut to 40 and 80, up to 20; none (or no key) means none, so a retired tool takes its shortcut away', () => {
     // Arrange
     const long = { key: 'marcar_asistencia', name: 'Marcar asistencia de ingreso, refrigerio, retorno y salida del personal', description: 'Ingreso, refrigerio, retorno o salida, con tu ubicación y una selfie, desde cualquier canal del espacio' };

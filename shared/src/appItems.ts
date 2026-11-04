@@ -1,3 +1,5 @@
+import type { ShortcutAudience } from './botCommands.js';
+
 /**
  * Where each command and action of an app works in a space, and who may use
  * it (R160; José, 23/10: only some are global; 28/10: everything starts off,
@@ -34,10 +36,11 @@ export const itemKey = (kind: AppItemKind, key: string): string => `${kind}:${ke
 const legacyOf = (kind: AppItemKind): AppItemSetting => ({ global: kind === 'shortcut', channels: 'all', direct: true, who: { kind: 'everyone' } });
 
 /** `legacy`: an installation not migrated yet keeps the old defaults, so deploying does not switch anything off by itself. */
-export function itemSettingOf(stored: StoredItemSettings | undefined, kind: AppItemKind, key: string, legacy = false): AppItemSetting {
+export function itemSettingOf(stored: StoredItemSettings | undefined, kind: AppItemKind, key: string, legacy = false, audience?: ShortcutAudience): AppItemSetting {
   const saved = stored?.[itemKey(kind, key)] ?? {};
   const base = legacy ? legacyOf(kind) : ALL_OFF;
-  return { global: saved.global ?? base.global, channels: saved.channels ?? base.channels, direct: saved.direct ?? base.direct, who: saved.who ?? base.who };
+  const suggested: ItemWho = !legacy && audience === 'everyone' ? { kind: 'everyone' } : base.who;
+  return { global: saved.global ?? base.global, channels: saved.channels ?? base.channels, direct: saved.direct ?? base.direct, who: saved.who ?? suggested };
 }
 
 export function enabledAt(setting: AppItemSetting, place: ItemPlace): boolean {

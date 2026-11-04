@@ -137,7 +137,7 @@ const appSchema = new Schema<BotApp>(
     webhookUrl: { type: String, required: true },
     installUrl: { type: String },
     commands: { type: [{ command: String, description: String, usageHint: String, schedulable: Boolean, shareable: Boolean, _id: false }], default: undefined },
-    shortcuts: { type: [{ key: String, name: String, description: String, _id: false }], default: undefined },
+    shortcuts: { type: [{ key: String, name: String, description: String, audience: String, _id: false }], default: undefined },
     noticeTopics: { type: [{ key: String, name: String, description: String, icon: String, noDefault: Boolean, offerChosen: Boolean, _id: false }], default: undefined },
     suggestedSchedules: { type: Schema.Types.Mixed, default: undefined },
     scopes: { type: [String], default: undefined },

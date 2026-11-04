@@ -54,7 +54,7 @@ export function ScheduleCallScreen(props: { visible: boolean; jwt: string; chat:
   };
 
   return (
-    <Sheet visible={visible} onClose={props.onClose} testID="programar-llamada" className="px-4" dragArea="handle" bottomRoom={8} avoidKeyboard>
+    <Sheet visible={visible} onClose={props.onClose} testID="programar-llamada" className="px-4" dragArea="handle" bottomRoom={8} keyboard="avoid">
       <View className="mb-3 flex-row items-center">
         <Text className="flex-1 text-lg font-bold text-on-surface">Programar llamada</Text>
         <Pressable testID="btn-cerrar-programar-llamada" accessibilityLabel="Cerrar" onPress={props.onClose} className="h-11 w-11 items-center justify-center">

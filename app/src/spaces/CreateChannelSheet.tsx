@@ -51,7 +51,7 @@ export function CreateChannelSheet(props: { visible: boolean; jwt: string; space
   );
 
   return (
-    <Sheet visible={props.visible} onClose={props.onClose} onBack={() => !name && props.onClose()} testID="hoja-crear-canal" className="max-h-[90%]" dragArea="handle" bottomRoom={8} avoidKeyboard>
+    <Sheet visible={props.visible} onClose={props.onClose} onBack={() => !name && props.onClose()} testID="hoja-crear-canal" className="max-h-[90%]" dragArea="handle" bottomRoom={8} keyboard="avoid">
       <ScrollView contentContainerStyle={{ padding: 20 }} keyboardShouldPersistTaps="handled">
         <View className="flex-row items-start">
           <View className="flex-1">

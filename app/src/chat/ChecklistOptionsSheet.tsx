@@ -33,7 +33,7 @@ export function ChecklistOptionsSheet(props: { checklist: AgendaChecklist | null
     ]);
 
   return (
-    <Sheet visible={checklist !== null} onClose={props.onClose} testID="hoja-opciones-checklist" className="px-5" dragArea="handle" bottomRoom={8} avoidKeyboard>
+    <Sheet visible={checklist !== null} onClose={props.onClose} testID="hoja-opciones-checklist" className="px-5" dragArea="handle" bottomRoom={8} keyboard="avoid">
       <View className="flex-row items-center">
         <Text className="flex-1 text-[11px] font-bold uppercase tracking-wider text-primary">Editar checklist</Text>
         <Pressable testID="opciones-checklist-cerrar" onPress={props.onClose} accessibilityLabel="Cerrar" className="h-11 w-11 items-center justify-center">

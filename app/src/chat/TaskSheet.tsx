@@ -59,7 +59,7 @@ export function TaskSheet(props: { item: ChecklistItem | null; members: readonly
   };
 
   return (
-    <Sheet visible={item !== null} onClose={props.onClose} testID="hoja-tarea" className="px-5" dragArea="handle" bottomRoom={8} avoidKeyboard>
+    <Sheet visible={item !== null} onClose={props.onClose} testID="hoja-tarea" className="px-5" dragArea="handle" bottomRoom={8} keyboard="avoid">
       {item ? (
         <>
           <View className="flex-row items-start gap-3 border-b border-outline/15 pb-3">

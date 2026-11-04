@@ -48,7 +48,7 @@ function ChoiceSheet(props: { field: Choice; value: unknown; onPick: (value: str
   const initials = showsInitials(props.field);
   // A long list keeps one height while typing; a short one is as tall as its rows.
   return (
-    <Sheet visible onClose={props.onClose} testID={`hoja-${props.field.name}`} dragArea="handle" bottomRoom={0} {...(withSearch ? { height: SHEET_MAX_SHARE } : { maxHeight: SHEET_MAX_SHARE })}>
+    <Sheet visible onClose={props.onClose} testID={`hoja-${props.field.name}`} dragArea="handle" bottomRoom={0} keyboard="keep" {...(withSearch ? { height: SHEET_MAX_SHARE } : { maxHeight: SHEET_MAX_SHARE })}>
       <View className="flex-row items-center px-4">
         <Text className="flex-1 text-[20px] font-bold text-on-surface">{props.field.label}</Text>
         <Pressable onPress={props.onClose} accessibilityLabel="Cerrar" className="h-11 w-11 items-center justify-center rounded-full bg-background"><X size={20} color={colors['on-surface-variant']} /></Pressable>

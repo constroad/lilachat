@@ -57,7 +57,7 @@ export function ScheduleSheet(props: SheetProps) {
     props.onCreated();
   };
   return (
-    <Sheet visible onClose={props.onClose} onBack={() => !text && props.onClose()} testID="hoja-programar" className="max-h-[92%]" dragArea="handle" bottomRoom={8} avoidKeyboard>
+    <Sheet visible onClose={props.onClose} onBack={() => !text && props.onClose()} testID="hoja-programar" className="max-h-[92%]" dragArea="handle" bottomRoom={8} keyboard="avoid">
       <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }} keyboardShouldPersistTaps="handled">
         <View>
           <Text className="text-[11px] font-bold uppercase tracking-widest text-primary">Programar</Text>

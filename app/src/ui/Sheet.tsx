@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
-import { Pressable, StyleSheet, View, type DimensionValue } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, View, type DimensionValue } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import Animated, { FadeOut, runOnJS, SlideInDown, SlideOutDown, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
@@ -40,8 +40,11 @@ type SheetProps = {
   bottomRoom?: number;
   /** The back button, when it does not simply close: a typed text is not thrown away. */
   onBack?: () => void;
-  /** The card rises with the keyboard: a sheet with a text field. */
-  avoidKeyboard?: boolean;
+  /**
+   * `dismiss` (default): it closes the keyboard, which would cover it: the card lives in the app's window.
+   * `avoid`: a sheet with a text field rises with it. `keep`: a search that opens it and keeps its height.
+   */
+  keyboard?: 'dismiss' | 'avoid' | 'keep';
   /** `background` for a sheet of cards. */
   tone?: 'surface' | 'background';
   children: ReactNode;
@@ -58,7 +61,7 @@ export function Sheet(props: SheetProps) {
 
 /** Mounted on every opening: it starts from rest, with no drag left over. */
 function SheetBody(props: SheetProps) {
-  const { onClose, dragArea = 'card', maxHeight, height: fixedHeight, bottomRoom = BOTTOM_ROOM, avoidKeyboard = false, tone = 'surface' } = props;
+  const { onClose, dragArea = 'card', maxHeight, height: fixedHeight, bottomRoom = BOTTOM_ROOM, keyboard = 'dismiss', tone = 'surface' } = props;
   const margins = useMargenes();
   const drag = useSharedValue(0);
   const height = useSharedValue(0);
@@ -67,7 +70,8 @@ function SheetBody(props: SheetProps) {
   useEffect(() => {
     shown.value = withTiming(1, { duration: BACKDROP_MS });
     beginInteraction(FRAME_WINDOW);
-  }, [shown]);
+    if (keyboard === 'dismiss') Keyboard.dismiss();
+  }, [shown, keyboard]);
 
   const pan = Gesture.Pan()
     .activeOffsetY([-DRAG_START_PX, DRAG_START_PX])
@@ -115,7 +119,7 @@ function SheetBody(props: SheetProps) {
       <Animated.View style={[styles.backdrop, backdropStyle]} exiting={FadeOut.duration(BACKDROP_MS)}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Cerrar" />
       </Animated.View>
-      {avoidKeyboard ? (
+      {keyboard === 'avoid' ? (
         <KeyboardAvoidingView behavior="padding" style={styles.bottom} pointerEvents="box-none">
           {draggable}
         </KeyboardAvoidingView>

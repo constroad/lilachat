@@ -75,7 +75,7 @@ export function ChatListEditor(props: {
     ]);
 
   return (
-    <Sheet visible={visible} onClose={props.onClose} testID="editor-de-lista" className="max-h-[90%] px-4" dragArea="handle" bottomRoom={8} avoidKeyboard>
+    <Sheet visible={visible} onClose={props.onClose} testID="editor-de-lista" className="max-h-[90%] px-4" dragArea="handle" bottomRoom={8} keyboard="avoid">
       <View className="mb-3 flex-row items-center">
         <Text className="flex-1 text-lg font-bold text-on-surface">{list ? 'Editar lista' : 'Nueva lista'}</Text>
         <Pressable testID="btn-cerrar-editor-de-lista" accessibilityLabel="Cerrar" onPress={props.onClose} className="h-11 w-11 items-center justify-center">

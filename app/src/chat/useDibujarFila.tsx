@@ -7,6 +7,7 @@ import { useKeptValues } from './keptValues';
 import { measureWork } from '../diagnostico/frameMonitor';
 import { buildMessageCells, keepCells, type MessageCell } from './messageCells';
 import { drawMessageCell, type CellDrawContext } from './drawMessageCell';
+import { useVoiceNoteQueue } from './useVoiceNoteQueue';
 
 export type { MessageCell };
 
@@ -18,6 +19,7 @@ type PropsDeFila = ComponentProps<typeof MessageRow>;
  * burbuja con todo lo que necesita.
  */
 export function useDibujarFila(p: {
+  chatId: string;
   rows: Row[];
   yo: string;
   jwt: string;
@@ -60,6 +62,7 @@ export function useDibujarFila(p: {
   onShowPerson?: (userId: string) => void;
 }) {
   const { rows, yo, jwt, encrypted, esGrupo, nombres, fotos, roles, leidoHasta, entregadoHasta, divisorSeq, noLeidosAlAbrir } = p;
+  useVoiceNoteQueue({ chatId: p.chatId, rows, names: nombres, photos: fotos });
   // Groups as flat rows, like Slack (design `s-01`): always in a company space, on request in a personal group.
   const flat = usesFlatLayout({ kind: esGrupo ? 'group' : 'direct', workspaceId: p.workspaceId }, { groupsAsList: useGroupsAsList() });
   const { elegidos, enSeleccion, resaltado, seqBuscado, onVerImagen, onSeleccionar, onResponder, onFallido, onTocarCita, onAbrirHilo, hiloConNuevas } = p;

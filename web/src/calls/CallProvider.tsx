@@ -1,8 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, type ReactNode } from 'react';
-import type { CallState } from '@lilachat/shared';
+import { callHoldsScreen, type CallState } from '@lilachat/shared';
 import { CallOverlay } from './CallOverlay';
 import { CallLinkFollower } from './CallLinkFollower';
 import { startCallTone } from './callTones';
+import { useScreenWakeLock } from './useScreenWakeLock';
 import { useWebCall, type IncomingOffer } from './useWebCall';
 import type { GroupCallRoom } from '@lilachat/shared';
 import { useWebGroupCall } from './group/useWebGroupCall';
@@ -84,6 +85,7 @@ export function CallProvider(props: { jwt: string; me: string; connected: boolea
   }, [ended, error, close]);
   const group = useWebGroupCall({ jwt: props.jwt, me: props.me, connected: props.connected });
   const busy = Boolean(state && state.fase !== 'terminada') || group.call !== null;
+  useScreenWakeLock(callHoldsScreen(state, Boolean(session?.videoCall)) || Boolean(group.call?.video));
   const { join: joinGroup, rooms: groupRooms, refreshRoom: refreshGroupRoom } = group;
   const value = useMemo<Calls>(
     () => ({ call: (chatId, peerName, video) => void call(chatId, peerName, video), busy, callGroup: (chatId, chatName, video) => void joinGroup(chatId, chatName, video), groupRooms, refreshGroupRoom, me: props.me }),

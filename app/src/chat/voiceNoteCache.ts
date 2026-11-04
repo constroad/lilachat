@@ -30,7 +30,7 @@ function fileFor(url: string): File | null {
 }
 
 /** The note's file on the phone, if it is already there. */
-function knownLocal(url: string): string | undefined {
+export function knownLocal(url: string): string | undefined {
   const cached = local.get(url);
   if (cached || checked.has(url)) return cached;
   checked.add(url);

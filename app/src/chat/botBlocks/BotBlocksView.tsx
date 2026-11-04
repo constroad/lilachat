@@ -1,6 +1,6 @@
 import { Linking, Pressable, Text, View } from 'react-native';
 import { Paperclip } from 'lucide-react-native';
-import { peopleOnCard, shortPersonName, type BotBlock } from '@lilachat/shared';
+import { peopleOnCard, personTime, shortPersonName, type BotBlock } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { useColores } from '../../ui/tema';
 import { BlockChart } from './BlockChart';
@@ -20,6 +20,7 @@ function PeopleOnCard({ block }: { block: PeopleBlock }) {
         <View key={`${name}-${index}`} className="flex-row items-center gap-1.5">
           <Avatar nombre={name} tamano={PEOPLE_SIZE} />
           <Text numberOfLines={1} className="text-[13px] text-on-surface">{shortPersonName(name)}</Text>
+          {personTime(block, index) ? <Text className="text-[12px] text-on-surface-variant" style={{ fontVariant: ['tabular-nums'] }}>{personTime(block, index)}</Text> : null}
         </View>
       ))}
       {more ? <Text className="text-[12px] text-on-surface-variant">+{more}</Text> : null}
@@ -35,6 +36,7 @@ function PeopleList({ block }: { block: PeopleBlock }) {
         <View key={`${name}-${index}`} className={`min-h-[44px] flex-row items-center gap-3 py-1.5 ${index ? 'border-t border-outline/10' : ''}`}>
           <Avatar nombre={name} tamano={PEOPLE_SIZE} />
           <Text className="min-w-0 flex-1 text-[14px] text-on-surface">{name}</Text>
+          {personTime(block, index) ? <Text className="text-[13px] font-semibold text-on-surface" style={{ fontVariant: ['tabular-nums'] }}>{personTime(block, index)}</Text> : null}
         </View>
       ))}
       {block.more ? <Text className="py-2 text-[13px] text-on-surface-variant">{`y ${block.more} más`}</Text> : null}

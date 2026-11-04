@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { barColumns, barFractions, linePath, peopleOnCard, tankFill, tankPercent, validateBotBlocks, BLOCK_LIMITS, PEOPLE_ON_CARD } from './botBlocks.js';
+import { barColumns, barFractions, linePath, peopleOnCard, personTime, tankDeltaTrend, tankFill, tankPercent, validateBotBlocks, BLOCK_LIMITS, PEOPLE_ON_CARD } from './botBlocks.js';
 import { validateBotCard } from './bots.js';
 
 /** The card kit (§118.4, José 23/10): what agents and webhooks can draw in a card, validated once for server, app and web. */
@@ -107,5 +107,50 @@ describe('bot card blocks', () => {
     expect(barColumns(300, 2).bar).toBe(32);
     expect(barColumns(0, 7)).toMatchObject({ scroll: false });
     expect(barColumns(300, 0)).toMatchObject({ scroll: false, column: 0 });
+  });
+});
+
+/** José, 04/11: «en las asistencias no se ve la hora solo los nombres». */
+describe('the time of each person', () => {
+  const people = (raw: Record<string, unknown>) => {
+    const result = validateBotBlocks([{ type: 'people', ...raw }], BLOCK_LIMITS.detailBlocks);
+    if (!result.ok) throw new Error(result.message);
+    return result.blocks[0] as Extract<(typeof result.blocks)[number], { type: 'people' }>;
+  };
+
+  it('each name keeps its time', () => {
+    const block = people({ names: ['Carlos Dario', 'Jensen Stewen'], times: ['07:12', '07:40'] });
+    expect(block.times).toEqual(['07:12', '07:40']);
+    expect(personTime(block, 1)).toBe('07:40');
+  });
+
+  it('a blank name takes its time with it, so the rest stay with their person', () => {
+    const block = people({ names: ['Carlos Dario', '  ', 'Jensen Stewen'], times: ['07:12', '07:20', '07:40'] });
+    expect(block.names).toEqual(['Carlos Dario', 'Jensen Stewen']);
+    expect(block.times).toEqual(['07:12', '07:40']);
+  });
+
+  it('someone without a time says nothing, and a short list leaves the rest without one', () => {
+    const block = people({ names: ['Ana', 'Beto', 'Caro'], times: ['', '08:00'] });
+    expect([personTime(block, 0), personTime(block, 1), personTime(block, 2)]).toEqual(['', '08:00', '']);
+  });
+
+  it('a block with no times stays as the installed apps know it', () => {
+    expect(people({ names: ['Ana'] })).toEqual({ type: 'people', names: ['Ana'] });
+    expect(people({ names: ['Ana'], times: ['', 7] })).toEqual({ type: 'people', names: ['Ana'] });
+    expect(personTime({}, 0)).toBe('');
+  });
+});
+
+/** José, 04/11: «el delta casi pasa desapercibido hacelo mas notorio». */
+describe('which way a tank went', () => {
+  it('a minus of any kind is down, a plus is up', () => {
+    expect(tankDeltaTrend('−6,08 gl consumidos')).toBe('down');
+    expect(tankDeltaTrend('-6.08 gl')).toBe('down');
+    expect(tankDeltaTrend('+12 gl cargados')).toBe('up');
+  });
+
+  it('a text without a sign has no arrow', () => {
+    expect(tankDeltaTrend('Sin cambios')).toBeNull();
   });
 });

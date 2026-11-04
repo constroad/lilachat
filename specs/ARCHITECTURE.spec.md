@@ -405,8 +405,15 @@ Detalle en `specs/INGRESO-POR-ESPACIO.spec.md`. Lo que cambia en esta sección:
 
 ### Otros cambios del 04/11/2026
 
+- **Audios seguidos (José, 04/11, como WhatsApp).** Al terminar una nota suena la siguiente si el
+  mensaje que le sigue también es una nota de voz: un texto en medio corta la tanda
+  (`nextVoiceMessage` en `shared/nowPlaying.ts`). Solo sigue tras una nota que sonó hasta el final,
+  nunca al parar con la X, y va a la velocidad de la anterior. El chat abierto le dice al reproductor
+  qué sigue (`useVoiceNoteQueue`, app y web). Al salir del chat la cola sigue con la nota en curso y
+  el siguiente chat abierto la reemplaza. Una nota de un hilo no sigue a ninguna.
 - **Bloque `people`** (`shared/src/botBlocks.ts`): hasta 40 nombres; la tarjeta muestra 8
-  con avatar y nombre corto (`peopleOnCard`), y el detalle los muestra todos.
+  con avatar y nombre corto (`peopleOnCard`), y el detalle los muestra todos. `times`, opcional y
+  paralelo a `names`, trae la hora de cada persona (`BOTS-API.spec.md` §c-duodecies).
 - **Clientes de un espacio**: `clientsCache` en `app/src/spaces/spaceCache.ts`, y la lista
   espera a chats y clientes (`spaceListReady`) para no saltar al cargar.
 - **`audience` en los atajos del ⚡** (`AppShortcut`): `everyone` o `admins`, como valor por
@@ -7094,6 +7101,13 @@ del server y el del propio receptor seguían corriendo durante el desbloqueo.
 (`createRecordingWakeLock`, puro y con test): `expo-keep-awake` con la etiqueta propia `voice-note`
 (la del actualizador es `lilachat-update` y ninguna suelta la otra). Se toma al empezar a grabar y se
 suelta al enviar, cancelar o salir del chat (`useGrabadorDeVoz`).
+
+**Videollamada sin bloqueo (José, 04/11: «se sigue bloqueando la pantalla»).** `callHoldsScreen`
+(`shared/call.ts`) dice cuándo: una llamada con video, desde que marca hasta que termina, también
+minimizada. Una llamada de voz se bloquea como cualquier otra. La app usa `useCallScreenHold` con la
+etiqueta `call`, sobre `createScreenHold` (`ui/screenHold.ts`, el mismo motor de la grabación). La web
+usa `useScreenWakeLock` con la Wake Lock API, y la vuelve a pedir al regresar a la pestaña, porque el
+navegador la suelta al ocultarla. El grupo cuenta con `group.call.video`.
 
 **Tests**: `shared/call.test.ts` (6, «answering»), `callMedia.test.ts` (leyenda),
 `cicloDeLlamada.test.ts` (3), `test/callSignaling.test.ts` (socket y HTTP), `llamadaNativa.test.ts`

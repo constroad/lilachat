@@ -878,6 +878,25 @@ del detalle, un tanque no abre otro: su `detail` se descarta, así nunca hay
 bucle. Un tanque sin `detail` no es tocable. Un servidor anterior descarta el
 campo y la tarjeta queda igual.
 
+## c-duodecies) La hora de cada persona en `people` (04/11)
+
+José, 04/11: en las asistencias se ven los nombres sin la hora. El bloque `people`
+acepta `times`, opcional y paralelo a `names`:
+```
+{ "type": "people", "names": ["Carlos Dario Paredes", "Jensen Stewen"], "times": ["07:12", "07:40"] }
+```
+- `times[i]` es la hora de `names[i]`, como texto y ya en la hora que ve la persona.
+  Lilachat no la convierte. `""` si esa persona no tiene hora, y si el arreglo es más
+  corto, los que faltan van sin hora. Hasta 24 caracteres.
+- Un nombre en blanco se descarta con su hora: cada hora sigue con su persona.
+- En la tarjeta va junto al nombre corto, y en el detalle a la derecha de la fila.
+- Cada bloque lleva la suya: «Vinieron» la de ingreso, «Marcaron salida» la de salida.
+- `names` no cambia. Un server o una APK que no conocen `times` lo ignoran y dibujan
+  los nombres como siempre.
+
+El `delta` de un tanque va destacado desde el mismo día: acento, tamaño propio y una
+flecha si empieza con `−`, `-` o `+`. El texto lo escribe la app, hasta 24 caracteres.
+
 ## c-decies) Bloque `weather`: el clima por horas (0.1.166)
 
 Pedido de José (23/10): /clima «como lo entrega Google, con horas». Diseño

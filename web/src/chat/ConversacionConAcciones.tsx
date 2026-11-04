@@ -19,6 +19,7 @@ import { comoMensaje, usePendientesDeArchivos } from './colaDeArchivos';
 import { colaDeArchivosWeb, usarJwtParaSubir } from './colaDeArchivosWeb';
 import { aplicarEntrante } from '../local/mensajesLocales';
 import { useHilosWeb } from './hilos/useHilosWeb';
+import { useVoiceNoteQueue } from './useVoiceNoteQueue';
 import { PanelDeHilo } from './hilos/PanelDeHilo';
 import { OutsideMentionNotice } from './OutsideMentionNotice';
 import { useMentionCandidatesWeb } from './useMentionCandidatesWeb';
@@ -96,6 +97,7 @@ export function ConversacionConAcciones(
     if (!mapa.has(yo)) mapa.set(yo, 'Tú');
     return mapa;
   }, [detalle, yo]);
+  useVoiceNoteQueue({ chatId: chat.id, messages: hilos.visibles ?? [], names: nombres });
   /** Who has a photo, for the thread chip and root (backlog 18). */
   const photos = useMemo(() => new Map([...(detalle?.miembros.values() ?? [])].flatMap((member) => (member.foto ? [[member.id, member.foto] as const] : []))), [detalle]);
   const acciones = useAccionesSobreMensajes({ chatId: chat.id, sync, nombres, onAviso });

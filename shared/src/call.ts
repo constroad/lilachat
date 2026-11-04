@@ -50,6 +50,13 @@ export type CallState =
       porMi: boolean;
     };
 
+/**
+ * The screen stays on in a video call, from dialing to hanging up (José, 04/11:
+ * «se sigue bloqueando la pantalla y no deberia»). A voice call locks like any
+ * other, and a call that only rings already has its own full-screen notice.
+ */
+export const callHoldsScreen = (state: CallState | null, video: boolean): boolean => video && (state?.fase === 'llamando' || state?.fase === 'activa');
+
 export type CallEvent =
   | { tipo: 'contestada'; at: number }
   | { tipo: 'answering'; at: number }

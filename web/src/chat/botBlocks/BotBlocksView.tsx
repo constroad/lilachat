@@ -1,5 +1,5 @@
 import { Paperclip } from 'lucide-react';
-import { peopleOnCard, shortPersonName, type BotBlock } from '@lilachat/shared';
+import { peopleOnCard, personTime, shortPersonName, type BotBlock } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { BlockChart } from './BlockChart';
 import { BlockTank } from './BlockTank';
@@ -13,7 +13,7 @@ function PeopleOnCard({ block }: { block: PeopleBlock }) {
   const { names, more } = peopleOnCard(block);
   return (
     <div data-testid="bloque-personas" className="flex flex-wrap items-center gap-2">
-      {names.map((name, index) => <span key={`${name}-${index}`} className="inline-flex items-center gap-1.5 text-[13px]"><Avatar name={name} size={26} />{shortPersonName(name)}</span>)}
+      {names.map((name, index) => <span key={`${name}-${index}`} className="inline-flex items-center gap-1.5 text-[13px]"><Avatar name={name} size={26} />{shortPersonName(name)}{personTime(block, index) ? <span className="text-[12px] tabular-nums text-on-surface-variant">{personTime(block, index)}</span> : null}</span>)}
       {more ? <span className="text-[12px] text-on-surface-variant">+{more}</span> : null}
     </div>
   );
@@ -23,7 +23,7 @@ function PeopleOnCard({ block }: { block: PeopleBlock }) {
 function PeopleList({ block }: { block: PeopleBlock }) {
   return (
     <div data-testid="bloque-personas" className="divide-y divide-outline/10">
-      {block.names.map((name, index) => <div key={`${name}-${index}`} className="flex min-h-[44px] items-center gap-3 py-1.5 text-[14px]"><Avatar name={name} size={26} /><span className="min-w-0 flex-1">{name}</span></div>)}
+      {block.names.map((name, index) => <div key={`${name}-${index}`} className="flex min-h-[44px] items-center gap-3 py-1.5 text-[14px]"><Avatar name={name} size={26} /><span className="min-w-0 flex-1">{name}</span>{personTime(block, index) ? <span className="text-[13px] font-semibold tabular-nums">{personTime(block, index)}</span> : null}</div>)}
       {block.more ? <p className="py-2 text-[13px] text-on-surface-variant">{`y ${block.more} más`}</p> : null}
     </div>
   );

@@ -1,6 +1,10 @@
 import { useSyncExternalStore } from 'react';
 import type { NowPlaying } from '@lilachat/shared';
 
+type VoiceNote = { id: string; chatId: string; url: string; authorName: string; authorPhoto?: string; durationS: number; rate: number; startShare: number | null };
+/** What follows a note: it plays from the start, at the speed of the one that ended. */
+export type QueuedVoiceNote = Omit<VoiceNote, 'rate' | 'startShare'>;
+
 /**
  * The voice note that plays for the whole web session, like the app's
  * (backlog 34; `shared/nowPlaying.ts`): ONE <audio> outside React, so
@@ -9,6 +13,7 @@ import type { NowPlaying } from '@lilachat/shared';
  */
 let element: HTMLAudioElement | null = null;
 let current: NowPlaying | null = null;
+let noteAfter: ((finishedId: string) => QueuedVoiceNote | null) | null = null;
 const listeners = new Set<() => void>();
 
 function publish(next: NowPlaying | null): void {
@@ -17,6 +22,19 @@ function publish(next: NowPlaying | null): void {
 }
 
 const durationOf = (audio: HTMLAudioElement, fallback: number) => (Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : fallback);
+
+/** Finished: it goes, like WhatsApp; the bubble is back at the start and the bar hides, unless another note follows it. */
+function finishVoiceNote(): void {
+  const finished = current;
+  publish(null);
+  const next = finished ? noteAfter?.(finished.id) : null;
+  if (finished && next) playVoiceNote({ ...next, rate: finished.rate, startShare: null });
+}
+
+/** Who says what follows a note: the chat on screen, which knows its messages. */
+export function setVoiceNoteQueue(next: (finishedId: string) => QueuedVoiceNote | null): void {
+  noteAfter = next;
+}
 
 /** The one <audio>, created on the first note; its own events say what it is doing. */
 function audio(): HTMLAudioElement {
@@ -27,14 +45,13 @@ function audio(): HTMLAudioElement {
   created.addEventListener('loadedmetadata', () => sync({ loaded: true }));
   created.addEventListener('play', () => sync({ playing: true }));
   created.addEventListener('pause', () => sync({ playing: false }));
-  // Finished: it goes, like WhatsApp; the bubble is back at the start and the bar hides.
-  created.addEventListener('ended', () => publish(null));
+  created.addEventListener('ended', finishVoiceNote);
   element = created;
   return created;
 }
 
 /** Plays a note; if it is the one already loaded, it goes on from where it was. */
-export function playVoiceNote(note: { id: string; chatId: string; url: string; authorName: string; durationS: number; rate: number; startShare: number | null }): void {
+export function playVoiceNote(note: VoiceNote): void {
   const player = audio();
   if (current?.id === note.id) return toggleVoiceNote();
   player.pause();
@@ -81,4 +98,5 @@ export const useNowPlaying = (): NowPlaying | null => useSyncExternalStore(subsc
 export function resetVoicePlayerForTests(): void {
   element = null;
   current = null;
+  noteAfter = null;
 }

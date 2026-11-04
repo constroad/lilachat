@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { ChevronRight } from 'lucide-react-native';
+import { ArrowDown, ArrowUp, ChevronRight } from 'lucide-react-native';
 import Svg, { Ellipse, Line, Rect } from 'react-native-svg';
-import { tankFill, tankPercent, type TankItem } from '@lilachat/shared';
+import { tankDeltaTrend, tankFill, tankPercent, type TankItem } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { TONE_CLASS, TONE_COLOR } from './tones';
 import { PantallaEnModal } from '../../ui/PantallaEnModal';
@@ -28,6 +28,19 @@ export function TankDrawing({ tank, scale = 1 }: { tank: TankItem; scale?: numbe
   );
 }
 
+/** What changed since the last reading, at a glance (José, 04/11: «casi pasa desapercibido»): arrow, accent and a size of its own. */
+function TankDelta({ delta, big }: { delta: string; big: boolean }) {
+  const colors = useColores();
+  const trend = tankDeltaTrend(delta);
+  const Arrow = trend === 'up' ? ArrowUp : ArrowDown;
+  return (
+    <View testID="tanque-delta" className={`mt-1.5 flex-row items-center gap-1 self-start rounded-lg border px-2 py-1 ${TONE_CLASS.info.soft}`}>
+      {trend ? <Arrow size={big ? 17 : 14} strokeWidth={2.5} color={colors.primary} /> : null}
+      <Text className={`shrink ${big ? 'text-[16px]' : 'text-[13px]'} font-bold ${TONE_CLASS.info.text}`} style={{ fontVariant: ['tabular-nums'] }}>{delta}</Text>
+    </View>
+  );
+}
+
 function TankFacts({ tank, big }: { tank: TankItem; big: boolean }) {
   return (
     <View className="min-w-0 flex-1">
@@ -36,7 +49,7 @@ function TankFacts({ tank, big }: { tank: TankItem; big: boolean }) {
       {/* The fill and the verdict, like design r155 and Portal's WhatsApp report (José, 24/10). */}
       <Text numberOfLines={1} className="text-[12px] text-on-surface-variant" style={{ fontVariant: ['tabular-nums'] }}>{tank.sub ? `${tank.sub} · ${tankPercent(tank.level)}` : tankPercent(tank.level)}</Text>
       {tank.status ? <View testID="tanque-estado" className={`mt-1 self-start rounded-md border px-1.5 py-0.5 ${TONE_CLASS[tank.tone].soft}`}><Text className={`text-[11px] font-semibold ${TONE_CLASS[tank.tone].text}`}>{tank.status}</Text></View> : null}
-      {tank.delta ? <View className={`mt-1 self-start rounded-md border px-1.5 py-0.5 ${TONE_CLASS.neutral.soft}`}><Text className="text-[11px] font-semibold text-on-surface">{tank.delta}</Text></View> : null}
+      {tank.delta ? <TankDelta delta={tank.delta} big={big} /> : null}
     </View>
   );
 }

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronRight } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronRight } from 'lucide-react';
 import { Overlay } from '../../ui/Overlay';
 import { BotBlocksView } from './BotBlocksView';
-import { tankFill, tankPercent, type TankItem } from '@lilachat/shared';
+import { tankDeltaTrend, tankFill, tankPercent, type TankItem } from '@lilachat/shared';
 import { TONE } from './tones';
 
 const BODY = { width: 44, height: 76 };
@@ -26,6 +26,18 @@ function TankDrawing({ tank, scale = 1 }: { tank: TankItem; scale?: number }) {
   );
 }
 
+/** What changed since the last reading, at a glance (José, 04/11: «casi pasa desapercibido»): arrow, accent and a size of its own. */
+function TankDelta({ delta, big }: { delta: string; big: boolean }) {
+  const trend = tankDeltaTrend(delta);
+  const Arrow = trend === 'up' ? ArrowUp : ArrowDown;
+  return (
+    <span data-testid="tanque-delta" className={`mt-1.5 inline-flex max-w-full items-center gap-1 rounded-lg border px-2 py-1 font-bold tabular-nums ${big ? 'text-[16px]' : 'text-[13px]'} ${TONE.info.soft} ${TONE.info.text}`}>
+      {trend ? <Arrow size={big ? 17 : 14} strokeWidth={2.5} aria-hidden /> : null}
+      {delta}
+    </span>
+  );
+}
+
 function TankFacts({ tank, big }: { tank: TankItem; big: boolean }) {
   return (
     <div className="min-w-0 flex-1">
@@ -34,7 +46,7 @@ function TankFacts({ tank, big }: { tank: TankItem; big: boolean }) {
       {/* The fill and the verdict, like design r155 and Portal's WhatsApp report (José, 24/10). */}
       <p className="truncate text-[12px] tabular-nums text-on-surface-variant">{tank.sub ? `${tank.sub} · ${tankPercent(tank.level)}` : tankPercent(tank.level)}</p>
       {tank.status ? <span data-testid="tanque-estado" className={`mt-1 inline-block rounded-md border px-1.5 py-0.5 text-[11px] font-semibold ${TONE[tank.tone].soft} ${TONE[tank.tone].text}`}>{tank.status}</span> : null}
-      {tank.delta ? <span className={`mt-1 inline-block rounded-md border px-1.5 py-0.5 text-[11px] font-semibold ${TONE.neutral.soft}`}>{tank.delta}</span> : null}
+      {tank.delta ? <TankDelta delta={tank.delta} big={big} /> : null}
     </div>
   );
 }

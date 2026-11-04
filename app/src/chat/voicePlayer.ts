@@ -11,6 +11,9 @@ const LOCK_SCREEN_FROM_S = 150;
 /** How often the position updates: the bar and the bubble move smoothly without a render per frame. */
 const STATUS_EVERY_MS = 250;
 
+type VoiceNote = { id: string; url: string; authorName: string; authorPhoto?: string; durationS: number; rate: number; startShare: number | null };
+/** What follows a note: it plays from the start, at the speed of the one that ended. */
+export type QueuedVoiceNote = Omit<VoiceNote, 'rate' | 'startShare'>;
 type Session = { player: AudioPlayer; stop: () => void; started: boolean; startShare: number | null };
 
 /**
@@ -22,6 +25,7 @@ type Session = { player: AudioPlayer; stop: () => void; started: boolean; startS
  */
 let session: Session | null = null;
 let current: NowPlaying | null = null;
+let noteAfter: ((finishedId: string) => QueuedVoiceNote | null) | null = null;
 const listeners = new Set<() => void>();
 
 function publish(next: NowPlaying | null): void {
@@ -47,13 +51,25 @@ function onStatus(status: AudioStatus): void {
     session.player.setPlaybackRate(current.rate);
     playInBackground(session.player, durationS);
   }
-  // Finished: it goes, like WhatsApp; the bubble is back at the start and the bar hides.
-  if (status.didJustFinish) return stopVoiceNote();
+  if (status.didJustFinish) return finishVoiceNote();
   publish({ ...current, playing: status.playing, currentS: status.currentTime, durationS, loaded: status.isLoaded });
 }
 
+/** Finished: it goes, like WhatsApp; the bubble is back at the start and the bar hides, unless another note follows it. */
+function finishVoiceNote(): void {
+  const finished = current;
+  stopVoiceNote();
+  const next = finished ? noteAfter?.(finished.id) : null;
+  if (finished && next) playVoiceNote({ ...next, rate: finished.rate, startShare: null });
+}
+
+/** Who says what follows a note: the chat on screen, which knows its messages. */
+export function setVoiceNoteQueue(next: (finishedId: string) => QueuedVoiceNote | null): void {
+  noteAfter = next;
+}
+
 /** Plays a note; if it is the one already loaded, it goes on from where it was. */
-export function playVoiceNote(note: { id: string; url: string; authorName: string; authorPhoto?: string; durationS: number; rate: number; startShare: number | null }): void {
+export function playVoiceNote(note: VoiceNote): void {
   if (session && current?.id === note.id) return toggleVoiceNote();
   stopVoiceNote();
   const player = createAudioPlayer(note.url, { updateInterval: STATUS_EVERY_MS });

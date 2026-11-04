@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CALL_CONNECT_TIMEOUT_MS,
   CALL_TIMEOUT_MS,
+  callHoldsScreen,
   formatCallDuration,
   ringDeadline,
   nextCallState,
@@ -19,6 +20,26 @@ import {
  */
 const sonando: CallState = { fase: 'sonando', desde: 1000, entrante: true };
 const activa: CallState = { fase: 'activa', desde: 1000, entrante: true, conectadaEn: 5000 };
+
+/** José, 04/11: «cuando hago video llamada se sigue bloqueando la pantalla y no deberia». */
+describe('callHoldsScreen', () => {
+  const dialing: CallState = { fase: 'llamando', desde: 1, entrante: false };
+  const ringing: CallState = { fase: 'sonando', desde: 1, entrante: true };
+  const active: CallState = { fase: 'activa', desde: 1, entrante: false, conectadaEn: 2 };
+  const ended: CallState = { fase: 'terminada', desde: 1, entrante: false, conectadaEn: 2, terminadaEn: 3, motivo: 'colgada', porMi: true };
+
+  it('a video call holds it from the moment it dials until it ends', () => {
+    expect(callHoldsScreen(dialing, true)).toBe(true);
+    expect(callHoldsScreen(active, true)).toBe(true);
+  });
+
+  it('a voice call locks like any other, and so does a call that only rings or is over', () => {
+    expect(callHoldsScreen(active, false)).toBe(false);
+    expect(callHoldsScreen(ringing, true)).toBe(false);
+    expect(callHoldsScreen(ended, true)).toBe(false);
+    expect(callHoldsScreen(null, true)).toBe(false);
+  });
+});
 
 describe('nextCallState', () => {
   it('quien llama pasa de llamando a activa cuando el otro contesta', () => {

@@ -23,7 +23,8 @@ export type BotBlock =
   | { type: 'tank'; items: TankItem[] }
   | { type: 'text'; text: string; tone: CardTone }
   | { type: 'rows'; rows: { label: string; value: string; sub?: string; bar?: number; tone: CardTone }[] }
-  | { type: 'people'; names: string[]; more?: number }
+  /** `times[i]` is the time of `names[i]`, as the app wrote it; '' when that person has none (José, 04/11). */
+  | { type: 'people'; names: string[]; times?: string[]; more?: number }
   | { type: 'attachments'; count: number; label: string; url: string }
   | WeatherBlock;
 
@@ -83,6 +84,14 @@ function attachmentsBlock(raw: Record<string, unknown>): Result<BotBlock> {
   return { ok: true, value: { type: 'attachments', count, label: text(raw.label, BLOCK_LIMITS.short) || (count === 1 ? '1 adjunto' : `${count} adjuntos`), url } };
 }
 
+/** A blank name goes with its time: each time stays with its person. */
+function peopleBlock(raw: Record<string, unknown>): Result<BotBlock> {
+  const sentTimes = Array.isArray(raw.times) ? raw.times : [];
+  const people = list(raw.names, BLOCK_LIMITS.people).map((name, index) => ({ name: text(name, BLOCK_LIMITS.label), time: text(sentTimes[index], BLOCK_LIMITS.short) })).filter((person) => person.name);
+  const times = people.map((person) => person.time);
+  return { ok: true, value: { type: 'people', names: people.map((person) => person.name), ...(times.some(Boolean) ? { times } : {}), ...(Number(raw.more) > 0 ? { more: Math.floor(Number(raw.more)) } : {}) } };
+}
+
 /** One block as the server keeps it, or null for an unknown type (ignored, not an error: newer apps may send more). */
 function block(raw: Record<string, unknown>): Result<BotBlock> | null {
   switch (raw.type) {
@@ -96,7 +105,7 @@ function block(raw: Record<string, unknown>): Result<BotBlock> | null {
     case 'tank': return tankBlock(raw);
     case 'text': return text(raw.text, BLOCK_LIMITS.text) ? { ok: true, value: { type: 'text', text: text(raw.text, BLOCK_LIMITS.text), tone: tone(raw.tone) } } : { ok: false, message: 'El texto del bloque está vacío.' };
     case 'rows': return { ok: true, value: { type: 'rows', rows: list(raw.rows, BLOCK_LIMITS.rows).map((item) => { const row = record(item); return { label: text(row.label, BLOCK_LIMITS.label), value: text(row.value, BLOCK_LIMITS.text), ...withText('sub', row.sub, BLOCK_LIMITS.text), ...(row.bar !== undefined ? { bar: clamp01(row.bar) } : {}), tone: tone(row.tone) }; }).filter((row) => row.label) } };
-    case 'people': return { ok: true, value: { type: 'people', names: list(raw.names, BLOCK_LIMITS.people).map((name) => text(name, BLOCK_LIMITS.label)).filter(Boolean), ...(Number(raw.more) > 0 ? { more: Math.floor(Number(raw.more)) } : {}) } };
+    case 'people': return peopleBlock(raw);
     case 'attachments': return attachmentsBlock(raw);
     case 'weather': return validateWeatherBlock(raw);
     default: return null;
@@ -158,10 +167,19 @@ export function peopleOnCard(block: Pick<PeopleBlock, 'names' | 'more'>): { name
   return { names: block.names.slice(0, PEOPLE_ON_CARD), more: (block.more ?? 0) + Math.max(0, block.names.length - PEOPLE_ON_CARD) };
 }
 
+/** The time of the person at `index`; '' when the app did not send one. */
+export const personTime = (block: Pick<PeopleBlock, 'times'>, index: number): string => block.times?.[index] ?? '';
+
 /** The liquid inside a tank of `height`: where it starts and how tall it is. */
 export function tankFill(level: number, height: number): { y: number; height: number } {
   const filled = Math.round(Math.min(1, Math.max(0, level)) * height);
   return { y: height - filled, height: filled };
+}
+
+/** Which way a tank went, by the sign the app wrote: «−6,08 gl», «+12 gl». */
+export function tankDeltaTrend(delta: string): 'down' | 'up' | null {
+  if (/^[-−–]/.test(delta)) return 'down';
+  return delta.startsWith('+') ? 'up' : null;
 }
 
 /** The fill of a tank as the design writes it next to the level: «80 %». */

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { nombreDeContacto } from '@lilachat/shared';
+import { callHoldsScreen, nombreDeContacto } from '@lilachat/shared';
 import { chatsEnMemoria } from '../chat/chatsGuardados';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { CallScreen } from './CallScreen';
@@ -8,6 +8,7 @@ import { leyendaDeLlamada } from './estadoDeMedios';
 import type { EstadoDeMedios } from './estadoDeMedios';
 import type { CallState } from '@lilachat/shared';
 import { useCall, type AutorDeLlamada } from './useCall';
+import { useCallScreenHold } from './useCallScreenHold';
 import { llamadaNativa } from '../../modules/llamada-entrante/src';
 import { BASE_URL } from '../api/client';
 import { groupCallBanner, type GroupCallRoom } from '@lilachat/shared';
@@ -81,6 +82,7 @@ export function ProveedorDeLlamadas({ jwt, me, children, onOpenChat }: { jwt: st
     if (!inGroupCall) setGroupMinimized(false);
   }, [inGroupCall]);
   const hayLlamada = llamada.state !== null || inGroupCall;
+  useCallScreenHold(callHoldsScreen(llamada.state, llamada.conVideoDesdeElInicio) || Boolean(group.call?.video));
   // Pending 106: minimized, the call goes on under a pill; a call that rings, or ends, always shows.
   const [minimized, setMinimized] = useState(false);
   const fase = llamada.state?.fase;

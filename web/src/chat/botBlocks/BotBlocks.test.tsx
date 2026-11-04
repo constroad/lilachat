@@ -97,4 +97,26 @@ describe('tapping a tank opens its detail (José, 24/10)', () => {
     expect(screen.getByTestId('detalle-tanque').textContent).toContain('Disponible2589,1 gl');
     expect(screen.getByTestId('detalle-tanque').querySelector('[data-testid="bloque-tanque"]')).not.toBeNull();
   });
+
+  it('the change of a tank stands out, with its arrow (José, 04/11: «casi pasa desapercibido»)', () => {
+    if (!card.ok) throw new Error(card.message);
+    render(<BotCardView card={card.card} chatId="c" seq={1} jwt="j" />);
+    const delta = screen.getByTestId('tanque-delta');
+    expect(delta.textContent).toContain('−0,06 gl');
+    expect(delta.querySelector('svg')).not.toBeNull();
+  });
+
+  it('each person shows their time on the card and in the detail (José, 04/11)', () => {
+    const attendance = validateBotCard({
+      title: 'Asistencia',
+      fields: [],
+      blocks: [{ type: 'people', names: ['Carlos Dario Paredes', 'Jensen Stewen'], times: ['07:12'] }],
+      detail: { title: 'Detalle', blocks: [{ type: 'people', names: ['Carlos Dario Paredes', 'Jensen Stewen'], times: ['07:12'] }] },
+    });
+    if (!attendance.ok) throw new Error(attendance.message);
+    render(<BotCardView card={attendance.card} chatId="c" seq={1} jwt="j" />);
+    expect(screen.getByTestId('bloque-personas').textContent).toContain('07:12');
+    fireEvent.click(screen.getByTestId('tarjeta-ver-detalle'));
+    expect(screen.getByTestId('detalle-tarjeta').textContent).toContain('Carlos Dario Paredes07:12');
+  });
 });

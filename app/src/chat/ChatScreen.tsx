@@ -336,7 +336,7 @@ export function ChatScreen({
     [personCard.show, grupo.members, grupo.roles, nombresDelGrupo, credential.userId]
   );
   const { dibujarFila, cells, reply: responder } = useDibujarFila({
-    rows,
+    chatId, rows,
     yo: credential.userId,
     jwt: credential.jwt,
     encrypted: Boolean(encrypted),

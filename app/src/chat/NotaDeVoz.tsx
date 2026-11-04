@@ -31,6 +31,8 @@ type PropsDeNota = {
  * **No arranca solo.** Un audio que empieza a sonar al aparecer en pantalla es
  * lo peor que puede hacer una app de mensajería: suena en la mesa, en la
  * reunión, o encima de otro audio.
+ * The only exception is the note right after one that played to its end
+ * (`useVoiceNoteQueue.ts`, José 04/11), like WhatsApp.
  */
 export function NotaDeVoz(props: PropsDeNota) {
   const [velocidad, setVelocidad] = useState(1);

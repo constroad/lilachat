@@ -7,6 +7,7 @@ import { markWelcomeSeen } from '../spaces/welcomeSeen';
 import { markNotesSeen } from '../ui/WhatsNewDialog';
 import { YourSpacesPage } from '../spaces/YourSpacesPage';
 import { EmailSignIn } from './EmailSignIn';
+import type { EmailLink } from './emailLink';
 import { IngresoPorTelefono } from './IngresoPorTelefono';
 import { PantallaDeVincular } from './PantallaDeVincular';
 
@@ -21,8 +22,8 @@ const abrePorQr = (): boolean => typeof window.matchMedia === 'function' && wind
 
 type Door = 'qr' | 'email' | 'phone' | 'personal';
 
-export function AccessScreens({ onReady }: { onReady: (credential: Credential) => void }) {
-  const [door, setDoor] = useState<Door>(() => (abrePorQr() ? 'qr' : 'email'));
+export function AccessScreens({ onReady, emailLink }: { onReady: (credential: Credential) => void; emailLink?: EmailLink | null }) {
+  const [door, setDoor] = useState<Door>(() => (!emailLink && abrePorQr() ? 'qr' : 'email'));
   const [arrived, setArrived] = useState<{ credential: Credential; account: string } | null>(null);
   const [invited] = useState(() => peekPendingJoin() !== null);
   const [calledIn] = useState(() => peekPendingCallLink() !== null);
@@ -48,7 +49,7 @@ export function AccessScreens({ onReady }: { onReady: (credential: Credential) =
         </p>
       ) : null}
       {door === 'qr' ? <PantallaDeVincular onReady={ready} onUsarTelefono={() => setDoor('email')} /> : null}
-      {door === 'email' ? <EmailSignIn onVerified={arrive} onUsePhone={() => setDoor('phone')} onUsePersonal={() => setDoor('personal')} onUseQr={() => setDoor('qr')} /> : null}
+      {door === 'email' ? <EmailSignIn link={emailLink} onVerified={arrive} onUsePhone={() => setDoor('phone')} onUsePersonal={() => setDoor('personal')} onUseQr={() => setDoor('qr')} /> : null}
       {door === 'phone' || door === 'personal' ? (
         <>
           <IngresoPorTelefono onReady={fromPhone} onUsarQr={() => setDoor('qr')} />

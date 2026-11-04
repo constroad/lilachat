@@ -130,10 +130,13 @@ Los dos archivos de `android/` se restauran después, y el build deja ~1 GB en
 `node_modules/*/android/build`.
 
 **Correo real (04/11):** con `jose.test@yopmail.com` el código llegó en unos 18 s, y un
-código equivocado da 401 en la ruta real. El botón del correo apunta a
-`chat.constroad.com/login/callback`, que muestra la web de Constroad y no Lilachat, y la web
-tampoco recibe `?d=&c=`. Arreglarlo pide agregar el host nuevo a los `enlaces` de la llave en
-Torre. Falta escribir el código real: crea una cuenta en producción y lo hace José.
+código equivocado da 401 en la ruta real. El botón del correo apuntaba a
+`chat.constroad.com/login/callback`, que muestra la web de Constroad. Ahora va a
+`lilachat.constroad.com/login/callback`, que muestra el código y un «Entrar aquí»: el código
+se gasta con ese toque y no al abrir, porque los antivirus del correo abren los enlaces, y quien
+lo pidió en la app lo escribe allá (la app no abre ese enlace). Hasta que ese host esté en los
+`enlaces` de la llave en Torre, el correo sale sin botón y solo con el código. Falta escribir
+el código real: crea una cuenta en producción y lo hace José.
 
 **Sin probar:** la foto opcional de `i-04`, y «Unirme con un código» y «Crear un espacio»
 desde `i-03` en el emulador.

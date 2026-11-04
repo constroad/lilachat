@@ -140,3 +140,39 @@ describe('sign-in by workspace on the web', () => {
     expect(await screen.findByText('12 miembros')).toBeInTheDocument();
   });
 });
+
+describe('the button of the code email (04/11: it led to the company site)', () => {
+  const link = { email: EMAIL, code: '424242' };
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('shows the code and spends it only on a tap: a mail scanner opens links too', async () => {
+    // Arrange
+    const server = fakeServer({ name: 'Ana Torres' });
+    render(<AccessScreens onReady={vi.fn()} emailLink={link} />);
+    // Act
+    const shown = screen.getByTestId('codigo-del-enlace');
+    const callsBefore = server.calls.length;
+    await userEvent.click(screen.getByTestId('btn-entrar-enlace'));
+    // Assert
+    expect(shown).toHaveTextContent('424242');
+    expect(callsBefore).toBe(0);
+    await screen.findByTestId('pantalla-tus-espacios');
+    expect(server.calls).toContain('POST /auth/email/verify');
+  });
+
+  it('a used code lands on the code screen with its error, ready to ask another', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ message: 'no' }), { status: 401 })));
+    render(<AccessScreens onReady={vi.fn()} emailLink={link} />);
+    await userEvent.click(screen.getByTestId('btn-entrar-enlace'));
+    expect(await screen.findByTestId('error-acceso')).toHaveTextContent('El código no es correcto o ya venc');
+    expect(screen.getByTestId('pantalla-codigo-correo')).toBeInTheDocument();
+  });
+
+  it('another email goes back to the first screen, with nothing spent', async () => {
+    const server = fakeServer({ name: 'Ana Torres' });
+    render(<AccessScreens onReady={vi.fn()} emailLink={link} />);
+    await userEvent.click(screen.getByTestId('btn-otro-correo'));
+    expect(screen.getByTestId('pantalla-entrar')).toBeInTheDocument();
+    expect(server.calls).toEqual([]);
+  });
+});

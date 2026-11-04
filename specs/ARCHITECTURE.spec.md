@@ -291,7 +291,7 @@ Servicio en producción en la mini (:4002). Reglas de su
   - **UNA llave** con prod + localhost en `enlaces` — el patrón vivo de
     lilastore; separar llave por dev es para cuando haya más de un dev:
     ```
-    https://chat.constroad.com/login/callback
+    https://lilachat.constroad.com/login/callback
     http://localhost:5173/login/callback
     http://localhost:4003/login/callback
     ```

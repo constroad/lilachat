@@ -3,6 +3,7 @@ import { ArrowLeft, Smartphone } from 'lucide-react';
 import { countdownLabel, normalizeEmail } from '@lilachat/shared';
 import { api, deviceId, type Credential } from '../api';
 import { Logo } from '../ui/Logo';
+import type { EmailLink } from './emailLink';
 
 const CODE_LENGTH = 6;
 const RESEND_SECONDS = 60;
@@ -14,8 +15,9 @@ type SignedIn = { jwt: string; user: { id: string; name: string | null; phone: s
  * the email and its code first, like Slack; the phone and the QR stay one click
  * away, and a discreet link keeps the personal use.
  */
-export function EmailSignIn(props: { onVerified: (credential: Credential, email: string) => void; onUsePhone: () => void; onUsePersonal: () => void; onUseQr: () => void }) {
-  const [rawEmail, setRawEmail] = useState('');
+export function EmailSignIn(props: { onVerified: (credential: Credential, email: string) => void; onUsePhone: () => void; onUsePersonal: () => void; onUseQr: () => void; link?: EmailLink | null }) {
+  const [rawEmail, setRawEmail] = useState(props.link?.email ?? '');
+  const [openLink, setOpenLink] = useState(props.link ?? null);
   const [sent, setSent] = useState(false);
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -64,8 +66,33 @@ export function EmailSignIn(props: { onVerified: (credential: Credential, email:
     if (digits.length === CODE_LENGTH) void verify(digits);
   };
 
+  /** Spent only here, on a tap: the scanners of a mailbox open every link they find. */
+  const enterByLink = (link: EmailLink) => {
+    setOpenLink(null);
+    setSent(true);
+    void verify(link.code);
+  };
+
+  if (openLink) return <LinkStep link={openLink} onEnter={() => enterByLink(openLink)} onOtherEmail={() => setOpenLink(null)} />;
   if (sent) return <CodeStep email={email} code={code} error={error} busy={busy} seconds={seconds} codeRef={codeRef} onCode={onCode} onResend={() => void request()} onBack={() => setSent(false)} />;
   return <EmailStep rawEmail={rawEmail} error={error} busy={busy} onEmail={(text) => { setRawEmail(text); setError(''); }} onSubmit={() => void request()} doors={props} />;
+}
+
+/** Where the button of the email lands. It shows the code first: who asked for it in the app types it there. */
+function LinkStep(props: { link: EmailLink; onEnter: () => void; onOtherEmail: () => void }) {
+  return (
+    <main className="grid min-h-full place-items-center px-4" data-testid="pantalla-enlace-correo">
+      <div className="w-full max-w-sm py-8">
+        <div className="flex items-center justify-center gap-2"><Logo size={40} /><span className="text-[22px] font-bold">Lilachat</span></div>
+        <h1 className="mt-10 text-[26px] font-bold leading-8 tracking-tight">Tu código de acceso</h1>
+        <p className="mt-2 text-[15px] leading-[22px] text-on-surface-variant">Si lo pediste en la app, escríbelo allá.</p>
+        <p data-testid="codigo-del-enlace" className="mt-6 text-center text-4xl font-bold tabular-nums tracking-[0.2em]">{props.link.code}</p>
+        <button type="button" data-testid="btn-entrar-enlace" onClick={props.onEnter} className="mt-7 h-12 w-full rounded-lg bg-primary text-sm font-bold text-on-primary">Entrar aquí</button>
+        <p className="mt-3 break-all text-center text-[13px] text-on-surface-variant">{props.link.email}</p>
+        <button type="button" data-testid="btn-otro-correo" onClick={props.onOtherEmail} className="mt-3 w-full py-2 text-sm font-semibold text-primary hover:underline">Usar otro correo</button>
+      </div>
+    </main>
+  );
 }
 
 function CodeStep(props: { email: string; code: string; error: string; busy: boolean; seconds: number; codeRef: RefObject<HTMLInputElement>; onCode: (text: string) => void; onResend: () => void; onBack: () => void }) {

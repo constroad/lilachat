@@ -35,7 +35,7 @@ const TIMEOUT_MS = 12_000;
 /** Producción como default: un default que no es el valor real obliga a
  *  declarar la variable en todos lados (constroad-security §2). */
 const DEFAULT_AUTH_URL = 'https://auth.constroad.com';
-const DEFAULT_CALLBACK = 'https://chat.constroad.com/login/callback';
+const DEFAULT_CALLBACK = 'https://lilachat.constroad.com/login/callback';
 
 function credentials(): { base: string; key: string } | null {
   const base = process.env.CONSTROAD_AUTH_URL || DEFAULT_AUTH_URL;

@@ -77,7 +77,7 @@ export function NavegacionDeSesion(props: {
   const pestana = useRef<Tab>('chats');
   const enPanelRef = useRef(enPanel);
   enPanelRef.current = enPanel;
-  const avisarAbierto = useCallback(() => {
+  const announceOpenChat = useCallback(() => {
     const chatId = chatQueSeVe({
       deLaPila: navegacion.isReady() ? chatAbiertoDe(navegacion.getRootState()) : null,
       enPanel: enPanelRef.current?.chat.id ?? null,
@@ -87,26 +87,26 @@ export function NavegacionDeSesion(props: {
     onChatAbierto(chatId);
   }, [onChatAbierto]);
   useEffect(() => () => reportOpenChat(null), []);
-  const alCambiar = useCallback(() => avisarAbierto(), [avisarAbierto]);
+  const alCambiar = useCallback(() => announceOpenChat(), [announceOpenChat]);
   const abrirEnPanel = useCallback(
     (chat: ChatSummary, entry: ChatEntry = {}) => {
       enPanelRef.current = { chat, ...entry };
       setEnPanel({ chat, ...entry });
-      avisarAbierto();
+      announceOpenChat();
     },
-    [avisarAbierto]
+    [announceOpenChat]
   );
   const cerrarPanel = useCallback(() => {
     enPanelRef.current = null;
     setEnPanel(null);
-    avisarAbierto();
-  }, [avisarAbierto]);
+    announceOpenChat();
+  }, [announceOpenChat]);
   const alCambiarPestana = useCallback(
     (tab: Tab) => {
       pestana.current = tab;
-      avisarAbierto();
+      announceOpenChat();
     },
-    [avisarAbierto]
+    [announceOpenChat]
   );
 
   // The store key and base in hand before the first chat opens (plan 1, F5a).

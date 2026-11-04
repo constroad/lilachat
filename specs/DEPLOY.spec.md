@@ -598,6 +598,7 @@ sigue en 0: obligar a actualizar es decisión de José. Resultados del E2E: ARCH
 APK 0.1.176: versionCode 177, runtime `62ff8b1c`, publicado en LilaStore `stable` el 01/11/2026
 (`https://lilastore.constroad.com/d/6ae7f9fa3a5e366dfa9560a0`, 42 950 616 bytes): Lilachat como destino
 de «Compartir» (ARCHITECTURE §186). `minVersionCode` sigue en 0.
+APK 0.1.180: versionCode 181, runtime `79221c17`, publicado en LilaStore `stable` el 04/11/2026 sin OTA aparte: subir la versión cambia el runtime, así que el código nuevo llega con el APK.
 
 ## 5. Errores conocidos y arreglo
 

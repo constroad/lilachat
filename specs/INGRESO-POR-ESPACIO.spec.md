@@ -5,7 +5,8 @@
 > del mismo día: seguir el patrón de Slack, dejar teléfono y código como opción,
 > y mantener un enlace discreto para usar la app sin espacio.
 >
-> **Estado:** I1 a I5 hechas y probadas de punta a punta el 04/11. Sale en la 0.1.180.
+> **Estado:** I1 a I5 hechas y probadas de punta a punta el 04/11. Publicada en la
+> 0.1.180 (181) el mismo día: web y server en vivo, APK en LilaStore `stable`.
 
 ## 1. Cómo lo hace Slack
 
@@ -94,9 +95,9 @@ cruza con la agenda. Esas cuentas tienen el correo verificado por el código.
 | --- | --- | --- |
 | I1 | Server: `/api/auth/email/request` y `/api/auth/email/verify`; entra la cuenta que verificó ese correo | Server. **Hecho** |
 | I2 | Server: cuenta nueva por correo con clave interna; `GET /api/workspaces/invitations` y `POST /api/workspaces/invitations/:id/accept` | Server. **Hecho** |
-| I3 | App: las cuatro pantallas y el orden nuevo (`SignInFlow`) | APK para quien instala y OTA para quien ya la tiene |
+| I3 | App: las cuatro pantallas y el orden nuevo (`SignInFlow`) | APK. Sin OTA: la versión entra al runtime, y quien ya tiene sesión no ve estas pantallas |
 | I4 | Web: las mismas pantallas (`EmailSignIn`, `YourSpacesPage`, `CreateUserPage`) | Server |
-| I5 | Revisión de la clave interna en perfil, directorio, agenda, avisos y admin | Server y OTA |
+| I5 | Revisión de la clave interna en perfil, directorio, agenda, avisos y admin | Server y APK |
 
 ## 6. Cómo se prueba
 

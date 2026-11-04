@@ -87,7 +87,6 @@ export function NavegacionDeSesion(props: {
     onChatAbierto(chatId);
   }, [onChatAbierto]);
   useEffect(() => () => reportOpenChat(null), []);
-  const alCambiar = useCallback(() => announceOpenChat(), [announceOpenChat]);
   const abrirEnPanel = useCallback(
     (chat: ChatSummary, entry: ChatEntry = {}) => {
       enPanelRef.current = { chat, ...entry };
@@ -193,7 +192,7 @@ export function NavegacionDeSesion(props: {
     <IncomingShareHost jwt={props.credential.jwt} onOpenChat={openChatScreen} />
     <WhatsNewHost />
     <SilentUpdateHost />
-    <NavigationContainer ref={navegacion} theme={tema} onStateChange={alCambiar}>
+    <NavigationContainer ref={navegacion} theme={tema} onStateChange={announceOpenChat}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,

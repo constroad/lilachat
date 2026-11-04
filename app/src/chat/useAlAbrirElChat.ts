@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AppState } from 'react-native';
 import { terminarCronometro } from '../diagnostico/diagnostico';
-import { endInteractionAfterPaint } from '../diagnostico/frameMonitor';
 import { hastaDondeLeer } from './hastaDondeLeer';
 
 /**
@@ -21,8 +20,6 @@ export function useAlAbrirElChat(params: {
     if (!hayContenido) return;
     // Línea base de FL0 (spec §45): del toque en la lista a ver mensajes.
     terminarCronometro('abrir-chat');
-    // Plan 1, F0: the frames from the tap on the list until the bubbles are painted.
-    endInteractionAfterPaint('abrir-chat');
     // The first scroll is done by the list itself when it finishes its first layout
     // (`onLoad` → `irAlInicio`); a second one here, 150 ms later, moved it again (20/10).
   }, [hayContenido]);

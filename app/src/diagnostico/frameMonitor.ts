@@ -24,8 +24,9 @@ let uiSampler: UiSampler | null = null;
 let jsFrame: number | null = null;
 let lastJsFrameAt = 0;
 
-function sampleJs(frameAt: number): void {
-  if (lastJsFrameAt > 0) windows.frame('js', frameAt - lastJsFrameAt, Date.now());
+function sampleJs(): void {
+  const frameAt = performance.now();
+  windows.frame('js', frameAt - lastJsFrameAt, Date.now());
   lastJsFrameAt = frameAt;
   if (windows.sampling) jsFrame = requestAnimationFrame(sampleJs);
   else stopSampling();
@@ -33,7 +34,8 @@ function sampleJs(frameAt: number): void {
 
 function startSampling(): void {
   if (jsFrame !== null) return;
-  lastJsFrameAt = 0;
+  // From the tap, not from the first frame: the wait for that frame is the stall of the screen being mounted.
+  lastJsFrameAt = performance.now();
   jsFrame = requestAnimationFrame(sampleJs);
   uiSampler?.start();
 }
@@ -75,6 +77,8 @@ export function endInteractionAfterPaint(name: string): void {
 
 /** A send's window: the pending bubble, the scroll and the field emptying. */
 export const SEND_FRAME_WINDOW_MS = 600;
+/** Opening a chat: the mount, the 200 ms slide and the first page. It closed at the first paint, and read 0 with the whole mount outside. */
+export const OPEN_CHAT_FRAME_WINDOW_MS = 600;
 
 /** Labeled JS work (ms) inside the open interactions (F4: where the time of a send goes). Free when none is open. */
 export function measureWork(label: string, ms: number): void {

@@ -312,4 +312,14 @@ describe('work inside an interaction', () => {
       { label: 'disco', ms: 20, count: 1 },
     ]);
   });
+
+  it('a stall before the first frame counts: it is the screen being mounted after the tap', () => {
+    // Arrange: 300 ms blocked, then normal frames
+    const deltas = [300, ...Array.from({ length: 18 }, () => 16.7)];
+    // Act
+    const stats = frameStats(deltas);
+    // Assert
+    expect(stats.dropped).toBe(17);
+    expect(stats.worstMs).toBe(300);
+  });
 });

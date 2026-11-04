@@ -397,6 +397,8 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
             seq: resultado.message.seq,
           });
           if (resultado.hilo) io.to(userRoom(member)).emit('msg.hilo', { chatId: String(resultado.message.chatId), raiz: resultado.message.hiloDe, hilo: resultado.hilo });
+          // The pins travel with the chat list: a chat left open keeps showing this one until it rereads.
+          if (resultado.unpinned) avisarCambioDeChat(member, String(resultado.message.chatId));
         }
         ack?.({ ok: true });
         // The app that heard it learns it is gone (pending 87b), after the ack: a slow webhook holds nothing.

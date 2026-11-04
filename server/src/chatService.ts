@@ -325,7 +325,7 @@ export async function deleteMessage(params: {
   chatId: string;
   seq: number;
   userId: Types.ObjectId;
-}): Promise<{ ok: true; message: Message; previous: Message; hilo?: ResumenDeHilo } | { ok: false; motivo: string }> {
+}): Promise<{ ok: true; message: Message; previous: Message; unpinned: boolean; hilo?: ResumenDeHilo } | { ok: false; motivo: string }> {
   // La membresía primero: sin esto se podría sondear si un `seq` existe en un
   // chat ajeno por la diferencia entre «no permitido» y «no existe».
   const chat = await ChatModel.findOne({
@@ -354,11 +354,11 @@ export async function deleteMessage(params: {
     { returnDocument: 'after' }
   ).lean<Message | null>();
   // Borrado para todos no puede seguir fijado arriba del chat (19/10), y una respuesta de hilo descuenta (E3).
-  if (actualizado) await ChatModel.updateOne({ _id: params.chatId }, { $pull: { fijados: { seq: params.seq } } });
+  const unpin = actualizado ? await ChatModel.updateOne({ _id: params.chatId, 'fijados.seq': params.seq }, { $pull: { fijados: { seq: params.seq } } }) : null;
   const hilo = actualizado?.hiloDe ? await descontarRespuesta(actualizado.chatId, actualizado.hiloDe) : null;
 
   return actualizado
-    ? { ok: true, message: actualizado, previous: mensaje, ...(hilo ? { hilo } : {}) }
+    ? { ok: true, message: actualizado, previous: mensaje, unpinned: (unpin?.modifiedCount ?? 0) > 0, ...(hilo ? { hilo } : {}) }
     : { ok: false, motivo: 'No se pudo eliminar.' };
 }
 

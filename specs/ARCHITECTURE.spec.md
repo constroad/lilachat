@@ -9070,6 +9070,12 @@ Portal leyó bien monto, destinatario, operación, fecha y concepto. Falta en ag
 
 El caso de Aracely sigue sin probar: la cuenta de José sí tiene usuario en Portal.
 
+**Campos del gasto en Portal (04/11, leídos por la sesión de Portal):** `registrar_gasto` va por
+`registerExpense`, que no guarda partida, medio de pago, comisión ni ITF. La entrada de finanzas
+del servicio (`POST /api/service-management/[id]/finance/entries`) sí guarda `paymentMethod` y
+`allocations` por partida. Comisión e ITF no existen en ningún camino. Cambiar el esquema de
+`registrar_gasto` pide que José reapruebe la herramienta.
+
 **Lo que esa prueba arregló en Lilachat:** la respuesta de una app en un hilo no
 movía el chip de la raíz hasta recargar, y quien subía un voucher no veía la
 respuesta (`notifyThread` faltaba en `botMessages.ts`). En la web, «Ver hilo» de

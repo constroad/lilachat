@@ -1,9 +1,10 @@
-import type { Types } from 'mongoose';
+import { Types } from 'mongoose';
 import { toInternationalPhone } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Chat, type Message } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { sendBotEvent } from './botEvents.js';
 import { signedMessageFileUrl } from './botFiles.js';
+import type { BotInstallation } from './botModels.js';
 import { botOfUser, botsAmong, type BotOfUser } from './botRegistry.js';
 
 /**
@@ -28,7 +29,7 @@ export async function personOf(userId: Types.ObjectId | string, scopes?: readonl
 export const channelOf = (chat: Pick<Chat, '_id' | 'kind' | 'name' | 'channel'>) => ({ id: String(chat._id), kind: chat.channel ? 'channel' : chat.kind, ...(chat.name ? { name: chat.name } : {}) });
 
 /** Picked from the suggestions (`menciones`) or typed as text: «@Lila» names the bot either way. */
-function mentionsBot(message: Pick<Message, 'body' | 'menciones'>, bot: BotOfUser, botName: string): boolean {
+function mentionsBot(message: Pick<Message, 'body' | 'menciones'>, bot: Pick<BotOfUser, 'botUserId'>, botName: string): boolean {
   if (message.menciones?.some((mention) => mention.userId === String(bot.botUserId))) return true;
   const escaped = botName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return Boolean(message.body && new RegExp(`(^|\\s)@${escaped}(?![\\p{L}\\p{N}])`, 'iu').test(message.body));
@@ -48,6 +49,25 @@ export function filesOf(message: Pick<Message, '_id' | 'kind' | 'media'>, now = 
   const media = message.media;
   if (!media?.url || !FILE_KINDS.has(message.kind)) return [];
   return [{ url: signedMessageFileUrl(message._id, now), mime: media.mime ?? 'application/octet-stream', name: media.fileName ?? media.mediaId, ...(media.sizeBytes ? { size: media.sizeBytes } : {}) }];
+}
+
+/**
+ * A message's files read again (agentes, 04/11): the addresses of `message.created`
+ * die in 15 minutes and an approval can come later. Same rule as hearing it live,
+ * so null (a 404) for a message this app never heard.
+ */
+export async function filesHeardBy(installation: Pick<BotInstallation, 'workspaceId' | 'botUserId' | 'grantedScopes'>, messageId: string): Promise<ReturnType<typeof filesOf> | null> {
+  if (!Types.ObjectId.isValid(messageId)) return null;
+  const message = await MessageModel.findOne({ _id: messageId, deletedAt: { $exists: false } }).select('_id chatId senderId kind body menciones media envelope at').lean<Message | null>();
+  if (!message || message.envelope || String(message.senderId) === String(installation.botUserId)) return null;
+  const [chat, botUser] = await Promise.all([
+    ChatModel.findOne({ _id: message.chatId, workspaceId: installation.workspaceId }).select('kind members').lean<Chat | null>(),
+    UserModel.findById(installation.botUserId).select('name').lean(),
+  ]);
+  const membership = chat?.members.find((member) => String(member.userId) === String(installation.botUserId));
+  if (!chat || !membership || (membership.joinedAt && message.at < membership.joinedAt)) return null;
+  const named = mentionsBot(message, installation, botUser?.name ?? '');
+  return botHears({ chatKind: chat.kind, named, scopes: installation.grantedScopes ?? [] }) ? filesOf(message) : null;
 }
 
 type Hearing = { chat: Chat; bots: { bot: BotOfUser; name: string }[] };

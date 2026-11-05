@@ -197,3 +197,91 @@ describe('files toward the app (pending 90)', () => {
     expect(members).toHaveLength(3);
   });
 });
+
+describe('a file read again after its 15 minutes (agentes, 04/11)', () => {
+  const PHOTO = { mediaId: 'st-1', url: '/files/v.jpg', mime: 'image/jpeg', fileName: 'v.jpg', sizeBytes: 16 };
+  const SIXTEEN_MINUTES_MS = 16 * 60_000;
+
+  const installPortal = async (scopes: string[], workspaceId = spaceId) => {
+    const bot = await BotAppModel.create({ clientId: `lca_portal_${workspaceId}`, clientSecretHash: 'x', name: 'Portal', redirectUris: ['https://agentes.example.com/vuelta'], webhookUrl: hookUrl, scopes });
+    const installed = await installApp({ app: bot.toObject(), workspaceId, installedBy: jose });
+    await ChatModel.updateOne({ _id: channel, 'members.userId': { $ne: installed.installation.botUserId } }, { $push: { members: { userId: installed.installation.botUserId, role: 'member' } } });
+    return installed;
+  };
+  const read = (messageId: unknown, token: string) => request(app).get(`/api/bots/messages/${String(messageId)}/files`).set({ Authorization: `Bearer ${token}` });
+  const photo = (seq: number, extra: Partial<Message> = {}) => say(seq, '/gastos pago parcial', { kind: 'image', media: PHOTO, ...extra });
+
+  it('an approval after the 15 minutes gets a new address that serves the bytes', async () => {
+    const { token } = await installPortal(['channels:history']);
+    const sent = await photo(1);
+    stored.set(PHOTO.url, VOUCHER);
+    const [expired] = filesOf(sent, Date.now() - SIXTEEN_MINUTES_MS);
+    await request(app).get(new URL(expired!.url).pathname).expect(410);
+
+    const answer = await read(sent._id, token).expect(200);
+
+    expect(answer.body.files).toMatchObject([{ mime: 'image/jpeg', name: 'v.jpg' }]);
+    const served = await request(app).get(new URL(answer.body.files[0].url as string).pathname).expect(200);
+    expect(Buffer.from(served.body as Buffer).toString()).toBe(VOUCHER.toString());
+  });
+
+  it('a message with nothing to read answers an empty list', async () => {
+    const { token } = await installPortal(['channels:history']);
+    const sent = await say(1, 'sin foto');
+
+    const answer = await read(sent._id, token).expect(200);
+
+    expect(answer.body).toEqual({ files: [] });
+  });
+
+  it('only what the app heard: a channel without channels:history needs the mention', async () => {
+    const { token } = await installPortal([]);
+    const unnamed = await photo(1);
+    const named = await photo(2, { body: '@Portal súbelo' });
+
+    await read(unnamed._id, token).expect(404);
+    await read(named._id, token).expect(200);
+  });
+
+  it('another space\'s app reads nothing, even with channels:history', async () => {
+    await installPortal(['channels:history']);
+    const otherSpace = (await WorkspaceModel.create({ name: 'Otra', ownerId: jose, joinCode: 'OTRA-1234' }))._id;
+    const { token } = await installPortal(['channels:history'], otherSpace);
+    await ChatModel.updateOne({ _id: channel }, { $pull: { members: { userId: { $ne: jose } } } });
+    const sent = await photo(1);
+
+    await read(sent._id, token).expect(404);
+  });
+
+  it('an app taken out of the channel, or added after the message, reads nothing', async () => {
+    const { token, installation } = await installPortal(['channels:history']);
+    const before = await photo(1, { at: new Date('2026-11-01T10:00:00Z') });
+    await ChatModel.updateOne({ _id: channel, 'members.userId': installation.botUserId }, { $set: { 'members.$.joinedAt': new Date('2026-11-02T10:00:00Z') } });
+    await read(before._id, token).expect(404);
+
+    const after = await photo(2);
+    await read(after._id, token).expect(200);
+    await ChatModel.updateOne({ _id: channel }, { $pull: { members: { userId: installation.botUserId } } });
+    await read(after._id, token).expect(404);
+  });
+
+  it('a deleted, a secret or the app\'s own message answers 404', async () => {
+    const { token, installation } = await installPortal(['channels:history']);
+    const deleted = await photo(1);
+    await deleteMessage({ chatId: String(channel), seq: 1, userId: ana });
+    const secret = await say(2, '', { kind: 'image', media: PHOTO, envelope: { v: 1, nonce: 'n', ciphertext: 'c' } });
+    const own = await photo(3, { senderId: installation.botUserId });
+
+    await read(deleted._id, token).expect(404);
+    await read(secret._id, token).expect(404);
+    await read(own._id, token).expect(404);
+  });
+
+  it('an odd id answers 404, and no token answers 401', async () => {
+    const { token } = await installPortal(['channels:history']);
+    const sent = await photo(1);
+
+    await read('no-es-un-id', token).expect(404);
+    await request(app).get(`/api/bots/messages/${String(sent._id)}/files`).expect(401);
+  });
+});

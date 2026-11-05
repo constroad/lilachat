@@ -12,6 +12,7 @@ import { installationByToken, revokeInstallation } from './botInstall.js';
 import { postBotMessage, updateBotMessage } from './botMessages.js';
 import { upsertClientChannel } from './botClients.js';
 import { setTopicChannels, setTopicOffered, topicRoutesOf } from './botTopics.js';
+import { filesHeardBy } from './botTriggers.js';
 import type { BotApp, BotInstallation } from './botModels.js';
 import { appForConsent, authorize, exchangeCode } from './oauthService.js';
 
@@ -110,6 +111,11 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
     const outcome = await updateBotMessage(req.bot!, String(req.params.id), { ...(text ? { text } : {}), ...(card?.ok ? { card: card.card } : {}) }, notifyEdited);
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.json(outcome);
+  }));
+  router.get('/messages/:id/files', asyncRoute(async (req, res) => {
+    const files = await filesHeardBy(req.bot!, String(req.params.id));
+    if (!files) return void res.status(404).json({ error: 'message_not_found', message: 'Ese mensaje no existe o esta app no lo escuchó.' });
+    res.json({ files });
   }));
   router.put('/clients/:clientId', asyncRoute(async (req, res) => {
     const outcome = await upsertClientChannel(req.bot!, String(req.params.clientId), req.body);

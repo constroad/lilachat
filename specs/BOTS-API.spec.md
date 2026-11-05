@@ -600,6 +600,7 @@ Para el pedido conversacional (pendiente 87) y los vouchers (pendiente 90).
   documentos y notas de voz (no stickers ni videos). `text` puede venir vacío: una foto sin
   texto también llega. La `url` es `https://lilachat.constroad.com/api/bots/files/<token>`,
   vale 15 minutos y responde 410 al vencer y 404 si el mensaje se borró. Bajarlo al llegar.
+  Para pedirla de nuevo: `GET /api/bots/messages/:id/files` (§d).
 - Responder en el hilo del mensaje sigue igual: `thread_of` en `POST /api/bots/messages`.
 
 ## c-octodecies) Fotos: una sola regla, la de Portal (28/10/2026, servidor + OTA + web)
@@ -951,6 +952,13 @@ e-33. Contrato cerrado con agentes el 24/10:
   "private", is_member } ] }`.
 - `GET /api/bots/members` → `{ members: [ { id, name, phone, role: "owner" |
   "admin" | "member" | "guest", title?, area? } ] }`. Solo los activos.
+- `GET /api/bots/messages/:id/files` → `{ files: [ { url, mime, name, size? } ] }` (04/11). Las
+  direcciones de un mensaje, recién firmadas: valen otros 15 minutos, en el orden de
+  `message.files`. Sirve para una aprobación que llega después de que venció la de
+  `message.created`. Regla: la misma de escuchar ese mensaje en vivo (la app es miembro desde
+  antes, y es su 1:1, la nombraron o tiene `channels:history`). Si no, o si el mensaje se borró,
+  es secreto, es de la propia app o es de otro espacio: **404 `message_not_found`**. Un mensaje
+  escuchado sin archivo da `{ files: [] }`.
 
 El bot entra solo a todos los canales públicos al instalarse, y a cada canal
 público nuevo. A uno privado entra si lo agregan.

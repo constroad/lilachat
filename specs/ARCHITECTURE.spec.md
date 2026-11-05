@@ -9077,6 +9077,9 @@ catálogo de `opciones_de_gasto`, que no trae el cliente. El control de duplicad
 foto dentro de la empresa, y no ve lo cargado a mano en Portal. El 1:1 calla porque solo se actúa
 en el canal de caja.
 
+**La foto al aprobar:** la dirección firmada vence a los 15 minutos, y aprobar puede tardar más.
+`GET /api/bots/messages/:id/files` la firma de nuevo (`BOTS-API.spec.md` §d).
+
 **Campos del gasto en Portal (04/11, leídos por la sesión de Portal):** `registrar_gasto` va por
 `registerExpense`, que no guarda partida, medio de pago, comisión ni ITF. La entrada de finanzas
 del servicio (`POST /api/service-management/[id]/finance/entries`) sí guarda `paymentMethod` y

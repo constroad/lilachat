@@ -9131,6 +9131,11 @@ La cuenta de Aracely ya pasó por /gastos en #flujo-caja real: su voucher de S/ 
 
 La prueba encontró un fallo en la app. Después de buscar el servicio el teclado seguía abierto, y la lista de partidas, sin buscador,
 quedaba detrás: la pantalla se oscurecía y no se veía nada que elegir. Ahora la lista sin buscador cierra el teclado.
+Verificado en la app con OTA `17632b32` (05/11): teclado cerrado, FRESADO, IMPRIMACION y COLOCACION a la vista, Guardar, y la tarjeta
+pasó a «Por aprobar». La prueba terminó en «Descartado»: no se creó ningún gasto.
+
+Para las tarjetas ya enviadas: un voucher sin tarjeta se recupera con `GET /api/bots/channels/:id/files` (`a0cfebe`, BOTS-API §d) y
+agentes arma su vista previa. Un gasto ya registrado no se edita desde Lilachat: se corrige en Portal.
 
 «Caja · Hoy» sigue sumando un gasto borrado después: la tarjeta guarda lo que le avisaron. Es de agentes.
 

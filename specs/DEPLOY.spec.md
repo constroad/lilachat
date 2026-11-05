@@ -618,6 +618,9 @@ corre aunque el comando esté apagado en ese canal. Verificada en el emulador co
 OTA `9fceffbd` del 05/11/2026 sobre el runtime `79221c17` (git `4fa3d71`): solo llega a la 0.1.180. Un botón de tarjeta corre una
 línea (Completar y Editar de /gastos) y las filas funcionan dentro de un hilo. Verificada en el emulador en Test.
 
+OTA `17632b32` del 05/11/2026 sobre el runtime `79221c17` (git `a0cfebe`): solo llega a la 0.1.180. Una lista de opciones sin buscador
+cierra el teclado: con él abierto, la hoja quedaba detrás. Verificada en el emulador en Test.
+
 ## 5. Errores conocidos y arreglo
 
 | Síntoma | Causa | Arreglo |

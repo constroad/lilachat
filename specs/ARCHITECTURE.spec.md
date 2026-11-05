@@ -6243,6 +6243,11 @@ enlace secundario al pie.
   `totals.services`, y `pending` ya los incluye. La sección va antes de «Pedidos al crédito» y no sale
   si `services` no llega. `due_at` es `AAAA-MM-DD` y solo cuenta con `is_credit`. Lo vencido y «N al crédito»
   suman esos servicios. Una fecha de otro año dice el año («28 oct 2025»); en la ficha de la cotización, siempre.
+  **Probado el 05/11 en Test**, web y app, con el cliente QA de Portal: S/ 6,200 por cobrar, S/ 5,000 vencidos, «1 al crédito»
+  y el crédito vencido primero. El año de una fecha vieja solo tiene test: Test no tiene pedidos de otro año.
+- **Tocar un distrito** (`rows[].command`, `BOTS-API` §c-duodecies-bis). Probado el 05/11 en Test, web y app, en el 1:1 con Portal:
+  desde la tarjeta y desde «Ver detalle», con las 38 filas. La hoja se cierra y sale el clima de ese distrito.
+  `/clima` no corre en #general ni en #flujo-caja de Test: ahí ninguna app tiene comandos encendidos.
 - **Pestaña «Cuenta»** del canal de cliente (diseño f-08; `client.account.requested`,
   agentes cf37b98, Portal 0227a1f0).
   - Muestra TODAS las cotizaciones del cliente, también las sin servicio, y abre

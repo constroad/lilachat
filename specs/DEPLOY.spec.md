@@ -609,6 +609,9 @@ y el lugar en el detalle de personas. Se ven cuando Inframaq mande `evidence`.
 OTA `05171242` del 04/11/2026 sobre el runtime `79221c17` (git `7e61ad6`): solo llega a la 0.1.180. Lleva «1 respuesta» en singular en Hilos.
 Smoke verde. No se vio en el emulador: Test no tiene hoy un hilo de una respuesta en esa lista.
 
+OTA `12cda85c` del 05/11/2026 sobre el runtime `79221c17` (git `bd09ddb`): solo llega a la 0.1.180. Lleva «Servicios por cobrar»
+en la Cuenta, el año en las fechas de otro año y el toque en las filas con comando. Verificada en el emulador.
+
 ## 5. Errores conocidos y arreglo
 
 | Síntoma | Causa | Arreglo |

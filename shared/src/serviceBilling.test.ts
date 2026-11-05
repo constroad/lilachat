@@ -92,9 +92,9 @@ describe('moneyOf', () => {
 describe('the detail carries it', () => {
   const detail = { service: { id: 's', name: 'CHANCAY' }, orders: [], dispatches: [], reports: [], quotes: [] };
 
-  it('«Cobranza» is a tab only when billing came', () => {
-    expect(detailTabs(serviceDetailOf({ ...detail, billing: raw })!).map((tab) => tab.label)).toEqual(['Cotizaciones · 0', 'Cobranza', 'Pedidos · 0', 'Informes · 0']);
-    expect(detailTabs(serviceDetailOf(detail)!).map((tab) => tab.key)).not.toContain('billing');
+  it('José 05/11: billing still parses, but it is never a tab of the service: it opens from «Cuenta»', () => {
+    expect(detailTabs(serviceDetailOf({ ...detail, billing: raw })!).map((tab) => tab.label)).toEqual(['Pedidos · 0', 'Informes · 0']);
+    expect(serviceDetailOf({ ...detail, billing: raw })!.billing?.total).toBe(raw.total);
     expect(serviceDetailOf({ ...detail, billing: 'roto' })!.billing).toBeUndefined();
   });
 

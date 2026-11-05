@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { serviceDetailOf } from './serviceDetail.js';
-import { detailSheet, invoicesOf } from './serviceDetailSheet.js';
+import { detailSheet, invoicesOf, quoteSheet } from './serviceDetailSheet.js';
 
 /** José 30/10: «si quiero ver el detalle de un pedido me dice que abra Portal… lo mismo con informes». */
 const detail = serviceDetailOf({
@@ -84,19 +84,18 @@ describe('detailSheet', () => {
   });
 
   it('a quote: total, day and its line items when they come', () => {
-    const sheet = detailSheet(detail, 'quotes', 'q1')!;
+    const sheet = quoteSheet(detail.quotes![0]!);
     expect(sheet.facts).toEqual([{ label: 'Total', value: 'S/ 142,416.02' }, { label: 'Fecha', value: '28 ago 2026' }]);
     expect(sheet.items).toEqual([{ name: 'Mezcla asfáltica', line: '383.5 m³ · S/ 320.00 c/u', total: 'S/ 122,720.00' }]);
   });
 
   it('a quote with its PDF (José 30/10 night: «en cotizaciones me gustaría poder ver el PDF»)', () => {
     const withPdf = serviceDetailOf({ service: { id: 's', name: 'S' }, orders: [], dispatches: [], reports: [], quotes: [{ id: 'q2', code: '301', status_label: 'Enviada', tone: 'info', pdf_url: 'https://lila.constroad.com/files/q301.pdf' }] })!;
-    expect(detailSheet(withPdf, 'quotes', 'q2')?.files).toEqual([{ url: 'https://lila.constroad.com/files/q301.pdf', label: 'PDF' }]);
-    expect(detailSheet(detail, 'quotes', 'q1')?.files).toEqual([]);
+    expect(quoteSheet(withPdf.quotes![0]!).files).toEqual([{ url: 'https://lila.constroad.com/files/q301.pdf', label: 'PDF' }]);
+    expect(quoteSheet(detail.quotes![0]!).files).toEqual([]);
   });
 
-  it('null for an id that is not there or for the collection tab', () => {
+  it('null for an id that is not there', () => {
     expect(detailSheet(detail, 'orders', 'nada')).toBeNull();
-    expect(detailSheet(detail, 'billing', 'o1')).toBeNull();
   });
 });

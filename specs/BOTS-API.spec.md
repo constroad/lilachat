@@ -941,6 +941,11 @@ y paralelo a `names`, lleva lo que respalda cada marca:
 El `delta` de un tanque va destacado desde el mismo día: acento, tamaño propio y una
 flecha si empieza con `−`, `-` o `+`. El texto lo escribe la app, hasta 24 caracteres.
 
+El delta tiene que ser texto: un número o un campo vacío se descartan sin error y la
+tarjeta sale sin delta. En cero se manda igual, `"0,00 gl"`, y se dibuja sin flecha. Sin
+medida anterior no va delta, porque eso no es un cero (José, 05/11: WhatsApp decía
+«Delta: 0.00 gl» y la tarjeta no lo mostraba; Agentes lo manda desde `84f1846`).
+
 ## c-decies) Bloque `weather`: el clima por horas (0.1.166)
 
 Pedido de José (23/10): /clima «como lo entrega Google, con horas». Diseño

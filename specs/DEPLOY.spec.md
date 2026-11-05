@@ -624,6 +624,11 @@ cierra el teclado: con él abierto, la hoja quedaba detrás. Verificada en el em
 OTA `73269a02` del 05/11/2026 sobre el runtime `79221c17` (git `aa328e9`): solo llega a la 0.1.180. Buscar clientes encuentra a los archivados
 y el buscador de una lista lee también la línea de abajo (un servicio por su cliente). Verificada en el emulador en Test.
 
+OTA `b1e5b7cc` del 05/11/2026 sobre el runtime `79221c17` (git `895149c`): solo llega a la 0.1.180. La plata del canal de cliente
+vive en Cuenta, con Cobranza por servicio, y una respuesta 2xx cortada ya no tumba las pestañas. Tres aperturas en frío limpias con
+rn-smoke 1.15.0, que ahora lee los errores de JS. En Test abrieron las pestañas de admin, pero sus tres clientes ya no están en Portal:
+Cuenta con datos reales solo se vio en local y en la web. Falta probar a un miembro sin montos en producción (Test tiene un solo miembro).
+
 ## 5. Errores conocidos y arreglo
 
 | Síntoma | Causa | Arreglo |

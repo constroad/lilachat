@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createServer, type Server, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import type { MongoMemoryServer } from 'mongodb-memory-server';
@@ -119,8 +119,12 @@ describe('at its hour', () => {
   it('runs as the creator with trigger «schedule», posts once, and moves to the next slot', async () => {
     const { id } = (await create({}).expect(201)).body.schedule;
     await slotFor(id);
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     expect(await runDueSchedules(new Date('2026-10-28T15:30:20Z'))).toBe(1);
     expect(await runDueSchedules(new Date('2026-10-28T15:31:00Z'))).toBe(0);
+    // Agentes 05/11: the server log is the only place to confirm a run without opening the channel.
+    expect(log).toHaveBeenCalledWith(`[schedules] ${id} ${SLOT.toISOString()} posted`);
+    log.mockRestore();
     expect(received).toHaveLength(1);
     expect(received[0]).toMatchObject({ type: 'command.invoked', data: { command: 'asistencia', text: '', trigger: 'schedule', schedule_id: id, scheduled_for: SLOT.toISOString(), user: { id: String(jose) } } });
     expect((await botMessagesIn(planta)).map((message) => message.body)).toEqual(['Asistencia: 12 de 15']);

@@ -9,6 +9,7 @@ type ScheduledRun = Pick<BotCommandRun, '_id' | 'userId' | 'command'> & { schedu
 
 /** «How it went», written on the schedule for «Horarios» (design d-03); never awaited by the person. */
 export async function recordScheduleRun(scheduleId: Types.ObjectId, scheduledFor: Date, outcome: ScheduleOutcome, message?: string): Promise<void> {
+  console.log(`[schedules] ${scheduleId} ${scheduledFor.toISOString()} ${outcome}${message ? ` ${message}` : ''}`);
   await AppScheduleModel.updateOne({ _id: scheduleId }, { $set: { lastRun: { scheduledFor, at: new Date(), outcome, ...(message ? { message: message.slice(0, 300) } : {}) } } });
 }
 

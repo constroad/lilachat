@@ -14,14 +14,14 @@ const ALL = Number.MAX_SAFE_INTEGER;
 
 /**
  * The clients' picker (José 30/10: a picker with an option to create a
- * client): every live client, searched by name or RUC, the
+ * client): every live client, searched by name or RUC along with the
  * archived ones, and «Crear un cliente» for whoever may run Portal's action.
  */
-export function ClientPickerWeb(props: { jwt?: string; spaceId: string; live: Entry[]; archived: number; onOpen: (chat: ChatSummary) => void; onArchived: () => void; now?: Date }) {
+export function ClientPickerWeb(props: { jwt?: string; spaceId: string; live: Entry[]; archived: Entry[]; onOpen: (chat: ChatSummary) => void; onArchived: () => void; now?: Date }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const { row, answers } = useSpaceAction(props.jwt, props.spaceId, CREATE_CLIENT_ACTION, open);
-  const found = pageLiveClients(props.live, { query, shown: ALL }).entries;
+  const found = pageLiveClients(props.live, { query, shown: ALL, archived: props.archived }).entries;
   const now = props.now ?? new Date();
   const close = () => {
     setOpen(false);
@@ -55,10 +55,10 @@ export function ClientPickerWeb(props: { jwt?: string; spaceId: string; live: En
               {found.map((entry) => <ClientRow key={entry.client.id} entry={entry} now={now} open={false} onOpen={(chat) => leaveTo(() => props.onOpen(chat))} />)}
               {found.length === 0 ? <p className="p-4 text-sm text-on-surface-variant">{query ? 'Ningún cliente con ese nombre o RUC.' : 'Todavía no hay clientes con canal.'}</p> : null}
             </div>
-            {props.archived > 0 ? (
+            {props.archived.length > 0 ? (
               <button type="button" data-testid="selector-archivados" onClick={() => leaveTo(props.onArchived)} className="flex h-11 w-full items-center gap-2.5 rounded-xl px-1 text-left text-sm hover:bg-background">
                 <Archive size={16} className="text-on-surface-variant" />
-                <span className="flex-1">{`Archivados · ${props.archived}`}</span>
+                <span className="flex-1">{`Archivados · ${props.archived.length}`}</span>
                 <ChevronRight size={16} className="text-on-surface-variant" />
               </button>
             ) : null}

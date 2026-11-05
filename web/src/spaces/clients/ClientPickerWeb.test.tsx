@@ -14,12 +14,13 @@ const now = new Date('2026-10-30T15:00:00Z');
 const client = (id: string, name: string, ruc?: string): SpaceClient => ({ id, chat_id: `chat-${id}`, name, ruc, live: true, archived_since: null, last_activity_at: now.toISOString(), last_order_at: null, orders_total: 0, archived_group: '2-6', services: [] });
 const entry = (one: SpaceClient): ClientEntry<ChatSummary> => ({ client: one, chat: { id: one.chat_id, kind: 'group', name: one.name, unread: 0, lastSeq: 0, memberIds: [] } as unknown as ChatSummary });
 const live = [entry(client('a', 'CARCELI SAC', '20512345678')), entry(client('b', 'Obras Chancay')), entry(client('c', 'Asfaltos del Sur')), entry(client('d', 'Vial Norte')), entry(client('e', 'Pavimentos Lima'))];
+const archived = [entry({ ...client('z', 'Cliente Antiguo SAC', '20998877665'), live: false })];
 const portal = (shortcuts: { key: string; name: string }[]) => ({ ok: true, data: { groups: [{ appId: 'p', appName: 'Portal', commands: [], shortcuts }] } });
 
 function arrange(shortcuts: { key: string; name: string }[]) {
   api.spaceCommands.mockResolvedValue(portal(shortcuts));
   const onOpen = vi.fn();
-  render(<ClientPickerWeb jwt="jwt" spaceId="sp1" live={live} archived={3} onOpen={onOpen} onArchived={vi.fn()} now={now} />);
+  render(<ClientPickerWeb jwt="jwt" spaceId="sp1" live={live} archived={archived} onOpen={onOpen} onArchived={vi.fn()} now={now} />);
   fireEvent.click(screen.getByTestId('selector-clientes'));
   return { onOpen };
 }
@@ -41,6 +42,18 @@ describe('ClientPickerWeb', () => {
     // Assert
     expect(onOpen).toHaveBeenCalledWith(live[0]!.chat);
     expect(screen.queryByTestId('lista-selector-clientes')).toBeNull();
+  });
+
+  it('a search also finds an archived client and opens it (José 05/11: «no muestra clientes antiguos»)', () => {
+    // Arrange
+    const { onOpen } = arrange([]);
+    const list = screen.getByTestId('lista-selector-clientes');
+    expect(within(list).queryByTestId('cliente-fila-z')).toBeNull();
+    // Act
+    fireEvent.change(screen.getByTestId('buscar-cliente'), { target: { value: 'antiguo' } });
+    fireEvent.click(within(list).getByTestId('cliente-fila-z'));
+    // Assert
+    expect(onOpen).toHaveBeenCalledWith(archived[0]!.chat);
   });
 
   it('«Crear un cliente» shows when Portal\'s action is on for that person and runs it from the picker', async () => {

@@ -107,12 +107,14 @@ export function archivedBanner(client: Pick<SpaceClient, 'live' | 'archived_sinc
 }
 
 const normalize = (text: string) => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+/** `text` already normalized: the name without accents, or the RUC. */
+const matchesClient = (client: Pick<SpaceClient, 'name' | 'ruc'>, text: string) => normalize(client.name).includes(text) || (client.ruc ?? '').includes(text);
 const isRecentOrder = (client: SpaceClient, now: Date) => client.last_order_at !== null && now.getTime() - Date.parse(client.last_order_at) <= SIX_MONTHS_DAYS * DAY_MS;
 
 /** The archived screen (design f-02): search by name or RUC, a chip, and the groups by age that have someone. */
 export function filterArchivedClients<T extends ClientChat>(archived: readonly ClientEntry<T>[], params: { query: string; filter: ArchivedClientsFilter }, now: Date) {
   const text = normalize(params.query.trim());
-  const matching = archived.filter(({ client }) => !text || normalize(client.name).includes(text) || (client.ruc ?? '').includes(text));
+  const matching = archived.filter(({ client }) => !text || matchesClient(client, text));
   const counts: Record<ArchivedClientsFilter, number> = {
     all: matching.length,
     unread: matching.filter((entry) => (entry.chat?.unread ?? 0) > 0).length,
@@ -144,11 +146,12 @@ export const CLIENTS_PAGE = 10;
 /**
  * The live clients the list shows: the newest `shown`, plus any further one
  * with unread messages (it must not hide behind «Ver más»). A filter searches
- * all of them by name without accents, or by RUC, with no page limit.
+ * all of them by name without accents, or by RUC, with no page limit, and then
+ * the archived ones (José 05/11: an old client has to be found by its name).
  */
-export function pageLiveClients<T extends ClientChat>(live: readonly ClientEntry<T>[], params: { query: string; shown: number }): { entries: ClientEntry<T>[]; hidden: number } {
+export function pageLiveClients<T extends ClientChat>(live: readonly ClientEntry<T>[], params: { query: string; shown: number; archived?: readonly ClientEntry<T>[] }): { entries: ClientEntry<T>[]; hidden: number } {
   const text = normalize(params.query.trim());
-  if (text) return { entries: live.filter(({ client }) => normalize(client.name).includes(text) || (client.ruc ?? '').includes(text)), hidden: 0 };
+  if (text) return { entries: [...live, ...(params.archived ?? [])].filter(({ client }) => matchesClient(client, text)), hidden: 0 };
   const entries = live.filter((entry, index) => index < params.shown || (entry.chat?.unread ?? 0) > 0);
   return { entries, hidden: live.length - entries.length };
 }

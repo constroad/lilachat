@@ -19,7 +19,7 @@ describe('ClientsSection (design f-01)', () => {
     // Arrange
     const onOpen = vi.fn();
     const onArchived = vi.fn();
-    render(<ClientsSection spaceId="sp1" query="" live={[entry(client('a', { services: [inProgress] }), 3)]} archived={237} archivedUnread={2} folded={false} onToggle={vi.fn()} selectedChatId={null} onOpen={onOpen} onArchived={onArchived} now={now} />);
+    render(<ClientsSection spaceId="sp1" query="" live={[entry(client('a', { services: [inProgress] }), 3)]} archived={Array.from({ length: 237 }, (_, index) => entry(client(`v${index}`, { live: false })))} archivedUnread={2} folded={false} onToggle={vi.fn()} selectedChatId={null} onOpen={onOpen} onArchived={onArchived} now={now} />);
     // Act
     fireEvent.click(screen.getByTestId('cliente-fila-a'));
     fireEvent.click(screen.getByTestId('clientes-archivados'));
@@ -31,8 +31,16 @@ describe('ClientsSection (design f-01)', () => {
     expect(onArchived).toHaveBeenCalled();
   });
 
+  it('the search of the space also finds an archived client', () => {
+    // Arrange and act
+    render(<ClientsSection spaceId="sp1" query="antiguo" live={[entry(client('a'))]} archived={[entry(client('z', { name: 'Cliente Antiguo', live: false }))]} archivedUnread={0} folded={false} onToggle={vi.fn()} selectedChatId={null} onOpen={vi.fn()} onArchived={vi.fn()} />);
+    // Assert
+    expect(screen.getByTestId('cliente-fila-z')).toBeInTheDocument();
+    expect(screen.queryByTestId('cliente-fila-a')).toBeNull();
+  });
+
   it('is not there for someone in no client channel', () => {
-    const { container } = render(<ClientsSection spaceId="sp1" query="" live={[]} archived={0} archivedUnread={0} folded={false} onToggle={vi.fn()} selectedChatId={null} onOpen={vi.fn()} onArchived={vi.fn()} />);
+    const { container } = render(<ClientsSection spaceId="sp1" query="" live={[]} archived={[]} archivedUnread={0} folded={false} onToggle={vi.fn()} selectedChatId={null} onOpen={vi.fn()} onArchived={vi.fn()} />);
     expect(container).toBeEmptyDOMElement();
   });
 });

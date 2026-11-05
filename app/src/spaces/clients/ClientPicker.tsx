@@ -15,16 +15,16 @@ const ALL = Number.MAX_SAFE_INTEGER;
 
 /**
  * The clients' picker (José 30/10: a picker with an option to create a
- * client): every live client, searched by name or RUC, the
+ * client): every live client, searched by name or RUC along with the
  * archived ones, and «Crear un cliente» for whoever may run Portal's action.
  * It is not in the ⚡: it lives here.
  */
-export function ClientPicker(props: { jwt: string; spaceId: string; live: Entry[]; archived: number; onOpen: (chat: ChatSummary) => void; onArchived: () => void }) {
+export function ClientPicker(props: { jwt: string; spaceId: string; live: Entry[]; archived: Entry[]; onOpen: (chat: ChatSummary) => void; onArchived: () => void }) {
   const colors = useColores();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const { row, answers } = useSpaceAction(props.jwt, props.spaceId, CREATE_CLIENT_ACTION, open);
-  const found = pageLiveClients(props.live, { query, shown: ALL }).entries;
+  const found = pageLiveClients(props.live, { query, shown: ALL, archived: props.archived }).entries;
   const now = new Date();
   const close = () => {
     setOpen(false);
@@ -56,10 +56,10 @@ export function ClientPicker(props: { jwt: string; spaceId: string; live: Entry[
           {found.map((entry) => <ClientRow key={entry.client.id} entry={entry} now={now} open={false} onOpen={(chat) => leaveTo(() => props.onOpen(chat))} />)}
           {found.length === 0 ? <Text className="p-4 text-[14px] text-on-surface-variant">{query ? 'Ningún cliente con ese nombre o RUC.' : 'Todavía no hay clientes con canal.'}</Text> : null}
         </View>
-        {props.archived > 0 ? (
+        {props.archived.length > 0 ? (
           <Pressable testID="selector-archivados" onPress={() => leaveTo(props.onArchived)} className="mt-3 min-h-[52px] flex-row items-center gap-3 px-1">
             <Archive size={20} color={colors['on-surface-variant']} />
-            <Text className="flex-1 text-[15px] text-on-surface">{`Archivados · ${props.archived}`}</Text>
+            <Text className="flex-1 text-[15px] text-on-surface">{`Archivados · ${props.archived.length}`}</Text>
             <ChevronRight size={18} color={colors['on-surface-variant']} />
           </Pressable>
         ) : null}

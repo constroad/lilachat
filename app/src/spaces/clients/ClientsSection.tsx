@@ -15,12 +15,12 @@ type Entry = ClientEntry<ChatSummary>;
  * with the newest four (José 29/10) and «Ver más» opens ten more. On top, the
  * picker searches all of them and creates a client (José 30/10).
  */
-export function ClientsSection(props: { jwt: string; spaceId: string; live: Entry[]; query: string; archived: number; archivedUnread: number; folded: boolean; onToggle: () => void; openChatId: string | null; onOpen: (chat: ChatSummary) => void; onArchived: () => void }) {
+export function ClientsSection(props: { jwt: string; spaceId: string; live: Entry[]; query: string; archived: Entry[]; archivedUnread: number; folded: boolean; onToggle: () => void; openChatId: string | null; onOpen: (chat: ChatSummary) => void; onArchived: () => void }) {
   const colors = useColores();
   const [shown, setShown] = useState(CLIENTS_PREVIEW);
-  if (props.live.length === 0 && props.archived === 0) return null;
+  if (props.live.length === 0 && props.archived.length === 0) return null;
   const now = new Date();
-  const page = pageLiveClients(props.live, { query: props.query, shown });
+  const page = pageLiveClients(props.live, { query: props.query, shown, archived: props.archived });
   return (
     <View testID="seccion-clientes" className="border-t border-outline/10 pt-1">
       <Pressable testID="plegar-clientes" onPress={props.onToggle} className="min-h-[44px] flex-row items-center px-4">
@@ -37,10 +37,10 @@ export function ClientsSection(props: { jwt: string; spaceId: string; live: Entr
               <Text className="text-[14px] font-semibold text-primary">{`Ver más · ${page.hidden}`}</Text>
             </Pressable>
           ) : null}
-          {props.archived > 0 ? (
+          {props.archived.length > 0 ? (
             <Pressable testID="clientes-archivados" onPress={props.onArchived} android_ripple={{ color: colors.outline }} className="min-h-[52px] flex-row items-center gap-3 px-4">
               <Archive size={20} color={colors['on-surface-variant']} />
-              <Text numberOfLines={1} className="flex-1 text-[15px] text-on-surface">{`Archivados · ${props.archived} ${props.archived === 1 ? 'cliente' : 'clientes'}`}</Text>
+              <Text numberOfLines={1} className="flex-1 text-[15px] text-on-surface">{`Archivados · ${props.archived.length} ${props.archived.length === 1 ? 'cliente' : 'clientes'}`}</Text>
               {props.archivedUnread > 0 ? <Text className="text-[14px] font-semibold text-primary">{`${props.archivedUnread} sin leer`}</Text> : null}
               <ChevronRight size={18} color={colors['on-surface-variant']} />
             </Pressable>

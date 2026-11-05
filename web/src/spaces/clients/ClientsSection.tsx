@@ -14,11 +14,11 @@ type Entry = ClientEntry<ChatSummary>;
  * four (José 29/10) and «Ver más» opens ten more. On top, the picker searches
  * all of them and creates a client (José 30/10).
  */
-export function ClientsSection(props: { jwt?: string; spaceId: string; live: Entry[]; query: string; archived: number; archivedUnread: number; folded: boolean; onToggle: () => void; selectedChatId: string | null; onOpen: (chat: ChatSummary) => void; onArchived: () => void; now?: Date }) {
+export function ClientsSection(props: { jwt?: string; spaceId: string; live: Entry[]; query: string; archived: Entry[]; archivedUnread: number; folded: boolean; onToggle: () => void; selectedChatId: string | null; onOpen: (chat: ChatSummary) => void; onArchived: () => void; now?: Date }) {
   const [shown, setShown] = useState(CLIENTS_PREVIEW);
-  if (props.live.length === 0 && props.archived === 0) return null;
+  if (props.live.length === 0 && props.archived.length === 0) return null;
   const now = props.now ?? new Date();
-  const page = pageLiveClients(props.live, { query: props.query, shown });
+  const page = pageLiveClients(props.live, { query: props.query, shown, archived: props.archived });
   return (
     <section data-testid="seccion-clientes" className="pt-1">
       <button type="button" data-testid="plegar-clientes" aria-expanded={!props.folded} onClick={props.onToggle} className="flex h-10 w-full items-center gap-1.5 px-4 text-left">
@@ -34,10 +34,10 @@ export function ClientsSection(props: { jwt?: string; spaceId: string; live: Ent
           {page.hidden > 0 ? (
             <button type="button" data-testid="clientes-ver-mas" onClick={() => setShown((before) => before + CLIENTS_PAGE)} className="h-9 w-full px-4 text-left text-[13px] font-semibold text-primary hover:bg-background">{`Ver más · ${page.hidden}`}</button>
           ) : null}
-          {props.archived > 0 ? (
+          {props.archived.length > 0 ? (
             <button type="button" data-testid="clientes-archivados" onClick={props.onArchived} className="flex h-11 w-full items-center gap-2.5 px-4 text-left text-sm hover:bg-background">
               <Archive size={16} className="text-on-surface-variant" />
-              <span className="min-w-0 flex-1 truncate">{`Archivados · ${props.archived} ${props.archived === 1 ? 'cliente' : 'clientes'}`}</span>
+              <span className="min-w-0 flex-1 truncate">{`Archivados · ${props.archived.length} ${props.archived.length === 1 ? 'cliente' : 'clientes'}`}</span>
               {props.archivedUnread > 0 ? <span className="text-[12px] font-semibold text-primary">{`${props.archivedUnread} sin leer`}</span> : null}
               <ChevronRight size={16} className="text-on-surface-variant" />
             </button>

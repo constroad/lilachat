@@ -151,6 +151,19 @@ describe('pageLiveClients (José 29/10: the last 3 or 4, «Ver más» and a filt
     expect(pageLiveClients(live, { query: 'pachacámac', shown: CLIENTS_PREVIEW }).entries.map((one) => one.client.id)).toEqual(['2']);
     expect(pageLiveClients(live, { query: '2060123', shown: CLIENTS_PREVIEW }).entries.map((one) => one.client.id)).toEqual(['6']);
   });
+
+  it('a search also finds the archived ones, after the live (José 05/11: «no muestra clientes antiguos»); without a search they stay out', () => {
+    // Arrange
+    const archived = [entry('7', 'Andes Viejo'), entry('8', 'Obras Antiguas', 0, '20991234567')];
+    // Act
+    const byName = pageLiveClients(live, { query: 'andes', shown: CLIENTS_PREVIEW, archived });
+    const byRuc = pageLiveClients(live, { query: '2099123', shown: CLIENTS_PREVIEW, archived });
+    const noSearch = pageLiveClients(live, { query: '', shown: CLIENTS_PREVIEW, archived });
+    // Assert
+    expect(byName.entries.map((one) => one.client.id)).toEqual(['5', '7']);
+    expect(byRuc.entries.map((one) => one.client.id)).toEqual(['8']);
+    expect(noSearch.entries.map((one) => one.client.id)).toEqual(['1', '2', '3', '4', '5']);
+  });
 });
 
 describe('filterServices (José 29/10: the services of a client channel with their search filters)', () => {

@@ -6266,6 +6266,8 @@ enlace secundario al pie.
   de poder crear un cliente»). Reemplaza el campo «Filtrar por cliente o RUC».
   - Abre la lista de TODOS los clientes vivos, con búsqueda por nombre o RUC, y
     el enlace a «Archivados».
+  - Buscar también encuentra a los archivados, después de los vivos (José 05/11: «no muestra
+    clientes antiguos»), en el selector y en el buscador del espacio. Sin buscar, solo salen los vivos.
   - «Crear un cliente» corre la acción `crear_cliente` de Portal (0227a1f0)
     desde el mismo selector, con su formulario y su respuesta.
   - **No está en el ⚡** (José: «el crear cliente no debería ser desde el rayo»).

@@ -126,7 +126,7 @@ export function SpaceChatList(props: Props) {
           </div>
         ) : null}
         {ready ? (
-          <ClientsSection jwt={props.jwt} spaceId={space.id} live={clientSplit.live} query={query} archived={clientSplit.archived.length} archivedUnread={clientSplit.archivedUnread} folded={foldedClients} onToggle={() => setFoldedClients((before) => !before)} selectedChatId={props.selectedChatId} onOpen={props.onOpenChat} onArchived={() => setOpenArchivedClients(true)} />
+          <ClientsSection jwt={props.jwt} spaceId={space.id} live={clientSplit.live} query={query} archived={clientSplit.archived} archivedUnread={clientSplit.archivedUnread} folded={foldedClients} onToggle={() => setFoldedClients((before) => !before)} selectedChatId={props.selectedChatId} onOpen={props.onOpenChat} onArchived={() => setOpenArchivedClients(true)} />
         ) : null}
         {ready && (chats?.length || query)
           ? sections.map((section) => section.key === 'apps' ? (

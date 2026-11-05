@@ -126,7 +126,7 @@ export async function salirDelServer(): Promise<void> {
   await api('/auth/salir', { method: 'POST' });
 }
 
-const SIN_CONEXION = 'Sin conexión. Revisa tu internet.';
+const NO_CONNECTION = 'Sin conexión. Revisa tu internet.';
 
 /** The body as JSON, or `undefined` when it was cut or is not JSON. An empty body is `{}`. */
 async function readJson(response: Response): Promise<{ message?: string } | undefined> {
@@ -167,11 +167,11 @@ export async function api<T>(
       };
     }
     // José 05/11: a body cut by a server restart read as `{}`, and the screen read a list that was not there.
-    if (!data) return { ok: false, status: 0, message: SIN_CONEXION };
+    if (!data) return { ok: false, status: 0, message: NO_CONNECTION };
     return { ok: true, data: data as T };
   } catch {
     // Sin red NO se dice «rechazado»: son cosas distintas y confundirlas hace
     // que el usuario borre su sesión creyendo que caducó.
-    return { ok: false, status: 0, message: SIN_CONEXION };
+    return { ok: false, status: 0, message: NO_CONNECTION };
   }
 }

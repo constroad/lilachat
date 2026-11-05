@@ -30,7 +30,7 @@ export async function jsonCall<T>(url: string, jwt: string, init: RequestInit = 
 }
 
 /** The body as JSON, or `undefined` when it could not be read or is not JSON (a cut connection, an HTML page). An empty body is `{}`: a 204 is a success. */
-async function readJson(response: Response): Promise<Record<string, unknown> | undefined> {
+export async function readJson(response: Response): Promise<Record<string, unknown> | undefined> {
   const text = await response.text().catch(() => undefined);
   if (text === undefined) return undefined;
   if (!text.trim()) return {};

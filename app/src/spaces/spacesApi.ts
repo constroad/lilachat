@@ -25,7 +25,9 @@ export const joinChannel = (jwt: string, spaceId: string, chatId: string) => jso
 /** The chats of a space; each one carries its space, so it opens in the Slack format. */
 export async function spaceChats(jwt: string, spaceId: string) {
   const result = await jsonCall<{ chats: ChatSummary[]; activity?: { mentions: number; threads: number } }>(`${BASE_URL}/api/chats?workspace=${spaceId}`, jwt);
-  return result.ok ? { ...result, data: { chats: result.data.chats.map((chat) => ({ ...chat, workspaceId: spaceId })), activity: result.data.activity } } : result;
+  if (!result.ok) return result;
+  if (!Array.isArray(result.data.chats)) return { ok: false as const };
+  return { ...result, data: { chats: result.data.chats.map((chat) => ({ ...chat, workspaceId: spaceId })), activity: result.data.activity } };
 }
 /** Leave a space, or withdraw a request still waiting («Cancelar solicitud», design `e1-03`). */
 export const leaveSpace = (jwt: string, spaceId: string) => jsonCall<Record<string, never>>(url(`/${spaceId}/leave`), jwt, post({}));

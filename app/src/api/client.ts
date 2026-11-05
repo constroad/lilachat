@@ -12,6 +12,7 @@ import type { BigFile, StorageReport } from '@lilachat/shared';
 import type { ServerMessage } from '../chat/socketClient';
 import { unSoloPedido } from './pedidoUnico';
 import { buildHeader, reportStatus } from './appBuild';
+import { readJson } from './jsonCall';
 
 export const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
 const TIMEOUT_MS = 15_000;
@@ -34,15 +35,17 @@ async function post<T>(
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
-    const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    const payload = await readJson(response);
     if (!response.ok) {
       reportStatus(response.status);
       return {
         ok: false,
         status: response.status,
-        message: typeof payload.message === 'string' ? payload.message : undefined,
+        message: typeof payload?.message === 'string' ? payload.message : undefined,
       };
     }
+    // José 05/11, as jsonCall on 01/11: a body cut by a server restart read as `{}` and took the tabs down.
+    if (!payload) return { ok: false, status: 'network' };
     return { ok: true, data: payload as T };
   } catch {
     return { ok: false, status: 'network' };
@@ -67,15 +70,17 @@ async function authed<T>(
       body: body ? JSON.stringify(body) : undefined,
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
-    const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    const payload = await readJson(response);
     if (!response.ok) {
       reportStatus(response.status);
       return {
         ok: false,
         status: response.status,
-        message: typeof payload.message === 'string' ? payload.message : undefined,
+        message: typeof payload?.message === 'string' ? payload.message : undefined,
       };
     }
+    // José 05/11, as jsonCall on 01/11: a body cut by a server restart read as `{}` and took the tabs down.
+    if (!payload) return { ok: false, status: 'network' };
     return { ok: true, data: payload as T };
   } catch {
     return { ok: false, status: 'network' };
@@ -294,15 +299,17 @@ async function get<T>(route: string, token: string, fetchImpl: FetchLike = fetch
       headers: { Authorization: `Bearer ${token}`, ...buildHeader() },
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
-    const payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+    const payload = await readJson(response);
     if (!response.ok) {
       reportStatus(response.status);
       return {
         ok: false,
         status: response.status,
-        message: typeof payload.message === 'string' ? payload.message : undefined,
+        message: typeof payload?.message === 'string' ? payload.message : undefined,
       };
     }
+    // José 05/11, as jsonCall on 01/11: a body cut by a server restart read as `{}` and took the tabs down.
+    if (!payload) return { ok: false, status: 'network' };
     return { ok: true, data: payload as T };
   } catch {
     return { ok: false, status: 'network' };
@@ -313,10 +320,11 @@ async function get<T>(route: string, token: string, fetchImpl: FetchLike = fetch
  * La lista de chats. Dos pedidos iguales en vuelo van UNA vez al server (FL4:
  * al arrancar se pedía 6 veces). Con `fetchImpl` (los tests) va siempre.
  */
-export const listChats = (token: string, fetchImpl?: FetchLike) =>
-  fetchImpl
-    ? get<{ chats: ChatSummary[] }>('/api/chats', token, fetchImpl)
-    : unSoloPedido(`chats:${token}`, () => get<{ chats: ChatSummary[] }>('/api/chats', token));
+/** The tabs read `chats` while drawing: an answer without the list is a failure, never `undefined`. */
+const withChatList = (result: ApiResult<{ chats: ChatSummary[] }>): ApiResult<{ chats: ChatSummary[] }> => (result.ok && !Array.isArray(result.data.chats) ? { ok: false, status: 'network' } : result);
+
+export const listChats = async (token: string, fetchImpl?: FetchLike) =>
+  withChatList(await (fetchImpl ? get<{ chats: ChatSummary[] }>('/api/chats', token, fetchImpl) : unSoloPedido(`chats:${token}`, () => get<{ chats: ChatSummary[] }>('/api/chats', token))));
 
 export type ResultadoBusqueda = {
   chatId: string;

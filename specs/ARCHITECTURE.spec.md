@@ -15208,3 +15208,21 @@ y eso no se puede clasificar.
 - Un canal público lo ve y lo une cualquier miembro del espacio. #flujo-caja y
   #administracion de Constroad son privados (agentes 05/11).
 
+## Una respuesta 2xx cortada es un fallo (José 05/11/2026)
+
+Un reinicio del server puede cortar el cuerpo de una respuesta que ya salió con
+200. `response.json().catch(() => ({}))` la convertía en `{}` con `ok: true`, y
+quien leía `data.chats` recibía `undefined`. La app caía en «Algo se rompió».
+
+`jsonCall` lo arregló el 01/11, pero `api/client.ts` y `web/src/api.ts` siguieron
+igual. Ahora los tres leen el cuerpo con `readJson`:
+
+- JSON cortado o que no es JSON: fallo, como sin conexión.
+- Cuerpo vacío: `{}`, porque un 204 es un éxito.
+
+`listChats` y `spaceChats` además exigen que `chats` sea una lista, porque
+`TabsShell` la lee mientras dibuja.
+
+Un JSON no llega a medias por gusto: si una pantalla lee una lista, esa lista se
+valida al recibirla, no al dibujarla.
+

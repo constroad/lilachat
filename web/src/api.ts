@@ -126,6 +126,21 @@ export async function salirDelServer(): Promise<void> {
   await api('/auth/salir', { method: 'POST' });
 }
 
+const SIN_CONEXION = 'Sin conexión. Revisa tu internet.';
+
+/** The body as JSON, or `undefined` when it was cut or is not JSON. An empty body is `{}`. */
+async function readJson(response: Response): Promise<{ message?: string } | undefined> {
+  const text = await response.text().catch(() => undefined);
+  if (text === undefined) return undefined;
+  if (!text.trim()) return {};
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return parsed && typeof parsed === 'object' ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function api<T>(
   path: string,
   options: { method?: string; body?: unknown; jwt?: string; signal?: AbortSignal } = {}
@@ -143,18 +158,20 @@ export async function api<T>(
 
     if (response.status === 204) return { ok: true, data: undefined as T };
 
-    const data = await response.json().catch(() => ({}));
+    const data = await readJson(response);
     if (!response.ok) {
       return {
         ok: false,
         status: response.status,
-        message: (data as { message?: string }).message ?? 'No se pudo completar.',
+        message: data?.message ?? 'No se pudo completar.',
       };
     }
+    // José 05/11: a body cut by a server restart read as `{}`, and the screen read a list that was not there.
+    if (!data) return { ok: false, status: 0, message: SIN_CONEXION };
     return { ok: true, data: data as T };
   } catch {
     // Sin red NO se dice «rechazado»: son cosas distintas y confundirlas hace
     // que el usuario borre su sesión creyendo que caducó.
-    return { ok: false, status: 0, message: 'Sin conexión. Revisa tu internet.' };
+    return { ok: false, status: 0, message: SIN_CONEXION };
   }
 }

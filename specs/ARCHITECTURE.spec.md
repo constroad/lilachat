@@ -9072,8 +9072,16 @@ Esa primera prueba creaba el gasto sin vista previa. Agentes lo cambió el mismo
 | Descartar, en la web y en la app | «DESCARTADO POR J ZAMORA» |
 | El 1:1 con Portal | Igual que en el canal |
 
-Comisión e ITF quedan en la nota del gasto. Falta decidir con José la partida, el medio de pago
-como campo y dónde van comisión e ITF. Tampoco avisa de un pago cargado a mano en Portal.
+Comisión e ITF quedan por ahora en la nota del gasto.
+
+**Decisiones de José (05/11), pendientes de construir en Portal y agentes:**
+- El gasto de servicio se registra como movimiento financiero, con partida y medio de pago.
+- Comisión e ITF van en un movimiento aparte.
+- La vista previa avisa si hay un pago cargado a mano con la misma empresa, monto y fecha.
+  Aprobar sigue disponible.
+
+Lilachat no cambia: el aviso usa `status` con `tone: "warn"` y un campo. José debe reaprobar
+`registrar_gasto` cuando cambie.
 
 **Sin probar:** que otro miembro toque Aprobar (Test solo tiene una cuenta), la hora y la evidencia
 de `/asistencia` con marcas reales, y el delta de una medida real de tanque.

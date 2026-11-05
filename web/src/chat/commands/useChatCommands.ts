@@ -18,6 +18,9 @@ export function useChatCommands(params: { jwt?: string; chatId: string; workspac
   const [active, setActive] = useState(0);
   const scope = useMemo(() => ({ chatId }), [chatId]);
   const appAnswers = useAppAnswers({ jwt, scope: workspaceId ? scope : null });
+  // José 05/11: `appAnswers` is a new object on every render, its functions are not. `runCardLine` goes up to the
+  // conversation in an effect: depending on the object looped the render forever in every space's chat.
+  const { track, say, removeAnswer } = appAnswers;
   const loaded = useRef<CommandGroup[] | null>(null);
   const inflight = useRef<Promise<CommandGroup[] | null> | null>(null);
   const enabled = Boolean(workspaceId && jwt);
@@ -91,16 +94,16 @@ export function useChatCommands(params: { jwt?: string; chatId: string; workspac
       const found = known ? commandOf(known, text) : null;
       // A command no app of this chat has is not sent as text (pending 102): it says which ones there are.
       if (!found && known) {
-        appAnswers.say(parseSlashInput(text)!.command, unknownCommandMessage(parseSlashInput(text)!.command, known));
+        say(parseSlashInput(text)!.command, unknownCommandMessage(parseSlashInput(text)!.command, known));
         return true;
       }
       if (!found) return 'not-command';
       if (!jwt) return false;
       setQuery(null);
       const group = known!.find((one) => one.appId === found.appId);
-      return appAnswers.track({ appName: group?.appName ?? 'La app', command: found.command, ...(group?.avatarUrl ? { avatarUrl: group.avatarUrl } : {}) }, () => runCommand(jwt, chatId, found));
+      return track({ appName: group?.appName ?? 'La app', command: found.command, ...(group?.avatarUrl ? { avatarUrl: group.avatarUrl } : {}) }, () => runCommand(jwt, chatId, found));
     },
-    [enabled, load, jwt, chatId, appAnswers]
+    [enabled, load, jwt, chatId, track, say]
   );
 
   /** A card's row: a stored card (`seq`) runs where the app posted it, even with the command off; one only I see, like typing it. */
@@ -109,9 +112,9 @@ export function useChatCommands(params: { jwt?: string; chatId: string; workspac
       const parsed = parseSlashInput(line);
       if (!seq) return runIfCommand(line);
       if (!jwt || !parsed) return false;
-      return appAnswers.track({ appName: 'La app', command: parsed.command }, () => runCardCommand(jwt, chatId, { seq, line }));
+      return track({ appName: 'La app', command: parsed.command }, () => runCardCommand(jwt, chatId, { seq, line }));
     },
-    [runIfCommand, jwt, chatId, appAnswers]
+    [runIfCommand, jwt, chatId, track]
   );
 
   // A manifest or the commands changed (23/10): the list already read is stale; read again if it was in use.
@@ -135,10 +138,10 @@ export function useChatCommands(params: { jwt?: string; chatId: string; workspac
       if (!jwt) return 'Sin sesión.';
       const result = await shareCommandAnswer(jwt, chatId, commandId);
       if (!result.ok) return result.message;
-      appAnswers.removeAnswer(commandId);
+      removeAnswer(commandId);
       return null;
     },
-    [jwt, chatId, appAnswers]
+    [jwt, chatId, removeAnswer]
   );
   /** The chat's ⚡ (R31/10): its actions, asked on open in a channel or the chat with an app. */
   const actions = useMemo(() => chatActionRows(groups), [groups]);

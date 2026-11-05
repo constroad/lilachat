@@ -10,6 +10,17 @@ vi.mock('./commandsApi', () => ({ spaceCommands: (...args: unknown[]) => spaceCo
 const { useChatCommands, useChatCommandsWithActions } = await import('./useChatCommands');
 
 describe('useChatCommands (23/10: a fast «/clima» + Enter went to the channel as text)', () => {
+  it('José 05/11: the card runner keeps its identity between renders, or the conversation renders forever', () => {
+    // Arrange
+    const { result, rerender } = renderHook(() => useChatCommands({ jwt: 'jwt', chatId: 'ch1', workspaceId: 's1' }));
+    const { runCardLine, runIfCommand } = result.current;
+    // Act
+    rerender();
+    // Assert
+    expect(result.current.runCardLine).toBe(runCardLine);
+    expect(result.current.runIfCommand).toBe(runIfCommand);
+  });
+
   it('a command sent before the space\'s commands arrive waits for them and goes to its app; asked once', async () => {
     // Arrange
     const { result } = renderHook(() => useChatCommands({ jwt: 'jwt', chatId: 'ch1', workspaceId: 's1' }));

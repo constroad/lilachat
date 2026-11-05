@@ -1,10 +1,9 @@
 import { useCallback, useState } from 'react';
-import { ChevronLeft, ExternalLink, FileText, Plus } from 'lucide-react';
-import { CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, PAYMENT_ACTION, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { ChevronLeft, ExternalLink, FileText } from 'lucide-react';
+import { CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { usePortalFileViewer } from './PortalFileViewer';
 import type { OpenSheetFile } from './RecordSheetWeb';
 import { RecordSheetWeb } from './RecordSheetWeb';
-import { ServiceBillingWeb } from './ServiceBillingWeb';
 import { ServiceStagesWeb } from './ServiceStagesWeb';
 import { SpaceActionButtonWeb } from './SpaceActionButtonWeb';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
@@ -78,15 +77,12 @@ const orderLinkAction = (links: ChannelLinks | undefined, top: OpenSheet | undef
   links?.can('order') && top?.tab === 'orders' ? { label: 'Crear enlace del pedido', onPress: () => links.open({ kind: 'order', clientId: target.clientId, orderId: top.id }) } : undefined;
 
 /**
- * Above the tab (José 31/10): «Registrar pago» in Cobranza and «Generar informe
- * de servicio» in Informes. Both run from the space (Portal refuses them in a
- * group), and an answered one asks the detail again.
+ * «Generar informe de servicio» above Informes (José 31/10): the liquidation
+ * carries amounts, so only for whoever sees money (José 05/11). It runs from
+ * the space (Portal refuses it in a group), and an answered one asks the detail again.
  */
-function TabActions({ tab, target, serviceId, onAnswered }: { tab: DetailTabKey; target: ServiceAskTarget; serviceId: string; onAnswered: () => void }) {
-  const common = { jwt: target.jwt, spaceId: target.spaceId, values: serviceValuesOf(serviceId), onAnswered };
-  if (tab === 'billing') return <SpaceActionButtonWeb {...common} actionKey={PAYMENT_ACTION} label="Registrar pago" testId="registrar-pago" Icon={Plus} />;
-  if (tab === 'reports') return <SpaceActionButtonWeb {...common} actionKey={SERVICE_REPORT_ACTION} label="Generar informe de servicio" testId="generar-informe-servicio" Icon={FileText} />;
-  return null;
+function ReportAction({ target, serviceId, onAnswered }: { target: ServiceAskTarget; serviceId: string; onAnswered: () => void }) {
+  return <SpaceActionButtonWeb jwt={target.jwt} spaceId={target.spaceId} values={serviceValuesOf(serviceId)} onAnswered={onAnswered} actionKey={SERVICE_REPORT_ACTION} label="Generar informe de servicio" testId="generar-informe-servicio" Icon={FileText} />;
 }
 
 /** Dispatches whose order did not come in the 100 Portal sent (José 01/11: they live inside their order). */
@@ -101,9 +97,8 @@ function OrphanDispatches({ detail, onOpen, onOpenFile }: { detail: ServiceDetai
   );
 }
 
-/** The open tab's body: «Cobranza» has its own view; the reports go by day; the rest, a row each. */
+/** The open tab's body: the reports go by day; the rest, a row each. */
 function TabBody({ detail, tab, onOpen, onOpenFile }: { detail: ServiceDetail; tab: DetailTabKey; onOpen: (id: string) => void; onOpenFile: OpenSheetFile }) {
-  if (tab === 'billing' && detail.billing) return <ServiceBillingWeb billing={detail.billing} invoices={invoicesOf(detail)} onOpenFile={onOpenFile} />;
   const rows = detailRows(detail, tab);
   return (
     <ul className="divide-y divide-outline/10 overflow-hidden rounded-xl border border-outline/15 bg-surface">
@@ -112,14 +107,13 @@ function TabBody({ detail, tab, onOpen, onOpenFile }: { detail: ServiceDetail; t
   );
 }
 
-function DetailTabs({ detail, target, serviceId, links, onPaid }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; links?: ChannelLinks; onPaid: () => void }) {
-  // José 30/10 night: Cotizaciones and Cobranza first; it opens on the first one that came.
-  const [tab, setTab] = useState<DetailTabKey>(() => detailTabs(detail)[0]?.key ?? 'orders');
+function DetailTabs({ detail, target, serviceId, links, seesMoney, onReported }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; links?: ChannelLinks; seesMoney: boolean; onReported: () => void }) {
+  const [tab, setTab] = useState<DetailTabKey>('orders');
   const viewer = usePortalFileViewer();
   // An order's sheet opens its dispatches on top (José 01/11); closing goes back one.
   const [opened, setOpened] = useState<OpenSheet[]>([]);
   const shown = detailRows(detail, tab).length;
-  const more = tab === 'billing' ? null : moreInPortal(shown, detail.totals[tab] ?? shown);
+  const more = moreInPortal(shown, detail.totals[tab]);
   const top = opened.at(-1);
   const sheet = top ? detailSheet(detail, top.tab, top.id) : null;
   const reportPdf = useReportPdf(target, serviceId);
@@ -136,7 +130,7 @@ function DetailTabs({ detail, target, serviceId, links, onPaid }: { detail: Serv
           <button key={one.key} type="button" role="tab" aria-selected={tab === one.key} data-testid={`pestana-detalle-${one.key}`} onClick={(event) => { setTab(one.key); event.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); }} className={`h-9 shrink-0 rounded-lg px-3 text-sm ${tab === one.key ? 'bg-primary font-semibold text-on-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>{one.label}</button>
         ))}
       </div>
-      <TabActions tab={tab} target={target} serviceId={serviceId} onAnswered={onPaid} />
+      {tab === 'reports' && seesMoney ? <ReportAction target={target} serviceId={serviceId} onAnswered={onReported} /> : null}
       <TabBody detail={detail} tab={tab} onOpen={openRow} onOpenFile={viewer.open} />
       {tab === 'orders' ? <OrphanDispatches detail={detail} onOpen={openDispatch} onOpenFile={viewer.open} /> : null}
       {viewer.viewer}
@@ -153,8 +147,8 @@ function DetailTabs({ detail, target, serviceId, links, onPaid }: { detail: Serv
  * Pedidos · Informes with Portal's counts, each order with its dispatches
  * inside (José 01/11). Asked when it opens.
  */
-export function ServiceDetailWeb(props: { target: ServiceAskTarget; service: SpaceClientService; onBack: () => void; links?: ChannelLinks }) {
-  // After a payment the detail is asked again, keeping the open tab (agentes 31/10).
+export function ServiceDetailWeb(props: { target: ServiceAskTarget; service: SpaceClientService; seesMoney: boolean; onBack: () => void; links?: ChannelLinks }) {
+  // After a report the detail is asked again, keeping the open tab (agentes 31/10).
   const [round, setRound] = useState(0);
   const askAgain = useCallback(() => setRound((count) => count + 1), []);
   const answer = useServiceAsk('detail', props.target, props.service.id, round);
@@ -163,7 +157,7 @@ export function ServiceDetailWeb(props: { target: ServiceAskTarget; service: Spa
       <button type="button" data-testid="volver-a-servicios" onClick={props.onBack} className="inline-flex items-center gap-1 self-start text-sm font-semibold text-primary"><ChevronLeft size={16} /> Servicios</button>
       <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
       {answer === null ? <div data-testid="detalle-cargando" className="h-48 animate-pulse rounded-xl bg-surface" /> : null}
-      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} links={props.links} onPaid={askAgain} /> : null}
+      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} /> : null}
       {answer && !answer.ok ? (
         <div data-testid="detalle-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm">
           <p className="mb-2 font-semibold">{answer.message}</p>

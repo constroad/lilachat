@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronRight, ExternalLink, Folder, FolderOpen } from 'lucide-react';
-import { stageFiles, type SpaceClient, type SpaceClientService, type WorkStage } from '@lilachat/shared';
+import { canSeeDrive, stageFiles, type SpaceClient, type SpaceClientService, type WorkStage } from '@lilachat/shared';
 import { StageFilesWeb } from '../../chat/workPlan/WorkListsWeb';
 import { ServiceDriveWeb } from './ServiceDriveWeb';
 import type { ServiceAskTarget } from './useServiceAsk';
@@ -50,16 +50,18 @@ function SourceSwitch(props: { source: Source; channelFiles: number; onSource: (
 /**
  * «Archivos» of a client's channel, ONE tab (José asked for a single one on
  * 30/10): what was uploaded to the checklist («Del canal») and Portal's
- * Drive, per service. The Drive left «Servicios».
+ * Drive, per service. The Drive left «Servicios», and it holds liquidations:
+ * only whoever sees money or got «Archivos» ticked has it (José 05/11).
  */
 export function ClientFilesWeb(props: { client: SpaceClient; target: ServiceAskTarget | null; stages: readonly WorkStage[]; onOpenMessage: (seq: number) => void }) {
   const channelFiles = stageFiles(props.stages).total;
-  const [source, setSource] = useState<Source>(channelFiles ? 'channel' : 'drive');
+  const drive = canSeeDrive(props.client.access);
+  const [source, setSource] = useState<Source>(channelFiles || !drive ? 'channel' : 'drive');
   const [service, setService] = useState<SpaceClientService | null>(null);
   const { target } = props;
   return (
     <div data-testid="archivos-cliente" className="flex min-h-0 flex-1 flex-col bg-background">
-      <div className="px-4 pt-3 md:px-6"><SourceSwitch source={source} channelFiles={channelFiles} onSource={setSource} /></div>
+      {drive ? <div className="px-4 pt-3 md:px-6"><SourceSwitch source={source} channelFiles={channelFiles} onSource={setSource} /></div> : null}
       {source === 'channel' ? <StageFilesWeb stages={[...props.stages]} onOpenMessage={props.onOpenMessage} /> : null}
       {source === 'drive' ? (
         <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">

@@ -85,7 +85,7 @@ function ChannelPanels(props: { shown: Tab; client: SpaceClient; records: Return
           <ClientServices client={client} records={props.records} onOpenRecord={toMessage} target={target} members={props.people} me={params.yo} links={props.links} />
         </View>
       ) : null}
-      {shown === 'account' && target ? <View className="bg-background" style={COVER}><ClientAccountPanel target={target} /></View> : null}
+      {shown === 'account' && target ? <View className="bg-background" style={COVER}><ClientAccountPanel target={target} services={client.services} /></View> : null}
       {shown === 'checklist' ? (
         <View className="bg-background" style={COVER}>
           <WorkPlanPanel restricted={Boolean(client.access?.restricted)} plan={plan} jwt={params.jwt} yo={params.yo} nameOf={nameOf} members={members} onStartFailed={(message) => ToastAndroid.show(message, ToastAndroid.SHORT)} onOpenTask={setOpenTask} />

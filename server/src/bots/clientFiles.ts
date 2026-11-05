@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { canManageMembers, canSeeTab, CLIENT_ID, clientAccountOf, REPORT_PDF_FAILED, reportPdfOf, serviceDetailOf, serviceFilesOf, type ClientAccount, type RestrictableTab, type ReportPdf, type ServiceDetail, type ServiceFiles } from '@lilachat/shared';
+import { canManageMembers, canSeeDrive, canSeeTab, CLIENT_ID, isMoneyReport, clientAccountOf, REPORT_PDF_FAILED, reportPdfOf, serviceDetailOf, serviceFilesOf, type ClientAccount, type MyClientAccess, type RestrictableTab, type ReportPdf, type ServiceDetail, type ServiceFiles, type ServiceOrder } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { actorIn } from '../workspaces.js';
@@ -13,6 +13,7 @@ const ASK_TIMEOUT_MS = 8_000;
 export const DRIVE_FAILED = 'No se pudo traer el Drive';
 export const DETAIL_FAILED = 'No se pudo traer el detalle del servicio';
 export const ACCOUNT_FAILED = 'No se pudo traer la cuenta del cliente';
+export const BILLING_FAILED = 'No se pudo traer la cobranza del servicio';
 const SERVICE_GONE = 'Este servicio ya no está en el Portal.';
 
 type NotFound = { status: 404; error: string; message: string };
@@ -21,13 +22,18 @@ export type FilesOutcome = { ok: true; files: ServiceFiles } | { ok: false; mess
 
 const notFound = (): NotFound => ({ status: 404, error: 'service_not_found', message: 'Ese servicio no existe o no estás en el canal del cliente.' });
 
-/** What the question needs from the member's access (José 30/10 night): a tab, or seeing money. */
-type Need = RestrictableTab | 'money';
+/** What the question needs from the member's access (José 30/10 night): a tab, seeing money, or Portal's Drive (José 05/11). */
+type Need = RestrictableTab | 'money' | 'drive';
 /** `gone`: what it says when Portal no longer has it (agentes 6fc3ca5: 404 `not-found`), without a link that would 404 too. */
 type ServiceAsk<T> = { event: Extract<BotEventType, `client.${string}.requested`>; parse: (body: unknown) => T | null; failed: string; gone: string; label: string; need: Need; scrub?: (value: T, seesMoney: boolean) => T };
 
 type AskedService = { client: Pick<ClientChannel, 'appId' | 'chatId' | 'driveUrl' | 'services'>; fallbackUrl: string | null; seesBilling: boolean };
 type Asker = { id: string; name?: string; phone?: string; sees_billing?: true };
+
+function meets(access: MyClientAccess, need: Need): boolean {
+  if (need === 'money') return access.money;
+  return need === 'drive' ? canSeeDrive(access) : canSeeTab(access, need);
+}
 
 /**
  * The client (and, when asked, its service), only for a member of the client's PRIVATE channel and only if the app
@@ -41,7 +47,7 @@ async function findAskedService(workspaceId: string, clientId: string, serviceId
   if (!client || service === undefined || !(await ChatModel.exists({ _id: client.chatId, 'members.userId': userId }))) return null;
   // José 30/10: the space's admins, plus whoever an admin marked in THIS channel; Portal widens `billing` with it.
   const access = accessOf(client, userId, canManageMembers(actor.role));
-  if (need === 'money' ? !access.money : !canSeeTab(access, need)) return null;
+  if (!meets(access, need)) return null;
   return { client, fallbackUrl: service?.url ?? client.driveUrl ?? null, seesBilling: access.money };
 }
 
@@ -82,16 +88,25 @@ async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clien
   return { ok: false, message: ask.failed, fallbackUrl };
 }
 
-/** José 30/10 night: quotes and collection only for whoever sees money, whatever Portal decided to send. */
+/** An order's invoice, price, credit and payments (José 05/11): the invoice's PDF carries the amounts. */
+function orderWithoutMoney(order: ServiceOrder): ServiceOrder {
+  const { invoice: _invoice, invoiceUrl: _invoiceUrl, unitPrice: _unitPrice, total: _total, isCredit: _isCredit, dueAt: _dueAt, payments: _payments, ...rest } = order;
+  return rest;
+}
+
+/** José 30/10 night, 05/11: quotes, collection, invoices and liquidations only for whoever sees money, whatever Portal decided to send. */
 function withoutMoney(detail: ServiceDetail, seesMoney: boolean): ServiceDetail {
   if (seesMoney) return detail;
   const { quotes: _quotes, billing: _billing, totals, ...rest } = detail;
   const { quotes: _count, ...counts } = totals;
-  return { ...rest, totals: counts };
+  const reports = detail.reports.filter((report) => !isMoneyReport(report));
+  return { ...rest, orders: detail.orders.map(orderWithoutMoney), reports, totals: { ...counts, reports: counts.reports - (detail.reports.length - reports.length) } };
 }
 
-const FILES: ServiceAsk<ServiceFiles> = { event: 'client.files.requested', parse: serviceFilesOf, failed: DRIVE_FAILED, gone: SERVICE_GONE, label: 'Drive del servicio', need: 'files' };
+const FILES: ServiceAsk<ServiceFiles> = { event: 'client.files.requested', parse: serviceFilesOf, failed: DRIVE_FAILED, gone: SERVICE_GONE, label: 'Drive del servicio', need: 'drive' };
 const DETAIL: ServiceAsk<ServiceDetail> = { event: 'client.service.requested', parse: serviceDetailOf, failed: DETAIL_FAILED, gone: SERVICE_GONE, label: 'Detalle del servicio', need: 'services', scrub: withoutMoney };
+/** «Cobranza» opens from «Cuenta» (José 05/11): the same question, only for whoever sees money, even without «Servicios». */
+const BILLING: ServiceAsk<ServiceDetail> = { ...DETAIL, failed: BILLING_FAILED, label: 'Cobranza del servicio', need: 'money' };
 const ACCOUNT: ServiceAsk<ClientAccount> = { event: 'client.account.requested', parse: clientAccountOf, failed: ACCOUNT_FAILED, gone: 'Este cliente ya no está en el Portal.', label: 'Cuenta del cliente', need: 'money' };
 const REPORT_PDF: ServiceAsk<ReportPdf> = { event: 'client.report.requested', parse: reportPdfOf, failed: REPORT_PDF_FAILED, gone: 'Este informe ya no está en el Portal.', label: 'PDF del informe', need: 'services' };
 
@@ -104,6 +119,9 @@ export async function clientServiceFiles(workspaceId: string, clientId: string, 
 
 /** Its pedidos, despachos and informes (José, 30/10; agentes 77e7782, Portal 1d4072d5). */
 export const clientServiceDetail = (workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId) => askAboutService(DETAIL, workspaceId, clientId, serviceId, userId);
+
+/** A service's collection, from «Cuenta» (José 05/11). */
+export const clientServiceBilling = (workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId) => askAboutService(BILLING, workspaceId, clientId, serviceId, userId);
 
 /** All the client's quotes and its orders on credit (José 30/10, design f-08; agentes cf37b98, Portal 0227a1f0). */
 export const clientAccount = (workspaceId: string, clientId: string, userId: Types.ObjectId) => askAboutService(ACCOUNT, workspaceId, clientId, null, userId);

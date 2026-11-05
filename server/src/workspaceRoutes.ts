@@ -26,7 +26,7 @@ import multer from 'multer';
 import { CUSTOM_EMOJI_MAX_BYTES } from '@lilachat/shared';
 import { addCustomEmoji, listCustomEmojis, removeCustomEmoji } from './customEmojiCatalog.js';
 import { clientRecords, listClients } from './bots/botClients.js';
-import { clientAccount, clientReportPdf, clientServiceDetail, clientServiceFiles } from './bots/clientFiles.js';
+import { clientAccount, clientReportPdf, clientServiceBilling, clientServiceDetail, clientServiceFiles } from './bots/clientFiles.js';
 import { liftRestrictionsOfAdmin, listBillingViewers, listClientAccess, setBillingViewer, setClientAccess } from './bots/clientBillingViewers.js';
 
 /** Tries of a code per person and minute: enough to fix a typo, not to guess codes. */
@@ -113,6 +113,12 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
     const found = await clientServiceDetail(req.params.id!, req.params.clientId!, req.params.serviceId!, me(req));
     if ('error' in found) return res.status(found.status).json({ error: found.error, message: found.message });
     res.json(found.ok ? { detail: found.value } : { error: 'detail_failed', message: found.message, portal_url: found.fallbackUrl });
+  }));
+  // José 05/11: a service's collection opens from «Cuenta», only for whoever sees money.
+  router.get('/:id/clients/:clientId/services/:serviceId/billing', handled(async (req, res) => {
+    const found = await clientServiceBilling(req.params.id!, req.params.clientId!, req.params.serviceId!, me(req));
+    if ('error' in found) return res.status(found.status).json({ error: found.error, message: found.message });
+    res.json(found.ok ? { detail: found.value } : { error: 'billing_failed', message: found.message, portal_url: found.fallbackUrl });
   }));
   // agentes 30/10: a report's PDF, ready or generating; the app asks again after the wait.
   router.get('/:id/clients/:clientId/services/:serviceId/reports/:reportId/pdf', handled(async (req, res) => {

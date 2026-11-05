@@ -3,7 +3,7 @@
  * engineers and the like join seeing only the tabs and checklist stages an
  * admin picks, plus the tasks assigned to them. Money (Cuenta, quotes,
  * Cobranza, invoices) is only for the space's admins and whoever an admin
- * marks. A space admin always sees the whole channel. PURE: server, app, web.
+ * marks; all of it lives in «Cuenta» (José 05/11), so «Servicios» carries none. A space admin always sees the whole channel. PURE: server, app, web.
  */
 export const RESTRICTABLE_TABS = ['services', 'files', 'checklist'] as const;
 export type RestrictableTab = (typeof RESTRICTABLE_TABS)[number];
@@ -19,13 +19,23 @@ export const CHANNEL_TAB_LABELS: Record<ChannelTab, string> = { chat: 'Chat', ac
 /** What each restrictable tab gives, for the access editor. */
 export const RESTRICTABLE_TAB_HINTS: Record<RestrictableTab, string> = {
   services: 'Pedidos, despachos e informes, sin montos',
-  files: 'Drive del Portal y archivos del checklist',
+  files: 'Archivos del checklist y Drive del Portal, que puede traer liquidaciones',
   checklist: 'Las etapas que elijas y sus tareas',
 };
 export const MONEY_HINT = 'Cuenta, cotizaciones, cobranza y facturas';
 
 const STAGE_ID = /^[a-f0-9]{24}$/;
 const MAX_STAGES = 50;
+
+/** Portal's Drive holds liquidations and whatever was uploaded by hand: it takes the money mark or an admin ticking «Archivos» (José 05/11). */
+export const canSeeDrive = (access: MyClientAccess | undefined): boolean => Boolean(access?.money || access?.restricted?.tabs.includes('files'));
+
+const MONEY_RECORD = /pago|cotizaci|orden de compra|valorizaci|liquidaci|factura/i;
+/** A service's record that speaks of money, by what its card says: agentes sends no type (José 05/11). */
+export const isMoneyRecord = (record: { kicker?: string; title: string }): boolean => MONEY_RECORD.test(`${record.kicker ?? ''} ${record.title}`);
+/** Liquidations and valuations carry amounts; Portal names them by type (LIQ-SRV, VAL-SRV). */
+const MONEY_REPORT = /liquidaci|valorizaci/i;
+export const isMoneyReport = (report: { typeLabel?: string; title: string }): boolean => MONEY_REPORT.test(`${report.typeLabel ?? ''} ${report.title}`);
 
 export const canSeeTab = (access: MyClientAccess | undefined, tab: RestrictableTab): boolean => !access?.restricted || access.restricted.tabs.includes(tab);
 
@@ -82,7 +92,7 @@ function checklistPart(stages: readonly string[], titles: ReadonlyMap<string, st
 
 /** One line for the access list: «Todo el canal · ve montos», «Solo el chat», «Chat y Checklist (Permisos)». */
 export function accessSummary(access: MyClientAccess, stageTitles: ReadonlyMap<string, string>): string {
-  if (!access.restricted) return access.money ? 'Todo el canal · ve montos' : 'Todo el canal, sin montos';
+  if (!access.restricted) return access.money ? 'Todo el canal · ve montos' : 'Todo el canal, sin montos ni Drive';
   const { tabs, stages } = access.restricted;
   if (!tabs.length) return access.money ? 'Solo el chat · ve montos' : 'Solo el chat';
   const names = ['Chat', ...tabs.map((tab) => CHANNEL_TAB_LABELS[tab])];

@@ -217,6 +217,19 @@ describe('client channels stay out of the app\'s channel pickers (José, 30/10)'
 });
 
 describe('GET /api/workspaces/:id/clients/:clientId/records', () => {
+  it('José 05/11: a member without the money mark does not get a payment nor a quote among the service\'s records', async () => {
+    // Arrange
+    const token = await installApp();
+    const created = await putClient(token, state(daysAgo(1), [service('in_progress')])).expect(201);
+    await post(token, { client: CLIENT, kind: 'service.record', refs: { service_id: 'srv-1', record_id: 'r1' }, text: 'Control de pista · 29 de octubre', idempotency_key: 'k1' }).expect(201);
+    await post(token, { client: CLIENT, kind: 'service.record', refs: { service_id: 'srv-1', record_id: 'r2' }, text: 'Cotización COT-12', idempotency_key: 'k2' }).expect(201);
+    await ChatModel.updateOne({ _id: created.body.client.channel.id }, { $push: { members: { userId: ana, role: 'member' } } });
+    // Act
+    const forAna = await request(app).get(`/api/workspaces/${spaceId}/clients/${CLIENT}/records`).set(asAna).expect(200);
+    // Assert
+    expect(forAna.body.records.map((one: { title: string }) => one.title)).toEqual(['Control de pista · 29 de octubre']);
+  });
+
   it('lists the records of each service for a member of the channel, newest first; a plain member of the space gets 404', async () => {
     // Arrange
     const token = await installApp();

@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { accountQuoteLine, accountServiceLine, accountSummary, byUrgency, creditOrderLine, dueStatus, moneyOf, quoteSheet, type AccountQuote, type AccountService, type ClientAccount, type CreditOrder, type DetailStatus } from '@lilachat/shared';
+import { useCallback, useState } from 'react';
+import { accountQuoteLine, accountServiceLine, accountSummary, byUrgency, collectionByService, creditOrderLine, dueStatus, moneyOf, quoteSheet, type AccountQuote, type CollectionRow, type SpaceClientService, type ClientAccount, type CreditOrder, type DetailStatus } from '@lilachat/shared';
+import { ChevronRight } from 'lucide-react';
 import { RecordSheetWeb } from './RecordSheetWeb';
+import { ServiceCollectionWeb } from './ServiceCollectionWeb';
 import { usePortalFileViewer } from './PortalFileViewer';
 import { DETAIL_TONE } from './tones';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
@@ -21,37 +23,43 @@ function Summary({ account }: { account: ClientAccount }) {
   );
 }
 
-/** What is owed, with its due day when it has one: past due, it is marked in red. */
-function DebtRow(props: { testId: string; title: string; line: string; dueAt?: string; pending?: number; status?: DetailStatus }) {
+/** What is owed, with its due day when it has one: past due, it is marked in red. With `onOpen` the whole row opens. */
+function DebtRow(props: { testId: string; title: string; line: string; dueAt?: string; pending?: number; status?: DetailStatus; onOpen?: () => void }) {
   const due = props.dueAt && props.pending ? dueStatus(props.dueAt, new Date()) : null;
-  return (
-    <li data-testid={props.testId} className={`py-3 ${due?.tone === 'error' ? 'border-l-[3px] border-l-error pl-3' : ''}`}>
+  const body = (
+    <>
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{props.title}</p><p className="text-[12px] text-on-surface-variant">{props.line}</p></div>
         {due ? <Pill label={due.label} tone={due.tone} /> : props.status ? <Pill label={props.status.label} tone={props.status.tone} /> : null}
+        {props.onOpen ? <ChevronRight size={16} className="shrink-0 text-on-surface-variant" /> : null}
       </div>
       {props.pending !== undefined ? <p className={`mt-1 text-right font-bold tabular-nums ${due?.tone === 'error' ? 'text-error' : ''}`}>{`Debe ${moneyOf(props.pending)}`}</p> : null}
+    </>
+  );
+  return (
+    <li data-testid={props.testId} className={`py-3 ${due?.tone === 'error' ? 'border-l-[3px] border-l-error pl-3' : ''}`}>
+      {props.onOpen ? <button type="button" onClick={props.onOpen} className="block w-full text-left">{body}</button> : body}
     </li>
   );
 }
 
 const CreditRow = ({ order }: { order: CreditOrder }) => <DebtRow testId={`credito-${order.id}`} title={order.product ?? 'Pedido'} line={creditOrderLine(order, new Date())} dueAt={order.dueAt} pending={order.pending} status={order.status} />;
 
-const ServiceRow = ({ service }: { service: AccountService }) => <DebtRow testId={`servicio-por-cobrar-${service.id}`} title={service.name ?? 'Servicio'} line={accountServiceLine(service)} dueAt={service.dueAt} pending={service.pending} status={service.isCredit ? { label: 'Al crédito', tone: 'neutral' } : undefined} />;
+const ServiceRow = ({ service, onOpen }: { service: CollectionRow; onOpen: () => void }) => <DebtRow testId={`servicio-por-cobrar-${service.id}`} title={service.name} line={accountServiceLine(service)} dueAt={service.dueAt} pending={service.pending} onOpen={onOpen} />;
 
-function AccountBody({ account }: { account: ClientAccount }) {
+function AccountBody({ account, services, onOpenService }: { account: ClientAccount; services: readonly SpaceClientService[]; onOpenService: (service: CollectionRow) => void }) {
   const [quote, setQuote] = useState<AccountQuote | null>(null);
   const viewer = usePortalFileViewer();
   const credit = account.creditOrders;
-  const { services } = account;
-  if (!credit && !services && !account.quotes) return <p className="pt-6 text-center text-sm text-on-surface-variant">No tienes permiso para ver la cuenta de este cliente.</p>;
+  const collection = collectionByService(account.services, services, new Date());
+  if (!credit && !account.services && !account.quotes) return <p className="pt-6 text-center text-sm text-on-surface-variant">No tienes permiso para ver la cuenta de este cliente.</p>;
   return (
     <>
-      {credit || services ? <Summary account={account} /> : null}
-      {services ? (
+      {credit || account.services ? <Summary account={account} /> : null}
+      {collection.length ? (
         <section data-testid="servicios-por-cobrar" className="rounded-xl border border-outline/15 bg-surface px-4 pt-3">
-          <Kicker>{`Servicios por cobrar · ${account.totals.services ?? services.length}`}</Kicker>
-          {services.length ? <ul className="divide-y divide-outline/10">{byUrgency(services, new Date()).map((service) => <ServiceRow key={service.id} service={service} />)}</ul> : <p className="py-3 text-sm text-on-surface-variant">Sin servicios por cobrar.</p>}
+          <Kicker>{`Cobranza por servicio · ${collection.length}`}</Kicker>
+          <ul className="divide-y divide-outline/10">{collection.map((service) => <ServiceRow key={service.id} service={service} onOpen={() => onOpenService(service)} />)}</ul>
         </section>
       ) : null}
       {credit ? (
@@ -85,17 +93,22 @@ function AccountBody({ account }: { account: ClientAccount }) {
 
 /**
  * «Cuenta» of a client's channel (José 30/10: where are the client's quotes;
- * design f-08): ALL its quotes, what its services owe and its orders on
- * credit, overdue first.
+ * design f-08): ALL its quotes, its orders on credit and, by service, its
+ * collection, overdue first. The one place with money (José 05/11): a service
+ * opens its Cobranza here, and «Servicios» carries none.
  */
-export function ClientAccountWeb(props: { target: ServiceAskTarget }) {
-  const answer = useServiceAsk('account', props.target, props.target.clientId);
+export function ClientAccountWeb(props: { target: ServiceAskTarget; services: readonly SpaceClientService[] }) {
+  const [round, setRound] = useState(0);
+  const [opened, setOpened] = useState<CollectionRow | null>(null);
+  const answer = useServiceAsk('account', props.target, props.target.clientId, round);
+  const askAgain = useCallback(() => setRound((count) => count + 1), []);
   return (
     <div data-testid="cuenta-cliente" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-6">
       <div className="mx-auto flex max-w-3xl flex-col gap-3">
-        {answer === null ? <div data-testid="cuenta-cargando" className="h-40 animate-pulse rounded-xl bg-surface" /> : null}
-        {answer?.ok ? <AccountBody account={answer.value} /> : null}
-        {answer && !answer.ok ? <p data-testid="cuenta-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm font-semibold">{answer.message}</p> : null}
+        {opened ? <ServiceCollectionWeb target={props.target} service={opened} onBack={() => setOpened(null)} onPaid={askAgain} /> : null}
+        {!opened && answer === null ? <div data-testid="cuenta-cargando" className="h-40 animate-pulse rounded-xl bg-surface" /> : null}
+        {!opened && answer?.ok ? <AccountBody account={answer.value} services={props.services} onOpenService={setOpened} /> : null}
+        {!opened && answer && !answer.ok ? <p data-testid="cuenta-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm font-semibold">{answer.message}</p> : null}
       </div>
     </div>
   );

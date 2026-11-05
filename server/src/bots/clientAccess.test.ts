@@ -151,6 +151,63 @@ describe('money (José: «la cuenta y temas sensibles de plata y cotizaciones so
   });
 });
 
+describe('José 05/11: engineers in a client\'s channel see no money anywhere', () => {
+  const REPORTS = [{ id: 'r1', title: 'Control de pista · 3 de noviembre', type_label: 'Control de pista', status_label: 'Listo', tone: 'ok', pdf_url: 'https://lila.example.com/r1.pdf' }, { id: 'r2', title: 'Liquidación Final del Servicio · 4 de noviembre', type_label: 'Liquidación Final del Servicio', status_label: 'Listo', tone: 'ok', pdf_url: 'https://lila.example.com/r2.pdf' }];
+  const ORDERS = [{ id: 'o1', product: 'MAC', status_label: 'Entregado', tone: 'ok', invoice: 'F001-99', invoice_url: 'https://lila.example.com/f.pdf', unit_price: 500, total: 5000, is_credit: true, payments: [{ date: '2026-11-01', amount: 100 }] }];
+  const detailFor = async (who: Types.ObjectId) => (await request(app).get(`${base()}/services/srv-318/detail`).set(auth(who)).expect(200)).body.detail;
+
+  it('the detail goes without invoices, prices nor liquidations, whatever Portal sends; the count matches', async () => {
+    // Arrange
+    answer = { status: 200, body: { ...DETAIL, orders: ORDERS, reports: REPORTS, totals: { orders: 1, dispatches: 0, reports: 2 } } };
+    // Act
+    const detail = await detailFor(ana);
+    // Assert
+    expect(detail.orders[0]).toMatchObject({ id: 'o1', product: 'MAC' });
+    for (const field of ['invoice', 'invoiceUrl', 'unitPrice', 'total', 'isCredit', 'payments']) expect(detail.orders[0]).not.toHaveProperty(field);
+    expect(detail.reports.map((report: { id: string }) => report.id)).toEqual(['r1']);
+    expect(detail.totals.reports).toBe(1);
+  });
+
+  it('whoever sees money gets them', async () => {
+    // Arrange
+    answer = { status: 200, body: { ...DETAIL, orders: ORDERS, reports: REPORTS, totals: { orders: 1, dispatches: 0, reports: 2 } } };
+    // Act
+    const detail = await detailFor(jose);
+    // Assert
+    expect(detail.orders[0].invoice).toBe('F001-99');
+    expect(detail.reports).toHaveLength(2);
+  });
+
+  it('Portal\'s Drive holds liquidations: a plain member does not get it and agentes is not asked', async () => {
+    // Act
+    const refused = await request(app).get(`${base()}/services/srv-318/files`).set(auth(ana));
+    // Assert
+    expect(refused.status).toBe(404);
+    expect(received).toHaveLength(0);
+  });
+
+  it('an admin opens the Drive to one person by ticking «Archivos»', async () => {
+    // Arrange
+    answer = { status: 200, body: { files: [], drive_url: null } };
+    await setAccess(jose, ana, { restricted: { tabs: ['files'], stages: [] } }).expect(200);
+    // Act
+    const ticked = await request(app).get(`${base()}/services/srv-318/files`).set(auth(ana));
+    // Assert
+    expect(ticked.status).toBe(200);
+    expect(received).toHaveLength(1);
+  });
+
+  it('«Cobranza» from «Cuenta» is only for whoever sees money, also without «Servicios»', async () => {
+    // Act
+    const refused = await request(app).get(`${base()}/services/srv-318/billing`).set(auth(ana));
+    await setAccess(jose, ana, { money: true, restricted: { tabs: [], stages: [] } }).expect(200);
+    const marked = await request(app).get(`${base()}/services/srv-318/billing`).set(auth(ana)).expect(200);
+    // Assert
+    expect(refused.status).toBe(404);
+    expect(marked.body.detail.billing.total).toBe(1000);
+  });
+});
+
 describe('adding someone to the client channel with restricted access', () => {
   it('an admin adds the topographer with only the checklist: he joins restricted', async () => {
     // Act

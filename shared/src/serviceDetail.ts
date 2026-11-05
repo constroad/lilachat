@@ -1,5 +1,5 @@
 import { limaDayKey } from './birthdays.js';
-import { billingOf, moneyOf, type ServiceBilling } from './serviceBilling.js';
+import { billingOf, type ServiceBilling } from './serviceBilling.js';
 import type { ClientRecord } from './spaceClients.js';
 /**
  * The detail of a client's service (José, 30/10: there was no way to see a
@@ -52,7 +52,7 @@ export type ServiceDetail = {
   billing?: ServiceBilling;
   totals: DetailTotals;
 };
-export type DetailTabKey = 'orders' | 'dispatches' | 'reports' | 'quotes' | 'billing';
+export type DetailTabKey = 'orders' | 'dispatches' | 'reports';
 
 const LIST_MAX = 100;
 const TIME_ZONE = 'America/Lima';
@@ -217,7 +217,6 @@ const AMOUNT_DECIMALS = 2;
 /** «25.5 m³»: at most two decimals, since Portal sends computed volumes raw (24.114116940799995). */
 export const amount = (quantity?: number, unit?: string) => (quantity === undefined ? undefined : `${Number(quantity.toFixed(AMOUNT_DECIMALS))}${unit ? ` ${unit}` : ''}`);
 const joined = (parts: (string | undefined)[]) => parts.filter(Boolean).join(' · ');
-const money = (total?: number) => (total === undefined ? undefined : moneyOf(total));
 
 /** One row of the detail, whatever the tab: what the person reads and what opens. */
 export type DetailRow = { id: string; title: string; line: string; status: DetailStatus; url?: string; file?: { url: string; label: string } };
@@ -289,40 +288,34 @@ export function recordDays(records: readonly ClientRecord[]): { title: string; r
   }
   return [...byDay.entries()].map(([day, rows]) => ({ title: dayInWordsOf(day), records: rows }));
 }
-const quoteRow = (quote: ServiceQuote): DetailRow => ({ id: quote.id, title: quote.code ?? 'Cotización', line: joined([money(quote.total), quote.date ? dayOf(quote.date) : undefined]), status: quote.status, ...urlOf(quote.url) });
-
-/** The rows of one tab: a pedido has no number of its own in Portal, a dispatch shows its departure or the planned hour. «Cobranza» has its own view. */
+/** The rows of one tab: a pedido has no number of its own in Portal, a dispatch shows its departure or the planned hour. */
 export function detailRows(detail: ServiceDetail, tab: DetailTabKey): DetailRow[] {
   if (tab === 'orders') return detail.orders.map((order) => orderRow(order, dispatchesOf(detail, order.id).length));
   if (tab === 'dispatches') return detail.dispatches.map(dispatchRow);
-  if (tab === 'reports') return detail.reports.map(reportRow);
-  if (tab === 'quotes') return (detail.quotes ?? []).map(quoteRow);
-  return [];
+  return detail.reports.map(reportRow);
 }
 
 /** «Mostrando 100 de 148» when Portal has more than it sent; the rest is in Portal. An empty list says it itself. */
 export const moreInPortal = (shown: number, total: number): string | null => (total > shown && shown > 0 ? `Mostrando ${shown} de ${total}` : null);
 
-const TAB_NAMES: Record<DetailTabKey, string> = { orders: 'Pedidos', dispatches: 'Despachos', reports: 'Informes', quotes: 'Cotizaciones', billing: 'Cobranza' };
+const TAB_NAMES: Record<DetailTabKey, string> = { orders: 'Pedidos', dispatches: 'Despachos', reports: 'Informes' };
 
 /** What an empty tab says. */
-export const DETAIL_EMPTY: Record<DetailTabKey, string> = { orders: 'Este servicio todavía no tiene pedidos.', dispatches: 'Todavía no hay despachos.', reports: 'Todavía no hay informes.', quotes: 'Sin cotizaciones.', billing: 'Sin cobranza.' };
+export const DETAIL_EMPTY: Record<DetailTabKey, string> = { orders: 'Este servicio todavía no tiene pedidos.', dispatches: 'Todavía no hay despachos.', reports: 'Todavía no hay informes.' };
 
 /** «Todavía no hay» only when Portal counts none: it can count some it did not send (01/11: «Informes · 1» over an empty list). */
 export function detailEmptyText(tab: DetailTabKey, totals: DetailTotals): string {
-  const total = tab === 'billing' ? 0 : (totals[tab] ?? 0);
+  const total = totals[tab];
   return total > 0 ? `Hay ${total} en el Portal que todavía no ${total === 1 ? 'llega' : 'llegan'} aquí.` : DETAIL_EMPTY[tab];
 }
 
 /**
- * The detail's tabs with Portal's real counts; the money ones only when they
- * came, and first (José 30/10 night). No «Despachos» (José 01/11: a service has
- * several orders): each order's sheet lists its own.
+ * The detail's tabs with Portal's real counts. No money here (José 05/11):
+ * Cotizaciones and Cobranza live in «Cuenta», by service. No «Despachos» (José
+ * 01/11: a service has several orders): each order's sheet lists its own.
  */
 export function detailTabs(detail: ServiceDetail): { key: DetailTabKey; label: string }[] {
-  const money: DetailTabKey[] = [...(detail.quotes ? (['quotes'] as const) : []), ...(detail.billing ? (['billing'] as const) : [])];
-  const keys: DetailTabKey[] = [...money, 'orders', 'reports'];
-  return keys.map((key) => ({ key, label: key === 'billing' ? TAB_NAMES.billing : `${TAB_NAMES[key]} · ${detail.totals[key] ?? 0}` }));
+  return (['orders', 'reports'] as const).map((key) => ({ key, label: `${TAB_NAMES[key]} · ${detail.totals[key]}` }));
 }
 
 /** «15 nov 2026»: a calendar day with its year, for a due date. */

@@ -777,7 +777,7 @@ por eso no sube el nivel de `forms`.
   ya saca el canal de Archivados.
 - Los registros de cada servicio salen de los mensajes con `refs.service_id`:
   `GET /api/workspaces/:id/clients/:clientId/records` (solo para miembros del canal; los demás
-  reciben 404) devuelve `{ records: [{ seq, at, kind, service_id, record_id?, title, kicker? }] }`,
+  reciben 404; sin la marca de montos no trae pagos ni cotizaciones) devuelve `{ records: [{ seq, at, kind, service_id, record_id?, title, kicker? }] }`,
   los 200 más nuevos primero. «Servicios» los lista dentro de cada servicio y al tocar uno
   salta a su mensaje.
 - Los despachos no publican mensajes en el canal del cliente (José, 29/10): solo redibujan la

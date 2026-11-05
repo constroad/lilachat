@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { accountQuoteLine, accountServiceLine, accountSummary, byUrgency, creditOrderLine, dueStatus, moneyOf, quoteSheet, type AccountQuote, type AccountService, type ClientAccount, type CreditOrder, type DetailStatus } from '@lilachat/shared';
+import { ChevronRight } from 'lucide-react-native';
+import { accountQuoteLine, accountServiceLine, accountSummary, byUrgency, collectionByService, creditOrderLine, dueStatus, moneyOf, quoteSheet, type AccountQuote, type CollectionRow, type SpaceClientService, type ClientAccount, type CreditOrder, type DetailStatus } from '@lilachat/shared';
+import { useColores } from '../../ui/tema';
 import { RecordSheet } from './RecordSheet';
+import { ServiceCollectionView } from './ServiceCollectionView';
 import { DETAIL_TONE } from './tones';
 import { useFileViewer } from './useFileViewer';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
@@ -23,26 +26,28 @@ function Summary({ account }: { account: ClientAccount }) {
   );
 }
 
-/** What is owed, with its due day when it has one: past due, it is marked in red. */
-function DebtRow(props: { testID: string; title: string; line: string; dueAt?: string; pending?: number; status?: DetailStatus }) {
+/** What is owed, with its due day when it has one: past due, it is marked in red. With `onOpen` the whole row opens. */
+function DebtRow(props: { testID: string; title: string; line: string; dueAt?: string; pending?: number; status?: DetailStatus; onOpen?: () => void }) {
+  const colors = useColores();
   const due = props.dueAt && props.pending ? dueStatus(props.dueAt, new Date()) : null;
   return (
-    <View testID={props.testID} className={`border-t border-outline/10 py-3 ${due?.tone === 'error' ? 'border-l-[3px] border-l-error pl-3' : ''}`}>
+    <Pressable testID={props.testID} disabled={!props.onOpen} onPress={props.onOpen} className={`border-t border-outline/10 py-3 ${due?.tone === 'error' ? 'border-l-[3px] border-l-error pl-3' : ''}`}>
       <View className="flex-row items-start gap-3">
         <View className="min-w-0 flex-1">
           <Text className="text-[14px] font-semibold text-on-surface">{props.title}</Text>
-          <Text className="mt-0.5 text-[12px] text-on-surface-variant">{props.line}</Text>
+          {props.line ? <Text className="mt-0.5 text-[12px] text-on-surface-variant">{props.line}</Text> : null}
         </View>
         {due ? <Pill label={due.label} tone={due.tone} /> : props.status ? <Pill label={props.status.label} tone={props.status.tone} /> : null}
+        {props.onOpen ? <ChevronRight size={16} color={colors['on-surface-variant']} /> : null}
       </View>
       {props.pending !== undefined ? <Text className={`mt-1 text-right text-[15px] font-bold ${due?.tone === 'error' ? 'text-error' : 'text-on-surface'}`}>{`Debe ${moneyOf(props.pending)}`}</Text> : null}
-    </View>
+    </Pressable>
   );
 }
 
 const CreditRow = ({ order }: { order: CreditOrder }) => <DebtRow testID={`credito-${order.id}`} title={order.product ?? 'Pedido'} line={creditOrderLine(order, new Date())} dueAt={order.dueAt} pending={order.pending} status={order.status} />;
 
-const ServiceRow = ({ service }: { service: AccountService }) => <DebtRow testID={`servicio-por-cobrar-${service.id}`} title={service.name ?? 'Servicio'} line={accountServiceLine(service)} dueAt={service.dueAt} pending={service.pending} status={service.isCredit ? { label: 'Al crédito', tone: 'neutral' } : undefined} />;
+const ServiceRow = ({ service, onOpen }: { service: CollectionRow; onOpen: () => void }) => <DebtRow testID={`servicio-por-cobrar-${service.id}`} title={service.name} line={accountServiceLine(service)} dueAt={service.dueAt} pending={service.pending} onOpen={onOpen} />;
 
 function QuoteRow(props: { quote: AccountQuote; onOpen: () => void }) {
   const { quote } = props;
@@ -57,19 +62,19 @@ function QuoteRow(props: { quote: AccountQuote; onOpen: () => void }) {
   );
 }
 
-function AccountBody({ account }: { account: ClientAccount }) {
+function AccountBody({ account, services, onOpenService }: { account: ClientAccount; services: readonly SpaceClientService[]; onOpenService: (service: CollectionRow) => void }) {
   const [quote, setQuote] = useState<AccountQuote | null>(null);
   const files = useFileViewer();
   const credit = account.creditOrders;
-  const { services } = account;
-  if (!credit && !services && !account.quotes) return <Text className="pt-6 text-center text-[14px] text-on-surface-variant">No tienes permiso para ver la cuenta de este cliente.</Text>;
+  const collection = collectionByService(account.services, services, new Date());
+  if (!credit && !account.services && !account.quotes) return <Text className="pt-6 text-center text-[14px] text-on-surface-variant">No tienes permiso para ver la cuenta de este cliente.</Text>;
   return (
     <>
-      {credit || services ? <Summary account={account} /> : null}
-      {services ? (
+      {credit || account.services ? <Summary account={account} /> : null}
+      {collection.length ? (
         <View testID="servicios-por-cobrar" className="rounded-2xl border border-outline/15 bg-surface px-4 pt-3">
-          <Kicker>{`Servicios por cobrar · ${account.totals.services ?? services.length}`}</Kicker>
-          {services.length ? byUrgency(services, new Date()).map((service) => <ServiceRow key={service.id} service={service} />) : <Text className="py-3 text-[14px] text-on-surface-variant">Sin servicios por cobrar.</Text>}
+          <Kicker>{`Cobranza por servicio · ${collection.length}`}</Kicker>
+          {collection.map((service) => <ServiceRow key={service.id} service={service} onOpen={() => onOpenService(service)} />)}
         </View>
       ) : null}
       {credit ? (
@@ -92,16 +97,23 @@ function AccountBody({ account }: { account: ClientAccount }) {
 
 /**
  * «Cuenta» of a client's channel (José 30/10: where are the client's quotes;
- * design f-08): ALL its quotes, also those with no service, what its services
- * owe and its orders on credit, overdue first. Asked when it opens; what Portal
- * does not send is what that person may not see.
+ * design f-08): ALL its quotes, also those with no service, its orders on
+ * credit and, by service, its collection, overdue first. The one place with
+ * money (José 05/11): a service opens its Cobranza here, and «Servicios»
+ * carries none. Asked when it opens; what Portal does not send is what that
+ * person may not see.
  */
-export function ClientAccountPanel(props: { target: ServiceAskTarget }) {
-  const answer = useServiceAsk('account', props.target, props.target.clientId);
+export function ClientAccountPanel(props: { target: ServiceAskTarget; services: readonly SpaceClientService[] }) {
+  const [round, setRound] = useState(0);
+  const [opened, setOpened] = useState<CollectionRow | null>(null);
+  const answer = useServiceAsk('account', props.target, props.target.clientId, round);
+  const askAgain = useCallback(() => setRound((count) => count + 1), []);
+  const back = useCallback(() => setOpened(null), []);
+  if (opened) return <ServiceCollectionView target={props.target} service={opened} onBack={back} onPaid={askAgain} />;
   return (
     <ScrollView testID="cuenta-cliente" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
       {answer === null ? <View testID="cuenta-cargando" className="h-40 rounded-2xl bg-surface-variant" /> : null}
-      {answer?.ok ? <AccountBody account={answer.value} /> : null}
+      {answer?.ok ? <AccountBody account={answer.value} services={props.services} onOpenService={setOpened} /> : null}
       {answer && !answer.ok ? <Text testID="cuenta-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-[15px] font-semibold text-on-surface">{answer.message}</Text> : null}
     </ScrollView>
   );

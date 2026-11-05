@@ -6,6 +6,7 @@ describe('serviceAskPath', () => {
   it('escapes the ids Portal sends', () => {
     expect(serviceAskPath('w1', 'cli 1', 'srv/2', 'detail')).toBe('/workspaces/w1/clients/cli%201/services/srv%2F2/detail');
     expect(serviceAskPath('w1', 'cli 1', 'cli 1', 'account')).toBe('/workspaces/w1/clients/cli%201/account');
+    expect(serviceAskPath('w1', 'cli 1', 'srv/2', 'billing')).toBe('/workspaces/w1/clients/cli%201/services/srv%2F2/billing');
   });
 });
 

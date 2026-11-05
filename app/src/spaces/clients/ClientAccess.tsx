@@ -84,7 +84,7 @@ export function AccessFields(props: { value: MemberAccess | null; stages: readon
   return (
     <View className="gap-2">
       <View className="flex-row gap-2">
-        {option(false, 'Todo el canal', 'Todas las pestañas, sin montos')}
+        {option(false, 'Todo el canal', 'Todas las pestañas, sin montos ni Drive')}
         {option(true, 'Solo lo que elijas', 'El chat y lo que marques')}
       </View>
       {restricted ? (

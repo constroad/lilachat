@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronRight, ExternalLink, Folder, FolderOpen } from 'lucide-react-native';
-import { stageFiles, type SpaceClient, type SpaceClientService, type WorkStage } from '@lilachat/shared';
+import { canSeeDrive, stageFiles, type SpaceClient, type SpaceClientService, type WorkStage } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { StageFilesPanel } from '../../chat/workPlan/WorkListsPanels';
 import { ServiceDrive } from './ServiceDrive';
@@ -62,16 +62,18 @@ function SourceSwitch(props: { source: Source; channelFiles: number; onSource: (
 /**
  * «Archivos» of a client's channel, ONE tab (José asked for a single one on
  * 30/10): what was uploaded to the checklist («Del canal») and Portal's
- * Drive, per service. The Drive left «Servicios».
+ * Drive, per service. The Drive left «Servicios», and it holds liquidations:
+ * only whoever sees money or got «Archivos» ticked has it (José 05/11).
  */
 export function ClientFilesPanel(props: { client: SpaceClient; target: ServiceAskTarget | null; stages: readonly WorkStage[]; onOpenMessage: (seq: number) => void }) {
   const channelFiles = stageFiles(props.stages).total;
-  const [source, setSource] = useState<Source>(channelFiles ? 'channel' : 'drive');
+  const drive = canSeeDrive(props.client.access);
+  const [source, setSource] = useState<Source>(channelFiles || !drive ? 'channel' : 'drive');
   const [service, setService] = useState<SpaceClientService | null>(null);
   const { target } = props;
   return (
     <View testID="archivos-cliente" className="flex-1">
-      <SourceSwitch source={source} channelFiles={channelFiles} onSource={setSource} />
+      {drive ? <SourceSwitch source={source} channelFiles={channelFiles} onSource={setSource} /> : null}
       {source === 'channel' ? <StageFilesPanel stages={props.stages} onOpenMessage={props.onOpenMessage} /> : null}
       {source === 'drive' ? (
         <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>

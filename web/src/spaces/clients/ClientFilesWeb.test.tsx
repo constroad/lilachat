@@ -5,7 +5,7 @@ import { ClientFilesWeb } from './ClientFilesWeb';
 
 /** José 30/10: «una sola pestaña Archivos» — the checklist's files and Portal's Drive per service. */
 afterEach(() => vi.unstubAllGlobals());
-const client: SpaceClient = { id: 'cli-cvs', chat_id: 'c9', name: 'Constructora Vía Sur', live: true, archived_since: null, last_activity_at: null, last_order_at: null, orders_total: 2, archived_group: null, services: [{ id: 'srv-318', name: 'Pavimentación Av. Los Álamos', status: 'in_progress', stage_label: '' }], drive_url: 'https://portal.constroad.com/drive/c1' } as unknown as SpaceClient;
+const client: SpaceClient = { access: { money: true }, id: 'cli-cvs', chat_id: 'c9', name: 'Constructora Vía Sur', live: true, archived_since: null, last_activity_at: null, last_order_at: null, orders_total: 2, archived_group: null, services: [{ id: 'srv-318', name: 'Pavimentación Av. Los Álamos', status: 'in_progress', stage_label: '' }], drive_url: 'https://portal.constroad.com/drive/c1' } as unknown as SpaceClient;
 const photo = { seq: 12, kind: 'image' as const, url: 'https://x/media/12.jpg', name: 'probeta.jpg', sizeBytes: 2048, by: 'yo', at: '2026-10-23T15:14:00Z' };
 const stages: WorkStage[] = [{ _id: 's3', title: 'Ejecución', stage: 3, items: [{ id: 'b', text: 'Control de densidad', doneBy: null, doneAt: null, evidence: [photo] }] }];
 const target = { jwt: 'j', spaceId: 'w1', clientId: 'cli-cvs' };
@@ -29,5 +29,22 @@ describe('ClientFilesWeb', () => {
     expect(String((fetchMock.mock.calls[0] as unknown as [string])[0])).toContain('/services/srv-318/files');
     fireEvent.click(screen.getByTestId('volver-a-drive'));
     expect(screen.getByTestId('drive-cliente')).toHaveAttribute('href', 'https://portal.constroad.com/drive/c1');
+  });
+
+  it('José 05/11: without money nor «Archivos» ticked there is no Drive at all, only the channel\'s files', () => {
+    render(<ClientFilesWeb client={{ ...client, access: { money: false } }} target={target} stages={stages} onOpenMessage={() => undefined} />);
+    expect(screen.queryByTestId('archivos-drive')).toBeNull();
+    expect(screen.queryByTestId('drive-cliente')).toBeNull();
+    expect(screen.getByTestId('archivos-cliente')).toHaveTextContent('Control de densidad');
+  });
+
+  it('an empty channel does not fall on the Drive for someone who may not see it', () => {
+    render(<ClientFilesWeb client={{ ...client, access: { money: false } }} target={target} stages={[]} onOpenMessage={() => undefined} />);
+    expect(screen.queryByTestId('drive-de-srv-318')).toBeNull();
+  });
+
+  it('an admin ticking «Archivos» opens the Drive', () => {
+    render(<ClientFilesWeb client={{ ...client, access: { money: false, restricted: { tabs: ['files'], stages: [] } } }} target={target} stages={[]} onOpenMessage={() => undefined} />);
+    expect(screen.getByTestId('drive-de-srv-318')).toBeInTheDocument();
   });
 });

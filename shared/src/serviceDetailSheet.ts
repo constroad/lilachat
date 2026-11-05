@@ -82,6 +82,5 @@ export function detailSheet(detail: ServiceDetail, tab: DetailTabKey, id: string
   if (tab === 'orders') return ((order) => (order ? orderSheet(order, detail) : null))(detail.orders.find((one) => one.id === id));
   if (tab === 'dispatches') return ((dispatch) => (dispatch ? dispatchSheet(dispatch, detail) : null))(detail.dispatches.find((one) => one.id === id));
   if (tab === 'reports') return ((report) => (report ? reportSheet(report) : null))(detail.reports.find((one) => one.id === id));
-  if (tab === 'quotes') return ((quote) => (quote ? quoteSheet(quote) : null))(detail.quotes?.find((one) => one.id === id));
   return null;
 }

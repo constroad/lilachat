@@ -101,7 +101,7 @@ export function ClientServices(props: { client: SpaceClient; records: ClientReco
   const close = useCallback(() => setOpened(null), []);
   const { services, counts } = filterServices(props.client.services, { query, filter });
   const grouped = props.records ? recordsByService(props.records) : null;
-  if (opened && props.target) return <ServiceDetailView target={props.target} service={opened} onBack={close} links={links} />;
+  if (opened && props.target) return <ServiceDetailView target={props.target} service={opened} seesMoney={Boolean(props.client.access?.money)} onBack={close} links={links} />;
   const total = props.client.services.length;
   return (
     <ScrollView testID="servicios-cliente" contentContainerStyle={{ padding: 16, gap: 12 }}>

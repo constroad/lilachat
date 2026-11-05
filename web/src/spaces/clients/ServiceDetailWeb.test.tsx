@@ -21,7 +21,7 @@ describe('ServiceDetailWeb', () => {
     const fetchMock = reply({ detail });
     vi.stubGlobal('fetch', fetchMock);
     // Act
-    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
+    render(<ServiceDetailWeb target={target} service={service} seesMoney onBack={() => undefined} />);
     // Assert
     expect(await screen.findByTestId('fila-o1')).toHaveTextContent('Asfalto MAC 2');
     expect(screen.getByTestId('fila-o1')).toHaveTextContent('120 m³ · 22 oct');
@@ -42,7 +42,7 @@ describe('ServiceDetailWeb', () => {
     vi.stubGlobal('fetch', reply({ detail: { ...detail, dispatches: [{ ...detail.dispatches[0], orderId: 'o1' }] } }));
     const opened = vi.fn();
     vi.stubGlobal('open', opened);
-    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
+    render(<ServiceDetailWeb target={target} service={service} seesMoney onBack={() => undefined} />);
     expect(await screen.findByTestId('fila-o1')).toHaveTextContent('1 despacho');
     expect(screen.queryByTestId('pestana-detalle-dispatches')).toBeNull();
     fireEvent.click(screen.getByText('Asfalto MAC 2'));
@@ -59,19 +59,15 @@ describe('ServiceDetailWeb', () => {
     expect(screen.getByText('Todavía no hay informes.')).toBeInTheDocument();
   });
 
-  it('José 30/10 night: Cotizaciones and Cobranza first; a dispatch shows its photos and cubicaje; invoices in Cobranza, guides in their order', async () => {
+  it('José 05/11: no money tab, even when the answer brings it; a dispatch shows its photos and cubicaje, guides in their order', async () => {
     // Arrange
     const billing = { isCredit: false, total: 1000, collected: 0, pending: 1000, items: [], payments: [] };
     const orders = [{ ...detail.orders[0], invoice: 'F001-9', invoiceUrl: 'https://lila.constroad.com/f9.pdf', guides: [{ name: 'Guía 001-2', url: 'https://lila.constroad.com/g2.jpg' }] }];
     const dispatches = [{ ...detail.dispatches[0], orderId: 'o1', pictures: [{ url: 'https://lila.constroad.com/p1.jpg', mime: 'image/jpeg' }], cubicage: { m3: 25.5, shape: 'Cuadrado', dimensions: [] } }];
     vi.stubGlobal('fetch', reply({ detail: { ...detail, orders, dispatches, quotes: [{ id: 'q1', code: '300', status: { label: 'Borrador', tone: 'neutral' } }], billing, totals: { ...detail.totals, quotes: 1 } } }));
-    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
+    render(<ServiceDetailWeb target={target} service={service} seesMoney onBack={() => undefined} />);
     // Act
     const tabs = (await screen.findAllByRole('tab')).map((tab) => tab.getAttribute('data-testid'));
-    const firstShown = screen.getByTestId('pestana-detalle-quotes').getAttribute('aria-selected');
-    fireEvent.click(screen.getByTestId('pestana-detalle-billing'));
-    const invoices = screen.getByTestId('facturas').textContent;
-    fireEvent.click(screen.getByTestId('pestana-detalle-orders'));
     fireEvent.click(screen.getByText('Asfalto MAC 2'));
     const guides = screen.getByTestId('ficha-registro').textContent;
     fireEvent.click(screen.getByTestId('relacionado-d1'));
@@ -81,9 +77,8 @@ describe('ServiceDetailWeb', () => {
     const cubicage = screen.getByTestId('grupo-Cubicaje').textContent;
     fireEvent.click(screen.getByTestId('media-ficha-0'));
     // Assert
-    expect(tabs).toEqual(['pestana-detalle-quotes', 'pestana-detalle-billing', 'pestana-detalle-orders', 'pestana-detalle-reports']);
-    expect(firstShown).toBe('true');
-    expect(invoices).toContain('Factura F001-9');
+    expect(tabs).toEqual(['pestana-detalle-orders', 'pestana-detalle-reports']);
+    expect(screen.queryByTestId('cobranza')).toBeNull();
     expect(guides).toContain('Ver Guía 001-2');
     expect(folded).toBe('Ver cubicaje25.5 m³ · Cuadrado');
     expect(cubicage).toContain('Volquete cubica25.5 m³');
@@ -95,7 +90,7 @@ describe('ServiceDetailWeb', () => {
     const status = { label: 'Borrador', tone: 'neutral' };
     const reports = [{ id: 'r5', title: 'Control de pista · 5 de octubre', date: '2026-10-05', status }, { id: 'r6', title: 'Producción de planta · 6 de octubre', date: '2026-10-06', status }];
     vi.stubGlobal('fetch', reply({ detail: { ...detail, reports, totals: { ...detail.totals, reports: 2 } } }));
-    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
+    render(<ServiceDetailWeb target={target} service={service} seesMoney onBack={() => undefined} />);
     // Act
     fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
     // Assert
@@ -108,7 +103,7 @@ describe('ServiceDetailWeb', () => {
     // Arrange
     vi.stubGlobal('fetch', reply({ detail }));
     const open = vi.fn();
-    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} links={{ can: (kind) => kind === 'order', open }} />);
+    render(<ServiceDetailWeb target={target} service={service} seesMoney onBack={() => undefined} links={{ can: (kind) => kind === 'order', open }} />);
     // Act
     fireEvent.click(within(await screen.findByTestId('fila-o1')).getByText('Asfalto MAC 2'));
     fireEvent.click(screen.getByTestId('accion-ficha'));
@@ -126,7 +121,7 @@ describe('ServiceDetailWeb', () => {
       return new Response(JSON.stringify(body), { status: 200 });
     });
     vi.stubGlobal('fetch', fetchMock);
-    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
+    render(<ServiceDetailWeb target={target} service={service} seesMoney onBack={() => undefined} />);
     fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
     // Act
     fireEvent.click(await screen.findByTestId('generar-informe-servicio'));
@@ -140,69 +135,38 @@ describe('ServiceDetailWeb', () => {
   it('no «Generar informe de servicio» while the server does not offer it to that person', async () => {
     const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(String(url).includes('/commands?place=space') ? { groups: [] } : { detail }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
-    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
+    render(<ServiceDetailWeb target={target} service={service} seesMoney onBack={() => undefined} />);
     fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
     await vi.waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/commands?place=space'))).toBe(true));
     expect(screen.queryByTestId('generar-informe-servicio')).toBeNull();
   });
 
-  it('«Registrar pago» in Cobranza runs registrar_pago from the space with the service, and asks the detail again after (José 31/10)', async () => {
+  it('José 05/11: «Generar informe de servicio» makes a liquidation with amounts: not for whoever does not see money', async () => {
     // Arrange
-    const billing = { isCredit: false, total: 1000, collected: 0, pending: 1000, items: [], payments: [] };
-    const groups = [{ appId: 'p1', appName: 'Portal', commands: [], shortcuts: [{ key: 'registrar_pago', name: 'Registrar pago' }] }];
-    const answered = { commandId: 'c1', appId: 'p1', appName: 'Portal', outcome: 'ephemeral', response: { responseType: 'ephemeral', text: 'Pago registrado: S/ 250.00' } };
-    const fetchMock = vi.fn(async (url: string) => {
-      const body = String(url).includes('/commands?place=space') ? { groups } : String(url).endsWith('/shortcuts') ? answered : { detail: { ...detail, billing } };
-      return new Response(JSON.stringify(body), { status: 200 });
-    });
+    const groups = [{ appId: 'p1', appName: 'Portal', commands: [], shortcuts: [{ key: 'informe_de_servicio', name: 'Informe' }] }];
+    const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(String(url).includes('/commands?place=space') ? { groups } : { detail }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
-    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
-    fireEvent.click(await screen.findByTestId('pestana-detalle-billing'));
     // Act
-    fireEvent.click(await screen.findByTestId('registrar-pago'));
+    render(<ServiceDetailWeb target={target} service={service} seesMoney={false} onBack={() => undefined} />);
+    fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
     // Assert
-    expect(await screen.findByText('Pago registrado: S/ 250.00')).toBeInTheDocument();
-    const shortcut = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/shortcuts')) as unknown as [string, RequestInit];
-    expect(shortcut[0]).toContain('/api/workspaces/s1/shortcuts');
-    expect(JSON.parse(String(shortcut[1].body))).toMatchObject({ app_id: 'p1', shortcut: 'registrar_pago', values: { servicioId: 'srv-318' } });
-    await vi.waitFor(() => expect(fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/detail'))).toHaveLength(2));
-  });
-
-  it('no «Registrar pago» when the action is off in the space or that person may not run it', async () => {
-    const billing = { isCredit: false, total: 1000, collected: 0, pending: 1000, items: [], payments: [] };
-    const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(String(url).includes('/commands?place=space') ? { groups: [] } : { detail: { ...detail, billing } }), { status: 200 }));
-    vi.stubGlobal('fetch', fetchMock);
-    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
-    fireEvent.click(await screen.findByTestId('pestana-detalle-billing'));
-    await vi.waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/commands?place=space'))).toBe(true));
-    expect(screen.queryByTestId('registrar-pago')).toBeNull();
+    expect(screen.queryByTestId('generar-informe-servicio')).toBeNull();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/commands?place=space'))).toBe(false);
   });
 
   it('a row opens its sheet inside Lilachat: an order with its dispatches, Portal only at the foot', async () => {
     vi.stubGlobal('fetch', reply({ detail: { ...detail, dispatches: [{ ...detail.dispatches[0], orderId: 'o1' }] } }));
-    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
+    render(<ServiceDetailWeb target={target} service={service} seesMoney onBack={() => undefined} />);
     fireEvent.click(await screen.findByText('Asfalto MAC 2'));
     expect(screen.getByTestId('ficha-registro')).toHaveTextContent('Cantidad120 m³');
     expect(screen.getByTestId('relacionado-d1')).toHaveTextContent('ABC-123');
     expect(screen.queryByTestId('ficha-en-portal')).toBeNull();
   });
 
-  it('«Cobranza» shows the credit, what is pending and the line items when billing came', async () => {
-    const billing = { isCredit: true, dueAt: '2099-01-10', total: 1000, collected: 250, pending: 750, items: [{ name: 'Transporte a obra', total: 600, invoiced: true }], payments: [] };
-    vi.stubGlobal('fetch', reply({ detail: { ...detail, billing } }));
-    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
-    fireEvent.click(await screen.findByTestId('pestana-detalle-billing'));
-    expect(screen.getByTestId('condicion-de-pago')).toHaveTextContent('Vence el 10 ene 2099');
-    expect(screen.getByTestId('estado-de-cobranza')).toHaveTextContent('25 % cobrado');
-    expect(screen.getByTestId('estado-de-cobranza')).toHaveTextContent('S/ 750.00');
-    expect(screen.getByTestId('partidas')).toHaveTextContent('Facturada');
-    expect(screen.getByTestId('pagos')).toHaveTextContent('Todavía no hay pagos registrados.');
-  });
-
   it('when the app fails it says so with Portal’s link; «Servicios» goes back', async () => {
     const onBack = vi.fn();
     vi.stubGlobal('fetch', reply({ error: 'detail_failed', message: 'No se pudo traer el detalle del servicio', portal_url: 'https://portal.constroad.com/s/318' }));
-    render(<ServiceDetailWeb target={target} service={service} onBack={onBack} />);
+    render(<ServiceDetailWeb target={target} service={service} seesMoney onBack={onBack} />);
     expect(await screen.findByTestId('detalle-fallo')).toHaveTextContent('No se pudo traer el detalle del servicio');
     expect(screen.getByTestId('detalle-fallo-portal')).toHaveAttribute('href', 'https://portal.constroad.com/s/318');
     fireEvent.click(screen.getByTestId('volver-a-servicios'));
@@ -215,7 +179,7 @@ describe('ServiceDetailWeb', () => {
     // Informes also asks the space for its button; that answer is not one of these.
     const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(String(url).includes('/commands?place=space') ? { groups: [] } : bodies.shift()), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
-    render(<ServiceDetailWeb target={target} service={service} onBack={() => undefined} />);
+    render(<ServiceDetailWeb target={target} service={service} seesMoney onBack={() => undefined} />);
     fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
     fireEvent.click(within(screen.getByTestId('fila-r9')).getByRole('button'));
     // Act

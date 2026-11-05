@@ -69,6 +69,21 @@ export const byUrgency = <T extends WithDue>(debts: readonly T[], now: Date): T[
   return [...debts].sort((a, b) => overdue(a) - overdue(b) || byDue(a, b));
 };
 
+/** A row of «Cobranza por servicio»: without a debt, only its name. */
+export type CollectionRow = Omit<AccountService, 'name'> & { name: string };
+type ChannelService = { id: string; name: string };
+
+/**
+ * José 05/11: Cobranza lives in «Cuenta», by service. What owes goes first by
+ * urgency; the channel's other services follow, so a paid one still opens.
+ */
+export function collectionByService(debts: readonly AccountService[] | undefined, services: readonly ChannelService[], now: Date): CollectionRow[] {
+  const names = new Map(services.map((service) => [service.id, service.name]));
+  const owing = byUrgency(debts ?? [], now).map((debt) => ({ ...debt, name: debt.name ?? names.get(debt.id) ?? 'Servicio' }));
+  const shown = new Set(owing.map((row) => row.id));
+  return [...owing, ...services.filter((service) => !shown.has(service.id)).map((service) => ({ id: service.id, name: service.name, isCredit: false }))];
+}
+
 /** «Total por cobrar» is Portal's (all the debts, not just the 100 listed); «vencido» adds those past due today in Lima. */
 export function accountSummary(account: ClientAccount, now: Date): { pending?: number; overdue: number; onCredit: number } {
   const today = limaDayKey(now);

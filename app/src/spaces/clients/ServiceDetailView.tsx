@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
-import { ChevronLeft, ExternalLink, FileText, Plus } from 'lucide-react-native';
-import { CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, PAYMENT_ACTION, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, invoicesOf, moreInPortal, orphanDispatchesOf, reportGroups, type ChannelLinks, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { ChevronLeft, ExternalLink, FileText } from 'lucide-react-native';
+import { CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, moreInPortal, orphanDispatchesOf, reportGroups, type ChannelLinks, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
 import { RecordSheet } from './RecordSheet';
-import { ServiceBilling } from './ServiceBilling';
 import { ServiceStages } from './ServiceStages';
 import { SpaceActionButton } from './SpaceActionButton';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
@@ -126,20 +125,16 @@ const orderLinkAction = (links: ChannelLinks | undefined, top: OpenSheet | undef
   links?.can('order') && top?.tab === 'orders' ? { label: 'Crear enlace del pedido', onPress: () => links.open({ kind: 'order', clientId: target.clientId, orderId: top.id }) } : undefined;
 
 /**
- * Above the tab (José 31/10): «Registrar pago» in Cobranza and «Generar informe
- * de servicio» in Informes. Both run from the space (Portal refuses them in a
- * group), and an answered one asks the detail again.
+ * «Generar informe de servicio» above Informes (José 31/10): the liquidation
+ * carries amounts, so only for whoever sees money (José 05/11). It runs from
+ * the space (Portal refuses it in a group), and an answered one asks the detail again.
  */
-function TabActions({ tab, target, serviceId, onAnswered }: { tab: DetailTabKey; target: ServiceAskTarget; serviceId: string; onAnswered: () => void }) {
-  const common = { jwt: target.jwt, spaceId: target.spaceId, values: serviceValuesOf(serviceId), onAnswered };
-  if (tab === 'billing') return <SpaceActionButton {...common} actionKey={PAYMENT_ACTION} label="Registrar pago" testID="registrar-pago" Icon={Plus} />;
-  if (tab === 'reports') return <SpaceActionButton {...common} actionKey={SERVICE_REPORT_ACTION} label="Generar informe de servicio" testID="generar-informe-servicio" Icon={FileText} />;
-  return null;
+function ReportAction({ target, serviceId, onAnswered }: { target: ServiceAskTarget; serviceId: string; onAnswered: () => void }) {
+  return <SpaceActionButton jwt={target.jwt} spaceId={target.spaceId} values={serviceValuesOf(serviceId)} onAnswered={onAnswered} actionKey={SERVICE_REPORT_ACTION} label="Generar informe de servicio" testID="generar-informe-servicio" Icon={FileText} />;
 }
 
-function DetailTabs({ detail, target, serviceId, onOpenFile, links, onPaid }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void; links?: ChannelLinks; onPaid: () => void }) {
-  // José 30/10 night: Cotizaciones and Cobranza first; it opens on the first one that came.
-  const [tab, setTab] = useState<DetailTabKey>(() => detailTabs(detail)[0]?.key ?? 'orders');
+function DetailTabs({ detail, target, serviceId, onOpenFile, links, seesMoney, onReported }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void; links?: ChannelLinks; seesMoney: boolean; onReported: () => void }) {
+  const [tab, setTab] = useState<DetailTabKey>('orders');
   // An order's sheet opens its dispatches on top (José 01/11); closing goes back one.
   const [opened, setOpened] = useState<OpenSheet[]>([]);
   const reportPdf = useReportPdf(target, serviceId, onOpenFile);
@@ -152,16 +147,14 @@ function DetailTabs({ detail, target, serviceId, onOpenFile, links, onPaid }: { 
     setOpened((before) => before.slice(0, -1));
   };
   const rows = detailRows(detail, tab);
-  const more = tab === 'billing' ? null : moreInPortal(rows.length, detail.totals[tab] ?? rows.length);
+  const more = moreInPortal(rows.length, detail.totals[tab]);
   return (
     <>
       <TabStrip detail={detail} tab={tab} onTab={setTab} />
-      <TabActions tab={tab} target={target} serviceId={serviceId} onAnswered={onPaid} />
-      {tab === 'billing' && detail.billing ? <ServiceBilling billing={detail.billing} invoices={invoicesOf(detail)} onOpenFile={onOpenFile} /> : (
-        <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">
-          {!rows.length ? <Text className="p-4 text-[14px] text-on-surface-variant">{detailEmptyText(tab, detail.totals)}</Text> : tab === 'reports' ? <ReportDays detail={detail} onOpen={openRow} onOpenFile={onOpenFile} /> : rows.map((row) => <RowView key={row.id} row={row} onOpen={openRow} onOpenFile={onOpenFile} />)}
-        </View>
-      )}
+      {tab === 'reports' && seesMoney ? <ReportAction target={target} serviceId={serviceId} onAnswered={onReported} /> : null}
+      <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">
+        {!rows.length ? <Text className="p-4 text-[14px] text-on-surface-variant">{detailEmptyText(tab, detail.totals)}</Text> : tab === 'reports' ? <ReportDays detail={detail} onOpen={openRow} onOpenFile={onOpenFile} /> : rows.map((row) => <RowView key={row.id} row={row} onOpen={openRow} onOpenFile={onOpenFile} />)}
+      </View>
       {tab === 'orders' ? <OrphanDispatches detail={detail} onOpen={openDispatch} onOpenFile={onOpenFile} /> : null}
       {more ? <Text className="text-center text-[12px] text-on-surface-variant">{`${more} · el resto está en el Portal`}</Text> : null}
       <RecordSheet sheet={sheet} onClose={close} onOpenFile={onOpenFile} pdf={sheet?.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!, `${sheet.title} · PDF`) } : undefined} onOpenRelated={openDispatch} action={orderLinkAction(links, top, target)} />
@@ -183,9 +176,9 @@ const Skeleton = () => (
  * Pedidos · Informes with Portal's counts, each order with its dispatches
  * inside (José 01/11). Asked when it opens.
  */
-export function ServiceDetailView(props: { target: ServiceAskTarget; service: SpaceClientService; onBack: () => void; links?: ChannelLinks }) {
+export function ServiceDetailView(props: { target: ServiceAskTarget; service: SpaceClientService; seesMoney: boolean; onBack: () => void; links?: ChannelLinks }) {
   const colors = useColores();
-  // After a payment the detail is asked again, keeping the open tab (agentes 31/10).
+  // After a report the detail is asked again, keeping the open tab (agentes 31/10).
   const [round, setRound] = useState(0);
   const askAgain = useCallback(() => setRound((count) => count + 1), []);
   const answer = useServiceAsk('detail', props.target, props.service.id, round);
@@ -207,7 +200,7 @@ export function ServiceDetailView(props: { target: ServiceAskTarget; service: Sp
       </Pressable>
       <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
       {answer === null ? <Skeleton /> : null}
-      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} onOpenFile={files.open} links={props.links} onPaid={askAgain} /> : null}
+      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} onOpenFile={files.open} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} /> : null}
       {files.notice ? <Text className="text-center text-[13px] text-error">{files.notice}</Text> : null}
       {files.viewer}
       {answer && !answer.ok ? (

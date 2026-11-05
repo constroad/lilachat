@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accessSummary, canSeeTab, channelTabs, memberAccessIn, memberAccessOf, stageScopeOf, toggleInAccess, visibleStagesFor, type MyClientAccess } from './clientAccess.js';
+import { accessSummary, canSeeDrive, canSeeTab, isMoneyRecord, channelTabs, memberAccessIn, memberAccessOf, stageScopeOf, toggleInAccess, visibleStagesFor, type MyClientAccess } from './clientAccess.js';
 
 /** José 30/10 night: topographers and engineers join a client's channel seeing only what an admin picks; money only for admins. */
 const STAGE_A = 'a'.repeat(24);
@@ -84,7 +84,7 @@ describe('accessSummary', () => {
   const titles = new Map([[STAGE_A, 'Permisos'], [STAGE_B, 'Topografía']]);
   it('says in one line what the member sees', () => {
     expect(accessSummary({ money: true }, titles)).toBe('Todo el canal · ve montos');
-    expect(accessSummary({ money: false }, titles)).toBe('Todo el canal, sin montos');
+    expect(accessSummary({ money: false }, titles)).toBe('Todo el canal, sin montos ni Drive');
     expect(accessSummary({ money: false, restricted: { tabs: [], stages: [] } }, titles)).toBe('Solo el chat');
     expect(accessSummary({ money: false, restricted: { tabs: ['services', 'checklist'], stages: [STAGE_A] } }, titles)).toBe('Chat, Servicios y Checklist (Permisos)');
     expect(accessSummary({ money: false, restricted: { tabs: ['checklist'], stages: [STAGE_A, STAGE_B] } }, titles)).toBe('Chat y Checklist (2 etapas)');
@@ -111,5 +111,24 @@ describe('memberAccessIn and toggleInAccess (the editor)', () => {
     expect(toggleInAccess(withServices, { tab: 'checklist' }).tabs).toEqual(['services']);
     expect(withoutStage.stages).toEqual([]);
     expect(toggleInAccess(withoutStage, { stage: STAGE_B }).stages).toEqual([STAGE_B]);
+  });
+});
+
+/** José 05/11: the engineers joining a client's channel see no money anywhere, not only in «Cuenta». */
+describe('what carries money beyond the tabs', () => {
+  it('Portal\'s Drive holds liquidations: it takes the money mark or an admin ticking «Archivos»', () => {
+    expect(canSeeDrive({ money: false })).toBe(false);
+    expect(canSeeDrive(undefined)).toBe(false);
+    expect(canSeeDrive({ money: true })).toBe(true);
+    expect(canSeeDrive({ money: false, restricted: { tabs: ['files'], stages: [] } })).toBe(true);
+    expect(canSeeDrive({ money: false, restricted: { tabs: ['services'], stages: [] } })).toBe(false);
+  });
+
+  it('a payment or a quote on a service\'s card is money; a report or an observation is not', () => {
+    expect(isMoneyRecord({ kicker: 'Pago', title: 'Adelanto S/ 5,000' })).toBe(true);
+    expect(isMoneyRecord({ title: 'Cotización COT-12' })).toBe(true);
+    expect(isMoneyRecord({ kicker: 'Valorización', title: 'Octubre' })).toBe(true);
+    expect(isMoneyRecord({ kicker: 'Informe', title: 'Control de pista · 29 de octubre' })).toBe(false);
+    expect(isMoneyRecord({ title: 'Observación de obra' })).toBe(false);
   });
 });

@@ -64,20 +64,14 @@ describe('rows and tabs', () => {
     expect(detailRows(detail, 'reports')[0]!.line).toBe('');
   });
 
-  it('a quote reads its code, then the total in soles · day; nothing when they did not come', () => {
-    const detail = serviceDetailOf({ ...body, quotes: [{ id: 'q1', code: 'COT-2026-0142', total: 48380, date: '2026-10-14', status_label: 'Aceptada', tone: 'ok' }] })!;
-    expect(detailRows(detail, 'quotes')[0]).toMatchObject({ title: 'COT-2026-0142', line: 'S/ 48,380.00 · 14 oct' });
-    expect(detailRows(serviceDetailOf(body)!, 'quotes')).toEqual([]);
-  });
-
-  it('«100 de 148» only when Portal has more than it sent; quotes only when they came', () => {
+  it('«100 de 148» only when Portal has more than it sent; the money lives in «Cuenta», never here', () => {
     expect(moreInPortal(100, 148)).toBe('Mostrando 100 de 148');
     expect(moreInPortal(3, 3)).toBeNull();
     // An empty list says it itself (01/11: «Mostrando 0 de 1» under «Todavía no hay informes»).
     expect(moreInPortal(0, 1)).toBeNull();
     expect(detailTabs(serviceDetailOf(body)!).map((tab) => tab.label)).toEqual(['Pedidos · 148', 'Informes · 1']);
-    // José 30/10 night: Cotizaciones and Cobranza go first.
-    expect(detailTabs({ ...serviceDetailOf(body)!, quotes: [], totals: { orders: 0, dispatches: 0, reports: 0, quotes: 2 } }).map((tab) => tab.key)).toEqual(['quotes', 'orders', 'reports']);
+    // José 05/11: even for whoever sees money, the service has no money tab.
+    expect(detailTabs({ ...serviceDetailOf(body)!, quotes: [], totals: { orders: 0, dispatches: 0, reports: 0, quotes: 2 } }).map((tab) => tab.key)).toEqual(['orders', 'reports']);
   });
 });
 
@@ -154,7 +148,6 @@ describe('an empty tab with Portal counting some (01/11: «Informes · 1» over 
   it('says none yet only when Portal counts none', () => {
     expect(detailEmptyText('reports', none)).toBe('Todavía no hay informes.');
     expect(detailEmptyText('orders', none)).toBe('Este servicio todavía no tiene pedidos.');
-    expect(detailEmptyText('billing', { ...none, reports: 2 })).toBe('Sin cobranza.');
   });
 
   it('says how many are in Portal when none came', () => {

@@ -8,13 +8,13 @@ import type { ServiceFile, ServiceFiles } from './serviceFiles.js';
  * server answers 200 with a message and Portal's link when agentes fails, so
  * the person always has somewhere to go. PURE.
  */
-export type ServiceAskKind = 'files' | 'detail' | 'account';
+export type ServiceAskKind = 'files' | 'detail' | 'account' | 'billing';
 export type ServiceAskResult<T> = { ok: true; value: T } | { ok: false; message: string; portalUrl: string | null };
 export type ServiceAskBody = { files?: ServiceFile[]; drive_url?: string | null; detail?: ServiceDetail; account?: ClientAccount; error?: string; message?: string; portal_url?: string | null };
-type ValueOf = { files: ServiceFiles; detail: ServiceDetail; account: ClientAccount };
+type ValueOf = { files: ServiceFiles; detail: ServiceDetail; account: ClientAccount; billing: ServiceDetail };
 export type ServiceAskValue<K extends ServiceAskKind> = ValueOf[K];
 
-const FAILED: Record<ServiceAskKind, string> = { files: 'No se pudo traer el Drive', detail: 'No se pudo traer el detalle del servicio', account: 'No se pudo traer la cuenta del cliente' };
+const FAILED: Record<ServiceAskKind, string> = { files: 'No se pudo traer el Drive', detail: 'No se pudo traer el detalle del servicio', account: 'No se pudo traer la cuenta del cliente', billing: 'No se pudo traer la cobranza del servicio' };
 
 /** The account is the whole client's (design f-08): its path has no service. */
 export const serviceAskPath = (spaceId: string, clientId: string, serviceId: string, kind: ServiceAskKind): string =>

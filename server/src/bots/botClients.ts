@@ -1,5 +1,5 @@
 import { model, Schema, Types } from 'mongoose';
-import { archivedAgeGroup, archivedSince, canManageMembers, CLIENT_ID, isClientChannelLive, validateClientState, type ClientService, type ClientState, type MemberAccess } from '@lilachat/shared';
+import { archivedAgeGroup, archivedSince, canManageMembers, CLIENT_ID, isClientChannelLive, isMoneyRecord, validateClientState, type ClientService, type ClientState, type MemberAccess } from '@lilachat/shared';
 import { ChatModel, MessageModel } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { noticeChannelJoined } from '../workspaceNotices.js';
@@ -160,24 +160,24 @@ const MAX_RECORDS = 200;
  * first, for a member of the client's channel. Anyone else gets 404.
  */
 export async function clientRecords(workspaceId: string, clientId: string, userId: Types.ObjectId) {
-  await actorIn(workspaceId, userId);
+  const actor = await actorIn(workspaceId, userId);
   const notFound = fail(404, 'client_not_found', 'Ese cliente no existe o no estás en su canal.');
-  const found = await ClientChannelModel.findOne({ workspaceId: new Types.ObjectId(workspaceId), clientId }).select('chatId').lean<Pick<ClientChannel, 'chatId'> | null>();
+  const found = await ClientChannelModel.findOne({ workspaceId: new Types.ObjectId(workspaceId), clientId }).select('chatId billingViewers restrictedMembers').lean<Pick<ClientChannel, 'chatId' | 'billingViewers' | 'restrictedMembers'>>();
   if (!found || !(await ChatModel.exists({ _id: found.chatId, 'members.userId': userId }))) return notFound;
   const messages = await MessageModel.find({ chatId: found.chatId, 'clientRef.serviceId': { $exists: true }, deletedAt: { $exists: false } })
     .sort({ seq: -1 })
     .limit(MAX_RECORDS)
     .select('seq at body card.title card.kicker clientRef')
     .lean();
-  return {
-    records: messages.map((message) => ({
-      seq: message.seq,
-      at: message.at,
-      kind: message.clientRef?.kind,
-      service_id: message.clientRef?.serviceId,
-      ...(message.clientRef?.recordId ? { record_id: message.clientRef.recordId } : {}),
-      title: message.card?.title ?? message.body ?? '',
-      ...(message.card?.kicker ? { kicker: message.card.kicker } : {}),
-    })),
-  };
+  const records = messages.map((message) => ({
+    seq: message.seq,
+    at: message.at,
+    kind: message.clientRef?.kind,
+    service_id: message.clientRef?.serviceId,
+    ...(message.clientRef?.recordId ? { record_id: message.clientRef.recordId } : {}),
+    title: message.card?.title ?? message.body ?? '',
+    ...(message.card?.kicker ? { kicker: message.card.kicker } : {}),
+  }));
+  // José 05/11: the service's card shows a payment or a quote only to whoever sees money.
+  return { records: accessOf(found, userId, canManageMembers(actor.role)).money ? records : records.filter((record) => !isMoneyRecord(record)) };
 }

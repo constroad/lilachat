@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accountQuoteLine, accountServiceLine, accountSummary, byUrgency, clientAccountOf, creditOrderLine } from './clientAccount.js';
+import { accountQuoteLine, accountServiceLine, accountSummary, byUrgency, clientAccountOf, collectionByService, creditOrderLine } from './clientAccount.js';
 
 /** José 30/10: «¿dónde veo las cotizaciones del cliente?» — `client.account.requested` (agentes cf37b98, Portal 0227a1f0, design f-08). */
 const body = {
@@ -110,6 +110,32 @@ describe('services to collect', () => {
 });
 
 /** Loroña's order said «28 oct» and was from 2025 (José, 05/11): an old date must not read as recent. */
+describe('collectionByService (José 05/11: Cobranza lives in Cuenta, by service)', () => {
+  const channel = [{ id: 's1', name: 'Pavimentación' }, { id: 's2', name: 'Imprimación' }, { id: 's3', name: 'Bacheo' }];
+  const debts = [{ id: 's2', name: 'Imprimación Av. Lima', pending: 500, isCredit: false }, { id: 's3', pending: 900, isCredit: true, dueAt: '2020-01-01' }];
+  const now = new Date('2026-11-05T15:00:00Z');
+
+  it('what owes goes first, overdue on top; the rest of the channel\'s services follow without amounts', () => {
+    expect(collectionByService(debts, channel, now).map((row) => row.id)).toEqual(['s3', 's2', 's1']);
+    expect(collectionByService(debts, channel, now)[2]).toEqual({ id: 's1', name: 'Pavimentación', isCredit: false });
+  });
+
+  it('a debt keeps its own name, or the channel\'s when it comes without one', () => {
+    const rows = collectionByService(debts, channel, now);
+    expect(rows[0]?.name).toBe('Bacheo');
+    expect(rows[1]?.name).toBe('Imprimación Av. Lima');
+  });
+
+  it('a service Portal charges and the channel does not list still shows', () => {
+    expect(collectionByService([{ id: 's9', pending: 1, isCredit: false }], [], now).map((row) => row.id)).toEqual(['s9']);
+  });
+
+  it('without debts it is the channel\'s services; without either, nothing', () => {
+    expect(collectionByService(undefined, channel, now)).toHaveLength(3);
+    expect(collectionByService(undefined, [], now)).toEqual([]);
+  });
+});
+
 describe('the year in the account’s lines', () => {
   it('an order from another year says it; one from this year does not', () => {
     const order = { id: 'o', product: 'MAC 2', quantity: 50, unit: 'm³', total: 12000, status: { label: 'Pendiente', tone: 'warn' as const } };

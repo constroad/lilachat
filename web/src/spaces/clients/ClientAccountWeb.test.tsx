@@ -17,13 +17,15 @@ const account = {
   totals: { quotes: 12, creditOrders: 2 },
 };
 
+const DETAIL = { service: { id: 'srv-1', name: 'Pavimentación' }, orders: [], dispatches: [], reports: [], totals: { orders: 0, dispatches: 0, reports: 0 } };
+
 describe('ClientAccountWeb', () => {
   it('asks for the account; overdue first with what is owed; the summary adds the overdue', async () => {
     // Arrange
     const fetchMock = reply({ account });
     vi.stubGlobal('fetch', fetchMock);
     // Act
-    render(<ClientAccountWeb target={target} />);
+    render(<ClientAccountWeb target={target} services={[]} />);
     // Assert
     expect(await screen.findByTestId('resumen-cuenta')).toHaveTextContent('S/ 11,000.00');
     expect(screen.getByTestId('resumen-cuenta')).toHaveTextContent('Monto vencidoS/ 8,000.00');
@@ -35,7 +37,7 @@ describe('ClientAccountWeb', () => {
 
   it('a quote opens with its line items, inside Lilachat', async () => {
     vi.stubGlobal('fetch', reply({ account }));
-    render(<ClientAccountWeb target={target} />);
+    render(<ClientAccountWeb target={target} services={[]} />);
     fireEvent.click(await screen.findByTestId('cotizacion-q1'));
     expect(within(screen.getByTestId('ficha-registro')).getByText('Mezcla asfáltica')).toBeInTheDocument();
     expect(screen.getByTestId('ficha-registro')).toHaveTextContent('S/ 3,200.00');
@@ -49,10 +51,10 @@ describe('ClientAccountWeb', () => {
     ];
     vi.stubGlobal('fetch', reply({ account: { ...account, services, totals: { ...account.totals, services: 2 } } }));
     // Act
-    render(<ClientAccountWeb target={target} />);
+    render(<ClientAccountWeb target={target} services={[]} />);
     // Assert
     const section = await screen.findByTestId('servicios-por-cobrar');
-    expect(section).toHaveTextContent('Servicios por cobrar · 2');
+    expect(section).toHaveTextContent('Cobranza por servicio · 2');
     expect(screen.getAllByTestId(/^servicio-por-cobrar-/).map((row) => row.dataset.testid)).toEqual(['servicio-por-cobrar-s1', 'servicio-por-cobrar-s2']);
     expect(screen.getByTestId('servicio-por-cobrar-s1')).toHaveTextContent('Total S/ 90,000.00 · Cobrado S/ 40,000.00');
     expect(screen.getByTestId('servicio-por-cobrar-s1')).toHaveTextContent('Debe S/ 50,000.00');
@@ -63,14 +65,14 @@ describe('ClientAccountWeb', () => {
 
   it('without `services` the section is not there', async () => {
     vi.stubGlobal('fetch', reply({ account }));
-    render(<ClientAccountWeb target={target} />);
+    render(<ClientAccountWeb target={target} services={[]} />);
     await screen.findByTestId('resumen-cuenta');
     expect(screen.queryByTestId('servicios-por-cobrar')).not.toBeInTheDocument();
   });
 
   it('services alone are enough to show the account', async () => {
     vi.stubGlobal('fetch', reply({ account: { client: account.client, services: [{ id: 's1', name: 'Asfaltado', pending: 900, isCredit: false }], pending: 900, totals: {} } }));
-    render(<ClientAccountWeb target={target} />);
+    render(<ClientAccountWeb target={target} services={[]} />);
     expect(await screen.findByTestId('resumen-cuenta')).toHaveTextContent('S/ 900.00');
     expect(screen.getByTestId('servicio-por-cobrar-s1')).toHaveTextContent('Debe S/ 900.00');
   });
@@ -78,13 +80,43 @@ describe('ClientAccountWeb', () => {
   it('an order from another year says it (Loroña’s «28 oct» was from 2025)', async () => {
     const old = { id: 'o9', product: 'MAC 2', date: '2020-10-28', pending: 100, status: { label: 'Pendiente', tone: 'warn' } };
     vi.stubGlobal('fetch', reply({ account: { ...account, creditOrders: [old] } }));
-    render(<ClientAccountWeb target={target} />);
+    render(<ClientAccountWeb target={target} services={[]} />);
     expect(await screen.findByTestId('credito-o9')).toHaveTextContent('28 oct 2020');
   });
 
   it('when Portal sends neither list, it says that person may not see it', async () => {
     vi.stubGlobal('fetch', reply({ account: { client: { id: 'c', name: 'C' }, totals: {} } }));
-    render(<ClientAccountWeb target={target} />);
+    render(<ClientAccountWeb target={target} services={[]} />);
     expect(await screen.findByText('No tienes permiso para ver la cuenta de este cliente.')).toBeInTheDocument();
+  });
+
+  it('José 05/11: Cobranza lives here, by service; a paid service still opens, and it is asked only then', async () => {
+    // Arrange
+    const billing = { isCredit: false, total: 1000, collected: 250, pending: 750, items: [], payments: [] };
+    const fetchMock = vi.fn(async (url: string) => {
+      const body = String(url).endsWith('/account') ? { account: { ...account, services: [{ id: 'srv-1', name: 'Pavimentación', pending: 750, isCredit: false }] } } : String(url).endsWith('/billing') ? { detail: { ...DETAIL, billing } } : { groups: [] };
+      return new Response(JSON.stringify(body), { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<ClientAccountWeb target={target} services={[{ id: 'srv-1', name: 'Pavimentación' }, { id: 'srv-2', name: 'Bacheo' }] as never} />);
+    // Act
+    const rows = await screen.findAllByTestId(/^servicio-por-cobrar-/);
+    fireEvent.click(within(rows[0]!).getByRole('button'));
+    // Assert
+    expect(rows.map((row) => row.getAttribute('data-testid'))).toEqual(['servicio-por-cobrar-srv-1', 'servicio-por-cobrar-srv-2']);
+    expect(await screen.findByTestId('estado-de-cobranza')).toHaveTextContent('S/ 750.00');
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/services/srv-1/billing'))).toBe(true);
+    fireEvent.click(screen.getByTestId('volver-a-cuenta'));
+    expect(await screen.findByTestId('servicios-por-cobrar')).toBeInTheDocument();
+  });
+
+  it('a failure in a service\'s Cobranza says so and goes back', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(String(url).endsWith('/account') ? { account } : String(url).endsWith('/billing') ? { error: 'billing_failed', message: 'No se pudo traer la cobranza del servicio' } : { groups: [] }), { status: 200 })));
+    render(<ClientAccountWeb target={target} services={[{ id: 'srv-2', name: 'Bacheo' }] as never} />);
+    // Act
+    fireEvent.click(within(await screen.findByTestId('servicio-por-cobrar-srv-2')).getByRole('button'));
+    // Assert
+    expect(await screen.findByTestId('cobranza-fallo')).toHaveTextContent('No se pudo traer la cobranza del servicio');
   });
 });

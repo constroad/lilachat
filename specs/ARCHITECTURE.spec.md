@@ -15166,3 +15166,45 @@ originales son de Microsoft: **no se pueden usar**. Hay que hacer las nuestras
 > revisión de k-04/k-05). Mientras tanto se avanza con lo que ya tiene diseño:
 > el modo empresa estilo Slack (`s-01`…`s-04`), y lo que no necesita pantalla
 > (repreguntar la versión en app y web, avisos de tareas del 35).
+
+## La plata de un canal de cliente vive en Cuenta (José 05/11/2026)
+
+Entran ingenieros a canales de clientes y no deben ver dinero. Esto reemplaza lo
+anterior sobre Cotizaciones y Cobranza dentro del detalle del servicio.
+
+**Dónde está cada cosa**
+
+- «Cuenta» es el único lugar con plata. «Cobranza por servicio» lista primero lo
+  que debe, por urgencia, y después los demás servicios del canal
+  (`collectionByService`). Un servicio abre su Cobranza ahí, con «Registrar pago».
+- El detalle del servicio solo tiene Pedidos · Informes, también para un admin.
+  El servidor sigue mandando `quotes` y `billing` a quien ve montos, porque un APK
+  sin la OTA todavía los dibuja.
+- «Generar informe de servicio» solo sale a quien ve montos: crea una liquidación.
+
+**Quién ve qué sin la marca de montos**
+
+| Dato | Regla | Dónde se corta |
+| --- | --- | --- |
+| Pestaña Cuenta y `/billing` | `need: 'money'` | `clientFiles.ts`, 404 |
+| Factura, precio, crédito y pagos de un pedido | se quitan | `withoutMoney` y Portal `orderBillingOf` |
+| Liquidación y valorización | la fila no llega | `isMoneyReport` por etiqueta, Portal por tipo |
+| Pago o cotización en la tarjeta del servicio | no llega | `isMoneyRecord` en `clientRecords` |
+| Drive del Portal | solo con montos o «Archivos» marcado | `canSeeDrive`, sin preguntar a agentes |
+| Tarjetas de pago en el chat | no se publican | agentes `6feb8c1` |
+
+Un miembro sin marcas ve Chat · Servicios · Archivos · Checklist. Su «Archivos»
+trae solo lo del canal. Para abrirle el Drive a una persona, un admin le marca
+«Archivos» en sus accesos: el Drive puede traer liquidaciones y lo subido a mano,
+y eso no se puede clasificar.
+
+**Lo que no depende de Lilachat**
+
+- Portal rechaza las pestañas a quien no tiene usuario de Portal
+  (`unknown_person`): ve «No se pudo traer el detalle». Abrirlo es decisión de
+  José: Portal no comprueba que esa persona esté en ese canal.
+- Por chat con Lila, `cuenta_de_cliente` y `pdf_de_cotizacion` dependen del rol
+  de Portal (`quotes:view`), no de la marca del canal.
+- Un canal público lo ve y lo une cualquier miembro del espacio. #flujo-caja y
+  #administracion de Constroad son privados (agentes 05/11).
+

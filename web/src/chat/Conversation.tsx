@@ -190,7 +190,7 @@ export function Conversation(props: {
       ) : isClientChannel && shownTab === 'checklist' ? (
         <WorkPlanWeb plan={workPlan} onOpenTask={setOpenTask} restricted={Boolean(client?.access?.restricted)} />
       ) : isClientChannel && client && shownTab === 'account' && props.jwtParaEnlaces && chat.workspaceId ? (
-        <ClientAccountWeb target={{ jwt: props.jwtParaEnlaces, spaceId: chat.workspaceId, clientId: client.id }} />
+        <ClientAccountWeb target={{ jwt: props.jwtParaEnlaces, spaceId: chat.workspaceId, clientId: client.id }} services={client.services} />
       ) : isClientChannel && client && shownTab === 'services' ? (
         <ClientServicesPanel client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} onOpenRecord={toMessage} links={links} />
       ) : props.app && appTab === 'info' ? (

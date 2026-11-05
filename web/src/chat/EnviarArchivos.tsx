@@ -70,7 +70,7 @@ export function EnviarArchivos(props: { archivos: File[]; onCerrar: () => void; 
           </span>
         </label>
       ) : null}
-      <input data-testid="input-pie" value={pie} onChange={(evento) => setPie(evento.target.value)} placeholder="Añade un comentario" className="min-h-[44px] w-full rounded-lg border border-outline/25 bg-background px-3 text-sm outline-none focus:border-primary" />
+      <input data-testid="input-pie" autoFocus value={pie} onChange={(evento) => setPie(evento.target.value)} placeholder="Añade un comentario" className="min-h-[44px] w-full rounded-lg border border-outline/25 bg-background px-3 text-sm outline-none focus:border-primary" />
     </Overlay>
   );
 }

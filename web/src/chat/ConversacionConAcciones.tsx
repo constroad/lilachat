@@ -74,7 +74,7 @@ export function ConversacionConAcciones(
     /** E3b: a group's notification level, from «Info.». */
     onLevel: (chat: ChatSummary, level: NotificationLevel) => void;
     /** Ir a un mensaje pedido desde afuera (un destacado de la lista global, 20/10). */
-    irA?: { seq: number; vez: number } | null;
+    irA?: { seq: number; vez: number; hilo?: boolean } | null;
     /** A 1:1 opened from a person's card (José, 25/10); a space's 1:1 comes with its summary. */
     onOpenChat?: (chatId: string, known?: ChatSummary) => void;
   }
@@ -137,9 +137,6 @@ export function ConversacionConAcciones(
     setSalto(null);
     ventana.close();
   }, [ventana]);
-  useEffect(() => {
-    if (props.irA) setSalto(props.irA);
-  }, [props.irA]);
   const destacados = useDestacadosWeb({ chatId: chat.id, jwt: props.jwt, secreto: Boolean(chat.encrypted) });
   const [verFijados, setVerFijados] = useState(false);
   const nombreDe = useCallback((id: string) => (id === yo ? 'Tú' : (nombres.get(id) ?? 'Alguien')), [yo, nombres]);
@@ -151,6 +148,11 @@ export function ConversacionConAcciones(
     },
     [hilos.abrir]
   );
+  useEffect(() => {
+    if (!props.irA) return;
+    setSalto(props.irA);
+    if (props.irA.hilo) abrirHilo(props.irA.seq);
+  }, [props.irA, abrirHilo]);
   const { keepReceived, saveGif } = useStickers(props.jwt, yo);
   const calls = useCalls();
   const onStickerAction = useCallback(

@@ -82,7 +82,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
   const [aviso, setAviso] = useState('');
   const [creando, setCreando] = useState<Creando>(null);
   /** Ir a un mensaje de otro chat (un destacado de la lista global, 20/10). */
-  const [irA, setIrA] = useState<{ chatId: string; seq: number; vez: number } | null>(null);
+  const [irA, setIrA] = useState<{ chatId: string; seq: number; vez: number; hilo?: boolean } | null>(null);
   const historial = useHistorialDelChat(selectedId);
   // Los avisos cortos («Copiado», «Reenviado») se van solos; «Subiendo…» y los ajustes, no.
   useEffect(() => {
@@ -186,9 +186,9 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
     online: socket.online,
     selectedChatId: selectedId,
     onOpenChat: abrirChat,
-    onOpenMessage: (chatId, seq) => {
+    onOpenMessage: (chatId, seq, hilo) => {
       abrirChat(chatId);
-      setIrA({ chatId, seq, vez: Date.now() });
+      setIrA({ chatId, seq, vez: Date.now(), hilo });
     },
     onPersonalChat: (chatId) => {
       abrirChat(chatId);

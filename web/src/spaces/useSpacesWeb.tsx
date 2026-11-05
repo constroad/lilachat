@@ -49,7 +49,7 @@ function useDebounced(run: () => void, delayMs: number) {
  * Socket events of chats outside the personal list reload the space's list
  * and the rail's counts.
  */
-export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The session's local base: the spaces' screens keep what they saw there (22/10). */ base?: BaseLocal | null; me: { name?: string | null; phone: string }; personalUnread: number; /** `null` while the personal list loads (the welcome waits for it). */ personalChats?: number | null; online: ReadonlySet<string>; selectedChatId: string | null; onOpenChat: (chatId: string) => void; onOpenMessage: (chatId: string, seq: number) => void; onPersonalChat: (chatId: string) => void }) {
+export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The session's local base: the spaces' screens keep what they saw there (22/10). */ base?: BaseLocal | null; me: { name?: string | null; phone: string }; personalUnread: number; /** `null` while the personal list loads (the welcome waits for it). */ personalChats?: number | null; online: ReadonlySet<string>; selectedChatId: string | null; onOpenChat: (chatId: string) => void; onOpenMessage: (chatId: string, seq: number, opensThread?: boolean) => void; onPersonalChat: (chatId: string) => void }) {
   const { jwt, myUserId, onOpenChat, onPersonalChat } = params;
   const currentId = useCurrentSpaceId();
   const { spaces, reload } = useMySpaces(jwt, myUserId);
@@ -253,9 +253,9 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
           // Closing it: what was read there changes the chips' counts.
           if (!tab) loadChats();
         },
-        activityItem: (item) => {
+        activityItem: (item, opensThread) => {
           setActivityTab(null);
-          params.onOpenMessage(item.chatId, item.seq);
+          params.onOpenMessage(item.chatId, item.seq, opensThread);
         },
         openApp: (appId) => {
           setDialog(null);

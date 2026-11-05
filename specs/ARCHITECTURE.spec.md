@@ -9036,6 +9036,46 @@ de quien confirma; Lilachat solo muestra la vista previa y devuelve el «sí».
 3. **El piloto ya está**: clima y líquidos ya avisan por Lilachat.
 4. **Llegan muchos vouchers**: el ahorro justifica `/gastos`.
 
+### 118.9 Lo que cambió José (04/11)
+
+Deroga el punto 2 de 118.8.
+
+1. **Se confirma antes de crear.** Quien sube el voucher escribe en el pie, por
+   ejemplo, `/gastos súbeme este gasto para el servicio X, es un pago parcial`.
+   Lila lee la foto y el texto, y responde con una vista previa. Se aprueba o se
+   pide un cambio en el hilo. El gasto se crea recién al aprobar.
+2. **Un gasto de servicio nombra cliente, servicio y partida.**
+3. **Un modelo ordena la información, sin embeddings.** Haiku 5.5 arma la vista
+   previa con lo leído y el texto.
+4. **No hace falta usuario en Portal.** Ser admin del espacio alcanza, y Aracely
+   ya lo es.
+
+**Prueba en Test (04/11)**, con un voucher de José y su cuenta:
+
+| Dónde y qué decía el pie | Qué pasó |
+| --- | --- |
+| 1:1 con Portal | No contestó. |
+| # flujo-caja, con el nombre del cliente | «No registré este voucher: no sé de qué servicio o proyecto es.» |
+| # flujo-caja, con el nombre exacto del servicio | Creó el gasto al instante, sin vista previa. |
+
+Portal leyó bien monto, destinatario, operación, fecha y concepto. Falta en agentes:
+
+- La vista previa con Aprobar y pedir cambios. En Lilachat ya está todo: tarjeta
+  con botones, hilo y edición en su lugar.
+- La partida, que no apareció en lo creado.
+- Reconocer el servicio por el cliente, cuando ese cliente tiene uno solo.
+- El medio de pago: guardó «CONTIAHORRO», que es el nombre de la cuenta.
+- La comisión (S/ 4.30) y el ITF (S/ 2.45) no aparecen en ningún campo.
+- Un voucher del 19/08 salió en «Caja del 4 de noviembre».
+
+El caso de Aracely sigue sin probar: la cuenta de José sí tiene usuario en Portal.
+
+**Lo que esa prueba arregló en Lilachat:** la respuesta de una app en un hilo no
+movía el chip de la raíz hasta recargar, y quien subía un voucher no veía la
+respuesta (`notifyThread` faltaba en `botMessages.ts`). En la web, «Ver hilo» de
+Menciones y actividad abre el hilo, y al pegar un archivo el cursor queda en el
+comentario.
+
 ## 117. Análisis del 23/10: alertas vía agentes, API/MCP, «Zernio propio», IA con la suscripción y el Mongo de emergencia
 
 Pedido de José del 23/10 (pendientes 75, 33, 16, IA y 67). Fuentes: la

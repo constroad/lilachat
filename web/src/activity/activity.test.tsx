@@ -29,11 +29,25 @@ describe('ActivityDialog', () => {
     expect(screen.getByTestId('actividad-mentions')).toHaveTextContent('1');
     expect(urls[0]).toContain('/api/activity?workspace=w1&type=mentions');
     await userEvent.click(screen.getByTestId('responder-c1-2'));
-    expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ chatId: 'c1', seq: 2 }));
+    expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ chatId: 'c1', seq: 2 }), false);
   });
 
   it('threads say how many replies', async () => {
     render(<ActivityDialog spaceId="w1" spaceName="QA Obra" jwt="t" myUserId="u1" initialTab="threads" onOpen={() => undefined} onClose={() => undefined} />);
     expect(await screen.findByTestId('actividad-item-c1-4')).toHaveTextContent('2 respuestas');
+  });
+
+  it('«Ver hilo» asks for the thread itself, and a single reply reads in singular', async () => {
+    const item = { chatId: 'c1', seq: 4, at: new Date().toISOString(), chat: { kind: 'group', name: 'flujo-caja', channel: true }, author: { id: 'u1', name: 'José' }, body: '/gastos', thread: { replies: 1 } };
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ items: [item], unread: { mentions: 0, threads: 1 } }), { status: 200 })));
+    const user = userEvent.setup();
+    const onOpen = vi.fn();
+    render(<ActivityDialog spaceId="w1" spaceName="QA Obra" jwt="t" myUserId="u1" initialTab="threads" onOpen={onOpen} onClose={() => undefined} />);
+
+    const open = await screen.findByTestId('responder-c1-4');
+    expect(open).toHaveTextContent('1 respuesta · Ver hilo');
+    await user.click(open);
+
+    expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ chatId: 'c1', seq: 4 }), true);
   });
 });

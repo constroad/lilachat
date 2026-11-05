@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ArrowRight, CornerUpLeft, MessagesSquare } from 'lucide-react';
-import { ACTIVITY_TABS, activityDaySections, formatChatTimestamp, formatPhoneDisplay, type ActivityItem, type ActivityType } from '@lilachat/shared';
+import { ACTIVITY_TABS, activityDaySections, formatChatTimestamp, formatPhoneDisplay, textoDelChipDeHilo, type ActivityItem, type ActivityType } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { FieldError, Overlay } from '../ui/Overlay';
 import { TextoDelMensaje } from '../chat/TextoDelMensaje';
@@ -17,7 +17,7 @@ const keyOf = (item: ActivityItem) => `${item.chatId}-${item.seq}`;
  * Menciones · Hilos · Reacciones with what is new, by day; each card says who,
  * where and when, the message with its mentions, and opens the chat there.
  */
-export function ActivityDialog(props: { spaceId: string; spaceName: string; jwt: string; myUserId: string; initialTab: ActivityType; onOpen: (item: ActivityItem) => void; onClose: () => void }) {
+export function ActivityDialog(props: { spaceId: string; spaceName: string; jwt: string; myUserId: string; initialTab: ActivityType; onOpen: (item: ActivityItem, opensThread: boolean) => void; onClose: () => void }) {
   const [tab, setTab] = useState<ActivityType>(props.initialTab);
   // Each tab keeps what it showed: Menciones → Hilos → Menciones no longer goes grey three times (22/10).
   const page = useCached(activityCache, `${props.spaceId}:activity:${tab}`, fetchActivity(props.jwt, props.spaceId, tab));
@@ -59,9 +59,9 @@ export function ActivityDialog(props: { spaceId: string; spaceName: string; jwt:
                   </p>
                   {item.body ? <div className="mt-1 text-sm"><TextoDelMensaje clave={`actividad-${keyOf(item)}`} texto={item.body} menciones={item.menciones} nombres={NO_NAMES} yo={props.myUserId} mio={false} /></div> : null}
                   {item.reactions?.length ? <p className="mt-2 flex flex-wrap gap-2">{item.reactions.map((reaction) => <span key={reaction.emoji} className="rounded-full border border-outline/20 px-2 text-sm">{`${reaction.emoji} ${reaction.count}`}</span>)}</p> : null}
-                  <button type="button" data-testid={`responder-${keyOf(item)}`} onClick={() => props.onOpen(item)} className="mt-3 flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-on-primary">
+                  <button type="button" data-testid={`responder-${keyOf(item)}`} onClick={() => props.onOpen(item, tab === 'threads')} className="mt-3 flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-on-primary">
                     {tab === 'threads' ? <MessagesSquare size={15} /> : <CornerUpLeft size={15} />}
-                    {tab === 'threads' ? `${item.thread?.replies ?? 0} respuestas · Ver hilo` : tab === 'reactions' ? 'Ver en el chat' : 'Responder en el chat'}
+                    {tab === 'threads' ? `${textoDelChipDeHilo({ respuestas: item.thread?.replies ?? 0 })} · Ver hilo` : tab === 'reactions' ? 'Ver en el chat' : 'Responder en el chat'}
                     <ArrowRight size={15} />
                   </button>
                 </div>

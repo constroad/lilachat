@@ -3,7 +3,7 @@ import { botCardSummary, type BotCard, type BotPost } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Chat, type Message } from '../chatModels.js';
 import { chatMemberIds, sendMessage } from '../chatService.js';
 import { createChecklistInChat } from '../checklistService.js';
-import { publicarMensaje } from '../reparto.js';
+import { notifyThread, publicarMensaje } from '../reparto.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { BotInstallationModel, type BotInstallation } from './botModels.js';
 import { channelOfPostedTopic } from './botTopics.js';
@@ -86,7 +86,9 @@ async function publishText(installation: Installation, chatId: Types.ObjectId, p
     ...(post.threadOf ? { hiloDe: post.threadOf } : {}),
   });
   if (post.clientRef && !result.duplicate) await MessageModel.updateOne({ _id: result.message._id }, { $set: { clientRef: post.clientRef } });
-  if (!result.duplicate) await publicarMensaje(result.message, result.members);
+  if (result.duplicate) return result.message;
+  await publicarMensaje(result.message, result.members);
+  if (result.hilo && post.threadOf) notifyThread(String(chatId), post.threadOf, result.hilo, result.members);
   return result.message;
 }
 

@@ -159,6 +159,18 @@ describe('an app answers a command with a form', () => {
     await request(app).get(`${photoUrl.pathname}x`).expect(404);
   });
 
+  it('nothing_to_report closes the form and leaves no answer (agentes, 05/11): the card already changed', async () => {
+    // Arrange
+    const commandId = await openForm();
+    const { fileId } = (await uploadPhoto(commandId).expect(201)).body;
+    answer = json({ text: 'Listo: revisa la tarjeta.', nothing_to_report: true });
+    // Act
+    const done = await submit(commandId, { accion: 'ingreso', ubicacion: here, foto: fileId }).expect(200);
+    // Assert
+    expect(done.body).toMatchObject({ commandId, outcome: 'posted' });
+    expect(done.body.response).toBeUndefined();
+  });
+
   it('the live selfie comes back stamped with the hour and the place; one it cannot read goes as it came (pending 94)', async () => {
     // Arrange: a real 320×240 white photo, sent with the place the form has.
     const commandId = await openForm();

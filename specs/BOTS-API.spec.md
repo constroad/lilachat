@@ -362,6 +362,10 @@ día, la hora o ambos. Hasta 20 campos.
   command_id, values, channel, user }`. La app responde como a un comando, o
   con `{ "errors": { "campo": "…", "_": "…" } }` y el formulario queda abierto
   con esos errores.
+- **`nothing_to_report: true` cierra el formulario sin aviso** (05/11/2026, agentes:
+  el resultado ya se ve en la tarjeta que lo abrió). Va en la respuesta a
+  `form.submitted`, y gana a cualquier otro campo del cuerpo: un `text` al lado solo
+  sirve para un server anterior a este cambio. Lilachat no publica nada.
 - **Responder «después» también llega en la misma llamada** (25/10/2026,
   agentes: «No se pudo confirmar» de una firma que sí se registró). Si la app
   solo confirma la recepción (200 vacío o `{}`) y contesta por
@@ -1007,6 +1011,15 @@ e-33. Contrato cerrado con agentes el 24/10:
   antes, y es su 1:1, la nombraron o tiene `channels:history`). Si no, o si el mensaje se borró,
   es secreto, es de la propia app o es de otro espacio: **404 `message_not_found`**. Un mensaje
   escuchado sin archivo da `{ files: [] }`.
+- `GET /api/bots/channels/:id/files?from=&to=` → `{ messages: [ { id, seq, text, thread_of?, at,
+  author: { id, name, phone }, files: [ { url, mime, name, size? } ] } ], has_more }` (05/11). Lo
+  que la app escuchó en un canal entre dos fechas (`from` incluida, `to` no; ISO o `AAAA-MM-DD`,
+  que se lee como 00:00 UTC). Sirve para los vouchers enviados antes de que existiera el preview,
+  o mientras la app no pudo leerlos. Solo foto, documento y nota de voz, del más nuevo al más viejo,
+  con direcciones recién firmadas de 15 minutos. Regla: la misma de `/messages/:id/files`, mensaje
+  por mensaje. Página de 100 candidatos: `has_more: true` pide acortar las fechas. Fechas que no se
+  leen o `from` después de `to`: **400 `invalid_request`**. Canal de otro espacio o sin la app:
+  **404 `channel_not_found`**.
 
 El bot entra solo a todos los canales públicos al instalarse, y a cada canal
 público nuevo. A uno privado entra si lo agregan.

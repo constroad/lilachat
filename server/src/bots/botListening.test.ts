@@ -243,6 +243,67 @@ describe('a file read again after its 15 minutes (agentes, 04/11)', () => {
     await read(named._id, token).expect(200);
   });
 
+  describe('what the app heard in a channel, by dates (José, 05/11: vouchers sent before the preview existed)', () => {
+    const list = (token: string, query = 'from=2026-11-04T00:00:00Z&to=2026-11-05T00:00:00Z', id: unknown = channel) => request(app).get(`/api/bots/channels/${String(id)}/files?${query}`).set({ Authorization: `Bearer ${token}` });
+    const day = (hour: number) => ({ at: new Date(`2026-11-04T${hour}:00:00Z`) });
+    const joined = (botUserId: Types.ObjectId, at: string) => ChatModel.updateOne({ _id: channel, 'members.userId': botUserId }, { $set: { 'members.$.joinedAt': new Date(at) } });
+
+    it('lists the photos of those days, newest first, with who sent them and a fresh address', async () => {
+      // Arrange
+      const { token, installation } = await installPortal(['channels:history']);
+      await joined(installation.botUserId, '2026-11-01T00:00:00Z');
+      await photo(1, day(10));
+      await photo(2, day(18));
+      await photo(3, { at: new Date('2026-11-03T18:00:00Z') });
+      await say(4, 'sin foto', day(12));
+      // Act
+      const answer = await list(token).expect(200);
+      // Assert
+      expect(answer.body.messages.map((one: { seq: number }) => one.seq)).toEqual([2, 1]);
+      expect(answer.body.messages[0]).toMatchObject({ text: '/gastos pago parcial', at: '2026-11-04T18:00:00.000Z', author: { id: String(ana) }, files: [{ mime: 'image/jpeg', name: 'v.jpg' }] });
+      expect(answer.body.messages[0].id).toEqual(expect.any(String));
+    });
+
+    it('more than a page says so, and the app narrows the dates', async () => {
+      // Arrange
+      const { token, installation } = await installPortal(['channels:history']);
+      await joined(installation.botUserId, '2026-11-01T00:00:00Z');
+      await MessageModel.insertMany(Array.from({ length: 101 }, (_, index) => ({ chatId: channel, seq: index + 1, senderId: ana, clientKey: `k${index}`, kind: 'image', media: PHOTO, ...day(12) })));
+      // Act
+      const answer = await list(token).expect(200);
+      // Assert
+      expect(answer.body.messages).toHaveLength(100);
+      expect(answer.body.has_more).toBe(true);
+    });
+
+    it('only what it could hear: no mention without channels:history, nothing from before it joined, nothing deleted', async () => {
+      // Arrange
+      const { token, installation } = await installPortal([]);
+      await photo(1, day(10));
+      await photo(2, { ...day(11), body: '@Portal súbelo' });
+      await photo(3, { ...day(12), body: '@Portal borrada', deletedAt: new Date() });
+      await photo(4, { at: new Date('2026-11-04T09:00:00Z'), body: '@Portal temprano' });
+      await joined(installation.botUserId, '2026-11-04T10:30:00Z');
+      // Act
+      const answer = await list(token).expect(200);
+      // Assert
+      expect(answer.body.messages.map((one: { seq: number }) => one.seq)).toEqual([2]);
+    });
+
+    it('a channel of another space or without the app is a 404, and dates that do not read are a 400', async () => {
+      // Arrange
+      const { token, installation } = await installPortal(['channels:history']);
+      const otherSpace = (await WorkspaceModel.create({ name: 'Otra', ownerId: jose, joinCode: 'OTRA-1234' }))._id;
+      const stranger = await installPortal(['channels:history'], otherSpace);
+      await ChatModel.updateOne({ _id: channel }, { $pull: { members: { userId: installation.botUserId } } });
+      // Act and assert
+      expect((await list(token).expect(404)).body.error).toBe('channel_not_found');
+      expect((await list(stranger.token).expect(404)).body.error).toBe('channel_not_found');
+      expect((await list(token, 'from=ayer').expect(400)).body.error).toBe('invalid_request');
+      expect((await list(token, 'from=2026-11-05&to=2026-11-04').expect(400)).body.error).toBe('invalid_request');
+    });
+  });
+
   it('another space\'s app reads nothing, even with channels:history', async () => {
     await installPortal(['channels:history']);
     const otherSpace = (await WorkspaceModel.create({ name: 'Otra', ownerId: jose, joinCode: 'OTRA-1234' }))._id;

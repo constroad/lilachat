@@ -12,7 +12,7 @@ import { installationByToken, revokeInstallation } from './botInstall.js';
 import { postBotMessage, updateBotMessage } from './botMessages.js';
 import { upsertClientChannel } from './botClients.js';
 import { setTopicChannels, setTopicOffered, topicRoutesOf } from './botTopics.js';
-import { filesHeardBy } from './botTriggers.js';
+import { channelFilesHeardBy, filesHeardBy } from './botTriggers.js';
 import type { BotApp, BotInstallation } from './botModels.js';
 import { appForConsent, authorize, exchangeCode } from './oauthService.js';
 
@@ -93,6 +93,13 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
     res.json({ installation_id: String(req.bot!._id), space: { id: String(req.bot!.workspaceId), name: space?.name ?? '' }, bot_user_id: String(req.bot!.botUserId) });
   }));
   router.get('/channels', asyncRoute(async (req, res) => res.json({ channels: await channelsOf(req.bot!) })));
+  router.get('/channels/:id/files', asyncRoute(async (req, res) => {
+    const [from, to] = [new Date(String(req.query.from)), new Date(String(req.query.to))];
+    if (!(from.getTime() < to.getTime())) return void res.status(400).json({ error: 'invalid_request', message: 'Manda from y to como fechas, con from antes que to.' });
+    const heard = await channelFilesHeardBy(req.bot!, String(req.params.id), { from, to });
+    if (!heard) return void res.status(404).json({ error: 'channel_not_found', message: 'Ese canal no existe o esta app no está en él.' });
+    res.json(heard);
+  }));
   router.get('/members', asyncRoute(async (req, res) => res.json({ members: await membersOf(req.bot!) })));
   router.post('/messages', asyncRoute(async (req, res) => {
     if (!messageTries.permitir(String(req.bot!._id))) return void res.status(429).set('Retry-After', '60').json({ error: 'rate_limited', message: 'Más de 60 mensajes por minuto.' });

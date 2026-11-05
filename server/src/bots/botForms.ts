@@ -175,8 +175,16 @@ export async function submitForm(userId: Types.ObjectId, scope: CommandScope, co
   }
 }
 
+/** The app already showed the result, in the card that opened this form (agentes, 05/11): `text` is only for servers before this. */
+const reportsNothing = (reply: Awaited<ReturnType<typeof callBotWebhook>>) => reply.status !== null && reply.status < 400 && (reply.body as { nothing_to_report?: unknown } | null)?.nothing_to_report === true;
+
 /** What the app said: its errors keep the form open; a slow or empty answer leaves it «enviando» until `/respond`. */
 async function answerOf(reply: Awaited<ReturnType<typeof callBotWebhook>>, ctx: { installation: Parameters<typeof deliverResponse>[0]; run: Parameters<typeof deliverResponse>[1]; chat: ChatOfCommand | null; base: Base }): Promise<FormOutcome> {
+  if (reportsNothing(reply)) {
+    recordLastDelivery(ctx.installation._id, { ok: true });
+    await BotCommandRunModel.updateOne({ _id: ctx.run._id }, { $inc: { responses: 1 }, $unset: { form: 1 } });
+    return { ...ctx.base, outcome: 'posted' };
+  }
   // A timeout, or a body that only acknowledges: the answer comes by /respond.
   if (reply.error === 'timeout' || (reply.status !== null && reply.status < 400 && isAckBody(reply.body))) return { ...ctx.base, outcome: 'pending' };
   const judged = reply.status !== null && reply.status < 400 ? validateFormReply(reply.body) : { ok: false as const, message: reply.error ?? 'Sin respuesta' };

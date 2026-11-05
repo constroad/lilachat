@@ -615,6 +615,9 @@ en la Cuenta, el año en las fechas de otro año y el toque en las filas con com
 OTA `a86e8c73` del 05/11/2026 sobre el runtime `79221c17` (git `fee9f9f`): solo llega a la 0.1.180. La fila de una tarjeta guardada
 corre aunque el comando esté apagado en ese canal. Verificada en el emulador con una tarjeta real.
 
+OTA `9fceffbd` del 05/11/2026 sobre el runtime `79221c17` (git `4fa3d71`): solo llega a la 0.1.180. Un botón de tarjeta corre una
+línea (Completar y Editar de /gastos) y las filas funcionan dentro de un hilo. Verificada en el emulador en Test.
+
 ## 5. Errores conocidos y arreglo
 
 | Síntoma | Causa | Arreglo |

@@ -36,6 +36,8 @@ function mentionsBot(message: Pick<Message, 'body' | 'menciones'>, bot: Pick<Bot
 }
 
 const HISTORY_SCOPE = 'channels:history';
+/** One page of a channel's files: a voucher channel sends few a day, more means narrowing the dates. */
+const CHANNEL_FILES_PAGE = 100;
 /** The kinds whose file goes to the app: a photo, a document, a voice note. Stickers and videos do not (nobody reads them, and a video is heavy). */
 const FILE_KINDS: ReadonlySet<Message['kind']> = new Set(['image', 'file', 'audio']);
 
@@ -56,18 +58,50 @@ export function filesOf(message: Pick<Message, '_id' | 'kind' | 'media'>, now = 
  * die in 15 minutes and an approval can come later. Same rule as hearing it live,
  * so null (a 404) for a message this app never heard.
  */
-export async function filesHeardBy(installation: Pick<BotInstallation, 'workspaceId' | 'botUserId' | 'grantedScopes'>, messageId: string): Promise<ReturnType<typeof filesOf> | null> {
+export async function filesHeardBy(installation: Listener, messageId: string): Promise<ReturnType<typeof filesOf> | null> {
   if (!Types.ObjectId.isValid(messageId)) return null;
   const message = await MessageModel.findOne({ _id: messageId, deletedAt: { $exists: false } }).select('_id chatId senderId kind body menciones media envelope at').lean<Message | null>();
-  if (!message || message.envelope || String(message.senderId) === String(installation.botUserId)) return null;
+  if (!message) return null;
+  const room = await roomOf(installation, message.chatId);
+  return room && heardInRoom(message, installation, room) ? filesOf(message) : null;
+}
+
+type Listener = Pick<BotInstallation, 'workspaceId' | 'botUserId' | 'grantedScopes'>;
+type Room = { chat: Chat; botName: string; joinedAt?: Date };
+
+/** The app's place in a chat of its space: null when it is not there. */
+async function roomOf(installation: Listener, chatId: Types.ObjectId | string): Promise<Room | null> {
   const [chat, botUser] = await Promise.all([
-    ChatModel.findOne({ _id: message.chatId, workspaceId: installation.workspaceId }).select('kind members').lean<Chat | null>(),
+    ChatModel.findOne({ _id: chatId, workspaceId: installation.workspaceId }).select('kind members').lean<Chat | null>(),
     UserModel.findById(installation.botUserId).select('name').lean(),
   ]);
   const membership = chat?.members.find((member) => String(member.userId) === String(installation.botUserId));
-  if (!chat || !membership || (membership.joinedAt && message.at < membership.joinedAt)) return null;
-  const named = mentionsBot(message, installation, botUser?.name ?? '');
-  return botHears({ chatKind: chat.kind, named, scopes: installation.grantedScopes ?? [] }) ? filesOf(message) : null;
+  return chat && membership ? { chat, botName: botUser?.name ?? '', joinedAt: membership.joinedAt } : null;
+}
+
+/** The same rule as hearing it live: not its own, not encrypted, not from before it joined, and `botHears`. */
+function heardInRoom(message: Message, installation: Listener, room: Room): boolean {
+  if (message.envelope || String(message.senderId) === String(installation.botUserId)) return false;
+  if (room.joinedAt && message.at < room.joinedAt) return false;
+  return botHears({ chatKind: room.chat.kind, named: mentionsBot(message, installation, room.botName), scopes: installation.grantedScopes ?? [] });
+}
+
+/**
+ * What the app heard in a channel between two dates (José, 05/11): the vouchers
+ * sent before the preview existed, or while the app could not read them. Newest
+ * first, one page; null (a 404) for a chat the app is not in.
+ */
+export async function channelFilesHeardBy(installation: Listener, chatId: string, range: { from: Date; to: Date }) {
+  const room = Types.ObjectId.isValid(chatId) ? await roomOf(installation, chatId) : null;
+  if (!room) return null;
+  const found = await MessageModel.find({ chatId, kind: { $in: [...FILE_KINDS] }, at: { $gte: range.from, $lt: range.to }, deletedAt: { $exists: false } })
+    .sort({ at: -1 })
+    .limit(CHANNEL_FILES_PAGE + 1)
+    .select('_id seq senderId kind body menciones media envelope at hiloDe')
+    .lean<Message[]>();
+  const heard = found.slice(0, CHANNEL_FILES_PAGE).filter((message) => message.media?.url && heardInRoom(message, installation, room));
+  const authors = new Map(await Promise.all([...new Set(heard.map((message) => String(message.senderId)))].map(async (id) => [id, await personOf(id)] as const)));
+  return { messages: heard.map((message) => ({ ...messageData(message), at: message.at, author: authors.get(String(message.senderId)), files: filesOf(message) })), has_more: found.length > CHANNEL_FILES_PAGE };
 }
 
 type Hearing = { chat: Chat; bots: { bot: BotOfUser; name: string }[] };

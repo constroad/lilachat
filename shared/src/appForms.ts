@@ -501,11 +501,11 @@ function checkList(field: Extract<FormField, { kind: 'list' }>, value: unknown):
 const foldChar = (char: string) => char.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const foldText = (text: string) => Array.from(text).map(foldChar).join('');
 
-/** The options of a long list that match the search, without accents or capitals; empty search = all. */
+/** The options of a long list that match the search in the name or the line below it, without accents or capitals; empty search = all. */
 export function filterChoiceOptions(options: readonly ChoiceOption[], query: string): ChoiceOption[] {
   const wanted = foldText(query.trim());
   if (!wanted) return [...options];
-  return options.filter((option) => foldText(option.label).includes(wanted));
+  return options.filter((option) => foldText(option.label).includes(wanted) || foldText(option.sub ?? '').includes(wanted));
 }
 
 /** Where the search falls in a label, to tint it (design e-35); null when it does not. */

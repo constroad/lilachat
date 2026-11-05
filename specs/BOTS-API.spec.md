@@ -863,7 +863,8 @@ un id. Una lista de fotos dice «Se registra con las fotos», no «con tu foto»
 Para marcar asistencia eligiendo el nombre (agentes, 24/10; diseño e-35):
 - Un `enum` (o `oneOf: [{ const, title, description? }]`) con **más de 8**
   opciones se dibuja como un campo que abre una hoja con buscador: filtra por
-  el nombre sin tildes ni mayúsculas, dice «3 de 31», resalta lo que coincide y
+  el nombre y por `description` (05/11: un servicio se busca por su cliente), sin
+  tildes ni mayúsculas, dice «3 de 31», resalta lo que coincide en el nombre y
   muestra `description` como línea de abajo (el cargo). Hasta 300 opciones.
 - `x-input: "pin"`: dígitos ocultos mientras se escriben, teclado numérico,
   sin autocompletar. Nunca toma `default`, nunca se guarda en el teléfono ni

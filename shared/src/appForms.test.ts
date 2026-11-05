@@ -225,6 +225,17 @@ describe('marking attendance by name: the company\'s list and the PIN (agentes, 
     expect(conDespacho).toMatchObject({ kind: 'choice', searchable: false, segmented: true });
   });
 
+  it('the search also reads the line below the name (José 05/11: a service is found by its client)', () => {
+    // Arrange
+    const options = [{ value: 's1', label: 'obra la molina', sub: 'Constructora Los Andes SAC' }, { value: 's2', label: 'Mejoramiento vial', sub: 'Municipalidad de Lurín' }, { value: 's3', label: 'Base granular' }];
+    // Act
+    const byClient = filterChoiceOptions(options, 'lurin');
+    const byName = filterChoiceOptions(options, 'granular');
+    // Assert
+    expect(byClient.map((option) => option.value)).toEqual(['s2']);
+    expect(byName.map((option) => option.value)).toEqual(['s3']);
+  });
+
   it('the search ignores accents and capitals and tells where it falls', () => {
     const [person] = formFields(form);
     const options = person!.kind === 'choice' ? person.options : [];

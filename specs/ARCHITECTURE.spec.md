@@ -9119,6 +9119,21 @@ y «Editar» con el formulario.
 
 La cuenta de Aracely ya pasó por /gastos en #flujo-caja real: su voucher de S/ 500 sacó vista previa sin usuario en Portal.
 
+**Cuarta prueba en Test (05/11)**, con Lilachat `4fa3d71`, OTA `9fceffbd` y agentes `24ac318`, en la web y la app:
+
+| Paso | Qué pasó |
+| --- | --- |
+| Foto con `/gastos` y nada más | «Falta un dato» con «Completar» y «Descartar» |
+| Completar, dentro del hilo | El formulario se abre encima. Al elegir el servicio aparece «Partida» con sus partidas |
+| Guardar | La misma tarjeta pasa a «Por aprobar», con «Aprobar», «Editar» y «Descartar» |
+| Editar | Abre con servicio, partida, monto, fecha, detalle, medio, operación, comisión e ITF cargados |
+| Agregar comisión e ITF y Aprobar | «REGISTRADO». Sale «Caja del 30 de octubre», con S/ 64,50 y 3 movimientos: gasto, Comisión e ITF |
+
+La prueba encontró un fallo en la app. Después de buscar el servicio el teclado seguía abierto, y la lista de partidas, sin buscador,
+quedaba detrás: la pantalla se oscurecía y no se veía nada que elegir. Ahora la lista sin buscador cierra el teclado.
+
+«Caja · Hoy» sigue sumando un gasto borrado después: la tarjeta guarda lo que le avisaron. Es de agentes.
+
 **Cómo lee hoy agentes (`bcf4966`, leído por su sesión):** `claude-haiku-5-5` recibe la foto en
 base64, sin OCR, y devuelve `expenses[]` (`lila/vouchers.ts`). El modelo elige el servicio del
 catálogo de `opciones_de_gasto`, que no trae el cliente. El control de duplicados mira operación y

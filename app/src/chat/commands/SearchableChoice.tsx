@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
+import { FlatList, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import { Check, ChevronDown, Search, X } from 'lucide-react-native';
 import { SEARCHABLE_FROM, filterChoiceOptions, matchSpan, showsInitials, type ChoiceOption, type FormField } from '@lilachat/shared';
 import { Sheet } from '../../ui/Sheet';
@@ -33,7 +33,7 @@ export function SearchableChoice(props: { field: Choice; value: unknown; onChang
         </View>
         <ChevronDown size={18} color={colors['on-surface-variant']} />
       </Pressable>
-      {open ? <ChoiceSheet field={props.field} value={props.value} onPick={(value) => { props.onChange(value); setOpen(false); }} onClose={() => setOpen(false)} /> : null}
+      {open ? <ChoiceSheet field={props.field} value={props.value} onPick={(value) => { Keyboard.dismiss(); props.onChange(value); setOpen(false); }} onClose={() => setOpen(false)} /> : null}
     </>
   );
 }
@@ -43,12 +43,13 @@ function ChoiceSheet(props: { field: Choice; value: unknown; onPick: (value: str
   const [query, setQuery] = useState('');
   const shown = useMemo(() => filterChoiceOptions(props.field.options, query), [props.field.options, query]);
   // A search box over three rows is noise, and the keyboard it raises hides them (José, 24/10: carriers and quarries are dropdowns even when short).
+  // Without a search no keyboard may stay open: this sheet sits at the bottom, behind it (E2E 05/11: the partidas, after searching the service).
   const withSearch = props.field.options.length > SEARCHABLE_FROM;
   // Initials beside people and clients, not beside «No» or a mix design (E2E 28/10).
   const initials = showsInitials(props.field);
   // A long list keeps one height while typing; a short one is as tall as its rows.
   return (
-    <Sheet visible onClose={props.onClose} testID={`hoja-${props.field.name}`} dragArea="handle" bottomRoom={0} keyboard="keep" {...(withSearch ? { height: SHEET_MAX_SHARE } : { maxHeight: SHEET_MAX_SHARE })}>
+    <Sheet visible onClose={props.onClose} testID={`hoja-${props.field.name}`} dragArea="handle" bottomRoom={0} keyboard={withSearch ? 'keep' : 'dismiss'} {...(withSearch ? { height: SHEET_MAX_SHARE } : { maxHeight: SHEET_MAX_SHARE })}>
       <View className="flex-row items-center px-4">
         <Text className="flex-1 text-[20px] font-bold text-on-surface">{props.field.label}</Text>
         <Pressable onPress={props.onClose} accessibilityLabel="Cerrar" className="h-11 w-11 items-center justify-center rounded-full bg-background"><X size={20} color={colors['on-surface-variant']} /></Pressable>

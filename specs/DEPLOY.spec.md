@@ -603,6 +603,9 @@ APK 0.1.180: versionCode 181, runtime `79221c17`, publicado en LilaStore `stable
 OTA `5179d0eb` del 04/11/2026 sobre el runtime `79221c17` (git `36b0890`): solo llega a la 0.1.180. Lleva los arreglos del
 formulario, audios seguidos, videollamada sin bloqueo, delta del tanque y hora por persona.
 
+OTA `05171242` del 04/11/2026 sobre el runtime `79221c17` (git `7e61ad6`): solo llega a la 0.1.180. Lleva «1 respuesta» en singular en Hilos.
+Smoke verde. No se vio en el emulador: Test no tiene hoy un hilo de una respuesta en esa lista.
+
 OTA `9be6cb82` del 04/11/2026 sobre el runtime `79221c17` (git `5eeea35`): solo llega a la 0.1.180. Lleva la foto de la marca
 y el lugar en el detalle de personas. Se ven cuando Inframaq mande `evidence`.
 

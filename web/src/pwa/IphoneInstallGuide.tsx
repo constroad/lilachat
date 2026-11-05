@@ -5,8 +5,8 @@ import type { useInstalarApp } from './instalar';
 import { needsIosInstall } from './iosInstall';
 
 const STEPS: { Icon: typeof Share; title: string; hint: string }[] = [
-  { Icon: Share, title: 'Toca Compartir en Safari', hint: 'Es el cuadrado con la flecha hacia arriba, en la barra del navegador.' },
-  { Icon: SquarePlus, title: 'Elige «Añadir a pantalla de inicio»', hint: 'Si no aparece, baja en la lista o toca «Más».' },
+  { Icon: Share, title: 'Toca Compartir en Safari', hint: 'Es el cuadrado con la flecha hacia arriba. Si no lo ves, toca primero «…» junto a la dirección.' },
+  { Icon: SquarePlus, title: 'Elige «Añadir a pantalla de inicio»', hint: 'Si no aparece, baja en la lista o toca «Ver más». Deja encendido abrir como app web.' },
   { Icon: Smartphone, title: 'Abre Lilachat desde el ícono nuevo', hint: 'Entra ahí con tu correo o tu número: lo que hagas en Safari no pasa a la app.' },
 ];
 

@@ -2,7 +2,7 @@ import { validateFormSpec, type AppForm, type FormSchema, type FormSchemaPropert
 
 /**
  * A field report filled from Lilachat by sections (José 05/11/2026, spec
- * INFORMES-DESDE-LILACHAT §3.1). Portal's `informe_de_campo` answers the
+ * INFORMES-DESDE-LILACHAT §3.1). Portal's field-report tool answers the
  * document: which sections it has, each one's form, values, state and the
  * results Portal computed. Every section is a real form of the engine, saved
  * through `guardar_seccion_de_informe`; a repeat (the tramos) stamps the same

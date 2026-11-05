@@ -25,7 +25,7 @@ export function StateDot({ state, small }: { state: SectionState; small?: boolea
   );
 }
 
-/** What a section measured (the tasa, the área), label over value, in a strip under the summary. */
+/** What a section measured (the rate, the area), label over value, in a strip under the summary. */
 export function ResultsStrip({ results, testID }: { results: readonly SectionResult[]; testID?: string }) {
   if (!results.length) return null;
   return (

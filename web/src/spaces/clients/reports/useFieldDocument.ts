@@ -9,7 +9,7 @@ import { askReportDraft } from './reportsApi';
  * `null` while the first ask is out; a later `reload` keeps what is on screen.
  * The id learnt from the first answer rides with the next asks.
  */
-export function useFieldDocument(target: ServiceAskTarget, serviceId: string, type: string): { draft: ReportDraftResult | null; reload: () => void } {
+export function useFieldDocument(target: ServiceAskTarget, serviceId: string, type: string): { draft: ReportDraftResult | null; reload: () => void; /** A form was answered since the page opened: the detail behind must ask again. */ reloaded: boolean } {
   const { jwt, spaceId, clientId } = target;
   const [draft, setDraft] = useState<ReportDraftResult | null>(null);
   const [round, setRound] = useState(0);
@@ -25,5 +25,5 @@ export function useFieldDocument(target: ServiceAskTarget, serviceId: string, ty
     });
     return () => controller.abort();
   }, [jwt, spaceId, clientId, serviceId, type, round]);
-  return { draft, reload };
+  return { draft, reload, reloaded: round > 0 };
 }

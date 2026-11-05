@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { AlertTriangle, ChevronLeft, ExternalLink, FileText } from 'lucide-react-native';
-import { formKeyOf, itemsLine, publishBlockers, reportTypeLabel, sectionBadge, STATUS_BADGE, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
+import { formKeyOf, itemsLine, publishBlockers, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
 import { AppFormSheet } from '../../../chat/commands/AppFormSheet';
 import { EphemeralAnswers } from '../../../chat/commands/EphemeralAnswers';
 import { useColores } from '../../../ui/tema';
@@ -113,16 +113,12 @@ function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems }: { 
 /** The state of the screen: the document, the open tramos list, the forms and Android's back. */
 function useReportScreen(props: Props) {
   const { target, chatId, service, type, onClose } = props;
-  const { draft, reload } = useFieldDocument(target, service.id, type);
-  const changed = useRef(false);
-  const answered = useCallback(() => {
-    changed.current = true;
-    reload();
-  }, [reload]);
-  const forms = useReportForms(target, chatId, service.id, answered);
+  const { draft, reload, reloaded } = useFieldDocument(target, service.id, type);
+  const forms = useReportForms(target, chatId, service.id, reload);
   const [itemsOf, setItemsOf] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
-  const back = useCallback(() => (itemsOf ? setItemsOf(null) : onClose(changed.current)), [itemsOf, onClose]);
+  // Inside the tramos, back goes to the hub; in the hub, back closes and the detail asks again if something was saved.
+  const back = useCallback(() => (itemsOf ? setItemsOf(null) : onClose(reloaded)), [itemsOf, onClose, reloaded]);
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       back();
@@ -130,16 +126,7 @@ function useReportScreen(props: Props) {
     });
     return () => subscription.remove();
   }, [back]);
-  const report = draft?.ok ? draft.document : null;
-  const items = report?.sections.find((section) => section.id === itemsOf);
-  const open = (path: SectionPath) => {
-    if (report) void forms.openSection(report, path);
-  };
-  const publish = () => {
-    setPublishing(false);
-    if (report) void forms.openPublish(report);
-  };
-  return { draft, report, items, forms, open, publish, publishing, setPublishing, setItemsOf, back };
+  return { draft, ...reportViewOf(draft, itemsOf), forms, publishing, setPublishing, setItemsOf, back };
 }
 
 /**
@@ -155,17 +142,22 @@ export function ReportDocumentScreen(props: Props) {
   const pdf = useReportPdf(props.target, props.service.id, files.open);
   const kicker = report ? report.title : reportTypeLabel(props.type);
   const notice = files.notice ?? pdf.message;
+  const open = (path: SectionPath) => report && void forms.openSection(report, path);
+  const publish = () => {
+    screen.setPublishing(false);
+    if (report) void forms.openPublish(report);
+  };
   return (
     <View className="flex-1">
       <ScrollView testID="informe-documento" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 24 }}>
         <ReportHeader kicker={items ? `${kicker} · ${items.title}` : kicker} title={props.service.name} report={report} onBack={screen.back} />
         <EphemeralAnswers answers={forms.answers.answers} onDismiss={forms.answers.dismiss} onOpenForm={forms.answers.showForm} chatId={props.chatId} jwt={props.target.jwt} embedded />
-        <ReportBody draft={screen.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={screen.open} onOpenItems={screen.setItemsOf} />
+        <ReportBody draft={screen.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={open} onOpenItems={screen.setItemsOf} />
         {notice ? <Text className="text-center text-[13px] text-error">{notice}</Text> : null}
       </ScrollView>
       {report && !items ? <ReportFooter report={report} asking={pdf.asking} onPublish={() => screen.setPublishing(true)} onPdf={() => void pdf.ask(report.id ?? '', `${report.title} · PDF`)} onDone={() => props.onClose(true)} /> : null}
       {files.viewer}
-      {report ? <PublishSheet document={report} visible={screen.publishing} onClose={() => screen.setPublishing(false)} onPublish={screen.publish} /> : null}
+      {report ? <PublishSheet document={report} visible={screen.publishing} onClose={() => screen.setPublishing(false)} onPublish={publish} /> : null}
       {forms.answers.openForm ? (
         <AppFormSheet key={formKeyOf(forms.answers.openForm)} answer={forms.answers.openForm} onSubmit={(values) => forms.answers.submitForm(forms.answers.openForm!, values)} onUpload={(photo, stamp) => forms.answers.uploadPhoto(forms.answers.openForm!.commandId, photo, stamp)} onRefresh={(values) => forms.answers.refreshForm(forms.answers.openForm!, values)} onPreview={(values) => forms.answers.previewForm(forms.answers.openForm!, values)} onClose={() => forms.answers.dismiss(forms.answers.openForm!.commandId)} />
       ) : null}

@@ -1,6 +1,6 @@
-import { useCallback, useRef, useState } from 'react';
+import { useState } from 'react';
 import { AlertTriangle, ChevronLeft, ExternalLink, FileText } from 'lucide-react';
-import { formKeyOf, itemsLine, publishBlockers, reportTypeLabel, sectionBadge, STATUS_BADGE, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
+import { formKeyOf, itemsLine, publishBlockers, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
 import { loadPerfil } from '../../../api';
 import { AppFormDialog } from '../../../chat/commands/AppFormDialog';
 import { EphemeralAnswers } from '../../../chat/commands/EphemeralAnswers';
@@ -88,29 +88,22 @@ function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems }: { 
   );
 }
 
-/** The state of the page: the document, the open tramos list and the forms. */
+/** The state of the page: the document, the open tramos list and the forms (no hardware back here). */
 function useReportPage(props: Props) {
   const { target, chatId, service, type, onClose } = props;
-  const { draft, reload } = useFieldDocument(target, service.id, type);
-  const changed = useRef(false);
-  const answered = useCallback(() => {
-    changed.current = true;
-    reload();
-  }, [reload]);
-  const forms = useReportForms(target, chatId, service.id, answered);
+  const { draft, reload, reloaded } = useFieldDocument(target, service.id, type);
+  const forms = useReportForms(target, chatId, service.id, reload);
   const [itemsOf, setItemsOf] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
-  const back = useCallback(() => (itemsOf ? setItemsOf(null) : onClose(changed.current)), [itemsOf, onClose]);
-  const report = draft?.ok ? draft.document : null;
-  const items = report?.sections.find((section) => section.id === itemsOf);
-  const open = (path: SectionPath) => {
-    if (report) void forms.openSection(report, path);
-  };
+  const view = reportViewOf(draft, itemsOf);
+  // Inside the tramos, back goes to the hub; in the hub, back closes and the detail asks again if something was saved.
+  const back = () => (itemsOf ? setItemsOf(null) : onClose(reloaded));
+  const open = (path: SectionPath) => view.report && void forms.openSection(view.report, path);
   const publish = () => {
     setPublishing(false);
-    if (report) void forms.openPublish(report);
+    if (view.report) void forms.openPublish(view.report);
   };
-  return { draft, report, items, forms, open, publish, publishing, setPublishing, setItemsOf, back };
+  return { draft, ...view, forms, open, publish, publishing, setPublishing, setItemsOf, back };
 }
 
 /**

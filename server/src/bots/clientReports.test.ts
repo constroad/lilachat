@@ -32,10 +32,10 @@ const openOf = (who: Types.ObjectId, body: Record<string, unknown>) => request(a
 
 const generalForm = { type: 'object', properties: { liquido: { type: 'string', title: 'Líquido', oneOf: [{ const: 'MC-30', title: 'MC-30' }, { const: 'EMULSION', title: 'Emulsión' }] }, responsable: { type: 'string', title: 'Responsable' } }, required: ['liquido', 'responsable'] };
 const ubicacionForm = { type: 'object', properties: { tramo: { type: 'string', title: 'Tramo' } }, required: ['tramo'] };
-const fotosForm = { type: 'object', properties: { foto: { type: 'string', title: 'Foto', 'x-input': 'photo' }, descripcion: { type: 'string', title: 'Descripción', maxLength: 200 } }, required: ['foto'] };
+const photosForm = { type: 'object', properties: { foto: { type: 'string', title: 'Foto', 'x-input': 'photo' }, descripcion: { type: 'string', title: 'Descripción', maxLength: 200 } }, required: ['foto'] };
 const document = {
   id: null, type: 'CTL-IMP', title: 'Control de imprimación', status: 'draft',
-  forms: { general: generalForm, ubicacion: ubicacionForm, fotos: fotosForm },
+  forms: { general: generalForm, ubicacion: ubicacionForm, fotos: photosForm },
   sections: [
     { id: 'general', title: 'Datos generales', required: true, state: 'empty', summary: [], results: [], form: 'general', values: { responsable: 'Ana Torres' } },
     { id: 'tramos', title: 'Tramos', required: true, enabled: false, state: 'empty', summary: [], repeat: { itemTitle: 'Tramo', addLabel: 'Agregar tramo', min: 1, template: [{ id: 'ubicacion', title: 'Ubicación', required: true, form: 'ubicacion' }, { id: 'fotos', title: 'Fotos', required: false, form: 'fotos', tool: 'agregar_foto_de_informe' }] }, items: [] },

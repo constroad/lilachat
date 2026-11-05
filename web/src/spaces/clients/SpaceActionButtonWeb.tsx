@@ -1,9 +1,9 @@
-import { useEffect, useRef } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { answeredSince, formKeyOf, type ShortcutValues } from '@lilachat/shared';
+import { formKeyOf, type ShortcutValues } from '@lilachat/shared';
 import { loadPerfil } from '../../api';
 import { AppFormDialog } from '../../chat/commands/AppFormDialog';
 import { EphemeralAnswers } from '../../chat/commands/EphemeralAnswers';
+import { useAnsweredSince } from '../../chat/commands/useAnsweredSince';
 import { useSpaceAction } from './useSpaceAction';
 
 /**
@@ -15,13 +15,8 @@ import { useSpaceAction } from './useSpaceAction';
  */
 export function SpaceActionButtonWeb(props: { jwt: string; spaceId: string; actionKey: string; label: string; testId: string; Icon: LucideIcon; values: ShortcutValues; onAnswered: () => void }) {
   const { row, answers } = useSpaceAction(props.jwt, props.spaceId, props.actionKey, true);
-  const seen = useRef(new Set<string>());
-  const { onAnswered, Icon } = props;
-  useEffect(() => {
-    const fresh = answeredSince(answers.answers, seen.current);
-    fresh.forEach((id) => seen.current.add(id));
-    if (fresh.length) onAnswered();
-  }, [answers.answers, onAnswered]);
+  const { Icon } = props;
+  useAnsweredSince(answers.answers, props.onAnswered);
   if (!row) return null;
   return (
     <div className="space-y-2">

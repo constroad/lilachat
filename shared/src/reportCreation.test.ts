@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { FORMS_LEVEL } from './appForms';
 import { isFieldReport } from './clientAccess';
 import { fieldDocumentOf } from './fieldDocument';
-import { itemsLine, progressLine, progressPercent, publishFormRequest, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, reportFormsPath, reportTypeLabel, sectionBadge, sectionFormRequest, sectionNeedsPlace, STATUS_BADGE } from './reportCreation';
+import { itemsLine, progressLine, progressPercent, publishFormRequest, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, reportFormActions, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, sectionNeedsPlace, STATUS_BADGE, type TrackStart } from './reportCreation';
 
 /** A CTL-IMP as Portal answers it, with one tramo whose photos go through their own tool. */
 const form = (title: string) => ({ type: 'object', properties: { campo: { type: 'string', title } } });
@@ -68,6 +68,43 @@ describe('what the phone asks the server', () => {
   it('publishing needs a report that exists', () => {
     expect(publishFormRequest(document())).toEqual({ kind: 'publish', report_id: body.id, forms: FORMS_LEVEL });
     expect(publishFormRequest(fieldDocumentOf({ ...body, id: null })!)).toBeNull();
+  });
+});
+
+describe('reportFormActions', () => {
+  const deps = () => {
+    const calls: { start: TrackStart; request: unknown }[] = [];
+    const placeNow = vi.fn(async () => ({ lat: -12.1, lng: -77, at: '2026-11-05T15:00:00.000Z' }));
+    const actions = reportFormActions<{ ok: true }>({ placeNow, open: async (request) => ({ ok: true, request }) as unknown as { ok: true }, track: async (start, call) => { calls.push({ start, request: ((await call()) as unknown as { request: unknown }).request }); return true; } });
+    return { calls, placeNow, actions };
+  };
+
+  it('opens a section titled by its tramo, reading the place only for the photos', async () => {
+    const { calls, placeNow, actions } = deps();
+
+    await actions.openSection(document(), { sectionId: 'tramos', itemId: 't1', key: 'ubicacion' });
+    await actions.openSection(document(), { sectionId: 'tramos', itemId: 't1', key: 'fotos' });
+
+    expect(placeNow).toHaveBeenCalledTimes(1);
+    expect(calls[0].start).toEqual({ appName: 'Portal', command: '', action: 'Tramo 1 · Ubicación' });
+    expect(calls[0].request).not.toHaveProperty('at');
+    expect(calls[1].request).toMatchObject({ key: 'fotos', lat: -12.1, lng: -77, at: '2026-11-05T15:00:00.000Z' });
+  });
+
+  it('publishes only a report that exists', async () => {
+    const { calls, actions } = deps();
+
+    expect(await actions.openPublish(fieldDocumentOf({ ...body, id: null })!)).toBe(false);
+    expect(await actions.openPublish(document())).toBe(true);
+    expect(calls).toEqual([{ start: { appName: 'Portal', command: '', action: 'Publicar informe' }, request: { kind: 'publish', report_id: body.id, forms: FORMS_LEVEL } }]);
+  });
+
+  it('reportViewOf: the document once it came, and the open repeat', () => {
+    expect(reportViewOf(null, null)).toEqual({ report: null, items: undefined });
+    expect(reportViewOf({ ok: false, message: 'no' }, 'tramos').report).toBeNull();
+    const view = reportViewOf({ ok: true, document: document() }, 'tramos');
+    expect(view.items?.id).toBe('tramos');
+    expect(reportViewOf({ ok: true, document: document() }, null).items).toBeUndefined();
   });
 });
 

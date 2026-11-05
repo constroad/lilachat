@@ -1,10 +1,10 @@
-import { useEffect, useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
-import { answeredSince, formKeyOf, type ShortcutValues } from '@lilachat/shared';
+import { formKeyOf, type ShortcutValues } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { AppFormSheet } from '../../chat/commands/AppFormSheet';
 import { EphemeralAnswers } from '../../chat/commands/EphemeralAnswers';
+import { useAnsweredSince } from '../../chat/commands/useAnsweredSince';
 import { useSpaceAction } from './useSpaceAction';
 
 /**
@@ -17,13 +17,8 @@ import { useSpaceAction } from './useSpaceAction';
 export function SpaceActionButton(props: { jwt: string; spaceId: string; actionKey: string; label: string; testID: string; Icon: LucideIcon; values: ShortcutValues; onAnswered: () => void }) {
   const colors = useColores();
   const { row, answers } = useSpaceAction(props.jwt, props.spaceId, props.actionKey, true);
-  const seen = useRef(new Set<string>());
-  const { onAnswered, Icon } = props;
-  useEffect(() => {
-    const fresh = answeredSince(answers.answers, seen.current);
-    fresh.forEach((id) => seen.current.add(id));
-    if (fresh.length) onAnswered();
-  }, [answers.answers, onAnswered]);
+  const { Icon } = props;
+  useAnsweredSince(answers.answers, props.onAnswered);
   if (!row) return null;
   return (
     <View className="gap-2">

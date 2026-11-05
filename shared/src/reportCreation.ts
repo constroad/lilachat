@@ -1,5 +1,5 @@
 import { FORMS_LEVEL } from './appForms.js';
-import { fieldDocumentOf, SECTION_TOOL, sectionFormOf, type DocumentStatus, type FieldDocument, type RepeatSection, type SectionPath, type SectionState } from './fieldDocument.js';
+import { fieldDocumentOf, SECTION_TOOL, sectionFormOf, type DocumentSection, type DocumentStatus, type FieldDocument, type RepeatSection, type SectionPath, type SectionState } from './fieldDocument.js';
 import { clientServicePath } from './serviceAsk.js';
 import type { DetailTone } from './serviceDetail.js';
 
@@ -83,4 +83,30 @@ export function itemsLine(section: RepeatSection): string {
   const count = section.items.length;
   if (count === 0) return `Sin ${unit}s todavía`;
   return `${count} ${unit}${count === 1 ? '' : 's'}`;
+}
+
+const PUBLISH_LABEL = 'Publicar informe';
+export type TrackStart = { appName: string; command: string; action: string };
+/** What each platform lends: its `track` of app answers, its HTTP call to `reports/forms` and its way to read where the device is. */
+export type ReportFormDeps<T> = { track: (start: TrackStart, call: () => Promise<T>) => Promise<boolean>; open: (request: ReportFormRequest) => Promise<T>; placeNow: () => Promise<DevicePlace> };
+
+/** Opening a section or «Publicar» as a form of the app, the same on the phone and the web: the place only for the photos. */
+export function reportFormActions<T>(deps: ReportFormDeps<T>) {
+  const openSection = async (report: FieldDocument, path: SectionPath): Promise<boolean> => {
+    const place = sectionNeedsPlace(report, path) ? await deps.placeNow() : null;
+    const request = sectionFormRequest(report, path, place);
+    const title = sectionFormOf(report, path)?.title ?? path.key;
+    return deps.track({ appName: REPORT_KEEPER, command: '', action: title }, () => deps.open(request));
+  };
+  const openPublish = (report: FieldDocument): Promise<boolean> => {
+    const request = publishFormRequest(report);
+    return request ? deps.track({ appName: REPORT_KEEPER, command: '', action: PUBLISH_LABEL }, () => deps.open(request)) : Promise.resolve(false);
+  };
+  return { openSection, openPublish };
+}
+
+/** What the screen draws: the document once it came, and the repeat whose items are open, if any. */
+export function reportViewOf(draft: ReportDraftResult | null, itemsOf: string | null): { report: FieldDocument | null; items: DocumentSection | undefined } {
+  const report = draft?.ok ? draft.document : null;
+  return { report, items: report?.sections.find((section) => section.id === itemsOf) };
 }

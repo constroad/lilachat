@@ -626,8 +626,9 @@ y el buscador de una lista lee también la línea de abajo (un servicio por su c
 
 OTA `b1e5b7cc` del 05/11/2026 sobre el runtime `79221c17` (git `895149c`): solo llega a la 0.1.180. La plata del canal de cliente
 vive en Cuenta, con Cobranza por servicio, y una respuesta 2xx cortada ya no tumba las pestañas. Tres aperturas en frío limpias con
-rn-smoke 1.15.0, que ahora lee los errores de JS. En Test abrieron las pestañas de admin, pero sus tres clientes ya no están en Portal:
-Cuenta con datos reales solo se vio en local y en la web. Falta probar a un miembro sin montos en producción (Test tiene un solo miembro).
+rn-smoke 1.15.0, que ahora lee los errores de JS. Verificada como admin en Test con datos reales de Portal (Consorcio Vial del Pacífico):
+Cuenta, Cobranza por servicio con y sin deuda, volver con atrás, detalle del servicio sin montos y Drive. Falta probar a un miembro sin
+montos en producción: Test tiene un solo miembro, y Portal reconoce a una persona solo por el correo vinculado con constroad-auth.
 
 ## 5. Errores conocidos y arreglo
 

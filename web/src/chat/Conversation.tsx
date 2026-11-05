@@ -9,6 +9,7 @@ import { Avatar } from '../ui/Avatar';
 import type { AgendaReminder, DirectoryApp, MencionElegida, MencionEnMensaje, WinkId } from '@lilachat/shared';
 import { channelLinksOf, chatHasActionPlace, clientHeaderSubtitle, formatUltimaVez, presenceLine, type PresenceStatus, memberCountLabel } from '@lilachat/shared';
 import { Composer, type ContextoDelComposer } from './Composer';
+import { CardCommandContext } from './botBlocks/cardCommand';
 import { useChatCommandsWithActions } from './commands/useChatCommands';
 import { AppCommandsBar, AppConversationHeader, type AppConversationTab } from '../spaces/apps/AppConversation';
 import { AppDetail } from '../spaces/apps/AppDetail';
@@ -139,7 +140,10 @@ export function Conversation(props: {
     setChannelTab('chat');
     void commands.appAnswers.runAction(row, values);
   });
+  // Its answer shows over the bar: without a bar (a secret or read-only chat) a card's row stays still.
+  const cardCommand = commands.enabled && !chat.encrypted && !props.sendLock ? commands.runIfCommand : null;
   return (
+    <CardCommandContext.Provider value={cardCommand}>
     <section
       data-testid="panel-conversacion"
       className="relative flex h-full min-w-0 flex-1 flex-col"
@@ -267,6 +271,7 @@ export function Conversation(props: {
       </>
       )}
     </section>
+    </CardCommandContext.Provider>
   );
 }
 

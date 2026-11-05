@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { barColumns, barFractions, linePath, peopleOnCard, peoplePhotos, personEvidence, personTime, tankDeltaTrend, tankFill, tankPercent, validateBotBlocks, BLOCK_LIMITS, PEOPLE_ON_CARD } from './botBlocks.js';
+import { barColumns, barFractions, linePath, peopleOnCard, peoplePhotos, personEvidence, personTime, tankDeltaTrend, tankFill, tankPercent, validateBotBlocks, BLOCK_LIMITS, PEOPLE_ON_CARD, type BotBlock } from './botBlocks.js';
 import { validateBotCard } from './bots.js';
 
 /** The card kit (§118.4, José 23/10): what agents and webhooks can draw in a card, validated once for server, app and web. */
@@ -193,5 +193,28 @@ describe('what backs a mark', () => {
       { url: photo, name: 'Foto de Ana', mime: 'image/jpeg' },
       { url: `${photo}2`, name: 'Foto de Caro', mime: 'image/jpeg' },
     ]);
+  });
+});
+
+/** «Si toco un distrito no muestra el detalle» (José, 05/11): a row can carry the line a person would type. */
+describe('a row with a command', () => {
+  const rowsOf = (row: Record<string, unknown>) => {
+    const checked = validateBotBlocks([{ type: 'rows', rows: [{ label: 'Ate', value: '24°', ...row }] }], BLOCK_LIMITS.detailBlocks);
+    if (!checked.ok) throw new Error(checked.message);
+    return checked.blocks[0] as Extract<BotBlock, { type: 'rows' }>;
+  };
+
+  it('keeps the line to run', () => {
+    expect(rowsOf({ command: '/clima hoy en Ate' }).rows[0]).toMatchObject({ label: 'Ate', command: '/clima hoy en Ate' });
+  });
+
+  it('a row without one stays as it was', () => {
+    expect(rowsOf({}).rows[0]).not.toHaveProperty('command');
+  });
+
+  it('what is not a slash line is dropped, and the row stays', () => {
+    expect(rowsOf({ command: 'clima hoy' }).rows[0]).not.toHaveProperty('command');
+    expect(rowsOf({ command: 42 }).rows[0]).not.toHaveProperty('command');
+    expect(rowsOf({ command: '/' }).rows[0]).not.toHaveProperty('command');
   });
 });

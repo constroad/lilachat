@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { detailEmptyText, detailRows, detailTabs, moreInPortal, orphanDispatchesOf, recordDays, reportGroups, serviceDetailOf } from './serviceDetail.js';
+import { dayWithYearOf, detailEmptyText, detailRows, detailTabs, moreInPortal, orphanDispatchesOf, recordDays, reportGroups, serviceDetailOf } from './serviceDetail.js';
 
 /** The detail of a client's service (José, 30/10: «qué informes hay, qué pedidos, qué despachos»), from `client.service.requested`. */
 const body = {
@@ -160,5 +160,23 @@ describe('an empty tab with Portal counting some (01/11: «Informes · 1» over 
   it('says how many are in Portal when none came', () => {
     expect(detailEmptyText('reports', { ...none, reports: 1 })).toBe('Hay 1 en el Portal que todavía no llega aquí.');
     expect(detailEmptyText('orders', { ...none, orders: 3 })).toBe('Hay 3 en el Portal que todavía no llegan aquí.');
+  });
+});
+
+describe('dayWithYearOf', () => {
+  it('this year’s day needs no year, another year’s says it', () => {
+    const now = new Date('2026-11-05T15:00:00.000Z');
+    expect(dayWithYearOf('2026-10-28', now)).toBe('28 oct');
+    expect(dayWithYearOf('2025-10-28', now)).toBe('28 oct 2025');
+    expect(dayWithYearOf('2027-01-02', now)).toBe('2 ene 2027');
+  });
+
+  it('the year is Lima’s: New Year’s Eve at night is still the old year there', () => {
+    const lastNight = new Date('2027-01-01T03:00:00.000Z');
+    expect(dayWithYearOf('2026-12-31', lastNight)).toBe('31 dic');
+  });
+
+  it('what is not a calendar day comes back as it was', () => {
+    expect(dayWithYearOf('ayer', new Date('2026-11-05T15:00:00.000Z'))).toBe('ayer');
   });
 });

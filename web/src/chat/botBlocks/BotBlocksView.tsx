@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { MapPin, Paperclip } from 'lucide-react';
+import { ChevronRight, MapPin, Paperclip } from 'lucide-react';
 import { peopleOnCard, peoplePhotos, personEvidence, personTime, shortPersonName, type BotBlock, type PersonEvidence } from '@lilachat/shared';
 import { usePortalFileViewer } from '../../spaces/clients/PortalFileViewer';
 import { Avatar } from '../../ui/Avatar';
 import { BlockChart } from './BlockChart';
 import { BlockTank } from './BlockTank';
 import { BlockWeather } from './BlockWeather';
+import { useCardCommand } from './cardCommand';
 import { TONE } from './tones';
 
 type PeopleBlock = Extract<BotBlock, { type: 'people' }>;
@@ -70,19 +71,33 @@ function PeopleList({ block }: { block: PeopleBlock }) {
   );
 }
 
-function Rows({ rows }: { rows: Extract<BotBlock, { type: 'rows' }>['rows'] }) {
+type RowsBlock = Extract<BotBlock, { type: 'rows' }>;
+
+function RowBody({ row, tappable }: { row: RowsBlock['rows'][number]; tappable: boolean }) {
+  return (
+    <>
+      <div className="flex items-center gap-3 text-[14px]">
+        <span className="min-w-0 flex-1 truncate">{row.label}</span>
+        {row.bar !== undefined ? <span className="h-1.5 w-16 overflow-hidden rounded-full bg-surface-variant"><span className={`block h-full rounded-full ${TONE[row.tone].bar}`} style={{ width: `${Math.round(row.bar * 100)}%` }} /></span> : null}
+        <span className={`text-[13px] font-semibold tabular-nums ${row.tone === 'neutral' ? '' : TONE[row.tone].text}`}>{row.value}</span>
+        {tappable ? <ChevronRight size={16} className="shrink-0 text-on-surface-variant" /> : null}
+      </div>
+      {row.sub ? <span className="mt-0.5 text-[12px] text-on-surface-variant">{row.sub}</span> : null}
+    </>
+  );
+}
+
+/** A row with a command runs it on a tap, like typing it (José, 05/11). */
+function Rows({ rows }: { rows: RowsBlock['rows'] }) {
+  const run = useCardCommand();
   return (
     <div data-testid="bloque-filas" className="divide-y divide-outline/10">
-      {rows.map((row, index) => (
-        <div key={`${row.label}-${index}`} className="flex min-h-[44px] flex-col justify-center py-2">
-          <div className="flex items-center gap-3 text-[14px]">
-            <span className="min-w-0 flex-1 truncate">{row.label}</span>
-            {row.bar !== undefined ? <span className="h-1.5 w-16 overflow-hidden rounded-full bg-surface-variant"><span className={`block h-full rounded-full ${TONE[row.tone].bar}`} style={{ width: `${Math.round(row.bar * 100)}%` }} /></span> : null}
-            <span className={`text-[13px] font-semibold tabular-nums ${row.tone === 'neutral' ? '' : TONE[row.tone].text}`}>{row.value}</span>
-          </div>
-          {row.sub ? <span className="mt-0.5 text-[12px] text-on-surface-variant">{row.sub}</span> : null}
-        </div>
-      ))}
+      {rows.map((row, index) => {
+        const key = `${row.label}-${index}`;
+        const { command } = row;
+        if (!run || !command) return <div key={key} className="flex min-h-[44px] flex-col justify-center py-2"><RowBody row={row} tappable={false} /></div>;
+        return <button key={key} type="button" data-testid={`fila-comando-${index}`} onClick={() => run(command)} className="flex min-h-[44px] w-full flex-col justify-center py-2 text-left hover:bg-background"><RowBody row={row} tappable /></button>;
+      })}
     </div>
   );
 }

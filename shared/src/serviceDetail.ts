@@ -1,3 +1,4 @@
+import { limaDayKey } from './birthdays.js';
 import { billingOf, moneyOf, type ServiceBilling } from './serviceBilling.js';
 import type { ClientRecord } from './spaceClients.js';
 /**
@@ -328,4 +329,9 @@ export function detailTabs(detail: ServiceDetail): { key: DetailTabKey; label: s
 export function longDayOf(date: string): string {
   const year = DATE_ONLY.exec(date)?.[1];
   return year ? `${dayOf(date)} ${year}` : date;
+}
+
+/** «28 oct» this year in Lima, «28 oct 2025» from another one: an old date must not read as recent (José, 05/11). */
+export function dayWithYearOf(date: string, now: Date): string {
+  return date.slice(0, 4) === limaDayKey(now).slice(0, 4) ? dayOf(date) : longDayOf(date);
 }

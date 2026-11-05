@@ -879,6 +879,25 @@ del detalle, un tanque no abre otro: su `detail` se descarta, así nunca hay
 bucle. Un tanque sin `detail` no es tocable. Un servidor anterior descarta el
 campo y la tarjeta queda igual.
 
+## c-duodecies-bis) Tocar una fila de `rows` corre un comando (05/11)
+
+José: «si toco un distrito no muestra el detalle». Cada fila acepta `command`:
+
+```json
+{ "type": "rows", "rows": [ { "label": "Ate", "value": "24°", "command": "/clima hoy en Ate" } ] }
+```
+
+- Es la línea que escribiría una persona, hasta 200 caracteres. Debe empezar con `/` y una letra.
+  Otro valor se descarta, y la fila queda igual.
+- Tocarla es lo mismo que escribirla: misma ruta, mismos permisos y respuesta «Solo tú ves esto».
+  Si el comando no existe en ese chat, Lilachat dice cuáles hay.
+- Dentro de «Ver detalle», la hoja se cierra antes de correr: la respuesta sale sobre la barra.
+- La fila no responde donde la respuesta no se vería: chat secreto o canal donde esa persona no escribe.
+  Tampoco en las respuestas del ⚡ del espacio, que no tienen un chat donde correr.
+- **Sin romper nada:** un server anterior descarta el campo, porque arma cada fila campo por campo.
+  Una app anterior dibuja la fila quieta. Se puede mandar apenas el server esté en vivo.
+- Vale en la tarjeta y en su detalle, no en el detalle de un tanque, que se queda abierto.
+
 ## c-duodecies) La hora de cada persona en `people` (04/11)
 
 José, 04/11: en las asistencias se ven los nombres sin la hora. El bloque `people`

@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { MapPin, Paperclip } from 'lucide-react-native';
+import { ChevronRight, MapPin, Paperclip } from 'lucide-react-native';
 import { peopleOnCard, peoplePhotos, personEvidence, personTime, shortPersonName, type BotBlock, type PersonEvidence } from '@lilachat/shared';
 import { useFileViewer } from '../../spaces/clients/useFileViewer';
 import { Avatar } from '../../ui/Avatar';
 import { useColores } from '../../ui/tema';
+import { useAccionesDeTarjeta } from '../accionesDeTarjeta';
 import { BlockChart } from './BlockChart';
 import { BlockTank } from './BlockTank';
 import { BlockWeather } from './BlockWeather';
@@ -85,25 +86,39 @@ function PeopleList({ block }: { block: PeopleBlock }) {
   );
 }
 
-/** Rows for the detail: label and value, an optional mini bar and a second line (districts, today's readings, who is missing). */
-function Rows({ rows }: { rows: Extract<BotBlock, { type: 'rows' }>['rows'] }) {
+type RowsBlock = Extract<BotBlock, { type: 'rows' }>;
+
+function RowBody({ row, tappable }: { row: RowsBlock['rows'][number]; tappable: boolean }) {
   const colors = useColores();
   return (
-    <View testID="bloque-filas">
-      {rows.map((row, index) => (
-        <View key={`${row.label}-${index}`} className={`min-h-[44px] justify-center py-2 ${index ? 'border-t border-outline/10' : ''}`}>
-          <View className="flex-row items-center gap-3">
-            <Text numberOfLines={1} className="min-w-0 flex-1 text-[14px] text-on-surface">{row.label}</Text>
-            {row.bar !== undefined ? (
-              <View className="h-1.5 w-16 overflow-hidden rounded-full bg-surface-variant">
-                <View className="h-full rounded-full" style={{ width: `${Math.round(row.bar * 100)}%`, backgroundColor: colors[TONE_COLOR[row.tone]] }} />
-              </View>
-            ) : null}
-            <Text className={`text-[13px] font-semibold ${row.tone === 'neutral' ? 'text-on-surface' : TONE_CLASS[row.tone].text}`} style={{ fontVariant: ['tabular-nums'] }}>{row.value}</Text>
+    <>
+      <View className="flex-row items-center gap-3">
+        <Text numberOfLines={1} className="min-w-0 flex-1 text-[14px] text-on-surface">{row.label}</Text>
+        {row.bar !== undefined ? (
+          <View className="h-1.5 w-16 overflow-hidden rounded-full bg-surface-variant">
+            <View className="h-full rounded-full" style={{ width: `${Math.round(row.bar * 100)}%`, backgroundColor: colors[TONE_COLOR[row.tone]] }} />
           </View>
-          {row.sub ? <Text className="mt-0.5 text-[12px] text-on-surface-variant">{row.sub}</Text> : null}
-        </View>
-      ))}
+        ) : null}
+        <Text className={`text-[13px] font-semibold ${row.tone === 'neutral' ? 'text-on-surface' : TONE_CLASS[row.tone].text}`} style={{ fontVariant: ['tabular-nums'] }}>{row.value}</Text>
+        {tappable ? <ChevronRight size={16} color={colors['on-surface-variant']} /> : null}
+      </View>
+      {row.sub ? <Text className="mt-0.5 text-[12px] text-on-surface-variant">{row.sub}</Text> : null}
+    </>
+  );
+}
+
+/** Rows for the detail: label and value, an optional mini bar and a second line (districts, today's readings, who is missing). One with a command runs it on a tap (José, 05/11). */
+function Rows({ rows }: { rows: RowsBlock['rows'] }) {
+  const { runLine } = useAccionesDeTarjeta();
+  return (
+    <View testID="bloque-filas">
+      {rows.map((row, index) => {
+        const key = `${row.label}-${index}`;
+        const frame = `min-h-[44px] justify-center py-2 ${index ? 'border-t border-outline/10' : ''}`;
+        const { command } = row;
+        if (!runLine || !command) return <View key={key} className={frame}><RowBody row={row} tappable={false} /></View>;
+        return <Pressable key={key} testID={`fila-comando-${index}`} accessibilityRole="button" accessibilityLabel={row.label} onPress={() => runLine(command)} className={frame}><RowBody row={row} tappable /></Pressable>;
+      })}
     </View>
   );
 }

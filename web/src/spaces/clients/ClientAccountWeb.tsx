@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { accountSummary, amount, creditOrdersByUrgency, dayOf, dueStatus, moneyOf, quoteSheet, type AccountQuote, type ClientAccount, type CreditOrder } from '@lilachat/shared';
+import { accountQuoteLine, accountServiceLine, accountSummary, byUrgency, creditOrderLine, dueStatus, moneyOf, quoteSheet, type AccountQuote, type AccountService, type ClientAccount, type CreditOrder, type DetailStatus } from '@lilachat/shared';
 import { RecordSheetWeb } from './RecordSheetWeb';
 import { usePortalFileViewer } from './PortalFileViewer';
 import { DETAIL_TONE } from './tones';
@@ -21,31 +21,43 @@ function Summary({ account }: { account: ClientAccount }) {
   );
 }
 
-function CreditRow({ order }: { order: CreditOrder }) {
-  const due = order.dueAt && order.pending ? dueStatus(order.dueAt, new Date()) : null;
+/** What is owed, with its due day when it has one: past due, it is marked in red. */
+function DebtRow(props: { testId: string; title: string; line: string; dueAt?: string; pending?: number; status?: DetailStatus }) {
+  const due = props.dueAt && props.pending ? dueStatus(props.dueAt, new Date()) : null;
   return (
-    <li data-testid={`credito-${order.id}`} className={`py-3 ${due?.tone === 'error' ? 'border-l-[3px] border-l-error pl-3' : ''}`}>
+    <li data-testid={props.testId} className={`py-3 ${due?.tone === 'error' ? 'border-l-[3px] border-l-error pl-3' : ''}`}>
       <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{order.product ?? 'Pedido'}</p><p className="text-[12px] text-on-surface-variant">{[amount(order.quantity, order.unit), order.date && dayOf(order.date), order.total !== undefined ? `Total ${moneyOf(order.total)}` : undefined].filter(Boolean).join(' · ')}</p></div>
-        {due ? <Pill label={due.label} tone={due.tone} /> : <Pill label={order.status.label} tone={order.status.tone} />}
+        <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{props.title}</p><p className="text-[12px] text-on-surface-variant">{props.line}</p></div>
+        {due ? <Pill label={due.label} tone={due.tone} /> : props.status ? <Pill label={props.status.label} tone={props.status.tone} /> : null}
       </div>
-      {order.pending !== undefined ? <p className={`mt-1 text-right font-bold tabular-nums ${due?.tone === 'error' ? 'text-error' : ''}`}>{`Debe ${moneyOf(order.pending)}`}</p> : null}
+      {props.pending !== undefined ? <p className={`mt-1 text-right font-bold tabular-nums ${due?.tone === 'error' ? 'text-error' : ''}`}>{`Debe ${moneyOf(props.pending)}`}</p> : null}
     </li>
   );
 }
+
+const CreditRow = ({ order }: { order: CreditOrder }) => <DebtRow testId={`credito-${order.id}`} title={order.product ?? 'Pedido'} line={creditOrderLine(order, new Date())} dueAt={order.dueAt} pending={order.pending} status={order.status} />;
+
+const ServiceRow = ({ service }: { service: AccountService }) => <DebtRow testId={`servicio-por-cobrar-${service.id}`} title={service.name ?? 'Servicio'} line={accountServiceLine(service)} dueAt={service.dueAt} pending={service.pending} status={service.isCredit ? { label: 'Al crédito', tone: 'neutral' } : undefined} />;
 
 function AccountBody({ account }: { account: ClientAccount }) {
   const [quote, setQuote] = useState<AccountQuote | null>(null);
   const viewer = usePortalFileViewer();
   const credit = account.creditOrders;
-  if (!credit && !account.quotes) return <p className="pt-6 text-center text-sm text-on-surface-variant">No tienes permiso para ver la cuenta de este cliente.</p>;
+  const { services } = account;
+  if (!credit && !services && !account.quotes) return <p className="pt-6 text-center text-sm text-on-surface-variant">No tienes permiso para ver la cuenta de este cliente.</p>;
   return (
     <>
-      {credit ? <Summary account={account} /> : null}
+      {credit || services ? <Summary account={account} /> : null}
+      {services ? (
+        <section data-testid="servicios-por-cobrar" className="rounded-xl border border-outline/15 bg-surface px-4 pt-3">
+          <Kicker>{`Servicios por cobrar · ${account.totals.services ?? services.length}`}</Kicker>
+          {services.length ? <ul className="divide-y divide-outline/10">{byUrgency(services, new Date()).map((service) => <ServiceRow key={service.id} service={service} />)}</ul> : <p className="py-3 text-sm text-on-surface-variant">Sin servicios por cobrar.</p>}
+        </section>
+      ) : null}
       {credit ? (
         <section className="rounded-xl border border-outline/15 bg-surface px-4 pt-3">
           <Kicker>Pedidos al crédito</Kicker>
-          {credit.length ? <ul className="divide-y divide-outline/10">{creditOrdersByUrgency(credit, new Date()).map((order) => <CreditRow key={order.id} order={order} />)}</ul> : <p className="py-3 text-sm text-on-surface-variant">Sin pedidos al crédito.</p>}
+          {credit.length ? <ul className="divide-y divide-outline/10">{byUrgency(credit, new Date()).map((order) => <CreditRow key={order.id} order={order} />)}</ul> : <p className="py-3 text-sm text-on-surface-variant">Sin pedidos al crédito.</p>}
         </section>
       ) : null}
       {account.quotes ? (
@@ -56,7 +68,7 @@ function AccountBody({ account }: { account: ClientAccount }) {
               {account.quotes.map((one) => (
                 <li key={one.id}>
                   <button type="button" data-testid={`cotizacion-${one.id}`} onClick={() => setQuote(one)} className="flex min-h-[52px] w-full items-center gap-3 py-2.5 text-left hover:bg-background">
-                    <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{one.code ? `Cotización ${one.code}` : 'Cotización'}</span><span className="block text-[12px] text-on-surface-variant">{[one.total !== undefined ? moneyOf(one.total) : undefined, one.date && dayOf(one.date), one.serviceId ? undefined : 'sin servicio'].filter(Boolean).join(' · ')}</span></span>
+                    <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{one.code ? `Cotización ${one.code}` : 'Cotización'}</span><span className="block text-[12px] text-on-surface-variant">{accountQuoteLine(one, new Date())}</span></span>
                     <Pill label={one.status.label} tone={one.status.tone} />
                   </button>
                 </li>
@@ -73,7 +85,8 @@ function AccountBody({ account }: { account: ClientAccount }) {
 
 /**
  * «Cuenta» of a client's channel (José 30/10: where are the client's quotes;
- * design f-08): ALL its quotes and its orders on credit, overdue first.
+ * design f-08): ALL its quotes, what its services owe and its orders on
+ * credit, overdue first.
  */
 export function ClientAccountWeb(props: { target: ServiceAskTarget }) {
   const answer = useServiceAsk('account', props.target, props.target.clientId);

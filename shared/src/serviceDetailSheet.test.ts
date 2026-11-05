@@ -85,7 +85,7 @@ describe('detailSheet', () => {
 
   it('a quote: total, day and its line items when they come', () => {
     const sheet = detailSheet(detail, 'quotes', 'q1')!;
-    expect(sheet.facts).toEqual([{ label: 'Total', value: 'S/ 142,416.02' }, { label: 'Fecha', value: '28 ago' }]);
+    expect(sheet.facts).toEqual([{ label: 'Total', value: 'S/ 142,416.02' }, { label: 'Fecha', value: '28 ago 2026' }]);
     expect(sheet.items).toEqual([{ name: 'Mezcla asfáltica', line: '383.5 m³ · S/ 320.00 c/u', total: 'S/ 122,720.00' }]);
   });
 

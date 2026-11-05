@@ -25,7 +25,8 @@ export type BotBlock =
   | { type: 'progress'; value: number; max: number; label: string; tone: CardTone }
   | { type: 'tank'; items: TankItem[] }
   | { type: 'text'; text: string; tone: CardTone }
-  | { type: 'rows'; rows: { label: string; value: string; sub?: string; bar?: number; tone: CardTone }[] }
+  /** `command`: the line a person would type; tapping the row runs it (José, 05/11). */
+  | { type: 'rows'; rows: { label: string; value: string; sub?: string; bar?: number; tone: CardTone; command?: string }[] }
   /** `times[i]` is the time of `names[i]`, as the app wrote it; '' when that person has none (José, 04/11). */
   | { type: 'people'; names: string[]; times?: string[]; evidence?: PersonEvidence[]; more?: number }
   | { type: 'attachments'; count: number; label: string; url: string }
@@ -42,6 +43,11 @@ const tone = (value: unknown): CardTone => (TONES.includes(value as CardTone) ? 
 const clamp01 = (value: unknown): number => Math.min(1, Math.max(0, Number(value) || 0));
 const finite = (value: unknown): number | null => (typeof value === 'number' && Number.isFinite(value) ? value : null);
 const list = (value: unknown, max: number): unknown[] => (Array.isArray(value) ? value.slice(0, max) : []);
+const COMMAND_LINE = /^\/[a-zA-Z]/;
+const withCommand = (value: unknown): { command?: string } => {
+  const line = text(value, BLOCK_LIMITS.text);
+  return COMMAND_LINE.test(line) ? { command: line } : {};
+};
 const withText = <K extends string>(key: K, value: unknown, max: number): Partial<Record<K, string>> => {
   const clean = text(value, max);
   return clean ? ({ [key]: clean } as Record<K, string>) : {};
@@ -132,7 +138,7 @@ function block(raw: Record<string, unknown>): Result<BotBlock> | null {
     }
     case 'tank': return tankBlock(raw);
     case 'text': return text(raw.text, BLOCK_LIMITS.text) ? { ok: true, value: { type: 'text', text: text(raw.text, BLOCK_LIMITS.text), tone: tone(raw.tone) } } : { ok: false, message: 'El texto del bloque está vacío.' };
-    case 'rows': return { ok: true, value: { type: 'rows', rows: list(raw.rows, BLOCK_LIMITS.rows).map((item) => { const row = record(item); return { label: text(row.label, BLOCK_LIMITS.label), value: text(row.value, BLOCK_LIMITS.text), ...withText('sub', row.sub, BLOCK_LIMITS.text), ...(row.bar !== undefined ? { bar: clamp01(row.bar) } : {}), tone: tone(row.tone) }; }).filter((row) => row.label) } };
+    case 'rows': return { ok: true, value: { type: 'rows', rows: list(raw.rows, BLOCK_LIMITS.rows).map((item) => { const row = record(item); return { label: text(row.label, BLOCK_LIMITS.label), value: text(row.value, BLOCK_LIMITS.text), ...withText('sub', row.sub, BLOCK_LIMITS.text), ...(row.bar !== undefined ? { bar: clamp01(row.bar) } : {}), tone: tone(row.tone), ...withCommand(row.command) }; }).filter((row) => row.label) } };
     case 'people': return peopleBlock(raw);
     case 'attachments': return attachmentsBlock(raw);
     case 'weather': return validateWeatherBlock(raw);

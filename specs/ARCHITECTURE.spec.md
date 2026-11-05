@@ -6238,6 +6238,11 @@ enlace secundario al pie.
   - Con la regla de la cobranza suma precio unitario, total, crédito con su
     vencimiento, cobrado (la suma de `payments`) y por cobrar.
   - `DetailSheet.files` admite varios archivos.
+- **Servicios por cobrar en «Cuenta»** (José, 05/11: decía S/ 0.00 y los servicios debían S/ 1,365,828.12).
+  `client.account.requested` trae `services: [{ id, name, total, collected, pending, is_credit, due_at? }]`,
+  `totals.services`, y `pending` ya los incluye. La sección va antes de «Pedidos al crédito» y no sale
+  si `services` no llega. `due_at` es `AAAA-MM-DD` y solo cuenta con `is_credit`. Lo vencido y «N al crédito»
+  suman esos servicios. Una fecha de otro año dice el año («28 oct 2025»); en la ficha de la cotización, siempre.
 - **Pestaña «Cuenta»** del canal de cliente (diseño f-08; `client.account.requested`,
   agentes cf37b98, Portal 0227a1f0).
   - Muestra TODAS las cotizaciones del cliente, también las sin servicio, y abre

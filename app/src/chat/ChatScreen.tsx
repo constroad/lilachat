@@ -219,7 +219,8 @@ export function ChatScreen({
   // Editing the chat's reminder by tapping its card: in a group, its admins; in a 1:1 or a draft, anyone (19-20/10).
   const puedeEditarRecordatorios = !esGrupoChat || soyAdminDelGrupo;
   const callBack = useCallBack({ chatId, name: nombreVisible, callName: chatName, jwt: credential.jwt, enabled: Boolean(otherUserId), llamar });
-  const accionesDeTarjeta = useMemo(() => ({ editarRecordatorio: puedeEditarRecordatorios ? (recordatorio: AgendaReminder) => setCreando({ recordatorio }) : undefined, callBack: callBack.actions }), [puedeEditarRecordatorios, callBack.actions]);
+  const runLine = encrypted || fueraDelGrupo || grupo.sendLock(credential.userId) ? undefined : commands.runIfCommand;
+  const accionesDeTarjeta = useMemo(() => ({ editarRecordatorio: puedeEditarRecordatorios ? (recordatorio: AgendaReminder) => setCreando({ recordatorio }) : undefined, callBack: callBack.actions, runLine }), [puedeEditarRecordatorios, callBack.actions, runLine]);
   // Fuera del grupo no se listan miembros: ya no es «QA Ana, Vos».
   const otherStatus = usePresenceStatus(otherUserId);
   const channelWork = useChannelWork({ enabled: Boolean(workspaceId && esGrupoChat && !appId && !encrypted), jwt: credential.jwt, chatId, channelName: nombreVisible, yo: credential.userId, names: nombresDelGrupo, apps: grupo.appIds, spaceId: workspaceId, onOpenRecord: (seq) => saltarA(seq, 'Ese registro está más arriba: sube para cargarlo.'), actions: commands.buttons, runAction: commands.appAnswers.runAction });
@@ -473,8 +474,7 @@ export function ChatScreen({
       <AccionesDeTarjetaContext.Provider value={accionesDeTarjeta}>
         <ListaDeMensajes
           listaRef={listaRef}
-          rows={rows} cells={cells}
-          mensajes={messages}
+          rows={rows} cells={cells} mensajes={messages}
           yo={credential.userId} chatId={chatId} readSeqAtOpen={readSeq ?? 0} holdPosition={busqueda.activo || resaltado !== null} releaseRef={releaseRef} anchor={anchor}
           dibujarFila={dibujarFila}
           onListo={ventana.placement(alAbrir, (seq) => saltarA(seq, ''))} placedAwayLate={placedLate} ventana={ventana.list}

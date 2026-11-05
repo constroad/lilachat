@@ -1,7 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { validateBotCard } from '@lilachat/shared';
 import { BotCardView } from '../BotCardView';
+import { CardCommandContext } from './cardCommand';
 
 /** The card kit on the web (§118.4, designs r155-*): a drawn tank, bars, the update time and the detail. */
 const card = validateBotCard({
@@ -149,5 +150,48 @@ describe('tapping a tank opens its detail (José, 24/10)', () => {
       expect(screen.queryByRole('img', { name: 'Foto de Carlos Dario Paredes' })).toBeNull();
       expect(screen.getByTestId('detalle-tarjeta').textContent).toContain('Carlos Dario Paredes');
     });
+  });
+});
+
+describe('a row with a command (José, 05/11: «si toco un distrito no muestra el detalle»)', () => {
+  const weather = validateBotCard({
+    title: 'Clima de hoy',
+    fields: [],
+    blocks: [{ type: 'rows', rows: [{ label: 'Miraflores', value: '21°', command: '/clima hoy en Miraflores' }] }],
+    detail: { title: 'Distritos', blocks: [{ type: 'rows', rows: [{ label: 'Ate', value: '24°', command: '/clima hoy en Ate' }, { label: 'Lurín', value: '22°' }] }] },
+  });
+  const renderCard = (run: ((line: string) => void) | null) => {
+    if (!weather.ok) throw new Error(weather.message);
+    render(<CardCommandContext.Provider value={run}><BotCardView card={weather.card} chatId="c" seq={1} jwt="j" /></CardCommandContext.Provider>);
+  };
+
+  it('on the card, tapping it runs the line', () => {
+    // Arrange
+    const run = vi.fn();
+    renderCard(run);
+    // Act
+    fireEvent.click(screen.getByRole('button', { name: /Miraflores/ }));
+    // Assert
+    expect(run).toHaveBeenCalledWith('/clima hoy en Miraflores');
+  });
+
+  it('in the detail, it closes first: the answer lands in the chat, behind it', () => {
+    const run = vi.fn();
+    renderCard(run);
+    fireEvent.click(screen.getByTestId('tarjeta-ver-detalle'));
+    fireEvent.click(screen.getByRole('button', { name: /Ate/ }));
+    expect(run).toHaveBeenCalledWith('/clima hoy en Ate');
+    expect(screen.queryByTestId('detalle-tarjeta')).toBeNull();
+  });
+
+  it('a row without a command is not a button', () => {
+    renderCard(vi.fn());
+    fireEvent.click(screen.getByTestId('tarjeta-ver-detalle'));
+    expect(screen.getByText('Lurín').closest('button')).toBeNull();
+  });
+
+  it('where the answer could not be shown, the row stays still', () => {
+    renderCard(null);
+    expect(screen.getByText('Miraflores').closest('button')).toBeNull();
   });
 });

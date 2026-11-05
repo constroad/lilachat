@@ -8,8 +8,11 @@ import type { CallBackActions } from './useCallBack';
  * vive tres componentes abajo de la pantalla del chat. Sin permiso, `undefined`
  * y la tarjeta no responde al toque.
  */
-/** `callBack`: «Llamar» and «Recordarme devolverla» on a missed call, only in a 1:1 (backlog 23). */
-export type AccionesDeTarjeta = { editarRecordatorio?: (recordatorio: AgendaReminder) => void; callBack?: CallBackActions };
+/**
+ * `callBack`: «Llamar» and «Recordarme devolverla» on a missed call, only in a 1:1 (backlog 23).
+ * `runLine`: a card's row runs its command as if it was typed; absent where its answer could not be shown.
+ */
+export type AccionesDeTarjeta = { editarRecordatorio?: (recordatorio: AgendaReminder) => void; callBack?: CallBackActions; runLine?: (line: string) => void };
 
 export const AccionesDeTarjetaContext = createContext<AccionesDeTarjeta>({});
 

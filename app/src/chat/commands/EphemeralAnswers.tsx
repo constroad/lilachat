@@ -5,13 +5,14 @@ import { canCloseAll, ephemeralLabel, ephemeralSummary, openAnswerId, toggleAnsw
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { useColores } from '../../ui/tema';
+import { AccionesDeTarjetaContext } from '../accionesDeTarjeta';
 import { BotCardView } from '../BotCardView';
 import { TextoConEnlaces } from '../TextoConEnlaces';
 
 const APP_AVATAR = 22;
 /** The answers never take more than this share of the screen: the conversation stays in sight. */
 const MAX_SCREEN_SHARE = 0.45;
-type Props = { answers: readonly EphemeralAnswer[]; onDismiss: (commandId: string) => void; onShare?: (commandId: string) => Promise<string | null>; onOpenForm?: (commandId: string) => void; chatId: string; jwt: string; /** Inside a sheet (the ⚡): it grows with its content instead of capping at the screen. */ embedded?: boolean; /** The command panel is open: with the keyboard up there is no room left, so the stack steps aside until it closes (E2E 28/10). */ hidden?: boolean };
+type Props = { answers: readonly EphemeralAnswer[]; onDismiss: (commandId: string) => void; /** A row of a card runs its command; its answer comes here too. */ onRunLine?: (line: string) => void; onShare?: (commandId: string) => Promise<string | null>; onOpenForm?: (commandId: string) => void; chatId: string; jwt: string; /** Inside a sheet (the ⚡): it grows with its content instead of capping at the screen. */ embedded?: boolean; /** The command panel is open: with the keyboard up there is no room left, so the stack steps aside until it closes (E2E 28/10). */ hidden?: boolean };
 
 /**
  * What an app answered only to me (§c-bis), over the bar like Slack's
@@ -103,7 +104,9 @@ function AnswerBody(props: Props & { answer: EphemeralAnswer }) {
       ) : null}
       {answer.response?.card ? (
         <View className="mt-2">
-          <BotCardView card={{ ...answer.response.card, actions: [] }} chatId={props.chatId} seq={0} jwt={props.jwt} />
+          <AccionesDeTarjetaContext.Provider value={{ runLine: props.onRunLine }}>
+            <BotCardView card={{ ...answer.response.card, actions: [] }} chatId={props.chatId} seq={0} jwt={props.jwt} />
+          </AccionesDeTarjetaContext.Provider>
         </View>
       ) : null}
       {/* shareable:false (R160): a debt or a salary is only for whoever asked. */}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { accountSummary, amount, creditOrdersByUrgency, dayOf, dueStatus, moneyOf, quoteSheet, type AccountQuote, type ClientAccount, type CreditOrder } from '@lilachat/shared';
+import { accountQuoteLine, accountServiceLine, accountSummary, byUrgency, creditOrderLine, dueStatus, moneyOf, quoteSheet, type AccountQuote, type AccountService, type ClientAccount, type CreditOrder, type DetailStatus } from '@lilachat/shared';
 import { RecordSheet } from './RecordSheet';
 import { DETAIL_TONE } from './tones';
 import { useFileViewer } from './useFileViewer';
@@ -23,21 +23,26 @@ function Summary({ account }: { account: ClientAccount }) {
   );
 }
 
-function CreditRow({ order }: { order: CreditOrder }) {
-  const due = order.dueAt && order.pending ? dueStatus(order.dueAt, new Date()) : null;
+/** What is owed, with its due day when it has one: past due, it is marked in red. */
+function DebtRow(props: { testID: string; title: string; line: string; dueAt?: string; pending?: number; status?: DetailStatus }) {
+  const due = props.dueAt && props.pending ? dueStatus(props.dueAt, new Date()) : null;
   return (
-    <View testID={`credito-${order.id}`} className={`border-t border-outline/10 py-3 ${due?.tone === 'error' ? 'border-l-[3px] border-l-error pl-3' : ''}`}>
+    <View testID={props.testID} className={`border-t border-outline/10 py-3 ${due?.tone === 'error' ? 'border-l-[3px] border-l-error pl-3' : ''}`}>
       <View className="flex-row items-start gap-3">
         <View className="min-w-0 flex-1">
-          <Text className="text-[14px] font-semibold text-on-surface">{order.product ?? 'Pedido'}</Text>
-          <Text className="mt-0.5 text-[12px] text-on-surface-variant">{[amount(order.quantity, order.unit), order.date && dayOf(order.date), order.total !== undefined ? `Total ${moneyOf(order.total)}` : undefined].filter(Boolean).join(' · ')}</Text>
+          <Text className="text-[14px] font-semibold text-on-surface">{props.title}</Text>
+          <Text className="mt-0.5 text-[12px] text-on-surface-variant">{props.line}</Text>
         </View>
-        {due ? <Pill label={due.label} tone={due.tone} /> : <Pill label={order.status.label} tone={order.status.tone} />}
+        {due ? <Pill label={due.label} tone={due.tone} /> : props.status ? <Pill label={props.status.label} tone={props.status.tone} /> : null}
       </View>
-      {order.pending !== undefined ? <Text className={`mt-1 text-right text-[15px] font-bold ${due?.tone === 'error' ? 'text-error' : 'text-on-surface'}`}>{`Debe ${moneyOf(order.pending)}`}</Text> : null}
+      {props.pending !== undefined ? <Text className={`mt-1 text-right text-[15px] font-bold ${due?.tone === 'error' ? 'text-error' : 'text-on-surface'}`}>{`Debe ${moneyOf(props.pending)}`}</Text> : null}
     </View>
   );
 }
+
+const CreditRow = ({ order }: { order: CreditOrder }) => <DebtRow testID={`credito-${order.id}`} title={order.product ?? 'Pedido'} line={creditOrderLine(order, new Date())} dueAt={order.dueAt} pending={order.pending} status={order.status} />;
+
+const ServiceRow = ({ service }: { service: AccountService }) => <DebtRow testID={`servicio-por-cobrar-${service.id}`} title={service.name ?? 'Servicio'} line={accountServiceLine(service)} dueAt={service.dueAt} pending={service.pending} status={service.isCredit ? { label: 'Al crédito', tone: 'neutral' } : undefined} />;
 
 function QuoteRow(props: { quote: AccountQuote; onOpen: () => void }) {
   const { quote } = props;
@@ -45,7 +50,7 @@ function QuoteRow(props: { quote: AccountQuote; onOpen: () => void }) {
     <Pressable testID={`cotizacion-${quote.id}`} onPress={props.onOpen} className="min-h-[56px] flex-row items-center gap-3 border-t border-outline/10 py-2.5">
       <View className="min-w-0 flex-1">
         <Text className="text-[14px] font-semibold text-on-surface">{quote.code ? `Cotización ${quote.code}` : 'Cotización'}</Text>
-        <Text className="mt-0.5 text-[12px] text-on-surface-variant">{[quote.total !== undefined ? moneyOf(quote.total) : undefined, quote.date && dayOf(quote.date), quote.serviceId ? undefined : 'sin servicio'].filter(Boolean).join(' · ')}</Text>
+        <Text className="mt-0.5 text-[12px] text-on-surface-variant">{accountQuoteLine(quote, new Date())}</Text>
       </View>
       <Pill label={quote.status.label} tone={quote.status.tone} />
     </Pressable>
@@ -56,14 +61,21 @@ function AccountBody({ account }: { account: ClientAccount }) {
   const [quote, setQuote] = useState<AccountQuote | null>(null);
   const files = useFileViewer();
   const credit = account.creditOrders;
-  if (!credit && !account.quotes) return <Text className="pt-6 text-center text-[14px] text-on-surface-variant">No tienes permiso para ver la cuenta de este cliente.</Text>;
+  const { services } = account;
+  if (!credit && !services && !account.quotes) return <Text className="pt-6 text-center text-[14px] text-on-surface-variant">No tienes permiso para ver la cuenta de este cliente.</Text>;
   return (
     <>
-      {credit ? <Summary account={account} /> : null}
+      {credit || services ? <Summary account={account} /> : null}
+      {services ? (
+        <View testID="servicios-por-cobrar" className="rounded-2xl border border-outline/15 bg-surface px-4 pt-3">
+          <Kicker>{`Servicios por cobrar · ${account.totals.services ?? services.length}`}</Kicker>
+          {services.length ? byUrgency(services, new Date()).map((service) => <ServiceRow key={service.id} service={service} />) : <Text className="py-3 text-[14px] text-on-surface-variant">Sin servicios por cobrar.</Text>}
+        </View>
+      ) : null}
       {credit ? (
         <View className="rounded-2xl border border-outline/15 bg-surface px-4 pt-3">
           <Kicker>Pedidos al crédito</Kicker>
-          {credit.length ? creditOrdersByUrgency(credit, new Date()).map((order) => <CreditRow key={order.id} order={order} />) : <Text className="py-3 text-[14px] text-on-surface-variant">Sin pedidos al crédito.</Text>}
+          {credit.length ? byUrgency(credit, new Date()).map((order) => <CreditRow key={order.id} order={order} />) : <Text className="py-3 text-[14px] text-on-surface-variant">Sin pedidos al crédito.</Text>}
         </View>
       ) : null}
       {account.quotes ? (
@@ -80,9 +92,9 @@ function AccountBody({ account }: { account: ClientAccount }) {
 
 /**
  * «Cuenta» of a client's channel (José 30/10: where are the client's quotes;
- * design f-08): ALL its quotes, also those with no service, and its orders on
- * credit, overdue first. Asked when it opens; what Portal does not send is
- * what that person may not see.
+ * design f-08): ALL its quotes, also those with no service, what its services
+ * owe and its orders on credit, overdue first. Asked when it opens; what Portal
+ * does not send is what that person may not see.
  */
 export function ClientAccountPanel(props: { target: ServiceAskTarget }) {
   const answer = useServiceAsk('account', props.target, props.target.clientId);

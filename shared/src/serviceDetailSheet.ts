@@ -72,7 +72,7 @@ const sheetItem = (item: QuoteItem): SheetItem => ({ name: item.name, line: item
 
 /** Also opened from the client's account (all its quotes, design f-08). */
 export function quoteSheet(quote: ServiceQuote): DetailSheet {
-  const sheet = { ...base(quote.code ? `Cotización ${quote.code}` : 'Cotización', quote.status, quote.url), facts: facts([['Total', quote.total === undefined ? undefined : moneyOf(quote.total)], ['Fecha', quote.date && dayOf(quote.date)]]), items: (quote.items ?? []).map(sheetItem) };
+  const sheet = { ...base(quote.code ? `Cotización ${quote.code}` : 'Cotización', quote.status, quote.url), facts: facts([['Total', quote.total === undefined ? undefined : moneyOf(quote.total)], ['Fecha', quote.date && longDayOf(quote.date)]]), items: (quote.items ?? []).map(sheetItem) };
   // José 30/10 night: «en cotizaciones me gustaría poder ver el PDF».
   return quote.pdfUrl ? { ...sheet, files: [{ url: quote.pdfUrl, label: 'PDF' }] } : sheet;
 }

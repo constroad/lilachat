@@ -9066,9 +9066,16 @@ Portal leyó bien monto, destinatario, operación, fecha y concepto. Falta en ag
 - Reconocer el servicio por el cliente, cuando ese cliente tiene uno solo.
 - El medio de pago: guardó «CONTIAHORRO», que es el nombre de la cuenta.
 - La comisión (S/ 4.30) y el ITF (S/ 2.45) no aparecen en ningún campo.
-- Un voucher del 19/08 salió en «Caja del 4 de noviembre».
+- Un voucher del 19/08 salió en «Caja del 4 de noviembre». La fecha se guardó bien: esa tarjeta
+  agrupa por día de registro. Falta decidir si la fila muestra la fecha real.
 
 El caso de Aracely sigue sin probar: la cuenta de José sí tiene usuario en Portal.
+
+**Cómo lee hoy agentes (`bcf4966`, leído por su sesión):** `claude-haiku-5-5` recibe la foto en
+base64, sin OCR, y devuelve `expenses[]` (`lila/vouchers.ts`). El modelo elige el servicio del
+catálogo de `opciones_de_gasto`, que no trae el cliente. El control de duplicados mira operación y
+foto dentro de la empresa, y no ve lo cargado a mano en Portal. El 1:1 calla porque solo se actúa
+en el canal de caja.
 
 **Campos del gasto en Portal (04/11, leídos por la sesión de Portal):** `registrar_gasto` va por
 `registerExpense`, que no guarda partida, medio de pago, comisión ni ITF. La entrada de finanzas

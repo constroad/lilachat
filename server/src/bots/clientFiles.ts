@@ -16,18 +16,18 @@ export const ACCOUNT_FAILED = 'No se pudo traer la cuenta del cliente';
 export const BILLING_FAILED = 'No se pudo traer la cobranza del servicio';
 const SERVICE_GONE = 'Este servicio ya no está en el Portal.';
 
-type NotFound = { status: 404; error: string; message: string };
+export type NotFound = { status: 404; error: string; message: string };
 export type AskOutcome<T> = { ok: true; value: T } | { ok: false; message: string; fallbackUrl: string | null };
 export type FilesOutcome = { ok: true; files: ServiceFiles } | { ok: false; message: string; fallbackUrl: string | null };
 
-const notFound = (): NotFound => ({ status: 404, error: 'service_not_found', message: 'Ese servicio no existe o no estás en el canal del cliente.' });
+export const notFound = (): NotFound => ({ status: 404, error: 'service_not_found', message: 'Ese servicio no existe o no estás en el canal del cliente.' });
 
 /** What the question needs from the member's access (José 30/10 night): a tab, seeing money, or Portal's Drive (José 05/11). */
 type Need = RestrictableTab | 'money' | 'drive';
 /** `gone`: what it says when Portal no longer has it (agentes 6fc3ca5: 404 `not-found`), without a link that would 404 too. */
-type ServiceAsk<T> = { event: Extract<BotEventType, `client.${string}.requested`>; parse: (body: unknown) => T | null; failed: string; gone: string; label: string; need: Need; scrub?: (value: T, seesMoney: boolean) => T };
+export type ServiceAsk<T> = { event: Extract<BotEventType, `client.${string}.requested`>; parse: (body: unknown) => T | null; failed: string; gone: string; label: string; need: Need; scrub?: (value: T, seesMoney: boolean) => T };
 
-type AskedService = { client: Pick<ClientChannel, 'appId' | 'chatId' | 'driveUrl' | 'services'>; fallbackUrl: string | null; seesBilling: boolean };
+export type AskedService = { client: Pick<ClientChannel, 'appId' | 'chatId' | 'driveUrl' | 'services'>; fallbackUrl: string | null; seesBilling: boolean };
 type Asker = { id: string; name?: string; phone?: string; sees_billing?: true };
 
 function meets(access: MyClientAccess, need: Need): boolean {
@@ -39,7 +39,7 @@ function meets(access: MyClientAccess, need: Need): boolean {
  * The client (and, when asked, its service), only for a member of the client's PRIVATE channel and only if the app
  * listed that service in its last PUT (Portal only checks the company). `serviceId` null asks about the whole client.
  */
-async function findAskedService(workspaceId: string, clientId: string, serviceId: string | null, userId: Types.ObjectId, need: Need): Promise<AskedService | null> {
+export async function findAskedService(workspaceId: string, clientId: string, serviceId: string | null, userId: Types.ObjectId, need: Need): Promise<AskedService | null> {
   const actor = await actorIn(workspaceId, userId);
   if (!CLIENT_ID.test(clientId) || (serviceId !== null && !CLIENT_ID.test(serviceId))) return null;
   const client = await ClientChannelModel.findOne({ workspaceId: new Types.ObjectId(workspaceId), clientId }).select('appId chatId driveUrl services billingViewers restrictedMembers').lean<(AskedService['client'] & Pick<ClientChannel, 'billingViewers' | 'restrictedMembers'>) | null>();
@@ -69,7 +69,7 @@ const isGone = (reply: { status?: number | null; body?: unknown }): boolean => r
  * same request (pending 121 Drive; José 30/10 detail). Nothing is stored: the
  * links never expire, so they only show inside that channel.
  */
-async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clientId: string, serviceId: string | null, userId: Types.ObjectId, extra: Record<string, string> = {}): Promise<AskOutcome<T> | NotFound> {
+export async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clientId: string, serviceId: string | null, userId: Types.ObjectId, extra: Record<string, string> = {}): Promise<AskOutcome<T> | NotFound> {
   const asked = await findAskedService(workspaceId, clientId, serviceId, userId, ask.need);
   if (!asked) return notFound();
   const { client, fallbackUrl, seesBilling } = asked;

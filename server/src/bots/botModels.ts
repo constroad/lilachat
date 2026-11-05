@@ -66,6 +66,10 @@ export type BotCommandRun = {
   failure?: { at: Date; error: string };
   /** A run started by a schedule (28/10): its answers go to the schedule's chat, and «solo si hay algo» is honored. */
   schedule?: { id: Types.ObjectId; scheduledFor: Date; onlyIfSomething: boolean; time: string };
+  /** Values the SERVER adds to the form's answer (field reports, 05/11): the report, the section, the tramo. The phone never sets them. */
+  context?: Record<string, string | number>;
+  /** The client's service the door checked (`findAskedService`): goes beside `values` so agentes can hold the border between clients. */
+  service?: { clientId: string; serviceId: string };
   expiresAt: Date;
   createdAt: Date;
 };
@@ -218,6 +222,8 @@ const commandRunSchema = new Schema<BotCommandRun>(
     text: { type: String },
     failure: { at: Date, error: String },
     schedule: { type: Schema.Types.Mixed },
+    context: { type: Schema.Types.Mixed },
+    service: { type: Schema.Types.Mixed },
     expiresAt: { type: Date, required: true },
   },
   { timestamps: { createdAt: true, updatedAt: false } }

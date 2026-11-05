@@ -227,3 +227,14 @@ A mano, en `.stitch-work/out/winks/r02nov-ataque-hand.html` (después de las hoj
 | `i-02-codigo-correo-app.png` | I · Código enviado al correo · Móvil (`screens/2a6227a5eaa94603a3cfe8af1a6b4916`) · aprobado por José 04/11 |
 | `i-03-tus-espacios-app.png` | I · Tus espacios de trabajo e invitaciones · Móvil (`screens/562f0b08fcfe4edb887ca7bdf4603f0d`) · aprobado por José 04/11 |
 | `i-04-crea-tu-usuario-app.png` | I · Crear el usuario al entrar a un espacio · Móvil (`screens/ac8b685553074d4bae1be561bf507116`) · aprobado por José 04/11 |
+
+## J · Informes desde Lilachat (05/11/2026, spec `INFORMES-DESDE-LILACHAT.spec.md` §4.3)
+
+| Captura | Pantalla |
+| --- | --- |
+| `j-02-informe-hub.png` | J · Hub del informe por secciones, progreso y Publicar · Móvil (`screens/f00b3484ba4b43a0b8f24899257b93e6`) · implementada en F1, pendiente de la mirada de José |
+| `j-01-crear-informe.png` | J · Crear informe: selector de tipo (8 tipos, En Portal) · Móvil (`screens/31438e82e9ac41a5936b8e09301485d3`) · implementada en F1, pendiente de la mirada de José |
+| `j-03-informe-tramos.png` | J · Tramos del Control de imprimación · Móvil (`screens/1bd3934a64c94e8087eaff6ccb6ed23c`) · implementada en F1, pendiente de la mirada de José |
+| `j-04-informe-publicar.png` | J · Publicar: faltantes y publicado con PDF · Móvil (`screens/e9a051e578764ce5a22dd74778065d6c`) · implementada en F1, pendiente de la mirada de José |
+| `j-03-informe-tramos-escritorio.png` | J · Tramos del Control de imprimación · Escritorio (`screens/05f7fe40b4de4712b26bf1b5c0805e4c`) · implementada en F1, pendiente de la mirada de José |
+| `j-02-informe-hub-escritorio.png` | J · Hub del informe por secciones, progreso y Publicar · Escritorio (`screens/3d4b150972fd4595bcd841e40e1c5db0`) · implementada en F1, pendiente de la mirada de José |

@@ -133,6 +133,8 @@ export * from './ephemeralStack.js';
 export * from './botManifest.js';
 export * from './appDirectory.js';
 export * from './appForms.js';
+export * from './fieldDocument.js';
+export * from './reportCreation.js';
 export * from './appFormOptions.js';
 export * from './appFormRows.js';
 export * from './formDates.js';

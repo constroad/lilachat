@@ -16,9 +16,12 @@ export type ServiceAskValue<K extends ServiceAskKind> = ValueOf[K];
 
 const FAILED: Record<ServiceAskKind, string> = { files: 'No se pudo traer el Drive', detail: 'No se pudo traer el detalle del servicio', account: 'No se pudo traer la cuenta del cliente', billing: 'No se pudo traer la cobranza del servicio' };
 
+/** Everything asked about one service hangs from here: its detail, its Drive, its billing and its field reports. */
+export const clientServicePath = (spaceId: string, clientId: string, serviceId: string): string => `/workspaces/${spaceId}/clients/${encodeURIComponent(clientId)}/services/${encodeURIComponent(serviceId)}`;
+
 /** The account is the whole client's (design f-08): its path has no service. */
 export const serviceAskPath = (spaceId: string, clientId: string, serviceId: string, kind: ServiceAskKind): string =>
-  kind === 'account' ? `/workspaces/${spaceId}/clients/${encodeURIComponent(clientId)}/account` : `/workspaces/${spaceId}/clients/${encodeURIComponent(clientId)}/services/${encodeURIComponent(serviceId)}/${kind}`;
+  kind === 'account' ? `/workspaces/${spaceId}/clients/${encodeURIComponent(clientId)}/account` : `${clientServicePath(spaceId, clientId, serviceId)}/${kind}`;
 
 /** `null` body = no network or a refusal: the generic failure, without a link. */
 export function readServiceAsk<K extends ServiceAskKind>(kind: K, body: ServiceAskBody | null): ServiceAskResult<ValueOf[K]> {

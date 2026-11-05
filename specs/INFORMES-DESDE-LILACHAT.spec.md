@@ -86,6 +86,15 @@ Reglas:
 - Después de cada guardado Lilachat vuelve a pedir el documento: la respuesta de
   una escritura no trae el documento (agentes solo lee texto, `code`, `campo`).
   Dos llamadas por sección, dentro de las 20 por minuto.
+- Agentes suma `report_id` (opcional, primer nivel) a su respuesta de un
+  formulario, tomado de `structured.informeId`, en la directa y en `/respond`.
+  `validateFormReply` lo guarda como `reportId`. Portal responde `informeId` en
+  `guardar_seccion_de_informe` **sin campos de PDF**: con un PDF en
+  `generating`, agentes espera el PDF y contesta el enlace en vez de «guardado».
+- Un reintento del mismo `form.submitted` no escribe dos veces, pero vuelve sin
+  `report_id`. Por eso `informe_de_campo` sin `report_id` devuelve el borrador
+  de esa persona (mismo servicio y tipo, `draft`, creado por ese `sub`) si
+  existe; Lilachat relee con eso cuando le falte el id.
 - Portal aplica sus fórmulas en cada guardado; los resultados vuelven en el
   documento. **Lilachat no calcula nada.** `observaciones` tope 200 caracteres.
 - Fotos: Lilachat sube la imagen comprimida, **sin sello**, a su media y la
@@ -189,32 +198,54 @@ Rangos aceptados en lt/m²: MC-30 0.7 a 1.5 (peso específico 0.93); Emulsión
 
 ### 4.2 Server (`server/src/bots/clientReports.ts`)
 
-- `POST /api/spaces/:spaceId/clients/:clientId/services/:serviceId/reports`
-  `{ type, report_id? }` → `client.report.draft.requested` → documento.
-- `POST …/reports/:reportId/sections/:seccion` `{ tramoId?, values }`: el
-  server arma un `BotCommandRun` con el `form` de esa sección (id =
-  `guardar_seccion_de_informe`), valida los valores con `validateFormValues`
-  como hoy y manda `form.submitted` por `submitForm`. Sin comando previo: el
-  run nace aquí, con los 15 minutos de siempre.
-- `POST …/reports/:reportId/photos` (multipart + `lat`, `lng`, `at`,
-  `tramoId`, `descripcion?`): comprime, guarda en media **sin sellar**, firma la
-  URL 15 minutos y manda `form.submitted` de `agregar_foto_de_informe`.
-- `POST …/reports/:reportId/publish` → `form.submitted` de `publicar_informe`.
+Dos rutas, y el resto es el motor de formularios de siempre:
+
+- `POST /api/workspaces/:id/clients/:clientId/services/:serviceId/reports/draft`
+  `{ type, report_id? }` → `client.report.draft.requested` → `{ document }`.
+  Sin `report_id` Portal devuelve el borrador propio de ese tipo (o el
+  documento vacío con `id: null`). El server guarda el último documento por
+  persona y servicio (`ReportDraftModel`, 24 h): los formularios de las
+  secciones se arman desde ahí, nunca desde lo que mande el teléfono. Un tipo
+  fuera de `OPEN_REPORT_TYPES` da 400; un canal ajeno, 404.
+- `POST …/reports/forms` abre UNA pieza del informe como `BotCommandRun` del
+  canal del cliente (15 min, `trigger: 'shortcut'`) y responde el
+  `CommandOutcome` con `outcome: 'form'`, igual que un atajo:
+  - `{ kind: 'section', type, section_id, item_id, key, report_id?, forms,
+    lat?, lng?, at? }`: el form es `sectionFormOf(documento, path)` (el de la
+    sección con los `values` como `default`, o el `tool` del template para las
+    fotos). El run lleva `context` (`servicioId`, `tipo`, `seccion`,
+    `informeId?`, `tramoId?`; para la foto `servicioId`, `informeId`,
+    `tramoId`, `at`, `lat?`, `lng?`) y `service { clientId, serviceId }`.
+    Una foto sin `at` da 400; sin documento guardado o un path que no existe,
+    409 `draft_not_open`; un `forms` menor al que pide el form, 409
+    `outdated_app`.
+  - `{ kind: 'publish', report_id, forms }`: form `publicar_informe` con el
+    único campo `nota` (≤200) y `context { servicioId, informeId }`.
+- El envío va por `POST /api/chats/:chatId/commands/:commandId/form` (y las
+  fotos por `…/files`) como cualquier formulario. `submitForm` mezcla el
+  `context` del run sobre los valores y manda `client_id` y `service_id` al
+  lado de `values` en `form.submitted`, para que agentes sostenga la frontera
+  entre clientes.
 - Puerta: `findAskedService` con `need: 'services'`. Escribe quien lee el
   Detalle: miembro del canal con el servicio listado, sin marca de montos
-  necesaria. Un canal ajeno da 404 (test existente).
+  necesaria. Un canal ajeno da 404 (test).
 - Cada escritura deja `audit_logs` en Portal como las lecturas.
 
 ### 4.3 Pantallas (APK y web, mismo motor)
 
 | Pantalla | Diseño Stitch | Qué hace |
 | --- | --- | --- |
-| Informes → «Crear informe» | `j-01-crear-informe` | selector de tipo con la lista del canal (8 tipos; solo `CTL-IMP` crea por ahora, los demás abren Portal) |
-| Hub del informe | `j-02-informe-hub` | tarjetas por sección con estado, resumen y resultados; barra de progreso; «Publicar informe» abajo; borrador reabrible desde la fila del informe |
-| Tramos | `j-03-informe-tramos` | lista de tramos con su tasa y tono; «Agregar tramo»; cada tramo abre sus subsecciones |
-| Sección | `AppFormSheet` / `AppFormDialog` de hoy | el formulario de la sección con `values` precargados y `results` arriba |
-| Fotos del tramo | campo `photo` de hoy + `x-caption` | cámara o galería, hasta 20, leyenda por foto, sello del server |
-| Publicar | `j-04-informe-publicar` | lo que falta por sección, o «Publicado» con el PDF |
+| Informes → «Crear informe» | `j-01-crear-informe` | para todo el que ve los servicios (no solo quien ve montos); selector con los 8 tipos de la página pública (`REPORT_TYPE_OPTIONS`); solo `CTL-IMP` abre aquí, los demás abren el servicio en Portal con la pastilla «En Portal» |
+| Hub del informe | `j-02-informe-hub` | toma el lugar del Detalle; kicker con el tipo, título del servicio, pastilla Borrador/Publicado; progreso «N de M secciones listas»; una tarjeta por sección con punto de estado, pastilla (Lista / A medias / Falta / Opcional), resumen y resultados; la primera traba y «Publicar informe» abajo. Volver reabre el Detalle en Informes. Reabrir un borrador = volver a «Crear informe»: Portal devuelve el propio |
+| Tramos | `j-03-informe-tramos` | misma pantalla, vista interna: «N tramos», «Agregar tramo» (abre la primera sección de un tramo nuevo), una tarjeta por tramo con kicker, resumen, franja de resultados y una fila por subsección |
+| Sección | `AppFormSheet` / `AppFormDialog` de hoy | el formulario de la sección con `values` precargados; al responderse (`answeredSince`) se vuelve a pedir el documento |
+| Fotos del tramo | fila «Fotos» del tramo → form del tool `agregar_foto_de_informe` | una foto por llamada; el cliente manda `at` (y `lat`/`lng` si el dispositivo los da) al abrir el form; Portal sella. Leyenda y varias fotos seguidas: F2 |
+| Publicar | `j-04-informe-publicar` | hoja/diálogo con lo que falta (botón apagado) o «Todo listo» → form `publicar_informe` (nota); publicado, el pie del hub muestra «Informe publicado», «Ver PDF» (`pdf_de_informe` de siempre) y «Volver al servicio» |
+
+Código: motor `shared/src/reportCreation.ts` (tipos, rutas, requests,
+pastillas; con test); app `app/src/spaces/clients/reports/*`; web
+`web/src/spaces/clients/reports/*` (con test de la página). El `chatId` del
+canal del cliente llega al Detalle porque los runs viven en ese chat.
 
 Reglas de UI: `constroad-premium-ui`; acento del espacio; estados cargando,
 vacío y error en cada pantalla; toque mínimo 44 px; sin hex.
@@ -263,5 +294,23 @@ spec al día. Las herramientas nuevas las aprueba José en agentes al publicarse
 ## 8. Estado
 
 - 05/11/2026: decisión tomada, as-is de Portal recibido, contrato cerrado con
-  Portal y Agentes. Motor `shared/src/fieldDocument.ts` con 15 tests. Portal
+  Portal y Agentes. Motor `shared/src/fieldDocument.ts` con 16 tests. Portal
   escribe las cuatro herramientas; Agentes espera la aprobación de José.
+- 05/11/2026 (noche), F1 escrita: server (`clientReports.ts`, 11 tests),
+  motor de pantallas (`reportCreation.ts`, 11 tests), pantallas APK y web
+  (j-01…j-04; test de la página web, 6). Portal publicó las herramientas en
+  `7841b285` (apagadas hasta que José las apruebe en agentes). **Sin
+  verificar de punta a punta**: el camino por agentes, el sello de la foto,
+  publicar de verdad, el PDF y el aviso al canal. Guion del E2E (en Test,
+  Consorcio Vial del Pacífico, APK y web): crear → general → tramo
+  (ubicación, bandejas, foto) → publicar con nota → PDF en el canal →
+  releer el publicado. F1 no tiene cola offline (§4.4 es F2) ni `report_id`
+  en la respuesta del form: el cliente vuelve a pedir el borrador sin id y
+  Portal devuelve el propio. **Cuidado (Portal 05/11):** sin `informeId`
+  Portal solo busca `draft`; después de publicar, releer sin id devuelve el
+  documento vacío y guardar `general` crearía un segundo informe. Por eso el
+  cliente guarda el id apenas lo aprende (`useFieldDocument`) y relee con él;
+  el publicado vuelve con `status: completed` (el motor lo lee como
+  `published`) y `publish.label: 'Republicar informe'` (sin botón en F1).
+  La foto sin GPS pasa: `lat` y `lng` van juntas o ninguna; sin punto el
+  sello dice «Ubicacion no disponible».

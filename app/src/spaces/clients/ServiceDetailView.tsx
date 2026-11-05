@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
-import { ChevronLeft, ExternalLink, FileText } from 'lucide-react-native';
+import { ChevronLeft, ExternalLink, FilePlus, FileText } from 'lucide-react-native';
 import { CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, moreInPortal, orphanDispatchesOf, reportGroups, type ChannelLinks, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
@@ -11,6 +11,8 @@ import { DETAIL_TONE, STATUS_TONE } from './tones';
 import { useFileViewer } from './useFileViewer';
 import { useReportPdf } from './useReportPdf';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
+import { CreateReportSheet } from './reports/CreateReportSheet';
+import { ReportDocumentScreen } from './reports/ReportDocumentScreen';
 
 /** How much of the previous tab stays visible when one scrolls into view. */
 const TAB_SCROLL_MARGIN = 24;
@@ -124,6 +126,17 @@ type OpenSheet = { tab: DetailTabKey; id: string };
 const orderLinkAction = (links: ChannelLinks | undefined, top: OpenSheet | undefined, target: ServiceAskTarget) =>
   links?.can('order') && top?.tab === 'orders' ? { label: 'Crear enlace del pedido', onPress: () => links.open({ kind: 'order', clientId: target.clientId, orderId: top.id }) } : undefined;
 
+/** «Crear informe» above Informes, for everyone with the services (José 05/11): the type picker, design j-01. */
+function CreateReportButton({ onPress }: { onPress: () => void }) {
+  const colors = useColores();
+  return (
+    <Pressable testID="crear-informe" onPress={onPress} className="min-h-[48px] flex-row items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 px-3">
+      <FilePlus size={18} color={colors.primary} />
+      <Text className="flex-1 text-[15px] font-semibold text-primary">Crear informe</Text>
+    </Pressable>
+  );
+}
+
 /**
  * «Generar informe de servicio» above Informes (José 31/10): the liquidation
  * carries amounts, so only for whoever sees money (José 05/11). It runs from
@@ -133,8 +146,8 @@ function ReportAction({ target, serviceId, onAnswered }: { target: ServiceAskTar
   return <SpaceActionButton jwt={target.jwt} spaceId={target.spaceId} values={serviceValuesOf(serviceId)} onAnswered={onAnswered} actionKey={SERVICE_REPORT_ACTION} label="Generar informe de servicio" testID="generar-informe-servicio" Icon={FileText} />;
 }
 
-function DetailTabs({ detail, target, serviceId, onOpenFile, links, seesMoney, onReported }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void; links?: ChannelLinks; seesMoney: boolean; onReported: () => void }) {
-  const [tab, setTab] = useState<DetailTabKey>('orders');
+function DetailTabs({ detail, target, serviceId, onOpenFile, links, seesMoney, onReported, onCreateReport, startTab }: { onCreateReport: () => void; startTab: DetailTabKey; detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void; links?: ChannelLinks; seesMoney: boolean; onReported: () => void }) {
+  const [tab, setTab] = useState<DetailTabKey>(startTab);
   // An order's sheet opens its dispatches on top (José 01/11); closing goes back one.
   const [opened, setOpened] = useState<OpenSheet[]>([]);
   const reportPdf = useReportPdf(target, serviceId, onOpenFile);
@@ -151,6 +164,7 @@ function DetailTabs({ detail, target, serviceId, onOpenFile, links, seesMoney, o
   return (
     <>
       <TabStrip detail={detail} tab={tab} onTab={setTab} />
+      {tab === 'reports' ? <CreateReportButton onPress={onCreateReport} /> : null}
       {tab === 'reports' && seesMoney ? <ReportAction target={target} serviceId={serviceId} onAnswered={onReported} /> : null}
       <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">
         {!rows.length ? <Text className="p-4 text-[14px] text-on-surface-variant">{detailEmptyText(tab, detail.totals)}</Text> : tab === 'reports' ? <ReportDays detail={detail} onOpen={openRow} onOpenFile={onOpenFile} /> : rows.map((row) => <RowView key={row.id} row={row} onOpen={openRow} onOpenFile={onOpenFile} />)}
@@ -176,7 +190,7 @@ const Skeleton = () => (
  * Pedidos · Informes with Portal's counts, each order with its dispatches
  * inside (José 01/11). Asked when it opens.
  */
-export function ServiceDetailView(props: { target: ServiceAskTarget; service: SpaceClientService; seesMoney: boolean; onBack: () => void; links?: ChannelLinks }) {
+export function ServiceDetailView(props: { target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; onBack: () => void; links?: ChannelLinks }) {
   const colors = useColores();
   // After a report the detail is asked again, keeping the open tab (agentes 31/10).
   const [round, setRound] = useState(0);
@@ -192,6 +206,18 @@ export function ServiceDetailView(props: { target: ServiceAskTarget; service: Sp
     });
     return () => subscription.remove();
   }, [onBack]);
+  // José 05/11: a field report is filled here, not in Portal's public page (spec INFORMES-DESDE-LILACHAT); it takes the detail's place.
+  const [picker, setPicker] = useState(false);
+  const [reportType, setReportType] = useState<string | null>(null);
+  // Back from the report, the detail opens on Informes, where it was.
+  const [startTab, setStartTab] = useState<DetailTabKey>('orders');
+  const portalUrl = answer?.ok ? answer.value.service.url : undefined;
+  const closeReport = useCallback((changed: boolean) => {
+    setReportType(null);
+    setStartTab('reports');
+    if (changed) askAgain();
+  }, [askAgain]);
+  if (reportType) return <ReportDocumentScreen target={props.target} chatId={props.chatId} service={props.service} type={reportType} portalUrl={portalUrl} onClose={closeReport} />;
   return (
     <ScrollView testID="detalle-servicio" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
       <Pressable testID="volver-a-servicios" onPress={onBack} className="min-h-[40px] flex-row items-center gap-1 self-start">
@@ -200,7 +226,8 @@ export function ServiceDetailView(props: { target: ServiceAskTarget; service: Sp
       </Pressable>
       <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
       {answer === null ? <Skeleton /> : null}
-      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} onOpenFile={files.open} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} /> : null}
+      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} onOpenFile={files.open} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} /> : null}
+      <CreateReportSheet visible={picker} portalUrl={portalUrl} onPick={(code) => { setPicker(false); setReportType(code); }} onClose={() => setPicker(false)} />
       {files.notice ? <Text className="text-center text-[13px] text-error">{files.notice}</Text> : null}
       {files.viewer}
       {answer && !answer.ok ? (

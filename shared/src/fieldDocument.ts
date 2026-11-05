@@ -17,8 +17,8 @@ export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
 export type SectionState = (typeof SECTION_STATES)[number];
 export type ResultTone = (typeof RESULT_TONES)[number];
 export type SectionResult = { label: string; value: string; tone: ResultTone };
-export type FormSection = { kind: 'form'; id: string; title: string; required: boolean; enabled: boolean; state: SectionState; summary: string[]; results: SectionResult[]; form: string; values: FormValues; /** The `clientKey` of a save Portal has not confirmed yet. */ pending?: string };
-export type SectionTemplate = { id: string; title: string; required: boolean; form: string };
+export type FormSection = { kind: 'form'; id: string; title: string; required: boolean; enabled: boolean; state: SectionState; summary: string[]; results: SectionResult[]; form: string; /** The tool that fills it instead of its form: the photos go one by one through `agregar_foto_de_informe`. */ tool?: string; values: FormValues; /** The `clientKey` of a save Portal has not confirmed yet. */ pending?: string };
+export type SectionTemplate = { id: string; title: string; required: boolean; form: string; tool?: string };
 export type RepeatItem = { id: string; title: string; summary: string[]; results: SectionResult[]; sections: FormSection[] };
 export type RepeatSection = { kind: 'repeat'; id: string; title: string; required: boolean; enabled: boolean; state: SectionState; summary: string[]; itemTitle: string; addLabel: string; min: number; template: SectionTemplate[]; items: RepeatItem[] };
 export type DocumentSection = FormSection | RepeatSection;
@@ -62,8 +62,9 @@ function formSectionOf(raw: Raw, forms: Record<string, FormSchema>, template?: S
   const title = template?.title ?? text(raw.title, LIMITS.title);
   const form = template?.form ?? text(raw.form, LIMITS.title);
   if (!id || !title || !(form in forms)) return null;
+  const tool = template?.tool ?? text(raw.tool, LIMITS.title);
   return {
-    kind: 'form', id, title, form,
+    kind: 'form', id, title, form, ...(tool ? { tool } : {}),
     required: template ? template.required : raw.required === true,
     enabled: raw.enabled !== false,
     state: oneOf(raw.state, SECTION_STATES, 'empty'),
@@ -80,7 +81,8 @@ function templateOf(raw: unknown, forms: Record<string, FormSchema>): SectionTem
     const title = text(one.title, LIMITS.title);
     const form = text(one.form, LIMITS.title);
     if (!id || !title || !(form in forms)) return null;
-    template.push({ id, title, required: one.required === true, form });
+    const tool = text(one.tool, LIMITS.title);
+    template.push({ id, title, required: one.required === true, form, ...(tool ? { tool } : {}) });
   }
   return template;
 }
@@ -132,44 +134,49 @@ function sectionsOf(raw: unknown, forms: Record<string, FormSchema>): DocumentSe
   return sections;
 }
 
+/** Portal says `completed` once published (05/11): here it is `published`; anything else it may invent is refused. */
+const statusOf = (value: unknown): DocumentStatus | null => (value === 'completed' ? 'published' : DOCUMENT_STATUSES.includes(value as DocumentStatus) ? (value as DocumentStatus) : null);
+
 /** What Portal answered for `informe_de_campo`, or null when it cannot be drawn. */
 export function fieldDocumentOf(body: unknown): FieldDocument | null {
   const raw = record(body);
   const id = raw.id === null ? null : text(raw.id, LIMITS.title);
   const type = text(raw.type, LIMITS.title);
   const title = text(raw.title, LIMITS.title);
-  if (id === '' || !type || !title || !DOCUMENT_STATUSES.includes(raw.status as DocumentStatus)) return null;
+  const status = statusOf(raw.status);
+  if (id === '' || !type || !title || !status) return null;
   const forms = formsOf(raw.forms);
   const sections = forms ? sectionsOf(raw.sections, forms) : null;
   if (!forms || !sections) return null;
   const publish = record(raw.publish);
-  return { id, type, title, status: raw.status as DocumentStatus, forms, sections, publish: { label: text(publish.label, LIMITS.title) || 'Publicar informe', missing: lines(publish.missing) } };
+  return { id, type, title, status, forms, sections, publish: { label: text(publish.label, LIMITS.title) || 'Publicar informe', missing: lines(publish.missing) } };
 }
 
-type Found = { title: string; form: string; values: FormValues };
+type Found = { title: string; form: string; tool?: string; values: FormValues };
 
 /** The section behind a path; inside a repeat, a null `itemId` is a new item on the template, empty. */
 function sectionAt(document: FieldDocument, path: SectionPath): Found | null {
   const section = document.sections.find((one) => one.id === path.sectionId);
   if (!section) return null;
-  if (section.kind === 'form') return path.key === section.id ? { title: section.title, form: section.form, values: section.values } : null;
+  if (section.kind === 'form') return path.key === section.id ? { title: section.title, form: section.form, ...(section.tool ? { tool: section.tool } : {}), values: section.values } : null;
   const entry = section.template.find((one) => one.id === path.key);
   if (!entry) return null;
-  if (path.itemId === null) return { title: `${section.itemTitle} · ${entry.title}`, form: entry.form, values: {} };
+  const tool = entry.tool ? { tool: entry.tool } : {};
+  if (path.itemId === null) return { title: `${section.itemTitle} · ${entry.title}`, form: entry.form, ...tool, values: {} };
   const item = section.items.find((one) => one.id === path.itemId);
   const saved = item?.sections.find((one) => one.id === path.key);
-  return item && saved ? { title: `${item.title} · ${entry.title}`, form: entry.form, values: saved.values } : null;
+  return item && saved ? { title: `${item.title} · ${entry.title}`, form: entry.form, ...tool, values: saved.values } : null;
 }
 
 const withDefault = (property: FormSchemaProperty, value: unknown): FormSchemaProperty => (value === undefined || value === '' ? property : { ...property, default: value });
 
-/** The section as the form the engine draws: `guardar_seccion_de_informe` with the saved values as defaults. */
+/** The section as the form the engine draws: `guardar_seccion_de_informe` (or the section's own tool) with the saved values as defaults. */
 export function sectionFormOf(document: FieldDocument, path: SectionPath): AppForm | null {
   const found = sectionAt(document, path);
   const schema = found ? document.forms[found.form] : undefined;
   if (!found || !schema) return null;
   const properties = Object.fromEntries(Object.entries(schema.properties ?? {}).map(([name, property]) => [name, withDefault(property, found.values[name])]));
-  return { id: SECTION_TOOL, title: found.title, schema: { ...schema, properties } };
+  return { id: found.tool ?? SECTION_TOOL, title: found.title, schema: { ...schema, properties } };
 }
 
 type Leaf = { path: SectionPath; required: boolean; done: boolean; enabled: boolean };

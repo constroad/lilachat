@@ -6,16 +6,17 @@ const generalForm = { type: 'object', properties: { liquido: { type: 'string', t
 const ubicacionForm = { type: 'object', properties: { tramo: { type: 'string', title: 'Tramo' }, carril: { type: 'string', title: 'Carril' } }, required: ['tramo'] };
 const bandejasForm = { type: 'object', properties: { pesoSin1: { type: 'number', title: 'Peso sin asfalto 1', 'x-unit': 'g' }, pesoCon1: { type: 'number', title: 'Peso con asfalto 1', 'x-unit': 'g' }, area1: { type: 'number', title: 'Área 1', 'x-unit': 'm²' } }, required: ['pesoSin1', 'pesoCon1', 'area1'] };
 const firmasForm = { type: 'object', properties: { responsableNombre: { type: 'string', title: 'Responsable' } } };
+const fotosForm = { type: 'object', properties: { foto: { type: 'string', title: 'Foto', 'x-input': 'photo' }, descripcion: { type: 'string', title: 'Descripción', maxLength: 200 } }, required: ['foto'] };
 
 const body = {
   id: '6aed0a1b2c3d4e5f60718293', type: 'CTL-IMP', title: 'Control de imprimación', status: 'draft',
-  forms: { general: generalForm, ubicacion: ubicacionForm, bandejas: bandejasForm, firmas: firmasForm },
+  forms: { general: generalForm, ubicacion: ubicacionForm, bandejas: bandejasForm, fotos: fotosForm, firmas: firmasForm },
   sections: [
     { id: 'general', title: 'Datos generales', required: true, state: 'done', summary: ['Av. Los Incas · MC-30'], results: [], form: 'general', values: { liquido: 'MC-30', proyecto: 'Av. Los Incas' } },
     {
       id: 'tramos', title: 'Tramos', required: true, state: 'partial', summary: ['1 tramo'],
-      repeat: { itemTitle: 'Tramo', addLabel: 'Agregar tramo', min: 1, template: [{ id: 'ubicacion', title: 'Ubicación', required: true, form: 'ubicacion' }, { id: 'bandejas', title: 'Bandejas', required: true, form: 'bandejas' }] },
-      items: [{ id: 't1', title: 'Tramo 1', summary: ['Km 12+000 a 12+350'], results: [{ label: 'Tasa de riego', value: '1.02 lt/m²', tone: 'ok' }], sections: [{ id: 'ubicacion', state: 'done', values: { tramo: 'Km 12+000' } }, { id: 'bandejas', state: 'empty', values: {} }] }],
+      repeat: { itemTitle: 'Tramo', addLabel: 'Agregar tramo', min: 1, template: [{ id: 'ubicacion', title: 'Ubicación', required: true, form: 'ubicacion' }, { id: 'bandejas', title: 'Bandejas', required: true, form: 'bandejas' }, { id: 'fotos', title: 'Fotos', required: false, form: 'fotos', tool: 'agregar_foto_de_informe' }] },
+      items: [{ id: 't1', title: 'Tramo 1', summary: ['Km 12+000 a 12+350'], results: [{ label: 'Tasa de riego', value: '1.02 lt/m²', tone: 'ok' }], sections: [{ id: 'ubicacion', state: 'done', values: { tramo: 'Km 12+000' } }, { id: 'bandejas', state: 'empty', values: {} }, { id: 'fotos', state: 'done', values: { fotos: [{ id: 'f1', url: 'https://lila.constroad.com/f/1.jpg' }] } }] }],
     },
     { id: 'firmas', title: 'Responsables y firmas', required: false, state: 'empty', summary: [], results: [], form: 'firmas', values: {} },
   ],
@@ -31,7 +32,7 @@ describe('fieldDocumentOf', () => {
     expect(document.id).toBe(body.id);
     expect(document.sections.map((section) => section.id)).toEqual(['general', 'tramos', 'firmas']);
     const tramos = document.sections[1];
-    expect(tramos.kind === 'repeat' && tramos.items[0].sections.map((section) => [section.title, section.form, section.state])).toEqual([['Ubicación', 'ubicacion', 'done'], ['Bandejas', 'bandejas', 'empty']]);
+    expect(tramos.kind === 'repeat' && tramos.items[0].sections.map((section) => [section.title, section.form, section.state, section.tool ?? ''])).toEqual([['Ubicación', 'ubicacion', 'done', ''], ['Bandejas', 'bandejas', 'empty', ''], ['Fotos', 'fotos', 'done', 'agregar_foto_de_informe']]);
     expect(tramos.kind === 'repeat' && tramos.items[0].results[0]).toEqual({ label: 'Tasa de riego', value: '1.02 lt/m²', tone: 'ok' });
   });
 
@@ -48,6 +49,11 @@ describe('fieldDocumentOf', () => {
     expect(empty.sections.map((section) => section.enabled)).toEqual([true, false, false]);
     expect(nextSection(empty)).toEqual({ sectionId: 'general', itemId: null, key: 'general' });
     expect(sectionFormOf(empty, { sectionId: 'general', itemId: null, key: 'general' })?.schema.properties?.proyecto).toMatchObject({ default: 'Av. Los Incas' });
+  });
+
+  it('a published report comes from Portal as «completed» and reads as published (Portal 05/11)', () => {
+    expect(fieldDocumentOf({ ...body, status: 'completed' })?.status).toBe('published');
+    expect(fieldDocumentOf({ ...body, status: 'published' })?.status).toBe('published');
   });
 
   it('refuses what is not a document', () => {
@@ -86,6 +92,13 @@ describe('sectionFormOf', () => {
     expect(form.schema.properties?.tramo).toMatchObject({ title: 'Tramo', default: 'Km 12+000' });
     expect(form.schema.properties?.carril).not.toHaveProperty('default');
     expect(form.schema.required).toEqual(['tramo']);
+  });
+
+  it('the photos open with their own tool, one photo at a time', () => {
+    const form = sectionFormOf(parsed(), { sectionId: 'tramos', itemId: 't1', key: 'fotos' })!;
+
+    expect(form.id).toBe('agregar_foto_de_informe');
+    expect(form.schema.properties?.foto).not.toHaveProperty('default');
   });
 
   it('a new tramo opens its first section empty', () => {

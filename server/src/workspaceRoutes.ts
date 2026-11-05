@@ -27,6 +27,7 @@ import { CUSTOM_EMOJI_MAX_BYTES } from '@lilachat/shared';
 import { addCustomEmoji, listCustomEmojis, removeCustomEmoji } from './customEmojiCatalog.js';
 import { clientRecords, listClients } from './bots/botClients.js';
 import { clientAccount, clientReportPdf, clientServiceBilling, clientServiceDetail, clientServiceFiles } from './bots/clientFiles.js';
+import { clientReportDraft, openReportForm } from './bots/clientReports.js';
 import { liftRestrictionsOfAdmin, listBillingViewers, listClientAccess, setBillingViewer, setClientAccess } from './bots/clientBillingViewers.js';
 
 /** Tries of a code per person and minute: enough to fix a typo, not to guess codes. */
@@ -125,6 +126,18 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
     const found = await clientReportPdf(req.params.id!, req.params.clientId!, req.params.serviceId!, req.params.reportId!, me(req));
     if ('error' in found) return res.status(found.status).json({ error: found.error, message: found.message });
     res.json(found.ok ? { pdf: found.value } : { error: 'report_pdf_failed', message: found.message });
+  }));
+  // José 05/11: a field report filled from the channel by sections (spec INFORMES-DESDE-LILACHAT). The document first…
+  router.post('/:id/clients/:clientId/services/:serviceId/reports/draft', handled(async (req, res) => {
+    const found = await clientReportDraft(req.params.id!, req.params.clientId!, req.params.serviceId!, me(req), req.body);
+    if ('error' in found) return res.status(found.status).json({ error: found.error, message: found.message });
+    res.json(found.ok ? { document: found.value } : { error: 'report_draft_failed', message: found.message });
+  }));
+  // …then each section, photo or «Publicar» is a form of the app, sent through the form routes.
+  router.post('/:id/clients/:clientId/services/:serviceId/reports/forms', handled(async (req, res) => {
+    const outcome = await openReportForm(req.params.id!, req.params.clientId!, req.params.serviceId!, me(req), req.body);
+    if ('error' in outcome) return res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+    res.json(outcome);
   }));
   // José 30/10 (design f-08): all the client's quotes and its orders on credit; a failure is a 200 with the message.
   router.get('/:id/clients/:clientId/account', handled(async (req, res) => {

@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { ChevronLeft, ExternalLink, FileText } from 'lucide-react';
+import { ChevronLeft, ExternalLink, FilePlus, FileText } from 'lucide-react';
 import { CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { usePortalFileViewer } from './PortalFileViewer';
 import type { OpenSheetFile } from './RecordSheetWeb';
@@ -9,6 +9,8 @@ import { SpaceActionButtonWeb } from './SpaceActionButtonWeb';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
 import { useReportPdf } from './useReportPdf';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
+import { CreateReportDialog } from './reports/CreateReportDialog';
+import { ReportDocumentWeb } from './reports/ReportDocumentWeb';
 
 const PortalLink = (props: { url: string; label: string; testId: string }) => (
   <a href={props.url} target="_blank" rel="noreferrer" data-testid={props.testId} className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary hover:underline">
@@ -76,6 +78,16 @@ type OpenSheet = { tab: DetailTabKey; id: string };
 const orderLinkAction = (links: ChannelLinks | undefined, top: OpenSheet | undefined, target: ServiceAskTarget) =>
   links?.can('order') && top?.tab === 'orders' ? { label: 'Crear enlace del pedido', onPress: () => links.open({ kind: 'order', clientId: target.clientId, orderId: top.id }) } : undefined;
 
+/** «Crear informe» above Informes, for everyone with the services (José 05/11): the type picker, design j-01. */
+function CreateReportButton({ onPress }: { onPress: () => void }) {
+  return (
+    <button type="button" data-testid="crear-informe" onClick={onPress} className="flex h-11 w-full items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 text-left text-sm font-semibold text-primary hover:bg-primary/15">
+      <FilePlus size={16} />
+      Crear informe
+    </button>
+  );
+}
+
 /**
  * «Generar informe de servicio» above Informes (José 31/10): the liquidation
  * carries amounts, so only for whoever sees money (José 05/11). It runs from
@@ -107,8 +119,8 @@ function TabBody({ detail, tab, onOpen, onOpenFile }: { detail: ServiceDetail; t
   );
 }
 
-function DetailTabs({ detail, target, serviceId, links, seesMoney, onReported }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; links?: ChannelLinks; seesMoney: boolean; onReported: () => void }) {
-  const [tab, setTab] = useState<DetailTabKey>('orders');
+function DetailTabs({ detail, target, serviceId, links, seesMoney, onReported, onCreateReport, startTab }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; links?: ChannelLinks; seesMoney: boolean; onReported: () => void; onCreateReport: () => void; startTab: DetailTabKey }) {
+  const [tab, setTab] = useState<DetailTabKey>(startTab);
   const viewer = usePortalFileViewer();
   // An order's sheet opens its dispatches on top (José 01/11); closing goes back one.
   const [opened, setOpened] = useState<OpenSheet[]>([]);
@@ -130,6 +142,7 @@ function DetailTabs({ detail, target, serviceId, links, seesMoney, onReported }:
           <button key={one.key} type="button" role="tab" aria-selected={tab === one.key} data-testid={`pestana-detalle-${one.key}`} onClick={(event) => { setTab(one.key); event.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); }} className={`h-9 shrink-0 rounded-lg px-3 text-sm ${tab === one.key ? 'bg-primary font-semibold text-on-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>{one.label}</button>
         ))}
       </div>
+      {tab === 'reports' ? <CreateReportButton onPress={onCreateReport} /> : null}
       {tab === 'reports' && seesMoney ? <ReportAction target={target} serviceId={serviceId} onAnswered={onReported} /> : null}
       <TabBody detail={detail} tab={tab} onOpen={openRow} onOpenFile={viewer.open} />
       {tab === 'orders' ? <OrphanDispatches detail={detail} onOpen={openDispatch} onOpenFile={viewer.open} /> : null}
@@ -147,17 +160,30 @@ function DetailTabs({ detail, target, serviceId, links, seesMoney, onReported }:
  * Pedidos · Informes with Portal's counts, each order with its dispatches
  * inside (José 01/11). Asked when it opens.
  */
-export function ServiceDetailWeb(props: { target: ServiceAskTarget; service: SpaceClientService; seesMoney: boolean; onBack: () => void; links?: ChannelLinks }) {
+export function ServiceDetailWeb(props: { target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; onBack: () => void; links?: ChannelLinks }) {
   // After a report the detail is asked again, keeping the open tab (agentes 31/10).
   const [round, setRound] = useState(0);
   const askAgain = useCallback(() => setRound((count) => count + 1), []);
   const answer = useServiceAsk('detail', props.target, props.service.id, round);
+  // José 05/11: a field report is filled here, not in Portal's public page (spec INFORMES-DESDE-LILACHAT); it takes the detail's place.
+  const [picker, setPicker] = useState(false);
+  const [reportType, setReportType] = useState<string | null>(null);
+  // Back from the report, the detail opens on Informes, where it was.
+  const [startTab, setStartTab] = useState<DetailTabKey>('orders');
+  const portalUrl = answer?.ok ? answer.value.service.url : undefined;
+  const closeReport = useCallback((changed: boolean) => {
+    setReportType(null);
+    setStartTab('reports');
+    if (changed) askAgain();
+  }, [askAgain]);
+  if (reportType) return <ReportDocumentWeb target={props.target} chatId={props.chatId} service={props.service} type={reportType} portalUrl={portalUrl} onClose={closeReport} />;
   return (
     <div data-testid="detalle-servicio" className="mx-auto flex max-w-3xl flex-col gap-3">
       <button type="button" data-testid="volver-a-servicios" onClick={props.onBack} className="inline-flex items-center gap-1 self-start text-sm font-semibold text-primary"><ChevronLeft size={16} /> Servicios</button>
       <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
       {answer === null ? <div data-testid="detalle-cargando" className="h-48 animate-pulse rounded-xl bg-surface" /> : null}
-      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} /> : null}
+      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} /> : null}
+      {picker ? <CreateReportDialog portalUrl={portalUrl} onPick={(code) => { setPicker(false); setReportType(code); }} onClose={() => setPicker(false)} /> : null}
       {answer && !answer.ok ? (
         <div data-testid="detalle-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm">
           <p className="mb-2 font-semibold">{answer.message}</p>

@@ -167,7 +167,10 @@ export async function submitForm(userId: Types.ObjectId, scope: CommandScope, co
   // Open before calling the app: its late answer can land before the webhook returns.
   const late = expectLateAnswer(commandId);
   try {
-    const reply = await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, 'form.submitted', { form_id: run.form!.id, command_id: commandId, values: checked.values as FormValues, channel: chat ? channelOf(chat) : null, user }, commandAnswerTimeout());
+    // A field report's section (05/11): the server's context rides with the answers, and the checked service beside them.
+    const values = { ...(checked.values as FormValues), ...(run.context ?? {}) };
+    const service = run.service ? { client_id: run.service.clientId, service_id: run.service.serviceId } : {};
+    const reply = await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, 'form.submitted', { form_id: run.form!.id, command_id: commandId, values, ...service, channel: chat ? channelOf(chat) : null, user }, commandAnswerTimeout());
     const outcome = await answerOf(reply, { installation, run, chat, base });
     return 'outcome' in outcome && outcome.outcome === 'pending' ? ((await late.within()) ?? outcome) : outcome;
   } finally {

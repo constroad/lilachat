@@ -175,6 +175,34 @@ describe('a row with a command (José, 05/11: «si toco un distrito no muestra e
     expect(run).toHaveBeenCalledWith('/clima hoy en Miraflores', 1);
   });
 
+  describe('a button with a line (José, 05/11: «Completar» on a card that lacks a piece of data)', () => {
+    const lacking = validateBotCard({ title: 'Gasto', fields: [], actions: [{ id: 'completar', label: 'Completar', style: 'primary', command: '/gastos completar 7' }, { id: 'descartar', label: 'Descartar', style: 'danger', value: 'x' }] });
+    const renderLacking = (run: ((line: string) => void) | null) => {
+      if (!lacking.ok) throw new Error(lacking.message);
+      render(<CardCommandContext.Provider value={run}><BotCardView card={lacking.card} chatId="c" seq={4} jwt="j" /></CardCommandContext.Provider>);
+    };
+
+    it('runs its line and does not lock the card: the form can be closed and opened again', () => {
+      // Arrange
+      const run = vi.fn();
+      const sent = vi.spyOn(globalThis, 'fetch');
+      renderLacking(run);
+      // Act
+      fireEvent.click(screen.getByTestId('accion-tarjeta-completar'));
+      // Assert
+      expect(run).toHaveBeenCalledWith('/gastos completar 7', 4);
+      expect(sent).not.toHaveBeenCalled();
+      expect((screen.getByTestId('accion-tarjeta-descartar') as HTMLButtonElement).disabled).toBe(false);
+      sent.mockRestore();
+    });
+
+    it('where its answer could not be shown it is not offered, and the other buttons stay', () => {
+      renderLacking(null);
+      expect(screen.queryByTestId('accion-tarjeta-completar')).toBeNull();
+      expect(screen.getByTestId('accion-tarjeta-descartar')).toBeTruthy();
+    });
+  });
+
   it('in the detail, it closes first: the answer lands in the chat, behind it', () => {
     const run = vi.fn();
     renderCard(run);

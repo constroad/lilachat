@@ -259,6 +259,26 @@ describe('a row of a card the app posted here', () => {
     await tap(asLuis).expect(403);
   });
 
+  it('a row the app opens runs for any member here, and the setting stays as it was (José, 05/11: «no hay data sensible alli»)', async () => {
+    // Arrange
+    const open: BotCard = { title: 'Clima', fields: [], blocks: [{ type: 'rows', rows: [{ label: 'Ate', value: '24°', tone: 'neutral', command: line, anyone: true }] }] };
+    await post({ card: open });
+    // Act
+    await tap(asAna).expect(200);
+    // Assert
+    expect(JSON.parse(heard[0]!).data).toMatchObject({ command: 'clima', text: '5/11/2026 en Ate' });
+    expect(await offered(asAna, `?chat=${planta}`)).toEqual([]);
+  });
+
+  it('a button with a line runs like a row, and who may use it still counts', async () => {
+    // Arrange
+    const button: BotCard = { title: 'Gasto', fields: [], actions: [{ id: 'completar', label: 'Completar', style: 'primary', value: '', command: line }] };
+    await post({ card: button });
+    // Act and assert
+    await tap(asJose).expect(200);
+    expect((await tap(asAna).expect(403)).body.error).toBe('not_allowed_here');
+  });
+
   it('only what the card says: another line of the same command is not run', async () => {
     await post();
     const refused = await tap(asJose, { seq: 7, line: '/clima 6/11/2026 en Ate' }).expect(404);

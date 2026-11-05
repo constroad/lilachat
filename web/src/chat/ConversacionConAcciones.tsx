@@ -21,6 +21,7 @@ import { aplicarEntrante } from '../local/mensajesLocales';
 import { useHilosWeb } from './hilos/useHilosWeb';
 import { useVoiceNoteQueue } from './useVoiceNoteQueue';
 import { PanelDeHilo } from './hilos/PanelDeHilo';
+import { CardCommandContext, type CardCommand } from './botBlocks/cardCommand';
 import { OutsideMentionNotice } from './OutsideMentionNotice';
 import { useMentionCandidatesWeb } from './useMentionCandidatesWeb';
 import { useOutsideMentionsWeb } from './useOutsideMentionsWeb';
@@ -88,6 +89,8 @@ export function ConversacionConAcciones(
   const [versionDelDetalle, setVersionDelDetalle] = useState(0);
   const detalle = useDetalleDelChat(chat.id, props.jwt, props.base, `${versionDelDetalle}|${chat.memberIds.join(',')}|${chat.name ?? ''}|${chat.avatarUrl ?? ''}`);
   const [infoAbierta, setInfoAbierta] = useState(false);
+  const [cardCommand, setCardCommand] = useState<CardCommand | null>(null);
+  const shareCardCommand = useCallback((run: CardCommand | null) => setCardCommand(() => run), []);
   useEffect(() => {
     setInfoAbierta(false);
   }, [chat.id]);
@@ -201,6 +204,7 @@ export function ConversacionConAcciones(
     <ConversacionContext.Provider value={contexto}>
       <Conversation
         {...props}
+        onCardCommand={shareCardCommand}
         onCreateReminder={!chat.encrypted && canManage ? props.onCreateReminder : undefined}
         sendLock={sendLock}
         // En un grupo, quién escribe (el socket trae su id).
@@ -264,6 +268,7 @@ export function ConversacionConAcciones(
       />
       {hilos.raiz ? (
         <PanelBoundary label="el hilo" onClose={hilos.cerrar}>
+        <CardCommandContext.Provider value={cardCommand}>
         <PanelDeHilo
           chat={chat}
           raiz={hilos.raiz}
@@ -281,6 +286,7 @@ export function ConversacionConAcciones(
           stickers={chat.encrypted ? undefined : { jwt: props.jwt, me: yo, chatId: chat.id, chatName: chat.name ?? chat.phone ?? '' }}
           onCerrar={hilos.cerrar}
         />
+        </CardCommandContext.Provider>
         </PanelBoundary>
       ) : null}
       {infoAbierta ? (

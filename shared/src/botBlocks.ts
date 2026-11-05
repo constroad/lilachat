@@ -26,7 +26,7 @@ export type BotBlock =
   | { type: 'tank'; items: TankItem[] }
   | { type: 'text'; text: string; tone: CardTone }
   /** `command`: the line a person would type; tapping the row runs it (José, 05/11). */
-  | { type: 'rows'; rows: { label: string; value: string; sub?: string; bar?: number; tone: CardTone; command?: string }[] }
+  | { type: 'rows'; rows: { label: string; value: string; sub?: string; bar?: number; tone: CardTone; command?: string; anyone?: boolean }[] }
   /** `times[i]` is the time of `names[i]`, as the app wrote it; '' when that person has none (José, 04/11). */
   | { type: 'people'; names: string[]; times?: string[]; evidence?: PersonEvidence[]; more?: number }
   | { type: 'attachments'; count: number; label: string; url: string }
@@ -44,9 +44,16 @@ const clamp01 = (value: unknown): number => Math.min(1, Math.max(0, Number(value
 const finite = (value: unknown): number | null => (typeof value === 'number' && Number.isFinite(value) ? value : null);
 const list = (value: unknown, max: number): unknown[] => (Array.isArray(value) ? value.slice(0, max) : []);
 const COMMAND_LINE = /^\/[a-zA-Z]/;
-const withCommand = (value: unknown): { command?: string } => {
+/** A line a row or a button of a card may run, or nothing. */
+export const commandLineOf = (value: unknown): string | null => {
   const line = text(value, BLOCK_LIMITS.text);
-  return COMMAND_LINE.test(line) ? { command: line } : {};
+  return COMMAND_LINE.test(line) ? line : null;
+};
+/** `anyone`: the app opens this row to every member of the channel, whatever «Quién puede usarlo» says. */
+const withCommand = (row: Record<string, unknown>): { command?: string; anyone?: true } => {
+  const command = commandLineOf(row.command);
+  if (!command) return {};
+  return row.anyone === true ? { command, anyone: true } : { command };
 };
 const withText = <K extends string>(key: K, value: unknown, max: number): Partial<Record<K, string>> => {
   const clean = text(value, max);
@@ -138,7 +145,7 @@ function block(raw: Record<string, unknown>): Result<BotBlock> | null {
     }
     case 'tank': return tankBlock(raw);
     case 'text': return text(raw.text, BLOCK_LIMITS.text) ? { ok: true, value: { type: 'text', text: text(raw.text, BLOCK_LIMITS.text), tone: tone(raw.tone) } } : { ok: false, message: 'El texto del bloque está vacío.' };
-    case 'rows': return { ok: true, value: { type: 'rows', rows: list(raw.rows, BLOCK_LIMITS.rows).map((item) => { const row = record(item); return { label: text(row.label, BLOCK_LIMITS.label), value: text(row.value, BLOCK_LIMITS.text), ...withText('sub', row.sub, BLOCK_LIMITS.text), ...(row.bar !== undefined ? { bar: clamp01(row.bar) } : {}), tone: tone(row.tone), ...withCommand(row.command) }; }).filter((row) => row.label) } };
+    case 'rows': return { ok: true, value: { type: 'rows', rows: list(raw.rows, BLOCK_LIMITS.rows).map((item) => { const row = record(item); return { label: text(row.label, BLOCK_LIMITS.label), value: text(row.value, BLOCK_LIMITS.text), ...withText('sub', row.sub, BLOCK_LIMITS.text), ...(row.bar !== undefined ? { bar: clamp01(row.bar) } : {}), tone: tone(row.tone), ...withCommand(row) }; }).filter((row) => row.label) } };
     case 'people': return peopleBlock(raw);
     case 'attachments': return attachmentsBlock(raw);
     case 'weather': return validateWeatherBlock(raw);
@@ -193,10 +200,15 @@ export function linePath(values: readonly number[], width: number, height: numbe
   return values.map((value, index) => `${index === 0 ? 'M' : 'L'}${Math.round((index / (values.length - 1)) * width)},${Math.round(((top - value) / span) * height)}`).join(' ');
 }
 
-const rowCommandsOf = (blocks: readonly BotBlock[] = []): string[] => blocks.flatMap((one) => (one.type === 'rows' ? one.rows.flatMap((row) => (row.command ? [row.command] : [])) : []));
+type CardWithLines = { blocks?: readonly BotBlock[]; detail?: { blocks: readonly BotBlock[] }; actions?: readonly { command?: string }[] };
 
-/** The lines a card's rows run, on it and in its detail: the only ones a tap may run. */
-export const cardCommandsOf = (card: { blocks?: readonly BotBlock[]; detail?: { blocks: readonly BotBlock[] } }): string[] => [...rowCommandsOf(card.blocks), ...rowCommandsOf(card.detail?.blocks)];
+const rowsOf = (card: CardWithLines) => [...(card.blocks ?? []), ...(card.detail?.blocks ?? [])].flatMap((one) => (one.type === 'rows' ? one.rows : []));
+
+/** The lines a card's rows and buttons run, on it and in its detail: the only ones a tap may run. */
+export const cardCommandsOf = (card: CardWithLines): string[] => [...rowsOf(card), ...(card.actions ?? [])].flatMap((one) => (one.command ? [one.command] : []));
+
+/** A row the app opened to every member of the channel; a button never is. */
+export const rowIsForAnyone = (card: CardWithLines, line: string): boolean => rowsOf(card).some((row) => row.command === line && row.anyone === true);
 
 type PeopleBlock = Extract<BotBlock, { type: 'people' }>;
 /** A card stops here; its detail lists everybody. */

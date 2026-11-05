@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { AccionesDeTarjetaContext, type AccionesDeTarjeta } from './accionesDeTarjeta';
 import { Alert, FlatList, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Modal } from '../ui/Modal';
@@ -86,7 +87,10 @@ export function HiloScreen(props: {
   /** Deletes for everyone, like «Eliminar para todos» in the chat. */
   onDelete?: (seq: number) => void;
   onCerrar: () => void;
+  /** A row or a button of a card in the thread runs its line (José, 05/11: the card of a voucher lives here). */
+  runLine?: AccionesDeTarjeta['runLine'];
 }) {
+  const tarjetas = useMemo(() => ({ runLine: props.runLine }), [props.runLine]);
   const colores = useColores();
   const margenes = useMargenes();
   // El teclado tapa el margen de la barra de navegación: la barra de escribir sube eso menos (20/10:
@@ -202,6 +206,7 @@ export function HiloScreen(props: {
   };
 
   return (
+    <AccionesDeTarjetaContext.Provider value={tarjetas}>
     <Modal visible={props.raiz !== null} animationType="slide" onRequestClose={props.onCerrar}>
       <ChatKeyboardArea style={{ flex: 1 }}>
       <View className="flex-1 bg-background" testID="pantalla-hilo">
@@ -375,6 +380,7 @@ export function HiloScreen(props: {
         />
       ) : null}
     </Modal>
+    </AccionesDeTarjetaContext.Provider>
   );
 }
 

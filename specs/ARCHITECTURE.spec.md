@@ -9100,7 +9100,24 @@ Lilachat no cambia: el aviso usa `status` con `tone: "warn"` y un campo. José d
 **Sin probar:** que otro miembro toque Aprobar (Test solo tiene una cuenta), la hora y la evidencia
 de `/asistencia` con marcas reales, y el delta de una medida real de tanque.
 
-El caso de Aracely sigue sin probar: la cuenta de José sí tiene usuario en Portal.
+**Tercera prueba en Test (05/11)**, con agentes `6f55eec` y las dos herramientas aprobadas a las 08:58, en la web y la app:
+
+| Paso | Qué pasó |
+| --- | --- |
+| Foto con `/gastos pago para obra la molina` | «Falta un dato» con FRESADO, IMPRIMACION y COLOCACION |
+| Responder la partida en el hilo | La misma tarjeta pasó a «Por aprobar», con Partida, Medio, Comisión e ITF |
+| Aprobar | «REGISTRADO». Portal leyó en la base el gasto en `service_finance`, con partida, medio y referencia, y comisión e ITF como filas aparte. Subió S/ 44.25 |
+| Otro voucher, mismo monto y fecha | «Posible duplicado» con «Pago parecido», y «Aprobar» sigue. Aprobado también funciona |
+| El mismo voucher otra vez | «Ese voucher ya estaba registrado» |
+| App: otro voucher parecido | El aviso se ve, y Descartar deja «Descartado por J zamora» |
+
+Pendiente de José: «Caja · Hoy» solo muestra el monto principal, sin comisión ni ITF, y un gasto del 28/10 sale en «Hoy».
+
+**José, 05/11, con el gasto real de Aracely:** «indicas que falta un dato pero no das opcion a editar o asignar». Escribir en el
+hilo no basta. Lilachat agregó el botón con `command` y las filas en un hilo (`BOTS-API` §c-duodecies-bis). Agentes arma «Completar»
+y «Editar» con el formulario.
+
+La cuenta de Aracely ya pasó por /gastos en #flujo-caja real: su voucher de S/ 500 sacó vista previa sin usuario en Portal.
 
 **Cómo lee hoy agentes (`bcf4966`, leído por su sesión):** `claude-haiku-5-5` recibe la foto en
 base64, sin OCR, y devuelve `expenses[]` (`lila/vouchers.ts`). El modelo elige el servicio del

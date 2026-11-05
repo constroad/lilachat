@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronRight, ExternalLink } from 'lucide-react';
-import { formatClock, type BotCard, type CardActionStyle, type CardTone } from '@lilachat/shared';
+import { formatClock, type BotCard, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BotBlocksView } from './botBlocks/BotBlocksView';
 import { BotCardDetail } from './botBlocks/BotCardDetail';
 import { CardCommandContext, useCardCommand } from './botBlocks/cardCommand';
@@ -23,7 +23,8 @@ const ACTION: Record<CardActionStyle, string> = {
  * A bot's card in the chat (`specs/BOTS-API.spec.md` §b; design `e-21`):
  * kicker, title, status, fields, a link and up to three actions. A tap goes to
  * the bot as `button.click`; the bot answers by closing the card (PATCH), so
- * after the tap the buttons only say it was sent.
+ * after the tap the buttons only say it was sent. A button with a `command`
+ * runs its line instead, and the card stays open: its form can be closed.
  */
 export function BotCardView(props: { card: BotCard; chatId: string; seq: number; jwt: string }) {
   const { card } = props;
@@ -42,6 +43,8 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
     setSent(null);
     setError(data.message ?? 'No se pudo enviar. Revisa tu conexión.');
   };
+  const press = (action: CardAction) => (action.command ? runRow?.(action.command) : void tap(action.id));
+  const actions = card.actions?.filter((action) => !action.command || runRow) ?? [];
   return (
     <CardCommandContext.Provider value={runRow}>
     <div data-testid="tarjeta-bot" className="mb-1 w-full max-w-sm overflow-hidden rounded-xl border border-outline/15 bg-surface text-on-surface">
@@ -78,10 +81,10 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
           </a>
         ) : null}
       </div>
-      {card.actions?.length ? (
+      {actions.length ? (
         <div className="flex flex-wrap gap-2 border-t border-outline/10 px-3.5 py-2.5">
-          {card.actions.map((action) => (
-            <button key={action.id} type="button" data-testid={`accion-tarjeta-${action.id}`} disabled={sent !== null} onClick={() => void tap(action.id)} className={`h-9 flex-1 rounded-full px-3 text-[13px] font-semibold disabled:opacity-60 ${ACTION[action.style]}`}>
+          {actions.map((action) => (
+            <button key={action.id} type="button" data-testid={`accion-tarjeta-${action.id}`} disabled={sent !== null} onClick={() => press(action)} className={`h-9 flex-1 rounded-full px-3 text-[13px] font-semibold disabled:opacity-60 ${ACTION[action.style]}`}>
               {sent?.id === action.id ? (sent.state === 'sending' ? 'Enviando…' : 'Enviado ✓') : action.label}
             </button>
           ))}

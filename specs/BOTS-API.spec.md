@@ -901,6 +901,26 @@ José: «si toco un distrito no muestra el detalle». Cada fila acepta `command`
 - **Sin romper nada:** un server anterior descarta el campo, porque arma cada fila campo por campo.
   Una app anterior dibuja la fila quieta. Se puede mandar apenas el server esté en vivo.
 - Vale en la tarjeta y en su detalle, no en el detalle de un tanque, que se queda abierto.
+- Vale también dentro de un hilo, en la web y en la app. Una respuesta «Solo tú ves esto» sale en la barra del chat, y en la app
+  queda detrás del hilo. Un formulario sí se abre encima.
+
+**`anyone: true` en una fila (05/11).** José: «si pueden tocar un distrito no hay data sensible alli». La app abre esa fila a
+todo miembro del canal, aunque «Quién puede usarlo» no lo incluya. Va por fila, no toca el ajuste del comando y el menú no cambia.
+Solo vale junto a `command`, y solo con `true`. Un botón no lo acepta. Se usa en datos sin nada sensible, como los distritos de `/clima`.
+
+**`command` en un botón (05/11).** José, con un gasto en «Falta un dato»: «no das opcion a editar o asignar». Una acción de la
+tarjeta acepta `command`, y al tocarla corre esa línea para quien toca, en vez de llegar como `button.click`:
+
+```json
+{ "id": "completar", "label": "Completar", "style": "primary", "command": "/gastos completar 6aec8c76" }
+```
+
+- La respuesta puede ser `response_type: "form"`, y el formulario se abre encima del chat o del hilo.
+- Corre por `card-commands`, con las mismas reglas de arriba. **Quién** sigue valiendo.
+- La tarjeta no se bloquea: quien cierra el formulario puede tocar otra vez.
+- Donde la respuesta no se vería, ese botón no se dibuja. Los demás botones siguen.
+- **Sin romper nada:** una app anterior manda el toque como `button.click`, con su `id` y `value`. La app que publicó la tarjeta
+  tiene que responder sin romper nada.
 
 ## c-duodecies) La hora de cada persona en `people` (04/11)
 

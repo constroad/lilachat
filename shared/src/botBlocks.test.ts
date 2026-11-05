@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { barColumns, barFractions, linePath, peopleOnCard, peoplePhotos, personEvidence, personTime, tankDeltaTrend, tankFill, tankPercent, validateBotBlocks, BLOCK_LIMITS, PEOPLE_ON_CARD, cardCommandsOf, type BotBlock } from './botBlocks.js';
+import { barColumns, barFractions, linePath, peopleOnCard, peoplePhotos, personEvidence, personTime, tankDeltaTrend, tankFill, tankPercent, validateBotBlocks, BLOCK_LIMITS, PEOPLE_ON_CARD, cardCommandsOf, rowIsForAnyone, type BotBlock } from './botBlocks.js';
 import { validateBotCard } from './bots.js';
 
 /** The card kit (§118.4, José 23/10): what agents and webhooks can draw in a card, validated once for server, app and web. */
@@ -229,5 +229,31 @@ describe('cardCommandsOf', () => {
 
   it('a card with no blocks has none', () => {
     expect(cardCommandsOf({})).toEqual([]);
+  });
+
+  it('a button of the card counts too (José, 05/11: «Completar» on a card that lacks a piece of data)', () => {
+    expect(cardCommandsOf({ actions: [{ command: '/gastos completar 7' }, {}] })).toEqual(['/gastos completar 7']);
+  });
+});
+
+describe('rowIsForAnyone', () => {
+  const card = { blocks: [{ type: 'rows' as const, rows: [{ label: 'Ate', value: '1', tone: 'neutral' as const, command: '/clima en Ate', anyone: true }, { label: 'Lima', value: '2', tone: 'neutral' as const, command: '/clima en Lima' }] }] };
+
+  it('only the row the app opened, by its exact line', () => {
+    expect(rowIsForAnyone(card, '/clima en Ate')).toBe(true);
+    expect(rowIsForAnyone(card, '/clima en Lima')).toBe(false);
+    expect(rowIsForAnyone(card, '/clima en Lurín')).toBe(false);
+  });
+
+  it('reads the detail too, and a button never opens anything', () => {
+    expect(rowIsForAnyone({ detail: { blocks: card.blocks } }, '/clima en Ate')).toBe(true);
+    expect(rowIsForAnyone({ actions: [{ command: '/clima en Ate' }] }, '/clima en Ate')).toBe(false);
+  });
+
+  it('the validator keeps it only on a row with a command, and only when it is true', () => {
+    const valid = validateBotBlocks([{ type: 'rows', rows: [{ label: 'A', value: '1', command: '/clima a', anyone: true }, { label: 'B', value: '2', anyone: true }, { label: 'C', value: '3', command: '/clima c', anyone: 'yes' }] }]);
+    if (!valid.ok) throw new Error(valid.message);
+    const rows = valid.blocks[0]!.type === 'rows' ? valid.blocks[0]!.rows : [];
+    expect(rows.map((row) => row.anyone)).toEqual([true, undefined, undefined]);
   });
 });

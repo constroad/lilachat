@@ -70,6 +70,12 @@ describe('bot card', () => {
     expect(validateBotCard({ title: 'T', actions: [action, { ...action }] })).toMatchObject({ ok: false });
   });
 
+  it('an action may carry a line to run, and anything else is left out (José, 05/11)', () => {
+    const action = { id: 'ok', label: 'Ok', value: '1' };
+    const result = validateBotCard({ title: 'T', actions: [{ ...action, command: '/gastos completar 7' }, { ...action, id: 'no', command: 'gastos' }] });
+    expect(result.ok && result.card.actions?.map((one) => one.command)).toEqual(['/gastos completar 7', undefined]);
+  });
+
   it('an action without a style is a secondary one', () => {
     const result = validateBotCard({ title: 'T', actions: [{ id: 'ok', label: 'Ok', value: '1' }] });
     expect(result.ok && result.card.actions).toEqual([{ id: 'ok', label: 'Ok', style: 'secondary', value: '1' }]);

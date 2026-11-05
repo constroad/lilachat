@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { availableTo, canManageMembers, cardCommandsOf, COMMAND_LIMITS, formLevelOf, isAckBody, itemSettingOf, mayUseItem, parseSlashInput, shortcutValuesOf, validateCommandResponse, validateFormReply, type ShortcutAudience, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope, type ShortcutValues, worksAt } from '@lilachat/shared';
+import { availableTo, canManageMembers, cardCommandsOf, COMMAND_LIMITS, formLevelOf, isAckBody, itemSettingOf, mayUseItem, parseSlashInput, rowIsForAnyone, shortcutValuesOf, validateCommandResponse, validateFormReply, type ShortcutAudience, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope, type ShortcutValues, worksAt } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Chat, type Message } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { callBotWebhook, isRestarting, recordLastDelivery, type WebhookReply } from './botEvents.js';
@@ -168,12 +168,12 @@ export function judgeReply(reply: WebhookReply, command: string, installationId:
 }
 
 /** What the person did: typed a command, or tapped an action of the «+» (R160, design e-29). */
-/** `fromCard`: a tap on a row of a card the app posted in this chat. */
-type Trigger = { kind: 'command'; command: string; text: string; fromCard?: boolean } | { kind: 'shortcut'; key: string; values?: ShortcutValues };
+/** `fromCard`: a tap on a row or a button of a card the app posted in this chat; `anyone`: a row it opened to every member. */
+type Trigger = { kind: 'command'; command: string; text: string; fromCard?: boolean; anyone?: boolean } | { kind: 'shortcut'; key: string; values?: ShortcutValues };
 
 /** The app already chose this place by posting the card, so its row only asks who may use the command. */
 const mayRun = (trigger: Trigger, name: string, setting: Parameters<typeof availableTo>[2], place: Parameters<typeof availableTo>[3], person: Parameters<typeof availableTo>[4]): boolean =>
-  trigger.kind === 'command' && trigger.fromCard ? mayUseItem(setting, person) : availableTo(trigger.kind, name, setting, place, person);
+  trigger.kind === 'command' && trigger.fromCard ? trigger.anyone === true || mayUseItem(setting, person) : availableTo(trigger.kind, name, setting, place, person);
 
 /** The chat where it was used and its space, or the space alone (its ⚡); null if the person is not in it. */
 async function placeOf(userId: Types.ObjectId, scope: CommandScope): Promise<{ chat: ChatOfCommand | null; workspaceId: Types.ObjectId } | null> {
@@ -244,7 +244,7 @@ export async function invokeCardCommand(userId: Types.ObjectId, chatId: string, 
   if (!chat?.workspaceId || !message?.card || !cardCommandsOf(message.card).includes(line)) return gone();
   const installation = await BotInstallationModel.findOne({ workspaceId: chat.workspaceId, botUserId: message.senderId, revokedAt: { $exists: false } }).select('appId').lean();
   if (!installation) return gone();
-  return invokeApp(userId, { chatId }, String(installation.appId), { kind: 'command', ...parsed, fromCard: true }, formsLevelOf(input.forms));
+  return invokeApp(userId, { chatId }, String(installation.appId), { kind: 'command', ...parsed, fromCard: true, anyone: rowIsForAnyone(message.card, line) }, formsLevelOf(input.forms));
 }
 
 /**

@@ -2,7 +2,7 @@ import { cutAtWord } from './textCut.js';
 import { normalizePeruPhone } from './phone.js';
 import { TOPIC_KEY } from './noticeTopics.js';
 import { validateChecklist } from './checklists.js';
-import { BLOCK_LIMITS, validateBotBlocks, type BotBlock } from './botBlocks.js';
+import { BLOCK_LIMITS, commandLineOf, validateBotBlocks, type BotBlock } from './botBlocks.js';
 import type { BotCommand } from './botCommands.js';
 import type { AppCategory } from './botManifest.js';
 
@@ -15,7 +15,8 @@ import type { AppCategory } from './botManifest.js';
  */
 export type CardTone = 'ok' | 'warn' | 'error' | 'info' | 'neutral';
 export type CardActionStyle = 'primary' | 'secondary' | 'danger';
-export type CardAction = { id: string; label: string; style: CardActionStyle; value: string };
+/** `command`: the button runs that line for whoever taps it, instead of reaching the bot as `button.click`. */
+export type CardAction = { id: string; label: string; style: CardActionStyle; value: string; command?: string };
 export type BotCard = {
   kicker?: string;
   title: string;
@@ -60,7 +61,8 @@ function validateActions(raw: unknown): { ok: true; actions: CardAction[] } | { 
     const value = typeof action.value === 'string' ? action.value : '';
     if (value.length > BOT_LIMITS.actionValue) return { ok: false, message: `El valor de una acción lleva hasta ${BOT_LIMITS.actionValue} caracteres.` };
     const style = STYLES.includes(action.style as CardActionStyle) ? (action.style as CardActionStyle) : 'secondary';
-    actions.push({ id, label, style, value });
+    const command = commandLineOf(action.command);
+    actions.push({ id, label, style, value, ...(command ? { command } : {}) });
   }
   return { ok: true, actions };
 }

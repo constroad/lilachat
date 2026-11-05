@@ -9,7 +9,7 @@ import { Avatar } from '../ui/Avatar';
 import type { AgendaReminder, DirectoryApp, MencionElegida, MencionEnMensaje, WinkId } from '@lilachat/shared';
 import { channelLinksOf, chatHasActionPlace, clientHeaderSubtitle, formatUltimaVez, presenceLine, type PresenceStatus, memberCountLabel } from '@lilachat/shared';
 import { Composer, type ContextoDelComposer } from './Composer';
-import { CardCommandContext } from './botBlocks/cardCommand';
+import { CardCommandContext, type CardCommand } from './botBlocks/cardCommand';
 import { useChatCommandsWithActions } from './commands/useChatCommands';
 import { AppCommandsBar, AppConversationHeader, type AppConversationTab } from '../spaces/apps/AppConversation';
 import { AppDetail } from '../spaces/apps/AppDetail';
@@ -87,6 +87,8 @@ export function Conversation(props: {
   queue?: ReactNode;
   /** Pending 8: why I cannot write here (only admins do), or nothing. */
   sendLock?: string | null;
+  /** The thread panel sits beside this one: it runs a card's lines through here. */
+  onCardCommand?: (run: CardCommand | null) => void;
   /** Go to a message from outside the list (a record in «Servicios»). */
   onIrA?: (seq: number) => void;
   /** Ir a un mensaje (desde la franja). */
@@ -142,6 +144,8 @@ export function Conversation(props: {
   });
   // Its answer shows over the bar: without a bar (a secret or read-only chat) a card's row stays still.
   const cardCommand = commands.enabled && !chat.encrypted && !props.sendLock ? commands.runCardLine : null;
+  const { onCardCommand } = props;
+  useEffect(() => onCardCommand?.(cardCommand), [onCardCommand, cardCommand]);
   return (
     <CardCommandContext.Provider value={cardCommand}>
     <section

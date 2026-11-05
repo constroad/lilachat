@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { ChevronRight, ExternalLink } from 'lucide-react-native';
-import { formatClock, type BotCard, type CardActionStyle, type CardTone } from '@lilachat/shared';
+import { formatClock, type BotCard, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BASE_URL } from '../api/client';
 import { useColores } from '../ui/tema';
 import { AccionesDeTarjetaContext, useAccionesDeTarjeta } from './accionesDeTarjeta';
@@ -47,6 +47,9 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
     setSent(null);
     setError(data.message ?? 'No se pudo enviar. Revisa tu conexión.');
   };
+  // A button with a `command` runs its line and the card stays open: its form can be closed.
+  const press = (action: CardAction) => (action.command ? runRow?.(action.command) : void tap(action.id));
+  const buttons = card.actions?.filter((action) => !action.command || runRow) ?? [];
   return (
     <AccionesDeTarjetaContext.Provider value={{ ...actions, runLine: runRow }}>
     <View testID="tarjeta-bot" className="m-1 overflow-hidden rounded-xl border border-outline/15 bg-surface" style={{ minWidth: 240, maxWidth: card.blocks ? 320 : 300, width: card.blocks ? 320 : undefined }}>
@@ -89,10 +92,10 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
           </Pressable>
         ) : null}
       </View>
-      {card.actions?.length ? (
+      {buttons.length ? (
         <View className="flex-row gap-2 border-t border-outline/10 px-3.5 py-2.5">
-          {card.actions.map((action) => (
-            <Pressable key={action.id} testID={`accion-tarjeta-${action.id}`} disabled={sent !== null} onPress={() => void tap(action.id)} className={`h-10 flex-1 items-center justify-center rounded-full px-3 ${ACTION[action.style].box} ${sent !== null ? 'opacity-60' : ''}`}>
+          {buttons.map((action) => (
+            <Pressable key={action.id} testID={`accion-tarjeta-${action.id}`} disabled={sent !== null} onPress={() => press(action)} className={`h-10 flex-1 items-center justify-center rounded-full px-3 ${ACTION[action.style].box} ${sent !== null ? 'opacity-60' : ''}`}>
               <Text className={`text-[13px] font-semibold ${ACTION[action.style].text}`}>{sent?.id === action.id ? (sent.state === 'sending' ? 'Enviando…' : 'Enviado ✓') : action.label}</Text>
             </Pressable>
           ))}

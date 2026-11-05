@@ -97,7 +97,7 @@ export function buildActivityRouter(): Router {
       ...(message.body ? { body: message.body } : {}),
       ...(message.menciones?.length ? { menciones: message.menciones } : {}),
       unread,
-      ...(message.hilo?.respuestas ? { thread: { replies: message.hilo.respuestas, ...(message.hilo.ultimaEn ? { lastAt: new Date(message.hilo.ultimaEn).toISOString() } : {}) } } : {}),
+      ...(message.hilo?.respuestas ? { thread: { replies: message.hilo.respuestas, ...(message.hilo.ultimaEn ? { lastAt: new Date(message.hilo.ultimaEn).toISOString() } : {}), ...(message.hilo.ultimaSeq ? { lastSeq: message.hilo.ultimaSeq } : {}) } } : {}),
       ...(type === 'reactions' ? { reactions: (reactionsFromOthers((message.reacciones ?? []) as unknown as Reaccion[], String(me))?.groups ?? []).map(({ emoji, count }) => ({ emoji, count })) } : {}),
     }));
     res.json({ items, unread: { mentions: mentioned.filter((message) => mentionUnread(scope, message)).length, threads: inThreads.filter((message) => threadUnread(scope, message)).length } });

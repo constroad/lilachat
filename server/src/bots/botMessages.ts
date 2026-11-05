@@ -87,8 +87,8 @@ async function publishText(installation: Installation, chatId: Types.ObjectId, p
   });
   if (post.clientRef && !result.duplicate) await MessageModel.updateOne({ _id: result.message._id }, { $set: { clientRef: post.clientRef } });
   if (result.duplicate) return result.message;
-  await publicarMensaje(result.message, result.members);
-  if (result.hilo && post.threadOf) notifyThread(String(chatId), post.threadOf, result.hilo, result.members);
+  const members = await publicarMensaje(result.message, result.members);
+  if (result.hilo && post.threadOf) notifyThread(String(chatId), post.threadOf, result.hilo, members);
   return result.message;
 }
 

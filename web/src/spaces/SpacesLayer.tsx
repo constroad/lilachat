@@ -47,7 +47,7 @@ export function SpacesLayer(props: {
     removedSeen: () => void;
     talkTo: (admin: Admin) => void;
     activity: (tab: ActivityType | null) => void;
-    activityItem: (item: ActivityItem, opensThread: boolean) => void;
+    activityItem: (item: ActivityItem) => void;
     /** An installed app, from Integraciones: its detail in the directory. */
     openApp: (appId: string) => void;
   };

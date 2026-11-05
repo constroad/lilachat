@@ -22,13 +22,13 @@ describe('EnviarArchivos: the caption is where the keyboard lands (José, 04/11)
 
   it('what is typed right after pasting goes to the caption and leaves with the file', async () => {
     const user = userEvent.setup();
-    const onEnviar = vi.fn();
+    const send = vi.fn();
     const file = voucher();
-    render(<EnviarArchivos archivos={[file]} onCerrar={() => undefined} onEnviar={onEnviar} />);
+    render(<EnviarArchivos archivos={[file]} onCerrar={() => undefined} onEnviar={send} />);
 
     await user.keyboard('/gastos pago parcial');
     await user.click(screen.getByTestId('btn-enviar-archivos'));
 
-    expect(onEnviar).toHaveBeenCalledWith([file], '/gastos pago parcial', false);
+    expect(send).toHaveBeenCalledWith([file], '/gastos pago parcial', false);
   });
 });

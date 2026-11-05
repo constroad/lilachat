@@ -32,7 +32,7 @@ export type ActivityItem = {
   body?: string;
   menciones?: MessageMention[];
   unread: boolean;
-  thread?: { replies: number; lastAt?: string };
+  thread?: { replies: number; lastAt?: string; lastSeq?: number };
   reactions?: { emoji: string; count: number }[];
 };
 

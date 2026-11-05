@@ -69,7 +69,7 @@ describe('GET /api/activity', () => {
   it('threads I am in, by their last reply; reactions of others to my messages', async () => {
     const threads = (await activity(`type=threads&workspace=${spaceId}`)).items;
     expect(threads).toHaveLength(1);
-    expect(threads[0]).toMatchObject({ body: 'Mi pregunta', thread: { replies: 2 }, at: '2026-10-21T17:00:00.000Z', unread: true });
+    expect(threads[0]).toMatchObject({ body: 'Mi pregunta', thread: { replies: 2, lastSeq: 9 }, at: '2026-10-21T17:00:00.000Z', unread: true });
     const reactions = (await activity(`type=reactions&workspace=${spaceId}`)).items;
     expect(reactions[0]).toMatchObject({ body: 'Mi pregunta', reactions: [{ emoji: '👍', count: 1 }], at: '2026-10-21T13:00:00.000Z', author: { id: String(ana) } });
   });

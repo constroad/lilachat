@@ -33,9 +33,15 @@ export const canSeeDrive = (access: MyClientAccess | undefined): boolean => Bool
 const MONEY_RECORD = /pago|cotizaci|orden de compra|valorizaci|liquidaci|factura/i;
 /** A service's record that speaks of money, by what its card says: agentes sends no type (José 05/11). */
 export const isMoneyRecord = (record: { kicker?: string; title: string }): boolean => MONEY_RECORD.test(`${record.kicker ?? ''} ${record.title}`);
-/** Liquidations and valuations carry amounts; Portal names them by type (LIQ-SRV, VAL-SRV). */
-const MONEY_REPORT = /liquidaci|valorizaci/i;
-export const isMoneyReport = (report: { typeLabel?: string; title: string }): boolean => MONEY_REPORT.test(`${report.typeLabel ?? ''} ${report.title}`);
+/**
+ * What a member without money sees of a service's reports (José 05/11): the types of Portal's public
+ * services page (`publicFieldReportTypes`), by the label Portal sends, less «Aprobación de adicional»,
+ * which carries prices. A list of what is allowed: a type nobody reviewed stays hidden. Portal filters
+ * first; this is the second lock.
+ */
+const FIELD_REPORT_LABELS = new Set(['control de pista', 'conformacion de capa', 'control de imprimacion', 'area adicional', 'recepcion de campo', 'levantamiento de observaciones', 'fresado de pavimento', 'solicitud de imprimacion']);
+const plainLabel = (label: string): string => label.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+export const isFieldReport = (report: { typeLabel?: string }): boolean => FIELD_REPORT_LABELS.has(plainLabel(report.typeLabel ?? ''));
 
 export const canSeeTab = (access: MyClientAccess | undefined, tab: RestrictableTab): boolean => !access?.restricted || access.restricted.tabs.includes(tab);
 

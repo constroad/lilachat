@@ -168,6 +168,18 @@ describe('José 05/11: engineers in a client\'s channel see no money anywhere', 
     expect(detail.totals.reports).toBe(1);
   });
 
+  it('a plain member sees only what Portal\'s public services page shows (José 05/11)', async () => {
+    // Arrange
+    const report = (id: string, type_label: string) => ({ id, title: `${type_label} · 3 de noviembre`, type_label, status_label: 'Listo', tone: 'ok' });
+    const reports = [report('field', 'Recepción de campo'), report('measure', 'Cuadro Resumen de Metrado'), report('act', 'Acta de conformidad'), report('extra', 'Aprobación de adicional')];
+    answer = { status: 200, body: { ...DETAIL, reports, totals: { orders: 0, dispatches: 0, reports: 4 } } };
+    // Act
+    const detail = await detailFor(ana);
+    // Assert
+    expect(detail.reports.map((one: { id: string }) => one.id)).toEqual(['field']);
+    expect(detail.totals.reports).toBe(1);
+  });
+
   it('whoever sees money gets them', async () => {
     // Arrange
     answer = { status: 200, body: { ...DETAIL, orders: ORDERS, reports: REPORTS, totals: { orders: 1, dispatches: 0, reports: 2 } } };

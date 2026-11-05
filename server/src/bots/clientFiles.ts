@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { canManageMembers, canSeeDrive, canSeeTab, CLIENT_ID, isMoneyReport, clientAccountOf, REPORT_PDF_FAILED, reportPdfOf, serviceDetailOf, serviceFilesOf, type ClientAccount, type MyClientAccess, type RestrictableTab, type ReportPdf, type ServiceDetail, type ServiceFiles, type ServiceOrder } from '@lilachat/shared';
+import { canManageMembers, canSeeDrive, canSeeTab, CLIENT_ID, isFieldReport, clientAccountOf, REPORT_PDF_FAILED, reportPdfOf, serviceDetailOf, serviceFilesOf, type ClientAccount, type MyClientAccess, type RestrictableTab, type ReportPdf, type ServiceDetail, type ServiceFiles, type ServiceOrder } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { actorIn } from '../workspaces.js';
@@ -94,12 +94,12 @@ function orderWithoutMoney(order: ServiceOrder): ServiceOrder {
   return rest;
 }
 
-/** José 30/10 night, 05/11: quotes, collection, invoices and liquidations only for whoever sees money, whatever Portal decided to send. */
+/** José 30/10 night, 05/11: quotes, collection, invoices and all but the field reports only for whoever sees money, whatever Portal decided to send. */
 function withoutMoney(detail: ServiceDetail, seesMoney: boolean): ServiceDetail {
   if (seesMoney) return detail;
   const { quotes: _quotes, billing: _billing, totals, ...rest } = detail;
   const { quotes: _count, ...counts } = totals;
-  const reports = detail.reports.filter((report) => !isMoneyReport(report));
+  const reports = detail.reports.filter(isFieldReport);
   return { ...rest, orders: detail.orders.map(orderWithoutMoney), reports, totals: { ...counts, reports: counts.reports - (detail.reports.length - reports.length) } };
 }
 

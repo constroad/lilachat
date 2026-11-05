@@ -15188,7 +15188,7 @@ anterior sobre Cotizaciones y Cobranza dentro del detalle del servicio.
 | --- | --- | --- |
 | Pestaña Cuenta y `/billing` | `need: 'money'` | `clientFiles.ts`, 404 |
 | Factura, precio, crédito y pagos de un pedido | se quitan | `withoutMoney` y Portal `orderBillingOf` |
-| Liquidación y valorización | la fila no llega | `isMoneyReport` por etiqueta, Portal por tipo |
+| Todo informe fuera de la página pública de Portal | la fila no llega | `isFieldReport`, lista de permitidos por etiqueta; Portal por tipo |
 | Pago o cotización en la tarjeta del servicio | no llega | `isMoneyRecord` en `clientRecords` |
 | Drive del Portal | solo con montos o «Archivos» marcado | `canSeeDrive`, sin preguntar a agentes |
 | Tarjetas de pago en el chat | no se publican | agentes `6feb8c1` |

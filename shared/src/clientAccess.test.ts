@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accessSummary, canSeeDrive, canSeeTab, isMoneyRecord, channelTabs, memberAccessIn, memberAccessOf, stageScopeOf, toggleInAccess, visibleStagesFor, type MyClientAccess } from './clientAccess.js';
+import { accessSummary, canSeeDrive, canSeeTab, isFieldReport, isMoneyRecord, channelTabs, memberAccessIn, memberAccessOf, stageScopeOf, toggleInAccess, visibleStagesFor, type MyClientAccess } from './clientAccess.js';
 
 /** José 30/10 night: topographers and engineers join a client's channel seeing only what an admin picks; money only for admins. */
 const STAGE_A = 'a'.repeat(24);
@@ -130,5 +130,26 @@ describe('what carries money beyond the tabs', () => {
     expect(isMoneyRecord({ kicker: 'Valorización', title: 'Octubre' })).toBe(true);
     expect(isMoneyRecord({ kicker: 'Informe', title: 'Control de pista · 29 de octubre' })).toBe(false);
     expect(isMoneyRecord({ title: 'Observación de obra' })).toBe(false);
+  });
+});
+
+describe('isFieldReport: the reports of a member without money', () => {
+  const PUBLIC_PAGE = ['Control de pista', 'Conformación de capa', 'Control de imprimación', 'Área adicional', 'Recepción de campo', 'Levantamiento de observaciones', 'Fresado de pavimento', 'Solicitud de imprimación'];
+  const HIDDEN = ['Valorización de servicios', 'Liquidación final del servicio', 'Contrato de servicio', 'Aprobación de adicional', 'Acta de conformidad', 'Cuadro Resumen de Metrado', 'Informe Tecnico Reclamo Excedente', 'Dossier de obra', 'Producción de planta', 'Panel fotográfico de obra', 'Informe de obra'];
+
+  it.each(PUBLIC_PAGE)('shows «%s», as Portal\'s public services page does', (typeLabel) => {
+    expect(isFieldReport({ typeLabel })).toBe(true);
+  });
+
+  it.each(HIDDEN)('hides «%s»', (typeLabel) => {
+    expect(isFieldReport({ typeLabel })).toBe(false);
+  });
+
+  it('hides a report that says no type: a list of what is allowed fails closed', () => {
+    expect(isFieldReport({})).toBe(false);
+  });
+
+  it('does not depend on accents or capitals', () => {
+    expect(isFieldReport({ typeLabel: 'CONTROL DE IMPRIMACION' })).toBe(true);
   });
 });

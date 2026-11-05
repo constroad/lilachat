@@ -15200,9 +15200,14 @@ y eso no se puede clasificar.
 
 **Lo que no depende de Lilachat**
 
-- Portal rechaza las pestañas a quien no tiene usuario de Portal
-  (`unknown_person`): ve «No se pudo traer el detalle». Abrirlo es decisión de
-  José: Portal no comprueba que esa persona esté en ese canal.
+- Portal rechazaba las pestañas a quien no tiene usuario de Portal
+  (`unknown_person`). José 05/11 abrió Detalle y el PDF de informes en
+  `MEMBER_TOOLS` (Portal `9da3ce4d`; el PDF espera a Agentes), con los 8 tipos de
+  la página pública. Cuenta y Drive siguen cerrados para esa persona.
+- Portal no comprueba que esa persona esté en el canal: `findAskedService` es la
+  única puerta. Si cambia esa comprobación, cambia también este caso.
+- Portal ignora la marca de montos de quien no tiene usuario: Cuenta le da error
+  y Cobranza sale vacía. No marcar a esos miembros.
 - Por chat con Lila, `cuenta_de_cliente` y `pdf_de_cotizacion` dependen del rol
   de Portal (`quotes:view`), no de la marca del canal.
 - Un canal público lo ve y lo une cualquier miembro del espacio. #flujo-caja y

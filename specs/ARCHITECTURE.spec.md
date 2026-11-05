@@ -9136,6 +9136,11 @@ quedaba detrás: la pantalla se oscurecía y no se veía nada que elegir. Ahora 
 Verificado en la app con OTA `17632b32` (05/11): teclado cerrado, FRESADO, IMPRIMACION y COLOCACION a la vista, Guardar, y la tarjeta
 pasó a «Por aprobar». La prueba terminó en «Descartado»: no se creó ningún gasto.
 
+**Quinta prueba en Test (05/11)**, con Lilachat `aa328e9`, OTA `73269a02` y agentes `b814655`, en la web y la app: «Completar» abre solo con
+«¿Proyecto o servicio?». Servicio trae 28 opciones, y Proyecto 6. Buscar «andes» encuentra los servicios de ese cliente. Elegir `obra la molina`
+trae «Partida». Mover el radio vacía el servicio y quita la partida. «Editar» abre con el tipo y el servicio elegidos. Terminó en «Descartado»:
+sin gasto. Portal manda hasta 300 de cada lista y Constroad tiene 26 servicios y 19 proyectos, así que nada se corta y no hace falta buscar en el servidor.
+
 Para las tarjetas ya enviadas: un voucher sin tarjeta se recupera con `GET /api/bots/channels/:id/files` (`a0cfebe`, BOTS-API §d) y
 agentes arma su vista previa. Un gasto ya registrado no se edita desde Lilachat: se corrige en Portal.
 

@@ -6247,7 +6247,11 @@ enlace secundario al pie.
   y el crédito vencido primero. El año de una fecha vieja solo tiene test: Test no tiene pedidos de otro año.
 - **Tocar un distrito** (`rows[].command`, `BOTS-API` §c-duodecies-bis). Probado el 05/11 en Test, web y app, en el 1:1 con Portal:
   desde la tarjeta y desde «Ver detalle», con las 38 filas. La hoja se cierra y sale el clima de ese distrito.
-  `/clima` no corre en #general ni en #flujo-caja de Test: ahí ninguna app tiene comandos encendidos.
+  `/clima` escrito no corre en #general ni en #flujo-caja de Test: ahí ninguna app tiene comandos encendidos.
+  La tarjeta cae en un canal por su tema, donde el comando puede estar apagado (Agentes, 05/11). Por eso la fila de una tarjeta
+  guardada va por `card-commands`: corre esa línea exacta y solo pregunta quién puede. Probado el mismo día con la tarjeta real del
+  tema `clima` en #general de Test, con `/clima` apagado: web y app, desde la tarjeta y desde «Ver detalle».
+  Sin probar: un miembro sin permiso en vivo (Test solo tiene una cuenta); lo cubre el test del server.
 - **Pestaña «Cuenta»** del canal de cliente (diseño f-08; `client.account.requested`,
   agentes cf37b98, Portal 0227a1f0).
   - Muestra TODAS las cotizaciones del cliente, también las sin servicio, y abre

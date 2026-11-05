@@ -612,6 +612,9 @@ Smoke verde. No se vio en el emulador: Test no tiene hoy un hilo de una respuest
 OTA `12cda85c` del 05/11/2026 sobre el runtime `79221c17` (git `bd09ddb`): solo llega a la 0.1.180. Lleva «Servicios por cobrar»
 en la Cuenta, el año en las fechas de otro año y el toque en las filas con comando. Verificada en el emulador.
 
+OTA `a86e8c73` del 05/11/2026 sobre el runtime `79221c17` (git `fee9f9f`): solo llega a la 0.1.180. La fila de una tarjeta guardada
+corre aunque el comando esté apagado en ese canal. Verificada en el emulador con una tarjeta real.
+
 ## 5. Errores conocidos y arreglo
 
 | Síntoma | Causa | Arreglo |

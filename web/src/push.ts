@@ -1,4 +1,5 @@
 import { api } from './api';
+import { needsIosInstall } from './pwa/iosInstall';
 import { OPCIONES_DEL_SW, RUTA_DEL_SW } from './pwa/serviceWorker';
 
 /**
@@ -32,7 +33,8 @@ function urlBase64ToBytes(base64: string): ArrayBuffer {
 
 export async function enablePush(jwt: string): Promise<{ ok: boolean; message?: string }> {
   if (pushState() === 'sin-soporte') {
-    return { ok: false, message: 'Este navegador no admite notificaciones.' };
+    // iPhone only gives push to the installed app (spec §3.2).
+    return { ok: false, message: needsIosInstall() ? 'En iPhone los avisos llegan con Lilachat instalada. Instálala desde Ajustes.' : 'Este navegador no admite notificaciones.' };
   }
 
   const key = await api<{ key: string }>('/push/key');

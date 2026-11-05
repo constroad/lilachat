@@ -178,6 +178,55 @@ Límite sin arreglo por código: sin fondo, sin Share Target, sin llamada con
 pantalla bloqueada. La PWA sirve para leer y responder; no reemplaza al APK ni
 a la app de iOS.
 
+### 3.5 Hecho el 05/11/2026 (P1 y P2, para los ingenieros de obra)
+
+José: mañana entran ingenieros con iPhone a canales de clientes. Se adelantó lo
+mínimo de P1 y P2. P0 se hizo solo en las pantallas de ese recorrido.
+
+**Shell móvil (solo con `pointer: coarse`; una computadora no cambia):**
+
+- Teclado: `pwa/visualViewport.ts` escribe `--app-height` y `data-keyboard` en
+  `<html>`. El alto del `#root` y de todo `.fixed.inset-0` sale de ahí. El zoom
+  con dos dedos no cuenta como teclado.
+- La página no se desplaza: `body` fijo y el `#root` con su propio scroll.
+- Safe areas: `viewport-fit=cover`, padding `env(safe-area-inset-*)` en el `#root`
+  y abajo en los diálogos. Barra de estado `default`: el contenido queda debajo
+  de ella, sin tapar nada con la muesca.
+- Campos a 16 px, o Safari hace zoom en cada foco y no vuelve.
+- Toque sostenido: `pwa/touchHold.ts` marca la fila (`.group`) con
+  `data-touch-open` a los 450 ms y una regla de CSS muestra lo que el ratón
+  muestra con hover. Mover el dedo más de 10 px lo cancela.
+
+**Instalación en iPhone:**
+
+- `pwa/iosInstall.ts`: iPhone o iPad fuera de la app instalada.
+- `IphoneInstallGuide`: la guía sale ANTES de entrar, porque la sesión de Safari
+  no pasa a la app. «Seguir en el navegador» la salta para siempre en ese Safari.
+- No sale si llegó con un enlace de invitación, de llamada o de correo: ese
+  enlace vive en Safari y no sobrevive a la instalación. La invitación dice que
+  instale después, desde Ajustes.
+- En Ajustes, «Instalar en tu iPhone» abre los mismos pasos.
+- Sin instalar, activar avisos dice que hace falta instalar. Instalada, la
+  franja «Activa las notificaciones» pide el permiso con un toque.
+- Metas de Apple y `id` en el manifest.
+
+**Cómo se probó.** Stack local (Mongo en memoria, constroad-auth y agentes
+falsos) con Chromium en 390×664, táctil y agente de iPhone, como admin y como
+ingeniero. El teclado se simuló encogiendo `visualViewport`: el compositor quedó
+en 318 px con 330 px disponibles.
+
+**Lo que NO se probó: Safari real.** En esta Mac no hay Xcode ni WebKit. Faltan
+en un iPhone de verdad: instalar desde Compartir, el teclado real, el permiso de
+avisos, y que llegue un aviso con la app cerrada.
+
+**Sigue pendiente:** P0 completo, P3 y P4, emojis como en la app, y el riel de
+espacios, que resta 64 px en el teléfono.
+
+**Bug encontrado al probar:** desde `8620e77` (05/11) la web entraba en un bucle
+infinito de renders en todo chat de un espacio. `runCardLine` dependía del objeto
+`appAnswers`, nuevo en cada render, y un efecto lo subía al padre con `setState`.
+Ahora depende de sus funciones, que son estables, y tiene test.
+
 ## 4. Orden entre los tres planes y decisiones de José
 
 1. **Hoy:** F0 (medir) y, si José lo decide, I0 (los papeles de Apple demoran

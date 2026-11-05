@@ -1,7 +1,8 @@
 {
   "name": "Lilachat",
   "short_name": "Lilachat",
-  "description": "Chats, grupos, agenda y llamadas de Constroad, en tu computadora.",
+  "id": "/",
+  "description": "Chats, grupos, agenda y llamadas de Constroad, en tu teléfono o tu computadora.",
   "lang": "es",
   "start_url": "/",
   "scope": "/",

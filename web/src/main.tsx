@@ -9,6 +9,8 @@ import { applyChatFont, readChatFont } from './ui/chatFont';
 import { catchJoinLink } from './spaces/pendingJoin';
 import { catchAppReturn } from './spaces/apps/pendingAppReturn';
 import { catchCallLink } from './calls/pendingCallLink';
+import { followTouchHold } from './pwa/touchHold';
+import { followVisualViewport } from './pwa/visualViewport';
 
 // El navegador deja sonar recién después del primer gesto (20/10).
 prepararSonidos();
@@ -23,6 +25,10 @@ catchJoinLink();
 catchCallLink();
 // Back from agentes after installing an app: that space opens on the app.
 catchAppReturn();
+
+// On a phone: the keyboard and holding a row (José 05/11, the iPhones of the site).
+followVisualViewport();
+followTouchHold();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

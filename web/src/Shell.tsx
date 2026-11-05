@@ -4,10 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChatRail } from './chat/ChatRail';
 import { ListResizeHandle } from './chat/ListResizeHandle';
 import { readThemeChoice, saveThemeChoice, type ThemeChoice } from './ui/tema';
-import { Bell, BellOff, Download, LogOut, UsersRound, WifiOff, X } from 'lucide-react';
+import { Bell, BellOff, LogOut, UsersRound, WifiOff, X } from 'lucide-react';
 import { useDismiss } from './ui/useDismiss';
 import { useSinConexion } from './pwa/conexion';
 import { useInstalarApp } from './pwa/instalar';
+import { InstallRow } from './pwa/IphoneInstallGuide';
 import type { Credential } from './api';
 import { AgendaOverlay } from './agenda/AgendaOverlay';
 import { CreateEventOverlay, CreatePollOverlay, NewChatOverlay, type ChatDestino } from './agenda/CreatePanels';
@@ -462,12 +463,7 @@ function PanelDeAjustes(props: {
         {push === 'encendido' ? <BellOff size={16} /> : <Bell size={16} />}
         <span className="min-w-0 flex-1">{push === 'encendido' ? 'Desactivar notificaciones' : 'Activar notificaciones'}</span>
       </button>
-      {instalacion.puedeInstalar ? (
-        <button type="button" data-testid="btn-instalar" onClick={() => void instalacion.instalar().then(onCerrar)} className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-left text-sm hover:bg-background">
-          <Download size={16} />
-          Instalar Lilachat en esta computadora
-        </button>
-      ) : null}
+      <InstallRow instalacion={instalacion} onDone={onCerrar} />
       {superadmin ? (
         <a href="/admin" data-testid="btn-usuarios-lilachat" className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-left text-sm hover:bg-background">
           <UsersRound size={16} />

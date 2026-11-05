@@ -10,6 +10,8 @@ import { EmailSignIn } from './EmailSignIn';
 import type { EmailLink } from './emailLink';
 import { IngresoPorTelefono } from './IngresoPorTelefono';
 import { PantallaDeVincular } from './PantallaDeVincular';
+import { IphoneInstallGuide } from '../pwa/IphoneInstallGuide';
+import { iphoneGuideSkipped, needsIosInstall, skipIphoneGuide } from '../pwa/iosInstall';
 
 /**
  * The doors of the web: the phone's QR, like WhatsApp Web (W5), the email and its
@@ -27,6 +29,8 @@ export function AccessScreens({ onReady, emailLink }: { onReady: (credential: Cr
   const [arrived, setArrived] = useState<{ credential: Credential; account: string } | null>(null);
   const [invited] = useState(() => peekPendingJoin() !== null);
   const [calledIn] = useState(() => peekPendingCallLink() !== null);
+  // A link already says what to do here, and it would not survive the install: Safari keeps it.
+  const [iphoneGuide, setIphoneGuide] = useState(() => !invited && !calledIn && !emailLink && needsIosInstall() && !iphoneGuideSkipped());
   // Nothing is «new» to someone who just arrived.
   const ready = (credential: Credential) => {
     markNotesSeen();
@@ -40,6 +44,13 @@ export function AccessScreens({ onReady, emailLink }: { onReady: (credential: Cr
     ready(credential);
   };
   if (arrived) return <YourSpacesPage credential={arrived.credential} account={arrived.account} onEnter={ready} />;
+  if (iphoneGuide) {
+    const skip = () => {
+      skipIphoneGuide();
+      setIphoneGuide(false);
+    };
+    return <IphoneInstallGuide onSkip={skip} />;
+  }
   return (
     <>
       {invited ? <JoinLinkBanner /> : null}
@@ -67,8 +78,14 @@ function JoinLinkBanner() {
   return (
     <div data-testid="aviso-invitacion" className="mx-auto mt-4 flex w-[calc(100%-32px)] max-w-md flex-col gap-2 rounded-2xl border border-primary/30 bg-primary/5 p-4 text-sm">
       <p className="font-semibold">Te invitaron a un espacio de Lilachat.</p>
-      <p className="text-on-surface-variant">En el teléfono, descarga la app y vuelve a tocar el enlace. Aquí, entra con tu correo o tu número y te unes al espacio.</p>
-      <a href={ENLACE_DE_DESCARGA} className="self-start font-semibold text-primary underline-offset-2 hover:underline">Descargar Lilachat</a>
+      {needsIosInstall() ? (
+        <p className="text-on-surface-variant">Entra aquí con tu correo o tu número y te unes al espacio. Después instala Lilachat desde Ajustes, para recibir los avisos.</p>
+      ) : (
+        <>
+          <p className="text-on-surface-variant">En el teléfono, descarga la app y vuelve a tocar el enlace. Aquí, entra con tu correo o tu número y te unes al espacio.</p>
+          <a href={ENLACE_DE_DESCARGA} className="self-start font-semibold text-primary underline-offset-2 hover:underline">Descargar Lilachat</a>
+        </>
+      )}
     </div>
   );
 }

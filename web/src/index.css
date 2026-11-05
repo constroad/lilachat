@@ -13,6 +13,59 @@
   }
 }
 
+/* A phone (José 05/11, the iPhones of the site; spec PLANES-FLUIDEZ §3): the page
+   never scrolls, the app takes what the keyboard leaves (`--app-height`, written by
+   pwa/visualViewport.ts) and stays off the home bar. A computer changes nothing. */
+@media (pointer: coarse) {
+  html,
+  body {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  body {
+    position: fixed;
+    inset: 0;
+  }
+  #root {
+    height: var(--app-height, 100dvh);
+    overflow-y: auto;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  html[data-keyboard] #root {
+    padding-bottom: 0;
+  }
+  /* Every sheet and dialog is one of these: they too must end above the keyboard. */
+  .fixed.inset-0 {
+    bottom: auto;
+    height: var(--app-height, 100dvh);
+  }
+  html:not([data-keyboard]) .fixed.inset-0 {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  /* Under 16 px Safari zooms the page on every focus and does not zoom back. */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+  /* At 16 px the composer's hint no longer fits one line, and the second one was cut in half. */
+  textarea::placeholder {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Holding a row shows its actions (pwa/touchHold.ts), not Safari's text menu. */
+  .group {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  [data-touch-open] .opacity-0 {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
 /* The MSN nudge (backlog 3): the open chat shakes for 600 ms. */
 /* A wink in the chat list: the row pops twice. */
 @keyframes wink-pop {

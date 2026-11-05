@@ -2,16 +2,21 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#6b38d4" />
     <!-- The saved theme before the first paint, so dark mode never flashes white (21/10). -->
     <script src="/tema-inicial.js"></script>
     <title>Lilachat</title>
-    <meta name="description" content="Chats, grupos, agenda y llamadas de Constroad, en tu computadora." />
+    <meta name="description" content="Chats, grupos, agenda y llamadas de Constroad, en tu teléfono o tu computadora." />
     <!-- Instalable (W0): ícono, color y nombre al agregarla al escritorio o al inicio. -->
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/png" href="/icons/icon-192.png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <!-- iPhone (spec PLANES-FLUIDEZ §3): installed from Share it opens without Safari's bars, under the status bar. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Lilachat" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <!-- La tarjeta al compartir el enlace en WhatsApp: imagen ABSOLUTA, con su tamaño. -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Lilachat" />

@@ -83,3 +83,46 @@ describe('AccessScreens (W5)', () => {
     }
   });
 });
+
+describe('José 05/11: an iPhone in Safari', () => {
+  const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Version/18.0 Mobile/15E148 Safari/604.1';
+  afterEach(() => {
+    vi.restoreAllMocks();
+    localStorage.clear();
+  });
+
+  it('installs first: Safari\'s session does not reach the installed app; it can still go on', async () => {
+    // Arrange
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(IPHONE);
+    // Act
+    render(<AccessScreens onReady={vi.fn()} />);
+    // Assert
+    expect(screen.getByTestId('paso-iphone-2')).toHaveTextContent('Añadir a pantalla de inicio');
+    await userEvent.click(screen.getByTestId('btn-seguir-en-safari'));
+    expect(screen.queryByTestId('guia-iphone')).toBeNull();
+  });
+
+  it('skipped once, it does not ask again', () => {
+    // Arrange
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(IPHONE);
+    localStorage.setItem('lilachat.iphone-guide-skipped', '1');
+    // Act
+    render(<AccessScreens onReady={vi.fn()} />);
+    // Assert
+    expect(screen.queryByTestId('guia-iphone')).toBeNull();
+  });
+
+  it('an email link goes straight to it: the link opens in Safari anyway', () => {
+    // Arrange
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue(IPHONE);
+    // Act
+    render(<AccessScreens onReady={vi.fn()} emailLink={{ email: 'x@x.com', code: '424242' }} />);
+    // Assert
+    expect(screen.queryByTestId('guia-iphone')).toBeNull();
+  });
+
+  it('a computer never sees it', () => {
+    render(<AccessScreens onReady={vi.fn()} />);
+    expect(screen.queryByTestId('guia-iphone')).toBeNull();
+  });
+});

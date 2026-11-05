@@ -48,8 +48,8 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
             {card.updatedAt ? <span data-testid="tarjeta-actualizada" className="shrink-0 text-[10px] text-on-surface-variant">Actualizado {formatClock(card.updatedAt)}</span> : null}
           </div>
         ) : null}
-        <div className="flex items-start gap-2">
-          <p className="min-w-0 flex-1 text-[15px] font-bold leading-5">{card.title}</p>
+        <div className="flex flex-wrap items-start gap-2">
+          <p className="min-w-[60%] flex-1 text-[15px] font-bold leading-5">{card.title}</p>
           {card.status ? <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${TONE[card.status.tone]}`}>{card.status.label}</span> : null}
         </div>
         {card.fields.length ? (

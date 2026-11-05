@@ -9058,16 +9058,25 @@ Deroga el punto 2 de 118.8.
 | # flujo-caja, con el nombre del cliente | «No registré este voucher: no sé de qué servicio o proyecto es.» |
 | # flujo-caja, con el nombre exacto del servicio | Creó el gasto al instante, sin vista previa. |
 
-Portal leyó bien monto, destinatario, operación, fecha y concepto. Falta en agentes:
+Esa primera prueba creaba el gasto sin vista previa. Agentes lo cambió el mismo día.
 
-- La vista previa con Aprobar y pedir cambios. En Lilachat ya está todo: tarjeta
-  con botones, hilo y edición en su lugar.
-- La partida, que no apareció en lo creado.
-- Reconocer el servicio por el cliente, cuando ese cliente tiene uno solo.
-- El medio de pago: guardó «CONTIAHORRO», que es el nombre de la cuenta.
-- La comisión (S/ 4.30) y el ITF (S/ 2.45) no aparecen en ningún campo.
-- Un voucher del 19/08 salió en «Caja del 4 de noviembre». La fecha se guardó bien: esa tarjeta
-  agrupa por día de registro. Falta decidir si la fila muestra la fecha real.
+**Segunda prueba en Test (04/11, noche)**, con agentes `3b0119c`, en la web y la app:
+
+| Paso | Qué pasó |
+| --- | --- |
+| Foto con `/gastos` y solo el nombre del cliente | «POR APROBAR» en el hilo, con cliente, servicio, fecha, medio, comisión e ITF |
+| Pedir un cambio en el hilo | Se editó la misma tarjeta, sola y sin recargar |
+| Aprobar 18 minutos después de subir la foto | «REGISTRADO». El gasto quedó con fecha 19/08 y la foto de 159 534 bytes |
+| El mismo voucher otra vez | «Ese voucher ya estaba registrado» |
+| Foto con solo `/gastos` | «FALTA UN DATO», sin Aprobar. Al responder el cliente pasó a «POR APROBAR» |
+| Descartar, en la web y en la app | «DESCARTADO POR J ZAMORA» |
+| El 1:1 con Portal | Igual que en el canal |
+
+Comisión e ITF quedan en la nota del gasto. Falta decidir con José la partida, el medio de pago
+como campo y dónde van comisión e ITF. Tampoco avisa de un pago cargado a mano en Portal.
+
+**Sin probar:** que otro miembro toque Aprobar (Test solo tiene una cuenta), la hora y la evidencia
+de `/asistencia` con marcas reales, y el delta de una medida real de tanque.
 
 El caso de Aracely sigue sin probar: la cuenta de José sí tiene usuario en Portal.
 

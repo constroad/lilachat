@@ -15202,14 +15202,20 @@ y eso no se puede clasificar.
 
 - Portal rechazaba las pestañas a quien no tiene usuario de Portal
   (`unknown_person`). José 05/11 abrió Detalle y el PDF de informes en
-  `MEMBER_TOOLS` (Portal `9da3ce4d`; el PDF espera a Agentes), con los 8 tipos de
-  la página pública. Cuenta y Drive siguen cerrados para esa persona.
+  `MEMBER_TOOLS` (Portal `8de4995f`), con los 8 tipos de la página pública. Cuenta
+  y Drive siguen cerrados para esa persona.
+- José 05/11: la misma regla alcanza a quien tiene usuario de Portal sin cobranza,
+  en lista y en PDF (Portal `b393229e`). Va por persona. No alcanza al admin del
+  espacio, ni a quien tiene cobranza o la marca del canal. «Aprobación de
+  adicional» queda fuera porque su PDF lleva montos.
+- En las pestañas del canal, todo admin del espacio va con `sees_billing: true`.
 - Portal no comprueba que esa persona esté en el canal: `findAskedService` es la
   única puerta. Si cambia esa comprobación, cambia también este caso.
 - Portal ignora la marca de montos de quien no tiene usuario: Cuenta le da error
   y Cobranza sale vacía. No marcar a esos miembros.
 - Por chat con Lila, `cuenta_de_cliente` y `pdf_de_cotizacion` dependen del rol
-  de Portal (`quotes:view`), no de la marca del canal.
+  de Portal (`quotes:view`), no de la marca del canal. `listar_informes` da todos
+  los tipos a quien tiene `services`: tipo, obra, estado y fecha, sin PDF.
 - Un canal público lo ve y lo une cualquier miembro del espacio. #flujo-caja y
   #administracion de Constroad son privados (agentes 05/11).
 

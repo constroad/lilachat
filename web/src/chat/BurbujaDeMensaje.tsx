@@ -27,6 +27,7 @@ import { ConversacionContext, useConversacion } from './contextoDeLaConversacion
 import type { ChatSummary, MensajeEnPantalla } from './types';
 import { Avatar } from '../ui/Avatar';
 import { AlbumGridWeb } from './AlbumGridWeb';
+import { photoBubbleStyle } from './photoBubbleStyle';
 
 /** Las clases de color de autor, escritas enteras para que Tailwind las genere. */
 const COLOR_DE_AUTOR = ['', 'text-autor-1', 'text-autor-2', 'text-autor-3', 'text-autor-4', 'text-autor-5', 'text-autor-6'];
@@ -282,7 +283,7 @@ function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; m
               alt={mensaje.body ?? 'Foto'}
               loading="lazy"
               className="mb-1 max-h-64 w-full rounded-lg object-cover"
-              style={media.width && media.height ? { aspectRatio: `${media.width} / ${media.height}` } : undefined}
+              style={photoBubbleStyle(media)}
             />
           )}
           {mensaje.estado === 'enviando' ? <AnilloDeSubida razon={mensaje.progreso} /> : null}

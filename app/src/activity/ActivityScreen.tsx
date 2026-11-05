@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { ArrowRight, CornerUpLeft, MessagesSquare } from 'lucide-react-native';
-import { ACTIVITY_TABS, activityDaySections, formatChatTimestamp, formatPhoneDisplay, type ActivityItem, type ActivityType, type ClientWorkspace } from '@lilachat/shared';
+import { ACTIVITY_TABS, activityDaySections, formatChatTimestamp, formatPhoneDisplay, textoDelChipDeHilo, type ActivityItem, type ActivityType, type ClientWorkspace } from '@lilachat/shared';
 import { PantallaEnModal } from '../ui/PantallaEnModal';
 import { Segmentado } from '../ui/Segmentado';
 import { Avatar } from '../ui/Avatar';
@@ -73,7 +73,7 @@ export function ActivityScreen(props: { /** As a tab of the bar (22/10): no wind
                 ) : null}
                 <View className="mt-3 flex-row items-center border-t border-outline/10 pt-3">
                   {tab === 'threads' ? <MessagesSquare size={16} color={colors.primary} /> : <CornerUpLeft size={16} color={colors.primary} />}
-                  <Text className="ml-2 flex-1 text-[15px] font-semibold text-primary">{tab === 'threads' ? `${item.thread?.replies ?? 0} respuestas · Ver hilo` : tab === 'reactions' ? 'Ver en el chat' : 'Responder en el chat'}</Text>
+                  <Text className="ml-2 flex-1 text-[15px] font-semibold text-primary">{tab === 'threads' ? `${textoDelChipDeHilo({ respuestas: item.thread?.replies ?? 0 })} · Ver hilo` : tab === 'reactions' ? 'Ver en el chat' : 'Responder en el chat'}</Text>
                   <ArrowRight size={18} color={colors['on-surface-variant']} />
                 </View>
               </Pressable>

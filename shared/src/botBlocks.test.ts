@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { barColumns, barFractions, linePath, peopleOnCard, peoplePhotos, personEvidence, personTime, tankDeltaTrend, tankFill, tankPercent, validateBotBlocks, BLOCK_LIMITS, PEOPLE_ON_CARD, type BotBlock } from './botBlocks.js';
+import { barColumns, barFractions, linePath, peopleOnCard, peoplePhotos, personEvidence, personTime, tankDeltaTrend, tankFill, tankPercent, validateBotBlocks, BLOCK_LIMITS, PEOPLE_ON_CARD, cardCommandsOf, type BotBlock } from './botBlocks.js';
 import { validateBotCard } from './bots.js';
 
 /** The card kit (§118.4, José 23/10): what agents and webhooks can draw in a card, validated once for server, app and web. */
@@ -216,5 +216,18 @@ describe('a row with a command', () => {
     expect(rowsOf({ command: 'clima hoy' }).rows[0]).not.toHaveProperty('command');
     expect(rowsOf({ command: 42 }).rows[0]).not.toHaveProperty('command');
     expect(rowsOf({ command: '/' }).rows[0]).not.toHaveProperty('command');
+  });
+});
+
+describe('cardCommandsOf', () => {
+  const rows = (...commands: (string | undefined)[]): BotBlock => ({ type: 'rows', rows: commands.map((command, index) => ({ label: `Fila ${index}`, value: '1', tone: 'neutral' as const, ...(command ? { command } : {}) })) });
+
+  it('reads the card and its detail, and skips rows without one', () => {
+    const card = { blocks: [rows('/clima hoy en Lima', undefined)], detail: { blocks: [{ type: 'text' as const, text: 'x', tone: 'neutral' as const }, rows('/clima hoy en Ate')] } };
+    expect(cardCommandsOf(card)).toEqual(['/clima hoy en Lima', '/clima hoy en Ate']);
+  });
+
+  it('a card with no blocks has none', () => {
+    expect(cardCommandsOf({})).toEqual([]);
   });
 });

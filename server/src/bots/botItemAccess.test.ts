@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net';
 import type { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose, { Types } from 'mongoose';
 import request from 'supertest';
+import type { BotCard } from '@lilachat/shared';
 import { startTestMongo } from '../testMongo.js';
 import { buildApp } from '../app.js';
 import { UserModel } from '../models.js';
@@ -33,6 +34,7 @@ let planta: Types.ObjectId;
 let appId: string;
 let hook: Server;
 let hookUrl = '';
+let heard: string[] = [];
 const asUser = (userId: () => Types.ObjectId) => ({ get Authorization() { return `Bearer ${signSession({ userId: String(userId()), deviceId: `d-${userId()}`, email: 'x' })}`; } });
 const asJose = asUser(() => jose);
 const asAna = asUser(() => ana);
@@ -51,9 +53,14 @@ const directOf = async (as: Who) => (await request(app).post(`/api/workspaces/${
 beforeAll(async () => {
   mongo = await startTestMongo();
   await mongoose.connect(mongo.getUri('lilachat_bot_item_access'));
-  hook = createServer((_req, res) => {
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify({ text: 'Soleado, 24 °C' }));
+  hook = createServer((req, res) => {
+    let body = '';
+    req.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+    req.on('end', () => {
+      heard.push(body);
+      res.setHeader('Content-Type', 'application/json');
+      res.end(JSON.stringify({ text: 'Soleado, 24 °C' }));
+    });
   });
   await new Promise<void>((resolve) => hook.listen(0, '127.0.0.1', resolve));
   hookUrl = `http://127.0.0.1:${(hook.address() as AddressInfo).port}/events`;
@@ -66,6 +73,7 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
+  heard = [];
   forgetBots();
   await Promise.all([UserModel, ChatModel, MessageModel, WorkspaceModel, WorkspaceMemberModel, BotAppModel, BotInstallationModel, BotDeliveryModel, BotCommandRunModel, ClientChannelModel].map((model) => (model as unknown as mongoose.Model<unknown>).deleteMany({})));
   [jose, ana, luis] = (await UserModel.create([{ phone: '902049935', name: 'José' }, { phone: '987654321', name: 'Ana' }, { phone: '987654322', name: 'Luis' }])).map((user) => user._id) as [Types.ObjectId, Types.ObjectId, Types.ObjectId];
@@ -219,5 +227,69 @@ describe('the move to all off is a migration José approves, not the deploy', ()
     expect(await offered(asJose, `?chat=${planta}`)).toEqual([]);
     expect(await offered(asJose, '?place=space')).toEqual([]);
     await run(asAna, planta).expect(403);
+  });
+});
+
+/** The card falls in #planta by its topic while /clima is off there: the tap said «ninguna app tiene comandos» (agentes, 05/11). */
+describe('a row of a card the app posted here', () => {
+  const line = '/clima 5/11/2026 en Ate';
+  const card: BotCard = { title: 'Clima', fields: [], detail: { title: 'Distritos', blocks: [{ type: 'rows', rows: [{ label: 'Ate', value: '24°', tone: 'neutral', command: line }] }] } };
+  const post = async (extra: Record<string, unknown> = {}) => {
+    const { botUserId } = (await BotInstallationModel.findOne({ appId }).lean())!;
+    await MessageModel.create({ chatId: planta, seq: 7, senderId: botUserId, clientKey: 'card-7', kind: 'text', body: 'Clima', card, ...extra });
+  };
+  const tap = (as: Who, body: object = { seq: 7, line }) => request(app).post(`/api/chats/${planta}/card-commands`).set(as).send(body);
+
+  it('runs for an admin with the command off here, and the menu still does not offer it', async () => {
+    // Arrange
+    await post();
+    // Act
+    const answer = await tap(asJose).expect(200);
+    // Assert
+    expect(answer.body).toMatchObject({ outcome: 'ephemeral' });
+    expect(JSON.parse(heard[0]!).data).toMatchObject({ command: 'clima', text: '5/11/2026 en Ate' });
+    expect(await offered(asJose, `?chat=${planta}`)).toEqual([]);
+  });
+
+  it('who may use it still counts: a member the admin did not add is refused, and one added runs it', async () => {
+    await post();
+    expect((await tap(asAna).expect(403)).body.error).toBe('not_allowed_here');
+    await enable({ 'command:clima': { who: { kind: 'people', userIds: [String(ana)] } } });
+    await tap(asAna).expect(200);
+    await tap(asLuis).expect(403);
+  });
+
+  it('only what the card says: another line of the same command is not run', async () => {
+    await post();
+    const refused = await tap(asJose, { seq: 7, line: '/clima 6/11/2026 en Ate' }).expect(404);
+    expect(refused.body.message).toBe('Esa fila ya no está en la tarjeta.');
+    expect(heard).toEqual([]);
+  });
+
+  it('a person’s message, a deleted card or an uninstalled app run nothing', async () => {
+    await post({ senderId: ana });
+    await tap(asJose).expect(404);
+    await MessageModel.deleteMany({});
+    await post({ deletedAt: new Date() });
+    await tap(asJose).expect(404);
+    await MessageModel.deleteMany({});
+    await post();
+    await BotInstallationModel.updateMany({ appId }, { revokedAt: new Date() });
+    await tap(asJose).expect(404);
+    expect(heard).toEqual([]);
+  });
+
+  it('somebody outside the chat gets nothing, and a line the app has no command for neither', async () => {
+    await post({ card: { ...card, detail: { title: 'D', blocks: [{ type: 'rows', rows: [{ label: 'Otro', value: '1', tone: 'neutral', command: '/kardex hoy' }] }] } } });
+    await ChatModel.updateOne({ _id: planta }, { $pull: { members: { userId: luis } } });
+    await tap(asLuis, { seq: 7, line: '/kardex hoy' }).expect(404);
+    await tap(asJose, { seq: 7, line: '/kardex hoy' }).expect(404);
+    expect(heard).toEqual([]);
+  });
+
+  it('nonsense in the request is a 404, not a crash', async () => {
+    await tap(asJose, { seq: 'x', line }).expect(404);
+    await tap(asJose, { seq: 7, line: 42 }).expect(404);
+    await request(app).post('/api/chats/nada/card-commands').set(asJose).send({ seq: 7, line }).expect(404);
   });
 });

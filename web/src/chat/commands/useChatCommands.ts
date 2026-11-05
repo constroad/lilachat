@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { channelButtonRows, chatActionRows, commandOf, matchCommands, parseSlashInput, slashQuery, unknownCommandMessage, type CommandGroup } from '@lilachat/shared';
 import { currentSocket } from '../../useSocket';
-import { runCommand, shareCommandAnswer, spaceCommands } from './commandsApi';
+import { runCardCommand, runCommand, shareCommandAnswer, spaceCommands } from './commandsApi';
 import { useAppAnswers } from './useAppAnswers';
 
 export type ChatCommands = ReturnType<typeof useChatCommands>;
@@ -103,6 +103,17 @@ export function useChatCommands(params: { jwt?: string; chatId: string; workspac
     [enabled, load, jwt, chatId, appAnswers]
   );
 
+  /** A card's row: a stored card (`seq`) runs where the app posted it, even with the command off; one only I see, like typing it. */
+  const runCardLine = useCallback(
+    async (line: string, seq?: number): Promise<boolean | 'not-command'> => {
+      const parsed = parseSlashInput(line);
+      if (!seq) return runIfCommand(line);
+      if (!jwt || !parsed) return false;
+      return appAnswers.track({ appName: 'La app', command: parsed.command }, () => runCardCommand(jwt, chatId, { seq, line }));
+    },
+    [runIfCommand, jwt, chatId, appAnswers]
+  );
+
   // A manifest or the commands changed (23/10): the list already read is stale; read again if it was in use.
   useEffect(() => {
     const socket = currentSocket();
@@ -135,7 +146,7 @@ export function useChatCommands(params: { jwt?: string; chatId: string; workspac
   const buttons = useMemo(() => channelButtonRows(groups), [groups]);
   /** The «/» button shows only where this chat has commands (José 02/11). */
   const hasCommands = useMemo(() => groups.some((group) => group.commands.length > 0), [groups]);
-  return { enabled, hasCommands, suggestions, activeCommand: flat[Math.min(active, flat.length - 1)] ?? null, onType, onKey, runIfCommand, answers: appAnswers.answers, dismiss: appAnswers.dismiss, appAnswers, actions, buttons, loadActions: load, share: params.shareable ? share : undefined, jwt: jwt ?? '', chatId };
+  return { enabled, hasCommands, suggestions, activeCommand: flat[Math.min(active, flat.length - 1)] ?? null, onType, onKey, runIfCommand, runCardLine, answers: appAnswers.answers, dismiss: appAnswers.dismiss, appAnswers, actions, buttons, loadActions: load, share: params.shareable ? share : undefined, jwt: jwt ?? '', chatId };
 }
 
 /** A channel or the chat with an app also asks for its actions on open, for its ⚡ (R31/10); a person's chat asks nothing. */

@@ -4,6 +4,7 @@ import { ChevronRight, ExternalLink } from 'lucide-react-native';
 import { formatClock, type BotCard, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BASE_URL } from '../api/client';
 import { useColores } from '../ui/tema';
+import { AccionesDeTarjetaContext, useAccionesDeTarjeta } from './accionesDeTarjeta';
 import { BotBlocksView } from './botBlocks/BotBlocksView';
 import { BotCardDetail } from './botBlocks/BotCardDetail';
 
@@ -34,6 +35,9 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
   const [error, setError] = useState('');
   // The kit (§118.4): the detail opens in a sheet with the data that came with the message.
   const [detailOpen, setDetailOpen] = useState(false);
+  const actions = useAccionesDeTarjeta();
+  const { runLine } = actions;
+  const runRow = runLine ? (line: string) => runLine(line, props.seq) : undefined;
   const tap = async (actionId: string) => {
     setSent({ id: actionId, state: 'sending' });
     setError('');
@@ -44,6 +48,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
     setError(data.message ?? 'No se pudo enviar. Revisa tu conexión.');
   };
   return (
+    <AccionesDeTarjetaContext.Provider value={{ ...actions, runLine: runRow }}>
     <View testID="tarjeta-bot" className="m-1 overflow-hidden rounded-xl border border-outline/15 bg-surface" style={{ minWidth: 240, maxWidth: card.blocks ? 320 : 300, width: card.blocks ? 320 : undefined }}>
       <View className="gap-2 px-3.5 py-3">
         {card.kicker || card.updatedAt ? (
@@ -96,5 +101,6 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
       {error ? <Text className="border-t border-outline/10 px-3.5 py-2 text-[12px] text-error">{error}</Text> : null}
       <BotCardDetail card={card} visible={detailOpen} onClose={() => setDetailOpen(false)} />
     </View>
+    </AccionesDeTarjetaContext.Provider>
   );
 }

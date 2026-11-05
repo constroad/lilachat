@@ -219,7 +219,7 @@ export function ChatScreen({
   // Editing the chat's reminder by tapping its card: in a group, its admins; in a 1:1 or a draft, anyone (19-20/10).
   const puedeEditarRecordatorios = !esGrupoChat || soyAdminDelGrupo;
   const callBack = useCallBack({ chatId, name: nombreVisible, callName: chatName, jwt: credential.jwt, enabled: Boolean(otherUserId), llamar });
-  const runLine = encrypted || fueraDelGrupo || grupo.sendLock(credential.userId) ? undefined : commands.runIfCommand;
+  const runLine = encrypted || fueraDelGrupo || grupo.sendLock(credential.userId) ? undefined : commands.runCardLine;
   const accionesDeTarjeta = useMemo(() => ({ editarRecordatorio: puedeEditarRecordatorios ? (recordatorio: AgendaReminder) => setCreando({ recordatorio }) : undefined, callBack: callBack.actions, runLine }), [puedeEditarRecordatorios, callBack.actions, runLine]);
   // Fuera del grupo no se listan miembros: ya no es «QA Ana, Vos».
   const otherStatus = usePresenceStatus(otherUserId);

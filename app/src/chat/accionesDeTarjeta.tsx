@@ -10,9 +10,9 @@ import type { CallBackActions } from './useCallBack';
  */
 /**
  * `callBack`: «Llamar» and «Recordarme devolverla» on a missed call, only in a 1:1 (backlog 23).
- * `runLine`: a card's row runs its command as if it was typed; absent where its answer could not be shown.
+ * `runLine`: a card's row runs its line, with the `seq` of a stored card; absent where its answer could not be shown.
  */
-export type AccionesDeTarjeta = { editarRecordatorio?: (recordatorio: AgendaReminder) => void; callBack?: CallBackActions; runLine?: (line: string) => void };
+export type AccionesDeTarjeta = { editarRecordatorio?: (recordatorio: AgendaReminder) => void; callBack?: CallBackActions; runLine?: (line: string, seq?: number) => void };
 
 export const AccionesDeTarjetaContext = createContext<AccionesDeTarjeta>({});
 

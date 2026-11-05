@@ -3,6 +3,7 @@ import { ChevronRight, ExternalLink } from 'lucide-react';
 import { formatClock, type BotCard, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BotBlocksView } from './botBlocks/BotBlocksView';
 import { BotCardDetail } from './botBlocks/BotCardDetail';
+import { CardCommandContext, useCardCommand } from './botBlocks/cardCommand';
 
 /** The status pill's tone (design `e-21`): background faint, border at 30 %, text strong. */
 const TONE: Record<CardTone, string> = {
@@ -30,6 +31,8 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
   const [error, setError] = useState('');
   // The kit (§118.4): the detail opens over the window with the data that came with the message.
   const [detailOpen, setDetailOpen] = useState(false);
+  const run = useCardCommand();
+  const runRow = run ? (line: string) => run(line, props.seq) : null;
   const tap = async (actionId: string) => {
     setSent({ id: actionId, state: 'sending' });
     setError('');
@@ -40,6 +43,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
     setError(data.message ?? 'No se pudo enviar. Revisa tu conexión.');
   };
   return (
+    <CardCommandContext.Provider value={runRow}>
     <div data-testid="tarjeta-bot" className="mb-1 w-full max-w-sm overflow-hidden rounded-xl border border-outline/15 bg-surface text-on-surface">
       <div className="space-y-2 px-3.5 py-3">
         {card.kicker || card.updatedAt ? (
@@ -86,5 +90,6 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
       {error ? <p role="alert" className="border-t border-outline/10 px-3.5 py-2 text-[12px] text-error">{error}</p> : null}
       {detailOpen ? <BotCardDetail card={card} onClose={() => setDetailOpen(false)} /> : null}
     </div>
+    </CardCommandContext.Provider>
   );
 }

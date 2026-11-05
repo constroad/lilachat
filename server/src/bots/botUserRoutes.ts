@@ -7,7 +7,7 @@ import { UserModel } from '../models.js';
 import { crearLimiteDeIntentos } from '../limiteDeIntentos.js';
 import { asyncRoute, requireSession } from '../requireSession.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
-import { commandGroupsOf, invokeCommand, invokeShortcut, shareCommandAnswer } from './botCommands.js';
+import { commandGroupsOf, invokeCardCommand, invokeCommand, invokeShortcut, shareCommandAnswer } from './botCommands.js';
 import { FORM_PHOTO_MAX_BYTES, readSignedFile, storeFormPhoto, submitForm } from './botForms.js';
 import { previewForm, refreshForm } from './botFormLive.js';
 import { appChannelsOf } from './botChannels.js';
@@ -75,6 +75,14 @@ export function buildBotUserRouter(): Router {
     const userId = req.session!.userId;
     if (!commandTries.permitir(String(userId))) return void res.status(429).set('Retry-After', '60').json({ message: 'Más de 20 comandos por minuto. Espera un momento.' });
     const outcome = await invokeCommand(userId, scopeOf(req), { appId: req.body?.app_id, command: req.body?.command, text: req.body?.text, forms: req.body?.forms });
+    if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+    res.json(outcome);
+  }));
+  // A row of a card (José, 05/11): it counts as a command against the same limit.
+  router.post('/chats/:chatId/card-commands', requireSession, asyncRoute(async (req, res) => {
+    const userId = req.session!.userId;
+    if (!commandTries.permitir(String(userId))) return void res.status(429).set('Retry-After', '60').json({ message: 'Más de 20 comandos por minuto. Espera un momento.' });
+    const outcome = await invokeCardCommand(userId, req.params.chatId!, { seq: req.body?.seq, line: req.body?.line, forms: req.body?.forms });
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.json(outcome);
   }));

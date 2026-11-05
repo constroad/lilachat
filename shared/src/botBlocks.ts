@@ -193,6 +193,11 @@ export function linePath(values: readonly number[], width: number, height: numbe
   return values.map((value, index) => `${index === 0 ? 'M' : 'L'}${Math.round((index / (values.length - 1)) * width)},${Math.round(((top - value) / span) * height)}`).join(' ');
 }
 
+const rowCommandsOf = (blocks: readonly BotBlock[] = []): string[] => blocks.flatMap((one) => (one.type === 'rows' ? one.rows.flatMap((row) => (row.command ? [row.command] : [])) : []));
+
+/** The lines a card's rows run, on it and in its detail: the only ones a tap may run. */
+export const cardCommandsOf = (card: { blocks?: readonly BotBlock[]; detail?: { blocks: readonly BotBlock[] } }): string[] => [...rowCommandsOf(card.blocks), ...rowCommandsOf(card.detail?.blocks)];
+
 type PeopleBlock = Extract<BotBlock, { type: 'people' }>;
 /** A card stops here; its detail lists everybody. */
 export const PEOPLE_ON_CARD = 8;

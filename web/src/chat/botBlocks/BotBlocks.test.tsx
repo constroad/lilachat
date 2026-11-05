@@ -172,7 +172,7 @@ describe('a row with a command (José, 05/11: «si toco un distrito no muestra e
     // Act
     fireEvent.click(screen.getByRole('button', { name: /Miraflores/ }));
     // Assert
-    expect(run).toHaveBeenCalledWith('/clima hoy en Miraflores');
+    expect(run).toHaveBeenCalledWith('/clima hoy en Miraflores', 1);
   });
 
   it('in the detail, it closes first: the answer lands in the chat, behind it', () => {
@@ -180,7 +180,7 @@ describe('a row with a command (José, 05/11: «si toco un distrito no muestra e
     renderCard(run);
     fireEvent.click(screen.getByTestId('tarjeta-ver-detalle'));
     fireEvent.click(screen.getByRole('button', { name: /Ate/ }));
-    expect(run).toHaveBeenCalledWith('/clima hoy en Ate');
+    expect(run).toHaveBeenCalledWith('/clima hoy en Ate', 1);
     expect(screen.queryByTestId('detalle-tarjeta')).toBeNull();
   });
 

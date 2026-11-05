@@ -889,8 +889,12 @@ José: «si toco un distrito no muestra el detalle». Cada fila acepta `command`
 
 - Es la línea que escribiría una persona, hasta 200 caracteres. Debe empezar con `/` y una letra.
   Otro valor se descarta, y la fila queda igual.
-- Tocarla es lo mismo que escribirla: misma ruta, mismos permisos y respuesta «Solo tú ves esto».
-  Si el comando no existe en ese chat, Lilachat dice cuáles hay.
+- En una tarjeta guardada corre por `POST /api/chats/:chatId/card-commands` con `{ seq, line, forms }`, con respuesta
+  «Solo tú ves esto». Corre aunque el comando esté apagado en ese canal: la tarjeta cae ahí por su tema, y la app ya eligió ese
+  lugar al publicarla. El menú no cambia. **Quién** sigue valiendo: sin permiso sale «No tienes permiso para usar /clima aquí».
+- Solo corre la línea exacta que está en esa tarjeta, y solo si la app que la publicó sigue instalada y tiene ese comando.
+  Otra línea da 404 `row_not_found`.
+- En una respuesta «Solo tú ves esto» no hay mensaje guardado: corre como escribirla.
 - Dentro de «Ver detalle», la hoja se cierra antes de correr: la respuesta sale sobre la barra.
 - La fila no responde donde la respuesta no se vería: chat secreto o canal donde esa persona no escribe.
   Tampoco en las respuestas del ⚡ del espacio, que no tienen un chat donde correr.

@@ -15,6 +15,10 @@ export const spaceCommands = (jwt: string, spaceId: string, place: CommandsPlace
 export const runCommand = (jwt: string, chatId: string, input: { appId: string; command: string; text: string }) =>
   jsonCall<CommandOutcome>(`${BASE_URL}/api/chats/${chatId}/commands`, jwt, { method: 'POST', body: JSON.stringify({ app_id: input.appId, command: input.command, text: input.text, forms: FORMS_LEVEL }) });
 
+/** A row of a stored card: the server finds its app and checks the line is on the card. */
+export const runCardCommand = (jwt: string, chatId: string, input: { seq: number; line: string }) =>
+  jsonCall<CommandOutcome>(`${BASE_URL}/api/chats/${chatId}/card-commands`, jwt, { method: 'POST', body: JSON.stringify({ seq: input.seq, line: input.line, forms: FORMS_LEVEL }) });
+
 /** «Enviar al canal»: the app posts in the channel the answer only I saw. */
 export const shareCommandAnswer = (jwt: string, chatId: string, commandId: string) => jsonCall<{ seq: number }>(`${BASE_URL}/api/chats/${chatId}/commands/${commandId}/share`, jwt, { method: 'POST', body: '{}' });
 

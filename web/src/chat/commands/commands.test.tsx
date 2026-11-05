@@ -19,6 +19,7 @@ const stubCommands = (overrides: Partial<ChatCommands> = {}): ChatCommands => ({
   onType: vi.fn(),
   onKey: vi.fn(() => false),
   runIfCommand: vi.fn(async () => 'not-command' as const),
+  runCardLine: vi.fn(async () => true),
   answers: [],
   dismiss: vi.fn(),
   appAnswers: { answers: [], track: vi.fn(), runAction: vi.fn(), uploadPhoto: vi.fn(), submitForm: vi.fn(), refreshForm: vi.fn(), previewForm: vi.fn(), dismiss: vi.fn(), removeAnswer: vi.fn(), say: vi.fn(), openForm: null, showForm: vi.fn() },

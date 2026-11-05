@@ -141,7 +141,7 @@ export function Conversation(props: {
     void commands.appAnswers.runAction(row, values);
   });
   // Its answer shows over the bar: without a bar (a secret or read-only chat) a card's row stays still.
-  const cardCommand = commands.enabled && !chat.encrypted && !props.sendLock ? commands.runIfCommand : null;
+  const cardCommand = commands.enabled && !chat.encrypted && !props.sendLock ? commands.runCardLine : null;
   return (
     <CardCommandContext.Provider value={cardCommand}>
     <section

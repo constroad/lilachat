@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { channelButtonRows, chatActionRows, commandOf, matchCommands, parseSlashInput, slashQuery, unknownCommandMessage, type CommandGroup } from '@lilachat/shared';
 import { getSocket } from '../socketClient';
-import { runCommand, shareCommandAnswer, spaceCommands } from './commandsApi';
+import { runCardCommand, runCommand, shareCommandAnswer, spaceCommands } from './commandsApi';
 import { useAppAnswers } from './useAppAnswers';
 
 export type ChatCommands = ReturnType<typeof useChatCommands>;
@@ -74,6 +74,17 @@ export function useChatCommands(params: { jwt: string; chatId: string; workspace
     [workspaceId, load, jwt, chatId, appAnswers]
   );
 
+  /** A card's row: a stored card (`seq`) runs where the app posted it, even with the command off; one only I see, like typing it. */
+  const runCardLine = useCallback(
+    async (line: string, seq?: number): Promise<boolean | 'not-command'> => {
+      const parsed = parseSlashInput(line);
+      if (!seq) return runIfCommand(line);
+      if (!parsed) return false;
+      return appAnswers.track({ appName: 'La app', command: parsed.command }, () => runCardCommand(jwt, chatId, { seq, line }));
+    },
+    [runIfCommand, jwt, chatId, appAnswers]
+  );
+
   // A manifest or the commands changed (23/10): the list already read is stale; read again if it was in use.
   useEffect(() => {
     const socket = getSocket();
@@ -109,8 +120,8 @@ export function useChatCommands(params: { jwt: string; chatId: string; workspace
   const shareable = params.shareable;
   // Stable while nothing changes, like `useAppAnswers`: the memoized bar receives it (F4, 02/11).
   return useMemo(
-    () => ({ enabled: Boolean(workspaceId), hasCommands, suggestions, onType, runIfCommand, answers: appAnswers.answers, dismiss: appAnswers.dismiss, appAnswers, actions, buttons, loadActions: load, share: shareable ? share : undefined }),
-    [workspaceId, hasCommands, suggestions, onType, runIfCommand, appAnswers, actions, buttons, load, shareable, share]
+    () => ({ enabled: Boolean(workspaceId), hasCommands, suggestions, onType, runIfCommand, runCardLine, answers: appAnswers.answers, dismiss: appAnswers.dismiss, appAnswers, actions, buttons, loadActions: load, share: shareable ? share : undefined }),
+    [workspaceId, hasCommands, suggestions, onType, runIfCommand, runCardLine, appAnswers, actions, buttons, load, shareable, share]
   );
 }
 

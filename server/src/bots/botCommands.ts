@@ -1,6 +1,6 @@
 import { Types } from 'mongoose';
-import { availableTo, canManageMembers, COMMAND_LIMITS, formLevelOf, isAckBody, itemSettingOf, mayUseItem, shortcutValuesOf, validateCommandResponse, validateFormReply, type ShortcutAudience, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope, type ShortcutValues, worksAt } from '@lilachat/shared';
-import { ChatModel, type Chat } from '../chatModels.js';
+import { availableTo, canManageMembers, cardCommandsOf, COMMAND_LIMITS, formLevelOf, isAckBody, itemSettingOf, mayUseItem, parseSlashInput, shortcutValuesOf, validateCommandResponse, validateFormReply, type ShortcutAudience, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope, type ShortcutValues, worksAt } from '@lilachat/shared';
+import { ChatModel, MessageModel, type Chat, type Message } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { callBotWebhook, isRestarting, recordLastDelivery, type WebhookReply } from './botEvents.js';
 import { postBotMessage } from './botMessages.js';
@@ -168,7 +168,12 @@ export function judgeReply(reply: WebhookReply, command: string, installationId:
 }
 
 /** What the person did: typed a command, or tapped an action of the «+» (R160, design e-29). */
-type Trigger = { kind: 'command'; command: string; text: string } | { kind: 'shortcut'; key: string; values?: ShortcutValues };
+/** `fromCard`: a tap on a row of a card the app posted in this chat. */
+type Trigger = { kind: 'command'; command: string; text: string; fromCard?: boolean } | { kind: 'shortcut'; key: string; values?: ShortcutValues };
+
+/** The app already chose this place by posting the card, so its row only asks who may use the command. */
+const mayRun = (trigger: Trigger, name: string, setting: Parameters<typeof availableTo>[2], place: Parameters<typeof availableTo>[3], person: Parameters<typeof availableTo>[4]): boolean =>
+  trigger.kind === 'command' && trigger.fromCard ? mayUseItem(setting, person) : availableTo(trigger.kind, name, setting, place, person);
 
 /** The chat where it was used and its space, or the space alone (its ⚡); null if the person is not in it. */
 async function placeOf(userId: Types.ObjectId, scope: CommandScope): Promise<{ chat: ChatOfCommand | null; workspaceId: Types.ObjectId } | null> {
@@ -196,7 +201,7 @@ async function invokeApp(userId: Types.ObjectId, scope: CommandScope, appId: unk
   // Checked here, not only in the menu: an old client or a direct call skips the menu (§2.2).
   const [member, clientChat] = await Promise.all([WorkspaceMemberModel.findOne({ workspaceId: place.workspaceId, userId, status: 'active' }).select('role').lean(), place.chat ? isClientChat(place.chat._id) : false]);
   const label = trigger.kind === 'command' ? `/${name}` : `«${app.shortcuts?.find((entry) => entry.key === name)?.name ?? name}»`;
-  if (!member || !availableTo(trigger.kind, name, setting, itemPlaceOf(place.chat, installation, clientChat), { userId: String(userId), spaceAdmin: canManageMembers(member.role) })) return notAllowedHere(label);
+  if (!member || !mayRun(trigger, name, setting, itemPlaceOf(place.chat, installation, clientChat), { userId: String(userId), spaceAdmin: canManageMembers(member.role) })) return notAllowedHere(label);
   // A failed run stays a week: its `failure` is how a «no pudo responder» gets explained (23/10).
   void BotCommandRunModel.deleteMany({ $or: [{ expiresAt: { $lt: new Date() }, failure: { $exists: false } }, { expiresAt: { $lt: new Date(Date.now() - FAILED_RUN_KEPT_MS) } }] }).catch((error: unknown) => console.error('[bots] no se pudieron purgar comandos vencidos:', error instanceof Error ? error.message : error));
   const { chat } = place;
@@ -220,6 +225,26 @@ export const OUTDATED_FORM_MESSAGE = 'Actualiza Lilachat para llenar este formul
 export function invokeCommand(userId: Types.ObjectId, scope: CommandScope, input: { appId: unknown; command: unknown; text: unknown; forms?: unknown }): Promise<CommandOutcome | CommandError> {
   const text = typeof input.text === 'string' ? input.text.trim().slice(0, COMMAND_LIMITS.input) : '';
   return invokeApp(userId, scope, input.appId, { kind: 'command', command: typeof input.command === 'string' ? input.command : '', text }, formsLevelOf(input.forms));
+}
+
+/**
+ * A row of a card the app posted here (José, 05/11): the card falls in a channel
+ * by its topic, where the command may be off. It runs exactly the line on the card.
+ */
+export async function invokeCardCommand(userId: Types.ObjectId, chatId: string, input: { seq: unknown; line: unknown; forms?: unknown }): Promise<CommandOutcome | CommandError> {
+  const gone = () => fail(404, 'row_not_found', 'Esa fila ya no está en la tarjeta.');
+  const seq = Number(input.seq);
+  const line = typeof input.line === 'string' ? input.line : '';
+  const parsed = parseSlashInput(line);
+  if (!isId(chatId) || !Number.isInteger(seq) || !parsed) return gone();
+  const [chat, message] = await Promise.all([
+    ChatModel.findOne({ _id: chatId, 'members.userId': userId }).select('workspaceId').lean<Pick<Chat, 'workspaceId'> | null>(),
+    MessageModel.findOne({ chatId, seq, deletedAt: { $exists: false } }).select('senderId card').lean<Pick<Message, 'senderId' | 'card'> | null>(),
+  ]);
+  if (!chat?.workspaceId || !message?.card || !cardCommandsOf(message.card).includes(line)) return gone();
+  const installation = await BotInstallationModel.findOne({ workspaceId: chat.workspaceId, botUserId: message.senderId, revokedAt: { $exists: false } }).select('appId').lean();
+  if (!installation) return gone();
+  return invokeApp(userId, { chatId }, String(installation.appId), { kind: 'command', ...parsed, fromCard: true }, formsLevelOf(input.forms));
 }
 
 /**

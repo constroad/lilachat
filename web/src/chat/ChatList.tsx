@@ -11,6 +11,7 @@ import { useChatListsPanel } from './chatLists/useChatListsPanel';
 import type { ChatAction } from './menuDelChat';
 import type { ChatSummary } from './types';
 import { NewVersionBand } from '../ui/NewVersionBand';
+import { InstallStrip } from '../pwa/InstallStrip';
 import { NowPlayingBar } from './NowPlayingBar';
 import { readAllChats, scopeOf } from './readAllChats';
 
@@ -194,6 +195,7 @@ export function ChatList({
         }}
       />
       <NewVersionBand />
+      <InstallStrip jwt={jwt} />
 
       <div className="px-3 pb-2">
         <div className="flex items-center gap-2 rounded-full bg-background px-3 py-2">

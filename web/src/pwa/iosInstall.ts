@@ -15,6 +15,9 @@ export const isStandalone = (safari: { standalone?: boolean } = navigator as { s
 
 export const needsIosInstall = (device: Device = navigator): boolean => isIos(device) && !isStandalone(device as { standalone?: boolean });
 
+/** The guide's steps are Safari's (Portal's advice, 05/11): links also open in Chrome or inside another app. */
+export const isOutsideSafari = (device: Pick<Navigator, 'userAgent'> = navigator): boolean => /CriOS|FxiOS|EdgiOS|OPiOS|FBAN|FBAV|FB_IAB|Instagram|Line\/|GSA\/|TikTok|musical_ly/.test(device.userAgent);
+
 export function iphoneGuideSkipped(): boolean {
   try {
     return localStorage.getItem(GUIDE_SKIPPED_KEY) === '1';

@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { Download, Share, Smartphone, SquarePlus } from 'lucide-react';
 import { Overlay } from '../ui/Overlay';
-import type { useInstalarApp } from './instalar';
-import { needsIosInstall } from './iosInstall';
+import { useInstallPrompt } from './installPrompt';
+import { isOutsideSafari, needsIosInstall } from './iosInstall';
 
 const STEPS: { Icon: typeof Share; title: string; hint: string }[] = [
   { Icon: Share, title: 'Toca Compartir en Safari', hint: 'Es el cuadrado con la flecha hacia arriba. Si no lo ves, toca primero «…» junto a la dirección.' },
@@ -13,14 +13,17 @@ const STEPS: { Icon: typeof Share; title: string; hint: string }[] = [
 /** The three steps: Safari's own menu, no prompt exists on iPhone. */
 export function IphoneInstallSteps() {
   return (
-    <ol className="flex flex-col gap-3">
-      {STEPS.map(({ Icon, title, hint }, index) => (
-        <li key={title} data-testid={`paso-iphone-${index + 1}`} className="flex items-start gap-3 rounded-xl border border-outline/15 bg-surface p-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><Icon size={20} /></span>
-          <span className="min-w-0"><span className="block text-sm font-semibold">{`${index + 1}. ${title}`}</span><span className="block text-[13px] text-on-surface-variant">{hint}</span></span>
-        </li>
-      ))}
-    </ol>
+    <>
+      {isOutsideSafari() ? <p data-testid="aviso-abrir-en-safari" className="mb-3 rounded-xl bg-primary/10 p-3 text-sm font-semibold">Abre esta página en Safari para instalarla.</p> : null}
+      <ol className="flex flex-col gap-3">
+        {STEPS.map(({ Icon, title, hint }, index) => (
+          <li key={title} data-testid={`paso-iphone-${index + 1}`} className="flex items-start gap-3 rounded-xl border border-outline/15 bg-surface p-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/10 text-primary"><Icon size={20} /></span>
+            <span className="min-w-0"><span className="block text-sm font-semibold">{`${index + 1}. ${title}`}</span><span className="block text-[13px] text-on-surface-variant">{hint}</span></span>
+          </li>
+        ))}
+      </ol>
+    </>
   );
 }
 
@@ -42,7 +45,8 @@ export function IphoneInstallGuide({ onSkip }: { onSkip: () => void }) {
 const ROW = 'flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-left text-sm hover:bg-background';
 
 /** Ajustes: the browser's own prompt where it exists; on iPhone, the guide. */
-export function InstallRow({ instalacion, onDone }: { instalacion: ReturnType<typeof useInstalarApp>; onDone: () => void }): ReactNode {
+export function InstallRow({ onDone }: { onDone: () => void }): ReactNode {
+  const { canInstall, install } = useInstallPrompt();
   const [guide, setGuide] = useState(false);
   if (needsIosInstall()) {
     return (
@@ -52,6 +56,6 @@ export function InstallRow({ instalacion, onDone }: { instalacion: ReturnType<ty
       </>
     );
   }
-  if (!instalacion.puedeInstalar) return null;
-  return <button type="button" data-testid="btn-instalar" onClick={() => void instalacion.instalar().then(onDone)} className={ROW}><Download size={16} />Instalar Lilachat en este dispositivo</button>;
+  if (!canInstall) return null;
+  return <button type="button" data-testid="btn-instalar" onClick={() => void install().then(onDone)} className={ROW}><Download size={16} />Instalar Lilachat en este dispositivo</button>;
 }

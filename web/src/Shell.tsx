@@ -7,7 +7,6 @@ import { readThemeChoice, saveThemeChoice, type ThemeChoice } from './ui/tema';
 import { Bell, BellOff, LogOut, UsersRound, WifiOff, X } from 'lucide-react';
 import { useDismiss } from './ui/useDismiss';
 import { useSinConexion } from './pwa/conexion';
-import { useInstalarApp } from './pwa/instalar';
 import { InstallRow } from './pwa/IphoneInstallGuide';
 import type { Credential } from './api';
 import { AgendaOverlay } from './agenda/AgendaOverlay';
@@ -146,8 +145,6 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
 
   const mensajes = useMensajesEnPantalla(base, selectedId, historial.limite, yo);
   const sinConexion = useSinConexion(socket.connected, true);
-  // El navegador ofrece instalar UNA vez al cargar: se escucha desde acá, no desde el panel.
-  const instalacion = useInstalarApp();
   // The creator's users panel (José, 21/10): asked the first time Ajustes opens.
   const superadmin = useSuperadmin(credential.jwt, aviso === 'ajustes');
   useTituloConPendientes(chatsGuardados);
@@ -400,7 +397,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
       ) : null}
       {creando?.tipo === 'recordatorio' ? <CrearRecordatorio jwt={credential.jwt} chat={creando.chat} editando={creando.editando} onClose={() => setCreando(null)} onGuardado={() => setCreando(null)} /> : null}
 
-      {aviso === 'ajustes' ? <PanelDeAjustes jwt={credential.jwt} userId={credential.userId} onAviso={setAviso} onSalir={logout} onCerrar={() => setAviso('')} instalacion={instalacion} superadmin={superadmin} /> : aviso ? (
+      {aviso === 'ajustes' ? <PanelDeAjustes jwt={credential.jwt} userId={credential.userId} onAviso={setAviso} onSalir={logout} onCerrar={() => setAviso('')} superadmin={superadmin} /> : aviso ? (
         <p data-testid="aviso" role="status" className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-on-surface px-4 py-2 text-sm text-surface">
           {aviso}
         </p>
@@ -431,10 +428,9 @@ function PanelDeAjustes(props: {
   onAviso: (texto: string) => void;
   onSalir: () => void;
   onCerrar: () => void;
-  instalacion: ReturnType<typeof useInstalarApp>;
   superadmin: boolean;
 }) {
-  const { jwt, onAviso, onSalir, onCerrar, instalacion, superadmin } = props;
+  const { jwt, onAviso, onSalir, onCerrar, superadmin } = props;
   const [push, setPush] = useState(pushState);
   // It had no way out but its own button (José, 21/10): a click outside, Escape or the X close it.
   const panel = useRef<HTMLDivElement>(null);
@@ -463,7 +459,7 @@ function PanelDeAjustes(props: {
         {push === 'encendido' ? <BellOff size={16} /> : <Bell size={16} />}
         <span className="min-w-0 flex-1">{push === 'encendido' ? 'Desactivar notificaciones' : 'Activar notificaciones'}</span>
       </button>
-      <InstallRow instalacion={instalacion} onDone={onCerrar} />
+      <InstallRow onDone={onCerrar} />
       {superadmin ? (
         <a href="/admin" data-testid="btn-usuarios-lilachat" className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-left text-sm hover:bg-background">
           <UsersRound size={16} />

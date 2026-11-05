@@ -209,11 +209,32 @@ mínimo de P1 y P2. P0 se hizo solo en las pantallas de ese recorrido.
 - Sin instalar, activar avisos dice que hace falta instalar. Instalada, la
   franja «Activa las notificaciones» pide el permiso con un toque.
 - Metas de Apple y `id` en el manifest.
+- En Chrome o dentro de otra app, los mismos pasos dicen antes «Abre esta página
+  en Safari» (`isOutsideSafari`). Los pasos son los de Safari.
+
+**La franja de instalar (José 05/11, tomada del banner de Portal y mejorada):**
+
+- `pwa/InstallStrip`: va dentro de la lista de chats y del espacio, no flota. El
+  banner de Portal le tapó la X al visor el 20/10/2026; una fila no puede.
+- iPhone en el navegador: «Ver cómo» abre los pasos y avisa que se entra de nuevo.
+- Android: lleva al APK de LilaStore, salvo que la cuenta ya lo tenga.
+- `GET /api/me/android-app` lo responde con el token de push. `platform` no sirve:
+  vale `android` por defecto en cada inicio de sesión, también en la web. Sin
+  respuesta del server no se muestra nada.
+- Computadora: no sale; sigue la fila de Ajustes.
+- `pwa/installOffer.ts`: cerrarla la duerme 14 días, vuelve una vez y después solo
+  queda Ajustes. Es la regla de Portal, pura y con tests.
+- `pwa/installPrompt.ts`: el evento del navegador se captura desde `main.tsx`. Se
+  emite una vez por carga; escuchado desde el Shell se perdía y Ajustes nunca
+  ofrecía instalar a quien entraba sin recargar.
 
 **Cómo se probó.** Stack local (Mongo en memoria, constroad-auth y agentes
 falsos) con Chromium en 390×664, táctil y agente de iPhone, como admin y como
 ingeniero. El teclado se simuló encogiendo `visualViewport`: el compositor quedó
 en 318 px con 330 px disponibles.
+La franja se probó igual: iPhone (pasos, cerrar y recarga), Android sin APK
+(enlace a LilaStore), Android con APK (nada) y Chrome en iPhone (aviso de Safari).
+Ni la guía ni la franja se probaron en un iPhone real.
 
 **Lo que NO se probó: Safari real.** En esta Mac no hay Xcode ni WebKit. Faltan
 en un iPhone de verdad: instalar desde Compartir, el teclado real, el permiso de

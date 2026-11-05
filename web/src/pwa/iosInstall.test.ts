@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { isIos, isStandalone, iphoneGuideSkipped, needsIosInstall, skipIphoneGuide } from './iosInstall';
+import { isIos, isOutsideSafari, isStandalone, iphoneGuideSkipped, needsIosInstall, skipIphoneGuide } from './iosInstall';
 
 /** José 05/11: engineers with an iPhone start tomorrow on the installed web. */
 const IPHONE = { userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Version/18.0 Mobile/15E148 Safari/604.1', platform: 'iPhone', maxTouchPoints: 5 };
@@ -40,6 +40,23 @@ describe('needsIosInstall', () => {
     expect(needsIosInstall(ANDROID)).toBe(false);
     inDisplayMode(true);
     expect(needsIosInstall(IPHONE)).toBe(false);
+  });
+});
+
+describe('isOutsideSafari', () => {
+  it('spots the browser inside another app', () => {
+    expect(isOutsideSafari({ userAgent: `${IPHONE.userAgent} Instagram 300.0` })).toBe(true);
+    expect(isOutsideSafari({ userAgent: `${IPHONE.userAgent} [FBAN/FBIOS;FBAV/450.0]` })).toBe(true);
+  });
+
+  it('spots Chrome, Firefox and Edge on an iPhone', () => {
+    expect(isOutsideSafari({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) CriOS/130.0.6723.90 Mobile/15E148 Safari/604.1' })).toBe(true);
+    expect(isOutsideSafari({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) FxiOS/132.0 Mobile/15E148 Safari/605.1.15' })).toBe(true);
+    expect(isOutsideSafari({ userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) EdgiOS/130.0 Version/18.0 Mobile/15E148 Safari/604.1' })).toBe(true);
+  });
+
+  it('leaves Safari alone', () => {
+    expect(isOutsideSafari(IPHONE)).toBe(false);
   });
 });
 

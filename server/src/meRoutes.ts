@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { isPresenceMode, validarNombreDePerfil, type PresenceMode } from '@lilachat/shared';
 import { requireSession } from './requireSession.js';
-import { UserModel } from './models.js';
+import { DeviceModel, UserModel } from './models.js';
 import { announceJoin } from './joinNotice.js';
 import { contactIdsOf, presenceFrameOf, prefsFromUser, rememberPresencePrefs } from './presenceModes.js';
 import { emitPresence } from './reparto.js';
@@ -98,6 +98,12 @@ export function buildMeRouter(uploader: MediaUploader = defaultMediaUploader()):
       { $set: { autoReply: { enabled, text } } }
     );
     res.json({ autoReply: { enabled, text } });
+  });
+
+  // The web's install strip (José 05/11). Only the push token tells the APK: `platform` defaults to android on every sign-in.
+  router.get('/android-app', async (req, res) => {
+    const hasAndroidApp = await DeviceModel.exists({ userId: req.session!.userId, platform: 'android', pushToken: { $exists: true, $ne: '' } });
+    res.json({ hasAndroidApp: Boolean(hasAndroidApp) });
   });
 
   // The presence I choose and my «últ. vez» (pending 15): saved, kept for the socket, told to my contacts.

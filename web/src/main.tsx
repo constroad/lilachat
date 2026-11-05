@@ -9,6 +9,7 @@ import { applyChatFont, readChatFont } from './ui/chatFont';
 import { catchJoinLink } from './spaces/pendingJoin';
 import { catchAppReturn } from './spaces/apps/pendingAppReturn';
 import { catchCallLink } from './calls/pendingCallLink';
+import { catchInstallPrompt } from './pwa/installPrompt';
 import { followTouchHold } from './pwa/touchHold';
 import { followVisualViewport } from './pwa/visualViewport';
 
@@ -25,6 +26,9 @@ catchJoinLink();
 catchCallLink();
 // Back from agentes after installing an app: that space opens on the app.
 catchAppReturn();
+
+// The browser offers to install once per load, often before anyone signs in.
+catchInstallPrompt();
 
 // On a phone: the keyboard and holding a row (José 05/11, the iPhones of the site).
 followVisualViewport();

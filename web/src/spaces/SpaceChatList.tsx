@@ -10,6 +10,7 @@ import { SpaceTitleMenu, type WorkspaceLink } from './SpaceTitleMenu';
 import { PendingMarker } from '../chat/queue/PendingMarker';
 import { AppsSection } from './apps/AppsSection';
 import { SpaceQuickActions } from './apps/SpaceQuickActions';
+import { InstallStrip } from '../pwa/InstallStrip';
 import type { SpaceApps } from './apps/useSpaceApps';
 import { useSpaceClients } from './clients/useSpaceClients';
 import { ClientsSection } from './clients/ClientsSection';
@@ -98,6 +99,7 @@ export function SpaceChatList(props: Props) {
           </button>
         ) : null}
       </header>
+      {props.jwt ? <InstallStrip jwt={props.jwt} /> : null}
       <div className="px-3 pb-2">
         <label className="flex items-center gap-2 rounded-full bg-background px-3 py-2">
           <Search size={16} className="shrink-0 text-on-surface-variant" />

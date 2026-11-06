@@ -22,7 +22,7 @@ export type RespuestaDeSubida =
 
 export function subirPorXhr(params: {
   url: string;
-  /** Sin él no viaja la sesión: una subida a Portal lleva su propio ticket en la dirección. */
+  /** Without it no session travels: an upload to Portal carries its own ticket in the address. */
   token?: string;
   form: FormData;
   timeoutMs: number;

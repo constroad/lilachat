@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { Camera, Check, Pencil, Trash2, X } from 'lucide-react-native';
-import { MAX_NOMBRE_DE_PERFIL, formatPhoneDisplay, validarNombreDePerfil } from '@lilachat/shared';
+import { MAX_PROFILE_NAME, formatPhoneDisplay, validarNombreDePerfil } from '@lilachat/shared';
 import { guardarNombreDePerfil, quitarFotoDePerfil } from '../api/client';
 import type { Credential } from '../auth/credentialStore';
 import { elegirFotoRedonda } from '../chat/fotoDeGrupo';
@@ -143,7 +143,7 @@ export function PerfilAjuste({ credential }: { credential: Credential }) {
                   setError(null);
                 }}
                 autoFocus
-                maxLength={MAX_NOMBRE_DE_PERFIL * 2}
+                maxLength={MAX_PROFILE_NAME * 2}
                 placeholder="Tu nombre"
                 placeholderTextColor={colores['on-surface-variant']}
                 returnKeyType="done"

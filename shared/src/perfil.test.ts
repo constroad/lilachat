@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_NOMBRE_DE_PERFIL, validarNombreDePerfil } from './perfil.js';
+import { MAX_PROFILE_NAME, validarNombreDePerfil } from './perfil.js';
 
 /** El nombre del perfil (FL9): lo que ven los que no te tienen agendado. */
 describe('validarNombreDePerfil', () => {
@@ -18,13 +18,13 @@ describe('validarNombreDePerfil', () => {
     expect(validarNombreDePerfil('   ').ok).toBe(false);
   });
 
-  it(`más de ${MAX_NOMBRE_DE_PERFIL} letras: se rechaza, no se corta a escondidas`, () => {
-    expect(validarNombreDePerfil('a'.repeat(MAX_NOMBRE_DE_PERFIL)).ok).toBe(true);
-    expect(validarNombreDePerfil('a'.repeat(MAX_NOMBRE_DE_PERFIL + 1)).ok).toBe(false);
+  it(`más de ${MAX_PROFILE_NAME} letras: se rechaza, no se corta a escondidas`, () => {
+    expect(validarNombreDePerfil('a'.repeat(MAX_PROFILE_NAME)).ok).toBe(true);
+    expect(validarNombreDePerfil('a'.repeat(MAX_PROFILE_NAME + 1)).ok).toBe(false);
   });
 
   it('cuenta letras y no unidades de UTF-16 (un emoji vale uno)', () => {
-    expect(validarNombreDePerfil(`${'a'.repeat(MAX_NOMBRE_DE_PERFIL - 1)}🙂`).ok).toBe(true);
+    expect(validarNombreDePerfil(`${'a'.repeat(MAX_PROFILE_NAME - 1)}🙂`).ok).toBe(true);
   });
 
   it('lo que no es texto no es un nombre', () => {

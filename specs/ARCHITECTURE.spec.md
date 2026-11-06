@@ -15377,7 +15377,7 @@ Una persona de un espacio no podía crear su usuario: un nombre completo de 31 l
 daba «Hasta 25 letras». El error salía debajo de «Entras con <correo>» y parecía del
 correo, pero era del nombre. El correo no se valida en esa pantalla.
 
-- `MAX_NOMBRE_DE_PERFIL` pasa a 60: dos nombres y dos apellidos entran.
+- `MAX_PROFILE_NAME` pasa a 60: dos nombres y dos apellidos entran.
 - El error va debajo del campo del nombre, en APK y web.
 - Por qué le volvía a pedir el nombre: sin nombre guardado, `owesItsName` sigue dando
   verdadero. La foto sí se guarda sola, así que la cuenta parecía completa.

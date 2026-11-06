@@ -109,6 +109,31 @@ describe('a client channel (design f-03)', () => {
     expect(open.mock.calls).toEqual([[{ kind: 'client', clientId: 'x' }], [{ kind: 'service', clientId: 'x', serviceId: 's1' }]]);
   });
 
+  it('the «Ver despachos y fotos» of an order\'s card opens its service once the records say which it is', () => {
+    // Arrange
+    const onFocused = vi.fn();
+    const target = { jwt: 'j', spaceId: 'sp', clientId: 'x' };
+    const records = [{ seq: 10, at: now.toISOString(), kind: 'order.created', service_id: 's1', record_id: 'o1', title: '30 m³' }];
+    const one = client('x', { services: [inProgress] });
+    const { rerender } = render(<ClientServices client={one} records={null} target={target} focusSeq={10} onFocused={onFocused} />);
+    expect(onFocused).not.toHaveBeenCalled();
+    // Act
+    rerender(<ClientServices client={one} records={records} target={target} focusSeq={10} onFocused={onFocused} />);
+    // Assert
+    expect(screen.getByTestId('detalle-servicio')).toBeInTheDocument();
+    expect(onFocused).toHaveBeenCalledTimes(1);
+  });
+
+  it('a card with no order among the records stays on the list of services', () => {
+    // Arrange
+    const onFocused = vi.fn();
+    // Act
+    render(<ClientServices client={client('x', { services: [inProgress] })} records={[]} target={{ jwt: 'j', spaceId: 'sp', clientId: 'x' }} focusSeq={10} onFocused={onFocused} />);
+    // Assert
+    expect(screen.queryByTestId('detalle-servicio')).toBeNull();
+    expect(onFocused).toHaveBeenCalledTimes(1);
+  });
+
   it('without the link actions offered to that person there is nothing to tap', () => {
     render(<ClientServices client={client('x', { services: [inProgress] })} records={[]} target={null} links={{ can: () => false, open: vi.fn() }} />);
     expect(screen.queryByTestId('enlace-cliente')).toBeNull();

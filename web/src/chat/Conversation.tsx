@@ -3,13 +3,13 @@ import { useLastSeen } from './useLastSeen';
 import { usePresenceStatus } from '../presence/presenceStatus';
 import { NotificationsBanner } from '../notify/NotificationsBanner';
 import { ConversacionContext } from './contextoDeLaConversacion';
-import { useContext, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { ArrowLeft, Building2, Phone, Search, Video } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import type { AgendaReminder, DirectoryApp, MencionElegida, MencionEnMensaje, WinkId } from '@lilachat/shared';
 import { channelLinksOf, chatHasActionPlace, clientHeaderSubtitle, formatUltimaVez, presenceLine, type PresenceStatus, memberCountLabel } from '@lilachat/shared';
 import { Composer, type ContextoDelComposer } from './Composer';
-import { CardCommandContext, type CardCommand } from './botBlocks/cardCommand';
+import { CardCommandContext, OrderCardContext, type CardCommand } from './botBlocks/cardCommand';
 import { useChatCommandsWithActions } from './commands/useChatCommands';
 import { AppCommandsBar, AppConversationHeader, type AppConversationTab } from '../spaces/apps/AppConversation';
 import { AppDetail } from '../spaces/apps/AppDetail';
@@ -110,6 +110,13 @@ export function Conversation(props: {
   // Pending 21: a space's channel has «Chat · Checklist»; the checklist takes the place of the messages.
   const isChannel = Boolean(chat.workspaceId && chat.kind === 'group' && !props.app && !chat.encrypted);
   const [channelTab, setChannelTab] = useState<ChannelTab>('chat');
+  // An order's card sends to «Servicios» with its message; the panel clears it once it opened the order.
+  const [focusSeq, setFocusSeq] = useState<number | null>(null);
+  const clearFocus = useCallback(() => setFocusSeq(null), []);
+  const openOrderCard = useCallback((seq: number) => {
+    setFocusSeq(seq);
+    setChannelTab('services');
+  }, []);
   // Pending 21 (design f-03): a client's channel adds «Servicios» and, archived, its banner.
   const client = useClientOfChat(chat.id);
   // José 29/10: Checklist, Archivos and Pendientes belong to a client's channel only.
@@ -150,6 +157,7 @@ export function Conversation(props: {
   }, [onCardCommand, cardCommand]);
   return (
     <CardCommandContext.Provider value={cardCommand}>
+    <OrderCardContext.Provider value={isClientChannel && tabs.includes('services') ? openOrderCard : null}>
     <section
       data-testid="panel-conversacion"
       className="relative flex h-full min-w-0 flex-1 flex-col"
@@ -192,7 +200,7 @@ export function Conversation(props: {
       ) : isClientChannel && client && shownTab === 'account' && props.jwtParaEnlaces && chat.workspaceId ? (
         <ClientAccountWeb target={{ jwt: props.jwtParaEnlaces, spaceId: chat.workspaceId, clientId: client.id }} services={client.services} />
       ) : isClientChannel && client && shownTab === 'services' ? (
-        <ClientServicesPanel client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} onOpenRecord={toMessage} links={links} />
+        <ClientServicesPanel client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} onOpenRecord={toMessage} links={links} focusSeq={focusSeq} onFocused={clearFocus} />
       ) : props.app && appTab === 'info' ? (
         <div data-testid="informacion-app" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-8">
           <div className="mx-auto max-w-3xl">
@@ -277,6 +285,7 @@ export function Conversation(props: {
       </>
       )}
     </section>
+    </OrderCardContext.Provider>
     </CardCommandContext.Provider>
   );
 }
@@ -345,9 +354,9 @@ function BannerWithSession() {
 }
 
 /** «Servicios» asks for its records only while it is open. */
-function ClientServicesPanel(props: { client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; onOpenRecord: (seq: number) => void; links: ChannelLinks }) {
+function ClientServicesPanel(props: { client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; onOpenRecord: (seq: number) => void; links: ChannelLinks; focusSeq: number | null; onFocused: () => void }) {
   const records = useClientRecords(props.jwt, props.spaceId, props.client.id);
-  return <ClientServices client={props.client} records={records} onOpenRecord={props.onOpenRecord} target={props.jwt && props.spaceId ? { jwt: props.jwt, spaceId: props.spaceId, clientId: props.client.id } : null} links={props.links} />;
+  return <ClientServices client={props.client} records={records} onOpenRecord={props.onOpenRecord} focusSeq={props.focusSeq} onFocused={props.onFocused} target={props.jwt && props.spaceId ? { jwt: props.jwt, spaceId: props.spaceId, clientId: props.client.id } : null} links={props.links} />;
 }
 
 /**

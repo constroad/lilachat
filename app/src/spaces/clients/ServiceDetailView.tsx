@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronLeft, ExternalLink, FilePlus, FileText } from 'lucide-react-native';
-import { CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, moreInPortal, orphanDispatchesOf, reportGroups, type ChannelLinks, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, openingSheets, moreInPortal, orphanDispatchesOf, reportGroups, type ChannelLinks, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
 import { RecordSheet } from './RecordSheet';
@@ -146,10 +146,10 @@ function ReportAction({ target, serviceId, onAnswered }: { target: ServiceAskTar
   return <SpaceActionButton jwt={target.jwt} spaceId={target.spaceId} values={serviceValuesOf(serviceId)} onAnswered={onAnswered} actionKey={SERVICE_REPORT_ACTION} label="Generar informe de servicio" testID="generar-informe-servicio" Icon={FileText} />;
 }
 
-function DetailTabs({ detail, target, serviceId, onOpenFile, links, seesMoney, onReported, onCreateReport, startTab }: { onCreateReport: () => void; startTab: DetailTabKey; detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void; links?: ChannelLinks; seesMoney: boolean; onReported: () => void }) {
+function DetailTabs({ detail, target, serviceId, onOpenFile, links, seesMoney, onReported, onCreateReport, startTab, startOrderId }: { startOrderId?: string; onCreateReport: () => void; startTab: DetailTabKey; detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void; links?: ChannelLinks; seesMoney: boolean; onReported: () => void }) {
   const [tab, setTab] = useState<DetailTabKey>(startTab);
   // An order's sheet opens its dispatches on top (José 01/11); closing goes back one.
-  const [opened, setOpened] = useState<OpenSheet[]>([]);
+  const [opened, setOpened] = useState<OpenSheet[]>(() => openingSheets(detail, startOrderId));
   const reportPdf = useReportPdf(target, serviceId, onOpenFile);
   const top = opened.at(-1);
   const sheet = top ? detailSheet(detail, top.tab, top.id) : null;
@@ -190,7 +190,7 @@ const Skeleton = () => (
  * Pedidos · Informes with Portal's counts, each order with its dispatches
  * inside (José 01/11). Asked when it opens.
  */
-export function ServiceDetailView(props: { target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; onBack: () => void; links?: ChannelLinks }) {
+export function ServiceDetailView(props: { target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string }) {
   const colors = useColores();
   // After a report the detail is asked again, keeping the open tab (agentes 31/10).
   const [round, setRound] = useState(0);
@@ -226,7 +226,7 @@ export function ServiceDetailView(props: { target: ServiceAskTarget; chatId: str
       </Pressable>
       <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
       {answer === null ? <Skeleton /> : null}
-      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} onOpenFile={files.open} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} /> : null}
+      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} onOpenFile={files.open} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} startOrderId={startTab === 'orders' ? props.startOrderId : undefined} /> : null}
       <CreateReportSheet visible={picker} portalUrl={portalUrl} onPick={(code) => { setPicker(false); setReportType(code); }} onClose={() => setPicker(false)} />
       {files.notice ? <Text className="text-center text-[13px] text-error">{files.notice}</Text> : null}
       {files.viewer}

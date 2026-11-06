@@ -173,6 +173,21 @@ export function filterServices(services: readonly SpaceClientService[], params: 
 /** One record of a service (an informe, a quote, a payment, a photo): `GET …/clients/:id/records`. */
 export type ClientRecord = { seq: number; at: string; kind?: string; service_id: string; record_id?: string; title: string; kicker?: string };
 
+/** How agentes heads an order's card in a client's channel. */
+const ORDER_CARD_KICKER = 'pedido';
+const ORDER_RECORD_PREFIX = 'order.';
+
+/** An order's card: in a client's channel it leads to that order's sheet, with its dispatches and their plant photos (José 06/11). */
+export const isOrderCard = (card: { kicker?: string }): boolean => card.kicker?.trim().toLowerCase() === ORDER_CARD_KICKER;
+
+/** The service and the order a card's message stands for; null when it is no order, or its service is not listed. */
+export function orderFocusOf<Service extends { id: string }>(services: readonly Service[], records: readonly ClientRecord[], seq: number): { service: Service; orderId: string } | null {
+  const record = records.find((one) => one.seq === seq);
+  if (!record?.record_id || !record.kind?.startsWith(ORDER_RECORD_PREFIX)) return null;
+  const service = services.find((one) => one.id === record.service_id);
+  return service ? { service, orderId: record.record_id } : null;
+}
+
 /** The records grouped by service, keeping the server's order (newest first). */
 export function recordsByService(records: readonly ClientRecord[]): Map<string, ClientRecord[]> {
   const grouped = new Map<string, ClientRecord[]>();

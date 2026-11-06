@@ -6,3 +6,6 @@ export type CardCommand = (line: string, seq?: number) => void;
 export const CardCommandContext = createContext<CardCommand | null>(null);
 
 export const useCardCommand = () => useContext(CardCommandContext);
+
+/** Opens the order of a card's message in «Servicios»; `null` outside a client's channel. */
+export const OrderCardContext = createContext<((seq: number) => void) | null>(null);

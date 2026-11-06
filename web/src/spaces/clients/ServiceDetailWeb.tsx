@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { ChevronLeft, ExternalLink, FilePlus, FileText } from 'lucide-react';
-import { CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, openingSheets, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { usePortalFileViewer } from './PortalFileViewer';
 import type { OpenSheetFile } from './RecordSheetWeb';
 import { RecordSheetWeb } from './RecordSheetWeb';
@@ -119,11 +119,11 @@ function TabBody({ detail, tab, onOpen, onOpenFile }: { detail: ServiceDetail; t
   );
 }
 
-function DetailTabs({ detail, target, serviceId, links, seesMoney, onReported, onCreateReport, startTab }: { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; links?: ChannelLinks; seesMoney: boolean; onReported: () => void; onCreateReport: () => void; startTab: DetailTabKey }) {
+function DetailTabs({ detail, target, serviceId, links, seesMoney, onReported, onCreateReport, startTab, startOrderId }: { startOrderId?: string; detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; links?: ChannelLinks; seesMoney: boolean; onReported: () => void; onCreateReport: () => void; startTab: DetailTabKey }) {
   const [tab, setTab] = useState<DetailTabKey>(startTab);
   const viewer = usePortalFileViewer();
   // An order's sheet opens its dispatches on top (José 01/11); closing goes back one.
-  const [opened, setOpened] = useState<OpenSheet[]>([]);
+  const [opened, setOpened] = useState<OpenSheet[]>(() => openingSheets(detail, startOrderId));
   const shown = detailRows(detail, tab).length;
   const more = moreInPortal(shown, detail.totals[tab]);
   const top = opened.at(-1);
@@ -160,7 +160,7 @@ function DetailTabs({ detail, target, serviceId, links, seesMoney, onReported, o
  * Pedidos · Informes with Portal's counts, each order with its dispatches
  * inside (José 01/11). Asked when it opens.
  */
-export function ServiceDetailWeb(props: { target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; onBack: () => void; links?: ChannelLinks }) {
+export function ServiceDetailWeb(props: { target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string }) {
   // After a report the detail is asked again, keeping the open tab (agentes 31/10).
   const [round, setRound] = useState(0);
   const askAgain = useCallback(() => setRound((count) => count + 1), []);
@@ -182,7 +182,7 @@ export function ServiceDetailWeb(props: { target: ServiceAskTarget; chatId: stri
       <button type="button" data-testid="volver-a-servicios" onClick={props.onBack} className="inline-flex items-center gap-1 self-start text-sm font-semibold text-primary"><ChevronLeft size={16} /> Servicios</button>
       <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
       {answer === null ? <div data-testid="detalle-cargando" className="h-48 animate-pulse rounded-xl bg-surface" /> : null}
-      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} /> : null}
+      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} startOrderId={startTab === 'orders' ? props.startOrderId : undefined} /> : null}
       {picker ? <CreateReportDialog portalUrl={portalUrl} onPick={(code) => { setPicker(false); setReportType(code); }} onClose={() => setPicker(false)} /> : null}
       {answer && !answer.ok ? (
         <div data-testid="detalle-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm">

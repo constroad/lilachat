@@ -220,10 +220,10 @@ export function ChatScreen({
   const puedeEditarRecordatorios = !esGrupoChat || soyAdminDelGrupo;
   const callBack = useCallBack({ chatId, name: nombreVisible, callName: chatName, jwt: credential.jwt, enabled: Boolean(otherUserId), llamar });
   const runLine = encrypted || fueraDelGrupo || grupo.sendLock(credential.userId) ? undefined : commands.runCardLine;
-  const accionesDeTarjeta = useMemo(() => ({ editarRecordatorio: puedeEditarRecordatorios ? (recordatorio: AgendaReminder) => setCreando({ recordatorio }) : undefined, callBack: callBack.actions, runLine }), [puedeEditarRecordatorios, callBack.actions, runLine]);
   // Fuera del grupo no se listan miembros: ya no es «QA Ana, Vos».
   const otherStatus = usePresenceStatus(otherUserId);
   const channelWork = useChannelWork({ enabled: Boolean(workspaceId && esGrupoChat && !appId && !encrypted), jwt: credential.jwt, chatId, channelName: nombreVisible, yo: credential.userId, names: nombresDelGrupo, apps: grupo.appIds, spaceId: workspaceId, onOpenRecord: (seq) => saltarA(seq, 'Ese registro está más arriba: sube para cargarlo.'), actions: commands.buttons, runAction: commands.appAnswers.runAction });
+  const accionesDeTarjeta = useMemo(() => ({ editarRecordatorio: puedeEditarRecordatorios ? (recordatorio: AgendaReminder) => setCreando({ recordatorio }) : undefined, callBack: callBack.actions, runLine, openOrderCard: channelWork.openOrderCard }), [puedeEditarRecordatorios, callBack.actions, runLine, channelWork.openOrderCard]);
   const subtitulo = useChatSubtitle({ fueraDelGrupo, esBorrador, esGrupo: esGrupoChat, workspaceId, escriben: [...escribiendo], otroEnLinea, otroEstado: otherStatus, ultimaVez, nombres: nombresDelGrupo, totalMembers: grupo.members.length, yo: credential.userId });
   const fotoVisible = infoPropia.avatarUrl ?? chatAvatarUrl;
 

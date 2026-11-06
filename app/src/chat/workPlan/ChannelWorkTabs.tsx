@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { BackHandler, Pressable, ScrollView, Text, ToastAndroid, View } from 'react-native';
 import { CHANNEL_TAB_LABELS, channelLinksOf, channelTabs, checklistMembers, stageFiles, withoutApps, type ChannelLinks, type ChannelTab, type ShortcutRow, type ShortcutValues, type SpaceClient, type WorkStage } from '@lilachat/shared';
 import { useWorkPlan } from './useWorkPlan';
@@ -23,8 +23,15 @@ const COVER = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zInd
  * the composer. «Archivos» is always there (José 30/10): the checklist's files
  * and Portal's Drive per service, in one tab.
  */
-export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: string; channelName: string; yo: string; names: ReadonlyMap<string, string>; apps: ReadonlySet<string>; spaceId?: string; onOpenRecord?: (seq: number) => void; /** The client channel's buttons: a link is made with its action, in the chat (José 31/10). */ actions?: readonly ShortcutRow[]; runAction?: (row: ShortcutRow, values: ShortcutValues) => unknown }): { tabs: ReactNode; panel: ReactNode; note: ReactNode; client: SpaceClient | null } {
+export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: string; channelName: string; yo: string; names: ReadonlyMap<string, string>; apps: ReadonlySet<string>; spaceId?: string; onOpenRecord?: (seq: number) => void; /** The client channel's buttons: a link is made with its action, in the chat (José 31/10). */ actions?: readonly ShortcutRow[]; runAction?: (row: ShortcutRow, values: ShortcutValues) => unknown }): { tabs: ReactNode; panel: ReactNode; note: ReactNode; client: SpaceClient | null; openOrderCard?: (seq: number) => void } {
   const [tab, setTab] = useState<Tab>('chat');
+  // An order's card sends to «Servicios» with its message; the panel clears it once it opened the order.
+  const [focusSeq, setFocusSeq] = useState<number | null>(null);
+  const clearFocus = useCallback(() => setFocusSeq(null), []);
+  const openOrderCard = useCallback((seq: number) => {
+    setFocusSeq(seq);
+    setTab('services');
+  }, []);
   const client = useClientOfChat(params.chatId);
   const records = useClientRecords(params.jwt, params.spaceId, client?.id, tab === 'services');
   const plan = useWorkPlan(params.jwt, params.chatId, params.enabled && Boolean(client));
@@ -39,7 +46,7 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
     return () => subscription.remove();
   }, [tab]);
   // José 29/10: Checklist, Archivos and Pendientes belong to a client's channel only; any other channel is just its chat.
-  if (!params.enabled || !client) return { tabs: null, panel: null, note: null, client: null };
+  if (!params.enabled || !client) return { tabs: null, panel: null, note: null, client: null, openOrderCard: undefined };
   const counter = plan.summary && plan.summary.total ? `${plan.summary.done}/${plan.summary.total}` : null;
   const stages = plan.stages ?? [];
   const filesTotal = stageFiles(stages).total;
@@ -68,21 +75,21 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
       <ArchivedClientBanner client={client} />
     </>
   );
-  const panel = <ChannelPanels shown={shown} client={client} records={records} plan={plan} stages={stages} target={target} people={people} params={params} nameOf={nameOf} toMessage={toMessage} openTask={openTask} setOpenTask={setOpenTask} links={links} />;
-  return { tabs, panel, note: <ArchivedComposerNote client={client} />, client };
+  const panel = <ChannelPanels shown={shown} focusSeq={focusSeq} clearFocus={clearFocus} client={client} records={records} plan={plan} stages={stages} target={target} people={people} params={params} nameOf={nameOf} toMessage={toMessage} openTask={openTask} setOpenTask={setOpenTask} links={links} />;
+  return { tabs, panel, note: <ArchivedComposerNote client={client} />, client, openOrderCard: allowed.includes('services') ? openOrderCard : undefined };
 }
 
 type ChannelWorkParams = Parameters<typeof useChannelWork>[0];
 
 /** The open tab's panel of a client's channel, and the task sheet over it. */
-function ChannelPanels(props: { shown: Tab; client: SpaceClient; records: ReturnType<typeof useClientRecords>; plan: ReturnType<typeof useWorkPlan>; stages: WorkStage[]; target: ServiceAskTarget | null; people: ReadonlyMap<string, string>; params: ChannelWorkParams; nameOf: (userId: string) => string; toMessage: (seq: number) => void; openTask: OpenTask | null; setOpenTask: (task: OpenTask | null) => void; links: ChannelLinks }) {
+function ChannelPanels(props: { shown: Tab; focusSeq: number | null; clearFocus: () => void; client: SpaceClient; records: ReturnType<typeof useClientRecords>; plan: ReturnType<typeof useWorkPlan>; stages: WorkStage[]; target: ServiceAskTarget | null; people: ReadonlyMap<string, string>; params: ChannelWorkParams; nameOf: (userId: string) => string; toMessage: (seq: number) => void; openTask: OpenTask | null; setOpenTask: (task: OpenTask | null) => void; links: ChannelLinks }) {
   const { shown, client, plan, stages, target, params, nameOf, toMessage, setOpenTask } = props;
   const members = checklistMembers(props.people, params.yo);
   return (
     <>
       {shown === 'services' ? (
         <View className="bg-background" style={COVER}>
-          <ClientServices client={client} records={props.records} onOpenRecord={toMessage} target={target} members={props.people} me={params.yo} links={props.links} />
+          <ClientServices client={client} records={props.records} onOpenRecord={toMessage} target={target} members={props.people} me={params.yo} links={props.links} focusSeq={props.focusSeq} onFocused={props.clearFocus} />
         </View>
       ) : null}
       {shown === 'account' && target ? <View className="bg-background" style={COVER}><ClientAccountPanel target={target} services={client.services} /></View> : null}

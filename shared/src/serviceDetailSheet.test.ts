@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { serviceDetailOf } from './serviceDetail.js';
-import { detailSheet, invoicesOf, quoteSheet } from './serviceDetailSheet.js';
+import { detailSheet, invoicesOf, openingSheets, quoteSheet } from './serviceDetailSheet.js';
 
 /** José 30/10: «si quiero ver el detalle de un pedido me dice que abra Portal… lo mismo con informes». */
 const detail = serviceDetailOf({
@@ -16,6 +16,17 @@ const detail = serviceDetailOf({
   ],
   quotes: [{ id: 'q1', code: '300', date: '2026-08-28', total: 142416.02, status_label: 'Borrador', tone: 'neutral', items: [{ name: 'Mezcla asfáltica', quantity: 383.5, unit: 'm³', unit_price: 320, total: 122720 }, { quantity: 1 }] }],
 })!;
+
+describe('openingSheets (the detail opened from an order\'s card in the chat)', () => {
+  it('starts on that order\'s sheet', () => {
+    expect(openingSheets(detail, 'o1')).toEqual([{ tab: 'orders', id: 'o1' }]);
+  });
+
+  it('without an order, or with one the detail does not bring, it starts with nothing open', () => {
+    expect(openingSheets(detail)).toEqual([]);
+    expect(openingSheets(detail, 'otro')).toEqual([]);
+  });
+});
 
 describe('detailSheet', () => {
   it('an order: its facts and its dispatches, by order', () => {

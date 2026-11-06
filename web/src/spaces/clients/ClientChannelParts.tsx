@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Archive, ChevronRight, ExternalLink, FileText, Link2, Search } from 'lucide-react';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordDays, recordsByService, SERVICE_FILTER_LABELS, dayOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, orderFocusOf, recordDays, recordsByService, SERVICE_FILTER_LABELS, dayOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
 import { ServiceDetailWeb } from './ServiceDetailWeb';
 import { STATUS_TONE } from './tones';
 import type { ServiceAskTarget } from './useServiceAsk';
@@ -88,19 +88,29 @@ function ServiceCard(props: { service: SpaceClientService; records: ClientRecord
  * message. The service opens its expediente (José, 30/10); the Drive moved to
  * «Archivos».
  */
-export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord?: (seq: number) => void; target: ServiceAskTarget | null; links?: ChannelLinks }) {
+export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord?: (seq: number) => void; target: ServiceAskTarget | null; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void }) {
   const { links } = props;
   const clientId = props.client.id;
   const [query, setQuery] = useState('');
   const [opened, setOpened] = useState<SpaceClientService | null>(null);
   const [filter, setFilter] = useState<ServiceFilter>('all');
+  const [startOrderId, setStartOrderId] = useState<string | undefined>();
+  const { focusSeq, records, onFocused } = props;
+  const clientServices = props.client.services;
+  // The records say which order the card was: until they arrive, this waits.
+  useEffect(() => {
+    if (focusSeq === null || focusSeq === undefined || !records) return;
+    const focus = orderFocusOf(clientServices, records, focusSeq);
+    if (focus) { setStartOrderId(focus.orderId); setOpened(focus.service); }
+    onFocused?.();
+  }, [focusSeq, records, clientServices, onFocused]);
   const { services, counts } = filterServices(props.client.services, { query, filter });
   const grouped = props.records ? recordsByService(props.records) : null;
   const total = props.client.services.length;
   return (
     <div data-testid="servicios-cliente" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-6">
       {opened && props.target ? (
-        <ServiceDetailWeb target={props.target} chatId={props.client.chat_id} service={opened} seesMoney={Boolean(props.client.access?.money)} onBack={() => setOpened(null)} links={links} />
+        <ServiceDetailWeb target={props.target} chatId={props.client.chat_id} service={opened} seesMoney={Boolean(props.client.access?.money)} onBack={() => setOpened(null)} links={links} startOrderId={startOrderId} />
       ) : (
         <div className="mx-auto flex max-w-3xl flex-col gap-3">
           {/* José 31/10: the client's link here; an order's in its sheet, a service's on its card. */}

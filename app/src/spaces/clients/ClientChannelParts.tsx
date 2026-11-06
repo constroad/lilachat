@@ -1,7 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Archive, ChevronRight, ExternalLink, FileText, Link2, Search } from 'lucide-react-native';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, recordDays, recordsByService, SERVICE_FILTER_LABELS, dayOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, orderFocusOf, recordDays, recordsByService, SERVICE_FILTER_LABELS, dayOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { ClientAccessRow } from './ClientAccess';
 import { ServiceDetailView } from './ServiceDetailView';
@@ -91,7 +91,7 @@ function ServiceCard(props: { service: SpaceClientService; records: ClientRecord
  * Tapping the service opens its expediente (José, 30/10); the Drive moved to
  * «Archivos».
  */
-export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord: (seq: number) => void; target: ServiceAskTarget | null; members: ReadonlyMap<string, string>; me: string; links?: ChannelLinks }) {
+export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord: (seq: number) => void; target: ServiceAskTarget | null; members: ReadonlyMap<string, string>; me: string; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void }) {
   const colors = useColores();
   const { links } = props;
   const clientId = props.client.id;
@@ -99,9 +99,19 @@ export function ClientServices(props: { client: SpaceClient; records: ClientReco
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<ServiceFilter>('all');
   const close = useCallback(() => setOpened(null), []);
+  const [startOrderId, setStartOrderId] = useState<string | undefined>();
+  const { focusSeq, records, onFocused } = props;
+  const clientServices = props.client.services;
+  // The records say which order the card was: until they arrive, this waits.
+  useEffect(() => {
+    if (focusSeq === null || focusSeq === undefined || !records) return;
+    const focus = orderFocusOf(clientServices, records, focusSeq);
+    if (focus) { setStartOrderId(focus.orderId); setOpened(focus.service); }
+    onFocused?.();
+  }, [focusSeq, records, clientServices, onFocused]);
   const { services, counts } = filterServices(props.client.services, { query, filter });
   const grouped = props.records ? recordsByService(props.records) : null;
-  if (opened && props.target) return <ServiceDetailView target={props.target} chatId={props.client.chat_id} service={opened} seesMoney={Boolean(props.client.access?.money)} onBack={close} links={links} />;
+  if (opened && props.target) return <ServiceDetailView target={props.target} chatId={props.client.chat_id} service={opened} seesMoney={Boolean(props.client.access?.money)} onBack={close} links={links} startOrderId={startOrderId} />;
   const total = props.client.services.length;
   return (
     <ScrollView testID="servicios-cliente" contentContainerStyle={{ padding: 16, gap: 12 }}>

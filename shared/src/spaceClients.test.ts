@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clientsOfEntry, spaceListReady, recordsByService, serviceStageLine, archivedBanner, clientChatIds, clientHeaderSubtitle, clientRowSubtitle, dayLabel, filterArchivedClients, filterServices, pageLiveClients, splitClients, CLIENTS_PAGE, CLIENTS_PREVIEW, type SpaceClient } from './spaceClients.js';
+import { clientsOfEntry, spaceListReady, recordsByService, isOrderCard, orderFocusOf, serviceStageLine, archivedBanner, clientChatIds, clientHeaderSubtitle, clientRowSubtitle, dayLabel, filterArchivedClients, filterServices, pageLiveClients, splitClients, CLIENTS_PAGE, CLIENTS_PREVIEW, type SpaceClient } from './spaceClients.js';
 
 /** Pending 21 (§157): the client channels in the space list and «Archivados» (designs f-01, f-02, f-03). */
 const now = new Date('2026-10-29T15:00:00Z');
@@ -112,6 +112,35 @@ describe('recordsByService', () => {
     expect(grouped.get('s1')!.map((one) => one.seq)).toEqual([9, 5]);
     expect(grouped.get('s2')!.map((one) => one.seq)).toEqual([7]);
     expect(grouped.get('s3')).toBeUndefined();
+  });
+});
+
+describe('an order\'s card opens its sheet (José 06/11: «el card llega pero no puedo tocarlo para ver fotos»)', () => {
+  const services = [{ id: 's1', name: 'QA-CTLPIS' }];
+  const record = (extra: Record<string, unknown>) => ({ seq: 10, at: daysAgo(0), service_id: 's1', title: '30 m³', ...extra });
+
+  it('knows an order\'s card by its kicker, whatever its case', () => {
+    expect(isOrderCard({ kicker: 'PEDIDO' })).toBe(true);
+    expect(isOrderCard({ kicker: ' pedido ' })).toBe(true);
+    expect(isOrderCard({ kicker: 'INFORME' })).toBe(false);
+    expect(isOrderCard({})).toBe(false);
+  });
+
+  it('finds the service and the order of the card\'s message', () => {
+    // Arrange
+    const records = [record({ seq: 9, kind: 'service.record', record_id: 'r1' }), record({ kind: 'order.created', record_id: 'o1' })];
+    // Act and assert
+    expect(orderFocusOf(services, records, 10)).toEqual({ service: services[0], orderId: 'o1' });
+  });
+
+  it('a message that is not an order, has no order id or is not among the records opens nothing', () => {
+    expect(orderFocusOf(services, [record({ kind: 'service.record', record_id: 'r1' })], 10)).toBeNull();
+    expect(orderFocusOf(services, [record({ kind: 'order.created' })], 10)).toBeNull();
+    expect(orderFocusOf(services, [record({ kind: 'order.created', record_id: 'o1' })], 11)).toBeNull();
+  });
+
+  it('an order of a service the channel no longer lists opens nothing', () => {
+    expect(orderFocusOf(services, [record({ kind: 'order.created', record_id: 'o1', service_id: 'otro' })], 10)).toBeNull();
   });
 });
 

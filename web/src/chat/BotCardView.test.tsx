@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BotCardView } from './BotCardView';
+import { OrderCardContext } from './botBlocks/cardCommand';
 
 afterEach(() => {
   cleanup();
@@ -56,5 +57,34 @@ describe('bot card', () => {
   it('a closed card (no actions) has no buttons', () => {
     render(<BotCardView card={{ title: 'Pedido 1024', status: { label: 'Confirmado por José', tone: 'ok' }, fields: [] }} chatId="c1" seq={7} jwt="jwt" />);
     expect(screen.queryByRole('button')).toBeNull();
+  });
+});
+
+/** José 06/11: the order's card reaches the channel and there was nothing to tap to see the dispatch's photos. */
+describe('an order\'s card in a client\'s channel', () => {
+  const order = { kicker: 'PEDIDO', title: '30 m³ · Diseño MAC-2 certificado', fields: [] };
+
+  it('opens the order with the seq of its message', () => {
+    // Arrange
+    const open = vi.fn();
+    render(<OrderCardContext.Provider value={open}><BotCardView card={order} chatId="c1" seq={10} jwt="jwt" /></OrderCardContext.Provider>);
+    // Act
+    fireEvent.click(screen.getByTestId('tarjeta-ver-pedido'));
+    // Assert
+    expect(screen.getByTestId('tarjeta-ver-pedido').textContent).toContain('Ver despachos y fotos');
+    expect(open).toHaveBeenCalledWith(10);
+  });
+
+  it('any other card, or a chat that is not a client\'s, shows no such button', () => {
+    // Arrange and act
+    render(<OrderCardContext.Provider value={vi.fn()}><BotCardView card={{ ...order, kicker: 'INFORME' }} chatId="c1" seq={10} jwt="jwt" /></OrderCardContext.Provider>);
+    render(<BotCardView card={order} chatId="c1" seq={10} jwt="jwt" />);
+    // Assert
+    expect(screen.queryByTestId('tarjeta-ver-pedido')).toBeNull();
+  });
+
+  it('an answer that is not stored has no message to look up', () => {
+    render(<OrderCardContext.Provider value={vi.fn()}><BotCardView card={order} chatId="c1" seq={0} jwt="jwt" /></OrderCardContext.Provider>);
+    expect(screen.queryByTestId('tarjeta-ver-pedido')).toBeNull();
   });
 });

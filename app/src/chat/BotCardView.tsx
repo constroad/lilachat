@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { ChevronRight, ExternalLink } from 'lucide-react-native';
-import { formatClock, type BotCard, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
+import { formatClock, isOrderCard, type BotCard, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BASE_URL } from '../api/client';
 import { useColores } from '../ui/tema';
 import { AccionesDeTarjetaContext, useAccionesDeTarjeta } from './accionesDeTarjeta';
@@ -36,7 +36,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
   // The kit (§118.4): the detail opens in a sheet with the data that came with the message.
   const [detailOpen, setDetailOpen] = useState(false);
   const actions = useAccionesDeTarjeta();
-  const { runLine } = actions;
+  const { runLine, openOrderCard } = actions;
   const runRow = runLine ? (line: string) => runLine(line, props.seq) : undefined;
   const tap = async (actionId: string) => {
     setSent({ id: actionId, state: 'sending' });
@@ -82,6 +82,12 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
         {card.detail ? (
           <Pressable testID="tarjeta-ver-detalle" onPress={() => setDetailOpen(true)} className="min-h-[36px] flex-row items-center gap-1 self-start rounded-full border border-outline/20 px-3">
             <Text className="text-[13px] font-semibold text-on-surface">Ver detalle</Text>
+            <ChevronRight size={14} color={colors['on-surface-variant']} />
+          </Pressable>
+        ) : null}
+        {openOrderCard && props.seq && isOrderCard(card) ? (
+          <Pressable testID="tarjeta-ver-pedido" onPress={() => openOrderCard(props.seq)} className="min-h-[36px] flex-row items-center gap-1 self-start rounded-full border border-outline/20 px-3">
+            <Text className="text-[13px] font-semibold text-on-surface">Ver despachos y fotos</Text>
             <ChevronRight size={14} color={colors['on-surface-variant']} />
           </Pressable>
         ) : null}

@@ -11,8 +11,9 @@ import type { CallBackActions } from './useCallBack';
 /**
  * `callBack`: «Llamar» and «Recordarme devolverla» on a missed call, only in a 1:1 (backlog 23).
  * `runLine`: a card's row runs its line, with the `seq` of a stored card; absent where its answer could not be shown.
+ * `openOrderCard`: an order's card opens that order in «Servicios»; only in a client's channel whose tab this person has.
  */
-export type AccionesDeTarjeta = { editarRecordatorio?: (recordatorio: AgendaReminder) => void; callBack?: CallBackActions; runLine?: (line: string, seq?: number) => void };
+export type AccionesDeTarjeta = { editarRecordatorio?: (recordatorio: AgendaReminder) => void; callBack?: CallBackActions; runLine?: (line: string, seq?: number) => void; openOrderCard?: (seq: number) => void };
 
 export const AccionesDeTarjetaContext = createContext<AccionesDeTarjeta>({});
 

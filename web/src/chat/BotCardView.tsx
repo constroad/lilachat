@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { ChevronRight, ExternalLink } from 'lucide-react';
-import { formatClock, type BotCard, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
+import { formatClock, isOrderCard, type BotCard, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BotBlocksView } from './botBlocks/BotBlocksView';
 import { BotCardDetail } from './botBlocks/BotCardDetail';
-import { CardCommandContext, useCardCommand } from './botBlocks/cardCommand';
+import { CardCommandContext, OrderCardContext, useCardCommand } from './botBlocks/cardCommand';
 
 /** The status pill's tone (design `e-21`): background faint, border at 30 %, text strong. */
 const TONE: Record<CardTone, string> = {
@@ -33,6 +33,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
   // The kit (§118.4): the detail opens over the window with the data that came with the message.
   const [detailOpen, setDetailOpen] = useState(false);
   const run = useCardCommand();
+  const openOrder = useContext(OrderCardContext);
   const runRow = run ? (line: string) => run(line, props.seq) : null;
   const tap = async (actionId: string) => {
     setSent({ id: actionId, state: 'sending' });
@@ -73,6 +74,11 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
         {card.detail ? (
           <button type="button" data-testid="tarjeta-ver-detalle" onClick={() => setDetailOpen(true)} className="inline-flex min-h-9 items-center gap-1 rounded-full border border-outline/20 px-3 text-[13px] font-semibold hover:bg-background">
             Ver detalle <ChevronRight size={14} className="text-on-surface-variant" />
+          </button>
+        ) : null}
+        {openOrder && props.seq && isOrderCard(card) ? (
+          <button type="button" data-testid="tarjeta-ver-pedido" onClick={() => openOrder(props.seq)} className="inline-flex min-h-9 items-center gap-1 self-start rounded-full border border-outline/20 px-3 text-[13px] font-semibold text-on-surface hover:bg-background">
+            Ver despachos y fotos <ChevronRight size={14} className="text-on-surface-variant" />
           </button>
         ) : null}
         {card.link ? (

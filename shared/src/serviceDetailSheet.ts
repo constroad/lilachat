@@ -43,6 +43,10 @@ function orderSheet(order: ServiceOrder, detail: ServiceDetail): DetailSheet {
   return { ...base(order.product ?? 'Pedido', order.status, order.url), facts: facts([...head, ...orderMoney(order)]), related: dispatches.map(dispatchRow), files: guides };
 }
 
+/** What the detail opens with: the sheet of the order a chat's card asked for, when the detail brings it. */
+export const openingSheets = (detail: ServiceDetail, orderId?: string): { tab: 'orders'; id: string }[] =>
+  orderId && detail.orders.some((order) => order.id === orderId) ? [{ tab: 'orders', id: orderId }] : [];
+
 /** Each photo or video with a name the viewer can show: its own, or «AZJ 910 · foto 2». */
 const mediaOf = (dispatch: ServiceDispatch): SheetMedia[] =>
   (dispatch.pictures ?? []).map((picture, index) => ({ url: picture.url, ...(picture.thumbUrl ? { thumbUrl: picture.thumbUrl } : {}), mime: picture.mime, name: picture.name ?? `${dispatch.plate ?? 'Despacho'} · ${picture.mime.startsWith('video/') ? 'video' : 'foto'} ${index + 1}`, ...(dispatch.at ? { when: dispatch.at } : {}) }));

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { fieldDocumentOf, type RepeatItem, type RepeatSection } from './fieldDocument';
-import { ARRIVED_LABEL, dataSectionOf, isUnitsRepeat, photoSlotsOf, unitBadgeOf, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf } from './reportUnits';
+import { fieldDocumentOf, type FieldDocument, type RepeatItem, type RepeatSection } from './fieldDocument';
+import { reportFormAnswer } from './reportSaves';
+import { ARRIVED_LABEL, arrivalHourOf, dataSectionOf, isUnitsRepeat, photoSlotsOf, unitBadgeOf, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf } from './reportUnits';
 
 /** The units of a control de pista as Portal lists them (06/11): rows by arrival, then the dispatches not here yet. */
 const form = (name: string) => ({ type: 'object', properties: { [name]: { type: 'string', title: name } } });
@@ -64,5 +65,45 @@ describe('the units of a control de pista', () => {
     expect(slots.map((slot) => [slot.section.photoKind, slot.done, slot.photo?.url ?? null])).toEqual([['ingreso', true, 'https://x/e.jpg'], ['temperatura', false, null], ['vacia', false, null], ['escantillon', false, null]]);
     expect(dataSectionOf(itemOf('d2'))?.id).toBe('datos');
     expect(photoSlotsOf(itemOf('d3'))).toHaveLength(4);
+  });
+});
+
+/** E2E 06/11: «Llegó» tapped at 12:22 opened with 12:13, the hour of the last draft; with no signal it would be hours old. */
+describe('the hour of «Llegó»', () => {
+  const noon = new Date(2026, 10, 6, 12, 22).toISOString();
+  const timeForm = { type: 'object', properties: { horaLlegada: { type: 'string', format: 'time', title: 'Hora de llegada' }, horaInicio: { type: 'string', format: 'time', title: 'Inicio' } }, required: ['horaLlegada'] };
+  const waiting = (values: Record<string, string>): FieldDocument => {
+    const [general, repeat] = body.sections;
+    const items = [unit('d9', 'QAP-109', ['Salió 07:10'], [{ id: 'datos', state: 'empty', values }])];
+    return fieldDocumentOf({ ...body, forms: { ...body.forms, unidad: timeForm }, sections: [general, { ...repeat, items }] })!;
+  };
+  const path = { sectionId: 'unidades', itemId: 'd9', key: 'datos' };
+  const propertiesOf = (document: FieldDocument, hour?: string) => {
+    const answer = reportFormAnswer(document, path, undefined, undefined, hour);
+    return answer?.response.responseType === 'form' ? answer.response.form.schema.properties : undefined;
+  };
+
+  it('is the phone\'s clock for a unit with nothing written', () => {
+    expect(arrivalHourOf(waiting({}), path, noon)).toBe('12:22');
+  });
+
+  it('pads the hour as the form reads it', () => {
+    expect(arrivalHourOf(waiting({}), path, new Date(2026, 10, 6, 7, 5).toISOString())).toBe('07:05');
+  });
+
+  it('leaves alone a unit already on site, a photo and anything outside a unit', () => {
+    expect(arrivalHourOf(fieldDocumentOf(body)!, { sectionId: 'unidades', itemId: 'd2', key: 'datos' }, noon)).toBeUndefined();
+    expect(arrivalHourOf(fieldDocumentOf(body)!, { sectionId: 'unidades', itemId: 'd2', key: 'foto-ingreso' }, noon)).toBeUndefined();
+    expect(arrivalHourOf(fieldDocumentOf(body)!, { sectionId: 'general', itemId: null, key: 'general' }, noon)).toBeUndefined();
+  });
+
+  it('fills only the required hour, and the optional ones stay to be chosen', () => {
+    const properties = propertiesOf(waiting({}), '12:22');
+    expect(properties?.horaLlegada).toMatchObject({ default: '12:22' });
+    expect(properties?.horaInicio).not.toHaveProperty('default');
+  });
+
+  it('the hour the driver marked stays: Portal sends it and the clock does not replace it', () => {
+    expect(propertiesOf(waiting({ horaLlegada: '11:58' }), '12:22')?.horaLlegada).toMatchObject({ default: '11:58' });
   });
 });

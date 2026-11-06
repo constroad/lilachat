@@ -234,11 +234,21 @@ export function withoutSave(queue: readonly ReportSave[], clientKey: string): Re
 }
 
 /** A section's form, drawn here from the document: it opens with no signal, and what Portal refused goes under its field. */
-export function reportFormAnswer(document: FieldDocument, path: SectionPath, errors?: Record<string, string>, personName?: string | null): EphemeralAnswer | null {
+export function reportFormAnswer(document: FieldDocument, path: SectionPath, errors?: Record<string, string>, personName?: string | null, hour?: string): EphemeralAnswer | null {
   const found = sectionFormOf(document, path);
   if (!found) return null;
-  const form = path.key === GENERAL_SECTION ? withDeviceFields(found, personName?.trim()) : found;
+  const filled = path.key === GENERAL_SECTION ? withDeviceFields(found, personName?.trim()) : found;
+  const form = hour ? withHour(filled, hour) : filled;
   return { commandId: `report-${path.sectionId}-${path.itemId ?? 'new'}-${path.key}`, appName: REPORT_KEEPER, command: '', action: form.title, state: 'form', response: { responseType: 'form', form }, ...(errors ? { errors } : {}) };
+}
+
+/** The hour the form must say and nobody wrote: its required time field with no value. */
+function withHour(form: AppForm, hour: string): AppForm {
+  const properties: Record<string, FormSchemaProperty> = { ...form.schema.properties };
+  const name = form.schema.required?.find((one) => properties[one]?.format === 'time' && properties[one]?.default === undefined);
+  if (!name) return form;
+  properties[name] = { ...properties[name], default: hour };
+  return { ...form, schema: { ...form.schema, properties } };
 }
 
 /** José, 06/11: the responsible is who makes the report, unless one was saved, and the place can be read from the device. */

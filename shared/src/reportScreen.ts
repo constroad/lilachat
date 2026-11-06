@@ -1,3 +1,4 @@
+import { arrivalHourOf } from './reportUnits.js';
 import type { FormSubmitOutcome } from './appActions.js';
 import type { FormValues } from './appForms.js';
 import type { EphemeralAnswer } from './botCommands.js';
@@ -115,7 +116,7 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
     openSection(path: SectionPath): void {
       const { document, saves } = reportNow();
       const refused = saves.find((one) => one.refusal && !one.photo && samePath(one.path, path));
-      const answer = document ? reportFormAnswer(document, path, refused?.refusal?.errors, deps.personName()) : null;
+      const answer = document ? reportFormAnswer(document, path, refused?.refusal?.errors, deps.personName(), arrivalHourOf(document, path, deps.now())) : null;
       openForm = answer ? { path, answer } : null;
       tell();
     },

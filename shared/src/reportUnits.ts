@@ -1,4 +1,4 @@
-import type { FormSection, RepeatItem, RepeatSection } from './fieldDocument.js';
+import type { FieldDocument, FormSection, RepeatItem, RepeatSection, SectionPath } from './fieldDocument.js';
 import { sectionPhotos, type SectionPhoto } from './reportSaves.js';
 import type { StateBadge } from './reportCreation.js';
 
@@ -60,6 +60,22 @@ export const photoSlotsOf = (item: RepeatItem): UnitSlot[] => item.sections.filt
 
 /** The section with the unit's data (arrival, temperatures, thickness): the first one that is not a photo. */
 export const dataSectionOf = (item: RepeatItem): FormSection | undefined => item.sections.find((one) => !one.tool);
+
+const twoDigits = (value: number): string => String(value).padStart(2, '0');
+
+/**
+ * «Llegó» is the moment of the tap (E2E 06/11), and the document on the phone
+ * can be hours old: the hour comes from its clock. Portal only sends the hour a
+ * driver marked, which stays. Undefined for anything but a unit not here yet.
+ */
+export function arrivalHourOf(document: FieldDocument, path: SectionPath, now: string): string | undefined {
+  const repeat = document.sections.find((one) => one.id === path.sectionId);
+  if (repeat?.kind !== 'repeat' || !isUnitsRepeat(repeat)) return undefined;
+  const item = repeat.items.find((one) => one.id === path.itemId);
+  if (!item || unitStateOf(item) !== 'waiting' || dataSectionOf(item)?.id !== path.key) return undefined;
+  const at = new Date(now);
+  return `${twoDigits(at.getHours())}:${twoDigits(at.getMinutes())}`;
+}
 
 /** What the summary of a unit says beside its plate, without the «Terminó» line the pill already shows. */
 export const unitLineOf = (item: RepeatItem): string => item.summary.filter((one) => !FINISHED_LINE.test(one)).join(TITLE_SEPARATOR);

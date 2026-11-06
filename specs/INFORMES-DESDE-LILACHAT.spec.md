@@ -720,6 +720,8 @@ Corrida en el espacio Test, segundo pedido QA (30 m³, QAP-103 y QAP-104).
 - **Tarjeta PEDIDO sin salida a las fotos (pedido de José, 12:07):** la tarjeta llegaba al canal y no llevaba a ningún lado. Ahora dice «Ver despachos y fotos». El botón va a Servicios, y `orderFocusOf` cruza el `seq` del mensaje con los registros del canal (`order.*`, `service_id`, `record_id`) para abrir la hoja de ese pedido. La hoja lista los despachos y cada despacho muestra `DISPATCH_PICTURES`, que es la evidencia de planta. No cambia Portal ni el contrato. Los registros se piden al abrir Servicios, así que el chat no suma llamadas.
 - **La tarjeta se reconoce por su `kicker` «PEDIDO».** Si agentes lo cambia, el botón desaparece sin error. Se decidió así para no agregar `clientRef` al mensaje, que obligaría a tocar el almacén local del teléfono.
 
+- **Hora de «Llegó» vieja:** al tocar «Llegó» a las 12:22 el formulario traía 12:13, la hora del último borrador. Sin señal podía ser de horas antes. Ahora `arrivalHourOf` toma el reloj del teléfono al abrir el formulario de una unidad en espera. Portal solo manda `horaLlegada` cuando la marcó el chofer, y esa hora se respeta.
+
 Reportado a Portal el 06/11, sin arreglo verificado todavía:
 
 - El PDF de `CTL-PIS` abre con el folio 1 ocupado solo por el encabezado.

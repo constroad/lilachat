@@ -40,7 +40,7 @@ describe('useChatCommands (23/10: a fast «/clima» + Enter went to the channel 
 });
 
 describe('the ⚡ of a chat (R31/10: the actions turned on for a chat had no place since the clip lost them)', () => {
-  it('a channel or the chat with an app asks for its actions on open, once; only the actions are listed', async () => {
+  it('a channel or the chat with an app asks for its actions on open, once; the list has its actions and its commands', async () => {
     // Arrange
     spaceCommands.mockClear();
     const withActions: CommandGroup[] = [{ appId: 'a2', appName: 'Portal', commands: [{ command: 'tanques', description: 'Tanques' }], shortcuts: [{ key: 'registrar_consumo', name: 'Registrar consumo' }, { key: 'crear_cliente', name: 'Crear un cliente' }] }];
@@ -51,7 +51,7 @@ describe('the ⚡ of a chat (R31/10: the actions turned on for a chat had no pla
     // Assert
     expect(spaceCommands).toHaveBeenCalledTimes(1);
     expect(spaceCommands).toHaveBeenCalledWith('jwt', 's1', { chatId: 'dm-app' });
-    expect(result.current.actions.map((row) => row.key)).toEqual(['registrar_consumo']);
+    expect(result.current.actions.map((row) => row.key)).toEqual(['registrar_consumo', 'tanques']);
   });
 
   it('a person\'s chat asks nothing on open and has no actions', async () => {

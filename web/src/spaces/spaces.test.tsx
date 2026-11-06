@@ -7,6 +7,7 @@ import { JoinSpaceDialog } from './JoinSpaceDialog';
 import { CreateSpaceDialog } from './CreateSpaceDialog';
 import { SpacesRail } from './SpacesRail';
 import { SpaceChatList } from './SpaceChatList';
+import { SpacePhoneLinks } from './SpacePhoneLinks';
 import { ChannelsDialog } from './ChannelsDialog';
 import { InviteToSpaceDialog } from './InviteToSpaceDialog';
 import { spaceChats } from './spacesApi';
@@ -180,6 +181,56 @@ describe('SpaceChatList', () => {
     await userEvent.click(screen.getByTestId('titulo-espacio'));
     await userEvent.click(await screen.findByRole('menuitem', { name: /Cambiar de espacio/ }));
     expect(onSwitch).toHaveBeenCalled();
+  });
+
+  it('on a phone the title opens the switcher straight away, like the APK (José 06/11)', async () => {
+    // Arrange
+    const onSwitch = vi.fn();
+    render(list([], { space: space({ role: 'admin' }), phone: true, elsewhere: 3, onSwitch }));
+    // Act
+    await userEvent.click(screen.getByTestId('titulo-espacio'));
+    // Assert
+    expect(onSwitch).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('menuitem', { name: /Cambiar de espacio/ })).toBeNull();
+    expect(screen.getByTestId('badge-otros-espacios')).toHaveTextContent('3');
+  });
+
+  it('on a phone the header carries me instead of «Invitar», and the code stays out of the list', async () => {
+    // Arrange
+    const onProfile = vi.fn();
+    render(list([], { space: space({ role: 'admin', joinCode: 'CONS-9M59' }), phone: true, onProfile }));
+    // Act
+    await userEvent.click(screen.getByTestId('btn-perfil'));
+    // Assert
+    expect(onProfile).toHaveBeenCalled();
+    expect(screen.queryByTestId('btn-invitar-espacio')).toBeNull();
+    expect(screen.queryByTestId('codigo-del-espacio')).toBeNull();
+  });
+
+  it('at the desk the admin keeps the code and «Invitar»', () => {
+    render(list([], { space: space({ role: 'admin', joinCode: 'CONS-9M59' }) }));
+    expect(screen.getByTestId('codigo-del-espacio')).toHaveTextContent('CONS-9M59');
+    expect(screen.getByTestId('btn-invitar-espacio')).toBeInTheDocument();
+    expect(screen.queryByTestId('btn-perfil')).toBeNull();
+  });
+
+  it('on a phone Ajustes holds what the title menu held: the admin\'s links, and nothing for a member', async () => {
+    // Arrange
+    const onOpen = vi.fn();
+    const onInvite = vi.fn();
+    const { unmount } = render(<SpacePhoneLinks space={space({ role: 'admin', pendingRequests: 2 })} onOpen={onOpen} onInvite={onInvite} />);
+    // Act
+    await userEvent.click(screen.getByTestId('ajustes-espacio-requests'));
+    await userEvent.click(screen.getByTestId('ajustes-espacio-settings'));
+    await userEvent.click(screen.getByTestId('ajustes-espacio-invitar'));
+    // Assert
+    expect(onOpen.mock.calls.map(([link]) => link)).toEqual(['requests', 'settings']);
+    expect(onInvite).toHaveBeenCalled();
+    expect(screen.getByTestId('ajustes-espacio-members')).toBeInTheDocument();
+    unmount();
+    render(<SpacePhoneLinks space={space({ role: 'member' })} onOpen={onOpen} onInvite={onInvite} />);
+    expect(screen.queryByTestId('ajustes-espacio-members')).toBeNull();
+    expect(screen.queryByTestId('ajustes-espacio-invitar')).toBeNull();
   });
 
   it('a member only sees the directory and switching in the title menu', async () => {

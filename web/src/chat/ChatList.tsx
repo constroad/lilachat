@@ -15,6 +15,8 @@ import { InstallStrip } from '../pwa/InstallStrip';
 import { NowPlayingBar } from './NowPlayingBar';
 import { readAllChats, scopeOf } from './readAllChats';
 
+const BADGE_MAX = 99;
+
 /**
  * El panel izquierdo del diseño web (W3a: `w3-web-lista.png`).
  *
@@ -46,6 +48,8 @@ export function ChatList({
   onCollapse,
   onHome,
   onSpaces,
+  phone,
+  elsewhere = 0,
   jwt,
   onNotice,
 }: {
@@ -75,6 +79,10 @@ export function ChatList({
   onHome?: () => void;
   /** «Cambiar de espacio» (E1, design `e1-06`): the arrow next to the name, like the app's header. */
   onSpaces?: () => void;
+  /** One column, like the APK (José 06/11): the title opens the switcher. */
+  phone?: boolean;
+  /** Chats with something new in a space: a phone has no rail to show them. */
+  elsewhere?: number;
   /** The session, for my lists of chats (pending 45). */
   jwt: string;
   /** Says what failed («Leer todo»). */
@@ -131,14 +139,17 @@ export function ChatList({
     >
       <header className="flex items-center gap-2 px-4 py-3">
         {/* The logo goes home: the chat list with nothing open, like WhatsApp Web (José, 21/10). */}
-        <a href="/" data-testid="logo-inicio" aria-label="Ir al inicio" onClick={(event) => { if (!onHome) return; event.preventDefault(); onHome(); }} className={`flex items-center gap-2 rounded-lg ${onSpaces ? '' : 'flex-1'}`}>
+        <a href="/" data-testid="logo-inicio" aria-label="Ir al inicio" onClick={(event) => { const go = phone ? onSpaces : onHome; if (!go) return; event.preventDefault(); go(); }} className={`flex items-center gap-2 rounded-lg ${onSpaces ? '' : 'flex-1'}`}>
           <Logo size={30} />
           <h1 className="text-lg font-extrabold tracking-tight">Lilachat</h1>
         </a>
         {onSpaces ? (
-          <button type="button" data-testid="btn-espacios" aria-label="Cambiar de espacio" title="Cambiar de espacio" onClick={onSpaces} className="-ml-2 mr-auto grid h-9 w-9 place-items-center rounded-full text-on-surface-variant hover:bg-background">
-            <ChevronDown size={18} />
-          </button>
+          <span className="-ml-2 mr-auto flex items-center gap-0.5">
+            <button type="button" data-testid="btn-espacios" aria-label="Cambiar de espacio" title="Cambiar de espacio" onClick={onSpaces} className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant hover:bg-background">
+              <ChevronDown size={18} />
+            </button>
+            {phone && elsewhere > 0 ? <span data-testid="badge-otros-espacios" aria-label={`${elsewhere} ${elsewhere === 1 ? 'chat' : 'chats'} con algo nuevo en otro espacio`} className="grid h-5 min-w-[20px] place-items-center rounded-full bg-primary px-1 text-[11px] font-bold text-on-primary">{elsewhere > BADGE_MAX ? `${BADGE_MAX}+` : elsewhere}</span> : null}
+          </span>
         ) : null}
         <ThemeToggle />
         <button type="button" data-testid="btn-lapiz-nuevo-chat" aria-label="Nuevo chat" title="Nuevo chat" onClick={onNewChat} className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant hover:bg-background">

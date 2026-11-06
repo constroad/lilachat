@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { answeredSince, channelButtonRows, channelLinksOf, chatActionRows, chatHasActionPlace, evidenceLine, formSubmitOutcome, geoPointOf, linkActionOf, serviceValuesOf, photoStampLines, placedActionRow, precisionLabel, quickActionRows, shortcutRows, shortcutValuesOf, submitLabelOf } from './appActions.js';
+import { answeredSince, channelButtonRows, channelLinksOf, chatHasActionPlace, commandToWrite, evidenceLine, formSubmitOutcome, geoPointOf, linkActionOf, serviceValuesOf, photoStampLines, placedActionRow, precisionLabel, quickActionRows, shortcutRows, shortcutValuesOf, submitLabelOf } from './appActions.js';
 import type { FormField } from './appForms.js';
 import type { CommandGroup, CommandOutcome } from './botCommands.js';
 
@@ -52,19 +52,28 @@ describe('the ⚡ of a chat (R31/10: since the clip lost the actions, a chat\'s 
     expect(chatHasActionPlace(groupOutsideSpace)).toBe(false);
   });
 
-  it('lists only the actions (the commands are a «/» away) and leaves out the ones with a place of their own', () => {
+  it('a chat\'s ⚡ is one list: the actions and then the commands, without the ones with a place of their own', () => {
     // Arrange
-    const withCreate: CommandGroup[] = [...groups, { appId: 'a3', appName: 'Portal', commands: [], shortcuts: [{ key: 'crear_cliente', name: 'Crear un cliente' }, { key: 'registrar_consumo', name: 'Registrar consumo' }] }];
+    const withCreate: CommandGroup[] = [...groups, { appId: 'a3', appName: 'Portal', commands: [{ command: 'pedidos', description: 'Pedidos', usageHint: '[cliente]' }], shortcuts: [{ key: 'crear_cliente', name: 'Crear un cliente' }, { key: 'registrar_consumo', name: 'Registrar consumo' }] }];
     // Act
-    const rows = chatActionRows(withCreate);
+    const rows = quickActionRows(withCreate).filter((row) => row.appId === 'a3');
     // Assert
-    expect(rows.map((row) => row.key)).toEqual(['marcar_asistencia', 'medir_tanque', 'registrar_consumo']);
-    expect(rows.every((row) => row.kind === 'shortcut')).toBe(true);
+    expect(rows.map((row) => [row.kind, row.key])).toEqual([['shortcut', 'registrar_consumo'], ['command', 'pedidos']]);
+    expect(rows[1]).toMatchObject({ name: '/pedidos', usageHint: '[cliente]' });
   });
 
-  it('no groups yet, or apps with no actions here: no rows, so no ⚡', () => {
-    expect(chatActionRows([])).toEqual([]);
-    expect(chatActionRows([{ appId: 'a2', appName: 'Portal', commands: [{ command: 'pedidos', description: 'Pedidos' }], shortcuts: [] }])).toEqual([]);
+  it('a command that needs its text goes to the field; one that does not runs from the ⚡', () => {
+    // Arrange
+    const row = { appId: 'a3', appName: 'Portal', key: 'pedidos', name: '/pedidos' };
+    // Act and assert
+    expect(commandToWrite({ ...row, kind: 'command', usageHint: '[cliente]' })).toBe('/pedidos ');
+    expect(commandToWrite({ ...row, kind: 'command' })).toBeNull();
+    expect(commandToWrite({ ...row, kind: 'shortcut', usageHint: '[cliente]' })).toBeNull();
+  });
+
+  it('no groups yet, or apps with nothing here: no rows, so no ⚡', () => {
+    expect(quickActionRows([])).toEqual([]);
+    expect(quickActionRows([{ appId: 'a2', appName: 'Portal', commands: [], shortcuts: [] }])).toEqual([]);
   });
 });
 
@@ -126,6 +135,25 @@ describe('photoStampLines (pending 94: date, time and place burned into the self
     // Assert
     expect(lines).toEqual(['vie 23/10/2026 · 18:51', '-11.98123, -76.95451 · ± 5 m']);
   });
+  it('with an address it burns the address, not the coordinates (José 06/11)', () => {
+    // Arrange
+    const location = { lat: -12.0464, lng: -77.0428, precision: 12 };
+    // Act
+    const lines = photoStampLines({ at: new Date('2026-11-06T17:38:00.000Z'), location, place: 'Avenida Alfonso Ugarte 123, Breña, Lima' });
+    // Assert
+    expect(lines[1]).toBe('Avenida Alfonso Ugarte 123, Breña, Lima · ± 12 m');
+  });
+
+  it('a long address is cut at a word, keeping the precision in sight', () => {
+    // Arrange
+    const place = 'Avenida Nicolás de Piérola 1234, Cercado de Lima, Provincia de Lima, Lima Metropolitana';
+    // Act
+    const lines = photoStampLines({ at: new Date('2026-11-06T17:38:00.000Z'), location: { lat: -12.05, lng: -77.04, precision: 8 }, place });
+    // Assert
+    expect(lines[1].endsWith('… · ± 8 m')).toBe(true);
+    expect(lines[1].length).toBeLessThanOrEqual(56);
+  });
+
   it('without a location it says so, and an unknown zone falls back to Lima', () => {
     const lines = photoStampLines({ at: new Date('2026-10-24T05:05:00.000Z'), timeZone: 'Mars/Olympus' });
     expect(lines).toEqual(['sáb 24/10/2026 · 00:05', 'Sin ubicación']);
@@ -211,8 +239,7 @@ describe('the client\'s channel buttons stay out of the ⚡ (José 01/11)', () =
   it('the ⚡ of the space and of a chat leave them out: each one has its button', () => {
     // Act / Assert
     expect(quickActionRows(portal).map((row) => row.key)).toEqual(['registrar_consumo']);
-    expect(chatActionRows(portal).map((row) => row.key)).toEqual(['registrar_consumo']);
-  });
+      });
 
   it('the buttons read them from their own list, and the payment still finds its row', () => {
     // Act

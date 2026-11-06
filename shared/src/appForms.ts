@@ -98,6 +98,8 @@ const SEGMENTED_ROW_CHARS = 40;
 export const SEARCHABLE_FROM = 8;
 /** A database id (Mongo ObjectId or UUID): options with these are records that grow, never a fixed set. */
 const RECORD_ID = /^(?:[0-9a-f]{24}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
+/** The value of a record (a person, a carrier), not a word of the form. */
+export const isRecordId = (value: string): boolean => RECORD_ID.test(value);
 /** A list of photos without `maxItems`. */
 const DEFAULT_MAX_PHOTOS = 6;
 /** A list of items without `maxItems`. */

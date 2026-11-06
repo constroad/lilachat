@@ -1,10 +1,10 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Clock, MapPin } from 'lucide-react';
-import { precisionLabel, type GeoPoint } from '@lilachat/shared';
+import { precisionLabel, signingPlaceLine, type GeoPoint } from '@lilachat/shared';
+import { usePlaceName, type PlaceLookup } from './usePlaceName';
 
 const CLOCK_TICK_MS = 15_000;
 const JPEG_QUALITY = 0.8;
-const COORD_DECIMALS = 5;
 
 export type LiveSelfieHandle = { capture: () => Promise<File | null> };
 
@@ -20,10 +20,11 @@ function stampDateLine(now: Date): string {
  * camera live in the form, the face guide, the GPS precision and the two
  * lines the server will burn into it. The form's button takes the frame.
  */
-export const LiveSelfie = forwardRef<LiveSelfieHandle, { label: string; location: GeoPoint | null; error?: string; testId?: string }>(function LiveSelfie(props, ref) {
+export const LiveSelfie = forwardRef<LiveSelfieHandle, { label: string; location: GeoPoint | null; onPlace?: PlaceLookup; error?: string; testId?: string }>(function LiveSelfie(props, ref) {
   const video = useRef<HTMLVideoElement>(null);
   const [state, setState] = useState<'asking' | 'live' | 'denied'>('asking');
   const [now, setNow] = useState(() => new Date());
+  const placeName = usePlaceName(props.location, props.onPlace);
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), CLOCK_TICK_MS);
     return () => clearInterval(timer);
@@ -55,7 +56,7 @@ export const LiveSelfie = forwardRef<LiveSelfieHandle, { label: string; location
       return blob ? new File([blob], 'selfie.jpg', { type: 'image/jpeg' }) : null;
     },
   }), [state]);
-  const place = props.location ? `${props.location.lat.toFixed(COORD_DECIMALS)}, ${props.location.lng.toFixed(COORD_DECIMALS)} · ${precisionLabel(props.location)}` : 'Buscando tu ubicación…';
+  const place = signingPlaceLine(props.location, placeName);
   return (
     <div data-testid={props.testId}>
       <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">{props.label}</p>

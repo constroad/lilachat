@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { channelButtonRows, chatActionRows, commandOf, matchCommands, parseSlashInput, slashQuery, unknownCommandMessage, type CommandGroup } from '@lilachat/shared';
+import { channelButtonRows, commandOf, matchCommands, parseSlashInput, quickActionRows, slashQuery, unknownCommandMessage, type CommandGroup } from '@lilachat/shared';
 import { getSocket } from '../socketClient';
 import { runCardCommand, runCommand, shareCommandAnswer, spaceCommands } from './commandsApi';
 import { useAppAnswers } from './useAppAnswers';
@@ -112,16 +112,14 @@ export function useChatCommands(params: { jwt: string; chatId: string; workspace
     [jwt, chatId, appAnswers]
   );
   /** The chat's ⚡ (R31/10): its actions, asked on open in a channel or the chat with an app. */
-  const actions = useMemo(() => chatActionRows(groups), [groups]);
+  const actions = useMemo(() => quickActionRows(groups), [groups]);
   /** A client channel's buttons (José 01/11): links and the service report, out of the ⚡. */
   const buttons = useMemo(() => channelButtonRows(groups), [groups]);
-  /** The «/» button shows only where this chat has commands (José 02/11). */
-  const hasCommands = useMemo(() => groups.some((group) => group.commands.length > 0), [groups]);
   const shareable = params.shareable;
   // Stable while nothing changes, like `useAppAnswers`: the memoized bar receives it (F4, 02/11).
   return useMemo(
-    () => ({ enabled: Boolean(workspaceId), hasCommands, suggestions, onType, runIfCommand, runCardLine, answers: appAnswers.answers, dismiss: appAnswers.dismiss, appAnswers, actions, buttons, loadActions: load, share: shareable ? share : undefined }),
-    [workspaceId, hasCommands, suggestions, onType, runIfCommand, runCardLine, appAnswers, actions, buttons, load, shareable, share]
+    () => ({ enabled: Boolean(workspaceId), suggestions, onType, runIfCommand, runCardLine, answers: appAnswers.answers, dismiss: appAnswers.dismiss, appAnswers, actions, buttons, loadActions: load, share: shareable ? share : undefined }),
+    [workspaceId, suggestions, onType, runIfCommand, runCardLine, appAnswers, actions, buttons, load, shareable, share]
   );
 }
 

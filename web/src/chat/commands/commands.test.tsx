@@ -13,7 +13,6 @@ const groups: CommandGroup[] = [
 
 const stubCommands = (overrides: Partial<ChatCommands> = {}): ChatCommands => ({
   enabled: true,
-  hasCommands: false,
   suggestions: [],
   activeCommand: null,
   onType: vi.fn(),
@@ -22,7 +21,7 @@ const stubCommands = (overrides: Partial<ChatCommands> = {}): ChatCommands => ({
   runCardLine: vi.fn(async () => true),
   answers: [],
   dismiss: vi.fn(),
-  appAnswers: { answers: [], track: vi.fn(), runAction: vi.fn(), uploadPhoto: vi.fn(), submitForm: vi.fn(), refreshForm: vi.fn(), previewForm: vi.fn(), dismiss: vi.fn(), removeAnswer: vi.fn(), say: vi.fn(), openForm: null, showForm: vi.fn() },
+  appAnswers: { answers: [], placeOf: vi.fn(async () => null), track: vi.fn(), runAction: vi.fn(), uploadPhoto: vi.fn(), submitForm: vi.fn(), refreshForm: vi.fn(), previewForm: vi.fn(), dismiss: vi.fn(), removeAnswer: vi.fn(), say: vi.fn(), openForm: null, showForm: vi.fn() },
   actions: [],
   buttons: [],
   loadActions: vi.fn(async () => null),
@@ -165,18 +164,18 @@ describe('Composer with commands', () => {
     expect(commands.onType).toHaveBeenCalledWith('/tanques ');
   });
 
-  it('the «/» button writes the slash and opens the chat\'s commands; without commands it is not there (José 02/11)', () => {
+  it('the ⚡ is the only button: a command with its text goes to the field, and there is no «/» beside it (José 06/11)', () => {
     // Arrange: an empty field (the tests above leave a draft for c1)
     localStorage.clear();
-    const commands = stubCommands({ hasCommands: true });
-    const { unmount } = composer(commands);
+    const row = { kind: 'command' as const, appId: 'a1', appName: 'Inframaq', key: 'clima', name: '/clima', usageHint: '[mañana]' };
+    const commands = stubCommands({ actions: [row] });
+    composer(commands);
     // Act
-    fireEvent.click(screen.getByTestId('btn-comandos'));
+    fireEvent.click(screen.getByTestId('btn-acciones-chat'));
+    fireEvent.click(screen.getByTestId('accion-chat-clima'));
     // Assert
-    expect(screen.getByTestId('input-mensaje')).toHaveValue('/');
-    expect(commands.onType).toHaveBeenCalledWith('/');
-    unmount();
-    composer(stubCommands({ hasCommands: false }));
+    expect(screen.getByTestId('input-mensaje')).toHaveValue('/clima ');
+    expect(commands.onType).toHaveBeenCalledWith('/clima ');
     expect(screen.queryByTestId('btn-comandos')).toBeNull();
   });
 });

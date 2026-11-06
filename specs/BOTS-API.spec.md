@@ -497,7 +497,14 @@ es global y un comando no; los dos funcionan en todos los canales.
   tenía más de 2 min o no traía `age`, así que la app la puede usar como
   ubicación del momento.
 - La foto llega con la marca de agua ya estampada: hora del servidor de
-  Lilachat (Lima) y «lat, lng · ± m».
+  Lilachat (Lima) y «dirección · ± m». La dirección sale de Nominatim con un
+  plazo de 3,2 s; si no llega, el sello lleva «lat, lng · ± m» (José 06/11).
+- Una firma con una lista de registros (`registrar_asistencia`: `empleadoId`)
+  abre en dos pasos, como la página de asistencia de Portal: primero una tarjeta
+  por persona; al elegir un nombre se prende la cámara. El resto de opciones
+  fijas de la firma va en chips de una línea. Una etiqueta de más de 12 letras
+  cede a la palabra del valor: «Salida a refrigerio» se ve «Refrigerio». El
+  schema no cambia, así que la herramienta no pide reaprobación.
 - `/respond` con `{ "errors": { … } }` mientras el formulario espera respuesta
   lo vuelve a abrir con esos errores. Si ya se cerró: 409 `form_closed`.
 - Tanque: `status` (hasta 24 caracteres, en palabras) además de `tone`; el %

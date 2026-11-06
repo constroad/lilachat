@@ -3,7 +3,8 @@ import { Linking, Pressable, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import Svg, { Ellipse } from 'react-native-svg';
 import { Clock, MapPin } from 'lucide-react-native';
-import { precisionLabel, type GeoPoint } from '@lilachat/shared';
+import { precisionLabel, signingPlaceLine, type GeoPoint } from '@lilachat/shared';
+import { usePlaceName, type PlaceLookup } from './usePlaceName';
 
 /** The box stands like a selfie (height over width), and never taller than this. */
 const ASPECT = 4 / 3;
@@ -11,7 +12,6 @@ const MAX_HEIGHT = 380;
 const CLOCK_TICK_MS = 15_000;
 /** Native and untouched: `uploadFormPhoto` makes it lighter once (Portal's standard, 28/10). */
 const PHOTO_QUALITY = 1;
-const COORD_DECIMALS = 5;
 const STAMP_FOREGROUND = '#ffffff';
 
 export type LiveSelfieHandle = { capture: () => Promise<{ uri: string; mime: string } | null> };
@@ -29,10 +29,11 @@ function stampDateLine(now: Date): string {
  * server will burn into it. The form's button takes the photo (`capture`):
  * there is no gallery and no photo taken before.
  */
-export const LiveSelfie = forwardRef<LiveSelfieHandle, { label: string; width: number; location: GeoPoint | null; error?: string; testID?: string }>(function LiveSelfie(props, ref) {
+export const LiveSelfie = forwardRef<LiveSelfieHandle, { label: string; width: number; location: GeoPoint | null; onPlace?: PlaceLookup; error?: string; testID?: string }>(function LiveSelfie(props, ref) {
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
   const [now, setNow] = useState(() => new Date());
+  const placeName = usePlaceName(props.location, props.onPlace);
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), CLOCK_TICK_MS);
     return () => clearInterval(timer);
@@ -47,7 +48,7 @@ export const LiveSelfie = forwardRef<LiveSelfieHandle, { label: string; width: n
     },
   }), []);
   const height = Math.min(MAX_HEIGHT, Math.round(props.width * ASPECT));
-  const place = props.location ? `${props.location.lat.toFixed(COORD_DECIMALS)}, ${props.location.lng.toFixed(COORD_DECIMALS)} · ${precisionLabel(props.location)}` : 'Buscando tu ubicación…';
+  const place = signingPlaceLine(props.location, placeName);
   return (
     <View testID={props.testID}>
       <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{props.label}</Text>

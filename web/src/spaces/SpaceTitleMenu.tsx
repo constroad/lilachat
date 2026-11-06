@@ -5,30 +5,46 @@ import { SpaceLogo } from './SpaceLogo';
 
 export type WorkspaceLink = 'directory' | 'members' | 'requests' | 'settings';
 
+const TITLE = 'flex min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left outline-none';
+const BADGE_MAX = 99;
+
+/** `elsewhere`: chats with something new in another space, which a phone has no rail to show. */
+function TitleBody(props: { space: ClientWorkspace; pending: number; elsewhere: number }) {
+  const { space, pending, elsewhere } = props;
+  return (
+    <>
+      <SpaceLogo space={space} size={36} />
+      <span className="min-w-0">
+        <span className="flex items-center gap-1">
+          <span className="truncate text-base font-extrabold tracking-tight">{space.name}</span>
+          <ChevronDown size={16} className="shrink-0 text-on-surface-variant" />
+          {pending > 0 ? <span data-testid="aviso-solicitudes" aria-label={`${pending} solicitudes`} className="h-2 w-2 shrink-0 rounded-full bg-primary" /> : null}
+          {elsewhere > 0 ? <span data-testid="badge-otros-espacios" aria-label={`${elsewhere} ${elsewhere === 1 ? 'chat' : 'chats'} con algo nuevo en otro espacio`} className="ml-0.5 grid h-5 min-w-[20px] shrink-0 place-items-center rounded-full bg-primary px-1 text-[11px] font-bold text-on-primary">{elsewhere > BADGE_MAX ? `${BADGE_MAX}+` : elsewhere}</span> : null}
+        </span>
+        <span className="block truncate text-[12px] text-on-surface-variant">{spaceSubtitle(space, { membersFirst: true })}</span>
+      </span>
+    </>
+  );
+}
+
 /**
  * The space's name opens its menu, like Slack's (José 30/10: the
  * «Espacio de trabajo» section on top of the list only took room). The
  * directory for everyone; members, requests and settings for its admins;
- * and switching space. Waiting requests keep a dot on the title.
+ * and switching space. Waiting requests keep a dot on the title. On a phone
+ * the title goes straight to the switcher, like the APK (José 06/11).
  */
-export function SpaceTitleMenu(props: { space: ClientWorkspace; onOpen: (link: WorkspaceLink) => void; onSwitch: () => void }) {
+export function SpaceTitleMenu(props: { space: ClientWorkspace; onOpen: (link: WorkspaceLink) => void; onSwitch: () => void; phone?: boolean; elsewhere?: number }) {
   const { space } = props;
   const admin = canManageMembers(space.role);
   const pending = admin ? space.pendingRequests ?? 0 : 0;
+  if (props.phone) {
+    return <button type="button" data-testid="titulo-espacio" aria-label="Cambiar de espacio" onClick={props.onSwitch} className={TITLE}><TitleBody space={space} pending={pending} elsewhere={props.elsewhere ?? 0} /></button>;
+  }
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        <button type="button" data-testid="titulo-espacio" aria-label={`Menú de ${space.name}`} className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left outline-none">
-          <SpaceLogo space={space} size={36} />
-          <span className="min-w-0">
-            <span className="flex items-center gap-1">
-              <span className="truncate text-base font-extrabold tracking-tight">{space.name}</span>
-              <ChevronDown size={16} className="shrink-0 text-on-surface-variant" />
-              {pending > 0 ? <span data-testid="aviso-solicitudes" aria-label={`${pending} solicitudes`} className="h-2 w-2 shrink-0 rounded-full bg-primary" /> : null}
-            </span>
-            <span className="block truncate text-[12px] text-on-surface-variant">{spaceSubtitle(space, { membersFirst: true })}</span>
-          </span>
-        </button>
+        <button type="button" data-testid="titulo-espacio" aria-label={`Menú de ${space.name}`} className={TITLE}><TitleBody space={space} pending={pending} elsewhere={0} /></button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content align="start" sideOffset={6} onCloseAutoFocus={(event) => event.preventDefault()} className="z-40 min-w-[260px] rounded-xl border border-outline/15 bg-surface p-1 shadow-lg">

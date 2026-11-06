@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ENLACE_DE_DESCARGA } from '@lilachat/shared';
 import { InstallStrip } from './InstallStrip';
+import { InstallRow } from './IphoneInstallGuide';
 import { catchInstallPrompt } from './installPrompt';
 
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Version/18.0 Mobile/15E148 Safari/604.1';
@@ -116,5 +117,40 @@ describe('InstallStrip', () => {
 
     expect(screen.queryByTestId('franja-instalar')).not.toBeInTheDocument();
     expect(server).not.toHaveBeenCalled();
+  });
+});
+
+describe('after closing the strip (José 06/11: «si lo cancelo, ¿cómo puedo hacer la instalación?»)', () => {
+  it('says where it stays', async () => {
+    // Arrange
+    browsingOn(IPHONE);
+    serverSays({});
+    render(<InstallStrip jwt="jwt" />);
+    // Act
+    await userEvent.click(screen.getByTestId('btn-cerrar-franja'));
+    // Assert
+    expect(screen.queryByTestId('franja-instalar')).toBeNull();
+    expect(screen.getByTestId('aviso-instalar-en-ajustes')).toHaveTextContent('Ajustes');
+  });
+
+  it('Ajustes offers the APK to an Android phone without the app, even with the strip closed for good', async () => {
+    // Arrange
+    browsingOn(ANDROID);
+    serverSays({ hasAndroidApp: false });
+    localStorage.setItem('lilachat.install-offer', JSON.stringify({ dismissals: 2, snoozeUntil: null }));
+    // Act
+    render(<InstallRow jwt="jwt" onDone={() => undefined} />);
+    // Assert
+    expect(await screen.findByTestId('btn-descargar-apk')).toHaveAttribute('href', ENLACE_DE_DESCARGA);
+  });
+
+  it('Ajustes stays quiet on an Android phone that already has the app', async () => {
+    // Arrange
+    browsingOn(ANDROID);
+    const server = serverSays({ hasAndroidApp: true });
+    render(<InstallRow jwt="jwt" onDone={() => undefined} />);
+    // Assert
+    await waitFor(() => expect(server).toHaveBeenCalled());
+    expect(screen.queryByTestId('btn-descargar-apk')).toBeNull();
   });
 });

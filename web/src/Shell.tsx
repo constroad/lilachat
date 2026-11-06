@@ -9,12 +9,13 @@ import { Bell, BellOff, LogOut, UsersRound, WifiOff, X } from 'lucide-react';
 import { useDismiss } from './ui/useDismiss';
 import { useSinConexion } from './pwa/conexion';
 import { InstallRow } from './pwa/IphoneInstallGuide';
+import { SpacePhoneLinks } from './spaces/SpacePhoneLinks';
 import type { Credential } from './api';
 import { AgendaOverlay } from './agenda/AgendaOverlay';
 import { CreateEventOverlay, CreatePollOverlay, NewChatOverlay, type ChatDestino } from './agenda/CreatePanels';
 import { CrearRecordatorio } from './agenda/CrearRecordatorio';
 import { ListaDeDestacados } from './chat/destacados/ListaDeDestacados';
-import { callerName, type AgendaReminder } from '@lilachat/shared';
+import { callerName, unreadElsewhere, type AgendaReminder } from '@lilachat/shared';
 import { ChatList } from './chat/ChatList';
 import { ConversacionConAcciones } from './chat/ConversacionConAcciones';
 import { EmptyState } from './chat/EmptyState';
@@ -231,6 +232,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
   const enEspacio = espacios.chatById(selectedId);
   const selected = chats.find((chat) => chat.id === selectedId) ?? (enEspacio ? withPresence(enEspacio) : null);
   const panel = resolveVisiblePanel({ width, selectedChatId: selectedId });
+  const elsewhere = unreadElsewhere({ spaces: espacios.spaces, currentId: espacios.current?.id ?? null, personalUnread: chatsSinLeer(chats) });
   const listLayout = useListLayout(width);
   /** The phone's bar (the APK's tabs, José 06/11): each tab opens what the rail opened, Chats closes it. */
   const pickMobileTab = (tab: MobileTab) => {
@@ -295,6 +297,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
             onActivity={espacios.openActivity}
             width={panel === 'both' ? listLayout.width : undefined}
             onCollapse={panel === 'both' ? () => listLayout.setCollapsed(true) : undefined}
+            phone={panel === 'list'} elsewhere={elsewhere} onProfile={() => setAviso(aviso === 'ajustes' ? '' : 'ajustes')}
           />
         ) : (
         <ChatList
@@ -314,7 +317,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
           onAccion={(chat, accion) => void accionesSobreChats.aplicar(chat, accion)}
           width={panel === 'both' ? listLayout.width : undefined}
           onCollapse={panel === 'both' ? () => listLayout.setCollapsed(true) : undefined}
-          onSpaces={espacios.openSwitcher}
+          onSpaces={espacios.openSwitcher} phone={panel === 'list'} elsewhere={elsewhere}
         />
         )}
         {panel === 'both' ? <ListResizeHandle width={listLayout.width} onResize={listLayout.setWidth} onReset={listLayout.reset} /> : null}
@@ -412,7 +415,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
       ) : null}
       {creando?.tipo === 'recordatorio' ? <CrearRecordatorio jwt={credential.jwt} chat={creando.chat} editando={creando.editando} onClose={() => setCreando(null)} onGuardado={() => setCreando(null)} /> : null}
 
-      {aviso === 'ajustes' ? <PanelDeAjustes jwt={credential.jwt} userId={credential.userId} onAviso={setAviso} onSalir={logout} onCerrar={() => setAviso('')} superadmin={superadmin} /> : aviso ? (
+      {aviso === 'ajustes' ? <PanelDeAjustes jwt={credential.jwt} userId={credential.userId} onAviso={setAviso} onSalir={logout} onCerrar={() => setAviso('')} spaceLinks={panel === 'list' && espacios.current ? <SpacePhoneLinks space={espacios.current} onOpen={espacios.openWorkspace} onInvite={espacios.openInvite} /> : null} superadmin={superadmin} /> : aviso ? (
         <p data-testid="aviso" role="status" className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-on-surface px-4 py-2 text-sm text-surface">
           {aviso}
         </p>
@@ -444,12 +447,13 @@ function PanelDeAjustes(props: {
   onSalir: () => void;
   onCerrar: () => void;
   superadmin: boolean;
+  spaceLinks?: ReactNode;
 }) {
   const { jwt, onAviso, onSalir, onCerrar, superadmin } = props;
   const [push, setPush] = useState(pushState);
   // It had no way out but its own button (José, 21/10): a click outside, Escape or the X close it.
   const panel = useRef<HTMLDivElement>(null);
-  useDismiss(true, panel, onCerrar, { ignore: '[data-testid="btn-ajustes"], [data-testid="riel-perfil"]' });
+  useDismiss(true, panel, onCerrar, { ignore: '[data-testid="btn-ajustes"], [data-testid="riel-perfil"], [data-testid="btn-perfil"]' });
   const alternar = async () => {
     if (push === 'encendido') {
       await disablePush(jwt);
@@ -464,6 +468,7 @@ function PanelDeAjustes(props: {
       <button type="button" data-testid="cerrar-ajustes" aria-label="Cerrar ajustes" title="Cerrar" onClick={onCerrar} className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full text-on-surface-variant hover:bg-background">
         <X size={16} />
       </button>
+      {props.spaceLinks}
       <PresenceChoice jwt={jwt} />
       <AppearanceChoice />
       <ChatFontChoice />
@@ -474,7 +479,7 @@ function PanelDeAjustes(props: {
         {push === 'encendido' ? <BellOff size={16} /> : <Bell size={16} />}
         <span className="min-w-0 flex-1">{push === 'encendido' ? 'Desactivar notificaciones' : 'Activar notificaciones'}</span>
       </button>
-      <InstallRow onDone={onCerrar} />
+      <InstallRow jwt={jwt} onDone={onCerrar} />
       {superadmin ? (
         <a href="/admin" data-testid="btn-usuarios-lilachat" className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-left text-sm hover:bg-background">
           <UsersRound size={16} />

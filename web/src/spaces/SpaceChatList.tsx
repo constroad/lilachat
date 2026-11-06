@@ -45,6 +45,11 @@ type Props = {
   apps?: SpaceApps;
   /** The ⚡ of the header (design e-30) asks the space's apps for their actions. */
   jwt?: string;
+  /** One column, like the APK (José 06/11): the title switches spaces, me in the corner, no code at the foot. */
+  phone?: boolean;
+  /** Chats with something new elsewhere: a phone has no rail to show them. */
+  elsewhere?: number;
+  onProfile?: () => void;
 };
 
 /**
@@ -88,11 +93,15 @@ export function SpaceChatList(props: Props) {
   return (
     <aside data-testid="panel-espacio" className={`flex h-full w-full min-w-0 flex-col bg-surface ${props.width ? 'shrink-0' : 'border-r border-outline/15 md:w-[340px] md:shrink-0 lg:w-[400px]'}`} style={props.width ? { width: props.width } : undefined}>
       <header className="flex items-center gap-2 px-4 py-3">
-        <SpaceTitleMenu space={space} onOpen={props.onWorkspace} onSwitch={props.onSwitch} />
+        <SpaceTitleMenu space={space} onOpen={props.onWorkspace} onSwitch={props.onSwitch} phone={props.phone} elsewhere={props.elsewhere} />
         {props.jwt ? <SpaceQuickActions jwt={props.jwt} spaceId={space.id} spaceName={space.name} /> : null}
-        <button type="button" data-testid="btn-invitar-espacio" aria-label="Invitar personas" title="Invitar personas" onClick={props.onInvite} className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant hover:bg-background">
-          <UserPlus size={18} />
-        </button>
+        {props.phone ? (
+          <button type="button" data-testid="btn-perfil" aria-label="Tu perfil y ajustes" onClick={props.onProfile} className="grid h-11 w-11 shrink-0 place-items-center rounded-full"><Avatar name={props.me.name ?? props.me.phone} size={36} /></button>
+        ) : (
+          <button type="button" data-testid="btn-invitar-espacio" aria-label="Invitar personas" title="Invitar personas" onClick={props.onInvite} className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant hover:bg-background">
+            <UserPlus size={18} />
+          </button>
+        )}
         {props.onCollapse ? (
           <button type="button" aria-label="Plegar la lista" title="Plegar la lista" onClick={props.onCollapse} className="grid h-9 w-9 place-items-center rounded-full text-on-surface-variant hover:bg-background">
             <PanelLeftClose size={18} />
@@ -177,7 +186,7 @@ export function SpaceChatList(props: Props) {
           }}
         />
       ) : null}
-      {space.joinCode ? (
+      {space.joinCode && !props.phone ? (
         <div className="flex items-center gap-2 border-t border-outline/15 px-4 py-2">
           <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Código</span>
           <span data-testid="codigo-del-espacio" className="rounded-md border border-outline/20 px-2 py-0.5 font-mono text-[13px] font-semibold text-primary">{space.joinCode}</span>

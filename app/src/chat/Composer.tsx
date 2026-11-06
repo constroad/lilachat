@@ -27,7 +27,6 @@ import { CommandPanel } from './commands/CommandPanel';
 import { EphemeralAnswers } from './commands/EphemeralAnswers';
 import { AppFormSheet } from './commands/AppFormSheet';
 import { ChatQuickActions } from './commands/ChatQuickActions';
-import { SlashCommandsButton } from './commands/SlashCommandsButton';
 
 
 /** Cuánto se espera tras la última tecla para guardar el borrador. */
@@ -169,6 +168,10 @@ export const Composer = memo(function Composer(props: {
     seleccion.current = { start: cursor, end: cursor };
     const enfocar = inputRef.current?.isFocused() ?? false;
     setInicial((antes) => ({ texto, version: antes.version + 1, enfocar, cursor }));
+  };
+  const escribirComando = (texto: string) => {
+    escribir(texto, texto.length);
+    props.commands?.onType(texto);
   };
   // El cursor va donde quedó lo insertado, apenas el campo nuevo existe.
   useEffect(() => {
@@ -360,9 +363,8 @@ export const Composer = memo(function Composer(props: {
           if (texto.length > 0) props.onEscribiendo();
         }}
       />
-      {/* The ⚡ of a channel or the chat with an app, only when it has actions (R31/10). */}
-      {props.commands && forma.vacio ? <ChatQuickActions commands={props.commands} /> : null}
-      {props.commands?.hasCommands && forma.vacio ? <SlashCommandsButton onPress={() => { escribir('/', 1); props.commands?.onType('/'); }} /> : null}
+      {/* The ⚡ of a channel or the chat with an app: its actions and its commands, one button (José 06/11). */}
+      {props.commands && forma.vacio ? <ChatQuickActions commands={props.commands} onWriteCommand={escribirComando} /> : null}
       {/* Como WhatsApp (José, 19/10): el clip siempre adentro; la cámara, solo
           con el campo vacío. El «+» de afuera se fue: era la misma puerta. */}
       <Pressable
@@ -402,16 +404,12 @@ export const Composer = memo(function Composer(props: {
       ) : null}
       {props.commands ? <EphemeralAnswers answers={props.commands.answers} hidden={props.commands.suggestions.length > 0} onDismiss={props.commands.dismiss} onShare={props.commands.share} onOpenForm={props.commands.appAnswers.showForm} onRunLine={props.commands.runCardLine} chatId={props.chatId} jwt={props.jwt ?? ''} /> : null}
       {props.commands?.appAnswers.openForm ? (
-        <AppFormSheet key={formKeyOf(props.commands.appAnswers.openForm)} answer={props.commands.appAnswers.openForm} personName={props.myName} onSubmit={(values) => props.commands!.appAnswers.submitForm(props.commands!.appAnswers.openForm!, values)} onUpload={(photo, stamp) => props.commands!.appAnswers.uploadPhoto(props.commands!.appAnswers.openForm!.commandId, photo, stamp)} onRefresh={(draft) => props.commands!.appAnswers.refreshForm(props.commands!.appAnswers.openForm!, draft)} onPreview={(draft) => props.commands!.appAnswers.previewForm(props.commands!.appAnswers.openForm!, draft)} onClose={() => props.commands!.appAnswers.dismiss(props.commands!.appAnswers.openForm!.commandId)} />
+        <AppFormSheet key={formKeyOf(props.commands.appAnswers.openForm)} answer={props.commands.appAnswers.openForm} personName={props.myName} onSubmit={(values) => props.commands!.appAnswers.submitForm(props.commands!.appAnswers.openForm!, values)} onUpload={(photo, stamp) => props.commands!.appAnswers.uploadPhoto(props.commands!.appAnswers.openForm!.commandId, photo, stamp)} onPlace={(point) => props.commands!.appAnswers.placeOf(props.commands!.appAnswers.openForm!.commandId, point)} onRefresh={(draft) => props.commands!.appAnswers.refreshForm(props.commands!.appAnswers.openForm!, draft)} onPreview={(draft) => props.commands!.appAnswers.previewForm(props.commands!.appAnswers.openForm!, draft)} onClose={() => props.commands!.appAnswers.dismiss(props.commands!.appAnswers.openForm!.commandId)} />
       ) : null}
       {props.commands ? (
         <CommandPanel
           groups={props.commands.suggestions}
-          onPick={(command) => {
-            const text = `/${command} `;
-            escribir(text, text.length);
-            props.commands?.onType(text);
-          }}
+          onPick={(command) => escribirComando(`/${command} `)}
         />
       ) : null}
       {props.notice}

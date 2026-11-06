@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { answerOfOutcome, formSubmitOutcome, giveUpPending, giveUpWaiting, markWaiting, noticeIsFor, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, WRITE_GIVE_UP_MS, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type ShortcutRow, type ShortcutValues } from '@lilachat/shared';
 import type { JsonResult } from '../../api/jsonCall';
 import { getSocket } from '../socketClient';
-import { previewAppForm, refreshAppForm, runShortcut, submitAppForm, uploadFormPhoto } from './commandsApi';
+import { previewAppForm, refreshAppForm, runShortcut, submitAppForm, readFormPlace, uploadFormPhoto } from './commandsApi';
 
 export type AppAnswers = ReturnType<typeof useAppAnswers>;
 
@@ -50,6 +50,10 @@ export function useAppAnswers(params: { jwt: string; scope: CommandScope | null 
   const runAction = useCallback(
     (row: ShortcutRow, values?: ShortcutValues) => (scopeRef.current ? track({ ...(row.kind === 'command' ? { appName: row.appName, command: row.key } : { appName: row.appName, command: '', action: row.name }), ...(row.avatarUrl ? { avatarUrl: row.avatarUrl } : {}) }, () => runShortcut(jwt, scopeRef.current!, row, values)) : Promise.resolve(false)),
     [jwt, track]
+  );
+  const placeOf = useCallback(
+    (commandId: string, point: GeoPoint) => (scopeRef.current ? readFormPlace(jwt, scopeRef.current, commandId, point) : Promise.resolve(null)),
+    [jwt]
   );
   const uploadPhoto = useCallback(
     (commandId: string, photo: { uri: string; mime: string }, stamp?: GeoPoint) => (scopeRef.current ? uploadFormPhoto(jwt, scopeRef.current, commandId, photo, stamp) : Promise.resolve({ ok: false as const, message: 'Sin sesión.' })),
@@ -140,7 +144,7 @@ export function useAppAnswers(params: { jwt: string; scope: CommandScope | null 
   const openForm = answers.find((entry) => entry.commandId === openFormId && entry.state === 'form') ?? null;
   // One object while nothing changes: the bar is memoized and a new one redrew it with every message (F4, 02/11).
   return useMemo(
-    () => ({ answers, track, runAction, uploadPhoto, submitForm, refreshForm, previewForm, dismiss, removeAnswer, say, openForm, showForm: setOpenFormId }),
-    [answers, track, runAction, uploadPhoto, submitForm, refreshForm, previewForm, dismiss, removeAnswer, say, openForm]
+    () => ({ answers, track, runAction, placeOf, uploadPhoto, submitForm, refreshForm, previewForm, dismiss, removeAnswer, say, openForm, showForm: setOpenFormId }),
+    [answers, track, runAction, placeOf, uploadPhoto, submitForm, refreshForm, previewForm, dismiss, removeAnswer, say, openForm]
   );
 }

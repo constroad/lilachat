@@ -11,7 +11,7 @@ const commandsWith = (actions: ShortcutRow[], runAction = vi.fn()) => ({ actions
 describe('ChatQuickActions', () => {
   it('a chat with no actions shows no ⚡', () => {
     // Arrange / Act
-    render(<ChatQuickActions commands={commandsWith([])} />);
+    render(<ChatQuickActions commands={commandsWith([])} onWriteCommand={vi.fn()} />);
     // Assert
     expect(screen.queryByTestId('btn-acciones-chat')).not.toBeInTheDocument();
   });
@@ -19,12 +19,39 @@ describe('ChatQuickActions', () => {
   it('picking an action closes the list and runs it in the chat', () => {
     // Arrange
     const runAction = vi.fn();
-    render(<ChatQuickActions commands={commandsWith([consumo], runAction)} />);
+    render(<ChatQuickActions commands={commandsWith([consumo], runAction)} onWriteCommand={vi.fn()} />);
     // Act
     fireEvent.click(screen.getByTestId('btn-acciones-chat'));
     fireEvent.click(screen.getByTestId('accion-chat-registrar_consumo'));
     // Assert
     expect(runAction).toHaveBeenCalledWith(consumo);
     expect(screen.queryByTestId('hoja-acciones-chat')).not.toBeInTheDocument();
+  });
+
+  it('a command that needs its text goes to the field instead of running', () => {
+    // Arrange
+    const runAction = vi.fn();
+    const onWriteCommand = vi.fn();
+    const pedidos: ShortcutRow = { kind: 'command', appId: 'a2', appName: 'Portal', key: 'pedidos', name: '/pedidos', usageHint: '[cliente]' };
+    render(<ChatQuickActions commands={commandsWith([pedidos], runAction)} onWriteCommand={onWriteCommand} />);
+    // Act
+    fireEvent.click(screen.getByTestId('btn-acciones-chat'));
+    fireEvent.click(screen.getByTestId('accion-chat-pedidos'));
+    // Assert
+    expect(onWriteCommand).toHaveBeenCalledWith('/pedidos ');
+    expect(runAction).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('hoja-acciones-chat')).not.toBeInTheDocument();
+  });
+
+  it('a command without text runs from the list, like an action', () => {
+    // Arrange
+    const runAction = vi.fn();
+    const clima: ShortcutRow = { kind: 'command', appId: 'a2', appName: 'Portal', key: 'clima', name: '/clima' };
+    render(<ChatQuickActions commands={commandsWith([clima], runAction)} onWriteCommand={vi.fn()} />);
+    // Act
+    fireEvent.click(screen.getByTestId('btn-acciones-chat'));
+    fireEvent.click(screen.getByTestId('accion-chat-clima'));
+    // Assert
+    expect(runAction).toHaveBeenCalledWith(clima);
   });
 });

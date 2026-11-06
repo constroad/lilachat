@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from 'react';
 import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { CheckCheck, X } from 'lucide-react-native';
-import { CHECK_ALL_LABEL, checkAllValues, evidenceLine, formFields, formRows, liveSelfieFieldOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply } from '@lilachat/shared';
+import { CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, formRows, liveSelfieFieldOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { Modal } from '../../ui/Modal';
@@ -12,6 +12,8 @@ import { DateField } from './DateField';
 import { ListField } from './ListField';
 import { PhotoListField } from './PhotoListField';
 import { LiveSelfie, type LiveSelfieHandle } from './LiveSelfie';
+import { SignerCard, SignerPicker, SigningChips } from './SignerPicker';
+import type { PlaceLookup } from './usePlaceName';
 import { useLiveSigning } from './useLiveSigning';
 import { useFormLive } from './useFormLive';
 import { useAppFormState } from './useAppFormState';
@@ -34,7 +36,7 @@ const ROW_GAP = 12;
 const TODAY = new Intl.DateTimeFormat('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
 const CLOCK = new Intl.DateTimeFormat('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false });
 
-type SheetProps = { answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: PhotoUpload; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply> };
+type SheetProps = { answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: PhotoUpload; /** The address under a signing's camera. */ onPlace?: PlaceLookup; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply> };
 
 /** The keyboard's height: the sheet rises above it and shrinks to fit (José, 23/10: he typed the code without seeing it). */
 function useKeyboardHeight() {
@@ -84,6 +86,7 @@ export function AppFormSheet(props: SheetProps) {
   const keyboard = useKeyboardHeight();
   // A form with a location and a photo is a signing (pending 94): live selfie, place of now, one tap.
   const live = useMemo(() => liveSelfieFieldOf(fields), [fields]);
+  const signer = useMemo(() => signerFieldOf(fields), [fields]);
   const locationName = fields.find((field) => field.kind === 'location')?.name;
   const selfie = useRef<LiveSelfieHandle>(null);
   const signing = useLiveSigning({ live, locationName, selfie, upload: props.onUpload });
@@ -94,7 +97,7 @@ export function AppFormSheet(props: SheetProps) {
   const formLive = useFormLive({ fields, values: state.values, preview: form.preview, onRefresh: props.onRefresh, onPreview: props.onPreview });
   const sheetWidth = Math.min(width, SHEET_MAX_WIDTH);
   // The summary's remarks under their fields; the person's own errors win.
-  const slot: SlotContext = { values: state.values, errors: { ...formLive.summary.errors, ...state.errors }, live, locationName, selfie, upload: props.onUpload, set: state.set, setList: state.setList, width: sheetWidth, positions };
+  const slot: SlotContext = { fields, onPlace: props.onPlace, values: state.values, errors: { ...formLive.summary.errors, ...state.errors }, live, locationName, selfie, upload: props.onUpload, set: state.set, setList: state.setList, width: sheetWidth, positions };
   // Sent and answered later (consensus 24/10): «Enviando…» until the answer closes it or the errors come back here.
   const waiting = props.answer.waiting === true;
   const evidence = evidenceLine(fields);
@@ -102,6 +105,9 @@ export function AppFormSheet(props: SheetProps) {
     if (!typedSomething(fields, state.values, state.prefilled)) return props.onClose();
     Alert.alert('¿Descartar el formulario?', 'Lo que llenaste no se envía.', [{ text: 'Seguir llenando', style: 'cancel' }, { text: 'Descartar', style: 'destructive', onPress: props.onClose }]);
   };
+  // José 06/11: the name first, like Portal; until then only the place keeps reading, and the camera stays off.
+  const step = signingStepOf(fields, state.values);
+  const shown = visibleFields(fields, state.values).filter((field) => field.name !== signer?.name && (step === 'sign' || field.kind === 'location'));
   const label = waiting ? 'Enviando…' : state.sending ? signing.phaseLabel : submitLabelOf(form, fields, state.values);
   return (
     <Modal visible transparent animationType="slide" onRequestClose={close}>
@@ -114,8 +120,10 @@ export function AppFormSheet(props: SheetProps) {
           <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }} contentContainerStyle={{ padding: SHEET_PADDING, gap: 14 }}>
             <FormIntro answer={props.answer} refreshing={formLive.refreshing} clock={Boolean(evidence) && !live} personName={props.personName} />
             {form.checkAll ? <CheckAllButton onPress={() => state.fill(checkAllValues(fields, state.values))} /> : null}
+            {signer && step === 'who' ? <SignerPicker field={signer} onPick={state.set(signer.name)} /> : null}
+            {signer && step === 'sign' ? <SignerCard field={signer} value={state.values[signer.name]} error={slot.errors[signer.name]} onChange={() => state.set(signer.name)('')} /> : null}
             {/* Two short fields share a row (José, 28/10: a field per row made the forms a sheet). */}
-            {formRows(visibleFields(fields, state.values)).map((row) =>
+            {formRows(shown).map((row) =>
               row.length === 2 ? (
                 <View key={row[0]!.name} onLayout={(event) => row.forEach((field) => (positions.current[field.name] = event.nativeEvent.layout.y))} className="flex-row items-start" style={{ gap: ROW_GAP }}>
                   {row.map((field) => <FieldSlot key={field.name} field={field} half context={slot} />)}
@@ -125,7 +133,7 @@ export function AppFormSheet(props: SheetProps) {
               )
             )}
           </ScrollView>
-          <SheetFooter summary={formLive.summary.blocks} message={state.message} busy={state.sending || waiting} label={label} note={evidence ? (live ? LIVE_FOOTER : evidence) : ''} onSend={() => void state.send()} />
+          {step === 'sign' ? <SheetFooter summary={formLive.summary.blocks} message={state.message} busy={state.sending || waiting} label={label} note={evidence ? (live ? LIVE_FOOTER : evidence) : ''} onSend={() => void state.send()} /> : null}
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -203,6 +211,8 @@ function SheetFooter(props: { summary: PreviewReply['blocks']; message: string; 
 
 /** What every field of the sheet draws from. */
 type SlotContext = {
+  fields: readonly FormField[];
+  onPlace?: PlaceLookup;
   values: FormValues;
   errors: Record<string, string>;
   live: Pick<FormField, 'name'> | null;
@@ -219,14 +229,17 @@ type SlotContext = {
 function FieldSlot(props: { field: FormField; half: boolean; context: SlotContext }) {
   const { field, half } = props;
   const { values, errors, live, locationName, upload, width } = props.context;
+  const chips = field.kind === 'choice' && chipsFor(props.context.fields, field);
   if (live && field.name === live.name) {
-    return <LiveSelfie ref={props.context.selfie} testID={`campo-${field.name}`} label={LIVE_PHOTO_KICKER} width={width - SHEET_PADDING * 2} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />;
+    return <LiveSelfie ref={props.context.selfie} testID={`campo-${field.name}`} label={LIVE_PHOTO_KICKER} onPlace={props.context.onPlace} width={width - SHEET_PADDING * 2} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />;
   }
   return (
     // In a signing the place shows inside the camera; its field keeps reading behind it.
     <View onLayout={half ? undefined : (event) => (props.context.positions.current[field.name] = event.nativeEvent.layout.y)} style={live && field.kind === 'location' ? { display: 'none' } : half ? { flex: 1, minWidth: 0 } : undefined}>
-      {live && field.kind === 'choice' && field.segmented ? <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{LIVE_CHOICE_KICKER}</Text> : null}
-      {field.kind === 'list' ? (
+      {chips ? <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{LIVE_CHOICE_KICKER}</Text> : null}
+      {chips ? (
+        <SigningChips field={field} value={values[field.name]} error={errors[field.name]} onChange={props.context.set(field.name)} />
+      ) : field.kind === 'list' ? (
         <ListField
           field={field}
           value={values[field.name]}

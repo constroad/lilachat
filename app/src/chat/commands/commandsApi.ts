@@ -67,6 +67,17 @@ async function sendFormPhoto(jwt: string, scope: CommandScope, commandId: string
   return { ok: false, status: reply.status, message: typeof reply.payload.message === 'string' ? reply.payload.message : 'No se pudo subir la foto.' };
 }
 
+/** The address of a reading, for the camera of a signing; `null` when it does not arrive. */
+export async function readFormPlace(jwt: string, scope: CommandScope, commandId: string, point: GeoPoint): Promise<string | null> {
+  const query = `lat=${point.lat}&lng=${point.lng}&precision=${point.precision}`;
+  try {
+    const response = await fetch(`${BASE_URL}${commandScopePath(scope)}/commands/${commandId}/place?${query}`, { headers: { Authorization: `Bearer ${jwt}` } });
+    return response.ok ? ((await response.json()) as { place?: string | null }).place ?? null : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Sending is the person's confirmation; a 422 brings what to fix, field by field. */
 export async function submitAppForm(jwt: string, scope: CommandScope, commandId: string, values: FormValues): Promise<FormSubmitReply> {
   try {

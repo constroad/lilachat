@@ -15313,3 +15313,26 @@ nunca en iOS); la hoja con scroll en el emulador.
 
 Tests: `mobileTabs.test.ts`, `MobileNav.test.tsx`, `installOffer.test.ts`,
 `InstallStrip.test.tsx` (caso pwa).
+
+## Web del teléfono como el APK, un solo ⚡ y firma por tarjetas (José 06/11)
+
+Pedido de José desde su teléfono, con cuatro capturas.
+
+**Compositor.** El ⚡ y el «/» mostraban cosas distintas: acciones de las apps y comandos de texto. Quedó un solo ⚡ con las dos cosas en una lista (`quickActionRows`). Un comando que pide texto va al campo (`commandToWrite`); el resto corre desde la lista. Escribir «/» a mano sigue abriendo los comandos. `SlashCommandsButton` se borró.
+
+**Título en el teléfono.** En una columna (`panel === 'list'`) el título abre el selector de espacios, como `useSpacesUi` en el APK. También vale en la lista personal. Lo que había en el menú del título pasó a Ajustes (`SpacePhoneLinks`): invitar, miembros, solicitudes y ajustes del espacio, solo para admins. El directorio ya tiene su pestaña. El contador de chats en otros espacios va junto al título, porque el teléfono no tiene riel.
+
+**Encabezado.** En el teléfono la esquina lleva tu avatar, que abre Ajustes, igual que el APK. «Invitar» pasó a Ajustes.
+
+**Código del espacio.** El server solo lo manda a quien administra miembros (`canManageMembers`), así que un miembro nunca lo vio. Sale de la lista en el teléfono; en el escritorio sigue al pie para los admins.
+
+**Instalar.** Al cerrar la franja queda ocho segundos el aviso «Cuando quieras, instálala desde Ajustes.». La fila de Ajustes ahora también ofrece el APK a un Android sin la app.
+
+**Firma.** Ver `BOTS-API.spec.md` §c-septies. Reglas en `shared/src/signingForm.ts`; pantallas en `SignerPicker.tsx` de app y web. La cámara se monta recién al elegir el nombre, y el GPS ya viene leyendo desde el primer paso.
+
+**Dirección.** `server/src/placeName.ts` pregunta a Nominatim, gratis y con tope de una consulta por segundo. Recuerda cada cuadra diez minutos, hasta 500 lugares. `GET …/commands/:id/place` responde a quien abrió el formulario, y comparte el límite de 20 por minuto. La cámara nunca muestra coordenadas: si no hay dirección dice «Ubicación lista». Las coordenadas quedan solo como último recurso del sello.
+
+Sin verificar al escribir esto: el E2E en el teléfono real de José y si Nominatim responde igual desde la mini en horas de carga.
+
+Tests: `signingForm.test.ts`, `placeName.test.ts`, `botForms.test.ts`, `AppFormDialog.test.tsx`, `usePlaceName.test.tsx`, `ChatQuickActions.test.tsx`, `InstallStrip.test.tsx`, `spaces.test.tsx`.
+

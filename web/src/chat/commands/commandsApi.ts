@@ -31,6 +31,17 @@ export const refreshAppForm = (jwt: string, scope: CommandScope, commandId: stri
 /** `x-preview`: the app's summary of the draft; an empty one when it cannot answer. */
 export const previewAppForm = (jwt: string, scope: CommandScope, commandId: string, values: FormValues) => api<PreviewReply>(`${pathOf(scope)}/commands/${commandId}/preview`, { jwt, body: { values } });
 
+/** The address of a reading, for the camera of a signing; `null` when it does not arrive. */
+export async function readFormPlace(jwt: string, scope: CommandScope, commandId: string, point: GeoPoint): Promise<string | null> {
+  const query = new URLSearchParams({ lat: String(point.lat), lng: String(point.lng), precision: String(point.precision) });
+  try {
+    const response = await fetch(`${commandScopePath(scope)}/commands/${commandId}/place?${query}`, { headers: { Authorization: `Bearer ${jwt}` } });
+    return response.ok ? ((await response.json()) as { place?: string | null }).place ?? null : null;
+  } catch {
+    return null;
+  }
+}
+
 /** A form's photo, the moment it is picked, lighter with Portal's standard (28/10): the form then carries its id. */
 export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandId: string, file: Blob, stamp?: GeoPoint): Promise<FormPhotoUpload> {
   const photo = await shrinkPhotoBlob(file, file instanceof File ? file.name : 'foto.jpg');

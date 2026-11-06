@@ -124,3 +124,114 @@ describe('AppFormDialog (design e-28)', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });
+
+/** Portal's `registrar_asistencia`: who signs, what they sign, the selfie and the place. */
+const ANA = '6ad95d52d225a79c08002e24';
+const LUIS = '6ad95d52d225a79c08002e25';
+const peopleForm = (people: { const: string; title: string }[]): EphemeralAnswer => ({
+  ...answer,
+  action: 'Registrar asistencia',
+  response: {
+    responseType: 'form',
+    form: {
+      id: 'registrar_asistencia',
+      title: 'Registrar asistencia',
+      submitLabel: 'Registrar asistencia',
+      schema: {
+        type: 'object',
+        properties: {
+          empleadoId: { type: 'string', title: 'Trabajador', oneOf: people },
+          accion: { type: 'string', title: 'Qué firma', enum: ['ingreso', 'salida', 'refrigerio', 'retorno'], description: 'Ingreso abre el turno.', 'x-labels': { ingreso: 'Ingreso', salida: 'Salida', refrigerio: 'Salida a refrigerio', retorno: 'Retorno de refrigerio' } },
+          fotoUrl: { type: 'string', title: 'Foto', 'x-input': 'photo' },
+          ubicacion: { type: 'object', title: 'Ubicación', 'x-input': 'location' },
+        },
+        required: ['empleadoId', 'accion', 'fotoUrl', 'ubicacion'],
+      },
+    },
+  },
+});
+const crew = [{ const: ANA, title: 'Ana Torres' }, { const: LUIS, title: 'Luis Rojas' }];
+const drawPeople = (people = crew) => {
+  const onSubmit = vi.fn(async (): Promise<FormSubmitOutcome> => ({ done: true, answer: null }));
+  const onUpload = vi.fn(async () => ({ ok: true as const, fileId: 'f1' }));
+  render(<AppFormDialog answer={peopleForm(people)} onSubmit={onSubmit} onUpload={onUpload} onClose={() => undefined} />);
+  return { onSubmit, onUpload };
+};
+
+describe('a signing opens on who signs (José 06/11: like Portal, the camera comes after the name)', () => {
+  it('shows a card per person, with the camera off and nothing to send yet', () => {
+    // Arrange / Act
+    drawPeople();
+    // Assert
+    expect(screen.getByTestId('quien-firma')).toHaveTextContent('¿Quién firma?');
+    expect(screen.getByTestId(`firmante-${ANA}`)).toHaveTextContent('Ana Torres');
+    expect(screen.queryByTestId('campo-fotoUrl')).toBeNull();
+    expect(screen.queryByTestId('btn-enviar-formulario')).toBeNull();
+  });
+
+  it('picking a name turns the camera on, with the choice as chips in one line', () => {
+    // Arrange
+    drawPeople();
+    // Act
+    fireEvent.click(screen.getByTestId(`firmante-${ANA}`));
+    // Assert
+    expect(screen.getByTestId('campo-fotoUrl')).toBeInTheDocument();
+    expect(screen.getByTestId('firmante-elegido')).toHaveTextContent('Ana Torres');
+    expect(screen.queryByTestId('quien-firma')).toBeNull();
+    expect(screen.getByTestId('chips-accion').children).toHaveLength(4);
+    expect(screen.getByTestId('opcion-accion-refrigerio')).toHaveTextContent('Refrigerio');
+    expect(screen.getByTestId('opcion-accion-retorno')).toHaveTextContent('Retorno');
+  });
+
+  it('«Cambiar» goes back to the cards and turns the camera off', () => {
+    // Arrange
+    drawPeople();
+    fireEvent.click(screen.getByTestId(`firmante-${ANA}`));
+    // Act
+    fireEvent.click(screen.getByTestId('cambiar-firmante'));
+    // Assert
+    expect(screen.getByTestId(`firmante-${LUIS}`)).toBeInTheDocument();
+    expect(screen.queryByTestId('campo-fotoUrl')).toBeNull();
+  });
+
+  it('sends the person picked with what they sign, in one tap', async () => {
+    // Arrange
+    const { onSubmit, onUpload } = drawPeople();
+    fireEvent.click(screen.getByTestId(`firmante-${LUIS}`));
+    fireEvent.click(screen.getByTestId('opcion-accion-salida'));
+    // Act
+    fireEvent.click(screen.getByTestId('btn-enviar-formulario'));
+    // Assert
+    await vi.waitFor(() => expect(onUpload).toHaveBeenCalled());
+    await vi.waitFor(() => expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ empleadoId: LUIS, accion: 'salida', fotoUrl: 'f1' })));
+  });
+
+  it('a long list can be searched; a short one does not need it', () => {
+    // Arrange
+    const many = Array.from({ length: 12 }, (_, index) => ({ const: `6ad95d52d225a79c08002e${String(30 + index)}`, title: index === 7 ? 'Wilson Huamán' : `Persona ${index}` }));
+    drawPeople(many);
+    // Act
+    fireEvent.change(screen.getByTestId('buscar-quien-firma'), { target: { value: 'wilson' } });
+    // Assert
+    expect(screen.getAllByTestId(/^firmante-/)).toHaveLength(1);
+    expect(screen.getByText('Wilson Huamán')).toBeInTheDocument();
+  });
+
+  it('nobody matches: it says so instead of an empty sheet', () => {
+    // Arrange
+    const many = Array.from({ length: 12 }, (_, index) => ({ const: `6ad95d52d225a79c08002e${String(30 + index)}`, title: `Persona ${index}` }));
+    drawPeople(many);
+    // Act
+    fireEvent.change(screen.getByTestId('buscar-quien-firma'), { target: { value: 'zzz' } });
+    // Assert
+    expect(screen.getByTestId('quien-firma-vacio')).toHaveTextContent('zzz');
+  });
+
+  it('a form without people is untouched: the camera is there from the start', () => {
+    // Arrange / Act
+    draw();
+    // Assert
+    expect(screen.queryByTestId('quien-firma')).toBeNull();
+    expect(screen.getByTestId('campo-foto')).toBeInTheDocument();
+  });
+});

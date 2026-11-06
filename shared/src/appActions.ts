@@ -1,6 +1,7 @@
 import { answerOfOutcome, type CommandGroup, type CommandOutcome, type EphemeralAnswer } from './botCommands.js';
 import type { AppForm, FormField, FormValues, GeoPoint } from './appForms.js';
 import { liveSelfieFieldOf } from './appForms.js';
+import { cutAtWord } from './textCut.js';
 import { CLIENT_LINK_ACTION, clientChannelButtonOf, hasOwnSpacePlace, SERVICE_LINK_ACTION } from './appItems.js';
 
 /**
@@ -9,7 +10,7 @@ import { CLIENT_LINK_ACTION, clientChannelButtonOf, hasOwnSpacePlace, SERVICE_LI
  * screen. PURE: the app and the web draw with it.
  */
 /** `command`: a slash command the admin made global, run from the ⚡ with no text. */
-export type ShortcutRow = { kind: 'shortcut' | 'command'; appId: string; appName: string; avatarUrl?: string; key: string; name: string; description?: string };
+export type ShortcutRow = { kind: 'shortcut' | 'command'; appId: string; appName: string; avatarUrl?: string; key: string; name: string; description?: string; /** A command that asks for text after it. */ usageHint?: string };
 
 const appOf = (group: CommandGroup) => ({ appId: group.appId, appName: group.appName, ...(group.avatarUrl ? { avatarUrl: group.avatarUrl } : {}) });
 
@@ -21,13 +22,19 @@ export function shortcutRows(groups: readonly CommandGroup[]): ShortcutRow[] {
 /** An action drawn somewhere else: the clients' picker, or a button of a client's channel (José 01/11). */
 const hasPlaceOfItsOwn = (key: string) => hasOwnSpacePlace('shortcut', key) || Boolean(clientChannelButtonOf('shortcut', key));
 
-/** The space's ⚡: the actions and the commands the server says are global here, app by app. */
+/**
+ * A ⚡, the space's or a chat's: the actions and the commands, app by app. One list
+ * (José 06/11: a ⚡ and a «/» that showed different things took the field's room).
+ */
 export function quickActionRows(groups: readonly CommandGroup[]): ShortcutRow[] {
   return groups.flatMap((group) => [
     ...(group.shortcuts ?? []).filter((shortcut) => !hasPlaceOfItsOwn(shortcut.key)).map((shortcut) => ({ kind: 'shortcut' as const, ...appOf(group), ...shortcut })),
-    ...group.commands.map((entry) => ({ kind: 'command' as const, ...appOf(group), key: entry.command, name: `/${entry.command}`, description: entry.description })),
+    ...group.commands.map((entry) => ({ kind: 'command' as const, ...appOf(group), key: entry.command, name: `/${entry.command}`, description: entry.description, ...(entry.usageHint ? { usageHint: entry.usageHint } : {}) })),
   ]);
 }
+
+/** A command that needs its text goes to the field with its slash; `null` when the row runs from the ⚡. */
+export const commandToWrite = (row: ShortcutRow): string | null => (row.kind === 'command' && row.usageHint ? `/${row.key} ` : null);
 
 /**
  * The ⚡ of a chat (R31/10): backlog 111 took the actions out of the clip and
@@ -36,11 +43,6 @@ export function quickActionRows(groups: readonly CommandGroup[]): ShortcutRow[] 
  */
 export function chatHasActionPlace(chat: { workspaceId?: string | null; isGroup: boolean; appId?: string | null }): boolean {
   return Boolean(chat.workspaceId) && (chat.isGroup || Boolean(chat.appId));
-}
-
-/** The rows of a chat's ⚡: its actions, without the ones that live in a place of their own. */
-export function chatActionRows(groups: readonly CommandGroup[]): ShortcutRow[] {
-  return shortcutRows(groups).filter((row) => !hasPlaceOfItsOwn(row.key));
 }
 
 /** The rows a client channel's buttons run (links, report): the server lists them only to who may use them. */
@@ -173,6 +175,8 @@ export function evidenceLine(fields: readonly FormField[]): string {
 /** Where a stamp's hour is read when the space says nothing else (ConstRoad works in Peru). */
 export const STAMP_TIME_ZONE = 'America/Lima';
 const STAMP_DECIMALS = 5;
+/** What fits the band of a photo beside the precision. */
+const STAMP_PLACE_MAX = 46;
 
 function stampDate(at: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat('es-PE', { timeZone, weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(at);
@@ -185,13 +189,15 @@ function stampDate(at: Date, timeZone: string): string {
  * watermark with the date, the hour and the place): the server writes them
  * with ITS clock, so the phone cannot fake the hour.
  */
-export function photoStampLines(params: { at: Date; timeZone?: string; location?: GeoPoint }): [string, string] {
+export function photoStampLines(params: { at: Date; timeZone?: string; location?: GeoPoint; /** The address, when it arrived in time; otherwise the coordinates. */ place?: string | null }): [string, string] {
   let date: string;
   try {
     date = stampDate(params.at, params.timeZone ?? STAMP_TIME_ZONE);
   } catch {
     date = stampDate(params.at, STAMP_TIME_ZONE);
   }
-  const place = params.location ? `${params.location.lat.toFixed(STAMP_DECIMALS)}, ${params.location.lng.toFixed(STAMP_DECIMALS)} · ${precisionLabel(params.location)}` : 'Sin ubicación';
+  const { location } = params;
+  const where = params.place ? cutAtWord(params.place, STAMP_PLACE_MAX) : location && `${location.lat.toFixed(STAMP_DECIMALS)}, ${location.lng.toFixed(STAMP_DECIMALS)}`;
+  const place = location ? `${where} · ${precisionLabel(location)}` : 'Sin ubicación';
   return [date, place];
 }

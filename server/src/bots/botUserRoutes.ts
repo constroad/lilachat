@@ -8,7 +8,7 @@ import { crearLimiteDeIntentos } from '../limiteDeIntentos.js';
 import { asyncRoute, requireSession } from '../requireSession.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { commandGroupsOf, invokeCardCommand, invokeCommand, invokeShortcut, shareCommandAnswer } from './botCommands.js';
-import { FORM_PHOTO_MAX_BYTES, readSignedFile, storeFormPhoto, submitForm } from './botForms.js';
+import { FORM_PHOTO_MAX_BYTES, formPlace, readSignedFile, storeFormPhoto, submitForm } from './botForms.js';
 import { previewForm, refreshForm } from './botFormLive.js';
 import { appChannelsOf } from './botChannels.js';
 import { acceptAppScopes, revokeInstallation } from './botInstall.js';
@@ -93,13 +93,17 @@ export function buildBotUserRouter(): Router {
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.json(outcome);
   }));
+  const pointOf = (fields: Record<string, unknown>): GeoPoint | null => {
+    const [lat, lng, precision] = [fields.lat, fields.lng, fields.precision].map(Number);
+    const valid = [lat, lng, precision].every(Number.isFinite) && Math.abs(lat!) <= 90 && Math.abs(lng!) <= 180 && precision! >= 0;
+    return valid ? { lat: lat!, lng: lng!, precision: Math.round(precision!) } : null;
+  };
   /** The live selfie asks for the stamp, with the place the form already has (pending 94). */
   const stampOf = (body: unknown): { location?: GeoPoint } | undefined => {
     const fields = (body ?? {}) as Record<string, unknown>;
     if (fields.stamp !== '1') return undefined;
-    const [lat, lng, precision] = [fields.lat, fields.lng, fields.precision].map(Number);
-    const valid = [lat, lng, precision].every(Number.isFinite) && Math.abs(lat!) <= 90 && Math.abs(lng!) <= 180 && precision! >= 0;
-    return valid ? { location: { lat: lat!, lng: lng!, precision: Math.round(precision!) } } : {};
+    const location = pointOf(fields);
+    return location ? { location } : {};
   };
   // App forms (R160): the photo first, then the form; sending it is the person's confirmation.
   const photo = multer({ storage: multer.memoryStorage(), limits: { fileSize: FORM_PHOTO_MAX_BYTES } });
@@ -108,6 +112,15 @@ export function buildBotUserRouter(): Router {
     const outcome = await storeFormPhoto(req.session!.userId, scopeOf(req), req.params.commandId!, req.file, stampOf(req.body));
     if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
     res.status(201).json(outcome);
+  }));
+  // The address under a signing's camera (José 06/11); asked once per block, and the phone keeps it.
+  router.get(['/chats/:chatId/commands/:commandId/place', '/workspaces/:id/commands/:commandId/place'], requireSession, asyncRoute(async (req, res) => {
+    const point = pointOf(req.query as Record<string, unknown>);
+    if (!point) return void res.status(400).json({ message: 'Falta la ubicación.' });
+    if (!commandTries.permitir(String(req.session!.userId))) return void res.status(429).set('Retry-After', '60').json({ message: 'Espera un momento.' });
+    const outcome = await formPlace(req.session!.userId, scopeOf(req), req.params.commandId!, point);
+    if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
+    res.set('Cache-Control', 'no-store').json(outcome);
   }));
   router.post(['/chats/:chatId/commands/:commandId/form', '/workspaces/:id/commands/:commandId/form'], requireSession, asyncRoute(async (req, res) => {
     const outcome = await submitForm(req.session!.userId, scopeOf(req), req.params.commandId!, req.body?.values);

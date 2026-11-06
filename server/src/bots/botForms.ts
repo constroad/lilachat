@@ -10,6 +10,7 @@ import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botMode
 import { channelOf, personOf } from './botTriggers.js';
 import { shrinkPhotoBuffer } from '../photoShrink.js';
 import { stampPhoto } from './photoStamp.js';
+import { placeNameOf } from '../placeName.js';
 import { signedFormFileUrl, verifyFileToken } from './botFiles.js';
 
 /**
@@ -76,7 +77,8 @@ export async function openRun(userId: Types.ObjectId, scope: CommandScope, comma
 /** The live selfie (pending 94): the server burns ITS hour and the place into it; a photo it cannot read goes as it came. */
 async function stamped(file: { originalname: string; mimetype: string; buffer: Buffer }, location: GeoPoint | undefined): Promise<{ fileName: string; mimeType: string; bytes: Buffer }> {
   try {
-    const photo = await stampPhoto(file.buffer, photoStampLines({ at: new Date(), ...(location ? { location } : {}) }));
+    const place = location ? await placeNameOf(location) : null;
+    const photo = await stampPhoto(file.buffer, photoStampLines({ at: new Date(), ...(location ? { location } : {}), place }));
     console.log(`[forms] selfie sellada ${photo.log}`);
     return { fileName: file.originalname.replace(/\.\w+$/, '') + '.jpg', mimeType: photo.mimeType, bytes: photo.bytes };
   } catch (error) {
@@ -100,6 +102,13 @@ async function shrunk(file: { originalname: string; mimetype: string; buffer: Bu
   }
   console.log(`[forms] foto ${photo.log}`);
   return { fileName: photo.fileName, mimeType: photo.mimeType, bytes: photo.bytes };
+}
+
+/** The address of where the person stands, for the camera of an open form. */
+export async function formPlace(userId: Types.ObjectId, scope: CommandScope, commandId: string, point: GeoPoint) {
+  const run = await openRun(userId, scope, commandId);
+  if ('error' in run) return run;
+  return { place: await placeNameOf(point) };
 }
 
 export async function storeFormPhoto(userId: Types.ObjectId, scope: CommandScope, commandId: string, file: { originalname: string; mimetype: string; size: number; buffer: Buffer }, stamp?: { location?: GeoPoint }): Promise<{ fileId: string } | ReturnType<typeof fail>> {

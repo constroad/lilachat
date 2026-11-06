@@ -1,5 +1,5 @@
 import sharp from 'sharp';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHash } from 'node:crypto';
 import type { CommandNotice } from '@lilachat/shared';
 import { createServer, type Server, type ServerResponse } from 'node:http';
@@ -19,6 +19,10 @@ import { configureFormFiles, FormFileModel } from './botForms.js';
 import { forgetBots } from './botRegistry.js';
 import { sha256 } from './botSecrets.js';
 import { openEveryItem } from './testItems.js';
+import { placeNameOf } from '../placeName.js';
+
+// The provider of addresses is a real service: these routes never call it.
+vi.mock('../placeName.js', () => ({ placeNameOf: vi.fn(async () => null) }));
 
 /** App forms (R160, `specs/BOTS-API.spec.md` §c-ter): Inframaq's real `registrar_marca`. */
 let mongo: MongoMemoryServer;
@@ -169,6 +173,28 @@ describe('an app answers a command with a form', () => {
     // Assert
     expect(done.body).toMatchObject({ commandId, outcome: 'posted' });
     expect(done.body.response).toBeUndefined();
+  });
+
+  it('the camera of an open form reads the address of where the person stands (José 06/11)', async () => {
+    // Arrange
+    vi.mocked(placeNameOf).mockResolvedValueOnce('Avenida Alfonso Ugarte 123, Breña, Lima');
+    const commandId = await openForm();
+    const path = `/api/chats/${channel}/commands/${commandId}/place`;
+    // Act
+    const reply = await request(app).get(path).query({ lat: -12.0464, lng: -77.0428, precision: 12 }).set(asAna).expect(200);
+    // Assert
+    expect(reply.body).toEqual({ place: 'Avenida Alfonso Ugarte 123, Breña, Lima' });
+    expect(vi.mocked(placeNameOf)).toHaveBeenLastCalledWith({ lat: -12.0464, lng: -77.0428, precision: 12 });
+  });
+
+  it('the address asks for a real point, and only the one who opened the form may read it', async () => {
+    // Arrange
+    const commandId = await openForm();
+    const path = `/api/chats/${channel}/commands/${commandId}/place`;
+    // Act and assert
+    await request(app).get(path).query({ lat: 'x', lng: -77, precision: 12 }).set(asAna).expect(400);
+    await request(app).get(path).query({ lat: -12, lng: -77, precision: 12 }).expect(401);
+    await request(app).get(`/api/chats/${channel}/commands/${new Types.ObjectId()}/place`).query({ lat: -12, lng: -77, precision: 12 }).set(asAna).expect(404);
   });
 
   it('the live selfie comes back stamped with the hour and the place; one it cannot read goes as it came (pending 94)', async () => {

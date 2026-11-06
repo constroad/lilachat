@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { answerOfOutcome, formSubmitOutcome, giveUpPending, giveUpWaiting, markWaiting, noticeIsFor, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, WRITE_GIVE_UP_MS, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type ShortcutRow, type ShortcutValues } from '@lilachat/shared';
 import type { ApiResult } from '../../api';
 import { currentSocket } from '../../useSocket';
-import { previewAppForm, refreshAppForm, runShortcut, submitAppForm, uploadFormPhoto } from './commandsApi';
+import { previewAppForm, readFormPlace, refreshAppForm, runShortcut, submitAppForm, uploadFormPhoto } from './commandsApi';
 
 export type AppAnswers = ReturnType<typeof useAppAnswers>;
 
@@ -52,6 +52,10 @@ export function useAppAnswers(params: { jwt?: string; scope: CommandScope | null
     [jwt, scope, track]
   );
 
+  const placeOf = useCallback(
+    (commandId: string, point: GeoPoint) => (jwt && scopeRef.current ? readFormPlace(jwt, scopeRef.current, commandId, point) : Promise.resolve(null)),
+    [jwt]
+  );
   const uploadPhoto = useCallback(
     (commandId: string, file: Blob, stamp?: GeoPoint) => (jwt && scope ? uploadFormPhoto(jwt, scope, commandId, file, stamp) : Promise.resolve({ ok: false as const, message: 'Sin sesión.' })),
     [jwt, scope]
@@ -140,5 +144,5 @@ export function useAppAnswers(params: { jwt?: string; scope: CommandScope | null
     };
   }, []);
   const openForm = answers.find((entry) => entry.commandId === openFormId && entry.state === 'form') ?? null;
-  return { answers, track, runAction, uploadPhoto, submitForm, refreshForm, previewForm, dismiss, removeAnswer, say, openForm, showForm: setOpenFormId };
+  return { answers, track, runAction, placeOf, uploadPhoto, submitForm, refreshForm, previewForm, dismiss, removeAnswer, say, openForm, showForm: setOpenFormId };
 }

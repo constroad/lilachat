@@ -1,8 +1,11 @@
 import { useState, type ReactNode } from 'react';
 import { Download, Share, Smartphone, SquarePlus } from 'lucide-react';
+import { ENLACE_DE_DESCARGA } from '@lilachat/shared';
 import { Overlay } from '../ui/Overlay';
+import { installOfferFor } from './installOffer';
 import { useInstallPrompt } from './installPrompt';
 import { isOutsideSafari, needsIosInstall } from './iosInstall';
+import { useHasAndroidApp } from './useHasAndroidApp';
 
 const STEPS: { Icon: typeof Share; title: string; hint: string }[] = [
   { Icon: Share, title: 'Toca Compartir en Safari', hint: 'Es el cuadrado con la flecha hacia arriba. Si no lo ves, toca primero «…» junto a la dirección.' },
@@ -44,9 +47,10 @@ export function IphoneInstallGuide({ onSkip }: { onSkip: () => void }) {
 
 const ROW = 'flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-left text-sm hover:bg-background';
 
-/** Ajustes: the browser's own prompt where it exists; on iPhone, the guide. */
-export function InstallRow({ onDone }: { onDone: () => void }): ReactNode {
+/** Ajustes, always there when the strip is gone: the browser's own prompt where it exists; on iPhone, the guide; an Android phone without it, the APK. */
+export function InstallRow({ jwt, onDone }: { jwt: string; onDone: () => void }): ReactNode {
   const { canInstall, install } = useInstallPrompt();
+  const hasAndroidApp = useHasAndroidApp(jwt);
   const [guide, setGuide] = useState(false);
   if (needsIosInstall()) {
     return (
@@ -55,6 +59,9 @@ export function InstallRow({ onDone }: { onDone: () => void }): ReactNode {
         {guide ? <Overlay title="Instalar en tu iPhone" onClose={() => setGuide(false)}><IphoneInstallSteps /></Overlay> : null}
       </>
     );
+  }
+  if (installOfferFor(navigator, hasAndroidApp, canInstall) === 'android') {
+    return <a data-testid="btn-descargar-apk" href={ENLACE_DE_DESCARGA} target="_blank" rel="noreferrer" onClick={onDone} className={ROW}><Download size={16} />Descargar la app de Lilachat</a>;
   }
   if (!canInstall) return null;
   return <button type="button" data-testid="btn-instalar" onClick={() => void install().then(onDone)} className={ROW}><Download size={16} />Instalar Lilachat en este dispositivo</button>;

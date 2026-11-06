@@ -15370,3 +15370,19 @@ de Portal (1600 px, calidad 0.78, 1 MB). Portal recomprime al recibir (1600 px,
 JPEG q82).
 
 Sin verificar al escribir esto: el gesto en un teléfono físico.
+
+## Nombre de perfil hasta 60 letras (José 06/11)
+
+Una persona de un espacio no podía crear su usuario: un nombre completo de 31 letras
+daba «Hasta 25 letras». El error salía debajo de «Entras con <correo>» y parecía del
+correo, pero era del nombre. El correo no se valida en esa pantalla.
+
+- `MAX_NOMBRE_DE_PERFIL` pasa a 60: dos nombres y dos apellidos entran.
+- El error va debajo del campo del nombre, en APK y web.
+- Por qué le volvía a pedir el nombre: sin nombre guardado, `owesItsName` sigue dando
+  verdadero. La foto sí se guarda sola, así que la cuenta parecía completa.
+- El server valida con `validarNombreDePerfil`: el arreglo llega con el despliegue, sin
+  esperar el OTA.
+
+Sin verificar: la cuenta real. No se leyó la base; se dedujo del código y de la captura.
+

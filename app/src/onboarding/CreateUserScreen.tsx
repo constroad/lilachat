@@ -78,13 +78,14 @@ export function CreateUserScreen(props: { credential: Credential; email: string 
 
         <Text className="mb-2 mt-7 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Nombre completo</Text>
         <TextInput testID="input-nombre-completo" className="h-[52px] rounded-lg border border-outline/20 bg-surface-variant/40 px-4 text-base text-on-surface" placeholder="Nombre y apellido" placeholderTextColor={colors.outline} autoCapitalize="words" autoComplete="name" value={name} onChangeText={setName} />
+        {/* Under the field it speaks of: below the email it read as a complaint about the email (José 06/11). */}
+        {error ? <Text testID="error-crea-usuario" className="mt-2 text-sm text-error">{error}</Text> : null}
         {props.email ? (
           <View className="mt-3 flex-row items-center gap-2">
             <Mail size={16} color={colors['on-surface-variant']} />
             <Text className="min-w-0 flex-1 text-[13px] text-on-surface-variant" numberOfLines={1}>Entras con <Text className="font-medium text-on-surface">{props.email}</Text></Text>
           </View>
         ) : null}
-        {error ? <Text testID="error-crea-usuario" className="mt-3 text-sm text-error">{error}</Text> : null}
 
         <View className="min-h-8 flex-1" />
         <Pressable testID="btn-entrar-espacio" accessibilityRole="button" disabled={!ready} onPress={() => void finish()} className={`min-h-[52px] items-center justify-center rounded-lg ${ready ? 'bg-primary' : 'bg-primary/30'}`}>

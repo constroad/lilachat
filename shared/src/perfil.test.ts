@@ -7,6 +7,13 @@ describe('validarNombreDePerfil', () => {
     expect(validarNombreDePerfil('  José   Zamora ')).toEqual({ ok: true, nombre: 'José Zamora' });
   });
 
+  it('a full name with two names and two surnames fits (José 06/11: 31 letters were refused and the account never got its name)', () => {
+    // Act
+    const checked = validarNombreDePerfil('Fernando Eduardo Castillo Rivera');
+    // Assert
+    expect(checked).toEqual({ ok: true, nombre: 'Fernando Eduardo Castillo Rivera' });
+  });
+
   it('vacío o de espacios: no hay nombre', () => {
     expect(validarNombreDePerfil('   ').ok).toBe(false);
   });

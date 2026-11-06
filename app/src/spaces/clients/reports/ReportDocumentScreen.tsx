@@ -15,7 +15,7 @@ import { Pill, ProgressCard, QueueCard, SectionCard } from './ReportSections';
 import { useFieldDocument } from './useFieldDocument';
 import { useReportForms } from './useReportForms';
 
-type Props = { target: ServiceAskTarget; chatId: string; service: SpaceClientService; type: string; portalUrl?: string; onClose: (changed: boolean) => void };
+type Props = { target: ServiceAskTarget; chatId: string; service: SpaceClientService; type: string; /** The draft a row asked to continue. */ reportId?: string; portalUrl?: string; onClose: (changed: boolean) => void };
 
 /** Kicker, title and state (design j-02): the type over the service, the pill at the right. */
 function ReportHeader({ kicker, title, report, onBack }: { kicker: string; title: string; report: FieldDocument | null; onBack: () => void }) {
@@ -115,8 +115,8 @@ function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems, onRe
 
 /** The state of the screen: the document, the open tramos list, «Publicar» and Android's back. */
 function useReportScreen(props: Props) {
-  const { target, chatId, service, type, onClose } = props;
-  const document = useFieldDocument({ spaceId: target.spaceId, clientId: target.clientId, chatId, serviceId: service.id, type });
+  const { target, chatId, service, type, reportId, onClose } = props;
+  const document = useFieldDocument({ spaceId: target.spaceId, clientId: target.clientId, chatId, serviceId: service.id, type, ...(reportId ? { reportId } : {}) });
   const forms = useReportForms(target, chatId, service.id, document.actions.reload);
   const [itemsOf, setItemsOf] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);

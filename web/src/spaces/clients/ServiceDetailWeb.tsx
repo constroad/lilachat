@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { ChevronLeft, ExternalLink, FilePlus, FileText } from 'lucide-react';
-import { CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, openingSheets, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { draftToContinue, CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, openingSheets, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { usePortalFileViewer } from './PortalFileViewer';
 import type { OpenSheetFile } from './RecordSheetWeb';
 import { RecordSheetWeb } from './RecordSheetWeb';
@@ -119,7 +119,7 @@ function TabBody({ detail, tab, onOpen, onOpenFile }: { detail: ServiceDetail; t
   );
 }
 
-function DetailTabs({ detail, target, serviceId, links, seesMoney, onReported, onCreateReport, startTab, startOrderId }: { startOrderId?: string; detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; links?: ChannelLinks; seesMoney: boolean; onReported: () => void; onCreateReport: () => void; startTab: DetailTabKey }) {
+function DetailTabs({ detail, target, serviceId, links, seesMoney, onReported, onCreateReport, onContinueReport, startTab, startOrderId }: { onContinueReport: (draft: { type: string; reportId: string }) => void; startOrderId?: string; detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; links?: ChannelLinks; seesMoney: boolean; onReported: () => void; onCreateReport: () => void; startTab: DetailTabKey }) {
   const [tab, setTab] = useState<DetailTabKey>(startTab);
   const viewer = usePortalFileViewer();
   // An order's sheet opens its dispatches on top (José 01/11); closing goes back one.
@@ -129,7 +129,11 @@ function DetailTabs({ detail, target, serviceId, links, seesMoney, onReported, o
   const top = opened.at(-1);
   const sheet = top ? detailSheet(detail, top.tab, top.id) : null;
   const reportPdf = useReportPdf(target, serviceId);
-  const openRow = (id: string) => setOpened([{ tab, id }]);
+  const openRow = (id: string) => {
+    const draft = tab === 'reports' ? draftToContinue(detail, id) : null;
+    if (draft) onContinueReport(draft);
+    else setOpened([{ tab, id }]);
+  };
   const openDispatch = (id: string) => setOpened((before) => [...before, { tab: 'dispatches', id }]);
   const close = () => {
     reportPdf.stop();
@@ -167,23 +171,23 @@ export function ServiceDetailWeb(props: { target: ServiceAskTarget; chatId: stri
   const answer = useServiceAsk('detail', props.target, props.service.id, round);
   // José 05/11: a field report is filled here, not in Portal's public page (spec INFORMES-DESDE-LILACHAT); it takes the detail's place.
   const [picker, setPicker] = useState(false);
-  const [reportType, setReportType] = useState<string | null>(null);
+  const [report, setReport] = useState<{ type: string; reportId?: string } | null>(null);
   // Back from the report, the detail opens on Informes, where it was.
   const [startTab, setStartTab] = useState<DetailTabKey>('orders');
   const portalUrl = answer?.ok ? answer.value.service.url : undefined;
   const closeReport = useCallback((changed: boolean) => {
-    setReportType(null);
+    setReport(null);
     setStartTab('reports');
     if (changed) askAgain();
   }, [askAgain]);
-  if (reportType) return <ReportDocumentWeb target={props.target} chatId={props.chatId} service={props.service} type={reportType} portalUrl={portalUrl} onClose={closeReport} />;
+  if (report) return <ReportDocumentWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} portalUrl={portalUrl} onClose={closeReport} />;
   return (
     <div data-testid="detalle-servicio" className="mx-auto flex max-w-3xl flex-col gap-3">
       <button type="button" data-testid="volver-a-servicios" onClick={props.onBack} className="inline-flex items-center gap-1 self-start text-sm font-semibold text-primary"><ChevronLeft size={16} /> Servicios</button>
       <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
       {answer === null ? <div data-testid="detalle-cargando" className="h-48 animate-pulse rounded-xl bg-surface" /> : null}
-      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} startOrderId={startTab === 'orders' ? props.startOrderId : undefined} /> : null}
-      {picker ? <CreateReportDialog portalUrl={portalUrl} onPick={(code) => { setPicker(false); setReportType(code); }} onClose={() => setPicker(false)} /> : null}
+      {answer?.ok ? <DetailTabs onContinueReport={setReport} detail={answer.value} target={props.target} serviceId={props.service.id} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} startOrderId={startTab === 'orders' ? props.startOrderId : undefined} /> : null}
+      {picker ? <CreateReportDialog portalUrl={portalUrl} onPick={(code) => { setPicker(false); setReport({ type: code }); }} onClose={() => setPicker(false)} /> : null}
       {answer && !answer.ok ? (
         <div data-testid="detalle-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm">
           <p className="mb-2 font-semibold">{answer.message}</p>

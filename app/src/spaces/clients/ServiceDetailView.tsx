@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronLeft, ExternalLink, FilePlus, FileText } from 'lucide-react-native';
-import { CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, openingSheets, moreInPortal, orphanDispatchesOf, reportGroups, type ChannelLinks, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { draftToContinue, CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, openingSheets, moreInPortal, orphanDispatchesOf, reportGroups, type ChannelLinks, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
 import { RecordSheet } from './RecordSheet';
@@ -146,14 +146,18 @@ function ReportAction({ target, serviceId, onAnswered }: { target: ServiceAskTar
   return <SpaceActionButton jwt={target.jwt} spaceId={target.spaceId} values={serviceValuesOf(serviceId)} onAnswered={onAnswered} actionKey={SERVICE_REPORT_ACTION} label="Generar informe de servicio" testID="generar-informe-servicio" Icon={FileText} />;
 }
 
-function DetailTabs({ detail, target, serviceId, onOpenFile, links, seesMoney, onReported, onCreateReport, startTab, startOrderId }: { startOrderId?: string; onCreateReport: () => void; startTab: DetailTabKey; detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void; links?: ChannelLinks; seesMoney: boolean; onReported: () => void }) {
+function DetailTabs({ detail, target, serviceId, onOpenFile, links, seesMoney, onReported, onCreateReport, onContinueReport, startTab, startOrderId }: { onContinueReport: (draft: { type: string; reportId: string }) => void; startOrderId?: string; onCreateReport: () => void; startTab: DetailTabKey; detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void; links?: ChannelLinks; seesMoney: boolean; onReported: () => void }) {
   const [tab, setTab] = useState<DetailTabKey>(startTab);
   // An order's sheet opens its dispatches on top (José 01/11); closing goes back one.
   const [opened, setOpened] = useState<OpenSheet[]>(() => openingSheets(detail, startOrderId));
   const reportPdf = useReportPdf(target, serviceId, onOpenFile);
   const top = opened.at(-1);
   const sheet = top ? detailSheet(detail, top.tab, top.id) : null;
-  const openRow = (id: string) => setOpened([{ tab, id }]);
+  const openRow = (id: string) => {
+    const draft = tab === 'reports' ? draftToContinue(detail, id) : null;
+    if (draft) onContinueReport(draft);
+    else setOpened([{ tab, id }]);
+  };
   const openDispatch = (id: string) => setOpened((before) => [...before, { tab: 'dispatches', id }]);
   const close = () => {
     reportPdf.stop();
@@ -208,16 +212,16 @@ export function ServiceDetailView(props: { target: ServiceAskTarget; chatId: str
   }, [onBack]);
   // José 05/11: a field report is filled here, not in Portal's public page (spec INFORMES-DESDE-LILACHAT); it takes the detail's place.
   const [picker, setPicker] = useState(false);
-  const [reportType, setReportType] = useState<string | null>(null);
+  const [report, setReport] = useState<{ type: string; reportId?: string } | null>(null);
   // Back from the report, the detail opens on Informes, where it was.
   const [startTab, setStartTab] = useState<DetailTabKey>('orders');
   const portalUrl = answer?.ok ? answer.value.service.url : undefined;
   const closeReport = useCallback((changed: boolean) => {
-    setReportType(null);
+    setReport(null);
     setStartTab('reports');
     if (changed) askAgain();
   }, [askAgain]);
-  if (reportType) return <ReportDocumentScreen target={props.target} chatId={props.chatId} service={props.service} type={reportType} portalUrl={portalUrl} onClose={closeReport} />;
+  if (report) return <ReportDocumentScreen target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} portalUrl={portalUrl} onClose={closeReport} />;
   return (
     <ScrollView testID="detalle-servicio" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
       <Pressable testID="volver-a-servicios" onPress={onBack} className="min-h-[40px] flex-row items-center gap-1 self-start">
@@ -226,8 +230,8 @@ export function ServiceDetailView(props: { target: ServiceAskTarget; chatId: str
       </Pressable>
       <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
       {answer === null ? <Skeleton /> : null}
-      {answer?.ok ? <DetailTabs detail={answer.value} target={props.target} serviceId={props.service.id} onOpenFile={files.open} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} startOrderId={startTab === 'orders' ? props.startOrderId : undefined} /> : null}
-      <CreateReportSheet visible={picker} portalUrl={portalUrl} onPick={(code) => { setPicker(false); setReportType(code); }} onClose={() => setPicker(false)} />
+      {answer?.ok ? <DetailTabs onContinueReport={setReport} detail={answer.value} target={props.target} serviceId={props.service.id} onOpenFile={files.open} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} startOrderId={startTab === 'orders' ? props.startOrderId : undefined} /> : null}
+      <CreateReportSheet visible={picker} portalUrl={portalUrl} onPick={(code) => { setPicker(false); setReport({ type: code }); }} onClose={() => setPicker(false)} />
       {files.notice ? <Text className="text-center text-[13px] text-error">{files.notice}</Text> : null}
       {files.viewer}
       {answer && !answer.ok ? (

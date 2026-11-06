@@ -1,3 +1,4 @@
+import type { ServiceDetail } from './serviceDetail.js';
 import { FORMS_LEVEL } from './appForms.js';
 import type { EphemeralAnswer } from './botCommands.js';
 import { fieldDocumentOf, type DocumentSection, type DocumentStatus, type FieldDocument, type RepeatSection, type SectionPath, type SectionState } from './fieldDocument.js';
@@ -24,6 +25,16 @@ export const REPORT_TYPE_OPTIONS: readonly ReportTypeOption[] = [
   { code: 'FRE-PAV', label: 'Fresado de pavimento', caption: 'Área fresada y profundidad', opensHere: false },
   { code: 'SOL-IMP', label: 'Solicitud de imprimación', caption: 'Pedido previo al riego, con firma', opensHere: false },
 ];
+
+const DRAFT_LABEL = 'borrador';
+
+/** A draft of a type filled here reopens its document; its row used to offer only the PDF (José 06/11). Anything else keeps its sheet. */
+export function draftToContinue(detail: Pick<ServiceDetail, 'reports'>, id: string): { type: string; reportId: string } | null {
+  const report = detail.reports.find((one) => one.id === id);
+  if (report?.status.label.toLowerCase() !== DRAFT_LABEL) return null;
+  const option = REPORT_TYPE_OPTIONS.find((one) => one.opensHere && (report.typeLabel === one.label || report.title.startsWith(one.label)));
+  return option ? { type: option.code, reportId: report.id } : null;
+}
 
 /** Who keeps the report: the «está trabajando…» card names it before Portal answers. */
 export const REPORT_KEEPER = 'Portal';

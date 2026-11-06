@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fieldDocumentOf, type FieldDocument, type RepeatItem, type RepeatSection } from './fieldDocument';
 import { reportFormAnswer } from './reportSaves';
-import { ARRIVED_LABEL, arrivalHourOf, dataSectionOf, isUnitsRepeat, photoSlotsOf, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf } from './reportUnits';
+import { waitingLayoutOf, ARRIVED_LABEL, arrivalHourOf, dataSectionOf, isUnitsRepeat, photoSlotsOf, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf } from './reportUnits';
 
 /** The units of a control de pista as Portal lists them (06/11): rows by arrival, then the dispatches not here yet. */
 const form = (name: string) => ({ type: 'object', properties: { [name]: { type: 'string', title: name } } });
@@ -121,6 +121,15 @@ describe('the hour of «Llegó»', () => {
     expect(arrivalHourOf(waiting({}), path, new Date(2026, 10, 6, 7, 5).toISOString())).toBe('07:05');
   });
 
+  it('a truck the plant still shows there takes the hour of the tap too (José 06/11)', () => {
+    // Arrange
+    const document = waiting({});
+    const repeat = document.sections.find((one) => one.id === 'unidades');
+    if (repeat?.kind === 'repeat') repeat.items.forEach((item) => { if (item.id === path.itemId) item.summary = ['En planta']; });
+    // Act and assert
+    expect(arrivalHourOf(document, path, noon)).toBe('12:22');
+  });
+
   it('leaves alone a unit already on site, a photo and anything outside a unit', () => {
     expect(arrivalHourOf(fieldDocumentOf(body)!, { sectionId: 'unidades', itemId: 'd2', key: 'datos' }, noon)).toBeUndefined();
     expect(arrivalHourOf(fieldDocumentOf(body)!, { sectionId: 'unidades', itemId: 'd2', key: 'foto-ingreso' }, noon)).toBeUndefined();
@@ -137,3 +146,20 @@ describe('the hour of «Llegó»', () => {
     expect(propertiesOf(waiting({ horaLlegada: '11:58' }), '12:22')?.horaLlegada).toMatchObject({ default: '11:58' });
   });
 });
+
+describe('waitingLayoutOf (with several units on site the rows fell two screens down)', () => {
+  const groupsWith = (onSite: number, waiting: number) => ({ onSite: Array.from({ length: onSite }), waiting: Array.from({ length: waiting }) });
+
+  it('one unit on site leaves the rows in sight', () => {
+    expect(waitingLayoutOf(groupsWith(1, 6))).toBe('rows');
+  });
+
+  it('from two on site the plates go in a strip on top', () => {
+    expect(waitingLayoutOf(groupsWith(2, 6))).toBe('strip');
+  });
+
+  it('nobody on the way needs no strip', () => {
+    expect(waitingLayoutOf(groupsWith(4, 0))).toBe('rows');
+  });
+});
+

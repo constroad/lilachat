@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Camera, LocateFixed, MapPin, RefreshCw } from 'lucide-react';
-import { geoPointOf, mapTilesFor, precisionLabel, type FormField, type GeoPoint } from '@lilachat/shared';
+import { geoPointOf, mapTilesFor, precisionLabel, type FormField, type GeoPoint, HOUR_STAMP, type FormPhotoStamp } from '@lilachat/shared';
 import { FieldError } from '../../ui/Overlay';
 import { PlaceButton } from './PlaceButton';
 import { SearchableChoice } from './SearchableChoice';
@@ -183,7 +183,7 @@ export function LocationField({ field, value, error, onChange }: FieldProps<'loc
 }
 
 /** The photo goes up the moment it is picked; the form carries its id (`uploadFormPhoto`). */
-export function PhotoField({ field, value, error, onChange, upload }: FieldProps<'photo'> & { upload: (file: File) => Promise<{ ok: true; fileId: string } | { ok: false; message: string }> }) {
+export function PhotoField({ field, value, error, onChange, upload }: FieldProps<'photo'> & { upload: (file: File, stamp?: FormPhotoStamp) => Promise<{ ok: true; fileId: string } | { ok: false; message: string }> }) {
   const input = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [status, setStatus] = useState<{ busy: boolean; message?: string }>({ busy: false });
@@ -195,7 +195,7 @@ export function PhotoField({ field, value, error, onChange, upload }: FieldProps
     setPreview(URL.createObjectURL(file));
     setStatus({ busy: true });
     onChange(undefined);
-    const uploaded = await upload(file);
+    const uploaded = await upload(file, HOUR_STAMP);
     if (uploaded.ok) onChange(uploaded.fileId);
     setStatus({ busy: false, ...(uploaded.ok ? {} : { message: uploaded.message }) });
   };

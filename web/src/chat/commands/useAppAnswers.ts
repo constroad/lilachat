@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { answerOfOutcome, formSubmitOutcome, giveUpPending, giveUpWaiting, markWaiting, noticeIsFor, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, WRITE_GIVE_UP_MS, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type ShortcutRow, type ShortcutValues } from '@lilachat/shared';
+import { answerOfOutcome, formSubmitOutcome, giveUpPending, giveUpWaiting, markWaiting, noticeIsFor, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, WRITE_GIVE_UP_MS, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type ShortcutRow, type ShortcutValues } from '@lilachat/shared';
 import type { ApiResult } from '../../api';
 import { currentSocket } from '../../useSocket';
 import { previewAppForm, readFormPlace, refreshAppForm, runShortcut, submitAppForm, uploadFormPhoto } from './commandsApi';
@@ -57,7 +57,7 @@ export function useAppAnswers(params: { jwt?: string; scope: CommandScope | null
     [jwt]
   );
   const uploadPhoto = useCallback(
-    (commandId: string, file: Blob, stamp?: GeoPoint) => (jwt && scope ? uploadFormPhoto(jwt, scope, commandId, file, stamp) : Promise.resolve({ ok: false as const, message: 'Sin sesión.' })),
+    (commandId: string, file: Blob, stamp?: FormPhotoStamp) => (jwt && scope ? uploadFormPhoto(jwt, scope, commandId, file, stamp) : Promise.resolve({ ok: false as const, message: 'Sin sesión.' })),
     [jwt, scope]
   );
 

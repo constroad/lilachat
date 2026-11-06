@@ -194,6 +194,12 @@ function numberLimits(property: FormSchemaProperty): Pick<Extract<FormField, { k
   };
 }
 
+/** A default as a number. A refused form comes back with what was typed, «148» or «5,2»; an empty text is no value, not 0. */
+function numberOf(value: unknown): number | undefined {
+  const parsed = typeof value === 'string' && value.trim() ? Number(value.replace(',', '.')) : value;
+  return typeof parsed === 'number' && Number.isFinite(parsed) ? parsed : undefined;
+}
+
 function fieldOf(name: string, property: FormSchemaProperty, required: boolean): FormField | string {
   const input = property['x-input'];
   if (input !== undefined && !INPUTS.includes(input)) return `El campo «${name}» pide x-input «${input}», que Lilachat no sabe dibujar.`;
@@ -212,7 +218,8 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
     return { ...base, ...initial, kind: 'choice', options, ...choiceLayout(options), ...(property['x-avatar'] === 'initials' ? { initials: true as const } : {}) };
   }
   if (property.type === 'number' || property.type === 'integer') {
-    const initial = typeof property.default === 'number' && Number.isFinite(property.default) ? { initial: property.default } : {};
+    const given = numberOf(property.default);
+    const initial = given === undefined ? {} : { initial: given };
     return { ...base, ...initial, kind: 'number', ...(property['x-unit'] ? { unit: line(property['x-unit'], 12) } : {}), ...numberLimits(property), integer: property.type === 'integer' };
   }
   const mode = property.type === 'string' ? dateModeOf(property.format) : null;

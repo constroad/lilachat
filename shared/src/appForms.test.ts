@@ -373,3 +373,20 @@ describe('a checkbox (José 06/11: send a photo to the group only if asked)', ()
     expect(checked).toMatchObject({ ok: false });
   });
 });
+
+describe('a number that comes back as text (a refused form on the web keeps what was typed)', () => {
+  const form = (given: unknown): AppForm => ({ id: 'f', title: 'F', schema: { type: 'object', properties: { temperatura: { type: 'number', title: 'Temperatura', default: given } as FormSchemaProperty } } });
+
+  it('«148» and «5,2» reopen as the numbers they are', () => {
+    expect(formFields(form('148'))[0]).toMatchObject({ initial: 148 });
+    expect(formFields(form('5,2'))[0]).toMatchObject({ initial: 5.2 });
+    expect(formFields(form(150))[0]).toMatchObject({ initial: 150 });
+  });
+
+  it('an empty text or one that is not a number starts empty, never at 0', () => {
+    expect(formFields(form(''))[0]).not.toHaveProperty('initial');
+    expect(formFields(form('  '))[0]).not.toHaveProperty('initial');
+    expect(formFields(form('abc'))[0]).not.toHaveProperty('initial');
+  });
+});
+

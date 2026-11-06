@@ -1,4 +1,4 @@
-import { FORMS_LEVEL, commandScopePath, formSubmitFailure, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
+import { FORMS_LEVEL, HOUR_STAMP, commandScopePath, formSubmitFailure, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoStamp, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
 import { api } from '../../api';
 import { shrinkPhotoBlob } from '../shrinkPhoto';
 
@@ -43,12 +43,13 @@ export async function readFormPlace(jwt: string, scope: CommandScope, commandId:
 }
 
 /** A form's photo, the moment it is picked, lighter with Portal's standard (28/10): the form then carries its id. */
-export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandId: string, file: Blob, stamp?: GeoPoint): Promise<FormPhotoUpload> {
+export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandId: string, file: Blob, stamp?: FormPhotoStamp): Promise<FormPhotoUpload> {
   const photo = await shrinkPhotoBlob(file, file instanceof File ? file.name : 'foto.jpg');
   const body = new FormData();
   body.append('file', photo.blob, photo.name);
   // A signing's selfie: the server burns its hour and this place into it (pending 94).
-  if (stamp) {
+  if (stamp === HOUR_STAMP) body.append('stamp', HOUR_STAMP);
+  else if (stamp) {
     body.append('stamp', '1');
     body.append('lat', String(stamp.lat));
     body.append('lng', String(stamp.lng));

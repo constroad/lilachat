@@ -184,18 +184,30 @@ function stampDate(at: Date, timeZone: string): string {
   return `${part('weekday').replace('.', '')} ${part('day')}/${part('month')}/${part('year')} · ${part('hour')}:${part('minute')}`;
 }
 
+/** A time zone the phone or the space got wrong falls back to Lima: the stamp is never lost. */
+function stampDateOf(at: Date, timeZone: string = STAMP_TIME_ZONE): string {
+  try {
+    return stampDate(at, timeZone);
+  } catch {
+    return stampDate(at, STAMP_TIME_ZONE);
+  }
+}
+
+/** What a photo of the camera asks the server for: the day and the hour, nothing else (José 06/11: tank and materials). */
+export const HOUR_STAMP = 'hour';
+export type FormPhotoStamp = GeoPoint | typeof HOUR_STAMP;
+
 /**
  * The two lines burned into a form's photo (pending 94, José 23/10: a
  * watermark with the date, the hour and the place): the server writes them
  * with ITS clock, so the phone cannot fake the hour.
  */
+export function photoHourLines(params: { at: Date; timeZone?: string }): [string] {
+  return [stampDateOf(params.at, params.timeZone)];
+}
+
 export function photoStampLines(params: { at: Date; timeZone?: string; location?: GeoPoint; /** The address, when it arrived in time; otherwise the coordinates. */ place?: string | null }): [string, string] {
-  let date: string;
-  try {
-    date = stampDate(params.at, params.timeZone ?? STAMP_TIME_ZONE);
-  } catch {
-    date = stampDate(params.at, STAMP_TIME_ZONE);
-  }
+  const date = stampDateOf(params.at, params.timeZone);
   const { location } = params;
   const where = params.place ? cutAtWord(params.place, STAMP_PLACE_MAX) : location && `${location.lat.toFixed(STAMP_DECIMALS)}, ${location.lng.toFixed(STAMP_DECIMALS)}`;
   const place = location ? `${where} · ${precisionLabel(location)}` : 'Sin ubicación';

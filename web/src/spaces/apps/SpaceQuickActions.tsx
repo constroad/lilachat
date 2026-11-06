@@ -81,7 +81,7 @@ export function SpaceQuickActions(props: { jwt: string; spaceId: string; spaceNa
         </Overlay>
       ) : null}
       {answers.openForm ? (
-        <AppFormDialog key={formKeyOf(answers.openForm)} answer={answers.openForm} personName={loadPerfil()?.name} onSubmit={(values) => answers.submitForm(answers.openForm!, values)} onUpload={(file, stamp) => answers.uploadPhoto(answers.openForm!.commandId, file, stamp)} onPlace={(point) => answers.placeOf(answers.openForm!.commandId, point)} onRefresh={(draft) => answers.refreshForm(answers.openForm!, draft)} onPreview={(draft) => answers.previewForm(answers.openForm!, draft)} onClose={() => answers.dismiss(answers.openForm!.commandId)} />
+        <AppFormDialog key={formKeyOf(answers.openForm)} answer={answers.openForm} personName={loadPerfil()?.name} onSubmit={(values) => answers.submitForm(answers.openForm!, values)} onUpload={(file, stamp) => answers.uploadPhoto(answers.openForm!.commandId, file, stamp)} onPlace={(point) => answers.placeOf(answers.openForm!.commandId, point)} onRefresh={(draft) => answers.refreshForm(answers.openForm!, draft)} onPreview={(draft) => answers.previewForm(answers.openForm!, draft)} onClose={() => { setOpen(false); answers.dismiss(answers.openForm!.commandId); }} />
       ) : null}
     </>
   );

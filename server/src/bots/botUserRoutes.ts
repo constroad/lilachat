@@ -1,14 +1,14 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { Types } from 'mongoose';
-import { canManageMembers, normalizePeruPhone, toInternationalPhone, type CommandScope, type GeoPoint } from '@lilachat/shared';
+import { HOUR_STAMP, canManageMembers, normalizePeruPhone, toInternationalPhone, type CommandScope, type GeoPoint } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Message } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { crearLimiteDeIntentos } from '../limiteDeIntentos.js';
 import { asyncRoute, requireSession } from '../requireSession.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { commandGroupsOf, invokeCardCommand, invokeCommand, invokeShortcut, shareCommandAnswer } from './botCommands.js';
-import { FORM_PHOTO_MAX_BYTES, formPlace, readSignedFile, storeFormPhoto, submitForm } from './botForms.js';
+import { FORM_PHOTO_MAX_BYTES, formPlace, readSignedFile, storeFormPhoto, submitForm, type PhotoStampAsked } from './botForms.js';
 import { previewForm, refreshForm } from './botFormLive.js';
 import { appChannelsOf } from './botChannels.js';
 import { acceptAppScopes, revokeInstallation } from './botInstall.js';
@@ -99,8 +99,9 @@ export function buildBotUserRouter(): Router {
     return valid ? { lat: lat!, lng: lng!, precision: Math.round(precision!) } : null;
   };
   /** The live selfie asks for the stamp, with the place the form already has (pending 94). */
-  const stampOf = (body: unknown): { location?: GeoPoint } | undefined => {
+  const stampOf = (body: unknown): PhotoStampAsked | undefined => {
     const fields = (body ?? {}) as Record<string, unknown>;
+    if (fields.stamp === HOUR_STAMP) return { hourOnly: true };
     if (fields.stamp !== '1') return undefined;
     const location = pointOf(fields);
     return location ? { location } : {};

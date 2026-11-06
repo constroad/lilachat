@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { answeredSince, channelButtonRows, channelLinksOf, chatHasActionPlace, commandToWrite, evidenceLine, formSubmitOutcome, geoPointOf, linkActionOf, serviceValuesOf, photoStampLines, placedActionRow, precisionLabel, quickActionRows, shortcutRows, shortcutValuesOf, submitLabelOf } from './appActions.js';
+import { photoHourLines, answeredSince, channelButtonRows, channelLinksOf, chatHasActionPlace, commandToWrite, evidenceLine, formSubmitOutcome, geoPointOf, linkActionOf, serviceValuesOf, photoStampLines, placedActionRow, precisionLabel, quickActionRows, shortcutRows, shortcutValuesOf, submitLabelOf } from './appActions.js';
 import type { FormField } from './appForms.js';
 import type { CommandGroup, CommandOutcome } from './botCommands.js';
 
@@ -123,6 +123,15 @@ describe('the button and the foot of a form (design e-28)', () => {
     expect(evidenceLine([photo])).toBe('Se registra con tu foto');
     expect(evidenceLine([{ ...photo, multiple: true, max: 6 }])).toBe('Se registra con las fotos');
     expect(evidenceLine([choice])).toBe('');
+  });
+});
+
+describe('photoHourLines (José 06/11: tank and material photos carry when they were taken)', () => {
+  it('says the day and the hour where the space is, and nothing else', () => {
+    // Act
+    const lines = photoHourLines({ at: new Date('2026-10-23T23:51:00.000Z'), timeZone: 'America/Lima' });
+    // Assert
+    expect(lines).toEqual(['vie 23/10/2026 · 18:51']);
   });
 });
 

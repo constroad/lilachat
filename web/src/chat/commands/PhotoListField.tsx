@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
 import { Camera, Loader2, X } from 'lucide-react';
-import type { FormField } from '@lilachat/shared';
+import { HOUR_STAMP, type FormPhotoStamp, type FormField } from '@lilachat/shared';
 
 type PhotoList = Extract<FormField, { kind: 'photo' }>;
 type Shot = { key: string; preview: string; fileId: string | null };
-type Upload = (file: File) => Promise<{ ok: true; fileId: string } | { ok: false; message: string }>;
+type Upload = (file: File, stamp?: FormPhotoStamp) => Promise<{ ok: true; fileId: string } | { ok: false; message: string }>;
 
 /**
  * Several photos (José, 24/10: the tank tape and the material receipt): add,
@@ -27,7 +27,7 @@ export function PhotoListField({ field, error, onChange, upload }: { field: Phot
     let current = [...shots, ...picked.map((one) => one.shot)];
     setShots(current);
     for (const { file, shot } of picked) {
-      const uploaded = await upload(file);
+      const uploaded = await upload(file, field.gallery ? undefined : HOUR_STAMP);
       current = uploaded.ok ? current.map((one) => (one.key === shot.key ? { ...one, fileId: uploaded.fileId } : one)) : current.filter((one) => one.key !== shot.key);
       if (!uploaded.ok) setMessage(uploaded.message);
       setShots(current);

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, Image as ImageIcon, X } from 'lucide-react-native';
-import type { FormField } from '@lilachat/shared';
+import { HOUR_STAMP, type FormField, type FormPhotoStamp } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { CAMERA_DENIED, cameraAllowed, FormCamera, type CameraShot } from '../camara/FormCamera';
 import type { PhotoUpload } from './AppFormFields';
@@ -29,12 +29,12 @@ export function PhotoListField(props: { field: PhotoList; error?: string; onChan
     props.onChange(ids.length ? ids : undefined);
   };
   const [aiming, setAiming] = useState(false);
-  const keep = async (picked: CameraShot) => {
+  const keep = async (picked: CameraShot, stamp?: FormPhotoStamp) => {
     const shot: Shot = { key: `${Date.now()}`, uri: picked.uri, fileId: null };
     setAiming(false);
     setMessage(undefined);
     setShots((before) => [...before, shot]);
-    const uploaded = await props.upload(picked);
+    const uploaded = await props.upload(picked, stamp);
     setShots((before) => {
       const next = uploaded.ok ? before.map((one) => (one.key === shot.key ? { ...one, fileId: uploaded.fileId } : one)) : before.filter((one) => one.key !== shot.key);
       const ids = next.map((one) => one.fileId).filter((id): id is string => id !== null);
@@ -85,7 +85,7 @@ export function PhotoListField(props: { field: PhotoList; error?: string; onChan
         )}
       </View>
       {message ?? props.error ? <Text className="mt-1 text-[13px] text-error">{message ?? props.error}</Text> : null}
-      {aiming ? <FormCamera title={props.field.label} onShot={(shot) => void keep(shot)} onClose={() => setAiming(false)} /> : null}
+      {aiming ? <FormCamera title={props.field.label} onShot={(shot) => void keep(shot, HOUR_STAMP)} onClose={() => setAiming(false)} /> : null}
     </View>
   );
 }

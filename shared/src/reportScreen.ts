@@ -58,9 +58,9 @@ type Shot = { field: string; kept: KeptPhoto; place: DevicePlace };
 const photoFieldOf = (answer: EphemeralAnswer): string | undefined => Object.entries(answer.response?.form?.schema.properties ?? {}).find(([, property]) => property['x-input'] === 'photo')?.[0];
 
 /** The document as it should look: what Portal last said, with the queue over it. */
-function createDocumentFeed(queue: ReportQueue, ref: ReportRef, tell: () => void) {
+function createDocumentFeed(queue: ReportQueue, ref: ReportRef, tell: () => void, startId?: string) {
   let opened: OpenedReport | null = null;
-  let reportId: string | null = null;
+  let reportId: string | null = startId ?? null;
   let mine = savesOf(queue.snapshot().saves, ref);
   /** What reached Portal, until the document that has it arrives. */
   let held: ReportSave[] = [];
@@ -201,14 +201,15 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
   };
 }
 
-export function createReportScreen<P>(deps: ReportScreenDeps<P>, ref: ReportRef) {
+/** `startId`: the draft a row asked to continue; without it Portal decides which one opens. */
+export function createReportScreen<P>(deps: ReportScreenDeps<P>, ref: ReportRef, startId?: string) {
   const listeners = new Set<() => void>();
   let stopListening: (() => void) | null = null;
   const tell = () => {
     state = { ...feed.view(), form: forms.current() };
     listeners.forEach((listener) => listener());
   };
-  const feed = createDocumentFeed(deps.queue, ref, tell);
+  const feed = createDocumentFeed(deps.queue, ref, tell, startId);
   const reportNow = () => ({ document: state.draft?.ok ? state.draft.document : null, saves: feed.saves() });
   const forms = createFormSession(deps, ref, reportNow, tell);
   let state: ReportScreenState = { ...feed.view(), form: null };

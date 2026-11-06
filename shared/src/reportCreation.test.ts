@@ -3,7 +3,7 @@ import { FORMS_LEVEL } from './appForms';
 import { isFieldReport } from './clientAccess';
 import { fieldDocumentOf } from './fieldDocument';
 import { locationMapLink } from './sharedLocation';
-import { itemsLine, pageLine, placeFieldValue, progressLine, progressPercent, publishFormRequest, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, openPublishForm, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, staleAnswerIds, STATUS_BADGE, type TrackStart } from './reportCreation';
+import { draftToContinue, itemsLine, pageLine, placeFieldValue, progressLine, progressPercent, publishFormRequest, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, openPublishForm, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, staleAnswerIds, STATUS_BADGE, type TrackStart } from './reportCreation';
 
 /** A CTL-IMP as Portal answers it, with one tramo whose photos go through their own tool. */
 const form = (title: string) => ({ type: 'object', properties: { campo: { type: 'string', title } } });
@@ -182,3 +182,25 @@ describe('the units of a control de pista (06/11)', () => {
     expect(REPORT_TYPE_OPTIONS.find((option) => option.code === 'CTL-PIS')).toMatchObject({ caption: 'Llegada, temperaturas, escantillón y 4 fotos por volquete', opensHere: true });
   });
 });
+
+describe('draftToContinue (José 06/11: a draft row opened «Ver el PDF» and nothing else)', () => {
+  const draft = { id: 'r1', title: 'Control de imprimación', date: '2026-11-06', status: { label: 'Borrador', tone: 'neutral' as const } };
+
+  it('a draft of a type filled here reopens its document', () => {
+    expect(draftToContinue({ reports: [draft] }, 'r1')).toEqual({ type: 'CTL-IMP', reportId: 'r1' });
+  });
+
+  it('it reads the type from the label when the title is another', () => {
+    expect(draftToContinue({ reports: [{ ...draft, title: 'Tramo norte', typeLabel: 'Control de pista' }] }, 'r1')).toEqual({ type: 'CTL-PIS', reportId: 'r1' });
+  });
+
+  it('a published report keeps its sheet', () => {
+    expect(draftToContinue({ reports: [{ ...draft, status: { label: 'Completado', tone: 'ok' as const } }] }, 'r1')).toBeNull();
+  });
+
+  it('a type that lives in Portal keeps its sheet, and an unknown row opens nothing', () => {
+    expect(draftToContinue({ reports: [{ ...draft, title: 'Acta de conformidad' }] }, 'r1')).toBeNull();
+    expect(draftToContinue({ reports: [draft] }, 'r9')).toBeNull();
+  });
+});
+

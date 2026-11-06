@@ -172,6 +172,20 @@ describe('ReportDocumentWeb', () => {
     expect(formCalls(calls)).toEqual([]);
   });
 
+  it('with several units on site the plates go on top, and a truck the plant has not marked can arrive (José 06/11)', async () => {
+    // Arrange
+    const working = (id: string) => ({ id, title: `Unidad 1 · ${id}`, summary: [], results: [], sections: [{ id: 'datos', state: 'done', summary: ['Llegada 07:30'], values: {} }] });
+    const notHere = (id: string, summary: string[]) => ({ id, title: id, summary, results: [], sections: [{ id: 'datos', state: 'empty', summary: [], values: {} }] });
+    const units = { id: 'unidades', kind: 'repeat', title: 'Unidades', required: true, state: 'partial', summary: [], results: [], itemTitle: 'Unidad', addLabel: '', min: 0, units: true, template: [{ id: 'datos', title: 'Datos', required: true, form: 'ubicacion' }], items: [working('QAP-1'), working('QAP-2'), notHere('QAP-3', ['Salió 07:10']), notHere('QAP-4', ['En planta'])] };
+    serverWith({ document: { ...document, type: 'CTL-PIS', title: 'Control de pista', sections: [document.sections[0], units] } });
+    openReport();
+    fireEvent.click(await screen.findByTestId('seccion-unidades'));
+    // Assert
+    expect(within(screen.getByTestId('unidades-por-llegar')).getByTestId('llego-QAP-3')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('llego-QAP-4'));
+    expect(await screen.findByTestId('formulario-guardar_seccion_de_informe')).toBeInTheDocument();
+  });
+
   it('a photo already taken opens in the viewer, and «Tomar otra» goes to its form (José 06/11)', async () => {
     // Arrange
     const photoEntry = { id: 'foto-ingreso', title: 'Foto de ingreso', required: true, form: 'fotos', tool: 'agregar_foto_de_informe', photoKind: 'ingreso' };

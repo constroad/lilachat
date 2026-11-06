@@ -1,6 +1,6 @@
 import { useMemo, useRef, type RefObject } from 'react';
 import { CheckCheck } from 'lucide-react';
-import { CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, formRows, liveSelfieFieldOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply } from '@lilachat/shared';
+import { CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, formRows, liveSelfieFieldOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
@@ -21,7 +21,7 @@ const LIVE_CHOICE_KICKER = '1 · Qué marcas';
 const LIVE_PHOTO_KICKER = '2 · Tu foto y tu ubicación';
 const LIVE_FOOTER = 'Al tocar se toma la foto con la hora y el lugar, y se envía.';
 
-type Upload = (file: File, stamp?: GeoPoint) => Promise<{ ok: true; fileId: string } | { ok: false; message: string }>;
+type Upload = (file: File, stamp?: FormPhotoStamp) => Promise<{ ok: true; fileId: string } | { ok: false; message: string }>;
 
 type DialogProps = { answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: Upload; /** The address under a signing's camera. */ onPlace?: PlaceLookup; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply> };
 

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
-import { Image, Platform, Pressable, Text, View } from 'react-native';
+import { Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { Camera, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Clock, Container, Ruler, Thermometer, Truck } from 'lucide-react-native';
-import { ARRIVED_LABEL, dataSectionOf, pageLine, photoSlotsOf, sectionRowLine, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
+import { ARRIVED_LABEL, dataSectionOf, pageLine, photoSlotsOf, sectionRowLine, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { Pill, ResultsStrip, StateDot } from './ReportSections';
 
@@ -86,6 +86,20 @@ function ArrivedCard({ item, section, onOpen, onView }: { item: RepeatItem; sect
   );
 }
 
+/** One plate to tap: «Llegó» in the strip on top, the same as the row's button. */
+function ArrivalChip({ item, section, onOpen }: { item: RepeatItem; section: RepeatSection; onOpen: Open }) {
+  const colors = useColores();
+  const data = dataSectionOf(item);
+  const { plate } = unitTitleOf(item);
+  if (!data) return null;
+  return (
+    <Pressable testID={`llego-${item.id}`} onPress={() => onOpen({ sectionId: section.id, itemId: item.id, key: data.id })} accessibilityLabel={`${ARRIVED_LABEL} ${plate}`} className="min-h-[52px] flex-row items-center gap-2 rounded-xl bg-primary px-4">
+      <Truck size={18} color={colors['on-primary']} />
+      <Text className="text-[15px] font-bold text-on-primary" style={{ fontFamily: PLATE_FONT }}>{plate}</Text>
+    </Pressable>
+  );
+}
+
 function Group({ title, count, children }: { title: string; count: number; children: ReactNode }) {
   return (
     <View className="gap-3">
@@ -125,18 +139,33 @@ function FinishedGroup({ items, section, onOpen, onView }: { items: RepeatItem[]
 export function ReportUnitsView({ section, onOpen, onView }: { section: RepeatSection; onOpen: Open; onView: ViewPhoto }) {
   const groups = unitGroupsOf(section);
   const head = [unitCountsLine(groups), pageLine(section)].filter(Boolean).join(' · ');
+  const strip = waitingLayoutOf(groups) === 'strip';
+  const reachable = groups.atPlant.filter((item) => dataSectionOf(item));
+  const plantOnly = groups.atPlant.filter((item) => !dataSectionOf(item));
   return (
     <View testID={`unidades-${section.id}`} className="gap-4">
       {section.summary.length ? <Text testID="resumen-unidades" className="text-[15px] font-bold text-on-surface">{section.summary.join(' · ')}</Text> : null}
       {head ? <Text testID="conteo-unidades" className="text-[14px] text-on-surface-variant">{head}</Text> : null}
       {section.items.length === 0 ? <Text className="pt-4 text-center text-[14px] text-on-surface-variant">{NO_UNITS}</Text> : null}
+      {strip ? (
+        <Group title={UNIT_GROUP_TITLES.waiting} count={groups.waiting.length}>
+          <ScrollView horizontal testID="unidades-por-llegar" showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {groups.waiting.map((item) => <ArrivalChip key={item.id} item={item} section={section} onOpen={onOpen} />)}
+          </ScrollView>
+        </Group>
+      ) : null}
       {groups.onSite.length ? <Group title={UNIT_GROUP_TITLES.onSite} count={groups.onSite.length}>{groups.onSite.map((item) => <ArrivedCard key={item.id} item={item} section={section} onOpen={onOpen} onView={onView} />)}</Group> : null}
-      {groups.waiting.length ? (
+      {groups.waiting.length && !strip ? (
         <Group title={UNIT_GROUP_TITLES.waiting} count={groups.waiting.length}>
           <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">{groups.waiting.map((item, index) => <WaitingRow key={item.id} item={item} section={section} last={index === groups.waiting.length - 1} onOpen={onOpen} />)}</View>
         </Group>
       ) : null}
-      {groups.atPlant.length ? <Group title={UNIT_GROUP_TITLES.atPlant} count={groups.atPlant.length}><Text testID="unidades-en-planta" className="text-[14px] text-on-surface-variant" style={{ fontFamily: PLATE_FONT }}>{groups.atPlant.map((item) => unitTitleOf(item).plate).join(' · ')}</Text></Group> : null}
+      {groups.atPlant.length ? (
+        <Group title={UNIT_GROUP_TITLES.atPlant} count={groups.atPlant.length}>
+          {reachable.length ? <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">{reachable.map((item, index) => <WaitingRow key={item.id} item={item} section={section} last={index === reachable.length - 1} onOpen={onOpen} />)}</View> : null}
+          {plantOnly.length ? <Text testID="unidades-en-planta" className="text-[14px] text-on-surface-variant" style={{ fontFamily: PLATE_FONT }}>{plantOnly.map((item) => unitTitleOf(item).plate).join(' · ')}</Text> : null}
+        </Group>
+      ) : null}
       {groups.finished.length ? <FinishedGroup items={groups.finished} section={section} onOpen={onOpen} onView={onView} /> : null}
       <ResultsStrip results={section.results} testID="resultados-unidades" />
     </View>

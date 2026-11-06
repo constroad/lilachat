@@ -17,6 +17,18 @@ describe('stampPhoto', () => {
     expect(pixel(2, 297)).toBeLessThan(140);
   });
 
+  it('one line takes a thinner band: a tank photo only says when (José 06/11)', async () => {
+    // Arrange
+    const white = await sharp({ create: { width: 400, height: 300, channels: 3, background: '#ffffff' } }).jpeg().toBuffer();
+    // Act
+    const stamped = await stampPhoto(white, ['vie 06/11/2026 · 16:20']);
+    // Assert
+    const { data, info } = await sharp(stamped.bytes).raw().toBuffer({ resolveWithObject: true });
+    const pixel = (x: number, y: number) => data[(y * info.width + x) * info.channels]!;
+    expect(pixel(2, 297)).toBeLessThan(140);
+    expect(pixel(2, 260)).toBeGreaterThan(240);
+  });
+
   it('turns a sideways phone photo upright before stamping, and a broken file throws', async () => {
     // Arrange: a 300×400 photo saved landscape with EXIF «rotate 90».
     const sideways = await sharp({ create: { width: 400, height: 300, channels: 3, background: '#ffffff' } }).jpeg().withMetadata({ orientation: 6 }).toBuffer();

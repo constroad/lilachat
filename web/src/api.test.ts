@@ -34,3 +34,18 @@ describe('a 2xx is a success only when its body arrived', () => {
     expect(await api('/x')).toEqual({ ok: false, status: 403, message: 'No puedes' });
   });
 });
+
+describe('a call that needs the session, before the session is ready', () => {
+  it('does not go out: it answered 401 three times on every load (06/11)', async () => {
+    // Arrange
+    const fetcher = vi.fn();
+    vi.stubGlobal('fetch', fetcher);
+    // Act
+    const result = await api('/agenda/queue?chatId=c1', { jwt: '' });
+    // Assert
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(result).toMatchObject({ ok: false, status: 401 });
+    vi.unstubAllGlobals();
+  });
+});
+

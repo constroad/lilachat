@@ -57,6 +57,15 @@ export function unitGroupsOf(section: RepeatSection): UnitGroups {
   return { onSite: [...of('working'), ...ended.filter((item) => !isComplete(item))], waiting: of('waiting'), atPlant: of('atPlant'), finished: ended.filter(isComplete) };
 }
 
+/** A truck can reach the site before the plant marks it dispatched (José 06/11): its arrival is written all the same. */
+const NOT_HERE_YET: readonly UnitState[] = ['waiting', 'atPlant'];
+
+/** From this many units on site their cards push the rows out of sight. */
+const STRIP_FROM = 2;
+
+/** The ones on the way as rows, or as a strip of plates on top when the cards on site would bury them: «Llegó» is the next tap. */
+export const waitingLayoutOf = (groups: { onSite: readonly unknown[]; waiting: readonly unknown[] }): 'rows' | 'strip' => (groups.waiting.length && groups.onSite.length >= STRIP_FROM ? 'strip' : 'rows');
+
 /** «2 en pista · 6 por llegar · 4 en planta · 1 terminó»: the whole order at a glance, without the empty groups. */
 export function unitCountsLine({ onSite, waiting, atPlant, finished }: UnitGroups): string {
   const counts: [number, string][] = [[onSite.length, 'en pista'], [waiting.length, 'por llegar'], [atPlant.length, 'en planta'], [finished.length, finished.length === 1 ? 'terminó' : 'terminaron']];
@@ -101,7 +110,7 @@ export function arrivalHourOf(document: FieldDocument, path: SectionPath, now: s
   const repeat = document.sections.find((one) => one.id === path.sectionId);
   if (repeat?.kind !== 'repeat' || !isUnitsRepeat(repeat)) return undefined;
   const item = repeat.items.find((one) => one.id === path.itemId);
-  if (!item || unitStateOf(item) !== 'waiting' || dataSectionOf(item)?.id !== path.key) return undefined;
+  if (!item || !NOT_HERE_YET.includes(unitStateOf(item)) || dataSectionOf(item)?.id !== path.key) return undefined;
   return clockHourOf(now);
 }
 

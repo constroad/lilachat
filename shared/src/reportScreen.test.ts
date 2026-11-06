@@ -7,8 +7,14 @@ import type { FieldDocument, FormSection, RepeatSection, SectionPath } from './f
 
 type Source = { uri: string };
 
-function screenWith(start: { id: string | null; tramos: Tramo[]; requireLocation?: boolean }, placeNow: () => Promise<DevicePlace> = async () => ({ lat: -12, lng: -77, at: NOW })) {
+function screenWith(start: { id: string | null; tramos: Tramo[]; requireLocation?: boolean }, placeNow: () => Promise<DevicePlace> = async () => ({ lat: -12, lng: -77, at: NOW }), startId?: string) {
   const portal = fakePortal(start);
+  const askedIds: (string | null)[] = [];
+  const read = portal.wire.read;
+  portal.wire.read = (reportRef, reportId) => {
+    askedIds.push(reportId);
+    return read(reportRef, reportId);
+  };
   const disk = fakeVault();
   const queue = createReportQueue({ wire: portal.wire, vault: disk.vault, gapMs: 0 });
   let keys = 0;
@@ -21,9 +27,9 @@ function screenWith(start: { id: string | null; tramos: Tramo[]; requireLocation
     personName: () => 'Ana Torres',
     newKey: () => `k${(keys += 1)}`,
     now: () => NOW,
-  }, ref);
+  }, ref, startId);
   const stop = screen.subscribe(() => undefined);
-  return { portal, disk, queue, screen, stop, dropped };
+  return { portal, disk, queue, screen, stop, dropped, askedIds };
 }
 
 const settled = async ({ queue }: { queue: ReturnType<typeof createReportQueue> }) => {
@@ -382,6 +388,28 @@ describe('a photo that needs its place (CTL-PIS, José 06/11)', () => {
     // Assert
     expect(outcome).toMatchObject({ done: true });
     free.stop();
+  });
+});
+
+describe('continuing a draft (José 06/11: its row only offered the PDF)', () => {
+  it('asks for that report, not for the newest of its type', async () => {
+    // Arrange
+    const test = screenWith({ id: 'r1', tramos: [] }, undefined, 'r1');
+    // Act
+    await settled(test);
+    // Assert
+    expect(test.askedIds[0]).toBe('r1');
+    test.stop();
+  });
+
+  it('with no report named, Portal decides which draft opens', async () => {
+    // Arrange
+    const test = screenWith({ id: 'r1', tramos: [] });
+    // Act
+    await settled(test);
+    // Assert
+    expect(test.askedIds[0]).toBeNull();
+    test.stop();
   });
 });
 

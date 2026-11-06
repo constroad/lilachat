@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, Text, TextInput, View } from 'react-native';
 import { Camera, Check, LocateFixed } from 'lucide-react-native';
-import { geoPointOf, precisionLabel, type FormField, type GeoPoint } from '@lilachat/shared';
+import { geoPointOf, precisionLabel, type FormField, type GeoPoint, HOUR_STAMP, type FormPhotoStamp } from '@lilachat/shared';
 import { Segmentado } from '../../ui/Segmentado';
 import { SearchableChoice } from './SearchableChoice';
 import { useColores } from '../../ui/tema';
@@ -17,7 +17,7 @@ const SELFIE = 80;
 /** The digits of a one-time code, spread like the six boxes of a sign-in. */
 const CODE_LETTER_SPACING = 10;
 
-export type PhotoUpload = (photo: { uri: string; mime: string }, stamp?: GeoPoint) => Promise<{ ok: true; fileId: string } | { ok: false; message: string }>;
+export type PhotoUpload = (photo: { uri: string; mime: string }, stamp?: FormPhotoStamp) => Promise<{ ok: true; fileId: string } | { ok: false; message: string }>;
 type FieldProps<K extends FormField['kind']> = { field: Extract<FormField, { kind: K }>; value: unknown; error?: string; onChange: (value: unknown) => void };
 
 export function ErrorLine(props: { text?: string }) {
@@ -174,7 +174,7 @@ export function PhotoField({ field, value, error, onChange, upload, opensCamera,
     setPreview(shot.uri);
     setStatus({ busy: true });
     onChange(undefined);
-    const uploaded = await upload(shot);
+    const uploaded = await upload(shot, HOUR_STAMP);
     if (uploaded.ok) onChange(uploaded.fileId);
     setStatus({ busy: false, ...(uploaded.ok ? {} : { message: uploaded.message }) });
   };

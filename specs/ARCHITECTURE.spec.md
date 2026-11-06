@@ -15386,3 +15386,19 @@ correo, pero era del nombre. El correo no se valida en esa pantalla.
 
 Sin verificar: la cuenta real. No se leyó la base; se dedujo del código y de la captura.
 
+## Fecha y hora en fotos de chat, y detalles del informe (José 06/11)
+
+- **Fecha y hora:** una foto tomada con la cámara en un formulario de chat, como medida
+  de tanque o materiales, pide `HOUR_STAMP`. El server quema su fecha y hora en una
+  banda de una línea. Una foto de galería va sin sello: un comprobante no es de ahora.
+  Las fotos de informe siguen selladas por Portal, con su propia cola.
+- **Borrador:** `draftToContinue` reabre el documento desde su fila, por `reportId`.
+  Antes solo ofrecía «Ver el PDF». Otros tipos conservan su hoja.
+- **Por llegar:** desde 2 unidades en pista las placas van en una tira arriba
+  (`waitingLayoutOf`), con «Llegó» a un toque. Las tarjetas ya no las entierran.
+- **Carro en planta:** si Portal manda su sección de datos, también tiene «Llegó».
+- **⚡:** cerrar un formulario cierra la hoja de acciones.
+- **Formulario rechazado:** un número que vuelve como texto, «148» o «5,2», se conserva.
+- **401 al cargar (web):** un `jwt` vacío ya no sale a la red. El hook vuelve a pedir al
+  llegar la sesión.
+

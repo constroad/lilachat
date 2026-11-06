@@ -127,6 +127,7 @@ export async function salirDelServer(): Promise<void> {
 }
 
 const NO_CONNECTION = 'Sin conexión. Revisa tu internet.';
+const NO_SESSION = 'Sin sesión.';
 
 /** The body as JSON, or `undefined` when it was cut or is not JSON. An empty body is `{}`. */
 async function readJson(response: Response): Promise<{ message?: string } | undefined> {
@@ -145,6 +146,8 @@ export async function api<T>(
   path: string,
   options: { method?: string; body?: unknown; jwt?: string; signal?: AbortSignal } = {}
 ): Promise<ApiResult<T>> {
+  // An empty token is a call that needs the session before it is ready: the hook asks again when the token arrives.
+  if (options.jwt === '') return { ok: false, status: 401, message: NO_SESSION };
   try {
     const response = await fetch(`/api${path}`, {
       signal: options.signal,

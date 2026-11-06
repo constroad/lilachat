@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { answerOfOutcome, formSubmitOutcome, giveUpPending, giveUpWaiting, markWaiting, noticeIsFor, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, WRITE_GIVE_UP_MS, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type ShortcutRow, type ShortcutValues } from '@lilachat/shared';
+import { answerOfOutcome, formSubmitOutcome, giveUpPending, giveUpWaiting, markWaiting, noticeIsFor, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, WRITE_GIVE_UP_MS, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type ShortcutRow, type ShortcutValues } from '@lilachat/shared';
 import type { JsonResult } from '../../api/jsonCall';
 import { getSocket } from '../socketClient';
 import { previewAppForm, refreshAppForm, runShortcut, submitAppForm, readFormPlace, uploadFormPhoto } from './commandsApi';
@@ -56,7 +56,7 @@ export function useAppAnswers(params: { jwt: string; scope: CommandScope | null 
     [jwt]
   );
   const uploadPhoto = useCallback(
-    (commandId: string, photo: { uri: string; mime: string }, stamp?: GeoPoint) => (scopeRef.current ? uploadFormPhoto(jwt, scopeRef.current, commandId, photo, stamp) : Promise.resolve({ ok: false as const, message: 'Sin sesión.' })),
+    (commandId: string, photo: { uri: string; mime: string }, stamp?: FormPhotoStamp) => (scopeRef.current ? uploadFormPhoto(jwt, scopeRef.current, commandId, photo, stamp) : Promise.resolve({ ok: false as const, message: 'Sin sesión.' })),
     [jwt]
   );
   /** Done: the app's answer takes the form's place and the sheet closes; otherwise what to fix. */

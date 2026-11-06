@@ -1,4 +1,4 @@
-import { FORMS_LEVEL, commandScopePath, formSubmitFailure, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
+import { FORMS_LEVEL, HOUR_STAMP, commandScopePath, formSubmitFailure, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoStamp, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -40,7 +40,7 @@ export const previewAppForm = (jwt: string, scope: CommandScope, commandId: stri
  * A form's photo, the moment it is taken: made lighter with Portal's standard
  * (28/10), then read from disk by the native multipart, never through JS memory.
  */
-export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandId: string, photo: { uri: string; mime: string }, stamp?: GeoPoint): Promise<FormPhotoUpload> {
+export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandId: string, photo: { uri: string; mime: string }, stamp?: FormPhotoStamp): Promise<FormPhotoUpload> {
   const name = photo.mime === 'image/png' ? 'foto.png' : 'foto.jpg';
   const shrunk = await shrinkPhotoFile({ uri: photo.uri, mimeType: photo.mime, fileName: name });
   try {
@@ -50,11 +50,12 @@ export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandI
   }
 }
 
-async function sendFormPhoto(jwt: string, scope: CommandScope, commandId: string, photo: ShrunkPhotoFile, stamp?: GeoPoint): Promise<FormPhotoUpload> {
+async function sendFormPhoto(jwt: string, scope: CommandScope, commandId: string, photo: ShrunkPhotoFile, stamp?: FormPhotoStamp): Promise<FormPhotoUpload> {
   const form = new FormData();
   form.append('file', { uri: photo.uri, name: photo.fileName, type: photo.mimeType } as unknown as Blob);
+  if (stamp === HOUR_STAMP) form.append('stamp', HOUR_STAMP);
   // A signing's selfie: the server burns its hour and this place into it (pending 94).
-  if (stamp) {
+  else if (stamp) {
     form.append('stamp', '1');
     form.append('lat', String(stamp.lat));
     form.append('lng', String(stamp.lng));

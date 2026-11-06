@@ -95,15 +95,15 @@ export async function registerPushToken(jwt: string): Promise<'ok' | 'denied' | 
  * Keeps this phone reachable, in Personal and inside a space (José 05/11). It
  * lived in the personal chat list, which a space replaces: whoever entered
  * straight into a space was never asked for the permission nor registered, and
- * a token Firebase rotated stayed dead on the server. So: on entering, when
- * Firebase rotates it, and on each return to the app.
+ * a token Firebase rotated stayed dead on the server. So: on entering and on
+ * each return to the app, which also catches a rotation. Never with
+ * `addPushTokenListener`: reading the token fires it, and that looped 600 times
+ * a second (OTA 911f561c, 05/11).
  */
 export function usePushRegistration(jwt: string): void {
   useEffect(() => {
     configureNotificationHandler();
     void registerPushToken(jwt);
-    const subscription = Notifications.addPushTokenListener(() => void registerPushToken(jwt));
-    return () => subscription.remove();
   }, [jwt]);
   useAlVolver(true, () => void registerPushToken(jwt));
 }

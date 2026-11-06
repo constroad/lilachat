@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { AlertTriangle, ChevronLeft, ExternalLink, FileText } from 'lucide-react';
-import { formKeyOf, isUnitsRepeat, itemsLine, pendingOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
+import { formKeyOf, isUnitsRepeat, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
 import { loadPerfil } from '../../../api';
 import { AppFormDialog } from '../../../chat/commands/AppFormDialog';
 import { EphemeralAnswers } from '../../../chat/commands/EphemeralAnswers';
 import { useReportPdf } from '../useReportPdf';
 import type { ServiceAskTarget } from '../useServiceAsk';
 import { PublishDialog } from './PublishDialog';
+import { usePortalFileViewer } from '../PortalFileViewer';
 import { ReportItemsWeb } from './ReportItemsWeb';
 import { ReportUnitsWeb } from './ReportUnitsWeb';
 import { Pill, ProgressCard, QueueCard, SectionCard } from './ReportSectionsWeb';
@@ -77,10 +78,10 @@ function ReportFooter({ report, blocker, pdf, onPublish, onDone }: { report: Fie
 }
 
 /** What the page shows under the header: the loading block, the failure, the tramos or the hub. */
-function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems, onRetry }: { onRetry: () => void; draft: ReportDraftResult | null; report: FieldDocument | null; items: DocumentSection | undefined; portalUrl?: string; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
+function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems, onRetry, onView }: { onRetry: () => void; onView: (photo: PhotoToView) => void; draft: ReportDraftResult | null; report: FieldDocument | null; items: DocumentSection | undefined; portalUrl?: string; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
   if (draft === null) return <div data-testid="informe-cargando" className="h-40 animate-pulse rounded-xl bg-surface" />;
   if (!draft.ok || !report) return <DraftFailure message={draft.ok ? 'No se pudo abrir el informe' : draft.message} portalUrl={portalUrl} onRetry={onRetry} />;
-  if (items?.kind === 'repeat') return isUnitsRepeat(items) ? <ReportUnitsWeb section={items} onOpen={onOpen} /> : <ReportItemsWeb section={items} onOpen={onOpen} />;
+  if (items?.kind === 'repeat') return isUnitsRepeat(items) ? <ReportUnitsWeb section={items} onOpen={onOpen} onView={onView} /> : <ReportItemsWeb section={items} onOpen={onOpen} onView={onView} />;
   return (
     <>
       <ProgressCard report={report} />
@@ -119,12 +120,18 @@ export function ReportDocumentWeb(props: Props) {
   const pdf = useReportPdf(props.target, props.service.id);
   const kicker = report ? report.title : reportTypeLabel(props.type);
   const blockers = report ? publishBlockers(report, saves, offline) : [];
+  const files = usePortalFileViewer();
+  const viewPhoto = ({ section, url, path }: PhotoToView) => {
+    const view = photoViewOf(section, url);
+    if (view) files.open(view.file, view.siblings, { label: TAKE_ANOTHER_PHOTO, onPress: () => actions.openSection(path) });
+  };
   return (
     <div data-testid="informe-documento" className="mx-auto flex max-w-3xl flex-col gap-3">
       <ReportHeader kicker={items ? `${kicker} · ${items.title}` : kicker} title={props.service.name} report={report} onBack={page.back} />
       <QueueCard saves={saves} offline={offline} onFix={(save) => actions.openSection(save.path)} onDiscard={(save) => void actions.discard(save.clientKey)} />
       <EphemeralAnswers answers={forms.answers.answers} onDismiss={forms.answers.dismiss} onOpenForm={forms.answers.showForm} chatId={props.chatId} jwt={props.target.jwt} />
-      <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={page.setItemsOf} onRetry={actions.refresh} />
+      <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={page.setItemsOf} onRetry={actions.refresh} onView={viewPhoto} />
+      {files.viewer}
       {report && (!items || (items.kind === 'repeat' && isUnitsRepeat(items))) ? <ReportFooter report={report} blocker={publishFooterLine(report, blockers)} pdf={pdf} onPublish={() => page.setPublishing(true)} onDone={() => props.onClose(true)} /> : null}
       {report && page.publishing ? <PublishDialog report={report} blockers={blockers} onClose={() => page.setPublishing(false)} onPublish={page.publish} /> : null}
       {document.form ? <AppFormDialog key={formKeyOf(document.form)} answer={document.form} personName={loadPerfil()?.name} onSubmit={actions.submit} onUpload={actions.upload} onClose={actions.closeForm} /> : null}

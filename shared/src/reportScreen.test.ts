@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createReportQueue } from './reportQueue';
 import { docOf, fakePortal, fakeVault, general, newTramo, NOW, ref, type Tramo } from './reportQueue.fixture';
 import type { DevicePlace } from './reportCreation';
-import { createReportScreen, NO_GPS_PHOTO, REFRESH_RETRIES, REFRESH_RETRY_MS, type ReportScreenState } from './reportScreen';
+import { createReportScreen, NO_GPS_PHOTO, PHOTO_PLACE_WAIT_MS, REFRESH_RETRIES, REFRESH_RETRY_MS, type ReportScreenState } from './reportScreen';
 import type { FieldDocument, FormSection, RepeatSection, SectionPath } from './fieldDocument';
 
 type Source = { uri: string };
@@ -335,35 +335,158 @@ describe('a refresh that fails', () => {
 
 describe('a photo that needs its place (CTL-PIS, José 06/11)', () => {
   const photosPath: SectionPath = { sectionId: 'tramos', itemId: 't1', key: 'fotos' };
+  const located = { id: 'r1', tramos: [{ id: 't1', photos: 0 }], requireLocation: true };
+  const noFix = async (): Promise<DevicePlace> => ({ at: NOW });
 
-  it('without GPS there is no photo: it is dropped and the person is told', async () => {
-    const test = screenWith({ id: 'r1', tramos: [{ id: 't1', photos: 0 }], requireLocation: true }, async () => ({ at: NOW }));
+  it('without GPS there is no photo: «Enviar» says so and the form stays open', async () => {
+    // Arrange
+    const test = screenWith(located, noFix);
     await settled(test);
     test.screen.openSection(photosPath);
-    expect(await test.screen.upload({ uri: 'a.jpg' })).toEqual({ ok: false, message: NO_GPS_PHOTO });
-    expect(test.dropped).toEqual(['kept-a.jpg']);
+    await test.screen.upload({ uri: 'a.jpg' });
+    // Act
+    const outcome = await test.screen.submit({ foto: 'kept-a.jpg' });
+    // Assert
+    expect(outcome).toEqual({ done: false, errors: {}, message: NO_GPS_PHOTO });
+    expect(test.screen.snapshot().form).not.toBeNull();
+    expect(test.screen.snapshot().saves).toEqual([]);
     test.stop();
   });
 
-  it('a GPS that fails reads the same, and with the fix the photo is kept', async () => {
-    const failing = screenWith({ id: 'r1', tramos: [{ id: 't1', photos: 0 }], requireLocation: true }, async () => { throw new Error('off'); });
-    await settled(failing);
-    failing.screen.openSection(photosPath);
-    expect(await failing.screen.upload({ uri: 'a.jpg' })).toEqual({ ok: false, message: NO_GPS_PHOTO });
-    failing.stop();
-    const placed = screenWith({ id: 'r1', tramos: [{ id: 't1', photos: 0 }], requireLocation: true });
-    await settled(placed);
-    placed.screen.openSection(photosPath);
-    expect(await placed.screen.upload({ uri: 'a.jpg' })).toEqual({ ok: true, fileId: 'kept-a.jpg' });
-    expect(placed.dropped).toEqual([]);
-    placed.stop();
+  it('a GPS that fails reads the same, and turned on it goes at the next «Enviar»', async () => {
+    // Arrange
+    let reading: () => Promise<DevicePlace> = async () => { throw new Error('off'); };
+    const test = screenWith(located, () => reading());
+    await settled(test);
+    test.screen.openSection(photosPath);
+    await test.screen.upload({ uri: 'a.jpg' });
+    expect(await test.screen.submit({ foto: 'kept-a.jpg' })).toMatchObject({ done: false, message: NO_GPS_PHOTO });
+    reading = async () => ({ lat: -12, lng: -77, at: NOW });
+    test.portal.state.offline = true;
+    // Act
+    const outcome = await test.screen.submit({ foto: 'kept-a.jpg' });
+    // Assert
+    expect(outcome).toMatchObject({ done: true });
+    expect(test.screen.snapshot().saves[0]).toMatchObject({ place: { lat: -12, lng: -77, at: NOW } });
+    test.stop();
   });
 
   it('a section that does not ask for the place takes the photo with the hour alone', async () => {
-    const free = screenWith({ id: 'r1', tramos: [{ id: 't1', photos: 0 }] }, async () => ({ at: NOW }));
+    // Arrange
+    const free = screenWith({ id: 'r1', tramos: [{ id: 't1', photos: 0 }] }, noFix);
     await settled(free);
     free.screen.openSection(photosPath);
-    expect(await free.screen.upload({ uri: 'a.jpg' })).toEqual({ ok: true, fileId: 'kept-a.jpg' });
+    await free.screen.upload({ uri: 'a.jpg' });
+    // Act
+    const outcome = await free.screen.submit({ foto: 'kept-a.jpg' });
+    // Assert
+    expect(outcome).toMatchObject({ done: true });
     free.stop();
+  });
+});
+
+describe('the GPS never holds the photo (José 06/11: «pasan segundos y recién los agrega a la app»)', () => {
+  const photosPath: SectionPath = { sectionId: 'tramos', itemId: 't1', key: 'fotos' };
+  const start = { id: 'r1', tramos: [{ id: 't1', photos: 0 }] };
+
+  it('the reading starts with the form, so it runs while the person aims', async () => {
+    // Arrange
+    const placeNow = vi.fn(async (): Promise<DevicePlace> => ({ lat: -12, lng: -77, at: NOW }));
+    const test = screenWith(start, placeNow);
+    await settled(test);
+    // Act
+    test.screen.openSection(photosPath);
+    // Assert
+    expect(placeNow).toHaveBeenCalledTimes(1);
+    await test.screen.upload({ uri: 'a.jpg' });
+    expect(placeNow).toHaveBeenCalledTimes(1);
+    test.stop();
+  });
+
+  it('a form with no photo never asks for the GPS', async () => {
+    // Arrange
+    const placeNow = vi.fn(async (): Promise<DevicePlace> => ({ at: NOW }));
+    const test = screenWith(start, placeNow);
+    await settled(test);
+    // Act
+    test.screen.openSection(general);
+    // Assert
+    expect(placeNow).not.toHaveBeenCalled();
+    test.stop();
+  });
+
+  it('the shot is kept at once, whatever the GPS is doing', async () => {
+    // Arrange
+    const test = screenWith(start, () => new Promise<DevicePlace>(() => undefined));
+    await settled(test);
+    test.screen.openSection(photosPath);
+    // Act
+    const kept = await test.screen.upload({ uri: 'a.jpg' });
+    // Assert
+    expect(kept).toEqual({ ok: true, fileId: 'kept-a.jpg' });
+    test.stop();
+  });
+
+  it('a second photo reads the GPS again: the first reading was for the first one', async () => {
+    // Arrange
+    const placeNow = vi.fn(async (): Promise<DevicePlace> => ({ lat: -12, lng: -77, at: NOW }));
+    const test = screenWith(start, placeNow);
+    await settled(test);
+    test.screen.openSection(photosPath);
+    // Act
+    await test.screen.upload({ uri: 'a.jpg' });
+    await test.screen.upload({ uri: 'b.jpg' });
+    // Assert
+    expect(placeNow).toHaveBeenCalledTimes(2);
+    test.stop();
+  });
+
+  it('a slow GPS holds «Enviar» a moment, then the photo goes with its hour', async () => {
+    // Arrange
+    const test = screenWith(start, () => new Promise<DevicePlace>(() => undefined));
+    await settled(test);
+    test.screen.openSection(photosPath);
+    await test.screen.upload({ uri: 'a.jpg' });
+    test.portal.state.offline = true;
+    // Act
+    const sending = test.screen.submit({ foto: 'kept-a.jpg' });
+    await vi.advanceTimersByTimeAsync(PHOTO_PLACE_WAIT_MS);
+    // Assert
+    expect(await sending).toMatchObject({ done: true });
+    expect(test.screen.snapshot().saves[0]).toMatchObject({ place: { at: NOW } });
+    test.stop();
+  });
+
+  it('a section that needs the place waits for it, however long the phone takes', async () => {
+    // Arrange
+    let answer: (place: DevicePlace) => void = () => undefined;
+    const test = screenWith({ ...start, requireLocation: true }, () => new Promise<DevicePlace>((resolve) => { answer = resolve; }));
+    await settled(test);
+    test.screen.openSection(photosPath);
+    await test.screen.upload({ uri: 'a.jpg' });
+    const sending = test.screen.submit({ foto: 'kept-a.jpg' });
+    await vi.advanceTimersByTimeAsync(PHOTO_PLACE_WAIT_MS * 2);
+    // Act
+    answer({ lat: -12, lng: -77, at: NOW });
+    // Assert
+    expect(await sending).toMatchObject({ done: true });
+    test.stop();
+  });
+
+  it('closing the form while «Enviar» waits for the GPS saves nothing', async () => {
+    // Arrange
+    let answer: (place: DevicePlace) => void = () => undefined;
+    const test = screenWith({ ...start, requireLocation: true }, () => new Promise<DevicePlace>((resolve) => { answer = resolve; }));
+    await settled(test);
+    test.screen.openSection(photosPath);
+    await test.screen.upload({ uri: 'a.jpg' });
+    const sending = test.screen.submit({ foto: 'kept-a.jpg' });
+    // Act
+    test.screen.closeForm();
+    answer({ lat: -12, lng: -77, at: NOW });
+    // Assert
+    expect(await sending).toMatchObject({ done: false });
+    expect(test.screen.snapshot().saves).toEqual([]);
+    test.stop();
   });
 });

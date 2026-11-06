@@ -172,6 +172,22 @@ describe('ReportDocumentWeb', () => {
     expect(formCalls(calls)).toEqual([]);
   });
 
+  it('a photo already taken opens in the viewer, and «Tomar otra» goes to its form (José 06/11)', async () => {
+    // Arrange
+    const photoEntry = { id: 'foto-ingreso', title: 'Foto de ingreso', required: true, form: 'fotos', tool: 'agregar_foto_de_informe', photoKind: 'ingreso' };
+    const taken = { id: 'foto-ingreso', state: 'done', summary: [], values: { fotos: [{ id: 'p1', url: 'https://lila.example.com/f/p1.jpg', descripcion: 'Ingreso' }] } };
+    const units = { id: 'unidades', kind: 'repeat', title: 'Unidades', required: true, state: 'partial', summary: [], results: [], itemTitle: 'Unidad', addLabel: '', min: 0, units: true, template: [{ id: 'datos', title: 'Datos', required: true, form: 'ubicacion' }, photoEntry], items: [{ id: 'd2', title: 'Unidad 2 · QAP-102', summary: [], results: [], sections: [{ id: 'datos', state: 'done', summary: ['Llegada 07:30'], values: {} }, taken] }] };
+    serverWith({ document: { ...document, type: 'CTL-PIS', title: 'Control de pista', sections: [document.sections[0], units] } });
+    openReport();
+    fireEvent.click(await screen.findByTestId('seccion-unidades'));
+    // Act
+    fireEvent.click(screen.getByTestId('foto-d2-foto-ingreso'));
+    // Assert
+    expect(screen.queryByTestId('formulario-agregar_foto_de_informe')).toBeNull();
+    fireEvent.click(await screen.findByRole('button', { name: 'Tomar otra' }));
+    expect(await screen.findByTestId('formulario-agregar_foto_de_informe')).toBeInTheDocument();
+  });
+
   it('«Publicar» waits for what Portal says is missing (design j-04), and ready it opens Portal’s publish form', async () => {
     const calls = serverWith({ document });
     render(<ReportDocumentWeb target={target} chatId="chat-1" service={service} type="CTL-IMP" onClose={() => undefined} />);

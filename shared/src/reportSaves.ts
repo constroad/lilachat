@@ -1,5 +1,6 @@
 import type { AppForm, FormSchemaProperty, FormValues } from './appForms.js';
 import type { FormSubmitReply } from './appActions.js';
+import type { ViewableFile } from './fileViewer.js';
 import type { CommandNotice, EphemeralAnswer } from './botCommands.js';
 import { applySavedSection, sectionAt, sectionFormOf, type DocumentSection, type FieldDocument, type FormSection, type RepeatItem, type RepeatSection, type SectionPath, type SectionTemplate } from './fieldDocument.js';
 import { PUBLISH_LABEL, REPORT_KEEPER, sectionBadge, type DevicePlace } from './reportCreation.js';
@@ -41,6 +42,9 @@ const MEMBER_FIELD = 'responsable';
 const PLACE_FIELD = 'ubicacion';
 const START_HOUR = /^hora (de )?inicio/i;
 const PHOTOS_VALUE = 'fotos';
+const PHOTO_MIME = 'image/jpeg';
+/** The viewer's action on a report's photo. It never deletes: a swipe can change which one is on screen. */
+export const TAKE_ANOTHER_PHOTO = 'Tomar otra';
 const SAVE_REFUSED = 'Portal no aceptó este cambio.';
 const UNSENT_HTTP = new Set([408, 429]);
 const SERVER_DOWN = 500;
@@ -109,6 +113,8 @@ export function applySave(document: FieldDocument, save: ReportSave): FieldDocum
 
 export const documentWithQueue = (document: FieldDocument, queue: readonly ReportSave[]): FieldDocument => queue.reduce(applySave, document);
 
+/** A thumbnail tapped: its section, which photo, and where «Tomar otra» goes. */
+export type PhotoToView = { section: FormSection; url: string; path: SectionPath };
 export type SectionPhoto = { id: string; url: string; thumbUrl: string; caption: string; hour: string; pending: boolean };
 const textOf = (value: unknown): string => (typeof value === 'string' ? value : '');
 
@@ -119,6 +125,13 @@ export function sectionPhotos(section: Pick<FormSection, 'values'>): SectionPhot
   return (photos as Record<string, unknown>[])
     .filter((one) => textOf(one?.url))
     .map((one) => ({ id: textOf(one.id), url: textOf(one.url), thumbUrl: textOf(one.thumb_url) || textOf(one.url), caption: textOf(one.descripcion), hour: textOf(one.hora), pending: one.pending === true }));
+}
+
+/** What the viewer opens for a tapped photo: a swipe goes through the others of its section. */
+export function photoViewOf(section: Pick<FormSection, 'title' | 'values'>, url: string): { file: ViewableFile; siblings: ViewableFile[] } | null {
+  const siblings = sectionPhotos(section).map((photo) => ({ url: photo.url, name: photo.caption || section.title, mime: PHOTO_MIME, thumbUrl: photo.thumbUrl }));
+  const file = siblings.find((one) => one.url === url);
+  return file ? { file, siblings } : null;
 }
 
 /** «0 fotos», «1 foto» (design j-03). */

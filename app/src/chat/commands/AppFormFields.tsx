@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, Text, TextInput, View } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { Camera, LocateFixed } from 'lucide-react-native';
 import { geoPointOf, precisionLabel, type FormField, type GeoPoint } from '@lilachat/shared';
 import { Segmentado } from '../../ui/Segmentado';
@@ -9,11 +8,12 @@ import { useColores } from '../../ui/tema';
 import { MapSnippet } from '../location/MapSnippet';
 import { PlaceButton } from './PlaceButton';
 import { useCurrentLocation } from '../location/useCurrentLocation';
+import { CAMERA_DENIED, cameraAllowed, FormCamera, type CameraShot } from '../camara/FormCamera';
+import { VisorDeFoto } from '../../ui/VisorDeFoto';
 
 const MAP_HEIGHT = 120;
 const SELFIE = 80;
 /** Native and untouched: `uploadFormPhoto` makes it lighter once (Portal's standard, 28/10). */
-const SELFIE_QUALITY = 1;
 /** The digits of a one-time code, spread like the six boxes of a sign-in. */
 const CODE_LETTER_SPACING = 10;
 
@@ -135,28 +135,38 @@ export function LocationField({ field, error, onChange, width }: FieldProps<'loc
 }
 
 /** «Tomar foto» of something (the tape measure, a delivery note): the rear camera, and it goes up at once; the form carries its id. A signature uses `LiveSelfie`, not this. */
-export function PhotoField({ field, value, error, onChange, upload }: FieldProps<'photo'> & { upload: PhotoUpload }) {
+export function PhotoField({ field, value, error, onChange, upload, opensCamera, onCameraDismissed }: FieldProps<'photo'> & { upload: PhotoUpload; opensCamera?: boolean; onCameraDismissed?: () => void }) {
   const colors = useColores();
   const [preview, setPreview] = useState<string | null>(null);
   const [status, setStatus] = useState<{ busy: boolean; message?: string }>({ busy: false });
+  const [aiming, setAiming] = useState(false);
+  const [viewing, setViewing] = useState(false);
   const take = async () => {
-    const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) return setStatus({ busy: false, message: 'Permite la cámara para tomar la foto.' });
-    const shot = await ImagePicker.launchCameraAsync({ cameraType: ImagePicker.CameraType.back, quality: SELFIE_QUALITY, allowsEditing: false });
-    const asset = shot.canceled ? null : shot.assets[0];
-    if (!asset) return;
-    setPreview(asset.uri);
+    if (await cameraAllowed()) setAiming(true);
+    else setStatus({ busy: false, message: CAMERA_DENIED });
+  };
+  // A report's photo goes straight to the camera (José 06/11): the form waits behind it, with the rest.
+  useEffect(() => {
+    if (opensCamera) void take();
+  }, []);
+  const keep = async (shot: CameraShot) => {
+    setAiming(false);
+    setPreview(shot.uri);
     setStatus({ busy: true });
     onChange(undefined);
-    const uploaded = await upload({ uri: asset.uri, mime: asset.mimeType ?? 'image/jpeg' });
+    const uploaded = await upload(shot);
     if (uploaded.ok) onChange(uploaded.fileId);
     setStatus({ busy: false, ...(uploaded.ok ? {} : { message: uploaded.message }) });
   };
+  const dismiss = () => {
+    setAiming(false);
+    if (!preview) onCameraDismissed?.();
+  };
   return (
     <View className="flex-row items-center gap-4 rounded-2xl border border-outline/15 p-3">
-      <View className="items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-outline/30 bg-background" style={{ width: SELFIE, height: SELFIE }}>
+      <Pressable testID={`ver-${field.name}`} accessibilityLabel="Ver la foto" disabled={!preview} onPress={() => setViewing(true)} className="items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-outline/30 bg-background" style={{ width: SELFIE, height: SELFIE }}>
         {preview ? <Image source={{ uri: preview }} style={{ width: SELFIE, height: SELFIE }} /> : <Camera size={30} color={colors['on-surface-variant']} />}
-      </View>
+      </Pressable>
       <View className="min-w-0 flex-1">
         <Text className="text-[15px] font-semibold text-on-surface">{field.label}</Text>
         {field.help ? <Text className="text-[13px] text-on-surface-variant">{field.help}</Text> : null}
@@ -166,6 +176,8 @@ export function PhotoField({ field, value, error, onChange, upload }: FieldProps
         </Pressable>
         <ErrorLine text={status.message ?? error} />
       </View>
+      {aiming ? <FormCamera title={field.label} onShot={(shot) => void keep(shot)} onClose={dismiss} /> : null}
+      <VisorDeFoto foto={viewing ? preview : null} titulo={field.label} onCerrar={() => setViewing(false)} />
     </View>
   );
 }

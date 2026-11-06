@@ -1,4 +1,4 @@
-import type { FormField } from './appForms.js';
+import type { FormField, FormValues } from './appForms.js';
 
 /** Every one-line text with a limit (José 06/11: two per row wherever it can be; Portal declares its report fields with 200). */
 const SHORT_TEXT_MAX = 200;
@@ -44,4 +44,18 @@ function canBeHalf(field: FormField): boolean {
     default:
       return true;
   }
+}
+
+const isAnswered = (value: unknown): boolean => value !== undefined && value !== null && value !== '' && !(Array.isArray(value) && value.length === 0);
+
+/**
+ * The photo a report's form opens straight at the camera for (José 06/11: tile,
+ * camera, shutter): its only photo, when nothing else is still required. The
+ * rest of the form waits after the shot. Pass the fields SHOWN.
+ */
+export function cameraFirstFieldOf(shown: readonly FormField[], values: FormValues): string | null {
+  const photos = shown.filter((field) => field.kind === 'photo');
+  const photo = photos[0];
+  if (photos.length !== 1 || !photo || photo.multiple || isAnswered(values[photo.name])) return null;
+  return shown.some((field) => field !== photo && field.required && !isAnswered(values[field.name])) ? null : photo.name;
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formFields, visibleFields, type AppForm, type FormSchemaProperty } from './appForms.js';
-import { formRows } from './appFormRows.js';
+import { cameraFirstFieldOf, formRows } from './appFormRows.js';
 
 const formWith = (properties: Record<string, FormSchemaProperty>): AppForm => ({ id: 'f', title: 'F', schema: { type: 'object', properties } });
 /** The rows as field names: `[['monto', 'fecha'], ['descripcion']]`. */
@@ -17,6 +17,40 @@ const expense = formWith({
   estado: { type: 'string', enum: ['pagado', 'por_pagar'], title: 'Estado' },
   fotos: { type: 'array', items: { type: 'string' }, 'x-input': 'photo', title: 'Comprobante' },
   nota: { type: 'string', title: 'Nota', maxLength: 300 },
+});
+
+describe('cameraFirstFieldOf (José 06/11: tile, camera, shutter)', () => {
+  const fieldsOf = (properties: Record<string, FormSchemaProperty>, required: string[]) => { const form = formWith(properties); return formFields({ ...form, schema: { ...form.schema, required } }); };
+  const photo: FormSchemaProperty = { type: 'string', 'x-input': 'photo', title: 'Foto' };
+
+  it('a photo with an hour already filled and an optional note opens at the camera', () => {
+    // Arrange
+    const fields = fieldsOf({ hora: { type: 'string', format: 'time', title: 'Hora' }, foto: photo, descripcion: { type: 'string', title: 'Descripción', maxLength: 500 } }, ['hora', 'foto']);
+    // Act
+    const name = cameraFirstFieldOf(fields, { hora: '13:43' });
+    // Assert
+    expect(name).toBe('foto');
+  });
+
+  it('something else still required starts at the form', () => {
+    // Arrange
+    const fields = fieldsOf({ hora: { type: 'string', format: 'time', title: 'Hora' }, foto: photo }, ['hora', 'foto']);
+    // Act
+    const name = cameraFirstFieldOf(fields, {});
+    // Assert
+    expect(name).toBeNull();
+  });
+
+  it('a photo already taken, two photos, a list or no photo start at the form', () => {
+    // Arrange
+    const second: FormSchemaProperty = { ...photo, title: 'Otra' };
+    const list: FormSchemaProperty = { type: 'array', 'x-input': 'photo', title: 'Fotos', items: { type: 'string' } };
+    // Act and assert
+    expect(cameraFirstFieldOf(fieldsOf({ foto: photo }, ['foto']), { foto: 'kept-a.jpg' })).toBeNull();
+    expect(cameraFirstFieldOf(fieldsOf({ foto: photo, otra: second }, []), {})).toBeNull();
+    expect(cameraFirstFieldOf(fieldsOf({ fotos: list }, []), {})).toBeNull();
+    expect(cameraFirstFieldOf(fieldsOf({ nota: { type: 'string', title: 'Nota' } }, []), {})).toBeNull();
+  });
 });
 
 describe('two short fields share a row (José, 28/10: «unidad, hora, m³ podrían ser una sola fila»)', () => {

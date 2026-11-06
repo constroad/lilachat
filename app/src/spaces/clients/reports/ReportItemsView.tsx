@@ -1,30 +1,30 @@
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronRight, Clock, Plus } from 'lucide-react-native';
-import { itemsLine, sectionPhotos, sectionRowLine, type FormSection, type RepeatItem, type RepeatSection, type SectionPath } from '@lilachat/shared';
+import { itemsLine, sectionPhotos, sectionRowLine, type FormSection, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { ResultsStrip, StateDot } from './ReportSections';
 
 const THUMB = 84;
 
 /** The photos of a tramo with their caption; one still on the phone says so with a clock. */
-function PhotoStrip({ section, itemId }: { section: FormSection; itemId: string }) {
+function PhotoStrip({ section, itemId, onView }: { section: FormSection; itemId: string; onView: (url: string) => void }) {
   const photos = sectionPhotos(section);
   if (!photos.length) return null;
   return (
     <ScrollView horizontal testID={`fotos-${itemId}`} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 8 }}>
       {photos.map((photo) => (
-        <View key={photo.id} style={{ width: THUMB }}>
+        <Pressable key={photo.id} testID={`ver-foto-${photo.id}`} accessibilityLabel="Ver la foto" onPress={() => onView(photo.url)} style={{ width: THUMB }}>
           <Image source={{ uri: photo.thumbUrl }} style={{ width: THUMB, height: THUMB, borderRadius: 12 }} />
           {photo.pending ? <View testID={`foto-pendiente-${photo.id}`} className="absolute right-1 top-1 h-6 w-6 items-center justify-center rounded-full bg-black/60"><Clock size={13} color="white" /></View> : null}
           {photo.caption ? <Text className="mt-1 text-[11px] text-on-surface-variant" numberOfLines={2}>{photo.caption}</Text> : null}
-        </View>
+        </Pressable>
       ))}
     </ScrollView>
   );
 }
 
 /** One tramo (design j-03): its kicker, where it is, what it measured and a row per subsection. */
-function ItemCard({ item, section, onOpen }: { item: RepeatItem; section: RepeatSection; onOpen: (path: SectionPath) => void }) {
+function ItemCard({ item, section, onOpen, onView }: { item: RepeatItem; section: RepeatSection; onOpen: (path: SectionPath) => void; onView: (photo: PhotoToView) => void }) {
   const colors = useColores();
   return (
     <View testID={`item-${item.id}`} className="rounded-2xl border border-outline/15 bg-surface p-4">
@@ -40,7 +40,7 @@ function ItemCard({ item, section, onOpen }: { item: RepeatItem; section: Repeat
               <Text className="max-w-[40%] text-[12px] text-on-surface-variant" numberOfLines={1}>{sectionRowLine(one)}</Text>
               <ChevronRight size={16} color={colors.primary} />
             </Pressable>
-            {one.tool ? <PhotoStrip section={one} itemId={item.id} /> : null}
+            {one.tool ? <PhotoStrip section={one} itemId={item.id} onView={(url) => onView({ section: one, url, path: { sectionId: section.id, itemId: item.id, key: one.id } })} /> : null}
           </View>
         ))}
       </View>
@@ -53,7 +53,7 @@ function ItemCard({ item, section, onOpen }: { item: RepeatItem; section: Repeat
  * (which opens the first section of a new one) and a card per tramo with its
  * subsections, each opening its own form.
  */
-export function ReportItemsView({ section, onOpen }: { section: RepeatSection; onOpen: (path: SectionPath) => void }) {
+export function ReportItemsView({ section, onOpen, onView }: { section: RepeatSection; onOpen: (path: SectionPath) => void; onView: (photo: PhotoToView) => void }) {
   const colors = useColores();
   const first = section.template[0];
   const add = () => first && onOpen({ sectionId: section.id, itemId: null, key: first.id });
@@ -69,7 +69,7 @@ export function ReportItemsView({ section, onOpen }: { section: RepeatSection; o
         ) : null}
       </View>
       {section.items.length === 0 ? <Text className="pt-4 text-center text-[14px] text-on-surface-variant">{`Agrega el primer ${section.itemTitle.toLowerCase()} para empezar.`}</Text> : null}
-      {section.items.map((item) => <ItemCard key={item.id} item={item} section={section} onOpen={onOpen} />)}
+      {section.items.map((item) => <ItemCard key={item.id} item={item} section={section} onOpen={onOpen} onView={onView} />)}
     </View>
   );
 }

@@ -6,6 +6,12 @@ const FIX_TIMEOUT_MS = 15_000;
 /** A reading older than this is the phone's cache, not «now». */
 const FRESH_FIX_MS = 30_000;
 
+/** Asks only when it has to: Android refuses a request while the camera is asking for its own. */
+async function locationPermission(): Promise<Location.LocationPermissionResponse | null> {
+  const current = await Location.getForegroundPermissionsAsync().catch(() => null);
+  return current?.granted ? current : Location.requestForegroundPermissionsAsync().catch(() => null);
+}
+
 /**
  * Where the person is RIGHT NOW, read when they sign (José, 24/10: the
  * place in real time, never the one the phone kept). Never the last known
@@ -13,7 +19,7 @@ const FRESH_FIX_MS = 30_000;
  * `age` goes with it so the server can judge it with no clock to trust.
  */
 export async function freshPoint(): Promise<(GeoPoint & { readAt: number }) | null> {
-  const permission = await Location.requestForegroundPermissionsAsync().catch(() => null);
+  const permission = await locationPermission();
   if (permission?.status !== 'granted') return null;
   const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), FIX_TIMEOUT_MS));
   const fix = await Promise.race([Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High }).catch(() => null), timeout]);

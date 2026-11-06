@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fieldDocumentOf, type FieldDocument, type SectionPath } from './fieldDocument';
-import { applySave, blankDocumentOf, documentWithQueue, judgeFailure, judgeNotice, judgeReply, RATE_LIMIT_WAIT_MS, landedBefore, newItemOf, nextSave, pendingOf, photosLine, queueLine, queueSave, reportFormAnswer, reportKeyOf, reportSaveOf, resolveItem, savesOf, sectionPhotos, sectionRowLine, sentMarkOf, withoutSave, type ReportRef, type ReportSave } from './reportSaves';
+import { applySave, blankDocumentOf, documentWithQueue, judgeFailure, judgeNotice, judgeReply, RATE_LIMIT_WAIT_MS, landedBefore, newItemOf, nextSave, pendingOf, photoViewOf, photosLine, queueLine, queueSave, reportFormAnswer, reportKeyOf, reportSaveOf, resolveItem, savesOf, sectionPhotos, sectionRowLine, sentMarkOf, withoutSave, type ReportRef, type ReportSave } from './reportSaves';
 
 const photosForm = { type: 'object', properties: { foto: { type: 'string', title: 'Foto', 'x-input': 'photo' }, descripcion: { type: 'string', title: 'Descripción', maxLength: 200 } }, required: ['foto'] };
 const textForm = (name: string) => ({ type: 'object', properties: { [name]: { type: 'string', title: name } }, required: [name] });
@@ -109,6 +109,23 @@ describe('applySave', () => {
     const refused = { ...saveAt(bandejas, 'k1'), refusal: { message: 'Falta el peso', errors: { peso: 'Falta el peso' } } };
     const section = documentWithQueue(parsed(), [refused]).sections[1];
     expect(section?.kind === 'repeat' ? section.items[0]?.sections[1]?.state : null).toBe('error');
+  });
+});
+
+describe('photoViewOf (José 06/11: «no hay forma de ver la foto tomada»)', () => {
+  const section = { title: 'Foto de ingreso', values: { fotos: [{ id: 'f1', url: 'https://x/1.jpg', thumb_url: 'https://x/1t.jpg', descripcion: 'Inicio' }, { id: 'f2', url: 'https://x/2.jpg' }] } };
+
+  it('opens the tapped photo among the others of its section', () => {
+    // Act
+    const view = photoViewOf(section, 'https://x/2.jpg');
+    // Assert
+    expect(view?.file).toMatchObject({ url: 'https://x/2.jpg', name: 'Foto de ingreso', mime: 'image/jpeg' });
+    expect(view?.siblings.map((one) => one.name)).toEqual(['Inicio', 'Foto de ingreso']);
+    expect(view?.siblings[0]?.thumbUrl).toBe('https://x/1t.jpg');
+  });
+
+  it('a photo that is no longer there opens nothing', () => {
+    expect(photoViewOf(section, 'https://x/9.jpg')).toBeNull();
   });
 });
 

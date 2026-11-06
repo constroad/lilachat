@@ -586,11 +586,35 @@ spec al día. Las herramientas nuevas las aprueba José en agentes al publicarse
 
 ## 8. Estado
 
+**06/11, la foto del informe, causa de la lentitud:** después de disparar, `upload`
+esperaba `placeNow`, una lectura fresca de GPS de hasta 15 s en el APK. A eso se
+sumaba la cámara del sistema con su paso de confirmar. Ahora:
+
+- El GPS se lee desde que se abre el formulario, mientras se apunta. `upload` guarda
+  la foto al instante y el lugar se resuelve en «Enviar».
+- Sección que exige GPS (CTL-PIS): «Enviar» espera al teléfono. Sin lectura dice
+  `NO_GPS_PHOTO`, el formulario sigue abierto y el siguiente «Enviar» lee de nuevo.
+  Antes el rechazo salía al tomar la foto y la foto se perdía.
+- Sección que no lo exige: «Enviar» espera `PHOTO_PLACE_WAIT_MS` (3 s) y la foto va
+  con su hora.
+- La hora del sello es la del disparo, no la de la lectura.
+- `FormCamera` reemplaza a la cámara del sistema en todo campo de foto del APK.
+- `cameraFirstFieldOf`: en un informe, si solo falta la foto, el toque en la casilla
+  abre la cámara directo. Al disparar vuelve a la hoja con la foto, la hora y la
+  descripción opcional. Cerrar la cámara sin foto cierra el formulario.
+- Ver la foto: una foto tomada se abre en el visor, deslizando por las de su sección.
+  El visor ofrece «Tomar otra». No ofrece borrar: al deslizar cambia la foto en
+  pantalla y borraría la equivocada.
+- Permisos: GPS y cámara preguntan primero con `get` y solo piden si falta. Android
+  rechaza dos pedidos a la vez, y ahora GPS y cámara arrancan juntos.
+- La web gana lo mismo salvo la cámara: su campo sigue siendo el del navegador.
+
+Sin verificar al escribir esto: la velocidad en un teléfono físico.
+
 **06/11, prueba de José en su teléfono:** los campos de informe salen de una línea
 y 2 por fila, la hora de inicio toma la hora actual si no hay una guardada, y
-«Publicar informe» queda sobre los botones del teléfono. Pendiente en esta misma
-lista: ver la foto tomada, cámara dentro de la app, y las decisiones de José sobre
-WhatsApp por foto, borrar fotos y video. Portal ya siembra el responsable en
+«Publicar informe» queda sobre los botones del teléfono. Pendiente: las decisiones
+de José sobre WhatsApp por foto, borrar fotos enviadas y video. Portal ya siembra el responsable en
 «Responsables y firmas» (`311e2120`).
 
 

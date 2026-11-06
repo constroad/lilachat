@@ -44,11 +44,16 @@ const NOT_KEPT = 'No se pudo guardar en este dispositivo.';
 const PHOTO_NOT_KEPT = 'No se pudo guardar la foto en este dispositivo.';
 const NO_FORM = 'Este formulario ya no está abierto.';
 /** José 06/11: «bloquea la foto sin GPS». */
-export const NO_GPS_PHOTO = 'Sin GPS no hay foto. Enciende la ubicación del teléfono y vuelve a tomarla.';
+export const NO_GPS_PHOTO = 'Sin GPS no hay foto. Enciende la ubicación del teléfono y toca Enviar otra vez.';
+/** How long «Enviar» waits for a GPS the section does not require: then the photo goes with its hour alone. */
+export const PHOTO_PLACE_WAIT_MS = 3000;
 
 const hasFix = (place: DevicePlace): boolean => place.lat !== undefined && place.lng !== undefined;
 
-type HeldPhoto = { kept: KeptPhoto; place: DevicePlace };
+/** `place` is null after a reading without a fix: the next «Enviar» reads again, once the person turned the GPS on. */
+type HeldPhoto = { kept: KeptPhoto; place: Promise<DevicePlace> | null; takenAt: string };
+/** A held photo on its way to the queue, with where it was finally taken. */
+type Shot = { field: string; kept: KeptPhoto; place: DevicePlace };
 
 const photoFieldOf = (answer: EphemeralAnswer): string | undefined => Object.entries(answer.response?.form?.schema.properties ?? {}).find(([, property]) => property['x-input'] === 'photo')?.[0];
 
@@ -115,12 +120,25 @@ function createDocumentFeed(queue: ReportQueue, ref: ReportRef, tell: () => void
 function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportNow: () => { document: FieldDocument | null; saves: ReportSave[] }, tell: () => void) {
   const photos = new Map<string, HeldPhoto>();
   let openForm: { path: SectionPath; answer: EphemeralAnswer } | null = null;
+  /**
+   * The reading started with the form, so the GPS works while the person aims.
+   * José 06/11: waiting for it after the shutter was what held the photo for seconds.
+   */
+  let aiming: Promise<DevicePlace> | null = null;
+  const readPlace = (): Promise<DevicePlace> => deps.placeNow().catch((): DevicePlace => ({ at: deps.now() }));
 
-  function saveOf(document: FieldDocument, path: SectionPath, answer: EphemeralAnswer, values: FormValues): ReportSave {
+  /** A section that requires the place waits for the phone, which has its own limit; any other, a moment. */
+  async function placeOf(held: HeldPhoto, required: boolean): Promise<DevicePlace> {
+    const reading = held.place ?? readPlace();
+    held.place = reading;
+    const gaveUp = new Promise<DevicePlace>((resolve) => setTimeout(() => resolve({ at: held.takenAt }), PHOTO_PLACE_WAIT_MS));
+    const place = await (required ? reading : Promise.race([reading, gaveUp]));
+    return { ...place, at: held.takenAt };
+  }
+
+  function saveOf(document: FieldDocument, path: SectionPath, values: FormValues, shot: Shot | null): ReportSave {
     const save = reportSaveOf({ ref, document, path, values, clientKey: deps.newKey(), now: deps.now() });
-    const field = photoFieldOf(answer);
-    const photo = field ? photos.get(String(values[field])) : undefined;
-    return field && photo ? { ...save, photo: { field, ...photo.kept }, place: photo.place } : save;
+    return shot ? { ...save, photo: { field: shot.field, ...shot.kept }, place: shot.place } : save;
   }
 
   return {
@@ -132,15 +150,17 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
       const context = { errors: refused?.refusal?.errors, personName: deps.personName(), arrivalHour: document ? arrivalHourOf(document, path, deps.now()) : undefined, startHour: clockHourOf(deps.now()) };
       const answer = document ? reportFormAnswer(document, path, context) : null;
       openForm = answer ? { path, answer } : null;
+      aiming = answer && photoFieldOf(answer) ? readPlace() : null;
       tell();
     },
     closeForm(): void {
       photos.forEach((_held, photo) => void deps.dropPhoto(photo));
       photos.clear();
       openForm = null;
+      aiming = null;
       tell();
     },
-    /** The photo field's upload: here it only stays on the device, with where and when it was taken. A section that needs the place refuses it without a fix. */
+    /** The photo field's upload: it only stays on the device, at once. Where it was taken is settled at «Enviar». */
     async upload(source: P): Promise<{ ok: true; fileId: string } | { ok: false; message: string }> {
       let kept: KeptPhoto;
       try {
@@ -148,26 +168,33 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
       } catch {
         return { ok: false, message: PHOTO_NOT_KEPT };
       }
-      const place = await deps.placeNow().catch((): DevicePlace => ({ at: deps.now() }));
-      const { document } = reportNow();
-      if (!hasFix(place) && openForm && document && requiresLocation(document, openForm.path)) {
-        await deps.dropPhoto(kept.ref);
-        return { ok: false, message: NO_GPS_PHOTO };
-      }
-      photos.set(kept.ref, { kept, place });
+      photos.set(kept.ref, { kept, place: aiming ?? readPlace(), takenAt: deps.now() });
+      aiming = null;
       return { ok: true, fileId: kept.ref };
     },
     /** The save is queued and the form closes, with signal or without. */
     async submit(values: FormValues): Promise<FormSubmitOutcome> {
-      const { document } = reportNow();
-      if (!openForm || !document) return { done: false, errors: {}, message: NO_FORM };
+      const opened = openForm;
+      const before = reportNow().document;
+      if (!opened || !before) return { done: false, errors: {}, message: NO_FORM };
+      const field = photoFieldOf(opened.answer);
+      const held = field ? photos.get(String(values[field])) : undefined;
+      const required = requiresLocation(before, opened.path);
+      const place = held ? await placeOf(held, required) : null;
+      const document = reportNow().document;
+      if (openForm !== opened || !document) return { done: false, errors: {}, message: NO_FORM };
+      if (held && place && required && !hasFix(place)) {
+        held.place = null;
+        return { done: false, errors: {}, message: NO_GPS_PHOTO };
+      }
       try {
-        await deps.queue.add(saveOf(document, openForm.path, openForm.answer, values));
+        await deps.queue.add(saveOf(document, opened.path, values, field && held && place ? { field, kept: held.kept, place } : null));
       } catch {
         return { done: false, errors: {}, message: NOT_KEPT };
       }
       photos.clear();
       openForm = null;
+      aiming = null;
       tell();
       return { done: true, answer: null };
     },

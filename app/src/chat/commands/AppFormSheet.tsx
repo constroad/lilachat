@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from 'react';
 import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { CheckCheck, X } from 'lucide-react-native';
-import { CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, formRows, liveSelfieFieldOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply } from '@lilachat/shared';
+import { cameraFirstFieldOf, CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, formRows, liveSelfieFieldOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { Modal } from '../../ui/Modal';
@@ -36,7 +36,7 @@ const ROW_GAP = 12;
 const TODAY = new Intl.DateTimeFormat('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
 const CLOCK = new Intl.DateTimeFormat('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false });
 
-type SheetProps = { answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: PhotoUpload; /** The address under a signing's camera. */ onPlace?: PlaceLookup; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply> };
+type SheetProps = { /** A report's photo: the form starts at the camera when that is all it still needs. */ cameraFirst?: boolean; answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: PhotoUpload; /** The address under a signing's camera. */ onPlace?: PlaceLookup; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply> };
 
 /** The keyboard's height: the sheet rises above it and shrinks to fit (José, 23/10: he typed the code without seeing it). */
 function useKeyboardHeight() {
@@ -94,10 +94,12 @@ export function AppFormSheet(props: SheetProps) {
   const scroll = useRef<ScrollView>(null);
   const positions = useRef<Record<string, number>>({});
   const state = useAppFormState({ fields, refused: props.answer.errors, signing, onSubmit: props.onSubmit, reveal: (name) => revealField(scroll, positions.current[name], keyboard > 0) });
+  // Decided once: taking the photo out again must not open the camera again.
+  const [cameraField] = useState(() => (props.cameraFirst && !live ? cameraFirstFieldOf(visibleFields(fields, state.values), state.values) : null));
   const formLive = useFormLive({ fields, values: state.values, preview: form.preview, onRefresh: props.onRefresh, onPreview: props.onPreview });
   const sheetWidth = Math.min(width, SHEET_MAX_WIDTH);
   // The summary's remarks under their fields; the person's own errors win.
-  const slot: SlotContext = { fields, onPlace: props.onPlace, values: state.values, errors: { ...formLive.summary.errors, ...state.errors }, live, locationName, selfie, upload: props.onUpload, set: state.set, setList: state.setList, width: sheetWidth, positions };
+  const slot: SlotContext = { cameraField, onCameraDismissed: props.onClose, fields, onPlace: props.onPlace, values: state.values, errors: { ...formLive.summary.errors, ...state.errors }, live, locationName, selfie, upload: props.onUpload, set: state.set, setList: state.setList, width: sheetWidth, positions };
   // Sent and answered later (consensus 24/10): «Enviando…» until the answer closes it or the errors come back here.
   const waiting = props.answer.waiting === true;
   const evidence = evidenceLine(fields);
@@ -213,6 +215,8 @@ function SheetFooter(props: { summary: PreviewReply['blocks']; message: string; 
 type SlotContext = {
   fields: readonly FormField[];
   onPlace?: PlaceLookup;
+  cameraField: string | null;
+  onCameraDismissed: () => void;
   values: FormValues;
   errors: Record<string, string>;
   live: Pick<FormField, 'name'> | null;
@@ -248,20 +252,20 @@ function FieldSlot(props: { field: FormField; half: boolean; context: SlotContex
           renderField={(child, value, error, onChange, key, halfCell) => <Field key={key} field={child} value={value} error={error} onChange={onChange} upload={upload} width={width - SHEET_PADDING * 4} half={halfCell} />}
         />
       ) : (
-        <Field field={field} value={values[field.name]} error={errors[field.name]} onChange={props.context.set(field.name)} upload={upload} width={width - SHEET_PADDING * 2} half={half} />
+        <Field field={field} value={values[field.name]} error={errors[field.name]} onChange={props.context.set(field.name)} upload={upload} width={width - SHEET_PADDING * 2} half={half} opensCamera={props.context.cameraField === field.name} onCameraDismissed={props.context.onCameraDismissed} />
       )}
     </View>
   );
 }
 
-function Field(props: { field: Exclude<FormField, { kind: 'list' }>; value: unknown; error?: string; onChange: (value: unknown) => void; upload: PhotoUpload; width: number; half?: boolean }) {
-  const { field, upload, width, half, ...rest } = props;
+function Field(props: { field: Exclude<FormField, { kind: 'list' }>; value: unknown; error?: string; onChange: (value: unknown) => void; upload: PhotoUpload; width: number; half?: boolean; opensCamera?: boolean; onCameraDismissed?: () => void }) {
+  const { field, upload, width, half, opensCamera, onCameraDismissed, ...rest } = props;
   switch (field.kind) {
     case 'choice': return isRichChoice(field) ? <RichChoiceField field={field} {...rest} /> : <ChoiceField field={field} {...rest} compact={half} />;
     case 'multi': return <MultiField field={field} {...rest} />;
     case 'date': return <DateField field={field} {...rest} compact={half} />;
     case 'location': return <LocationField field={field} {...rest} width={width} />;
-    case 'photo': return field.multiple ? <PhotoListField field={field} error={rest.error} onChange={rest.onChange} upload={upload} /> : <PhotoField field={field} {...rest} upload={upload} />;
+    case 'photo': return field.multiple ? <PhotoListField field={field} error={rest.error} onChange={rest.onChange} upload={upload} /> : <PhotoField field={field} {...rest} upload={upload} opensCamera={opensCamera} onCameraDismissed={onCameraDismissed} />;
     default: return <TypedField field={field} {...rest} />;
   }
 }

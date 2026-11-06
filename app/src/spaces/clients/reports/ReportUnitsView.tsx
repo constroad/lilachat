@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Image, Platform, Pressable, Text, View } from 'react-native';
 import { Camera, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Clock, Container, Ruler, Thermometer, Truck } from 'lucide-react-native';
-import { ARRIVED_LABEL, dataSectionOf, pageLine, photoSlotsOf, sectionRowLine, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
+import { ARRIVED_LABEL, dataSectionOf, pageLine, photoSlotsOf, sectionRowLine, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { Pill, ResultsStrip, StateDot } from './ReportSections';
 
@@ -14,13 +14,14 @@ const NO_UNITS = 'Todavía no salió ningún volquete de planta.';
 const slotLabel = (title: string): string => title.replace(/^foto de\s+/i, '');
 
 type Open = (path: SectionPath) => void;
+type ViewPhoto = (photo: PhotoToView) => void;
 
 /** One photo of the unit: its thumbnail with a check, or a dashed camera to take it with one tap. */
-function PhotoSlot({ slot, itemId, onOpen }: { slot: UnitSlot; itemId: string; onOpen: () => void }) {
+function PhotoSlot({ slot, itemId, onOpen, onView }: { slot: UnitSlot; itemId: string; onOpen: () => void; onView: (url: string) => void }) {
   const colors = useColores();
   const Icon = iconOf(slot.section.photoKind);
   return (
-    <Pressable testID={`foto-${itemId}-${slot.section.id}`} onPress={onOpen} accessibilityLabel={slot.section.title} className="items-center" style={{ width: SLOT }}>
+    <Pressable testID={`foto-${itemId}-${slot.section.id}`} onPress={() => (slot.photo ? onView(slot.photo.url) : onOpen())} accessibilityLabel={slot.section.title} className="items-center" style={{ width: SLOT }}>
       {/* The key remounts the tile: on Android, dropping the dashed border from a live clipped view left its photo and check undrawn until the screen was reopened (E2E 06/11). */}
       <View key={slot.done ? 'taken' : 'missing'} className={`items-center justify-center overflow-hidden rounded-2xl ${slot.done ? 'bg-primary/10' : 'border-2 border-dashed border-primary/50 bg-surface-variant'}`} style={{ width: SLOT, height: SLOT }}>
         {slot.photo ? <Image source={{ uri: slot.photo.thumbUrl }} style={{ width: SLOT, height: SLOT }} /> : <Icon size={28} color={colors.primary} />}
@@ -54,7 +55,7 @@ function WaitingRow({ item, section, last, onOpen }: { item: RepeatItem; section
 }
 
 /** A unit on site: number and plate, its pill, the four photo slots and the line of its data. */
-function ArrivedCard({ item, section, onOpen }: { item: RepeatItem; section: RepeatSection; onOpen: Open }) {
+function ArrivedCard({ item, section, onOpen, onView }: { item: RepeatItem; section: RepeatSection; onOpen: Open; onView: ViewPhoto }) {
   const colors = useColores();
   const { kicker, plate } = unitTitleOf(item);
   const data = dataSectionOf(item);
@@ -69,7 +70,10 @@ function ArrivedCard({ item, section, onOpen }: { item: RepeatItem; section: Rep
         <Pill badge={unitBadgeOf(item)} testID={`estado-${item.id}`} />
       </View>
       <View className="mt-3 flex-row justify-between">
-        {photoSlotsOf(item).map((slot) => <PhotoSlot key={slot.section.id} slot={slot} itemId={item.id} onOpen={() => onOpen({ sectionId: section.id, itemId: item.id, key: slot.section.id })} />)}
+        {photoSlotsOf(item).map((slot) => {
+          const path = { sectionId: section.id, itemId: item.id, key: slot.section.id };
+          return <PhotoSlot key={slot.section.id} slot={slot} itemId={item.id} onOpen={() => onOpen(path)} onView={(url) => onView({ section: slot.section, url, path })} />;
+        })}
       </View>
       {data ? (
         <Pressable testID={`datos-${item.id}`} onPress={() => onOpen({ sectionId: section.id, itemId: item.id, key: data.id })} className="mt-3 min-h-[44px] flex-row items-center gap-2 border-t border-outline/10 pt-2">
@@ -95,7 +99,7 @@ function Group({ title, count, children }: { title: string; count: number; child
 }
 
 /** The finished ones fold away: they no longer need the person, and twelve of them would bury the rest. */
-function FinishedGroup({ items, section, onOpen }: { items: RepeatItem[]; section: RepeatSection; onOpen: Open }) {
+function FinishedGroup({ items, section, onOpen, onView }: { items: RepeatItem[]; section: RepeatSection; onOpen: Open; onView: ViewPhoto }) {
   const colors = useColores();
   const [open, setOpen] = useState(false);
   const Chevron = open ? ChevronUp : ChevronDown;
@@ -106,7 +110,7 @@ function FinishedGroup({ items, section, onOpen }: { items: RepeatItem[]; sectio
         <Text className="text-[12px] font-bold text-primary">{items.length}</Text>
         <Chevron size={18} color={colors.primary} />
       </Pressable>
-      {open ? items.map((item) => <ArrivedCard key={item.id} item={item} section={section} onOpen={onOpen} />) : null}
+      {open ? items.map((item) => <ArrivedCard key={item.id} item={item} section={section} onOpen={onOpen} onView={onView} />) : null}
     </View>
   );
 }
@@ -118,7 +122,7 @@ function FinishedGroup({ items, section, onOpen }: { items: RepeatItem[]; sectio
  * order; the ones still at the plant as a line; the finished ones folded.
  * Nobody adds a unit; Portal lists the order's dispatches.
  */
-export function ReportUnitsView({ section, onOpen }: { section: RepeatSection; onOpen: Open }) {
+export function ReportUnitsView({ section, onOpen, onView }: { section: RepeatSection; onOpen: Open; onView: ViewPhoto }) {
   const groups = unitGroupsOf(section);
   const head = [unitCountsLine(groups), pageLine(section)].filter(Boolean).join(' · ');
   return (
@@ -126,14 +130,14 @@ export function ReportUnitsView({ section, onOpen }: { section: RepeatSection; o
       {section.summary.length ? <Text testID="resumen-unidades" className="text-[15px] font-bold text-on-surface">{section.summary.join(' · ')}</Text> : null}
       {head ? <Text testID="conteo-unidades" className="text-[14px] text-on-surface-variant">{head}</Text> : null}
       {section.items.length === 0 ? <Text className="pt-4 text-center text-[14px] text-on-surface-variant">{NO_UNITS}</Text> : null}
-      {groups.onSite.length ? <Group title={UNIT_GROUP_TITLES.onSite} count={groups.onSite.length}>{groups.onSite.map((item) => <ArrivedCard key={item.id} item={item} section={section} onOpen={onOpen} />)}</Group> : null}
+      {groups.onSite.length ? <Group title={UNIT_GROUP_TITLES.onSite} count={groups.onSite.length}>{groups.onSite.map((item) => <ArrivedCard key={item.id} item={item} section={section} onOpen={onOpen} onView={onView} />)}</Group> : null}
       {groups.waiting.length ? (
         <Group title={UNIT_GROUP_TITLES.waiting} count={groups.waiting.length}>
           <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">{groups.waiting.map((item, index) => <WaitingRow key={item.id} item={item} section={section} last={index === groups.waiting.length - 1} onOpen={onOpen} />)}</View>
         </Group>
       ) : null}
       {groups.atPlant.length ? <Group title={UNIT_GROUP_TITLES.atPlant} count={groups.atPlant.length}><Text testID="unidades-en-planta" className="text-[14px] text-on-surface-variant" style={{ fontFamily: PLATE_FONT }}>{groups.atPlant.map((item) => unitTitleOf(item).plate).join(' · ')}</Text></Group> : null}
-      {groups.finished.length ? <FinishedGroup items={groups.finished} section={section} onOpen={onOpen} /> : null}
+      {groups.finished.length ? <FinishedGroup items={groups.finished} section={section} onOpen={onOpen} onView={onView} /> : null}
       <ResultsStrip results={section.results} testID="resultados-unidades" />
     </View>
   );

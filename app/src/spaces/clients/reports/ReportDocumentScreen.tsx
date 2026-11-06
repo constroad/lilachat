@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { AlertTriangle, ChevronLeft, ExternalLink, FileText } from 'lucide-react-native';
-import { formKeyOf, isUnitsRepeat, itemsLine, pendingOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
+import { formKeyOf, isUnitsRepeat, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
 import { AppFormSheet } from '../../../chat/commands/AppFormSheet';
 import { EphemeralAnswers } from '../../../chat/commands/EphemeralAnswers';
 import { useColores } from '../../../ui/tema';
@@ -101,10 +101,10 @@ function ReportFooter({ report, blocker, asking, onPublish, onPdf, onDone }: { r
 }
 
 /** What the screen shows under the header: the loading block, the failure, the tramos or the hub. */
-function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems, onRetry }: { onRetry: () => void; draft: ReportDraftResult | null; report: FieldDocument | null; items: DocumentSection | undefined; portalUrl?: string; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
+function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems, onRetry, onView }: { onRetry: () => void; onView: (photo: PhotoToView) => void; draft: ReportDraftResult | null; report: FieldDocument | null; items: DocumentSection | undefined; portalUrl?: string; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
   if (draft === null) return <View testID="informe-cargando" className="h-40 rounded-2xl bg-surface-variant" />;
   if (!draft.ok || !report) return <DraftFailure message={draft.ok ? 'No se pudo abrir el informe' : draft.message} portalUrl={portalUrl} onRetry={onRetry} />;
-  if (items?.kind === 'repeat') return isUnitsRepeat(items) ? <ReportUnitsView section={items} onOpen={onOpen} /> : <ReportItemsView section={items} onOpen={onOpen} />;
+  if (items?.kind === 'repeat') return isUnitsRepeat(items) ? <ReportUnitsView section={items} onOpen={onOpen} onView={onView} /> : <ReportItemsView section={items} onOpen={onOpen} onView={onView} />;
   return (
     <>
       <ProgressCard document={report} />
@@ -152,19 +152,23 @@ export function ReportDocumentScreen(props: Props) {
     screen.setPublishing(false);
     if (report) void forms.openPublish(report);
   };
+  const viewPhoto = ({ section, url, path }: PhotoToView) => {
+    const view = photoViewOf(section, url);
+    if (view) files.open(view.file, view.siblings, { label: TAKE_ANOTHER_PHOTO, onPress: () => actions.openSection(path) });
+  };
   return (
     <View className="flex-1">
       <ScrollView testID="informe-documento" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 24 }}>
         <ReportHeader kicker={items ? `${kicker} · ${items.title}` : kicker} title={props.service.name} report={report} onBack={screen.back} />
         <QueueCard saves={saves} offline={offline} onFix={(save) => actions.openSection(save.path)} onDiscard={(save) => void actions.discard(save.clientKey)} />
         <EphemeralAnswers answers={forms.answers.answers} onDismiss={forms.answers.dismiss} onOpenForm={forms.answers.showForm} chatId={props.chatId} jwt={props.target.jwt} embedded />
-        <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={screen.setItemsOf} onRetry={actions.refresh} />
+        <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={screen.setItemsOf} onRetry={actions.refresh} onView={viewPhoto} />
         {notice ? <Text className="text-center text-[13px] text-error">{notice}</Text> : null}
       </ScrollView>
       {report && (!items || (items.kind === 'repeat' && isUnitsRepeat(items))) ? <ReportFooter report={report} blocker={publishFooterLine(report, blockers)} asking={pdf.asking} onPublish={() => screen.setPublishing(true)} onPdf={() => void pdf.ask(report.id ?? '', `${report.title} · PDF`)} onDone={() => props.onClose(true)} /> : null}
       {files.viewer}
       {report ? <PublishSheet document={report} blockers={blockers} visible={screen.publishing} onClose={() => screen.setPublishing(false)} onPublish={publish} /> : null}
-      {document.form ? <AppFormSheet key={formKeyOf(document.form)} answer={document.form} onSubmit={actions.submit} onUpload={actions.upload} onClose={actions.closeForm} /> : null}
+      {document.form ? <AppFormSheet key={formKeyOf(document.form)} cameraFirst answer={document.form} onSubmit={actions.submit} onUpload={actions.upload} onClose={actions.closeForm} /> : null}
       {forms.answers.openForm ? (
         <AppFormSheet key={formKeyOf(forms.answers.openForm)} answer={forms.answers.openForm} onSubmit={(values) => forms.answers.submitForm(forms.answers.openForm!, values)} onUpload={(photo, stamp) => forms.answers.uploadPhoto(forms.answers.openForm!.commandId, photo, stamp)} onRefresh={(values) => forms.answers.refreshForm(forms.answers.openForm!, values)} onPreview={(values) => forms.answers.previewForm(forms.answers.openForm!, values)} onClose={() => forms.answers.dismiss(forms.answers.openForm!.commandId)} />
       ) : null}

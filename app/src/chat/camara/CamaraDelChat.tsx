@@ -9,14 +9,12 @@ import { useMargenes } from '../../ui/useMargenes';
 import { reportarError } from '../../ui/reportarError';
 import type { FotoAEnviar, FotoElegida } from '../envioDeFotos';
 import { EnviarFotos } from '../EnviarFotos';
+import { FLASH_LABEL, NEXT_FLASH, type FlashMode } from './flash';
 
 /** Cuántas fotos recientes muestra la tira (solo si ya hay permiso de la galería). */
 const RECIENTES = 12;
 const MINIATURA = 56;
 const DISPARADOR = 76;
-type Flash = 'off' | 'on' | 'auto';
-const SIGUIENTE_FLASH: Record<Flash, Flash> = { auto: 'on', on: 'off', off: 'auto' };
-const ETIQUETA_FLASH: Record<Flash, string> = { auto: 'Auto', on: 'Sí', off: 'No' };
 
 /**
  * La cámara propia del chat (José, 20/10: «al tomar una foto demora unos
@@ -31,7 +29,7 @@ export function CamaraDelChat(props: { visible: boolean; nombreDelChat: string; 
   const camara = useRef<CameraView>(null);
   const destello = useRef(new Animated.Value(0)).current;
   const [frontal, setFrontal] = useState(false);
-  const [flash, setFlash] = useState<Flash>('auto');
+  const [flash, setFlash] = useState<FlashMode>('auto');
   const [disparando, setDisparando] = useState(false);
   const [recientes, setRecientes] = useState<MediaLibrary.Asset[]>([]);
   /** La foto recién tomada: «Enviar» se abre ENCIMA, en esta misma pantalla (dos modales no se apilan bien en Android). */
@@ -75,9 +73,9 @@ export function CamaraDelChat(props: { visible: boolean; nombreDelChat: string; 
             <Pressable testID="btn-cerrar-camara" accessibilityLabel="Cerrar la cámara" onPress={props.onCerrar} className="h-11 w-11 items-center justify-center rounded-full bg-black/40">
               <X size={24} color="white" />
             </Pressable>
-            <Pressable testID="btn-flash" accessibilityLabel={`Flash: ${ETIQUETA_FLASH[flash]}`} onPress={() => setFlash((antes) => SIGUIENTE_FLASH[antes])} className="h-11 flex-row items-center gap-1.5 rounded-full bg-black/40 px-3">
+            <Pressable testID="btn-flash" accessibilityLabel={`Flash: ${FLASH_LABEL[flash]}`} onPress={() => setFlash((antes) => NEXT_FLASH[antes])} className="h-11 flex-row items-center gap-1.5 rounded-full bg-black/40 px-3">
               {flash === 'off' ? <ZapOff size={20} color="white" /> : <Zap size={20} color="white" />}
-              <Text className="text-[13px] font-semibold" style={{ color: 'white' }}>{ETIQUETA_FLASH[flash]}</Text>
+              <Text className="text-[13px] font-semibold" style={{ color: 'white' }}>{FLASH_LABEL[flash]}</Text>
             </Pressable>
           </View>
           <Text className="mt-2 rounded-full bg-black/40 px-3 py-1 text-[13px]" style={{ color: 'white' }} numberOfLines={1}>

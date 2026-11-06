@@ -411,6 +411,15 @@ E2E del 06/11 (Test, Consorcio Vial del Pacífico, servicio QA-CTLPIS
   por ítem, `publish.warnings` y copia `page` al `repeat`. **Regla:** la lista
   blanca de Agentes duplica nuestro analizador; toda clave nueva que lea
   `fieldDocument.ts` se le avisa a Agentes o se pierde sin error.
+- **`seccion` para Portal = el `form` de la entrada, no su id.** Al guardar
+  «Datos» de una unidad, `guardar_seccion_de_informe` respondía 422 «seccion:
+  No es una de las opciones»: su enum para CTL-PIS es `general`, `control`,
+  `unidad`, `checklist`, `observaciones`, `firmas`, y la entrada de la
+  plantilla se llama `datos` con formulario `unidad`. El server manda ahora
+  `sectionAt(document, path).form` (igual en CTL-IMP, donde entrada y
+  formulario comparten id); el despacho sigue en `tramoId`. Portal prefirió
+  esto a sumar `datos` al enum: cambiar el `inputSchema` obligaría a José a
+  reaprobar la herramienta otra vez.
 - `RepeatSection.results`: Portal manda en la sección de unidades Carros,
   Volumen y Terminadas; el analizador los lee y el hub y la lista de unidades
   los muestran (`resultados-unidades`).

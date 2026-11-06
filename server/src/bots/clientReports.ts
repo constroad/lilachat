@@ -1,5 +1,5 @@
 import mongoose, { Types, type Model } from 'mongoose';
-import { channelValuesOf, CLIENT_ID, fieldDocumentOf, formLevelOf, photoKindOf, requiresLocation, SECTION_TOOL, sectionFormOf, type AppForm, type CommandOutcome, type FieldDocument, type FormSchema, type SectionPath } from '@lilachat/shared';
+import { channelValuesOf, CLIENT_ID, fieldDocumentOf, formLevelOf, photoKindOf, requiresLocation, SECTION_TOOL, sectionAt, sectionFormOf, type AppForm, type CommandOutcome, type FieldDocument, type FormSchema, type SectionPath } from '@lilachat/shared';
 import { OUTDATED_FORM_MESSAGE, type CommandError } from './botCommands.js';
 import { askAboutService, findAskedService, notFound, type AskOutcome, type NotFound, type ServiceAsk } from './clientFiles.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botModels.js';
@@ -103,12 +103,12 @@ function openInputOf(input: unknown): OpenInput | null {
 
 type Prepared = { form: AppForm; context: Record<string, string | number> };
 
-type PhotoTerms = { reportId: string | null; tramoId: string | null; /** The section's `tipoFoto` (CTL-PIS) and whether it refuses a capture without a fix. */ photoKind?: string; requireLocation: boolean };
+type PhotoTerms = { reportId: string | null; tramoId: string | null; /** Portal's `seccion` is the form the person filled, not the template entry (`datos` → `unidad` in CTL-PIS; equal in CTL-IMP). */ sectionForm: string; /** The section's `tipoFoto` (CTL-PIS) and whether it refuses a capture without a fix. */ photoKind?: string; requireLocation: boolean };
 
 /** Each tool takes only the keys it declares (agentes refuses the rest): the photo one wants the report, the tramo, the hour, its kind and its key. */
 function contextFor(form: AppForm, serviceId: string, input: Extract<OpenInput, { kind: 'section' }>, terms: PhotoTerms): { context: Record<string, string | number> } | CommandError {
   const { reportId, tramoId, photoKind } = terms;
-  if (form.id === SECTION_TOOL) return { context: { servicioId: serviceId, tipo: input.type, seccion: input.path.key, ...(reportId ? { informeId: reportId } : {}), ...(tramoId ? { tramoId } : {}) } };
+  if (form.id === SECTION_TOOL) return { context: { servicioId: serviceId, tipo: input.type, seccion: terms.sectionForm, ...(reportId ? { informeId: reportId } : {}), ...(tramoId ? { tramoId } : {}) } };
   if (!reportId || !tramoId || !input.place) return fail(400, 'invalid_request', 'Una foto necesita el informe, el tramo y la hora de la captura.');
   const { lat, lng, at } = input.place;
   const placed = lat !== undefined && lng !== undefined;
@@ -121,7 +121,7 @@ async function sectionPrepared(workspaceId: string, serviceId: string, userId: T
   const draft = await ReportDraftModel.findOne({ workspaceId: new Types.ObjectId(workspaceId), userId, serviceId, type: input.type }).lean();
   const form = draft ? sectionFormOf(draft.document, input.path) : null;
   if (!draft || !form) return fail(409, 'draft_not_open', 'Abre el informe de nuevo para seguir llenándolo.');
-  const built = contextFor(form, serviceId, input, { reportId: input.reportId ?? draft.document.id, tramoId: input.tramoId ?? input.path.itemId, photoKind: photoKindOf(draft.document, input.path), requireLocation: requiresLocation(draft.document, input.path) });
+  const built = contextFor(form, serviceId, input, { reportId: input.reportId ?? draft.document.id, tramoId: input.tramoId ?? input.path.itemId, sectionForm: sectionAt(draft.document, input.path)?.form ?? input.path.key, photoKind: photoKindOf(draft.document, input.path), requireLocation: requiresLocation(draft.document, input.path) });
   return 'error' in built ? built : { form, context: { ...built.context, ...channelValuesOf(draft.document, input.path) } };
 }
 

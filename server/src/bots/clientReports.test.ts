@@ -207,10 +207,11 @@ describe('the photo and «Publicar» as forms', () => {
 describe('a control de pista (06/11): units from the dispatches, photos with their kind and place', () => {
   const unitsSection = {
     id: 'unidades', kind: 'repeat', title: 'Unidades', required: true, state: 'empty', summary: [], itemTitle: 'Unidad', addLabel: '', min: 1, page: { current: 1, total: 2 },
-    template: [{ id: 'datos', title: 'Datos', required: true, form: 'ubicacion' }, { id: 'foto-ingreso', title: 'Foto de ingreso', required: true, form: 'fotos', tool: 'agregar_foto_de_informe', photoKind: 'ingreso', requireLocation: true }],
+    template: [{ id: 'datos', title: 'Datos', required: true, form: 'unidad' }, { id: 'foto-ingreso', title: 'Foto de ingreso', required: true, form: 'fotos', tool: 'agregar_foto_de_informe', photoKind: 'ingreso', requireLocation: true }],
     items: [{ id: 'd1', title: 'QAP-103', summary: ['Salió 07:10 · 15 m³'], sections: [] }],
   };
-  const pista = { ...document, id: '6aed0a1b2c3d4e5f60718293', type: 'CTL-PIS', title: 'Control de pista', sections: [document.sections[0], unitsSection] };
+  // The unit's data form is `unidad` while its template entry is `datos`: Portal's `seccion` is the form (06/11).
+  const pista = { ...document, id: '6aed0a1b2c3d4e5f60718293', type: 'CTL-PIS', title: 'Control de pista', forms: { ...document.forms, unidad: ubicacionForm }, sections: [document.sections[0], unitsSection] };
   const at = '2026-11-06T15:00:00.000Z';
 
   it('opens here, and a page of units rides to Portal as given; a page before the first is refused', async () => {
@@ -231,6 +232,17 @@ describe('a control de pista (06/11): units from the dispatches, photos with the
     expect(opened.body.response.form).toMatchObject({ id: 'agregar_foto_de_informe', title: 'QAP-103 · Foto de ingreso' });
     const run = await BotCommandRunModel.findById(opened.body.commandId).lean();
     expect(run?.context).toEqual({ servicioId: 'srv-318', informeId: '6aed0a1b2c3d4e5f60718293', tramoId: 'd1', tipoFoto: 'ingreso', clientKey: 'k-ingreso-1', lat: -12.0464, lng: -77.0428, at });
+  });
+
+  it('a unit\'s data section is saved under its form id (`unidad`), the key Portal accepts, with the dispatch as tramo', async () => {
+    answers['client.report.draft.requested'] = { status: 200, body: pista };
+    await draftOf(ana, { type: 'CTL-PIS' }).expect(200);
+
+    const opened = await openOf(ana, { kind: 'section', type: 'CTL-PIS', section_id: 'unidades', item_id: 'd1', key: 'datos' }).expect(200);
+
+    expect(opened.body.response.form).toMatchObject({ id: 'guardar_seccion_de_informe', title: 'QAP-103 · Datos' });
+    const run = await BotCommandRunModel.findById(opened.body.commandId).lean();
+    expect(run?.context).toEqual({ servicioId: 'srv-318', tipo: 'CTL-PIS', seccion: 'unidad', informeId: '6aed0a1b2c3d4e5f60718293', tramoId: 'd1' });
   });
 
   it('a photo that needs its place is refused without one, before touching Portal', async () => {

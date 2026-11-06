@@ -107,7 +107,9 @@ const DEFAULT_MAX_ITEMS = 10;
 /** More fields than this per item, or a long or conditional one, and the item is a card instead of a row. */
 const ROW_MAX_FIELDS = 3;
 /** A text allowed longer than this gets several lines. */
-const MULTILINE_FROM = 120;
+const MULTILINE_FROM = 200;
+/** A field for free writing, whatever its limit. */
+const FREE_WRITING = /observaci|comentario/i;
 const FORM_ID = /^[a-z][a-z0-9_-]*$/;
 const INPUTS = ['photo', 'location', 'textarea', 'otp', 'pin', 'place'];
 /** A code longer than this is not typed by hand. */
@@ -222,7 +224,7 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
     const maxLength = typeof property.maxLength === 'number' ? Math.min(property.maxLength, FORM_LIMITS.text) : undefined;
     const digits = codeDigitsOf(input, property, maxLength);
     const initial = typeof property.default === 'string' && property.default.trim() ? { initial: line(property.default, maxLength ?? FORM_LIMITS.text) } : {};
-    return { ...base, ...initial, kind: 'text', multiline: !digits && (input === 'textarea' || (maxLength ?? 0) > MULTILINE_FROM), ...(maxLength ? { maxLength } : {}), ...(digits ? { digits } : {}), ...(input === 'place' ? { place: true as const } : {}) };
+    return { ...base, ...initial, kind: 'text', multiline: !digits && (input === 'textarea' || (maxLength ?? 0) > MULTILINE_FROM || FREE_WRITING.test(name)), ...(maxLength ? { maxLength } : {}), ...(digits ? { digits } : {}), ...(input === 'place' ? { place: true as const } : {}) };
   }
   return `El campo «${name}» es de un tipo que Lilachat no sabe dibujar.`;
 }

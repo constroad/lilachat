@@ -14,6 +14,10 @@ describe('addressOf', () => {
     expect(addressOf({ address: {}, display_name: 'Cantera Norte, Carabayllo, Lima, Perú, 15121' })).toBe('Cantera Norte, Carabayllo, Lima');
   });
 
+  it('a nameless path does not repeat the city or show a postal code', () => {
+    expect(addressOf({ address: { city: 'Lima' }, display_name: 'Lima, Lima Metropolitana, Lima, 15082, Perú' })).toBe('Lima, Lima Metropolitana, Perú');
+  });
+
   it('an answer with nothing to read is no address', () => {
     expect(addressOf({ error: 'Unable to geocode' })).toBeNull();
     expect(addressOf(null)).toBeNull();
@@ -43,6 +47,8 @@ describe('createPlaceLookup', () => {
     // Assert
     const [url, init] = fetcher.mock.calls[0]!;
     expect(url).toContain('lat=-12.0464');
+    // Zoom 18 answers with a nameless path where 19 finds the avenue (E2E 06/11).
+    expect(url).toContain('zoom=19');
     expect(new Headers(init.headers).get('User-Agent')).toBe('lilachat/1.0 (reverse-geocode)');
   });
 

@@ -586,6 +586,14 @@ spec al día. Las herramientas nuevas las aprueba José en agentes al publicarse
 
 ## 8. Estado
 
+**06/11, prueba de José en su teléfono:** los campos de informe salen de una línea
+y 2 por fila, la hora de inicio toma la hora actual si no hay una guardada, y
+«Publicar informe» queda sobre los botones del teléfono. Pendiente en esta misma
+lista: ver la foto tomada, cámara dentro de la app, y las decisiones de José sobre
+WhatsApp por foto, borrar fotos y video. Portal ya siembra el responsable en
+«Responsables y firmas» (`311e2120`).
+
+
 - 05/11/2026: decisión tomada, as-is de Portal recibido, contrato cerrado con
   Portal y Agentes. Motor `shared/src/fieldDocument.ts` con 16 tests. Portal
   escribe las cuatro herramientas; Agentes espera la aprobación de José.

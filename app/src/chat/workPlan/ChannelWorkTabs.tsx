@@ -1,3 +1,4 @@
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { BackHandler, Pressable, ScrollView, Text, ToastAndroid, View } from 'react-native';
 import { CHANNEL_TAB_LABELS, channelLinksOf, channelTabs, checklistMembers, stageFiles, withoutApps, type ChannelLinks, type ChannelTab, type ShortcutRow, type ShortcutValues, type SpaceClient, type WorkStage } from '@lilachat/shared';
@@ -85,21 +86,23 @@ type ChannelWorkParams = Parameters<typeof useChannelWork>[0];
 function ChannelPanels(props: { shown: Tab; focusSeq: number | null; clearFocus: () => void; client: SpaceClient; records: ReturnType<typeof useClientRecords>; plan: ReturnType<typeof useWorkPlan>; stages: WorkStage[]; target: ServiceAskTarget | null; people: ReadonlyMap<string, string>; params: ChannelWorkParams; nameOf: (userId: string) => string; toMessage: (seq: number) => void; openTask: OpenTask | null; setOpenTask: (task: OpenTask | null) => void; links: ChannelLinks }) {
   const { shown, client, plan, stages, target, params, nameOf, toMessage, setOpenTask } = props;
   const members = checklistMembers(props.people, params.yo);
+  // José 06/11: «Publicar informe» went under the three Android buttons; every panel ends above them.
+  const cover = { ...COVER, paddingBottom: useSafeAreaInsets().bottom };
   return (
     <>
       {shown === 'services' ? (
-        <View className="bg-background" style={COVER}>
+        <View className="bg-background" style={cover}>
           <ClientServices client={client} records={props.records} onOpenRecord={toMessage} target={target} members={props.people} me={params.yo} links={props.links} focusSeq={props.focusSeq} onFocused={props.clearFocus} />
         </View>
       ) : null}
-      {shown === 'account' && target ? <View className="bg-background" style={COVER}><ClientAccountPanel target={target} services={client.services} /></View> : null}
+      {shown === 'account' && target ? <View className="bg-background" style={cover}><ClientAccountPanel target={target} services={client.services} /></View> : null}
       {shown === 'checklist' ? (
-        <View className="bg-background" style={COVER}>
+        <View className="bg-background" style={cover}>
           <WorkPlanPanel restricted={Boolean(client.access?.restricted)} plan={plan} jwt={params.jwt} yo={params.yo} nameOf={nameOf} members={members} onStartFailed={(message) => ToastAndroid.show(message, ToastAndroid.SHORT)} onOpenTask={setOpenTask} />
         </View>
       ) : null}
-      {shown === 'files' ? <View className="bg-background" style={COVER}><ClientFilesPanel client={client} target={target} stages={stages} onOpenMessage={toMessage} /></View> : null}
-      {shown === 'pending' ? <View className="bg-background" style={COVER}><PendingPanel stages={stages} nameOf={nameOf} onOpen={setOpenTask} /></View> : null}
+      {shown === 'files' ? <View className="bg-background" style={cover}><ClientFilesPanel client={client} target={target} stages={stages} onOpenMessage={toMessage} /></View> : null}
+      {shown === 'pending' ? <View className="bg-background" style={cover}><PendingPanel stages={stages} nameOf={nameOf} onOpen={setOpenTask} /></View> : null}
       <TaskDetailSheet open={props.openTask} stages={stages} channelName={params.channelName} jwt={params.jwt} chatId={params.chatId} yo={params.yo} nameOf={nameOf} members={members} onChanged={() => void plan.reload()} onOpenMessage={toMessage} onClose={() => setOpenTask(null)} />
     </>
   );

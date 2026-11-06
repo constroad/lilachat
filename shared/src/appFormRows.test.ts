@@ -57,7 +57,7 @@ describe('two short fields share a row (José, 28/10: «unidad, hora, m³ podrí
     // Act
     const rows = rowsOf(form);
     // Assert
-    expect(rows).toEqual([['placa', 'lote'], ['codigo'], ['pin'], ['cuando'], ['direccion'], ['fletero', 'cubos']]);
+    expect(rows).toEqual([['placa', 'lote'], ['codigo'], ['pin'], ['cuando'], ['direccion', 'fletero'], ['cubos']]);
   });
 
   it('the app decides with x-width: «half» puts a short choice or text beside another, «full» keeps a number alone', () => {
@@ -98,7 +98,7 @@ describe('two short fields share a row (José, 28/10: «unidad, hora, m³ podrí
     const form = formWith({
       tipo: { type: 'string', enum: ['ingreso', 'ajuste'], title: 'Tipo' },
       cantidad: { type: 'number', title: 'Cantidad' },
-      motivo: { type: 'string', title: 'Motivo', maxLength: 200, 'x-visible-if': { tipo: ['ajuste'] } },
+      motivo: { type: 'string', title: 'Motivo', maxLength: 500, 'x-visible-if': { tipo: ['ajuste'] } },
       fecha: { type: 'string', format: 'date', title: 'Fecha' },
     });
     // Act
@@ -134,5 +134,35 @@ describe('two short fields share a row (José, 28/10: «unidad, hora, m³ podrí
     const rows = items.kind === 'list' ? formRows(items.fields).map((row) => row.map((field) => field.name)) : [];
     // Assert
     expect(rows).toEqual([['productoId'], ['cantidad', 'precio']]);
+  });
+
+  it('a report\'s short texts go two per row, one line each (José 06/11): Portal declares them all with 200 characters', () => {
+    // Arrange: `text()` of Portal's report fields, as they arrive.
+    const fields = formFields(formWith({
+      responsableNombre: { type: 'string', title: 'Responsable · nombre', maxLength: 200 },
+      responsableCargo: { type: 'string', title: 'Responsable · cargo', maxLength: 200 },
+      responsableEmpresa: { type: 'string', title: 'Responsable · empresa', maxLength: 200 },
+      responsableCip: { type: 'string', title: 'Responsable · CIP', maxLength: 200 },
+    }));
+    // Act
+    const rows = formRows(fields);
+    // Assert
+    expect(rows.map((row) => row.map((field) => field.name))).toEqual([['responsableNombre', 'responsableCargo'], ['responsableEmpresa', 'responsableCip']]);
+    expect(fields.every((field) => field.kind === 'text' && !field.multiline)).toBe(true);
+  });
+
+  it('observations keep their box and their row, however short their limit', () => {
+    // Arrange
+    const fields = formFields(formWith({ observaciones: { type: 'string', title: 'Observaciones', maxLength: 200 }, carril: { type: 'string', title: 'Carril', maxLength: 200 } }));
+    // Act and assert
+    expect(fields[0]).toMatchObject({ kind: 'text', multiline: true });
+    expect(formRows(fields).map((row) => row.length)).toEqual([1, 1]);
+  });
+
+  it('an app can keep a text on its own row with `x-width: full`', () => {
+    // Arrange
+    const fields = formFields(formWith({ proyecto: { type: 'string', title: 'Proyecto', maxLength: 200, 'x-width': 'full' }, carril: { type: 'string', title: 'Carril', maxLength: 200 } }));
+    // Act and assert
+    expect(formRows(fields).map((row) => row.length)).toEqual([1, 1]);
   });
 });

@@ -109,7 +109,7 @@ describe('the hour of «Llegó»', () => {
   };
   const path = { sectionId: 'unidades', itemId: 'd9', key: 'datos' };
   const propertiesOf = (document: FieldDocument, hour?: string) => {
-    const answer = reportFormAnswer(document, path, undefined, undefined, hour);
+    const answer = reportFormAnswer(document, path, { arrivalHour: hour });
     return answer?.response.responseType === 'form' ? answer.response.form.schema.properties : undefined;
   };
 

@@ -9,6 +9,7 @@ import { Bell, BellOff, LogOut, UsersRound, WifiOff, X } from 'lucide-react';
 import { useDismiss } from './ui/useDismiss';
 import { useSinConexion } from './pwa/conexion';
 import { InstallRow } from './pwa/IphoneInstallGuide';
+import { PullToRefresh } from './pwa/pullToRefresh';
 import { SpacePhoneLinks } from './spaces/SpacePhoneLinks';
 import type { Credential } from './api';
 import { AgendaOverlay } from './agenda/AgendaOverlay';
@@ -464,7 +465,7 @@ function PanelDeAjustes(props: {
     if (!resultado.ok) onAviso(resultado.message ?? 'No se pudieron activar.');
   };
   return (
-    <div ref={panel} data-testid="panel-ajustes" className="absolute bottom-16 left-4 z-10 w-72 rounded-xl border border-outline/15 bg-surface p-2 shadow-lg">
+    <div ref={panel} data-testid="panel-ajustes" className="absolute bottom-16 left-4 z-10 max-h-[calc(100dvh-5rem)] w-72 overflow-y-auto rounded-xl border border-outline/15 bg-surface p-2 shadow-lg">
       <button type="button" data-testid="cerrar-ajustes" aria-label="Cerrar ajustes" title="Cerrar" onClick={onCerrar} className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full text-on-surface-variant hover:bg-background">
         <X size={16} />
       </button>
@@ -616,7 +617,7 @@ function ListColumn({ phone, nav, children }: { phone: boolean; nav: ReactNode; 
   if (!phone) return <>{children}</>;
   return (
     <div className="flex min-w-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1">{children}</div>
+      <div className="min-h-0 flex-1"><PullToRefresh onRefresh={() => window.location.reload()}>{children}</PullToRefresh></div>
       {nav}
     </div>
   );

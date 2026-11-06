@@ -86,6 +86,12 @@ export const dataSectionOf = (item: RepeatItem): FormSection | undefined => item
 
 const twoDigits = (value: number): string => String(value).padStart(2, '0');
 
+/** The hour of the device's clock, as a form's time field holds it. */
+export function clockHourOf(now: string): string {
+  const at = new Date(now);
+  return `${twoDigits(at.getHours())}:${twoDigits(at.getMinutes())}`;
+}
+
 /**
  * «Llegó» is the moment of the tap (E2E 06/11), and the document on the phone
  * can be hours old: the hour comes from its clock. Portal only sends the hour a
@@ -96,8 +102,7 @@ export function arrivalHourOf(document: FieldDocument, path: SectionPath, now: s
   if (repeat?.kind !== 'repeat' || !isUnitsRepeat(repeat)) return undefined;
   const item = repeat.items.find((one) => one.id === path.itemId);
   if (!item || unitStateOf(item) !== 'waiting' || dataSectionOf(item)?.id !== path.key) return undefined;
-  const at = new Date(now);
-  return `${twoDigits(at.getHours())}:${twoDigits(at.getMinutes())}`;
+  return clockHourOf(now);
 }
 
 /** What the summary of a unit says beside its plate, without the «Terminó» line the pill already shows. */

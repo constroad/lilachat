@@ -286,8 +286,26 @@ describe('the tramo Portal makes with a new report', () => {
 
 describe('the report form on the phone', () => {
   it('is the section\'s form with what was refused under each field', () => {
-    const answer = reportFormAnswer(parsed(), bandejas, { peso: 'Falta el peso' });
+    const answer = reportFormAnswer(parsed(), bandejas, { errors: { peso: 'Falta el peso' } });
     expect(answer).toMatchObject({ appName: 'Portal', state: 'form', action: 'Tramo 1 · Bandejas', errors: { peso: 'Falta el peso' }, response: { responseType: 'form', form: { id: 'guardar_seccion_de_informe' } } });
+  });
+
+  describe('the start hour (José 06/11: it takes the hour of now if none was saved)', () => {
+    const timesForm = { type: 'object', properties: { horaInicio: { type: 'string', format: 'time', title: 'Hora inicio' }, horaFinal: { type: 'string', format: 'time', title: 'Hora final' } } };
+    const withTimes = (values: Record<string, string>) => fieldDocumentOf({ ...body, forms: { ...body.forms, general: timesForm }, sections: [{ id: 'general', kind: 'form', title: 'Tramo', form: 'general', required: false, enabled: true, state: 'empty', values }] });
+    const generalPath: SectionPath = { sectionId: 'general', itemId: null, key: 'general' };
+    const hoursOf = (answer: ReturnType<typeof reportFormAnswer>) => (answer?.response?.responseType === 'form' ? answer.response.form?.schema.properties : undefined);
+
+    it('fills «Hora inicio» and leaves «Hora final» for the person', () => {
+      const properties = hoursOf(reportFormAnswer(withTimes({}), generalPath, { startHour: '14:20' }));
+      expect(properties?.horaInicio?.default).toBe('14:20');
+      expect(properties?.horaFinal?.default).toBeUndefined();
+    });
+
+    it('never moves an hour already saved', () => {
+      const properties = hoursOf(reportFormAnswer(withTimes({ horaInicio: '08:05' }), generalPath, { startHour: '14:20' }));
+      expect(properties?.horaInicio?.default).toBe('08:05');
+    });
   });
 
   describe('general data (José, 06/11)', () => {
@@ -297,15 +315,15 @@ describe('the report form on the phone', () => {
     const propertiesOf = (answer: ReturnType<typeof reportFormAnswer>) => (answer?.response.responseType === 'form' ? answer.response.form.schema.properties : undefined);
 
     it('the person who makes the report is its responsible', () => {
-      expect(propertiesOf(reportFormAnswer(withGeneral({}), generalPath, undefined, 'Ana Torres'))?.responsable).toMatchObject({ default: 'Ana Torres' });
+      expect(propertiesOf(reportFormAnswer(withGeneral({}), generalPath, { personName: 'Ana Torres' }))?.responsable).toMatchObject({ default: 'Ana Torres' });
     });
 
     it('a responsible already saved stays', () => {
-      expect(propertiesOf(reportFormAnswer(withGeneral({ responsable: 'Luis Vega' }), generalPath, undefined, 'Ana Torres'))?.responsable).toMatchObject({ default: 'Luis Vega' });
+      expect(propertiesOf(reportFormAnswer(withGeneral({ responsable: 'Luis Vega' }), generalPath, { personName: 'Ana Torres' }))?.responsable).toMatchObject({ default: 'Luis Vega' });
     });
 
     it('with no name the field stays empty to be typed', () => {
-      expect(propertiesOf(reportFormAnswer(withGeneral({}), generalPath, undefined, ' '))?.responsable).not.toHaveProperty('default');
+      expect(propertiesOf(reportFormAnswer(withGeneral({}), generalPath, { personName: ' ' }))?.responsable).not.toHaveProperty('default');
     });
 
     it('the place can be taken from the device', () => {
@@ -313,7 +331,7 @@ describe('the report form on the phone', () => {
     });
 
     it('a tramo\'s section with the same name stays as it is', () => {
-      expect(propertiesOf(reportFormAnswer(parsed(), bandejas, undefined, 'Ana Torres'))?.responsable).toBeUndefined();
+      expect(propertiesOf(reportFormAnswer(parsed(), bandejas, { personName: 'Ana Torres' }))?.responsable).toBeUndefined();
     });
   });
 

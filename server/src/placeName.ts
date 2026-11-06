@@ -28,11 +28,12 @@ export function addressOf(reply: unknown): string | null {
     const parts = [street, firstOf(address, ['suburb', 'city_district', 'district', 'neighbourhood']), firstOf(address, ['city', 'town', 'village', 'municipality'])];
     return parts.filter(Boolean).join(', ');
   }
-  return longName?.split(',').slice(0, NAME_PARTS).map((part) => part.trim()).join(', ') || null;
+  const parts = new Set(longName?.split(',').map((part) => part.trim()).filter((part) => !/^\d+$/.test(part)));
+  return [...parts].slice(0, NAME_PARTS).join(', ') || null;
 }
 
 async function askProvider(point: GeoPoint, fetcher: Fetcher): Promise<string | null> {
-  const query = new URLSearchParams({ format: 'jsonv2', lat: String(point.lat), lon: String(point.lng), zoom: '18', addressdetails: '1', 'accept-language': 'es' });
+  const query = new URLSearchParams({ format: 'jsonv2', lat: String(point.lat), lon: String(point.lng), zoom: '19', addressdetails: '1', 'accept-language': 'es' });
   try {
     const reply = await fetcher(`${NOMINATIM_URL}?${query}`, { headers: { 'User-Agent': CLIENT_NAME }, signal: AbortSignal.timeout(LOOKUP_BUDGET_MS) });
     return reply.ok ? addressOf(await reply.json()) : null;

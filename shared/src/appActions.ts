@@ -175,8 +175,8 @@ export function evidenceLine(fields: readonly FormField[]): string {
 /** Where a stamp's hour is read when the space says nothing else (ConstRoad works in Peru). */
 export const STAMP_TIME_ZONE = 'America/Lima';
 const STAMP_DECIMALS = 5;
-/** What fits the band of a photo beside the precision. */
-const STAMP_PLACE_MAX = 46;
+/** What fits the band of a photo beside the precision: measured on a 1200 px photo, 48 characters reach the edge. */
+const STAMP_PLACE_MAX = 38;
 
 function stampDate(at: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat('es-PE', { timeZone, weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(at);

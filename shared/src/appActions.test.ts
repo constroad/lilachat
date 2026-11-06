@@ -139,9 +139,9 @@ describe('photoStampLines (pending 94: date, time and place burned into the self
     // Arrange
     const location = { lat: -12.0464, lng: -77.0428, precision: 12 };
     // Act
-    const lines = photoStampLines({ at: new Date('2026-11-06T17:38:00.000Z'), location, place: 'Avenida Alfonso Ugarte 123, Breña, Lima' });
+    const lines = photoStampLines({ at: new Date('2026-11-06T17:38:00.000Z'), location, place: 'Av. Alfonso Ugarte 123, Breña, Lima' });
     // Assert
-    expect(lines[1]).toBe('Avenida Alfonso Ugarte 123, Breña, Lima · ± 12 m');
+    expect(lines[1]).toBe('Av. Alfonso Ugarte 123, Breña, Lima · ± 12 m');
   });
 
   it('a long address is cut at a word, keeping the precision in sight', () => {
@@ -151,7 +151,7 @@ describe('photoStampLines (pending 94: date, time and place burned into the self
     const lines = photoStampLines({ at: new Date('2026-11-06T17:38:00.000Z'), location: { lat: -12.05, lng: -77.04, precision: 8 }, place });
     // Assert
     expect(lines[1].endsWith('… · ± 8 m')).toBe(true);
-    expect(lines[1].length).toBeLessThanOrEqual(56);
+    expect(lines[1].length).toBeLessThanOrEqual(48);
   });
 
   it('without a location it says so, and an unknown zone falls back to Lima', () => {

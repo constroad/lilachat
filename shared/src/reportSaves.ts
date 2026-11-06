@@ -39,6 +39,7 @@ const LOCAL_ITEM = 'local-';
 const GENERAL_SECTION = 'general';
 const MEMBER_FIELD = 'responsable';
 const PLACE_FIELD = 'ubicacion';
+const START_HOUR = /^hora (de )?inicio/i;
 const PHOTOS_VALUE = 'fotos';
 const SAVE_REFUSED = 'Portal no aceptó este cambio.';
 const UNSENT_HTTP = new Set([408, 429]);
@@ -233,12 +234,17 @@ export function withoutSave(queue: readonly ReportSave[], clientKey: string): Re
   return queue.filter((one) => one.clientKey !== clientKey && !(gone?.createsItem && one.path.itemId === gone.path.itemId));
 }
 
+/** What the device adds to a form: what Portal refused, who is filling it and the hours of its clock. */
+export type ReportFormContext = { errors?: Record<string, string>; personName?: string | null; arrivalHour?: string; startHour?: string };
+
 /** A section's form, drawn here from the document: it opens with no signal, and what Portal refused goes under its field. */
-export function reportFormAnswer(document: FieldDocument, path: SectionPath, errors?: Record<string, string>, personName?: string | null, hour?: string): EphemeralAnswer | null {
+export function reportFormAnswer(document: FieldDocument, path: SectionPath, context: ReportFormContext = {}): EphemeralAnswer | null {
+  const { errors, personName, arrivalHour, startHour } = context;
   const found = sectionFormOf(document, path);
   if (!found) return null;
   const filled = path.key === GENERAL_SECTION ? withDeviceFields(found, personName?.trim()) : found;
-  const form = hour ? withHour(filled, hour) : filled;
+  const arrived = arrivalHour ? withHour(filled, arrivalHour) : filled;
+  const form = startHour ? withStartHour(arrived, startHour) : arrived;
   return { commandId: `report-${path.sectionId}-${path.itemId ?? 'new'}-${path.key}`, appName: REPORT_KEEPER, command: '', action: form.title, state: 'form', response: { responseType: 'form', form }, ...(errors ? { errors } : {}) };
 }
 
@@ -246,6 +252,15 @@ export function reportFormAnswer(document: FieldDocument, path: SectionPath, err
 function withHour(form: AppForm, hour: string): AppForm {
   const properties: Record<string, FormSchemaProperty> = { ...form.schema.properties };
   const name = form.schema.required?.find((one) => properties[one]?.format === 'time' && properties[one]?.default === undefined);
+  if (!name) return form;
+  properties[name] = { ...properties[name], default: hour };
+  return { ...form, schema: { ...form.schema, properties } };
+}
+
+/** «Hora inicio» starts at the hour of now when nothing was saved (José 06/11); «Hora final» waits for the person. */
+function withStartHour(form: AppForm, hour: string): AppForm {
+  const properties: Record<string, FormSchemaProperty> = { ...form.schema.properties };
+  const name = Object.keys(properties).find((one) => properties[one]?.format === 'time' && START_HOUR.test(String(properties[one]?.title ?? '')) && properties[one]?.default === undefined);
   if (!name) return form;
   properties[name] = { ...properties[name], default: hour };
   return { ...form, schema: { ...form.schema, properties } };

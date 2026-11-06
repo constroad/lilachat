@@ -15336,3 +15336,35 @@ Sin verificar al escribir esto: el E2E en el teléfono real de José y si Nomina
 
 Tests: `signingForm.test.ts`, `placeName.test.ts`, `botForms.test.ts`, `AppFormDialog.test.tsx`, `usePlaceName.test.tsx`, `ChatQuickActions.test.tsx`, `InstallStrip.test.tsx`, `spaces.test.tsx`.
 
+
+## Inputs de una línea, 2 por fila, y deslizar para actualizar (José 06/11)
+
+José probó CTL-IMP en su teléfono y encontró lo que el E2E con toques automáticos
+no midió. Ninguna skill ni gate cubría la regla de 2 por fila.
+
+- **Inputs grandes, causa:** `MULTILINE_FROM = 120` volvía multilínea todo texto con
+  `maxLength: 200`, que es lo que Portal declara en cada campo de informe, y un
+  multilínea no puede ir a media fila. Ahora `MULTILINE_FROM = 200`, y solo
+  `textarea`, un tope mayor o un nombre de escritura libre (`observaci`,
+  `comentario`) son multilínea. `SHORT_TEXT_MAX = 200` en `appFormRows.ts`.
+- **Hora de inicio:** `reportFormAnswer` recibe `ReportFormContext` y `withStartHour`
+  llena con la hora del teléfono el campo `Hora inicio` sin valor guardado. Nunca
+  mueve una hora guardada ni llena `Hora final`.
+- **«Publicar informe» tapado:** `ChannelPanels` sumaba cero de margen inferior.
+  `cover` agrega el `bottom` del área segura.
+- **Deslizar para actualizar (web):** en un teléfono el `body` está fijo por el
+  teclado, así que el gesto propio del navegador no existe. `PullToRefresh`
+  (`web/src/pwa/pullToRefresh.tsx`) lo hace en la lista: desde arriba del todo,
+  recarga al soltar, y esa recarga también trae la versión nueva. No arranca desde
+  una hoja abierta, porque React pasa sus toques por el portal.
+- **Dirección del sello:** `zoom=19` como Portal, sin partes repetidas ni código
+  postal. `STAMP_PLACE_MAX = 38`: medido, 48 caracteres llegan al borde de 1200 px.
+- **Panel de Ajustes:** se salía por arriba del teléfono. Ahora tiene alto máximo y
+  hace scroll.
+
+Compresión de fotos, verificada leyendo el código: APK con `shrinkPhotoFile`, web
+con `shrinkPhotoBlob`, ambos con `PHOTO_SIZING`, copia de `optimizeBrowserImageFile`
+de Portal (1600 px, calidad 0.78, 1 MB). Portal recomprime al recibir (1600 px,
+JPEG q82).
+
+Sin verificar al escribir esto: el gesto en un teléfono físico.

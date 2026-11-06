@@ -1,7 +1,7 @@
 import type { FormField } from './appForms.js';
 
-/** A one-line text allowed up to this many characters fits half a row: a plate, a carrier, a lot (José, 28/10: «Fletero o placa» beside «Cubos»). */
-const SHORT_TEXT_MAX = 60;
+/** Every one-line text with a limit (José 06/11: two per row wherever it can be; Portal declares its report fields with 200). */
+const SHORT_TEXT_MAX = 200;
 
 /**
  * The rows a form is drawn in (José, 28/10: a field per row turned every form

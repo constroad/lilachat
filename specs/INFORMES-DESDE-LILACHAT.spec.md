@@ -730,7 +730,7 @@ Reportado a Portal y verificado con el informe publicado desde el APK a las 12:5
 - El sello: la foto de las 12:51 dice «Avenida Alfonso Ugarte, Lima, Li…» (`45456f21`).
 - La salida en la tarjeta del pedido al llegar (`dedaa11b`) y ENTREGADO solo con todas las llegadas (agentes `893ba62`).
 
-Pendiente en Portal: el bloque de firmas se partía entre folios.
+Resuelto por Portal en `34d5c36d`: el bloque de firmas se partía entre folios.
 
 ### Prueba con un pedido de 12 carros (pedido de José, 06/11)
 
@@ -752,4 +752,21 @@ Cómo quedó, en este orden:
 5. Las estadísticas van al final, y arriba queda una línea con el conteo de cada grupo.
 
 Abierto para José: un carro que llega sin que la planta lo haya marcado despachado no se puede registrar, porque sigue en «En planta».
+
+Resultado en el emulador, con OTA `01f31791` (git `3bda92d`), informe del pedido `6aee0e7256b47458e58861f6`:
+
+- **Lista larga:** cuatro filas de «Por llegar» entran en una pantalla. Al tocar «Llegó», la tarjeta aparece justo encima de esas filas y la pantalla no salta.
+- **Orden libre:** los carros llegaron 206, 203, 208, 201, 207, 204, 202, 205, 210, 209, 212 y 211. Cada uno tomó el siguiente número de unidad, y el PDF salió en ese orden.
+- **Hora de llegada:** sale del reloj del teléfono. QAP-207 marcó 13:20 al tocar «Llegó» a las 13:20.
+- **Planta a pista:** Portal despachó QAP-209 y QAP-210 con el informe abierto. Pasaron de «En planta» a «Por llegar» al reabrir Unidades, sin tocar nada más.
+- **Terminaron:** con los 12 listos, toda la lista cabe en una pantalla. En la web, «Terminaron» se abre y se cierra, y muestra `TERMINÓ 13:19`.
+- **Publicación:** 63 de 63 secciones, sin advertencias. Publicado a las 13:46 con el PDF generado antes de 30 s.
+- **PDF `CTL-PIS-2026-11-06T18-46-07-025Z.pdf`:** 10 folios, 2,2 MB, encabezado correcto, 48 fotos a 8 por folio y firmas juntas en el último folio. El sello trae hora, dirección y mapa.
+- **Tarjeta del pedido:** EN DESPACHO con 4 de 8 llegadas, DESPACHADO con 10 de 12, y ENTREGADO con la última llegada, 12 de 12.
+
+Queda pendiente:
+
+- **Numeración, decisión de José:** la tarjeta numera por orden de planta y el informe por orden de llegada. QAP-203 es «Unidad 3» en la tarjeta y «Unidad 2» en el informe.
+- **PDF, cola de Portal:** «UNIDADES SIN TEMP» cae sola en el folio 2, la fila 12 cae sola en el folio 3, el encabezado dice «FOLIO: 1-1», «Observaciones» sale vacío y la dirección del sello se corta.
+- **Lista con varias unidades en pista:** cada tarjeta ocupa media pantalla, así que con 4 en pista las filas de «Por llegar» quedan dos pantallas abajo. No se cambió: en obra rara vez hay más de dos carros descargando.
 

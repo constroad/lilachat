@@ -15231,10 +15231,10 @@ anterior sobre Cotizaciones y Cobranza dentro del detalle del servicio.
 | Drive del Portal | solo con montos o «Drive» marcado | `canSeeDrive`, sin preguntar a agentes |
 | Tarjetas de pago en el chat | no se publican | agentes `6feb8c1` |
 
-Un miembro sin marcas ve Chat · Servicios · Archivos · Checklist. Su «Archivos»
-trae solo lo del canal. Para abrirle el Drive a una persona, un admin le marca
-«Archivos» en sus accesos: el Drive puede traer liquidaciones y lo subido a mano,
-y eso no se puede clasificar.
+Un miembro sin marcas ve Chat · Servicios · Checklist, y un servicio sin pestaña
+Drive. Para abrirle el Drive a una persona, un admin le marca «Drive» en sus
+accesos: el Drive puede traer liquidaciones y lo subido a mano, y eso no se puede
+clasificar.
 
 **Lo que no depende de Lilachat**
 

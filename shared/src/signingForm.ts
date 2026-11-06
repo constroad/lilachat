@@ -3,9 +3,9 @@ import type { ChoiceOption } from './appFormOptions.js';
 import { precisionLabel } from './appActions.js';
 
 /**
- * The steps of a signing (José 06/11: «primero una lista de empleados con cards
- * y que cada uno elija su nombre, luego se abre ahora sí la cámara»), like
- * Portal's attendance page. PURE: the app and the web draw with it.
+ * The steps of a signing (José 06/11): first a card per employee, and the camera
+ * only once a name is picked, like Portal's attendance page. PURE: the app and
+ * the web draw with it.
  */
 export const SIGNER_KICKER = '¿Quién firma?';
 

@@ -169,7 +169,7 @@ export const Composer = memo(function Composer(props: {
     const enfocar = inputRef.current?.isFocused() ?? false;
     setInicial((antes) => ({ texto, version: antes.version + 1, enfocar, cursor }));
   };
-  const escribirComando = (texto: string) => {
+  const writeCommand = (texto: string) => {
     escribir(texto, texto.length);
     props.commands?.onType(texto);
   };
@@ -364,7 +364,7 @@ export const Composer = memo(function Composer(props: {
         }}
       />
       {/* The ⚡ of a channel or the chat with an app: its actions and its commands, one button (José 06/11). */}
-      {props.commands && forma.vacio ? <ChatQuickActions commands={props.commands} onWriteCommand={escribirComando} /> : null}
+      {props.commands && forma.vacio ? <ChatQuickActions commands={props.commands} onWriteCommand={writeCommand} /> : null}
       {/* Como WhatsApp (José, 19/10): el clip siempre adentro; la cámara, solo
           con el campo vacío. El «+» de afuera se fue: era la misma puerta. */}
       <Pressable
@@ -409,7 +409,7 @@ export const Composer = memo(function Composer(props: {
       {props.commands ? (
         <CommandPanel
           groups={props.commands.suggestions}
-          onPick={(command) => escribirComando(`/${command} `)}
+          onPick={(command) => writeCommand(`/${command} `)}
         />
       ) : null}
       {props.notice}

@@ -32,8 +32,8 @@ describe('ChatQuickActions', () => {
     // Arrange
     const runAction = vi.fn();
     const onWriteCommand = vi.fn();
-    const pedidos: ShortcutRow = { kind: 'command', appId: 'a2', appName: 'Portal', key: 'pedidos', name: '/pedidos', usageHint: '[cliente]' };
-    render(<ChatQuickActions commands={commandsWith([pedidos], runAction)} onWriteCommand={onWriteCommand} />);
+    const ordersCommand: ShortcutRow = { kind: 'command', appId: 'a2', appName: 'Portal', key: 'pedidos', name: '/pedidos', usageHint: '[cliente]' };
+    render(<ChatQuickActions commands={commandsWith([ordersCommand], runAction)} onWriteCommand={onWriteCommand} />);
     // Act
     fireEvent.click(screen.getByTestId('btn-acciones-chat'));
     fireEvent.click(screen.getByTestId('accion-chat-pedidos'));

@@ -440,8 +440,12 @@ spec al día. Las herramientas nuevas las aprueba José en agentes al publicarse
   nombre es el que la persona edita en su perfil: se muestra, no identifica.
   Sin verificar: la tarjeta abierta en el APK. La app dibuja `card.fields` con
   el mismo recorrido, pero no se abrió en el emulador.
-  Defecto abierto, de Portal: antes de guardar Datos generales, el hub dice
-  «Faltan datos generales: cliente, proyecto, responsable, fecha», aunque
-  cliente y proyecto ya no se piden. Sale de `fieldReportPublishRules.ts`.
-  Datos QA: un informe publicado en TEST COMPANY, servicio
-  `096f1e56d931ff4d4561bb41`, tramo «QA autor tarjeta», que limpia Portal.
+  Defecto hallado en esa prueba: antes de guardar Datos generales, el hub
+  decía «Faltan datos generales: cliente, proyecto, responsable, fecha», aunque
+  cliente y proyecto ya no se piden. Portal lo corrigió en `6c21837e`. Verificado
+  en vivo: un informe nuevo dice «Faltan datos generales: responsable, fecha.».
+  Un informe guardado sin cliente o proyecto sigue bloqueado, con un texto que
+  manda a completarlos en Portal.
+  Datos QA: Portal borró el informe `6aedb421fca1f5d5db14e079`, con 0 informes
+  y 0 archivos activos; la foto y el PDF quedaron en la papelera. La tarjeta
+  `seq` 7 sigue en el canal para que José la borre.

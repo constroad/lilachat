@@ -2318,14 +2318,27 @@ abrir la app. Lo auditado, sin leer la base de producción:
   entra directo a un espacio nunca vio el permiso ni registró token. La app
   tampoco escuchaba la rotación del token, y el server ignoraba el 404 en silencio.
 
-Arreglo: `usePushRegistration` en `TabsShell` registra al entrar, al rotar el token
-y al volver a la app, con un tope de 6 horas si nada cambió. El server quita el
+Arreglo: `usePushRegistration` en `TabsShell` registra al entrar y al volver a la
+app, con un tope de 6 horas si nada cambió, y al volver también nota un token
+rotado. El server quita el
 token solo si FCM responde `UNREGISTERED`: un 404 por proyecto equivocado no borra
 nada. `pushTally` escribe una línea por hora con aceptados, vencidos y errores.
 Diagnóstico muestra el estado del registro en `diag-avisos`.
 
 **Sin verificar**: qué pasó exactamente en el teléfono de José. La rotación del
 token es la hipótesis, no un hecho: la prueba es la línea `[push] token vencido`.
+
+**Dos incidentes al publicarlo (05/11, noche):**
+
+- **OTA `911f561c`, bucle.** Usó `addPushTokenListener`, y en Android leer el token
+  dispara ese evento (`PushTokenModule.kt`: `promise.resolve(token); onNewToken(token)`).
+  Unos 600 registros por segundo y 48 % de CPU. Publicada de 23:47 a 23:55; se frenó
+  con `--embedded` (`2e283aba`) y se corrigió en `a33107b5`. El smoke dio verde igual:
+  solo mira que la app abra. No se sabe cuántos teléfonos la tomaron.
+- **Web en blanco, `b89f89a`.** `datos` importaba React de `interfaz` e `interfaz` un
+  helper de `datos`: `Cannot access 'ro' before initialization` con el build en verde.
+  Caída de 23:46 a 00:14. Ahora hay una sola pieza `vendor`, y
+  `web/scripts/check-chunk-cycles.mjs` hace fallar el build si dos piezas se importan.
 
 ## 36. Grupos: sumar gente y salir (29/08/2026)
 

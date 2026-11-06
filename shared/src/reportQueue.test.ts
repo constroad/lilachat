@@ -43,6 +43,26 @@ describe('draining', () => {
     expect(kept.saves).toEqual([]);
   });
 
+  it('the first tramo of a report born with no signal fills the one Portal makes: no empty tramo stays behind', async () => {
+    const portal = fakePortal({ id: null, tramos: [], seedsTramo: true });
+    portal.state.offline = true;
+    const { kept, vault } = fakeVault();
+    const queue = queueWith(portal.wire, vault);
+    const blank = docOf(null, []);
+    const tramo = saveOf(blank, newTramo, 't', { tramo: 'Km 1' });
+    await queue.add(saveOf(blank, general, 'g', { liquido: 'MC-30' }));
+    await queue.add(tramo);
+    await queue.add(photoOf(blank, tramo.path.itemId!, 'f'));
+    await queue.idle();
+    portal.state.offline = false;
+    await queue.kick();
+    await queue.idle();
+    expect(portal.state.tramos.map((one) => one.id)).toEqual(['t1']);
+    expect(portal.state.writes.slice(0, 2)).toEqual(['general:nuevo:{"liquido":"MC-30"}', 'ubicacion:t1:{"tramo":"Km 1"}']);
+    expect(portal.state.tramos[0].photos).toBe(1);
+    expect(kept.saves).toEqual([]);
+  });
+
   it('with no signal it tries again by itself, later each time', async () => {
     const portal = fakePortal({ id: 'r1', tramos: [] });
     portal.state.offline = true;

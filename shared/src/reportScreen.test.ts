@@ -17,6 +17,7 @@ function screenWith(start: { id: string | null; tramos: Tramo[] }) {
     keepPhoto: async (source) => ({ ref: `kept-${source.uri}`, mime: 'image/jpeg', preview: `file://${source.uri}` }),
     dropPhoto: async (photo) => { dropped.push(photo); },
     placeNow: async () => ({ lat: -12, lng: -77, at: NOW }),
+    personName: () => 'Ana Torres',
     newKey: () => `k${(keys += 1)}`,
     now: () => NOW,
   }, ref);
@@ -39,6 +40,17 @@ const generalOf = (state: ReportScreenState) => documentOf(state).sections[0] as
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
+describe('who makes the report', () => {
+  it('is the responsible the form starts with', async () => {
+    const test = screenWith({ id: null, tramos: [] });
+    await settled(test);
+    test.screen.openSection(general);
+    const form = test.screen.snapshot().form;
+    expect(form?.response.responseType === 'form' ? form.response.form.schema.properties?.responsable : null).toMatchObject({ default: 'Ana Torres' });
+    test.stop();
+  });
+});
+
 describe('opening', () => {
   it('nothing on screen until Portal answers, then its document', async () => {
     const test = screenWith({ id: 'r1', tramos: [] });
@@ -52,7 +64,7 @@ describe('opening', () => {
     const portal = fakePortal({ id: 'r1', tramos: [] });
     portal.state.offline = true;
     const queue = createReportQueue({ wire: portal.wire, vault: fakeVault().vault });
-    const screen = createReportScreen<Source>({ queue, keepPhoto: async () => ({ ref: '', mime: '', preview: '' }), dropPhoto: async () => undefined, placeNow: async () => ({ at: NOW }), newKey: () => 'k', now: () => NOW }, ref);
+    const screen = createReportScreen<Source>({ queue, keepPhoto: async () => ({ ref: '', mime: '', preview: '' }), dropPhoto: async () => undefined, personName: () => null, placeNow: async () => ({ at: NOW }), newKey: () => 'k', now: () => NOW }, ref);
     screen.subscribe(() => undefined);
     await queue.idle();
     await vi.advanceTimersByTimeAsync(0);
@@ -202,7 +214,7 @@ describe('photos', () => {
   it('a device that cannot keep the photo says so', async () => {
     const test = screenWith({ id: 'r1', tramos: [{ id: 't1', photos: 0 }] });
     await settled(test);
-    const failing = createReportScreen<Source>({ queue: test.queue, keepPhoto: async () => { throw new Error('full'); }, dropPhoto: async () => undefined, placeNow: async () => ({ at: NOW }), newKey: () => 'k', now: () => NOW }, ref);
+    const failing = createReportScreen<Source>({ queue: test.queue, keepPhoto: async () => { throw new Error('full'); }, dropPhoto: async () => undefined, personName: () => null, placeNow: async () => ({ at: NOW }), newKey: () => 'k', now: () => NOW }, ref);
     expect(await failing.upload({ uri: 'a.jpg' })).toEqual({ ok: false, message: 'No se pudo guardar la foto en este dispositivo.' });
   });
 });

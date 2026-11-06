@@ -7,6 +7,7 @@ import { Segmentado } from '../../ui/Segmentado';
 import { SearchableChoice } from './SearchableChoice';
 import { useColores } from '../../ui/tema';
 import { MapSnippet } from '../location/MapSnippet';
+import { PlaceButton } from './PlaceButton';
 import { useCurrentLocation } from '../location/useCurrentLocation';
 
 const MAP_HEIGHT = 120;
@@ -85,6 +86,7 @@ export function TypedField({ field, value, error, onChange }: FieldProps<'text' 
         />
         {field.kind === 'number' && field.unit ? <Text className="text-[15px] font-semibold text-on-surface-variant">{field.unit}</Text> : null}
       </View>
+      {field.kind === 'text' && field.place ? <PlaceButton onPick={onChange} /> : null}
       {field.help ? <Text className="mt-1 text-[13px] text-on-surface-variant">{field.help}</Text> : null}
       <ErrorLine text={error} />
     </View>

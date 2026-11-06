@@ -24,7 +24,7 @@ export function ChatQuickActions(props: { commands: ChatCommands }) {
       <QuickActionsSheet
         visible={open}
         title="Acciones de las apps"
-        hint="Las que el admin encendió en este chat."
+        hint="Las disponibles para ti en este chat."
         rows={actions}
         loading={false}
         failed={false}

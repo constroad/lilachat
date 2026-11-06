@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fieldDocumentOf, type FieldDocument, type SectionPath } from './fieldDocument';
-import { applySave, blankDocumentOf, documentWithQueue, judgeFailure, judgeNotice, judgeReply, landedBefore, nextSave, pendingOf, photosLine, queueLine, queueSave, reportFormAnswer, reportKeyOf, reportSaveOf, resolveItem, savesOf, sectionPhotos, sectionRowLine, sentMarkOf, withoutSave, type ReportRef, type ReportSave } from './reportSaves';
+import { applySave, blankDocumentOf, documentWithQueue, judgeFailure, judgeNotice, judgeReply, landedBefore, newItemOf, nextSave, pendingOf, photosLine, queueLine, queueSave, reportFormAnswer, reportKeyOf, reportSaveOf, resolveItem, savesOf, sectionPhotos, sectionRowLine, sentMarkOf, withoutSave, type ReportRef, type ReportSave } from './reportSaves';
 
 const photosForm = { type: 'object', properties: { foto: { type: 'string', title: 'Foto', 'x-input': 'photo' }, descripcion: { type: 'string', title: 'Descripción', maxLength: 200 } }, required: ['foto'] };
 const textForm = (name: string) => ({ type: 'object', properties: { [name]: { type: 'string', title: name } }, required: [name] });
@@ -232,10 +232,76 @@ describe('withoutSave', () => {
   });
 });
 
+describe('the tramo Portal makes with a new report', () => {
+  const seeded = (state: string) => fieldDocumentOf({ ...body, sections: body.sections.map((one) => (one.id === 'tramos' ? { ...one, items: [{ id: 'control-1', title: 'Tramo 1', summary: [], results: [], sections: [{ id: 'ubicacion', state, values: {} }, { id: 'bandejas', state: 'empty', values: {} }] }] } : one)) })!;
+  const firstTramo = (): ReportSave => saveAt(newTramo, 'k', { tramo: 'Km 1' }, empty());
+
+  it('the first tramo of a report not made yet says it fills that one', () => {
+    expect(firstTramo().fillsSeed).toBe(true);
+  });
+
+  it('a tramo of a report that exists is a new tramo: the person saw the one that is there', () => {
+    expect(saveAt(newTramo, 'k', { tramo: 'Km 1' }).fillsSeed).toBeUndefined();
+  });
+
+  it('a second tramo of a report not made yet is a new tramo too', () => {
+    const shown = documentWithQueue(empty(), [firstTramo()]);
+    expect(saveAt(newTramo, 'k2', { tramo: 'Km 2' }, shown).fillsSeed).toBeUndefined();
+  });
+
+  it('correcting it before it leaves keeps that it fills the seed', () => {
+    const save = firstTramo();
+    const again = saveAt(save.path, 'k3', { tramo: 'Km 1+500' }, documentWithQueue(empty(), [save]));
+    expect(queueSave([save], again)[0]).toMatchObject({ createsItem: true, fillsSeed: true, values: { tramo: 'Km 1+500' } });
+  });
+
+  it('takes the empty tramo, and the id is known with no need to read it back', () => {
+    const sent = sentMarkOf(firstTramo(), seeded('empty'));
+    expect(sent.seed).toBe('control-1');
+    expect(newItemOf(firstTramo(), seeded('done'), sent)).toBe('control-1');
+  });
+
+  it('a tramo somebody already wrote is left alone', () => {
+    expect(sentMarkOf(firstTramo(), seeded('partial')).seed).toBeUndefined();
+  });
+
+  it('with its answer lost it is sent again: writing the same section twice changes nothing', () => {
+    const sent = sentMarkOf(firstTramo(), seeded('empty'));
+    expect(landedBefore({ ...firstTramo(), sent }, seeded('done'))).toBeNull();
+  });
+});
+
 describe('the report form on the phone', () => {
   it('is the section\'s form with what was refused under each field', () => {
     const answer = reportFormAnswer(parsed(), bandejas, { peso: 'Falta el peso' });
     expect(answer).toMatchObject({ appName: 'Portal', state: 'form', action: 'Tramo 1 · Bandejas', errors: { peso: 'Falta el peso' }, response: { responseType: 'form', form: { id: 'guardar_seccion_de_informe' } } });
+  });
+
+  describe('general data (José, 06/11)', () => {
+    const generalPath: SectionPath = { sectionId: 'general', itemId: null, key: 'general' };
+    const generalForm = { type: 'object', properties: { responsable: { type: 'string', title: 'Responsable' }, ubicacion: { type: 'string', title: 'Ubicación' } }, required: ['responsable'] };
+    const withGeneral = (values: Record<string, string>) => fieldDocumentOf({ ...body, forms: { ...body.forms, general: generalForm }, sections: [{ ...body.sections[0], values }, ...body.sections.slice(1)] })!;
+    const propertiesOf = (answer: ReturnType<typeof reportFormAnswer>) => (answer?.response.responseType === 'form' ? answer.response.form.schema.properties : undefined);
+
+    it('the person who makes the report is its responsible', () => {
+      expect(propertiesOf(reportFormAnswer(withGeneral({}), generalPath, undefined, 'Ana Torres'))?.responsable).toMatchObject({ default: 'Ana Torres' });
+    });
+
+    it('a responsible already saved stays', () => {
+      expect(propertiesOf(reportFormAnswer(withGeneral({ responsable: 'Luis Vega' }), generalPath, undefined, 'Ana Torres'))?.responsable).toMatchObject({ default: 'Luis Vega' });
+    });
+
+    it('with no name the field stays empty to be typed', () => {
+      expect(propertiesOf(reportFormAnswer(withGeneral({}), generalPath, undefined, ' '))?.responsable).not.toHaveProperty('default');
+    });
+
+    it('the place can be taken from the device', () => {
+      expect(propertiesOf(reportFormAnswer(withGeneral({}), generalPath))?.ubicacion).toMatchObject({ 'x-input': 'place' });
+    });
+
+    it('a tramo\'s section with the same name stays as it is', () => {
+      expect(propertiesOf(reportFormAnswer(parsed(), bandejas, undefined, 'Ana Torres'))?.responsable).toBeUndefined();
+    });
   });
 
   it('two sections are two forms, and a path that is not there is none', () => {

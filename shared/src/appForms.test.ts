@@ -115,6 +115,11 @@ describe('connecting an account inside Lilachat (José, 23/10: «ingresar allí 
     expect(initialValues(formFields(code))).toEqual({});
   });
 
+  it('x-input place is a text with the button that takes the device\'s place', () => {
+    const spec = validateFormSpec({ id: 'lugar', title: 'Lugar', schema: { type: 'object', properties: { ubicacion: { type: 'string', title: 'Ubicación', 'x-input': 'place', default: 'Av. Los Incas' } } } });
+    expect(spec.ok && formFields(spec.form)[0]).toMatchObject({ name: 'ubicacion', kind: 'text', place: true, initial: 'Av. Los Incas' });
+  });
+
   it('a six-digit code is a code field, with x-input otp or with a digits pattern', () => {
     expect(validateFormSpec(otp)).toMatchObject({ ok: true });
     expect(formFields(otp)[0]).toMatchObject({ kind: 'text', digits: 6 });

@@ -1,5 +1,5 @@
 import mongoose, { Types, type Model } from 'mongoose';
-import { CLIENT_ID, fieldDocumentOf, formLevelOf, SECTION_TOOL, sectionFormOf, type AppForm, type CommandOutcome, type FieldDocument, type FormSchema, type SectionPath } from '@lilachat/shared';
+import { channelValuesOf, CLIENT_ID, fieldDocumentOf, formLevelOf, SECTION_TOOL, sectionFormOf, type AppForm, type CommandOutcome, type FieldDocument, type FormSchema, type SectionPath } from '@lilachat/shared';
 import { OUTDATED_FORM_MESSAGE, type CommandError } from './botCommands.js';
 import { askAboutService, findAskedService, notFound, type AskOutcome, type NotFound, type ServiceAsk } from './clientFiles.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botModels.js';
@@ -106,9 +106,9 @@ function contextFor(form: AppForm, serviceId: string, input: Extract<OpenInput, 
 async function sectionPrepared(workspaceId: string, serviceId: string, userId: Types.ObjectId, input: Extract<OpenInput, { kind: 'section' }>): Promise<Prepared | CommandError> {
   const draft = await ReportDraftModel.findOne({ workspaceId: new Types.ObjectId(workspaceId), userId, serviceId, type: input.type }).lean();
   const form = draft ? sectionFormOf(draft.document, input.path) : null;
-  if (!form) return fail(409, 'draft_not_open', 'Abre el informe de nuevo para seguir llenándolo.');
-  const built = contextFor(form, serviceId, input, input.reportId ?? draft?.document.id ?? null, input.tramoId ?? input.path.itemId);
-  return 'error' in built ? built : { form, context: built.context };
+  if (!draft || !form) return fail(409, 'draft_not_open', 'Abre el informe de nuevo para seguir llenándolo.');
+  const built = contextFor(form, serviceId, input, input.reportId ?? draft.document.id, input.tramoId ?? input.path.itemId);
+  return 'error' in built ? built : { form, context: { ...built.context, ...channelValuesOf(draft.document, input.path) } };
 }
 
 function prepared(workspaceId: string, serviceId: string, userId: Types.ObjectId, input: OpenInput): Promise<Prepared | CommandError> | Prepared {

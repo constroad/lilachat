@@ -2,6 +2,7 @@ import { FORMS_LEVEL } from './appForms.js';
 import type { EphemeralAnswer } from './botCommands.js';
 import { fieldDocumentOf, type DocumentSection, type DocumentStatus, type FieldDocument, type RepeatSection, type SectionPath, type SectionState } from './fieldDocument.js';
 import { clientServicePath } from './serviceAsk.js';
+import { locationMapLink } from './sharedLocation.js';
 import type { DetailTone } from './serviceDetail.js';
 
 /**
@@ -50,6 +51,10 @@ export function readReportDraft(body: ReportDraftBody | null): ReportDraftResult
 
 /** Where and when a photo was taken; the place may be missing, the hour may not (server `placeOf`). */
 export type DevicePlace = { lat?: number; lng?: number; at: string };
+/** The button under a place field (José, 06/11). */
+export const PLACE_BUTTON = { take: 'Usar mi ubicación', taking: 'Buscando tu ubicación…', failed: 'No se pudo leer tu ubicación. Revisa el permiso y el GPS.' };
+/** What a place field holds: the same link to the map the service's own place has. */
+export const placeFieldValue = ({ lat, lng }: DevicePlace): string | null => (lat === undefined || lng === undefined ? null : locationMapLink({ lat, lng }));
 export type SectionFormRequest = { kind: 'section'; type: string; section_id: string; item_id: string | null; key: string; report_id?: string; forms: number } & Partial<DevicePlace>;
 export type PublishFormRequest = { kind: 'publish'; report_id: string; forms: number };
 export type ReportFormRequest = SectionFormRequest | PublishFormRequest;

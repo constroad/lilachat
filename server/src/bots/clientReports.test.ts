@@ -132,6 +132,20 @@ describe('a section as a form', () => {
     expect(submitted.data).toMatchObject({ form_id: 'guardar_seccion_de_informe', command_id: opened.body.commandId, client_id: 'cli-cvs', service_id: 'srv-318', values: { liquido: 'MC-30', responsable: 'Ana Torres', servicioId: 'srv-318', tipo: 'CTL-IMP', seccion: 'general' } });
   });
 
+  it('the client and the project are not asked: Portal\'s own values ride with the answers, or it would blank them', async () => {
+    const general = { ...document.sections[0], values: { responsable: 'Ana Torres', cliente: 'Consorcio Vial', proyecto: 'Corredor Pachacútec' } };
+    const known = { ...generalForm, properties: { ...generalForm.properties, cliente: { type: 'string', title: 'Cliente' }, proyecto: { type: 'string', title: 'Proyecto' } }, required: ['liquido', 'cliente', 'proyecto', 'responsable'] };
+    answers['client.report.draft.requested'] = { status: 200, body: { ...document, forms: { ...document.forms, general: known }, sections: [general, ...document.sections.slice(1)] } };
+    await draftOf(ana).expect(200);
+
+    const opened = await openOf(ana, { kind: 'section', type: 'CTL-IMP', section_id: 'general', item_id: null, key: 'general' }).expect(200);
+
+    expect(Object.keys(opened.body.response.form.schema.properties)).not.toContain('cliente');
+    await request(app).post(`/api/chats/${chatId}/commands/${opened.body.commandId}/form`).set(auth(ana)).send({ values: { liquido: 'MC-30', responsable: 'Ana Torres' } }).expect(200);
+    const submitted = received.find((event) => event.type === 'form.submitted')!;
+    expect(submitted.data).toMatchObject({ values: { liquido: 'MC-30', responsable: 'Ana Torres', cliente: 'Consorcio Vial', proyecto: 'Corredor Pachacútec', seccion: 'general' } });
+  });
+
   it('a new tramo opens its first section empty, with the report but no tramo', async () => {
     answers['client.report.draft.requested'] = { status: 200, body: { ...document, id: '6aed0a1b2c3d4e5f60718293' } };
     await draftOf(ana).expect(200);

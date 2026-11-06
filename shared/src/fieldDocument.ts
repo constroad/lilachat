@@ -168,6 +168,9 @@ export function sectionAt(document: FieldDocument, path: SectionPath): Found | n
   return item && saved ? { title: `${item.title} · ${entry.title}`, form: entry.form, ...tool, values: saved.values } : null;
 }
 
+/** The channel is the client's and the report hangs from a service (José, 06/11): nobody types them. */
+const KNOWN_BY_CHANNEL = ['cliente', 'proyecto'];
+
 const withDefault = (property: FormSchemaProperty, value: unknown): FormSchemaProperty => (value === undefined || value === '' ? property : { ...property, default: value });
 
 /** The section as the form the engine draws: `guardar_seccion_de_informe` (or the section's own tool) with the saved values as defaults. */
@@ -175,8 +178,17 @@ export function sectionFormOf(document: FieldDocument, path: SectionPath): AppFo
   const found = sectionAt(document, path);
   const schema = found ? document.forms[found.form] : undefined;
   if (!found || !schema) return null;
-  const properties = Object.fromEntries(Object.entries(schema.properties ?? {}).map(([name, property]) => [name, withDefault(property, found.values[name])]));
-  return { id: found.tool ?? SECTION_TOOL, title: found.title, schema: { ...schema, properties } };
+  const asked = Object.entries(schema.properties ?? {}).filter(([name]) => !KNOWN_BY_CHANNEL.includes(name));
+  const properties = Object.fromEntries(asked.map(([name, property]) => [name, withDefault(property, found.values[name])]));
+  const required = schema.required?.filter((name) => !KNOWN_BY_CHANNEL.includes(name));
+  return { id: found.tool ?? SECTION_TOOL, title: found.title, schema: { ...schema, properties, ...(required ? { required } : {}) } };
+}
+
+/** Portal's own value of what the form does not ask: it rides with the answers, because Portal blanks a field a saved section leaves out. */
+export function channelValuesOf(document: FieldDocument, path: SectionPath): Record<string, string> {
+  const values = sectionAt(document, path)?.values ?? {};
+  const known = KNOWN_BY_CHANNEL.map((name) => [name, values[name]] as const);
+  return Object.fromEntries(known.filter((pair): pair is readonly [string, string] => typeof pair[1] === 'string' && pair[1] !== ''));
 }
 
 type Leaf = { path: SectionPath; required: boolean; done: boolean; enabled: boolean };

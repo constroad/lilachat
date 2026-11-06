@@ -118,7 +118,7 @@ async function readDocument(core: QueueCore, ref: ReportRef, reportId: string | 
 /** One attempt: its own run, the photo up, the form sent. */
 async function send({ wire, store }: QueueCore, save: ReportSave, document: FieldDocument, sent: SentMark): Promise<SaveVerdict> {
   await store.editSave(save.clientKey, (one) => ({ ...one, sent }));
-  const path = save.createsItem ? { ...save.path, itemId: null } : save.path;
+  const path = save.createsItem ? { ...save.path, itemId: sent.seed ?? null } : save.path;
   const opened = await wire.open(save.ref, sectionFormRequest(document, path, save.place));
   if (!opened.ok) return judgeFailure(opened);
   const { commandId } = opened.data;

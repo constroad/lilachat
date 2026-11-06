@@ -1,7 +1,7 @@
-import type { FormValues } from './appForms.js';
+import type { AppForm, FormSchemaProperty, FormValues } from './appForms.js';
 import type { FormSubmitReply } from './appActions.js';
 import type { CommandNotice, EphemeralAnswer } from './botCommands.js';
-import { applySavedSection, sectionAt, sectionFormOf, type DocumentSection, type FieldDocument, type FormSection, type RepeatSection, type SectionPath, type SectionTemplate } from './fieldDocument.js';
+import { applySavedSection, sectionAt, sectionFormOf, type DocumentSection, type FieldDocument, type FormSection, type RepeatItem, type RepeatSection, type SectionPath, type SectionTemplate } from './fieldDocument.js';
 import { PUBLISH_LABEL, REPORT_KEEPER, sectionBadge, type DevicePlace } from './reportCreation.js';
 
 /**
@@ -14,7 +14,7 @@ export type ReportRef = { spaceId: string; clientId: string; chatId: string; ser
 export type QueuedPhoto = { field: string; ref: string; mime: string; preview: string };
 export type SaveRefusal = { message: string; errors: Record<string, string> };
 /** What the report had when the write went out: with the answer lost, it tells a write that landed. */
-export type SentMark = { items: string[]; photos: number };
+export type SentMark = { items: string[]; photos: number; /** The empty tramo this write fills. */ seed?: string };
 export type ReportSave = {
   clientKey: string;
   ref: ReportRef;
@@ -24,6 +24,8 @@ export type ReportSave = {
   values: FormValues;
   /** A tramo made here: `path.itemId` is local until Portal gives it its id. */
   createsItem?: true;
+  /** The first tramo of a report not made yet: Portal makes the report with one empty tramo, and this one fills it. */
+  fillsSeed?: true;
   photo?: QueuedPhoto;
   place?: DevicePlace;
   queuedAt: string;
@@ -34,6 +36,9 @@ export type ReportSave = {
 export type SaveVerdict = { kind: 'confirm' | 'retry' | 'flush' | 'wait' } | { kind: 'refuse'; refusal: SaveRefusal };
 
 const LOCAL_ITEM = 'local-';
+const GENERAL_SECTION = 'general';
+const MEMBER_FIELD = 'responsable';
+const PLACE_FIELD = 'ubicacion';
 const PHOTOS_VALUE = 'fotos';
 const SAVE_REFUSED = 'Portal no aceptó este cambio.';
 const UNSENT_HTTP = new Set([408, 429]);
@@ -54,6 +59,7 @@ export function reportSaveOf(input: { ref: ReportRef; document: FieldDocument; p
     path: creates ? { ...path, itemId: `${LOCAL_ITEM}${clientKey}` } : path,
     title: sectionFormOf(document, path)?.title ?? path.key,
     ...(creates ? { createsItem: true as const } : {}),
+    ...(creates && document.id === null && itemsOf(document, path.sectionId).length === 0 ? { fillsSeed: true as const } : {}),
   };
 }
 
@@ -63,7 +69,7 @@ export const samePath = (left: SectionPath, right: SectionPath): boolean => left
 export function queueSave(queue: readonly ReportSave[], save: ReportSave): ReportSave[] {
   const kept = save.photo ? undefined : queue.find((one) => !one.photo && samePath(one.path, save.path));
   if (!kept) return [...queue, save];
-  const merged: ReportSave = { ...save, ...(kept.createsItem ? { createsItem: true as const } : {}), ...(kept.sent ? { sent: kept.sent } : {}) };
+  const merged: ReportSave = { ...save, ...(kept.createsItem ? { createsItem: true as const } : {}), ...(kept.fillsSeed ? { fillsSeed: true as const } : {}), ...(kept.sent ? { sent: kept.sent } : {}) };
   return queue.map((one) => (one === kept ? merged : one));
 }
 
@@ -144,16 +150,26 @@ export function nextSave(queue: readonly ReportSave[], document: FieldDocument |
   return queue.find((one) => !one.refusal && !stuck.has(one.path.itemId) && (document?.id !== null || one.path.sectionId === first)) ?? null;
 }
 
-const itemsOf = (document: FieldDocument, sectionId: string): string[] => {
-  const section = document.sections.find((one): one is RepeatSection => one.id === sectionId && one.kind === 'repeat');
-  return section?.items.map((one) => one.id) ?? [];
-};
+const repeatItems = (document: FieldDocument, sectionId: string): RepeatItem[] => document.sections.find((one): one is RepeatSection => one.id === sectionId && one.kind === 'repeat')?.items ?? [];
+const itemsOf = (document: FieldDocument, sectionId: string): string[] => repeatItems(document, sectionId).map((one) => one.id);
+
+/** The tramo Portal made with the report, while nobody has written in it. */
+function emptySeedOf(save: ReportSave, document: FieldDocument): string | null {
+  const items = repeatItems(document, save.path.sectionId);
+  const only = items.length === 1 ? items[0] : null;
+  return save.fillsSeed && only?.sections.every((one) => one.state === 'empty') ? only.id : null;
+}
 
 /** Taken once, before the first attempt. */
-export const sentMarkOf = (save: ReportSave, document: FieldDocument): SentMark => save.sent ?? { items: itemsOf(document, save.path.sectionId), photos: photoListAt(document, save.path).length };
+export function sentMarkOf(save: ReportSave, document: FieldDocument): SentMark {
+  if (save.sent) return save.sent;
+  const seed = emptySeedOf(save, document);
+  return { items: itemsOf(document, save.path.sectionId), photos: photoListAt(document, save.path).length, ...(seed ? { seed } : {}) };
+}
+
 
 /** The tramo Portal made for this save: the one the report did not have when it went out. */
-export const newItemOf = (save: ReportSave, document: FieldDocument, sent: SentMark): string | null => itemsOf(document, save.path.sectionId).find((id) => !sent.items.includes(id)) ?? null;
+export const newItemOf = (save: ReportSave, document: FieldDocument, sent: SentMark): string | null => sent.seed ?? itemsOf(document, save.path.sectionId).find((id) => !sent.items.includes(id)) ?? null;
 
 /**
  * The answer may be lost with the write done. A tramo or a photo that is there
@@ -161,6 +177,7 @@ export const newItemOf = (save: ReportSave, document: FieldDocument, sent: SentM
  */
 export function landedBefore(save: ReportSave, document: FieldDocument): { itemId: string | null } | null {
   if (!save.sent) return null;
+  if (save.sent.seed) return null;
   if (save.createsItem) {
     const itemId = newItemOf(save, document, save.sent);
     return itemId ? { itemId } : null;
@@ -208,10 +225,21 @@ export function withoutSave(queue: readonly ReportSave[], clientKey: string): Re
 }
 
 /** A section's form, drawn here from the document: it opens with no signal, and what Portal refused goes under its field. */
-export function reportFormAnswer(document: FieldDocument, path: SectionPath, errors?: Record<string, string>): EphemeralAnswer | null {
-  const form = sectionFormOf(document, path);
-  if (!form) return null;
+export function reportFormAnswer(document: FieldDocument, path: SectionPath, errors?: Record<string, string>, personName?: string | null): EphemeralAnswer | null {
+  const found = sectionFormOf(document, path);
+  if (!found) return null;
+  const form = path.key === GENERAL_SECTION ? withDeviceFields(found, personName?.trim()) : found;
   return { commandId: `report-${path.sectionId}-${path.itemId ?? 'new'}-${path.key}`, appName: REPORT_KEEPER, command: '', action: form.title, state: 'form', response: { responseType: 'form', form }, ...(errors ? { errors } : {}) };
+}
+
+/** José, 06/11: the responsible is who makes the report, unless one was saved, and the place can be read from the device. */
+function withDeviceFields(form: AppForm, personName?: string): AppForm {
+  const properties: Record<string, FormSchemaProperty> = { ...form.schema.properties };
+  const member = properties[MEMBER_FIELD];
+  const place = properties[PLACE_FIELD];
+  if (member && personName && member.default === undefined) properties[MEMBER_FIELD] = { ...member, default: personName };
+  if (place) properties[PLACE_FIELD] = { ...place, 'x-input': 'place' };
+  return { ...form, schema: { ...form.schema, properties } };
 }
 
 /** The line over the hub while something waits. */

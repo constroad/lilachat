@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { FORMS_LEVEL } from './appForms';
 import { isFieldReport } from './clientAccess';
 import { fieldDocumentOf } from './fieldDocument';
-import { itemsLine, progressLine, progressPercent, publishFormRequest, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, openPublishForm, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, staleAnswerIds, STATUS_BADGE, type TrackStart } from './reportCreation';
+import { locationMapLink } from './sharedLocation';
+import { itemsLine, placeFieldValue, progressLine, progressPercent, publishFormRequest, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, openPublishForm, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, staleAnswerIds, STATUS_BADGE, type TrackStart } from './reportCreation';
 
 /** A CTL-IMP as Portal answers it, with one tramo whose photos go through their own tool. */
 const form = (title: string) => ({ type: 'object', properties: { campo: { type: 'string', title } } });
@@ -62,6 +63,23 @@ describe('what the phone asks the server', () => {
   it('publishing needs a report that exists', () => {
     expect(publishFormRequest(document())).toEqual({ kind: 'publish', report_id: body.id, forms: FORMS_LEVEL });
     expect(publishFormRequest(fieldDocumentOf({ ...body, id: null })!)).toBeNull();
+  });
+});
+
+describe('placeFieldValue', () => {
+  const NOW = '2026-11-06T10:00:00.000Z';
+
+  it('is the link to the map of where the device is', () => {
+    expect(placeFieldValue({ lat: -12.0464, lng: -77.0428, at: NOW })).toBe(locationMapLink({ lat: -12.0464, lng: -77.0428 }));
+  });
+
+  it('without a position there is nothing to write', () => {
+    expect(placeFieldValue({ at: NOW })).toBeNull();
+    expect(placeFieldValue({ lat: 0, at: NOW })).toBeNull();
+  });
+
+  it('the equator and the Greenwich meridian are places', () => {
+    expect(placeFieldValue({ lat: 0, lng: 0, at: NOW })).toBe(locationMapLink({ lat: 0, lng: 0 }));
   });
 });
 

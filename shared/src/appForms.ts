@@ -61,7 +61,7 @@ export type AppForm = { id: string; title: string; submitLabel?: string; /** The
 type Base = { name: string; label: string; help?: string; required: boolean; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number; /** `x-refresh`: changing it asks the app for the form again. */ refresh?: true };
 export type FormField =
   | (Base & { kind: 'choice'; options: ChoiceOption[]; segmented: boolean; /** A long list (the company's people, agentes 24/10): a field that opens a sheet with a search. */ searchable: boolean; /** `x-avatar: initials`: each option with its initials. */ initials?: true })
-  | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true })
+  | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true; /** `x-input: place`: a text with the button that writes where the device is. */ place?: true })
   | (Base & { kind: 'number'; unit?: string; min?: number; max?: number; /** The limit itself is out: «Mayor que 0». */ minExclusive?: true; maxExclusive?: true; integer: boolean })
   | (Base & { kind: 'date'; /** `format: date | time | date-time`: a picker for the day, the hour or both (José, 24/10). */ mode: DateMode })
   | (Base & { kind: 'photo'; /** A list (`type: array`) where each photo can be removed and taken again; otherwise one photo. */ multiple: boolean; max: number; min: number; /** `x-gallery`: also from the gallery. */ gallery?: true })
@@ -107,7 +107,7 @@ const ROW_MAX_FIELDS = 3;
 /** A text allowed longer than this gets several lines. */
 const MULTILINE_FROM = 120;
 const FORM_ID = /^[a-z][a-z0-9_-]*$/;
-const INPUTS = ['photo', 'location', 'textarea', 'otp', 'pin'];
+const INPUTS = ['photo', 'location', 'textarea', 'otp', 'pin', 'place'];
 /** A code longer than this is not typed by hand. */
 const CODE_MAX_DIGITS = 8;
 const DIGITS_PATTERN = /^\^\\d\{(\d)\}\$$/;
@@ -220,7 +220,7 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
     const maxLength = typeof property.maxLength === 'number' ? Math.min(property.maxLength, FORM_LIMITS.text) : undefined;
     const digits = codeDigitsOf(input, property, maxLength);
     const initial = typeof property.default === 'string' && property.default.trim() ? { initial: line(property.default, maxLength ?? FORM_LIMITS.text) } : {};
-    return { ...base, ...initial, kind: 'text', multiline: !digits && (input === 'textarea' || (maxLength ?? 0) > MULTILINE_FROM), ...(maxLength ? { maxLength } : {}), ...(digits ? { digits } : {}) };
+    return { ...base, ...initial, kind: 'text', multiline: !digits && (input === 'textarea' || (maxLength ?? 0) > MULTILINE_FROM), ...(maxLength ? { maxLength } : {}), ...(digits ? { digits } : {}), ...(input === 'place' ? { place: true as const } : {}) };
   }
   return `El campo «${name}» es de un tipo que Lilachat no sabe dibujar.`;
 }

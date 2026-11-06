@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Camera, LocateFixed, MapPin, RefreshCw } from 'lucide-react';
 import { geoPointOf, mapTilesFor, precisionLabel, type FormField, type GeoPoint } from '@lilachat/shared';
 import { FieldError } from '../../ui/Overlay';
+import { PlaceButton } from './PlaceButton';
 import { SearchableChoice } from './SearchableChoice';
 
 const MAP = { width: 320, height: 120 };
@@ -81,6 +82,7 @@ export function TextField({ field, value, error, onChange }: FieldProps<'text'>)
           className={field.digits ? `${inputClass} text-center text-2xl font-bold tracking-[0.5em] tabular-nums` : inputClass}
         />
       )}
+      {field.place ? <PlaceButton onPick={onChange} /> : null}
       {field.help ? <p className="mt-1 text-[12px] text-on-surface-variant">{field.help}</p> : null}
       <FieldError>{error}</FieldError>
     </div>

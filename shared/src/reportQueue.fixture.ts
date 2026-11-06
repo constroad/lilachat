@@ -10,7 +10,7 @@ export type Tramo = { id: string; photos: number };
 /** What Portal answers for the report as it stands. */
 const answerOf = (id: string | null, tramos: Tramo[]) => ({
   id, type: 'CTL-IMP', title: 'Control de imprimación', status: 'draft',
-  forms: { general: textForm('liquido'), ubicacion: textForm('tramo'), bandejas: textForm('peso'), fotos: { type: 'object', properties: { foto: { type: 'string', title: 'Foto', 'x-input': 'photo' } } } },
+  forms: { general: { type: 'object', properties: { liquido: { type: 'string', title: 'liquido' }, responsable: { type: 'string', title: 'responsable' } } }, ubicacion: textForm('tramo'), bandejas: textForm('peso'), fotos: { type: 'object', properties: { foto: { type: 'string', title: 'Foto', 'x-input': 'photo' } } } },
   sections: [
     { id: 'general', title: 'Datos generales', required: true, state: 'done', summary: [], results: [], form: 'general', values: {} },
     {
@@ -30,7 +30,7 @@ export const saved: CommandOutcome = { commandId: 'run', appId: 'a', appName: 'P
 export const NOW = '2026-11-05T10:00:00.000Z';
 
 /** A Portal that keeps a report: a section creates it, a `ubicacion` without tramo adds one, a photo goes to its tramo. */
-export function fakePortal(start: { id: string | null; tramos: Tramo[] }) {
+export function fakePortal(start: { id: string | null; tramos: Tramo[]; /** As Portal does: a new report is born with one empty tramo. */ seedsTramo?: boolean }) {
   const state = { ...start, tramos: start.tramos.map((one) => ({ ...one })), offline: false, reads: 0, writes: [] as string[], loseNextAnswer: false, refuse: null as Record<string, string> | null, status: null as number | null };
   const runs = new Map<string, { item_id: string | null; key: string; report_id?: string }>();
   let run = 0;
@@ -53,7 +53,10 @@ export function fakePortal(start: { id: string | null; tramos: Tramo[] }) {
       if (state.refuse) return { ok: false, errors: state.refuse };
       const open = runs.get(commandId)!;
       state.writes.push(`${open.key}:${open.item_id ?? 'nuevo'}:${JSON.stringify(values)}`);
-      if (!state.id) state.id = 'r1';
+      if (!state.id) {
+        state.id = 'r1';
+        if (start.seedsTramo) state.tramos.push({ id: 't1', photos: 0 });
+      }
       if (open.key === 'ubicacion' && !open.item_id) state.tramos.push({ id: `t${state.tramos.length + 1}`, photos: 0 });
       if (open.key === 'fotos') state.tramos.find((one) => one.id === open.item_id)!.photos += 1;
       if (state.loseNextAnswer) {

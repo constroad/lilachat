@@ -20,6 +20,8 @@ export type ReportScreenDeps<P> = {
   keepPhoto(source: P): Promise<KeptPhoto>;
   dropPhoto(ref: string): Promise<void>;
   placeNow(): Promise<DevicePlace>;
+  /** Who makes the report: its responsible when none was saved. */
+  personName(): string | null | undefined;
   newKey(): string;
   now(): string;
 };
@@ -109,7 +111,7 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
     openSection(path: SectionPath): void {
       const { document, saves } = reportNow();
       const refused = saves.find((one) => one.refusal && !one.photo && samePath(one.path, path));
-      const answer = document ? reportFormAnswer(document, path, refused?.refusal?.errors) : null;
+      const answer = document ? reportFormAnswer(document, path, refused?.refusal?.errors, deps.personName()) : null;
       openForm = answer ? { path, answer } : null;
       tell();
     },

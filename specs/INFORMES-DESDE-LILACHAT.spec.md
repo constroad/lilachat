@@ -383,3 +383,29 @@ spec al día. Las herramientas nuevas las aprueba José en agentes al publicarse
 - 05/11/2026 (noche), **F2 escrita**: cola de un solo camino (§4.4), fotos con
   leyenda y varias seguidas, miniaturas en el tramo, «Crear informe» sin señal.
   El server y las herramientas no cambian.
+- 06/11/2026, **F2 probada sin señal en el emulador** (OTA `a33107b5`, Test,
+  Consorcio Vial del Pacífico, wifi y datos apagados): el informe se abre con
+  sus formularios, Datos generales y un tramo quedan «Pendiente de enviar», y
+  dos fotos con leyenda salen de la cámara una tras otra. La línea llegó a «4
+  cambios sin enviar». Al volver la red la cola se vació sola en unos 20 s, y
+  el tramo mostró «2 fotos» con sus dos leyendas.
+  Defecto hallado en esa prueba: quedó un Tramo 1 vacío además del tramo real.
+  Portal crea el informe con un tramo vacío, y el primer tramo hecho sin señal
+  creaba otro. Ese vacío debe sus secciones obligatorias y traba «Publicar».
+  Arreglo: el primer tramo de un informe que todavía no existe lleva
+  `fillsSeed` y escribe sobre ese tramo vacío (`SentMark.seed`). Solo se toma
+  si sigue intacto, y un segundo tramo crea uno nuevo. Con la respuesta perdida
+  se reenvía: escribir la misma sección dos veces no cambia nada.
+- 06/11/2026, **Datos generales** (José: «por qué tengo que llenar datos del
+  cliente si estoy en el canal del cliente»):
+  - `cliente` y `proyecto` no se piden. `sectionFormOf` los saca del formulario
+    y de `required`, en el teléfono y en el server. El server los manda igual
+    en el contexto del run (`channelValuesOf`), con el valor que dio Portal:
+    `writeFields` de Portal deja vacío lo que una sección guardada omite. En un
+    informe nuevo Portal los llena del servicio.
+  - `responsable` empieza con el nombre de quien hace el informe y se puede
+    corregir. Si ya había uno guardado, se respeta. Sin nombre queda vacío.
+  - `ubicacion` trae el botón «Usar mi ubicación» (`x-input: place`). Escribe
+    el enlace de Google Maps de donde está el dispositivo, igual que el lugar
+    del servicio. Si no hay permiso o GPS lo dice bajo el campo.
+  Esto vive en `reportFormAnswer`, sin cambios en Portal.

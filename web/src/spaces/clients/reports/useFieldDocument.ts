@@ -12,7 +12,7 @@ import { dropReportPhoto, keepReportPhoto, reportQueue, useReportQueueStart } fr
 export function useFieldDocument(jwt: string, { spaceId, clientId, chatId, serviceId, type }: ReportRef) {
   useReportQueueStart(jwt, loadPerfil()?.userId ?? null);
   const actions = useMemo(
-    () => createReportScreen<File>({ queue: reportQueue, keepPhoto: keepReportPhoto, dropPhoto: dropReportPhoto, placeNow: devicePlaceNow, newKey: () => crypto.randomUUID(), now: () => new Date().toISOString() }, { spaceId, clientId, chatId, serviceId, type }),
+    () => createReportScreen<File>({ queue: reportQueue, keepPhoto: keepReportPhoto, dropPhoto: dropReportPhoto, placeNow: devicePlaceNow, personName: () => loadPerfil()?.name, newKey: () => crypto.randomUUID(), now: () => new Date().toISOString() }, { spaceId, clientId, chatId, serviceId, type }),
     [spaceId, clientId, chatId, serviceId, type]
   );
   const state = useSyncExternalStore(actions.subscribe, actions.snapshot);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applySavedSection, fieldDocumentOf, nextSection, progressOf, publishBlockers, SECTION_TOOL, sectionFormOf } from './fieldDocument';
+import { applySavedSection, channelValuesOf, fieldDocumentOf, nextSection, progressOf, publishBlockers, SECTION_TOOL, sectionFormOf } from './fieldDocument';
 
 /** The document Portal's `informe_de_campo` answers (spec INFORMES-DESDE-LILACHAT §3.1), for a CTL-IMP with one tramo. */
 const generalForm = { type: 'object', properties: { liquido: { type: 'string', title: 'Líquido', oneOf: [{ const: 'MC-30', title: 'MC-30' }, { const: 'EMULSION', title: 'Emulsión' }] }, proyecto: { type: 'string', title: 'Proyecto' } }, required: ['liquido', 'proyecto'] };
@@ -48,7 +48,7 @@ describe('fieldDocumentOf', () => {
     expect(empty.id).toBeNull();
     expect(empty.sections.map((section) => section.enabled)).toEqual([true, false, false]);
     expect(nextSection(empty)).toEqual({ sectionId: 'general', itemId: null, key: 'general' });
-    expect(sectionFormOf(empty, { sectionId: 'general', itemId: null, key: 'general' })?.schema.properties?.proyecto).toMatchObject({ default: 'Av. Los Incas' });
+    expect(channelValuesOf(empty, { sectionId: 'general', itemId: null, key: 'general' })).toEqual({ proyecto: 'Av. Los Incas' });
   });
 
   it('a published report comes from Portal as «completed» and reads as published (Portal 05/11)', () => {
@@ -102,6 +102,27 @@ describe('progress and what comes next', () => {
     const done = applySavedSection(parsed(), { sectionId: 'tramos', itemId: 't1', key: 'bandejas' }, { pesoSin1: 1, pesoCon1: 2, area1: 3 }, 'k1');
     const allDone = { ...done, sections: done.sections.map((section) => (section.kind === 'repeat' ? { ...section, items: section.items.map((item) => ({ ...item, sections: item.sections.map((one) => ({ ...one, state: 'done' as const })) })) } : section)) };
     expect(nextSection(allDone)).toBeNull();
+  });
+});
+
+describe('what the channel already knows (José, 06/11)', () => {
+  const generalPath = { sectionId: 'general', itemId: null, key: 'general' };
+  const channelForm = { type: 'object', properties: { liquido: { type: 'string', title: 'Líquido' }, cliente: { type: 'string', title: 'Cliente' }, proyecto: { type: 'string', title: 'Proyecto' }, responsable: { type: 'string', title: 'Responsable' } }, required: ['liquido', 'cliente', 'proyecto', 'responsable'] };
+  const channelDocument = (values: Record<string, string>) => fieldDocumentOf({ ...body, forms: { ...body.forms, general: channelForm }, sections: [{ ...body.sections[0], values }, ...body.sections.slice(1)] })!;
+
+  it('the form does not ask for the client nor the project, and does not require them', () => {
+    const form = sectionFormOf(channelDocument({ cliente: 'Consorcio Vial', proyecto: 'Corredor Pachacútec' }), generalPath)!;
+    expect(Object.keys(form.schema.properties ?? {})).toEqual(['liquido', 'responsable']);
+    expect(form.schema.required).toEqual(['liquido', 'responsable']);
+  });
+
+  it('their values stay apart, to ride with the answers: Portal blanks what a saved section leaves out', () => {
+    expect(channelValuesOf(channelDocument({ cliente: 'Consorcio Vial', proyecto: 'Corredor Pachacútec', responsable: 'Ana' }), generalPath)).toEqual({ cliente: 'Consorcio Vial', proyecto: 'Corredor Pachacútec' });
+  });
+
+  it('a value Portal does not have is not invented, and another section has none', () => {
+    expect(channelValuesOf(channelDocument({ cliente: 'Consorcio Vial', proyecto: '' }), generalPath)).toEqual({ cliente: 'Consorcio Vial' });
+    expect(channelValuesOf(channelDocument({}), { sectionId: 'tramos', itemId: 't1', key: 'ubicacion' })).toEqual({});
   });
 });
 

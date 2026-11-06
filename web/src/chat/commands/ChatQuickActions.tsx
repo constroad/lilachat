@@ -22,7 +22,7 @@ export function ChatQuickActions(props: { commands: ChatCommands }) {
       {open ? (
         <Overlay title="Acciones de las apps" onClose={() => setOpen(false)}>
           <div data-testid="hoja-acciones-chat" className="space-y-3">
-            <p className="text-[13px] text-on-surface-variant">Las que el admin encendió en este chat.</p>
+            <p className="text-[13px] text-on-surface-variant">Las disponibles para ti en este chat.</p>
             <AppActionList
               rows={actions}
               testPrefix="accion-chat"

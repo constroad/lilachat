@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import * as Crypto from 'expo-crypto';
 import { createReportScreen, type ReportRef } from '@lilachat/shared';
+import { loadCredential } from '../../../auth/credentialStore';
 import { alConectar } from '../../../chat/socketClient';
 import { devicePlaceNow } from './devicePlace';
 import { dropReportPhoto, keepReportPhoto, reportQueue } from './reportQueueStore';
@@ -11,8 +12,14 @@ import { dropReportPhoto, keepReportPhoto, reportQueue } from './reportQueueStor
  * asks Portal again, so «sin señal» goes away by itself.
  */
 export function useFieldDocument({ spaceId, clientId, chatId, serviceId, type }: ReportRef) {
+  const personName = useRef<string | null>(null);
+  useEffect(() => {
+    void loadCredential().then((credential) => {
+      personName.current = credential?.name ?? null;
+    });
+  }, []);
   const actions = useMemo(
-    () => createReportScreen({ queue: reportQueue, keepPhoto: keepReportPhoto, dropPhoto: dropReportPhoto, placeNow: devicePlaceNow, newKey: Crypto.randomUUID, now: () => new Date().toISOString() }, { spaceId, clientId, chatId, serviceId, type }),
+    () => createReportScreen({ queue: reportQueue, keepPhoto: keepReportPhoto, dropPhoto: dropReportPhoto, placeNow: devicePlaceNow, personName: () => personName.current, newKey: Crypto.randomUUID, now: () => new Date().toISOString() }, { spaceId, clientId, chatId, serviceId, type }),
     [spaceId, clientId, chatId, serviceId, type]
   );
   const state = useSyncExternalStore(actions.subscribe, actions.snapshot);

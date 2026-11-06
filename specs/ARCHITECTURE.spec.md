@@ -15419,3 +15419,14 @@ Sin verificar: la cuenta real. No se leyó la base; se dedujo del código y de l
 - En la web, `connect-src` permite `https://constroad.com`. Sin eso el navegador
   corta la subida antes de salir.
 
+## Cierre de la app: `scrollToIndex out of range` (José 06/11)
+
+Reportado en el OTA `4ce1614d`, pantalla chat: «index 6 is out of 0 to 5». El mensaje
+es de `FlatList`, y el chat usa FlashList. La vista de hilo guardaba el índice de la
+respuesta para su segundo pase, 400 ms después. Si la lista se acortaba en ese tiempo,
+el índice quedaba fuera de rango y la app se cerraba.
+
+Ahora el segundo pase busca la respuesta en las filas de ese momento (`replyRowOf`) y
+no hace nada si ya no está. La causa se dedujo del código: el stack llegó cortado y no
+se reprodujo en el emulador.
+

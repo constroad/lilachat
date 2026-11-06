@@ -29,6 +29,7 @@ import type { RespuestaDeReaccion } from './useCambiosDeMensajes';
 import { BarraDeReacciones } from './reacciones/BarraDeReacciones';
 import { PastillaDeReacciones } from './reacciones/PastillaDeReacciones';
 import { useReaccionesEnPantalla } from './reacciones/useReaccionesEnPantalla';
+import { replyRowOf } from './threadReply';
 
 /** Side of a sticker reply in the thread (dp). */
 const STICKER_IN_THREAD = 120;
@@ -134,13 +135,19 @@ export function HiloScreen(props: {
   const [highlighted, setHighlighted] = useState<number | null>(null);
   /** Which opening already jumped, so a reply arriving later does not pull the list back. */
   const jumpedKey = useRef<string | null>(null);
-  const replyIndex = props.highlightReply === undefined ? -1 : filas.findIndex((fila) => !esPendiente(fila) && fila.seq === props.highlightReply);
+  const replyIndex = replyRowOf(filas, props.highlightReply);
+  // The second pass runs later: the rows may have shrunk by then (`scrollToIndex out of range`, 06/11).
+  const latestRows = useRef(filas);
+  latestRows.current = filas;
   useEffect(() => {
     if (props.raiz === null) jumpedKey.current = null;
     const key = `${clave}:${props.highlightReply}`;
     if (props.raiz === null || replyIndex < 0 || jumpedKey.current === key) return;
     jumpedKey.current = key;
-    const scrollToReply = () => lista.current?.scrollToIndex({ index: replyIndex, animated: false, viewPosition: 0.4 });
+    const scrollToReply = () => {
+      const index = replyRowOf(latestRows.current, props.highlightReply);
+      if (index >= 0) lista.current?.scrollToIndex({ index, animated: false, viewPosition: 0.4 });
+    };
     scrollToReply();
     setTimeout(scrollToReply, SECOND_PASS_MS);
     setHighlighted(props.highlightReply ?? null);

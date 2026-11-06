@@ -426,3 +426,22 @@ spec al día. Las herramientas nuevas las aprueba José en agentes al publicarse
   el rechazo de Portal a una sección guardada en cola quedan para campo.
   Datos QA: dos borradores en TEST COMPANY, en los servicios
   `096f1e56d931ff4d4561bb41` y `6a54797255b64bb87befd231`, que limpia Portal.
+- 06/11/2026, **la tarjeta del informe dice quién lo hizo** (José: «no sale
+  quién creó el informe»). Lilachat no cambia: dibuja cualquier campo de
+  `card.fields`. Portal manda `data.record.author` en `report` y `report_pdf`
+  (`92c5a383`), solo el nombre, sin correo ni teléfono. Agentes agrega el campo
+  «Creado por» después de «Servicio» (`6ad6757`). Sin autor, la tarjeta queda
+  como antes.
+  Verificado en vivo: web, Chrome de José, Test, Consorcio. Informe nuevo
+  publicado con foto. La tarjeta `seq` 7 trae «Creado por: J zamora» y el
+  enlace al PDF.
+  Límites: las tarjetas ya publicadas no se redibujan. Lo creado en la página
+  pública sale sin autor, porque ese enlace no tiene usuario. En Lilachat el
+  nombre es el que la persona edita en su perfil: se muestra, no identifica.
+  Sin verificar: la tarjeta abierta en el APK. La app dibuja `card.fields` con
+  el mismo recorrido, pero no se abrió en el emulador.
+  Defecto abierto, de Portal: antes de guardar Datos generales, el hub dice
+  «Faltan datos generales: cliente, proyecto, responsable, fecha», aunque
+  cliente y proyecto ya no se piden. Sale de `fieldReportPublishRules.ts`.
+  Datos QA: un informe publicado en TEST COMPANY, servicio
+  `096f1e56d931ff4d4561bb41`, tramo «QA autor tarjeta», que limpia Portal.

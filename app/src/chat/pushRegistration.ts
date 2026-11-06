@@ -14,7 +14,7 @@ import { pushTokenSendDue, type PushStatus, type SentPushToken } from './pushTok
  * 1. **El permiso se pide TARDE**, no al abrir la app por primera vez. Pedirlo
  *    antes de que la persona vea un solo mensaje se contesta que no, y en
  *    Android reabrir ese diálogo es imposible: hay que ir a Ajustes. Se llama
- *    cuando ya hay sesión y la app está en pantalla, en Personal o en un espacio.
+ *    once there is a session and the app is on screen, in Personal or a space.
  * 2. **Un permiso negado NO es un error.** La app funciona igual con la
  *    pantalla abierta; simplemente no avisa con el teléfono guardado. No se
  *    reintenta ni se molesta.

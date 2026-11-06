@@ -54,6 +54,8 @@ const formCalls = (calls: { url: string; body: unknown }[]) => calls.filter((cal
 // A hook that returns the mock would hand vitest a «cleanup» that calls `track` with nothing: braces on purpose.
 beforeEach(() => {
   answers.track.mockClear();
+  answers.dismiss.mockClear();
+  answers.answers = [];
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -132,6 +134,15 @@ describe('ReportDocumentWeb', () => {
     await vi.waitFor(() => expect(formCalls(calls)).toHaveLength(1));
     expect(formCalls(calls)[0]).toEqual({ kind: 'publish', report_id: document.id, forms: 3 });
     expect(answers.track).toHaveBeenCalledWith({ appName: 'Portal', command: '', action: 'Publicar informe' }, expect.any(Function));
+  });
+
+  it('a new answer clears the ones before it: «Sección guardada» does not stack over the sections', async () => {
+    serverWith({ document });
+    const answered = (commandId: string) => ({ commandId, appName: 'Portal', command: '', action: 'Bandejas', state: 'answered', message: 'Sección guardada.' });
+    answers.answers = [answered('c1'), answered('c2'), answered('c3')];
+    render(<ReportDocumentWeb target={target} chatId="chat-1" service={service} type="CTL-IMP" onClose={() => undefined} />);
+    await screen.findByTestId('seccion-general');
+    expect(answers.dismiss.mock.calls).toEqual([['c1'], ['c2']]);
   });
 
   it('a refusal shows the server’s message and the service in Portal', async () => {

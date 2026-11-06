@@ -1,4 +1,5 @@
 import { FORMS_LEVEL } from './appForms.js';
+import type { EphemeralAnswer } from './botCommands.js';
 import { fieldDocumentOf, SECTION_TOOL, sectionFormOf, type DocumentSection, type DocumentStatus, type FieldDocument, type RepeatSection, type SectionPath, type SectionState } from './fieldDocument.js';
 import { clientServicePath } from './serviceAsk.js';
 import type { DetailTone } from './serviceDetail.js';
@@ -109,4 +110,9 @@ export function reportFormActions<T>(deps: ReportFormDeps<T>) {
 export function reportViewOf(draft: ReportDraftResult | null, itemsOf: string | null): { report: FieldDocument | null; items: DocumentSection | undefined } {
   const report = draft?.ok ? draft.document : null;
   return { report, items: report?.sections.find((section) => section.id === itemsOf) };
+}
+
+/** What a report no longer needs on screen: every answered form but the newest. One still running or refused stays. */
+export function staleAnswerIds(answers: readonly Pick<EphemeralAnswer, 'commandId' | 'state'>[]): string[] {
+  return answers.slice(0, -1).filter((answer) => answer.state === 'answered').map((answer) => answer.commandId);
 }

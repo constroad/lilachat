@@ -300,8 +300,9 @@ spec al día. Las herramientas nuevas las aprueba José en agentes al publicarse
   motor de pantallas (`reportCreation.ts`, 11 tests), pantallas APK y web
   (j-01…j-04; test de la página web, 6). Portal publicó las herramientas en
   `7841b285` (apagadas hasta que José las apruebe en agentes). **Sin
-  verificar de punta a punta**: el camino por agentes, el sello de la foto,
-  publicar de verdad, el PDF y el aviso al canal. Guion del E2E (en Test,
+  verificar de punta a punta** en esa fecha (ver el E2E de abajo): el camino
+  por agentes, el sello de la foto, publicar de verdad, el PDF y el aviso al
+  canal. Guion del E2E (en Test,
   Consorcio Vial del Pacífico, APK y web): crear → general → tramo
   (ubicación, bandejas, foto) → publicar con nota → PDF en el canal →
   releer el publicado. F1 no tiene cola offline (§4.4 es F2) ni `report_id`
@@ -314,3 +315,27 @@ spec al día. Las herramientas nuevas las aprueba José en agentes al publicarse
   `published`) y `publish.label: 'Republicar informe'` (sin botón en F1).
   La foto sin GPS pasa: `lat` y `lng` van juntas o ninguna; sin punto el
   sello dice «Ubicacion no disponible».
+- 05/11/2026 (noche), **E2E en Test con las cuatro herramientas aprobadas**,
+  Consorcio Vial del Pacífico, servicio Pachacútec, web en el Chrome de José y
+  APK 0.1.180 con OTA en `lilafotos-qa`. Recorrido en los dos: crear, datos
+  generales, tramo (ubicación, bandejas, foto), publicar, PDF y aviso en el
+  canal. Web con nota y MC-30 (1,47 lt/m², dentro de rango); APK sin nota,
+  con Emulsión y foto de la cámara (1,36 lt/m², «Riego pasado (máx. 0.7)» en
+  tono de aviso). Ambos PDF traen datos, cálculo y panel fotográfico. Cada
+  formulario responde en 3 a 7 s. La validación del formulario y el «Atrás» de
+  Android (de tramos al hub) funcionan.
+  Defectos y arreglos:
+  1. El hub decía «No se pudo abrir el informe»: Portal manda el `repeat`
+     plano junto a `kind`, no anidado. El motor lee las dos formas.
+  2. Con el teclado abierto, al cerrarse el formulario Android lo pasaba al
+     compositor del chat, oculto bajo el informe: lo que se tecleaba iba ahí.
+     `useAppFormState` cierra el teclado al enviar. Sin test unitario (la app
+     solo prueba módulos puros): se verificó en el emulador.
+  3. Las confirmaciones se apilaban sobre las secciones. `staleAnswerIds`
+     deja solo la última respuesta.
+  4. **Abierto, en Portal:** la fila y el título del informe dicen «4 de
+     noviembre» aunque `fecha` y el PDF dicen 05/11 (fecha sin hora leída en
+     UTC). Avisado a Portal.
+  Sin verificar en vivo: el rechazo de un servicio ajeno (solo test del
+  server), un miembro sin usuario de Portal (el E2E usó al admin) y la foto con
+  GPS real.

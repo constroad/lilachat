@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { FORMS_LEVEL } from './appForms';
 import { isFieldReport } from './clientAccess';
 import { fieldDocumentOf } from './fieldDocument';
-import { itemsLine, progressLine, progressPercent, publishFormRequest, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, reportFormActions, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, sectionNeedsPlace, STATUS_BADGE, type TrackStart } from './reportCreation';
+import { itemsLine, progressLine, progressPercent, publishFormRequest, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, reportFormActions, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, sectionNeedsPlace, staleAnswerIds, STATUS_BADGE, type TrackStart } from './reportCreation';
 
 /** A CTL-IMP as Portal answers it, with one tramo whose photos go through their own tool. */
 const form = (title: string) => ({ type: 'object', properties: { campo: { type: 'string', title } } });
@@ -142,5 +142,22 @@ describe('what the cards say', () => {
     expect(itemsLine(tramos())).toBe('1 tramo');
     expect(itemsLine({ ...tramos(), items: [] })).toBe('Sin tramos todavía');
     expect(itemsLine({ ...tramos(), items: [tramos().items[0], tramos().items[0]] })).toBe('2 tramos');
+  });
+});
+
+describe('staleAnswerIds', () => {
+  const answer = (commandId: string, state: 'pending' | 'answered' | 'failed' | 'form') => ({ commandId, state });
+
+  it('keeps the newest answer and names the answered ones before it', () => {
+    expect(staleAnswerIds([answer('a', 'answered'), answer('b', 'answered'), answer('c', 'answered')])).toEqual(['a', 'b']);
+  });
+
+  it('an answer still running or refused stays on screen, even if older', () => {
+    expect(staleAnswerIds([answer('a', 'pending'), answer('b', 'failed'), answer('c', 'form'), answer('d', 'answered')])).toEqual([]);
+  });
+
+  it('nothing to clear with one answer or none', () => {
+    expect(staleAnswerIds([answer('a', 'answered')])).toEqual([]);
+    expect(staleAnswerIds([])).toEqual([]);
   });
 });

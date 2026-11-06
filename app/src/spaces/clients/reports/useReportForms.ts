@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { reportFormActions } from '@lilachat/shared';
+import { useEffect, useMemo } from 'react';
+import { reportFormActions, staleAnswerIds } from '@lilachat/shared';
 import { useAnsweredSince } from '../../../chat/commands/useAnsweredSince';
 import { useAppAnswers } from '../../../chat/commands/useAppAnswers';
 import type { ServiceAskTarget } from '../useServiceAsk';
@@ -15,7 +15,11 @@ import { openReportForm } from './reportsApi';
 export function useReportForms(target: ServiceAskTarget, chatId: string, serviceId: string, onAnswered: () => void) {
   const answers = useAppAnswers({ jwt: target.jwt, scope: useMemo(() => ({ chatId }), [chatId]) });
   useAnsweredSince(answers.answers, onAnswered);
-  const { track } = answers;
+  const { track, dismiss } = answers;
+  // A report has many sections: «Sección guardada» must not stack over them, only the newest answer stays.
+  useEffect(() => {
+    staleAnswerIds(answers.answers).forEach((commandId) => dismiss(commandId));
+  }, [answers.answers, dismiss]);
   const actions = useMemo(() => reportFormActions({ track, placeNow: devicePlaceNow, open: (request) => openReportForm(target, serviceId, request) }), [track, target, serviceId]);
   return { answers, ...actions };
 }

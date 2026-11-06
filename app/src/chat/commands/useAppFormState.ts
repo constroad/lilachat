@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Keyboard } from 'react-native';
 import { firstErrorField, initialValues, keptAfterRefresh, validateFormValues, visibleFields, type FormField, type FormSubmitOutcome, type FormValues } from '@lilachat/shared';
 
 type Errors = Record<string, string>;
@@ -58,6 +59,8 @@ export function useAppFormState({ fields, refused, signing, onSubmit, reveal }: 
     if (!checked.ok) return showErrors(checked.errors);
     setSending(true);
     setMessage('');
+    // The sheet closes with the answer: with the keyboard up, Android hands it to the first input behind, a composer hidden under the report (E2E 05/11).
+    Keyboard.dismiss();
     const prepared = await signing.prepare(values);
     if ('errors' in prepared) {
       setSending(false);

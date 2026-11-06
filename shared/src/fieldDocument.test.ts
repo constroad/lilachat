@@ -56,6 +56,28 @@ describe('fieldDocumentOf', () => {
     expect(fieldDocumentOf({ ...body, status: 'published' })?.status).toBe('published');
   });
 
+  it('reads the document as Portal really sends it (06/11): the repeat flat beside `kind`, no tramos yet, the rest off', () => {
+    const portal = {
+      id: null, type: 'CTL-IMP', title: 'Control de imprimación', status: 'draft',
+      forms: { general: generalForm, ubicacion: ubicacionForm, bandejas: bandejasForm, fotos: photosForm, firmas: firmasForm },
+      sections: [
+        { kind: 'form', id: 'general', title: 'Datos generales', form: 'general', required: true, enabled: true, state: 'partial', summary: ['Mejoramiento del Corredor Vial Pachacútec'], results: [], values: { proyecto: 'Mejoramiento del Corredor Vial Pachacútec' } },
+        { kind: 'repeat', id: 'tramos', title: 'Tramos', template: [{ id: 'ubicacion', title: 'Ubicación', required: true, form: 'ubicacion' }, { id: 'bandejas', title: 'Bandejas', required: true, form: 'bandejas' }, { id: 'fotos', title: 'Fotos', required: false, form: 'fotos', tool: 'agregar_foto_de_informe' }], items: [], min: 1, required: true, enabled: false, state: 'empty', summary: ['0 tramos'], itemTitle: 'Tramo', addLabel: 'Agregar tramo' },
+        { kind: 'form', id: 'firmas', title: 'Responsables y firmas', form: 'firmas', required: false, enabled: false, state: 'empty', summary: [], results: [], values: {} },
+      ],
+      publish: { label: 'Publicar informe', missing: ['Faltan datos generales: cliente, proyecto, responsable, fecha.', 'Falta un tramo con sus 3 bandejas.', 'Falta al menos una foto.'] },
+    };
+
+    const document = fieldDocumentOf(portal)!;
+
+    expect(document).not.toBeNull();
+    const tramos = document.sections[1];
+    expect(tramos.kind === 'repeat' && [tramos.itemTitle, tramos.addLabel, tramos.min, tramos.enabled, tramos.template.length, tramos.template[2].tool]).toEqual(['Tramo', 'Agregar tramo', 1, false, 3, 'agregar_foto_de_informe']);
+    expect(progressOf(document)).toEqual({ done: 0, total: 3 });
+    expect(nextSection(document)).toEqual({ sectionId: 'general', itemId: null, key: 'general' });
+    expect(document.publish.missing).toHaveLength(3);
+  });
+
   it('refuses what is not a document', () => {
     expect(fieldDocumentOf(null)).toBeNull();
     expect(fieldDocumentOf({ id: 'x' })).toBeNull();

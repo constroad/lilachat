@@ -104,7 +104,8 @@ function itemOf(raw: Raw, template: SectionTemplate[], forms: Record<string, For
 function repeatOf(raw: Raw, forms: Record<string, FormSchema>): RepeatSection | null {
   const id = text(raw.id, LIMITS.title);
   const title = text(raw.title, LIMITS.title);
-  const repeat = record(raw.repeat);
+  // Portal sends the repeat's own keys flat beside `kind: 'repeat'` (7841b285); the spec's nested `repeat` is read too.
+  const repeat = 'repeat' in raw ? record(raw.repeat) : raw;
   const template = templateOf(repeat.template, forms);
   if (!id || !title || !template) return null;
   const items: RepeatItem[] = [];
@@ -127,7 +128,7 @@ function sectionsOf(raw: unknown, forms: Record<string, FormSchema>): DocumentSe
   const sections: DocumentSection[] = [];
   for (const entry of raw) {
     const one = record(entry);
-    const section = 'repeat' in one ? repeatOf(one, forms) : formSectionOf(one, forms);
+    const section = one.kind === 'repeat' || 'repeat' in one ? repeatOf(one, forms) : formSectionOf(one, forms);
     if (!section) return null;
     sections.push(section);
   }

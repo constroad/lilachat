@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { availableTo, canManageMembers, cardCommandsOf, COMMAND_LIMITS, formLevelOf, isAckBody, itemSettingOf, mayUseItem, parseSlashInput, rowIsForAnyone, withoutKnownFields, shortcutValuesOf, validateCommandResponse, validateFormReply, type ShortcutAudience, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope, type ShortcutValues, worksAt } from '@lilachat/shared';
+import { availableTo, canManageMembers, cardCommandsOf, COMMAND_LIMITS, formLevelOf, isAckBody, itemSettingOf, mayUseItem, parseSlashInput, rowIsForAnyone, withoutKnownFields, shortcutValuesOf, validateCommandResponse, validateFormReply, type AppForm, type ShortcutAudience, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope, type ShortcutValues, worksAt } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Chat, type Message } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { callBotWebhook, isRestarting, recordLastDelivery, type WebhookReply } from './botEvents.js';
@@ -116,16 +116,20 @@ function inChannelTarget(chat: ChatOfCommand, installation: Pick<BotInstallation
   return chat.members.some((member) => String(member.userId) === String(installation.botUserId)) ? { userId: String(askerId) } : null;
 }
 
+type RunOfAnswer = Pick<BotCommandRun, '_id' | 'userId' | 'responses' | 'formsLevel' | 'placeValues' | 'placeConfirmed'>;
+
+/** The form the asker gets, without what the place knew; kept to check what is sent against it (`botForms.ts`). */
+async function deliverForm(run: RunOfAnswer, response: CommandResponse & { form: AppForm }, base: Base): Promise<CommandOutcome> {
+  // A Lilachat that cannot draw it is told so, instead of a sheet that breaks (28/10, lists).
+  if (formLevelOf(response.form) > (run.formsLevel ?? 1)) return { ...base, outcome: 'failed', message: OUTDATED_FORM_MESSAGE };
+  const { form, context } = withoutKnownFields(response.form, run.placeValues ?? {}, new Set(run.placeConfirmed));
+  await BotCommandRunModel.updateOne({ _id: run._id }, { $set: { form, ...(Object.keys(context).length ? { context } : {}) } });
+  return { ...base, outcome: 'form', response: { ...response, form } };
+}
+
 /** `chat` is null for the space's ⚡: an in_channel answer has nowhere to go and stays for the asker. */
-export async function deliverResponse(installation: BotInstallation, run: Pick<BotCommandRun, '_id' | 'userId' | 'responses' | 'formsLevel' | 'placeValues' | 'placeConfirmed'>, chat: ChatOfCommand | null, response: CommandResponse, base: Base): Promise<CommandOutcome> {
-  if (response.responseType === 'form' && response.form) {
-    // A Lilachat that cannot draw it is told so, instead of a sheet that breaks (28/10, lists).
-    if (formLevelOf(response.form) > (run.formsLevel ?? 1)) return { ...base, outcome: 'failed', message: OUTDATED_FORM_MESSAGE };
-    const { form, context } = withoutKnownFields(response.form, run.placeValues ?? {}, new Set(run.placeConfirmed));
-    // Kept to check what is sent against it (`botForms.ts`); what the place knew rides with the answers.
-    await BotCommandRunModel.updateOne({ _id: run._id }, { $set: { form, ...(Object.keys(context).length ? { context } : {}) } });
-    return { ...base, outcome: 'form', response: { ...response, form } };
-  }
+export async function deliverResponse(installation: BotInstallation, run: RunOfAnswer, chat: ChatOfCommand | null, response: CommandResponse, base: Base): Promise<CommandOutcome> {
+  if (response.responseType === 'form' && response.form) return deliverForm(run, { ...response, form: response.form }, base);
   const target = response.responseType === 'in_channel' && chat ? inChannelTarget(chat, installation, run.userId) : null;
   if (target) {
     const posted = await postBotMessage(installation, { target, ...(response.text ? { text: response.text } : {}), ...(response.card ? { card: response.card } : {}), idempotencyKey: `cmd:${run._id}:${run.responses}` });

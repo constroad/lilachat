@@ -13,7 +13,6 @@ import {
 } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { connectSocket } from './socketClient';
-import { configureNotificationHandler, registerPushToken } from './pushRegistration';
 import {
   buscarMensajes,
   listChats,
@@ -145,14 +144,6 @@ export function ChatListScreen({
   /** Quién está en línea. Del socket: `presence.snapshot` al conectar y
    *  `presence` en cada cambio (F4). */
   const [onlineIds, setOnlineIds] = useState<Set<string>>(new Set());
-
-  // El permiso de notificaciones se pide ACÁ, con la lista ya en pantalla —
-  // no en el arranque: pedirlo antes de ver un mensaje se contesta que no, y
-  // en Android ese diálogo no se puede volver a abrir desde la app.
-  useEffect(() => {
-    configureNotificationHandler();
-    void registerPushToken(credential.jwt);
-  }, [credential.jwt]);
 
   useEffect(() => {
     const socket = connectSocket(credential.jwt);

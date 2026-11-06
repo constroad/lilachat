@@ -1,7 +1,10 @@
+import { useEffect } from 'react';
 import * as Notifications from 'expo-notifications';
 import { marcarPreguntado, queHacerConElPermiso, yaSePregunto } from '../ui/permisos';
+import { useAlVolver } from '../ui/useAlVolver';
 import { CAPACIDAD_LLAMADA_NATIVA, REMINDER_NATIVE_CAPABILITY, CAPACIDAD_MENSAJE_NATIVO } from '@lilachat/shared';
 import { llamadaNativa } from '../../modules/llamada-entrante/src';
+import { pushTokenSendDue, type PushStatus, type SentPushToken } from './pushTokenSend';
 
 /**
  * Registro del token de push (F4).
@@ -11,12 +14,18 @@ import { llamadaNativa } from '../../modules/llamada-entrante/src';
  * 1. **El permiso se pide TARDE**, no al abrir la app por primera vez. Pedirlo
  *    antes de que la persona vea un solo mensaje se contesta que no, y en
  *    Android reabrir ese diálogo es imposible: hay que ir a Ajustes. Se llama
- *    cuando ya hay sesión y la lista de chats está en pantalla.
+ *    cuando ya hay sesión y la app está en pantalla, en Personal o en un espacio.
  * 2. **Un permiso negado NO es un error.** La app funciona igual con la
  *    pantalla abierta; simplemente no avisa con el teléfono guardado. No se
  *    reintenta ni se molesta.
  */
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
+
+let lastSent: SentPushToken | null = null;
+let status: PushStatus | null = null;
+
+/** What happened to this phone's registration, for Diagnóstico. */
+export const pushStatus = (): PushStatus | null => status;
 
 export async function registerPushToken(jwt: string): Promise<'ok' | 'denied' | 'unsupported'> {
   /**
@@ -42,14 +51,18 @@ export async function registerPushToken(jwt: string): Promise<'ok' | 'denied' | 
   });
   if (decision === 'pedir') await marcarPreguntado('notificaciones');
   const granted = decision === 'usar' || (decision === 'pedir' && (await Notifications.requestPermissionsAsync()).granted);
-  if (!granted) return 'denied';
+  if (!granted) {
+    status = { kind: 'denied', at: Date.now() };
+    return 'denied';
+  }
 
   try {
     const token = await Notifications.getDevicePushTokenAsync();
     const pushToken = String(token.data ?? '');
     if (!pushToken) return 'unsupported';
+    if (!pushTokenSendDue(lastSent, pushToken, jwt, Date.now())) return 'ok';
 
-    await fetch(`${BASE_URL}/api/chats/push-token`, {
+    const response = await fetch(`${BASE_URL}/api/chats/push-token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
       // FL8.1: con el módulo nativo, las llamadas llegan solo-datos y se
@@ -62,13 +75,37 @@ export async function registerPushToken(jwt: string): Promise<'ok' | 'denied' | 
       }),
       signal: AbortSignal.timeout(10_000),
     });
+    if (!response.ok) {
+      status = { kind: 'refused', at: Date.now(), status: response.status };
+      return 'unsupported';
+    }
+    lastSent = { token: pushToken, jwt, at: Date.now() };
+    status = { kind: 'sent', at: lastSent.at };
     return 'ok';
   } catch (error) {
     // Sin proyecto de Firebase, `getDevicePushTokenAsync` lanza. Es config
     // faltante, no un bug de la app: se dice y se sigue.
     console.warn('[push] no se pudo registrar el token:', error);
+    status = { kind: 'failed', at: Date.now() };
     return 'unsupported';
   }
+}
+
+/**
+ * Keeps this phone reachable, in Personal and inside a space (José 05/11). It
+ * lived in the personal chat list, which a space replaces: whoever entered
+ * straight into a space was never asked for the permission nor registered, and
+ * a token Firebase rotated stayed dead on the server. So: on entering, when
+ * Firebase rotates it, and on each return to the app.
+ */
+export function usePushRegistration(jwt: string): void {
+  useEffect(() => {
+    configureNotificationHandler();
+    void registerPushToken(jwt);
+    const subscription = Notifications.addPushTokenListener(() => void registerPushToken(jwt));
+    return () => subscription.remove();
+  }, [jwt]);
+  useAlVolver(true, () => void registerPushToken(jwt));
 }
 
 /**

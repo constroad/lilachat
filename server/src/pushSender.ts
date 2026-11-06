@@ -18,6 +18,8 @@
 import jwt from 'jsonwebtoken';
 import { CANAL_MENSAJES } from '@lilachat/shared';
 import { leerCredencialFcm, urlDeEnvio, type CredencialFcm } from './credencialFcm.js';
+import { DeviceModel } from './models.js';
+import { createPushTally, outcomeOfReply } from './pushTally.js';
 import { registro } from './registro.js';
 
 export type PushMessage = {
@@ -116,12 +118,43 @@ async function obtenerAcceso(credencial: CredencialFcm): Promise<string | null> 
   }
 }
 
+const countOutcome = createPushTally((line) => registro.info(line));
+
+/**
+ * A token Firebase no longer knows, off every row that holds it. The phone
+ * sends its new one on its next return to the app (`usePushRegistration`).
+ */
+async function forgetDeadToken(token: string): Promise<void> {
+  const { modifiedCount } = await DeviceModel.updateMany({ pushToken: token }, { $unset: { pushToken: 1 } });
+  registro.info(`[push] token vencido, quitado de ${modifiedCount} dispositivo(s)`);
+}
+
 /**
  * Emisor real, contra FCM **HTTP v1**. Un fallo NUNCA propaga: el mensaje ya
  * está guardado y la notificación es el timbre, no la entrega.
  */
 function buildFcmSender(credencial: CredencialFcm): PushSender {
   const url = urlDeEnvio(credencial.projectId);
+
+  /** What became of one token. A 200, a dead token and a network failure used to leave the same silence (José 05/11). */
+  const sendTo = async (destino: string, armar: (destino: string) => object, token: string) => {
+    try {
+      const respuesta = await fetch(url, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: armar(destino) }),
+        signal: AbortSignal.timeout(PUSH_TIMEOUT_MS),
+      });
+      const detalle = respuesta.ok ? '' : await respuesta.text().catch(() => '');
+      const outcome = outcomeOfReply(respuesta.status, detalle);
+      countOutcome(outcome);
+      if (outcome === 'dead') await forgetDeadToken(destino);
+      if (outcome === 'failed') registro.error(`[push] FCM ${respuesta.status}: ${detalle.slice(0, 200)}`);
+    } catch (error) {
+      countOutcome('failed');
+      registro.error(`[push] FCM no respondió: ${(error as Error).message}`);
+    }
+  };
 
   /**
    * Un POST a FCM por token, y UNO por token aunque venga repetido: un token
@@ -131,20 +164,7 @@ function buildFcmSender(credencial: CredencialFcm): PushSender {
   const enviarA = async (destinos: string[], armar: (destino: string) => object) => {
     const token = await obtenerAcceso(credencial);
     if (!token) return;
-    await Promise.allSettled(
-      [...new Set(destinos)].map(async (destino) => {
-        const respuesta = await fetch(url, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: armar(destino) }),
-          signal: AbortSignal.timeout(PUSH_TIMEOUT_MS),
-        });
-        if (!respuesta.ok && respuesta.status !== 404) {
-          const detalle = await respuesta.text().catch(() => '');
-          registro.error(`[push] FCM ${respuesta.status}: ${detalle.slice(0, 200)}`);
-        }
-      })
-    );
+    await Promise.all([...new Set(destinos)].map((destino) => sendTo(destino, armar, token)));
   };
 
   return {

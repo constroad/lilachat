@@ -6,6 +6,7 @@ import type { Credential } from '../auth/credentialStore';
 import { listChats, type ChatSummary } from '../api/client';
 import { connectSocket } from '../chat/socketClient';
 import { avisarMensaje, prepararAvisos } from '../chat/avisoLocal';
+import { usePushRegistration } from '../chat/pushRegistration';
 import { iniciarServicio } from '../../modules/servicio-socket/src';
 import { ChatListScreen } from '../chat/ChatListScreen';
 import { CoverableSpaceChats } from '../spaces/SpaceChatsScreen';
@@ -96,6 +97,7 @@ export function TabsShell({
   chatAbiertoRef.current = chatAbierto;
   const colores = useColores();
   const perfilPropio = usePerfilPropio(credential);
+  usePushRegistration(credential.jwt);
   const margenes = useMargenes();
   const [tab, setTab] = useState<Tab>('chats');
   /** Los contadores de Agenda y Encuestas en la barra (18/10). */

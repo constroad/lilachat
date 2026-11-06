@@ -2304,6 +2304,29 @@ probar y una que hay que creerle.
 lock. Se conserva como opción para un teléfono sin Google Play, donde el push no
 llega nunca.
 
+### 35.6 El registro vivía en la lista personal (05/11/2026)
+
+José reportó que los avisos dejaron de llegar: los mensajes aparecían recién al
+abrir la app. Lo auditado, sin leer la base de producción:
+
+- **Server**: 0 líneas `[push]` de error en 7 días. Eso no probaba entrega:
+  `enviarA` no dejaba rastro de un 200, de un 404 ni de un `fetch` que lanza.
+- **Aviso nativo**: sin cambios desde el 29/10. El manifiesto de 0.1.178 y 0.1.180
+  tiene `ServicioDeAvisos` con prioridad 10.
+- **Defecto cierto**: `registerPushToken` solo corría al montar `ChatListScreen`, y
+  desde los espacios (21/10) esa pantalla no se monta dentro de un espacio. Quien
+  entra directo a un espacio nunca vio el permiso ni registró token. La app
+  tampoco escuchaba la rotación del token, y el server ignoraba el 404 en silencio.
+
+Arreglo: `usePushRegistration` en `TabsShell` registra al entrar, al rotar el token
+y al volver a la app, con un tope de 6 horas si nada cambió. El server quita el
+token solo si FCM responde `UNREGISTERED`: un 404 por proyecto equivocado no borra
+nada. `pushTally` escribe una línea por hora con aceptados, vencidos y errores.
+Diagnóstico muestra el estado del registro en `diag-avisos`.
+
+**Sin verificar**: qué pasó exactamente en el teléfono de José. La rotación del
+token es la hipótesis, no un hecho: la prueba es la línea `[push] token vencido`.
+
 ## 36. Grupos: sumar gente y salir (29/08/2026)
 
 «Implementá el detalle de chat de grupo, no existe» (José). La pantalla SÍ

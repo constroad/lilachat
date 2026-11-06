@@ -58,7 +58,7 @@ export type FieldWidth = 'half' | 'full';
 export type FormSchema = { type?: string; description?: string; properties?: Record<string, FormSchemaProperty>; required?: string[]; /** The read tool that sums up the draft above «Enviar». */ 'x-preview'?: { tool?: string }; /** A checklist (CTL-PIS, 06/11): one button answers every choice with its first option. */ 'x-check-all'?: boolean };
 export type AppForm = { id: string; title: string; submitLabel?: string; /** The schema's `description`: a line under the title. */ intro?: string; schema: FormSchema; /** `x-preview`'s tool: the summary above «Enviar». */ preview?: string; /** `x-check-all`: the «Marcar todo» button. */ checkAll?: true };
 
-type Base = { name: string; label: string; help?: string; required: boolean; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number; /** `x-refresh`: changing it asks the app for the form again. */ refresh?: true };
+type Base = { name: string; label: string; help?: string; required: boolean; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number | true; /** `x-refresh`: changing it asks the app for the form again. */ refresh?: true };
 export type FormField =
   | (Base & { kind: 'choice'; options: ChoiceOption[]; segmented: boolean; /** A long list (the company's people, agentes 24/10): a field that opens a sheet with a search. */ searchable: boolean; /** `x-avatar: initials`: each option with its initials. */ initials?: true })
   | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true; /** `x-input: place`: a text with the button that writes where the device is. */ place?: true })
@@ -66,6 +66,8 @@ export type FormField =
   | (Base & { kind: 'date'; /** `format: date | time | date-time`: a picker for the day, the hour or both (José, 24/10). */ mode: DateMode })
   | (Base & { kind: 'photo'; /** A list (`type: array`) where each photo can be removed and taken again; otherwise one photo. */ multiple: boolean; max: number; min: number; /** `x-gallery`: also from the gallery. */ gallery?: true })
   | (Base & { kind: 'location' })
+  /** `type: boolean`, a box to mark (José 06/11: a photo goes to the group only if asked). Left alone it does not travel. */
+  | (Base & { kind: 'check' })
   /** `type: array` of options (agentes 2483da7): chips with a check, the week's orders. */
   | (Base & { kind: 'multi'; options: ChoiceOption[]; min: number; max: number })
   | (Base & {
@@ -203,6 +205,7 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
   if (picks) return multiField(base, property, picks);
   if (property.type === 'array' && input === undefined) return listField(base, property);
   if (input === 'location') return { ...base, kind: 'location' };
+  if (property.type === 'boolean') return { ...base, kind: 'check', ...(property.default === true ? { initial: true as const } : {}) };
   const options = choiceOptions(property);
   if (options) {
     const initial = options.some((option) => option.value === String(property.default)) ? { initial: String(property.default) } : {};
@@ -368,6 +371,7 @@ function checkValue(field: Exclude<FormField, { kind: 'list' }>, value: unknown,
     case 'number': return checkNumber(field, value);
     case 'date': return checkDate(field, value);
     case 'photo': return checkPhoto(field, value);
+    case 'check': return typeof value === 'boolean' ? { value } : { error: 'Marca o desmarca la casilla.' };
     case 'location':
       // Only what the app's schema has: `age` is Lilachat's own check and never travels (agentes, 24/10: strict schemas).
       return isGeoPoint(value) ? { value: { lat: value.lat, lng: value.lng, precision: value.precision } } : { error: 'La ubicación no es válida.' };
@@ -431,7 +435,7 @@ function rangeMessage(field: Extract<FormField, { kind: 'number' }>): string {
   return low && high ? `${low} y ${high.charAt(0).toLowerCase()}${high.slice(1)}.` : `${low || high}.`;
 }
 
-const MISSING: Record<Exclude<FormField['kind'], 'date'>, string> = { multi: 'Elige al menos una.', choice: 'Elige una opción.', text: 'Escribe algo aquí.', number: 'Escribe un número.', photo: 'Falta la foto.', location: 'Falta tu ubicación.', list: 'Agrega al menos uno.' };
+const MISSING: Record<Exclude<FormField['kind'], 'date'>, string> = { check: 'Marca la casilla.', multi: 'Elige al menos una.', choice: 'Elige una opción.', text: 'Escribe algo aquí.', number: 'Escribe un número.', photo: 'Falta la foto.', location: 'Falta tu ubicación.', list: 'Agrega al menos uno.' };
 const missingOf = (field: FormField): string => (field.kind !== 'date' ? MISSING[field.kind] : field.mode === 'time' ? 'Elige una hora.' : 'Elige una fecha.');
 
 /** A signing's location older than this when sent is not «now». */

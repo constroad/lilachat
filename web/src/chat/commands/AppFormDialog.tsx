@@ -4,7 +4,7 @@ import { CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, fo
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
-import { ChoiceField, DateField, LocationField, NumberField, PhotoField, TextField } from './AppFormFields';
+import { CheckField, ChoiceField, DateField, LocationField, NumberField, PhotoField, TextField } from './AppFormFields';
 import { ListField } from './ListField';
 import { isRichChoice, MultiField, RichChoiceField } from './RichChoiceFields';
 import { PhotoListField } from './PhotoListField';
@@ -170,6 +170,7 @@ function Field(props: { field: Exclude<FormField, { kind: 'list' }>; value: unkn
     case 'choice': return isRichChoice(field) ? <RichChoiceField field={field} {...rest} /> : <ChoiceField field={field} {...rest} compact={half} />;
     case 'multi': return <MultiField field={field} {...rest} />;
     case 'text': return <TextField field={field} {...rest} />;
+    case 'check': return <CheckField field={field} {...rest} />;
     case 'number': return <NumberField field={field} {...rest} />;
     case 'date': return <DateField field={field} {...rest} />;
     case 'location': return <LocationField field={field} {...rest} />;

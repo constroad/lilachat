@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { EphemeralAnswer, FormSchemaProperty, FormSubmitOutcome } from '@lilachat/shared';
 import { AppFormDialog } from './AppFormDialog';
@@ -28,6 +28,31 @@ const draw = (answer: EphemeralAnswer, onSubmit = vi.fn(async (): Promise<FormSu
   render(<AppFormDialog answer={answer} onSubmit={onSubmit} onUpload={vi.fn()} onClose={vi.fn()} />);
   return onSubmit;
 };
+describe('a checkbox (José 06/11: a photo goes to the group only if asked)', () => {
+  const box = answerWith({ enviar: { type: 'boolean', title: 'Enviar al grupo', default: false } }, []);
+
+  it('starts off, and marked it travels as true', async () => {
+    // Arrange
+    const onSubmit = draw(box);
+    const check = screen.getByRole('checkbox', { name: 'Enviar al grupo' });
+    expect(check).not.toBeChecked();
+    // Act
+    fireEvent.click(check);
+    fireEvent.click(screen.getByTestId('btn-enviar-formulario'));
+    // Assert
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ enviar: true }));
+  });
+
+  it('left alone it does not travel', async () => {
+    // Arrange
+    const onSubmit = draw(box);
+    // Act
+    fireEvent.click(screen.getByTestId('btn-enviar-formulario'));
+    // Assert
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({}));
+  });
+});
+
 const type = (testId: string, value: string) => fireEvent.change(screen.getByTestId(testId), { target: { value } });
 
 describe('a list in the web form (José and agentes, 28/10)', () => {

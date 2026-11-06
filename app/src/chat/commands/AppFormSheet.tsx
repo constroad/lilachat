@@ -7,7 +7,7 @@ import { AppLogo } from '../../spaces/apps/AppLogo';
 import { Modal } from '../../ui/Modal';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
-import { ChoiceField, LocationField, PhotoField, TypedField, type PhotoUpload } from './AppFormFields';
+import { CheckField, ChoiceField, LocationField, PhotoField, TypedField, type PhotoUpload } from './AppFormFields';
 import { DateField } from './DateField';
 import { ListField } from './ListField';
 import { PhotoListField } from './PhotoListField';
@@ -263,6 +263,7 @@ function Field(props: { field: Exclude<FormField, { kind: 'list' }>; value: unkn
   switch (field.kind) {
     case 'choice': return isRichChoice(field) ? <RichChoiceField field={field} {...rest} /> : <ChoiceField field={field} {...rest} compact={half} />;
     case 'multi': return <MultiField field={field} {...rest} />;
+    case 'check': return <CheckField field={field} {...rest} />;
     case 'date': return <DateField field={field} {...rest} compact={half} />;
     case 'location': return <LocationField field={field} {...rest} width={width} />;
     case 'photo': return field.multiple ? <PhotoListField field={field} error={rest.error} onChange={rest.onChange} upload={upload} /> : <PhotoField field={field} {...rest} upload={upload} opensCamera={opensCamera} onCameraDismissed={onCameraDismissed} />;

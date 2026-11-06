@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FRESH_LOCATION_MS, checkAllValues, filterChoiceOptions, formFields, initialValues, liveSelfieFieldOf, matchSpan, validateFormSpec, validateFormValues, visibleFields, type FormField } from './appForms.js';
+import { type AppForm, type FormSchemaProperty, FRESH_LOCATION_MS, checkAllValues, filterChoiceOptions, formFields, initialValues, liveSelfieFieldOf, matchSpan, validateFormSpec, validateFormValues, visibleFields, type FormField } from './appForms.js';
 
 /** Inframaq's real `registrar_marca` (agentes, 23/10), as the app sends it. */
 const attendanceForm = {
@@ -340,5 +340,36 @@ describe('«Marcar todo» (the checklist of a control de pista, 06/11)', () => {
     expect(checkAllValues(formFields(checked.form), {})).toEqual({ riego: 'si', junta: 'si' });
     const loose = validateFormSpec({ ...checklist, schema: { ...checklist.schema, 'x-check-all': 'yes' } });
     expect(loose.ok && loose.form.checkAll).toBeUndefined();
+  });
+});
+
+describe('a checkbox (José 06/11: send a photo to the group only if asked)', () => {
+  const form = (property: FormSchemaProperty): AppForm => ({ id: 'f', title: 'F', schema: { type: 'object', properties: { enviar: property } } });
+  const box: FormSchemaProperty = { type: 'boolean', title: 'Enviar al grupo', default: false };
+
+  it('a boolean is a box, off unless the app says so', () => {
+    // Act
+    const [field] = formFields(form(box));
+    const [on] = formFields(form({ ...box, default: true }));
+    // Assert
+    expect(field).toMatchObject({ kind: 'check', label: 'Enviar al grupo', required: false });
+    expect(initialValues(formFields(form(box)))).toEqual({});
+    expect(on).toMatchObject({ kind: 'check', initial: true });
+  });
+
+  it('it travels as true or false, and left alone it does not travel', () => {
+    // Arrange
+    const fields = formFields(form(box));
+    // Act and assert
+    expect(validateFormValues(fields, { enviar: true })).toEqual({ ok: true, values: { enviar: true } });
+    expect(validateFormValues(fields, { enviar: false })).toEqual({ ok: true, values: { enviar: false } });
+    expect(validateFormValues(fields, {})).toEqual({ ok: true, values: {} });
+  });
+
+  it('anything else is refused', () => {
+    // Act
+    const checked = validateFormValues(formFields(form(box)), { enviar: 'si' });
+    // Assert
+    expect(checked).toMatchObject({ ok: false });
   });
 });

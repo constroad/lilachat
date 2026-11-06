@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, Text, TextInput, View } from 'react-native';
-import { Camera, LocateFixed } from 'lucide-react-native';
+import { Camera, Check, LocateFixed } from 'lucide-react-native';
 import { geoPointOf, precisionLabel, type FormField, type GeoPoint } from '@lilachat/shared';
 import { Segmentado } from '../../ui/Segmentado';
 import { SearchableChoice } from './SearchableChoice';
@@ -135,6 +135,26 @@ export function LocationField({ field, error, onChange, width }: FieldProps<'loc
 }
 
 /** «Tomar foto» of something (the tape measure, a delivery note): the rear camera, and it goes up at once; the form carries its id. A signature uses `LiveSelfie`, not this. */
+/** A box to mark, the whole row its target. */
+export function CheckField({ field, value, error, onChange }: FieldProps<'check'>) {
+  const colors = useColores();
+  const on = value === true;
+  return (
+    <View>
+      <Pressable testID={`campo-${field.name}`} accessibilityRole="checkbox" accessibilityState={{ checked: on }} accessibilityLabel={field.label} onPress={() => onChange(!on)} className="min-h-[52px] flex-row items-center gap-3 rounded-2xl border border-outline/15 px-3 py-2">
+        <View className={`h-7 w-7 items-center justify-center rounded-md border ${on ? 'border-primary bg-primary' : 'border-outline/40'}`}>
+          {on ? <Check size={18} color={colors['on-primary']} /> : null}
+        </View>
+        <View className="min-w-0 flex-1">
+          <Text className="text-[15px] font-semibold text-on-surface">{field.label}</Text>
+          {field.help ? <Text className="text-[13px] text-on-surface-variant">{field.help}</Text> : null}
+        </View>
+      </Pressable>
+      <ErrorLine text={error} />
+    </View>
+  );
+}
+
 export function PhotoField({ field, value, error, onChange, upload, opensCamera, onCameraDismissed }: FieldProps<'photo'> & { upload: PhotoUpload; opensCamera?: boolean; onCameraDismissed?: () => void }) {
   const colors = useColores();
   const [preview, setPreview] = useState<string | null>(null);

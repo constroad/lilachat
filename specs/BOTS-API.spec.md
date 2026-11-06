@@ -729,6 +729,21 @@ mientras tanto todo sigue por la URL pública.
 **De la app hacia Lilachat** (responder, `/respond`, mensajes): eso es del lado de la
 app. Desde la mini, `http://127.0.0.1:3004` es Lilachat, con los mismos tokens.
 
+## c-sexdecies) Casilla: `type: boolean` (06/11/2026, OTA + web)
+
+Un campo `type: boolean` se dibuja como una casilla, a fila entera. Nació para que una
+foto de informe vaya al grupo de WhatsApp solo si se pide.
+
+```json
+{ "enviar_al_grupo": { "type": "boolean", "title": "Enviar al grupo", "default": false } }
+```
+
+- `default: true` nace marcada. Cualquier otro valor nace sin marcar.
+- Marcada viaja `true`. Desmarcada a mano viaja `false`. Sin tocar no viaja.
+- Un valor que no sea booleano se rechaza.
+- **Un cliente viejo rechaza el formulario entero** con «es de un tipo que Lilachat no
+  sabe dibujar». El campo se publica recién con el OTA en la calle.
+
 ## c-quindecies) Dos campos por fila: `x-width` (28/10/2026, OTA + web)
 
 José, 28/10: «cada input ocupa una fila entera y se generan sábanas». Desde

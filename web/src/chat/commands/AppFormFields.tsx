@@ -89,6 +89,22 @@ export function TextField({ field, value, error, onChange }: FieldProps<'text'>)
   );
 }
 
+/** A box to mark, the whole row its target. */
+export function CheckField({ field, value, error, onChange }: FieldProps<'check'>) {
+  return (
+    <div>
+      <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-xl border border-outline/15 px-3 py-2">
+        <input type="checkbox" data-testid={`campo-${field.name}`} checked={value === true} onChange={(event) => onChange(event.target.checked)} className="h-5 w-5 shrink-0 accent-primary" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-on-surface">{field.label}</span>
+          {field.help ? <span className="block text-[12px] text-on-surface-variant">{field.help}</span> : null}
+        </span>
+      </label>
+      <FieldError>{error}</FieldError>
+    </div>
+  );
+}
+
 export function NumberField({ field, value, error, onChange }: FieldProps<'number'>) {
   return (
     <div>

@@ -20,9 +20,8 @@ import { ListaDeMensajes } from './ListaDeMensajes';
 import { useWithoutDisappeared } from './useWithoutDisappeared';
 import { useWorkPlanWeb, WorkPlanWeb } from './workPlan/WorkPlanWeb';
 import { PendingWeb, TaskDetailWeb, type OpenTask } from './workPlan/WorkListsWeb';
-import { ClientFilesWeb } from '../spaces/clients/ClientFilesWeb';
 import { ClientAccountWeb } from '../spaces/clients/ClientAccountWeb';
-import { CHANNEL_TAB_LABELS, channelTabs, stageFiles, type ChannelLinks, type ChannelTab } from '@lilachat/shared';
+import { CHANNEL_TAB_LABELS, channelTabs, type ChannelLinks, type ChannelTab } from '@lilachat/shared';
 import { useClientOfChat } from '../spaces/clients/useSpaceClients';
 import { ArchivedClientBanner, ArchivedComposerNote, ClientServices } from '../spaces/clients/ClientChannelParts';
 import { useClientRecords } from '../spaces/clients/useSpaceClients';
@@ -119,12 +118,15 @@ export function Conversation(props: {
   }, []);
   // Pending 21 (design f-03): a client's channel adds «Servicios» and, archived, its banner.
   const client = useClientOfChat(chat.id);
-  // José 29/10: Checklist, Archivos and Pendientes belong to a client's channel only.
+  // José 29/10: Checklist and Pendientes belong to a client's channel only.
   const isClientChannel = isChannel && Boolean(client);
   const workPlan = useWorkPlanWeb(props.jwtParaEnlaces ?? '', chat.id, isClientChannel && Boolean(props.jwtParaEnlaces));
   const tabs = client ? channelTabs(client.access, Boolean(workPlan.stages?.length)) : (['chat'] as ChannelTab[]);
   // A tab the access no longer gives (an admin just restricted me) falls back to the chat.
   const shownTab = tabs.includes(channelTab) ? channelTab : 'chat';
+  // José 06/11: an open service takes the whole conversation; its breadcrumb goes back to the chat.
+  const [serviceOpen, setServiceOpen] = useState(false);
+  const serviceFull = isClientChannel && shownTab === 'services' && serviceOpen;
   const [openTask, setOpenTask] = useState<OpenTask | null>(null);
   const toMessage = (seq: number) => {
     setChannelTab('chat');
@@ -182,25 +184,23 @@ export function Conversation(props: {
         </div>
       ) : null}
       {fun.overlay}
-      {props.app ? (
+      {serviceFull ? null : props.app ? (
         <AppConversationHeader app={props.app} tab={appTab} onTab={setAppTab} showBack={props.showBack} onBack={props.onBack} />
       ) : (
         <CabeceraDeLaConversacion chat={chat} isClient={Boolean(client)} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} lastSeen={lastSeen} status={otherStatus} onCall={props.onCall} callExtras={props.callExtras} />
       )}
       {props.callStrip}
-      {isClientChannel && client ? <ChannelTabs tabs={tabs} tab={shownTab} onTab={setChannelTab} counter={workPlan.summary?.total ? `${workPlan.summary.done}/${workPlan.summary.total}` : null} services={client.services.length} files={workPlan.stages?.length ? stageFiles(workPlan.stages).total : null} overdue={Boolean(workPlan.summary?.overdue)} /> : null}
-      {isClientChannel && client ? <ArchivedClientBanner client={client} /> : null}
+      {isClientChannel && client && !serviceFull ? <ChannelTabs tabs={tabs} tab={shownTab} onTab={setChannelTab} counter={workPlan.summary?.total ? `${workPlan.summary.done}/${workPlan.summary.total}` : null} services={client.services.length} overdue={Boolean(workPlan.summary?.overdue)} /> : null}
+      {isClientChannel && client && !serviceFull ? <ArchivedClientBanner client={client} /> : null}
       {openTask && workPlan.stages ? <TaskDetailWeb open={openTask} stages={workPlan.stages} onChanged={() => void workPlan.reload()} onOpenMessage={toMessage} onClose={() => setOpenTask(null)} /> : null}
-      {isClientChannel && client && shownTab === 'files' ? (
-        <ClientFilesWeb client={client} target={props.jwtParaEnlaces && chat.workspaceId ? { jwt: props.jwtParaEnlaces, spaceId: chat.workspaceId, clientId: client.id } : null} stages={workPlan.stages ?? []} onOpenMessage={toMessage} />
-      ) : isClientChannel && shownTab === 'pending' ? (
+      {isClientChannel && shownTab === 'pending' ? (
         <PendingWeb stages={workPlan.stages ?? []} onOpen={setOpenTask} />
       ) : isClientChannel && shownTab === 'checklist' ? (
         <WorkPlanWeb plan={workPlan} onOpenTask={setOpenTask} restricted={Boolean(client?.access?.restricted)} />
       ) : isClientChannel && client && shownTab === 'account' && props.jwtParaEnlaces && chat.workspaceId ? (
         <ClientAccountWeb target={{ jwt: props.jwtParaEnlaces, spaceId: chat.workspaceId, clientId: client.id }} services={client.services} />
       ) : isClientChannel && client && shownTab === 'services' ? (
-        <ClientServicesPanel client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} onOpenRecord={toMessage} links={links} focusSeq={focusSeq} onFocused={clearFocus} />
+        <ClientServicesPanel client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} onOpenRecord={toMessage} links={links} focusSeq={focusSeq} onFocused={clearFocus} onServiceOpen={setServiceOpen} onToChat={() => setChannelTab('chat')} />
       ) : props.app && appTab === 'info' ? (
         <div data-testid="informacion-app" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-8">
           <div className="mx-auto max-w-3xl">
@@ -244,7 +244,7 @@ export function Conversation(props: {
           ventana={props.ventana}
         />
       )}
-      {chat.encrypted ? (
+      {serviceFull ? null : chat.encrypted ? (
         // La web no tiene sobre propio todavía (§54.4): escribir acá saldría en claro.
         <p data-testid="aviso-chat-secreto" className="border-t border-outline/15 bg-surface px-4 py-4 text-center text-[13px] text-on-surface-variant">
           Este chat secreto se lee y se escribe en tu teléfono.
@@ -354,18 +354,18 @@ function BannerWithSession() {
 }
 
 /** «Servicios» asks for its records only while it is open. */
-function ClientServicesPanel(props: { client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; onOpenRecord: (seq: number) => void; links: ChannelLinks; focusSeq: number | null; onFocused: () => void }) {
+function ClientServicesPanel(props: { client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; onOpenRecord: (seq: number) => void; links: ChannelLinks; focusSeq: number | null; onFocused: () => void; onServiceOpen: (open: boolean) => void; onToChat: () => void }) {
   const records = useClientRecords(props.jwt, props.spaceId, props.client.id);
-  return <ClientServices client={props.client} records={records} onOpenRecord={props.onOpenRecord} focusSeq={props.focusSeq} onFocused={props.onFocused} target={props.jwt && props.spaceId ? { jwt: props.jwt, spaceId: props.spaceId, clientId: props.client.id } : null} links={props.links} />;
+  return <ClientServices client={props.client} records={records} onOpenRecord={props.onOpenRecord} focusSeq={props.focusSeq} onFocused={props.onFocused} target={props.jwt && props.spaceId ? { jwt: props.jwt, spaceId: props.spaceId, clientId: props.client.id } : null} links={props.links} onServiceOpen={props.onServiceOpen} onToChat={props.onToChat} />;
 }
 
 /**
  * A client's channel (designs f-03 and e2-17), in José's order of 30/10 night:
- * Chat · Cuenta · Servicios · Archivos · Checklist · Pendientes. Cuenta only
+ * Chat · Cuenta · Servicios · Checklist · Pendientes. Cuenta only
  * for whoever sees money; a restricted member only gets the tabs an admin picked.
  */
-function ChannelTabs(props: { tabs: ChannelTab[]; tab: ChannelTab; onTab: (tab: ChannelTab) => void; counter: string | null; services: number; files: number | null; overdue: boolean }) {
-  const badges: Partial<Record<ChannelTab, string | null>> = { services: props.services ? String(props.services) : null, checklist: props.counter, files: props.files ? String(props.files) : null };
+function ChannelTabs(props: { tabs: ChannelTab[]; tab: ChannelTab; onTab: (tab: ChannelTab) => void; counter: string | null; services: number; overdue: boolean }) {
+  const badges: Partial<Record<ChannelTab, string | null>> = { services: props.services ? String(props.services) : null, checklist: props.counter };
   return (
     <div role="tablist" className="flex gap-6 overflow-x-auto border-b border-outline/15 bg-surface px-4">
       {props.tabs.map((key) => (

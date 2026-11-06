@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { availableTo, canManageMembers, cardCommandsOf, COMMAND_LIMITS, formLevelOf, isAckBody, itemSettingOf, mayUseItem, parseSlashInput, rowIsForAnyone, shortcutValuesOf, validateCommandResponse, validateFormReply, type ShortcutAudience, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope, type ShortcutValues, worksAt } from '@lilachat/shared';
+import { availableTo, canManageMembers, cardCommandsOf, COMMAND_LIMITS, formLevelOf, isAckBody, itemSettingOf, mayUseItem, parseSlashInput, rowIsForAnyone, withoutKnownFields, shortcutValuesOf, validateCommandResponse, validateFormReply, type ShortcutAudience, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope, type ShortcutValues, worksAt } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Chat, type Message } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { callBotWebhook, isRestarting, recordLastDelivery, type WebhookReply } from './botEvents.js';
@@ -117,13 +117,14 @@ function inChannelTarget(chat: ChatOfCommand, installation: Pick<BotInstallation
 }
 
 /** `chat` is null for the space's ⚡: an in_channel answer has nowhere to go and stays for the asker. */
-export async function deliverResponse(installation: BotInstallation, run: Pick<BotCommandRun, '_id' | 'userId' | 'responses' | 'formsLevel'>, chat: ChatOfCommand | null, response: CommandResponse, base: Base): Promise<CommandOutcome> {
+export async function deliverResponse(installation: BotInstallation, run: Pick<BotCommandRun, '_id' | 'userId' | 'responses' | 'formsLevel' | 'placeValues'>, chat: ChatOfCommand | null, response: CommandResponse, base: Base): Promise<CommandOutcome> {
   if (response.responseType === 'form' && response.form) {
     // A Lilachat that cannot draw it is told so, instead of a sheet that breaks (28/10, lists).
     if (formLevelOf(response.form) > (run.formsLevel ?? 1)) return { ...base, outcome: 'failed', message: OUTDATED_FORM_MESSAGE };
-    // Kept to check what is sent against it (`botForms.ts`).
-    await BotCommandRunModel.updateOne({ _id: run._id }, { $set: { form: response.form } });
-    return { ...base, outcome: 'form', response };
+    const { form, context } = withoutKnownFields(response.form, run.placeValues ?? {});
+    // Kept to check what is sent against it (`botForms.ts`); what the place knew rides with the answers.
+    await BotCommandRunModel.updateOne({ _id: run._id }, { $set: { form, ...(Object.keys(context).length ? { context } : {}) } });
+    return { ...base, outcome: 'form', response: { ...response, form } };
   }
   const target = response.responseType === 'in_channel' && chat ? inChannelTarget(chat, installation, run.userId) : null;
   if (target) {
@@ -205,7 +206,7 @@ async function invokeApp(userId: Types.ObjectId, scope: CommandScope, appId: unk
   // A failed run stays a week: its `failure` is how a «no pudo responder» gets explained (23/10).
   void BotCommandRunModel.deleteMany({ $or: [{ expiresAt: { $lt: new Date() }, failure: { $exists: false } }, { expiresAt: { $lt: new Date(Date.now() - FAILED_RUN_KEPT_MS) } }] }).catch((error: unknown) => console.error('[bots] no se pudieron purgar comandos vencidos:', error instanceof Error ? error.message : error));
   const { chat } = place;
-  const [run, user] = await Promise.all([BotCommandRunModel.create({ installationId: installation._id, ...(chat ? { chatId: chat._id } : {}), workspaceId: place.workspaceId, userId, command: name, formsLevel, trigger: trigger.kind, ...(trigger.kind === 'command' && trigger.text ? { text: trigger.text } : {}), expiresAt: new Date(Date.now() + COMMAND_TTL_MS) }), personOf(userId, installation.grantedScopes)]);
+  const [run, user] = await Promise.all([BotCommandRunModel.create({ installationId: installation._id, ...(chat ? { chatId: chat._id } : {}), workspaceId: place.workspaceId, userId, command: name, formsLevel, trigger: trigger.kind, ...(trigger.kind === 'command' && trigger.text ? { text: trigger.text } : {}), ...(trigger.kind === 'shortcut' && trigger.values ? { placeValues: trigger.values } : {}), expiresAt: new Date(Date.now() + COMMAND_TTL_MS) }), personOf(userId, installation.grantedScopes)]);
   // Slack's global shortcuts carry no channel either.
   const common = { command_id: String(run._id), channel: chat ? channelOf(chat) : null, user };
   const reply = trigger.kind === 'command'

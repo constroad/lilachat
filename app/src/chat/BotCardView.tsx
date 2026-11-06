@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Linking, Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { ChevronRight, ExternalLink } from 'lucide-react-native';
 import { formatClock, isOrderCard, type BotCard, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BASE_URL } from '../api/client';
@@ -7,6 +7,11 @@ import { useColores } from '../ui/tema';
 import { AccionesDeTarjetaContext, useAccionesDeTarjeta } from './accionesDeTarjeta';
 import { BotBlocksView } from './botBlocks/BotBlocksView';
 import { BotCardDetail } from './botBlocks/BotCardDetail';
+import { cardWidthOf } from './cardWidth';
+
+/** A card of text only: narrower than one with blocks, and never thinner than this. */
+const CARD_TEXT_WIDTH = 300;
+const CARD_MIN_FILL = 240;
 
 /** The status pill's tone (design `e-21`): background faint, border at 30 %, text strong. */
 const TONE: Record<CardTone, { pill: string; text: string }> = {
@@ -50,9 +55,10 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
   // A button with a `command` runs its line and the card stays open: its form can be closed.
   const press = (action: CardAction) => (action.command ? runRow?.(action.command) : void tap(action.id));
   const buttons = card.actions?.filter((action) => !action.command || runRow) ?? [];
+  const width = cardWidthOf(useWindowDimensions().width);
   return (
     <AccionesDeTarjetaContext.Provider value={{ ...actions, runLine: runRow }}>
-    <View testID="tarjeta-bot" className="m-1 overflow-hidden rounded-xl border border-outline/15 bg-surface" style={{ minWidth: 240, maxWidth: card.blocks ? 320 : 300, width: card.blocks ? 320 : undefined }}>
+    <View testID="tarjeta-bot" className="m-1 overflow-hidden rounded-xl border border-outline/15 bg-surface" style={{ minWidth: Math.min(CARD_MIN_FILL, width), maxWidth: card.blocks ? width : Math.min(CARD_TEXT_WIDTH, width), width: card.blocks ? width : undefined }}>
       <View className="gap-2 px-3.5 py-3">
         {card.kicker || card.updatedAt ? (
           <View className="flex-row items-center gap-2">

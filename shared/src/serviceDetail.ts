@@ -53,6 +53,8 @@ export type ServiceDetail = {
   totals: DetailTotals;
 };
 export type DetailTabKey = 'orders' | 'dispatches' | 'reports';
+/** A tab of an open service: Portal's lists and, for whoever may see it, its Drive (José 06/11). */
+export type ServiceTabKey = DetailTabKey | 'drive';
 
 const LIST_MAX = 100;
 const TIME_ZONE = 'America/Lima';
@@ -316,6 +318,11 @@ export function detailEmptyText(tab: DetailTabKey, totals: DetailTotals): string
  */
 export function detailTabs(detail: ServiceDetail): { key: DetailTabKey; label: string }[] {
   return (['orders', 'reports'] as const).map((key) => ({ key, label: `${TAB_NAMES[key]} · ${detail.totals[key]}` }));
+}
+
+/** The open service's tabs: the Drive joins Pedidos and Informes, with no count because Portal sends none. */
+export function serviceTabs(detail: ServiceDetail, seesDrive: boolean): { key: ServiceTabKey; label: string }[] {
+  return seesDrive ? [...detailTabs(detail), { key: 'drive', label: 'Drive' }] : detailTabs(detail);
 }
 
 /** «15 nov 2026»: a calendar day with its year, for a due date. */

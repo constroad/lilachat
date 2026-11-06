@@ -300,6 +300,31 @@ describe('an app answers a command with a form', () => {
     expect(refused.body.message).toBe('values va como un objeto de textos cortos, números o sí/no.');
   });
 
+  it('the form does not ask what the place knows (José 06/11: the link of a service); the app still hears it at form.submitted', async () => {
+    // Arrange
+    await BotAppModel.updateOne({ clientId: 'lca_inframaq' }, { $set: { shortcuts: [{ key: 'crear_enlace', name: 'Crear enlace' }] } });
+    const linkForm = { id: 'crear_enlace', title: 'Crear el enlace', schema: { type: 'object', required: ['servicioId', 'dias'], properties: { servicioId: { type: 'string', title: 'Servicio', oneOf: [{ const: 'srv-1', title: 'Obra uno' }] }, dias: { type: 'integer', title: 'Días' } } } };
+    answer = json({ response_type: 'form', form: linkForm });
+    // Act
+    const opened = await request(app).post(`/api/chats/${channel}/shortcuts`).set(asAna).send({ app_id: await appId(), shortcut: 'crear_enlace', values: { servicioId: 'srv-1' } }).expect(200);
+    received.length = 0;
+    answer = json({ response_type: 'ephemeral', text: 'Listo' });
+    await submit(opened.body.commandId, { dias: 7 }).expect(200);
+    // Assert
+    expect(Object.keys(opened.body.response.form.schema.properties)).toEqual(['dias']);
+    expect(received).toEqual([{ type: 'form.submitted', data: expect.objectContaining({ form_id: 'crear_enlace', values: { dias: 7, servicioId: 'srv-1' } }) }]);
+  });
+
+  it('a value the form does not offer is asked, not trusted: another service\'s id cannot ride past the options', async () => {
+    // Arrange
+    await BotAppModel.updateOne({ clientId: 'lca_inframaq' }, { $set: { shortcuts: [{ key: 'crear_enlace', name: 'Crear enlace' }] } });
+    answer = json({ response_type: 'form', form: { id: 'crear_enlace', title: 'Crear el enlace', schema: { type: 'object', required: ['servicioId', 'dias'], properties: { servicioId: { type: 'string', oneOf: [{ const: 'srv-1', title: 'Obra uno' }] }, dias: { type: 'integer' } } } } });
+    // Act
+    const opened = await request(app).post(`/api/chats/${channel}/shortcuts`).set(asAna).send({ app_id: await appId(), shortcut: 'crear_enlace', values: { servicioId: 'srv-9' } }).expect(200);
+    // Assert
+    expect(Object.keys(opened.body.response.form.schema.properties)).toEqual(['servicioId', 'dias']);
+  });
+
   describe('the late answer travels in the sent form\'s own reply (agentes, 25/10: «No se pudo confirmar» although it was recorded)', () => {
     const sendLate = async (commandId: string, body: Record<string, unknown>) => request(app).post(`/api/bots/commands/${commandId}/respond`).set(await botAuth()).send(body).expect(200);
     const send = async () => {

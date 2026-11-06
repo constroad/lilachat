@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { linkEvidence, pendingTasks, stageFiles, taskActivity, EVIDENCE_LIMIT } from './workFiles.js';
+import { linkEvidence, pendingTasks, taskActivity, EVIDENCE_LIMIT } from './workFiles.js';
 import type { TaskEvidence } from './checklists.js';
 import type { WorkStage } from './workStages.js';
 
-/** Pending 21 (designs e2-17 and e2-18): the «Pendientes» and «Archivos» tabs and a task's evidence. */
+/** Pending 21 (designs e2-17 and e2-18): the «Pendientes» tab and a task's evidence. */
 const now = new Date('2026-10-28T15:00:00Z');
 const evidence = (seq: number, at: string, kind: TaskEvidence['kind'] = 'image'): TaskEvidence => ({ seq, kind, url: `/media/${seq}.jpg`, name: `foto-${seq}.jpg`, sizeBytes: 1000, by: 'u2', at });
 const task = (id: string, extra: Partial<WorkStage['items'][number]> = {}): WorkStage['items'][number] => ({ id, text: id, doneBy: null, doneAt: null, ...extra });
@@ -25,26 +25,6 @@ describe('pendingTasks', () => {
 
   it('nothing open, nothing listed', () => {
     expect(pendingTasks([stage(1, 'Cotización', [task('a', { doneBy: 'u1', doneAt: '2026-10-27T00:00:00Z' })])], now)).toEqual([]);
-  });
-});
-
-describe('stageFiles', () => {
-  it('groups the evidence by stage in the plan order, the newest first, and skips stages without files', () => {
-    const plan = [
-      stage(3, 'Ejecución', [task('a', { evidence: [evidence(10, '2026-10-23T10:14:00Z')] }), task('b', { evidence: [evidence(12, '2026-10-23T10:18:00Z', 'file')] })]),
-      stage(2, 'Orden', [task('c')]),
-      stage(1, 'Cotización', [task('d', { evidence: [evidence(4, '2026-10-20T09:00:00Z')] })]),
-    ];
-
-    const files = stageFiles(plan);
-
-    expect(files.groups.map((group) => group.title)).toEqual(['Cotización', 'Ejecución']);
-    expect(files.groups[1]!.files.map((file) => [file.seq, file.taskText])).toEqual([[12, 'b'], [10, 'a']]);
-    expect(files.total).toBe(3);
-  });
-
-  it('a plan without evidence has no groups', () => {
-    expect(stageFiles([stage(1, 'Cotización', [task('a')])])).toEqual({ groups: [], total: 0 });
   });
 });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accessSummary, canSeeDrive, canSeeTab, isFieldReport, isMoneyRecord, channelTabs, memberAccessIn, memberAccessOf, stageScopeOf, toggleInAccess, visibleStagesFor, type MyClientAccess } from './clientAccess.js';
+import { accessSummary, canSeeDrive, canSeeTab, isFieldReport, isMoneyRecord, channelTabs, memberAccessIn, memberAccessOf, serviceAccessOf, stageScopeOf, toggleInAccess, visibleStagesFor, type MyClientAccess } from './clientAccess.js';
 
 /** José 30/10 night: topographers and engineers join a client's channel seeing only what an admin picks; money only for admins. */
 const STAGE_A = 'a'.repeat(24);
@@ -11,17 +11,17 @@ const stages = [
 ];
 
 describe('channelTabs', () => {
-  it('an admin: Chat · Cuenta · Servicios · Archivos · Checklist · Pendientes, in the order José asked', () => {
+  it('an admin: Chat · Cuenta · Servicios · Checklist · Pendientes; «Archivos» is gone (José 06/11)', () => {
     // Arrange
     const access: MyClientAccess = { money: true };
     // Act
     const tabs = channelTabs(access, true);
     // Assert
-    expect(tabs).toEqual(['chat', 'account', 'services', 'files', 'checklist', 'pending']);
+    expect(tabs).toEqual(['chat', 'account', 'services', 'checklist', 'pending']);
   });
 
   it('a member without money does not get Cuenta; without stages there is no Pendientes', () => {
-    expect(channelTabs({ money: false }, false)).toEqual(['chat', 'services', 'files', 'checklist']);
+    expect(channelTabs({ money: false }, false)).toEqual(['chat', 'services', 'checklist']);
   });
 
   it('a restricted member only gets the chat and the tabs the admin picked', () => {
@@ -31,8 +31,24 @@ describe('channelTabs', () => {
     expect(canSeeTab(access, 'checklist')).toBe(true);
   });
 
+  it('a member an admin gave only the Drive still reaches it: it lives inside each service now', () => {
+    // Arrange
+    const access: MyClientAccess = { money: false, restricted: { tabs: ['files'], stages: [] } };
+    // Act
+    const tabs = channelTabs(access, false);
+    // Assert
+    expect(tabs).toEqual(['chat', 'services']);
+    expect(serviceAccessOf(access)).toEqual({ detail: false, drive: true });
+  });
+
+  it('opening a service shows what each one may see: orders and reports, the Drive, or both', () => {
+    expect(serviceAccessOf({ money: true })).toEqual({ detail: true, drive: true });
+    expect(serviceAccessOf({ money: false })).toEqual({ detail: true, drive: false });
+    expect(serviceAccessOf({ money: false, restricted: { tabs: ['services', 'files'], stages: [] } })).toEqual({ detail: true, drive: true });
+  });
+
   it('a list from an older server (no access) shows everything but Cuenta', () => {
-    expect(channelTabs(undefined, true)).toEqual(['chat', 'services', 'files', 'checklist', 'pending']);
+    expect(channelTabs(undefined, true)).toEqual(['chat', 'services', 'checklist', 'pending']);
     expect(canSeeTab(undefined, 'files')).toBe(true);
   });
 });
@@ -116,7 +132,7 @@ describe('memberAccessIn and toggleInAccess (the editor)', () => {
 
 /** José 05/11: the engineers joining a client's channel see no money anywhere, not only in «Cuenta». */
 describe('what carries money beyond the tabs', () => {
-  it('Portal\'s Drive holds liquidations: it takes the money mark or an admin ticking «Archivos»', () => {
+  it('Portal\'s Drive holds liquidations: it takes the money mark or an admin ticking «Drive»', () => {
     expect(canSeeDrive({ money: false })).toBe(false);
     expect(canSeeDrive(undefined)).toBe(false);
     expect(canSeeDrive({ money: true })).toBe(true);

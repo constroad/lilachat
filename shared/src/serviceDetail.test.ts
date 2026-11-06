@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dayWithYearOf, detailEmptyText, detailRows, detailTabs, moreInPortal, orphanDispatchesOf, recordDays, reportGroups, serviceDetailOf } from './serviceDetail.js';
+import { dayWithYearOf, detailEmptyText, detailRows, detailTabs, moreInPortal, serviceTabs, orphanDispatchesOf, recordDays, reportGroups, serviceDetailOf } from './serviceDetail.js';
 
 /** The detail of a client's service (José, 30/10: «qué informes hay, qué pedidos, qué despachos»), from `client.service.requested`. */
 const body = {
@@ -85,6 +85,16 @@ describe('the dispatches live inside their order (José 01/11: «por servicio pu
     expect(detailTabs(detail).map((tab) => tab.key)).not.toContain('dispatches');
     expect(first!.line).toBe('24 m³ · 12 oct · 2 despachos');
     expect(second!.line).toBe('sin fecha');
+  });
+
+  it('the Drive is a tab of the service for whoever may see it (José 06/11), and has no count to show', () => {
+    // Arrange
+    const detail = serviceDetailOf(body)!;
+    // Act
+    const withDrive = serviceTabs(detail, true);
+    // Assert
+    expect(withDrive.map((tab) => tab.label)).toEqual(['Pedidos · 148', 'Informes · 1', 'Drive']);
+    expect(serviceTabs(detail, false).map((tab) => tab.key)).toEqual(['orders', 'reports']);
   });
 
   it('a dispatch whose order did not come (Portal sends 100 of each) is not lost: it is listed apart', () => {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Archive, ChevronRight, ExternalLink, FileText, Link2, Search } from 'lucide-react-native';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, orderFocusOf, recordDays, recordsByService, SERVICE_FILTER_LABELS, dayOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
+import { Archive, ChevronRight, ExternalLink, FileText, FolderOpen, Link2, Search } from 'lucide-react-native';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, serviceAccessOf, orderFocusOf, recordDays, recordsByService, SERVICE_FILTER_LABELS, dayOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { ClientAccessRow } from './ClientAccess';
 import { ServiceDetailView } from './ServiceDetailView';
@@ -85,13 +85,26 @@ function ServiceCard(props: { service: SpaceClientService; records: ClientRecord
   );
 }
 
+function ClientDriveLink({ url }: { url: string }) {
+  const colors = useColores();
+  return (
+    <Pressable testID="drive-cliente" onPress={() => void Linking.openURL(url)} className="min-h-[60px] flex-row items-center gap-3 rounded-2xl border border-outline/15 bg-surface p-4">
+      <FolderOpen size={22} color={colors.primary} />
+      <View className="min-w-0 flex-1">
+        <Text className="text-[15px] font-semibold text-on-surface">Drive del cliente</Text>
+        <Text className="text-[12px] text-on-surface-variant">Todas sus carpetas en el Portal</Text>
+      </View>
+      <ExternalLink size={16} color={colors['on-surface-variant']} />
+    </Pressable>
+  );
+}
+
 /**
  * «Servicios»: each service with its state, its progress and its records
  * (informes, quotes, payments) — tapping one goes to its message in the chat.
- * Tapping the service opens its expediente (José, 30/10); the Drive moved to
- * «Archivos».
+ * Tapping the service opens its expediente with its Drive (José, 06/11).
  */
-export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord: (seq: number) => void; target: ServiceAskTarget | null; members: ReadonlyMap<string, string>; me: string; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void }) {
+export function ClientServices(props: { /** The channel hides its chrome while a service is open. */ onServiceOpen?: (open: boolean) => void; onToChat?: () => void; client: SpaceClient; records: ClientRecord[] | null; onOpenRecord: (seq: number) => void; target: ServiceAskTarget | null; members: ReadonlyMap<string, string>; me: string; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void }) {
   const colors = useColores();
   const { links } = props;
   const clientId = props.client.id;
@@ -109,9 +122,16 @@ export function ClientServices(props: { client: SpaceClient; records: ClientReco
     if (focus) { setStartOrderId(focus.orderId); setOpened(focus.service); }
     onFocused?.();
   }, [focusSeq, records, clientServices, onFocused]);
+  const showsDetail = Boolean(opened && props.target);
+  const { onServiceOpen } = props;
+  useEffect(() => {
+    onServiceOpen?.(showsDetail);
+    return () => onServiceOpen?.(false);
+  }, [showsDetail, onServiceOpen]);
   const { services, counts } = filterServices(props.client.services, { query, filter });
   const grouped = props.records ? recordsByService(props.records) : null;
-  if (opened && props.target) return <ServiceDetailView target={props.target} chatId={props.client.chat_id} service={opened} seesMoney={Boolean(props.client.access?.money)} onBack={close} links={links} startOrderId={startOrderId} />;
+  const sees = serviceAccessOf(props.client.access);
+  if (opened && props.target) return <ServiceDetailView target={props.target} chatId={props.client.chat_id} service={opened} seesMoney={Boolean(props.client.access?.money)} seesDrive={sees.drive} driveOnly={!sees.detail} onToChat={props.onToChat} onBack={close} links={links} startOrderId={startOrderId} />;
   const total = props.client.services.length;
   return (
     <ScrollView testID="servicios-cliente" contentContainerStyle={{ padding: 16, gap: 12 }}>
@@ -123,6 +143,7 @@ export function ClientServices(props: { client: SpaceClient; records: ClientReco
           <Text className="text-[14px] font-semibold text-primary">Enlace del cliente</Text>
         </Pressable>
       ) : null}
+      {sees.drive && props.client.drive_url ? <ClientDriveLink url={props.client.drive_url} /> : null}
       {total > 1 ? <ServiceFilters query={query} onQuery={setQuery} filter={filter} onFilter={setFilter} counts={counts} /> : null}
       {total === 0 ? <Text className="pt-10 text-center text-[14px] text-on-surface-variant">Este cliente todavía no tiene servicios.</Text> : null}
       {total > 0 && services.length === 0 ? <Text className="pt-6 text-center text-[14px] text-on-surface-variant">Ningún servicio con ese filtro.</Text> : null}

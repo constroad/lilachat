@@ -375,7 +375,7 @@ export function ChatScreen({
   return (
     <SpaceEmojisProvider jwt={credential.jwt} spaceId={workspaceId}><OverlayHost><View style={{ flex: 1, backgroundColor: colores['fondo-chat'] }} testID="pantalla-chat">
       {/* La cabecera queda FUERA de lo que sube con el teclado y por encima: la conversación pasa por debajo. */}
-      <View style={{ zIndex: 2, elevation: 2 }}>
+      <View style={{ zIndex: 2, elevation: 2, display: channelWork.fullScreen ? 'none' : 'flex' }}>
       {/**
        * Con un mensaje seleccionado, la cabecera se REEMPLAZA por la barra de
        * acciones — no se apila encima. Es lo que hace WhatsApp: mientras estás

@@ -142,7 +142,7 @@ function FlatMessage(props: Props) {
           </p>
         )}
         {mensaje.ref && !mensaje.deletedAt ? (
-          <div className="max-w-sm"><TarjetaDelMensaje mensaje={mensaje} mio={false} conAutor={false} /></div>
+          <div className="w-[calc(100%-0.5rem)] max-w-sm"><TarjetaDelMensaje mensaje={mensaje} mio={false} conAutor={false} /></div>
         ) : mensaje.kind === 'sticker' && mensaje.media?.url && !mensaje.deletedAt ? (
           <StickerMessage message={mensaje} url={mensaje.media.url} author={null} quote={mensaje.replyToSeq ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={false} /> : null} />
         ) : (

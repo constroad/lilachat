@@ -15,6 +15,63 @@ const detail = {
   totals: { orders: 148, dispatches: 1, reports: 0 },
 };
 
+describe('an open service takes the whole conversation (José 06/11: «ocupe todo con sus tabs de pedido informes drive»)', () => {
+  const driveReply = { files: [{ name: 'densidades.pdf', mime: 'application/pdf', url: 'https://x/d', folder: 'Informes' }], drive_url: null };
+  const askedFor = (url: string) => new Response(JSON.stringify(url.endsWith('/files') ? driveReply : { detail }), { status: 200 });
+
+  it('the breadcrumb goes back to the chat or to the services', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => askedFor(url)));
+    const onToChat = vi.fn();
+    const onBack = vi.fn();
+    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={onBack} onToChat={onToChat} />);
+    // Act
+    fireEvent.click(await screen.findByTestId('volver-al-chat'));
+    fireEvent.click(screen.getByTestId('volver-a-servicios'));
+    // Assert
+    expect(onToChat).toHaveBeenCalledTimes(1);
+    expect(onBack).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('ruta-servicio')).toHaveTextContent('Pavimentación Av. Los Álamos');
+  });
+
+  it('the Drive is one more tab: its folders open and come back without leaving the service', async () => {
+    // Arrange
+    const fetchMock = vi.fn(async (url: string) => askedFor(url));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney seesDrive onBack={() => undefined} />);
+    // Act
+    fireEvent.click(await screen.findByTestId('pestana-detalle-drive'));
+    fireEvent.click(await screen.findByTestId('carpeta-Informes'));
+    fireEvent.click(await screen.findByTestId('volver-a-drive'));
+    // Assert
+    expect(await screen.findByTestId('carpeta-Informes')).toHaveTextContent('1');
+    expect(fetchMock.mock.calls.map((call) => String(call[0])).some((url) => url.includes('/services/srv-318/files'))).toBe(true);
+    expect(screen.queryByTestId('fila-o1')).toBeNull();
+  });
+
+  it('without the Drive there is no such tab', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => askedFor(url)));
+    // Act
+    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney={false} onBack={() => undefined} />);
+    // Assert
+    expect(await screen.findByTestId('pestana-detalle-reports')).toBeInTheDocument();
+    expect(screen.queryByTestId('pestana-detalle-drive')).toBeNull();
+  });
+
+  it('a member an admin gave only the Drive sees it alone: the orders are not even asked', async () => {
+    // Arrange
+    const fetchMock = vi.fn(async (url: string) => askedFor(url));
+    vi.stubGlobal('fetch', fetchMock);
+    // Act
+    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney={false} seesDrive driveOnly onBack={() => undefined} />);
+    // Assert
+    expect(await screen.findByTestId('carpeta-Informes')).toBeInTheDocument();
+    expect(screen.queryByTestId('pestana-detalle-orders')).toBeNull();
+    expect(fetchMock.mock.calls.map((call) => String(call[0])).every((url) => url.endsWith('/files'))).toBe(true);
+  });
+});
+
 describe('ServiceDetailWeb', () => {
   it('José 05/11: «Crear informe» for everyone with the services; the picker offers the eight types, the ones not here open Portal, and CTL-IMP opens the report', async () => {
     // Arrange

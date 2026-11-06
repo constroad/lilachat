@@ -30,7 +30,7 @@ export async function refreshForm(userId: Types.ObjectId, scope: CommandScope, c
   const { installation, chat, user, app, base } = party;
   const trigger = run.trigger ?? 'shortcut';
   const named = trigger === 'command' ? { command: run.command, text: run.text ?? '' } : { shortcut: run.command };
-  const data = { command_id: commandId, channel: chat ? channelOf(chat) : null, user, ...named, values: draftValues(fields, record(raw)), refresh: true };
+  const data = { command_id: commandId, channel: chat ? channelOf(chat) : null, user, ...named, values: { ...draftValues(fields, record(raw)), ...(run.context ?? {}) }, refresh: true };
   // Open before calling: Portal can take longer than 1.5 s and the form then comes by /respond (agentes, 30/10).
   const late = expectLateAnswer(commandId);
   try {
@@ -51,7 +51,7 @@ export async function previewForm(userId: Types.ObjectId, scope: CommandScope, c
   const party = await formParty(run, commandId);
   if ('error' in party) return party;
   const { installation, chat, user, app } = party;
-  const data = { command_id: commandId, form_id: run.form!.id, values: draftValues(formFields(run.form!), record(raw)), channel: chat ? channelOf(chat) : null, user };
+  const data = { command_id: commandId, form_id: run.form!.id, values: { ...draftValues(formFields(run.form!), record(raw)), ...(run.context ?? {}) }, channel: chat ? channelOf(chat) : null, user };
   const reply = await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, 'form.preview.requested', data, PREVIEW_TIMEOUT_MS);
   return reply.status !== null && reply.status < 400 ? previewReplyOf(reply.body) : NO_SUMMARY;
 }

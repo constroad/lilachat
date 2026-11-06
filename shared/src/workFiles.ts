@@ -1,6 +1,6 @@
 /**
- * The «Pendientes» and «Archivos» tabs of a job's channel and the evidence of
- * a task (pending 21, designs e2-17 and e2-18). A file of evidence is a
+ * The «Pendientes» tab of a job's channel and the evidence of a task (pending
+ * 21, designs e2-17 and e2-18). A file of evidence is a
  * message of the channel linked to the task by its seq: it stays in the chat
  * history and the task only points at it. PURE: server, app and web.
  */
@@ -11,8 +11,6 @@ import { compareOrdinal } from './compareText.js';
 export const EVIDENCE_LIMIT = 12;
 
 export type PendingTask = { stageId: string; stageTitle: string; stage: number; item: ChecklistItem; overdue: boolean };
-export type StageFile = TaskEvidence & { taskId: string; taskText: string };
-export type StageFileGroup = { stageId: string; title: string; stage: number; files: StageFile[] };
 export type ActivityLine = { text: string; at: string | null; tone: 'created' | 'file' | 'done' };
 
 const byStage = (stages: readonly WorkStage[]) => [...stages].sort((a, b) => a.stage - b.stage);
@@ -24,21 +22,6 @@ export function pendingTasks(stages: readonly WorkStage[], now: Date): PendingTa
     one.items.filter((item) => !item.doneBy).map((item): PendingTask => ({ stageId: one._id, stageTitle: one.title, stage: one.stage, item, overdue: taskDueState(item, now) === 'overdue' }))
   );
   return open.sort((a, b) => Number(b.overdue) - Number(a.overdue) || dueTime(a.item) - dueTime(b.item) || a.stage - b.stage);
-}
-
-/** The evidence of every task, by stage in the plan's order and the newest first; stages without files are left out. */
-export function stageFiles(stages: readonly WorkStage[]): { groups: StageFileGroup[]; total: number } {
-  const groups = byStage(stages)
-    .map((one): StageFileGroup => ({
-      stageId: one._id,
-      title: one.title,
-      stage: one.stage,
-      files: one.items
-        .flatMap((item) => (item.evidence ?? []).map((file): StageFile => ({ ...file, taskId: item.id, taskText: item.text })))
-        .sort((a, b) => compareOrdinal(b.at, a.at)),
-    }))
-    .filter((group) => group.files.length > 0);
-  return { groups, total: groups.reduce((sum, group) => sum + group.files.length, 0) };
 }
 
 /** Links one more file to a task; the same message twice stays once (an upload retried). */

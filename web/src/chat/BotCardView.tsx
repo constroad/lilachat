@@ -48,7 +48,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
   const actions = card.actions?.filter((action) => !action.command || runRow) ?? [];
   return (
     <CardCommandContext.Provider value={runRow}>
-    <div data-testid="tarjeta-bot" className="mb-1 w-full max-w-sm overflow-hidden rounded-xl border border-outline/15 bg-surface text-on-surface">
+    <div data-testid="tarjeta-bot" className="mb-1 w-[calc(100%-0.5rem)] max-w-sm overflow-hidden rounded-xl border border-outline/15 bg-surface text-on-surface">
       <div className="space-y-2 px-3.5 py-3">
         {card.kicker || card.updatedAt ? (
           <div className="flex items-center gap-2">

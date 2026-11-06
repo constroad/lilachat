@@ -134,6 +134,36 @@ describe('a client channel (design f-03)', () => {
     expect(onFocused).toHaveBeenCalledTimes(1);
   });
 
+  it('tells its channel when a service opens and closes, so it can take the whole conversation (José 06/11)', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ detail: { service: { id: inProgress.id, name: inProgress.name }, orders: [], dispatches: [], reports: [], totals: { orders: 0, dispatches: 0, reports: 0 } } }), { status: 200 })));
+    const onServiceOpen = vi.fn();
+    const { unmount } = render(<ClientServices client={client('x', { services: [inProgress] })} records={[]} target={{ jwt: 'j', spaceId: 'sp', clientId: 'x' }} onServiceOpen={onServiceOpen} />);
+    // Act
+    fireEvent.click(screen.getByTestId(`abrir-servicio-${inProgress.id}`));
+    await screen.findByTestId('volver-a-servicios');
+    fireEvent.click(screen.getByTestId('volver-a-servicios'));
+    const shown = onServiceOpen.mock.calls.map((call) => call[0]);
+    unmount();
+    // Assert
+    expect(shown).toContain(true);
+    expect(shown.at(-1)).toBe(false);
+    expect(onServiceOpen).toHaveBeenLastCalledWith(false);
+  });
+
+  it('the client\'s Drive is a link for whoever may see it, now that «Archivos» is gone', () => {
+    // Arrange
+    const withDrive = client('x', { services: [inProgress], drive_url: 'https://portal.constroad.com/drive/c1', access: { money: true } });
+    const withoutDrive = client('y', { services: [inProgress], drive_url: 'https://portal.constroad.com/drive/c1', access: { money: false } });
+    // Act
+    const { rerender } = render(<ClientServices client={withDrive} records={[]} target={null} />);
+    const link = screen.getByTestId('drive-cliente');
+    // Assert
+    expect(link).toHaveAttribute('href', 'https://portal.constroad.com/drive/c1');
+    rerender(<ClientServices client={withoutDrive} records={[]} target={null} />);
+    expect(screen.queryByTestId('drive-cliente')).toBeNull();
+  });
+
   it('without the link actions offered to that person there is nothing to tap', () => {
     render(<ClientServices client={client('x', { services: [inProgress] })} records={[]} target={null} links={{ can: () => false, open: vi.fn() }} />);
     expect(screen.queryByTestId('enlace-cliente')).toBeNull();

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
-import { CalendarDays, Check, CheckCircle2, FileText, FolderOpen, Plus, RotateCcw, X } from 'lucide-react';
-import { checklistMembers, withoutApps, formatClock, pendingTasks, stageFiles, taskActivity, taskDueLabel, taskDueState, type ChecklistItem, type TaskEvidence, type WorkStage } from '@lilachat/shared';
+import { CalendarDays, Check, CheckCircle2, FileText, Plus, RotateCcw, X } from 'lucide-react';
+import { checklistMembers, withoutApps, formatClock, pendingTasks, taskActivity, taskDueLabel, taskDueState, type ChecklistItem, type TaskEvidence, type WorkStage } from '@lilachat/shared';
 import { api } from '../../api';
 import { useConversacion } from '../contextoDeLaConversacion';
 import { TaskDialog, type TaskEdit } from '../tarjetas/TaskDialog';
@@ -41,39 +41,6 @@ export function PendingWeb(props: { stages: readonly WorkStage[]; onOpen: (task:
             </span>
             {task.item.dueAt ? <span className={`shrink-0 text-[12px] font-semibold ${task.overdue ? 'text-error' : 'text-on-surface-variant'}`}>{taskDueLabel(task.item.dueAt, now)}</span> : null}
           </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** «Archivos» of a job's channel on the web (design e2-17): the evidence by stage; a click goes to the file's message. */
-export function StageFilesWeb(props: { stages: readonly WorkStage[]; onOpenMessage: (seq: number) => void }) {
-  const files = stageFiles(props.stages);
-  if (!files.total) {
-    return (
-      <div data-testid="archivos-de-obra-vacio" className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-8 text-center">
-        <FolderOpen className="text-primary" size={40} />
-        <p className="text-lg font-bold">Sin archivos todavía</p>
-        <p className="max-w-md text-sm text-on-surface-variant">Abre una tarea del checklist y sube su evidencia: fotos, planos o informes.</p>
-      </div>
-    );
-  }
-  return (
-    <div data-testid="archivos-de-obra" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-6">
-      <div className="mx-auto flex max-w-3xl flex-col gap-5">
-        {files.groups.map((group) => (
-          <section key={group.stageId}>
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">{`${group.stage}. ${group.title} · ${group.files.length}`}</p>
-            <div className="grid grid-cols-3 gap-2 md:grid-cols-4">
-              {group.files.map((file) => (
-                <button key={file.seq} type="button" data-testid={`archivo-de-obra-${file.seq}`} onClick={() => props.onOpenMessage(file.seq)} className="overflow-hidden rounded-xl border border-outline/15 bg-surface text-left hover:border-primary/40">
-                  {file.kind === 'file' ? <span className="grid h-24 place-items-center bg-error/[0.06]"><FileText className="text-error" size={28} /></span> : <img src={file.thumbnailUrl ?? file.url} alt={file.taskText} className="h-24 w-full object-cover" />}
-                  <span className="block truncate px-2 py-1.5 text-[11px] text-on-surface-variant">{file.kind === 'file' ? file.name : file.taskText}</span>
-                </button>
-              ))}
-            </div>
-          </section>
         ))}
       </div>
     </div>

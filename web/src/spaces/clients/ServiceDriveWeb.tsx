@@ -65,12 +65,12 @@ function DriveBody(props: { files: ServiceFile[]; query: string; folder: string 
   );
 }
 
-function Breadcrumb(props: { service: string; folder: string | null; onBack: () => void; onRoot: () => void }) {
+function Breadcrumb(props: { folder: string; onRoot: () => void }) {
   return (
     <p className="flex items-center gap-1.5 text-sm">
-      <button type="button" data-testid="volver-a-drive" aria-label="Volver a Archivos" onClick={props.onBack} className="flex items-center gap-1 font-semibold text-primary"><ChevronLeft size={16} /> <Cloud size={15} /></button>
-      <button type="button" onClick={props.onRoot} className="truncate font-semibold text-primary hover:underline">{props.service}</button>
-      {props.folder ? <><ChevronRight size={14} className="text-on-surface-variant" /><span className="truncate">{props.folder}</span></> : null}
+      <button type="button" data-testid="volver-a-drive" onClick={props.onRoot} className="flex items-center gap-1 font-semibold text-primary"><ChevronLeft size={16} /> <Cloud size={15} /> Drive</button>
+      <ChevronRight size={14} className="text-on-surface-variant" />
+      <span className="truncate">{props.folder}</span>
     </p>
   );
 }
@@ -95,11 +95,11 @@ function DriveUploadBar({ upload }: { upload: ReturnType<typeof useDriveUpload> 
 }
 
 /**
- * The Drive of one service inside «Archivos» (pending 121, design f-06):
+ * The Drive of one service, a tab of its detail (José 06/11; design f-06):
  * search, top folders with counts, the newest files and, inside a folder, its
  * files. A failure says why, with the service's link.
  */
-export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: SpaceClientService; chatId: string; onBack: () => void }) {
+export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: SpaceClientService; chatId: string }) {
   const [round, setRound] = useState(0);
   const answer = useServiceAsk('files', props.target, props.service.id, round);
   const upload = useDriveUpload({ target: props.target, chatId: props.chatId, serviceId: props.service.id, onDone: () => setRound((current) => current + 1) });
@@ -109,7 +109,7 @@ export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: Spac
   const driveUrl = answer?.ok ? answer.value.driveUrl : (answer?.portalUrl ?? null);
   return (
     <div data-testid="drive-servicio" className="flex flex-col gap-3">
-      <Breadcrumb service={props.service.name} folder={folder} onBack={props.onBack} onRoot={() => setFolder(null)} />
+      {folder ? <Breadcrumb folder={folder} onRoot={() => setFolder(null)} /> : null}
       <DriveUploadBar upload={upload} />
       {answer === null ? <div data-testid="drive-cargando" className="h-32 animate-pulse rounded-xl bg-surface" /> : null}
       {answer && !answer.ok ? <p data-testid="drive-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm font-semibold">{answer.message}</p> : null}

@@ -4,9 +4,9 @@ import type { ReactNode } from 'react';
 import { ConversacionContext, type ContextoDeLaConversacion } from '../contextoDeLaConversacion';
 import type { ChatSummary } from '../types';
 import type { WorkStage } from '@lilachat/shared';
-import { PendingWeb, StageFilesWeb, TaskDetailWeb } from './WorkListsWeb';
+import { PendingWeb, TaskDetailWeb } from './WorkListsWeb';
 
-/** Pending 21 (designs e2-17 and e2-18): «Pendientes», «Archivos» and a task's detail on the web. */
+/** Pending 21 (designs e2-17 and e2-18): «Pendientes» and a task's detail on the web. */
 const channel: ChatSummary = { id: 'c9', kind: 'group', name: 'Constructora Vía Sur', workspaceId: 'w1', memberIds: ['yo'], lastSeq: 0, unread: 0, lastMessage: null, othersReadSeq: 0, othersDeliveredSeq: 0 };
 const context: ContextoDeLaConversacion = { yo: 'yo', jwt: 'j', chat: channel, detalle: null, nombres: new Map([['u2', 'Ana Torres']]), citado: () => undefined, onAccion: vi.fn(), onVerFoto: vi.fn(), puedeFijar: false, fijados: new Set() };
 const withContext = (node: ReactNode) => render(<ConversacionContext.Provider value={context}>{node}</ConversacionContext.Provider>);
@@ -25,20 +25,6 @@ describe('the job tabs of a client channel on the web', () => {
     expect(screen.getByTestId('pendiente-0')).toHaveTextContent('Control de densidad');
     fireEvent.click(screen.getByTestId('pendiente-0'));
     expect(onOpen).toHaveBeenCalledWith({ stageId: 's3', itemId: 'b' });
-  });
-
-  it('«Archivos» groups the evidence by stage and goes to its message', () => {
-    const onOpenMessage = vi.fn();
-    withContext(<StageFilesWeb stages={stages} onOpenMessage={onOpenMessage} />);
-
-    fireEvent.click(screen.getByTestId('archivo-de-obra-12'));
-    expect(onOpenMessage).toHaveBeenCalledWith(12);
-  });
-
-  it('a plan without files says how to add them', () => {
-    withContext(<StageFilesWeb stages={[{ ...stages[0]!, items: [] }]} onOpenMessage={vi.fn()} />);
-
-    expect(screen.getByTestId('archivos-de-obra-vacio')).toHaveTextContent('Sin archivos todavía');
   });
 
   it('the detail shows who, overdue, evidence and activity, and «Marcar como hecho» ticks it', async () => {

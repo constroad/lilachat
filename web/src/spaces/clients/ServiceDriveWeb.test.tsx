@@ -15,7 +15,7 @@ describe('ServiceDriveWeb', () => {
     const fetchMock = reply({ files: [file('densidades.pdf', 'Informes'), file('t1.jpg', 'Fotos de obra / Día 1'), file('t2.jpg', 'Fotos de obra / Día 2')], drive_url: 'https://drive.google.com/drive/folders/x' });
     vi.stubGlobal('fetch', fetchMock);
     // Act
-    render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" onBack={() => undefined} />);
+    render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" />);
     // Assert
     expect((await screen.findByTestId('carpeta-Fotos de obra')).textContent).toContain('2');
     expect(String((fetchMock.mock.calls[0] as unknown as [string])[0])).toContain('/api/workspaces/s1/clients/cli-cvs/services/srv-318/files');
@@ -26,25 +26,30 @@ describe('ServiceDriveWeb', () => {
 
   it('search finds by name across folders', async () => {
     vi.stubGlobal('fetch', reply({ files: [file('densidades.pdf', 'Informes'), file('plano-perfil.pdf', 'Planos')], drive_url: null }));
-    render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" onBack={() => undefined} />);
+    render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" />);
     fireEvent.change(await screen.findByTestId('buscar-drive'), { target: { value: 'perfil' } });
     expect(screen.getAllByTestId('archivo-drive').map((one) => one.textContent)).toEqual([expect.stringContaining('plano-perfil.pdf')]);
   });
 
   it('when the app fails it says so and offers the service link', async () => {
     vi.stubGlobal('fetch', reply({ error: 'drive_failed', message: 'No se pudo traer el Drive', drive_url: 'https://portal.example.com/s/318' }));
-    render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" onBack={() => undefined} />);
+    render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" />);
     expect((await screen.findByTestId('drive-fallo')).textContent).toContain('No se pudo traer el Drive');
     expect(screen.getByText('Abrir el servicio en el Portal').closest('a')?.getAttribute('href')).toBe('https://portal.example.com/s/318');
   });
 
-  it('the file line reads folder · day, and the crumb goes back', async () => {
-    const onBack = vi.fn();
+  it('the file line reads folder · day, and inside a folder the crumb goes back to the Drive', async () => {
+    // Arrange
     vi.stubGlobal('fetch', reply({ files: [{ ...file('densidades.pdf', 'Informes'), modifiedAt: '2026-10-21T15:00:00.000Z' }], drive_url: null }));
-    render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" onBack={onBack} />);
+    render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" />);
     expect((await screen.findAllByTestId('archivo-drive'))[0]).toHaveTextContent('Informes · 21 oct');
+    expect(screen.queryByTestId('volver-a-drive')).toBeNull();
+    // Act
+    fireEvent.click(screen.getByTestId('carpeta-Informes'));
     fireEvent.click(screen.getByTestId('volver-a-drive'));
-    expect(onBack).toHaveBeenCalled();
+    // Assert
+    expect(await screen.findByTestId('carpeta-Informes')).toBeInTheDocument();
+    expect(screen.queryByTestId('volver-a-drive')).toBeNull();
   });
 });
 
@@ -60,7 +65,7 @@ describe('sending a file to the service Drive (José 06/11)', () => {
       if (url.endsWith('/commands/c1/form')) return new Response(JSON.stringify(outcome({ outcome: 'ephemeral', response: { responseType: 'ephemeral', text: 'Ya', upload: ticket } })), { status: 200 });
       return new Response(JSON.stringify(stored), upload);
     }));
-    render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" onBack={() => undefined} />);
+    render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" />);
     return calls;
   };
   const picked = new File(['x'], 'obra.jpg', { type: 'image/jpeg' });

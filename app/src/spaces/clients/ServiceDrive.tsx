@@ -83,17 +83,17 @@ function DriveSearch(props: { query: string; onQuery: (query: string) => void })
   );
 }
 
-function Breadcrumb(props: { service: string; folder: string | null; onBack: () => void; onRoot: () => void }) {
+function Breadcrumb(props: { folder: string; onRoot: () => void }) {
   const colors = useColores();
   return (
     <View className="flex-row items-center gap-1.5">
-      <Pressable testID="volver-a-drive" onPress={props.onBack} className="min-h-[40px] flex-row items-center gap-1">
+      <Pressable testID="volver-a-drive" onPress={props.onRoot} className="min-h-[40px] flex-row items-center gap-1">
         <ChevronLeft size={18} color={colors.primary} />
         <Cloud size={15} color={colors.primary} />
+        <Text className="text-[14px] font-semibold text-primary">Drive</Text>
       </Pressable>
-      <Pressable onPress={props.onRoot} className="min-w-0 flex-shrink"><Text className="text-[14px] font-semibold text-primary" numberOfLines={1}>{props.service}</Text></Pressable>
-      {props.folder ? <ChevronRight size={14} color={colors['on-surface-variant']} /> : null}
-      {props.folder ? <Text className="min-w-0 flex-shrink text-[14px] text-on-surface" numberOfLines={1}>{props.folder}</Text> : null}
+      <ChevronRight size={14} color={colors['on-surface-variant']} />
+      <Text className="min-w-0 flex-shrink text-[14px] text-on-surface" numberOfLines={1}>{props.folder}</Text>
     </View>
   );
 }
@@ -124,7 +124,7 @@ function DriveUploadBar({ upload }: { upload: ReturnType<typeof useDriveUpload> 
 }
 
 /**
- * The Drive of one service inside «Archivos» (pending 121, design f-06):
+ * The Drive of one service, a tab of its detail (José 06/11; design f-06):
  * search, top folders with counts, the newest files and, inside a folder, its
  * files. A failure says why, with the service's link. BACK leaves the folder,
  * then the service.
@@ -149,7 +149,7 @@ export function ServiceDrive(props: { target: ServiceAskTarget; service: SpaceCl
   const driveUrl = answer?.ok ? answer.value.driveUrl : (answer?.portalUrl ?? null);
   return (
     <View testID="drive-servicio" className="gap-3">
-      <Breadcrumb service={props.service.name} folder={folder} onBack={onBack} onRoot={() => setFolder(null)} />
+      {folder ? <Breadcrumb folder={folder} onRoot={() => setFolder(null)} /> : null}
       <DriveUploadBar upload={upload} />
       {answer === null ? <View testID="drive-cargando" className="h-40 rounded-2xl bg-surface-variant" /> : null}
       {answer && !answer.ok ? <Text testID="drive-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-[15px] font-semibold text-on-surface">{answer.message}</Text> : null}

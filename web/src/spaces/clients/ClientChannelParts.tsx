@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Archive, ChevronRight, ExternalLink, FileText, Link2, Search } from 'lucide-react';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, orderFocusOf, recordDays, recordsByService, SERVICE_FILTER_LABELS, dayOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
+import { Archive, ChevronRight, ExternalLink, FileText, FolderOpen, Link2, Search } from 'lucide-react';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, serviceAccessOf, orderFocusOf, recordDays, recordsByService, SERVICE_FILTER_LABELS, dayOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
 import { ServiceDetailWeb } from './ServiceDetailWeb';
 import { STATUS_TONE } from './tones';
 import type { ServiceAskTarget } from './useServiceAsk';
@@ -82,13 +82,20 @@ function ServiceCard(props: { service: SpaceClientService; records: ClientRecord
   );
 }
 
+const ClientDriveLink = ({ url }: { url: string }) => (
+  <a href={url} target="_blank" rel="noreferrer" data-testid="drive-cliente" className="flex items-center gap-3 rounded-xl border border-outline/15 bg-surface p-4 hover:bg-background">
+    <FolderOpen size={20} className="text-primary" />
+    <span className="min-w-0 flex-1"><span className="block font-semibold">Drive del cliente</span><span className="block text-[12px] text-on-surface-variant">Todas sus carpetas en el Portal</span></span>
+    <ExternalLink size={16} className="text-on-surface-variant" />
+  </a>
+);
+
 /**
  * «Servicios»: each service with its state, its progress (the client portal's)
  * and its records (informes, quotes, payments) — tapping one goes to its
- * message. The service opens its expediente (José, 30/10); the Drive moved to
- * «Archivos».
+ * message. The service opens its expediente with its Drive (José, 06/11).
  */
-export function ClientServices(props: { client: SpaceClient; records: ClientRecord[] | null; onOpenRecord?: (seq: number) => void; target: ServiceAskTarget | null; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void }) {
+export function ClientServices(props: { /** The channel hides its chrome while a service is open. */ onServiceOpen?: (open: boolean) => void; onToChat?: () => void; client: SpaceClient; records: ClientRecord[] | null; onOpenRecord?: (seq: number) => void; target: ServiceAskTarget | null; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void }) {
   const { links } = props;
   const clientId = props.client.id;
   const [query, setQuery] = useState('');
@@ -104,17 +111,25 @@ export function ClientServices(props: { client: SpaceClient; records: ClientReco
     if (focus) { setStartOrderId(focus.orderId); setOpened(focus.service); }
     onFocused?.();
   }, [focusSeq, records, clientServices, onFocused]);
+  const showsDetail = Boolean(opened && props.target);
+  const { onServiceOpen } = props;
+  useEffect(() => {
+    onServiceOpen?.(showsDetail);
+    return () => onServiceOpen?.(false);
+  }, [showsDetail, onServiceOpen]);
   const { services, counts } = filterServices(props.client.services, { query, filter });
   const grouped = props.records ? recordsByService(props.records) : null;
   const total = props.client.services.length;
+  const sees = serviceAccessOf(props.client.access);
   return (
     <div data-testid="servicios-cliente" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-6">
       {opened && props.target ? (
-        <ServiceDetailWeb target={props.target} chatId={props.client.chat_id} service={opened} seesMoney={Boolean(props.client.access?.money)} onBack={() => setOpened(null)} links={links} startOrderId={startOrderId} />
+        <ServiceDetailWeb target={props.target} chatId={props.client.chat_id} service={opened} seesMoney={Boolean(props.client.access?.money)} seesDrive={sees.drive} driveOnly={!sees.detail} onBack={() => setOpened(null)} onToChat={props.onToChat} links={links} startOrderId={startOrderId} />
       ) : (
         <div className="mx-auto flex max-w-3xl flex-col gap-3">
           {/* José 31/10: the client's link here; an order's in its sheet, a service's on its card. */}
           {links?.can('client') ? <button type="button" data-testid="enlace-cliente" onClick={() => links.open({ kind: 'client', clientId })} className="inline-flex h-9 items-center gap-1.5 self-start rounded-lg border border-primary/30 bg-primary/10 px-3 text-[13px] font-semibold text-primary hover:bg-primary/15"><Link2 size={15} /> Enlace del cliente</button> : null}
+          {sees.drive && props.client.drive_url ? <ClientDriveLink url={props.client.drive_url} /> : null}
           {total > 1 ? <ServiceFilters query={query} onQuery={setQuery} filter={filter} onFilter={setFilter} counts={counts} /> : null}
           {total === 0 ? <p className="pt-10 text-center text-sm text-on-surface-variant">Este cliente todavía no tiene servicios.</p> : null}
           {total > 0 && services.length === 0 ? <p className="pt-6 text-center text-sm text-on-surface-variant">Ningún servicio con ese filtro.</p> : null}

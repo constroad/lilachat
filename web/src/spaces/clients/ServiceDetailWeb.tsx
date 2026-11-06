@@ -1,9 +1,10 @@
 import { useCallback, useState } from 'react';
-import { ChevronLeft, ExternalLink, FilePlus, FileText } from 'lucide-react';
-import { draftToContinue, CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, openingSheets, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { ChevronLeft, ChevronRight, ExternalLink, FilePlus, FileText } from 'lucide-react';
+import { draftToContinue, CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { usePortalFileViewer } from './PortalFileViewer';
 import type { OpenSheetFile } from './RecordSheetWeb';
 import { RecordSheetWeb } from './RecordSheetWeb';
+import { ServiceDriveWeb } from './ServiceDriveWeb';
 import { ServiceStagesWeb } from './ServiceStagesWeb';
 import { SpaceActionButtonWeb } from './SpaceActionButtonWeb';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
@@ -119,36 +120,43 @@ function TabBody({ detail, tab, onOpen, onOpenFile }: { detail: ServiceDetail; t
   );
 }
 
-function DetailTabs({ detail, target, serviceId, links, seesMoney, onReported, onCreateReport, onContinueReport, startTab, startOrderId }: { onContinueReport: (draft: { type: string; reportId: string }) => void; startOrderId?: string; detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; links?: ChannelLinks; seesMoney: boolean; onReported: () => void; onCreateReport: () => void; startTab: DetailTabKey }) {
-  const [tab, setTab] = useState<DetailTabKey>(startTab);
+function DetailTabs({ detail, target, service, chatId, seesDrive, links, seesMoney, onReported, onCreateReport, onContinueReport, startTab, startOrderId }: { onContinueReport: (draft: { type: string; reportId: string }) => void; startOrderId?: string; detail: ServiceDetail; target: ServiceAskTarget; service: SpaceClientService; chatId: string; seesDrive: boolean; links?: ChannelLinks; seesMoney: boolean; onReported: () => void; onCreateReport: () => void; startTab: DetailTabKey }) {
+  const [tab, setTab] = useState<ServiceTabKey>(startTab);
+  // The Drive draws its own list; what follows only reads Portal's.
+  const listTab: DetailTabKey = tab === 'drive' ? 'orders' : tab;
+  const serviceId = service.id;
   const viewer = usePortalFileViewer();
   // An order's sheet opens its dispatches on top (José 01/11); closing goes back one.
   const [opened, setOpened] = useState<OpenSheet[]>(() => openingSheets(detail, startOrderId));
-  const shown = detailRows(detail, tab).length;
-  const more = moreInPortal(shown, detail.totals[tab]);
+  const shown = detailRows(detail, listTab).length;
+  const more = moreInPortal(shown, detail.totals[listTab]);
   const top = opened.at(-1);
   const sheet = top ? detailSheet(detail, top.tab, top.id) : null;
   const reportPdf = useReportPdf(target, serviceId);
   const openRow = (id: string) => {
-    const draft = tab === 'reports' ? draftToContinue(detail, id) : null;
+    const draft = listTab === 'reports' ? draftToContinue(detail, id) : null;
     if (draft) onContinueReport(draft);
-    else setOpened([{ tab, id }]);
+    else setOpened([{ tab: listTab, id }]);
   };
   const openDispatch = (id: string) => setOpened((before) => [...before, { tab: 'dispatches', id }]);
   const close = () => {
     reportPdf.stop();
     setOpened((before) => before.slice(0, -1));
   };
-  return (
-    <>
+  const strip = (
       <div role="tablist" className="flex gap-1 overflow-x-auto rounded-xl border border-outline/15 bg-surface p-1">
-        {detailTabs(detail).map((one) => (
+        {serviceTabs(detail, seesDrive).map((one) => (
           <button key={one.key} type="button" role="tab" aria-selected={tab === one.key} data-testid={`pestana-detalle-${one.key}`} onClick={(event) => { setTab(one.key); event.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); }} className={`h-9 shrink-0 rounded-lg px-3 text-sm ${tab === one.key ? 'bg-primary font-semibold text-on-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>{one.label}</button>
         ))}
       </div>
+  );
+  if (tab === 'drive') return <>{strip}<ServiceDriveWeb target={target} service={service} chatId={chatId} /></>;
+  return (
+    <>
+      {strip}
       {tab === 'reports' ? <CreateReportButton onPress={onCreateReport} /> : null}
       {tab === 'reports' && seesMoney ? <ReportAction target={target} serviceId={serviceId} onAnswered={onReported} /> : null}
-      <TabBody detail={detail} tab={tab} onOpen={openRow} onOpenFile={viewer.open} />
+      <TabBody detail={detail} tab={listTab} onOpen={openRow} onOpenFile={viewer.open} />
       {tab === 'orders' ? <OrphanDispatches detail={detail} onOpen={openDispatch} onOpenFile={viewer.open} /> : null}
       {viewer.viewer}
       {sheet ? <RecordSheetWeb sheet={sheet} onClose={close} onOpenFile={viewer.open} pdf={sheet.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, readyUrl: reportPdf.readyUrl, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!) } : undefined} onOpenRelated={openDispatch} action={orderLinkAction(links, top, target)} /> : null}
@@ -158,13 +166,39 @@ function DetailTabs({ detail, target, serviceId, links, seesMoney, onReported, o
   );
 }
 
+type ServiceDetailProps = { target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string ; /** Its Drive joins the tabs (José 06/11). */ seesDrive?: boolean; /** A member an admin gave only the Drive. */ driveOnly?: boolean; onToChat?: () => void };
+
+/** José 06/11: an open service takes the whole conversation, and this is the way back to the chat. */
+function ServiceCrumbs(props: { service: string; onBack: () => void; onToChat?: () => void }) {
+  return (
+    <nav aria-label="Ruta" data-testid="ruta-servicio" className="flex min-w-0 items-center gap-1.5 text-sm">
+      {props.onToChat ? <button type="button" data-testid="volver-al-chat" onClick={props.onToChat} className="inline-flex shrink-0 items-center gap-1 font-semibold text-primary"><ChevronLeft size={16} /> Chat</button> : null}
+      {props.onToChat ? <ChevronRight size={14} className="shrink-0 text-on-surface-variant" /> : null}
+      <button type="button" data-testid="volver-a-servicios" onClick={props.onBack} className="inline-flex shrink-0 items-center gap-1 font-semibold text-primary">{props.onToChat ? null : <ChevronLeft size={16} />} Servicios</button>
+      <ChevronRight size={14} className="shrink-0 text-on-surface-variant" />
+      <span className="min-w-0 truncate text-on-surface-variant">{props.service}</span>
+    </nav>
+  );
+}
+
 /**
  * A client's service as an expediente (José 30/10: there was no way to see a
  * service's reports, orders and dispatches; design f-04): its head, then
- * Pedidos · Informes with Portal's counts, each order with its dispatches
- * inside (José 01/11). Asked when it opens.
+ * Pedidos · Informes · Drive, each order with its dispatches inside (José
+ * 01/11). Asked when it opens.
  */
-export function ServiceDetailWeb(props: { target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string }) {
+export function ServiceDetailWeb(props: ServiceDetailProps) {
+  if (!props.driveOnly) return <ServiceRecordsDetail {...props} />;
+  return (
+    <div data-testid="detalle-servicio" className="mx-auto flex max-w-3xl flex-col gap-3">
+      <ServiceCrumbs service={props.service.name} onBack={props.onBack} onToChat={props.onToChat} />
+      <ServiceHead service={props.service} detail={null} />
+      <ServiceDriveWeb target={props.target} service={props.service} chatId={props.chatId} />
+    </div>
+  );
+}
+
+function ServiceRecordsDetail(props: ServiceDetailProps) {
   // After a report the detail is asked again, keeping the open tab (agentes 31/10).
   const [round, setRound] = useState(0);
   const askAgain = useCallback(() => setRound((count) => count + 1), []);
@@ -183,10 +217,10 @@ export function ServiceDetailWeb(props: { target: ServiceAskTarget; chatId: stri
   if (report) return <ReportDocumentWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} portalUrl={portalUrl} onClose={closeReport} />;
   return (
     <div data-testid="detalle-servicio" className="mx-auto flex max-w-3xl flex-col gap-3">
-      <button type="button" data-testid="volver-a-servicios" onClick={props.onBack} className="inline-flex items-center gap-1 self-start text-sm font-semibold text-primary"><ChevronLeft size={16} /> Servicios</button>
+      <ServiceCrumbs service={props.service.name} onBack={props.onBack} onToChat={props.onToChat} />
       <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
       {answer === null ? <div data-testid="detalle-cargando" className="h-48 animate-pulse rounded-xl bg-surface" /> : null}
-      {answer?.ok ? <DetailTabs onContinueReport={setReport} detail={answer.value} target={props.target} serviceId={props.service.id} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} startOrderId={startTab === 'orders' ? props.startOrderId : undefined} /> : null}
+      {answer?.ok ? <DetailTabs onContinueReport={setReport} detail={answer.value} target={props.target} service={props.service} chatId={props.chatId} seesDrive={Boolean(props.seesDrive)} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} startOrderId={startTab === 'orders' ? props.startOrderId : undefined} /> : null}
       {picker ? <CreateReportDialog portalUrl={portalUrl} onPick={(code) => { setPicker(false); setReport({ type: code }); }} onClose={() => setPicker(false)} /> : null}
       {answer && !answer.ok ? (
         <div data-testid="detalle-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm">

@@ -1115,3 +1115,14 @@ La respuesta a `form.submitted`, por el cuerpo o por `/respond`, lleva `upload`:
 - Respuestas de Portal: 201 subido, 200 ya estaba, 410 venció (se pide otro ticket
   una vez), 413 pesa demasiado, 415 tipo no admitido, 409 conflicto.
 
+## c-octodecies. Lo que el lugar ya sabe no se pregunta (José 06/11)
+
+Una acción tocada desde un lugar manda `values` en `shortcut.invoked`, por
+ejemplo `{ servicioId }` desde la tarjeta de un servicio.
+
+- Si la app responde un formulario con un campo de ese nombre, Lilachat lo quita
+  antes de mostrarlo, siempre que el valor sea uno que ese campo acepta.
+- La app no cambia nada: `form.submitted` trae ese valor en `values`, junto a las
+  respuestas. También llega en `refresh` y `form.preview.requested`.
+- El campo se queda si otro depende de él por `x-visible-if`, si él depende de
+  otro, o si el formulario quedaría vacío.

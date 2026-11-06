@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { CircleAlert } from 'lucide-react-native';
@@ -9,6 +9,7 @@ import { useColores } from '../ui/tema';
 import { useChatFont } from '../ui/chatFont';
 import { useRenderCount } from '../diagnostico/frameMonitor';
 import { DeslizarParaResponder } from './DeslizarParaResponder';
+import { cardWidthOf } from './cardWidth';
 import { CitaDeRespuesta } from './CitaDeRespuesta';
 import { MetaDeMensaje } from './MetaDeMensaje';
 import { MessageMedia } from './MessageMedia';
@@ -29,7 +30,6 @@ export const FLAT_AVATAR = 40;
 export const FLAT_GAP = 12;
 export const FLAT_INDENT = FLAT_AVATAR + FLAT_GAP;
 /** A card keeps its width; a sticker is a bit smaller than in a 1:1. */
-const FLAT_CARD = 320;
 const FLAT_STICKER = 120;
 
 const atOf = (row: Row) => (isPending(row) ? row.queuedAt : row.at);
@@ -73,6 +73,7 @@ function FlatRow(props: {
   onShowPerson?: (userId: string) => void;
 }) {
   useRenderCount('fila');
+  const cardWidth = cardWidthOf(useWindowDimensions().width);
   const colors = useColores();
   const font = useChatFont();
   const { item, previous } = props;
@@ -138,7 +139,7 @@ function FlatRow(props: {
           {!isPending(item) && item.sharedBy && !deleted ? <Text testID={`compartido-por-${item.seq}`} className="text-[12px] text-on-surface-variant">{sharedByLine(item.sharedBy)}</Text> : null}
           {props.quoted ? <CitaDeRespuesta citado={props.quoted} enBurbujaPropia={false} compact testID={`cita-${id}`} onPress={isPending(item) ? undefined : props.selecting ? () => props.onSelect?.(item.seq) : quoteAction(props.quoted, item.replyToSeq, props.onOpenThread, props.onGoToQuote)} /> : null}
           {card ? (
-            <View style={{ maxWidth: FLAT_CARD }}>
+            <View style={{ maxWidth: cardWidth }}>
               <CardBody item={card} jwt={props.jwt!} yo={props.myUserId} everyName={props.everyName} selecting={props.selecting} onSelect={props.onSelect} />
             </View>
           ) : sticker ? (

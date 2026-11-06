@@ -7,7 +7,7 @@
  */
 export const RESTRICTABLE_TABS = ['services', 'files', 'checklist'] as const;
 export type RestrictableTab = (typeof RESTRICTABLE_TABS)[number];
-export type ChannelTab = 'chat' | 'account' | RestrictableTab | 'pending';
+export type ChannelTab = 'chat' | 'account' | 'services' | 'checklist' | 'pending';
 /** A restricted member: the tabs they see besides the chat, and the checklist stages they see whole. */
 export type MemberAccess = { tabs: RestrictableTab[]; stages: string[] };
 /** My access in a client's channel (`SpaceClient.access`). No `restricted` = the whole channel. */
@@ -15,11 +15,12 @@ export type MyClientAccess = { money: boolean; restricted?: MemberAccess };
 /** How much of a checklist stage a member sees: all of it, only their tasks, or nothing. */
 export type StageScope = 'full' | 'own' | 'none';
 
-export const CHANNEL_TAB_LABELS: Record<ChannelTab, string> = { chat: 'Chat', account: 'Cuenta', services: 'Servicios', files: 'Archivos', checklist: 'Checklist', pending: 'Pendientes' };
+/** `files` is no tab since José 06/11: it stays as the access mark that opens each service's Drive. */
+export const CHANNEL_TAB_LABELS: Record<ChannelTab | RestrictableTab, string> = { chat: 'Chat', account: 'Cuenta', services: 'Servicios', files: 'Drive', checklist: 'Checklist', pending: 'Pendientes' };
 /** What each restrictable tab gives, for the access editor. */
 export const RESTRICTABLE_TAB_HINTS: Record<RestrictableTab, string> = {
   services: 'Pedidos, despachos e informes, sin montos',
-  files: 'Archivos del checklist y Drive del Portal, que puede traer liquidaciones',
+  files: 'El Drive de cada servicio, que puede traer liquidaciones',
   checklist: 'Las etapas que elijas y sus tareas',
 };
 export const MONEY_HINT = 'Cuenta, cotizaciones, cobranza y facturas';
@@ -27,7 +28,7 @@ export const MONEY_HINT = 'Cuenta, cotizaciones, cobranza y facturas';
 const STAGE_ID = /^[a-f0-9]{24}$/;
 const MAX_STAGES = 50;
 
-/** Portal's Drive holds liquidations and whatever was uploaded by hand: it takes the money mark or an admin ticking «Archivos» (José 05/11). */
+/** Portal's Drive holds liquidations and whatever was uploaded by hand: it takes the money mark or an admin ticking «Drive» (José 05/11). */
 export const canSeeDrive = (access: MyClientAccess | undefined): boolean => Boolean(access?.money || access?.restricted?.tabs.includes('files'));
 
 const MONEY_RECORD = /pago|cotizaci|orden de compra|valorizaci|liquidaci|factura/i;
@@ -45,14 +46,21 @@ export const isFieldReport = (report: { typeLabel?: string }): boolean => FIELD_
 
 export const canSeeTab = (access: MyClientAccess | undefined, tab: RestrictableTab): boolean => !access?.restricted || access.restricted.tabs.includes(tab);
 
-/** José 30/10: Chat · Cuenta · Servicios · Archivos · Checklist, and Pendientes once the checklist exists. */
+/**
+ * José 06/11: Chat · Cuenta · Servicios · Checklist, and Pendientes once the checklist exists. The Drive
+ * lives inside each service, so a member who only has the Drive goes through «Servicios».
+ */
 export function channelTabs(access: MyClientAccess | undefined, hasStages: boolean): ChannelTab[] {
   const tabs: ChannelTab[] = ['chat'];
   if (access?.money) tabs.push('account');
-  for (const tab of RESTRICTABLE_TABS) if (canSeeTab(access, tab)) tabs.push(tab);
+  if (canSeeTab(access, 'services') || access?.restricted?.tabs.includes('files')) tabs.push('services');
+  if (canSeeTab(access, 'checklist')) tabs.push('checklist');
   if (hasStages && canSeeTab(access, 'checklist')) tabs.push('pending');
   return tabs;
 }
+
+/** What opening a service shows a member: its orders and reports, its Drive, or both. */
+export const serviceAccessOf = (access: MyClientAccess | undefined): { detail: boolean; drive: boolean } => ({ detail: canSeeTab(access, 'services'), drive: canSeeDrive(access) });
 
 /** A picked stage is whole; any other shows only the tasks assigned to the member; without them it is hidden. */
 export function stageScopeOf(restricted: MemberAccess | null | undefined, stageId: string, hasOwnTask: boolean): StageScope {

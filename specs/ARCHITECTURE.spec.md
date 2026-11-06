@@ -6375,6 +6375,8 @@ Lo que esperaba un APK porque toca lo nativo (cambia el runtime de las OTA):
 
 ## 171. Detalle del servicio y una sola pestaña «Archivos» (30/10/2026, OTA + web; diseño f-04, agentes 77e7782, Portal 1d4072d5)
 
+> Superado el 06/11/2026: «Archivos» ya no existe. Ver «Un servicio ocupa todo y el Drive vive en él».
+
 Pedido de José del 30/10: «en la web no veo cómo navegar en el servicio, qué
 informes hay, qué pedidos, qué despachos» y «una sola pestaña Archivos».
 
@@ -15226,7 +15228,7 @@ anterior sobre Cotizaciones y Cobranza dentro del detalle del servicio.
 | Factura, precio, crédito y pagos de un pedido | se quitan | `withoutMoney` y Portal `orderBillingOf` |
 | Todo informe fuera de la página pública de Portal | la fila no llega | `isFieldReport`, lista de permitidos por etiqueta; Portal por tipo |
 | Pago o cotización en la tarjeta del servicio | no llega | `isMoneyRecord` en `clientRecords` |
-| Drive del Portal | solo con montos o «Archivos» marcado | `canSeeDrive`, sin preguntar a agentes |
+| Drive del Portal | solo con montos o «Drive» marcado | `canSeeDrive`, sin preguntar a agentes |
 | Tarjetas de pago en el chat | no se publican | agentes `6feb8c1` |
 
 Un miembro sin marcas ve Chat · Servicios · Archivos · Checklist. Su «Archivos»
@@ -15430,3 +15432,51 @@ Ahora el segundo pase busca la respuesta en las filas de ese momento (`replyRowO
 no hace nada si ya no está. La causa se dedujo del código: el stack llegó cortado y no
 se reprodujo en el emulador.
 
+## Un servicio ocupa todo y el Drive vive en él (José 06/11)
+
+Pedido: «Mueve el drive a nivel de servicio y cuando ingrese a un servicio ocupe
+todo con sus tabs de pedido informes drive y tenga un breadcrum para volver al
+chat. Eliminemos el tab archivos no tiene sentido. Los archivos del canal se ven
+desde media en el detalle del canal.»
+
+- **Pestañas del canal:** Chat · Cuenta · Servicios · Checklist · Pendientes.
+  `channelTabs` ya no da `files`.
+- **`files` sigue como marca de acceso.** Se llama «Drive» en el editor. No se
+  migró nada: quien la tenía la conserva.
+- **Quien solo tiene «Drive» entra por «Servicios».** `channelTabs` le muestra
+  esa pestaña, y `serviceAccessOf` dice `{ detail: false, drive: true }`. El
+  servicio le abre el Drive solo y no pide el detalle, que el server negaría.
+- **Un servicio abierto ocupa todo.** App: `useChannelWork.fullScreen` oculta la
+  cabecera con `display: none`, y el panel suma el inset de arriba. Web:
+  `serviceFull` quita cabecera, pestañas, banner y compositor en `Conversation`.
+- **La ruta** `ServiceCrumbs`: Chat › Servicios › obra. Queda fija en la app
+  mientras el servicio se desplaza. BACK de Android vuelve a Servicios.
+- **Pestañas del servicio:** `serviceTabs` suma «Drive» para quien lo ve. Sin
+  conteo, porque Portal no manda uno.
+- **Drive del cliente:** el enlace pasó a la lista de «Servicios».
+- **Archivos del canal:** cada evidencia de una tarea es un mensaje del chat, así
+  que ya está en Media del detalle del canal. Se borraron `stageFiles`,
+  `StageFilesPanel`, `StageFilesWeb`, `ClientFilesPanel` y `ClientFilesWeb`.
+
+## El formulario no pregunta lo que el lugar sabe (José 06/11)
+
+Pedido: «si hay un cta de un servicio xq me vuelve a preguntar seleccionar
+servicio no tiene sentido». El botón ya mandaba `values: { servicioId }`, pero el
+formulario de Portal traía el campo igual.
+
+- `withoutKnownFields` (`shared/src/appFormKnown.ts`) quita del formulario lo que
+  `values` responde, y lo guarda en `run.context` para `form.submitted`.
+- **Solo se quita si el campo lo aceptaría.** Un id que el formulario no ofrece
+  deja el campo a la vista: el lugar no pasa por encima de las opciones.
+- **No se quita** un campo del que otro depende, ni uno que depende de otro. Un
+  formulario que quedaría vacío sigue entero.
+- Vale para toda acción que manda `values`, también Registrar pago y los informes.
+- `refresh` y `preview` también reciben esos valores.
+
+## Tarjetas con aire a la derecha (José 06/11)
+
+Pedido: «En apk y mpbile web se estan pegando mucho al lado derecho». En un
+teléfono de 392 dp la fila deja 316 dp, y la tarjeta medía 320 más 8 de margen:
+se salía de la fila. `cardWidthOf` (`app/src/chat/cardWidth.ts`) resta 88 dp al
+ancho de la ventana y queda entre 200 y 320. En la web la tarjeta medida a 433 px
+terminaba a 20 px del borde; ahora a 28 px.

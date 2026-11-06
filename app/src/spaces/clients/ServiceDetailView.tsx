@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
-import { ChevronLeft, ExternalLink, FilePlus, FileText } from 'lucide-react-native';
-import { draftToContinue, CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, detailTabs, openingSheets, moreInPortal, orphanDispatchesOf, reportGroups, type ChannelLinks, type DetailRow, type DetailTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { ChevronLeft, ChevronRight, ExternalLink, FilePlus, FileText } from 'lucide-react-native';
+import { draftToContinue, CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, orphanDispatchesOf, reportGroups, type ChannelLinks, type DetailRow, type DetailTabKey, type ServiceTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
 import { RecordSheet } from './RecordSheet';
+import { ServiceDrive } from './ServiceDrive';
 import { ServiceStages } from './ServiceStages';
 import { SpaceActionButton } from './SpaceActionButton';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
@@ -103,16 +104,16 @@ function OrphanDispatches({ detail, onOpen, onOpenFile }: { detail: ServiceDetai
 }
 
 /** The tabs scroll so the one touched is whole on screen (30/10: «Cotizaciones» showed as a cut «C»). */
-function TabStrip(props: { detail: ServiceDetail; tab: DetailTabKey; onTab: (tab: DetailTabKey) => void }) {
+function TabStrip(props: { detail: ServiceDetail; seesDrive: boolean; tab: ServiceTabKey; onTab: (tab: ServiceTabKey) => void }) {
   const strip = useRef<ScrollView>(null);
-  const starts = useRef<Partial<Record<DetailTabKey, number>>>({});
-  const pick = (key: DetailTabKey) => {
+  const starts = useRef<Partial<Record<ServiceTabKey, number>>>({});
+  const pick = (key: ServiceTabKey) => {
     props.onTab(key);
     strip.current?.scrollTo({ x: Math.max(0, (starts.current[key] ?? 0) - TAB_SCROLL_MARGIN), animated: true });
   };
   return (
     <ScrollView ref={strip} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }} className="flex-grow-0 rounded-xl border border-outline/15 bg-surface p-1">
-      {detailTabs(props.detail).map((one) => (
+      {serviceTabs(props.detail, props.seesDrive).map((one) => (
         <Pressable key={one.key} testID={`pestana-detalle-${one.key}`} onLayout={(event) => (starts.current[one.key] = event.nativeEvent.layout.x)} onPress={() => pick(one.key)} accessibilityRole="tab" accessibilityState={{ selected: props.tab === one.key }} className={`min-h-[40px] justify-center rounded-lg px-3 ${props.tab === one.key ? 'bg-primary' : ''}`}>
           <Text className={`text-[14px] ${props.tab === one.key ? 'font-semibold text-on-primary' : 'text-on-surface-variant'}`}>{one.label}</Text>
         </Pressable>
@@ -146,32 +147,37 @@ function ReportAction({ target, serviceId, onAnswered }: { target: ServiceAskTar
   return <SpaceActionButton jwt={target.jwt} spaceId={target.spaceId} values={serviceValuesOf(serviceId)} onAnswered={onAnswered} actionKey={SERVICE_REPORT_ACTION} label="Generar informe de servicio" testID="generar-informe-servicio" Icon={FileText} />;
 }
 
-function DetailTabs({ detail, target, serviceId, onOpenFile, links, seesMoney, onReported, onCreateReport, onContinueReport, startTab, startOrderId }: { onContinueReport: (draft: { type: string; reportId: string }) => void; startOrderId?: string; onCreateReport: () => void; startTab: DetailTabKey; detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void; links?: ChannelLinks; seesMoney: boolean; onReported: () => void }) {
-  const [tab, setTab] = useState<DetailTabKey>(startTab);
+function DetailTabs({ detail, target, service, chatId, seesDrive, onBack, onOpenFile, links, seesMoney, onReported, onCreateReport, onContinueReport, startTab, startOrderId }: { onContinueReport: (draft: { type: string; reportId: string }) => void; startOrderId?: string; onCreateReport: () => void; startTab: DetailTabKey; detail: ServiceDetail; target: ServiceAskTarget; service: SpaceClientService; chatId: string; seesDrive: boolean; onBack: () => void; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void; links?: ChannelLinks; seesMoney: boolean; onReported: () => void }) {
+  const [tab, setTab] = useState<ServiceTabKey>(startTab);
+  // The Drive draws its own list; what follows only reads Portal's.
+  const listTab: DetailTabKey = tab === 'drive' ? 'orders' : tab;
+  const serviceId = service.id;
   // An order's sheet opens its dispatches on top (José 01/11); closing goes back one.
   const [opened, setOpened] = useState<OpenSheet[]>(() => openingSheets(detail, startOrderId));
   const reportPdf = useReportPdf(target, serviceId, onOpenFile);
   const top = opened.at(-1);
   const sheet = top ? detailSheet(detail, top.tab, top.id) : null;
   const openRow = (id: string) => {
-    const draft = tab === 'reports' ? draftToContinue(detail, id) : null;
+    const draft = listTab === 'reports' ? draftToContinue(detail, id) : null;
     if (draft) onContinueReport(draft);
-    else setOpened([{ tab, id }]);
+    else setOpened([{ tab: listTab, id }]);
   };
   const openDispatch = (id: string) => setOpened((before) => [...before, { tab: 'dispatches', id }]);
   const close = () => {
     reportPdf.stop();
     setOpened((before) => before.slice(0, -1));
   };
-  const rows = detailRows(detail, tab);
-  const more = moreInPortal(rows.length, detail.totals[tab]);
+  const rows = detailRows(detail, listTab);
+  const more = moreInPortal(rows.length, detail.totals[listTab]);
+  const strip = <TabStrip detail={detail} seesDrive={seesDrive} tab={tab} onTab={setTab} />;
+  if (tab === 'drive') return <>{strip}<ServiceDrive target={target} service={service} chatId={chatId} onBack={onBack} /></>;
   return (
     <>
-      <TabStrip detail={detail} tab={tab} onTab={setTab} />
+      {strip}
       {tab === 'reports' ? <CreateReportButton onPress={onCreateReport} /> : null}
       {tab === 'reports' && seesMoney ? <ReportAction target={target} serviceId={serviceId} onAnswered={onReported} /> : null}
       <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">
-        {!rows.length ? <Text className="p-4 text-[14px] text-on-surface-variant">{detailEmptyText(tab, detail.totals)}</Text> : tab === 'reports' ? <ReportDays detail={detail} onOpen={openRow} onOpenFile={onOpenFile} /> : rows.map((row) => <RowView key={row.id} row={row} onOpen={openRow} onOpenFile={onOpenFile} />)}
+        {!rows.length ? <Text className="p-4 text-[14px] text-on-surface-variant">{detailEmptyText(listTab, detail.totals)}</Text> : tab === 'reports' ? <ReportDays detail={detail} onOpen={openRow} onOpenFile={onOpenFile} /> : rows.map((row) => <RowView key={row.id} row={row} onOpen={openRow} onOpenFile={onOpenFile} />)}
       </View>
       {tab === 'orders' ? <OrphanDispatches detail={detail} onOpen={openDispatch} onOpenFile={onOpenFile} /> : null}
       {more ? <Text className="text-center text-[12px] text-on-surface-variant">{`${more} · el resto está en el Portal`}</Text> : null}
@@ -188,14 +194,47 @@ const Skeleton = () => (
   </View>
 );
 
+type ServiceDetailProps = { target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string ; /** Its Drive joins the tabs (José 06/11). */ seesDrive?: boolean; /** A member an admin gave only the Drive. */ driveOnly?: boolean; onToChat?: () => void };
+
+/** José 06/11: an open service takes the whole chat, and this is the way back to it. It stays while the service scrolls. */
+function ServiceCrumbs(props: { service: string; onBack: () => void; onToChat?: () => void }) {
+  const colors = useColores();
+  return (
+    <View testID="ruta-servicio" className="min-h-[48px] flex-row items-center gap-1.5 border-b border-outline/10 bg-surface px-3">
+      {props.onToChat ? (
+        <Pressable testID="volver-al-chat" onPress={props.onToChat} className="min-h-[44px] flex-row items-center gap-1">
+          <ChevronLeft size={18} color={colors.primary} />
+          <Text className="text-[14px] font-semibold text-primary">Chat</Text>
+        </Pressable>
+      ) : null}
+      {props.onToChat ? <ChevronRight size={14} color={colors['on-surface-variant']} /> : null}
+      <Pressable testID="volver-a-servicios" onPress={props.onBack} className="min-h-[44px] justify-center"><Text className="text-[14px] font-semibold text-primary">Servicios</Text></Pressable>
+      <ChevronRight size={14} color={colors['on-surface-variant']} />
+      <Text className="min-w-0 flex-1 text-[14px] text-on-surface-variant" numberOfLines={1}>{props.service}</Text>
+    </View>
+  );
+}
+
 /**
  * A client's service as an expediente (José 30/10: there was no way to see a
  * service's reports, orders and dispatches; design f-04): its head, then
- * Pedidos · Informes with Portal's counts, each order with its dispatches
- * inside (José 01/11). Asked when it opens.
+ * Pedidos · Informes · Drive, each order with its dispatches inside (José
+ * 01/11). Asked when it opens.
  */
-export function ServiceDetailView(props: { target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string }) {
-  const colors = useColores();
+export function ServiceDetailView(props: ServiceDetailProps) {
+  if (!props.driveOnly) return <ServiceRecordsDetail {...props} />;
+  return (
+    <View className="flex-1">
+      <ServiceCrumbs service={props.service.name} onBack={props.onBack} onToChat={props.onToChat} />
+      <ScrollView testID="detalle-servicio" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
+        <ServiceHead service={props.service} detail={null} />
+        <ServiceDrive target={props.target} service={props.service} chatId={props.chatId} onBack={props.onBack} />
+      </ScrollView>
+    </View>
+  );
+}
+
+function ServiceRecordsDetail(props: ServiceDetailProps) {
   // After a report the detail is asked again, keeping the open tab (agentes 31/10).
   const [round, setRound] = useState(0);
   const askAgain = useCallback(() => setRound((count) => count + 1), []);
@@ -223,14 +262,12 @@ export function ServiceDetailView(props: { target: ServiceAskTarget; chatId: str
   }, [askAgain]);
   if (report) return <ReportDocumentScreen target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} portalUrl={portalUrl} onClose={closeReport} />;
   return (
+    <View className="flex-1">
+    <ServiceCrumbs service={props.service.name} onBack={props.onBack} onToChat={props.onToChat} />
     <ScrollView testID="detalle-servicio" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
-      <Pressable testID="volver-a-servicios" onPress={onBack} className="min-h-[40px] flex-row items-center gap-1 self-start">
-        <ChevronLeft size={18} color={colors.primary} />
-        <Text className="text-[14px] font-semibold text-primary">Servicios</Text>
-      </Pressable>
       <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
       {answer === null ? <Skeleton /> : null}
-      {answer?.ok ? <DetailTabs onContinueReport={setReport} detail={answer.value} target={props.target} serviceId={props.service.id} onOpenFile={files.open} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} startOrderId={startTab === 'orders' ? props.startOrderId : undefined} /> : null}
+      {answer?.ok ? <DetailTabs onContinueReport={setReport} detail={answer.value} target={props.target} service={props.service} chatId={props.chatId} seesDrive={Boolean(props.seesDrive)} onBack={onBack} onOpenFile={files.open} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} startOrderId={startTab === 'orders' ? props.startOrderId : undefined} /> : null}
       <CreateReportSheet visible={picker} portalUrl={portalUrl} onPick={(code) => { setPicker(false); setReport({ type: code }); }} onClose={() => setPicker(false)} />
       {files.notice ? <Text className="text-center text-[13px] text-error">{files.notice}</Text> : null}
       {files.viewer}
@@ -246,5 +283,6 @@ export function ServiceDetailView(props: { target: ServiceAskTarget; chatId: str
         </View>
       ) : null}
     </ScrollView>
+    </View>
   );
 }

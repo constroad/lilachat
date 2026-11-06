@@ -6,7 +6,8 @@ import { compareNames } from './compareText.js';
  * made it decides whether the others can tick and add. PURE: the server
  * applies the same rules the app and the web show.
  */
-export const CHECKLIST_LIMITS = { title: 120, item: 200, items: 30 } as const;
+/** `stageItems`: a stage of a client's plan gathers every order's tasks (José 06/11). */
+export const CHECKLIST_LIMITS = { title: 120, item: 200, items: 30, stageItems: 300 } as const;
 
 /** `assignee` and `dueAt` (backlog 30): who does it and for when; both optional. */
 /** A file that proves a task (pending 21, design e2-18): a message of the channel, linked to the task by its seq. */
@@ -26,7 +27,8 @@ export type AgendaChecklist = {
 };
 
 const key = (text: string) => text.trim().toLocaleLowerCase('es');
-const tooMany = `Un checklist lleva hasta ${CHECKLIST_LIMITS.items} tareas.`;
+const tooManyFor = (max: number) => `Un checklist lleva hasta ${max} tareas.`;
+const tooMany = tooManyFor(CHECKLIST_LIMITS.items);
 
 /** A new checklist: title and tasks trimmed, empty tasks dropped, in their order. */
 export function validateChecklist(params: { title: string; items: readonly string[] }): { ok: true; title: string; items: string[] } | { ok: false; message: string } {
@@ -50,11 +52,11 @@ export function validateChecklistTitle(text: string): { ok: true; title: string 
 }
 
 /** A task added later: not empty, not already there, and room left. */
-export function validateChecklistItem(text: string, existing: readonly { text: string }[]): { ok: true; text: string } | { ok: false; message: string } {
+export function validateChecklistItem(text: string, existing: readonly { text: string }[], max: number = CHECKLIST_LIMITS.items): { ok: true; text: string } | { ok: false; message: string } {
   const trimmed = text.trim();
   if (!trimmed) return { ok: false, message: 'Escribe la tarea.' };
   if (trimmed.length > CHECKLIST_LIMITS.item) return { ok: false, message: `Cada tarea lleva hasta ${CHECKLIST_LIMITS.item} letras.` };
-  if (existing.length >= CHECKLIST_LIMITS.items) return { ok: false, message: tooMany };
+  if (existing.length >= max) return { ok: false, message: tooManyFor(max) };
   if (existing.some((item) => key(item.text) === key(trimmed))) return { ok: false, message: 'Esa tarea ya está.' };
   return { ok: true, text: trimmed };
 }

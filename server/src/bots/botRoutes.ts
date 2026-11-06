@@ -11,6 +11,7 @@ import { commandsOfApp, commandsToWire, registerCommands, respondToCommand } fro
 import { installationByToken, revokeInstallation } from './botInstall.js';
 import { postBotMessage, updateBotMessage } from './botMessages.js';
 import { upsertClientChannel } from './botClients.js';
+import { addClientTasks, clientTasksOf } from './botClientTasks.js';
 import { setTopicChannels, setTopicOffered, topicRoutesOf } from './botTopics.js';
 import { channelFilesHeardBy, filesHeardBy } from './botTriggers.js';
 import type { BotApp, BotInstallation } from './botModels.js';
@@ -128,6 +129,16 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
     const outcome = await upsertClientChannel(req.bot!, String(req.params.clientId), req.body);
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.status(outcome.status).json({ client: outcome.client });
+  }));
+  router.post('/clients/:clientId/tasks', asyncRoute(async (req, res) => {
+    const outcome = await addClientTasks(req.bot!, String(req.params.clientId), req.body);
+    if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+    res.status(outcome.status).json({ added: outcome.added });
+  }));
+  router.get('/clients/:clientId/tasks', asyncRoute(async (req, res) => {
+    const outcome = await clientTasksOf(req.bot!, String(req.params.clientId), req.query.key);
+    if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+    res.json(outcome);
   }));
   router.get('/commands', asyncRoute(async (req, res) => res.json({ commands: commandsToWire(await commandsOfApp(req.bot!)) })));
   router.put('/commands', asyncRoute(async (req, res) => {

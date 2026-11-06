@@ -63,7 +63,7 @@ async function resolveChat(installation: Installation, target: BotPost['target']
   return directWith(installation, userId);
 }
 
-async function assigneesOf(installation: Installation, checklist: NonNullable<BotPost['checklist']>): Promise<Map<string, Types.ObjectId> | BotApiError> {
+export async function assigneesOf(installation: Pick<Installation, 'workspaceId'>, checklist: Pick<NonNullable<BotPost['checklist']>, 'items'>): Promise<Map<string, Types.ObjectId> | BotApiError> {
   const byPhone = new Map<string, Types.ObjectId>();
   for (const phone of new Set(checklist.items.flatMap((item) => item.assigneePhone ?? []))) {
     const userId = await activeMemberId(installation.workspaceId, { phone });

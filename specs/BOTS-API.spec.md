@@ -1126,3 +1126,33 @@ ejemplo `{ servicioId }` desde la tarjeta de un servicio.
   respuestas. También llega en `refresh` y `form.preview.requested`.
 - El campo se queda si otro depende de él por `x-visible-if`, si él depende de
   otro, o si el formulario quedaría vacío.
+
+## c-novodecies. Tareas de un pedido en el checklist del cliente (José 06/11)
+
+Pedido: el checklist de campo de un pedido va a la pestaña Checklist del canal
+del cliente, no a un mensaje. Se confirma solo ahí, y ahí se asignan responsable
+y fecha.
+
+`POST /api/bots/clients/:clientId/tasks`, con el token de la app dueña del canal:
+
+```json
+{ "key": "order:<pedidoId>", "label": "<lo que identifica al pedido>", "items": [{ "text": "Cuadrilla", "key": "cuadrilla", "assignee_phone": "902049935", "due_at": "2026-11-07T15:00:00.000Z" }] }
+```
+
+- `key` hasta 120 y `label` hasta 40. Cada tarea se ve «label · texto», hasta 200.
+- `items[].key` hasta 60, `assignee_phone` y `due_at` son opcionales. Hasta 30 tareas por llamada.
+- Van a la etapa 3, «Ejecución», por su lugar en el plan: un admin puede renombrarla.
+- Si el canal no empezó su checklist, se crean las siete etapas. No se publica nada en el chat.
+- 201 `{ "added": 9 }`. El mismo `key` otra vez da 200 `{ "added": 0 }`, en un solo paso atómico.
+- Errores: 400 `invalid_request` o `assignee_not_member`, 404 `client_not_found`,
+  409 `stage_full` con 300 tareas en la etapa.
+
+`GET /api/bots/clients/:clientId/tasks?key=<key>` lee el estado actual:
+`{ "tasks": [{ "id", "key", "text", "done", "done_at", "assignee_phone", "due_at" }] }`.
+
+Al marcar una de estas tareas llega `checklist.item.toggled`, aunque la etapa la
+haya creado una persona. Trae `item.key` y `item.source_key`.
+
+**Sin verificar:** dos llamadas simultáneas sobre un canal sin etapas podrían crear
+etapas repetidas, porque no hay índice único por `{chatId, stage}` y crearlo en
+producción pide el OK de José. Agentes llama una vez por pedido.

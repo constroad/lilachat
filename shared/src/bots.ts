@@ -29,7 +29,8 @@ export type BotCard = {
   detail?: { title: string; blocks: BotBlock[] };
   updatedAt?: string;
 };
-export type BotChecklist = { title: string; othersCanMark: boolean; items: { text: string; assigneePhone?: string; dueAt?: string }[] };
+export type BotChecklist = { title: string; othersCanMark: boolean; items: { text: string; /** The app's name for this task: it comes back in `checklist.item.toggled`. */ key?: string; assigneePhone?: string; dueAt?: string }[] };
+const TASK_KEY_MAX = 60;
 /** `topic` (R160): the channel the space's admin picked for that topic of the app. */
 /** `client` (pending 21, §157): the channel of that client, created by `PUT /api/bots/clients/:id`. */
 export type BotTarget = { channelId: string } | { topic: string } | { userPhone: string } | { userId: string } | { client: string };
@@ -105,7 +106,7 @@ export function validateBotCard(raw: unknown): { ok: true; card: BotCard } | { o
   return { ok: true, card: kept };
 }
 
-function validateBotChecklist(raw: unknown): { ok: true; checklist: BotChecklist } | BotPostError {
+export function validateBotChecklist(raw: unknown): { ok: true; checklist: BotChecklist } | BotPostError {
   const checklist = record(raw);
   const items: BotChecklist['items'] = [];
   for (const rawItem of Array.isArray(checklist.items) ? checklist.items : []) {
@@ -114,7 +115,8 @@ function validateBotChecklist(raw: unknown): { ok: true; checklist: BotChecklist
     const assigneePhone = phone ? normalizePeruPhone(phone) : undefined;
     if (phone && !assigneePhone) return refuse(`El responsable «${phone}» no es un celular de Perú.`);
     const due = typeof item.due_at === 'string' && !Number.isNaN(Date.parse(item.due_at)) ? new Date(item.due_at).toISOString() : undefined;
-    items.push({ text: String(item.text ?? ''), ...(assigneePhone ? { assigneePhone } : {}), ...(due ? { dueAt: due } : {}) });
+    const key = typeof item.key === 'string' && item.key.trim() ? item.key.trim().slice(0, TASK_KEY_MAX) : undefined;
+    items.push({ text: String(item.text ?? ''), ...(key ? { key } : {}), ...(assigneePhone ? { assigneePhone } : {}), ...(due ? { dueAt: due } : {}) });
   }
   const valid = validateChecklist({ title: String(checklist.title ?? ''), items: items.map((item) => item.text) });
   if (!valid.ok) return refuse(valid.message);

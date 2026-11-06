@@ -15483,3 +15483,19 @@ teléfono de 392 dp la fila deja 316 dp, y la tarjeta medía 320 más 8 de marge
 se salía de la fila. `cardWidthOf` (`app/src/chat/cardWidth.ts`) resta 88 dp al
 ancho de la ventana y queda entre 200 y 320. En la web la tarjeta medida a 433 px
 terminaba a 20 px del borde; ahora a 28 px.
+
+## Checklist de campo en la pestaña Checklist (José 06/11)
+
+José decidió: va a la pestaña Checklist de Lilachat, al crear el pedido, en
+«Ejecución», y se confirma solo ahí. La arena queda en una línea: son 9 puntos.
+El contrato está en `BOTS-API.spec.md` §c-novodecies.
+
+- `shared/src/clientTasks.ts` valida, `server/src/bots/botClientTasks.ts` agrega y lee.
+- Una etapa admite 300 tareas (`CHECKLIST_LIMITS.stageItems`), porque junta las de
+  todos los pedidos. Un checklist del chat sigue en 30.
+- Responsable y fecha ya existían en cada tarea («Reasignar»). Cualquiera que vea
+  el canal entero los edita, porque la etapa nace con `othersCanAdd`.
+
+**Pendiente:** Lilachat no avisa al asignar una tarea ni cuando se acerca su fecha.
+Con el WhatsApp apagado nadie empuja: lo decide José. Portal no tiene código de
+pedido, y `label` espera esa decisión. Lo llama Agentes con `order.created`.

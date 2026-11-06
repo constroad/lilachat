@@ -1,7 +1,7 @@
 import { Router, type Response } from 'express';
 import { botHearsChecklist } from './bots/botTriggers.js';
 import { Types } from 'mongoose';
-import { canToggleTask, checklistOverdue, checklistPermissions, checklistTextInChat, toggleChecklistItem, validateChecklist, validateChecklistItem, validateChecklistTitle, type AgendaChecklist, type TaskEvidence } from '@lilachat/shared';
+import { canToggleTask, CHECKLIST_LIMITS, checklistOverdue, checklistPermissions, checklistTextInChat, toggleChecklistItem, validateChecklist, validateChecklistItem, validateChecklistTitle, type AgendaChecklist, type TaskEvidence } from '@lilachat/shared';
 import { ChatModel, MessageModel } from './chatModels.js';
 import { ChecklistModel, type Checklist, type TaskEvidenceEntry } from './checklistModel.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
@@ -61,6 +61,9 @@ const shownTo = (seen: Seen, updated: Checklist, userId: Types.ObjectId) => view
 const LIST_LIMIT = 50;
 const MINE_LIMIT = 100;
 
+/** A stage of a client's plan gathers every order's tasks; a checklist of the chat stays short. */
+const maxTasksOf = (checklist: Pick<Checklist, 'stage'>): number => (checklist.stage ? CHECKLIST_LIMITS.stageItems : CHECKLIST_LIMITS.items);
+
 /** The checklist if I may edit its tasks (who made it, or anyone if «los demás pueden agregar»); otherwise answers and null. */
 async function editableChecklist(id: unknown, userId: Types.ObjectId, res: Response): Promise<Checklist | null> {
   const checklist = await checklistOfMember(id, userId, res, 'edit');
@@ -76,7 +79,7 @@ async function editableChecklist(id: unknown, userId: Types.ObjectId, res: Respo
 async function taskChanges(body: Record<string, unknown>, checklist: Checklist, itemId: string): Promise<Record<string, unknown> | { message: string }> {
   const changes: Record<string, unknown> = {};
   if (body.text !== undefined) {
-    const valid = validateChecklistItem(String(body.text), checklist.items.filter((one) => one.id !== itemId));
+    const valid = validateChecklistItem(String(body.text), checklist.items.filter((one) => one.id !== itemId), maxTasksOf(checklist));
     if (!valid.ok) return { message: valid.message };
     changes.text = valid.text;
   }
@@ -204,7 +207,7 @@ export function buildChecklistRouter(): Router {
     announce(updated);
     noteTaskToggle(String(updated._id), String(userId), item.id, Boolean(item.doneBy));
     // A bot's checklist (`bots/`): the bot hears which task changed and who did it.
-    void botHearsChecklist({ checklist: updated, item: { id: item.id, text: before.text, done: Boolean(item.doneBy), assignee: before.assignee ?? null }, userId }).catch((error) =>
+    void botHearsChecklist({ checklist: updated, item: { id: item.id, text: before.text, done: Boolean(item.doneBy), assignee: before.assignee ?? null, addedBy: before.addedBy, sourceKey: before.sourceKey, taskKey: before.taskKey }, userId }).catch((error) =>
       console.error('[bots] no se pudo avisar la tarea:', error instanceof Error ? error.message : error)
     );
   }));
@@ -216,7 +219,7 @@ export function buildChecklistRouter(): Router {
     if (!checklistPermissions({ me: String(userId), createdBy: String(checklist.createdBy), othersCanMark: checklist.othersCanMark, othersCanAdd: checklist.othersCanAdd }).canAdd) {
       return res.status(403).json({ message: 'Solo quien lo creó agrega tareas.' });
     }
-    const valid = validateChecklistItem(String(req.body?.text ?? ''), checklist.items);
+    const valid = validateChecklistItem(String(req.body?.text ?? ''), checklist.items, maxTasksOf(checklist));
     if (!valid.ok) return res.status(400).json({ message: valid.message });
     const updated = await ChecklistModel.findByIdAndUpdate(checklist._id, { $push: { items: { id: newItemId(), text: valid.text, addedBy: userId, doneBy: null, doneAt: null } } }, { returnDocument: 'after' }).lean();
     if (!updated) return res.status(404).json({ message: 'Ese checklist ya no está.' });

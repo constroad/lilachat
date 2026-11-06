@@ -17,6 +17,10 @@ export interface ChecklistTask {
   dueAt?: Date | null;
   /** Files that prove it (pending 21, design e2-18): messages of the channel, by seq; URLs stay relative like the message's. */
   evidence?: TaskEvidenceEntry[];
+  /** What an app added it for (`order:<id>`, José 06/11): the same key never adds twice. */
+  sourceKey?: string;
+  /** Which of those tasks it is, in the app's words. */
+  taskKey?: string;
 }
 
 export interface TaskEvidenceEntry {
@@ -60,6 +64,8 @@ const checklistSchema = new Schema<Checklist>(
         doneAt: { type: Date, default: null },
         assignee: { type: Schema.Types.ObjectId, ref: 'User', default: null },
         dueAt: { type: Date, default: null },
+        sourceKey: { type: String },
+        taskKey: { type: String },
         evidence: {
           type: [{ seq: { type: Number, required: true }, kind: { type: String, enum: ['image', 'video', 'file'], required: true }, url: { type: String, required: true }, thumbUrl: String, name: { type: String, required: true }, sizeBytes: { type: Number, required: true }, by: { type: Schema.Types.ObjectId, ref: 'User', required: true }, at: { type: Date, required: true }, _id: false }],
           default: undefined,

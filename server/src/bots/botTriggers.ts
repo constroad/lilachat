@@ -177,15 +177,15 @@ export async function botHearsAction(params: { message: Pick<Message, '_id' | 'c
   return true;
 }
 
-/** A task of a checklist the bot created was marked or unmarked. */
-export async function botHearsChecklist(params: { checklist: { _id: Types.ObjectId; title: string; createdBy: Types.ObjectId; chatId: Types.ObjectId; cardSeq?: number }; item: { id: string; text: string; done: boolean; assignee?: Types.ObjectId | null }; userId: Types.ObjectId }): Promise<void> {
-  const bot = await botOfUser(String(params.checklist.createdBy));
+/** A task the bot added, or of a checklist it created, was marked or unmarked. */
+export async function botHearsChecklist(params: { checklist: { _id: Types.ObjectId; title: string; createdBy: Types.ObjectId; chatId: Types.ObjectId; cardSeq?: number }; item: { id: string; text: string; done: boolean; assignee?: Types.ObjectId | null; addedBy?: Types.ObjectId; sourceKey?: string; taskKey?: string }; userId: Types.ObjectId }): Promise<void> {
+  const bot = (params.item.addedBy ? await botOfUser(String(params.item.addedBy)) : null) ?? (await botOfUser(String(params.checklist.createdBy)));
   if (!bot) return;
   const assignee = params.item.assignee ? await personOf(params.item.assignee) : null;
   const card = params.checklist.cardSeq ? await MessageModel.findOne({ chatId: params.checklist.chatId, seq: params.checklist.cardSeq }).select('_id').lean() : null;
   const data = {
     checklist: { id: String(params.checklist._id), title: params.checklist.title, message_id: card ? String(card._id) : null },
-    item: { id: params.item.id, text: params.item.text, done: params.item.done, ...(assignee?.phone ? { assignee_phone: assignee.phone } : {}) },
+    item: { id: params.item.id, text: params.item.text, done: params.item.done, ...(params.item.taskKey ? { key: params.item.taskKey } : {}), ...(params.item.sourceKey ? { source_key: params.item.sourceKey } : {}), ...(assignee?.phone ? { assignee_phone: assignee.phone } : {}) },
     user: await personOf(params.userId),
   };
   await sendBotEvent({ _id: bot.installationId, workspaceId: bot.workspaceId }, 'checklist.item.toggled', data);

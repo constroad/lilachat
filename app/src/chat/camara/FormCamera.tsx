@@ -33,9 +33,9 @@ export async function cameraAllowed(): Promise<boolean> {
 }
 
 /**
- * The camera of a form's photo (José 06/11: «abre la cámara, pasan segundos y
- * recién los agrega a la app»). The phone's own camera had to start, show the
- * shot and wait for its confirmation. This one is ready when it opens and hands
+ * The camera of a form's photo (José 06/11: seconds went by between the camera
+ * and the photo showing up in the app). The phone's own camera had to start, show
+ * the shot and wait for its confirmation. This one is ready when it opens and hands
  * the photo over at the shutter, like `CamaraDelChat` did for the chat on 20/10.
  */
 export function FormCamera(props: { title: string; onShot: (shot: CameraShot) => void; onClose: () => void }) {

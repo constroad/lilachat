@@ -17,13 +17,15 @@ export type DriveUploadDeps<F> = {
   open(): Promise<{ ok: true; data: CommandOutcome } | { ok: false; message?: string }>;
   submit(commandId: string): Promise<FormSubmitReply>;
   notice(commandId: string): Promise<CommandNotice | null>;
-  /** No `status`: nothing came back. */
-  send(upload: DriveUpload, file: F, clientUploadId: string): Promise<{ status?: number }>;
+  /** No `status`: nothing came back. `message`: what Portal said, or what stopped the phone. */
+  send(upload: DriveUpload, file: F, clientUploadId: string): Promise<{ status?: number; message?: string }>;
 };
 
 export const DRIVE_UPLOAD_FAILED = 'No se pudo subir el archivo. Revisa tu señal y vuelve a intentarlo.';
 export const DRIVE_UPLOAD_DONE = 'Archivo subido al Drive.';
 export const DRIVE_UPLOADING = 'Subiendo…';
+/** «Subiendo… 40 %»: a video can take minutes in the field. */
+export const driveUploadingLine = (ratio: number): string => (ratio > 0 ? `${DRIVE_UPLOADING} ${Math.round(ratio * 100)} %` : DRIVE_UPLOADING);
 /** What the phone's camera records at most: Portal says it again in each ticket. */
 export const DRIVE_VIDEO_SECONDS = 60;
 
@@ -88,9 +90,9 @@ async function attempt<F>(deps: DriveUploadDeps<F>, file: { source: F; facts: Dr
   if ('message' in ticket) return { ok: false, message: ticket.message };
   const refusal = driveFileRefusal(ticket.upload, file.facts);
   if (refusal) return { ok: false, message: refusal };
-  const { status } = await deps.send(ticket.upload, file.source, clientUploadId);
+  const { status, message } = await deps.send(ticket.upload, file.source, clientUploadId);
   if (status === EXPIRED) return null;
-  return status && status < 300 ? { ok: true } : { ok: false, message: FAILURES[status ?? 0] ?? DRIVE_UPLOAD_FAILED };
+  return status && status < 300 ? { ok: true } : { ok: false, message: FAILURES[status ?? 0] ?? message ?? DRIVE_UPLOAD_FAILED };
 }
 
 /** The same `clientUploadId` on a retry: Portal answers the file it already has. */

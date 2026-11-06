@@ -22,7 +22,8 @@ export type RespuestaDeSubida =
 
 export function subirPorXhr(params: {
   url: string;
-  token: string;
+  /** Sin él no viaja la sesión: una subida a Portal lleva su propio ticket en la dirección. */
+  token?: string;
   form: FormData;
   timeoutMs: number;
   /** 0→1 mientras suben los bytes. Un archivo sin progreso parece colgado. */
@@ -32,7 +33,7 @@ export function subirPorXhr(params: {
     const pedido = new XMLHttpRequest();
     pedido.open('POST', params.url);
     pedido.timeout = params.timeoutMs;
-    pedido.setRequestHeader('Authorization', `Bearer ${params.token}`);
+    if (params.token) pedido.setRequestHeader('Authorization', `Bearer ${params.token}`);
     // El Content-Type NO se pone a mano: lleva el boundary que genera el nativo.
 
     pedido.upload.onprogress = (evento) => {

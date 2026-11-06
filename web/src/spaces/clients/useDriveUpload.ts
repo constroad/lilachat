@@ -13,13 +13,15 @@ type UploadTarget = { target: ServiceAskTarget; chatId: string; serviceId: strin
 const IDLE: UploadState = { sending: false, message: '', failed: false };
 
 /** Straight to Portal: the file never goes through Lilachat, and no session travels with it. */
-async function sendToDrive(upload: DriveUpload, file: DriveFile, clientUploadId: string): Promise<{ status?: number }> {
+async function sendToDrive(upload: DriveUpload, file: DriveFile, clientUploadId: string): Promise<{ status?: number; message?: string }> {
   const body = new FormData();
   Object.entries(upload.fields).forEach(([name, value]) => body.append(name, value));
   body.append('clientUploadId', clientUploadId);
   body.append(upload.fileField, file.blob, file.name);
   try {
-    return { status: (await fetch(upload.url, { method: 'POST', body })).status };
+    const response = await fetch(upload.url, { method: 'POST', body });
+    const { message } = (await response.json().catch(() => ({}))) as { message?: unknown };
+    return { status: response.status, ...(typeof message === 'string' ? { message } : {}) };
   } catch {
     return {};
   }

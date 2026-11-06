@@ -51,14 +51,14 @@ describe('ServiceDriveWeb', () => {
 describe('sending a file to the service Drive (José 06/11)', () => {
   const ticket = { url: 'https://constroad.com/api/public/service-drive-upload/t1', method: 'POST', fields: {}, fileField: 'file', expiresAt: '2026-11-06T23:00:00.000Z', maxBytes: 52428800, maxSeconds: 60, mimeTypes: ['image/jpeg', 'video/mp4'] };
   const outcome = (body: object) => ({ commandId: 'c1', appId: 'p', appName: 'Portal', ...body });
-  const open = (upload = { status: 201 }) => {
+  const open = (upload = { status: 201 }, stored: object = { mediaId: 'm1', url: 'https://x/y.jpg' }) => {
     const calls: { url: string; body: unknown }[] = [];
     vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
       calls.push({ url, body: init?.body });
       if (url.endsWith('/files')) return new Response(JSON.stringify({ files: [file('densidades.pdf')], drive_url: null }), { status: 200 });
       if (url.endsWith('/reports/forms')) return new Response(JSON.stringify(outcome({ outcome: 'form', response: { responseType: 'form', form: { id: 'subir_al_drive', title: 'x', schema: { type: 'object', properties: {} } } } })), { status: 200 });
       if (url.endsWith('/commands/c1/form')) return new Response(JSON.stringify(outcome({ outcome: 'ephemeral', response: { responseType: 'ephemeral', text: 'Ya', upload: ticket } })), { status: 200 });
-      return new Response(JSON.stringify({ mediaId: 'm1', url: 'https://x/y.jpg' }), upload);
+      return new Response(JSON.stringify(stored), upload);
     }));
     render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" onBack={() => undefined} />);
     return calls;
@@ -88,6 +88,16 @@ describe('sending a file to the service Drive (José 06/11)', () => {
     // Assert
     expect(await screen.findByText('El archivo pesa demasiado.')).toBeInTheDocument();
     expect(calls.filter((call) => call.url.endsWith('/files'))).toHaveLength(1);
+  });
+
+  it('any other refusal is told in Portal’s words', async () => {
+    // Arrange
+    open({ status: 404 }, { message: 'Ese servicio ya no existe.' });
+    await screen.findByTestId('subir-al-drive');
+    // Act
+    fireEvent.change(screen.getByTestId('archivo-para-drive'), { target: { files: [picked] } });
+    // Assert
+    expect(await screen.findByText('Ese servicio ya no existe.')).toBeInTheDocument();
   });
 
   it('a file that is not a photo or a video stays here', async () => {

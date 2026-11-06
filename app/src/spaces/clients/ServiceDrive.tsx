@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BackHandler, Linking, Pressable, Text, TextInput, View } from 'react-native';
 import { Camera, ChevronLeft, ChevronRight, Cloud, ExternalLink, Folder, Image as ImageIcon, Search, Video } from 'lucide-react-native';
 import { FileThumb } from './FileThumb';
-import { DRIVE_UPLOADING, driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService } from '@lilachat/shared';
+import { driveFileLine, driveUploadingLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
 import { useDriveUpload } from './useDriveUpload';
@@ -117,7 +117,7 @@ function DriveUploadBar({ upload }: { upload: ReturnType<typeof useDriveUpload> 
         <UploadButton testID="drive-grabar-video" label="Video" icon={<Video size={17} color={colors.primary} />} disabled={upload.sending} onPress={upload.recordVideo} />
         <UploadButton testID="drive-galeria" label="Galería" icon={<ImageIcon size={17} color={colors.primary} />} disabled={upload.sending} onPress={upload.pickFromGallery} />
       </View>
-      {upload.sending ? <Text testID="drive-subiendo" className="text-center text-[13px] text-on-surface-variant">{DRIVE_UPLOADING}</Text> : null}
+      {upload.sending ? <Text testID="drive-subiendo" className="text-center text-[13px] text-on-surface-variant">{driveUploadingLine(upload.progress)}</Text> : null}
       {upload.message ? <Text testID="drive-aviso" className={upload.failed ? 'text-center text-[13px] text-error' : 'text-center text-[13px] text-on-surface-variant'}>{upload.message}</Text> : null}
     </View>
   );

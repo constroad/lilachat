@@ -15413,5 +15413,9 @@ Sin verificar: la cuenta real. No se leyó la base; se dedujo del código y de l
 - Medido el 06/11 desde la Mac: 6 MB tardaron 11 s, sin rechazo por tamaño de la
   plataforma. Un video grande en campo puede tardar minutos y no sigue en segundo
   plano: si la app se cierra, la subida falla y se reintenta a mano.
-- Sin verificar con un archivo real hasta aprobar `subir_al_drive`.
+- En la app el archivo sube por `subirPorXhr`, como toda subida: `fetch` no puede
+  enviar un archivo por su `uri` y falla como si no hubiera señal. Las pruebas no lo
+  ven: corren sin el `fetch` de Expo. Solo lo detecta el E2E en el emulador.
+- En la web, `connect-src` permite `https://constroad.com`. Sin eso el navegador
+  corta la subida antes de salir.
 

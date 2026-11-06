@@ -50,6 +50,12 @@ describe('cabecerasDeSeguridad', () => {
     expect(connect).not.toMatch(/ https:( |$)/);
   });
 
+  it('the web sends a file to the Drive at Portal itself (José 06/11: the browser stopped it before it left)', () => {
+    const connect = politicaDeContenido('lilachat.constroad.com').split('; ').find((rule) => rule.startsWith('connect-src'));
+
+    expect(connect).toMatch(/ https:\/\/constroad\.com( |$)/);
+  });
+
   it('un Host raro no se cuela en la política', () => {
     expect(politicaDeContenido('evil.com; script-src *')).not.toContain('script-src *');
   });

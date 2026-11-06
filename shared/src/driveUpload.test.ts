@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DRIVE_UPLOAD_FAILED, driveFileRefusal, driveUploadOf, driveUploadRequest, uploadToDrive, type DriveUpload, type DriveUploadDeps } from './driveUpload';
+import { DRIVE_UPLOAD_FAILED, driveFileRefusal, driveUploadingLine, driveUploadOf, driveUploadRequest, uploadToDrive, type DriveUpload, type DriveUploadDeps } from './driveUpload';
 import { FORMS_LEVEL } from './appForms';
 import { validateCommandResponse } from './botCommands';
 
@@ -65,6 +65,13 @@ describe('driveFileRefusal', () => {
 
   it('what the phone does not know is left to Portal', () => {
     expect(driveFileRefusal(upload, { mime: 'video/mp4' })).toBeNull();
+  });
+});
+
+describe('driveUploadingLine', () => {
+  it('says how far it went, once it started', () => {
+    expect(driveUploadingLine(0)).toBe('Subiendo…');
+    expect(driveUploadingLine(0.4)).toBe('Subiendo… 40 %');
   });
 });
 
@@ -165,6 +172,16 @@ describe('uploadToDrive', () => {
     expect(await failing(409)).toEqual({ ok: false, message: 'Ese archivo ya se está subiendo.' });
     expect(await failing(500)).toEqual({ ok: false, message: DRIVE_UPLOAD_FAILED });
     expect(await failing()).toEqual({ ok: false, message: DRIVE_UPLOAD_FAILED });
+  });
+
+  it('any other refusal is told in Portal\'s words', async () => {
+    const deps = depsWith(async () => ({ status: 404, message: 'Ese servicio ya no existe.' }));
+    expect(await uploadToDrive(deps, file, 'key-1')).toEqual({ ok: false, message: 'Ese servicio ya no existe.' });
+  });
+
+  it('what stopped the phone from sending is told too', async () => {
+    const deps = depsWith(async () => ({ message: 'La subida tardó demasiado. Inténtalo de nuevo.' }));
+    expect(await uploadToDrive(deps, file, 'key-1')).toEqual({ ok: false, message: 'La subida tardó demasiado. Inténtalo de nuevo.' });
   });
 
   it('with no signal to open the ticket it fails the same way', async () => {

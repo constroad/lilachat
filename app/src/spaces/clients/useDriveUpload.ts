@@ -5,28 +5,33 @@ import { DRIVE_UPLOAD_DONE, DRIVE_VIDEO_SECONDS, driveUploadRequest, noticeOf, u
 import { submitAppForm } from '../../chat/commands/commandsApi';
 import { shrinkPhotoFile } from '../../chat/shrinkPhoto';
 import { getSocket } from '../../chat/socketClient';
+import { subirPorXhr } from '../../chat/subidaXhr';
 import { openReportForm } from './reports/reportsApi';
 import type { ServiceAskTarget } from './useServiceAsk';
 
 type DriveFile = { uri: string; name: string; mime: string };
-type UploadState = { sending: boolean; message: string; failed: boolean };
+type UploadState = { sending: boolean; progress: number; message: string; failed: boolean };
 type UploadTarget = { target: ServiceAskTarget; chatId: string; serviceId: string; onDone: () => void };
 
-const IDLE: UploadState = { sending: false, message: '', failed: false };
+const IDLE: UploadState = { sending: false, progress: 0, message: '', failed: false };
+/** A 60-second video on a field connection: 6 MB took 11 s from an office (06/11). */
+const UPLOAD_TIMEOUT_MS = 10 * 60_000;
 const CAMERA_DENIED = 'Lilachat necesita permiso para usar la cámara.';
 const MS_PER_SECOND = 1000;
 
-/** Straight to Portal: the file never goes through Lilachat, and no session travels with it. */
-async function sendToDrive(upload: DriveUpload, file: DriveFile, clientUploadId: string): Promise<{ status?: number }> {
-  const body = new FormData();
-  Object.entries(upload.fields).forEach(([name, value]) => body.append(name, value));
-  body.append('clientUploadId', clientUploadId);
-  body.append(upload.fileField, { uri: file.uri, name: file.name, type: file.mime } as unknown as Blob);
-  try {
-    return { status: (await fetch(upload.url, { method: 'POST', body })).status };
-  } catch {
-    return {};
-  }
+/**
+ * Straight to Portal: the file never goes through Lilachat, and no session travels with it.
+ * By XHR, as every upload of the app: `fetch` cannot send a file by its `uri` (`subidaXhr`).
+ */
+async function sendToDrive(upload: DriveUpload, file: DriveFile, clientUploadId: string, onProgress: (ratio: number) => void): Promise<{ status?: number; message?: string }> {
+  const form = new FormData();
+  Object.entries(upload.fields).forEach(([name, value]) => form.append(name, value));
+  form.append('clientUploadId', clientUploadId);
+  form.append(upload.fileField, { uri: file.uri, name: file.name, type: file.mime } as unknown as Blob);
+  const reply = await subirPorXhr({ url: upload.url, form, timeoutMs: UPLOAD_TIMEOUT_MS, onProgress });
+  if (reply.tipo === 'fallo') return { message: reply.motivo };
+  const { message } = reply.payload;
+  return { status: reply.status, ...(typeof message === 'string' ? { message } : {}) };
 }
 
 /** A photo leaves at Portal's size; a video goes as it is, with its length for the ticket's limit. */
@@ -39,11 +44,11 @@ async function prepared(asset: ImagePicker.ImagePickerAsset): Promise<{ source: 
   return { source: { uri: photo.uri, name: photo.fileName, mime: photo.mimeType }, facts: { mime: photo.mimeType, sizeBytes: photo.sizeBytes } };
 }
 
-const depsOf = ({ target, chatId, serviceId }: UploadTarget): DriveUploadDeps<DriveFile> => ({
+const depsOf = ({ target, chatId, serviceId }: UploadTarget, onProgress: (ratio: number) => void): DriveUploadDeps<DriveFile> => ({
   open: () => openReportForm(target, serviceId, driveUploadRequest()),
   submit: (commandId) => submitAppForm(target.jwt, { chatId }, commandId, {}),
   notice: (commandId) => noticeOf(getSocket(), commandId),
-  send: sendToDrive,
+  send: (upload, file, clientUploadId) => sendToDrive(upload, file, clientUploadId, onProgress),
 });
 
 /** A photo or a video to the service's Drive (José, 06/11). The list is asked again when it landed. */
@@ -53,13 +58,14 @@ export function useDriveUpload(upload: UploadTarget) {
     const asset = picked.canceled ? null : picked.assets[0];
     if (!asset) return;
     setState({ ...IDLE, sending: true });
-    const result = await uploadToDrive(depsOf(upload), await prepared(asset), Crypto.randomUUID());
-    setState(result.ok ? { ...IDLE, message: DRIVE_UPLOAD_DONE } : { sending: false, message: result.message, failed: true });
+    const showProgress = (progress: number) => setState((current) => ({ ...current, progress }));
+    const result = await uploadToDrive(depsOf(upload, showProgress), await prepared(asset), Crypto.randomUUID());
+    setState(result.ok ? { ...IDLE, message: DRIVE_UPLOAD_DONE } : { ...IDLE, message: result.message, failed: true });
     if (result.ok) upload.onDone();
   };
   const fromCamera = async (mediaTypes: ImagePicker.MediaType[]) => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
-    if (!permission.granted) return setState({ sending: false, message: CAMERA_DENIED, failed: true });
+    if (!permission.granted) return setState({ ...IDLE, message: CAMERA_DENIED, failed: true });
     await send(await ImagePicker.launchCameraAsync({ mediaTypes, quality: 1, videoMaxDuration: DRIVE_VIDEO_SECONDS }));
   };
   return {

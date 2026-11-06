@@ -4,6 +4,14 @@ import { formatClock, formatDayLabel } from '@lilachat/shared';
 import type { MensajeEnPantalla } from './types';
 import { openMiniPlayer } from '../media/miniPlayer';
 
+function ViewerAction({ action }: { action: { label: string; onPress: () => void } }) {
+  return (
+    <button type="button" data-testid="visor-accion" onClick={action.onPress} className="mx-auto mb-6 flex h-12 items-center rounded-full bg-white px-6 text-[15px] font-semibold text-black hover:bg-white/90">
+      {action.label}
+    </button>
+  );
+}
+
 /**
  * Las fotos del chat a pantalla completa (W2), como WhatsApp Web: flechas (y
  * las del teclado) para pasar a la anterior o la siguiente, Escape para salir y
@@ -83,11 +91,7 @@ export function PhotoViewer(props: { fotos: MensajeEnPantalla[]; indice: number;
         ) : null}
       </div>
       {foto.body ? <p className="px-6 pb-6 text-center text-sm text-white">{foto.body}</p> : null}
-      {props.action ? (
-        <button type="button" data-testid="visor-accion" onClick={props.action.onPress} className="mx-auto mb-6 flex h-12 items-center rounded-full bg-white px-6 text-[15px] font-semibold text-black hover:bg-white/90">
-          {props.action.label}
-        </button>
-      ) : null}
+      {props.action ? <ViewerAction action={props.action} /> : null}
     </div>
   );
 }

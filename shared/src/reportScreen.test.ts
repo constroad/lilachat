@@ -520,7 +520,7 @@ describe('the GPS never holds the photo (José 06/11: «pasan segundos y recién
 });
 
 describe('taking a sent photo out of a draft (José 06/11)', () => {
-  const fotosOf = (state: ReportScreenState) => tramosOf(state).items[0]!.sections.find((one) => one.id === 'fotos')!.values.fotos as unknown[];
+  const photosOf = (state: ReportScreenState) => tramosOf(state).items[0]!.sections.find((one) => one.id === 'fotos')!.values.fotos as unknown[];
 
   it('Portal hears it at once and the document comes back without the photo', async () => {
     // Arrange
@@ -532,7 +532,7 @@ describe('taking a sent photo out of a draft (José 06/11)', () => {
     // Assert
     expect(removal).toEqual({ ok: true });
     expect(test.portal.removed).toEqual(['r1:f1']);
-    expect(fotosOf(test.screen.snapshot())).toHaveLength(1);
+    expect(photosOf(test.screen.snapshot())).toHaveLength(1);
     expect(test.screen.snapshot().changed).toBe(true);
     test.stop();
   });
@@ -546,7 +546,7 @@ describe('taking a sent photo out of a draft (José 06/11)', () => {
     const removal = await test.screen.removePhoto('f0');
     // Assert
     expect(removal).toEqual({ ok: false, message: PHOTO_REMOVAL_FAILED });
-    expect(fotosOf(test.screen.snapshot())).toHaveLength(1);
+    expect(photosOf(test.screen.snapshot())).toHaveLength(1);
     expect(test.screen.snapshot().saves).toEqual([]);
     test.stop();
   });

@@ -24,6 +24,7 @@ export function AgendaOverlay({
   onEditarRecordatorio,
   chatNameOf,
   onOpenTask,
+  pestanaInicial = 'pendientes',
 }: {
   jwt: string;
   myUserId: string;
@@ -35,8 +36,10 @@ export function AgendaOverlay({
   /** «Mis tareas» (backlog 30): the chat's name as the list shows it, and opening it on the checklist. */
   chatNameOf: (chatId: string) => string;
   onOpenTask: (chatId: string, seq?: number) => void;
+  /** The phone's bar opens «Encuestas» straight away. */
+  pestanaInicial?: Pestana;
 }) {
-  const [pestana, setPestana] = useState<Pestana>('pendientes');
+  const [pestana, setPestana] = useState<Pestana>(pestanaInicial);
   const crear = [
     { id: 'btn-nuevo-evento', etiqueta: 'Evento', Icono: CalendarPlus, accion: onCreateEvent },
     { id: 'btn-nueva-encuesta', etiqueta: 'Encuesta', Icono: ListPlus, accion: onCreatePoll },

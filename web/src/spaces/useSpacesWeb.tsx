@@ -285,8 +285,12 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
     openInvite: () => setDialog('invite'),
     openWorkspace: (link: WorkspaceLink) => setDialog(link),
     openNewDirect: () => setDialog('newDirect'),
+    /** The space's people (the phone's «Directorio» tab). */
+    openDirectory: () => setDialog('directory'),
     activity,
     openActivity: setActivityTab,
+    /** What covers the list right now, for the phone's bar to light its tab. */
+    overlay: dialog === 'directory' ? 'directory' : activityTab,
     apps,
     layer: (
       <>

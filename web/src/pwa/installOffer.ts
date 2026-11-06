@@ -2,11 +2,12 @@ import { isStandalone, needsIosInstall } from './iosInstall';
 
 /**
  * The strip that offers the app inside the chat lists (José 05/11, from Portal's banner): an
- * iPhone installs the web, an Android phone gets the APK, and a computer keeps its row in Ajustes.
+ * iPhone installs the web; an Android phone installs the web too when the browser offers it
+ * (José 06/11: «aún no me propone instalar la PWA»), or gets the APK; a computer keeps its row in Ajustes.
  */
 type Device = Pick<Navigator, 'userAgent' | 'platform' | 'maxTouchPoints'>;
 
-export type InstallOffer = 'iphone' | 'android';
+export type InstallOffer = 'iphone' | 'pwa' | 'android';
 export type OfferDismissal = { dismissals: number; snoozeUntil: number | null };
 
 const DISMISSAL_KEY = 'lilachat.install-offer';
@@ -18,11 +19,12 @@ const FRESH: OfferDismissal = { dismissals: 0, snoozeUntil: null };
 
 export const isAndroid = (device: Device = navigator): boolean => /Android/.test(device.userAgent);
 
-/** `hasAndroidApp` null: the server has not answered, and a nag is worse than a missed offer. */
-export function installOfferFor(device: Device, hasAndroidApp: boolean | null): InstallOffer | null {
+/** `canInstall`: the browser's own prompt is at hand. `hasAndroidApp` null: the server has not answered, and a nag is worse than a missed offer. */
+export function installOfferFor(device: Device, hasAndroidApp: boolean | null, canInstall = false): InstallOffer | null {
   if (needsIosInstall(device)) return 'iphone';
-  const browsing = !isStandalone(device as { standalone?: boolean });
-  return browsing && isAndroid(device) && hasAndroidApp === false ? 'android' : null;
+  if (isStandalone(device as { standalone?: boolean }) || !isAndroid(device)) return null;
+  if (canInstall) return 'pwa';
+  return hasAndroidApp === false ? 'android' : null;
 }
 
 export function readDismissal(): OfferDismissal {

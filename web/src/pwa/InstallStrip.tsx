@@ -4,10 +4,12 @@ import { ENLACE_DE_DESCARGA } from '@lilachat/shared';
 import { api } from '../api';
 import { Overlay } from '../ui/Overlay';
 import { IphoneInstallSteps } from './IphoneInstallGuide';
+import { useInstallPrompt } from './installPrompt';
 import { canOffer, installOfferFor, isAndroid, nextDismissal, readDismissal, saveDismissal, type InstallOffer } from './installOffer';
 
 const WORDS: Record<InstallOffer, { title: string; hint: string; action: string }> = {
   iphone: { title: 'Instala Lilachat en tu iPhone', hint: 'Te llegan los avisos. Al abrirla, entras de nuevo.', action: 'Ver cómo' },
+  pwa: { title: 'Instala Lilachat en este teléfono', hint: 'Se abre como app y te llegan los avisos.', action: 'Instalar' },
   android: { title: 'Descarga la app de Lilachat', hint: 'Las llamadas y los avisos funcionan mejor.', action: 'Descargar' },
 };
 
@@ -28,9 +30,10 @@ function useHasAndroidApp(jwt: string): boolean | null {
 /** Part of the list, not floating over it (Portal's banner hid the viewer's close button, 20/10/2026). */
 export function InstallStrip({ jwt }: { jwt: string }) {
   const hasAndroidApp = useHasAndroidApp(jwt);
+  const { canInstall, install } = useInstallPrompt();
   const [dismissal, setDismissal] = useState(readDismissal);
   const [steps, setSteps] = useState(false);
-  const offer = installOfferFor(navigator, hasAndroidApp);
+  const offer = installOfferFor(navigator, hasAndroidApp, canInstall);
   if (!offer || !canOffer(dismissal, Date.now())) return null;
   const dismiss = () => {
     const next = nextDismissal(dismissal, Date.now());
@@ -51,6 +54,8 @@ export function InstallStrip({ jwt }: { jwt: string }) {
       <div className="flex justify-end pb-2 pr-2">
         {offer === 'iphone' ? (
           <button type="button" data-testid="btn-franja-instalar" onClick={() => setSteps(true)} className={ACTION}>{words.action}</button>
+        ) : offer === 'pwa' ? (
+          <button type="button" data-testid="btn-franja-instalar" onClick={() => void install().then(dismiss)} className={ACTION}>{words.action}</button>
         ) : (
           <a data-testid="btn-franja-instalar" href={ENLACE_DE_DESCARGA} target="_blank" rel="noreferrer" onClick={dismiss} className={ACTION}>{words.action}</a>
         )}

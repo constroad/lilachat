@@ -28,6 +28,14 @@ describe('installOfferFor', () => {
     expect(installOfferFor(ANDROID, true)).toBeNull();
   });
 
+  it('offers the installed web on Android when the browser can prompt (José 06/11), whatever the account has', () => {
+    expect(installOfferFor(ANDROID, true, true)).toBe('pwa');
+    expect(installOfferFor(ANDROID, null, true)).toBe('pwa');
+    expect(installOfferFor(ANDROID, false, true)).toBe('pwa');
+    expect(installOfferFor(ANDROID, false, false)).toBe('android');
+    expect(installOfferFor(MAC, null, true)).toBeNull();
+  });
+
   it('stays quiet on Android until the server answers: a nag is worse than a missed offer', () => {
     expect(installOfferFor(ANDROID, null)).toBeNull();
   });

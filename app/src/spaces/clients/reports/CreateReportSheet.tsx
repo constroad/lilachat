@@ -1,4 +1,4 @@
-import { Linking, Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronRight, ClipboardCheck, Droplets, FileSignature, Hammer, Layers, Square, Truck, UserCheck, type LucideIcon } from 'lucide-react-native';
 import { REPORT_TYPE_OPTIONS, type ReportTypeOption } from '@lilachat/shared';
 import { Sheet } from '../../../ui/Sheet';
@@ -37,12 +37,13 @@ export function CreateReportSheet(props: { visible: boolean; portalUrl?: string;
       <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">Nuevo informe</Text>
       <Text className="mt-1 text-[22px] font-bold text-on-surface">¿Qué informe vas a hacer?</Text>
       <Text className="mb-3 mt-1 text-[14px] text-on-surface-variant">Se guarda como borrador mientras lo llenas</Text>
-      <View className="gap-2">
+      {/* Eight rows do not fit a phone under the sheet's cap: they scroll, so the last ones and «Cancelar» stay above the system bar (José, 06/11). */}
+      <ScrollView testID="tipos-de-informe" style={{ flexShrink: 1 }} contentContainerStyle={{ gap: 8, paddingBottom: 4 }} showsVerticalScrollIndicator={false}>
         {REPORT_TYPE_OPTIONS.map((option) => <TypeRow key={option.code} option={option} portalUrl={props.portalUrl} onPick={props.onPick} />)}
-      </View>
-      <Pressable testID="cancelar-crear-informe" onPress={props.onClose} className="mt-3 min-h-[52px] items-center justify-center rounded-2xl border border-outline/20 bg-surface">
-        <Text className="text-[16px] font-semibold text-on-surface">Cancelar</Text>
-      </Pressable>
+        <Pressable testID="cancelar-crear-informe" onPress={props.onClose} className="mt-1 min-h-[52px] items-center justify-center rounded-2xl border border-outline/20 bg-surface">
+          <Text className="text-[16px] font-semibold text-on-surface">Cancelar</Text>
+        </Pressable>
+      </ScrollView>
     </Sheet>
   );
 }

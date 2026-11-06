@@ -19,3 +19,5 @@ design/stitch/*
 .stitch-work/
 .claude/rn-smoke-ok
 .claude/last-publish
+.claude/pw-feature
+.claude/worktrees/

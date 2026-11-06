@@ -1,7 +1,7 @@
 import { useReportQueueStart } from './spaces/clients/reports/reportQueueStore';
 import { CreateChecklistOverlay } from './agenda/CreateChecklistOverlay';
 import { WEB_BUILD, webVersionLabel } from './ui/webVersion';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ChatRail } from './chat/ChatRail';
 import { ListResizeHandle } from './chat/ListResizeHandle';
 import { readThemeChoice, saveThemeChoice, type ThemeChoice } from './ui/tema';
@@ -38,6 +38,8 @@ import { WhatsNewDialog } from './ui/WhatsNewDialog';
 import { chatNameWithAgenda } from './contacts/phoneAgenda';
 import { useAgendaRelay } from './contacts/useAgendaRelay';
 import { AppRail } from './rail/AppRail';
+import { MobileNav } from './rail/MobileNav';
+import { activeMobileTab, type MobileTab } from './rail/mobileTabs';
 import { MediaDialog } from './media/MediaDialog';
 import { SpaceChatList } from './spaces/SpaceChatList';
 import { useSuperadmin } from './admin/adminApi';
@@ -55,7 +57,8 @@ const DURACION_DEL_AVISO_MS = 3000;
 type Creando =
   | null
   | { tipo: 'chat'; kind: 'direct' | 'group' }
-  | { tipo: 'borrador' | 'agenda' | 'destacados' | 'medios' | 'llamadas' }
+  | { tipo: 'borrador' | 'destacados' | 'medios' | 'llamadas' }
+  | { tipo: 'agenda'; pestana?: 'encuestas' }
   | { tipo: 'evento'; chat: ChatDestino | null }
   | { tipo: 'encuesta'; chat: ChatDestino | null }
   | { tipo: 'checklist'; chatId: string }
@@ -229,6 +232,15 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
   const selected = chats.find((chat) => chat.id === selectedId) ?? (enEspacio ? withPresence(enEspacio) : null);
   const panel = resolveVisiblePanel({ width, selectedChatId: selectedId });
   const listLayout = useListLayout(width);
+  /** The phone's bar (the APK's tabs, José 06/11): each tab opens what the rail opened, Chats closes it. */
+  const pickMobileTab = (tab: MobileTab) => {
+    setAviso(tab === 'ajustes' ? 'ajustes' : '');
+    if (tab === 'chats' || tab === 'ajustes') return setCreando(null);
+    if (tab === 'agenda') return setCreando({ tipo: 'agenda' });
+    if (tab === 'encuestas') return setCreando({ tipo: 'agenda', pestana: 'encuestas' });
+    setCreando(null);
+    return tab === 'directory' ? espacios.openDirectory() : espacios.openActivity('mentions');
+  };
   const alCrear = (chatId: string) => {
     setCreando(null);
     abrirChat(chatId);
@@ -240,7 +252,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
     <div className="relative flex h-full">
       <WebNotices sinConexion={sinConexion} />
       <WhatsNewDialog />
-      {panel !== 'conversation' ? (
+      {panel === 'both' ? (
         <AppRail
           spaces={espacios.spaces}
           currentSpaceId={espacios.current?.id ?? null}
@@ -262,7 +274,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
       {panel === 'conversation' ? null : panel === 'both' && listLayout.collapsed ? (
         <ChatRail chats={espacios.current ? (spaceChatsShown ?? []) : chats} selectedChatId={selectedId} onSelect={(chat) => abrirChat(chat.id)} onExpand={() => listLayout.setCollapsed(false)} />
       ) : (
-        <>
+        <ListColumn phone={panel === 'list'} nav={panel === 'list' ? <MobileNav inSpace={Boolean(espacios.current)} active={activeMobileTab({ settingsOpen: aviso === 'ajustes', overlay: creando?.tipo === 'agenda' ? (creando.pestana ?? 'agenda') : espacios.overlay })} counts={{ mentions: espacios.activity?.mentions ?? 0 }} onPick={pickMobileTab} /> : null}>
         {espacios.current ? (
           <SpaceChatList
             space={espacios.current}
@@ -306,7 +318,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
         />
         )}
         {panel === 'both' ? <ListResizeHandle width={listLayout.width} onResize={listLayout.setWidth} onReset={listLayout.reset} /> : null}
-        </>
+        </ListColumn>
       )}
 
       {panel === 'list' ? null : selected ? (
@@ -368,6 +380,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
           onClose={() => setCreando(null)}
           onCreateEvent={() => setCreando({ tipo: 'evento', chat: null })}
           onCreatePoll={() => setCreando({ tipo: 'encuesta', chat: null })}
+          pestanaInicial={creando.pestana}
           onCreateReminder={() => setCreando({ tipo: 'recordatorio', chat: null })}
           onEditarRecordatorio={(recordatorio) =>
             setCreando({ tipo: 'recordatorio', chat: recordatorio.chatId ? { id: recordatorio.chatId, name: recordatorio.chat?.name ?? recordatorio.chat?.phone, kind: recordatorio.chat?.kind ?? 'group' } : null, editando: recordatorio })
@@ -591,4 +604,15 @@ function useListLayout(windowWidth: number) {
   }, []);
   const reset = useCallback(() => setWidth(LIST_DEFAULT_WIDTH), [setWidth]);
   return { width: clampListWidth(width, windowWidth), collapsed, setWidth, setCollapsed, reset };
+}
+
+/** On a phone the list takes the column and the bar sits under it; on a computer the list keeps its place in the row. */
+function ListColumn({ phone, nav, children }: { phone: boolean; nav: ReactNode; children: ReactNode }) {
+  if (!phone) return <>{children}</>;
+  return (
+    <div className="flex min-w-0 flex-1 flex-col">
+      <div className="min-h-0 flex-1">{children}</div>
+      {nav}
+    </div>
+  );
 }

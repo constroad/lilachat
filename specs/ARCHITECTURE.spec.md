@@ -15273,3 +15273,43 @@ igual. Ahora los tres leen el cuerpo con `readJson`:
 Un JSON no llega a medias por gusto: si una pantalla lee una lista, esa lista se
 valida al recibirla, no al dibujarla.
 
+
+## La web en el teléfono se parece al APK, y la hoja de tipos de informe hace scroll (José 06/11/2026)
+
+José, desde su teléfono: «el riel de la izquierda no debería estar allí, me
+quita espacio; debería parecerse más a la versión de la APK en modo móvil»,
+«en la web aún no me propone instalar la PWA», y en la APK «no puedo
+seleccionar imprimación porque por encima están los botones del footer de mi
+teléfono».
+
+**Web en un teléfono (`panel === 'list'`, menos de 900 px).**
+- El riel (`AppRail`) solo se dibuja con dos paneles. En una columna la lista
+  ocupa todo el ancho y debajo va `MobileNav` (`web/src/rail/MobileNav.tsx`,
+  motor `mobileTabs.ts`): las pestañas del APK (`app/src/ui/bottomTabs.ts`).
+  Personal: Chats · Pendientes · Encuestas · Ajustes. Espacio: Chats ·
+  Directorio · Menciones · Ajustes. El contador de menciones topa en «99+».
+- Cada pestaña abre lo que abría el riel: Pendientes y Encuestas abren
+  `AgendaOverlay` (prop nueva `pestanaInicial`), Directorio el diálogo del
+  espacio (`openDirectory`), Menciones la actividad y Ajustes el panel.
+  `activeMobileTab` ilumina la pestaña según lo abierto (`useSpacesWeb`
+  expone `overlay`). El cambio de espacio sigue en la cabecera de la lista;
+  dentro de una conversación no hay barra.
+- Instalar: en Android con Chrome la tira (`InstallStrip`) ofrece «Instalar»
+  con el `beforeinstallprompt` que guarda `catchInstallPrompt`
+  (`installOfferFor(device, hasAndroidApp, canInstall)` → `'pwa'`). Antes solo
+  sugería el APK cuando LilaStore no lo tenía y nunca la PWA. iPhone sigue
+  con la guía «Compartir → Añadir a inicio».
+
+**APK: la hoja «Nuevo informe» (`CreateReportSheet`).** Ocho tipos más
+«Cancelar» no entraban bajo el tope del 88 % de la hoja y las últimas filas
+quedaban debajo de la barra de navegación del sistema: «Control de
+imprimación» no se podía tocar. Las filas van en un `ScrollView`
+(`testID="tipos-de-informe"`) con `flexShrink: 1`.
+
+**Sin verificar todavía (se hace al publicar):** la barra a 390 px en
+lilachat.constroad.com; la tira «Instalar» en el Chrome de Android (el
+navegador no dispara `beforeinstallprompt` si la PWA ya está instalada, y
+nunca en iOS); la hoja con scroll en el emulador.
+
+Tests: `mobileTabs.test.ts`, `MobileNav.test.tsx`, `installOffer.test.ts`,
+`InstallStrip.test.tsx` (caso pwa).

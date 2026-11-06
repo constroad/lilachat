@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ENLACE_DE_DESCARGA } from '@lilachat/shared';
 import { InstallStrip } from './InstallStrip';
+import { catchInstallPrompt } from './installPrompt';
 
 const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Version/18.0 Mobile/15E148 Safari/604.1';
 const ANDROID = 'Mozilla/5.0 (Linux; Android 14; Pixel 6) Chrome/130.0 Mobile Safari/537.36';
@@ -74,6 +75,21 @@ describe('InstallStrip', () => {
     expect(link).toHaveAttribute('href', ENLACE_DE_DESCARGA);
     await userEvent.click(link);
     expect(screen.queryByTestId('franja-instalar')).not.toBeInTheDocument();
+  });
+
+  it('offers an Android phone the installed web when Chrome can prompt (José 06/11), even with the APK at hand', async () => {
+    browsingOn(ANDROID);
+    serverSays({ hasAndroidApp: true });
+    catchInstallPrompt();
+    const prompt = vi.fn(async () => undefined);
+    const event = Object.assign(new Event('beforeinstallprompt'), { prompt, userChoice: Promise.resolve({ outcome: 'accepted' as const }) });
+    window.dispatchEvent(event);
+    render(<InstallStrip jwt="jwt" />);
+
+    expect(await screen.findByTestId('franja-instalar')).toHaveTextContent('Instala Lilachat en este teléfono');
+    await userEvent.click(screen.getByTestId('btn-franja-instalar'));
+    await waitFor(() => expect(prompt).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByTestId('franja-instalar')).toBeNull());
   });
 
   it('says nothing to an Android account that already has the app', async () => {

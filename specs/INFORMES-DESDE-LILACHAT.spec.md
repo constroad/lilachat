@@ -423,12 +423,25 @@ E2E del 06/11 (Test, Consorcio Vial del Pacífico, servicio QA-CTLPIS
 - `RepeatSection.results`: Portal manda en la sección de unidades Carros,
   Volumen y Terminadas; el analizador los lee y el hub y la lista de unidades
   los muestran (`resultados-unidades`).
-- Sin verificar: «Llegó» y el formulario de datos, las cuatro fotos con GPS
-  (tiempo de la primera foto contra el tope de 7 s de agentes), publicar, el
-  PDF con cuatro fotos por fila y el WhatsApp por foto; lila-app
-  (`escantillonCm`, resumen) sigue esperando el OK de José en la sesión lila-2.
-  El índice único por pedido de Portal cubre solo informes nuevos: dos pedidos
-  de Globofast ya tienen dos controles.
+- **Corrida completa en la web (06/11, 11:00–11:21, tras el arreglo de
+  Agentes y el de `seccion`):** unidades en dos grupos con totales; «Llegó» en
+  QAP-102 → «Datos» guardado (POST 0,68 s, unidad refrescada en 3,0 s, «Llegada
+  10:54 · 148° · 5.2 cm»); las cuatro fotos con posición fija de Lima: subida
+  a Portal 2,5 / 2,2 / 1,4 / 3,1 s (tope de agentes 7 s), la primera visible
+  en la unidad 6,0 s después de «Enviar»; la unidad pasó a «Terminó 11:20» y
+  los totales a «Terminadas 1 de 1»; checklist con «Marcar todo» en 0,56 s;
+  publicar 2,8 s; PDF (CTL-PIS 1.2.1, 4 folios) en 1 s: panel fotográfico con
+  las cuatro fotos en una fila, con hora y sello de ubicación; registro y
+  checklist correctos. La tarjeta del pedido en el canal pasó a «unidades
+  terminadas: 1 de 4» y «Salió 06:48 · Llegó 10:54 · Terminó 11:20». Se
+  publicó con aviso «3 despachos del pedido sin registrar».
+- Sin verificar: el WhatsApp por foto (lo confirma José en su teléfono); la
+  app en el emulador con GPS real y el bloqueo sin GPS (los AVD se borraron
+  al liberar disco; `lilafotos-qa` recreado, pendiente de código de ingreso y
+  de un segundo pedido QA porque el índice es por pedido); el OTA del commit
+  de totales (`25d6f96`) espera ese smoke; lila-app (`escantillonCm`,
+  resumen) sigue esperando el OK de José en la sesión lila-2. Hallazgo web:
+  al reabrir un formulario rechazado se pierden los números (tarea #218).
 
 ## 4. Lilachat
 
@@ -697,3 +710,18 @@ spec al día. Las herramientas nuevas las aprueba José en agentes al publicarse
   Datos QA: Portal borró el informe `6aedb421fca1f5d5db14e079`, con 0 informes
   y 0 archivos activos; la foto y el PDF quedaron en la papelera. La tarjeta
   `seq` 7 sigue en el canal para que José la borre.
+
+### E2E móvil de `CTL-PIS` (06/11, emulador, OTA `95367b48` y siguientes)
+
+Corrida en el espacio Test, segundo pedido QA (30 m³, QAP-103 y QAP-104).
+
+- **Sin GPS:** con la ubicación del teléfono apagada la foto se rechaza con «Sin GPS no hay foto. Enciende la ubicación del teléfono y vuelve a tomarla.». Con el GPS encendido pasa. Verificado.
+- **Casilla en blanco, defecto de Lilachat:** al tomar la foto, la casilla pasaba de punteada a llena y quedaba vacía, sin miniatura ni check, hasta reabrir la vista. El árbol de vistas sí traía la imagen y el check. Al montarse de nuevo se dibujaban bien. En Android, la vista recortada que pierde el borde punteado no volvía a pintar a sus hijos. La casilla ahora lleva `key` por estado y se remonta. No hay pruebas de componentes en la app: se verifica en el emulador.
+- **Tarjeta PEDIDO sin salida a las fotos (pedido de José, 12:07):** la tarjeta llegaba al canal y no llevaba a ningún lado. Ahora dice «Ver despachos y fotos». El botón va a Servicios, y `orderFocusOf` cruza el `seq` del mensaje con los registros del canal (`order.*`, `service_id`, `record_id`) para abrir la hoja de ese pedido. La hoja lista los despachos y cada despacho muestra `DISPATCH_PICTURES`, que es la evidencia de planta. No cambia Portal ni el contrato. Los registros se piden al abrir Servicios, así que el chat no suma llamadas.
+- **La tarjeta se reconoce por su `kicker` «PEDIDO».** Si agentes lo cambia, el botón desaparece sin error. Se decidió así para no agregar `clientRef` al mensaje, que obligaría a tocar el almacén local del teléfono.
+
+Reportado a Portal el 06/11, sin arreglo verificado todavía:
+
+- El PDF de `CTL-PIS` abre con el folio 1 ocupado solo por el encabezado.
+- El sello de la foto sale con coordenadas en vez de la dirección. `stampPlaceOf` da 2,5 s y `resolveReverseAddress` espera a los dos proveedores.
+

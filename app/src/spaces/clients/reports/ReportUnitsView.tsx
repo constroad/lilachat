@@ -21,7 +21,8 @@ function PhotoSlot({ slot, itemId, onOpen }: { slot: UnitSlot; itemId: string; o
   const Icon = iconOf(slot.section.photoKind);
   return (
     <Pressable testID={`foto-${itemId}-${slot.section.id}`} onPress={onOpen} accessibilityLabel={slot.section.title} className="items-center" style={{ width: SLOT }}>
-      <View className={`items-center justify-center overflow-hidden rounded-2xl ${slot.done ? 'bg-primary/10' : 'border-2 border-dashed border-primary/50 bg-surface-variant'}`} style={{ width: SLOT, height: SLOT }}>
+      {/* The key remounts the tile: on Android, dropping the dashed border from a live clipped view left its photo and check undrawn until the screen was reopened (E2E 06/11). */}
+      <View key={slot.done ? 'taken' : 'missing'} className={`items-center justify-center overflow-hidden rounded-2xl ${slot.done ? 'bg-primary/10' : 'border-2 border-dashed border-primary/50 bg-surface-variant'}`} style={{ width: SLOT, height: SLOT }}>
         {slot.photo ? <Image source={{ uri: slot.photo.thumbUrl }} style={{ width: SLOT, height: SLOT }} /> : <Icon size={28} color={colors.primary} />}
         {slot.done ? <View className="absolute right-1 top-1 rounded-full bg-surface"><CheckCircle2 size={18} color={colors.primary} /></View> : null}
         {slot.photo?.pending ? <View testID={`foto-pendiente-${slot.photo.id}`} className="absolute left-1 top-1 h-5 w-5 items-center justify-center rounded-full bg-black/60"><Clock size={12} color="white" /></View> : null}

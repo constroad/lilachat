@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Download, PictureInPicture2, Sticker, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, PictureInPicture2, Sticker, Trash2, X } from 'lucide-react';
 import { formatClock, formatDayLabel } from '@lilachat/shared';
 import type { MensajeEnPantalla } from './types';
 import { openMiniPlayer } from '../media/miniPlayer';
@@ -9,7 +9,7 @@ import { openMiniPlayer } from '../media/miniPlayer';
  * las del teclado) para pasar a la anterior o la siguiente, Escape para salir y
  * un botón para bajarla. Antes la foto se abría en otra pestaña.
  */
-export function PhotoViewer(props: { fotos: MensajeEnPantalla[]; indice: number; onCambiar: (indice: number) => void; onCerrar: () => void; /** A GIF of the chat becomes my animated sticker (pending 37); absent in a secret chat. */ onMakeSticker?: (foto: MensajeEnPantalla) => void; /** A form's option seen in the viewer: «Elegir esta lectura» (design h-03). */ action?: { label: string; onPress: () => void } }) {
+export function PhotoViewer(props: { fotos: MensajeEnPantalla[]; indice: number; onCambiar: (indice: number) => void; onCerrar: () => void; /** Takes the photo on screen out, where the opener allows it. */ onRemove?: () => void; /** A GIF of the chat becomes my animated sticker (pending 37); absent in a secret chat. */ onMakeSticker?: (foto: MensajeEnPantalla) => void; /** A form's option seen in the viewer: «Elegir esta lectura» (design h-03). */ action?: { label: string; onPress: () => void } }) {
   const { fotos, indice, onCambiar, onCerrar } = props;
   const foto = fotos[indice];
   const video = useRef<HTMLVideoElement>(null);
@@ -28,6 +28,11 @@ export function PhotoViewer(props: { fotos: MensajeEnPantalla[]; indice: number;
     <div data-testid="visor-fotos" role="dialog" aria-label="Foto" className="fixed inset-0 z-40 flex flex-col bg-black/95">
       <header className="flex items-center gap-2 px-4 py-3 text-white">
         <p className="min-w-0 flex-1 truncate text-sm">{`${formatDayLabel(foto.at)}, ${formatClock(foto.at)}`}</p>
+        {props.onRemove ? (
+          <button type="button" data-testid="visor-eliminar" aria-label="Eliminar" onClick={props.onRemove} className={boton}>
+            <Trash2 size={20} />
+          </button>
+        ) : null}
         {props.onMakeSticker && foto.media.mime === 'image/gif' ? (
           <button type="button" data-testid="visor-gif-a-sticker" onClick={() => props.onMakeSticker?.(foto)} className="flex h-11 items-center gap-2 rounded-full px-4 text-sm font-semibold text-white hover:bg-white/10">
             <Sticker size={18} />

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createReportQueue } from './reportQueue';
+import { createReportQueue, PHOTO_REMOVAL_FAILED } from './reportQueue';
 import { docOf, fakePortal, fakeVault, general, newTramo, NOW, ref, type Tramo } from './reportQueue.fixture';
 import type { DevicePlace } from './reportCreation';
 import { createReportScreen, NO_GPS_PHOTO, PHOTO_PLACE_WAIT_MS, REFRESH_RETRIES, REFRESH_RETRY_MS, type ReportScreenState } from './reportScreen';
@@ -518,3 +518,57 @@ describe('the GPS never holds the photo (José 06/11: «pasan segundos y recién
     test.stop();
   });
 });
+
+describe('taking a sent photo out of a draft (José 06/11)', () => {
+  const fotosOf = (state: ReportScreenState) => tramosOf(state).items[0]!.sections.find((one) => one.id === 'fotos')!.values.fotos as unknown[];
+
+  it('Portal hears it at once and the document comes back without the photo', async () => {
+    // Arrange
+    const test = screenWith({ id: 'r1', tramos: [{ id: 't1', photos: 2 }] });
+    await settled(test);
+    // Act
+    const removal = await test.screen.removePhoto('f1');
+    await settled(test);
+    // Assert
+    expect(removal).toEqual({ ok: true });
+    expect(test.portal.removed).toEqual(['r1:f1']);
+    expect(fotosOf(test.screen.snapshot())).toHaveLength(1);
+    expect(test.screen.snapshot().changed).toBe(true);
+    test.stop();
+  });
+
+  it('with no signal nothing moves, and the person is told', async () => {
+    // Arrange
+    const test = screenWith({ id: 'r1', tramos: [{ id: 't1', photos: 1 }] });
+    await settled(test);
+    test.portal.state.offline = true;
+    // Act
+    const removal = await test.screen.removePhoto('f0');
+    // Assert
+    expect(removal).toEqual({ ok: false, message: PHOTO_REMOVAL_FAILED });
+    expect(fotosOf(test.screen.snapshot())).toHaveLength(1);
+    expect(test.screen.snapshot().saves).toEqual([]);
+    test.stop();
+  });
+
+  it('what Portal refuses reaches the person in its words', async () => {
+    // Arrange
+    const test = screenWith({ id: 'r1', tramos: [{ id: 't1', photos: 1 }] });
+    await settled(test);
+    test.portal.state.refuse = { _: 'El informe ya se publicó: conserva sus fotos.' };
+    // Act and assert
+    expect(await test.screen.removePhoto('f0')).toEqual({ ok: false, message: 'El informe ya se publicó: conserva sus fotos.' });
+    test.stop();
+  });
+
+  it('a report Portal has not made yet has nothing to take out', async () => {
+    // Arrange
+    const test = screenWith({ id: null, tramos: [] });
+    await settled(test);
+    // Act and assert
+    expect(await test.screen.removePhoto('f0')).toEqual({ ok: false, message: PHOTO_REMOVAL_FAILED });
+    expect(test.portal.removed).toEqual([]);
+    test.stop();
+  });
+});
+

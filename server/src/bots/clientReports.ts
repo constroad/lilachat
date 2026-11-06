@@ -24,6 +24,10 @@ const TEXT_MAX = 200;
 /** Portal's `publicar_informe`: the report is context; the note is the person's confirmation with something to say. */
 const PUBLISH_FORM: FormSchema = { type: 'object', properties: { nota: { type: 'string', title: 'Nota para el canal', maxLength: TEXT_MAX } } };
 
+/** Portal's `quitar_foto_de_informe`: everything is context, and the person already confirmed on the phone. */
+const REMOVE_PHOTO_TOOL = 'quitar_foto_de_informe';
+const NOTHING_TO_FILL: FormSchema = { type: 'object', properties: {} };
+
 /** The last document Portal answered, per person and service: the section forms are built from it, never from the phone. */
 type ReportDraft = { _id: Types.ObjectId; workspaceId: Types.ObjectId; userId: Types.ObjectId; serviceId: string; type: string; document: FieldDocument; updatedAt: Date };
 const draftSchema = new mongoose.Schema<ReportDraft>(
@@ -68,7 +72,8 @@ function pageOf(raw: unknown): number | null | 'invalid' {
 type Place = { lat?: number; lng?: number; at: string };
 type OpenInput =
   | { kind: 'section'; type: string; path: SectionPath; reportId: string | null; tramoId: string | null; place: Place | null; /** The save's own key: Portal tells a photo sent twice from a second one. */ clientKey: string | null }
-  | { kind: 'publish'; reportId: string };
+  | { kind: 'publish'; reportId: string }
+  | { kind: 'remove_photo'; reportId: string; photoId: string };
 
 const pathOf = (raw: Record<string, unknown>): SectionPath | null => {
   const sectionId = text(raw.section_id, 64);
@@ -88,11 +93,14 @@ function placeOf(raw: Record<string, unknown>): Place | null | 'invalid' {
   return placed ? { lat, lng, at } : 'invalid';
 }
 
+const removalOf = (reportId: string, photoId: string): OpenInput | null => (reportId && photoId ? { kind: 'remove_photo', reportId, photoId } : null);
+
 /** What the phone asked to open; anything off the contract is a 400 before touching the door. */
 function openInputOf(input: unknown): OpenInput | null {
   const raw = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
   const reportId = text(raw.report_id, 64);
   if (raw.kind === 'publish') return reportId ? { kind: 'publish', reportId } : null;
+  if (raw.kind === 'remove_photo') return removalOf(reportId, text(raw.photo_id, 64));
   const path = raw.kind === 'section' ? pathOf(raw) : null;
   const place = placeOf(raw);
   if (!path || !isOpenType(raw.type) || place === 'invalid') return null;
@@ -127,6 +135,7 @@ async function sectionPrepared(workspaceId: string, serviceId: string, userId: T
 
 function prepared(workspaceId: string, serviceId: string, userId: Types.ObjectId, input: OpenInput): Promise<Prepared | CommandError> | Prepared {
   if (input.kind === 'section') return sectionPrepared(workspaceId, serviceId, userId, input);
+  if (input.kind === 'remove_photo') return { form: { id: REMOVE_PHOTO_TOOL, title: 'Quitar foto', submitLabel: 'Quitar', schema: NOTHING_TO_FILL }, context: { servicioId: serviceId, informeId: input.reportId, fotoId: input.photoId } };
   return { form: { id: PUBLISH_TOOL, title: 'Publicar informe', submitLabel: 'Publicar', schema: PUBLISH_FORM }, context: { servicioId: serviceId, informeId: input.reportId } };
 }
 

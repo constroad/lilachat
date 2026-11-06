@@ -134,6 +134,25 @@ export function photoViewOf(section: Pick<FormSection, 'title' | 'values'>, url:
   return file ? { file, siblings } : null;
 }
 
+/**
+ * What «Eliminar» acts on in the viewer: a draft's photo that reached Portal.
+ * One still on the phone leaves through the queue, and a published report keeps its photos.
+ */
+export function removablePhotoId(document: Pick<FieldDocument, 'status'>, section: Pick<FormSection, 'values'>, url: string): string | null {
+  if (document.status !== 'draft') return null;
+  const photo = sectionPhotos(section).find((one) => one.url === url);
+  return photo?.id && !photo.pending ? photo.id : null;
+}
+
+export const REMOVE_PHOTO_QUESTION = '¿Quitar esta foto del informe?';
+export const REMOVE_PHOTO_LABEL = 'Quitar';
+
+/** Names the photo in the confirmation: the viewer is closed by then. */
+export function photoRemovalLine(section: Pick<FormSection, 'title' | 'values'>, url: string): string {
+  const photo = sectionPhotos(section).find((one) => one.url === url);
+  return [photo?.caption, photo?.hour].filter(Boolean).join(' · ') || section.title;
+}
+
 /** «0 fotos», «1 foto» (design j-03). */
 export function photosLine(section: Pick<FormSection, 'values'>): string {
   const count = sectionPhotos(section).length;

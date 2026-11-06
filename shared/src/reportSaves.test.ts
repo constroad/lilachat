@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fieldDocumentOf, type FieldDocument, type SectionPath } from './fieldDocument';
-import { applySave, blankDocumentOf, documentWithQueue, judgeFailure, judgeNotice, judgeReply, RATE_LIMIT_WAIT_MS, landedBefore, newItemOf, nextSave, pendingOf, photoViewOf, photosLine, queueLine, queueSave, reportFormAnswer, reportKeyOf, reportSaveOf, resolveItem, savesOf, sectionPhotos, sectionRowLine, sentMarkOf, withoutSave, type ReportRef, type ReportSave } from './reportSaves';
+import { applySave, blankDocumentOf, documentWithQueue, judgeFailure, judgeNotice, judgeReply, RATE_LIMIT_WAIT_MS, landedBefore, newItemOf, nextSave, pendingOf, removablePhotoId, photoRemovalLine, photoViewOf, photosLine, queueLine, queueSave, reportFormAnswer, reportKeyOf, reportSaveOf, resolveItem, savesOf, sectionPhotos, sectionRowLine, sentMarkOf, withoutSave, type ReportRef, type ReportSave } from './reportSaves';
 
 const photosForm = { type: 'object', properties: { foto: { type: 'string', title: 'Foto', 'x-input': 'photo' }, descripcion: { type: 'string', title: 'Descripción', maxLength: 200 } }, required: ['foto'] };
 const textForm = (name: string) => ({ type: 'object', properties: { [name]: { type: 'string', title: name } }, required: [name] });
@@ -393,3 +393,35 @@ describe('lines and keys', () => {
     expect(savesOf([saveAt(bandejas, 'a')], { ...ref, serviceId: 'otro' })).toHaveLength(0);
   });
 });
+
+describe('removablePhotoId (José 06/11: quitar una foto enviada)', () => {
+  const section = { values: { fotos: [{ id: 'f1', url: 'https://x/1.jpg' }, { id: 'local', url: 'file://2.jpg', pending: true }, { url: 'https://x/3.jpg' }] } };
+
+  it('a photo of a draft that reached Portal can go', () => {
+    expect(removablePhotoId({ status: 'draft' }, section, 'https://x/1.jpg')).toBe('f1');
+  });
+
+  it('one still on the phone cannot: the queue is where it is discarded', () => {
+    expect(removablePhotoId({ status: 'draft' }, section, 'file://2.jpg')).toBeNull();
+  });
+
+  it('a published report keeps its photos', () => {
+    expect(removablePhotoId({ status: 'published' }, section, 'https://x/1.jpg')).toBeNull();
+  });
+
+  it('with no id or an unknown address there is nothing to name to Portal', () => {
+    expect(removablePhotoId({ status: 'draft' }, section, 'https://x/3.jpg')).toBeNull();
+    expect(removablePhotoId({ status: 'draft' }, section, 'https://x/9.jpg')).toBeNull();
+  });
+});
+
+describe('photoRemovalLine', () => {
+  it('names the photo the person is about to lose', () => {
+    expect(photoRemovalLine({ title: 'Fotos', values: { fotos: [{ id: 'f1', url: 'https://x/1.jpg', hora: '16:43', descripcion: 'Riego' }] } }, 'https://x/1.jpg')).toBe('Riego · 16:43');
+  });
+
+  it('with neither caption nor hour it falls back to its section', () => {
+    expect(photoRemovalLine({ title: 'Fotos', values: { fotos: [{ id: 'f1', url: 'https://x/1.jpg' }] } }, 'https://x/1.jpg')).toBe('Fotos');
+  });
+});
+

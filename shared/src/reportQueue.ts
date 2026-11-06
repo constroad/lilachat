@@ -3,7 +3,7 @@ import type { FormValues } from './appForms.js';
 import { WRITE_GIVE_UP_MS, type CommandNotice, type CommandOutcome } from './botCommands.js';
 import type { FieldDocument } from './fieldDocument.js';
 import { retryDelayMs } from './outbox.js';
-import { DRAFT_FAILED, readReportDraft, sectionFormRequest, type ReportDraftBody, type SectionFormRequest } from './reportCreation.js';
+import { DRAFT_FAILED, readReportDraft, removePhotoRequest, sectionFormRequest, type RemovePhotoRequest, type ReportDraftBody, type SectionFormRequest } from './reportCreation.js';
 import { blankDocumentOf, isUnreachable, judgeFailure, judgeNotice, judgeReply, landedBefore, newItemOf, nextSave, queueSave, reportKeyOf, reportTypeKeyOf, resolveItem, sentMarkOf, withoutSave, type QueuedPhoto, type ReportRef, type ReportSave, type SaveVerdict, type SentMark } from './reportSaves.js';
 
 /**
@@ -25,13 +25,16 @@ export type ReportVault = {
 };
 export type ReportWire = {
   read(ref: ReportRef, reportId: string | null): Promise<WireResult<ReportDraftBody>>;
-  open(ref: ReportRef, request: SectionFormRequest): Promise<WireResult<CommandOutcome>>;
+  open(ref: ReportRef, request: SectionFormRequest | RemovePhotoRequest): Promise<WireResult<CommandOutcome>>;
   upload(ref: ReportRef, commandId: string, photo: QueuedPhoto): Promise<FormPhotoUpload>;
   submit(ref: ReportRef, commandId: string, values: FormValues): Promise<FormSubmitReply>;
   /** The late answer of a write, or null past the wait. */
   notice(commandId: string): Promise<CommandNotice | null>;
 };
 export type QueueState = { saves: ReportSave[]; /** Moves when something reached Portal: the screen asks the document again. */ revision: number; sending: boolean; /** The last pass stopped for lack of signal. */ stalled: boolean };
+/** Never queued: the person waits for Portal's word, and a queue would show the photo gone before it said so. */
+export type PhotoRemoval = { ok: true } | { ok: false; message: string };
+export const PHOTO_REMOVAL_FAILED = 'No se pudo quitar la foto. Revisa tu señal y vuelve a intentarlo.';
 export type OpenedReport = { ok: true; document: FieldDocument; offline: boolean } | { ok: false; message: string };
 export type ReportQueue = ReturnType<typeof createReportQueue>;
 /** Two tabs of the web share the disk: only the one holding the lock sends. Without one, this is the only sender. */
@@ -148,6 +151,21 @@ async function send({ wire, store, pace }: QueueCore, save: ReportSave, document
   const verdict = judgeReply(await wire.submit(save.ref, commandId, values));
   return verdict.kind === 'wait' ? judgeNotice(await wire.notice(commandId)) : verdict;
 }
+
+/** One attempt to take a photo out: its run, and the form sent with nothing to fill. */
+async function askRemoval({ wire, pace }: QueueCore, ref: ReportRef, reportId: string, photoId: string): Promise<SaveVerdict> {
+  await pace();
+  const opened = await wire.open(ref, removePhotoRequest(reportId, photoId));
+  if (!opened.ok) return judgeFailure(opened);
+  const { commandId } = opened.data;
+  const verdict = judgeReply(await wire.submit(ref, commandId, {}));
+  return verdict.kind === 'wait' ? judgeNotice(await wire.notice(commandId)) : verdict;
+}
+
+const removalOf = (verdict: SaveVerdict): PhotoRemoval => {
+  if (verdict.kind === 'confirm') return { ok: true };
+  return { ok: false, message: verdict.kind === 'refuse' ? verdict.refusal.message : PHOTO_REMOVAL_FAILED };
+};
 
 /** A plain section needs nothing of the answer; what makes a report, a tramo or a photo changes what the next save reads. */
 const needsFreshDocument = (save: ReportSave, document: FieldDocument): boolean => Boolean(save.createsItem || save.photo || document.id === null);
@@ -306,5 +324,12 @@ export function createReportQueue({ vault, wire, exclusive = (task) => task(), g
     },
     forget,
     documentOf: (ref: ReportRef, reportId: string | null) => documentOf(core, ref, reportId),
+    async removePhoto(ref: ReportRef, reportId: string, photoId: string): Promise<PhotoRemoval> {
+      let verdict: SaveVerdict = { kind: 'retry' };
+      await exclusive(async () => {
+        verdict = await askRemoval(core, ref, reportId, photoId);
+      });
+      return removalOf(verdict);
+    },
   };
 }

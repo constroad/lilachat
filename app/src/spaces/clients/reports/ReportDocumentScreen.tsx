@@ -10,6 +10,7 @@ import { useReportPdf } from '../useReportPdf';
 import type { ServiceAskTarget } from '../useServiceAsk';
 import { PublishSheet } from './PublishSheet';
 import { ReportItemsView } from './ReportItemsView';
+import { photoRemovalOf } from './photoRemoval';
 import { ReportUnitsView } from './ReportUnitsView';
 import { Pill, ProgressCard, QueueCard, SectionCard } from './ReportSections';
 import { useFieldDocument } from './useFieldDocument';
@@ -154,7 +155,7 @@ export function ReportDocumentScreen(props: Props) {
   };
   const viewPhoto = ({ section, url, path }: PhotoToView) => {
     const view = photoViewOf(section, url);
-    if (view) files.open(view.file, view.siblings, { label: TAKE_ANOTHER_PHOTO, onPress: () => actions.openSection(path) });
+    if (view) files.open(view.file, view.siblings, { label: TAKE_ANOTHER_PHOTO, onPress: () => actions.openSection(path) }, photoRemovalOf(report, section, actions.removePhoto));
   };
   return (
     <View className="flex-1">

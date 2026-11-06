@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CommandOutcome } from '@lilachat/shared';
 import { baseDe } from '../../../local/baseLocal';
@@ -200,6 +200,69 @@ describe('ReportDocumentWeb', () => {
     expect(screen.queryByTestId('formulario-agregar_foto_de_informe')).toBeNull();
     fireEvent.click(await screen.findByRole('button', { name: 'Tomar otra' }));
     expect(await screen.findByTestId('formulario-agregar_foto_de_informe')).toBeInTheDocument();
+  });
+
+  describe('taking a sent photo out of a draft (José 06/11)', () => {
+    const photoEntry = { id: 'foto-ingreso', title: 'Foto de ingreso', required: true, form: 'fotos', tool: 'agregar_foto_de_informe', photoKind: 'ingreso' };
+    const photos = [{ id: 'p1', url: 'https://lila.example.com/f/p1.jpg', descripcion: 'Ingreso', hora: '07:10' }, { id: 'p2', url: 'https://lila.example.com/f/p2.jpg', descripcion: 'Riego', hora: '07:20' }];
+    const reportOf = () => {
+      const taken = { id: 'foto-ingreso', state: 'done', summary: [], values: { fotos: photos } };
+      const units = { id: 'unidades', kind: 'repeat', title: 'Unidades', required: true, state: 'partial', summary: [], results: [], itemTitle: 'Unidad', addLabel: '', min: 0, canAdd: false, template: [{ id: 'datos', title: 'Datos', required: true, form: 'ubicacion' }, photoEntry], items: [{ id: 'd2', title: 'Unidad 1', summary: [], results: [], sections: [{ id: 'datos', state: 'done', summary: ['Llegada 07:30'], values: {} }, taken] }] };
+      return { ...document, type: 'CTL-PIS', title: 'Control de pista', sections: [document.sections[0], units] };
+    };
+    const openPhoto = async () => {
+      const calls = serverWith({ document: reportOf() });
+      openReport();
+      fireEvent.click(await screen.findByTestId('seccion-unidades'));
+      fireEvent.click(screen.getByTestId('foto-d2-foto-ingreso'));
+      await screen.findByTestId('visor-fotos');
+      return calls;
+    };
+    const shownPhotoId = () => photos.find((photo) => screen.getByTestId('visor-fotos').innerHTML.includes(photo.url))!.id;
+
+    it('«Eliminar» acts on the photo on screen after moving, once confirmed', async () => {
+      // Arrange
+      const asked = vi.fn(() => true);
+      vi.stubGlobal('confirm', asked);
+      const calls = await openPhoto();
+      fireEvent.keyDown(window, { key: shownPhotoId() === 'p1' ? 'ArrowRight' : 'ArrowLeft' });
+      const shown = shownPhotoId();
+      // Act
+      fireEvent.click(screen.getByTestId('visor-eliminar'));
+      // Assert
+      await waitFor(() => expect(formCalls(calls)).toEqual([{ kind: 'remove_photo', report_id: document.id, photo_id: shown, forms: 3 }]));
+      await waitFor(() => expect(sentCalls(calls)).toEqual([{ values: {} }]));
+      expect(asked).toHaveBeenCalledTimes(1);
+      expect(screen.queryByTestId('visor-fotos')).toBeNull();
+    });
+
+    it('nothing goes to Portal when the person says no', async () => {
+      // Arrange
+      vi.stubGlobal('confirm', vi.fn(() => false));
+      const calls = await openPhoto();
+      // Act
+      fireEvent.click(screen.getByTestId('visor-eliminar'));
+      // Assert
+      expect(formCalls(calls)).toEqual([]);
+      expect(screen.getByTestId('visor-fotos')).toBeInTheDocument();
+    });
+
+    it('a refusal reaches the person in Portal’s words', async () => {
+      // Arrange
+      const told = vi.fn();
+      vi.stubGlobal('confirm', vi.fn(() => true));
+      vi.stubGlobal('alert', told);
+      const calls = serverWith({ document: reportOf() }, { status: 422, body: { errors: { _: 'El informe ya se publicó: conserva sus fotos.' } } });
+      openReport();
+      fireEvent.click(await screen.findByTestId('seccion-unidades'));
+      fireEvent.click(screen.getByTestId('foto-d2-foto-ingreso'));
+      await screen.findByTestId('visor-fotos');
+      // Act
+      fireEvent.click(screen.getByTestId('visor-eliminar'));
+      // Assert
+      await waitFor(() => expect(told).toHaveBeenCalledWith('El informe ya se publicó: conserva sus fotos.'));
+      expect(formCalls(calls)).toHaveLength(1);
+    });
   });
 
   it('«Publicar» waits for what Portal says is missing (design j-04), and ready it opens Portal’s publish form', async () => {

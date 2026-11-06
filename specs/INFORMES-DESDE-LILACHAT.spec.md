@@ -819,3 +819,16 @@ Queda pendiente:
 - **PDF, cola de Portal:** «UNIDADES SIN TEMP» cae sola en el folio 2, la fila 12 cae sola en el folio 3, el encabezado dice «FOLIO: 1-1», «Observaciones» sale vacío y la dirección del sello se corta.
 - **Lista con varias unidades en pista:** cada tarjeta ocupa media pantalla, así que con 4 en pista las filas de «Por llegar» quedan dos pantallas abajo. No se cambió: en obra rara vez hay más de dos carros descargando.
 
+## Quitar una foto enviada de un borrador (José 06/11)
+
+- El visor del informe muestra «Eliminar» solo en una foto que ya llegó a Portal,
+  de un informe en borrador (`removablePhotoId`). Una foto que sigue en el teléfono
+  se descarta en la cola. Un informe publicado conserva sus fotos.
+- «Eliminar» actúa sobre la foto en pantalla al momento del toque, aunque la persona
+  haya deslizado a otra (`ViewerRemoval`). Antes de enviar pide confirmación y nombra
+  la foto por su descripción y hora.
+- No pasa por la cola: el server abre el formulario `quitar_foto_de_informe` sin
+  campos y la app lo envía enseguida. La foto sigue en pantalla hasta que Portal
+  acepta. Sin señal o con rechazo, la persona lo lee y nada cambia.
+- Portal rechaza un informe publicado y es idempotente con la misma confirmación.
+

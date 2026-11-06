@@ -3,7 +3,7 @@ import { FORMS_LEVEL } from './appForms';
 import { isFieldReport } from './clientAccess';
 import { fieldDocumentOf } from './fieldDocument';
 import { locationMapLink } from './sharedLocation';
-import { draftToContinue, itemsLine, pageLine, placeFieldValue, progressLine, progressPercent, publishFormRequest, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, openPublishForm, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, staleAnswerIds, STATUS_BADGE, type TrackStart } from './reportCreation';
+import { draftToContinue, itemsLine, removePhotoRequest, pageLine, placeFieldValue, progressLine, progressPercent, publishFormRequest, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, openPublishForm, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, staleAnswerIds, STATUS_BADGE, type TrackStart } from './reportCreation';
 
 /** A CTL-IMP as Portal answers it, with one tramo whose photos go through their own tool. */
 const form = (title: string) => ({ type: 'object', properties: { campo: { type: 'string', title } } });
@@ -201,6 +201,12 @@ describe('draftToContinue (José 06/11: a draft row opened «Ver el PDF» and no
   it('a type that lives in Portal keeps its sheet, and an unknown row opens nothing', () => {
     expect(draftToContinue({ reports: [{ ...draft, title: 'Acta de conformidad' }] }, 'r1')).toBeNull();
     expect(draftToContinue({ reports: [draft] }, 'r9')).toBeNull();
+  });
+});
+
+describe('removePhotoRequest', () => {
+  it('names the report and the photo, and what this app can draw', () => {
+    expect(removePhotoRequest('r1', 'f1')).toEqual({ kind: 'remove_photo', report_id: 'r1', photo_id: 'f1', forms: FORMS_LEVEL });
   });
 });
 

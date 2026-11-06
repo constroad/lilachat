@@ -33,7 +33,8 @@ export const NOW = '2026-11-05T10:00:00.000Z';
 /** A Portal that keeps a report: a section creates it, a `ubicacion` without tramo adds one, a photo goes to its tramo. */
 export function fakePortal(start: { id: string | null; tramos: Tramo[]; /** As Portal does: a new report is born with one empty tramo. */ seedsTramo?: boolean; requireLocation?: boolean }) {
   const state = { ...start, tramos: start.tramos.map((one) => ({ ...one })), offline: false, reads: 0, writes: [] as string[], loseNextAnswer: false, refuse: null as Record<string, string> | null, status: null as number | null, /** Agentes' «too many calls», once: the seconds to wait. */ rateLimitOnce: null as number | null };
-  const runs = new Map<string, { item_id: string | null; key: string; report_id?: string }>();
+  const runs = new Map<string, { item_id: string | null; key: string; report_id?: string; removes?: string }>();
+  const removed: string[] = [];
   let run = 0;
   const wire: ReportWire = {
     read: async () => {
@@ -44,7 +45,7 @@ export function fakePortal(start: { id: string | null; tramos: Tramo[]; /** As P
     open: async (_ref, request) => {
       if (state.offline) return { ok: false, message: 'Sin conexión.' };
       run += 1;
-      runs.set(`run-${run}`, { item_id: request.item_id, key: request.key, ...(request.report_id ? { report_id: request.report_id } : {}) });
+      runs.set(`run-${run}`, request.kind === 'section' ? { item_id: request.item_id, key: request.key, ...(request.report_id ? { report_id: request.report_id } : {}) } : { item_id: null, key: request.kind, report_id: request.report_id, ...(request.kind === 'remove_photo' ? { removes: request.photo_id } : {}) });
       return { ok: true, data: { ...saved, commandId: `run-${run}`, outcome: 'form', response: { responseType: 'form', form: { id: 'x', title: 'x', schema: { type: 'object' } } } } };
     },
     upload: async (_ref, commandId, photo) => (state.offline ? { ok: false, message: 'Sin conexión.' } : { ok: true, fileId: `file-of-${photo.ref}-${commandId}` }),
@@ -58,6 +59,11 @@ export function fakePortal(start: { id: string | null; tramos: Tramo[]; /** As P
         return { ok: false, status: 429, errors: { _: 'Demasiadas llamadas' }, code: 'rate_limited', retryAfterS };
       }
       const open = runs.get(commandId)!;
+      if (open.removes) {
+        removed.push(`${open.report_id}:${open.removes}`);
+        state.tramos[0]!.photos -= 1;
+        return { ok: true, outcome: saved };
+      }
       state.writes.push(`${open.key}:${open.item_id ?? 'nuevo'}:${JSON.stringify(values)}`);
       if (!state.id) {
         state.id = 'r1';
@@ -74,7 +80,7 @@ export function fakePortal(start: { id: string | null; tramos: Tramo[]; /** As P
     },
     notice: async () => null,
   };
-  return { state, wire };
+  return { state, wire, removed };
 }
 
 export function fakeVault(saves: ReportSave[] = []) {

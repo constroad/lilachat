@@ -4,7 +4,7 @@ import type { FormValues } from './appForms.js';
 import type { EphemeralAnswer } from './botCommands.js';
 import { requiresLocation, type FieldDocument, type SectionPath } from './fieldDocument.js';
 import type { DevicePlace, ReportDraftResult } from './reportCreation.js';
-import type { OpenedReport, ReportQueue } from './reportQueue.js';
+import { PHOTO_REMOVAL_FAILED, type OpenedReport, type PhotoRemoval, type ReportQueue } from './reportQueue.js';
 import { documentWithQueue, reportFormAnswer, reportSaveOf, samePath, savesOf, type QueuedPhoto, type ReportRef, type ReportSave } from './reportSaves.js';
 
 /**
@@ -239,5 +239,13 @@ export function createReportScreen<P>(deps: ReportScreenDeps<P>, ref: ReportRef,
     upload: forms.upload,
     submit: forms.submit,
     discard: (clientKey: string): Promise<void> => deps.queue.discard(clientKey),
+    /** A sent photo out of the draft: it stays on screen until Portal said yes. */
+    async removePhoto(photoId: string): Promise<PhotoRemoval> {
+      const reportId = reportNow().document?.id;
+      if (!reportId) return { ok: false, message: PHOTO_REMOVAL_FAILED };
+      const removal = await deps.queue.removePhoto(ref, reportId, photoId);
+      if (removal.ok) feed.reload();
+      return removal;
+    },
   };
 }

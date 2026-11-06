@@ -5,8 +5,10 @@ import { PdfViewerScreen } from '../../chat/pdf/PdfViewerScreen';
 import { VisorDelChat } from '../../chat/VisorDelChat';
 import { galleryOf, mimeOf, openingOf, pdfsOf, viewerWhenOf, type ViewableFile } from '@lilachat/shared';
 
-type Session = { files: ViewableFile[]; url: string; action?: ViewerAction };
+type Session = { files: ViewableFile[]; url: string; action?: ViewerAction; removal?: ViewerRemoval };
 export type ViewerAction = { label: string; onPress: () => void };
+/** «Eliminar» of the viewer: it always asks about the file on screen, never the one that opened it. */
+export type ViewerRemoval = { canRemove: (url: string) => boolean; remove: (url: string) => void };
 
 const NOTICE_MS = 4000;
 /** The viewer has nothing to delete here: these are Portal's files. */
@@ -25,24 +27,30 @@ export function useFileViewer() {
     setTimeout(() => setNotice(''), NOTICE_MS);
   }, []);
 
-  const open = useCallback((file: ViewableFile, siblings?: readonly ViewableFile[], action?: ViewerAction) => {
+  const open = useCallback((file: ViewableFile, siblings?: readonly ViewableFile[], action?: ViewerAction, removal?: ViewerRemoval) => {
     const opening = openingOf(mimeOf(file));
-    const picked = action ? { action: { label: action.label, onPress: () => { setSession(null); action.onPress(); } } } : {};
+    const picked = { ...(removal ? { removal } : {}), ...(action ? { action: { label: action.label, onPress: () => { setSession(null); action.onPress(); } } } : {}) };
     if (opening === 'gallery' || (opening === 'pdf' && pdfPages)) return setSession({ files: [...(siblings ?? [file])], url: file.url, ...picked });
     void abrirConOtraApp({ url: file.url, cuando: new Date(), mime: mimeOf(file), seq: 0, nombre: file.name }).then((result) => {
       if (!result.ok) say(result.motivo);
     });
   }, [say]);
 
-  const photos = useMemo(() => galleryOf(session?.files ?? []).map((file, index) => ({ url: file.url, autor: file.name, cuando: viewerWhenOf(file.when), seq: index + 1, mia: false, cuandoReal: new Date(), mime: mimeOf(file), nombre: file.name, ...(file.thumbUrl ? { miniatura: file.thumbUrl } : {}) })), [session]);
+  const photos = useMemo(() => galleryOf(session?.files ?? []).map((file, index) => ({ url: file.url, autor: file.name, cuando: viewerWhenOf(file.when), seq: index + 1, mia: session?.removal?.canRemove(file.url) ?? false, cuandoReal: new Date(), mime: mimeOf(file), nombre: file.name, ...(file.thumbUrl ? { miniatura: file.thumbUrl } : {}) })), [session]);
   const pdfs = useMemo(() => pdfsOf(session?.files ?? []).map((file, index) => ({ seq: index + 1, url: file.url, name: file.name, at: new Date().toISOString(), mime: 'application/pdf' })), [session]);
   const photoSeq = photos.find((photo) => photo.url === session?.url)?.seq ?? null;
   const pdf = pdfs.find((one) => one.url === session?.url) ?? null;
 
+  const removeShown = async (seq: number) => {
+    const shown = photos.find((photo) => photo.seq === seq);
+    if (!session?.removal || !shown) return cannotDelete();
+    session.removal.remove(shown.url);
+    return { ok: true };
+  };
   const moveTo = (url: string | undefined) => setSession((current) => (current && url ? { ...current, url } : null));
   const viewer = (
     <>
-      <VisorDelChat fotos={photos} viendoSeq={photoSeq} onCambiar={(seq) => moveTo(photos.find((photo) => photo.seq === seq)?.url)} onEliminar={cannotDelete} onError={say} {...(session?.action ? { action: session.action } : {})} />
+      <VisorDelChat fotos={photos} viendoSeq={photoSeq} onCambiar={(seq) => moveTo(photos.find((photo) => photo.seq === seq)?.url)} onEliminar={removeShown} onError={say} {...(session?.action ? { action: session.action } : {})} />
       <PdfViewerScreen pdf={pdf} others={pdfs} onPick={(seq) => moveTo(pdfs.find((one) => one.seq === seq)?.url)} onClose={() => setSession(null)} />
     </>
   );

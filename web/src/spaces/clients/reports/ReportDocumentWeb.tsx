@@ -9,6 +9,7 @@ import type { ServiceAskTarget } from '../useServiceAsk';
 import { PublishDialog } from './PublishDialog';
 import { usePortalFileViewer } from '../PortalFileViewer';
 import { ReportItemsWeb } from './ReportItemsWeb';
+import { photoRemovalOf } from './photoRemoval';
 import { ReportUnitsWeb } from './ReportUnitsWeb';
 import { Pill, ProgressCard, QueueCard, SectionCard } from './ReportSectionsWeb';
 import { useFieldDocument } from './useFieldDocument';
@@ -123,7 +124,7 @@ export function ReportDocumentWeb(props: Props) {
   const files = usePortalFileViewer();
   const viewPhoto = ({ section, url, path }: PhotoToView) => {
     const view = photoViewOf(section, url);
-    if (view) files.open(view.file, view.siblings, { label: TAKE_ANOTHER_PHOTO, onPress: () => actions.openSection(path) });
+    if (view) files.open(view.file, view.siblings, { label: TAKE_ANOTHER_PHOTO, onPress: () => actions.openSection(path) }, photoRemovalOf(report, section, actions.removePhoto));
   };
   return (
     <div data-testid="informe-documento" className="mx-auto flex max-w-3xl flex-col gap-3">

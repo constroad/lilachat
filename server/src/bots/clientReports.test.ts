@@ -202,6 +202,25 @@ describe('the photo and «Publicar» as forms', () => {
 
     expect(received.find((event) => event.type === 'form.submitted')?.data).toMatchObject({ form_id: 'publicar_informe', service_id: 'srv-318', values: { servicioId: 'srv-318', informeId: '6aed0a1b2c3d4e5f60718293' } });
   });
+
+  it('taking a photo out of a draft is a form with no fields; sending it carries the report, the photo and the service (José 06/11)', async () => {
+    const opened = await openOf(ana, { kind: 'remove_photo', report_id: '6aed0a1b2c3d4e5f60718293', photo_id: '6aed0a1b2c3d4e5f60718294' }).expect(200);
+
+    expect(opened.body.response.form).toMatchObject({ id: 'quitar_foto_de_informe', submitLabel: 'Quitar' });
+    expect(opened.body.response.form.schema.properties).toEqual({});
+    await request(app).post(`/api/chats/${chatId}/commands/${opened.body.commandId}/form`).set(auth(ana)).send({ values: {} }).expect(200);
+
+    expect(received.find((event) => event.type === 'form.submitted')?.data).toMatchObject({ form_id: 'quitar_foto_de_informe', client_id: 'cli-cvs', service_id: 'srv-318', values: { servicioId: 'srv-318', informeId: '6aed0a1b2c3d4e5f60718293', fotoId: '6aed0a1b2c3d4e5f60718294' } });
+  });
+
+  it('a photo to take out needs both its report and its id', async () => {
+    await openOf(ana, { kind: 'remove_photo', report_id: '6aed0a1b2c3d4e5f60718293' }).expect(400);
+    await openOf(ana, { kind: 'remove_photo', photo_id: '6aed0a1b2c3d4e5f60718294' }).expect(400);
+  });
+
+  it('nobody outside the channel takes a photo out', async () => {
+    await openOf(outsider, { kind: 'remove_photo', report_id: '6aed0a1b2c3d4e5f60718293', photo_id: '6aed0a1b2c3d4e5f60718294' }).expect(404);
+  });
 });
 
 describe('a control de pista (06/11): units from the dispatches, photos with their kind and place', () => {

@@ -9,7 +9,7 @@ import { BotAppModel, BotCommandRunModel, BotInstallationModel, type BotCommandR
 import { channelOf, personOf } from './botTriggers.js';
 import { configureLateAnswers, settleLateAnswer } from './lateAnswers.js';
 import { deliverScheduledAnswer } from './botScheduleDelivery.js';
-import { isClientChat } from './botClients.js';
+import { isClientChat, placeConfirmedValues } from './botClients.js';
 
 /**
  * Slash commands (`specs/BOTS-API.spec.md` §c-bis), like Slack: the app
@@ -117,11 +117,11 @@ function inChannelTarget(chat: ChatOfCommand, installation: Pick<BotInstallation
 }
 
 /** `chat` is null for the space's ⚡: an in_channel answer has nowhere to go and stays for the asker. */
-export async function deliverResponse(installation: BotInstallation, run: Pick<BotCommandRun, '_id' | 'userId' | 'responses' | 'formsLevel' | 'placeValues'>, chat: ChatOfCommand | null, response: CommandResponse, base: Base): Promise<CommandOutcome> {
+export async function deliverResponse(installation: BotInstallation, run: Pick<BotCommandRun, '_id' | 'userId' | 'responses' | 'formsLevel' | 'placeValues' | 'placeConfirmed'>, chat: ChatOfCommand | null, response: CommandResponse, base: Base): Promise<CommandOutcome> {
   if (response.responseType === 'form' && response.form) {
     // A Lilachat that cannot draw it is told so, instead of a sheet that breaks (28/10, lists).
     if (formLevelOf(response.form) > (run.formsLevel ?? 1)) return { ...base, outcome: 'failed', message: OUTDATED_FORM_MESSAGE };
-    const { form, context } = withoutKnownFields(response.form, run.placeValues ?? {});
+    const { form, context } = withoutKnownFields(response.form, run.placeValues ?? {}, new Set(run.placeConfirmed));
     // Kept to check what is sent against it (`botForms.ts`); what the place knew rides with the answers.
     await BotCommandRunModel.updateOne({ _id: run._id }, { $set: { form, ...(Object.keys(context).length ? { context } : {}) } });
     return { ...base, outcome: 'form', response: { ...response, form } };
@@ -206,7 +206,9 @@ async function invokeApp(userId: Types.ObjectId, scope: CommandScope, appId: unk
   // A failed run stays a week: its `failure` is how a «no pudo responder» gets explained (23/10).
   void BotCommandRunModel.deleteMany({ $or: [{ expiresAt: { $lt: new Date() }, failure: { $exists: false } }, { expiresAt: { $lt: new Date(Date.now() - FAILED_RUN_KEPT_MS) } }] }).catch((error: unknown) => console.error('[bots] no se pudieron purgar comandos vencidos:', error instanceof Error ? error.message : error));
   const { chat } = place;
-  const [run, user] = await Promise.all([BotCommandRunModel.create({ installationId: installation._id, ...(chat ? { chatId: chat._id } : {}), workspaceId: place.workspaceId, userId, command: name, formsLevel, trigger: trigger.kind, ...(trigger.kind === 'command' && trigger.text ? { text: trigger.text } : {}), ...(trigger.kind === 'shortcut' && trigger.values ? { placeValues: trigger.values } : {}), expiresAt: new Date(Date.now() + COMMAND_TTL_MS) }), personOf(userId, installation.grantedScopes)]);
+  const placeValues = trigger.kind === 'shortcut' ? trigger.values : undefined;
+  const placeConfirmed = placeValues && chat ? await placeConfirmedValues(place.workspaceId, chat._id, placeValues) : [];
+  const [run, user] = await Promise.all([BotCommandRunModel.create({ installationId: installation._id, ...(chat ? { chatId: chat._id } : {}), workspaceId: place.workspaceId, userId, command: name, formsLevel, trigger: trigger.kind, ...(trigger.kind === 'command' && trigger.text ? { text: trigger.text } : {}), ...(placeValues ? { placeValues, placeConfirmed } : {}), expiresAt: new Date(Date.now() + COMMAND_TTL_MS) }), personOf(userId, installation.grantedScopes)]);
   // Slack's global shortcuts carry no channel either.
   const common = { command_id: String(run._id), channel: chat ? channelOf(chat) : null, user };
   const reply = trigger.kind === 'command'

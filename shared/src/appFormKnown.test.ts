@@ -33,6 +33,14 @@ describe('a form opened from a place that already knows an answer (José 06/11: 
     expect(asked.context).toEqual({});
   });
 
+  it('a value the server confirmed with the place goes through even if the list is cut (Portal offers the latest 20 services)', () => {
+    // Act
+    const asked = withoutKnownFields(linkForm, { servicioId: 'srv-older' }, new Set(['servicioId']));
+    // Assert
+    expect(Object.keys(asked.form.schema.properties ?? {})).toEqual(['dias']);
+    expect(asked.context).toEqual({ servicioId: 'srv-older' });
+  });
+
   it('values with no field in the form stay out of it and out of the answers', () => {
     // Act
     const asked = withoutKnownFields(linkForm, { alcance: 'pedido', clienteId: 'cli-1' });

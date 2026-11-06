@@ -14,6 +14,7 @@ import { ChatModel, MessageModel } from '../chatModels.js';
 import { WorkspaceMemberModel, WorkspaceModel } from '../workspaceModels.js';
 import { signSession } from '../sessions.js';
 import { BotAppModel, BotCommandRunModel, BotDeliveryModel, BotInstallationModel, OAuthCodeModel } from './botModels.js';
+import { ClientChannelModel } from './botClients.js';
 import { configureCommands } from './botCommands.js';
 import { configureFormFiles, FormFileModel } from './botForms.js';
 import { forgetBots } from './botRegistry.js';
@@ -313,6 +314,19 @@ describe('an app answers a command with a form', () => {
     // Assert
     expect(Object.keys(opened.body.response.form.schema.properties)).toEqual(['dias']);
     expect(received).toEqual([{ type: 'form.submitted', data: expect.objectContaining({ form_id: 'crear_enlace', values: { dias: 7, servicioId: 'srv-1' } }) }]);
+  });
+
+  it('a service the channel lists is not asked even if the form cut its list (Portal offers the latest 20)', async () => {
+    // Arrange
+    await BotAppModel.updateOne({ clientId: 'lca_inframaq' }, { $set: { shortcuts: [{ key: 'crear_enlace_de_servicio', name: 'Crear enlace' }] } });
+    const installation = await BotInstallationModel.findOne({}).lean();
+    await ClientChannelModel.create({ workspaceId: installation!.workspaceId, appId: installation!.appId, clientId: 'cli-old', chatId: channel, name: 'Cliente', services: [{ id: 'srv-old', name: 'Obra vieja', status: 'in_progress', stageLabel: 'Ejecución' }] });
+    answer = json({ response_type: 'form', form: { id: 'crear_enlace', title: 'Crear el enlace', schema: { type: 'object', required: ['servicioId', 'dias'], properties: { servicioId: { type: 'string', oneOf: [{ const: 'srv-1', title: 'Obra uno' }] }, dias: { type: 'integer' } } } } });
+    // Act
+    const opened = await request(app).post(`/api/chats/${channel}/shortcuts`).set(asAna).send({ app_id: await appId(), shortcut: 'crear_enlace_de_servicio', values: { servicioId: 'srv-old' } }).expect(200);
+    await ClientChannelModel.deleteMany({ clientId: 'cli-old' });
+    // Assert
+    expect(Object.keys(opened.body.response.form.schema.properties)).toEqual(['dias']);
   });
 
   it('a value the form does not offer is asked, not trusted: another service\'s id cannot ride past the options', async () => {

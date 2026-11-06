@@ -62,6 +62,12 @@ export async function isClientChat(chatId: Types.ObjectId | string): Promise<boo
   return Boolean(await ClientChannelModel.exists({ chatId }));
 }
 
+/** The `values` this client's channel vouches for: a service it lists, though Portal's form offers only its latest 20 (José 06/11). */
+export async function placeConfirmedValues(workspaceId: Types.ObjectId, chatId: Types.ObjectId, values: { servicioId?: unknown }): Promise<string[]> {
+  if (typeof values.servicioId !== 'string') return [];
+  return (await ClientChannelModel.exists({ workspaceId, chatId, 'services.id': values.servicioId })) ? ['servicioId'] : [];
+}
+
 const fail = (status: ClientsError['status'], error: string, message: string): ClientsError => ({ status, error, message });
 const isDuplicateKey = (error: unknown) => (error as { code?: number })?.code === 11000;
 

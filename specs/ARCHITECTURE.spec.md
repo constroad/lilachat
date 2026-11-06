@@ -15468,6 +15468,9 @@ formulario de Portal traía el campo igual.
   `values` responde, y lo guarda en `run.context` para `form.submitted`.
 - **Solo se quita si el campo lo aceptaría.** Un id que el formulario no ofrece
   deja el campo a la vista: el lugar no pasa por encima de las opciones.
+- **Excepción, un servicio del canal.** Portal ofrece solo sus 20 servicios más
+  recientes, de toda la empresa. Si el canal del cliente lista ese servicio,
+  `placeConfirmedValues` lo avala y el campo se quita igual.
 - **No se quita** un campo del que otro depende, ni uno que depende de otro. Un
   formulario que quedaría vacío sigue entero.
 - Vale para toda acción que manda `values`, también Registrar pago y los informes.

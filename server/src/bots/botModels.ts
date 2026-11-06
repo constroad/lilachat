@@ -70,6 +70,8 @@ export type BotCommandRun = {
   context?: Record<string, string | number | boolean>;
   /** What the place it was tapped from knows (José 06/11): the form does not ask it again. */
   placeValues?: Record<string, string | number | boolean>;
+  /** Which of them the place vouches for, beyond what the form offers. */
+  placeConfirmed?: string[];
   /** The client's service the door checked (`findAskedService`): goes beside `values` so agentes can hold the border between clients. */
   service?: { clientId: string; serviceId: string };
   expiresAt: Date;
@@ -226,6 +228,7 @@ const commandRunSchema = new Schema<BotCommandRun>(
     schedule: { type: Schema.Types.Mixed },
     context: { type: Schema.Types.Mixed },
     placeValues: { type: Schema.Types.Mixed },
+    placeConfirmed: { type: [String], default: undefined },
     service: { type: Schema.Types.Mixed },
     expiresAt: { type: Date, required: true },
   },

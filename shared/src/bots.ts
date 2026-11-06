@@ -106,17 +106,24 @@ export function validateBotCard(raw: unknown): { ok: true; card: BotCard } | { o
   return { ok: true, card: kept };
 }
 
+/** One task as the wire sends it; a phone that is not from Peru refuses the whole checklist. */
+function botChecklistItem(raw: unknown): BotChecklist['items'][number] | BotPostError {
+  const item = record(raw);
+  const phone = typeof item.assignee_phone === 'string' && item.assignee_phone.trim() ? item.assignee_phone : undefined;
+  const assigneePhone = phone ? normalizePeruPhone(phone) : undefined;
+  if (phone && !assigneePhone) return refuse(`El responsable «${phone}» no es un celular de Perú.`);
+  const due = typeof item.due_at === 'string' && !Number.isNaN(Date.parse(item.due_at)) ? new Date(item.due_at).toISOString() : undefined;
+  const key = typeof item.key === 'string' && item.key.trim() ? item.key.trim().slice(0, TASK_KEY_MAX) : undefined;
+  return { text: String(item.text ?? ''), ...(key ? { key } : {}), ...(assigneePhone ? { assigneePhone } : {}), ...(due ? { dueAt: due } : {}) };
+}
+
 export function validateBotChecklist(raw: unknown): { ok: true; checklist: BotChecklist } | BotPostError {
   const checklist = record(raw);
   const items: BotChecklist['items'] = [];
   for (const rawItem of Array.isArray(checklist.items) ? checklist.items : []) {
-    const item = record(rawItem);
-    const phone = typeof item.assignee_phone === 'string' && item.assignee_phone.trim() ? item.assignee_phone : undefined;
-    const assigneePhone = phone ? normalizePeruPhone(phone) : undefined;
-    if (phone && !assigneePhone) return refuse(`El responsable «${phone}» no es un celular de Perú.`);
-    const due = typeof item.due_at === 'string' && !Number.isNaN(Date.parse(item.due_at)) ? new Date(item.due_at).toISOString() : undefined;
-    const key = typeof item.key === 'string' && item.key.trim() ? item.key.trim().slice(0, TASK_KEY_MAX) : undefined;
-    items.push({ text: String(item.text ?? ''), ...(key ? { key } : {}), ...(assigneePhone ? { assigneePhone } : {}), ...(due ? { dueAt: due } : {}) });
+    const item = botChecklistItem(rawItem);
+    if ('ok' in item) return item;
+    items.push(item);
   }
   const valid = validateChecklist({ title: String(checklist.title ?? ''), items: items.map((item) => item.text) });
   if (!valid.ok) return refuse(valid.message);

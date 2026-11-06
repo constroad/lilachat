@@ -7,7 +7,7 @@
     "predev": "node scripts/copy-mediapipe.mjs",
     "dev": "vite",
     "prebuild": "node scripts/copy-mediapipe.mjs",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node scripts/check-chunk-cycles.mjs",
     "preview": "vite preview",
     "test": "vitest run"
   },

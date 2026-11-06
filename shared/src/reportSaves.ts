@@ -33,7 +33,7 @@ export type ReportSave = {
   refusal?: SaveRefusal;
   sent?: SentMark;
 };
-export type SaveVerdict = { kind: 'confirm' | 'retry' | 'flush' | 'wait' } | { kind: 'refuse'; refusal: SaveRefusal };
+export type SaveVerdict = { kind: 'confirm' | 'flush' | 'wait' } | { kind: 'retry'; /** Agentes said how long: its «too many calls», not a lost signal. */ afterMs?: number } | { kind: 'refuse'; refusal: SaveRefusal };
 
 const LOCAL_ITEM = 'local-';
 const GENERAL_SECTION = 'general';
@@ -43,6 +43,10 @@ const PHOTOS_VALUE = 'fotos';
 const SAVE_REFUSED = 'Portal no aceptó este cambio.';
 const UNSENT_HTTP = new Set([408, 429]);
 const SERVER_DOWN = 500;
+/** Agentes' «too many calls» (06/11): the save waits what it says, or this when it says nothing. */
+const RATE_LIMITED = 'rate_limited';
+export const RATE_LIMIT_WAIT_MS = 5000;
+const MS_PER_S = 1000;
 
 export const reportKeyOf = ({ spaceId, clientId, serviceId, type }: ReportRef): string => [spaceId, clientId, serviceId, type].join(':');
 /** The forms of a type are the same in every service of the space: they let a new report start with no signal. */
@@ -75,7 +79,7 @@ export function queueSave(queue: readonly ReportSave[], save: ReportSave): Repor
 
 const openSection = (section: DocumentSection): DocumentSection => ({ ...section, enabled: true });
 
-const emptySection = (entry: SectionTemplate): FormSection => ({ kind: 'form', id: entry.id, title: entry.title, form: entry.form, required: entry.required, enabled: true, state: 'empty', summary: [], results: [], values: {}, ...(entry.tool ? { tool: entry.tool } : {}) });
+const emptySection = ({ id, title, form, required, tool, photoKind, requireLocation }: SectionTemplate): FormSection => ({ kind: 'form', id, title, form, required, enabled: true, state: 'empty', summary: [], results: [], values: {}, ...(tool ? { tool } : {}), ...(photoKind ? { photoKind } : {}), ...(requireLocation ? { requireLocation } : {}) });
 
 function withLocalItem(document: FieldDocument, path: SectionPath): FieldDocument {
   const sections = document.sections.map((section): DocumentSection => {
@@ -141,13 +145,17 @@ function blankSection(section: DocumentSection, index: number): DocumentSection 
 }
 
 /** A new report from what the phone knows of its type: its forms, and nothing of the report they came from. */
-export const blankDocumentOf = (document: FieldDocument): FieldDocument => ({ ...document, id: null, status: 'draft', sections: document.sections.map(blankSection), publish: { label: PUBLISH_LABEL, missing: [] } });
+export const blankDocumentOf = (document: FieldDocument): FieldDocument => ({ ...document, id: null, status: 'draft', sections: document.sections.map(blankSection), publish: { label: PUBLISH_LABEL, missing: [], warnings: [] } });
 
-/** The next save to send. What was refused waits for the person, and so does what hangs from it; while the report does not exist, only its first section can make it. */
+/**
+ * The next save to send. What was refused waits for the person, and so does what hangs from it; while the report does not exist, only its first section can make it.
+ * What the person saves passes before the photos waiting (José 06/11): a section is one call, a backlog of photos is many.
+ */
 export function nextSave(queue: readonly ReportSave[], document: FieldDocument | null): ReportSave | null {
   const stuck = new Set(queue.filter((one) => one.refusal && one.createsItem).map((one) => one.path.itemId));
   const first = document?.sections[0]?.id;
-  return queue.find((one) => !one.refusal && !stuck.has(one.path.itemId) && (document?.id !== null || one.path.sectionId === first)) ?? null;
+  const ready = queue.filter((one) => !one.refusal && !stuck.has(one.path.itemId) && (document?.id !== null || one.path.sectionId === first));
+  return ready.find((one) => !one.photo) ?? ready[0] ?? null;
 }
 
 const repeatItems = (document: FieldDocument, sectionId: string): RepeatItem[] => document.sections.find((one): one is RepeatSection => one.id === sectionId && one.kind === 'repeat')?.items ?? [];
@@ -198,6 +206,7 @@ export function judgeFailure(failure: { status?: number; message?: string }): Sa
 const refusalOf = (errors: Record<string, string>): SaveVerdict => ({ kind: 'refuse', refusal: { message: errors._ ?? Object.values(errors)[0] ?? SAVE_REFUSED, errors } });
 
 export function judgeReply(reply: FormSubmitReply): SaveVerdict {
+  if (!reply.ok && reply.code === RATE_LIMITED) return { kind: 'retry', afterMs: reply.retryAfterS ? reply.retryAfterS * MS_PER_S : RATE_LIMIT_WAIT_MS };
   if (!reply.ok) return reply.errors && Object.keys(reply.errors).length ? refusalOf(reply.errors) : judgeFailure(reply);
   if (reply.outcome.outcome === 'failed') return { kind: 'retry' };
   return { kind: reply.outcome.outcome === 'pending' ? 'wait' : 'confirm' };

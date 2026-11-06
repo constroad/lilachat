@@ -4,7 +4,8 @@ import { createReportQueue, noticeOf, type ReportWire } from './reportQueue';
 import { docOf, fakePortal, fakeVault, general, newTramo, photoOf, ref, saved, saveOf } from './reportQueue.fixture';
 import { blankDocumentOf, reportKeyOf } from './reportSaves';
 
-const queueWith = (wire: ReportWire, vault: ReturnType<typeof fakeVault>['vault']) => createReportQueue({ wire, vault });
+/** No pace between writes: the tests of the pace set their own `gapMs`. */
+const queueWith = (wire: ReportWire, vault: ReturnType<typeof fakeVault>['vault']) => createReportQueue({ wire, vault, gapMs: 0 });
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -403,5 +404,47 @@ describe('noticeOf', () => {
     expect(await answer).toBeNull();
     expect(socket.listeners.size).toBe(0);
     expect(await noticeOf(null, 'run-1')).toBeNull();
+  });
+});
+
+describe('the pace Portal asked for (06/11): one write every few seconds, and its «too many calls»', () => {
+  it('the first write goes at once; the next waits `gapMs`', async () => {
+    const portal = fakePortal({ id: 'r1', tramos: [{ id: 't1', photos: 0 }] });
+    const { vault } = fakeVault();
+    const queue = createReportQueue({ wire: portal.wire, vault, gapMs: 4000 });
+    const document = docOf('r1', [{ id: 't1', photos: 0 }]);
+    await queue.add(saveOf(document, general, 'a', { liquido: 'MC-30' }));
+    await queue.add(saveOf(document, { sectionId: 'tramos', itemId: 't1', key: 'bandejas' }, 'b', { peso: '9' }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(portal.state.writes).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(3999);
+    expect(portal.state.writes).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(1);
+    await queue.idle();
+    expect(portal.state.writes).toHaveLength(2);
+    // Emptied, the queue forgets its pace: the next write goes at once.
+    await queue.forget();
+    await queue.add(saveOf(document, general, 'c', { liquido: 'RC-250' }));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(portal.state.writes).toHaveLength(3);
+  });
+
+  it('too many calls: the save waits what agentes said, is not read as no signal, and then goes', async () => {
+    const portal = fakePortal({ id: 'r1', tramos: [] });
+    portal.state.rateLimitOnce = 2;
+    const { kept, vault } = fakeVault();
+    const queue = queueWith(portal.wire, vault);
+    await queue.add(saveOf(docOf('r1', []), general, 'a', { liquido: 'MC-30' }));
+    await queue.idle();
+    expect(portal.state.writes).toEqual([]);
+    expect(kept.saves[0]).toMatchObject({ clientKey: 'a', attempts: 1 });
+    expect(kept.saves[0]?.refusal).toBeUndefined();
+    expect(queue.snapshot().stalled).toBe(false);
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(portal.state.writes).toEqual([]);
+    await vi.advanceTimersByTimeAsync(1);
+    await queue.idle();
+    expect(portal.state.writes).toEqual(['general:nuevo:{"liquido":"MC-30"}']);
+    expect(kept.saves).toEqual([]);
   });
 });

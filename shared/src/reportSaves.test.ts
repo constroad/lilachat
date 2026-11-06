@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fieldDocumentOf, type FieldDocument, type SectionPath } from './fieldDocument';
-import { applySave, blankDocumentOf, documentWithQueue, judgeFailure, judgeNotice, judgeReply, landedBefore, newItemOf, nextSave, pendingOf, photosLine, queueLine, queueSave, reportFormAnswer, reportKeyOf, reportSaveOf, resolveItem, savesOf, sectionPhotos, sectionRowLine, sentMarkOf, withoutSave, type ReportRef, type ReportSave } from './reportSaves';
+import { applySave, blankDocumentOf, documentWithQueue, judgeFailure, judgeNotice, judgeReply, RATE_LIMIT_WAIT_MS, landedBefore, newItemOf, nextSave, pendingOf, photosLine, queueLine, queueSave, reportFormAnswer, reportKeyOf, reportSaveOf, resolveItem, savesOf, sectionPhotos, sectionRowLine, sentMarkOf, withoutSave, type ReportRef, type ReportSave } from './reportSaves';
 
 const photosForm = { type: 'object', properties: { foto: { type: 'string', title: 'Foto', 'x-input': 'photo' }, descripcion: { type: 'string', title: 'Descripción', maxLength: 200 } }, required: ['foto'] };
 const textForm = (name: string) => ({ type: 'object', properties: { [name]: { type: 'string', title: name } }, required: [name] });
@@ -146,6 +146,13 @@ describe('nextSave', () => {
     expect(nextSave([tramo, inside], parsed())).toBeNull();
   });
 
+  it('what the person saves passes before the photos waiting (José 06/11)', () => {
+    const document = parsed();
+    expect(nextSave([photoSave('p1'), photoSave('p2'), saveAt(bandejas, 's', { peso: '9' })], document)?.clientKey).toBe('s');
+    expect(nextSave([photoSave('p1'), photoSave('p2')], document)?.clientKey).toBe('p1');
+    expect(nextSave([photoSave('p1'), { ...saveAt(bandejas, 's'), refusal: { message: 'x', errors: {} } }], document)?.clientKey).toBe('p1');
+  });
+
   it('while the report does not exist only its first section goes', () => {
     const general = saveAt({ sectionId: 'general', itemId: null, key: 'general' }, 'a', {}, empty());
     const firmas = saveAt({ sectionId: 'firmas', itemId: null, key: 'firmas' }, 'b', {}, empty());
@@ -199,6 +206,12 @@ describe('judging an answer', () => {
     expect(judgeReply({ ok: false, errors: { _: 'Ese tramo no está', peso: 'x' } })).toMatchObject({ refusal: { message: 'Ese tramo no está' } });
     expect(judgeReply({ ok: false, message: 'Sin conexión' }).kind).toBe('retry');
     expect(judgeReply({ ok: false, status: 410, message: 'La app ya no está' }).kind).toBe('refuse');
+  });
+
+  it('too many calls (agentes 06/11) is a wait of what it says, never a refusal', () => {
+    expect(judgeReply({ ok: false, status: 429, errors: { _: 'Demasiadas llamadas' }, code: 'rate_limited', retryAfterS: 12 })).toEqual({ kind: 'retry', afterMs: 12_000 });
+    expect(judgeReply({ ok: false, status: 429, errors: { _: 'Demasiadas llamadas' }, code: 'rate_limited' })).toEqual({ kind: 'retry', afterMs: RATE_LIMIT_WAIT_MS });
+    expect(judgeReply({ ok: false, status: 429 })).toEqual({ kind: 'retry' });
   });
 });
 

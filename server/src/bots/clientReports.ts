@@ -1,5 +1,5 @@
 import mongoose, { Types, type Model } from 'mongoose';
-import { channelValuesOf, CLIENT_ID, fieldDocumentOf, formLevelOf, SECTION_TOOL, sectionFormOf, type AppForm, type CommandOutcome, type FieldDocument, type FormSchema, type SectionPath } from '@lilachat/shared';
+import { channelValuesOf, CLIENT_ID, fieldDocumentOf, formLevelOf, photoKindOf, requiresLocation, SECTION_TOOL, sectionFormOf, type AppForm, type CommandOutcome, type FieldDocument, type FormSchema, type SectionPath } from '@lilachat/shared';
 import { OUTDATED_FORM_MESSAGE, type CommandError } from './botCommands.js';
 import { askAboutService, findAskedService, notFound, type AskOutcome, type NotFound, type ServiceAsk } from './clientFiles.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botModels.js';
@@ -14,7 +14,7 @@ import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botMode
  */
 export const PUBLISH_TOOL = 'publicar_informe';
 /** The report types that open from Lilachat today; Portal's `tipo` enum says the same. */
-export const OPEN_REPORT_TYPES = ['CTL-IMP'] as const;
+export const OPEN_REPORT_TYPES = ['CTL-IMP', 'CTL-PIS'] as const;
 const DRAFT_FAILED = 'No se pudo abrir el informe';
 const DRAFT_KEPT_S = 24 * 60 * 60;
 const COMMAND_TTL_MS = 15 * 60_000;
@@ -50,16 +50,24 @@ export async function clientReportDraft(workspaceId: string, clientId: string, s
   const body = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
   const reportId = text(body.report_id, 64);
   if (!isOpenType(body.type) || (reportId && !CLIENT_ID.test(reportId))) return fail(400, 'invalid_request', 'Ese tipo de informe no se crea desde Lilachat.');
-  const asked = await askAboutService(DRAFT, workspaceId, clientId, serviceId, userId, { type: body.type, ...(reportId ? { report_id: reportId } : {}) });
+  const page = pageOf(body.page);
+  if (page === 'invalid') return fail(400, 'invalid_request', 'La página de unidades empieza en 1.');
+  const asked = await askAboutService(DRAFT, workspaceId, clientId, serviceId, userId, { type: body.type, ...(reportId ? { report_id: reportId } : {}), ...(page ? { page } : {}) });
   if ('ok' in asked && asked.ok) {
     await ReportDraftModel.updateOne({ workspaceId: new Types.ObjectId(workspaceId), userId, serviceId, type: body.type }, { $set: { document: asked.value } }, { upsert: true });
   }
   return asked;
 }
 
+/** A window of units (50 a page, agentes maps it to `pagina` from the second on): an integer from 1, nothing, or a refusal. */
+function pageOf(raw: unknown): number | null | 'invalid' {
+  if (raw === undefined || raw === null) return null;
+  return typeof raw === 'number' && Number.isInteger(raw) && raw >= 1 ? raw : 'invalid';
+}
+
 type Place = { lat?: number; lng?: number; at: string };
 type OpenInput =
-  | { kind: 'section'; type: string; path: SectionPath; reportId: string | null; tramoId: string | null; place: Place | null }
+  | { kind: 'section'; type: string; path: SectionPath; reportId: string | null; tramoId: string | null; place: Place | null; /** The save's own key: Portal tells a photo sent twice from a second one. */ clientKey: string | null }
   | { kind: 'publish'; reportId: string };
 
 const pathOf = (raw: Record<string, unknown>): SectionPath | null => {
@@ -89,17 +97,23 @@ function openInputOf(input: unknown): OpenInput | null {
   const place = placeOf(raw);
   if (!path || !isOpenType(raw.type) || place === 'invalid') return null;
   const tramoId = text(raw.tramo_id, 64);
-  return { kind: 'section', type: raw.type, path, reportId: reportId || null, tramoId: tramoId || null, place };
+  const clientKey = text(raw.client_key, 64);
+  return { kind: 'section', type: raw.type, path, reportId: reportId || null, tramoId: tramoId || null, place, clientKey: clientKey || null };
 }
 
 type Prepared = { form: AppForm; context: Record<string, string | number> };
 
-/** Each tool takes only the keys it declares (agentes refuses the rest): the photo one wants the report, the tramo and the hour. */
-function contextFor(form: AppForm, serviceId: string, input: Extract<OpenInput, { kind: 'section' }>, reportId: string | null, tramoId: string | null): { context: Record<string, string | number> } | CommandError {
+type PhotoTerms = { reportId: string | null; tramoId: string | null; /** The section's `tipoFoto` (CTL-PIS) and whether it refuses a capture without a fix. */ photoKind?: string; requireLocation: boolean };
+
+/** Each tool takes only the keys it declares (agentes refuses the rest): the photo one wants the report, the tramo, the hour, its kind and its key. */
+function contextFor(form: AppForm, serviceId: string, input: Extract<OpenInput, { kind: 'section' }>, terms: PhotoTerms): { context: Record<string, string | number> } | CommandError {
+  const { reportId, tramoId, photoKind } = terms;
   if (form.id === SECTION_TOOL) return { context: { servicioId: serviceId, tipo: input.type, seccion: input.path.key, ...(reportId ? { informeId: reportId } : {}), ...(tramoId ? { tramoId } : {}) } };
   if (!reportId || !tramoId || !input.place) return fail(400, 'invalid_request', 'Una foto necesita el informe, el tramo y la hora de la captura.');
   const { lat, lng, at } = input.place;
-  return { context: { servicioId: serviceId, informeId: reportId, tramoId, at, ...(lat !== undefined && lng !== undefined ? { lat, lng } : {}) } };
+  const placed = lat !== undefined && lng !== undefined;
+  if (terms.requireLocation && !placed) return fail(400, 'invalid_request', 'Esta foto necesita la ubicación del teléfono.');
+  return { context: { servicioId: serviceId, informeId: reportId, tramoId, at, ...(placed ? { lat, lng } : {}), ...(photoKind ? { tipoFoto: photoKind } : {}), ...(input.clientKey ? { clientKey: input.clientKey } : {}) } };
 }
 
 /** The section's form comes from the document Portal answered to THIS person; the report, section and tramo ride as context. */
@@ -107,7 +121,7 @@ async function sectionPrepared(workspaceId: string, serviceId: string, userId: T
   const draft = await ReportDraftModel.findOne({ workspaceId: new Types.ObjectId(workspaceId), userId, serviceId, type: input.type }).lean();
   const form = draft ? sectionFormOf(draft.document, input.path) : null;
   if (!draft || !form) return fail(409, 'draft_not_open', 'Abre el informe de nuevo para seguir llenándolo.');
-  const built = contextFor(form, serviceId, input, input.reportId ?? draft.document.id, input.tramoId ?? input.path.itemId);
+  const built = contextFor(form, serviceId, input, { reportId: input.reportId ?? draft.document.id, tramoId: input.tramoId ?? input.path.itemId, photoKind: photoKindOf(draft.document, input.path), requireLocation: requiresLocation(draft.document, input.path) });
   return 'error' in built ? built : { form, context: { ...built.context, ...channelValuesOf(draft.document, input.path) } };
 }
 

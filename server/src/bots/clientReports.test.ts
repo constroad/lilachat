@@ -203,3 +203,43 @@ describe('the photo and «Publicar» as forms', () => {
     expect(received.find((event) => event.type === 'form.submitted')?.data).toMatchObject({ form_id: 'publicar_informe', service_id: 'srv-318', values: { servicioId: 'srv-318', informeId: '6aed0a1b2c3d4e5f60718293' } });
   });
 });
+
+describe('a control de pista (06/11): units from the dispatches, photos with their kind and place', () => {
+  const unitsSection = {
+    id: 'unidades', kind: 'repeat', title: 'Unidades', required: true, state: 'empty', summary: [], itemTitle: 'Unidad', addLabel: '', min: 1, page: { current: 1, total: 2 },
+    template: [{ id: 'datos', title: 'Datos', required: true, form: 'ubicacion' }, { id: 'foto-ingreso', title: 'Foto de ingreso', required: true, form: 'fotos', tool: 'agregar_foto_de_informe', photoKind: 'ingreso', requireLocation: true }],
+    items: [{ id: 'd1', title: 'QAP-103', summary: ['Salió 07:10 · 15 m³'], sections: [] }],
+  };
+  const pista = { ...document, id: '6aed0a1b2c3d4e5f60718293', type: 'CTL-PIS', title: 'Control de pista', sections: [document.sections[0], unitsSection] };
+  const at = '2026-11-06T15:00:00.000Z';
+
+  it('opens here, and a page of units rides to Portal as given; a page before the first is refused', async () => {
+    answers['client.report.draft.requested'] = { status: 200, body: pista };
+    await draftOf(ana, { type: 'CTL-PIS', page: 2 }).expect(200);
+    expect(received[0]?.data).toMatchObject({ client_id: 'cli-cvs', service_id: 'srv-318', type: 'CTL-PIS', page: 2 });
+    await draftOf(ana, { type: 'CTL-PIS' }).expect(200);
+    expect(received[1]?.data).not.toHaveProperty('page');
+    await draftOf(ana, { type: 'CTL-PIS', page: 0 }).expect(400);
+  });
+
+  it('a unit\'s photo says its kind and its own key beside the place, so Portal tells the photos apart', async () => {
+    answers['client.report.draft.requested'] = { status: 200, body: pista };
+    await draftOf(ana, { type: 'CTL-PIS' }).expect(200);
+
+    const opened = await openOf(ana, { kind: 'section', type: 'CTL-PIS', section_id: 'unidades', item_id: 'd1', key: 'foto-ingreso', lat: -12.0464, lng: -77.0428, at, client_key: 'k-ingreso-1' }).expect(200);
+
+    expect(opened.body.response.form).toMatchObject({ id: 'agregar_foto_de_informe', title: 'QAP-103 · Foto de ingreso' });
+    const run = await BotCommandRunModel.findById(opened.body.commandId).lean();
+    expect(run?.context).toEqual({ servicioId: 'srv-318', informeId: '6aed0a1b2c3d4e5f60718293', tramoId: 'd1', tipoFoto: 'ingreso', clientKey: 'k-ingreso-1', lat: -12.0464, lng: -77.0428, at });
+  });
+
+  it('a photo that needs its place is refused without one, before touching Portal', async () => {
+    answers['client.report.draft.requested'] = { status: 200, body: pista };
+    await draftOf(ana, { type: 'CTL-PIS' }).expect(200);
+    const before = received.length;
+
+    await openOf(ana, { kind: 'section', type: 'CTL-PIS', section_id: 'unidades', item_id: 'd1', key: 'foto-ingreso', at }).expect(400);
+
+    expect(received).toHaveLength(before);
+  });
+});

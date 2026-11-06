@@ -17,7 +17,7 @@ export type ReportTypeOption = { code: string; label: string; caption: string; /
 export const REPORT_TYPE_OPTIONS: readonly ReportTypeOption[] = [
   { code: 'CTL-IMP', label: 'Control de imprimación', caption: 'Tasa de riego por tramo, con bandejas y fotos', opensHere: true },
   { code: 'IAA', label: 'Área adicional', caption: 'Zonas medidas sobre la foto', opensHere: false },
-  { code: 'CTL-PIS', label: 'Control de pista', caption: 'Una foto por volquete del pedido', opensHere: false },
+  { code: 'CTL-PIS', label: 'Control de pista', caption: 'Llegada, temperaturas, escantillón y 4 fotos por volquete', opensHere: false },
   { code: 'CON-CAP', label: 'Conformación de capa', caption: 'Espesor y compactación en campo', opensHere: false },
   { code: 'RCP-CAM', label: 'Recepción de campo', caption: 'Conformidad con firma de supervisión', opensHere: false },
   { code: 'LEV-OBS', label: 'Levantamiento de observaciones', caption: 'Correcciones validadas en campo', opensHere: false },
@@ -36,9 +36,9 @@ export const DRAFT_FAILED = 'No se pudo abrir el informe';
 export const reportDraftPath = (spaceId: string, clientId: string, serviceId: string): string => `${clientServicePath(spaceId, clientId, serviceId)}/reports/draft`;
 export const reportFormsPath = (spaceId: string, clientId: string, serviceId: string): string => `${clientServicePath(spaceId, clientId, serviceId)}/reports/forms`;
 
-export type ReportDraftRequest = { type: string; report_id?: string };
+export type ReportDraftRequest = { type: string; report_id?: string; /** A window of items past the first (50 units a page): the first goes without it. */ page?: number };
 /** Without the id Portal answers the person's own draft of that type, so a lost id is never a second report. */
-export const reportDraftRequest = (type: string, reportId: string | null): ReportDraftRequest => ({ type, ...(reportId ? { report_id: reportId } : {}) });
+export const reportDraftRequest = (type: string, reportId: string | null, page = 1): ReportDraftRequest => ({ type, ...(reportId ? { report_id: reportId } : {}), ...(page > 1 ? { page } : {}) });
 
 export type ReportDraftBody = { document?: unknown; error?: string; message?: string };
 export type ReportDraftResult = { ok: true; document: FieldDocument } | { ok: false; message: string };
@@ -55,13 +55,13 @@ export type DevicePlace = { lat?: number; lng?: number; at: string };
 export const PLACE_BUTTON = { take: 'Usar mi ubicación', taking: 'Buscando tu ubicación…', failed: 'No se pudo leer tu ubicación. Revisa el permiso y el GPS.' };
 /** What a place field holds: the same link to the map the service's own place has. */
 export const placeFieldValue = ({ lat, lng }: DevicePlace): string | null => (lat === undefined || lng === undefined ? null : locationMapLink({ lat, lng }));
-export type SectionFormRequest = { kind: 'section'; type: string; section_id: string; item_id: string | null; key: string; report_id?: string; forms: number } & Partial<DevicePlace>;
+export type SectionFormRequest = { kind: 'section'; type: string; section_id: string; item_id: string | null; key: string; report_id?: string; forms: number; /** The save's own key: Portal tells a photo sent twice from a second one. */ client_key?: string } & Partial<DevicePlace>;
 export type PublishFormRequest = { kind: 'publish'; report_id: string; forms: number };
 export type ReportFormRequest = SectionFormRequest | PublishFormRequest;
 
 /** What `POST …/reports/forms` takes to open a section: its path, the report once it exists, and what this app can draw. */
-export function sectionFormRequest(document: FieldDocument, path: SectionPath, place?: DevicePlace | null): SectionFormRequest {
-  return { kind: 'section', type: document.type, section_id: path.sectionId, item_id: path.itemId, key: path.key, ...(document.id ? { report_id: document.id } : {}), forms: FORMS_LEVEL, ...(place ?? {}) };
+export function sectionFormRequest(document: FieldDocument, path: SectionPath, place?: DevicePlace | null, clientKey?: string): SectionFormRequest {
+  return { kind: 'section', type: document.type, section_id: path.sectionId, item_id: path.itemId, key: path.key, ...(document.id ? { report_id: document.id } : {}), forms: FORMS_LEVEL, ...(place ?? {}), ...(clientKey ? { client_key: clientKey } : {}) };
 }
 
 export const publishFormRequest = (document: FieldDocument): PublishFormRequest | null => (document.id ? { kind: 'publish', report_id: document.id, forms: FORMS_LEVEL } : null);
@@ -85,9 +85,15 @@ export const progressPercent = ({ done, total }: { done: number; total: number }
 export function itemsLine(section: RepeatSection): string {
   const unit = section.itemTitle.toLowerCase();
   const count = section.items.length;
-  if (count === 0) return `Sin ${unit}s todavía`;
-  return `${count} ${unit}${count === 1 ? '' : 's'}`;
+  if (count === 0) return `Sin ${pluralOf(unit)} todavía`;
+  return `${count} ${count === 1 ? unit : pluralOf(unit)}`;
 }
+
+/** «tramo» → «tramos», «unidad» → «unidades». */
+const pluralOf = (word: string): string => (/[aeiouáéíóú]$/i.test(word) ? `${word}s` : `${word}es`);
+
+/** «Página 2 de 3» over a paged repeat (design j-05); nothing while all the items fit. */
+export const pageLine = ({ page }: Pick<RepeatSection, 'page'>): string | null => (page && page.total > 1 ? `Página ${page.current} de ${page.total}` : null);
 
 export const PUBLISH_LABEL = 'Publicar informe';
 export type TrackStart = { appName: string; command: string; action: string };

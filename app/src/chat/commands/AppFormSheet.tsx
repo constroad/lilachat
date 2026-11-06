@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from 'react';
 import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
-import { X } from 'lucide-react-native';
-import { evidenceLine, formFields, formRows, liveSelfieFieldOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply } from '@lilachat/shared';
+import { CheckCheck, X } from 'lucide-react-native';
+import { CHECK_ALL_LABEL, checkAllValues, evidenceLine, formFields, formRows, liveSelfieFieldOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { Modal } from '../../ui/Modal';
@@ -113,6 +113,7 @@ export function AppFormSheet(props: SheetProps) {
           <SheetHeader answer={props.answer} onClose={close} />
           <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }} contentContainerStyle={{ padding: SHEET_PADDING, gap: 14 }}>
             <FormIntro answer={props.answer} refreshing={formLive.refreshing} clock={Boolean(evidence) && !live} personName={props.personName} />
+            {form.checkAll ? <CheckAllButton onPress={() => state.fill(checkAllValues(fields, state.values))} /> : null}
             {/* Two short fields share a row (José, 28/10: a field per row made the forms a sheet). */}
             {formRows(visibleFields(fields, state.values)).map((row) =>
               row.length === 2 ? (
@@ -128,6 +129,17 @@ export function AppFormSheet(props: SheetProps) {
         </View>
       </KeyboardAvoidingView>
     </Modal>
+  );
+}
+
+/** «Marcar todo» (`x-check-all`, the checklist of a control de pista): one tap answers every choice with its first option. */
+function CheckAllButton({ onPress }: { onPress: () => void }) {
+  const colors = useColores();
+  return (
+    <Pressable testID="marcar-todo" onPress={onPress} className="min-h-[48px] flex-row items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10">
+      <CheckCheck size={18} color={colors.primary} />
+      <Text className="text-[15px] font-semibold text-primary">{CHECK_ALL_LABEL}</Text>
+    </Pressable>
   );
 }
 

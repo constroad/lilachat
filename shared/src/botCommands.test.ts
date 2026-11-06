@@ -273,6 +273,10 @@ describe('answers that open a form or must not be shared (R160)', () => {
   it('a form reply is either errors per field or a normal answer', () => {
     expect(validateFormReply({ errors: { accion: 'Ya marcaste ingreso hoy. Lo que sigue es: refrigerio.', _: '  ' } })).toEqual({ ok: true, errors: { accion: 'Ya marcaste ingreso hoy. Lo que sigue es: refrigerio.' } });
     expect(validateFormReply({ text: 'Ingreso marcado 07:12' })).toMatchObject({ ok: true, response: { responseType: 'ephemeral', text: 'Ingreso marcado 07:12' } });
+    // Too many calls (agentes 06/11): the code and the seconds to wait ride with the errors; any other code does not.
+    expect(validateFormReply({ errors: { _: 'Demasiadas llamadas' }, code: 'rate_limited', retry_after_s: 12.4 })).toEqual({ ok: true, errors: { _: 'Demasiadas llamadas' }, code: 'rate_limited', retryAfterS: 13 });
+    expect(validateFormReply({ errors: { _: 'Demasiadas llamadas' }, code: 'rate_limited', retry_after_s: 'pronto' })).toEqual({ ok: true, errors: { _: 'Demasiadas llamadas' }, code: 'rate_limited' });
+    expect(validateFormReply({ errors: { peso: 'Falta' }, code: 'other', retry_after_s: 3 })).toEqual({ ok: true, errors: { peso: 'Falta' } });
     expect(validateFormReply({}).ok).toBe(false);
   });
 });

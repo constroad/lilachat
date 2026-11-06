@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { AlertTriangle, ChevronLeft, ExternalLink, FileText } from 'lucide-react-native';
-import { formKeyOf, itemsLine, pendingOf, publishBlockers, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
+import { formKeyOf, isUnitsRepeat, itemsLine, pendingOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
 import { AppFormSheet } from '../../../chat/commands/AppFormSheet';
 import { EphemeralAnswers } from '../../../chat/commands/EphemeralAnswers';
 import { useColores } from '../../../ui/tema';
@@ -10,6 +10,7 @@ import { useReportPdf } from '../useReportPdf';
 import type { ServiceAskTarget } from '../useServiceAsk';
 import { PublishSheet } from './PublishSheet';
 import { ReportItemsView } from './ReportItemsView';
+import { ReportUnitsView } from './ReportUnitsView';
 import { Pill, ProgressCard, QueueCard, SectionCard } from './ReportSections';
 import { useFieldDocument } from './useFieldDocument';
 import { useReportForms } from './useReportForms';
@@ -100,7 +101,7 @@ function ReportFooter({ report, blocker, asking, onPublish, onPdf, onDone }: { r
 function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems }: { draft: ReportDraftResult | null; report: FieldDocument | null; items: DocumentSection | undefined; portalUrl?: string; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
   if (draft === null) return <View testID="informe-cargando" className="h-40 rounded-2xl bg-surface-variant" />;
   if (!draft.ok || !report) return <DraftFailure message={draft.ok ? 'No se pudo abrir el informe' : draft.message} portalUrl={portalUrl} />;
-  if (items?.kind === 'repeat') return <ReportItemsView section={items} onOpen={onOpen} />;
+  if (items?.kind === 'repeat') return isUnitsRepeat(items) ? <ReportUnitsView section={items} onOpen={onOpen} /> : <ReportItemsView section={items} onOpen={onOpen} />;
   return (
     <>
       <ProgressCard document={report} />
@@ -157,7 +158,7 @@ export function ReportDocumentScreen(props: Props) {
         <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={screen.setItemsOf} />
         {notice ? <Text className="text-center text-[13px] text-error">{notice}</Text> : null}
       </ScrollView>
-      {report && !items ? <ReportFooter report={report} blocker={blockers[0]} asking={pdf.asking} onPublish={() => screen.setPublishing(true)} onPdf={() => void pdf.ask(report.id ?? '', `${report.title} · PDF`)} onDone={() => props.onClose(true)} /> : null}
+      {report && (!items || (items.kind === 'repeat' && isUnitsRepeat(items))) ? <ReportFooter report={report} blocker={publishFooterLine(report, blockers)} asking={pdf.asking} onPublish={() => screen.setPublishing(true)} onPdf={() => void pdf.ask(report.id ?? '', `${report.title} · PDF`)} onDone={() => props.onClose(true)} /> : null}
       {files.viewer}
       {report ? <PublishSheet document={report} blockers={blockers} visible={screen.publishing} onClose={() => screen.setPublishing(false)} onPublish={publish} /> : null}
       {document.form ? <AppFormSheet key={formKeyOf(document.form)} answer={document.form} onSubmit={actions.submit} onUpload={actions.upload} onClose={actions.closeForm} /> : null}

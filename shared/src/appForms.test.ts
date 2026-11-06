@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FRESH_LOCATION_MS, filterChoiceOptions, formFields, initialValues, liveSelfieFieldOf, matchSpan, validateFormSpec, validateFormValues, visibleFields, type FormField } from './appForms.js';
+import { FRESH_LOCATION_MS, checkAllValues, filterChoiceOptions, formFields, initialValues, liveSelfieFieldOf, matchSpan, validateFormSpec, validateFormValues, visibleFields, type FormField } from './appForms.js';
 
 /** Inframaq's real `registrar_marca` (agentes, 23/10), as the app sends it. */
 const attendanceForm = {
@@ -317,5 +317,28 @@ describe('dates and times with a picker, today by default (José, 24/10: «fecha
     expect(validateFormValues(fields, { fecha: '2026-10-24', hora: '07:30' })).toEqual({ ok: true, values: { fecha: '2026-10-24', hora: '07:30' } });
     expect(validateFormValues(fields, { hora: '25:00' })).toEqual({ ok: false, errors: { hora: 'La hora no es válida.' } });
     expect(validateFormValues(fields, { fecha: 'mañana' })).toEqual({ ok: false, errors: { fecha: 'La fecha no es válida.' } });
+  });
+});
+
+describe('«Marcar todo» (the checklist of a control de pista, 06/11)', () => {
+  const yesNo = (title: string) => ({ type: 'string', title, oneOf: [{ const: 'si', title: 'Cumple' }, { const: 'no', title: 'No cumple' }] });
+  const checklist = { id: 'guardar_seccion_de_informe', title: 'Checklist', schema: { type: 'object', 'x-check-all': true, properties: { riego: yesNo('Riego de liga'), junta: yesNo('Juntas'), nota: { type: 'string', title: 'Nota' } } } };
+
+  it('the form keeps the flag, and the button answers every choice with its first option, the rest untouched', () => {
+    const checked = validateFormSpec(checklist);
+    if (!checked.ok) throw new Error(checked.message);
+
+    expect(checked.form.checkAll).toBe(true);
+    expect(checked.form.schema['x-check-all']).toBe(true);
+    expect(checkAllValues(formFields(checked.form), { nota: 'x', riego: 'no' })).toEqual({ nota: 'x', riego: 'si', junta: 'si' });
+  });
+
+  it('a first option that cannot be picked is skipped, and anything but `true` is no button', () => {
+    const blocked = { ...checklist, schema: { ...checklist.schema, properties: { ...checklist.schema.properties, riego: { ...yesNo('Riego'), oneOf: [{ const: 'na', title: 'No aplica', 'x-disabled': true }, { const: 'si', title: 'Cumple' }] } } } };
+    const checked = validateFormSpec(blocked);
+    if (!checked.ok) throw new Error(checked.message);
+    expect(checkAllValues(formFields(checked.form), {})).toEqual({ riego: 'si', junta: 'si' });
+    const loose = validateFormSpec({ ...checklist, schema: { ...checklist.schema, 'x-check-all': 'yes' } });
+    expect(loose.ok && loose.form.checkAll).toBeUndefined();
   });
 });

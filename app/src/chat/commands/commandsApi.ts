@@ -1,4 +1,4 @@
-import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
+import { FORMS_LEVEL, commandScopePath, formSubmitFailure, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -71,9 +71,9 @@ async function sendFormPhoto(jwt: string, scope: CommandScope, commandId: string
 export async function submitAppForm(jwt: string, scope: CommandScope, commandId: string, values: FormValues): Promise<FormSubmitReply> {
   try {
     const response = await fetch(`${BASE_URL}${commandScopePath(scope)}/commands/${commandId}/form`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` }, body: JSON.stringify({ values }) });
-    const data = (await response.json().catch(() => ({}))) as CommandOutcome & { errors?: Record<string, string>; message?: string };
+    const data = (await response.json().catch(() => ({}))) as CommandOutcome & { errors?: Record<string, string>; message?: string; code?: string; retry_after_s?: number };
     if (response.ok) return { ok: true, outcome: data };
-    return data.errors ? { ok: false, errors: data.errors } : { ok: false, status: response.status, message: data.message ?? 'No se pudo enviar.' };
+    return formSubmitFailure(response.status, data, 'No se pudo enviar.');
   } catch {
     return { ok: false, message: 'Sin conexión. Inténtalo de nuevo.' };
   }

@@ -190,6 +190,16 @@ describe('an app answers a command with a form', () => {
     expect(broken.body.fileId).toEqual(expect.any(String));
   });
 
+  it('too many calls (agentes 06/11) is a 429 with the code and the seconds to wait, so the queue waits instead of refusing', async () => {
+    const commandId = await openForm();
+    const { fileId } = (await uploadPhoto(commandId).expect(201)).body;
+    answer = json({ errors: { _: 'Demasiadas llamadas, espera un momento.' }, code: 'rate_limited', retry_after_s: 12 });
+    const limited = await submit(commandId, { accion: 'ingreso', ubicacion: here, foto: fileId }).expect(429);
+    expect(limited.body).toEqual({ errors: { _: 'Demasiadas llamadas, espera un momento.' }, code: 'rate_limited', retry_after_s: 12 });
+    answer = json({ errors: { _: 'Demasiadas llamadas.' }, code: 'rate_limited' });
+    expect((await submit(commandId, { accion: 'ingreso', ubicacion: here, foto: fileId }).expect(429)).body).toEqual({ errors: { _: 'Demasiadas llamadas.' }, code: 'rate_limited' });
+  });
+
   it('the app\'s errors keep the form open with them; a late answer through /respond closes it', async () => {
     const commandId = await openForm();
     const { fileId } = (await uploadPhoto(commandId).expect(201)).body;

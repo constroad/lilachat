@@ -133,7 +133,14 @@ export function precisionLabel(point: GeoPoint): string {
 }
 
 /** The server's answer to a sent form: `errors` are the 422's, `message` a refusal (expired, uninstalled). */
-export type FormSubmitReply = { ok: true; outcome: CommandOutcome } | { ok: false; errors?: Record<string, string>; message?: string; /** Missing with no network: the HTTP refusal, to tell one from the other. */ status?: number };
+export type FormSubmitReply = { ok: true; outcome: CommandOutcome } | { ok: false; errors?: Record<string, string>; message?: string; /** Missing with no network: the HTTP refusal, to tell one from the other. */ status?: number; /** `rate_limited` (agentes 06/11): too many calls, with the seconds to wait. */ code?: string; retryAfterS?: number };
+
+/** The HTTP refusal of a sent form as the app and the web read it: the app's errors, agentes' rate limit, or the server's message. */
+export function formSubmitFailure(status: number, body: { errors?: Record<string, string>; message?: string; code?: string; retry_after_s?: number }, fallback: string): FormSubmitReply {
+  const rate = body.code === 'rate_limited' ? { code: body.code, ...(typeof body.retry_after_s === 'number' ? { retryAfterS: body.retry_after_s } : {}) } : {};
+  if (body.errors) return { ok: false, status, errors: body.errors, ...rate };
+  return { ok: false, status, message: body.message ?? fallback };
+}
 /** `waiting`: the app answers later by `/respond`; the form stays open with «Enviando…» until then (consensus 24/10). */
 export type FormSubmitOutcome = { done: true; answer: EphemeralAnswer | null } | { done: false; errors: Record<string, string>; message?: string; waiting?: true };
 

@@ -97,10 +97,19 @@ export function isAckBody(raw: unknown): boolean {
  * or `{ errors }`, a message per field and `"_"` for the whole form (it stays
  * open with them, agentes 23/10).
  */
-export function validateFormReply(raw: unknown): { ok: true; errors: Record<string, string> } | { ok: true; response: CommandResponse } | { ok: false; message: string } {
+export type FormReplyErrors = { ok: true; errors: Record<string, string>; /** Agentes' «too many calls» (06/11): the caller waits `retryAfterS` instead of refusing. */ code?: 'rate_limited'; retryAfterS?: number };
+
+/** `code: 'rate_limited'` and `retry_after_s` as agentes sends them; any other code is not the app's business. */
+function rateLimitOf(raw: Record<string, unknown>): Pick<FormReplyErrors, 'code' | 'retryAfterS'> {
+  if (raw.code !== 'rate_limited') return {};
+  const seconds = typeof raw.retry_after_s === 'number' && Number.isFinite(raw.retry_after_s) && raw.retry_after_s > 0 ? Math.ceil(raw.retry_after_s) : undefined;
+  return { code: 'rate_limited', ...(seconds ? { retryAfterS: seconds } : {}) };
+}
+
+export function validateFormReply(raw: unknown): FormReplyErrors | { ok: true; response: CommandResponse } | { ok: false; message: string } {
   const errors = record(record(raw).errors);
   const messages = Object.fromEntries(Object.entries(errors).flatMap(([field, message]) => (typeof message === 'string' && message.trim() ? [[field, line(message, COMMAND_LIMITS.description * 2)]] : [])));
-  if (Object.keys(messages).length) return { ok: true, errors: messages };
+  if (Object.keys(messages).length) return { ok: true, errors: messages, ...rateLimitOf(record(raw)) };
   const valid = validateCommandResponse(raw);
   return valid.ok ? { ok: true, response: valid.response } : valid;
 }

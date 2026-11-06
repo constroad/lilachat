@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applySavedSection, channelValuesOf, fieldDocumentOf, nextSection, progressOf, publishBlockers, SECTION_TOOL, sectionFormOf } from './fieldDocument';
+import { applySavedSection, channelValuesOf, fieldDocumentOf, nextSection, photoKindOf, progressOf, publishBlockers, requiresLocation, SECTION_TOOL, sectionFormOf, type RepeatSection } from './fieldDocument';
 
 /** The document Portal's `informe_de_campo` answers (spec INFORMES-DESDE-LILACHAT §3.1), for a CTL-IMP with one tramo. */
 const generalForm = { type: 'object', properties: { liquido: { type: 'string', title: 'Líquido', oneOf: [{ const: 'MC-30', title: 'MC-30' }, { const: 'EMULSION', title: 'Emulsión' }] }, proyecto: { type: 'string', title: 'Proyecto' } }, required: ['liquido', 'proyecto'] };
@@ -179,5 +179,55 @@ describe('publishBlockers', () => {
     expect(publishBlockers(parsed(), [])).toEqual(['Falta una foto en Tramo 1']);
     expect(publishBlockers(parsed(), ['a save'])).toEqual(['Falta una foto en Tramo 1', 'Hay cambios sin enviar.']);
     expect(publishBlockers(parsed(), [], true)).toEqual(['Falta una foto en Tramo 1', 'Publicar necesita señal.']);
+  });
+});
+
+describe('a control de pista (contract 06/11): the units come from the dispatches, four photos with their place', () => {
+  const unidadForm = { type: 'object', properties: { horaLlegada: { type: 'string', title: 'Hora de llegada', format: 'time' }, tempLlegada: { type: 'number', title: 'Temp. de llegada', 'x-unit': '°C' }, escantillonCm: { type: 'number', title: 'Escantillón', 'x-unit': 'cm' } }, required: ['horaLlegada', 'tempLlegada', 'escantillonCm'] };
+  const photoEntry = (kind: string) => ({ id: `foto-${kind}`, title: `Foto de ${kind}`, required: true, form: 'fotos', tool: 'agregar_foto_de_informe', photoKind: kind, requireLocation: true });
+  const unitsOf = (items: unknown[], extra: Record<string, unknown>) => ({
+    id: 'unidades', kind: 'repeat', title: 'Unidades', required: true, state: 'empty', summary: [], itemTitle: 'Unidad', addLabel: '', canAdd: false, min: 1, page: { current: 2, total: 3 },
+    template: [{ id: 'datos', title: 'Datos', required: true, form: 'unidad' }, photoEntry('ingreso'), photoEntry('temperatura'), photoEntry('vacia'), photoEntry('escantillon')],
+    items, ...extra,
+  });
+  const pista = (items: unknown[] = [], extra: Record<string, unknown> = {}) => fieldDocumentOf({
+    id: null, type: 'CTL-PIS', title: 'Control de pista', status: 'draft',
+    forms: { general: generalForm, unidad: unidadForm, fotos: photosForm },
+    sections: [{ ...body.sections[0], values: {} }, unitsOf(items, extra)],
+    publish: { label: 'Publicar informe', missing: ['Falta una unidad'], warnings: ['2 despachos del pedido sin fila'] },
+  })!;
+  const units = (document: ReturnType<typeof pista>) => document.sections[1] as RepeatSection;
+  const dispatch = { id: 'd1', title: 'QAP-103', summary: ['Salió 07:10 · 15 m³'], results: [], sections: [] };
+  const photoPath = { sectionId: 'unidades', itemId: 'd1', key: 'foto-ingreso' };
+
+  it('reads the page, that nobody adds a unit, the kind and the place each photo asks for, and the warnings', () => {
+    const document = pista([dispatch]);
+
+    expect(units(document)).toMatchObject({ canAdd: false, page: { current: 2, total: 3 }, items: [{ id: 'd1', title: 'QAP-103' }] });
+    expect(units(document).template[1]).toEqual({ id: 'foto-ingreso', title: 'Foto de ingreso', required: true, form: 'fotos', tool: 'agregar_foto_de_informe', photoKind: 'ingreso', requireLocation: true });
+    expect(document.publish).toEqual({ label: 'Publicar informe', missing: ['Falta una unidad'], warnings: ['2 despachos del pedido sin fila'] });
+    expect(photoKindOf(document, photoPath)).toBe('ingreso');
+    expect(photoKindOf(document, { ...photoPath, key: 'datos' })).toBeUndefined();
+    expect(requiresLocation(document, photoPath)).toBe(true);
+    expect(requiresLocation(document, { ...photoPath, itemId: null })).toBe(true);
+    expect(requiresLocation(document, { ...photoPath, key: 'datos' })).toBe(false);
+  });
+
+  it('a repeat adds by default; an empty «Agregar» or `canAdd: false` takes the button away, and a bad page is no page', () => {
+    expect(units(parsed()).canAdd).toBe(true);
+    expect(parsed().publish.warnings).toEqual([]);
+    expect(units(pista([], { canAdd: undefined, addLabel: '' })).canAdd).toBe(false);
+    expect(units(pista([], { canAdd: false, addLabel: 'Agregar' })).canAdd).toBe(false);
+    expect(units(pista([], { canAdd: undefined, addLabel: 'Agregar' })).canAdd).toBe(true);
+    expect(units(pista([], { page: { current: 0, total: 3 } })).page).toBeUndefined();
+    expect(units(pista([], { page: { current: 4, total: 3 } })).page).toBeUndefined();
+  });
+
+  it('with no unit yet nobody owes the first one: the units come from the dispatches, not from «Agregar»', () => {
+    const empty = pista([]);
+    expect(progressOf(empty)).toEqual({ done: 1, total: 1 });
+    expect(nextSection(empty)).toBeNull();
+    expect(progressOf(pista([dispatch]))).toEqual({ done: 1, total: 6 });
+    expect(nextSection(pista([dispatch]))).toEqual({ sectionId: 'unidades', itemId: 'd1', key: 'datos' });
   });
 });

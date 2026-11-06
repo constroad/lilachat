@@ -69,7 +69,7 @@ const isGone = (reply: { status?: number | null; body?: unknown }): boolean => r
  * same request (pending 121 Drive; José 30/10 detail). Nothing is stored: the
  * links never expire, so they only show inside that channel.
  */
-export async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clientId: string, serviceId: string | null, userId: Types.ObjectId, extra: Record<string, string> = {}): Promise<AskOutcome<T> | NotFound> {
+export async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clientId: string, serviceId: string | null, userId: Types.ObjectId, extra: Record<string, string | number> = {}): Promise<AskOutcome<T> | NotFound> {
   const asked = await findAskedService(workspaceId, clientId, serviceId, userId, ask.need);
   if (!asked) return notFound();
   const { client, fallbackUrl, seesBilling } = asked;

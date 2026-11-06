@@ -131,6 +131,42 @@ describe('ReportDocumentWeb', () => {
     expect(onClose).toHaveBeenCalledWith(false);
   });
 
+  it('a control de pista (design j-05): the volquetes that left the plant with «Llegó», the ones on site with their four photos, and «Publicar» with what is missing and the warning', async () => {
+    const photoEntry = (kind: string) => ({ id: `foto-${kind}`, title: `Foto de ${kind}`, required: true, form: 'fotos', tool: 'agregar_foto_de_informe', photoKind: kind, requireLocation: true });
+    const units = {
+      id: 'unidades', kind: 'repeat', title: 'Unidades', required: true, state: 'partial', summary: ['1 de 3 terminadas · 45 m³'], itemTitle: 'Unidad', addLabel: '', min: 1,
+      template: [{ id: 'datos', title: 'Datos', required: true, form: 'ubicacion' }, photoEntry('ingreso'), photoEntry('temperatura'), photoEntry('vacia'), photoEntry('escantillon')],
+      items: [
+        { id: 'd1', title: 'Unidad 1 · QAP-101', summary: ['Terminó 09:12', 'Guía G1 · 15 m³'], results: [], sections: [{ id: 'datos', state: 'done', summary: ['Llegada 06:15 · 150° · 3.0 cm'], values: {} }, { id: 'foto-vacia', state: 'done', values: { fotos: [{ id: 'v', url: 'https://x/v.jpg' }] } }] },
+        { id: 'd2', title: 'Unidad 2 · QAP-102', summary: ['Guía G2 · 15 m³'], results: [], sections: [{ id: 'datos', state: 'done', summary: ['Llegada 07:30 · 148°'], values: {} }] },
+        { id: 'd3', title: 'QAP-103', summary: ['Salió 07:10 · 15 m³ · Guía G3'], results: [], sections: [] },
+      ],
+    };
+    const pista = { ...document, type: 'CTL-PIS', title: 'Control de pista', sections: [document.sections[0], units], publish: { label: 'Publicar informe', missing: ['Falta la foto de vacía en QAP-102'], warnings: ['2 volquetes por llegar'] } };
+    const calls = serverWith({ document: pista });
+    openReport();
+    fireEvent.click(await screen.findByTestId('seccion-unidades'));
+
+    const list = screen.getByTestId('unidades-unidades');
+    expect(screen.queryByTestId('agregar-item')).toBeNull();
+    expect(screen.getByTestId('resumen-unidades')).toHaveTextContent('1 de 3 terminadas · 45 m³');
+    expect(list).toHaveTextContent('Salieron de planta · toca la que llega');
+    expect(list).toHaveTextContent('En obra · por orden de llegada');
+    expect(within(screen.getByTestId('unidad-d3')).getByTestId('llego-d3')).toHaveTextContent('Llegó');
+    expect(screen.getByTestId('estado-d1')).toHaveTextContent('Terminó 09:12');
+    expect(screen.getByTestId('estado-d2')).toHaveTextContent('En pista');
+    expect(within(screen.getByTestId('unidad-d2')).getAllByRole('button', { name: /^Foto de/ })).toHaveLength(4);
+    expect(screen.getByTestId('datos-d2')).toHaveTextContent('Llegada 07:30 · 148°');
+    expect(screen.getByTestId('falta-informe')).toHaveTextContent('Falta la foto de vacía en QAP-102 · 2 volquetes por llegar');
+    expect(screen.getByTestId('abrir-publicar')).toBeInTheDocument();
+
+    // «Llegó» opens the unit's data here, with no call: the save goes through the queue.
+    fireEvent.click(screen.getByTestId('llego-d3'));
+    expect(await screen.findByTestId('formulario-guardar_seccion_de_informe')).toBeInTheDocument();
+    expect(screen.getByText('QAP-103 · Datos')).toBeInTheDocument();
+    expect(formCalls(calls)).toEqual([]);
+  });
+
   it('«Publicar» waits for what Portal says is missing (design j-04), and ready it opens Portal’s publish form', async () => {
     const calls = serverWith({ document });
     render(<ReportDocumentWeb target={target} chatId="chat-1" service={service} type="CTL-IMP" onClose={() => undefined} />);

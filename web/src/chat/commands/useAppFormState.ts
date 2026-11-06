@@ -70,5 +70,10 @@ export function useAppFormState({ fields, refused, signing, onSubmit, reveal }: 
       setMessage(outcome.errors._ ?? outcome.message ?? '');
     }
   };
-  return { prefilled, values, errors, message, sending, set, setList, send };
+  /** «Marcar todo» (`x-check-all`): several fields at once, their errors gone. */
+  const fill = (next: FormValues) => {
+    setValues((before) => ({ ...before, ...next }));
+    setErrors((before) => Object.fromEntries(Object.entries(before).filter(([name]) => !(name in next))));
+  };
+  return { prefilled, values, errors, message, sending, set, setList, fill, send };
 }

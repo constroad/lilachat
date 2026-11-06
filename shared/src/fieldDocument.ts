@@ -17,13 +17,17 @@ export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
 export type SectionState = (typeof SECTION_STATES)[number];
 export type ResultTone = (typeof RESULT_TONES)[number];
 export type SectionResult = { label: string; value: string; tone: ResultTone };
-export type FormSection = { kind: 'form'; id: string; title: string; required: boolean; enabled: boolean; state: SectionState; summary: string[]; results: SectionResult[]; form: string; /** The tool that fills it instead of its form: the photos go one by one through `agregar_foto_de_informe`. */ tool?: string; values: FormValues; /** The `clientKey` of a save Portal has not confirmed yet. */ pending?: string };
-export type SectionTemplate = { id: string; title: string; required: boolean; form: string; tool?: string };
+/** What a photo section asks of the device (CTL-PIS, José 06/11): the `tipoFoto` it sends, and no photo without the GPS fix. */
+export type PhotoMarks = { photoKind?: string; requireLocation?: true };
+export type FormSection = PhotoMarks & { kind: 'form'; id: string; title: string; required: boolean; enabled: boolean; state: SectionState; summary: string[]; results: SectionResult[]; form: string; /** The tool that fills it instead of its form: the photos go one by one through `agregar_foto_de_informe`. */ tool?: string; values: FormValues; /** The `clientKey` of a save Portal has not confirmed yet. */ pending?: string };
+export type SectionTemplate = PhotoMarks & { id: string; title: string; required: boolean; form: string; tool?: string };
+/** The window of items on screen when Portal pages them (50 units of a control de pista). */
+export type ItemsPage = { current: number; total: number };
 export type RepeatItem = { id: string; title: string; summary: string[]; results: SectionResult[]; sections: FormSection[] };
-export type RepeatSection = { kind: 'repeat'; id: string; title: string; required: boolean; enabled: boolean; state: SectionState; summary: string[]; itemTitle: string; addLabel: string; min: number; template: SectionTemplate[]; items: RepeatItem[] };
+export type RepeatSection = { kind: 'repeat'; id: string; title: string; required: boolean; enabled: boolean; state: SectionState; summary: string[]; itemTitle: string; addLabel: string; /** False when the items come from elsewhere (the dispatches of an order): no «Agregar». */ canAdd: boolean; page?: ItemsPage; min: number; template: SectionTemplate[]; items: RepeatItem[] };
 export type DocumentSection = FormSection | RepeatSection;
 /** `id` is null until the first section is saved: Portal creates nothing on a read. */
-export type FieldDocument = { id: string | null; type: string; title: string; status: DocumentStatus; forms: Record<string, FormSchema>; sections: DocumentSection[]; publish: { label: string; missing: string[] } };
+export type FieldDocument = { id: string | null; type: string; title: string; status: DocumentStatus; forms: Record<string, FormSchema>; sections: DocumentSection[]; publish: { label: string; missing: string[]; /** Shown without blocking «Publicar» (dispatches of the order with no row yet). */ warnings: string[] } };
 /** Where a section lives: a top-level one has `key` = `sectionId`; inside a repeat, `itemId` null means a new item. */
 export type SectionPath = { sectionId: string; itemId: string | null; key: string };
 
@@ -56,14 +60,21 @@ function formsOf(raw: unknown): Record<string, FormSchema> | null {
   return forms;
 }
 
+/** `photoKind` and `requireLocation` as Portal writes them on a template entry or a section. */
+function photoMarksOf(raw: Raw): PhotoMarks {
+  const photoKind = text(raw.photoKind, LIMITS.title);
+  return { ...(photoKind ? { photoKind } : {}), ...(raw.requireLocation === true ? { requireLocation: true as const } : {}) };
+}
+
 function formSectionOf(raw: Raw, forms: Record<string, FormSchema>, template?: SectionTemplate): FormSection | null {
   const id = template?.id ?? text(raw.id, LIMITS.title);
   const title = template?.title ?? text(raw.title, LIMITS.title);
   const form = template?.form ?? text(raw.form, LIMITS.title);
   if (!id || !title || !(form in forms)) return null;
   const tool = template?.tool ?? text(raw.tool, LIMITS.title);
+  const marks = template ? { ...(template.photoKind ? { photoKind: template.photoKind } : {}), ...(template.requireLocation ? { requireLocation: true as const } : {}) } : photoMarksOf(raw);
   return {
-    kind: 'form', id, title, form, ...(tool ? { tool } : {}),
+    kind: 'form', id, title, form, ...(tool ? { tool } : {}), ...marks,
     required: template ? template.required : raw.required === true,
     enabled: raw.enabled !== false,
     state: oneOf(raw.state, SECTION_STATES, 'empty'),
@@ -81,7 +92,7 @@ function templateOf(raw: unknown, forms: Record<string, FormSchema>): SectionTem
     const form = text(one.form, LIMITS.title);
     if (!id || !title || !(form in forms)) return null;
     const tool = text(one.tool, LIMITS.title);
-    template.push({ id, title, required: one.required === true, form, ...(tool ? { tool } : {}) });
+    template.push({ id, title, required: one.required === true, form, ...(tool ? { tool } : {}), ...photoMarksOf(one) });
   }
   return template;
 }
@@ -100,6 +111,16 @@ function itemOf(raw: Raw, template: SectionTemplate[], forms: Record<string, For
   return { id, title: text(raw.title, LIMITS.title) || id, summary: lines(raw.summary), results: resultsOf(raw.results), sections };
 }
 
+/** `{ current, total }` from 1, or nothing: a page off its book is no page. */
+function pageOf(raw: unknown): ItemsPage | undefined {
+  const { current, total } = record(raw);
+  const whole = typeof current === 'number' && typeof total === 'number' && Number.isInteger(current) && Number.isInteger(total);
+  return whole && current >= 1 && current <= total ? { current, total } : undefined;
+}
+
+/** José 06/11: the units of a control de pista are the order's dispatches, nobody adds one. An empty «Agregar» says the same. */
+const canAddOf = (repeat: Raw): boolean => repeat.canAdd !== false && !(typeof repeat.addLabel === 'string' && repeat.addLabel.trim() === '');
+
 function repeatOf(raw: Raw, forms: Record<string, FormSchema>): RepeatSection | null {
   const id = text(raw.id, LIMITS.title);
   const title = text(raw.title, LIMITS.title);
@@ -114,8 +135,9 @@ function repeatOf(raw: Raw, forms: Record<string, FormSchema>): RepeatSection | 
     items.push(item);
   }
   const min = typeof repeat.min === 'number' && repeat.min > 0 ? Math.floor(repeat.min) : 0;
+  const page = pageOf(repeat.page);
   return {
-    kind: 'repeat', id, title, template, items, min,
+    kind: 'repeat', id, title, template, items, min, canAdd: canAddOf(repeat), ...(page ? { page } : {}),
     required: raw.required === true, enabled: raw.enabled !== false,
     state: oneOf(raw.state, SECTION_STATES, 'empty'), summary: lines(raw.summary),
     itemTitle: text(repeat.itemTitle, LIMITS.title) || title, addLabel: text(repeat.addLabel, LIMITS.title) || 'Agregar',
@@ -149,24 +171,31 @@ export function fieldDocumentOf(body: unknown): FieldDocument | null {
   const sections = forms ? sectionsOf(raw.sections, forms) : null;
   if (!forms || !sections) return null;
   const publish = record(raw.publish);
-  return { id, type, title, status, forms, sections, publish: { label: text(publish.label, LIMITS.title) || 'Publicar informe', missing: lines(publish.missing) } };
+  return { id, type, title, status, forms, sections, publish: { label: text(publish.label, LIMITS.title) || 'Publicar informe', missing: lines(publish.missing), warnings: lines(publish.warnings) } };
 }
 
-type Found = { title: string; form: string; tool?: string; values: FormValues };
+type Found = PhotoMarks & { title: string; form: string; tool?: string; values: FormValues };
+
+const marksOf = ({ photoKind, requireLocation }: PhotoMarks): PhotoMarks => ({ ...(photoKind ? { photoKind } : {}), ...(requireLocation ? { requireLocation } : {}) });
 
 /** The section behind a path; inside a repeat, a null `itemId` is a new item on the template, empty. */
 export function sectionAt(document: FieldDocument, path: SectionPath): Found | null {
   const section = document.sections.find((one) => one.id === path.sectionId);
   if (!section) return null;
-  if (section.kind === 'form') return path.key === section.id ? { title: section.title, form: section.form, ...(section.tool ? { tool: section.tool } : {}), values: section.values } : null;
+  if (section.kind === 'form') return path.key === section.id ? { title: section.title, form: section.form, ...(section.tool ? { tool: section.tool } : {}), ...marksOf(section), values: section.values } : null;
   const entry = section.template.find((one) => one.id === path.key);
   if (!entry) return null;
-  const tool = entry.tool ? { tool: entry.tool } : {};
+  const tool = { ...(entry.tool ? { tool: entry.tool } : {}), ...marksOf(entry) };
   if (path.itemId === null) return { title: `${section.itemTitle} · ${entry.title}`, form: entry.form, ...tool, values: {} };
   const item = section.items.find((one) => one.id === path.itemId);
   const saved = item?.sections.find((one) => one.id === path.key);
   return item && saved ? { title: `${item.title} · ${entry.title}`, form: entry.form, ...tool, values: saved.values } : null;
 }
+
+/** The `tipoFoto` the photo tool gets for this section, when Portal fixed one. */
+export const photoKindOf = (document: FieldDocument, path: SectionPath): string | undefined => sectionAt(document, path)?.photoKind;
+/** José 06/11: «sin GPS no hay foto»; the section says so, and both the phone and the server refuse the capture without a fix. */
+export const requiresLocation = (document: FieldDocument, path: SectionPath): boolean => sectionAt(document, path)?.requireLocation === true;
 
 /** The channel is the client's and the report hangs from a service (José, 06/11): nobody types them. */
 const KNOWN_BY_CHANNEL = ['cliente', 'proyecto'];
@@ -181,7 +210,7 @@ export function sectionFormOf(document: FieldDocument, path: SectionPath): AppFo
   const asked = Object.entries(schema.properties ?? {}).filter(([name]) => !KNOWN_BY_CHANNEL.includes(name));
   const properties = Object.fromEntries(asked.map(([name, property]) => [name, withDefault(property, found.values[name])]));
   const required = schema.required?.filter((name) => !KNOWN_BY_CHANNEL.includes(name));
-  return { id: found.tool ?? SECTION_TOOL, title: found.title, schema: { ...schema, properties, ...(required ? { required } : {}) } };
+  return { id: found.tool ?? SECTION_TOOL, title: found.title, schema: { ...schema, properties, ...(required ? { required } : {}) }, ...(schema['x-check-all'] ? { checkAll: true as const } : {}) };
 }
 
 /** Portal's own value of what the form does not ask: it rides with the answers, because Portal blanks a field a saved section leaves out. */
@@ -200,7 +229,7 @@ function leavesOf(document: FieldDocument): Leaf[] {
       leaves.push({ path: { sectionId: section.id, itemId: null, key: section.id }, required: section.required, done: section.state === 'done', enabled: section.enabled });
       continue;
     }
-    const owed = section.items.length === 0 && (section.required || section.min > 0);
+    const owed = section.items.length === 0 && section.canAdd && (section.required || section.min > 0);
     if (owed) section.template.forEach((entry) => leaves.push({ path: { sectionId: section.id, itemId: null, key: entry.id }, required: entry.required, done: false, enabled: section.enabled }));
     for (const item of section.items) {
       item.sections.forEach((one) => leaves.push({ path: { sectionId: section.id, itemId: item.id, key: one.id }, required: one.required, done: one.state === 'done', enabled: section.enabled }));
@@ -240,6 +269,12 @@ export function applySavedSection(document: FieldDocument, path: SectionPath, va
     return { ...section, items };
   });
   return touched ? { ...document, sections } : document;
+}
+
+/** The line over «Publicar» (design j-05): the first blocker and the first warning, «Falta: … · 2 volquetes por llegar». */
+export function publishFooterLine(document: FieldDocument, blockers: readonly string[]): string | undefined {
+  const line = [blockers[0], document.publish.warnings[0]].filter(Boolean).join(' · ');
+  return line || undefined;
 }
 
 /** Why «Publicar» waits: what Portal says is missing, saves still in the queue, and no signal (Portal validates and makes the PDF). */

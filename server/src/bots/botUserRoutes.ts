@@ -111,7 +111,7 @@ export function buildBotUserRouter(): Router {
   }));
   router.post(['/chats/:chatId/commands/:commandId/form', '/workspaces/:id/commands/:commandId/form'], requireSession, asyncRoute(async (req, res) => {
     const outcome = await submitForm(req.session!.userId, scopeOf(req), req.params.commandId!, req.body?.values);
-    if ('errors' in outcome) return void res.status(422).json({ errors: outcome.errors });
+    if ('errors' in outcome) return void res.status(outcome.status).json({ errors: outcome.errors, ...(outcome.code ? { code: outcome.code } : {}), ...(outcome.retryAfterS ? { retry_after_s: outcome.retryAfterS } : {}) });
     if ('error' in outcome) return void res.status(outcome.status).json({ message: outcome.message });
     res.json(outcome);
   }));

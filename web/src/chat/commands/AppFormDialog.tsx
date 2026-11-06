@@ -1,5 +1,6 @@
 import { useMemo, useRef, type RefObject } from 'react';
-import { evidenceLine, formFields, formRows, liveSelfieFieldOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply } from '@lilachat/shared';
+import { CheckCheck } from 'lucide-react';
+import { CHECK_ALL_LABEL, checkAllValues, evidenceLine, formFields, formRows, liveSelfieFieldOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
@@ -58,6 +59,11 @@ export function AppFormDialog(props: DialogProps) {
     <Overlay title={form.title} onClose={props.onClose} footer={footer}>
       <div ref={body} data-testid={`formulario-${form.id}`} className="space-y-4">
         <FormIntro answer={props.answer} refreshing={live.refreshing} clock={Boolean(evidence) && !selfieField} personName={props.personName} />
+        {form.checkAll ? (
+          <button type="button" data-testid="marcar-todo" onClick={() => state.fill(checkAllValues(fields, state.values))} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 text-[14px] font-semibold text-primary hover:bg-primary/15">
+            <CheckCheck size={18} /> {CHECK_ALL_LABEL}
+          </button>
+        ) : null}
         {/* Two short fields share a row (José, 28/10: a field per row made the forms a sheet). */}
         {formRows(visibleFields(fields, state.values)).map((row) =>
           row.length === 2 ? (

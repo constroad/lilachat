@@ -55,8 +55,8 @@ export type FormSchemaProperty = {
 };
 /** How much of a row a field takes: half beside another, or all of it. */
 export type FieldWidth = 'half' | 'full';
-export type FormSchema = { type?: string; description?: string; properties?: Record<string, FormSchemaProperty>; required?: string[]; /** The read tool that sums up the draft above «Enviar». */ 'x-preview'?: { tool?: string } };
-export type AppForm = { id: string; title: string; submitLabel?: string; /** The schema's `description`: a line under the title. */ intro?: string; schema: FormSchema; /** `x-preview`'s tool: the summary above «Enviar». */ preview?: string };
+export type FormSchema = { type?: string; description?: string; properties?: Record<string, FormSchemaProperty>; required?: string[]; /** The read tool that sums up the draft above «Enviar». */ 'x-preview'?: { tool?: string }; /** A checklist (CTL-PIS, 06/11): one button answers every choice with its first option. */ 'x-check-all'?: boolean };
+export type AppForm = { id: string; title: string; submitLabel?: string; /** The schema's `description`: a line under the title. */ intro?: string; schema: FormSchema; /** `x-preview`'s tool: the summary above «Enviar». */ preview?: string; /** `x-check-all`: the «Marcar todo» button. */ checkAll?: true };
 
 type Base = { name: string; label: string; help?: string; required: boolean; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number; /** `x-refresh`: changing it asks the app for the form again. */ refresh?: true };
 export type FormField =
@@ -336,7 +336,8 @@ export function validateFormSpec(raw: unknown): { ok: true; form: AppForm } | { 
   const intro = line(schema.description, FORM_LIMITS.intro);
   const submitLabel = cutAtWord(line(body.submit_label, FORM_LIMITS.text), FORM_LIMITS.submitLabel);
   const preview = previewToolOf(schema);
-  const form: AppForm = { id, title, ...(submitLabel ? { submitLabel } : {}), ...(intro ? { intro } : {}), schema: { type: 'object', properties, required, ...(preview ? { 'x-preview': { tool: preview } } : {}) }, ...(preview ? { preview } : {}) };
+  const checkAll = schema['x-check-all'] === true;
+  const form: AppForm = { id, title, ...(submitLabel ? { submitLabel } : {}), ...(intro ? { intro } : {}), schema: { type: 'object', properties, required, ...(preview ? { 'x-preview': { tool: preview } } : {}), ...(checkAll ? { 'x-check-all': true } : {}) }, ...(preview ? { preview } : {}), ...(checkAll ? { checkAll: true as const } : {}) };
   for (const [name, property] of Object.entries(properties)) {
     const field = fieldOf(name, record(property) as FormSchemaProperty, false);
     if (typeof field === 'string') return { ok: false, message: field };
@@ -514,4 +515,16 @@ export function matchSpan(label: string, query: string): { start: number; end: n
   if (!wanted) return null;
   const start = foldText(label).indexOf(wanted);
   return start < 0 ? null : { start, end: start + wanted.length };
+}
+
+export const CHECK_ALL_LABEL = 'Marcar todo';
+
+/** «Marcar todo» (`x-check-all`): every choice takes its first option that can be picked, the affirmative one by contract; the rest stays. */
+export function checkAllValues(fields: readonly FormField[], values: FormValues): FormValues {
+  const picked = fields.flatMap((field) => {
+    if (field.kind !== 'choice') return [];
+    const first = field.options.find((option) => !option.disabled);
+    return first ? [[field.name, first.value] as const] : [];
+  });
+  return { ...values, ...Object.fromEntries(picked) };
 }

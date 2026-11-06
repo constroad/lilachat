@@ -3,7 +3,7 @@ import { FORMS_LEVEL } from './appForms';
 import { isFieldReport } from './clientAccess';
 import { fieldDocumentOf } from './fieldDocument';
 import { locationMapLink } from './sharedLocation';
-import { itemsLine, placeFieldValue, progressLine, progressPercent, publishFormRequest, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, openPublishForm, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, staleAnswerIds, STATUS_BADGE, type TrackStart } from './reportCreation';
+import { itemsLine, pageLine, placeFieldValue, progressLine, progressPercent, publishFormRequest, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, openPublishForm, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, staleAnswerIds, STATUS_BADGE, type TrackStart } from './reportCreation';
 
 /** A CTL-IMP as Portal answers it, with one tramo whose photos go through their own tool. */
 const form = (title: string) => ({ type: 'object', properties: { campo: { type: 'string', title } } });
@@ -140,6 +140,8 @@ describe('what the cards say', () => {
     expect(reportTypeLabel('XYZ')).toBe('XYZ');
     expect(itemsLine(tramos())).toBe('1 tramo');
     expect(itemsLine({ ...tramos(), items: [] })).toBe('Sin tramos todavía');
+    expect(itemsLine({ ...tramos(), itemTitle: 'Unidad', items: [] })).toBe('Sin unidades todavía');
+    expect(itemsLine({ ...tramos(), itemTitle: 'Unidad', items: [tramos().items[0]!, tramos().items[0]!] })).toBe('2 unidades');
     expect(itemsLine({ ...tramos(), items: [tramos().items[0], tramos().items[0]] })).toBe('2 tramos');
   });
 });
@@ -158,5 +160,25 @@ describe('staleAnswerIds', () => {
   it('nothing to clear with one answer or none', () => {
     expect(staleAnswerIds([answer('a', 'answered')])).toEqual([]);
     expect(staleAnswerIds([])).toEqual([]);
+  });
+});
+
+describe('the units of a control de pista (06/11)', () => {
+  it('asks a page of units past the first, and says which page is on screen', () => {
+    expect(reportDraftRequest('CTL-PIS', null, 1)).toEqual({ type: 'CTL-PIS' });
+    expect(reportDraftRequest('CTL-PIS', body.id, 2)).toEqual({ type: 'CTL-PIS', report_id: body.id, page: 2 });
+    expect(pageLine({ ...tramos(), page: { current: 2, total: 3 } })).toBe('Página 2 de 3');
+    expect(pageLine({ ...tramos(), page: { current: 1, total: 1 } })).toBeNull();
+    expect(pageLine(tramos())).toBeNull();
+  });
+
+  it('the photo\'s own key rides when its section opens: Portal tells a photo sent twice from a second one', () => {
+    const place = { lat: -12, lng: -77, at: '2026-11-06T12:00:00.000Z' };
+    expect(sectionFormRequest(document(), { sectionId: 'tramos', itemId: 't1', key: 'fotos' }, place, 'k1')).toMatchObject({ client_key: 'k1', lat: -12, lng: -77 });
+    expect(sectionFormRequest(document(), { sectionId: 'general', itemId: null, key: 'general' })).not.toHaveProperty('client_key');
+  });
+
+  it('CTL-PIS says what it asks per truck, and opens here only once Portal is live', () => {
+    expect(REPORT_TYPE_OPTIONS.find((option) => option.code === 'CTL-PIS')).toMatchObject({ caption: 'Llegada, temperaturas, escantillón y 4 fotos por volquete', opensHere: false });
   });
 });

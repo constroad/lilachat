@@ -1,7 +1,7 @@
 import type { FormSubmitOutcome } from './appActions.js';
 import type { FormValues } from './appForms.js';
 import type { EphemeralAnswer } from './botCommands.js';
-import type { FieldDocument, SectionPath } from './fieldDocument.js';
+import { requiresLocation, type FieldDocument, type SectionPath } from './fieldDocument.js';
 import type { DevicePlace, ReportDraftResult } from './reportCreation.js';
 import type { OpenedReport, ReportQueue } from './reportQueue.js';
 import { documentWithQueue, reportFormAnswer, reportSaveOf, samePath, savesOf, type QueuedPhoto, type ReportRef, type ReportSave } from './reportSaves.js';
@@ -39,6 +39,10 @@ export type ReportScreenState = {
 const NOT_KEPT = 'No se pudo guardar en este dispositivo.';
 const PHOTO_NOT_KEPT = 'No se pudo guardar la foto en este dispositivo.';
 const NO_FORM = 'Este formulario ya no está abierto.';
+/** José 06/11: «bloquea la foto sin GPS». */
+export const NO_GPS_PHOTO = 'Sin GPS no hay foto. Enciende la ubicación del teléfono y vuelve a tomarla.';
+
+const hasFix = (place: DevicePlace): boolean => place.lat !== undefined && place.lng !== undefined;
 
 type HeldPhoto = { kept: KeptPhoto; place: DevicePlace };
 
@@ -121,15 +125,22 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
       openForm = null;
       tell();
     },
-    /** The photo field's upload: here it only stays on the device, with where and when it was taken. */
+    /** The photo field's upload: here it only stays on the device, with where and when it was taken. A section that needs the place refuses it without a fix. */
     async upload(source: P): Promise<{ ok: true; fileId: string } | { ok: false; message: string }> {
+      let kept: KeptPhoto;
       try {
-        const [kept, place] = await Promise.all([deps.keepPhoto(source), deps.placeNow()]);
-        photos.set(kept.ref, { kept, place });
-        return { ok: true, fileId: kept.ref };
+        kept = await deps.keepPhoto(source);
       } catch {
         return { ok: false, message: PHOTO_NOT_KEPT };
       }
+      const place = await deps.placeNow().catch((): DevicePlace => ({ at: deps.now() }));
+      const { document } = reportNow();
+      if (!hasFix(place) && openForm && document && requiresLocation(document, openForm.path)) {
+        await deps.dropPhoto(kept.ref);
+        return { ok: false, message: NO_GPS_PHOTO };
+      }
+      photos.set(kept.ref, { kept, place });
+      return { ok: true, fileId: kept.ref };
     },
     /** The save is queued and the form closes, with signal or without. */
     async submit(values: FormValues): Promise<FormSubmitOutcome> {

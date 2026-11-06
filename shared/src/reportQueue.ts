@@ -39,6 +39,8 @@ type Exclusive = (task: () => Promise<void>) => Promise<unknown>;
 
 const NEVER_OPENED = 'Sin señal. Abre este informe una vez con señal para poder llenarlo sin ella.';
 const FIRST_ATTEMPT = 1;
+/** Portal and agentes (06/11): one write every four seconds keeps a report of 50 units under the per-person limit. */
+export const REPORT_SEND_GAP_MS = 4000;
 
 type NoticeSource = { on(event: 'command.response', listener: (notice: CommandNotice) => void): unknown; off(event: 'command.response', listener: (notice: CommandNotice) => void): unknown };
 
@@ -91,7 +93,7 @@ function createQueueStore(vault: ReportVault) {
 }
 
 /** What a pass of the queue works with. */
-type QueueCore = { vault: ReportVault; wire: ReportWire; store: ReturnType<typeof createQueueStore>; tryLater(save: ReportSave): Promise<void>; forget(): Promise<void> };
+type QueueCore = { vault: ReportVault; wire: ReportWire; store: ReturnType<typeof createQueueStore>; /** Waits its turn: `gapMs` since the last write went out. */ pace(): Promise<void>; /** `afterMs`: what agentes asked to wait; otherwise the backoff of a lost signal. */ tryLater(save: ReportSave, afterMs?: number): Promise<void>; forget(): Promise<void> };
 
 const dropPhotos = async (vault: ReportVault, saves: readonly ReportSave[]) => {
   await Promise.all(saves.flatMap((one) => (one.photo ? [vault.dropPhoto(one.photo.ref)] : [])));
@@ -116,10 +118,12 @@ async function readDocument(core: QueueCore, ref: ReportRef, reportId: string | 
 }
 
 /** One attempt: its own run, the photo up, the form sent. */
-async function send({ wire, store }: QueueCore, save: ReportSave, document: FieldDocument, sent: SentMark): Promise<SaveVerdict> {
+async function send({ wire, store, pace }: QueueCore, save: ReportSave, document: FieldDocument, sent: SentMark): Promise<SaveVerdict> {
+  await pace();
   await store.editSave(save.clientKey, (one) => ({ ...one, sent }));
   const path = save.createsItem ? { ...save.path, itemId: sent.seed ?? null } : save.path;
-  const opened = await wire.open(save.ref, sectionFormRequest(document, path, save.place));
+  // Only a photo carries its key: Portal tells a photo sent twice from a second one; a section written twice changes nothing.
+  const opened = await wire.open(save.ref, sectionFormRequest(document, path, save.place, save.photo ? save.clientKey : undefined));
   if (!opened.ok) return judgeFailure(opened);
   const { commandId } = opened.data;
   const uploaded = save.photo ? await wire.upload(save.ref, commandId, save.photo) : null;
@@ -152,7 +156,7 @@ async function afterFailure(core: QueueCore, save: ReportSave, verdict: SaveVerd
     return true;
   }
   if (verdict.kind === 'flush') await core.forget();
-  else await core.tryLater(save);
+  else await core.tryLater(save, verdict.kind === 'retry' ? verdict.afterMs : undefined);
   return false;
 }
 
@@ -208,31 +212,40 @@ async function documentOf(core: QueueCore, ref: ReportRef, reportId: string | nu
   return known ? { ok: true, document: blankDocumentOf(known), offline: true } : { ok: false, message: NEVER_OPENED };
 }
 
-export function createReportQueue({ vault, wire, exclusive = (task) => task() }: { vault: ReportVault; wire: ReportWire; exclusive?: Exclusive }) {
+export function createReportQueue({ vault, wire, exclusive = (task) => task(), gapMs = REPORT_SEND_GAP_MS }: { vault: ReportVault; wire: ReportWire; exclusive?: Exclusive; gapMs?: number }) {
   const store = createQueueStore(vault);
   let pass: Promise<void> | null = null;
   let rerun = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
+  let lastSentAt = Number.NEGATIVE_INFINITY;
 
   const clearTimer = () => {
     if (timer) clearTimeout(timer);
     timer = null;
   };
-  const stalled = (attempts: number) => {
-    store.tell({ stalled: true });
+  /** A wait agentes asked for is not a lost signal: the screen does not say «sin señal». */
+  const stalled = (attempts: number, afterMs?: number) => {
+    store.tell({ stalled: afterMs === undefined });
     clearTimer();
-    timer = setTimeout(() => void run(), retryDelayMs(attempts));
+    timer = setTimeout(() => void run(), afterMs ?? retryDelayMs(attempts));
   };
+  const pace = async (): Promise<void> => {
+    const wait = lastSentAt + gapMs - Date.now();
+    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+    lastSentAt = Date.now();
+  };
+  /** Emptied (a revoked credential, or a test's clean slate): nothing left to pace either. */
   const forget = (): Promise<void> => {
     clearTimer();
+    lastSentAt = Number.NEGATIVE_INFINITY;
     return emptyQueue(vault, store);
   };
-  async function tryLater(save: ReportSave): Promise<void> {
+  async function tryLater(save: ReportSave, afterMs?: number): Promise<void> {
     const attempts = save.attempts + 1;
     await store.editSave(save.clientKey, (one) => ({ ...one, attempts }));
-    stalled(attempts);
+    stalled(attempts, afterMs);
   }
-  const core: QueueCore = { vault, wire, store, tryLater, forget };
+  const core: QueueCore = { vault, wire, store, pace, tryLater, forget };
 
   async function drainKeys(): Promise<void> {
     do {

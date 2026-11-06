@@ -1,22 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createReportQueue } from './reportQueue';
 import { docOf, fakePortal, fakeVault, general, newTramo, NOW, ref, type Tramo } from './reportQueue.fixture';
-import { createReportScreen, type ReportScreenState } from './reportScreen';
+import type { DevicePlace } from './reportCreation';
+import { createReportScreen, NO_GPS_PHOTO, type ReportScreenState } from './reportScreen';
 import type { FieldDocument, FormSection, RepeatSection, SectionPath } from './fieldDocument';
 
 type Source = { uri: string };
 
-function screenWith(start: { id: string | null; tramos: Tramo[] }) {
+function screenWith(start: { id: string | null; tramos: Tramo[]; requireLocation?: boolean }, placeNow: () => Promise<DevicePlace> = async () => ({ lat: -12, lng: -77, at: NOW })) {
   const portal = fakePortal(start);
   const disk = fakeVault();
-  const queue = createReportQueue({ wire: portal.wire, vault: disk.vault });
+  const queue = createReportQueue({ wire: portal.wire, vault: disk.vault, gapMs: 0 });
   let keys = 0;
   const dropped: string[] = [];
   const screen = createReportScreen<Source>({
     queue,
     keepPhoto: async (source) => ({ ref: `kept-${source.uri}`, mime: 'image/jpeg', preview: `file://${source.uri}` }),
     dropPhoto: async (photo) => { dropped.push(photo); },
-    placeNow: async () => ({ lat: -12, lng: -77, at: NOW }),
+    placeNow,
     personName: () => 'Ana Torres',
     newKey: () => `k${(keys += 1)}`,
     now: () => NOW,
@@ -63,7 +64,7 @@ describe('opening', () => {
   it('with no signal and nothing kept it says why', async () => {
     const portal = fakePortal({ id: 'r1', tramos: [] });
     portal.state.offline = true;
-    const queue = createReportQueue({ wire: portal.wire, vault: fakeVault().vault });
+    const queue = createReportQueue({ wire: portal.wire, vault: fakeVault().vault, gapMs: 0 });
     const screen = createReportScreen<Source>({ queue, keepPhoto: async () => ({ ref: '', mime: '', preview: '' }), dropPhoto: async () => undefined, personName: () => null, placeNow: async () => ({ at: NOW }), newKey: () => 'k', now: () => NOW }, ref);
     screen.subscribe(() => undefined);
     await queue.idle();
@@ -263,5 +264,40 @@ describe('reload', () => {
     release();
     await settled(test);
     expect(documentOf(test.screen.snapshot()).id).toBe('r1');
+  });
+});
+
+describe('a photo that needs its place (CTL-PIS, José 06/11)', () => {
+  const fotos: SectionPath = { sectionId: 'tramos', itemId: 't1', key: 'fotos' };
+
+  it('without GPS there is no photo: it is dropped and the person is told', async () => {
+    const test = screenWith({ id: 'r1', tramos: [{ id: 't1', photos: 0 }], requireLocation: true }, async () => ({ at: NOW }));
+    await settled(test);
+    test.screen.openSection(fotos);
+    expect(await test.screen.upload({ uri: 'a.jpg' })).toEqual({ ok: false, message: NO_GPS_PHOTO });
+    expect(test.dropped).toEqual(['kept-a.jpg']);
+    test.stop();
+  });
+
+  it('a GPS that fails reads the same, and with the fix the photo is kept', async () => {
+    const failing = screenWith({ id: 'r1', tramos: [{ id: 't1', photos: 0 }], requireLocation: true }, async () => { throw new Error('off'); });
+    await settled(failing);
+    failing.screen.openSection(fotos);
+    expect(await failing.screen.upload({ uri: 'a.jpg' })).toEqual({ ok: false, message: NO_GPS_PHOTO });
+    failing.stop();
+    const placed = screenWith({ id: 'r1', tramos: [{ id: 't1', photos: 0 }], requireLocation: true });
+    await settled(placed);
+    placed.screen.openSection(fotos);
+    expect(await placed.screen.upload({ uri: 'a.jpg' })).toEqual({ ok: true, fileId: 'kept-a.jpg' });
+    expect(placed.dropped).toEqual([]);
+    placed.stop();
+  });
+
+  it('a section that does not ask for the place takes the photo with the hour alone', async () => {
+    const free = screenWith({ id: 'r1', tramos: [{ id: 't1', photos: 0 }] }, async () => ({ at: NOW }));
+    await settled(free);
+    free.screen.openSection(fotos);
+    expect(await free.screen.upload({ uri: 'a.jpg' })).toEqual({ ok: true, fileId: 'kept-a.jpg' });
+    free.stop();
   });
 });

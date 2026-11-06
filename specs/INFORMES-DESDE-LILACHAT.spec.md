@@ -182,6 +182,220 @@ formulario que el motor no dibuja se rechaza entero. Un tramo solo trae `state` 
 Rangos aceptados en lt/m²: MC-30 0.7 a 1.5 (peso específico 0.93); Emulsión
 0.2 a 0.7 (peso específico 1). Los aplica Portal; Lilachat muestra el tono.
 
+### 3.3 `CTL-PIS` · lo que pidió José (06/11/2026), antes del diseño
+
+Pendiente del análisis de Portal (pedido el 06/11, once puntos con archivo y
+línea) y de las restricciones de agentes. Nada de esto está diseñado todavía.
+
+1. **Estado nuevo por despacho**: si la unidad terminó su trabajo en pista o
+   no. Hoy el despacho pasa por `progreso`, `despachado` y la llegada
+   (`arrival`); no existe «terminó en pista».
+2. **Tres fotos obligatorias por unidad**: ingreso de la unidad, la temperatura
+   y la unidad vacía. Hoy la galería por unidad (`unitPhotos_<dispatchId>`) no
+   distingue tipos de foto.
+3. **Ubicación del dispositivo en cada foto**, guardada por unidad: para saber
+   qué unidad trabajó en qué parte de la obra, estimar avance y promediar.
+   Lilachat ya manda `lat`, `lng` y `at`; falta que quede consultable por
+   unidad y decidir si es obligatoria.
+4. **Control de escantillón por unidad**: «el espesor del planchero», en
+   palabras de José. Decidido el 06/11: **espesor en centímetros** más la
+   **foto de la wincha** que lo muestra. En asfalto se habla en pulgadas, pero
+   el dato se guarda en cm.
+5. **Rediseño con Stitch** si hace falta, y **coordinación con agentes** desde
+   el inicio.
+
+Decisiones de José del 06/11:
+
+- **Sin GPS no hay foto** en CTL-PIS: la app bloquea la captura hasta tener la
+  posición del dispositivo. Vale para las cuatro fotos de la unidad: ingreso,
+  temperatura, unidad vacía y wincha del escantillón.
+
+Análisis de Portal: `Portal/specs/modules/CONTROL-PISTA-LILACHAT.analisis.md`
+(06/11, 751 líneas, con archivo y línea). Hallazgos que cambian el diseño: el
+resumen cuenta un vacío como 0; la sincronía con despachos vive solo en el
+navegador; `control.fecha` nace vacía y sin ella la llegada no sube al
+despacho; el operador no puede corregir su llegada; cada guardado relee todas
+las filas (200 son 5 s). Portal recomienda la opción a sin escribir al leer:
+un despacho `despachado` sin fila sale como unidad vacía con `id` =
+`dispatchId`, y la fila nace al guardar la unidad.
+
+Decisiones de José (06/11, sobre el §12 del análisis de Portal): hora de
+inicio de colocación opcional en la unidad y la final desde la foto de vacía;
+el checklist de 5 bloquea publicar, con botón «marcar los 5»; un miembro sin
+usuario de Portal no mueve pedidos entre servicios; **el WhatsApp al grupo del
+cliente sigue saliendo por cada foto, sin cambios**; el operador corrige su
+llegada; «terminó» es solo la hora, sin resultado de devuelta o rechazada por
+ahora; la página pública exige lo mismo (4 fotos, GPS, escantillón); el PDF
+lleva todas las fotos, una fila por unidad con sus 4; el cliente ve que la
+unidad terminó. OK explícito a: corregir los resúmenes guardados, leer conteos
+de producción, y los dos índices nuevos (único por pedido en CTL-PIS, y
+`{ companyId, 'metadata.dispatchId' }` en `media`). El tope de agentes por
+empresa sube a 120.
+
+#### El documento de CTL-PIS (contrato, 06/11)
+
+Opción a de Portal: una lectura no escribe. Las unidades son los despachos
+`despachado` del pedido; la fila nace al guardar la unidad.
+
+| Sección | Tipo | Formulario y campos | Obligatoria |
+| --- | --- | --- | --- |
+| `general` | form | `pedido` (`oneOf`, solo pedidos del servicio o sin servicio, con ventana de fechas), `responsable`, `fecha` | sí; crea el informe |
+| `control` | form | `tramo`, `frente`, `turno`, `clima`, `supervisor` | `tramo` |
+| `unidades` | repeat, sin «Agregar» | ítem por despacho, `id` = `dispatchId`, `title` «Unidad N · placa»; `summary` con guía, salida, m³ y temperatura de salida; `results` del informe: carros, m³, promedios, escantillón promedio, terminadas N de M | al menos una unidad guardada |
+| `unidades › datos` | form `unidad` | `horaLlegada`, `tempLlegada`, `tempRodilloLiso`, `tempRodilloNeumatico`, `horaInicio`, `horaFinal`, `escantillonCm`, `observaciones` | llegada, temperatura de llegada y escantillón |
+| `unidades › foto-ingreso`, `foto-temperatura`, `foto-vacia`, `foto-escantillon` | tool `agregar_foto_de_informe` con `photoKind` y `requireLocation: true` | una foto de ese tipo, con `lat` y `lng` | sí, las cuatro |
+| `checklist` | form, `x-check-all` | los 5 del esquema | sí |
+| `observaciones` | form | texto | no |
+| `firmas` | form | elaborado por y aprobado por: nombre, cargo, CIP | no |
+
+- Novedades del documento que el motor debe leer: `page: { current, total }`
+  (ventana de 50 unidades, `publish` y `results` sobre todas); en un `repeat`,
+  `addLabel` vacío o `canAdd: false` oculta el botón; en el `template`,
+  `photoKind` fija el `tipoFoto` que manda la app y `requireLocation` bloquea
+  la captura sin posición; `publish.warnings` se muestran sin bloquear
+  (despachos del pedido sin fila).
+- Portal marca `dispatch.fieldWork` al recibir la foto `vacia`; la unidad
+  muestra «Terminó HH:MM» en su resumen. La hora de llegada la sugiere Portal
+  (chofer u hora actual) y la confirma la persona al guardar `datos`.
+- Un ítem cuyo despacho ya no existe llega con `state: 'error'` y un resumen
+  que lo dice.
+- Despliegue: agentes primero; Portal en un solo deploy con todo opcional, a la
+  hora que José fije, y él reaprueba tres herramientas; Lilachat publica
+  CTL-PIS en el selector recién cuando Portal esté en producción.
+
+Contrato con agentes y Portal (06/11):
+
+- **Sin herramienta nueva**: Portal está en 50 de 50 en agentes. Despachos y
+  pedidos viajan dentro del documento de `informe_de_campo`.
+- **Páginas**: `page` entero desde 1 en `client.report.draft.requested`,
+  agentes lo pasa como `pagina`. Ventana de 50 unidades por `unitNumber`; el
+  resto del documento completo, con `page: { current, total }`. `publish` y el
+  resumen se calculan sobre todas las unidades, no sobre la ventana.
+- **Fotos**: `tipoFoto` (`ingreso`, `temperatura`, `vacia`, `escantillon`),
+  `clientKey` y `precisionM`, opcionales en `agregar_foto_de_informe`. En
+  CTL-PIS Portal rechaza la foto sin `tipoFoto`, `lat` o `lng`, y deduplica
+  por `informeId` + `tramoId` + `tipoFoto` + `clientKey`. `tramoId` lleva el
+  `dispatchId`.
+- **Escantillón**: `escantillonCm` en el formulario `unidad` y columna de
+  `controlPista`; publicar lo exige con su foto.
+- **Estado por unidad**: Portal guarda `dispatch.fieldWork`; en los avisos va
+  un solo campo, `fieldWorkFinishedAt` (ISO o `null`), también en
+  `order.dispatched` y `order.delivered`. Agentes agrega el `kind`
+  `order.field_work_finished`, clave `order.field_work_finished:<dispatchId>`,
+  que no crea tarjeta: redibuja la del pedido con «Terminó HH:MM» en la fila
+  de la unidad y una barra de unidades terminadas. Ese `kind` no deduplica;
+  la clave es `order.field_work_finished:<dispatchId>:<occurredAt>`. Portal
+  manda `data.dispatch.occurredAt` (hora del último cambio del despacho) en
+  `order.dispatched`, `order.delivered` y este `kind`; el hilo descarta el
+  aviso más viejo que lo guardado. Deshacer: mismo `kind` con `null`.
+  Agentes despliega primero.
+- **Reaprobación**: cambiar el `inputSchema` deja la herramienta sin aprobar
+  hasta que José reaprueba, y CTL-IMP se corta mientras tanto. Portal sale en
+  un solo deploy con todo opcional, a una hora acordada con José, y él
+  reaprueba `informe_de_campo`, `guardar_seccion_de_informe` y
+  `agregar_foto_de_informe`. `guardar_seccion_de_informe` queda cerca de
+  4 780 de 8 192 bytes reutilizando `horaInicio`, `horaFinal`,
+  `responsable*` y `supervisadoPor*`.
+- **Tope por minuto**: 20 por persona; 60 por empresa, que José sube a 120.
+  Al superarlo agentes responde HTTP 200 con `errors._` y sumará
+  `code: 'rate_limited'` y `retry_after_s`. La cola de Lilachat vacía a una
+  llamada cada 4 s, respeta `retry_after_s`, y lo que la persona guarda pasa
+  antes que el atraso de fotos. La escritura por unidad con sus 4 fotos queda
+  como mejora posterior, si la obra la pide.
+
+Lo que ya se sabe del código (leído de `origin/main` el 06/11):
+
+- Portal arma el documento de Lilachat solo para CTL-IMP
+  (`portalFieldReportTools.ts`, `imprimacionDocumentOf`); las reglas de
+  publicar (`fieldReportPublishRules.ts`) solo cubren CTL-IMP.
+- El esquema de lila (`control-pista.schema.ts`): obra, contratista,
+  subcontratista, ubicación; fecha, tramo, frente, turno, clima, supervisor;
+  tabla de hasta 200 unidades con 13 columnas; `resumenControl` calculado;
+  `controlPistaColumns`; checklist de 5; fotos hasta 100; observaciones; dos
+  firmas con CIP.
+- La página pública liga filas a despachos en estado `despachado`
+  (`DispatchPickSheet`), sincroniza placa, guía, hora de salida, volumen y
+  temperatura de salida desde el despacho, y la persona completa llegada,
+  temperatura de llegada, rodillos, observaciones y fotos. La unidad cuenta
+  completa con hora y temperatura de llegada (`CtlPisUnitsSection.tsx`).
+- La llegada del operador se copia al despacho sin pisar la del chofer
+  (`controlPistaArrivals.ts`, UTC-5 fijo, gana la primera hora).
+- El WhatsApp sale por cada foto, con el texto «Nueva foto de control de
+  pista» (`whatsAppAlerts.ts`).
+
+#### Hecho en Lilachat (06/11, pendiente de E2E hasta que Portal despliegue)
+
+Diseños: `design/stitch/j-05-pista-unidades*.png` y `j-06-pista-unidad*.png`
+(v2). La v1 era de oficinista y José la descartó el 06/11: «es para un personal
+en campo, intuitivo y muy fácil, la menor cantidad de pasos». La v2 tiene placa
+enorme, un botón «Llegó» por volquete, cuatro recuadros de cámara de 72 px,
+hora y GPS solos, un solo «Guardar». José también pidió la pantalla donde se
+elige qué volquete llegó, porque el orden de salida de planta no es el de
+entrada a la pista: es el grupo «Salieron de planta · toca la que llega» sobre
+«En obra · por orden de llegada», en la misma pantalla de Unidades.
+
+Motor (`shared`, tests primero, 2 173 verdes):
+
+- `fieldDocument`: `RepeatSection.canAdd` (falso con `canAdd: false` o
+  `addLabel` vacío; sin «Agregar» y sin deber el primer ítem), `page`
+  (`{ current, total }`, se descarta fuera de rango), `SectionTemplate` y
+  `FormSection` con `photoKind` y `requireLocation`, `publish.warnings`,
+  `photoKindOf`, `requiresLocation`, `publishFooterLine` («Falta: … · 2
+  volquetes por llegar»). `sectionFormOf` pasa `checkAll` cuando el esquema
+  trae `x-check-all`.
+- `reportUnits` (nuevo): `isUnitsRepeat`, `unitStateOf` (por llegar / en
+  pista / terminó, terminó = foto `vacia` hecha aunque Portal no haya
+  respondido), `unitGroupsOf` (por llegar; en obra con las que trabajan
+  primero), `unitTitleOf` («Unidad 3 · QAP-102» = kicker y placa; la placa
+  sola es un despacho sin fila), `unitBadgeOf` («Terminó HH:MM» del
+  `summary[0]`), `photoSlotsOf`, `dataSectionOf`, `unitLineOf`.
+- `reportSaves`: `nextSave` manda lo que la persona guarda antes que el
+  atraso de fotos; `judgeReply` lee `code: 'rate_limited'` y espera
+  `retryAfterS` (5 s si no viene) sin rechazar; `SaveVerdict.retry.afterMs`.
+- `reportQueue`: ritmo de una escritura cada `REPORT_SEND_GAP_MS` (4 s);
+  `tryLater(save, afterMs)` no marca «sin señal» cuando la espera la pidió
+  agentes; `forget()` olvida el ritmo; `client_key` viaja solo con las fotos.
+- `reportScreen`: `NO_GPS_PHOTO`; una sección con `requireLocation` descarta
+  la foto sin posición (o con el GPS fallando) y lo dice; una sin ella acepta
+  la foto solo con la hora.
+- `reportCreation`: `reportDraftRequest(type, id, page)` manda `page` desde
+  la 2; `pageLine` («Página 2 de 3»); `sectionFormRequest(…, clientKey)`;
+  `itemsLine` pluraliza («unidades»); CTL-PIS sigue `opensHere: false` hasta
+  que Portal esté en producción.
+- `appForms`: `x-check-all` → `AppForm.checkAll`; `checkAllValues` pone en
+  cada opción la primera que se puede elegir; `CHECK_ALL_LABEL`.
+- `appActions.formSubmitFailure`: un solo lector del 4xx de un formulario
+  para la app y la web (status, errors, code, retry_after_s).
+- `botCommands.validateFormReply` conserva `code: 'rate_limited'` y
+  `retry_after_s` (redondeado hacia arriba).
+
+Server (`clientReports.ts`, `botForms.ts`, `botUserRoutes.ts`): CTL-PIS en
+`OPEN_REPORT_TYPES`; `page` entero desde 1 hacia Portal (0 es 400); el
+contexto de `agregar_foto_de_informe` suma `tipoFoto` (del `photoKind` de la
+sección) y `clientKey` (del `client_key` del run); una sección con
+`requireLocation` sin `lat`/`lng` es 400 antes de tocar Portal; el
+`rate_limited` de agentes sale como **HTTP 429** con `errors`, `code` y
+`retry_after_s` (los demás errores siguen en 422).
+
+App y web: `ReportUnitsView` / `ReportUnitsWeb` (diseño j-05) cuando el
+repeat es de unidades; «Publicar informe» también al pie de la lista de
+unidades con `publishFooterLine`; botón «Marcar todo» (`marcar-todo`) en
+`AppFormSheet` y `AppFormDialog` con `fill` en los dos `useAppFormState`. La
+pantalla j-06 no es una pantalla aparte: la tarjeta de la unidad ya tiene las
+cuatro fotos y la fila de datos, y cada una abre su formulario con un toque.
+
+Límites conocidos: Portal guarda el checklist como booleanos, así que un «No
+cumple» vuelve vacío al reabrir y el informe no se publica hasta que los 5
+cumplan; `precisionM` no se manda (la app no guarda la precisión del GPS); la
+cámara se abre dentro del formulario de la foto, no al tocar el recuadro (un
+toque más que el diseño).
+
+Pendiente: Portal despliega `feat/ctl-pis-lilachat` a la hora que fije José y
+él reaprueba tres herramientas; lila-app (`escantillonCm`, resumen) espera el
+OK de José en la sesión lila-2; después, voltear `opensHere` de CTL-PIS, OTA
+y web, y el E2E en Test con los datos que Portal creó (servicio, pedido y
+despachos).
+
 ## 4. Lilachat
 
 ### 4.1 Motor puro (`shared/src/fieldDocument.ts`, con test)

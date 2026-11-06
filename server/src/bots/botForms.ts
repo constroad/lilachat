@@ -136,7 +136,8 @@ async function withSignedPhotos(runId: Types.ObjectId, fields: readonly FormFiel
   return values;
 }
 
-export type FormOutcome = CommandOutcome | { status: 422; errors: Record<string, string> };
+/** 429: agentes' «too many calls» (06/11), with its code and the seconds to wait, so the report queue waits instead of refusing. */
+export type FormOutcome = CommandOutcome | { status: 422 | 429; errors: Record<string, string>; code?: 'rate_limited'; retryAfterS?: number };
 type OpenRun = Exclude<Awaited<ReturnType<typeof openRun>>, ReturnType<typeof fail>>;
 
 /** Who a form talks to: the installation, its chat, the asker as the app sees them; 410 once the app is gone. */
@@ -196,7 +197,7 @@ async function answerOf(reply: Awaited<ReturnType<typeof callBotWebhook>>, ctx: 
     recordRunFailure(ctx.base.commandId, `form.submitted: ${judged.message}`);
     return { ...ctx.base, outcome: 'failed', message: isRestarting(reply) ? restartingMessage(ctx.base.appName) : `${ctx.base.appName} no pudo responder.` };
   }
-  if ('errors' in judged) return { status: 422, errors: judged.errors };
+  if ('errors' in judged) return judged.code ? { status: 429, errors: judged.errors, code: judged.code, ...(judged.retryAfterS ? { retryAfterS: judged.retryAfterS } : {}) } : { status: 422, errors: judged.errors };
   await BotCommandRunModel.updateOne({ _id: ctx.run._id }, { $inc: { responses: 1 }, $unset: { form: 1 } });
   return deliverResponse(ctx.installation, ctx.run, ctx.chat, judged.response, ctx.base);
 }

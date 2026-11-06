@@ -1,4 +1,4 @@
-import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
+import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
 import { api } from '../../api';
 import { shrinkPhotoBlob } from '../shrinkPhoto';
 
@@ -32,7 +32,7 @@ export const refreshAppForm = (jwt: string, scope: CommandScope, commandId: stri
 export const previewAppForm = (jwt: string, scope: CommandScope, commandId: string, values: FormValues) => api<PreviewReply>(`${pathOf(scope)}/commands/${commandId}/preview`, { jwt, body: { values } });
 
 /** A form's photo, the moment it is picked, lighter with Portal's standard (28/10): the form then carries its id. */
-export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandId: string, file: Blob, stamp?: GeoPoint): Promise<{ ok: true; fileId: string } | { ok: false; message: string }> {
+export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandId: string, file: Blob, stamp?: GeoPoint): Promise<FormPhotoUpload> {
   const photo = await shrinkPhotoBlob(file, file instanceof File ? file.name : 'foto.jpg');
   const body = new FormData();
   body.append('file', photo.blob, photo.name);
@@ -46,7 +46,7 @@ export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandI
   try {
     const response = await fetch(`${commandScopePath(scope)}/commands/${commandId}/files`, { method: 'POST', headers: { Authorization: `Bearer ${jwt}` }, body });
     const data = (await response.json().catch(() => ({}))) as { fileId?: string; message?: string };
-    return response.ok && data.fileId ? { ok: true, fileId: data.fileId } : { ok: false, message: data.message ?? 'No se pudo subir la foto.' };
+    return response.ok && data.fileId ? { ok: true, fileId: data.fileId } : { ok: false, status: response.status, message: data.message ?? 'No se pudo subir la foto.' };
   } catch {
     return { ok: false, message: 'Sin conexión. Revisa tu internet.' };
   }
@@ -58,7 +58,7 @@ export async function submitAppForm(jwt: string, scope: CommandScope, commandId:
     const response = await fetch(`${commandScopePath(scope)}/commands/${commandId}/form`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` }, body: JSON.stringify({ values }) });
     const data = (await response.json().catch(() => ({}))) as CommandOutcome & { errors?: Record<string, string>; message?: string };
     if (response.ok) return { ok: true, outcome: data };
-    return { ok: false, ...(data.errors ? { errors: data.errors } : {}), message: data.errors ? undefined : (data.message ?? 'No se pudo enviar.') };
+    return { ok: false, status: response.status, ...(data.errors ? { errors: data.errors } : {}), message: data.errors ? undefined : (data.message ?? 'No se pudo enviar.') };
   } catch {
     return { ok: false, message: 'Sin conexión. Revisa tu internet.' };
   }

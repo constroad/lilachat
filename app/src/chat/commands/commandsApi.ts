@@ -1,4 +1,4 @@
-import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
+import { FORMS_LEVEL, commandScopePath, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -40,7 +40,7 @@ export const previewAppForm = (jwt: string, scope: CommandScope, commandId: stri
  * A form's photo, the moment it is taken: made lighter with Portal's standard
  * (28/10), then read from disk by the native multipart, never through JS memory.
  */
-export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandId: string, photo: { uri: string; mime: string }, stamp?: GeoPoint): Promise<{ ok: true; fileId: string } | { ok: false; message: string }> {
+export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandId: string, photo: { uri: string; mime: string }, stamp?: GeoPoint): Promise<FormPhotoUpload> {
   const name = photo.mime === 'image/png' ? 'foto.png' : 'foto.jpg';
   const shrunk = await shrinkPhotoFile({ uri: photo.uri, mimeType: photo.mime, fileName: name });
   try {
@@ -50,7 +50,7 @@ export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandI
   }
 }
 
-async function sendFormPhoto(jwt: string, scope: CommandScope, commandId: string, photo: ShrunkPhotoFile, stamp?: GeoPoint): Promise<{ ok: true; fileId: string } | { ok: false; message: string }> {
+async function sendFormPhoto(jwt: string, scope: CommandScope, commandId: string, photo: ShrunkPhotoFile, stamp?: GeoPoint): Promise<FormPhotoUpload> {
   const form = new FormData();
   form.append('file', { uri: photo.uri, name: photo.fileName, type: photo.mimeType } as unknown as Blob);
   // A signing's selfie: the server burns its hour and this place into it (pending 94).
@@ -64,7 +64,7 @@ async function sendFormPhoto(jwt: string, scope: CommandScope, commandId: string
   if (reply.tipo === 'fallo') return { ok: false, message: reply.motivo };
   const fileId = reply.payload.fileId;
   if (reply.status >= 200 && reply.status < 300 && typeof fileId === 'string') return { ok: true, fileId };
-  return { ok: false, message: typeof reply.payload.message === 'string' ? reply.payload.message : 'No se pudo subir la foto.' };
+  return { ok: false, status: reply.status, message: typeof reply.payload.message === 'string' ? reply.payload.message : 'No se pudo subir la foto.' };
 }
 
 /** Sending is the person's confirmation; a 422 brings what to fix, field by field. */
@@ -73,7 +73,7 @@ export async function submitAppForm(jwt: string, scope: CommandScope, commandId:
     const response = await fetch(`${BASE_URL}${commandScopePath(scope)}/commands/${commandId}/form`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` }, body: JSON.stringify({ values }) });
     const data = (await response.json().catch(() => ({}))) as CommandOutcome & { errors?: Record<string, string>; message?: string };
     if (response.ok) return { ok: true, outcome: data };
-    return data.errors ? { ok: false, errors: data.errors } : { ok: false, message: data.message ?? 'No se pudo enviar.' };
+    return data.errors ? { ok: false, errors: data.errors } : { ok: false, status: response.status, message: data.message ?? 'No se pudo enviar.' };
   } catch {
     return { ok: false, message: 'Sin conexión. Inténtalo de nuevo.' };
   }

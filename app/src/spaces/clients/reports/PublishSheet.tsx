@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
-import { publishBlockers, type FieldDocument } from '@lilachat/shared';
+import type { FieldDocument } from '@lilachat/shared';
 import { Sheet } from '../../../ui/Sheet';
 
 const CHANNEL_NOTE = 'El PDF se genera y llega al canal del cliente.';
@@ -9,8 +9,8 @@ const CHANNEL_NOTE = 'El PDF se genera y llega al canal del cliente.';
  * the button off until nothing is; ready, the button opens Portal's publish
  * form (the note for the channel). Published, the hub itself shows the PDF.
  */
-export function PublishSheet(props: { document: FieldDocument; visible: boolean; onClose: () => void; onPublish: () => void }) {
-  const blockers = publishBlockers(props.document, []);
+export function PublishSheet(props: { document: FieldDocument; blockers: readonly string[]; visible: boolean; onClose: () => void; onPublish: () => void }) {
+  const { blockers } = props;
   const ready = blockers.length === 0;
   return (
     <Sheet visible={props.visible} onClose={props.onClose} testID="publicar-informe" dragArea="handle" maxHeight="88%" className="px-4 pt-2">

@@ -133,7 +133,7 @@ export function precisionLabel(point: GeoPoint): string {
 }
 
 /** The server's answer to a sent form: `errors` are the 422's, `message` a refusal (expired, uninstalled). */
-export type FormSubmitReply = { ok: true; outcome: CommandOutcome } | { ok: false; errors?: Record<string, string>; message?: string };
+export type FormSubmitReply = { ok: true; outcome: CommandOutcome } | { ok: false; errors?: Record<string, string>; message?: string; /** Missing with no network: the HTTP refusal, to tell one from the other. */ status?: number };
 /** `waiting`: the app answers later by `/respond`; the form stays open with «Enviando…» until then (consensus 24/10). */
 export type FormSubmitOutcome = { done: true; answer: EphemeralAnswer | null } | { done: false; errors: Record<string, string>; message?: string; waiting?: true };
 

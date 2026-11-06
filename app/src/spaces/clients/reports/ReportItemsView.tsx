@@ -1,8 +1,27 @@
-import { Pressable, Text, View } from 'react-native';
-import { ChevronRight, Plus } from 'lucide-react-native';
-import { itemsLine, sectionBadge, type RepeatItem, type RepeatSection, type SectionPath } from '@lilachat/shared';
+import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { ChevronRight, Clock, Plus } from 'lucide-react-native';
+import { itemsLine, sectionPhotos, sectionRowLine, type FormSection, type RepeatItem, type RepeatSection, type SectionPath } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { ResultsStrip, StateDot } from './ReportSections';
+
+const THUMB = 84;
+
+/** The photos of a tramo with their caption; one still on the phone says so with a clock. */
+function PhotoStrip({ section, itemId }: { section: FormSection; itemId: string }) {
+  const photos = sectionPhotos(section);
+  if (!photos.length) return null;
+  return (
+    <ScrollView horizontal testID={`fotos-${itemId}`} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 8 }}>
+      {photos.map((photo) => (
+        <View key={photo.id} style={{ width: THUMB }}>
+          <Image source={{ uri: photo.thumbUrl }} style={{ width: THUMB, height: THUMB, borderRadius: 12 }} />
+          {photo.pending ? <View testID={`foto-pendiente-${photo.id}`} className="absolute right-1 top-1 h-6 w-6 items-center justify-center rounded-full bg-black/60"><Clock size={13} color="white" /></View> : null}
+          {photo.caption ? <Text className="mt-1 text-[11px] text-on-surface-variant" numberOfLines={2}>{photo.caption}</Text> : null}
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
 
 /** One tramo (design j-03): its kicker, where it is, what it measured and a row per subsection. */
 function ItemCard({ item, section, onOpen }: { item: RepeatItem; section: RepeatSection; onOpen: (path: SectionPath) => void }) {
@@ -14,12 +33,15 @@ function ItemCard({ item, section, onOpen }: { item: RepeatItem; section: Repeat
       <ResultsStrip results={item.results} testID={`resultados-${item.id}`} />
       <View className="mt-3 border-t border-outline/10">
         {item.sections.map((one) => (
-          <Pressable key={one.id} testID={`seccion-${item.id}-${one.id}`} onPress={() => onOpen({ sectionId: section.id, itemId: item.id, key: one.id })} className="min-h-[48px] flex-row items-center gap-3 border-b border-outline/10 py-2">
-            <StateDot state={one.state} small />
-            <Text className="flex-1 text-[14px] font-semibold text-on-surface">{one.title}</Text>
-            <Text className="max-w-[40%] text-[12px] text-on-surface-variant" numberOfLines={1}>{one.summary[0] ?? sectionBadge(one.state, one.required).label}</Text>
-            <ChevronRight size={16} color={colors.primary} />
-          </Pressable>
+          <View key={one.id} className="border-b border-outline/10 py-2">
+            <Pressable testID={`seccion-${item.id}-${one.id}`} onPress={() => onOpen({ sectionId: section.id, itemId: item.id, key: one.id })} className="min-h-[44px] flex-row items-center gap-3">
+              <StateDot state={one.state} small />
+              <Text className="flex-1 text-[14px] font-semibold text-on-surface">{one.title}</Text>
+              <Text className="max-w-[40%] text-[12px] text-on-surface-variant" numberOfLines={1}>{sectionRowLine(one)}</Text>
+              <ChevronRight size={16} color={colors.primary} />
+            </Pressable>
+            {one.tool ? <PhotoStrip section={one} itemId={item.id} /> : null}
+          </View>
         ))}
       </View>
     </View>

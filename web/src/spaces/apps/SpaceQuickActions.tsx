@@ -75,7 +75,7 @@ export function SpaceQuickActions(props: { jwt: string; spaceId: string; spaceNa
             <EphemeralAnswers answers={answers.answers} onDismiss={answers.dismiss} onOpenForm={answers.showForm} chatId="" jwt={jwt} />
             {groups === null && !failed ? <div data-testid="acciones-cargando" className="space-y-2">{[0, 1, 2].map((index) => <div key={index} className="h-14 animate-pulse rounded-xl bg-background" />)}</div> : null}
             {failed ? <button type="button" onClick={() => void load()} className="w-full rounded-xl bg-error/10 px-4 py-3 text-left text-[13px] text-error">No se pudieron leer las acciones. Toca para reintentar.</button> : null}
-            {groups && rows.length === 0 ? <p data-testid="acciones-vacias" className="rounded-xl border border-outline/15 p-4 text-[13px] text-on-surface-variant">Las apps de {props.spaceName} todavía no tienen acciones. Cuando una las tenga, aparecen aquí.</p> : null}
+            {groups && rows.length === 0 ? <p data-testid="acciones-vacias" className="rounded-xl border border-outline/15 p-4 text-[13px] text-on-surface-variant">Las apps de {props.spaceName} todavía no tienen acciones aquí. Un admin las habilita en el detalle de cada app.</p> : null}
             {rows.length ? <AppActionList rows={rows} testPrefix="accion-espacio" onPick={run} /> : null}
           </div>
         </Overlay>

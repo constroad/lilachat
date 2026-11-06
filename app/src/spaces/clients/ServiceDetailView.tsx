@@ -234,6 +234,11 @@ export function ServiceDetailView(props: { target: ServiceAskTarget; chatId: str
         <View testID="detalle-fallo" className="rounded-2xl border border-outline/15 bg-surface p-4">
           <Text className="text-[15px] font-semibold text-on-surface">{answer.message}</Text>
           {answer.portalUrl ? <PortalLink url={answer.portalUrl} label="Abrir el servicio en el Portal" testID="detalle-fallo-portal" /> : null}
+          {answer.offline ? (
+            <Pressable testID="crear-informe-sin-senal" onPress={() => setPicker(true)} className="mt-3 min-h-[48px] items-center justify-center rounded-xl border border-primary/30 bg-primary/10">
+              <Text className="text-[15px] font-semibold text-primary">Crear informe</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
     </ScrollView>

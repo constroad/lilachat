@@ -1,3 +1,4 @@
+import { useReportQueueStart } from './spaces/clients/reports/reportQueueStore';
 import { CreateChecklistOverlay } from './agenda/CreateChecklistOverlay';
 import { WEB_BUILD, webVersionLabel } from './ui/webVersion';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -75,6 +76,7 @@ type Props = {
 export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Props) {
   const yo = credential.userId;
   const base = useBaseLocal(yo);
+  useReportQueueStart(credential.jwt, yo);
   const chatsGuardados = useChatsLocales(base);
   const [selectedId, abrirChat] = useChatDeLaUrl();
   const [query, setQuery] = useState('');

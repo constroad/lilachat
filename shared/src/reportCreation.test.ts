@@ -1,8 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { FORMS_LEVEL } from './appForms';
 import { isFieldReport } from './clientAccess';
 import { fieldDocumentOf } from './fieldDocument';
-import { itemsLine, progressLine, progressPercent, publishFormRequest, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, reportFormActions, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, sectionNeedsPlace, staleAnswerIds, STATUS_BADGE, type TrackStart } from './reportCreation';
+import { itemsLine, progressLine, progressPercent, publishFormRequest, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, openPublishForm, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, staleAnswerIds, STATUS_BADGE, type TrackStart } from './reportCreation';
 
 /** A CTL-IMP as Portal answers it, with one tramo whose photos go through their own tool. */
 const form = (title: string) => ({ type: 'object', properties: { campo: { type: 'string', title } } });
@@ -59,44 +59,20 @@ describe('what the phone asks the server', () => {
     expect(sectionFormRequest(document(), { sectionId: 'tramos', itemId: 't1', key: 'fotos' }, { lat: -12.1, lng: -77, at: '2026-11-05T15:00:00.000Z' })).toMatchObject({ lat: -12.1, lng: -77, at: '2026-11-05T15:00:00.000Z' });
   });
 
-  it('only a section with its own tool (the photos) needs the place', () => {
-    expect(sectionNeedsPlace(document(), { sectionId: 'tramos', itemId: 't1', key: 'fotos' })).toBe(true);
-    expect(sectionNeedsPlace(document(), { sectionId: 'tramos', itemId: 't1', key: 'ubicacion' })).toBe(false);
-    expect(sectionNeedsPlace(document(), { sectionId: 'nope', itemId: null, key: 'nope' })).toBe(false);
-  });
-
   it('publishing needs a report that exists', () => {
     expect(publishFormRequest(document())).toEqual({ kind: 'publish', report_id: body.id, forms: FORMS_LEVEL });
     expect(publishFormRequest(fieldDocumentOf({ ...body, id: null })!)).toBeNull();
   });
 });
 
-describe('reportFormActions', () => {
-  const deps = () => {
+describe('openPublishForm', () => {
+  it('publishes only a report that exists, titled by the action', async () => {
     const calls: { start: TrackStart; request: unknown }[] = [];
-    const placeNow = vi.fn(async () => ({ lat: -12.1, lng: -77, at: '2026-11-05T15:00:00.000Z' }));
-    const actions = reportFormActions<{ ok: true }>({ placeNow, open: async (request) => ({ ok: true, request }) as unknown as { ok: true }, track: async (start, call) => { calls.push({ start, request: ((await call()) as unknown as { request: unknown }).request }); return true; } });
-    return { calls, placeNow, actions };
-  };
-
-  it('opens a section titled by its tramo, reading the place only for the photos', async () => {
-    const { calls, placeNow, actions } = deps();
-
-    await actions.openSection(document(), { sectionId: 'tramos', itemId: 't1', key: 'ubicacion' });
-    await actions.openSection(document(), { sectionId: 'tramos', itemId: 't1', key: 'fotos' });
-
-    expect(placeNow).toHaveBeenCalledTimes(1);
-    expect(calls[0].start).toEqual({ appName: 'Portal', command: '', action: 'Tramo 1 · Ubicación' });
-    expect(calls[0].request).not.toHaveProperty('at');
-    expect(calls[1].request).toMatchObject({ key: 'fotos', lat: -12.1, lng: -77, at: '2026-11-05T15:00:00.000Z' });
-  });
-
-  it('publishes only a report that exists', async () => {
-    const { calls, actions } = deps();
-
-    expect(await actions.openPublish(fieldDocumentOf({ ...body, id: null })!)).toBe(false);
-    expect(await actions.openPublish(document())).toBe(true);
-    expect(calls).toEqual([{ start: { appName: 'Portal', command: '', action: 'Publicar informe' }, request: { kind: 'publish', report_id: body.id, forms: FORMS_LEVEL } }]);
+    const deps = { open: async (request: unknown) => ({ ok: true, request }), track: async (start: TrackStart, call: () => Promise<{ ok: boolean; request: unknown }>) => { calls.push({ start, request: (await call()).request }); return true; } };
+    expect(await openPublishForm(deps, document())).toBe(true);
+    expect(calls[0]).toEqual({ start: { appName: 'Portal', command: '', action: 'Publicar informe' }, request: { kind: 'publish', report_id: document().id, forms: FORMS_LEVEL } });
+    expect(await openPublishForm(deps, { ...document(), id: null })).toBe(false);
+    expect(calls).toHaveLength(1);
   });
 
   it('reportViewOf: the document once it came, and the open repeat', () => {
@@ -123,6 +99,11 @@ describe('readReportDraft', () => {
 });
 
 describe('what the cards say', () => {
+  it('what waits in the queue says so, and a refused one is an error', () => {
+    expect(sectionBadge('partial', true, 'k1').label).toBe('Pendiente de enviar');
+    expect(sectionBadge('error', true, 'k1').label).toBe('Error');
+  });
+
   it('a pill per state, and «Opcional» for an empty section nobody owes', () => {
     expect(sectionBadge('done', true)).toEqual({ label: 'Lista', tone: 'ok' });
     expect(sectionBadge('partial', true)).toEqual({ label: 'A medias', tone: 'warn' });

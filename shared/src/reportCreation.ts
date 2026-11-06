@@ -1,6 +1,6 @@
 import { FORMS_LEVEL } from './appForms.js';
 import type { EphemeralAnswer } from './botCommands.js';
-import { fieldDocumentOf, SECTION_TOOL, sectionFormOf, type DocumentSection, type DocumentStatus, type FieldDocument, type RepeatSection, type SectionPath, type SectionState } from './fieldDocument.js';
+import { fieldDocumentOf, type DocumentSection, type DocumentStatus, type FieldDocument, type RepeatSection, type SectionPath, type SectionState } from './fieldDocument.js';
 import { clientServicePath } from './serviceAsk.js';
 import type { DetailTone } from './serviceDetail.js';
 
@@ -30,7 +30,7 @@ const PERCENT = 100;
 
 /** The type's name for the screen's kicker before Portal answers the document. */
 export const reportTypeLabel = (code: string): string => REPORT_TYPE_OPTIONS.find((option) => option.code === code)?.label ?? code;
-const DRAFT_FAILED = 'No se pudo abrir el informe';
+export const DRAFT_FAILED = 'No se pudo abrir el informe';
 
 export const reportDraftPath = (spaceId: string, clientId: string, serviceId: string): string => `${clientServicePath(spaceId, clientId, serviceId)}/reports/draft`;
 export const reportFormsPath = (spaceId: string, clientId: string, serviceId: string): string => `${clientServicePath(spaceId, clientId, serviceId)}/reports/forms`;
@@ -61,19 +61,17 @@ export function sectionFormRequest(document: FieldDocument, path: SectionPath, p
 
 export const publishFormRequest = (document: FieldDocument): PublishFormRequest | null => (document.id ? { kind: 'publish', report_id: document.id, forms: FORMS_LEVEL } : null);
 
-/** A section with a tool of its own (the photos) wants the device's place and hour before it opens. */
-export function sectionNeedsPlace(document: FieldDocument, path: SectionPath): boolean {
-  const form = sectionFormOf(document, path);
-  return Boolean(form && form.id !== SECTION_TOOL);
-}
-
 export type StateBadge = { label: string; tone: DetailTone };
+const PENDING_BADGE: StateBadge = { label: 'Pendiente de enviar', tone: 'warn' };
 const STATE_BADGES: Record<SectionState, StateBadge> = { done: { label: 'Lista', tone: 'ok' }, partial: { label: 'A medias', tone: 'warn' }, error: { label: 'Error', tone: 'error' }, empty: { label: 'Falta', tone: 'error' } };
 const OPTIONAL_BADGE: StateBadge = { label: 'Opcional', tone: 'neutral' };
 export const STATUS_BADGE: Record<DocumentStatus, StateBadge> = { draft: { label: 'Borrador', tone: 'warn' }, published: { label: 'Publicado', tone: 'ok' } };
 
-/** The pill of a section card (design j-02): an empty section nobody owes is «Opcional», not «Falta». */
-export const sectionBadge = (state: SectionState, required: boolean): StateBadge => (state === 'empty' && !required ? OPTIONAL_BADGE : STATE_BADGES[state]);
+/** The pill of a section card (design j-02): an empty section nobody owes is «Opcional», not «Falta»; one waiting in the queue says so. */
+export function sectionBadge(state: SectionState, required: boolean, pending?: string): StateBadge {
+  if (pending && state !== 'error') return PENDING_BADGE;
+  return state === 'empty' && !required ? OPTIONAL_BADGE : STATE_BADGES[state];
+}
 
 export const progressLine = ({ done, total }: { done: number; total: number }): string => `${done} de ${total} ${total === 1 ? 'sección lista' : 'secciones listas'}`;
 export const progressPercent = ({ done, total }: { done: number; total: number }): number => (total ? Math.round((done / total) * PERCENT) : 0);
@@ -86,24 +84,15 @@ export function itemsLine(section: RepeatSection): string {
   return `${count} ${unit}${count === 1 ? '' : 's'}`;
 }
 
-const PUBLISH_LABEL = 'Publicar informe';
+export const PUBLISH_LABEL = 'Publicar informe';
 export type TrackStart = { appName: string; command: string; action: string };
-/** What each platform lends: its `track` of app answers, its HTTP call to `reports/forms` and its way to read where the device is. */
-export type ReportFormDeps<T> = { track: (start: TrackStart, call: () => Promise<T>) => Promise<boolean>; open: (request: ReportFormRequest) => Promise<T>; placeNow: () => Promise<DevicePlace> };
+/** What each platform lends: its `track` of app answers and its HTTP call to `reports/forms`. */
+export type ReportFormDeps<T> = { track: (start: TrackStart, call: () => Promise<T>) => Promise<boolean>; open: (request: ReportFormRequest) => Promise<T> };
 
-/** Opening a section or «Publicar» as a form of the app, the same on the phone and the web: the place only for the photos. */
-export function reportFormActions<T>(deps: ReportFormDeps<T>) {
-  const openSection = async (report: FieldDocument, path: SectionPath): Promise<boolean> => {
-    const place = sectionNeedsPlace(report, path) ? await deps.placeNow() : null;
-    const request = sectionFormRequest(report, path, place);
-    const title = sectionFormOf(report, path)?.title ?? path.key;
-    return deps.track({ appName: REPORT_KEEPER, command: '', action: title }, () => deps.open(request));
-  };
-  const openPublish = (report: FieldDocument): Promise<boolean> => {
-    const request = publishFormRequest(report);
-    return request ? deps.track({ appName: REPORT_KEEPER, command: '', action: PUBLISH_LABEL }, () => deps.open(request)) : Promise.resolve(false);
-  };
-  return { openSection, openPublish };
+/** «Publicar» as a form of the app, the same on the phone and the web. The sections go through the queue (`reportQueue`). */
+export function openPublishForm<T>(deps: ReportFormDeps<T>, report: FieldDocument): Promise<boolean> {
+  const request = publishFormRequest(report);
+  return request ? deps.track({ appName: REPORT_KEEPER, command: '', action: PUBLISH_LABEL }, () => deps.open(request)) : Promise.resolve(false);
 }
 
 /** What the screen draws: the document once it came, and the repeat whose items are open, if any. */

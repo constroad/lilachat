@@ -1,7 +1,12 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CommandOutcome } from '@lilachat/shared';
+import { baseDe } from '../../../local/baseLocal';
 import { ReportDocumentWeb } from './ReportDocumentWeb';
+import { reportQueue } from './reportQueueStore';
+
+/** The queue keeps its saves in this person's local base. */
+vi.mock('../../../api', async (original) => ({ ...(await original<typeof import('../../../api')>()), loadPerfil: () => ({ userId: 'qa-user', phone: '', deviceId: 'd1' }) }));
 
 /** The form answers are the engine of every app form; here only `track` matters: it runs the call and opens what comes back. */
 const answers = vi.hoisted(() => ({
@@ -32,24 +37,34 @@ const document = {
   ],
   publish: { label: 'Publicar informe', missing: ['Falta una foto en Tramo 1'] },
 };
+const savedOutcome: CommandOutcome = { commandId: 'c1', appId: 'p', appName: 'Portal', outcome: 'ephemeral', response: { responseType: 'ephemeral', text: 'Sección guardada.' } };
 const formOutcome: CommandOutcome = { commandId: 'c1', appId: 'p', appName: 'Portal', outcome: 'form', response: { responseType: 'form', form: { id: 'guardar_seccion_de_informe', title: 'Datos generales', schema: form('General') } } };
 const service = { id: 'srv-318', name: 'Imprimación Av. Los Incas', status: 'in_progress' as const, stage_label: 'Ejecución' };
 const target = { jwt: 'jwt', spaceId: 's1', clientId: 'cli-cvs' };
 
-/** The server behind: the draft by its path, a form by its path; everything else is a refusal. */
-function serverWith(draft: object) {
+/** The server behind: the draft by its path, a form by its path, its answer by the run; everything else is a refusal. */
+function serverWith(draft: object, answer: { status: number; body: object } = { status: 200, body: savedOutcome }) {
   const calls: { url: string; body: unknown }[] = [];
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const body = init?.body ? JSON.parse(String(init.body)) : null;
     calls.push({ url, body });
     if (url.endsWith('/reports/draft')) return new Response(JSON.stringify(draft), { status: 200 });
     if (url.endsWith('/reports/forms')) return new Response(JSON.stringify(formOutcome), { status: 200 });
+    if (url.endsWith('/commands/c1/form')) return new Response(JSON.stringify(answer.body), { status: answer.status });
     return new Response(JSON.stringify({ message: 'no' }), { status: 404 });
   });
   vi.stubGlobal('fetch', fetchMock);
   return calls;
 }
+/** No network at all: every call throws, as `fetch` does. */
+const noNetwork = () => vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('Failed to fetch'); }));
 const formCalls = (calls: { url: string; body: unknown }[]) => calls.filter((call) => call.url.endsWith('/reports/forms')).map((call) => call.body);
+const sentCalls = (calls: { url: string; body: unknown }[]) => calls.filter((call) => call.url.endsWith('/commands/c1/form')).map((call) => call.body);
+const openReport = (props: { onClose?: (changed: boolean) => void } = {}) => render(<ReportDocumentWeb target={target} chatId="chat-1" service={service} type="CTL-IMP" onClose={props.onClose ?? (() => undefined)} />);
+const fillAndSave = (value: string) => {
+  fireEvent.change(screen.getByTestId('campo-campo'), { target: { value } });
+  fireEvent.click(screen.getByTestId('btn-enviar-formulario'));
+};
 
 // A hook that returns the mock would hand vitest a «cleanup» that calls `track` with nothing: braces on purpose.
 beforeEach(() => {
@@ -57,7 +72,11 @@ beforeEach(() => {
   answers.dismiss.mockClear();
   answers.answers = [];
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(async () => {
+  await reportQueue.forget();
+  await baseDe('qa-user').meta.clear();
+  vi.unstubAllGlobals();
+});
 
 describe('ReportDocumentWeb', () => {
   it('asks the draft and shows the hub (design j-02): kicker, state, progress, a card per section and what blocks «Publicar»', async () => {
@@ -80,33 +99,32 @@ describe('ReportDocumentWeb', () => {
     expect(screen.getByTestId('abrir-publicar')).toHaveTextContent('Publicar informe');
   });
 
-  it('a section card opens its form through the server, with the report and its path', async () => {
+  it('a section opens its form here, with no call, and «Guardar» goes through the server with the report and its path', async () => {
     const calls = serverWith({ document });
-    render(<ReportDocumentWeb target={target} chatId="chat-1" service={service} type="CTL-IMP" onClose={() => undefined} />);
+    openReport();
     fireEvent.click(await screen.findByTestId('seccion-general'));
-    await vi.waitFor(() => expect(formCalls(calls)).toHaveLength(1));
+    expect(await screen.findByTestId('formulario-guardar_seccion_de_informe')).toBeInTheDocument();
+    expect(formCalls(calls)).toHaveLength(0);
+    fillAndSave('Nuevo valor');
+    await vi.waitFor(() => expect(sentCalls(calls)).toEqual([{ values: { campo: 'Nuevo valor' } }]));
     expect(formCalls(calls)[0]).toEqual({ kind: 'section', type: 'CTL-IMP', section_id: 'general', item_id: null, key: 'general', report_id: document.id, forms: 3 });
-    expect(answers.track).toHaveBeenCalledWith({ appName: 'Portal', command: '', action: 'Datos generales' }, expect.any(Function));
+    expect(screen.queryByTestId('formulario-guardar_seccion_de_informe')).toBeNull();
   });
 
   it('the tramos open their own list (design j-03): a card per tramo with its subsections, «Agregar tramo» opens the first section of a new one, and back returns to the hub', async () => {
-    const calls = serverWith({ document });
+    serverWith({ document });
     const onClose = vi.fn();
-    render(<ReportDocumentWeb target={target} chatId="chat-1" service={service} type="CTL-IMP" onClose={onClose} />);
+    openReport({ onClose });
     fireEvent.click(await screen.findByTestId('seccion-tramos'));
     const item = screen.getByTestId('item-t1');
     expect(screen.getByTestId('items-tramos')).toHaveTextContent('1 tramo');
     expect(item).toHaveTextContent('Km 12+000 a 12+350');
     expect(within(item).getByTestId('seccion-t1-bandejas')).toHaveTextContent('Falta');
     expect(screen.queryByTestId('abrir-publicar')).toBeNull();
-    fireEvent.click(within(item).getByTestId('seccion-t1-fotos'));
-    await vi.waitFor(() => expect(formCalls(calls)).toHaveLength(1));
-    // The photos ride with the hour (and the place when the browser gives one): the server needs it for Portal's stamp.
-    expect(formCalls(calls)[0]).toMatchObject({ kind: 'section', item_id: 't1', key: 'fotos', at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) });
+    expect(within(item).getByTestId('seccion-t1-fotos')).toHaveTextContent('0 fotos');
     fireEvent.click(screen.getByTestId('agregar-item'));
-    await vi.waitFor(() => expect(formCalls(calls)).toHaveLength(2));
-    expect(formCalls(calls)[1]).toMatchObject({ kind: 'section', section_id: 'tramos', item_id: null, key: 'ubicacion' });
-    expect(formCalls(calls)[1]).not.toHaveProperty('at');
+    expect(await screen.findByTestId('formulario-guardar_seccion_de_informe')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Cerrar'));
     fireEvent.click(screen.getByTestId('volver-al-servicio'));
     expect(screen.getByTestId('seccion-general')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('volver-al-servicio'));
@@ -143,6 +161,53 @@ describe('ReportDocumentWeb', () => {
     render(<ReportDocumentWeb target={target} chatId="chat-1" service={service} type="CTL-IMP" onClose={() => undefined} />);
     await screen.findByTestId('seccion-general');
     expect(answers.dismiss.mock.calls).toEqual([['c1'], ['c2']]);
+  });
+
+  it('what Portal refused stays on screen: «Corregir» brings the form with the error under its field, «Descartar» lets it go', async () => {
+    const calls = serverWith({ document }, { status: 422, body: { errors: { campo: 'Ese valor no va' } } });
+    openReport();
+    fireEvent.click(await screen.findByTestId('seccion-general'));
+    await screen.findByTestId('campo-campo');
+    fillAndSave('Malo');
+    const refused = await screen.findByText('Ese valor no va');
+    expect(sentCalls(calls)).toHaveLength(1);
+    const card = refused.closest('[data-testid^="rechazo-"]')!;
+    expect(card).toHaveTextContent('Datos generales');
+    const key = card.getAttribute('data-testid')!.replace('rechazo-', '');
+    expect(screen.getByTestId('seccion-general')).toHaveTextContent('Error');
+    fireEvent.click(screen.getByTestId(`corregir-${key}`));
+    expect(await screen.findByTestId('campo-campo')).toHaveValue('Malo');
+    expect(screen.getAllByText('Ese valor no va').length).toBeGreaterThan(1);
+    fireEvent.click(screen.getByLabelText('Cerrar'));
+    fireEvent.click(screen.getByTestId(`descartar-${key}`));
+    await vi.waitFor(() => expect(screen.queryByTestId(`rechazo-${key}`)).toBeNull());
+    expect(screen.getByTestId('seccion-general')).toHaveTextContent('Lista');
+  });
+
+  it('with no network the report opens with the last one kept, a save waits, and «Publicar» says why it cannot', async () => {
+    serverWith({ document: { ...document, publish: { label: 'Publicar informe', missing: [] } } });
+    const first = openReport();
+    await screen.findByTestId('seccion-general');
+    first.unmount();
+
+    noNetwork();
+    openReport();
+    expect(await screen.findByTestId('linea-cola')).toHaveTextContent('Sin señal. Lo que guardes sale solo cuando vuelva.');
+    expect(screen.getByTestId('falta-informe')).toHaveTextContent('Publicar necesita señal.');
+    fireEvent.click(screen.getByTestId('seccion-general'));
+    await screen.findByTestId('campo-campo');
+    fillAndSave('Sin señal');
+    await vi.waitFor(() => expect(screen.getByTestId('seccion-general')).toHaveTextContent('Pendiente de enviar'));
+    expect(await screen.findByTestId('linea-cola')).toHaveTextContent('1 cambio sin enviar. Sale solo cuando vuelva la señal.');
+    expect(screen.getByTestId('falta-informe')).toHaveTextContent('Hay cambios sin enviar.');
+    fireEvent.click(screen.getByTestId('abrir-publicar'));
+    expect(screen.getByTestId('confirmar-publicar')).toBeDisabled();
+  });
+
+  it('never opened and with no network, it says what to do', async () => {
+    noNetwork();
+    openReport();
+    expect(await screen.findByTestId('informe-fallo')).toHaveTextContent('Abre este informe una vez con señal');
   });
 
   it('a refusal shows the server’s message and the service in Portal', async () => {

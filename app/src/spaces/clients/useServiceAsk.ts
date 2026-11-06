@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { readServiceAsk, serviceAskPath, type ServiceAskBody, type ServiceAskKind, type ServiceAskResult, type ServiceAskValue } from '@lilachat/shared';
+import { isUnreachable, readServiceAsk, serviceAskPath, type ServiceAskBody, type ServiceAskKind, type ServiceAskResult, type ServiceAskValue } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 
@@ -17,7 +17,9 @@ export function useServiceAsk<K extends ServiceAskKind>(kind: K, target: Service
     if (!serviceId) return undefined;
     let alive = true;
     void jsonCall<ServiceAskBody>(`${BASE_URL}/api${serviceAskPath(spaceId, clientId, serviceId, kind)}`, jwt).then((response) => {
-      if (alive) setAnswer(readServiceAsk(kind, response.ok ? response.data : { message: response.message }));
+      if (!alive) return;
+      const read = readServiceAsk(kind, response.ok ? response.data : { message: response.message });
+      setAnswer(!response.ok && !read.ok && isUnreachable(response) ? { ...read, offline: true } : read);
     });
     return () => {
       alive = false;

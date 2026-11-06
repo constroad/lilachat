@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { Check, ChevronRight } from 'lucide-react';
-import { progressLine, progressOf, progressPercent, type FieldDocument, type ResultTone, type SectionResult, type SectionState, type StateBadge } from '@lilachat/shared';
+import { Check, ChevronRight, CloudOff } from 'lucide-react';
+import { progressLine, progressOf, progressPercent, queueLine, type FieldDocument, type ReportSave, type ResultTone, type SectionResult, type SectionState, type StateBadge } from '@lilachat/shared';
 import { DETAIL_TONE } from '../tones';
 
 /** A result's number in its tone (design j-02: «1.02 lt/m²» green when in range). */
@@ -54,6 +54,37 @@ export function SectionCard(props: { testId: string; title: string; badge: State
       </span>
       {props.onPress ? <ChevronRight size={18} className="shrink-0 text-on-surface-variant" /> : null}
     </button>
+  );
+}
+
+function RefusedSave({ save, onFix, onDiscard }: { save: ReportSave; onFix: () => void; onDiscard: () => void }) {
+  return (
+    <div data-testid={`rechazo-${save.clientKey}`} className="rounded-xl border border-error/30 bg-surface p-3">
+      <p className="text-sm font-bold">{save.title}</p>
+      <p className="mt-0.5 text-[13px] text-error">{save.refusal?.message}</p>
+      <div className="mt-2 flex gap-2">
+        {save.photo ? null : <button type="button" data-testid={`corregir-${save.clientKey}`} onClick={onFix} className="h-11 flex-1 rounded-xl border border-primary/30 bg-primary/10 text-sm font-semibold text-primary">Corregir</button>}
+        <button type="button" data-testid={`descartar-${save.clientKey}`} onClick={onDiscard} className="h-11 flex-1 rounded-xl border border-outline/20 text-sm font-semibold hover:bg-background">Descartar</button>
+      </div>
+    </div>
+  );
+}
+
+/** What has not reached Portal: the line of what waits, and each thing it refused with what to do about it. */
+export function QueueCard({ saves, offline, onFix, onDiscard }: { saves: readonly ReportSave[]; offline: boolean; onFix: (save: ReportSave) => void; onDiscard: (save: ReportSave) => void }) {
+  const refused = saves.filter((one) => one.refusal);
+  const waiting = saves.length - refused.length;
+  if (!offline && saves.length === 0) return null;
+  return (
+    <div data-testid="cola-informe" className="flex flex-col gap-2">
+      {waiting > 0 || offline ? (
+        <p data-testid="linea-cola" className="inline-flex items-center gap-2 rounded-xl border border-outline/15 bg-surface px-3 py-2.5 text-[13px] font-semibold text-on-surface-variant">
+          {offline ? <CloudOff size={15} className="shrink-0 text-primary" /> : null}
+          {queueLine(waiting, offline)}
+        </p>
+      ) : null}
+      {refused.map((save) => <RefusedSave key={save.clientKey} save={save} onFix={() => onFix(save)} onDiscard={() => onDiscard(save)} />)}
+    </div>
   );
 }
 

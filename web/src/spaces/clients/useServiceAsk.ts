@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { readServiceAsk, serviceAskPath, type ServiceAskBody, type ServiceAskKind, type ServiceAskResult, type ServiceAskValue } from '@lilachat/shared';
+import { isUnreachable, readServiceAsk, serviceAskPath, type ServiceAskBody, type ServiceAskKind, type ServiceAskResult, type ServiceAskValue } from '@lilachat/shared';
 import { api } from '../../api';
 
 export type ServiceAskTarget = { jwt: string; spaceId: string; clientId: string };
@@ -16,7 +16,9 @@ export function useServiceAsk<K extends ServiceAskKind>(kind: K, target: Service
     if (!serviceId) return undefined;
     const controller = new AbortController();
     void api<ServiceAskBody>(serviceAskPath(spaceId, clientId, serviceId, kind), { jwt, signal: controller.signal }).then((response) => {
-      if (!controller.signal.aborted) setAnswer(readServiceAsk(kind, response.ok ? response.data : { message: response.message }));
+      if (controller.signal.aborted) return;
+      const read = readServiceAsk(kind, response.ok ? response.data : { message: response.message });
+      setAnswer(!response.ok && !read.ok && isUnreachable(response) ? { ...read, offline: true } : read);
     });
     return () => controller.abort();
   }, [kind, jwt, spaceId, clientId, serviceId, round]);

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Check, ChevronRight } from 'lucide-react-native';
-import { progressLine, progressOf, progressPercent, type FieldDocument, type ResultTone, type SectionResult, type SectionState, type StateBadge } from '@lilachat/shared';
+import { Check, ChevronRight, CloudOff } from 'lucide-react-native';
+import { progressLine, progressOf, progressPercent, queueLine, type FieldDocument, type ReportSave, type ResultTone, type SectionResult, type SectionState, type StateBadge } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { DETAIL_TONE } from '../tones';
 
@@ -60,6 +60,44 @@ export function SectionCard(props: { testID: string; title: string; badge: State
         {props.onPress ? <ChevronRight size={18} color={colors.primary} /> : null}
       </View>
     </Pressable>
+  );
+}
+
+function RefusedSave({ save, onFix, onDiscard }: { save: ReportSave; onFix: () => void; onDiscard: () => void }) {
+  return (
+    <View testID={`rechazo-${save.clientKey}`} className="rounded-2xl border border-error/30 bg-surface p-3">
+      <Text className="text-[14px] font-bold text-on-surface">{save.title}</Text>
+      <Text className="mt-0.5 text-[13px] text-error">{save.refusal?.message}</Text>
+      <View className="mt-2 flex-row gap-2">
+        {save.photo ? null : (
+          <Pressable testID={`corregir-${save.clientKey}`} onPress={onFix} className="min-h-[44px] flex-1 items-center justify-center rounded-xl border border-primary/30 bg-primary/10">
+            <Text className="text-[14px] font-semibold text-primary">Corregir</Text>
+          </Pressable>
+        )}
+        <Pressable testID={`descartar-${save.clientKey}`} onPress={onDiscard} className="min-h-[44px] flex-1 items-center justify-center rounded-xl border border-outline/20">
+          <Text className="text-[14px] font-semibold text-on-surface">Descartar</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+/** What has not reached Portal: the line of what waits, and each thing it refused with what to do about it. */
+export function QueueCard({ saves, offline, onFix, onDiscard }: { saves: readonly ReportSave[]; offline: boolean; onFix: (save: ReportSave) => void; onDiscard: (save: ReportSave) => void }) {
+  const colors = useColores();
+  const refused = saves.filter((one) => one.refusal);
+  const waiting = saves.length - refused.length;
+  if (!offline && saves.length === 0) return null;
+  return (
+    <View testID="cola-informe" className="gap-2">
+      {waiting > 0 || offline ? (
+        <View className="flex-row items-center gap-2 rounded-2xl border border-outline/15 bg-surface px-3 py-2.5">
+          {offline ? <CloudOff size={16} color={colors.primary} /> : null}
+          <Text testID="linea-cola" className="flex-1 text-[13px] font-semibold text-on-surface-variant">{queueLine(waiting, offline)}</Text>
+        </View>
+      ) : null}
+      {refused.map((save) => <RefusedSave key={save.clientKey} save={save} onFix={() => onFix(save)} onDiscard={() => onDiscard(save)} />)}
+    </View>
   );
 }
 

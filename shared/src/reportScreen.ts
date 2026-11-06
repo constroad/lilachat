@@ -1,0 +1,172 @@
+import type { FormSubmitOutcome } from './appActions.js';
+import type { FormValues } from './appForms.js';
+import type { EphemeralAnswer } from './botCommands.js';
+import type { FieldDocument, SectionPath } from './fieldDocument.js';
+import type { DevicePlace, ReportDraftResult } from './reportCreation.js';
+import type { OpenedReport, ReportQueue } from './reportQueue.js';
+import { documentWithQueue, reportFormAnswer, reportSaveOf, samePath, savesOf, type QueuedPhoto, type ReportRef, type ReportSave } from './reportSaves.js';
+
+/**
+ * What the report's screen shows and does, the same on the phone and the web
+ * (spec INFORMES-DESDE-LILACHAT §4.3): the document with the queue over it and
+ * the section's form, drawn from the document so it opens with no signal.
+ * What reached Portal stays on screen until its new document arrives, so a
+ * saved section never goes back to its old state. `P` is what the platform's
+ * photo field hands over.
+ */
+export type KeptPhoto = Omit<QueuedPhoto, 'field'>;
+export type ReportScreenDeps<P> = {
+  queue: ReportQueue;
+  keepPhoto(source: P): Promise<KeptPhoto>;
+  dropPhoto(ref: string): Promise<void>;
+  placeNow(): Promise<DevicePlace>;
+  newKey(): string;
+  now(): string;
+};
+export type ReportScreenState = {
+  draft: ReportDraftResult | null;
+  /** What this report still has in the queue, refused ones included. */
+  saves: ReportSave[];
+  offline: boolean;
+  sending: boolean;
+  /** Something reached Portal since the screen opened: the detail behind must ask again. */
+  changed: boolean;
+  form: EphemeralAnswer | null;
+};
+
+const NOT_KEPT = 'No se pudo guardar en este dispositivo.';
+const PHOTO_NOT_KEPT = 'No se pudo guardar la foto en este dispositivo.';
+const NO_FORM = 'Este formulario ya no está abierto.';
+
+type HeldPhoto = { kept: KeptPhoto; place: DevicePlace };
+
+const photoFieldOf = (answer: EphemeralAnswer): string | undefined => Object.entries(answer.response?.form?.schema.properties ?? {}).find(([, property]) => property['x-input'] === 'photo')?.[0];
+
+export function createReportScreen<P>(deps: ReportScreenDeps<P>, ref: ReportRef) {
+  const { queue } = deps;
+  const listeners = new Set<() => void>();
+  const photos = new Map<string, HeldPhoto>();
+  let opened: OpenedReport | null = null;
+  let reportId: string | null = null;
+  let mine = savesOf(queue.snapshot().saves, ref);
+  /** What reached Portal, until the document that has it arrives. */
+  let held: ReportSave[] = [];
+  let revision = queue.snapshot().revision;
+  let changed = false;
+  let asking = 0;
+  let openForm: { path: SectionPath; answer: EphemeralAnswer } | null = null;
+  let stopListening: (() => void) | null = null;
+
+  function build(): ReportScreenState {
+    const shown = [...held.filter((one) => !mine.some((save) => save.clientKey === one.clientKey)), ...mine];
+    const draft: ReportDraftResult | null = opened?.ok ? { ok: true, document: documentWithQueue(opened.document, shown) } : opened;
+    const { sending, stalled } = queue.snapshot();
+    return { draft, saves: mine, offline: Boolean(opened?.ok && opened.offline) || (stalled && mine.length > 0), sending, changed, form: openForm?.answer ?? null };
+  }
+
+  let state = build();
+  const tell = () => {
+    state = build();
+    listeners.forEach((listener) => listener());
+  };
+
+  async function ask(): Promise<void> {
+    asking += 1;
+    const ticket = asking;
+    const read = await queue.documentOf(ref, reportId);
+    if (ticket !== asking) return;
+    if (read.ok && read.document.id) reportId = read.document.id;
+    opened = read;
+    held = [];
+    tell();
+  }
+
+  function onQueue(): void {
+    const next = queue.snapshot();
+    if (next.revision !== revision) {
+      held = [...held, ...mine];
+      revision = next.revision;
+      changed = true;
+      void ask();
+    }
+    mine = savesOf(next.saves, ref);
+    tell();
+  }
+
+  const documentNow = (): FieldDocument | null => (state.draft?.ok ? state.draft.document : null);
+
+  function dropUnsaved(): void {
+    photos.forEach((_held, photo) => void deps.dropPhoto(photo));
+    photos.clear();
+  }
+
+  function saveOf(document: FieldDocument, path: SectionPath, answer: EphemeralAnswer, values: FormValues): ReportSave {
+    const save = reportSaveOf({ ref, document, path, values, clientKey: deps.newKey(), now: deps.now() });
+    const field = photoFieldOf(answer);
+    const photo = field ? photos.get(String(values[field])) : undefined;
+    return field && photo ? { ...save, photo: { field, ...photo.kept }, place: photo.place } : save;
+  }
+
+  return {
+    snapshot: (): ReportScreenState => state,
+    subscribe(listener: () => void): () => void {
+      listeners.add(listener);
+      if (!stopListening) {
+        stopListening = queue.subscribe(onQueue);
+        onQueue();
+        void ask();
+      }
+      return () => {
+        listeners.delete(listener);
+        if (listeners.size > 0) return;
+        stopListening?.();
+        stopListening = null;
+      };
+    },
+    /** The signal came back, or the document is just old. */
+    refresh: (): void => void ask(),
+    /** A form outside the queue was answered (publishing). */
+    reload(): void {
+      changed = true;
+      void ask();
+    },
+    /** A refused section opens with what Portal said under each field. */
+    openSection(path: SectionPath): void {
+      const document = documentNow();
+      const refused = mine.find((one) => one.refusal && !one.photo && samePath(one.path, path));
+      const answer = document ? reportFormAnswer(document, path, refused?.refusal?.errors) : null;
+      openForm = answer ? { path, answer } : null;
+      tell();
+    },
+    closeForm(): void {
+      dropUnsaved();
+      openForm = null;
+      tell();
+    },
+    /** The photo field's upload: here it only stays on the device, with where and when it was taken. */
+    async upload(source: P): Promise<{ ok: true; fileId: string } | { ok: false; message: string }> {
+      try {
+        const [kept, place] = await Promise.all([deps.keepPhoto(source), deps.placeNow()]);
+        photos.set(kept.ref, { kept, place });
+        return { ok: true, fileId: kept.ref };
+      } catch {
+        return { ok: false, message: PHOTO_NOT_KEPT };
+      }
+    },
+    /** «Guardar» is the person's confirmation: the save is queued and the form closes, with signal or without. */
+    async submit(values: FormValues): Promise<FormSubmitOutcome> {
+      const document = documentNow();
+      if (!openForm || !document) return { done: false, errors: {}, message: NO_FORM };
+      try {
+        await queue.add(saveOf(document, openForm.path, openForm.answer, values));
+      } catch {
+        return { done: false, errors: {}, message: NOT_KEPT };
+      }
+      photos.clear();
+      openForm = null;
+      tell();
+      return { done: true, answer: null };
+    },
+    discard: (clientKey: string): Promise<void> => queue.discard(clientKey),
+  };
+}

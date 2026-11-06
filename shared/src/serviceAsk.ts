@@ -9,7 +9,7 @@ import type { ServiceFile, ServiceFiles } from './serviceFiles.js';
  * the person always has somewhere to go. PURE.
  */
 export type ServiceAskKind = 'files' | 'detail' | 'account' | 'billing';
-export type ServiceAskResult<T> = { ok: true; value: T } | { ok: false; message: string; portalUrl: string | null };
+export type ServiceAskResult<T> = { ok: true; value: T } | { ok: false; message: string; portalUrl: string | null; /** It never reached the server: a field report can still be filled. */ offline?: true };
 export type ServiceAskBody = { files?: ServiceFile[]; drive_url?: string | null; detail?: ServiceDetail; account?: ClientAccount; error?: string; message?: string; portal_url?: string | null };
 type ValueOf = { files: ServiceFiles; detail: ServiceDetail; account: ClientAccount; billing: ServiceDetail };
 export type ServiceAskValue<K extends ServiceAskKind> = ValueOf[K];

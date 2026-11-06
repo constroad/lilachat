@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { AlertTriangle, ChevronLeft, ExternalLink, FileText } from 'lucide-react-native';
-import { formKeyOf, itemsLine, publishBlockers, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
+import { formKeyOf, itemsLine, pendingOf, publishBlockers, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
 import { AppFormSheet } from '../../../chat/commands/AppFormSheet';
 import { EphemeralAnswers } from '../../../chat/commands/EphemeralAnswers';
 import { useColores } from '../../../ui/tema';
@@ -10,7 +10,7 @@ import { useReportPdf } from '../useReportPdf';
 import type { ServiceAskTarget } from '../useServiceAsk';
 import { PublishSheet } from './PublishSheet';
 import { ReportItemsView } from './ReportItemsView';
-import { Pill, ProgressCard, SectionCard } from './ReportSections';
+import { Pill, ProgressCard, QueueCard, SectionCard } from './ReportSections';
 import { useFieldDocument } from './useFieldDocument';
 import { useReportForms } from './useReportForms';
 
@@ -52,7 +52,7 @@ function DraftFailure({ message, portalUrl }: { message: string; portalUrl?: str
 function HubCards({ report, onOpen, onOpenItems }: { report: FieldDocument; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
   const locked = report.status === 'published';
   const cardOf = (section: DocumentSection) => {
-    const badge = sectionBadge(section.state, section.required);
+    const badge = sectionBadge(section.state, section.required, pendingOf(section));
     const open = section.enabled && !locked;
     if (section.kind === 'repeat') {
       const first = section.items[0];
@@ -64,9 +64,8 @@ function HubCards({ report, onOpen, onOpenItems }: { report: FieldDocument; onOp
 }
 
 /** Under the cards: what still blocks «Publicar» and the button, or the PDF once published (design j-04). */
-function ReportFooter({ report, asking, onPublish, onPdf, onDone }: { report: FieldDocument; asking: boolean; onPublish: () => void; onPdf: () => void; onDone: () => void }) {
+function ReportFooter({ report, blocker, asking, onPublish, onPdf, onDone }: { report: FieldDocument; blocker?: string; asking: boolean; onPublish: () => void; onPdf: () => void; onDone: () => void }) {
   const colors = useColores();
-  const blocker = publishBlockers(report, [])[0];
   if (report.status === 'published') {
     return (
       <View testID="informe-publicado" className="gap-2 border-t border-outline/10 px-4 pb-4 pt-3">
@@ -110,15 +109,16 @@ function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems }: { 
   );
 }
 
-/** The state of the screen: the document, the open tramos list, the forms and Android's back. */
+/** The state of the screen: the document, the open tramos list, «Publicar» and Android's back. */
 function useReportScreen(props: Props) {
   const { target, chatId, service, type, onClose } = props;
-  const { draft, reload, reloaded } = useFieldDocument(target, service.id, type);
-  const forms = useReportForms(target, chatId, service.id, reload);
+  const document = useFieldDocument({ spaceId: target.spaceId, clientId: target.clientId, chatId, serviceId: service.id, type });
+  const forms = useReportForms(target, chatId, service.id, document.actions.reload);
   const [itemsOf, setItemsOf] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
+  const { changed } = document;
   // Inside the tramos, back goes to the hub; in the hub, back closes and the detail asks again if something was saved.
-  const back = useCallback(() => (itemsOf ? setItemsOf(null) : onClose(reloaded)), [itemsOf, onClose, reloaded]);
+  const back = useCallback(() => (itemsOf ? setItemsOf(null) : onClose(changed)), [itemsOf, onClose, changed]);
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       back();
@@ -126,7 +126,7 @@ function useReportScreen(props: Props) {
     });
     return () => subscription.remove();
   }, [back]);
-  return { draft, ...reportViewOf(draft, itemsOf), forms, publishing, setPublishing, setItemsOf, back };
+  return { document, ...reportViewOf(document.draft, itemsOf), forms, publishing, setPublishing, setItemsOf, back };
 }
 
 /**
@@ -137,12 +137,13 @@ function useReportScreen(props: Props) {
  */
 export function ReportDocumentScreen(props: Props) {
   const screen = useReportScreen(props);
-  const { report, items, forms } = screen;
+  const { document, report, items, forms } = screen;
+  const { actions, saves, offline } = document;
   const files = useFileViewer();
   const pdf = useReportPdf(props.target, props.service.id, files.open);
   const kicker = report ? report.title : reportTypeLabel(props.type);
   const notice = files.notice ?? pdf.message;
-  const open = (path: SectionPath) => report && void forms.openSection(report, path);
+  const blockers = report ? publishBlockers(report, saves, offline) : [];
   const publish = () => {
     screen.setPublishing(false);
     if (report) void forms.openPublish(report);
@@ -151,13 +152,15 @@ export function ReportDocumentScreen(props: Props) {
     <View className="flex-1">
       <ScrollView testID="informe-documento" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 24 }}>
         <ReportHeader kicker={items ? `${kicker} · ${items.title}` : kicker} title={props.service.name} report={report} onBack={screen.back} />
+        <QueueCard saves={saves} offline={offline} onFix={(save) => actions.openSection(save.path)} onDiscard={(save) => void actions.discard(save.clientKey)} />
         <EphemeralAnswers answers={forms.answers.answers} onDismiss={forms.answers.dismiss} onOpenForm={forms.answers.showForm} chatId={props.chatId} jwt={props.target.jwt} embedded />
-        <ReportBody draft={screen.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={open} onOpenItems={screen.setItemsOf} />
+        <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={screen.setItemsOf} />
         {notice ? <Text className="text-center text-[13px] text-error">{notice}</Text> : null}
       </ScrollView>
-      {report && !items ? <ReportFooter report={report} asking={pdf.asking} onPublish={() => screen.setPublishing(true)} onPdf={() => void pdf.ask(report.id ?? '', `${report.title} · PDF`)} onDone={() => props.onClose(true)} /> : null}
+      {report && !items ? <ReportFooter report={report} blocker={blockers[0]} asking={pdf.asking} onPublish={() => screen.setPublishing(true)} onPdf={() => void pdf.ask(report.id ?? '', `${report.title} · PDF`)} onDone={() => props.onClose(true)} /> : null}
       {files.viewer}
-      {report ? <PublishSheet document={report} visible={screen.publishing} onClose={() => screen.setPublishing(false)} onPublish={publish} /> : null}
+      {report ? <PublishSheet document={report} blockers={blockers} visible={screen.publishing} onClose={() => screen.setPublishing(false)} onPublish={publish} /> : null}
+      {document.form ? <AppFormSheet key={formKeyOf(document.form)} answer={document.form} onSubmit={actions.submit} onUpload={actions.upload} onClose={actions.closeForm} /> : null}
       {forms.answers.openForm ? (
         <AppFormSheet key={formKeyOf(forms.answers.openForm)} answer={forms.answers.openForm} onSubmit={(values) => forms.answers.submitForm(forms.answers.openForm!, values)} onUpload={(photo, stamp) => forms.answers.uploadPhoto(forms.answers.openForm!.commandId, photo, stamp)} onRefresh={(values) => forms.answers.refreshForm(forms.answers.openForm!, values)} onPreview={(values) => forms.answers.previewForm(forms.answers.openForm!, values)} onClose={() => forms.answers.dismiss(forms.answers.openForm!.commandId)} />
       ) : null}

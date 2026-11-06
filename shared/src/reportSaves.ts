@@ -1,0 +1,223 @@
+import type { FormValues } from './appForms.js';
+import type { FormSubmitReply } from './appActions.js';
+import type { CommandNotice, EphemeralAnswer } from './botCommands.js';
+import { applySavedSection, sectionAt, sectionFormOf, type DocumentSection, type FieldDocument, type FormSection, type RepeatSection, type SectionPath, type SectionTemplate } from './fieldDocument.js';
+import { PUBLISH_LABEL, REPORT_KEEPER, sectionBadge, type DevicePlace } from './reportCreation.js';
+
+/**
+ * What a field report keeps on the phone until Portal has it (spec
+ * INFORMES-DESDE-LILACHAT §4.4): one save per section, one per photo, each the
+ * fact the person confirmed, never the screen. Sections and tramos made here
+ * show on the document at once, over what Portal last answered. PURE.
+ */
+export type ReportRef = { spaceId: string; clientId: string; chatId: string; serviceId: string; type: string };
+export type QueuedPhoto = { field: string; ref: string; mime: string; preview: string };
+export type SaveRefusal = { message: string; errors: Record<string, string> };
+/** What the report had when the write went out: with the answer lost, it tells a write that landed. */
+export type SentMark = { items: string[]; photos: number };
+export type ReportSave = {
+  clientKey: string;
+  ref: ReportRef;
+  reportId: string | null;
+  path: SectionPath;
+  title: string;
+  values: FormValues;
+  /** A tramo made here: `path.itemId` is local until Portal gives it its id. */
+  createsItem?: true;
+  photo?: QueuedPhoto;
+  place?: DevicePlace;
+  queuedAt: string;
+  attempts: number;
+  refusal?: SaveRefusal;
+  sent?: SentMark;
+};
+export type SaveVerdict = { kind: 'confirm' | 'retry' | 'flush' | 'wait' } | { kind: 'refuse'; refusal: SaveRefusal };
+
+const LOCAL_ITEM = 'local-';
+const PHOTOS_VALUE = 'fotos';
+const SAVE_REFUSED = 'Portal no aceptó este cambio.';
+const UNSENT_HTTP = new Set([408, 429]);
+const SERVER_DOWN = 500;
+
+export const reportKeyOf = ({ spaceId, clientId, serviceId, type }: ReportRef): string => [spaceId, clientId, serviceId, type].join(':');
+/** The forms of a type are the same in every service of the space: they let a new report start with no signal. */
+export const reportTypeKeyOf = ({ spaceId, type }: ReportRef): string => [spaceId, type].join(':');
+export const savesOf = (queue: readonly ReportSave[], ref: ReportRef): ReportSave[] => queue.filter((one) => reportKeyOf(one.ref) === reportKeyOf(ref));
+
+/** The save of a confirmed form. Inside a repeat, a null `itemId` is a new tramo: it takes a local id. */
+export function reportSaveOf(input: { ref: ReportRef; document: FieldDocument; path: SectionPath; values: FormValues; clientKey: string; now: string }): ReportSave {
+  const { ref, document, path, values, clientKey, now } = input;
+  const inRepeat = document.sections.find((one) => one.id === path.sectionId)?.kind === 'repeat';
+  const creates = inRepeat && path.itemId === null;
+  return {
+    clientKey, ref, values, reportId: document.id, queuedAt: now, attempts: 0,
+    path: creates ? { ...path, itemId: `${LOCAL_ITEM}${clientKey}` } : path,
+    title: sectionFormOf(document, path)?.title ?? path.key,
+    ...(creates ? { createsItem: true as const } : {}),
+  };
+}
+
+export const samePath = (left: SectionPath, right: SectionPath): boolean => left.sectionId === right.sectionId && left.itemId === right.itemId && left.key === right.key;
+
+/** One save per section, the newest, in its place in line; a photo is its own write. A tramo not sent yet stays the save that creates it. */
+export function queueSave(queue: readonly ReportSave[], save: ReportSave): ReportSave[] {
+  const kept = save.photo ? undefined : queue.find((one) => !one.photo && samePath(one.path, save.path));
+  if (!kept) return [...queue, save];
+  const merged: ReportSave = { ...save, ...(kept.createsItem ? { createsItem: true as const } : {}), ...(kept.sent ? { sent: kept.sent } : {}) };
+  return queue.map((one) => (one === kept ? merged : one));
+}
+
+const openSection = (section: DocumentSection): DocumentSection => ({ ...section, enabled: true });
+
+const emptySection = (entry: SectionTemplate): FormSection => ({ kind: 'form', id: entry.id, title: entry.title, form: entry.form, required: entry.required, enabled: true, state: 'empty', summary: [], results: [], values: {}, ...(entry.tool ? { tool: entry.tool } : {}) });
+
+function withLocalItem(document: FieldDocument, path: SectionPath): FieldDocument {
+  const sections = document.sections.map((section): DocumentSection => {
+    if (section.id !== path.sectionId || section.kind !== 'repeat' || !path.itemId || section.items.some((one) => one.id === path.itemId)) return section;
+    return { ...section, items: [...section.items, { id: path.itemId, title: `${section.itemTitle} ${section.items.length + 1}`, summary: [], results: [], sections: section.template.map(emptySection) }] };
+  });
+  return { ...document, sections };
+}
+
+const photoListAt = (document: FieldDocument, path: SectionPath): unknown[] => {
+  const photos = sectionAt(document, path)?.values[PHOTOS_VALUE];
+  return Array.isArray(photos) ? photos : [];
+};
+
+function withPendingPhoto(document: FieldDocument, save: ReportSave): FormValues {
+  const preview = save.photo?.preview ?? '';
+  return { [PHOTOS_VALUE]: [...photoListAt(document, save.path), { id: save.clientKey, url: preview, thumb_url: preview, descripcion: save.values.descripcion ?? '', pending: true }] } as FormValues;
+}
+
+/** A save over the document: it shows at once, and the first one opens what Portal keeps closed until the report exists. */
+export function applySave(document: FieldDocument, save: ReportSave): FieldDocument {
+  const opened = document.id === null ? { ...document, sections: document.sections.map(openSection) } : document;
+  const placed = save.createsItem ? withLocalItem(opened, save.path) : opened;
+  return applySavedSection(placed, save.path, save.photo ? withPendingPhoto(placed, save) : save.values, save.clientKey, save.refusal ? 'error' : 'partial');
+}
+
+export const documentWithQueue = (document: FieldDocument, queue: readonly ReportSave[]): FieldDocument => queue.reduce(applySave, document);
+
+export type SectionPhoto = { id: string; url: string; thumbUrl: string; caption: string; hour: string; pending: boolean };
+const textOf = (value: unknown): string => (typeof value === 'string' ? value : '');
+
+/** The photos of a section as Portal lists them, and the ones still on the phone. */
+export function sectionPhotos(section: Pick<FormSection, 'values'>): SectionPhoto[] {
+  const photos = section.values[PHOTOS_VALUE];
+  if (!Array.isArray(photos)) return [];
+  return (photos as Record<string, unknown>[])
+    .filter((one) => textOf(one?.url))
+    .map((one) => ({ id: textOf(one.id), url: textOf(one.url), thumbUrl: textOf(one.thumb_url) || textOf(one.url), caption: textOf(one.descripcion), hour: textOf(one.hora), pending: one.pending === true }));
+}
+
+/** «0 fotos», «1 foto» (design j-03). */
+export function photosLine(section: Pick<FormSection, 'values'>): string {
+  const count = sectionPhotos(section).length;
+  return `${count} ${count === 1 ? 'foto' : 'fotos'}`;
+}
+
+/** The line at the right of a tramo's row (design j-03): what waits, how many photos, or what Portal said. */
+export function sectionRowLine(section: FormSection): string {
+  if (section.pending) return sectionBadge(section.state, section.required, section.pending).label;
+  if (section.tool) return photosLine(section);
+  return section.summary[0] ?? sectionBadge(section.state, section.required).label;
+}
+
+/** The save waiting on a card of the hub; a repeat waits while any of its tramos does. */
+export function pendingOf(section: DocumentSection): string | undefined {
+  if (section.kind === 'form') return section.pending;
+  return section.items.flatMap((item) => item.sections).find((one) => one.pending)?.pending;
+}
+
+function blankSection(section: DocumentSection, index: number): DocumentSection {
+  const blank = { state: 'empty' as const, summary: [], enabled: index === 0 };
+  return section.kind === 'repeat' ? { ...section, ...blank, items: [] } : { ...section, ...blank, values: {}, results: [] };
+}
+
+/** A new report from what the phone knows of its type: its forms, and nothing of the report they came from. */
+export const blankDocumentOf = (document: FieldDocument): FieldDocument => ({ ...document, id: null, status: 'draft', sections: document.sections.map(blankSection), publish: { label: PUBLISH_LABEL, missing: [] } });
+
+/** The next save to send. What was refused waits for the person, and so does what hangs from it; while the report does not exist, only its first section can make it. */
+export function nextSave(queue: readonly ReportSave[], document: FieldDocument | null): ReportSave | null {
+  const stuck = new Set(queue.filter((one) => one.refusal && one.createsItem).map((one) => one.path.itemId));
+  const first = document?.sections[0]?.id;
+  return queue.find((one) => !one.refusal && !stuck.has(one.path.itemId) && (document?.id !== null || one.path.sectionId === first)) ?? null;
+}
+
+const itemsOf = (document: FieldDocument, sectionId: string): string[] => {
+  const section = document.sections.find((one): one is RepeatSection => one.id === sectionId && one.kind === 'repeat');
+  return section?.items.map((one) => one.id) ?? [];
+};
+
+/** Taken once, before the first attempt. */
+export const sentMarkOf = (save: ReportSave, document: FieldDocument): SentMark => save.sent ?? { items: itemsOf(document, save.path.sectionId), photos: photoListAt(document, save.path).length };
+
+/** The tramo Portal made for this save: the one the report did not have when it went out. */
+export const newItemOf = (save: ReportSave, document: FieldDocument, sent: SentMark): string | null => itemsOf(document, save.path.sectionId).find((id) => !sent.items.includes(id)) ?? null;
+
+/**
+ * The answer may be lost with the write done. A tramo or a photo that is there
+ * must not be sent again; a plain section can: writing it twice changes nothing.
+ */
+export function landedBefore(save: ReportSave, document: FieldDocument): { itemId: string | null } | null {
+  if (!save.sent) return null;
+  if (save.createsItem) {
+    const itemId = newItemOf(save, document, save.sent);
+    return itemId ? { itemId } : null;
+  }
+  return save.photo && photoListAt(document, save.path).length > save.sent.photos ? { itemId: null } : null;
+}
+
+/** Nothing came back (the web says 0, the phone says nothing) or the server is down. */
+export const isUnreachable = ({ status }: { status?: number }): boolean => !status || status >= SERVER_DOWN;
+
+/** A failed call: no network or a server down waits, a revoked credential empties the queue (`rn-app-loop` §5), the rest is a refusal the person sees. */
+export function judgeFailure(failure: { status?: number; message?: string }): SaveVerdict {
+  if (isUnreachable(failure) || UNSENT_HTTP.has(failure.status ?? 0)) return { kind: 'retry' };
+  if (failure.status === 401) return { kind: 'flush' };
+  return { kind: 'refuse', refusal: { message: failure.message ?? SAVE_REFUSED, errors: {} } };
+}
+
+const refusalOf = (errors: Record<string, string>): SaveVerdict => ({ kind: 'refuse', refusal: { message: errors._ ?? Object.values(errors)[0] ?? SAVE_REFUSED, errors } });
+
+export function judgeReply(reply: FormSubmitReply): SaveVerdict {
+  if (!reply.ok) return reply.errors && Object.keys(reply.errors).length ? refusalOf(reply.errors) : judgeFailure(reply);
+  if (reply.outcome.outcome === 'failed') return { kind: 'retry' };
+  return { kind: reply.outcome.outcome === 'pending' ? 'wait' : 'confirm' };
+}
+
+/** The late answer of a slow write. None in time: the next pass looks at the report. */
+export function judgeNotice(notice: CommandNotice | null): SaveVerdict {
+  if (!notice) return { kind: 'retry' };
+  return notice.errors ? refusalOf(notice.errors) : { kind: 'confirm' };
+}
+
+/** Portal gave the tramo its id: what hung from the local one follows it, and nothing creates it again. */
+export function resolveItem(queue: readonly ReportSave[], localId: string, itemId: string): ReportSave[] {
+  return queue.map((one) => {
+    if (one.path.itemId !== localId) return one;
+    const { createsItem: _made, ...rest } = one;
+    return { ...rest, path: { ...one.path, itemId } };
+  });
+}
+
+/** Discarding a tramo not sent discards what hangs from it. */
+export function withoutSave(queue: readonly ReportSave[], clientKey: string): ReportSave[] {
+  const gone = queue.find((one) => one.clientKey === clientKey);
+  return queue.filter((one) => one.clientKey !== clientKey && !(gone?.createsItem && one.path.itemId === gone.path.itemId));
+}
+
+/** A section's form, drawn here from the document: it opens with no signal, and what Portal refused goes under its field. */
+export function reportFormAnswer(document: FieldDocument, path: SectionPath, errors?: Record<string, string>): EphemeralAnswer | null {
+  const form = sectionFormOf(document, path);
+  if (!form) return null;
+  return { commandId: `report-${path.sectionId}-${path.itemId ?? 'new'}-${path.key}`, appName: REPORT_KEEPER, command: '', action: form.title, state: 'form', response: { responseType: 'form', form }, ...(errors ? { errors } : {}) };
+}
+
+/** The line over the hub while something waits. */
+export function queueLine(count: number, offline: boolean): string {
+  if (count === 0) return 'Sin señal. Lo que guardes sale solo cuando vuelva.';
+  const noun = count === 1 ? 'cambio' : 'cambios';
+  if (!offline) return `${count} ${noun} enviándose`;
+  return `${count} ${noun} sin enviar. ${count === 1 ? 'Sale solo' : 'Salen solos'} cuando vuelva la señal.`;
+}

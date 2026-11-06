@@ -188,6 +188,7 @@ export function ServiceDetailWeb(props: { target: ServiceAskTarget; chatId: stri
         <div data-testid="detalle-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm">
           <p className="mb-2 font-semibold">{answer.message}</p>
           {answer.portalUrl ? <PortalLink url={answer.portalUrl} label="Abrir el servicio en el Portal" testId="detalle-fallo-portal" /> : null}
+          {answer.offline ? <button type="button" data-testid="crear-informe-sin-senal" onClick={() => setPicker(true)} className="mt-2 h-11 w-full rounded-xl border border-primary/30 bg-primary/10 text-sm font-semibold text-primary">Crear informe</button> : null}
         </div>
       ) : null}
     </div>

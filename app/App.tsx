@@ -16,6 +16,7 @@ import { listChats, olvidarPushDeEsteTelefono, refreshSession } from './src/api/
 import { olvidarCola } from './src/chat/outboxStore';
 import { olvidarArchivos } from './src/chat/colaDeArchivos';
 import { olvidarBorradores } from './src/chat/borradores';
+import { forgetReportQueue } from './src/spaces/clients/reports/reportQueueStore';
 import {
   clearCredential,
   loadCredential,
@@ -65,6 +66,7 @@ async function forgetRevokedSession(): Promise<void> {
     clearCredential(),
     olvidarCola(),
     olvidarArchivos(),
+    forgetReportQueue(),
     olvidarChats(),
     forgetAllSpaces(),
     forgetMySpaces(),

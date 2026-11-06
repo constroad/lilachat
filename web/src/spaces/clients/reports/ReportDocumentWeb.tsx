@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AlertTriangle, ChevronLeft, ExternalLink, FileText } from 'lucide-react';
-import { formKeyOf, itemsLine, publishBlockers, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
+import { formKeyOf, itemsLine, pendingOf, publishBlockers, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
 import { loadPerfil } from '../../../api';
 import { AppFormDialog } from '../../../chat/commands/AppFormDialog';
 import { EphemeralAnswers } from '../../../chat/commands/EphemeralAnswers';
@@ -8,7 +8,7 @@ import { useReportPdf } from '../useReportPdf';
 import type { ServiceAskTarget } from '../useServiceAsk';
 import { PublishDialog } from './PublishDialog';
 import { ReportItemsWeb } from './ReportItemsWeb';
-import { Pill, ProgressCard, SectionCard } from './ReportSectionsWeb';
+import { Pill, ProgressCard, QueueCard, SectionCard } from './ReportSectionsWeb';
 import { useFieldDocument } from './useFieldDocument';
 import { useReportForms } from './useReportForms';
 
@@ -41,7 +41,7 @@ function DraftFailure({ message, portalUrl }: { message: string; portalUrl?: str
 function HubCards({ report, onOpen, onOpenItems }: { report: FieldDocument; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
   const locked = report.status === 'published';
   const cardOf = (section: DocumentSection) => {
-    const badge = sectionBadge(section.state, section.required);
+    const badge = sectionBadge(section.state, section.required, pendingOf(section));
     const open = section.enabled && !locked;
     if (section.kind === 'repeat') {
       const first = section.items[0];
@@ -53,8 +53,7 @@ function HubCards({ report, onOpen, onOpenItems }: { report: FieldDocument; onOp
 }
 
 /** Under the cards: what still blocks «Publicar» and the button, or the PDF once published (design j-04). */
-function ReportFooter({ report, pdf, onPublish, onDone }: { report: FieldDocument; pdf: ReturnType<typeof useReportPdf>; onPublish: () => void; onDone: () => void }) {
-  const blocker = publishBlockers(report, [])[0];
+function ReportFooter({ report, blocker, pdf, onPublish, onDone }: { report: FieldDocument; blocker?: string; pdf: ReturnType<typeof useReportPdf>; onPublish: () => void; onDone: () => void }) {
   if (report.status === 'published') {
     return (
       <footer data-testid="informe-publicado" className="sticky bottom-0 flex flex-col gap-2 border-t border-outline/10 bg-background pt-3">
@@ -88,22 +87,21 @@ function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems }: { 
   );
 }
 
-/** The state of the page: the document, the open tramos list and the forms (no hardware back here). */
+/** The state of the page: the document, the open tramos list and «Publicar» (no hardware back here). */
 function useReportPage(props: Props) {
   const { target, chatId, service, type, onClose } = props;
-  const { draft, reload, reloaded } = useFieldDocument(target, service.id, type);
-  const forms = useReportForms(target, chatId, service.id, reload);
+  const document = useFieldDocument(target.jwt, { spaceId: target.spaceId, clientId: target.clientId, chatId, serviceId: service.id, type });
+  const forms = useReportForms(target, chatId, service.id, document.actions.reload);
   const [itemsOf, setItemsOf] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
-  const view = reportViewOf(draft, itemsOf);
+  const view = reportViewOf(document.draft, itemsOf);
   // Inside the tramos, back goes to the hub; in the hub, back closes and the detail asks again if something was saved.
-  const back = () => (itemsOf ? setItemsOf(null) : onClose(reloaded));
-  const open = (path: SectionPath) => view.report && void forms.openSection(view.report, path);
+  const back = () => (itemsOf ? setItemsOf(null) : onClose(document.changed));
   const publish = () => {
     setPublishing(false);
     if (view.report) void forms.openPublish(view.report);
   };
-  return { draft, ...view, forms, open, publish, publishing, setPublishing, setItemsOf, back };
+  return { document, ...view, forms, publish, publishing, setPublishing, setItemsOf, back };
 }
 
 /**
@@ -114,16 +112,20 @@ function useReportPage(props: Props) {
  */
 export function ReportDocumentWeb(props: Props) {
   const page = useReportPage(props);
-  const { report, items, forms } = page;
+  const { document, report, items, forms } = page;
+  const { actions, saves, offline } = document;
   const pdf = useReportPdf(props.target, props.service.id);
   const kicker = report ? report.title : reportTypeLabel(props.type);
+  const blockers = report ? publishBlockers(report, saves, offline) : [];
   return (
     <div data-testid="informe-documento" className="mx-auto flex max-w-3xl flex-col gap-3">
       <ReportHeader kicker={items ? `${kicker} · ${items.title}` : kicker} title={props.service.name} report={report} onBack={page.back} />
+      <QueueCard saves={saves} offline={offline} onFix={(save) => actions.openSection(save.path)} onDiscard={(save) => void actions.discard(save.clientKey)} />
       <EphemeralAnswers answers={forms.answers.answers} onDismiss={forms.answers.dismiss} onOpenForm={forms.answers.showForm} chatId={props.chatId} jwt={props.target.jwt} />
-      <ReportBody draft={page.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={page.open} onOpenItems={page.setItemsOf} />
-      {report && !items ? <ReportFooter report={report} pdf={pdf} onPublish={() => page.setPublishing(true)} onDone={() => props.onClose(true)} /> : null}
-      {report && page.publishing ? <PublishDialog report={report} onClose={() => page.setPublishing(false)} onPublish={page.publish} /> : null}
+      <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={page.setItemsOf} />
+      {report && !items ? <ReportFooter report={report} blocker={blockers[0]} pdf={pdf} onPublish={() => page.setPublishing(true)} onDone={() => props.onClose(true)} /> : null}
+      {report && page.publishing ? <PublishDialog report={report} blockers={blockers} onClose={() => page.setPublishing(false)} onPublish={page.publish} /> : null}
+      {document.form ? <AppFormDialog key={formKeyOf(document.form)} answer={document.form} personName={loadPerfil()?.name} onSubmit={actions.submit} onUpload={actions.upload} onClose={actions.closeForm} /> : null}
       {forms.answers.openForm ? (
         <AppFormDialog key={formKeyOf(forms.answers.openForm)} answer={forms.answers.openForm} personName={loadPerfil()?.name} onSubmit={(values) => forms.answers.submitForm(forms.answers.openForm!, values)} onUpload={(file, stamp) => forms.answers.uploadPhoto(forms.answers.openForm!.commandId, file, stamp)} onRefresh={(values) => forms.answers.refreshForm(forms.answers.openForm!, values)} onPreview={(values) => forms.answers.previewForm(forms.answers.openForm!, values)} onClose={() => forms.answers.dismiss(forms.answers.openForm!.commandId)} />
       ) : null}

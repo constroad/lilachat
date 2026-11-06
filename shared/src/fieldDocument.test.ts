@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { afterSave, applySavedSection, fieldDocumentOf, nextSection, nextSave, progressOf, publishBlockers, queueSave, SECTION_TOOL, sectionFormOf, type PendingSave } from './fieldDocument';
+import { applySavedSection, fieldDocumentOf, nextSection, progressOf, publishBlockers, SECTION_TOOL, sectionFormOf } from './fieldDocument';
 
 /** The document Portal's `informe_de_campo` answers (spec INFORMES-DESDE-LILACHAT §3.1), for a CTL-IMP with one tramo. */
 const generalForm = { type: 'object', properties: { liquido: { type: 'string', title: 'Líquido', oneOf: [{ const: 'MC-30', title: 'MC-30' }, { const: 'EMULSION', title: 'Emulsión' }] }, proyecto: { type: 'string', title: 'Proyecto' } }, required: ['liquido', 'proyecto'] };
@@ -153,29 +153,10 @@ describe('applySavedSection', () => {
   });
 });
 
-describe('the queue of saves', () => {
-  const save = (key: string, clientKey: string, values = {}): PendingSave => ({ path: { sectionId: 'tramos', itemId: 't1', key }, values, clientKey });
-
-  it('keeps one save per section, the newest, in the order they first came', () => {
-    const queue = queueSave(queueSave(queueSave([], save('ubicacion', 'a')), save('bandejas', 'b')), save('ubicacion', 'c', { tramo: 'Km 13' }));
-
-    expect(queue.map((one) => [one.path.key, one.clientKey])).toEqual([['ubicacion', 'c'], ['bandejas', 'b']]);
-    expect(nextSave(queue)?.values).toEqual({ tramo: 'Km 13' });
-    expect(nextSave([])).toBeNull();
-  });
-
-  it('decides after each answer: confirm, retry, drop or flush', () => {
-    expect(afterSave(200)).toBe('confirm');
-    expect(afterSave(409)).toBe('confirm');
-    expect(afterSave(null)).toBe('retry');
-    expect(afterSave(503)).toBe('retry');
-    expect(afterSave(422)).toBe('drop');
-    expect(afterSave(404)).toBe('drop');
-    expect(afterSave(401)).toBe('flush');
-  });
-
-  it('publishing waits for Portal\'s missing list and for the queue', () => {
+describe('publishBlockers', () => {
+  it('publishing waits for Portal\'s missing list, for the queue and for the signal', () => {
     expect(publishBlockers(parsed(), [])).toEqual(['Falta una foto en Tramo 1']);
-    expect(publishBlockers(parsed(), [save('bandejas', 'b')])).toEqual(['Falta una foto en Tramo 1', 'Hay cambios sin enviar.']);
+    expect(publishBlockers(parsed(), ['a save'])).toEqual(['Falta una foto en Tramo 1', 'Hay cambios sin enviar.']);
+    expect(publishBlockers(parsed(), [], true)).toEqual(['Falta una foto en Tramo 1', 'Publicar necesita señal.']);
   });
 });

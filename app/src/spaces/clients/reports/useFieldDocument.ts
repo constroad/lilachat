@@ -1,31 +1,26 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { readReportDraft, type ReportDraftResult } from '@lilachat/shared';
-import type { ServiceAskTarget } from '../useServiceAsk';
-import { askReportDraft } from './reportsApi';
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
+import * as Crypto from 'expo-crypto';
+import { createReportScreen, type ReportRef } from '@lilachat/shared';
+import { alConectar } from '../../../chat/socketClient';
+import { devicePlaceNow } from './devicePlace';
+import { dropReportPhoto, keepReportPhoto, reportQueue } from './reportQueueStore';
 
 /**
- * The report's document as Portal keeps it (spec INFORMES-DESDE-LILACHAT
- * §4.3): asked when the screen opens and again after every form answered.
- * `null` while the first ask is out; a later `reload` keeps what is on screen.
- * The id learnt from the first answer rides with the next asks.
+ * The report's screen on the phone (`shared/reportScreen`): the document with
+ * the queue over it and the section's form. When the signal comes back it
+ * asks Portal again, so «sin señal» goes away by itself.
  */
-export function useFieldDocument(target: ServiceAskTarget, serviceId: string, type: string): { draft: ReportDraftResult | null; reload: () => void; /** A form was answered since the screen opened: the detail behind must ask again. */ reloaded: boolean } {
-  const { jwt, spaceId, clientId } = target;
-  const [draft, setDraft] = useState<ReportDraftResult | null>(null);
-  const [round, setRound] = useState(0);
-  const reportId = useRef<string | null>(null);
-  const reload = useCallback(() => setRound((count) => count + 1), []);
+export function useFieldDocument({ spaceId, clientId, chatId, serviceId, type }: ReportRef) {
+  const actions = useMemo(
+    () => createReportScreen({ queue: reportQueue, keepPhoto: keepReportPhoto, dropPhoto: dropReportPhoto, placeNow: devicePlaceNow, newKey: Crypto.randomUUID, now: () => new Date().toISOString() }, { spaceId, clientId, chatId, serviceId, type }),
+    [spaceId, clientId, chatId, serviceId, type]
+  );
+  const state = useSyncExternalStore(actions.subscribe, actions.snapshot);
   useEffect(() => {
-    let alive = true;
-    void askReportDraft({ jwt, spaceId, clientId }, serviceId, type, reportId.current).then((response) => {
-      if (!alive) return;
-      const read = readReportDraft(response.ok ? response.data : { message: response.message });
-      if (read.ok && read.document.id) reportId.current = read.document.id;
-      setDraft(read);
-    });
+    const stop = alConectar(() => actions.refresh());
     return () => {
-      alive = false;
+      stop();
     };
-  }, [jwt, spaceId, clientId, serviceId, type, round]);
-  return { draft, reload, reloaded: round > 0 };
+  }, [actions]);
+  return { ...state, actions };
 }

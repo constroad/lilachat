@@ -26,11 +26,10 @@ export type DocumentSection = FormSection | RepeatSection;
 export type FieldDocument = { id: string | null; type: string; title: string; status: DocumentStatus; forms: Record<string, FormSchema>; sections: DocumentSection[]; publish: { label: string; missing: string[] } };
 /** Where a section lives: a top-level one has `key` = `sectionId`; inside a repeat, `itemId` null means a new item. */
 export type SectionPath = { sectionId: string; itemId: string | null; key: string };
-export type PendingSave = { path: SectionPath; values: FormValues; clientKey: string };
-export type SaveDecision = 'confirm' | 'retry' | 'drop' | 'flush';
 
 const LIMITS = { title: 80, line: 160, lines: 10, results: 8, sections: 30, items: 50 };
 const PENDING_TEXT = 'Hay cambios sin enviar.';
+const OFFLINE_TEXT = 'Publicar necesita señal.';
 
 type Raw = Record<string, unknown>;
 const record = (value: unknown): Raw => (value && typeof value === 'object' && !Array.isArray(value) ? (value as Raw) : {});
@@ -156,7 +155,7 @@ export function fieldDocumentOf(body: unknown): FieldDocument | null {
 type Found = { title: string; form: string; tool?: string; values: FormValues };
 
 /** The section behind a path; inside a repeat, a null `itemId` is a new item on the template, empty. */
-function sectionAt(document: FieldDocument, path: SectionPath): Found | null {
+export function sectionAt(document: FieldDocument, path: SectionPath): Found | null {
   const section = document.sections.find((one) => one.id === path.sectionId);
   if (!section) return null;
   if (section.kind === 'form') return path.key === section.id ? { title: section.title, form: section.form, ...(section.tool ? { tool: section.tool } : {}), values: section.values } : null;
@@ -209,46 +208,29 @@ export function nextSection(document: FieldDocument): SectionPath | null {
   return leavesOf(document).find((leaf) => leaf.required && leaf.enabled && !leaf.done)?.path ?? null;
 }
 
-const savedForm = (section: FormSection, values: FormValues, clientKey: string): FormSection => ({ ...section, values, state: 'partial', pending: clientKey });
+const savedForm = (section: FormSection, values: FormValues, clientKey: string, state: SectionState): FormSection => ({ ...section, values, state, pending: clientKey });
 
 /** The phone keeps what was saved before Portal answers; the same document comes back when the path is not there. */
-export function applySavedSection(document: FieldDocument, path: SectionPath, values: FormValues, clientKey: string): FieldDocument {
+export function applySavedSection(document: FieldDocument, path: SectionPath, values: FormValues, clientKey: string, state: SectionState = 'partial'): FieldDocument {
   let touched = false;
   const sections = document.sections.map((section): DocumentSection => {
     if (section.id !== path.sectionId) return section;
     if (section.kind === 'form') {
       if (path.key !== section.id) return section;
       touched = true;
-      return savedForm(section, values, clientKey);
+      return savedForm(section, values, clientKey, state);
     }
     const items = section.items.map((item) => {
       if (item.id !== path.itemId || !item.sections.some((one) => one.id === path.key)) return item;
       touched = true;
-      return { ...item, sections: item.sections.map((one) => (one.id === path.key ? savedForm(one, values, clientKey) : one)) };
+      return { ...item, sections: item.sections.map((one) => (one.id === path.key ? savedForm(one, values, clientKey, state) : one)) };
     });
     return { ...section, items };
   });
   return touched ? { ...document, sections } : document;
 }
 
-const samePath = (left: SectionPath, right: SectionPath): boolean => left.sectionId === right.sectionId && left.itemId === right.itemId && left.key === right.key;
-
-/** One save per section, the newest; a section already queued keeps its place in line. */
-export function queueSave(queue: readonly PendingSave[], save: PendingSave): PendingSave[] {
-  return queue.some((one) => samePath(one.path, save.path)) ? queue.map((one) => (samePath(one.path, save.path) ? save : one)) : [...queue, save];
-}
-
-export const nextSave = (queue: readonly PendingSave[]): PendingSave | null => queue[0] ?? null;
-
-/** After Portal answered a save (`rn-app-loop` §5): 409 is success, a final 4xx drops, 401 empties the queue, the rest retries. */
-export function afterSave(status: number | null): SaveDecision {
-  if (status === null || status === 408 || status === 429 || status >= 500) return 'retry';
-  if (status === 401) return 'flush';
-  if (status === 409 || status < 400) return 'confirm';
-  return 'drop';
-}
-
-/** Why «Publicar» waits: what Portal says is missing, and saves still in the queue. */
-export function publishBlockers(document: FieldDocument, queue: readonly PendingSave[]): string[] {
-  return queue.length ? [...document.publish.missing, PENDING_TEXT] : [...document.publish.missing];
+/** Why «Publicar» waits: what Portal says is missing, saves still in the queue, and no signal (Portal validates and makes the PDF). */
+export function publishBlockers(document: FieldDocument, queue: readonly unknown[], offline = false): string[] {
+  return [...document.publish.missing, ...(queue.length ? [PENDING_TEXT] : []), ...(offline ? [OFFLINE_TEXT] : [])];
 }

@@ -1,4 +1,4 @@
-import { publishBlockers, type FieldDocument } from '@lilachat/shared';
+import type { FieldDocument } from '@lilachat/shared';
 import { Overlay, PrimaryButton } from '../../../ui/Overlay';
 
 const CHANNEL_NOTE = 'El PDF se genera y llega al canal del cliente.';
@@ -8,8 +8,8 @@ const CHANNEL_NOTE = 'El PDF se genera y llega al canal del cliente.';
  * the button off until nothing is; ready, the button opens Portal's publish
  * form (the note for the channel). Published, the hub itself shows the PDF.
  */
-export function PublishDialog(props: { report: FieldDocument; onClose: () => void; onPublish: () => void }) {
-  const blockers = publishBlockers(props.report, []);
+export function PublishDialog(props: { report: FieldDocument; blockers: readonly string[]; onClose: () => void; onPublish: () => void }) {
+  const { blockers } = props;
   const ready = blockers.length === 0;
   const footer = (
     <div className="flex flex-col gap-2">

@@ -1,6 +1,23 @@
-import { ChevronRight, Plus } from 'lucide-react';
-import { itemsLine, sectionBadge, type RepeatItem, type RepeatSection, type SectionPath } from '@lilachat/shared';
+import { ChevronRight, Clock, Plus } from 'lucide-react';
+import { itemsLine, sectionPhotos, sectionRowLine, type FormSection, type RepeatItem, type RepeatSection, type SectionPath } from '@lilachat/shared';
 import { ResultsStrip, StateDot } from './ReportSectionsWeb';
+
+/** The photos of a tramo with their caption; one still on this device says so with a clock. */
+function PhotoStrip({ section, itemId }: { section: FormSection; itemId: string }) {
+  const photos = sectionPhotos(section);
+  if (!photos.length) return null;
+  return (
+    <div data-testid={`fotos-${itemId}`} className="flex gap-2 overflow-x-auto pb-2 pt-1">
+      {photos.map((photo) => (
+        <figure key={photo.id} className="relative w-24 shrink-0">
+          <img src={photo.thumbUrl} alt={photo.caption || 'Foto del tramo'} loading="lazy" className="h-24 w-24 rounded-xl object-cover" />
+          {photo.pending ? <span data-testid={`foto-pendiente-${photo.id}`} className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-white"><Clock size={13} /></span> : null}
+          {photo.caption ? <figcaption className="mt-1 line-clamp-2 text-[11px] text-on-surface-variant">{photo.caption}</figcaption> : null}
+        </figure>
+      ))}
+    </div>
+  );
+}
 
 /** One tramo (design j-03): its kicker, where it is, what it measured and a row per subsection. */
 function ItemCard({ item, section, onOpen }: { item: RepeatItem; section: RepeatSection; onOpen: (path: SectionPath) => void }) {
@@ -15,9 +32,10 @@ function ItemCard({ item, section, onOpen }: { item: RepeatItem; section: Repeat
             <button type="button" data-testid={`seccion-${item.id}-${one.id}`} onClick={() => onOpen({ sectionId: section.id, itemId: item.id, key: one.id })} className="flex min-h-[48px] w-full items-center gap-3 py-2 text-left hover:bg-background/60">
               <StateDot state={one.state} small />
               <span className="flex-1 text-sm font-semibold">{one.title}</span>
-              <span className="max-w-[40%] truncate text-[12px] text-on-surface-variant">{one.summary[0] ?? sectionBadge(one.state, one.required).label}</span>
+              <span className="max-w-[40%] truncate text-[12px] text-on-surface-variant">{sectionRowLine(one)}</span>
               <ChevronRight size={16} className="shrink-0 text-on-surface-variant" />
             </button>
+            {one.tool ? <PhotoStrip section={one} itemId={item.id} /> : null}
           </li>
         ))}
       </ul>

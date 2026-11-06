@@ -190,11 +190,16 @@ Rangos aceptados en lt/m²: MC-30 0.7 a 1.5 (peso específico 0.93); Emulsión
   `validateFormSpec`. Un documento que no se puede dibujar se rechaza con motivo.
 - `sectionAt(document, path)`, `progressOf`, `nextSection` (la primera
   obligatoria sin terminar), `publishBlockers`.
-- `applySavedSection(document, path, values)`: el borrador local avanza antes de
-  que Portal conteste (optimista); la respuesta lo reemplaza.
-- `pendingSaves`: cola de guardados por sección con `clientKey`; la misma
-  sección reemplaza su pendiente; se drena en orden; 4xx definitivo descarta con
-  motivo visible; 401 vacía la cola (regla de `rn-app-loop` §5).
+- `applySavedSection(document, path, values, clientKey, state)`: el borrador
+  local avanza antes de que Portal conteste; la respuesta lo reemplaza.
+- `shared/src/reportSaves.ts`: el guardado como hecho (`ReportSave`), su lugar en
+  la cola (`queueSave`), cómo se pinta sobre el documento (`applySave`,
+  `documentWithQueue`), el documento en blanco de un tipo (`blankDocumentOf`) y
+  cómo se juzga cada respuesta (`judgeFailure`, `judgeReply`, `judgeNotice`).
+- `shared/src/reportQueue.ts`: la cola con su drenaje (`createReportQueue`).
+- `shared/src/reportScreen.ts`: lo que la pantalla muestra y hace, igual en la
+  app y la web (`createReportScreen`). Las dos solo prestan su disco y sus
+  llamadas: `app|web/src/spaces/clients/reports/reportQueueStore.ts`.
 
 ### 4.2 Server (`server/src/bots/clientReports.ts`)
 
@@ -238,8 +243,9 @@ Dos rutas, y el resto es el motor de formularios de siempre:
 | Informes → «Crear informe» | `j-01-crear-informe` | para todo el que ve los servicios (no solo quien ve montos); selector con los 8 tipos de la página pública (`REPORT_TYPE_OPTIONS`); solo `CTL-IMP` abre aquí, los demás abren el servicio en Portal con la pastilla «En Portal» |
 | Hub del informe | `j-02-informe-hub` | toma el lugar del Detalle; kicker con el tipo, título del servicio, pastilla Borrador/Publicado; progreso «N de M secciones listas»; una tarjeta por sección con punto de estado, pastilla (Lista / A medias / Falta / Opcional), resumen y resultados; la primera traba y «Publicar informe» abajo. Volver reabre el Detalle en Informes. Reabrir un borrador = volver a «Crear informe»: Portal devuelve el propio |
 | Tramos | `j-03-informe-tramos` | misma pantalla, vista interna: «N tramos», «Agregar tramo» (abre la primera sección de un tramo nuevo), una tarjeta por tramo con kicker, resumen, franja de resultados y una fila por subsección |
-| Sección | `AppFormSheet` / `AppFormDialog` de hoy | el formulario de la sección con `values` precargados; al responderse (`answeredSince`) se vuelve a pedir el documento |
-| Fotos del tramo | fila «Fotos» del tramo → form del tool `agregar_foto_de_informe` | una foto por llamada; el cliente manda `at` (y `lat`/`lng` si el dispositivo los da) al abrir el form; Portal sella. Leyenda y varias fotos seguidas: F2 |
+| Sección | `AppFormSheet` / `AppFormDialog` de hoy | el formulario se dibuja acá, desde `document.forms`, con los `values` precargados: abre sin señal y sin ida y vuelta. «Guardar» encola y cierra. Lo que Portal rechaza vuelve bajo su campo al reabrir la sección |
+| Fotos del tramo | fila «N fotos» del tramo (j-03) → form `fotos`, y debajo la tira con miniatura y leyenda | una foto por guardado, con su `descripcion` y `progresiva`; `at`, `lat` y `lng` se leen al tomarla. No espera a Portal: se pueden tomar varias seguidas. Un reloj marca la que sigue en el dispositivo. Portal sella al recibirla |
+| Cola | `QueueCard` sobre el hub y los tramos | «2 cambios sin enviar…» o «Sin señal…»; cada rechazo con su motivo, «Corregir» y «Descartar» |
 | Publicar | `j-04-informe-publicar` | hoja/diálogo con lo que falta (botón apagado) o «Todo listo» → form `publicar_informe` (nota); publicado, el pie del hub muestra «Informe publicado», «Ver PDF» (`pdf_de_informe` de siempre) y «Volver al servicio» |
 
 Código: motor `shared/src/reportCreation.ts` (tipos, rutas, requests,
@@ -252,20 +258,46 @@ vacío y error en cada pantalla; toque mínimo 44 px; sin hex.
 
 ### 4.4 Offline
 
-- El documento vive en el teléfono (SQLite) y en la web (Dexie) por
-  `reportId`. Se abre sin red con lo último guardado.
-- Un guardado sin red queda en `pendingSaves`; la tarjeta dice «Pendiente de
-  enviar». Al volver la red se drena y el hub se actualiza con Portal.
-- Una foto sin red queda con su archivo local en los `values`; se sube antes de
-  drenar el guardado de su sección (`colaDeArchivosMotor` como patrón).
-- «Publicar» exige red: Portal valida y genera el PDF.
+**Un solo camino de escritura (decisión de F2).** Toda sección y toda foto pasan
+por la cola, con señal o sin ella: «Guardar» encola y la hoja se cierra al
+instante. Con señal sale en segundos. Dos caminos habrían dado dos reglas de
+error y una carrera entre ellos. «Publicar» no entra: exige red.
+
+- El documento vive en AsyncStorage (app) y en `meta` de Dexie (web), por
+  servicio y tipo. Se abre sin red con lo último guardado. Un informe ya
+  publicado no se reabre: arranca uno nuevo.
+- **Informe nuevo sin señal**: sale de los formularios del último documento de
+  ese tipo en el espacio (`blankDocumentOf`). Si el dispositivo nunca abrió un
+  informe de ese tipo, la pantalla dice que hay que abrirlo una vez con señal.
+- **Entrada sin señal**: el Detalle no se guarda (decisión de José, 30/10), así
+  que sin señal falla. Su tarjeta de error ofrece «Crear informe» solo si la
+  falla fue de red, no de permisos.
+- Cada guardado abre su propio run al salir: `reports/draft` deja el documento
+  al día en el server, `reports/forms` abre el run, `…/files` sube la foto,
+  `…/form` envía. No hace falta cambiar el server ni las herramientas.
+- **Orden y dependencias**: se drena en orden. Mientras el informe no exista
+  solo sale su primera sección. Un tramo nuevo lleva id local `local-<clave>`
+  hasta que Portal da el suyo (`resolveItem`). Lo que cuelga de un tramo
+  rechazado espera con él.
+- **Respuesta perdida**: antes de enviar se anota qué tenía el informe
+  (`SentMark`). Al reintentar, un tramo o una foto que ya están no se reenvían
+  (`landedBefore`). Una sección normal se reescribe: da lo mismo.
+- **Veredictos**: sin red, 408, 429 y 5xx reintentan con espera creciente; 401
+  vacía la cola (regla de `rn-app-loop` §5); el resto queda rechazado y a la
+  vista, sin bloquear lo que sigue. Nada se borra solo.
+- Lo que llegó a Portal sigue pintado hasta que llega su documento nuevo: una
+  sección no vuelve a su estado viejo mientras tanto.
+- Dos pestañas de la web comparten el disco: solo envía la que tiene el candado
+  (Web Locks) y cada pasada relee el disco.
+- Al cerrar sesión se borra todo: la app con `forgetReportQueue`; en la web, la
+  base local entera.
 
 ## 5. Fases
 
 | Fase | Lilachat | Portal | Sale como |
 | --- | --- | --- | --- |
 | F1 | motor + rutas del server + hub + tramos + secciones con el formulario de hoy | `informe_de_campo`, `guardar_seccion_de_informe`, autor, fórmulas en el guardado | OTA + web |
-| F2 | fotos con leyenda y sello, cola offline de guardados y fotos | adjuntar fotos al Drive con `category` y `stampContext` | OTA + web |
+| F2 | fotos con leyenda, varias seguidas, cola offline de guardados y fotos | ya estaba en F1 | OTA + web |
 | F3 | publicar con faltantes y PDF, E2E en Test y en obra | `publicar_informe`, validación, PDF, aviso con PDF | OTA + web |
 | F4 | `IAA`: zonas y m² por foto (medición sobre foto, pantalla propia) | zonas y numeración | OTA + web |
 | F5 | `CTL-PIS`: una foto por volquete, pedidos y despachos, aviso WhatsApp | sincronía con pedidos | OTA + web |
@@ -345,3 +377,9 @@ spec al día. Las herramientas nuevas las aprueba José en agentes al publicarse
   Sin verificar en vivo: el rechazo de un servicio ajeno (solo test del
   server), un miembro sin usuario de Portal (el E2E usó al admin) y la foto con
   GPS real.
+- 05/11/2026 (noche), decisión de José: el informe avisa al canal solo al
+  publicar. Portal lo cambió en `ddd0390e`: `createServiceReport` tiene
+  `announce`, y solo el borrador de Lilachat pasa `false`.
+- 05/11/2026 (noche), **F2 escrita**: cola de un solo camino (§4.4), fotos con
+  leyenda y varias seguidas, miniaturas en el tramo, «Crear informe» sin señal.
+  El server y las herramientas no cambian.

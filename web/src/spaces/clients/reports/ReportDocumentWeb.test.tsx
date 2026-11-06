@@ -176,7 +176,7 @@ describe('ReportDocumentWeb', () => {
     // Arrange
     const working = (id: string) => ({ id, title: `Unidad 1 · ${id}`, summary: [], results: [], sections: [{ id: 'datos', state: 'done', summary: ['Llegada 07:30'], values: {} }] });
     const notHere = (id: string, summary: string[]) => ({ id, title: id, summary, results: [], sections: [{ id: 'datos', state: 'empty', summary: [], values: {} }] });
-    const units = { id: 'unidades', kind: 'repeat', title: 'Unidades', required: true, state: 'partial', summary: [], results: [], itemTitle: 'Unidad', addLabel: '', min: 0, units: true, template: [{ id: 'datos', title: 'Datos', required: true, form: 'ubicacion' }], items: [working('QAP-1'), working('QAP-2'), notHere('QAP-3', ['Salió 07:10']), notHere('QAP-4', ['En planta'])] };
+    const units = { id: 'unidades', kind: 'repeat', title: 'Unidades', required: true, state: 'partial', summary: [], results: [], itemTitle: 'Unidad', addLabel: '', min: 0, canAdd: false, template: [{ id: 'datos', title: 'Datos', required: true, form: 'ubicacion' }, { id: 'foto-ingreso', title: 'Foto de ingreso', required: true, form: 'ubicacion', tool: 'agregar_foto_de_informe', photoKind: 'ingreso' }], items: [working('QAP-1'), working('QAP-2'), notHere('QAP-3', ['Salió 07:10']), notHere('QAP-4', ['En planta'])] };
     serverWith({ document: { ...document, type: 'CTL-PIS', title: 'Control de pista', sections: [document.sections[0], units] } });
     openReport();
     fireEvent.click(await screen.findByTestId('seccion-unidades'));

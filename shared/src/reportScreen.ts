@@ -37,6 +37,9 @@ export type ReportScreenState = {
   form: EphemeralAnswer | null;
 };
 
+/** A refresh that fails reads again by itself a few times (E2E 06/11). */
+export const REFRESH_RETRIES = 3;
+export const REFRESH_RETRY_MS = 4000;
 const NOT_KEPT = 'No se pudo guardar en este dispositivo.';
 const PHOTO_NOT_KEPT = 'No se pudo guardar la foto en este dispositivo.';
 const NO_FORM = 'Este formulario ya no está abierto.';
@@ -59,12 +62,22 @@ function createDocumentFeed(queue: ReportQueue, ref: ReportRef, tell: () => void
   let revision = queue.snapshot().revision;
   let changed = false;
   let asking = 0;
+  let retries = 0;
 
   async function ask(): Promise<void> {
     asking += 1;
     const ticket = asking;
     const read = await queue.documentOf(ref, reportId);
     if (ticket !== asking) return;
+    // A failed refresh keeps what is on screen: the saves are safe in the queue, and an error there was a dead end.
+    if (!read.ok && opened?.ok) {
+      if (retries < REFRESH_RETRIES) {
+        retries += 1;
+        setTimeout(() => void ask(), REFRESH_RETRY_MS);
+      }
+      return;
+    }
+    retries = 0;
     if (read.ok && read.document.id) reportId = read.document.id;
     opened = read;
     held = [];

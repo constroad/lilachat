@@ -722,8 +722,34 @@ Corrida en el espacio Test, segundo pedido QA (30 m³, QAP-103 y QAP-104).
 
 - **Hora de «Llegó» vieja:** al tocar «Llegó» a las 12:22 el formulario traía 12:13, la hora del último borrador. Sin señal podía ser de horas antes. Ahora `arrivalHourOf` toma el reloj del teléfono al abrir el formulario de una unidad en espera. Portal solo manda `horaLlegada` cuando la marcó el chofer, y esa hora se respeta.
 
-Reportado a Portal el 06/11, sin arreglo verificado todavía:
+- **Recarga que falla:** tras la última foto de QAP-104, una lectura fallida reemplazó el informe por «No se pudo abrir el informe», sin salida. La foto sí estaba guardada y la web abrió el borrador en 0,55 s. No se supo la causa de esa lectura. Ahora una recarga que falla deja el informe en pantalla y reintenta sola 3 veces cada 4 s. Si el informe nunca abrió, el error trae «Reintentar».
 
-- El PDF de `CTL-PIS` abre con el folio 1 ocupado solo por el encabezado.
-- El sello de la foto sale con coordenadas en vez de la dirección. `stampPlaceOf` da 2,5 s y `resolveReverseAddress` espera a los dos proveedores.
+Reportado a Portal y verificado con el informe publicado desde el APK a las 12:53:
+
+- El encabezado del PDF de `CTL-PIS`: logo y título en franja normal, contenido desde el folio 1 (`45456f21`).
+- El sello: la foto de las 12:51 dice «Avenida Alfonso Ugarte, Lima, Li…» (`45456f21`).
+- La salida en la tarjeta del pedido al llegar (`dedaa11b`) y ENTREGADO solo con todas las llegadas (agentes `893ba62`).
+
+Pendiente en Portal: el bloque de firmas se partía entre folios.
+
+### Prueba con un pedido de 12 carros (pedido de José, 06/11)
+
+José pidió juzgar si la lista larga le sirve al ingeniero de campo y cómo diferenciar los pendientes. El orden de ingreso no depende de nada: el último puede ingresar quinto. Solo se listan los pendientes, sin obligar a elegir ninguno.
+
+Con el diseño j-05 la lista no servía:
+
+- Cabían 3 carros por pantalla, así que 8 carros ocupaban casi tres pantallas.
+- Los carros en obra, que son el trabajo del momento, quedaban debajo de todos los pendientes.
+- Las estadísticas empujaban la lista hacia abajo.
+- Los carros que aún no salen de planta no aparecían, y el pedido parecía de 8.
+
+Cómo quedó, en este orden:
+
+1. **En pista:** las tarjetas con sus cuatro fotos. Una unidad terminada a la que le falta algo sigue aquí.
+2. **Por llegar · toca el que llegó:** una fila por carro, con placa, salida y «Llegó». Cualquiera puede ser el siguiente.
+3. **En planta:** una línea con las placas, sin botón. Portal marca esos ítems con `summary: ['En planta']`, sin llave nueva.
+4. **Terminaron:** plegado. Se abre al tocarlo.
+5. Las estadísticas van al final, y arriba queda una línea con el conteo de cada grupo.
+
+Abierto para José: un carro que llega sin que la planta lo haya marcado despachado no se puede registrar, porque sigue en «En planta».
 

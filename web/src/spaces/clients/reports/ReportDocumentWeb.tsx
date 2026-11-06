@@ -29,10 +29,11 @@ function ReportHeader({ kicker, title, report, onBack }: { kicker: string; title
   );
 }
 
-function DraftFailure({ message, portalUrl }: { message: string; portalUrl?: string }) {
+function DraftFailure({ message, portalUrl, onRetry }: { message: string; portalUrl?: string; onRetry: () => void }) {
   return (
     <div data-testid="informe-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm">
       <p className="mb-2 font-semibold">{message}</p>
+      <button type="button" data-testid="informe-reintentar" onClick={onRetry} className="mb-2 h-11 w-full rounded-xl border border-primary/30 bg-primary/10 text-sm font-semibold text-primary">Reintentar</button>
       {portalUrl ? <a href={portalUrl} target="_blank" rel="noreferrer" data-testid="informe-fallo-portal" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary hover:underline"><ExternalLink size={14} /> Abrir el servicio en el Portal</a> : null}
     </div>
   );
@@ -76,9 +77,9 @@ function ReportFooter({ report, blocker, pdf, onPublish, onDone }: { report: Fie
 }
 
 /** What the page shows under the header: the loading block, the failure, the tramos or the hub. */
-function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems }: { draft: ReportDraftResult | null; report: FieldDocument | null; items: DocumentSection | undefined; portalUrl?: string; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
+function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems, onRetry }: { onRetry: () => void; draft: ReportDraftResult | null; report: FieldDocument | null; items: DocumentSection | undefined; portalUrl?: string; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
   if (draft === null) return <div data-testid="informe-cargando" className="h-40 animate-pulse rounded-xl bg-surface" />;
-  if (!draft.ok || !report) return <DraftFailure message={draft.ok ? 'No se pudo abrir el informe' : draft.message} portalUrl={portalUrl} />;
+  if (!draft.ok || !report) return <DraftFailure message={draft.ok ? 'No se pudo abrir el informe' : draft.message} portalUrl={portalUrl} onRetry={onRetry} />;
   if (items?.kind === 'repeat') return isUnitsRepeat(items) ? <ReportUnitsWeb section={items} onOpen={onOpen} /> : <ReportItemsWeb section={items} onOpen={onOpen} />;
   return (
     <>
@@ -123,7 +124,7 @@ export function ReportDocumentWeb(props: Props) {
       <ReportHeader kicker={items ? `${kicker} · ${items.title}` : kicker} title={props.service.name} report={report} onBack={page.back} />
       <QueueCard saves={saves} offline={offline} onFix={(save) => actions.openSection(save.path)} onDiscard={(save) => void actions.discard(save.clientKey)} />
       <EphemeralAnswers answers={forms.answers.answers} onDismiss={forms.answers.dismiss} onOpenForm={forms.answers.showForm} chatId={props.chatId} jwt={props.target.jwt} />
-      <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={page.setItemsOf} />
+      <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={page.setItemsOf} onRetry={actions.refresh} />
       {report && (!items || (items.kind === 'repeat' && isUnitsRepeat(items))) ? <ReportFooter report={report} blocker={publishFooterLine(report, blockers)} pdf={pdf} onPublish={() => page.setPublishing(true)} onDone={() => props.onClose(true)} /> : null}
       {report && page.publishing ? <PublishDialog report={report} blockers={blockers} onClose={() => page.setPublishing(false)} onPublish={page.publish} /> : null}
       {document.form ? <AppFormDialog key={formKeyOf(document.form)} answer={document.form} personName={loadPerfil()?.name} onSubmit={actions.submit} onUpload={actions.upload} onClose={actions.closeForm} /> : null}

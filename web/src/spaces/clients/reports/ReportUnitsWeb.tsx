@@ -1,6 +1,6 @@
-import type { ReactNode } from 'react';
-import { Camera, CheckCircle2, ChevronRight, Clock, Container, Ruler, Thermometer, Truck } from 'lucide-react';
-import { ARRIVED_LABEL, dataSectionOf, itemsLine, pageLine, photoSlotsOf, sectionRowLine, UNIT_GROUP_TITLES, unitBadgeOf, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
+import { useState, type ReactNode } from 'react';
+import { Camera, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Clock, Container, Ruler, Thermometer, Truck } from 'lucide-react';
+import { ARRIVED_LABEL, dataSectionOf, pageLine, photoSlotsOf, sectionRowLine, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
 import { Pill, ResultsStrip, StateDot } from './ReportSectionsWeb';
 
 /** Design j-05 (José 06/11): for the operator on the pista. Big plate, big slots, one click per action. */
@@ -26,23 +26,23 @@ function PhotoSlot({ slot, itemId, onOpen }: { slot: UnitSlot; itemId: string; o
   );
 }
 
-/** A volquete that left the plant: its plate and «Llegó», which opens its data with the hour already there. */
-function WaitingCard({ item, section, onOpen }: { item: RepeatItem; section: RepeatSection; onOpen: Open }) {
+/** A volquete on its way, in one row: any of them can be next, because the order of arrival depends on nothing. «Llegó» opens its data with the hour of the click. */
+function WaitingRow({ item, section, onOpen }: { item: RepeatItem; section: RepeatSection; onOpen: Open }) {
   const data = dataSectionOf(item);
   const { plate } = unitTitleOf(item);
   return (
-    <article data-testid={`unidad-${item.id}`} className="flex items-center gap-3 rounded-xl border border-outline/15 bg-surface p-4">
+    <li data-testid={`unidad-${item.id}`} className="flex items-center gap-3 border-b border-outline/10 px-3 py-2 last:border-b-0">
       <div className="min-w-0 flex-1">
-        <p className="truncate font-mono text-[28px] font-bold leading-tight">{plate}</p>
-        {unitLineOf(item) ? <p className="mt-0.5 text-[13px] text-on-surface-variant">{unitLineOf(item)}</p> : null}
+        <p className="truncate font-mono text-[21px] font-bold leading-tight">{plate}</p>
+        {unitLineOf(item) ? <p className="truncate text-xs text-on-surface-variant">{unitLineOf(item)}</p> : null}
       </div>
       {data ? (
-        <button type="button" data-testid={`llego-${item.id}`} onClick={() => onOpen({ sectionId: section.id, itemId: item.id, key: data.id })} aria-label={`${ARRIVED_LABEL} ${plate}`} className="flex min-h-[64px] min-w-[96px] flex-col items-center justify-center rounded-2xl bg-primary px-4 text-on-primary hover:opacity-90">
-          <Truck size={22} />
+        <button type="button" data-testid={`llego-${item.id}`} onClick={() => onOpen({ sectionId: section.id, itemId: item.id, key: data.id })} aria-label={`${ARRIVED_LABEL} ${plate}`} className="flex min-h-[52px] min-w-[96px] items-center justify-center gap-1.5 rounded-xl bg-primary px-3 text-on-primary">
+          <Truck size={18} />
           <span className="text-[14px] font-bold uppercase">{ARRIVED_LABEL}</span>
         </button>
       ) : null}
-    </article>
+    </li>
   );
 }
 
@@ -86,22 +86,46 @@ function Group({ title, count, children }: { title: string; count: number; child
   );
 }
 
+/** The finished ones fold away: they no longer need the person, and twelve of them would bury the rest. */
+function FinishedGroup({ items, section, onOpen }: { items: RepeatItem[]; section: RepeatSection; onOpen: Open }) {
+  const [open, setOpen] = useState(false);
+  const Chevron = open ? ChevronUp : ChevronDown;
+  return (
+    <section className="flex flex-col gap-3">
+      <button type="button" data-testid="ver-terminadas" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-h-[44px] items-center gap-3 text-left">
+        <span className="flex-1 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{UNIT_GROUP_TITLES.finished}</span>
+        <span className="text-[12px] font-bold text-primary">{items.length}</span>
+        <Chevron size={18} className="text-primary" />
+      </button>
+      {open ? items.map((item) => <ArrivedCard key={item.id} item={item} section={section} onOpen={onOpen} />) : null}
+    </section>
+  );
+}
+
 /**
- * The units of a control de pista (design j-05): the volquetes that left the
- * plant, to click when each one reaches the pista, and the ones on site by
- * arrival. Nobody adds a unit; Portal lists the order's dispatches.
+ * The units of a control de pista (design j-05, reordered after the test with
+ * twelve volquetes, José 06/11): first the ones on site, which are the work at
+ * hand; then the ones on their way, as rows that force no order; the ones still
+ * at the plant as a line; the finished ones folded. Nobody adds a unit; Portal
+ * lists the order's dispatches.
  */
 export function ReportUnitsWeb({ section, onOpen }: { section: RepeatSection; onOpen: Open }) {
   const groups = unitGroupsOf(section);
-  const head = [itemsLine(section), pageLine(section)].filter(Boolean).join(' · ');
+  const head = [unitCountsLine(groups), pageLine(section)].filter(Boolean).join(' · ');
   return (
     <div data-testid={`unidades-${section.id}`} className="flex flex-col gap-4">
       {section.summary.length ? <p data-testid="resumen-unidades" className="text-[15px] font-bold">{section.summary.join(' · ')}</p> : null}
-      <ResultsStrip results={section.results} testId="resultados-unidades" />
-      <p className="text-sm text-on-surface-variant">{head}</p>
+      {head ? <p data-testid="conteo-unidades" className="text-sm text-on-surface-variant">{head}</p> : null}
       {section.items.length === 0 ? <p className="pt-4 text-center text-sm text-on-surface-variant">{NO_UNITS}</p> : null}
-      {groups.waiting.length ? <Group title={UNIT_GROUP_TITLES.waiting} count={groups.waiting.length}>{groups.waiting.map((item) => <WaitingCard key={item.id} item={item} section={section} onOpen={onOpen} />)}</Group> : null}
-      {groups.arrived.length ? <Group title={UNIT_GROUP_TITLES.arrived} count={groups.arrived.length}>{groups.arrived.map((item) => <ArrivedCard key={item.id} item={item} section={section} onOpen={onOpen} />)}</Group> : null}
+      {groups.onSite.length ? <Group title={UNIT_GROUP_TITLES.onSite} count={groups.onSite.length}>{groups.onSite.map((item) => <ArrivedCard key={item.id} item={item} section={section} onOpen={onOpen} />)}</Group> : null}
+      {groups.waiting.length ? (
+        <Group title={UNIT_GROUP_TITLES.waiting} count={groups.waiting.length}>
+          <ul className="overflow-hidden rounded-xl border border-outline/15 bg-surface">{groups.waiting.map((item) => <WaitingRow key={item.id} item={item} section={section} onOpen={onOpen} />)}</ul>
+        </Group>
+      ) : null}
+      {groups.atPlant.length ? <Group title={UNIT_GROUP_TITLES.atPlant} count={groups.atPlant.length}><p data-testid="unidades-en-planta" className="font-mono text-sm text-on-surface-variant">{groups.atPlant.map((item) => unitTitleOf(item).plate).join(' · ')}</p></Group> : null}
+      {groups.finished.length ? <FinishedGroup items={groups.finished} section={section} onOpen={onOpen} /> : null}
+      <ResultsStrip results={section.results} testId="resultados-unidades" />
     </div>
   );
 }

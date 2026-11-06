@@ -34,11 +34,14 @@ function ReportHeader({ kicker, title, report, onBack }: { kicker: string; title
   );
 }
 
-function DraftFailure({ message, portalUrl }: { message: string; portalUrl?: string }) {
+function DraftFailure({ message, portalUrl, onRetry }: { message: string; portalUrl?: string; onRetry: () => void }) {
   const colors = useColores();
   return (
     <View testID="informe-fallo" className="rounded-2xl border border-outline/15 bg-surface p-4">
       <Text className="text-[15px] font-semibold text-on-surface">{message}</Text>
+      <Pressable testID="informe-reintentar" onPress={onRetry} className="mt-3 min-h-[48px] items-center justify-center rounded-xl border border-primary/30 bg-primary/10">
+        <Text className="text-[15px] font-semibold text-primary">Reintentar</Text>
+      </Pressable>
       {portalUrl ? (
         <Pressable testID="informe-fallo-portal" onPress={() => void Linking.openURL(portalUrl)} className="mt-2 min-h-[44px] flex-row items-center gap-1.5">
           <ExternalLink size={15} color={colors.primary} />
@@ -98,9 +101,9 @@ function ReportFooter({ report, blocker, asking, onPublish, onPdf, onDone }: { r
 }
 
 /** What the screen shows under the header: the loading block, the failure, the tramos or the hub. */
-function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems }: { draft: ReportDraftResult | null; report: FieldDocument | null; items: DocumentSection | undefined; portalUrl?: string; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
+function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems, onRetry }: { onRetry: () => void; draft: ReportDraftResult | null; report: FieldDocument | null; items: DocumentSection | undefined; portalUrl?: string; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
   if (draft === null) return <View testID="informe-cargando" className="h-40 rounded-2xl bg-surface-variant" />;
-  if (!draft.ok || !report) return <DraftFailure message={draft.ok ? 'No se pudo abrir el informe' : draft.message} portalUrl={portalUrl} />;
+  if (!draft.ok || !report) return <DraftFailure message={draft.ok ? 'No se pudo abrir el informe' : draft.message} portalUrl={portalUrl} onRetry={onRetry} />;
   if (items?.kind === 'repeat') return isUnitsRepeat(items) ? <ReportUnitsView section={items} onOpen={onOpen} /> : <ReportItemsView section={items} onOpen={onOpen} />;
   return (
     <>
@@ -155,7 +158,7 @@ export function ReportDocumentScreen(props: Props) {
         <ReportHeader kicker={items ? `${kicker} · ${items.title}` : kicker} title={props.service.name} report={report} onBack={screen.back} />
         <QueueCard saves={saves} offline={offline} onFix={(save) => actions.openSection(save.path)} onDiscard={(save) => void actions.discard(save.clientKey)} />
         <EphemeralAnswers answers={forms.answers.answers} onDismiss={forms.answers.dismiss} onOpenForm={forms.answers.showForm} chatId={props.chatId} jwt={props.target.jwt} embedded />
-        <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={screen.setItemsOf} />
+        <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={screen.setItemsOf} onRetry={actions.refresh} />
         {notice ? <Text className="text-center text-[13px] text-error">{notice}</Text> : null}
       </ScrollView>
       {report && (!items || (items.kind === 'repeat' && isUnitsRepeat(items))) ? <ReportFooter report={report} blocker={publishFooterLine(report, blockers)} asking={pdf.asking} onPublish={() => screen.setPublishing(true)} onPdf={() => void pdf.ask(report.id ?? '', `${report.title} · PDF`)} onDone={() => props.onClose(true)} /> : null}

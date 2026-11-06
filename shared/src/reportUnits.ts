@@ -9,18 +9,30 @@ import type { StateBadge } from './reportCreation.js';
  * a unit; Portal lists them. Four photos per unit, the «vacía» one ends it.
  * PURE: the APK and the web draw from here.
  */
-export type UnitState = 'waiting' | 'working' | 'finished';
+export type UnitState = 'atPlant' | 'waiting' | 'working' | 'finished';
 export type UnitSlot = { section: FormSection; photo: SectionPhoto | null; done: boolean };
-export type UnitGroups = { /** Left the plant, not here yet: tap the one that arrives. */ waiting: RepeatItem[]; /** On site, by arrival: the ones still working first, then the finished. */ arrived: RepeatItem[] };
+/** José 06/11, with a pedido of 12: who needs the person first. The order of arrival depends on nothing: `waiting` is a list, no unit is «the next». */
+export type UnitGroups = {
+  /** On site with something still to do. */
+  onSite: RepeatItem[];
+  /** Left the plant, not here yet: tap the one that arrives. */
+  waiting: RepeatItem[];
+  /** Still at the plant: only listed, nothing to tap. */
+  atPlant: RepeatItem[];
+  /** Done with everything: folded, they no longer need the person. */
+  finished: RepeatItem[];
+};
 
 const FINISHING_PHOTO = 'vacia';
 const TITLE_SEPARATOR = ' · ';
 /** «Terminó 10:42» as Portal writes it (`\b` does not see a boundary after «ó»). */
 const FINISHED_LINE = /^termin[óo](\s|$)/i;
+/** A dispatch that has not left: Portal writes it as a line of its own. */
+const PLANT_LINE = /^en planta$/i;
 
 export const ARRIVED_LABEL = 'Llegó';
-export const UNIT_GROUP_TITLES: Record<keyof UnitGroups, string> = { waiting: 'Salieron de planta · toca la que llega', arrived: 'En obra · por orden de llegada' };
-export const UNIT_BADGES: Record<Exclude<UnitState, 'finished'>, StateBadge> = { waiting: { label: 'Por llegar', tone: 'neutral' }, working: { label: 'En pista', tone: 'warn' } };
+export const UNIT_GROUP_TITLES: Record<keyof UnitGroups, string> = { onSite: 'En pista', waiting: 'Por llegar · toca el que llegó', atPlant: 'En planta', finished: 'Terminaron' };
+export const UNIT_BADGES: Record<Exclude<UnitState, 'finished'>, StateBadge> = { atPlant: { label: 'En planta', tone: 'neutral' }, waiting: { label: 'Por llegar', tone: 'neutral' }, working: { label: 'En pista', tone: 'warn' } };
 const FINISHED_BADGE: StateBadge = { label: 'Terminó', tone: 'ok' };
 
 /** A repeat whose items are units: nobody adds one and its template takes photos by kind. */
@@ -30,14 +42,25 @@ const sectionDone = (section: FormSection): boolean => section.state === 'done' 
 
 /** The photo that ends the unit is done: finished. Anything written: working. Nothing: it left the plant and is not here yet. */
 export function unitStateOf(item: RepeatItem): UnitState {
+  if (item.summary.some((one) => PLANT_LINE.test(one.trim()))) return 'atPlant';
   if (item.sections.some((one) => one.photoKind === FINISHING_PHOTO && sectionDone(one))) return 'finished';
   return item.sections.some((one) => one.state !== 'empty') ? 'working' : 'waiting';
 }
 
+/** Nothing left to do: every photo taken and its data saved. The «vacía» photo ends the unit, not the report's work on it. */
+const isComplete = (item: RepeatItem): boolean => photoSlotsOf(item).every((slot) => slot.done) && dataSectionOf(item)?.state === 'done';
+
 export function unitGroupsOf(section: RepeatSection): UnitGroups {
   const states = section.items.map((item) => ({ item, state: unitStateOf(item) }));
   const of = (state: UnitState) => states.filter((one) => one.state === state).map((one) => one.item);
-  return { waiting: of('waiting'), arrived: [...of('working'), ...of('finished')] };
+  const ended = of('finished');
+  return { onSite: [...of('working'), ...ended.filter((item) => !isComplete(item))], waiting: of('waiting'), atPlant: of('atPlant'), finished: ended.filter(isComplete) };
+}
+
+/** «2 en pista · 6 por llegar · 4 en planta · 1 terminó»: the whole order at a glance, without the empty groups. */
+export function unitCountsLine({ onSite, waiting, atPlant, finished }: UnitGroups): string {
+  const counts: [number, string][] = [[onSite.length, 'en pista'], [waiting.length, 'por llegar'], [atPlant.length, 'en planta'], [finished.length, finished.length === 1 ? 'terminó' : 'terminaron']];
+  return counts.filter(([count]) => count > 0).map(([count, label]) => `${count} ${label}`).join(' · ');
 }
 
 /** «Unidad 3 · QAP-102» is a kicker and a plate; a dispatch not arrived comes as the plate alone. */

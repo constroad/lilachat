@@ -137,7 +137,7 @@ describe('ReportDocumentWeb', () => {
       id: 'unidades', kind: 'repeat', results: [{ label: 'Carros', value: '4', tone: 'neutral' }], title: 'Unidades', required: true, state: 'partial', summary: ['1 de 3 terminadas · 45 m³'], itemTitle: 'Unidad', addLabel: '', min: 1,
       template: [{ id: 'datos', title: 'Datos', required: true, form: 'ubicacion' }, photoEntry('ingreso'), photoEntry('temperatura'), photoEntry('vacia'), photoEntry('escantillon')],
       items: [
-        { id: 'd1', title: 'Unidad 1 · QAP-101', summary: ['Terminó 09:12', 'Guía G1 · 15 m³'], results: [], sections: [{ id: 'datos', state: 'done', summary: ['Llegada 06:15 · 150° · 3.0 cm'], values: {} }, { id: 'foto-vacia', state: 'done', values: { fotos: [{ id: 'v', url: 'https://x/v.jpg' }] } }] },
+        { id: 'd1', title: 'Unidad 1 · QAP-101', summary: ['Terminó 09:12', 'Guía G1 · 15 m³'], results: [], sections: [{ id: 'datos', state: 'done', summary: ['Llegada 06:15 · 150° · 3.0 cm'], values: {} }, ...['ingreso', 'temperatura', 'vacia', 'escantillon'].map((kind) => ({ id: `foto-${kind}`, state: 'done', values: { fotos: [{ id: kind, url: `https://x/${kind}.jpg` }] } }))] },
         { id: 'd2', title: 'Unidad 2 · QAP-102', summary: ['Guía G2 · 15 m³'], results: [], sections: [{ id: 'datos', state: 'done', summary: ['Llegada 07:30 · 148°'], values: {} }] },
         { id: 'd3', title: 'QAP-103', summary: ['Salió 07:10 · 15 m³ · Guía G3'], results: [], sections: [] },
       ],
@@ -151,9 +151,13 @@ describe('ReportDocumentWeb', () => {
     expect(screen.queryByTestId('agregar-item')).toBeNull();
     expect(screen.getByTestId('resumen-unidades')).toHaveTextContent('1 de 3 terminadas · 45 m³');
     expect(screen.getByTestId('resultados-unidades')).toHaveTextContent('Carros');
-    expect(list).toHaveTextContent('Salieron de planta · toca la que llega');
-    expect(list).toHaveTextContent('En obra · por orden de llegada');
+    expect(list).toHaveTextContent('Por llegar · toca el que llegó');
+    expect(list).toHaveTextContent('En pista');
+    expect(screen.getByTestId('conteo-unidades')).toHaveTextContent('1 en pista · 1 por llegar · 1 terminó');
     expect(within(screen.getByTestId('unidad-d3')).getByTestId('llego-d3')).toHaveTextContent('Llegó');
+    // A finished unit folds away: it no longer needs the person.
+    expect(screen.queryByTestId('estado-d1')).toBeNull();
+    fireEvent.click(screen.getByTestId('ver-terminadas'));
     expect(screen.getByTestId('estado-d1')).toHaveTextContent('Terminó 09:12');
     expect(screen.getByTestId('estado-d2')).toHaveTextContent('En pista');
     expect(within(screen.getByTestId('unidad-d2')).getAllByRole('button', { name: /^Foto de/ })).toHaveLength(4);
@@ -251,6 +255,7 @@ describe('ReportDocumentWeb', () => {
     serverWith({ error: 'not_found', message: 'Ese servicio ya no está en el Portal.' });
     render(<ReportDocumentWeb target={target} chatId="chat-1" service={service} type="CTL-IMP" portalUrl="https://portal.constroad.com/s/318" onClose={() => undefined} />);
     expect(await screen.findByTestId('informe-fallo')).toHaveTextContent('Ese servicio ya no está en el Portal.');
+    expect(screen.getByTestId('informe-reintentar')).toHaveTextContent('Reintentar');
     expect(screen.getByTestId('informe-fallo-portal')).toHaveAttribute('href', 'https://portal.constroad.com/s/318');
     expect(screen.queryByTestId('abrir-publicar')).toBeNull();
   });

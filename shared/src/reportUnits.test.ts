@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fieldDocumentOf, type FieldDocument, type RepeatItem, type RepeatSection } from './fieldDocument';
 import { reportFormAnswer } from './reportSaves';
-import { ARRIVED_LABEL, arrivalHourOf, dataSectionOf, isUnitsRepeat, photoSlotsOf, unitBadgeOf, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf } from './reportUnits';
+import { ARRIVED_LABEL, arrivalHourOf, dataSectionOf, isUnitsRepeat, photoSlotsOf, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf } from './reportUnits';
 
 /** The units of a control de pista as Portal lists them (06/11): rows by arrival, then the dispatches not here yet. */
 const form = (name: string) => ({ type: 'object', properties: { [name]: { type: 'string', title: name } } });
@@ -43,11 +43,41 @@ describe('the units of a control de pista', () => {
     expect(unitStateOf(pending)).toBe('finished');
   });
 
-  it('groups the ones to tap when they arrive apart from the ones on site, the working ones first', () => {
-    const groups = unitGroupsOf(units());
+  /** José 06/11, a pedido of 12: the arrival order depends on nothing, so the pending ones are only listed. */
+  it('groups by what each one needs: on site, to tap when it arrives, at the plant, and finished', () => {
+    // Arrange
+    const atPlant = { ...itemOf('d3'), id: 'd4', title: 'QAP-104', summary: ['En planta'] };
+    // Act
+    const groups = unitGroupsOf({ ...units(), items: [...units().items, atPlant] });
+    // Assert
+    expect(groups.onSite.map((one) => one.id)).toEqual(['d2']);
     expect(groups.waiting.map((one) => one.id)).toEqual(['d3']);
-    expect(groups.arrived.map((one) => one.id)).toEqual(['d2', 'd1']);
+    expect(groups.atPlant.map((one) => one.id)).toEqual(['d4']);
+    expect(groups.finished.map((one) => one.id)).toEqual(['d1']);
     expect(ARRIVED_LABEL).toBe('Llegó');
+  });
+
+  it('a unit at the plant is not a unit to tap, and anything else stays as it was', () => {
+    expect(unitStateOf({ ...itemOf('d3'), summary: ['En planta'] })).toBe('atPlant');
+    expect(unitStateOf({ ...itemOf('d3'), summary: ['Salió 07:10 · En planta nueva'] })).toBe('waiting');
+  });
+
+  it('a unit ended by its «vacía» photo with another photo missing stays on site, where the person sees it', () => {
+    // Arrange
+    const missing = { ...itemOf('d1'), sections: itemOf('d1').sections.map((one) => (one.id === 'foto-escantillon' ? { ...one, state: 'empty' as const, values: {} } : one)) };
+    // Act
+    const groups = unitGroupsOf({ ...units(), items: [missing] });
+    // Assert
+    expect(unitStateOf(missing)).toBe('finished');
+    expect(groups.onSite.map((one) => one.id)).toEqual(['d1']);
+    expect(groups.finished).toEqual([]);
+  });
+
+  it('counts each group in one line, without the empty ones', () => {
+    const [one, two] = [itemOf('d1'), itemOf('d2')];
+    expect(unitCountsLine({ onSite: [one, two], waiting: [one], atPlant: [], finished: [one] })).toBe('2 en pista · 1 por llegar · 1 terminó');
+    expect(unitCountsLine({ onSite: [], waiting: [], atPlant: [one], finished: [one, two] })).toBe('1 en planta · 2 terminaron');
+    expect(unitCountsLine({ onSite: [], waiting: [], atPlant: [], finished: [] })).toBe('');
   });
 
   it('reads the kicker and the plate from the title, and the pill from the state or Portal\'s «Terminó»', () => {

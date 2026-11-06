@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createReportQueue } from './reportQueue';
 import { docOf, fakePortal, fakeVault, general, newTramo, NOW, ref, type Tramo } from './reportQueue.fixture';
 import type { DevicePlace } from './reportCreation';
-import { createReportScreen, NO_GPS_PHOTO, type ReportScreenState } from './reportScreen';
+import { createReportScreen, NO_GPS_PHOTO, REFRESH_RETRIES, REFRESH_RETRY_MS, type ReportScreenState } from './reportScreen';
 import type { FieldDocument, FormSection, RepeatSection, SectionPath } from './fieldDocument';
 
 type Source = { uri: string };
@@ -264,6 +264,72 @@ describe('reload', () => {
     release();
     await settled(test);
     expect(documentOf(test.screen.snapshot()).id).toBe('r1');
+  });
+});
+
+/** E2E 06/11: one failed read after the last photo left the screen in «No se pudo abrir el informe», with no way on. */
+describe('a refresh that fails', () => {
+  const refusingOnce = (test: ReturnType<typeof screenWith>, times: number) => {
+    const read = test.portal.wire.read;
+    let left = times;
+    let calls = 0;
+    test.portal.wire.read = async (...args) => {
+      calls += 1;
+      if (left > 0) {
+        left -= 1;
+        return { ok: false, status: 400, message: 'No se pudo abrir el informe' };
+      }
+      return read(...args);
+    };
+    return () => calls;
+  };
+
+  it('keeps the document on screen and reads again by itself', async () => {
+    // Arrange
+    const test = screenWith({ id: 'r1', tramos: [] });
+    await settled(test);
+    const calls = refusingOnce(test, 1);
+    // Act
+    test.screen.refresh();
+    await settled(test);
+    // Assert
+    expect(documentOf(test.screen.snapshot()).id).toBe('r1');
+    expect(calls()).toBe(1);
+    await vi.advanceTimersByTimeAsync(REFRESH_RETRY_MS);
+    expect(calls()).toBe(2);
+    expect(documentOf(test.screen.snapshot()).id).toBe('r1');
+  });
+
+  it('stops trying after a few reads and stays on the document', async () => {
+    // Arrange
+    const test = screenWith({ id: 'r1', tramos: [] });
+    await settled(test);
+    const calls = refusingOnce(test, 99);
+    // Act
+    test.screen.refresh();
+    await settled(test);
+    await vi.advanceTimersByTimeAsync(REFRESH_RETRY_MS * 10);
+    // Assert
+    expect(calls()).toBe(1 + REFRESH_RETRIES);
+    expect(documentOf(test.screen.snapshot()).id).toBe('r1');
+  });
+
+  it('a report that never opened says so, and asking again opens it', async () => {
+    // Arrange
+    const portal = fakePortal({ id: 'r1', tramos: [] });
+    const read = portal.wire.read;
+    portal.wire.read = async () => ({ ok: false, status: 400, message: 'No se pudo abrir el informe' });
+    const queue = createReportQueue({ wire: portal.wire, vault: fakeVault().vault, gapMs: 0 });
+    const screen = createReportScreen<Source>({ queue, keepPhoto: async () => ({ ref: 'k', mime: 'image/jpeg', preview: 'p' }), dropPhoto: async () => undefined, placeNow: async () => ({ at: NOW }), personName: () => null, newKey: () => 'k', now: () => NOW }, ref);
+    screen.subscribe(() => undefined);
+    await settled({ queue });
+    expect(screen.snapshot().draft).toMatchObject({ ok: false, message: 'No se pudo abrir el informe' });
+    // Act
+    portal.wire.read = read;
+    screen.refresh();
+    await settled({ queue });
+    // Assert
+    expect(documentOf(screen.snapshot()).id).toBe('r1');
   });
 });
 

@@ -127,6 +127,19 @@ describe('two short fields share a row (José, 28/10: «unidad, hora, m³ podrí
     expect(rows).toEqual([['lista'], ['donde'], ['fotos'], ['selfie'], ['nota'], ['cuando'], ['monto']]);
   });
 
+  it('a place keeps the whole row: its link in half a row only showed the tail, «%2C-76.88» (E2E 06/11)', () => {
+    // Arrange
+    const form = formWith({
+      fecha: { type: 'string', format: 'date', title: 'Fecha' },
+      ubicacion: { type: 'string', 'x-input': 'place', title: 'Ubicación', maxLength: 200 },
+      responsable: { type: 'string', title: 'Responsable', maxLength: 200 },
+    });
+    // Act
+    const rows = rowsOf(form, {});
+    // Assert
+    expect(rows).toEqual([['fecha'], ['ubicacion'], ['responsable']]);
+  });
+
   it('pairs what is SHOWN: a hidden field between two short ones does not keep them apart', () => {
     // Arrange
     const form = formWith({

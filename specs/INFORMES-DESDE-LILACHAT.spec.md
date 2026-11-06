@@ -609,7 +609,24 @@ sumaba la cámara del sistema con su paso de confirmar. Ahora:
   rechaza dos pedidos a la vez, y ahora GPS y cámara arrancan juntos.
 - La web gana lo mismo salvo la cámara: su campo sigue siendo el del navegador.
 
-Sin verificar al escribir esto: la velocidad en un teléfono físico.
+E2E 06/11 en el emulador con barra de 3 botones, CTL-IMP en Test, OTA `f50d30e5`:
+
+| Paso | Medido |
+| --- | --- |
+| «Tomar otra» hasta la cámara en pantalla | menos de 1 s |
+| Disparo hasta la foto en el formulario | 1,3 s o menos |
+| «Enviar» hasta cerrar el formulario | menos de 0,6 s |
+
+Portal recibió la foto con la hora del disparo y la dirección en el sello. Atrás en
+la cámara cierra cámara y formulario. El visor abre la foto de José y la nueva.
+
+Trampa del emulador: `expo-camera` no captura ahí. `generateSimulatorPhoto` entrega
+una imagen negra con la fecha en amarillo, así que la velocidad de disparo solo vale
+en un teléfono. La cámara del sistema sí daba el patrón de prueba.
+
+Sin verificar: la velocidad en un teléfono físico, y las casillas de CTL-PIS en el
+APK. Los tres informes de pista de QA están publicados, y un informe nuevo con fotos
+de pista avisa a grupos reales de WhatsApp. Su lógica tiene test en la web.
 
 **06/11, prueba de José en su teléfono:** los campos de informe salen de una línea
 y 2 por fila, la hora de inicio toma la hora actual si no hay una guardada, y

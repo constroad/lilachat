@@ -38,7 +38,7 @@ function canBeHalf(field: FormField): boolean {
     case 'photo':
       return false;
     case 'text':
-      return !field.multiline && !field.digits && !field.secret;
+      return !field.multiline && !field.digits && !field.secret && !field.place;
     case 'date':
       return field.mode !== 'date-time';
     default:

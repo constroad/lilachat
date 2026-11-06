@@ -15347,6 +15347,8 @@ no midió. Ninguna skill ni gate cubría la regla de 2 por fila.
   multilínea no puede ir a media fila. Ahora `MULTILINE_FROM = 200`, y solo
   `textarea`, un tope mayor o un nombre de escritura libre (`observaci`,
   `comentario`) son multilínea. `SHORT_TEXT_MAX = 200` en `appFormRows.ts`.
+- **Ubicación:** un campo `x-input: place` conserva la fila entera. Su valor es un
+  enlace, y a media fila solo se veía la cola, «%2C-76.88». Lo halló el E2E.
 - **Hora de inicio:** `reportFormAnswer` recibe `ReportFormContext` y `withStartHour`
   llena con la hora del teléfono el campo `Hora inicio` sin valor guardado. Nunca
   mueve una hora guardada ni llena `Hora final`.

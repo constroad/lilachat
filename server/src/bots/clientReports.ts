@@ -26,6 +26,8 @@ const PUBLISH_FORM: FormSchema = { type: 'object', properties: { nota: { type: '
 
 /** Portal's `quitar_foto_de_informe`: everything is context, and the person already confirmed on the phone. */
 const REMOVE_PHOTO_TOOL = 'quitar_foto_de_informe';
+/** Portal's `subir_al_drive`: its answer is the ticket the phone sends the file with. */
+const DRIVE_UPLOAD_TOOL = 'subir_al_drive';
 const NOTHING_TO_FILL: FormSchema = { type: 'object', properties: {} };
 
 /** The last document Portal answered, per person and service: the section forms are built from it, never from the phone. */
@@ -73,7 +75,8 @@ type Place = { lat?: number; lng?: number; at: string };
 type OpenInput =
   | { kind: 'section'; type: string; path: SectionPath; reportId: string | null; tramoId: string | null; place: Place | null; /** The save's own key: Portal tells a photo sent twice from a second one. */ clientKey: string | null }
   | { kind: 'publish'; reportId: string }
-  | { kind: 'remove_photo'; reportId: string; photoId: string };
+  | { kind: 'remove_photo'; reportId: string; photoId: string }
+  | { kind: 'drive_upload' };
 
 const pathOf = (raw: Record<string, unknown>): SectionPath | null => {
   const sectionId = text(raw.section_id, 64);
@@ -98,6 +101,7 @@ const removalOf = (reportId: string, photoId: string): OpenInput | null => (repo
 /** What the phone asked to open; anything off the contract is a 400 before touching the door. */
 function openInputOf(input: unknown): OpenInput | null {
   const raw = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
+  if (raw.kind === 'drive_upload') return { kind: 'drive_upload' };
   const reportId = text(raw.report_id, 64);
   if (raw.kind === 'publish') return reportId ? { kind: 'publish', reportId } : null;
   if (raw.kind === 'remove_photo') return removalOf(reportId, text(raw.photo_id, 64));
@@ -135,6 +139,7 @@ async function sectionPrepared(workspaceId: string, serviceId: string, userId: T
 
 function prepared(workspaceId: string, serviceId: string, userId: Types.ObjectId, input: OpenInput): Promise<Prepared | CommandError> | Prepared {
   if (input.kind === 'section') return sectionPrepared(workspaceId, serviceId, userId, input);
+  if (input.kind === 'drive_upload') return { form: { id: DRIVE_UPLOAD_TOOL, title: 'Subir al Drive', submitLabel: 'Subir', schema: NOTHING_TO_FILL }, context: { servicioId: serviceId } };
   if (input.kind === 'remove_photo') return { form: { id: REMOVE_PHOTO_TOOL, title: 'Quitar foto', submitLabel: 'Quitar', schema: NOTHING_TO_FILL }, context: { servicioId: serviceId, informeId: input.reportId, fotoId: input.photoId } };
   return { form: { id: PUBLISH_TOOL, title: 'Publicar informe', submitLabel: 'Publicar', schema: PUBLISH_FORM }, context: { servicioId: serviceId, informeId: input.reportId } };
 }

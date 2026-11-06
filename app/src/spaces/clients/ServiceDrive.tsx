@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BackHandler, Linking, Pressable, Text, TextInput, View } from 'react-native';
-import { ChevronLeft, ChevronRight, Cloud, ExternalLink, Folder, Search } from 'lucide-react-native';
+import { Camera, ChevronLeft, ChevronRight, Cloud, ExternalLink, Folder, Image as ImageIcon, Search, Video } from 'lucide-react-native';
 import { FileThumb } from './FileThumb';
-import { driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService } from '@lilachat/shared';
+import { DRIVE_UPLOADING, driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
+import { useDriveUpload } from './useDriveUpload';
 import { useFileViewer } from './useFileViewer';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
 
@@ -97,15 +98,42 @@ function Breadcrumb(props: { service: string; folder: string | null; onBack: () 
   );
 }
 
+function UploadButton(props: { testID: string; label: string; icon: ReactNode; disabled: boolean; onPress: () => void }) {
+  return (
+    <Pressable testID={props.testID} accessibilityRole="button" accessibilityLabel={props.label} disabled={props.disabled} onPress={props.onPress} className="min-h-[52px] flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-outline/15 bg-surface px-2" style={{ opacity: props.disabled ? 0.6 : 1 }}>
+      {props.icon}
+      <Text className="text-[14px] font-semibold text-primary" numberOfLines={1}>{props.label}</Text>
+    </Pressable>
+  );
+}
+
+/** José 06/11: photos and videos go to the Drive from here, never to a report. */
+function DriveUploadBar({ upload }: { upload: ReturnType<typeof useDriveUpload> }) {
+  const colors = useColores();
+  return (
+    <View className="gap-1.5">
+      <View className="flex-row gap-2">
+        <UploadButton testID="drive-tomar-foto" label="Foto" icon={<Camera size={17} color={colors.primary} />} disabled={upload.sending} onPress={upload.takePhoto} />
+        <UploadButton testID="drive-grabar-video" label="Video" icon={<Video size={17} color={colors.primary} />} disabled={upload.sending} onPress={upload.recordVideo} />
+        <UploadButton testID="drive-galeria" label="Galería" icon={<ImageIcon size={17} color={colors.primary} />} disabled={upload.sending} onPress={upload.pickFromGallery} />
+      </View>
+      {upload.sending ? <Text testID="drive-subiendo" className="text-center text-[13px] text-on-surface-variant">{DRIVE_UPLOADING}</Text> : null}
+      {upload.message ? <Text testID="drive-aviso" className={upload.failed ? 'text-center text-[13px] text-error' : 'text-center text-[13px] text-on-surface-variant'}>{upload.message}</Text> : null}
+    </View>
+  );
+}
+
 /**
  * The Drive of one service inside «Archivos» (pending 121, design f-06):
  * search, top folders with counts, the newest files and, inside a folder, its
  * files. A failure says why, with the service's link. BACK leaves the folder,
  * then the service.
  */
-export function ServiceDrive(props: { target: ServiceAskTarget; service: SpaceClientService; onBack: () => void }) {
+export function ServiceDrive(props: { target: ServiceAskTarget; service: SpaceClientService; chatId: string; onBack: () => void }) {
   const colors = useColores();
-  const answer = useServiceAsk('files', props.target, props.service.id);
+  const [round, setRound] = useState(0);
+  const answer = useServiceAsk('files', props.target, props.service.id, round);
+  const upload = useDriveUpload({ target: props.target, chatId: props.chatId, serviceId: props.service.id, onDone: () => setRound((current) => current + 1) });
   const viewer = useFileViewer();
   const [folder, setFolder] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -122,6 +150,7 @@ export function ServiceDrive(props: { target: ServiceAskTarget; service: SpaceCl
   return (
     <View testID="drive-servicio" className="gap-3">
       <Breadcrumb service={props.service.name} folder={folder} onBack={onBack} onRoot={() => setFolder(null)} />
+      <DriveUploadBar upload={upload} />
       {answer === null ? <View testID="drive-cargando" className="h-40 rounded-2xl bg-surface-variant" /> : null}
       {answer && !answer.ok ? <Text testID="drive-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-[15px] font-semibold text-on-surface">{answer.message}</Text> : null}
       {answer?.ok ? <DriveSearch query={query} onQuery={setQuery} /> : null}

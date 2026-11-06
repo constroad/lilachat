@@ -67,7 +67,7 @@ export function ClientFilesWeb(props: { client: SpaceClient; target: ServiceAskT
         <div className="min-h-0 flex-1 overflow-y-auto p-4 md:p-6">
           <div className="mx-auto flex max-w-3xl flex-col gap-3">
             {service && target ? (
-              <ServiceDriveWeb target={target} service={service} onBack={() => setService(null)} />
+              <ServiceDriveWeb target={target} service={service} chatId={props.client.chat_id} onBack={() => setService(null)} />
             ) : (
               <>
                 {props.client.drive_url ? <ClientDriveLink url={props.client.drive_url} /> : null}

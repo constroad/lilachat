@@ -15402,3 +15402,16 @@ Sin verificar: la cuenta real. No se leyó la base; se dedujo del código y de l
 - **401 al cargar (web):** un `jwt` vacío ya no sale a la red. El hook vuelve a pedir al
   llegar la sesión.
 
+## Drive del servicio: subir fotos y videos (José 06/11)
+
+- «Los videos no van en informes nunca»: fotos y videos entran por «Archivos», en el
+  Drive del servicio. Quedan en la raíz del servicio, sin sello y sin informe.
+- App: «Foto», «Video» y «Galería». Web: «Subir foto o video». El motor es
+  `shared/driveUpload.ts` y cada plataforma aporta su selector y su envío.
+- Una foto se achica al estándar de Portal antes de salir. Un video va tal cual,
+  con tope de 60 s y 50 MB. La cámara del teléfono ya corta a los 60 s.
+- Medido el 06/11 desde la Mac: 6 MB tardaron 11 s, sin rechazo por tamaño de la
+  plataforma. Un video grande en campo puede tardar minutos y no sigue en segundo
+  plano: si la app se cierra, la subida falla y se reintenta a mano.
+- Sin verificar con un archivo real hasta aprobar `subir_al_drive`.
+

@@ -213,6 +213,24 @@ describe('the photo and «Publicar» as forms', () => {
     expect(received.find((event) => event.type === 'form.submitted')?.data).toMatchObject({ form_id: 'quitar_foto_de_informe', client_id: 'cli-cvs', service_id: 'srv-318', values: { servicioId: 'srv-318', informeId: '6aed0a1b2c3d4e5f60718293', fotoId: '6aed0a1b2c3d4e5f60718294' } });
   });
 
+  it('opening a Drive upload carries the checked service; the ticket reaches the asker and is not kept (José 06/11)', async () => {
+    const ticket = { url: 'https://constroad.com/api/public/service-drive-upload/secreto', method: 'POST', fields: {}, fileField: 'file', expiresAt: '2026-11-06T23:00:00.000Z', maxBytes: 52428800, maxSeconds: 60, mimeTypes: ['image/jpeg', 'video/mp4'] };
+    answers['form.submitted'] = { status: 200, body: { response_type: 'ephemeral', text: 'Ya puedes enviar el archivo.', shareable: false, upload: ticket } };
+    const opened = await openOf(ana, { kind: 'drive_upload' }).expect(200);
+
+    expect(opened.body.response.form).toMatchObject({ id: 'subir_al_drive', schema: { properties: {} } });
+    const sent = await request(app).post(`/api/chats/${chatId}/commands/${opened.body.commandId}/form`).set(auth(ana)).send({ values: {} }).expect(200);
+
+    expect(received.find((event) => event.type === 'form.submitted')?.data).toMatchObject({ form_id: 'subir_al_drive', client_id: 'cli-cvs', service_id: 'srv-318', values: { servicioId: 'srv-318' } });
+    expect(sent.body.response.upload).toEqual(ticket);
+    const run = await BotCommandRunModel.findById(opened.body.commandId).lean();
+    expect(JSON.stringify(run)).not.toContain('secreto');
+  });
+
+  it('nobody outside the channel opens a Drive upload', async () => {
+    await openOf(outsider, { kind: 'drive_upload' }).expect(404);
+  });
+
   it('a photo to take out needs both its report and its id', async () => {
     await openOf(ana, { kind: 'remove_photo', report_id: '6aed0a1b2c3d4e5f60718293' }).expect(400);
     await openOf(ana, { kind: 'remove_photo', photo_id: '6aed0a1b2c3d4e5f60718294' }).expect(400);

@@ -78,7 +78,7 @@ export function ClientFilesPanel(props: { client: SpaceClient; target: ServiceAs
       {source === 'drive' ? (
         <ScrollView contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
           {service && target ? (
-            <ServiceDrive target={target} service={service} onBack={() => setService(null)} />
+            <ServiceDrive target={target} service={service} chatId={props.client.chat_id} onBack={() => setService(null)} />
           ) : (
             <>
               {props.client.drive_url ? <ClientDriveLink url={props.client.drive_url} /> : null}

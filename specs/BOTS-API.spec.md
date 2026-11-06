@@ -1088,3 +1088,30 @@ Se configura por entorno: `PORT`, `CLIENT_ID`, `CLIENT_SECRET`, `REDIRECT_URI`,
 `WEBHOOK_URL`, y opcionalmente `SPACE_NAME`, `CHANNELS` y `MEMBERS` (JSON). La
 misma batería de pruebas de contrato corre contra el fake y contra el server
 real, así no se separan.
+
+## c-septendecies. Subir al Drive de un servicio (José 06/11)
+
+Lilachat abre `POST …/reports/forms { kind: 'drive_upload' }`: un formulario sin campos
+de `subir_al_drive`, con `client_id` y `service_id` al lado de `values` y
+`values.servicioId` igual a `service_id`.
+
+La respuesta a `form.submitted`, por el cuerpo o por `/respond`, lleva `upload`:
+
+```json
+{ "response_type": "ephemeral", "text": "…", "shareable": false,
+  "upload": { "url": "https://constroad.com/…", "method": "POST", "fields": {},
+    "fileField": "file", "expiresAt": "…", "maxBytes": 52428800, "maxSeconds": 60,
+    "mimeTypes": ["image/jpeg", "video/mp4"] } }
+```
+
+- `driveUploadOf` valida con llaves cerradas: https, host `constroad.com` o un
+  subdominio, sin usuario en la dirección, solo tipos `image/` y `video/`. Un
+  `upload` inválido rechaza la respuesta entera.
+- La dirección es un secreto. `deliverResponse` no la guarda en `answer` y no se
+  escribe en logs. Por el cuerpo llega solo a quien envió el formulario. Por
+  `/respond` llega por socket a las sesiones de esa persona, nunca al canal.
+- El archivo va del teléfono a Portal, sin pasar por Lilachat, con `clientUploadId`.
+  Un reintento conserva esa clave y pide un `command_id` nuevo.
+- Respuestas de Portal: 201 subido, 200 ya estaba, 410 venció (se pide otro ticket
+  una vez), 413 pesa demasiado, 415 tipo no admitido, 409 conflicto.
+

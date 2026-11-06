@@ -1,5 +1,6 @@
 import { validateFormSpec, type AppForm } from './appForms.js';
 import { validateBotCard, type BotCard } from './bots.js';
+import { driveUploadOf, type DriveUpload } from './driveUpload.js';
 
 /**
  * Slash commands of the apps (`specs/BOTS-API.spec.md` §c), like Slack: an
@@ -25,7 +26,7 @@ export type CommandGroup = { appId: string; appName: string; commands: BotComman
 export type CommandResponseType = 'ephemeral' | 'in_channel' | 'form';
 /** `shareable: false` (agentes, 23/10: debts, payments, payroll): no «Enviar al canal». */
 /** `nothingToReport` (schedules, agentes 28/10): the report still comes, and a schedule «solo si hay algo» posts nothing. */
-export type CommandResponse = { responseType: CommandResponseType; text?: string; card?: BotCard; form?: AppForm; shareable?: false; nothingToReport?: true };
+export type CommandResponse = { responseType: CommandResponseType; text?: string; card?: BotCard; form?: AppForm; shareable?: false; nothingToReport?: true; /** Never stored: `deliverResponse` keeps only the text and the card. */ upload?: DriveUpload };
 
 export const COMMAND_LIMITS = { commands: 25, name: 32, description: 100, usageHint: 60, text: 4000, input: 2000 };
 const COMMAND_NAME = /^[a-z][a-z0-9_-]+$/;
@@ -77,7 +78,9 @@ export function validateCommandResponse(raw: unknown): { ok: true; response: Com
     card = checked.card;
   }
   if (!text && !card) return { ok: false, message: 'La respuesta lleva «text» o «card».' };
-  return { ok: true, response: { responseType, ...(text ? { text } : {}), ...(card ? { card } : {}), ...(body.shareable === false ? { shareable: false as const } : {}), ...(body.nothing_to_report === true ? { nothingToReport: true as const } : {}) } };
+  const upload = body.upload === undefined ? null : driveUploadOf(body.upload);
+  if (body.upload !== undefined && !upload) return { ok: false, message: 'La respuesta lleva un «upload» inválido.' };
+  return { ok: true, response: { responseType, ...(text ? { text } : {}), ...(card ? { card } : {}), ...(upload ? { upload } : {}), ...(body.shareable === false ? { shareable: false as const } : {}), ...(body.nothing_to_report === true ? { nothingToReport: true as const } : {}) } };
 }
 
 /**

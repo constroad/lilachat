@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Cloud, ExternalLink, Folder, Search } from 'lucide-react';
-import { driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService, type ViewableFile } from '@lilachat/shared';
+import { useMemo, useRef, useState } from 'react';
+import { ChevronLeft, ChevronRight, Cloud, ExternalLink, Folder, Search, Upload } from 'lucide-react';
+import { DRIVE_UPLOADING, driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService, type ViewableFile } from '@lilachat/shared';
 import { FileThumb, usePortalFileViewer } from './PortalFileViewer';
+import { useDriveUpload } from './useDriveUpload';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
 
 const RECENT = 3;
@@ -74,13 +75,34 @@ function Breadcrumb(props: { service: string; folder: string | null; onBack: () 
   );
 }
 
+/** José 06/11: photos and videos go to the Drive from here, never to a report. */
+function DriveUploadBar({ upload }: { upload: ReturnType<typeof useDriveUpload> }) {
+  const picker = useRef<HTMLInputElement>(null);
+  const pick = (files: FileList | null) => {
+    const file = files?.[0];
+    if (file) void upload.send(file);
+    if (picker.current) picker.current.value = '';
+  };
+  return (
+    <div className="flex flex-col gap-1.5">
+      <button type="button" data-testid="subir-al-drive" disabled={upload.sending} onClick={() => picker.current?.click()} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-outline/15 bg-surface px-4 text-sm font-semibold text-primary disabled:opacity-60">
+        <Upload size={16} /> {upload.sending ? DRIVE_UPLOADING : 'Subir foto o video'}
+      </button>
+      <input ref={picker} data-testid="archivo-para-drive" type="file" accept="image/*,video/*" hidden onChange={(event) => pick(event.target.files)} />
+      {upload.message ? <p role="status" className={upload.failed ? 'text-sm text-error' : 'text-sm text-on-surface-variant'}>{upload.message}</p> : null}
+    </div>
+  );
+}
+
 /**
  * The Drive of one service inside «Archivos» (pending 121, design f-06):
  * search, top folders with counts, the newest files and, inside a folder, its
  * files. A failure says why, with the service's link.
  */
-export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: SpaceClientService; onBack: () => void }) {
-  const answer = useServiceAsk('files', props.target, props.service.id);
+export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: SpaceClientService; chatId: string; onBack: () => void }) {
+  const [round, setRound] = useState(0);
+  const answer = useServiceAsk('files', props.target, props.service.id, round);
+  const upload = useDriveUpload({ target: props.target, chatId: props.chatId, serviceId: props.service.id, onDone: () => setRound((current) => current + 1) });
   const viewer = usePortalFileViewer();
   const [folder, setFolder] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -88,6 +110,7 @@ export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: Spac
   return (
     <div data-testid="drive-servicio" className="flex flex-col gap-3">
       <Breadcrumb service={props.service.name} folder={folder} onBack={props.onBack} onRoot={() => setFolder(null)} />
+      <DriveUploadBar upload={upload} />
       {answer === null ? <div data-testid="drive-cargando" className="h-32 animate-pulse rounded-xl bg-surface" /> : null}
       {answer && !answer.ok ? <p data-testid="drive-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm font-semibold">{answer.message}</p> : null}
       {answer?.ok ? (

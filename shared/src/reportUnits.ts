@@ -58,7 +58,7 @@ export function unitBadgeOf(item: RepeatItem): StateBadge {
 /** One slot per photo kind, in the template's order: its last photo, and whether it is done. */
 export const photoSlotsOf = (item: RepeatItem): UnitSlot[] => item.sections.filter((one) => one.photoKind).map((section) => ({ section, photo: sectionPhotos(section).at(-1) ?? null, done: sectionDone(section) }));
 
-/** The section with the unit's data (arrival, temperatures, escantillón): the first one that is not a photo. */
+/** The section with the unit's data (arrival, temperatures, thickness): the first one that is not a photo. */
 export const dataSectionOf = (item: RepeatItem): FormSection | undefined => item.sections.find((one) => !one.tool);
 
 /** What the summary of a unit says beside its plate, without the «Terminó» line the pill already shows. */

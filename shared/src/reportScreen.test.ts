@@ -268,12 +268,12 @@ describe('reload', () => {
 });
 
 describe('a photo that needs its place (CTL-PIS, José 06/11)', () => {
-  const fotos: SectionPath = { sectionId: 'tramos', itemId: 't1', key: 'fotos' };
+  const photosPath: SectionPath = { sectionId: 'tramos', itemId: 't1', key: 'fotos' };
 
   it('without GPS there is no photo: it is dropped and the person is told', async () => {
     const test = screenWith({ id: 'r1', tramos: [{ id: 't1', photos: 0 }], requireLocation: true }, async () => ({ at: NOW }));
     await settled(test);
-    test.screen.openSection(fotos);
+    test.screen.openSection(photosPath);
     expect(await test.screen.upload({ uri: 'a.jpg' })).toEqual({ ok: false, message: NO_GPS_PHOTO });
     expect(test.dropped).toEqual(['kept-a.jpg']);
     test.stop();
@@ -282,12 +282,12 @@ describe('a photo that needs its place (CTL-PIS, José 06/11)', () => {
   it('a GPS that fails reads the same, and with the fix the photo is kept', async () => {
     const failing = screenWith({ id: 'r1', tramos: [{ id: 't1', photos: 0 }], requireLocation: true }, async () => { throw new Error('off'); });
     await settled(failing);
-    failing.screen.openSection(fotos);
+    failing.screen.openSection(photosPath);
     expect(await failing.screen.upload({ uri: 'a.jpg' })).toEqual({ ok: false, message: NO_GPS_PHOTO });
     failing.stop();
     const placed = screenWith({ id: 'r1', tramos: [{ id: 't1', photos: 0 }], requireLocation: true });
     await settled(placed);
-    placed.screen.openSection(fotos);
+    placed.screen.openSection(photosPath);
     expect(await placed.screen.upload({ uri: 'a.jpg' })).toEqual({ ok: true, fileId: 'kept-a.jpg' });
     expect(placed.dropped).toEqual([]);
     placed.stop();
@@ -296,7 +296,7 @@ describe('a photo that needs its place (CTL-PIS, José 06/11)', () => {
   it('a section that does not ask for the place takes the photo with the hour alone', async () => {
     const free = screenWith({ id: 'r1', tramos: [{ id: 't1', photos: 0 }] }, async () => ({ at: NOW }));
     await settled(free);
-    free.screen.openSection(fotos);
+    free.screen.openSection(photosPath);
     expect(await free.screen.upload({ uri: 'a.jpg' })).toEqual({ ok: true, fileId: 'kept-a.jpg' });
     free.stop();
   });

@@ -44,6 +44,22 @@ export const REPORT_SEND_GAP_MS = 4000;
 
 type NoticeSource = { on(event: 'command.response', listener: (notice: CommandNotice) => void): unknown; off(event: 'command.response', listener: (notice: CommandNotice) => void): unknown };
 
+/** One write every `gapMs` (Portal and agentes, 06/11): the first goes at once, each next one waits its turn. */
+function createPacer(gapMs: number) {
+  let lastSentAt = Number.NEGATIVE_INFINITY;
+  return {
+    async pace(): Promise<void> {
+      const wait = lastSentAt + gapMs - Date.now();
+      if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+      lastSentAt = Date.now();
+    },
+    /** Emptied (a revoked credential, or a test's clean slate): nothing left to pace. */
+    reset(): void {
+      lastSentAt = Number.NEGATIVE_INFINITY;
+    },
+  };
+}
+
 /** Waits on the socket for the answer of one write. */
 export function noticeOf(source: NoticeSource | null, commandId: string, waitMs: number = WRITE_GIVE_UP_MS): Promise<CommandNotice | null> {
   if (!source) return Promise.resolve(null);
@@ -217,7 +233,7 @@ export function createReportQueue({ vault, wire, exclusive = (task) => task(), g
   let pass: Promise<void> | null = null;
   let rerun = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
-  let lastSentAt = Number.NEGATIVE_INFINITY;
+  const pacer = createPacer(gapMs);
 
   const clearTimer = () => {
     if (timer) clearTimeout(timer);
@@ -229,15 +245,9 @@ export function createReportQueue({ vault, wire, exclusive = (task) => task(), g
     clearTimer();
     timer = setTimeout(() => void run(), afterMs ?? retryDelayMs(attempts));
   };
-  const pace = async (): Promise<void> => {
-    const wait = lastSentAt + gapMs - Date.now();
-    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-    lastSentAt = Date.now();
-  };
-  /** Emptied (a revoked credential, or a test's clean slate): nothing left to pace either. */
   const forget = (): Promise<void> => {
     clearTimer();
-    lastSentAt = Number.NEGATIVE_INFINITY;
+    pacer.reset();
     return emptyQueue(vault, store);
   };
   async function tryLater(save: ReportSave, afterMs?: number): Promise<void> {
@@ -245,7 +255,7 @@ export function createReportQueue({ vault, wire, exclusive = (task) => task(), g
     await store.editSave(save.clientKey, (one) => ({ ...one, attempts }));
     stalled(attempts, afterMs);
   }
-  const core: QueueCore = { vault, wire, store, pace, tryLater, forget };
+  const core: QueueCore = { vault, wire, store, pace: pacer.pace, tryLater, forget };
 
   async function drainKeys(): Promise<void> {
     do {

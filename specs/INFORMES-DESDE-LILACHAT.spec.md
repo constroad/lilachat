@@ -409,3 +409,20 @@ spec al día. Las herramientas nuevas las aprueba José en agentes al publicarse
     el enlace de Google Maps de donde está el dispositivo, igual que el lugar
     del servicio. Si no hay permiso o GPS lo dice bajo el campo.
   Esto vive en `reportFormAnswer`, sin cambios en Portal.
+  Publicado: web y server `cd647c4`, OTA `2b6c0d11` (runtime `79221c17`).
+  Verificado en vivo el 06/11 con esa versión:
+  - Web, Chrome de José, Test: el formulario de Datos generales ya no trae
+    cliente ni obra. Al guardar con la posición simulada, el borrador de Portal
+    conservó los dos y actualizó `ubicacion` con el enlace. En un informe nuevo
+    `responsable` nació igual al nombre del perfil.
+  - Emulador, wifi y datos apagados, servicio `b1`: informe nuevo con
+    responsable «J zamora» y sin cliente ni obra. Sin permiso de ubicación, el
+    botón avisa bajo el campo. Con permiso escribe el enlace. Datos generales y
+    un tramo quedaron en cola. Al volver la red se vaciaron en unos 10 s: 1
+    tramo, `control-1`, y Datos generales «Lista» con `b1 · MC-30`.
+  - Diagnóstico: código `2b6c0d11`, avisos registrados, 0 % de CPU.
+  Sin verificar: «Publicar» sin señal con un informe completo. Se probó solo
+  con faltantes, y la hoja los mostró. El botón con GPS real en un teléfono y
+  el rechazo de Portal a una sección guardada en cola quedan para campo.
+  Datos QA: dos borradores en TEST COMPANY, en los servicios
+  `096f1e56d931ff4d4561bb41` y `6a54797255b64bb87befd231`, que limpia Portal.

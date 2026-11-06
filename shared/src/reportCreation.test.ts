@@ -28,9 +28,9 @@ const tramos = () => {
 };
 
 describe('the types a report can be', () => {
-  it('offers the eight types of the public page, and only CTL-IMP opens here today', () => {
+  it('offers the eight types of the public page, and CTL-IMP and CTL-PIS open here', () => {
     expect(REPORT_TYPE_OPTIONS).toHaveLength(8);
-    expect(REPORT_TYPE_OPTIONS.filter((option) => option.opensHere).map((option) => option.code)).toEqual(['CTL-IMP']);
+    expect(REPORT_TYPE_OPTIONS.filter((option) => option.opensHere).map((option) => option.code)).toEqual(['CTL-IMP', 'CTL-PIS']);
     expect(REPORT_TYPE_OPTIONS.slice(0, 3).map((option) => option.code)).toEqual(['CTL-IMP', 'IAA', 'CTL-PIS']);
     REPORT_TYPE_OPTIONS.forEach((option) => expect(isFieldReport({ typeLabel: option.label })).toBe(true));
   });
@@ -178,7 +178,7 @@ describe('the units of a control de pista (06/11)', () => {
     expect(sectionFormRequest(document(), { sectionId: 'general', itemId: null, key: 'general' })).not.toHaveProperty('client_key');
   });
 
-  it('CTL-PIS says what it asks per truck, and opens here only once Portal is live', () => {
-    expect(REPORT_TYPE_OPTIONS.find((option) => option.code === 'CTL-PIS')).toMatchObject({ caption: 'Llegada, temperaturas, escantillón y 4 fotos por volquete', opensHere: false });
+  it('CTL-PIS says what it asks per truck, and opens here since Portal shipped it (06/11)', () => {
+    expect(REPORT_TYPE_OPTIONS.find((option) => option.code === 'CTL-PIS')).toMatchObject({ caption: 'Llegada, temperaturas, escantillón y 4 fotos por volquete', opensHere: true });
   });
 });

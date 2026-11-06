@@ -323,7 +323,7 @@ Lo que ya se sabe del código (leído de `origin/main` el 06/11):
 - El WhatsApp sale por cada foto, con el texto «Nueva foto de control de
   pista» (`whatsAppAlerts.ts`).
 
-#### Hecho en Lilachat (06/11, pendiente de E2E hasta que Portal despliegue)
+#### Hecho en Lilachat (06/11; Portal en producción desde las 13:57 UTC, commit 68ce06a7)
 
 Diseños: `design/stitch/j-05-pista-unidades*.png` y `j-06-pista-unidad*.png`
 (v2). La v1 era de oficinista y José la descartó el 06/11: «es para un personal
@@ -360,8 +360,8 @@ Motor (`shared`, tests primero, 2 173 verdes):
   la foto solo con la hora.
 - `reportCreation`: `reportDraftRequest(type, id, page)` manda `page` desde
   la 2; `pageLine` («Página 2 de 3»); `sectionFormRequest(…, clientKey)`;
-  `itemsLine` pluraliza («unidades»); CTL-PIS sigue `opensHere: false` hasta
-  que Portal esté en producción.
+  `itemsLine` pluraliza («unidades»); CTL-PIS abre en Lilachat (`opensHere:
+  true`) desde que Portal desplegó (06/11).
 - `appForms`: `x-check-all` → `AppForm.checkAll`; `checkAllValues` pone en
   cada opción la primera que se puede elegir; `CHECK_ALL_LABEL`.
 - `appActions.formSubmitFailure`: un solo lector del 4xx de un formulario
@@ -390,11 +390,15 @@ cumplan; `precisionM` no se manda (la app no guarda la precisión del GPS); la
 cámara se abre dentro del formulario de la foto, no al tocar el recuadro (un
 toque más que el diseño).
 
-Pendiente: Portal despliega `feat/ctl-pis-lilachat` a la hora que fije José y
-él reaprueba tres herramientas; lila-app (`escantillonCm`, resumen) espera el
-OK de José en la sesión lila-2; después, voltear `opensHere` de CTL-PIS, OTA
-y web, y el E2E en Test con los datos que Portal creó (servicio, pedido y
-despachos).
+Pendiente: José reaprueba `informe_de_campo`, `guardar_seccion_de_informe` y
+`agregar_foto_de_informe` en agentes (hasta entonces dan 502 y CTL-IMP
+también queda cortado); lila-app (`escantillonCm`, resumen) espera el OK de
+José en la sesión lila-2; el E2E en Test con los datos que Portal creó
+(servicio `6aedcc3a2f5e395dca260f16`, pedido `6aedcc392f5e395dca260f12`,
+despachos `6aedcc3a2f5e395dca260f19` a `…1d`) corre al reaprobar, midiendo
+el tiempo de la primera foto (tope de agentes: 7 s). El índice único por
+pedido de Portal cubre solo informes nuevos: dos pedidos de Globofast ya
+tienen dos controles.
 
 ## 4. Lilachat
 

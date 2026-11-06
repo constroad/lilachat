@@ -157,13 +157,13 @@ describe('with no signal', () => {
 });
 
 describe('photos', () => {
-  const fotos = { sectionId: 'tramos', itemId: 't1', key: 'fotos' };
+  const photosPath = { sectionId: 'tramos', itemId: 't1', key: 'fotos' };
 
   it('the photo stays on the device with where and when it was taken, and goes with its caption', async () => {
     const test = screenWith({ id: 'r1', tramos: [{ id: 't1', photos: 0 }] });
     await settled(test);
     test.portal.state.offline = true;
-    test.screen.openSection(fotos);
+    test.screen.openSection(photosPath);
     expect(await test.screen.upload({ uri: 'a.jpg' })).toEqual({ ok: true, fileId: 'kept-a.jpg' });
     await test.screen.submit({ foto: 'kept-a.jpg', descripcion: 'Riego' });
     await settled(test);
@@ -180,7 +180,7 @@ describe('photos', () => {
     await settled(test);
     test.portal.state.offline = true;
     for (const name of ['a', 'b', 'c']) {
-      test.screen.openSection(fotos);
+      test.screen.openSection(photosPath);
       await test.screen.upload({ uri: name });
       await test.screen.submit({ foto: `kept-${name}` });
     }
@@ -191,7 +191,7 @@ describe('photos', () => {
   it('closing the form drops the photo nobody saved', async () => {
     const test = screenWith({ id: 'r1', tramos: [{ id: 't1', photos: 0 }] });
     await settled(test);
-    test.screen.openSection(fotos);
+    test.screen.openSection(photosPath);
     await test.screen.upload({ uri: 'a.jpg' });
     test.screen.closeForm();
     await settled(test);

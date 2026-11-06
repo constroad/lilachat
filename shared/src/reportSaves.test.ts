@@ -25,10 +25,10 @@ const empty = (): FieldDocument => ({ ...blankDocumentOf(parsed()) });
 
 const ref: ReportRef = { spaceId: 's1', clientId: 'c1', chatId: 'ch1', serviceId: 'sv1', type: 'CTL-IMP' };
 const bandejas: SectionPath = { sectionId: 'tramos', itemId: 't1', key: 'bandejas' };
-const fotos: SectionPath = { sectionId: 'tramos', itemId: 't1', key: 'fotos' };
+const photosPath: SectionPath = { sectionId: 'tramos', itemId: 't1', key: 'fotos' };
 const newTramo: SectionPath = { sectionId: 'tramos', itemId: null, key: 'ubicacion' };
 const saveAt = (path: SectionPath, clientKey: string, values = {}, document = parsed()): ReportSave => reportSaveOf({ ref, document, path, values, clientKey, now: '2026-11-05T10:00:00.000Z' });
-const photoSave = (clientKey: string, path = fotos): ReportSave => ({ ...saveAt(path, clientKey, { foto: 'ref-1', descripcion: 'Riego' }), photo: { field: 'foto', ref: `ref-${clientKey}`, mime: 'image/jpeg', preview: `file://${clientKey}.jpg` }, place: { at: '2026-11-05T10:00:00.000Z' } });
+const photoSave = (clientKey: string, path = photosPath): ReportSave => ({ ...saveAt(path, clientKey, { foto: 'ref-1', descripcion: 'Riego' }), photo: { field: 'foto', ref: `ref-${clientKey}`, mime: 'image/jpeg', preview: `file://${clientKey}.jpg` }, place: { at: '2026-11-05T10:00:00.000Z' } });
 
 describe('reportSaveOf', () => {
   it('a section of the report keeps its path, its report and its title', () => {
@@ -44,7 +44,7 @@ describe('reportSaveOf', () => {
 
 describe('queueSave', () => {
   it('keeps one save per section, the newest, in the order they first came', () => {
-    const queue = queueSave(queueSave(queueSave([], saveAt(bandejas, 'a', { peso: '1' })), saveAt(fotos, 'b')), saveAt(bandejas, 'c', { peso: '2' }));
+    const queue = queueSave(queueSave(queueSave([], saveAt(bandejas, 'a', { peso: '1' })), saveAt(photosPath, 'b')), saveAt(bandejas, 'c', { peso: '2' }));
     expect(queue.map((one) => one.clientKey)).toEqual(['c', 'b']);
     expect(queue[0]?.values).toEqual({ peso: '2' });
   });
@@ -135,7 +135,7 @@ describe('blankDocumentOf', () => {
 
 describe('nextSave', () => {
   it('takes the first one, skipping what was refused', () => {
-    const queue = [{ ...saveAt(bandejas, 'a'), refusal: { message: 'No', errors: {} } }, saveAt(fotos, 'b')];
+    const queue = [{ ...saveAt(bandejas, 'a'), refusal: { message: 'No', errors: {} } }, saveAt(photosPath, 'b')];
     expect(nextSave(queue, parsed())?.clientKey).toBe('b');
     expect(nextSave([], parsed())).toBeNull();
   });
@@ -239,7 +239,7 @@ describe('the report form on the phone', () => {
   });
 
   it('two sections are two forms, and a path that is not there is none', () => {
-    expect(reportFormAnswer(parsed(), bandejas)?.commandId).not.toBe(reportFormAnswer(parsed(), fotos)?.commandId);
+    expect(reportFormAnswer(parsed(), bandejas)?.commandId).not.toBe(reportFormAnswer(parsed(), photosPath)?.commandId);
     expect(reportFormAnswer(parsed(), { sectionId: 'x', itemId: null, key: 'x' })).toBeNull();
   });
 });

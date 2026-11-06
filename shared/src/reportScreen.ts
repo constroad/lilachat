@@ -42,10 +42,8 @@ type HeldPhoto = { kept: KeptPhoto; place: DevicePlace };
 
 const photoFieldOf = (answer: EphemeralAnswer): string | undefined => Object.entries(answer.response?.form?.schema.properties ?? {}).find(([, property]) => property['x-input'] === 'photo')?.[0];
 
-export function createReportScreen<P>(deps: ReportScreenDeps<P>, ref: ReportRef) {
-  const { queue } = deps;
-  const listeners = new Set<() => void>();
-  const photos = new Map<string, HeldPhoto>();
+/** The document as it should look: what Portal last said, with the queue over it. */
+function createDocumentFeed(queue: ReportQueue, ref: ReportRef, tell: () => void) {
   let opened: OpenedReport | null = null;
   let reportId: string | null = null;
   let mine = savesOf(queue.snapshot().saves, ref);
@@ -54,21 +52,6 @@ export function createReportScreen<P>(deps: ReportScreenDeps<P>, ref: ReportRef)
   let revision = queue.snapshot().revision;
   let changed = false;
   let asking = 0;
-  let openForm: { path: SectionPath; answer: EphemeralAnswer } | null = null;
-  let stopListening: (() => void) | null = null;
-
-  function build(): ReportScreenState {
-    const shown = [...held.filter((one) => !mine.some((save) => save.clientKey === one.clientKey)), ...mine];
-    const draft: ReportDraftResult | null = opened?.ok ? { ok: true, document: documentWithQueue(opened.document, shown) } : opened;
-    const { sending, stalled } = queue.snapshot();
-    return { draft, saves: mine, offline: Boolean(opened?.ok && opened.offline) || (stalled && mine.length > 0), sending, changed, form: openForm?.answer ?? null };
-  }
-
-  let state = build();
-  const tell = () => {
-    state = build();
-    listeners.forEach((listener) => listener());
-  };
 
   async function ask(): Promise<void> {
     asking += 1;
@@ -81,24 +64,37 @@ export function createReportScreen<P>(deps: ReportScreenDeps<P>, ref: ReportRef)
     tell();
   }
 
-  function onQueue(): void {
-    const next = queue.snapshot();
-    if (next.revision !== revision) {
-      held = [...held, ...mine];
-      revision = next.revision;
+  return {
+    ask,
+    saves: (): ReportSave[] => mine,
+    onQueue(): void {
+      const next = queue.snapshot();
+      if (next.revision !== revision) {
+        held = [...held, ...mine];
+        revision = next.revision;
+        changed = true;
+        void ask();
+      }
+      mine = savesOf(next.saves, ref);
+      tell();
+    },
+    reload(): void {
       changed = true;
       void ask();
-    }
-    mine = savesOf(next.saves, ref);
-    tell();
-  }
+    },
+    view(): Omit<ReportScreenState, 'form'> {
+      const shown = [...held.filter((one) => !mine.some((save) => save.clientKey === one.clientKey)), ...mine];
+      const draft: ReportDraftResult | null = opened?.ok ? { ok: true, document: documentWithQueue(opened.document, shown) } : opened;
+      const { sending, stalled } = queue.snapshot();
+      return { draft, saves: mine, offline: Boolean(opened?.ok && opened.offline) || (stalled && mine.length > 0), sending, changed };
+    },
+  };
+}
 
-  const documentNow = (): FieldDocument | null => (state.draft?.ok ? state.draft.document : null);
-
-  function dropUnsaved(): void {
-    photos.forEach((_held, photo) => void deps.dropPhoto(photo));
-    photos.clear();
-  }
+/** The section's form: what it holds until «Guardar», which is the person's confirmation. */
+function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportNow: () => { document: FieldDocument | null; saves: ReportSave[] }, tell: () => void) {
+  const photos = new Map<string, HeldPhoto>();
+  let openForm: { path: SectionPath; answer: EphemeralAnswer } | null = null;
 
   function saveOf(document: FieldDocument, path: SectionPath, answer: EphemeralAnswer, values: FormValues): ReportSave {
     const save = reportSaveOf({ ref, document, path, values, clientKey: deps.newKey(), now: deps.now() });
@@ -108,38 +104,18 @@ export function createReportScreen<P>(deps: ReportScreenDeps<P>, ref: ReportRef)
   }
 
   return {
-    snapshot: (): ReportScreenState => state,
-    subscribe(listener: () => void): () => void {
-      listeners.add(listener);
-      if (!stopListening) {
-        stopListening = queue.subscribe(onQueue);
-        onQueue();
-        void ask();
-      }
-      return () => {
-        listeners.delete(listener);
-        if (listeners.size > 0) return;
-        stopListening?.();
-        stopListening = null;
-      };
-    },
-    /** The signal came back, or the document is just old. */
-    refresh: (): void => void ask(),
-    /** A form outside the queue was answered (publishing). */
-    reload(): void {
-      changed = true;
-      void ask();
-    },
+    current: (): EphemeralAnswer | null => openForm?.answer ?? null,
     /** A refused section opens with what Portal said under each field. */
     openSection(path: SectionPath): void {
-      const document = documentNow();
-      const refused = mine.find((one) => one.refusal && !one.photo && samePath(one.path, path));
+      const { document, saves } = reportNow();
+      const refused = saves.find((one) => one.refusal && !one.photo && samePath(one.path, path));
       const answer = document ? reportFormAnswer(document, path, refused?.refusal?.errors) : null;
       openForm = answer ? { path, answer } : null;
       tell();
     },
     closeForm(): void {
-      dropUnsaved();
+      photos.forEach((_held, photo) => void deps.dropPhoto(photo));
+      photos.clear();
       openForm = null;
       tell();
     },
@@ -153,12 +129,12 @@ export function createReportScreen<P>(deps: ReportScreenDeps<P>, ref: ReportRef)
         return { ok: false, message: PHOTO_NOT_KEPT };
       }
     },
-    /** «Guardar» is the person's confirmation: the save is queued and the form closes, with signal or without. */
+    /** The save is queued and the form closes, with signal or without. */
     async submit(values: FormValues): Promise<FormSubmitOutcome> {
-      const document = documentNow();
+      const { document } = reportNow();
       if (!openForm || !document) return { done: false, errors: {}, message: NO_FORM };
       try {
-        await queue.add(saveOf(document, openForm.path, openForm.answer, values));
+        await deps.queue.add(saveOf(document, openForm.path, openForm.answer, values));
       } catch {
         return { done: false, errors: {}, message: NOT_KEPT };
       }
@@ -167,6 +143,45 @@ export function createReportScreen<P>(deps: ReportScreenDeps<P>, ref: ReportRef)
       tell();
       return { done: true, answer: null };
     },
-    discard: (clientKey: string): Promise<void> => queue.discard(clientKey),
+  };
+}
+
+export function createReportScreen<P>(deps: ReportScreenDeps<P>, ref: ReportRef) {
+  const listeners = new Set<() => void>();
+  let stopListening: (() => void) | null = null;
+  const tell = () => {
+    state = { ...feed.view(), form: forms.current() };
+    listeners.forEach((listener) => listener());
+  };
+  const feed = createDocumentFeed(deps.queue, ref, tell);
+  const reportNow = () => ({ document: state.draft?.ok ? state.draft.document : null, saves: feed.saves() });
+  const forms = createFormSession(deps, ref, reportNow, tell);
+  let state: ReportScreenState = { ...feed.view(), form: null };
+
+  return {
+    snapshot: (): ReportScreenState => state,
+    subscribe(listener: () => void): () => void {
+      listeners.add(listener);
+      if (!stopListening) {
+        stopListening = deps.queue.subscribe(feed.onQueue);
+        feed.onQueue();
+        void feed.ask();
+      }
+      return () => {
+        listeners.delete(listener);
+        if (listeners.size > 0) return;
+        stopListening?.();
+        stopListening = null;
+      };
+    },
+    /** The signal came back, or the document is just old. */
+    refresh: (): void => void feed.ask(),
+    /** A form outside the queue was answered (publishing). */
+    reload: feed.reload,
+    openSection: forms.openSection,
+    closeForm: forms.closeForm,
+    upload: forms.upload,
+    submit: forms.submit,
+    discard: (clientKey: string): Promise<void> => deps.queue.discard(clientKey),
   };
 }

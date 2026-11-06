@@ -56,7 +56,7 @@ const wire: ReportWire = {
 export const reportQueue = createReportQueue({ vault, wire });
 
 /** Each time the socket connects: at start, and when the signal comes back. */
-alConectar(() => void reportQueue.hydrate());
+alConectar(() => void reportQueue.kick());
 
 export async function keepReportPhoto(photo: { uri: string; mime: string }): Promise<KeptPhoto> {
   await FileSystem.makeDirectoryAsync(PHOTOS_FOLDER, { intermediates: true }).catch(() => undefined);

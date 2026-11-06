@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { createReportQueue, noticeOf, type FieldDocument, type KeptPhoto, type ReportRef, type ReportSave, type ReportVault, type ReportWire } from '@lilachat/shared';
 import { submitAppForm, uploadFormPhoto } from '../../../chat/commands/commandsApi';
-import { baseDe } from '../../../local/baseLocal';
+import { baseDe, ignoreClosedBase, type ValorMeta } from '../../../local/baseLocal';
 import { currentSocket } from '../../../useSocket';
 import { askReportDraft, openReportForm } from './reportsApi';
 
@@ -19,47 +19,52 @@ let session: { jwt: string; userId: string | null } | null = null;
 const previews = new Map<string, string>();
 const metaOf = () => (session?.userId ? baseDe(session.userId).meta : null);
 
+/** Logging out closes the base under whatever is reading it: that is nothing to keep, not an error. */
+const readMeta = (key: string): Promise<ValorMeta | undefined> =>
+  Promise.resolve(metaOf()?.get(key)).catch((error: unknown) => {
+    ignoreClosedBase(error);
+    return undefined;
+  });
+const writeMeta = (key: string, value: unknown): Promise<void> => Promise.resolve(metaOf()?.put({ clave: key, valor: value })).then(() => undefined, ignoreClosedBase);
+const removeMeta = (key: string): Promise<void> => Promise.resolve(metaOf()?.delete(key)).catch(ignoreClosedBase);
+
+async function photoBlobOf(ref: string): Promise<Blob | null> {
+  const kept = await readMeta(`${PHOTO_PREFIX}${ref}`);
+  return kept?.valor instanceof Blob ? kept.valor : null;
+}
+
 async function previewOf(ref: string): Promise<string> {
   const known = previews.get(ref);
   if (known) return known;
-  const kept = await metaOf()?.get(`${PHOTO_PREFIX}${ref}`);
-  if (!(kept?.valor instanceof Blob)) return '';
-  const url = URL.createObjectURL(kept.valor);
+  const blob = await photoBlobOf(ref);
+  if (!blob) return '';
+  const url = URL.createObjectURL(blob);
   previews.set(ref, url);
   return url;
 }
 
 const vault: ReportVault = {
   async load() {
-    const kept = await metaOf()?.get(QUEUE_KEY);
+    const kept = await readMeta(QUEUE_KEY);
     const saves = Array.isArray(kept?.valor) ? (kept.valor as ReportSave[]) : [];
     return Promise.all(saves.map(async (one) => (one.photo ? { ...one, photo: { ...one.photo, preview: await previewOf(one.photo.ref) } } : one)));
   },
-  async store(saves) {
-    await metaOf()?.put({ clave: QUEUE_KEY, valor: saves });
-  },
+  store: (saves) => writeMeta(QUEUE_KEY, saves),
   async loadDocument(key) {
-    const kept = await metaOf()?.get(`${DOCUMENT_PREFIX}${key}`);
+    const kept = await readMeta(`${DOCUMENT_PREFIX}${key}`);
     return (kept?.valor as FieldDocument | undefined) ?? null;
   },
-  async storeDocument(key, document) {
-    await metaOf()?.put({ clave: `${DOCUMENT_PREFIX}${key}`, valor: document });
-  },
+  storeDocument: (key, document) => writeMeta(`${DOCUMENT_PREFIX}${key}`, document),
   async dropPhoto(ref) {
     const url = previews.get(ref);
     if (url) URL.revokeObjectURL(url);
     previews.delete(ref);
-    await metaOf()?.delete(`${PHOTO_PREFIX}${ref}`);
+    await removeMeta(`${PHOTO_PREFIX}${ref}`);
   },
 };
 
 const NO_SESSION = { ok: false as const, message: 'Sin sesión.' };
 const targetOf = (ref: ReportRef, jwt: string) => ({ jwt, spaceId: ref.spaceId, clientId: ref.clientId });
-
-async function photoBlobOf(ref: string): Promise<Blob | null> {
-  const kept = await metaOf()?.get(`${PHOTO_PREFIX}${ref}`);
-  return kept?.valor instanceof Blob ? kept.valor : null;
-}
 
 const wire: ReportWire = {
   read: async (ref, reportId) => (session ? askReportDraft(targetOf(ref, session.jwt), ref.serviceId, ref.type, reportId) : NO_SESSION),
@@ -86,7 +91,7 @@ export function useReportQueueStart(jwt: string, userId: string | null): void {
   useEffect(() => {
     session = jwt ? { jwt, userId } : null;
     if (!session) return undefined;
-    void reportQueue.hydrate();
+    void reportQueue.kick();
     const kick = () => void reportQueue.kick();
     window.addEventListener('online', kick);
     return () => window.removeEventListener('online', kick);
@@ -95,7 +100,7 @@ export function useReportQueueStart(jwt: string, userId: string | null): void {
 
 export async function keepReportPhoto(file: File): Promise<KeptPhoto> {
   const ref = crypto.randomUUID();
-  await metaOf()?.put({ clave: `${PHOTO_PREFIX}${ref}`, valor: file });
+  await writeMeta(`${PHOTO_PREFIX}${ref}`, file);
   const preview = URL.createObjectURL(file);
   previews.set(ref, preview);
   return { ref, mime: file.type || 'image/jpeg', preview };

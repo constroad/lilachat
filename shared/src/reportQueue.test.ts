@@ -60,7 +60,7 @@ describe('draining', () => {
     const portal = fakePortal({ id: 'r1', tramos: [] });
     const { kept, vault } = fakeVault([saveOf(docOf('r1', []), general, 'a')]);
     const queue = queueWith(portal.wire, vault);
-    await queue.hydrate();
+    await queue.kick();
     await queue.idle();
     expect(portal.state.writes).toHaveLength(1);
     expect(kept.saves).toEqual([]);
@@ -74,6 +74,25 @@ describe('draining', () => {
     await queue.idle();
     expect(portal.state.writes[0]).toContain('file-of-ref-f-run-1');
     expect(kept.dropped).toEqual(['ref-f']);
+  });
+});
+
+describe('a disk that fails', () => {
+  it('in the middle of a pass stops it without losing anything, and it tries again', async () => {
+    const portal = fakePortal({ id: 'r1', tramos: [] });
+    const { kept, vault } = fakeVault([saveOf(docOf('r1', []), general, 'a')]);
+    const load = vault.load;
+    vault.load = async () => { throw new Error('closed'); };
+    const queue = queueWith(portal.wire, vault);
+    await queue.kick();
+    await queue.idle();
+    expect(queue.snapshot().stalled).toBe(true);
+    expect(kept.saves).toHaveLength(1);
+    vault.load = load;
+    await vi.advanceTimersByTimeAsync(60_000);
+    await queue.idle();
+    expect(portal.state.writes).toHaveLength(1);
+    expect(kept.saves).toEqual([]);
   });
 });
 

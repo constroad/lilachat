@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Camera, CheckCircle2, ChevronRight, Clock, Container, Ruler, Thermometer, Truck } from 'lucide-react';
 import { ARRIVED_LABEL, dataSectionOf, itemsLine, pageLine, photoSlotsOf, sectionRowLine, UNIT_GROUP_TITLES, unitBadgeOf, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
-import { Pill, StateDot } from './ReportSectionsWeb';
+import { Pill, ResultsStrip, StateDot } from './ReportSectionsWeb';
 
 /** Design j-05 (José 06/11): for the operator on the pista. Big plate, big slots, one click per action. */
 const ICONS = { ingreso: Truck, temperatura: Thermometer, escantillon: Ruler, vacia: Container } as const;
@@ -97,6 +97,7 @@ export function ReportUnitsWeb({ section, onOpen }: { section: RepeatSection; on
   return (
     <div data-testid={`unidades-${section.id}`} className="flex flex-col gap-4">
       {section.summary.length ? <p data-testid="resumen-unidades" className="text-[15px] font-bold">{section.summary.join(' · ')}</p> : null}
+      <ResultsStrip results={section.results} testId="resultados-unidades" />
       <p className="text-sm text-on-surface-variant">{head}</p>
       {section.items.length === 0 ? <p className="pt-4 text-center text-sm text-on-surface-variant">{NO_UNITS}</p> : null}
       {groups.waiting.length ? <Group title={UNIT_GROUP_TITLES.waiting} count={groups.waiting.length}>{groups.waiting.map((item) => <WaitingCard key={item.id} item={item} section={section} onOpen={onOpen} />)}</Group> : null}

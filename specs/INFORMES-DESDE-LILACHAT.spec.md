@@ -390,15 +390,36 @@ cumplan; `precisionM` no se manda (la app no guarda la precisión del GPS); la
 cámara se abre dentro del formulario de la foto, no al tocar el recuadro (un
 toque más que el diseño).
 
-Pendiente: José reaprueba `informe_de_campo`, `guardar_seccion_de_informe` y
-`agregar_foto_de_informe` en agentes (hasta entonces dan 502 y CTL-IMP
-también queda cortado); lila-app (`escantillonCm`, resumen) espera el OK de
-José en la sesión lila-2; el E2E en Test con los datos que Portal creó
-(servicio `6aedcc3a2f5e395dca260f16`, pedido `6aedcc392f5e395dca260f12`,
-despachos `6aedcc3a2f5e395dca260f19` a `…1d`) corre al reaprobar, midiendo
-el tiempo de la primera foto (tope de agentes: 7 s). El índice único por
-pedido de Portal cubre solo informes nuevos: dos pedidos de Globofast ya
-tienen dos controles.
+E2E del 06/11 (Test, Consorcio Vial del Pacífico, servicio QA-CTLPIS
+`6aedcc3a2f5e395dca260f16`, pedido `6aedcc392f5e395dca260f12`, informe
+`6aede78618cf3d526c1260f1`), con las tres herramientas reaprobadas por José:
+
+- Web (Chrome de José) y APK (emulador, OTA 1381ce77) abren el mismo
+  borrador. Abrir el informe: 1,0 s. «Datos generales» con el pedido elegido
+  guardó en menos de 2 s y habilitó el resto de secciones. «Información de
+  control» (tramo, turno) guardó en 2,5 s. CTL-IMP vuelve a abrir con sus
+  `tramos` (no se guardó nada).
+- **Bloqueo (resuelto en Agentes, pendiente de release):** el documento
+  llegaba con cinco secciones `form` y sin la `repeat` de unidades, aunque
+  `forms` traía `unidad` y `fotos` y `publish.missing` decía «Falta al menos
+  una unidad.». Portal sí emite seis; el server de Lilachat pasa el cuerpo de
+  Agentes tal cual a `fieldDocumentOf`, y `sectionsOf` no recorta secciones
+  sueltas (una inválida anula el documento entero). La causa estaba en la
+  lista blanca de Agentes (`core/notices/field-document.ts`, `repeatOf` exigía
+  `addLabel` con texto): commit `88b93ee` de Agentes deja pasar `addLabel`
+  vacío, `canAdd`, `photoKind`, `requireLocation`, `tool`, `summary`/`enabled`
+  por ítem, `publish.warnings` y copia `page` al `repeat`. **Regla:** la lista
+  blanca de Agentes duplica nuestro analizador; toda clave nueva que lea
+  `fieldDocument.ts` se le avisa a Agentes o se pierde sin error.
+- `RepeatSection.results`: Portal manda en la sección de unidades Carros,
+  Volumen y Terminadas; el analizador los lee y el hub y la lista de unidades
+  los muestran (`resultados-unidades`).
+- Sin verificar: «Llegó» y el formulario de datos, las cuatro fotos con GPS
+  (tiempo de la primera foto contra el tope de 7 s de agentes), publicar, el
+  PDF con cuatro fotos por fila y el WhatsApp por foto; lila-app
+  (`escantillonCm`, resumen) sigue esperando el OK de José en la sesión lila-2.
+  El índice único por pedido de Portal cubre solo informes nuevos: dos pedidos
+  de Globofast ya tienen dos controles.
 
 ## 4. Lilachat
 

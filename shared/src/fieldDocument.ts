@@ -24,7 +24,7 @@ export type SectionTemplate = PhotoMarks & { id: string; title: string; required
 /** The window of items on screen when Portal pages them (50 units of a control de pista). */
 export type ItemsPage = { current: number; total: number };
 export type RepeatItem = { id: string; title: string; summary: string[]; results: SectionResult[]; sections: FormSection[] };
-export type RepeatSection = { kind: 'repeat'; id: string; title: string; required: boolean; enabled: boolean; state: SectionState; summary: string[]; itemTitle: string; addLabel: string; /** False when the items come from elsewhere (the dispatches of an order): no «Agregar». */ canAdd: boolean; page?: ItemsPage; min: number; template: SectionTemplate[]; items: RepeatItem[] };
+export type RepeatSection = { kind: 'repeat'; id: string; title: string; required: boolean; enabled: boolean; state: SectionState; summary: string[]; /** Over all the items (Portal's Carros, Volumen, Terminadas). */ results: SectionResult[]; itemTitle: string; addLabel: string; /** False when the items come from elsewhere (the dispatches of an order): no «Agregar». */ canAdd: boolean; page?: ItemsPage; min: number; template: SectionTemplate[]; items: RepeatItem[] };
 export type DocumentSection = FormSection | RepeatSection;
 /** `id` is null until the first section is saved: Portal creates nothing on a read. */
 export type FieldDocument = { id: string | null; type: string; title: string; status: DocumentStatus; forms: Record<string, FormSchema>; sections: DocumentSection[]; publish: { label: string; missing: string[]; /** Shown without blocking «Publicar» (dispatches of the order with no row yet). */ warnings: string[] } };
@@ -139,7 +139,7 @@ function repeatOf(raw: Raw, forms: Record<string, FormSchema>): RepeatSection | 
   return {
     kind: 'repeat', id, title, template, items, min, canAdd: canAddOf(repeat), ...(page ? { page } : {}),
     required: raw.required === true, enabled: raw.enabled !== false,
-    state: oneOf(raw.state, SECTION_STATES, 'empty'), summary: lines(raw.summary),
+    state: oneOf(raw.state, SECTION_STATES, 'empty'), summary: lines(raw.summary), results: resultsOf(repeat.results ?? raw.results),
     itemTitle: text(repeat.itemTitle, LIMITS.title) || title, addLabel: text(repeat.addLabel, LIMITS.title) || 'Agregar',
   };
 }

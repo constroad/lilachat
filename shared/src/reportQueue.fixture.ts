@@ -15,7 +15,7 @@ const answerOf = (id: string | null, tramos: Tramo[], requireLocation = false) =
   sections: [
     { id: 'general', title: 'Datos generales', required: true, state: 'done', summary: [], results: [], form: 'general', values: {} },
     {
-      id: 'tramos', kind: 'repeat', title: 'Tramos', required: true, state: 'partial', summary: [], itemTitle: 'Tramo', addLabel: 'Agregar', min: 1,
+      id: 'tramos', kind: 'repeat', results: [], title: 'Tramos', required: true, state: 'partial', summary: [], itemTitle: 'Tramo', addLabel: 'Agregar', min: 1,
       template: [{ id: 'ubicacion', title: 'Ubicación', required: true, form: 'ubicacion' }, { id: 'bandejas', title: 'Bandejas', required: true, form: 'bandejas' }, { id: 'fotos', title: 'Fotos', required: false, form: 'fotos', tool: 'agregar_foto_de_informe', ...(requireLocation ? { photoKind: 'riego', requireLocation: true } : {}) }],
       items: tramos.map((tramo, index) => ({ id: tramo.id, title: `Tramo ${index + 1}`, summary: [], results: [], sections: [leaf('ubicacion'), leaf('bandejas'), leaf('fotos', { fotos: Array.from({ length: tramo.photos }, (_unused, photo) => ({ id: `f${photo}`, url: `https://x/${photo}.jpg` })) })] })),
     },

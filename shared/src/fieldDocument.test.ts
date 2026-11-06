@@ -213,6 +213,12 @@ describe('a control de pista (contract 06/11): the units come from the dispatche
     expect(requiresLocation(document, { ...photoPath, key: 'datos' })).toBe(false);
   });
 
+  it('the repeat keeps the results Portal computed over all the units (Carros, Volumen, Terminadas)', () => {
+    const results = [{ label: 'Carros', value: '4', tone: 'neutral' }, { label: 'Terminadas', value: '1', tone: 'ok' }];
+    expect(units(pista([], { results })).results).toEqual(results);
+    expect(units(pista([], {})).results).toEqual([]);
+  });
+
   it('a repeat adds by default; an empty «Agregar» or `canAdd: false` takes the button away, and a bad page is no page', () => {
     expect(units(parsed()).canAdd).toBe(true);
     expect(parsed().publish.warnings).toEqual([]);

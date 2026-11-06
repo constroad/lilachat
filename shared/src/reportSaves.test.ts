@@ -12,7 +12,7 @@ const body = {
   sections: [
     { id: 'general', title: 'Datos generales', required: true, state: 'done', summary: ['MC-30'], results: [], form: 'general', values: { liquido: 'MC-30' } },
     {
-      id: 'tramos', kind: 'repeat', title: 'Tramos', required: true, state: 'partial', summary: ['1 tramo'], itemTitle: 'Tramo', addLabel: 'Agregar tramo', min: 1,
+      id: 'tramos', kind: 'repeat', results: [], title: 'Tramos', required: true, state: 'partial', summary: ['1 tramo'], itemTitle: 'Tramo', addLabel: 'Agregar tramo', min: 1,
       template: [{ id: 'ubicacion', title: 'Ubicación', required: true, form: 'ubicacion' }, { id: 'bandejas', title: 'Bandejas', required: true, form: 'bandejas' }, { id: 'fotos', title: 'Fotos', required: false, form: 'fotos', tool: 'agregar_foto_de_informe' }],
       items: [{ id: 't1', title: 'Tramo 1', summary: ['Km 12'], results: [{ label: 'Tasa', value: '1 lt/m²', tone: 'ok' }], sections: [{ id: 'ubicacion', state: 'done', values: { tramo: 'Km 12' } }, { id: 'bandejas', state: 'empty', values: {} }, { id: 'fotos', state: 'done', values: { fotos: [{ id: 'f1', url: 'https://x/1.jpg', thumb_url: 'https://x/1t.jpg', descripcion: 'Inicio', hora: '10:02' }] } }] }],
     },

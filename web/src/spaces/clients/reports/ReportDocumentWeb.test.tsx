@@ -134,7 +134,7 @@ describe('ReportDocumentWeb', () => {
   it('a control de pista (design j-05): the volquetes that left the plant with «Llegó», the ones on site with their four photos, and «Publicar» with what is missing and the warning', async () => {
     const photoEntry = (kind: string) => ({ id: `foto-${kind}`, title: `Foto de ${kind}`, required: true, form: 'fotos', tool: 'agregar_foto_de_informe', photoKind: kind, requireLocation: true });
     const units = {
-      id: 'unidades', kind: 'repeat', title: 'Unidades', required: true, state: 'partial', summary: ['1 de 3 terminadas · 45 m³'], itemTitle: 'Unidad', addLabel: '', min: 1,
+      id: 'unidades', kind: 'repeat', results: [{ label: 'Carros', value: '4', tone: 'neutral' }], title: 'Unidades', required: true, state: 'partial', summary: ['1 de 3 terminadas · 45 m³'], itemTitle: 'Unidad', addLabel: '', min: 1,
       template: [{ id: 'datos', title: 'Datos', required: true, form: 'ubicacion' }, photoEntry('ingreso'), photoEntry('temperatura'), photoEntry('vacia'), photoEntry('escantillon')],
       items: [
         { id: 'd1', title: 'Unidad 1 · QAP-101', summary: ['Terminó 09:12', 'Guía G1 · 15 m³'], results: [], sections: [{ id: 'datos', state: 'done', summary: ['Llegada 06:15 · 150° · 3.0 cm'], values: {} }, { id: 'foto-vacia', state: 'done', values: { fotos: [{ id: 'v', url: 'https://x/v.jpg' }] } }] },
@@ -150,6 +150,7 @@ describe('ReportDocumentWeb', () => {
     const list = screen.getByTestId('unidades-unidades');
     expect(screen.queryByTestId('agregar-item')).toBeNull();
     expect(screen.getByTestId('resumen-unidades')).toHaveTextContent('1 de 3 terminadas · 45 m³');
+    expect(screen.getByTestId('resultados-unidades')).toHaveTextContent('Carros');
     expect(list).toHaveTextContent('Salieron de planta · toca la que llega');
     expect(list).toHaveTextContent('En obra · por orden de llegada');
     expect(within(screen.getByTestId('unidad-d3')).getByTestId('llego-d3')).toHaveTextContent('Llegó');

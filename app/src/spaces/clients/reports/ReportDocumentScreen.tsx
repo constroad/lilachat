@@ -57,7 +57,7 @@ function HubCards({ report, onOpen, onOpenItems }: { report: FieldDocument; onOp
     const open = section.enabled && !locked;
     if (section.kind === 'repeat') {
       const first = section.items[0];
-      return <SectionCard key={section.id} testID={`seccion-${section.id}`} title={section.title} badge={badge} state={section.state} summary={[itemsLine(section), ...(first?.summary ?? [])]} results={first?.results ?? []} onPress={open ? () => onOpenItems(section.id) : undefined} />;
+      return <SectionCard key={section.id} testID={`seccion-${section.id}`} title={section.title} badge={badge} state={section.state} summary={[itemsLine(section), ...(first?.summary ?? [])]} results={section.results.length ? section.results : first?.results ?? []} onPress={open ? () => onOpenItems(section.id) : undefined} />;
     }
     return <SectionCard key={section.id} testID={`seccion-${section.id}`} title={section.title} badge={badge} state={section.state} summary={section.summary} results={section.results} onPress={open ? () => onOpen({ sectionId: section.id, itemId: null, key: section.id }) : undefined} />;
   };

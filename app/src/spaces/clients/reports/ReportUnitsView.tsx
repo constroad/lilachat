@@ -3,7 +3,7 @@ import { Image, Platform, Pressable, Text, View } from 'react-native';
 import { Camera, CheckCircle2, ChevronRight, Clock, Container, Ruler, Thermometer, Truck } from 'lucide-react-native';
 import { ARRIVED_LABEL, dataSectionOf, itemsLine, pageLine, photoSlotsOf, sectionRowLine, UNIT_GROUP_TITLES, unitBadgeOf, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
-import { Pill, StateDot } from './ReportSections';
+import { Pill, ResultsStrip, StateDot } from './ReportSections';
 
 /** Design j-05 (José 06/11): for the operator on the pista, with gloves and in a hurry. Big plate, big slots, one tap per action. */
 const SLOT = 72;
@@ -103,6 +103,7 @@ export function ReportUnitsView({ section, onOpen }: { section: RepeatSection; o
   return (
     <View testID={`unidades-${section.id}`} className="gap-4">
       {section.summary.length ? <Text testID="resumen-unidades" className="text-[15px] font-bold text-on-surface">{section.summary.join(' · ')}</Text> : null}
+      <ResultsStrip results={section.results} testID="resultados-unidades" />
       <Text className="text-[14px] text-on-surface-variant">{head}</Text>
       {section.items.length === 0 ? <Text className="pt-4 text-center text-[14px] text-on-surface-variant">{NO_UNITS}</Text> : null}
       {groups.waiting.length ? <Group title={UNIT_GROUP_TITLES.waiting} count={groups.waiting.length}>{groups.waiting.map((item) => <WaitingCard key={item.id} item={item} section={section} onOpen={onOpen} />)}</Group> : null}

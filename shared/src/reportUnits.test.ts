@@ -13,7 +13,7 @@ const body = {
   sections: [
     { id: 'general', title: 'Datos generales', required: true, state: 'done', summary: [], results: [], form: 'general', values: {} },
     {
-      id: 'unidades', kind: 'repeat', title: 'Unidades', required: true, state: 'partial', summary: [], itemTitle: 'Unidad', addLabel: '', min: 1,
+      id: 'unidades', kind: 'repeat', results: [], title: 'Unidades', required: true, state: 'partial', summary: [], itemTitle: 'Unidad', addLabel: '', min: 1,
       template: [{ id: 'datos', title: 'Datos', required: true, form: 'unidad' }, photoEntry('ingreso'), photoEntry('temperatura'), photoEntry('vacia'), photoEntry('escantillon')],
       items: [
         unit('d1', 'Unidad 1 · QAP-101', ['Terminó 09:12', 'Guía G1 · 15 m³'], [{ id: 'datos', state: 'done', values: {} }, { id: 'foto-ingreso', state: 'done', values: { fotos: [photo('a')] } }, { id: 'foto-temperatura', state: 'done', values: { fotos: [photo('b')] } }, { id: 'foto-vacia', state: 'done', values: { fotos: [photo('c')] } }, { id: 'foto-escantillon', state: 'done', values: { fotos: [photo('d')] } }]),

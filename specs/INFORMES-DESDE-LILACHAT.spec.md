@@ -330,12 +330,18 @@ spec al día. Las herramientas nuevas las aprueba José en agentes al publicarse
   2. Con el teclado abierto, al cerrarse el formulario Android lo pasaba al
      compositor del chat, oculto bajo el informe: lo que se tecleaba iba ahí.
      `useAppFormState` cierra el teclado al enviar. Sin test unitario (la app
-     solo prueba módulos puros): se verificó en el emulador.
+     solo prueba módulos puros). Verificado en el emulador con el OTA
+     `19c3f02a`: teclado abierto antes de enviar, cerrado después, y el
+     compositor vacío y sin foco.
   3. Las confirmaciones se apilaban sobre las secciones. `staleAnswerIds`
-     deja solo la última respuesta.
-  4. **Abierto, en Portal:** la fila y el título del informe dicen «4 de
-     noviembre» aunque `fecha` y el PDF dicen 05/11 (fecha sin hora leída en
-     UTC). Avisado a Portal.
+     deja solo la última respuesta. Verificado en el emulador.
+  4. La fila y el título del informe decían «4 de noviembre» con `fecha` y PDF
+     en 05/11 (fecha sin hora leída en UTC). Portal lo arregló en `86dc0eb9`;
+     además, cambiar `fecha` en `general` ahora mueve la fila. Verificado en
+     vivo: un informe nuevo nació con el 5 y siguió al 3 al cambiarla.
+  Publicado: web y server `a44638c`, OTA `19c3f02a` (runtime `79221c17`).
+  Datos QA: tres informes en TEST COMPANY, que limpia Portal; sus avisos en el
+  canal del cliente quedan para que José los borre.
   Sin verificar en vivo: el rechazo de un servicio ajeno (solo test del
   server), un miembro sin usuario de Portal (el E2E usó al admin) y la foto con
   GPS real.

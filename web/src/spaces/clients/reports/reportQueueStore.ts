@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { createReportQueue, noticeOf, type FieldDocument, type KeptPhoto, type ReportRef, type ReportSave, type ReportVault, type ReportWire } from '@lilachat/shared';
 import { submitAppForm, uploadFormPhoto } from '../../../chat/commands/commandsApi';
-import { baseDe, ignoreClosedBase, type ValorMeta } from '../../../local/baseLocal';
+import { baseDe, ignoreClosedBase } from '../../../local/baseLocal';
 import { currentSocket } from '../../../useSocket';
 import { askReportDraft, openReportForm } from './reportsApi';
 
@@ -20,7 +20,7 @@ const previews = new Map<string, string>();
 const metaOf = () => (session?.userId ? baseDe(session.userId).meta : null);
 
 /** Logging out closes the base under whatever is reading it: that is nothing to keep, not an error. */
-const readMeta = (key: string): Promise<ValorMeta | undefined> =>
+const readMeta = (key: string) =>
   Promise.resolve(metaOf()?.get(key)).catch((error: unknown) => {
     ignoreClosedBase(error);
     return undefined;

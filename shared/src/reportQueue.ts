@@ -97,6 +97,12 @@ const dropPhotos = async (vault: ReportVault, saves: readonly ReportSave[]) => {
   await Promise.all(saves.flatMap((one) => (one.photo ? [vault.dropPhoto(one.photo.ref)] : [])));
 };
 
+async function emptyQueue(vault: ReportVault, store: ReturnType<typeof createQueueStore>): Promise<void> {
+  const gone = store.snapshot().saves;
+  await store.change(() => []);
+  await dropPhotos(vault, gone);
+}
+
 const keepDocument = ({ vault }: QueueCore, ref: ReportRef, document: FieldDocument) => Promise.all([vault.storeDocument(reportKeyOf(ref), document), vault.storeDocument(reportTypeKeyOf(ref), document)]);
 
 /** What Portal has now; the server keeps it too, for the forms that follow. */
@@ -178,6 +184,14 @@ async function drainReport(core: QueueCore, key: string): Promise<boolean> {
   }
 }
 
+/** A refused save the person gives up on, with what hangs from it. */
+async function discardSave({ vault, store }: QueueCore, clientKey: string): Promise<void> {
+  const before = await vault.load();
+  const kept = withoutSave(before, clientKey);
+  await store.change(() => kept);
+  await dropPhotos(vault, before.filter((one) => !kept.includes(one)));
+}
+
 /** The document on screen: Portal's, or with no signal the last one kept; a new report starts from the forms of its type. */
 async function documentOf(core: QueueCore, ref: ReportRef, reportId: string | null): Promise<OpenedReport> {
   const response = await core.wire.read(ref, reportId);
@@ -209,12 +223,10 @@ export function createReportQueue({ vault, wire, exclusive = (task) => task() }:
     clearTimer();
     timer = setTimeout(() => void run(), retryDelayMs(attempts));
   };
-  async function forget(): Promise<void> {
+  const forget = (): Promise<void> => {
     clearTimer();
-    const gone = store.snapshot().saves;
-    await store.change(() => []);
-    await dropPhotos(vault, gone);
-  }
+    return emptyQueue(vault, store);
+  };
   async function tryLater(save: ReportSave): Promise<void> {
     const attempts = save.attempts + 1;
     await store.editSave(save.clientKey, (one) => ({ ...one, attempts }));
@@ -261,13 +273,7 @@ export function createReportQueue({ vault, wire, exclusive = (task) => task() }:
       await store.change((saves) => queueSave(saves, save));
       void run();
     },
-    /** A refused save the person gives up on, with what hangs from it. */
-    async discard(clientKey: string): Promise<void> {
-      const before = await vault.load();
-      const kept = withoutSave(before, clientKey);
-      await store.change(() => kept);
-      await dropPhotos(vault, before.filter((one) => !kept.includes(one)));
-    },
+    discard: (clientKey: string) => discardSave(core, clientKey),
     /** What is on the disk, on its way: at start, after a restart, when the signal comes back. */
     kick: run,
     /** Resolves when no pass is running. */

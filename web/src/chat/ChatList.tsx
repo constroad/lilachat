@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CheckCheck, ChevronDown, ListTodo, MessageSquarePlus, MoreVertical, NotebookPen, PanelLeftClose, Search, Settings, SquarePen, Star, Users } from 'lucide-react';
-import type { FiltroDeChats } from '@lilachat/shared';
+import { anyChatUnread, type FiltroDeChats } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { Logo } from '../ui/Logo';
 import { ThemeToggle } from '../ui/ThemeToggle';
@@ -128,7 +128,7 @@ export function ChatList({
     { id: 'nuevo-borrador', label: 'Nuevo borrador', icon: NotebookPen, run: onNewBorrador },
     { id: 'agenda', label: 'Pendientes y encuestas', icon: ListTodo, run: onAgenda },
     ...(onDestacados ? [{ id: 'destacados', label: 'Mensajes destacados', icon: Star, run: onDestacados }] : []),
-    ...(chats.some((chat) => chat.unread > 0 || chat.markedUnread === true) ? [{ id: 'leer-todo', label: 'Leer todo', icon: CheckCheck, run: () => void readAll() }] : []),
+    ...(anyChatUnread(chats) ? [{ id: 'leer-todo', label: 'Leer todo', icon: CheckCheck, run: () => void readAll() }] : []),
   ];
 
   return (

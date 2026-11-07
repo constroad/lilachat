@@ -34,6 +34,10 @@ export type ChatFiltrable = {
 
 const estaSinLeer = (chat: ChatFiltrable): boolean => chat.sinLeer > 0 || chat.marcadoNoLeido === true;
 
+/** The chats as the server lists them: «Leer todo» only shows with something to read. */
+export const anyChatUnread = (chats: readonly { unread: number; markedUnread?: boolean | undefined }[]): boolean =>
+  chats.some((chat) => chat.unread > 0 || chat.markedUnread === true);
+
 /**
  * Sin tildes y en minúsculas.
  *

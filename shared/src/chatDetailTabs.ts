@@ -8,7 +8,9 @@ export type ChatDetailKind = 'direct' | 'group' | 'notas';
 
 export const CHAT_DETAIL_TAB_LABEL: Record<ChatDetailTab, string> = { members: 'Miembros', media: 'Media', settings: 'Ajustes' };
 
-export function chatDetailTabs(kind: ChatDetailKind): ChatDetailTab[] {
+/** A draft's only setting is its reminders, and an encrypted chat has none: the tab would open empty. */
+export function chatDetailTabs(kind: ChatDetailKind, encrypted = false): ChatDetailTab[] {
+  if (kind === 'notas' && encrypted) return ['media'];
   return kind === 'group' ? ['members', 'media', 'settings'] : ['media', 'settings'];
 }
 

@@ -9,6 +9,8 @@ describe('chat detail tabs (pending 69)', () => {
   it('a 1:1 and a draft have no members to list', () => {
     expect(chatDetailTabs('direct')).toEqual(['media', 'settings']);
     expect(chatDetailTabs('notas')).toEqual(['media', 'settings']);
+    expect(chatDetailTabs('notas', true)).toEqual(['media']);
+    expect(chatDetailTabs('direct', true)).toEqual(['media', 'settings']);
   });
 
   it('opens on the first tab, or where the ⋮ asked', () => {

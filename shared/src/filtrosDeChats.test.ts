@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { contarChats, filtrarChats, separarArchivados, type ChatFiltrable } from './filtrosDeChats.js';
+import { anyChatUnread, contarChats, filtrarChats, separarArchivados, type ChatFiltrable } from './filtrosDeChats.js';
 
 const chat = (parcial: Partial<ChatFiltrable> & { titulo: string }): ChatFiltrable => ({
   ultimo: '',
@@ -147,5 +147,19 @@ describe('archivados y marcados como no leídos', () => {
 
     expect(filtrarChats({ chats, filtro: 'no-leidos', texto: '' }).map((chat) => chat.titulo)).toEqual(['marcado']);
     expect(contarChats(chats)['no-leidos']).toBe(1);
+  });
+});
+
+describe('anyChatUnread', () => {
+  it('counts a chat with messages to read and one marked by hand', () => {
+    // Act and assert
+    expect(anyChatUnread([{ unread: 0 }, { unread: 2 }])).toBe(true);
+    expect(anyChatUnread([{ unread: 0, markedUnread: true }])).toBe(true);
+  });
+
+  it('has nothing to read in a read list or an empty one', () => {
+    // Act and assert
+    expect(anyChatUnread([{ unread: 0, markedUnread: false }])).toBe(false);
+    expect(anyChatUnread([])).toBe(false);
   });
 });

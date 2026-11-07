@@ -476,7 +476,7 @@ export function ChatDetailScreen({
             {tarjetas}
 
             <View onLayout={(event) => ((sharedY.current = event.nativeEvent.layout.y), followShared.current && scrollToShared())}>
-              <DetailTabBar tabs={chatDetailTabs(detalle!.kind)} active={tab} onChange={setTab} />
+              <DetailTabBar tabs={chatDetailTabs(detalle!.kind, detalle!.encrypted)} active={tab} onChange={setTab} />
             </View>
 
             {tab === 'media' ? (

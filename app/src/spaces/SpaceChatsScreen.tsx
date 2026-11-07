@@ -1,11 +1,12 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { BackHandler, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { Archive, AtSign, ChevronDown, ChevronRight, Hash, Inbox, Lock, MessagesSquare, Plus, Search, UserPlus } from 'lucide-react-native';
-import { aplicarMensajeALista, canManageMembers, clientChatIds, formatChatTimestamp, marcarLeido, nombreDeContacto, spaceListReady, spaceSections, splitArchived, splitClients, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
+import { anyChatUnread, aplicarMensajeALista, canManageMembers, clientChatIds, formatChatTimestamp, marcarLeido, nombreDeContacto, spaceListReady, spaceSections, splitArchived, splitClients, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
 import type { MensajeEnVivo as LiveMessage } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 import { BarraDeSeleccionDeChats } from '../chat/BarraDeSeleccionDeChats';
 import { FilaDeChat, PendingMarker } from '../chat/FilaDeChat';
+import { ReadAllRow } from '../chat/ReadAllRow';
 import { useAccionesDeSeleccion } from '../chat/useAccionesDeSeleccion';
 import { useChatSelection } from '../chat/useChatSelection';
 import { openChatNow } from '../chat/openChatNow';
@@ -190,6 +191,7 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
         <ActivityChip testID="chip-hilos" Icon={MessagesSquare} label="Hilos" count={activity.threads} onPress={() => props.onActivity('threads')} />
         <ActivityChip testID="chip-menciones" Icon={AtSign} label="Menciones" count={activity.mentions} onPress={() => props.onActivity('mentions')} />
       </View>
+      {ready && chats && anyChatUnread(chats) ? <ReadAllRow jwt={props.jwt} workspaceId={space.id} onDone={() => void load()} /> : null}
       <PendingRequestsRow space={space} onOpen={props.onWorkspace} />
       {failed && chats === null ? (
         <Pressable onPress={() => void load()} className="mx-4 mt-3 rounded-xl bg-error/10 px-4 py-3"><Text className="text-[13px] text-error">No se pudo cargar el espacio. Toca para reintentar.</Text></Pressable>

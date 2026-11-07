@@ -95,7 +95,7 @@ export function PanelDeInfo(props: {
         />
         {chat.kind !== 'direct' ? <DescripcionDelChat descripcion={detalle?.descripcion} editable={info.puedeEditar} onGuardar={editar.describir} /> : null}
         {props.tarjetas}
-        <DetailTabBar tabs={chatDetailTabs(chat.kind)} active={tab} onChange={setTab} />
+        <DetailTabBar tabs={chatDetailTabs(chat.kind, chat.encrypted)} active={tab} onChange={setTab} />
         {tab === 'members' && accessTarget ? <ClientAccessSection target={accessTarget} people={people} /> : null}
         {tab === 'members' && info.miembros.length ? (
           <ParticipantesDelChat

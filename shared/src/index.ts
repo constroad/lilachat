@@ -153,6 +153,7 @@ export * from './serviceMap.js';
 export * from './workMap.js';
 export * from './workMapDischarges.js';
 export * from './workMapExport.js';
+export * from './workMapPanel.js';
 export * from './workMapProgress.js';
 export * from './workProgressSend.js';
 export * from './zipStore.js';

@@ -133,8 +133,26 @@ pero `get_screen` devuelve el mismo HTML. Por eso se generó aparte.
   con un selector y en el APK con pastillas. Solo ofrece días con avance, porque otro día
   daría el mismo mapa, y no aparece con un solo día. Las fechas se comparan como texto
   `YYYY-MM-DD`, así ninguna zona horaria las mueve.
-- **No se dibuja todavía:** «Registrar avance», «Compartir avance» y «Editar obra». Sin
-  puerta de escritura serían botones de mentira.
+- **No se dibuja todavía:** «Editar obra» ni «Registrar avance» como botón suelto. Sin
+  puerta de escritura serían botones de mentira. «Compartir avance» abre la exportación.
+- **Composición web (07/11, José: «no se está pareciendo en nada al diseño»):** la pestaña
+  «Mapa» ya no es una tarjeta dentro de la columna del detalle. Ocupa toda la
+  conversación (`MapWorkspace`): el canal quita su relleno y su scroll (`onMapOpen`).
+  Arriba va la barra de o-01: ruta y pestañas subrayadas a la izquierda; «Pantalla
+  completa», «Portal» y «Compartir avance» a la derecha. Debajo, el mapa a toda la altura
+  con tarjetas flotantes: trabajos con su %, etapa y día de corte arriba, «Convenciones»
+  abajo a la izquierda y el zoom de MapLibre abajo a la derecha. A la derecha, el panel de
+  380–400 px: «Avance de la obra» con el estado del servicio, la cifra grande, la longitud
+  total, la barra por trabajo y los metros por etapa; las calles agrupadas por etapa con
+  su estado («En ejecución», «Por iniciar», «Terminada», de `stageStateLabel`); y el pie
+  «Corte: …». Los admins ven el avance sugerido (o-07) arriba de las calles.
+- **Ancho o angosto lo decide el tablero, no la ventana:** con 880 px o más el panel va a
+  la derecha. Menos, como en el teléfono de o-01: filtros en filas bajo las pestañas, mapa
+  de 58 vh y el panel como hoja redondeada que sube sobre el mapa. La lista de chats al
+  lado hace que la ventana mienta, por eso se mide con `ResizeObserver`.
+- **Diferencias con o-01 a propósito:** sin «Editar obra», «Registrar avance», «Ing. de
+  campo» ni «Sincronizado con Caseta», que no tienen dato detrás. Sin descripción por
+  calle: Portal no la manda.
 - **Trampa:** el CSS de MapLibre pone `position: relative` en su contenedor. Si ese
   `div` lleva `absolute`, mide 0 de alto y el mapa no se ve, aunque cargue sin error.
 - **APK:** `app/src/spaces/clients/workMap/*` con `@maplibre/maplibre-react-native`.

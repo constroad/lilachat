@@ -102,6 +102,8 @@ export function ClientServices(props: { /** Who can be a report's responsible. *
   const [opened, setOpened] = useState<SpaceClientService | null>(null);
   const [filter, setFilter] = useState<ServiceFilter>('all');
   const [startOrderId, setStartOrderId] = useState<string | undefined>();
+  // The map takes the whole conversation (o-01): no padding and its own scroll.
+  const [mapOpen, setMapOpen] = useState(false);
   const { focusSeq, records, onFocused } = props;
   const clientServices = props.client.services;
   // The records say which order the card was: until they arrive, this waits.
@@ -122,9 +124,9 @@ export function ClientServices(props: { /** Who can be a report's responsible. *
   const total = props.client.services.length;
   const sees = serviceAccessOf(props.client.access);
   return (
-    <div data-testid="servicios-cliente" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-6">
+    <div data-testid="servicios-cliente" className={`min-h-0 flex-1 bg-background ${mapOpen && opened ? 'flex flex-col overflow-hidden' : 'overflow-y-auto p-4 md:p-6'}`}>
       {opened && props.target ? (
-        <ServiceDetailWeb people={props.people ?? []} target={props.target} chatId={props.client.chat_id} service={opened} seesMoney={Boolean(props.client.access?.money)} admin={Boolean(props.client.access?.admin)} seesDrive={sees.drive} driveOnly={!sees.detail} onBack={() => setOpened(null)} onToChat={props.onToChat} links={links} startOrderId={startOrderId} />
+        <ServiceDetailWeb people={props.people ?? []} target={props.target} chatId={props.client.chat_id} service={opened} seesMoney={Boolean(props.client.access?.money)} admin={Boolean(props.client.access?.admin)} seesDrive={sees.drive} driveOnly={!sees.detail} onBack={() => setOpened(null)} onToChat={props.onToChat} links={links} startOrderId={startOrderId} onMapOpen={setMapOpen} />
       ) : (
         <div className="mx-auto flex max-w-3xl flex-col gap-3">
           {/* José 31/10: the client's link here; an order's in its sheet, a service's on its card. */}

@@ -60,6 +60,40 @@ describe('ServiceMapWeb', () => {
     expect(screen.getByTestId('mapa-avance')).toHaveTextContent('400 m de 1 000 m');
   });
 
+  it('lists the streets under their stage, says where each stage is and where the map is cut (design o-01)', async () => {
+    // Act
+    showMap();
+
+    // Assert
+    const first = await screen.findByText('Etapa 1 · En ejecución');
+    expect(first.closest('section')).toContainElement(screen.getByTestId('mapa-calle-s1'));
+    expect(screen.getByText('Etapa 2 · Por iniciar').closest('section')).toContainElement(screen.getByTestId('mapa-calle-s2'));
+    expect(screen.getByTestId('mapa-barra-trabajos').children).toHaveLength(1);
+    expect(screen.getByTestId('mapa-corte-pie')).toHaveTextContent('Corte: Hasta hoy');
+  });
+
+  it('on a wide board the filters float over the map and the panel goes to its right', async () => {
+    // Arrange
+    let report: (width: number) => void = () => undefined;
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(private readonly onResize: ResizeObserverCallback) {}
+      observe() { report = (width) => this.onResize([{ contentRect: { width } } as ResizeObserverEntry], this as unknown as ResizeObserver); }
+      disconnect() { report = () => undefined; }
+    });
+    showMap();
+    await screen.findByTestId('mapa-lienzo');
+
+    // Act
+    act(() => report(1200));
+
+    // Assert
+    expect(screen.getByTestId('mapa-servicio')).toHaveAttribute('data-wide', 'true');
+    expect(screen.getByTestId('mapa-exportar')).toHaveTextContent('Compartir avance');
+    act(() => report(600));
+    expect(screen.getByTestId('mapa-servicio')).toHaveAttribute('data-wide', 'false');
+    vi.unstubAllGlobals();
+  });
+
   it('shows the progress up to the day chosen and keeps the work picked', async () => {
     // Arrange
     const twoDays: WorkMap = {

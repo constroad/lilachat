@@ -1,15 +1,31 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Download, ExternalLink, Maximize2, Minimize2 } from 'lucide-react';
-import { dischargePinsOf, metersLabel, stretchLinesOf, suggestDischarges, workMapCutDays, workMapCutLabel, workMapDayFilter, workMapHeadline, workMapStageFilter, workMapView, workMapWorkFilter, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type WorkMapStreetRow, type WorkMapView } from '@lilachat/shared';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { ExternalLink, Maximize2, Minimize2, Share2 } from 'lucide-react';
+import { dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange } from '@lilachat/shared';
 import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
+import { MapFilters, MapLegend } from './WorkMapOverlays';
+import { WorkMapPanel } from './WorkMapPanel';
 
 const WorkMapCanvas = lazy(() => import('./WorkMapCanvas'));
 
-const CHIP = 'flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold';
-const CHIP_ON = 'border-primary bg-primary text-on-primary';
-const CHIP_OFF = 'border-outline/20 bg-surface text-on-surface';
-const ICON_BUTTON = 'flex h-9 items-center gap-1.5 rounded-xl border border-outline/20 px-3 text-[13px] font-semibold text-on-surface';
+const ACTION = 'flex h-10 shrink-0 items-center gap-2 rounded-xl border border-outline/20 bg-surface px-3 text-[13px] font-semibold text-on-surface hover:bg-background';
+/** Under this width the panel goes under the map, as the design's phone (o-01 mobile). */
+const WIDE_MIN_PX = 880;
+/** The bar over the map: crumbs and tabs on the left, the actions on the right (o-01). */
+export const MAP_HEAD_BAR = 'flex shrink-0 items-start gap-3 border-b border-outline/15 bg-surface px-4 pt-3 md:px-6';
+
+/** Wide or narrow by the board's own width: the chat list beside it decides more than the window. */
+function useWide(holder: RefObject<HTMLElement | null>): boolean {
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const element = holder.current;
+    if (!element || typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(([entry]) => setWide((entry?.contentRect.width ?? 0) >= WIDE_MIN_PX));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [holder]);
+  return wide;
+}
 
 /** The browser's full screen when it allows it; the layer over the page stands either way. */
 function useFullScreen() {
@@ -41,77 +57,6 @@ function useFullScreen() {
   return { holder, expanded, open, close };
 }
 
-function ProgressBar(props: { percent: number }) {
-  return (
-    <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface-variant">
-      <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, props.percent)}%` }} />
-    </div>
-  );
-}
-
-function StreetRow(props: { street: WorkMapStreetRow }) {
-  const { street } = props;
-  return (
-    <li data-testid={`mapa-calle-${street.id}`} className="rounded-xl border border-outline/15 bg-surface p-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="min-w-0 truncate text-[14px] font-semibold text-on-surface">{street.name}</p>
-        <span className="shrink-0 font-mono text-[12px] text-on-surface-variant">{metersLabel(street.lengthM)}</span>
-      </div>
-      <div className="relative mt-2 h-2 overflow-hidden rounded-full bg-surface-variant">
-        {street.segments.map((segment) => (
-          <span key={`${segment.workId}-${segment.fromPct}`} className="absolute inset-y-0" style={{ left: `${segment.fromPct}%`, width: `${segment.widthPct}%`, backgroundColor: segment.color }} />
-        ))}
-      </div>
-      <p className="mt-1.5 text-[12px] text-on-surface-variant">{street.status}</p>
-    </li>
-  );
-}
-
-function WorkChips(props: { view: WorkMapView; workId?: string; onPick: (workId?: string) => void }) {
-  if (!props.view.works.length) return null;
-  return (
-    <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
-      <button type="button" data-testid="mapa-trabajo-todos" aria-pressed={!props.workId} onClick={() => props.onPick()} className={`${CHIP} ${props.workId ? CHIP_OFF : CHIP_ON}`}>Todos</button>
-      {props.view.works.map((work) => (
-        <button key={work.id} type="button" data-testid={`mapa-trabajo-${work.id}`} aria-pressed={props.workId === work.id} onClick={() => props.onPick(work.id)} className={`${CHIP} ${props.workId === work.id ? CHIP_ON : CHIP_OFF}`}>
-          <span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: work.color }} />
-          {work.name} {work.percent} %
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function Legend(props: { view: WorkMapView }) {
-  return (
-    <div className="pointer-events-none absolute bottom-2 left-2 flex max-w-[70%] flex-wrap gap-x-3 gap-y-1 rounded-lg bg-surface/95 px-2.5 py-1.5 text-[11px] font-medium text-on-surface shadow-sm">
-      {props.view.works.map((work) => (
-        <span key={work.id} className="flex items-center gap-1"><span aria-hidden className="h-1 w-3.5 rounded-full" style={{ backgroundColor: work.color }} />{work.name}</span>
-      ))}
-      <span className="text-on-surface-variant">Punteado: por ejecutar</span>
-    </div>
-  );
-}
-
-function Header(props: { view: WorkMapView; pageUrl: string; stages: ReactNode; expanded: boolean; onToggle: () => void; onExport: () => void }) {
-  const { view } = props;
-  return (
-    <header className="flex flex-wrap items-center gap-2">
-      <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">Mapa de la obra</p>
-        <p data-testid="mapa-avance" className="text-[15px] font-semibold text-on-surface">{workMapHeadline(view)}</p>
-      </div>
-      {props.stages}
-      <button type="button" data-testid="mapa-pantalla-completa" onClick={props.onToggle} className={ICON_BUTTON}>
-        {props.expanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />} {props.expanded ? 'Salir' : 'Pantalla completa'}
-      </button>
-      <button type="button" data-testid="mapa-exportar" onClick={props.onExport} className={ICON_BUTTON}><Download size={15} /> Exportar</button>
-      <a data-testid="mapa-abrir" href={props.pageUrl} target="_blank" rel="noopener noreferrer" className={ICON_BUTTON}><ExternalLink size={15} /> Portal</a>
-    </header>
-  );
-}
-
-/** The map, its figures and its streets (design `o-01-mapa-obra`), read only; «Exportar» takes out what it shows (`o-12`). */
 const NO_DISCHARGES: UnitDischarge[] = [];
 
 /** The units of the Control de pista over the map: the suggestion, its pins and the stretches being confirmed. */
@@ -124,45 +69,57 @@ function useDischarges(map: WorkMap, discharges: UnitDischarge[]) {
   return { suggestion, ranges, onRange, pins, stretches };
 }
 
-type BoardProps = { map: WorkMap; pageUrl: string; title: string; serviceId: string; /** Space admins only (José 06/11, Agentes enforces it too). */ admin?: boolean; discharges?: UnitDischarge[]; send?: ProgressSend };
+type BoardProps = { map: WorkMap; pageUrl: string; title: string; serviceId: string; /** Crumbs and the service's tabs (o-01). */ head?: ReactNode; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; /** Space admins only (José 06/11, Agentes enforces it too). */ admin?: boolean; discharges?: UnitDischarge[]; send?: ProgressSend };
 
+function Actions(props: { pageUrl: string; expanded: boolean; wide: boolean; onToggle: () => void; onExport: () => void }) {
+  const label = (text: string) => (props.wide ? text : <span className="sr-only">{text}</span>);
+  return (
+    <div className="flex shrink-0 items-center gap-2 pb-3">
+      <button type="button" data-testid="mapa-pantalla-completa" onClick={props.onToggle} className={ACTION}>
+        {props.expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />} {label(props.expanded ? 'Salir' : 'Pantalla completa')}
+      </button>
+      <a data-testid="mapa-abrir" href={props.pageUrl} target="_blank" rel="noopener noreferrer" className={ACTION}><ExternalLink size={16} /> {label('Portal')}</a>
+      <button type="button" data-testid="mapa-exportar" onClick={props.onExport} className={`${ACTION} border-primary bg-primary text-on-primary hover:bg-primary/90`}><Share2 size={16} /> {props.wide ? 'Compartir avance' : 'Compartir'}</button>
+    </div>
+  );
+}
+
+/**
+ * The map of the work as the design draws it (`o-01-mapa-obra`): the bar with the service's tabs,
+ * the literal map with its filters floating, and the panel of progress on the right; on a narrow
+ * screen the panel goes under the map. «Compartir avance» opens the export in that panel (`o-12`).
+ */
 export function WorkMapBoard(props: BoardProps) {
   const { map, pageUrl } = props;
   const [filter, setFilter] = useState<WorkMapFilter>({});
   const [exporting, setExporting] = useState(false);
   const view = useMemo(() => workMapView(map, filter), [map, filter]);
+  const groups = useMemo(() => workMapStageGroups(map, view), [map, view]);
   const pista = useDischarges(map, props.admin ? (props.discharges ?? NO_DISCHARGES) : NO_DISCHARGES);
-  const showsPista = pista.suggestion.units.length > 0;
   const { holder, expanded, open, close } = useFullScreen();
-  const stages = map.stages.length ? (
-    <select data-testid="mapa-etapa" aria-label="Etapa" value={filter.stageId ?? ''} onChange={(event) => setFilter(workMapStageFilter(map, filter, event.target.value))} className="h-9 rounded-xl border border-outline/20 bg-surface px-2 text-[13px] font-semibold text-on-surface">
-      <option value="">Todas las etapas</option>
-      {map.stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
-    </select>
-  ) : null;
-  const days = workMapCutDays(map);
-  const cut = days.length > 1 ? (
-    <select data-testid="mapa-corte" aria-label="Avance hasta el día" value={filter.untilDay ?? ''} onChange={(event) => setFilter(workMapDayFilter(filter, event.target.value))} className="h-9 rounded-xl border border-outline/20 bg-surface px-2 text-[13px] font-semibold text-on-surface">
-      <option value="">Hasta hoy</option>
-      {days.map((day) => <option key={day} value={day}>{workMapCutLabel(day)}</option>)}
-    </select>
-  ) : null;
+  const wide = useWide(holder);
+  const top = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null;
+  const panel = exporting
+    ? <WorkMapExport map={map} filter={filter} title={props.title} pageUrl={pageUrl} onClose={() => setExporting(false)} />
+    : <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} scrolls={wide} />;
   return (
-    <div ref={holder} data-testid="mapa-servicio" data-expanded={expanded} className={expanded ? 'fixed inset-0 z-50 flex flex-col bg-surface p-3' : 'rounded-2xl border border-outline/15 bg-surface p-3'}>
-      <Header view={view} pageUrl={pageUrl} stages={<>{stages}{cut}</>} expanded={expanded} onToggle={expanded ? close : open} onExport={() => setExporting((shown) => !shown)} />
-      {exporting ? <WorkMapExport map={map} filter={filter} title={props.title} pageUrl={pageUrl} onClose={() => setExporting(false)} /> : null}
-      <WorkChips view={view} workId={filter.workId} onPick={(workId) => setFilter(workMapWorkFilter(filter, workId))} />
-      <div className={expanded ? 'mt-2 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,38%)] gap-3 lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-1' : 'mt-2 space-y-3'}>
-        <div className={`relative overflow-hidden rounded-xl border border-outline/15 bg-surface-variant ${expanded ? 'min-h-0' : 'h-[420px]'}`}>
+    <div ref={holder} data-testid="mapa-servicio" data-expanded={expanded} data-wide={wide} className={`flex flex-col bg-background ${expanded ? 'fixed inset-0 z-50' : 'min-h-0 flex-1'} ${wide ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+      <header className={MAP_HEAD_BAR}>
+        <div className="min-w-0 flex-1">{props.head}</div>
+        <Actions pageUrl={pageUrl} expanded={expanded} wide={wide} onToggle={expanded ? close : open} onExport={() => setExporting((shown) => !shown)} />
+      </header>
+      {wide ? null : <MapFilters map={map} view={view} filter={filter} onFilter={setFilter} floating={false} />}
+      <div className={wide ? 'flex min-h-0 flex-1' : 'flex flex-col'}>
+        <div className={`relative overflow-hidden bg-surface-variant ${wide ? 'min-w-0 flex-1' : 'h-[58vh] min-h-[320px] shrink-0'}`}>
           <Suspense fallback={<div data-testid="mapa-cargando-lienzo" className="absolute inset-0 animate-pulse bg-surface-variant" />}>
             <WorkMapCanvas view={view} expanded={expanded} pins={pista.pins} stretches={pista.stretches} />
           </Suspense>
-          <Legend view={view} />
+          {wide ? <MapFilters map={map} view={view} filter={filter} onFilter={setFilter} floating /> : null}
+          <MapLegend view={view} compact={!wide} />
         </div>
-        <aside className={expanded ? 'min-h-0 space-y-3 overflow-y-auto' : 'space-y-3'}>
-          {showsPista ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null}
-          <ProgressBar percent={view.percent} />
-          <ul className="mt-3 space-y-2">{view.streets.map((street) => <StreetRow key={street.id} street={street} />)}</ul>
+        <aside className={wide ? 'flex w-[380px] shrink-0 flex-col overflow-hidden border-l border-outline/15 bg-surface xl:w-[400px]' : 'relative z-10 -mt-5 flex flex-col overflow-hidden rounded-t-3xl border-t border-outline/15 bg-surface shadow-[0_-8px_24px_rgb(0_0_0/0.08)]'}>
+          {wide ? null : <span aria-hidden className="mx-auto mt-2 h-1 w-10 rounded-full bg-outline/30" />}
+          {panel}
         </aside>
       </div>
     </div>

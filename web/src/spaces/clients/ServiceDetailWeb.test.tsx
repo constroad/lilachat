@@ -222,6 +222,26 @@ describe('ServiceDetailWeb', () => {
     expect(map).toHaveBeenCalledWith({ kind: 'service', clientId: 'cli-cvs', serviceId: 'srv-318' });
   });
 
+  it('the map takes the whole conversation with the tabs in its bar, and «Pedidos» brings the list back (design o-01, José 07/11)', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', reply({ detail: { ...detail, service: { ...detail.service, hasMap: true } } }));
+    const map = vi.fn(async () => ({ ok: true as const, url: 'https://constroad.com/public/mapa' }));
+    const onMapOpen = vi.fn();
+    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={() => undefined} onMapOpen={onMapOpen} links={{ can: (kind) => kind === 'service', open: vi.fn(), map }} />);
+
+    // Act
+    fireEvent.click(await screen.findByTestId('pestana-detalle-map'));
+
+    // Assert
+    await screen.findByTestId('mapa-abrir');
+    expect(onMapOpen).toHaveBeenLastCalledWith(true);
+    expect(screen.getByTestId('ruta-servicio')).toBeInTheDocument();
+    expect(screen.getByTestId('pestana-detalle-map')).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(screen.getByTestId('pestana-detalle-orders'));
+    expect(onMapOpen).toHaveBeenLastCalledWith(false);
+    expect(screen.queryByTestId('mapa-abrir')).not.toBeInTheDocument();
+  });
+
   it('«Generar informe de servicio» runs informe_de_servicio from the space with the service: Portal refuses it in a group (01/11)', async () => {
     // Arrange
     const groups = [{ appId: 'p1', appName: 'Portal', commands: [], shortcuts: [{ key: 'informe_de_servicio', name: 'Informe de servicio' }] }];

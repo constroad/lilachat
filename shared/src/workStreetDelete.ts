@@ -31,3 +31,15 @@ export const deleteThenReload = <Send extends (id: string) => Promise<WorkProgre
     if (result.ok) void reload();
     return result;
   } : undefined;
+
+/** Where the confirmation is: closed, asking, sending, or refused with Portal's words. */
+export type StreetDeleteState = { asking: boolean; busy: boolean; error: string | null };
+export const STREET_DELETE_IDLE: StreetDeleteState = { asking: false, busy: false, error: null };
+export const STREET_DELETE_ASKING: StreetDeleteState = { asking: true, busy: false, error: null };
+
+/** Sends the delete and reports each step; a refusal keeps the question open with its words. */
+export async function runStreetDelete(send: (id: string) => Promise<WorkProgressResult>, streetId: string, update: (state: StreetDeleteState) => void): Promise<void> {
+  update({ asking: true, busy: true, error: null });
+  const result = await send(streetId);
+  update(result.ok ? STREET_DELETE_IDLE : { asking: true, busy: false, error: result.message });
+}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Trash2 } from 'lucide-react';
-import { STREET_DELETE_ACTION, streetDeleteAsk, type WorkMapStreetRow, type WorkProgressResult } from '@lilachat/shared';
+import { runStreetDelete, STREET_DELETE_ACTION, STREET_DELETE_ASKING, STREET_DELETE_IDLE, streetDeleteAsk, type StreetDeleteState, type WorkMapStreetRow, type WorkProgressResult } from '@lilachat/shared';
 
 export type StreetDeleteSend = (streetId: string) => Promise<WorkProgressResult>;
 
@@ -9,20 +9,11 @@ export type StreetDeleteSend = (streetId: string) => Promise<WorkProgressResult>
  * It asks first, naming the street, and shows Portal's refusal as it comes (a street with progress).
  */
 export function StreetDelete({ street, send }: { street: WorkMapStreetRow; send: StreetDeleteSend }) {
-  const [asking, setAsking] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [{ asking, busy, error }, setState] = useState<StreetDeleteState>(STREET_DELETE_IDLE);
   const ask = streetDeleteAsk(street.name);
-  const confirm = async () => {
-    setBusy(true);
-    setError(null);
-    const result = await send(street.id);
-    setBusy(false);
-    if (!result.ok) setError(result.message);
-  };
   if (!asking) {
     return (
-      <button type="button" data-testid={`borrar-calle-${street.id}`} onClick={() => setAsking(true)} aria-label={`${STREET_DELETE_ACTION} ${street.name}`} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-on-surface-variant hover:bg-background hover:text-error">
+      <button type="button" data-testid={`borrar-calle-${street.id}`} onClick={() => setState(STREET_DELETE_ASKING)} aria-label={`${STREET_DELETE_ACTION} ${street.name}`} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-on-surface-variant hover:bg-background hover:text-error">
         <Trash2 size={16} />
       </button>
     );
@@ -33,8 +24,8 @@ export function StreetDelete({ street, send }: { street: WorkMapStreetRow; send:
       <p className="mt-1 text-[12px] text-on-surface-variant">{ask.hint}</p>
       {error ? <p role="alert" className="mt-2 text-[13px] font-semibold text-error">{error}</p> : null}
       <div className="mt-3 flex gap-2">
-        <button type="button" onClick={() => { setAsking(false); setError(null); }} disabled={busy} className="h-10 flex-1 rounded-xl border border-outline/20 text-[13px] font-semibold text-on-surface">Cancelar</button>
-        <button type="button" data-testid={`borrar-calle-si-${street.id}`} onClick={() => void confirm()} disabled={busy} className="h-10 flex-1 rounded-xl bg-error text-[13px] font-bold text-background disabled:opacity-60">{busy ? 'Borrando…' : 'Borrar'}</button>
+        <button type="button" onClick={() => setState(STREET_DELETE_IDLE)} disabled={busy} className="h-10 flex-1 rounded-xl border border-outline/20 text-[13px] font-semibold text-on-surface">Cancelar</button>
+        <button type="button" data-testid={`borrar-calle-si-${street.id}`} onClick={() => void runStreetDelete(send, street.id, setState)} disabled={busy} className="h-10 flex-1 rounded-xl bg-error text-[13px] font-bold text-background disabled:opacity-60">{busy ? 'Borrando…' : 'Borrar'}</button>
       </div>
     </div>
   );

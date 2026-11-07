@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FORMS_LEVEL } from './appForms.js';
-import { deleteThenReload, sendWorkStreetDelete, STREET_DELETE_FAILED, STREET_DELETED, streetDeleteAsk, workStreetDeleteRequest } from './workStreetDelete.js';
+import { deleteThenReload, runStreetDelete, STREET_DELETE_IDLE, sendWorkStreetDelete, STREET_DELETE_FAILED, STREET_DELETED, streetDeleteAsk, workStreetDeleteRequest } from './workStreetDelete.js';
 import type { WorkProgressDeps } from './workProgressSend.js';
 
 /** José 07/11: «que pueda borrar calles cualquiera, pero que sea un borrado lógico que el admin pueda restaurar». */
@@ -41,5 +41,14 @@ describe('deleting a street from the map', () => {
     await deleteThenReload(async () => ({ ok: true, message: 'sí' }), reload)!('s1');
     expect(reload).toHaveBeenCalledTimes(1);
     expect(deleteThenReload(undefined, reload)).toBeUndefined();
+  });
+
+  it('walks the question: sending, then closed, or open again with the refusal', async () => {
+    const steps: unknown[] = [];
+    await runStreetDelete(async () => ({ ok: false, message: 'Tiene avance.' }), 's1', (state) => steps.push(state));
+    expect(steps).toEqual([{ asking: true, busy: true, error: null }, { asking: true, busy: false, error: 'Tiene avance.' }]);
+    steps.length = 0;
+    await runStreetDelete(async () => ({ ok: true, message: 'ok' }), 's1', (state) => steps.push(state));
+    expect(steps.at(-1)).toEqual(STREET_DELETE_IDLE);
   });
 });

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Trash2 } from 'lucide-react-native';
-import { STREET_DELETE_ACTION, streetDeleteAsk, type WorkMapStreetRow, type WorkProgressResult } from '@lilachat/shared';
+import { runStreetDelete, STREET_DELETE_ACTION, STREET_DELETE_ASKING, STREET_DELETE_IDLE, streetDeleteAsk, type StreetDeleteState, type WorkMapStreetRow, type WorkProgressResult } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 
 export type StreetDeleteSend = (streetId: string) => Promise<WorkProgressResult>;
@@ -12,20 +12,11 @@ export type StreetDeleteSend = (streetId: string) => Promise<WorkProgressResult>
  */
 export function StreetDelete({ street, send }: { street: WorkMapStreetRow; send: StreetDeleteSend }) {
   const colors = useColores();
-  const [asking, setAsking] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [{ asking, busy, error }, setState] = useState<StreetDeleteState>(STREET_DELETE_IDLE);
   const ask = streetDeleteAsk(street.name);
-  const confirm = async () => {
-    setBusy(true);
-    setError(null);
-    const result = await send(street.id);
-    setBusy(false);
-    if (!result.ok) setError(result.message);
-  };
   if (!asking) {
     return (
-      <Pressable testID={`borrar-calle-${street.id}`} onPress={() => setAsking(true)} accessibilityLabel={`${STREET_DELETE_ACTION} ${street.name}`} className="h-11 w-11 items-center justify-center rounded-lg">
+      <Pressable testID={`borrar-calle-${street.id}`} onPress={() => setState(STREET_DELETE_ASKING)} accessibilityLabel={`${STREET_DELETE_ACTION} ${street.name}`} className="h-11 w-11 items-center justify-center rounded-lg">
         <Trash2 size={18} color={colors['on-surface-variant']} />
       </Pressable>
     );
@@ -36,10 +27,10 @@ export function StreetDelete({ street, send }: { street: WorkMapStreetRow; send:
       <Text className="mt-1 text-[13px] text-on-surface-variant">{ask.hint}</Text>
       {error ? <Text accessibilityRole="alert" className="mt-2 text-[14px] font-semibold text-error">{error}</Text> : null}
       <View className="mt-3 flex-row gap-2">
-        <Pressable onPress={() => { setAsking(false); setError(null); }} disabled={busy} className="h-12 flex-1 items-center justify-center rounded-xl border border-outline/20">
+        <Pressable onPress={() => setState(STREET_DELETE_IDLE)} disabled={busy} className="h-12 flex-1 items-center justify-center rounded-xl border border-outline/20">
           <Text className="text-[14px] font-semibold text-on-surface">Cancelar</Text>
         </Pressable>
-        <Pressable testID={`borrar-calle-si-${street.id}`} onPress={() => void confirm()} disabled={busy} className={`h-12 flex-1 items-center justify-center rounded-xl bg-error ${busy ? 'opacity-60' : ''}`}>
+        <Pressable testID={`borrar-calle-si-${street.id}`} onPress={() => void runStreetDelete(send, street.id, setState)} disabled={busy} className={`h-12 flex-1 items-center justify-center rounded-xl bg-error ${busy ? 'opacity-60' : ''}`}>
           <Text className="text-[14px] font-bold text-background">{busy ? 'Borrando…' : 'Borrar'}</Text>
         </Pressable>
       </View>

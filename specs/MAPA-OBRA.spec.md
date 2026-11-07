@@ -223,6 +223,37 @@ si el enlace del servicio es esa página).
 admin pueda restaurar». Portal lo implementa (`restaurar_de_obra`, `borrados_de_obra`) y mantiene
 el rechazo a borrar una calle con avance, porque el metrado y la valorización dejarían de cuadrar.
 
+**Editor de calles auditado (José 07/11, con captura de su teléfono):** «no quiero que copies,
+audítalo y mejóralo», fácil y fluido para un ingeniero de campo. Su captura: tocó inicio y fin, y
+el trazo salió en recta, sin seguir la vía; no había forma de tocar una calle y tomar su nombre; el
+mapa no se parecía al del diseño.
+
+Lo que se encontró al auditar el editor de Portal:
+- Al tocar una calle, Portal la toma ENTERA (varias cuadras) y para recortarla hay que escribir
+  «Hasta». En campo, eso es un paso que sobra.
+- El mapa trae la misma línea dos veces: `transportation` (la vía) y `transportation_name` (el
+  rótulo). Si entran las dos, la calle vuelve sobre sí misma y su largo se duplica. Portal no lo
+  sufría porque arma con una sola capa; Lilachat sí, porque consulta todo lo que se ve.
+- Tomaba como tocada la primera vía con nombre, que con la pantalla entera puede ser cualquiera.
+- Un río o un canal bajo el dedo contaba como calle.
+
+Cómo quedó (`@constroad/shared/obra` 0.11.0 `streetPick` y 0.12.0 `streetAtTap`; en Lilachat
+`workStreetPick.ts`):
+- **«Tocar la calle» (por defecto):** un toque trae la calle entera con su nombre y su largo. El
+  siguiente toque sobre ella marca el inicio y otro el fin, en cualquier orden. La línea es el
+  tramo del eje real entre los dos, con «Inicio 0+080 · Fin 0+320». Si no se marca nada, se guarda
+  la calle entera. Un toque a más de 30 m de esa calle elige otra. «Deshacer» quita el fin, luego
+  el inicio, luego la calle. Si el nombre lo escribió la persona, se respeta.
+- **«A mano»:** como antes, cada toque es una curva. Sirve para un pasaje que el mapa no tiene.
+- **Sin OSRM:** el trazo sigue la vía porque sale del eje de la vía en el mapa, no de una ruta.
+- **Mapa claro** (openfreemap «positron», gris): los colores de la obra resaltan, como en el
+  diseño. Tiene las mismas capas de vías que «liberty».
+- **Web:** consulta lo que está bajo el dedo y lee los nombres de los tiles cargados. **APK:**
+  consulta lo dibujado bajo el dedo y los rótulos visibles, porque el mapa nativo no deja leer los
+  tiles. Si una calle no tiene rótulo en pantalla, llega sin nombre y la persona lo escribe.
+- **Falta de o-02:** «Caminar con GPS» (o-13), la etapa al guardar (la etapa es del tramo, no de
+  la calle) y probarlo en un teléfono real.
+
 **Borrar una calle en pantalla (07/11), web y APK, para todos:**
 - Cada calle del panel tiene un tacho («Borrar calle»). Antes de borrar pregunta «¿Borrar «Av.
   Grau»?» y avisa que sus tramos se van con ella, que un admin puede restaurarla y que una calle

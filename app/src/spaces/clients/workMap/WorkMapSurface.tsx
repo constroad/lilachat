@@ -1,5 +1,6 @@
-import { Camera, GeoJSONSource, Layer, Map as MapSurface } from '@maplibre/maplibre-react-native';
-import { dischargePinCollection, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE_URL, workMapCollection, type DischargePin, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
+import { useRef } from 'react';
+import { Camera, GeoJSONSource, Layer, Map as MapSurface, type MapRef } from '@maplibre/maplibre-react-native';
+import { dischargePinCollection, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE_URL, workMapCollection, type BasemapFeatureLike, type DischargePin, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
 
 const LINE_ENDS = { 'line-cap': 'round', 'line-join': 'round' } as const;
 const EDGE = { top: 48, right: 48, bottom: 48, left: 48 };
@@ -14,12 +15,33 @@ const DRAW_ZOOM = 17;
  * The streets of the work over a literal map (José 06/11). `moves` is off inside the detail, whose
  * scroll would fight the finger; the full map moves. Texture: a surface view ignores rounded corners.
  */
+/** A road of the tiles carries its `class`; boundaries and the work's own lines do not. */
+const isTileRoad = (feature: BasemapFeatureLike): boolean => typeof feature?.properties?.class === 'string';
+
+/**
+ * The roads at a tap (audit 07/11): what is drawn under the finger, and the named roads in view.
+ * The native map has no tiles to read, only what it draws, so the names come from the labels shown.
+ */
+async function roadsAt(map: MapRef | null, point: [number, number], tap: WorkMapPoint): Promise<TapFeatures> {
+  if (!map) return { underFinger: [], nearby: [], tap };
+  const [x, y] = point;
+  const [under, inView] = await Promise.all([map.queryRenderedFeatures(tapBox({ x, y }, tapTolerancePx(true))), map.queryRenderedFeatures()]);
+  const roads = (features: unknown[]) => (features as BasemapFeatureLike[]).filter(isTileRoad);
+  return { underFinger: roads(under), nearby: roads(inView).filter((feature) => typeof feature.properties?.name === 'string'), tap };
+}
+
 /** `onTap` draws a street (o-02): each tap is a bend. `near` frames where the phone is when there is nothing drawn yet. */
-export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; onTap?: (point: WorkMapPoint) => void; near?: WorkMapPoint | null }) {
+export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void; near?: WorkMapPoint | null }) {
   const { view, moves } = props;
+  const map = useRef<MapRef>(null);
+  const press = async (lngLat: [number, number], point: [number, number]) => {
+    const tap = { lat: lngLat[1], lng: lngLat[0] };
+    const roads = await roadsAt(map.current, point, tap).catch(() => ({ underFinger: [], nearby: [], tap }));
+    props.onTap?.(tap, roads);
+  };
   const corners = view.bounds;
   return (
-    <MapSurface testID="mapa-lienzo" style={{ flex: 1 }} mapStyle={WORK_MAP_STYLE_URL} androidView="texture" logo={false} compass={false} dragPan={moves} touchZoom={moves} doubleTapZoom={moves} doubleTapHoldZoom={moves} touchRotate={false} touchPitch={false} onPress={props.onTap ? (event) => props.onTap?.({ lat: event.nativeEvent.lngLat[1], lng: event.nativeEvent.lngLat[0] }) : undefined}>
+    <MapSurface ref={map} testID="mapa-lienzo" style={{ flex: 1 }} mapStyle={WORK_MAP_STYLE_URL} androidView="texture" logo={false} compass={false} dragPan={moves} touchZoom={moves} doubleTapZoom={moves} doubleTapHoldZoom={moves} touchRotate={false} touchPitch={false} onPress={props.onTap ? (event) => void press(event.nativeEvent.lngLat as [number, number], event.nativeEvent.point as [number, number]) : undefined}>
       {corners ? <Camera bounds={[...corners[0], ...corners[1]]} padding={EDGE} duration={0} /> : props.near ? <Camera center={[props.near.lng, props.near.lat]} zoom={DRAW_ZOOM} duration={0} /> : null}
       <GeoJSONSource id="work-map-planned" data={workMapCollection(view.planned)}>
         <Layer id="work-map-planned-line" type="line" layout={LINE_ENDS} paint={{ 'line-color': WORK_MAP_PLANNED_COLOR, 'line-width': 4, 'line-dasharray': [1.2, 1.4] }} />

@@ -8,12 +8,14 @@ import type { StreetDeleteSend } from './workMap/StreetDelete';
 
 const askServer = vi.hoisted(() => vi.fn());
 vi.mock('../../api', async (original) => ({ ...(await original<typeof import('../../api')>()), api: askServer }));
+/** The street under every tap of the fake map: 500 m east-west, named in the tiles around. */
+const losPinos = vi.hoisted(() => (named: boolean) => ({ properties: { class: 'minor', ...(named ? { name: 'Jr. Los Pinos' } : {}) }, geometry: { type: 'LineString', coordinates: [[-77, -12], [-77 + 500 / 108_766, -12]] } }));
 /** A tap on the fake map goes 100 m further east each time, as when a street is drawn (o-02). */
 const taps = vi.hoisted(() => ({ count: 0 }));
 vi.mock('./workMap/WorkMapCanvas', () => ({
-  default: (props: { view: WorkMapView; expanded: boolean; pins?: unknown[]; stretches?: unknown[]; onTap?: (point: { lat: number; lng: number }) => void }) => (
+  default: (props: { view: WorkMapView; expanded: boolean; pins?: unknown[]; stretches?: unknown[]; onTap?: (point: { lat: number; lng: number }, roads: unknown) => void }) => (
     <div data-testid="mapa-lienzo" data-done={props.view.done.length} data-expanded={props.expanded} data-pins={props.pins?.length ?? 0} data-stretches={props.stretches?.length ?? 0}>
-      {props.onTap ? <button type="button" data-testid="mapa-tocar" onClick={() => props.onTap?.({ lat: -12, lng: -77 + (taps.count++ * 100) / 108_766 })} /> : null}
+      {props.onTap ? <button type="button" data-testid="mapa-tocar" onClick={() => { const point = { lat: -12, lng: -77 + (taps.count++ * 100) / 108_766 }; props.onTap?.(point, { underFinger: [losPinos(false)], nearby: [losPinos(true)], tap: point }); }} /> : null}
     </div>
   ),
 }));
@@ -302,6 +304,7 @@ describe('ServiceMapWeb', () => {
     taps.count = 0;
     showMap(undefined, { drawStreet });
     fireEvent.click(await screen.findByTestId('mapa-dibujar-calle'));
+    fireEvent.click(await screen.findByTestId('editor-modo-hand'));
     // Act
     fireEvent.click(await screen.findByTestId('mapa-tocar'));
     fireEvent.click(screen.getByTestId('editor-calle-guardar'));
@@ -358,11 +361,34 @@ describe('ServiceMapWeb', () => {
     expect(screen.queryByTestId('borrar-calle-s1')).not.toBeInTheDocument();
   });
 
+  it('«Tocar la calle»: a tap brings the street named, two more keep only the stretch of work (audit 07/11)', async () => {
+    // Arrange
+    askServer.mockResolvedValue({ ok: true, data: { map: workMap } });
+    const drawStreet = vi.fn<StreetSend>(async () => ({ ok: true, message: 'Calle guardada.' }));
+    taps.count = 1;
+    showMap(undefined, { drawStreet });
+    fireEvent.click(await screen.findByTestId('mapa-nueva-calle'));
+    // Act
+    fireEvent.click(await screen.findByTestId('mapa-tocar'));
+    // Assert
+    expect(screen.getByTestId('editor-calle-nombre')).toHaveValue('Jr. Los Pinos');
+    expect(screen.getByTestId('editor-calle-largo')).toHaveTextContent('500 m');
+    expect(screen.getByTestId('editor-calle-ayuda')).toHaveTextContent('Toca dónde empieza la obra');
+    fireEvent.click(screen.getByTestId('mapa-tocar'));
+    fireEvent.click(screen.getByTestId('mapa-tocar'));
+    expect(screen.getByTestId('editor-calle-largo')).toHaveTextContent('100 m');
+    expect(screen.getByTestId('editor-calle-extremos')).toHaveTextContent('Inicio 0+200 · Fin 0+300');
+    fireEvent.click(screen.getByTestId('editor-calle-guardar'));
+    await waitFor(() => expect(drawStreet).toHaveBeenCalledTimes(1));
+    expect(drawStreet.mock.calls[0]![0]).toMatchObject({ name: 'Jr. Los Pinos', mode: 'street' });
+  });
+
   it('«Deshacer» takes back a tap, and a refusal from Portal stays in the editor with its words', async () => {
     askServer.mockResolvedValue({ ok: true, data: { map: workMap } });
     const drawStreet = vi.fn<StreetSend>(async () => ({ ok: false, message: 'Ese trazo deja fuera un avance aprobado.' }));
     showMap(undefined, { drawStreet });
     fireEvent.click(await screen.findByTestId('mapa-nueva-calle'));
+    fireEvent.click(await screen.findByTestId('editor-modo-hand'));
     fireEvent.click(await screen.findByTestId('mapa-tocar'));
     fireEvent.click(screen.getByTestId('mapa-tocar'));
     fireEvent.click(screen.getByTestId('mapa-tocar'));

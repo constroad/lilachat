@@ -47,7 +47,8 @@ export type WorkMapState =
 /** MapLibre paints with plain colors: a CSS variable does not reach its canvas. */
 export const WORK_MAP_PLANNED_COLOR = '#94a3b8';
 /** Free tiles without a key, the ones Portal's map uses. */
-export const WORK_MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
+/** Light and grey (José 07/11: «no se parece el mapa del diseño»): the work's colours stand out over it, as in design o-02. Same OpenMapTiles layers as «liberty». */
+export const WORK_MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/positron';
 export const WORK_MAP_FAILED = 'No se pudo cargar el mapa. Prueba de nuevo.';
 /** Design o-10: what a space admin reads in a service without streets (José 07/11: «dónde voy a crear el mapa»). */
 export const WORK_MAP_FIRST = {

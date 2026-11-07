@@ -1,3 +1,4 @@
+import type { StreetPick } from '@constroad/shared/obra';
 import { lineLengthM, type WorkMapLine, type WorkMapPoint } from './workMap.js';
 import type { DischargePin } from './workMapProgress.js';
 import { FORMS_LEVEL } from './appForms.js';
@@ -8,14 +9,17 @@ import { sendMapTool, type WorkProgressDeps, type WorkProgressResult } from './w
  * taps the start, the bends and the end on the map; Portal measures it again when it saves.
  * PURE: the APK and the web draw from here and send `workStreetRequest`.
  */
-export type StreetDraft = { name: string; points: WorkMapPoint[]; widthM: number | null };
+/** `street`: tap a street of the map, then where the work starts and ends on it (audit 07/11); `hand`: tap every bend. */
+export type DrawMode = 'street' | 'hand';
+export type StreetDraft = { name: string; points: WorkMapPoint[]; widthM: number | null; mode: DrawMode; pick: StreetPick | null };
 
 export const STREET_POINTS_MAX = 500;
 export const STREET_NAME_MAX = 80;
 export const STREET_WIDTH_MAX_M = 60;
-export const EMPTY_STREET: StreetDraft = { name: '', points: [], widthM: null };
+export const EMPTY_STREET: StreetDraft = { name: '', points: [], widthM: null, mode: 'street', pick: null };
 
 export const DRAFT_NEEDS_POINTS = 'Toca el inicio y el fin de la calle en el mapa.';
+export const DRAFT_NEEDS_STREET = 'Toca en el mapa la calle donde vas a trabajar.';
 export const DRAFT_NEEDS_NAME = 'Ponle nombre a la calle.';
 export const DRAFT_NAME_TOO_LONG = `El nombre lleva hasta ${STREET_NAME_MAX} letras.`;
 export const DRAFT_BAD_WIDTH = `El ancho va de 0,1 a ${STREET_WIDTH_MAX_M} m.`;
@@ -32,7 +36,7 @@ export const streetDraftLengthM = (draft: Pick<StreetDraft, 'points'>): number =
 
 /** What stops «Guardar calle», in the order the person meets it on the screen. */
 export function streetDraftProblem(draft: StreetDraft): string | null {
-  if (draft.points.length < 2) return DRAFT_NEEDS_POINTS;
+  if (draft.points.length < 2) return draft.mode === 'street' ? DRAFT_NEEDS_STREET : DRAFT_NEEDS_POINTS;
   const name = draft.name.trim();
   if (!name) return DRAFT_NEEDS_NAME;
   if (name.length > STREET_NAME_MAX) return DRAFT_NAME_TOO_LONG;

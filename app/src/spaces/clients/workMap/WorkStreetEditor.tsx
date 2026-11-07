@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import { Save, Undo2, X } from 'lucide-react-native';
-import { addStreetPoint, EMPTY_STREET, metersLabel, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, undoStreetPoint, workMapView, type StreetDraft, type WorkMap } from '@lilachat/shared';
+import { DRAW_MODES, EMPTY_STREET, metersLabel, setDrawMode, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint } from '@lilachat/shared';
 import { useCurrentLocation } from '../../../chat/location/useCurrentLocation';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
@@ -16,7 +16,20 @@ const LABEL = 'text-[12px] font-semibold uppercase text-on-surface-variant';
 
 type EditorProps = { open: boolean; title: string; map: WorkMap | null; send: StreetSend; onClose: () => void; onSaved: (message: string) => void };
 
-/** Design o-02: tap the start, the bends and the end of a street; Portal measures and keeps it (José 07/11: everyone draws). */
+/** «Tocar la calle» first: it is the fast one (audit 07/11). «A mano» is for a pasaje the map lacks. */
+function ModeSwitch({ mode, onMode }: { mode: DrawMode; onMode: (mode: DrawMode) => void }) {
+  return (
+    <View accessibilityRole="radiogroup" className="mt-2 flex-row gap-1 rounded-xl bg-on-primary/15 p-1">
+      {DRAW_MODES.map((one) => (
+        <Pressable key={one.mode} testID={`editor-modo-${one.mode}`} accessibilityRole="radio" accessibilityState={{ checked: mode === one.mode }} onPress={() => onMode(one.mode)} className={`h-10 flex-1 items-center justify-center rounded-lg ${mode === one.mode ? 'bg-surface' : ''}`}>
+          <Text className={`text-[14px] font-semibold ${mode === one.mode ? 'text-primary' : 'text-on-primary'}`}>{one.label}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+/** Design o-02, audited 07/11: tap the street, then where the work starts and ends on it; or draw it by hand. */
 export function WorkStreetEditor(props: EditorProps) {
   const [draft, setDraft] = useState<StreetDraft>(EMPTY_STREET);
   const [entryId] = useState(() => randomUUID());
@@ -29,6 +42,11 @@ export function WorkStreetEditor(props: EditorProps) {
   const change = (next: Partial<StreetDraft>) => {
     setError(null);
     setDraft((before) => ({ ...before, ...next }));
+  };
+  const onTap = (_point: WorkMapPoint, roads: TapFeatures) => {
+    const tapped = tapStreetDraft(draft, roads);
+    setDraft(tapped.draft);
+    setError(tapped.problem);
   };
   const save = async () => {
     const problem = streetDraftProblem(draft);
@@ -44,13 +62,13 @@ export function WorkStreetEditor(props: EditorProps) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-background" testID="editor-calle">
         <View className="bg-primary px-4 pb-3" style={{ paddingTop: margins.cabecera + 8 }}>
           <Text className={`${KICKER} text-on-primary`} numberOfLines={1}>{props.title}</Text>
-          <View className="mt-1 flex-row items-center justify-between">
-            <Text className="text-[18px] font-bold text-on-primary">Dibujando calle</Text>
-            <Text testID="editor-calle-puntos" className="rounded-md bg-on-primary/15 px-2 py-0.5 font-mono text-[12px] text-on-primary">{draft.points.length} puntos</Text>
+          <ModeSwitch mode={draft.mode} onMode={(mode) => { setError(null); setDraft((before) => setDrawMode(before, mode)); }} />
+          <View className="mt-2 flex-row items-center justify-between gap-2">
+            <Text testID="editor-calle-ayuda" className="flex-1 text-[15px] font-semibold text-on-primary">{streetDraftHint(draft)}</Text>
+            {draft.mode === 'hand' ? <Text testID="editor-calle-puntos" className="rounded-md bg-on-primary/15 px-2 py-0.5 font-mono text-[12px] text-on-primary">{draft.points.length} puntos</Text> : null}
           </View>
-          <Text className="mt-1 text-[14px] text-on-primary">Toca el inicio, las curvas y el fin sobre la vía en el mapa.</Text>
           <View className="mt-2 flex-row gap-2">
-            <Pressable testID="editor-calle-deshacer" disabled={!draft.points.length} onPress={() => setDraft(undoStreetPoint)} className={`h-11 flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-on-primary/15 ${draft.points.length ? '' : 'opacity-50'}`}>
+            <Pressable testID="editor-calle-deshacer" disabled={!draft.points.length} onPress={() => { setError(null); setDraft(undoStreetDraft); }} className={`h-11 flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-on-primary/15 ${draft.points.length ? '' : 'opacity-50'}`}>
               <Undo2 size={16} color={colors['on-primary']} /><Text className="text-[14px] font-semibold text-on-primary">Deshacer</Text>
             </Pressable>
             <Pressable testID="editor-calle-cancelar" onPress={props.onClose} className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-on-primary/15">
@@ -59,7 +77,7 @@ export function WorkStreetEditor(props: EditorProps) {
           </View>
         </View>
         <View className="flex-1">
-          {props.open ? <WorkMapSurface view={view} moves pins={streetDraftPins(draft)} stretches={streetDraftLines(draft)} onTap={(point) => { setError(null); setDraft((before) => addStreetPoint(before, point)); }} near={current.state === 'ready' ? current.location : null} /> : null}
+          {props.open ? <WorkMapSurface view={view} moves pins={streetDraftPins(draft)} stretches={streetDraftLines(draft)} onTap={onTap} near={current.state === 'ready' ? current.location : null} /> : null}
         </View>
         <View className="border-t border-outline/15 bg-surface px-4 pt-3" style={{ paddingBottom: margins.pie + 12 }}>
           <Text className={LABEL}>Nombre</Text>
@@ -67,7 +85,8 @@ export function WorkStreetEditor(props: EditorProps) {
           <View className="mt-3 flex-row gap-3">
             <View className="flex-1">
               <Text className={LABEL}>Largo</Text>
-              <Text testID="editor-calle-largo" className="mt-1 h-12 py-3 font-mono text-[15px] text-on-surface">{metersLabel(streetDraftLengthM(draft))}</Text>
+              <Text testID="editor-calle-largo" className="mt-1 py-3 font-mono text-[15px] text-on-surface">{metersLabel(streetDraftLengthM(draft))}</Text>
+              {streetDraftEnds(draft) ? <Text testID="editor-calle-extremos" className="font-mono text-[11px] text-on-surface-variant">{streetDraftEnds(draft)}</Text> : null}
             </View>
             <View className="flex-1">
               <Text className={LABEL}>Ancho (m)</Text>

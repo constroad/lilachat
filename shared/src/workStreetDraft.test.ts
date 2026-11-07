@@ -36,7 +36,7 @@ describe('drawing a street (design o-02)', () => {
 
 describe('what stops «Guardar calle»', () => {
   it('asks for the start and the end first, then the name', () => {
-    expect(streetDraftProblem(drawn({ points: [START], name: '' }))).toBe(DRAFT_NEEDS_POINTS);
+    expect(streetDraftProblem(drawn({ points: [START], name: '', mode: 'hand' }))).toBe(DRAFT_NEEDS_POINTS);
     expect(streetDraftProblem(drawn({ name: '   ' }))).toBe(DRAFT_NEEDS_NAME);
   });
 

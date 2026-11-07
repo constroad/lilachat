@@ -156,6 +156,12 @@ pero `get_screen` devuelve el mismo HTML. Por eso se generó aparte.
   calle: Portal no la manda.
 - **Trampa:** el CSS de MapLibre pone `position: relative` en su contenedor. Si ese
   `div` lleva `absolute`, mide 0 de alto y el mapa no se ve, aunque cargue sin error.
+- **APK con la composición de o-01 móvil (07/11):** «Mapa de la obra» con «Compartir» y
+  «Portal»; etapa y día como chips que abren su lista (`WorkMapFilters`); los trabajos en una
+  fila; el mapa de borde a borde con la leyenda arriba a la izquierda y el botón de mapa
+  completo arriba a la derecha; y el panel que sube como hoja sobre el borde del mapa
+  (`WorkMapPanel`), con la cifra, la barra por trabajo y las calles por etapa. En la pestaña
+  «Mapa» se oculta la tarjeta del servicio, como en la web.
 - **APK:** `app/src/spaces/clients/workMap/*` con `@maplibre/maplibre-react-native`.
   Dentro del detalle el mapa no se mueve, para no pelear con el scroll; «Ver mapa
   completo» lo abre a toda la pantalla. Es código nativo: un OTA de este commit no llega

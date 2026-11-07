@@ -143,7 +143,7 @@ const byOrder = (left: Fields, right: Fields) => numberOf(left.order) - numberOf
 
 /**
  * Tags first, in their order; then the partidas of the stretches that have no tag. The colors are
- * Portal's (`colorForPartida`): imprimación blue, asphalt black, base brown, as in the drawings. A tag
+ * Portal's (`colorForPartida`): priming blue, asphalt black, base brown, as in the drawings. A tag
  * whose color is not a hex gets the same rule, so MapLibre never receives a color it cannot paint.
  */
 function worksFrom(rawTags: unknown, rawPartidas: unknown, scopes: WorkMapScope[]): WorkMapWork[] {

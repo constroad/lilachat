@@ -6,6 +6,7 @@ import type { OpenSheetFile } from './RecordSheetWeb';
 import { RecordSheetWeb } from './RecordSheetWeb';
 import { ServiceDriveWeb } from './ServiceDriveWeb';
 import { ServiceMapWeb } from './ServiceMapWeb';
+import { workProgressSender } from './workMap/workProgressSender';
 import { ServiceStagesWeb } from './ServiceStagesWeb';
 import { SpaceActionButtonWeb } from './SpaceActionButtonWeb';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
@@ -152,7 +153,7 @@ function DetailTabs({ detail, target, service, chatId, seesDrive, links, seesMon
       </div>
   );
   if (tab === 'drive') return <>{strip}<ServiceDriveWeb target={target} service={service} chatId={chatId} /></>;
-  if (tab === 'map' && links) return <>{strip}<ServiceMapWeb jwt={target.jwt} links={links} target={{ kind: 'service', clientId: target.clientId, serviceId }} title={service.name} admin={admin} discharges={detail.discharges} /></>;
+  if (tab === 'map' && links) return <>{strip}<ServiceMapWeb jwt={target.jwt} links={links} target={{ kind: 'service', clientId: target.clientId, serviceId }} title={service.name} admin={admin} discharges={detail.discharges} send={workProgressSender(admin, target, chatId, serviceId)} /></>;
   return (
     <>
       {strip}

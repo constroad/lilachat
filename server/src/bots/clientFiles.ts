@@ -23,14 +23,17 @@ export type FilesOutcome = { ok: true; files: ServiceFiles } | { ok: false; mess
 export const notFound = (): NotFound => ({ status: 404, error: 'service_not_found', message: 'Ese servicio no existe o no estás en el canal del cliente.' });
 
 /** What the question needs from the member's access (José 30/10 night): a tab, seeing money, or Portal's Drive (José 05/11). */
-type Need = RestrictableTab | 'money' | 'drive';
+/** `admin`: a space admin, the only one who registers the progress of the work for now (design o-07). */
+type Need = RestrictableTab | 'money' | 'drive' | 'admin';
 /** `gone`: what it says when Portal no longer has it (agentes 6fc3ca5: 404 `not-found`), without a link that would 404 too. */
+export type { Need };
 export type ServiceAsk<T> = { event: Extract<BotEventType, `client.${string}.requested`>; parse: (body: unknown) => T | null; failed: string; gone: string; label: string; need: Need; scrub?: (value: T, seesMoney: boolean) => T };
 
 export type AskedService = { client: Pick<ClientChannel, 'appId' | 'chatId' | 'driveUrl' | 'services'>; fallbackUrl: string | null; seesBilling: boolean };
 type Asker = { id: string; name?: string; phone?: string; sees_billing?: true };
 
 function meets(access: MyClientAccess, need: Need): boolean {
+  if (need === 'admin') return access.admin === true;
   if (need === 'money') return access.money;
   return need === 'drive' ? canSeeDrive(access) : canSeeTab(access, need);
 }

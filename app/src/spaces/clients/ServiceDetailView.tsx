@@ -7,6 +7,7 @@ import type { ViewableFile } from '@lilachat/shared';
 import { RecordSheet } from './RecordSheet';
 import { ServiceDrive } from './ServiceDrive';
 import { ServiceMapPanel } from './ServiceMapPanel';
+import { workProgressSender } from './workMap/workProgressSender';
 import { ServiceStages } from './ServiceStages';
 import { SpaceActionButton } from './SpaceActionButton';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
@@ -179,7 +180,7 @@ function DetailTabs({ detail, target, service, chatId, seesDrive, onBack, onOpen
   const more = moreInPortal(rows.length, detail.totals[listTab]);
   const strip = <TabStrip detail={detail} seesDrive={seesDrive} seesMap={Boolean(links?.can('service'))} tab={tab} onTab={setTab} />;
   if (tab === 'drive') return <>{strip}<ServiceDrive target={target} service={service} chatId={chatId} onBack={onBack} /></>;
-  if (tab === 'map' && links) return <>{strip}<ServiceMapPanel jwt={target.jwt} links={links} target={{ kind: 'service', clientId: target.clientId, serviceId }} title={service.name} admin={admin} discharges={detail.discharges} /></>;
+  if (tab === 'map' && links) return <>{strip}<ServiceMapPanel jwt={target.jwt} links={links} target={{ kind: 'service', clientId: target.clientId, serviceId }} title={service.name} admin={admin} discharges={detail.discharges} send={workProgressSender(admin, target, chatId, serviceId)} /></>;
   return (
     <>
       {strip}

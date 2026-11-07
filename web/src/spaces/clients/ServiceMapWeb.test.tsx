@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChannelLinks, UnitDischarge, WorkMap, WorkMapView } from '@lilachat/shared';
 import { ServiceMapWeb } from './ServiceMapWeb';
+import type { ProgressSend } from './workMap/WorkMapDischarges';
 
 const askServer = vi.hoisted(() => vi.fn());
 vi.mock('../../api', async (original) => ({ ...(await original<typeof import('../../api')>()), api: askServer }));
@@ -25,7 +26,7 @@ const workMap: WorkMap = {
   works: [{ id: 'base', name: 'Base', color: '#c08a1e' }, { id: 'asfalto', name: 'Asfaltado', color: '#111111' }],
   stages: [{ id: 'e1', name: 'Etapa 1' }, { id: 'e2', name: 'Etapa 2' }],
 };
-const showMap = (map: ChannelLinks['map'] = vi.fn(async () => ({ ok: true as const, url })), extra: { admin?: boolean; discharges?: UnitDischarge[] } = {}) => render(<ServiceMapWeb jwt="jwt-1" links={linksWith(map)} target={target} title="Pavimentación Los Olivos" {...extra} />);
+const showMap = (map: ChannelLinks['map'] = vi.fn(async () => ({ ok: true as const, url })), extra: { admin?: boolean; discharges?: UnitDischarge[]; send?: ProgressSend } = {}) => render(<ServiceMapWeb jwt="jwt-1" links={linksWith(map)} target={target} title="Pavimentación Los Olivos" {...extra} />);
 
 /** A spot on Av. Los Olivos, so many meters from its start (it runs east along -12). */
 const METERS_PER_DEGREE_LNG = 111_195 * Math.cos((12 * Math.PI) / 180);
@@ -186,6 +187,26 @@ describe('ServiceMapWeb', () => {
     expect(canvas).toHaveAttribute('data-stretches', '1');
     // Until Portal's tool is on, nothing pretends to register.
     expect(screen.queryByTestId('avance-confirmar')).not.toBeInTheDocument();
+  });
+
+  it('an admin picks the work, adjusts the stretch and confirms it with the units that did it', async () => {
+    // Arrange
+    const send = vi.fn<ProgressSend>(async () => ({ ok: true, message: 'Avance registrado. Queda pendiente de aprobación del residente.' }));
+    showMap(undefined, { admin: true, discharges, send });
+    await screen.findByTestId('mapa-lienzo');
+    // Act: two works on that street, so nothing goes until one is picked.
+    fireEvent.click(screen.getByTestId('avance-confirmar'));
+    const missing = screen.getByTestId('avance-respuesta').textContent;
+    fireEvent.click(screen.getByTestId('avance-trabajo-asfalto'));
+    fireEvent.click(screen.getByTestId('avance-ajustar'));
+    fireEvent.change(screen.getByTestId('avance-hasta'), { target: { value: '65' } });
+    fireEvent.click(screen.getByTestId('avance-confirmar'));
+    // Assert
+    expect(missing).toBe('Elige el trabajo que se hizo en el tramo.');
+    await waitFor(() => expect(screen.getByTestId('avance-respuesta')).toHaveTextContent('pendiente de aprobación'));
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0]?.[0]).toMatchObject({ servicioId: serviceId, calleId: 's1', etiquetaId: 'asfalto', desdeM: 10, hastaM: 65, despachoIds: ['a', 'b'] });
+    expect(screen.getByTestId('avance-confirmar')).toHaveTextContent('Confirmar avance (55 m)');
   });
 
   it('a member who is not an admin does not see the suggestion', async () => {

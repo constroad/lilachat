@@ -3,6 +3,7 @@ import { runShortcut, submitAppForm } from '../../chat/commands/commandsApi';
 import { currentSocket } from '../../useSocket';
 import { useWorkMap } from './workMap/useWorkMap';
 import { WorkMapBoard } from './workMap/WorkMapBoard';
+import type { ProgressSend } from './workMap/WorkMapDischarges';
 
 /** How a chat runs the link action for the map. */
 export const mapDepsOf = (jwt: string, chatId: string) => (row: ShortcutRow, values: ShortcutValues): ServiceMapDeps => ({
@@ -16,7 +17,7 @@ export const mapDepsOf = (jwt: string, chatId: string) => (row: ShortcutRow, val
  * what Portal shows a client; Portal's own page stays one tap away, opened from a link that is
  * ready before the tap because a browser blocks a tab opened after waiting for an answer.
  */
-export function ServiceMapWeb(props: { jwt: string; links: ChannelLinks; target: { kind: 'service'; clientId: string; serviceId: string }; title: string; admin?: boolean; discharges?: UnitDischarge[] }) {
+export function ServiceMapWeb(props: { jwt: string; links: ChannelLinks; target: { kind: 'service'; clientId: string; serviceId: string }; title: string; admin?: boolean; discharges?: UnitDischarge[]; send?: ProgressSend }) {
   const { state, retry } = useWorkMap(props.jwt, props.links, props.target);
   const pageOf = (url: string) => serviceMapPage(url, props.target.serviceId);
   if (state.kind === 'loading') return <div data-testid="mapa-cargando" className="h-28 animate-pulse rounded-2xl bg-surface-variant" />;
@@ -37,5 +38,5 @@ export function ServiceMapWeb(props: { jwt: string; links: ChannelLinks; target:
       </div>
     );
   }
-  return <WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} title={props.title} serviceId={props.target.serviceId} admin={props.admin} discharges={props.discharges} />;
+  return <WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} title={props.title} serviceId={props.target.serviceId} admin={props.admin} discharges={props.discharges} send={props.send} />;
 }

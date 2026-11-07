@@ -4,6 +4,7 @@ import { loadWorkMap, serviceMapPage, WORK_MAP_EMPTY, type ChannelLinks, type Un
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 import { WorkMapBoard } from './workMap/WorkMapBoard';
+import type { ProgressSend } from './workMap/WorkMapDischarges';
 
 /** Most of the screen, leaving the tabs in sight. */
 const MAP_SCREEN_SHARE = 0.5;
@@ -41,7 +42,7 @@ const PortalLink = (props: { url: string }) => (
 );
 
 /** «Mapa» of a service (José 06/11: «el mapa literal de la obra»), drawn with what Portal shows a client. */
-export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; target: ServiceTarget; title: string; admin?: boolean; discharges?: UnitDischarge[] }) {
+export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; target: ServiceTarget; title: string; admin?: boolean; discharges?: UnitDischarge[]; send?: ProgressSend }) {
   const screen = useWindowDimensions();
   const { state, ask } = useServiceMap(props.jwt, props.links, props.target);
   const height = Math.round(screen.height * MAP_SCREEN_SHARE);
@@ -66,5 +67,5 @@ export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; targe
       </View>
     );
   }
-  return <WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} height={height} title={props.title} serviceId={props.target.serviceId} admin={props.admin} discharges={props.discharges} />;
+  return <WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} height={height} title={props.title} serviceId={props.target.serviceId} admin={props.admin} discharges={props.discharges} send={props.send} />;
 }

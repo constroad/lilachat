@@ -205,12 +205,21 @@ todavía. Por eso no hace falta un modelo nuevo: la progresiva sale de proyectar
   número, placa, hora de Lima, m³ y progresivas, o «Fuera de la obra», o «Sin lugar en sus fotos».
 - Sobre el mapa: un pin numerado por unidad, rojo si quedó fuera, y el tramo a confirmar resaltado.
   Web con marcadores HTML; APK con una capa de círculos y números con la fuente del estilo.
-- **Sin botón de registrar todavía.** «Confirmar avance» y «Ajustar tramo» aparecen cuando la
-  herramienta esté publicada y su formulario pase en Lilachat. `progressEntryOf` ya arma los campos.
-- **Choque de contrato encontrado:** si `despachoIds` llega como lista de texto sin opciones,
-  `validateFormSpec` rechaza el formulario entero. Con `oneOf` o `enum` pasa como selección
-  múltiple. Se lo pasé a Agentes el 07/11.
-- **Sin verificar:** los pines y el panel con datos reales, porque Agentes aún no manda `discharges`.
+- **Registrar (07/11):** «Confirmar avance» y «Ajustar tramo», solo para admins. No es un atajo:
+  `registrar_avance_de_obra` lleva `x-no-action`. El servidor la abre como «Subir al Drive»
+  (`POST …/reports/forms` con `kind: 'work_progress'`, `server/src/bots/workProgressForm.ts`):
+  - La puerta es `findAskedService` con la necesidad `admin`. Un miembro recibe 404.
+  - El servicio sale de la puerta, nunca del teléfono.
+  - Pregunta el detalle a Agentes y deja solo los `despachoIds` que trae `discharges`. Si no queda
+    ninguno, responde 409 «Esas unidades no salen en el detalle del servicio».
+  - El formulario solo pide `nota`, hasta 280. `calleId`, `etiquetaId` o `partidaId`, `desdeM`,
+    `hastaM`, `despachoIds`, `entradaId` y `horaDelEquipo` van en el contexto, así
+    `validateFormSpec` no ve listas sin opciones.
+  - Un reenvío con el mismo `entradaId` vuelve como texto normal: Agentes convierte `ya_marcada`
+    en «Ya estaba registrado.».
+  - Flujo compartido en `shared/src/workProgressSend.ts`; web y APK solo ponen el transporte.
+- **Sin verificar:** el registro de punta a punta, que espera que José apruebe la herramienta de
+  Portal (`d623dcd3`). Datos QA «QA-MAPA — borrar» sembrados por Portal en el servicio `6aedcc3a…`.
 
 **Contrato en curso con Portal y Agentes (06/11):**
 - **Lectura:** campo `descargas` en la salida del detalle de servicio, solo para lectores

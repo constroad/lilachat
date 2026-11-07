@@ -241,6 +241,63 @@ describe('the photo and «Publicar» as forms', () => {
   });
 });
 
+describe('the progress of the work from the map (design o-07, agentes 07/11)', () => {
+  const ENTRY = '3f0e2c1a-1111-4222-8333-444455556666';
+  const point = { kind: 'ingreso', lat: -12.05, lng: -77.03, precision_m: 6, at: '2026-11-07T14:00:00.000Z' };
+  const detail = { service: { id: 'srv-318', name: 'Imprimación' }, orders: [], dispatches: [], reports: [], totals: {}, discharges: [{ dispatch_id: 'd1', plate: 'QAP-101', m3: 15, points: [point] }, { dispatch_id: 'd2', plate: '', points: [point] }] };
+  const progress = (overrides: Record<string, unknown> = {}) => ({ kind: 'work_progress', street_id: 'st-1', tag_id: 'tg-1', from_m: 10, to_m: 100, dispatch_ids: ['d1', 'd2'], entry_id: ENTRY, device_at: '2026-11-07T15:00:00.000Z', forms: 3, ...overrides });
+
+  beforeEach(() => {
+    answers['client.service.requested'] = { status: 200, body: detail };
+  });
+
+  it('an admin opens it with the lists as context, the service from the door, and only units the detail brought', async () => {
+    // Arrange: the phone also sends a unit the service never had.
+    const opened = await openOf(jose, progress({ dispatch_ids: ['d1', 'd2', 'd-otro'] })).expect(200);
+    // Act
+    await request(app).post(`/api/chats/${chatId}/commands/${opened.body.commandId}/form`).set(auth(jose)).send({ values: { nota: 'Tramo de la mañana' } }).expect(200);
+    // Assert
+    expect(opened.body.response.form).toMatchObject({ id: 'registrar_avance_de_obra', schema: { properties: { nota: { maxLength: 280 } } } });
+    expect(received.find((event) => event.type === 'form.submitted')?.data).toMatchObject({
+      form_id: 'registrar_avance_de_obra', client_id: 'cli-cvs', service_id: 'srv-318',
+      values: { nota: 'Tramo de la mañana', servicioId: 'srv-318', calleId: 'st-1', etiquetaId: 'tg-1', desdeM: 10, hastaM: 100, despachoIds: ['d1', 'd2'], entradaId: ENTRY, horaDelEquipo: '2026-11-07T15:00:00.000Z' },
+    });
+  });
+
+  it('a contracted item goes as partidaId', async () => {
+    const opened = await openOf(jose, progress({ tag_id: undefined, partida_id: 'pa-1' })).expect(200);
+    const run = await BotCommandRunModel.findById(opened.body.commandId).lean();
+    expect(run?.context).toMatchObject({ partidaId: 'pa-1' });
+    expect(run?.context).not.toHaveProperty('etiquetaId');
+  });
+
+  it('a member who is not an admin of the space does not open it', async () => {
+    await openOf(ana, progress()).expect(404);
+    expect(received.some((event) => event.type === 'client.service.requested')).toBe(false);
+  });
+
+  it('units that are not in the service are refused before anything reaches Portal', async () => {
+    const refused = await openOf(jose, progress({ dispatch_ids: ['d-otro'] })).expect(409);
+    expect(refused.body.message).toBe('Esas unidades no salen en el detalle del servicio. Abre el mapa de nuevo.');
+  });
+
+  it('when the detail does not come back it says so, and opens nothing', async () => {
+    answers['client.service.requested'] = { status: 502, body: {} };
+    const refused = await openOf(jose, progress()).expect(409);
+    expect(refused.body.message).toBe('No se pudo comprobar el servicio. Prueba de nuevo.');
+    expect(await BotCommandRunModel.countDocuments({ command: 'registrar_avance_de_obra' })).toBe(0);
+  });
+
+  it('anything off the contract is a 400', async () => {
+    await openOf(jose, progress({ tag_id: undefined })).expect(400);
+    await openOf(jose, progress({ partida_id: 'pa-1' })).expect(400);
+    await openOf(jose, progress({ to_m: 10 })).expect(400);
+    await openOf(jose, progress({ entry_id: 'abc' })).expect(400);
+    await openOf(jose, progress({ device_at: 'ayer' })).expect(400);
+    await openOf(jose, progress({ dispatch_ids: Array.from({ length: 31 }, (_, index) => `d${index}`) })).expect(400);
+  });
+});
+
 describe('a control de pista (06/11): units from the dispatches, photos with their kind and place', () => {
   const unitsSection = {
     id: 'unidades', kind: 'repeat', title: 'Unidades', required: true, state: 'empty', summary: [], itemTitle: 'Unidad', addLabel: '', min: 1, page: { current: 1, total: 2 },

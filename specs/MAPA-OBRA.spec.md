@@ -223,6 +223,13 @@ si el enlace del servicio es esa página).
 admin pueda restaurar». Portal lo implementa (`restaurar_de_obra`, `borrados_de_obra`) y mantiene
 el rechazo a borrar una calle con avance, porque el metrado y la valorización dejarían de cuadrar.
 
+**«Mapa» para todos, de verdad (07/11):** el ingeniero Jeremy no veía «Mapa» (ni «Drive»). La
+pestaña dependía de que el atajo «Crear enlace del servicio» estuviera prendido para esa persona
+(`links.can('service')`); con los atajos apagados para los miembros, no salía. Ahora la pestaña sale
+para todo miembro del canal y el enlace del mapa se pide por la puerta del servidor
+(`kind: 'service_link'`, `doorMapLinks`), que comprueba el canal y fija el servicio. Su captura
+además era de la app sin la OTA del mapa abierto: hay que abrirla dos veces con señal.
+
 **Editor de calles auditado (José 07/11, con captura de su teléfono):** «no quiero que copies,
 audítalo y mejóralo», fácil y fluido para un ingeniero de campo. Su captura: tocó inicio y fin, y
 el trazo salió en recta, sin seguir la vía; no había forma de tocar una calle y tomar su nombre; el

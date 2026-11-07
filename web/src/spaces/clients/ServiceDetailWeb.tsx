@@ -6,6 +6,7 @@ import type { OpenSheetFile } from './RecordSheetWeb';
 import { RecordSheetWeb } from './RecordSheetWeb';
 import { ServiceDriveWeb } from './ServiceDriveWeb';
 import { MapWorkspace } from './workMap/MapWorkspace';
+import { doorMapLinks } from './workMap/workProgressSender';
 import { ServiceStagesWeb } from './ServiceStagesWeb';
 import { SpaceActionButtonWeb } from './SpaceActionButtonWeb';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
@@ -147,7 +148,7 @@ function DetailTabs({ detail, target, service, chatId, seesDrive, links, seesMon
   };
   const strip = (
       <div role="tablist" className="flex gap-1 overflow-x-auto rounded-xl border border-outline/15 bg-surface p-1">
-        {serviceTabs(detail, seesDrive, Boolean(links?.can('service'))).map((one) => (
+        {serviceTabs(detail, seesDrive, Boolean(links)).map((one) => (
           <button key={one.key} type="button" role="tab" aria-selected={tab === one.key} data-testid={`pestana-detalle-${one.key}`} onClick={(event) => { setTab(one.key); event.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); }} className={`h-9 shrink-0 rounded-lg px-3 text-sm ${tab === one.key ? 'bg-primary font-semibold text-on-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>{one.label}</button>
         ))}
       </div>
@@ -231,7 +232,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   }, [mapOpen, onMapOpen]);
   if (mapOpen && answer?.ok && props.links) {
     const crumbs = <ServiceCrumbs service={props.service.name} onBack={props.onBack} onToChat={props.onToChat} />;
-    return <MapWorkspace crumbs={crumbs} detail={answer.value} service={props.service} tabs={serviceTabs(answer.value, Boolean(props.seesDrive), true)} onTab={pickTab} links={props.links} target={props.target} chatId={props.chatId} />;
+    return <MapWorkspace crumbs={crumbs} detail={answer.value} service={props.service} tabs={serviceTabs(answer.value, Boolean(props.seesDrive), true)} onTab={pickTab} links={doorMapLinks(props.links, props.target, props.chatId, props.service.id)} target={props.target} chatId={props.chatId} />;
   }
   if (report) return <ReportDocumentWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={portalUrl} onClose={closeReport} />;
   return (

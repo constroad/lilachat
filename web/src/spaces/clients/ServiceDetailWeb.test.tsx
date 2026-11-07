@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+/** The map's door is the server's; here the channel's fake `map` stands in for it. */
+vi.mock('./workMap/workProgressSender', async (original) => ({ ...(await original<typeof import('./workMap/workProgressSender')>()), doorMapLinks: (links: unknown) => links }));
 import { ServiceDetailWeb } from './ServiceDetailWeb';
 
 /** José 30/10: «no veo cómo navegar en el servicio, qué informes, qué pedidos, qué despachos» (design f-04). */
@@ -206,15 +208,11 @@ describe('ServiceDetailWeb', () => {
     expect(open).toHaveBeenCalledWith({ kind: 'order', clientId: 'cli-cvs', orderId: 'o1' });
   });
 
-  it('a service with a map shows «Mapa» only to whoever can make its link, and the tab asks for it (José 06/11)', async () => {
+  it('«Mapa» is for every member of the channel, even when the link shortcut is off for them (José 07/11, the engineer Jeremy)', async () => {
     // Arrange
     vi.stubGlobal('fetch', reply({ detail: { ...detail, service: { ...detail.service, hasMap: true } } }));
     const map = vi.fn(async () => ({ ok: true as const, url: 'https://constroad.com/public/mapa' }));
-    const view = render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={() => undefined} links={{ can: () => false, open: vi.fn(), map }} />);
-    await screen.findByTestId('pestana-detalle-orders');
-    expect(screen.queryByTestId('pestana-detalle-map')).not.toBeInTheDocument();
-    view.unmount();
-    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={() => undefined} links={{ can: (kind) => kind === 'service', open: vi.fn(), map }} />);
+    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={() => undefined} links={{ can: () => false, open: vi.fn(), map }} />);
     // Act
     fireEvent.click(await screen.findByTestId('pestana-detalle-map'));
     // Assert: the fake server sends no streets, so the tab offers to draw them.

@@ -1,4 +1,4 @@
-import { noticeOf, sendWorkProgress, sendWorkStreet, sendWorkStreetDelete, workProgressRequest, workStreetDeleteRequest, workStreetRequest, type StreetDraft, type WorkProgressResult } from '@lilachat/shared';
+import { serviceLinkRequest, serviceMapUrl, type ChannelLinks, noticeOf, sendWorkProgress, sendWorkStreet, sendWorkStreetDelete, workProgressRequest, workStreetDeleteRequest, workStreetRequest, type StreetDraft, type WorkProgressResult } from '@lilachat/shared';
 import { submitAppForm } from '../../../chat/commands/commandsApi';
 import { currentSocket } from '../../../useSocket';
 import { openReportForm } from '../reports/reportsApi';
@@ -34,3 +34,13 @@ export const workStreetDeleteSender = (target: ServiceAskTarget, chatId: string,
     submit: (commandId, values) => submitAppForm(target.jwt, { chatId }, commandId, values),
     notice: (commandId) => noticeOf(currentSocket(), commandId),
   });
+
+/** The map's link through the server's door, not the channel's shortcut: every member sees the map (José 07/11). */
+export const doorMapLinks = (links: ChannelLinks, target: ServiceAskTarget, chatId: string, serviceId: string): ChannelLinks => ({
+  ...links,
+  map: () => serviceMapUrl({
+    open: () => openReportForm(target, serviceId, serviceLinkRequest()),
+    submit: (commandId, values) => submitAppForm(target.jwt, { chatId }, commandId, values),
+    notice: (commandId) => noticeOf(currentSocket(), commandId),
+  }),
+});

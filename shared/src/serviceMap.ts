@@ -1,5 +1,5 @@
 import type { FormSubmitReply } from './appActions.js';
-import type { FormValues } from './appForms.js';
+import { FORMS_LEVEL, type FormValues } from './appForms.js';
 import type { CommandOutcome, CommandResponse } from './botCommands.js';
 
 /**
@@ -33,6 +33,14 @@ export function portalMapTabUrl(url: string | undefined): string | null {
 }
 
 export type ServiceMapResult = { ok: true; url: string } | { ok: false; message: string };
+/**
+ * The service's link through the server's door (José 07/11, the engineer Jeremy had no «Mapa»):
+ * the channel's «crear enlace» shortcut may be off for a member, but the map is everyone's. The
+ * door checks the person is in the client's channel and fixes the service.
+ */
+export type ServiceLinkRequest = { kind: 'service_link'; forms: number };
+export const serviceLinkRequest = (): ServiceLinkRequest => ({ kind: 'service_link', forms: FORMS_LEVEL });
+
 export type ServiceMapDeps = {
   open: () => Promise<{ ok: true; data: CommandOutcome } | { ok: false; message?: string }>;
   submit: (commandId: string, values: FormValues) => Promise<FormSubmitReply>;

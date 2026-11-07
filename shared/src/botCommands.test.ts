@@ -40,6 +40,10 @@ describe('command registry', () => {
 describe('command response', () => {
   it('ephemeral by default, with text or a card', () => {
     expect(validateCommandResponse({ text: 'Lurín: 24 °C' })).toEqual({ ok: true, response: { responseType: 'ephemeral', text: 'Lurín: 24 °C' } });
+    // Agentes 07/11: the map's tools answer with Portal's structured data too (deleted streets and stretches, a new street's id).
+    expect(validateCommandResponse({ text: 'Borrados', data: { calles: [{ calleId: 's1' }] } })).toEqual({ ok: true, response: { responseType: 'ephemeral', text: 'Borrados', data: { calles: [{ calleId: 's1' }] } } });
+    expect(validateCommandResponse({ text: 'x', data: ['no'] })).toEqual({ ok: true, response: { responseType: 'ephemeral', text: 'x' } });
+    expect(validateCommandResponse({ text: 'x', data: { big: 'y'.repeat(COMMAND_LIMITS.data + 1) } })).toEqual({ ok: true, response: { responseType: 'ephemeral', text: 'x' } });
     const withCard = validateCommandResponse({ response_type: 'in_channel', card: { title: 'Clima de hoy' } });
     expect(withCard.ok && withCard.response.responseType).toBe('in_channel');
     expect(withCard.ok && withCard.response.card?.title).toBe('Clima de hoy');

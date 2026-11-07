@@ -26,9 +26,10 @@ export type CommandGroup = { appId: string; appName: string; commands: BotComman
 export type CommandResponseType = 'ephemeral' | 'in_channel' | 'form';
 /** `shareable: false` (agentes, 23/10: debts, payments, payroll): no «Enviar al canal». */
 /** `nothingToReport` (schedules, agentes 28/10): the report still comes, and a schedule «solo si hay algo» posts nothing. */
-export type CommandResponse = { responseType: CommandResponseType; text?: string; card?: BotCard; form?: AppForm; shareable?: false; nothingToReport?: true; /** Never stored: `deliverResponse` keeps only the text and the card. */ upload?: DriveUpload };
+export type CommandResponse = { responseType: CommandResponseType; text?: string; card?: BotCard; form?: AppForm; shareable?: false; nothingToReport?: true; /** Never stored: `deliverResponse` keeps only the text and the card. */ upload?: DriveUpload; /** The app's structured answer as it came (agentes 07/11: Portal's `structuredContent`); never stored. */ data?: Record<string, unknown> };
 
-export const COMMAND_LIMITS = { commands: 25, name: 32, description: 100, usageHint: 60, text: 4000, input: 2000 };
+/** `data`: characters of the JSON an app may attach to an answer (agentes 07/11, the map's deleted list). */
+export const COMMAND_LIMITS = { commands: 25, name: 32, description: 100, usageHint: 60, text: 4000, input: 2000, data: 64_000 };
 const COMMAND_NAME = /^[a-z][a-z0-9_-]+$/;
 
 const line = (value: unknown, max: number): string => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, max) : '');
@@ -61,6 +62,12 @@ export function validateBotCommands(raw: unknown): { ok: true; commands: BotComm
   return { ok: true, commands };
 }
 
+/** A plain object small enough to pass to the phone; anything else is dropped, not refused. */
+function dataOf(raw: unknown): Record<string, unknown> | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  return JSON.stringify(raw).length <= COMMAND_LIMITS.data ? (raw as Record<string, unknown>) : null;
+}
+
 /** What the app answers to `command.invoked`, in the webhook body or later through `/respond`. */
 export function validateCommandResponse(raw: unknown): { ok: true; response: CommandResponse } | { ok: false; message: string } {
   const body = record(raw);
@@ -80,7 +87,8 @@ export function validateCommandResponse(raw: unknown): { ok: true; response: Com
   if (!text && !card) return { ok: false, message: 'La respuesta lleva «text» o «card».' };
   const upload = body.upload === undefined ? null : driveUploadOf(body.upload);
   if (body.upload !== undefined && !upload) return { ok: false, message: 'La respuesta lleva un «upload» inválido.' };
-  return { ok: true, response: { responseType, ...(text ? { text } : {}), ...(card ? { card } : {}), ...(upload ? { upload } : {}), ...(body.shareable === false ? { shareable: false as const } : {}), ...(body.nothing_to_report === true ? { nothingToReport: true as const } : {}) } };
+  const data = dataOf(body.data);
+  return { ok: true, response: { responseType, ...(text ? { text } : {}), ...(card ? { card } : {}), ...(upload ? { upload } : {}), ...(data ? { data } : {}), ...(body.shareable === false ? { shareable: false as const } : {}), ...(body.nothing_to_report === true ? { nothingToReport: true as const } : {}) } };
 }
 
 /**

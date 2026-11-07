@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
-import { ExternalLink, Maximize2, Plus, Share2, X } from 'lucide-react-native';
+import { ArchiveRestore, ExternalLink, Maximize2, Plus, Share2, X } from 'lucide-react-native';
 import { type MapEditSend, dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StretchRange, type UnitDischarge, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { useColores } from '../../../ui/tema';
@@ -11,6 +11,7 @@ import { WorkMapFilters, WorkMapLegend } from './WorkMapFilters';
 import { WorkMapPanel } from './WorkMapPanel';
 import type { StreetDeleteSend } from './StreetDelete';
 import { StreetScopes } from './StreetScopes';
+import { DeletedWork } from './DeletedWork';
 import { WorkMapSurface } from './WorkMapSurface';
 
 function FullMap(props: { view: WorkMapView; open: boolean; onClose: () => void; pins: DischargePin[]; stretches: WorkMapLine[] }) {
@@ -39,9 +40,9 @@ function useDischarges(map: WorkMap, discharges: UnitDischarge[]) {
   return { suggestion, ranges, pins, stretches, onRange: (streetId: string, range: StretchRange) => setRanges((before) => ({ ...before, [streetId]: range })) };
 }
 
-type BoardProps = { map: WorkMap; pageUrl: string; height: number; title: string; serviceId: string; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend };
+type BoardProps = { map: WorkMap; pageUrl: string; height: number; title: string; serviceId: string; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» and «Restaurar» (José 07/11). */ admin?: boolean };
 
-function TitleRow(props: { pageUrl: string; onExport: () => void; onDraw?: () => void }) {
+function TitleRow(props: { pageUrl: string; onExport: () => void; onDraw?: () => void; onDeleted?: () => void }) {
   const colors = useColores();
   return (
     <View className="flex-row items-center gap-2">
@@ -49,6 +50,11 @@ function TitleRow(props: { pageUrl: string; onExport: () => void; onDraw?: () =>
       {props.onDraw ? (
         <Pressable testID="mapa-nueva-calle" accessibilityLabel="Nueva calle" onPress={props.onDraw} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20">
           <Plus size={18} color={colors['on-surface']} />
+        </Pressable>
+      ) : null}
+      {props.onDeleted ? (
+        <Pressable testID="mapa-borrados-abrir" accessibilityLabel="Borrados" onPress={props.onDeleted} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20">
+          <ArchiveRestore size={18} color={colors['on-surface']} />
         </Pressable>
       ) : null}
       <Pressable testID="mapa-abrir" accessibilityLabel="Abrir en Portal" onPress={() => void Linking.openURL(props.pageUrl)} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20">
@@ -74,13 +80,14 @@ export function WorkMapBoard(props: BoardProps) {
   const [wide, setWide] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [streetId, setStreetId] = useState<string | null>(null);
+  const [seeingDeleted, setSeeingDeleted] = useState(false);
   const view = useMemo(() => workMapView(map, filter), [map, filter]);
   const groups = useMemo(() => workMapStageGroups(map, view), [map, view]);
   const pista = useDischarges(map, props.discharges ?? NO_DISCHARGES);
   const top = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null;
   return (
     <View testID="mapa-servicio" className="gap-3">
-      <TitleRow pageUrl={pageUrl} onExport={() => setExporting(true)} onDraw={props.onDraw} />
+      <TitleRow pageUrl={pageUrl} onExport={() => setExporting(true)} onDraw={props.onDraw} onDeleted={props.admin && props.editMap ? () => setSeeingDeleted(true) : undefined} />
       <WorkMapFilters map={map} view={view} filter={filter} onFilter={setFilter} />
       <View className="-mx-4 overflow-hidden bg-surface-variant" style={{ height }}>
         <View pointerEvents="none" className="absolute inset-0">
@@ -93,6 +100,7 @@ export function WorkMapBoard(props: BoardProps) {
       </View>
       <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} deleteStreet={props.deleteStreet} onOpenStreet={setStreetId} />
       <FullMap view={view} open={wide} onClose={() => setWide(false)} pins={pista.pins} stretches={pista.stretches} />
+      {props.editMap ? <DeletedWork open={seeingDeleted} map={map} send={props.editMap} onClose={() => setSeeingDeleted(false)} /> : null}
       <StreetScopes map={map} streetId={streetId} send={props.editMap} onClose={() => setStreetId(null)} />
       <WorkMapExport open={exporting} map={map} filter={filter} title={props.title} pageUrl={pageUrl} onClose={() => setExporting(false)} />
     </View>

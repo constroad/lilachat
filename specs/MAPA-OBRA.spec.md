@@ -443,10 +443,6 @@ porque Portal no tiene cómo borrarlos.
 **Sin probar:** el APK (falta la OTA) y un miembro que no es admin.
 
 **Pendiente, con su porqué:**
-- Restaurar y ver lo borrado: Agentes pidió no abrir `restaurar_de_obra` ni `borrados_de_obra`
-  hasta desplegar su comprobación del servicio (rama `mapa-borrados-y-datos`). La puerta ya los
-  sabe armar, pero no los abre (`isWorkMapFormKind`). Además Portal los da solo a quien tiene
-  `services:manage`: un miembro sin cuenta de Portal recibe el rechazo.
 - Registrar avance a mano (o-06): Portal publica `registrar_avance_manual_de_obra` (sin unidades,
   con fotos del Drive del servicio y la hora del equipo). José tiene que aprobarla en Agentes.
 
@@ -466,3 +462,16 @@ porque Portal no tiene cómo borrarlos.
   la línea se da vuelta (`reversed`) y 0+000 es el primer toque; «Deshacer» lo conserva.
 - **Sin probar:** caminar de verdad en la calle con un teléfono. El emulador no camina; la prueba
   real la hace un ingeniero en obra.
+
+## Borrados y Restaurar (admins), web y APK
+
+- Agentes desplegó su comprobación del servicio para `restaurar_de_obra` y `borrados_de_obra`
+  (890b02e, 21:15Z). Toda escritura del mapa responde además con `data`, el `structuredContent` de
+  Portal. Lilachat lo deja pasar en la respuesta de un comando (`CommandResponse.data`, hasta 64 000
+  caracteres de JSON; otra cosa se descarta, no se rechaza) y `sendMapTool` lo devuelve.
+- «Borrados» sale en la barra del mapa solo para admins del espacio (los que ven plata). Lista las
+  calles y los tramos borrados, el más nuevo arriba, con quién y cuándo (hora de Lima). Una calle
+  vuelve con los tramos que se borraron con ella; los tramos que se borraron solos salen aparte.
+  «Restaurar» vuelve a pedir la lista y el mapa. Motor puro `shared/src/workDeleted.ts`.
+- Portal da estas dos herramientas solo a quien tiene `services:manage`: un admin del espacio sin
+  ese permiso en Portal recibe el rechazo tal cual.

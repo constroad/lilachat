@@ -25,7 +25,8 @@ export type WorkProgressDeps = {
   submit(commandId: string, values: FormValues): Promise<FormSubmitReply>;
   notice(commandId: string): Promise<CommandNotice | null>;
 };
-export type WorkProgressResult = { ok: true; message: string } | { ok: false; message: string };
+/** `data`: the tool's structured answer, when the app sends one (agentes 890b02e). */
+export type WorkProgressResult = { ok: true; message: string; data?: Record<string, unknown> } | { ok: false; message: string };
 
 export const PROGRESS_SENT = 'Avance registrado. Queda pendiente de aprobación del residente.';
 export const PROGRESS_FAILED = 'No se pudo registrar el avance. Revisa tu señal y vuelve a confirmar.';
@@ -60,7 +61,7 @@ export async function sendMapTool(deps: WorkProgressDeps, values: FormValues, te
   const { outcome } = reply;
   if (outcome.outcome === 'failed') return { ok: false, message: outcome.message ?? texts.failed };
   const response = outcome.outcome === 'pending' ? (await deps.notice(commandId))?.response : outcome.response;
-  return { ok: true, message: response?.text?.trim() || texts.sent };
+  return { ok: true, message: response?.text?.trim() || texts.sent, ...(response?.data ? { data: response.data } : {}) };
 }
 
 /** The same `entradaId` on a resend: Portal answers `ya_marcada` and agentes turns it into a normal answer, «Ya estaba registrado.». */

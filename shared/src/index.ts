@@ -160,6 +160,7 @@ export * from './workStreetDraft.js';
 export * from './workStreetPick.js';
 export * from './workStreetDetail.js';
 export * from './workStreetWalk.js';
+export * from './workDeleted.js';
 export * from './workScopeDraft.js';
 export * from './workStreetDelete.js';
 export * from './photoStamp.js';

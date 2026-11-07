@@ -232,7 +232,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   }, [mapOpen, onMapOpen]);
   if (mapOpen && answer?.ok && props.links) {
     const crumbs = <ServiceCrumbs service={props.service.name} onBack={props.onBack} onToChat={props.onToChat} />;
-    return <MapWorkspace crumbs={crumbs} detail={answer.value} service={props.service} tabs={serviceTabs(answer.value, Boolean(props.seesDrive), true)} onTab={pickTab} links={doorMapLinks(props.links, props.target, props.chatId, props.service.id)} target={props.target} chatId={props.chatId} />;
+    return <MapWorkspace admin={props.seesMoney} crumbs={crumbs} detail={answer.value} service={props.service} tabs={serviceTabs(answer.value, Boolean(props.seesDrive), true)} onTab={pickTab} links={doorMapLinks(props.links, props.target, props.chatId, props.service.id)} target={props.target} chatId={props.chatId} />;
   }
   if (report) return <ReportDocumentWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={portalUrl} onClose={closeReport} />;
   return (

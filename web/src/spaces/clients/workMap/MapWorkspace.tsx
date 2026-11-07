@@ -23,7 +23,7 @@ function UnderlineTabs(props: { tabs: Tab[]; onTab: (tab: ServiceTabKey) => void
   );
 }
 
-type WorkspaceProps = { crumbs: ReactNode; detail: ServiceDetail; service: SpaceClientService; tabs: Tab[]; onTab: (tab: ServiceTabKey) => void; links: ChannelLinks; target: ServiceAskTarget; chatId: string };
+type WorkspaceProps = { /** A space admin: «Borrados» on the map (José 07/11). */ admin?: boolean; crumbs: ReactNode; detail: ServiceDetail; service: SpaceClientService; tabs: Tab[]; onTab: (tab: ServiceTabKey) => void; links: ChannelLinks; target: ServiceAskTarget; chatId: string };
 
 /**
  * The map tab takes the whole conversation (design `o-01-mapa-obra`; José 07/11 said the web did
@@ -40,7 +40,7 @@ export function MapWorkspace(props: WorkspaceProps) {
   const badge = <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{CLIENT_SERVICE_STATUS_LABELS[service.status]}</span>;
   return (
     <div data-testid="detalle-servicio" className="flex min-h-0 flex-1 flex-col">
-      <ServiceMapWeb jwt={target.jwt} links={props.links} target={{ kind: 'service', clientId: target.clientId, serviceId: service.id }} title={service.name} head={head} tabs={<UnderlineTabs tabs={props.tabs} onTab={props.onTab} />} badge={badge} drawUrl={portalMapTabUrl(props.detail.service.url)} discharges={props.detail.discharges} send={workProgressSender(target, props.chatId, service.id)} drawStreet={workStreetSender(target, props.chatId, service.id)} deleteStreet={workStreetDeleteSender(target, props.chatId, service.id)} editMap={mapEditSender(target, props.chatId, service.id)} />
+      <ServiceMapWeb jwt={target.jwt} links={props.links} target={{ kind: 'service', clientId: target.clientId, serviceId: service.id }} title={service.name} head={head} tabs={<UnderlineTabs tabs={props.tabs} onTab={props.onTab} />} badge={badge} drawUrl={portalMapTabUrl(props.detail.service.url)} discharges={props.detail.discharges} send={workProgressSender(target, props.chatId, service.id)} drawStreet={workStreetSender(target, props.chatId, service.id)} deleteStreet={workStreetDeleteSender(target, props.chatId, service.id)} editMap={mapEditSender(target, props.chatId, service.id)} admin={props.admin} />
     </div>
   );
 }

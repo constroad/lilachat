@@ -81,12 +81,9 @@ export function workMapFormInputOf(raw: Record<string, unknown>): WorkMapFormInp
   return null;
 }
 
-/**
- * The kinds the door opens. Restoring and listing what was deleted wait for agentes: its service
- * check did not cover those two tools yet (agentes 07/11).
- */
+/** The kinds the door opens; restore and the deleted list since agentes checks their service (890b02e). */
 export const isWorkMapFormKind = (kind: unknown): boolean =>
-  kind === 'work_scope' || kind === 'work_scope_delete' || kind === 'work_stage' || kind === 'work_tag';
+  kind === 'work_scope' || kind === 'work_scope_delete' || kind === 'work_stage' || kind === 'work_tag' || kind === 'work_restore' || kind === 'work_deleted';
 
 /** Narrows the door's union to these kinds. */
 export const isWorkMapFormInput = (input: { kind: string }): input is WorkMapFormInput => isWorkMapFormKind(input.kind);

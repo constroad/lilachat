@@ -69,10 +69,10 @@ describe('what was deleted (admins restore it)', () => {
     expect(workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_deleted' })!)).toMatchObject({ form: { id: 'borrados_de_obra' }, context: { servicioId: SERVICE } });
   });
 
-  it('the door does not open them yet: agentes checks their service first', () => {
-    expect(isWorkMapFormKind('work_restore')).toBe(false);
-    expect(isWorkMapFormKind('work_deleted')).toBe(false);
-    expect(isWorkMapFormKind('work_scope')).toBe(true);
+  it('the door opens them since agentes checks their service (890b02e)', () => {
+    expect(isWorkMapFormKind('work_restore')).toBe(true);
+    expect(isWorkMapFormKind('work_deleted')).toBe(true);
+    expect(isWorkMapFormKind('work_street')).toBe(false);
   });
 
   it('another kind is not this module\'s', () => {

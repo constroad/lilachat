@@ -149,6 +149,7 @@ export * from './appActions.js';
 export * from './appFormKnown.js';
 export * from './clientTasks.js';
 export * from './taskReminders.js';
+export * from './serviceMap.js';
 export * from './signingForm.js';
 export * from './appItems.js';
 export * from './reportPdf.js';

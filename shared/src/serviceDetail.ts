@@ -42,7 +42,8 @@ export type QuoteItem = { name: string; quantity?: number; unit?: string; unitPr
 export type ServiceQuote = { id: string; code?: string; date?: string; total?: number; status: DetailStatus; url?: string; items?: QuoteItem[]; pdfUrl?: string };
 export type DetailTotals = { orders: number; dispatches: number; reports: number; quotes?: number };
 export type ServiceDetail = {
-  service: { id: string; name: string; stageLabel?: string; progress?: number; url?: string };
+  /** `hasMap`: Portal has the job's stretches drawn (José 06/11), so the service gets its «Mapa». */
+  service: { id: string; name: string; stageLabel?: string; progress?: number; url?: string; hasMap?: true };
   orders: ServiceOrder[];
   dispatches: ServiceDispatch[];
   reports: ServiceReport[];
@@ -53,8 +54,8 @@ export type ServiceDetail = {
   totals: DetailTotals;
 };
 export type DetailTabKey = 'orders' | 'dispatches' | 'reports';
-/** A tab of an open service: Portal's lists and, for whoever may see it, its Drive (José 06/11). */
-export type ServiceTabKey = DetailTabKey | 'drive';
+/** A tab of an open service: Portal's lists and, for whoever may see them, its map and its Drive (José 06/11). */
+export type ServiceTabKey = DetailTabKey | 'map' | 'drive';
 
 const LIST_MAX = 100;
 const TIME_ZONE = 'America/Lima';
@@ -158,7 +159,7 @@ function listOf<T>(value: unknown, parse: (raw: Raw) => T): T[] | null {
 }
 
 function serviceHeadOf(service: Raw): ServiceDetail['service'] {
-  return defined({ id: text(service.id)!, name: text(service.name) ?? 'Servicio', stageLabel: text(service.stage_label), progress: count(service.progress), url: https(service.url) });
+  return defined({ id: text(service.id)!, name: text(service.name) ?? 'Servicio', stageLabel: text(service.stage_label), progress: count(service.progress), url: https(service.url), hasMap: service.has_map === true ? (true as const) : undefined });
 }
 
 /** Portal's real counts; the length of what came when it sends none. */
@@ -320,9 +321,11 @@ export function detailTabs(detail: ServiceDetail): { key: DetailTabKey; label: s
   return (['orders', 'reports'] as const).map((key) => ({ key, label: `${TAB_NAMES[key]} · ${detail.totals[key]}` }));
 }
 
-/** The open service's tabs: the Drive joins Pedidos and Informes, with no count because Portal sends none. */
-export function serviceTabs(detail: ServiceDetail, seesDrive: boolean): { key: ServiceTabKey; label: string }[] {
-  return seesDrive ? [...detailTabs(detail), { key: 'drive', label: 'Drive' }] : detailTabs(detail);
+/** The open service's tabs: the map and the Drive join Pedidos and Informes, with no count because Portal sends none. */
+export function serviceTabs(detail: ServiceDetail, seesDrive: boolean, seesMap = false): { key: ServiceTabKey; label: string }[] {
+  const map = seesMap && detail.service.hasMap ? [{ key: 'map' as const, label: 'Mapa' }] : [];
+  const drive = seesDrive ? [{ key: 'drive' as const, label: 'Drive' }] : [];
+  return [...detailTabs(detail), ...map, ...drive];
 }
 
 /** «15 nov 2026»: a calendar day with its year, for a due date. */

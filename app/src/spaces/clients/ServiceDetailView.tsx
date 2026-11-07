@@ -6,6 +6,7 @@ import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
 import { RecordSheet } from './RecordSheet';
 import { ServiceDrive } from './ServiceDrive';
+import { ServiceMapPanel } from './ServiceMapPanel';
 import { ServiceStages } from './ServiceStages';
 import { SpaceActionButton } from './SpaceActionButton';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
@@ -104,7 +105,7 @@ function OrphanDispatches({ detail, onOpen, onOpenFile }: { detail: ServiceDetai
 }
 
 /** The tabs scroll so the one touched is whole on screen (30/10: «Cotizaciones» showed as a cut «C»). */
-function TabStrip(props: { detail: ServiceDetail; seesDrive: boolean; tab: ServiceTabKey; onTab: (tab: ServiceTabKey) => void }) {
+function TabStrip(props: { detail: ServiceDetail; seesDrive: boolean; seesMap: boolean; tab: ServiceTabKey; onTab: (tab: ServiceTabKey) => void }) {
   const strip = useRef<ScrollView>(null);
   const starts = useRef<Partial<Record<ServiceTabKey, number>>>({});
   const pick = (key: ServiceTabKey) => {
@@ -113,7 +114,7 @@ function TabStrip(props: { detail: ServiceDetail; seesDrive: boolean; tab: Servi
   };
   return (
     <ScrollView ref={strip} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }} className="flex-grow-0 rounded-xl border border-outline/15 bg-surface p-1">
-      {serviceTabs(props.detail, props.seesDrive).map((one) => (
+      {serviceTabs(props.detail, props.seesDrive, props.seesMap).map((one) => (
         <Pressable key={one.key} testID={`pestana-detalle-${one.key}`} onLayout={(event) => (starts.current[one.key] = event.nativeEvent.layout.x)} onPress={() => pick(one.key)} accessibilityRole="tab" accessibilityState={{ selected: props.tab === one.key }} className={`min-h-[40px] justify-center rounded-lg px-3 ${props.tab === one.key ? 'bg-primary' : ''}`}>
           <Text className={`text-[14px] ${props.tab === one.key ? 'font-semibold text-on-primary' : 'text-on-surface-variant'}`}>{one.label}</Text>
         </Pressable>
@@ -149,8 +150,8 @@ function ReportAction({ target, serviceId, onAnswered }: { target: ServiceAskTar
 
 function DetailTabs({ detail, target, service, chatId, seesDrive, onBack, onOpenFile, links, seesMoney, onReported, onCreateReport, onContinueReport, startTab, startOrderId }: { onContinueReport: (draft: { type: string; reportId: string }) => void; startOrderId?: string; onCreateReport: () => void; startTab: DetailTabKey; detail: ServiceDetail; target: ServiceAskTarget; service: SpaceClientService; chatId: string; seesDrive: boolean; onBack: () => void; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void; links?: ChannelLinks; seesMoney: boolean; onReported: () => void }) {
   const [tab, setTab] = useState<ServiceTabKey>(startTab);
-  // The Drive draws its own list; what follows only reads Portal's.
-  const listTab: DetailTabKey = tab === 'drive' ? 'orders' : tab;
+  // The map and the Drive draw their own; what follows only reads Portal's lists.
+  const listTab: DetailTabKey = tab === 'drive' || tab === 'map' ? 'orders' : tab;
   const serviceId = service.id;
   // An order's sheet opens its dispatches on top (José 01/11); closing goes back one.
   const [opened, setOpened] = useState<OpenSheet[]>(() => openingSheets(detail, startOrderId));
@@ -169,8 +170,9 @@ function DetailTabs({ detail, target, service, chatId, seesDrive, onBack, onOpen
   };
   const rows = detailRows(detail, listTab);
   const more = moreInPortal(rows.length, detail.totals[listTab]);
-  const strip = <TabStrip detail={detail} seesDrive={seesDrive} tab={tab} onTab={setTab} />;
+  const strip = <TabStrip detail={detail} seesDrive={seesDrive} seesMap={Boolean(links?.can('service'))} tab={tab} onTab={setTab} />;
   if (tab === 'drive') return <>{strip}<ServiceDrive target={target} service={service} chatId={chatId} onBack={onBack} /></>;
+  if (tab === 'map' && links) return <>{strip}<ServiceMapPanel links={links} target={{ kind: 'service', clientId: target.clientId, serviceId }} /></>;
   return (
     <>
       {strip}

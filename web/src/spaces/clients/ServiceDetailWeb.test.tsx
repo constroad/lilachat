@@ -181,13 +181,29 @@ describe('ServiceDetailWeb', () => {
     // Arrange
     vi.stubGlobal('fetch', reply({ detail }));
     const open = vi.fn();
-    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={() => undefined} links={{ can: (kind) => kind === 'order', open }} />);
+    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={() => undefined} links={{ can: (kind) => kind === 'order', open, map: vi.fn() }} />);
     // Act
     fireEvent.click(within(await screen.findByTestId('fila-o1')).getByText('Asfalto MAC 2'));
     fireEvent.click(screen.getByTestId('accion-ficha'));
     // Assert
     expect(screen.getByTestId('accion-ficha')).toHaveTextContent('Crear enlace del pedido');
     expect(open).toHaveBeenCalledWith({ kind: 'order', clientId: 'cli-cvs', orderId: 'o1' });
+  });
+
+  it('a service with a map shows «Mapa» only to whoever can make its link, and the tab asks for it (José 06/11)', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', reply({ detail: { ...detail, service: { ...detail.service, hasMap: true } } }));
+    const map = vi.fn(async () => ({ ok: true as const, url: 'https://constroad.com/public/mapa' }));
+    const view = render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={() => undefined} links={{ can: () => false, open: vi.fn(), map }} />);
+    await screen.findByTestId('pestana-detalle-orders');
+    expect(screen.queryByTestId('pestana-detalle-map')).not.toBeInTheDocument();
+    view.unmount();
+    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={() => undefined} links={{ can: (kind) => kind === 'service', open: vi.fn(), map }} />);
+    // Act
+    fireEvent.click(await screen.findByTestId('pestana-detalle-map'));
+    // Assert
+    expect(await screen.findByTestId('mapa-abrir')).toHaveAttribute('href', 'https://constroad.com/public/mapa');
+    expect(map).toHaveBeenCalledWith({ kind: 'service', clientId: 'cli-cvs', serviceId: 'srv-318' });
   });
 
   it('«Generar informe de servicio» runs informe_de_servicio from the space with the service: Portal refuses it in a group (01/11)', async () => {

@@ -63,7 +63,7 @@ export function TaskSheet(props: { item: ChecklistItem | null; members: readonly
   };
 
   return (
-    <Sheet visible={item !== null} onClose={props.onClose} testID="hoja-tarea" className="px-5" dragArea="handle" bottomRoom={8} keyboard="avoid">
+    <Sheet visible={item !== null} onClose={props.onClose} testID="hoja-tarea" className="max-h-[92%] px-5" dragArea="handle" bottomRoom={8} keyboard="avoid">
       {item ? (
         <>
           <View className="flex-row items-start gap-3 border-b border-outline/15 pb-3">
@@ -75,6 +75,8 @@ export function TaskSheet(props: { item: ChecklistItem | null; members: readonly
               <X size={20} color={colors['on-surface-variant']} />
             </Pressable>
           </View>
+          {/* José 06/11: with «Recordar antes» a short phone runs out of room; the fields scroll and «Guardar» stays. */}
+          <ScrollView style={{ flexShrink: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View className="flex-row items-center justify-between pb-2 pt-3">
             <Text className="text-[13px] font-bold uppercase tracking-wide text-on-surface">Responsable</Text>
             {assigneeName ? <Text className="text-[13px] font-semibold text-primary">{`Asignado: ${assigneeName}`}</Text> : null}
@@ -100,6 +102,7 @@ export function TaskSheet(props: { item: ChecklistItem | null; members: readonly
               <AdvanceField value={advance ?? []} onChange={setAdvance} ringsAtHour={false} />
             </View>
           ) : null}
+          </ScrollView>
           <View className="gap-2.5 border-t border-outline/15 pt-3">
             <Pressable testID="tarea-guardar" disabled={!text.trim()} onPress={() => { props.onSave({ text: text.trim(), assignee, dueAt, ...(advance ? { advance } : {}) }); props.onClose(); }} className="min-h-[48px] items-center justify-center rounded-xl bg-primary">
               <Text className="text-[15px] font-bold text-on-primary">Guardar cambios</Text>

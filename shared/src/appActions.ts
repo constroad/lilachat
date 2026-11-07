@@ -3,6 +3,7 @@ import type { AppForm, FormField, FormValues, GeoPoint } from './appForms.js';
 import { liveSelfieFieldOf } from './appForms.js';
 import { cutAtWord } from './textCut.js';
 import { CLIENT_LINK_ACTION, clientChannelButtonOf, hasOwnSpacePlace, SERVICE_LINK_ACTION } from './appItems.js';
+import { MAP_LINK_FAILED, serviceMapUrl, type ServiceMapDeps, type ServiceMapResult } from './serviceMap.js';
 
 /**
  * The actions of the apps (R160): the rows of «Acciones rápidas» (the space's ⚡,
@@ -97,13 +98,17 @@ export function linkActionOf(actions: readonly ShortcutRow[], target: LinkTarget
 }
 
 /** The link buttons of a client's channel: which ones show, and what tapping one does. */
-export type ChannelLinks = { can: (kind: LinkTarget['kind']) => boolean; open: (target: LinkTarget) => void };
-export function channelLinksOf(actions: readonly ShortcutRow[], run: (row: ShortcutRow, values: ShortcutValues) => void): ChannelLinks {
+export type ChannelLinks = { can: (kind: LinkTarget['kind']) => boolean; open: (target: LinkTarget) => void; /** A service's map: its link, made without the form. */ map: (target: LinkTarget) => Promise<ServiceMapResult> };
+export function channelLinksOf(actions: readonly ShortcutRow[], run: (row: ShortcutRow, values: ShortcutValues) => void, mapDeps?: (row: ShortcutRow, values: ShortcutValues) => ServiceMapDeps): ChannelLinks {
   return {
     can: (kind) => Boolean(linkRowOf(actions, kind)),
     open: (target) => {
       const link = linkActionOf(actions, target);
       if (link) run(link.row, link.values);
+    },
+    map: async (target) => {
+      const link = linkActionOf(actions, target);
+      return link && mapDeps ? serviceMapUrl(mapDeps(link.row, link.values)) : { ok: false, message: MAP_LINK_FAILED };
     },
   };
 }

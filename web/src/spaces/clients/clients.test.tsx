@@ -100,7 +100,7 @@ describe('a client channel (design f-03)', () => {
   it('the links of the channel (José 31/10): the client\'s at the top and each service\'s on its card, only while their action is on', () => {
     // Arrange
     const open = vi.fn();
-    const links = { can: (kind: string) => kind !== 'order', open };
+    const links = { can: (kind: string) => kind !== 'order', open, map: vi.fn() };
     render(<ClientServices client={client('x', { services: [inProgress] })} records={[]} target={null} links={links} />);
     // Act
     fireEvent.click(screen.getByTestId('enlace-cliente'));
@@ -165,7 +165,7 @@ describe('a client channel (design f-03)', () => {
   });
 
   it('without the link actions offered to that person there is nothing to tap', () => {
-    render(<ClientServices client={client('x', { services: [inProgress] })} records={[]} target={null} links={{ can: () => false, open: vi.fn() }} />);
+    render(<ClientServices client={client('x', { services: [inProgress] })} records={[]} target={null} links={{ can: () => false, open: vi.fn(), map: vi.fn() }} />);
     expect(screen.queryByTestId('enlace-cliente')).toBeNull();
     expect(screen.queryByTestId('enlace-servicio-s1')).toBeNull();
   });

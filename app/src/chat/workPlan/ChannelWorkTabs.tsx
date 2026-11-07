@@ -1,8 +1,10 @@
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { BackHandler, Pressable, ScrollView, Text, ToastAndroid, View } from 'react-native';
-import { CHANNEL_TAB_LABELS, channelLinksOf, channelTabs, checklistMembers, withoutApps, type ChannelLinks, type ChannelTab, type ShortcutRow, type ShortcutValues, type SpaceClient, type WorkStage } from '@lilachat/shared';
+import { CHANNEL_TAB_LABELS, channelLinksOf, channelTabs, checklistMembers, noticeOf, withoutApps, type ChannelLinks, type ChannelTab, type ShortcutRow, type ShortcutValues, type SpaceClient, type WorkStage } from '@lilachat/shared';
 import { useWorkPlan } from './useWorkPlan';
+import { runShortcut, submitAppForm } from '../commands/commandsApi';
+import { getSocket } from '../socketClient';
 import { WorkPlanPanel } from './WorkPlanPanel';
 import { PendingPanel } from './WorkListsPanels';
 import { TaskDetailSheet, type OpenTask } from './TaskDetailSheet';
@@ -61,7 +63,11 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
   const links = channelLinksOf(params.actions ?? [], (row, values) => {
     setTab('chat');
     void params.runAction?.(row, values);
-  });
+  }, (row, values) => ({
+    open: () => runShortcut(params.jwt, { chatId: params.chatId }, row, values),
+    submit: (commandId, answers) => submitAppForm(params.jwt, { chatId: params.chatId }, commandId, answers),
+    notice: (commandId) => noticeOf(getSocket(), commandId),
+  }));
   const allowed = channelTabs(client.access, stages.length > 0);
   // A tab the access no longer gives (an admin just restricted me) falls back to the chat.
   const shown = allowed.includes(tab) ? tab : 'chat';

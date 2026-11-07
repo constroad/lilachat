@@ -15541,3 +15541,22 @@ Reemplaza el aviso de WhatsApp: el responsable recibe un aviso de Lilachat.
 - No aparece en las listas de recordatorios (`/reminders`, `/linea`): vive en la tarea.
 - En la app y la web, «Recordar antes» sale en la hoja de la tarea cuando hay fecha, y
   el detalle muestra la fila «Recordatorios». Sin tocarlo no se manda `advance`.
+
+## Pestaña Mapa de un servicio (José 06/11)
+
+Pedido: «si el servicio tiene mapa agrega un tab mapa para un servicio». José decidió
+crear el enlace al tocar la pestaña, sin guardar una dirección fija.
+
+- Portal manda `service.has_map: true` en `detalle_de_servicio` solo si el servicio tiene
+  tramos de obra. `serviceDetailOf` lo lee como `hasMap`. Agentes deja pasar esa clave.
+- `serviceTabs` pone Mapa antes del Drive, y solo para quien puede crear el enlace
+  (`links.can('service')`). `crear_enlace_de_servicio` pide `manage`, así que hoy son los
+  admins. Si José quiere que lo vea un miembro, Portal tiene que abrir esa herramienta.
+- `serviceMapUrl` corre la acción con `dias: 1`, sin mostrar el formulario, y toma
+  `response.card.link.url`. Solo acepta `https`. Falla con mensaje y «Reintentar».
+- App: `ServiceMapPanel` muestra la página en un WebView con `nestedScrollEnabled`, y lo que
+  salga de ese sitio se abre en el navegador. El enlace se pide al abrir la pestaña.
+- Web: `ServiceMapWeb` deja el enlace listo y ofrece «Abrir el mapa» en otra pestaña. Portal
+  responde `X-Frame-Options: SAMEORIGIN`, y un navegador bloquea una pestaña abierta después
+  de esperar una respuesta.
+- Cada visita crea un enlace de un día en Portal.

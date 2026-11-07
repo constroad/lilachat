@@ -5,6 +5,7 @@ import { usePortalFileViewer } from './PortalFileViewer';
 import type { OpenSheetFile } from './RecordSheetWeb';
 import { RecordSheetWeb } from './RecordSheetWeb';
 import { ServiceDriveWeb } from './ServiceDriveWeb';
+import { ServiceMapWeb } from './ServiceMapWeb';
 import { ServiceStagesWeb } from './ServiceStagesWeb';
 import { SpaceActionButtonWeb } from './SpaceActionButtonWeb';
 import { DETAIL_TONE, STATUS_TONE } from './tones';
@@ -122,8 +123,8 @@ function TabBody({ detail, tab, onOpen, onOpenFile }: { detail: ServiceDetail; t
 
 function DetailTabs({ detail, target, service, chatId, seesDrive, links, seesMoney, onReported, onCreateReport, onContinueReport, startTab, startOrderId }: { onContinueReport: (draft: { type: string; reportId: string }) => void; startOrderId?: string; detail: ServiceDetail; target: ServiceAskTarget; service: SpaceClientService; chatId: string; seesDrive: boolean; links?: ChannelLinks; seesMoney: boolean; onReported: () => void; onCreateReport: () => void; startTab: DetailTabKey }) {
   const [tab, setTab] = useState<ServiceTabKey>(startTab);
-  // The Drive draws its own list; what follows only reads Portal's.
-  const listTab: DetailTabKey = tab === 'drive' ? 'orders' : tab;
+  // The map and the Drive draw their own; what follows only reads Portal's lists.
+  const listTab: DetailTabKey = tab === 'drive' || tab === 'map' ? 'orders' : tab;
   const serviceId = service.id;
   const viewer = usePortalFileViewer();
   // An order's sheet opens its dispatches on top (José 01/11); closing goes back one.
@@ -145,12 +146,13 @@ function DetailTabs({ detail, target, service, chatId, seesDrive, links, seesMon
   };
   const strip = (
       <div role="tablist" className="flex gap-1 overflow-x-auto rounded-xl border border-outline/15 bg-surface p-1">
-        {serviceTabs(detail, seesDrive).map((one) => (
+        {serviceTabs(detail, seesDrive, Boolean(links?.can('service'))).map((one) => (
           <button key={one.key} type="button" role="tab" aria-selected={tab === one.key} data-testid={`pestana-detalle-${one.key}`} onClick={(event) => { setTab(one.key); event.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); }} className={`h-9 shrink-0 rounded-lg px-3 text-sm ${tab === one.key ? 'bg-primary font-semibold text-on-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>{one.label}</button>
         ))}
       </div>
   );
   if (tab === 'drive') return <>{strip}<ServiceDriveWeb target={target} service={service} chatId={chatId} /></>;
+  if (tab === 'map' && links) return <>{strip}<ServiceMapWeb links={links} target={{ kind: 'service', clientId: target.clientId, serviceId }} /></>;
   return (
     <>
       {strip}

@@ -19,6 +19,7 @@ import type { NotaDeVozGrabada } from './useGrabadoraDeVoz';
 import { ListaDeMensajes } from './ListaDeMensajes';
 import { useWithoutDisappeared } from './useWithoutDisappeared';
 import { useWorkPlanWeb, WorkPlanWeb } from './workPlan/WorkPlanWeb';
+import { mapDepsOf } from '../spaces/clients/ServiceMapWeb';
 import { PendingWeb, TaskDetailWeb, type OpenTask } from './workPlan/WorkListsWeb';
 import { ClientAccountWeb } from '../spaces/clients/ClientAccountWeb';
 import { CHANNEL_TAB_LABELS, channelTabs, type ChannelLinks, type ChannelTab } from '@lilachat/shared';
@@ -150,7 +151,7 @@ export function Conversation(props: {
   const links = channelLinksOf(commands.buttons, (row, values) => {
     setChannelTab('chat');
     void commands.appAnswers.runAction(row, values);
-  });
+  }, mapDepsOf(props.jwtParaEnlaces ?? '', chat.id));
   // Its answer shows over the bar: without a bar (a secret or read-only chat) a card's row stays still.
   const cardCommand = commands.enabled && !chat.encrypted && !props.sendLock ? commands.runCardLine : null;
   const { onCardCommand } = props;

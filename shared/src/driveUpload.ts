@@ -12,13 +12,14 @@ export type DriveUpload = { url: string; method: 'POST'; fields: Record<string, 
 export type DriveUploadRequest = { kind: 'drive_upload'; forms: number };
 /** What the phone knows of a file before sending it; what it does not know is left to Portal. */
 export type DriveFileFacts = { mime: string; sizeBytes?: number; seconds?: number };
-export type DriveUploadResult = { ok: true } | { ok: false; message: string };
+/** `mediaId`: the file's id in Portal, when it answers one (o-06 sends it as evidence). */
+export type DriveUploadResult = { ok: true; mediaId?: string } | { ok: false; message: string };
 export type DriveUploadDeps<F> = {
   open(): Promise<{ ok: true; data: CommandOutcome } | { ok: false; message?: string }>;
   submit(commandId: string): Promise<FormSubmitReply>;
   notice(commandId: string): Promise<CommandNotice | null>;
   /** No `status`: nothing came back. `message`: what Portal said, or what stopped the phone. */
-  send(upload: DriveUpload, file: F, clientUploadId: string): Promise<{ status?: number; message?: string }>;
+  send(upload: DriveUpload, file: F, clientUploadId: string): Promise<{ status?: number; message?: string; mediaId?: string }>;
 };
 
 export const DRIVE_UPLOAD_FAILED = 'No se pudo subir el archivo. Revisa tu señal y vuelve a intentarlo.';
@@ -90,9 +91,10 @@ async function attempt<F>(deps: DriveUploadDeps<F>, file: { source: F; facts: Dr
   if ('message' in ticket) return { ok: false, message: ticket.message };
   const refusal = driveFileRefusal(ticket.upload, file.facts);
   if (refusal) return { ok: false, message: refusal };
-  const { status, message } = await deps.send(ticket.upload, file.source, clientUploadId);
+  const { status, message, mediaId } = await deps.send(ticket.upload, file.source, clientUploadId);
   if (status === EXPIRED) return null;
-  return status && status < 300 ? { ok: true } : { ok: false, message: FAILURES[status ?? 0] ?? message ?? DRIVE_UPLOAD_FAILED };
+  if (status && status < 300) return mediaId ? { ok: true, mediaId } : { ok: true };
+  return { ok: false, message: FAILURES[status ?? 0] ?? message ?? DRIVE_UPLOAD_FAILED };
 }
 
 /** The same `clientUploadId` on a retry: Portal answers the file it already has. */

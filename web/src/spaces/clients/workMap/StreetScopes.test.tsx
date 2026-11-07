@@ -85,9 +85,18 @@ describe('StreetScopes', () => {
     await waitFor(() => expect(send).toHaveBeenCalledWith({ kind: 'work_scope_delete', scope_id: 'c1', forms: expect.any(Number) }, expect.any(Function)));
   });
 
+  it('«Registrar avance» opens o-06 on the street, and closes with Cancelar', () => {
+    render(<StreetScopes map={mapOf()} streetId="s1" send={sender()} onBack={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('avance-manual-abrir'));
+    expect(screen.getByTestId('avance-manual')).toBeTruthy();
+    fireEvent.click(screen.getByText('Cancelar'));
+    expect(screen.queryByTestId('avance-manual')).toBeNull();
+  });
+
   it('read-only without a sender, and a street gone from the map says so', () => {
     const { rerender } = render(<StreetScopes map={mapOf()} streetId="s1" onBack={vi.fn()} />);
     expect(screen.queryByTestId('tramo-agregar')).toBeNull();
+    expect(screen.queryByTestId('avance-manual-abrir')).toBeNull();
     expect(screen.queryByTestId('borrar-tramo-c1')).toBeNull();
     rerender(<StreetScopes map={mapOf()} streetId="gone" onBack={vi.fn()} />);
     expect(screen.getByText('Esta calle ya no está en el mapa.')).toBeTruthy();

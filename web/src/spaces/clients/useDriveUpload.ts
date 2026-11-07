@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DRIVE_UPLOAD_DONE, driveUploadRequest, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps } from '@lilachat/shared';
+import { DRIVE_UPLOAD_DONE, driveUploadRequest, manualPhotoOf, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type ManualPhotoUpload } from '@lilachat/shared';
 import { submitAppForm } from '../../chat/commands/commandsApi';
 import { shrinkPhotoBlob } from '../../chat/shrinkPhoto';
 import { currentSocket } from '../../useSocket';
@@ -13,15 +13,15 @@ type UploadTarget = { target: ServiceAskTarget; chatId: string; serviceId: strin
 const IDLE: UploadState = { sending: false, message: '', failed: false };
 
 /** Straight to Portal: the file never goes through Lilachat, and no session travels with it. */
-async function sendToDrive(upload: DriveUpload, file: DriveFile, clientUploadId: string): Promise<{ status?: number; message?: string }> {
+async function sendToDrive(upload: DriveUpload, file: DriveFile, clientUploadId: string): Promise<{ status?: number; message?: string; mediaId?: string }> {
   const body = new FormData();
   Object.entries(upload.fields).forEach(([name, value]) => body.append(name, value));
   body.append('clientUploadId', clientUploadId);
   body.append(upload.fileField, file.blob, file.name);
   try {
     const response = await fetch(upload.url, { method: 'POST', body });
-    const { message } = (await response.json().catch(() => ({}))) as { message?: unknown };
-    return { status: response.status, ...(typeof message === 'string' ? { message } : {}) };
+    const { message, mediaId } = (await response.json().catch(() => ({}))) as { message?: unknown; mediaId?: unknown };
+    return { status: response.status, ...(typeof message === 'string' ? { message } : {}), ...(typeof mediaId === 'string' ? { mediaId } : {}) };
   } catch {
     return {};
   }
@@ -52,7 +52,7 @@ async function prepared(file: File): Promise<{ source: DriveFile; facts: DriveFi
   return { source: { blob: file, name: file.name }, facts: { mime: file.type, sizeBytes: file.size, ...(seconds === undefined ? {} : { seconds }) } };
 }
 
-const depsOf = ({ target, chatId, serviceId }: UploadTarget): DriveUploadDeps<DriveFile> => ({
+const depsOf = ({ target, chatId, serviceId }: Omit<UploadTarget, 'onDone'>): DriveUploadDeps<DriveFile> => ({
   open: () => openReportForm(target, serviceId, driveUploadRequest()),
   submit: (commandId) => submitAppForm(target.jwt, { chatId }, commandId, {}),
   notice: (commandId) => noticeOf(currentSocket(), commandId),
@@ -70,3 +70,7 @@ export function useDriveUpload(upload: UploadTarget) {
   };
   return { ...state, send };
 }
+
+/** A photo of «Registrar avance» (o-06): to the service's Drive first, its id rides with the progress. */
+export const mapPhotoUploader = (target: ServiceAskTarget, chatId: string, serviceId: string): ManualPhotoUpload<File> => async (file) =>
+  manualPhotoOf(await uploadToDrive(depsOf({ target, chatId, serviceId }), await prepared(file), crypto.randomUUID()));

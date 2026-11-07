@@ -112,6 +112,10 @@ describe('uploadToDrive', () => {
     expect(await uploadToDrive(depsWith(async () => ({ status: 200 })), file, 'key-1')).toEqual({ ok: true });
   });
 
+  it('passes on the file id Portal answers (o-06 sends it as evidence)', async () => {
+    expect(await uploadToDrive(depsWith(async () => ({ status: 201, mediaId: '6aef8d455e4b25190f7c3177' })), file, 'key-1')).toEqual({ ok: true, mediaId: '6aef8d455e4b25190f7c3177' });
+  });
+
   it('a ticket that expired is asked again with a new run, and the same key', async () => {
     // Arrange
     const send = vi.fn<DriveUploadDeps<string>['send']>().mockResolvedValueOnce({ status: 410 }).mockResolvedValueOnce({ status: 201 });

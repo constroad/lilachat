@@ -6,6 +6,7 @@ import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botMode
 import { ClientChannelModel } from './botClients.js';
 import { workProgressInputOf, workProgressPrepared, type WorkProgressInput } from './workProgressForm.js';
 import { workStreetDeleteInputOf, workStreetDeletePrepared, workStreetInputOf, workStreetPrepared, type StreetContext, type WorkStreetDeleteInput, type WorkStreetInput } from './workStreetForm.js';
+import { workManualProgressInputOf, workManualProgressPrepared, type WorkManualProgressInput } from './workManualProgressForm.js';
 import { isWorkMapFormInput, isWorkMapFormKind, workMapFormInputOf, workMapFormPrepared, type WorkMapFormContext, type WorkMapFormInput } from './workMapForms.js';
 
 /**
@@ -93,6 +94,7 @@ type OpenInput =
   | { kind: 'drive_upload' }
   | { kind: 'service_link' }
   | WorkProgressInput
+  | WorkManualProgressInput
   | WorkStreetInput
   | WorkStreetDeleteInput
   | WorkMapFormInput;
@@ -123,6 +125,7 @@ function openInputOf(input: unknown): OpenInput | null {
   if (raw.kind === 'drive_upload') return { kind: 'drive_upload' };
   if (raw.kind === 'service_link') return { kind: 'service_link' };
   if (raw.kind === 'work_progress') return workProgressInputOf(raw);
+  if (raw.kind === 'work_manual_progress') return workManualProgressInputOf(raw);
   if (raw.kind === 'work_street') return workStreetInputOf(raw);
   if (raw.kind === 'work_street_delete') return workStreetDeleteInputOf(raw);
   if (isWorkMapFormKind(raw.kind)) return workMapFormInputOf(raw);
@@ -166,6 +169,7 @@ async function sectionPrepared(workspaceId: string, serviceId: string, userId: T
 function prepared(workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId, input: OpenInput): Promise<Prepared | CommandError> | Prepared {
   if (input.kind === 'section') return sectionPrepared(workspaceId, serviceId, userId, input);
   if (input.kind === 'work_progress') return workProgressPrepared(workspaceId, clientId, serviceId, userId, input);
+  if (input.kind === 'work_manual_progress') return workManualProgressPrepared(serviceId, input);
   if (input.kind === 'work_street') return workStreetPrepared(serviceId, input);
   if (input.kind === 'work_street_delete') return workStreetDeletePrepared(serviceId, input);
   if (isWorkMapFormInput(input)) return workMapFormPrepared(serviceId, input);

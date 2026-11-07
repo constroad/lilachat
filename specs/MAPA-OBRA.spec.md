@@ -442,9 +442,30 @@ su tramo 1. Queda borrado de forma lógica en Portal. No se crearon etapas ni tr
 porque Portal no tiene cómo borrarlos.
 **Sin probar:** el APK (falta la OTA) y un miembro que no es admin.
 
-**Pendiente, con su porqué:**
-- Registrar avance a mano (o-06): Portal publica `registrar_avance_manual_de_obra` (sin unidades,
-  con fotos del Drive del servicio y la hora del equipo). José tiene que aprobarla en Agentes.
+**Pendiente, con su porqué:** nada de o-03 a o-05; o-06 tiene su sección.
+
+## Registrar avance a mano (o-06), web y APK
+
+- Botón principal «Registrar avance» al abrir una calle («Ver tramos»), para todo miembro del canal.
+  Cuatro bloques como el diseño: 1 trabajo (chips de los trabajos de sus tramos; con uno solo viene
+  elegido), 2 hasta dónde, 3 foto en campo, 4 enviar con nota opcional.
+- **Punto de partida = «sigue donde quedó»:** el fin del avance aprobado de ese trabajo en esa calle
+  (un retrabajo no lo mueve); sin avance, el inicio de su tramo. «Hasta dónde» se escribe o se mueve
+  con −10 m / +10 m, nunca antes del inicio ni pasado el largo de la calle. Metrado «+120 m · 720 m²»
+  (el área solo con el ancho de la calle).
+- **Fotos:** se suben primero al Drive del servicio (`subir_al_drive`, el mismo camino de «Drive»),
+  y el `mediaId` que responde Portal viaja como `fotoIds` (hasta 6). Sin `mediaId` la foto no se
+  adjunta y se dice. En el APK solo cámara (foto en campo); en la web, cámara o archivo.
+- **Puerta:** `work_manual_progress` → `registrar_avance_manual_de_obra` de Portal (57f06ec7) con
+  `calleId`, `etiquetaId|partidaId`, `desdeM`, `hastaM`, `entradaId` (uuid del equipo, reenvío
+  idempotente), `horaDelEquipo` y `fotoIds`. El servicio lo pone la puerta. Entra **pendiente**;
+  Portal rechaza una hora del equipo adelantada más de 5 min y fotos que no son del Drive del servicio.
+- Motor puro `shared/src/workManualProgress.ts`; puerta `server/src/bots/workManualProgressForm.ts`
+  (comparte el parser del tramo con `registrar_avance_de_obra`).
+- **Sin «Mi GPS» todavía:** el diseño trae un botón para fijar el fin con la ubicación. Queda para la
+  siguiente vuelta.
+- **Depende de José:** la herramienta debe estar aprobada en Agentes → Herramientas. Sin eso, la
+  puerta devuelve el rechazo de agentes tal cual.
 
 ## Caminar con GPS (o-13) y el inicio donde se toca primero, web y APK
 

@@ -14,19 +14,19 @@ const NOTE_MAX = 280;
 const UNITS_MAX = 30;
 const ID_MAX = 64;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-const WORK_PROGRESS_FORM: FormSchema = { type: 'object', properties: { nota: { type: 'string', title: 'Nota del avance', maxLength: NOTE_MAX } } };
+export const WORK_PROGRESS_FORM: FormSchema = { type: 'object', properties: { nota: { type: 'string', title: 'Nota del avance', maxLength: NOTE_MAX } } };
 const UNITS_GONE = 'Esas unidades no salen en el detalle del servicio. Abre el mapa de nuevo.';
 
-export type WorkProgressInput = {
-  kind: 'work_progress';
+/** What both kinds of progress carry: the street, one work, the stations, the entry and the phone's hour. */
+export type ProgressStretch = {
   streetId: string;
   work: { etiquetaId: string } | { partidaId: string };
   fromM: number;
   toM: number;
-  dispatchIds: string[];
   entryId: string;
   deviceAt: string;
 };
+export type WorkProgressInput = ProgressStretch & { kind: 'work_progress'; dispatchIds: string[] };
 
 const idOf = (value: unknown): string => (typeof value === 'string' && value.trim().length <= ID_MAX ? value.trim() : '');
 const meters = (value: unknown): number | null => (typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null);
@@ -44,13 +44,19 @@ function dispatchIdsOf(value: unknown): string[] | null {
   return ids.every(Boolean) ? [...new Set(ids)] : null;
 }
 
-/** What the phone sends to open the progress; anything off the contract is a 400. */
-export function workProgressInputOf(raw: Record<string, unknown>): WorkProgressInput | null {
-  const [streetId, work, fromM, toM, dispatchIds] = [idOf(raw.street_id), workOf(raw), meters(raw.from_m), meters(raw.to_m), dispatchIdsOf(raw.dispatch_ids)];
+/** The stretch both kinds of progress send; null when any part is off the contract. */
+export function stretchInputOf(raw: Record<string, unknown>): ProgressStretch | null {
+  const [streetId, work, fromM, toM] = [idOf(raw.street_id), workOf(raw), meters(raw.from_m), meters(raw.to_m)];
   const entryId = typeof raw.entry_id === 'string' && UUID.test(raw.entry_id) ? raw.entry_id : '';
   const deviceAt = typeof raw.device_at === 'string' && !Number.isNaN(Date.parse(raw.device_at)) ? raw.device_at : '';
-  if (!streetId || !work || fromM === null || toM === null || toM <= fromM || !dispatchIds || !entryId || !deviceAt) return null;
-  return { kind: 'work_progress', streetId, work, fromM, toM, dispatchIds, entryId, deviceAt };
+  if (!streetId || !work || fromM === null || toM === null || toM <= fromM || !entryId || !deviceAt) return null;
+  return { streetId, work, fromM, toM, entryId, deviceAt };
+}
+
+/** What the phone sends to open the progress; anything off the contract is a 400. */
+export function workProgressInputOf(raw: Record<string, unknown>): WorkProgressInput | null {
+  const [stretch, dispatchIds] = [stretchInputOf(raw), dispatchIdsOf(raw.dispatch_ids)];
+  return stretch && dispatchIds ? { kind: 'work_progress', ...stretch, dispatchIds } : null;
 }
 
 /** The form and its context, with the units narrowed to those the service's detail brings. */

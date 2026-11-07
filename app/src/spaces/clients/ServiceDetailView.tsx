@@ -7,6 +7,7 @@ import type { ViewableFile } from '@lilachat/shared';
 import { RecordSheet } from './RecordSheet';
 import { ServiceDrive } from './ServiceDrive';
 import { ServiceMapPanel } from './ServiceMapPanel';
+import { mapPhotoUploader } from './useDriveUpload';
 import { doorMapLinks, mapEditSender, workProgressSender, workStreetDeleteSender, workStreetSender } from './workMap/workProgressSender';
 import { ServiceStages } from './ServiceStages';
 import { SpaceActionButton } from './SpaceActionButton';
@@ -184,7 +185,7 @@ function DetailTabs({ detail, target, service, chatId, seesDrive, onBack, onOpen
   const more = moreInPortal(rows.length, detail.totals[listTab]);
   const strip = <TabStrip detail={detail} seesDrive={seesDrive} seesMap={Boolean(links)} tab={tab} onTab={setTab} />;
   if (tab === 'drive') return <>{strip}<ServiceDrive target={target} service={service} chatId={chatId} onBack={onBack} /></>;
-  if (tab === 'map' && links) return <>{strip}<ServiceMapPanel jwt={target.jwt} links={doorMapLinks(links, target, chatId, serviceId)} target={{ kind: 'service', clientId: target.clientId, serviceId }} title={service.name} badge={<Text className={`rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{CLIENT_SERVICE_STATUS_LABELS[service.status]}</Text>} drawUrl={portalMapTabUrl(detail.service.url)} discharges={detail.discharges} send={workProgressSender(target, chatId, serviceId)} drawStreet={workStreetSender(target, chatId, serviceId)} deleteStreet={workStreetDeleteSender(target, chatId, serviceId)} editMap={mapEditSender(target, chatId, serviceId)} admin={seesMoney} /></>;
+  if (tab === 'map' && links) return <>{strip}<ServiceMapPanel jwt={target.jwt} links={doorMapLinks(links, target, chatId, serviceId)} target={{ kind: 'service', clientId: target.clientId, serviceId }} title={service.name} badge={<Text className={`rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{CLIENT_SERVICE_STATUS_LABELS[service.status]}</Text>} drawUrl={portalMapTabUrl(detail.service.url)} discharges={detail.discharges} send={workProgressSender(target, chatId, serviceId)} drawStreet={workStreetSender(target, chatId, serviceId)} deleteStreet={workStreetDeleteSender(target, chatId, serviceId)} editMap={mapEditSender(target, chatId, serviceId)} admin={seesMoney} uploadPhoto={mapPhotoUploader(target, chatId, serviceId)} /></>;
   return (
     <>
       {strip}

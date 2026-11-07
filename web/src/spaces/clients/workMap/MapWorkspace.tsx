@@ -3,6 +3,7 @@ import { CLIENT_SERVICE_STATUS_LABELS, portalMapTabUrl, type ChannelLinks, type 
 import { ServiceMapWeb } from '../ServiceMapWeb';
 import { STATUS_TONE } from '../tones';
 import type { ServiceAskTarget } from '../useServiceAsk';
+import { mapPhotoUploader } from '../useDriveUpload';
 import { mapEditSender, workProgressSender, workStreetDeleteSender, workStreetSender } from './workProgressSender';
 
 type Tab = { key: ServiceTabKey; label: string };
@@ -40,7 +41,7 @@ export function MapWorkspace(props: WorkspaceProps) {
   const badge = <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{CLIENT_SERVICE_STATUS_LABELS[service.status]}</span>;
   return (
     <div data-testid="detalle-servicio" className="flex min-h-0 flex-1 flex-col">
-      <ServiceMapWeb jwt={target.jwt} links={props.links} target={{ kind: 'service', clientId: target.clientId, serviceId: service.id }} title={service.name} head={head} tabs={<UnderlineTabs tabs={props.tabs} onTab={props.onTab} />} badge={badge} drawUrl={portalMapTabUrl(props.detail.service.url)} discharges={props.detail.discharges} send={workProgressSender(target, props.chatId, service.id)} drawStreet={workStreetSender(target, props.chatId, service.id)} deleteStreet={workStreetDeleteSender(target, props.chatId, service.id)} editMap={mapEditSender(target, props.chatId, service.id)} admin={props.admin} />
+      <ServiceMapWeb jwt={target.jwt} links={props.links} target={{ kind: 'service', clientId: target.clientId, serviceId: service.id }} title={service.name} head={head} tabs={<UnderlineTabs tabs={props.tabs} onTab={props.onTab} />} badge={badge} drawUrl={portalMapTabUrl(props.detail.service.url)} discharges={props.detail.discharges} send={workProgressSender(target, props.chatId, service.id)} drawStreet={workStreetSender(target, props.chatId, service.id)} deleteStreet={workStreetDeleteSender(target, props.chatId, service.id)} editMap={mapEditSender(target, props.chatId, service.id)} admin={props.admin} uploadPhoto={mapPhotoUploader(target, props.chatId, service.id)} />
     </div>
   );
 }

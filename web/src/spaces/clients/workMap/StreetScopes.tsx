@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-react';
-import { metersLabel, scopeDraftFor, sendWorkScopeDelete, streetDetailOf, workScopeDeleteRequest, type MapEditSend, type ScopeDraft, type StreetLayer, type StreetScopeRow, type WorkMap } from '@lilachat/shared';
+import { ArrowLeft, Pencil, Plus, TrendingUp, Trash2 } from 'lucide-react';
+import { metersLabel, type ManualPhotoUpload, scopeDraftFor, sendWorkScopeDelete, streetDetailOf, workScopeDeleteRequest, type MapEditSend, type ScopeDraft, type StreetLayer, type StreetScopeRow, type WorkMap } from '@lilachat/shared';
 import { KICKER } from './WorkMapPanel';
+import { ManualProgress } from './ManualProgress';
 import { ScopeForm } from './ScopeForm';
 
 const BAR = 'relative h-2.5 overflow-hidden rounded-full bg-surface-variant';
@@ -66,9 +67,10 @@ function ScopeCard(props: { row: StreetScopeRow; send?: MapEditSend; onEdit: () 
 type Editing = { draft: ScopeDraft; scopeId?: string } | null;
 
 /** Design o-03: a street, what each work did on it, and its stretches to add, edit or delete (José 07/11: everyone updates). */
-export function StreetScopes(props: { map: WorkMap; streetId: string; send?: MapEditSend; onBack: () => void }) {
+export function StreetScopes(props: { map: WorkMap; streetId: string; send?: MapEditSend; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<File>; onBack: () => void }) {
   const detail = useMemo(() => streetDetailOf(props.map, props.streetId), [props.map, props.streetId]);
   const [editing, setEditing] = useState<Editing>(null);
+  const [recording, setRecording] = useState(false);
   if (!detail) return <p className="p-4 text-[14px] text-on-surface-variant">Esta calle ya no está en el mapa.</p>;
   const editOf = (row: StreetScopeRow): Editing => ({ scopeId: row.id, draft: { fromM: row.scope.fromM, toM: row.scope.toM, workIds: row.scope.workIds, stageId: row.scope.stageId ?? null, widthM: row.scope.widthM ?? null } });
   return (
@@ -78,6 +80,8 @@ export function StreetScopes(props: { map: WorkMap; streetId: string; send?: Map
         <p className="text-xl font-extrabold tracking-tight text-on-surface">{detail.name}</p>
         <span className="shrink-0 rounded-lg border border-outline/20 px-2 py-1 font-mono text-[12px] font-semibold">{detail.headline}</span>
       </div>
+      {props.send && !recording ? <button type="button" data-testid="avance-manual-abrir" onClick={() => setRecording(true)} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-semibold text-on-primary"><TrendingUp size={18} />Registrar avance</button> : null}
+      {props.send && recording ? <div className="mt-4"><ManualProgress map={props.map} streetId={detail.id} lengthM={detail.lengthM} widthM={detail.widthM ?? undefined} send={props.send} uploadPhoto={props.uploadPhoto} onDone={() => setRecording(false)} /></div> : null}
       {detail.layers.length ? (
         <section className="mt-4 rounded-xl border-[1.5px] border-outline/15 bg-surface p-4">
           <p className={KICKER}>Avance por trabajo</p>

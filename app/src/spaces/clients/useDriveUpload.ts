@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import * as Crypto from 'expo-crypto';
 import * as ImagePicker from 'expo-image-picker';
-import { DRIVE_UPLOAD_DONE, DRIVE_VIDEO_SECONDS, driveUploadRequest, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps } from '@lilachat/shared';
+import { DRIVE_UPLOAD_DONE, DRIVE_VIDEO_SECONDS, driveUploadRequest, manualPhotoOf, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type ManualPhotoUpload } from '@lilachat/shared';
 import { submitAppForm } from '../../chat/commands/commandsApi';
 import { shrinkPhotoFile } from '../../chat/shrinkPhoto';
 import { getSocket } from '../../chat/socketClient';
@@ -23,15 +23,15 @@ const MS_PER_SECOND = 1000;
  * Straight to Portal: the file never goes through Lilachat, and no session travels with it.
  * By XHR, as every upload of the app: `fetch` cannot send a file by its `uri` (`subidaXhr`).
  */
-async function sendToDrive(upload: DriveUpload, file: DriveFile, clientUploadId: string, onProgress: (ratio: number) => void): Promise<{ status?: number; message?: string }> {
+async function sendToDrive(upload: DriveUpload, file: DriveFile, clientUploadId: string, onProgress: (ratio: number) => void): Promise<{ status?: number; message?: string; mediaId?: string }> {
   const form = new FormData();
   Object.entries(upload.fields).forEach(([name, value]) => form.append(name, value));
   form.append('clientUploadId', clientUploadId);
   form.append(upload.fileField, { uri: file.uri, name: file.name, type: file.mime } as unknown as Blob);
   const reply = await subirPorXhr({ url: upload.url, form, timeoutMs: UPLOAD_TIMEOUT_MS, onProgress });
   if (reply.tipo === 'fallo') return { message: reply.motivo };
-  const { message } = reply.payload;
-  return { status: reply.status, ...(typeof message === 'string' ? { message } : {}) };
+  const { message, mediaId } = reply.payload;
+  return { status: reply.status, ...(typeof message === 'string' ? { message } : {}), ...(typeof mediaId === 'string' ? { mediaId } : {}) };
 }
 
 /** A photo leaves at Portal's size; a video goes as it is, with its length for the ticket's limit. */
@@ -44,7 +44,7 @@ async function prepared(asset: ImagePicker.ImagePickerAsset): Promise<{ source: 
   return { source: { uri: photo.uri, name: photo.fileName, mime: photo.mimeType }, facts: { mime: photo.mimeType, sizeBytes: photo.sizeBytes } };
 }
 
-const depsOf = ({ target, chatId, serviceId }: UploadTarget, onProgress: (ratio: number) => void): DriveUploadDeps<DriveFile> => ({
+const depsOf = ({ target, chatId, serviceId }: Omit<UploadTarget, 'onDone'>, onProgress: (ratio: number) => void): DriveUploadDeps<DriveFile> => ({
   open: () => openReportForm(target, serviceId, driveUploadRequest()),
   submit: (commandId) => submitAppForm(target.jwt, { chatId }, commandId, {}),
   notice: (commandId) => noticeOf(getSocket(), commandId),
@@ -75,3 +75,7 @@ export function useDriveUpload(upload: UploadTarget) {
     pickFromGallery: () => void ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images', 'videos'], quality: 1 }).then(send),
   };
 }
+
+/** A photo of «Registrar avance» (o-06): to the service's Drive first, its id rides with the progress. */
+export const mapPhotoUploader = (target: ServiceAskTarget, chatId: string, serviceId: string): ManualPhotoUpload<ImagePicker.ImagePickerAsset> => async (asset) =>
+  manualPhotoOf(await uploadToDrive(depsOf({ target, chatId, serviceId }, () => undefined), await prepared(asset), Crypto.randomUUID()));

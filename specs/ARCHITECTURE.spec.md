@@ -6220,6 +6220,9 @@ José pidió los diez en una sola iteración. Lo que cambió:
   (`serviceStages`): Cotización, Pedidos, Despachos, Informes, Facturación y
   Cobranza, cada una leída de los datos de Portal. Nadie las marca.
   Cotización, Facturación y Cobranza salen solo en la vista privada.
+  - **Solo admins (José 07/11):** «quitar el detalle para los que no son admins en el canal del
+    cliente». El bloque de etapas no se dibuja para un miembro, aunque tenga montos marcados. El
+    avance y la etapa de una línea siguen a la vista. Web y APK, con test en la web.
   - El checklist de obra queda para lo que Portal no registra (permisos,
     coordinaciones, observaciones). Su estado vacío lo dice.
 

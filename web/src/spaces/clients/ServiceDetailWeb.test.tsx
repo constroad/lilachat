@@ -104,7 +104,7 @@ describe('ServiceDetailWeb', () => {
     const fetchMock = reply({ detail });
     vi.stubGlobal('fetch', fetchMock);
     // Act
-    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={() => undefined} />);
+    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney admin onBack={() => undefined} />);
     // Assert
     expect(await screen.findByTestId('fila-o1')).toHaveTextContent('Asfalto MAC 2');
     expect(screen.getByTestId('fila-o1')).toHaveTextContent('120 m³ · 22 oct');
@@ -119,6 +119,17 @@ describe('ServiceDetailWeb', () => {
     expect(screen.getByText('Mostrando 1 de 148 · el resto está en el Portal')).toBeInTheDocument();
     expect(screen.getByTestId('abrir-servicio-portal')).toHaveAttribute('href', 'https://portal.constroad.com/s/318');
     expect(String((fetchMock.mock.calls[0] as unknown as [string])[0])).toContain('/api/workspaces/s1/clients/cli-cvs/services/srv-318/detail');
+  });
+
+  it('a member who is not an admin sees no stages, not even with money marked (José 07/11: «quitar el detalle para los que no son admins»)', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', reply({ detail }));
+    // Act
+    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={() => undefined} />);
+    // Assert
+    expect(await screen.findByTestId('fila-o1')).toBeInTheDocument();
+    expect(screen.queryByTestId('etapas-servicio')).not.toBeInTheDocument();
+    expect(screen.getByTestId('detalle-servicio')).toHaveTextContent('Etapa: Ejecución');
   });
 
   it('no «Despachos» tab: an order opens its dispatches, each with its file in the viewer, and closing goes back to the order (José 01/11)', async () => {

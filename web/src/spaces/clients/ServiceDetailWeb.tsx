@@ -22,7 +22,8 @@ const PortalLink = (props: { url: string; label: string; testId: string }) => (
 );
 
 /** The expediente's head (design f-04): kicker, name, state and stage with its progress. */
-function ServiceHead({ service, detail }: { service: SpaceClientService; detail: ServiceDetail | null }) {
+/** The stages read quotes and collection: only a space admin sees them (José 07/11). */
+function ServiceHead({ service, detail, admin = false }: { service: SpaceClientService; detail: ServiceDetail | null; admin?: boolean }) {
   return (
     <section className="rounded-xl border border-outline/15 border-t-[3px] border-t-primary bg-surface p-4 md:p-5">
       <div className="flex items-start gap-3">
@@ -41,7 +42,7 @@ function ServiceHead({ service, detail }: { service: SpaceClientService; detail:
           {service.progress !== undefined ? <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background"><div className="h-full rounded-full bg-primary" style={{ width: `${service.progress}%` }} /></div> : null}
         </div>
       ) : null}
-      {detail ? <ServiceStagesWeb detail={detail} /> : null}
+      {detail && admin ? <ServiceStagesWeb detail={detail} /> : null}
     </section>
   );
 }
@@ -221,7 +222,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   return (
     <div data-testid="detalle-servicio" className="mx-auto flex max-w-3xl flex-col gap-3">
       <ServiceCrumbs service={props.service.name} onBack={props.onBack} onToChat={props.onToChat} />
-      <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
+      <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} admin={Boolean(props.admin)} />
       {answer === null ? <div data-testid="detalle-cargando" className="h-48 animate-pulse rounded-xl bg-surface" /> : null}
       {answer?.ok ? <DetailTabs onContinueReport={setReport} detail={answer.value} target={props.target} service={props.service} chatId={props.chatId} seesDrive={Boolean(props.seesDrive)} links={props.links} seesMoney={props.seesMoney} admin={Boolean(props.admin)} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} startOrderId={startTab === 'orders' ? props.startOrderId : undefined} /> : null}
       {picker ? <CreateReportDialog portalUrl={portalUrl} people={props.people ?? []} onPick={(code, responsible) => { setPicker(false); setReport({ type: code, responsible }); }} onClose={() => setPicker(false)} /> : null}

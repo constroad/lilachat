@@ -35,7 +35,8 @@ function PortalLink(props: { url: string; label: string; testID: string }) {
 }
 
 /** The expediente's head (design f-04): kicker, name, state and stage with its progress. */
-export function ServiceHead({ service, detail }: { service: SpaceClientService; detail?: ServiceDetail | null }) {
+/** The stages read quotes and collection: only a space admin sees them (José 07/11). */
+export function ServiceHead({ service, detail, admin = false }: { service: SpaceClientService; detail?: ServiceDetail | null; admin?: boolean }) {
   return (
     <View className="rounded-2xl border border-outline/15 border-t-[3px] border-t-primary bg-surface p-4">
       <View className="flex-row items-start gap-3">
@@ -54,7 +55,7 @@ export function ServiceHead({ service, detail }: { service: SpaceClientService; 
           {service.progress !== undefined ? <View className="mt-2 h-1.5 overflow-hidden rounded-full bg-background"><View className="h-full rounded-full bg-primary" style={{ width: `${service.progress}%` }} /></View> : null}
         </View>
       ) : null}
-      {detail ? <ServiceStages detail={detail} /> : null}
+      {detail && admin ? <ServiceStages detail={detail} /> : null}
     </View>
   );
 }
@@ -275,7 +276,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
     <View className="flex-1">
     <ServiceCrumbs service={props.service.name} onBack={props.onBack} onToChat={props.onToChat} />
     <ScrollView testID="detalle-servicio" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
-      <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
+      <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} admin={Boolean(props.admin)} />
       {answer === null ? <Skeleton /> : null}
       {answer?.ok ? <DetailTabs onContinueReport={setReport} detail={answer.value} target={props.target} service={props.service} chatId={props.chatId} seesDrive={Boolean(props.seesDrive)} onBack={onBack} onOpenFile={files.open} links={props.links} seesMoney={props.seesMoney} admin={Boolean(props.admin)} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} startOrderId={startTab === 'orders' ? props.startOrderId : undefined} /> : null}
       <CreateReportSheet visible={picker} portalUrl={portalUrl} people={props.people ?? []} onPick={(code, responsible) => { setPicker(false); setReport({ type: code, responsible }); }} onClose={() => setPicker(false)} />

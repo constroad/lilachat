@@ -315,7 +315,7 @@ describe('ServiceMapWeb', () => {
     expect(screen.getByTestId('mapa-lienzo')).toHaveAttribute('data-stretches', '1');
     fireEvent.click(screen.getByTestId('editor-calle-guardar'));
     await waitFor(() => expect(drawStreet).toHaveBeenCalledTimes(1));
-    const [draft, entryId] = drawStreet.mock.calls[0];
+    const [draft, entryId] = drawStreet.mock.calls[0]!;
     expect(draft).toMatchObject({ name: 'Jr. Los Pinos', widthM: 6 });
     expect(draft.points).toHaveLength(2);
     expect(entryId).toMatch(/^[0-9a-f-]{36}$/);

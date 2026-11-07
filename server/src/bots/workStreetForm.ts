@@ -1,8 +1,8 @@
 import type { AppForm, FormSchema } from '@lilachat/shared';
 
 /**
- * Portal's `guardar_calle_de_obra` from the map (design o-02, José 07/11: «todos pueden crear y
- * actualizar»). Like the progress, it opens as a form with the street as context and nothing to
+ * Portal's `guardar_calle_de_obra` from the map (design o-02, José 07/11: everyone creates and
+ * updates). Like the progress, it opens as a form with the street as context and nothing to
  * fill: the service is the door's, and Portal measures the line again. A new street carries the
  * phone's entry, so a resend after a lost answer does not draw it twice.
  */
@@ -43,15 +43,26 @@ const widthOf = (raw: unknown): number | null | undefined => {
   return typeof raw === 'number' && raw > 0 && raw <= WIDTH_MAX_M ? raw : null;
 };
 
-/** What the phone sends; a new street needs name, line and entry, an edit at least one change. */
-export function workStreetInputOf(raw: Record<string, unknown>): WorkStreetInput | null {
-  const streetId = typeof raw.street_id === 'string' && raw.street_id.trim().length <= ID_MAX ? raw.street_id.trim() : '';
+type Fields = { name: string | undefined; line: LatLng[] | undefined; widthM: number | undefined };
+
+const streetIdOf = (raw: unknown): string => (typeof raw === 'string' && raw.trim().length <= ID_MAX ? raw.trim() : '');
+const entryIdOf = (raw: unknown): string | null => (typeof raw === 'string' && UUID.test(raw) ? raw : null);
+
+/** The three fields as sent; null when one of them came wrong. */
+function fieldsOf(raw: Record<string, unknown>): Fields | null {
   const [name, line, widthM] = [nameOf(raw.name), lineOf(raw.line), widthOf(raw.width_m)];
-  if (name === null || line === null || widthM === null) return null;
-  const entryId = typeof raw.entry_id === 'string' && UUID.test(raw.entry_id) ? raw.entry_id : null;
-  if (!streetId && (!name || !line || !entryId)) return null;
-  if (streetId && name === undefined && line === undefined && widthM === undefined) return null;
-  return { kind: 'work_street', streetId: streetId || null, name: name ?? null, line: line ?? null, widthM: widthM ?? null, entryId: streetId ? null : entryId };
+  return name === null || line === null || widthM === null ? null : { name, line, widthM };
+}
+
+/** A new street needs name, line and entry; an edit, at least one change. */
+const complete = (streetId: string, fields: Fields, entryId: string | null): boolean =>
+  streetId ? Object.values(fields).some((value) => value !== undefined) : Boolean(fields.name && fields.line && entryId);
+
+/** What the phone sends; anything off the contract is a 400. */
+export function workStreetInputOf(raw: Record<string, unknown>): WorkStreetInput | null {
+  const [streetId, fields, entryId] = [streetIdOf(raw.street_id), fieldsOf(raw), entryIdOf(raw.entry_id)];
+  if (!fields || !complete(streetId, fields, entryId)) return null;
+  return { kind: 'work_street', streetId: streetId || null, name: fields.name ?? null, line: fields.line ?? null, widthM: fields.widthM ?? null, entryId: streetId ? null : entryId };
 }
 
 export function workStreetPrepared(serviceId: string, input: WorkStreetInput): { form: AppForm; context: StreetContext } {

@@ -475,3 +475,11 @@ porque Portal no tiene cómo borrarlos.
   «Restaurar» vuelve a pedir la lista y el mapa. Motor puro `shared/src/workDeleted.ts`.
 - Portal da estas dos herramientas solo a quien tiene `services:manage`: un admin del espacio sin
   ese permiso en Portal recibe el rechazo tal cual.
+
+**E2E web prod (07/11, 21:30Z a 21:36Z, Test, QA-CTLPIS, calle «QA-MAPA calle — borrar»):**
+«Borrados» listó el tramo QA borrado antes (0+120 a 0+191, 71 m, «borrado el 7 nov, 3:53 p. m.
+por J zamora»). «Restaurar» lo devolvió: la lista quedó «No hay calles ni tramos borrados.» y
+«Ver tramos» volvió a mostrar Tramo 2 con su trabajo y su ancho. Después se borró otra vez desde
+«Ver tramos» con su confirmación: Test quedó como antes (un solo tramo, 0+000 a 0+120).
+**Sin verificar:** el APK (falta el OTA, que José aprueba) y un miembro que no es admin (no debe
+ver «Borrados»; cubierto solo por test).

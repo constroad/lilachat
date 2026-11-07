@@ -13,6 +13,5 @@ const senderOf = (target: ServiceAskTarget, chatId: string, serviceId: string): 
     notice: (commandId) => noticeOf(currentSocket(), commandId),
   }, entry);
 
-/** Only a space admin registers progress for now: anyone else gets no button at all. */
-export const workProgressSender = (admin: boolean, target: ServiceAskTarget, chatId: string, serviceId: string): ProgressSend | undefined =>
-  (admin ? senderOf(target, chatId, serviceId) : undefined);
+/** Everyone in the client's channel registers progress (José 07/11: «todos pueden crear y actualizar»). */
+export const workProgressSender = (target: ServiceAskTarget, chatId: string, serviceId: string): ProgressSend => senderOf(target, chatId, serviceId);

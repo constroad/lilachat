@@ -109,15 +109,15 @@ describe('the dispatches live inside their order (José 01/11: «por servicio pu
     expect(serviceTabs(detail, false).map((tab) => tab.key)).toEqual(['orders', 'reports']);
   });
 
-  it('a service with a map gets «Mapa» for whoever can make its link, before the Drive (José 06/11)', () => {
+  it('«Mapa» goes to whoever can make its link, with streets or not, before the Drive (José 06/11 and 07/11, design o-10)', () => {
     // Arrange
     const withMap = serviceDetailOf({ ...body, service: { ...body.service, has_map: true } })!;
+    const withoutMap = serviceDetailOf(body)!;
     // Assert
     expect(withMap.service.hasMap).toBe(true);
     expect(serviceTabs(withMap, true, true).map((tab) => tab.key)).toEqual(['orders', 'reports', 'map', 'drive']);
+    expect(serviceTabs(withoutMap, false, true).map((tab) => tab.key)).toEqual(['orders', 'reports', 'map']);
     expect(serviceTabs(withMap, true, false).map((tab) => tab.key)).toEqual(['orders', 'reports', 'drive']);
-    expect(serviceTabs(serviceDetailOf(body)!, true, true).map((tab) => tab.key)).toEqual(['orders', 'reports', 'drive']);
-    expect(serviceDetailOf({ ...body, service: { ...body.service, has_map: 'yes' } })!.service.hasMap).toBeUndefined();
   });
 
   it('a dispatch whose order did not come (Portal sends 100 of each) is not lost: it is listed apart', () => {

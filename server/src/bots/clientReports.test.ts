@@ -251,7 +251,7 @@ describe('the progress of the work from the map (design o-07, agentes 07/11)', (
     answers['client.service.requested'] = { status: 200, body: detail };
   });
 
-  it('an admin opens it with the lists as context, the service from the door, and only units the detail brought', async () => {
+  it('it opens with the lists as context, the service from the door, and only units the detail brought', async () => {
     // Arrange: the phone also sends a unit the service never had.
     const opened = await openOf(jose, progress({ dispatch_ids: ['d1', 'd2', 'd-otro'] })).expect(200);
     // Act
@@ -271,8 +271,13 @@ describe('the progress of the work from the map (design o-07, agentes 07/11)', (
     expect(run?.context).not.toHaveProperty('etiquetaId');
   });
 
-  it('a member who is not an admin of the space does not open it', async () => {
-    await openOf(ana, progress()).expect(404);
+  it('any member of the client channel opens it, not only an admin (José 07/11: «todos pueden crear y actualizar»)', async () => {
+    const opened = await openOf(ana, progress()).expect(200);
+    expect(opened.body.response.form).toMatchObject({ id: 'registrar_avance_de_obra' });
+  });
+
+  it('someone outside the client channel does not open it', async () => {
+    await openOf(outsider, progress()).expect(404);
     expect(received.some((event) => event.type === 'client.service.requested')).toBe(false);
   });
 

@@ -168,7 +168,7 @@ function DetailTabs({ detail, target, service, chatId, seesDrive, links, seesMon
   );
 }
 
-type ServiceDetailProps = { /** Who can be a report's responsible. */ people?: readonly string[]; target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; /** The map takes the whole conversation (design o-01): the channel drops its padding and scroll. */ onMapOpen?: (open: boolean) => void; /** A space admin: the map's suggested progress (design o-07). */ admin?: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string ; /** Its Drive joins the tabs (José 06/11). */ seesDrive?: boolean; /** A member an admin gave only the Drive. */ driveOnly?: boolean; onToChat?: () => void };
+type ServiceDetailProps = { /** Who can be a report's responsible. */ people?: readonly string[]; target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; /** The map takes the whole conversation (design o-01): the channel drops its padding and scroll. */ onMapOpen?: (open: boolean) => void; /** A space admin: the stages, which read money (José 07/11). */ admin?: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string ; /** Its Drive joins the tabs (José 06/11). */ seesDrive?: boolean; /** A member an admin gave only the Drive. */ driveOnly?: boolean; onToChat?: () => void };
 
 /** José 06/11: an open service takes the whole conversation, and this is the way back to the chat. */
 function ServiceCrumbs(props: { service: string; onBack: () => void; onToChat?: () => void }) {
@@ -231,7 +231,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   }, [mapOpen, onMapOpen]);
   if (mapOpen && answer?.ok && props.links) {
     const crumbs = <ServiceCrumbs service={props.service.name} onBack={props.onBack} onToChat={props.onToChat} />;
-    return <MapWorkspace crumbs={crumbs} detail={answer.value} service={props.service} tabs={serviceTabs(answer.value, Boolean(props.seesDrive), true)} onTab={pickTab} links={props.links} target={props.target} chatId={props.chatId} admin={Boolean(props.admin)} />;
+    return <MapWorkspace crumbs={crumbs} detail={answer.value} service={props.service} tabs={serviceTabs(answer.value, Boolean(props.seesDrive), true)} onTab={pickTab} links={props.links} target={props.target} chatId={props.chatId} />;
   }
   if (report) return <ReportDocumentWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={portalUrl} onClose={closeReport} />;
   return (

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, useWindowDimensions, View } from 'react-native';
-import { loadWorkMap, serviceMapPage, WORK_MAP_EMPTY, type ChannelLinks, type UnitDischarge, type WorkMap, type WorkMapState } from '@lilachat/shared';
+import { loadWorkMap, serviceMapPage, type ChannelLinks, type UnitDischarge, type WorkMap, type WorkMapState } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 import { WorkMapBoard } from './workMap/WorkMapBoard';
 import type { ProgressSend } from './workMap/WorkMapDischarges';
+import { WorkMapFirst } from './workMap/WorkMapFirst';
 
 /** The map of o-01 on a phone: the sheet with the progress rises over its lower edge. */
 const MAP_SCREEN_SHARE = 0.45;
@@ -42,7 +43,7 @@ const PortalLink = (props: { url: string }) => (
 );
 
 /** «Mapa» of a service (José 06/11: «el mapa literal de la obra»), drawn with what Portal shows a client. */
-export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; target: ServiceTarget; title: string; badge?: ReactNode; admin?: boolean; discharges?: UnitDischarge[]; send?: ProgressSend }) {
+export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; target: ServiceTarget; title: string; badge?: ReactNode; /** Where the streets are drawn today (Portal's «Mapa» tab). */ drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend }) {
   const screen = useWindowDimensions();
   const { state, ask } = useServiceMap(props.jwt, props.links, props.target);
   const height = Math.round(screen.height * MAP_SCREEN_SHARE);
@@ -59,13 +60,6 @@ export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; targe
       </View>
     );
   }
-  if (!state.map) {
-    return (
-      <View testID="mapa-vacio" className="rounded-2xl border border-outline/15 bg-surface p-4">
-        <Text className="text-[15px] text-on-surface-variant">{WORK_MAP_EMPTY}</Text>
-        <PortalLink url={pageOf(state.url)} />
-      </View>
-    );
-  }
-  return <WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} height={height} title={props.title} serviceId={props.target.serviceId} badge={props.badge} admin={props.admin} discharges={props.discharges} send={props.send} />;
+  if (!state.map) return <WorkMapFirst drawUrl={props.drawUrl ?? null} />;
+  return <WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} height={height} title={props.title} serviceId={props.target.serviceId} badge={props.badge} discharges={props.discharges} send={props.send} />;
 }

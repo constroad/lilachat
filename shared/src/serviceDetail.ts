@@ -328,8 +328,9 @@ export function detailTabs(detail: ServiceDetail): { key: DetailTabKey; label: s
 }
 
 /** The open service's tabs: the map and the Drive join Pedidos and Informes, with no count because Portal sends none. */
+/** «Mapa» for everyone who can open the service, with streets or not: a service without them is where they are drawn (José 07/11, design o-10). */
 export function serviceTabs(detail: ServiceDetail, seesDrive: boolean, seesMap = false): { key: ServiceTabKey; label: string }[] {
-  const map = seesMap && detail.service.hasMap ? [{ key: 'map' as const, label: 'Mapa' }] : [];
+  const map = seesMap ? [{ key: 'map' as const, label: 'Mapa' }] : [];
   const drive = seesDrive ? [{ key: 'drive' as const, label: 'Drive' }] : [];
   return [...detailTabs(detail), ...map, ...drive];
 }

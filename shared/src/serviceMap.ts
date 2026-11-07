@@ -14,6 +14,24 @@ export const MAP_LINK_FAILED = 'No se pudo abrir el mapa. Prueba de nuevo.';
 /** Portal's report opens on its first page; this is the section with the map (E2E 06/11: `section=map`). */
 export const serviceMapPage = (url: string, serviceId: string): string => `${url.includes('/service/') ? url : `${url}/service/${serviceId}`}?section=map`;
 
+const ADMIN_SERVICE_PAGE = /^\/admin\/service-management\/[^/]+\/?$/;
+
+/**
+ * Where the streets are drawn today (José 07/11: «dónde se supone que voy a crear el mapa»): the
+ * «Mapa» tab of the service in Portal's admin. Only that page draws; any other link gives nothing.
+ */
+export function portalMapTabUrl(url: string | undefined): string | null {
+  if (!url) return null;
+  try {
+    const page = new URL(url);
+    if (page.protocol !== 'https:' || !ADMIN_SERVICE_PAGE.test(page.pathname)) return null;
+    page.searchParams.set('tab', 'mapa');
+    return page.toString();
+  } catch {
+    return null;
+  }
+}
+
 export type ServiceMapResult = { ok: true; url: string } | { ok: false; message: string };
 export type ServiceMapDeps = {
   open: () => Promise<{ ok: true; data: CommandOutcome } | { ok: false; message?: string }>;

@@ -49,7 +49,15 @@ export const WORK_MAP_PLANNED_COLOR = '#94a3b8';
 /** Free tiles without a key, the ones Portal's map uses. */
 export const WORK_MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 export const WORK_MAP_FAILED = 'No se pudo cargar el mapa. Prueba de nuevo.';
-export const WORK_MAP_EMPTY = 'Este servicio todavía no tiene calles en el mapa.';
+/** Design o-10: what a space admin reads in a service without streets (José 07/11: «dónde voy a crear el mapa»). */
+export const WORK_MAP_FIRST = {
+  kicker: 'Mapa de la obra',
+  title: 'Todavía no hay calles',
+  hint: 'Marca dónde se va a trabajar. El avance y el informe del cliente salen de aquí.',
+  steps: ['Dibuja las calles', 'Pártelas en etapas', 'Marca los trabajos'],
+  action: 'Dibujar en el Portal',
+  where: 'Las calles se dibujan en la pestaña Mapa del servicio, en el Portal. Al volver, el mapa aparece aquí.',
+} as const;
 
 const UNNAMED_WORK = 'Trabajo';
 const NO_PROGRESS = 'Sin avance';

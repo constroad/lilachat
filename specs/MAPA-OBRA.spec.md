@@ -145,7 +145,7 @@ pero `get_screen` devuelve el mismo HTML. Por eso se generó aparte.
   380–400 px: «Avance de la obra» con el estado del servicio, la cifra grande, la longitud
   total, la barra por trabajo y los metros por etapa; las calles agrupadas por etapa con
   su estado («En ejecución», «Por iniciar», «Terminada», de `stageStateLabel`); y el pie
-  «Corte: …». Los admins ven el avance sugerido (o-07) arriba de las calles.
+  «Corte: …». Todos ven el avance sugerido (o-07) arriba de las calles.
 - **Ancho o angosto lo decide el tablero, no la ventana:** con 880 px o más el panel va a
   la derecha. Menos, como en el teléfono de o-01: pestañas en su propia fila (al lado de
   los botones quedaban tapadas a 444 px), filtros en filas debajo, leyenda arriba, mapa
@@ -197,6 +197,16 @@ APK 182 por el OTA `49025a2b` (git 1cb9051). Recorrido en Test con QA-CTLPIS: we
   queda igual byte por byte (test con el KML de v0.7.0). Cambia el id de cada estilo (`p-<trabajo>`
   en vez de `trabajo-N`) y el orden de las carpetas sigue el de los tramos; Google Earth lo ve igual.
 
+**Servicio sin calles (diseño o-10, 07/11):** José: «¿dónde se supone que voy a crear el mapa
+si no hay tab ni opción?». La pestaña «Mapa» aparece para todos los que abren el servicio, tenga
+calles o no. Sin calles muestra «Todavía no hay calles», los tres pasos y «Dibujar en el Portal»,
+que abre la pestaña Mapa del servicio en el admin de Portal (`?tab=mapa`). El botón solo sale si
+el enlace del servicio es esa página; si no, solo el texto. El editor propio (o-02 a o-05) espera
+las seis herramientas de Portal (`guardar_calle_de_obra`, `borrar_calle_de_obra`,
+`guardar_tramo_de_obra`, `borrar_tramo_de_obra`, `crear_etapa_de_obra`, `crear_etiqueta_de_obra`),
+que José aprueba en Agentes. Lilachat pidió `entradaId` en las creaciones, para que un reintento
+sin señal no duplique una calle.
+
 **Ancho de móvil en la web:** medido el 06/11 con 433 px, el mínimo que da esa pestaña, no
 390. Sin scroll lateral, mapa de 375 × 419 y botones dentro. Un `resize` sin recargar en una
 pestaña oculta deja el diseño de escritorio; es de la prueba, porque ahí no llega el evento.
@@ -245,21 +255,21 @@ todavía. Por eso no hace falta un modelo nuevo: la progresiva sale de proyectar
 - **Límite conocido:** un hueco entre unidades queda dentro del tramo. La persona lo corrige
   con «Ajustar tramo».
 
-**Pantalla `o-07` (07/11), web y APK, solo para admins del espacio:**
+**Pantalla `o-07` (07/11), web y APK, para todos los miembros del canal del cliente** (José 07/11: «Todos verán el mapa no solo admin y todos pueden crear y actualizar»):
 - Lee `discharges` del detalle del servicio (Portal `80cad301`, en vivo; Agentes todavía la deja
   afuera hasta su deploy). `dischargesOf` es lista blanca: 100 unidades y 20 puntos como máximo,
   placa vacía como «Sin placa» y foto sin tipo igual cuenta para el lugar.
-- El servidor de Lilachat la quita a quien no ve montos, junto con cotizaciones y cobranza. Todo
-  admin ve montos, así que el panel nunca llega vacío a un admin.
+- Las unidades no llevan montos: el servidor ya no las quita a quien no ve plata. Cotizaciones,
+  cobranza y facturas siguen solo para admins.
 - Panel «Avance sugerido»: «2 de 3 listas», un tramo por calle con su trabajo, progresivas,
   volumen y «El lugar sale de las fotos de cada unidad». Debajo, «Descargas registradas» con
   número, placa, hora de Lima, m³ y progresivas, o «Fuera de la obra», o «Sin lugar en sus fotos».
 - Sobre el mapa: un pin numerado por unidad, rojo si quedó fuera, y el tramo a confirmar resaltado.
   Web con marcadores HTML; APK con una capa de círculos y números con la fuente del estilo.
-- **Registrar (07/11):** «Confirmar avance» y «Ajustar tramo», solo para admins. No es un atajo:
+- **Registrar (07/11):** «Confirmar avance» y «Ajustar tramo», para todos los miembros. No es un atajo:
   `registrar_avance_de_obra` lleva `x-no-action`. El servidor la abre como «Subir al Drive»
   (`POST …/reports/forms` con `kind: 'work_progress'`, `server/src/bots/workProgressForm.ts`):
-  - La puerta es `findAskedService` con la necesidad `admin`. Un miembro recibe 404.
+  - La puerta es `findAskedService` con la necesidad `services`. Quien no está en el canal recibe 404.
   - El servicio sale de la puerta, nunca del teléfono.
   - Pregunta el detalle a Agentes y deja solo los `despachoIds` que trae `discharges`. Si no queda
     ninguno, responde 409 «Esas unidades no salen en el detalle del servicio».
@@ -286,8 +296,8 @@ todavía. Por eso no hace falta un modelo nuevo: la progresiva sale de proyectar
   `code: 'ya_marcada'` se muestra como «Ya estaba registrado». `rate_limited` no corrió
   nada: se reenvía la misma entrada tras `retry_after_s`. `command_id` no sirve aquí, porque
   vence a los 15 minutos.
-- **Solo admins al inicio:** Lilachat oculta la entrada y Agentes lo hace valer. No se usa
-  `Solo admins`, que es de los ítems del ⚡.
+- **Para todos (José 07/11):** primero fue solo para admins; José lo abrió a todos los miembros
+  del canal. Lilachat quitó su candado. Agentes y Portal quitan el suyo (pedido el 07/11).
 
 ## 8. Lo que falta decidir
 

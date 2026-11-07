@@ -69,7 +69,7 @@ function useDischarges(map: WorkMap, discharges: UnitDischarge[]) {
   return { suggestion, ranges, onRange, pins, stretches };
 }
 
-type BoardProps = { map: WorkMap; pageUrl: string; title: string; serviceId: string; /** Crumbs and title (o-01). */ head?: ReactNode; /** The service's tabs: beside the actions on a wide board, on their own row on a narrow one. */ tabs?: ReactNode; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; /** Space admins only (José 06/11, Agentes enforces it too). */ admin?: boolean; discharges?: UnitDischarge[]; send?: ProgressSend };
+type BoardProps = { map: WorkMap; pageUrl: string; title: string; serviceId: string; /** Crumbs and title (o-01). */ head?: ReactNode; /** The service's tabs: beside the actions on a wide board, on their own row on a narrow one. */ tabs?: ReactNode; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; send?: ProgressSend };
 
 function Actions(props: { pageUrl: string; expanded: boolean; wide: boolean; onToggle: () => void; onExport: () => void }) {
   const label = (text: string) => (props.wide ? text : <span className="sr-only">{text}</span>);
@@ -95,7 +95,7 @@ export function WorkMapBoard(props: BoardProps) {
   const [exporting, setExporting] = useState(false);
   const view = useMemo(() => workMapView(map, filter), [map, filter]);
   const groups = useMemo(() => workMapStageGroups(map, view), [map, view]);
-  const pista = useDischarges(map, props.admin ? (props.discharges ?? NO_DISCHARGES) : NO_DISCHARGES);
+  const pista = useDischarges(map, props.discharges ?? NO_DISCHARGES);
   const { holder, expanded, open, close } = useFullScreen();
   const wide = useWide(holder);
   const top = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null;

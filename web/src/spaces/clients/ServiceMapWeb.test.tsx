@@ -26,7 +26,7 @@ const workMap: WorkMap = {
   works: [{ id: 'base', name: 'Base', color: '#c08a1e' }, { id: 'asfalto', name: 'Asfaltado', color: '#111111' }],
   stages: [{ id: 'e1', name: 'Etapa 1' }, { id: 'e2', name: 'Etapa 2' }],
 };
-const showMap = (map: ChannelLinks['map'] = vi.fn(async () => ({ ok: true as const, url })), extra: { admin?: boolean; discharges?: UnitDischarge[]; send?: ProgressSend } = {}) => render(<ServiceMapWeb jwt="jwt-1" links={linksWith(map)} target={target} title="Pavimentación Los Olivos" {...extra} />);
+const showMap = (map: ChannelLinks['map'] = vi.fn(async () => ({ ok: true as const, url })), extra: { drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend } = {}) => render(<ServiceMapWeb jwt="jwt-1" links={linksWith(map)} target={target} title="Pavimentación Los Olivos" {...extra} />);
 
 /** A spot on Av. Los Olivos, so many meters from its start (it runs east along -12). */
 const METERS_PER_DEGREE_LNG = 111_195 * Math.cos((12 * Math.PI) / 180);
@@ -208,9 +208,9 @@ describe('ServiceMapWeb', () => {
     expect(screen.queryByTestId('mapa-exportar-panel')).not.toBeInTheDocument();
   });
 
-  it('an admin sees the progress the units suggest, with a pin per unit (design o-07)', async () => {
+  it('shows the progress the units suggest, with a pin per unit (design o-07)', async () => {
     // Act
-    showMap(undefined, { admin: true, discharges });
+    showMap(undefined, { discharges });
     // Assert
     const canvas = await screen.findByTestId('mapa-lienzo');
     expect(screen.getByTestId('avance-listas')).toHaveTextContent('2 de 3 listas');
@@ -223,10 +223,10 @@ describe('ServiceMapWeb', () => {
     expect(screen.queryByTestId('avance-confirmar')).not.toBeInTheDocument();
   });
 
-  it('an admin picks the work, adjusts the stretch and confirms it with the units that did it', async () => {
+  it('picks the work, adjusts the stretch and confirms it with the units that did it', async () => {
     // Arrange
     const send = vi.fn<ProgressSend>(async () => ({ ok: true, message: 'Avance registrado. Queda pendiente de aprobación del residente.' }));
-    showMap(undefined, { admin: true, discharges, send });
+    showMap(undefined, { discharges, send });
     await screen.findByTestId('mapa-lienzo');
     // Act: two works on that street, so nothing goes until one is picked.
     fireEvent.click(screen.getByTestId('avance-confirmar'));
@@ -243,18 +243,31 @@ describe('ServiceMapWeb', () => {
     expect(screen.getByTestId('avance-confirmar')).toHaveTextContent('Confirmar avance (55 m)');
   });
 
-  it('a member who is not an admin does not see the suggestion', async () => {
-    showMap(undefined, { admin: false, discharges });
-    const canvas = await screen.findByTestId('mapa-lienzo');
-    expect(screen.queryByTestId('avance-sugerido')).not.toBeInTheDocument();
-    expect(canvas).toHaveAttribute('data-pins', '0');
+  it('every member sees the suggestion, not only an admin (José 07/11: «todos pueden crear y actualizar»)', async () => {
+    showMap(undefined, { discharges });
+    expect(await screen.findByTestId('avance-sugerido')).toBeInTheDocument();
   });
 
-  it('a service without streets says so', async () => {
+
+  it('a service without streets shows how to start and where to draw them, to everyone (design o-10)', async () => {
+    // Arrange
     askServer.mockResolvedValue({ ok: true, data: { map: null } });
-    showMap();
-    expect(await screen.findByTestId('mapa-vacio')).toHaveTextContent('todavía no tiene calles');
-    expect(screen.getByTestId('mapa-abrir')).toHaveAttribute('href', `${url}/service/${serviceId}?section=map`);
+    const drawUrl = 'https://portal.constroad.com/admin/service-management/6aedcc3a0c104549fea4aa30?tab=mapa';
+    // Act
+    showMap(undefined, { drawUrl });
+    // Assert
+    const card = await screen.findByTestId('mapa-primera-calle');
+    expect(card).toHaveTextContent('Todavía no hay calles');
+    expect(card).toHaveTextContent('Dibuja las calles');
+    expect(screen.getByTestId('mapa-dibujar-portal')).toHaveAttribute('href', drawUrl);
+    expect(screen.queryByTestId('mapa-vacio')).not.toBeInTheDocument();
+  });
+
+  it('without the Portal page there is no button that leads nowhere', async () => {
+    askServer.mockResolvedValue({ ok: true, data: { map: null } });
+    showMap(undefined, { drawUrl: null });
+    expect(await screen.findByTestId('mapa-primera-calle')).toHaveTextContent('pestaña Mapa');
+    expect(screen.queryByTestId('mapa-dibujar-portal')).not.toBeInTheDocument();
   });
 
   it('a link that fails says so and can be tried again', async () => {

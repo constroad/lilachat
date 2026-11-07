@@ -217,9 +217,22 @@ describe('ServiceDetailWeb', () => {
     render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={() => undefined} links={{ can: (kind) => kind === 'service', open: vi.fn(), map }} />);
     // Act
     fireEvent.click(await screen.findByTestId('pestana-detalle-map'));
-    // Assert
-    expect(await screen.findByTestId('mapa-abrir')).toHaveAttribute('href', 'https://constroad.com/public/mapa/service/srv-318?section=map');
+    // Assert: the fake server sends no streets, so the tab offers to draw them.
+    expect(await screen.findByTestId('mapa-primera-calle')).toBeInTheDocument();
     expect(map).toHaveBeenCalledWith({ kind: 'service', clientId: 'cli-cvs', serviceId: 'srv-318' });
+  });
+
+  it('everyone who can open the service gets «Mapa» before there are streets, and is sent to draw them in Portal (José 07/11, design o-10)', async () => {
+    // Arrange
+    const adminPage = 'https://portal.constroad.com/admin/service-management/6aedcc3a0c104549fea4aa30';
+    vi.stubGlobal('fetch', reply({ detail: { ...detail, service: { ...detail.service, url: adminPage } } }));
+    const map = vi.fn(async () => ({ ok: true as const, url: 'https://constroad.com/public/mapa' }));
+    const links = { can: (kind: string) => kind === 'service', open: vi.fn(), map };
+    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney={false} onBack={() => undefined} links={links} />);
+    // Act
+    fireEvent.click(await screen.findByTestId('pestana-detalle-map'));
+    // Assert
+    expect(await screen.findByTestId('mapa-dibujar-portal')).toHaveAttribute('href', `${adminPage}?tab=mapa`);
   });
 
   it('the map takes the whole conversation with the tabs in its bar, and «Pedidos» brings the list back (design o-01, José 07/11)', async () => {
@@ -233,13 +246,13 @@ describe('ServiceDetailWeb', () => {
     fireEvent.click(await screen.findByTestId('pestana-detalle-map'));
 
     // Assert
-    await screen.findByTestId('mapa-abrir');
+    await screen.findByTestId('mapa-primera-calle');
     expect(onMapOpen).toHaveBeenLastCalledWith(true);
     expect(screen.getByTestId('ruta-servicio')).toBeInTheDocument();
     expect(screen.getByTestId('pestana-detalle-map')).toHaveAttribute('aria-selected', 'true');
     fireEvent.click(screen.getByTestId('pestana-detalle-orders'));
     expect(onMapOpen).toHaveBeenLastCalledWith(false);
-    expect(screen.queryByTestId('mapa-abrir')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mapa-primera-calle')).not.toBeInTheDocument();
   });
 
   it('«Generar informe de servicio» runs informe_de_servicio from the space with the service: Portal refuses it in a group (01/11)', async () => {

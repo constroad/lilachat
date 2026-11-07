@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
-import { noticeOf, serviceMapPage, WORK_MAP_EMPTY, type ChannelLinks, type ServiceMapDeps, type ShortcutRow, type ShortcutValues, type UnitDischarge } from '@lilachat/shared';
+import { noticeOf, serviceMapPage, type ChannelLinks, type ServiceMapDeps, type ShortcutRow, type ShortcutValues, type UnitDischarge } from '@lilachat/shared';
 import { runShortcut, submitAppForm } from '../../chat/commands/commandsApi';
 import { currentSocket } from '../../useSocket';
 import { useWorkMap } from './workMap/useWorkMap';
 import { MAP_HEAD_BAR, WorkMapBoard } from './workMap/WorkMapBoard';
 import type { ProgressSend } from './workMap/WorkMapDischarges';
+import { WorkMapFirst } from './workMap/WorkMapFirst';
 
 /** How a chat runs the link action for the map. */
 export const mapDepsOf = (jwt: string, chatId: string) => (row: ShortcutRow, values: ShortcutValues): ServiceMapDeps => ({
@@ -29,7 +30,7 @@ function Frame(props: { head?: ReactNode; tabs?: ReactNode; children: ReactNode 
   );
 }
 
-type MapProps = { jwt: string; links: ChannelLinks; target: { kind: 'service'; clientId: string; serviceId: string }; title: string; head?: ReactNode; tabs?: ReactNode; badge?: ReactNode; admin?: boolean; discharges?: UnitDischarge[]; send?: ProgressSend };
+type MapProps = { jwt: string; links: ChannelLinks; target: { kind: 'service'; clientId: string; serviceId: string }; title: string; head?: ReactNode; tabs?: ReactNode; badge?: ReactNode; /** Where the streets are drawn today (Portal's «Mapa» tab). */ drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend };
 
 export function ServiceMapWeb(props: MapProps) {
   const { state, retry } = useWorkMap(props.jwt, props.links, props.target);
@@ -46,15 +47,6 @@ export function ServiceMapWeb(props: MapProps) {
       </Frame>
     );
   }
-  if (!state.map) {
-    return (
-      <Frame head={props.head} tabs={props.tabs}>
-      <div data-testid="mapa-vacio" className="rounded-2xl border border-outline/15 bg-surface p-4 text-[14px] text-on-surface-variant">
-        {WORK_MAP_EMPTY}
-        <a data-testid="mapa-abrir" href={pageOf(state.url)} target="_blank" rel="noopener noreferrer" className="mt-2 block text-[13px] font-semibold text-primary">Abrir en Portal</a>
-      </div>
-      </Frame>
-    );
-  }
-  return <WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} title={props.title} serviceId={props.target.serviceId} head={props.head} tabs={props.tabs} badge={props.badge} admin={props.admin} discharges={props.discharges} send={props.send} />;
+  if (!state.map) return <Frame head={props.head} tabs={props.tabs}><WorkMapFirst drawUrl={props.drawUrl ?? null} /></Frame>;
+  return <WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} title={props.title} serviceId={props.target.serviceId} head={props.head} tabs={props.tabs} badge={props.badge} discharges={props.discharges} send={props.send} />;
 }

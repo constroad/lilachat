@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { CommandOutcome } from './botCommands';
-import { MAP_LINK_DAYS, MAP_LINK_FAILED, serviceMapPage, serviceMapUrl, type ServiceMapDeps } from './serviceMap';
+import { MAP_LINK_DAYS, MAP_LINK_FAILED, portalMapTabUrl, serviceMapPage, serviceMapUrl, type ServiceMapDeps } from './serviceMap';
 
 /** José 06/11: «si el servicio tiene mapa agrega un tab mapa». Portal's public page draws it, from a link made on the tap. */
 const URL_OF_LINK = 'https://constroad.com/public/service-report/token/service/srv-1';
@@ -60,5 +60,22 @@ describe('serviceMapPage', () => {
 
   it('a link that already names the service keeps it', () => {
     expect(serviceMapPage('https://constroad.com/public/test/service-report/abc/service/srv-1', 'srv-1')).toBe('https://constroad.com/public/test/service-report/abc/service/srv-1?section=map');
+  });
+});
+
+describe('portalMapTabUrl', () => {
+  it('opens the «Mapa» tab of the service in Portal\'s admin, where the streets are drawn today', () => {
+    expect(portalMapTabUrl('https://portal.constroad.com/admin/service-management/6aedcc3a0c104549fea4aa30')).toBe('https://portal.constroad.com/admin/service-management/6aedcc3a0c104549fea4aa30?tab=mapa');
+  });
+
+  it('replaces another tab instead of adding a second one', () => {
+    expect(portalMapTabUrl('https://portal.constroad.com/admin/service-management/6aedcc3a0c104549fea4aa30?tab=drive')).toBe('https://portal.constroad.com/admin/service-management/6aedcc3a0c104549fea4aa30?tab=mapa');
+  });
+
+  it('a link that is not the admin page of a service gives nothing to draw with', () => {
+    expect(portalMapTabUrl('https://portal.constroad.com/s/1')).toBeNull();
+    expect(portalMapTabUrl('http://portal.constroad.com/admin/service-management/6aedcc3a0c104549fea4aa30')).toBeNull();
+    expect(portalMapTabUrl(undefined)).toBeNull();
+    expect(portalMapTabUrl('no es un enlace')).toBeNull();
   });
 });

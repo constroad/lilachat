@@ -150,8 +150,8 @@ describe('money (José: «la cuenta y temas sensibles de plata y cotizaciones so
     // Assert
     expect(refused.status).toBe(404);
     expect(detail.quotes).toBeUndefined();
-    // The units of the Control de pista feed the progress only admins confirm (design o-07, 07/11).
-    expect(detail.discharges).toBeUndefined();
+    // The units of the Control de pista carry no money: everyone confirms the progress they suggest (José 07/11).
+    expect(detail.discharges).toHaveLength(1);
     expect(adminDetail.discharges).toHaveLength(1);
     expect(adminDetail.quotes).toHaveLength(1);
     expect(adminDetail.billing.total).toBe(1000);

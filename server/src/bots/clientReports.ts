@@ -156,7 +156,7 @@ function prepared(workspaceId: string, clientId: string, serviceId: string, user
 export async function openReportForm(workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId, input: unknown): Promise<CommandOutcome | CommandError> {
   const open = openInputOf(input);
   if (!open) return fail(400, 'invalid_request', 'Falta qué parte del informe abrir.');
-  const asked = await findAskedService(workspaceId, clientId, serviceId, userId, open.kind === 'work_progress' ? 'admin' : 'services');
+  const asked = await findAskedService(workspaceId, clientId, serviceId, userId, 'services');
   if (!asked) return notFound();
   const ready = await prepared(workspaceId, clientId, serviceId, userId, open);
   if ('error' in ready) return ready;

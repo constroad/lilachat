@@ -9,8 +9,9 @@ import type { ServiceMapResult } from './serviceMap.js';
  * not read two percentages. PURE: the server, the app and the web use it.
  */
 export type WorkMapPoint = { lat: number; lng: number };
-export type WorkMapStreet = { id: string; name: string; line: WorkMapPoint[]; lengthM: number };
-export type WorkMapScope = { streetId: string; fromM: number; toM: number; workIds: string[]; stageId?: string };
+export type WorkMapStreet = { id: string; name: string; line: WorkMapPoint[]; lengthM: number; widthM?: number };
+/** `id` and `widthM` let the person edit or delete a stretch (o-03, step 3). */
+export type WorkMapScope = { id: string; streetId: string; fromM: number; toM: number; workIds: string[]; stageId?: string; widthM?: number };
 export type WorkMapProgress = { streetId: string; workId: string; fromM: number; toM: number; date: string; rework: boolean };
 /** `partida`: a contracted item, not a tag of the map; the progress names it `partidaId`. */
 export type WorkMapWork = { id: string; name: string; color: string; partida?: true };
@@ -127,7 +128,8 @@ function streetsFrom(raw: unknown): WorkMapStreet[] {
   return listOf(raw).flatMap((street) => {
     const id = textOf(street._id);
     const line = listOf(street.geometry).map((point) => ({ lat: point.lat as number, lng: point.lng as number })).filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng));
-    return id ? [{ id, name: textOf(street.name), line, lengthM: numberOf(street.lengthM) || lineLengthM(line) }] : [];
+    const widthM = numberOf(street.widthM);
+    return id ? [{ id, name: textOf(street.name), line, lengthM: numberOf(street.lengthM) || lineLengthM(line), ...(widthM > 0 ? { widthM } : {}) }] : [];
   });
 }
 
@@ -137,7 +139,8 @@ function scopesFrom(raw: unknown, streets: WorkMapStreet[]): WorkMapScope[] {
     const tags = textsOf(scope.tagIds);
     const stageId = textOf(scope.stageId);
     if (!known.has(textOf(scope.streetId))) return [];
-    return [{ streetId: textOf(scope.streetId), fromM: numberOf(scope.fromM), toM: numberOf(scope.toM), workIds: tags.length ? tags : textsOf(scope.partidaIds), ...(stageId ? { stageId } : {}) }];
+    const widthM = numberOf(scope.widthM);
+    return [{ id: textOf(scope._id), streetId: textOf(scope.streetId), fromM: numberOf(scope.fromM), toM: numberOf(scope.toM), workIds: tags.length ? tags : textsOf(scope.partidaIds), ...(stageId ? { stageId } : {}), ...(widthM > 0 ? { widthM } : {}) }];
   });
 }
 
@@ -187,6 +190,9 @@ function approvedIn(progress: WorkMapProgress[], scope: WorkMapScope, workId: st
   const mine = progress.filter((record) => record.streetId === scope.streetId && record.workId === workId && !record.rework);
   return mergeIntervals(mine.map((record): Interval => [Math.max(record.fromM, scope.fromM), Math.min(record.toM, scope.toM)]));
 }
+
+/** Approved metres of one work on one stretch, rework left out (o-03's bars). */
+export const approvedMetersIn = (progress: WorkMapProgress[], scope: WorkMapScope, workId: string): number => metersOf(approvedIn(progress, scope, workId));
 
 function workedStretches(map: WorkMap, scopes: WorkMapScope[], workId?: string): WorkedStretch[] {
   return scopes.flatMap((scope) => scope.workIds.filter((id) => !workId || id === workId).map((id) => {

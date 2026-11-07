@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 import { StreetDelete, type StreetDeleteSend } from './StreetDelete';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { ChevronRight } from 'lucide-react-native';
+import { useColores } from '../../../ui/tema';
 import { metersLabel, NO_STRETCHES, stageStateLabel, workMapCutChip, workShares, type StageGroup, type WorkMapFilter, type WorkMapStreetRow, type WorkMapView } from '@lilachat/shared';
 
 export const KICKER = 'font-mono text-[11px] font-bold uppercase tracking-[2px] text-on-surface-variant';
@@ -39,8 +41,9 @@ function PanelHead(props: { view: WorkMapView; groups: StageGroup[]; badge?: Rea
   );
 }
 
-function StreetCard(props: { street: WorkMapStreetRow; deleteStreet?: StreetDeleteSend }) {
+function StreetCard(props: { street: WorkMapStreetRow; deleteStreet?: StreetDeleteSend; onOpen?: () => void }) {
   const { street } = props;
+  const colors = useColores();
   return (
     <View testID={`mapa-calle-${street.id}`} className="rounded-xl border-[1.5px] border-outline/15 bg-surface p-4">
       <View className="flex-row items-start justify-between gap-2">
@@ -52,6 +55,7 @@ function StreetCard(props: { street: WorkMapStreetRow; deleteStreet?: StreetDele
       </View>
       <View className="mt-2 flex-row flex-wrap items-center justify-between">
         <Text className="min-w-0 flex-1 font-mono text-[12px] text-on-surface-variant">{street.status}</Text>
+        {props.onOpen ? <Pressable testID={`ver-tramos-${street.id}`} onPress={props.onOpen} className="h-11 flex-row items-center"><Text className="text-[14px] font-semibold text-primary">Ver tramos</Text><ChevronRight size={16} color={colors.primary} /></Pressable> : null}
         {props.deleteStreet ? <StreetDelete street={street} send={props.deleteStreet} /> : null}
       </View>
     </View>
@@ -78,7 +82,7 @@ function GroupTitle(props: { group: StageGroup }) {
  * the streets under their stage, and the day the map is cut at. Admins see the units of the runway
  * control report on top (`o-07`).
  */
-export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; filter: WorkMapFilter; badge?: ReactNode; top?: ReactNode; deleteStreet?: StreetDeleteSend }) {
+export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; filter: WorkMapFilter; badge?: ReactNode; top?: ReactNode; deleteStreet?: StreetDeleteSend; /** «Ver tramos» (o-03). */ onOpenStreet?: (streetId: string) => void }) {
   return (
     <View className="-mx-4 -mt-5 rounded-t-3xl border-t border-outline/15 bg-surface px-4 pb-4 pt-2">
       <View className="mb-3 h-1 w-10 self-center rounded-full bg-outline/30" />
@@ -87,7 +91,7 @@ export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; f
       {props.groups.map((group) => (
         <View key={group.id}>
           <GroupTitle group={group} />
-          <View className="gap-3">{group.streets.map((street) => <StreetCard key={street.id} street={street} deleteStreet={props.deleteStreet} />)}</View>
+          <View className="gap-3">{group.streets.map((street) => <StreetCard key={street.id} street={street} deleteStreet={props.deleteStreet} onOpen={props.onOpenStreet ? () => props.onOpenStreet?.(street.id) : undefined} />)}</View>
         </View>
       ))}
       <Text testID="mapa-corte-pie" className="mt-4 text-right font-mono text-[12px] text-on-surface-variant">Corte: {workMapCutChip(props.filter)}</Text>

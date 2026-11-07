@@ -158,6 +158,8 @@ export * from './workMapProgress.js';
 export * from './workProgressSend.js';
 export * from './workStreetDraft.js';
 export * from './workStreetPick.js';
+export * from './workStreetDetail.js';
+export * from './workScopeDraft.js';
 export * from './workStreetDelete.js';
 export * from './photoStamp.js';
 export * from './signingForm.js';

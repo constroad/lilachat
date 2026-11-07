@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { ExternalLink, Maximize2, Plus, Share2, X } from 'lucide-react-native';
-import { dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StretchRange, type UnitDischarge, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { type MapEditSend, dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StretchRange, type UnitDischarge, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
@@ -10,6 +10,7 @@ import { WorkMapExport } from './WorkMapExport';
 import { WorkMapFilters, WorkMapLegend } from './WorkMapFilters';
 import { WorkMapPanel } from './WorkMapPanel';
 import type { StreetDeleteSend } from './StreetDelete';
+import { StreetScopes } from './StreetScopes';
 import { WorkMapSurface } from './WorkMapSurface';
 
 function FullMap(props: { view: WorkMapView; open: boolean; onClose: () => void; pins: DischargePin[]; stretches: WorkMapLine[] }) {
@@ -38,7 +39,7 @@ function useDischarges(map: WorkMap, discharges: UnitDischarge[]) {
   return { suggestion, ranges, pins, stretches, onRange: (streetId: string, range: StretchRange) => setRanges((before) => ({ ...before, [streetId]: range })) };
 }
 
-type BoardProps = { map: WorkMap; pageUrl: string; height: number; title: string; serviceId: string; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend };
+type BoardProps = { map: WorkMap; pageUrl: string; height: number; title: string; serviceId: string; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend };
 
 function TitleRow(props: { pageUrl: string; onExport: () => void; onDraw?: () => void }) {
   const colors = useColores();
@@ -72,6 +73,7 @@ export function WorkMapBoard(props: BoardProps) {
   const [filter, setFilter] = useState<WorkMapFilter>({});
   const [wide, setWide] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [streetId, setStreetId] = useState<string | null>(null);
   const view = useMemo(() => workMapView(map, filter), [map, filter]);
   const groups = useMemo(() => workMapStageGroups(map, view), [map, view]);
   const pista = useDischarges(map, props.discharges ?? NO_DISCHARGES);
@@ -89,8 +91,9 @@ export function WorkMapBoard(props: BoardProps) {
           <Maximize2 size={18} color={colors['on-surface']} />
         </Pressable>
       </View>
-      <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} deleteStreet={props.deleteStreet} />
+      <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} deleteStreet={props.deleteStreet} onOpenStreet={setStreetId} />
       <FullMap view={view} open={wide} onClose={() => setWide(false)} pins={pista.pins} stretches={pista.stretches} />
+      <StreetScopes map={map} streetId={streetId} send={props.editMap} onClose={() => setStreetId(null)} />
       <WorkMapExport open={exporting} map={map} filter={filter} title={props.title} pageUrl={pageUrl} onClose={() => setExporting(false)} />
     </View>
   );

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { StreetDelete, type StreetDeleteSend } from './StreetDelete';
 import { metersLabel, NO_STRETCHES, stageStateLabel, workMapCutChip, workShares, type StageGroup, type WorkMapFilter, type WorkMapStreetRow, type WorkMapView } from '@lilachat/shared';
 
@@ -51,7 +52,7 @@ function PanelHead(props: { view: WorkMapView; groups: StageGroup[]; badge?: Rea
   );
 }
 
-function StreetCard(props: { street: WorkMapStreetRow; deleteStreet?: StreetDeleteSend }) {
+function StreetCard(props: { street: WorkMapStreetRow; deleteStreet?: StreetDeleteSend; onOpen?: () => void }) {
   const { street } = props;
   return (
     <li data-testid={`mapa-calle-${street.id}`} className="rounded-xl border-[1.5px] border-outline/15 bg-surface p-4">
@@ -66,6 +67,7 @@ function StreetCard(props: { street: WorkMapStreetRow; deleteStreet?: StreetDele
       </div>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2">
         <p className="min-w-0 flex-1 font-mono text-[12px] text-on-surface-variant">{street.status}</p>
+        {props.onOpen ? <button type="button" data-testid={`ver-tramos-${street.id}`} onClick={props.onOpen} className="flex h-9 shrink-0 items-center text-[13px] font-semibold text-primary">Ver tramos<ChevronRight size={16} /></button> : null}
         {props.deleteStreet ? <StreetDelete street={street} send={props.deleteStreet} /> : null}
       </div>
     </li>
@@ -92,7 +94,7 @@ function GroupTitle(props: { group: StageGroup }) {
  * the streets under their stage, and the day the map is cut at. Admins see the units of the
  * runway control report on top (`o-07`).
  */
-export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; filter: WorkMapFilter; badge?: ReactNode; top?: ReactNode; scrolls: boolean; deleteStreet?: StreetDeleteSend }) {
+export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; filter: WorkMapFilter; badge?: ReactNode; top?: ReactNode; scrolls: boolean; deleteStreet?: StreetDeleteSend; /** «Ver tramos» (o-03). */ onOpenStreet?: (streetId: string) => void }) {
   return (
     <>
       <PanelHead view={props.view} groups={props.groups} badge={props.badge} />
@@ -101,7 +103,7 @@ export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; f
         {props.groups.map((group) => (
           <section key={group.id}>
             <GroupTitle group={group} />
-            <ul className="space-y-3">{group.streets.map((street) => <StreetCard key={street.id} street={street} deleteStreet={props.deleteStreet} />)}</ul>
+            <ul className="space-y-3">{group.streets.map((street) => <StreetCard key={street.id} street={street} deleteStreet={props.deleteStreet} onOpen={props.onOpenStreet ? () => props.onOpenStreet?.(street.id) : undefined} />)}</ul>
           </section>
         ))}
       </div>

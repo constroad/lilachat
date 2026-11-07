@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { deleteThenReload, noticeOf, serviceMapPage, type ChannelLinks, type ServiceMapDeps, type ShortcutRow, type ShortcutValues, type UnitDischarge } from '@lilachat/shared';
+import { deleteThenReload, editThenReload, noticeOf, type MapEditSend, serviceMapPage, type ChannelLinks, type ServiceMapDeps, type ShortcutRow, type ShortcutValues, type UnitDischarge } from '@lilachat/shared';
 import { runShortcut, submitAppForm } from '../../chat/commands/commandsApi';
 import { currentSocket } from '../../useSocket';
 import { useWorkMap } from './workMap/useWorkMap';
@@ -33,7 +33,7 @@ function Frame(props: { head?: ReactNode; tabs?: ReactNode; children: ReactNode 
   );
 }
 
-type MapProps = { jwt: string; links: ChannelLinks; target: { kind: 'service'; clientId: string; serviceId: string }; title: string; head?: ReactNode; tabs?: ReactNode; badge?: ReactNode; /** Where the streets are drawn today (Portal's «Mapa» tab). */ drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Guardar calle» (o-02): everyone draws (José 07/11). */ drawStreet?: StreetSend; /** «Borrar calle»: anyone, an admin restores (José 07/11). */ deleteStreet?: StreetDeleteSend };
+type MapProps = { jwt: string; links: ChannelLinks; target: { kind: 'service'; clientId: string; serviceId: string }; title: string; head?: ReactNode; tabs?: ReactNode; badge?: ReactNode; /** Where the streets are drawn today (Portal's «Mapa» tab). */ drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Guardar calle» (o-02): everyone draws (José 07/11). */ drawStreet?: StreetSend; /** «Borrar calle»: anyone, an admin restores (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend };
 
 export function ServiceMapWeb(props: MapProps) {
   const { state, retry } = useWorkMap(props.jwt, props.links, props.target);
@@ -41,6 +41,7 @@ export function ServiceMapWeb(props: MapProps) {
   const onDraw = props.drawStreet ? () => setDrawing(true) : undefined;
   const pageOf = (url: string) => serviceMapPage(url, props.target.serviceId);
   const deleteStreet = deleteThenReload(props.deleteStreet, retry);
+  const editMap = editThenReload(props.editMap, retry);
   if (state.kind === 'loading') return <Frame head={props.head} tabs={props.tabs}><div data-testid="mapa-cargando" className="h-[60vh] animate-pulse rounded-2xl bg-surface-variant" /></Frame>;
   if (state.kind === 'failed') {
     return (
@@ -55,5 +56,5 @@ export function ServiceMapWeb(props: MapProps) {
   }
   if (drawing && props.drawStreet) return <WorkStreetEditor title={props.title} map={state.map} send={props.drawStreet} onClose={() => setDrawing(false)} onSaved={() => { setDrawing(false); void retry(); }} />;
   if (!state.map) return <Frame head={props.head} tabs={props.tabs}><WorkMapFirst drawUrl={props.drawUrl ?? null} onDraw={onDraw} /></Frame>;
-  return <WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} title={props.title} serviceId={props.target.serviceId} head={props.head} tabs={props.tabs} badge={props.badge} discharges={props.discharges} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} />;
+  return <WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} title={props.title} serviceId={props.target.serviceId} head={props.head} tabs={props.tabs} badge={props.badge} discharges={props.discharges} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} editMap={editMap} />;
 }

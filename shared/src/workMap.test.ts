@@ -48,8 +48,8 @@ describe('workMapOf', () => {
     // A contracted item is no tag: its progress goes as partidaId (07/11).
     expect(map.works.map((work) => Boolean(work.partida))).toEqual([false, false, true]);
     expect(map.stages.map((stage) => stage.id)).toEqual(['e1', 'e2']);
-    expect(map.scopes[0]).toEqual({ streetId: 's1', fromM: 0, toM: 400, workIds: ['base', 'asfalto'], stageId: 'e1' });
-    expect(JSON.stringify(map)).not.toContain('widthM');
+    expect(map.scopes[0]).toEqual({ id: 'c1', streetId: 's1', fromM: 0, toM: 400, workIds: ['base', 'asfalto'], stageId: 'e1' });
+    expect(map.streets[0]?.widthM).toBe(6);
   });
 
   it('answers null when Portal has no streets or sends something else', () => {

@@ -29,8 +29,8 @@ const line = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.99 }];
 const workMap: WorkMap = {
   streets: [{ id: 's1', name: 'Av. Los Olivos', line, lengthM: 1000 }, { id: 's2', name: 'Jr. Las Dalias', line, lengthM: 500 }],
   scopes: [
-    { streetId: 's1', fromM: 0, toM: 400, workIds: ['base', 'asfalto'], stageId: 'e1' },
-    { streetId: 's2', fromM: 0, toM: 200, workIds: ['base'], stageId: 'e2' },
+    { id: 'c1', streetId: 's1', fromM: 0, toM: 400, workIds: ['base', 'asfalto'], stageId: 'e1' },
+    { id: 'c2', streetId: 's2', fromM: 0, toM: 200, workIds: ['base'], stageId: 'e2' },
   ],
   progress: [{ streetId: 's1', workId: 'base', fromM: 0, toM: 400, date: '2026-11-01', rework: false }],
   works: [{ id: 'base', name: 'Base', color: '#c08a1e' }, { id: 'asfalto', name: 'Asfaltado', color: '#111111' }],

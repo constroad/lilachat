@@ -1,4 +1,4 @@
-import { serviceLinkRequest, serviceMapUrl, type ChannelLinks, noticeOf, sendWorkProgress, sendWorkStreet, sendWorkStreetDelete, workProgressRequest, workStreetDeleteRequest, workStreetRequest, type StreetDraft, type WorkProgressResult } from '@lilachat/shared';
+import { type MapEditSend, serviceLinkRequest, serviceMapUrl, type ChannelLinks, noticeOf, sendWorkProgress, sendWorkStreet, sendWorkStreetDelete, workProgressRequest, workStreetDeleteRequest, workStreetRequest, type StreetDraft, type WorkProgressResult } from '@lilachat/shared';
 import { submitAppForm } from '../../../chat/commands/commandsApi';
 import { getSocket } from '../../../chat/socketClient';
 import { openReportForm } from '../reports/reportsApi';
@@ -13,6 +13,14 @@ const senderOf = (target: ServiceAskTarget, chatId: string, serviceId: string): 
     submit: (commandId, values) => submitAppForm(target.jwt, { chatId }, commandId, values),
     notice: (commandId) => noticeOf(getSocket(), commandId),
   }, entry);
+
+/** Any other edit of the map (stretches, stages, works; step 3): the request opens at the door, `run` reads the answer. */
+export const mapEditSender = (target: ServiceAskTarget, chatId: string, serviceId: string): MapEditSend => (request, run) =>
+  run({
+    open: () => openReportForm(target, serviceId, request),
+    submit: (commandId, values) => submitAppForm(target.jwt, { chatId }, commandId, values),
+    notice: (commandId) => noticeOf(getSocket(), commandId),
+  });
 
 /** Everyone in the client's channel registers progress (José 07/11: «todos pueden crear y actualizar»). */
 export const workProgressSender = (target: ServiceAskTarget, chatId: string, serviceId: string): ProgressSend => senderOf(target, chatId, serviceId);

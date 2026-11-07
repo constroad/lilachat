@@ -412,3 +412,33 @@ trabajos (o-05), registrar avance a mano (o-06, botón principal del diseño), c
 (o-13), la etapa al guardar una calle, y restaurar o ver lo borrado (admins). Portal ya tiene
 `guardar_tramo_de_obra`, `borrar_tramo_de_obra`, `crear_etapa_de_obra`,
 `crear_etiqueta_de_obra` y `registrar_avance_de_obra` (a9938ba7).
+
+## Paso 3: una calle y sus tramos, etapas y trabajos (o-03, o-04, o-05), web y APK, para todos
+
+- «Ver tramos ›» en cada calle del panel abre la calle (web: el panel de la derecha; APK: una hoja
+  a pantalla completa). Arriba, el nombre y «320 m · 6,0 m»; después «Avance por trabajo», una barra
+  por trabajo con los metros aprobados; y «Tramos definidos», cada uno con sus progresivas, su
+  tamaño («160 m · 6,0 m · 960 m²»), su etapa y sus trabajos con el porcentaje.
+- «Agregar tramo» empieza con la calle entera (0 a su largo). Se tocan los trabajos y la etapa. Ahí
+  mismo están «Nuevo trabajo» (nombre y uno de ocho colores de los planos) y «Nueva etapa» (nombre):
+  José 07/11 pidió que todo sea fácil para un ingeniero de campo, sin ir a otra pantalla.
+- Antes de enviar se avisa: faltan los extremos, el fin va antes del inicio, o el tramo pasa el
+  largo de la calle (Portal deja 0,5 m de holgura). El rechazo de Portal se muestra tal cual.
+- Editar un tramo usa el mismo formulario sin `entradaId`. Borrar pregunta antes, nombra el tramo y
+  avisa que un admin lo restaura y que un tramo con avance aprobado no se borra.
+- Puerta del servidor: `server/src/bots/workMapForms.ts`, kinds `work_scope`, `work_scope_delete`,
+  `work_stage`, `work_tag`. El servicio sale de la puerta; Portal recibe `etiquetaIds` y
+  `partidaIds` por separado, y `etapaId: null` quita la etapa. Motores puros en shared:
+  `workStreetDetail.ts` y `workScopeDraft.ts` (`editThenReload` vuelve a pedir el mapa si Portal
+  guardó).
+- Los datos salen de la lectura del mapa por el enlace (`toClientWorkStreets`), que ya trae el id y
+  el ancho de cada tramo y el ancho de la calle (Portal 07/11). `detalle_de_servicio` no los trae.
+
+**Pendiente, con su porqué:**
+- Restaurar y ver lo borrado: Agentes pidió no abrir `restaurar_de_obra` ni `borrados_de_obra`
+  hasta desplegar su comprobación del servicio (rama `mapa-borrados-y-datos`). La puerta ya los
+  sabe armar, pero no los abre (`isWorkMapFormKind`). Además Portal los da solo a quien tiene
+  `services:manage`: un miembro sin cuenta de Portal recibe el rechazo.
+- Registrar avance a mano (o-06): Portal publica `registrar_avance_manual_de_obra` (sin unidades,
+  con fotos del Drive del servicio y la hora del equipo). José tiene que aprobarla en Agentes.
+- Caminar con GPS (o-13).

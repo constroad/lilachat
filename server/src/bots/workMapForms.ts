@@ -1,0 +1,116 @@
+import type { AppForm, FormSchema } from '@lilachat/shared';
+
+/**
+ * The rest of Portal's work-map tools from the map (step 3, José 07/11: «itera hasta terminarlo»):
+ * stretches (o-03), stages (o-04), works (o-05) and, for admins, what was deleted. Like the street,
+ * each opens as a form with nothing to fill: the service is the door's and the rest rides as
+ * context, which Portal validates again (`portalWorkMapTools`, a9938ba7).
+ */
+const CONFIRM_ONLY: FormSchema = { type: 'object', properties: {} };
+const ID_MAX = 64;
+const LABEL_MAX = 60;
+const AXES_MAX = 30;
+const WIDTH_MAX_M = 60;
+const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export type WorkScopeInput = { kind: 'work_scope'; streetId: string; scopeId: string | null; fromM: number; toM: number; tagIds: string[] | null; partidaIds: string[] | null; stageId: string | null | undefined; widthM: number | null; entryId: string | null };
+export type WorkMapFormInput =
+  | WorkScopeInput
+  | { kind: 'work_scope_delete'; scopeId: string }
+  | { kind: 'work_stage'; name: string }
+  | { kind: 'work_tag'; name: string; color: string }
+  | { kind: 'work_restore'; streetId: string | null; scopeId: string | null }
+  | { kind: 'work_deleted' };
+export type WorkMapFormContext = Record<string, string | number | string[] | null>;
+
+const idOf = (raw: unknown): string => (typeof raw === 'string' && raw.trim().length <= ID_MAX ? raw.trim() : '');
+const labelOf = (raw: unknown): string => {
+  const label = typeof raw === 'string' ? raw.trim() : '';
+  return label.length <= LABEL_MAX ? label : '';
+};
+const meterOf = (raw: unknown): number | null => (typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 ? raw : null);
+
+/** undefined: not sent; null: sent wrong. */
+function idsOf(raw: unknown): string[] | null | undefined {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw) || raw.length > AXES_MAX) return null;
+  const ids = raw.map(idOf);
+  return ids.every(Boolean) ? ids : null;
+}
+
+/** undefined: keep it; null: «sin etapa»; '': sent wrong. */
+const stageOf = (raw: unknown): string | null | undefined => (raw === undefined || raw === null ? raw : idOf(raw));
+const widthOf = (raw: unknown): number | null | undefined => (raw === undefined ? undefined : typeof raw === 'number' && raw > 0 && raw <= WIDTH_MAX_M ? raw : null);
+
+function scopeInputOf(raw: Record<string, unknown>): WorkScopeInput | null {
+  const [streetId, scopeId, fromM, toM] = [idOf(raw.street_id), idOf(raw.scope_id), meterOf(raw.from_m), meterOf(raw.to_m)];
+  const [tagIds, partidaIds, stageId, widthM] = [idsOf(raw.tag_ids), idsOf(raw.partida_ids), stageOf(raw.stage_id), widthOf(raw.width_m)];
+  const entryId = typeof raw.entry_id === 'string' && UUID.test(raw.entry_id) ? raw.entry_id : null;
+  if (!streetId || fromM === null || toM === null || toM <= fromM) return null;
+  if (tagIds === null || partidaIds === null || stageId === '' || widthM === null || (!scopeId && !entryId)) return null;
+  return { kind: 'work_scope', streetId, scopeId: scopeId || null, fromM, toM, tagIds: tagIds ?? null, partidaIds: partidaIds ?? null, stageId, widthM: widthM ?? null, entryId: scopeId ? null : entryId };
+}
+
+function restoreInputOf(raw: Record<string, unknown>): WorkMapFormInput | null {
+  const [streetId, scopeId] = [idOf(raw.street_id), idOf(raw.scope_id)];
+  return Boolean(streetId) !== Boolean(scopeId) ? { kind: 'work_restore', streetId: streetId || null, scopeId: scopeId || null } : null;
+}
+
+function tagInputOf(raw: Record<string, unknown>): WorkMapFormInput | null {
+  const [name, color] = [labelOf(raw.name), typeof raw.color === 'string' ? raw.color : ''];
+  return name && HEX_COLOR.test(color) ? { kind: 'work_tag', name, color } : null;
+}
+
+/** What the phone sends for one of these kinds; null when it is off the contract or another kind. */
+export function workMapFormInputOf(raw: Record<string, unknown>): WorkMapFormInput | null {
+  if (raw.kind === 'work_scope') return scopeInputOf(raw);
+  if (raw.kind === 'work_scope_delete') return idOf(raw.scope_id) ? { kind: 'work_scope_delete', scopeId: idOf(raw.scope_id) } : null;
+  if (raw.kind === 'work_stage') return labelOf(raw.name) ? { kind: 'work_stage', name: labelOf(raw.name) } : null;
+  if (raw.kind === 'work_tag') return tagInputOf(raw);
+  if (raw.kind === 'work_restore') return restoreInputOf(raw);
+  if (raw.kind === 'work_deleted') return { kind: 'work_deleted' };
+  return null;
+}
+
+/**
+ * The kinds the door opens. `work_restore` and `work_deleted` wait for agentes: its service check did
+ * not cover `restaurar_de_obra` nor `borrados_de_obra` yet (agentes 07/11, branch mapa-borrados-y-datos).
+ */
+export const isWorkMapFormKind = (kind: unknown): boolean =>
+  kind === 'work_scope' || kind === 'work_scope_delete' || kind === 'work_stage' || kind === 'work_tag';
+
+/** Narrows the door's union to these kinds. */
+export const isWorkMapFormInput = (input: { kind: string }): input is WorkMapFormInput => isWorkMapFormKind(input.kind);
+
+const formOf = (id: string, title: string, submitLabel: string): AppForm => ({ id, title, submitLabel, schema: CONFIRM_ONLY });
+
+function scopeContext(serviceId: string, input: WorkScopeInput): WorkMapFormContext {
+  return {
+    servicioId: serviceId,
+    calleId: input.streetId,
+    ...(input.scopeId ? { tramoId: input.scopeId } : {}),
+    desdeM: input.fromM,
+    hastaM: input.toM,
+    ...(input.tagIds ? { etiquetaIds: input.tagIds } : {}),
+    ...(input.partidaIds ? { partidaIds: input.partidaIds } : {}),
+    ...(input.stageId !== undefined ? { etapaId: input.stageId } : {}),
+    ...(input.widthM !== null ? { anchoM: input.widthM } : {}),
+    ...(input.entryId ? { entradaId: input.entryId } : {}),
+  };
+}
+
+const restoreContext = (serviceId: string, input: Extract<WorkMapFormInput, { kind: 'work_restore' }>): WorkMapFormContext =>
+  ({ servicioId: serviceId, ...(input.streetId ? { calleId: input.streetId } : { tramoId: input.scopeId ?? '' }) });
+
+/** The form and the context Portal's tool receives; the service always comes from the door. */
+export function workMapFormPrepared(serviceId: string, input: WorkMapFormInput): { form: AppForm; context: WorkMapFormContext } {
+  switch (input.kind) {
+    case 'work_scope': return { form: formOf('guardar_tramo_de_obra', 'Guardar tramo', 'Guardar'), context: scopeContext(serviceId, input) };
+    case 'work_scope_delete': return { form: formOf('borrar_tramo_de_obra', 'Borrar tramo', 'Borrar'), context: { servicioId: serviceId, tramoId: input.scopeId } };
+    case 'work_stage': return { form: formOf('crear_etapa_de_obra', 'Crear etapa', 'Crear'), context: { servicioId: serviceId, nombre: input.name } };
+    case 'work_tag': return { form: formOf('crear_etiqueta_de_obra', 'Crear trabajo', 'Crear'), context: { servicioId: serviceId, nombre: input.name, color: input.color } };
+    case 'work_restore': return { form: formOf('restaurar_de_obra', 'Restaurar', 'Restaurar'), context: restoreContext(serviceId, input) };
+    case 'work_deleted': return { form: formOf('borrados_de_obra', 'Lo borrado del mapa', 'Ver'), context: { servicioId: serviceId } };
+  }
+}

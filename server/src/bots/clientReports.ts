@@ -6,6 +6,7 @@ import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botMode
 import { ClientChannelModel } from './botClients.js';
 import { workProgressInputOf, workProgressPrepared, type WorkProgressInput } from './workProgressForm.js';
 import { workStreetDeleteInputOf, workStreetDeletePrepared, workStreetInputOf, workStreetPrepared, type StreetContext, type WorkStreetDeleteInput, type WorkStreetInput } from './workStreetForm.js';
+import { isWorkMapFormInput, isWorkMapFormKind, workMapFormInputOf, workMapFormPrepared, type WorkMapFormContext, type WorkMapFormInput } from './workMapForms.js';
 
 /**
  * A field report filled from the client's channel (José 05/11/2026, spec
@@ -93,7 +94,8 @@ type OpenInput =
   | { kind: 'service_link' }
   | WorkProgressInput
   | WorkStreetInput
-  | WorkStreetDeleteInput;
+  | WorkStreetDeleteInput
+  | WorkMapFormInput;
 
 const pathOf = (raw: Record<string, unknown>): SectionPath | null => {
   const sectionId = text(raw.section_id, 64);
@@ -123,6 +125,7 @@ function openInputOf(input: unknown): OpenInput | null {
   if (raw.kind === 'work_progress') return workProgressInputOf(raw);
   if (raw.kind === 'work_street') return workStreetInputOf(raw);
   if (raw.kind === 'work_street_delete') return workStreetDeleteInputOf(raw);
+  if (isWorkMapFormKind(raw.kind)) return workMapFormInputOf(raw);
   const reportId = text(raw.report_id, 64);
   if (raw.kind === 'publish') return reportId ? { kind: 'publish', reportId } : null;
   if (raw.kind === 'remove_photo') return removalOf(reportId, text(raw.photo_id, 64));
@@ -134,7 +137,7 @@ function openInputOf(input: unknown): OpenInput | null {
   return { kind: 'section', type: raw.type, path, reportId: reportId || null, tramoId: tramoId || null, place, clientKey: clientKey || null };
 }
 
-type Prepared = { form: AppForm; context: Record<string, string | number | string[]> | StreetContext };
+type Prepared = { form: AppForm; context: Record<string, string | number | string[]> | StreetContext | WorkMapFormContext };
 
 type PhotoTerms = { reportId: string | null; tramoId: string | null; /** Portal's `seccion` is the form the person filled, not the template entry (`datos` → `unidad` in CTL-PIS; equal in CTL-IMP). */ sectionForm: string; /** The section's `tipoFoto` (CTL-PIS) and whether it refuses a capture without a fix. */ photoKind?: string; requireLocation: boolean };
 
@@ -165,6 +168,7 @@ function prepared(workspaceId: string, clientId: string, serviceId: string, user
   if (input.kind === 'work_progress') return workProgressPrepared(workspaceId, clientId, serviceId, userId, input);
   if (input.kind === 'work_street') return workStreetPrepared(serviceId, input);
   if (input.kind === 'work_street_delete') return workStreetDeletePrepared(serviceId, input);
+  if (isWorkMapFormInput(input)) return workMapFormPrepared(serviceId, input);
   if (input.kind === 'service_link') return { form: { id: SERVICE_LINK_ACTION, title: 'Enlace del servicio', submitLabel: 'Crear enlace', schema: SERVICE_LINK_FORM }, context: { servicioId: serviceId } };
   if (input.kind === 'drive_upload') return { form: { id: DRIVE_UPLOAD_TOOL, title: 'Subir al Drive', submitLabel: 'Subir', schema: NOTHING_TO_FILL }, context: { servicioId: serviceId } };
   if (input.kind === 'remove_photo') return { form: { id: REMOVE_PHOTO_TOOL, title: 'Quitar foto', submitLabel: 'Quitar', schema: NOTHING_TO_FILL }, context: { servicioId: serviceId, informeId: input.reportId, fotoId: input.photoId } };

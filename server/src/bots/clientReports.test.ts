@@ -423,6 +423,22 @@ describe('deleting a street from the map (José 07/11: anyone deletes, an admin 
   });
 });
 
+describe('a stretch of a street from the map (step 3, José 07/11)', () => {
+  it('any member opens Portal\'s stretch tool with the street, the stations and the service from the door', async () => {
+    // Act
+    const opened = await openOf(ana, { kind: 'work_scope', street_id: 'st-1', from_m: 0, to_m: 160, tag_ids: ['tg-1'], stage_id: 'sg-1', entry_id: '0b7e7d0e-6a8f-4c3b-9d2e-1f2a3b4c5d6e', forms: 3 }).expect(200);
+    // Assert
+    expect(opened.body.response.form).toMatchObject({ id: 'guardar_tramo_de_obra' });
+    const run = await BotCommandRunModel.findById(opened.body.commandId).lean();
+    expect(run?.context).toEqual({ servicioId: 'srv-318', calleId: 'st-1', desdeM: 0, hastaM: 160, etiquetaIds: ['tg-1'], etapaId: 'sg-1', entradaId: '0b7e7d0e-6a8f-4c3b-9d2e-1f2a3b4c5d6e' });
+  });
+
+  it('an end before the start is a 400, and someone outside the channel does not open it', async () => {
+    await openOf(ana, { kind: 'work_scope', street_id: 'st-1', from_m: 50, to_m: 10, entry_id: '0b7e7d0e-6a8f-4c3b-9d2e-1f2a3b4c5d6e', forms: 3 }).expect(400);
+    await openOf(outsider, { kind: 'work_stage', name: 'Etapa 2', forms: 3 }).expect(404);
+  });
+});
+
 describe('the link of a service from its client channel (José 07/11: «solo el servicio del canal»)', () => {
   const shortcutOf = async (who: Types.ObjectId, values: Record<string, unknown>, status: number) => {
     const portal = await BotAppModel.findOne({ clientId: 'lca_portal' }).lean();

@@ -187,6 +187,12 @@ APK 182 por el OTA `49025a2b` (git 1cb9051). Recorrido en Test con QA-CTLPIS: we
 - `workMapPortalParity.test.ts` compara con el `workMapOverview` del paquete y exige el mismo %
   (también con fecha de corte), los mismos estados de calle y los mismos colores. Antes, una calle
   sin trazo daba 47,7 % en Lilachat y 48,1 % en Portal.
+- El tramo de cada unidad del Control de pista sale de `suggestDischarges` del paquete (v0.7.0).
+  `workMapDischarges.ts` solo cambia las formas: la calle a `StreetAxis` y la unidad a
+  `Discharge`, y devuelve cada resultado con su unidad original. Las reglas (30 m del eje, foto
+  con precisión peor que 30 m descartada, orden por llegada) son las mismas que tenía Lilachat.
+- Sigue en Lilachat el KML de exportar: el del paquete no tiene filtros por trabajo, etapa ni día,
+  ni nombres «0+040 a 0+150». Se pasa cuando el paquete los tenga.
 
 **Ancho de móvil en la web:** medido el 06/11 con 433 px, el mínimo que da esa pestaña, no
 390. Sin scroll lateral, mapa de 375 × 419 y botones dentro. Un `resize` sin recargar en una

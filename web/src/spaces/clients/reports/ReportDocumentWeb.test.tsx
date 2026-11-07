@@ -202,6 +202,33 @@ describe('ReportDocumentWeb', () => {
     expect(await screen.findByTestId('formulario-agregar_foto_de_informe')).toBeInTheDocument();
   });
 
+  it('a unit\'s extra photos sit under the fixed four: a thumbnail opens the viewer and «Agregar foto» its camera (José 07/11)', async () => {
+    // Arrange
+    const extraEntry = { id: 'foto-adicional', title: 'Fotos adicionales', required: false, form: 'fotos', tool: 'agregar_foto_adicional', photoKind: 'adicional' };
+    const extras = { id: 'foto-adicional', state: 'done', summary: [], values: { fotos: [{ id: 'x1', url: 'https://lila.example.com/f/x1.jpg', descripcion: 'Junta', hora: '08:02' }] } };
+    const units = { id: 'unidades', kind: 'repeat', title: 'Unidades', required: true, state: 'partial', summary: [], results: [], itemTitle: 'Unidad', addLabel: '', min: 0, canAdd: false, template: [{ id: 'datos', title: 'Datos', required: true, form: 'ubicacion' }, { id: 'foto-ingreso', title: 'Foto de ingreso', required: true, form: 'fotos', tool: 'agregar_foto_de_informe', photoKind: 'ingreso' }, extraEntry], items: [{ id: 'd2', title: 'Unidad 1 · QAP-102', summary: [], results: [], sections: [{ id: 'datos', state: 'done', summary: ['Llegada 07:30'], values: {} }, extras] }] };
+    serverWith({ document: { ...document, type: 'CTL-PIS', title: 'Control de pista', sections: [document.sections[0], units] } });
+    openReport();
+    fireEvent.click(await screen.findByTestId('seccion-unidades'));
+    const strip = screen.getByTestId('adicionales-d2');
+    // Assert
+    expect(strip).toHaveTextContent('Adicionales · opcional (1)');
+    expect(within(screen.getByTestId('unidad-d2')).getAllByRole('button', { name: /^Foto de/ })).toHaveLength(1);
+    fireEvent.click(within(strip).getByRole('button', { name: 'Junta · 08:02' }));
+    expect(await screen.findByRole('button', { name: 'Tomar otra' })).toBeInTheDocument();
+    expect(screen.queryByTestId('formulario-agregar_foto_adicional')).toBeNull();
+  });
+
+  it('«Agregar foto» opens the camera of the extra photos', async () => {
+    const extraEntry = { id: 'foto-adicional', title: 'Fotos adicionales', required: false, form: 'fotos', tool: 'agregar_foto_adicional', photoKind: 'adicional' };
+    const units = { id: 'unidades', kind: 'repeat', title: 'Unidades', required: true, state: 'partial', summary: [], results: [], itemTitle: 'Unidad', addLabel: '', min: 0, canAdd: false, template: [{ id: 'datos', title: 'Datos', required: true, form: 'ubicacion' }, extraEntry], items: [{ id: 'd2', title: 'Unidad 1 · QAP-102', summary: [], results: [], sections: [{ id: 'datos', state: 'done', summary: ['Llegada 07:30'], values: {} }] }] };
+    serverWith({ document: { ...document, type: 'CTL-PIS', title: 'Control de pista', sections: [document.sections[0], units] } });
+    openReport();
+    fireEvent.click(await screen.findByTestId('seccion-unidades'));
+    fireEvent.click(screen.getByTestId('agregar-adicional-d2'));
+    expect(await screen.findByTestId('formulario-agregar_foto_adicional')).toBeInTheDocument();
+  });
+
   describe('taking a sent photo out of a draft (José 06/11)', () => {
     const photoEntry = { id: 'foto-ingreso', title: 'Foto de ingreso', required: true, form: 'fotos', tool: 'agregar_foto_de_informe', photoKind: 'ingreso' };
     const photos = [{ id: 'p1', url: 'https://lila.example.com/f/p1.jpg', descripcion: 'Ingreso', hora: '07:10' }, { id: 'p2', url: 'https://lila.example.com/f/p2.jpg', descripcion: 'Riego', hora: '07:20' }];

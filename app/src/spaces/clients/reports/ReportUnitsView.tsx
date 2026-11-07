@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
-import { Camera, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Clock, Container, Ruler, Thermometer, Truck } from 'lucide-react-native';
-import { ARRIVED_LABEL, arrivalKeyOf, dataSectionOf, pageLine, photoSlotsOf, sectionRowLine, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
+import { Camera, CheckCircle2, Plus, ChevronDown, ChevronRight, ChevronUp, Clock, Container, Ruler, Thermometer, Truck } from 'lucide-react-native';
+import { ADD_EXTRA_PHOTO, ARRIVED_LABEL, arrivalKeyOf, extraPhotosOf, extraPhotosTitle, dataSectionOf, pageLine, photoSlotsOf, sectionRowLine, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { Pill, ResultsStrip, StateDot } from './ReportSections';
 
@@ -54,6 +54,35 @@ function WaitingRow({ item, section, last, onOpen }: { item: RepeatItem; section
   );
 }
 
+const EXTRA_THUMB = 56;
+
+/** Design j-07b (José 07/11): the unit's optional photos under the fixed ones. A thumbnail opens the viewer, where a draft's photo can be removed. */
+function ExtraStrip({ item, section, onOpen, onView }: { item: RepeatItem; section: RepeatSection; onOpen: Open; onView: ViewPhoto }) {
+  const colors = useColores();
+  const extras = extraPhotosOf(item);
+  if (!extras) return null;
+  const path = { sectionId: section.id, itemId: item.id, key: extras.section.id };
+  return (
+    <View testID={`adicionales-${item.id}`} className="mt-3 border-t border-outline/10 pt-2">
+      <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{extraPhotosTitle(extras.photos.length)}</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2" contentContainerStyle={{ gap: 8 }}>
+        {extras.photos.map((one) => (
+          <Pressable key={one.id || one.url} onPress={() => onView({ section: extras.section, url: one.url, path })} accessibilityLabel={[one.caption, one.hour].filter(Boolean).join(' · ') || extras.section.title} className="items-center" style={{ width: EXTRA_THUMB }}>
+            <Image source={{ uri: one.thumbUrl }} style={{ width: EXTRA_THUMB, height: EXTRA_THUMB, borderRadius: 12 }} />
+            <Text className="mt-0.5 text-[10px] text-on-surface-variant" style={{ fontFamily: PLATE_FONT }}>{one.hour}</Text>
+          </Pressable>
+        ))}
+        {extras.full ? null : (
+          <Pressable testID={`agregar-adicional-${item.id}`} onPress={() => onOpen(path)} className="flex-row items-center gap-1.5 rounded-xl border-2 border-dashed border-primary/40 px-3" style={{ height: EXTRA_THUMB }}>
+            <Plus size={16} color={colors.primary} />
+            <Text className="text-[14px] font-bold text-primary">{ADD_EXTRA_PHOTO}</Text>
+          </Pressable>
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+
 /** A unit on site: number and plate, its pill, the four photo slots and the line of its data. */
 function ArrivedCard({ item, section, onOpen, onView }: { item: RepeatItem; section: RepeatSection; onOpen: Open; onView: ViewPhoto }) {
   const colors = useColores();
@@ -82,6 +111,7 @@ function ArrivedCard({ item, section, onOpen, onView }: { item: RepeatItem; sect
           <ChevronRight size={16} color={colors.primary} />
         </Pressable>
       ) : null}
+      <ExtraStrip item={item} section={section} onOpen={onOpen} onView={onView} />
     </View>
   );
 }

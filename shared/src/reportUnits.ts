@@ -87,8 +87,25 @@ export function unitBadgeOf(item: RepeatItem): StateBadge {
   return line ? { ...FINISHED_BADGE, label: line } : FINISHED_BADGE;
 }
 
-/** One slot per photo kind, in the template's order: its last photo, and whether it is done. */
-export const photoSlotsOf = (item: RepeatItem): UnitSlot[] => item.sections.filter((one) => one.photoKind).map((section) => ({ section, photo: sectionPhotos(section).at(-1) ?? null, done: sectionDone(section) }));
+/** The kind of the optional photos of a unit (José 07/11, Portal: `foto-adicional`, its own tool). */
+export const EXTRA_PHOTO_KIND = 'adicional';
+/** Portal refuses the 11th. */
+export const EXTRA_PHOTOS_MAX = 10;
+export type ExtraPhotos = { section: FormSection; photos: SectionPhoto[]; full: boolean };
+export const ADD_EXTRA_PHOTO = 'Agregar foto';
+/** The strip's title (design j-07b): «Adicionales · opcional (3)». */
+export const extraPhotosTitle = (count: number): string => `Adicionales · opcional (${count})`;
+
+/** One slot per fixed photo kind, in the template's order: its last photo, and whether it is done. */
+export const photoSlotsOf = (item: RepeatItem): UnitSlot[] => item.sections.filter((one) => one.photoKind && one.photoKind !== EXTRA_PHOTO_KIND).map((section) => ({ section, photo: sectionPhotos(section).at(-1) ?? null, done: sectionDone(section) }));
+
+/** The unit's optional photos under its fixed ones, or null when Portal's template has none. */
+export function extraPhotosOf(item: RepeatItem): ExtraPhotos | null {
+  const section = item.sections.find((one) => one.photoKind === EXTRA_PHOTO_KIND);
+  if (!section) return null;
+  const photos = sectionPhotos(section);
+  return { section, photos, full: photos.length >= EXTRA_PHOTOS_MAX };
+}
 
 /** The section with the unit's data (arrival, temperatures, thickness): the first one that is not a photo. */
 export const dataSectionOf = (item: RepeatItem): FormSection | undefined => item.sections.find((one) => !one.tool);

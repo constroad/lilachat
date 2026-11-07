@@ -240,6 +240,7 @@ A mano, en `.stitch-work/out/winks/r02nov-ataque-hand.html` (después de las hoj
 | `j-02-informe-hub-escritorio.png` | J · Hub del informe por secciones, progreso y Publicar · Escritorio (`screens/3d4b150972fd4595bcd841e40e1c5db0`) · implementada en F1, pendiente de la mirada de José |
 | `j-05-pista-unidades.png` | J · Unidades del control de pista · Móvil (`screens/bf8b0a53049d4ef7a0067483d2850d9f`) · v2 para personal de campo (v1 de oficina descartada); pendiente de la mirada de José |
 | `j-05-pista-unidades-escritorio.png` | J · Unidades del control de pista · Escritorio (`screens/59c8ae10675840b9b323c8fd42f286cf`) · v2 para personal de campo (v1 de oficina descartada); pendiente de la mirada de José |
+| `j-07b-pista-extra-tira.png` | J · Fotos adicionales por unidad, opción B · Móvil (`screens/fabc2fe26c8649c3b8c2cedb419f5c1c`) · ELEGIDA por José el 07/11. Opciones descartadas: A quinto recuadro (`screens/649ac4a80ee14c99966edde04a7b26f7`, Stitch no lo dibujó) y C hoja de la unidad (`screens/eb51e6f06d834c05bb7e31fc6f4da70f`) |
 | `j-06-pista-unidad.png` | J · Una unidad del control de pista · Móvil (`screens/8106fbe2bffd4f6ab8a44d42f08e33ae`) · v2 para personal de campo (v1 de oficina descartada); pendiente de la mirada de José |
 | `j-06-pista-unidad-escritorio.png` | J · Una unidad del control de pista · Escritorio (`screens/f59d92ce9973433daefe085fdddc1264`) · v2 para personal de campo (v1 de oficina descartada); pendiente de la mirada de José |
 

@@ -333,6 +333,20 @@ describe('a control de pista (06/11): units from the dispatches, photos with the
     expect(run?.context).toEqual({ servicioId: 'srv-318', informeId: '6aed0a1b2c3d4e5f60718293', tramoId: 'd1', tipoFoto: 'ingreso', clientKey: 'k-ingreso-1', lat: -12.0464, lng: -77.0428, at });
   });
 
+  it('an extra photo goes through its own tool without `tipoFoto`, which that tool does not declare (José 07/11)', async () => {
+    // Arrange
+    const extra = { id: 'foto-adicional', title: 'Fotos adicionales', required: false, form: 'fotos', tool: 'agregar_foto_adicional', photoKind: 'adicional', requireLocation: true };
+    const withExtra = { ...pista, sections: [document.sections[0], { ...unitsSection, template: [...unitsSection.template, extra] }] };
+    answers['client.report.draft.requested'] = { status: 200, body: withExtra };
+    await draftOf(ana, { type: 'CTL-PIS' }).expect(200);
+    // Act
+    const opened = await openOf(ana, { kind: 'section', type: 'CTL-PIS', section_id: 'unidades', item_id: 'd1', key: 'foto-adicional', lat: -12.0464, lng: -77.0428, at, client_key: 'k-extra-1' }).expect(200);
+    // Assert
+    expect(opened.body.response.form).toMatchObject({ id: 'agregar_foto_adicional' });
+    const run = await BotCommandRunModel.findById(opened.body.commandId).lean();
+    expect(run?.context).toEqual({ servicioId: 'srv-318', informeId: '6aed0a1b2c3d4e5f60718293', tramoId: 'd1', clientKey: 'k-extra-1', lat: -12.0464, lng: -77.0428, at });
+  });
+
   it('a unit\'s data section is saved under its form id (`unidad`), the key Portal accepts, with the dispatch as tramo', async () => {
     answers['client.report.draft.requested'] = { status: 200, body: pista };
     await draftOf(ana, { type: 'CTL-PIS' }).expect(200);

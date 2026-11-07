@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fieldDocumentOf, type FieldDocument, type RepeatItem, type RepeatSection } from './fieldDocument';
 import { reportFormAnswer } from './reportSaves';
-import { waitingLayoutOf, ARRIVED_LABEL, arrivalHourOf, arrivalKeyOf, dataSectionOf, isUnitsRepeat, photoSlotsOf, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf } from './reportUnits';
+import { waitingLayoutOf, ARRIVED_LABEL, arrivalHourOf, arrivalKeyOf, extraPhotosOf, EXTRA_PHOTOS_MAX, dataSectionOf, isUnitsRepeat, photoSlotsOf, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf } from './reportUnits';
 
 /** The units of a control de pista as Portal lists them (06/11): rows by arrival, then the dispatches not here yet. */
 const form = (name: string) => ({ type: 'object', properties: { [name]: { type: 'string', title: name } } });
@@ -99,6 +99,33 @@ describe('the units of a control de pista', () => {
 });
 
 /** E2E 06/11: «Llegó» tapped at 12:22 opened with 12:13, the hour of the last draft; with no signal it would be hours old. */
+/** José 07/11, asked by the engineer Jeremy: extra photos per unit, optional, besides the four fixed ones. */
+describe('the extra photos of a unit', () => {
+  const extraEntry = { ...photoEntry('adicional'), required: false, tool: 'agregar_foto_adicional' };
+  const extraUnit = (count: number) => {
+    const shots = Array.from({ length: count }, (_, index) => ({ id: `x${index}`, url: `https://x/x${index}.jpg`, hora: '08:0' + (index % 10) }));
+    const [general, repeat] = body.sections as [unknown, Record<string, unknown>];
+    const items = [unit('d1', 'Unidad 1 · QAP-101', ['Terminó 09:12'], [{ id: 'datos', state: 'done', values: {} }, ...['ingreso', 'temperatura', 'vacia', 'escantillon'].map((kind) => ({ id: `foto-${kind}`, state: 'done', values: { fotos: [photo(kind)] } })), { id: 'foto-adicional', state: count ? 'done' : 'empty', values: { fotos: shots } }])];
+    const repeatSection = fieldDocumentOf({ ...body, sections: [general, { ...repeat, template: [...(repeat.template as unknown[]), extraEntry], items }] })!.sections[1] as RepeatSection;
+    return { repeatSection, item: repeatSection.items[0]! };
+  };
+
+  it('are not one of the fixed slots, and an empty strip does not hold a finished unit back', () => {
+    const { repeatSection, item } = extraUnit(0);
+    expect(photoSlotsOf(item).map((slot) => slot.section.id)).toEqual(['foto-ingreso', 'foto-temperatura', 'foto-vacia', 'foto-escantillon']);
+    expect(unitGroupsOf(repeatSection).finished.map((one) => one.id)).toEqual(['d1']);
+  });
+
+  it('list their photos with the hour, and stop offering more at the top', () => {
+    expect(extraPhotosOf(extraUnit(3).item)).toMatchObject({ full: false, photos: [{ hour: '08:00' }, { hour: '08:01' }, { hour: '08:02' }] });
+    expect(extraPhotosOf(extraUnit(EXTRA_PHOTOS_MAX).item)?.full).toBe(true);
+  });
+
+  it('is nothing for a template without them', () => {
+    expect(extraPhotosOf(itemOf('d1'))).toBeNull();
+  });
+});
+
 /** José 07/11: «primero tomar la foto de ingreso»; the data comes after, with the hour of that photo. */
 describe('what «Llegó» opens', () => {
   it('is the ingreso photo of a unit not here yet', () => {

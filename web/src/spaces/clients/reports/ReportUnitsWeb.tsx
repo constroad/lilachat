@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { Camera, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Clock, Container, Ruler, Thermometer, Truck } from 'lucide-react';
-import { ARRIVED_LABEL, arrivalKeyOf, dataSectionOf, pageLine, photoSlotsOf, sectionRowLine, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
+import { Camera, CheckCircle2, Plus, ChevronDown, ChevronRight, ChevronUp, Clock, Container, Ruler, Thermometer, Truck } from 'lucide-react';
+import { ADD_EXTRA_PHOTO, ARRIVED_LABEL, arrivalKeyOf, extraPhotosOf, extraPhotosTitle, dataSectionOf, pageLine, photoSlotsOf, sectionRowLine, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
 import { Pill, ResultsStrip, StateDot } from './ReportSectionsWeb';
 
 /** Design j-05 (José 06/11): for the operator on the pista. Big plate, big slots, one click per action. */
@@ -24,6 +24,31 @@ function PhotoSlot({ slot, itemId, onOpen, onView }: { slot: UnitSlot; itemId: s
       </span>
       <span className={`mt-1 truncate text-[11px] ${slot.done ? 'text-on-surface-variant' : 'font-bold text-primary'}`}>{slotLabel(slot.section.title)}</span>
     </button>
+  );
+}
+
+/** Design j-07b (José 07/11): the unit's optional photos under the fixed ones. A thumbnail opens the viewer, where a draft's photo can be removed. */
+function ExtraStrip({ item, section, onOpen, onView }: { item: RepeatItem; section: RepeatSection; onOpen: Open; onView: ViewPhoto }) {
+  const extras = extraPhotosOf(item);
+  if (!extras) return null;
+  const path = { sectionId: section.id, itemId: item.id, key: extras.section.id };
+  return (
+    <div data-testid={`adicionales-${item.id}`} className="mt-3 border-t border-outline/10 pt-2">
+      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{extraPhotosTitle(extras.photos.length)}</p>
+      <div className="mt-2 flex gap-2 overflow-x-auto">
+        {extras.photos.map((one) => (
+          <button key={one.id || one.url} type="button" onClick={() => onView({ section: extras.section, url: one.url, path })} aria-label={[one.caption, one.hour].filter(Boolean).join(' · ') || extras.section.title} className="flex w-[56px] shrink-0 flex-col items-center">
+            <img src={one.thumbUrl} alt="" className="h-[56px] w-[56px] rounded-xl object-cover" />
+            <span className="mt-0.5 font-mono text-[10px] text-on-surface-variant">{one.hour}</span>
+          </button>
+        ))}
+        {extras.full ? null : (
+          <button type="button" data-testid={`agregar-adicional-${item.id}`} onClick={() => onOpen(path)} className="flex h-[56px] shrink-0 items-center gap-1.5 rounded-xl border-2 border-dashed border-primary/40 px-3 text-sm font-bold text-primary">
+            <Plus size={16} /> {ADD_EXTRA_PHOTO}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -74,6 +99,7 @@ function ArrivedCard({ item, section, onOpen, onView }: { item: RepeatItem; sect
           <ChevronRight size={16} className="shrink-0 text-on-surface-variant" />
         </button>
       ) : null}
+      <ExtraStrip item={item} section={section} onOpen={onOpen} onView={onView} />
     </article>
   );
 }

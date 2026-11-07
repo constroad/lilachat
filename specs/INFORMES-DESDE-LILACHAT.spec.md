@@ -829,6 +829,18 @@ José: al llegar primero se toma la foto de ingreso y la de temperatura. Pedir l
 - Web y app usan la misma regla. Tests: `reportUnits.test.ts` y `ReportDocumentWeb.test.tsx`.
 - **Sin verificar:** el recorrido en el emulador y en un teléfono real.
 
+## Fotos adicionales por unidad (José 07/11, diseño j-07b)
+
+El ingeniero Jeremy pidió subir fotos extra de cada unidad, además de las 4 obligatorias. José eligió la opción B de Stitch: una tira «Adicionales · opcional» en la tarjeta de la unidad.
+
+- **Contrato con Portal:** la plantilla de `unidades` trae una 5.ª entrada, `foto-adicional`, con `required: false`, `photoKind: 'adicional'` y su propia herramienta, `agregar_foto_adicional`. Esa herramienta no recibe `tipoFoto`, para no cambiar la huella de `agregar_foto_de_informe`. Pide reaprobación de José solo para la nueva.
+- **Tope:** 10 por unidad (`EXTRA_PHOTOS_MAX`). Con 10, el botón «Agregar foto» desaparece. Portal rechaza la 11.ª.
+- **No cuentan para terminar:** `photoSlotsOf` deja fuera la adicional, así que una unidad completa no espera fotos extra. Tampoco entran en «Falta» ni bloquean «Publicar».
+- **Ver y borrar:** cada miniatura abre el visor, con su hora y descripción. En un borrador, «Eliminar» usa `quitar_foto_de_informe`, como las fijas.
+- **PDF (Portal):** van después de todas las unidades, rotuladas «Adicional · placa · descripción».
+- **Sin la entrada en la plantilla** la tarjeta se ve como antes.
+- **Sin verificar:** el recorrido en el emulador y en un teléfono, hasta que Portal publique la plantilla y José apruebe la herramienta.
+
 ## Quitar una foto enviada de un borrador (José 06/11)
 
 - El visor del informe muestra «Eliminar» solo en una foto que ya llegó a Portal,

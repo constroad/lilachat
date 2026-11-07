@@ -29,6 +29,8 @@ const PUBLISH_FORM: FormSchema = { type: 'object', properties: { nota: { type: '
 
 /** Portal's `quitar_foto_de_informe`: everything is context, and the person already confirmed on the phone. */
 const REMOVE_PHOTO_TOOL = 'quitar_foto_de_informe';
+/** The photo tool that takes the photo's kind (`tipoFoto`). */
+const KINDED_PHOTO_TOOL = 'agregar_foto_de_informe';
 /** Portal's `subir_al_drive`: its answer is the ticket the phone sends the file with. */
 const DRIVE_UPLOAD_TOOL = 'subir_al_drive';
 const NOTHING_TO_FILL: FormSchema = { type: 'object', properties: {} };
@@ -142,7 +144,9 @@ function contextFor(form: AppForm, serviceId: string, input: Extract<OpenInput, 
   const { lat, lng, at } = input.place;
   const placed = lat !== undefined && lng !== undefined;
   if (terms.requireLocation && !placed) return fail(400, 'invalid_request', 'Esta foto necesita la ubicación del teléfono.');
-  return { context: { servicioId: serviceId, informeId: reportId, tramoId, at, ...(placed ? { lat, lng } : {}), ...(photoKind ? { tipoFoto: photoKind } : {}), ...(input.clientKey ? { clientKey: input.clientKey } : {}) } };
+  // Only the fixed-photo tool declares `tipoFoto`; the extra photo's tool has none and agentes refuses unknown keys (José 07/11).
+  const kind: Record<string, string> = photoKind && form.id === KINDED_PHOTO_TOOL ? { tipoFoto: photoKind } : {};
+  return { context: { servicioId: serviceId, informeId: reportId, tramoId, at, ...(placed ? { lat, lng } : {}), ...kind, ...(input.clientKey ? { clientKey: input.clientKey } : {}) } };
 }
 
 /** The section's form comes from the document Portal answered to THIS person; the report, section and tramo ride as context. */

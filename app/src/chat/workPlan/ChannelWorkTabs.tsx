@@ -46,7 +46,7 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
     });
     return () => subscription.remove();
   }, [tab]);
-  // José 29/10: Checklist and Pendientes belong to a client's channel only; any other channel is just its chat.
+  // José 29/10: Checklist and Pendientes belong to a client's channel only; José 06/11: the Checklist, to its admins.
   if (!params.enabled || !client) return { tabs: null, panel: null, note: null, client: null, openOrderCard: undefined, fullScreen: false };
   const counter = plan.summary && plan.summary.total ? `${plan.summary.done}/${plan.summary.total}` : null;
   const stages = plan.stages ?? [];
@@ -99,11 +99,11 @@ function ChannelPanels(props: { fullScreen: boolean; onServiceOpen: (open: boole
       {shown === 'account' && target ? <View className="bg-background" style={cover}><ClientAccountPanel target={target} services={client.services} /></View> : null}
       {shown === 'checklist' ? (
         <View className="bg-background" style={cover}>
-          <WorkPlanPanel restricted={Boolean(client.access?.restricted)} plan={plan} jwt={params.jwt} yo={params.yo} nameOf={nameOf} members={members} onStartFailed={(message) => ToastAndroid.show(message, ToastAndroid.SHORT)} onOpenTask={setOpenTask} />
+          <WorkPlanPanel plan={plan} jwt={params.jwt} yo={params.yo} nameOf={nameOf} members={members} onStartFailed={(message) => ToastAndroid.show(message, ToastAndroid.SHORT)} onOpenTask={setOpenTask} />
         </View>
       ) : null}
       {shown === 'pending' ? <View className="bg-background" style={cover}><PendingPanel stages={stages} nameOf={nameOf} onOpen={setOpenTask} /></View> : null}
-      <TaskDetailSheet open={props.openTask} stages={stages} channelName={params.channelName} jwt={params.jwt} chatId={params.chatId} yo={params.yo} nameOf={nameOf} members={members} onChanged={() => void plan.reload()} onOpenMessage={toMessage} onClose={() => setOpenTask(null)} />
+      <TaskDetailSheet open={props.openTask} admin={Boolean(client.access?.admin)} stages={stages} channelName={params.channelName} jwt={params.jwt} chatId={params.chatId} yo={params.yo} nameOf={nameOf} members={members} onChanged={() => void plan.reload()} onOpenMessage={toMessage} onClose={() => setOpenTask(null)} />
     </>
   );
 }

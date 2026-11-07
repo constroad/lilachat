@@ -1,4 +1,4 @@
-import { advanceDue, advanceNote, decidirRecordatorio, MAX_ADVANCE_MINUTES, nextOccurrence, REMINDER_NATIVE_CAPABILITY, shouldRemind } from '@lilachat/shared';
+import { advanceDue, advanceNote, taskAdvanceNote, decidirRecordatorio, MAX_ADVANCE_MINUTES, nextOccurrence, REMINDER_NATIVE_CAPABILITY, shouldRemind } from '@lilachat/shared';
 import { EventModel, ReminderModel } from './eventModels.js';
 import { DeviceModel } from './models.js';
 import { ChatModel } from './chatModels.js';
@@ -146,6 +146,11 @@ export async function runReminderTick(now: Date = new Date()): Promise<{ events:
     .lean();
 
   for (const reminder of due) {
+    // A task only rings before it is due (José 06/11: «x tiempo antes»): at its hour the reminder just ends.
+    if (reminder.taskRef) {
+      await ReminderModel.updateOne({ _id: reminder._id }, { $set: { active: false } });
+      continue;
+    }
     const decision = decidirRecordatorio({
       startsAt: reminder.startsAt,
       recurrence: reminder.recurrence,
@@ -224,10 +229,10 @@ async function runAdvancePass(now: Date): Promise<number> {
     await ringReminder({
       userIds: chat ? chat.members.map((m) => String(m.userId)) : [String(reminder.userId)],
       title: reminder.title,
-      note: [advanceNote(ring), reminder.note].filter(Boolean).join(' · '),
+      note: [reminder.taskRef ? taskAdvanceNote(ring) : advanceNote(ring), reminder.note].filter(Boolean).join(' · '),
       chat: chat?.kind === 'group' ? (chat.name ?? 'Grupo') : undefined,
       reminderId: String(reminder._id),
-      data: { chatId: String(reminder.chatId ?? reminder.callBack?.chatId ?? ''), seq: 0 },
+      data: { chatId: String(reminder.chatId ?? reminder.callBack?.chatId ?? reminder.taskRef?.chatId ?? ''), seq: 0 },
     });
     rung += 1;
   }

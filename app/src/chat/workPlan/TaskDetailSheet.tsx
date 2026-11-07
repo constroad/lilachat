@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { CalendarDays, Check, Download, FileText, Plus, RotateCcw, X } from 'lucide-react-native';
-import { formatClock, taskActivity, taskDueState, type ChecklistItem, type TaskEvidence, type WorkStage } from '@lilachat/shared';
+import { advanceSummary, formatClock, taskActionsFor, taskActivity, taskDueState, type ChecklistItem, type TaskEvidence, type WorkStage } from '@lilachat/shared';
 import { agendaPatch, agendaPost } from '../../agenda/agendaApi';
 import { Sheet } from '../../ui/Sheet';
 import { Avatar } from '../../ui/Avatar';
@@ -19,6 +19,8 @@ const sizeLabel = (bytes: number) => (bytes >= 1_048_576 ? `${(bytes / 1_048_576
 
 type Props = {
   open: OpenTask | null;
+  /** Who runs the plan; anyone else reads the task and marks it only if it is theirs (José 06/11). */
+  admin: boolean;
   stages: readonly WorkStage[];
   channelName: string;
   jwt: string;
@@ -44,6 +46,7 @@ export function TaskDetailSheet(props: Props) {
   const stage = props.open ? props.stages.find((one) => one._id === props.open!.stageId) : undefined;
   const item = stage?.items.find((one) => one.id === props.open!.itemId);
   const resolved: Resolved | null = stage && item ? { stage, item } : null;
+  const { canMark, canReassign } = taskActionsFor({ admin: props.admin, me: props.yo, assignee: item?.assignee });
 
   const run = async (label: string, action: () => Promise<string | null>) => {
     setBusy(label);
@@ -76,16 +79,20 @@ export function TaskDetailSheet(props: Props) {
           <Header resolved={resolved} channelName={props.channelName} onClose={props.onClose} />
           <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
             <Facts resolved={resolved} nameOf={props.nameOf} />
-            <Evidence files={resolved.item.evidence ?? []} uploading={busy === 'subir'} onUpload={askUpload} onOpen={(file) => { props.onClose(); props.onOpenMessage(file.seq); }} onRemove={askRemove} />
+            <Evidence files={resolved.item.evidence ?? []} canUpload={canMark} uploading={busy === 'subir'} onUpload={askUpload} onOpen={(file) => { props.onClose(); props.onOpenMessage(file.seq); }} onRemove={askRemove} />
             <Activity item={resolved.item} nameOf={props.nameOf} />
             {error ? <Text testID="detalle-tarea-error" className="text-[13px] text-error">{error}</Text> : null}
           </ScrollView>
-          <View className="flex-row gap-3 border-t border-outline/10 px-4 pt-3">
-            <Pressable testID="btn-tarea-reasignar" onPress={() => setEditing(true)} className="min-h-[52px] flex-1 items-center justify-center rounded-2xl border border-outline/25 bg-surface">
-              <Text className="text-[16px] font-semibold text-on-surface">Reasignar</Text>
-            </Pressable>
-            <ToggleButton done={Boolean(resolved.item.doneBy)} busy={busy === 'marcar'} onPress={toggle} colors={colors} />
-          </View>
+          {canMark || canReassign ? (
+            <View className="flex-row gap-3 border-t border-outline/10 px-4 pt-3">
+              {canReassign ? (
+                <Pressable testID="btn-tarea-reasignar" onPress={() => setEditing(true)} className="min-h-[52px] flex-1 items-center justify-center rounded-2xl border border-outline/25 bg-surface">
+                  <Text className="text-[16px] font-semibold text-on-surface">Reasignar</Text>
+                </Pressable>
+              ) : null}
+              {canMark ? <ToggleButton done={Boolean(resolved.item.doneBy)} busy={busy === 'marcar'} onPress={toggle} colors={colors} /> : null}
+            </View>
+          ) : null}
         </>
       ) : null}
     </Sheet>
@@ -130,12 +137,13 @@ function Facts({ resolved, nameOf }: { resolved: Resolved; nameOf: (userId: stri
     <View className="rounded-2xl border border-outline/15 bg-surface">
       {row('Responsable', assignee ? <View className="flex-row items-center gap-2"><Avatar nombre={assignee} tamano={26} /><Text className="text-[15px] font-semibold text-on-surface">{assignee}</Text></View> : <Text className="text-[15px] text-on-surface-variant">Sin responsable</Text>, true)}
       {row('Fecha límite', item.dueAt ? <View className="flex-row items-center gap-1.5"><CalendarDays size={16} color={overdue ? colors.error : colors['on-surface-variant']} /><Text className={`text-[15px] font-semibold ${overdue ? 'text-error' : 'text-on-surface'}`}>{`${day(item.dueAt)}${overdue ? ' (Venció)' : ''}`}</Text></View> : <Text className="text-[15px] text-on-surface-variant">Sin fecha</Text>)}
+      {item.dueAt && item.advance?.length ? row('Recordatorios', <Text testID="detalle-tarea-recordatorios" className="text-[15px] font-semibold text-on-surface">{advanceSummary(item.advance)}</Text>) : null}
       {row('Etapa', <View className="flex-row items-center gap-2"><Text className="rounded-md border border-outline/20 px-2 py-0.5 text-[11px] font-bold text-on-surface-variant">{`ETAPA ${stage.stage}`}</Text><Text className="text-[15px] font-semibold text-on-surface">{stage.title}</Text></View>)}
     </View>
   );
 }
 
-function Evidence(props: { files: readonly TaskEvidence[]; uploading: boolean; onUpload: () => void; onOpen: (file: TaskEvidence) => void; onRemove: (file: TaskEvidence) => void }) {
+function Evidence(props: { files: readonly TaskEvidence[]; canUpload: boolean; uploading: boolean; onUpload: () => void; onOpen: (file: TaskEvidence) => void; onRemove: (file: TaskEvidence) => void }) {
   const colors = useColores();
   const photos = props.files.filter((file) => file.kind !== 'file');
   const documents = props.files.filter((file) => file.kind === 'file');
@@ -143,12 +151,14 @@ function Evidence(props: { files: readonly TaskEvidence[]; uploading: boolean; o
     <View testID="detalle-tarea-evidencia" className="rounded-2xl border border-outline/15 bg-surface p-4">
       <View className="flex-row items-center justify-between">
         <Text className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Evidencia</Text>
-        <Pressable testID="btn-subir-evidencia" disabled={props.uploading} onPress={props.onUpload} className="min-h-[36px] flex-row items-center gap-1 px-1">
-          {props.uploading ? <ActivityIndicator size="small" /> : <Plus size={14} color={colors.primary} />}
-          <Text className="text-[13px] font-semibold text-primary">{props.uploading ? 'Subiendo…' : 'Subir archivo'}</Text>
-        </Pressable>
+        {props.canUpload ? (
+          <Pressable testID="btn-subir-evidencia" disabled={props.uploading} onPress={props.onUpload} className="min-h-[36px] flex-row items-center gap-1 px-1">
+            {props.uploading ? <ActivityIndicator size="small" /> : <Plus size={14} color={colors.primary} />}
+            <Text className="text-[13px] font-semibold text-primary">{props.uploading ? 'Subiendo…' : 'Subir archivo'}</Text>
+          </Pressable>
+        ) : null}
       </View>
-      {props.files.length === 0 ? <Text className="mt-2 text-[13px] text-on-surface-variant">Sin archivos todavía. Sube una foto o un documento que pruebe la tarea.</Text> : null}
+      {props.files.length === 0 ? <Text className="mt-2 text-[13px] text-on-surface-variant">{props.canUpload ? 'Sin archivos todavía. Sube una foto o un documento que pruebe la tarea.' : 'Sin archivos todavía.'}</Text> : null}
       {photos.length ? (
         <View className="mt-3 flex-row flex-wrap gap-2">
           {photos.map((file, index) => (

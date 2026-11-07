@@ -4,6 +4,7 @@ import { avisarCambioDeTarjeta } from '../avisoDeTarjeta.js';
 import { ChecklistModel } from '../checklistModel.js';
 import { UserModel } from '../models.js';
 import { newItemId } from '../checklistService.js';
+import { syncTaskReminder } from '../taskReminders.js';
 import { ClientChannelModel } from './botClients.js';
 import { assigneesOf, type BotApiError } from './botMessages.js';
 import type { BotInstallation } from './botModels.js';
@@ -65,9 +66,10 @@ export async function addClientTasks(installation: Installation, clientId: strin
   await ensureWorkStages(channel.chatId, installation.botUserId);
   const stage = { chatId: channel.chatId, stage: ORDER_TASKS_STAGE };
   const room = `items.${CHECKLIST_LIMITS.stageItems - items.length}`;
-  const updated = await ChecklistModel.findOneAndUpdate({ ...stage, 'items.sourceKey': { $ne: key }, [room]: { $exists: false } }, { $push: { items: { $each: items.map((task) => stageTask(task, key, installation.botUserId, assignees)) } } }, { returnDocument: 'after' }).select('_id').lean();
+  const updated = await ChecklistModel.findOneAndUpdate({ ...stage, 'items.sourceKey': { $ne: key }, [room]: { $exists: false } }, { $push: { items: { $each: items.map((task) => stageTask(task, key, installation.botUserId, assignees)) } } }, { returnDocument: 'after' }).lean();
   if (updated) {
     void avisarCambioDeTarjeta({ chatId: channel.chatId, tipo: 'checklist', id: updated._id });
+    for (const task of updated.items.filter((one) => one.sourceKey === key && one.assignee)) void syncTaskReminder(updated, task);
     return { status: 201, added: items.length };
   }
   if (await ChecklistModel.exists({ ...stage, 'items.sourceKey': key })) return { status: 200, added: 0 };

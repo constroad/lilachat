@@ -36,7 +36,7 @@ export const rejectRequest = (jwt: string, spaceId: string, memberId: string) =>
 export const inviteToSpaceByEmail = (jwt: string, spaceId: string, email: string) => api<{ id: string; email: string; status: 'active' | 'invited' }>(path(`/${spaceId}/invites`), { jwt, body: { email } });
 /** Withdraws an email invitation (22/10). */
 export const revokeSpaceInvite = (jwt: string, spaceId: string, inviteId: string) => api<Record<string, never>>(path(`/${spaceId}/invites/${inviteId}`), { jwt, method: 'DELETE' });
-export const updateSpace = (jwt: string, spaceId: string, change: { name?: string; rubro?: string; joinPolicy?: JoinPolicy; newCode?: boolean }) => api<{ workspace: ClientWorkspace }>(path(`/${spaceId}`), { jwt, method: 'PATCH', body: change });
+export const updateSpace = (jwt: string, spaceId: string, change: { name?: string; rubro?: string; joinPolicy?: JoinPolicy; newCode?: boolean; taskNotices?: boolean }) => api<{ workspace: ClientWorkspace }>(path(`/${spaceId}`), { jwt, method: 'PATCH', body: change });
 /** A 1:1 or a group INSIDE the space, among its active members (the server checks it). */
 export const createSpaceChat = (jwt: string, spaceId: string, body: { kind: 'direct' | 'group'; memberIds: string[]; name?: string }) => api<{ chatId: string }>('/chats', { jwt, body: { ...body, workspaceId: spaceId } });
 

@@ -135,7 +135,7 @@ export function ClientServices(props: { /** The channel hides its chrome while a
   const total = props.client.services.length;
   return (
     <ScrollView testID="servicios-cliente" contentContainerStyle={{ padding: 16, gap: 12 }}>
-      {props.target ? <ClientAccessRow target={props.target} members={props.members} me={props.me} chatId={props.client.chat_id} /> : null}
+      {props.target ? <ClientAccessRow target={props.target} members={props.members} me={props.me} /> : null}
       {/* José 31/10: the client's link here; an order's in its sheet, a service's on its card. */}
       {links?.can('client') ? (
         <Pressable testID="enlace-cliente" onPress={() => links.open({ kind: 'client', clientId })} className="min-h-[44px] flex-row items-center gap-2 self-start rounded-xl border border-primary/30 bg-primary/10 px-3">

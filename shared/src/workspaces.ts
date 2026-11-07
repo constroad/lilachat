@@ -80,6 +80,8 @@ export type ClientWorkspace = {
   status: WorkspaceMemberStatus;
   /** Only for those who can invite. */
   joinCode?: string;
+  /** Pushes to whoever gets a task and two hours before it is due (José 06/11); born off. */
+  taskNotices?: boolean;
   members: number;
   unreadChats: number;
   /** For those who approve: requests waiting (design `e1-11`). */

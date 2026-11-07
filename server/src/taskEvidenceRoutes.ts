@@ -14,10 +14,10 @@ const GONE = 'Esa tarea ya no está.';
 async function taskOfMember(params: { id: string; itemId: string; userId: Types.ObjectId; res: Response }): Promise<Checklist | null> {
   const found = Types.ObjectId.isValid(params.id) ? await ChecklistModel.findById(params.id).lean() : null;
   const member = found && (await ChatModel.exists({ _id: found.chatId, 'members.userId': params.userId }));
-  // José 30/10 night: a restricted member only reaches the tasks of the stages they see (or their own).
-  const scope = found && member ? await stageScopeFor(found, params.userId) : 'none';
+  // José 06/11: who does not run the plan only adds evidence to the tasks assigned to them.
+  const scope = found && member ? await stageScopeFor(found, params.userId) : null;
   const checklist = found && scope === 'own' ? ownTasksOnly(found, params.userId) : found;
-  if (!checklist || scope === 'none' || !checklist.items.some((item) => item.id === params.itemId)) {
+  if (!checklist || !scope || !checklist.items.some((item) => item.id === params.itemId)) {
     params.res.status(404).json({ message: GONE });
     return null;
   }

@@ -11,17 +11,20 @@ export type ChannelTab = 'chat' | 'account' | 'services' | 'checklist' | 'pendin
 /** A restricted member: the tabs they see besides the chat, and the checklist stages they see whole. */
 export type MemberAccess = { tabs: RestrictableTab[]; stages: string[] };
 /** My access in a client's channel (`SpaceClient.access`). No `restricted` = the whole channel. */
-export type MyClientAccess = { money: boolean; restricted?: MemberAccess };
+export type MyClientAccess = { money: boolean; /** A space admin: the only one with the checklist (José 06/11). */ admin?: boolean; restricted?: MemberAccess };
 /** How much of a checklist stage a member sees: all of it, only their tasks, or nothing. */
-export type StageScope = 'full' | 'own' | 'none';
+/** `full` runs the stage; `own` reads it whole and only touches the tasks assigned to them. */
+export type StageScope = 'full' | 'own';
 
 /** `files` is no tab since José 06/11: it stays as the access mark that opens each service's Drive. */
+/** What an admin can open to a member; `checklist` stays in `RESTRICTABLE_TABS` only to read older marks. */
+export const MEMBER_TABS = ['services', 'files'] as const;
+
 export const CHANNEL_TAB_LABELS: Record<ChannelTab | RestrictableTab, string> = { chat: 'Chat', account: 'Cuenta', services: 'Servicios', files: 'Drive', checklist: 'Checklist', pending: 'Pendientes' };
 /** What each restrictable tab gives, for the access editor. */
-export const RESTRICTABLE_TAB_HINTS: Record<RestrictableTab, string> = {
+export const RESTRICTABLE_TAB_HINTS: Record<(typeof MEMBER_TABS)[number], string> = {
   services: 'Pedidos, despachos e informes, sin montos',
   files: 'El Drive de cada servicio, que puede traer liquidaciones',
-  checklist: 'Las etapas que elijas y sus tareas',
 };
 export const MONEY_HINT = 'Cuenta, cotizaciones, cobranza y facturas';
 
@@ -48,38 +51,24 @@ export const canSeeTab = (access: MyClientAccess | undefined, tab: RestrictableT
 
 /**
  * José 06/11: Chat · Cuenta · Servicios · Checklist, and Pendientes once the checklist exists. The Drive
- * lives inside each service, so a member who only has the Drive goes through «Servicios».
+ * lives inside each service, so a member who only has the Drive goes through «Servicios». The checklist
+ * is for admins; «Pendientes» is for everyone in the channel, who mark there what was assigned to them.
  */
 export function channelTabs(access: MyClientAccess | undefined, hasStages: boolean): ChannelTab[] {
   const tabs: ChannelTab[] = ['chat'];
   if (access?.money) tabs.push('account');
   if (canSeeTab(access, 'services') || access?.restricted?.tabs.includes('files')) tabs.push('services');
-  if (canSeeTab(access, 'checklist')) tabs.push('checklist');
-  if (hasStages && canSeeTab(access, 'checklist')) tabs.push('pending');
+  if (access?.admin) tabs.push('checklist');
+  if (hasStages) tabs.push('pending');
   return tabs;
 }
 
 /** What opening a service shows a member: its orders and reports, its Drive, or both. */
 export const serviceAccessOf = (access: MyClientAccess | undefined): { detail: boolean; drive: boolean } => ({ detail: canSeeTab(access, 'services'), drive: canSeeDrive(access) });
 
-/** A picked stage is whole; any other shows only the tasks assigned to the member; without them it is hidden. */
-export function stageScopeOf(restricted: MemberAccess | null | undefined, stageId: string, hasOwnTask: boolean): StageScope {
-  if (!restricted) return 'full';
-  if (restricted.tabs.includes('checklist') && restricted.stages.includes(stageId)) return 'full';
-  return hasOwnTask ? 'own' : 'none';
-}
-
-type StageLike = { _id: string; items: { assignee?: string | null }[] };
-
-/** The stages as a restricted member sees them; everyone else gets them as they are. */
-export function visibleStagesFor<T extends StageLike>(stages: readonly T[], restricted: MemberAccess | null | undefined, me: string): T[] {
-  if (!restricted) return [...stages];
-  return stages.flatMap((stage) => {
-    const own = stage.items.filter((item) => item.assignee === me);
-    const scope = stageScopeOf(restricted, stage._id, own.length > 0);
-    if (scope === 'none') return [];
-    return scope === 'full' ? [stage] : [{ ...stage, items: own }];
-  });
+/** What someone can do on a task of the plan (José 06/11): an admin everything, anyone else marks only their own. */
+export function taskActionsFor(params: { admin: boolean; me: string; assignee?: string | null }): { canMark: boolean; canReassign: boolean } {
+  return { canMark: params.admin || params.assignee === params.me, canReassign: params.admin };
 }
 
 export type MemberAccessInput = { ok: true; access: MemberAccess } | { ok: false; message: string };
@@ -99,18 +88,12 @@ export function memberAccessOf(value: unknown): MemberAccessInput {
 
 const listed = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}` : names[0] ?? '');
 
-function checklistPart(stages: readonly string[], titles: ReadonlyMap<string, string>): string {
-  if (!stages.length) return 'solo sus tareas';
-  return stages.length === 1 ? (titles.get(stages[0]!) ?? '1 etapa') : `${stages.length} etapas`;
-}
-
-/** One line for the access list: «Todo el canal · ve montos», «Solo el chat», «Chat y Checklist (Permisos)». */
-export function accessSummary(access: MyClientAccess, stageTitles: ReadonlyMap<string, string>): string {
+/** One line for the access list: «Todo el canal · ve montos», «Solo el chat», «Chat y Servicios». */
+export function accessSummary(access: MyClientAccess): string {
   if (!access.restricted) return access.money ? 'Todo el canal · ve montos' : 'Todo el canal, sin montos ni Drive';
-  const { tabs, stages } = access.restricted;
+  const tabs = access.restricted.tabs.filter((tab) => tab !== 'checklist');
   if (!tabs.length) return access.money ? 'Solo el chat · ve montos' : 'Solo el chat';
-  const names = ['Chat', ...tabs.map((tab) => CHANNEL_TAB_LABELS[tab])];
-  const text = tabs.includes('checklist') ? `${listed(names)} (${checklistPart(stages, stageTitles)})` : listed(names);
+  const text = listed(['Chat', ...tabs.map((tab) => CHANNEL_TAB_LABELS[tab])]);
   return access.money ? `${text} · ve montos` : text;
 }
 
@@ -128,15 +111,11 @@ export function memberAccessIn(list: ClientAccessList, userId: string): MemberAc
 
 export const clientAccessPath = (spaceId: string, clientId: string, userId?: string) => `/workspaces/${spaceId}/clients/${encodeURIComponent(clientId)}/access${userId ? `/${userId}` : ''}`;
 
-/** What a new restricted member starts with in the editor: the checklist only, with no stage yet (their own tasks). */
-export const DEFAULT_RESTRICTED: MemberAccess = { tabs: ['checklist'], stages: [] };
+/** What a new restricted member starts with in the editor: only the chat. */
+export const DEFAULT_RESTRICTED: MemberAccess = { tabs: [], stages: [] };
 
-/** Flips one tab or stage of the editor's choice. */
-export function toggleInAccess(access: MemberAccess, change: { tab: RestrictableTab } | { stage: string }): MemberAccess {
-  if ('tab' in change) {
-    const tabs = access.tabs.includes(change.tab) ? access.tabs.filter((tab) => tab !== change.tab) : RESTRICTABLE_TABS.filter((tab) => tab === change.tab || access.tabs.includes(tab));
-    return { ...access, tabs };
-  }
-  const stages = access.stages.includes(change.stage) ? access.stages.filter((stage) => stage !== change.stage) : [...access.stages, change.stage];
-  return { ...access, stages };
+/** Flips one tab of the editor's choice. */
+export function toggleInAccess(access: MemberAccess, tab: RestrictableTab): MemberAccess {
+  const tabs = access.tabs.includes(tab) ? access.tabs.filter((one) => one !== tab) : RESTRICTABLE_TABS.filter((one) => one === tab || access.tabs.includes(one));
+  return { ...access, tabs };
 }

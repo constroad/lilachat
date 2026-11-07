@@ -43,7 +43,7 @@ export const rejectRequest = (jwt: string, spaceId: string, memberId: string) =>
 /** Withdraws an email invitation (22/10). */
 export const revokeSpaceInvite = (jwt: string, spaceId: string, inviteId: string) => jsonCall<Record<string, never>>(url(`/${spaceId}/invites/${inviteId}`), jwt, { method: 'DELETE' });
 /** «Ajustes del espacio» (design `e1-12`): name, trade, approval, and a new code. */
-export const updateSpace = (jwt: string, spaceId: string, change: { name?: string; rubro?: string; joinPolicy?: JoinPolicy; newCode?: boolean }) =>
+export const updateSpace = (jwt: string, spaceId: string, change: { name?: string; rubro?: string; joinPolicy?: JoinPolicy; newCode?: boolean; taskNotices?: boolean }) =>
   jsonCall<{ workspace: ClientWorkspace }>(url(`/${spaceId}`), jwt, { method: 'PATCH', body: JSON.stringify(change) });
 /** A 1:1 or a group INSIDE the space, among its active members (the server checks it). */
 export const createSpaceChat = (jwt: string, spaceId: string, body: { kind: 'direct' | 'group'; memberIds: string[]; name?: string }) =>

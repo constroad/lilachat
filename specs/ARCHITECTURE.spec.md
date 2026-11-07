@@ -15496,6 +15496,48 @@ El contrato está en `BOTS-API.spec.md` §c-novodecies.
 - Responsable y fecha ya existían en cada tarea («Reasignar»). Cualquiera que vea
   el canal entero los edita, porque la etapa nace con `othersCanAdd`.
 
-**Pendiente:** Lilachat no avisa al asignar una tarea ni cuando se acerca su fecha.
-Con el WhatsApp apagado nadie empuja: lo decide José. Portal no tiene código de
-pedido, y `label` espera esa decisión. Lo llama Agentes con `order.created`.
+`label` es la fecha más el nombre de la obra («07/11 · OBRA GRAU»), porque Portal
+no tiene código de pedido. Lo llama Agentes con `order.created`.
+
+## Quién ve el Checklist y Pendientes (José 06/11)
+
+Pedido: «el tab check list es solo para los admins en lilachat canal de clientes»
+y «el tab de los pendientes si lo ven todos».
+
+- `channelTabs` da Checklist solo con `access.admin`, y Pendientes a todos cuando
+  el canal tiene etapas. `accessOf` manda `{ money: true, admin: true }` a un admin.
+- **Leer es de todos, tocar no.** `GET /checklists/stages` trae el plan entero a
+  cualquier miembro del chat. `stageScopeFor` devuelve `full` a quien dirige el plan
+  (`runsChecklist`: admin u owner del espacio) y `own` al resto.
+- Con `own` no se agregan tareas, no se reasigna y no se edita (403). Solo se marca
+  la tarea asignada y se le suben evidencias (`need: 'task'`). Marcar una ajena da 403.
+- `taskActionsFor` esconde los botones en la app y en la web: sin Reasignar para quien
+  no es admin, y sin Marcar ni Subir archivo en una tarea ajena.
+- El editor de accesos ya no elige etapas. `MEMBER_TABS` deja Servicios y Drive.
+  `checklist` y `stages` siguen en `MemberAccess` para leer marcas viejas y aceptar
+  lo que manda un APK anterior, pero ya no deciden nada.
+- Un miembro ve todas las tareas de su canal, también las que antes le ocultaba una
+  restricción por etapas. Es lo pedido.
+
+## Recordatorios de tareas (José 06/11)
+
+Pedido: «a las tareas agrega que se puedan agregar recordatorios x tiempo antes».
+Reemplaza el aviso de WhatsApp: el responsable recibe un aviso de Lilachat.
+
+- `Workspace.taskNotices` nace apagado. Es el switch «Avisar a los responsables de
+  tareas» en los ajustes del espacio. Encendido, avisa al asignar y da 2 horas antes
+  a la tarea que no eligió nada (`DEFAULT_TASK_ADVANCE`).
+- `ChecklistItem.advance` guarda los minutos que eligió la tarea. Vacío significa
+  ninguno. Ausente significa el default del espacio. Lo elegido suena aunque el
+  espacio tenga el switch apagado, porque alguien lo pidió para esa tarea.
+- `taskReminders.ts` mantiene un `Reminder` personal por tarea (`items.$.reminderId`,
+  `taskRef`). Cambiar la fecha mueve el mismo documento; marcar hecha lo apaga y
+  reabrir lo enciende; borrar la tarea o el checklist lo apaga.
+- Sin backfill: un deploy no hace sonar a nadie. Una tarea antigua entra recién cuando
+  se edita o se marca.
+- **Solo suena antes.** `runReminderTick` apaga el recordatorio de una tarea a su hora
+  sin hacerlo sonar, porque el recordatorio normal es de pantalla completa. Su nota
+  dice «Vence en …» (`taskAdvanceNote`).
+- No aparece en las listas de recordatorios (`/reminders`, `/linea`): vive en la tarea.
+- En la app y la web, «Recordar antes» sale en la hoja de la tarea cuando hay fecha, y
+  el detalle muestra la fila «Recordatorios». Sin tocarlo no se manda `advance`.

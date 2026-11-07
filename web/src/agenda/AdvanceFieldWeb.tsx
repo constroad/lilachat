@@ -12,7 +12,7 @@ const CHIP = 'min-h-[36px] rounded-full border px-3 text-[13px] font-medium';
  * «Avisar antes» of a reminder (José 25/10): the usual advances as chips — several can be on at once —
  * and «Otro» for a custom amount. The same as the app's (`AdvanceField`).
  */
-export function AdvanceFieldWeb(props: { value: number[]; onChange: (next: number[]) => void }) {
+export function AdvanceFieldWeb(props: { value: number[]; onChange: (next: number[]) => void; /** A task only rings before: its field does not promise the hour. */ ringsAtHour?: boolean }) {
   const [custom, setCustom] = useState(false);
   const [amount, setAmount] = useState('');
   const [unit, setUnit] = useState<AdvanceUnit>('min');
@@ -59,7 +59,7 @@ export function AdvanceFieldWeb(props: { value: number[]; onChange: (next: numbe
         </div>
       ) : null}
       {error ? <p role="alert" className="mt-1 text-[12px] text-error">{error}</p> : null}
-      <p className="mt-1 text-[12px] text-on-surface-variant">{props.value.length === 0 ? 'Sin aviso previo: solo suena a la hora.' : 'Suena antes y también a la hora.'}</p>
+      {props.ringsAtHour === false ? null : <p className="mt-1 text-[12px] text-on-surface-variant">{props.value.length === 0 ? 'Sin aviso previo: solo suena a la hora.' : 'Suena antes y también a la hora.'}</p>}
     </div>
   );
 }

@@ -192,11 +192,11 @@ export function Conversation(props: {
       {props.callStrip}
       {isClientChannel && client && !serviceFull ? <ChannelTabs tabs={tabs} tab={shownTab} onTab={setChannelTab} counter={workPlan.summary?.total ? `${workPlan.summary.done}/${workPlan.summary.total}` : null} services={client.services.length} overdue={Boolean(workPlan.summary?.overdue)} /> : null}
       {isClientChannel && client && !serviceFull ? <ArchivedClientBanner client={client} /> : null}
-      {openTask && workPlan.stages ? <TaskDetailWeb open={openTask} stages={workPlan.stages} onChanged={() => void workPlan.reload()} onOpenMessage={toMessage} onClose={() => setOpenTask(null)} /> : null}
+      {openTask && workPlan.stages ? <TaskDetailWeb open={openTask} admin={Boolean(client?.access?.admin)} stages={workPlan.stages} onChanged={() => void workPlan.reload()} onOpenMessage={toMessage} onClose={() => setOpenTask(null)} /> : null}
       {isClientChannel && shownTab === 'pending' ? (
         <PendingWeb stages={workPlan.stages ?? []} onOpen={setOpenTask} />
       ) : isClientChannel && shownTab === 'checklist' ? (
-        <WorkPlanWeb plan={workPlan} onOpenTask={setOpenTask} restricted={Boolean(client?.access?.restricted)} />
+        <WorkPlanWeb plan={workPlan} onOpenTask={setOpenTask} />
       ) : isClientChannel && client && shownTab === 'account' && props.jwtParaEnlaces && chat.workspaceId ? (
         <ClientAccountWeb target={{ jwt: props.jwtParaEnlaces, spaceId: chat.workspaceId, clientId: client.id }} services={client.services} />
       ) : isClientChannel && client && shownTab === 'services' ? (

@@ -40,7 +40,8 @@ export function buildPendientesRouter(): Router {
   router.get('/linea', requireSession, asyncRoute(async (req, res) => {
     const yo = req.session!.userId;
     const chats = await ChatModel.find({ 'members.userId': yo }).select('_id').lean();
-    const meSuenan = { $or: [{ userId: yo, chatId: { $exists: false } }, { chatId: { $in: chats.map((chat) => chat._id) } }] };
+    // A task's reminder lives in the task, not in this list (José 06/11).
+    const meSuenan = { taskRef: { $exists: false }, $or: [{ userId: yo, chatId: { $exists: false } }, { chatId: { $in: chats.map((chat) => chat._id) } }] };
     const desde = new Date(Date.now() - VENTANA_DE_VENCIDOS_MS);
     const [activos, vencidos, apagados] = await Promise.all([
       ReminderModel.find({ ...meSuenan, active: true }).select(FIELDS).sort({ startsAt: 1 }).lean<RecordatorioCrudo[]>(),
@@ -49,7 +50,7 @@ export function buildPendientesRouter(): Router {
         .sort({ startsAt: -1 })
         .lean<RecordatorioCrudo[]>(),
       // Los MÍOS apagados (a mano o que ya sonaron hace más de un día): se prenden de nuevo desde acá.
-      ReminderModel.find({ userId: yo, chatId: { $exists: false }, active: false, $nor: [{ recurrence: 'once', startsAt: { $gte: desde, $lte: new Date() } }] })
+      ReminderModel.find({ userId: yo, chatId: { $exists: false }, taskRef: { $exists: false }, active: false, $nor: [{ recurrence: 'once', startsAt: { $gte: desde, $lte: new Date() } }] })
         .select(FIELDS)
         .sort({ startsAt: -1 })
         .limit(MAXIMO_DE_APAGADOS)

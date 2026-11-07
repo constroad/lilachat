@@ -31,7 +31,7 @@ describe('the job tabs of a client channel on the web', () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
     const onChanged = vi.fn();
-    withContext(<TaskDetailWeb open={{ stageId: 's3', itemId: 'b' }} stages={stages} onChanged={onChanged} onOpenMessage={vi.fn()} onClose={vi.fn()} />);
+    withContext(<TaskDetailWeb open={{ stageId: 's3', itemId: 'b' }} admin stages={stages} onChanged={onChanged} onOpenMessage={vi.fn()} onClose={vi.fn()} />);
 
     expect(screen.getByTestId('hoja-detalle-tarea')).toHaveTextContent('VENCIDO');
     expect(screen.getByTestId('hoja-detalle-tarea')).toHaveTextContent('Ana Torres');
@@ -40,5 +40,24 @@ describe('the job tabs of a client channel on the web', () => {
     fireEvent.click(screen.getByTestId('btn-tarea-marcar'));
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
     expect(String((fetchMock.mock.calls[0] as unknown[])[0])).toContain('/agenda/checklists/s3/items/b/toggle');
+  });
+
+  it('someone who does not run the plan reads a task of another without any action', () => {
+    withContext(<TaskDetailWeb open={{ stageId: 's3', itemId: 'b' }} admin={false} stages={stages} onChanged={vi.fn()} onOpenMessage={vi.fn()} onClose={vi.fn()} />);
+
+    expect(screen.getByTestId('detalle-tarea-titulo')).toHaveTextContent('Control de densidad');
+    expect(screen.queryByTestId('btn-tarea-marcar')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('btn-tarea-reasignar')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('btn-subir-evidencia')).not.toBeInTheDocument();
+  });
+
+  it('their own task can be marked and given evidence, never reassigned', () => {
+    const mine: WorkStage[] = [{ ...stages[0]!, items: [{ id: 'm', text: 'Mi tarea', doneBy: null, doneAt: null, assignee: 'yo', dueAt: '2099-01-01T00:00:00Z', advance: [60] }] }];
+    withContext(<TaskDetailWeb open={{ stageId: 's3', itemId: 'm' }} admin={false} stages={mine} onChanged={vi.fn()} onOpenMessage={vi.fn()} onClose={vi.fn()} />);
+
+    expect(screen.getByTestId('btn-tarea-marcar')).toBeInTheDocument();
+    expect(screen.getByTestId('btn-subir-evidencia')).toBeInTheDocument();
+    expect(screen.queryByTestId('btn-tarea-reasignar')).not.toBeInTheDocument();
+    expect(screen.getByTestId('detalle-tarea-recordatorios')).toHaveTextContent('Avisa 1 h antes');
   });
 });

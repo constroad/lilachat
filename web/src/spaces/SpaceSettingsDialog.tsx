@@ -18,12 +18,13 @@ export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string
   const [name, setName] = useState(space.name);
   const [rubro, setRubro] = useState(space.rubro ?? '');
   const [approval, setApproval] = useState(space.joinPolicy === 'approval');
+  const [taskNotices, setTaskNotices] = useState(space.taskNotices === true);
   const [code, setCode] = useState(space.joinCode);
   const [logoUrl, setLogoUrl] = useState(space.logoUrl);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const clean = name.trim();
-  const changed = clean !== space.name || rubro !== (space.rubro ?? '') || approval !== (space.joinPolicy === 'approval');
+  const changed = clean !== space.name || rubro !== (space.rubro ?? '') || approval !== (space.joinPolicy === 'approval') || taskNotices !== (space.taskNotices === true);
 
   const save = async (change: Parameters<typeof updateSpace>[2]) => {
     setBusy(true);
@@ -56,7 +57,7 @@ export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string
 
   return (
     <Overlay title="Ajustes del espacio" onClose={props.onClose} footer={
-      <PrimaryButton testId="ajustes-espacio-guardar" disabled={!clean || !changed || busy} onClick={() => void save({ name: clean, rubro: rubro || undefined, joinPolicy: approval ? 'approval' : 'open' })}>
+      <PrimaryButton testId="ajustes-espacio-guardar" disabled={!clean || !changed || busy} onClick={() => void save({ name: clean, rubro: rubro || undefined, joinPolicy: approval ? 'approval' : 'open', taskNotices })}>
         <span className="flex items-center gap-2"><Check size={16} /> Guardar</span>
       </PrimaryButton>
     }>
@@ -86,8 +87,29 @@ export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string
         {SPACE_RUBROS.map((option) => <option key={option} value={option}>{option}</option>)}
       </select>
       <JoinSection code={code} approval={approval} busy={busy} onNewCode={newCode} onApproval={() => setApproval((before) => !before)} />
+      <NoticesSection on={taskNotices} onToggle={() => setTaskNotices((before) => !before)} />
       <IntegrationsSection jwt={props.jwt} spaceId={space.id} onOpenApp={props.onOpenApp} />
     </Overlay>
+  );
+}
+
+/** One on/off setting of the space. */
+function SettingSwitch(props: { testId: string; title: string; hint: string; on: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" role="switch" aria-checked={props.on} data-testid={props.testId} onClick={props.onToggle} className="mt-3 flex w-full items-center gap-3 rounded-xl border border-outline/20 p-3 text-left">
+      <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{props.title}</span><span className="block text-[12px] leading-4 text-on-surface-variant">{props.hint}</span></span>
+      <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${props.on ? 'bg-primary' : 'bg-outline/40'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-surface shadow transition-transform ${props.on ? 'translate-x-[22px]' : 'translate-x-0.5'}`} /></span>
+    </button>
+  );
+}
+
+/** «Avisos»: born off, like anything that reaches a person (José 06/11). */
+function NoticesSection(props: { on: boolean; onToggle: () => void }) {
+  return (
+    <>
+      <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Avisos</p>
+      <SettingSwitch testId="ajustes-avisos-tareas" title="Avisar a los responsables de tareas" hint="Les llega un aviso de Lilachat al asignarles una tarea y 2 horas antes de que venza." on={props.on} onToggle={props.onToggle} />
+    </>
   );
 }
 
@@ -101,10 +123,7 @@ function JoinSection(props: { code?: string; approval: boolean; busy: boolean; o
       <span data-testid="codigo-ajustes" className="flex-1 select-all font-mono text-lg font-bold tracking-widest">{props.code}</span>
       <button type="button" data-testid="ajustes-cambiar-codigo" disabled={props.busy} onClick={props.onNewCode} className="h-9 rounded-lg border border-outline/25 bg-surface px-3 text-sm font-semibold text-primary">Cambiar código</button>
     </div>
-    <button type="button" role="switch" aria-checked={props.approval} data-testid="ajustes-aprobar" onClick={props.onApproval} className="mt-3 flex w-full items-center gap-3 rounded-xl border border-outline/20 p-3 text-left">
-      <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Aprobar a quien entre con el código</span><span className="block text-[12px] leading-4 text-on-surface-variant">Recibirás una solicitud cada vez que alguien nuevo use el código, antes de ver los canales.</span></span>
-      <span className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${props.approval ? 'bg-primary' : 'bg-outline/40'}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-surface shadow transition-transform ${props.approval ? 'translate-x-[22px]' : 'translate-x-0.5'}`} /></span>
-    </button>
+    <SettingSwitch testId="ajustes-aprobar" title="Aprobar a quien entre con el código" hint="Recibirás una solicitud cada vez que alguien nuevo use el código, antes de ver los canales." on={props.approval} onToggle={props.onApproval} />
     </>
   );
 }

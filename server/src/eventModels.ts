@@ -64,6 +64,8 @@ export interface Reminder {
    * rings, opens the chat of that call.
    */
   callBack?: { chatId: Types.ObjectId; video: boolean };
+  /** A task's reminder (José 06/11): personal, and ringing opens the task's chat. */
+  taskRef?: { chatId: Types.ObjectId; checklistId: Types.ObjectId; itemId: string };
 }
 
 export interface Poll {
@@ -127,6 +129,7 @@ const reminderSchema = new Schema<Reminder>(
     location: { type: String, trim: true },
     advance: { type: [Number], default: undefined },
     advanceSent: { type: [Number], default: undefined },
+    taskRef: { type: { chatId: { type: Schema.Types.ObjectId, ref: 'Chat', required: true }, checklistId: { type: Schema.Types.ObjectId, required: true }, itemId: { type: String, required: true } }, _id: false, default: undefined },
     callBack: { type: { chatId: { type: Schema.Types.ObjectId, ref: 'Chat', required: true }, video: { type: Boolean, default: false } }, _id: false, default: undefined },
   },
   { timestamps: true }

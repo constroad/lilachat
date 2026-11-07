@@ -6,8 +6,10 @@ import { CHECKLIST_LIMITS, activeDueChoice, shortPersonName, taskDueLabel, taskD
 import { Sheet } from '../ui/Sheet';
 import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
+import { AdvanceField } from '../agenda/AdvanceField';
 
-export type TaskEdit = { text: string; assignee: string | null; dueAt: string | null };
+/** `advance` only goes when someone chose: left out, the task keeps the space's default. */
+export type TaskEdit = { text: string; assignee: string | null; dueAt: string | null; advance?: number[] };
 export type ChecklistMember = { id: string; name: string };
 
 /** A date picked by hand is due at the end of that working day. */
@@ -24,12 +26,14 @@ export function TaskSheet(props: { item: ChecklistItem | null; members: readonly
   const [text, setText] = useState('');
   const [assignee, setAssignee] = useState<string | null>(null);
   const [dueAt, setDueAt] = useState<string | null>(null);
+  const [advance, setAdvance] = useState<number[] | undefined>(undefined);
   const [picking, setPicking] = useState(false);
   // The sheet lives mounted: each task that opens it starts from its own values.
   useEffect(() => {
     setText(item?.text ?? '');
     setAssignee(item?.assignee ?? null);
     setDueAt(item?.dueAt ?? null);
+    setAdvance(item?.advance);
     setPicking(false);
   }, [item]);
   // «Hoy» depends on the time it opens.
@@ -89,8 +93,15 @@ export function TaskSheet(props: { item: ChecklistItem | null; members: readonly
             {chip('elegir-fecha', active === 'custom' && dueAt ? taskDueLabel(dueAt, new Date()) : 'Elegir fecha', active === 'custom', () => setPicking(true), 'calendar')}
             {chip('sin-fecha', 'Sin fecha', active === 'none', () => setDueAt(null))}
           </View>
+          {dueAt ? (
+            <View testID="tarea-recordatorios" className="border-t border-outline/15 pb-4 pt-3">
+              <Text className="text-[13px] font-bold uppercase tracking-wide text-on-surface">Recordar antes</Text>
+              <Text className="pb-2 text-[12px] text-on-surface-variant">Le llega al responsable de la tarea.</Text>
+              <AdvanceField value={advance ?? []} onChange={setAdvance} ringsAtHour={false} />
+            </View>
+          ) : null}
           <View className="gap-2.5 border-t border-outline/15 pt-3">
-            <Pressable testID="tarea-guardar" disabled={!text.trim()} onPress={() => { props.onSave({ text: text.trim(), assignee, dueAt }); props.onClose(); }} className="min-h-[48px] items-center justify-center rounded-xl bg-primary">
+            <Pressable testID="tarea-guardar" disabled={!text.trim()} onPress={() => { props.onSave({ text: text.trim(), assignee, dueAt, ...(advance ? { advance } : {}) }); props.onClose(); }} className="min-h-[48px] items-center justify-center rounded-xl bg-primary">
               <Text className="text-[15px] font-bold text-on-primary">Guardar cambios</Text>
             </Pressable>
             {props.canRemove ? (

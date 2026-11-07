@@ -25,12 +25,13 @@ export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string
   const [name, setName] = useState(space.name);
   const [rubro, setRubro] = useState(space.rubro ?? '');
   const [approval, setApproval] = useState(space.joinPolicy === 'approval');
+  const [taskNotices, setTaskNotices] = useState(space.taskNotices === true);
   const [code, setCode] = useState(space.joinCode);
   const [logoUrl, setLogoUrl] = useState(space.logoUrl);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const clean = name.trim();
-  const changed = clean !== space.name || rubro !== (space.rubro ?? '') || approval !== (space.joinPolicy === 'approval');
+  const changed = clean !== space.name || rubro !== (space.rubro ?? '') || approval !== (space.joinPolicy === 'approval') || taskNotices !== (space.taskNotices === true);
 
   const save = async (change: Parameters<typeof updateSpace>[2]) => {
     setBusy(true);
@@ -77,7 +78,7 @@ export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string
             <Text numberOfLines={1} className="text-[11px] font-bold uppercase tracking-widest text-primary">{space.name}</Text>
             <Text className="text-[18px] font-bold text-on-surface">Ajustes del espacio</Text>
           </View>
-          <Pressable testID="ajustes-espacio-guardar" disabled={!clean || !changed || busy} onPress={() => void save({ name: clean, rubro: rubro || undefined, joinPolicy: approval ? 'approval' : 'open' })} className={`min-h-[44px] flex-row items-center gap-1.5 rounded-xl bg-primary px-3 ${!clean || !changed || busy ? 'opacity-40' : ''}`}>
+          <Pressable testID="ajustes-espacio-guardar" disabled={!clean || !changed || busy} onPress={() => void save({ name: clean, rubro: rubro || undefined, joinPolicy: approval ? 'approval' : 'open', taskNotices })} className={`min-h-[44px] flex-row items-center gap-1.5 rounded-xl bg-primary px-3 ${!clean || !changed || busy ? 'opacity-40' : ''}`}>
             <Check size={16} color={colors['on-primary']} />
             <Text className="text-[14px] font-bold text-on-primary">Guardar</Text>
           </Pressable>
@@ -90,6 +91,7 @@ export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string
           {error ? <Text testID="error-ajustes-espacio" className="mt-3 text-[13px] text-error">{error}</Text> : null}
           <IdentitySection space={space} name={name} rubro={rubro} logoUrl={logoUrl} busy={busy} onName={setName} onRubro={setRubro} onChangeLogo={() => void changeLogo()} onRemoveLogo={() => void removeLogo()} />
           <JoinSection code={code} approval={approval} busy={busy} onNewCode={newCode} onApproval={setApproval} />
+          <NoticesSection taskNotices={taskNotices} onTaskNotices={setTaskNotices} />
           <IntegrationsSection jwt={props.jwt} spaceId={space.id} onOpenApp={props.onOpenApp} />
         </ScrollView>
       </View>
@@ -124,6 +126,22 @@ function IdentitySection(props: IdentityProps) {
             <Text className={`text-[14px] font-semibold ${props.rubro === option ? 'text-primary' : 'text-on-surface'}`}>{option}</Text>
           </Pressable>
         ))}
+      </View>
+    </View>
+  );
+}
+
+/** «Avisos»: born off, like anything that reaches a person (José 06/11). */
+function NoticesSection(props: { taskNotices: boolean; onTaskNotices: (value: boolean) => void }) {
+  return (
+    <View className="mt-4 rounded-2xl border border-outline/15 bg-surface p-4">
+      <Text className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Avisos</Text>
+      <View className="mt-3 flex-row items-center gap-3">
+        <View className="min-w-0 flex-1">
+          <Text className="text-[15px] font-semibold text-on-surface">Avisar a los responsables de tareas</Text>
+          <Text className="mt-0.5 text-[13px] text-on-surface-variant">Les llega un aviso de Lilachat al asignarles una tarea y 2 horas antes de que venza.</Text>
+        </View>
+        <Interruptor testID="ajustes-avisos-tareas" value={props.taskNotices} onValueChange={props.onTaskNotices} />
       </View>
     </View>
   );

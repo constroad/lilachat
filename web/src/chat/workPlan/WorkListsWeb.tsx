@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { CalendarDays, Check, CheckCircle2, FileText, Plus, RotateCcw, X } from 'lucide-react';
-import { checklistMembers, withoutApps, formatClock, pendingTasks, taskActivity, taskDueLabel, taskDueState, type ChecklistItem, type TaskEvidence, type WorkStage } from '@lilachat/shared';
+import { advanceSummary, checklistMembers, withoutApps, formatClock, pendingTasks, taskActionsFor, taskActivity, taskDueLabel, taskDueState, type ChecklistItem, type TaskEvidence, type WorkStage } from '@lilachat/shared';
 import { api } from '../../api';
 import { useConversacion } from '../contextoDeLaConversacion';
 import { TaskDialog, type TaskEdit } from '../tarjetas/TaskDialog';
@@ -48,7 +48,7 @@ export function PendingWeb(props: { stages: readonly WorkStage[]; onOpen: (task:
 }
 
 /** A task of the job on the web (design e2-18): who, when, stage, evidence, activity, «Reasignar» and «Marcar como hecho». */
-export function TaskDetailWeb(props: { open: OpenTask; stages: readonly WorkStage[]; onChanged: () => void; onOpenMessage: (seq: number) => void; onClose: () => void }) {
+export function TaskDetailWeb(props: { open: OpenTask; /** Who runs the plan; anyone else marks only their own task (José 06/11). */ admin: boolean; stages: readonly WorkStage[]; onChanged: () => void; onOpenMessage: (seq: number) => void; onClose: () => void }) {
   const { jwt, yo, nombres, chat, detalle } = useConversacion();
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -59,6 +59,7 @@ export function TaskDetailWeb(props: { open: OpenTask; stages: readonly WorkStag
   if (!stage || !item) return null;
   const nameOf = (userId: string) => nombres.get(userId) ?? 'Alguien';
   const state = taskDueState(item, new Date());
+  const { canMark, canReassign } = taskActionsFor({ admin: props.admin, me: yo, assignee: item.assignee });
   const run = async (label: string, action: () => Promise<string | null>) => {
     setBusy(label);
     setError('');
@@ -90,19 +91,24 @@ export function TaskDetailWeb(props: { open: OpenTask; stages: readonly WorkStag
           <dl className="divide-y divide-outline/10 rounded-2xl border border-outline/15 bg-surface text-sm">
             <Fact label="Responsable">{item.assignee ? <span className="font-semibold">{nameOf(item.assignee)}</span> : <span className="text-on-surface-variant">Sin responsable</span>}</Fact>
             <Fact label="Fecha límite">{item.dueAt ? <span className={`flex items-center gap-1.5 font-semibold ${state === 'overdue' ? 'text-error' : ''}`}><CalendarDays size={15} />{`${day(item.dueAt)}${state === 'overdue' ? ' (Venció)' : ''}`}</span> : <span className="text-on-surface-variant">Sin fecha</span>}</Fact>
+            {item.dueAt && item.advance?.length ? <Fact label="Recordatorios"><span data-testid="detalle-tarea-recordatorios" className="font-semibold">{advanceSummary(item.advance)}</span></Fact> : null}
             <Fact label="Etapa"><span className="flex items-center gap-2"><span className="rounded-md border border-outline/20 px-2 py-0.5 text-[11px] font-bold text-on-surface-variant">{`ETAPA ${stage.stage}`}</span><span className="font-semibold">{stage.title}</span></span></Fact>
           </dl>
-          <EvidenceWeb files={item.evidence ?? []} me={yo} uploading={busy === 'subir'} onUpload={() => picker.current?.click()} onOpen={(file) => { props.onClose(); props.onOpenMessage(file.seq); }} onRemove={remove} />
+          <EvidenceWeb files={item.evidence ?? []} me={yo} canUpload={canMark} uploading={busy === 'subir'} onUpload={() => picker.current?.click()} onOpen={(file) => { props.onClose(); props.onOpenMessage(file.seq); }} onRemove={remove} />
           <input ref={picker} type="file" data-testid="input-evidencia" className="hidden" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" onChange={(event) => { upload(event.target.files?.[0]); event.target.value = ''; }} />
           <ActivityWeb item={item} nameOf={nameOf} />
           {error ? <p role="alert" className="text-sm text-error">{error}</p> : null}
         </div>
-        <footer className="flex gap-3 border-t border-outline/10 p-4">
-          <button type="button" data-testid="btn-tarea-reasignar" onClick={() => setEditing(true)} className="min-h-[48px] flex-1 rounded-2xl border border-outline/25 bg-surface font-semibold">Reasignar</button>
-          <button type="button" data-testid="btn-tarea-marcar" disabled={busy === 'marcar'} onClick={toggle} className="flex min-h-[48px] flex-[1.3] items-center justify-center gap-2 rounded-2xl bg-primary font-semibold text-on-primary disabled:opacity-60">
-            {item.doneBy ? <RotateCcw size={17} /> : <Check size={17} />}{item.doneBy ? 'Reabrir' : 'Marcar como hecho'}
-          </button>
-        </footer>
+        {canMark || canReassign ? (
+          <footer className="flex gap-3 border-t border-outline/10 p-4">
+            {canReassign ? <button type="button" data-testid="btn-tarea-reasignar" onClick={() => setEditing(true)} className="min-h-[48px] flex-1 rounded-2xl border border-outline/25 bg-surface font-semibold">Reasignar</button> : null}
+            {canMark ? (
+              <button type="button" data-testid="btn-tarea-marcar" disabled={busy === 'marcar'} onClick={toggle} className="flex min-h-[48px] flex-[1.3] items-center justify-center gap-2 rounded-2xl bg-primary font-semibold text-on-primary disabled:opacity-60">
+                {item.doneBy ? <RotateCcw size={17} /> : <Check size={17} />}{item.doneBy ? 'Reabrir' : 'Marcar como hecho'}
+              </button>
+            ) : null}
+          </footer>
+        ) : null}
       </div>
       {editing ? <TaskDialog item={item} members={checklistMembers(withoutApps(nombres, detalle?.appIds ?? NO_APPS), yo)} canRemove={false} onSave={(edit) => { setEditing(false); save(edit); }} onRemove={() => setEditing(false)} onClose={() => setEditing(false)} /> : null}
     </div>
@@ -118,7 +124,7 @@ function Fact(props: { label: string; children: React.ReactNode }) {
   );
 }
 
-function EvidenceWeb(props: { files: readonly TaskEvidence[]; me: string; uploading: boolean; onUpload: () => void; onOpen: (file: TaskEvidence) => void; onRemove: (file: TaskEvidence) => void }) {
+function EvidenceWeb(props: { files: readonly TaskEvidence[]; me: string; canUpload: boolean; uploading: boolean; onUpload: () => void; onOpen: (file: TaskEvidence) => void; onRemove: (file: TaskEvidence) => void }) {
   const photos = props.files.filter((file) => file.kind !== 'file');
   const documents = props.files.filter((file) => file.kind === 'file');
   const removable = (file: TaskEvidence) => (file.by === props.me ? <button type="button" aria-label="Quitar de la tarea" onClick={(event) => { event.stopPropagation(); props.onRemove(file); }} className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-black/50 text-white"><X size={13} /></button> : null);
@@ -126,9 +132,9 @@ function EvidenceWeb(props: { files: readonly TaskEvidence[]; me: string; upload
     <section data-testid="detalle-tarea-evidencia" className="rounded-2xl border border-outline/15 bg-surface p-4">
       <div className="flex items-center justify-between">
         <p className="text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Evidencia</p>
-        <button type="button" data-testid="btn-subir-evidencia" disabled={props.uploading} onClick={props.onUpload} className="flex items-center gap-1 text-[13px] font-semibold text-primary disabled:opacity-60"><Plus size={14} />{props.uploading ? 'Subiendo…' : 'Subir archivo'}</button>
+        {props.canUpload ? <button type="button" data-testid="btn-subir-evidencia" disabled={props.uploading} onClick={props.onUpload} className="flex items-center gap-1 text-[13px] font-semibold text-primary disabled:opacity-60"><Plus size={14} />{props.uploading ? 'Subiendo…' : 'Subir archivo'}</button> : null}
       </div>
-      {props.files.length === 0 ? <p className="mt-2 text-[13px] text-on-surface-variant">Sin archivos todavía. Sube una foto o un documento que pruebe la tarea.</p> : null}
+      {props.files.length === 0 ? <p className="mt-2 text-[13px] text-on-surface-variant">{props.canUpload ? 'Sin archivos todavía. Sube una foto o un documento que pruebe la tarea.' : 'Sin archivos todavía.'}</p> : null}
       {photos.length ? (
         <div className="mt-3 grid grid-cols-2 gap-2">
           {photos.map((file, index) => (

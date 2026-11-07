@@ -10,7 +10,7 @@ import { Overlay } from '../../ui/Overlay';
 import type { MiembroEnInfo } from './infoDelChat';
 import { useAddCandidates } from './useAddCandidates';
 import { HistoryChoiceDialog } from './HistoryChoiceDialog';
-import { JoinClientChannelDialog, type StageOption } from '../../spaces/clients/ClientAccessWeb';
+import { JoinClientChannelDialog } from '../../spaces/clients/ClientAccessWeb';
 import type { MemberAccess } from '@lilachat/shared';
 
 const ETIQUETAS: Record<AccionDeMiembro, string> = { 'hacer-admin': 'Nombrar admin', 'dejar-admin': 'Quitar como admin', sacar: 'Sacar del grupo' };
@@ -30,7 +30,7 @@ export function ParticipantesDelChat(props: {
   hasHistory?: boolean;
   onAgregar: (userId: string, history?: boolean, access?: MemberAccess) => void;
   /** A client's channel and I am a space admin (José 30/10 night): adding asks what they see, too. */
-  clientJoin?: { stages: readonly StageOption[] };
+  clientJoin?: boolean;
   onCambiarRol: (userId: string, role: 'admin' | 'member') => void;
   onSacar: (userId: string) => void;
   /** Tapping a row opens that person's card (José, 25/10). Without it, the rows are plain. */
@@ -119,7 +119,6 @@ export function ParticipantesDelChat(props: {
         <JoinClientChannelDialog
           name={joining.name ?? joining.phone}
           askHistory={Boolean(props.hasHistory)}
-          stages={props.clientJoin.stages}
           onConfirm={(history, access) => {
             setJoining(null);
             props.onAgregar(joining.id, history, access ?? undefined);

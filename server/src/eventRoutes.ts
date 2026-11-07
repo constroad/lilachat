@@ -339,7 +339,7 @@ export function buildEventRouter(): Router {
     // Los de un GRUPO viven en el grupo (19/10), no en la agenda de cada uno.
     const chatIds = await myChatIds(req.session!.userId, { sinGrupos: true });
     const [mine, shared] = await Promise.all([
-      ReminderModel.find({ userId: req.session!.userId, chatId: { $exists: false } })
+      ReminderModel.find({ userId: req.session!.userId, chatId: { $exists: false }, taskRef: { $exists: false } })
         .sort({ startsAt: 1 })
         .lean(),
       // Los COMPARTIDOS son los de mis chats — incluidos los que creó otro.

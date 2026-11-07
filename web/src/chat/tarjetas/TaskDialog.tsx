@@ -4,8 +4,10 @@ import { CalendarClock, Check, Trash2, X } from 'lucide-react';
 import { CHECKLIST_LIMITS, activeDueChoice, shortPersonName, taskDueOptions, type ChecklistItem } from '@lilachat/shared';
 import { Overlay } from '../../ui/Overlay';
 import { Avatar } from '../../ui/Avatar';
+import { AdvanceFieldWeb } from '../../agenda/AdvanceFieldWeb';
 
-export type TaskEdit = { text: string; assignee: string | null; dueAt: string | null };
+/** `advance` only goes when someone chose: left out, the task keeps the space's default. */
+export type TaskEdit = { text: string; assignee: string | null; dueAt: string | null; advance?: number[] };
 
 /** A date picked by hand is due at the end of that working day. */
 const PICKED_DUE_HOUR = 18;
@@ -23,6 +25,7 @@ export function TaskDialog(props: { item: ChecklistItem; members: readonly { id:
   const [text, setText] = useState(props.item.text);
   const [assignee, setAssignee] = useState<string | null>(props.item.assignee ?? null);
   const [dueAt, setDueAt] = useState<string | null>(props.item.dueAt ?? null);
+  const [advance, setAdvance] = useState<number[] | undefined>(props.item.advance);
   const options = useMemo(() => taskDueOptions(new Date()), []);
   const active = activeDueChoice(dueAt, options);
   const assigneeName = props.members.find((member) => member.id === assignee)?.name;
@@ -42,7 +45,7 @@ export function TaskDialog(props: { item: ChecklistItem; members: readonly { id:
       onClose={props.onClose}
       footer={
         <div className="flex flex-col gap-2">
-          <button type="button" data-testid="tarea-guardar" disabled={!text.trim()} onClick={() => { props.onSave({ text: text.trim(), assignee, dueAt }); props.onClose(); }} className="h-11 rounded-xl bg-primary text-[15px] font-bold text-on-primary disabled:opacity-50">Guardar cambios</button>
+          <button type="button" data-testid="tarea-guardar" disabled={!text.trim()} onClick={() => { props.onSave({ text: text.trim(), assignee, dueAt, ...(advance ? { advance } : {}) }); props.onClose(); }} className="h-11 rounded-xl bg-primary text-[15px] font-bold text-on-primary disabled:opacity-50">Guardar cambios</button>
           {props.canRemove ? (
             <button type="button" data-testid="tarea-quitar" onClick={() => { props.onRemove(); props.onClose(); }} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-error/40 bg-error/[0.06] text-[15px] font-semibold text-error"><Trash2 size={17} />Quitar la tarea</button>
           ) : null}
@@ -76,6 +79,13 @@ export function TaskDialog(props: { item: ChecklistItem; members: readonly { id:
         </label>
         <button type="button" data-testid="tarea-sin-fecha" aria-pressed={active === 'none'} onClick={() => setDueAt(null)} className={chip(active === 'none')}>Sin fecha</button>
       </div>
+      {dueAt ? (
+        <div data-testid="tarea-recordatorios" className="border-t border-outline/15 pt-3">
+          <p className="text-[13px] font-bold uppercase tracking-wide">Recordar antes</p>
+          <p className="pb-2 text-[12px] text-on-surface-variant">Le llega al responsable de la tarea.</p>
+          <AdvanceFieldWeb value={advance ?? []} onChange={setAdvance} ringsAtHour={false} />
+        </div>
+      ) : null}
     </Overlay>
     </div>,
     document.body,

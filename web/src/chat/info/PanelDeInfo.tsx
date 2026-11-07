@@ -26,7 +26,7 @@ import { ParticipantesDelChat } from './ParticipantesDelChat';
 import { useEditarChat } from './useEditarChat';
 import { useClientOfChat } from '../../spaces/clients/useSpaceClients';
 import { useMySpaces } from '../../spaces/currentSpace';
-import { ClientAccessSection, useChannelStages } from '../../spaces/clients/ClientAccessWeb';
+import { ClientAccessSection } from '../../spaces/clients/ClientAccessWeb';
 
 const NO_APPS: ReadonlySet<string> = new Set();
 
@@ -73,7 +73,6 @@ export function PanelDeInfo(props: {
   const { spaces } = useMySpaces(props.jwt);
   const spaceAdmin = Boolean(spaces?.find((one) => one.id === chat.workspaceId && canManageMembers(one.role)));
   const accessTarget = client && chat.workspaceId && spaceAdmin ? { jwt: props.jwt, spaceId: chat.workspaceId, clientId: client.id } : null;
-  const stages = useChannelStages(props.jwt, chat.id, Boolean(accessTarget));
   const appIds = detalle?.appIds ?? NO_APPS;
   const people = info.miembros.filter((member) => !member.esYo && !appIds.has(member.id)).map((member) => ({ id: member.id, name: member.nombre, photo: member.foto }));
   return (
@@ -97,7 +96,7 @@ export function PanelDeInfo(props: {
         {chat.kind !== 'direct' ? <DescripcionDelChat descripcion={detalle?.descripcion} editable={info.puedeEditar} onGuardar={editar.describir} /> : null}
         {props.tarjetas}
         <DetailTabBar tabs={chatDetailTabs(chat.kind)} active={tab} onChange={setTab} />
-        {tab === 'members' && accessTarget ? <ClientAccessSection target={accessTarget} people={people} stages={stages} /> : null}
+        {tab === 'members' && accessTarget ? <ClientAccessSection target={accessTarget} people={people} /> : null}
         {tab === 'members' && info.miembros.length ? (
           <ParticipantesDelChat
             jwt={props.jwt}
@@ -107,7 +106,7 @@ export function PanelDeInfo(props: {
             puedeAgregar={info.puedeAgregar}
             hasHistory={chat.lastSeq > 0}
             onAgregar={(userId, history, access) => void editar.addMember(userId, history, access)}
-            clientJoin={accessTarget ? { stages } : undefined}
+            clientJoin={Boolean(accessTarget)}
             onCambiarRol={(userId, role) => void editar.cambiarRol(userId, role)}
             onSacar={(userId) => void editar.sacar(userId)}
             onViewPerson={props.onViewPerson}

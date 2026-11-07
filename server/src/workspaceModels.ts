@@ -16,6 +16,8 @@ export type Workspace = {
   ownerId: Types.ObjectId;
   joinCode: string;
   joinPolicy: JoinPolicy;
+  /** Pushes about tasks to their person (José 06/11); born off. */
+  taskNotices?: boolean;
   /** Its #general (José, 22/10): every active member is in it and «X se unió al espacio» lands there (`workspaceGeneral.ts`). */
   generalChatId?: Types.ObjectId;
   createdAt: Date;
@@ -65,6 +67,7 @@ const workspaceSchema = new Schema<Workspace>(
     ownerId: { type: Schema.Types.ObjectId, required: true },
     joinCode: { type: String, required: true },
     joinPolicy: { type: String, enum: ['open', 'approval'], default: 'approval' },
+    taskNotices: { type: Boolean, default: false },
     generalChatId: { type: Schema.Types.ObjectId },
   },
   { timestamps: true }

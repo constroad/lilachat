@@ -11,11 +11,13 @@ import { ChecklistModel } from '../src/checklistModel.js';
 import { configurarAvisoDeTarjeta } from '../src/avisoDeTarjeta.js';
 import { signSession } from '../src/sessions.js';
 import { ClientChannelModel } from '../src/bots/botClients.js';
+import { WorkspaceMemberModel } from '../src/workspaceModels.js';
 
 /** Pending 21 (José, 20/10): a channel as a job's file, with its checklist by stages. */
 let mongo: MongoMemoryServer;
 let ana: Types.ObjectId;
 let outsider: Types.ObjectId;
+let crew: Types.ObjectId;
 let channelId: string;
 let directId: string;
 let plainChannelId: string;
@@ -35,19 +37,20 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await Promise.all([UserModel.deleteMany({}), ChatModel.deleteMany({}), MessageModel.deleteMany({}), ChecklistModel.deleteMany({}), ClientChannelModel.deleteMany({})]);
-  [ana, outsider] = (await UserModel.create([{ phone: '900000031', name: 'Ana' }, { phone: '900000032', name: 'Ajeno' }])).map((user) => user._id) as [Types.ObjectId, Types.ObjectId];
-  channelId = String((await ChatModel.create({ kind: 'group', name: 'obra-miraflores', workspaceId: new Types.ObjectId(), members: [{ userId: ana }], lastSeq: 0 }))._id);
+  await Promise.all([UserModel.deleteMany({}), ChatModel.deleteMany({}), MessageModel.deleteMany({}), ChecklistModel.deleteMany({}), ClientChannelModel.deleteMany({}), WorkspaceMemberModel.deleteMany({})]);
+  [ana, outsider, crew] = (await UserModel.create([{ phone: '900000031', name: 'Ana' }, { phone: '900000032', name: 'Ajeno' }, { phone: '900000033', name: 'Cuadrilla' }])).map((user) => user._id) as [Types.ObjectId, Types.ObjectId, Types.ObjectId];
+  channelId = String((await ChatModel.create({ kind: 'group', name: 'obra-miraflores', workspaceId: new Types.ObjectId(), members: [{ userId: ana }, { userId: crew }], lastSeq: 0 }))._id);
   directId = String((await ChatModel.create({ kind: 'group', name: 'Casa', members: [{ userId: ana }], lastSeq: 0 }))._id);
   // José 29/10: only a client's channel has the job's plan.
   const space = (await ChatModel.findById(channelId).lean())!.workspaceId!;
   await ClientChannelModel.create({ workspaceId: space, appId: new Types.ObjectId(), clientId: 'cli-1', chatId: channelId, name: 'Constructora Vía Sur' });
+  await WorkspaceMemberModel.create([{ workspaceId: space, userId: ana, phone: '900000031', role: 'admin', status: 'active' }, { workspaceId: space, userId: crew, phone: '900000033', role: 'member', status: 'active' }]);
   plainChannelId = String((await ChatModel.create({ kind: 'group', name: 'general', workspaceId: space, members: [{ userId: ana }], lastSeq: 0 }))._id);
   configurarAvisoDeTarjeta(() => undefined);
 });
 
 describe('the checklist by stages of a channel', () => {
-  it('a member starts it with the seven stages, in order, without filling the chat with cards', async () => {
+  it('an admin starts it with the seven stages, in order, without filling the chat with cards', async () => {
     const started = await startPlan(ana, channelId);
 
     expect(started.status).toBe(201);
@@ -88,6 +91,46 @@ describe('the checklist by stages of a channel', () => {
     await startPlan(ana, channelId);
     const list = await request(app).get(`/api/agenda/checklists?chatId=${channelId}`).set(jwtOf(ana));
     expect(list.body.checklists).toHaveLength(0);
+  });
+});
+
+describe('a channel member who is not an admin (José 06/11)', () => {
+  const addTask = async (stageId: string, text: string, assignee?: Types.ObjectId) => {
+    const added = await request(app).post(`/api/agenda/checklists/${stageId}/items`).set(jwtOf(ana)).send({ text });
+    const task = added.body.checklist.items.find((one: { text: string }) => one.text === text);
+    if (assignee) await request(app).patch(`/api/agenda/checklists/${stageId}/items/${task.id}`).set(jwtOf(ana)).send({ assignee: String(assignee) });
+    return task.id as string;
+  };
+
+  it('cannot start the plan', async () => {
+    expect((await startPlan(crew, channelId)).status).toBe(403);
+  });
+
+  it('reads every task, because «Pendientes» is for everyone', async () => {
+    await startPlan(ana, channelId);
+    const [first] = (await readPlan(ana, channelId)).body.stages;
+    await addTask(first._id, 'De otro');
+    await addTask(first._id, 'Suya', crew);
+
+    const plan = await readPlan(crew, channelId);
+
+    expect(plan.body.stages).toHaveLength(DEFAULT_WORK_STAGES.length);
+    expect(plan.body.stages[0].items.map((item: { text: string }) => item.text)).toEqual(['De otro', 'Suya']);
+  });
+
+  it('ticks only the task assigned to them, and neither adds nor reassigns', async () => {
+    await startPlan(ana, channelId);
+    const [first] = (await readPlan(ana, channelId)).body.stages;
+    const others = await addTask(first._id, 'De otro');
+    const own = await addTask(first._id, 'Suya', crew);
+    const toggle = (itemId: string) => request(app).post(`/api/agenda/checklists/${first._id}/items/${itemId}/toggle`).set(jwtOf(crew));
+
+    expect((await toggle(others)).status).toBe(403);
+    const ticked = await toggle(own);
+    expect(ticked.status).toBe(200);
+    expect(ticked.body.checklist.items).toHaveLength(2);
+    expect((await request(app).post(`/api/agenda/checklists/${first._id}/items`).set(jwtOf(crew)).send({ text: 'Otra' })).status).toBe(403);
+    expect((await request(app).patch(`/api/agenda/checklists/${first._id}/items/${own}`).set(jwtOf(crew)).send({ assignee: null })).status).toBe(403);
   });
 });
 

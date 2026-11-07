@@ -14,7 +14,7 @@ const UNITS: { value: AdvanceUnit; label: string }[] = [
  * and «Otro…» for a custom amount. The same as the web's (`AdvanceFieldWeb`); the rules live in
  * `reminderAdvance` (shared, tested).
  */
-export function AdvanceField(props: { value: number[]; onChange: (next: number[]) => void }) {
+export function AdvanceField(props: { value: number[]; onChange: (next: number[]) => void; /** A task only rings before: its field does not promise the hour. */ ringsAtHour?: boolean }) {
   const colors = useColores();
   const [custom, setCustom] = useState(false);
   const [amount, setAmount] = useState('');
@@ -83,7 +83,7 @@ export function AdvanceField(props: { value: number[]; onChange: (next: number[]
           {error}
         </Text>
       ) : null}
-      <Text className="mt-2 text-[12px] text-on-surface-variant">{props.value.length === 0 ? 'Sin aviso previo: solo suena a la hora.' : 'Suena antes y también a la hora.'}</Text>
+      {props.ringsAtHour === false ? null : <Text className="mt-2 text-[12px] text-on-surface-variant">{props.value.length === 0 ? 'Sin aviso previo: solo suena a la hora.' : 'Suena antes y también a la hora.'}</Text>}
     </View>
   );
 }

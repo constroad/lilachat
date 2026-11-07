@@ -8,7 +8,7 @@ import { useColores } from '../ui/tema';
 import { useMargenes } from '../ui/useMargenes';
 import { HistoryChoiceSheet } from './HistoryChoiceSheet';
 import type { MemberAccess } from '@lilachat/shared';
-import { JoinAccessScreen, useChannelStages, useClientAccess } from '../spaces/clients/ClientAccess';
+import { JoinAccessScreen, useClientAccess } from '../spaces/clients/ClientAccess';
 import { useClientOfChat } from '../spaces/clients/useSpaceClients';
 
 /**
@@ -52,7 +52,6 @@ export function ElegirParaSumar({
   const client = useClientOfChat(chatId);
   // The access list answers only to a space admin: with it, adding asks what the person sees.
   const { list } = useClientAccess(visible && client && spaceId ? { jwt: credential.jwt, spaceId, clientId: client.id } : null);
-  const stages = useChannelStages(credential.jwt, chatId, list !== null);
   const choose = (history: boolean, access?: MemberAccess) => {
     const person = picked;
     setPicked(null);
@@ -101,7 +100,7 @@ export function ElegirParaSumar({
         ) : null}
       </View>
       {list ? (
-        <JoinAccessScreen name={picked?.name ?? null} askHistory stages={stages} onClose={() => setPicked(null)} onConfirm={(history, access) => choose(history, access ?? undefined)} />
+        <JoinAccessScreen name={picked?.name ?? null} askHistory onClose={() => setPicked(null)} onConfirm={(history, access) => choose(history, access ?? undefined)} />
       ) : (
         <HistoryChoiceSheet name={picked?.name ?? null} onClose={() => setPicked(null)} onChoose={(history) => choose(history)} />
       )}

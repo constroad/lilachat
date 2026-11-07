@@ -67,6 +67,9 @@ export function advanceSummary(advance: readonly number[] | undefined): string {
 /** The chips of the form: the usual advances plus whatever custom one is selected, shortest first. */
 export const advanceChips = (selected: readonly number[]): number[] => [...new Set([...ADVANCE_PRESETS, ...selected])].sort((a, b) => a - b);
 
+/** The same line for a task: it does not start, it is due. */
+export const taskAdvanceNote = (minutes: number): string => `Vence en ${durationText(minutes)}`;
+
 /** The line the alert carries: as configured, not as the cron measured it. */
 export const advanceNote = (minutes: number): string => `Empieza en ${durationText(minutes)}`;
 

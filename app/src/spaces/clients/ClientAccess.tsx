@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Switch, Text, View } from 'react-native';
 import { CheckSquare, ChevronRight, ShieldCheck, Square } from 'lucide-react-native';
-import { accessSummary, CHANNEL_TAB_LABELS, clientAccessPath, DEFAULT_RESTRICTED, memberAccessIn, MONEY_HINT, RESTRICTABLE_TAB_HINTS, RESTRICTABLE_TABS, toggleInAccess, type ClientAccessList, type MemberAccess, type MemberAccessEntry } from '@lilachat/shared';
+import { accessSummary, CHANNEL_TAB_LABELS, clientAccessPath, DEFAULT_RESTRICTED, memberAccessIn, MEMBER_TABS, MONEY_HINT, RESTRICTABLE_TAB_HINTS, toggleInAccess, type ClientAccessList, type MemberAccess, type MemberAccessEntry } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 import { PantallaEnModal } from '../../ui/PantallaEnModal';
 import { useColores } from '../../ui/tema';
 import type { ServiceAskTarget } from './useServiceAsk';
 
-export type StageOption = { id: string; title: string };
 type SaveBody = { money?: boolean; restricted?: MemberAccess | null };
 
 /** The channel's access list; `null` while loading or for a non-admin (the server says 403). */
@@ -36,22 +35,6 @@ export function useClientAccess(target: ServiceAskTarget | null) {
   return { list, save };
 }
 
-/** The checklist's stages of the channel, for picking which ones a member sees. */
-export function useChannelStages(jwt: string, chatId: string, enabled: boolean): StageOption[] {
-  const [stages, setStages] = useState<StageOption[]>([]);
-  useEffect(() => {
-    if (!enabled) return undefined;
-    let alive = true;
-    void jsonCall<{ stages: { _id: string; title: string }[] }>(`${BASE_URL}/api/agenda/checklists/stages?chatId=${chatId}`, jwt).then((response) => {
-      if (alive && response.ok) setStages(response.data.stages.map((stage) => ({ id: stage._id, title: stage.title })));
-    });
-    return () => {
-      alive = false;
-    };
-  }, [jwt, chatId, enabled]);
-  return stages;
-}
-
 const PrimaryButton = (props: { testID: string; label: string; disabled?: boolean; onPress: () => void }) => (
   <Pressable testID={props.testID} disabled={props.disabled} onPress={props.onPress} className="min-h-[48px] items-center justify-center rounded-xl bg-primary">
     <Text className="text-[15px] font-semibold text-on-primary">{props.label}</Text>
@@ -73,7 +56,7 @@ function CheckRow(props: { testID: string; checked: boolean; label: string; hint
 }
 
 /** «Todo el canal» or «Solo lo que elijas» (José 30/10 night); `null` = the whole channel. */
-export function AccessFields(props: { value: MemberAccess | null; stages: readonly StageOption[]; onChange: (value: MemberAccess | null) => void }) {
+export function AccessFields(props: { value: MemberAccess | null; onChange: (value: MemberAccess | null) => void }) {
   const restricted = props.value;
   const option = (some: boolean, label: string, hint: string) => (
     <Pressable testID={some ? 'acceso-some' : 'acceso-all'} onPress={() => props.onChange(some ? (restricted ?? DEFAULT_RESTRICTED) : null)} className={`flex-1 rounded-xl border px-3 py-2 ${some === Boolean(restricted) ? 'border-primary bg-primary/10' : 'border-outline/20'}`}>
@@ -84,26 +67,19 @@ export function AccessFields(props: { value: MemberAccess | null; stages: readon
   return (
     <View className="gap-2">
       <View className="flex-row gap-2">
-        {option(false, 'Todo el canal', 'Todas las pestañas, sin montos ni Drive')}
-        {option(true, 'Solo lo que elijas', 'El chat y lo que marques')}
+        {option(false, 'Todo el canal', 'Servicios y Pendientes, sin montos ni Drive')}
+        {option(true, 'Solo lo que elijas', 'El chat, Pendientes y lo que marques')}
       </View>
       {restricted ? (
         <View className="rounded-xl border border-outline/15 px-3">
-          {RESTRICTABLE_TABS.map((tab) => <CheckRow key={tab} testID={`acceso-pestana-${tab}`} checked={restricted.tabs.includes(tab)} label={CHANNEL_TAB_LABELS[tab]} hint={RESTRICTABLE_TAB_HINTS[tab]} onPress={() => props.onChange(toggleInAccess(restricted, { tab }))} />)}
-          {restricted.tabs.includes('checklist') ? (
-            <View className="border-t border-outline/10 pb-2 pl-8">
-              <Text className="pt-2 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">Etapas que ve enteras</Text>
-              {props.stages.length ? props.stages.map((stage) => <CheckRow key={stage.id} testID={`acceso-etapa-${stage.id}`} checked={restricted.stages.includes(stage.id)} label={stage.title} onPress={() => props.onChange(toggleInAccess(restricted, { stage: stage.id }))} />) : <Text className="py-2 text-[12px] text-on-surface-variant">El checklist todavía no tiene etapas.</Text>}
-              <Text className="text-[12px] text-on-surface-variant">En las demás solo ve las tareas que le asignes.</Text>
-            </View>
-          ) : null}
+          {MEMBER_TABS.map((tab) => <CheckRow key={tab} testID={`acceso-pestana-${tab}`} checked={restricted.tabs.includes(tab)} label={CHANNEL_TAB_LABELS[tab]} hint={RESTRICTABLE_TAB_HINTS[tab]} onPress={() => props.onChange(toggleInAccess(restricted, tab))} />)}
         </View>
       ) : null}
     </View>
   );
 }
 
-function MemberAccessScreen(props: { name: string; entry: MemberAccessEntry; stages: readonly StageOption[]; onSave: (body: SaveBody) => Promise<string | null>; onClose: () => void }) {
+function MemberAccessScreen(props: { name: string; entry: MemberAccessEntry; onSave: (body: SaveBody) => Promise<string | null>; onClose: () => void }) {
   const colors = useColores();
   const [money, setMoney] = useState(props.entry.money);
   const [restricted, setRestricted] = useState<MemberAccess | null>(props.entry.restricted ?? null);
@@ -118,7 +94,7 @@ function MemberAccessScreen(props: { name: string; entry: MemberAccessEntry; sta
   };
   return (
     <PantallaEnModal visible titulo={`Acceso de ${props.name}`} onCerrar={props.onClose} testIDCerrar="cerrar-acceso" footer={<PrimaryButton testID="guardar-acceso" label={saving ? 'Guardando…' : 'Guardar'} disabled={saving} onPress={() => void save()} />}>
-      <AccessFields value={restricted} stages={props.stages} onChange={setRestricted} />
+      <AccessFields value={restricted} onChange={setRestricted} />
       <View className="mt-3 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/15 px-3">
         <View className="min-w-0 flex-1">
           <Text className="text-[15px] font-semibold text-on-surface">Ve montos</Text>
@@ -136,14 +112,12 @@ function MemberAccessScreen(props: { name: string; entry: MemberAccessEntry; sta
  * night): each member with what they see; tapping one edits it. Replaces
  * «Quién ve la cobranza», which is now its «Ve montos».
  */
-export function ClientAccessRow(props: { target: ServiceAskTarget; members: ReadonlyMap<string, string>; me: string; chatId: string }) {
+export function ClientAccessRow(props: { target: ServiceAskTarget; members: ReadonlyMap<string, string>; me: string }) {
   const colors = useColores();
   const { list, save } = useClientAccess(props.target);
-  const stages = useChannelStages(props.target.jwt, props.chatId, list !== null);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
   if (!list) return null;
-  const titles = new Map(stages.map((stage) => [stage.id, stage.title]));
   const people = [...props.members].filter(([userId]) => userId !== props.me);
   return (
     <>
@@ -164,7 +138,7 @@ export function ClientAccessRow(props: { target: ServiceAskTarget; members: Read
               <Pressable key={userId} testID={`acceso-de-${userId}`} disabled={entry.admin} onPress={() => setEditing({ id: userId, name })} className={`min-h-[60px] flex-row items-center gap-3 px-4 py-2 ${index ? 'border-t border-outline/10' : ''}`}>
                 <View className="min-w-0 flex-1">
                   <Text className="text-[15px] text-on-surface" numberOfLines={1}>{name}</Text>
-                  <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>{entry.admin ? 'Admin del espacio · ve todo' : accessSummary(entry, titles)}</Text>
+                  <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>{entry.admin ? 'Admin del espacio · ve todo' : accessSummary(entry)}</Text>
                 </View>
                 {entry.admin ? null : <ChevronRight size={16} color={colors['on-surface-variant']} />}
               </Pressable>
@@ -172,7 +146,7 @@ export function ClientAccessRow(props: { target: ServiceAskTarget; members: Read
           })}
         </View>
       </PantallaEnModal>
-      {editing ? <MemberAccessScreen name={editing.name} entry={memberAccessIn(list, editing.id)} stages={stages} onSave={(body) => save(editing.id, body)} onClose={() => setEditing(null)} /> : null}
+      {editing ? <MemberAccessScreen name={editing.name} entry={memberAccessIn(list, editing.id)} onSave={(body) => save(editing.id, body)} onClose={() => setEditing(null)} /> : null}
     </>
   );
 }
@@ -181,7 +155,7 @@ export function ClientAccessRow(props: { target: ServiceAskTarget; members: Read
  * Adding someone to a client's channel (José 30/10 night: «con accesos
  * restringidos»): whether they read the history and what they see, in one step.
  */
-export function JoinAccessScreen(props: { name: string | null; askHistory: boolean; stages: readonly StageOption[]; onConfirm: (history: boolean, access: MemberAccess | null) => void; onClose: () => void }) {
+export function JoinAccessScreen(props: { name: string | null; askHistory: boolean; onConfirm: (history: boolean, access: MemberAccess | null) => void; onClose: () => void }) {
   const [history, setHistory] = useState(true);
   const [access, setAccess] = useState<MemberAccess | null>(null);
   const choice = (value: boolean, label: string) => (
@@ -198,7 +172,7 @@ export function JoinAccessScreen(props: { name: string | null; askHistory: boole
         </View>
       ) : null}
       <Text className="mb-2 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">¿Qué ve?</Text>
-      <AccessFields value={access} stages={props.stages} onChange={setAccess} />
+      <AccessFields value={access} onChange={setAccess} />
     </PantallaEnModal>
   );
 }

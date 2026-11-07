@@ -17,6 +17,10 @@ export interface ChecklistTask {
   dueAt?: Date | null;
   /** Files that prove it (pending 21, design e2-18): messages of the channel, by seq; URLs stay relative like the message's. */
   evidence?: TaskEvidenceEntry[];
+  /** Minutes before `dueAt` that its person is reminded; absent = the space's default (José 06/11). */
+  advance?: number[];
+  /** The person's reminder for it, kept in step by `taskReminders.ts`. */
+  reminderId?: Types.ObjectId;
   /** What an app added it for (`order:<id>`, José 06/11): the same key never adds twice. */
   sourceKey?: string;
   /** Which of those tasks it is, in the app's words. */
@@ -64,6 +68,8 @@ const checklistSchema = new Schema<Checklist>(
         doneAt: { type: Date, default: null },
         assignee: { type: Schema.Types.ObjectId, ref: 'User', default: null },
         dueAt: { type: Date, default: null },
+        advance: { type: [Number], default: undefined },
+        reminderId: { type: Schema.Types.ObjectId },
         sourceKey: { type: String },
         taskKey: { type: String },
         evidence: {

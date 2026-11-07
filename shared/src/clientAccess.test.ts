@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accessSummary, canSeeDrive, canSeeTab, isFieldReport, isMoneyRecord, channelTabs, memberAccessIn, memberAccessOf, serviceAccessOf, stageScopeOf, toggleInAccess, visibleStagesFor, type MyClientAccess } from './clientAccess.js';
+import { accessSummary, canSeeDrive, canSeeTab, isFieldReport, isMoneyRecord, channelTabs, memberAccessIn, memberAccessOf, serviceAccessOf, taskActionsFor, toggleInAccess, type MyClientAccess } from './clientAccess.js';
 
 /** José 30/10 night: topographers and engineers join a client's channel seeing only what an admin picks; money only for admins. */
 const STAGE_A = 'a'.repeat(24);
@@ -13,22 +13,24 @@ const stages = [
 describe('channelTabs', () => {
   it('an admin: Chat · Cuenta · Servicios · Checklist · Pendientes; «Archivos» is gone (José 06/11)', () => {
     // Arrange
-    const access: MyClientAccess = { money: true };
+    const access: MyClientAccess = { money: true, admin: true };
     // Act
     const tabs = channelTabs(access, true);
     // Assert
     expect(tabs).toEqual(['chat', 'account', 'services', 'checklist', 'pending']);
   });
 
-  it('a member without money does not get Cuenta; without stages there is no Pendientes', () => {
-    expect(channelTabs({ money: false }, false)).toEqual(['chat', 'services', 'checklist']);
+  it('the Checklist is only for admins and Pendientes for everyone (José 06/11); without money there is no Cuenta', () => {
+    expect(channelTabs({ money: false }, true)).toEqual(['chat', 'services', 'pending']);
+    expect(channelTabs({ money: true }, true)).toEqual(['chat', 'account', 'services', 'pending']);
+    expect(channelTabs({ money: true, admin: true }, false)).toEqual(['chat', 'account', 'services', 'checklist']);
   });
 
   it('a restricted member only gets the chat and the tabs the admin picked', () => {
-    const access: MyClientAccess = { money: false, restricted: { tabs: ['checklist'], stages: [STAGE_A] } };
-    expect(channelTabs(access, true)).toEqual(['chat', 'checklist', 'pending']);
-    expect(canSeeTab(access, 'services')).toBe(false);
-    expect(canSeeTab(access, 'checklist')).toBe(true);
+    const access: MyClientAccess = { money: false, restricted: { tabs: ['services'], stages: [] } };
+    expect(channelTabs(access, true)).toEqual(['chat', 'services', 'pending']);
+    expect(canSeeTab(access, 'files')).toBe(false);
+    expect(canSeeTab(access, 'services')).toBe(true);
   });
 
   it('a member an admin gave only the Drive still reaches it: it lives inside each service now', () => {
@@ -47,35 +49,21 @@ describe('channelTabs', () => {
     expect(serviceAccessOf({ money: false, restricted: { tabs: ['services', 'files'], stages: [] } })).toEqual({ detail: true, drive: true });
   });
 
-  it('a list from an older server (no access) shows everything but Cuenta', () => {
-    expect(channelTabs(undefined, true)).toEqual(['chat', 'services', 'checklist', 'pending']);
+  it('a list from an older server (no access) shows neither Cuenta nor the checklist, only Pendientes', () => {
+    expect(channelTabs(undefined, true)).toEqual(['chat', 'services', 'pending']);
     expect(canSeeTab(undefined, 'files')).toBe(true);
   });
 });
 
-describe('stageScopeOf and visibleStagesFor', () => {
-  it('without restriction every stage is whole', () => {
-    expect(stageScopeOf(null, STAGE_B, false)).toBe('full');
-    expect(visibleStagesFor(stages, null, ME)).toEqual(stages);
+describe('taskActionsFor', () => {
+  it('an admin marks and reassigns any task', () => {
+    expect(taskActionsFor({ admin: true, me: ME, assignee: 'other' })).toEqual({ canMark: true, canReassign: true });
   });
 
-  it('a picked stage is whole; any other only shows the tasks assigned to me; with none it is hidden', () => {
-    // Arrange
-    const restricted = { tabs: ['checklist' as const], stages: [STAGE_A] };
-    // Act
-    const visible = visibleStagesFor(stages, restricted, ME);
-    // Assert
-    expect(stageScopeOf(restricted, STAGE_A, false)).toBe('full');
-    expect(stageScopeOf(restricted, STAGE_B, true)).toBe('own');
-    expect(stageScopeOf(restricted, STAGE_B, false)).toBe('none');
-    expect(visible.map((stage) => [stage.title, stage.items.map((item) => item.id)])).toEqual([['Permisos', ['t1', 't2']], ['Topografía', ['t4']]]);
-  });
-
-  it('without the Checklist tab only the tasks assigned to me remain (for «Mis tareas»)', () => {
-    const restricted = { tabs: ['services' as const], stages: [STAGE_A] };
-    expect(stageScopeOf(restricted, STAGE_A, false)).toBe('none');
-    expect(stageScopeOf(restricted, STAGE_A, true)).toBe('own');
-    expect(visibleStagesFor(stages, restricted, 'nobody')).toEqual([]);
+  it('anyone else marks only what was assigned to them and never reassigns', () => {
+    expect(taskActionsFor({ admin: false, me: ME, assignee: ME })).toEqual({ canMark: true, canReassign: false });
+    expect(taskActionsFor({ admin: false, me: ME, assignee: 'other' })).toEqual({ canMark: false, canReassign: false });
+    expect(taskActionsFor({ admin: false, me: ME })).toEqual({ canMark: false, canReassign: false });
   });
 });
 
@@ -97,14 +85,16 @@ describe('memberAccessOf', () => {
 });
 
 describe('accessSummary', () => {
-  const titles = new Map([[STAGE_A, 'Permisos'], [STAGE_B, 'Topografía']]);
   it('says in one line what the member sees', () => {
-    expect(accessSummary({ money: true }, titles)).toBe('Todo el canal · ve montos');
-    expect(accessSummary({ money: false }, titles)).toBe('Todo el canal, sin montos ni Drive');
-    expect(accessSummary({ money: false, restricted: { tabs: [], stages: [] } }, titles)).toBe('Solo el chat');
-    expect(accessSummary({ money: false, restricted: { tabs: ['services', 'checklist'], stages: [STAGE_A] } }, titles)).toBe('Chat, Servicios y Checklist (Permisos)');
-    expect(accessSummary({ money: false, restricted: { tabs: ['checklist'], stages: [STAGE_A, STAGE_B] } }, titles)).toBe('Chat y Checklist (2 etapas)');
-    expect(accessSummary({ money: false, restricted: { tabs: ['checklist'], stages: [] } }, titles)).toBe('Chat y Checklist (solo sus tareas)');
+    expect(accessSummary({ money: true })).toBe('Todo el canal · ve montos');
+    expect(accessSummary({ money: false })).toBe('Todo el canal, sin montos ni Drive');
+    expect(accessSummary({ money: false, restricted: { tabs: [], stages: [] } })).toBe('Solo el chat');
+    expect(accessSummary({ money: false, restricted: { tabs: ['services'], stages: [] } })).toBe('Chat y Servicios');
+  });
+
+  it('ignores the checklist mark an older editor left', () => {
+    expect(accessSummary({ money: false, restricted: { tabs: ['checklist'], stages: [STAGE_A] } })).toBe('Solo el chat');
+    expect(accessSummary({ money: true, restricted: { tabs: ['services', 'checklist'], stages: [] } })).toBe('Chat y Servicios · ve montos');
   });
 });
 
@@ -116,17 +106,14 @@ describe('memberAccessIn and toggleInAccess (the editor)', () => {
     expect(memberAccessIn(list, 'u3')).toEqual({ admin: false, money: true });
   });
 
-  it('flips a tab keeping the tab order, and a stage', () => {
+  it('flips a tab keeping the tab order', () => {
     // Arrange
-    const access = { tabs: ['checklist' as const], stages: [STAGE_A] };
+    const access = { tabs: ['files' as const], stages: [] };
     // Act
-    const withServices = toggleInAccess(access, { tab: 'services' });
-    const withoutStage = toggleInAccess(withServices, { stage: STAGE_A });
+    const withServices = toggleInAccess(access, 'services');
     // Assert
-    expect(withServices.tabs).toEqual(['services', 'checklist']);
-    expect(toggleInAccess(withServices, { tab: 'checklist' }).tabs).toEqual(['services']);
-    expect(withoutStage.stages).toEqual([]);
-    expect(toggleInAccess(withoutStage, { stage: STAGE_B }).stages).toEqual([STAGE_B]);
+    expect(withServices.tabs).toEqual(['services', 'files']);
+    expect(toggleInAccess(withServices, 'files').tabs).toEqual(['services']);
   });
 });
 

@@ -76,14 +76,14 @@ beforeEach(async () => {
 });
 
 describe('my access, in the client list', () => {
-  it('an admin sees money; a member does not; a restricted member gets her tabs and stages', async () => {
+  it('an admin sees money; a member does not; a restricted member gets her tabs', async () => {
     // Act
     const admin = await myAccess(jose);
     const member = await myAccess(ana);
     await setAccess(jose, ana, { restricted: { tabs: ['checklist'], stages: [] } }).expect(200);
     const restricted = await myAccess(ana);
     // Assert
-    expect(admin).toEqual({ money: true });
+    expect(admin).toEqual({ money: true, admin: true });
     expect(member).toEqual({ money: false });
     expect(restricted).toEqual({ money: false, restricted: { tabs: ['checklist'], stages: [] } });
   });
@@ -116,7 +116,7 @@ describe('the access editor (admins only)', () => {
     // Act
     await request(app).patch(`/api/workspaces/${spaceId}/members/${anaMember!._id}`).set(auth(jose)).send({ role: 'admin' }).expect(200);
     // Assert
-    expect(await myAccess(ana)).toEqual({ money: true });
+    expect(await myAccess(ana)).toEqual({ money: true, admin: true });
   });
 });
 
@@ -237,7 +237,7 @@ describe('adding someone to the client channel with restricted access', () => {
   });
 });
 
-describe('the checklist by stages, seen by a restricted member', () => {
+describe('the checklist by stages, for someone who does not run it', () => {
   const stagesOf = async (who: Types.ObjectId) => (await request(app).get(`/api/agenda/checklists/stages?chatId=${chatId}`).set(auth(who)).expect(200)).body.stages as { _id: string; title: string; items: { id: string }[] }[];
 
   async function twoStagesWithTasks() {
@@ -249,15 +249,15 @@ describe('the checklist by stages, seen by a restricted member', () => {
     return { first: first._id, second: second._id };
   }
 
-  it('sees the picked stage whole and, elsewhere, only her tasks', async () => {
+  it('reads the whole plan, because «Pendientes» is for everyone (José 06/11)', async () => {
     // Arrange
     const { first, second } = await twoStagesWithTasks();
-    await setAccess(jose, ana, { restricted: { tabs: ['checklist'], stages: [first] } }).expect(200);
+    await setAccess(jose, ana, { restricted: { tabs: [], stages: [] } }).expect(200);
     // Act
     const seen = await stagesOf(ana);
     // Assert
-    expect(seen.map((stage) => [stage._id, stage.items.map((item) => item.id)])).toEqual([[first, ['p1']], [second, ['t1']]]);
-    expect((await stagesOf(jose)).length).toBe(7);
+    expect(seen).toHaveLength(7);
+    expect(seen.slice(0, 2).map((stage) => [stage._id, stage.items.map((item) => item.id)])).toEqual([[first, ['p1']], [second, ['t1', 't2']]]);
   });
 
   it('a restricted member does not start the checklist', async () => {
@@ -265,22 +265,19 @@ describe('the checklist by stages, seen by a restricted member', () => {
     expect((await request(app).post('/api/agenda/checklists/stages').set(auth(ana)).send({ chatId: String(chatId) })).status).toBe(403);
   });
 
-  it('a hidden stage is a 404; in a stage she sees partly she ticks her task but cannot add', async () => {
+  it('reads any stage, ticks only her task and cannot add', async () => {
     // Arrange
     const { second } = await twoStagesWithTasks();
-    const third = (await stagesOf(jose))[2]!._id;
-    await setAccess(jose, ana, { restricted: { tabs: ['checklist'], stages: [] } }).expect(200);
+    await setAccess(jose, ana, { restricted: { tabs: [], stages: [] } }).expect(200);
     // Act
-    const hidden = await request(app).get(`/api/agenda/checklists/${third}`).set(auth(ana));
-    const partial = await request(app).get(`/api/agenda/checklists/${second}`).set(auth(ana)).expect(200);
+    const read = await request(app).get(`/api/agenda/checklists/${second}`).set(auth(ana)).expect(200);
     const ticked = await request(app).post(`/api/agenda/checklists/${second}/items/t1/toggle`).set(auth(ana)).expect(200);
     const added = await request(app).post(`/api/agenda/checklists/${second}/items`).set(auth(ana)).send({ text: 'Otra' });
     const other = await request(app).post(`/api/agenda/checklists/${second}/items/t2/toggle`).set(auth(ana));
     // Assert
-    expect(hidden.status).toBe(404);
-    expect(partial.body.checklist.items.map((item: { id: string }) => item.id)).toEqual(['t1']);
-    expect(ticked.body.checklist.items.map((item: { id: string }) => item.id)).toEqual(['t1']);
+    expect(read.body.checklist.items.map((item: { id: string }) => item.id)).toEqual(['t1', 't2']);
+    expect(ticked.body.checklist.items.map((item: { id: string }) => item.id)).toEqual(['t1', 't2']);
     expect(added.status).toBe(403);
-    expect(other.status).toBe(404);
+    expect(other.status).toBe(403);
   });
 });

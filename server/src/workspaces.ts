@@ -58,7 +58,7 @@ export function toClientWorkspace(workspace: Workspace, member: Pick<WorkspaceMe
     role: member.role,
     status: member.status,
     // The code is for those who can invite; a member asks an admin.
-    ...(canManageMembers(member.role) ? { joinCode: workspace.joinCode } : {}),
+    ...(canManageMembers(member.role) ? { joinCode: workspace.joinCode, taskNotices: workspace.taskNotices === true } : {}),
   };
 }
 
@@ -238,7 +238,7 @@ export async function rejectRequest(workspaceId: string, actorId: Types.ObjectId
   noticeSpacesChanged([target.userId]);
 }
 
-export async function updateWorkspace(workspaceId: string, actorId: Types.ObjectId, change: { name?: unknown; rubro?: unknown; joinPolicy?: unknown; newCode?: unknown }) {
+export async function updateWorkspace(workspaceId: string, actorId: Types.ObjectId, change: { name?: unknown; rubro?: unknown; joinPolicy?: unknown; newCode?: unknown; taskNotices?: unknown }) {
   const actor = await actorIn(workspaceId, actorId);
   if (!canManageMembers(actor.role)) throw new WorkspaceError(403, ONLY_ADMINS);
   const current = await WorkspaceModel.findById(actor.workspaceId).lean<Workspace | null>();
@@ -250,6 +250,7 @@ export async function updateWorkspace(workspaceId: string, actorId: Types.Object
   if (rubro) set.rubro = rubro;
   const policy = asPolicy(change.joinPolicy);
   if (policy) set.joinPolicy = policy;
+  if (typeof change.taskNotices === 'boolean') set.taskNotices = change.taskNotices;
   if (change.newCode === true) set.joinCode = await uniqueCode(name ?? current.name);
   const updated = await WorkspaceModel.findOneAndUpdate({ _id: current._id }, { $set: set }, { returnDocument: 'after' }).lean<Workspace>();
   if (!updated) throw new WorkspaceError(404, NOT_FOUND);

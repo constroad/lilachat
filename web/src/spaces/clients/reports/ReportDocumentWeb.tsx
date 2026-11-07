@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AlertTriangle, ChevronLeft, ExternalLink, FileText } from 'lucide-react';
-import { formKeyOf, isUnitsRepeat, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
+import { formKeyOf, isUnitsRepeat, PREVIEW_ASKING, PREVIEW_LABEL, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
 import { loadPerfil } from '../../../api';
 import { AppFormDialog } from '../../../chat/commands/AppFormDialog';
 import { EphemeralAnswers } from '../../../chat/commands/EphemeralAnswers';
@@ -73,7 +73,14 @@ function ReportFooter({ report, blocker, pdf, onPublish, onDone }: { report: Fie
   return (
     <footer className="sticky bottom-0 flex flex-col gap-2 border-t border-outline/10 bg-background pt-3">
       {blocker ? <p data-testid="falta-informe" className="inline-flex items-center justify-center gap-2 text-[13px] font-semibold text-on-surface-variant"><AlertTriangle size={15} className="text-primary" /> {blocker}</p> : null}
-      <button type="button" data-testid="abrir-publicar" onClick={onPublish} className="h-12 rounded-xl bg-primary text-base font-bold text-on-primary">{report.publish.label}</button>
+      {/* José 07/11: «Ver PDF» beside «Publicar», on one line; a draft's preview publishes nothing. */}
+      <div className="flex gap-2">
+        {pdf.readyUrl
+          ? <a href={pdf.readyUrl} target="_blank" rel="noreferrer" data-testid="abrir-vista-previa" className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 text-sm font-semibold text-primary"><FileText size={16} /> Abrir vista previa</a>
+          : <button type="button" data-testid="ver-vista-previa" disabled={pdf.asking || !report.id} onClick={() => void pdf.ask(report.id ?? '', true)} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 text-sm font-semibold text-primary disabled:opacity-60"><FileText size={16} /> {pdf.asking ? PREVIEW_ASKING : PREVIEW_LABEL}</button>}
+        <button type="button" data-testid="abrir-publicar" onClick={onPublish} className="h-12 flex-[2] rounded-xl bg-primary text-base font-bold text-on-primary">{report.publish.label}</button>
+      </div>
+      {pdf.message ? <p className="text-center text-[13px] text-error">{pdf.message}</p> : null}
     </footer>
   );
 }

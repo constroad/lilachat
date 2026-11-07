@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { AlertTriangle, ChevronLeft, ExternalLink, FileText } from 'lucide-react-native';
-import { formKeyOf, isUnitsRepeat, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
+import { formKeyOf, isUnitsRepeat, PREVIEW_ASKING, PREVIEW_LABEL, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
 import { AppFormSheet } from '../../../chat/commands/AppFormSheet';
 import { EphemeralAnswers } from '../../../chat/commands/EphemeralAnswers';
 import { useColores } from '../../../ui/tema';
@@ -69,7 +69,7 @@ function HubCards({ report, onOpen, onOpenItems }: { report: FieldDocument; onOp
 }
 
 /** Under the cards: what still blocks «Publicar» and the button, or the PDF once published (design j-04). */
-function ReportFooter({ report, blocker, asking, onPublish, onPdf, onDone }: { report: FieldDocument; blocker?: string; asking: boolean; onPublish: () => void; onPdf: () => void; onDone: () => void }) {
+function ReportFooter({ report, blocker, asking, onPublish, onPdf, onPreview, onDone }: { report: FieldDocument; blocker?: string; asking: boolean; onPublish: () => void; onPdf: () => void; onPreview: () => void; onDone: () => void }) {
   const colors = useColores();
   if (report.status === 'published') {
     return (
@@ -94,9 +94,16 @@ function ReportFooter({ report, blocker, asking, onPublish, onPdf, onDone }: { r
           <Text className="text-[13px] font-semibold text-on-surface-variant">{blocker}</Text>
         </View>
       ) : null}
-      <Pressable testID="abrir-publicar" onPress={onPublish} className="min-h-[56px] items-center justify-center rounded-2xl bg-primary">
-        <Text className="text-[16px] font-bold text-on-primary">{report.publish.label}</Text>
-      </Pressable>
+      {/* José 07/11: «Ver PDF» beside «Publicar», on one line; a draft's preview publishes nothing. */}
+      <View className="flex-row gap-2">
+        <Pressable testID="ver-vista-previa" onPress={onPreview} disabled={asking || !report.id} className={`min-h-[56px] flex-1 flex-row items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 ${asking ? 'opacity-60' : ''}`}>
+          <FileText size={18} color={colors.primary} />
+          <Text className="text-[15px] font-semibold text-primary" numberOfLines={1}>{asking ? PREVIEW_ASKING : PREVIEW_LABEL}</Text>
+        </Pressable>
+        <Pressable testID="abrir-publicar" onPress={onPublish} className="min-h-[56px] flex-[2] items-center justify-center rounded-2xl bg-primary">
+          <Text className="text-[16px] font-bold text-on-primary" numberOfLines={1}>{report.publish.label}</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -166,7 +173,7 @@ export function ReportDocumentScreen(props: Props) {
         <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={screen.setItemsOf} onRetry={actions.refresh} onView={viewPhoto} />
         {notice ? <Text className="text-center text-[13px] text-error">{notice}</Text> : null}
       </ScrollView>
-      {report && (!items || (items.kind === 'repeat' && isUnitsRepeat(items))) ? <ReportFooter report={report} blocker={publishFooterLine(report, blockers)} asking={pdf.asking} onPublish={() => screen.setPublishing(true)} onPdf={() => void pdf.ask(report.id ?? '', `${report.title} · PDF`)} onDone={() => props.onClose(true)} /> : null}
+      {report && (!items || (items.kind === 'repeat' && isUnitsRepeat(items))) ? <ReportFooter report={report} blocker={publishFooterLine(report, blockers)} asking={pdf.asking} onPublish={() => screen.setPublishing(true)} onPdf={() => void pdf.ask(report.id ?? '', `${report.title} · PDF`)} onPreview={() => void pdf.ask(report.id ?? '', `${report.title} · vista previa`, true)} onDone={() => props.onClose(true)} /> : null}
       {files.viewer}
       {report ? <PublishSheet document={report} blockers={blockers} visible={screen.publishing} onClose={() => screen.setPublishing(false)} onPublish={publish} /> : null}
       {document.form ? <AppFormSheet key={formKeyOf(document.form)} cameraFirst answer={document.form} onSubmit={actions.submit} onUpload={actions.upload} onClose={actions.closeForm} /> : null}

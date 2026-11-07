@@ -212,6 +212,16 @@ describe('a report\'s PDF on demand (agentes 30/10, Portal 588e3ff9: client.repo
     expect((await pdfOf(jose).expect(200)).body).toEqual({ pdf: { status: 'generating', retryAfterS: 5 } });
   });
 
+  it('a draft\'s preview asks the same event with `preview` (José 07/11: «Ver PDF» beside «Publicar»)', async () => {
+    // Arrange
+    answer = { status: 200, body: { status: 'ready', pdf_url: 'https://portal.example.com/preview/rep-1' } };
+    // Act
+    const ready = await request(app).get(`/api/workspaces/${spaceId}/clients/cli-cvs/services/srv-318/reports/rep-1/pdf?preview=1`).set(auth(jose)).expect(200);
+    // Assert
+    expect(received[0]?.data).toMatchObject({ report_id: 'rep-1', preview: true });
+    expect(ready.body).toEqual({ pdf: { status: 'ready', pdfUrl: 'https://portal.example.com/preview/rep-1' } });
+  });
+
   it('a service the app did not list, a bad report id or someone outside: 404 and no event; a failure says so', async () => {
     expect((await pdfOf(jose, 'srv-999')).status).toBe(404);
     expect((await pdfOf(jose, 'srv-318', 'mal id')).status).toBe(404);

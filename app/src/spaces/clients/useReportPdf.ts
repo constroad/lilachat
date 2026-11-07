@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Linking } from 'react-native';
 import { askReportPdfUntilDone, reportPdfPath, type ReportPdfBody } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
@@ -25,18 +26,20 @@ export function useReportPdf(target: ServiceAskTarget, serviceId: string, onRead
     setMessage(null);
   }, []);
   useEffect(() => stop, [stop]);
-  const ask = useCallback(async (reportId: string, name: string) => {
+  const ask = useCallback(async (reportId: string, name: string, preview = false) => {
     const mine = ++turn.current;
     setAsking(true);
     setMessage(null);
     const askOnce = async (): Promise<ReportPdfBody> => {
-      const response = await jsonCall<ReportPdfBody>(`${BASE_URL}/api${reportPdfPath(spaceId, clientId, serviceId, reportId)}`, jwt);
+      const response = await jsonCall<ReportPdfBody>(`${BASE_URL}/api${reportPdfPath(spaceId, clientId, serviceId, reportId, preview)}`, jwt);
       return response.ok ? response.data : { message: response.message };
     };
     const step = await askReportPdfUntilDone(askOnce, () => mine === turn.current, pause);
     if (!step) return;
     setAsking(false);
-    if (step.kind === 'open') onReady({ url: step.url, name, mime: PDF_MIME });
+    // A draft's preview is Portal's signed page of the sheets, not a PDF file: the browser shows it (José 07/11).
+    if (step.kind === 'open' && preview) void Linking.openURL(step.url);
+    else if (step.kind === 'open') onReady({ url: step.url, name, mime: PDF_MIME });
     else setMessage(step.message);
   }, [jwt, spaceId, clientId, serviceId, onReady]);
   return { ask, stop, asking, message };

@@ -51,6 +51,7 @@ function serverWith(draft: object, answer: { status: number; body: object } = { 
     if (url.endsWith('/reports/draft')) return new Response(JSON.stringify(draft), { status: 200 });
     if (url.endsWith('/reports/forms')) return new Response(JSON.stringify(formOutcome), { status: 200 });
     if (url.endsWith('/commands/c1/form')) return new Response(JSON.stringify(answer.body), { status: answer.status });
+    if (url.endsWith('/pdf?preview=1')) return new Response(JSON.stringify({ pdf: { status: 'ready', pdfUrl: 'https://portal.example.com/vista/rep' } }), { status: 200 });
     return new Response(JSON.stringify({ message: 'no' }), { status: 404 });
   });
   vi.stubGlobal('fetch', fetchMock);
@@ -227,6 +228,18 @@ describe('ReportDocumentWeb', () => {
     fireEvent.click(await screen.findByTestId('seccion-unidades'));
     fireEvent.click(screen.getByTestId('agregar-adicional-d2'));
     expect(await screen.findByTestId('formulario-agregar_foto_adicional')).toBeInTheDocument();
+  });
+
+  it('a draft has «Ver PDF» beside «Publicar», and it asks for the preview, which publishes nothing (José 07/11)', async () => {
+    // Arrange
+    const calls = serverWith({ document: { ...document, id: '6aed0a1b2c3d4e5f60718293' } });
+    openReport();
+    // Act
+    fireEvent.click(await screen.findByTestId('ver-vista-previa'));
+    // Assert
+    expect(screen.getByTestId('abrir-publicar')).toBeInTheDocument();
+    expect(await screen.findByTestId('abrir-vista-previa')).toHaveAttribute('href', 'https://portal.example.com/vista/rep');
+    expect(calls.some((call) => call.url.endsWith('/reports/6aed0a1b2c3d4e5f60718293/pdf?preview=1'))).toBe(true);
   });
 
   describe('taking a sent photo out of a draft (José 06/11)', () => {

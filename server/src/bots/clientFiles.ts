@@ -72,7 +72,7 @@ const isGone = (reply: { status?: number | null; body?: unknown }): boolean => r
  * same request (pending 121 Drive; José 30/10 detail). Nothing is stored: the
  * links never expire, so they only show inside that channel.
  */
-export async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clientId: string, serviceId: string | null, userId: Types.ObjectId, extra: Record<string, string | number> = {}): Promise<AskOutcome<T> | NotFound> {
+export async function askAboutService<T>(ask: ServiceAsk<T>, workspaceId: string, clientId: string, serviceId: string | null, userId: Types.ObjectId, extra: Record<string, string | number | boolean> = {}): Promise<AskOutcome<T> | NotFound> {
   const asked = await findAskedService(workspaceId, clientId, serviceId, userId, ask.need);
   if (!asked) return notFound();
   const { client, fallbackUrl, seesBilling } = asked;
@@ -133,7 +133,8 @@ export const clientServiceBilling = (workspaceId: string, clientId: string, serv
 export const clientAccount = (workspaceId: string, clientId: string, userId: Types.ObjectId) => askAboutService(ACCOUNT, workspaceId, clientId, null, userId);
 
 /** A report's PDF: ready, or still generating with how long to wait (agentes 30/10, Portal 588e3ff9). The app or the web asks again. */
-export async function clientReportPdf(workspaceId: string, clientId: string, serviceId: string, reportId: string, userId: Types.ObjectId): Promise<AskOutcome<ReportPdf> | NotFound> {
+export async function clientReportPdf(workspaceId: string, clientId: string, serviceId: string, reportId: string, userId: Types.ObjectId, preview = false): Promise<AskOutcome<ReportPdf> | NotFound> {
   if (!CLIENT_ID.test(reportId)) return notFound();
-  return askAboutService(REPORT_PDF, workspaceId, clientId, serviceId, userId, { report_id: reportId });
+  // A draft's preview (José 07/11): agentes calls Portal's `vista_previa_de_informe`, which publishes nothing.
+  return askAboutService(REPORT_PDF, workspaceId, clientId, serviceId, userId, { report_id: reportId, ...(preview ? { preview: true } : {}) });
 }

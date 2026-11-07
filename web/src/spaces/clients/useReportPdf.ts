@@ -24,12 +24,12 @@ export function useReportPdf(target: ServiceAskTarget, serviceId: string) {
     setReadyUrl(null);
   }, []);
   useEffect(() => stop, [stop]);
-  const ask = useCallback(async (reportId: string) => {
+  const ask = useCallback(async (reportId: string, preview = false) => {
     const mine = ++turn.current;
     setAsking(true);
     setMessage(null);
     const askOnce = async (): Promise<ReportPdfBody> => {
-      const response = await api<ReportPdfBody>(reportPdfPath(spaceId, clientId, serviceId, reportId), { jwt });
+      const response = await api<ReportPdfBody>(reportPdfPath(spaceId, clientId, serviceId, reportId, preview), { jwt });
       return response.ok ? response.data : { message: response.message };
     };
     const step = await askReportPdfUntilDone(askOnce, () => mine === turn.current, pause);

@@ -123,7 +123,7 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
   }));
   // agentes 30/10: a report's PDF, ready or generating; the app asks again after the wait.
   router.get('/:id/clients/:clientId/services/:serviceId/reports/:reportId/pdf', handled(async (req, res) => {
-    const found = await clientReportPdf(req.params.id!, req.params.clientId!, req.params.serviceId!, req.params.reportId!, me(req));
+    const found = await clientReportPdf(req.params.id!, req.params.clientId!, req.params.serviceId!, req.params.reportId!, me(req), req.query.preview === '1');
     if ('error' in found) return res.status(found.status).json({ error: found.error, message: found.message });
     res.json(found.ok ? { pdf: found.value } : { error: 'report_pdf_failed', message: found.message });
   }));

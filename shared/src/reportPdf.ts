@@ -38,8 +38,12 @@ export function nextReportPdfStep(body: ReportPdfBody | null, tries: number): Re
   return { kind: 'failed', message: body?.message ?? REPORT_PDF_FAILED };
 }
 
-export const reportPdfPath = (spaceId: string, clientId: string, serviceId: string, reportId: string): string =>
-  `/workspaces/${spaceId}/clients/${encodeURIComponent(clientId)}/services/${encodeURIComponent(serviceId)}/reports/${encodeURIComponent(reportId)}/pdf`;
+export const reportPdfPath = (spaceId: string, clientId: string, serviceId: string, reportId: string, preview = false): string =>
+  `/workspaces/${spaceId}/clients/${encodeURIComponent(clientId)}/services/${encodeURIComponent(serviceId)}/reports/${encodeURIComponent(reportId)}/pdf${preview ? '?preview=1' : ''}`;
+
+/** «Ver PDF» of a draft (José 07/11): Portal's preview, the same sheets marked as a draft, without publishing. */
+export const PREVIEW_LABEL = 'Ver PDF';
+export const PREVIEW_ASKING = 'Armando la vista previa…';
 
 /** Asks until Portal has it or it fails; `null` once `current` says the person closed the sheet. */
 export async function askReportPdfUntilDone(ask: () => Promise<ReportPdfBody | null>, current: () => boolean, pause: (ms: number) => Promise<void>): Promise<Exclude<ReportPdfStep, { kind: 'wait' }> | null> {

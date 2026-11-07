@@ -841,6 +841,18 @@ El ingeniero Jeremy pidió subir fotos extra de cada unidad, además de las 4 ob
 - **Sin la entrada en la plantilla** la tarjeta se ve como antes.
 - **Sin verificar:** el recorrido en el emulador y en un teléfono, hasta que Portal publique la plantilla y José apruebe la herramienta.
 
+## «Ver PDF» junto a «Publicar» en un borrador (José 07/11)
+
+José: en un borrador solo estaba el botón grande «Publicar». Pidió «Ver PDF» al lado, en la misma línea.
+
+- `pdf_de_informe` no sirve para un borrador: lila marca como completado lo que renderiza, así que lo publicaría.
+- Portal publicó `vista_previa_de_informe` (2b670a82, solo lectura). Arma la vista firmada con las mismas hojas del PDF y la marca «Borrador · vista previa sin publicar». No guarda nada ni avisa al canal. La URL vence en 15 minutos.
+- La puerta es la de siempre: `GET …/reports/:id/pdf?preview=1`. El server de Lilachat agrega `preview: true` a `client.report.requested`, y Agentes llama a la vista previa en vez del PDF.
+- Web: «Ver PDF» ocupa un tercio y «Publicar» dos tercios. Cuando está lista, el botón pasa a «Abrir vista previa», un enlace a una pestaña nueva; abrir la pestaña después de la espera la bloquearía como popup.
+- APK: la vista previa es una página, no un PDF, así que se abre en el navegador.
+- **Falta:** que José apruebe `vista_previa_de_informe` en Agentes, y el despliegue de Agentes (rama `vista-previa-informe`). Mientras tanto, el botón muestra el rechazo.
+- **Por confirmar con Portal:** que los borradores aparezcan en los `reports` de `detalle_de_servicio`. Si no, a un miembro que no es admin Agentes le responde 404.
+
 ## Quitar una foto enviada de un borrador (José 06/11)
 
 - El visor del informe muestra «Eliminar» solo en una foto que ya llegó a Portal,

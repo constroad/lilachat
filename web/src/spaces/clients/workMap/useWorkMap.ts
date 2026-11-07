@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { loadWorkMap, type ChannelLinks, type WorkMap, type WorkMapState } from '@lilachat/shared';
+import { afterQuietReload, loadWorkMap, type ChannelLinks, type WorkMap, type WorkMapState } from '@lilachat/shared';
 import { api } from '../../../api';
 
 type ServiceTarget = { kind: 'service'; clientId: string; serviceId: string };
@@ -11,13 +11,14 @@ export function useWorkMap(jwt: string, links: ChannelLinks, target: ServiceTarg
   latestLinks.current = links;
   const turn = useRef(0);
   const { clientId, serviceId } = target;
-  const load = useCallback(async () => {
+  /** `quiet` after an edit: the map on screen stays while Portal answers (an open street does not close). */
+  const load = useCallback(async (quiet = false) => {
     turn.current += 1;
     const asked = turn.current;
-    setState({ kind: 'loading' });
+    if (!quiet) setState({ kind: 'loading' });
     const read = (link: string) => api<{ map: WorkMap | null }>('/service-work-map', { jwt, body: { link, serviceId } });
     const next = await loadWorkMap(() => latestLinks.current.map({ kind: 'service', clientId, serviceId }), read);
-    if (asked === turn.current) setState(next);
+    if (asked === turn.current) setState((previous) => (quiet ? afterQuietReload(previous, next) : next));
   }, [jwt, clientId, serviceId]);
   useEffect(() => {
     void load();
@@ -25,5 +26,5 @@ export function useWorkMap(jwt: string, links: ChannelLinks, target: ServiceTarg
       turn.current += 1;
     };
   }, [load]);
-  return { state, retry: load };
+  return { state, retry: load, refresh: () => load(true) };
 }

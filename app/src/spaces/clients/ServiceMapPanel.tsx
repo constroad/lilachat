@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, useWindowDimensions, View } from 'react-native';
-import { deleteThenReload, editThenReload, loadWorkMap, type MapEditSend, serviceMapPage, type ChannelLinks, type UnitDischarge, type WorkMap, type WorkMapState } from '@lilachat/shared';
+import { afterQuietReload, deleteThenReload, editThenReload, loadWorkMap, type MapEditSend, serviceMapPage, type ChannelLinks, type UnitDischarge, type WorkMap, type WorkMapState } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 import { WorkMapBoard } from './workMap/WorkMapBoard';
@@ -22,13 +22,14 @@ function useServiceMap(jwt: string, links: ChannelLinks, target: ServiceTarget) 
   latestLinks.current = links;
   const turn = useRef(0);
   const { clientId, serviceId } = target;
-  const ask = useCallback(async () => {
+  /** `quiet` after an edit: the map on screen stays while Portal answers (an open street does not close). */
+  const ask = useCallback(async (quiet = false) => {
     turn.current += 1;
     const asked = turn.current;
-    setState({ kind: 'loading' });
+    if (!quiet) setState({ kind: 'loading' });
     const read = (link: string) => jsonCall<{ map: WorkMap | null }>(`${BASE_URL}/api/service-work-map`, jwt, { method: 'POST', body: JSON.stringify({ link, serviceId }) });
     const next = await loadWorkMap(() => latestLinks.current.map({ kind: 'service', clientId, serviceId }), read);
-    if (asked === turn.current) setState(next);
+    if (asked === turn.current) setState((previous) => (quiet ? afterQuietReload(previous, next) : next));
   }, [jwt, clientId, serviceId]);
   useEffect(() => {
     void ask();
@@ -53,8 +54,8 @@ export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; targe
   const onDraw = props.drawStreet ? () => setDrawing(true) : undefined;
   const height = Math.round(screen.height * MAP_SCREEN_SHARE);
   const pageOf = (url: string) => serviceMapPage(url, props.target.serviceId);
-  const deleteStreet = deleteThenReload(props.deleteStreet, ask);
-  const editMap = editThenReload(props.editMap, ask);
+  const deleteStreet = deleteThenReload(props.deleteStreet, () => ask(true));
+  const editMap = editThenReload(props.editMap, () => ask(true));
   if (state.kind === 'loading') return <View testID="mapa-cargando" className="rounded-2xl bg-surface-variant" style={{ height }} />;
   if (state.kind === 'failed') {
     return (

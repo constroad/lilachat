@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lineLengthM, workMapOf, type WorkMap } from './workMap.js';
+import { afterQuietReload, lineLengthM, workMapOf, type WorkMap } from './workMap.js';
 import { streetDetailOf } from './workStreetDetail.js';
 import { createdOrRefusal, editThenReload, labelFormIdle, runLabelCreate, runScopeSave, sendWorkStage, type LabelForm, SCOPE_PAST_STREET, SCOPE_ENDS_BEFORE, SCOPE_NEEDS_ENDS, LABEL_NEEDS_NAME, LABEL_TOO_LONG, labelProblem, scopeDraftFor, scopeDraftProblem, toggleScopeWork, WORK_TAG_COLORS, workScopeDeleteRequest, workScopeRequest, workStageRequest, workTagRequest } from './workScopeDraft.js';
 
@@ -151,5 +151,16 @@ describe('the inline forms (shared by the web and the APK)', () => {
     expect(await runScopeSave({ ...base, draft: scopeDraftFor(320), send: async () => ({ ok: true, message: 'ok' }) })).toBeNull();
     expect(await createdOrRefusal(Promise.resolve({ ok: false, message: 'no' }))).toBe('no');
     expect(await createdOrRefusal(Promise.resolve({ ok: true, message: 'ok' }))).toBeNull();
+  });
+});
+
+describe('reloading the map after an edit', () => {
+  it('keeps the map on screen if the quiet reload fails, and takes the new one otherwise', () => {
+    const ready = { kind: 'ready' as const, url: 'https://x', map: mapOf() };
+    const failed = { kind: 'failed' as const, message: 'sin señal' };
+    expect(afterQuietReload(ready, failed)).toBe(ready);
+    const newer = { ...ready, map: null };
+    expect(afterQuietReload(ready, newer)).toBe(newer);
+    expect(afterQuietReload({ kind: 'loading' }, failed)).toBe(failed);
   });
 });

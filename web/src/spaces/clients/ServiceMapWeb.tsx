@@ -36,12 +36,12 @@ function Frame(props: { head?: ReactNode; tabs?: ReactNode; children: ReactNode 
 type MapProps = { jwt: string; links: ChannelLinks; target: { kind: 'service'; clientId: string; serviceId: string }; title: string; head?: ReactNode; tabs?: ReactNode; badge?: ReactNode; /** Where the streets are drawn today (Portal's «Mapa» tab). */ drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Guardar calle» (o-02): everyone draws (José 07/11). */ drawStreet?: StreetSend; /** «Borrar calle»: anyone, an admin restores (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend };
 
 export function ServiceMapWeb(props: MapProps) {
-  const { state, retry } = useWorkMap(props.jwt, props.links, props.target);
+  const { state, retry, refresh } = useWorkMap(props.jwt, props.links, props.target);
   const [drawing, setDrawing] = useState(false);
   const onDraw = props.drawStreet ? () => setDrawing(true) : undefined;
   const pageOf = (url: string) => serviceMapPage(url, props.target.serviceId);
-  const deleteStreet = deleteThenReload(props.deleteStreet, retry);
-  const editMap = editThenReload(props.editMap, retry);
+  const deleteStreet = deleteThenReload(props.deleteStreet, refresh);
+  const editMap = editThenReload(props.editMap, refresh);
   if (state.kind === 'loading') return <Frame head={props.head} tabs={props.tabs}><div data-testid="mapa-cargando" className="h-[60vh] animate-pulse rounded-2xl bg-surface-variant" /></Frame>;
   if (state.kind === 'failed') {
     return (

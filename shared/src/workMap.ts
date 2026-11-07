@@ -310,6 +310,13 @@ export const workMapCutDays = (map: WorkMap): string[] =>
 export const workMapCutLabel = (day: string) => `Hasta el ${dayMonthOf(new Date(`${day}T00:00:00Z`))}`;
 
 /** The link of the service, then the map behind it. With the link alone Portal's page stays open. */
+/**
+ * A quiet reload after an edit (step 3, web E2E 07/11): the map on screen stays while Portal answers,
+ * so an open street does not close; if the reload fails, what was there stays too.
+ */
+export const afterQuietReload = (previous: WorkMapState, next: WorkMapState): WorkMapState =>
+  (previous.kind === 'ready' && next.kind === 'failed' ? previous : next);
+
 export async function loadWorkMap(
   link: () => Promise<ServiceMapResult>,
   read: (url: string) => Promise<{ ok: true; data: { map?: WorkMap | null } } | { ok: false; message?: string }>,

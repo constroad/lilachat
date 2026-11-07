@@ -343,7 +343,7 @@ describe('an app answers a command with a form', () => {
     expect(received).toEqual([{ type: 'form.submitted', data: expect.objectContaining({ form_id: 'crear_enlace', values: { dias: 7, servicioId: 'srv-1' } }) }]);
   });
 
-  it('a service the channel lists is not asked even if the form cut its list (Portal offers the latest 20)', async () => {
+  it('a service the channel lists opens with the service fixed, without asking the app (José 07/11: «solo el servicio del canal»)', async () => {
     // Arrange
     await BotAppModel.updateOne({ clientId: 'lca_inframaq' }, { $set: { shortcuts: [{ key: 'crear_enlace_de_servicio', name: 'Crear enlace' }] } });
     const installation = await BotInstallationModel.findOne({}).lean();
@@ -353,7 +353,8 @@ describe('an app answers a command with a form', () => {
     const opened = await request(app).post(`/api/chats/${channel}/shortcuts`).set(asAna).send({ app_id: await appId(), shortcut: 'crear_enlace_de_servicio', values: { servicioId: 'srv-old' } }).expect(200);
     await ClientChannelModel.deleteMany({ clientId: 'cli-old' });
     // Assert
-    expect(Object.keys(opened.body.response.form.schema.properties)).toEqual(['dias']);
+    expect(Object.keys(opened.body.response.form.schema.properties)).toEqual(['dias', 'noExpira']);
+    expect(opened.body.response.form.id).toBe('crear_enlace_de_servicio');
   });
 
   it('a value the form does not offer is asked, not trusted: another service\'s id cannot ride past the options', async () => {

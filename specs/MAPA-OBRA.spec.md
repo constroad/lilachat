@@ -469,8 +469,10 @@ porque Portal no tiene cómo borrarlos.
 **E2E web prod (07/11, 21:59Z, Test, QA-CTLPIS, calle «QA-MAPA calle — borrar»):** «Ver tramos» →
 «Registrar avance» abrió con «Asfalto QA» elegido (único trabajo) y partida 0+000. Dos «+10 m»
 dieron «+20 m · 120 m²» (ancho 6,0 m). Con la nota «QA-E2E o-06 borrar» y sin fotos, Portal
-respondió «Avance registrado. Queda pendiente hasta que el residente lo apruebe.». La limpieza
-del pendiente se le pidió a la sesión de Portal por su ruta de rechazo.
+respondió «Avance registrado. Queda pendiente hasta que el residente lo apruebe.». Portal guardó
+el día en Lima (07/11). La sesión de Portal lo quitó con los pasos de su DELETE /api/work-progress/[id]
+(busca, se niega si está aprobado, borra): quedan 0 avances con esa nota. Lilachat no guarda los
+pendientes: el mapa solo lee el avance aprobado.
 **Sin verificar:** subir una foto desde el mapa (la extensión no deja elegir archivos), el APK
 (falta el OTA) y que el pendiente se vea como avance al aprobarlo.
 

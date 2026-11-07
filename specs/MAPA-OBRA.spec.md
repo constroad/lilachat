@@ -147,7 +147,8 @@ pero `get_screen` devuelve el mismo HTML. Por eso se generó aparte.
   su estado («En ejecución», «Por iniciar», «Terminada», de `stageStateLabel`); y el pie
   «Corte: …». Los admins ven el avance sugerido (o-07) arriba de las calles.
 - **Ancho o angosto lo decide el tablero, no la ventana:** con 880 px o más el panel va a
-  la derecha. Menos, como en el teléfono de o-01: filtros en filas bajo las pestañas, mapa
+  la derecha. Menos, como en el teléfono de o-01: pestañas en su propia fila (al lado de
+  los botones quedaban tapadas a 444 px), filtros en filas debajo, leyenda arriba, mapa
   de 58 vh y el panel como hoja redondeada que sube sobre el mapa. La lista de chats al
   lado hace que la ventana mienta, por eso se mide con `ResizeObserver`.
 - **Diferencias con o-01 a propósito:** sin «Editar obra», «Registrar avance», «Ing. de

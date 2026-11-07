@@ -69,12 +69,12 @@ function useDischarges(map: WorkMap, discharges: UnitDischarge[]) {
   return { suggestion, ranges, onRange, pins, stretches };
 }
 
-type BoardProps = { map: WorkMap; pageUrl: string; title: string; serviceId: string; /** Crumbs and the service's tabs (o-01). */ head?: ReactNode; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; /** Space admins only (José 06/11, Agentes enforces it too). */ admin?: boolean; discharges?: UnitDischarge[]; send?: ProgressSend };
+type BoardProps = { map: WorkMap; pageUrl: string; title: string; serviceId: string; /** Crumbs and title (o-01). */ head?: ReactNode; /** The service's tabs: beside the actions on a wide board, on their own row on a narrow one. */ tabs?: ReactNode; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; /** Space admins only (José 06/11, Agentes enforces it too). */ admin?: boolean; discharges?: UnitDischarge[]; send?: ProgressSend };
 
 function Actions(props: { pageUrl: string; expanded: boolean; wide: boolean; onToggle: () => void; onExport: () => void }) {
   const label = (text: string) => (props.wide ? text : <span className="sr-only">{text}</span>);
   return (
-    <div className="flex shrink-0 items-center gap-2 pb-3">
+    <div className={`flex shrink-0 items-center gap-2 ${props.wide ? 'pb-3' : 'pb-2'}`}>
       <button type="button" data-testid="mapa-pantalla-completa" onClick={props.onToggle} className={ACTION}>
         {props.expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />} {label(props.expanded ? 'Salir' : 'Pantalla completa')}
       </button>
@@ -104,9 +104,10 @@ export function WorkMapBoard(props: BoardProps) {
     : <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} scrolls={wide} />;
   return (
     <div ref={holder} data-testid="mapa-servicio" data-expanded={expanded} data-wide={wide} className={`flex flex-col bg-background ${expanded ? 'fixed inset-0 z-50' : 'min-h-0 flex-1'} ${wide ? 'overflow-hidden' : 'overflow-y-auto'}`}>
-      <header className={MAP_HEAD_BAR}>
-        <div className="min-w-0 flex-1">{props.head}</div>
+      <header className={`${MAP_HEAD_BAR} flex-wrap`}>
+        <div className="min-w-0 flex-1">{props.head}{wide ? props.tabs : null}</div>
         <Actions pageUrl={pageUrl} expanded={expanded} wide={wide} onToggle={expanded ? close : open} onExport={() => setExporting((shown) => !shown)} />
+        {wide ? null : <div className="-mt-2 min-w-0 basis-full">{props.tabs}</div>}
       </header>
       {wide ? null : <MapFilters map={map} view={view} filter={filter} onFilter={setFilter} floating={false} />}
       <div className={wide ? 'flex min-h-0 flex-1' : 'flex flex-col'}>

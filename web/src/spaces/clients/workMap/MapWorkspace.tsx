@@ -35,13 +35,12 @@ export function MapWorkspace(props: WorkspaceProps) {
     <>
       {props.crumbs}
       <h2 className="mt-1 text-lg font-bold text-on-surface md:hidden">Mapa de la obra</h2>
-      <UnderlineTabs tabs={props.tabs} onTab={props.onTab} />
     </>
   );
   const badge = <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{CLIENT_SERVICE_STATUS_LABELS[service.status]}</span>;
   return (
     <div data-testid="detalle-servicio" className="flex min-h-0 flex-1 flex-col">
-      <ServiceMapWeb jwt={target.jwt} links={props.links} target={{ kind: 'service', clientId: target.clientId, serviceId: service.id }} title={service.name} head={head} badge={badge} admin={props.admin} discharges={props.detail.discharges} send={workProgressSender(props.admin, target, props.chatId, service.id)} />
+      <ServiceMapWeb jwt={target.jwt} links={props.links} target={{ kind: 'service', clientId: target.clientId, serviceId: service.id }} title={service.name} head={head} tabs={<UnderlineTabs tabs={props.tabs} onTab={props.onTab} />} badge={badge} admin={props.admin} discharges={props.detail.discharges} send={workProgressSender(props.admin, target, props.chatId, service.id)} />
     </div>
   );
 }

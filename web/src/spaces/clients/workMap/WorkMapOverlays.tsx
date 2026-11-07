@@ -83,9 +83,9 @@ export function MapFilters(props: FilterProps & { floating: boolean }) {
 /** «Convenciones» (o-01): each work's line, and the dashed one still to build. */
 export function MapLegend(props: { view: WorkMapView; compact: boolean }) {
   return (
-    <div className={`pointer-events-none absolute bottom-4 left-4 z-10 ${FLOATING} ${props.compact ? 'max-w-[70%] px-2.5 py-2' : 'max-w-[320px] p-3'}`}>
+    <div className={`pointer-events-none absolute z-10 ${FLOATING} ${props.compact ? 'left-3 top-3 max-w-[60%] px-2.5 py-2' : 'bottom-4 left-4 max-w-[320px] p-3'}`}>
       {props.compact ? null : <p className={`${KICKER} mb-2`}>Convenciones</p>}
-      <div className={`grid gap-x-4 gap-y-1.5 text-[12px] font-medium text-on-surface grid-cols-2`}>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12px] font-medium text-on-surface">
         {props.view.works.map((work) => (
           <span key={work.id} className="flex items-center gap-2"><span aria-hidden className="h-1 w-4 shrink-0 rounded-full" style={{ backgroundColor: work.color }} />{work.name}</span>
         ))}

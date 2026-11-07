@@ -196,7 +196,7 @@ const Skeleton = () => (
   </View>
 );
 
-type ServiceDetailProps = { target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string ; /** Its Drive joins the tabs (José 06/11). */ seesDrive?: boolean; /** A member an admin gave only the Drive. */ driveOnly?: boolean; onToChat?: () => void };
+type ServiceDetailProps = { /** Who can be a report's responsible. */ people?: readonly string[]; target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string ; /** Its Drive joins the tabs (José 06/11). */ seesDrive?: boolean; /** A member an admin gave only the Drive. */ driveOnly?: boolean; onToChat?: () => void };
 
 /** José 06/11: an open service takes the whole chat, and this is the way back to it. It stays while the service scrolls. */
 function ServiceCrumbs(props: { service: string; onBack: () => void; onToChat?: () => void }) {
@@ -253,7 +253,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   }, [onBack]);
   // José 05/11: a field report is filled here, not in Portal's public page (spec INFORMES-DESDE-LILACHAT); it takes the detail's place.
   const [picker, setPicker] = useState(false);
-  const [report, setReport] = useState<{ type: string; reportId?: string } | null>(null);
+  const [report, setReport] = useState<{ type: string; reportId?: string; responsible?: string } | null>(null);
   // Back from the report, the detail opens on Informes, where it was.
   const [startTab, setStartTab] = useState<DetailTabKey>('orders');
   const portalUrl = answer?.ok ? answer.value.service.url : undefined;
@@ -262,7 +262,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
     setStartTab('reports');
     if (changed) askAgain();
   }, [askAgain]);
-  if (report) return <ReportDocumentScreen target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} portalUrl={portalUrl} onClose={closeReport} />;
+  if (report) return <ReportDocumentScreen target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={portalUrl} onClose={closeReport} />;
   return (
     <View className="flex-1">
     <ServiceCrumbs service={props.service.name} onBack={props.onBack} onToChat={props.onToChat} />
@@ -270,7 +270,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
       <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
       {answer === null ? <Skeleton /> : null}
       {answer?.ok ? <DetailTabs onContinueReport={setReport} detail={answer.value} target={props.target} service={props.service} chatId={props.chatId} seesDrive={Boolean(props.seesDrive)} onBack={onBack} onOpenFile={files.open} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} startOrderId={startTab === 'orders' ? props.startOrderId : undefined} /> : null}
-      <CreateReportSheet visible={picker} portalUrl={portalUrl} onPick={(code) => { setPicker(false); setReport({ type: code }); }} onClose={() => setPicker(false)} />
+      <CreateReportSheet visible={picker} portalUrl={portalUrl} people={props.people ?? []} onPick={(code, responsible) => { setPicker(false); setReport({ type: code, responsible }); }} onClose={() => setPicker(false)} />
       {files.notice ? <Text className="text-center text-[13px] text-error">{files.notice}</Text> : null}
       {files.viewer}
       {answer && !answer.ok ? (

@@ -1,17 +1,16 @@
 import { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import { Camera, Image as ImageIcon, X } from 'lucide-react-native';
-import { HOUR_STAMP, type FormField, type FormPhotoStamp } from '@lilachat/shared';
+import type { FormField, FormPhotoStamp } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { CAMERA_DENIED, cameraAllowed, FormCamera, type CameraShot } from '../camara/FormCamera';
 import type { PhotoUpload } from './AppFormFields';
+import { pickFromGallery } from './galleryPick';
+import { useCameraPlace } from './useCameraPlace';
 
 type PhotoList = Extract<FormField, { kind: 'photo' }>;
 type Shot = { key: string; uri: string; fileId: string | null };
 const THUMB = 84;
-/** Native and untouched: `uploadFormPhoto` makes it lighter once (Portal's standard, 28/10). */
-const PHOTO_QUALITY = 1;
 
 /**
  * Several photos (José, 24/10: the tank tape and the material receipt): take
@@ -29,12 +28,13 @@ export function PhotoListField(props: { field: PhotoList; error?: string; onChan
     props.onChange(ids.length ? ids : undefined);
   };
   const [aiming, setAiming] = useState(false);
-  const keep = async (picked: CameraShot, stamp?: FormPhotoStamp) => {
+  const place = useCameraPlace();
+  const keep = async (picked: CameraShot, stampOf: () => Promise<FormPhotoStamp | undefined>) => {
     const shot: Shot = { key: `${Date.now()}`, uri: picked.uri, fileId: null };
     setAiming(false);
     setMessage(undefined);
     setShots((before) => [...before, shot]);
-    const uploaded = await props.upload(picked, stamp);
+    const uploaded = await props.upload(picked, await stampOf());
     setShots((before) => {
       const next = uploaded.ok ? before.map((one) => (one.key === shot.key ? { ...one, fileId: uploaded.fileId } : one)) : before.filter((one) => one.key !== shot.key);
       const ids = next.map((one) => one.fileId).filter((id): id is string => id !== null);
@@ -43,16 +43,17 @@ export function PhotoListField(props: { field: PhotoList; error?: string; onChan
     });
     if (!uploaded.ok) setMessage(uploaded.message);
   };
-  /** The camera, or the gallery when the app allows it (`x-gallery`: a transfer receipt is a screenshot, E2E 28/10). */
+  /** The camera or the gallery (José 06/11). A file marked `x-gallery: true` goes unstamped: a transfer receipt is a screenshot, E2E 28/10. */
   const take = async (source: 'camera' | 'gallery') => {
     if (source === 'camera') {
-      if (await cameraAllowed()) setAiming(true);
-      else setMessage(CAMERA_DENIED);
+      if (await cameraAllowed()) {
+        place.start();
+        setAiming(true);
+      } else setMessage(CAMERA_DENIED);
       return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: PHOTO_QUALITY, allowsEditing: false });
-    const asset = result.canceled ? null : result.assets[0];
-    if (asset) await keep({ uri: asset.uri, mime: asset.mimeType ?? 'image/jpeg' });
+    const picked = await pickFromGallery(Boolean(props.field.plainGallery));
+    if (picked) await keep(picked.shot, async () => picked.stamp);
   };
   const uploading = shots.some((shot) => shot.fileId === null);
   const full = shots.length >= props.field.max;
@@ -85,7 +86,7 @@ export function PhotoListField(props: { field: PhotoList; error?: string; onChan
         )}
       </View>
       {message ?? props.error ? <Text className="mt-1 text-[13px] text-error">{message ?? props.error}</Text> : null}
-      {aiming ? <FormCamera title={props.field.label} onShot={(shot) => void keep(shot, HOUR_STAMP)} onClose={() => setAiming(false)} /> : null}
+      {aiming ? <FormCamera title={props.field.label} onShot={(shot) => void keep(shot, place.stamp)} onClose={() => setAiming(false)} /> : null}
     </View>
   );
 }

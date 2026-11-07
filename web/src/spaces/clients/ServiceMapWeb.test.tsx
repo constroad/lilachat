@@ -15,7 +15,7 @@ describe('ServiceMapWeb', () => {
     render(<ServiceMapWeb links={linksWith(map)} target={target} />);
     // Assert
     const open = await screen.findByTestId('mapa-abrir');
-    expect(open).toHaveAttribute('href', 'https://constroad.com/public/mapa');
+    expect(open).toHaveAttribute('href', 'https://constroad.com/public/mapa/service/srv-1?section=map');
     expect(open).toHaveAttribute('target', '_blank');
     expect(map).toHaveBeenCalledTimes(1);
     expect(map).toHaveBeenCalledWith(target);

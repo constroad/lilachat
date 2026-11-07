@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { ExternalLink } from 'lucide-react';
-import { noticeOf, type ChannelLinks, type ServiceMapDeps, type ServiceMapResult, type ShortcutRow, type ShortcutValues } from '@lilachat/shared';
+import { noticeOf, serviceMapPage, type ChannelLinks, type ServiceMapDeps, type ServiceMapResult, type ShortcutRow, type ShortcutValues } from '@lilachat/shared';
 import { runShortcut, submitAppForm } from '../../chat/commands/commandsApi';
 import { currentSocket } from '../../useSocket';
 
@@ -45,7 +45,7 @@ export function ServiceMapWeb(props: { links: ChannelLinks; target: { kind: 'ser
     <div data-testid="mapa-servicio" className="rounded-2xl border border-outline/15 bg-surface p-4">
       <p className="text-[15px] font-semibold">Mapa de la obra</p>
       <p className="mt-1 text-sm text-on-surface-variant">Se abre en otra pestaña, sin montos.</p>
-      <a data-testid="mapa-abrir" href={map.url} target="_blank" rel="noopener noreferrer" className="mt-3 flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-primary font-semibold text-on-primary"><ExternalLink size={16} /> Abrir el mapa</a>
+      <a data-testid="mapa-abrir" href={serviceMapPage(map.url, serviceId)} target="_blank" rel="noopener noreferrer" className="mt-3 flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-primary font-semibold text-on-primary"><ExternalLink size={16} /> Abrir el mapa</a>
     </div>
   );
 }

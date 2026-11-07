@@ -234,6 +234,22 @@ describe('an app answers a command with a form', () => {
     expect(data[(200 * info.width + 2) * info.channels]!).toBeGreaterThan(240);
   });
 
+  it('a photo of the gallery comes back stamped with its own date, not the upload (José 06/11)', async () => {
+    // Arrange
+    const commandId = await openForm();
+    const white = await sharp({ create: { width: 320, height: 240, channels: 3, background: '#ffffff' } }).jpeg().toBuffer();
+    // Act
+    const { fileId } = (await request(app).post(`/api/chats/${channel}/commands/${commandId}/files`).set(asAna).field('stamp', 'taken').field('takenAt', '2026-11-01T15:00:00.000Z').attach('file', white, { filename: 'galeria.jpg', contentType: 'image/jpeg' }).expect(201)).body;
+    answer = json({ text: 'Ingreso marcado' });
+    received.length = 0;
+    await submit(commandId, { accion: 'ingreso', ubicacion: here, foto: fileId }).expect(200);
+    // Assert
+    const photoUrl = new URL(String((received[0]!.data.values as Record<string, unknown>).foto));
+    const photo = (await request(app).get(photoUrl.pathname).expect(200)).body as Buffer;
+    const { data, info } = await sharp(photo).raw().toBuffer({ resolveWithObject: true });
+    expect(data[(238 * info.width + 2) * info.channels]!).toBeLessThan(140);
+  });
+
   it('too many calls (agentes 06/11) is a 429 with the code and the seconds to wait, so the queue waits instead of refusing', async () => {
     const commandId = await openForm();
     const { fileId } = (await uploadPhoto(commandId).expect(201)).body;

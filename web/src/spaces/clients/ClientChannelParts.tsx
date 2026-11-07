@@ -95,7 +95,7 @@ const ClientDriveLink = ({ url }: { url: string }) => (
  * and its records (informes, quotes, payments) — tapping one goes to its
  * message. The service opens its expediente with its Drive (José, 06/11).
  */
-export function ClientServices(props: { /** The channel hides its chrome while a service is open. */ onServiceOpen?: (open: boolean) => void; onToChat?: () => void; client: SpaceClient; records: ClientRecord[] | null; onOpenRecord?: (seq: number) => void; target: ServiceAskTarget | null; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void }) {
+export function ClientServices(props: { /** Who can be a report's responsible. */ people?: readonly string[]; /** The channel hides its chrome while a service is open. */ onServiceOpen?: (open: boolean) => void; onToChat?: () => void; client: SpaceClient; records: ClientRecord[] | null; onOpenRecord?: (seq: number) => void; target: ServiceAskTarget | null; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void }) {
   const { links } = props;
   const clientId = props.client.id;
   const [query, setQuery] = useState('');
@@ -124,7 +124,7 @@ export function ClientServices(props: { /** The channel hides its chrome while a
   return (
     <div data-testid="servicios-cliente" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-6">
       {opened && props.target ? (
-        <ServiceDetailWeb target={props.target} chatId={props.client.chat_id} service={opened} seesMoney={Boolean(props.client.access?.money)} seesDrive={sees.drive} driveOnly={!sees.detail} onBack={() => setOpened(null)} onToChat={props.onToChat} links={links} startOrderId={startOrderId} />
+        <ServiceDetailWeb people={props.people ?? []} target={props.target} chatId={props.client.chat_id} service={opened} seesMoney={Boolean(props.client.access?.money)} seesDrive={sees.drive} driveOnly={!sees.detail} onBack={() => setOpened(null)} onToChat={props.onToChat} links={links} startOrderId={startOrderId} />
       ) : (
         <div className="mx-auto flex max-w-3xl flex-col gap-3">
           {/* José 31/10: the client's link here; an order's in its sheet, a service's on its card. */}

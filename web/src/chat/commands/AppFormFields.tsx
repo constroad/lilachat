@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Camera, LocateFixed, MapPin, RefreshCw } from 'lucide-react';
-import { geoPointOf, mapTilesFor, precisionLabel, type FormField, type GeoPoint, HOUR_STAMP, type FormPhotoStamp } from '@lilachat/shared';
+import { geoPointOf, mapTilesFor, precisionLabel, type FormField, type GeoPoint, fileStampOf, type FormPhotoStamp } from '@lilachat/shared';
 import { FieldError } from '../../ui/Overlay';
 import { PlaceButton } from './PlaceButton';
 import { SearchableChoice } from './SearchableChoice';
@@ -195,7 +195,7 @@ export function PhotoField({ field, value, error, onChange, upload }: FieldProps
     setPreview(URL.createObjectURL(file));
     setStatus({ busy: true });
     onChange(undefined);
-    const uploaded = await upload(file, HOUR_STAMP);
+    const uploaded = await upload(file, fileStampOf(field, file.lastModified));
     if (uploaded.ok) onChange(uploaded.fileId);
     setStatus({ busy: false, ...(uploaded.ok ? {} : { message: uploaded.message }) });
   };
@@ -207,9 +207,9 @@ export function PhotoField({ field, value, error, onChange, upload }: FieldProps
       <div className="min-w-0 flex-1">
         <p className="text-[14px] font-semibold">{field.label}</p>
         {field.help ? <p className="text-[12px] text-on-surface-variant">{field.help}</p> : null}
-        <input ref={input} data-testid={`campo-${field.name}`} type="file" accept="image/jpeg,image/png,image/webp,image/heic" capture="environment" className="hidden" onChange={(event) => void pick(event.target.files?.[0])} />
+        <input ref={input} data-testid={`campo-${field.name}`} type="file" accept="image/jpeg,image/png,image/webp,image/heic" {...(field.gallery ? {} : { capture: 'environment' as const })} className="hidden" onChange={(event) => void pick(event.target.files?.[0])} />
         <button type="button" disabled={status.busy} onClick={() => input.current?.click()} className="mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-outline/25 text-[14px] font-semibold text-on-surface disabled:opacity-50">
-          <Camera size={16} className="text-primary" /> {status.busy ? 'Subiendo…' : value ? 'Cambiar foto' : 'Tomar foto'}
+          <Camera size={16} className="text-primary" /> {status.busy ? 'Subiendo…' : value ? 'Cambiar foto' : field.gallery ? 'Subir foto' : 'Tomar foto'}
         </button>
         <FieldError>{status.message ?? error}</FieldError>
       </div>

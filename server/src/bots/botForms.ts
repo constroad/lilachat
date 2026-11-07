@@ -75,12 +75,13 @@ export async function openRun(userId: Types.ObjectId, scope: CommandScope, comma
 }
 
 /** A signing brings the place the form has; a camera photo only asks for the hour (José 06/11: tank and materials). */
-export type PhotoStampAsked = { location?: GeoPoint; hourOnly?: true };
+export type PhotoStampAsked = { location?: GeoPoint; hourOnly?: true; /** A photo of the gallery: its own date, not the upload's. */ takenAt?: Date };
 
-async function stampLinesOf({ location, hourOnly }: PhotoStampAsked): Promise<readonly string[]> {
-  if (hourOnly) return photoHourLines({ at: new Date() });
+async function stampLinesOf({ location, hourOnly, takenAt }: PhotoStampAsked): Promise<readonly string[]> {
+  const at = takenAt ?? new Date();
+  if (hourOnly || (takenAt && !location)) return photoHourLines({ at });
   const place = location ? await placeNameOf(location) : null;
-  return photoStampLines({ at: new Date(), ...(location ? { location } : {}), place });
+  return photoStampLines({ at, ...(location ? { location } : {}), place });
 }
 
 /** The server burns ITS hour into the photo (pending 94); a photo it cannot read goes as it came. */

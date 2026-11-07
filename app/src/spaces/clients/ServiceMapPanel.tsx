@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { WebView, type WebViewNavigation } from 'react-native-webview';
-import type { ChannelLinks, ServiceMapResult } from '@lilachat/shared';
+import { serviceMapPage, type ChannelLinks, type ServiceMapResult } from '@lilachat/shared';
 
 /** Most of the screen, leaving the tabs in sight. */
 const MAP_SCREEN_SHARE = 0.68;
@@ -57,7 +57,7 @@ export function ServiceMapPanel(props: { links: ChannelLinks; target: { kind: 's
   };
   return (
     <View testID="mapa-servicio" className="overflow-hidden rounded-2xl border border-outline/15" style={{ height }}>
-      <WebView source={{ uri: map.url }} originWhitelist={['https://*']} onShouldStartLoadWithRequest={keepInside} nestedScrollEnabled setSupportMultipleWindows={false} allowFileAccess={false} mixedContentMode="never" />
+      <WebView source={{ uri: serviceMapPage(map.url, props.target.serviceId) }} originWhitelist={['https://*']} onShouldStartLoadWithRequest={keepInside} nestedScrollEnabled setSupportMultipleWindows={false} allowFileAccess={false} mixedContentMode="never" />
     </View>
   );
 }

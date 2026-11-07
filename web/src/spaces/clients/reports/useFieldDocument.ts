@@ -9,11 +9,11 @@ import { dropReportPhoto, keepReportPhoto, reportQueue, useReportQueueStart } fr
  * the queue over it and the section's form. When the network comes back it
  * asks Portal again, so «sin señal» goes away by itself.
  */
-export function useFieldDocument(jwt: string, { spaceId, clientId, chatId, serviceId, type, reportId }: ReportRef & { reportId?: string }) {
+export function useFieldDocument(jwt: string, { spaceId, clientId, chatId, serviceId, type, reportId, responsible }: ReportRef & { reportId?: string; responsible?: string }) {
   useReportQueueStart(jwt, loadPerfil()?.userId ?? null);
   const actions = useMemo(
-    () => createReportScreen<File>({ queue: reportQueue, keepPhoto: keepReportPhoto, dropPhoto: dropReportPhoto, placeNow: devicePlaceNow, personName: () => loadPerfil()?.name, newKey: () => crypto.randomUUID(), now: () => new Date().toISOString() }, { spaceId, clientId, chatId, serviceId, type }, reportId),
-    [spaceId, clientId, chatId, serviceId, type, reportId]
+    () => createReportScreen<File>({ queue: reportQueue, keepPhoto: keepReportPhoto, dropPhoto: dropReportPhoto, placeNow: devicePlaceNow, personName: () => responsible ?? loadPerfil()?.name, newKey: () => crypto.randomUUID(), now: () => new Date().toISOString() }, { spaceId, clientId, chatId, serviceId, type }, reportId),
+    [spaceId, clientId, chatId, serviceId, type, reportId, responsible]
   );
   const state = useSyncExternalStore(actions.subscribe, actions.snapshot);
   useEffect(() => {

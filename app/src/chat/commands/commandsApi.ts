@@ -1,4 +1,4 @@
-import { FORMS_LEVEL, HOUR_STAMP, commandScopePath, formSubmitFailure, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoStamp, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
+import { FORMS_LEVEL, commandScopePath, formSubmitFailure, stampFieldsOf, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoStamp, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -53,14 +53,8 @@ export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandI
 async function sendFormPhoto(jwt: string, scope: CommandScope, commandId: string, photo: ShrunkPhotoFile, stamp?: FormPhotoStamp): Promise<FormPhotoUpload> {
   const form = new FormData();
   form.append('file', { uri: photo.uri, name: photo.fileName, type: photo.mimeType } as unknown as Blob);
-  if (stamp === HOUR_STAMP) form.append('stamp', HOUR_STAMP);
-  // A signing's selfie: the server burns its hour and this place into it (pending 94).
-  else if (stamp) {
-    form.append('stamp', '1');
-    form.append('lat', String(stamp.lat));
-    form.append('lng', String(stamp.lng));
-    form.append('precision', String(stamp.precision));
-  }
+  // The server burns the hour, and the place when there is one (pending 94).
+  Object.entries(stampFieldsOf(stamp)).forEach(([name, value]) => form.append(name, value));
   const reply = await subirPorXhr({ url: `${BASE_URL}${commandScopePath(scope)}/commands/${commandId}/files`, token: jwt, form, timeoutMs: PHOTO_UPLOAD_TIMEOUT_MS });
   if (reply.tipo === 'fallo') return { ok: false, message: reply.motivo };
   const fileId = reply.payload.fileId;

@@ -77,7 +77,7 @@ describe('ServiceDetailWeb', () => {
     // Arrange
     const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith('/reports/draft') ? { error: 'report_draft_failed', message: 'No se pudo abrir el informe' } : { detail }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
-    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney={false} onBack={() => undefined} />);
+    render(<ServiceDetailWeb people={['Rosa Vega']} target={target} chatId="chat-1" service={service} seesMoney={false} onBack={() => undefined} />);
     fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
     expect(screen.queryByTestId('generar-informe-servicio')).toBeNull();
     // Act
@@ -88,6 +88,11 @@ describe('ServiceDetailWeb', () => {
     expect(screen.getByTestId('tipo-informe-IAA')).toHaveAttribute('href', 'https://portal.constroad.com/s/318');
     expect(screen.getByTestId('tipo-informe-IAA')).toHaveTextContent('En Portal');
     fireEvent.click(screen.getByTestId('tipo-informe-CTL-IMP'));
+    expect(screen.getByTestId('responsable-de-informe')).toHaveTextContent('¿Quién es el responsable?');
+    fireEvent.change(screen.getByTestId('responsable-nombre'), { target: { value: '' } });
+    expect(screen.getByTestId('responsable-confirmar')).toBeDisabled();
+    fireEvent.click(screen.getByTestId('responsable-opcion-Rosa Vega'));
+    fireEvent.click(screen.getByTestId('responsable-confirmar'));
     expect(await screen.findByTestId('informe-fallo')).toHaveTextContent('No se pudo abrir el informe');
     expect(String((fetchMock.mock.calls.at(-1) as unknown as [string])[0])).toContain('/services/srv-318/reports/draft');
     fireEvent.click(screen.getByTestId('volver-al-servicio'));
@@ -202,7 +207,7 @@ describe('ServiceDetailWeb', () => {
     // Act
     fireEvent.click(await screen.findByTestId('pestana-detalle-map'));
     // Assert
-    expect(await screen.findByTestId('mapa-abrir')).toHaveAttribute('href', 'https://constroad.com/public/mapa');
+    expect(await screen.findByTestId('mapa-abrir')).toHaveAttribute('href', 'https://constroad.com/public/mapa/service/srv-318?section=map');
     expect(map).toHaveBeenCalledWith({ kind: 'service', clientId: 'cli-cvs', serviceId: 'srv-318' });
   });
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { CommandOutcome } from './botCommands';
-import { MAP_LINK_DAYS, MAP_LINK_FAILED, serviceMapUrl, type ServiceMapDeps } from './serviceMap';
+import { MAP_LINK_DAYS, MAP_LINK_FAILED, serviceMapPage, serviceMapUrl, type ServiceMapDeps } from './serviceMap';
 
 /** José 06/11: «si el servicio tiene mapa agrega un tab mapa». Portal's public page draws it, from a link made on the tap. */
 const URL_OF_LINK = 'https://constroad.com/public/service-report/token/service/srv-1';
@@ -50,5 +50,15 @@ describe('serviceMapUrl', () => {
   it('a link that is not https does not open', async () => {
     const plain = { responseType: 'ephemeral' as const, card: { ...card, link: { label: 'Abrir', url: 'javascript:alert(1)' } } };
     expect(await serviceMapUrl(deps({ submit: vi.fn(async () => ({ ok: true as const, outcome: answer({ response: plain }) })) }))).toEqual({ ok: false, message: MAP_LINK_FAILED });
+  });
+});
+
+describe('serviceMapPage', () => {
+  it('goes straight to the map of that service, not to the report\'s first page', () => {
+    expect(serviceMapPage('https://constroad.com/public/test/service-report/abc', 'srv-1')).toBe('https://constroad.com/public/test/service-report/abc/service/srv-1?section=map');
+  });
+
+  it('a link that already names the service keeps it', () => {
+    expect(serviceMapPage('https://constroad.com/public/test/service-report/abc/service/srv-1', 'srv-1')).toBe('https://constroad.com/public/test/service-report/abc/service/srv-1?section=map');
   });
 });

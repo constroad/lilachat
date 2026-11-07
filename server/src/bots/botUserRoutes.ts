@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { Types } from 'mongoose';
-import { HOUR_STAMP, canManageMembers, normalizePeruPhone, toInternationalPhone, type CommandScope, type GeoPoint } from '@lilachat/shared';
+import { HOUR_STAMP, canManageMembers, normalizePeruPhone, takenAtFrom, toInternationalPhone, type CommandScope, type GeoPoint } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Message } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { crearLimiteDeIntentos } from '../limiteDeIntentos.js';
@@ -102,6 +102,11 @@ export function buildBotUserRouter(): Router {
   const stampOf = (body: unknown): PhotoStampAsked | undefined => {
     const fields = (body ?? {}) as Record<string, unknown>;
     if (fields.stamp === HOUR_STAMP) return { hourOnly: true };
+    if (fields.stamp === 'taken') {
+      const takenAt = takenAtFrom(fields.takenAt, new Date());
+      const place = pointOf(fields);
+      return takenAt ? { takenAt, ...(place ? { location: place } : {}) } : { hourOnly: true };
+    }
     if (fields.stamp !== '1') return undefined;
     const location = pointOf(fields);
     return location ? { location } : {};

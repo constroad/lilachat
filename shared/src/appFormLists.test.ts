@@ -187,16 +187,21 @@ describe('limits that exclude their edge (zod .positive(); E2E 28/10: an expense
   });
 });
 
-describe('photos from the gallery, only when the app asks (E2E 28/10: a transfer receipt is a screenshot)', () => {
-  it('x-gallery on a list of photos lets the person pick one; without it, only the camera', () => {
+describe('photos from the gallery (José 06/11: «no solo tomar foto»; E2E 28/10: a transfer receipt is a screenshot)', () => {
+  it('any photo can come from the device and is stamped; x-gallery true goes plain; x-gallery false is camera only', () => {
     // Arrange
     const photos = (extra: Record<string, unknown>): AppForm => ({ id: 'gasto', title: 'Gasto', schema: { type: 'object', properties: { fotos: { type: 'array', 'x-input': 'photo', items: { type: 'string' }, ...extra } } } });
     // Act
-    const withGallery = formFields(photos({ 'x-gallery': true }))[0];
-    const cameraOnly = formFields(photos({}))[0];
+    const plain = formFields(photos({ 'x-gallery': true }))[0];
+    const stamped = formFields(photos({}))[0];
+    const cameraOnly = formFields(photos({ 'x-gallery': false }))[0];
+    const single = formFields({ id: 'tanque', title: 'Tanque', schema: { type: 'object', properties: { foto: { type: 'string', 'x-input': 'photo' } } } })[0];
     // Assert
-    expect(withGallery).toMatchObject({ kind: 'photo', multiple: true, gallery: true });
-    expect(cameraOnly).not.toHaveProperty('gallery');
+    expect(plain).toMatchObject({ kind: 'photo', multiple: true, gallery: true, plainGallery: true });
+    expect(stamped).toMatchObject({ kind: 'photo', multiple: true, gallery: true });
+    expect(stamped).not.toHaveProperty('plainGallery');
+    expect(cameraOnly).toMatchObject({ kind: 'photo', gallery: false });
+    expect(single).toMatchObject({ kind: 'photo', multiple: false, gallery: true });
   });
 });
 

@@ -1,4 +1,4 @@
-import { FORMS_LEVEL, HOUR_STAMP, commandScopePath, formSubmitFailure, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoStamp, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
+import { FORMS_LEVEL, commandScopePath, formSubmitFailure, stampFieldsOf, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoStamp, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
 import { api } from '../../api';
 import { shrinkPhotoBlob } from '../shrinkPhoto';
 
@@ -48,13 +48,7 @@ export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandI
   const body = new FormData();
   body.append('file', photo.blob, photo.name);
   // A signing's selfie: the server burns its hour and this place into it (pending 94).
-  if (stamp === HOUR_STAMP) body.append('stamp', HOUR_STAMP);
-  else if (stamp) {
-    body.append('stamp', '1');
-    body.append('lat', String(stamp.lat));
-    body.append('lng', String(stamp.lng));
-    body.append('precision', String(stamp.precision));
-  }
+  Object.entries(stampFieldsOf(stamp)).forEach(([name, value]) => body.append(name, value));
   try {
     const response = await fetch(`${commandScopePath(scope)}/commands/${commandId}/files`, { method: 'POST', headers: { Authorization: `Bearer ${jwt}` }, body });
     const data = (await response.json().catch(() => ({}))) as { fileId?: string; message?: string };

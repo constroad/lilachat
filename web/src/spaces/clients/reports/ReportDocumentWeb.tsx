@@ -15,7 +15,7 @@ import { Pill, ProgressCard, QueueCard, SectionCard } from './ReportSectionsWeb'
 import { useFieldDocument } from './useFieldDocument';
 import { useReportForms } from './useReportForms';
 
-type Props = { target: ServiceAskTarget; chatId: string; service: SpaceClientService; type: string; /** The draft a row asked to continue. */ reportId?: string; portalUrl?: string; onClose: (changed: boolean) => void };
+type Props = { /** Who the person named before creating it (José 06/11). */ responsible?: string; target: ServiceAskTarget; chatId: string; service: SpaceClientService; type: string; /** The draft a row asked to continue. */ reportId?: string; portalUrl?: string; onClose: (changed: boolean) => void };
 
 /** Kicker, title and state (design j-02 desktop): the type over the service, the pill at the right. */
 function ReportHeader({ kicker, title, report, onBack }: { kicker: string; title: string; report: FieldDocument | null; onBack: () => void }) {
@@ -93,8 +93,8 @@ function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems, onRe
 
 /** The state of the page: the document, the open tramos list and «Publicar» (no hardware back here). */
 function useReportPage(props: Props) {
-  const { target, chatId, service, type, reportId, onClose } = props;
-  const document = useFieldDocument(target.jwt, { spaceId: target.spaceId, clientId: target.clientId, chatId, serviceId: service.id, type, ...(reportId ? { reportId } : {}) });
+  const { target, chatId, service, type, reportId, responsible, onClose } = props;
+  const document = useFieldDocument(target.jwt, { spaceId: target.spaceId, clientId: target.clientId, chatId, serviceId: service.id, type, ...(reportId ? { reportId } : {}), ...(responsible ? { responsible } : {}) });
   const forms = useReportForms(target, chatId, service.id, document.actions.reload);
   const [itemsOf, setItemsOf] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);

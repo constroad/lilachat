@@ -33,7 +33,7 @@ export type FormSchemaProperty = {
   required?: string[];
   /** The list's button: «Agregar producto». Without it, «Agregar fila». */
   'x-add-label'?: string;
-  /** A list of photos that also takes them from the gallery (a transfer receipt is a screenshot); only the camera without it. */
+  /** `true`: a file with no stamp, like a transfer's screenshot; `false`: only the camera. By default the gallery is there, stamped (José 06/11). */
   'x-gallery'?: boolean;
   'x-input'?: string;
   'x-unit'?: string;
@@ -64,7 +64,7 @@ export type FormField =
   | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true; /** `x-input: place`: a text with the button that writes where the device is. */ place?: true })
   | (Base & { kind: 'number'; unit?: string; min?: number; max?: number; /** The limit itself is out: «Mayor que 0». */ minExclusive?: true; maxExclusive?: true; integer: boolean })
   | (Base & { kind: 'date'; /** `format: date | time | date-time`: a picker for the day, the hour or both (José, 24/10). */ mode: DateMode })
-  | (Base & { kind: 'photo'; /** A list (`type: array`) where each photo can be removed and taken again; otherwise one photo. */ multiple: boolean; max: number; min: number; /** `x-gallery`: also from the gallery. */ gallery?: true })
+  | (Base & { kind: 'photo'; /** A list (`type: array`) where each photo can be removed and taken again; otherwise one photo. */ multiple: boolean; max: number; min: number; /** Also from the gallery, unless the form asks for the camera alone. */ gallery?: boolean; /** `x-gallery: true`: its files go with no stamp. */ plainGallery?: true })
   | (Base & { kind: 'location' })
   /** `type: boolean`, a box to mark (José 06/11: a photo goes to the group only if asked). Left alone it does not travel. */
   | (Base & { kind: 'check' })
@@ -124,10 +124,11 @@ const labelOf = (name: string) => name.replace(/[_-]+/g, ' ').replace(/^./, (fir
 
 /** One photo, or a list of them when the schema is an array (minItems/maxItems, at most 10). */
 function photoField(base: Base, property: FormSchemaProperty): FormField {
-  if (property.type !== 'array') return { ...base, kind: 'photo', multiple: false, max: 1, min: base.required ? 1 : 0 };
+  const gallery = { gallery: property['x-gallery'] !== false, ...(property['x-gallery'] === true ? { plainGallery: true as const } : {}) };
+  if (property.type !== 'array') return { ...base, kind: 'photo', multiple: false, max: 1, min: base.required ? 1 : 0, ...gallery };
   const max = Math.min(FORM_LIMITS.photos, Math.max(1, Math.floor(property.maxItems ?? DEFAULT_MAX_PHOTOS)));
   const min = Math.min(max, Math.max(base.required ? 1 : 0, Math.floor(property.minItems ?? 0)));
-  return { ...base, required: min > 0, kind: 'photo', multiple: true, max, min, ...(property['x-gallery'] === true ? { gallery: true as const } : {}) };
+  return { ...base, required: min > 0, kind: 'photo', multiple: true, max, min, ...gallery };
 }
 
 /** A row holds short typed values only: numbers and one-line texts, none that waits for another answer. */

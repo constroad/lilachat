@@ -201,7 +201,7 @@ export function Conversation(props: {
       ) : isClientChannel && client && shownTab === 'account' && props.jwtParaEnlaces && chat.workspaceId ? (
         <ClientAccountWeb target={{ jwt: props.jwtParaEnlaces, spaceId: chat.workspaceId, clientId: client.id }} services={client.services} />
       ) : isClientChannel && client && shownTab === 'services' ? (
-        <ClientServicesPanel client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} onOpenRecord={toMessage} links={links} focusSeq={focusSeq} onFocused={clearFocus} onServiceOpen={setServiceOpen} onToChat={() => setChannelTab('chat')} />
+        <ClientServicesPanel people={(props.mencionables ?? []).map((person) => person.nombre)} client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} onOpenRecord={toMessage} links={links} focusSeq={focusSeq} onFocused={clearFocus} onServiceOpen={setServiceOpen} onToChat={() => setChannelTab('chat')} />
       ) : props.app && appTab === 'info' ? (
         <div data-testid="informacion-app" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-8">
           <div className="mx-auto max-w-3xl">
@@ -355,9 +355,9 @@ function BannerWithSession() {
 }
 
 /** «Servicios» asks for its records only while it is open. */
-function ClientServicesPanel(props: { client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; onOpenRecord: (seq: number) => void; links: ChannelLinks; focusSeq: number | null; onFocused: () => void; onServiceOpen: (open: boolean) => void; onToChat: () => void }) {
+function ClientServicesPanel(props: { people: readonly string[]; client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; onOpenRecord: (seq: number) => void; links: ChannelLinks; focusSeq: number | null; onFocused: () => void; onServiceOpen: (open: boolean) => void; onToChat: () => void }) {
   const records = useClientRecords(props.jwt, props.spaceId, props.client.id);
-  return <ClientServices client={props.client} records={records} onOpenRecord={props.onOpenRecord} focusSeq={props.focusSeq} onFocused={props.onFocused} target={props.jwt && props.spaceId ? { jwt: props.jwt, spaceId: props.spaceId, clientId: props.client.id } : null} links={props.links} onServiceOpen={props.onServiceOpen} onToChat={props.onToChat} />;
+  return <ClientServices people={props.people} client={props.client} records={records} onOpenRecord={props.onOpenRecord} focusSeq={props.focusSeq} onFocused={props.onFocused} target={props.jwt && props.spaceId ? { jwt: props.jwt, spaceId: props.spaceId, clientId: props.client.id } : null} links={props.links} onServiceOpen={props.onServiceOpen} onToChat={props.onToChat} />;
 }
 
 /**

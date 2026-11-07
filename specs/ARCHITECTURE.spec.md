@@ -15560,3 +15560,45 @@ crear el enlace al tocar la pestaña, sin guardar una dirección fija.
   responde `X-Frame-Options: SAMEORIGIN`, y un navegador bloquea una pestaña abierta después
   de esperar una respuesta.
 - Cada visita crea un enlace de un día en Portal.
+
+El enlace abre el reporte en su sección de mapa: `serviceMapPage` le agrega
+`/service/<id>?section=map`, en la pestaña del APK y en «Abrir el mapa» de la web.
+
+## Fotos de formularios: fecha, hora, lugar y galería (José 06/11)
+
+Toda foto de un formulario puede salir de la cámara o del dispositivo. Vale para
+tanque, materiales y cualquier otro formulario, con una foto o con varias.
+
+| Origen | Qué pide al server | Qué queda quemado en la foto |
+| --- | --- | --- |
+| Cámara con GPS | `lat`, `lng`, `precision` | fecha, hora y lugar, con la hora del server |
+| Cámara sin GPS a tiempo | `stamp=hour` | fecha y hora |
+| Galería con EXIF de fecha | `stamp=taken`, `takenAt` | la fecha y hora de la foto, nunca la de la subida |
+| Galería con EXIF de lugar | además `lat`, `lng` | también el lugar |
+| Web | `stamp=taken` con la fecha del archivo | fecha y hora del archivo; el navegador no da lugar |
+| `x-gallery: true` | nada | sin marca: un voucher es una captura de pantalla |
+
+- `x-gallery: false` deja solo la cámara. Sin la clave, la galería está abierta.
+- La lectura del GPS arranca al abrir la cámara (`useCameraPlace`) y la subida la
+  espera 2,5 s como máximo. La miniatura aparece antes.
+- La firma con selfie no cambia: `LiveSelfie` es su propio camino, sin galería.
+- Motor puro: `shared/src/photoStamp.ts`. Galería del APK: `galleryPick.ts`.
+
+**Límites conocidos:**
+
+- En Android el EXIF llega sin GPS mientras el APK no pida `ACCESS_MEDIA_LOCATION`.
+  Hasta un APK nuevo, una foto de galería lleva su fecha y no su lugar.
+- Un formulario no acepta video. Ninguna parte de la app comprime video: el chat
+  lo manda tal cual y Drive tiene tope de 60 s. Comprimir exige un módulo nativo y
+  un APK nuevo. Video en tanque y materiales exige además contrato con Agentes,
+  Portal e Inframaq.
+
+**Sin verificar:** el lugar leído de una foto real de galería y la marca sobre una
+foto real de teléfono. El emulador entrega una foto falsa.
+
+## Responsable antes de crear un informe (José 06/11)
+
+Al elegir un tipo que se llena aquí, la hoja pasa a un segundo paso: «¿Quién es el
+responsable?». Empieza con el nombre de quien lo crea, ofrece a la gente del canal y
+admite cualquier nombre. «Crear informe» se apaga si queda vacío. El nombre llega a
+`useFieldDocument` y `withDeviceFields` lo escribe en `responsable`.

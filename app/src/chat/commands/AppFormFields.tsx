@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, Text, TextInput, View } from 'react-native';
-import { Camera, Check, LocateFixed } from 'lucide-react-native';
-import { geoPointOf, precisionLabel, type FormField, type GeoPoint, HOUR_STAMP, type FormPhotoStamp } from '@lilachat/shared';
+import { Camera, Check, Image as ImageIcon, LocateFixed } from 'lucide-react-native';
+import { geoPointOf, precisionLabel, type FormField, type GeoPoint, type FormPhotoStamp } from '@lilachat/shared';
+import { pickFromGallery } from './galleryPick';
+import { useCameraPlace } from './useCameraPlace';
 import { Segmentado } from '../../ui/Segmentado';
 import { SearchableChoice } from './SearchableChoice';
 import { useColores } from '../../ui/tema';
@@ -156,27 +158,34 @@ export function CheckField({ field, value, error, onChange }: FieldProps<'check'
 }
 
 export function PhotoField({ field, value, error, onChange, upload, opensCamera, onCameraDismissed }: FieldProps<'photo'> & { upload: PhotoUpload; opensCamera?: boolean; onCameraDismissed?: () => void }) {
+  const place = useCameraPlace();
   const colors = useColores();
   const [preview, setPreview] = useState<string | null>(null);
   const [status, setStatus] = useState<{ busy: boolean; message?: string }>({ busy: false });
   const [aiming, setAiming] = useState(false);
   const [viewing, setViewing] = useState(false);
   const take = async () => {
-    if (await cameraAllowed()) setAiming(true);
-    else setStatus({ busy: false, message: CAMERA_DENIED });
+    if (await cameraAllowed()) {
+      place.start();
+      setAiming(true);
+    } else setStatus({ busy: false, message: CAMERA_DENIED });
   };
   // A report's photo goes straight to the camera (José 06/11): the form waits behind it, with the rest.
   useEffect(() => {
     if (opensCamera) void take();
   }, []);
-  const keep = async (shot: CameraShot) => {
+  const keep = async (shot: CameraShot, stampOf: () => Promise<FormPhotoStamp | undefined>) => {
     setAiming(false);
     setPreview(shot.uri);
     setStatus({ busy: true });
     onChange(undefined);
-    const uploaded = await upload(shot, HOUR_STAMP);
+    const uploaded = await upload(shot, await stampOf());
     if (uploaded.ok) onChange(uploaded.fileId);
     setStatus({ busy: false, ...(uploaded.ok ? {} : { message: uploaded.message }) });
+  };
+  const fromGallery = async () => {
+    const picked = await pickFromGallery(Boolean(field.plainGallery));
+    if (picked) await keep(picked.shot, async () => picked.stamp);
   };
   const dismiss = () => {
     setAiming(false);
@@ -194,9 +203,15 @@ export function PhotoField({ field, value, error, onChange, upload, opensCamera,
           {status.busy ? <ActivityIndicator size="small" color={colors.primary} /> : <Camera size={17} color={colors.primary} />}
           <Text className="text-[15px] font-semibold text-on-surface">{status.busy ? 'Subiendo…' : value ? 'Cambiar foto' : 'Tomar foto'}</Text>
         </Pressable>
+        {field.gallery ? (
+          <Pressable testID={`galeria-${field.name}`} accessibilityLabel="Elegir de la galería" disabled={status.busy} onPress={() => void fromGallery()} className="mt-2 min-h-[44px] flex-row items-center justify-center gap-2 rounded-xl border border-outline/25">
+            <ImageIcon size={17} color={colors.primary} />
+            <Text className="text-[15px] font-semibold text-on-surface">Galería</Text>
+          </Pressable>
+        ) : null}
         <ErrorLine text={status.message ?? error} />
       </View>
-      {aiming ? <FormCamera title={field.label} onShot={(shot) => void keep(shot)} onClose={dismiss} /> : null}
+      {aiming ? <FormCamera title={field.label} onShot={(shot) => void keep(shot, place.stamp)} onClose={dismiss} /> : null}
       <VisorDeFoto foto={viewing ? preview : null} titulo={field.label} onCerrar={() => setViewing(false)} />
     </View>
   );

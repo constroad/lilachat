@@ -11,7 +11,7 @@ import { dropReportPhoto, keepReportPhoto, reportQueue } from './reportQueueStor
  * the queue over it and the section's form. When the signal comes back it
  * asks Portal again, so «sin señal» goes away by itself.
  */
-export function useFieldDocument({ spaceId, clientId, chatId, serviceId, type, reportId }: ReportRef & { reportId?: string }) {
+export function useFieldDocument({ spaceId, clientId, chatId, serviceId, type, reportId, responsible }: ReportRef & { reportId?: string; responsible?: string }) {
   const personName = useRef<string | null>(null);
   useEffect(() => {
     void loadCredential().then((credential) => {
@@ -19,8 +19,8 @@ export function useFieldDocument({ spaceId, clientId, chatId, serviceId, type, r
     });
   }, []);
   const actions = useMemo(
-    () => createReportScreen({ queue: reportQueue, keepPhoto: keepReportPhoto, dropPhoto: dropReportPhoto, placeNow: devicePlaceNow, personName: () => personName.current, newKey: Crypto.randomUUID, now: () => new Date().toISOString() }, { spaceId, clientId, chatId, serviceId, type }, reportId),
-    [spaceId, clientId, chatId, serviceId, type, reportId]
+    () => createReportScreen({ queue: reportQueue, keepPhoto: keepReportPhoto, dropPhoto: dropReportPhoto, placeNow: devicePlaceNow, personName: () => responsible ?? personName.current, newKey: Crypto.randomUUID, now: () => new Date().toISOString() }, { spaceId, clientId, chatId, serviceId, type }, reportId),
+    [spaceId, clientId, chatId, serviceId, type, reportId, responsible]
   );
   const state = useSyncExternalStore(actions.subscribe, actions.snapshot);
   useEffect(() => {

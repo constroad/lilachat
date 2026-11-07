@@ -11,6 +11,9 @@ import type { CommandOutcome, CommandResponse } from './botCommands.js';
 export const MAP_LINK_DAYS = 1;
 export const MAP_LINK_FAILED = 'No se pudo abrir el mapa. Prueba de nuevo.';
 
+/** Portal's report opens on its first page; this is the section with the map (E2E 06/11: `section=map`). */
+export const serviceMapPage = (url: string, serviceId: string): string => `${url.includes('/service/') ? url : `${url}/service/${serviceId}`}?section=map`;
+
 export type ServiceMapResult = { ok: true; url: string } | { ok: false; message: string };
 export type ServiceMapDeps = {
   open: () => Promise<{ ok: true; data: CommandOutcome } | { ok: false; message?: string }>;

@@ -88,30 +88,43 @@ export function TaskDetailWeb(props: { open: OpenTask; /** Who runs the plan; an
           <button type="button" aria-label="Cerrar" onClick={props.onClose} className="grid h-9 w-9 place-items-center rounded-full hover:bg-surface-variant"><X size={18} /></button>
         </header>
         <div className="flex flex-col gap-3 overflow-y-auto p-4">
-          <dl className="divide-y divide-outline/10 rounded-2xl border border-outline/15 bg-surface text-sm">
-            <Fact label="Responsable">{item.assignee ? <span className="font-semibold">{nameOf(item.assignee)}</span> : <span className="text-on-surface-variant">Sin responsable</span>}</Fact>
-            <Fact label="Fecha límite">{item.dueAt ? <span className={`flex items-center gap-1.5 font-semibold ${state === 'overdue' ? 'text-error' : ''}`}><CalendarDays size={15} />{`${day(item.dueAt)}${state === 'overdue' ? ' (Venció)' : ''}`}</span> : <span className="text-on-surface-variant">Sin fecha</span>}</Fact>
-            {item.dueAt && item.advance?.length ? <Fact label="Recordatorios"><span data-testid="detalle-tarea-recordatorios" className="font-semibold">{advanceSummary(item.advance)}</span></Fact> : null}
-            <Fact label="Etapa"><span className="flex items-center gap-2"><span className="rounded-md border border-outline/20 px-2 py-0.5 text-[11px] font-bold text-on-surface-variant">{`ETAPA ${stage.stage}`}</span><span className="font-semibold">{stage.title}</span></span></Fact>
-          </dl>
+          <TaskFacts stage={stage} item={item} assignee={item.assignee ? nameOf(item.assignee) : null} overdue={state === 'overdue'} />
           <EvidenceWeb files={item.evidence ?? []} me={yo} canUpload={canMark} uploading={busy === 'subir'} onUpload={() => picker.current?.click()} onOpen={(file) => { props.onClose(); props.onOpenMessage(file.seq); }} onRemove={remove} />
           <input ref={picker} type="file" data-testid="input-evidencia" className="hidden" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" onChange={(event) => { upload(event.target.files?.[0]); event.target.value = ''; }} />
           <ActivityWeb item={item} nameOf={nameOf} />
           {error ? <p role="alert" className="text-sm text-error">{error}</p> : null}
         </div>
-        {canMark || canReassign ? (
-          <footer className="flex gap-3 border-t border-outline/10 p-4">
-            {canReassign ? <button type="button" data-testid="btn-tarea-reasignar" onClick={() => setEditing(true)} className="min-h-[48px] flex-1 rounded-2xl border border-outline/25 bg-surface font-semibold">Reasignar</button> : null}
-            {canMark ? (
-              <button type="button" data-testid="btn-tarea-marcar" disabled={busy === 'marcar'} onClick={toggle} className="flex min-h-[48px] flex-[1.3] items-center justify-center gap-2 rounded-2xl bg-primary font-semibold text-on-primary disabled:opacity-60">
-                {item.doneBy ? <RotateCcw size={17} /> : <Check size={17} />}{item.doneBy ? 'Reabrir' : 'Marcar como hecho'}
-              </button>
-            ) : null}
-          </footer>
-        ) : null}
+        <TaskActions canMark={canMark} canReassign={canReassign} done={Boolean(item.doneBy)} busy={busy === 'marcar'} onReassign={() => setEditing(true)} onToggle={toggle} />
       </div>
       {editing ? <TaskDialog item={item} members={checklistMembers(withoutApps(nombres, detalle?.appIds ?? NO_APPS), yo)} canRemove={false} onSave={(edit) => { setEditing(false); save(edit); }} onRemove={() => setEditing(false)} onClose={() => setEditing(false)} /> : null}
     </div>
+  );
+}
+
+/** Who, for when, how it is reminded and its stage. */
+function TaskFacts({ stage, item, assignee, overdue }: { stage: WorkStage; item: ChecklistItem; assignee: string | null; overdue: boolean }) {
+  return (
+    <dl className="divide-y divide-outline/10 rounded-2xl border border-outline/15 bg-surface text-sm">
+      <Fact label="Responsable">{assignee ? <span className="font-semibold">{assignee}</span> : <span className="text-on-surface-variant">Sin responsable</span>}</Fact>
+      <Fact label="Fecha límite">{item.dueAt ? <span className={`flex items-center gap-1.5 font-semibold ${overdue ? 'text-error' : ''}`}><CalendarDays size={15} />{`${day(item.dueAt)}${overdue ? ' (Venció)' : ''}`}</span> : <span className="text-on-surface-variant">Sin fecha</span>}</Fact>
+      {item.dueAt && item.advance?.length ? <Fact label="Recordatorios"><span data-testid="detalle-tarea-recordatorios" className="font-semibold">{advanceSummary(item.advance)}</span></Fact> : null}
+      <Fact label="Etapa"><span className="flex items-center gap-2"><span className="rounded-md border border-outline/20 px-2 py-0.5 text-[11px] font-bold text-on-surface-variant">{`ETAPA ${stage.stage}`}</span><span className="font-semibold">{stage.title}</span></span></Fact>
+    </dl>
+  );
+}
+
+/** «Reasignar» for who runs the plan and «Marcar como hecho» for whoever may; nothing for anyone else. */
+function TaskActions(props: { canMark: boolean; canReassign: boolean; done: boolean; busy: boolean; onReassign: () => void; onToggle: () => void }) {
+  if (!props.canMark && !props.canReassign) return null;
+  return (
+    <footer className="flex gap-3 border-t border-outline/10 p-4">
+      {props.canReassign ? <button type="button" data-testid="btn-tarea-reasignar" onClick={props.onReassign} className="min-h-[48px] flex-1 rounded-2xl border border-outline/25 bg-surface font-semibold">Reasignar</button> : null}
+      {props.canMark ? (
+        <button type="button" data-testid="btn-tarea-marcar" disabled={props.busy} onClick={props.onToggle} className="flex min-h-[48px] flex-[1.3] items-center justify-center gap-2 rounded-2xl bg-primary font-semibold text-on-primary disabled:opacity-60">
+          {props.done ? <RotateCcw size={17} /> : <Check size={17} />}{props.done ? 'Reabrir' : 'Marcar como hecho'}
+        </button>
+      ) : null}
+    </footer>
   );
 }
 

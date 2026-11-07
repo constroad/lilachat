@@ -137,20 +137,18 @@ export async function runReminderTick(now: Date = new Date()): Promise<{ events:
   // ─── Recordatorios ──────────────────────────────────────────────────────
   // Ordenados: los más viejos primero. Sin orden, 50 vencidos sin resolver
   // tapaban para siempre a los que tocaba avisar.
+  const dueBy = new Date(now.getTime() + 60_000);
+  // A task only rings before it is due (José 06/11: «x tiempo antes»): at its hour the reminder just ends.
+  await ReminderModel.updateMany({ active: true, startsAt: { $lte: dueBy }, taskRef: { $exists: true } }, { $set: { active: false } });
   const due = await ReminderModel.find({
     active: true,
-    startsAt: { $lte: new Date(now.getTime() + 60_000) },
+    startsAt: { $lte: dueBy },
   })
     .sort({ startsAt: 1 })
     .limit(MAX_PER_TICK)
     .lean();
 
   for (const reminder of due) {
-    // A task only rings before it is due (José 06/11: «x tiempo antes»): at its hour the reminder just ends.
-    if (reminder.taskRef) {
-      await ReminderModel.updateOne({ _id: reminder._id }, { $set: { active: false } });
-      continue;
-    }
     const decision = decidirRecordatorio({
       startsAt: reminder.startsAt,
       recurrence: reminder.recurrence,

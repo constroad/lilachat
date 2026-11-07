@@ -194,6 +194,24 @@ todavía. Por eso no hace falta un modelo nuevo: la progresiva sale de proyectar
 - **Límite conocido:** un hueco entre unidades queda dentro del tramo. La persona lo corrige
   con «Ajustar tramo».
 
+**Pantalla `o-07` (07/11), web y APK, solo para admins del espacio:**
+- Lee `discharges` del detalle del servicio (Portal `80cad301`, en vivo; Agentes todavía la deja
+  afuera hasta su deploy). `dischargesOf` es lista blanca: 100 unidades y 20 puntos como máximo,
+  placa vacía como «Sin placa» y foto sin tipo igual cuenta para el lugar.
+- El servidor de Lilachat la quita a quien no ve montos, junto con cotizaciones y cobranza. Todo
+  admin ve montos, así que el panel nunca llega vacío a un admin.
+- Panel «Avance sugerido»: «2 de 3 listas», un tramo por calle con su trabajo, progresivas,
+  volumen y «El lugar sale de las fotos de cada unidad». Debajo, «Descargas registradas» con
+  número, placa, hora de Lima, m³ y progresivas, o «Fuera de la obra», o «Sin lugar en sus fotos».
+- Sobre el mapa: un pin numerado por unidad, rojo si quedó fuera, y el tramo a confirmar resaltado.
+  Web con marcadores HTML; APK con una capa de círculos y números con la fuente del estilo.
+- **Sin botón de registrar todavía.** «Confirmar avance» y «Ajustar tramo» aparecen cuando la
+  herramienta esté publicada y su formulario pase en Lilachat. `progressEntryOf` ya arma los campos.
+- **Choque de contrato encontrado:** si `despachoIds` llega como lista de texto sin opciones,
+  `validateFormSpec` rechaza el formulario entero. Con `oneOf` o `enum` pasa como selección
+  múltiple. Se lo pasé a Agentes el 07/11.
+- **Sin verificar:** los pines y el panel con datos reales, porque Agentes aún no manda `discharges`.
+
 **Contrato en curso con Portal y Agentes (06/11):**
 - **Lectura:** campo `descargas` en la salida del detalle de servicio, solo para lectores
   de la empresa y nunca en el enlace del cliente. No cambia la huella de la herramienta,

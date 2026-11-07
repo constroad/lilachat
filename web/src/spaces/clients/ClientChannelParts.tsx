@@ -124,7 +124,7 @@ export function ClientServices(props: { /** Who can be a report's responsible. *
   return (
     <div data-testid="servicios-cliente" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-6">
       {opened && props.target ? (
-        <ServiceDetailWeb people={props.people ?? []} target={props.target} chatId={props.client.chat_id} service={opened} seesMoney={Boolean(props.client.access?.money)} seesDrive={sees.drive} driveOnly={!sees.detail} onBack={() => setOpened(null)} onToChat={props.onToChat} links={links} startOrderId={startOrderId} />
+        <ServiceDetailWeb people={props.people ?? []} target={props.target} chatId={props.client.chat_id} service={opened} seesMoney={Boolean(props.client.access?.money)} admin={Boolean(props.client.access?.admin)} seesDrive={sees.drive} driveOnly={!sees.detail} onBack={() => setOpened(null)} onToChat={props.onToChat} links={links} startOrderId={startOrderId} />
       ) : (
         <div className="mx-auto flex max-w-3xl flex-col gap-3">
           {/* José 31/10: the client's link here; an order's in its sheet, a service's on its card. */}

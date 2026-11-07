@@ -45,6 +45,8 @@ describe('workMapOf', () => {
   it('keeps only what the map draws, with works and stages in their order', () => {
     const map = parsed();
     expect(map.works.map((work) => work.name)).toEqual(['Base', 'Asfaltado', 'Bacheo']);
+    // A contracted item is no tag: its progress goes as partidaId (07/11).
+    expect(map.works.map((work) => Boolean(work.partida))).toEqual([false, false, true]);
     expect(map.stages.map((stage) => stage.id)).toEqual(['e1', 'e2']);
     expect(map.scopes[0]).toEqual({ streetId: 's1', fromM: 0, toM: 400, workIds: ['base', 'asfalto'], stageId: 'e1' });
     expect(JSON.stringify(map)).not.toContain('widthM');

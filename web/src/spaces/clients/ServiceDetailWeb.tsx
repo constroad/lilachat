@@ -121,7 +121,7 @@ function TabBody({ detail, tab, onOpen, onOpenFile }: { detail: ServiceDetail; t
   );
 }
 
-function DetailTabs({ detail, target, service, chatId, seesDrive, links, seesMoney, onReported, onCreateReport, onContinueReport, startTab, startOrderId }: { onContinueReport: (draft: { type: string; reportId: string }) => void; startOrderId?: string; detail: ServiceDetail; target: ServiceAskTarget; service: SpaceClientService; chatId: string; seesDrive: boolean; links?: ChannelLinks; seesMoney: boolean; onReported: () => void; onCreateReport: () => void; startTab: DetailTabKey }) {
+function DetailTabs({ detail, target, service, chatId, seesDrive, links, seesMoney, admin, onReported, onCreateReport, onContinueReport, startTab, startOrderId }: { onContinueReport: (draft: { type: string; reportId: string }) => void; startOrderId?: string; detail: ServiceDetail; target: ServiceAskTarget; service: SpaceClientService; chatId: string; seesDrive: boolean; links?: ChannelLinks; seesMoney: boolean; admin: boolean; onReported: () => void; onCreateReport: () => void; startTab: DetailTabKey }) {
   const [tab, setTab] = useState<ServiceTabKey>(startTab);
   // The map and the Drive draw their own; what follows only reads Portal's lists.
   const listTab: DetailTabKey = tab === 'drive' || tab === 'map' ? 'orders' : tab;
@@ -152,7 +152,7 @@ function DetailTabs({ detail, target, service, chatId, seesDrive, links, seesMon
       </div>
   );
   if (tab === 'drive') return <>{strip}<ServiceDriveWeb target={target} service={service} chatId={chatId} /></>;
-  if (tab === 'map' && links) return <>{strip}<ServiceMapWeb jwt={target.jwt} links={links} target={{ kind: 'service', clientId: target.clientId, serviceId }} title={service.name} /></>;
+  if (tab === 'map' && links) return <>{strip}<ServiceMapWeb jwt={target.jwt} links={links} target={{ kind: 'service', clientId: target.clientId, serviceId }} title={service.name} admin={admin} discharges={detail.discharges} /></>;
   return (
     <>
       {strip}
@@ -168,7 +168,7 @@ function DetailTabs({ detail, target, service, chatId, seesDrive, links, seesMon
   );
 }
 
-type ServiceDetailProps = { /** Who can be a report's responsible. */ people?: readonly string[]; target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string ; /** Its Drive joins the tabs (José 06/11). */ seesDrive?: boolean; /** A member an admin gave only the Drive. */ driveOnly?: boolean; onToChat?: () => void };
+type ServiceDetailProps = { /** Who can be a report's responsible. */ people?: readonly string[]; target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; /** A space admin: the map's suggested progress (design o-07). */ admin?: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string ; /** Its Drive joins the tabs (José 06/11). */ seesDrive?: boolean; /** A member an admin gave only the Drive. */ driveOnly?: boolean; onToChat?: () => void };
 
 /** José 06/11: an open service takes the whole conversation, and this is the way back to the chat. */
 function ServiceCrumbs(props: { service: string; onBack: () => void; onToChat?: () => void }) {
@@ -222,7 +222,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
       <ServiceCrumbs service={props.service.name} onBack={props.onBack} onToChat={props.onToChat} />
       <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
       {answer === null ? <div data-testid="detalle-cargando" className="h-48 animate-pulse rounded-xl bg-surface" /> : null}
-      {answer?.ok ? <DetailTabs onContinueReport={setReport} detail={answer.value} target={props.target} service={props.service} chatId={props.chatId} seesDrive={Boolean(props.seesDrive)} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} startOrderId={startTab === 'orders' ? props.startOrderId : undefined} /> : null}
+      {answer?.ok ? <DetailTabs onContinueReport={setReport} detail={answer.value} target={props.target} service={props.service} chatId={props.chatId} seesDrive={Boolean(props.seesDrive)} links={props.links} seesMoney={props.seesMoney} admin={Boolean(props.admin)} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} startOrderId={startTab === 'orders' ? props.startOrderId : undefined} /> : null}
       {picker ? <CreateReportDialog portalUrl={portalUrl} people={props.people ?? []} onPick={(code, responsible) => { setPicker(false); setReport({ type: code, responsible }); }} onClose={() => setPicker(false)} /> : null}
       {answer && !answer.ok ? (
         <div data-testid="detalle-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm">

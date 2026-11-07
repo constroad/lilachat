@@ -1,10 +1,11 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { Download, ExternalLink, Maximize2, X } from 'lucide-react-native';
-import { metersLabel, workMapCutDays, workMapCutLabel, workMapDayFilter, workMapHeadline, workMapStageFilter, workMapView, workMapWorkFilter, type WorkMap, type WorkMapFilter, type WorkMapStreetRow, type WorkMapView } from '@lilachat/shared';
+import { dischargePinsOf, metersLabel, stretchLinesOf, suggestDischarges, workMapCutDays, workMapCutLabel, workMapDayFilter, workMapHeadline, workMapStageFilter, workMapView, workMapWorkFilter, type DischargePin, type StretchRange, type UnitDischarge, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapStreetRow, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
+import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
 import { WorkMapSurface } from './WorkMapSurface';
 
@@ -64,13 +65,13 @@ function StreetCard(props: { street: WorkMapStreetRow }) {
   );
 }
 
-function FullMap(props: { view: WorkMapView; open: boolean; onClose: () => void }) {
+function FullMap(props: { view: WorkMapView; open: boolean; onClose: () => void; pins: DischargePin[]; stretches: WorkMapLine[] }) {
   const colors = useColores();
   const margins = useMargenes();
   return (
     <Modal visible={props.open} animationType="slide" onRequestClose={props.onClose}>
       <View className="flex-1 bg-background">
-        {props.open ? <WorkMapSurface view={props.view} moves /> : null}
+        {props.open ? <WorkMapSurface view={props.view} moves pins={props.pins} stretches={props.stretches} /> : null}
         <Pressable testID="mapa-cerrar-completo" accessibilityLabel="Cerrar el mapa" onPress={props.onClose} className="absolute right-3 h-12 w-12 items-center justify-center rounded-full bg-surface" style={{ top: margins.cabecera + 8 }}>
           <X size={22} color={colors['on-surface']} />
         </Pressable>
@@ -80,13 +81,27 @@ function FullMap(props: { view: WorkMapView; open: boolean; onClose: () => void 
 }
 
 /** The map, its figures and its streets (design `o-01-mapa-obra`), read only; «Exportar» takes out what it shows (`o-12`). */
-export function WorkMapBoard(props: { map: WorkMap; pageUrl: string; height: number; title: string }) {
+const NO_DISCHARGES: UnitDischarge[] = [];
+
+/** The units of the Control de pista over the map: the suggestion, its pins and the stretches being confirmed. */
+function useDischarges(map: WorkMap, discharges: UnitDischarge[]) {
+  const suggestion = useMemo(() => suggestDischarges(map, discharges), [map, discharges]);
+  const [ranges, setRanges] = useState<Record<string, StretchRange>>({});
+  const pins = useMemo(() => dischargePinsOf(suggestion), [suggestion]);
+  const stretches = useMemo(() => stretchLinesOf(map, suggestion.stretches, ranges), [map, suggestion, ranges]);
+  return { suggestion, ranges, pins, stretches, onRange: (streetId: string, range: StretchRange) => setRanges((before) => ({ ...before, [streetId]: range })) };
+}
+
+type BoardProps = { map: WorkMap; pageUrl: string; height: number; title: string; serviceId: string; /** Space admins only (José 06/11, Agentes enforces it too). */ admin?: boolean; discharges?: UnitDischarge[]; send?: ProgressSend };
+
+export function WorkMapBoard(props: BoardProps) {
   const { map, pageUrl, height } = props;
   const colors = useColores();
   const [filter, setFilter] = useState<WorkMapFilter>({});
   const [wide, setWide] = useState(false);
   const [exporting, setExporting] = useState(false);
   const view = useMemo(() => workMapView(map, filter), [map, filter]);
+  const pista = useDischarges(map, props.admin ? (props.discharges ?? NO_DISCHARGES) : NO_DISCHARGES);
   return (
     <View testID="mapa-servicio" className="gap-3">
       <View>
@@ -95,7 +110,7 @@ export function WorkMapBoard(props: { map: WorkMap; pageUrl: string; height: num
       </View>
       <Filters map={map} view={view} filter={filter} onFilter={setFilter} />
       <View pointerEvents="none" className="overflow-hidden rounded-2xl border border-outline/15" style={{ height }}>
-        {wide ? null : <WorkMapSurface view={view} moves={false} />}
+        {wide ? null : <WorkMapSurface view={view} moves={false} pins={pista.pins} stretches={pista.stretches} />}
       </View>
       <View className="flex-row gap-2">
         <Pressable testID="mapa-pantalla-completa" onPress={() => setWide(true)} className="min-h-[48px] flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-primary">
@@ -111,8 +126,9 @@ export function WorkMapBoard(props: { map: WorkMap; pageUrl: string; height: num
         <Download size={18} color={colors['on-surface']} />
         <Text className="text-[15px] font-semibold text-on-surface">Exportar</Text>
       </Pressable>
+      {pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null}
       {view.streets.map((street) => <StreetCard key={street.id} street={street} />)}
-      <FullMap view={view} open={wide} onClose={() => setWide(false)} />
+      <FullMap view={view} open={wide} onClose={() => setWide(false)} pins={pista.pins} stretches={pista.stretches} />
       <WorkMapExport open={exporting} map={map} filter={filter} title={props.title} pageUrl={pageUrl} onClose={() => setExporting(false)} />
     </View>
   );

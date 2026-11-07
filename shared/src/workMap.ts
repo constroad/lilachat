@@ -11,7 +11,8 @@ export type WorkMapPoint = { lat: number; lng: number };
 export type WorkMapStreet = { id: string; name: string; line: WorkMapPoint[]; lengthM: number };
 export type WorkMapScope = { streetId: string; fromM: number; toM: number; workIds: string[]; stageId?: string };
 export type WorkMapProgress = { streetId: string; workId: string; fromM: number; toM: number; date: string; rework: boolean };
-export type WorkMapWork = { id: string; name: string; color: string };
+/** `partida`: a contracted item, not a tag of the map; the progress names it `partidaId`. */
+export type WorkMapWork = { id: string; name: string; color: string; partida?: true };
 export type WorkMapStage = { id: string; name: string };
 export type WorkMap = { streets: WorkMapStreet[]; scopes: WorkMapScope[]; progress: WorkMapProgress[]; works: WorkMapWork[]; stages: WorkMapStage[] };
 
@@ -211,7 +212,7 @@ function worksFrom(rawTags: unknown, rawPartidas: unknown, scopes: WorkMapScope[
   const seen = new Set(tags.map((tag) => tag.id));
   const names = new Map(listOf(rawPartidas).map((partida) => [textOf(partida._id) || textOf(partida.id), textOf(partida.description)]));
   const partidas = [...new Set(scopes.flatMap((scope) => scope.workIds))].filter((id) => !seen.has(id));
-  return [...tags, ...partidas.map((id, index) => ({ id, name: names.get(id) || UNNAMED_WORK, color: paletteColor(index) }))];
+  return [...tags, ...partidas.map((id, index) => ({ id, name: names.get(id) || UNNAMED_WORK, color: paletteColor(index), partida: true as const }))];
 }
 
 /** What the map draws out of Portal's service detail; null when the service has no streets. */

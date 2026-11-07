@@ -148,7 +148,7 @@ function ReportAction({ target, serviceId, onAnswered }: { target: ServiceAskTar
   return <SpaceActionButton jwt={target.jwt} spaceId={target.spaceId} values={serviceValuesOf(serviceId)} onAnswered={onAnswered} actionKey={SERVICE_REPORT_ACTION} label="Generar informe de servicio" testID="generar-informe-servicio" Icon={FileText} />;
 }
 
-function DetailTabs({ detail, target, service, chatId, seesDrive, onBack, onOpenFile, links, seesMoney, onReported, onCreateReport, onContinueReport, startTab, startOrderId }: { onContinueReport: (draft: { type: string; reportId: string }) => void; startOrderId?: string; onCreateReport: () => void; startTab: DetailTabKey; detail: ServiceDetail; target: ServiceAskTarget; service: SpaceClientService; chatId: string; seesDrive: boolean; onBack: () => void; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void; links?: ChannelLinks; seesMoney: boolean; onReported: () => void }) {
+function DetailTabs({ detail, target, service, chatId, seesDrive, onBack, onOpenFile, links, seesMoney, admin, onReported, onCreateReport, onContinueReport, startTab, startOrderId }: { onContinueReport: (draft: { type: string; reportId: string }) => void; startOrderId?: string; onCreateReport: () => void; startTab: DetailTabKey; detail: ServiceDetail; target: ServiceAskTarget; service: SpaceClientService; chatId: string; seesDrive: boolean; onBack: () => void; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void; links?: ChannelLinks; seesMoney: boolean; admin: boolean; onReported: () => void }) {
   const [tab, setTab] = useState<ServiceTabKey>(startTab);
   // The map and the Drive draw their own; what follows only reads Portal's lists.
   const listTab: DetailTabKey = tab === 'drive' || tab === 'map' ? 'orders' : tab;
@@ -172,7 +172,7 @@ function DetailTabs({ detail, target, service, chatId, seesDrive, onBack, onOpen
   const more = moreInPortal(rows.length, detail.totals[listTab]);
   const strip = <TabStrip detail={detail} seesDrive={seesDrive} seesMap={Boolean(links?.can('service'))} tab={tab} onTab={setTab} />;
   if (tab === 'drive') return <>{strip}<ServiceDrive target={target} service={service} chatId={chatId} onBack={onBack} /></>;
-  if (tab === 'map' && links) return <>{strip}<ServiceMapPanel jwt={target.jwt} links={links} target={{ kind: 'service', clientId: target.clientId, serviceId }} title={service.name} /></>;
+  if (tab === 'map' && links) return <>{strip}<ServiceMapPanel jwt={target.jwt} links={links} target={{ kind: 'service', clientId: target.clientId, serviceId }} title={service.name} admin={admin} discharges={detail.discharges} /></>;
   return (
     <>
       {strip}
@@ -196,7 +196,7 @@ const Skeleton = () => (
   </View>
 );
 
-type ServiceDetailProps = { /** Who can be a report's responsible. */ people?: readonly string[]; target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string ; /** Its Drive joins the tabs (José 06/11). */ seesDrive?: boolean; /** A member an admin gave only the Drive. */ driveOnly?: boolean; onToChat?: () => void };
+type ServiceDetailProps = { /** Who can be a report's responsible. */ people?: readonly string[]; target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; /** A space admin: the map's suggested progress (design o-07). */ admin?: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string ; /** Its Drive joins the tabs (José 06/11). */ seesDrive?: boolean; /** A member an admin gave only the Drive. */ driveOnly?: boolean; onToChat?: () => void };
 
 /** José 06/11: an open service takes the whole chat, and this is the way back to it. It stays while the service scrolls. */
 function ServiceCrumbs(props: { service: string; onBack: () => void; onToChat?: () => void }) {
@@ -269,7 +269,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
     <ScrollView testID="detalle-servicio" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
       <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} />
       {answer === null ? <Skeleton /> : null}
-      {answer?.ok ? <DetailTabs onContinueReport={setReport} detail={answer.value} target={props.target} service={props.service} chatId={props.chatId} seesDrive={Boolean(props.seesDrive)} onBack={onBack} onOpenFile={files.open} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} startOrderId={startTab === 'orders' ? props.startOrderId : undefined} /> : null}
+      {answer?.ok ? <DetailTabs onContinueReport={setReport} detail={answer.value} target={props.target} service={props.service} chatId={props.chatId} seesDrive={Boolean(props.seesDrive)} onBack={onBack} onOpenFile={files.open} links={props.links} seesMoney={props.seesMoney} admin={Boolean(props.admin)} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} startOrderId={startTab === 'orders' ? props.startOrderId : undefined} /> : null}
       <CreateReportSheet visible={picker} portalUrl={portalUrl} people={props.people ?? []} onPick={(code, responsible) => { setPicker(false); setReport({ type: code, responsible }); }} onClose={() => setPicker(false)} />
       {files.notice ? <Text className="text-center text-[13px] text-error">{files.notice}</Text> : null}
       {files.viewer}

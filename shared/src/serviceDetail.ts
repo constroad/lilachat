@@ -1,4 +1,6 @@
 import { limaDayKey } from './birthdays.js';
+import type { UnitDischarge } from './workMapDischarges.js';
+import { dischargesOf } from './workMapProgress.js';
 import { billingOf, type ServiceBilling } from './serviceBilling.js';
 import type { ClientRecord } from './spaceClients.js';
 /**
@@ -51,6 +53,8 @@ export type ServiceDetail = {
   quotes?: ServiceQuote[];
   /** Same rule as quotes: only in the private view (design f-05). */
   billing?: ServiceBilling;
+  /** The units with placed photos (Portal 07/11): the map suggests the stretch they worked (design o-07). */
+  discharges?: UnitDischarge[];
   totals: DetailTotals;
 };
 export type DetailTabKey = 'orders' | 'dispatches' | 'reports';
@@ -184,6 +188,7 @@ export function serviceDetailOf(body: unknown): ServiceDetail | null {
   if (!input || !service || !text(service.id) || !orders || !dispatches || !reports) return null;
   const quotes = input.quotes === undefined ? undefined : (listOf(input.quotes, quoteOf) ?? undefined);
   const billing = billingOf(input.billing);
+  const discharges = dischargesOf(input.discharges);
   return {
     service: serviceHeadOf(service),
     orders,
@@ -191,6 +196,7 @@ export function serviceDetailOf(body: unknown): ServiceDetail | null {
     reports,
     ...(quotes ? { quotes } : {}),
     ...(billing ? { billing } : {}),
+    ...(discharges.length ? { discharges } : {}),
     totals: totalsOf(input.totals, { orders, dispatches, reports, quotes }),
   };
 }

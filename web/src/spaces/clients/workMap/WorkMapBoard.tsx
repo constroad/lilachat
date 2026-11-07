@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Download, ExternalLink, Maximize2, Minimize2 } from 'lucide-react';
-import { metersLabel, workMapCutDays, workMapCutLabel, workMapDayFilter, workMapHeadline, workMapStageFilter, workMapView, workMapWorkFilter, type WorkMap, type WorkMapFilter, type WorkMapStreetRow, type WorkMapView } from '@lilachat/shared';
+import { dischargePinsOf, metersLabel, stretchLinesOf, suggestDischarges, workMapCutDays, workMapCutLabel, workMapDayFilter, workMapHeadline, workMapStageFilter, workMapView, workMapWorkFilter, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type WorkMapStreetRow, type WorkMapView } from '@lilachat/shared';
+import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
 
 const WorkMapCanvas = lazy(() => import('./WorkMapCanvas'));
@@ -111,11 +112,27 @@ function Header(props: { view: WorkMapView; pageUrl: string; stages: ReactNode; 
 }
 
 /** The map, its figures and its streets (design `o-01-mapa-obra`), read only; «Exportar» takes out what it shows (`o-12`). */
-export function WorkMapBoard(props: { map: WorkMap; pageUrl: string; title: string }) {
+const NO_DISCHARGES: UnitDischarge[] = [];
+
+/** The units of the Control de pista over the map: the suggestion, its pins and the stretches being confirmed. */
+function useDischarges(map: WorkMap, discharges: UnitDischarge[]) {
+  const suggestion = useMemo(() => suggestDischarges(map, discharges), [map, discharges]);
+  const [ranges, setRanges] = useState<Record<string, StretchRange>>({});
+  const pins = useMemo(() => dischargePinsOf(suggestion), [suggestion]);
+  const stretches = useMemo(() => stretchLinesOf(map, suggestion.stretches, ranges), [map, suggestion, ranges]);
+  const onRange = (streetId: string, range: StretchRange) => setRanges((before) => ({ ...before, [streetId]: range }));
+  return { suggestion, ranges, onRange, pins, stretches };
+}
+
+type BoardProps = { map: WorkMap; pageUrl: string; title: string; serviceId: string; /** Space admins only (José 06/11, Agentes enforces it too). */ admin?: boolean; discharges?: UnitDischarge[]; send?: ProgressSend };
+
+export function WorkMapBoard(props: BoardProps) {
   const { map, pageUrl } = props;
   const [filter, setFilter] = useState<WorkMapFilter>({});
   const [exporting, setExporting] = useState(false);
   const view = useMemo(() => workMapView(map, filter), [map, filter]);
+  const pista = useDischarges(map, props.admin ? (props.discharges ?? NO_DISCHARGES) : NO_DISCHARGES);
+  const showsPista = pista.suggestion.units.length > 0;
   const { holder, expanded, open, close } = useFullScreen();
   const stages = map.stages.length ? (
     <select data-testid="mapa-etapa" aria-label="Etapa" value={filter.stageId ?? ''} onChange={(event) => setFilter(workMapStageFilter(map, filter, event.target.value))} className="h-9 rounded-xl border border-outline/20 bg-surface px-2 text-[13px] font-semibold text-on-surface">
@@ -138,11 +155,12 @@ export function WorkMapBoard(props: { map: WorkMap; pageUrl: string; title: stri
       <div className={expanded ? 'mt-2 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,38%)] gap-3 lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-1' : 'mt-2 space-y-3'}>
         <div className={`relative overflow-hidden rounded-xl border border-outline/15 bg-surface-variant ${expanded ? 'min-h-0' : 'h-[420px]'}`}>
           <Suspense fallback={<div data-testid="mapa-cargando-lienzo" className="absolute inset-0 animate-pulse bg-surface-variant" />}>
-            <WorkMapCanvas view={view} expanded={expanded} />
+            <WorkMapCanvas view={view} expanded={expanded} pins={pista.pins} stretches={pista.stretches} />
           </Suspense>
           <Legend view={view} />
         </div>
-        <aside className={expanded ? 'min-h-0 overflow-y-auto' : ''}>
+        <aside className={expanded ? 'min-h-0 space-y-3 overflow-y-auto' : 'space-y-3'}>
+          {showsPista ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null}
           <ProgressBar percent={view.percent} />
           <ul className="mt-3 space-y-2">{view.streets.map((street) => <StreetRow key={street.id} street={street} />)}</ul>
         </aside>

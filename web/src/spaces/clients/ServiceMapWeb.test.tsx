@@ -1,12 +1,12 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ChannelLinks, WorkMap, WorkMapView } from '@lilachat/shared';
+import type { ChannelLinks, UnitDischarge, WorkMap, WorkMapView } from '@lilachat/shared';
 import { ServiceMapWeb } from './ServiceMapWeb';
 
 const askServer = vi.hoisted(() => vi.fn());
 vi.mock('../../api', async (original) => ({ ...(await original<typeof import('../../api')>()), api: askServer }));
 vi.mock('./workMap/WorkMapCanvas', () => ({
-  default: (props: { view: WorkMapView; expanded: boolean }) => <div data-testid="mapa-lienzo" data-done={props.view.done.length} data-expanded={props.expanded} />,
+  default: (props: { view: WorkMapView; expanded: boolean; pins?: unknown[]; stretches?: unknown[] }) => <div data-testid="mapa-lienzo" data-done={props.view.done.length} data-expanded={props.expanded} data-pins={props.pins?.length ?? 0} data-stretches={props.stretches?.length ?? 0} />,
 }));
 
 /** José 06/11 asked for the literal map of the work, with a full screen mode on the web. */
@@ -25,7 +25,20 @@ const workMap: WorkMap = {
   works: [{ id: 'base', name: 'Base', color: '#c08a1e' }, { id: 'asfalto', name: 'Asfaltado', color: '#111111' }],
   stages: [{ id: 'e1', name: 'Etapa 1' }, { id: 'e2', name: 'Etapa 2' }],
 };
-const showMap = (map: ChannelLinks['map'] = vi.fn(async () => ({ ok: true as const, url }))) => render(<ServiceMapWeb jwt="jwt-1" links={linksWith(map)} target={target} title="Pavimentación Los Olivos" />);
+const showMap = (map: ChannelLinks['map'] = vi.fn(async () => ({ ok: true as const, url })), extra: { admin?: boolean; discharges?: UnitDischarge[] } = {}) => render(<ServiceMapWeb jwt="jwt-1" links={linksWith(map)} target={target} title="Pavimentación Los Olivos" {...extra} />);
+
+/** A spot on Av. Los Olivos, so many meters from its start (it runs east along -12). */
+const METERS_PER_DEGREE_LNG = 111_195 * Math.cos((12 * Math.PI) / 180);
+const onStreet = (meters: number, sideM = 0) => ({ lat: -12 + sideM / 111_195, lng: -77 + meters / METERS_PER_DEGREE_LNG });
+const discharge = (dispatchId: string, plate: string, ...spots: Array<{ lat: number; lng: number }>): UnitDischarge => ({
+  dispatchId, plate, m3: 15, arrivalAt: '2026-11-07T14:00:00.000Z',
+  points: spots.map((spot, index) => ({ kind: index ? 'vacia' : 'ingreso', ...spot, precisionM: 6, at: '2026-11-07T14:00:00.000Z' })),
+});
+const discharges = [
+  discharge('a', 'QAP-101', onStreet(10), onStreet(40)),
+  discharge('b', 'QAP-102', onStreet(40), onStreet(70)),
+  discharge('d', 'QAP-104', onStreet(50, 200)),
+];
 
 describe('ServiceMapWeb', () => {
   beforeEach(() => {
@@ -158,6 +171,28 @@ describe('ServiceMapWeb', () => {
     expect(writeText).toHaveBeenCalledWith(`${url}/service/${serviceId}?section=map`);
     fireEvent.click(screen.getByTestId('mapa-exportar-cerrar'));
     expect(screen.queryByTestId('mapa-exportar-panel')).not.toBeInTheDocument();
+  });
+
+  it('an admin sees the progress the units suggest, with a pin per unit (design o-07)', async () => {
+    // Act
+    showMap(undefined, { admin: true, discharges });
+    // Assert
+    const canvas = await screen.findByTestId('mapa-lienzo');
+    expect(screen.getByTestId('avance-listas')).toHaveTextContent('2 de 3 listas');
+    expect(within(screen.getByTestId('tramo-sugerido-s1')).getByText('+60 m')).toBeInTheDocument();
+    expect(screen.getByTestId('avance-progresivas')).toHaveTextContent('0+010 a 0+070');
+    expect(screen.getByTestId('descarga-d')).toHaveTextContent('Fuera de la obra');
+    expect(canvas).toHaveAttribute('data-pins', '3');
+    expect(canvas).toHaveAttribute('data-stretches', '1');
+    // Until Portal's tool is on, nothing pretends to register.
+    expect(screen.queryByTestId('avance-confirmar')).not.toBeInTheDocument();
+  });
+
+  it('a member who is not an admin does not see the suggestion', async () => {
+    showMap(undefined, { admin: false, discharges });
+    const canvas = await screen.findByTestId('mapa-lienzo');
+    expect(screen.queryByTestId('avance-sugerido')).not.toBeInTheDocument();
+    expect(canvas).toHaveAttribute('data-pins', '0');
   });
 
   it('a service without streets says so', async () => {

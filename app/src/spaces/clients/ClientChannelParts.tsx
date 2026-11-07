@@ -131,7 +131,7 @@ export function ClientServices(props: { /** The channel hides its chrome while a
   const { services, counts } = filterServices(props.client.services, { query, filter });
   const grouped = props.records ? recordsByService(props.records) : null;
   const sees = serviceAccessOf(props.client.access);
-  if (opened && props.target) return <ServiceDetailView people={[...props.members.values()]} target={props.target} chatId={props.client.chat_id} service={opened} seesMoney={Boolean(props.client.access?.money)} seesDrive={sees.drive} driveOnly={!sees.detail} onToChat={props.onToChat} onBack={close} links={links} startOrderId={startOrderId} />;
+  if (opened && props.target) return <ServiceDetailView people={[...props.members.values()]} target={props.target} chatId={props.client.chat_id} service={opened} seesMoney={Boolean(props.client.access?.money)} admin={Boolean(props.client.access?.admin)} seesDrive={sees.drive} driveOnly={!sees.detail} onToChat={props.onToChat} onBack={close} links={links} startOrderId={startOrderId} />;
   const total = props.client.services.length;
   return (
     <ScrollView testID="servicios-cliente" contentContainerStyle={{ padding: 16, gap: 12 }}>

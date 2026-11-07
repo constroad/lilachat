@@ -1,0 +1,161 @@
+import { metersLabel, sliceLine, stationLabel, type WorkMap, type WorkMapLine, type WorkMapWork } from './workMap.js';
+import type { DischargePoint, DischargeSuggestion, PlacedDischarge, SuggestedStretch, UnitDischarge } from './workMapDischarges.js';
+
+/**
+ * From Portal's units to the progress the person confirms (design `o-07`, contract of 07/11).
+ * Reads `discharges` of the service detail by a whitelist, and fills `registrar_avance_de_obra`.
+ * The date is not sent: Portal takes the day the units worked from their photos. PURE.
+ */
+export const PROGRESS_SHORTCUT = 'registrar_avance_de_obra';
+export const NO_PLATE = 'Sin placa';
+const UNITS_MAX = 100;
+const POINTS_MAX = 20;
+const ENTRY_UNITS_MAX = 30;
+const NOTE_MAX = 280;
+const ID_MAX = 64;
+const LAT_MAX = 90;
+const LNG_MAX = 180;
+/** MapLibre paints plain colors: the suggested stretch in the accent of the design. */
+const STRETCH_COLOR = '#7c3aed';
+
+type Raw = Record<string, unknown>;
+const record = (value: unknown): Raw | null => (value && typeof value === 'object' && !Array.isArray(value) ? (value as Raw) : null);
+const number = (value: unknown): number | null => (typeof value === 'number' && Number.isFinite(value) ? value : null);
+const isoOf = (value: unknown): string | null => (typeof value === 'string' && !Number.isNaN(Date.parse(value)) ? value : null);
+
+function pointOf(value: unknown): DischargePoint[] {
+  const raw = record(value);
+  const [lat, lng, at] = [number(raw?.lat), number(raw?.lng), isoOf(raw?.at)];
+  if (!raw || lat === null || lng === null || !at || Math.abs(lat) > LAT_MAX || Math.abs(lng) > LNG_MAX) return [];
+  const precisionM = number(raw.precision_m);
+  return [{ kind: typeof raw.kind === 'string' ? raw.kind : '', lat, lng, ...(precisionM !== null && precisionM >= 0 ? { precisionM } : {}), at }];
+}
+
+function unitOf(value: unknown): UnitDischarge[] {
+  const raw = record(value);
+  const dispatchId = typeof raw?.dispatch_id === 'string' ? raw.dispatch_id.trim().slice(0, ID_MAX) : '';
+  if (!raw || !dispatchId) return [];
+  const plate = typeof raw.plate === 'string' && raw.plate.trim() ? raw.plate.trim() : NO_PLATE;
+  const m3 = number(raw.m3);
+  const points = (Array.isArray(raw.points) ? raw.points : []).flatMap(pointOf).slice(0, POINTS_MAX);
+  return [{ dispatchId, plate, m3: m3 !== null && m3 >= 0 ? m3 : null, arrivalAt: isoOf(raw.arrival_at), points }];
+}
+
+/** `discharges` of the service detail; Portal leaves the key out when no unit has a placed photo. */
+export const dischargesOf = (value: unknown): UnitDischarge[] => (Array.isArray(value) ? value.flatMap(unitOf).slice(0, UNITS_MAX) : []);
+
+export type ProgressEntry = {
+  servicioId: string;
+  calleId: string;
+  etiquetaId?: string;
+  partidaId?: string;
+  desdeM: number;
+  hastaM: number;
+  despachoIds: string[];
+  /** The device's UUID: a resend after a lost answer is the same entry, and Portal says `ya_marcada`. */
+  entradaId: string;
+  /** Only for the audit: the date comes from the photos. */
+  horaDelEquipo: string;
+  nota?: string;
+};
+export type ProgressDraft = {
+  serviceId: string;
+  stretch: SuggestedStretch;
+  fromM: number;
+  toM: number;
+  work: WorkMapWork | undefined;
+  entryId: string;
+  now: Date;
+  streetLengthM: number;
+  note?: string;
+};
+
+function refusalOf(draft: ProgressDraft, fromM: number, toM: number): string | null {
+  if (!draft.work) return 'Elige el trabajo que se hizo en el tramo.';
+  if (toM <= fromM) return 'El final del tramo tiene que ir después del inicio.';
+  if (fromM < 0 || toM > Math.ceil(draft.streetLengthM)) return `El tramo pasa el largo de la calle (${metersLabel(draft.streetLengthM)}).`;
+  if (draft.stretch.dispatchIds.length === 0) return 'Este tramo no tiene unidades que lo respalden.';
+  if (draft.stretch.dispatchIds.length > ENTRY_UNITS_MAX) return `Máximo ${ENTRY_UNITS_MAX} unidades por avance.`;
+  return null;
+}
+
+export function progressEntryOf(draft: ProgressDraft): { ok: true; entry: ProgressEntry } | { ok: false; message: string } {
+  const [fromM, toM] = [Math.round(draft.fromM), Math.round(draft.toM)];
+  const refusal = refusalOf(draft, fromM, toM);
+  if (refusal || !draft.work) return { ok: false, message: refusal ?? '' };
+  const note = draft.note?.trim().slice(0, NOTE_MAX);
+  return { ok: true, entry: {
+    servicioId: draft.serviceId,
+    calleId: draft.stretch.streetId,
+    ...(draft.work.partida ? { partidaId: draft.work.id } : { etiquetaId: draft.work.id }),
+    desdeM: fromM,
+    hastaM: toM,
+    despachoIds: [...draft.stretch.dispatchIds],
+    entradaId: draft.entryId,
+    horaDelEquipo: draft.now.toISOString(),
+    ...(note ? { nota: note } : {}),
+  } };
+}
+
+/** Peru keeps -05:00 all year: the hour a person on site read. */
+const LIMA_OFFSET_MS = 5 * 60 * 60 * 1000;
+const HOUR_START = 11;
+const HOUR_END = 16;
+const hourInLima = (iso: string) => new Date(Date.parse(iso) - LIMA_OFFSET_MS).toISOString().slice(HOUR_START, HOUR_END);
+const volumeLabel = (m3: number) => `${String(m3).replace('.', ',')} m³`;
+
+export type DischargeRow = { dispatchId: string; number: number; title: string; line: string; state: PlacedDischarge['state'] };
+
+function placeOf(placed: PlacedDischarge): string {
+  if (placed.state === 'placed') return `${stationLabel(placed.fromM)} a ${stationLabel(placed.toM)}`;
+  return placed.state === 'outside' ? 'Fuera de la obra' : 'Sin lugar en sus fotos';
+}
+
+/** The units as design o-07 lists them, in the order they arrived. */
+export const dischargeRowsOf = ({ units }: Pick<DischargeSuggestion, 'units'>): DischargeRow[] =>
+  units.map((placed, index) => {
+    const { unit } = placed;
+    const parts = [unit.arrivalAt ? hourInLima(unit.arrivalAt) : null, unit.m3 === null ? null : volumeLabel(unit.m3), placeOf(placed)];
+    return { dispatchId: unit.dispatchId, number: index + 1, title: `Unidad ${index + 1} · ${unit.plate}`, line: parts.filter(Boolean).join(' · '), state: placed.state };
+  });
+
+/** The works planned on a street: the progress of the stretch is one of them. */
+export const stretchWorksOf = (map: Pick<WorkMap, 'scopes' | 'works'>, streetId: string): WorkMapWork[] => {
+  const ids = new Set(map.scopes.filter((scope) => scope.streetId === streetId).flatMap((scope) => scope.workIds));
+  return map.works.filter((work) => ids.has(work.id));
+};
+
+export type DischargePin = { id: string; label: string; lat: number; lng: number; outside: boolean };
+
+/** A numbered pin where each unit emptied; the one outside the work stands apart. */
+export const dischargePinsOf = ({ units }: Pick<DischargeSuggestion, 'units'>): DischargePin[] =>
+  units.flatMap((placed, index) => {
+    const spot = placed.state === 'outside' ? placed.point : placed.unit.points.at(-1);
+    return spot ? [{ id: placed.unit.dispatchId, label: String(index + 1), lat: spot.lat, lng: spot.lng, outside: placed.state === 'outside' }] : [];
+  });
+
+/** The stretch about to be confirmed, as a line the canvas draws over the street. */
+export function stretchLineOf(map: Pick<WorkMap, 'streets'>, streetId: string, fromM: number, toM: number): WorkMapLine | null {
+  const street = map.streets.find((one) => one.id === streetId);
+  const coordinates = street ? sliceLine(street.line, fromM, toM).map((point): [number, number] => [point.lng, point.lat]) : [];
+  return coordinates.length >= 2 ? { streetId, color: STRETCH_COLOR, coordinates, fromM, toM } : null;
+}
+
+/** MapLibre paints plain colors: a unit outside the work in red. */
+const OUTSIDE_COLOR = '#dc2626';
+
+/** The pins as a MapLibre source: the APK draws them as a circle and its number. */
+export const dischargePinCollection = (pins: DischargePin[]) => ({
+  type: 'FeatureCollection' as const,
+  features: pins.map((pin) => ({ type: 'Feature' as const, properties: { label: pin.label, color: pin.outside ? OUTSIDE_COLOR : STRETCH_COLOR }, geometry: { type: 'Point' as const, coordinates: [pin.lng, pin.lat] as [number, number] } })),
+});
+
+export type StretchRange = { fromM: number; toM: number };
+
+/** Every suggested stretch over its street, with the range the person adjusted when there is one. */
+export const stretchLinesOf = (map: Pick<WorkMap, 'streets'>, stretches: SuggestedStretch[], ranges: Record<string, StretchRange>): WorkMapLine[] =>
+  stretches.flatMap((stretch) => {
+    const range = ranges[stretch.streetId] ?? stretch;
+    const line = stretchLineOf(map, stretch.streetId, range.fromM, range.toM);
+    return line ? [line] : [];
+  });

@@ -26,6 +26,18 @@ describe('serviceDetailOf', () => {
     expect(detail.totals).toEqual({ orders: 148, dispatches: 1, reports: 1 });
   });
 
+  it('brings the units placed by their photos for the map, and nothing when Portal leaves the key out (07/11)', () => {
+    // Arrange
+    const discharges = [{ dispatch_id: 'd1', plate: '', m3: 15, arrival_at: '2026-11-07T14:00:00.000Z', points: [{ kind: 'ingreso', lat: -12.05, lng: -77.03, precision_m: 6, at: '2026-11-07T14:00:00.000Z' }] }];
+    // Act
+    const placed = serviceDetailOf({ ...body, discharges })!;
+    const none = serviceDetailOf(body)!;
+    // Assert
+    expect(placed.discharges).toEqual([{ dispatchId: 'd1', plate: 'Sin placa', m3: 15, arrivalAt: '2026-11-07T14:00:00.000Z', points: [{ kind: 'ingreso', lat: -12.05, lng: -77.03, precisionM: 6, at: '2026-11-07T14:00:00.000Z' }] }]);
+    expect(none.discharges).toBeUndefined();
+    expect(serviceDetailOf({ ...body, discharges: [] })!.discharges).toBeUndefined();
+  });
+
   it('is null without a service or without the lists', () => {
     expect(serviceDetailOf({ orders: [] })).toBeNull();
     expect(serviceDetailOf(null)).toBeNull();

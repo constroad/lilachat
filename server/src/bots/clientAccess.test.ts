@@ -33,7 +33,8 @@ const auth = (userId: Types.ObjectId) => ({ Authorization: `Bearer ${signSession
 const base = () => `/api/workspaces/${spaceId}/clients/cli-cvs`;
 const setAccess = (who: Types.ObjectId, target: Types.ObjectId, body: object) => request(app).put(`${base()}/access/${target}`).set(auth(who)).send(body);
 const myAccess = async (who: Types.ObjectId) => (await request(app).get(`/api/workspaces/${spaceId}/clients`).set(auth(who)).expect(200)).body.clients[0].access;
-const DETAIL = { service: { id: 'srv-318', name: 'Pavimentación' }, orders: [], dispatches: [], reports: [], quotes: [{ id: 'q1', code: '313', total: 1000, status_label: 'Borrador', tone: 'neutral' }], billing: { total: 1000, collected: 0, pending: 1000, items: [], payments: [] }, totals: { orders: 0, dispatches: 0, reports: 0, quotes: 1 } };
+const DISCHARGES = [{ dispatch_id: 'd1', plate: 'QAP-101', m3: 15, points: [{ kind: 'ingreso', lat: -12.05, lng: -77.03, precision_m: 6, at: '2026-11-07T14:00:00.000Z' }] }];
+const DETAIL = { service: { id: 'srv-318', name: 'Pavimentación' }, orders: [], dispatches: [], reports: [], quotes: [{ id: 'q1', code: '313', total: 1000, status_label: 'Borrador', tone: 'neutral' }], billing: { total: 1000, collected: 0, pending: 1000, items: [], payments: [] }, totals: { orders: 0, dispatches: 0, reports: 0, quotes: 1 }, discharges: DISCHARGES };
 
 beforeAll(async () => {
   mongo = await startTestMongo();
@@ -146,6 +147,9 @@ describe('money (José: «la cuenta y temas sensibles de plata y cotizaciones so
     // Assert
     expect(refused.status).toBe(404);
     expect(detail.quotes).toBeUndefined();
+    // The units of the Control de pista feed the progress only admins confirm (design o-07, 07/11).
+    expect(detail.discharges).toBeUndefined();
+    expect(marked.discharges).toHaveLength(1);
     expect(marked.quotes).toHaveLength(1);
     expect(marked.billing.total).toBe(1000);
   });

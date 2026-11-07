@@ -29,6 +29,13 @@ export function ServiceMapWeb(props: { jwt: string; links: ChannelLinks; target:
       </div>
     );
   }
-  if (!state.map) return <p data-testid="mapa-vacio" className="rounded-2xl border border-outline/15 bg-surface p-4 text-[14px] text-on-surface-variant">{WORK_MAP_EMPTY}</p>;
+  if (!state.map) {
+    return (
+      <div data-testid="mapa-vacio" className="rounded-2xl border border-outline/15 bg-surface p-4 text-[14px] text-on-surface-variant">
+        {WORK_MAP_EMPTY}
+        <a data-testid="mapa-abrir" href={pageOf(state.url)} target="_blank" rel="noopener noreferrer" className="mt-2 block text-[13px] font-semibold text-primary">Abrir en Portal</a>
+      </div>
+    );
+  }
   return <WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} />;
 }

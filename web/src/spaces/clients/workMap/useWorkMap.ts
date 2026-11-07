@@ -25,7 +25,7 @@ export function useWorkMap(jwt: string, links: ChannelLinks, target: ServiceTarg
     const link = await latestLinks.current.map({ kind: 'service', clientId, serviceId });
     if (!link.ok) return answer({ kind: 'failed', message: link.message });
     const reply = await api<{ map: WorkMap | null }>('/service-work-map', { jwt, body: { link: link.url, serviceId } });
-    return answer(reply.ok ? { kind: 'ready', url: link.url, map: reply.data.map } : { kind: 'failed', message: reply.message ?? WORK_MAP_FAILED, url: link.url });
+    return answer(reply.ok ? { kind: 'ready', url: link.url, map: reply.data.map ?? null } : { kind: 'failed', message: reply.message ?? WORK_MAP_FAILED, url: link.url });
   }, [jwt, clientId, serviceId]);
   useEffect(() => {
     void load();

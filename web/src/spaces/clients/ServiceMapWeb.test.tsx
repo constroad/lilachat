@@ -9,7 +9,7 @@ vi.mock('./workMap/WorkMapCanvas', () => ({
   default: (props: { view: WorkMapView; expanded: boolean }) => <div data-testid="mapa-lienzo" data-done={props.view.done.length} data-expanded={props.expanded} />,
 }));
 
-/** José 06/11: «el mapa literal de la obra», y en la web «un modo pantalla completa». */
+/** José 06/11 asked for the literal map of the work, with a full screen mode on the web. */
 const serviceId = '6aedcc3a2f5e395dca260f16';
 const target = { kind: 'service' as const, clientId: 'cli-1', serviceId };
 const url = `https://constroad.com/public/test/service-report/${'a'.repeat(64)}`;
@@ -99,6 +99,7 @@ describe('ServiceMapWeb', () => {
     askServer.mockResolvedValue({ ok: true, data: { map: null } });
     showMap();
     expect(await screen.findByTestId('mapa-vacio')).toHaveTextContent('todavía no tiene calles');
+    expect(screen.getByTestId('mapa-abrir')).toHaveAttribute('href', `${url}/service/${serviceId}?section=map`);
   });
 
   it('a link that fails says so and can be tried again', async () => {

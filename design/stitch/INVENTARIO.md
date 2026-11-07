@@ -242,3 +242,24 @@ A mano, en `.stitch-work/out/winks/r02nov-ataque-hand.html` (después de las hoj
 | `j-05-pista-unidades-escritorio.png` | J · Unidades del control de pista · Escritorio (`screens/59c8ae10675840b9b323c8fd42f286cf`) · v2 para personal de campo (v1 de oficina descartada); pendiente de la mirada de José |
 | `j-06-pista-unidad.png` | J · Una unidad del control de pista · Móvil (`screens/8106fbe2bffd4f6ab8a44d42f08e33ae`) · v2 para personal de campo (v1 de oficina descartada); pendiente de la mirada de José |
 | `j-06-pista-unidad-escritorio.png` | J · Una unidad del control de pista · Escritorio (`screens/f59d92ce9973433daefe085fdddc1264`) · v2 para personal de campo (v1 de oficina descartada); pendiente de la mirada de José |
+
+## Mapa de la obra (José 06/11, `specs/MAPA-OBRA.spec.md`)
+
+Proyecto `15540754270713720465`. Cada pantalla en móvil, tablet y escritorio; los ids están en `registro.jsonl`.
+
+| Slug | Pantalla |
+| --- | --- |
+| `o-01-mapa-obra` | Mapa de la obra |
+| `o-02-mapa-definir` | Definir el área de trabajo |
+| `o-03-mapa-calle` | Una calle y sus tramos |
+| `o-04-mapa-etapas` | Etapas de la obra |
+| `o-05-mapa-trabajos` | Trabajos sobre la obra |
+| `o-06-mapa-avance` | Registrar avance |
+| `o-07-mapa-pista` | Avance desde el Control de pista |
+| `o-08-mapa-parcial` | Avance parcial para el cliente |
+| `o-09-mapa-cliente` | Avance de la obra para el cliente |
+| `o-10-mapa-vacio` | Servicio sin mapa |
+| `o-12-mapa-exportar` | Exportar y compartir la obra |
+| `o-13-mapa-caminar` | Caminar la calle con GPS |
+
+El cliente del enlace de servicio vive en el proyecto `773748608093847613`: `o-11-reporte-cliente-mapa`.

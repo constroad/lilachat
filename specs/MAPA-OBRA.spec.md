@@ -77,6 +77,8 @@ en móvil, tablet y escritorio.
 | `o-08-mapa-parcial` | Avance parcial y enlace | Ingeniero |
 | `o-09-mapa-cliente` | Vista del cliente | Cliente |
 | `o-10-mapa-vacio` | Servicio sin mapa | Todos |
+| `o-12-mapa-exportar` | KMZ, plano PDF, enlace e importar | Ingeniero |
+| `o-13-mapa-caminar` | Caminar la calle con GPS | Ingeniero |
 
 La pantalla del cliente en el enlace de servicio vive en otro proyecto de Stitch:
 `773748608093847613`, con el slug `o-11-reporte-cliente-mapa` en `registro.jsonl`.
@@ -86,6 +88,19 @@ de tiempo y el panel por calle o por capa.
 La sección 5 de `1f9365f6e58f422bb3a71a759b1a2e7f` sigue siendo el esquema lineal en
 el archivo guardado. `edit_screens` respondió éxito y mandó una operación de sesión,
 pero `get_screen` devuelve el mismo HTML. Por eso se generó aparte.
+
+## 4-bis. GPS, mapa base y Google Earth en Portal
+
+- **Mapa base:** OpenFreeMap, sin token, con datos de OSM. Sin señal usa un pack raster.
+- **Pegado a la vía:** OSRM `/match`. Si se aleja más de 25 m del trazo, se guarda lo
+  dibujado. No está verificado qué valor tiene `OSRM_BASE_URL` en producción.
+- **Calle que el mapa no conoce:** solo se traza a mano o se camina.
+- **Caminar:** descarta lecturas de más de 25 m de error, menos de 5 m de movimiento y
+  saltos de más de 120 m. Muestra precisión, largo y lecturas descartadas.
+- **Exportar KMZ:** carpetas Ejecutado, por trabajo, y Pendiente, a una fecha. El color de
+  KML es `AABBGGRR` y las coordenadas van `lng,lat`. Hay que escapar el XML.
+- **Importar KMZ o KML: no existe.** `work-street.source` tiene `import`, pero no hay
+  pantalla ni API. En `o-12` es una mejora nueva, no algo que ya funcione.
 
 ## 5. Lo que falta decidir
 

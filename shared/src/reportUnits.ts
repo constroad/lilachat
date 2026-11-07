@@ -1,3 +1,4 @@
+import { CTL_PIS_EXTRA_PHOTO, MAX_EXTRA_PHOTOS_PER_UNIT } from '@constroad/shared/informes';
 import type { FieldDocument, FormSection, RepeatItem, RepeatSection, SectionPath } from './fieldDocument.js';
 import { sectionPhotos, type SectionPhoto } from './reportSaves.js';
 import type { StateBadge } from './reportCreation.js';
@@ -87,10 +88,9 @@ export function unitBadgeOf(item: RepeatItem): StateBadge {
   return line ? { ...FINISHED_BADGE, label: line } : FINISHED_BADGE;
 }
 
-/** The kind of the optional photos of a unit (José 07/11, Portal: `foto-adicional`, its own tool). */
-export const EXTRA_PHOTO_KIND = 'adicional';
-/** Portal refuses the 11th. */
-export const EXTRA_PHOTOS_MAX = 10;
+/** The optional photos of a unit and their cap live with Portal's rules (José 07/11: «muévelo a shared»). */
+export const EXTRA_PHOTO_KIND = CTL_PIS_EXTRA_PHOTO;
+export const EXTRA_PHOTOS_MAX = MAX_EXTRA_PHOTOS_PER_UNIT;
 export type ExtraPhotos = { section: FormSection; photos: SectionPhoto[]; full: boolean };
 export const ADD_EXTRA_PHOTO = 'Agregar foto';
 /** The strip's title (design j-07b): «Adicionales · opcional (3)». */

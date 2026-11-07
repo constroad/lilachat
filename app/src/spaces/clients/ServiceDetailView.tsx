@@ -148,6 +148,13 @@ function ReportAction({ target, serviceId, onAnswered }: { target: ServiceAskTar
   return <SpaceActionButton jwt={target.jwt} spaceId={target.spaceId} values={serviceValuesOf(serviceId)} onAnswered={onAnswered} actionKey={SERVICE_REPORT_ACTION} label="Generar informe de servicio" testID="generar-informe-servicio" Icon={FileText} />;
 }
 
+/** The report's PDF made on demand from its sheet; nothing for a sheet that has its PDF already. */
+function pdfActionOf(sheet: ReturnType<typeof detailSheet>, reportPdf: ReturnType<typeof useReportPdf>) {
+  const asked = sheet?.pdfOnDemand;
+  if (!sheet || !asked) return undefined;
+  return { asking: reportPdf.asking, message: reportPdf.message, onAsk: () => void reportPdf.ask(asked, `${sheet.title} · PDF`) };
+}
+
 function DetailTabs({ detail, target, service, chatId, seesDrive, onBack, onOpenFile, links, seesMoney, admin, onReported, onCreateReport, onContinueReport, startTab, startOrderId }: { onContinueReport: (draft: { type: string; reportId: string }) => void; startOrderId?: string; onCreateReport: () => void; startTab: DetailTabKey; detail: ServiceDetail; target: ServiceAskTarget; service: SpaceClientService; chatId: string; seesDrive: boolean; onBack: () => void; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void; links?: ChannelLinks; seesMoney: boolean; admin: boolean; onReported: () => void }) {
   const [tab, setTab] = useState<ServiceTabKey>(startTab);
   // The map and the Drive draw their own; what follows only reads Portal's lists.
@@ -183,7 +190,7 @@ function DetailTabs({ detail, target, service, chatId, seesDrive, onBack, onOpen
       </View>
       {tab === 'orders' ? <OrphanDispatches detail={detail} onOpen={openDispatch} onOpenFile={onOpenFile} /> : null}
       {more ? <Text className="text-center text-[12px] text-on-surface-variant">{`${more} · el resto está en el Portal`}</Text> : null}
-      <RecordSheet sheet={sheet} onClose={close} onOpenFile={onOpenFile} pdf={sheet?.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!, `${sheet.title} · PDF`) } : undefined} onOpenRelated={openDispatch} action={orderLinkAction(links, top, target)} />
+      <RecordSheet sheet={sheet} onClose={close} onOpenFile={onOpenFile} pdf={pdfActionOf(sheet, reportPdf)} onOpenRelated={openDispatch} action={orderLinkAction(links, top, target)} />
       {detail.service.url ? <PortalLink url={detail.service.url} label="Abrir en el Portal" testID="abrir-servicio-portal" /> : null}
     </>
   );

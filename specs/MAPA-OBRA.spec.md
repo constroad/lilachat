@@ -138,6 +138,14 @@ pero `get_screen` devuelve el mismo HTML. Por eso se generó aparte.
   completo» lo abre a toda la pantalla. Es código nativo: un OTA de este commit no llega
   a nadie hasta instalar el APK nuevo, porque la huella del `runtimeVersion` cambia.
 
+**Estado al 06/11:** APK 0.1.181 (182) publicado en LilaStore, runtime `6176e3ea`. La web y
+el APK recorridos en Test con el servicio `6aedcc3a…`: mapa, scroll sobre él, mapa completo,
+cierre y giro. Smoke limpio sobre ese APK.
+
+**Sin verificar:** un teléfono real, una obra con tramos y avance reales, el ancho de móvil en
+la web, y los mosaicos sin señal. La calle QA no tiene tramos, así que las líneas de avance y
+los filtros solo están probados con datos de prueba.
+
 ## 7. Lo que falta decidir
 
 1. **Cómo entra Lilachat a escribir:** hoy nada de `work-*` pasa por herramientas. Hace

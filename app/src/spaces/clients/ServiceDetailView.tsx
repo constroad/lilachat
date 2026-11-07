@@ -159,7 +159,9 @@ function pdfActionOf(sheet: ReturnType<typeof detailSheet>, reportPdf: ReturnTyp
 
 function DetailTabs({ detail, target, service, chatId, seesDrive, onBack, onOpenFile, links, seesMoney, admin, onReported, onCreateReport, onContinueReport, startTab, startOrderId, onTabChange }: { onContinueReport: (draft: { type: string; reportId: string }) => void; startOrderId?: string; onCreateReport: () => void; startTab: DetailTabKey; /** The map hides the service's head (o-01). */ onTabChange?: (tab: ServiceTabKey) => void; detail: ServiceDetail; target: ServiceAskTarget; service: SpaceClientService; chatId: string; seesDrive: boolean; onBack: () => void; onOpenFile: (file: ViewableFile, siblings?: readonly ViewableFile[]) => void; links?: ChannelLinks; seesMoney: boolean; admin: boolean; onReported: () => void }) {
   const [tab, setTab] = useState<ServiceTabKey>(startTab);
-  useEffect(() => onTabChange?.(tab), [tab, onTabChange]);
+  useEffect(() => {
+    onTabChange?.(tab);
+  }, [tab, onTabChange]);
   // The map and the Drive draw their own; what follows only reads Portal's lists.
   const listTab: DetailTabKey = tab === 'drive' || tab === 'map' ? 'orders' : tab;
   const serviceId = service.id;

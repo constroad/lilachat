@@ -1,18 +1,20 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
-import { Save, Undo2, X } from 'lucide-react-native';
-import { DRAW_MODES, EMPTY_STREET, metersLabel, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint } from '@lilachat/shared';
+import { Footprints, Save, Square, Undo2, X } from 'lucide-react-native';
+import { DRAW_MODES, EMPTY_STREET, metersLabel, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, walkedDraft, walkHint, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint } from '@lilachat/shared';
 import { useCurrentLocation } from '../../../chat/location/useCurrentLocation';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
 import { WorkMapSurface } from './WorkMapSurface';
 import type { StreetSend } from './workProgressSender';
+import { useGpsWalk } from './useGpsWalk';
 
 const NO_STREETS: WorkMap = { streets: [], scopes: [], progress: [], works: [], stages: [] };
 const FIELD = 'mt-1 h-12 rounded-xl border border-outline/25 bg-background px-3 text-[15px] text-on-surface';
 const LABEL = 'text-[12px] font-semibold uppercase text-on-surface-variant';
 const LENGTH_HINT = 'Medido en el mapa';
+const GPS_DENIED = 'Lilachat no tiene permiso de ubicación. Actívalo en Ajustes o dibuja la calle de otra forma.';
 
 type EditorProps = { open: boolean; title: string; map: WorkMap | null; send: StreetSend; onClose: () => void; onSaved: (message: string) => void };
 
@@ -36,6 +38,8 @@ export function WorkStreetEditor(props: EditorProps) {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const view = useMemo(() => workMapView(props.map ?? NO_STREETS), [props.map]);
+  const gps = useGpsWalk();
+  useEffect(() => { setDraft((before) => (before.mode === 'gps' ? walkedDraft(before, gps.walk) : before)); }, [gps.walk]);
   const { current } = useCurrentLocation(props.open && !view.bounds);
   const margins = useMargenes();
   const colors = useColores();
@@ -63,13 +67,19 @@ export function WorkStreetEditor(props: EditorProps) {
         <View className="bg-primary px-4 pb-3" style={{ paddingTop: margins.cabecera + 8 }}>
           <Text className="font-mono text-[11px] font-bold uppercase tracking-[2px] text-on-primary/80" numberOfLines={1}>{props.title}</Text>
           <Text className="text-[20px] font-bold text-on-primary">Definir área de trabajo</Text>
-          <ModeSwitch mode={draft.mode} onMode={(mode) => { setError(null); setDraft((before) => setDrawMode(before, mode)); }} />
+          <ModeSwitch mode={draft.mode} onMode={(mode) => { setError(null); gps.reset(); setDraft((before) => setDrawMode(before, mode)); }} />
           <View className="mt-2 flex-row items-center justify-between gap-2">
-            <Text testID="editor-calle-ayuda" className="flex-1 text-[15px] font-semibold text-on-primary">{streetDraftHint(draft)}</Text>
+            <Text testID="editor-calle-ayuda" className="flex-1 text-[15px] font-semibold text-on-primary">{draft.mode === 'gps' ? (gps.denied ? GPS_DENIED : walkHint(gps.walk)) : streetDraftHint(draft)}</Text>
             {draft.mode === 'hand' ? <Text testID="editor-calle-puntos" className="rounded-md bg-on-primary/15 px-2 py-0.5 font-mono text-[12px] text-on-primary">{draft.points.length} puntos</Text> : null}
           </View>
+          {draft.mode === 'gps' ? (
+            <Pressable testID={gps.walk.walking ? 'editor-gps-terminar' : 'editor-gps-empezar'} onPress={gps.walk.walking ? gps.stop : () => void gps.start()} className="mt-2 h-14 flex-row items-center justify-center gap-2 rounded-xl bg-surface">
+              {gps.walk.walking ? <Square size={18} color={colors.primary} /> : <Footprints size={20} color={colors.primary} />}
+              <Text className="text-[16px] font-bold text-primary">{gps.walk.walking ? 'Terminar' : 'Empezar a caminar'}</Text>
+            </Pressable>
+          ) : null}
           <View className="mt-2 flex-row gap-2">
-            <Pressable testID="editor-calle-deshacer" disabled={!draft.points.length} onPress={() => { setError(null); setDraft(undoStreetDraft); }} className={`h-11 flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-on-primary/15 ${draft.points.length ? '' : 'opacity-50'}`}>
+            <Pressable testID="editor-calle-deshacer" disabled={!draft.points.length} onPress={() => { setError(null); if (draft.mode === 'gps') gps.reset(); setDraft(undoStreetDraft); }} className={`h-11 flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-on-primary/15 ${draft.points.length ? '' : 'opacity-50'}`}>
               <Undo2 size={16} color={colors['on-primary']} /><Text className="text-[14px] font-semibold text-on-primary">Deshacer</Text>
             </Pressable>
             <Pressable testID="editor-calle-cancelar" onPress={props.onClose} className="h-11 flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-on-primary/15">

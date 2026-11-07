@@ -9,9 +9,10 @@ import { sendMapTool, type WorkProgressDeps, type WorkProgressResult } from './w
  * taps the start, the bends and the end on the map; Portal measures it again when it saves.
  * PURE: the APK and the web draw from here and send `workStreetRequest`.
  */
-/** `street`: tap a street of the map, then where the work starts and ends on it (audit 07/11); `hand`: tap every bend. */
-export type DrawMode = 'street' | 'hand';
-export type StreetDraft = { name: string; points: WorkMapPoint[]; widthM: number | null; mode: DrawMode; pick: StreetPick | null };
+/** `street`: tap a street of the map, then where the work starts and ends on it (audit 07/11); `gps`: walk it (o-13); `hand`: tap every bend. */
+export type DrawMode = 'street' | 'gps' | 'hand';
+/** `reversed`: the person marked the start further along the map's road than the end; the line is turned so 0+000 is their start. */
+export type StreetDraft = { name: string; points: WorkMapPoint[]; widthM: number | null; mode: DrawMode; pick: StreetPick | null; reversed?: boolean };
 
 export const STREET_POINTS_MAX = 500;
 export const STREET_NAME_MAX = 80;
@@ -51,7 +52,7 @@ export const WORK_MAP_DRAFT_COLOR = '#7c3aed';
 export function streetDraftPins(draft: Pick<StreetDraft, 'points'> & { mode?: DrawMode }): DischargePin[] {
   const pin = (point: WorkMapPoint, index: number): DischargePin => ({ id: `trazo-${index + 1}`, label: String(index + 1), lat: point.lat, lng: point.lng, outside: false });
   /** A picked street follows the road's every bend: only its start and its end are the person's (audit 07/11). */
-  const ends = draft.mode === 'street' && draft.points.length > 2 ? [...draft.points.slice(0, 1), ...draft.points.slice(-1)] : draft.points;
+  const ends = draft.mode !== 'hand' && draft.mode !== undefined && draft.points.length > 2 ? [...draft.points.slice(0, 1), ...draft.points.slice(-1)] : draft.points;
   return ends.map(pin);
 }
 

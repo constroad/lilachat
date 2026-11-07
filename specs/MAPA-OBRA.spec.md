@@ -441,4 +441,20 @@ trabajos (o-05), registrar avance a mano (o-06, botón principal del diseño), c
   `services:manage`: un miembro sin cuenta de Portal recibe el rechazo.
 - Registrar avance a mano (o-06): Portal publica `registrar_avance_manual_de_obra` (sin unidades,
   con fotos del Drive del servicio y la hora del equipo). José tiene que aprobarla en Agentes.
-- Caminar con GPS (o-13).
+
+## Caminar con GPS (o-13) y el inicio donde se toca primero, web y APK
+
+- Tercer modo del editor, «Caminar GPS», entre «Tocar la calle» y «A mano». Un botón grande
+  «Empezar a caminar» / «Terminar», para usarlo con el teléfono en una mano. La ubicación se pide
+  al tocar «Empezar» y se sigue solo hasta «Terminar»; nada corre en segundo plano.
+- Motor puro `shared/src/workStreetWalk.ts`: un punto cada 5 m como mínimo (parado no garabatea) y
+  nada peor que ±25 m (se muestra «GPS débil», no se dibuja). Tope de 500 puntos, como Portal.
+- La banda dice «Caminando · 85 m · GPS ±4 m» y, al terminar, «Listo: 85 m caminados». «Deshacer»
+  bota la caminata para caminar de nuevo. Sin permiso, lo dice y propone dibujarla de otra forma.
+- Web: `navigator.geolocation.watchPosition` con alta precisión. APK: `expo-location`
+  `watchPositionAsync` con `BestForNavigation`.
+- **Inicio donde se toca primero (E2E web 07/11):** al marcar inicio y fin en contra del sentido de
+  la vía del mapa, el «1» salía en el extremo equivocado: el paquete ordena las progresivas. Ahora
+  la línea se da vuelta (`reversed`) y 0+000 es el primer toque; «Deshacer» lo conserva.
+- **Sin probar:** caminar de verdad en la calle con un teléfono. El emulador no camina; la prueba
+  real la hace un ingeniero en obra.

@@ -81,3 +81,30 @@ describe('what the picked street shows (side-by-side audit 07/11)', () => {
     expect(streetDraftArea({ ...draft, widthM: 0 })).toBeNull();
   });
 });
+
+describe('the start is where the person tapped first (web E2E 07/11)', () => {
+  it('marking the end before the start in the road\'s direction turns the line around', () => {
+    // Arrange: the map's road runs from 0 to 500; the person starts at 320 and ends at 80.
+    let draft = tapStreetDraft(EMPTY_STREET, at(100)).draft;
+    // Act
+    draft = tapStreetDraft(tapStreetDraft(draft, at(320)).draft, at(80)).draft;
+    // Assert
+    expect(draft.points[0]!.lng).toBeCloseTo(east(320).lng, 6);
+    expect(draft.points.at(-1)!.lng).toBeCloseTo(east(80).lng, 6);
+    expect(streetDraftEnds(draft)).toBe('Inicio 0+000 · Fin 0+240');
+  });
+
+  it('in the road\'s direction it stays as it is', () => {
+    let draft = tapStreetDraft(EMPTY_STREET, at(100)).draft;
+    draft = tapStreetDraft(tapStreetDraft(draft, at(80)).draft, at(320)).draft;
+    expect(draft.points[0]!.lng).toBeCloseTo(east(80).lng, 6);
+  });
+
+  it('«Deshacer» on a turned line keeps the first tap as the start', () => {
+    let draft = tapStreetDraft(EMPTY_STREET, at(100)).draft;
+    draft = tapStreetDraft(tapStreetDraft(draft, at(320)).draft, at(80)).draft;
+    draft = undoStreetDraft(draft);
+    expect(draft.pick?.fromM).toBeCloseTo(320, 0);
+    expect(draft.reversed).toBe(false);
+  });
+});

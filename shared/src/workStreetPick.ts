@@ -13,6 +13,7 @@ import { metersLabel } from './workMap.js';
  */
 export const DRAW_MODES: ReadonlyArray<{ mode: DrawMode; label: string }> = [
   { mode: 'street', label: 'Tocar la calle' },
+  { mode: 'gps', label: 'Caminar GPS' },
   { mode: 'hand', label: 'A mano' },
 ];
 
@@ -21,7 +22,13 @@ export const NO_STREET_THERE = 'Ahí no hay una calle del mapa. Toca sobre la v�
 /** Another way of drawing starts the line again; the name and the width stay. */
 export const setDrawMode = (draft: StreetDraft, mode: DrawMode): StreetDraft => (draft.mode === mode ? draft : { ...EMPTY_STREET, name: draft.name, widthM: draft.widthM, mode });
 
-const withPick = (draft: StreetDraft, pick: StreetPick): StreetDraft => ({ ...draft, pick, points: pickedLine(pick) });
+const withPick = (draft: StreetDraft, pick: StreetPick, reversed = false): StreetDraft => {
+  const line = pickedLine(pick);
+  return { ...draft, pick, reversed, points: reversed ? [...line].reverse() : line };
+};
+
+/** The end tap landed before the start on the map's road: the package sorts them, the line turns around. */
+const endedBehind = (before: StreetPick, after: StreetPick): boolean => before.fromM !== null && before.toM === null && after.toM === before.fromM && after.fromM !== before.fromM;
 
 /** The map's name fills the field unless the person wrote their own. */
 const nameFor = (draft: StreetDraft, mapName: string): string => (!draft.name.trim() || draft.name === draft.pick?.name ? mapName : draft.name);
@@ -36,16 +43,18 @@ function pickAt(draft: StreetDraft, at: TapFeatures): { draft: StreetDraft; prob
 /** One tap on the map: a bend by hand; a street, its start or its end; or another street. */
 export function tapStreetDraft(draft: StreetDraft, at: TapFeatures): { draft: StreetDraft; problem: string | null } {
   if (draft.mode === 'hand') return { draft: addStreetPoint(draft, at.tap), problem: null };
+  if (draft.mode === 'gps') return { draft, problem: null };
   if (!draft.pick) return pickAt(draft, at);
   const tapped = tapOnPick(draft.pick, at.tap);
-  return tapped.kind === 'marked' ? { draft: withPick(draft, tapped.pick), problem: null } : pickAt(draft, at);
+  return tapped.kind === 'marked' ? { draft: withPick(draft, tapped.pick, endedBehind(draft.pick, tapped.pick)), problem: null } : pickAt(draft, at);
 }
 
 /** «Deshacer»: the end, then the start, then the street; by hand, the last bend. */
 export function undoStreetDraft(draft: StreetDraft): StreetDraft {
+  if (draft.mode === 'gps') return { ...draft, points: [] };
   if (draft.mode === 'hand' || !draft.pick) return undoStreetPoint(draft);
   const { pick } = draft;
-  if (pick.toM !== null) return withPick(draft, { ...pick, fromM: pick.fromM, toM: null });
+  if (pick.toM !== null) return withPick(draft, { ...pick, fromM: draft.reversed ? pick.toM : pick.fromM, toM: null });
   if (pick.fromM !== null) return withPick(draft, { ...pick, fromM: null });
   return { ...draft, pick: null, points: [], name: draft.name === pick.name ? '' : draft.name };
 }

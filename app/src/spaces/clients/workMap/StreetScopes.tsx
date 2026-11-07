@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { ArrowLeft, Pencil, Plus, Trash2, TrendingUp } from 'lucide-react-native';
-import { type ManualPhotoUpload, metersLabel, scopeDraftFor, sendWorkScopeDelete, streetDetailOf, workScopeDeleteRequest, type MapEditSend, type ScopeDraft, type StreetLayer, type StreetScopeRow, type WorkMap } from '@lilachat/shared';
+import { type ManualPhotoUpload, metersLabel, scopeDraftFor, sendWorkScopeDelete, streetDetailOf, workScopeDeleteRequest, type MapEditSend, type ScopeDraft, type StreetDetail, type StreetLayer, type StreetScopeRow, type WorkMap } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
@@ -72,6 +72,32 @@ function ScopeCard(props: { row: StreetScopeRow; send?: MapEditSend; onEdit: () 
 
 type Editing = { draft: ScopeDraft; scopeId?: string } | null;
 const editOf = (row: StreetScopeRow): Editing => ({ scopeId: row.id, draft: { fromM: row.scope.fromM, toM: row.scope.toM, workIds: row.scope.workIds, stageId: row.scope.stageId ?? null, widthM: row.scope.widthM ?? null } });
+type BodyProps = { map: WorkMap; detail: StreetDetail; send?: MapEditSend; uploadPhoto?: ManualPhotoUpload<PhotoAsset>; editing: Editing; onEditing: (next: Editing) => void; recording: boolean; onRecording: (next: boolean) => void };
+
+/** «Registrar avance» (o-06), what each work did, and the stretches of the street (o-03). */
+function StreetBody(props: BodyProps) {
+  const colors = useColores();
+  const { detail, send, editing } = props;
+  return (
+    <>
+      {send && !props.recording ? <Pressable testID="avance-manual-abrir" onPress={() => props.onRecording(true)} className="h-14 flex-row items-center justify-center gap-2 rounded-xl bg-primary"><TrendingUp size={20} color={colors['on-primary']} /><Text className="text-[16px] font-semibold text-on-primary">Registrar avance</Text></Pressable> : null}
+      {send && props.recording ? <ManualProgress map={props.map} streetId={detail.id} lengthM={detail.lengthM} widthM={detail.widthM ?? undefined} send={send} uploadPhoto={props.uploadPhoto} onDone={() => props.onRecording(false)} /> : null}
+      {detail.layers.length ? (
+        <View className="gap-2 rounded-xl border-[1.5px] border-outline/15 bg-surface p-4">
+          <Text className={KICKER}>Avance por trabajo</Text>
+          {detail.layers.map((layer) => <LayerRow key={layer.workId} layer={layer} />)}
+        </View>
+      ) : null}
+      <View className="flex-row items-center justify-between">
+        <Text className={KICKER}>Tramos definidos ({detail.scopes.length})</Text>
+        {send && !editing ? <Pressable testID="tramo-agregar" onPress={() => props.onEditing({ draft: scopeDraftFor(detail.lengthM) })} className="h-11 flex-row items-center gap-1.5 rounded-xl border border-primary/30 px-3"><Plus size={16} color={colors.primary} /><Text className="text-[14px] font-semibold text-primary">Agregar tramo</Text></Pressable> : null}
+      </View>
+      {editing && send ? <ScopeForm map={props.map} streetId={detail.id} lengthM={detail.lengthM} initial={editing.draft} scopeId={editing.scopeId} send={send} onDone={() => props.onEditing(null)} /> : null}
+      {detail.scopes.map((row) => <ScopeCard key={row.id} row={row} send={send} onEdit={() => props.onEditing(editOf(row))} />)}
+      {detail.scopes.length ? null : <Text className="text-[14px] text-on-surface-variant">Esta calle todavía no tiene tramos. Agrega uno para asignarle trabajos y etapa.</Text>}
+    </>
+  );
+}
 
 /** Design o-03 on the phone: a sheet with the street, what each work did on it, and its stretches to add, edit or delete. */
 export function StreetScopes(props: { map: WorkMap; streetId: string | null; send?: MapEditSend; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<PhotoAsset>; onClose: () => void }) {
@@ -90,24 +116,7 @@ export function StreetScopes(props: { map: WorkMap; streetId: string | null; sen
           {detail ? <Text className="rounded-lg border border-outline/20 px-2 py-1 font-mono text-[12px] font-semibold text-on-surface">{detail.headline}</Text> : null}
         </View>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, paddingBottom: margins.pie + 24, gap: 12 }}>
-          {!detail ? <Text className="text-[14px] text-on-surface-variant">Esta calle ya no está en el mapa.</Text> : null}
-          {detail && props.send && !recording ? <Pressable testID="avance-manual-abrir" onPress={() => setRecording(true)} className="h-14 flex-row items-center justify-center gap-2 rounded-xl bg-primary"><TrendingUp size={20} color={colors['on-primary']} /><Text className="text-[16px] font-semibold text-on-primary">Registrar avance</Text></Pressable> : null}
-          {detail && props.send && recording ? <ManualProgress map={props.map} streetId={detail.id} lengthM={detail.lengthM} widthM={detail.widthM ?? undefined} send={props.send} uploadPhoto={props.uploadPhoto} onDone={() => setRecording(false)} /> : null}
-          {detail?.layers.length ? (
-            <View className="gap-2 rounded-xl border-[1.5px] border-outline/15 bg-surface p-4">
-              <Text className={KICKER}>Avance por trabajo</Text>
-              {detail.layers.map((layer) => <LayerRow key={layer.workId} layer={layer} />)}
-            </View>
-          ) : null}
-          {detail ? (
-            <View className="flex-row items-center justify-between">
-              <Text className={KICKER}>Tramos definidos ({detail.scopes.length})</Text>
-              {props.send && !editing ? <Pressable testID="tramo-agregar" onPress={() => setEditing({ draft: scopeDraftFor(detail.lengthM) })} className="h-11 flex-row items-center gap-1.5 rounded-xl border border-primary/30 px-3"><Plus size={16} color={colors.primary} /><Text className="text-[14px] font-semibold text-primary">Agregar tramo</Text></Pressable> : null}
-            </View>
-          ) : null}
-          {detail && editing && props.send ? <ScopeForm map={props.map} streetId={detail.id} lengthM={detail.lengthM} initial={editing.draft} scopeId={editing.scopeId} send={props.send} onDone={() => setEditing(null)} /> : null}
-          {detail?.scopes.map((row) => <ScopeCard key={row.id} row={row} send={props.send} onEdit={() => setEditing(editOf(row))} />)}
-          {detail && !detail.scopes.length ? <Text className="text-[14px] text-on-surface-variant">Esta calle todavía no tiene tramos. Agrega uno para asignarle trabajos y etapa.</Text> : null}
+          {detail ? <StreetBody map={props.map} detail={detail} send={props.send} uploadPhoto={props.uploadPhoto} editing={editing} onEditing={setEditing} recording={recording} onRecording={setRecording} /> : <Text className="text-[14px] text-on-surface-variant">Esta calle ya no está en el mapa.</Text>}
         </ScrollView>
       </KeyboardAvoidingView>
     </Modal>

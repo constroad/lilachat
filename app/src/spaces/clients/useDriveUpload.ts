@@ -79,3 +79,12 @@ export function useDriveUpload(upload: UploadTarget) {
 /** A photo of «Registrar avance» (o-06): to the service's Drive first, its id rides with the progress. */
 export const mapPhotoUploader = (target: ServiceAskTarget, chatId: string, serviceId: string): ManualPhotoUpload<ImagePicker.ImagePickerAsset> => async (asset) =>
   manualPhotoOf(await uploadToDrive(depsOf({ target, chatId, serviceId }, () => undefined), await prepared(asset), Crypto.randomUUID()));
+
+/** A field photo for «Registrar avance» (o-06), from the camera's door; null when the person cancels. */
+export async function takeFieldPhoto(): Promise<{ asset: ImagePicker.ImagePickerAsset } | { message: string } | null> {
+  const permission = await ImagePicker.requestCameraPermissionsAsync();
+  if (!permission.granted) return { message: CAMERA_DENIED };
+  const picked = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 });
+  const asset = picked.canceled ? null : picked.assets[0];
+  return asset ? { asset } : null;
+}

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { forwardRef, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Cloud, ExternalLink, Folder, Search, Upload } from 'lucide-react';
 import { DRIVE_UPLOADING, driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService, type ViewableFile } from '@lilachat/shared';
 import { FileThumb, usePortalFileViewer } from './PortalFileViewer';
@@ -125,3 +125,8 @@ export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: Spac
     </div>
   );
 }
+
+/** One field photo for the service's Drive, from the camera or a file (o-06 «Registrar avance»): the camera's door. */
+export const DrivePhotoInput = forwardRef<HTMLInputElement, { testId: string; onFile: (file: File | undefined) => void }>(function DrivePhotoInput(props, ref) {
+  return <input ref={ref} data-testid={props.testId} type="file" accept="image/*" capture="environment" hidden onChange={(event) => { props.onFile(event.target.files?.[0]); event.target.value = ''; }} />;
+});

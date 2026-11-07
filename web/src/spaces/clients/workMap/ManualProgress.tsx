@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Camera, Check, Minus, Plus, Send, X } from 'lucide-react';
 import { addManualPhoto, MANUAL_PHOTOS_MAX, MANUAL_STEP_M, manualDraftFor, manualFigures, nudgeManualEnd, pickManualWork, runManualProgress, stationLabel, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkMap } from '@lilachat/shared';
+import { DrivePhotoInput } from '../ServiceDriveWeb';
 import { KICKER } from './WorkMapPanel';
 
 const CARD = 'rounded-xl border-[1.5px] border-outline/15 bg-surface p-4';
@@ -29,7 +30,7 @@ function Photos(props: { count: number; uploadPhoto?: ManualPhotoUpload<File>; o
     <section className={CARD}>
       <p className={KICKER}>3 · Foto en campo</p>
       <p className="mt-1 text-[12px] text-on-surface-variant">Va al Drive del servicio con su fecha y hora.</p>
-      <input ref={input} data-testid="avance-foto-archivo" type="file" accept="image/*" capture="environment" hidden onChange={(event) => { void pick(event.target.files?.[0]); event.target.value = ''; }} />
+      <DrivePhotoInput ref={input} testId="avance-foto-archivo" onFile={(file) => void pick(file)} />
       <button type="button" data-testid="avance-foto" disabled={busy || props.count >= MANUAL_PHOTOS_MAX} onClick={() => input.current?.click()} className="mt-3 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-primary/40 text-[14px] font-semibold text-primary disabled:opacity-60"><Camera size={16} />{busy ? 'Subiendo…' : 'Agregar foto'}</button>
       <p data-testid="avance-fotos" className="mt-2 text-[12px] text-on-surface-variant">{props.count} de {MANUAL_PHOTOS_MAX} fotos</p>
       {error ? <p role="alert" className="mt-1 text-[13px] font-semibold text-error">{error}</p> : null}

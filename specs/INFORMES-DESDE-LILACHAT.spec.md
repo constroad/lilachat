@@ -850,7 +850,8 @@ José: en un borrador solo estaba el botón grande «Publicar». Pidió «Ver PD
 - La puerta es la de siempre: `GET …/reports/:id/pdf?preview=1`. El server de Lilachat agrega `preview: true` a `client.report.requested`, y Agentes llama a la vista previa en vez del PDF.
 - Web: «Ver PDF» ocupa un tercio y «Publicar» dos tercios. Cuando está lista, el botón pasa a «Abrir vista previa», un enlace a una pestaña nueva; abrir la pestaña después de la espera la bloquearía como popup.
 - APK: la vista previa es una página, no un PDF, así que se abre en el navegador.
-- **Falta:** que José apruebe `vista_previa_de_informe` en Agentes, y el despliegue de Agentes (rama `vista-previa-informe`). Mientras tanto, el botón muestra el rechazo.
+- **Probado en producción (07/11, 19:51Z), web, espacio Test, borrador «Control de imprimación» de QA-CTLPIS:** «Ver PDF» dio «Abrir vista previa» en unos 8 s. La página firmada de Portal muestra «Borrador · vista previa sin publicar» con las 4 hojas, y el informe siguió en borrador. Agentes en cebf80a; José aprobó la herramienta a las 19:47Z.
+- **Sin probar:** el APK (abre la misma página en el navegador) y un miembro que no es admin.
 - **Por confirmar con Portal:** que los borradores aparezcan en los `reports` de `detalle_de_servicio`. Si no, a un miembro que no es admin Agentes le responde 404.
 
 ## Quitar una foto enviada de un borrador (José 06/11)

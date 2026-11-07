@@ -44,7 +44,7 @@ const sectionDone = (section: FormSection): boolean => section.state === 'done' 
 export function unitStateOf(item: RepeatItem): UnitState {
   if (item.summary.some((one) => PLANT_LINE.test(one.trim()))) return 'atPlant';
   if (item.sections.some((one) => one.photoKind === FINISHING_PHOTO && sectionDone(one))) return 'finished';
-  return item.sections.some((one) => one.state !== 'empty') ? 'working' : 'waiting';
+  return item.sections.some((one) => one.state !== 'empty' || sectionDone(one)) ? 'working' : 'waiting';
 }
 
 /** Nothing left to do: every photo taken and its data saved. The «vacía» photo ends the unit, not the report's work on it. */
@@ -110,9 +110,22 @@ export function arrivalHourOf(document: FieldDocument, path: SectionPath, now: s
   const repeat = document.sections.find((one) => one.id === path.sectionId);
   if (repeat?.kind !== 'repeat' || !isUnitsRepeat(repeat)) return undefined;
   const item = repeat.items.find((one) => one.id === path.itemId);
-  if (!item || !NOT_HERE_YET.includes(unitStateOf(item)) || dataSectionOf(item)?.id !== path.key) return undefined;
-  return clockHourOf(now);
+  if (!item || dataSectionOf(item)?.id !== path.key) return undefined;
+  return NOT_HERE_YET.includes(unitStateOf(item)) ? clockHourOf(now) : photoArrivalOf(item, now);
 }
+
+/** A photo's hour as Portal stamps it. */
+const PHOTO_HOUR = /^([01]\d|2[0-3]):[0-5]\d/;
+
+/** The data opened after the ingreso photo: the truck arrived when that photo was taken, or now if it is still on the phone. */
+function photoArrivalOf(item: RepeatItem, now: string): string | undefined {
+  const [ingreso] = photoSlotsOf(item);
+  if (dataSectionOf(item)?.state !== 'empty' || !ingreso?.done) return undefined;
+  return ingreso.photo?.hour.match(PHOTO_HOUR)?.[0] ?? clockHourOf(now);
+}
+
+/** José 07/11: «primero tomar la foto de ingreso». «Llegó» opens the first photo; the data comes after. */
+export const arrivalKeyOf = (item: RepeatItem): string | undefined => photoSlotsOf(item)[0]?.section.id ?? dataSectionOf(item)?.id;
 
 /** What the summary of a unit says beside its plate, without the «Terminó» line the pill already shows. */
 export const unitLineOf = (item: RepeatItem): string => item.summary.filter((one) => !FINISHED_LINE.test(one)).join(TITLE_SEPARATOR);

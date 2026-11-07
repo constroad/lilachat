@@ -819,6 +819,16 @@ Queda pendiente:
 - **PDF, cola de Portal:** «UNIDADES SIN TEMP» cae sola en el folio 2, la fila 12 cae sola en el folio 3, el encabezado dice «FOLIO: 1-1», «Observaciones» sale vacío y la dirección del sello se corta.
 - **Lista con varias unidades en pista:** cada tarjeta ocupa media pantalla, así que con 4 en pista las filas de «Por llegar» quedan dos pantallas abajo. No se cambió: en obra rara vez hay más de dos carros descargando.
 
+## «Llegó» abre la foto de ingreso (José 07/11)
+
+José: al llegar primero se toma la foto de ingreso y la de temperatura. Pedir los datos antes no tiene sentido.
+
+- **«Llegó» abre la primera foto** de la plantilla (`arrivalKeyOf`), la de ingreso. Si la plantilla no tiene fotos, abre Datos como antes.
+- **La unidad pasa a «En pista» con la foto**, aunque siga en el teléfono. Antes solo contaba el estado que manda Portal, y la fila de «Por llegar» seguía ahí.
+- **Hora de llegada:** Datos se abre después, con la hora de la foto de ingreso (`hora`, HH:MM). Si la foto aún no sube, va la hora del reloj. Una unidad con Datos ya escrito no se toca.
+- Web y app usan la misma regla. Tests: `reportUnits.test.ts` y `ReportDocumentWeb.test.tsx`.
+- **Sin verificar:** el recorrido en el emulador y en un teléfono real.
+
 ## Quitar una foto enviada de un borrador (José 06/11)
 
 - El visor del informe muestra «Eliminar» solo en una foto que ya llegó a Portal,

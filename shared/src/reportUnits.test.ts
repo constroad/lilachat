@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fieldDocumentOf, type FieldDocument, type RepeatItem, type RepeatSection } from './fieldDocument';
 import { reportFormAnswer } from './reportSaves';
-import { waitingLayoutOf, ARRIVED_LABEL, arrivalHourOf, dataSectionOf, isUnitsRepeat, photoSlotsOf, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf } from './reportUnits';
+import { waitingLayoutOf, ARRIVED_LABEL, arrivalHourOf, arrivalKeyOf, dataSectionOf, isUnitsRepeat, photoSlotsOf, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf } from './reportUnits';
 
 /** The units of a control de pista as Portal lists them (06/11): rows by arrival, then the dispatches not here yet. */
 const form = (name: string) => ({ type: 'object', properties: { [name]: { type: 'string', title: name } } });
@@ -99,6 +99,19 @@ describe('the units of a control de pista', () => {
 });
 
 /** E2E 06/11: «Llegó» tapped at 12:22 opened with 12:13, the hour of the last draft; with no signal it would be hours old. */
+/** José 07/11: «primero tomar la foto de ingreso»; the data comes after, with the hour of that photo. */
+describe('what «Llegó» opens', () => {
+  it('is the ingreso photo of a unit not here yet', () => {
+    expect(unitStateOf(itemOf('d3'))).toBe('waiting');
+    expect(arrivalKeyOf(itemOf('d3'))).toBe('foto-ingreso');
+  });
+
+  it('falls back to the data when the template has no photos', () => {
+    const noPhotos = { ...itemOf('d2'), sections: itemOf('d2').sections.filter((one) => !one.photoKind) };
+    expect(arrivalKeyOf(noPhotos)).toBe('datos');
+  });
+});
+
 describe('the hour of «Llegó»', () => {
   const noon = new Date(2026, 10, 6, 12, 22).toISOString();
   const timeForm = { type: 'object', properties: { horaLlegada: { type: 'string', format: 'time', title: 'Hora de llegada' }, horaInicio: { type: 'string', format: 'time', title: 'Inicio' } }, required: ['horaLlegada'] };
@@ -128,6 +141,22 @@ describe('the hour of «Llegó»', () => {
     if (repeat?.kind === 'repeat') repeat.items.forEach((item) => { if (item.id === path.itemId) item.summary = ['En planta']; });
     // Act and assert
     expect(arrivalHourOf(document, path, noon)).toBe('12:22');
+  });
+
+  const withIngreso = (hour: string | undefined): FieldDocument => {
+    const [general, repeat] = body.sections;
+    const shot = { id: 'p1', url: 'https://x/p1.jpg', ...(hour === undefined ? { pending: true } : { hora: hour }) };
+    const items = [unit('d9', 'QAP-109', [], [{ id: 'datos', state: 'empty', values: {} }, { id: 'foto-ingreso', state: 'empty', values: { fotos: [shot] } }])];
+    return fieldDocumentOf({ ...body, forms: { ...body.forms, unidad: timeForm }, sections: [general, { ...repeat, items }] })!;
+  };
+
+  it('is the hour of the ingreso photo once it was taken (José 07/11)', () => {
+    expect(arrivalHourOf(withIngreso('07:48'), path, noon)).toBe('07:48');
+  });
+
+  it('is the clock while that photo is still on the phone', () => {
+    expect(arrivalHourOf(withIngreso(undefined), path, noon)).toBe('12:22');
+    expect(arrivalHourOf(withIngreso('7.48 am'), path, noon)).toBe('12:22');
   });
 
   it('leaves alone a unit already on site, a photo and anything outside a unit', () => {

@@ -165,10 +165,10 @@ describe('ReportDocumentWeb', () => {
     expect(screen.getByTestId('falta-informe')).toHaveTextContent('Falta la foto de vacía en QAP-102 · 2 volquetes por llegar');
     expect(screen.getByTestId('abrir-publicar')).toBeInTheDocument();
 
-    // «Llegó» opens the unit's data here, with no call: the save goes through the queue.
+    // José 07/11: «Llegó» opens the ingreso photo first, with no call; the data comes after.
     fireEvent.click(screen.getByTestId('llego-d3'));
-    expect(await screen.findByTestId('formulario-guardar_seccion_de_informe')).toBeInTheDocument();
-    expect(screen.getByText('QAP-103 · Datos')).toBeInTheDocument();
+    expect(await screen.findByTestId('formulario-agregar_foto_de_informe')).toBeInTheDocument();
+    expect(screen.queryByTestId('formulario-guardar_seccion_de_informe')).toBeNull();
     expect(formCalls(calls)).toEqual([]);
   });
 
@@ -183,7 +183,7 @@ describe('ReportDocumentWeb', () => {
     // Assert
     expect(within(screen.getByTestId('unidades-por-llegar')).getByTestId('llego-QAP-3')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('llego-QAP-4'));
-    expect(await screen.findByTestId('formulario-guardar_seccion_de_informe')).toBeInTheDocument();
+    expect(await screen.findByTestId('formulario-agregar_foto_de_informe')).toBeInTheDocument();
   });
 
   it('a photo already taken opens in the viewer, and «Tomar otra» goes to its form (José 06/11)', async () => {

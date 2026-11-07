@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Camera, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Clock, Container, Ruler, Thermometer, Truck } from 'lucide-react';
-import { ARRIVED_LABEL, dataSectionOf, pageLine, photoSlotsOf, sectionRowLine, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
+import { ARRIVED_LABEL, arrivalKeyOf, dataSectionOf, pageLine, photoSlotsOf, sectionRowLine, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
 import { Pill, ResultsStrip, StateDot } from './ReportSectionsWeb';
 
 /** Design j-05 (José 06/11): for the operator on the pista. Big plate, big slots, one click per action. */
@@ -27,9 +27,9 @@ function PhotoSlot({ slot, itemId, onOpen, onView }: { slot: UnitSlot; itemId: s
   );
 }
 
-/** A volquete on its way, in one row: any of them can be next, because the order of arrival depends on nothing. «Llegó» opens its data with the hour of the click. */
+/** A volquete on its way, in one row: any of them can be next, because the order of arrival depends on nothing. «Llegó» opens its ingreso photo; the data comes after (José 07/11). */
 function WaitingRow({ item, section, onOpen }: { item: RepeatItem; section: RepeatSection; onOpen: Open }) {
-  const data = dataSectionOf(item);
+  const arrival = arrivalKeyOf(item);
   const { plate } = unitTitleOf(item);
   return (
     <li data-testid={`unidad-${item.id}`} className="flex items-center gap-3 border-b border-outline/10 px-3 py-2 last:border-b-0">
@@ -37,8 +37,8 @@ function WaitingRow({ item, section, onOpen }: { item: RepeatItem; section: Repe
         <p className="truncate font-mono text-[21px] font-bold leading-tight">{plate}</p>
         {unitLineOf(item) ? <p className="truncate text-xs text-on-surface-variant">{unitLineOf(item)}</p> : null}
       </div>
-      {data ? (
-        <button type="button" data-testid={`llego-${item.id}`} onClick={() => onOpen({ sectionId: section.id, itemId: item.id, key: data.id })} aria-label={`${ARRIVED_LABEL} ${plate}`} className="flex min-h-[52px] min-w-[96px] items-center justify-center gap-1.5 rounded-xl bg-primary px-3 text-on-primary">
+      {arrival ? (
+        <button type="button" data-testid={`llego-${item.id}`} onClick={() => onOpen({ sectionId: section.id, itemId: item.id, key: arrival })} aria-label={`${ARRIVED_LABEL} ${plate}`} className="flex min-h-[52px] min-w-[96px] items-center justify-center gap-1.5 rounded-xl bg-primary px-3 text-on-primary">
           <Truck size={18} />
           <span className="text-[14px] font-bold uppercase">{ARRIVED_LABEL}</span>
         </button>
@@ -80,11 +80,11 @@ function ArrivedCard({ item, section, onOpen, onView }: { item: RepeatItem; sect
 
 /** One plate to click: «Llegó» in the strip on top, the same as the row's button. */
 function ArrivalChip({ item, section, onOpen }: { item: RepeatItem; section: RepeatSection; onOpen: Open }) {
-  const data = dataSectionOf(item);
+  const arrival = arrivalKeyOf(item);
   const { plate } = unitTitleOf(item);
-  if (!data) return null;
+  if (!arrival) return null;
   return (
-    <button type="button" data-testid={`llego-${item.id}`} onClick={() => onOpen({ sectionId: section.id, itemId: item.id, key: data.id })} aria-label={`${ARRIVED_LABEL} ${plate}`} className="inline-flex min-h-[52px] shrink-0 items-center gap-2 rounded-xl bg-primary px-4 font-mono text-[15px] font-bold text-on-primary">
+    <button type="button" data-testid={`llego-${item.id}`} onClick={() => onOpen({ sectionId: section.id, itemId: item.id, key: arrival })} aria-label={`${ARRIVED_LABEL} ${plate}`} className="inline-flex min-h-[52px] shrink-0 items-center gap-2 rounded-xl bg-primary px-4 font-mono text-[15px] font-bold text-on-primary">
       <Truck size={18} /> {plate}
     </button>
   );

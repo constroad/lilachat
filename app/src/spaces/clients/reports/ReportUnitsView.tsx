@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { Camera, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Clock, Container, Ruler, Thermometer, Truck } from 'lucide-react-native';
-import { ARRIVED_LABEL, dataSectionOf, pageLine, photoSlotsOf, sectionRowLine, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
+import { ARRIVED_LABEL, arrivalKeyOf, dataSectionOf, pageLine, photoSlotsOf, sectionRowLine, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { Pill, ResultsStrip, StateDot } from './ReportSections';
 
@@ -33,10 +33,10 @@ function PhotoSlot({ slot, itemId, onOpen, onView }: { slot: UnitSlot; itemId: s
   );
 }
 
-/** A volquete on its way, in one row: any of them can be next, because the order of arrival depends on nothing. «Llegó» opens its data with the hour of the tap. */
+/** A volquete on its way, in one row: any of them can be next, because the order of arrival depends on nothing. «Llegó» opens its ingreso photo; the data comes after (José 07/11). */
 function WaitingRow({ item, section, last, onOpen }: { item: RepeatItem; section: RepeatSection; last: boolean; onOpen: Open }) {
   const colors = useColores();
-  const data = dataSectionOf(item);
+  const arrival = arrivalKeyOf(item);
   const { plate } = unitTitleOf(item);
   return (
     <View testID={`unidad-${item.id}`} className={`flex-row items-center gap-3 px-3 py-2 ${last ? '' : 'border-b border-outline/10'}`}>
@@ -44,8 +44,8 @@ function WaitingRow({ item, section, last, onOpen }: { item: RepeatItem; section
         <Text className="text-[21px] font-bold text-on-surface" style={{ fontFamily: PLATE_FONT }} numberOfLines={1}>{plate}</Text>
         {unitLineOf(item) ? <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>{unitLineOf(item)}</Text> : null}
       </View>
-      {data ? (
-        <Pressable testID={`llego-${item.id}`} onPress={() => onOpen({ sectionId: section.id, itemId: item.id, key: data.id })} accessibilityLabel={`${ARRIVED_LABEL} ${plate}`} className="min-h-[52px] min-w-[96px] flex-row items-center justify-center gap-1.5 rounded-xl bg-primary px-3">
+      {arrival ? (
+        <Pressable testID={`llego-${item.id}`} onPress={() => onOpen({ sectionId: section.id, itemId: item.id, key: arrival })} accessibilityLabel={`${ARRIVED_LABEL} ${plate}`} className="min-h-[52px] min-w-[96px] flex-row items-center justify-center gap-1.5 rounded-xl bg-primary px-3">
           <Truck size={18} color={colors['on-primary']} />
           <Text className="text-[14px] font-bold uppercase text-on-primary">{ARRIVED_LABEL}</Text>
         </Pressable>
@@ -89,11 +89,11 @@ function ArrivedCard({ item, section, onOpen, onView }: { item: RepeatItem; sect
 /** One plate to tap: «Llegó» in the strip on top, the same as the row's button. */
 function ArrivalChip({ item, section, onOpen }: { item: RepeatItem; section: RepeatSection; onOpen: Open }) {
   const colors = useColores();
-  const data = dataSectionOf(item);
+  const arrival = arrivalKeyOf(item);
   const { plate } = unitTitleOf(item);
-  if (!data) return null;
+  if (!arrival) return null;
   return (
-    <Pressable testID={`llego-${item.id}`} onPress={() => onOpen({ sectionId: section.id, itemId: item.id, key: data.id })} accessibilityLabel={`${ARRIVED_LABEL} ${plate}`} className="min-h-[52px] flex-row items-center gap-2 rounded-xl bg-primary px-4">
+    <Pressable testID={`llego-${item.id}`} onPress={() => onOpen({ sectionId: section.id, itemId: item.id, key: arrival })} accessibilityLabel={`${ARRIVED_LABEL} ${plate}`} className="min-h-[52px] flex-row items-center gap-2 rounded-xl bg-primary px-4">
       <Truck size={18} color={colors['on-primary']} />
       <Text className="text-[15px] font-bold text-on-primary" style={{ fontFamily: PLATE_FONT }}>{plate}</Text>
     </Pressable>

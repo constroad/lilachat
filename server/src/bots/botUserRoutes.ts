@@ -8,6 +8,7 @@ import { crearLimiteDeIntentos } from '../limiteDeIntentos.js';
 import { asyncRoute, requireSession } from '../requireSession.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { commandGroupsOf, invokeCardCommand, invokeCommand, invokeShortcut, shareCommandAnswer } from './botCommands.js';
+import { openChannelServiceLink } from './clientReports.js';
 import { FORM_PHOTO_MAX_BYTES, formPlace, readSignedFile, storeFormPhoto, submitForm, type PhotoStampAsked } from './botForms.js';
 import { previewForm, refreshForm } from './botFormLive.js';
 import { appChannelsOf } from './botChannels.js';
@@ -89,7 +90,8 @@ export function buildBotUserRouter(): Router {
   router.post(['/chats/:chatId/shortcuts', '/workspaces/:id/shortcuts'], requireSession, asyncRoute(async (req, res) => {
     const userId = req.session!.userId;
     if (!commandTries.permitir(String(userId))) return void res.status(429).set('Retry-After', '60').json({ message: 'Más de 20 acciones por minuto. Espera un momento.' });
-    const outcome = await invokeShortcut(userId, scopeOf(req), { appId: req.body?.app_id, shortcut: req.body?.shortcut, forms: req.body?.forms, values: req.body?.values });
+    const input = { appId: req.body?.app_id, shortcut: req.body?.shortcut, forms: req.body?.forms, values: req.body?.values };
+    const outcome = (await openChannelServiceLink(userId, req.params.chatId, input)) ?? (await invokeShortcut(userId, scopeOf(req), input));
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.json(outcome);
   }));

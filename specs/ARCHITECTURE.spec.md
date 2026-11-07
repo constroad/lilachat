@@ -8338,6 +8338,23 @@ ve (negra, porque el AVD no tiene cámara frontal), con «GPS ± 5 m» y la band
 asistencia ingreso» queda a la vista. Cerrar descarta sin dejar tarjeta. No
 se marcó de verdad: la marca real la hace José con la 0.1.163.
 
+## 126-bis. El enlace de un servicio no pide cuenta de Portal (07/11/2026)
+
+Jeremy, ingeniero de campo de Constroad sin usuario de Portal, recibió «Conecta tu cuenta de
+Portal» cuatro veces entre las 15:33 y las 15:34Z en CONSORCIO EL ALMIRANTE. Agentes armaba el
+formulario de `crear_enlace_de_servicio` pidiéndole a Portal `listar_servicios` como esa persona: la
+lista de TODOS los servicios de la empresa, que Portal no da a quien no es de la empresa. José:
+«solo el servicio del canal».
+
+- En el canal de un cliente, el servidor de Lilachat abre esa acción él mismo
+  (`openChannelServiceLink` en `clientReports.ts`): el servicio sale del canal y de su lista, el
+  formulario solo pide `dias` (hasta 60) y `noExpira`, y `form.submitted` lleva `client_id` y
+  `service_id`. Agentes no recibe `shortcut.invoked`. Sirve para el botón «Enlace del servicio» y
+  para la pestaña Mapa, que pide su enlace por la misma acción. Arregla también el APK sin OTA.
+- Un servicio que no es del canal: 404. Fuera de un canal de cliente, la acción sigue yendo a la app.
+- Portal suma la herramienta a MEMBER_TOOLS. Agentes, sin servicio, contesta «Crea el enlace desde
+  el servicio, en el canal del cliente» en vez de «Conecta tu cuenta».
+
 ## 126. «Conecta tu cuenta» dentro de Lilachat y respuestas que siempre terminan (24/10/2026, 0.1.162)
 
 Pedido de José del 23/10, con urgencia: conectar la cuenta de una app «con un

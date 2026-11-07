@@ -391,3 +391,25 @@ describe('drawing a street of the work from the map (design o-02, José 07/11)',
     await openOf(outsider, street()).expect(404);
   });
 });
+
+describe('the link of a service from its client channel (José 07/11: «solo el servicio del canal»)', () => {
+  const shortcutOf = async (who: Types.ObjectId, values: Record<string, unknown>, status: number) => {
+    const portal = await BotAppModel.findOne({ clientId: 'lca_portal' }).lean();
+    return request(app).post(`/api/chats/${chatId}/shortcuts`).set(auth(who)).send({ app_id: String(portal!._id), shortcut: 'crear_enlace_de_servicio', values, forms: 3 }).expect(status);
+  };
+
+  it('a member without a Portal account gets the form at once, with the service fixed, and the app is not asked to list services', async () => {
+    // Act
+    const opened = await shortcutOf(ana, { servicioId: 'srv-318' }, 200);
+    await request(app).post(`/api/chats/${chatId}/commands/${opened.body.commandId}/form`).set(auth(ana)).send({ values: { dias: 1 } }).expect(200);
+    // Assert
+    expect(opened.body.response.form).toMatchObject({ id: 'crear_enlace_de_servicio', schema: { properties: { dias: { type: 'number', maximum: 60 }, noExpira: { type: 'boolean' } } } });
+    expect(opened.body.response.form.schema.properties).not.toHaveProperty('servicioId');
+    expect(received.some((event) => event.type === 'shortcut.invoked')).toBe(false);
+    expect(received.find((event) => event.type === 'form.submitted')?.data).toMatchObject({ form_id: 'crear_enlace_de_servicio', client_id: 'cli-cvs', service_id: 'srv-318', values: { dias: 1, servicioId: 'srv-318' } });
+  });
+
+  it('a service that is not the channel\'s is not opened', async () => {
+    await shortcutOf(ana, { servicioId: 'srv-otro' }, 404);
+  });
+});

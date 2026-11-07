@@ -1,8 +1,9 @@
 import mongoose, { Types, type Model } from 'mongoose';
-import { channelValuesOf, CLIENT_ID, fieldDocumentOf, formLevelOf, photoKindOf, requiresLocation, SECTION_TOOL, sectionAt, sectionFormOf, type AppForm, type CommandOutcome, type FieldDocument, type FormSchema, type SectionPath } from '@lilachat/shared';
+import { channelValuesOf, CLIENT_ID, SERVICE_LINK_ACTION, fieldDocumentOf, formLevelOf, photoKindOf, requiresLocation, SECTION_TOOL, sectionAt, sectionFormOf, type AppForm, type CommandOutcome, type FieldDocument, type FormSchema, type SectionPath } from '@lilachat/shared';
 import { OUTDATED_FORM_MESSAGE, type CommandError } from './botCommands.js';
 import { askAboutService, findAskedService, notFound, type AskOutcome, type NotFound, type ServiceAsk } from './clientFiles.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botModels.js';
+import { ClientChannelModel } from './botClients.js';
 import { workProgressInputOf, workProgressPrepared, type WorkProgressInput } from './workProgressForm.js';
 import { workStreetInputOf, workStreetPrepared, type StreetContext, type WorkStreetInput } from './workStreetForm.js';
 
@@ -31,6 +32,14 @@ const REMOVE_PHOTO_TOOL = 'quitar_foto_de_informe';
 /** Portal's `subir_al_drive`: its answer is the ticket the phone sends the file with. */
 const DRIVE_UPLOAD_TOOL = 'subir_al_drive';
 const NOTHING_TO_FILL: FormSchema = { type: 'object', properties: {} };
+/** Portal's `crear_enlace_de_servicio` without its service list: the service is the channel's (José 07/11). */
+const SERVICE_LINK_FORM: FormSchema = {
+  type: 'object',
+  properties: {
+    dias: { type: 'number', title: 'Días', exclusiveMinimum: 0, maximum: 60, description: 'Cuántos días dura el enlace. Sin esto, 7; como máximo 60.' },
+    noExpira: { type: 'boolean', title: 'No expira', default: false, description: 'El enlace queda abierto hasta que lo revoquen en Portal. Ignora los días.' },
+  },
+};
 
 /** The last document Portal answered, per person and service: the section forms are built from it, never from the phone. */
 type ReportDraft = { _id: Types.ObjectId; workspaceId: Types.ObjectId; userId: Types.ObjectId; serviceId: string; type: string; document: FieldDocument; updatedAt: Date };
@@ -79,6 +88,7 @@ type OpenInput =
   | { kind: 'publish'; reportId: string }
   | { kind: 'remove_photo'; reportId: string; photoId: string }
   | { kind: 'drive_upload' }
+  | { kind: 'service_link' }
   | WorkProgressInput
   | WorkStreetInput;
 
@@ -106,6 +116,7 @@ const removalOf = (reportId: string, photoId: string): OpenInput | null => (repo
 function openInputOf(input: unknown): OpenInput | null {
   const raw = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
   if (raw.kind === 'drive_upload') return { kind: 'drive_upload' };
+  if (raw.kind === 'service_link') return { kind: 'service_link' };
   if (raw.kind === 'work_progress') return workProgressInputOf(raw);
   if (raw.kind === 'work_street') return workStreetInputOf(raw);
   const reportId = text(raw.report_id, 64);
@@ -147,6 +158,7 @@ function prepared(workspaceId: string, clientId: string, serviceId: string, user
   if (input.kind === 'section') return sectionPrepared(workspaceId, serviceId, userId, input);
   if (input.kind === 'work_progress') return workProgressPrepared(workspaceId, clientId, serviceId, userId, input);
   if (input.kind === 'work_street') return workStreetPrepared(serviceId, input);
+  if (input.kind === 'service_link') return { form: { id: SERVICE_LINK_ACTION, title: 'Enlace del servicio', submitLabel: 'Crear enlace', schema: SERVICE_LINK_FORM }, context: { servicioId: serviceId } };
   if (input.kind === 'drive_upload') return { form: { id: DRIVE_UPLOAD_TOOL, title: 'Subir al Drive', submitLabel: 'Subir', schema: NOTHING_TO_FILL }, context: { servicioId: serviceId } };
   if (input.kind === 'remove_photo') return { form: { id: REMOVE_PHOTO_TOOL, title: 'Quitar foto', submitLabel: 'Quitar', schema: NOTHING_TO_FILL }, context: { servicioId: serviceId, informeId: input.reportId, fotoId: input.photoId } };
   return { form: { id: PUBLISH_TOOL, title: 'Publicar informe', submitLabel: 'Publicar', schema: PUBLISH_FORM }, context: { servicioId: serviceId, informeId: input.reportId } };
@@ -177,6 +189,19 @@ export async function openReportForm(workspaceId: string, clientId: string, serv
     service: { clientId, serviceId }, expiresAt: new Date(Date.now() + COMMAND_TTL_MS),
   });
   return { commandId: String(run._id), appId: String(app._id), appName: app.name, outcome: 'form', response: { responseType: 'form', form: ready.form } };
+}
+
+/**
+ * José 07/11, «solo el servicio del canal»: in a client's channel the service link opens here with its
+ * service fixed. Agentes used to fill its list by asking Portal for every service of the company as the
+ * person, and a field engineer without a Portal account got «Conecta tu cuenta». Elsewhere, null: the app answers.
+ */
+export async function openChannelServiceLink(userId: Types.ObjectId, chatId: string | undefined, input: { appId: unknown; shortcut: unknown; values?: unknown; forms?: unknown }): Promise<CommandOutcome | CommandError | null> {
+  const serviceId = (input.values as { servicioId?: unknown } | undefined)?.servicioId;
+  if (input.shortcut !== SERVICE_LINK_ACTION || typeof serviceId !== 'string' || !chatId || !Types.ObjectId.isValid(chatId)) return null;
+  const client = await ClientChannelModel.findOne({ chatId: new Types.ObjectId(chatId) }).select('workspaceId appId clientId').lean();
+  if (!client || String(client.appId) !== String(input.appId)) return null;
+  return openReportForm(String(client.workspaceId), client.clientId, serviceId, userId, { kind: 'service_link', forms: input.forms });
 }
 
 export { SECTION_TOOL };

@@ -1,4 +1,4 @@
-import { lengthOfLine, projectToLine, sliceLine as sliceStreet } from '@constroad/shared/obra';
+import { colorForPartida, kmLabel, lengthOfLine, mergeIntervals, projectToLine, sliceLine as sliceStreet } from '@constroad/shared/obra';
 import { dayMonthOf } from './appDirectory.js';
 import type { ServiceMapResult } from './serviceMap.js';
 
@@ -51,7 +51,6 @@ export const WORK_MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty'
 export const WORK_MAP_FAILED = 'No se pudo cargar el mapa. Prueba de nuevo.';
 export const WORK_MAP_EMPTY = 'Este servicio todavía no tiene calles en el mapa.';
 
-const PARTIDA_COLORS = ['#0f766e', '#b45309', '#7c3aed', '#be123c', '#1d4ed8', '#4d7c0f'];
 const UNNAMED_WORK = 'Trabajo';
 const NO_PROGRESS = 'Sin avance';
 export const NO_STRETCHES = 'Sin tramos definidos';
@@ -108,24 +107,18 @@ export function projectOntoLine(line: WorkMapPoint[], place: WorkMapPoint): Line
 /** The part of a street between two stations, keeping its corners; nothing for an empty cut. */
 export const sliceLine = (line: WorkMapPoint[], fromM: number, toM: number): WorkMapPoint[] => sliceStreet(line, fromM, toM);
 
-function mergeIntervals(intervals: Interval[]): Interval[] {
-  const sorted = intervals.filter(([from, to]) => to > from).sort((left, right) => left[0] - right[0]);
-  const merged: Interval[] = [];
-  for (const [from, to] of sorted) {
-    const last = merged.at(-1);
-    if (last && from <= last[1]) last[1] = Math.max(last[1], to);
-    else merged.push([from, to]);
-  }
-  return merged;
-}
+/** Metres of the stretch rounded to the centimetre, as Portal adds them per stretch (`progressByWork`). */
+const metersOf = (intervals: Interval[]) => round2(intervals.reduce((total, [from, to]) => total + (to - from), 0));
 
-const metersOf = (intervals: Interval[]) => intervals.reduce((total, [from, to]) => total + (to - from), 0);
-
+/**
+ * Portal counts a street even when its line cannot be drawn (fewer than two points): its stretches add
+ * to the totals. Here it stays too; only the drawing leaves it out.
+ */
 function streetsFrom(raw: unknown): WorkMapStreet[] {
   return listOf(raw).flatMap((street) => {
-    const line = listOf(street.geometry).map((point) => ({ lat: point.lat as number, lng: point.lng as number }));
-    const valid = line.length >= 2 && line.every((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng));
-    return valid ? [{ id: textOf(street._id), name: textOf(street.name), line, lengthM: numberOf(street.lengthM) || lineLengthM(line) }] : [];
+    const id = textOf(street._id);
+    const line = listOf(street.geometry).map((point) => ({ lat: point.lat as number, lng: point.lng as number })).filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng));
+    return id ? [{ id, name: textOf(street.name), line, lengthM: numberOf(street.lengthM) || lineLengthM(line) }] : [];
   });
 }
 
@@ -147,18 +140,24 @@ function progressFrom(raw: unknown): WorkMapProgress[] {
 }
 
 const byOrder = (left: Fields, right: Fields) => numberOf(left.order) - numberOf(right.order);
-const paletteColor = (index: number) => PARTIDA_COLORS[index % PARTIDA_COLORS.length] ?? WORK_MAP_PLANNED_COLOR;
 
-/** Tags first, in their order; then the partidas of the stretches that have no tag. */
+/**
+ * Tags first, in their order; then the partidas of the stretches that have no tag. The colors are
+ * Portal's (`colorForPartida`): imprimación blue, asphalt black, base brown, as in the drawings. A tag
+ * whose color is not a hex gets the same rule, so MapLibre never receives a color it cannot paint.
+ */
 function worksFrom(rawTags: unknown, rawPartidas: unknown, scopes: WorkMapScope[]): WorkMapWork[] {
-  const tags = [...listOf(rawTags)].sort(byOrder).map((tag, index) => {
-    const color = textOf(tag.color);
-    return { id: textOf(tag._id), name: textOf(tag.name) || UNNAMED_WORK, color: HEX_COLOR.test(color) ? color : paletteColor(index) };
+  const tags = [...listOf(rawTags)].sort(byOrder).map((tag) => {
+    const [id, name, color] = [textOf(tag._id), textOf(tag.name) || UNNAMED_WORK, textOf(tag.color)];
+    return { id, name, color: HEX_COLOR.test(color) ? color : colorForPartida(id, name) };
   });
   const seen = new Set(tags.map((tag) => tag.id));
   const names = new Map(listOf(rawPartidas).map((partida) => [textOf(partida._id) || textOf(partida.id), textOf(partida.description)]));
   const partidas = [...new Set(scopes.flatMap((scope) => scope.workIds))].filter((id) => !seen.has(id));
-  return [...tags, ...partidas.map((id, index) => ({ id, name: names.get(id) || UNNAMED_WORK, color: paletteColor(index), partida: true as const }))];
+  return [...tags, ...partidas.map((id) => {
+    const name = names.get(id) || UNNAMED_WORK;
+    return { id, name, color: colorForPartida(id, names.get(id) ?? ''), partida: true as const };
+  })];
 }
 
 /** What the map draws out of Portal's service detail; null when the service has no streets. */
@@ -200,7 +199,7 @@ function statusOf(stretches: WorkedStretch[], works: WorkMapWork[]): { status: s
   });
   if (rows.length && rows.every((row) => row.percent >= COMPLETE_PCT)) return { status: FINISHED, done: true };
   const parts = rows.filter((row) => row.percent > 0).slice(-MAX_STATUS_PARTS);
-  const status = parts.map((row) => (row.percent >= COMPLETE_PCT ? `${row.name} completa` : `${row.name} hasta ${stationLabel(row.furthestM)}`));
+  const status = parts.map((row) => (row.percent >= COMPLETE_PCT ? `${row.name} completa` : `${row.name} hasta ${kmLabel(row.furthestM)}`));
   return { status: status.join(' · ') || NO_PROGRESS, done: false };
 }
 

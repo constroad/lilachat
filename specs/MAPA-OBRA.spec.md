@@ -177,6 +177,17 @@ APK 182 por el OTA `49025a2b` (git 1cb9051). Recorrido en Test con QA-CTLPIS: we
 (90 m)». El motor pasa a `@constroad/shared/obra` (Portal publicó v0.6.0); mientras tanto
 `workMap.ts`, `workMapDischarges.ts` y `workMapProgress.ts` no suman lógica.
 
+**Un solo motor con Portal (07/11):**
+- La geometría sale del paquete: largo, proyección de una foto y corte entre progresivas (3069b51).
+- Los colores salen del paquete: `colorForPartida` da imprimación azul, asfalto negro y base marrón,
+  como los planos.
+- Las uniones de intervalos y la etiqueta «Km 0+100» del estado de cada calle también salen de ahí.
+- Una calle con menos de dos puntos se cuenta en los totales, como en Portal, aunque no se dibuje.
+- Los metros de cada tramo se redondean al centímetro.
+- `workMapPortalParity.test.ts` compara con el `workMapOverview` del paquete y exige el mismo %
+  (también con fecha de corte), los mismos estados de calle y los mismos colores. Antes, una calle
+  sin trazo daba 47,7 % en Lilachat y 48,1 % en Portal.
+
 **Ancho de móvil en la web:** medido el 06/11 con 433 px, el mínimo que da esa pestaña, no
 390. Sin scroll lateral, mapa de 375 × 419 y botones dentro. Un `resize` sin recargar en una
 pestaña oculta deja el diseño de escritorio; es de la prueba, porque ahí no llega el evento.

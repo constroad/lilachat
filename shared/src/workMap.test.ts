@@ -59,11 +59,13 @@ describe('workMapOf', () => {
     expect(workMapOf(undefined)).toBeNull();
   });
 
-  it('drops a street without a line and a bad coordinate instead of breaking the map', () => {
+  it('keeps a street it cannot draw, as Portal counts it, and drops a bad coordinate instead of breaking the map', () => {
     const raw = payload();
     raw.workStreets.streets.push({ _id: 's3', name: 'Sin trazo', geometry: lineOf([[-12, -77]]), lengthM: 0 });
     raw.workStreets.streets.push({ _id: 's4', name: 'Rota', geometry: [{ lat: Number.NaN, lng: -77 }, { lat: -12, lng: -77 }], lengthM: 5 });
-    expect(workMapOf(raw)?.streets.map((street) => street.id)).toEqual(['s1', 's2']);
+    const map = workMapOf(raw);
+    expect(map?.streets.map((street) => [street.id, street.line.length])).toEqual([['s1', 2], ['s2', 2], ['s3', 1], ['s4', 1]]);
+    expect(map && workMapView(map).planned.every((line) => line.coordinates.length >= 2)).toBe(true);
   });
 
   it('names a partida without a name and gives it a color of its own', () => {
@@ -107,7 +109,7 @@ describe('workMapView', () => {
 
   it('tells how far each street went', () => {
     const [olivos, dalias] = workMapView(parsed()).streets;
-    expect(olivos.status).toBe('Base hasta 0+300 · Asfaltado completa');
+    expect(olivos.status).toBe('Base hasta Km 0+300 · Asfaltado completa');
     expect(olivos.done).toBe(false);
     expect(dalias.status).toBe('Terminada');
     expect(dalias.done).toBe(true);

@@ -43,13 +43,21 @@ function idsOf(raw: unknown): string[] | null | undefined {
 const stageOf = (raw: unknown): string | null | undefined => (raw === undefined || raw === null ? raw : idOf(raw));
 const widthOf = (raw: unknown): number | null | undefined => (raw === undefined ? undefined : typeof raw === 'number' && raw > 0 && raw <= WIDTH_MAX_M ? raw : null);
 
+type ScopeExtras = Pick<WorkScopeInput, 'tagIds' | 'partidaIds' | 'stageId' | 'widthM'>;
+
+/** Works, stage and width as sent; null when one of them came wrong. */
+function scopeExtrasOf(raw: Record<string, unknown>): ScopeExtras | null {
+  const [tagIds, partidaIds, stageId, widthM] = [idsOf(raw.tag_ids), idsOf(raw.partida_ids), stageOf(raw.stage_id), widthOf(raw.width_m)];
+  if (tagIds === null || partidaIds === null || stageId === '' || widthM === null) return null;
+  return { tagIds: tagIds ?? null, partidaIds: partidaIds ?? null, stageId, widthM: widthM ?? null };
+}
+
 function scopeInputOf(raw: Record<string, unknown>): WorkScopeInput | null {
   const [streetId, scopeId, fromM, toM] = [idOf(raw.street_id), idOf(raw.scope_id), meterOf(raw.from_m), meterOf(raw.to_m)];
-  const [tagIds, partidaIds, stageId, widthM] = [idsOf(raw.tag_ids), idsOf(raw.partida_ids), stageOf(raw.stage_id), widthOf(raw.width_m)];
   const entryId = typeof raw.entry_id === 'string' && UUID.test(raw.entry_id) ? raw.entry_id : null;
-  if (!streetId || fromM === null || toM === null || toM <= fromM) return null;
-  if (tagIds === null || partidaIds === null || stageId === '' || widthM === null || (!scopeId && !entryId)) return null;
-  return { kind: 'work_scope', streetId, scopeId: scopeId || null, fromM, toM, tagIds: tagIds ?? null, partidaIds: partidaIds ?? null, stageId, widthM: widthM ?? null, entryId: scopeId ? null : entryId };
+  const extras = scopeExtrasOf(raw);
+  if (!streetId || fromM === null || toM === null || toM <= fromM || !extras || (!scopeId && !entryId)) return null;
+  return { kind: 'work_scope', streetId, scopeId: scopeId || null, fromM, toM, ...extras, entryId: scopeId ? null : entryId };
 }
 
 function restoreInputOf(raw: Record<string, unknown>): WorkMapFormInput | null {
@@ -74,8 +82,8 @@ export function workMapFormInputOf(raw: Record<string, unknown>): WorkMapFormInp
 }
 
 /**
- * The kinds the door opens. `work_restore` and `work_deleted` wait for agentes: its service check did
- * not cover `restaurar_de_obra` nor `borrados_de_obra` yet (agentes 07/11, branch mapa-borrados-y-datos).
+ * The kinds the door opens. Restoring and listing what was deleted wait for agentes: its service
+ * check did not cover those two tools yet (agentes 07/11).
  */
 export const isWorkMapFormKind = (kind: unknown): boolean =>
   kind === 'work_scope' || kind === 'work_scope_delete' || kind === 'work_stage' || kind === 'work_tag';

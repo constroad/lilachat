@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { lineLengthM, workMapOf, type WorkMap } from './workMap.js';
 import { streetDetailOf } from './workStreetDetail.js';
-import { editThenReload, sendWorkStage, SCOPE_PAST_STREET, SCOPE_ENDS_BEFORE, SCOPE_NEEDS_ENDS, LABEL_NEEDS_NAME, LABEL_TOO_LONG, labelProblem, scopeDraftFor, scopeDraftProblem, toggleScopeWork, WORK_TAG_COLORS, workScopeDeleteRequest, workScopeRequest, workStageRequest, workTagRequest } from './workScopeDraft.js';
+import { createdOrRefusal, editThenReload, labelFormIdle, runLabelCreate, runScopeSave, sendWorkStage, type LabelForm, SCOPE_PAST_STREET, SCOPE_ENDS_BEFORE, SCOPE_NEEDS_ENDS, LABEL_NEEDS_NAME, LABEL_TOO_LONG, labelProblem, scopeDraftFor, scopeDraftProblem, toggleScopeWork, WORK_TAG_COLORS, workScopeDeleteRequest, workScopeRequest, workStageRequest, workTagRequest } from './workScopeDraft.js';
 
 /** Step 3 of the map (José 07/11: «itera hasta terminarlo»): a street and its stretches (o-03), stages (o-04) and works (o-05). */
 const line = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.997 }];
@@ -129,5 +129,27 @@ describe('an edit of the map, then the map again', () => {
     expect(failed.ok).toBe(false);
     expect(reloads).toBe(1);
     expect(editThenReload(undefined, reload)).toBeUndefined();
+  });
+});
+
+describe('the inline forms (shared by the web and the APK)', () => {
+  it('a new label checks the name, creates, then closes; a refusal stays on the form', async () => {
+    const seen: LabelForm[] = [];
+    await runLabelCreate({ ...labelFormIdle('#0d9488'), open: true, name: '' }, async () => null, (form) => seen.push(form));
+    expect(seen.at(-1)?.error).toBe(LABEL_NEEDS_NAME);
+    await runLabelCreate({ ...labelFormIdle('#0d9488'), open: true, name: 'Bacheo' }, async () => null, (form) => seen.push(form));
+    expect(seen.at(-1)).toEqual(labelFormIdle('#0d9488'));
+    await runLabelCreate({ ...labelFormIdle(), open: true, name: 'Bacheo' }, async () => 'Ya existe', (form) => seen.push(form));
+    expect(seen.at(-1)).toMatchObject({ open: true, busy: false, error: 'Ya existe' });
+  });
+
+  it('saving a stretch says the problem first, then Portal\'s answer', async () => {
+    const send = async () => ({ ok: false as const, message: 'tiene_avance' });
+    const base = { map: mapOf(), streetId: 's1', lengthM: 320, entryId: ENTRY, send };
+    expect(await runScopeSave({ ...base, draft: { ...scopeDraftFor(320), toM: null } })).toBe(SCOPE_NEEDS_ENDS);
+    expect(await runScopeSave({ ...base, draft: scopeDraftFor(320) })).toBe('tiene_avance');
+    expect(await runScopeSave({ ...base, draft: scopeDraftFor(320), send: async () => ({ ok: true, message: 'ok' }) })).toBeNull();
+    expect(await createdOrRefusal(Promise.resolve({ ok: false, message: 'no' }))).toBe('no');
+    expect(await createdOrRefusal(Promise.resolve({ ok: true, message: 'ok' }))).toBeNull();
   });
 });

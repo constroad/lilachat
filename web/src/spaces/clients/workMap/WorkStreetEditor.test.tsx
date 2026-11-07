@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WorkMapView } from '@lilachat/shared';
+import type { StreetSend } from './workProgressSender';
 import { WorkStreetEditor } from './WorkStreetEditor';
 
 vi.mock('./WorkMapCanvas', () => ({
@@ -26,7 +27,7 @@ const walkTo = (meters: number) => act(() => report({ coords: { latitude: -12, l
 describe('WorkStreetEditor, walking with GPS', () => {
   it('walks the street and saves the walked line', async () => {
     // Arrange
-    const send = vi.fn(async () => ({ ok: true as const, message: 'Calle guardada.' }));
+    const send = vi.fn<StreetSend>(async () => ({ ok: true, message: 'Calle guardada.' }));
     render(<WorkStreetEditor title="Obra" map={null} send={send} onClose={vi.fn()} onSaved={vi.fn()} />);
     // Act
     fireEvent.click(screen.getByTestId('editor-modo-gps'));

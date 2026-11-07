@@ -5,8 +5,7 @@ import { sendMapTool, type WorkProgressDeps, type WorkProgressResult } from './w
 
 /**
  * Adding or editing a stretch, a stage or a work of the map (designs o-03, o-04, o-05; step 3,
- * José 07/11). Each goes through the server's door to Portal's tool (`guardar_tramo_de_obra`,
- * `borrar_tramo_de_obra`, `crear_etapa_de_obra`, `crear_etiqueta_de_obra`), which checks it again.
+ * José 07/11). Each goes through the server's door to Portal's map tools, which check it again.
  * PURE: the APK and the web send what this builds.
  */
 export type ScopeDraft = { fromM: number | null; toM: number | null; workIds: string[]; stageId: string | null; widthM: number | null };
@@ -25,7 +24,7 @@ export const SCOPE_PAST_STREET = (lengthM: number) => `El tramo pasa el largo de
 export const LABEL_NEEDS_NAME = 'Ponle nombre.';
 export const LABEL_TOO_LONG = `El nombre lleva hasta ${LABEL_MAX} letras.`;
 
-/** The colors of the drawings (o-05): subrasante, base, imprimación, asfalto, then four more to tell works apart. MapLibre paints hex. */
+/** The colors of the drawings (o-05): subgrade, base, priming and asphalt, then four more to tell works apart. MapLibre paints hex. */
 export const WORK_TAG_COLORS = ['#7c4a2d', '#d97706', '#0d9488', '#111827', '#2563eb', '#7c3aed', '#db2777', '#65a30d'] as const;
 
 export const SCOPE_SAVED = 'Tramo guardado.';
@@ -94,3 +93,32 @@ export const editThenReload = (send: MapEditSend | undefined, reload: () => Prom
     if (result.ok) await reload();
     return result;
   });
+
+/** «Nueva etapa» / «Nuevo trabajo» inline (o-04, o-05): the same small form on the web and the APK. */
+export type LabelForm = { open: boolean; name: string; color: string; error: string | null; busy: boolean };
+export const labelFormIdle = (color = ''): LabelForm => ({ open: false, name: '', color, error: null, busy: false });
+
+/** Checks the name, creates, and closes the form or shows why it was refused. */
+export async function runLabelCreate(form: LabelForm, create: (name: string, color: string) => Promise<string | null>, update: (form: LabelForm) => void): Promise<void> {
+  const problem = labelProblem(form.name);
+  if (problem) return update({ ...form, error: problem });
+  update({ ...form, busy: true, error: null });
+  const failure = await create(form.name, form.color);
+  update(failure ? { ...form, busy: false, error: failure } : labelFormIdle(form.color));
+}
+
+type ScopeSave = { map: WorkMap; streetId: string; lengthM: number; draft: ScopeDraft; entryId: string; scopeId?: string; send: MapEditSend };
+
+/** «Guardar tramo»: what is wrong before sending, then Portal's answer; null when it was kept. */
+export async function runScopeSave(save: ScopeSave): Promise<string | null> {
+  const problem = scopeDraftProblem(save.draft, save.lengthM);
+  if (problem) return problem;
+  const result = await save.send(workScopeRequest(save.map, save.streetId, save.draft, save.entryId, save.scopeId), sendWorkScope);
+  return result.ok ? null : result.message;
+}
+
+/** A new work or stage from inside the form: null when Portal created it. */
+export const createdOrRefusal = async (sent: Promise<WorkProgressResult>): Promise<string | null> => {
+  const result = await sent;
+  return result.ok ? null : result.message;
+};

@@ -52,7 +52,7 @@ describe('StreetScopes', () => {
     fireEvent.click(screen.getByTestId('editar-tramo-c1'));
     fireEvent.change(screen.getByTestId('tramo-hasta'), { target: { value: '400' } });
     fireEvent.click(screen.getByTestId('tramo-guardar'));
-    expect(screen.getByTestId('tramo-error')).toHaveTextContent('El tramo pasa el largo de la calle (320 m).');
+    expect(await screen.findByTestId('tramo-error')).toHaveTextContent('El tramo pasa el largo de la calle (320 m).');
     expect(send).not.toHaveBeenCalled();
     fireEvent.change(screen.getByTestId('tramo-hasta'), { target: { value: '60' } });
     fireEvent.click(screen.getByTestId('tramo-guardar'));

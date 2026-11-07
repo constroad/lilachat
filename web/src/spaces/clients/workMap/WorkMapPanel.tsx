@@ -86,7 +86,7 @@ function GroupTitle(props: { group: StageGroup }) {
 /**
  * The right panel of the map (design `o-01-mapa-obra`): the big figure with the bar by work, then
  * the streets under their stage, and the day the map is cut at. Admins see the units of the
- * Control de pista on top (`o-07`).
+ * runway control report on top (`o-07`).
  */
 export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; filter: WorkMapFilter; badge?: ReactNode; top?: ReactNode; scrolls: boolean }) {
   return (

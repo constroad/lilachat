@@ -26,8 +26,8 @@ function UnderlineTabs(props: { tabs: Tab[]; onTab: (tab: ServiceTabKey) => void
 type WorkspaceProps = { crumbs: ReactNode; detail: ServiceDetail; service: SpaceClientService; tabs: Tab[]; onTab: (tab: ServiceTabKey) => void; links: ChannelLinks; target: ServiceAskTarget; chatId: string; admin: boolean };
 
 /**
- * The «Mapa» tab takes the whole conversation (design `o-01-mapa-obra`, José 07/11: «no se está
- * pareciendo en nada al diseño»): the crumbs and the tabs go in the map's own bar.
+ * The map tab takes the whole conversation (design `o-01-mapa-obra`; José 07/11 said the web did
+ * not look like the design): the crumbs and the tabs go in the map's own bar.
  */
 export function MapWorkspace(props: WorkspaceProps) {
   const { service, target } = props;

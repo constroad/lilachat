@@ -131,7 +131,12 @@ pero `get_screen` devuelve el mismo HTML. Por eso se generó aparte.
 - **Peso:** el mapa es un trozo aparte de 256 KB comprimidos. Solo baja al abrir la pestaña.
 - **No se dibuja todavía:** «Registrar avance», «Compartir avance», «Editar obra» y la
   fecha de corte. Sin puerta de escritura serían botones de mentira.
-- **APK:** sigue con la página de Portal en la WebView hasta el APK nuevo.
+- **Trampa:** el CSS de MapLibre pone `position: relative` en su contenedor. Si ese
+  `div` lleva `absolute`, mide 0 de alto y el mapa no se ve, aunque cargue sin error.
+- **APK:** `app/src/spaces/clients/workMap/*` con `@maplibre/maplibre-react-native`.
+  Dentro del detalle el mapa no se mueve, para no pelear con el scroll; «Ver mapa
+  completo» lo abre a toda la pantalla. Es código nativo: un OTA de este commit no llega
+  a nadie hasta instalar el APK nuevo, porque la huella del `runtimeVersion` cambia.
 
 ## 7. Lo que falta decidir
 

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ExternalLink, Maximize2, Minimize2 } from 'lucide-react';
-import { metersLabel, percentLabel, workMapView, type WorkMap, type WorkMapFilter, type WorkMapStreetRow, type WorkMapView } from '@lilachat/shared';
+import { metersLabel, workMapHeadline, workMapStageFilter, workMapView, type WorkMap, type WorkMapFilter, type WorkMapStreetRow, type WorkMapView } from '@lilachat/shared';
 
 const WorkMapCanvas = lazy(() => import('./WorkMapCanvas'));
 
@@ -97,7 +97,7 @@ function Header(props: { view: WorkMapView; pageUrl: string; stages: ReactNode; 
     <header className="flex flex-wrap items-center gap-2">
       <div className="min-w-0 flex-1">
         <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">Mapa de la obra</p>
-        <p data-testid="mapa-avance" className="text-[15px] font-semibold text-on-surface">{percentLabel(view.percent)} · {metersLabel(view.doneM)} de {metersLabel(view.totalM)}</p>
+        <p data-testid="mapa-avance" className="text-[15px] font-semibold text-on-surface">{workMapHeadline(view)}</p>
       </div>
       {props.stages}
       <button type="button" data-testid="mapa-pantalla-completa" onClick={props.onToggle} className={ICON_BUTTON}>
@@ -108,13 +108,6 @@ function Header(props: { view: WorkMapView; pageUrl: string; stages: ReactNode; 
   );
 }
 
-/** A stage may not have the chosen work: the filter drops it instead of showing an empty map. */
-function nextFilter(map: WorkMap, filter: WorkMapFilter, stageId: string): WorkMapFilter {
-  const stageWorks = map.scopes.filter((scope) => !stageId || scope.stageId === stageId).flatMap((scope) => scope.workIds);
-  const workId = filter.workId && stageWorks.includes(filter.workId) ? filter.workId : undefined;
-  return { ...(stageId ? { stageId } : {}), ...(workId ? { workId } : {}) };
-}
-
 /** The map, its figures and its streets (design `o-01-mapa-obra`), read only. */
 export function WorkMapBoard(props: { map: WorkMap; pageUrl: string }) {
   const { map, pageUrl } = props;
@@ -122,7 +115,7 @@ export function WorkMapBoard(props: { map: WorkMap; pageUrl: string }) {
   const view = useMemo(() => workMapView(map, filter), [map, filter]);
   const { holder, expanded, open, close } = useFullScreen();
   const stages = map.stages.length ? (
-    <select data-testid="mapa-etapa" aria-label="Etapa" value={filter.stageId ?? ''} onChange={(event) => setFilter(nextFilter(map, filter, event.target.value))} className="h-9 rounded-xl border border-outline/20 bg-surface px-2 text-[13px] font-semibold text-on-surface">
+    <select data-testid="mapa-etapa" aria-label="Etapa" value={filter.stageId ?? ''} onChange={(event) => setFilter(workMapStageFilter(map, filter, event.target.value))} className="h-9 rounded-xl border border-outline/20 bg-surface px-2 text-[13px] font-semibold text-on-surface">
       <option value="">Todas las etapas</option>
       {map.stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
     </select>

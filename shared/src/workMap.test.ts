@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lineLengthM, metersLabel, percentLabel, sliceLine, stationLabel, workMapOf, workMapRequest, workMapView, type WorkMap } from './workMap.js';
+import { lineLengthM, loadWorkMap, metersLabel, percentLabel, sliceLine, stationLabel, WORK_MAP_FAILED, workMapCollection, workMapHeadline, workMapOf, workMapRequest, workMapStageFilter, workMapView, type WorkMap } from './workMap.js';
 
 const lineOf = (points: Array<[number, number]>) => points.map(([lat, lng]) => ({ lat, lng }));
 const LONG_STREET = lineOf([[-12, -77], [-12, -76.99]]);
@@ -165,6 +165,13 @@ describe('labels', () => {
   });
 });
 
+describe('workMapHeadline', () => {
+  it('reads the figures, and says so when no stretch is defined yet', () => {
+    expect(workMapHeadline({ percent: 61.5, doneM: 800, totalM: 1300 })).toBe('61,5 % · 800 m de 1 300 m');
+    expect(workMapHeadline({ percent: 0, doneM: 0, totalM: 0 })).toBe('Sin tramos definidos');
+  });
+});
+
 describe('workMapRequest', () => {
   const token = 'a'.repeat(64);
   const service = '6aedcc3a2f5e395dca260f16';
@@ -181,5 +188,54 @@ describe('workMapRequest', () => {
     expect(workMapRequest(`https://constroad.com/public/test/service-report/${token}`, '../../admin')).toBeNull();
     expect(workMapRequest('https://constroad.com/public/test/other/abc', service)).toBeNull();
     expect(workMapRequest('not a link', service)).toBeNull();
+  });
+});
+
+describe('workMapCollection', () => {
+  it('writes each line as a feature with its color', () => {
+    const collection = workMapCollection([{ streetId: 's1', color: '#111111', coordinates: [[-77, -12], [-76.9, -12]] }]);
+    expect(collection.features[0]?.properties.color).toBe('#111111');
+    expect(collection.features[0]?.geometry.type).toBe('LineString');
+  });
+});
+
+describe('workMapStageFilter', () => {
+  it('keeps the work when the stage has it and drops it when it does not', () => {
+    expect(workMapStageFilter(parsed(), { workId: 'base' }, 'e2')).toEqual({ stageId: 'e2', workId: 'base' });
+    expect(workMapStageFilter(parsed(), { workId: 'asfalto' }, 'e2')).toEqual({ stageId: 'e2' });
+  });
+
+  it('an empty stage is the whole work', () => {
+    expect(workMapStageFilter(parsed(), { stageId: 'e2', workId: 'base' }, '')).toEqual({ workId: 'base' });
+  });
+});
+
+describe('loadWorkMap', () => {
+  const url = 'https://constroad.com/public/test/service-report/abc';
+
+  it('reads the map with the link', async () => {
+    const read = async (asked: string) => ({ ok: true as const, data: { map: asked === url ? parsed() : null } });
+    const state = await loadWorkMap(async () => ({ ok: true, url }), read);
+    expect(state.kind === 'ready' && state.map?.streets).toHaveLength(2);
+  });
+
+  it('a link that fails never reaches the server', async () => {
+    let asked = false;
+    const state = await loadWorkMap(async () => ({ ok: false, message: 'Sin enlace' }), async () => {
+      asked = true;
+      return { ok: false };
+    });
+    expect(state).toEqual({ kind: 'failed', message: 'Sin enlace' });
+    expect(asked).toBe(false);
+  });
+
+  it('a server that fails keeps the link, so Portal stays one tap away', async () => {
+    const state = await loadWorkMap(async () => ({ ok: true, url }), async () => ({ ok: false }));
+    expect(state).toEqual({ kind: 'failed', message: WORK_MAP_FAILED, url });
+  });
+
+  it('an answer without a map reads as a service without streets', async () => {
+    const state = await loadWorkMap(async () => ({ ok: true, url }), async () => ({ ok: true, data: {} }));
+    expect(state).toEqual({ kind: 'ready', url, map: null });
   });
 });

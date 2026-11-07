@@ -1,3 +1,5 @@
+import type { ServiceMapResult } from './serviceMap.js';
+
 /**
  * The work map of a service (José 06/11: «el mapa literal de la obra»). Portal owns the streets,
  * the stretches and the approved progress; this reads what it shows a client and turns it into
@@ -33,6 +35,11 @@ export type WorkMapView = {
   bounds: [[number, number], [number, number]] | null;
 };
 
+export type WorkMapState =
+  | { kind: 'loading' }
+  | { kind: 'failed'; message: string; url?: string }
+  | { kind: 'ready'; url: string; map: WorkMap | null };
+
 /** MapLibre paints with plain colors: a CSS variable does not reach its canvas. */
 export const WORK_MAP_PLANNED_COLOR = '#94a3b8';
 /** Free tiles without a key, the ones Portal's map uses. */
@@ -43,6 +50,7 @@ export const WORK_MAP_EMPTY = 'Este servicio todavía no tiene calles en el mapa
 const PARTIDA_COLORS = ['#0f766e', '#b45309', '#7c3aed', '#be123c', '#1d4ed8', '#4d7c0f'];
 const UNNAMED_WORK = 'Trabajo';
 const NO_PROGRESS = 'Sin avance';
+const NO_STRETCHES = 'Sin tramos definidos';
 const FINISHED = 'Terminada';
 const COMPLETE_PCT = 100;
 const MAX_STATUS_PARTS = 2;
@@ -73,6 +81,10 @@ export function workMapRequest(link: string, serviceId: string): string | null {
 
 export const percentLabel = (percent: number) => `${String(percent).replace('.', ',')} %`;
 export const metersLabel = (meters: number) => `${String(Math.round(meters)).replace(/\B(?=(\d{3})+$)/g, ' ')} m`;
+
+/** The figure over the map; a work without stretches has nothing to add up yet. */
+export const workMapHeadline = (view: Pick<WorkMapView, 'percent' | 'doneM' | 'totalM'>) =>
+  view.totalM > 0 ? `${percentLabel(view.percent)} · ${metersLabel(view.doneM)} de ${metersLabel(view.totalM)}` : NO_STRETCHES;
 
 /** A station as the field writes it: 1420 m is «1+420». */
 export function stationLabel(meters: number): string {
@@ -272,4 +284,29 @@ export function workMapView(map: WorkMap, filter: WorkMapFilter = {}): WorkMapVi
     done: doneLines(map, stretches),
     bounds: boundsOf(streets.length ? streets : map.streets),
   };
+}
+
+/** The lines as MapLibre reads them, on the web and in the app. */
+export const workMapCollection = (lines: WorkMapLine[]) => ({
+  type: 'FeatureCollection' as const,
+  features: lines.map((line) => ({ type: 'Feature' as const, properties: { color: line.color }, geometry: { type: 'LineString' as const, coordinates: line.coordinates } })),
+});
+
+/** A stage may not have the chosen work: the filter drops it instead of showing an empty map. */
+export function workMapStageFilter(map: WorkMap, filter: WorkMapFilter, stageId: string): WorkMapFilter {
+  const stageWorks = map.scopes.filter((scope) => !stageId || scope.stageId === stageId).flatMap((scope) => scope.workIds);
+  const workId = filter.workId && stageWorks.includes(filter.workId) ? filter.workId : undefined;
+  return { ...(stageId ? { stageId } : {}), ...(workId ? { workId } : {}) };
+}
+
+/** The link of the service, then the map behind it. With the link alone Portal's page stays open. */
+export async function loadWorkMap(
+  link: () => Promise<ServiceMapResult>,
+  read: (url: string) => Promise<{ ok: true; data: { map?: WorkMap | null } } | { ok: false; message?: string }>,
+): Promise<WorkMapState> {
+  const made = await link();
+  if (!made.ok) return { kind: 'failed', message: made.message };
+  const reply = await read(made.url);
+  if (!reply.ok) return { kind: 'failed', message: reply.message ?? WORK_MAP_FAILED, url: made.url };
+  return { kind: 'ready', url: made.url, map: reply.data.map ?? null };
 }

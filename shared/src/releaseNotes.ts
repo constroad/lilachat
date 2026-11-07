@@ -17,6 +17,17 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.181',
+    // Company spaces: the work map, Cubicar, the ⚡ and the photos of the plant forms.
+    audience: 'spaces',
+    items: [
+      'La pestaña Mapa de un servicio muestra la obra sobre las calles reales, con el avance por trabajo y por etapa.',
+      'Cubicar se abre desde el ⚡ sin enrolar el equipo.',
+      'Las fotos de galería de tanques y materiales llevan la fecha en que se tomaron.',
+      'Una acción del ⚡ que tarda ya no dice que la app no respondió.',
+    ],
+  },
+  {
     version: '0.1.180',
     // Everyone: the sign-in by workspace (spec INGRESO-POR-ESPACIO).
     audience: 'all',

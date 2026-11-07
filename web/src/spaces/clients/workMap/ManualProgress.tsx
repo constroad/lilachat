@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
-import { Camera, Check, Minus, Plus, Send, X } from 'lucide-react';
-import { addManualPhoto, MANUAL_PHOTOS_MAX, MANUAL_STEP_M, manualDraftFor, manualFigures, nudgeManualEnd, pickManualWork, runManualProgress, stationLabel, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkMap } from '@lilachat/shared';
+import { Camera, Check, Crosshair, Minus, Plus, Send, X } from 'lucide-react';
+import { addManualPhoto, GPS_UNAVAILABLE, manualEndFromGps, MANUAL_PHOTOS_MAX, MANUAL_STEP_M, manualDraftFor, manualFigures, nudgeManualEnd, pickManualWork, runManualProgress, stationLabel, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkMap } from '@lilachat/shared';
 import { DrivePhotoInput } from '../ServiceDriveWeb';
+import { readGpsOnce } from './useGpsWalk';
 import { KICKER } from './WorkMapPanel';
 
 const CARD = 'rounded-xl border-[1.5px] border-outline/15 bg-surface p-4';
@@ -45,7 +46,17 @@ export function ManualProgress(props: Props) {
   const [entryId] = useState(() => crypto.randomUUID());
   const [answer, setAnswer] = useState<Answer>(null);
   const [sending, setSending] = useState(false);
+  const [locating, setLocating] = useState(false);
   const change = (next: ManualProgressDraft) => { setAnswer(null); setDraft(next); };
+  const line = props.map.streets.find((street) => street.id === props.streetId)?.line ?? [];
+  const fromGps = async () => {
+    setLocating(true);
+    const fix = await readGpsOnce();
+    setLocating(false);
+    const placed = fix ? manualEndFromGps(draft, line, props.lengthM, fix) : { problem: GPS_UNAVAILABLE };
+    if ('draft' in placed) change(placed.draft);
+    else setAnswer({ ok: false, message: placed.problem });
+  };
   const submit = async () => {
     setSending(true);
     const result = await runManualProgress({ map: props.map, streetId: props.streetId, lengthM: props.lengthM, draft, entryId, send: props.send, now: new Date() });
@@ -86,8 +97,9 @@ export function ManualProgress(props: Props) {
             <input data-testid="avance-manual-hasta" type="number" inputMode="decimal" min={draft.fromM} value={draft.toM} onChange={(event) => change({ ...draft, toM: Number(event.target.value.replace(',', '.')) || 0 })} className="mt-0.5 h-11 w-full rounded-xl border border-outline/25 bg-background px-3 font-mono text-xl font-bold tabular-nums text-primary outline-none focus:border-primary" />
           </label>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="mt-3 grid grid-cols-3 gap-2">
           <button type="button" data-testid="avance-manual-menos" onClick={() => change(nudgeManualEnd(draft, -MANUAL_STEP_M, props.lengthM))} className={STEP}><span className="flex items-center gap-1"><Minus size={14} />{MANUAL_STEP_M} m</span><span className="font-sans text-[11px] font-medium text-on-surface-variant">Retroceder</span></button>
+          <button type="button" data-testid="avance-manual-gps" disabled={locating} onClick={() => void fromGps()} className={`${STEP} border-primary/30 bg-primary/5 text-primary`}><Crosshair size={16} /><span className="font-sans text-[11px] font-semibold">{locating ? 'Ubicando…' : 'Mi GPS'}</span></button>
           <button type="button" data-testid="avance-manual-mas" onClick={() => change(nudgeManualEnd(draft, MANUAL_STEP_M, props.lengthM))} className={`${STEP} text-primary`}><span className="flex items-center gap-1"><Plus size={14} />{MANUAL_STEP_M} m</span><span className="font-sans text-[11px] font-medium text-on-surface-variant">Avanzar</span></button>
         </div>
         <p className="mt-3 rounded-xl bg-background p-3 text-[12px] text-on-surface-variant">Metrado de la jornada: <b data-testid="avance-manual-metrado" className="font-mono text-[14px] text-on-surface">{manualFigures(draft, props.widthM)}</b></p>

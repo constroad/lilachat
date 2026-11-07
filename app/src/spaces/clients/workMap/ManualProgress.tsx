@@ -2,10 +2,11 @@ import { useMemo, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import type * as ImagePicker from 'expo-image-picker';
-import { Camera, Check, Minus, Plus, Send } from 'lucide-react-native';
-import { addManualPhoto, MANUAL_NOTE_MAX, MANUAL_PHOTOS_MAX, MANUAL_STEP_M, manualDraftFor, manualFigures, nudgeManualEnd, pickManualWork, runManualProgress, stationLabel, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkMap } from '@lilachat/shared';
+import { Camera, Check, Crosshair, Minus, Plus, Send } from 'lucide-react-native';
+import { addManualPhoto, GPS_UNAVAILABLE, manualEndFromGps, MANUAL_NOTE_MAX, MANUAL_PHOTOS_MAX, MANUAL_STEP_M, manualDraftFor, manualFigures, nudgeManualEnd, pickManualWork, runManualProgress, stationLabel, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkMap } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { takeFieldPhoto } from '../useDriveUpload';
+import { readGpsOnce } from './useGpsWalk';
 import { KICKER } from './WorkMapPanel';
 
 const CARD = 'gap-2 rounded-xl border-[1.5px] border-outline/15 bg-surface p-4';
@@ -49,7 +50,7 @@ function Photos(props: { count: number; uploadPhoto?: ManualPhotoUpload<PhotoAss
 }
 
 /** Step 2: from where the work stopped, up to where it reached today. */
-function Reach(props: { draft: ManualProgressDraft; lengthM: number; widthM?: number; onChange: (next: ManualProgressDraft) => void }) {
+function Reach(props: { draft: ManualProgressDraft; lengthM: number; widthM?: number; locating: boolean; onGps: () => void; onChange: (next: ManualProgressDraft) => void }) {
   const colors = useColores();
   const { draft } = props;
   return (
@@ -71,6 +72,10 @@ function Reach(props: { draft: ManualProgressDraft; lengthM: number; widthM?: nu
           <View className="flex-row items-center gap-1"><Minus size={14} color={colors['on-surface']} /><Text className="font-mono text-[16px] font-bold text-on-surface">{MANUAL_STEP_M} m</Text></View>
           <Text className="text-[11px] text-on-surface-variant">Retroceder</Text>
         </Pressable>
+        <Pressable testID="avance-manual-gps" disabled={props.locating} onPress={props.onGps} className={`${STEP} border-primary/30 bg-primary/5 ${props.locating ? 'opacity-60' : ''}`}>
+          <Crosshair size={18} color={colors.primary} />
+          <Text className="text-[11px] font-semibold text-primary">{props.locating ? 'Ubicando…' : 'Mi GPS'}</Text>
+        </Pressable>
         <Pressable testID="avance-manual-mas" onPress={() => props.onChange(nudgeManualEnd(draft, MANUAL_STEP_M, props.lengthM))} className={STEP}>
           <View className="flex-row items-center gap-1"><Plus size={14} color={colors.primary} /><Text className="font-mono text-[16px] font-bold text-primary">{MANUAL_STEP_M} m</Text></View>
           <Text className="text-[11px] text-on-surface-variant">Avanzar</Text>
@@ -89,7 +94,17 @@ export function ManualProgress(props: Props) {
   const [entryId] = useState(() => randomUUID());
   const [answer, setAnswer] = useState<Answer>(null);
   const [sending, setSending] = useState(false);
+  const [locating, setLocating] = useState(false);
   const change = (next: ManualProgressDraft) => { setAnswer(null); setDraft(next); };
+  const fromGps = async () => {
+    setLocating(true);
+    const fix = await readGpsOnce();
+    setLocating(false);
+    const line = props.map.streets.find((street) => street.id === props.streetId)?.line ?? [];
+    const placed = fix ? manualEndFromGps(draft, line, props.lengthM, fix) : { problem: GPS_UNAVAILABLE };
+    if ('draft' in placed) change(placed.draft);
+    else setAnswer({ ok: false, message: placed.problem });
+  };
   const submit = async () => {
     setSending(true);
     setAnswer(await runManualProgress({ map: props.map, streetId: props.streetId, lengthM: props.lengthM, draft, entryId, send: props.send, now: new Date() }));
@@ -116,7 +131,7 @@ export function ManualProgress(props: Props) {
           {start.works.length ? null : <Text className="text-[14px] text-on-surface-variant">Esta calle no tiene trabajos en sus tramos. Agrega un tramo con su trabajo primero.</Text>}
         </View>
       </View>
-      <Reach draft={draft} lengthM={props.lengthM} widthM={props.widthM} onChange={change} />
+      <Reach draft={draft} lengthM={props.lengthM} widthM={props.widthM} locating={locating} onGps={() => void fromGps()} onChange={change} />
       <Photos count={draft.photoIds.length} uploadPhoto={props.uploadPhoto} onPhoto={(mediaId) => change(addManualPhoto(draft, mediaId))} />
       <View className={CARD}>
         <Text className={LABEL}>4 · Enviar</Text>

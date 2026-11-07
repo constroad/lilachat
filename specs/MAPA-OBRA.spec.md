@@ -462,8 +462,9 @@ porque Portal no tiene cómo borrarlos.
   Portal rechaza una hora del equipo adelantada más de 5 min y fotos que no son del Drive del servicio.
 - Motor puro `shared/src/workManualProgress.ts`; puerta `server/src/bots/workManualProgressForm.ts`
   (comparte el parser del tramo con `registrar_avance_de_obra`).
-- **Sin «Mi GPS» todavía:** el diseño trae un botón para fijar el fin con la ubicación. Queda para la
-  siguiente vuelta.
+- **«Mi GPS»** entre −10 y +10: una sola lectura de la ubicación (sin seguirla) se proyecta sobre el
+  eje de la calle (`projectToLine` de `@constroad/shared/obra`) y pasa a ser el fin. Se niega con
+  GPS débil (más de ±25 m), a más de 30 m de la calle o antes del punto de partida, y lo dice.
 - La herramienta ya estaba aprobada en Agentes al probarla (07/11).
 
 **E2E web prod (07/11, 21:59Z, Test, QA-CTLPIS, calle «QA-MAPA calle — borrar»):** «Ver tramos» →

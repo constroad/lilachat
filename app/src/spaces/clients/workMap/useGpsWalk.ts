@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
-import { startWalk, stopWalk, WALK_IDLE, walkFix, type WalkState } from '@lilachat/shared';
+import { startWalk, stopWalk, WALK_IDLE, walkFix, type GpsFix, type WalkState } from '@lilachat/shared';
 
 /** Metres the phone moves before it reports again: the engine still keeps one point every 5 m. */
 const REPORT_EVERY_M = 2;
@@ -30,4 +30,12 @@ export function useGpsWalk() {
   const stop = () => { clear(); setWalk(stopWalk); };
   const reset = () => { clear(); setWalk(WALK_IDLE); };
   return { walk, denied, start, stop, reset };
+}
+
+/** One position for «Mi GPS» (o-06); null when the person refused it or the phone has none. */
+export async function readGpsOnce(): Promise<GpsFix | null> {
+  const permission = await Location.requestForegroundPermissionsAsync().catch(() => null);
+  if (permission?.status !== 'granted') return null;
+  const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.BestForNavigation }).catch(() => null);
+  return position ? { lat: position.coords.latitude, lng: position.coords.longitude, accuracyM: position.coords.accuracy ?? Number.POSITIVE_INFINITY } : null;
 }

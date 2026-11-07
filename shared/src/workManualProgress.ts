@@ -1,8 +1,10 @@
+import { projectToLine, STREET_REACH_M } from '@constroad/shared/obra';
 import { FORMS_LEVEL } from './appForms.js';
-import { metersLabel, type WorkMap, type WorkMapWork } from './workMap.js';
+import { metersLabel, type WorkMap, type WorkMapPoint, type WorkMapWork } from './workMap.js';
 import { stretchWorksOf } from './workMapProgress.js';
 import type { DriveUploadResult } from './driveUpload.js';
 import type { MapEditSend } from './workScopeDraft.js';
+import { WALK_MAX_ACCURACY_M, type GpsFix } from './workStreetWalk.js';
 import { sendMapTool, type WorkProgressDeps, type WorkProgressResult } from './workProgressSend.js';
 
 /**
@@ -123,4 +125,19 @@ export async function runManualProgress(run: ManualRun): Promise<WorkProgressRes
   const problem = manualProblem(run.draft, run.lengthM);
   if (problem) return { ok: false, message: problem };
   return run.send(workManualProgressRequest(run.map, run.streetId, run.draft, run.entryId, run.now), (deps) => sendWorkManualProgress(deps, run.draft.note));
+}
+
+export const GPS_WEAK = (accuracyM: number) => `GPS débil (±${Math.round(accuracyM)} m): espera a cielo abierto o usa ±10 m.`;
+export const GPS_OFF_STREET = (distanceM: number) => `Estás a ${Math.round(distanceM)} m de la calle. Acércate o usa ±10 m.`;
+export const GPS_BEHIND = 'Tu posición queda antes del punto de partida.';
+export const GPS_UNAVAILABLE = 'No se pudo leer tu ubicación. Revisa el permiso de ubicación o usa ±10 m.';
+
+/** «Mi GPS» (o-06): where the person stands, projected on the street, becomes the end. */
+export function manualEndFromGps(draft: ManualProgressDraft, line: WorkMapPoint[], lengthM: number, fix: GpsFix): { draft: ManualProgressDraft } | { problem: string } {
+  if (fix.accuracyM > WALK_MAX_ACCURACY_M) return { problem: GPS_WEAK(fix.accuracyM) };
+  const projected = projectToLine(line, fix);
+  if (!projected) return { problem: GPS_UNAVAILABLE };
+  if (projected.distanceM > STREET_REACH_M) return { problem: GPS_OFF_STREET(projected.distanceM) };
+  const toM = Math.round(Math.min(projected.measureM, lengthM));
+  return toM > draft.fromM ? { draft: { ...draft, toM } } : { problem: GPS_BEHIND };
 }

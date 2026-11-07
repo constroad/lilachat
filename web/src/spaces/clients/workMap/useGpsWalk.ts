@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { startWalk, stopWalk, WALK_IDLE, walkFix, type WalkState } from '@lilachat/shared';
+import { startWalk, stopWalk, WALK_IDLE, walkFix, type GpsFix, type WalkState } from '@lilachat/shared';
+
+/** A first fix outdoors takes a few seconds; past this the person uses ±10 m. */
+const GPS_ONCE_TIMEOUT_MS = 15_000;
 
 /** «Caminar con GPS» (o-13) in the browser: the position is watched only between «Empezar» and «Terminar». */
 export function useGpsWalk() {
@@ -28,3 +31,13 @@ export function useGpsWalk() {
   const reset = () => { clear(); setWalk(WALK_IDLE); };
   return { walk, denied, start, stop, reset };
 }
+
+/** One position for «Mi GPS» (o-06); null when the browser has none or the person refused it. */
+export const readGpsOnce = (): Promise<GpsFix | null> => new Promise((resolve) => {
+  if (!navigator.geolocation) return resolve(null);
+  navigator.geolocation.getCurrentPosition(
+    (position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude, accuracyM: position.coords.accuracy }),
+    (failure) => { console.warn('gps once: position refused', failure.code); resolve(null); },
+    { enableHighAccuracy: true, maximumAge: 0, timeout: GPS_ONCE_TIMEOUT_MS },
+  );
+});

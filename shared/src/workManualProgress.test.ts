@@ -3,9 +3,9 @@ import { FORMS_LEVEL } from './appForms.js';
 import type { FormSubmitReply } from './appActions.js';
 import type { CommandOutcome } from './botCommands.js';
 import type { WorkProgressDeps } from './workProgressSend.js';
-import { workMapOf, type WorkMap } from './workMap.js';
+import { lineLengthM, workMapOf, type WorkMap } from './workMap.js';
 import type { MapEditSend } from './workScopeDraft.js';
-import { addManualPhoto, manualPhotoOf, MANUAL_PHOTO_UNLINKED, runManualProgress, MANUAL_FAILED, MANUAL_NO_LENGTH, MANUAL_PAST_STREET, MANUAL_PHOTOS_MAX, MANUAL_PICK_WORK, MANUAL_SENT, manualDraftFor, manualFigures, manualProblem, manualStartOf, nudgeManualEnd, pickManualWork, sendWorkManualProgress, workManualProgressRequest } from './workManualProgress.js';
+import { GPS_BEHIND, GPS_OFF_STREET, GPS_WEAK, manualEndFromGps, addManualPhoto, manualPhotoOf, MANUAL_PHOTO_UNLINKED, runManualProgress, MANUAL_FAILED, MANUAL_NO_LENGTH, MANUAL_PAST_STREET, MANUAL_PHOTOS_MAX, MANUAL_PICK_WORK, MANUAL_SENT, manualDraftFor, manualFigures, manualProblem, manualStartOf, nudgeManualEnd, pickManualWork, sendWorkManualProgress, workManualProgressRequest } from './workManualProgress.js';
 
 /** Design o-06 (Portal 57f06ec7): progress marked by hand, without trucks. */
 const line = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.997 }];
@@ -141,5 +141,25 @@ describe('manual progress: photos and the run', () => {
     expect(send).toHaveBeenCalledTimes(1);
     expect(send.mock.calls[0]![0]).toMatchObject({ kind: 'work_manual_progress', from_m: 120, to_m: 240 });
     expect(sent.ok).toBe(true);
+  });
+});
+
+describe('manual progress: «Mi GPS»', () => {
+  const draft = { workId: 'base', fromM: 120, toM: 120, photoIds: [], note: '' };
+  const street = mapOf().streets[0]!;
+  const lengthM = lineLengthM(street.line);
+  const at = (meters: number, offsetLat = 0) => ({ lat: -12 + offsetLat, lng: -77 + (0.003 * meters) / lengthM, accuracyM: 4 });
+
+  it('the person\'s place on the street becomes the end', () => {
+    const result = manualEndFromGps(draft, street.line, street.lengthM, at(240));
+    expect('draft' in result && result.draft.toM).toBeGreaterThanOrEqual(238);
+    expect('draft' in result && result.draft.toM).toBeLessThanOrEqual(242);
+  });
+
+  it('refuses a weak signal, a place off the street and one behind the start', () => {
+    expect(manualEndFromGps(draft, street.line, street.lengthM, { ...at(240), accuracyM: 40 })).toEqual({ problem: GPS_WEAK(40) });
+    const far = manualEndFromGps(draft, street.line, street.lengthM, at(240, 0.001));
+    expect('problem' in far && far.problem).toBe(GPS_OFF_STREET(111));
+    expect(manualEndFromGps(draft, street.line, street.lengthM, at(60))).toEqual({ problem: GPS_BEHIND });
   });
 });

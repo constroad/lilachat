@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { MANUAL_NO_LENGTH, MANUAL_SENT, workMapOf, type ManualPhotoUpload, type MapEditSend, type WorkMap } from '@lilachat/shared';
+import { GPS_UNAVAILABLE, MANUAL_NO_LENGTH, MANUAL_SENT, workMapOf, type ManualPhotoUpload, type MapEditSend, type WorkMap } from '@lilachat/shared';
 import { ManualProgress } from './ManualProgress';
 
 /** Design o-06 on the web: a stretch done by hand, from where the work stopped, with a photo. */
@@ -43,6 +43,23 @@ describe('ManualProgress', () => {
     expect(send).not.toHaveBeenCalled();
     fireEvent.change(screen.getByTestId('avance-foto-archivo'), { target: { files: [new File(['x'], 'big.jpg', { type: 'image/jpeg' })] } });
     expect(await screen.findByText('El archivo pesa demasiado.')).toBeTruthy();
+  });
+
+  it('«Mi GPS» puts the end where the person stands, and says when there is no position', async () => {
+    // Arrange
+    const line = mapOf().streets[0]!.line;
+    const at = { lat: line[0]!.lat, lng: line[0]!.lng + (line[1]!.lng - line[0]!.lng) * 0.75 };
+    const getCurrentPosition = vi.fn((ok: PositionCallback) => ok({ coords: { latitude: at.lat, longitude: at.lng, accuracy: 4 } } as GeolocationPosition));
+    vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition } });
+    render(<ManualProgress map={mapOf()} streetId="s1" lengthM={320} send={vi.fn<MapEditSend>()} onDone={vi.fn()} />);
+    // Act
+    fireEvent.click(screen.getByTestId('avance-manual-gps'));
+    // Assert
+    await waitFor(() => expect(Number((screen.getByTestId('avance-manual-hasta') as HTMLInputElement).value)).toBeGreaterThan(230));
+    vi.stubGlobal('navigator', { ...navigator, geolocation: undefined });
+    fireEvent.click(screen.getByTestId('avance-manual-gps'));
+    expect(await screen.findByTestId('avance-manual-error')).toHaveTextContent(GPS_UNAVAILABLE);
+    vi.unstubAllGlobals();
   });
 
   it('without an uploader there is no photo step', () => {

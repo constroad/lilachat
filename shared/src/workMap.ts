@@ -1,3 +1,4 @@
+import { lengthOfLine, projectToLine, sliceLine as sliceStreet } from '@constroad/shared/obra';
 import { dayMonthOf } from './appDirectory.js';
 import type { ServiceMapResult } from './serviceMap.js';
 
@@ -57,7 +58,6 @@ export const NO_STRETCHES = 'Sin tramos definidos';
 const FINISHED = 'Terminada';
 const COMPLETE_PCT = 100;
 const MAX_STATUS_PARTS = 2;
-const EARTH_RADIUS_M = 6_371_008.8;
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 const PORTAL_ORIGIN = 'https://constroad.com';
 const SERVICE_LINK = /^https:\/\/(?:www\.)?constroad\.com\/public\/(?:[a-z0-9-]+\/)?service-report\/([A-Za-z0-9_-]{16,128})(?:[/?#]|$)/;
@@ -73,7 +73,6 @@ const listOf = (value: unknown): Fields[] => (Array.isArray(value) ? value.filte
 const textOf = (value: unknown) => (typeof value === 'string' ? value : '');
 const numberOf = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
 const textsOf = (value: unknown) => (Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string' && entry !== '') : []);
-const radians = (degrees: number) => (degrees * Math.PI) / 180;
 
 /** Where Portal answers for a service link; null for anything that is not one of its links. */
 export function workMapRequest(link: string, serviceId: string): string | null {
@@ -95,72 +94,19 @@ export function stationLabel(meters: number): string {
   return `${Math.floor(whole / 1000)}+${String(whole % 1000).padStart(3, '0')}`;
 }
 
-function metersBetween(from: WorkMapPoint, to: WorkMapPoint): number {
-  const latitude = radians(to.lat - from.lat);
-  const longitude = radians(to.lng - from.lng);
-  const arc = Math.sin(latitude / 2) ** 2 + Math.cos(radians(from.lat)) * Math.cos(radians(to.lat)) * Math.sin(longitude / 2) ** 2;
-  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(arc)));
-}
-
-function measuresOf(line: WorkMapPoint[]): number[] {
-  let total = 0;
-  return line.map((point, index) => {
-    const previous = line[index - 1];
-    if (previous) total += metersBetween(previous, point);
-    return total;
-  });
-}
-
-export const lineLengthM = (line: WorkMapPoint[]) => measuresOf(line).at(-1) ?? 0;
+/** The street's length following its bends: the same metres Portal shows (`@constroad/shared/obra`). */
+export const lineLengthM = (line: WorkMapPoint[]): number => lengthOfLine(line);
 
 type LineFoot = { measureM: number; distanceM: number };
 
-function footOn(from: WorkMapPoint, to: WorkMapPoint, place: WorkMapPoint) {
-  const scale = Math.cos(radians(from.lat));
-  const [east, north] = [(to.lng - from.lng) * scale, to.lat - from.lat];
-  const [placeEast, placeNorth] = [(place.lng - from.lng) * scale, place.lat - from.lat];
-  const span = east ** 2 + north ** 2;
-  const ratio = span === 0 ? 0 : Math.max(0, Math.min(1, (east * placeEast + north * placeNorth) / span));
-  return { ratio, point: { lat: from.lat + (to.lat - from.lat) * ratio, lng: from.lng + (to.lng - from.lng) * ratio } };
-}
-
-/** Where a place falls on a street: its station and how far off the axis. At block scale a flat projection is well below the GPS error. */
+/** Where a place falls on a street: its station and how far off the axis, as Portal projects it. */
 export function projectOntoLine(line: WorkMapPoint[], place: WorkMapPoint): LineFoot | null {
-  const measures = measuresOf(line);
-  let nearest: LineFoot | null = null;
-  for (const [index, to] of line.entries()) {
-    const [from, fromM, toM] = [line[index - 1], measures[index - 1], measures[index]];
-    if (!from || fromM === undefined || toM === undefined) continue;
-    const foot = footOn(from, to, place);
-    const distanceM = metersBetween(place, foot.point);
-    if (!nearest || distanceM < nearest.distanceM) nearest = { measureM: fromM + (toM - fromM) * foot.ratio, distanceM };
-  }
-  return nearest;
+  const foot = projectToLine(line, place);
+  return foot ? { measureM: foot.measureM, distanceM: foot.distanceM } : null;
 }
 
-function pointAt(line: WorkMapPoint[], measures: number[], meters: number): WorkMapPoint | null {
-  const next = measures.findIndex((measure) => measure >= meters);
-  const to = next === -1 ? line.at(-1) : line[next];
-  const from = line[next - 1];
-  const [fromM, toM] = [measures[next - 1], measures[next]];
-  if (!from || !to || fromM === undefined || toM === undefined) return to ?? null;
-  const ratio = (meters - fromM) / (toM - fromM || 1);
-  return { lat: from.lat + (to.lat - from.lat) * ratio, lng: from.lng + (to.lng - from.lng) * ratio };
-}
-
-/** The part of a street between two stations, keeping its corners. Nothing for an empty cut. */
-export function sliceLine(line: WorkMapPoint[], fromM: number, toM: number): WorkMapPoint[] {
-  const measures = measuresOf(line);
-  const total = measures.at(-1) ?? 0;
-  const [start, end] = [Math.max(0, Math.min(fromM, total)), Math.max(0, Math.min(toM, total))];
-  if (line.length < 2 || end <= start) return [];
-  const middle = line.filter((_, index) => {
-    const measure = measures[index] ?? 0;
-    return measure > start && measure < end;
-  });
-  const [first, last] = [pointAt(line, measures, start), pointAt(line, measures, end)];
-  return first && last ? [first, ...middle, last] : [];
-}
+/** The part of a street between two stations, keeping its corners; nothing for an empty cut. */
+export const sliceLine = (line: WorkMapPoint[], fromM: number, toM: number): WorkMapPoint[] => sliceStreet(line, fromM, toM);
 
 function mergeIntervals(intervals: Interval[]): Interval[] {
   const sorted = intervals.filter(([from, to]) => to > from).sort((left, right) => left[0] - right[0]);

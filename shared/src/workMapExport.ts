@@ -1,6 +1,6 @@
 import { stationLabel, WORK_MAP_PLANNED_COLOR, workMapCutLabel, workMapView, type WorkMap, type WorkMapFilter, type WorkMapLine } from './workMap.js';
 import { formatFormDate } from './formDates.js';
-import { zipOneFile } from './zipStore.js';
+import { zipOneFile } from '@constroad/shared/obra';
 
 /**
  * The work as a KMZ for Google Earth (design `o-12-mapa-exportar`), the same file Portal gives:

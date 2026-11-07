@@ -15544,6 +15544,10 @@ Reemplaza el aviso de WhatsApp: el responsable recibe un aviso de Lilachat.
 
 ## Pestaña Mapa de un servicio (José 06/11)
 
+En la web el mapa ya lo dibuja Lilachat: `shared/src/workMap.ts`, `POST /api/service-work-map`
+y `web/src/spaces/clients/workMap/*`, con pantalla completa. El APK sigue con la página de
+Portal hasta el APK nuevo. Detalle en `specs/MAPA-OBRA.spec.md` §6.
+
 Pedido: «si el servicio tiene mapa agrega un tab mapa para un servicio». José decidió
 crear el enlace al tocar la pestaña, sin guardar una dirección fija.
 

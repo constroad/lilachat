@@ -152,7 +152,7 @@ function DetailTabs({ detail, target, service, chatId, seesDrive, links, seesMon
       </div>
   );
   if (tab === 'drive') return <>{strip}<ServiceDriveWeb target={target} service={service} chatId={chatId} /></>;
-  if (tab === 'map' && links) return <>{strip}<ServiceMapWeb links={links} target={{ kind: 'service', clientId: target.clientId, serviceId }} /></>;
+  if (tab === 'map' && links) return <>{strip}<ServiceMapWeb jwt={target.jwt} links={links} target={{ kind: 'service', clientId: target.clientId, serviceId }} /></>;
   return (
     <>
       {strip}

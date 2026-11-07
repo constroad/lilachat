@@ -45,6 +45,7 @@ import { buildGroupPermissionsRouter } from './groupPermissionsRoutes.js';
 import { buildRoutinesRouter } from './routinesRoutes.js';
 import { buildChecklistRouter } from './checklistRoutes.js';
 import { buildWorkStageRouter } from './workStageRoutes.js';
+import { buildWorkMapRouter } from './workMapRoutes.js';
 import { buildTaskEvidenceRouter } from './taskEvidenceRoutes.js';
 import { buildStickersRouter } from './stickersRoutes.js';
 import { buildReenvioRouter } from './reenvioRoutes.js';
@@ -180,6 +181,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/agenda', buildQueueRouter());
   app.use('/api/agenda', buildEventRouter());
   app.use('/api/agenda', buildWorkStageRouter());
+  app.use('/api/service-work-map', buildWorkMapRouter());
   app.use('/api/agenda', buildTaskEvidenceRouter());
   app.use('/api/agenda', buildChecklistRouter());
   app.use('/api/push', buildPushRouter());

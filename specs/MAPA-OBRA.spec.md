@@ -102,14 +102,42 @@ pero `get_screen` devuelve el mismo HTML. Por eso se generó aparte.
 - **Importar KMZ o KML: no existe.** `work-street.source` tiene `import`, pero no hay
   pantalla ni API. En `o-12` es una mejora nueva, no algo que ya funcione.
 
-## 5. Lo que falta decidir
+## 5. Decisiones de José (06/11)
 
-1. **Quién guarda el mapa:** Portal sigue siendo dueño de los datos, o Lilachat tiene
-   los suyos. Recomendado: Portal, porque ahí viven la curva S y la valorización.
-2. **Cómo entra Lilachat:** hoy nada de `work-*` pasa por herramientas. Hace falta
-   una puerta con identidad, y Agentes pide `client_id` y `service_id` comprobados.
-3. **Mapa nativo en el APK:** módulo nativo y APK nuevo, o WebView con pantalla propia.
-4. **Sin señal:** la cola con `x-idempotency-key` no existe del lado de Portal.
-5. **Tiles y OSRM:** la spec de agosto los da por públicos y sin garantía. Hay que
-   verificar su estado actual.
-6. **Despacho y tramo:** cómo se ata una unidad a una progresiva. Es el modelo nuevo.
+1. **Datos en Portal.** Lilachat lee y, más adelante, escribe por una puerta con
+   identidad. La curva S y la valorización siguen allá.
+2. **Mapa en Lilachat con estos diseños.** Sí, con APK nuevo para el mapa nativo.
+3. **Web con pantalla completa.** Sus palabras: «en la web deberia haber un modo
+   pantalla completa para tener mayor amplitud del mapa de la obra».
+4. **Primero el enlace con Control de pista.** Es lo que sigue después de leer.
+
+## 6. Fase 1: leer el mapa (implementada en la web)
+
+- **Motor puro:** `shared/src/workMap.ts`. Lee `detail.workStreets` por lista blanca y
+  suma como `workMapOverview` de Portal: unión de días, sin reproceso, por trabajo y
+  por tramo. El cliente no debe leer dos porcentajes distintos.
+- **Puerta del servidor:** `POST /api/service-work-map` con `{ link, serviceId }`. La
+  API pública de Portal no tiene CORS, así que el servidor pregunta con el enlace que
+  la persona ya obtuvo. El token es el permiso y viaja en el cuerpo, fuera de los logs.
+  `workMapRequest` solo acepta enlaces de `constroad.com` y arma la dirección de Portal.
+- **Contrato con Portal:** `GET /api/public/client-portal/services/[id]?token=`, campo
+  `detail.workStreets`, con `stages[]` y `scopes[].stageId`. El endpoint
+  `client-report/[token]/work-streets` no sirve: exige un enlace de pedido.
+- **Web:** `ServiceMapWeb` y `workMap/*`. Muestra `o-01-mapa-obra`: avance, trabajos,
+  etapas, calles y leyenda sobre MapLibre con OpenFreeMap. Pantalla completa con la
+  del navegador y una capa sobre la página si el navegador la niega. Escape sale.
+- **CSP:** se usa el build `maplibre-gl-csp` para que el worker salga de nuestro
+  origen. `connect-src` suma `tiles.openfreemap.org`; `worker-src` no cambia.
+- **Peso:** el mapa es un trozo aparte de 256 KB comprimidos. Solo baja al abrir la pestaña.
+- **No se dibuja todavía:** «Registrar avance», «Compartir avance», «Editar obra» y la
+  fecha de corte. Sin puerta de escritura serían botones de mentira.
+- **APK:** sigue con la página de Portal en la WebView hasta el APK nuevo.
+
+## 7. Lo que falta decidir
+
+1. **Cómo entra Lilachat a escribir:** hoy nada de `work-*` pasa por herramientas. Hace
+   falta una puerta con identidad, y Agentes pide `client_id` y `service_id` comprobados.
+2. **Sin señal:** la cola con `x-idempotency-key` no existe del lado de Portal.
+3. **Tiles y OSRM:** la spec de agosto los da por públicos y sin garantía. Falta
+   verificar `OSRM_BASE_URL` en producción.
+4. **Despacho y tramo:** cómo se ata una unidad a una progresiva. Es el modelo nuevo.

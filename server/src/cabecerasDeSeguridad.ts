@@ -25,6 +25,8 @@ const MODELOS_DE_MEDIAPIPE = 'https://storage.googleapis.com/mediapipe-models/';
 const PORTAL_FILE_ORIGINS = ['https://www.constroad.com', 'https://lila.constroad.com'];
 /** Where a file for a service's Drive goes, straight from the browser (José, 06/11). */
 const DRIVE_UPLOAD_ORIGIN = 'https://constroad.com';
+/** The streets under the work map (José, 06/11): free tiles, without a key. */
+const MAP_TILES_ORIGIN = 'https://tiles.openfreemap.org';
 
 export function politicaDeContenido(host: string): string {
   const socket = HOST_VALIDO.test(host) ? ` wss://${host} ws://${host}` : '';
@@ -35,7 +37,7 @@ export function politicaDeContenido(host: string): string {
     'font-src https://fonts.gstatic.com',
     "img-src 'self' data: blob: https:",
     "media-src 'self' blob: https:",
-    `connect-src 'self'${socket} ${MODELOS_DE_MEDIAPIPE} ${PORTAL_FILE_ORIGINS.join(' ')} ${DRIVE_UPLOAD_ORIGIN}`,
+    `connect-src 'self'${socket} ${MODELOS_DE_MEDIAPIPE} ${PORTAL_FILE_ORIGINS.join(' ')} ${DRIVE_UPLOAD_ORIGIN} ${MAP_TILES_ORIGIN}`,
     "worker-src 'self'",
     "manifest-src 'self'",
     "object-src 'none'",

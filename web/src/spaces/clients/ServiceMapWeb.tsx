@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
-import { ExternalLink } from 'lucide-react';
-import { noticeOf, serviceMapPage, type ChannelLinks, type ServiceMapDeps, type ServiceMapResult, type ShortcutRow, type ShortcutValues } from '@lilachat/shared';
+import { noticeOf, serviceMapPage, WORK_MAP_EMPTY, type ChannelLinks, type ServiceMapDeps, type ShortcutRow, type ShortcutValues } from '@lilachat/shared';
 import { runShortcut, submitAppForm } from '../../chat/commands/commandsApi';
 import { currentSocket } from '../../useSocket';
+import { useWorkMap } from './workMap/useWorkMap';
+import { WorkMapBoard } from './workMap/WorkMapBoard';
 
 /** How a chat runs the link action for the map. */
 export const mapDepsOf = (jwt: string, chatId: string) => (row: ShortcutRow, values: ShortcutValues): ServiceMapDeps => ({
@@ -12,40 +12,23 @@ export const mapDepsOf = (jwt: string, chatId: string) => (row: ShortcutRow, val
 });
 
 /**
- * «Mapa» of a service on the web (José 06/11). Portal's page refuses to live in a frame, so it
- * opens in its own tab; the link is ready before the tap because a browser blocks a tab opened
- * after waiting for an answer.
+ * «Mapa» of a service on the web (José 06/11: «el mapa literal de la obra»). Lilachat draws it with
+ * what Portal shows a client; Portal's own page stays one tap away, opened from a link that is
+ * ready before the tap because a browser blocks a tab opened after waiting for an answer.
  */
-export function ServiceMapWeb(props: { links: ChannelLinks; target: { kind: 'service'; clientId: string; serviceId: string } }) {
-  const [map, setMap] = useState<ServiceMapResult | null>(null);
-  const [round, setRound] = useState(0);
-  const links = useRef(props.links);
-  links.current = props.links;
-  const { clientId, serviceId } = props.target;
-  useEffect(() => {
-    let alive = true;
-    setMap(null);
-    void links.current.map({ kind: 'service', clientId, serviceId }).then((result) => {
-      if (alive) setMap(result);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [clientId, serviceId, round]);
-  if (!map) return <div data-testid="mapa-cargando" className="h-28 animate-pulse rounded-2xl bg-surface-variant" />;
-  if (!map.ok) {
+export function ServiceMapWeb(props: { jwt: string; links: ChannelLinks; target: { kind: 'service'; clientId: string; serviceId: string } }) {
+  const { state, retry } = useWorkMap(props.jwt, props.links, props.target);
+  const pageOf = (url: string) => serviceMapPage(url, props.target.serviceId);
+  if (state.kind === 'loading') return <div data-testid="mapa-cargando" className="h-28 animate-pulse rounded-2xl bg-surface-variant" />;
+  if (state.kind === 'failed') {
     return (
       <div data-testid="mapa-fallo" className="rounded-2xl border border-outline/15 bg-surface p-4">
-        <p className="text-[15px] font-semibold">{map.message}</p>
-        <button type="button" data-testid="mapa-reintentar" onClick={() => setRound((count) => count + 1)} className="mt-3 min-h-[44px] w-full rounded-xl border border-primary/30 bg-primary/10 font-semibold text-primary">Reintentar</button>
+        <p className="text-[15px] font-semibold">{state.message}</p>
+        <button type="button" data-testid="mapa-reintentar" onClick={() => void retry()} className="mt-3 min-h-[44px] w-full rounded-xl border border-primary/30 text-[14px] font-semibold text-primary">Reintentar</button>
+        {state.url ? <a data-testid="mapa-abrir" href={pageOf(state.url)} target="_blank" rel="noopener noreferrer" className="mt-2 block text-center text-[13px] font-semibold text-primary">Abrir en Portal</a> : null}
       </div>
     );
   }
-  return (
-    <div data-testid="mapa-servicio" className="rounded-2xl border border-outline/15 bg-surface p-4">
-      <p className="text-[15px] font-semibold">Mapa de la obra</p>
-      <p className="mt-1 text-sm text-on-surface-variant">Se abre en otra pestaña, sin montos.</p>
-      <a data-testid="mapa-abrir" href={serviceMapPage(map.url, serviceId)} target="_blank" rel="noopener noreferrer" className="mt-3 flex min-h-[44px] items-center justify-center gap-2 rounded-xl bg-primary font-semibold text-on-primary"><ExternalLink size={16} /> Abrir el mapa</a>
-    </div>
-  );
+  if (!state.map) return <p data-testid="mapa-vacio" className="rounded-2xl border border-outline/15 bg-surface p-4 text-[14px] text-on-surface-variant">{WORK_MAP_EMPTY}</p>;
+  return <WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} />;
 }

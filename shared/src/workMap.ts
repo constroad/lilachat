@@ -1,0 +1,275 @@
+/**
+ * The work map of a service (José 06/11: «el mapa literal de la obra»). Portal owns the streets,
+ * the stretches and the approved progress; this reads what it shows a client and turns it into
+ * figures and lines. The figures add up like Portal's report (`workMapOverview`): the client must
+ * not read two percentages. PURE: the server, the app and the web use it.
+ */
+export type WorkMapPoint = { lat: number; lng: number };
+export type WorkMapStreet = { id: string; name: string; line: WorkMapPoint[]; lengthM: number };
+export type WorkMapScope = { streetId: string; fromM: number; toM: number; workIds: string[]; stageId?: string };
+export type WorkMapProgress = { streetId: string; workId: string; fromM: number; toM: number; rework: boolean };
+export type WorkMapWork = { id: string; name: string; color: string };
+export type WorkMapStage = { id: string; name: string };
+export type WorkMap = { streets: WorkMapStreet[]; scopes: WorkMapScope[]; progress: WorkMapProgress[]; works: WorkMapWork[]; stages: WorkMapStage[] };
+
+export type WorkMapFilter = { stageId?: string; workId?: string };
+export type WorkMapLine = { streetId: string; workId?: string; color: string; coordinates: Array<[number, number]> };
+export type WorkMapStreetRow = {
+  id: string;
+  name: string;
+  lengthM: number;
+  status: string;
+  done: boolean;
+  segments: Array<{ workId: string; color: string; fromPct: number; widthPct: number }>;
+};
+export type WorkMapView = {
+  percent: number;
+  doneM: number;
+  totalM: number;
+  works: Array<WorkMapWork & { percent: number }>;
+  streets: WorkMapStreetRow[];
+  planned: WorkMapLine[];
+  done: WorkMapLine[];
+  bounds: [[number, number], [number, number]] | null;
+};
+
+/** MapLibre paints with plain colors: a CSS variable does not reach its canvas. */
+export const WORK_MAP_PLANNED_COLOR = '#94a3b8';
+/** Free tiles without a key, the ones Portal's map uses. */
+export const WORK_MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
+export const WORK_MAP_FAILED = 'No se pudo cargar el mapa. Prueba de nuevo.';
+export const WORK_MAP_EMPTY = 'Este servicio todavía no tiene calles en el mapa.';
+
+const PARTIDA_COLORS = ['#0f766e', '#b45309', '#7c3aed', '#be123c', '#1d4ed8', '#4d7c0f'];
+const UNNAMED_WORK = 'Trabajo';
+const NO_PROGRESS = 'Sin avance';
+const FINISHED = 'Terminada';
+const COMPLETE_PCT = 100;
+const MAX_STATUS_PARTS = 2;
+const EARTH_RADIUS_M = 6_371_008.8;
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+const PORTAL_ORIGIN = 'https://constroad.com';
+const SERVICE_LINK = /^https:\/\/(?:www\.)?constroad\.com\/public\/(?:[a-z0-9-]+\/)?service-report\/([A-Za-z0-9_-]{16,128})(?:[/?#]|$)/;
+const SERVICE_ID = /^[0-9a-f]{24}$/;
+
+type Interval = [number, number];
+type Fields = Record<string, unknown>;
+
+const round2 = (value: number) => Math.round(value * 100) / 100;
+const oneDecimal = (value: number) => Math.round(value * 10) / 10;
+const isFields = (value: unknown): value is Fields => typeof value === 'object' && value !== null;
+const listOf = (value: unknown): Fields[] => (Array.isArray(value) ? value.filter(isFields) : []);
+const textOf = (value: unknown) => (typeof value === 'string' ? value : '');
+const numberOf = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
+const textsOf = (value: unknown) => (Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string' && entry !== '') : []);
+const radians = (degrees: number) => (degrees * Math.PI) / 180;
+
+/** Where Portal answers for a service link; null for anything that is not one of its links. */
+export function workMapRequest(link: string, serviceId: string): string | null {
+  const token = SERVICE_LINK.exec(link)?.[1];
+  if (!token || !SERVICE_ID.test(serviceId)) return null;
+  return `${PORTAL_ORIGIN}/api/public/client-portal/services/${serviceId}?token=${token}`;
+}
+
+export const percentLabel = (percent: number) => `${String(percent).replace('.', ',')} %`;
+export const metersLabel = (meters: number) => `${String(Math.round(meters)).replace(/\B(?=(\d{3})+$)/g, ' ')} m`;
+
+/** A station as the field writes it: 1420 m is «1+420». */
+export function stationLabel(meters: number): string {
+  const whole = Math.round(meters);
+  return `${Math.floor(whole / 1000)}+${String(whole % 1000).padStart(3, '0')}`;
+}
+
+function metersBetween(from: WorkMapPoint, to: WorkMapPoint): number {
+  const latitude = radians(to.lat - from.lat);
+  const longitude = radians(to.lng - from.lng);
+  const arc = Math.sin(latitude / 2) ** 2 + Math.cos(radians(from.lat)) * Math.cos(radians(to.lat)) * Math.sin(longitude / 2) ** 2;
+  return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(arc)));
+}
+
+function measuresOf(line: WorkMapPoint[]): number[] {
+  let total = 0;
+  return line.map((point, index) => {
+    const previous = line[index - 1];
+    if (previous) total += metersBetween(previous, point);
+    return total;
+  });
+}
+
+export const lineLengthM = (line: WorkMapPoint[]) => measuresOf(line).at(-1) ?? 0;
+
+function pointAt(line: WorkMapPoint[], measures: number[], meters: number): WorkMapPoint | null {
+  const next = measures.findIndex((measure) => measure >= meters);
+  const to = next === -1 ? line.at(-1) : line[next];
+  const from = line[next - 1];
+  const [fromM, toM] = [measures[next - 1], measures[next]];
+  if (!from || !to || fromM === undefined || toM === undefined) return to ?? null;
+  const ratio = (meters - fromM) / (toM - fromM || 1);
+  return { lat: from.lat + (to.lat - from.lat) * ratio, lng: from.lng + (to.lng - from.lng) * ratio };
+}
+
+/** The part of a street between two stations, keeping its corners. Nothing for an empty cut. */
+export function sliceLine(line: WorkMapPoint[], fromM: number, toM: number): WorkMapPoint[] {
+  const measures = measuresOf(line);
+  const total = measures.at(-1) ?? 0;
+  const [start, end] = [Math.max(0, Math.min(fromM, total)), Math.max(0, Math.min(toM, total))];
+  if (line.length < 2 || end <= start) return [];
+  const middle = line.filter((_, index) => {
+    const measure = measures[index] ?? 0;
+    return measure > start && measure < end;
+  });
+  const [first, last] = [pointAt(line, measures, start), pointAt(line, measures, end)];
+  return first && last ? [first, ...middle, last] : [];
+}
+
+function mergeIntervals(intervals: Interval[]): Interval[] {
+  const sorted = intervals.filter(([from, to]) => to > from).sort((left, right) => left[0] - right[0]);
+  const merged: Interval[] = [];
+  for (const [from, to] of sorted) {
+    const last = merged.at(-1);
+    if (last && from <= last[1]) last[1] = Math.max(last[1], to);
+    else merged.push([from, to]);
+  }
+  return merged;
+}
+
+const metersOf = (intervals: Interval[]) => intervals.reduce((total, [from, to]) => total + (to - from), 0);
+
+function streetsFrom(raw: unknown): WorkMapStreet[] {
+  return listOf(raw).flatMap((street) => {
+    const line = listOf(street.geometry).map((point) => ({ lat: point.lat as number, lng: point.lng as number }));
+    const valid = line.length >= 2 && line.every((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng));
+    return valid ? [{ id: textOf(street._id), name: textOf(street.name), line, lengthM: numberOf(street.lengthM) || lineLengthM(line) }] : [];
+  });
+}
+
+function scopesFrom(raw: unknown, streets: WorkMapStreet[]): WorkMapScope[] {
+  const known = new Set(streets.map((street) => street.id));
+  return listOf(raw).flatMap((scope) => {
+    const tags = textsOf(scope.tagIds);
+    const stageId = textOf(scope.stageId);
+    if (!known.has(textOf(scope.streetId))) return [];
+    return [{ streetId: textOf(scope.streetId), fromM: numberOf(scope.fromM), toM: numberOf(scope.toM), workIds: tags.length ? tags : textsOf(scope.partidaIds), ...(stageId ? { stageId } : {}) }];
+  });
+}
+
+function progressFrom(raw: unknown): WorkMapProgress[] {
+  return listOf(raw).flatMap((record) => {
+    const workId = textOf(record.tagId) || textOf(record.partidaId);
+    return workId ? [{ streetId: textOf(record.streetId), workId, fromM: numberOf(record.fromM), toM: numberOf(record.toM), rework: record.rework === true }] : [];
+  });
+}
+
+const byOrder = (left: Fields, right: Fields) => numberOf(left.order) - numberOf(right.order);
+const paletteColor = (index: number) => PARTIDA_COLORS[index % PARTIDA_COLORS.length] ?? WORK_MAP_PLANNED_COLOR;
+
+/** Tags first, in their order; then the partidas of the stretches that have no tag. */
+function worksFrom(rawTags: unknown, rawPartidas: unknown, scopes: WorkMapScope[]): WorkMapWork[] {
+  const tags = [...listOf(rawTags)].sort(byOrder).map((tag, index) => {
+    const color = textOf(tag.color);
+    return { id: textOf(tag._id), name: textOf(tag.name) || UNNAMED_WORK, color: HEX_COLOR.test(color) ? color : paletteColor(index) };
+  });
+  const seen = new Set(tags.map((tag) => tag.id));
+  const names = new Map(listOf(rawPartidas).map((partida) => [textOf(partida._id) || textOf(partida.id), textOf(partida.description)]));
+  const partidas = [...new Set(scopes.flatMap((scope) => scope.workIds))].filter((id) => !seen.has(id));
+  return [...tags, ...partidas.map((id, index) => ({ id, name: names.get(id) || UNNAMED_WORK, color: paletteColor(index) }))];
+}
+
+/** What the map draws out of Portal's service detail; null when the service has no streets. */
+export function workMapOf(detail: unknown): WorkMap | null {
+  if (!isFields(detail) || !isFields(detail.workStreets)) return null;
+  const raw = detail.workStreets;
+  const streets = streetsFrom(raw.streets);
+  if (!streets.length) return null;
+  const scopes = scopesFrom(raw.scopes, streets);
+  const stages = [...listOf(raw.stages)].sort(byOrder).map((stage) => ({ id: textOf(stage._id), name: textOf(stage.name) }));
+  return { streets, scopes, progress: progressFrom(raw.progress), works: worksFrom(raw.tags, detail.partidas, scopes), stages };
+}
+
+type WorkedStretch = { scope: WorkMapScope; workId: string; doneIntervals: Interval[]; totalM: number; doneM: number };
+
+/** What was approved on a stretch for one work: every day joined, cut to it, rework left out. */
+function approvedIn(progress: WorkMapProgress[], scope: WorkMapScope, workId: string): Interval[] {
+  const mine = progress.filter((record) => record.streetId === scope.streetId && record.workId === workId && !record.rework);
+  return mergeIntervals(mine.map((record): Interval => [Math.max(record.fromM, scope.fromM), Math.min(record.toM, scope.toM)]));
+}
+
+function workedStretches(map: WorkMap, scopes: WorkMapScope[], workId?: string): WorkedStretch[] {
+  return scopes.flatMap((scope) => scope.workIds.filter((id) => !workId || id === workId).map((id) => {
+    const doneIntervals = approvedIn(map.progress, scope, id);
+    return { scope, workId: id, doneIntervals, totalM: Math.max(0, scope.toM - scope.fromM), doneM: metersOf(doneIntervals) };
+  }));
+}
+
+const percentOf = (stretches: WorkedStretch[]) => {
+  const total = stretches.reduce((sum, stretch) => sum + stretch.totalM, 0);
+  return total > 0 ? Math.round((stretches.reduce((sum, stretch) => sum + stretch.doneM, 0) / total) * 100) : 0;
+};
+
+function statusOf(stretches: WorkedStretch[], works: WorkMapWork[]): { status: string; done: boolean } {
+  const rows = works.flatMap((work) => {
+    const mine = stretches.filter((stretch) => stretch.workId === work.id);
+    const furthestM = Math.max(0, ...mine.flatMap((stretch) => stretch.doneIntervals.map(([, to]) => to)));
+    return mine.length ? [{ name: work.name, percent: percentOf(mine), furthestM }] : [];
+  });
+  if (rows.length && rows.every((row) => row.percent >= COMPLETE_PCT)) return { status: FINISHED, done: true };
+  const parts = rows.filter((row) => row.percent > 0).slice(-MAX_STATUS_PARTS);
+  const status = parts.map((row) => (row.percent >= COMPLETE_PCT ? `${row.name} completa` : `${row.name} hasta ${stationLabel(row.furthestM)}`));
+  return { status: status.join(' · ') || NO_PROGRESS, done: false };
+}
+
+function streetRow(street: WorkMapStreet, stretches: WorkedStretch[], works: WorkMapWork[]): WorkMapStreetRow {
+  const length = Math.max(1, street.lengthM);
+  const colorOf = (workId: string) => works.find((work) => work.id === workId)?.color ?? WORK_MAP_PLANNED_COLOR;
+  const segments = stretches.flatMap((stretch) => stretch.doneIntervals.map(([from, to]) => ({ workId: stretch.workId, color: colorOf(stretch.workId), fromPct: (from / length) * 100, widthPct: ((to - from) / length) * 100 })));
+  return { id: street.id, name: street.name, lengthM: street.lengthM, ...statusOf(stretches, works), segments };
+}
+
+const lngLat = (line: WorkMapPoint[]) => line.map((point): [number, number] => [point.lng, point.lat]);
+
+function plannedLines(map: WorkMap, scopes: WorkMapScope[], narrowed: boolean): WorkMapLine[] {
+  const lineOf = (streetId: string) => map.streets.find((street) => street.id === streetId)?.line ?? [];
+  const stretches = scopes.map((scope) => ({ streetId: scope.streetId, color: WORK_MAP_PLANNED_COLOR, coordinates: lngLat(sliceLine(lineOf(scope.streetId), scope.fromM, scope.toM)) }));
+  const bare = narrowed ? [] : map.streets.filter((street) => !scopes.some((scope) => scope.streetId === street.id));
+  return [...stretches, ...bare.map((street) => ({ streetId: street.id, color: WORK_MAP_PLANNED_COLOR, coordinates: lngLat(street.line) }))].filter((line) => line.coordinates.length >= 2);
+}
+
+function doneLines(map: WorkMap, stretches: WorkedStretch[]): WorkMapLine[] {
+  return stretches.flatMap((stretch) => {
+    const line = map.streets.find((street) => street.id === stretch.scope.streetId)?.line ?? [];
+    const color = map.works.find((work) => work.id === stretch.workId)?.color ?? WORK_MAP_PLANNED_COLOR;
+    return stretch.doneIntervals.map(([from, to]) => ({ streetId: stretch.scope.streetId, workId: stretch.workId, color, coordinates: lngLat(sliceLine(line, from, to)) }));
+  }).filter((line) => line.coordinates.length >= 2);
+}
+
+function boundsOf(streets: WorkMapStreet[]): WorkMapView['bounds'] {
+  const points = streets.flatMap((street) => street.line);
+  if (!points.length) return null;
+  const [lngs, lats] = [points.map((point) => point.lng), points.map((point) => point.lat)];
+  return [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]];
+}
+
+/** Figures, street rows and lines of the map; the chips keep every work of the stage in sight. */
+export function workMapView(map: WorkMap, filter: WorkMapFilter = {}): WorkMapView {
+  const stageScopes = map.scopes.filter((scope) => !filter.stageId || scope.stageId === filter.stageId);
+  const scopes = stageScopes.filter((scope) => !filter.workId || scope.workIds.includes(filter.workId));
+  const narrowed = Boolean(filter.stageId || filter.workId);
+  const stretches = workedStretches(map, scopes, filter.workId);
+  const stageStretches = workedStretches(map, stageScopes);
+  const streets = map.streets.filter((street) => !narrowed || scopes.some((scope) => scope.streetId === street.id));
+  const totalM = stretches.reduce((sum, stretch) => sum + stretch.totalM, 0);
+  const doneM = stretches.reduce((sum, stretch) => sum + stretch.doneM, 0);
+  return {
+    percent: totalM > 0 ? oneDecimal((doneM / totalM) * 100) : 0,
+    doneM: round2(doneM),
+    totalM: round2(totalM),
+    works: map.works.flatMap((work) => {
+      const mine = stageStretches.filter((stretch) => stretch.workId === work.id);
+      return mine.length ? [{ ...work, percent: percentOf(mine) }] : [];
+    }),
+    streets: streets.map((street) => streetRow(street, stretches.filter((stretch) => stretch.scope.streetId === street.id), map.works)),
+    planned: plannedLines(map, scopes, narrowed),
+    done: doneLines(map, stretches),
+    bounds: boundsOf(streets.length ? streets : map.streets),
+  };
+}

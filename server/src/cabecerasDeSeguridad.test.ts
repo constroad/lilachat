@@ -9,6 +9,12 @@ describe('cabecerasDeSeguridad', () => {
   app.use(cabecerasDeSeguridad);
   app.get('/', (_req, res) => res.send('<html></html>'));
 
+  it('lets the work map read its tiles and nothing else from that host family', () => {
+    const connect = politicaDeContenido('lilachat.constroad.com').split('; ').find((rule) => rule.startsWith('connect-src'));
+    expect(connect).toContain('https://tiles.openfreemap.org');
+    expect(politicaDeContenido('lilachat.constroad.com')).toContain("worker-src 'self'");
+  });
+
   it('pone la CSP, nosniff, el referrer y prohíbe los iframes', async () => {
     const response = await request(app).get('/').set('Host', 'lilachat.constroad.com');
 

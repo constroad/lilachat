@@ -110,6 +110,31 @@ function measuresOf(line: WorkMapPoint[]): number[] {
 
 export const lineLengthM = (line: WorkMapPoint[]) => measuresOf(line).at(-1) ?? 0;
 
+type LineFoot = { measureM: number; distanceM: number };
+
+function footOn(from: WorkMapPoint, to: WorkMapPoint, place: WorkMapPoint) {
+  const scale = Math.cos(radians(from.lat));
+  const [east, north] = [(to.lng - from.lng) * scale, to.lat - from.lat];
+  const [placeEast, placeNorth] = [(place.lng - from.lng) * scale, place.lat - from.lat];
+  const span = east ** 2 + north ** 2;
+  const ratio = span === 0 ? 0 : Math.max(0, Math.min(1, (east * placeEast + north * placeNorth) / span));
+  return { ratio, point: { lat: from.lat + (to.lat - from.lat) * ratio, lng: from.lng + (to.lng - from.lng) * ratio } };
+}
+
+/** Where a place falls on a street: its station and how far off the axis. At block scale a flat projection is well below the GPS error. */
+export function projectOntoLine(line: WorkMapPoint[], place: WorkMapPoint): LineFoot | null {
+  const measures = measuresOf(line);
+  let nearest: LineFoot | null = null;
+  for (const [index, to] of line.entries()) {
+    const [from, fromM, toM] = [line[index - 1], measures[index - 1], measures[index]];
+    if (!from || fromM === undefined || toM === undefined) continue;
+    const foot = footOn(from, to, place);
+    const distanceM = metersBetween(place, foot.point);
+    if (!nearest || distanceM < nearest.distanceM) nearest = { measureM: fromM + (toM - fromM) * foot.ratio, distanceM };
+  }
+  return nearest;
+}
+
 function pointAt(line: WorkMapPoint[], measures: number[], meters: number): WorkMapPoint | null {
   const next = measures.findIndex((measure) => measure >= meters);
   const to = next === -1 ? line.at(-1) : line[next];

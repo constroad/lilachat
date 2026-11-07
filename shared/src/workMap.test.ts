@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lineLengthM, loadWorkMap, metersLabel, percentLabel, sliceLine, stationLabel, WORK_MAP_FAILED, workMapCollection, workMapHeadline, workMapOf, workMapRequest, workMapStageFilter, workMapView, type WorkMap } from './workMap.js';
+import { lineLengthM, loadWorkMap, metersLabel, percentLabel, projectOntoLine, sliceLine, stationLabel, WORK_MAP_FAILED, workMapCollection, workMapHeadline, workMapOf, workMapRequest, workMapStageFilter, workMapView, type WorkMap } from './workMap.js';
 
 const lineOf = (points: Array<[number, number]>) => points.map(([lat, lng]) => ({ lat, lng }));
 const LONG_STREET = lineOf([[-12, -77], [-12, -76.99]]);
@@ -144,6 +144,52 @@ describe('sliceLine', () => {
     expect(sliceLine(LONG_STREET, 50, 50)).toEqual([]);
     expect(sliceLine(LONG_STREET, 90, 10)).toEqual([]);
     expect(sliceLine(LONG_STREET, 0, LENGTH * 2).at(-1)).toEqual(LONG_STREET[1]);
+  });
+});
+
+describe('projectOntoLine', () => {
+  const corner = lineOf([[-12.05, -77.03], [-12.049, -77.03], [-12.049, -77.029]]);
+
+  it('reads the station of a place beside the second stretch', () => {
+    // Arrange
+    const firstStretch = lineLengthM(corner.slice(0, 2));
+    const beside = { lat: -12.0489, lng: -77.0295 };
+
+    // Act
+    const foot = projectOntoLine(corner, beside);
+
+    // Assert
+    expect(foot?.measureM).toBeGreaterThan(firstStretch);
+    expect(foot?.distanceM).toBeGreaterThan(10);
+    expect(foot?.distanceM).toBeLessThan(12);
+  });
+
+  it('stops at the end of the street for a place beyond it', () => {
+    // Arrange
+    const beyond = { lat: -12.049, lng: -77.02 };
+
+    // Act
+    const foot = projectOntoLine(corner, beyond);
+
+    // Assert
+    expect(foot?.measureM).toBeCloseTo(lineLengthM(corner), 3);
+  });
+
+  it('survives a repeated point in the line', () => {
+    // Arrange
+    const repeated = lineOf([[-12.05, -77.03], [-12.05, -77.03], [-12.049, -77.03]]);
+
+    // Act
+    const foot = projectOntoLine(repeated, { lat: -12.0495, lng: -77.03 });
+
+    // Assert
+    expect(foot?.distanceM).toBeCloseTo(0, 3);
+  });
+
+  it('answers nothing for a line without two points', () => {
+    // Act and assert
+    expect(projectOntoLine(lineOf([[-12.05, -77.03]]), { lat: -12.05, lng: -77.03 })).toBeNull();
+    expect(projectOntoLine([], { lat: -12.05, lng: -77.03 })).toBeNull();
   });
 });
 

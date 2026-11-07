@@ -4,6 +4,7 @@ import { OUTDATED_FORM_MESSAGE, type CommandError } from './botCommands.js';
 import { askAboutService, findAskedService, notFound, type AskOutcome, type NotFound, type ServiceAsk } from './clientFiles.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botModels.js';
 import { workProgressInputOf, workProgressPrepared, type WorkProgressInput } from './workProgressForm.js';
+import { workStreetInputOf, workStreetPrepared, type StreetContext, type WorkStreetInput } from './workStreetForm.js';
 
 /**
  * A field report filled from the client's channel (José 05/11/2026, spec
@@ -78,7 +79,8 @@ type OpenInput =
   | { kind: 'publish'; reportId: string }
   | { kind: 'remove_photo'; reportId: string; photoId: string }
   | { kind: 'drive_upload' }
-  | WorkProgressInput;
+  | WorkProgressInput
+  | WorkStreetInput;
 
 const pathOf = (raw: Record<string, unknown>): SectionPath | null => {
   const sectionId = text(raw.section_id, 64);
@@ -105,6 +107,7 @@ function openInputOf(input: unknown): OpenInput | null {
   const raw = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
   if (raw.kind === 'drive_upload') return { kind: 'drive_upload' };
   if (raw.kind === 'work_progress') return workProgressInputOf(raw);
+  if (raw.kind === 'work_street') return workStreetInputOf(raw);
   const reportId = text(raw.report_id, 64);
   if (raw.kind === 'publish') return reportId ? { kind: 'publish', reportId } : null;
   if (raw.kind === 'remove_photo') return removalOf(reportId, text(raw.photo_id, 64));
@@ -116,7 +119,7 @@ function openInputOf(input: unknown): OpenInput | null {
   return { kind: 'section', type: raw.type, path, reportId: reportId || null, tramoId: tramoId || null, place, clientKey: clientKey || null };
 }
 
-type Prepared = { form: AppForm; context: Record<string, string | number | string[]> };
+type Prepared = { form: AppForm; context: Record<string, string | number | string[]> | StreetContext };
 
 type PhotoTerms = { reportId: string | null; tramoId: string | null; /** Portal's `seccion` is the form the person filled, not the template entry (`datos` → `unidad` in CTL-PIS; equal in CTL-IMP). */ sectionForm: string; /** The section's `tipoFoto` (CTL-PIS) and whether it refuses a capture without a fix. */ photoKind?: string; requireLocation: boolean };
 
@@ -143,6 +146,7 @@ async function sectionPrepared(workspaceId: string, serviceId: string, userId: T
 function prepared(workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId, input: OpenInput): Promise<Prepared | CommandError> | Prepared {
   if (input.kind === 'section') return sectionPrepared(workspaceId, serviceId, userId, input);
   if (input.kind === 'work_progress') return workProgressPrepared(workspaceId, clientId, serviceId, userId, input);
+  if (input.kind === 'work_street') return workStreetPrepared(serviceId, input);
   if (input.kind === 'drive_upload') return { form: { id: DRIVE_UPLOAD_TOOL, title: 'Subir al Drive', submitLabel: 'Subir', schema: NOTHING_TO_FILL }, context: { servicioId: serviceId } };
   if (input.kind === 'remove_photo') return { form: { id: REMOVE_PHOTO_TOOL, title: 'Quitar foto', submitLabel: 'Quitar', schema: NOTHING_TO_FILL }, context: { servicioId: serviceId, informeId: input.reportId, fotoId: input.photoId } };
   return { form: { id: PUBLISH_TOOL, title: 'Publicar informe', submitLabel: 'Publicar', schema: PUBLISH_FORM }, context: { servicioId: serviceId, informeId: input.reportId } };

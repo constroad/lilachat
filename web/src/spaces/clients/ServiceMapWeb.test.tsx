@@ -3,11 +3,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ChannelLinks, UnitDischarge, WorkMap, WorkMapView } from '@lilachat/shared';
 import { ServiceMapWeb } from './ServiceMapWeb';
 import type { ProgressSend } from './workMap/WorkMapDischarges';
+import type { StreetSend } from './workMap/workProgressSender';
 
 const askServer = vi.hoisted(() => vi.fn());
 vi.mock('../../api', async (original) => ({ ...(await original<typeof import('../../api')>()), api: askServer }));
+/** A tap on the fake map goes 100 m further east each time, as when a street is drawn (o-02). */
+const taps = vi.hoisted(() => ({ count: 0 }));
 vi.mock('./workMap/WorkMapCanvas', () => ({
-  default: (props: { view: WorkMapView; expanded: boolean; pins?: unknown[]; stretches?: unknown[] }) => <div data-testid="mapa-lienzo" data-done={props.view.done.length} data-expanded={props.expanded} data-pins={props.pins?.length ?? 0} data-stretches={props.stretches?.length ?? 0} />,
+  default: (props: { view: WorkMapView; expanded: boolean; pins?: unknown[]; stretches?: unknown[]; onTap?: (point: { lat: number; lng: number }) => void }) => (
+    <div data-testid="mapa-lienzo" data-done={props.view.done.length} data-expanded={props.expanded} data-pins={props.pins?.length ?? 0} data-stretches={props.stretches?.length ?? 0}>
+      {props.onTap ? <button type="button" data-testid="mapa-tocar" onClick={() => props.onTap?.({ lat: -12, lng: -77 + (taps.count++ * 100) / 108_766 })} /> : null}
+    </div>
+  ),
 }));
 
 /** José 06/11 asked for the literal map of the work, with a full screen mode on the web. */
@@ -26,7 +33,7 @@ const workMap: WorkMap = {
   works: [{ id: 'base', name: 'Base', color: '#c08a1e' }, { id: 'asfalto', name: 'Asfaltado', color: '#111111' }],
   stages: [{ id: 'e1', name: 'Etapa 1' }, { id: 'e2', name: 'Etapa 2' }],
 };
-const showMap = (map: ChannelLinks['map'] = vi.fn(async () => ({ ok: true as const, url })), extra: { drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend } = {}) => render(<ServiceMapWeb jwt="jwt-1" links={linksWith(map)} target={target} title="Pavimentación Los Olivos" {...extra} />);
+const showMap = (map: ChannelLinks['map'] = vi.fn(async () => ({ ok: true as const, url })), extra: { drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend; drawStreet?: StreetSend } = {}) => render(<ServiceMapWeb jwt="jwt-1" links={linksWith(map)} target={target} title="Pavimentación Los Olivos" {...extra} />);
 
 /** A spot on Av. Los Olivos, so many meters from its start (it runs east along -12). */
 const METERS_PER_DEGREE_LNG = 111_195 * Math.cos((12 * Math.PI) / 180);
@@ -266,7 +273,7 @@ describe('ServiceMapWeb', () => {
   it('without the Portal page there is no button that leads nowhere', async () => {
     askServer.mockResolvedValue({ ok: true, data: { map: null } });
     showMap(undefined, { drawUrl: null });
-    expect(await screen.findByTestId('mapa-primera-calle')).toHaveTextContent('pestaña Mapa');
+    expect(await screen.findByTestId('mapa-primera-calle')).toHaveTextContent('Todavía no hay calles');
     expect(screen.queryByTestId('mapa-dibujar-portal')).not.toBeInTheDocument();
   });
 
@@ -285,5 +292,50 @@ describe('ServiceMapWeb', () => {
     expect(await screen.findByTestId('mapa-fallo')).toHaveTextContent('No se pudo cargar el mapa');
     expect(screen.getByTestId('mapa-abrir')).toHaveAttribute('href', `${url}/service/${serviceId}?section=map`);
     await waitFor(() => expect(askServer).toHaveBeenCalledTimes(1));
+  });
+
+  it('draws the first street: taps, name, length, and «Guardar calle» reloads the map (design o-02)', async () => {
+    // Arrange
+    askServer.mockResolvedValueOnce({ ok: true, data: { map: null } }).mockResolvedValue({ ok: true, data: { map: workMap } });
+    const drawStreet = vi.fn<StreetSend>(async () => ({ ok: true, message: 'Calle guardada.' }));
+    taps.count = 0;
+    showMap(undefined, { drawStreet });
+    fireEvent.click(await screen.findByTestId('mapa-dibujar-calle'));
+    // Act
+    fireEvent.click(await screen.findByTestId('mapa-tocar'));
+    fireEvent.click(screen.getByTestId('editor-calle-guardar'));
+    expect(screen.getByTestId('editor-calle-error')).toHaveTextContent('Toca el inicio y el fin');
+    fireEvent.click(screen.getByTestId('mapa-tocar'));
+    fireEvent.click(screen.getByTestId('editor-calle-guardar'));
+    expect(screen.getByTestId('editor-calle-error')).toHaveTextContent('Ponle nombre a la calle');
+    fireEvent.change(screen.getByTestId('editor-calle-nombre'), { target: { value: 'Jr. Los Pinos' } });
+    fireEvent.change(screen.getByTestId('editor-calle-ancho'), { target: { value: '6' } });
+    // Assert
+    expect(screen.getByTestId('editor-calle-largo')).toHaveTextContent('100 m');
+    expect(screen.getByTestId('mapa-lienzo')).toHaveAttribute('data-stretches', '1');
+    fireEvent.click(screen.getByTestId('editor-calle-guardar'));
+    await waitFor(() => expect(drawStreet).toHaveBeenCalledTimes(1));
+    const [draft, entryId] = drawStreet.mock.calls[0];
+    expect(draft).toMatchObject({ name: 'Jr. Los Pinos', widthM: 6 });
+    expect(draft.points).toHaveLength(2);
+    expect(entryId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(await screen.findByTestId('mapa-avance')).toBeInTheDocument();
+    expect(screen.queryByTestId('editor-calle')).not.toBeInTheDocument();
+  });
+
+  it('«Deshacer» takes back a tap, and a refusal from Portal stays in the editor with its words', async () => {
+    askServer.mockResolvedValue({ ok: true, data: { map: workMap } });
+    const drawStreet = vi.fn<StreetSend>(async () => ({ ok: false, message: 'Ese trazo deja fuera un avance aprobado.' }));
+    showMap(undefined, { drawStreet });
+    fireEvent.click(await screen.findByTestId('mapa-nueva-calle'));
+    fireEvent.click(await screen.findByTestId('mapa-tocar'));
+    fireEvent.click(screen.getByTestId('mapa-tocar'));
+    fireEvent.click(screen.getByTestId('mapa-tocar'));
+    fireEvent.click(screen.getByTestId('editor-calle-deshacer'));
+    expect(screen.getByTestId('editor-calle-puntos')).toHaveTextContent('2 puntos');
+    fireEvent.change(screen.getByTestId('editor-calle-nombre'), { target: { value: 'Calle Lima' } });
+    fireEvent.click(screen.getByTestId('editor-calle-guardar'));
+    expect(await screen.findByTestId('editor-calle-error')).toHaveTextContent('Ese trazo deja fuera un avance aprobado.');
+    expect(screen.getByTestId('editor-calle')).toBeInTheDocument();
   });
 });

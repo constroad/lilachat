@@ -156,6 +156,7 @@ export * from './workMapExport.js';
 export * from './workMapPanel.js';
 export * from './workMapProgress.js';
 export * from './workProgressSend.js';
+export * from './workStreetDraft.js';
 export * from './photoStamp.js';
 export * from './signingForm.js';
 export * from './appItems.js';

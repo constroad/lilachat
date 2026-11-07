@@ -43,20 +43,26 @@ export const workProgressRequest = (entry: ProgressEntry): WorkProgressRequest =
   forms: FORMS_LEVEL,
 });
 
-function refusalOf(reply: Extract<FormSubmitReply, { ok: false }>): string {
-  const said = reply.errors?._ ?? Object.values(reply.errors ?? {})[0] ?? reply.message ?? PROGRESS_FAILED;
+type MapToolTexts = { sent: string; failed: string };
+
+function refusalOf(reply: Extract<FormSubmitReply, { ok: false }>, failed: string): string {
+  const said = reply.errors?._ ?? Object.values(reply.errors ?? {})[0] ?? reply.message ?? failed;
   return reply.code === 'rate_limited' && reply.retryAfterS ? `${said} Espera ${reply.retryAfterS} s y vuelve a confirmar.` : said;
 }
 
-/** The same `entradaId` on a resend: Portal answers `ya_marcada` and agentes turns it into a normal answer, «Ya estaba registrado.». */
-export async function sendWorkProgress(deps: WorkProgressDeps, entry: ProgressEntry): Promise<WorkProgressResult> {
+/** One of Portal's map tools, opened by the server's door and confirmed with `values` (o-02, o-07). */
+export async function sendMapTool(deps: WorkProgressDeps, values: FormValues, texts: MapToolTexts): Promise<WorkProgressResult> {
   const opened = await deps.open();
-  if (!opened.ok) return { ok: false, message: opened.message ?? PROGRESS_FAILED };
+  if (!opened.ok) return { ok: false, message: opened.message ?? texts.failed };
   const { commandId } = opened.data;
-  const reply = await deps.submit(commandId, entry.nota ? { nota: entry.nota } : {});
-  if (!reply.ok) return { ok: false, message: refusalOf(reply) };
+  const reply = await deps.submit(commandId, values);
+  if (!reply.ok) return { ok: false, message: refusalOf(reply, texts.failed) };
   const { outcome } = reply;
-  if (outcome.outcome === 'failed') return { ok: false, message: outcome.message ?? PROGRESS_FAILED };
+  if (outcome.outcome === 'failed') return { ok: false, message: outcome.message ?? texts.failed };
   const response = outcome.outcome === 'pending' ? (await deps.notice(commandId))?.response : outcome.response;
-  return { ok: true, message: response?.text?.trim() || PROGRESS_SENT };
+  return { ok: true, message: response?.text?.trim() || texts.sent };
 }
+
+/** The same `entradaId` on a resend: Portal answers `ya_marcada` and agentes turns it into a normal answer, «Ya estaba registrado.». */
+export const sendWorkProgress = (deps: WorkProgressDeps, entry: ProgressEntry): Promise<WorkProgressResult> =>
+  sendMapTool(deps, entry.nota ? { nota: entry.nota } : {}, { sent: PROGRESS_SENT, failed: PROGRESS_FAILED });

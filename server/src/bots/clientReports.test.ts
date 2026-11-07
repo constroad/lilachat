@@ -354,3 +354,40 @@ describe('a control de pista (06/11): units from the dispatches, photos with the
     expect(received).toHaveLength(before);
   });
 });
+
+describe('drawing a street of the work from the map (design o-02, José 07/11)', () => {
+  const ENTRY = '7a1e2c1a-2222-4333-8444-555566667777';
+  const line = [{ lat: -12.05, lng: -77.03 }, { lat: -12.051, lng: -77.031 }];
+  const street = (overrides: Record<string, unknown> = {}) => ({ kind: 'work_street', name: 'Jr. Los Pinos', line, width_m: 6, entry_id: ENTRY, forms: 3, ...overrides });
+
+  it('any member of the client channel opens Portal\'s tool with the street as context and the service from the door', async () => {
+    // Act
+    const opened = await openOf(ana, street()).expect(200);
+    await request(app).post(`/api/chats/${chatId}/commands/${opened.body.commandId}/form`).set(auth(ana)).send({ values: {} }).expect(200);
+    // Assert
+    expect(opened.body.response.form).toMatchObject({ id: 'guardar_calle_de_obra', title: 'Guardar calle' });
+    expect(received.find((event) => event.type === 'form.submitted')?.data).toMatchObject({
+      form_id: 'guardar_calle_de_obra', service_id: 'srv-318',
+      values: { servicioId: 'srv-318', nombre: 'Jr. Los Pinos', trazo: line, anchoM: 6, entradaId: ENTRY },
+    });
+  });
+
+  it('editing a street sends only what changed, with its id and without an entry', async () => {
+    const opened = await openOf(ana, { kind: 'work_street', street_id: 'st-1', name: 'Jr. Las Flores', forms: 3 }).expect(200);
+    const run = await BotCommandRunModel.findById(opened.body.commandId).lean();
+    expect(run?.context).toEqual({ servicioId: 'srv-318', calleId: 'st-1', nombre: 'Jr. Las Flores' });
+  });
+
+  it('a new street needs its name, a line of 2 to 500 points and its entry', async () => {
+    await openOf(ana, street({ name: '' })).expect(400);
+    await openOf(ana, street({ line: [line[0]] })).expect(400);
+    await openOf(ana, street({ line: [...line, { lat: 200, lng: 0 }] })).expect(400);
+    await openOf(ana, street({ entry_id: 'no-uuid' })).expect(400);
+    await openOf(ana, street({ width_m: 61 })).expect(400);
+    await openOf(ana, { kind: 'work_street', street_id: 'st-1', forms: 3 }).expect(400);
+  });
+
+  it('someone outside the client channel does not open it', async () => {
+    await openOf(outsider, street()).expect(404);
+  });
+});

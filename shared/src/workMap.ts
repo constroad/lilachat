@@ -55,8 +55,8 @@ export const WORK_MAP_FIRST = {
   title: 'Todavía no hay calles',
   hint: 'Marca dónde se va a trabajar. El avance y el informe del cliente salen de aquí.',
   steps: ['Dibuja las calles', 'Pártelas en etapas', 'Marca los trabajos'],
-  action: 'Dibujar en el Portal',
-  where: 'Las calles se dibujan en la pestaña Mapa del servicio, en el Portal. Al volver, el mapa aparece aquí.',
+  draw: 'Dibujar la primera calle',
+  action: 'O dibújala en el Portal',
 } as const;
 
 const UNNAMED_WORK = 'Trabajo';

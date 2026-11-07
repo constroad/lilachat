@@ -5,7 +5,7 @@ import { useColores } from '../../../ui/tema';
 import { KICKER } from './WorkMapPanel';
 
 /** Design o-10: a service without streets, and where to draw them (José 07/11: everyone draws and updates). */
-export function WorkMapFirst({ drawUrl }: { drawUrl: string | null }) {
+export function WorkMapFirst({ drawUrl, onDraw }: { drawUrl: string | null; onDraw?: () => void }) {
   const colores = useColores();
   return (
     <View testID="mapa-primera-calle" className="rounded-2xl border border-outline/15 bg-surface p-5">
@@ -22,13 +22,17 @@ export function WorkMapFirst({ drawUrl }: { drawUrl: string | null }) {
           </View>
         ))}
       </View>
-      {drawUrl ? (
-        <Pressable testID="mapa-dibujar-portal" accessibilityRole="link" onPress={() => void Linking.openURL(drawUrl)} className="mt-4 min-h-[48px] flex-row items-center justify-center gap-2 rounded-xl bg-primary">
+      {onDraw ? (
+        <Pressable testID="mapa-dibujar-calle" accessibilityRole="button" onPress={onDraw} className="mt-4 min-h-[48px] flex-row items-center justify-center gap-2 rounded-xl bg-primary">
           <Plus size={18} color={colores['on-primary']} />
-          <Text className="text-[15px] font-semibold text-on-primary">{WORK_MAP_FIRST.action}</Text>
+          <Text className="text-[15px] font-semibold text-on-primary">{WORK_MAP_FIRST.draw}</Text>
         </Pressable>
       ) : null}
-      <Text className="mt-2 text-center text-[12px] text-on-surface-variant">{WORK_MAP_FIRST.where}</Text>
+      {drawUrl ? (
+        <Pressable testID="mapa-dibujar-portal" accessibilityRole="link" onPress={() => void Linking.openURL(drawUrl)} className="mt-1 min-h-[44px] items-center justify-center">
+          <Text className="text-[14px] font-semibold text-primary">{WORK_MAP_FIRST.action}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

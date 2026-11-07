@@ -199,13 +199,32 @@ APK 182 por el OTA `49025a2b` (git 1cb9051). Recorrido en Test con QA-CTLPIS: we
 
 **Servicio sin calles (diseño o-10, 07/11):** José: «¿dónde se supone que voy a crear el mapa
 si no hay tab ni opción?». La pestaña «Mapa» aparece para todos los que abren el servicio, tenga
-calles o no. Sin calles muestra «Todavía no hay calles», los tres pasos y «Dibujar en el Portal»,
-que abre la pestaña Mapa del servicio en el admin de Portal (`?tab=mapa`). El botón solo sale si
-el enlace del servicio es esa página; si no, solo el texto. El editor propio (o-02 a o-05) espera
-las seis herramientas de Portal (`guardar_calle_de_obra`, `borrar_calle_de_obra`,
-`guardar_tramo_de_obra`, `borrar_tramo_de_obra`, `crear_etapa_de_obra`, `crear_etiqueta_de_obra`),
-que José aprueba en Agentes. Lilachat pidió `entradaId` en las creaciones, para que un reintento
-sin señal no duplique una calle.
+calles o no. Sin calles muestra «Todavía no hay calles», los tres pasos, «Dibujar la primera calle»
+y, debajo, «O dibújala en el Portal» (la pestaña Mapa del servicio en el admin, `?tab=mapa`, solo
+si el enlace del servicio es esa página).
+
+**Dibujar una calle (diseño o-02, 07/11), web y APK, para todos:**
+- Motor puro `shared/src/workStreetDraft.ts`: cada toque agrega un punto (tope 500), «Deshacer»
+  quita el último, el largo se lee en metros enteros mientras se dibuja, y `streetDraftProblem`
+  pide primero inicio y fin, después el nombre (hasta 80) y el ancho (0,1 a 60 m, opcional).
+- Se entra por «Dibujar la primera calle» (o-10) o por «Nueva calle» en la barra del mapa.
+- Web: `WorkStreetEditor` dentro de la conversación, con el mismo lienzo MapLibre (`onTap`) y el
+  control «ubicarme» del navegador. APK: un `Modal` con `WorkMapSurface` (`onPress`) que, sin
+  calles, se centra en el teléfono con `useCurrentLocation`.
+- «Guardar calle» abre `guardar_calle_de_obra` de Portal por la puerta del servidor (`kind:
+  'work_street'`, `server/src/bots/workStreetForm.ts`), igual que el avance: el servicio sale de la
+  puerta, el contexto lleva `nombre`, `trazo`, `anchoM` y `entradaId`, y el formulario no pide nada.
+  El mismo `entradaId` en un reenvío devuelve la misma calle (`creada:false`). Al guardar, el mapa
+  se vuelve a pedir. Un rechazo de Portal (`tiene_avance`, `rechazado`) se muestra tal cual en el
+  editor.
+- Portal publicó las seis herramientas el 07/11 (a9938ba7) y José las aprobó en Agentes.
+
+**Borrar (José 07/11):** «que pueda borrar calles cualquiera, pero que sea un borrado lógico que el
+admin pueda restaurar». Portal lo implementa (`restaurar_de_obra`, `borrados_de_obra`) y mantiene
+el rechazo a borrar una calle con avance, porque el metrado y la valorización dejarían de cuadrar.
+
+**Falta:** tramos (o-03), etapas (o-04), trabajos (o-05), borrar y restaurar en pantalla, y
+caminar la calle con GPS (o-13).
 
 **Ancho de móvil en la web:** medido el 06/11 con 433 px, el mínimo que da esa pestaña, no
 390. Sin scroll lateral, mapa de 375 × 419 y botones dentro. Un `resize` sin recargar en una

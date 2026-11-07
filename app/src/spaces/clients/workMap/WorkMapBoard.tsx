@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
-import { ExternalLink, Maximize2, Share2, X } from 'lucide-react-native';
+import { ExternalLink, Maximize2, Plus, Share2, X } from 'lucide-react-native';
 import { dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StretchRange, type UnitDischarge, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { useColores } from '../../../ui/tema';
@@ -37,13 +37,18 @@ function useDischarges(map: WorkMap, discharges: UnitDischarge[]) {
   return { suggestion, ranges, pins, stretches, onRange: (streetId: string, range: StretchRange) => setRanges((before) => ({ ...before, [streetId]: range })) };
 }
 
-type BoardProps = { map: WorkMap; pageUrl: string; height: number; title: string; serviceId: string; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; send?: ProgressSend };
+type BoardProps = { map: WorkMap; pageUrl: string; height: number; title: string; serviceId: string; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void };
 
-function TitleRow(props: { pageUrl: string; onExport: () => void }) {
+function TitleRow(props: { pageUrl: string; onExport: () => void; onDraw?: () => void }) {
   const colors = useColores();
   return (
     <View className="flex-row items-center gap-2">
       <Text className="min-w-0 flex-1 text-[20px] font-bold text-on-surface">Mapa de la obra</Text>
+      {props.onDraw ? (
+        <Pressable testID="mapa-nueva-calle" accessibilityLabel="Nueva calle" onPress={props.onDraw} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20">
+          <Plus size={18} color={colors['on-surface']} />
+        </Pressable>
+      ) : null}
       <Pressable testID="mapa-abrir" accessibilityLabel="Abrir en Portal" onPress={() => void Linking.openURL(props.pageUrl)} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20">
         <ExternalLink size={18} color={colors['on-surface']} />
       </Pressable>
@@ -72,7 +77,7 @@ export function WorkMapBoard(props: BoardProps) {
   const top = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null;
   return (
     <View testID="mapa-servicio" className="gap-3">
-      <TitleRow pageUrl={pageUrl} onExport={() => setExporting(true)} />
+      <TitleRow pageUrl={pageUrl} onExport={() => setExporting(true)} onDraw={props.onDraw} />
       <WorkMapFilters map={map} view={view} filter={filter} onFilter={setFilter} />
       <View className="-mx-4 overflow-hidden bg-surface-variant" style={{ height }}>
         <View pointerEvents="none" className="absolute inset-0">

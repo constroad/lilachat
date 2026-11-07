@@ -67,8 +67,8 @@ export type BotCommandRun = {
   /** A run started by a schedule (28/10): its answers go to the schedule's chat, and «solo si hay algo» is honored. */
   schedule?: { id: Types.ObjectId; scheduledFor: Date; onlyIfSomething: boolean; time: string };
   /** Values the SERVER adds to the form's answer (field reports, 05/11): the report, the section, the tramo. The phone never sets them. */
-  /** A string list too: the units of a progress of the work (design o-07). */
-  context?: Record<string, string | number | boolean | string[]>;
+  /** A string list too: the units of a progress of the work (design o-07); a street's line rides as points (o-02). */
+  context?: Record<string, string | number | boolean | string[] | Array<{ lat: number; lng: number }>>;
   /** What the place it was tapped from knows (José 06/11): the form does not ask it again. */
   placeValues?: Record<string, string | number | boolean>;
   /** Which of them the place vouches for, beyond what the form offers. */

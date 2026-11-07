@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl/dist/maplibre-gl-csp';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-csp-worker?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE_URL, workMapCollection, type DischargePin, type WorkMapLine, type WorkMapView } from '@lilachat/shared';
+import { WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE_URL, workMapCollection, type DischargePin, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -40,18 +40,23 @@ function usePins(map: maplibregl.Map | null, ready: boolean, pins: DischargePin[
 }
 
 /** The streets of the work over a literal map (José 06/11). Lazy: its library weighs more than the chat. */
-export default function WorkMapCanvas(props: { view: WorkMapView; expanded: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[] }) {
+/** `onTap`: drawing a street (design o-02), each tap is a bend; the map also offers «ubicarme» when there is nothing to frame. */
+export default function WorkMapCanvas(props: { view: WorkMapView; expanded: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; onTap?: (point: WorkMapPoint) => void }) {
   const { view, expanded } = props;
   const holder = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const firstBounds = useRef(view.bounds);
   const [ready, setReady] = useState(false);
+  const onTap = useRef(props.onTap);
+  onTap.current = props.onTap;
 
   useEffect(() => {
     if (!holder.current) return undefined;
     const bounds = firstBounds.current ?? undefined;
     const created = new maplibregl.Map({ container: holder.current, style: WORK_MAP_STYLE_URL, bounds, fitBoundsOptions: FIT, attributionControl: { compact: true } });
     created.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
+    if (onTap.current) created.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, fitBoundsOptions: { maxZoom: 17 } }), 'bottom-right');
+    created.on('click', (event) => onTap.current?.({ lat: event.lngLat.lat, lng: event.lngLat.lng }));
     created.on('load', () => {
       addWorkLayers(created);
       setReady(true);

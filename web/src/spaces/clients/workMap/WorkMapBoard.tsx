@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
-import { ExternalLink, Maximize2, Minimize2, Share2 } from 'lucide-react';
+import { ExternalLink, Maximize2, Minimize2, Plus, Share2 } from 'lucide-react';
 import { dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange } from '@lilachat/shared';
 import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
@@ -69,15 +69,16 @@ function useDischarges(map: WorkMap, discharges: UnitDischarge[]) {
   return { suggestion, ranges, onRange, pins, stretches };
 }
 
-type BoardProps = { map: WorkMap; pageUrl: string; title: string; serviceId: string; /** Crumbs and title (o-01). */ head?: ReactNode; /** The service's tabs: beside the actions on a wide board, on their own row on a narrow one. */ tabs?: ReactNode; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; send?: ProgressSend };
+type BoardProps = { map: WorkMap; pageUrl: string; title: string; serviceId: string; /** Crumbs and title (o-01). */ head?: ReactNode; /** The service's tabs: beside the actions on a wide board, on their own row on a narrow one. */ tabs?: ReactNode; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void };
 
-function Actions(props: { pageUrl: string; expanded: boolean; wide: boolean; onToggle: () => void; onExport: () => void }) {
+function Actions(props: { pageUrl: string; expanded: boolean; wide: boolean; onToggle: () => void; onExport: () => void; onDraw?: () => void }) {
   const label = (text: string) => (props.wide ? text : <span className="sr-only">{text}</span>);
   return (
     <div className={`flex shrink-0 items-center gap-2 ${props.wide ? 'pb-3' : 'pb-2'}`}>
       <button type="button" data-testid="mapa-pantalla-completa" onClick={props.onToggle} className={ACTION}>
         {props.expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />} {label(props.expanded ? 'Salir' : 'Pantalla completa')}
       </button>
+      {props.onDraw ? <button type="button" data-testid="mapa-nueva-calle" onClick={props.onDraw} className={ACTION}><Plus size={16} /> {label('Nueva calle')}</button> : null}
       <a data-testid="mapa-abrir" href={props.pageUrl} target="_blank" rel="noopener noreferrer" className={ACTION}><ExternalLink size={16} /> {label('Portal')}</a>
       <button type="button" data-testid="mapa-exportar" onClick={props.onExport} className={`${ACTION} border-primary bg-primary text-on-primary hover:bg-primary/90`}><Share2 size={16} /> {props.wide ? 'Compartir avance' : 'Compartir'}</button>
     </div>
@@ -106,7 +107,7 @@ export function WorkMapBoard(props: BoardProps) {
     <div ref={holder} data-testid="mapa-servicio" data-expanded={expanded} data-wide={wide} className={`flex flex-col bg-background ${expanded ? 'fixed inset-0 z-50' : 'min-h-0 flex-1'} ${wide ? 'overflow-hidden' : 'overflow-y-auto'}`}>
       <header className={`${MAP_HEAD_BAR} flex-wrap`}>
         <div className="min-w-0 flex-1">{props.head}{wide ? props.tabs : null}</div>
-        <Actions pageUrl={pageUrl} expanded={expanded} wide={wide} onToggle={expanded ? close : open} onExport={() => setExporting((shown) => !shown)} />
+        <Actions pageUrl={pageUrl} expanded={expanded} wide={wide} onToggle={expanded ? close : open} onExport={() => setExporting((shown) => !shown)} onDraw={props.onDraw} />
         {wide ? null : <div className="-mt-2 min-w-0 basis-full">{props.tabs}</div>}
       </header>
       {wide ? null : <MapFilters map={map} view={view} filter={filter} onFilter={setFilter} floating={false} />}

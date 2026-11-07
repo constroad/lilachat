@@ -1,4 +1,4 @@
-import { noticeOf, sendWorkProgress, workProgressRequest } from '@lilachat/shared';
+import { noticeOf, sendWorkProgress, sendWorkStreet, workProgressRequest, workStreetRequest, type StreetDraft, type WorkProgressResult } from '@lilachat/shared';
 import { submitAppForm } from '../../../chat/commands/commandsApi';
 import { currentSocket } from '../../../useSocket';
 import { openReportForm } from '../reports/reportsApi';
@@ -15,3 +15,13 @@ const senderOf = (target: ServiceAskTarget, chatId: string, serviceId: string): 
 
 /** Everyone in the client's channel registers progress (José 07/11: «todos pueden crear y actualizar»). */
 export const workProgressSender = (target: ServiceAskTarget, chatId: string, serviceId: string): ProgressSend => senderOf(target, chatId, serviceId);
+
+export type StreetSend = (draft: StreetDraft, entryId: string) => Promise<WorkProgressResult>;
+
+/** «Guardar calle» (design o-02) through the same door: Portal's `guardar_calle_de_obra` with the line as context. */
+export const workStreetSender = (target: ServiceAskTarget, chatId: string, serviceId: string): StreetSend => (draft, entryId) =>
+  sendWorkStreet({
+    open: () => openReportForm(target, serviceId, workStreetRequest(draft, entryId)),
+    submit: (commandId, values) => submitAppForm(target.jwt, { chatId }, commandId, values),
+    notice: (commandId) => noticeOf(currentSocket(), commandId),
+  });

@@ -6,6 +6,8 @@ import { jsonCall } from '../../api/jsonCall';
 import { WorkMapBoard } from './workMap/WorkMapBoard';
 import type { ProgressSend } from './workMap/WorkMapDischarges';
 import { WorkMapFirst } from './workMap/WorkMapFirst';
+import { WorkStreetEditor } from './workMap/WorkStreetEditor';
+import type { StreetSend } from './workMap/workProgressSender';
 
 /** The map of o-01 on a phone: the sheet with the progress rises over its lower edge. */
 const MAP_SCREEN_SHARE = 0.45;
@@ -43,9 +45,11 @@ const PortalLink = (props: { url: string }) => (
 );
 
 /** «Mapa» of a service (José 06/11: «el mapa literal de la obra»), drawn with what Portal shows a client. */
-export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; target: ServiceTarget; title: string; badge?: ReactNode; /** Where the streets are drawn today (Portal's «Mapa» tab). */ drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend }) {
+export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; target: ServiceTarget; title: string; badge?: ReactNode; /** Where the streets are drawn today (Portal's «Mapa» tab). */ drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Guardar calle» (o-02): everyone draws (José 07/11). */ drawStreet?: StreetSend }) {
   const screen = useWindowDimensions();
   const { state, ask } = useServiceMap(props.jwt, props.links, props.target);
+  const [drawing, setDrawing] = useState(false);
+  const onDraw = props.drawStreet ? () => setDrawing(true) : undefined;
   const height = Math.round(screen.height * MAP_SCREEN_SHARE);
   const pageOf = (url: string) => serviceMapPage(url, props.target.serviceId);
   if (state.kind === 'loading') return <View testID="mapa-cargando" className="rounded-2xl bg-surface-variant" style={{ height }} />;
@@ -60,6 +64,7 @@ export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; targe
       </View>
     );
   }
-  if (!state.map) return <WorkMapFirst drawUrl={props.drawUrl ?? null} />;
-  return <WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} height={height} title={props.title} serviceId={props.target.serviceId} badge={props.badge} discharges={props.discharges} send={props.send} />;
+  const editor = props.drawStreet ? <WorkStreetEditor open={drawing} title={props.title} map={state.map} send={props.drawStreet} onClose={() => setDrawing(false)} onSaved={() => { setDrawing(false); void ask(); }} /> : null;
+  if (!state.map) return <>{editor}<WorkMapFirst drawUrl={props.drawUrl ?? null} onDraw={onDraw} /></>;
+  return <>{editor}<WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} height={height} title={props.title} serviceId={props.target.serviceId} badge={props.badge} discharges={props.discharges} send={props.send} onDraw={onDraw} /></>;
 }

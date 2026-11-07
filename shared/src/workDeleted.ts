@@ -4,8 +4,8 @@ import { sendMapTool, type WorkProgressDeps, type WorkProgressResult } from './w
 import type { MapEditSend } from './workScopeDraft.js';
 
 /**
- * What was deleted from the map and how an admin brings it back (José 07/11: «borrado lógico que
- * el admin pueda restaurar»). Portal answers the list in the tool's `data` (agentes 890b02e).
+ * What was deleted from the map and how an admin brings it back (José 07/11: a logical delete an
+ * admin can undo). Portal answers the list in the tool's `data` (agentes 890b02e).
  * PURE: the APK and the web draw from here.
  */
 export type DeletedStreet = { id: string; name: string; lengthM: number; deletedAt: string; deletedBy: string | null };
@@ -34,12 +34,15 @@ export function deletedWorkOf(data: unknown): DeletedWork {
 }
 
 const LIMA = 'America/Lima';
+/** Built once: Hermes pays a new `Intl` object on every call. */
+let dayFormat: Intl.DateTimeFormat | undefined;
+let hourFormat: Intl.DateTimeFormat | undefined;
 const whenOf = (iso: string): string => {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  const day = new Intl.DateTimeFormat('es-PE', { timeZone: LIMA, day: 'numeric', month: 'short' }).format(date).replace('.', '');
-  const hour = new Intl.DateTimeFormat('es-PE', { timeZone: LIMA, hour: 'numeric', minute: '2-digit', hour12: true }).format(date).replace(/\s/g, ' ');
-  return `${day}, ${hour}`;
+  dayFormat ??= new Intl.DateTimeFormat('es-PE', { timeZone: LIMA, day: 'numeric', month: 'short' });
+  hourFormat ??= new Intl.DateTimeFormat('es-PE', { timeZone: LIMA, hour: 'numeric', minute: '2-digit', hour12: true });
+  return `${dayFormat.format(date).replace('.', '')}, ${hourFormat.format(date).replace(/\s/g, ' ')}`;
 };
 const deletedLine = (word: string, at: string, by: string | null) => [`${word} el ${whenOf(at)}`, by ? `por ${by}` : ''].filter(Boolean).join(' ');
 
@@ -51,7 +54,7 @@ export function deletedRowsOf(deleted: DeletedWork, names: Map<string, string>):
     const parts = [...(where ? [where] : []), metersLabel(scope.toM - scope.fromM), deletedLine('borrado', scope.deletedAt, scope.deletedBy)];
     return { at: scope.deletedAt, row: { kind: 'scope' as const, id: scope.id, title: `Tramo ${stationLabel(scope.fromM)} a ${stationLabel(scope.toM)}`, detail: parts.join(' · ') } };
   });
-  return [...streets, ...scopes].sort((left, right) => right.at.localeCompare(left.at)).map((entry) => entry.row);
+  return [...streets, ...scopes].sort((left, right) => (left.at < right.at ? 1 : left.at > right.at ? -1 : 0)).map((entry) => entry.row);
 }
 
 export const workDeletedRequest = (): WorkDeletedRequest => ({ kind: 'work_deleted', forms: FORMS_LEVEL });

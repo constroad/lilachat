@@ -2,17 +2,17 @@ import { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import { Save, Undo2, X } from 'lucide-react-native';
-import { DRAW_MODES, EMPTY_STREET, metersLabel, setDrawMode, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint } from '@lilachat/shared';
+import { DRAW_MODES, EMPTY_STREET, metersLabel, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint } from '@lilachat/shared';
 import { useCurrentLocation } from '../../../chat/location/useCurrentLocation';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
-import { KICKER } from './WorkMapPanel';
 import { WorkMapSurface } from './WorkMapSurface';
 import type { StreetSend } from './workProgressSender';
 
 const NO_STREETS: WorkMap = { streets: [], scopes: [], progress: [], works: [], stages: [] };
 const FIELD = 'mt-1 h-12 rounded-xl border border-outline/25 bg-background px-3 text-[15px] text-on-surface';
 const LABEL = 'text-[12px] font-semibold uppercase text-on-surface-variant';
+const LENGTH_HINT = 'Medido en el mapa';
 
 type EditorProps = { open: boolean; title: string; map: WorkMap | null; send: StreetSend; onClose: () => void; onSaved: (message: string) => void };
 
@@ -61,7 +61,8 @@ export function WorkStreetEditor(props: EditorProps) {
     <Modal visible={props.open} animationType="slide" onRequestClose={() => { if (!draft.points.length) props.onClose(); }}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-background" testID="editor-calle">
         <View className="bg-primary px-4 pb-3" style={{ paddingTop: margins.cabecera + 8 }}>
-          <Text className={`${KICKER} text-on-primary`} numberOfLines={1}>{props.title}</Text>
+          <Text className="font-mono text-[11px] font-bold uppercase tracking-[2px] text-on-primary/80" numberOfLines={1}>{props.title}</Text>
+          <Text className="text-[20px] font-bold text-on-primary">Definir área de trabajo</Text>
           <ModeSwitch mode={draft.mode} onMode={(mode) => { setError(null); setDraft((before) => setDrawMode(before, mode)); }} />
           <View className="mt-2 flex-row items-center justify-between gap-2">
             <Text testID="editor-calle-ayuda" className="flex-1 text-[15px] font-semibold text-on-primary">{streetDraftHint(draft)}</Text>
@@ -84,15 +85,16 @@ export function WorkStreetEditor(props: EditorProps) {
           <TextInput testID="editor-calle-nombre" value={draft.name} maxLength={80} placeholder="Jr. Los Pinos" onChangeText={(name) => change({ name })} className={FIELD} />
           <View className="mt-3 flex-row gap-3">
             <View className="flex-1">
-              <Text className={LABEL}>Largo</Text>
+              <View className="flex-row items-center justify-between"><Text className={LABEL}>Largo</Text><Text className="text-[11px] font-bold text-primary">Auto</Text></View>
               <Text testID="editor-calle-largo" className="mt-1 py-3 font-mono text-[15px] text-on-surface">{metersLabel(streetDraftLengthM(draft))}</Text>
-              {streetDraftEnds(draft) ? <Text testID="editor-calle-extremos" className="font-mono text-[11px] text-on-surface-variant">{streetDraftEnds(draft)}</Text> : null}
+              <Text testID="editor-calle-extremos" className="font-mono text-[11px] text-on-surface-variant">{streetDraftEnds(draft) ?? LENGTH_HINT}</Text>
             </View>
             <View className="flex-1">
               <Text className={LABEL}>Ancho (m)</Text>
               <TextInput testID="editor-calle-ancho" keyboardType="decimal-pad" value={draft.widthM === null ? '' : String(draft.widthM)} placeholder="6.0" onChangeText={(text) => change({ widthM: text.trim() ? Number(text.replace(',', '.')) : null })} className={FIELD} />
             </View>
           </View>
+          {streetDraftArea(draft) ? <View className="mt-3 flex-row items-center justify-between rounded-xl border border-outline/15 bg-background px-3 py-2"><Text className="text-[13px] text-on-surface-variant">Área neta</Text><Text testID="editor-calle-area" className="font-mono text-[15px] font-bold text-on-surface">{streetDraftArea(draft)}</Text></View> : null}
           {error ? <Text testID="editor-calle-error" className="mt-2 text-[13px] font-semibold text-error">{error}</Text> : null}
           <Pressable testID="editor-calle-guardar" disabled={saving} onPress={() => void save()} className={`mt-3 h-12 flex-row items-center justify-center gap-2 rounded-xl bg-primary ${saving ? 'opacity-60' : ''}`}>
             <Save size={18} color={colors['on-primary']} /><Text className="text-[15px] font-semibold text-on-primary">{saving ? 'Guardando…' : 'Guardar calle'}</Text>

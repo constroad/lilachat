@@ -376,3 +376,39 @@ todavía. Por eso no hace falta un modelo nuevo: la progresiva sale de proyectar
 3. **Estado de entrada:** si el avance del ingeniero entra `pending` o `approved`.
 4. **Tiles y OSRM:** la spec de agosto los da por públicos y sin garantía. Falta
    verificar `OSRM_BASE_URL` en producción.
+
+## Auditoría lado a lado contra Stitch (José 07/11)
+
+José: «¿Lo auditaste contra los diseños de Stitch?». No se había hecho pantalla por pantalla.
+Se hizo el 07/11: la web de producción en escritorio contra las capturas `desktop/o-*`, y el
+APK 182 en el emulador (1080×2400) contra `mobile/o-*`. Espacio Test, servicio QA-CTLPIS.
+
+**Lo que funciona como el diseño:** tocar una calle real la toma con su nombre y sigue la vía
+(web: «Jirón Moquegua», 845 m entera y 116 m con inicio y fin; APK: 72 m). Exportar en el APK,
+avance sugerido del Control de pista (o-07), descargas, calle por iniciar con su tacho.
+
+**Defectos (paso 2, se corrigen):**
+1. Web: el panel «Exportar» se sale de la pantalla (el enlace largo estira la grilla hasta
+   2 433 px); el botón KMZ y «Copiar enlace» no se ven.
+2. Editor: las progresivas del tramo elegido se cuentan desde el inicio de la vía en el mapa
+   («Inicio 0+700 · Fin 0+816»). La calle que se guarda es ese tramo, así que empieza en 0+000.
+3. Web: al tomar una calle, cada vértice sale numerado (5, 6, 7, 8…). El diseño marca solo
+   inicio y fin con su progresiva.
+4. APK: en el editor el nombre del servicio sale gris sobre morado y no se lee, y falta el título
+   «Definir área de trabajo» que la web sí tiene.
+5. APK: el mapa (o-01) y el editor (o-02) no tienen acercar, alejar ni «mi ubicación».
+6. Web escritorio: el editor apila todo a lo ancho con un mapa de 300 px. El diseño pone el mapa
+   a la izquierda y el formulario en un panel a la derecha.
+7. Editor: faltan el rótulo «Auto» y «Medido en el mapa, se puede corregir» en el largo, y el área
+   neta (largo × ancho en m²).
+
+**Diferencias que se quedan, con su porqué:**
+- Exportar usa los filtros del mapa («Sale lo que ves») en vez de repetir «Qué», «Hasta el día»
+  y «Trabajos» dentro del panel. El «Plano PDF» A1/A3 no existe en Portal.
+- El chip «Ing. de campo: Rosa Vega» y «GPS RTK en línea» son datos que nadie registra.
+
+**Pantallas sin construir (paso 3):** tramos de una calle (o-03, «Ver tramos»), etapas (o-04),
+trabajos (o-05), registrar avance a mano (o-06, botón principal del diseño), caminar con GPS
+(o-13), la etapa al guardar una calle, y restaurar o ver lo borrado (admins). Portal ya tiene
+`guardar_tramo_de_obra`, `borrar_tramo_de_obra`, `crear_etapa_de_obra`,
+`crear_etiqueta_de_obra` y `registrar_avance_de_obra` (a9938ba7).

@@ -48,8 +48,12 @@ export function streetDraftProblem(draft: StreetDraft): string | null {
 export const WORK_MAP_DRAFT_COLOR = '#7c3aed';
 
 /** Each tap as a numbered pin, the first one the start (design o-02). */
-export const streetDraftPins = (draft: Pick<StreetDraft, 'points'>): DischargePin[] =>
-  draft.points.map((point, index) => ({ id: `trazo-${index + 1}`, label: String(index + 1), lat: point.lat, lng: point.lng, outside: false }));
+export function streetDraftPins(draft: Pick<StreetDraft, 'points'> & { mode?: DrawMode }): DischargePin[] {
+  const pin = (point: WorkMapPoint, index: number): DischargePin => ({ id: `trazo-${index + 1}`, label: String(index + 1), lat: point.lat, lng: point.lng, outside: false });
+  /** A picked street follows the road's every bend: only its start and its end are the person's (audit 07/11). */
+  const ends = draft.mode === 'street' && draft.points.length > 2 ? [...draft.points.slice(0, 1), ...draft.points.slice(-1)] : draft.points;
+  return ends.map(pin);
+}
 
 /** The line once there are a start and an end. */
 export const streetDraftLines = (draft: Pick<StreetDraft, 'points'>): WorkMapLine[] =>

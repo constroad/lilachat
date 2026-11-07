@@ -377,7 +377,10 @@ describe('ServiceMapWeb', () => {
     fireEvent.click(screen.getByTestId('mapa-tocar'));
     fireEvent.click(screen.getByTestId('mapa-tocar'));
     expect(screen.getByTestId('editor-calle-largo')).toHaveTextContent('100 m');
-    expect(screen.getByTestId('editor-calle-extremos')).toHaveTextContent('Inicio 0+200 · Fin 0+300');
+    expect(screen.getByTestId('editor-calle-extremos')).toHaveTextContent('Inicio 0+000 · Fin 0+100');
+    expect(screen.queryByTestId('editor-calle-area')).toBeNull();
+    fireEvent.change(screen.getByTestId('editor-calle-ancho'), { target: { value: '6' } });
+    expect(screen.getByTestId('editor-calle-area')).toHaveTextContent('600 m²');
     fireEvent.click(screen.getByTestId('editor-calle-guardar'));
     await waitFor(() => expect(drawStreet).toHaveBeenCalledTimes(1));
     expect(drawStreet.mock.calls[0]![0]).toMatchObject({ name: 'Jr. Los Pinos', mode: 'street' });

@@ -1,7 +1,8 @@
 import { pickedLine, pickedRange, pickStreet, stationLabel, streetAtTap, tapOnPick, type StreetPick, type TapFeatures } from '@constroad/shared/obra';
 /** What the maps need to ask for the roads at a tap; the rules stay in the package. */
 export { NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, type BasemapFeatureLike, type TapFeatures } from '@constroad/shared/obra';
-import { addStreetPoint, EMPTY_STREET, undoStreetPoint, type DrawMode, type StreetDraft } from './workStreetDraft.js';
+import { addStreetPoint, EMPTY_STREET, streetDraftLengthM, undoStreetPoint, type DrawMode, type StreetDraft } from './workStreetDraft.js';
+import { metersLabel } from './workMap.js';
 
 /**
  * The street-tap way of the street editor (audit 07/11, José asked it easy and fluid for a field
@@ -59,9 +60,18 @@ export function streetDraftHint(draft: StreetDraft): string {
   return 'Listo. Si no es ahí, toca Deshacer.';
 }
 
-/** «Inicio 0+080 · Fin 0+320» on the street's own chainage, once a stretch is marked. */
+/**
+ * «Inicio 0+000 · Fin 0+240»: the street that is saved is the marked stretch, so its chainage starts
+ * at zero. Counting from where the map's road begins (0+700) said nothing to the engineer (audit 07/11).
+ */
 export function streetDraftEnds(draft: StreetDraft): string | null {
   if (draft.mode !== 'street' || !draft.pick) return null;
-  const { fromM, toM } = pickedRange(draft.pick);
-  return `Inicio ${stationLabel(fromM)} · Fin ${stationLabel(toM)}`;
+  return `Inicio ${stationLabel(0)} · Fin ${stationLabel(streetDraftLengthM(draft))}`;
+}
+
+/** Design o-02's «Área neta»: length times width, once both are there. */
+export function streetDraftArea(draft: StreetDraft): string | null {
+  const lengthM = streetDraftLengthM(draft);
+  if (!lengthM || draft.widthM === null || !(draft.widthM > 0)) return null;
+  return `${metersLabel(lengthM * draft.widthM).slice(0, -2)} m²`;
 }

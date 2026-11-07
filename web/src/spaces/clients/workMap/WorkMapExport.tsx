@@ -50,7 +50,7 @@ export function WorkMapExport(props: { map: WorkMap; filter: WorkMapFilter; titl
         </div>
         <button type="button" data-testid="mapa-exportar-cerrar" aria-label="Cerrar exportar" onClick={props.onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-outline/20 text-on-surface"><X size={16} /></button>
       </div>
-      <div className="mt-4 grid gap-3">
+      <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-3">
         <section className={CARD}>
           <p className="flex items-center gap-2 text-[14px] font-semibold text-on-surface"><Globe size={16} /> Google Earth (KMZ)</p>
           <p className="mt-0.5 text-[12px] text-on-surface-variant">Carpetas Ejecutado, por trabajo, y Pendiente.</p>

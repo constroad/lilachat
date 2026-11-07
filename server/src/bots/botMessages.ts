@@ -3,6 +3,7 @@ import { botCardSummary, type BotCard, type BotPost } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Chat, type Message } from '../chatModels.js';
 import { chatMemberIds, sendMessage } from '../chatService.js';
 import { createChecklistInChat } from '../checklistService.js';
+import { HiloInvalidoError } from '../hilos.js';
 import { notifyThread, publicarMensaje } from '../reparto.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { BotInstallationModel, type BotInstallation } from './botModels.js';
@@ -107,6 +108,19 @@ async function publishChecklist(installation: Installation, chatId: Types.Object
   return created.cardSeq ? MessageModel.findOne({ chatId, seq: created.cardSeq }).lean<Message | null>() : null;
 }
 
+/** A `thread_of` that is not a message of that chat (agentes 07/11: each unit under its order's card) is the caller's mistake. */
+async function publishAll(installation: Installation, chatId: Types.ObjectId, post: BotPost, assignees: Map<string, Types.ObjectId>, sharedBy?: Message['sharedBy']): Promise<Message | BotApiError | null> {
+  try {
+    let last: Message | null = null;
+    if (post.text || post.card) last = await publishText(installation, chatId, post, sharedBy);
+    if (post.checklist) last = (await publishChecklist(installation, chatId, post, assignees)) ?? last;
+    return last;
+  } catch (error) {
+    if (error instanceof HiloInvalidoError) return fail(400, 'invalid_thread', 'thread_of no es un mensaje de ese canal que admita respuestas.');
+    throw error;
+  }
+}
+
 /** `sharedBy` is Lilachat's own: an answer to a command sent to the channel by who asked; never from the public API. */
 export async function postBotMessage(installation: Installation, post: BotPost, sharedBy?: Message['sharedBy']): Promise<{ status: 200 | 201; message: PostedMessage } | BotApiError> {
   const known = installation.recentKeys.find((entry) => entry.key === post.idempotencyKey);
@@ -115,10 +129,8 @@ export async function postBotMessage(installation: Installation, post: BotPost, 
   if (!(chatId instanceof Types.ObjectId)) return chatId;
   const assignees = post.checklist ? await assigneesOf(installation, post.checklist) : new Map<string, Types.ObjectId>();
   if (!(assignees instanceof Map)) return assignees;
-  let last: Message | null = null;
-  if (post.text || post.card) last = await publishText(installation, chatId, post, sharedBy);
-  if (post.checklist) last = (await publishChecklist(installation, chatId, post, assignees)) ?? last;
-  if (!last) return fail(400, 'invalid_request', 'No se pudo publicar.');
+  const last = await publishAll(installation, chatId, post, assignees, sharedBy);
+  if (!(last && 'seq' in last)) return last ?? fail(400, 'invalid_request', 'No se pudo publicar.');
   const entry = { key: post.idempotencyKey, messageId: String(last._id), chatId: String(last.chatId), seq: last.seq };
   await BotInstallationModel.updateOne({ _id: installation._id }, { $push: { recentKeys: { $each: [entry], $slice: -RECENT_KEYS_KEPT } } });
   return { status: 201, message: posted(last) };

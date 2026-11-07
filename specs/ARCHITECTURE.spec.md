@@ -6893,6 +6893,13 @@ el día 61 el canal pasa a Archivados sin ningún proceso que lo mueva.
   - Kinds de pedido: una tarjeta por pedido (`order.created`, refs.record_id =
     pedido). Cada despacho va en su hilo (`order.dispatched`,
     `order.delivered`), y la tarjeta se actualiza con PATCH.
+  - 29/10 a 07/11 agentes no publicó nada por unidad (749cebf, decisión de
+    José). El 07/11 José eligió en la sesión de agentes «tarjeta + aviso en su
+    hilo»: cada salida y cada llegada es un POST con `client`, `kind`, `refs`,
+    la tarjeta de la unidad (hora, carga, placa y chofer, sin el cliente) y
+    `thread_of` = seq de la tarjeta del pedido. `order.field_work_finished` solo
+    hace PATCH. Un `thread_of` que no es de ese canal contesta
+    `400 invalid_thread`.
   - Kinds de servicio: `service.created`, `service.status_changed`,
     `service.completed` y `service.rejected`.
   - `service.record` para quote, payment, report, observation y photo. Portal

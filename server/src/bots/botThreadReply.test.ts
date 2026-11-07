@@ -72,6 +72,15 @@ describe('an app answering in a thread', () => {
     expect(threadFrames()).toHaveLength(afterFirst);
   });
 
+  it('a root that is not in the channel answers 400, not a server error', async () => {
+    const installation = await installPortal();
+
+    const outcome = await postBotMessage(installation, { target: { channelId: String(channel) }, text: 'Salió a obra', threadOf: 999, idempotencyKey: 'reply-missing-root' });
+
+    expect(outcome).toMatchObject({ status: 400, error: 'invalid_thread' });
+    expect(await MessageModel.countDocuments({ chatId: channel })).toBe(0);
+  });
+
   it('a message outside a thread announces no summary', async () => {
     const installation = await installPortal();
 

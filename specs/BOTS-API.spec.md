@@ -192,7 +192,11 @@ espacio.
 - `idempotency_key` es obligatorio (hasta 120). La misma clave en la misma
   instalación no publica dos veces: devuelve `200` con el mismo mensaje.
 - `201 { "message": { "id": "…", "chat_id": "…", "seq": 57 } }`.
-- Errores: `400 invalid_request`, `401 invalid_token`, `403 not_in_channel`
+- `thread_of` es el `seq` de un mensaje de ESE mismo chat (con `client`, el
+  canal del cliente: la tarjeta del pedido). Si no existe, está borrado o ya es
+  una respuesta, contesta `400 invalid_thread` y no publica nada (07/11: antes
+  era un 500).
+- Errores: `400 invalid_request | invalid_thread`, `401 invalid_token`, `403 not_in_channel`
   (canal privado sin el bot), `404 channel_not_found | user_not_found`,
   `429 rate_limited` con `Retry-After` (60 por minuto por instalación).
 

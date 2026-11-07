@@ -87,9 +87,11 @@ function stretchOf(street: WorkMapStreet, units: Placed[]): SuggestedStretch | n
 }
 
 const arrivalOf = (unit: UnitDischarge) => unit.arrivalAt ?? NO_ARRIVAL;
+/** ISO hours sort as text, and a collator per call costs memory in Hermes. */
+const byText = (one: string, other: string) => (one === other ? 0 : one < other ? -1 : 1);
 
 export function suggestDischarges(map: WorkMap, discharges: UnitDischarge[]): DischargeSuggestion {
-  const arrived = [...discharges].sort((one, other) => arrivalOf(one).localeCompare(arrivalOf(other)));
+  const arrived = [...discharges].sort((one, other) => byText(arrivalOf(one), arrivalOf(other)));
   const units = arrived.map((unit) => placeUnit(map.streets, unit));
   const placed = units.filter((one): one is Placed => one.state === 'placed');
   return { units, stretches: map.streets.flatMap((street) => stretchOf(street, placed) ?? []) };

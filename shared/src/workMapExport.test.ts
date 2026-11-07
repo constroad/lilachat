@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lineLengthM, type WorkMap } from './workMap';
-import { kmlColor, workMapFileName, workMapKml, workMapKmz, workMapScopeLabel } from './workMapExport';
+import { workMapFileName, workMapKml, workMapKmz, workMapScopeLabel } from './workMapExport';
 
 const LINE = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.99 }];
 const LENGTH = lineLengthM(LINE);
@@ -24,17 +24,6 @@ const map = (): WorkMap => ({
 });
 
 const count = (kml: string, piece: string) => kml.split(piece).length - 1;
-
-describe('kmlColor', () => {
-  it('writes alpha first and the channels reversed, the way KML reads them', () => {
-    expect(kmlColor('#b45309')).toBe('ff0953b4');
-    expect(kmlColor('94a3b8', 'aa')).toBe('aab8a394');
-  });
-
-  it('a color it cannot read becomes gray instead of breaking the file', () => {
-    expect(kmlColor('hsl(var(--x))')).toBe('ff888888');
-  });
-});
 
 describe('workMapKml (design o-12: Ejecutado by work, and Pendiente)', () => {
   it('puts each work in its folder, with its stretches named by street and stations', () => {

@@ -191,8 +191,11 @@ APK 182 por el OTA `49025a2b` (git 1cb9051). Recorrido en Test con QA-CTLPIS: we
   `workMapDischarges.ts` solo cambia las formas: la calle a `StreetAxis` y la unidad a
   `Discharge`, y devuelve cada resultado con su unidad original. Las reglas (30 m del eje, foto
   con precisión peor que 30 m descartada, orden por llegada) son las mismas que tenía Lilachat.
-- Sigue en Lilachat el KML de exportar: el del paquete no tiene filtros por trabajo, etapa ni día,
-  ni nombres «0+040 a 0+150». Se pasa cuando el paquete los tenga.
+- El KML de exportar sale de `buildWorkStreetsKml` del paquete (v0.8.0), con las opciones que
+  Lilachat le sumó: `stageId`, `works`, `upToDate`, `pending: 'planned'` (cada tramo planificado y las
+  calles sin tramo) y `labels: 'progresiva'` («0+040 a 0+150»). Sin opciones el archivo de Portal
+  queda igual byte por byte (test con el KML de v0.7.0). Cambia el id de cada estilo (`p-<trabajo>`
+  en vez de `trabajo-N`) y el orden de las carpetas sigue el de los tramos; Google Earth lo ve igual.
 
 **Ancho de móvil en la web:** medido el 06/11 con 433 px, el mínimo que da esa pestaña, no
 390. Sin scroll lateral, mapa de 375 × 419 y botones dentro. Un `resize` sin recargar en una

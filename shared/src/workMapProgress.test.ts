@@ -87,6 +87,21 @@ describe('progressEntryOf (the form of registrar_avance_de_obra)', () => {
     expect(reply.ok && [reply.entry.desdeM, reply.entry.hastaM]).toEqual([12, 99]);
   });
 
+  it('never sends an end past what Portal accepts: the street plus half a meter (Portal 07/11)', () => {
+    // Arrange: a street of 198.3 m; Portal refuses an end over 198.8.
+    const short = { ...draft, streetLengthM: 198.3 };
+
+    // Act
+    const rounded = progressEntryOf({ ...short, toM: 198.6 });
+    const typed = progressEntryOf({ ...short, toM: 199 });
+    const edge = progressEntryOf({ ...draft, toM: 191 });
+
+    // Assert
+    expect(rounded.ok && rounded.entry.hastaM).toBe(198);
+    expect(typed).toEqual({ ok: false, message: 'El tramo pasa el largo de la calle (198 m).' });
+    expect(edge.ok && edge.entry.hastaM).toBe(191);
+  });
+
   it('refuses what Portal would refuse, in words the person reads', () => {
     expect(progressEntryOf({ ...draft, work: undefined })).toEqual({ ok: false, message: 'Elige el trabajo que se hizo en el tramo.' });
     expect(progressEntryOf({ ...draft, fromM: 100, toM: 100 })).toEqual({ ok: false, message: 'El final del tramo tiene que ir después del inicio.' });

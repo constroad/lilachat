@@ -70,17 +70,26 @@ export type ProgressDraft = {
   note?: string;
 };
 
+/** Portal refuses an end past the street's length plus half a meter (Portal 07/11). */
+const END_TOLERANCE_M = 0.5;
+
+/** Whole meters, as Portal stores them; an end within the street never rounds past what Portal accepts. */
+function endOf(toM: number, streetLengthM: number): number {
+  const limit = streetLengthM + END_TOLERANCE_M;
+  return toM <= limit ? Math.min(Math.round(toM), Math.floor(limit)) : Math.round(toM);
+}
+
 function refusalOf(draft: ProgressDraft, fromM: number, toM: number): string | null {
   if (!draft.work) return 'Elige el trabajo que se hizo en el tramo.';
   if (toM <= fromM) return 'El final del tramo tiene que ir después del inicio.';
-  if (fromM < 0 || toM > Math.ceil(draft.streetLengthM)) return `El tramo pasa el largo de la calle (${metersLabel(draft.streetLengthM)}).`;
+  if (fromM < 0 || toM > draft.streetLengthM + END_TOLERANCE_M) return `El tramo pasa el largo de la calle (${metersLabel(draft.streetLengthM)}).`;
   if (draft.stretch.dispatchIds.length === 0) return 'Este tramo no tiene unidades que lo respalden.';
   if (draft.stretch.dispatchIds.length > ENTRY_UNITS_MAX) return `Máximo ${ENTRY_UNITS_MAX} unidades por avance.`;
   return null;
 }
 
 export function progressEntryOf(draft: ProgressDraft): { ok: true; entry: ProgressEntry } | { ok: false; message: string } {
-  const [fromM, toM] = [Math.round(draft.fromM), Math.round(draft.toM)];
+  const [fromM, toM] = [Math.round(draft.fromM), endOf(draft.toM, draft.streetLengthM)];
   const refusal = refusalOf(draft, fromM, toM);
   if (refusal || !draft.work) return { ok: false, message: refusal ?? '' };
   const note = draft.note?.trim().slice(0, NOTE_MAX);

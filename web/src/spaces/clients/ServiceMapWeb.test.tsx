@@ -9,13 +9,13 @@ import type { StreetDeleteSend } from './workMap/StreetDelete';
 const askServer = vi.hoisted(() => vi.fn());
 vi.mock('../../api', async (original) => ({ ...(await original<typeof import('../../api')>()), api: askServer }));
 /** The street under every tap of the fake map: 500 m east-west, named in the tiles around. */
-const losPinos = vi.hoisted(() => (named: boolean) => ({ properties: { class: 'minor', ...(named ? { name: 'Jr. Los Pinos' } : {}) }, geometry: { type: 'LineString', coordinates: [[-77, -12], [-77 + 500 / 108_766, -12]] } }));
+const pineStreet = vi.hoisted(() => (named: boolean) => ({ properties: { class: 'minor', ...(named ? { name: 'Jr. Los Pinos' } : {}) }, geometry: { type: 'LineString', coordinates: [[-77, -12], [-77 + 500 / 108_766, -12]] } }));
 /** A tap on the fake map goes 100 m further east each time, as when a street is drawn (o-02). */
 const taps = vi.hoisted(() => ({ count: 0 }));
 vi.mock('./workMap/WorkMapCanvas', () => ({
   default: (props: { view: WorkMapView; expanded: boolean; pins?: unknown[]; stretches?: unknown[]; onTap?: (point: { lat: number; lng: number }, roads: unknown) => void }) => (
     <div data-testid="mapa-lienzo" data-done={props.view.done.length} data-expanded={props.expanded} data-pins={props.pins?.length ?? 0} data-stretches={props.stretches?.length ?? 0}>
-      {props.onTap ? <button type="button" data-testid="mapa-tocar" onClick={() => { const point = { lat: -12, lng: -77 + (taps.count++ * 100) / 108_766 }; props.onTap?.(point, { underFinger: [losPinos(false)], nearby: [losPinos(true)], tap: point }); }} /> : null}
+      {props.onTap ? <button type="button" data-testid="mapa-tocar" onClick={() => { const point = { lat: -12, lng: -77 + (taps.count++ * 100) / 108_766 }; props.onTap?.(point, { underFinger: [pineStreet(false)], nearby: [pineStreet(true)], tap: point }); }} /> : null}
     </div>
   ),
 }));

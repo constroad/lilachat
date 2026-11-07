@@ -4,8 +4,8 @@ export { NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, type Base
 import { addStreetPoint, EMPTY_STREET, undoStreetPoint, type DrawMode, type StreetDraft } from './workStreetDraft.js';
 
 /**
- * «Tocar la calle» of the street editor (audit 07/11, José: «fácil y fluido para un ingeniero de
- * campo»). The engineer taps a street of the map: it comes whole, with its name. Then two taps on
+ * The street-tap way of the street editor (audit 07/11, José asked it easy and fluid for a field
+ * engineer). The engineer taps a street of the map: it comes whole, with its name. Then two taps on
  * it mark where the work starts and ends, and the line follows the street's real axis. «A mano»
  * stays for a pasaje the map does not have. The rules live in `@constroad/shared/obra`.
  * PURE: the APK and the web draw from here.

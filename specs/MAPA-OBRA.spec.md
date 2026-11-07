@@ -514,3 +514,14 @@ por J zamora»). «Restaurar» lo devolvió: la lista quedó «No hay calles ni 
 «Ver tramos» con su confirmación: Test quedó como antes (un solo tramo, 0+000 a 0+120).
 **Sin verificar:** el APK (falta el OTA, que José aprueba) y un miembro que no es admin (no debe
 ver «Borrados»; cubierto solo por test).
+
+## OTA del mapa (07/11, 23:01Z)
+
+- OTA `003653ec` (git ec7929e) con todo el paso 3 (tramos, etapas, trabajos, GPS al dibujar, Borrados,
+  avance a mano y «Mi GPS»). rn-smoke antes y después: 3 aperturas en frío limpias (versionCode 182),
+  heap 22 MB.
+- **E2E APK (emulador, Test, QA-CTLPIS):** «Ver tramos» de «QA-MAPA calle — borrar» mostró «Registrar
+  avance»; el formulario abrió con «Asfalto QA» y 0+000, dos «+10 m» dieron «+20 m · 120 m²». «Mi GPS»
+  con el emulador a 4,5 km dijo «Estás a 4492 m de la calle. Acércate o usa ±10 m.». Se canceló sin
+  enviar. El emulador quedó en el espacio Constroad.
+- **Sin verificar en el APK:** tomar la foto (cámara falsa del emulador) y «Mi GPS» parado sobre la calle.

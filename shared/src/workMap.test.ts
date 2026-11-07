@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lineLengthM, loadWorkMap, metersLabel, percentLabel, projectOntoLine, sliceLine, stationLabel, WORK_MAP_FAILED, workMapCollection, workMapHeadline, workMapOf, workMapRequest, workMapStageFilter, workMapView, type WorkMap } from './workMap.js';
+import { lineLengthM, loadWorkMap, metersLabel, percentLabel, projectOntoLine, sliceLine, stationLabel, WORK_MAP_FAILED, workMapCollection, workMapCutDays, workMapCutLabel, workMapHeadline, workMapOf, workMapRequest, workMapStageFilter, workMapView, workMapWorkFilter, type WorkMap } from './workMap.js';
 
 const lineOf = (points: Array<[number, number]>) => points.map(([lat, lng]) => ({ lat, lng }));
 const LONG_STREET = lineOf([[-12, -77], [-12, -76.99]]);
@@ -215,6 +215,82 @@ describe('workMapHeadline', () => {
   it('reads the figures, and says so when no stretch is defined yet', () => {
     expect(workMapHeadline({ percent: 61.5, doneM: 800, totalM: 1300 })).toBe('61,5 % · 800 m de 1 300 m');
     expect(workMapHeadline({ percent: 0, doneM: 0, totalM: 0 })).toBe('Sin tramos definidos');
+  });
+});
+
+describe('cut of the map at a day', () => {
+  it('counts only what was done up to that day', () => {
+    // Arrange
+    const map = parsed();
+
+    // Act
+    const view = workMapView(map, { untilDay: '2026-11-02' });
+
+    // Assert
+    expect(view.doneM).toBeCloseTo(300, 1);
+    expect(view.works.find((work) => work.id === 'base')?.percent).toBe(38);
+    expect(view.works.find((work) => work.id === 'asfalto')?.percent).toBe(0);
+    expect(view.done.every((line) => line.workId === 'base')).toBe(true);
+  });
+
+  it('takes the day itself in, and everything without a cut', () => {
+    // Arrange
+    const map = parsed();
+
+    // Act
+    const lastDay = workMapView(map, { untilDay: '2026-11-04' });
+    const noCut = workMapView(map);
+
+    // Assert
+    expect(lastDay.doneM).toBeCloseTo(noCut.doneM, 1);
+    expect(noCut.doneM).toBeCloseTo(800, 1);
+  });
+
+  it('shows nothing done before the first day', () => {
+    // Act
+    const view = workMapView(parsed(), { untilDay: '2026-10-31' });
+
+    // Assert
+    expect(view.doneM).toBe(0);
+    expect(view.done).toEqual([]);
+  });
+
+  it('offers the worked days, the latest first and without repeats', () => {
+    // Act
+    const days = workMapCutDays(parsed());
+
+    // Assert
+    expect(days).toEqual(['2026-11-04', '2026-11-03', '2026-11-02', '2026-11-01']);
+  });
+
+  it('offers no day for a work without progress', () => {
+    // Arrange
+    const map: WorkMap = { ...parsed(), progress: [] };
+
+    // Act and assert
+    expect(workMapCutDays(map)).toEqual([]);
+  });
+
+  it('writes the day as it is, with no shift of time zone', () => {
+    // Act and assert
+    expect(workMapCutLabel('2026-11-01')).toBe('Hasta el 1 nov');
+    expect(workMapCutLabel('2026-12-31')).toBe('Hasta el 31 dic');
+  });
+
+  it('keeps the cut when the stage or the work changes', () => {
+    // Arrange
+    const map = parsed();
+    const filter = { untilDay: '2026-11-02', stageId: 'e1', workId: 'base' };
+
+    // Act
+    const otherStage = workMapStageFilter(map, filter, 'e2');
+    const otherWork = workMapWorkFilter(filter, 'asfalto');
+    const allWorks = workMapWorkFilter(filter);
+
+    // Assert
+    expect(otherStage).toEqual({ stageId: 'e2', workId: 'base', untilDay: '2026-11-02' });
+    expect(otherWork).toEqual({ stageId: 'e1', workId: 'asfalto', untilDay: '2026-11-02' });
+    expect(allWorks).toEqual({ stageId: 'e1', untilDay: '2026-11-02' });
   });
 });
 

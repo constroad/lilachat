@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { ExternalLink, Maximize2, X } from 'lucide-react-native';
-import { metersLabel, workMapHeadline, workMapStageFilter, workMapView, type WorkMap, type WorkMapFilter, type WorkMapStreetRow, type WorkMapView } from '@lilachat/shared';
+import { metersLabel, workMapCutDays, workMapCutLabel, workMapDayFilter, workMapHeadline, workMapStageFilter, workMapView, workMapWorkFilter, type WorkMap, type WorkMapFilter, type WorkMapStreetRow, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
@@ -22,7 +22,7 @@ const PillRow = (props: { children: ReactNode }) => (
 
 function Filters(props: { map: WorkMap; view: WorkMapView; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void }) {
   const { map, view, filter, onFilter } = props;
-  const stage = filter.stageId ? { stageId: filter.stageId } : {};
+  const days = workMapCutDays(map);
   return (
     <>
       {map.stages.length ? (
@@ -33,8 +33,14 @@ function Filters(props: { map: WorkMap; view: WorkMapView; filter: WorkMapFilter
       ) : null}
       {view.works.length ? (
         <PillRow>
-          <Pill testID="mapa-trabajo-todos" on={!filter.workId} label="Todos" onPress={() => onFilter(stage)} />
-          {view.works.map((work) => <Pill key={work.id} testID={`mapa-trabajo-${work.id}`} on={filter.workId === work.id} color={work.color} label={`${work.name} ${work.percent} %`} onPress={() => onFilter({ ...stage, workId: work.id })} />)}
+          <Pill testID="mapa-trabajo-todos" on={!filter.workId} label="Todos" onPress={() => onFilter(workMapWorkFilter(filter))} />
+          {view.works.map((work) => <Pill key={work.id} testID={`mapa-trabajo-${work.id}`} on={filter.workId === work.id} color={work.color} label={`${work.name} ${work.percent} %`} onPress={() => onFilter(workMapWorkFilter(filter, work.id))} />)}
+        </PillRow>
+      ) : null}
+      {days.length > 1 ? (
+        <PillRow>
+          <Pill testID="mapa-corte-hoy" on={!filter.untilDay} label="Hasta hoy" onPress={() => onFilter(workMapDayFilter(filter, ''))} />
+          {days.map((day) => <Pill key={day} testID={`mapa-corte-${day}`} on={filter.untilDay === day} label={workMapCutLabel(day)} onPress={() => onFilter(workMapDayFilter(filter, day))} />)}
         </PillRow>
       ) : null}
     </>

@@ -1,3 +1,4 @@
+import { dayMonthOf } from './appDirectory.js';
 import type { ServiceMapResult } from './serviceMap.js';
 
 /**
@@ -9,12 +10,12 @@ import type { ServiceMapResult } from './serviceMap.js';
 export type WorkMapPoint = { lat: number; lng: number };
 export type WorkMapStreet = { id: string; name: string; line: WorkMapPoint[]; lengthM: number };
 export type WorkMapScope = { streetId: string; fromM: number; toM: number; workIds: string[]; stageId?: string };
-export type WorkMapProgress = { streetId: string; workId: string; fromM: number; toM: number; rework: boolean };
+export type WorkMapProgress = { streetId: string; workId: string; fromM: number; toM: number; date: string; rework: boolean };
 export type WorkMapWork = { id: string; name: string; color: string };
 export type WorkMapStage = { id: string; name: string };
 export type WorkMap = { streets: WorkMapStreet[]; scopes: WorkMapScope[]; progress: WorkMapProgress[]; works: WorkMapWork[]; stages: WorkMapStage[] };
 
-export type WorkMapFilter = { stageId?: string; workId?: string };
+export type WorkMapFilter = { stageId?: string; workId?: string; untilDay?: string };
 export type WorkMapLine = { streetId: string; workId?: string; color: string; coordinates: Array<[number, number]> };
 export type WorkMapStreetRow = {
   id: string;
@@ -193,7 +194,7 @@ function scopesFrom(raw: unknown, streets: WorkMapStreet[]): WorkMapScope[] {
 function progressFrom(raw: unknown): WorkMapProgress[] {
   return listOf(raw).flatMap((record) => {
     const workId = textOf(record.tagId) || textOf(record.partidaId);
-    return workId ? [{ streetId: textOf(record.streetId), workId, fromM: numberOf(record.fromM), toM: numberOf(record.toM), rework: record.rework === true }] : [];
+    return workId ? [{ streetId: textOf(record.streetId), workId, fromM: numberOf(record.fromM), toM: numberOf(record.toM), date: textOf(record.date), rework: record.rework === true }] : [];
   });
 }
 
@@ -286,13 +287,18 @@ function boundsOf(streets: WorkMapStreet[]): WorkMapView['bounds'] {
   return [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]];
 }
 
+/** Days are written `YYYY-MM-DD`, so they compare as text and no time zone moves them. */
+const cutAt = (map: WorkMap, untilDay?: string): WorkMap =>
+  (untilDay ? { ...map, progress: map.progress.filter((record) => record.date <= untilDay) } : map);
+
 /** Figures, street rows and lines of the map; the chips keep every work of the stage in sight. */
 export function workMapView(map: WorkMap, filter: WorkMapFilter = {}): WorkMapView {
   const stageScopes = map.scopes.filter((scope) => !filter.stageId || scope.stageId === filter.stageId);
   const scopes = stageScopes.filter((scope) => !filter.workId || scope.workIds.includes(filter.workId));
   const narrowed = Boolean(filter.stageId || filter.workId);
-  const stretches = workedStretches(map, scopes, filter.workId);
-  const stageStretches = workedStretches(map, stageScopes);
+  const counted = cutAt(map, filter.untilDay);
+  const stretches = workedStretches(counted, scopes, filter.workId);
+  const stageStretches = workedStretches(counted, stageScopes);
   const streets = map.streets.filter((street) => !narrowed || scopes.some((scope) => scope.streetId === street.id));
   const totalM = stretches.reduce((sum, stretch) => sum + stretch.totalM, 0);
   const doneM = stretches.reduce((sum, stretch) => sum + stretch.doneM, 0);
@@ -318,11 +324,28 @@ export const workMapCollection = (lines: WorkMapLine[]) => ({
 });
 
 /** A stage may not have the chosen work: the filter drops it instead of showing an empty map. */
+type FilterChange = { stageId?: string | undefined; workId?: string | undefined; untilDay?: string | undefined };
+
+const tidyFilter = ({ stageId, workId, untilDay }: FilterChange): WorkMapFilter => ({
+  ...(stageId ? { stageId } : {}),
+  ...(workId ? { workId } : {}),
+  ...(untilDay ? { untilDay } : {}),
+});
+
 export function workMapStageFilter(map: WorkMap, filter: WorkMapFilter, stageId: string): WorkMapFilter {
   const stageWorks = map.scopes.filter((scope) => !stageId || scope.stageId === stageId).flatMap((scope) => scope.workIds);
   const workId = filter.workId && stageWorks.includes(filter.workId) ? filter.workId : undefined;
-  return { ...(stageId ? { stageId } : {}), ...(workId ? { workId } : {}) };
+  return tidyFilter({ ...filter, stageId, workId });
 }
+
+export const workMapWorkFilter = (filter: WorkMapFilter, workId?: string) => tidyFilter({ ...filter, workId });
+export const workMapDayFilter = (filter: WorkMapFilter, untilDay: string) => tidyFilter({ ...filter, untilDay });
+
+/** The days with progress, the latest first: any other day would show the same map. */
+export const workMapCutDays = (map: WorkMap): string[] =>
+  [...new Set(map.progress.map((record) => record.date).filter(Boolean))].sort().reverse();
+
+export const workMapCutLabel = (day: string) => `Hasta el ${dayMonthOf(new Date(`${day}T00:00:00Z`))}`;
 
 /** The link of the service, then the map behind it. With the link alone Portal's page stays open. */
 export async function loadWorkMap(

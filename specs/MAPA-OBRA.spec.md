@@ -129,8 +129,12 @@ pero `get_screen` devuelve el mismo HTML. Por eso se generó aparte.
 - **CSP:** se usa el build `maplibre-gl-csp` para que el worker salga de nuestro
   origen. `connect-src` suma `tiles.openfreemap.org`; `worker-src` no cambia.
 - **Peso:** el mapa es un trozo aparte de 256 KB comprimidos. Solo baja al abrir la pestaña.
-- **No se dibuja todavía:** «Registrar avance», «Compartir avance», «Editar obra» y la
-  fecha de corte. Sin puerta de escritura serían botones de mentira.
+- **Fecha de corte:** «Hasta el 5 nov» muestra el avance acumulado a ese día, en la web
+  con un selector y en el APK con pastillas. Solo ofrece días con avance, porque otro día
+  daría el mismo mapa, y no aparece con un solo día. Las fechas se comparan como texto
+  `YYYY-MM-DD`, así ninguna zona horaria las mueve.
+- **No se dibuja todavía:** «Registrar avance», «Compartir avance» y «Editar obra». Sin
+  puerta de escritura serían botones de mentira.
 - **Trampa:** el CSS de MapLibre pone `position: relative` en su contenedor. Si ese
   `div` lleva `absolute`, mide 0 de alto y el mapa no se ve, aunque cargue sin error.
 - **APK:** `app/src/spaces/clients/workMap/*` con `@maplibre/maplibre-react-native`.
@@ -142,15 +146,48 @@ pero `get_screen` devuelve el mismo HTML. Por eso se generó aparte.
 el APK recorridos en Test con el servicio `6aedcc3a…`: mapa, scroll sobre él, mapa completo,
 cierre y giro. Smoke limpio sobre ese APK.
 
-**Sin verificar:** un teléfono real, una obra con tramos y avance reales, el ancho de móvil en
-la web, y los mosaicos sin señal. La calle QA no tiene tramos, así que las líneas de avance y
-los filtros solo están probados con datos de prueba.
+**Ancho de móvil en la web:** medido el 06/11 con 433 px, el mínimo que da esa pestaña, no
+390. Sin scroll lateral, mapa de 375 × 419 y botones dentro. Un `resize` sin recargar en una
+pestaña oculta deja el diseño de escritorio; es de la prueba, porque ahí no llega el evento.
 
-## 7. Lo que falta decidir
+**Sin verificar:** un teléfono real, una obra con tramos y avance reales, y los mosaicos sin
+señal. La calle QA no tiene tramos, así que las líneas de avance, los filtros y la fecha de
+corte solo están probados con datos de prueba.
 
-1. **Cómo entra Lilachat a escribir:** hoy nada de `work-*` pasa por herramientas. Hace
-   falta una puerta con identidad, y Agentes pide `client_id` y `service_id` comprobados.
-2. **Sin señal:** la cola con `x-idempotency-key` no existe del lado de Portal.
-3. **Tiles y OSRM:** la spec de agosto los da por públicos y sin garantía. Falta
+## 7. Fase 2: Control de pista y avance sugerido (diseño `o-07`)
+
+**Hallazgo.** La unión entre unidad y tramo ya existe en los datos. Cada foto de unidad
+guarda en Portal `metadata.dispatchId`, `tipoFoto`, `geo` y `precisionM`. Nadie lee `geo`
+todavía. Por eso no hace falta un modelo nuevo: la progresiva sale de proyectar esas fotos.
+
+**Motor listo:** `shared/src/workMapDischarges.ts`, sin pantalla todavía.
+- `projectOntoLine` lleva un punto a su progresiva, igual que `projectToLine` de Portal.
+- Una unidad cae en la calle que reúne más fotos, y entre iguales en la más cercana.
+- Estados: `placed`, `outside` a más de 30 m del eje, y `noPlace` sin lugar confiable. Una
+  foto con precisión peor que 30 m no cuenta.
+- Sugiere un tramo por calle, de la menor a la mayor progresiva, y suma los m³. Una sola
+  foto no mide tramo, así que no hay nada que confirmar hasta ajustarlo.
+- **Límite conocido:** un hueco entre unidades queda dentro del tramo. La persona lo corrige
+  con «Ajustar tramo».
+
+**Contrato en curso con Portal y Agentes (06/11):**
+- **Lectura:** campo `descargas` en la salida del detalle de servicio, solo para lectores
+  de la empresa y nunca en el enlace del cliente. No cambia la huella de la herramienta,
+  pero `serviceDetailOf` de Agentes es lista blanca y hay que sumarlo allá.
+- **Escritura:** herramienta nueva publicada por Portal, con `x-no-action`, aprobada por
+  José. Agentes comprueba `client_id`, `service_id` y `spaceRole` admin **antes** de esa
+  aprobación. Portal comprueba que calle, partida y etiqueta sean de ese servicio.
+- **Sin señal:** `entradaId` UUID del equipo, índice único `{ companyId, entradaId }`, y
+  `code: 'ya_marcada'` se muestra como «Ya estaba registrado». `rate_limited` no corrió
+  nada: se reenvía la misma entrada tras `retry_after_s`. `command_id` no sirve aquí, porque
+  vence a los 15 minutos.
+- **Solo admins al inicio:** Lilachat oculta la entrada y Agentes lo hace valer. No se usa
+  `Solo admins`, que es de los ítems del ⚡.
+
+## 8. Lo que falta decidir
+
+1. **Tipo de foto:** cuál marca el tramo de la unidad. La propuesta es de `ingreso` a `vacia`.
+2. **Estado de entrada:** si el avance del ingeniero entra `pending` o `approved`.
+3. **Fecha de la jornada:** Portal hoy la pone en el server, y una cola sin señal llega tarde.
+4. **Tiles y OSRM:** la spec de agosto los da por públicos y sin garantía. Falta
    verificar `OSRM_BASE_URL` en producción.
-4. **Despacho y tramo:** cómo se ata una unidad a una progresiva. Es el modelo nuevo.

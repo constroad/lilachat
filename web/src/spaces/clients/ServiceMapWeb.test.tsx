@@ -21,7 +21,7 @@ const workMap: WorkMap = {
     { streetId: 's1', fromM: 0, toM: 400, workIds: ['base', 'asfalto'], stageId: 'e1' },
     { streetId: 's2', fromM: 0, toM: 200, workIds: ['base'], stageId: 'e2' },
   ],
-  progress: [{ streetId: 's1', workId: 'base', fromM: 0, toM: 400, rework: false }],
+  progress: [{ streetId: 's1', workId: 'base', fromM: 0, toM: 400, date: '2026-11-01', rework: false }],
   works: [{ id: 'base', name: 'Base', color: '#c08a1e' }, { id: 'asfalto', name: 'Asfaltado', color: '#111111' }],
   stages: [{ id: 'e1', name: 'Etapa 1' }, { id: 'e2', name: 'Etapa 2' }],
 };
@@ -44,6 +44,34 @@ describe('ServiceMapWeb', () => {
     expect(askServer).toHaveBeenCalledWith('/service-work-map', { jwt: 'jwt-1', body: { link: url, serviceId } });
     expect(screen.getByTestId('mapa-avance')).toHaveTextContent('40 %');
     expect(screen.getByTestId('mapa-avance')).toHaveTextContent('400 m de 1 000 m');
+  });
+
+  it('shows the progress up to the day chosen and keeps the work picked', async () => {
+    // Arrange
+    const twoDays: WorkMap = {
+      ...workMap,
+      progress: [
+        { streetId: 's1', workId: 'base', fromM: 0, toM: 100, date: '2026-11-01', rework: false },
+        { streetId: 's1', workId: 'base', fromM: 100, toM: 400, date: '2026-11-02', rework: false },
+      ],
+    };
+    askServer.mockResolvedValue({ ok: true, data: { map: twoDays } });
+    showMap();
+    // Act
+    fireEvent.click(await screen.findByTestId('mapa-trabajo-base'));
+    fireEvent.change(screen.getByTestId('mapa-corte'), { target: { value: '2026-11-01' } });
+    // Assert
+    expect(screen.getByTestId('mapa-avance')).toHaveTextContent('100 m de 600 m');
+    expect(screen.getByTestId('mapa-trabajo-base')).toHaveAttribute('aria-pressed', 'true');
+    expect(within(screen.getByTestId('mapa-corte')).getByRole('option', { name: 'Hasta el 1 nov' })).toBeInTheDocument();
+  });
+
+  it('offers no cut with a single worked day, which would change nothing', async () => {
+    // Act
+    showMap();
+    // Assert
+    await screen.findByTestId('mapa-lienzo');
+    expect(screen.queryByTestId('mapa-corte')).not.toBeInTheDocument();
   });
 
   it('keeps Portal one tap away, in its own tab', async () => {

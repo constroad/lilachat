@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ExternalLink, Maximize2, Minimize2 } from 'lucide-react';
-import { metersLabel, workMapHeadline, workMapStageFilter, workMapView, type WorkMap, type WorkMapFilter, type WorkMapStreetRow, type WorkMapView } from '@lilachat/shared';
+import { metersLabel, workMapCutDays, workMapCutLabel, workMapDayFilter, workMapHeadline, workMapStageFilter, workMapView, workMapWorkFilter, type WorkMap, type WorkMapFilter, type WorkMapStreetRow, type WorkMapView } from '@lilachat/shared';
 
 const WorkMapCanvas = lazy(() => import('./WorkMapCanvas'));
 
@@ -120,10 +120,17 @@ export function WorkMapBoard(props: { map: WorkMap; pageUrl: string }) {
       {map.stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
     </select>
   ) : null;
+  const days = workMapCutDays(map);
+  const cut = days.length > 1 ? (
+    <select data-testid="mapa-corte" aria-label="Avance hasta el día" value={filter.untilDay ?? ''} onChange={(event) => setFilter(workMapDayFilter(filter, event.target.value))} className="h-9 rounded-xl border border-outline/20 bg-surface px-2 text-[13px] font-semibold text-on-surface">
+      <option value="">Hasta hoy</option>
+      {days.map((day) => <option key={day} value={day}>{workMapCutLabel(day)}</option>)}
+    </select>
+  ) : null;
   return (
     <div ref={holder} data-testid="mapa-servicio" data-expanded={expanded} className={expanded ? 'fixed inset-0 z-50 flex flex-col bg-surface p-3' : 'rounded-2xl border border-outline/15 bg-surface p-3'}>
-      <Header view={view} pageUrl={pageUrl} stages={stages} expanded={expanded} onToggle={expanded ? close : open} />
-      <WorkChips view={view} workId={filter.workId} onPick={(workId) => setFilter({ ...(filter.stageId ? { stageId: filter.stageId } : {}), ...(workId ? { workId } : {}) })} />
+      <Header view={view} pageUrl={pageUrl} stages={<>{stages}{cut}</>} expanded={expanded} onToggle={expanded ? close : open} />
+      <WorkChips view={view} workId={filter.workId} onPick={(workId) => setFilter(workMapWorkFilter(filter, workId))} />
       <div className={expanded ? 'mt-2 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,38%)] gap-3 lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-1' : 'mt-2 space-y-3'}>
         <div className={`relative overflow-hidden rounded-xl border border-outline/15 bg-surface-variant ${expanded ? 'min-h-0' : 'h-[420px]'}`}>
           <Suspense fallback={<div data-testid="mapa-cargando-lienzo" className="absolute inset-0 animate-pulse bg-surface-variant" />}>

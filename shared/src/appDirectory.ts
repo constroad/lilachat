@@ -49,10 +49,13 @@ export function appActivityLine(installation: Pick<Installation, 'channels' | 'd
   return parts.length ? `Activa en ${parts.join(' y ')}` : '';
 }
 
+/** «23 oct», read in UTC: the caller has already placed the day there. */
+export const dayMonthOf = (day: Date) => `${day.getUTCDate()} ${MONTHS[day.getUTCMonth()]}`;
+
 /** «Instalada por José Zamora · 23 oct». */
 export function appInstalledByLine(installation: Pick<Installation, 'installedBy' | 'installedAt'>): string {
   const day = new Date(new Date(installation.installedAt).getTime() + LIMA_OFFSET_MS);
-  const date = `${day.getUTCDate()} ${MONTHS[day.getUTCMonth()]}`;
+  const date = dayMonthOf(day);
   return installation.installedBy ? `Instalada por ${installation.installedBy} · ${date}` : `Instalada el ${date}`;
 }
 

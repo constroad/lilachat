@@ -139,3 +139,27 @@ export function assertBundleBakedUrl(bundle: string, input: { apiUrl: string; ba
     }
   }
 }
+
+export const SERVED_ATTEMPTS = 6;
+export const SERVED_GAP_MS = 5000;
+export type ServedRead<T> = { ok: true; response: T } | { ok: false; status: number | null };
+
+/**
+ * A deploy restarts the server for some seconds, and that says nothing about the bundle (31/10, OTA 5f7bc6d7: an
+ * error page read as a bad bundle asked for a rollback that was not needed). Only a 200 is an answer.
+ */
+export async function readServed<T extends { status: number }>(read: () => Promise<T>, wait: (ms: number) => Promise<void>): Promise<ServedRead<T>> {
+  let status: number | null = null;
+  for (let attempt = 1; attempt <= SERVED_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await read();
+      if (response.status === 200) return { ok: true, response };
+      status = response.status;
+    } catch (failure) {
+      status = null;
+      console.warn(`ota: the server did not answer (${(failure as Error).name})`);
+    }
+    if (attempt < SERVED_ATTEMPTS) await wait(SERVED_GAP_MS);
+  }
+  return { ok: false, status };
+}

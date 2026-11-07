@@ -21,7 +21,7 @@ import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSy
 import { homedir, tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { NO_UPDATE_DIRECTIVE, assertBundleBakedUrl, assertRuntimeMatches, buildEnvOf, buildManifest, countDevHosts, rollbackDirective, type ExportMetadata, type FileDigest, type RuntimeSnapshot } from '../shared/src/otaPublish.ts';
+import { NO_UPDATE_DIRECTIVE, assertBundleBakedUrl, assertRuntimeMatches, buildEnvOf, buildManifest, countDevHosts, readServed, rollbackDirective, type ExportMetadata, type FileDigest, type RuntimeSnapshot } from '../shared/src/otaPublish.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const APP = path.join(ROOT, 'app');
@@ -38,6 +38,8 @@ const skipGitChecks = args.has('--no-git-checks');
 const recordApk = process.argv.find((arg) => arg.startsWith('--record-apk='))?.slice('--record-apk='.length);
 const MAX_BUNDLE_BYTES = 128 * 1024 * 1024;
 const ROLLBACK_NOW = 'Corre `npx tsx scripts/ota-publish.mts --embedded` YA.';
+const UNREAD_AFTER_PUBLISH = 'Publicado, pero el server no respondió: eso no prueba un bundle malo, no corras --embedded todavía. Mira si se está desplegando y comprueba de nuevo.';
+const pause = (ms: number) => new Promise<void>((resolve) => { setTimeout(resolve, ms); });
 
 function fail(message: string): never {
   console.error(`\n✗ ${message}`);
@@ -243,11 +245,14 @@ async function publishUpdate(token: string, privateKey: string, gitSha: string):
   console.log(`Subiendo ${typed.length} archivos a ${server}…`);
   const uploaded = await uploadAssets(token, typed);
   await postUpdate(token, { runtimeVersion, manifest: manifestText, signature: sign(manifestText, privateKey), noUpdateSignature: sign(NO_UPDATE_DIRECTIVE, privateKey) });
-  const check = await fetch(`${server}/api/ota/manifest`, { headers: { 'expo-protocol-version': '1', 'expo-platform': 'android', 'expo-runtime-version': runtimeVersion } });
-  const served = await check.text();
-  if (check.status !== 200 || !served.includes(manifest.id)) fail(`Publicado, pero el server no sirve este manifest (${check.status}). Revisa antes de decir que está en vivo.`);
+  const check = await readServed(() => fetch(`${server}/api/ota/manifest`, { headers: { 'expo-protocol-version': '1', 'expo-platform': 'android', 'expo-runtime-version': runtimeVersion } }), pause);
+  if (!check.ok) fail(`${UNREAD_AFTER_PUBLISH} El manifest respondió ${check.status ?? 'sin conexión'}.`);
+  const served = await check.response.text();
+  if (!served.includes(manifest.id)) fail(`Publicado, pero el server no sirve este manifest (${check.response.status}). Revisa antes de decir que está en vivo.`);
   // What phones will download, not what was exported: the bundle as the server serves it.
-  const servedBundle = Buffer.from(await (await fetch(`${server}/api/ota/assets/${digests[android.bundle]!.sha256}`)).arrayBuffer());
+  const asset = await readServed(() => fetch(`${server}/api/ota/assets/${digests[android.bundle]!.sha256}`), pause);
+  if (!asset.ok) fail(`${UNREAD_AFTER_PUBLISH} El bundle respondió ${asset.status ?? 'sin conexión'}.`);
+  const servedBundle = Buffer.from(await asset.response.arrayBuffer());
   try {
     assertBundleBakedUrl(servedBundle.toString('latin1'), { apiUrl, baseline: snapshot.devHosts });
   } catch (error) {

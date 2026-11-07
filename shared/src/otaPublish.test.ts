@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { NO_UPDATE_DIRECTIVE, assertBundleBakedUrl, assertRuntimeMatches, buildEnvOf, buildManifest, contentTypeOfExtension, countDevHosts, rollbackDirective, type ExportMetadata } from './otaPublish';
+import { describe, expect, it, vi } from 'vitest';
+import { NO_UPDATE_DIRECTIVE, SERVED_ATTEMPTS, assertBundleBakedUrl, assertRuntimeMatches, buildEnvOf, buildManifest, contentTypeOfExtension, countDevHosts, readServed, rollbackDirective, type ExportMetadata } from './otaPublish';
 
 /**
  * What José's machine builds before publishing an OTA update (agentes 25/10/2026). Pure: the script reads files and
@@ -185,5 +185,53 @@ describe('assertBundleBakedUrl (what the OTA bundle must carry before it is publ
 
   it('allows fewer dev hosts than the APK (a library that dropped a string is not a risk)', () => {
     expect(() => assertBundleBakedUrl(`xx ${apiUrl}`, { apiUrl, baseline })).not.toThrow();
+  });
+});
+
+describe('readServed', () => {
+  const noWait = async () => undefined;
+
+  it('answers at the first 200, without waiting', async () => {
+    // Arrange
+    const read = vi.fn(async () => ({ status: 200 }));
+    const wait = vi.fn(noWait);
+
+    // Act
+    const answer = await readServed(read, wait);
+
+    // Assert
+    expect(answer).toEqual({ ok: true, response: { status: 200 } });
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(wait).not.toHaveBeenCalled();
+  });
+
+  it('waits out a server that restarts, through an error page and a dropped connection', async () => {
+    // Arrange
+    const read = vi.fn<() => Promise<{ status: number }>>()
+      .mockResolvedValueOnce({ status: 502 })
+      .mockRejectedValueOnce(new TypeError('fetch failed'))
+      .mockResolvedValueOnce({ status: 200 });
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    // Act
+    const answer = await readServed(read, noWait);
+
+    // Assert
+    expect(answer.ok).toBe(true);
+    expect(read).toHaveBeenCalledTimes(3);
+  });
+
+  it('gives up with the last status, not a verdict on the bundle', async () => {
+    // Arrange
+    const read = vi.fn(async () => ({ status: 503 }));
+    const wait = vi.fn(noWait);
+
+    // Act
+    const answer = await readServed(read, wait);
+
+    // Assert
+    expect(answer).toEqual({ ok: false, status: 503 });
+    expect(read).toHaveBeenCalledTimes(SERVED_ATTEMPTS);
+    expect(wait).toHaveBeenCalledTimes(SERVED_ATTEMPTS - 1);
   });
 });

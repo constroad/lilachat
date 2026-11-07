@@ -16,22 +16,20 @@ export type MyClientAccess = { money: boolean; /** A space admin: the only one w
 /** `full` runs the stage; `own` reads it whole and only touches the tasks assigned to them. */
 export type StageScope = 'full' | 'own';
 
-/** `files` is no tab since José 06/11: it stays as the access mark that opens each service's Drive. */
-/** What an admin can open to a member; `checklist` stays in `RESTRICTABLE_TABS` only to read older marks. */
-export const MEMBER_TABS = ['services', 'files'] as const;
+/** What an admin can open to a member. `files` and `checklist` stay in `RESTRICTABLE_TABS` only to read older marks: the Drive is for everyone (José 07/11). */
+export const MEMBER_TABS = ['services'] as const;
 
 export const CHANNEL_TAB_LABELS: Record<ChannelTab | RestrictableTab, string> = { chat: 'Chat', account: 'Cuenta', services: 'Servicios', files: 'Drive', checklist: 'Checklist', pending: 'Pendientes' };
 /** What each restrictable tab gives, for the access editor. */
 export const RESTRICTABLE_TAB_HINTS: Record<(typeof MEMBER_TABS)[number], string> = {
   services: 'Pedidos, despachos e informes, sin montos',
-  files: 'El Drive de cada servicio, que puede traer liquidaciones',
 };
 
 const STAGE_ID = /^[a-f0-9]{24}$/;
 const MAX_STAGES = 50;
 
-/** Portal's Drive holds liquidations and whatever was uploaded by hand: it takes the money mark or an admin ticking «Drive» (José 05/11). */
-export const canSeeDrive = (access: MyClientAccess | undefined): boolean => Boolean(access?.money || access?.restricted?.tabs.includes('files'));
+/** The service's Drive is for every member of the client's channel (José 07/11: «el drive lo podrían usar todos»). */
+export const canSeeDrive = (access: MyClientAccess | undefined): boolean => access !== undefined;
 
 const MONEY_RECORD = /pago|cotizaci|orden de compra|valorizaci|liquidaci|factura/i;
 /** A service's record that speaks of money, by what its card says: agentes sends no type (José 05/11). */

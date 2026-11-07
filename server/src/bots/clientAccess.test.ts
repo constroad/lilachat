@@ -124,11 +124,12 @@ describe('the access editor (admins only)', () => {
 });
 
 describe('what a restricted member can ask', () => {
-  it('without Servicios or Archivos: no detail and no Drive (404, nothing asked)', async () => {
+  it('without Servicios: no detail, but the Drive all the same (José 07/11: the Drive is for everyone)', async () => {
+    answer = { status: 200, body: { files: [], drive_url: null } };
     await setAccess(jose, ana, { restricted: { tabs: ['checklist'], stages: [] } }).expect(200);
     expect((await request(app).get(`${base()}/services/srv-318/detail`).set(auth(ana))).status).toBe(404);
-    expect((await request(app).get(`${base()}/services/srv-318/files`).set(auth(ana))).status).toBe(404);
-    expect(received).toHaveLength(0);
+    expect((await request(app).get(`${base()}/services/srv-318/files`).set(auth(ana))).status).toBe(200);
+    expect(received).toHaveLength(1);
   });
 
   it('with Servicios: the detail, without quotes nor collection', async () => {
@@ -197,12 +198,14 @@ describe('José 05/11: engineers in a client\'s channel see no money anywhere', 
     expect(detail.reports).toHaveLength(2);
   });
 
-  it('Portal\'s Drive holds liquidations: a plain member does not get it and agentes is not asked', async () => {
+  it('a plain member opens the service\'s Drive: a field engineer needs it (José 07/11)', async () => {
+    // Arrange
+    answer = { status: 200, body: { files: [], drive_url: null } };
     // Act
-    const refused = await request(app).get(`${base()}/services/srv-318/files`).set(auth(ana));
+    const opened = await request(app).get(`${base()}/services/srv-318/files`).set(auth(ana));
     // Assert
-    expect(refused.status).toBe(404);
-    expect(received).toHaveLength(0);
+    expect(opened.status).toBe(200);
+    expect(received).toHaveLength(1);
   });
 
   it('an admin opens the Drive to one person by ticking «Archivos»', async () => {

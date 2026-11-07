@@ -15258,13 +15258,15 @@ anterior sobre Cotizaciones y Cobranza dentro del detalle del servicio.
 | Factura, precio, crédito y pagos de un pedido | se quitan | `withoutMoney` y Portal `orderBillingOf` |
 | Todo informe fuera de la página pública de Portal | la fila no llega | `isFieldReport`, lista de permitidos por etiqueta; Portal por tipo |
 | Pago o cotización en la tarjeta del servicio | no llega | `isMoneyRecord` en `clientRecords` |
-| Drive del Portal | solo con montos o «Drive» marcado | `canSeeDrive`, sin preguntar a agentes |
+| Drive del Portal | todos los miembros del canal (José 07/11) | `canSeeDrive`; agentes y Portal deciden el resto |
 | Tarjetas de pago en el chat | no se publican | agentes `6feb8c1` |
 
-Un miembro sin marcas ve Chat · Servicios · Checklist, y un servicio sin pestaña
-Drive. Para abrirle el Drive a una persona, un admin le marca «Drive» en sus
-accesos: el Drive puede traer liquidaciones y lo subido a mano, y eso no se puede
-clasificar.
+Un miembro sin marcas ve Chat · Servicios · Checklist, y cada servicio con su
+pestaña Drive. José 07/11, con el ingeniero de campo Jeremy sin Drive en OBRA
+GRAU: «el Drive lo podrían usar todos». Ya no hay marca «Drive» en los accesos;
+la marca vieja `files` se sigue leyendo. El enlace al Drive del cliente también
+lo ve todo el canal. Pendiente: que agentes y Portal respondan
+`client.files.requested` a un miembro sin cuenta de Portal (pedido el 07/11).
 
 **Lo que no depende de Lilachat**
 

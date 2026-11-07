@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accessSummary, canSeeDrive, canSeeTab, isFieldReport, isMoneyRecord, channelTabs, memberAccessIn, memberAccessOf, serviceAccessOf, taskActionsFor, toggleInAccess, type MyClientAccess } from './clientAccess.js';
+import { accessSummary, canSeeDrive, MEMBER_TABS, canSeeTab, isFieldReport, isMoneyRecord, channelTabs, memberAccessIn, memberAccessOf, serviceAccessOf, taskActionsFor, toggleInAccess, type MyClientAccess } from './clientAccess.js';
 
 /** José 30/10 night: topographers and engineers join a client's channel seeing only what an admin picks; money only for admins. */
 const STAGE_A = 'a'.repeat(24);
@@ -45,7 +45,7 @@ describe('channelTabs', () => {
 
   it('opening a service shows what each one may see: orders and reports, the Drive, or both', () => {
     expect(serviceAccessOf({ money: true })).toEqual({ detail: true, drive: true });
-    expect(serviceAccessOf({ money: false })).toEqual({ detail: true, drive: false });
+    expect(serviceAccessOf({ money: false })).toEqual({ detail: true, drive: true });
     expect(serviceAccessOf({ money: false, restricted: { tabs: ['services', 'files'], stages: [] } })).toEqual({ detail: true, drive: true });
   });
 
@@ -119,12 +119,16 @@ describe('memberAccessIn and toggleInAccess (the editor)', () => {
 
 /** José 05/11: the engineers joining a client's channel see no money anywhere, not only in «Cuenta». */
 describe('what carries money beyond the tabs', () => {
-  it('Portal\'s Drive holds liquidations: it takes the money mark or an admin ticking «Drive»', () => {
-    expect(canSeeDrive({ money: false })).toBe(false);
-    expect(canSeeDrive(undefined)).toBe(false);
+  it('the service\'s Drive is for every member of the channel (José 07/11: the engineer Jeremy had no Drive)', () => {
+    expect(canSeeDrive({ money: false })).toBe(true);
     expect(canSeeDrive({ money: true })).toBe(true);
-    expect(canSeeDrive({ money: false, restricted: { tabs: ['files'], stages: [] } })).toBe(true);
-    expect(canSeeDrive({ money: false, restricted: { tabs: ['services'], stages: [] } })).toBe(false);
+    expect(canSeeDrive({ money: false, restricted: { tabs: ['services'], stages: [] } })).toBe(true);
+    expect(canSeeDrive({ money: false, restricted: { tabs: [], stages: [] } })).toBe(true);
+    expect(canSeeDrive(undefined)).toBe(false);
+  });
+
+  it('the access editor no longer offers «Drive»: nobody has to be given it', () => {
+    expect(MEMBER_TABS).toEqual(['services']);
   });
 
   it('a payment or a quote on a service\'s card is money; a report or an observation is not', () => {

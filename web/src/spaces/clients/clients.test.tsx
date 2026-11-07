@@ -151,10 +151,10 @@ describe('a client channel (design f-03)', () => {
     expect(onServiceOpen).toHaveBeenLastCalledWith(false);
   });
 
-  it('the client\'s Drive is a link for whoever may see it, now that «Archivos» is gone', () => {
+  it('the client\'s Drive is a link for every member of the channel (José 07/11)', () => {
     // Arrange
-    const withDrive = client('x', { services: [inProgress], drive_url: 'https://portal.constroad.com/drive/c1', access: { money: true } });
-    const withoutDrive = client('y', { services: [inProgress], drive_url: 'https://portal.constroad.com/drive/c1', access: { money: false } });
+    const withDrive = client('x', { services: [inProgress], drive_url: 'https://portal.constroad.com/drive/c1', access: { money: false } });
+    const withoutDrive = client('y', { services: [inProgress], drive_url: 'https://portal.constroad.com/drive/c1', access: undefined });
     // Act
     const { rerender } = render(<ClientServices client={withDrive} records={[]} target={null} />);
     const link = screen.getByTestId('drive-cliente');

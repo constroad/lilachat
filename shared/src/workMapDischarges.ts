@@ -25,7 +25,8 @@ export type SuggestedStretch = {
   toM: number;
   lengthM: number;
   volumeM3: number;
-  units: number;
+  /** The units the person confirms: Portal checks they belong to the order and dates the stretch from their photos. */
+  dispatchIds: string[];
 };
 export type DischargeSuggestion = { units: PlacedDischarge[]; stretches: SuggestedStretch[] };
 
@@ -82,7 +83,7 @@ function stretchOf(street: WorkMapStreet, units: Placed[]): SuggestedStretch | n
     toM,
     lengthM: toM - fromM,
     volumeM3: Math.round(volume * VOLUME_ROUNDING) / VOLUME_ROUNDING,
-    units: onStreet.length,
+    dispatchIds: onStreet.map((one) => one.unit.dispatchId),
   };
 }
 

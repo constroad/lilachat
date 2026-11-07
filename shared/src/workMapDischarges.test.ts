@@ -126,7 +126,9 @@ describe('suggestDischarges', () => {
 
     // Assert
     expect(stretches).toHaveLength(1);
-    expect(stretches[0]).toMatchObject({ streetId: STREET_ID, streetName: 'Jr. Los Pinos', volumeM3: 15.5, units: 3 });
+    expect(stretches[0]).toMatchObject({ streetId: STREET_ID, streetName: 'Jr. Los Pinos', volumeM3: 15.5 });
+    // Portal checks these units belong to the order and dates the stretch from their photos (agentes 07/11).
+    expect(stretches[0]?.dispatchIds).toEqual(['6aeea2fdf3e8b385195281f1', '6aeea2fdf3e8b385195281f2', '6aeea2fdf3e8b385195281f3']);
     expect(stretches[0]?.fromM).toBeCloseTo(120, 0);
     expect(stretches[0]?.toM).toBeCloseTo(240, 0);
     expect(stretches[0]?.lengthM).toBeCloseTo(120, 0);

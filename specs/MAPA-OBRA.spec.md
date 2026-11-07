@@ -189,6 +189,8 @@ todavía. Por eso no hace falta un modelo nuevo: la progresiva sale de proyectar
   foto con precisión peor que 30 m no cuenta.
 - Sugiere un tramo por calle, de la menor a la mayor progresiva, y suma los m³. Una sola
   foto no mide tramo, así que no hay nada que confirmar hasta ajustarlo.
+- Cada tramo lleva `dispatchIds`, las unidades ubicadas en esa calle. Es lo que el mapa manda al
+  confirmar (Agentes, 07/11).
 - **Límite conocido:** un hueco entre unidades queda dentro del tramo. La persona lo corrige
   con «Ajustar tramo».
 
@@ -199,6 +201,9 @@ todavía. Por eso no hace falta un modelo nuevo: la progresiva sale de proyectar
 - **Escritura:** herramienta nueva publicada por Portal, con `x-no-action`, aprobada por
   José. Agentes comprueba `client_id`, `service_id` y `spaceRole` admin **antes** de esa
   aprobación. Portal comprueba que calle, partida y etiqueta sean de ese servicio.
+- **Fecha del avance (Agentes y Portal, 07/11):** el día en que se colocó, no el de la
+  confirmación. Lilachat no la manda: Portal la saca de las fotos de las unidades de `dispatchIds`.
+  Si la persona confirma un día después, el tramo cae el día de la obra.
 - **Sin señal:** `entradaId` UUID del equipo, índice único `{ companyId, entradaId }`, y
   `code: 'ya_marcada'` se muestra como «Ya estaba registrado». `rate_limited` no corrió
   nada: se reenvía la misma entrada tras `retry_after_s`. `command_id` no sirve aquí, porque
@@ -208,8 +213,9 @@ todavía. Por eso no hace falta un modelo nuevo: la progresiva sale de proyectar
 
 ## 8. Lo que falta decidir
 
-1. **Tipo de foto:** cuál marca el tramo de la unidad. La propuesta es de `ingreso` a `vacia`.
-2. **Estado de entrada:** si el avance del ingeniero entra `pending` o `approved`.
-3. **Fecha de la jornada:** Portal hoy la pone en el server, y una cola sin señal llega tarde.
+1. **Portal espera a José:** no empieza la puerta de escritura sin que José se lo confirme en
+   su sesión (07/11).
+2. **Tipo de foto:** cuál marca el tramo de la unidad. La propuesta es de `ingreso` a `vacia`.
+3. **Estado de entrada:** si el avance del ingeniero entra `pending` o `approved`.
 4. **Tiles y OSRM:** la spec de agosto los da por públicos y sin garantía. Falta
    verificar `OSRM_BASE_URL` en producción.

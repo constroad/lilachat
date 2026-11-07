@@ -134,7 +134,7 @@ describe('the service detail on demand (José, 30/10: pedidos, despachos e infor
 });
 
 
-describe('who sees the collection (José 30/10: «los admins y podemos asignar algún otro miembro del canal»)', () => {
+describe('who sees the collection (José 07/11: «todo lo que es plata solo admins»)', () => {
   const viewersOf = (who: Types.ObjectId) => request(app).get(`/api/workspaces/${spaceId}/clients/cli-cvs/billing-viewers`).set(auth(who));
   const mark = (who: Types.ObjectId, target: Types.ObjectId, sees: boolean) => request(app).put(`/api/workspaces/${spaceId}/clients/cli-cvs/billing-viewers/${target}`).set(auth(who)).send({ sees });
   const seesBillingSent = () => (received.at(-1)?.data?.user as { sees_billing?: boolean } | undefined)?.sees_billing;
@@ -146,29 +146,30 @@ describe('who sees the collection (José 30/10: «los admins y podemos asignar a
     expect(seesBillingSent()).toBeUndefined();
   });
 
-  it('an admin marks her and she gets it on the detail and the Drive; unmarked, it goes away', async () => {
+  it('nobody is marked: marking is refused, an old mark sends no sees_billing, and unmarking clears it', async () => {
+    // Arrange: a mark left from before 07/11.
+    await ClientChannelModel.updateOne({ clientId: 'cli-cvs' }, { $addToSet: { billingViewers: ana } });
     // Act
-    expect((await mark(jose, ana, true).expect(200)).body).toEqual({ viewers: [String(ana)] });
+    const refused = await mark(jose, ana, true);
     await detailOf(ana).expect(200);
-    const afterMark = seesBillingSent();
-    await filesOf(ana).expect(200);
-    const onDrive = seesBillingSent();
-    await mark(jose, ana, false).expect(200);
-    await detailOf(ana).expect(200);
+    const onDetail = seesBillingSent();
+    await filesOf(ana);
+    const cleared = (await mark(jose, ana, false).expect(200)).body;
     // Assert
-    expect(afterMark).toBe(true);
-    expect(onDrive).toBe(true);
+    expect(refused.status).toBe(400);
+    expect(refused.body.message).toBe('Los montos solo los ven los admins del espacio.');
+    expect(onDetail).toBeUndefined();
     expect(seesBillingSent()).toBeUndefined();
+    expect(cleared).toEqual({ viewers: [] });
+    expect((await ClientChannelModel.findOne({ clientId: 'cli-cvs' }).lean())?.billingViewers ?? []).toEqual([]);
     expect((await viewersOf(jose).expect(200)).body).toEqual({ viewers: [] });
   });
 
-  it('marking twice keeps one; only admins mark or list; only members of the channel can be marked', async () => {
-    await mark(jose, ana, true).expect(200);
-    expect((await mark(jose, ana, true).expect(200)).body.viewers).toEqual([String(ana)]);
-    expect((await mark(ana, ana, true)).status).toBe(403);
+  it('only admins touch or list the marks; only members of the channel; a bad body is a 400', async () => {
+    expect((await mark(ana, ana, false)).status).toBe(403);
     expect((await viewersOf(ana)).status).toBe(403);
-    expect((await mark(jose, outsider, true)).status).toBe(404);
-    expect((await request(app).put(`/api/workspaces/${spaceId}/clients/otro/billing-viewers/${ana}`).set(auth(jose)).send({ sees: true })).status).toBe(404);
+    expect((await mark(jose, outsider, false)).status).toBe(404);
+    expect((await request(app).put(`/api/workspaces/${spaceId}/clients/otro/billing-viewers/${ana}`).set(auth(jose)).send({ sees: false })).status).toBe(404);
     expect((await mark(jose, ana, 'si' as unknown as boolean)).status).toBe(400);
   });
 });

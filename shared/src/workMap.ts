@@ -16,7 +16,8 @@ export type WorkMapStage = { id: string; name: string };
 export type WorkMap = { streets: WorkMapStreet[]; scopes: WorkMapScope[]; progress: WorkMapProgress[]; works: WorkMapWork[]; stages: WorkMapStage[] };
 
 export type WorkMapFilter = { stageId?: string; workId?: string; untilDay?: string };
-export type WorkMapLine = { streetId: string; workId?: string; color: string; coordinates: Array<[number, number]> };
+/** A done line also says its stations, so an export can name the stretch. */
+export type WorkMapLine = { streetId: string; workId?: string; color: string; coordinates: Array<[number, number]>; fromM?: number; toM?: number };
 export type WorkMapStreetRow = {
   id: string;
   name: string;
@@ -276,7 +277,7 @@ function doneLines(map: WorkMap, stretches: WorkedStretch[]): WorkMapLine[] {
   return stretches.flatMap((stretch) => {
     const line = map.streets.find((street) => street.id === stretch.scope.streetId)?.line ?? [];
     const color = map.works.find((work) => work.id === stretch.workId)?.color ?? WORK_MAP_PLANNED_COLOR;
-    return stretch.doneIntervals.map(([from, to]) => ({ streetId: stretch.scope.streetId, workId: stretch.workId, color, coordinates: lngLat(sliceLine(line, from, to)) }));
+    return stretch.doneIntervals.map(([from, to]) => ({ streetId: stretch.scope.streetId, workId: stretch.workId, color, coordinates: lngLat(sliceLine(line, from, to)), fromM: from, toM: to }));
   }).filter((line) => line.coordinates.length >= 2);
 }
 

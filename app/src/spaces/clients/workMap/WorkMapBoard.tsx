@@ -1,10 +1,11 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
-import { ExternalLink, Maximize2, X } from 'lucide-react-native';
+import { Download, ExternalLink, Maximize2, X } from 'lucide-react-native';
 import { metersLabel, workMapCutDays, workMapCutLabel, workMapDayFilter, workMapHeadline, workMapStageFilter, workMapView, workMapWorkFilter, type WorkMap, type WorkMapFilter, type WorkMapStreetRow, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
+import { WorkMapExport } from './WorkMapExport';
 import { WorkMapSurface } from './WorkMapSurface';
 
 function Pill(props: { testID: string; on: boolean; color?: string; label: string; onPress: () => void }) {
@@ -78,12 +79,13 @@ function FullMap(props: { view: WorkMapView; open: boolean; onClose: () => void 
   );
 }
 
-/** The map, its figures and its streets (design `o-01-mapa-obra`), read only. */
-export function WorkMapBoard(props: { map: WorkMap; pageUrl: string; height: number }) {
+/** The map, its figures and its streets (design `o-01-mapa-obra`), read only; «Exportar» takes out what it shows (`o-12`). */
+export function WorkMapBoard(props: { map: WorkMap; pageUrl: string; height: number; title: string }) {
   const { map, pageUrl, height } = props;
   const colors = useColores();
   const [filter, setFilter] = useState<WorkMapFilter>({});
   const [wide, setWide] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const view = useMemo(() => workMapView(map, filter), [map, filter]);
   return (
     <View testID="mapa-servicio" className="gap-3">
@@ -105,8 +107,13 @@ export function WorkMapBoard(props: { map: WorkMap; pageUrl: string; height: num
           <Text className="text-[15px] font-semibold text-on-surface">Portal</Text>
         </Pressable>
       </View>
+      <Pressable testID="mapa-exportar" onPress={() => setExporting(true)} className="min-h-[48px] flex-row items-center justify-center gap-2 rounded-xl border border-outline/20">
+        <Download size={18} color={colors['on-surface']} />
+        <Text className="text-[15px] font-semibold text-on-surface">Exportar</Text>
+      </Pressable>
       {view.streets.map((street) => <StreetCard key={street.id} street={street} />)}
       <FullMap view={view} open={wide} onClose={() => setWide(false)} />
+      <WorkMapExport open={exporting} map={map} filter={filter} title={props.title} pageUrl={pageUrl} onClose={() => setExporting(false)} />
     </View>
   );
 }

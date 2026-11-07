@@ -152,6 +152,8 @@ export * from './taskReminders.js';
 export * from './serviceMap.js';
 export * from './workMap.js';
 export * from './workMapDischarges.js';
+export * from './workMapExport.js';
+export * from './zipStore.js';
 export * from './photoStamp.js';
 export * from './signingForm.js';
 export * from './appItems.js';

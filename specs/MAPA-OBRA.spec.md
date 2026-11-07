@@ -1,7 +1,7 @@
 # Mapa de la obra en Lilachat
 
-> Estado: **diseño en Stitch. Sin código del módulo.** Nace de lo que José pidió el
-> 06/11/2026. La pestaña Mapa de hoy es la página de Portal dentro de un WebView.
+> Estado: **lectura, fecha de corte y exportar, en web y APK. Escritura en espera de
+> Portal.** Nace de lo que José pidió el 06/11/2026. La pestaña Mapa de hoy es la página de Portal dentro de un WebView.
 
 ## 1. Qué pidió José
 
@@ -153,6 +153,28 @@ pestaña oculta deja el diseño de escritorio; es de la prueba, porque ahí no l
 **Sin verificar:** un teléfono real, una obra con tramos y avance reales, y los mosaicos sin
 señal. La calle QA no tiene tramos, así que las líneas de avance, los filtros y la fecha de
 corte solo están probados con datos de prueba.
+
+## 6-bis. Exportar la obra (diseño `o-12`, 07/11)
+
+- **Botón «Exportar»** en el mapa, web y APK, para todos los que ven la pestaña. Sale lo
+  que el mapa muestra: la etapa, el trabajo y el día elegidos. El panel lo dice en una línea,
+  por ejemplo «Etapa 1 · Asfaltado · Hasta el 5 nov».
+- **Google Earth (KMZ):** el mismo archivo que da Portal. Carpeta «Ejecutado» con una carpeta
+  por trabajo, y «Pendiente» con los tramos por hacer. Cada tramo hecho se llama con su calle y
+  sus progresivas. Color `AABBGGRR`, coordenadas `lng,lat` y XML escapado.
+- **Motor puro:** `shared/src/workMapExport.ts` arma el KML desde `workMapView`, así el archivo
+  y el mapa no pueden contar cosas distintas. `shared/src/zipStore.ts` escribe el zip sin
+  compresión y sin dependencias; Google Earth lo abre igual. Mismo mapa, mismos bytes.
+- **Nombre:** `pavimentacion-av-los-incas-2026-11-05.kmz`, con el día del corte o el de hoy en
+  el calendario del teléfono, nunca en UTC.
+- **Web:** descarga con `Blob`. **APK:** escribe en la caché y abre «Compartir» con el tipo
+  `application/vnd.google-earth.kmz`, para que Google Earth aparezca en la lista.
+- **Enlace para el cliente:** copia la página de Portal que ya abría «Portal», con
+  `?section=map`. El cliente solo ve lo aprobado.
+- **No se dibuja:** «Plano PDF» e «Importar KMZ». No hay quien genere el plano ni puerta para
+  importar, así que serían botones de mentira.
+- **Verificado:** el zip pasa `unzip -t` y el KML pasa `xmllint`. **Sin verificar:** abrirlo en
+  Google Earth de un teléfono real.
 
 ## 7. Fase 2: Control de pista y avance sugerido (diseño `o-07`)
 

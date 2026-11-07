@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ExternalLink, Maximize2, Minimize2 } from 'lucide-react';
+import { Download, ExternalLink, Maximize2, Minimize2 } from 'lucide-react';
 import { metersLabel, workMapCutDays, workMapCutLabel, workMapDayFilter, workMapHeadline, workMapStageFilter, workMapView, workMapWorkFilter, type WorkMap, type WorkMapFilter, type WorkMapStreetRow, type WorkMapView } from '@lilachat/shared';
+import { WorkMapExport } from './WorkMapExport';
 
 const WorkMapCanvas = lazy(() => import('./WorkMapCanvas'));
 
@@ -91,7 +92,7 @@ function Legend(props: { view: WorkMapView }) {
   );
 }
 
-function Header(props: { view: WorkMapView; pageUrl: string; stages: ReactNode; expanded: boolean; onToggle: () => void }) {
+function Header(props: { view: WorkMapView; pageUrl: string; stages: ReactNode; expanded: boolean; onToggle: () => void; onExport: () => void }) {
   const { view } = props;
   return (
     <header className="flex flex-wrap items-center gap-2">
@@ -103,15 +104,17 @@ function Header(props: { view: WorkMapView; pageUrl: string; stages: ReactNode; 
       <button type="button" data-testid="mapa-pantalla-completa" onClick={props.onToggle} className={ICON_BUTTON}>
         {props.expanded ? <Minimize2 size={15} /> : <Maximize2 size={15} />} {props.expanded ? 'Salir' : 'Pantalla completa'}
       </button>
+      <button type="button" data-testid="mapa-exportar" onClick={props.onExport} className={ICON_BUTTON}><Download size={15} /> Exportar</button>
       <a data-testid="mapa-abrir" href={props.pageUrl} target="_blank" rel="noopener noreferrer" className={ICON_BUTTON}><ExternalLink size={15} /> Portal</a>
     </header>
   );
 }
 
-/** The map, its figures and its streets (design `o-01-mapa-obra`), read only. */
-export function WorkMapBoard(props: { map: WorkMap; pageUrl: string }) {
+/** The map, its figures and its streets (design `o-01-mapa-obra`), read only; «Exportar» takes out what it shows (`o-12`). */
+export function WorkMapBoard(props: { map: WorkMap; pageUrl: string; title: string }) {
   const { map, pageUrl } = props;
   const [filter, setFilter] = useState<WorkMapFilter>({});
+  const [exporting, setExporting] = useState(false);
   const view = useMemo(() => workMapView(map, filter), [map, filter]);
   const { holder, expanded, open, close } = useFullScreen();
   const stages = map.stages.length ? (
@@ -129,7 +132,8 @@ export function WorkMapBoard(props: { map: WorkMap; pageUrl: string }) {
   ) : null;
   return (
     <div ref={holder} data-testid="mapa-servicio" data-expanded={expanded} className={expanded ? 'fixed inset-0 z-50 flex flex-col bg-surface p-3' : 'rounded-2xl border border-outline/15 bg-surface p-3'}>
-      <Header view={view} pageUrl={pageUrl} stages={<>{stages}{cut}</>} expanded={expanded} onToggle={expanded ? close : open} />
+      <Header view={view} pageUrl={pageUrl} stages={<>{stages}{cut}</>} expanded={expanded} onToggle={expanded ? close : open} onExport={() => setExporting((shown) => !shown)} />
+      {exporting ? <WorkMapExport map={map} filter={filter} title={props.title} pageUrl={pageUrl} onClose={() => setExporting(false)} /> : null}
       <WorkChips view={view} workId={filter.workId} onPick={(workId) => setFilter(workMapWorkFilter(filter, workId))} />
       <div className={expanded ? 'mt-2 grid min-h-0 flex-1 grid-rows-[minmax(0,1fr)_minmax(0,38%)] gap-3 lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-1' : 'mt-2 space-y-3'}>
         <div className={`relative overflow-hidden rounded-xl border border-outline/15 bg-surface-variant ${expanded ? 'min-h-0' : 'h-[420px]'}`}>

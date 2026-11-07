@@ -25,7 +25,7 @@ const workMap: WorkMap = {
   works: [{ id: 'base', name: 'Base', color: '#c08a1e' }, { id: 'asfalto', name: 'Asfaltado', color: '#111111' }],
   stages: [{ id: 'e1', name: 'Etapa 1' }, { id: 'e2', name: 'Etapa 2' }],
 };
-const showMap = (map: ChannelLinks['map'] = vi.fn(async () => ({ ok: true as const, url }))) => render(<ServiceMapWeb jwt="jwt-1" links={linksWith(map)} target={target} />);
+const showMap = (map: ChannelLinks['map'] = vi.fn(async () => ({ ok: true as const, url }))) => render(<ServiceMapWeb jwt="jwt-1" links={linksWith(map)} target={target} title="Pavimentación Los Olivos" />);
 
 describe('ServiceMapWeb', () => {
   beforeEach(() => {
@@ -121,6 +121,43 @@ describe('ServiceMapWeb', () => {
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
     });
     expect(screen.getByTestId('mapa-servicio')).toHaveAttribute('data-expanded', 'false');
+  });
+
+  it('exports what the map shows to Google Earth, named after the service (design o-12)', async () => {
+    // Arrange
+    const saved: Blob[] = [];
+    URL.createObjectURL = vi.fn((blob: Blob) => { saved.push(blob); return 'blob:kmz'; });
+    URL.revokeObjectURL = vi.fn();
+    const clicked = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    showMap();
+    await screen.findByTestId('mapa-lienzo');
+    fireEvent.change(screen.getByTestId('mapa-etapa'), { target: { value: 'e1' } });
+    // Act
+    fireEvent.click(screen.getByTestId('mapa-exportar'));
+    fireEvent.click(screen.getByTestId('mapa-descargar-kmz'));
+    // Assert
+    expect(screen.getByTestId('mapa-exportar-alcance')).toHaveTextContent('Etapa 1 · Hasta hoy');
+    expect(saved[0]?.type).toBe('application/vnd.google-earth.kmz');
+    const link = clicked.mock.instances[0] as unknown as HTMLAnchorElement;
+    expect(link.download).toMatch(/^pavimentacion-los-olivos-\d{4}-\d{2}-\d{2}\.kmz$/);
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:kmz');
+    clicked.mockRestore();
+  });
+
+  it('copies the link the client opens, and the panel closes', async () => {
+    // Arrange
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    showMap();
+    await screen.findByTestId('mapa-lienzo');
+    fireEvent.click(screen.getByTestId('mapa-exportar'));
+    // Act
+    fireEvent.click(screen.getByTestId('mapa-copiar-enlace'));
+    // Assert
+    await waitFor(() => expect(screen.getByTestId('mapa-copiar-enlace')).toHaveTextContent('Enlace copiado'));
+    expect(writeText).toHaveBeenCalledWith(`${url}/service/${serviceId}?section=map`);
+    fireEvent.click(screen.getByTestId('mapa-exportar-cerrar'));
+    expect(screen.queryByTestId('mapa-exportar-panel')).not.toBeInTheDocument();
   });
 
   it('a service without streets says so', async () => {

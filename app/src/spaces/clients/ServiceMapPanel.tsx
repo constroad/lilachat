@@ -41,7 +41,7 @@ const PortalLink = (props: { url: string }) => (
 );
 
 /** «Mapa» of a service (José 06/11: «el mapa literal de la obra»), drawn with what Portal shows a client. */
-export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; target: ServiceTarget }) {
+export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; target: ServiceTarget; title: string }) {
   const screen = useWindowDimensions();
   const { state, ask } = useServiceMap(props.jwt, props.links, props.target);
   const height = Math.round(screen.height * MAP_SCREEN_SHARE);
@@ -66,5 +66,5 @@ export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; targe
       </View>
     );
   }
-  return <WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} height={height} />;
+  return <WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} height={height} title={props.title} />;
 }

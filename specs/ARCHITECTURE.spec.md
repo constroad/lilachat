@@ -15613,3 +15613,16 @@ Al elegir un tipo que se llena aquí, la hoja pasa a un segundo paso: «¿Quién
 responsable?». Empieza con el nombre de quien lo crea, ofrece a la gente del canal y
 admite cualquier nombre. «Crear informe» se apaga si queda vacío. El nombre llega a
 `useFieldDocument` y `withDeviceFields` lo escribe en `responsable`.
+
+## «Leer todo» en un espacio y guardia del OTA (06/11)
+
+- **Lista de un espacio:** el APK muestra «Marcar todo como leído» sobre los clientes cuando
+  algún chat del espacio tiene algo sin leer (`anyChatUnread`). Lee solo ese espacio. Probado
+  en el emulador con el OTA `79c0b8a9`, en Test, marcando la app Portal como no leída.
+- **Filas de canal:** un toque largo sobre un canal de un espacio lo abre y no lo selecciona.
+  Solo las filas de chat y de app entran a la selección. No se cambió en esta iteración.
+- **Borrador cifrado:** no tiene pestaña Ajustes, porque su único ajuste son los recordatorios
+  y un chat cifrado no los tiene. Cubierto por test; no se recorrió en pantalla.
+- **OTA:** `readServed` espera hasta 25 s un 200 del manifest y del bundle servido. Un server
+  que reinicia ya no se lee como bundle malo, y el mensaje pide no correr `--embedded`. La
+  ruta del fallo solo está probada por test: el OTA `79c0b8a9` respondió a la primera.

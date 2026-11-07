@@ -3,6 +3,7 @@ import { channelButtonRows, commandOf, matchCommands, parseSlashInput, quickActi
 import { currentSocket } from '../../useSocket';
 import { runCardCommand, runCommand, shareCommandAnswer, spaceCommands } from './commandsApi';
 import { useAppAnswers } from './useAppAnswers';
+import { useSocketTurn } from '../../socketTurn';
 
 export type ChatCommands = ReturnType<typeof useChatCommands>;
 
@@ -118,6 +119,7 @@ export function useChatCommands(params: { jwt?: string; chatId: string; workspac
   );
 
   // A manifest or the commands changed (23/10): the list already read is stale; read again if it was in use.
+  const socketTurn = useSocketTurn();
   useEffect(() => {
     const socket = currentSocket();
     if (!socket || !enabled) return;
@@ -130,7 +132,7 @@ export function useChatCommands(params: { jwt?: string; chatId: string; workspac
     return () => {
       socket.off('workspace.apps.changed', onAppsChanged);
     };
-  }, [enabled, workspaceId, load]);
+  }, [enabled, workspaceId, load, socketTurn]);
 
   /** «Enviar al canal» (José, 23/10): once posted, the card leaves the «only you» list. Null when it went; the reason when not. */
   const share = useCallback(

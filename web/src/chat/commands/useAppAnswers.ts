@@ -3,6 +3,7 @@ import { answerOfOutcome, formSubmitOutcome, giveUpPending, giveUpWaiting, markW
 import type { ApiResult } from '../../api';
 import { currentSocket } from '../../useSocket';
 import { previewAppForm, readFormPlace, refreshAppForm, runShortcut, submitAppForm, uploadFormPhoto } from './commandsApi';
+import { useSocketTurn } from '../../socketTurn';
 
 export type AppAnswers = ReturnType<typeof useAppAnswers>;
 
@@ -99,6 +100,7 @@ export function useAppAnswers(params: { jwt?: string; scope: CommandScope | null
     [jwt, scope]
   );
 
+  const socketTurn = useSocketTurn();
   useEffect(() => {
     const socket = currentSocket();
     if (!socket || !key || !jwt) return;
@@ -111,7 +113,7 @@ export function useAppAnswers(params: { jwt?: string; scope: CommandScope | null
     return () => {
       socket.off('command.response', onNotice);
     };
-  }, [key, jwt]);
+  }, [key, jwt, socketTurn]);
 
   const dismiss = useCallback((commandId: string) => {
     setAnswers((list) => list.filter((entry) => entry.commandId !== commandId));

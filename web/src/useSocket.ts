@@ -4,6 +4,7 @@ import { io, type Socket } from 'socket.io-client';
 import type { Reaccion } from '@lilachat/shared';
 import { announceChatListsChanged } from './chat/chatLists/chatListsEvents';
 import { receivePresence, receivePresenceSnapshot } from './presence/presenceStatus';
+import { announceSocketTurn } from './socketTurn';
 
 /**
  * El socket vive FUERA del componente.
@@ -20,7 +21,10 @@ type OpcionesDeSocket = Parameters<typeof io>[1];
 
 function obtenerSocket(opciones: OpcionesDeSocket): Socket {
   duenos += 1;
-  if (!socketVivo) socketVivo = io(opciones);
+  if (!socketVivo) {
+    socketVivo = io(opciones);
+    announceSocketTurn();
+  }
   return socketVivo;
 }
 
@@ -39,6 +43,7 @@ function soltarSocket(): void {
       socketVivo.close();
       socketVivo = null;
       duenos = 0;
+      announceSocketTurn();
     }
   }, 0);
 }

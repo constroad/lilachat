@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { answerOfOutcome, formSubmitOutcome, giveUpPending, giveUpWaiting, markWaiting, noticeIsFor, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, WRITE_GIVE_UP_MS, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type ShortcutRow, type ShortcutValues } from '@lilachat/shared';
 import type { JsonResult } from '../../api/jsonCall';
-import { getSocket } from '../socketClient';
+import { connectSocket } from '../socketClient';
 import { previewAppForm, refreshAppForm, runShortcut, submitAppForm, readFormPlace, uploadFormPhoto } from './commandsApi';
 
 export type AppAnswers = ReturnType<typeof useAppAnswers>;
@@ -98,8 +98,9 @@ export function useAppAnswers(params: { jwt: string; scope: CommandScope | null 
   );
 
   useEffect(() => {
-    const socket = getSocket();
-    if (!socket || !key) return;
+    // `connectSocket`, not `getSocket`: this screen's effect runs before the one of whoever opens it.
+    if (!key || !jwt) return;
+    const socket = connectSocket(jwt);
     const onNotice = (notice: CommandNotice) => {
       if (!scopeRef.current || !noticeIsFor(answersRef.current, notice, scopeRef.current)) return;
       setAnswers((list) => withNotice(list, notice));
@@ -109,7 +110,7 @@ export function useAppAnswers(params: { jwt: string; scope: CommandScope | null 
     return () => {
       socket.off('command.response', onNotice);
     };
-  }, [key]);
+  }, [key, jwt]);
 
   const dismiss = useCallback((commandId: string) => {
     setAnswers((list) => list.filter((entry) => entry.commandId !== commandId));

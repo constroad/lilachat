@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSocketTurn } from '../socketTurn';
 import { currentSocket } from '../useSocket';
 
 /** How long to wait for the server's answer (ms): without it, the line stays empty. */
@@ -11,6 +12,7 @@ const LAST_SEEN_WAIT_MS = 8000;
  */
 export function useLastSeen(otherId: string | null): string | undefined {
   const [lastSeen, setLastSeen] = useState<string>();
+  const socketTurn = useSocketTurn();
   useEffect(() => {
     setLastSeen(undefined);
     const socket = currentSocket();
@@ -32,6 +34,6 @@ export function useLastSeen(otherId: string | null): string | undefined {
       socket.off('presence', onPresence);
       socket.off('connect', ask);
     };
-  }, [otherId]);
+  }, [otherId, socketTurn]);
   return lastSeen;
 }

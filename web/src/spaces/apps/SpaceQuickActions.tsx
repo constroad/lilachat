@@ -9,6 +9,7 @@ import { AppFormDialog } from '../../chat/commands/AppFormDialog';
 import { EphemeralAnswers } from '../../chat/commands/EphemeralAnswers';
 import { spaceCommands } from '../../chat/commands/commandsApi';
 import { useAppAnswers } from '../../chat/commands/useAppAnswers';
+import { useSocketTurn } from '../../socketTurn';
 
 /**
  * The space's ⚡ (R160, design e-30; José, 23/10: it belongs to the space,
@@ -38,6 +39,7 @@ export function SpaceQuickActions(props: { jwt: string; spaceId: string; spaceNa
   openRef.current = open;
   // A manifest changed: the list already read is stale. With the sheet open it is
   // read again at once (José, 23/10: skeletons that never loaded).
+  const socketTurn = useSocketTurn();
   useEffect(() => {
     const socket = currentSocket();
     const onAppsChanged = (frame: { workspaceId?: string }) => {
@@ -49,7 +51,7 @@ export function SpaceQuickActions(props: { jwt: string; spaceId: string; spaceNa
     return () => {
       socket?.off('workspace.apps.changed', onAppsChanged);
     };
-  }, [spaceId, load]);
+  }, [spaceId, load, socketTurn]);
   // A late answer reopens the sheet: it would be lost behind a closed one.
   const seen = useRef(new Set<string>());
   useEffect(() => {

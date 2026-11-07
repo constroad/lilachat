@@ -15542,6 +15542,13 @@ Reemplaza el aviso de WhatsApp: el responsable recibe un aviso de Lilachat.
 - En la app y la web, «Recordar antes» sale en la hoja de la tarea cuando hay fecha, y
   el detalle muestra la fila «Recordatorios». Sin tocarlo no se manda `advance`.
 
+## Socket en efectos de hijos (06/11)
+
+Un hijo montado con la página corre sus efectos antes de que el shell abra el socket. Con
+`currentSocket()` no encuentra nada y, si nada más cambia, nunca escucha. Así el ⚡ perdió una
+respuesta tardía y dijo «Portal no respondió a tiempo» con la tarjeta ya entregada. Todo efecto
+que escuche el socket en la web depende de `useSocketTurn()`; en la app usa `connectSocket(jwt)`.
+
 ## Pestaña Mapa de un servicio (José 06/11)
 
 En la web el mapa ya lo dibuja Lilachat: `shared/src/workMap.ts`, `POST /api/service-work-map`

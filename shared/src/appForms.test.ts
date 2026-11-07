@@ -30,7 +30,7 @@ describe('an app form (R160, like Slack\'s modals; agentes builds it from the to
     expect(fields).toEqual<FormField[]>([
       { kind: 'choice', name: 'accion', label: 'Acción', required: true, segmented: true, searchable: false, options: [{ value: 'ingreso', label: 'Ingreso' }, { value: 'refrigerio', label: 'Refrigerio' }, { value: 'retorno', label: 'Retorno' }, { value: 'salida', label: 'Salida' }] },
       { kind: 'location', name: 'ubicacion', label: 'Tu ubicación', required: true },
-      { kind: 'photo', name: 'foto', label: 'Selfie', help: 'Una foto tuya al marcar', required: true, multiple: false, max: 1, min: 1 },
+      { kind: 'photo', name: 'foto', label: 'Selfie', help: 'Una foto tuya al marcar', required: true, multiple: false, max: 1, min: 1, gallery: true },
       { kind: 'text', name: 'actividades', label: 'Actividades del día', required: false, multiline: true, maxLength: 300 },
     ]);
   });

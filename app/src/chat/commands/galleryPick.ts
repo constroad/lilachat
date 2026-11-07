@@ -8,8 +8,8 @@ const PHOTO_QUALITY = 1;
 export type GalleryPick = { shot: CameraShot; stamp: FormPhotoStamp | undefined };
 
 /**
- * A photo from the device (José 06/11). It carries its own date and place when the file has them;
- * `plain` goes unstamped: a transfer receipt is a screenshot (E2E 28/10).
+ * A photo from the device (José 06/11). It carries only its own date: the place comes only from the
+ * camera (José 07/11). `plain` goes unstamped: a transfer receipt is a screenshot (E2E 28/10).
  */
 export async function pickFromGallery(plain: boolean): Promise<GalleryPick | null> {
   const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: PHOTO_QUALITY, allowsEditing: false, exif: !plain });

@@ -102,10 +102,10 @@ export function buildBotUserRouter(): Router {
   const stampOf = (body: unknown): PhotoStampAsked | undefined => {
     const fields = (body ?? {}) as Record<string, unknown>;
     if (fields.stamp === HOUR_STAMP) return { hourOnly: true };
+    // A photo of the gallery burns only its date; a place sent with it is ignored (José 07/11).
     if (fields.stamp === 'taken') {
       const takenAt = takenAtFrom(fields.takenAt, new Date());
-      const place = pointOf(fields);
-      return takenAt ? { takenAt, ...(place ? { location: place } : {}) } : { hourOnly: true };
+      return takenAt ? { takenAt } : { hourOnly: true };
     }
     if (fields.stamp !== '1') return undefined;
     const location = pointOf(fields);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HOUR_STAMP } from './appActions';
-import { cameraStampOf, exifPointOf, exifTakenAtOf, fileStampOf, galleryStampOf, stampFieldsOf, takenAtFrom } from './photoStamp';
+import { cameraStampOf, exifTakenAtOf, fileStampOf, galleryStampOf, stampFieldsOf, takenAtFrom } from './photoStamp';
 
 /** José 06/11: the photo of a tank or a material carries its date, hour and place, from the camera or from the gallery. */
 const point = { lat: -12.0464, lng: -77.0428, precision: 8 };
@@ -26,32 +26,17 @@ describe('exifTakenAtOf', () => {
   });
 });
 
-describe('exifPointOf', () => {
-  it('reads decimal degrees with their hemisphere', () => {
-    expect(exifPointOf({ GPSLatitude: 12.0464, GPSLatitudeRef: 'S', GPSLongitude: 77.0428, GPSLongitudeRef: 'W' })).toMatchObject({ lat: -12.0464, lng: -77.0428 });
-  });
-
-  it('reads degrees, minutes and seconds', () => {
-    const read = exifPointOf({ GPSLatitude: [12, 2, 47.04], GPSLatitudeRef: 'S', GPSLongitude: [77, 2, 34.08], GPSLongitudeRef: 'W' });
-    expect(read?.lat).toBeCloseTo(-12.0464, 3);
-    expect(read?.lng).toBeCloseTo(-77.0428, 3);
-  });
-
-  it('Android blanks the place without its permission: zero is no place', () => {
-    expect(exifPointOf({ GPSLatitude: 0, GPSLongitude: 0 })).toBeNull();
-    expect(exifPointOf({})).toBeNull();
-    expect(exifPointOf(undefined)).toBeNull();
-  });
-});
-
 describe('galleryStampOf', () => {
-  it('keeps the date and the place of the photo, not of the moment it is uploaded', () => {
-    const stamp = galleryStampOf({ DateTimeOriginal: '2026:11:06 18:32:10', GPSLatitude: 12.0464, GPSLatitudeRef: 'S', GPSLongitude: 77.0428, GPSLongitudeRef: 'W' }, NOW);
-    expect(stamp.takenAt).toBe('2026-11-06T23:32:10.000Z');
-    expect(stamp.location).toMatchObject({ lat: -12.0464 });
+  it('keeps the date of the photo, not of the moment it is uploaded', () => {
+    expect(galleryStampOf({ DateTimeOriginal: '2026:11:06 18:32:10' }, NOW)).toEqual({ takenAt: '2026-11-06T23:32:10.000Z' });
   });
 
-  it('without a date in the file it uses the one given, and no place is invented', () => {
+  it('never carries a place, even when the file has one: the place comes only from the camera (José 07/11)', () => {
+    const stamp = galleryStampOf({ DateTimeOriginal: '2026:11:06 18:32:10', GPSLatitude: 12.0464, GPSLatitudeRef: 'S', GPSLongitude: 77.0428, GPSLongitudeRef: 'W' }, NOW);
+    expect(stamp).toEqual({ takenAt: '2026-11-06T23:32:10.000Z' });
+  });
+
+  it('without a date in the file it uses the one given', () => {
     expect(galleryStampOf(undefined, NOW)).toEqual({ takenAt: NOW.toISOString() });
   });
 });
@@ -62,7 +47,6 @@ describe('stampFieldsOf', () => {
     expect(stampFieldsOf(HOUR_STAMP)).toEqual({ stamp: 'hour' });
     expect(stampFieldsOf(point)).toEqual({ stamp: '1', lat: '-12.0464', lng: '-77.0428', precision: '8' });
     expect(stampFieldsOf({ takenAt: '2026-11-06T23:32:10.000Z' })).toEqual({ stamp: 'taken', takenAt: '2026-11-06T23:32:10.000Z' });
-    expect(stampFieldsOf({ takenAt: '2026-11-06T23:32:10.000Z', location: point })).toEqual({ stamp: 'taken', takenAt: '2026-11-06T23:32:10.000Z', lat: '-12.0464', lng: '-77.0428', precision: '8' });
   });
 });
 

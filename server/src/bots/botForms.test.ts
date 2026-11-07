@@ -250,6 +250,17 @@ describe('an app answers a command with a form', () => {
     expect(data[(238 * info.width + 2) * info.channels]!).toBeLessThan(140);
   });
 
+  it('a photo of the gallery burns only its date: the place comes only from the camera (José 07/11)', async () => {
+    // Arrange: an old client that still sends the place it read from the file.
+    const commandId = await openForm();
+    const white = await sharp({ create: { width: 320, height: 240, channels: 3, background: '#ffffff' } }).jpeg().toBuffer();
+    vi.mocked(placeNameOf).mockClear();
+    // Act
+    await request(app).post(`/api/chats/${channel}/commands/${commandId}/files`).set(asAna).field('stamp', 'taken').field('takenAt', '2026-11-01T15:00:00.000Z').field('lat', '-12.0464').field('lng', '-77.0428').field('precision', '8').attach('file', white, { filename: 'galeria.jpg', contentType: 'image/jpeg' }).expect(201);
+    // Assert: no address is looked up, so none is burned.
+    expect(vi.mocked(placeNameOf)).not.toHaveBeenCalled();
+  });
+
   it('too many calls (agentes 06/11) is a 429 with the code and the seconds to wait, so the queue waits instead of refusing', async () => {
     const commandId = await openForm();
     const { fileId } = (await uploadPhoto(commandId).expect(201)).body;

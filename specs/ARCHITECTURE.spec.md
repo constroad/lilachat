@@ -15585,7 +15585,6 @@ tanque, materiales y cualquier otro formulario, con una foto o con varias.
 | Cámara con GPS | `lat`, `lng`, `precision` | fecha, hora y lugar, con la hora del server |
 | Cámara sin GPS a tiempo | `stamp=hour` | fecha y hora |
 | Galería con EXIF de fecha | `stamp=taken`, `takenAt` | la fecha y hora de la foto, nunca la de la subida |
-| Galería con EXIF de lugar | además `lat`, `lng` | también el lugar |
 | Web | `stamp=taken` con la fecha del archivo | fecha y hora del archivo; el navegador no da lugar |
 | `x-gallery: true` | nada | sin marca: un voucher es una captura de pantalla |
 
@@ -15594,18 +15593,19 @@ tanque, materiales y cualquier otro formulario, con una foto o con varias.
   espera 2,5 s como máximo. La miniatura aparece antes.
 - La firma con selfie no cambia: `LiveSelfie` es su propio camino, sin galería.
 - Motor puro: `shared/src/photoStamp.ts`. Galería del APK: `galleryPick.ts`.
+- **Galería sin lugar (José 07/11):** una foto de galería lleva solo su fecha. El lugar
+  sale solo de la cámara, leído en el momento. El server ignora un `lat`/`lng` que
+  llegue con `stamp=taken`, así un APK viejo tampoco lo quema.
 
 **Límites conocidos:**
 
-- En Android el EXIF llega sin GPS mientras el APK no pida `ACCESS_MEDIA_LOCATION`.
-  Hasta un APK nuevo, una foto de galería lleva su fecha y no su lugar.
 - Un formulario no acepta video. Ninguna parte de la app comprime video: el chat
   lo manda tal cual y Drive tiene tope de 60 s. Comprimir exige un módulo nativo y
   un APK nuevo. Video en tanque y materiales exige además contrato con Agentes,
   Portal e Inframaq.
 
-**Sin verificar:** el lugar leído de una foto real de galería y la marca sobre una
-foto real de teléfono. El emulador entrega una foto falsa.
+**Sin verificar:** la marca sobre una foto real de teléfono. El emulador entrega una
+foto falsa.
 
 ## Responsable antes de crear un informe (José 06/11)
 

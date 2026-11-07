@@ -201,7 +201,8 @@ function stampDateOf(at: Date, timeZone: string = STAMP_TIME_ZONE): string {
 /** What a photo of the camera asks the server for: the day and the hour, nothing else (José 06/11: tank and materials). */
 export const HOUR_STAMP = 'hour';
 /** A photo of the gallery: the date and place of when it was taken, not of the upload (José 06/11). */
-export type GalleryStamp = { takenAt: string; location?: GeoPoint };
+/** A photo of the gallery: only its date, never a place (José 07/11). */
+export type GalleryStamp = { takenAt: string };
 export type FormPhotoStamp = GeoPoint | typeof HOUR_STAMP | GalleryStamp;
 
 /**

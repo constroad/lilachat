@@ -434,6 +434,14 @@ trabajos (o-05), registrar avance a mano (o-06, botón principal del diseño), c
 - Los datos salen de la lectura del mapa por el enlace (`toClientWorkStreets`), que ya trae el id y
   el ancho de cada tramo y el ancho de la calle (Portal 07/11). `detalle_de_servicio` no los trae.
 
+**E2E web prod (07/11, 20:42Z a 20:53Z, Test, QA-CTLPIS, calle «QA-MAPA calle — borrar»):** «Ver
+tramos» mostró 191 m · 6,0 m y el tramo 0+000 a 0+120 con Asfalto QA. Se agregó el tramo 0+120 a
+0+191 con Asfalto QA: Portal lo guardó (el total pasó a 191 m). Ahí se vio que la recarga cerraba la
+calle; con la recarga silenciosa (609a467) se borró el tramo de prueba y la calle siguió abierta con
+su tramo 1. Queda borrado de forma lógica en Portal. No se crearon etapas ni trabajos de prueba,
+porque Portal no tiene cómo borrarlos.
+**Sin probar:** el APK (falta la OTA) y un miembro que no es admin.
+
 **Pendiente, con su porqué:**
 - Restaurar y ver lo borrado: Agentes pidió no abrir `restaurar_de_obra` ni `borrados_de_obra`
   hasta desplegar su comprobación del servicio (rama `mapa-borrados-y-datos`). La puerta ya los

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { StreetDelete, type StreetDeleteSend } from './StreetDelete';
 import { metersLabel, NO_STRETCHES, stageStateLabel, workMapCutChip, workShares, type StageGroup, type WorkMapFilter, type WorkMapStreetRow, type WorkMapView } from '@lilachat/shared';
 
 export const KICKER = 'font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant';
@@ -50,7 +51,7 @@ function PanelHead(props: { view: WorkMapView; groups: StageGroup[]; badge?: Rea
   );
 }
 
-function StreetCard(props: { street: WorkMapStreetRow }) {
+function StreetCard(props: { street: WorkMapStreetRow; deleteStreet?: StreetDeleteSend }) {
   const { street } = props;
   return (
     <li data-testid={`mapa-calle-${street.id}`} className="rounded-xl border-[1.5px] border-outline/15 bg-surface p-4">
@@ -63,7 +64,10 @@ function StreetCard(props: { street: WorkMapStreetRow }) {
           <span key={`${segment.workId}-${segment.fromPct}`} className="absolute inset-y-0" style={{ left: `${segment.fromPct}%`, width: `${segment.widthPct}%`, backgroundColor: segment.color }} />
         ))}
       </div>
-      <p className="mt-3 font-mono text-[12px] text-on-surface-variant">{street.status}</p>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-x-2">
+        <p className="min-w-0 flex-1 font-mono text-[12px] text-on-surface-variant">{street.status}</p>
+        {props.deleteStreet ? <StreetDelete street={street} send={props.deleteStreet} /> : null}
+      </div>
     </li>
   );
 }
@@ -88,7 +92,7 @@ function GroupTitle(props: { group: StageGroup }) {
  * the streets under their stage, and the day the map is cut at. Admins see the units of the
  * runway control report on top (`o-07`).
  */
-export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; filter: WorkMapFilter; badge?: ReactNode; top?: ReactNode; scrolls: boolean }) {
+export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; filter: WorkMapFilter; badge?: ReactNode; top?: ReactNode; scrolls: boolean; deleteStreet?: StreetDeleteSend }) {
   return (
     <>
       <PanelHead view={props.view} groups={props.groups} badge={props.badge} />
@@ -97,7 +101,7 @@ export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; f
         {props.groups.map((group) => (
           <section key={group.id}>
             <GroupTitle group={group} />
-            <ul className="space-y-3">{group.streets.map((street) => <StreetCard key={street.id} street={street} />)}</ul>
+            <ul className="space-y-3">{group.streets.map((street) => <StreetCard key={street.id} street={street} deleteStreet={props.deleteStreet} />)}</ul>
           </section>
         ))}
       </div>

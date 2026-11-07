@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, useWindowDimensions, View } from 'react-native';
-import { loadWorkMap, serviceMapPage, type ChannelLinks, type UnitDischarge, type WorkMap, type WorkMapState } from '@lilachat/shared';
+import { deleteThenReload, loadWorkMap, serviceMapPage, type ChannelLinks, type UnitDischarge, type WorkMap, type WorkMapState } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 import { WorkMapBoard } from './workMap/WorkMapBoard';
 import type { ProgressSend } from './workMap/WorkMapDischarges';
 import { WorkMapFirst } from './workMap/WorkMapFirst';
 import { WorkStreetEditor } from './workMap/WorkStreetEditor';
+import type { StreetDeleteSend } from './workMap/StreetDelete';
 import type { StreetSend } from './workMap/workProgressSender';
 
 /** The map of o-01 on a phone: the sheet with the progress rises over its lower edge. */
@@ -45,13 +46,14 @@ const PortalLink = (props: { url: string }) => (
 );
 
 /** «Mapa» of a service (José 06/11: «el mapa literal de la obra»), drawn with what Portal shows a client. */
-export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; target: ServiceTarget; title: string; badge?: ReactNode; /** Where the streets are drawn today (Portal's «Mapa» tab). */ drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Guardar calle» (o-02): everyone draws (José 07/11). */ drawStreet?: StreetSend }) {
+export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; target: ServiceTarget; title: string; badge?: ReactNode; /** Where the streets are drawn today (Portal's «Mapa» tab). */ drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Guardar calle» (o-02): everyone draws (José 07/11). */ drawStreet?: StreetSend; /** «Borrar calle»: anyone, an admin restores (José 07/11). */ deleteStreet?: StreetDeleteSend }) {
   const screen = useWindowDimensions();
   const { state, ask } = useServiceMap(props.jwt, props.links, props.target);
   const [drawing, setDrawing] = useState(false);
   const onDraw = props.drawStreet ? () => setDrawing(true) : undefined;
   const height = Math.round(screen.height * MAP_SCREEN_SHARE);
   const pageOf = (url: string) => serviceMapPage(url, props.target.serviceId);
+  const deleteStreet = deleteThenReload(props.deleteStreet, ask);
   if (state.kind === 'loading') return <View testID="mapa-cargando" className="rounded-2xl bg-surface-variant" style={{ height }} />;
   if (state.kind === 'failed') {
     return (
@@ -66,5 +68,5 @@ export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; targe
   }
   const editor = props.drawStreet ? <WorkStreetEditor open={drawing} title={props.title} map={state.map} send={props.drawStreet} onClose={() => setDrawing(false)} onSaved={() => { setDrawing(false); void ask(); }} /> : null;
   if (!state.map) return <>{editor}<WorkMapFirst drawUrl={props.drawUrl ?? null} onDraw={onDraw} /></>;
-  return <>{editor}<WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} height={height} title={props.title} serviceId={props.target.serviceId} badge={props.badge} discharges={props.discharges} send={props.send} onDraw={onDraw} /></>;
+  return <>{editor}<WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} height={height} title={props.title} serviceId={props.target.serviceId} badge={props.badge} discharges={props.discharges} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} /></>;
 }

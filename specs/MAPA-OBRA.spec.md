@@ -223,8 +223,20 @@ si el enlace del servicio es esa página).
 admin pueda restaurar». Portal lo implementa (`restaurar_de_obra`, `borrados_de_obra`) y mantiene
 el rechazo a borrar una calle con avance, porque el metrado y la valorización dejarían de cuadrar.
 
-**Falta:** tramos (o-03), etapas (o-04), trabajos (o-05), borrar y restaurar en pantalla, y
-caminar la calle con GPS (o-13).
+**Borrar una calle en pantalla (07/11), web y APK, para todos:**
+- Cada calle del panel tiene un tacho («Borrar calle»). Antes de borrar pregunta «¿Borrar «Av.
+  Grau»?» y avisa que sus tramos se van con ella, que un admin puede restaurarla y que una calle
+  con avance no se borra.
+- Va por la puerta del servidor (`kind: 'work_street_delete'`, solo `street_id`) a
+  `borrar_calle_de_obra`, con el servicio de la puerta. Motor puro `shared/src/workStreetDelete.ts`.
+- Si Portal la rechaza (calle con avance), su texto queda bajo la pregunta y la calle sigue. Si la
+  borra, el mapa se vuelve a pedir (`deleteThenReload`).
+- Borrar un tramo espera la lista de tramos en pantalla (o-03): hoy el panel no muestra tramos
+  sueltos.
+
+**Falta:** tramos (o-03), etapas (o-04), trabajos (o-05), restaurar y ver lo borrado (admins,
+`restaurar_de_obra` y `borrados_de_obra`; la lectura necesita mostrar la respuesta de una
+herramienta de solo lectura), borrar un tramo y caminar la calle con GPS (o-13).
 
 **Ancho de móvil en la web:** medido el 06/11 con 433 px, el mínimo que da esa pestaña, no
 390. Sin scroll lateral, mapa de 375 × 419 y botones dentro. Un `resize` sin recargar en una

@@ -5,7 +5,7 @@ import { askAboutService, findAskedService, notFound, type AskOutcome, type NotF
 import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botModels.js';
 import { ClientChannelModel } from './botClients.js';
 import { workProgressInputOf, workProgressPrepared, type WorkProgressInput } from './workProgressForm.js';
-import { workStreetInputOf, workStreetPrepared, type StreetContext, type WorkStreetInput } from './workStreetForm.js';
+import { workStreetDeleteInputOf, workStreetDeletePrepared, workStreetInputOf, workStreetPrepared, type StreetContext, type WorkStreetDeleteInput, type WorkStreetInput } from './workStreetForm.js';
 
 /**
  * A field report filled from the client's channel (José 05/11/2026, spec
@@ -92,7 +92,8 @@ type OpenInput =
   | { kind: 'drive_upload' }
   | { kind: 'service_link' }
   | WorkProgressInput
-  | WorkStreetInput;
+  | WorkStreetInput
+  | WorkStreetDeleteInput;
 
 const pathOf = (raw: Record<string, unknown>): SectionPath | null => {
   const sectionId = text(raw.section_id, 64);
@@ -121,6 +122,7 @@ function openInputOf(input: unknown): OpenInput | null {
   if (raw.kind === 'service_link') return { kind: 'service_link' };
   if (raw.kind === 'work_progress') return workProgressInputOf(raw);
   if (raw.kind === 'work_street') return workStreetInputOf(raw);
+  if (raw.kind === 'work_street_delete') return workStreetDeleteInputOf(raw);
   const reportId = text(raw.report_id, 64);
   if (raw.kind === 'publish') return reportId ? { kind: 'publish', reportId } : null;
   if (raw.kind === 'remove_photo') return removalOf(reportId, text(raw.photo_id, 64));
@@ -162,6 +164,7 @@ function prepared(workspaceId: string, clientId: string, serviceId: string, user
   if (input.kind === 'section') return sectionPrepared(workspaceId, serviceId, userId, input);
   if (input.kind === 'work_progress') return workProgressPrepared(workspaceId, clientId, serviceId, userId, input);
   if (input.kind === 'work_street') return workStreetPrepared(serviceId, input);
+  if (input.kind === 'work_street_delete') return workStreetDeletePrepared(serviceId, input);
   if (input.kind === 'service_link') return { form: { id: SERVICE_LINK_ACTION, title: 'Enlace del servicio', submitLabel: 'Crear enlace', schema: SERVICE_LINK_FORM }, context: { servicioId: serviceId } };
   if (input.kind === 'drive_upload') return { form: { id: DRIVE_UPLOAD_TOOL, title: 'Subir al Drive', submitLabel: 'Subir', schema: NOTHING_TO_FILL }, context: { servicioId: serviceId } };
   if (input.kind === 'remove_photo') return { form: { id: REMOVE_PHOTO_TOOL, title: 'Quitar foto', submitLabel: 'Quitar', schema: NOTHING_TO_FILL }, context: { servicioId: serviceId, informeId: input.reportId, fotoId: input.photoId } };

@@ -1,9 +1,10 @@
-import { noticeOf, sendWorkProgress, sendWorkStreet, workProgressRequest, workStreetRequest, type StreetDraft, type WorkProgressResult } from '@lilachat/shared';
+import { noticeOf, sendWorkProgress, sendWorkStreet, sendWorkStreetDelete, workProgressRequest, workStreetDeleteRequest, workStreetRequest, type StreetDraft, type WorkProgressResult } from '@lilachat/shared';
 import { submitAppForm } from '../../../chat/commands/commandsApi';
 import { getSocket } from '../../../chat/socketClient';
 import { openReportForm } from '../reports/reportsApi';
 import type { ServiceAskTarget } from '../useServiceAsk';
 import type { ProgressSend } from './WorkMapDischarges';
+import type { StreetDeleteSend } from './StreetDelete';
 
 /** «Confirmar avance» through the server's door (agentes 07/11): opened like the Drive upload, then sent with the note. */
 const senderOf = (target: ServiceAskTarget, chatId: string, serviceId: string): ProgressSend => (entry) =>
@@ -22,6 +23,14 @@ export type StreetSend = (draft: StreetDraft, entryId: string) => Promise<WorkPr
 export const workStreetSender = (target: ServiceAskTarget, chatId: string, serviceId: string): StreetSend => (draft, entryId) =>
   sendWorkStreet({
     open: () => openReportForm(target, serviceId, workStreetRequest(draft, entryId)),
+    submit: (commandId, values) => submitAppForm(target.jwt, { chatId }, commandId, values),
+    notice: (commandId) => noticeOf(getSocket(), commandId),
+  });
+
+/** «Borrar calle» through the same door: Portal's logical `borrar_calle_de_obra` (José 07/11). */
+export const workStreetDeleteSender = (target: ServiceAskTarget, chatId: string, serviceId: string): StreetDeleteSend => (streetId) =>
+  sendWorkStreetDelete({
+    open: () => openReportForm(target, serviceId, workStreetDeleteRequest(streetId)),
     submit: (commandId, values) => submitAppForm(target.jwt, { chatId }, commandId, values),
     notice: (commandId) => noticeOf(getSocket(), commandId),
   });

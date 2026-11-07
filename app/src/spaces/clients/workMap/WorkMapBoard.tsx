@@ -9,6 +9,7 @@ import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
 import { WorkMapFilters, WorkMapLegend } from './WorkMapFilters';
 import { WorkMapPanel } from './WorkMapPanel';
+import type { StreetDeleteSend } from './StreetDelete';
 import { WorkMapSurface } from './WorkMapSurface';
 
 function FullMap(props: { view: WorkMapView; open: boolean; onClose: () => void; pins: DischargePin[]; stretches: WorkMapLine[] }) {
@@ -37,7 +38,7 @@ function useDischarges(map: WorkMap, discharges: UnitDischarge[]) {
   return { suggestion, ranges, pins, stretches, onRange: (streetId: string, range: StretchRange) => setRanges((before) => ({ ...before, [streetId]: range })) };
 }
 
-type BoardProps = { map: WorkMap; pageUrl: string; height: number; title: string; serviceId: string; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void };
+type BoardProps = { map: WorkMap; pageUrl: string; height: number; title: string; serviceId: string; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend };
 
 function TitleRow(props: { pageUrl: string; onExport: () => void; onDraw?: () => void }) {
   const colors = useColores();
@@ -88,7 +89,7 @@ export function WorkMapBoard(props: BoardProps) {
           <Maximize2 size={18} color={colors['on-surface']} />
         </Pressable>
       </View>
-      <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} />
+      <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} deleteStreet={props.deleteStreet} />
       <FullMap view={view} open={wide} onClose={() => setWide(false)} pins={pista.pins} stretches={pista.stretches} />
       <WorkMapExport open={exporting} map={map} filter={filter} title={props.title} pageUrl={pageUrl} onClose={() => setExporting(false)} />
     </View>

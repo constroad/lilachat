@@ -4,6 +4,7 @@ import type { ChannelLinks, UnitDischarge, WorkMap, WorkMapView } from '@lilacha
 import { ServiceMapWeb } from './ServiceMapWeb';
 import type { ProgressSend } from './workMap/WorkMapDischarges';
 import type { StreetSend } from './workMap/workProgressSender';
+import type { StreetDeleteSend } from './workMap/StreetDelete';
 
 const askServer = vi.hoisted(() => vi.fn());
 vi.mock('../../api', async (original) => ({ ...(await original<typeof import('../../api')>()), api: askServer }));
@@ -33,7 +34,7 @@ const workMap: WorkMap = {
   works: [{ id: 'base', name: 'Base', color: '#c08a1e' }, { id: 'asfalto', name: 'Asfaltado', color: '#111111' }],
   stages: [{ id: 'e1', name: 'Etapa 1' }, { id: 'e2', name: 'Etapa 2' }],
 };
-const showMap = (map: ChannelLinks['map'] = vi.fn(async () => ({ ok: true as const, url })), extra: { drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend; drawStreet?: StreetSend } = {}) => render(<ServiceMapWeb jwt="jwt-1" links={linksWith(map)} target={target} title="Pavimentación Los Olivos" {...extra} />);
+const showMap = (map: ChannelLinks['map'] = vi.fn(async () => ({ ok: true as const, url })), extra: { drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend; drawStreet?: StreetSend; deleteStreet?: StreetDeleteSend } = {}) => render(<ServiceMapWeb jwt="jwt-1" links={linksWith(map)} target={target} title="Pavimentación Los Olivos" {...extra} />);
 
 /** A spot on Av. Los Olivos, so many meters from its start (it runs east along -12). */
 const METERS_PER_DEGREE_LNG = 111_195 * Math.cos((12 * Math.PI) / 180);
@@ -321,6 +322,40 @@ describe('ServiceMapWeb', () => {
     expect(entryId).toMatch(/^[0-9a-f-]{36}$/);
     expect(await screen.findByTestId('mapa-avance')).toBeInTheDocument();
     expect(screen.queryByTestId('editor-calle')).not.toBeInTheDocument();
+  });
+
+  it('anyone deletes a street after confirming it, and the map is asked again (José 07/11)', async () => {
+    // Arrange
+    askServer.mockResolvedValue({ ok: true, data: { map: workMap } });
+    const deleteStreet = vi.fn<StreetDeleteSend>(async () => ({ ok: true, message: 'Calle borrada. Un admin puede restaurarla.' }));
+    showMap(undefined, { deleteStreet });
+    const asked = askServer.mock.calls.length;
+    // Act
+    fireEvent.click(await screen.findByTestId('borrar-calle-s2'));
+    // Assert
+    expect(screen.getByTestId('confirmar-borrar-s2')).toHaveTextContent('¿Borrar «Jr. Las Dalias»?');
+    expect(screen.getByTestId('confirmar-borrar-s2')).toHaveTextContent('Un admin puede restaurarla.');
+    expect(deleteStreet).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByTestId('borrar-calle-si-s2'));
+    await waitFor(() => expect(deleteStreet).toHaveBeenCalledWith('s2'));
+    await waitFor(() => expect(askServer.mock.calls.length).toBeGreaterThan(asked));
+  });
+
+  it('a street with progress stays, with Portal\'s words under the question', async () => {
+    askServer.mockResolvedValue({ ok: true, data: { map: workMap } });
+    const deleteStreet = vi.fn<StreetDeleteSend>(async () => ({ ok: false, message: 'La calle tiene avance registrado.' }));
+    showMap(undefined, { deleteStreet });
+    fireEvent.click(await screen.findByTestId('borrar-calle-s1'));
+    fireEvent.click(screen.getByTestId('borrar-calle-si-s1'));
+    expect(await screen.findByRole('alert')).toHaveTextContent('La calle tiene avance registrado.');
+    expect(screen.getByTestId('mapa-calle-s1')).toBeInTheDocument();
+  });
+
+  it('without a sender there is no delete button', async () => {
+    askServer.mockResolvedValue({ ok: true, data: { map: workMap } });
+    showMap();
+    await screen.findByTestId('mapa-calle-s1');
+    expect(screen.queryByTestId('borrar-calle-s1')).not.toBeInTheDocument();
   });
 
   it('«Deshacer» takes back a tap, and a refusal from Portal stays in the editor with its words', async () => {

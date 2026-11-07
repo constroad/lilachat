@@ -406,6 +406,23 @@ describe('drawing a street of the work from the map (design o-02, José 07/11)',
   });
 });
 
+describe('deleting a street from the map (José 07/11: anyone deletes, an admin restores)', () => {
+  it('any member opens Portal\'s logical delete with the street and the service from the door', async () => {
+    // Act
+    const opened = await openOf(ana, { kind: 'work_street_delete', street_id: 'st-1', forms: 3 }).expect(200);
+    // Assert
+    expect(opened.body.response.form).toMatchObject({ id: 'borrar_calle_de_obra', title: 'Borrar calle' });
+    const run = await BotCommandRunModel.findById(opened.body.commandId).lean();
+    expect(run?.context).toEqual({ servicioId: 'srv-318', calleId: 'st-1' });
+  });
+
+  it('needs the street, and someone outside the channel does not open it', async () => {
+    await openOf(ana, { kind: 'work_street_delete', forms: 3 }).expect(400);
+    await openOf(ana, { kind: 'work_street_delete', street_id: 'x'.repeat(65), forms: 3 }).expect(400);
+    await openOf(outsider, { kind: 'work_street_delete', street_id: 'st-1', forms: 3 }).expect(404);
+  });
+});
+
 describe('the link of a service from its client channel (José 07/11: «solo el servicio del canal»)', () => {
   const shortcutOf = async (who: Types.ObjectId, values: Record<string, unknown>, status: number) => {
     const portal = await BotAppModel.findOne({ clientId: 'lca_portal' }).lean();

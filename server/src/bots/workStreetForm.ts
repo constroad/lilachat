@@ -7,6 +7,8 @@ import type { AppForm, FormSchema } from '@lilachat/shared';
  * phone's entry, so a resend after a lost answer does not draw it twice.
  */
 export const WORK_STREET_TOOL = 'guardar_calle_de_obra';
+/** Logical: an admin brings it back with `restaurar_de_obra` (José 07/11). */
+export const WORK_STREET_DELETE_TOOL = 'borrar_calle_de_obra';
 const NAME_MAX = 80;
 const POINTS = { min: 2, max: 500 };
 const WIDTH_MAX_M = 60;
@@ -15,6 +17,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-
 const CONFIRM_ONLY: FormSchema = { type: 'object', properties: {} };
 
 type LatLng = { lat: number; lng: number };
+export type WorkStreetDeleteInput = { kind: 'work_street_delete'; streetId: string };
 export type WorkStreetInput = { kind: 'work_street'; streetId: string | null; name: string | null; line: LatLng[] | null; widthM: number | null; entryId: string | null };
 export type StreetContext = Record<string, string | number | LatLng[]>;
 
@@ -76,3 +79,14 @@ export function workStreetPrepared(serviceId: string, input: WorkStreetInput): {
   };
   return { form: { id: WORK_STREET_TOOL, title: 'Guardar calle', submitLabel: 'Guardar', schema: CONFIRM_ONLY }, context };
 }
+
+/** «Borrar calle»: only the street, which Portal looks up in the door's service. */
+export function workStreetDeleteInputOf(raw: Record<string, unknown>): WorkStreetDeleteInput | null {
+  const streetId = streetIdOf(raw.street_id);
+  return streetId ? { kind: 'work_street_delete', streetId } : null;
+}
+
+export const workStreetDeletePrepared = (serviceId: string, input: WorkStreetDeleteInput): { form: AppForm; context: StreetContext } => ({
+  form: { id: WORK_STREET_DELETE_TOOL, title: 'Borrar calle', submitLabel: 'Borrar', schema: CONFIRM_ONLY },
+  context: { servicioId: serviceId, calleId: input.streetId },
+});

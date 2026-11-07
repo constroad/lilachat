@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { StreetDelete, type StreetDeleteSend } from './StreetDelete';
 import { Text, View } from 'react-native';
 import { metersLabel, NO_STRETCHES, stageStateLabel, workMapCutChip, workShares, type StageGroup, type WorkMapFilter, type WorkMapStreetRow, type WorkMapView } from '@lilachat/shared';
 
@@ -38,7 +39,7 @@ function PanelHead(props: { view: WorkMapView; groups: StageGroup[]; badge?: Rea
   );
 }
 
-function StreetCard(props: { street: WorkMapStreetRow }) {
+function StreetCard(props: { street: WorkMapStreetRow; deleteStreet?: StreetDeleteSend }) {
   const { street } = props;
   return (
     <View testID={`mapa-calle-${street.id}`} className="rounded-xl border-[1.5px] border-outline/15 bg-surface p-4">
@@ -49,7 +50,10 @@ function StreetCard(props: { street: WorkMapStreetRow }) {
       <View className="mt-3 h-2.5 overflow-hidden rounded-full bg-surface-variant">
         {street.segments.map((segment) => <View key={`${segment.workId}-${segment.fromPct}`} className="absolute inset-y-0" style={{ left: `${segment.fromPct}%`, width: `${segment.widthPct}%`, backgroundColor: segment.color }} />)}
       </View>
-      <Text className="mt-3 font-mono text-[12px] text-on-surface-variant">{street.status}</Text>
+      <View className="mt-2 flex-row flex-wrap items-center justify-between">
+        <Text className="min-w-0 flex-1 font-mono text-[12px] text-on-surface-variant">{street.status}</Text>
+        {props.deleteStreet ? <StreetDelete street={street} send={props.deleteStreet} /> : null}
+      </View>
     </View>
   );
 }
@@ -74,7 +78,7 @@ function GroupTitle(props: { group: StageGroup }) {
  * the streets under their stage, and the day the map is cut at. Admins see the units of the runway
  * control report on top (`o-07`).
  */
-export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; filter: WorkMapFilter; badge?: ReactNode; top?: ReactNode }) {
+export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; filter: WorkMapFilter; badge?: ReactNode; top?: ReactNode; deleteStreet?: StreetDeleteSend }) {
   return (
     <View className="-mx-4 -mt-5 rounded-t-3xl border-t border-outline/15 bg-surface px-4 pb-4 pt-2">
       <View className="mb-3 h-1 w-10 self-center rounded-full bg-outline/30" />
@@ -83,7 +87,7 @@ export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; f
       {props.groups.map((group) => (
         <View key={group.id}>
           <GroupTitle group={group} />
-          <View className="gap-3">{group.streets.map((street) => <StreetCard key={street.id} street={street} />)}</View>
+          <View className="gap-3">{group.streets.map((street) => <StreetCard key={street.id} street={street} deleteStreet={props.deleteStreet} />)}</View>
         </View>
       ))}
       <Text testID="mapa-corte-pie" className="mt-4 text-right font-mono text-[12px] text-on-surface-variant">Corte: {workMapCutChip(props.filter)}</Text>

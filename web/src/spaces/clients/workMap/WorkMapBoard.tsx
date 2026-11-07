@@ -5,6 +5,7 @@ import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
 import { MapFilters, MapLegend } from './WorkMapOverlays';
 import { WorkMapPanel } from './WorkMapPanel';
+import type { StreetDeleteSend } from './StreetDelete';
 
 const WorkMapCanvas = lazy(() => import('./WorkMapCanvas'));
 
@@ -69,7 +70,7 @@ function useDischarges(map: WorkMap, discharges: UnitDischarge[]) {
   return { suggestion, ranges, onRange, pins, stretches };
 }
 
-type BoardProps = { map: WorkMap; pageUrl: string; title: string; serviceId: string; /** Crumbs and title (o-01). */ head?: ReactNode; /** The service's tabs: beside the actions on a wide board, on their own row on a narrow one. */ tabs?: ReactNode; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void };
+type BoardProps = { map: WorkMap; pageUrl: string; title: string; serviceId: string; /** Crumbs and title (o-01). */ head?: ReactNode; /** The service's tabs: beside the actions on a wide board, on their own row on a narrow one. */ tabs?: ReactNode; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend };
 
 function Actions(props: { pageUrl: string; expanded: boolean; wide: boolean; onToggle: () => void; onExport: () => void; onDraw?: () => void }) {
   const label = (text: string) => (props.wide ? text : <span className="sr-only">{text}</span>);
@@ -102,7 +103,7 @@ export function WorkMapBoard(props: BoardProps) {
   const top = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null;
   const panel = exporting
     ? <WorkMapExport map={map} filter={filter} title={props.title} pageUrl={pageUrl} onClose={() => setExporting(false)} />
-    : <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} scrolls={wide} />;
+    : <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} scrolls={wide} deleteStreet={props.deleteStreet} />;
   return (
     <div ref={holder} data-testid="mapa-servicio" data-expanded={expanded} data-wide={wide} className={`flex flex-col bg-background ${expanded ? 'fixed inset-0 z-50' : 'min-h-0 flex-1'} ${wide ? 'overflow-hidden' : 'overflow-y-auto'}`}>
       <header className={`${MAP_HEAD_BAR} flex-wrap`}>

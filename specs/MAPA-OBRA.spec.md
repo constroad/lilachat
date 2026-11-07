@@ -171,6 +171,12 @@ pero `get_screen` devuelve el mismo HTML. Por eso se generó aparte.
 el APK recorridos en Test con el servicio `6aedcc3a…`: mapa, scroll sobre él, mapa completo,
 cierre y giro. Smoke limpio sobre ese APK.
 
+**Estado al 07/11:** la composición de o-01 está en producción en la web (c3c7776) y en el
+APK 182 por el OTA `49025a2b` (git 1cb9051). Recorrido en Test con QA-CTLPIS: web a 1600 y
+444 px, y APK en el emulador con el panel completo, el Control de pista y «Confirmar avance
+(90 m)». El motor pasa a `@constroad/shared/obra` (Portal publicó v0.6.0); mientras tanto
+`workMap.ts`, `workMapDischarges.ts` y `workMapProgress.ts` no suman lógica.
+
 **Ancho de móvil en la web:** medido el 06/11 con 433 px, el mínimo que da esa pestaña, no
 390. Sin scroll lateral, mapa de 375 × 419 y botones dentro. Un `resize` sin recargar en una
 pestaña oculta deja el diseño de escritorio; es de la prueba, porque ahí no llega el evento.

@@ -46,3 +46,7 @@ export function outsideMentionPrompt(names: readonly string[]): { message: strin
   const listed = names.length === 2 ? `${names[0]} y ${names[1]}` : `${names[0]}, ${names[1]} y ${names.length - 2} más`;
   return { message: `${listed} no están en este canal, así que no recibieron tu mención.`, action: 'Agregarlos al canal' };
 }
+
+/** Who can answer for a report: the people of the chat, never an app that also lives in it (E2E 06/11: «Portal» came up as a responsible). */
+export const peopleNamesOf = (candidates: readonly Pick<MentionCandidate, 'id' | 'nombre'>[], appIds: ReadonlySet<string>): string[] =>
+  candidates.filter((candidate) => !appIds.has(candidate.id)).map((candidate) => candidate.nombre);

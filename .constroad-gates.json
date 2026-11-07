@@ -1,0 +1,20 @@
+{
+  "camera": {
+    "doors": [
+      "app/src/chat/camara/",
+      "app/src/chat/commands/",
+      "app/src/chat/useAdjuntosDelChat.ts",
+      "app/src/chat/workPlan/evidenceUpload.ts",
+      "app/src/spaces/clients/useDriveUpload.ts",
+      "app/src/calls/",
+      "web/src/chat/commands/",
+      "web/src/chat/workPlan/WorkListsWeb.tsx",
+      "web/src/spaces/clients/ServiceDriveWeb.tsx",
+      "web/src/calls/"
+    ],
+    "keeps": {
+      "app/src/chat/commands/commandsApi.ts": ["shrinkPhotoFile", "stampFieldsOf"],
+      "web/src/chat/commands/commandsApi.ts": ["shrinkPhotoBlob", "stampFieldsOf"]
+    }
+  }
+}

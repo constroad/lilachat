@@ -1,6 +1,6 @@
 import { ContactNoteBannerWeb } from '../routines/ContactNoteBannerWeb';
 import type { NotificationLevel, WinkId } from '@lilachat/shared';
-import { alreadyGreeted, newAlbumId } from '@lilachat/shared';
+import { alreadyGreeted, newAlbumId, peopleNamesOf } from '@lilachat/shared';
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { PanelDeInfo } from './info/PanelDeInfo';
 import type { ChatAction } from './menuDelChat';
@@ -106,6 +106,7 @@ export function ConversacionConAcciones(
   const acciones = useAccionesSobreMensajes({ chatId: chat.id, sync, nombres, onAviso });
   // Solo en grupos se menciona; a uno mismo, no. In a space `@` lists the whole space, and whoever is not in the channel is offered to be added (José 25/10).
   const mencionables = useMentionCandidatesWeb({ jwt: props.jwt, workspaceId: chat.workspaceId, isGroup: chat.kind === 'group', detail: detalle, myUserId: yo });
+  const people = useMemo(() => peopleNamesOf(mencionables ?? [], detalle?.appIds ?? new Set<string>()), [mencionables, detalle]);
   const outsideMentions = useOutsideMentionsWeb({ jwt: props.jwt, chatId: chat.id });
   const [archivos, setArchivos] = useState<File[] | null>(null);
   const [fotoAbierta, setFotoAbierta] = useState<number | null>(null);
@@ -219,6 +220,7 @@ export function ConversacionConAcciones(
         callExtras={canCall ? <CallExtrasMenu jwt={props.jwt} chat={{ id: chat.id, name: chat.name ?? chat.phone ?? 'Conversación' }} /> : undefined}
         onWink={funAllowed ? sendWink : undefined}
         mencionables={mencionables}
+        people={people}
         onOutsideMentions={outsideMentions.notify}
         avisoDeMencion={<OutsideMentionNotice outside={outsideMentions} />}
         jwtParaEnlaces={chat.encrypted ? undefined : props.jwt}

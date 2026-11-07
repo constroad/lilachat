@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { mentionOptions } from './menciones.js';
-import { mentionCandidates, outsideMentionPrompt, outsideMentioned, type SpaceMemberForMention } from './mentionCandidates.js';
+import { mentionCandidates, peopleNamesOf, outsideMentionPrompt, outsideMentioned, type SpaceMemberForMention } from './mentionCandidates.js';
 import { rangosDeMenciones } from './textoDelComposer.js';
 
 const ME = 'u-me';
@@ -113,5 +113,16 @@ describe('outsideMentionPrompt', () => {
 
   it('nobody, no prompt', () => {
     expect(outsideMentionPrompt([])).toBeNull();
+  });
+});
+
+describe('peopleNamesOf: who can answer for a report', () => {
+  it('leaves the people of the chat and drops the apps that live in it', () => {
+    // Arrange
+    const candidates = [{ id: 'rosa', nombre: 'Rosa Vega' }, { id: 'app', nombre: 'Portal' }];
+    // Act
+    const names = peopleNamesOf(candidates, new Set(['app']));
+    // Assert
+    expect(names).toEqual(['Rosa Vega']);
   });
 });

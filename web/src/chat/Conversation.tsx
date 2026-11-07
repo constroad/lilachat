@@ -47,6 +47,8 @@ export function Conversation(props: {
   onSend: (text: string, menciones?: MencionEnMensaje[]) => void;
   /** En grupos: a quién se puede @mencionar (W2). */
   mencionables?: Mencionable[];
+  /** Who can be a report's responsible: the people here, never an app. */
+  people?: readonly string[];
   onOutsideMentions?: (people: MencionElegida[]) => void;
   avisoDeMencion?: ReactNode;
   /** Para pedir tarjetas de enlaces al escribir; sin él no se piden. */
@@ -201,7 +203,7 @@ export function Conversation(props: {
       ) : isClientChannel && client && shownTab === 'account' && props.jwtParaEnlaces && chat.workspaceId ? (
         <ClientAccountWeb target={{ jwt: props.jwtParaEnlaces, spaceId: chat.workspaceId, clientId: client.id }} services={client.services} />
       ) : isClientChannel && client && shownTab === 'services' ? (
-        <ClientServicesPanel people={(props.mencionables ?? []).map((person) => person.nombre)} client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} onOpenRecord={toMessage} links={links} focusSeq={focusSeq} onFocused={clearFocus} onServiceOpen={setServiceOpen} onToChat={() => setChannelTab('chat')} />
+        <ClientServicesPanel people={props.people ?? []} client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} onOpenRecord={toMessage} links={links} focusSeq={focusSeq} onFocused={clearFocus} onServiceOpen={setServiceOpen} onToChat={() => setChannelTab('chat')} />
       ) : props.app && appTab === 'info' ? (
         <div data-testid="informacion-app" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-8">
           <div className="mx-auto max-w-3xl">

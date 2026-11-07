@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ChevronRight, ShieldCheck } from 'lucide-react';
-import { accessSummary, clientAccessPath, DEFAULT_RESTRICTED, memberAccessIn, MEMBER_TABS, MONEY_HINT, RESTRICTABLE_TAB_HINTS, CHANNEL_TAB_LABELS, toggleInAccess, type ClientAccessList, type MemberAccess, type MemberAccessEntry } from '@lilachat/shared';
+import { accessSummary, clientAccessPath, DEFAULT_RESTRICTED, memberAccessIn, MEMBER_TABS, RESTRICTABLE_TAB_HINTS, CHANNEL_TAB_LABELS, toggleInAccess, type ClientAccessList, type MemberAccess, type MemberAccessEntry } from '@lilachat/shared';
 import { api } from '../../api';
 import { Avatar } from '../../ui/Avatar';
 import { Overlay } from '../../ui/Overlay';
 import type { ServiceAskTarget } from './useServiceAsk';
 
 type Person = { id: string; name: string; photo?: string };
-type SaveBody = { money?: boolean; restricted?: MemberAccess | null };
+type SaveBody = { restricted?: MemberAccess | null };
 
 /** The channel's access list; `null` while loading or for a non-admin (the server says 403). */
 function useClientAccess(target: ServiceAskTarget) {
@@ -70,13 +70,12 @@ export function AccessFields(props: { value: MemberAccess | null; onChange: (val
 }
 
 function MemberAccessDialog(props: { person: Person; entry: MemberAccessEntry; onSave: (body: SaveBody) => Promise<string | null>; onClose: () => void }) {
-  const [money, setMoney] = useState(props.entry.money);
   const [restricted, setRestricted] = useState<MemberAccess | null>(props.entry.restricted ?? null);
   const [failure, setFailure] = useState('');
   const [saving, setSaving] = useState(false);
   const save = async () => {
     setSaving(true);
-    const message = await props.onSave({ money, restricted });
+    const message = await props.onSave({ restricted });
     setSaving(false);
     if (message) setFailure(message);
     else props.onClose();
@@ -85,7 +84,6 @@ function MemberAccessDialog(props: { person: Person; entry: MemberAccessEntry; o
     <Overlay title={`Acceso de ${props.person.name}`} onClose={props.onClose} footer={<button type="button" data-testid="guardar-acceso" disabled={saving} onClick={() => void save()} className="flex min-h-[44px] w-full items-center justify-center rounded-xl bg-primary text-sm font-semibold text-on-primary disabled:opacity-60">{saving ? 'Guardando…' : 'Guardar'}</button>}>
       <div className="flex flex-col gap-3">
         <AccessFields value={restricted} onChange={setRestricted} />
-        <Check testId="acceso-montos" checked={money} label="Ve montos" hint={MONEY_HINT} onChange={() => setMoney(!money)} />
         {failure ? <p role="alert" className="text-sm text-error">{failure}</p> : null}
       </div>
     </Overlay>
@@ -94,8 +92,8 @@ function MemberAccessDialog(props: { person: Person; entry: MemberAccessEntry; o
 
 /**
  * «Accesos del canal» of a client's channel, for the space's admins (José 30/10
- * night): each member with what they see; tapping one edits it. Replaces
- * «Quién ve la cobranza», which is now its «Ve montos».
+ * night): each member with what they see; tapping one edits it. Money is
+ * for the space's admins only (José 07/11), so it has no mark here.
  */
 export function ClientAccessSection(props: { target: ServiceAskTarget; people: readonly Person[] }) {
   const { list, save } = useClientAccess(props.target);

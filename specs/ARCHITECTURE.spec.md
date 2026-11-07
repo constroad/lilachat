@@ -6113,7 +6113,10 @@ Pedido de José en una sola iteración. Seis puntos.
 - Las pestañas que se pueden restringir son Servicios, Archivos y Checklist.
   El chat lo ven todos.
 - Los montos (Cuenta, cotizaciones, cobranza y facturas) los ven solo los admins
-  del espacio y los marcados en `billingViewers`.
+  del espacio. Desde el 07/11 no hay marca para nadie más (José: «todo lo que es
+  plata solo admins»): `accessOf` ignora `billingViewers`, `PUT …/access` con
+  `money: true` da 400 «Los montos solo los ven los admins del espacio.» y
+  `money: false` borra una marca vieja. `viewers` sale siempre vacío.
 - El servidor quita `quotes` y `billing` del detalle a quien no ve montos,
   aunque Portal los mande.
 - `GET /clients/:id/account` da 404 a quien no ve montos.
@@ -6135,8 +6138,8 @@ Pedido de José en una sola iteración. Seis puntos.
   - `POST /api/chats/:id/members` acepta `access`. Solo un admin del espacio
     puede usarlo, y se guarda después de agregar.
 - `GET /clients` trae `access` de cada cliente para mí.
-- La UI de «Accesos del canal» reemplaza a «Quién ve la cobranza», que pasa a
-  ser su interruptor «Ve montos». Está en:
+- La UI de «Accesos del canal» reemplaza a «Quién ve la cobranza». Desde el
+  07/11 no tiene interruptor «Ve montos». Está en:
   - la web: info del canal → Miembros;
   - la app: Servicios.
 - Las apps instaladas (el bot «Portal») no salen en «Accesos del canal» ni como

@@ -23,11 +23,13 @@ describe('ClientAccessSection', () => {
     fireEvent.click(screen.getByTestId('acceso-some'));
     expect(screen.queryByTestId('acceso-pestana-checklist')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('acceso-pestana-services'));
+    // José 07/11: «todo lo que es plata solo admins»; there is no mark to give it to anyone else.
+    expect(screen.queryByTestId('acceso-montos')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('guardar-acceso'));
     // Assert
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/workspaces/w1/clients/cli-1/access/u2', expect.objectContaining({ method: 'PUT' })));
     const sent = JSON.parse(String(fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT')?.[1]?.body));
-    expect(sent).toEqual({ money: false, restricted: { tabs: ['services'], stages: [] } });
+    expect(sent).toEqual({ restricted: { tabs: ['services'], stages: [] } });
   });
 
   it('a member who is not an admin of the space does not see the row (403)', async () => {

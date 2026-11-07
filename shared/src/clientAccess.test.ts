@@ -100,10 +100,10 @@ describe('accessSummary', () => {
 
 describe('memberAccessIn and toggleInAccess (the editor)', () => {
   const list = { viewers: ['u3'], restricted: [{ user_id: 'u2', tabs: ['checklist' as const], stages: [STAGE_A] }], admins: ['u1'] };
-  it('an admin of the space sees all; a restricted one has her tabs; a marked one sees money', () => {
+  it('an admin of the space sees all; a restricted one has her tabs; an old money mark counts for nothing (José 07/11)', () => {
     expect(memberAccessIn(list, 'u1')).toEqual({ admin: true, money: true });
     expect(memberAccessIn(list, 'u2')).toEqual({ admin: false, money: false, restricted: { tabs: ['checklist'], stages: [STAGE_A] } });
-    expect(memberAccessIn(list, 'u3')).toEqual({ admin: false, money: true });
+    expect(memberAccessIn(list, 'u3')).toEqual({ admin: false, money: false });
   });
 
   it('flips a tab keeping the tab order', () => {

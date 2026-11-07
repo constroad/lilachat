@@ -45,10 +45,10 @@ function meets(access: MyClientAccess, need: Need): boolean {
 export async function findAskedService(workspaceId: string, clientId: string, serviceId: string | null, userId: Types.ObjectId, need: Need): Promise<AskedService | null> {
   const actor = await actorIn(workspaceId, userId);
   if (!CLIENT_ID.test(clientId) || (serviceId !== null && !CLIENT_ID.test(serviceId))) return null;
-  const client = await ClientChannelModel.findOne({ workspaceId: new Types.ObjectId(workspaceId), clientId }).select('appId chatId driveUrl services billingViewers restrictedMembers').lean<(AskedService['client'] & Pick<ClientChannel, 'billingViewers' | 'restrictedMembers'>) | null>();
+  const client = await ClientChannelModel.findOne({ workspaceId: new Types.ObjectId(workspaceId), clientId }).select('appId chatId driveUrl services restrictedMembers').lean<(AskedService['client'] & Pick<ClientChannel, 'restrictedMembers'>) | null>();
   const service = serviceId === null ? null : client?.services.find((one) => one.id === serviceId);
   if (!client || service === undefined || !(await ChatModel.exists({ _id: client.chatId, 'members.userId': userId }))) return null;
-  // José 30/10: the space's admins, plus whoever an admin marked in THIS channel; Portal widens `billing` with it.
+  // José 07/11: money only for the space's admins; Portal widens `billing` with it.
   const access = accessOf(client, userId, canManageMembers(actor.role));
   if (!meets(access, need)) return null;
   return { client, fallbackUrl: service?.url ?? client.driveUrl ?? null, seesBilling: access.money };

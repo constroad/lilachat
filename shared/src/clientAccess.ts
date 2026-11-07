@@ -2,8 +2,8 @@
  * Who sees what in a client's channel (José 30/10 night): topographers,
  * engineers and the like join seeing only the tabs and checklist stages an
  * admin picks, plus the tasks assigned to them. Money (Cuenta, quotes,
- * Cobranza, invoices) is only for the space's admins and whoever an admin
- * marks; all of it lives in «Cuenta» (José 05/11), so «Servicios» carries none. A space admin always sees the whole channel. PURE: server, app, web.
+ * Cobranza, invoices) is only for the space's admins, with no mark for anyone
+ * else (José 07/11: «todo lo que es plata solo admins»); all of it lives in «Cuenta» (José 05/11), so «Servicios» carries none. A space admin always sees the whole channel. PURE: server, app, web.
  */
 export const RESTRICTABLE_TABS = ['services', 'files', 'checklist'] as const;
 export type RestrictableTab = (typeof RESTRICTABLE_TABS)[number];
@@ -26,7 +26,6 @@ export const RESTRICTABLE_TAB_HINTS: Record<(typeof MEMBER_TABS)[number], string
   services: 'Pedidos, despachos e informes, sin montos',
   files: 'El Drive de cada servicio, que puede traer liquidaciones',
 };
-export const MONEY_HINT = 'Cuenta, cotizaciones, cobranza y facturas';
 
 const STAGE_ID = /^[a-f0-9]{24}$/;
 const MAX_STAGES = 50;
@@ -101,12 +100,11 @@ export function accessSummary(access: MyClientAccess): string {
 export type ClientAccessList = { viewers: string[]; restricted: (MemberAccess & { user_id: string })[]; admins: string[] };
 export type MemberAccessEntry = MyClientAccess & { admin: boolean };
 
-/** One member's access as the editor shows it: a space admin always sees all, money included. */
+/** One member's access as the editor shows it: a space admin always sees all, money included; nobody else sees money (José 07/11). */
 export function memberAccessIn(list: ClientAccessList, userId: string): MemberAccessEntry {
   if (list.admins.includes(userId)) return { admin: true, money: true };
   const entry = list.restricted.find((one) => one.user_id === userId);
-  const money = list.viewers.includes(userId);
-  return entry ? { admin: false, money, restricted: { tabs: entry.tabs, stages: entry.stages } } : { admin: false, money };
+  return entry ? { admin: false, money: false, restricted: { tabs: entry.tabs, stages: entry.stages } } : { admin: false, money: false };
 }
 
 export const clientAccessPath = (spaceId: string, clientId: string, userId?: string) => `/workspaces/${spaceId}/clients/${encodeURIComponent(clientId)}/access${userId ? `/${userId}` : ''}`;

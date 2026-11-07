@@ -91,14 +91,16 @@ describe('my access, in the client list', () => {
 });
 
 describe('the access editor (admins only)', () => {
-  it('marks money and a restriction, lists them, and lifts the restriction with null', async () => {
+  it('money is no mark: only the space\'s admins see it (José 07/11); a restriction is listed and lifted with null', async () => {
     // Act
-    await setAccess(jose, ana, { money: true }).expect(200);
+    const money = await setAccess(jose, ana, { money: true });
     const saved = await setAccess(jose, ana, { restricted: { tabs: ['services', 'checklist'], stages: ['a'.repeat(24)] } }).expect(200);
     const lifted = await setAccess(jose, ana, { restricted: null }).expect(200);
     // Assert
-    expect(saved.body).toEqual({ viewers: [String(ana)], restricted: [{ user_id: String(ana), tabs: ['services', 'checklist'], stages: ['a'.repeat(24)] }], admins: [String(jose)] });
-    expect(lifted.body).toEqual({ viewers: [String(ana)], restricted: [], admins: [String(jose)] });
+    expect(money.status).toBe(400);
+    expect(money.body.message).toBe('Los montos solo los ven los admins del espacio.');
+    expect(saved.body).toEqual({ viewers: [], restricted: [{ user_id: String(ana), tabs: ['services', 'checklist'], stages: ['a'.repeat(24)] }], admins: [String(jose)] });
+    expect(lifted.body).toEqual({ viewers: [], restricted: [], admins: [String(jose)] });
     expect((await request(app).get(`${base()}/access`).set(auth(jose)).expect(200)).body).toEqual(lifted.body);
   });
 
@@ -138,20 +140,21 @@ describe('what a restricted member can ask', () => {
 });
 
 describe('money (José: «la cuenta y temas sensibles de plata y cotizaciones solo administradores»)', () => {
-  it('a member without money gets no account and a detail without quotes; marked, she gets both', async () => {
+  it('a member gets no account nor quotes, not even with a mark from before (José 07/11: «todo lo que es plata solo admins»)', async () => {
+    // Arrange: a mark an admin left before 07/11 stays in the base and counts for nothing.
+    await ClientChannelModel.updateOne({ clientId: 'cli-cvs' }, { $addToSet: { billingViewers: ana } });
     // Act
     const refused = await request(app).get(`${base()}/account`).set(auth(ana));
     const detail = (await request(app).get(`${base()}/services/srv-318/detail`).set(auth(ana)).expect(200)).body.detail;
-    await setAccess(jose, ana, { money: true }).expect(200);
-    const marked = (await request(app).get(`${base()}/services/srv-318/detail`).set(auth(ana)).expect(200)).body.detail;
+    const adminDetail = (await request(app).get(`${base()}/services/srv-318/detail`).set(auth(jose)).expect(200)).body.detail;
     // Assert
     expect(refused.status).toBe(404);
     expect(detail.quotes).toBeUndefined();
     // The units of the Control de pista feed the progress only admins confirm (design o-07, 07/11).
     expect(detail.discharges).toBeUndefined();
-    expect(marked.discharges).toHaveLength(1);
-    expect(marked.quotes).toHaveLength(1);
-    expect(marked.billing.total).toBe(1000);
+    expect(adminDetail.discharges).toHaveLength(1);
+    expect(adminDetail.quotes).toHaveLength(1);
+    expect(adminDetail.billing.total).toBe(1000);
   });
 });
 
@@ -213,14 +216,15 @@ describe('José 05/11: engineers in a client\'s channel see no money anywhere', 
     expect(received).toHaveLength(1);
   });
 
-  it('«Cobranza» from «Cuenta» is only for whoever sees money, also without «Servicios»', async () => {
+  it('«Cobranza» from «Cuenta» is only for the space\'s admins, whatever was marked before', async () => {
+    // Arrange
+    await ClientChannelModel.updateOne({ clientId: 'cli-cvs' }, { $addToSet: { billingViewers: ana } });
     // Act
     const refused = await request(app).get(`${base()}/services/srv-318/billing`).set(auth(ana));
-    await setAccess(jose, ana, { money: true, restricted: { tabs: [], stages: [] } }).expect(200);
-    const marked = await request(app).get(`${base()}/services/srv-318/billing`).set(auth(ana)).expect(200);
+    const admin = await request(app).get(`${base()}/services/srv-318/billing`).set(auth(jose)).expect(200);
     // Assert
     expect(refused.status).toBe(404);
-    expect(marked.body.detail.billing.total).toBe(1000);
+    expect(admin.body.detail.billing.total).toBe(1000);
   });
 });
 

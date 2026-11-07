@@ -9,6 +9,7 @@ import { ClientChannelModel, type ClientChannel, type RestrictedMember } from '.
 const NOT_IN_CHANNEL = 'Esa persona no está en el canal de este cliente.';
 const CLIENT_NOT_FOUND = 'Ese cliente no existe en este espacio.';
 const ADMIN_SEES_ALL = 'Un admin del espacio ve todo el canal.';
+const MONEY_ONLY_ADMINS = 'Los montos solo los ven los admins del espacio.';
 
 type Viewers = { viewers: string[] };
 /** `admins`: the channel's members who are admins of the space; they always see everything. */
@@ -34,7 +35,8 @@ const isSpaceAdmin = async (workspaceId: Types.ObjectId, userId: Types.ObjectId)
   return Boolean(member && canManageMembers(member.role));
 };
 
-const wire = (viewers: readonly Types.ObjectId[] | undefined): Viewers => ({ viewers: (viewers ?? []).map(String) });
+/** José 07/11: «todo lo que es plata solo admins». Nobody else is marked, and a mark left from before counts for nothing. */
+const NO_VIEWERS = (): Viewers => ({ viewers: [] });
 async function channelAdmins(client: Pick<ClientChannel, 'workspaceId' | 'chatId'>): Promise<string[]> {
   const chat = await ChatModel.findById(client.chatId).select('members.userId').lean();
   const ids = (chat?.members ?? []).map((member) => member.userId);
@@ -42,24 +44,25 @@ async function channelAdmins(client: Pick<ClientChannel, 'workspaceId' | 'chatId
   return admins.map((admin) => String(admin.userId));
 }
 
-const accessWire = async (client: Pick<ClientChannel, 'workspaceId' | 'chatId' | 'billingViewers' | 'restrictedMembers'>): Promise<AccessList> => ({
-  ...wire(client.billingViewers),
+const accessWire = async (client: Pick<ClientChannel, 'workspaceId' | 'chatId' | 'restrictedMembers'>): Promise<AccessList> => ({
+  ...NO_VIEWERS(),
   restricted: (client.restrictedMembers ?? []).map((entry) => ({ user_id: String(entry.userId), ...memberAccessFrom(entry) })),
   admins: await channelAdmins(client),
 });
 
 export async function listBillingViewers(workspaceId: string, clientId: string, userId: Types.ObjectId): Promise<Viewers> {
-  return wire((await clientForAdmin(workspaceId, clientId, userId)).billingViewers);
+  await clientForAdmin(workspaceId, clientId, userId);
+  return NO_VIEWERS();
 }
 
-/** Marks or unmarks a member of the client's channel; marking twice keeps one. */
+/** Money is no mark any more (José 07/11): unmarking still clears an old one; marking is refused. */
 export async function setBillingViewer(workspaceId: string, clientId: string, userId: Types.ObjectId, targetId: string, body: { sees?: unknown }): Promise<Viewers> {
   if (typeof body.sees !== 'boolean') throw new WorkspaceError(400, 'Falta «sees» (true o false).');
   const client = await clientForAdmin(workspaceId, clientId, userId);
   const target = await memberOfChannel(client, targetId);
-  const update = body.sees ? { $addToSet: { billingViewers: target } } : { $pull: { billingViewers: target } };
-  const saved = await ClientChannelModel.findByIdAndUpdate(client._id, update, { new: true }).select('billingViewers').lean<Pick<ClientChannel, 'billingViewers'> | null>();
-  return wire(saved?.billingViewers);
+  if (body.sees) throw new WorkspaceError(400, MONEY_ONLY_ADMINS);
+  await ClientChannelModel.updateOne({ _id: client._id }, { $pull: { billingViewers: target } });
+  return NO_VIEWERS();
 }
 
 /** Who sees money and who is restricted in a client's channel (José 30/10 night), for its admins. */
@@ -69,12 +72,13 @@ export async function listClientAccess(workspaceId: string, clientId: string, us
 
 const withoutMember = (entries: readonly RestrictedMember[], target: Types.ObjectId) => entries.filter((entry) => !entry.userId.equals(target));
 
-/** `money` marks who sees amounts; `restricted` limits the member to some tabs and stages, `null` lifts it. */
+/** `restricted` limits the member to some tabs and stages, `null` lifts it; `money: true` is refused (José 07/11). */
 export async function setClientAccess(workspaceId: string, clientId: string, userId: Types.ObjectId, targetId: string, body: { money?: unknown; restricted?: unknown }): Promise<AccessList> {
   const client = await clientForAdmin(workspaceId, clientId, userId);
   const target = await memberOfChannel(client, targetId);
+  if (body.money === true) throw new WorkspaceError(400, MONEY_ONLY_ADMINS);
   const set: Partial<Pick<ClientChannel, 'billingViewers' | 'restrictedMembers'>> = {};
-  if (typeof body.money === 'boolean') set.billingViewers = body.money ? [...(client.billingViewers ?? []).filter((one) => !one.equals(target)), target] : (client.billingViewers ?? []).filter((one) => !one.equals(target));
+  if (body.money === false) set.billingViewers = (client.billingViewers ?? []).filter((one) => !one.equals(target));
   if (body.restricted === null) set.restrictedMembers = withoutMember(client.restrictedMembers ?? [], target);
   if (body.restricted !== undefined && body.restricted !== null) {
     const parsed = memberAccessOf(body.restricted);

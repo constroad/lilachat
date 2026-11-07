@@ -14,12 +14,14 @@ import { WorkspaceMemberModel } from './workspaceModels.js';
 const tabsOf = (tabs: readonly string[]): RestrictableTab[] => RESTRICTABLE_TABS.filter((tab) => tabs.includes(tab));
 export const memberAccessFrom = (entry: Pick<RestrictedMember, 'tabs' | 'stages'>): MemberAccess => ({ tabs: tabsOf(entry.tabs), stages: [...entry.stages] });
 
-/** My access in a client's channel: a space admin sees everything, money included. */
-export function accessOf(client: Partial<Pick<ClientChannel, 'billingViewers' | 'restrictedMembers'>>, userId: Types.ObjectId, isAdmin: boolean): MyClientAccess {
+/**
+ * My access in a client's channel: a space admin sees everything, money included. Money is only
+ * theirs (José 07/11: «todo lo que es plata solo admins»); a `billingViewers` mark from before counts for nothing.
+ */
+export function accessOf(client: Partial<Pick<ClientChannel, 'restrictedMembers'>>, userId: Types.ObjectId, isAdmin: boolean): MyClientAccess {
   if (isAdmin) return { money: true, admin: true };
-  const money = (client.billingViewers ?? []).some((one) => one.equals(userId));
   const entry = (client.restrictedMembers ?? []).find((one) => one.userId.equals(userId));
-  return entry ? { money, restricted: memberAccessFrom(entry) } : { money };
+  return entry ? { money: false, restricted: memberAccessFrom(entry) } : { money: false };
 }
 
 /** A space admin runs the plan of a client's channel; a chat that is not a client's has no such limit. */

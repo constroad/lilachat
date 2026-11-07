@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, Switch, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { CheckSquare, ChevronRight, ShieldCheck, Square } from 'lucide-react-native';
-import { accessSummary, CHANNEL_TAB_LABELS, clientAccessPath, DEFAULT_RESTRICTED, memberAccessIn, MEMBER_TABS, MONEY_HINT, RESTRICTABLE_TAB_HINTS, toggleInAccess, type ClientAccessList, type MemberAccess, type MemberAccessEntry } from '@lilachat/shared';
+import { accessSummary, CHANNEL_TAB_LABELS, clientAccessPath, DEFAULT_RESTRICTED, memberAccessIn, MEMBER_TABS, RESTRICTABLE_TAB_HINTS, toggleInAccess, type ClientAccessList, type MemberAccess, type MemberAccessEntry } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 import { PantallaEnModal } from '../../ui/PantallaEnModal';
 import { useColores } from '../../ui/tema';
 import type { ServiceAskTarget } from './useServiceAsk';
 
-type SaveBody = { money?: boolean; restricted?: MemberAccess | null };
+type SaveBody = { restricted?: MemberAccess | null };
 
 /** The channel's access list; `null` while loading or for a non-admin (the server says 403). */
 export function useClientAccess(target: ServiceAskTarget | null) {
@@ -80,14 +80,12 @@ export function AccessFields(props: { value: MemberAccess | null; onChange: (val
 }
 
 function MemberAccessScreen(props: { name: string; entry: MemberAccessEntry; onSave: (body: SaveBody) => Promise<string | null>; onClose: () => void }) {
-  const colors = useColores();
-  const [money, setMoney] = useState(props.entry.money);
   const [restricted, setRestricted] = useState<MemberAccess | null>(props.entry.restricted ?? null);
   const [failure, setFailure] = useState('');
   const [saving, setSaving] = useState(false);
   const save = async () => {
     setSaving(true);
-    const message = await props.onSave({ money, restricted });
+    const message = await props.onSave({ restricted });
     setSaving(false);
     if (message) setFailure(message);
     else props.onClose();
@@ -95,13 +93,7 @@ function MemberAccessScreen(props: { name: string; entry: MemberAccessEntry; onS
   return (
     <PantallaEnModal visible titulo={`Acceso de ${props.name}`} onCerrar={props.onClose} testIDCerrar="cerrar-acceso" footer={<PrimaryButton testID="guardar-acceso" label={saving ? 'Guardando…' : 'Guardar'} disabled={saving} onPress={() => void save()} />}>
       <AccessFields value={restricted} onChange={setRestricted} />
-      <View className="mt-3 min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/15 px-3">
-        <View className="min-w-0 flex-1">
-          <Text className="text-[15px] font-semibold text-on-surface">Ve montos</Text>
-          <Text className="text-[12px] text-on-surface-variant">{MONEY_HINT}</Text>
-        </View>
-        <Switch testID="acceso-montos" value={money} onValueChange={setMoney} trackColor={{ true: colors.primary }} />
-      </View>
+      {/* José 07/11: «todo lo que es plata solo admins»; there is no mark to give money to anyone else. */}
       {failure ? <Text className="mt-3 text-[14px] text-error">{failure}</Text> : null}
     </PantallaEnModal>
   );

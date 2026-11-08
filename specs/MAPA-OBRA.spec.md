@@ -606,5 +606,10 @@ ver «Borrados»; cubierto solo por test).
   {incluir: true, etapaId?, hasta?} con el corte del panel; apagado, {incluir: false}. Muestra lo que
   Portal respondió: «Se adjunta al informe: Etapa 1 · Hasta el 6 nov.» El PDF del servicio suma la
   hoja «Mapa de avance». Sin corte de día, Portal usa lo aprobado hasta el día del informe.
-- **Arranca apagado:** la lectura del mapa no trae todavía si ya estaba incluido (pedido a Portal el
-  07/11: `mapaEnInforme` en `workStreets`).
+- **Arranca en su estado real:** `detalle_de_servicio` trae `service.mapa_en_informe = {incluido,
+  etapaId?, hasta?}` junto a `has_map` (Portal c7088e7d; no va en la lectura del cliente porque es un
+  ajuste interno).
+- **El PDF tarda ~30 s** (Portal ed331de6): Portal espera 6 s y si no está responde
+  `{status:'generating', retry_after_s}`. Lilachat espera eso (entre 2 y 30 s) y vuelve a pedir el
+  mismo formulario, hasta 6 veces; Portal reusa un PDF listo 10 min. Seis pedidos cada ~10 s quedan
+  lejos del tope de 20 por minuto de agentes.

@@ -109,6 +109,13 @@ describe('the dispatches live inside their order (José 01/11: «por servicio pu
     expect(serviceTabs(detail, false).map((tab) => tab.key)).toEqual(['orders', 'reports']);
   });
 
+  it('reads «Incluir en el informe» only with a map (Portal c7088e7d)', () => {
+    const on = serviceDetailOf({ ...body, service: { ...body.service, has_map: true, mapa_en_informe: { incluido: true, etapaId: 'e1', hasta: '2026-11-06' } } })!;
+    expect(on.service.mapInReport).toEqual({ included: true, stageId: 'e1', until: '2026-11-06' });
+    expect(serviceDetailOf({ ...body, service: { ...body.service, mapa_en_informe: { incluido: true } } })!.service.mapInReport).toBeUndefined();
+    expect(serviceDetailOf({ ...body, service: { ...body.service, has_map: true, mapa_en_informe: { incluido: true, hasta: 'ayer' } } })!.service.mapInReport).toEqual({ included: true });
+  });
+
   it('«Mapa» goes to whoever can make its link, with streets or not, before the Drive (José 06/11 and 07/11, design o-10)', () => {
     // Arrange
     const withMap = serviceDetailOf({ ...body, service: { ...body.service, has_map: true } })!;

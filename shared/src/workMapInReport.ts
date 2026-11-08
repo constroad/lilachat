@@ -1,6 +1,7 @@
 import { FORMS_LEVEL } from './appForms.js';
 import { workMapCutLabel, type WorkMap, type WorkMapFilter } from './workMap.js';
 import { sendMapTool, type WorkProgressResult } from './workProgressSend.js';
+import type { ServiceMapInReport } from './serviceDetail.js';
 import type { MapEditSend } from './workScopeDraft.js';
 
 /**
@@ -37,6 +38,22 @@ export type InReportStep = { on: boolean | null; note: { ok: boolean; text: stri
 export async function toggleMapInReport(send: MapEditSend, map: WorkMap, filter: WorkMapFilter, include: boolean): Promise<InReportStep> {
   const result = await setMapInReport(send, map, filter, include);
   return result.ok ? { on: result.state.included, note: { ok: true, text: result.state.label } } : { on: null, note: { ok: false, text: result.message } };
+}
+
+export type InReportView = { on: boolean; busy: boolean; note: { ok: boolean; text: string } | null };
+export const IN_REPORT_IDLE: InReportView = { on: false, busy: false, note: null };
+
+/** The switch as Portal has it when the panel opens. */
+export function inReportViewOf(map: WorkMap, saved: ServiceMapInReport | undefined): InReportView {
+  if (!saved?.included) return IN_REPORT_IDLE;
+  const state = mapInReportOf(map, { incluido: true, ...(saved.stageId ? { etapa: saved.stageId } : {}), ...(saved.until ? { hasta: saved.until } : {}) }, true);
+  return { on: true, busy: false, note: { ok: true, text: state.label } };
+}
+
+/** The switch after asking, from how it was before. */
+export async function nextInReportView(send: MapEditSend, map: WorkMap, filter: WorkMapFilter, include: boolean, before: InReportView): Promise<InReportView> {
+  const step = await toggleMapInReport(send, map, filter, include);
+  return { on: step.on ?? before.on, busy: false, note: step.note };
 }
 
 export async function setMapInReport(send: MapEditSend, map: WorkMap, filter: WorkMapFilter, include: boolean): Promise<MapInReportResult> {

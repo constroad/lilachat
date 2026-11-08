@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Check, Copy, Download, Link2, ShieldCheck, X } from 'lucide-react';
-import { createProgressLink, createProgressPdf, toggleMapInReport, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { createProgressLink, createProgressPdf, inReportViewOf, nextInReportView, type InReportView, type ServiceMapInReport, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 import { DayField, PANEL_LABEL, StageField } from './CutFields';
 import { PdfAction } from './PdfAction';
 
-type Props = { map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; /** Portal's map tools through the door; without it there is nothing to create. */ send?: MapEditSend; onClose: () => void };
+type Props = { map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; /** Portal's map tools through the door; without it there is nothing to create. */ send?: MapEditSend; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport; onClose: () => void };
 
 /** «Resumen de frente»: which streets each work covered at this cut, and the approved metres. */
 function FrontSummary(props: { map: WorkMap; filter: WorkMapFilter }) {
@@ -30,16 +30,12 @@ function FrontSummary(props: { map: WorkMap; filter: WorkMapFilter }) {
 }
 
 /** «Incluir en el informe del servicio»: the client's report PDF adds the map at this cut. */
-function InReport(props: { map: WorkMap; filter: WorkMapFilter; send: MapEditSend }) {
-  const [on, setOn] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+function InReport(props: { map: WorkMap; filter: WorkMapFilter; send: MapEditSend; saved?: ServiceMapInReport }) {
+  const [view, setView] = useState<InReportView>(() => inReportViewOf(props.map, props.saved));
+  const { on, busy, note } = view;
   const change = async (include: boolean) => {
-    setBusy(true);
-    const step = await toggleMapInReport(props.send, props.map, props.filter, include);
-    setBusy(false);
-    if (step.on !== null) setOn(step.on);
-    setNote(step.note);
+    setView({ ...view, busy: true });
+    setView(await nextInReportView(props.send, props.map, props.filter, include, view));
   };
   return (
     <div>
@@ -116,7 +112,7 @@ export function ShareProgress(props: Props) {
         <DayField map={props.map} filter={props.filter} onFilter={cut} />
         <FrontSummary map={props.map} filter={props.filter} />
         <PanelSwitch testId="compartir-fotos" title="Mostrar fotos" hint="El cliente ve las fotos de la obra hasta el día del corte." on={photos} onChange={(on) => { setPhotos(on); setState({ busy: false, link: null, error: null }); }} />
-        {props.send ? <InReport map={props.map} filter={props.filter} send={props.send} /> : null}
+        {props.send ? <InReport map={props.map} filter={props.filter} send={props.send} saved={props.mapInReport} /> : null}
         <PublicLink state={state} />
         {props.send ? <PdfAction key={`${props.filter.stageId ?? ''}|${props.filter.untilDay ?? ''}`} testId="compartir-pdf" label="Descargar PDF para cliente" icon={<Download size={16} />} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-outline/25 bg-surface text-[14px] font-semibold text-on-surface" create={() => createProgressPdf(props.send!, props.filter, 'client')} /> : null}
         {props.send ? <button type="button" data-testid="compartir-crear-enlace" disabled={state.busy} onClick={() => void create(props.send!)} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-semibold text-on-primary disabled:opacity-60"><Link2 size={17} />{state.busy ? 'Creando…' : 'Crear enlace de avance'}</button> : null}

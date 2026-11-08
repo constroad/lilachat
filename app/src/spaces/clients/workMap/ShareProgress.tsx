@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Copy, Download, Link2, ShieldCheck } from 'lucide-react-native';
-import { createProgressLink, createProgressPdf, toggleMapInReport, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { createProgressLink, createProgressPdf, inReportViewOf, nextInReportView, type InReportView, type ServiceMapInReport, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 import { Interruptor } from '../../../ui/Interruptor';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
 import { DayChips, SHEET_LABEL, StageChips } from './CutChips';
 import { PdfAction } from './PdfAction';
 
-type Props = { open: boolean; map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; /** Portal's map tools through the door. */ send?: MapEditSend; onClose: () => void };
+type Props = { open: boolean; map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; /** Portal's map tools through the door. */ send?: MapEditSend; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport; onClose: () => void };
 
 /** «Resumen consolidado»: which streets each work covered at this cut, and the approved metres. */
 function FrontSummary(props: { map: WorkMap; filter: WorkMapFilter }) {
@@ -35,16 +35,12 @@ function FrontSummary(props: { map: WorkMap; filter: WorkMapFilter }) {
 }
 
 /** «Incluir en el informe del servicio»: the client's report PDF adds the map at this cut. */
-function InReport(props: { map: WorkMap; filter: WorkMapFilter; send: MapEditSend }) {
-  const [on, setOn] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+function InReport(props: { map: WorkMap; filter: WorkMapFilter; send: MapEditSend; saved?: ServiceMapInReport }) {
+  const [view, setView] = useState<InReportView>(() => inReportViewOf(props.map, props.saved));
+  const { on, busy, note } = view;
   const change = async (include: boolean) => {
-    setBusy(true);
-    const step = await toggleMapInReport(props.send, props.map, props.filter, include);
-    setBusy(false);
-    if (step.on !== null) setOn(step.on);
-    setNote(step.note);
+    setView({ ...view, busy: true });
+    setView(await nextInReportView(props.send, props.map, props.filter, include, view));
   };
   return (
     <View className="gap-1">
@@ -107,7 +103,7 @@ export function ShareProgress(props: Props) {
         <View className="flex-1"><Text className="text-[15px] font-semibold text-on-surface">Mostrar fotos de inspección</Text><Text className="text-[13px] text-on-surface-variant">Las de la obra hasta el día del corte.</Text></View>
         <Interruptor testID="compartir-fotos" value={photos} onValueChange={(on) => { setPhotos(on); setState(IDLE); }} />
       </View>
-      {props.send ? <InReport map={props.map} filter={props.filter} send={props.send} /> : null}
+      {props.send ? <InReport map={props.map} filter={props.filter} send={props.send} saved={props.mapInReport} /> : null}
       <PublicLink state={state} />
       {props.send ? <PdfAction testID="compartir-pdf" label="Descargar PDF para cliente" icon={<Download size={18} color={colors['on-surface']} />} className="min-h-[52px] flex-row items-center justify-center gap-2 rounded-xl border border-outline/25 bg-surface" textClassName="text-[16px] font-semibold text-on-surface" create={() => createProgressPdf(props.send!, props.filter, 'client')} /> : null}
       {props.send ? (

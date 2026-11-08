@@ -45,7 +45,7 @@ export type ServiceQuote = { id: string; code?: string; date?: string; total?: n
 export type DetailTotals = { orders: number; dispatches: number; reports: number; quotes?: number };
 export type ServiceDetail = {
   /** `hasMap`: Portal has the job's stretches drawn (José 06/11), so the service gets its «Mapa». */
-  service: { id: string; name: string; stageLabel?: string; progress?: number; url?: string; hasMap?: true };
+  service: { id: string; name: string; stageLabel?: string; progress?: number; url?: string; hasMap?: true; /** «Incluir en el informe» as Portal has it (c7088e7d). */ mapInReport?: ServiceMapInReport };
   orders: ServiceOrder[];
   dispatches: ServiceDispatch[];
   reports: ServiceReport[];
@@ -162,8 +162,19 @@ function listOf<T>(value: unknown, parse: (raw: Raw) => T): T[] | null {
   }).slice(0, LIST_MAX);
 }
 
+export type ServiceMapInReport = { included: boolean; stageId?: string; until?: string };
+
+/** `mapa_en_informe`, only with a map; a day that is not one is left out. */
+function mapInReportOfService(raw: unknown): ServiceMapInReport | undefined {
+  const input = record(raw);
+  if (!input || typeof input.incluido !== 'boolean') return undefined;
+  const until = text(input.hasta);
+  return defined({ included: input.incluido, stageId: text(input.etapaId), until: until && /^\d{4}-\d{2}-\d{2}$/.test(until) ? until : undefined });
+}
+
 function serviceHeadOf(service: Raw): ServiceDetail['service'] {
-  return defined({ id: text(service.id)!, name: text(service.name) ?? 'Servicio', stageLabel: text(service.stage_label), progress: count(service.progress), url: https(service.url), hasMap: service.has_map === true ? (true as const) : undefined });
+  const hasMap = service.has_map === true;
+  return defined({ id: text(service.id)!, name: text(service.name) ?? 'Servicio', stageLabel: text(service.stage_label), progress: count(service.progress), url: https(service.url), hasMap: hasMap ? (true as const) : undefined, mapInReport: hasMap ? mapInReportOfService(service.mapa_en_informe) : undefined });
 }
 
 /** Portal's real counts; the length of what came when it sends none. */

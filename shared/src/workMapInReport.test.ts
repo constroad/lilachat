@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FORMS_LEVEL } from './appForms.js';
 import { workMapOf, type WorkMap } from './workMap.js';
-import { mapInReportOf, setMapInReport, toggleMapInReport, workMapInReportRequest } from './workMapInReport.js';
+import { inReportViewOf, IN_REPORT_IDLE, mapInReportOf, setMapInReport, toggleMapInReport, workMapInReportRequest } from './workMapInReport.js';
 import type { MapEditSend } from './workScopeDraft.js';
 
 /** «Incluir en el informe del servicio» (o-08, Portal 926b9723). */
@@ -33,5 +33,13 @@ describe('toggleMapInReport', () => {
   it('keeps the switch where it was on a refusal', async () => {
     expect(await toggleMapInReport(async () => ({ ok: false, message: 'No.' }), map, {}, true)).toEqual({ on: null, note: { ok: false, text: 'No.' } });
     expect((await toggleMapInReport(async () => ({ ok: true, message: '', data: { incluido: false } }), map, {}, false)).on).toBe(false);
+  });
+});
+
+describe('inReportViewOf', () => {
+  it('opens on when Portal has it on, with its cut', () => {
+    expect(inReportViewOf(map, { included: true, stageId: 'e1', until: '2026-11-06' })).toEqual({ on: true, busy: false, note: { ok: true, text: 'Se adjunta al informe: Etapa 1 · Hasta el 6 nov.' } });
+    expect(inReportViewOf(map, { included: false })).toEqual(IN_REPORT_IDLE);
+    expect(inReportViewOf(map, undefined)).toEqual(IN_REPORT_IDLE);
   });
 });

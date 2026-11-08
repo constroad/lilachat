@@ -106,7 +106,7 @@ export function StreetScopes(props: { map: WorkMap; streetId: string | null; sen
   const detail = useMemo(() => (props.streetId ? streetDetailOf(props.map, props.streetId) : null), [props.map, props.streetId]);
   const [editing, setEditing] = useState<Editing>(null);
   const [recording, setRecording] = useState(false);
-  useEffect(() => setRecording(Boolean(props.streetId && props.startRecording)), [props.streetId, props.startRecording]);
+  useEffect(() => { setRecording(Boolean(props.streetId && props.startRecording)); }, [props.streetId, props.startRecording]);
   const close = () => { setEditing(null); setRecording(false); props.onClose(); };
   return (
     <Modal visible={Boolean(props.streetId)} animationType="slide" onRequestClose={() => { if (!editing && !recording) close(); }}>

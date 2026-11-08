@@ -18,6 +18,13 @@ describe('driveUploadOf', () => {
     expect(driveUploadOf({ ...wire, url: 'https://constroad.com@evil.example/x' })).toBeNull();
   });
 
+  it('keeps the trace types Portal announces for «Importar» (o-12)', () => {
+    const traces = ['application/vnd.google-earth.kmz', 'application/vnd.google-earth.kml+xml'];
+    const ticket = driveUploadOf({ ...wire, mimeTypes: [...wire.mimeTypes, ...traces, 'application/zip'] })!;
+    expect(ticket.mimeTypes).toEqual([...wire.mimeTypes, ...traces]);
+    expect(driveFileRefusal(ticket, { mime: 'application/vnd.google-earth.kmz', sizeBytes: 900 })).toBeNull();
+  });
+
   it('takes a subdomain of ours', () => {
     expect(driveUploadOf({ ...wire, url: 'https://www.constroad.com/x' })?.url).toBe('https://www.constroad.com/x');
   });

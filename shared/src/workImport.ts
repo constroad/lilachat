@@ -1,4 +1,5 @@
 import { FORMS_LEVEL } from './appForms.js';
+import { KML_TYPE, KMZ_TYPE } from './driveUpload.js';
 import { metersLabel } from './workMap.js';
 import { sendMapTool, type WorkProgressResult } from './workProgressSend.js';
 import type { MapEditSend } from './workScopeDraft.js';
@@ -19,8 +20,6 @@ export type ImportResult = { ok: true; review: ImportReview } | { ok: false; mes
 
 export const IMPORT_FAILED = 'No se pudo leer el archivo. Revisa tu señal y vuelve a intentarlo.';
 export const IMPORT_NOTHING = 'El archivo no trae líneas que se puedan usar como calles.';
-export const KMZ_TYPE = 'application/vnd.google-earth.kmz';
-export const KML_TYPE = 'application/vnd.google-earth.kml+xml';
 const LINES_MAX = 200;
 
 /** Phones and browsers often do not know a .kmz: the name decides. */

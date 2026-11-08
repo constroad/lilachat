@@ -38,6 +38,11 @@ const FAILURES: Record<number, string> = { [EXPIRED]: 'La subida venció. Vuelve
 /** Written by hand: `URL` has no `hostname` on every phone. No user part, ours or a subdomain of ours. */
 const OUR_ADDRESS = /^https:\/\/([a-z0-9-]+\.)*constroad\.com(:\d+)?\//i;
 const MEDIA_TYPE = /^(image|video)\/[a-z0-9.+-]+$/i;
+export const KMZ_TYPE = 'application/vnd.google-earth.kmz';
+export const KML_TYPE = 'application/vnd.google-earth.kml+xml';
+/** The traces «Importar» sends (o-12): Portal announces them in every ticket since 07/11. */
+const TRACE_TYPES: readonly string[] = [KMZ_TYPE, KML_TYPE];
+const isAnnouncedType = (one: string): boolean => MEDIA_TYPE.test(one) || TRACE_TYPES.includes(one);
 
 const isPositive = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0;
 const isShortText = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && value.length <= FIELD_MAX;
@@ -53,7 +58,7 @@ export function driveUploadOf(raw: unknown): DriveUpload | null {
   const input = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const { url, fileField, expiresAt, maxBytes, maxSeconds, mimeTypes } = input;
   const fields = fieldsOf(input.fields);
-  const types = Array.isArray(mimeTypes) ? mimeTypes.filter((one): one is string => typeof one === 'string' && MEDIA_TYPE.test(one)) : [];
+  const types = Array.isArray(mimeTypes) ? mimeTypes.filter((one): one is string => typeof one === 'string' && isAnnouncedType(one)) : [];
   const dated = typeof expiresAt === 'string' && !Number.isNaN(Date.parse(expiresAt));
   if (typeof url !== 'string' || !OUR_ADDRESS.test(url) || input.method !== 'POST' || !fields || !isShortText(fileField)) return null;
   if (!dated || !isPositive(maxBytes) || !isPositive(maxSeconds) || !types.length) return null;

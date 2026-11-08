@@ -613,3 +613,19 @@ ver «Borrados»; cubierto solo por test).
   `{status:'generating', retry_after_s}`. Lilachat espera eso (entre 2 y 30 s) y vuelve a pedir el
   mismo formulario, hasta 6 veces; Portal reusa un PDF listo 10 min. Seis pedidos cada ~10 s quedan
   lejos del tope de 20 por minuto de agentes.
+
+### E2E web prod de los paneles nuevos (07/11 noche, Test, QA-CTLPIS)
+
+- «Crear enlace de avance» (02:50:47Z del 08/11): enlace `service-report/<oculto>` de constroad.com,
+  «Vence en 7 días».
+- «Descargar PDF para cliente» (~02:51:30Z): `ready` desde lila, 200 `application/pdf`, 160 731 bytes.
+- «Incluir en el informe» prendido (02:52:16Z, «Se adjunta al informe: Toda la obra · Hasta el día
+  del informe.») y apagado otra vez (02:52:31Z, «El informe del servicio va sin el mapa.»). Test
+  quedó como estaba.
+- «Exportar» → «Generar Plano PDF» A3 (02:54:28Z): 41 s con los reintentos de «generating», 200
+  `application/pdf`, 160 325 bytes.
+- **Defecto hallado: «Importar» rechazaba todo KML/KMZ** con «Solo se admiten fotos y videos.»
+  Portal sí los anunciaba en el boleto, pero `driveUploadOf` filtraba `mimeTypes` a `image/*` y
+  `video/*`, y la comprobación local los tiraba. Ahora el boleto conserva los dos tipos de trazado
+  (`KMZ_TYPE`, `KML_TYPE` viven en `driveUpload.ts`) y lo demás sigue fuera. Test en
+  `driveUpload.test.ts`.

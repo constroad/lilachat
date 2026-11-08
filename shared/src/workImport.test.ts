@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FORMS_LEVEL } from './appForms.js';
-import { confirmImport, IMPORT_NOTHING, importCreateLabel, importDoneLabel, importFileType, importReviewOf, KML_TYPE, KMZ_TYPE, reviewImport, workImportRequest } from './workImport.js';
+import { confirmImport, IMPORT_NOTHING, importCreateLabel, importDoneLabel, importFileType, importReviewOf, reviewImport, workImportRequest } from './workImport.js';
+import { KML_TYPE, KMZ_TYPE } from './driveUpload.js';
 import type { MapEditSend } from './workScopeDraft.js';
 
 /** «Importar KMZ o KML» (o-12, Portal abc01353): review first, then confirm with an entry. */

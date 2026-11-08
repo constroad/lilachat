@@ -137,3 +137,21 @@ describe('handPointsLabel (APK E2E 08/11: the hand counter read «1 puntos»)', 
     expect(handPointsLabel(3)).toBe('3 puntos');
   });
 });
+
+describe('the start mark before the end (audit 08/11 item 11: the first tap left no mark)', () => {
+  it('after the start tap, a pin «1» stands where the person tapped, not at the road\'s start', () => {
+    let draft = tapStreetDraft(EMPTY_STREET, at(100)).draft;
+    draft = tapStreetDraft(draft, at(320)).draft;
+    const pins = streetDraftPins(draft);
+    expect(pins).toHaveLength(1);
+    expect(pins[0].label).toBe('1');
+    expect(pins[0].lng).toBeCloseTo(east(320).lng, 5);
+  });
+
+  it('before the start the whole street shows its ends; with both taps, the two marks', () => {
+    const picked = tapStreetDraft(EMPTY_STREET, at(100)).draft;
+    expect(streetDraftPins(picked).map((pin) => pin.label)).toEqual(['1', '2']);
+    const done = tapStreetDraft(tapStreetDraft(picked, at(320)).draft, at(80)).draft;
+    expect(streetDraftPins(done).map((pin) => pin.label)).toEqual(['1', '2']);
+  });
+});

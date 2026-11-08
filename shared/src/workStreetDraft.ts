@@ -1,5 +1,5 @@
 import type { StreetPick } from '@constroad/shared/obra';
-import { lineLengthM, type WorkMapLine, type WorkMapPoint } from './workMap.js';
+import { lineLengthM, sliceLine, type WorkMapLine, type WorkMapPoint } from './workMap.js';
 import type { DischargePin } from './workMapProgress.js';
 import { FORMS_LEVEL } from './appForms.js';
 import { sendMapTool, type WorkProgressDeps, type WorkProgressResult } from './workProgressSend.js';
@@ -51,8 +51,11 @@ export function streetDraftProblem(draft: StreetDraft): string | null {
 export const WORK_MAP_DRAFT_COLOR = '#7c3aed';
 
 /** Each tap as a numbered pin, the first one the start (design o-02). */
-export function streetDraftPins(draft: Pick<StreetDraft, 'points'> & { mode?: DrawMode }): DischargePin[] {
+export function streetDraftPins(draft: Pick<StreetDraft, 'points'> & { mode?: DrawMode; pick?: StreetDraft['pick'] }): DischargePin[] {
   const pin = (point: WorkMapPoint, index: number): DischargePin => ({ id: `trazo-${index + 1}`, label: String(index + 1), lat: point.lat, lng: point.lng, outside: false });
+  /** Start tapped, end not yet: the line is still the whole road, so the mark goes where the finger was (audit 08/11 item 11). */
+  const start = draft.mode === 'street' && draft.pick && draft.pick.fromM !== null && draft.pick.toM === null ? sliceLine(draft.pick.axis, 0, draft.pick.fromM).at(-1) : undefined;
+  if (start) return [pin(start, 0)];
   /** A picked street follows the road's every bend: only its start and its end are the person's (audit 07/11). */
   const ends = draft.mode !== 'hand' && draft.mode !== undefined && draft.points.length > 2 ? [...draft.points.slice(0, 1), ...draft.points.slice(-1)] : draft.points;
   return ends.map(pin);

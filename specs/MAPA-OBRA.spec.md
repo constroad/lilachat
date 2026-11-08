@@ -861,3 +861,8 @@ tests, deja en el mapa solo la calle: lo hecho, y el tramo nuevo de «Desde» a 
 color del trabajo, con sus progresivas. `ProgressPreview` lo muestra arriba del formulario (o-06) y
 arriba de los tramos de la calle (o-03), en la web y en el APK. Ya no se elige a ciegas: el tramo
 crece al tocar «+10 m».
+
+**Marca de inicio antes del fin (auditoría, punto 11).** Causa: con el inicio tocado y sin fin,
+`pickedLine` de `@constroad/shared/obra` devuelve la calle entera, y el pin «1» caía donde empieza
+la calle. Ahora `streetDraftPins` pone el «1» donde tocó el dedo hasta que llegue el fin (web y
+APK). El paquete compartido no se tocó (otro repo).

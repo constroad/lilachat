@@ -48,28 +48,30 @@ type BoardProps = { map: WorkMap; pageUrl: string; height: number; title: string
 function TitleRow(props: { pageUrl: string; onExport: () => void; onShare: () => void; onDraw?: () => void; onDeleted?: () => void }) {
   const colors = useColores();
   return (
-    <View className="flex-row items-center gap-2">
-      <Text className="min-w-0 flex-1 text-[20px] font-bold text-on-surface">Mapa de la obra</Text>
-      {props.onDraw ? (
-        <Pressable testID="mapa-nueva-calle" accessibilityLabel="Nueva calle" onPress={props.onDraw} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20">
-          <Plus size={18} color={colors['on-surface']} />
+    <View className="gap-2">
+      <Text className="text-[20px] font-bold text-on-surface">Mapa de la obra</Text>
+      <View className="flex-row items-center justify-end gap-2">
+        {props.onDraw ? (
+          <Pressable testID="mapa-nueva-calle" accessibilityLabel="Nueva calle" onPress={props.onDraw} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20">
+            <Plus size={18} color={colors['on-surface']} />
+          </Pressable>
+        ) : null}
+        {props.onDeleted ? (
+          <Pressable testID="mapa-borrados-abrir" accessibilityLabel="Borrados" onPress={props.onDeleted} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20">
+            <ArchiveRestore size={18} color={colors['on-surface']} />
+          </Pressable>
+        ) : null}
+        <Pressable testID="mapa-abrir" accessibilityLabel="Abrir en Portal" onPress={() => void Linking.openURL(props.pageUrl)} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20">
+          <ExternalLink size={18} color={colors['on-surface']} />
         </Pressable>
-      ) : null}
-      {props.onDeleted ? (
-        <Pressable testID="mapa-borrados-abrir" accessibilityLabel="Borrados" onPress={props.onDeleted} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20">
-          <ArchiveRestore size={18} color={colors['on-surface']} />
+        <Pressable testID="mapa-exportar" accessibilityLabel="Exportar" onPress={props.onExport} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20">
+          <Download size={18} color={colors['on-surface']} />
         </Pressable>
-      ) : null}
-      <Pressable testID="mapa-abrir" accessibilityLabel="Abrir en Portal" onPress={() => void Linking.openURL(props.pageUrl)} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20">
-        <ExternalLink size={18} color={colors['on-surface']} />
-      </Pressable>
-      <Pressable testID="mapa-exportar" accessibilityLabel="Exportar" onPress={props.onExport} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20">
-        <Download size={18} color={colors['on-surface']} />
-      </Pressable>
-      <Pressable testID="mapa-compartir" onPress={props.onShare} className="h-11 flex-row items-center gap-2 rounded-xl bg-primary px-3">
-        <Share2 size={18} color={colors['on-primary']} />
-        <Text className="text-[15px] font-semibold text-on-primary">Compartir</Text>
-      </Pressable>
+        <Pressable testID="mapa-compartir" onPress={props.onShare} className="h-11 flex-row items-center gap-2 rounded-xl bg-primary px-3">
+          <Share2 size={18} color={colors['on-primary']} />
+          <Text className="text-[15px] font-semibold text-on-primary">Compartir</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }

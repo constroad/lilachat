@@ -643,3 +643,24 @@ ver «Borrados»; cubierto solo por test).
   «Crear 1 calle»), se creó a las 03:15:22Z («Se creó 1 calle.») y se borró por «Borrar calle» a
   las 03:15:33Z. Queda en «Borrados» (borrado lógico) y el `.kml` queda en el Drive del servicio
   QA-CTLPIS de Test.
+
+### E2E APK con el OTA 295864d1 (08/11, 10:01Z a 10:08Z, emulador, Test, QA-CTLPIS)
+
+- Página del cliente (web, enlace creado a las 10:01Z): «Mapa de la obra», portal en solo lectura,
+  cifras, mapa y «Estado por vías» con «QA-MAPA calle — borrar». La calle importada y borrada no
+  aparece.
+- «Compartir»: el enlace salió a las 10:03:38Z con «Vence en 7 días». «Incluir en el informe» se
+  prendió a las 10:04:40Z y se apagó a las 10:04:52Z. «Descargar PDF para cliente» generó el PDF y
+  lo abrió en el navegador del teléfono. El Chrome del emulador quedó en su bienvenida y no se
+  aceptaron sus términos.
+- «Exportar» → «Importar KMZ o KML»: el selector del sistema eligió el KML de Descargas y Portal lo
+  revisó («QA-IMPORT APK borrar · 218 m», 10:06:25Z). Se canceló sin crear la calle; el archivo
+  quedó en el Drive del servicio de Test.
+- «Registrar avance»: «Mi GPS» con la ubicación simulada (`adb emu geo fix`) puso el fin en 0+147
+  en menos de 4 s («+147 m · 882 m²»). «Tomar foto» con la cámara del emulador subió la foto al
+  Drive en 9 s («1 de 6 fotos»). Se canceló sin registrar.
+- **Defectos hallados y corregidos:** el título se partía en «Map / a de / la / obra», apretado por
+  los cinco botones (ahora va en su fila y los botones debajo). «Exportar» era más alto que la
+  pantalla, sin scroll: tapaba la barra de estado y su parte de arriba no se alcanzaba. Ahora las
+  dos hojas usan `PanelSheet` (`CutChips.tsx`): scroll, arrastre por la manija y tope de 92 %.
+- Sin verificar: una foto de una cámara real y caminar la calle con un GPS real.

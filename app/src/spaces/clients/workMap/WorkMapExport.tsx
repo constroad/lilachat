@@ -5,9 +5,8 @@ import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Copy, Download, FileText, Globe, Link2, Printer } from 'lucide-react-native';
 import { createProgressPdf, exportStageOptions, PLAN_SIZES, type PlanSize, KMZ_MIME, kmzLayersOf, workMapFileName, workMapWorkFilter, workMapKml, workMapKmz, workMapScopeLabel, type MapEditSend, type TraceUpload, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
-import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
-import { DayChips, SHEET_LABEL, StageChips } from './CutChips';
+import { DayChips, PanelSheet, SHEET_LABEL, StageChips } from './CutChips';
 import { ImportTrace } from './ImportTrace';
 import { PdfAction } from './PdfAction';
 import type { TraceFile } from '../useDriveUpload';
@@ -97,7 +96,7 @@ export function WorkMapExport(props: Props) {
   const copy = () => void Clipboard.setStringAsync(props.pageUrl).then(() => setCopied(true));
   const fileName = workMapFileName(props.title, props.filter, new Date());
   return (
-    <Sheet visible={props.open} onClose={props.onClose} testID="mapa-exportar-panel" tone="background" className="gap-4 px-4 pt-2">
+    <PanelSheet open={props.open} onClose={props.onClose} testID="mapa-exportar-panel">
       <View>
         <Text className="text-[12px] font-bold uppercase tracking-[1.5px] text-primary">Sacar la obra</Text>
         <Text className="text-[22px] font-bold text-on-surface">Exportar</Text>
@@ -124,6 +123,6 @@ export function WorkMapExport(props: Props) {
       </Card>
       {props.send && props.uploadTrace ? <><Text className={SHEET_LABEL}>Traer un trazado</Text><ImportTrace send={props.send} upload={props.uploadTrace} /></> : null}
       <KmzTree map={props.map} filter={props.filter} fileName={fileName} />
-    </Sheet>
+    </PanelSheet>
   );
 }

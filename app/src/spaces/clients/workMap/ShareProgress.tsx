@@ -4,9 +4,8 @@ import * as Clipboard from 'expo-clipboard';
 import { Copy, Download, Link2, ShieldCheck } from 'lucide-react-native';
 import { createProgressLink, createProgressPdf, inReportViewOf, nextInReportView, type InReportView, type ServiceMapInReport, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 import { Interruptor } from '../../../ui/Interruptor';
-import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
-import { DayChips, SHEET_LABEL, StageChips } from './CutChips';
+import { DayChips, PanelSheet, SHEET_LABEL, StageChips } from './CutChips';
 import { PdfAction } from './PdfAction';
 
 type Props = { open: boolean; map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; /** Portal's map tools through the door. */ send?: MapEditSend; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport; onClose: () => void };
@@ -90,7 +89,7 @@ export function ShareProgress(props: Props) {
     setState(made.ok ? { ...IDLE, link: made.link } : { ...IDLE, error: made.message });
   };
   return (
-    <Sheet visible={props.open} onClose={props.onClose} testID="mapa-compartir-panel" tone="background" className="gap-4 px-4 pt-2">
+    <PanelSheet open={props.open} onClose={props.onClose} testID="mapa-compartir-panel">
       <View>
         <Text className="text-[12px] font-bold uppercase tracking-[1.5px] text-primary">Compartir avance</Text>
         <Text className="text-[22px] font-bold text-on-surface">Avance parcial</Text>
@@ -112,6 +111,6 @@ export function ShareProgress(props: Props) {
           <Text className="text-[16px] font-semibold text-on-primary">{state.busy ? 'Creando…' : 'Crear enlace de avance'}</Text>
         </Pressable>
       ) : null}
-    </Sheet>
+    </PanelSheet>
   );
 }

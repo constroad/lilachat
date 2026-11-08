@@ -1,8 +1,22 @@
+import type { ReactNode } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Sheet } from '../../../ui/Sheet';
 import { workMapCutDays, workMapCutLabel, workMapDayFilter, workMapStageFilter, type CutOption, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 
 export const SHEET_LABEL = 'text-[12px] font-bold uppercase tracking-[1.5px] text-on-surface-variant';
 const CHIP = 'h-10 justify-center rounded-xl border px-3';
+/** Room for the status bar: a panel taller than the phone scrolls instead of going under it. */
+const PANEL_MAX_HEIGHT = '92%';
+const PANEL_CONTENT = { gap: 16, paddingHorizontal: 16, paddingTop: 8 };
+
+/** «Compartir avance» and «Exportar» on the phone: a sheet that scrolls, dragged by its handle. */
+export function PanelSheet(props: { open: boolean; onClose: () => void; testID: string; children: ReactNode }) {
+  return (
+    <Sheet visible={props.open} onClose={props.onClose} testID={props.testID} tone="background" dragArea="handle" maxHeight={PANEL_MAX_HEIGHT}>
+      <ScrollView contentContainerStyle={PANEL_CONTENT} keyboardShouldPersistTaps="handled">{props.children}</ScrollView>
+    </Sheet>
+  );
+}
 
 type Props = { map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void };
 

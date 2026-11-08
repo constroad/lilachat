@@ -525,3 +525,14 @@ ver «Borrados»; cubierto solo por test).
   con el emulador a 4,5 km dijo «Estás a 4492 m de la calle. Acércate o usa ±10 m.». Se canceló sin
   enviar. El emulador quedó en el espacio Constroad.
 - **Sin verificar en el APK:** tomar la foto (cámara falsa del emulador) y «Mi GPS» parado sobre la calle.
+
+## Avance parcial (o-08), web y APK
+
+- Tarjeta «Avance parcial» arriba del panel «Compartir avance / Exportar», con el corte del mapa
+  (etapa y «hasta el día»). Por trabajo, el último primero: «Asfalto: Av. Los Incas hasta 0+120»,
+  «Base: Av. Los Incas · Jr. Los Pinos 0+040 a 0+090». Una calle completa va por su nombre; desde el
+  inicio, «hasta 0+xxx»; si no, sus tramos. «2 de 6 vías» y «Metrado aprobado acumulado +440 m
+  lineales». Solo avance aprobado, como lo ve el cliente. Motor puro `shared/src/workMapPartial.ts`.
+- **Lo que el diseño pide y depende de Portal (preguntado a su sesión el 07/11):** que el enlace del
+  cliente respete etapa y día, el interruptor «Mostrar fotos de inspección», «Incluir en el informe
+  del servicio» y «Descargar PDF para cliente». No se dibujan hasta que exista su ruta.

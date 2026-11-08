@@ -163,6 +163,7 @@ export * from './workStreetWalk.js';
 export * from './workDeleted.js';
 export * from './workScopeDraft.js';
 export * from './workManualProgress.js';
+export * from './workMapPartial.js';
 export * from './workStreetDelete.js';
 export * from './photoStamp.js';
 export * from './signingForm.js';

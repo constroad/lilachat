@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Paintbrush, X } from 'lucide-react';
 import { BRUSH_NO_EDIT as NO_EDIT, createdOrRefusal, paintAt, percentLabel, sendWorkScope, sendWorkStage, sendWorkTag, stageCardsOf, undoStroke, WORK_TAG_COLORS, workRowsOf, workStageRequest, workTagRequest, type Brush, type BrushStroke, type MapEditSend, type StageCard, type WorkMap, type WorkMapPoint, type WorkRow } from '@lilachat/shared';
 import { NewLabel } from './ScopeForm';
+import { LayerActions } from './LayerActions';
 import { KICKER } from './WorkMapPanel';
 
 export type LayersKind = 'stages' | 'works';
@@ -11,15 +12,16 @@ const BRUSH_BUTTON = 'flex h-9 shrink-0 items-center gap-1.5 rounded-xl border p
 const brushClass = (on: boolean) => `${BRUSH_BUTTON} ${on ? 'border-primary bg-primary text-on-primary' : 'border-primary/30 text-primary'}`;
 const same = (brush: Brush | null, kind: Brush['kind'], id: string) => brush?.kind === kind && brush.id === id;
 
-function StageCardView(props: { card: StageCard; on: boolean; onBrush: () => void }) {
+function StageCardView(props: { card: StageCard; on: boolean; onBrush: () => void; actions: ReactNode }) {
   const { card } = props;
   return (
     <li data-testid={`etapa-${card.id}`} className={`rounded-xl border-[1.5px] bg-surface p-4 ${props.on ? 'border-primary' : 'border-outline/15'}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+      <div className="flex flex-wrap items-start gap-x-1 gap-y-0">
+        <div className="min-w-0 flex-1">
           <p className="text-[15px] font-bold text-on-surface">{card.name}</p>
           <p className="mt-0.5 font-mono text-[12px] text-on-surface-variant">{card.line}</p>
         </div>
+        {props.actions}
         <p className="shrink-0 text-right text-[22px] font-extrabold tabular-nums text-primary">{percentLabel(card.percent)}</p>
       </div>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-outline/15"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, card.percent)}%` }} /></div>
@@ -36,7 +38,7 @@ function Stages(props: Omit<Props, 'kind' | 'onClose'>) {
   const { cards, loose } = stageCardsOf(props.map);
   return (
     <>
-      <ul className="mt-4 space-y-3">{cards.map((card) => <StageCardView key={card.id} card={card} on={same(props.brush, 'stage', card.id)} onBrush={() => props.onBrush(same(props.brush, 'stage', card.id) ? null : { kind: 'stage', id: card.id })} />)}</ul>
+      <ul className="mt-4 space-y-3">{cards.map((card) => <StageCardView key={card.id} card={card} on={same(props.brush, 'stage', card.id)} onBrush={() => props.onBrush(same(props.brush, 'stage', card.id) ? null : { kind: 'stage', id: card.id })} actions={<LayerActions kind="stages" id={card.id} name={card.name} layers={props.map.stages} send={props.send} />} />)}</ul>
       <div className="mt-3"><NewLabel testId="etapa" placeholder="Nueva etapa" onCreate={(name) => createdOrRefusal(props.send(workStageRequest(name), sendWorkStage))} /></div>
       {loose.length ? (
         <div data-testid="etapas-sin-etapa" className="mt-4 rounded-xl border border-dashed border-outline/30 p-3">
@@ -48,13 +50,14 @@ function Stages(props: Omit<Props, 'kind' | 'onClose'>) {
   );
 }
 
-function WorkRowView(props: { row: WorkRow; on: boolean; onBrush: () => void }) {
+function WorkRowView(props: { row: WorkRow; on: boolean; onBrush: () => void; actions: ReactNode }) {
   const { row } = props;
   return (
-    <li data-testid={`trabajo-fila-${row.id}`} className={`flex items-center gap-3 rounded-xl border-[1.5px] bg-surface px-3 py-2.5 ${props.on ? 'border-primary' : 'border-outline/15'}`}>
+    <li data-testid={`trabajo-fila-${row.id}`} className={`flex flex-wrap items-center gap-x-3 gap-y-0 rounded-xl border-[1.5px] bg-surface px-3 py-2.5 ${props.on ? 'border-primary' : 'border-outline/15'}`}>
       <span className="w-5 shrink-0 text-center font-mono text-[12px] font-bold text-on-surface-variant">{row.order}</span>
       <span aria-hidden className="h-3 w-8 shrink-0 rounded-full" style={{ backgroundColor: row.color }} />
       <div className="min-w-0 flex-1"><p className="truncate text-[14px] font-semibold text-on-surface">{row.name}</p><p className="font-mono text-[12px] text-on-surface-variant">{row.line}</p></div>
+      {props.actions}
       <button type="button" data-testid={`trabajo-brocha-${row.id}`} aria-pressed={props.on} onClick={props.onBrush} className={brushClass(props.on)}><Paintbrush size={14} />{props.on ? 'Pintando' : 'Pintar'}</button>
     </li>
   );
@@ -63,7 +66,7 @@ function WorkRowView(props: { row: WorkRow; on: boolean; onBrush: () => void }) 
 function Works(props: Omit<Props, 'kind' | 'onClose'>) {
   return (
     <>
-      <ul className="mt-4 space-y-2">{workRowsOf(props.map).map((row) => <WorkRowView key={row.id} row={row} on={same(props.brush, 'work', row.id)} onBrush={() => props.onBrush(same(props.brush, 'work', row.id) ? null : { kind: 'work', id: row.id })} />)}</ul>
+      <ul className="mt-4 space-y-2">{workRowsOf(props.map).map((row) => <WorkRowView key={row.id} row={row} on={same(props.brush, 'work', row.id)} onBrush={() => props.onBrush(same(props.brush, 'work', row.id) ? null : { kind: 'work', id: row.id })} actions={row.editable ? <LayerActions kind="works" id={row.id} name={row.name} layers={props.map.works} send={props.send} /> : null} />)}</ul>
       <div className="mt-3"><NewLabel testId="trabajo" placeholder="Agregar trabajo" colors={WORK_TAG_COLORS} onCreate={(name, color) => createdOrRefusal(props.send(workTagRequest(name, color), sendWorkTag))} /></div>
       <p className="mt-4 text-[12px] text-on-surface-variant">Una calle sin un trabajo no cuenta como pendiente.</p>
     </>

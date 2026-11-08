@@ -8,6 +8,7 @@ import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
 import { PanelSheet, SHEET_LABEL } from './CutChips';
 import { NewLabel } from './ScopeForm';
+import { useLayerActions } from './LayerActions';
 import { WorkMapSurface } from './WorkMapSurface';
 
 export type LayersKind = 'stages' | 'works';
@@ -23,14 +24,17 @@ function BrushButton(props: { testID: string; label: string; onPress: () => void
   );
 }
 
-function StageCardView(props: { card: StageCard; onBrush: () => void }) {
+function StageCardView(props: { card: StageCard; map: WorkMap; send: MapEditSend; onBrush: () => void }) {
   const { card } = props;
+  const actions = useLayerActions({ kind: 'stages', id: card.id, name: card.name, layers: props.map.stages, send: props.send });
   return (
     <View testID={`etapa-${card.id}`} className="rounded-2xl border-[1.5px] border-outline/15 bg-surface p-4">
       <View className="flex-row items-start justify-between gap-3">
         <View className="flex-1"><Text className="text-[16px] font-bold text-on-surface">{card.name}</Text><Text className="mt-0.5 font-mono text-[13px] text-on-surface-variant">{card.line}</Text></View>
+        {actions.icons}
         <Text className="text-[24px] font-extrabold text-primary">{percentLabel(card.percent)}</Text>
       </View>
+      {actions.panel}
       <View className="mt-2 h-2 overflow-hidden rounded-full bg-outline/15"><View className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, card.percent)}%` }} /></View>
       <View className="mt-3 flex-row items-center justify-between gap-2 border-t border-outline/10 pt-3">
         <Text className="flex-1 text-[13px] text-on-surface-variant">{card.days}</Text>
@@ -41,14 +45,19 @@ function StageCardView(props: { card: StageCard; onBrush: () => void }) {
   );
 }
 
-function WorkRowView(props: { row: WorkRow; onBrush: () => void }) {
+function WorkRowView(props: { row: WorkRow; map: WorkMap; send: MapEditSend; onBrush: () => void }) {
   const { row } = props;
+  const actions = useLayerActions({ kind: 'works', id: row.id, name: row.name, layers: props.map.works, send: props.send });
   return (
-    <View testID={`trabajo-fila-${row.id}`} className="flex-row items-center gap-3 rounded-2xl border-[1.5px] border-outline/15 bg-surface px-3 py-2.5">
-      <Text className="w-5 text-center font-mono text-[13px] font-bold text-on-surface-variant">{row.order}</Text>
-      <View className="h-3 w-8 rounded-full" style={{ backgroundColor: row.color }} />
-      <View className="flex-1"><Text numberOfLines={1} className="text-[15px] font-semibold text-on-surface">{row.name}</Text><Text className="font-mono text-[13px] text-on-surface-variant">{row.line}</Text></View>
-      <BrushButton testID={`trabajo-brocha-${row.id}`} label="Pintar" onPress={props.onBrush} />
+    <View testID={`trabajo-fila-${row.id}`} className="rounded-2xl border-[1.5px] border-outline/15 bg-surface px-3 py-2.5">
+      <View className="flex-row items-center gap-3">
+        <Text className="w-5 text-center font-mono text-[13px] font-bold text-on-surface-variant">{row.order}</Text>
+        <View className="h-3 w-8 rounded-full" style={{ backgroundColor: row.color }} />
+        <View className="flex-1"><Text numberOfLines={1} className="text-[15px] font-semibold text-on-surface">{row.name}</Text><Text className="font-mono text-[13px] text-on-surface-variant">{row.line}</Text></View>
+        {row.editable ? actions.icons : null}
+        <BrushButton testID={`trabajo-brocha-${row.id}`} label="Pintar" onPress={props.onBrush} />
+      </View>
+      {row.editable ? actions.panel : null}
     </View>
   );
 }
@@ -65,7 +74,7 @@ export function WorkLayersSheet(props: SheetProps) {
         <Text className="text-[12px] font-bold uppercase tracking-[1.5px] text-primary">{stages ? 'Partir la obra' : 'Qué se hace en cada calle'}</Text>
         <Text className="text-[22px] font-bold text-on-surface">{stages ? 'Etapas' : 'Trabajos'}</Text>
       </View>
-      {stages ? cards.map((card) => <StageCardView key={card.id} card={card} onBrush={() => props.onBrush({ kind: 'stage', id: card.id })} />) : workRowsOf(props.map).map((row) => <WorkRowView key={row.id} row={row} onBrush={() => props.onBrush({ kind: 'work', id: row.id })} />)}
+      {stages ? cards.map((card) => <StageCardView key={card.id} card={card} map={props.map} send={props.send} onBrush={() => props.onBrush({ kind: 'stage', id: card.id })} />) : workRowsOf(props.map).map((row) => <WorkRowView key={row.id} row={row} map={props.map} send={props.send} onBrush={() => props.onBrush({ kind: 'work', id: row.id })} />)}
       {stages
         ? <NewLabel testID="etapa" placeholder="Nueva etapa" onCreate={(name) => createdOrRefusal(props.send(workStageRequest(name), sendWorkStage))} />
         : <NewLabel testID="trabajo" placeholder="Agregar trabajo" colors={WORK_TAG_COLORS} onCreate={(name, color) => createdOrRefusal(props.send(workTagRequest(name, color), sendWorkTag))} />}

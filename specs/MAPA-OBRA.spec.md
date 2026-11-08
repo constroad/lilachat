@@ -1152,3 +1152,23 @@ en las dos vistas del detalle.
 controles suben lo que mide la barra (`controlsInset`).
 
 Los tres arreglos del APK van en la próxima OTA, que aprueba José.
+
+**Renombrar y borrar etapas y trabajos (Portal c1c35c58, pedido el 08/11 al escribir el tutorial 2).**
+Antes, quien escribía mal «Etapa 2» o creaba un trabajo de más se quedaba con él.
+- Cada tarjeta de «Etapas» y cada fila de «Trabajos» tiene «Renombrar» (lápiz) y «Borrar»
+  (papelera), en web (`LayerActions.tsx`) y APK (`useLayerActions`).
+- Un trabajo que es partida del contrato no se renombra ni se borra desde el mapa: no muestra las
+  acciones (`WorkRow.editable`).
+- Antes de enviar: nombre vacío, más de 60 letras o el nombre que ya tiene otra (sin mayúsculas ni
+  espacios, la misma regla de Portal).
+- Al borrar se pregunta qué pasa con sus tramos: «Sus tramos quedan sin etapa» o «quedan sin él».
+- Los rechazos de Portal se muestran debajo: un trabajo con avance registrado no se borra; una
+  etapa que usa el corte del mapa en el informe del servicio, tampoco.
+- Pedidos `work_stage_edit`, `work_tag_edit`, `work_stage_delete` y `work_tag_delete` →
+  `editar_etapa_de_obra`, `editar_etiqueta_de_obra`, `borrar_etapa_de_obra` y
+  `borrar_etiqueta_de_obra`. Motor `shared/src/workLayerEdit.ts`, con 6 tests; server con 4 tests nuevos.
+- «Borrados» también lista las etapas y los trabajos («Etapa «X»», «Trabajo «X»»). «Restaurar»
+  manda `stage_id` o `tag_id` y el server lo pasa como `etapaId` o `etiquetaId` (uno solo de los
+  cuatro). Vacío dice «No hay nada borrado en el mapa.».
+- **Sin verificar en vivo:** José tiene que aprobar las cuatro herramientas en Agentes. Después:
+  crear «QA etapa — borrar», renombrarla, borrarla y restaurarla en Test, y dejarla borrada.

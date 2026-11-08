@@ -14,8 +14,10 @@ describe('what was deleted from the map', () => {
     expect(deleted).toEqual({
       streets: [{ id: 's9', name: 'Jr. Las Flores', lengthM: 280.4, deletedAt: '2026-11-07T15:20:00.000Z', deletedBy: 'Ana Ruiz' }],
       scopes: [{ id: 'c7', streetId: 's1', fromM: 120, toM: 191, deletedAt: '2026-11-07T20:53:00.000Z', deletedBy: null }],
+      stages: [],
+      tags: [],
     });
-    expect(deletedWorkOf(undefined)).toEqual({ streets: [], scopes: [] });
+    expect(deletedWorkOf(undefined)).toEqual({ streets: [], scopes: [], stages: [], tags: [] });
   });
 
   it('a row per street and per stretch, newest first, with who and when in Lima', () => {
@@ -24,7 +26,21 @@ describe('what was deleted from the map', () => {
       { kind: 'scope', id: 'c7', title: 'Tramo 0+120 a 0+191', detail: 'Jr. Los Pinos · 71 m · borrado el 7 nov, 3:53 p. m.' },
       { kind: 'street', id: 's9', title: 'Jr. Las Flores', detail: '280 m · borrada el 7 nov, 10:20 a. m. por Ana Ruiz' },
     ]);
-    expect(NOTHING_DELETED).toBe('No hay calles ni tramos borrados.');
+    expect(NOTHING_DELETED).toBe('No hay nada borrado en el mapa.');
+  });
+
+  it('lists the stages and works deleted too, and restores each by its own key (Portal c1c35c58)', () => {
+    // Arrange
+    const more = { etapas: [{ etapaId: 'e1', nombre: 'Etapa 2', borradoEl: '2026-11-08T21:00:00.000Z', borradoPor: 'J zamora' }], etiquetas: [{ etiquetaId: 't1', nombre: 'Bacheo', color: '#0d9488', borradoEl: '2026-11-08T20:00:00.000Z' }] };
+    // Act
+    const rows = deletedRowsOf(deletedWorkOf(more), names);
+    // Assert
+    expect(rows).toEqual([
+      { kind: 'stage', id: 'e1', title: 'Etapa «Etapa 2»', detail: 'borrada el 8 nov, 4:00 p. m. por J zamora' },
+      { kind: 'tag', id: 't1', title: 'Trabajo «Bacheo»', detail: 'borrado el 8 nov, 3:00 p. m.' },
+    ]);
+    expect(workRestoreRequest({ kind: 'stage', id: 'e1' })).toEqual({ kind: 'work_restore', stage_id: 'e1', forms: expect.any(Number) });
+    expect(workRestoreRequest({ kind: 'tag', id: 't1' })).toEqual({ kind: 'work_restore', tag_id: 't1', forms: expect.any(Number) });
   });
 
   it('restores a street or a stretch, and asks the list with only the service', () => {

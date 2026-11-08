@@ -11,7 +11,8 @@ import { WORK_TAG_COLORS, workScopeDeleteRequest, workScopeRequest, type ScopeDr
  */
 export type StreetRef = { id: string; name: string; lengthM: number };
 export type StageCard = { id: string; name: string; streets: StreetRef[]; lengthM: number; areaM2: number; percent: number; line: string; days: string };
-export type WorkRow = { id: string; name: string; color: string; order: number; streets: number; lengthM: number; line: string };
+/** `editable`: a tag of the map; a contract item is not renamed nor deleted from it. */
+export type WorkRow = { id: string; name: string; color: string; order: number; streets: number; lengthM: number; line: string; editable: boolean };
 export type Brush = { kind: 'stage' | 'work'; id: string };
 /** A tap's stretches; «Deshacer» of a stretch the brush created deletes it (Portal keeps it in «Borrados»). */
 export type BrushRequest = WorkScopeRequest | WorkScopeDeleteRequest;
@@ -61,7 +62,7 @@ export function workRowsOf(map: WorkMap): WorkRow[] {
     const scopes = map.scopes.filter((scope) => scope.workIds.includes(work.id));
     const streets = new Set(scopes.map((scope) => scope.streetId)).size;
     const lengthM = lengthOf(scopes);
-    return { id: work.id, name: work.name, color: work.color, order: index + 1, streets, lengthM, line: `${countLabel(streets)} · ${metersLabel(lengthM)}` };
+    return { id: work.id, name: work.name, color: work.color, order: index + 1, streets, lengthM, line: `${countLabel(streets)} · ${metersLabel(lengthM)}`, editable: !work.partida };
   });
 }
 

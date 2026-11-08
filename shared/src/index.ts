@@ -209,3 +209,4 @@ export * from './placeSearch.js';
 export * from './tutorialScript.js';
 export * from './photoPhase.js';
 export * from './workPrimeCoat.js';
+export * from './workLayerEdit.js';

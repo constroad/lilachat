@@ -27,7 +27,7 @@ describe('DeletedWork', () => {
 
   it('says when there is nothing, and shows Portal\'s refusal', async () => {
     const { unmount } = render(<DeletedWork map={map} send={async () => ({ ok: true, message: 'x', data: { calles: [], tramos: [] } })} onClose={vi.fn()} />);
-    expect(await screen.findByText('No hay calles ni tramos borrados.')).toBeTruthy();
+    expect(await screen.findByText('No hay nada borrado en el mapa.')).toBeTruthy();
     unmount();
     render(<DeletedWork map={map} send={async () => ({ ok: false, message: 'Solo un admin con permiso de servicios.' })} onClose={vi.fn()} />);
     expect(await screen.findByRole('alert')).toHaveTextContent('Solo un admin con permiso de servicios.');

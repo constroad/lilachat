@@ -41,6 +41,32 @@ describe('WorkLayers', () => {
     expect(onBrush).toHaveBeenCalledWith(null);
   });
 
+  it('renames a stage and deletes a work after asking; Portal\'s refusal stays under it (Portal c1c35c58)', async () => {
+    // Arrange
+    const send = vi.fn<MapEditSend>(async (request) => (request.kind === 'work_tag_delete' ? { ok: false, message: 'Ese trabajo tiene avance registrado.' } : { ok: true, message: 'ok' }));
+    const { unmount } = render(<WorkLayers map={map} kind="stages" send={send} brush={null} onBrush={vi.fn()} onClose={vi.fn()} />);
+    // Act
+    fireEvent.click(screen.getByTestId('renombrar-etapa-e1'));
+    fireEvent.change(screen.getByTestId('nombre-etapa-e1'), { target: { value: 'Frente Norte' } });
+    fireEvent.click(screen.getByTestId('guardar-etapa-e1'));
+    // Assert
+    await waitFor(() => expect(send).toHaveBeenCalledWith({ kind: 'work_stage_edit', stage_id: 'e1', name: 'Frente Norte', forms: expect.any(Number) }, expect.any(Function)));
+    await waitFor(() => expect(screen.queryByTestId('nombre-etapa-e1')).toBeNull());
+    unmount();
+    render(<WorkLayers map={map} kind="works" send={send} brush={null} onBrush={vi.fn()} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('borrar-trabajo-base'));
+    expect(screen.getByTestId('trabajo-fila-base')).toHaveTextContent('¿Borrar el trabajo «Base»?');
+    fireEvent.click(screen.getByTestId('borrar-si-trabajo-base'));
+    expect(await screen.findByTestId('error-trabajo-base')).toHaveTextContent('Ese trabajo tiene avance registrado.');
+  });
+
+  it('a contract item is not renamed nor deleted from the map', () => {
+    const withItem: WorkMap = { ...map, works: [...map.works, { id: 'p1', name: 'Bacheo', color: '#0d9488', partida: true }] };
+    render(<WorkLayers map={withItem} kind="works" send={ok} brush={null} onBrush={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.getByTestId('renombrar-trabajo-base')).toBeTruthy();
+    expect(screen.queryByTestId('renombrar-trabajo-p1')).toBeNull();
+  });
+
   it('creates a stage right there', async () => {
     const send = vi.fn<MapEditSend>(ok);
     render(<WorkLayers map={map} kind="stages" send={send} brush={null} onBrush={vi.fn()} onClose={vi.fn()} />);

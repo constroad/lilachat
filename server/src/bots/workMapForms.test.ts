@@ -57,12 +57,40 @@ describe('stages and works (designs o-04 and o-05)', () => {
   });
 });
 
+describe('renaming and deleting a stage or a work (Portal c1c35c58)', () => {
+  it('renames a stage or a work; a work can change its color too', () => {
+    expect(workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_stage_edit', stage_id: 'e1', name: ' Frente 2 ' })!)).toMatchObject({ form: { id: 'editar_etapa_de_obra' }, context: { servicioId: SERVICE, etapaId: 'e1', nombre: 'Frente 2' } });
+    expect(workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_tag_edit', tag_id: 't1', name: 'Bacheo', color: '#0d9488' })!)).toMatchObject({ form: { id: 'editar_etiqueta_de_obra' }, context: { servicioId: SERVICE, etiquetaId: 't1', nombre: 'Bacheo', color: '#0d9488' } });
+    expect(workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_tag_edit', tag_id: 't1', name: 'Bacheo' })!).context).toEqual({ servicioId: SERVICE, etiquetaId: 't1', nombre: 'Bacheo' });
+  });
+
+  it('refuses a rename without its id or its name, or with a bad color', () => {
+    expect(workMapFormInputOf({ kind: 'work_stage_edit', name: 'Frente 2' })).toBeNull();
+    expect(workMapFormInputOf({ kind: 'work_stage_edit', stage_id: 'e1', name: ' ' })).toBeNull();
+    expect(workMapFormInputOf({ kind: 'work_tag_edit', tag_id: 't1', name: 'Bacheo', color: 'teal' })).toBeNull();
+  });
+
+  it('deletes one by its id', () => {
+    expect(workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_stage_delete', stage_id: 'e1' })!)).toMatchObject({ form: { id: 'borrar_etapa_de_obra' }, context: { servicioId: SERVICE, etapaId: 'e1' } });
+    expect(workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_tag_delete', tag_id: 't1' })!)).toMatchObject({ form: { id: 'borrar_etiqueta_de_obra' }, context: { servicioId: SERVICE, etiquetaId: 't1' } });
+    expect(workMapFormInputOf({ kind: 'work_tag_delete' })).toBeNull();
+    expect(isWorkMapFormKind('work_stage_delete')).toBe(true);
+    expect(isWorkMapFormKind('work_tag_edit')).toBe(true);
+  });
+});
+
 describe('what was deleted (admins restore it)', () => {
   it('restores a street or a stretch, one of the two', () => {
     expect(workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_restore', street_id: 'st-1' })!).context).toEqual({ servicioId: SERVICE, calleId: 'st-1' });
     expect(workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_restore', scope_id: 'sc-9' })!).context).toEqual({ servicioId: SERVICE, tramoId: 'sc-9' });
     expect(workMapFormInputOf({ kind: 'work_restore' })).toBeNull();
     expect(workMapFormInputOf({ kind: 'work_restore', street_id: 'st-1', scope_id: 'sc-9' })).toBeNull();
+  });
+
+  it('restores a stage or a work too, still one of the four', () => {
+    expect(workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_restore', stage_id: 'e1' })!).context).toEqual({ servicioId: SERVICE, etapaId: 'e1' });
+    expect(workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_restore', tag_id: 't1' })!).context).toEqual({ servicioId: SERVICE, etiquetaId: 't1' });
+    expect(workMapFormInputOf({ kind: 'work_restore', stage_id: 'e1', tag_id: 't1' })).toBeNull();
   });
 
   it('the list of what was deleted asks only for the service', () => {

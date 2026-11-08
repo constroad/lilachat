@@ -46,8 +46,9 @@ describe('stageCardsOf', () => {
 describe('workRowsOf', () => {
   it('numbers the works and says on how many streets and metres each one goes', () => {
     expect(workRowsOf(MAP)).toEqual([
-      { id: 'base', name: 'Base', color: '#d97706', order: 1, streets: 2, lengthM: 300, line: '2 calles · 300 m' },
-      { id: 'asf', name: 'Asfalto', color: '#111827', order: 2, streets: 1, lengthM: 200, line: '1 calle · 200 m' },
+      { id: 'base', name: 'Base', color: '#d97706', order: 1, streets: 2, lengthM: 300, line: '2 calles · 300 m', editable: true },
+      // A contract item is not renamed nor deleted from the map (Portal c1c35c58).
+      { id: 'asf', name: 'Asfalto', color: '#111827', order: 2, streets: 1, lengthM: 200, line: '1 calle · 200 m', editable: false },
     ]);
   });
 });

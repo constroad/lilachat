@@ -22,12 +22,18 @@ export type WorkMapFormInput =
   | { kind: 'work_scope_delete'; scopeId: string }
   | { kind: 'work_stage'; name: string }
   | { kind: 'work_tag'; name: string; color: string }
-  | { kind: 'work_restore'; streetId: string | null; scopeId: string | null }
+  | { kind: 'work_stage_edit'; stageId: string; name: string }
+  | { kind: 'work_tag_edit'; tagId: string; name: string; color: string | null }
+  | { kind: 'work_stage_delete'; stageId: string }
+  | { kind: 'work_tag_delete'; tagId: string }
+  | { kind: 'work_restore'; target: RestoreTarget; id: string }
   | { kind: 'work_deleted' }
   | { kind: 'work_progress_link'; stageId: string | null; until: string | null; photos: boolean }
   | { kind: 'work_import'; mediaId: string; entryId: string | null }
   | { kind: 'work_map_in_report'; include: boolean; stageId: string | null; until: string | null }
   | { kind: 'work_progress_pdf'; stageId: string | null; until: string | null; format: 'cliente' | 'plano'; size: 'A3' | 'A1' | null; workIds: string[] | null };
+/** What `restaurar_de_obra` brings back: exactly one of the four (Portal c1c35c58). */
+type RestoreTarget = 'calleId' | 'tramoId' | 'etapaId' | 'etiquetaId';
 export type WorkMapFormContext = Record<string, string | number | boolean | string[] | null>;
 
 const idOf = (raw: unknown): string => (typeof raw === 'string' && raw.trim().length <= ID_MAX ? raw.trim() : '');
@@ -66,9 +72,24 @@ function scopeInputOf(raw: Record<string, unknown>): WorkScopeInput | null {
   return { kind: 'work_scope', streetId, scopeId: scopeId || null, fromM, toM, ...extras, entryId: scopeId ? null : entryId };
 }
 
+const RESTORE_KEYS: Array<[string, RestoreTarget]> = [['street_id', 'calleId'], ['scope_id', 'tramoId'], ['stage_id', 'etapaId'], ['tag_id', 'etiquetaId']];
+
 function restoreInputOf(raw: Record<string, unknown>): WorkMapFormInput | null {
-  const [streetId, scopeId] = [idOf(raw.street_id), idOf(raw.scope_id)];
-  return Boolean(streetId) !== Boolean(scopeId) ? { kind: 'work_restore', streetId: streetId || null, scopeId: scopeId || null } : null;
+  const sent = RESTORE_KEYS.flatMap(([key, target]) => (idOf(raw[key]) ? [{ target, id: idOf(raw[key]) }] : []));
+  return sent.length === 1 ? { kind: 'work_restore', ...sent[0]! } : null;
+}
+
+/** Renaming a stage or a work (Portal c1c35c58): its id and the new name; a work may change its color. */
+function editInputOf(raw: Record<string, unknown>): WorkMapFormInput | null {
+  const name = labelOf(raw.name);
+  if (raw.kind === 'work_stage_edit') return idOf(raw.stage_id) && name ? { kind: 'work_stage_edit', stageId: idOf(raw.stage_id), name } : null;
+  const color = raw.color === undefined ? null : typeof raw.color === 'string' && HEX_COLOR.test(raw.color) ? raw.color : '';
+  return idOf(raw.tag_id) && name && color !== '' ? { kind: 'work_tag_edit', tagId: idOf(raw.tag_id), name, color } : null;
+}
+
+function deleteInputOf(raw: Record<string, unknown>): WorkMapFormInput | null {
+  if (raw.kind === 'work_stage_delete') return idOf(raw.stage_id) ? { kind: 'work_stage_delete', stageId: idOf(raw.stage_id) } : null;
+  return idOf(raw.tag_id) ? { kind: 'work_tag_delete', tagId: idOf(raw.tag_id) } : null;
 }
 
 function tagInputOf(raw: Record<string, unknown>): WorkMapFormInput | null {
@@ -120,6 +141,8 @@ export function workMapFormInputOf(raw: Record<string, unknown>): WorkMapFormInp
   if (raw.kind === 'work_stage') return labelOf(raw.name) ? { kind: 'work_stage', name: labelOf(raw.name) } : null;
   if (raw.kind === 'work_tag') return tagInputOf(raw);
   if (raw.kind === 'work_restore') return restoreInputOf(raw);
+  if (raw.kind === 'work_stage_edit' || raw.kind === 'work_tag_edit') return editInputOf(raw);
+  if (raw.kind === 'work_stage_delete' || raw.kind === 'work_tag_delete') return deleteInputOf(raw);
   if (raw.kind === 'work_deleted') return { kind: 'work_deleted' };
   if (raw.kind === 'work_progress_link') return progressLinkInputOf(raw);
   if (raw.kind === 'work_import') return importInputOf(raw);
@@ -129,8 +152,8 @@ export function workMapFormInputOf(raw: Record<string, unknown>): WorkMapFormInp
 }
 
 /** The kinds the door opens; restore and the deleted list since agentes checks their service (890b02e). */
-export const isWorkMapFormKind = (kind: unknown): boolean =>
-  kind === 'work_scope' || kind === 'work_scope_delete' || kind === 'work_stage' || kind === 'work_tag' || kind === 'work_restore' || kind === 'work_deleted' || kind === 'work_progress_link' || kind === 'work_import' || kind === 'work_progress_pdf' || kind === 'work_map_in_report';
+const FORM_KINDS = new Set(['work_scope', 'work_scope_delete', 'work_stage', 'work_tag', 'work_stage_edit', 'work_tag_edit', 'work_stage_delete', 'work_tag_delete', 'work_restore', 'work_deleted', 'work_progress_link', 'work_import', 'work_progress_pdf', 'work_map_in_report']);
+export const isWorkMapFormKind = (kind: unknown): boolean => typeof kind === 'string' && FORM_KINDS.has(kind);
 
 /** Narrows the door's union to these kinds. */
 export const isWorkMapFormInput = (input: { kind: string }): input is WorkMapFormInput => isWorkMapFormKind(input.kind);
@@ -153,7 +176,7 @@ function scopeContext(serviceId: string, input: WorkScopeInput): WorkMapFormCont
 }
 
 const restoreContext = (serviceId: string, input: Extract<WorkMapFormInput, { kind: 'work_restore' }>): WorkMapFormContext =>
-  ({ servicioId: serviceId, ...(input.streetId ? { calleId: input.streetId } : { tramoId: input.scopeId ?? '' }) });
+  ({ servicioId: serviceId, [input.target]: input.id });
 
 /** The form and the context Portal's tool receives; the service always comes from the door. */
 export function workMapFormPrepared(serviceId: string, input: WorkMapFormInput): { form: AppForm; context: WorkMapFormContext } {
@@ -162,6 +185,10 @@ export function workMapFormPrepared(serviceId: string, input: WorkMapFormInput):
     case 'work_scope_delete': return { form: formOf('borrar_tramo_de_obra', 'Borrar tramo', 'Borrar'), context: { servicioId: serviceId, tramoId: input.scopeId } };
     case 'work_stage': return { form: formOf('crear_etapa_de_obra', 'Crear etapa', 'Crear'), context: { servicioId: serviceId, nombre: input.name } };
     case 'work_tag': return { form: formOf('crear_etiqueta_de_obra', 'Crear trabajo', 'Crear'), context: { servicioId: serviceId, nombre: input.name, color: input.color } };
+    case 'work_stage_edit': return { form: formOf('editar_etapa_de_obra', 'Renombrar etapa', 'Guardar'), context: { servicioId: serviceId, etapaId: input.stageId, nombre: input.name } };
+    case 'work_tag_edit': return { form: formOf('editar_etiqueta_de_obra', 'Renombrar trabajo', 'Guardar'), context: { servicioId: serviceId, etiquetaId: input.tagId, nombre: input.name, ...(input.color ? { color: input.color } : {}) } };
+    case 'work_stage_delete': return { form: formOf('borrar_etapa_de_obra', 'Borrar etapa', 'Borrar'), context: { servicioId: serviceId, etapaId: input.stageId } };
+    case 'work_tag_delete': return { form: formOf('borrar_etiqueta_de_obra', 'Borrar trabajo', 'Borrar'), context: { servicioId: serviceId, etiquetaId: input.tagId } };
     case 'work_restore': return { form: formOf('restaurar_de_obra', 'Restaurar', 'Restaurar'), context: restoreContext(serviceId, input) };
     case 'work_deleted': return { form: formOf('borrados_de_obra', 'Lo borrado del mapa', 'Ver'), context: { servicioId: serviceId } };
     case 'work_progress_pdf': return { form: formOf('pdf_de_avance_de_obra', 'PDF del avance', 'Generar'), context: { servicioId: serviceId, ...(input.stageId ? { etapaId: input.stageId } : {}), ...(input.until ? { hasta: input.until } : {}), formato: input.format, ...(input.size ? { tamano: input.size } : {}), ...(input.workIds ? { trabajoIds: input.workIds } : {}) } };

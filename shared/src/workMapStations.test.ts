@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WorkMapStreet } from './workMap.js';
-import { STATION_STEP_M, stationMarkCollection, stationMarksOf } from './workMapStations.js';
+import { BARE_COLOR, bareLinesOf, STATION_STEP_M, stationMarkCollection, stationMarksOf } from './workMapStations.js';
 
 /** Audit 08/11 item 10: the designs write the stations on the road (0+000, 0+100…), not only numbered pins. */
 const M_PER_DEG_LNG = 111_195 * Math.cos((12 * Math.PI) / 180);
@@ -28,5 +28,19 @@ describe('stationMarksOf', () => {
   it('as points MapLibre reads', () => {
     const collection = stationMarkCollection(stationMarksOf([street('a', 120)]));
     expect(collection.features[0]).toEqual({ type: 'Feature', properties: { label: '0+000' }, geometry: { type: 'Point', coordinates: [-77, -12] } });
+  });
+});
+
+describe('bareLinesOf: the part of a street no stretch covers (audit item 15)', () => {
+  const map = { streets: [street('a', 200), street('b', 100)], scopes: [{ id: 'c', streetId: 'a', fromM: 0, toM: 120, workIds: ['w'] }] };
+
+  it('draws what is left of a street with stretches; a street without any is drawn whole already', () => {
+    const lines = bareLinesOf(map);
+    expect(lines.map((line) => [line.streetId, line.fromM, line.toM])).toEqual([['a', 120, 200]]);
+    expect(lines[0].color).toBe(BARE_COLOR);
+  });
+
+  it('a street covered end to end leaves nothing', () => {
+    expect(bareLinesOf({ ...map, streets: [street('a', 120)] })).toEqual([]);
   });
 });

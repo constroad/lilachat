@@ -1,4 +1,4 @@
-import { sliceLine, stationLabel, type WorkMapStreet } from './workMap.js';
+import { sliceLine, stationLabel, type WorkMap, type WorkMapLine, type WorkMapStreet } from './workMap.js';
 
 /**
  * The stations written on the road (audit 08/11 item 10; designs o-01, o-14, o-15): «0+000», one
@@ -40,3 +40,29 @@ export const STATION_TEXT_PAINT = { 'text-color': '#334155', 'text-halo-color': 
 /** The marks of the streets the view shows (a stage or work filter hides the others). */
 export const visibleStationMarks = (streets: WorkMapStreet[], shownIds: string[]): StationMark[] =>
   stationMarksOf(streets.filter((street) => shownIds.includes(street.id)));
+
+/** The part of a street no stretch covers: faint, so the street reads whole without counting as pending. */
+export const BARE_COLOR = '#cbd5e1';
+
+function gapsOf(street: WorkMapStreet, covered: Array<[number, number]>): Array<[number, number]> {
+  const gaps: Array<[number, number]> = [];
+  let at = 0;
+  for (const [from, to] of [...covered].sort((left, right) => left[0] - right[0])) {
+    if (from > at + 1) gaps.push([at, from]);
+    at = Math.max(at, to);
+  }
+  if (street.lengthM > at + 1) gaps.push([at, street.lengthM]);
+  return gaps;
+}
+
+/** Only streets with stretches: one without any is already drawn whole as pending. */
+export function bareLinesOf(map: Pick<WorkMap, 'streets' | 'scopes'>): WorkMapLine[] {
+  return map.streets.flatMap((street) => {
+    const covered = map.scopes.filter((scope) => scope.streetId === street.id).map((scope): [number, number] => [scope.fromM, scope.toM]);
+    if (!covered.length) return [];
+    return gapsOf(street, covered).flatMap(([fromM, toM]) => {
+      const coordinates = sliceLine(street.line, fromM, toM).map((point): [number, number] => [point.lng, point.lat]);
+      return coordinates.length >= 2 ? [{ streetId: street.id, color: BARE_COLOR, coordinates, fromM, toM }] : [];
+    });
+  });
+}

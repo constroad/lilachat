@@ -838,3 +838,9 @@ Solo salen en las calles que muestra la vista.
 
 **«Hasta dónde» con su progresiva (auditoría, punto 9).** El campo dice «Hasta dónde (m)» y abajo
 muestra «Progresiva 0+240». Así se lee igual que «Punto de partida 0+120» (web y APK).
+
+**Calle sin tramo (auditoría, punto 15, en parte).** La captura de prod mostró «0+191» flotando: la
+parte de la calle sin tramo (0+120 a 0+191) no se dibujaba. `bareLinesOf`, con 2 tests, la pinta
+como línea fina gris clara en la web y en el APK. Es una calle que no cuenta como pendiente. Una
+calle sin ningún tramo se sigue dibujando entera como pendiente, igual que antes. Queda sin hacer
+el estado de cada tramo en «Ver tramos».

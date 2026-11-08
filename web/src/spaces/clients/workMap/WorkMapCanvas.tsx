@@ -10,12 +10,15 @@ const PLANNED = 'work-map-planned';
 const DONE = 'work-map-done';
 const STRETCH = 'work-map-stretch';
 const STATIONS = 'work-map-stations';
+const BARE = 'work-map-bare';
 const NO_STATIONS: StationMark[] = [];
 const FIT = { padding: 56, maxZoom: 17, duration: 0 };
 const LINE_ROUND = { 'line-cap': 'round', 'line-join': 'round' } as const;
 const NO_PINS: DischargePin[] = [];
 
 function addWorkLayers(map: maplibregl.Map) {
+  map.addSource(BARE, { type: 'geojson', data: workMapCollection([]) });
+  map.addLayer({ id: BARE, type: 'line', source: BARE, layout: LINE_ROUND, paint: { 'line-color': ['get', 'color'], 'line-width': 4 } });
   map.addSource(PLANNED, { type: 'geojson', data: workMapCollection([]) });
   map.addSource(DONE, { type: 'geojson', data: workMapCollection([]) });
   map.addLayer({ id: PLANNED, type: 'line', source: PLANNED, layout: LINE_ROUND, paint: { 'line-color': WORK_MAP_PLANNED_COLOR, 'line-width': 5, 'line-dasharray': [1.2, 1.4] } });
@@ -68,7 +71,7 @@ function roadsAt(map: maplibregl.Map, event: maplibregl.MapMouseEvent): TapFeatu
 
 /** The streets of the work over a literal map (José 06/11). Lazy: its library weighs more than the chat. */
 /** `onTap`: drawing a street (design o-02), each tap is a bend; the map also offers «ubicarme» when there is nothing to frame. */
-export default function WorkMapCanvas(props: { view: WorkMapView; expanded: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void }) {
+export default function WorkMapCanvas(props: { view: WorkMapView; expanded: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void }) {
   const { view, expanded } = props;
   const holder = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -110,6 +113,9 @@ export default function WorkMapCanvas(props: { view: WorkMapView; expanded: bool
   useEffect(() => {
     if (ready) (map.current?.getSource(STRETCH) as maplibregl.GeoJSONSource | undefined)?.setData(workMapCollection(props.stretches ?? []));
   }, [ready, props.stretches]);
+  useEffect(() => {
+    if (ready) (map.current?.getSource(BARE) as maplibregl.GeoJSONSource | undefined)?.setData(workMapCollection(props.bare ?? []));
+  }, [ready, props.bare]);
   useEffect(() => {
     if (ready) (map.current?.getSource(STATIONS) as maplibregl.GeoJSONSource | undefined)?.setData(stationMarkCollection(props.stations ?? NO_STATIONS));
   }, [ready, props.stations]);

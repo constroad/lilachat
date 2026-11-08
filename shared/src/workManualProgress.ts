@@ -141,3 +141,13 @@ export function manualEndFromGps(draft: ManualProgressDraft, line: WorkMapPoint[
   const toM = Math.round(Math.min(projected.measureM, lengthM));
   return toM > draft.fromM ? { draft: { ...draft, toM } } : { problem: GPS_BEHIND };
 }
+
+/** Where «Registrar avance» on the map leads (o-01): the one street with work, a choice, or nowhere yet. */
+export type ProgressTarget = { kind: 'none' } | { kind: 'street'; streetId: string } | { kind: 'choose'; streets: Array<{ id: string; name: string }> };
+
+export function progressTargetOf(map: Pick<WorkMap, 'streets' | 'scopes'>): ProgressTarget {
+  const worked = new Set(map.scopes.filter((scope) => scope.workIds.length > 0).map((scope) => scope.streetId));
+  const streets = map.streets.filter((street) => worked.has(street.id)).map(({ id, name }) => ({ id, name }));
+  if (streets.length === 0) return { kind: 'none' };
+  return streets.length === 1 ? { kind: 'street', streetId: streets[0]!.id } : { kind: 'choose', streets };
+}

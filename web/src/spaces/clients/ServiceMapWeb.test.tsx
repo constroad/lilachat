@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ChannelLinks, UnitDischarge, WorkMap, WorkMapView } from '@lilachat/shared';
+import type { ChannelLinks, MapEditSend, UnitDischarge, WorkMap, WorkMapView } from '@lilachat/shared';
 import { ServiceMapWeb } from './ServiceMapWeb';
 import type { ProgressSend } from './workMap/WorkMapDischarges';
 import type { StreetSend } from './workMap/workProgressSender';
@@ -36,7 +36,7 @@ const workMap: WorkMap = {
   works: [{ id: 'base', name: 'Base', color: '#c08a1e' }, { id: 'asfalto', name: 'Asfaltado', color: '#111111' }],
   stages: [{ id: 'e1', name: 'Etapa 1' }, { id: 'e2', name: 'Etapa 2' }],
 };
-const showMap = (map: ChannelLinks['map'] = vi.fn(async () => ({ ok: true as const, url })), extra: { drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend; drawStreet?: StreetSend; deleteStreet?: StreetDeleteSend } = {}) => render(<ServiceMapWeb jwt="jwt-1" links={linksWith(map)} target={target} title="Pavimentación Los Olivos" {...extra} />);
+const showMap = (map: ChannelLinks['map'] = vi.fn(async () => ({ ok: true as const, url })), extra: { drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend; drawStreet?: StreetSend; deleteStreet?: StreetDeleteSend; editMap?: MapEditSend } = {}) => render(<ServiceMapWeb jwt="jwt-1" links={linksWith(map)} target={target} title="Pavimentación Los Olivos" {...extra} />);
 
 /** A spot on Av. Los Olivos, so many meters from its start (it runs east along -12). */
 const METERS_PER_DEGREE_LNG = 111_195 * Math.cos((12 * Math.PI) / 180);
@@ -352,6 +352,22 @@ describe('ServiceMapWeb', () => {
     fireEvent.click(screen.getByTestId('borrar-calle-si-s1'));
     expect(await screen.findByRole('alert')).toHaveTextContent('La calle tiene avance registrado.');
     expect(screen.getByTestId('mapa-calle-s1')).toBeInTheDocument();
+  });
+
+  it('«Registrar avance» on the map asks which street and opens its form there (design o-01)', async () => {
+    const editMap: MapEditSend = vi.fn();
+    showMap(undefined, { editMap });
+    fireEvent.click(await screen.findByTestId('mapa-registrar-avance'));
+    expect(screen.getByTestId('avance-elegir-calle')).toHaveTextContent('¿En qué calle?');
+    fireEvent.click(screen.getByTestId('avance-calle-s2'));
+    expect(await screen.findByTestId('avance-manual')).toBeInTheDocument();
+    expect(screen.queryByTestId('avance-elegir-calle')).toBeNull();
+  });
+
+  it('without the map tools there is no «Registrar avance»', async () => {
+    showMap();
+    await screen.findByTestId('mapa-servicio');
+    expect(screen.queryByTestId('mapa-registrar-avance')).toBeNull();
   });
 
   it('without a sender there is no delete button', async () => {

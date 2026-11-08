@@ -1,8 +1,9 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
-import { ArchiveRestore, Download, ExternalLink, Maximize2, Plus, Share2, X } from 'lucide-react-native';
-import { type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StretchRange, type UnitDischarge, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { ArchiveRestore, ChevronRight, Download, ExternalLink, Maximize2, Plus, Share2, TrendingUp, X } from 'lucide-react-native';
+import { progressTargetOf, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StretchRange, type UnitDischarge, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
+import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
 import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
@@ -44,6 +45,24 @@ function useDischarges(map: WorkMap, discharges: UnitDischarge[]) {
 }
 
 type BoardProps = { map: WorkMap; pageUrl: string; height: number; title: string; serviceId: string; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» and «Restaurar» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<PhotoAsset>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<TraceFile>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport };
+
+/** «¿En qué calle?» when «Registrar avance» could go to several streets. */
+function StreetPick(props: { target: ProgressTarget | null; onPick: (streetId: string) => void; onClose: () => void }) {
+  const colors = useColores();
+  const streets = props.target?.kind === 'choose' ? props.target.streets : [];
+  return (
+    <Sheet visible={streets.length > 0} onClose={props.onClose} testID="avance-elegir-calle" className="gap-2 px-4 pt-2">
+      <Text className="text-[12px] font-bold uppercase tracking-[1.5px] text-primary">Registrar avance</Text>
+      <Text className="mb-1 text-[22px] font-bold text-on-surface">¿En qué calle?</Text>
+      {streets.map((street) => (
+        <Pressable key={street.id} testID={`avance-calle-${street.id}`} onPress={() => props.onPick(street.id)} className="min-h-[56px] flex-row items-center justify-between rounded-xl border border-outline/20 bg-surface px-4">
+          <Text className="flex-1 text-[16px] font-semibold text-on-surface">{street.name}</Text>
+          <ChevronRight size={18} color={colors['on-surface-variant']} />
+        </Pressable>
+      ))}
+    </Sheet>
+  );
+}
 
 function TitleRow(props: { pageUrl: string; onExport: () => void; onShare: () => void; onDraw?: () => void; onDeleted?: () => void }) {
   const colors = useColores();
@@ -89,6 +108,10 @@ export function WorkMapBoard(props: BoardProps) {
   const [side, setSide] = useState<'export' | 'share' | null>(null);
   const [streetId, setStreetId] = useState<string | null>(null);
   const [seeingDeleted, setSeeingDeleted] = useState(false);
+  const [recordingStart, setRecordingStart] = useState(false);
+  const [choosing, setChoosing] = useState<ProgressTarget | null>(null);
+  const target = useMemo(() => progressTargetOf(map), [map]);
+  const openStreet = (id: string | null, record = false) => { setChoosing(null); setRecordingStart(record); setStreetId(id); };
   const view = useMemo(() => workMapView(map, filter), [map, filter]);
   const groups = useMemo(() => workMapStageGroups(map, view), [map, view]);
   const pista = useDischarges(map, props.discharges ?? NO_DISCHARGES);
@@ -96,6 +119,12 @@ export function WorkMapBoard(props: BoardProps) {
   return (
     <View testID="mapa-servicio" className="gap-3">
       <TitleRow pageUrl={pageUrl} onExport={() => setSide('export')} onShare={() => setSide('share')} onDraw={props.onDraw} onDeleted={props.admin && props.editMap ? () => setSeeingDeleted(true) : undefined} />
+      {props.editMap && target.kind !== 'none' ? (
+        <Pressable testID="mapa-registrar-avance" onPress={() => (target.kind === 'street' ? openStreet(target.streetId, true) : setChoosing(target))} className="min-h-[52px] flex-row items-center justify-center gap-2 rounded-xl bg-primary">
+          <TrendingUp size={18} color={colors['on-primary']} />
+          <Text className="text-[16px] font-semibold text-on-primary">Registrar avance</Text>
+        </Pressable>
+      ) : null}
       <WorkMapFilters map={map} view={view} filter={filter} onFilter={setFilter} />
       <View className="-mx-4 overflow-hidden bg-surface-variant" style={{ height }}>
         <View pointerEvents="none" className="absolute inset-0">
@@ -106,10 +135,11 @@ export function WorkMapBoard(props: BoardProps) {
           <Maximize2 size={18} color={colors['on-surface']} />
         </Pressable>
       </View>
-      <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} deleteStreet={props.deleteStreet} onOpenStreet={setStreetId} />
+      <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} deleteStreet={props.deleteStreet} onOpenStreet={(id) => openStreet(id)} />
       <FullMap view={view} open={wide} onClose={() => setWide(false)} pins={pista.pins} stretches={pista.stretches} />
       {props.editMap ? <DeletedWork open={seeingDeleted} map={map} send={props.editMap} onClose={() => setSeeingDeleted(false)} /> : null}
-      <StreetScopes map={map} streetId={streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} onClose={() => setStreetId(null)} />
+      <StreetScopes map={map} streetId={streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} startRecording={recordingStart} onClose={() => openStreet(null)} />
+      <StreetPick target={choosing} onPick={(id) => openStreet(id, true)} onClose={() => setChoosing(null)} />
       <WorkMapExport open={side === 'export'} map={map} filter={filter} onFilter={setFilter} title={props.title} pageUrl={pageUrl} send={props.editMap} uploadTrace={props.uploadTrace} onClose={() => setSide(null)} />
       <ShareProgress open={side === 'share'} map={map} filter={filter} onFilter={setFilter} send={props.editMap} mapInReport={props.mapInReport} onClose={() => setSide(null)} />
     </View>

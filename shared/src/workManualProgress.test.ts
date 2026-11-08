@@ -5,7 +5,7 @@ import type { CommandOutcome } from './botCommands.js';
 import type { WorkProgressDeps } from './workProgressSend.js';
 import { lineLengthM, workMapOf, type WorkMap } from './workMap.js';
 import type { MapEditSend } from './workScopeDraft.js';
-import { GPS_BEHIND, GPS_OFF_STREET, GPS_WEAK, manualEndFromGps, addManualPhoto, manualPhotoOf, MANUAL_PHOTO_UNLINKED, runManualProgress, MANUAL_FAILED, MANUAL_NO_LENGTH, MANUAL_PAST_STREET, MANUAL_PHOTOS_MAX, MANUAL_PICK_WORK, MANUAL_SENT, manualDraftFor, manualFigures, manualProblem, manualStartOf, nudgeManualEnd, pickManualWork, sendWorkManualProgress, workManualProgressRequest } from './workManualProgress.js';
+import { GPS_BEHIND, GPS_OFF_STREET, GPS_WEAK, manualEndFromGps, addManualPhoto, manualPhotoOf, MANUAL_PHOTO_UNLINKED, runManualProgress, MANUAL_FAILED, MANUAL_NO_LENGTH, MANUAL_PAST_STREET, MANUAL_PHOTOS_MAX, MANUAL_PICK_WORK, MANUAL_SENT, manualDraftFor, manualFigures, manualProblem, manualStartOf, nudgeManualEnd, pickManualWork, sendWorkManualProgress, workManualProgressRequest, progressTargetOf } from './workManualProgress.js';
 
 /** Design o-06 (Portal 57f06ec7): progress marked by hand, without trucks. */
 const line = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.997 }];
@@ -161,5 +161,26 @@ describe('manual progress: «Mi GPS»', () => {
     const far = manualEndFromGps(draft, street.line, street.lengthM, at(240, 0.001));
     expect('problem' in far && far.problem).toBe(GPS_OFF_STREET(111));
     expect(manualEndFromGps(draft, street.line, street.lengthM, at(60))).toEqual({ problem: GPS_BEHIND });
+  });
+});
+
+describe('progressTargetOf («Registrar avance» on the map, o-01)', () => {
+  const street = (id: string, name: string) => ({ id, name, line: [], lengthM: 100 });
+  const scope = (id: string, streetId: string) => ({ id, streetId, fromM: 0, toM: 100, workIds: ['w1'] });
+  const base = { progress: [], works: [{ id: 'w1', name: 'Base', color: '#a60' }], stages: [] };
+
+  it('opens the only street with stretches straight away', () => {
+    const map = { ...base, streets: [street('s1', 'Jr. Los Pinos'), street('s2', 'Psje. Sol')], scopes: [scope('k1', 's1')] };
+    expect(progressTargetOf(map)).toEqual({ kind: 'street', streetId: 's1' });
+  });
+
+  it('asks which street when several carry work, in the map order', () => {
+    const map = { ...base, streets: [street('s1', 'Jr. Los Pinos'), street('s2', 'Psje. Sol')], scopes: [scope('k2', 's2'), scope('k1', 's1'), scope('k3', 's1')] };
+    expect(progressTargetOf(map)).toEqual({ kind: 'choose', streets: [{ id: 's1', name: 'Jr. Los Pinos' }, { id: 's2', name: 'Psje. Sol' }] });
+  });
+
+  it('offers nothing while no street has a stretch with a work', () => {
+    const map = { ...base, streets: [street('s1', 'Jr. Los Pinos')], scopes: [{ ...scope('k1', 's1'), workIds: [] }] };
+    expect(progressTargetOf(map)).toEqual({ kind: 'none' });
   });
 });

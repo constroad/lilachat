@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { ArrowLeft, Pencil, Plus, Trash2, TrendingUp } from 'lucide-react-native';
 import { type ManualPhotoUpload, metersLabel, scopeDraftFor, sendWorkScopeDelete, streetDetailOf, workScopeDeleteRequest, type MapEditSend, type ScopeDraft, type StreetDetail, type StreetLayer, type StreetScopeRow, type WorkMap } from '@lilachat/shared';
@@ -100,12 +100,13 @@ function StreetBody(props: BodyProps) {
 }
 
 /** Design o-03 on the phone: a sheet with the street, what each work did on it, and its stretches to add, edit or delete. */
-export function StreetScopes(props: { map: WorkMap; streetId: string | null; send?: MapEditSend; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<PhotoAsset>; onClose: () => void }) {
+export function StreetScopes(props: { map: WorkMap; streetId: string | null; send?: MapEditSend; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<PhotoAsset>; /** «Registrar avance» from the map opens the form straight away. */ startRecording?: boolean; onClose: () => void }) {
   const colors = useColores();
   const margins = useMargenes();
   const detail = useMemo(() => (props.streetId ? streetDetailOf(props.map, props.streetId) : null), [props.map, props.streetId]);
   const [editing, setEditing] = useState<Editing>(null);
   const [recording, setRecording] = useState(false);
+  useEffect(() => setRecording(Boolean(props.streetId && props.startRecording)), [props.streetId, props.startRecording]);
   const close = () => { setEditing(null); setRecording(false); props.onClose(); };
   return (
     <Modal visible={Boolean(props.streetId)} animationType="slide" onRequestClose={() => { if (!editing && !recording) close(); }}>

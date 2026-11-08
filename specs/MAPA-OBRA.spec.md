@@ -745,3 +745,10 @@ el scratchpad de la sesión (`a01-…` a `a13-…`). Lo que falta, por gravedad:
 **Defectos de esta ronda ya corregidos:** título partido y hoja «Exportar» sin scroll (APK,
 1ba32fa, falta el OTA), la web caída al abrir el mapa tras un deploy (79ce259), el import bloqueado
 por el boleto (90748f1 y agentes dd1baa7).
+
+### «Registrar avance» en el mapa (o-01, punto 1 de la auditoría del 08/11)
+
+- Botón principal en la barra del mapa (web) y a todo el ancho bajo el título (APK), solo con las
+  herramientas del mapa. `progressTargetOf` (shared) decide: con una sola calle con tramos de
+  trabajo abre su formulario de avance directo; con varias pregunta «¿En qué calle?»; sin ninguna
+  el botón no sale. La calle abre con «Registrar avance» ya desplegado (`startRecording`).

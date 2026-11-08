@@ -67,10 +67,10 @@ function ScopeCard(props: { row: StreetScopeRow; send?: MapEditSend; onEdit: () 
 type Editing = { draft: ScopeDraft; scopeId?: string } | null;
 
 /** Design o-03: a street, what each work did on it, and its stretches to add, edit or delete (José 07/11: everyone updates). */
-export function StreetScopes(props: { map: WorkMap; streetId: string; send?: MapEditSend; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<File>; onBack: () => void }) {
+export function StreetScopes(props: { map: WorkMap; streetId: string; send?: MapEditSend; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<File>; /** «Registrar avance» from the map opens the form straight away. */ startRecording?: boolean; onBack: () => void }) {
   const detail = useMemo(() => streetDetailOf(props.map, props.streetId), [props.map, props.streetId]);
   const [editing, setEditing] = useState<Editing>(null);
-  const [recording, setRecording] = useState(false);
+  const [recording, setRecording] = useState(props.startRecording ?? false);
   if (!detail) return <p className="p-4 text-[14px] text-on-surface-variant">Esta calle ya no está en el mapa.</p>;
   const editOf = (row: StreetScopeRow): Editing => ({ scopeId: row.id, draft: { fromM: row.scope.fromM, toM: row.scope.toM, workIds: row.scope.workIds, stageId: row.scope.stageId ?? null, widthM: row.scope.widthM ?? null } });
   return (

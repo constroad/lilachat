@@ -2,7 +2,10 @@ import { useMemo, useState } from 'react';
 import { ArrowLeft, Pencil, Plus, TrendingUp, Trash2 } from 'lucide-react';
 import { metersLabel, type ManualPhotoUpload, scopeDraftFor, sendWorkScopeDelete, streetDetailOf, workScopeDeleteRequest, type MapEditSend, type ScopeDraft, type StreetLayer, type StreetScopeRow, type WorkMap } from '@lilachat/shared';
 import { KICKER } from './WorkMapPanel';
-import { ManualProgress } from './ManualProgress';
+import { ManualProgress, ProgressPreview } from './ManualProgress';
+
+/** «Ver calle» (o-03): the street alone on the map, without a stretch being recorded. */
+const STREET_ONLY = { workId: null, fromM: 0, toM: 0 };
 import { ScopeForm } from './ScopeForm';
 
 const BAR = 'relative h-2.5 overflow-hidden rounded-full bg-surface-variant';
@@ -80,6 +83,7 @@ export function StreetScopes(props: { map: WorkMap; streetId: string; send?: Map
         <p className="text-xl font-extrabold tracking-tight text-on-surface">{detail.name}</p>
         <span className="shrink-0 rounded-lg border border-outline/20 px-2 py-1 font-mono text-[12px] font-semibold">{detail.headline}</span>
       </div>
+      {recording ? null : <div className="mt-4"><ProgressPreview map={props.map} streetId={detail.id} draft={STREET_ONLY} /></div>}
       {props.send && !recording ? <button type="button" data-testid="avance-manual-abrir" onClick={() => setRecording(true)} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-semibold text-on-primary"><TrendingUp size={18} />Registrar avance</button> : null}
       {props.send && recording ? <div className="mt-4"><ManualProgress map={props.map} streetId={detail.id} lengthM={detail.lengthM} widthM={detail.widthM ?? undefined} send={props.send} uploadPhoto={props.uploadPhoto} onDone={() => setRecording(false)} /></div> : null}
       {detail.layers.length ? (

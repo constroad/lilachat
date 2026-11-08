@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { GPS_UNAVAILABLE, MANUAL_NO_LENGTH, MANUAL_SENT, workMapOf, type ManualPhotoUpload, type MapEditSend, type WorkMap } from '@lilachat/shared';
 import { ManualProgress } from './ManualProgress';
 
+vi.mock('./WorkMapCanvas', () => ({
+  default: (props: { stretches?: Array<{ fromM?: number; toM?: number }>; stations?: unknown[] }) => <div data-testid="avance-mapa-lienzo" data-tramo={(props.stretches ?? []).map((one) => `${one.fromM}-${one.toM}`).join(',')} data-progresivas={props.stations?.length ?? 0} />,
+}));
+
 /** Design o-06 on the web: a stretch done by hand, from where the work stopped, with a photo. */
 const line = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.997 }];
 const MEDIA = '6aef8d455e4b25190f7c3177';
@@ -27,6 +31,8 @@ describe('ManualProgress', () => {
     fireEvent.click(screen.getByTestId('avance-manual-mas'));
     fireEvent.change(screen.getByTestId('avance-manual-hasta'), { target: { value: '240' } });
     expect(screen.getByTestId('avance-manual-hasta-progresiva')).toHaveTextContent('Progresiva 0+240');
+    expect(await screen.findByTestId('avance-mapa-lienzo')).toHaveAttribute('data-tramo', '120-240');
+    expect(screen.getByTestId('avance-mapa-lienzo')).toHaveAttribute('data-progresivas', '4');
     fireEvent.change(screen.getByTestId('avance-foto-archivo'), { target: { files: [new File(['x'], 'base.jpg', { type: 'image/jpeg' })] } });
     await waitFor(() => expect(screen.getByTestId('avance-fotos')).toHaveTextContent('1 de 6 fotos'));
     fireEvent.click(screen.getByTestId('avance-manual-enviar'));

@@ -5,7 +5,7 @@ import type { CommandOutcome } from './botCommands.js';
 import type { WorkProgressDeps } from './workProgressSend.js';
 import { lineLengthM, workMapOf, type WorkMap } from './workMap.js';
 import type { MapEditSend } from './workScopeDraft.js';
-import { GPS_BEHIND, GPS_OFF_STREET, GPS_WEAK, manualEndFromGps, addManualPhoto, manualPhotoOf, MANUAL_PHOTO_UNLINKED, runManualProgress, MANUAL_FAILED, MANUAL_NO_LENGTH, MANUAL_PAST_STREET, MANUAL_PHOTOS_MAX, MANUAL_PICK_WORK, MANUAL_SENT, manualDraftFor, manualFigures, manualProblem, manualStartOf, nudgeManualEnd, pickManualWork, sendWorkManualProgress, workManualProgressRequest, progressTargetOf } from './workManualProgress.js';
+import { GPS_BEHIND, GPS_OFF_STREET, GPS_WEAK, manualEndFromGps, addManualPhoto, manualPhotoOf, MANUAL_PHOTO_UNLINKED, runManualProgress, MANUAL_FAILED, MANUAL_NO_LENGTH, MANUAL_PAST_STREET, MANUAL_PHOTOS_MAX, MANUAL_PICK_WORK, MANUAL_SENT, manualDraftFor, manualFigures, manualProblem, manualStartOf, nudgeManualEnd, pickManualWork, progressPreviewOf, sendWorkManualProgress, workManualProgressRequest, progressTargetOf } from './workManualProgress.js';
 
 /** Design o-06 (Portal 57f06ec7): progress marked by hand, without trucks. */
 const line = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.997 }];
@@ -182,5 +182,28 @@ describe('progressTargetOf («Registrar avance» on the map, o-01)', () => {
   it('offers nothing while no street has a stretch with a work', () => {
     const map = { ...base, streets: [street('s1', 'Jr. Los Pinos')], scopes: [{ ...scope('k1', 's1'), workIds: [] }] };
     expect(progressTargetOf(map)).toEqual({ kind: 'none' });
+  });
+});
+
+describe('progressPreviewOf (audit 08/11 item 6: the stations were picked blind)', () => {
+  const line = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.998 }];
+  const map: WorkMap = {
+    streets: [{ id: 's1', name: 'A', line, lengthM: 218 }, { id: 's2', name: 'B', line, lengthM: 218 }],
+    scopes: [{ id: 'c1', streetId: 's1', fromM: 0, toM: 218, workIds: ['w'] }, { id: 'c2', streetId: 's2', fromM: 0, toM: 218, workIds: ['w'] }],
+    progress: [{ streetId: 's1', workId: 'w', fromM: 0, toM: 100, date: '2026-11-08', rework: false }],
+    works: [{ id: 'w', name: 'Base', color: '#d97706' }],
+    stages: [],
+  };
+
+  it('shows only the street, what is done on it, and the new stretch in the work\'s color', () => {
+    const preview = progressPreviewOf(map, 's1', { workId: 'w', fromM: 100, toM: 160, photoIds: [], note: '' });
+    expect(preview.view.streets.map((street) => street.id)).toEqual(['s1']);
+    expect(preview.view.done).toHaveLength(1);
+    expect(preview.stretch).toEqual([expect.objectContaining({ streetId: 's1', color: '#d97706', fromM: 100, toM: 160 })]);
+    expect(preview.stations.map((mark) => mark.label)).toEqual(['0+000', '0+100', '0+218']);
+  });
+
+  it('no stretch while the end has not moved past the start', () => {
+    expect(progressPreviewOf(map, 's1', { workId: 'w', fromM: 100, toM: 100, photoIds: [], note: '' }).stretch).toEqual([]);
   });
 });

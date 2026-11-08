@@ -1,7 +1,8 @@
 import { projectToLine, STREET_REACH_M } from '@constroad/shared/obra';
 import { FORMS_LEVEL } from './appForms.js';
-import { metersLabel, type WorkMap, type WorkMapPoint, type WorkMapWork } from './workMap.js';
-import { stretchWorksOf } from './workMapProgress.js';
+import { metersLabel, workMapView, type WorkMap, type WorkMapLine, type WorkMapPoint, type WorkMapView, type WorkMapWork } from './workMap.js';
+import { stationMarksOf, type StationMark } from './workMapStations.js';
+import { stretchLineOf, stretchWorksOf } from './workMapProgress.js';
 import type { DriveUploadResult } from './driveUpload.js';
 import type { MapEditSend } from './workScopeDraft.js';
 import { WALK_MAX_ACCURACY_M, type GpsFix } from './workStreetWalk.js';
@@ -150,4 +151,12 @@ export function progressTargetOf(map: Pick<WorkMap, 'streets' | 'scopes'>): Prog
   const streets = map.streets.filter((street) => worked.has(street.id)).map(({ id, name }) => ({ id, name }));
   if (streets.length === 0) return { kind: 'none' };
   return streets.length === 1 ? { kind: 'street', streetId: streets[0]!.id } : { kind: 'choose', streets };
+}
+
+/** The map over «Registrar avance» (audit 08/11 item 6; design o-06): the street alone, what is done, and the new stretch. */
+export function progressPreviewOf(map: WorkMap, streetId: string, draft: Pick<ManualProgressDraft, 'workId' | 'fromM' | 'toM'>): { view: WorkMapView; stretch: WorkMapLine[]; stations: StationMark[] } {
+  const only: WorkMap = { ...map, streets: map.streets.filter((street) => street.id === streetId), scopes: map.scopes.filter((scope) => scope.streetId === streetId), progress: map.progress.filter((record) => record.streetId === streetId) };
+  const color = map.works.find((work) => work.id === draft.workId)?.color;
+  const line = draft.toM > draft.fromM ? stretchLineOf(map, streetId, draft.fromM, draft.toM) : null;
+  return { view: workMapView(only), stretch: line ? [color ? { ...line, color } : line] : [], stations: stationMarksOf(only.streets) };
 }

@@ -1,9 +1,24 @@
-import { useMemo, useRef, useState } from 'react';
+import { Suspense, useMemo, useRef, useState } from 'react';
 import { Camera, Check, Crosshair, Minus, Plus, Send, X } from 'lucide-react';
-import { addManualPhoto, GPS_UNAVAILABLE, manualEndFromGps, MANUAL_PHOTOS_MAX, MANUAL_STEP_M, manualDraftFor, manualFigures, nudgeManualEnd, pickManualWork, runManualProgress, stationLabel, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkMap } from '@lilachat/shared';
+import { addManualPhoto, GPS_UNAVAILABLE, manualEndFromGps, MANUAL_PHOTOS_MAX, MANUAL_STEP_M, manualDraftFor, manualFigures, nudgeManualEnd, pickManualWork, progressPreviewOf, runManualProgress, stationLabel, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkMap } from '@lilachat/shared';
 import { DrivePhotoInput } from '../ServiceDriveWeb';
 import { readGpsOnce } from './useGpsWalk';
 import { KICKER } from './WorkMapPanel';
+import { lazyChunk } from '../../../ui/lazyChunk';
+
+const WorkMapCanvas = lazyChunk(() => import('./WorkMapCanvas'));
+
+/** The street over the form (design o-06): what is done, and the new stretch up to «Hasta dónde». */
+export function ProgressPreview(props: { map: WorkMap; streetId: string; draft: Pick<ManualProgressDraft, 'workId' | 'fromM' | 'toM'> }) {
+  const preview = useMemo(() => progressPreviewOf(props.map, props.streetId, props.draft), [props.map, props.streetId, props.draft]);
+  return (
+    <div data-testid="avance-mapa" className="relative h-[220px] overflow-hidden rounded-xl border-[1.5px] border-outline/15 bg-surface-variant">
+      <Suspense fallback={<div className="absolute inset-0 animate-pulse bg-surface-variant" />}>
+        <WorkMapCanvas view={preview.view} expanded={false} stretches={preview.stretch} stations={preview.stations} />
+      </Suspense>
+    </div>
+  );
+}
 
 const CARD = 'rounded-xl border-[1.5px] border-outline/15 bg-surface p-4';
 const CHIP = 'flex h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold';
@@ -73,6 +88,7 @@ export function ManualProgress(props: Props) {
   }
   return (
     <div data-testid="avance-manual" className="space-y-3">
+      <ProgressPreview map={props.map} streetId={props.streetId} draft={draft} />
       <section className={CARD}>
         <p className={`${KICKER} text-primary`}>Registrar avance</p>
         <p className="mt-2 text-[12px] font-semibold uppercase text-on-surface-variant">1 · Trabajo</p>

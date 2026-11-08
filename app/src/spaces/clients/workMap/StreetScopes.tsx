@@ -6,7 +6,10 @@ import { Modal } from '../../../ui/Modal';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
 import { KICKER } from './WorkMapPanel';
-import { ManualProgress, type PhotoAsset } from './ManualProgress';
+import { ManualProgress, type PhotoAsset, ProgressPreview } from './ManualProgress';
+
+/** «Ver calle» (o-03): the street alone on the map, without a stretch being recorded. */
+const STREET_ONLY = { workId: null, fromM: 0, toM: 0 };
 import { ScopeForm } from './ScopeForm';
 
 function LayerRow({ layer }: { layer: StreetLayer }) {
@@ -80,6 +83,7 @@ function StreetBody(props: BodyProps) {
   const { detail, send, editing } = props;
   return (
     <>
+      {props.recording ? null : <ProgressPreview map={props.map} streetId={detail.id} draft={STREET_ONLY} />}
       {send && !props.recording ? <Pressable testID="avance-manual-abrir" onPress={() => props.onRecording(true)} className="h-14 flex-row items-center justify-center gap-2 rounded-xl bg-primary"><TrendingUp size={20} color={colors['on-primary']} /><Text className="text-[16px] font-semibold text-on-primary">Registrar avance</Text></Pressable> : null}
       {send && props.recording ? <ManualProgress map={props.map} streetId={detail.id} lengthM={detail.lengthM} widthM={detail.widthM ?? undefined} send={send} uploadPhoto={props.uploadPhoto} onDone={() => props.onRecording(false)} /> : null}
       {detail.layers.length ? (

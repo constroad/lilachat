@@ -844,3 +844,20 @@ parte de la calle sin tramo (0+120 a 0+191) no se dibujaba. `bareLinesOf`, con 2
 como línea fina gris clara en la web y en el APK. Es una calle que no cuenta como pendiente. Una
 calle sin ningún tramo se sigue dibujando entera como pendiente, igual que antes. Queda sin hacer
 el estado de cada tramo en «Ver tramos».
+
+**E2E 08/11 tarde, con OK de José (OTA 3edca7f2 y «Etapa QA» en Test).**
+- **Web prod:** José dio el OK para crear «Etapa QA» (6af08eb85fea71709b898976). Queda en Test
+  porque una etapa no se borra. Con la brocha, la calle QA pasó a «Etapa QA · 1 calle · 120 m ·
+  720 m²» y se pintó violeta. «Deshacer» la devolvió a «Sin etapa».
+- **APK:** rn-smoke en verde antes y después. Pasaron los botones Etapas y Trabajos, las
+  progresivas 0+000 y 0+100, y la línea sin tramo hasta 0+191. «Tocar calles» abre `BrushMap`; el
+  toque pintó la calle, «Deshacer» la devolvió y «Listo» volvió a la hoja. También pasaron
+  Trabajos (fila numerada y nota) y «Progresiva 0+000» bajo «Hasta dónde». Al final se dejó el APK
+  y la web en Constroad.
+- **Visto y menor:** la franja de `BrushMap` queda pegada a la barra de estado.
+
+**Mapa en «Registrar avance» y en «Ver calle» (auditoría, punto 6).** `progressPreviewOf`, con 2
+tests, deja en el mapa solo la calle: lo hecho, y el tramo nuevo de «Desde» a «Hasta dónde» en el
+color del trabajo, con sus progresivas. `ProgressPreview` lo muestra arriba del formulario (o-06) y
+arriba de los tramos de la calle (o-03), en la web y en el APK. Ya no se elige a ciegas: el tramo
+crece al tocar «+10 m».

@@ -3,11 +3,22 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import type * as ImagePicker from 'expo-image-picker';
 import { Camera, Check, Crosshair, Minus, Plus, Send } from 'lucide-react-native';
-import { addManualPhoto, GPS_UNAVAILABLE, manualEndFromGps, MANUAL_NOTE_MAX, MANUAL_PHOTOS_MAX, MANUAL_STEP_M, manualDraftFor, manualFigures, nudgeManualEnd, pickManualWork, runManualProgress, stationLabel, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkMap } from '@lilachat/shared';
+import { addManualPhoto, GPS_UNAVAILABLE, manualEndFromGps, MANUAL_NOTE_MAX, MANUAL_PHOTOS_MAX, MANUAL_STEP_M, manualDraftFor, manualFigures, nudgeManualEnd, pickManualWork, progressPreviewOf, runManualProgress, stationLabel, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkMap } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { takeFieldPhoto } from '../useDriveUpload';
 import { readGpsOnce } from './useGpsWalk';
 import { KICKER } from './WorkMapPanel';
+import { WorkMapSurface } from './WorkMapSurface';
+
+/** The street over the form (design o-06): what is done, and the new stretch up to «Hasta dónde». */
+export function ProgressPreview(props: { map: WorkMap; streetId: string; draft: Pick<ManualProgressDraft, 'workId' | 'fromM' | 'toM'> }) {
+  const preview = useMemo(() => progressPreviewOf(props.map, props.streetId, props.draft), [props.map, props.streetId, props.draft]);
+  return (
+    <View testID="avance-mapa" pointerEvents="none" className="h-[200px] overflow-hidden rounded-xl border-[1.5px] border-outline/15 bg-surface-variant">
+      <WorkMapSurface view={preview.view} moves={false} stretches={preview.stretch} stations={preview.stations} />
+    </View>
+  );
+}
 
 const CARD = 'gap-2 rounded-xl border-[1.5px] border-outline/15 bg-surface p-4';
 const LABEL = 'text-[12px] font-semibold uppercase text-on-surface-variant';
@@ -121,6 +132,7 @@ export function ManualProgress(props: Props) {
   }
   return (
     <View testID="avance-manual" className="gap-3">
+      <ProgressPreview map={props.map} streetId={props.streetId} draft={draft} />
       <View className={CARD}>
         <Text className={`${KICKER} text-primary`}>Registrar avance</Text>
         <Text className={LABEL}>1 · Trabajo</Text>

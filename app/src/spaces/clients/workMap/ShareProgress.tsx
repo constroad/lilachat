@@ -5,7 +5,7 @@ import { Copy, Download, Link2, ShieldCheck } from 'lucide-react-native';
 import { createProgressLink, createProgressPdf, inReportViewOf, nextInReportView, type InReportView, type ServiceMapInReport, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 import { Interruptor } from '../../../ui/Interruptor';
 import { useColores } from '../../../ui/tema';
-import { DayChips, PanelSheet, SHEET_LABEL, StageChips } from './CutChips';
+import { DayChips, PanelSheet, SHEET_LABEL, StageChips, CutPreview } from './CutChips';
 import { PdfAction } from './PdfAction';
 
 type Props = { open: boolean; map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; /** Portal's map tools through the door. */ send?: MapEditSend; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport; onClose: () => void };
@@ -95,6 +95,7 @@ export function ShareProgress(props: Props) {
         <Text className="text-[22px] font-bold text-on-surface">Avance parcial</Text>
         <Text className="mt-0.5 text-[14px] text-on-surface-variant">Elige el corte de obra para el enlace que verá el cliente.</Text>
       </View>
+      <CutPreview map={props.map} filter={props.filter} testID="compartir-mapa" />
       <StageChips map={props.map} filter={props.filter} onFilter={cut} options={shareStageOptions(props.map)} />
       <DayChips map={props.map} filter={props.filter} onFilter={cut} />
       <FrontSummary map={props.map} filter={props.filter} />

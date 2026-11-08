@@ -6,7 +6,7 @@ import * as Sharing from 'expo-sharing';
 import { Copy, Download, FileText, Globe, Link2, Printer } from 'lucide-react-native';
 import { createProgressPdf, exportStageOptions, PLAN_SIZES, type PlanSize, KMZ_MIME, kmzLayersOf, workMapFileName, workMapWorkFilter, workMapKml, workMapKmz, workMapScopeLabel, type MapEditSend, type TraceUpload, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
-import { DayChips, PanelSheet, SHEET_LABEL, StageChips } from './CutChips';
+import { DayChips, PanelSheet, SHEET_LABEL, StageChips, CutPreview } from './CutChips';
 import { ImportTrace } from './ImportTrace';
 import { PdfAction } from './PdfAction';
 import type { TraceFile } from '../useDriveUpload';
@@ -102,6 +102,7 @@ export function WorkMapExport(props: Props) {
         <Text className="text-[22px] font-bold text-on-surface">Exportar</Text>
         <Text testID="mapa-exportar-alcance" className="mt-0.5 text-[14px] text-on-surface-variant">Sale lo que ves: {workMapScopeLabel(props.map, props.filter)}</Text>
       </View>
+      <CutPreview map={props.map} filter={props.filter} testID="exportar-mapa" />
       <StageChips map={props.map} filter={props.filter} onFilter={props.onFilter} options={exportStageOptions(props.map)} label="Qué" />
       <DayChips map={props.map} filter={props.filter} onFilter={props.onFilter} />
       <WorkChips map={props.map} filter={props.filter} onFilter={props.onFilter} />

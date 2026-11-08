@@ -881,3 +881,21 @@ progresivas, y con «+10 m» ×6 el tramo nuevo creció en azul hasta 0+060. Se 
 
 **APK, punto 14 y la franja de la brocha.** El Control de pista ahora va después de las calles en
 el panel del APK. La franja de `BrushMap` deja 20 dp bajo la barra de estado.
+
+**E2E APK OTA e92cc197 (08/11, Test, con OK de José).** La primera publicación falló con un 502 del
+server en un HEAD de asset. El reintento publicó. rn-smoke en verde antes y después. Pasó:
+- Vista previa de «Registrar avance»: tramo azul hasta 0+060, con progresivas.
+- Marca de inicio: el «1» queda donde se tocó y la ayuda pasa a «Toca dónde termina la obra».
+- La «Etapa» sale al crear la calle, con el chip «Etapa QA».
+- Caminata con `adb emu geo fix`: en pausa la línea quedó en 477 m aunque el GPS se movió. «Seguir»
+  la llevó a 537 m. «Deshacer» la devolvió a 477 m.
+- Panel: la calle antes que el Control de pista.
+
+El pin de «mi posición» no se vio en la captura porque quedó fuera del encuadre. Al final se dejó
+el APK en Constroad.
+
+**Puntos 13 y 18 (APK).** Las hojas Compartir y Exportar ya no esconden lo que sale: arriba llevan
+`CutPreview`, el mapa del corte elegido (etapa y día), con sus progresivas. La hoja de
+Etapas/Trabajos usa `keyboard="avoid"`, así el teclado de «Nueva etapa» o «Agregar trabajo» no
+tapa los colores ni «Crear». Queda sin revisar el mismo teclado en «Agregar tramo», que vive en un
+Modal y no en la hoja.

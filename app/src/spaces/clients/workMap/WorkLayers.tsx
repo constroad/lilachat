@@ -59,7 +59,7 @@ export function WorkLayersSheet(props: SheetProps) {
   const stages = props.kind === 'stages';
   const { cards, loose } = stageCardsOf(props.map);
   return (
-    <PanelSheet open={props.kind !== null} onClose={props.onClose} testID={stages ? 'mapa-etapas' : 'mapa-trabajos'}>
+    <PanelSheet open={props.kind !== null} onClose={props.onClose} testID={stages ? 'mapa-etapas' : 'mapa-trabajos'} keyboard="avoid">
       <View>
         <Text className="text-[12px] font-bold uppercase tracking-[1.5px] text-primary">{stages ? 'Partir la obra' : 'Qué se hace en cada calle'}</Text>
         <Text className="text-[22px] font-bold text-on-surface">{stages ? 'Etapas' : 'Trabajos'}</Text>

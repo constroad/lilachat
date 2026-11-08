@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Sheet } from '../../../ui/Sheet';
-import { workMapCutDays, workMapCutLabel, workMapDayFilter, workMapStageFilter, type CutOption, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { WorkMapSurface } from './WorkMapSurface';
+import { visibleStationMarks, workMapView, workMapCutDays, workMapCutLabel, workMapDayFilter, workMapStageFilter, type CutOption, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 
 export const SHEET_LABEL = 'text-[12px] font-bold uppercase tracking-[1.5px] text-on-surface-variant';
 const CHIP = 'h-10 justify-center rounded-xl border px-3';
@@ -10,9 +11,10 @@ const PANEL_MAX_HEIGHT = '92%';
 const PANEL_CONTENT = { gap: 16, paddingHorizontal: 16, paddingTop: 8 };
 
 /** «Compartir avance» and «Exportar» on the phone: a sheet that scrolls, dragged by its handle. */
-export function PanelSheet(props: { open: boolean; onClose: () => void; testID: string; children: ReactNode }) {
+/** `keyboard`: «avoid» when the sheet has a field that opens it («Nueva etapa»), so «Crear» stays in sight (audit item 18). */
+export function PanelSheet(props: { open: boolean; onClose: () => void; testID: string; children: ReactNode; keyboard?: 'dismiss' | 'avoid' }) {
   return (
-    <Sheet visible={props.open} onClose={props.onClose} testID={props.testID} tone="background" dragArea="handle" maxHeight={PANEL_MAX_HEIGHT}>
+    <Sheet visible={props.open} onClose={props.onClose} testID={props.testID} tone="background" dragArea="handle" maxHeight={PANEL_MAX_HEIGHT} keyboard={props.keyboard ?? 'dismiss'}>
       <ScrollView contentContainerStyle={PANEL_CONTENT} keyboardShouldPersistTaps="handled">{props.children}</ScrollView>
     </Sheet>
   );
@@ -46,4 +48,15 @@ export const StageChips = (props: Props & { options: CutOption[]; label?: string
 export function DayChips(props: Props) {
   const options = [{ id: '', label: 'Hasta hoy' }, ...workMapCutDays(props.map).map((day) => ({ id: day, label: workMapCutLabel(day) }))];
   return <ChipRow testID="corte-dia" label="Hasta el día" options={options} selected={props.filter.untilDay ?? ''} onPick={(day) => props.onFilter(workMapDayFilter(props.filter, day))} />;
+}
+
+/** The cut being shared or exported, over the sheet (audit 08/11 item 13: the sheet hid the map). */
+export function CutPreview(props: { map: WorkMap; filter: WorkMapFilter; testID: string }) {
+  const view = useMemo(() => workMapView(props.map, props.filter), [props.map, props.filter]);
+  const stations = useMemo(() => visibleStationMarks(props.map.streets, view.streets.map((street) => street.id)), [props.map, view]);
+  return (
+    <View testID={props.testID} pointerEvents="none" className="h-[180px] overflow-hidden rounded-xl border-[1.5px] border-outline/15 bg-surface-variant">
+      <WorkMapSurface view={view} moves={false} stations={stations} />
+    </View>
+  );
 }

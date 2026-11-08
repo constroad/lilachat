@@ -90,3 +90,51 @@ El 9 es un recorrido: el mapa de lectura no tiene una acción principal.
 
 - Dónde aparecen en el canal de cliente: una pestaña «Ayuda» del servicio, un botón «?» en cada
   pantalla, o la Academia de Portal.
+
+## 7. Grabador (08/11, José: «sí a ambos»)
+
+José eligió las dos opciones: una pestaña «Ayuda» en el servicio y un botón «?» en cada
+pantalla. El visor todavía no está. Esto es lo que ya existe:
+
+- **Motor puro** `shared/src/tutorialScript.ts` (10 tests). Porta el de Portal con las reglas de
+  la skill:
+  - cartel = voz + 250 ms;
+  - mínimo 12 y máximo 38 palabras por cartel;
+  - voseo rechazado;
+  - tope de 5 min, validado antes de grabar;
+  - acciones `goto · click · hover · highlight · scrollTo · type · press · drag · dragToward ·
+    pause`. `dragToward` mueve un extremo de la calle hacia el otro, a lo largo de la vía.
+- **Grabador** `scripts/tutorials/record.ts`, con `overlay.ts`, `steps.ts`, `media.ts` y
+  `session.ts`:
+  - Levanta la app y el socket en el mismo proceso, **sin los crons** (recordatorios, respaldos,
+    cumpleaños, bots). La base es la misma de producción: un segundo server con crons mandaría
+    cada recordatorio dos veces.
+  - La sesión se firma en el proceso, con el secreto con que ese mismo proceso verifica. No se
+    escribe nada, no hay contraseña y el token no sale del proceso. Usa el dispositivo
+    `tutorial-recorder` y la cuenta de QA.
+  - Abre en el espacio Test (`spaceId` del guion), así los chats personales nunca salen en
+    cámara.
+  - Antes de grabar cierra «Novedades», el aviso de notificaciones y la oferta de instalar.
+  - `cameraNames` cambia los nombres de QA en todo el documento: «QA-CTLPIS — borrar» sale como
+    «Pavimentación Jirón Lampa».
+  - Puppeteer y ffmpeg salen de lila-app; la voz es `say` con Paulina a 195 palabras por minuto.
+  - El resultado es WebM VP9 de 4 MB como máximo, codificado a 780 px de ancho, y un `.json` con
+    los carteles y sus tiempos. Ese `.json` sirve para el `.srt`.
+  - `--ensayo` corre el guion como E2E: sin voz y sin codificar, con una captura por paso.
+- **Guion piloto** `scripts/tutorials/guiones/dibujar-calle.ts` (tutorial 1): 16 pasos, unos
+  2:45 estimados. Dice las buenas prácticas 1 a 4.
+
+**El ensayo encontró un defecto de la app, y se arregló en la app.**
+- Al tocar una calle de 1,5 km (Jr. Lampa), sus extremos quedaban fuera de la pantalla y no se
+  podían arrastrar.
+- Ahora el mapa encuadra la calle entera apenas se toca, en web y APK (`pickedStreetFrame`, con
+  tests).
+- En el segundo ensayo el arrastre recortó la calle de 1 577 a 1 106 m y «−10 m» la dejó en
+  1 096 m.
+
+**Falta:**
+- la grabación con voz, con los chequeos de la skill §7: el efecto en la base, la duración del
+  archivo igual a la del `.json`, la hoja de contacto y verlo con sonido;
+- borrar la calle grabada por el camino de la app;
+- el visor «Ayuda» y el botón «?», con los videos en el media de Lilachat;
+- los otros 10 guiones.

@@ -153,3 +153,15 @@ export function nudgeStreetEnd(draft: StreetDraft, handle: StreetEnd, deltaM: nu
   const shift = side === 'to' ? towardEnd : -towardEnd;
   return moveEnd(draft, draft.pick, handle, (side === 'from' ? fromM : toM) + shift);
 }
+
+export type MapFrame = [[number, number], [number, number]];
+
+/**
+ * The box of a street a tap just picked whole, so the map shows both ends to drag (tutorial
+ * rehearsal 08/11: a 1.5 km street left them off screen). Null for a trim, a drag or nothing.
+ */
+export function pickedStreetFrame(before: StreetDraft, after: StreetDraft): MapFrame | null {
+  if (before.points.length || after.points.length < 2) return null;
+  const [lngs, lats] = [after.points.map((point) => point.lng), after.points.map((point) => point.lat)];
+  return [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]];
+}

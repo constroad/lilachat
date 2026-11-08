@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EMPTY_STREET, streetDraftLengthM, streetDraftPins, streetDraftProblem, DRAFT_NEEDS_STREET } from './workStreetDraft.js';
-import { dragStreetEnd, handPointsLabel, HANDLE_OFF_STREET, modeChangeLoss, NO_STREET_THERE, nudgeStreetEnd, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHandles, streetDraftHint, tapStreetDraft, undoStreetDraft } from './workStreetPick.js';
+import { dragStreetEnd, handPointsLabel, pickedStreetFrame, HANDLE_OFF_STREET, modeChangeLoss, NO_STREET_THERE, nudgeStreetEnd, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHandles, streetDraftHint, tapStreetDraft, undoStreetDraft } from './workStreetPick.js';
 
 /** Audit 07/11 (José: «fácil y fluido para un ingeniero de campo»): tap the street, then its start and end. */
 const M_PER_DEG_LNG = 111_195 * Math.cos((12 * Math.PI) / 180);
@@ -224,5 +224,20 @@ describe('trimming a picked street by its ends', () => {
   it('with a street picked, the hint says the ends can be dragged', () => {
     expect(streetDraftHint(whole())).toBe('Arrastra los extremos para recortar, o toca dónde empieza la obra.');
     expect(streetDraftHint(dragStreetEnd(whole(), 'end', east(400)).draft)).toBe('Arrastra los extremos para ajustar, o guarda la calle.');
+  });
+});
+
+/** Tutorial rehearsal 08/11: a whole picked street was 1.5 km and its ends were off screen, so they could not be dragged. */
+describe('pickedStreetFrame', () => {
+  it('frames the whole street when a tap just picked it', () => {
+    const picked = tapStreetDraft(EMPTY_STREET, at(100)).draft;
+    expect(pickedStreetFrame(EMPTY_STREET, picked)).toEqual([[east(0).lng, -12], [east(500).lng, -12]]);
+  });
+
+  it('leaves the camera alone for a trim, a drag or an empty draft', () => {
+    const picked = tapStreetDraft(EMPTY_STREET, at(100)).draft;
+    const trimmed = tapStreetDraft(picked, at(200)).draft;
+    expect(pickedStreetFrame(picked, trimmed)).toBeNull();
+    expect(pickedStreetFrame(EMPTY_STREET, EMPTY_STREET)).toBeNull();
   });
 });

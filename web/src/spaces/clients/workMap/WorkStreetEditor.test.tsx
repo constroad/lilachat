@@ -4,10 +4,10 @@ import type { WorkMapView } from '@lilachat/shared';
 import type { StreetSend } from './workProgressSender';
 import { WorkStreetEditor } from './WorkStreetEditor';
 
-type CanvasProps = { view: WorkMapView; focus?: { lat: number; lng: number } | null; pins?: unknown[]; handles?: Array<{ label: string }>; onTap?: (point: unknown, roads: unknown) => void; onHandleDrop?: (handle: 'start' | 'end', point: unknown) => void };
+type CanvasProps = { view: WorkMapView; focus?: { lat: number; lng: number } | null; frame?: unknown; pins?: unknown[]; handles?: Array<{ label: string }>; onTap?: (point: unknown, roads: unknown) => void; onHandleDrop?: (handle: 'start' | 'end', point: unknown) => void };
 vi.mock('./WorkMapCanvas', () => ({
   default: (props: CanvasProps) => (
-    <div data-testid="mapa-lienzo" data-focus={props.focus ? `${props.focus.lat},${props.focus.lng}` : ''} data-pins={props.pins?.length ?? 0} data-handles={(props.handles ?? []).map((one) => one.label).join(',')}>
+    <div data-testid="mapa-lienzo" data-focus={props.focus ? `${props.focus.lat},${props.focus.lng}` : ''} data-pins={props.pins?.length ?? 0} data-handles={(props.handles ?? []).map((one) => one.label).join(',')} data-frame={props.frame ? JSON.stringify(props.frame) : ''}>
       <button type="button" data-testid="lienzo-tocar-calle" onClick={() => props.onTap?.(east(100), roadsAt(100))} />
       <button type="button" data-testid="lienzo-soltar-fin" onClick={() => props.onHandleDrop?.('end', east(400))} />
     </div>
@@ -139,6 +139,8 @@ describe('WorkStreetEditor, trimming the picked street (José 08/11)', () => {
     fireEvent.click(await screen.findByTestId('lienzo-tocar-calle'));
     expect(screen.getByTestId('mapa-lienzo').dataset.handles).toBe('0+000,0+500');
     expect(screen.getByTestId('mapa-lienzo').dataset.pins).toBe('0');
+    // The whole street is framed, so both ends are on screen to drag (tutorial rehearsal 08/11).
+    expect(JSON.parse(screen.getByTestId('mapa-lienzo').dataset.frame ?? 'null')).toEqual([[east(0).lng, -12], [east(500).lng, -12]]);
     // With a street drawn the search steps aside: on a phone the map had shrunk to a strip (APK E2E 08/11).
     expect(screen.queryByTestId('editor-buscar-lugar')).toBeNull();
     fireEvent.click(screen.getByTestId('lienzo-soltar-fin'));

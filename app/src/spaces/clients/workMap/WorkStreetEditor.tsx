@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import { Footprints, Navigation, Pause, Play, Save, Square, Undo2, X } from 'lucide-react-native';
-import { DRAW_MODES, dragStreetEnd, EMPTY_STREET, nudgeStreetEnd, streetDraftHandles, type StreetEnd, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, WORK_MAP_DRAFT_COLOR, WORK_MAP_PLANNED_COLOR, walkedDraft, walkHint, walkPositionPins, workMapView, type DrawMode, type PlaceAsk, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
+import { DRAW_MODES, dragStreetEnd, pickedStreetFrame, type MapFrame, EMPTY_STREET, nudgeStreetEnd, streetDraftHandles, type StreetEnd, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, WORK_MAP_DRAFT_COLOR, WORK_MAP_PLANNED_COLOR, walkedDraft, walkHint, walkPositionPins, workMapView, type DrawMode, type PlaceAsk, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
 import { useCurrentLocation } from '../../../chat/location/useCurrentLocation';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
@@ -125,8 +125,11 @@ export function WorkStreetEditor(props: EditorProps) {
     setDraft(dropped.draft);
     setError(dropped.problem);
   };
+  const [frame, setFrame] = useState<MapFrame | null>(null);
   const onTap = (_point: WorkMapPoint, roads: TapFeatures) => {
     const tapped = tapStreetDraft(draft, roads);
+    const picked = pickedStreetFrame(draft, tapped.draft);
+    if (picked) setFrame(picked);
     setDraft(tapped.draft);
     setError(tapped.problem);
   };
@@ -179,7 +182,7 @@ export function WorkStreetEditor(props: EditorProps) {
           </View>
         </View>
         <View className="flex-1">
-          {props.open ? <WorkMapSurface view={view} moves pins={handles.length ? NO_PINS : [...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} handles={handles} onHandleDrop={onHandleDrop} focus={focus} near={props.start ?? (current.state === 'ready' ? current.location : null)} /> : null}
+          {props.open ? <WorkMapSurface view={view} moves pins={handles.length ? NO_PINS : [...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} handles={handles} onHandleDrop={onHandleDrop} focus={focus} frame={frame} near={props.start ?? (current.state === 'ready' ? current.location : null)} /> : null}
           <EditorLegend />
         </View>
         <View className="border-t border-outline/15 bg-surface px-4 pt-3" style={{ paddingBottom: margins.pie + 12 }}>

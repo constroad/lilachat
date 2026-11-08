@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { lazyChunk } from '../../../ui/lazyChunk';
 import { Footprints, Navigation, Pause, Play, Save, Square, Undo2, X } from 'lucide-react';
-import { DRAW_MODES, dragStreetEnd, EMPTY_STREET, nudgeStreetEnd, streetDraftHandles, type StreetEnd, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, WORK_MAP_DRAFT_COLOR, WORK_MAP_PLANNED_COLOR, walkedDraft, walkHint, walkPositionPins, workMapView, type DrawMode, type PlaceAsk, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
+import { DRAW_MODES, dragStreetEnd, pickedStreetFrame, type MapFrame, EMPTY_STREET, nudgeStreetEnd, streetDraftHandles, type StreetEnd, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, WORK_MAP_DRAFT_COLOR, WORK_MAP_PLANNED_COLOR, walkedDraft, walkHint, walkPositionPins, workMapView, type DrawMode, type PlaceAsk, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
 import { KICKER } from './WorkMapPanel';
 import type { StreetSend } from './workProgressSender';
 import { useGpsWalk } from './useGpsWalk';
@@ -36,8 +36,11 @@ export function WorkStreetEditor(props: EditorProps) {
     setDraft(dropped.draft);
     setError(dropped.problem);
   };
+  const [frame, setFrame] = useState<MapFrame | null>(null);
   const onTap = (point: WorkMapPoint, roads?: TapFeatures) => {
     const tapped = tapStreetDraft(draft, roads ?? { underFinger: [], nearby: [], tap: point });
+    const picked = pickedStreetFrame(draft, tapped.draft);
+    if (picked) setFrame(picked);
     setDraft(tapped.draft);
     setError(tapped.problem);
   };
@@ -87,7 +90,7 @@ export function WorkStreetEditor(props: EditorProps) {
       </div>
       <div className="relative min-h-[320px] flex-1 lg:min-h-0">
         <Suspense fallback={<div className="absolute inset-0 animate-pulse bg-surface-variant" />}>
-          <WorkMapCanvas view={view} expanded={false} focus={focus} pins={handles.length ? NO_PINS : [...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} handles={handles} onHandleDrop={onHandleDrop} />
+          <WorkMapCanvas view={view} expanded={false} focus={focus} frame={frame} pins={handles.length ? NO_PINS : [...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} handles={handles} onHandleDrop={onHandleDrop} />
         </Suspense>
         <EditorLegend />
       </div>

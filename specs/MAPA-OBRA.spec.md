@@ -1034,3 +1034,19 @@ pantalla».
 - **Ubicación del servicio** (`service.ubicacion` de Portal da5382a5): si el mapa no tiene calles,
   el editor abre ahí y no en el GPS del teléfono. También es el centro del sesgo de búsqueda. Con
   esto queda resuelto el «o-10 sin fondo».
+
+**E2E en vivo de e68f4df (web, Test, 08/11, después del deploy).**
+- Brocha «Asfalto QA» sobre la calle 2, que no tenía tramos: se creó el tramo y quedó «2 calles ·
+  223 m». El arreglo del `entry_id` funciona.
+- Registrar avance en la calle 2: elegí el trabajo y toqué «+10 m» ×5. Quedó «Progresiva 0+050»,
+  «+50 m · 300 m²» y el paso actual en «3 Foto». Se envió sin foto: «Avance registrado. Queda
+  pendiente hasta que el residente lo apruebe.». Es el día 1 del o-09; el día 2 va mañana.
+- Buscador: «Parque de la Reserva, Lima» pasó por `POST /api/places` y Nominatim. Volvió un solo
+  resultado y el mapa voló ahí. Cancelé sin guardar.
+- **Capa «Fotos» bloqueada fuera de Lilachat.** Portal devuelve 8 `mapPhotos` para QA-CTLPIS (lo
+  confirmó con una lectura). El detalle que llega a Lilachat por `client.service.requested` trae
+  `discharges`, pero no `mapPhotos`: lo vi en las props del tablero.
+  - El server de Lilachat no lo filtra (`serviceDetailOf` lo lee y `withoutMoney` lo conserva).
+  - Queda en agentes, que arma la respuesta del evento. Se le pidió el 08/11.
+  - Lo mismo vale para `service.ubicacion`.
+- La web quedó en Constroad.

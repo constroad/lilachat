@@ -93,8 +93,9 @@ export function ManualProgress(props: Props) {
             <p className="text-[12px] text-on-surface-variant">Sigue donde quedó</p>
           </div>
           <label className="pl-3">
-            <span className={`${KICKER} text-primary`}>Hasta dónde (nuevo)</span>
+            <span className={`${KICKER} text-primary`}>Hasta dónde (m)</span>
             <input data-testid="avance-manual-hasta" type="number" inputMode="decimal" min={draft.fromM} value={draft.toM} onChange={(event) => change({ ...draft, toM: Number(event.target.value.replace(',', '.')) || 0 })} className="mt-0.5 h-11 w-full rounded-xl border border-outline/25 bg-background px-3 font-mono text-xl font-bold tabular-nums text-primary outline-none focus:border-primary" />
+            <span data-testid="avance-manual-hasta-progresiva" className="mt-0.5 block font-mono text-[12px] text-on-surface-variant">Progresiva {stationLabel(draft.toM)}</span>
           </label>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2">

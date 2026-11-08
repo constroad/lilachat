@@ -26,6 +26,7 @@ describe('ManualProgress', () => {
     expect(screen.getByTestId('avance-manual-desde')).toHaveTextContent('0+120');
     fireEvent.click(screen.getByTestId('avance-manual-mas'));
     fireEvent.change(screen.getByTestId('avance-manual-hasta'), { target: { value: '240' } });
+    expect(screen.getByTestId('avance-manual-hasta-progresiva')).toHaveTextContent('Progresiva 0+240');
     fireEvent.change(screen.getByTestId('avance-foto-archivo'), { target: { files: [new File(['x'], 'base.jpg', { type: 'image/jpeg' })] } });
     await waitFor(() => expect(screen.getByTestId('avance-fotos')).toHaveTextContent('1 de 6 fotos'));
     fireEvent.click(screen.getByTestId('avance-manual-enviar'));

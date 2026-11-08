@@ -63,8 +63,9 @@ function Reach(props: { draft: ManualProgressDraft; lengthM: number; widthM?: nu
           <Text className="text-[12px] text-on-surface-variant">Sigue donde quedó</Text>
         </View>
         <View className="flex-1 pl-3">
-          <Text className={`${KICKER} text-primary`}>Hasta dónde</Text>
+          <Text className={`${KICKER} text-primary`}>Hasta dónde (m)</Text>
           <TextInput testID="avance-manual-hasta" keyboardType="decimal-pad" value={String(draft.toM)} onChangeText={(text) => props.onChange({ ...draft, toM: Number(text.replace(',', '.')) || 0 })} className="mt-1 h-12 rounded-xl border border-outline/25 bg-background px-3 font-mono text-[20px] font-bold text-primary" />
+          <Text testID="avance-manual-hasta-progresiva" className="mt-0.5 font-mono text-[12px] text-on-surface-variant">Progresiva {stationLabel(draft.toM)}</Text>
         </View>
       </View>
       <View className="flex-row gap-2">

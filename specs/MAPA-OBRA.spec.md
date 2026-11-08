@@ -835,3 +835,6 @@ trabajos.
 marca 0+000, una cada 100 m y el final. Una marca a menos de 30 m del final le cede el lugar. Se
 dibujan como puntos con texto, con la misma pintura en la web y en el APK (tablero, mapa completo).
 Solo salen en las calles que muestra la vista.
+
+**«Hasta dónde» con su progresiva (auditoría, punto 9).** El campo dice «Hasta dónde (m)» y abajo
+muestra «Progresiva 0+240». Así se lee igual que «Punto de partida 0+120» (web y APK).

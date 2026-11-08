@@ -544,3 +544,22 @@ ver «Borrados»; cubierto solo por test).
 - **E2E web prod (07/11, 00:41Z, Test, QA-CTLPIS):** «Compartir avance» mostró «Avance parcial ·
   0 de 1 vía · Todavía no hay avance aprobado en este corte · +0 m lineales» (Test no tiene avance
   aprobado). Con avance, cubierto por tests.
+
+## «Compartir avance» (o-08) y «Exportar» (o-12) como dos paneles (07/11, José: «aún no se parece el diseño»)
+
+- La barra del mapa tiene **«Exportar»** (secundario) y **«Compartir avance»** (primario). Antes
+  «Compartir avance» abría la exportación con todo junto; ya no.
+- **Compartir avance (o-08):** «COMPARTIR AVANCE / Avance parcial», «Elige el corte de obra…»;
+  «Etapa de obra» (cada etapa con sus calles, «Etapa 1 (Av. Los Incas, Jr. Los Pinos)»), «Hasta el
+  día», «Resumen de frente · Aprobado» con las filas por trabajo, «N de M vías» y «Metrado aprobado
+  acumulado», y «Enlace público seguro» con «Copiar» y «El cliente ve solo lo aprobado por la
+  inspección técnica.». En el APK, la hoja con chips de etapa y día y «Copiar enlace de avance».
+- **Exportar (o-12):** «SACAR LA OBRA / Exportar»; «Qué» (toda la obra o cada etapa con sus metros),
+  «Hasta el día», «Trabajos» (todos o uno); «Formatos de exportación»: Google Earth (KMZ) con el
+  nombre del archivo, «Enlace para el cliente» con «Copiar enlace de visor», y la «Estructura de
+  capas KMZ generada» (Ejecutado por trabajo con sus metros, Pendiente).
+- Etapa, día y trabajo de los dos paneles mueven el mapa de atrás (el mismo filtro).
+- **Esperando a Portal** (pedido el 07/11, José aprobó): `crear_enlace_de_avance` (corte firmado y
+  fotos), `pdf_de_avance_de_obra` (cliente y plano A1/A3), incluir el mapa en el informe del servicio
+  e `importar_calles_de_obra`. Al llegar: «Crear enlace de avance», «Descargar PDF para cliente»,
+  «Mostrar fotos», «Incluir en el informe», «Plano PDF» e «Importar KMZ o KML».

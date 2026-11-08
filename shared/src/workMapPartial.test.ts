@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lineLengthM, workMapOf, type WorkMap } from './workMap.js';
-import { partialProgressOf, partialStreetsLabel } from './workMapPartial.js';
+import { exportStageOptions, kmzLayersOf, partialProgressOf, partialStreetsLabel, shareStageOptions } from './workMapPartial.js';
 
 /** Design o-08: «estas calles en base, estas imprimadas, estas asfaltadas», as the client sees it. */
 const lineA = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.997 }];
@@ -62,5 +62,22 @@ describe('partialProgressOf', () => {
     const empty = partialProgressOf({ ...mapOf(), progress: [] }, {});
     expect(empty.rows).toEqual([]);
     expect(partialStreetsLabel({ streetsWithProgress: 0, streetsTotal: 1 })).toBe('0 de 1 vía');
+  });
+});
+
+describe('the cut of o-08 and o-12', () => {
+  it('o-08 names each stage with its streets; o-12 with its metres', () => {
+    expect(shareStageOptions(mapOf())).toEqual([
+      { id: '', label: 'Toda la obra' },
+      { id: 'e1', label: 'Etapa 1 (Av. Los Incas, Jr. Los Pinos)' },
+      { id: 'e2', label: 'Etapa 2 (Jr. Las Flores)' },
+    ]);
+    expect(exportStageOptions(mapOf())[2]).toEqual({ id: 'e2', label: 'Etapa 2 (200 m)' });
+  });
+
+  it('the KMZ carries a folder per work with its done metres, and what is pending', () => {
+    const layers = kmzLayersOf(mapOf(), { stageId: 'e2' });
+    expect(layers).toEqual({ done: [{ workId: 'base', name: 'Base', color: '#d97706', meters: '200 m' }], pending: '0 m' });
+    expect(kmzLayersOf({ ...mapOf(), progress: [] }, { stageId: 'e2' })).toEqual({ done: [], pending: '200 m' });
   });
 });

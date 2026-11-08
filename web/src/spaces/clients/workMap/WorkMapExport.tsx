@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Check, Copy, Download, Globe, Link2, X } from 'lucide-react';
-import { KMZ_MIME, partialProgressOf, partialStreetsLabel, workMapFileName, workMapKml, workMapKmz, workMapScopeLabel, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { Check, Copy, Download, Folder, FolderOpen, Globe, Link2, X } from 'lucide-react';
+import { exportStageOptions, KMZ_MIME, kmzLayersOf, workMapFileName, workMapKml, workMapKmz, workMapScopeLabel, workMapStageFilter, workMapWorkFilter, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { DayField, PANEL_LABEL } from './CutFields';
 
-const CARD = 'rounded-xl border border-outline/15 bg-surface p-3';
-const PRIMARY = 'mt-3 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-primary text-[14px] font-semibold text-on-primary';
-const SECONDARY = 'mt-2 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-primary/30 text-[14px] font-semibold text-primary';
+const CARD = 'rounded-xl border-[1.5px] border-outline/15 bg-surface p-4';
+const SEGMENT = 'min-h-[40px] rounded-lg border px-3 py-1.5 text-[12px] font-semibold';
+const CHIP = 'flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-semibold';
+type Props = { map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; title: string; pageUrl: string; onClose: () => void };
 
 /** The browser saves the bytes with the work's name; the link is gone once the click took it. */
 function saveKmz(map: WorkMap, filter: WorkMapFilter, title: string): void {
@@ -17,69 +19,94 @@ function saveKmz(map: WorkMap, filter: WorkMapFilter, title: string): void {
   URL.revokeObjectURL(url);
 }
 
+/** «Qué», «Hasta el día» and «Trabajos» (o-12): the map behind follows what is chosen here. */
+function WhatLeaves(props: Props) {
+  const { map, filter } = props;
+  const works = map.works;
+  return (
+    <section className="space-y-4 rounded-xl border-[1.5px] border-outline/15 bg-background p-4">
+      {map.stages.length ? (
+        <div>
+          <p className={PANEL_LABEL}>Qué</p>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {exportStageOptions(map).map((option) => {
+              const on = (filter.stageId ?? '') === option.id;
+              return <button key={option.id || 'all'} type="button" aria-pressed={on} data-testid={`exportar-que-${option.id || 'todo'}`} onClick={() => props.onFilter(workMapStageFilter(map, filter, option.id))} className={`${SEGMENT} ${on ? 'border-primary bg-surface text-primary' : 'border-outline/20 bg-surface text-on-surface'}`}>{option.label}</button>;
+            })}
+          </div>
+        </div>
+      ) : null}
+      <DayField map={map} filter={filter} onFilter={props.onFilter} />
+      {works.length ? (
+        <div>
+          <div className="flex items-center justify-between"><p className={PANEL_LABEL}>Trabajos</p><button type="button" data-testid="exportar-trabajos-todos" onClick={() => props.onFilter(workMapWorkFilter(filter))} className="text-[12px] font-semibold text-primary">Todos ({works.length})</button></div>
+          <div className="mt-1 flex flex-wrap gap-2">
+            {works.map((work) => {
+              const on = !filter.workId || filter.workId === work.id;
+              return <button key={work.id} type="button" aria-pressed={on} data-testid={`exportar-trabajo-${work.id}`} onClick={() => props.onFilter(workMapWorkFilter(filter, filter.workId === work.id ? undefined : work.id))} className={`${CHIP} ${on ? 'border-outline/25 bg-surface text-on-surface' : 'border-outline/10 text-on-surface-variant opacity-60'}`}><span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: work.color }} />{work.name}</button>;
+            })}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function ClientLink(props: { pageUrl: string }) {
   const [copied, setCopied] = useState<'idle' | 'done' | 'failed'>('idle');
-  const copy = () => {
-    navigator.clipboard.writeText(props.pageUrl).then(() => setCopied('done'), (failure: Error) => {
-      console.warn('work map: copy refused', failure.name);
-      setCopied('failed');
-    });
-  };
+  const copy = () => navigator.clipboard.writeText(props.pageUrl).then(() => setCopied('done'), (failure: Error) => {
+    console.warn('work map: copy refused', failure.name);
+    setCopied('failed');
+  });
   return (
     <section className={CARD}>
-      <p className="flex items-center gap-2 text-[14px] font-semibold text-on-surface"><Link2 size={16} /> Enlace para el cliente</p>
-      <p className="mt-0.5 text-[12px] text-on-surface-variant">El cliente solo ve lo aprobado.</p>
-      <p data-testid="mapa-enlace-cliente" className="mt-2 truncate rounded-lg bg-surface-variant px-2 py-1.5 font-mono text-[12px] text-on-surface-variant">{props.pageUrl}</p>
-      <button type="button" data-testid="mapa-copiar-enlace" onClick={copy} className={SECONDARY}>
-        {copied === 'done' ? <Check size={16} /> : <Copy size={16} />} {copied === 'done' ? 'Enlace copiado' : 'Copiar enlace'}
-      </button>
+      <p className="flex items-center gap-2 text-[15px] font-semibold text-on-surface"><span className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary"><Link2 size={16} /></span>Enlace para el cliente</p>
+      <p className="mt-1 text-[12px] text-on-surface-variant">Solo lo aprobado.</p>
+      <p className="mt-2 truncate rounded-lg border border-outline/20 bg-background px-2.5 py-1.5 font-mono text-[12px] text-on-surface-variant">{props.pageUrl}</p>
+      <div className="mt-3 flex justify-end"><button type="button" data-testid="mapa-copiar-enlace-visor" onClick={() => void copy()} className="flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-[13px] font-semibold text-on-primary">{copied === 'done' ? <Check size={15} /> : <Copy size={15} />}{copied === 'done' ? 'Enlace copiado' : 'Copiar enlace de visor'}</button></div>
       {copied === 'failed' ? <p role="alert" className="mt-1 text-[12px] text-error">El navegador no dejó copiar. Selecciona el enlace y cópialo.</p> : null}
     </section>
   );
 }
 
-/** «Avance parcial» (o-08): which streets each work covered, for the stage and day the map shows. */
-function PartialProgress(props: { map: WorkMap; filter: WorkMapFilter }) {
-  const summary = partialProgressOf(props.map, props.filter);
+/** «Estructura de capas KMZ generada»: the folders Google Earth will show, with their metres. */
+function KmzTree(props: { map: WorkMap; filter: WorkMapFilter; fileName: string }) {
+  const layers = kmzLayersOf(props.map, props.filter);
   return (
-    <section data-testid="mapa-avance-parcial" className={CARD}>
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[14px] font-semibold text-on-surface">Avance parcial</p>
-        <span data-testid="mapa-parcial-vias" className="font-mono text-[12px] font-semibold text-primary">{partialStreetsLabel(summary)}</span>
-      </div>
-      {summary.rows.length ? (
-        <ul className="mt-2 space-y-1.5">
-          {summary.rows.map((row) => <li key={row.workId} data-testid={`mapa-parcial-${row.workId}`} className="flex items-start gap-2 text-[13px] text-on-surface"><span aria-hidden className="mt-1 h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: row.color }} /><span><b>{row.name}:</b> {row.streets}</span></li>)}
-        </ul>
-      ) : <p className="mt-2 text-[13px] text-on-surface-variant">Todavía no hay avance aprobado en este corte.</p>}
-      <div className="mt-3 flex items-baseline justify-between border-t border-outline/15 pt-2">
-        <span className="text-[12px] text-on-surface-variant">Metrado aprobado acumulado</span>
-        <span data-testid="mapa-parcial-metrado" className="font-mono text-[15px] font-bold text-primary">{summary.doneLabel}</span>
-      </div>
+    <section data-testid="exportar-capas" className="rounded-xl bg-on-surface p-4 font-mono text-[12px] text-surface">
+      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-surface/70">Estructura de capas KMZ generada</p>
+      <p className="mt-2 flex items-center gap-1.5"><FolderOpen size={14} />{props.fileName.replace(/\.kmz$/, '')}/</p>
+      <p className="ml-4 mt-1 flex items-center gap-1.5 text-primary-container"><Folder size={14} />Ejecutado/</p>
+      {layers.done.map((layer) => <p key={layer.workId} className="ml-9 flex items-center gap-2"><span aria-hidden className="h-2 w-2 rounded-full" style={{ backgroundColor: layer.color }} />{layer.name} ({layer.meters})</p>)}
+      <p className="ml-4 mt-1 flex items-center gap-1.5 text-surface/80"><Folder size={14} />Pendiente ({layers.pending})</p>
     </section>
   );
 }
 
-/** «Exportar» of the map (design `o-12-mapa-exportar`): what the map shows, to Google Earth and to the client. */
-export function WorkMapExport(props: { map: WorkMap; filter: WorkMapFilter; title: string; pageUrl: string; onClose: () => void }) {
+/** «Exportar» (design o-12): what leaves the map, to Google Earth and to the client. */
+export function WorkMapExport(props: Props) {
+  const fileName = workMapFileName(props.title, props.filter, new Date());
   return (
     <div data-testid="mapa-exportar-panel" className="min-h-0 flex-1 overflow-y-auto bg-surface p-4 md:p-5">
-      <div className="flex items-start justify-between gap-2 border-b border-outline/15 pb-4">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Sacar la obra</p>
           <p className="mt-1 text-2xl font-extrabold tracking-tight text-on-surface">Exportar</p>
-          <p data-testid="mapa-exportar-alcance" className="mt-0.5 text-[12px] text-on-surface-variant">Sale lo que ves: {workMapScopeLabel(props.map, props.filter)}</p>
+          <p data-testid="mapa-exportar-alcance" className="mt-0.5 text-[13px] text-on-surface-variant">Genera los entregables georreferenciados: {workMapScopeLabel(props.map, props.filter)}.</p>
         </div>
         <button type="button" data-testid="mapa-exportar-cerrar" aria-label="Cerrar exportar" onClick={props.onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-outline/20 text-on-surface"><X size={16} /></button>
       </div>
-      <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-3">
-        <PartialProgress map={props.map} filter={props.filter} />
+      <div className="mt-5 space-y-4">
+        <WhatLeaves {...props} />
+        <p className={PANEL_LABEL}>Formatos de exportación</p>
         <section className={CARD}>
-          <p className="flex items-center gap-2 text-[14px] font-semibold text-on-surface"><Globe size={16} /> Google Earth (KMZ)</p>
-          <p className="mt-0.5 text-[12px] text-on-surface-variant">Carpetas Ejecutado, por trabajo, y Pendiente.</p>
-          <button type="button" data-testid="mapa-descargar-kmz" onClick={() => saveKmz(props.map, props.filter, props.title)} className={PRIMARY}><Download size={16} /> Descargar KMZ</button>
+          <p className="flex items-center gap-2 text-[15px] font-semibold text-on-surface"><span className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary"><Globe size={16} /></span>Google Earth (KMZ)</p>
+          <p className="mt-1 text-[12px] text-on-surface-variant">Carpetas Ejecutado, por trabajo, y Pendiente.</p>
+          <p data-testid="exportar-archivo" className="mt-2 truncate rounded-lg border border-outline/20 bg-background px-2.5 py-1.5 font-mono text-[12px] text-on-surface-variant">{fileName}</p>
+          <div className="mt-3 flex justify-end"><button type="button" data-testid="mapa-descargar-kmz" onClick={() => saveKmz(props.map, props.filter, props.title)} className="flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-[13px] font-semibold text-on-primary"><Download size={15} />Descargar KMZ</button></div>
         </section>
         <ClientLink pageUrl={props.pageUrl} />
+        <KmzTree map={props.map} filter={props.filter} fileName={fileName} />
       </div>
     </div>
   );

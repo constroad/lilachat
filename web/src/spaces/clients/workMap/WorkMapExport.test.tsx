@@ -1,30 +1,54 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { workMapOf, type WorkMap } from '@lilachat/shared';
+import { workMapOf, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { ShareProgress } from './ShareProgress';
 import { WorkMapExport } from './WorkMapExport';
 
-/** Design o-08 inside «Compartir avance»: the partial progress, street by street, as the client sees it. */
+/** Designs o-08 («Compartir avance») and o-12 («Exportar»): the cut, what it shows, and what leaves. */
 const line = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.997 }];
 const mapOf = (progress: Array<Record<string, unknown>>): WorkMap => workMapOf({
   workStreets: {
     streets: [{ _id: 's1', name: 'Jr. Los Pinos', geometry: line, lengthM: 320 }],
-    scopes: [{ _id: 'c1', streetId: 's1', fromM: 0, toM: 320, tagIds: ['base'], partidaIds: [] }],
+    scopes: [{ _id: 'c1', streetId: 's1', fromM: 0, toM: 320, tagIds: ['base'], partidaIds: [], stageId: 'e1' }],
     progress,
     tags: [{ _id: 'base', name: 'Base', color: '#d97706', order: 1 }],
-    stages: [],
+    stages: [{ _id: 'e1', name: 'Etapa 1', order: 1 }],
   },
 })!;
+const done = [{ streetId: 's1', tagId: 'base', fromM: 0, toM: 120, date: '2026-11-01' }, { streetId: 's1', tagId: 'base', fromM: 120, toM: 200, date: '2026-11-04' }];
 
-describe('WorkMapExport · Avance parcial', () => {
-  it('lists each work with its streets, the streets with progress and the approved metres', () => {
-    render(<WorkMapExport map={mapOf([{ streetId: 's1', tagId: 'base', fromM: 0, toM: 120, date: '2026-11-01' }])} filter={{}} title="Obra" pageUrl="https://portal.example/x" onClose={vi.fn()} />);
+describe('ShareProgress (o-08)', () => {
+  it('shows the front summary for the cut; changing the stage or the day moves the map\'s filter', () => {
+    // Arrange
+    const onFilter = vi.fn<(filter: WorkMapFilter) => void>();
+    render(<ShareProgress map={mapOf(done)} filter={{ untilDay: '2026-11-01' }} onFilter={onFilter} pageUrl="https://portal.example/x" onClose={vi.fn()} />);
+    // Act
+    fireEvent.change(screen.getByTestId('corte-etapa'), { target: { value: 'e1' } });
+    fireEvent.change(screen.getByTestId('corte-dia'), { target: { value: '2026-11-04' } });
+    // Assert
     expect(screen.getByTestId('mapa-parcial-base')).toHaveTextContent('Base: Jr. Los Pinos hasta 0+120');
     expect(screen.getByTestId('mapa-parcial-vias')).toHaveTextContent('1 de 1 vía');
     expect(screen.getByTestId('mapa-parcial-metrado')).toHaveTextContent('+120 m lineales');
+    expect(screen.getByRole('option', { name: 'Etapa 1 (Jr. Los Pinos)' })).toBeTruthy();
+    expect(onFilter).toHaveBeenNthCalledWith(1, { stageId: 'e1', untilDay: '2026-11-01' });
+    expect(onFilter).toHaveBeenNthCalledWith(2, { untilDay: '2026-11-04' });
   });
 
   it('says when the cut has no approved progress yet', () => {
-    render(<WorkMapExport map={mapOf([])} filter={{}} title="Obra" pageUrl="https://portal.example/x" onClose={vi.fn()} />);
+    render(<ShareProgress map={mapOf([])} filter={{}} onFilter={vi.fn()} pageUrl="https://portal.example/x" onClose={vi.fn()} />);
     expect(screen.getByText('Todavía no hay avance aprobado en este corte.')).toBeTruthy();
+  });
+});
+
+describe('WorkMapExport (o-12)', () => {
+  it('names the file, lists the KMZ folders with their metres, and picks a work', () => {
+    const onFilter = vi.fn<(filter: WorkMapFilter) => void>();
+    render(<WorkMapExport map={mapOf(done)} filter={{}} onFilter={onFilter} title="Pavimentación Los Olivos" pageUrl="https://portal.example/x" onClose={vi.fn()} />);
+    expect(screen.getByTestId('exportar-archivo')).toHaveTextContent(/^pavimentacion-los-olivos-\d{4}-\d{2}-\d{2}\.kmz$/);
+    expect(screen.getByTestId('exportar-capas')).toHaveTextContent('Base (200 m)');
+    expect(screen.getByTestId('exportar-capas')).toHaveTextContent('Pendiente (120 m)');
+    expect(screen.getByTestId('exportar-que-e1')).toHaveTextContent('Etapa 1 (320 m)');
+    fireEvent.click(screen.getByTestId('exportar-trabajo-base'));
+    expect(onFilter).toHaveBeenCalledWith({ workId: 'base' });
   });
 });

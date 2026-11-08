@@ -1,12 +1,13 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
-import { ArchiveRestore, ExternalLink, Maximize2, Plus, Share2, X } from 'lucide-react-native';
+import { ArchiveRestore, Download, ExternalLink, Maximize2, Plus, Share2, X } from 'lucide-react-native';
 import { type ManualPhotoUpload, type MapEditSend, dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StretchRange, type UnitDischarge, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
 import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
+import { ShareProgress } from './ShareProgress';
 import { WorkMapFilters, WorkMapLegend } from './WorkMapFilters';
 import { WorkMapPanel } from './WorkMapPanel';
 import type { StreetDeleteSend } from './StreetDelete';
@@ -43,7 +44,7 @@ function useDischarges(map: WorkMap, discharges: UnitDischarge[]) {
 
 type BoardProps = { map: WorkMap; pageUrl: string; height: number; title: string; serviceId: string; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» and «Restaurar» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<PhotoAsset> };
 
-function TitleRow(props: { pageUrl: string; onExport: () => void; onDraw?: () => void; onDeleted?: () => void }) {
+function TitleRow(props: { pageUrl: string; onExport: () => void; onShare: () => void; onDraw?: () => void; onDeleted?: () => void }) {
   const colors = useColores();
   return (
     <View className="flex-row items-center gap-2">
@@ -61,9 +62,12 @@ function TitleRow(props: { pageUrl: string; onExport: () => void; onDraw?: () =>
       <Pressable testID="mapa-abrir" accessibilityLabel="Abrir en Portal" onPress={() => void Linking.openURL(props.pageUrl)} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20">
         <ExternalLink size={18} color={colors['on-surface']} />
       </Pressable>
-      <Pressable testID="mapa-exportar" onPress={props.onExport} className="h-11 flex-row items-center gap-2 rounded-xl border border-outline/20 px-3">
-        <Share2 size={18} color={colors['on-surface']} />
-        <Text className="text-[15px] font-semibold text-on-surface">Compartir</Text>
+      <Pressable testID="mapa-exportar" accessibilityLabel="Exportar" onPress={props.onExport} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20">
+        <Download size={18} color={colors['on-surface']} />
+      </Pressable>
+      <Pressable testID="mapa-compartir" onPress={props.onShare} className="h-11 flex-row items-center gap-2 rounded-xl bg-primary px-3">
+        <Share2 size={18} color={colors['on-primary']} />
+        <Text className="text-[15px] font-semibold text-on-primary">Compartir</Text>
       </Pressable>
     </View>
   );
@@ -79,7 +83,7 @@ export function WorkMapBoard(props: BoardProps) {
   const colors = useColores();
   const [filter, setFilter] = useState<WorkMapFilter>({});
   const [wide, setWide] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  const [side, setSide] = useState<'export' | 'share' | null>(null);
   const [streetId, setStreetId] = useState<string | null>(null);
   const [seeingDeleted, setSeeingDeleted] = useState(false);
   const view = useMemo(() => workMapView(map, filter), [map, filter]);
@@ -88,7 +92,7 @@ export function WorkMapBoard(props: BoardProps) {
   const top = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null;
   return (
     <View testID="mapa-servicio" className="gap-3">
-      <TitleRow pageUrl={pageUrl} onExport={() => setExporting(true)} onDraw={props.onDraw} onDeleted={props.admin && props.editMap ? () => setSeeingDeleted(true) : undefined} />
+      <TitleRow pageUrl={pageUrl} onExport={() => setSide('export')} onShare={() => setSide('share')} onDraw={props.onDraw} onDeleted={props.admin && props.editMap ? () => setSeeingDeleted(true) : undefined} />
       <WorkMapFilters map={map} view={view} filter={filter} onFilter={setFilter} />
       <View className="-mx-4 overflow-hidden bg-surface-variant" style={{ height }}>
         <View pointerEvents="none" className="absolute inset-0">
@@ -103,7 +107,8 @@ export function WorkMapBoard(props: BoardProps) {
       <FullMap view={view} open={wide} onClose={() => setWide(false)} pins={pista.pins} stretches={pista.stretches} />
       {props.editMap ? <DeletedWork open={seeingDeleted} map={map} send={props.editMap} onClose={() => setSeeingDeleted(false)} /> : null}
       <StreetScopes map={map} streetId={streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} onClose={() => setStreetId(null)} />
-      <WorkMapExport open={exporting} map={map} filter={filter} title={props.title} pageUrl={pageUrl} onClose={() => setExporting(false)} />
+      <WorkMapExport open={side === 'export'} map={map} filter={filter} onFilter={setFilter} title={props.title} pageUrl={pageUrl} onClose={() => setSide(null)} />
+      <ShareProgress open={side === 'share'} map={map} filter={filter} onFilter={setFilter} pageUrl={pageUrl} onClose={() => setSide(null)} />
     </View>
   );
 }

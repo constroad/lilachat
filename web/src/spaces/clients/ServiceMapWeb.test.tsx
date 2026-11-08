@@ -98,7 +98,7 @@ describe('ServiceMapWeb', () => {
 
     // Assert
     expect(screen.getByTestId('mapa-servicio')).toHaveAttribute('data-wide', 'true');
-    expect(screen.getByTestId('mapa-exportar')).toHaveTextContent('Compartir avance');
+    expect(screen.getByTestId('mapa-compartir')).toHaveTextContent('Compartir avance');
     act(() => report(600));
     expect(screen.getByTestId('mapa-servicio')).toHaveAttribute('data-wide', 'false');
     vi.unstubAllGlobals();
@@ -208,14 +208,14 @@ describe('ServiceMapWeb', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     showMap();
     await screen.findByTestId('mapa-lienzo');
-    fireEvent.click(screen.getByTestId('mapa-exportar'));
+    fireEvent.click(screen.getByTestId('mapa-compartir'));
     // Act
     fireEvent.click(screen.getByTestId('mapa-copiar-enlace'));
     // Assert
-    await waitFor(() => expect(screen.getByTestId('mapa-copiar-enlace')).toHaveTextContent('Enlace copiado'));
+    await waitFor(() => expect(screen.getByTestId('mapa-copiar-enlace')).toHaveTextContent('Copiado'));
     expect(writeText).toHaveBeenCalledWith(`${url}/service/${serviceId}?section=map`);
-    fireEvent.click(screen.getByTestId('mapa-exportar-cerrar'));
-    expect(screen.queryByTestId('mapa-exportar-panel')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mapa-compartir-cerrar'));
+    expect(screen.queryByTestId('mapa-compartir-panel')).not.toBeInTheDocument();
   });
 
   it('shows the progress the units suggest, with a pin per unit (design o-07)', async () => {

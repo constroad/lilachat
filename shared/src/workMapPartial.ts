@@ -44,3 +44,33 @@ export function partialProgressOf(map: WorkMap, filter: WorkMapFilter): PartialS
 
 export const partialStreetsLabel = ({ streetsWithProgress, streetsTotal }: Pick<PartialSummary, 'streetsWithProgress' | 'streetsTotal'>): string =>
   `${streetsWithProgress} de ${streetsTotal} ${streetsTotal === 1 ? 'vía' : 'vías'}`;
+
+export type CutOption = { id: string; label: string };
+export const WHOLE_WORK = 'Toda la obra';
+
+const stageStreets = (map: WorkMap, stageId: string): string[] =>
+  map.streets.filter((street) => map.scopes.some((scope) => scope.stageId === stageId && scope.streetId === street.id)).map((street) => street.name);
+
+/** «Etapa de obra» of o-08: each stage says its streets, as the design does. */
+export const shareStageOptions = (map: WorkMap): CutOption[] =>
+  [{ id: '', label: WHOLE_WORK }, ...map.stages.map((stage) => {
+    const streets = stageStreets(map, stage.id);
+    return { id: stage.id, label: streets.length ? `${stage.name} (${streets.join(', ')})` : stage.name };
+  })];
+
+/** «Qué» of o-12: the whole work or a stage, each with its planned metres. */
+export const exportStageOptions = (map: WorkMap): CutOption[] =>
+  [{ id: '', label: WHOLE_WORK }, ...map.stages.map((stage) => ({ id: stage.id, label: `${stage.name} (${metersLabel(workMapView(map, { stageId: stage.id }).totalM)})` }))];
+
+export type KmzLayer = { workId: string; name: string; color: string; meters: string };
+export type KmzLayers = { done: KmzLayer[]; pending: string };
+
+/** «Estructura de capas KMZ generada» (o-12): the folders the file carries and their metres. */
+export function kmzLayersOf(map: WorkMap, filter: WorkMapFilter): KmzLayers {
+  const view = workMapView(map, filter);
+  const done = map.works.flatMap((work) => {
+    const meters = view.done.filter((line) => line.workId === work.id).reduce((sum, line) => sum + ((line.toM ?? 0) - (line.fromM ?? 0)), 0);
+    return meters > 0 ? [{ workId: work.id, name: work.name, color: work.color, meters: metersLabel(meters) }] : [];
+  });
+  return { done, pending: metersLabel(Math.max(0, view.totalM - view.doneM)) };
+}

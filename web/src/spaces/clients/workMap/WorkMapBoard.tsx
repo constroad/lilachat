@@ -1,8 +1,9 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
-import { ArchiveRestore, ExternalLink, Maximize2, Minimize2, Plus, Share2 } from 'lucide-react';
+import { ArchiveRestore, Download, ExternalLink, Maximize2, Minimize2, Plus, Share2 } from 'lucide-react';
 import { type ManualPhotoUpload, type MapEditSend, dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange } from '@lilachat/shared';
 import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
+import { ShareProgress } from './ShareProgress';
 import { MapFilters, MapLegend } from './WorkMapOverlays';
 import { WorkMapPanel } from './WorkMapPanel';
 import type { StreetDeleteSend } from './StreetDelete';
@@ -74,7 +75,7 @@ function useDischarges(map: WorkMap, discharges: UnitDischarge[]) {
 
 type BoardProps = { map: WorkMap; pageUrl: string; title: string; serviceId: string; /** Crumbs and title (o-01). */ head?: ReactNode; /** The service's tabs: beside the actions on a wide board, on their own row on a narrow one. */ tabs?: ReactNode; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» and «Restaurar» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<File> };
 
-function Actions(props: { pageUrl: string; expanded: boolean; wide: boolean; onToggle: () => void; onExport: () => void; onDraw?: () => void; onDeleted?: () => void }) {
+function Actions(props: { pageUrl: string; expanded: boolean; wide: boolean; onToggle: () => void; onExport: () => void; onShare: () => void; onDraw?: () => void; onDeleted?: () => void }) {
   const label = (text: string) => (props.wide ? text : <span className="sr-only">{text}</span>);
   return (
     <div className={`flex shrink-0 items-center gap-2 ${props.wide ? 'pb-3' : 'pb-2'}`}>
@@ -84,7 +85,8 @@ function Actions(props: { pageUrl: string; expanded: boolean; wide: boolean; onT
       {props.onDraw ? <button type="button" data-testid="mapa-nueva-calle" onClick={props.onDraw} className={ACTION}><Plus size={16} /> {label('Nueva calle')}</button> : null}
       {props.onDeleted ? <button type="button" data-testid="mapa-borrados-abrir" onClick={props.onDeleted} className={ACTION}><ArchiveRestore size={16} /> {label('Borrados')}</button> : null}
       <a data-testid="mapa-abrir" href={props.pageUrl} target="_blank" rel="noopener noreferrer" className={ACTION}><ExternalLink size={16} /> {label('Portal')}</a>
-      <button type="button" data-testid="mapa-exportar" onClick={props.onExport} className={`${ACTION} border-primary bg-primary text-on-primary hover:bg-primary/90`}><Share2 size={16} /> {props.wide ? 'Compartir avance' : 'Compartir'}</button>
+      <button type="button" data-testid="mapa-exportar" onClick={props.onExport} className={ACTION}><Download size={16} /> {label('Exportar')}</button>
+      <button type="button" data-testid="mapa-compartir" onClick={props.onShare} className={`${ACTION} border-primary bg-primary text-on-primary hover:bg-primary/90`}><Share2 size={16} /> {props.wide ? 'Compartir avance' : 'Compartir'}</button>
     </div>
   );
 }
@@ -97,7 +99,8 @@ function Actions(props: { pageUrl: string; expanded: boolean; wide: boolean; onT
 export function WorkMapBoard(props: BoardProps) {
   const { map, pageUrl } = props;
   const [filter, setFilter] = useState<WorkMapFilter>({});
-  const [exporting, setExporting] = useState(false);
+  const [side, setSide] = useState<'export' | 'share' | null>(null);
+  const toggleSide = (next: 'export' | 'share') => setSide((shown) => (shown === next ? null : next));
   const [streetId, setStreetId] = useState<string | null>(null);
   const [seeingDeleted, setSeeingDeleted] = useState(false);
   const view = useMemo(() => workMapView(map, filter), [map, filter]);
@@ -108,14 +111,15 @@ export function WorkMapBoard(props: BoardProps) {
   const top = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null;
   const streetPanel = streetId ? <StreetScopes map={map} streetId={streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} onBack={() => setStreetId(null)} /> : null;
   const deletedPanel = seeingDeleted && props.editMap ? <DeletedWork map={map} send={props.editMap} onClose={() => setSeeingDeleted(false)} /> : null;
-  const panel = deletedPanel ?? (exporting
-    ? <WorkMapExport map={map} filter={filter} title={props.title} pageUrl={pageUrl} onClose={() => setExporting(false)} />
-    : streetPanel ?? <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} scrolls={wide} deleteStreet={props.deleteStreet} onOpenStreet={setStreetId} />);
+  const sidePanel = side === 'export'
+    ? <WorkMapExport map={map} filter={filter} onFilter={setFilter} title={props.title} pageUrl={pageUrl} onClose={() => setSide(null)} />
+    : side === 'share' ? <ShareProgress map={map} filter={filter} onFilter={setFilter} pageUrl={pageUrl} onClose={() => setSide(null)} /> : null;
+  const panel = deletedPanel ?? sidePanel ?? (streetPanel ?? <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} scrolls={wide} deleteStreet={props.deleteStreet} onOpenStreet={setStreetId} />);
   return (
     <div ref={holder} data-testid="mapa-servicio" data-expanded={expanded} data-wide={wide} className={`flex flex-col bg-background ${expanded ? 'fixed inset-0 z-50' : 'min-h-0 flex-1'} ${wide ? 'overflow-hidden' : 'overflow-y-auto'}`}>
       <header className={`${MAP_HEAD_BAR} flex-wrap`}>
         <div className="min-w-0 flex-1">{props.head}{wide ? props.tabs : null}</div>
-        <Actions pageUrl={pageUrl} expanded={expanded} wide={wide} onToggle={expanded ? close : open} onExport={() => setExporting((shown) => !shown)} onDraw={props.onDraw} onDeleted={props.admin && props.editMap ? () => setSeeingDeleted((shown) => !shown) : undefined} />
+        <Actions pageUrl={pageUrl} expanded={expanded} wide={wide} onToggle={expanded ? close : open} onExport={() => toggleSide('export')} onShare={() => toggleSide('share')} onDraw={props.onDraw} onDeleted={props.admin && props.editMap ? () => setSeeingDeleted((shown) => !shown) : undefined} />
         {wide ? null : <div className="-mt-2 min-w-0 basis-full">{props.tabs}</div>}
       </header>
       {wide ? null : <MapFilters map={map} view={view} filter={filter} onFilter={setFilter} floating={false} />}

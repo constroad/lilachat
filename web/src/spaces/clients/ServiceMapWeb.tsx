@@ -39,7 +39,9 @@ type MapProps = { jwt: string; links: ChannelLinks; target: { kind: 'service'; c
 export function ServiceMapWeb(props: MapProps) {
   const { state, retry, refresh } = useWorkMap(props.jwt, props.links, props.target);
   const [drawing, setDrawing] = useState(false);
-  const onDraw = props.drawStreet ? () => setDrawing(true) : undefined;
+  /** What the last save answered («Calle guardada…»): the editor closes, so the board says it. */
+  const [notice, setNotice] = useState<string | null>(null);
+  const onDraw = props.drawStreet ? () => { setNotice(null); setDrawing(true); } : undefined;
   const pageOf = (url: string) => serviceMapPage(url, props.target.serviceId);
   const deleteStreet = deleteThenReload(props.deleteStreet, refresh);
   const editMap = editThenReload(props.editMap, refresh);
@@ -55,7 +57,7 @@ export function ServiceMapWeb(props: MapProps) {
       </Frame>
     );
   }
-  if (drawing && props.drawStreet) return <WorkStreetEditor title={props.title} map={state.map} send={props.drawStreet} findPlace={placeAsker(props.jwt)} start={props.start} onClose={() => setDrawing(false)} onSaved={() => { setDrawing(false); void retry(); }} />;
+  if (drawing && props.drawStreet) return <WorkStreetEditor title={props.title} map={state.map} send={props.drawStreet} findPlace={placeAsker(props.jwt)} start={props.start} onClose={() => setDrawing(false)} onSaved={(message) => { setNotice(message); setDrawing(false); void retry(); }} />;
   if (!state.map) return <Frame head={props.head} tabs={props.tabs}><WorkMapFirst drawUrl={props.drawUrl ?? null} onDraw={onDraw} trace={editMap && props.uploadTrace ? <ImportTrace send={editMap} upload={props.uploadTrace} /> : null} /></Frame>;
-  return <WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} title={props.title} serviceId={props.target.serviceId} head={props.head} tabs={props.tabs} badge={props.badge} discharges={props.discharges} mapPhotos={props.mapPhotos} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} editMap={editMap} admin={props.admin} uploadPhoto={props.uploadPhoto} uploadTrace={props.uploadTrace} mapInReport={props.mapInReport} />;
+  return <WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} title={props.title} serviceId={props.target.serviceId} head={props.head} tabs={props.tabs} badge={props.badge} discharges={props.discharges} mapPhotos={props.mapPhotos} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} editMap={editMap} admin={props.admin} uploadPhoto={props.uploadPhoto} uploadTrace={props.uploadTrace} mapInReport={props.mapInReport} notice={notice} />;
 }

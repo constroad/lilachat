@@ -21,3 +21,6 @@ design/stitch/*
 .claude/last-publish
 .claude/pw-feature
 .claude/worktrees/
+
+# Tutorial recordings: they live in Lilachat's media, never in the repo (skill tutorial-video-loop).
+.tutorials-out/

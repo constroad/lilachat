@@ -19,7 +19,6 @@ export const script: TutorialScript = {
     'QA-CHECKLIST obra de prueba': 'Cercado de Lima',
     'Asfalto QA': 'Carpeta asfáltica',
     'Etapa QA': 'Etapa 1',
-    'Lampa Street': 'Jirón Lampa',
   },
   steps: [
     { say: 'El mapa de la obra vive en cada servicio del canal del cliente. Entra al canal de tu cliente para empezar.', action: { kind: 'click', selector: 'text:Consorcio Vial del Pacífico' } },
@@ -37,6 +36,6 @@ export const script: TutorialScript = {
     { say: 'El ancho va siempre. Sin ancho no hay metros cuadrados ni volumen, y no se puede calcular el metrado.', action: { kind: 'type', selector: 'testid:editor-calle-ancho', text: '7.2' } },
     { say: 'Con el largo y el ancho, Lilachat calcula el área neta de la calle. Revisa que coincida con tu plano.', action: { kind: 'highlight', selector: 'testid:editor-calle-area' } },
     { say: 'Toca Guardar calle. La calle queda en el mapa del servicio y la ven todos los miembros del canal.', action: { kind: 'click', selector: 'testid:editor-calle-guardar' } },
-    { say: 'Listo, la calle ya está en el mapa de la obra. El siguiente paso es partirla en etapas y en trabajos.', action: { kind: 'highlight', selector: 'text:Calle guardada' }, holdMs: 1500 },
+    { say: 'Listo, la calle ya está en el mapa de la obra. El siguiente paso es partirla en etapas y en trabajos.', action: { kind: 'highlight', selector: 'testid:mapa-aviso' }, holdMs: 1500 },
   ],
 };

@@ -335,6 +335,8 @@ describe('ServiceMapWeb', () => {
     expect(entryId).toMatch(/^[0-9a-f-]{36}$/);
     expect(await screen.findByTestId('mapa-avance')).toBeInTheDocument();
     expect(screen.queryByTestId('editor-calle')).not.toBeInTheDocument();
+    // The editor closed saying nothing (tutorial recording 08/11): the answer now stays over the map.
+    expect(screen.getByTestId('mapa-aviso')).toHaveTextContent('Calle guardada.');
   });
 
   it('anyone deletes a street after confirming it, and the map is asked again (José 07/11)', async () => {

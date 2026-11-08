@@ -4,7 +4,8 @@
  * before opening the browser. Ported from Portal (`scripts/academyRecorderOverlay.ts`).
  *
  * Selectors: `testid:x` (data-testid), `text:x` (deepest element with that text), `boton:x`
- * (button or link with that exact text, inside the open dialog first) and `ph:x` (placeholder).
+ * (button or link with that exact text, inside the open dialog first), `ph:x` (placeholder) and
+ * `xpath:x` (a row's button by the text of its row).
  * `cameraNames` rewrites texts that cannot appear on camera («QA», «borrar»), at any depth.
  */
 export const OVERLAY_SOURCE = `(() => {
@@ -82,6 +83,7 @@ export const OVERLAY_SOURCE = `(() => {
       return insideDialog(buttons)[0] || null;
     }
     if (selector.startsWith('text:')) return insideDialog(deepestWith(selector.slice(5).trim().toLowerCase()))[0] || null;
+    if (selector.startsWith('xpath:')) return document.evaluate(selector.slice(6), document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
     return document.querySelector(selector);
   };
   let names = [];

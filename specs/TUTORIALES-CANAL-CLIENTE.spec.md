@@ -149,3 +149,21 @@ pantalla. El visor todavía no está. Esto es lo que ya existe:
 - El grabador dio «sin avisos» porque el último paso miraba el mapa. Ahora el último paso espera
   «Calle guardada» (skill §4: el último paso espera su dato). Si no se guarda, el ensayo avisa.
 - No quedó nada que limpiar en la base.
+
+**Tercera grabación (08/11, 19:2xZ): lista para subir.** Agentes resumió el trazo en su tarjeta:
+«84 puntos» en vez de las coordenadas (d33009d, desde 19:06Z).
+- La segunda grabación (19:06Z) guardó la calle, pero el último paso no encontró «Calle
+  guardada». El editor se cerraba **sin decir nada**: el mensaje existía y nadie lo mostraba.
+  Ahora el mapa muestra el aviso arriba (`mapa-aviso`), en web y APK (test en
+  `ServiceMapWeb.test.tsx`).
+- Resultado de la tercera:
+  - dura 2:15,2, igual que el `.json` (135 231 ms), y pesa 3,4 MB;
+  - 0 avisos;
+  - el último cuadro muestra «Calle guardada» sobre el mapa con 3 calles;
+  - audio con volumen medio de −18,7 dB y pico de −3,9 dB, sin silencios de más de 8 s.
+- Efecto en la base: «Jirón Lampa» de 1 096 m apareció en el mapa del servicio (3 calles).
+- Limpieza por el camino de la app («Borrar calle» y confirmar, con un guion de ensayo que no
+  va al repo): el mapa volvió a 2 calles. Se hizo después de cada grabación que guardó.
+- El video y su `.json` quedan en `.tutorials-out/`, ignorado por git, hasta que exista el
+  media de tutoriales de Lilachat. Falta verlo con sonido (José).
+- El grabador acepta `xpath:` para el botón de una fila por el texto de esa fila.

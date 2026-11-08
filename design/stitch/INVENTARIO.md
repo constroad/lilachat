@@ -262,5 +262,7 @@ Proyecto `15540754270713720465`. Cada pantalla en móvil, tablet y escritorio; l
 | `o-10-mapa-vacio` | Servicio sin mapa |
 | `o-12-mapa-exportar` | Exportar y compartir la obra |
 | `o-13-mapa-caminar` | Caminar la calle con GPS |
+| `o-14-informe-avance-pdf` | Informe de avance para el cliente, PDF A4 de 4 hojas (08/11) |
+| `o-15-plano-avance-pdf` | Plano de avance A3 apaisado con leyenda, metrados y cajetín (08/11) |
 
 El cliente del enlace de servicio vive en el proyecto `773748608093847613`: `o-11-reporte-cliente-mapa`.

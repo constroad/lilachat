@@ -669,3 +669,30 @@ ver «Borrados»; cubierto solo por test).
   ya había reemplazado. El mapa usaba `lazy` pelado y no `lazyChunk`, que recarga una vez (José
   30/10, mismo caso con los emojis). Ahora los dos usos del lienzo pasan por `lazyChunk`, y
   `web/src/ui/lazyChunkUsage.test.ts` falla si alguien vuelve a escribir `lazy(() => import(…))`.
+
+### Informe visual para el cliente: diseño Stitch contra los PDF de hoy (José 08/11)
+
+José: «ese es un informe que le voy a entregar al cliente… capas, mis avances, una leyenda… todo lo
+construido». Diseños: `o-14-informe-avance-pdf` (A4, 4 hojas) y `o-15-plano-avance-pdf` (A3), ids
+en `design/stitch/registro.jsonl`. Los PDF de hoy (Portal `pdf_de_avance_de_obra`, mirados en Test
+el 08/11 10:20Z) tienen UNA hoja: encabezado, la línea de la calle sobre fondo blanco y «Resumen por
+trabajo». Falta, en los dos:
+
+| Diseño | PDF de hoy |
+| --- | --- |
+| Plano de la ciudad debajo (manzanas, calles con nombre) | Solo la línea, sin plano |
+| Leyenda: color por trabajo, pendiente punteado, contorno por etapa | No hay |
+| Progresivas sobre la línea, flecha de norte, escala gráfica | No hay |
+| Franja de cifras: avance %, m² de asfalto, calles terminadas, jornadas | No hay |
+| Avance por trabajo con barra y «X de Y m · %» | Una línea de texto |
+| Tabla de metrados por calle (etapa, largo, ancho, cada trabajo, m², estado) con TOTAL | No hay; el plano trae un cuadro vacío |
+| Lo hecho en el corte: jornadas con fecha, tramo, m y m², y mapa de lo hecho | No hay |
+| Comparado con el informe anterior | No hay |
+| Registro fotográfico con calle, progresiva, trabajo, fecha y hora, autor | No hay |
+| Observaciones y firmas (residente, supervisión) | No hay |
+| Plano A3: columna con leyenda, cuadro de metrados, avance por calle y cajetín (proyecto, cliente, corte, escala, lámina, elaboró, revisó) | Cuadro de metrados vacío, sin cajetín |
+| Pie «Informe N.º · Hoja X de Y» y fecha de emisión | Una línea «Generado el …» |
+
+Lo que Stitch inventó y NO va: «WGS-84 UTM 18S RTK ±2 cm», las especificaciones MAC-2, CSS-1H y
+CBR, el RUC, «Firma digital certificada» y el dictamen técnico redactado. Va solo el dato real; el
+texto de observaciones lo escribe el residente. El PDF lo arma Portal: pedido a esa sesión el 08/11.

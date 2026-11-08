@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { ArchiveRestore, ChevronRight, Download, ExternalLink, Layers, Maximize2, Paintbrush, Plus, Share2, TrendingUp, X } from 'lucide-react-native';
-import { progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StretchRange, type UnitDischarge, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { visibleStationMarks, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StationMark, type StretchRange, type UnitDischarge, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
@@ -19,13 +19,13 @@ import { DeletedWork } from './DeletedWork';
 import { WorkMapSurface } from './WorkMapSurface';
 import { BrushMap, WorkLayersSheet, type LayersKind } from './WorkLayers';
 
-function FullMap(props: { view: WorkMapView; open: boolean; onClose: () => void; pins: DischargePin[]; stretches: WorkMapLine[] }) {
+function FullMap(props: { view: WorkMapView; open: boolean; onClose: () => void; pins: DischargePin[]; stretches: WorkMapLine[]; stations: StationMark[] }) {
   const colors = useColores();
   const margins = useMargenes();
   return (
     <Modal visible={props.open} animationType="slide" onRequestClose={props.onClose}>
       <View className="flex-1 bg-background">
-        {props.open ? <WorkMapSurface view={props.view} moves pins={props.pins} stretches={props.stretches} /> : null}
+        {props.open ? <WorkMapSurface view={props.view} moves stations={props.stations} pins={props.pins} stretches={props.stretches} /> : null}
         <Pressable testID="mapa-cerrar-completo" accessibilityLabel="Cerrar el mapa" onPress={props.onClose} className="absolute right-3 h-12 w-12 items-center justify-center rounded-full bg-surface" style={{ top: margins.cabecera + 8 }}>
           <X size={22} color={colors['on-surface']} />
         </Pressable>
@@ -132,6 +132,7 @@ export function WorkMapBoard(props: BoardProps) {
   const openStreet = (id: string | null, record = false) => { setChoosing(null); setRecordingStart(record); setStreetId(id); };
   const view = useMemo(() => workMapView(map, filter), [map, filter]);
   const groups = useMemo(() => workMapStageGroups(map, view), [map, view]);
+  const stations = useMemo(() => visibleStationMarks(map.streets, view.streets.map((street) => street.id)), [map, view]);
   const pista = useDischarges(map, props.discharges ?? NO_DISCHARGES);
   const top = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null;
   return (
@@ -147,7 +148,7 @@ export function WorkMapBoard(props: BoardProps) {
       <WorkMapFilters map={map} view={view} filter={filter} onFilter={setFilter} />
       <View className="-mx-4 overflow-hidden bg-surface-variant" style={{ height }}>
         <View pointerEvents="none" className="absolute inset-0">
-          {wide ? null : <WorkMapSurface view={view} moves={false} pins={pista.pins} stretches={pista.stretches} />}
+          {wide ? null : <WorkMapSurface view={view} moves={false} stations={stations} pins={pista.pins} stretches={pista.stretches} />}
         </View>
         <WorkMapLegend view={view} />
         <Pressable testID="mapa-pantalla-completa" accessibilityLabel="Ver mapa completo" onPress={() => setWide(true)} className="absolute right-3 top-3 h-11 w-11 items-center justify-center rounded-xl border border-outline/15 bg-surface">
@@ -155,7 +156,7 @@ export function WorkMapBoard(props: BoardProps) {
         </Pressable>
       </View>
       <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} deleteStreet={props.deleteStreet} onOpenStreet={(id) => openStreet(id)} />
-      <FullMap view={view} open={wide} onClose={() => setWide(false)} pins={pista.pins} stretches={pista.stretches} />
+      <FullMap view={view} open={wide} onClose={() => setWide(false)} pins={pista.pins} stretches={pista.stretches} stations={stations} />
       {props.editMap ? <DeletedWork open={seeingDeleted} map={map} send={props.editMap} onClose={() => setSeeingDeleted(false)} /> : null}
       <StreetScopes map={map} streetId={streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} startRecording={recordingStart} onClose={() => openStreet(null)} />
       <StreetPick target={choosing} onPick={(id) => openStreet(id, true)} onClose={() => setChoosing(null)} />

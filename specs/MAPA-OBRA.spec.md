@@ -830,3 +830,8 @@ en 65825629: un tramo vale con un trabajo O con su etapa. Uno con solo la etapa 
 0 m. El descriptor no cambió, así que no hizo falta reaprobación. `brushProblem` ahora solo rechaza
 lo que dejaría un tramo vacío: el último trabajo de un tramo sin etapa, o la etapa de un tramo sin
 trabajos.
+
+**Progresivas sobre la vía (auditoría, punto 10).** `shared/src/workMapStations.ts`, con 4 tests,
+marca 0+000, una cada 100 m y el final. Una marca a menos de 30 m del final le cede el lugar. Se
+dibujan como puntos con texto, con la misma pintura en la web y en el APK (tablero, mapa completo).
+Solo salen en las calles que muestra la vista.

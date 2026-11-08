@@ -2,13 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl/dist/maplibre-gl-csp';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-csp-worker?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE_URL, workMapCollection, type BasemapFeatureLike, type DischargePin, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
+import { STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark, NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE_URL, workMapCollection, type BasemapFeatureLike, type DischargePin, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
 
 maplibregl.setWorkerUrl(workerUrl);
 
 const PLANNED = 'work-map-planned';
 const DONE = 'work-map-done';
 const STRETCH = 'work-map-stretch';
+const STATIONS = 'work-map-stations';
+const NO_STATIONS: StationMark[] = [];
 const FIT = { padding: 56, maxZoom: 17, duration: 0 };
 const LINE_ROUND = { 'line-cap': 'round', 'line-join': 'round' } as const;
 const NO_PINS: DischargePin[] = [];
@@ -20,6 +22,9 @@ function addWorkLayers(map: maplibregl.Map) {
   map.addLayer({ id: DONE, type: 'line', source: DONE, layout: LINE_ROUND, paint: { 'line-color': ['get', 'color'], 'line-width': 7 } });
   map.addSource(STRETCH, { type: 'geojson', data: workMapCollection([]) });
   map.addLayer({ id: STRETCH, type: 'line', source: STRETCH, layout: LINE_ROUND, paint: { 'line-color': ['get', 'color'], 'line-width': 11, 'line-opacity': 0.55 } });
+  map.addSource(STATIONS, { type: 'geojson', data: stationMarkCollection([]) });
+  map.addLayer({ id: `${STATIONS}-dot`, type: 'circle', source: STATIONS, paint: STATION_DOT_PAINT });
+  map.addLayer({ id: `${STATIONS}-text`, type: 'symbol', source: STATIONS, layout: STATION_TEXT_LAYOUT as maplibregl.SymbolLayerSpecification['layout'], paint: STATION_TEXT_PAINT });
 }
 
 /** A numbered pin per unit (design o-07): an HTML marker, so no font of the style is needed. */
@@ -63,7 +68,7 @@ function roadsAt(map: maplibregl.Map, event: maplibregl.MapMouseEvent): TapFeatu
 
 /** The streets of the work over a literal map (José 06/11). Lazy: its library weighs more than the chat. */
 /** `onTap`: drawing a street (design o-02), each tap is a bend; the map also offers «ubicarme» when there is nothing to frame. */
-export default function WorkMapCanvas(props: { view: WorkMapView; expanded: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void }) {
+export default function WorkMapCanvas(props: { view: WorkMapView; expanded: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void }) {
   const { view, expanded } = props;
   const holder = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -105,6 +110,9 @@ export default function WorkMapCanvas(props: { view: WorkMapView; expanded: bool
   useEffect(() => {
     if (ready) (map.current?.getSource(STRETCH) as maplibregl.GeoJSONSource | undefined)?.setData(workMapCollection(props.stretches ?? []));
   }, [ready, props.stretches]);
+  useEffect(() => {
+    if (ready) (map.current?.getSource(STATIONS) as maplibregl.GeoJSONSource | undefined)?.setData(stationMarkCollection(props.stations ?? NO_STATIONS));
+  }, [ready, props.stations]);
   usePins(map.current, ready, props.pins ?? NO_PINS);
 
   // MapLibre's stylesheet makes its container `relative`: on the holder itself `absolute` lost and the map measured 0 high.

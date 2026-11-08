@@ -2,12 +2,13 @@ import { useRef } from 'react';
 import { View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map as MapSurface, type CameraRef, type MapRef } from '@maplibre/maplibre-react-native';
 import { MapControls } from './MapControls';
-import { dischargePinCollection, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE_URL, workMapCollection, type BasemapFeatureLike, type DischargePin, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
+import { dischargePinCollection, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE_URL, workMapCollection, type BasemapFeatureLike, type DischargePin, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView , STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark } from '@lilachat/shared';
 
 const LINE_ENDS = { 'line-cap': 'round', 'line-join': 'round' } as const;
 const EDGE = { top: 48, right: 48, bottom: 48, left: 48 };
 /** The style's own font: OpenFreeMap serves it, the street names use it. */
 const PIN_FONT = ['Noto Sans Bold'];
+const NO_STATIONS: StationMark[] = [];
 const NO_PINS: DischargePin[] = [];
 const NO_LINES: WorkMapLine[] = [];
 /** Close enough to tell one side of the street from the other while drawing (o-02). */
@@ -33,7 +34,7 @@ async function roadsAt(map: MapRef | null, point: [number, number], tap: WorkMap
 }
 
 /** `onTap` draws a street (o-02): each tap is a bend. `near` frames where the phone is when there is nothing drawn yet. */
-export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void; near?: WorkMapPoint | null }) {
+export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void; near?: WorkMapPoint | null }) {
   const { view, moves } = props;
   const map = useRef<MapRef>(null);
   const camera = useRef<CameraRef>(null);
@@ -55,6 +56,10 @@ export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?
       </GeoJSONSource>
       <GeoJSONSource id="work-map-stretch" data={workMapCollection(props.stretches ?? NO_LINES)}>
         <Layer id="work-map-stretch-line" type="line" layout={LINE_ENDS} paint={{ 'line-color': ['get', 'color'], 'line-width': 10, 'line-opacity': 0.55 }} />
+      </GeoJSONSource>
+      <GeoJSONSource id="work-map-stations" data={stationMarkCollection(props.stations ?? NO_STATIONS)}>
+        <Layer id="work-map-station-dot" type="circle" paint={STATION_DOT_PAINT} />
+        <Layer id="work-map-station-text" type="symbol" layout={STATION_TEXT_LAYOUT as never} paint={STATION_TEXT_PAINT} />
       </GeoJSONSource>
       <GeoJSONSource id="work-map-pins" data={dischargePinCollection(props.pins ?? NO_PINS)}>
         <Layer id="work-map-pin-dot" type="circle" paint={{ 'circle-color': ['get', 'color'], 'circle-radius': 11, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 }} />

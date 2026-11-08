@@ -96,8 +96,8 @@ export function streetDraftArea(draft: StreetDraft): string | null {
 }
 
 /**
- * The ends of a picked street can be dragged (José 08/11: «selecciono toda la calle y no quiero los
- * últimos 100 m»). The gesture Portal's editor already has (`dragScopeHandle`): the dropped point is
+ * The ends of a picked street can be dragged (José 08/11: he picks the whole street but does not want
+ * its last 100 m). The gesture Portal's editor already has (`dragScopeHandle`): the dropped point is
  * projected on the street's axis, so the stretch never leaves the road. `start` and `end` are the
  * person's 0+000 and end, which on a street marked backwards are the map's end and start.
  */

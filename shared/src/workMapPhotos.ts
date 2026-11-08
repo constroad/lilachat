@@ -5,8 +5,8 @@ import { reportTypeLabel } from './reportCreation.js';
 import type { ViewableFile } from './fileViewer.js';
 
 /**
- * The «Fotos» layer of the work map (José 08/11: «si la unidad 1 trabajó en la calle X, en el mapa, en
- * la calle X, debería tener un marcador para ver las fotos y videos»). Every field photo is taken with
+ * The «Fotos» layer of the work map (José 08/11: if unit 1 worked on street X, the map should have a
+ * marker on street X to see its photos and videos). Every field photo is taken with
  * the phone's place: here it lands on its street and chainage, and photos of the same spot share one
  * marker. PURE: the APK and the web draw from here.
  */
@@ -64,7 +64,8 @@ function placeOnStreets(map: Pick<WorkMap, 'streets'>, photo: MapPhoto): Placed 
   return best;
 }
 
-const newestFirst = (photos: MapPhoto[]): MapPhoto[] => [...photos].sort((left, right) => right.at.localeCompare(left.at));
+/** ISO instants order as text; no collator (Hermes builds one per `localeCompare`). */
+const newestFirst = (photos: MapPhoto[]): MapPhoto[] => [...photos].sort((left, right) => (left.at < right.at ? 1 : left.at > right.at ? -1 : 0));
 
 function streetSpots(map: Pick<WorkMap, 'streets'>, streetId: string, placed: Placed[]): PhotoSpot[] {
   const street = map.streets.find((one) => one.id === streetId);

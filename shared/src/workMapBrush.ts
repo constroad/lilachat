@@ -82,15 +82,13 @@ function painted(draft: ScopeDraft, brush: Brush, on: boolean): ScopeDraft {
   return { ...draft, workIds: on ? [...others, brush.id] : others };
 }
 
-export const BRUSH_LAST_WORK = 'Es el único trabajo de esta calle. Para quitarlo, borra el tramo en «Ver tramos».';
-export const BRUSH_NEEDS_WORK = 'Esta calle todavía no tiene trabajos. Píntale uno en «Trabajos» y luego súmala a la etapa.';
+export const BRUSH_LAST_WORK = 'Es lo único que tiene esta calle. Para quitarlo, borra el tramo en «Ver tramos».';
 
-/** What Portal would refuse, said before sending: a stretch always keeps at least one work. */
+/** A stretch keeps a work or its stage (Portal, 08/11): the tap that would leave one empty is refused here. */
 export function brushProblem(map: Pick<WorkMap, 'scopes'>, brush: Brush, streetId: string): string | null {
-  const scopes = scopesOf(map, streetId);
-  if (brush.kind === 'stage') return scopes.length ? null : BRUSH_NEEDS_WORK;
-  const removing = brushHas(map, brush, streetId);
-  return removing && scopes.some((scope) => scope.workIds.length <= 1) ? BRUSH_LAST_WORK : null;
+  if (!brushHas(map, brush, streetId)) return null;
+  const emptied = (scope: WorkMapScope) => (brush.kind === 'stage' ? scope.workIds.length === 0 : scope.workIds.length <= 1 && !scope.stageId);
+  return scopesOf(map, streetId).some(emptied) ? BRUSH_LAST_WORK : null;
 }
 
 /** What a tap on the street sends: the brush on all its stretches, or off if it had it on all. */

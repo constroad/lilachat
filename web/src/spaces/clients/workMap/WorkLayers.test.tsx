@@ -69,10 +69,11 @@ describe('useBrush', () => {
 
   it('the last work of a stretch is not removed: Portal refuses an empty stretch', async () => {
     const send = vi.fn<MapEditSend>(ok);
-    const { result } = renderHook(() => useBrush(map, send));
+    const unstaged: WorkMap = { ...map, scopes: [{ id: 'c1', streetId: 's1', fromM: 0, toM: 218, workIds: ['base'] }] };
+    const { result } = renderHook(() => useBrush(unstaged, send));
     act(() => result.current.setBrush({ kind: 'work', id: 'base' }));
     await act(() => result.current.tap({ lat: -12, lng: -76.999 }));
-    expect(result.current.error).toBe('Es el único trabajo de esta calle. Para quitarlo, borra el tramo en «Ver tramos».');
+    expect(result.current.error).toBe('Es lo único que tiene esta calle. Para quitarlo, borra el tramo en «Ver tramos».');
     expect(send).not.toHaveBeenCalled();
   });
 

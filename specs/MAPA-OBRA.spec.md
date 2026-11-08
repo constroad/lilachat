@@ -825,6 +825,8 @@ etiqueta.». No cambió ningún dato. **Defecto, corregido en el motor:**
 - Una calle sin trabajos no se suma a una etapa: «Píntale uno en «Trabajos»…».
 - «Deshacer» de un tramo que creó la brocha lo borra; Portal lo guarda en «Borrados».
 
-**El mismo rechazo rompe la etapa al crear una calle** (`saveStreetWithStage` manda un tramo sin
-trabajos). Se le preguntó a Portal si acepta un tramo con etapa y sin trabajos. Si la regla se
-queda, el campo «Etapa» de la calle nueva se retira.
+**El mismo rechazo rompía la etapa al crear una calle** (`saveStreetWithStage`). Portal lo resolvió
+en 65825629: un tramo vale con un trabajo O con su etapa. Uno con solo la etapa no pinta y cuenta
+0 m. El descriptor no cambió, así que no hizo falta reaprobación. `brushProblem` ahora solo rechaza
+lo que dejaría un tramo vacío: el último trabajo de un tramo sin etapa, o la etapa de un tramo sin
+trabajos.

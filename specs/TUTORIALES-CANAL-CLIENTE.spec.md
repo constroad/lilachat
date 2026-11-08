@@ -167,3 +167,14 @@ pantalla. El visor todavía no está. Esto es lo que ya existe:
 - El video y su `.json` quedan en `.tutorials-out/`, ignorado por git, hasta que exista el
   media de tutoriales de Lilachat. Falta verlo con sonido (José).
 - El grabador acepta `xpath:` para el botón de una fila por el texto de esa fila.
+
+**Tutorial 1 regrabado con la pantalla corregida (08/11, después del comentario de José).**
+- La leyenda va en una fila arriba del mapa y el aviso «Calle «Jirón Lampa» guardada: 1096 m.»
+  sale fuera del mapa. Nada tapa las calles.
+- Defecto del video anterior: «Aquí ves las calles…» se decía con el mapa todavía gris (unos
+  3 s). Ahora un paso puede llevar `waitFor`: la voz espera a que ese elemento esté en pantalla.
+  Este guion espera `mapa-lienzo` con `data-listo=true`.
+- Dura 2:18,8, igual que el `.json` (138 802 ms). Pesa 3,5 MB. 0 avisos. Audio con volumen medio
+  de −18,8 dB y pico de −4,0 dB.
+- La calle grabada se borró por «Borrar calle» y el mapa volvió a 2 calles. También se borró la
+  de la grabación descartada.

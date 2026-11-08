@@ -30,6 +30,8 @@ export type TutorialStep = {
   action?: TutorialAction;
   /** Extra still time after the action, so what is shown can be understood. */
   holdMs?: number;
+  /** The voice waits for this to be on screen: a map that is still loading would be narrated grey. */
+  waitFor?: string;
 };
 
 export type TutorialViewport = { width: number; height: number };

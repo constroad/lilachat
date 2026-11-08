@@ -132,6 +132,7 @@ export async function runStep(step: TutorialStep, context: StepContext): Promise
   let warning: string | null;
   try {
     warning = await act(page, step.action ?? { kind: 'pause' }, context.baseUrl);
+    if (!warning && step.waitFor && !(await waitFor(page, step.waitFor))) warning = `no apareció «${step.waitFor}»`;
   } catch (error) {
     warning = `falló: ${(error instanceof Error ? error.message : String(error)).split('\n')[0]}`;
   }

@@ -24,7 +24,7 @@ export const script: TutorialScript = {
     { say: 'El mapa de la obra vive en cada servicio del canal del cliente. Entra al canal de tu cliente para empezar.', action: { kind: 'click', selector: 'text:Consorcio Vial del Pacífico' } },
     { say: 'En la pestaña Servicios están las obras de este cliente, cada una con su avance, sus pedidos y sus informes.', action: { kind: 'click', selector: 'text:Servicios' } },
     { say: 'Abre el servicio donde vas a trabajar. El mapa que dibujes queda guardado solo para este servicio.', action: { kind: 'click', selector: 'text:Pavimentación Jirón Lampa' } },
-    { say: 'Toca la pestaña Mapa. Aquí ves las calles de la obra sobre el mapa real, con el avance de cada trabajo.', action: { kind: 'click', selector: 'boton:Mapa' } },
+    { say: 'Toca la pestaña Mapa. Aquí ves las calles de la obra sobre el mapa real, con el avance de cada trabajo.', action: { kind: 'click', selector: 'boton:Mapa' }, waitFor: '[data-testid="mapa-lienzo"][data-listo="true"]' },
     { say: 'Para agregar una calle de la obra, toca Nueva calle. Se abre el editor sobre el mismo mapa.', action: { kind: 'click', selector: 'testid:mapa-nueva-calle' } },
     { say: 'Primero el lugar, después la calle. Escribe la dirección, o pega el enlace de Google Maps que te mandó el cliente.', action: { kind: 'type', selector: 'testid:editor-buscar-lugar', text: 'Jr. Lampa, Lima' } },
     { say: 'Toca Buscar. Puedes escribir Jirón o Jr., Avenida o Av., y el buscador lo entiende igual.', action: { kind: 'click', selector: 'testid:editor-buscar-ir' } },

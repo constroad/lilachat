@@ -123,3 +123,11 @@ describe('«PDF del avance» (o-08 and o-12, Portal 02cfceef)', () => {
     expect(workMapFormInputOf({ kind: 'work_progress_pdf', ...change })).toBeNull();
   });
 });
+
+describe('«Mapa en el informe del servicio» (o-08, Portal 926b9723)', () => {
+  it('on with its cut, or off; the service is the door\'s', () => {
+    expect(workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_map_in_report', include: true, stage_id: 'e1', until: '2026-11-06' })!).context).toEqual({ servicioId: SERVICE, incluir: true, etapaId: 'e1', hasta: '2026-11-06' });
+    expect(workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_map_in_report', include: false })!).form.id).toBe('mapa_en_informe_de_servicio');
+    expect(workMapFormInputOf({ kind: 'work_map_in_report', include: 'si' })).toBeNull();
+  });
+});

@@ -599,3 +599,12 @@ ver «Borrados»; cubierto solo por test).
   enlace real, sin ventana bloqueada); en el APK se abre en el visor del teléfono.
 - El boleto de `subir_al_drive` acepta KMZ/KML desde e0518e47 (sin cambiar su esquema): el import ya
   puede subir el archivo. Falta la aprobación de José de las herramientas nuevas.
+
+### «Incluir en el informe del servicio» (Portal 926b9723)
+
+- Interruptor en «Compartir avance» (web y APK). Prendido manda `mapa_en_informe_de_servicio`
+  {incluir: true, etapaId?, hasta?} con el corte del panel; apagado, {incluir: false}. Muestra lo que
+  Portal respondió: «Se adjunta al informe: Etapa 1 · Hasta el 6 nov.» El PDF del servicio suma la
+  hoja «Mapa de avance». Sin corte de día, Portal usa lo aprobado hasta el día del informe.
+- **Arranca apagado:** la lectura del mapa no trae todavía si ya estaba incluido (pedido a Portal el
+  07/11: `mapaEnInforme` en `workStreets`).

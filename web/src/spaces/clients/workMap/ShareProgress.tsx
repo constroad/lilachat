@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, Copy, Download, Link2, ShieldCheck, X } from 'lucide-react';
-import { createProgressLink, createProgressPdf, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { createProgressLink, createProgressPdf, setMapInReport, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 import { DayField, PANEL_LABEL, StageField } from './CutFields';
 import { PdfAction } from './PdfAction';
 
@@ -29,17 +29,37 @@ function FrontSummary(props: { map: WorkMap; filter: WorkMapFilter }) {
   );
 }
 
+/** «Incluir en el informe del servicio»: the client's report PDF adds the map at this cut. */
+function InReport(props: { map: WorkMap; filter: WorkMapFilter; send: MapEditSend }) {
+  const [on, setOn] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const change = async (include: boolean) => {
+    setBusy(true);
+    const result = await setMapInReport(props.send, props.map, props.filter, include);
+    setBusy(false);
+    if (result.ok) setOn(result.state.included);
+    setNote(result.ok ? { ok: true, text: result.state.label } : { ok: false, text: result.message });
+  };
+  return (
+    <div>
+      <PanelSwitch testId="compartir-informe" title="Incluir en el informe del servicio" hint="El PDF del servicio suma una hoja con el mapa de este corte." on={on} disabled={busy} onChange={(include) => void change(include)} />
+      {note ? <p role={note.ok ? 'status' : 'alert'} data-testid="compartir-informe-nota" className={`mt-1 text-[12px] ${note.ok ? 'text-on-surface-variant' : 'font-semibold text-error'}`}>{note.text}</p> : null}
+    </div>
+  );
+}
+
 type LinkState = { busy: boolean; link: ProgressLink | null; error: string | null };
 
-/** «Mostrar fotos»: the client sees the gallery up to the day of the cut only when it is on. */
-function PhotosSwitch(props: { on: boolean; onChange: (on: boolean) => void }) {
+/** A switch of the panel with its title and its hint (o-08: «Mostrar fotos», «Incluir en el informe»). */
+function PanelSwitch(props: { testId: string; title: string; hint: string; on: boolean; disabled?: boolean; onChange: (on: boolean) => void }) {
   return (
     <label className="flex items-start justify-between gap-3">
       <span>
-        <span className="block text-[14px] font-semibold text-on-surface">Mostrar fotos</span>
-        <span className="block text-[12px] text-on-surface-variant">El cliente ve las fotos de la obra hasta el día del corte.</span>
+        <span className="block text-[14px] font-semibold text-on-surface">{props.title}</span>
+        <span className="block text-[12px] text-on-surface-variant">{props.hint}</span>
       </span>
-      <input type="checkbox" role="switch" data-testid="compartir-fotos" checked={props.on} onChange={(event) => props.onChange(event.target.checked)} className="peer sr-only" />
+      <input type="checkbox" role="switch" data-testid={props.testId} checked={props.on} disabled={props.disabled} onChange={(event) => props.onChange(event.target.checked)} className="peer sr-only" />
       <span aria-hidden className="relative mt-0.5 h-6 w-11 shrink-0 rounded-full bg-outline/30 transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-surface after:transition-transform peer-checked:bg-primary peer-checked:after:translate-x-5" />
     </label>
   );
@@ -95,7 +115,8 @@ export function ShareProgress(props: Props) {
         {props.map.stages.length ? <StageField map={props.map} filter={props.filter} onFilter={cut} options={shareStageOptions(props.map)} /> : null}
         <DayField map={props.map} filter={props.filter} onFilter={cut} />
         <FrontSummary map={props.map} filter={props.filter} />
-        <PhotosSwitch on={photos} onChange={(on) => { setPhotos(on); setState({ busy: false, link: null, error: null }); }} />
+        <PanelSwitch testId="compartir-fotos" title="Mostrar fotos" hint="El cliente ve las fotos de la obra hasta el día del corte." on={photos} onChange={(on) => { setPhotos(on); setState({ busy: false, link: null, error: null }); }} />
+        {props.send ? <InReport map={props.map} filter={props.filter} send={props.send} /> : null}
         <PublicLink state={state} />
         {props.send ? <PdfAction key={`${props.filter.stageId ?? ''}|${props.filter.untilDay ?? ''}`} testId="compartir-pdf" label="Descargar PDF para cliente" icon={<Download size={16} />} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-outline/25 bg-surface text-[14px] font-semibold text-on-surface" create={() => createProgressPdf(props.send!, props.filter, 'client')} /> : null}
         {props.send ? <button type="button" data-testid="compartir-crear-enlace" disabled={state.busy} onClick={() => void create(props.send!)} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-semibold text-on-primary disabled:opacity-60"><Link2 size={17} />{state.busy ? 'Creando…' : 'Crear enlace de avance'}</button> : null}

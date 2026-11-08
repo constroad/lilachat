@@ -26,6 +26,7 @@ export type WorkMapFormInput =
   | { kind: 'work_deleted' }
   | { kind: 'work_progress_link'; stageId: string | null; until: string | null; photos: boolean }
   | { kind: 'work_import'; mediaId: string; entryId: string | null }
+  | { kind: 'work_map_in_report'; include: boolean; stageId: string | null; until: string | null }
   | { kind: 'work_progress_pdf'; stageId: string | null; until: string | null; format: 'cliente' | 'plano'; size: 'A3' | 'A1' | null; workIds: string[] | null };
 export type WorkMapFormContext = Record<string, string | number | boolean | string[] | null>;
 
@@ -97,6 +98,13 @@ function progressPdfInputOf(raw: Record<string, unknown>): WorkMapFormInput | nu
   return { kind: 'work_progress_pdf', stageId: cut.stageId, until: cut.until, format, size, workIds };
 }
 
+/** «Incluir en el informe del servicio» (o-08): on with its cut, or off. */
+function mapInReportInputOf(raw: Record<string, unknown>): WorkMapFormInput | null {
+  const cut = progressLinkInputOf({ ...raw, photos: false });
+  if (!cut || cut.kind !== 'work_progress_link' || typeof raw.include !== 'boolean') return null;
+  return { kind: 'work_map_in_report', include: raw.include, stageId: cut.stageId, until: cut.until };
+}
+
 /** «Importar KMZ o KML» (o-12): the Drive file, and an entry only to confirm. */
 function importInputOf(raw: Record<string, unknown>): WorkMapFormInput | null {
   const mediaId = typeof raw.media_id === 'string' && MEDIA_ID.test(raw.media_id) ? raw.media_id : '';
@@ -116,12 +124,13 @@ export function workMapFormInputOf(raw: Record<string, unknown>): WorkMapFormInp
   if (raw.kind === 'work_progress_link') return progressLinkInputOf(raw);
   if (raw.kind === 'work_import') return importInputOf(raw);
   if (raw.kind === 'work_progress_pdf') return progressPdfInputOf(raw);
+  if (raw.kind === 'work_map_in_report') return mapInReportInputOf(raw);
   return null;
 }
 
 /** The kinds the door opens; restore and the deleted list since agentes checks their service (890b02e). */
 export const isWorkMapFormKind = (kind: unknown): boolean =>
-  kind === 'work_scope' || kind === 'work_scope_delete' || kind === 'work_stage' || kind === 'work_tag' || kind === 'work_restore' || kind === 'work_deleted' || kind === 'work_progress_link' || kind === 'work_import' || kind === 'work_progress_pdf';
+  kind === 'work_scope' || kind === 'work_scope_delete' || kind === 'work_stage' || kind === 'work_tag' || kind === 'work_restore' || kind === 'work_deleted' || kind === 'work_progress_link' || kind === 'work_import' || kind === 'work_progress_pdf' || kind === 'work_map_in_report';
 
 /** Narrows the door's union to these kinds. */
 export const isWorkMapFormInput = (input: { kind: string }): input is WorkMapFormInput => isWorkMapFormKind(input.kind);
@@ -156,6 +165,7 @@ export function workMapFormPrepared(serviceId: string, input: WorkMapFormInput):
     case 'work_restore': return { form: formOf('restaurar_de_obra', 'Restaurar', 'Restaurar'), context: restoreContext(serviceId, input) };
     case 'work_deleted': return { form: formOf('borrados_de_obra', 'Lo borrado del mapa', 'Ver'), context: { servicioId: serviceId } };
     case 'work_progress_pdf': return { form: formOf('pdf_de_avance_de_obra', 'PDF del avance', 'Generar'), context: { servicioId: serviceId, ...(input.stageId ? { etapaId: input.stageId } : {}), ...(input.until ? { hasta: input.until } : {}), formato: input.format, ...(input.size ? { tamano: input.size } : {}), ...(input.workIds ? { trabajoIds: input.workIds } : {}) } };
+    case 'work_map_in_report': return { form: formOf('mapa_en_informe_de_servicio', 'Mapa en el informe', input.include ? 'Incluir' : 'Quitar'), context: { servicioId: serviceId, incluir: input.include, ...(input.stageId ? { etapaId: input.stageId } : {}), ...(input.until ? { hasta: input.until } : {}) } };
     case 'work_import': return { form: formOf('importar_calles_de_obra', 'Importar calles', input.entryId ? 'Crear calles' : 'Revisar'), context: { servicioId: serviceId, mediaId: input.mediaId, confirmar: Boolean(input.entryId), ...(input.entryId ? { entradaId: input.entryId } : {}) } };
     case 'work_progress_link': return { form: formOf('crear_enlace_de_avance', 'Enlace de avance', 'Crear enlace'), context: { servicioId: serviceId, ...(input.stageId ? { etapaId: input.stageId } : {}), ...(input.until ? { hasta: input.until } : {}), mostrarFotos: input.photos } };
   }

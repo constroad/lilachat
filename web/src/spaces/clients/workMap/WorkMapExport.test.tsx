@@ -124,3 +124,14 @@ describe('the map PDFs (Portal 02cfceef)', () => {
     expect(send.mock.calls[0]![0]).toMatchObject({ kind: 'work_progress_pdf', format: 'plan', size: 'A1' });
   });
 });
+
+describe('ShareProgress · Incluir en el informe', () => {
+  it('turns it on with the cut and says what the report carries', async () => {
+    const send = vi.fn<MapEditSend>(async () => ({ ok: true, message: '', data: { incluido: true, etapa: 'e1', hasta: '2026-11-04' } }));
+    render(<ShareProgress map={mapOf(done)} filter={{ stageId: 'e1', untilDay: '2026-11-04' }} onFilter={vi.fn()} send={send} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('compartir-informe'));
+    expect(await screen.findByTestId('compartir-informe-nota')).toHaveTextContent('Se adjunta al informe: Etapa 1 · Hasta el 4 nov.');
+    expect(screen.getByTestId('compartir-informe')).toBeChecked();
+    expect(send.mock.calls[0]![0]).toMatchObject({ kind: 'work_map_in_report', include: true, stage_id: 'e1', until: '2026-11-04' });
+  });
+});

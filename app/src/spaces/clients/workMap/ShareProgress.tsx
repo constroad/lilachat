@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Copy, Download, Link2, ShieldCheck } from 'lucide-react-native';
-import { createProgressLink, createProgressPdf, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { createProgressLink, createProgressPdf, setMapInReport, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 import { Interruptor } from '../../../ui/Interruptor';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
@@ -30,6 +30,29 @@ function FrontSummary(props: { map: WorkMap; filter: WorkMapFilter }) {
         <Text className="text-[13px] text-on-surface-variant">Metrado aprobado</Text>
         <Text testID="mapa-parcial-metrado" className="font-mono text-[20px] font-bold text-primary">{summary.doneLabel}</Text>
       </View>
+    </View>
+  );
+}
+
+/** «Incluir en el informe del servicio»: the client's report PDF adds the map at this cut. */
+function InReport(props: { map: WorkMap; filter: WorkMapFilter; send: MapEditSend }) {
+  const [on, setOn] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
+  const change = async (include: boolean) => {
+    setBusy(true);
+    const result = await setMapInReport(props.send, props.map, props.filter, include);
+    setBusy(false);
+    if (result.ok) setOn(result.state.included);
+    setNote(result.ok ? { ok: true, text: result.state.label } : { ok: false, text: result.message });
+  };
+  return (
+    <View className="gap-1">
+      <View className="flex-row items-center justify-between gap-3">
+        <View className="flex-1"><Text className="text-[15px] font-semibold text-on-surface">Incluir en el informe del servicio</Text><Text className="text-[13px] text-on-surface-variant">El PDF del servicio suma una hoja con el mapa de este corte.</Text></View>
+        <Interruptor testID="compartir-informe" value={on} disabled={busy} onValueChange={(include) => void change(include)} />
+      </View>
+      {note ? <Text testID="compartir-informe-nota" className={`text-[13px] ${note.ok ? 'text-on-surface-variant' : 'font-semibold text-error'}`}>{note.text}</Text> : null}
     </View>
   );
 }
@@ -84,6 +107,7 @@ export function ShareProgress(props: Props) {
         <View className="flex-1"><Text className="text-[15px] font-semibold text-on-surface">Mostrar fotos de inspección</Text><Text className="text-[13px] text-on-surface-variant">Las de la obra hasta el día del corte.</Text></View>
         <Interruptor testID="compartir-fotos" value={photos} onValueChange={(on) => { setPhotos(on); setState(IDLE); }} />
       </View>
+      {props.send ? <InReport map={props.map} filter={props.filter} send={props.send} /> : null}
       <PublicLink state={state} />
       {props.send ? <PdfAction testID="compartir-pdf" label="Descargar PDF para cliente" icon={<Download size={18} color={colors['on-surface']} />} className="min-h-[52px] flex-row items-center justify-center gap-2 rounded-xl border border-outline/25 bg-surface" textClassName="text-[16px] font-semibold text-on-surface" create={() => createProgressPdf(props.send!, props.filter, 'client')} /> : null}
       {props.send ? (

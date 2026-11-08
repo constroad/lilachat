@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import { Footprints, Navigation, Pause, Play, Save, Square, Undo2, X } from 'lucide-react-native';
-import { DRAW_MODES, dragStreetEnd, EMPTY_STREET, nudgeStreetEnd, streetDraftHandles, type StreetEnd, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, WORK_MAP_DRAFT_COLOR, WORK_MAP_PLANNED_COLOR, walkedDraft, walkHint, walkPositionPins, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
+import { DRAW_MODES, dragStreetEnd, EMPTY_STREET, nudgeStreetEnd, streetDraftHandles, type StreetEnd, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, WORK_MAP_DRAFT_COLOR, WORK_MAP_PLANNED_COLOR, walkedDraft, walkHint, walkPositionPins, workMapView, type DrawMode, type PlaceAsk, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
 import { useCurrentLocation } from '../../../chat/location/useCurrentLocation';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
 import { WorkMapSurface } from './WorkMapSurface';
 import type { StreetSend } from './workProgressSender';
 import { useGpsWalk } from './useGpsWalk';
+import { PlaceSearch } from './PlaceSearch';
 
 const NO_STREETS: WorkMap = { streets: [], scopes: [], progress: [], works: [], stages: [] };
 const FIELD = 'mt-1 h-12 rounded-xl border border-outline/25 bg-background px-3 text-[15px] text-on-surface';
@@ -19,7 +20,7 @@ const NO_PINS: never[] = [];
 const NUDGE_M = 10;
 const GPS_DENIED = 'Lilachat no tiene permiso de ubicación. Actívalo en Ajustes o dibuja la calle de otra forma.';
 
-type EditorProps = { open: boolean; title: string; map: WorkMap | null; send: StreetSend; onClose: () => void; onSaved: (message: string) => void };
+type EditorProps = { open: boolean; title: string; map: WorkMap | null; send: StreetSend; onClose: () => void; onSaved: (message: string) => void; /** «Busca un lugar o pega el enlace» (José 08/11). */ findPlace?: PlaceAsk; /** The service's place (Portal da5382a5): where a map without streets opens. */ start?: WorkMapPoint };
 
 /** «Tocar la calle» first: it is the fast one (audit 07/11). «A mano» is for a pasaje the map lacks. */
 function ModeSwitch({ mode, onMode }: { mode: DrawMode; onMode: (mode: DrawMode) => void }) {
@@ -110,7 +111,7 @@ export function WorkStreetEditor(props: EditorProps) {
   const view = useMemo(() => workMapView(props.map ?? NO_STREETS), [props.map]);
   const gps = useGpsWalk();
   useEffect(() => { setDraft((before) => (before.mode === 'gps' ? walkedDraft(before, gps.walk) : before)); }, [gps.walk]);
-  const { current } = useCurrentLocation(props.open && !view.bounds);
+  const { current } = useCurrentLocation(props.open && !view.bounds && !props.start);
   const margins = useMargenes();
   const colors = useColores();
   const change = (next: Partial<StreetDraft>) => {
@@ -118,6 +119,7 @@ export function WorkStreetEditor(props: EditorProps) {
     setDraft((before) => ({ ...before, ...next }));
   };
   const handles = useMemo(() => streetDraftHandles(draft), [draft]);
+  const [focus, setFocus] = useState<WorkMapPoint | null>(null);
   const onHandleDrop = (handle: StreetEnd, point: WorkMapPoint) => {
     const dropped = dragStreetEnd(draft, handle, point);
     setDraft(dropped.draft);
@@ -143,6 +145,7 @@ export function WorkStreetEditor(props: EditorProps) {
         <View className="bg-primary px-4 pb-3" style={{ paddingTop: margins.cabecera + 8 }}>
           <Text className="font-mono text-[11px] font-bold uppercase tracking-[2px] text-on-primary/80" numberOfLines={1}>{props.title}</Text>
           <Text className="text-[20px] font-bold text-on-primary">Definir área de trabajo</Text>
+          <PlaceSearch ask={props.findPlace} near={focus ?? props.start} onPick={setFocus} />
           <ModeSwitch mode={draft.mode} onMode={(mode) => { const question = modeChangeLoss(draft, mode); if (question) setSwitching({ mode, question }); else switchTo(mode); }} />
           {switching ? <SwitchQuestion question={switching.question} onYes={() => switchTo(switching.mode)} onNo={() => setSwitching(null)} /> : null}
           <View className="mt-2 flex-row items-center justify-between gap-2">
@@ -176,7 +179,7 @@ export function WorkStreetEditor(props: EditorProps) {
           </View>
         </View>
         <View className="flex-1">
-          {props.open ? <WorkMapSurface view={view} moves pins={handles.length ? NO_PINS : [...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} handles={handles} onHandleDrop={onHandleDrop} near={current.state === 'ready' ? current.location : null} /> : null}
+          {props.open ? <WorkMapSurface view={view} moves pins={handles.length ? NO_PINS : [...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} handles={handles} onHandleDrop={onHandleDrop} focus={focus} near={props.start ?? (current.state === 'ready' ? current.location : null)} /> : null}
           <EditorLegend />
         </View>
         <View className="border-t border-outline/15 bg-surface px-4 pt-3" style={{ paddingBottom: margins.pie + 12 }}>

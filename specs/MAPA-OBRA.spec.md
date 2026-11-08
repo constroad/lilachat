@@ -1001,3 +1001,36 @@ pantalla».
   Revisa el tramo y confírmalo: recién ahí se suma al avance.».
 - Cuando alguna unidad no suma, dice por qué: «No suman: 1 fuera de las calles de la obra · 1 sin
   ubicación en sus fotos.».
+
+**E2E en vivo de 259b55f (web, Test, 08/11).**
+- La tarjeta dice «Las fotos de 3 unidades caen entre 0+010 y 0+100 de QA-MAPA calle — borrar…» y
+  «No suman: 1 fuera de las calles de la obra.». La pastilla dice «3 de 4 unidades ubicadas».
+- Editor: al tocar Jirón Moquegua vino la calle entera, de 845 m, con sus dos extremos.
+- Arrastré el extremo «0+845» con el mouse: quedó en 713 m.
+- Los botones ±10 m dieron 723, 703 y 693 m.
+- Con dos toques y «Fin +10 m» ×4 quedó un tramo de 103 m, que guardé como «QA-MAPA calle 2 —
+  borrar» (6af0add1792b9464e8775e69, ancho 6 m, sin etapa) para el o-09. José dio el OK 08/11.
+- **Defecto encontrado:** la brocha sobre una calle SIN tramos mandaba `entry_id: brocha-<ms>`, y
+  el server solo acepta un UUID. Respondió «Falta qué parte del informe abrir.».
+- Antes solo se había probado sobre calles con tramos, que no llevan `entry_id`.
+- Arreglo: `paintAt` recibe el generador del id (`crypto.randomUUID` en la web, `expo-crypto` en
+  el APK), con un test que nació rojo.
+
+**Buscar un lugar o pegar el enlace (José 08/11, igual que Portal).**
+- Arriba del editor de calle: «Busca un lugar o pega el enlace de Google Maps».
+- Coordenadas: `!3d!4d`, `?q=`, `ll=/sll=/daddr=`, `/@` y «lat,lng» se leen en el teléfono, sin ir
+  al server.
+- Enlace corto (maps.app.goo.gl, goo.gl/maps, g.co/kgs):
+  - el server lee SOLO su `Location`, hasta 3 saltos entre esos dominios, con 3,5 s y caché de
+    24 h;
+  - no es un proxy;
+  - si el enlace largo trae un nombre y no coordenadas, se busca ese nombre.
+- Nombre de lugar: Nominatim desde el server, con User-Agent propio, caché de 10 min, 20 búsquedas
+  por minuto por persona, `viewbox` de ±0,25° alrededor de lo que se mira (`bounded=0`) y 6
+  resultados.
+- Al elegir un resultado, el mapa vuela ahí a zoom 17.
+- Ruta: `POST /api/places`, con sesión. Motor: `shared/src/placeSearch.ts`, con 8 tests; server
+  `placeSearch.ts`, con 6 tests.
+- **Ubicación del servicio** (`service.ubicacion` de Portal da5382a5): si el mapa no tiene calles,
+  el editor abre ahí y no en el GPS del teléfono. También es el centro del sesgo de búsqueda. Con
+  esto queda resuelto el «o-10 sin fondo».

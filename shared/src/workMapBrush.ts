@@ -160,12 +160,15 @@ export async function runBrushRequests(send: (request: BrushRequest) => Promise<
 export type BrushStroke = { before: WorkMap; brush: Brush; streetId: string };
 type ScopeSend = (request: BrushRequest) => Promise<WorkProgressResult>;
 
-/** A tap in brush mode: the street under it toggled through Portal, and the stroke to undo it. */
-export async function paintAt(map: WorkMap, brush: Brush, place: WorkMapPoint, send: ScopeSend): Promise<{ failure: string | null; stroke: BrushStroke | null }> {
+/**
+ * A tap in brush mode: the street under it toggled through Portal, and the stroke to undo it.
+ * `newEntryId` keys a new stretch: Portal takes only a UUID (web E2E 08/11: «brocha-<ms>» was refused).
+ */
+export async function paintAt(map: WorkMap, brush: Brush, place: WorkMapPoint, send: ScopeSend, newEntryId: () => string): Promise<{ failure: string | null; stroke: BrushStroke | null }> {
   const streetId = streetAtTap(map, place);
   const problem = streetId ? brushProblem(map, brush, streetId) : null;
   if (problem) return { failure: problem, stroke: null };
-  const failure = await runBrushRequests(send, streetId ? brushRequests(map, brush, streetId, `brocha-${Date.now()}`) : []);
+  const failure = await runBrushRequests(send, streetId ? brushRequests(map, brush, streetId, newEntryId()) : []);
   return { failure, stroke: !failure && streetId ? { before: map, brush, streetId } : null };
 }
 

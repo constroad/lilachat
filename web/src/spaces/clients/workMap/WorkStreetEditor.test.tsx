@@ -4,10 +4,10 @@ import type { WorkMapView } from '@lilachat/shared';
 import type { StreetSend } from './workProgressSender';
 import { WorkStreetEditor } from './WorkStreetEditor';
 
-type CanvasProps = { view: WorkMapView; pins?: unknown[]; handles?: Array<{ label: string }>; onTap?: (point: unknown, roads: unknown) => void; onHandleDrop?: (handle: 'start' | 'end', point: unknown) => void };
+type CanvasProps = { view: WorkMapView; focus?: { lat: number; lng: number } | null; pins?: unknown[]; handles?: Array<{ label: string }>; onTap?: (point: unknown, roads: unknown) => void; onHandleDrop?: (handle: 'start' | 'end', point: unknown) => void };
 vi.mock('./WorkMapCanvas', () => ({
   default: (props: CanvasProps) => (
-    <div data-testid="mapa-lienzo" data-pins={props.pins?.length ?? 0} data-handles={(props.handles ?? []).map((one) => one.label).join(',')}>
+    <div data-testid="mapa-lienzo" data-focus={props.focus ? `${props.focus.lat},${props.focus.lng}` : ''} data-pins={props.pins?.length ?? 0} data-handles={(props.handles ?? []).map((one) => one.label).join(',')}>
       <button type="button" data-testid="lienzo-tocar-calle" onClick={() => props.onTap?.(east(100), roadsAt(100))} />
       <button type="button" data-testid="lienzo-soltar-fin" onClick={() => props.onHandleDrop?.('end', east(400))} />
     </div>
@@ -151,5 +151,34 @@ describe('WorkStreetEditor, trimming the picked street (José 08/11)', () => {
   it('without a street picked there is nothing to trim', () => {
     render(<WorkStreetEditor title="Obra" map={null} send={vi.fn()} onClose={vi.fn()} onSaved={vi.fn()} />);
     expect(screen.queryByTestId('editor-extremos')).toBeNull();
+  });
+});
+
+describe('WorkStreetEditor, finding the place first (José 08/11)', () => {
+  it('a pasted «lat,lng» takes the map there without asking the server', async () => {
+    const findPlace = vi.fn();
+    render(<WorkStreetEditor title="Obra" map={null} send={vi.fn()} onClose={vi.fn()} onSaved={vi.fn()} findPlace={findPlace} />);
+    fireEvent.change(screen.getByTestId('editor-buscar-lugar'), { target: { value: '-12.0464, -77.0429' } });
+    fireEvent.click(screen.getByTestId('editor-buscar-ir'));
+    await waitFor(() => expect(screen.getByTestId('mapa-lienzo').dataset.focus).toBe('-12.0464,-77.0429'));
+    expect(findPlace).not.toHaveBeenCalled();
+  });
+
+  it('a name lists what the server found, and a pick takes the map there', async () => {
+    const findPlace = vi.fn(async () => ({ ok: true as const, results: [{ name: 'Plaza Dos de Mayo, Lima', lat: -12.0464, lng: -77.0429 }, { name: 'Dos de Mayo, Callao', lat: -12.06, lng: -77.14 }] }));
+    render(<WorkStreetEditor title="Obra" map={null} send={vi.fn()} onClose={vi.fn()} onSaved={vi.fn()} findPlace={findPlace} />);
+    fireEvent.change(screen.getByTestId('editor-buscar-lugar'), { target: { value: 'Plaza Dos de Mayo' } });
+    fireEvent.submit(screen.getByTestId('editor-buscar'));
+    fireEvent.click(await screen.findByTestId('editor-lugar-1'));
+    expect(screen.getByTestId('mapa-lienzo').dataset.focus).toBe('-12.06,-77.14');
+    expect(screen.queryByTestId('editor-lugar-0')).toBeNull();
+  });
+
+  it('nothing found says so under the box', async () => {
+    const findPlace = vi.fn(async () => ({ ok: false as const, message: 'No encontramos ese lugar.' }));
+    render(<WorkStreetEditor title="Obra" map={null} send={vi.fn()} onClose={vi.fn()} onSaved={vi.fn()} findPlace={findPlace} />);
+    fireEvent.change(screen.getByTestId('editor-buscar-lugar'), { target: { value: 'Calle perdida' } });
+    fireEvent.click(screen.getByTestId('editor-buscar-ir'));
+    expect(await screen.findByTestId('editor-buscar-error')).toHaveTextContent('No encontramos ese lugar.');
   });
 });

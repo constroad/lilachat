@@ -100,7 +100,7 @@ export function useBrush(map: WorkMap, send: MapEditSend | undefined) {
   const tap = async (place: WorkMapPoint) => {
     if (!brush || busy) return;
     setBusy(true);
-    const { failure, stroke } = await paintAt(current.current, brush, place, sendScope);
+    const { failure, stroke } = await paintAt(current.current, brush, place, sendScope, () => crypto.randomUUID());
     setBusy(false);
     setError(failure);
     if (stroke) setStrokes((done) => [...done, stroke]);

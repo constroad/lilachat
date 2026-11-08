@@ -1,5 +1,6 @@
-import { type MapEditSend, serviceLinkRequest, serviceMapUrl, type ChannelLinks, noticeOf, saveStreetWithStage, sendWorkProgress, sendWorkScope, sendWorkStreet, type FormValues, type ReportFormRequest, sendWorkStreetDelete, workProgressRequest, workStreetDeleteRequest, workStreetRequest, type StreetDraft, type WorkProgressResult } from '@lilachat/shared';
+import { type MapEditSend, serviceLinkRequest, serviceMapUrl, type ChannelLinks, noticeOf, saveStreetWithStage, sendWorkProgress, sendWorkScope, sendWorkStreet, type FormValues, type ReportFormRequest, sendWorkStreetDelete, workProgressRequest, workStreetDeleteRequest, workStreetRequest, type StreetDraft, type WorkProgressResult, type PlaceAsk, type PlaceResult, PLACE_SEARCH_FAILED } from '@lilachat/shared';
 import { submitAppForm } from '../../../chat/commands/commandsApi';
+import { api } from '../../../api';
 import { currentSocket } from '../../../useSocket';
 import { openReportForm } from '../reports/reportsApi';
 import type { ServiceAskTarget } from '../useServiceAsk';
@@ -54,3 +55,9 @@ export const doorMapLinks = (links: ChannelLinks, target: ServiceAskTarget, chat
     notice: (commandId) => noticeOf(currentSocket(), commandId),
   }),
 });
+
+/** «Busca un lugar o pega el enlace» (José 08/11): the server follows short links and asks OpenStreetMap. */
+export const placeAsker = (jwt: string): PlaceAsk => async (text, near) => {
+  const answer = await api<{ results: PlaceResult[] }>('/places', { jwt, body: { q: text, ...(near ? { near } : {}) } });
+  return answer.ok ? { ok: true, results: answer.data.results } : { ok: false, message: answer.message || PLACE_SEARCH_FAILED };
+};

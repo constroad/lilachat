@@ -1,3 +1,4 @@
+import { randomUUID } from 'expo-crypto';
 import { useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Paintbrush, Undo2 } from 'lucide-react-native';
@@ -92,7 +93,7 @@ function useStrokes(map: WorkMap, send: MapEditSend, brush: Brush) {
     setState((before) => ({ error: failure, busy: false, strokes: failure ? before.strokes : next(before.strokes) }));
   };
   const tap = (place: WorkMapPoint) => run(async () => {
-    const { failure, stroke } = await paintAt(latest.current, brush, place, scope);
+    const { failure, stroke } = await paintAt(latest.current, brush, place, scope, randomUUID);
     return { failure, next: (strokes) => (stroke ? [...strokes, stroke] : strokes) };
   });
   const last = state.strokes[state.strokes.length - 1];

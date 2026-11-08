@@ -1,10 +1,11 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { lazyChunk } from '../../../ui/lazyChunk';
 import { Footprints, Navigation, Pause, Play, Save, Square, Undo2, X } from 'lucide-react';
-import { DRAW_MODES, dragStreetEnd, EMPTY_STREET, nudgeStreetEnd, streetDraftHandles, type StreetEnd, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, WORK_MAP_DRAFT_COLOR, WORK_MAP_PLANNED_COLOR, walkedDraft, walkHint, walkPositionPins, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
+import { DRAW_MODES, dragStreetEnd, EMPTY_STREET, nudgeStreetEnd, streetDraftHandles, type StreetEnd, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, WORK_MAP_DRAFT_COLOR, WORK_MAP_PLANNED_COLOR, walkedDraft, walkHint, walkPositionPins, workMapView, type DrawMode, type PlaceAsk, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
 import { KICKER } from './WorkMapPanel';
 import type { StreetSend } from './workProgressSender';
 import { useGpsWalk } from './useGpsWalk';
+import { PlaceSearch } from './PlaceSearch';
 
 const WorkMapCanvas = lazyChunk(() => import('./WorkMapCanvas'));
 const NO_STREETS: WorkMap = { streets: [], scopes: [], progress: [], works: [], stages: [] };
@@ -16,7 +17,7 @@ const NUDGE = 'flex h-9 items-center justify-center rounded-lg bg-on-primary/15 
 const GPS_DENIED = 'El navegador no deja usar tu ubicación. Permítela o dibuja la calle de otra forma.';
 const FIELD = 'h-11 w-full rounded-xl border border-outline/25 bg-background px-3 text-[15px] outline-none focus:border-primary';
 
-type EditorProps = { title: string; map: WorkMap | null; send: StreetSend; onClose: () => void; onSaved: (message: string) => void };
+type EditorProps = { title: string; map: WorkMap | null; send: StreetSend; onClose: () => void; onSaved: (message: string) => void; /** «Busca un lugar o pega el enlace» (José 08/11). */ findPlace?: PlaceAsk; /** The service's place (Portal da5382a5): where a map without streets opens. */ start?: WorkMapPoint };
 
 /** Design o-02: tap the start, the bends and the end of a street; Portal measures and keeps it (José 07/11: everyone draws). */
 export function WorkStreetEditor(props: EditorProps) {
@@ -29,6 +30,7 @@ export function WorkStreetEditor(props: EditorProps) {
   const gps = useGpsWalk();
   useEffect(() => { setDraft((before) => (before.mode === 'gps' ? walkedDraft(before, gps.walk) : before)); }, [gps.walk]);
   const handles = useMemo(() => streetDraftHandles(draft), [draft]);
+  const [focus, setFocus] = useState<WorkMapPoint | null>(() => (view.bounds ? null : (props.start ?? null)));
   const onHandleDrop = (handle: StreetEnd, point: WorkMapPoint) => {
     const dropped = dragStreetEnd(draft, handle, point);
     setDraft(dropped.draft);
@@ -61,6 +63,7 @@ export function WorkStreetEditor(props: EditorProps) {
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
       <div className="flex min-h-0 flex-1 flex-col">
       <div className="bg-primary px-4 py-3 text-on-primary">
+        <PlaceSearch ask={props.findPlace} near={focus ?? props.start} onPick={setFocus} />
         <ModeSwitch mode={draft.mode} onMode={(mode) => { const question = modeChangeLoss(draft, mode); if (question) { setSwitching({ mode, question }); return; } setError(null); gps.reset(); setDraft((before) => setDrawMode(before, mode)); }} />
         {switching ? (
           <div data-testid="editor-calle-cambiar-modo" role="alertdialog" className="mt-2 rounded-xl bg-on-primary/15 p-3">
@@ -84,7 +87,7 @@ export function WorkStreetEditor(props: EditorProps) {
       </div>
       <div className="relative min-h-[320px] flex-1 lg:min-h-0">
         <Suspense fallback={<div className="absolute inset-0 animate-pulse bg-surface-variant" />}>
-          <WorkMapCanvas view={view} expanded={false} pins={handles.length ? NO_PINS : [...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} handles={handles} onHandleDrop={onHandleDrop} />
+          <WorkMapCanvas view={view} expanded={false} focus={focus} pins={handles.length ? NO_PINS : [...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} handles={handles} onHandleDrop={onHandleDrop} />
         </Suspense>
         <EditorLegend />
       </div>

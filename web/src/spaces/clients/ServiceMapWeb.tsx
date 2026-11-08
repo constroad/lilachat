@@ -8,7 +8,7 @@ import type { ProgressSend } from './workMap/WorkMapDischarges';
 import { WorkMapFirst } from './workMap/WorkMapFirst';
 import { ImportTrace } from './workMap/ImportTrace';
 import { WorkStreetEditor } from './workMap/WorkStreetEditor';
-import type { StreetSend } from './workMap/workProgressSender';
+import { placeAsker, type StreetSend } from './workMap/workProgressSender';
 import type { StreetDeleteSend } from './workMap/StreetDelete';
 
 /** How a chat runs the link action for the map. */
@@ -34,7 +34,7 @@ function Frame(props: { head?: ReactNode; tabs?: ReactNode; children: ReactNode 
   );
 }
 
-type MapProps = { jwt: string; links: ChannelLinks; target: { kind: 'service'; clientId: string; serviceId: string }; title: string; head?: ReactNode; tabs?: ReactNode; badge?: ReactNode; /** Where the streets are drawn today (Portal's «Mapa» tab). */ drawUrl?: string | null; discharges?: UnitDischarge[]; /** Field photos with their place (José 08/11). */ mapPhotos?: MapPhoto[]; send?: ProgressSend; /** «Guardar calle» (o-02): everyone draws (José 07/11). */ drawStreet?: StreetSend; /** «Borrar calle»: anyone, an admin restores (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<File>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<File>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport };
+type MapProps = { jwt: string; links: ChannelLinks; target: { kind: 'service'; clientId: string; serviceId: string }; title: string; head?: ReactNode; tabs?: ReactNode; badge?: ReactNode; /** Where the streets are drawn today (Portal's «Mapa» tab). */ drawUrl?: string | null; discharges?: UnitDischarge[]; /** Field photos with their place (José 08/11). */ mapPhotos?: MapPhoto[]; /** The service's place (Portal da5382a5). */ start?: { lat: number; lng: number }; send?: ProgressSend; /** «Guardar calle» (o-02): everyone draws (José 07/11). */ drawStreet?: StreetSend; /** «Borrar calle»: anyone, an admin restores (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<File>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<File>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport };
 
 export function ServiceMapWeb(props: MapProps) {
   const { state, retry, refresh } = useWorkMap(props.jwt, props.links, props.target);
@@ -55,7 +55,7 @@ export function ServiceMapWeb(props: MapProps) {
       </Frame>
     );
   }
-  if (drawing && props.drawStreet) return <WorkStreetEditor title={props.title} map={state.map} send={props.drawStreet} onClose={() => setDrawing(false)} onSaved={() => { setDrawing(false); void retry(); }} />;
+  if (drawing && props.drawStreet) return <WorkStreetEditor title={props.title} map={state.map} send={props.drawStreet} findPlace={placeAsker(props.jwt)} start={props.start} onClose={() => setDrawing(false)} onSaved={() => { setDrawing(false); void retry(); }} />;
   if (!state.map) return <Frame head={props.head} tabs={props.tabs}><WorkMapFirst drawUrl={props.drawUrl ?? null} onDraw={onDraw} trace={editMap && props.uploadTrace ? <ImportTrace send={editMap} upload={props.uploadTrace} /> : null} /></Frame>;
   return <WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} title={props.title} serviceId={props.target.serviceId} head={props.head} tabs={props.tabs} badge={props.badge} discharges={props.discharges} mapPhotos={props.mapPhotos} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} editMap={editMap} admin={props.admin} uploadPhoto={props.uploadPhoto} uploadTrace={props.uploadTrace} mapInReport={props.mapInReport} />;
 }

@@ -46,7 +46,7 @@ export type ServiceQuote = { id: string; code?: string; date?: string; total?: n
 export type DetailTotals = { orders: number; dispatches: number; reports: number; quotes?: number };
 export type ServiceDetail = {
   /** `hasMap`: Portal has the job's stretches drawn (José 06/11), so the service gets its «Mapa». */
-  service: { id: string; name: string; stageLabel?: string; progress?: number; url?: string; hasMap?: true; /** «Incluir en el informe» as Portal has it (c7088e7d). */ mapInReport?: ServiceMapInReport };
+  service: { id: string; name: string; stageLabel?: string; progress?: number; url?: string; hasMap?: true; /** «Incluir en el informe» as Portal has it (c7088e7d). */ mapInReport?: ServiceMapInReport; /** Where the work is, from the client's link (Portal da5382a5): the map opens there before any street. */ location?: { lat: number; lng: number } };
   orders: ServiceOrder[];
   dispatches: ServiceDispatch[];
   reports: ServiceReport[];
@@ -175,9 +175,15 @@ function mapInReportOfService(raw: unknown): ServiceMapInReport | undefined {
   return defined({ included: input.incluido, stageId: text(input.etapaId), until: until && /^\d{4}-\d{2}-\d{2}$/.test(until) ? until : undefined });
 }
 
+/** `ubicacion` with a point on Earth; the bare link (not resolved) is no place to open. */
+function locationOf(raw: unknown): { lat: number; lng: number } | undefined {
+  const { lat, lng } = record(raw) ?? {};
+  return typeof lat === 'number' && typeof lng === 'number' && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : undefined;
+}
+
 function serviceHeadOf(service: Raw): ServiceDetail['service'] {
   const hasMap = service.has_map === true;
-  return defined({ id: text(service.id)!, name: text(service.name) ?? 'Servicio', stageLabel: text(service.stage_label), progress: count(service.progress), url: https(service.url), hasMap: hasMap ? (true as const) : undefined, mapInReport: hasMap ? mapInReportOfService(service.mapa_en_informe) : undefined });
+  return defined({ location: locationOf(service.ubicacion), id: text(service.id)!, name: text(service.name) ?? 'Servicio', stageLabel: text(service.stage_label), progress: count(service.progress), url: https(service.url), hasMap: hasMap ? (true as const) : undefined, mapInReport: hasMap ? mapInReportOfService(service.mapa_en_informe) : undefined });
 }
 
 /** Portal's real counts; the length of what came when it sends none. */

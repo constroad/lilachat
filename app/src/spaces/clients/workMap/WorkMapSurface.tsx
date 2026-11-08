@@ -1,8 +1,8 @@
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Layer, Map as MapSurface, ViewAnnotation, type CameraRef, type MapRef } from '@maplibre/maplibre-react-native';
 import { MapControls } from './MapControls';
-import { dischargePinCollection, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE_URL, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView , STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark } from '@lilachat/shared';
+import { PLACE_ZOOM, dischargePinCollection, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE_URL, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView , STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark } from '@lilachat/shared';
 
 const LINE_ENDS = { 'line-cap': 'round', 'line-join': 'round' } as const;
 const EDGE = { top: 48, right: 48, bottom: 48, left: 48 };
@@ -49,10 +49,13 @@ function EndHandle(props: { handle: StreetHandle; onDrop?: (handle: StreetEnd, p
 }
 
 /** `onTap` draws a street (o-02): each tap is a bend. `near` frames where the phone is when there is nothing drawn yet. */
-export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void; near?: WorkMapPoint | null; /** Draggable ends of a picked street (José 08/11). */ handles?: StreetHandle[]; onHandleDrop?: (handle: StreetEnd, point: WorkMapPoint) => void; /** A tap on a pin (the «Fotos» layer, José 08/11). */ onPin?: (id: string) => void }) {
+export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void; near?: WorkMapPoint | null; /** Draggable ends of a picked street (José 08/11). */ handles?: StreetHandle[]; onHandleDrop?: (handle: StreetEnd, point: WorkMapPoint) => void; /** A tap on a pin (the «Fotos» layer, José 08/11). */ onPin?: (id: string) => void; /** A place found by the search: the map flies there (José 08/11). */ focus?: WorkMapPoint | null }) {
   const { view, moves } = props;
   const map = useRef<MapRef>(null);
   const camera = useRef<CameraRef>(null);
+  useEffect(() => {
+    if (props.focus) camera.current?.flyTo({ center: [props.focus.lng, props.focus.lat], zoom: PLACE_ZOOM, duration: 600 });
+  }, [props.focus]);
   const press = async (lngLat: [number, number], point: [number, number]) => {
     const tap = { lat: lngLat[1], lng: lngLat[0] };
     const roads = await roadsAt(map.current, point, tap).catch(() => ({ underFinger: [], nearby: [], tap }));

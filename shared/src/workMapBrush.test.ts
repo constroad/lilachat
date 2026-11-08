@@ -157,10 +157,19 @@ describe('paintAt and undoStroke', () => {
   const ok = async () => ({ ok: true as const, message: 'ok' });
 
   it('a tap on a street gives the stroke to undo; off the work, the reason and no stroke', async () => {
-    const painted = await paintAt(MAP, { kind: 'stage', id: 'e2' }, { lat: -12, lng: -76.9995 }, ok);
+    const painted = await paintAt(MAP, { kind: 'stage', id: 'e2' }, { lat: -12, lng: -76.9995 }, ok, () => 'k');
     expect(painted.failure).toBeNull();
     expect(painted.stroke?.brush).toEqual({ kind: 'stage', id: 'e2' });
-    expect(await paintAt(MAP, { kind: 'stage', id: 'e2' }, { lat: -13, lng: -76 }, ok)).toEqual({ failure: 'Toca sobre una calle de la obra.', stroke: null });
+    expect(await paintAt(MAP, { kind: 'stage', id: 'e2' }, { lat: -13, lng: -76 }, ok, () => 'k')).toEqual({ failure: 'Toca sobre una calle de la obra.', stroke: null });
+  });
+
+  it('a street without stretches gets a new one keyed by a fresh id: Portal wants a UUID (web E2E 08/11)', async () => {
+    const bare: WorkMap = { ...MAP, streets: [MAP.streets[2]!], scopes: [] };
+    const sent: unknown[] = [];
+    const uuid = '0f8b2c4e-1a2b-4c3d-8e9f-0123456789ab';
+    const painted = await paintAt(bare, { kind: 'work', id: 'base' }, { lat: -12, lng: -76.9995 }, async (one) => { sent.push(one); return { ok: true, message: '' }; }, () => uuid);
+    expect(painted.failure).toBeNull();
+    expect(sent).toEqual([expect.objectContaining({ kind: 'work_scope', street_id: 's3', entry_id: uuid, tag_ids: ['base'] })]);
   });
 
   it('undoing sends the street back as it was', async () => {
@@ -196,7 +205,7 @@ describe('brushProblem: a stretch keeps a work or its stage (Portal 08/11, after
 
   it('paintAt shows the problem and sends nothing', async () => {
     let calls = 0;
-    const result = await paintAt(lonely, { kind: 'work', id: 'base' }, { lat: -12, lng: -76.9995 }, async () => { calls += 1; return { ok: true, message: '' }; });
+    const result = await paintAt(lonely, { kind: 'work', id: 'base' }, { lat: -12, lng: -76.9995 }, async () => { calls += 1; return { ok: true, message: '' }; }, () => 'k');
     expect(result).toEqual({ failure: BRUSH_LAST_WORK, stroke: null });
     expect(calls).toBe(0);
   });

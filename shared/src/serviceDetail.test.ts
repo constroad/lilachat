@@ -44,6 +44,14 @@ describe('serviceDetailOf', () => {
     expect(serviceDetailOf(body)!.mapPhotos).toBeUndefined();
   });
 
+  it('brings the service\'s place for the map to open there (Portal da5382a5, 08/11)', () => {
+    const at = (ubicacion: unknown) => serviceDetailOf({ ...body, service: { ...body.service, ubicacion } })!.service.location;
+    expect(at({ lat: -12.05, lng: -77.03, enlace: 'https://maps.app.goo.gl/AbC' })).toEqual({ lat: -12.05, lng: -77.03 });
+    expect(at({ enlace: 'https://maps.app.goo.gl/AbC' })).toBeUndefined();
+    expect(at({ lat: 120, lng: -77 })).toBeUndefined();
+    expect(at(undefined)).toBeUndefined();
+  });
+
   it('is null without a service or without the lists', () => {
     expect(serviceDetailOf({ orders: [] })).toBeNull();
     expect(serviceDetailOf(null)).toBeNull();

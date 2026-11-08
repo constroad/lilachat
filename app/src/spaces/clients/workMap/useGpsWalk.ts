@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import * as Location from 'expo-location';
-import { startWalk, stopWalk, WALK_IDLE, walkFix, type GpsFix, type WalkState } from '@lilachat/shared';
+import { pauseWalk, resumeWalk, startWalk, stopWalk, undoWalkStep, WALK_IDLE, walkFix, type GpsFix, type WalkState } from '@lilachat/shared';
 
 /** Metres the phone moves before it reports again: the engine still keeps one point every 5 m. */
 const REPORT_EVERY_M = 2;
@@ -29,7 +29,11 @@ export function useGpsWalk() {
   };
   const stop = () => { clear(); setWalk(stopWalk); };
   const reset = () => { clear(); setWalk(WALK_IDLE); };
-  return { walk, denied, start, stop, reset };
+  /** «Pausa» keeps watching, so «mi posición» still moves; only the line stops (o-13). */
+  const pause = () => setWalk(pauseWalk);
+  const resume = () => setWalk(resumeWalk);
+  const undo = () => setWalk(undoWalkStep);
+  return { walk, denied, start, stop, reset, pause, resume, undo };
 }
 
 /** One position for «Mi GPS» (o-06); null when the person refused it or the phone has none. */

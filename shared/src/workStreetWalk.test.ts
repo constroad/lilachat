@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { EMPTY_STREET, streetDraftLengthM, streetDraftProblem, DRAFT_NEEDS_POINTS } from './workStreetDraft.js';
 import { setDrawMode } from './workStreetPick.js';
-import { WALK_IDLE, WALK_MAX_ACCURACY_M, startWalk, stopWalk, walkFix, walkHint, walkedDraft } from './workStreetWalk.js';
+import { WALK_IDLE, WALK_MAX_ACCURACY_M, pauseWalk, resumeWalk, startWalk, stopWalk, undoWalkStep, walkFix, walkHint, walkPositionPins, walkedDraft, type GpsFix } from './workStreetWalk.js';
+import { lineLengthM as lineLengthMOf } from './workMap.js';
 
 /** Design o-13 (step 3, José 07/11): the engineer walks the street's axis and the phone draws it. */
 const M_PER_DEG_LNG = 111_195 * Math.cos((12 * Math.PI) / 180);
@@ -52,5 +53,37 @@ describe('walking a street with GPS', () => {
   it('a walk with fewer than two points cannot be saved', () => {
     const draft = walkedDraft(setDrawMode(EMPTY_STREET, 'gps'), stopWalk(walkFix(startWalk(WALK_IDLE), fix(0))));
     expect(streetDraftProblem(draft)).toBe(DRAFT_NEEDS_POINTS);
+  });
+});
+
+describe('o-13 walk controls (audit 08/11 item 12)', () => {
+  const M_PER_DEG = 111_195 * Math.cos((12 * Math.PI) / 180);
+  const fixAt = (meters: number, accuracyM = 4): GpsFix => ({ lat: -12, lng: -77 + meters / M_PER_DEG, accuracyM });
+  const walked = (...meters: number[]) => meters.reduce((walk, at) => walkFix(walk, fixAt(at)), startWalk(WALK_IDLE));
+
+  it('«Pausa» keeps the line still while the phone keeps showing where it is', () => {
+    const paused = walkFix(pauseWalk(walked(0, 10, 20)), fixAt(60));
+    expect(paused.points).toHaveLength(3);
+    expect(paused.position).toMatchObject({ lng: fixAt(60).lng });
+    expect(walkHint(paused)).toBe('En pausa · 20 m caminados. Toca «Seguir» para continuar.');
+    expect(walkFix(resumeWalk(paused), fixAt(70)).points).toHaveLength(4);
+  });
+
+  it('counts the readings it discarded for a weak signal, and says it', () => {
+    const walk = walkFix(walkFix(walked(0, 10), fixAt(20, 40)), fixAt(30, 60));
+    expect(walk.discarded).toBe(2);
+    expect(walkHint(walkFix(walk, fixAt(40)))).toBe('Caminando · 40 m · GPS ±4 m · 2 lecturas descartadas');
+  });
+
+  it('«Deshacer último tramo» takes back about the last twenty metres, not the whole walk', () => {
+    const walk = walked(0, 10, 20, 30, 40, 50);
+    expect(undoWalkStep(walk).points).toHaveLength(4);
+    expect(lineLengthMOf(undoWalkStep(walk).points)).toBeCloseTo(30, 0);
+    expect(undoWalkStep(walked(0)).points).toEqual([]);
+  });
+
+  it('the position is a pin on the map while walking', () => {
+    expect(walkPositionPins(walked(0, 10))).toEqual([expect.objectContaining({ id: 'mi-posicion', lat: -12 })]);
+    expect(walkPositionPins(WALK_IDLE)).toEqual([]);
   });
 });

@@ -48,15 +48,32 @@ describe('WorkStreetEditor, walking with GPS', () => {
     expect(send.mock.calls[0]![0]).toMatchObject({ name: 'Jr. Caminado', mode: 'gps' });
   });
 
-  it('«Deshacer» throws the walk away to walk again', () => {
+  it('«Deshacer» takes back the last stretch walked, not the whole walk (audit 08/11 item 12)', async () => {
     render(<WorkStreetEditor title="Obra" map={null} send={vi.fn()} onClose={vi.fn()} onSaved={vi.fn()} />);
     fireEvent.click(screen.getByTestId('editor-modo-gps'));
     fireEvent.click(screen.getByTestId('editor-gps-empezar'));
     walkTo(0);
-    walkTo(50);
+    walkTo(30);
+    walkTo(60);
+    expect((await screen.findByTestId('mapa-lienzo')).dataset.pins).toBe('3');
     fireEvent.click(screen.getByTestId('editor-calle-deshacer'));
-    expect(screen.getByTestId('editor-calle-largo')).toHaveTextContent('0 m');
-    expect(screen.getByTestId('editor-gps-empezar')).toBeTruthy();
+    expect(screen.getByTestId('editor-calle-largo')).toHaveTextContent('30 m');
+    expect(screen.getByTestId('editor-gps-terminar')).toBeTruthy();
+  });
+
+  it('«Pausa» stops drawing until «Seguir», and the hint says so', () => {
+    render(<WorkStreetEditor title="Obra" map={null} send={vi.fn()} onClose={vi.fn()} onSaved={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('editor-modo-gps'));
+    fireEvent.click(screen.getByTestId('editor-gps-empezar'));
+    walkTo(0);
+    walkTo(40);
+    fireEvent.click(screen.getByTestId('editor-gps-pausa'));
+    walkTo(90);
+    expect(screen.getByTestId('editor-calle-ayuda')).toHaveTextContent('En pausa · 40 m caminados.');
+    expect(screen.getByTestId('editor-calle-largo')).toHaveTextContent('40 m');
+    fireEvent.click(screen.getByTestId('editor-gps-seguir'));
+    walkTo(100);
+    expect(screen.getByTestId('editor-calle-largo')).toHaveTextContent('100 m');
   });
 
   it('a browser without location says so', () => {

@@ -866,3 +866,15 @@ crece al tocar «+10 m».
 `pickedLine` de `@constroad/shared/obra` devuelve la calle entera, y el pin «1» caía donde empieza
 la calle. Ahora `streetDraftPins` pone el «1» donde tocó el dedo hasta que llegue el fin (web y
 APK). El paquete compartido no se tocó (otro repo).
+
+**Caminar con GPS como en o-13 (auditoría, punto 12).** `workStreetWalk.ts` suma:
+- «Pausa» y «Seguir»: el teléfono sigue mostrando dónde está, pero la línea no avanza.
+- Las lecturas descartadas por señal débil se cuentan en la ayuda («2 lecturas descartadas»).
+- «Deshacer» quita unos 20 m (`undoWalkStep`), ya no la caminata entera.
+- «Mi posición» es un pin sobre el mapa mientras se camina (`walkPositionPins`).
+
+Web y APK. Lo cubren 4 tests nuevos del motor y 2 del editor web. No se hizo la progresiva
+contra la meta: una calle nueva no tiene largo conocido. La ayuda muestra los metros caminados.
+
+**E2E de la vista previa (web prod, Test).** «Registrar avance» mostró la calle con sus
+progresivas, y con «+10 m» ×6 el tramo nuevo creció en azul hasta 0+060. Se canceló sin enviar.

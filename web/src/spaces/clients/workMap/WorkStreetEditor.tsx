@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { lazyChunk } from '../../../ui/lazyChunk';
-import { Footprints, Save, Square, Undo2, X } from 'lucide-react';
-import { DRAW_MODES, EMPTY_STREET, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, walkedDraft, walkHint, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
+import { Footprints, Pause, Play, Save, Square, Undo2, X } from 'lucide-react';
+import { DRAW_MODES, EMPTY_STREET, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, walkedDraft, walkHint, walkPositionPins, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
 import { KICKER } from './WorkMapPanel';
 import type { StreetSend } from './workProgressSender';
 import { useGpsWalk } from './useGpsWalk';
@@ -65,15 +65,15 @@ export function WorkStreetEditor(props: EditorProps) {
           <p data-testid="editor-calle-ayuda" className="text-[14px] font-semibold">{draft.mode === 'gps' ? (gps.denied ? GPS_DENIED : walkHint(gps.walk)) : streetDraftHint(draft)}</p>
           {draft.mode === 'hand' ? <span data-testid="editor-calle-puntos" className="shrink-0 rounded-md bg-on-primary/15 px-2 py-0.5 font-mono text-[11px]">{handPointsLabel(draft.points.length)}</span> : null}
         </div>
-        {draft.mode === 'gps' ? <WalkButton walking={gps.walk.walking} onStart={gps.start} onStop={gps.stop} /> : null}
+        {draft.mode === 'gps' ? <WalkButton walking={gps.walk.walking} paused={gps.walk.paused} onStart={gps.start} onStop={gps.stop} onPause={gps.pause} onResume={gps.resume} /> : null}
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <button type="button" data-testid="editor-calle-deshacer" disabled={!draft.points.length} onClick={() => { setError(null); if (draft.mode === 'gps') gps.reset(); setDraft(undoStreetDraft); }} className="flex h-10 items-center justify-center gap-2 rounded-xl bg-on-primary/15 text-[14px] font-semibold disabled:opacity-50"><Undo2 size={16} />Deshacer</button>
+          <button type="button" data-testid="editor-calle-deshacer" disabled={!draft.points.length} onClick={() => { setError(null); if (draft.mode === 'gps') gps.undo(); else setDraft(undoStreetDraft); }} className="flex h-10 items-center justify-center gap-2 rounded-xl bg-on-primary/15 text-[14px] font-semibold disabled:opacity-50"><Undo2 size={16} />Deshacer</button>
           <button type="button" data-testid="editor-calle-cancelar" onClick={props.onClose} className="flex h-10 items-center justify-center gap-2 rounded-xl bg-on-primary/15 text-[14px] font-semibold"><X size={16} />Cancelar</button>
         </div>
       </div>
       <div className="relative min-h-[320px] flex-1 lg:min-h-0">
         <Suspense fallback={<div className="absolute inset-0 animate-pulse bg-surface-variant" />}>
-          <WorkMapCanvas view={view} expanded={false} pins={streetDraftPins(draft)} stretches={streetDraftLines(draft)} onTap={onTap} />
+          <WorkMapCanvas view={view} expanded={false} pins={[...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} />
         </Suspense>
       </div>
       </div>
@@ -101,9 +101,18 @@ function ModeSwitch({ mode, onMode }: { mode: DrawMode; onMode: (mode: DrawMode)
 }
 
 /** «Empezar» / «Terminar» of the walk (o-13): one big button, used with the phone in one hand. */
-function WalkButton(props: { walking: boolean; onStart: () => void; onStop: () => void }) {
+const WALK_BUTTON = 'mt-2 flex h-12 items-center justify-center gap-2 rounded-xl bg-surface text-[15px] font-bold text-primary';
+
+function WalkButton(props: { walking: boolean; paused: boolean; onStart: () => void; onStop: () => void; onPause: () => void; onResume: () => void }) {
   return props.walking
-    ? <button type="button" data-testid="editor-gps-terminar" onClick={props.onStop} className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-surface text-[15px] font-bold text-primary"><Square size={16} />Terminar</button>
+    ? (
+      <div className="grid grid-cols-2 gap-2">
+        {props.paused
+          ? <button type="button" data-testid="editor-gps-seguir" onClick={props.onResume} className={WALK_BUTTON}><Play size={16} />Seguir</button>
+          : <button type="button" data-testid="editor-gps-pausa" onClick={props.onPause} className={WALK_BUTTON}><Pause size={16} />Pausa</button>}
+        <button type="button" data-testid="editor-gps-terminar" onClick={props.onStop} className={WALK_BUTTON}><Square size={16} />Terminar</button>
+      </div>
+    )
     : <button type="button" data-testid="editor-gps-empezar" onClick={props.onStart} className="mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-surface text-[15px] font-bold text-primary"><Footprints size={18} />Empezar a caminar</button>;
 }
 

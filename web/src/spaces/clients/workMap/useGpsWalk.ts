@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { startWalk, stopWalk, WALK_IDLE, walkFix, type GpsFix, type WalkState } from '@lilachat/shared';
+import { pauseWalk, resumeWalk, startWalk, stopWalk, undoWalkStep, WALK_IDLE, walkFix, type GpsFix, type WalkState } from '@lilachat/shared';
 
 /** A first fix outdoors takes a few seconds; past this the person uses ±10 m. */
 const GPS_ONCE_TIMEOUT_MS = 15_000;
@@ -29,7 +29,11 @@ export function useGpsWalk() {
   };
   const stop = () => { clear(); setWalk(stopWalk); };
   const reset = () => { clear(); setWalk(WALK_IDLE); };
-  return { walk, denied, start, stop, reset };
+  /** «Pausa» keeps watching, so «mi posición» still moves; only the line stops (o-13). */
+  const pause = () => setWalk(pauseWalk);
+  const resume = () => setWalk(resumeWalk);
+  const undo = () => setWalk(undoWalkStep);
+  return { walk, denied, start, stop, reset, pause, resume, undo };
 }
 
 /** One position for «Mi GPS» (o-06); null when the browser has none or the person refused it. */

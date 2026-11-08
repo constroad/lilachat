@@ -770,3 +770,8 @@ por el boleto (90748f1 y agentes dd1baa7).
   pestaña «Mapa».
 - Test «wide board»: el doble de `ResizeObserver` reportaba al último observador (a veces el del
   lienzo); ahora solo al del tablero. Era el falso rojo intermitente.
+- **E2E web prod (08/11, 11:28Z, Test, QA-CTLPIS):** «Nueva calle» → «A mano», dos toques (113 m) →
+  «Caminar GPS» preguntó «Cambiar de forma borra lo que marcaste (113 m). ¿Cambiar igual?»;
+  «Seguir aquí» dejó los 113 m. Se canceló sin guardar. El campo «Etapa» no sale en Test porque
+  no tiene etapas (no se crean de prueba: Portal no puede borrarlas): sin verificar en vivo, lo
+  cubre el test del editor.

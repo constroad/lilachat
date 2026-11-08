@@ -638,3 +638,8 @@ ver «Borrados»; cubierto solo por test).
   (`DownloadComplete`, `NEW_UPDATE_LOADED`) y quedó en el espacio Constroad. Los paneles en el APK
   no se volvieron a recorrer con este OTA: son los mismos del 683c5a64 más el PDF y el interruptor
   del informe, que se probaron en la web.
+- **Import resuelto (agentes dd1baa7, 03:14Z):** el boleto ya pasa los tipos de trazado. E2E web
+  prod en Test: un KML «QA-IMPORT borrar» se revisó a las 03:15:14Z («QA-IMPORT borrar · 218 m»,
+  «Crear 1 calle»), se creó a las 03:15:22Z («Se creó 1 calle.») y se borró por «Borrar calle» a
+  las 03:15:33Z. Queda en «Borrados» (borrado lógico) y el `.kml` queda en el Drive del servicio
+  QA-CTLPIS de Test.

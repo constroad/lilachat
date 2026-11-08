@@ -5,10 +5,12 @@ import { instantDayOf } from './serviceDetail.js';
  * agentes answers `client.files.requested` with the files Portal keeps for
  * that service. Nothing is stored in Lilachat. PURE: server, app and web.
  */
-export type ServiceFile = { name: string; mime: string; url: string; sizeBytes?: number; thumbUrl?: string; folder?: string; modifiedAt?: string };
+/** `id`: Portal's file id (cffb259b), the `fotoId` that marks it «antes» or «después». */
+export type ServiceFile = { id?: string; name: string; mime: string; url: string; sizeBytes?: number; thumbUrl?: string; folder?: string; modifiedAt?: string };
 export type ServiceFiles = { files: ServiceFile[]; driveUrl: string | null };
 
 export const SERVICE_FILES_MAX = 200;
+const FILE_ID_MAX = 64;
 const SEARCH_MIN = 2;
 const FOLDER_SEPARATOR = '/';
 
@@ -20,7 +22,9 @@ function fileOf(raw: unknown): ServiceFile | null {
   const name = text(input?.name);
   if (!input || !name || !isHttps(input.url)) return null;
   const sizeBytes = typeof input.size_bytes === 'number' && input.size_bytes >= 0 ? input.size_bytes : undefined;
+  const id = text(input.id);
   return {
+    ...(id && id.length <= FILE_ID_MAX ? { id } : {}),
     name,
     mime: text(input.mime) ?? 'application/octet-stream',
     url: input.url,

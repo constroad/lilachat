@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, Download, PictureInPicture2, Sticker, Trash2, X } from 'lucide-react';
 import { formatClock, formatDayLabel } from '@lilachat/shared';
 import type { MensajeEnPantalla } from './types';
@@ -17,7 +17,7 @@ function ViewerAction({ action }: { action: { label: string; onPress: () => void
  * las del teclado) para pasar a la anterior o la siguiente, Escape para salir y
  * un botón para bajarla. Antes la foto se abría en otra pestaña.
  */
-export function PhotoViewer(props: { fotos: MensajeEnPantalla[]; indice: number; onCambiar: (indice: number) => void; onCerrar: () => void; /** Takes the photo on screen out, where the opener allows it. */ onRemove?: () => void; /** A GIF of the chat becomes my animated sticker (pending 37); absent in a secret chat. */ onMakeSticker?: (foto: MensajeEnPantalla) => void; /** A form's option seen in the viewer: «Elegir esta lectura» (design h-03). */ action?: { label: string; onPress: () => void } }) {
+export function PhotoViewer(props: { fotos: MensajeEnPantalla[]; indice: number; onCambiar: (indice: number) => void; onCerrar: () => void; /** Takes the photo on screen out, where the opener allows it. */ onRemove?: () => void; /** A GIF of the chat becomes my animated sticker (pending 37); absent in a secret chat. */ onMakeSticker?: (foto: MensajeEnPantalla) => void; /** A form's option seen in the viewer: «Elegir esta lectura» (design h-03). */ action?: { label: string; onPress: () => void }; /** What the opener adds under the photo on screen: «Antes / Después» in a service's Drive. */ footer?: ReactNode }) {
   const { fotos, indice, onCambiar, onCerrar } = props;
   const foto = fotos[indice];
   const video = useRef<HTMLVideoElement>(null);
@@ -91,6 +91,7 @@ export function PhotoViewer(props: { fotos: MensajeEnPantalla[]; indice: number;
         ) : null}
       </div>
       {foto.body ? <p className="px-6 pb-6 text-center text-sm text-white">{foto.body}</p> : null}
+      {props.footer}
       {props.action ? <ViewerAction action={props.action} /> : null}
     </div>
   );

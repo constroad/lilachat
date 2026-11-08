@@ -1,8 +1,10 @@
-import { forwardRef, useMemo, useRef, useState } from 'react';
+import { forwardRef, useCallback, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Cloud, ExternalLink, Folder, Search, Upload } from 'lucide-react';
-import { DRIVE_UPLOADING, driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService, type ViewableFile } from '@lilachat/shared';
+import { photoMarkOf, type PhotoMark, DRIVE_UPLOADING, driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService, type ViewableFile } from '@lilachat/shared';
 import { FileThumb, usePortalFileViewer } from './PortalFileViewer';
 import { useDriveUpload } from './useDriveUpload';
+import { PhotoPhaseBar } from './PhotoPhaseBar';
+import { photoPhaseSender } from './workMap/workProgressSender';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
 
 const RECENT = 3;
@@ -99,10 +101,36 @@ function DriveUploadBar({ upload }: { upload: ReturnType<typeof useDriveUpload> 
  * search, top folders with counts, the newest files and, inside a folder, its
  * files. A failure says why, with the service's link.
  */
-export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: SpaceClientService; chatId: string }) {
+const NO_MARKS: readonly PhotoMark[] = [];
+const NO_FILES: readonly ServiceFile[] = [];
+
+/** The «Antes / Después» bar of a Drive photo, by its url: only a photo Portal sent with its id. */
+function usePhotoPhases(props: { target: ServiceAskTarget; service: SpaceClientService; chatId: string; marks?: readonly PhotoMark[] }, files: readonly ServiceFile[]) {
+  const [marks, setMarks] = useState<readonly PhotoMark[]>(props.marks ?? NO_MARKS);
+  // The viewer keeps the function it was opened with: it reads the latest marks and files from here.
+  const latest = useRef({ marks, files });
+  latest.current = { marks, files };
+  const send = photoPhaseSender(props.target, props.chatId, props.service.id);
+  return useCallback((url: string) => {
+    const file = latest.current.files.find((one) => one.url === url);
+    if (!file?.id || !file.mime.startsWith('image/')) return null;
+    const id = file.id;
+    const mark = photoMarkOf(latest.current.marks, id);
+    return <PhotoPhaseBar key={id} mark={mark} send={async (phase, stretch) => {
+      const result = await send(id, phase, stretch);
+      if (result.ok) setMarks((before) => [...before.filter((one) => one.photoId !== id), ...(phase ? [{ photoId: id, phase, stretch: stretch.trim() || (mark?.stretch ?? '') }] : [])]);
+      return result;
+    }} />;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.target, props.chatId, props.service.id]);
+}
+
+export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: SpaceClientService; chatId: string; /** Photos marked «antes» or «después» (Portal 08/11). */ marks?: readonly PhotoMark[] }) {
   const [round, setRound] = useState(0);
   const answer = useServiceAsk('files', props.target, props.service.id, round);
   const upload = useDriveUpload({ target: props.target, chatId: props.chatId, serviceId: props.service.id, onDone: () => setRound((current) => current + 1) });
+  // Before the viewer: its bar has to read the marks of THIS render.
+  const phaseOf = usePhotoPhases(props, answer?.ok ? answer.value.files : NO_FILES);
   const viewer = usePortalFileViewer();
   const [folder, setFolder] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -119,7 +147,7 @@ export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: Spac
           <input data-testid="buscar-drive" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar en el Drive del servicio…" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
         </label>
       ) : null}
-      {answer?.ok ? <DriveBody files={answer.value.files} query={query} folder={folder} onFolder={setFolder} onOpen={(file) => viewer.open(viewableOf(file), answer.value.files.map(viewableOf))} /> : null}
+      {answer?.ok ? <DriveBody files={answer.value.files} query={query} folder={folder} onFolder={setFolder} onOpen={(file) => viewer.open(viewableOf(file), answer.value.files.map(viewableOf), undefined, undefined, phaseOf)} /> : null}
       {viewer.viewer}
       {driveUrl ? <a href={driveUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary"><ExternalLink size={14} /> {answer?.ok ? 'Abrir en Google Drive' : 'Abrir el servicio en el Portal'}</a> : null}
     </div>

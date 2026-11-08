@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { BackHandler, Linking, Pressable, Text, TextInput, View } from 'react-native';
 import { Camera, ChevronLeft, ChevronRight, Cloud, ExternalLink, Folder, Image as ImageIcon, Search, Video } from 'lucide-react-native';
 import { FileThumb } from './FileThumb';
-import { driveFileLine, driveUploadingLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService } from '@lilachat/shared';
+import { photoMarkOf, type PhotoMark, driveFileLine, driveUploadingLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
 import { useDriveUpload } from './useDriveUpload';
 import { useFileViewer } from './useFileViewer';
+import { PhotoPhaseBar } from './PhotoPhaseBar';
+import { photoPhaseSender } from './workMap/workProgressSender';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
 
 type OpenFile = (file: ServiceFile) => void;
@@ -129,11 +131,38 @@ function DriveUploadBar({ upload }: { upload: ReturnType<typeof useDriveUpload> 
  * files. A failure says why, with the service's link. BACK leaves the folder,
  * then the service.
  */
-export function ServiceDrive(props: { target: ServiceAskTarget; service: SpaceClientService; chatId: string; onBack: () => void }) {
+const NO_MARKS: readonly PhotoMark[] = [];
+const NO_FILES: readonly ServiceFile[] = [];
+
+/** The «Antes / Después» bar of a Drive photo, by its url: only a photo Portal sent with its id. */
+function usePhotoPhases(props: { target: ServiceAskTarget; service: SpaceClientService; chatId: string; marks?: readonly PhotoMark[] }, files: readonly ServiceFile[]) {
+  const [marks, setMarks] = useState<readonly PhotoMark[]>(props.marks ?? NO_MARKS);
+  // The viewer keeps the function it was opened with: it reads the latest marks and files from here.
+  const latest = useRef({ marks, files });
+  latest.current = { marks, files };
+  const { target, chatId } = props;
+  const serviceId = props.service.id;
+  return useCallback((url: string) => {
+    const file = latest.current.files.find((one) => one.url === url);
+    if (!file?.id || !file.mime.startsWith('image/')) return null;
+    const id = file.id;
+    const mark = photoMarkOf(latest.current.marks, id);
+    const send = photoPhaseSender(target, chatId, serviceId);
+    return <PhotoPhaseBar key={id} mark={mark} send={async (phase, stretch) => {
+      const result = await send(id, phase, stretch);
+      if (result.ok) setMarks((before) => [...before.filter((one) => one.photoId !== id), ...(phase ? [{ photoId: id, phase, stretch: stretch.trim() || (mark?.stretch ?? '') }] : [])]);
+      return result;
+    }} />;
+  }, [target, chatId, serviceId]);
+}
+
+export function ServiceDrive(props: { target: ServiceAskTarget; service: SpaceClientService; chatId: string; onBack: () => void; /** Photos marked «antes» or «después» (Portal 08/11). */ marks?: readonly PhotoMark[] }) {
   const colors = useColores();
   const [round, setRound] = useState(0);
   const answer = useServiceAsk('files', props.target, props.service.id, round);
   const upload = useDriveUpload({ target: props.target, chatId: props.chatId, serviceId: props.service.id, onDone: () => setRound((current) => current + 1) });
+  // Before the viewer: its bar has to read the marks of THIS render.
+  const phaseOf = usePhotoPhases(props, answer?.ok ? answer.value.files : NO_FILES);
   const viewer = useFileViewer();
   const [folder, setFolder] = useState<string | null>(null);
   const [query, setQuery] = useState('');
@@ -154,7 +183,7 @@ export function ServiceDrive(props: { target: ServiceAskTarget; service: SpaceCl
       {answer === null ? <View testID="drive-cargando" className="h-40 rounded-2xl bg-surface-variant" /> : null}
       {answer && !answer.ok ? <Text testID="drive-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-[15px] font-semibold text-on-surface">{answer.message}</Text> : null}
       {answer?.ok ? <DriveSearch query={query} onQuery={setQuery} /> : null}
-      {answer?.ok ? <DriveBody files={answer.value.files} query={query} folder={folder} onFolder={setFolder} onOpen={(file) => viewer.open(viewableOf(file), answer.value.files.map(viewableOf))} /> : null}
+      {answer?.ok ? <DriveBody files={answer.value.files} query={query} folder={folder} onFolder={setFolder} onOpen={(file) => viewer.open(viewableOf(file), answer.value.files.map(viewableOf), undefined, undefined, phaseOf)} /> : null}
       {viewer.notice ? <Text className="text-center text-[13px] text-error">{viewer.notice}</Text> : null}
       {viewer.viewer}
       {driveUrl ? (

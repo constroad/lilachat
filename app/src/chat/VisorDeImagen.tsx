@@ -151,6 +151,8 @@ type VisorProps = {
   aviso?: string;
   /** A form's option seen here: «Elegir esta opción» (design h-03). */
   action?: { label: string; onPress: () => void };
+  /** What the opener adds under the photo: «Antes / Después» in a service's Drive (José 08/11). */
+  footer?: ReactNode;
 };
 
 export function VisorDeImagen(props: VisorProps) {
@@ -189,6 +191,7 @@ function ViewerBody({
   onMakeSticker,
   aviso,
   action,
+  footer,
   closeRef,
 }: VisorProps & { foto: FotoDelVisor; closeRef: MutableRefObject<(() => void) | null> }) {
   const margins = useMargenes();
@@ -250,7 +253,7 @@ function ViewerBody({
           {bars ? (
             <ViewerHeader photo={foto} position={photos.length > 1 ? `${index + 1} de ${photos.length} · ` : ''} top={margins.cabecera} onClose={close} actions={{ onMakeSticker, onDescargar, onCompartir, onEliminar }} />
           ) : null}
-          <ViewerFooter photo={foto} photos={bars ? photos : []} bottom={margins.pie} notice={aviso} action={action} onPick={onCambiar} />
+          <ViewerFooter photo={foto} photos={bars ? photos : []} bottom={margins.pie} notice={aviso} action={action} extra={footer} onPick={onCambiar} />
         </View>
       </Animated.View>
       {transition.flight ? <FlyingPhoto flight={transition.flight} progress={transition.progress} /> : null}
@@ -318,7 +321,7 @@ function HeaderButton(props: { testID: string; label: string; onPress: () => voi
 }
 
 /** The notice, the form's option and «shared in the chat» (jump between photos without closing). `photos` empty = no strip. */
-function ViewerFooter(props: { photo: FotoDelVisor; photos: FotoDelVisor[]; bottom: number; notice?: string; action?: VisorProps['action']; onPick?: (photo: FotoDelVisor) => void }) {
+function ViewerFooter(props: { photo: FotoDelVisor; photos: FotoDelVisor[]; bottom: number; notice?: string; action?: VisorProps['action']; extra?: ReactNode; onPick?: (photo: FotoDelVisor) => void }) {
   const { photo, action } = props;
   return (
     <View className="absolute bottom-0 left-0 right-0" style={{ paddingBottom: props.bottom }}>
@@ -329,6 +332,7 @@ function ViewerFooter(props: { photo: FotoDelVisor; photos: FotoDelVisor[]; bott
           </Text>
         </View>
       ) : null}
+      {props.extra}
       {action ? (
         <View className="items-center px-4 pb-3">
           <Pressable testID="visor-accion" onPress={action.onPress} className="h-12 items-center justify-center rounded-full bg-white px-6">

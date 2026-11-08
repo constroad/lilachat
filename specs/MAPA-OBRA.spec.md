@@ -1089,3 +1089,23 @@ pantalla».
 - La OTA 7b0e66fb (git e835bdf, OK de José: «sí publica») lleva la búsqueda con «Jr.», el
   buscador que se esconde, el encuadre de la calle entera y «Calle guardada». rn-smoke en verde
   antes y después. La leyenda en fila va en la OTA siguiente.
+
+**Antes y después en el visor del Drive (José 08/11, Portal 2ef27173; cualquier miembro del canal).**
+- Debajo de cada foto del Drive del servicio van «Antes · Después · Sin marcar», el tramo (texto
+  libre de hasta 80 caracteres, por ejemplo «Jr. Conchucos cdra 1») y «Guardar marca». Está en
+  web y APK.
+- Pedido: `kind: photo_phase` con `photo_id`, `phase` (`antes`, `despues` o `null`) y
+  `stretch`. Va a `marcar_foto_antes_despues` con `{servicioId, fotoId, fase, tramo?}`. Sin
+  tramo, la foto conserva el que tenía.
+- Datos:
+  - el `id` de cada archivo del Drive (Portal cffb259b, agentes c56584e) es el `fotoId`;
+  - `photoMarks` del detalle trae las marcas hechas a mano.
+  - Una foto sin `id` no muestra la barra.
+- El visor guarda la función con la que se abrió. Por eso el Drive la arma antes que el visor y
+  lee las marcas del render actual (test en `ServiceDriveWeb.test.tsx`).
+- **E2E en Test (web, sonda del grabador, 20:54–20:56Z):**
+  1. Marcar una foto del Drive como «Antes · QA cuadra 1». Portal respondió «La foto queda como
+     «antes» de QA cuadra 1».
+  2. Volver a abrir la app: la marca llegó desde Portal en `photoMarks`.
+  3. «Sin marcar» y guardar. La foto volvió a como estaba.
+- El APK lleva lo mismo; sale en la próxima OTA.

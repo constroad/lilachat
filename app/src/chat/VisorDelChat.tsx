@@ -1,4 +1,4 @@
-import { useState, type ComponentProps } from 'react';
+import { useState, type ComponentProps, type ReactNode } from 'react';
 import { abrirConOtraApp, compartirFoto, guardarEnGaleria } from './guardarYCompartir';
 import { VisorDeImagen } from './VisorDeImagen';
 import { saveGifSticker } from './stickers/useStickers';
@@ -23,6 +23,8 @@ export function VisorDelChat(props: {
   onOpenPdf?: (seq: number) => boolean;
   /** A form's option seen in the viewer (design h-03). */
   action?: { label: string; onPress: () => void };
+  /** What the opener adds under the photo: «Antes / Después» in a service's Drive. */
+  footer?: ReactNode;
 }) {
   const { gifSticker } = props;
   /** El resultado de descargar/compartir, que se pinta DENTRO del visor. */
@@ -35,6 +37,7 @@ export function VisorDelChat(props: {
     onCambiar={(otra) => props.onCambiar(otra.seq)}
     aviso={avisoVisor}
     {...(props.action ? { action: props.action } : {})}
+    footer={props.footer}
     onDescargar={async (f) => {
       // El resultado se DICE en los dos sentidos, y DENTRO del visor: una
       // descarga que no avisa nada deja sin saber si hay que reintentar.

@@ -5,7 +5,9 @@ import { PhotoViewer } from '../../chat/VisorDeFotos';
 import type { MensajeEnPantalla } from '../../chat/types';
 import { Overlay } from '../../ui/Overlay';
 
-type Session = { files: ViewableFile[]; url: string; action?: ViewerAction; removal?: ViewerRemoval };
+type Session = { files: ViewableFile[]; url: string; action?: ViewerAction; removal?: ViewerRemoval; footerOf?: ViewerFooter };
+/** What goes under the photo on screen, by its url: «Antes / Después» in a service's Drive (José 08/11). */
+export type ViewerFooter = (url: string) => ReactNode;
 export type ViewerAction = { label: string; onPress: () => void };
 /** «Eliminar» of the viewer: it always asks about the file on screen. `remove` says whether it went ahead. */
 export type ViewerRemoval = { canRemove: (url: string) => boolean; remove: (url: string) => boolean };
@@ -97,9 +99,9 @@ function PortalPdf(props: { file: ViewableFile; onClose: () => void }) {
 export function usePortalFileViewer() {
   const [session, setSession] = useState<Session | null>(null);
   const [pdf, setPdf] = useState<ViewableFile | null>(null);
-  const open = useCallback((file: ViewableFile, siblings?: readonly ViewableFile[], action?: ViewerAction, removal?: ViewerRemoval) => {
+  const open = useCallback((file: ViewableFile, siblings?: readonly ViewableFile[], action?: ViewerAction, removal?: ViewerRemoval, footerOf?: ViewerFooter) => {
     const opening = openingOf(mimeOf(file));
-    if (opening === 'gallery') return setSession({ files: galleryOf(siblings ?? [file]), url: file.url, ...(removal ? { removal } : {}), ...(action ? { action: { label: action.label, onPress: () => { setSession(null); action.onPress(); } } } : {}) });
+    if (opening === 'gallery') return setSession({ files: galleryOf(siblings ?? [file]), url: file.url, ...(removal ? { removal } : {}), ...(footerOf ? { footerOf } : {}), ...(action ? { action: { label: action.label, onPress: () => { setSession(null); action.onPress(); } } } : {}) });
     if (opening === 'pdf') return setPdf(file);
     window.open(file.url, '_blank', 'noopener');
   }, []);
@@ -108,7 +110,7 @@ export function usePortalFileViewer() {
   const removeShown = session?.removal?.canRemove(session.url) ? () => { if (session.removal?.remove(session.url)) setSession(null); } : undefined;
   const viewer: ReactNode = (
     <>
-      {session && index >= 0 ? <PhotoViewer fotos={photos} indice={index} onCambiar={(next) => setSession({ ...session, url: photos[next]?.media?.url ?? session.url })} onCerrar={() => setSession(null)} {...(removeShown ? { onRemove: removeShown } : {})} {...(session.action ? { action: session.action } : {})} /> : null}
+      {session && index >= 0 ? <PhotoViewer fotos={photos} indice={index} onCambiar={(next) => setSession({ ...session, url: photos[next]?.media?.url ?? session.url })} onCerrar={() => setSession(null)} {...(removeShown ? { onRemove: removeShown } : {})} {...(session.action ? { action: session.action } : {})} footer={session.footerOf?.(session.url)} /> : null}
       {pdf ? <PortalPdf file={pdf} onClose={() => setPdf(null)} /> : null}
     </>
   );

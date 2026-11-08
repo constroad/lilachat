@@ -1,11 +1,13 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { pdfPages } from '../../../modules/pdf-pages/src';
 import { abrirConOtraApp } from '../../chat/guardarYCompartir';
 import { PdfViewerScreen } from '../../chat/pdf/PdfViewerScreen';
 import { VisorDelChat } from '../../chat/VisorDelChat';
 import { galleryOf, mimeOf, openingOf, pdfsOf, viewerWhenOf, type ViewableFile } from '@lilachat/shared';
 
-type Session = { files: ViewableFile[]; url: string; action?: ViewerAction; removal?: ViewerRemoval };
+type Session = { files: ViewableFile[]; url: string; action?: ViewerAction; removal?: ViewerRemoval; footerOf?: ViewerFooter };
+/** What goes under the photo on screen, by its url: «Antes / Después» in a service's Drive (José 08/11). */
+export type ViewerFooter = (url: string) => ReactNode;
 export type ViewerAction = { label: string; onPress: () => void };
 /** «Eliminar» of the viewer: it always asks about the file on screen, never the one that opened it. */
 export type ViewerRemoval = { canRemove: (url: string) => boolean; remove: (url: string) => void };
@@ -27,9 +29,9 @@ export function useFileViewer() {
     setTimeout(() => setNotice(''), NOTICE_MS);
   }, []);
 
-  const open = useCallback((file: ViewableFile, siblings?: readonly ViewableFile[], action?: ViewerAction, removal?: ViewerRemoval) => {
+  const open = useCallback((file: ViewableFile, siblings?: readonly ViewableFile[], action?: ViewerAction, removal?: ViewerRemoval, footerOf?: ViewerFooter) => {
     const opening = openingOf(mimeOf(file));
-    const picked = { ...(removal ? { removal } : {}), ...(action ? { action: { label: action.label, onPress: () => { setSession(null); action.onPress(); } } } : {}) };
+    const picked = { ...(removal ? { removal } : {}), ...(footerOf ? { footerOf } : {}), ...(action ? { action: { label: action.label, onPress: () => { setSession(null); action.onPress(); } } } : {}) };
     if (opening === 'gallery' || (opening === 'pdf' && pdfPages)) return setSession({ files: [...(siblings ?? [file])], url: file.url, ...picked });
     void abrirConOtraApp({ url: file.url, cuando: new Date(), mime: mimeOf(file), seq: 0, nombre: file.name }).then((result) => {
       if (!result.ok) say(result.motivo);
@@ -50,7 +52,7 @@ export function useFileViewer() {
   const moveTo = (url: string | undefined) => setSession((current) => (current && url ? { ...current, url } : null));
   const viewer = (
     <>
-      <VisorDelChat fotos={photos} viendoSeq={photoSeq} onCambiar={(seq) => moveTo(photos.find((photo) => photo.seq === seq)?.url)} onEliminar={removeShown} onError={say} {...(session?.action ? { action: session.action } : {})} />
+      <VisorDelChat fotos={photos} viendoSeq={photoSeq} onCambiar={(seq) => moveTo(photos.find((photo) => photo.seq === seq)?.url)} onEliminar={removeShown} onError={say} {...(session?.action ? { action: session.action } : {})} footer={session?.footerOf?.(session.url)} />
       <PdfViewerScreen pdf={pdf} others={pdfs} onPick={(seq) => moveTo(pdfs.find((one) => one.seq === seq)?.url)} onClose={() => setSession(null)} />
     </>
   );

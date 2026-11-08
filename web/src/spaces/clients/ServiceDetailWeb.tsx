@@ -153,7 +153,7 @@ function DetailTabs({ detail, target, service, chatId, seesDrive, links, seesMon
         ))}
       </div>
   );
-  if (tab === 'drive') return <>{strip}<ServiceDriveWeb target={target} service={service} chatId={chatId} /></>;
+  if (tab === 'drive') return <>{strip}<ServiceDriveWeb target={target} service={service} chatId={chatId} marks={detail.photoMarks} /></>;
   return (
     <>
       {strip}

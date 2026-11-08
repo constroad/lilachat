@@ -117,3 +117,41 @@ describe('sending a file to the service Drive (José 06/11)', () => {
   });
 });
 
+
+describe('marking a Drive photo «antes» or «después» (José 08/11, Portal 2ef27173)', () => {
+  const outcome = (body: object) => ({ commandId: 'c9', appId: 'p', appName: 'Portal', ...body });
+  const photo = { ...file('fresado.jpg', 'Fotos de obra'), id: 'f-1' };
+
+  it('the viewer shows the mark and sends the new phase with its stretch through the channel\'s door', async () => {
+    // Arrange
+    const calls: { url: string; body: unknown }[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url, body: init?.body });
+      if (url.endsWith('/files')) return new Response(JSON.stringify({ files: [photo], drive_url: null }), { status: 200 });
+      if (url.endsWith('/reports/forms')) return new Response(JSON.stringify(outcome({ outcome: 'form', response: { responseType: 'form', form: { id: 'marcar_foto_antes_despues', title: 'x', schema: { type: 'object', properties: {} } } } })), { status: 200 });
+      return new Response(JSON.stringify(outcome({ outcome: 'done', response: { responseType: 'text', text: '' } })), { status: 200 });
+    }));
+    render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" marks={[{ photoId: 'f-1', phase: 'antes', stretch: 'Cdra 1' }]} />);
+    fireEvent.click(await screen.findByTestId('carpeta-Fotos de obra'));
+    // Act
+    fireEvent.click(screen.getByTestId('archivo-drive'));
+    // Assert
+    expect(await screen.findByTestId('foto-fase')).toHaveTextContent('Antes · Cdra 1');
+    fireEvent.click(screen.getByTestId('foto-fase-despues'));
+    fireEvent.change(screen.getByTestId('foto-fase-tramo'), { target: { value: 'Cdra 1' } });
+    fireEvent.click(screen.getByTestId('foto-fase-guardar'));
+    expect(await screen.findByText('Foto marcada.')).toBeInTheDocument();
+    const opened = calls.find((call) => call.url.endsWith('/reports/forms'))!;
+    expect(JSON.parse(String(opened.body))).toMatchObject({ kind: 'photo_phase', photo_id: 'f-1', phase: 'despues', stretch: 'Cdra 1' });
+    expect(screen.getByTestId('foto-fase')).toHaveTextContent('Después · Cdra 1');
+  });
+
+  it('a file Portal sent without its id cannot be marked', async () => {
+    vi.stubGlobal('fetch', reply({ files: [file('sin-id.jpg', 'Fotos de obra')], drive_url: null }));
+    render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" marks={[]} />);
+    fireEvent.click(await screen.findByTestId('carpeta-Fotos de obra'));
+    fireEvent.click(screen.getByTestId('archivo-drive'));
+    expect(await screen.findByTestId('visor-foto')).toBeInTheDocument();
+    expect(screen.queryByTestId('foto-fase')).toBeNull();
+  });
+});

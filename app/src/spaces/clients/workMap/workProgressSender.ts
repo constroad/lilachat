@@ -1,4 +1,4 @@
-import { type MapEditSend, serviceLinkRequest, serviceMapUrl, type ChannelLinks, noticeOf, saveStreetWithStage, sendWorkProgress, sendWorkScope, sendWorkStreet, type FormValues, type ReportFormRequest, sendWorkStreetDelete, workProgressRequest, workStreetDeleteRequest, workStreetRequest, type StreetDraft, type WorkProgressResult, type PlaceAsk, type PlaceResult, PLACE_SEARCH_FAILED } from '@lilachat/shared';
+import { photoPhaseRequest, sendPhotoPhase, type PhotoPhase, type MapEditSend, serviceLinkRequest, serviceMapUrl, type ChannelLinks, noticeOf, saveStreetWithStage, sendWorkProgress, sendWorkScope, sendWorkStreet, type FormValues, type ReportFormRequest, sendWorkStreetDelete, workProgressRequest, workStreetDeleteRequest, workStreetRequest, type StreetDraft, type WorkProgressResult, type PlaceAsk, type PlaceResult, PLACE_SEARCH_FAILED } from '@lilachat/shared';
 import { submitAppForm } from '../../../chat/commands/commandsApi';
 import { jsonCall } from '../../../api/jsonCall';
 import { BASE_URL } from '../../../api/client';
@@ -62,3 +62,11 @@ export const placeAsker = (jwt: string): PlaceAsk => async (text, near) => {
   const answer = await jsonCall<{ results: PlaceResult[] }>(`${BASE_URL}/api/places`, jwt, { method: 'POST', body: JSON.stringify({ q: text, ...(near ? { near } : {}) }) });
   return answer.ok ? { ok: true, results: answer.data.results } : { ok: false, message: answer.message || PLACE_SEARCH_FAILED };
 };
+
+/** «Antes / Después» of a Drive photo through the same door: Portal's `marcar_foto_antes_despues` (José 08/11). */
+export const photoPhaseSender = (target: ServiceAskTarget, chatId: string, serviceId: string) => (photoId: string, phase: PhotoPhase | null, stretch: string): Promise<WorkProgressResult> =>
+  sendPhotoPhase({
+    open: () => openReportForm(target, serviceId, photoPhaseRequest(photoId, phase, stretch)),
+    submit: (commandId, values) => submitAppForm(target.jwt, { chatId }, commandId, values),
+    notice: (commandId) => noticeOf(getSocket(), commandId),
+  });

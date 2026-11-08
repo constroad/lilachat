@@ -22,6 +22,11 @@ describe('serviceFilesOf', () => {
     const many = Array.from({ length: SERVICE_FILES_MAX + 5 }, (_, index) => file(`${index}.pdf`));
     expect(serviceFilesOf({ files: many, drive_url: null })?.files).toHaveLength(SERVICE_FILES_MAX);
   });
+
+  it('keeps Portal\'s file id (cffb259b), the one that marks it «antes» or «después»; a long one is left out', () => {
+    const reply = serviceFilesOf({ files: [file('a.jpg', undefined, { id: 'f-1' }), file('b.jpg', undefined, { id: 'x'.repeat(65) })], drive_url: null });
+    expect(reply?.files.map((one) => one.id)).toEqual(['f-1', undefined]);
+  });
 });
 
 describe('folders and search', () => {

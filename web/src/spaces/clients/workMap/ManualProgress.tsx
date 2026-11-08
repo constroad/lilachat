@@ -8,7 +8,7 @@ import { lazyChunk } from '../../../ui/lazyChunk';
 
 const WorkMapCanvas = lazyChunk(() => import('./WorkMapCanvas'));
 
-/** 1 Trabajo · 2 Hasta dónde · 3 Foto · 4 Enviar (design o-06): where the person is. */
+/** The four steps of the form (design o-06), with the current one marked: where the person is. */
 function ManualSteps(props: { draft: ManualProgressDraft }) {
   const step = manualStepOf(props.draft);
   return (

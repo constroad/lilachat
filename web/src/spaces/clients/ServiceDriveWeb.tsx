@@ -1,6 +1,6 @@
 import { forwardRef, useCallback, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Cloud, ExternalLink, Folder, Search, Upload } from 'lucide-react';
-import { photoMarkOf, type PhotoMark, DRIVE_UPLOADING, driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService, type ViewableFile } from '@lilachat/shared';
+import { photoMarkOf, withPhotoMark, type PhotoMark, DRIVE_UPLOADING, driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService, type ViewableFile } from '@lilachat/shared';
 import { FileThumb, usePortalFileViewer } from './PortalFileViewer';
 import { useDriveUpload } from './useDriveUpload';
 import { PhotoPhaseBar } from './PhotoPhaseBar';
@@ -118,7 +118,7 @@ function usePhotoPhases(props: { target: ServiceAskTarget; service: SpaceClientS
     const mark = photoMarkOf(latest.current.marks, id);
     return <PhotoPhaseBar key={id} mark={mark} send={async (phase, stretch) => {
       const result = await send(id, phase, stretch);
-      if (result.ok) setMarks((before) => [...before.filter((one) => one.photoId !== id), ...(phase ? [{ photoId: id, phase, stretch: stretch.trim() || (mark?.stretch ?? '') }] : [])]);
+      if (result.ok) setMarks((before) => withPhotoMark(before, id, phase, stretch));
       return result;
     }} />;
     // eslint-disable-next-line react-hooks/exhaustive-deps

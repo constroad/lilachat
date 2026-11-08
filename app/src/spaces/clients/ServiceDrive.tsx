@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { BackHandler, Linking, Pressable, Text, TextInput, View } from 'react-native';
 import { Camera, ChevronLeft, ChevronRight, Cloud, ExternalLink, Folder, Image as ImageIcon, Search, Video } from 'lucide-react-native';
 import { FileThumb } from './FileThumb';
-import { photoMarkOf, type PhotoMark, driveFileLine, driveUploadingLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService } from '@lilachat/shared';
+import { photoMarkOf, withPhotoMark, type PhotoMark, driveFileLine, driveUploadingLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
 import { useDriveUpload } from './useDriveUpload';
@@ -150,7 +150,7 @@ function usePhotoPhases(props: { target: ServiceAskTarget; service: SpaceClientS
     const send = photoPhaseSender(target, chatId, serviceId);
     return <PhotoPhaseBar key={id} mark={mark} send={async (phase, stretch) => {
       const result = await send(id, phase, stretch);
-      if (result.ok) setMarks((before) => [...before.filter((one) => one.photoId !== id), ...(phase ? [{ photoId: id, phase, stretch: stretch.trim() || (mark?.stretch ?? '') }] : [])]);
+      if (result.ok) setMarks((before) => withPhotoMark(before, id, phase, stretch));
       return result;
     }} />;
   }, [target, chatId, serviceId]);

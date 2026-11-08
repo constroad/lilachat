@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
-import { PHOTO_PHASES, PHOTO_STRETCH_HINT, PHOTO_STRETCH_MAX, photoPhaseLabel, type PhotoMark, type PhotoPhase, type WorkProgressResult } from '@lilachat/shared';
+import { PHOTO_PHASES, PHOTO_STRETCH_HINT, PHOTO_STRETCH_MAX, photoPhaseDraftOf, photoPhaseLabel, type PhotoMark, type PhotoPhase, type WorkProgressResult } from '@lilachat/shared';
 
 export type PhotoPhaseSend = (phase: PhotoPhase | null, stretch: string) => Promise<WorkProgressResult>;
 
@@ -13,14 +13,14 @@ const BLACK = '#000000';
  * always dark, so its colors are fixed and not the theme's.
  */
 export function PhotoPhaseBar(props: { mark: PhotoMark | null; send: PhotoPhaseSend }) {
-  const [phase, setPhase] = useState<PhotoPhase | null>(props.mark?.phase ?? null);
-  const [stretch, setStretch] = useState(props.mark?.stretch ?? '');
-  const [busy, setBusy] = useState(false);
-  const [answer, setAnswer] = useState<WorkProgressResult | null>(null);
+  const [draft, setDraft] = useState(() => photoPhaseDraftOf(props.mark));
+  const { phase, stretch, busy, answer } = draft;
+  const setPhase = (next: PhotoPhase | null) => setDraft((before) => ({ ...before, phase: next }));
+  const setStretch = (next: string) => setDraft((before) => ({ ...before, stretch: next }));
   const save = async () => {
-    setBusy(true);
-    setAnswer(await props.send(phase, stretch));
-    setBusy(false);
+    setDraft((before) => ({ ...before, busy: true }));
+    const result = await props.send(phase, stretch);
+    setDraft((before) => ({ ...before, busy: false, answer: result }));
   };
   return (
     <View testID="foto-fase-barra" className="gap-2 px-4 pb-3">

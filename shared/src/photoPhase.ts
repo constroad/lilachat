@@ -57,3 +57,13 @@ export function photoPhaseLabel(mark: PhotoMark | null): string {
 
 /** Nothing to fill: the photo, the phase and the stretch ride as context from the server's door. */
 export const sendPhotoPhase = (deps: WorkProgressDeps): Promise<WorkProgressResult> => sendMapTool(deps, {}, { sent: PHOTO_PHASE_SAVED, failed: PHOTO_PHASE_FAILED });
+
+/** What the bar under the photo is editing: the phase, the stretch and the answer of the last save. */
+export type PhotoPhaseDraft = { phase: PhotoPhase | null; stretch: string; busy: boolean; answer: WorkProgressResult | null };
+export const photoPhaseDraftOf = (mark: PhotoMark | null): PhotoPhaseDraft => ({ phase: mark?.phase ?? null, stretch: mark?.stretch ?? '', busy: false, answer: null });
+
+/** The marks once Portal took a new one: without a stretch the photo keeps the one it had; `null` takes it out. */
+export function withPhotoMark(marks: readonly PhotoMark[], photoId: string, phase: PhotoPhase | null, stretch: string): PhotoMark[] {
+  const kept = stretch.trim() || (photoMarkOf(marks, photoId)?.stretch ?? '');
+  return [...marks.filter((mark) => mark.photoId !== photoId), ...(phase ? [{ photoId, phase, stretch: kept }] : [])];
+}

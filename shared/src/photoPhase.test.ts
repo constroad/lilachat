@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FORMS_LEVEL } from './appForms.js';
-import { PHOTO_PHASE_SAVED, PHOTO_MARKS_MAX, photoMarkOf, photoMarksOf, photoPhaseLabel, photoPhaseRequest, sendPhotoPhase, stretchKey } from './photoPhase.js';
+import { PHOTO_PHASE_SAVED, PHOTO_MARKS_MAX, photoMarkOf, photoPhaseDraftOf, withPhotoMark, photoMarksOf, photoPhaseLabel, photoPhaseRequest, sendPhotoPhase, stretchKey } from './photoPhase.js';
 
 /** José 08/11 through Portal: mark a photo as «antes» or «después» from Lilachat's viewer. */
 describe('photoMarksOf', () => {
@@ -65,5 +65,23 @@ describe('sendPhotoPhase', () => {
     };
     expect(await sendPhotoPhase(deps)).toEqual({ ok: true, message: PHOTO_PHASE_SAVED });
     expect(deps.submit).toHaveBeenCalledWith('c1', {});
+  });
+});
+
+describe('withPhotoMark', () => {
+  const marks = [{ photoId: 'f1', phase: 'antes' as const, stretch: 'Cdra 1' }, { photoId: 'f2', phase: 'despues' as const, stretch: 'Cdra 2' }];
+
+  it('replaces the photo\'s mark, keeping its stretch when none came', () => {
+    expect(withPhotoMark(marks, 'f1', 'despues', ' ')).toEqual([marks[1], { photoId: 'f1', phase: 'despues', stretch: 'Cdra 1' }]);
+    expect(withPhotoMark(marks, 'f3', 'antes', 'Cdra 3')).toEqual([...marks, { photoId: 'f3', phase: 'antes', stretch: 'Cdra 3' }]);
+  });
+
+  it('null takes the mark out', () => {
+    expect(withPhotoMark(marks, 'f1', null, '')).toEqual([marks[1]]);
+  });
+
+  it('the bar starts from the photo\'s mark, or empty', () => {
+    expect(photoPhaseDraftOf(marks[0]!)).toEqual({ phase: 'antes', stretch: 'Cdra 1', busy: false, answer: null });
+    expect(photoPhaseDraftOf(null)).toEqual({ phase: null, stretch: '', busy: false, answer: null });
   });
 });

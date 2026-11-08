@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PHOTO_PHASES, PHOTO_STRETCH_HINT, PHOTO_STRETCH_MAX, photoPhaseLabel, type PhotoMark, type PhotoPhase, type WorkProgressResult } from '@lilachat/shared';
+import { PHOTO_PHASES, PHOTO_STRETCH_HINT, PHOTO_STRETCH_MAX, photoPhaseDraftOf, photoPhaseLabel, type PhotoMark, type PhotoPhase, type WorkProgressResult } from '@lilachat/shared';
 
 export type PhotoPhaseSend = (phase: PhotoPhase | null, stretch: string) => Promise<WorkProgressResult>;
 
@@ -8,14 +8,14 @@ export type PhotoPhaseSend = (phase: PhotoPhase | null, stretch: string) => Prom
  * the channel marks it, with the stretch that pairs a «before» with its «after».
  */
 export function PhotoPhaseBar(props: { mark: PhotoMark | null; send: PhotoPhaseSend }) {
-  const [phase, setPhase] = useState<PhotoPhase | null>(props.mark?.phase ?? null);
-  const [stretch, setStretch] = useState(props.mark?.stretch ?? '');
-  const [busy, setBusy] = useState(false);
-  const [answer, setAnswer] = useState<WorkProgressResult | null>(null);
+  const [draft, setDraft] = useState(() => photoPhaseDraftOf(props.mark));
+  const { phase, stretch, busy, answer } = draft;
+  const setPhase = (next: PhotoPhase | null) => setDraft((before) => ({ ...before, phase: next }));
+  const setStretch = (next: string) => setDraft((before) => ({ ...before, stretch: next }));
   const save = async () => {
-    setBusy(true);
-    setAnswer(await props.send(phase, stretch));
-    setBusy(false);
+    setDraft((before) => ({ ...before, busy: true }));
+    const result = await props.send(phase, stretch);
+    setDraft((before) => ({ ...before, busy: false, answer: result }));
   };
   return (
     <div data-testid="foto-fase-barra" className="mx-auto mb-4 flex w-full max-w-md flex-col gap-2 px-4 text-white">

@@ -207,3 +207,4 @@ export * from './workMapStations.js';
 export * from './workMapPhotos.js';
 export * from './placeSearch.js';
 export * from './tutorialScript.js';
+export * from './photoPhase.js';

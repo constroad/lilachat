@@ -44,6 +44,12 @@ describe('serviceDetailOf', () => {
     expect(serviceDetailOf(body)!.mapPhotos).toBeUndefined();
   });
 
+  it('brings the photos marked «antes» or «después» by hand (Portal 08/11), and nothing without them', () => {
+    const photoMarks = [{ fotoId: 'f1', fase: 'antes', tramo: 'Cdra 1' }];
+    expect(serviceDetailOf({ ...body, photoMarks })!.photoMarks).toEqual([{ photoId: 'f1', phase: 'antes', stretch: 'Cdra 1' }]);
+    expect(serviceDetailOf(body)!.photoMarks).toBeUndefined();
+  });
+
   it('brings the service\'s place for the map to open there (Portal da5382a5, 08/11)', () => {
     const at = (ubicacion: unknown) => serviceDetailOf({ ...body, service: { ...body.service, ubicacion } })!.service.location;
     expect(at({ lat: -12.05, lng: -77.03, enlace: 'https://maps.app.goo.gl/AbC' })).toEqual({ lat: -12.05, lng: -77.03 });

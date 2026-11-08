@@ -460,3 +460,28 @@ describe('the link of a service from its client channel (José 07/11: «solo el 
     await shortcutOf(ana, { servicioId: 'srv-otro' }, 404);
   });
 });
+
+describe('marking a photo «antes» or «después» (José 08/11, Portal 2ef27173: any member of the channel)', () => {
+  it('opens Portal\'s tool with the photo, the phase and the stretch, and the service from the door', async () => {
+    // Act
+    const opened = await openOf(ana, { kind: 'photo_phase', photo_id: 'f-1', phase: 'antes', stretch: 'Jr. Conchucos cdra 1', forms: 3 }).expect(200);
+    // Assert
+    expect(opened.body.response.form).toMatchObject({ id: 'marcar_foto_antes_despues', title: 'Antes y después' });
+    const run = await BotCommandRunModel.findById(opened.body.commandId).lean();
+    expect(run?.context).toEqual({ servicioId: 'srv-318', fotoId: 'f-1', fase: 'antes', tramo: 'Jr. Conchucos cdra 1' });
+  });
+
+  it('null takes the mark away, and without a stretch the photo keeps its own', async () => {
+    const opened = await openOf(ana, { kind: 'photo_phase', photo_id: 'f-1', phase: null, forms: 3 }).expect(200);
+    const run = await BotCommandRunModel.findById(opened.body.commandId).lean();
+    expect(run?.context).toEqual({ servicioId: 'srv-318', fotoId: 'f-1', fase: null });
+  });
+
+  it('refuses another phase, a long stretch or no photo; someone outside the channel does not open it', async () => {
+    await openOf(ana, { kind: 'photo_phase', photo_id: 'f-1', phase: 'durante', forms: 3 }).expect(400);
+    await openOf(ana, { kind: 'photo_phase', photo_id: 'f-1', forms: 3 }).expect(400);
+    await openOf(ana, { kind: 'photo_phase', photo_id: 'f-1', phase: 'antes', stretch: 'x'.repeat(81), forms: 3 }).expect(400);
+    await openOf(ana, { kind: 'photo_phase', phase: 'antes', forms: 3 }).expect(400);
+    await openOf(outsider, { kind: 'photo_phase', photo_id: 'f-1', phase: 'antes', forms: 3 }).expect(404);
+  });
+});

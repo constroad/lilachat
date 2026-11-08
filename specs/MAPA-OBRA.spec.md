@@ -916,3 +916,21 @@ Modal y no en la hoja.
   y pide la reaprobación de José. Queda a decisión suya.
 - **Punto 16.** La barra por trabajo y el estado «Asfalto hasta 0+350» ya estaban en las
   tarjetas de calle. Los botones del APK siguen siendo solo ícono, con nombre accesible.
+
+**E2E del OTA 0d85596d (APK, versionCode 182) y de la web, 08/11, espacio Test.**
+- APK, Compartir y Exportar: arriba el mapa del corte con 0+000, 0+100 y 0+191 (`compartir-mapa`,
+  `exportar-mapa`).
+- APK, «Nueva etapa» en la hoja de Etapas: con el teclado abierto, el campo, «Cancelar» y «Crear»
+  quedan visibles. Se canceló sin crear nada.
+- APK, Registrar avance: «1 Trabajo · 2 Hasta dónde · 3 Foto · 4 Enviar», con «Hasta dónde»
+  marcado porque el trabajo ya estaba elegido. Se canceló sin enviar.
+- APK, editor de calle: la leyenda («Calle nueva», «Calles de la obra») abajo a la izquierda y la
+  «N» arriba a la izquierda.
+- APK, brocha: la banda queda debajo de la barra de estado, con aire. «Listo» sin pintar.
+- APK, Control de pista: la tarjeta «Ancho útil» dice «6,0 m · 540 m²» para +90 m (90 × 6,0).
+- Web (lilachat.constroad.com, ya con 87a39b7): `avance-ancho-util` dice «6,0 m · 540 m²», los
+  pasos y la vista previa del avance salen, y el editor muestra la leyenda y la «N».
+- El APK y la web quedaron en Constroad y el emulador quedó apagado.
+
+Visto de paso: en la brocha a pantalla completa, el botón de ubicación abajo a la derecha queda
+pegado a la barra de navegación. Se puede tocar, pero queda justo.

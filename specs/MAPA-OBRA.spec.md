@@ -696,3 +696,52 @@ trabajo». Falta, en los dos:
 Lo que Stitch inventó y NO va: «WGS-84 UTM 18S RTK ±2 cm», las especificaciones MAC-2, CSS-1H y
 CBR, el RUC, «Firma digital certificada» y el dictamen técnico redactado. Va solo el dato real; el
 texto de observaciones lo escribe el residente. El PDF lo arma Portal: pedido a esa sesión el 08/11.
+
+## Auditoría completa contra Stitch (08/11, web prod y APK OTA 295864d1, Test QA-CTLPIS)
+
+José 08/11: «¿Ya está terminado el mapa? ¿Ya auditaste…? ¿Qué más falta?». No estaba terminado. La
+sección «Pendiente: nada de o-03 a o-05» de arriba era falsa contra el diseño. Capturas del APK en
+el scratchpad de la sesión (`a01-…` a `a13-…`). Lo que falta, por gravedad:
+
+**Impiden o traban el uso (web y APK salvo que se diga)**
+1. o-01: no hay «Registrar avance» en el mapa. Se llega bajando (APK: 3 pantallas, pasando el
+   Control de pista) y entrando a «Ver tramos». Tampoco hay «Editar obra».
+2. o-04 «Etapas» y o-05 «Trabajos» no existen como pantallas: no se ve el avance por etapa (%, m,
+   m², jornadas), no se asignan etapas ni trabajos tocando calles en el mapa (brocha), todo va
+   tramo por tramo dentro de «Agregar tramo».
+3. o-02: no hay campo «Etapa» al crear la calle.
+4. o-02 y o-13: cambiar de modo borra sin avisar lo tocado o caminado (APK: se perdieron 734 m y
+   141 m).
+5. o-10: en un servicio sin calles no se llega a «Importar KMZ o KML» (la barra con «Exportar» no
+   sale).
+6. o-06 y o-03: no hay mapa al registrar avance ni al ver la calle; las progresivas se eligen a
+   ciegas.
+7. Informe PDF y plano (o-14, o-15): ver la sección anterior; lo rehace Portal.
+
+**Confunden**
+8. o-01: «Longitud total 120 m» arriba y la calle «191 m» abajo, sin explicar que 120 m es lo que
+   tiene tramos.
+9. o-06: «Hasta dónde» en metros («147») junto al inicio en progresiva («0+000»).
+10. Ninguna pantalla rotula progresivas sobre la vía (0+000, 0+100…); solo pines numerados.
+11. o-02 (APK): el toque de inicio no deja marca hasta tocar el fin.
+12. o-13: sin marcador de mi posición, sin progresiva contra la meta, sin «Pausa», «Deshacer»
+    borra toda la caminata, no muestra puntos descartados.
+13. o-08 y o-12 (APK): la hoja tapa el mapa; no se ve el corte que se comparte o exporta.
+14. o-01 (APK): el bloque de avance queda cortado y su manija no arrastra; el Control de pista
+    va antes que las calles.
+15. o-03: no muestra el estado de cada tramo ni la parte de la calle sin tramo.
+
+**Menores**
+16. o-01: barra de avance sin colores por trabajo ni progresivas; tarjeta de calle sin «Asfalto
+    hasta 0+350»; APK sin el cliente en el encabezado y con botones solo ícono.
+17. o-02: el largo no se edita; faltan leyenda, norte y botón atrás (APK).
+18. o-05 (APK): el teclado tapa los colores y «Crear».
+19. o-06: sin indicador de pasos; «Mi GPS» no anticipa el valor.
+20. o-07: falta «Ancho útil»; «Confirmar» no queda fijo abajo (APK).
+21. o-10 (APK): fondo liso sin mapa; pasos sin cifras.
+22. o-09 (página del cliente, Portal): el diseño trae «Línea de tiempo de avance» por corte y
+    filtro por etapa; la página de hoy no.
+
+**Defectos de esta ronda ya corregidos:** título partido y hoja «Exportar» sin scroll (APK,
+1ba32fa, falta el OTA), la web caída al abrir el mapa tras un deploy (79ce259), el import bloqueado
+por el boleto (90748f1 y agentes dd1baa7).

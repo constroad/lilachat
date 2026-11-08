@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { lazyChunk } from '../../../ui/lazyChunk';
 import { ArchiveRestore, Download, ExternalLink, Maximize2, Minimize2, Plus, Share2 } from 'lucide-react';
 import { type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange } from '@lilachat/shared';
 import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
@@ -10,7 +11,7 @@ import type { StreetDeleteSend } from './StreetDelete';
 import { StreetScopes } from './StreetScopes';
 import { DeletedWork } from './DeletedWork';
 
-const WorkMapCanvas = lazy(() => import('./WorkMapCanvas'));
+const WorkMapCanvas = lazyChunk(() => import('./WorkMapCanvas'));
 
 const ACTION = 'flex h-10 shrink-0 items-center gap-2 rounded-xl border border-outline/20 bg-surface px-3 text-[13px] font-semibold text-on-surface hover:bg-background';
 /** Under this width the panel goes under the map, as the design's phone (o-01 mobile). */

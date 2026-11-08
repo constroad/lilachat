@@ -1,11 +1,12 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useState } from 'react';
+import { lazyChunk } from '../../../ui/lazyChunk';
 import { Footprints, Save, Square, Undo2, X } from 'lucide-react';
 import { DRAW_MODES, EMPTY_STREET, metersLabel, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, walkedDraft, walkHint, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint } from '@lilachat/shared';
 import { KICKER } from './WorkMapPanel';
 import type { StreetSend } from './workProgressSender';
 import { useGpsWalk } from './useGpsWalk';
 
-const WorkMapCanvas = lazy(() => import('./WorkMapCanvas'));
+const WorkMapCanvas = lazyChunk(() => import('./WorkMapCanvas'));
 const NO_STREETS: WorkMap = { streets: [], scopes: [], progress: [], works: [], stages: [] };
 const LENGTH_HINT = 'Medido en el mapa';
 const GPS_DENIED = 'El navegador no deja usar tu ubicación. Permítela o dibuja la calle de otra forma.';

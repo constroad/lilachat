@@ -664,3 +664,8 @@ ver «Borrados»; cubierto solo por test).
   pantalla, sin scroll: tapaba la barra de estado y su parte de arriba no se alcanzaba. Ahora las
   dos hojas usan `PanelSheet` (`CutChips.tsx`): scroll, arrastre por la manija y tope de 92 %.
 - Sin verificar: una foto de una cámara real y caminar la calle con un GPS real.
+- **Defecto: la web se caía al abrir el mapa después de un deploy** («Algo falló al mostrar
+  Lilachat», 08/11 10:18Z). La pestaña abierta pedía `WorkMapCanvas-<hash>.js` viejo, que el deploy
+  ya había reemplazado. El mapa usaba `lazy` pelado y no `lazyChunk`, que recarga una vez (José
+  30/10, mismo caso con los emojis). Ahora los dos usos del lienzo pasan por `lazyChunk`, y
+  `web/src/ui/lazyChunkUsage.test.ts` falla si alguien vuelve a escribir `lazy(() => import(…))`.

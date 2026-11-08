@@ -19,6 +19,7 @@ import { signSession } from './sessions.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { alertarServidor } from './alertaTelegram.js';
 import { resolverUsuarioDeSesion } from './identidadDeSesion.js';
+import { asyncRoute } from './requireSession.js';
 import { cookieBorrada, cookieDeDispositivo, leerCookieDeDispositivo, pedidoSeguro } from './cookieDeDispositivo.js';
 import { revocarVinculado, validarVinculado } from './dispositivosVinculados.js';
 import { avisarCambioDeVinculos, desconectarDispositivo } from './socket.js';
@@ -84,7 +85,7 @@ export function buildAuthRouter(authClient: AuthClient): Router {
     return { email: backupEmailOf(existingUser) };
   };
 
-  router.post('/otp/request', async (req, res) => {
+  router.post('/otp/request', asyncRoute(async (req, res) => {
     const phone = normalizePeruPhone(req.body?.phone);
     if (!phone) return res.status(400).json({ message: 'Escribe un celular válido.' });
 
@@ -123,9 +124,9 @@ export function buildAuthRouter(authClient: AuthClient): Router {
     // La app ofrece SIEMPRE «enviar por correo»; si ese número no tiene
     // respaldo, el server no hace nada y la respuesta es la misma.
     return res.status(200).json(GENERIC_OTP_RESPONSE);
-  });
+  }));
 
-  router.post('/otp/verify', async (req, res) => {
+  router.post('/otp/verify', asyncRoute(async (req, res) => {
     const phone = normalizePeruPhone(req.body?.phone);
     const code = String(req.body?.code ?? '').trim();
     const deviceId = String(req.body?.deviceId ?? '').trim();
@@ -167,10 +168,10 @@ export function buildAuthRouter(authClient: AuthClient): Router {
     // Spaces that added this phone before it had an account (E1): it joins them now.
     await claimPhoneInvites(user._id, phone).catch((error) => console.error('[workspaces] no se pudieron reclamar invitaciones:', error instanceof Error ? error.message : error));
     return openSession(req, res, user, deviceId, verified.valor.secreto);
-  });
+  }));
 
   /** Sign-in by email (spec INGRESO-POR-ESPACIO): same anti-enumeration answer as the phone. */
-  router.post('/email/request', async (req, res) => {
+  router.post('/email/request', asyncRoute(async (req, res) => {
     const email = normalizeEmail(req.body?.email);
     if (!email) return res.status(400).json({ message: 'Escribe un correo válido.' });
     const sent = await authClient.requestCode(email);
@@ -179,9 +180,9 @@ export function buildAuthRouter(authClient: AuthClient): Router {
       alertarServidor('email/request', new Error(`No se pudo enviar el código de acceso: ${sent.codigo}`));
     }
     return res.status(200).json(GENERIC_OTP_RESPONSE);
-  });
+  }));
 
-  router.post('/email/verify', async (req, res) => {
+  router.post('/email/verify', asyncRoute(async (req, res) => {
     const email = normalizeEmail(req.body?.email);
     const code = String(req.body?.code ?? '').trim();
     const deviceId = String(req.body?.deviceId ?? '').trim();
@@ -189,9 +190,9 @@ export function buildAuthRouter(authClient: AuthClient): Router {
     const verified = await authClient.verifyCode(email, code, deviceId);
     if (!verified.ok) return refuseCode(res, verified.codigo);
     return openSession(req, res, await accountOfEmail(email), deviceId, verified.valor.secreto);
-  });
+  }));
 
-  router.post('/session', async (req, res) => {
+  router.post('/session', asyncRoute(async (req, res) => {
     // La web (W0) renueva con la cookie; una sesión vieja suya todavía manda el
     // secreto en el cuerpo, y se muda a la cookie al renovar.
     const esWeb = req.body?.cliente === 'web';
@@ -288,13 +289,13 @@ export function buildAuthRouter(authClient: AuthClient): Router {
         avatarUrl: user.avatarUrl ? toAbsoluteMediaUrl(user.avatarUrl) : null,
       },
     });
-  });
+  }));
 
   /**
    * Cerrar sesión en la web (W0): la cookie se borra y ese navegador deja de
    * recibir avisos. Sin sesión a propósito: con el JWT vencido también se sale.
    */
-  router.post('/salir', async (req, res) => {
+  router.post('/salir', asyncRoute(async (req, res) => {
     const deCookie = leerCookieDeDispositivo(req.headers.cookie);
     if (deCookie && esDispositivoVinculado(deCookie.deviceId)) {
       // Una web vinculada que sale deja de estar vinculada (W5), con su secreto de prueba.
@@ -306,7 +307,7 @@ export function buildAuthRouter(authClient: AuthClient): Router {
     } else if (deCookie) await DeviceModel.updateOne({ deviceId: deCookie.deviceId }, { $unset: { pushToken: 1 } }).catch(() => undefined);
     res.setHeader('Set-Cookie', cookieBorrada(pedidoSeguro(req)));
     res.status(204).end();
-  });
+  }));
 
   return router;
 }

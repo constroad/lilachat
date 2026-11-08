@@ -62,6 +62,9 @@ async function call<T>(route: string, body: Record<string, unknown>): Promise<Au
     if (!response.ok) {
       return { ok: false, codigo: typeof payload?.codigo === 'string' ? payload.codigo : 'error' };
     }
+    // A 2xx without its JSON object (empty, cut) is no answer, never a success (production 08/11:
+    // `valor: null` crashed /auth/session reading `identidad`). It retries; it does not revoke.
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return { ok: false, codigo: 'sin_respuesta' };
     return { ok: true, valor: payload as T };
   } catch {
     return { ok: false, codigo: 'sin_respuesta' };

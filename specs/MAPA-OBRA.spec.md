@@ -587,3 +587,15 @@ ver «Borrados»; cubierto solo por test).
 - Motor `shared/src/workImport.ts`; puerta en `server/src/bots/workMapForms.ts`.
 - **Falta para usarlo:** que el boleto de `subir_al_drive` acepte KMZ/KML (pedido a Portal el 07/11;
   hoy solo foto y video, y Lilachat lo rechaza antes de subir) y que José apruebe la herramienta.
+
+### PDFs del mapa (Portal 02cfceef) y KMZ en el Drive (Portal e0518e47)
+
+- Puerta `work_progress_pdf` {stage_id?, until?, format client|plan, size A3|A1, work_ids?} →
+  `pdf_de_avance_de_obra` {formato cliente|plano, tamano, trabajoIds}. Portal responde
+  `{status:'ready', url}` en la misma llamada; solo se abre un `https://`.
+- «Descargar PDF para cliente» en «Compartir avance»: A4 con el plano, el resumen y el total
+  aprobado, al corte del panel. «Plano PDF» en «Exportar», con A3/A1: plano apaisado con el cuadro de
+  metrados; con un trabajo elegido, solo ese. En la web el botón genera y queda «Abrir PDF» (un
+  enlace real, sin ventana bloqueada); en el APK se abre en el visor del teléfono.
+- El boleto de `subir_al_drive` acepta KMZ/KML desde e0518e47 (sin cambiar su esquema): el import ya
+  puede subir el archivo. Falta la aprobación de José de las herramientas nuevas.

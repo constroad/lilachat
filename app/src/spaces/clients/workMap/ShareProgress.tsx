@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { Copy, Link2, ShieldCheck } from 'lucide-react-native';
-import { createProgressLink, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { Copy, Download, Link2, ShieldCheck } from 'lucide-react-native';
+import { createProgressLink, createProgressPdf, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 import { Interruptor } from '../../../ui/Interruptor';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
 import { DayChips, SHEET_LABEL, StageChips } from './CutChips';
+import { PdfAction } from './PdfAction';
 
 type Props = { open: boolean; map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; /** Portal's map tools through the door. */ send?: MapEditSend; onClose: () => void };
 
@@ -84,6 +85,7 @@ export function ShareProgress(props: Props) {
         <Interruptor testID="compartir-fotos" value={photos} onValueChange={(on) => { setPhotos(on); setState(IDLE); }} />
       </View>
       <PublicLink state={state} />
+      {props.send ? <PdfAction testID="compartir-pdf" label="Descargar PDF para cliente" icon={<Download size={18} color={colors['on-surface']} />} className="min-h-[52px] flex-row items-center justify-center gap-2 rounded-xl border border-outline/25 bg-surface" textClassName="text-[16px] font-semibold text-on-surface" create={() => createProgressPdf(props.send!, props.filter, 'client')} /> : null}
       {props.send ? (
         <Pressable testID="compartir-crear-enlace" disabled={state.busy} onPress={() => void create(props.send!)} className={`min-h-[52px] flex-row items-center justify-center gap-2 rounded-xl bg-primary ${state.busy ? 'opacity-60' : ''}`}>
           <Link2 size={18} color={colors['on-primary']} />

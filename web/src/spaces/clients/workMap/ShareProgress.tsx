@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Check, Copy, Link2, ShieldCheck, X } from 'lucide-react';
-import { createProgressLink, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { Check, Copy, Download, Link2, ShieldCheck, X } from 'lucide-react';
+import { createProgressLink, createProgressPdf, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 import { DayField, PANEL_LABEL, StageField } from './CutFields';
+import { PdfAction } from './PdfAction';
 
 type Props = { map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; /** Portal's map tools through the door; without it there is nothing to create. */ send?: MapEditSend; onClose: () => void };
 
@@ -96,6 +97,7 @@ export function ShareProgress(props: Props) {
         <FrontSummary map={props.map} filter={props.filter} />
         <PhotosSwitch on={photos} onChange={(on) => { setPhotos(on); setState({ busy: false, link: null, error: null }); }} />
         <PublicLink state={state} />
+        {props.send ? <PdfAction key={`${props.filter.stageId ?? ''}|${props.filter.untilDay ?? ''}`} testId="compartir-pdf" label="Descargar PDF para cliente" icon={<Download size={16} />} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-outline/25 bg-surface text-[14px] font-semibold text-on-surface" create={() => createProgressPdf(props.send!, props.filter, 'client')} /> : null}
         {props.send ? <button type="button" data-testid="compartir-crear-enlace" disabled={state.busy} onClick={() => void create(props.send!)} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-semibold text-on-primary disabled:opacity-60"><Link2 size={17} />{state.busy ? 'Creando…' : 'Crear enlace de avance'}</button> : null}
       </div>
     </div>

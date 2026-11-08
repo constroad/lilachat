@@ -3,12 +3,13 @@ import { Pressable, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
-import { Copy, Download, Globe, Link2 } from 'lucide-react-native';
-import { exportStageOptions, KMZ_MIME, kmzLayersOf, workMapFileName, workMapWorkFilter, workMapKml, workMapKmz, workMapScopeLabel, type MapEditSend, type TraceUpload, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { Copy, Download, FileText, Globe, Link2, Printer } from 'lucide-react-native';
+import { createProgressPdf, exportStageOptions, PLAN_SIZES, type PlanSize, KMZ_MIME, kmzLayersOf, workMapFileName, workMapWorkFilter, workMapKml, workMapKmz, workMapScopeLabel, type MapEditSend, type TraceUpload, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
 import { DayChips, SHEET_LABEL, StageChips } from './CutChips';
 import { ImportTrace } from './ImportTrace';
+import { PdfAction } from './PdfAction';
 import type { TraceFile } from '../useDriveUpload';
 
 type Props = { open: boolean; map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; title: string; pageUrl: string; onClose: () => void; /** «Importar KMZ o KML» (o-12). */ send?: MapEditSend; uploadTrace?: TraceUpload<TraceFile> };
@@ -60,6 +61,20 @@ function WorkChips(props: { map: WorkMap; filter: WorkMapFilter; onFilter: (filt
   );
 }
 
+/** «Plano PDF» (o-12): the plan with its legend and the table of metres, A3 or A1, at this cut. */
+function PlanPdf(props: { filter: WorkMapFilter; send: MapEditSend }) {
+  const colors = useColores();
+  const [size, setSize] = useState<PlanSize>('A3');
+  return (
+    <Card icon={<FileText size={18} color={colors.primary} />} title="Plano PDF" hint="Plano con leyenda y cuadro de metrados.">
+      <View className="mt-2 flex-row gap-2">
+        {PLAN_SIZES.map((one) => <Pressable key={one} testID={`plano-${one}`} accessibilityState={{ selected: size === one }} onPress={() => setSize(one)} className={`h-10 justify-center rounded-lg border px-3 ${size === one ? 'border-primary' : 'border-outline/20'}`}><Text className={`font-mono text-[14px] font-bold ${size === one ? 'text-primary' : 'text-on-surface-variant'}`}>{one}</Text></Pressable>)}
+      </View>
+      <View className="mt-3"><PdfAction testID="plano-pdf" label="Generar Plano PDF" icon={<Printer size={18} color={colors['on-surface']} />} className="min-h-[48px] flex-row items-center justify-center gap-2 rounded-xl border border-outline/25" textClassName="text-[15px] font-semibold text-on-surface" create={() => createProgressPdf(props.send, props.filter, 'plan', size)} /></View>
+    </Card>
+  );
+}
+
 /** «Estructura de capas KMZ generada»: the folders Google Earth will show, with their metres. */
 function KmzTree(props: { map: WorkMap; filter: WorkMapFilter; fileName: string }) {
   const layers = kmzLayersOf(props.map, props.filter);
@@ -99,6 +114,7 @@ export function WorkMapExport(props: Props) {
         </Pressable>
         {notice ? <Text accessibilityRole="alert" className="mt-2 text-[14px] text-error">{notice}</Text> : null}
       </Card>
+      {props.send ? <PlanPdf filter={props.filter} send={props.send} /> : null}
       <Card icon={<Link2 size={18} color={colors.primary} />} title="Enlace para el cliente" hint="Solo lo aprobado.">
         <Text numberOfLines={1} className="mt-2 rounded-lg border border-outline/20 bg-background px-2.5 py-1.5 font-mono text-[13px] text-on-surface-variant">{props.pageUrl}</Text>
         <Pressable testID="mapa-copiar-enlace-visor" onPress={copy} className="mt-2 min-h-[48px] flex-row items-center justify-center gap-2 rounded-xl border border-primary/30">

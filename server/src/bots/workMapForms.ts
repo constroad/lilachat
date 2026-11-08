@@ -25,7 +25,8 @@ export type WorkMapFormInput =
   | { kind: 'work_restore'; streetId: string | null; scopeId: string | null }
   | { kind: 'work_deleted' }
   | { kind: 'work_progress_link'; stageId: string | null; until: string | null; photos: boolean }
-  | { kind: 'work_import'; mediaId: string; entryId: string | null };
+  | { kind: 'work_import'; mediaId: string; entryId: string | null }
+  | { kind: 'work_progress_pdf'; stageId: string | null; until: string | null; format: 'cliente' | 'plano'; size: 'A3' | 'A1' | null; workIds: string[] | null };
 export type WorkMapFormContext = Record<string, string | number | boolean | string[] | null>;
 
 const idOf = (raw: unknown): string => (typeof raw === 'string' && raw.trim().length <= ID_MAX ? raw.trim() : '');
@@ -82,6 +83,20 @@ function progressLinkInputOf(raw: Record<string, unknown>): WorkMapFormInput | n
   return { kind: 'work_progress_link', stageId, until, photos: raw.photos };
 }
 
+const PDF_FORMATS: Record<string, 'cliente' | 'plano'> = { client: 'cliente', plan: 'plano' };
+const PLAN_SIZES = new Set(['A3', 'A1']);
+const PDF_WORKS_MAX = 20;
+
+/** The map's PDF (Portal 02cfceef): the cut, the format, and for the plan its size and works. */
+function progressPdfInputOf(raw: Record<string, unknown>): WorkMapFormInput | null {
+  const cut = progressLinkInputOf({ ...raw, photos: false });
+  const format = typeof raw.format === 'string' ? PDF_FORMATS[raw.format] : undefined;
+  const size = raw.size === undefined ? null : typeof raw.size === 'string' && PLAN_SIZES.has(raw.size) ? (raw.size as 'A3' | 'A1') : '';
+  const workIds = raw.work_ids === undefined ? null : idsOf(raw.work_ids) ?? [];
+  if (!cut || cut.kind !== 'work_progress_link' || !format || size === '' || (workIds && (!workIds.length || workIds.length > PDF_WORKS_MAX))) return null;
+  return { kind: 'work_progress_pdf', stageId: cut.stageId, until: cut.until, format, size, workIds };
+}
+
 /** «Importar KMZ o KML» (o-12): the Drive file, and an entry only to confirm. */
 function importInputOf(raw: Record<string, unknown>): WorkMapFormInput | null {
   const mediaId = typeof raw.media_id === 'string' && MEDIA_ID.test(raw.media_id) ? raw.media_id : '';
@@ -100,12 +115,13 @@ export function workMapFormInputOf(raw: Record<string, unknown>): WorkMapFormInp
   if (raw.kind === 'work_deleted') return { kind: 'work_deleted' };
   if (raw.kind === 'work_progress_link') return progressLinkInputOf(raw);
   if (raw.kind === 'work_import') return importInputOf(raw);
+  if (raw.kind === 'work_progress_pdf') return progressPdfInputOf(raw);
   return null;
 }
 
 /** The kinds the door opens; restore and the deleted list since agentes checks their service (890b02e). */
 export const isWorkMapFormKind = (kind: unknown): boolean =>
-  kind === 'work_scope' || kind === 'work_scope_delete' || kind === 'work_stage' || kind === 'work_tag' || kind === 'work_restore' || kind === 'work_deleted' || kind === 'work_progress_link' || kind === 'work_import';
+  kind === 'work_scope' || kind === 'work_scope_delete' || kind === 'work_stage' || kind === 'work_tag' || kind === 'work_restore' || kind === 'work_deleted' || kind === 'work_progress_link' || kind === 'work_import' || kind === 'work_progress_pdf';
 
 /** Narrows the door's union to these kinds. */
 export const isWorkMapFormInput = (input: { kind: string }): input is WorkMapFormInput => isWorkMapFormKind(input.kind);
@@ -139,6 +155,7 @@ export function workMapFormPrepared(serviceId: string, input: WorkMapFormInput):
     case 'work_tag': return { form: formOf('crear_etiqueta_de_obra', 'Crear trabajo', 'Crear'), context: { servicioId: serviceId, nombre: input.name, color: input.color } };
     case 'work_restore': return { form: formOf('restaurar_de_obra', 'Restaurar', 'Restaurar'), context: restoreContext(serviceId, input) };
     case 'work_deleted': return { form: formOf('borrados_de_obra', 'Lo borrado del mapa', 'Ver'), context: { servicioId: serviceId } };
+    case 'work_progress_pdf': return { form: formOf('pdf_de_avance_de_obra', 'PDF del avance', 'Generar'), context: { servicioId: serviceId, ...(input.stageId ? { etapaId: input.stageId } : {}), ...(input.until ? { hasta: input.until } : {}), formato: input.format, ...(input.size ? { tamano: input.size } : {}), ...(input.workIds ? { trabajoIds: input.workIds } : {}) } };
     case 'work_import': return { form: formOf('importar_calles_de_obra', 'Importar calles', input.entryId ? 'Crear calles' : 'Revisar'), context: { servicioId: serviceId, mediaId: input.mediaId, confirmar: Boolean(input.entryId), ...(input.entryId ? { entradaId: input.entryId } : {}) } };
     case 'work_progress_link': return { form: formOf('crear_enlace_de_avance', 'Enlace de avance', 'Crear enlace'), context: { servicioId: serviceId, ...(input.stageId ? { etapaId: input.stageId } : {}), ...(input.until ? { hasta: input.until } : {}), mostrarFotos: input.photos } };
   }

@@ -104,3 +104,23 @@ describe('WorkMapExport · Importar KMZ o KML (o-12)', () => {
     expect(screen.queryByTestId('importar-trazado')).toBeNull();
   });
 });
+
+describe('the map PDFs (Portal 02cfceef)', () => {
+  const PDF = 'https://lila.constroad.com/files/avance.pdf';
+  it('«Descargar PDF para cliente» asks for the client sheet at the cut and opens it from a link', async () => {
+    const send = vi.fn<MapEditSend>(async () => ({ ok: true, message: '', data: { status: 'ready', url: PDF } }));
+    render(<ShareProgress map={mapOf(done)} filter={{ stageId: 'e1' }} onFilter={vi.fn()} send={send} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('compartir-pdf'));
+    expect(await screen.findByTestId('compartir-pdf-abrir')).toHaveAttribute('href', PDF);
+    expect(send.mock.calls[0]![0]).toMatchObject({ kind: 'work_progress_pdf', stage_id: 'e1', format: 'client' });
+  });
+
+  it('«Plano PDF» goes in the size picked, and a refusal is shown', async () => {
+    const send = vi.fn<MapEditSend>(async () => ({ ok: false, message: 'Esa etapa no es de este servicio.' }));
+    render(<WorkMapExport map={mapOf(done)} filter={{}} onFilter={vi.fn()} title="Obra" pageUrl="https://portal.example/x" send={send} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('plano-A1'));
+    fireEvent.click(screen.getByTestId('plano-pdf'));
+    expect(await screen.findByTestId('plano-pdf-error')).toHaveTextContent('Esa etapa no es de este servicio.');
+    expect(send.mock.calls[0]![0]).toMatchObject({ kind: 'work_progress_pdf', format: 'plan', size: 'A1' });
+  });
+});

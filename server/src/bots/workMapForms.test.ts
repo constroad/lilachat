@@ -109,3 +109,17 @@ describe('«Importar KMZ o KML» (o-12, Portal abc01353)', () => {
     expect(workMapFormInputOf({ kind: 'work_import', ...change })).toBeNull();
   });
 });
+
+describe('«PDF del avance» (o-08 and o-12, Portal 02cfceef)', () => {
+  it('the client sheet and the plan with its size and works; the service is the door\'s', () => {
+    expect(workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_progress_pdf', stage_id: 'e1', until: '2026-11-06', format: 'client' })!)).toEqual({
+      form: { id: 'pdf_de_avance_de_obra', title: 'PDF del avance', submitLabel: 'Generar', schema: { type: 'object', properties: {} } },
+      context: { servicioId: SERVICE, etapaId: 'e1', hasta: '2026-11-06', formato: 'cliente' },
+    });
+    expect(workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_progress_pdf', format: 'plan', size: 'A1', work_ids: ['base'] })!).context).toEqual({ servicioId: SERVICE, formato: 'plano', tamano: 'A1', trabajoIds: ['base'] });
+  });
+
+  it.each([[{ format: 'word' }], [{ format: 'plan', size: 'A0' }], [{ format: 'client', until: 'hoy' }], [{ format: 'plan', work_ids: 'base' }]])('refuses %o', (change) => {
+    expect(workMapFormInputOf({ kind: 'work_progress_pdf', ...change })).toBeNull();
+  });
+});

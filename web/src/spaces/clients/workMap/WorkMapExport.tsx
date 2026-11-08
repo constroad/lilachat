@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Check, Copy, Download, Folder, FolderOpen, Globe, Link2, X } from 'lucide-react';
-import { exportStageOptions, KMZ_MIME, kmzLayersOf, workMapFileName, workMapKml, workMapKmz, workMapScopeLabel, workMapStageFilter, workMapWorkFilter, type MapEditSend, type TraceUpload, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { Check, Copy, Download, FileText, Folder, FolderOpen, Globe, Link2, Printer, X } from 'lucide-react';
+import { createProgressPdf, exportStageOptions, PLAN_SIZES, type PlanSize, KMZ_MIME, kmzLayersOf, workMapFileName, workMapKml, workMapKmz, workMapScopeLabel, workMapStageFilter, workMapWorkFilter, type MapEditSend, type TraceUpload, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 import { DayField, PANEL_LABEL } from './CutFields';
 import { ImportTrace } from './ImportTrace';
+import { PdfAction } from './PdfAction';
 
 const CARD = 'rounded-xl border-[1.5px] border-outline/15 bg-surface p-4';
 const SEGMENT = 'min-h-[40px] rounded-lg border px-3 py-1.5 text-[12px] font-semibold';
@@ -49,6 +50,24 @@ function WhatLeaves(props: Props) {
           </div>
         </div>
       ) : null}
+    </section>
+  );
+}
+
+/** «Plano PDF» (o-12): the plan with its legend and the table of metres, A3 or A1, at this cut. */
+function PlanPdf(props: { filter: WorkMapFilter; send: MapEditSend }) {
+  const [size, setSize] = useState<PlanSize>('A3');
+  const cut = `${props.filter.stageId ?? ''}|${props.filter.untilDay ?? ''}|${props.filter.workId ?? ''}|${size}`;
+  return (
+    <section className={CARD}>
+      <div className="flex items-start justify-between gap-2">
+        <p className="flex items-center gap-2 text-[15px] font-semibold text-on-surface"><span className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary"><FileText size={16} /></span>Plano PDF</p>
+        <div role="radiogroup" aria-label="Tamaño" className="flex gap-1">
+          {PLAN_SIZES.map((one) => <button key={one} type="button" role="radio" aria-checked={size === one} data-testid={`plano-${one}`} onClick={() => setSize(one)} className={`h-7 rounded-md border px-2 font-mono text-[11px] font-bold ${size === one ? 'border-primary text-primary' : 'border-outline/20 text-on-surface-variant'}`}>{one}</button>)}
+        </div>
+      </div>
+      <p className="mt-1 text-[12px] text-on-surface-variant">Plano con leyenda y cuadro de metrados.</p>
+      <div className="mt-3 flex justify-end"><PdfAction key={cut} testId="plano-pdf" label="Generar Plano PDF" icon={<Printer size={15} />} className="flex h-10 items-center gap-2 rounded-xl border border-outline/25 px-4 text-[13px] font-semibold text-on-surface" create={() => createProgressPdf(props.send, props.filter, 'plan', size)} /></div>
     </section>
   );
 }
@@ -106,6 +125,7 @@ export function WorkMapExport(props: Props) {
           <p data-testid="exportar-archivo" className="mt-2 truncate rounded-lg border border-outline/20 bg-background px-2.5 py-1.5 font-mono text-[12px] text-on-surface-variant">{fileName}</p>
           <div className="mt-3 flex justify-end"><button type="button" data-testid="mapa-descargar-kmz" onClick={() => saveKmz(props.map, props.filter, props.title)} className="flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-[13px] font-semibold text-on-primary"><Download size={15} />Descargar KMZ</button></div>
         </section>
+        {props.send ? <PlanPdf filter={props.filter} send={props.send} /> : null}
         <ClientLink pageUrl={props.pageUrl} />
         {props.send && props.uploadTrace ? <><p className={PANEL_LABEL}>Traer un trazado</p><ImportTrace send={props.send} upload={props.uploadTrace} /></> : null}
         <KmzTree map={props.map} filter={props.filter} fileName={fileName} />

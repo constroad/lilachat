@@ -22,9 +22,9 @@ const AUDIO_KBPS = 32;
 const ENCODE_ATTEMPTS = 3;
 
 export function requireFromLila<T>(moduleName: string): T {
-  const resolver = createRequire(path.join(LILA_ROOT, 'package.json'));
+  const requireFromLilaApp = createRequire(path.join(LILA_ROOT, 'package.json'));
   try {
-    return resolver(moduleName) as T;
+    return requireFromLilaApp(moduleName) as T;
   } catch {
     throw new Error(`Falta «${moduleName}» en ${LILA_ROOT}/node_modules: corre npm install en lila-app.`);
   }

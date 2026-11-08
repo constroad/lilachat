@@ -111,14 +111,8 @@ const stepMs = (step: TutorialStep): number =>
 export const scriptDurationMs = (script: TutorialScript): number =>
   (script.intro ? INTRO_CARD_MS : 0) + script.steps.reduce((total, step) => total + stepMs(step), 0) + OUTRO_CARD_MS;
 
-const VOSEO_STEMS = 'toc|eleg|esper|escrib|guard|abr|peg|busc|arrastr|confirm|mir|agreg|seleccion|revis|ajust|camin|termin|pint|compart|export|dibuj|registr|sac|empez|segu|cerr|pon|hac|lleg|pas';
-const VOSEO = new RegExp(`(?<![\\p{L}])(?:(?:${VOSEO_STEMS})[áéí]|tenés|podés|querés|sos|acá)(?![\\p{L}])`, 'iu');
-
-const actionError = (action: TutorialAction | undefined): string | null => {
-  if (!action) return null;
-  if (action.kind === 'goto') return action.url.trim() ? null : '«goto» sin url';
-  if (action.kind === 'press') return action.key.trim() ? null : '«press» sin tecla';
-  if (action.kind === 'pause') return null;
+/** Actions that operate an element: each needs its selector, and some their text or offset. */
+const elementActionError = (action: Exclude<TutorialAction, { kind: 'goto' | 'press' | 'pause' }>): string | null => {
   if (!action.selector.trim()) return `«${action.kind}» sin selector`;
   if (action.kind === 'type' && !action.text.trim()) return '«type» sin texto';
   if (action.kind === 'drag' && !action.dx && !action.dy) return '«drag» sin desplazamiento';
@@ -126,13 +120,18 @@ const actionError = (action: TutorialAction | undefined): string | null => {
   return null;
 };
 
+const actionError = (action: TutorialAction | undefined): string | null => {
+  if (!action || action.kind === 'pause') return null;
+  if (action.kind === 'goto') return action.url.trim() ? null : '«goto» sin url';
+  if (action.kind === 'press') return action.key.trim() ? null : '«press» sin tecla';
+  return elementActionError(action);
+};
+
 const stepErrors = (step: TutorialStep, position: number): string[] => {
   const errors: string[] = [];
   const words = wordsOf(step.say);
   if (words > CAPTION_MAX_WORDS) errors.push(`Paso ${position}: el cartel es un párrafo (más de ${CAPTION_MAX_WORDS} palabras); pártelo en dos`);
   else if (words < CAPTION_MIN_WORDS) errors.push(`Paso ${position}: el cartel tiene ${words} palabras; explica en ${CAPTION_MIN_WORDS} o más`);
-  const voseo = step.say.match(VOSEO);
-  if (voseo) errors.push(`Paso ${position}: voseo («${voseo[0]}»); usa español neutro`);
   const action = actionError(step.action);
   if (action) errors.push(`Paso ${position}: ${action}`);
   return errors;

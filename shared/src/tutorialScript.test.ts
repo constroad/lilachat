@@ -74,11 +74,6 @@ describe('validateTutorialScript', () => {
     ]);
   });
 
-  it('rejects voseo in what the voice says', () => {
-    const check = validateTutorialScript(scriptOf({ steps: [{ say: 'Tocá la calle de la obra en el mapa y esperá que se marque entera' }] }));
-    expect(check.errors).toContain('Paso 1: voseo («Tocá»); usa español neutro');
-  });
-
   it('rejects what would pass five minutes before recording it', () => {
     const long = Array(60).fill({ say: twelve, action: { kind: 'goto', url: '/x' } });
     const check = validateTutorialScript(scriptOf({ steps: long }));

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Check, Copy, Download, Link2, ShieldCheck, X } from 'lucide-react';
-import { createProgressLink, createProgressPdf, setMapInReport, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { createProgressLink, createProgressPdf, toggleMapInReport, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 import { DayField, PANEL_LABEL, StageField } from './CutFields';
 import { PdfAction } from './PdfAction';
 
@@ -36,10 +36,10 @@ function InReport(props: { map: WorkMap; filter: WorkMapFilter; send: MapEditSen
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
   const change = async (include: boolean) => {
     setBusy(true);
-    const result = await setMapInReport(props.send, props.map, props.filter, include);
+    const step = await toggleMapInReport(props.send, props.map, props.filter, include);
     setBusy(false);
-    if (result.ok) setOn(result.state.included);
-    setNote(result.ok ? { ok: true, text: result.state.label } : { ok: false, text: result.message });
+    if (step.on !== null) setOn(step.on);
+    setNote(step.note);
   };
   return (
     <div>

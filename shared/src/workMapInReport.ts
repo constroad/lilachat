@@ -31,6 +31,14 @@ export function mapInReportOf(map: WorkMap, data: Record<string, unknown> | unde
   return { included, label: `Se adjunta al informe: ${stage} · ${day}.` };
 }
 
+export type InReportStep = { on: boolean | null; note: { ok: boolean; text: string } };
+
+/** What the switch shows after asking: its new state (unchanged on a refusal) and the line under it. */
+export async function toggleMapInReport(send: MapEditSend, map: WorkMap, filter: WorkMapFilter, include: boolean): Promise<InReportStep> {
+  const result = await setMapInReport(send, map, filter, include);
+  return result.ok ? { on: result.state.included, note: { ok: true, text: result.state.label } } : { on: null, note: { ok: false, text: result.message } };
+}
+
 export async function setMapInReport(send: MapEditSend, map: WorkMap, filter: WorkMapFilter, include: boolean): Promise<MapInReportResult> {
   const result: WorkProgressResult = await send(workMapInReportRequest(include, filter), (deps) => sendMapTool(deps, {}, { sent: '', failed: MAP_IN_REPORT_FAILED }));
   return result.ok ? { ok: true, state: mapInReportOf(map, result.data, include) } : result;

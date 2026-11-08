@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FORMS_LEVEL } from './appForms.js';
 import { workMapOf, type WorkMap } from './workMap.js';
-import { mapInReportOf, setMapInReport, workMapInReportRequest } from './workMapInReport.js';
+import { mapInReportOf, setMapInReport, toggleMapInReport, workMapInReportRequest } from './workMapInReport.js';
 import type { MapEditSend } from './workScopeDraft.js';
 
 /** «Incluir en el informe del servicio» (o-08, Portal 926b9723). */
@@ -26,5 +26,12 @@ describe('mapInReportOf', () => {
     const send = vi.fn<MapEditSend>(async () => ({ ok: true, message: '', data: { incluido: true } }));
     expect(await setMapInReport(send, map, {}, true)).toMatchObject({ ok: true, state: { included: true } });
     expect(await setMapInReport(async () => ({ ok: false, message: 'No.' }), map, {}, true)).toEqual({ ok: false, message: 'No.' });
+  });
+});
+
+describe('toggleMapInReport', () => {
+  it('keeps the switch where it was on a refusal', async () => {
+    expect(await toggleMapInReport(async () => ({ ok: false, message: 'No.' }), map, {}, true)).toEqual({ on: null, note: { ok: false, text: 'No.' } });
+    expect((await toggleMapInReport(async () => ({ ok: true, message: '', data: { incluido: false } }), map, {}, false)).on).toBe(false);
   });
 });

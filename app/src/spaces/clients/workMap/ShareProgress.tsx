@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { Copy, Download, Link2, ShieldCheck } from 'lucide-react-native';
-import { createProgressLink, createProgressPdf, setMapInReport, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { createProgressLink, createProgressPdf, toggleMapInReport, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 import { Interruptor } from '../../../ui/Interruptor';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
@@ -41,10 +41,10 @@ function InReport(props: { map: WorkMap; filter: WorkMapFilter; send: MapEditSen
   const [note, setNote] = useState<{ ok: boolean; text: string } | null>(null);
   const change = async (include: boolean) => {
     setBusy(true);
-    const result = await setMapInReport(props.send, props.map, props.filter, include);
+    const step = await toggleMapInReport(props.send, props.map, props.filter, include);
     setBusy(false);
-    if (result.ok) setOn(result.state.included);
-    setNote(result.ok ? { ok: true, text: result.state.label } : { ok: false, text: result.message });
+    if (step.on !== null) setOn(step.on);
+    setNote(step.note);
   };
   return (
     <View className="gap-1">

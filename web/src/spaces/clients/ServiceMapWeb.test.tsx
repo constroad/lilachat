@@ -208,14 +208,14 @@ describe('ServiceMapWeb', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     showMap();
     await screen.findByTestId('mapa-lienzo');
-    fireEvent.click(screen.getByTestId('mapa-compartir'));
+    fireEvent.click(screen.getByTestId('mapa-exportar'));
     // Act
-    fireEvent.click(screen.getByTestId('mapa-copiar-enlace'));
+    fireEvent.click(screen.getByTestId('mapa-copiar-enlace-visor'));
     // Assert
-    await waitFor(() => expect(screen.getByTestId('mapa-copiar-enlace')).toHaveTextContent('Copiado'));
+    await waitFor(() => expect(screen.getByTestId('mapa-copiar-enlace-visor')).toHaveTextContent('Enlace copiado'));
     expect(writeText).toHaveBeenCalledWith(`${url}/service/${serviceId}?section=map`);
-    fireEvent.click(screen.getByTestId('mapa-compartir-cerrar'));
-    expect(screen.queryByTestId('mapa-compartir-panel')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mapa-exportar-cerrar'));
+    expect(screen.queryByTestId('mapa-exportar-panel')).not.toBeInTheDocument();
   });
 
   it('shows the progress the units suggest, with a pin per unit (design o-07)', async () => {

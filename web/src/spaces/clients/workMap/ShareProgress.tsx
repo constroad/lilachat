@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Check, Copy, ShieldCheck, X } from 'lucide-react';
-import { partialProgressOf, partialStreetsLabel, shareStageOptions, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { Check, Copy, Link2, ShieldCheck, X } from 'lucide-react';
+import { createProgressLink, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 import { DayField, PANEL_LABEL, StageField } from './CutFields';
 
-type Props = { map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; pageUrl: string; onClose: () => void };
+type Props = { map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; /** Portal's map tools through the door; without it there is nothing to create. */ send?: MapEditSend; onClose: () => void };
 
 /** «Resumen de frente»: which streets each work covered at this cut, and the approved metres. */
 function FrontSummary(props: { map: WorkMap; filter: WorkMapFilter }) {
@@ -28,20 +28,42 @@ function FrontSummary(props: { map: WorkMap; filter: WorkMapFilter }) {
   );
 }
 
-/** «Enlace público seguro»: Portal's page of the service; the client only sees what was approved. */
-function PublicLink(props: { pageUrl: string }) {
+type LinkState = { busy: boolean; link: ProgressLink | null; error: string | null };
+
+/** «Mostrar fotos»: the client sees the gallery up to the day of the cut only when it is on. */
+function PhotosSwitch(props: { on: boolean; onChange: (on: boolean) => void }) {
+  return (
+    <label className="flex items-start justify-between gap-3">
+      <span>
+        <span className="block text-[14px] font-semibold text-on-surface">Mostrar fotos</span>
+        <span className="block text-[12px] text-on-surface-variant">El cliente ve las fotos de la obra hasta el día del corte.</span>
+      </span>
+      <input type="checkbox" role="switch" data-testid="compartir-fotos" checked={props.on} onChange={(event) => props.onChange(event.target.checked)} className="peer sr-only" />
+      <span aria-hidden className="relative mt-0.5 h-6 w-11 shrink-0 rounded-full bg-outline/30 transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-5 after:w-5 after:rounded-full after:bg-surface after:transition-transform peer-checked:bg-primary peer-checked:after:translate-x-5" />
+    </label>
+  );
+}
+
+/** «Enlace público seguro»: the link Portal made for this cut; the client only sees what was approved. */
+function PublicLink(props: { state: LinkState }) {
+  const { link, error } = props.state;
   const [copied, setCopied] = useState<'idle' | 'done' | 'failed'>('idle');
-  const copy = () => navigator.clipboard.writeText(props.pageUrl).then(() => setCopied('done'), (failure: Error) => {
+  const copy = (url: string) => navigator.clipboard.writeText(url).then(() => setCopied('done'), (failure: Error) => {
     console.warn('work map: copy refused', failure.name);
     setCopied('failed');
   });
+  const expiry = link ? progressLinkExpiry(link) : null;
   return (
     <section className="rounded-xl border-[1.5px] border-outline/15 bg-surface p-4">
       <p className={PANEL_LABEL}>Enlace público seguro</p>
-      <div className="mt-2 flex items-center gap-2">
-        <p data-testid="mapa-enlace-cliente" className="min-w-0 flex-1 truncate rounded-lg border border-outline/20 bg-background px-2.5 py-2 font-mono text-[12px] text-on-surface">{props.pageUrl}</p>
-        <button type="button" data-testid="mapa-copiar-enlace" onClick={() => void copy()} className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-primary/10 px-3 text-[13px] font-semibold text-primary">{copied === 'done' ? <Check size={14} /> : <Copy size={14} />}{copied === 'done' ? 'Copiado' : 'Copiar'}</button>
-      </div>
+      {link ? (
+        <div className="mt-2 flex items-center gap-2">
+          <p data-testid="mapa-enlace-cliente" className="min-w-0 flex-1 truncate rounded-lg border border-outline/20 bg-background px-2.5 py-2 font-mono text-[12px] text-on-surface">{link.url}</p>
+          <button type="button" data-testid="mapa-copiar-enlace" onClick={() => void copy(link.url)} className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-primary/10 px-3 text-[13px] font-semibold text-primary">{copied === 'done' ? <Check size={14} /> : <Copy size={14} />}{copied === 'done' ? 'Copiado' : 'Copiar'}</button>
+        </div>
+      ) : <p className="mt-2 text-[13px] text-on-surface-variant">Crea el enlace con este corte. El cliente no puede ver más que eso.</p>}
+      {expiry ? <p className="mt-1 text-[12px] text-on-surface-variant">{expiry}</p> : null}
+      {error ? <p role="alert" data-testid="compartir-error" className="mt-2 text-[13px] font-semibold text-error">{error}</p> : null}
       {copied === 'failed' ? <p role="alert" className="mt-1 text-[12px] text-error">El navegador no dejó copiar. Selecciona el enlace y cópialo.</p> : null}
       <p className="mt-2 flex items-start gap-1.5 text-[12px] text-on-surface-variant"><ShieldCheck size={14} className="mt-px shrink-0 text-primary" />El cliente ve solo lo aprobado por la inspección técnica.</p>
     </section>
@@ -50,6 +72,14 @@ function PublicLink(props: { pageUrl: string }) {
 
 /** «Compartir avance» (design o-08): the cut of the work, what it shows, and the link the client opens. */
 export function ShareProgress(props: Props) {
+  const [photos, setPhotos] = useState(false);
+  const [state, setState] = useState<LinkState>({ busy: false, link: null, error: null });
+  const cut = (filter: WorkMapFilter) => { setState({ busy: false, link: null, error: null }); props.onFilter(filter); };
+  const create = async (send: MapEditSend) => {
+    setState({ busy: true, link: null, error: null });
+    const made = await createProgressLink(send, props.filter, photos);
+    setState(made.ok ? { busy: false, link: made.link, error: null } : { busy: false, link: null, error: made.message });
+  };
   return (
     <div data-testid="mapa-compartir-panel" className="min-h-0 flex-1 overflow-y-auto bg-surface p-4 md:p-5">
       <div className="flex items-start justify-between gap-2">
@@ -61,10 +91,12 @@ export function ShareProgress(props: Props) {
         <button type="button" data-testid="mapa-compartir-cerrar" aria-label="Cerrar compartir avance" onClick={props.onClose} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-outline/20 text-on-surface"><X size={16} /></button>
       </div>
       <div className="mt-5 space-y-4">
-        {props.map.stages.length ? <StageField map={props.map} filter={props.filter} onFilter={props.onFilter} options={shareStageOptions(props.map)} /> : null}
-        <DayField map={props.map} filter={props.filter} onFilter={props.onFilter} />
+        {props.map.stages.length ? <StageField map={props.map} filter={props.filter} onFilter={cut} options={shareStageOptions(props.map)} /> : null}
+        <DayField map={props.map} filter={props.filter} onFilter={cut} />
         <FrontSummary map={props.map} filter={props.filter} />
-        <PublicLink pageUrl={props.pageUrl} />
+        <PhotosSwitch on={photos} onChange={(on) => { setPhotos(on); setState({ busy: false, link: null, error: null }); }} />
+        <PublicLink state={state} />
+        {props.send ? <button type="button" data-testid="compartir-crear-enlace" disabled={state.busy} onClick={() => void create(props.send!)} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-semibold text-on-primary disabled:opacity-60"><Link2 size={17} />{state.busy ? 'Creando…' : 'Crear enlace de avance'}</button> : null}
       </div>
     </div>
   );

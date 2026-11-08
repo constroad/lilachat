@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { Copy, ShieldCheck } from 'lucide-react-native';
-import { partialProgressOf, partialStreetsLabel, shareStageOptions, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { Copy, Link2, ShieldCheck } from 'lucide-react-native';
+import { createProgressLink, partialProgressOf, partialStreetsLabel, progressLinkExpiry, shareStageOptions, type MapEditSend, type ProgressLink, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { Interruptor } from '../../../ui/Interruptor';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
 import { DayChips, SHEET_LABEL, StageChips } from './CutChips';
 
-type Props = { open: boolean; map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; pageUrl: string; onClose: () => void };
+type Props = { open: boolean; map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; /** Portal's map tools through the door. */ send?: MapEditSend; onClose: () => void };
 
 /** «Resumen consolidado»: which streets each work covered at this cut, and the approved metres. */
 function FrontSummary(props: { map: WorkMap; filter: WorkMapFilter }) {
@@ -32,11 +33,42 @@ function FrontSummary(props: { map: WorkMap; filter: WorkMapFilter }) {
   );
 }
 
-/** «Compartir avance» on the phone (design o-08 mobile): the cut, what it shows, and the link the client opens. */
-export function ShareProgress(props: Props) {
+type LinkState = { busy: boolean; link: ProgressLink | null; error: string | null };
+const IDLE: LinkState = { busy: false, link: null, error: null };
+
+/** «Enlace público seguro»: the link Portal made for this cut, to copy. */
+function PublicLink(props: { state: LinkState }) {
   const colors = useColores();
   const [copied, setCopied] = useState(false);
-  const copy = () => void Clipboard.setStringAsync(props.pageUrl).then(() => setCopied(true));
+  const { link, error } = props.state;
+  const expiry = link ? progressLinkExpiry(link) : null;
+  return (
+    <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-4">
+      <Text className={SHEET_LABEL}>Enlace público seguro</Text>
+      {link ? (
+        <Pressable testID="mapa-copiar-enlace" onPress={() => void Clipboard.setStringAsync(link.url).then(() => setCopied(true))} className="flex-row items-center gap-2 rounded-lg border border-outline/20 bg-background px-2.5 py-2">
+          <Text testID="mapa-enlace-cliente" numberOfLines={1} className="flex-1 font-mono text-[13px] text-on-surface">{link.url}</Text>
+          <Copy size={16} color={colors.primary} /><Text className="text-[14px] font-semibold text-primary">{copied ? 'Copiado' : 'Copiar'}</Text>
+        </Pressable>
+      ) : <Text className="text-[14px] text-on-surface-variant">Crea el enlace con este corte. El cliente no puede ver más que eso.</Text>}
+      {expiry ? <Text className="text-[13px] text-on-surface-variant">{expiry}</Text> : null}
+      {error ? <Text testID="compartir-error" accessibilityRole="alert" className="text-[14px] font-semibold text-error">{error}</Text> : null}
+      <View className="flex-row items-start gap-1.5"><ShieldCheck size={15} color={colors.primary} /><Text className="flex-1 text-[13px] text-on-surface-variant">El cliente ve solo lo aprobado por la inspección técnica.</Text></View>
+    </View>
+  );
+}
+
+/** «Compartir avance» on the phone (design o-08 mobile): the cut, what it shows, and the link Portal signs for it. */
+export function ShareProgress(props: Props) {
+  const colors = useColores();
+  const [photos, setPhotos] = useState(false);
+  const [state, setState] = useState<LinkState>(IDLE);
+  const cut = (filter: WorkMapFilter) => { setState(IDLE); props.onFilter(filter); };
+  const create = async (send: MapEditSend) => {
+    setState({ ...IDLE, busy: true });
+    const made = await createProgressLink(send, props.filter, photos);
+    setState(made.ok ? { ...IDLE, link: made.link } : { ...IDLE, error: made.message });
+  };
   return (
     <Sheet visible={props.open} onClose={props.onClose} testID="mapa-compartir-panel" tone="background" className="gap-4 px-4 pt-2">
       <View>
@@ -44,18 +76,20 @@ export function ShareProgress(props: Props) {
         <Text className="text-[22px] font-bold text-on-surface">Avance parcial</Text>
         <Text className="mt-0.5 text-[14px] text-on-surface-variant">Elige el corte de obra para el enlace que verá el cliente.</Text>
       </View>
-      <StageChips map={props.map} filter={props.filter} onFilter={props.onFilter} options={shareStageOptions(props.map)} />
-      <DayChips map={props.map} filter={props.filter} onFilter={props.onFilter} />
+      <StageChips map={props.map} filter={props.filter} onFilter={cut} options={shareStageOptions(props.map)} />
+      <DayChips map={props.map} filter={props.filter} onFilter={cut} />
       <FrontSummary map={props.map} filter={props.filter} />
-      <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-4">
-        <Text className={SHEET_LABEL}>Enlace público seguro</Text>
-        <Text testID="mapa-enlace-cliente" numberOfLines={1} className="rounded-lg border border-outline/20 bg-background px-2.5 py-2 font-mono text-[13px] text-on-surface">{props.pageUrl}</Text>
-        <View className="flex-row items-start gap-1.5"><ShieldCheck size={15} color={colors.primary} /><Text className="flex-1 text-[13px] text-on-surface-variant">El cliente ve solo lo aprobado por la inspección técnica.</Text></View>
+      <View className="flex-row items-center justify-between gap-3">
+        <View className="flex-1"><Text className="text-[15px] font-semibold text-on-surface">Mostrar fotos de inspección</Text><Text className="text-[13px] text-on-surface-variant">Las de la obra hasta el día del corte.</Text></View>
+        <Interruptor testID="compartir-fotos" value={photos} onValueChange={(on) => { setPhotos(on); setState(IDLE); }} />
       </View>
-      <Pressable testID="mapa-copiar-enlace" onPress={copy} className="min-h-[52px] flex-row items-center justify-center gap-2 rounded-xl bg-primary">
-        <Copy size={18} color={colors['on-primary']} />
-        <Text className="text-[16px] font-semibold text-on-primary">{copied ? 'Enlace copiado' : 'Copiar enlace de avance'}</Text>
-      </Pressable>
+      <PublicLink state={state} />
+      {props.send ? (
+        <Pressable testID="compartir-crear-enlace" disabled={state.busy} onPress={() => void create(props.send!)} className={`min-h-[52px] flex-row items-center justify-center gap-2 rounded-xl bg-primary ${state.busy ? 'opacity-60' : ''}`}>
+          <Link2 size={18} color={colors['on-primary']} />
+          <Text className="text-[16px] font-semibold text-on-primary">{state.busy ? 'Creando…' : 'Crear enlace de avance'}</Text>
+        </Pressable>
+      ) : null}
     </Sheet>
   );
 }

@@ -79,3 +79,19 @@ describe('what was deleted (admins restore it)', () => {
     expect(workMapFormInputOf({ kind: 'work_street' })).toBeNull();
   });
 });
+
+describe('«Crear enlace de avance» (o-08, Portal 1d397594)', () => {
+  it('carries the cut and the photos; the service is the door\'s', () => {
+    const input = workMapFormInputOf({ kind: 'work_progress_link', stage_id: 'e1', until: '2026-11-06', photos: true });
+    expect(workMapFormPrepared(SERVICE, input!)).toEqual({
+      form: { id: 'crear_enlace_de_avance', title: 'Enlace de avance', submitLabel: 'Crear enlace', schema: { type: 'object', properties: {} } },
+      context: { servicioId: SERVICE, etapaId: 'e1', hasta: '2026-11-06', mostrarFotos: true },
+    });
+    expect(workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_progress_link', photos: false })!).context).toEqual({ servicioId: SERVICE, mostrarFotos: false });
+    expect(isWorkMapFormKind('work_progress_link')).toBe(true);
+  });
+
+  it.each([[{ until: 'ayer', photos: true }], [{ photos: 'si' }], [{ stage_id: 7, photos: false }]])('refuses %o', (change) => {
+    expect(workMapFormInputOf({ kind: 'work_progress_link', ...change })).toBeNull();
+  });
+});

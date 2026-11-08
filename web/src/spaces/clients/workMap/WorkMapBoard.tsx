@@ -113,7 +113,7 @@ export function WorkMapBoard(props: BoardProps) {
   const deletedPanel = seeingDeleted && props.editMap ? <DeletedWork map={map} send={props.editMap} onClose={() => setSeeingDeleted(false)} /> : null;
   const sidePanel = side === 'export'
     ? <WorkMapExport map={map} filter={filter} onFilter={setFilter} title={props.title} pageUrl={pageUrl} onClose={() => setSide(null)} />
-    : side === 'share' ? <ShareProgress map={map} filter={filter} onFilter={setFilter} pageUrl={pageUrl} onClose={() => setSide(null)} /> : null;
+    : side === 'share' ? <ShareProgress map={map} filter={filter} onFilter={setFilter} send={props.editMap} onClose={() => setSide(null)} /> : null;
   const panel = deletedPanel ?? sidePanel ?? (streetPanel ?? <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} scrolls={wide} deleteStreet={props.deleteStreet} onOpenStreet={setStreetId} />);
   return (
     <div ref={holder} data-testid="mapa-servicio" data-expanded={expanded} data-wide={wide} className={`flex flex-col bg-background ${expanded ? 'fixed inset-0 z-50' : 'min-h-0 flex-1'} ${wide ? 'overflow-hidden' : 'overflow-y-auto'}`}>

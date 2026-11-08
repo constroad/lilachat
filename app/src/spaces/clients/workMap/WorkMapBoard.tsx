@@ -108,7 +108,7 @@ export function WorkMapBoard(props: BoardProps) {
       {props.editMap ? <DeletedWork open={seeingDeleted} map={map} send={props.editMap} onClose={() => setSeeingDeleted(false)} /> : null}
       <StreetScopes map={map} streetId={streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} onClose={() => setStreetId(null)} />
       <WorkMapExport open={side === 'export'} map={map} filter={filter} onFilter={setFilter} title={props.title} pageUrl={pageUrl} onClose={() => setSide(null)} />
-      <ShareProgress open={side === 'share'} map={map} filter={filter} onFilter={setFilter} pageUrl={pageUrl} onClose={() => setSide(null)} />
+      <ShareProgress open={side === 'share'} map={map} filter={filter} onFilter={setFilter} send={props.editMap} onClose={() => setSide(null)} />
     </View>
   );
 }

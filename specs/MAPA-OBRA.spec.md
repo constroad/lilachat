@@ -563,3 +563,16 @@ ver «Borrados»; cubierto solo por test).
   fotos), `pdf_de_avance_de_obra` (cliente y plano A1/A3), incluir el mapa en el informe del servicio
   e `importar_calles_de_obra`. Al llegar: «Crear enlace de avance», «Descargar PDF para cliente»,
   «Mostrar fotos», «Incluir en el informe», «Plano PDF» e «Importar KMZ o KML».
+
+### «Crear enlace de avance» (Portal 1d397594)
+
+- Puerta `work_progress_link` {stage_id?, until?, photos} → `crear_enlace_de_avance` {servicioId,
+  etapaId?, hasta?, mostrarFotos}. Portal firma el corte: el cliente ve solo el mapa a esa etapa y día,
+  y las fotos hasta ese día solo si se pidieron; no abre informes, jornadas, despachos, Drive, montos
+  ni otro servicio. Devuelve `{url, dias, …}`; Lilachat acepta solo direcciones `*.constroad.com`.
+- En el panel: «Mostrar fotos» (interruptor), «Crear enlace de avance», el enlace con «Copiar» y
+  «Vence en N días». Cambiar la etapa, el día o las fotos borra el enlace anterior: no se comparte
+  uno que no corresponde a lo que se ve.
+- «Exportar» conserva «Copiar enlace de visor» con la página entera del servicio.
+- **Antes de usarlo:** agentes suma la herramienta a su comprobación de servicio y José la aprueba
+  en Agentes → Herramientas. Sin eso la puerta devuelve el rechazo tal cual.

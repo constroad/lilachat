@@ -1,6 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { workMapOf, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { workMapOf, type MapEditSend, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 import { ShareProgress } from './ShareProgress';
 import { WorkMapExport } from './WorkMapExport';
 
@@ -21,7 +21,7 @@ describe('ShareProgress (o-08)', () => {
   it('shows the front summary for the cut; changing the stage or the day moves the map\'s filter', () => {
     // Arrange
     const onFilter = vi.fn<(filter: WorkMapFilter) => void>();
-    render(<ShareProgress map={mapOf(done)} filter={{ untilDay: '2026-11-01' }} onFilter={onFilter} pageUrl="https://portal.example/x" onClose={vi.fn()} />);
+    render(<ShareProgress map={mapOf(done)} filter={{ untilDay: '2026-11-01' }} onFilter={onFilter} onClose={vi.fn()} />);
     // Act
     fireEvent.change(screen.getByTestId('corte-etapa'), { target: { value: 'e1' } });
     fireEvent.change(screen.getByTestId('corte-dia'), { target: { value: '2026-11-04' } });
@@ -35,8 +35,31 @@ describe('ShareProgress (o-08)', () => {
   });
 
   it('says when the cut has no approved progress yet', () => {
-    render(<ShareProgress map={mapOf([])} filter={{}} onFilter={vi.fn()} pageUrl="https://portal.example/x" onClose={vi.fn()} />);
+    render(<ShareProgress map={mapOf([])} filter={{}} onFilter={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.queryByTestId('compartir-crear-enlace')).toBeNull();
     expect(screen.getByText('Todavía no hay avance aprobado en este corte.')).toBeTruthy();
+  });
+});
+
+describe('ShareProgress · Crear enlace de avance', () => {
+  it('asks Portal for the link at this cut with the photos switch, and shows it to copy', async () => {
+    // Arrange
+    const link = 'https://constroad.com/public/test/service-report/tok/service/s1?section=map';
+    const send = vi.fn<MapEditSend>(async () => ({ ok: true, message: '', data: { url: link, dias: 7 } }));
+    render(<ShareProgress map={mapOf(done)} filter={{ stageId: 'e1', untilDay: '2026-11-01' }} onFilter={vi.fn()} send={send} onClose={vi.fn()} />);
+    // Act
+    fireEvent.click(screen.getByTestId('compartir-fotos'));
+    fireEvent.click(screen.getByTestId('compartir-crear-enlace'));
+    // Assert
+    await waitFor(() => expect(screen.getByTestId('mapa-enlace-cliente')).toHaveTextContent(link));
+    expect(screen.getByText('Vence en 7 días')).toBeTruthy();
+    expect(send.mock.calls[0]![0]).toMatchObject({ kind: 'work_progress_link', stage_id: 'e1', until: '2026-11-01', photos: true });
+  });
+
+  it('shows what Portal refused', async () => {
+    render(<ShareProgress map={mapOf(done)} filter={{}} onFilter={vi.fn()} send={async () => ({ ok: false, message: 'Esa etapa no es de este servicio.' })} onClose={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('compartir-crear-enlace'));
+    expect(await screen.findByTestId('compartir-error')).toHaveTextContent('Esa etapa no es de este servicio.');
   });
 });
 

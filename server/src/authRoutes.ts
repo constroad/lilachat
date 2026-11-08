@@ -63,6 +63,54 @@ async function openSession(req: Request, res: Response, user: User, deviceId: st
   });
 }
 
+
+/** The jwt and the account of a renewed session; the profile photo rides here (FL9). */
+const sessionBodyOf = (user: User, deviceId: string) => ({
+  jwt: signSession({ userId: String(user._id), deviceId, email: user.email ?? user.phone }),
+  user: { id: String(user._id), name: user.name ?? null, phone: user.phone, avatarUrl: user.avatarUrl ? toAbsoluteMediaUrl(user.avatarUrl) : null },
+});
+
+/** A web linked with the QR (W5): ours, constroad-auth does not know it. */
+async function linkedSession(req: Request, res: Response, deviceId: string, deviceSecret: string) {
+  const linked = await validarVinculado(deviceId, deviceSecret);
+  const user = linked ? await UserModel.findById(linked.userId).lean() : null;
+  if (!linked || !user) {
+    res.setHeader('Set-Cookie', cookieBorrada(pedidoSeguro(req)));
+    return res.status(401).json({ message: 'Esta sesión se cerró desde el teléfono.' });
+  }
+  void DeviceModel.updateOne({ deviceId }, { $set: { lastSeenAt: new Date() } }).catch(() => {});
+  res.setHeader('Set-Cookie', cookieDeDispositivo({ deviceId, deviceSecret, segura: pedidoSeguro(req), temporal: linked.temporal }));
+  return res.status(200).json(sessionBodyOf(user, deviceId));
+}
+
+/** THE RULE: no answer does NOT revoke. A network down is a retryable 503; only a REAL refusal is a 401. */
+function refusedSession(req: Request, res: Response, deviceId: string, code: string) {
+  if (code === 'sin_respuesta' || code === 'sin_configurar') return res.status(503).json({ message: 'No se pudo validar. Inténtalo de nuevo.' });
+  if (req.body?.cliente === 'web') res.setHeader('Set-Cookie', cookieBorrada(pedidoSeguro(req)));
+  // It is SAID why: a 401 here signs the phone out, and without this line the symptom is «my session closed by itself».
+  console.error(`[auth] sesión rechazada por el servicio (${code}) device=${deviceId}`);
+  return res.status(401).json({ message: 'Tu acceso ya no está activo.' });
+}
+
+/**
+ * **The owner comes from OUR record, not from the identity text.**
+ *
+ * This was the «my session closed by itself» bug (28/08/2026): the user was deduced again from the
+ * `identidad` constroad-auth returns, which is the CHANNEL the code was redeemed through and not the
+ * user's key. Whoever came in through the backup email had identity = that email, and if their user
+ * did not have EXACTLY that email saved, nobody was found → 401 → the app deleted the credential.
+ * The auth service still proves the device and its secret; the owner comes from `DeviceModel`,
+ * written when the code is redeemed. The deduction is only for devices enrolled by an old version.
+ */
+async function sessionUserOf(identity: string, deviceId: string): Promise<{ user: User | null; via: string }> {
+  const device = await DeviceModel.findOne({ deviceId }).select('userId').lean();
+  const found = resolverUsuarioDeSesion({ userIdDelDevice: device?.userId ? String(device.userId) : null, identidad: identity });
+  if (found.via === 'device') return { user: await UserModel.findById(found.userId).lean(), via: found.via };
+  if (found.porTelefono) return { user: await UserModel.findOne({ phone: found.porTelefono }).lean(), via: found.via };
+  if (found.porEmail) return { user: await UserModel.findOne({ email: found.porEmail }).lean(), via: found.via };
+  return { user: null, via: found.via };
+}
+
 export function buildAuthRouter(authClient: AuthClient): Router {
   const router = Router();
 
@@ -202,93 +250,23 @@ export function buildAuthRouter(authClient: AuthClient): Router {
     if (!deviceId || !deviceSecret) {
       return esWeb ? res.status(401).json({ message: 'Tu acceso ya no está activo.' }) : res.status(400).json({ message: 'Faltan datos.' });
     }
-
     // Una web vinculada con el QR (W5) es nuestra: constroad-auth no la conoce.
-    if (esDispositivoVinculado(deviceId)) {
-      const vinculado = await validarVinculado(deviceId, deviceSecret);
-      const user = vinculado ? await UserModel.findById(vinculado.userId).lean() : null;
-      if (!vinculado || !user) {
-        res.setHeader('Set-Cookie', cookieBorrada(pedidoSeguro(req)));
-        return res.status(401).json({ message: 'Esta sesión se cerró desde el teléfono.' });
-      }
-      void DeviceModel.updateOne({ deviceId }, { $set: { lastSeenAt: new Date() } }).catch(() => {});
-      res.setHeader('Set-Cookie', cookieDeDispositivo({ deviceId, deviceSecret, segura: pedidoSeguro(req), temporal: vinculado.temporal }));
-      return res.status(200).json({
-        jwt: signSession({ userId: String(user._id), deviceId, email: user.email ?? user.phone }),
-        user: { id: String(user._id), name: user.name ?? null, phone: user.phone, avatarUrl: user.avatarUrl ? toAbsoluteMediaUrl(user.avatarUrl) : null },
-      });
-    }
-
+    if (esDispositivoVinculado(deviceId)) return linkedSession(req, res, deviceId, deviceSecret);
     const validated = await authClient.validateDevice(deviceId, deviceSecret);
-    if (!validated.ok) {
-      // LA REGLA: la ausencia de respuesta NO revoca. Red caída = 503
-      // reintentable; solo un rechazo REAL del servicio da 401.
-      if (validated.codigo === 'sin_respuesta' || validated.codigo === 'sin_configurar') {
-        return res.status(503).json({ message: 'No se pudo validar. Inténtalo de nuevo.' });
-      }
-      if (esWeb) res.setHeader('Set-Cookie', cookieBorrada(pedidoSeguro(req)));
-      // Se DICE por qué: un 401 acá desloguea el teléfono, y sin esta línea el
-      // síntoma es «se me cerró la sesión sola» sin nada que investigar.
-      console.error(`[auth] sesión rechazada por el servicio (${validated.codigo}) device=${deviceId}`);
-      return res.status(401).json({ message: 'Tu acceso ya no está activo.' });
-    }
-
-    /**
-     * **Quién es el dueño lo dice NUESTRO registro, no el texto de identidad.**
-     *
-     * Acá estaba el bug de «se me cerró la sesión sola» (28/08/2026): se
-     * re-deducía al usuario del `identidad` que devuelve constroad-auth, que es
-     * el CANAL por el que se canjeó el código y no la llave del usuario. Quien
-     * entraba por el respaldo de correo quedaba con identidad = ese correo, y si
-     * su usuario no tenía EXACTAMENTE ese correo guardado, la búsqueda no
-     * encontraba a nadie → 401 → la app borra la credencial y vuelve al alta.
-     *
-     * Le pegaba justo a quien había usado el canal de emergencia.
-     *
-     * El servicio de auth sigue haciendo lo suyo —probar que el dispositivo y su
-     * secreto son válidos—; el dueño sale de `DeviceModel`, que se escribe al
-     * canjear el código. La deducción queda solo para dispositivos enrolados por
-     * una versión vieja, que no tienen registro local.
-     */
+    if (!validated.ok) return refusedSession(req, res, deviceId, validated.codigo);
     const identity = String(validated.valor.identidad ?? '');
-    const device = await DeviceModel.findOne({ deviceId }).select('userId').lean();
-    const resolucion = resolverUsuarioDeSesion({
-      userIdDelDevice: device?.userId ? String(device.userId) : null,
-      identidad: identity,
-    });
-
-    const user =
-      resolucion.via === 'device'
-        ? await UserModel.findById(resolucion.userId).lean()
-        : resolucion.porTelefono
-          ? await UserModel.findOne({ phone: resolucion.porTelefono }).lean()
-          : resolucion.porEmail
-            ? await UserModel.findOne({ email: resolucion.porEmail }).lean()
-            : null;
-
+    const { user, via } = await sessionUserOf(identity, deviceId);
     if (!user) {
-      console.error(
-        `[auth] sesión válida pero SIN usuario local: via=${resolucion.via} identidad=${identity} device=${deviceId}`
-      );
+      console.error(`[auth] sesión válida pero SIN usuario local: via=${via} identidad=${identity} device=${deviceId}`);
       return res.status(401).json({ message: 'Tu acceso ya no está activo.' });
     }
-
     void DeviceModel.updateOne({ deviceId }, { $set: { lastSeenAt: new Date() } }).catch(() => {});
     if (esWeb) res.setHeader('Set-Cookie', cookieDeDispositivo({ deviceId, deviceSecret, segura: pedidoSeguro(req) }));
     // Se devuelve el USUARIO además del jwt: una credencial guardada por una
     // versión vieja de la app puede no tener `userId`, y sin él la pantalla no
     // distingue los mensajes propios de los ajenos (pasó de verdad). Así se
     // repara sola en el próximo arranque, sin obligar a re-loguear.
-    return res.status(200).json({
-      jwt: signSession({ userId: String(user._id), deviceId, email: user.email ?? user.phone }),
-      // La foto del perfil (FL9) viaja acá: la cabecera la pinta sin otro pedido.
-      user: {
-        id: String(user._id),
-        name: user.name ?? null,
-        phone: user.phone,
-        avatarUrl: user.avatarUrl ? toAbsoluteMediaUrl(user.avatarUrl) : null,
-      },
-    });
+    return res.status(200).json(sessionBodyOf(user, deviceId));
   }));
 
   /**

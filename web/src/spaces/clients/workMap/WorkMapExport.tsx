@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Check, Copy, Download, Folder, FolderOpen, Globe, Link2, X } from 'lucide-react';
-import { exportStageOptions, KMZ_MIME, kmzLayersOf, workMapFileName, workMapKml, workMapKmz, workMapScopeLabel, workMapStageFilter, workMapWorkFilter, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { exportStageOptions, KMZ_MIME, kmzLayersOf, workMapFileName, workMapKml, workMapKmz, workMapScopeLabel, workMapStageFilter, workMapWorkFilter, type MapEditSend, type TraceUpload, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 import { DayField, PANEL_LABEL } from './CutFields';
+import { ImportTrace } from './ImportTrace';
 
 const CARD = 'rounded-xl border-[1.5px] border-outline/15 bg-surface p-4';
 const SEGMENT = 'min-h-[40px] rounded-lg border px-3 py-1.5 text-[12px] font-semibold';
 const CHIP = 'flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-semibold';
-type Props = { map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; title: string; pageUrl: string; onClose: () => void };
+type Props = { map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; title: string; pageUrl: string; onClose: () => void; /** «Importar KMZ o KML» (o-12): Portal's tools and the Drive upload. */ send?: MapEditSend; uploadTrace?: TraceUpload<File> };
 
 /** The browser saves the bytes with the work's name; the link is gone once the click took it. */
 function saveKmz(map: WorkMap, filter: WorkMapFilter, title: string): void {
@@ -106,6 +107,7 @@ export function WorkMapExport(props: Props) {
           <div className="mt-3 flex justify-end"><button type="button" data-testid="mapa-descargar-kmz" onClick={() => saveKmz(props.map, props.filter, props.title)} className="flex h-10 items-center gap-2 rounded-xl bg-primary px-4 text-[13px] font-semibold text-on-primary"><Download size={15} />Descargar KMZ</button></div>
         </section>
         <ClientLink pageUrl={props.pageUrl} />
+        {props.send && props.uploadTrace ? <><p className={PANEL_LABEL}>Traer un trazado</p><ImportTrace send={props.send} upload={props.uploadTrace} /></> : null}
         <KmzTree map={props.map} filter={props.filter} fileName={fileName} />
       </div>
     </div>

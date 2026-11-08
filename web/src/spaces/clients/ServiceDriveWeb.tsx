@@ -130,3 +130,8 @@ export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: Spac
 export const DrivePhotoInput = forwardRef<HTMLInputElement, { testId: string; onFile: (file: File | undefined) => void }>(function DrivePhotoInput(props, ref) {
   return <input ref={ref} data-testid={props.testId} type="file" accept="image/*" capture="environment" hidden onChange={(event) => { props.onFile(event.target.files?.[0]); event.target.value = ''; }} />;
 });
+
+/** A KMZ or KML for «Importar» of the map (o-12). */
+export const DriveTraceInput = forwardRef<HTMLInputElement, { testId: string; onFile: (file: File | undefined) => void }>(function DriveTraceInput(props, ref) {
+  return <input ref={ref} data-testid={props.testId} type="file" accept=".kmz,.kml,application/vnd.google-earth.kmz,application/vnd.google-earth.kml+xml" hidden onChange={(event) => { props.onFile(event.target.files?.[0]); event.target.value = ''; }} />;
+});

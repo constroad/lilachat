@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { workMapOf, type MapEditSend, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { workMapOf, type MapEditSend, type TraceUpload, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 import { ShareProgress } from './ShareProgress';
 import { WorkMapExport } from './WorkMapExport';
 
@@ -73,5 +73,34 @@ describe('WorkMapExport (o-12)', () => {
     expect(screen.getByTestId('exportar-que-e1')).toHaveTextContent('Etapa 1 (320 m)');
     fireEvent.click(screen.getByTestId('exportar-trabajo-base'));
     expect(onFilter).toHaveBeenCalledWith({ workId: 'base' });
+  });
+});
+
+describe('WorkMapExport · Importar KMZ o KML (o-12)', () => {
+  const MEDIA = '6aef8d455e4b25190f7c3177';
+  it('uploads the file, shows what Portal read, and creates the streets with one entry', async () => {
+    // Arrange
+    const upload = vi.fn<TraceUpload<File>>(async () => ({ ok: true, mediaId: MEDIA }));
+    const send = vi.fn<MapEditSend>(async (request) => (request.kind === 'work_import' && request.confirm
+      ? { ok: true, message: '', data: { creadas: [{ nombre: 'Jr. A', largoM: 120 }, { nombre: 'Jr. B', largoM: 80 }] } }
+      : { ok: true, message: '', data: { calles: [{ nombre: 'Jr. A', largoM: 120 }, { nombre: 'Jr. B', largoM: 80 }], omitidas: [{ nombre: 'Parque', motivo: 'Es un polígono' }] } }));
+    render(<WorkMapExport map={mapOf(done)} filter={{}} onFilter={vi.fn()} title="Obra" pageUrl="https://portal.example/x" send={send} uploadTrace={upload} onClose={vi.fn()} />);
+    // Act
+    fireEvent.change(screen.getByTestId('importar-archivo'), { target: { files: [new File(['<kml/>'], 'obra.kmz')] } });
+    expect(await screen.findByTestId('importar-lineas')).toHaveTextContent('Jr. A');
+    expect(screen.getByText(/Parque \(Es un polígono\)/)).toBeTruthy();
+    fireEvent.click(screen.getByTestId('importar-crear'));
+    // Assert
+    expect(await screen.findByTestId('importar-listo')).toHaveTextContent('Se crearon 2 calles.');
+    expect(send.mock.calls[1]![0]).toMatchObject({ kind: 'work_import', media_id: MEDIA, confirm: true, entry_id: expect.any(String) });
+  });
+
+  it('shows a refused upload, and without the tools there is no import', async () => {
+    const { unmount } = render(<WorkMapExport map={mapOf(done)} filter={{}} onFilter={vi.fn()} title="Obra" pageUrl="https://portal.example/x" send={vi.fn<MapEditSend>()} uploadTrace={async () => ({ ok: false, message: 'Elige un archivo .kmz o .kml.' })} onClose={vi.fn()} />);
+    fireEvent.change(screen.getByTestId('importar-archivo'), { target: { files: [new File(['x'], 'foto.jpg')] } });
+    expect(await screen.findByTestId('importar-error')).toHaveTextContent('Elige un archivo .kmz o .kml.');
+    unmount();
+    render(<WorkMapExport map={mapOf(done)} filter={{}} onFilter={vi.fn()} title="Obra" pageUrl="https://portal.example/x" onClose={vi.fn()} />);
+    expect(screen.queryByTestId('importar-trazado')).toBeNull();
   });
 });

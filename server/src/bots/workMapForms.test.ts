@@ -95,3 +95,17 @@ describe('«Crear enlace de avance» (o-08, Portal 1d397594)', () => {
     expect(workMapFormInputOf({ kind: 'work_progress_link', ...change })).toBeNull();
   });
 });
+
+describe('«Importar KMZ o KML» (o-12, Portal abc01353)', () => {
+  const MEDIA = '6aef8d455e4b25190f7c3177';
+  it('reviews with the Drive file alone, and confirms with an entry', () => {
+    expect(workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_import', media_id: MEDIA, confirm: false })!).context).toEqual({ servicioId: SERVICE, mediaId: MEDIA, confirmar: false });
+    const confirm = workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_import', media_id: MEDIA, confirm: true, entry_id: ENTRY })!);
+    expect(confirm.form.id).toBe('importar_calles_de_obra');
+    expect(confirm.context).toEqual({ servicioId: SERVICE, mediaId: MEDIA, confirmar: true, entradaId: ENTRY });
+  });
+
+  it.each([[{ media_id: '../x', confirm: false }], [{ media_id: MEDIA, confirm: true }], [{ media_id: MEDIA, confirm: false, entry_id: ENTRY }]])('refuses %o', (change) => {
+    expect(workMapFormInputOf({ kind: 'work_import', ...change })).toBeNull();
+  });
+});

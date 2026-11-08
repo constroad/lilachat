@@ -13,6 +13,7 @@ const AXES_MAX = 30;
 const WIDTH_MAX_M = 60;
 const HEX_COLOR = /^#[0-9a-fA-F]{6}$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const MEDIA_ID = /^[0-9a-f]{24}$/i;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export type WorkScopeInput = { kind: 'work_scope'; streetId: string; scopeId: string | null; fromM: number; toM: number; tagIds: string[] | null; partidaIds: string[] | null; stageId: string | null | undefined; widthM: number | null; entryId: string | null };
@@ -23,7 +24,8 @@ export type WorkMapFormInput =
   | { kind: 'work_tag'; name: string; color: string }
   | { kind: 'work_restore'; streetId: string | null; scopeId: string | null }
   | { kind: 'work_deleted' }
-  | { kind: 'work_progress_link'; stageId: string | null; until: string | null; photos: boolean };
+  | { kind: 'work_progress_link'; stageId: string | null; until: string | null; photos: boolean }
+  | { kind: 'work_import'; mediaId: string; entryId: string | null };
 export type WorkMapFormContext = Record<string, string | number | boolean | string[] | null>;
 
 const idOf = (raw: unknown): string => (typeof raw === 'string' && raw.trim().length <= ID_MAX ? raw.trim() : '');
@@ -80,6 +82,14 @@ function progressLinkInputOf(raw: Record<string, unknown>): WorkMapFormInput | n
   return { kind: 'work_progress_link', stageId, until, photos: raw.photos };
 }
 
+/** «Importar KMZ o KML» (o-12): the Drive file, and an entry only to confirm. */
+function importInputOf(raw: Record<string, unknown>): WorkMapFormInput | null {
+  const mediaId = typeof raw.media_id === 'string' && MEDIA_ID.test(raw.media_id) ? raw.media_id : '';
+  const entryId = typeof raw.entry_id === 'string' && UUID.test(raw.entry_id) ? raw.entry_id : null;
+  if (!mediaId || typeof raw.confirm !== 'boolean' || raw.confirm !== Boolean(entryId)) return null;
+  return { kind: 'work_import', mediaId, entryId };
+}
+
 /** What the phone sends for one of these kinds; null when it is off the contract or another kind. */
 export function workMapFormInputOf(raw: Record<string, unknown>): WorkMapFormInput | null {
   if (raw.kind === 'work_scope') return scopeInputOf(raw);
@@ -89,12 +99,13 @@ export function workMapFormInputOf(raw: Record<string, unknown>): WorkMapFormInp
   if (raw.kind === 'work_restore') return restoreInputOf(raw);
   if (raw.kind === 'work_deleted') return { kind: 'work_deleted' };
   if (raw.kind === 'work_progress_link') return progressLinkInputOf(raw);
+  if (raw.kind === 'work_import') return importInputOf(raw);
   return null;
 }
 
 /** The kinds the door opens; restore and the deleted list since agentes checks their service (890b02e). */
 export const isWorkMapFormKind = (kind: unknown): boolean =>
-  kind === 'work_scope' || kind === 'work_scope_delete' || kind === 'work_stage' || kind === 'work_tag' || kind === 'work_restore' || kind === 'work_deleted' || kind === 'work_progress_link';
+  kind === 'work_scope' || kind === 'work_scope_delete' || kind === 'work_stage' || kind === 'work_tag' || kind === 'work_restore' || kind === 'work_deleted' || kind === 'work_progress_link' || kind === 'work_import';
 
 /** Narrows the door's union to these kinds. */
 export const isWorkMapFormInput = (input: { kind: string }): input is WorkMapFormInput => isWorkMapFormKind(input.kind);
@@ -128,6 +139,7 @@ export function workMapFormPrepared(serviceId: string, input: WorkMapFormInput):
     case 'work_tag': return { form: formOf('crear_etiqueta_de_obra', 'Crear trabajo', 'Crear'), context: { servicioId: serviceId, nombre: input.name, color: input.color } };
     case 'work_restore': return { form: formOf('restaurar_de_obra', 'Restaurar', 'Restaurar'), context: restoreContext(serviceId, input) };
     case 'work_deleted': return { form: formOf('borrados_de_obra', 'Lo borrado del mapa', 'Ver'), context: { servicioId: serviceId } };
+    case 'work_import': return { form: formOf('importar_calles_de_obra', 'Importar calles', input.entryId ? 'Crear calles' : 'Revisar'), context: { servicioId: serviceId, mediaId: input.mediaId, confirmar: Boolean(input.entryId), ...(input.entryId ? { entradaId: input.entryId } : {}) } };
     case 'work_progress_link': return { form: formOf('crear_enlace_de_avance', 'Enlace de avance', 'Crear enlace'), context: { servicioId: serviceId, ...(input.stageId ? { etapaId: input.stageId } : {}), ...(input.until ? { hasta: input.until } : {}), mostrarFotos: input.photos } };
   }
 }

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import * as Crypto from 'expo-crypto';
+import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { DRIVE_UPLOAD_DONE, DRIVE_VIDEO_SECONDS, driveUploadRequest, manualPhotoOf, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type ManualPhotoUpload } from '@lilachat/shared';
+import { DRIVE_UPLOAD_DONE, DRIVE_VIDEO_SECONDS, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type ManualPhotoUpload } from '@lilachat/shared';
 import { submitAppForm } from '../../chat/commands/commandsApi';
 import { shrinkPhotoFile } from '../../chat/shrinkPhoto';
 import { getSocket } from '../../chat/socketClient';
@@ -88,3 +89,21 @@ export async function takeFieldPhoto(): Promise<{ asset: ImagePicker.ImagePicker
   const asset = picked.canceled ? null : picked.assets[0];
   return asset ? { asset } : null;
 }
+
+export type TraceFile = { uri: string; name: string; type: string; sizeBytes?: number };
+
+/** A KMZ or KML from the phone's files for «Importar» (o-12); null when the person cancels. */
+export async function pickTraceFile(): Promise<TraceFile | null> {
+  const picked = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true, multiple: false, type: '*/*' });
+  const asset = picked.canceled ? null : picked.assets[0];
+  return asset ? { uri: asset.uri, name: asset.name, type: asset.mimeType ?? '', ...(asset.size ? { sizeBytes: asset.size } : {}) } : null;
+}
+
+/** The trace to the service's Drive: its type by the name, since Android often sends a .kmz as anything. */
+export const mapTraceUploader = (target: ServiceAskTarget, chatId: string, serviceId: string): TraceUpload<TraceFile> => async (file) => {
+  const mime = importFileType(file.name, file.type);
+  if (!mime) return { ok: false, message: IMPORT_NOT_A_TRACE };
+  const source = { uri: file.uri, name: file.name, mime };
+  const facts = { mime, ...(file.sizeBytes ? { sizeBytes: file.sizeBytes } : {}) };
+  return manualPhotoOf(await uploadToDrive(depsOf({ target, chatId, serviceId }, () => undefined), { source, facts }, Crypto.randomUUID()));
+};

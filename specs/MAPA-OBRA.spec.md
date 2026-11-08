@@ -576,3 +576,14 @@ ver «Borrados»; cubierto solo por test).
 - «Exportar» conserva «Copiar enlace de visor» con la página entera del servicio.
 - **Antes de usarlo:** agentes suma la herramienta a su comprobación de servicio y José la aprueba
   en Agentes → Herramientas. Sin eso la puerta devuelve el rechazo tal cual.
+
+### «Importar KMZ o KML» (Portal abc01353)
+
+- «Traer un trazado» en «Exportar», web y APK. El archivo sube primero al Drive del servicio
+  (`subir_al_drive`; su tipo sale del nombre, porque Android y los navegadores mandan un .kmz como
+  cualquier cosa). Después la puerta `work_import` abre `importar_calles_de_obra`: sin confirmar,
+  Portal dice qué líneas leyó (nombre y largo) y cuáles deja fuera con su motivo; «Crear N calles»
+  confirma con un `entradaId` del equipo (un reintento no duplica). El mapa se recarga solo.
+- Motor `shared/src/workImport.ts`; puerta en `server/src/bots/workMapForms.ts`.
+- **Falta para usarlo:** que el boleto de `subir_al_drive` acepte KMZ/KML (pedido a Portal el 07/11;
+  hoy solo foto y video, y Lilachat lo rechaza antes de subir) y que José apruebe la herramienta.

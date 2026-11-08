@@ -165,6 +165,7 @@ export * from './workScopeDraft.js';
 export * from './workManualProgress.js';
 export * from './workMapPartial.js';
 export * from './workProgressLink.js';
+export * from './workImport.js';
 export * from './workStreetDelete.js';
 export * from './photoStamp.js';
 export * from './signingForm.js';

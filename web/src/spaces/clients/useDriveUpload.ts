@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DRIVE_UPLOAD_DONE, driveUploadRequest, manualPhotoOf, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type ManualPhotoUpload } from '@lilachat/shared';
+import { DRIVE_UPLOAD_DONE, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type ManualPhotoUpload } from '@lilachat/shared';
 import { submitAppForm } from '../../chat/commands/commandsApi';
 import { shrinkPhotoBlob } from '../../chat/shrinkPhoto';
 import { currentSocket } from '../../useSocket';
@@ -74,3 +74,11 @@ export function useDriveUpload(upload: UploadTarget) {
 /** A photo of «Registrar avance» (o-06): to the service's Drive first, its id rides with the progress. */
 export const mapPhotoUploader = (target: ServiceAskTarget, chatId: string, serviceId: string): ManualPhotoUpload<File> => async (file) =>
   manualPhotoOf(await uploadToDrive(depsOf({ target, chatId, serviceId }), await prepared(file), crypto.randomUUID()));
+
+/** A KMZ or KML for «Importar» (o-12): its type by the name, since browsers often leave it blank. */
+export const mapTraceUploader = (target: ServiceAskTarget, chatId: string, serviceId: string): TraceUpload<File> => async (file) => {
+  const mime = importFileType(file.name, file.type);
+  if (!mime) return { ok: false, message: IMPORT_NOT_A_TRACE };
+  const source = { blob: file, name: file.name };
+  return manualPhotoOf(await uploadToDrive(depsOf({ target, chatId, serviceId }), { source, facts: { mime, sizeBytes: file.size } }, crypto.randomUUID()));
+};

@@ -4,12 +4,14 @@ import * as Clipboard from 'expo-clipboard';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { Copy, Download, Globe, Link2 } from 'lucide-react-native';
-import { exportStageOptions, KMZ_MIME, kmzLayersOf, workMapFileName, workMapWorkFilter, workMapKml, workMapKmz, workMapScopeLabel, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
+import { exportStageOptions, KMZ_MIME, kmzLayersOf, workMapFileName, workMapWorkFilter, workMapKml, workMapKmz, workMapScopeLabel, type MapEditSend, type TraceUpload, type WorkMap, type WorkMapFilter } from '@lilachat/shared';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
 import { DayChips, SHEET_LABEL, StageChips } from './CutChips';
+import { ImportTrace } from './ImportTrace';
+import type { TraceFile } from '../useDriveUpload';
 
-type Props = { open: boolean; map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; title: string; pageUrl: string; onClose: () => void };
+type Props = { open: boolean; map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; title: string; pageUrl: string; onClose: () => void; /** «Importar KMZ o KML» (o-12). */ send?: MapEditSend; uploadTrace?: TraceUpload<TraceFile> };
 
 /** «Avance parcial» (o-08): which streets each work covered, for the stage and day the map shows. */
 /** Writes the KMZ in the cache and opens the share sheet: Google Earth, WhatsApp or Drive. Never throws. */
@@ -104,6 +106,7 @@ export function WorkMapExport(props: Props) {
           <Text className="text-[15px] font-semibold text-primary">{copied ? 'Enlace copiado' : 'Copiar enlace de visor'}</Text>
         </Pressable>
       </Card>
+      {props.send && props.uploadTrace ? <><Text className={SHEET_LABEL}>Traer un trazado</Text><ImportTrace send={props.send} upload={props.uploadTrace} /></> : null}
       <KmzTree map={props.map} filter={props.filter} fileName={fileName} />
     </Sheet>
   );

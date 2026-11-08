@@ -536,3 +536,11 @@ ver «Borrados»; cubierto solo por test).
 - **Lo que el diseño pide y depende de Portal (preguntado a su sesión el 07/11):** que el enlace del
   cliente respete etapa y día, el interruptor «Mostrar fotos de inspección», «Incluir en el informe
   del servicio» y «Descargar PDF para cliente». No se dibujan hasta que exista su ruta.
+- **Respuesta de Portal (07/11):** el enlace no lee etapa ni día por URL (la página los tiene como
+  estado; leerlos del query son ~30 líneas, pero sería vista inicial, no recorte: para que el cliente
+  vea solo ese corte va firmado en el enlace). No hay bandera de fotos por enlace (cada foto tiene
+  `isClientVisible` y el Drive `driveVisibleToClient`). El PDF del enlace ya trae «Avance por calle»;
+  no hay PDF solo del mapa. Construirlo en Portal lo decide José.
+- **E2E web prod (07/11, 00:41Z, Test, QA-CTLPIS):** «Compartir avance» mostró «Avance parcial ·
+  0 de 1 vía · Todavía no hay avance aprobado en este corte · +0 m lineales» (Test no tiene avance
+  aprobado). Con avance, cubierto por tests.

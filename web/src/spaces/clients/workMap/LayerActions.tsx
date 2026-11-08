@@ -1,27 +1,20 @@
 import { useState } from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
-import { deleteLayer, layerDeleteQuestion, renameLayer, type MapEditSend, type MapLayerKind } from '@lilachat/shared';
+import { deleteLayer, layerActionOpen, layerDeleteQuestion, layerTestId, renameLayer, runLayerAction, type LayerActionMode, type LayerActionState, type MapEditSend, type MapLayerKind } from '@lilachat/shared';
 
-type Mode = 'idle' | 'rename' | 'ask';
 type Props = { kind: MapLayerKind; id: string; name: string; layers: Array<{ id: string; name: string }>; send: MapEditSend };
 const ICON = 'flex h-9 w-9 items-center justify-center rounded-lg text-on-surface-variant hover:bg-outline/10';
 const FIELD = 'h-10 min-w-0 flex-1 rounded-xl border border-outline/25 bg-background px-3 text-[14px] text-on-surface outline-none focus:border-primary';
 
 /** «Renombrar» and «Borrar» on a stage or a work (Portal c1c35c58); Portal's refusal shows under it. */
 export function LayerActions(props: Props) {
-  const [mode, setMode] = useState<Mode>('idle');
-  const [draft, setDraft] = useState(props.name);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const testId = `${props.kind === 'stages' ? 'etapa' : 'trabajo'}-${props.id}`;
-  const run = async (action: () => Promise<string | null>) => {
-    setBusy(true);
-    const failure = await action();
-    setBusy(false);
-    setError(failure);
-    if (!failure) setMode('idle');
-  };
-  const open = (next: Mode) => { setError(null); setDraft(props.name); setMode(next); };
+  const [state, setState] = useState<LayerActionState>(() => layerActionOpen('idle', props.name));
+  const { mode, draft, error, busy } = state;
+  const testId = layerTestId(props.kind, props.id);
+  const run = (action: () => Promise<string | null>) => runLayerAction(action, setState);
+  const open = (next: LayerActionMode) => setState(layerActionOpen(next, props.name));
+  const setMode = (next: LayerActionMode) => setState((before) => ({ ...before, mode: next }));
+  const setDraft = (next: string) => setState((before) => ({ ...before, draft: next }));
   // Open, it takes the whole row of its card (the parent wraps) and goes last.
   return (
     <div className={mode === 'idle' ? 'shrink-0' : 'order-last basis-full'}>

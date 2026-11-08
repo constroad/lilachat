@@ -1,10 +1,9 @@
 import { useState, type ReactNode } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Pencil, Trash2 } from 'lucide-react-native';
-import { deleteLayer, layerDeleteQuestion, renameLayer, type MapEditSend, type MapLayerKind } from '@lilachat/shared';
+import { deleteLayer, layerActionOpen, layerDeleteQuestion, layerTestId, renameLayer, runLayerAction, type LayerActionMode, type LayerActionState, type MapEditSend, type MapLayerKind } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 
-type Mode = 'idle' | 'rename' | 'ask';
 type Props = { kind: MapLayerKind; id: string; name: string; layers: Array<{ id: string; name: string }>; send: MapEditSend };
 const ICON = 'h-11 w-11 items-center justify-center rounded-xl';
 const BUTTON = 'h-11 flex-1 items-center justify-center rounded-xl';
@@ -15,19 +14,13 @@ const BUTTON = 'h-11 flex-1 items-center justify-center rounded-xl';
  */
 export function useLayerActions(props: Props): { icons: ReactNode; panel: ReactNode } {
   const colors = useColores();
-  const [mode, setMode] = useState<Mode>('idle');
-  const [draft, setDraft] = useState(props.name);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const testId = `${props.kind === 'stages' ? 'etapa' : 'trabajo'}-${props.id}`;
-  const run = async (action: () => Promise<string | null>) => {
-    setBusy(true);
-    const failure = await action();
-    setBusy(false);
-    setError(failure);
-    if (!failure) setMode('idle');
-  };
-  const open = (next: Mode) => { setError(null); setDraft(props.name); setMode(next); };
+  const [state, setState] = useState<LayerActionState>(() => layerActionOpen('idle', props.name));
+  const { mode, draft, error, busy } = state;
+  const testId = layerTestId(props.kind, props.id);
+  const run = (action: () => Promise<string | null>) => runLayerAction(action, setState);
+  const open = (next: LayerActionMode) => setState(layerActionOpen(next, props.name));
+  const setMode = (next: LayerActionMode) => setState((before) => ({ ...before, mode: next }));
+  const setDraft = (next: string) => setState((before) => ({ ...before, draft: next }));
   const icons = mode === 'idle' ? (
     <View className="flex-row">
       <Pressable testID={`renombrar-${testId}`} accessibilityLabel={`Renombrar ${props.name}`} onPress={() => open('rename')} className={ICON}><Pencil size={18} color={colors['on-surface-variant']} /></Pressable>

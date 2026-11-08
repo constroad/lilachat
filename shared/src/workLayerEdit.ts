@@ -57,3 +57,16 @@ export async function deleteLayer(send: MapEditSend, kind: MapLayerKind, id: str
   const result = await send(layerDeleteRequest(kind, id), sendLayerDelete);
   return result.ok ? null : result.message;
 }
+
+/** The state of «Renombrar» / «Borrar» on one card; web and APK draw it, the steps live here. */
+export type LayerActionMode = 'idle' | 'rename' | 'ask';
+export type LayerActionState = { mode: LayerActionMode; draft: string; error: string | null; busy: boolean };
+export const layerActionOpen = (mode: LayerActionMode, name: string): LayerActionState => ({ mode, draft: name, error: null, busy: false });
+export const layerTestId = (kind: MapLayerKind, id: string): string => `${kind === 'stages' ? 'etapa' : 'trabajo'}-${id}`;
+
+/** Busy while Portal answers; back to idle when it took it, else its message stays under the card. */
+export async function runLayerAction(action: () => Promise<string | null>, update: (change: (before: LayerActionState) => LayerActionState) => void): Promise<void> {
+  update((before) => ({ ...before, busy: true }));
+  const failure = await action();
+  update((before) => ({ ...before, busy: false, error: failure, mode: failure ? before.mode : 'idle' }));
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deleteLayer, renameLayer, layerDeleteRequest, layerEditProblem, layerEditRequest, LAYER_NAME_TAKEN, layerDeleteQuestion } from './workLayerEdit.js';
+import { deleteLayer, layerActionOpen, layerTestId, renameLayer, runLayerAction, type LayerActionState, layerDeleteRequest, layerEditProblem, layerEditRequest, LAYER_NAME_TAKEN, layerDeleteQuestion } from './workLayerEdit.js';
 import { LABEL_NEEDS_NAME } from './workScopeDraft.js';
 
 /** Renaming and deleting a stage or a work from the map (Portal c1c35c58, asked 08/11 while writing tutorial 2). */
@@ -43,5 +43,17 @@ describe('renameLayer and deleteLayer, through the door', () => {
     expect(await renameLayer(refused, 'stages', 'e2', 'Etapa 1', [])).toBe('Ya hay una etapa «Etapa 1» en este servicio.');
     expect(await deleteLayer(ok, 'works', 't1')).toBeNull();
     expect(sent).toEqual([expect.objectContaining({ kind: 'work_stage_edit' }), expect.objectContaining({ kind: 'work_tag_delete', tag_id: 't1' })]);
+  });
+});
+
+describe('the card\'s state', () => {
+  it('goes back to idle when Portal took it, and keeps the field open with its message when not', async () => {
+    let state: LayerActionState = layerActionOpen('rename', 'Etapa 1');
+    const update = (change: (before: LayerActionState) => LayerActionState) => { state = change(state); };
+    await runLayerAction(async () => 'Ya hay una etapa «X» en este servicio.', update);
+    expect(state).toEqual({ mode: 'rename', draft: 'Etapa 1', error: 'Ya hay una etapa «X» en este servicio.', busy: false });
+    await runLayerAction(async () => null, update);
+    expect(state).toMatchObject({ mode: 'idle', error: null, busy: false });
+    expect(layerTestId('works', 't1')).toBe('trabajo-t1');
   });
 });

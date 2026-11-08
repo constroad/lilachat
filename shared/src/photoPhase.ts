@@ -67,3 +67,9 @@ export function withPhotoMark(marks: readonly PhotoMark[], photoId: string, phas
   const kept = stretch.trim() || (photoMarkOf(marks, photoId)?.stretch ?? '');
   return [...marks.filter((mark) => mark.photoId !== photoId), ...(phase ? [{ photoId, phase, stretch: kept }] : [])];
 }
+
+/** «Guardar marca»: the draft once Portal answered, with its answer. */
+export async function savePhotoPhase(draft: PhotoPhaseDraft, send: (phase: PhotoPhase | null, stretch: string) => Promise<WorkProgressResult>): Promise<PhotoPhaseDraft> {
+  const answer = await send(draft.phase, draft.stretch);
+  return { ...draft, busy: false, answer };
+}

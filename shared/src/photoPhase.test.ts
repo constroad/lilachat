@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FORMS_LEVEL } from './appForms.js';
-import { PHOTO_PHASE_SAVED, PHOTO_MARKS_MAX, photoMarkOf, photoPhaseDraftOf, withPhotoMark, photoMarksOf, photoPhaseLabel, photoPhaseRequest, sendPhotoPhase, stretchKey } from './photoPhase.js';
+import { PHOTO_PHASE_SAVED, PHOTO_MARKS_MAX, photoMarkOf, photoPhaseDraftOf, savePhotoPhase, withPhotoMark, photoMarksOf, photoPhaseLabel, photoPhaseRequest, sendPhotoPhase, stretchKey } from './photoPhase.js';
 
 /** José 08/11 through Portal: mark a photo as «antes» or «después» from Lilachat's viewer. */
 describe('photoMarksOf', () => {
@@ -83,5 +83,14 @@ describe('withPhotoMark', () => {
   it('the bar starts from the photo\'s mark, or empty', () => {
     expect(photoPhaseDraftOf(marks[0]!)).toEqual({ phase: 'antes', stretch: 'Cdra 1', busy: false, answer: null });
     expect(photoPhaseDraftOf(null)).toEqual({ phase: null, stretch: '', busy: false, answer: null });
+  });
+});
+
+describe('savePhotoPhase', () => {
+  it('sends the phase and stretch, and keeps Portal\'s answer', async () => {
+    const send = vi.fn(async () => ({ ok: true as const, message: 'La foto queda como «antes» de Cdra 1' }));
+    const saved = await savePhotoPhase({ phase: 'antes', stretch: 'Cdra 1', busy: true, answer: null }, send);
+    expect(send).toHaveBeenCalledWith('antes', 'Cdra 1');
+    expect(saved).toEqual({ phase: 'antes', stretch: 'Cdra 1', busy: false, answer: { ok: true, message: 'La foto queda como «antes» de Cdra 1' } });
   });
 });

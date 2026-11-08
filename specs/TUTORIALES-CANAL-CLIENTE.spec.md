@@ -138,3 +138,14 @@ pantalla. El visor todavía no está. Esto es lo que ya existe:
 - borrar la calle grabada por el camino de la app;
 - el visor «Ayuda» y el botón «?», con los videos en el media de Lilachat;
 - los otros 10 guiones.
+
+**Primera grabación con voz (08/11): no se publica.**
+- El archivo dura 2:12,5, igual que el `.json` (132 513 ms). Pesa 3,3 MB y sale a 780×1688 con
+  audio Opus.
+- La hoja de contacto mostró el defecto: al guardar Jr. Lampa recortada a 1 096 m, la respuesta
+  fue «Más de 200 caracteres, no entra en la tarjeta para confirmar». La calle no se guardó.
+- El texto no está en Lilachat ni en Portal; se le preguntó a Agentes. Las calles cortas (103 m)
+  se guardan bien.
+- El grabador dio «sin avisos» porque el último paso miraba el mapa. Ahora el último paso espera
+  «Calle guardada» (skill §4: el último paso espera su dato). Si no se guarda, el ensayo avisa.
+- No quedó nada que limpiar en la base.

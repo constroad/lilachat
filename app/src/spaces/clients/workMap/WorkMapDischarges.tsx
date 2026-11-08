@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import * as Crypto from 'expo-crypto';
-import { CheckCircle2, MapPin, SlidersHorizontal } from 'lucide-react-native';
-import { usefulWidthLabel, confirmDischargeLabel, dischargeHeadline, dischargeRowsOf, metersLabel, progressEntryOf, stationLabel, stretchWorksOf, type DischargeRow, type DischargeSuggestion, type ProgressEntry, type StretchRange, type SuggestedStretch, type WorkMap } from '@lilachat/shared';
+import { CheckCircle2, SlidersHorizontal } from 'lucide-react-native';
+import { usefulWidthLabel, confirmDischargeLabel, DISCHARGE_HOW, DISCHARGE_TITLE, dischargeExplain, dischargeGaps, dischargeHeadline, dischargeRowsOf, metersLabel, progressEntryOf, stationLabel, stretchWorksOf, type DischargeRow, type DischargeSuggestion, type ProgressEntry, type StretchRange, type SuggestedStretch, type WorkMap } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 
 export type ProgressSend = (entry: ProgressEntry) => Promise<{ ok: true; message: string } | { ok: false; message: string }>;
@@ -58,6 +58,7 @@ function StretchCard(props: { map: WorkMap; serviceId: string; stretch: Suggeste
     <View testID={`tramo-sugerido-${stretch.streetId}`} className="gap-2 rounded-2xl border border-outline/15 bg-surface p-4">
       <Text className="text-[16px] font-semibold text-on-surface">{stretch.streetName}</Text>
       <Text className="text-[24px] font-bold text-on-surface">+{metersLabel(Math.max(0, range.toM - range.fromM))}</Text>
+      <Text testID="avance-explica" className="mt-1 text-[14px] text-on-surface-variant">{dischargeExplain({ ...stretch, ...range })}</Text>
       <View className="flex-row flex-wrap gap-2">
         {works.map((work) => (
           <Pressable key={work.id} testID={`avance-trabajo-${work.id}`} accessibilityState={{ selected: workId === work.id }} onPress={() => setWorkId(work.id)} className={`min-h-[40px] flex-row items-center gap-1.5 rounded-full border px-3 ${workId === work.id ? 'border-primary bg-primary' : 'border-outline/20 bg-surface'}`}>
@@ -71,7 +72,6 @@ function StretchCard(props: { map: WorkMap; serviceId: string; stretch: Suggeste
         <View className="flex-1 p-3"><Text className={KICKER}>Volumen</Text><Text className="text-[15px] font-semibold text-on-surface">{String(stretch.volumeM3).replace('.', ',')} m³</Text></View>
       </View>
       <View className="rounded-xl border border-outline/15 p-3"><Text className={KICKER}>Ancho útil</Text><Text testID="avance-ancho-util" className="text-[15px] font-semibold text-on-surface">{usefulWidthLabel(map, stretch.streetId, range)}</Text></View>
-      <View className="flex-row items-center gap-1.5"><MapPin size={14} color={colors['on-surface-variant']} /><Text className="text-[13px] text-on-surface-variant">El lugar sale de las fotos de cada unidad.</Text></View>
       {adjusting ? <RangeInputs range={range} onRange={props.onRange} /> : null}
       {props.send ? (
         <>
@@ -93,10 +93,13 @@ export function WorkMapDischarges(props: { map: WorkMap; serviceId: string; sugg
   const rows = useMemo(() => dischargeRowsOf(props.suggestion), [props.suggestion]);
   return (
     <View testID="avance-sugerido" className="gap-3">
-      <View className="flex-row items-start justify-between gap-2">
-        <View><Text className={KICKER}>Control de pista</Text><Text className="text-[17px] font-semibold text-on-surface">Avance sugerido</Text></View>
-        <View className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1"><Text testID="avance-listas" className="text-[12px] font-bold uppercase text-primary">{dischargeHeadline(props.suggestion)}</Text></View>
+      <View className="gap-1">
+        <Text className={KICKER}>Control de pista</Text>
+        <Text className="text-[17px] font-semibold text-on-surface">{DISCHARGE_TITLE}</Text>
+        <Text className="text-[13px] text-on-surface-variant">{DISCHARGE_HOW}</Text>
+        <View className="mt-1 self-start rounded-full border border-primary/30 bg-primary/10 px-3 py-1"><Text testID="avance-listas" className="text-[12px] font-bold uppercase text-primary">{dischargeHeadline(props.suggestion)}</Text></View>
       </View>
+      {dischargeGaps(props.suggestion) ? <Text testID="avance-sin-ubicar" className="rounded-xl border border-outline/15 bg-surface px-3 py-2 text-[13px] text-on-surface-variant">No suman: {dischargeGaps(props.suggestion)}.</Text> : null}
       {props.suggestion.stretches.map((stretch) => (
         <StretchCard key={stretch.streetId} map={props.map} serviceId={props.serviceId} stretch={stretch} send={props.send} range={props.ranges[stretch.streetId] ?? stretch} onRange={(range) => props.onRange(stretch.streetId, range)} />
       ))}

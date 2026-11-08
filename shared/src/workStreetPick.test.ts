@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EMPTY_STREET, streetDraftLengthM, streetDraftPins, streetDraftProblem, DRAFT_NEEDS_STREET } from './workStreetDraft.js';
-import { handPointsLabel, modeChangeLoss, NO_STREET_THERE, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, tapStreetDraft, undoStreetDraft } from './workStreetPick.js';
+import { dragStreetEnd, handPointsLabel, HANDLE_OFF_STREET, modeChangeLoss, NO_STREET_THERE, nudgeStreetEnd, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHandles, streetDraftHint, tapStreetDraft, undoStreetDraft } from './workStreetPick.js';
 
 /** Audit 07/11 (José: «fácil y fluido para un ingeniero de campo»): tap the street, then its start and end. */
 const M_PER_DEG_LNG = 111_195 * Math.cos((12 * Math.PI) / 180);
@@ -14,7 +14,7 @@ describe('drawing a street by tapping it', () => {
     expect(problem).toBeNull();
     expect(draft.name).toBe('Jr. Los Pinos');
     expect(streetDraftLengthM(draft)).toBe(500);
-    expect(streetDraftHint(draft)).toBe('Toca dónde empieza la obra, o guarda la calle entera.');
+    expect(streetDraftHint(draft)).toBe('Arrastra los extremos para recortar, o toca dónde empieza la obra.');
   });
 
   it('two taps on it keep only the stretch of work, with its chainage', () => {
@@ -153,5 +153,76 @@ describe('the start mark before the end (audit 08/11 item 11: the first tap left
     expect(streetDraftPins(picked).map((pin) => pin.label)).toEqual(['1', '2']);
     const done = tapStreetDraft(tapStreetDraft(picked, at(320)).draft, at(80)).draft;
     expect(streetDraftPins(done).map((pin) => pin.label)).toEqual(['1', '2']);
+  });
+});
+
+/** José 08/11: «selecciono toda la calle y no quiero los últimos 100 m»: drag the end, do not tap again. */
+describe('trimming a picked street by its ends', () => {
+  const whole = () => tapStreetDraft(EMPTY_STREET, at(100)).draft;
+
+  it('a picked street shows a handle at each end, labelled with its chainage', () => {
+    const handles = streetDraftHandles(whole());
+    expect(handles.map((one) => [one.handle, one.label])).toEqual([['start', '0+000'], ['end', '0+500']]);
+    expect(handles[1]!.point.lng).toBeCloseTo(east(500).lng, 6);
+  });
+
+  it('no street picked, or drawn by hand: no handles', () => {
+    expect(streetDraftHandles(EMPTY_STREET)).toEqual([]);
+    expect(streetDraftHandles(setDrawMode(whole(), 'hand'))).toEqual([]);
+  });
+
+  it('dragging the end 100 m back leaves the street without its last 100 m', () => {
+    const { draft, problem } = dragStreetEnd(whole(), 'end', east(400));
+    expect(problem).toBeNull();
+    expect(streetDraftLengthM(draft)).toBe(400);
+    expect(streetDraftEnds(draft)).toBe('Inicio 0+000 · Fin 0+400');
+    expect(streetDraftHandles(draft).map((one) => one.label)).toEqual(['0+000', '0+400']);
+  });
+
+  it('dragging the start trims the front, and the chainage starts at zero again', () => {
+    const { draft } = dragStreetEnd(whole(), 'start', east(150));
+    expect(streetDraftLengthM(draft)).toBe(350);
+    expect(streetDraftEnds(draft)).toBe('Inicio 0+000 · Fin 0+350');
+  });
+
+  it('a drop off the street keeps the end where it was and says why', () => {
+    const before = whole();
+    const { draft, problem } = dragStreetEnd(before, 'end', { lat: -11.999, lng: east(400).lng });
+    expect(problem).toBe(HANDLE_OFF_STREET);
+    expect(draft).toBe(before);
+  });
+
+  it('the ends never cross: the shortest stretch is 5 m', () => {
+    const trimmed = dragStreetEnd(whole(), 'start', east(300)).draft;
+    const { draft } = dragStreetEnd(trimmed, 'end', east(100));
+    expect(streetDraftLengthM(draft)).toBe(5);
+  });
+
+  it('a street marked backwards moves the handle the person sees, not the map\'s end', () => {
+    let draft = tapStreetDraft(whole(), at(400)).draft;
+    draft = tapStreetDraft(draft, at(100)).draft;
+    expect(draft.reversed).toBe(true);
+    draft = dragStreetEnd(draft, 'end', east(200)).draft;
+    expect(streetDraftEnds(draft)).toBe('Inicio 0+000 · Fin 0+200');
+    expect(streetDraftHandles(draft)[0]!.point.lng).toBeCloseTo(east(400).lng, 6);
+  });
+
+  it('«−10 m» and «+10 m» move an end in steps, inside the street', () => {
+    let draft = nudgeStreetEnd(whole(), 'end', -10);
+    expect(streetDraftEnds(draft)).toBe('Inicio 0+000 · Fin 0+490');
+    draft = nudgeStreetEnd(draft, 'end', 50);
+    expect(streetDraftEnds(draft)).toBe('Inicio 0+000 · Fin 0+500');
+    draft = nudgeStreetEnd(draft, 'start', 10);
+    expect(streetDraftEnds(draft)).toBe('Inicio 0+000 · Fin 0+490');
+  });
+
+  it('«Deshacer» after a drag gives back the whole street\'s end', () => {
+    const draft = undoStreetDraft(dragStreetEnd(whole(), 'end', east(400)).draft);
+    expect(streetDraftLengthM(draft)).toBe(500);
+  });
+
+  it('with a street picked, the hint says the ends can be dragged', () => {
+    expect(streetDraftHint(whole())).toBe('Arrastra los extremos para recortar, o toca dónde empieza la obra.');
+    expect(streetDraftHint(dragStreetEnd(whole(), 'end', east(400)).draft)).toBe('Arrastra los extremos para ajustar, o guarda la calle.');
   });
 });

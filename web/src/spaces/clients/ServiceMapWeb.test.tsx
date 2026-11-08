@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ChannelLinks, MapEditSend, TraceUpload, UnitDischarge, WorkMap, WorkMapView } from '@lilachat/shared';
+import type { ChannelLinks, MapEditSend, MapPhoto, TraceUpload, UnitDischarge, WorkMap, WorkMapView } from '@lilachat/shared';
 import { ServiceMapWeb } from './ServiceMapWeb';
 import type { ProgressSend } from './workMap/WorkMapDischarges';
 import type { StreetSend } from './workMap/workProgressSender';
@@ -13,8 +13,9 @@ const pineStreet = vi.hoisted(() => (named: boolean) => ({ properties: { class: 
 /** A tap on the fake map goes 100 m further east each time, as when a street is drawn (o-02). */
 const taps = vi.hoisted(() => ({ count: 0 }));
 vi.mock('./workMap/WorkMapCanvas', () => ({
-  default: (props: { view: WorkMapView; expanded: boolean; pins?: unknown[]; stretches?: unknown[]; onTap?: (point: { lat: number; lng: number }, roads: unknown) => void }) => (
+  default: (props: { view: WorkMapView; expanded: boolean; pins?: Array<{ id: string }>; stretches?: unknown[]; onTap?: (point: { lat: number; lng: number }, roads: unknown) => void; onPin?: (id: string) => void }) => (
     <div data-testid="mapa-lienzo" data-done={props.view.done.length} data-expanded={props.expanded} data-pins={props.pins?.length ?? 0} data-stretches={props.stretches?.length ?? 0}>
+      {props.onPin ? props.pins?.map((pin) => <button key={pin.id} type="button" data-testid={`lienzo-pin-${pin.id}`} onClick={() => props.onPin?.(pin.id)} />) : null}
       {props.onTap ? <button type="button" data-testid="mapa-tocar" onClick={() => { const point = { lat: -12, lng: -77 + (taps.count++ * 100) / 108_766 }; props.onTap?.(point, { underFinger: [pineStreet(false)], nearby: [pineStreet(true)], tap: point }); }} /> : null}
     </div>
   ),
@@ -36,7 +37,7 @@ const workMap: WorkMap = {
   works: [{ id: 'base', name: 'Base', color: '#c08a1e' }, { id: 'asfalto', name: 'Asfaltado', color: '#111111' }],
   stages: [{ id: 'e1', name: 'Etapa 1' }, { id: 'e2', name: 'Etapa 2' }],
 };
-const showMap = (map: ChannelLinks['map'] = vi.fn(async () => ({ ok: true as const, url })), extra: { drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend; drawStreet?: StreetSend; deleteStreet?: StreetDeleteSend; editMap?: MapEditSend; uploadTrace?: TraceUpload<File> } = {}) => render(<ServiceMapWeb jwt="jwt-1" links={linksWith(map)} target={target} title="Pavimentación Los Olivos" {...extra} />);
+const showMap = (map: ChannelLinks['map'] = vi.fn(async () => ({ ok: true as const, url })), extra: { drawUrl?: string | null; discharges?: UnitDischarge[]; mapPhotos?: MapPhoto[]; send?: ProgressSend; drawStreet?: StreetSend; deleteStreet?: StreetDeleteSend; editMap?: MapEditSend; uploadTrace?: TraceUpload<File> } = {}) => render(<ServiceMapWeb jwt="jwt-1" links={linksWith(map)} target={target} title="Pavimentación Los Olivos" {...extra} />);
 
 /** A spot on Av. Los Olivos, so many meters from its start (it runs east along -12). */
 const METERS_PER_DEGREE_LNG = 111_195 * Math.cos((12 * Math.PI) / 180);
@@ -225,7 +226,7 @@ describe('ServiceMapWeb', () => {
     showMap(undefined, { discharges });
     // Assert
     const canvas = await screen.findByTestId('mapa-lienzo');
-    expect(screen.getByTestId('avance-listas')).toHaveTextContent('2 de 3 listas');
+    expect(screen.getByTestId('avance-listas')).toHaveTextContent('2 de 3 unidades ubicadas');
     expect(within(screen.getByTestId('tramo-sugerido-s1')).getByText('+60 m')).toBeInTheDocument();
     expect(screen.getByTestId('avance-progresivas')).toHaveTextContent('0+010 a 0+070');
     expect(screen.getByTestId('descarga-d')).toHaveTextContent('Fuera de la obra');
@@ -398,7 +399,7 @@ describe('ServiceMapWeb', () => {
     // Assert
     expect(screen.getByTestId('editor-calle-nombre')).toHaveValue('Jr. Los Pinos');
     expect(screen.getByTestId('editor-calle-largo')).toHaveTextContent('500 m');
-    expect(screen.getByTestId('editor-calle-ayuda')).toHaveTextContent('Toca dónde empieza la obra');
+    expect(screen.getByTestId('editor-calle-ayuda')).toHaveTextContent('Arrastra los extremos para recortar');
     fireEvent.click(screen.getByTestId('mapa-tocar'));
     fireEvent.click(screen.getByTestId('mapa-tocar'));
     expect(screen.getByTestId('editor-calle-largo')).toHaveTextContent('100 m');
@@ -426,5 +427,22 @@ describe('ServiceMapWeb', () => {
     fireEvent.click(screen.getByTestId('editor-calle-guardar'));
     expect(await screen.findByTestId('editor-calle-error')).toHaveTextContent('Ese trazo deja fuera un avance aprobado.');
     expect(screen.getByTestId('editor-calle')).toBeInTheDocument();
+  });
+
+  it('«Fotos» shows a marker per spot of the street, and a marker opens its photos (José 08/11)', async () => {
+    const photo = (id: string, meters: number, plate?: string): MapPhoto => ({ id, ...onStreet(meters), at: '2026-11-07T14:00:00.000Z', kind: 'photo', url: `https://lila.test/${id}.jpg`, thumbnailUrl: `https://lila.test/${id}-t.jpg`, reportType: 'CTL-PIS', ...(plate ? { plate } : {}) });
+    showMap(undefined, { mapPhotos: [photo('f1', 40, 'QAP-101'), photo('f2', 45), photo('f3', 300)] });
+    fireEvent.click(await screen.findByTestId('mapa-fotos'));
+    expect(screen.getByTestId('mapa-fotos')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('mapa-lienzo').dataset.pins).toBe('2');
+    fireEvent.click(screen.getByTestId('lienzo-pin-fotos-s1-43'));
+    expect(await screen.findByTestId('visor-fotos')).toBeInTheDocument();
+    expect(screen.getByTestId('visor-fotos')).toHaveTextContent('Control de pista · QAP-101 · Av. Los Olivos · 0+043');
+  });
+
+  it('without placed photos there is no «Fotos» button', async () => {
+    showMap();
+    await screen.findByTestId('mapa-lienzo');
+    expect(screen.queryByTestId('mapa-fotos')).toBeNull();
   });
 });

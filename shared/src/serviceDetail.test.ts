@@ -38,6 +38,12 @@ describe('serviceDetailOf', () => {
     expect(serviceDetailOf({ ...body, discharges: [] })!.discharges).toBeUndefined();
   });
 
+  it('brings the placed photos for the map\'s «Fotos» layer (José 08/11), and nothing without them', () => {
+    const mapPhotos = [{ id: 'm1', lat: -12.05, lng: -77.03, at: '2026-11-07T14:00:00.000Z', kind: 'photo', url: 'https://lila.test/m1.jpg', thumbnailUrl: 'https://lila.test/m1-t.jpg', reportType: 'CTL-IMP' }];
+    expect(serviceDetailOf({ ...body, mapPhotos })!.mapPhotos).toEqual(mapPhotos);
+    expect(serviceDetailOf(body)!.mapPhotos).toBeUndefined();
+  });
+
   it('is null without a service or without the lists', () => {
     expect(serviceDetailOf({ orders: [] })).toBeNull();
     expect(serviceDetailOf(null)).toBeNull();

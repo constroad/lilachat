@@ -1,5 +1,5 @@
 import { suggestDischarges as suggestSharedDischarges, type Discharge, type DischargeSuggestion as SharedSuggestion, type StreetAxis, type SuggestedStretch } from '@constroad/shared/obra';
-import { metersLabel, type WorkMap, type WorkMapPoint, type WorkMapStreet } from './workMap.js';
+import { metersLabel, stationLabel, type WorkMap, type WorkMapPoint, type WorkMapStreet } from './workMap.js';
 
 /**
  * From the Control de pista to the map (design o-07): the photos of a unit carry
@@ -49,8 +49,29 @@ export function suggestDischarges(map: WorkMap, discharges: UnitDischarge[]): Di
   return { units, stretches: suggestion.stretches };
 }
 
+/** «3 de 4 unidades ubicadas»: «listas» read like a checklist (José 08/11: «no estoy entendiendo esta pantalla»). */
 export const dischargeHeadline = ({ units }: Pick<DischargeSuggestion, 'units'>) =>
-  `${units.filter((one) => one.state === 'placed').length} de ${units.length} listas`;
+  `${units.filter((one) => one.state === 'placed').length} de ${units.length} unidades ubicadas`;
+
+/** What the stretch is, in one sentence: whose photos, where, and that nothing counts yet. */
+export function dischargeExplain(stretch: Pick<SuggestedStretch, 'dispatchIds' | 'fromM' | 'toM' | 'streetName'>): string {
+  const count = stretch.dispatchIds.length;
+  const where = stretch.toM > stretch.fromM ? `entre ${stationLabel(stretch.fromM)} y ${stationLabel(stretch.toM)}` : `en ${stationLabel(stretch.fromM)}`;
+  const who = count === 1 ? 'La foto de 1 unidad cae' : `Las fotos de ${count} unidades caen`;
+  return `${who} ${where} de ${stretch.streetName}. Revisa el tramo y confírmalo: recién ahí se suma al avance.`;
+}
+
+/** The units that add nothing to the stretch, and why; `null` when every unit is on a street. */
+export function dischargeGaps({ units }: Pick<DischargeSuggestion, 'units'>): string | null {
+  const outside = units.filter((one) => one.state === 'outside').length;
+  const noPlace = units.filter((one) => one.state === 'noPlace').length;
+  const parts = [outside ? `${outside} fuera de las calles de la obra` : null, noPlace ? `${noPlace} sin ubicación en sus fotos` : null].filter(Boolean);
+  return parts.length ? parts.join(' · ') : null;
+}
+
+/** How the suggestion is made, under the title. */
+export const DISCHARGE_HOW = 'Cada unidad toma fotos al descargar. Los números del mapa son esas fotos.';
+export const DISCHARGE_TITLE = 'Avance que marcan las unidades';
 
 /** A single photo measures no stretch: there is nothing to confirm until the person adjusts it. */
 export const confirmDischargeLabel = ({ lengthM }: Pick<SuggestedStretch, 'lengthM'>): string | null =>

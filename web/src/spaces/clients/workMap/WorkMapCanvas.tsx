@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl/dist/maplibre-gl-csp';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-csp-worker?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark, NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE_URL, workMapCollection, type BasemapFeatureLike, type DischargePin, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
+import { STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark, NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE_URL, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -31,21 +31,59 @@ function addWorkLayers(map: maplibregl.Map) {
 }
 
 /** A numbered pin per unit (design o-07): an HTML marker, so no font of the style is needed. */
-function pinElement(pin: DischargePin): HTMLElement {
-  const element = document.createElement('div');
+function pinElement(pin: DischargePin, onPin: { current: ((id: string) => void) | undefined }): HTMLElement {
+  const element = document.createElement(onPin.current ? 'button' : 'div');
   element.dataset.testid = `pin-${pin.id}`;
-  element.className = `flex h-6 w-6 items-center justify-center rounded-full border-2 border-surface text-[11px] font-bold text-on-primary shadow ${pin.outside ? 'bg-error' : 'bg-primary'}`;
+  element.className = `flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-surface px-1 text-[11px] font-bold text-on-primary shadow ${pin.outside ? 'bg-error' : 'bg-primary'}`;
   element.textContent = pin.label;
+  if (onPin.current) {
+    // A photo marker (José 08/11): the click opens its photos and does not reach the map.
+    element.setAttribute('aria-label', `${pin.label} fotos aquí`);
+    element.addEventListener('click', (event) => { event.stopPropagation(); onPin.current?.(pin.id); });
+  }
   return element;
 }
 
-function usePins(map: maplibregl.Map | null, ready: boolean, pins: DischargePin[]) {
+function usePins(map: maplibregl.Map | null, ready: boolean, pins: DischargePin[], onPin: { current: ((id: string) => void) | undefined }) {
   useEffect(() => {
     if (!ready || !map) return undefined;
-    const markers = pins.map((pin) => new maplibregl.Marker({ element: pinElement(pin) }).setLngLat([pin.lng, pin.lat]).addTo(map));
+    const markers = pins.map((pin) => new maplibregl.Marker({ element: pinElement(pin, onPin) }).setLngLat([pin.lng, pin.lat]).addTo(map));
     return () => markers.forEach((marker) => marker.remove());
-  }, [map, ready, pins]);
+  }, [map, ready, pins, onPin]);
 }
+
+/** A draggable end of a picked street (José 08/11): a ring with its chainage under it. */
+function handleElement(handle: StreetHandle): HTMLElement {
+  const element = document.createElement('div');
+  element.dataset.testid = `editor-extremo-${handle.handle}`;
+  element.className = 'flex cursor-grab flex-col items-center active:cursor-grabbing';
+  const ring = document.createElement('span');
+  ring.className = 'h-7 w-7 rounded-full border-4 border-primary bg-surface shadow-md';
+  const label = document.createElement('span');
+  label.className = 'mt-0.5 rounded-md bg-surface px-1.5 font-mono text-[11px] font-bold text-on-surface shadow';
+  label.textContent = handle.label;
+  element.append(ring, label);
+  return element;
+}
+
+type HandleDrop = (handle: StreetEnd, point: WorkMapPoint) => void;
+
+function useHandles(map: maplibregl.Map | null, ready: boolean, handles: StreetHandle[], onDrop: { current: HandleDrop | undefined }) {
+  useEffect(() => {
+    if (!ready || !map) return undefined;
+    const markers = handles.map((handle) => {
+      const marker = new maplibregl.Marker({ element: handleElement(handle), draggable: true, anchor: 'top', offset: [0, -14] }).setLngLat([handle.point.lng, handle.point.lat]).addTo(map);
+      marker.on('dragend', () => {
+        const { lat, lng } = marker.getLngLat();
+        onDrop.current?.(handle.handle, { lat, lng });
+      });
+      return marker;
+    });
+    return () => markers.forEach((marker) => marker.remove());
+  }, [map, ready, handles, onDrop]);
+}
+
+const NO_HANDLES: StreetHandle[] = [];
 
 const isCoarsePointer = (): boolean => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches === true;
 
@@ -71,7 +109,7 @@ function roadsAt(map: maplibregl.Map, event: maplibregl.MapMouseEvent): TapFeatu
 
 /** The streets of the work over a literal map (José 06/11). Lazy: its library weighs more than the chat. */
 /** `onTap`: drawing a street (design o-02), each tap is a bend; the map also offers «ubicarme» when there is nothing to frame. */
-export default function WorkMapCanvas(props: { view: WorkMapView; expanded: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void }) {
+export default function WorkMapCanvas(props: { view: WorkMapView; expanded: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void; /** Draggable ends of a picked street (José 08/11). */ handles?: StreetHandle[]; onHandleDrop?: HandleDrop; /** A tap on a pin (the «Fotos» layer, José 08/11). */ onPin?: (id: string) => void }) {
   const { view, expanded } = props;
   const holder = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -79,6 +117,10 @@ export default function WorkMapCanvas(props: { view: WorkMapView; expanded: bool
   const [ready, setReady] = useState(false);
   const onTap = useRef(props.onTap);
   onTap.current = props.onTap;
+  const onPin = useRef(props.onPin);
+  onPin.current = props.onPin;
+  const onHandleDrop = useRef(props.onHandleDrop);
+  onHandleDrop.current = props.onHandleDrop;
 
   useEffect(() => {
     if (!holder.current) return undefined;
@@ -119,7 +161,8 @@ export default function WorkMapCanvas(props: { view: WorkMapView; expanded: bool
   useEffect(() => {
     if (ready) (map.current?.getSource(STATIONS) as maplibregl.GeoJSONSource | undefined)?.setData(stationMarkCollection(props.stations ?? NO_STATIONS));
   }, [ready, props.stations]);
-  usePins(map.current, ready, props.pins ?? NO_PINS);
+  usePins(map.current, ready, props.pins ?? NO_PINS, onPin);
+  useHandles(map.current, ready, props.handles ?? NO_HANDLES, onHandleDrop);
 
   // MapLibre's stylesheet makes its container `relative`: on the holder itself `absolute` lost and the map measured 0 high.
   return (

@@ -4,12 +4,21 @@ import type { WorkMapView } from '@lilachat/shared';
 import type { StreetSend } from './workProgressSender';
 import { WorkStreetEditor } from './WorkStreetEditor';
 
+type CanvasProps = { view: WorkMapView; pins?: unknown[]; handles?: Array<{ label: string }>; onTap?: (point: unknown, roads: unknown) => void; onHandleDrop?: (handle: 'start' | 'end', point: unknown) => void };
 vi.mock('./WorkMapCanvas', () => ({
-  default: (props: { view: WorkMapView; pins?: unknown[] }) => <div data-testid="mapa-lienzo" data-pins={props.pins?.length ?? 0} />,
+  default: (props: CanvasProps) => (
+    <div data-testid="mapa-lienzo" data-pins={props.pins?.length ?? 0} data-handles={(props.handles ?? []).map((one) => one.label).join(',')}>
+      <button type="button" data-testid="lienzo-tocar-calle" onClick={() => props.onTap?.(east(100), roadsAt(100))} />
+      <button type="button" data-testid="lienzo-soltar-fin" onClick={() => props.onHandleDrop?.('end', east(400))} />
+    </div>
+  ),
 }));
 
 /** «Caminar con GPS» (design o-13, step 3, José 07/11) on the web. */
 const M_PER_DEG_LNG = 111_195 * Math.cos((12 * Math.PI) / 180);
+const east = (meters: number) => ({ lat: -12, lng: -77 + meters / M_PER_DEG_LNG });
+const road = (name?: string) => ({ properties: { class: 'minor', ...(name ? { name } : {}) }, geometry: { type: 'LineString', coordinates: [[east(0).lng, -12], [east(500).lng, -12]] } });
+const roadsAt = (meters: number) => ({ underFinger: [road()], nearby: [road('Jr. Los Pinos')], tap: east(meters) });
 type Report = (position: { coords: { latitude: number; longitude: number; accuracy: number } }) => void;
 let report: Report = () => undefined;
 const clearWatch = vi.fn();
@@ -121,5 +130,26 @@ describe('WorkStreetEditor, what the audit of 08/11 found', () => {
   it('without stages there is no stage field', () => {
     render(<WorkStreetEditor title="Obra" map={null} send={vi.fn()} onClose={vi.fn()} onSaved={vi.fn()} />);
     expect(screen.queryByTestId('editor-calle-etapa')).toBeNull();
+  });
+});
+
+describe('WorkStreetEditor, trimming the picked street (José 08/11)', () => {
+  it('the ends of the street drag, and «−10 m» / «+10 m» fine-tune the end', async () => {
+    render(<WorkStreetEditor title="Obra" map={null} send={vi.fn()} onClose={vi.fn()} onSaved={vi.fn()} />);
+    fireEvent.click(await screen.findByTestId('lienzo-tocar-calle'));
+    expect(screen.getByTestId('mapa-lienzo').dataset.handles).toBe('0+000,0+500');
+    expect(screen.getByTestId('mapa-lienzo').dataset.pins).toBe('0');
+    fireEvent.click(screen.getByTestId('lienzo-soltar-fin'));
+    expect(screen.getByTestId('editor-calle-largo')).toHaveTextContent('400 m');
+    expect(screen.getByTestId('mapa-lienzo').dataset.handles).toBe('0+000,0+400');
+    fireEvent.click(screen.getByTestId('editor-fin-mas'));
+    expect(screen.getByTestId('editor-calle-largo')).toHaveTextContent('410 m');
+    fireEvent.click(screen.getByTestId('editor-inicio-mas'));
+    expect(screen.getByTestId('editor-calle-largo')).toHaveTextContent('400 m');
+  });
+
+  it('without a street picked there is nothing to trim', () => {
+    render(<WorkStreetEditor title="Obra" map={null} send={vi.fn()} onClose={vi.fn()} onSaved={vi.fn()} />);
+    expect(screen.queryByTestId('editor-extremos')).toBeNull();
   });
 });

@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { WorkMap, WorkMapPoint } from './workMap.js';
 import {
   confirmDischargeLabel,
+  dischargeExplain,
+  dischargeGaps,
   dischargeHeadline,
   suggestDischarges,
   type UnitDischarge,
@@ -172,7 +174,8 @@ describe('suggestDischarges', () => {
     const suggestion = suggestDischarges(workMap(), units);
 
     // Assert
-    expect(dischargeHeadline(suggestion)).toBe('1 de 3 listas');
+    expect(dischargeHeadline(suggestion)).toBe('1 de 3 unidades ubicadas');
+    expect(dischargeGaps(suggestion)).toBe('1 fuera de las calles de la obra · 1 sin ubicación en sus fotos');
   });
 });
 
@@ -197,5 +200,20 @@ describe('confirmDischargeLabel', () => {
 
     // Assert
     expect(stretches[0] && confirmDischargeLabel(stretches[0])).toBeNull();
+  });
+});
+
+/** José 08/11 «no estoy entendiendo esta pantalla»: the card says in words what the figures mean. */
+describe('the suggested progress, in words', () => {
+  it('says which units fell where, and that nothing counts until it is confirmed', () => {
+    const units = [unit('6aeea2fdf3e8b385195281f1', 'QAP-101', 7.5, north(40)), unit('6aeea2fdf3e8b385195281f2', 'QAP-104', 7.5, north(120))];
+    const suggestion = suggestDischarges(workMap(), units);
+    expect(dischargeExplain(suggestion.stretches[0]!)).toBe('Las fotos de 2 unidades caen entre 0+040 y 0+120 de Jr. Los Pinos. Revisa el tramo y confírmalo: recién ahí se suma al avance.');
+    expect(dischargeGaps(suggestion)).toBeNull();
+  });
+
+  it('one unit reads in singular', () => {
+    const suggestion = suggestDischarges(workMap(), [unit('6aeea2fdf3e8b385195281f1', 'QAP-101', 7.5, north(40))]);
+    expect(dischargeExplain(suggestion.stretches[0]!)).toMatch(/^La foto de 1 unidad cae en 0\+040 de Jr\. Los Pinos\./);
   });
 });

@@ -156,7 +156,7 @@ const OUTSIDE_COLOR = '#dc2626';
 /** The pins as a MapLibre source: the APK draws them as a circle and its number. */
 export const dischargePinCollection = (pins: DischargePin[]) => ({
   type: 'FeatureCollection' as const,
-  features: pins.map((pin) => ({ type: 'Feature' as const, properties: { label: pin.label, color: pin.outside ? OUTSIDE_COLOR : STRETCH_COLOR }, geometry: { type: 'Point' as const, coordinates: [pin.lng, pin.lat] as [number, number] } })),
+  features: pins.map((pin) => ({ type: 'Feature' as const, properties: { id: pin.id, label: pin.label, color: pin.outside ? OUTSIDE_COLOR : STRETCH_COLOR }, geometry: { type: 'Point' as const, coordinates: [pin.lng, pin.lat] as [number, number] } })),
 });
 
 export type StretchRange = { fromM: number; toM: number };

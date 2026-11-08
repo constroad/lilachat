@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { lazyChunk } from '../../../ui/lazyChunk';
 import { ArchiveRestore, ChevronRight, Download, ExternalLink, Layers, Maximize2, Minimize2, Paintbrush, Plus, Share2, TrendingUp, Undo2, X } from 'lucide-react';
-import { bareLinesOf, visibleStationMarks, brushLinesOf, brushTitle, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange } from '@lilachat/shared';
+import { bareLinesOf, visibleStationMarks, brushLinesOf, brushTitle, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type MapPhoto } from '@lilachat/shared';
 import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
 import { ShareProgress } from './ShareProgress';
@@ -11,6 +11,7 @@ import type { StreetDeleteSend } from './StreetDelete';
 import { StreetScopes } from './StreetScopes';
 import { DeletedWork } from './DeletedWork';
 import { useBrush, WorkLayers, type LayersKind } from './WorkLayers';
+import { PhotoToggle, usePhotoLayer } from './MapPhotos';
 
 const WorkMapCanvas = lazyChunk(() => import('./WorkMapCanvas'));
 
@@ -75,7 +76,7 @@ function useDischarges(map: WorkMap, discharges: UnitDischarge[]) {
   return { suggestion, ranges, onRange, pins, stretches };
 }
 
-type BoardProps = { map: WorkMap; pageUrl: string; title: string; serviceId: string; /** Crumbs and title (o-01). */ head?: ReactNode; /** The service's tabs: beside the actions on a wide board, on their own row on a narrow one. */ tabs?: ReactNode; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» and «Restaurar» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<File>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<File>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport };
+type BoardProps = { map: WorkMap; pageUrl: string; title: string; serviceId: string; /** Crumbs and title (o-01). */ head?: ReactNode; /** The service's tabs: beside the actions on a wide board, on their own row on a narrow one. */ tabs?: ReactNode; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; /** Field photos with their place: the «Fotos» layer (José 08/11). */ mapPhotos?: MapPhoto[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» and «Restaurar» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<File>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<File>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport };
 
 /** «¿En qué calle?» when «Registrar avance» could go to several streets. */
 function StreetPick(props: { streets: Array<{ id: string; name: string }>; onPick: (streetId: string) => void; onClose: () => void }) {
@@ -160,6 +161,7 @@ export function WorkMapBoard(props: BoardProps) {
   const stations = useMemo(() => visibleStationMarks(map.streets, view.streets.map((street) => street.id)), [map, view]);
   const bare = useMemo(() => bareLinesOf({ streets: map.streets.filter((street) => view.streets.some((shown) => shown.id === street.id)), scopes: map.scopes }), [map, view]);
   const pista = useDischarges(map, props.discharges ?? NO_DISCHARGES);
+  const photoLayer = usePhotoLayer(map, props.mapPhotos);
   const { holder, expanded, open, close } = useFullScreen();
   const wide = useWide(holder);
   const top = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null;
@@ -182,8 +184,9 @@ export function WorkMapBoard(props: BoardProps) {
       <div className={wide ? 'flex min-h-0 flex-1' : 'flex flex-col'}>
         <div className={`relative overflow-hidden bg-surface-variant ${wide ? 'min-w-0 flex-1' : 'h-[58vh] min-h-[320px] shrink-0'}`}>
           <Suspense fallback={<div data-testid="mapa-cargando-lienzo" className="absolute inset-0 animate-pulse bg-surface-variant" />}>
-            <WorkMapCanvas view={view} expanded={expanded} stations={stations} bare={bare} pins={pista.pins} stretches={brushing.brush ? brushLines : pista.stretches} onTap={brushing.brush ? (place) => void brushing.tap(place) : undefined} />
+            <WorkMapCanvas view={view} expanded={expanded} stations={stations} bare={bare} pins={photoLayer.shown ? photoLayer.pins : pista.pins} onPin={photoLayer.shown ? photoLayer.openPin : undefined} stretches={brushing.brush ? brushLines : pista.stretches} onTap={brushing.brush ? (place) => void brushing.tap(place) : undefined} />
           </Suspense>
+          {photoLayer.available && !brushing.brush ? <PhotoToggle shown={photoLayer.shown} count={photoLayer.count} onToggle={photoLayer.toggle} /> : null}
           {wide && !brushing.brush ? <MapFilters map={map} view={view} filter={filter} onFilter={setFilter} floating /> : null}
           {brushing.brush ? <BrushBand title={brushTitle(map, brushing.brush)} error={brushing.error} busy={brushing.busy} canUndo={brushing.canUndo} onUndo={() => void brushing.undo()} onDone={() => brushing.setBrush(null)} /> : null}
           <MapLegend view={view} compact={!wide} />
@@ -193,6 +196,7 @@ export function WorkMapBoard(props: BoardProps) {
           {panel}
         </aside>
       </div>
+      {photoLayer.viewer}
     </div>
   );
 }

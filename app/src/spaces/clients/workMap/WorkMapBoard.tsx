@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { ArchiveRestore, ChevronRight, Download, ExternalLink, Layers, Maximize2, Paintbrush, Plus, Share2, TrendingUp, X } from 'lucide-react-native';
-import { bareLinesOf, visibleStationMarks, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StationMark, type StretchRange, type UnitDischarge, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { bareLinesOf, visibleStationMarks, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StationMark, type StretchRange, type UnitDischarge, type MapPhoto, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
@@ -18,18 +18,23 @@ import { StreetScopes } from './StreetScopes';
 import { DeletedWork } from './DeletedWork';
 import { WorkMapSurface } from './WorkMapSurface';
 import { BrushMap, WorkLayersSheet, type LayersKind } from './WorkLayers';
+import { PhotoToggle, usePhotoLayer } from './MapPhotos';
 
-function FullMap(props: { view: WorkMapView; open: boolean; onClose: () => void; pins: DischargePin[]; stretches: WorkMapLine[]; stations: StationMark[]; bare: WorkMapLine[] }) {
+type PhotoLayer = ReturnType<typeof usePhotoLayer>;
+
+function FullMap(props: { view: WorkMapView; open: boolean; onClose: () => void; pins: DischargePin[]; stretches: WorkMapLine[]; stations: StationMark[]; bare: WorkMapLine[]; photos: PhotoLayer }) {
   const colors = useColores();
   const margins = useMargenes();
   return (
     <Modal visible={props.open} animationType="slide" onRequestClose={props.onClose}>
       <View className="flex-1 bg-background">
-        {props.open ? <WorkMapSurface view={props.view} moves stations={props.stations} bare={props.bare} pins={props.pins} stretches={props.stretches} /> : null}
+        {props.open ? <WorkMapSurface view={props.view} moves stations={props.stations} bare={props.bare} pins={props.photos.shown ? props.photos.pins : props.pins} onPin={props.photos.shown ? props.photos.openPin : undefined} stretches={props.stretches} /> : null}
+        {props.photos.available ? <PhotoToggle shown={props.photos.shown} count={props.photos.count} onToggle={() => props.photos.setShown(!props.photos.shown)} style={{ bottom: margins.pie + 24 }} /> : null}
         <Pressable testID="mapa-cerrar-completo" accessibilityLabel="Cerrar el mapa" onPress={props.onClose} className="absolute right-3 h-12 w-12 items-center justify-center rounded-full bg-surface" style={{ top: margins.cabecera + 8 }}>
           <X size={22} color={colors['on-surface']} />
         </Pressable>
       </View>
+      {props.photos.viewer}
     </Modal>
   );
 }
@@ -45,7 +50,7 @@ function useDischarges(map: WorkMap, discharges: UnitDischarge[]) {
   return { suggestion, ranges, pins, stretches, onRange: (streetId: string, range: StretchRange) => setRanges((before) => ({ ...before, [streetId]: range })) };
 }
 
-type BoardProps = { map: WorkMap; pageUrl: string; height: number; title: string; serviceId: string; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» and «Restaurar» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<PhotoAsset>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<TraceFile>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport };
+type BoardProps = { map: WorkMap; pageUrl: string; height: number; title: string; serviceId: string; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; /** Field photos with their place: the «Fotos» layer (José 08/11). */ mapPhotos?: MapPhoto[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» and «Restaurar» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<PhotoAsset>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<TraceFile>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport };
 
 /** «¿En qué calle?» when «Registrar avance» could go to several streets. */
 function StreetPick(props: { target: ProgressTarget | null; onPick: (streetId: string) => void; onClose: () => void }) {
@@ -135,6 +140,7 @@ export function WorkMapBoard(props: BoardProps) {
   const stations = useMemo(() => visibleStationMarks(map.streets, view.streets.map((street) => street.id)), [map, view]);
   const bare = useMemo(() => bareLinesOf({ streets: map.streets.filter((street) => view.streets.some((shown) => shown.id === street.id)), scopes: map.scopes }), [map, view]);
   const pista = useDischarges(map, props.discharges ?? NO_DISCHARGES);
+  const photos = usePhotoLayer(map, props.mapPhotos);
   const top = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null;
   return (
     <View testID="mapa-servicio" className="gap-3">
@@ -149,15 +155,17 @@ export function WorkMapBoard(props: BoardProps) {
       <WorkMapFilters map={map} view={view} filter={filter} onFilter={setFilter} />
       <View className="-mx-4 overflow-hidden bg-surface-variant" style={{ height }}>
         <View pointerEvents="none" className="absolute inset-0">
-          {wide ? null : <WorkMapSurface view={view} moves={false} stations={stations} bare={bare} pins={pista.pins} stretches={pista.stretches} />}
+          {wide ? null : <WorkMapSurface view={view} moves={false} stations={stations} bare={bare} pins={photos.shown ? photos.pins : pista.pins} stretches={pista.stretches} />}
         </View>
+        {/* The small map does not take taps: «Fotos» opens the full one, where a marker opens its photos. */}
+        {photos.available ? <PhotoToggle shown={photos.shown} count={photos.count} onToggle={() => { photos.setShown(true); setWide(true); }} style={{ bottom: 16 }} /> : null}
         <WorkMapLegend view={view} />
         <Pressable testID="mapa-pantalla-completa" accessibilityLabel="Ver mapa completo" onPress={() => setWide(true)} className="absolute right-3 top-3 h-11 w-11 items-center justify-center rounded-xl border border-outline/15 bg-surface">
           <Maximize2 size={18} color={colors['on-surface']} />
         </Pressable>
       </View>
       <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} deleteStreet={props.deleteStreet} onOpenStreet={(id) => openStreet(id)} />
-      <FullMap view={view} open={wide} onClose={() => setWide(false)} pins={pista.pins} stretches={pista.stretches} stations={stations} bare={bare} />
+      <FullMap view={view} open={wide} onClose={() => setWide(false)} pins={pista.pins} stretches={pista.stretches} stations={stations} bare={bare} photos={photos} />
       {props.editMap ? <DeletedWork open={seeingDeleted} map={map} send={props.editMap} onClose={() => setSeeingDeleted(false)} /> : null}
       <StreetScopes map={map} streetId={streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} startRecording={recordingStart} onClose={() => openStreet(null)} />
       <StreetPick target={choosing} onPick={(id) => openStreet(id, true)} onClose={() => setChoosing(null)} />

@@ -934,3 +934,70 @@ Modal y no en la hoja.
 
 Visto de paso: en la brocha a pantalla completa, el botón de ubicación abajo a la derecha queda
 pegado a la barra de navegación. Se puede tocar, pero queda justo.
+
+## José 08/11: recortar la calle, fotos en el mapa y «Avance sugerido» entendible
+
+**Recortar la calle arrastrando el extremo.** José: «selecciono toda la calle, pero no quiero los
+últimos 100 m. ¿Es más fácil arrastrar el último punto?». Sí. Es lo que hacen Google My Maps y
+Mapbox Draw, y lo que ya tiene el editor de Portal (`dragScopeHandle`).
+- Al tocar una calle aparecen dos extremos, «0+000» y «Fin 0+500». Se arrastran sobre la calle.
+- El punto soltado se proyecta al eje de la calle, así que el tramo nunca sale de la vía.
+- Más de 40 m fuera del eje no mueve nada y avisa «Suelta el extremo sobre la calle.».
+- Entre los extremos quedan al menos 5 m, igual que en Portal (`MIN_SCOPE_M`).
+- Debajo de la banda hay «Inicio −10 m +10 m · Fin −10 m +10 m», para el ajuste fino que el dedo
+  no da.
+- En una calle marcada al revés, «Inicio» sigue siendo el 0+000 de la persona.
+- Portal sigue midiendo el trazo recortado. La herramienta `guardar_calle_de_obra` no cambia, así
+  que no hace falta reaprobarla.
+- Motor: `streetDraftHandles`, `dragStreetEnd` y `nudgeStreetEnd` en `workStreetPick.ts`, con
+  10 tests nuevos. Web: marcadores `draggable` de MapLibre. APK: `ViewAnnotation` con `draggable`.
+
+**Auditoría: fotos con ubicación y avance.** Esto es lo que hay hoy:
+- Lilachat manda `lat`/`lng` con TODA foto de informe, tanto del Control de pista como del Control
+  de imprimación.
+- Portal sella el lugar en la imagen y lo guarda en la referencia de la foto dentro del informe.
+- Pero `metadata.geo` solo se guarda cuando la foto trae `tipoFoto`, es decir, solo en las fotos de
+  unidad del Control de pista (`portalFieldReportStore.unitMetadataOf`).
+- Por eso solo el Control de pista llega al mapa, como `discharges`. Ahí cada unidad ya se ubica en
+  su calle y progresiva, y eso arma el «Avance sugerido».
+- Las fotos del Control de imprimación no llegan al mapa ni al avance.
+- `discharges` trae los puntos sin la URL de la foto, así que el mapa no podía mostrarla.
+
+Se le pidió a Portal (08/11):
+- guardar `metadata.geo` en toda foto con ubicación;
+- enviar `mapPhotos` en el detalle del servicio: `{ id, lat, lng, at, kind, url, thumbnailUrl,
+  reportType, reportId, plate… }`;
+- dar su opinión sobre sugerir avance desde las fotos del CTL-IMP.
+
+Portal propone tratar el CTL-IMP como avance PENDIENTE que confirma el ingeniero:
+- La calle sale de las fotos del tramo de riego, proyectadas.
+- El rango sale de «Progresiva de / al» si se leen bien y caen en esa calle. Si no, sale del mínimo
+  y el máximo de las fotos.
+- Se confirma con `registrar_avance_manual_de_obra`, que ya existe, con el trabajo «Imprimación».
+  Así no hace falta una herramienta nueva ni reaprobar nada. Queda como siguiente paso.
+
+**Capa «Fotos».** Hay un botón «Fotos · N» sobre el mapa.
+- Cada foto cae en su calle y progresiva. Las que quedan a 15 m o menos sobre la misma calle
+  comparten un marcador con su número de fotos.
+- Las fotos fuera de las calles de la obra van en rojo.
+- Tocar un marcador abre el visor de siempre, con las fotos y videos de ese punto. Van de la más
+  nueva a la más vieja, con su origen: «Control de pista · QAA-001 · Jr. Los Pinos · 0+040».
+- En el APK el mapa chico no recibe toques, así que «Fotos» abre el mapa completo con la capa
+  encendida.
+- Sin `mapPhotos` el botón no aparece.
+- Portal ya lo envía (56752608, 08/11): las 300 más nuevas, con `at` igual a la hora de la toma y
+  las URLs del host público. Desde ese commit toda foto de informe con ubicación guarda
+  `metadata.geo`.
+- Las fotos subidas antes de ese commit sin `tipoFoto` no tienen lugar guardado y no salen. Tampoco
+  salen las de «Registrar avance» ni las subidas a mano al Drive, porque no guardan lugar.
+- Motor: `workMapPhotos.ts`, con 7 tests.
+
+**«Avance sugerido» → «Avance que marcan las unidades».** José: «no estoy entendiendo esta
+pantalla».
+- Debajo del título dice «Cada unidad toma fotos al descargar. Los números del mapa son esas
+  fotos.».
+- La pastilla dice «3 de 4 unidades ubicadas»; antes decía «3 de 4 listas».
+- Cada tramo lleva una frase: «Las fotos de 3 unidades caen entre 0+010 y 0+100 de QA-MAPA calle.
+  Revisa el tramo y confírmalo: recién ahí se suma al avance.».
+- Cuando alguna unidad no suma, dice por qué: «No suman: 1 fuera de las calles de la obra · 1 sin
+  ubicación en sus fotos.».

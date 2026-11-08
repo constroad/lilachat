@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import { Footprints, Navigation, Pause, Play, Save, Square, Undo2, X } from 'lucide-react-native';
-import { DRAW_MODES, EMPTY_STREET, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, WORK_MAP_DRAFT_COLOR, WORK_MAP_PLANNED_COLOR, walkedDraft, walkHint, walkPositionPins, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
+import { DRAW_MODES, dragStreetEnd, EMPTY_STREET, nudgeStreetEnd, streetDraftHandles, type StreetEnd, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, WORK_MAP_DRAFT_COLOR, WORK_MAP_PLANNED_COLOR, walkedDraft, walkHint, walkPositionPins, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
 import { useCurrentLocation } from '../../../chat/location/useCurrentLocation';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
@@ -14,6 +14,9 @@ const NO_STREETS: WorkMap = { streets: [], scopes: [], progress: [], works: [], 
 const FIELD = 'mt-1 h-12 rounded-xl border border-outline/25 bg-background px-3 text-[15px] text-on-surface';
 const LABEL = 'text-[12px] font-semibold uppercase text-on-surface-variant';
 const LENGTH_HINT = 'Medido en el mapa';
+const NO_PINS: never[] = [];
+/** One step of «−10 m» / «+10 m»: a finger lands within a few meters, the buttons finish the job. */
+const NUDGE_M = 10;
 const GPS_DENIED = 'Lilachat no tiene permiso de ubicación. Actívalo en Ajustes o dibuja la calle de otra forma.';
 
 type EditorProps = { open: boolean; title: string; map: WorkMap | null; send: StreetSend; onClose: () => void; onSaved: (message: string) => void };
@@ -78,6 +81,25 @@ function EditorLegend() {
   );
 }
 
+/** «Inicio −10 m +10 m · Fin −10 m +10 m»: the ends of the picked street, to the meter (José 08/11). */
+function EndNudges({ onNudge }: { onNudge: (handle: StreetEnd, deltaM: number) => void }) {
+  const ends: Array<{ handle: StreetEnd; label: string; key: string }> = [{ handle: 'start', label: 'Inicio', key: 'inicio' }, { handle: 'end', label: 'Fin', key: 'fin' }];
+  return (
+    <View testID="editor-extremos" className="mt-2 flex-row gap-2">
+      {ends.map((end) => (
+        <View key={end.key} className="flex-1 flex-row items-center gap-1">
+          <Text className="pr-1 text-[13px] font-semibold text-on-primary">{end.label}</Text>
+          {[-NUDGE_M, NUDGE_M].map((deltaM) => (
+            <Pressable key={deltaM} testID={`editor-${end.key}-${deltaM < 0 ? 'menos' : 'mas'}`} accessibilityLabel={`${end.label} 10 m hacia ${deltaM < 0 ? 'atrás' : 'adelante'}`} onPress={() => onNudge(end.handle, deltaM)} className="h-11 flex-1 items-center justify-center rounded-lg bg-on-primary/15">
+              <Text className="font-mono text-[13px] font-bold text-on-primary">{deltaM < 0 ? '−10 m' : '+10 m'}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function WorkStreetEditor(props: EditorProps) {
   const [draft, setDraft] = useState<StreetDraft>(EMPTY_STREET);
   const [entryId] = useState(() => randomUUID());
@@ -94,6 +116,12 @@ export function WorkStreetEditor(props: EditorProps) {
   const change = (next: Partial<StreetDraft>) => {
     setError(null);
     setDraft((before) => ({ ...before, ...next }));
+  };
+  const handles = useMemo(() => streetDraftHandles(draft), [draft]);
+  const onHandleDrop = (handle: StreetEnd, point: WorkMapPoint) => {
+    const dropped = dragStreetEnd(draft, handle, point);
+    setDraft(dropped.draft);
+    setError(dropped.problem);
   };
   const onTap = (_point: WorkMapPoint, roads: TapFeatures) => {
     const tapped = tapStreetDraft(draft, roads);
@@ -137,6 +165,7 @@ export function WorkStreetEditor(props: EditorProps) {
               <Footprints size={20} color={colors.primary} /><Text className="text-[16px] font-bold text-primary">Empezar a caminar</Text>
             </Pressable>
           ) : null}
+          {handles.length ? <EndNudges onNudge={(handle, deltaM) => { setError(null); setDraft((before) => nudgeStreetEnd(before, handle, deltaM)); }} /> : null}
           <View className="mt-2 flex-row gap-2">
             <Pressable testID="editor-calle-deshacer" disabled={!draft.points.length} onPress={() => { setError(null); if (draft.mode === 'gps') gps.undo(); else setDraft(undoStreetDraft); }} className={`h-11 flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-on-primary/15 ${draft.points.length ? '' : 'opacity-50'}`}>
               <Undo2 size={16} color={colors['on-primary']} /><Text className="text-[14px] font-semibold text-on-primary">Deshacer</Text>
@@ -147,7 +176,7 @@ export function WorkStreetEditor(props: EditorProps) {
           </View>
         </View>
         <View className="flex-1">
-          {props.open ? <WorkMapSurface view={view} moves pins={[...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} near={current.state === 'ready' ? current.location : null} /> : null}
+          {props.open ? <WorkMapSurface view={view} moves pins={handles.length ? NO_PINS : [...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} handles={handles} onHandleDrop={onHandleDrop} near={current.state === 'ready' ? current.location : null} /> : null}
           <EditorLegend />
         </View>
         <View className="border-t border-outline/15 bg-surface px-4 pt-3" style={{ paddingBottom: margins.pie + 12 }}>

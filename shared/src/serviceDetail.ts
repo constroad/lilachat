@@ -1,6 +1,7 @@
 import { limaDayKey } from './birthdays.js';
 import type { UnitDischarge } from './workMapDischarges.js';
 import { dischargesOf } from './workMapProgress.js';
+import { mapPhotosOf, type MapPhoto } from './workMapPhotos.js';
 import { billingOf, type ServiceBilling } from './serviceBilling.js';
 import type { ClientRecord } from './spaceClients.js';
 /**
@@ -55,6 +56,8 @@ export type ServiceDetail = {
   billing?: ServiceBilling;
   /** The units with placed photos (Portal 07/11): the map suggests the stretch they worked (design o-07). */
   discharges?: UnitDischarge[];
+  /** Every field photo with its place (José 08/11): the map's «Fotos» layer. */
+  mapPhotos?: MapPhoto[];
   totals: DetailTotals;
 };
 export type DetailTabKey = 'orders' | 'dispatches' | 'reports';
@@ -200,6 +203,7 @@ export function serviceDetailOf(body: unknown): ServiceDetail | null {
   const quotes = input.quotes === undefined ? undefined : (listOf(input.quotes, quoteOf) ?? undefined);
   const billing = billingOf(input.billing);
   const discharges = dischargesOf(input.discharges);
+  const mapPhotos = mapPhotosOf(input.mapPhotos);
   return {
     service: serviceHeadOf(service),
     orders,
@@ -208,6 +212,7 @@ export function serviceDetailOf(body: unknown): ServiceDetail | null {
     ...(quotes ? { quotes } : {}),
     ...(billing ? { billing } : {}),
     ...(discharges.length ? { discharges } : {}),
+    ...(mapPhotos.length ? { mapPhotos } : {}),
     totals: totalsOf(input.totals, { orders, dispatches, reports, quotes }),
   };
 }

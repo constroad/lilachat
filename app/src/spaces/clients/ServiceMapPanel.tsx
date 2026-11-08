@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, useWindowDimensions, View } from 'react-native';
-import { afterQuietReload, deleteThenReload, editThenReload, loadWorkMap, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, serviceMapPage, type ChannelLinks, type UnitDischarge, type WorkMap, type WorkMapState } from '@lilachat/shared';
+import { afterQuietReload, deleteThenReload, editThenReload, loadWorkMap, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, serviceMapPage, type ChannelLinks, type UnitDischarge, type MapPhoto, type WorkMap, type WorkMapState } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 import type { PhotoAsset } from './workMap/ManualProgress';
@@ -50,7 +50,7 @@ const PortalLink = (props: { url: string }) => (
 );
 
 /** «Mapa» of a service (José 06/11: «el mapa literal de la obra»), drawn with what Portal shows a client. */
-export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; target: ServiceTarget; title: string; badge?: ReactNode; /** Where the streets are drawn today (Portal's «Mapa» tab). */ drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend; /** «Guardar calle» (o-02): everyone draws (José 07/11). */ drawStreet?: StreetSend; /** «Borrar calle»: anyone, an admin restores (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<PhotoAsset>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<TraceFile>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport }) {
+export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; target: ServiceTarget; title: string; badge?: ReactNode; /** Where the streets are drawn today (Portal's «Mapa» tab). */ drawUrl?: string | null; discharges?: UnitDischarge[]; /** Field photos with their place (José 08/11). */ mapPhotos?: MapPhoto[]; send?: ProgressSend; /** «Guardar calle» (o-02): everyone draws (José 07/11). */ drawStreet?: StreetSend; /** «Borrar calle»: anyone, an admin restores (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<PhotoAsset>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<TraceFile>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport }) {
   const screen = useWindowDimensions();
   const { state, ask } = useServiceMap(props.jwt, props.links, props.target);
   const [drawing, setDrawing] = useState(false);
@@ -73,5 +73,5 @@ export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; targe
   }
   const editor = props.drawStreet ? <WorkStreetEditor open={drawing} title={props.title} map={state.map} send={props.drawStreet} onClose={() => setDrawing(false)} onSaved={() => { setDrawing(false); void ask(); }} /> : null;
   if (!state.map) return <>{editor}<WorkMapFirst drawUrl={props.drawUrl ?? null} onDraw={onDraw} trace={editMap && props.uploadTrace ? <ImportTrace send={editMap} upload={props.uploadTrace} /> : null} /></>;
-  return <>{editor}<WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} height={height} title={props.title} serviceId={props.target.serviceId} badge={props.badge} discharges={props.discharges} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} editMap={editMap} admin={props.admin} uploadPhoto={props.uploadPhoto} uploadTrace={props.uploadTrace} mapInReport={props.mapInReport} /></>;
+  return <>{editor}<WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} height={height} title={props.title} serviceId={props.target.serviceId} badge={props.badge} discharges={props.discharges} mapPhotos={props.mapPhotos} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} editMap={editMap} admin={props.admin} uploadPhoto={props.uploadPhoto} uploadTrace={props.uploadTrace} mapInReport={props.mapInReport} /></>;
 }

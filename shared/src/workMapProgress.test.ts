@@ -164,8 +164,8 @@ describe('dischargePinCollection (the APK draws pins as a layer)', () => {
   it('turns each pin into a point with its number and its color', () => {
     const collection = dischargePinCollection([{ id: 'a', label: '1', lat: -12, lng: -77, outside: false }, { id: 'd', label: '2', lat: -11.98, lng: -77, outside: true }]);
     expect(collection.features.map((feature) => [feature.properties, feature.geometry.coordinates])).toEqual([
-      [{ label: '1', color: '#7c3aed' }, [-77, -12]],
-      [{ label: '2', color: '#dc2626' }, [-77, -11.98]],
+      [{ id: 'a', label: '1', color: '#7c3aed' }, [-77, -12]],
+      [{ id: 'd', label: '2', color: '#dc2626' }, [-77, -11.98]],
     ]);
   });
 });

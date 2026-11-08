@@ -1,8 +1,8 @@
 import { useRef } from 'react';
-import { View } from 'react-native';
-import { Camera, GeoJSONSource, Layer, Map as MapSurface, type CameraRef, type MapRef } from '@maplibre/maplibre-react-native';
+import { Text, View } from 'react-native';
+import { Camera, GeoJSONSource, Layer, Map as MapSurface, ViewAnnotation, type CameraRef, type MapRef } from '@maplibre/maplibre-react-native';
 import { MapControls } from './MapControls';
-import { dischargePinCollection, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE_URL, workMapCollection, type BasemapFeatureLike, type DischargePin, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView , STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark } from '@lilachat/shared';
+import { dischargePinCollection, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE_URL, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView , STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark } from '@lilachat/shared';
 
 const LINE_ENDS = { 'line-cap': 'round', 'line-join': 'round' } as const;
 const EDGE = { top: 48, right: 48, bottom: 48, left: 48 };
@@ -33,8 +33,23 @@ async function roadsAt(map: MapRef | null, point: [number, number], tap: WorkMap
   return { underFinger: roads(under), nearby: roads(inView).filter((feature) => typeof feature.properties?.name === 'string'), tap };
 }
 
+const NO_HANDLES: StreetHandle[] = [];
+
+/** A draggable end of a picked street (José 08/11): a ring with its chainage under it. */
+function EndHandle(props: { handle: StreetHandle; onDrop?: (handle: StreetEnd, point: WorkMapPoint) => void }) {
+  const { handle } = props;
+  return (
+    <ViewAnnotation id={`extremo-${handle.handle}`} lngLat={[handle.point.lng, handle.point.lat]} anchor="top" offset={[0, -16]} draggable onDragEnd={(event) => { const [lng, lat] = event.nativeEvent.lngLat; props.onDrop?.(handle.handle, { lat, lng }); }}>
+      <View testID={`editor-extremo-${handle.handle}`} className="items-center">
+        <View className="h-8 w-8 rounded-full border-4 border-primary bg-surface" />
+        <Text className="mt-0.5 rounded-md bg-surface px-1.5 font-mono text-[11px] font-bold text-on-surface">{handle.label}</Text>
+      </View>
+    </ViewAnnotation>
+  );
+}
+
 /** `onTap` draws a street (o-02): each tap is a bend. `near` frames where the phone is when there is nothing drawn yet. */
-export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void; near?: WorkMapPoint | null }) {
+export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void; near?: WorkMapPoint | null; /** Draggable ends of a picked street (José 08/11). */ handles?: StreetHandle[]; onHandleDrop?: (handle: StreetEnd, point: WorkMapPoint) => void; /** A tap on a pin (the «Fotos» layer, José 08/11). */ onPin?: (id: string) => void }) {
   const { view, moves } = props;
   const map = useRef<MapRef>(null);
   const camera = useRef<CameraRef>(null);
@@ -64,10 +79,11 @@ export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?
         <Layer id="work-map-station-dot" type="circle" paint={STATION_DOT_PAINT} />
         <Layer id="work-map-station-text" type="symbol" layout={STATION_TEXT_LAYOUT as never} paint={STATION_TEXT_PAINT} />
       </GeoJSONSource>
-      <GeoJSONSource id="work-map-pins" data={dischargePinCollection(props.pins ?? NO_PINS)}>
+      <GeoJSONSource id="work-map-pins" data={dischargePinCollection(props.pins ?? NO_PINS)} onPress={props.onPin ? (event) => { const id = event.nativeEvent.features[0]?.properties?.id; if (typeof id === 'string') props.onPin?.(id); } : undefined}>
         <Layer id="work-map-pin-dot" type="circle" paint={{ 'circle-color': ['get', 'color'], 'circle-radius': 11, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 }} />
         <Layer id="work-map-pin-number" type="symbol" layout={{ 'text-field': ['get', 'label'], 'text-font': PIN_FONT, 'text-size': 12, 'text-allow-overlap': true }} paint={{ 'text-color': '#ffffff' }} />
       </GeoJSONSource>
+      {(props.handles ?? NO_HANDLES).map((handle) => <EndHandle key={`${handle.handle}-${handle.label}`} handle={handle} onDrop={props.onHandleDrop} />)}
     </MapSurface>
     <MapControls map={map} camera={camera} />
     </View>

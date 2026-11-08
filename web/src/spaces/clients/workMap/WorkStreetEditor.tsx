@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { lazyChunk } from '../../../ui/lazyChunk';
 import { Footprints, Navigation, Pause, Play, Save, Square, Undo2, X } from 'lucide-react';
-import { DRAW_MODES, EMPTY_STREET, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, WORK_MAP_DRAFT_COLOR, WORK_MAP_PLANNED_COLOR, walkedDraft, walkHint, walkPositionPins, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
+import { DRAW_MODES, dragStreetEnd, EMPTY_STREET, nudgeStreetEnd, streetDraftHandles, type StreetEnd, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, WORK_MAP_DRAFT_COLOR, WORK_MAP_PLANNED_COLOR, walkedDraft, walkHint, walkPositionPins, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
 import { KICKER } from './WorkMapPanel';
 import type { StreetSend } from './workProgressSender';
 import { useGpsWalk } from './useGpsWalk';
@@ -9,6 +9,10 @@ import { useGpsWalk } from './useGpsWalk';
 const WorkMapCanvas = lazyChunk(() => import('./WorkMapCanvas'));
 const NO_STREETS: WorkMap = { streets: [], scopes: [], progress: [], works: [], stages: [] };
 const LENGTH_HINT = 'Medido en el mapa';
+const NO_PINS: never[] = [];
+/** One step of «−10 m» / «+10 m»: a finger on a phone lands within a few meters, the buttons finish the job. */
+const NUDGE_M = 10;
+const NUDGE = 'flex h-9 items-center justify-center rounded-lg bg-on-primary/15 font-mono text-[13px] font-bold';
 const GPS_DENIED = 'El navegador no deja usar tu ubicación. Permítela o dibuja la calle de otra forma.';
 const FIELD = 'h-11 w-full rounded-xl border border-outline/25 bg-background px-3 text-[15px] outline-none focus:border-primary';
 
@@ -24,6 +28,12 @@ export function WorkStreetEditor(props: EditorProps) {
   const view = useMemo(() => workMapView(props.map ?? NO_STREETS), [props.map]);
   const gps = useGpsWalk();
   useEffect(() => { setDraft((before) => (before.mode === 'gps' ? walkedDraft(before, gps.walk) : before)); }, [gps.walk]);
+  const handles = useMemo(() => streetDraftHandles(draft), [draft]);
+  const onHandleDrop = (handle: StreetEnd, point: WorkMapPoint) => {
+    const dropped = dragStreetEnd(draft, handle, point);
+    setDraft(dropped.draft);
+    setError(dropped.problem);
+  };
   const onTap = (point: WorkMapPoint, roads?: TapFeatures) => {
     const tapped = tapStreetDraft(draft, roads ?? { underFinger: [], nearby: [], tap: point });
     setDraft(tapped.draft);
@@ -66,6 +76,7 @@ export function WorkStreetEditor(props: EditorProps) {
           {draft.mode === 'hand' ? <span data-testid="editor-calle-puntos" className="shrink-0 rounded-md bg-on-primary/15 px-2 py-0.5 font-mono text-[11px]">{handPointsLabel(draft.points.length)}</span> : null}
         </div>
         {draft.mode === 'gps' ? <WalkButton walking={gps.walk.walking} paused={gps.walk.paused} onStart={gps.start} onStop={gps.stop} onPause={gps.pause} onResume={gps.resume} /> : null}
+        {handles.length ? <EndNudges onNudge={(handle, deltaM) => { setError(null); setDraft((before) => nudgeStreetEnd(before, handle, deltaM)); }} /> : null}
         <div className="mt-2 grid grid-cols-2 gap-2">
           <button type="button" data-testid="editor-calle-deshacer" disabled={!draft.points.length} onClick={() => { setError(null); if (draft.mode === 'gps') gps.undo(); else setDraft(undoStreetDraft); }} className="flex h-10 items-center justify-center gap-2 rounded-xl bg-on-primary/15 text-[14px] font-semibold disabled:opacity-50"><Undo2 size={16} />Deshacer</button>
           <button type="button" data-testid="editor-calle-cancelar" onClick={props.onClose} className="flex h-10 items-center justify-center gap-2 rounded-xl bg-on-primary/15 text-[14px] font-semibold"><X size={16} />Cancelar</button>
@@ -73,7 +84,7 @@ export function WorkStreetEditor(props: EditorProps) {
       </div>
       <div className="relative min-h-[320px] flex-1 lg:min-h-0">
         <Suspense fallback={<div className="absolute inset-0 animate-pulse bg-surface-variant" />}>
-          <WorkMapCanvas view={view} expanded={false} pins={[...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} />
+          <WorkMapCanvas view={view} expanded={false} pins={handles.length ? NO_PINS : [...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} handles={handles} onHandleDrop={onHandleDrop} />
         </Suspense>
         <EditorLegend />
       </div>
@@ -86,6 +97,22 @@ export function WorkStreetEditor(props: EditorProps) {
       </div>
       </div>
       </div>
+    </div>
+  );
+}
+
+/** «Inicio −10 m +10 m · Fin −10 m +10 m»: the ends of the picked street, to the meter (José 08/11). */
+function EndNudges({ onNudge }: { onNudge: (handle: StreetEnd, deltaM: number) => void }) {
+  const ends: Array<{ handle: StreetEnd; label: string; key: string }> = [{ handle: 'start', label: 'Inicio', key: 'inicio' }, { handle: 'end', label: 'Fin', key: 'fin' }];
+  return (
+    <div data-testid="editor-extremos" className="mt-2 grid grid-cols-2 gap-2">
+      {ends.map((end) => (
+        <div key={end.key} className="grid grid-cols-[auto_1fr_1fr] items-center gap-1">
+          <span className="pr-1 text-[12px] font-semibold">{end.label}</span>
+          <button type="button" data-testid={`editor-${end.key}-menos`} aria-label={`${end.label} 10 m hacia atrás`} onClick={() => onNudge(end.handle, -NUDGE_M)} className={NUDGE}>−10 m</button>
+          <button type="button" data-testid={`editor-${end.key}-mas`} aria-label={`${end.label} 10 m hacia adelante`} onClick={() => onNudge(end.handle, NUDGE_M)} className={NUDGE}>+10 m</button>
+        </div>
+      ))}
     </div>
   );
 }

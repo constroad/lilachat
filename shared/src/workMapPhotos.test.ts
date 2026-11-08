@@ -56,6 +56,8 @@ describe('photoSourceLabel, where a photo came from', () => {
     expect(photoSourceLabel(photo('p1', north(0), { plate: 'QAA-001' }))).toBe('Control de pista · QAA-001');
     expect(photoSourceLabel(photo('p1', north(0), { reportType: 'CTL-IMP' }))).toBe('Control de imprimación');
     expect(photoSourceLabel(photo('p1', north(0), { reportType: undefined }))).toBe('Avance registrado');
+    // A unit's photo that came without its report (web E2E 08/11 said «Avance registrado»).
+    expect(photoSourceLabel(photo('p1', north(0), { reportType: undefined, plate: 'QAA-001' }))).toBe('Unidad QAA-001');
   });
 });
 

@@ -112,7 +112,7 @@ export const photoSpotPins = (spots: PhotoSpot[]): DischargePin[] =>
 
 /** «Control de pista · QAA-001», «Control de imprimación», or a photo of «Registrar avance». */
 export function photoSourceLabel(photo: Pick<MapPhoto, 'reportType' | 'plate'>): string {
-  if (!photo.reportType) return 'Avance registrado';
+  if (!photo.reportType) return photo.plate ? `Unidad ${photo.plate}` : 'Avance registrado';
   const report = reportTypeLabel(photo.reportType);
   return photo.plate ? `${report} · ${photo.plate}` : report;
 }

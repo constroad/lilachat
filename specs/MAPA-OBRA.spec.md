@@ -1050,3 +1050,10 @@ pantalla».
   - Queda en agentes, que arma la respuesta del evento. Se le pidió el 08/11.
   - Lo mismo vale para `service.ubicacion`.
 - La web quedó en Constroad.
+- **Capa «Fotos», en vivo (08/11, después de agentes c55bdb5).**
+  - QA-CTLPIS muestra «Fotos · 8», en 5 marcadores: 0+010 (1), 0+040 (2), 0+070 (2), 0+100 (1) y
+    2 fuera de las calles.
+  - Al tocar el de 0+040 se abre el visor con sus 2 fotos.
+  - La imagen sale rota porque es la URL de la semilla QA y su archivo no existe en lila.
+  - Defecto: una foto de unidad sin `reportType` decía «Avance registrado». Ahora dice «Unidad
+    QAA-001».

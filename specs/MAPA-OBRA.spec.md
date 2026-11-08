@@ -810,3 +810,9 @@ En la web, «Etapas» y «Trabajos» están en la barra del mapa. El panel `Work
 tarjetas, «Nueva etapa» o «Agregar trabajo», y «Tocar calles» o «Pintar». Con la brocha encendida,
 una franja sobre el mapa muestra «Deshacer» y «Listo», y las calles pintadas se ven gruesas. Cada
 toque pasa por `work_scope` de Portal, que lo valida otra vez.
+
+**APK (sin OTA todavía).** En el APK, «Etapas» y «Trabajos» son dos botones bajo «Registrar avance»:
+en la fila del título no entran. `WorkLayersSheet` muestra las tarjetas. «Tocar calles» o «Pintar»
+abre `BrushMap`, el mapa a pantalla completa que sí se mueve, con la franja, «Deshacer» y «Listo».
+«Listo» vuelve a la hoja. La lógica del toque y de «Deshacer» (`paintAt`, `undoStroke`) está en el
+motor compartido, así que la web y el APK no la duplican.

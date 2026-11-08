@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Paintbrush, X } from 'lucide-react';
-import { brushRequests, brushUndoRequests, createdOrRefusal, percentLabel, runBrushRequests, sendWorkScope, sendWorkStage, sendWorkTag, stageCardsOf, streetAtTap, WORK_TAG_COLORS, workRowsOf, workStageRequest, workTagRequest, type Brush, type MapEditSend, type StageCard, type WorkMap, type WorkMapPoint, type WorkRow } from '@lilachat/shared';
+import { BRUSH_NO_EDIT as NO_EDIT, createdOrRefusal, paintAt, percentLabel, sendWorkScope, sendWorkStage, sendWorkTag, stageCardsOf, undoStroke, WORK_TAG_COLORS, workRowsOf, workStageRequest, workTagRequest, type Brush, type BrushStroke, type MapEditSend, type StageCard, type WorkMap, type WorkMapPoint, type WorkRow } from '@lilachat/shared';
 import { NewLabel } from './ScopeForm';
 import { KICKER } from './WorkMapPanel';
 
@@ -87,37 +87,32 @@ export function WorkLayers(props: Props) {
   );
 }
 
-type Painted = { before: WorkMap; brush: Brush; streetId: string };
-
 /** The brush over the map: a tap toggles the street, «Deshacer» puts the last one back. */
 export function useBrush(map: WorkMap, send: MapEditSend | undefined) {
   const [brush, setBrushState] = useState<Brush | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [history, setHistory] = useState<Painted[]>([]);
+  const [strokes, setStrokes] = useState<BrushStroke[]>([]);
   const current = useRef(map);
   current.current = map;
-  const sendScope = (request: Parameters<MapEditSend>[0]) => (send ? send(request, sendWorkScope) : Promise.resolve({ ok: false as const, message: 'Sin permiso para editar el mapa.' }));
-  const setBrush = (next: Brush | null) => { setError(null); setHistory([]); setBrushState(next); };
+  const sendScope = (request: Parameters<MapEditSend>[0]) => (send ? send(request, sendWorkScope) : Promise.resolve({ ok: false as const, message: NO_EDIT }));
+  const setBrush = (next: Brush | null) => { setError(null); setStrokes([]); setBrushState(next); };
   const tap = async (place: WorkMapPoint) => {
     if (!brush || busy) return;
-    const before = current.current;
-    const streetId = streetAtTap(before, place);
-    const requests = streetId ? brushRequests(before, brush, streetId, `brocha-${Date.now()}`) : [];
     setBusy(true);
-    const failure = await runBrushRequests(sendScope, requests);
+    const { failure, stroke } = await paintAt(current.current, brush, place, sendScope);
     setBusy(false);
     setError(failure);
-    if (!failure && streetId) setHistory((done) => [...done, { before, brush, streetId }]);
+    if (stroke) setStrokes((done) => [...done, stroke]);
   };
   const undo = async () => {
-    const last = history[history.length - 1];
+    const last = strokes[strokes.length - 1];
     if (!last || busy) return;
     setBusy(true);
-    const failure = await runBrushRequests(sendScope, brushUndoRequests(last.before, current.current, last.brush, last.streetId));
+    const failure = await undoStroke(last, current.current, sendScope);
     setBusy(false);
     setError(failure);
-    if (!failure) setHistory((done) => done.slice(0, -1));
+    if (!failure) setStrokes((done) => done.slice(0, -1));
   };
-  return { brush, setBrush, tap, undo, error, busy, canUndo: history.length > 0 };
+  return { brush, setBrush, tap, undo, error, busy, canUndo: strokes.length > 0 };
 }

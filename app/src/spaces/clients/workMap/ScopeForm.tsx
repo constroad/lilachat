@@ -14,7 +14,7 @@ const numberOrNull = (text: string): number | null => (text.trim() === '' ? null
 type NewLabelProps = { testID: string; placeholder: string; colors?: readonly string[]; onCreate: (name: string, color: string) => Promise<string | null> };
 
 /** «Nueva etapa» / «Nuevo trabajo» right where they are picked (o-04, o-05): a name, and a color for a work. */
-function NewLabel(props: NewLabelProps) {
+export function NewLabel(props: NewLabelProps) {
   const palette = useColores();
   const [form, setForm] = useState<LabelForm>(() => labelFormIdle(props.colors?.[0]));
   const set = (next: Partial<LabelForm>) => setForm((before) => ({ ...before, ...next }));

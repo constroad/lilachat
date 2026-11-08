@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
-import { ArchiveRestore, ChevronRight, Download, ExternalLink, Maximize2, Plus, Share2, TrendingUp, X } from 'lucide-react-native';
-import { progressTargetOf, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StretchRange, type UnitDischarge, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { ArchiveRestore, ChevronRight, Download, ExternalLink, Layers, Maximize2, Paintbrush, Plus, Share2, TrendingUp, X } from 'lucide-react-native';
+import { progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StretchRange, type UnitDischarge, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
@@ -17,6 +17,7 @@ import type { TraceFile } from '../useDriveUpload';
 import { StreetScopes } from './StreetScopes';
 import { DeletedWork } from './DeletedWork';
 import { WorkMapSurface } from './WorkMapSurface';
+import { BrushMap, WorkLayersSheet, type LayersKind } from './WorkLayers';
 
 function FullMap(props: { view: WorkMapView; open: boolean; onClose: () => void; pins: DischargePin[]; stretches: WorkMapLine[] }) {
   const colors = useColores();
@@ -95,6 +96,21 @@ function TitleRow(props: { pageUrl: string; onExport: () => void; onShare: () =>
   );
 }
 
+/** «Etapas» and «Trabajos» under «Registrar avance» (o-04, o-05): the title row has no room left. */
+function LayerButtons(props: { onOpen: (kind: LayersKind) => void }) {
+  const colors = useColores();
+  return (
+    <View className="flex-row gap-2">
+      <Pressable testID="mapa-etapas-abrir" onPress={() => props.onOpen('stages')} className="min-h-[48px] flex-1 flex-row items-center justify-center gap-2 rounded-xl border border-outline/25 bg-surface">
+        <Layers size={18} color={colors['on-surface']} /><Text className="text-[15px] font-semibold text-on-surface">Etapas</Text>
+      </Pressable>
+      <Pressable testID="mapa-trabajos-abrir" onPress={() => props.onOpen('works')} className="min-h-[48px] flex-1 flex-row items-center justify-center gap-2 rounded-xl border border-outline/25 bg-surface">
+        <Paintbrush size={18} color={colors['on-surface']} /><Text className="text-[15px] font-semibold text-on-surface">Trabajos</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 /**
  * The map of the work as the design's phone draws it (`o-01-mapa-obra`): title and «Compartir»,
  * stage and day, the works, the map edge to edge, and the panel rising over it like a sheet.
@@ -110,6 +126,8 @@ export function WorkMapBoard(props: BoardProps) {
   const [seeingDeleted, setSeeingDeleted] = useState(false);
   const [recordingStart, setRecordingStart] = useState(false);
   const [choosing, setChoosing] = useState<ProgressTarget | null>(null);
+  const [layers, setLayers] = useState<LayersKind | null>(null);
+  const [brush, setBrush] = useState<{ brush: Brush; from: LayersKind } | null>(null);
   const target = useMemo(() => progressTargetOf(map), [map]);
   const openStreet = (id: string | null, record = false) => { setChoosing(null); setRecordingStart(record); setStreetId(id); };
   const view = useMemo(() => workMapView(map, filter), [map, filter]);
@@ -125,6 +143,7 @@ export function WorkMapBoard(props: BoardProps) {
           <Text className="text-[16px] font-semibold text-on-primary">Registrar avance</Text>
         </Pressable>
       ) : null}
+      {props.editMap ? <LayerButtons onOpen={setLayers} /> : null}
       <WorkMapFilters map={map} view={view} filter={filter} onFilter={setFilter} />
       <View className="-mx-4 overflow-hidden bg-surface-variant" style={{ height }}>
         <View pointerEvents="none" className="absolute inset-0">
@@ -141,6 +160,8 @@ export function WorkMapBoard(props: BoardProps) {
       <StreetScopes map={map} streetId={streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} startRecording={recordingStart} onClose={() => openStreet(null)} />
       <StreetPick target={choosing} onPick={(id) => openStreet(id, true)} onClose={() => setChoosing(null)} />
       <WorkMapExport open={side === 'export'} map={map} filter={filter} onFilter={setFilter} title={props.title} pageUrl={pageUrl} send={props.editMap} uploadTrace={props.uploadTrace} onClose={() => setSide(null)} />
+      {props.editMap ? <WorkLayersSheet kind={layers} map={map} send={props.editMap} onBrush={(picked) => { setBrush({ brush: picked, from: layers ?? 'stages' }); setLayers(null); }} onClose={() => setLayers(null)} /> : null}
+      {props.editMap && brush ? <BrushMap map={map} send={props.editMap} brush={brush.brush} onDone={() => { setLayers(brush.from); setBrush(null); }} /> : null}
       <ShareProgress open={side === 'share'} map={map} filter={filter} onFilter={setFilter} send={props.editMap} mapInReport={props.mapInReport} onClose={() => setSide(null)} />
     </View>
   );

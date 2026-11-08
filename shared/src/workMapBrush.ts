@@ -118,6 +118,7 @@ export function streetAtTap(map: Pick<WorkMap, 'streets'>, place: WorkMapPoint):
 /** A stage has no color of its own in Portal: the brush paints it violet. MapLibre paints hex. */
 export const BRUSH_STAGE_COLOR: string = WORK_TAG_COLORS[5];
 export const BRUSH_OFF_STREET = 'Toca sobre una calle de la obra.';
+export const BRUSH_NO_EDIT = 'Sin permiso para editar el mapa.';
 
 /** The stretches that carry the brush, thick over the map: what is already painted. */
 export function brushLinesOf(map: WorkMap, brush: Brush): WorkMapLine[] {
@@ -144,3 +145,18 @@ export async function runBrushRequests(send: (request: WorkScopeRequest) => Prom
   }
   return null;
 }
+
+/** One tap the brush made, so «Deshacer» can put the street back. */
+export type BrushStroke = { before: WorkMap; brush: Brush; streetId: string };
+type ScopeSend = (request: WorkScopeRequest) => Promise<WorkProgressResult>;
+
+/** A tap in brush mode: the street under it toggled through Portal, and the stroke to undo it. */
+export async function paintAt(map: WorkMap, brush: Brush, place: WorkMapPoint, send: ScopeSend): Promise<{ failure: string | null; stroke: BrushStroke | null }> {
+  const streetId = streetAtTap(map, place);
+  const failure = await runBrushRequests(send, streetId ? brushRequests(map, brush, streetId, `brocha-${Date.now()}`) : []);
+  return { failure, stroke: !failure && streetId ? { before: map, brush, streetId } : null };
+}
+
+/** «Deshacer»: the stroke's street as it was, against the map Portal shows now. */
+export const undoStroke = (stroke: BrushStroke, current: WorkMap, send: ScopeSend): Promise<string | null> =>
+  runBrushRequests(send, brushUndoRequests(stroke.before, current, stroke.brush, stroke.streetId));

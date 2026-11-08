@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WorkMap } from './workMap.js';
-import { BRUSH_REACH_M, BRUSH_STAGE_COLOR, brushHas, brushLinesOf, brushTitle, runBrushRequests, streetAtTap, brushRequests, brushUndoRequests, stageCardsOf, workRowsOf, type Brush } from './workMapBrush.js';
+import { paintAt, undoStroke, BRUSH_REACH_M, BRUSH_STAGE_COLOR, brushHas, brushLinesOf, brushTitle, runBrushRequests, streetAtTap, brushRequests, brushUndoRequests, stageCardsOf, workRowsOf, type Brush } from './workMapBrush.js';
 
 /** o-04 «Etapas» and o-05 «Trabajos» (audit 08/11 item 2): the cards and the brush that paints streets. */
 const line = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.999 }];
@@ -152,5 +152,23 @@ describe('runBrushRequests', () => {
 
   it('a tap off the work explains itself', async () => {
     expect(await runBrushRequests(async () => ({ ok: true as const, message: '' }), [])).toBe('Toca sobre una calle de la obra.');
+  });
+});
+
+describe('paintAt and undoStroke', () => {
+  const ok = async () => ({ ok: true as const, message: 'ok' });
+
+  it('a tap on a street gives the stroke to undo; off the work, the reason and no stroke', async () => {
+    const painted = await paintAt(MAP, { kind: 'stage', id: 'e2' }, { lat: -12, lng: -76.9995 }, ok);
+    expect(painted.failure).toBeNull();
+    expect(painted.stroke?.brush).toEqual({ kind: 'stage', id: 'e2' });
+    expect(await paintAt(MAP, { kind: 'stage', id: 'e2' }, { lat: -13, lng: -76 }, ok)).toEqual({ failure: 'Toca sobre una calle de la obra.', stroke: null });
+  });
+
+  it('undoing sends the street back as it was', async () => {
+    const sent: unknown[] = [];
+    const after: WorkMap = { ...MAP, scopes: MAP.scopes.map((scope) => (scope.id === 'c2' ? { ...scope, stageId: 'e2' } : scope)) };
+    expect(await undoStroke({ before: MAP, brush: { kind: 'stage', id: 'e2' }, streetId: 's2' }, after, async (one) => { sent.push(one); return { ok: true, message: '' }; })).toBeNull();
+    expect(sent).toEqual([expect.objectContaining({ scope_id: 'c2', stage_id: 'e1' })]);
   });
 });

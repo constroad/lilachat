@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { MapPhoto, WorkMap, WorkMapPoint } from '@lilachat/shared';
 import { PrimeCoatSuggestions } from './PrimeCoat';
 
-/** #253: the Control de imprimación suggests the stretch and «Registrar avance» opens filled. */
+/** #253: the prime coat report suggests the stretch and the manual progress form opens filled. */
 const METERS_PER_DEGREE = 111_195;
 const north = (meters: number): WorkMapPoint => ({ lat: -12.05 + meters / METERS_PER_DEGREE, lng: -77.03 });
 const map: WorkMap = {

@@ -41,7 +41,7 @@ const CHIP = 'h-10 flex-row items-center gap-1.5 rounded-full border px-3';
 const STEP = 'h-16 flex-1 items-center justify-center rounded-xl border border-outline/20 bg-surface';
 type Answer = { ok: boolean; message: string } | null;
 export type PhotoAsset = ImagePicker.ImagePickerAsset;
-/** `initial`: the form already filled, as the Control de imprimación suggests it (#253). */
+/** `initial`: the form already filled, as the prime coat report suggests it (#253). */
 type Props = { map: WorkMap; streetId: string; lengthM: number; widthM?: number; send: MapEditSend; uploadPhoto?: ManualPhotoUpload<PhotoAsset>; initial?: ManualProgressDraft; onDone: () => void };
 
 /** Step 3: a photo taken in the field, to the service's Drive; Portal only takes those as evidence. */

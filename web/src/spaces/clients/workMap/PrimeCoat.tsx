@@ -5,8 +5,8 @@ import { PRIME_COAT_HOW, PRIME_COAT_TITLE, primeCoatDraftOf, primeCoatExplain, p
 const KICKER = 'text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant';
 
 /**
- * #253: the stretches the photos of the Control de imprimación mark. «Revisar y registrar» opens
- * «Registrar avance» of that street already filled; nothing counts until the person sends it.
+ * #253: the stretches the photos of the prime coat report mark. Its button opens the manual
+ * progress form of that street already filled; nothing counts until the person sends it.
  */
 export function PrimeCoatSuggestions(props: { map: WorkMap; photos: MapPhoto[]; onRecord: (streetId: string, draft: ManualProgressDraft) => void }) {
   const suggestion = useMemo(() => suggestPrimeCoat(props.map, props.photos), [props.map, props.photos]);

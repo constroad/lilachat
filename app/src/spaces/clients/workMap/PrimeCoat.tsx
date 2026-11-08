@@ -7,8 +7,8 @@ import { useColores } from '../../../ui/tema';
 const KICKER = 'text-[12px] font-bold uppercase tracking-[1.5px] text-on-surface-variant';
 
 /**
- * #253 on the phone: the stretches the photos of the Control de imprimación mark. «Revisar y
- * registrar» opens «Registrar avance» of that street already filled; nothing counts until it is sent.
+ * #253 on the phone: the stretches the photos of the prime coat report mark. Its button opens the
+ * manual progress form of that street already filled; nothing counts until it is sent.
  */
 export function PrimeCoatSuggestions(props: { map: WorkMap; photos: MapPhoto[]; onRecord: (streetId: string, draft: ManualProgressDraft) => void }) {
   const colors = useColores();

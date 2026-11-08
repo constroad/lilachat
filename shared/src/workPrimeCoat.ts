@@ -4,10 +4,10 @@ import { stretchWorksOf } from './workMapProgress.js';
 import type { ManualProgressDraft } from './workManualProgress.js';
 
 /**
- * #253: the Control de imprimación suggests progress too (José 08/11: «no veo cómo se coloca el
- * avance sugerido en base a los procesos de imprimación»). Each photo of the spraying keeps where it
- * was taken; one report on one street goes from its first photo to its last. It is a suggestion:
- * «Registrar avance» opens already filled and the person sends it (Portal's proposal, 08/11: the
+ * #253: the prime coat report (CTL-IMP) suggests progress too (José 08/11: he could not see how the
+ * suggested progress comes from the prime coat). Each photo of the spraying keeps where it was
+ * taken; one report on one street goes from its first photo to its last. It is a suggestion: the
+ * manual progress form opens already filled and the person sends it (Portal's proposal, 08/11: the
  * manual progress tool, without a new one). PURE: the APK and the web draw from here.
  */
 export const PRIME_COAT_REPORT = 'CTL-IMP';

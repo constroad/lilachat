@@ -37,7 +37,7 @@ const CARD = 'rounded-xl border-[1.5px] border-outline/15 bg-surface p-4';
 const CHIP = 'flex h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold';
 const STEP = 'flex h-14 flex-col items-center justify-center rounded-xl border border-outline/20 bg-surface text-[15px] font-bold font-mono text-on-surface disabled:opacity-50';
 type Answer = { ok: boolean; message: string } | null;
-/** `initial`: the form already filled, as the Control de imprimación suggests it (#253). */
+/** `initial`: the form already filled, as the prime coat report suggests it (#253). */
 type Props = { map: WorkMap; streetId: string; lengthM: number; widthM?: number; send: MapEditSend; uploadPhoto?: ManualPhotoUpload<File>; initial?: ManualProgressDraft; onDone: () => void };
 
 /** Step 3: photos already in the service's Drive; Portal only takes those as evidence. */

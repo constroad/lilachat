@@ -56,15 +56,24 @@ describe('useBrush', () => {
     // Arrange
     const send = vi.fn<MapEditSend>(ok);
     const { result, rerender } = renderHook(({ current }) => useBrush(current, send), { initialProps: { current: map } });
-    act(() => result.current.setBrush({ kind: 'stage', id: 'e1' }));
+    act(() => result.current.setBrush({ kind: 'work', id: 'base' }));
     // Act
     await act(() => result.current.tap({ lat: -12.01, lng: -76.999 }));
     // Assert
-    expect(send).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'work_scope', street_id: 's2', stage_id: 'e1', from_m: 0, to_m: 218 }), expect.any(Function));
-    rerender({ current: { ...map, scopes: [...map.scopes, { id: 'c2', streetId: 's2', fromM: 0, toM: 218, workIds: [], stageId: 'e1' }] } });
+    expect(send).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'work_scope', street_id: 's2', tag_ids: ['base'], from_m: 0, to_m: 218 }), expect.any(Function));
+    rerender({ current: { ...map, scopes: [...map.scopes, { id: 'c2', streetId: 's2', fromM: 0, toM: 218, workIds: ['base'] }] } });
     await act(() => result.current.undo());
-    expect(send).toHaveBeenLastCalledWith(expect.objectContaining({ scope_id: 'c2', stage_id: null }), expect.any(Function));
+    expect(send).toHaveBeenLastCalledWith({ kind: 'work_scope_delete', scope_id: 'c2', forms: expect.any(Number) }, expect.any(Function));
     expect(result.current.canUndo).toBe(false);
+  });
+
+  it('the last work of a stretch is not removed: Portal refuses an empty stretch', async () => {
+    const send = vi.fn<MapEditSend>(ok);
+    const { result } = renderHook(() => useBrush(map, send));
+    act(() => result.current.setBrush({ kind: 'work', id: 'base' }));
+    await act(() => result.current.tap({ lat: -12, lng: -76.999 }));
+    expect(result.current.error).toBe('Es el único trabajo de esta calle. Para quitarlo, borra el tramo en «Ver tramos».');
+    expect(send).not.toHaveBeenCalled();
   });
 
   it('a tap off the work says so and sends nothing', async () => {

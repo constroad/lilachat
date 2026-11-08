@@ -1,7 +1,7 @@
 import { dayMonthOf } from './appDirectory.js';
 import { metersLabel, projectOntoLine, sliceLine, workMapView, type WorkMap, type WorkMapLine, type WorkMapPoint, type WorkMapScope } from './workMap.js';
 import type { WorkProgressResult } from './workProgressSend.js';
-import { WORK_TAG_COLORS, workScopeRequest, type ScopeDraft, type WorkScopeRequest } from './workScopeDraft.js';
+import { WORK_TAG_COLORS, workScopeDeleteRequest, workScopeRequest, type ScopeDraft, type WorkScopeDeleteRequest, type WorkScopeRequest } from './workScopeDraft.js';
 
 /**
  * «Etapas» (design o-04) and «Trabajos» (o-05), audit 08/11 item 2: what each stage and work
@@ -13,6 +13,8 @@ export type StreetRef = { id: string; name: string; lengthM: number };
 export type StageCard = { id: string; name: string; streets: StreetRef[]; lengthM: number; areaM2: number; percent: number; line: string; days: string };
 export type WorkRow = { id: string; name: string; color: string; order: number; streets: number; lengthM: number; line: string };
 export type Brush = { kind: 'stage' | 'work'; id: string };
+/** A tap's stretches; «Deshacer» of a stretch the brush created deletes it (Portal keeps it in «Borrados»). */
+export type BrushRequest = WorkScopeRequest | WorkScopeDeleteRequest;
 
 const NO_DAYS = 'Sin jornadas todavía';
 const lengthOf = (scopes: WorkMapScope[]) => scopes.reduce((sum, scope) => sum + Math.max(0, scope.toM - scope.fromM), 0);
@@ -80,10 +82,21 @@ function painted(draft: ScopeDraft, brush: Brush, on: boolean): ScopeDraft {
   return { ...draft, workIds: on ? [...others, brush.id] : others };
 }
 
+export const BRUSH_LAST_WORK = 'Es el único trabajo de esta calle. Para quitarlo, borra el tramo en «Ver tramos».';
+export const BRUSH_NEEDS_WORK = 'Esta calle todavía no tiene trabajos. Píntale uno en «Trabajos» y luego súmala a la etapa.';
+
+/** What Portal would refuse, said before sending: a stretch always keeps at least one work. */
+export function brushProblem(map: Pick<WorkMap, 'scopes'>, brush: Brush, streetId: string): string | null {
+  const scopes = scopesOf(map, streetId);
+  if (brush.kind === 'stage') return scopes.length ? null : BRUSH_NEEDS_WORK;
+  const removing = brushHas(map, brush, streetId);
+  return removing && scopes.some((scope) => scope.workIds.length <= 1) ? BRUSH_LAST_WORK : null;
+}
+
 /** What a tap on the street sends: the brush on all its stretches, or off if it had it on all. */
 export function brushRequests(map: WorkMap, brush: Brush, streetId: string, entryId: string): WorkScopeRequest[] {
   const street = map.streets.find((one) => one.id === streetId);
-  if (!street) return [];
+  if (!street || brushProblem(map, brush, streetId)) return [];
   const scopes = scopesOf(map, streetId);
   if (!scopes.length) {
     const whole: ScopeDraft = { fromM: 0, toM: Math.round(street.lengthM), workIds: [], stageId: null, widthM: null };
@@ -93,12 +106,11 @@ export function brushRequests(map: WorkMap, brush: Brush, streetId: string, entr
   return scopes.map((scope) => workScopeRequest(map, streetId, painted(draftOf(scope), brush, on), entryId, scope.id));
 }
 
-/** «Deshacer»: the street's stretches as they were before the tap; one the tap created loses the brush. */
-export function brushUndoRequests(before: WorkMap, after: WorkMap, brush: Brush, streetId: string): WorkScopeRequest[] {
+/** «Deshacer»: the street's stretches as they were before the tap; one the tap created is deleted. */
+export function brushUndoRequests(before: WorkMap, after: WorkMap, streetId: string): BrushRequest[] {
   return scopesOf(after, streetId).map((scope) => {
     const old = before.scopes.find((one) => one.id === scope.id);
-    const draft = old ? draftOf(old) : painted(draftOf(scope), brush, false);
-    return workScopeRequest(after, streetId, draft, '', scope.id);
+    return old ? workScopeRequest(after, streetId, draftOf(old), '', scope.id) : workScopeDeleteRequest(scope.id);
   });
 }
 
@@ -137,7 +149,7 @@ export function brushTitle(map: WorkMap, brush: Brush): string {
 }
 
 /** Sends a tap's stretches one by one; the first refusal stops and is what the person reads. */
-export async function runBrushRequests(send: (request: WorkScopeRequest) => Promise<WorkProgressResult>, requests: WorkScopeRequest[]): Promise<string | null> {
+export async function runBrushRequests(send: (request: BrushRequest) => Promise<WorkProgressResult>, requests: BrushRequest[]): Promise<string | null> {
   if (!requests.length) return BRUSH_OFF_STREET;
   for (const request of requests) {
     const result = await send(request);
@@ -148,15 +160,17 @@ export async function runBrushRequests(send: (request: WorkScopeRequest) => Prom
 
 /** One tap the brush made, so «Deshacer» can put the street back. */
 export type BrushStroke = { before: WorkMap; brush: Brush; streetId: string };
-type ScopeSend = (request: WorkScopeRequest) => Promise<WorkProgressResult>;
+type ScopeSend = (request: BrushRequest) => Promise<WorkProgressResult>;
 
 /** A tap in brush mode: the street under it toggled through Portal, and the stroke to undo it. */
 export async function paintAt(map: WorkMap, brush: Brush, place: WorkMapPoint, send: ScopeSend): Promise<{ failure: string | null; stroke: BrushStroke | null }> {
   const streetId = streetAtTap(map, place);
+  const problem = streetId ? brushProblem(map, brush, streetId) : null;
+  if (problem) return { failure: problem, stroke: null };
   const failure = await runBrushRequests(send, streetId ? brushRequests(map, brush, streetId, `brocha-${Date.now()}`) : []);
   return { failure, stroke: !failure && streetId ? { before: map, brush, streetId } : null };
 }
 
 /** «Deshacer»: the stroke's street as it was, against the map Portal shows now. */
 export const undoStroke = (stroke: BrushStroke, current: WorkMap, send: ScopeSend): Promise<string | null> =>
-  runBrushRequests(send, brushUndoRequests(stroke.before, current, stroke.brush, stroke.streetId));
+  runBrushRequests(send, brushUndoRequests(stroke.before, current, stroke.streetId));

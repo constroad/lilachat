@@ -816,3 +816,15 @@ en la fila del título no entran. `WorkLayersSheet` muestra las tarjetas. «Toca
 abre `BrushMap`, el mapa a pantalla completa que sí se mueve, con la franja, «Deshacer» y «Listo».
 «Listo» vuelve a la hoja. La lógica del toque y de «Deshacer» (`paintAt`, `undoStroke`) está en el
 motor compartido, así que la web y el APK no la duplican.
+
+**E2E web de la brocha (08/11, prod f5734b4, Test).** «Trabajos» → «Pintar Asfalto QA» abrió la
+franja «Pintando Asfalto QA · Toca las calles que la llevan». Un toque sobre la calle QA quiso
+quitarle su único trabajo, y Portal contestó «El tramo necesita al menos una partida o una
+etiqueta.». No cambió ningún dato. **Defecto, corregido en el motor:**
+- `brushProblem` avisa antes de enviar: «Es el único trabajo de esta calle…».
+- Una calle sin trabajos no se suma a una etapa: «Píntale uno en «Trabajos»…».
+- «Deshacer» de un tramo que creó la brocha lo borra; Portal lo guarda en «Borrados».
+
+**El mismo rechazo rompe la etapa al crear una calle** (`saveStreetWithStage` manda un tramo sin
+trabajos). Se le preguntó a Portal si acepta un tramo con etapa y sin trabajos. Si la regla se
+queda, el campo «Etapa» de la calle nueva se retira.

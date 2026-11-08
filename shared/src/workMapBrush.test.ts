@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WorkMap } from './workMap.js';
-import { paintAt, undoStroke, BRUSH_REACH_M, BRUSH_STAGE_COLOR, brushHas, brushLinesOf, brushTitle, runBrushRequests, streetAtTap, brushRequests, brushUndoRequests, stageCardsOf, workRowsOf, type Brush } from './workMapBrush.js';
+import { BRUSH_LAST_WORK, BRUSH_NEEDS_WORK, brushProblem, paintAt, undoStroke, BRUSH_REACH_M, BRUSH_STAGE_COLOR, brushHas, brushLinesOf, brushTitle, runBrushRequests, streetAtTap, brushRequests, brushUndoRequests, stageCardsOf, workRowsOf, type Brush } from './workMapBrush.js';
 
 /** o-04 «Etapas» and o-05 «Trabajos» (audit 08/11 item 2): the cards and the brush that paints streets. */
 const line = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.999 }];
@@ -64,8 +64,8 @@ describe('brushRequests: a tap on a street toggles the brush on all its stretche
     expect(brushRequests(MAP, { kind: 'stage', id: 'e1' }, 's1', 'k')[0]).toMatchObject({ scope_id: 'c1', stage_id: null });
   });
 
-  it('a street without stretches gets one along all of it', () => {
-    expect(brushRequests(MAP, stage2, 's3', 'k')).toEqual([{ kind: 'work_scope', street_id: 's3', from_m: 0, to_m: 80, tag_ids: [], partida_ids: [], stage_id: 'e2', entry_id: 'k', forms: expect.any(Number) }]);
+  it('a street without stretches gets one along all of it, with the work painted', () => {
+    expect(brushRequests(MAP, { kind: 'work', id: 'base' }, 's3', 'k')).toEqual([{ kind: 'work_scope', street_id: 's3', from_m: 0, to_m: 80, tag_ids: ['base'], partida_ids: [], stage_id: null, entry_id: 'k', forms: expect.any(Number) }]);
   });
 
   it('adds a work where it is missing; partidas travel apart from tags', () => {
@@ -90,14 +90,12 @@ describe('brushRequests: a tap on a street toggles the brush on all its stretche
 describe('brushUndoRequests: «Deshacer» puts the street back as it was', () => {
   it('restores the stretches the street had', () => {
     const after: WorkMap = { ...MAP, scopes: MAP.scopes.map((scope) => (scope.id === 'c2' ? { ...scope, stageId: 'e2' } : scope)) };
-    expect(brushUndoRequests(MAP, after, { kind: 'stage', id: 'e2' }, 's2')).toEqual([expect.objectContaining({ scope_id: 'c2', stage_id: 'e1', tag_ids: ['base'] })]);
+    expect(brushUndoRequests(MAP, after, 's2')).toEqual([expect.objectContaining({ scope_id: 'c2', stage_id: 'e1', tag_ids: ['base'] })]);
   });
 
-  it('a stretch the brush created loses what the brush gave it', () => {
-    const after: WorkMap = { ...MAP, scopes: [...MAP.scopes, { id: 'c9', streetId: 's3', fromM: 0, toM: 80, workIds: [], stageId: 'e2' }] };
-    expect(brushUndoRequests(MAP, after, { kind: 'stage', id: 'e2' }, 's3')).toEqual([expect.objectContaining({ scope_id: 'c9', stage_id: null })]);
+  it('a stretch the brush created is deleted: Portal refuses one without works', () => {
     const worked: WorkMap = { ...MAP, scopes: [...MAP.scopes, { id: 'c9', streetId: 's3', fromM: 0, toM: 80, workIds: ['base'] }] };
-    expect(brushUndoRequests(MAP, worked, { kind: 'work', id: 'base' }, 's3')).toEqual([expect.objectContaining({ scope_id: 'c9', tag_ids: [] })]);
+    expect(brushUndoRequests(MAP, worked, 's3')).toEqual([{ kind: 'work_scope_delete', scope_id: 'c9', forms: expect.any(Number) }]);
   });
 });
 
@@ -170,5 +168,31 @@ describe('paintAt and undoStroke', () => {
     const after: WorkMap = { ...MAP, scopes: MAP.scopes.map((scope) => (scope.id === 'c2' ? { ...scope, stageId: 'e2' } : scope)) };
     expect(await undoStroke({ before: MAP, brush: { kind: 'stage', id: 'e2' }, streetId: 's2' }, after, async (one) => { sent.push(one); return { ok: true, message: '' }; })).toBeNull();
     expect(sent).toEqual([expect.objectContaining({ scope_id: 'c2', stage_id: 'e1' })]);
+  });
+});
+
+describe('brushProblem: what Portal would refuse, said before sending (web E2E 08/11)', () => {
+  const lonely: WorkMap = { ...MAP, scopes: [{ id: 'c1', streetId: 's1', fromM: 0, toM: 200, workIds: ['base'], stageId: 'e1' }] };
+
+  it('a stretch keeps at least one work: Portal refuses an empty one', () => {
+    expect(brushProblem(lonely, { kind: 'work', id: 'base' }, 's1')).toBe(BRUSH_LAST_WORK);
+    expect(brushRequests(lonely, { kind: 'work', id: 'base' }, 's1', 'k')).toEqual([]);
+  });
+
+  it('a street without works cannot join a stage yet', () => {
+    expect(brushProblem(MAP, { kind: 'stage', id: 'e2' }, 's3')).toBe(BRUSH_NEEDS_WORK);
+    expect(brushRequests(MAP, { kind: 'stage', id: 'e2' }, 's3', 'k')).toEqual([]);
+  });
+
+  it('nothing to say when the tap can go through', () => {
+    expect(brushProblem(MAP, { kind: 'work', id: 'asf' }, 's1')).toBeNull();
+    expect(brushProblem(MAP, { kind: 'stage', id: 'e2' }, 's2')).toBeNull();
+  });
+
+  it('paintAt shows the problem and sends nothing', async () => {
+    let calls = 0;
+    const result = await paintAt(lonely, { kind: 'work', id: 'base' }, { lat: -12, lng: -76.9995 }, async () => { calls += 1; return { ok: true, message: '' }; });
+    expect(result).toEqual({ failure: BRUSH_LAST_WORK, stroke: null });
+    expect(calls).toBe(0);
   });
 });

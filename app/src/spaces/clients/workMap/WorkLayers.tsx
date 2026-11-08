@@ -10,6 +10,8 @@ import { NewLabel } from './ScopeForm';
 import { WorkMapSurface } from './WorkMapSurface';
 
 export type LayersKind = 'stages' | 'works';
+/** Air between the status bar and the brush band: at 8 it read stuck to the clock (APK E2E 08/11). */
+const BAND_GAP = 20;
 
 function BrushButton(props: { testID: string; label: string; onPress: () => void }) {
   const colors = useColores();
@@ -108,7 +110,7 @@ export function BrushMap(props: { map: WorkMap; send: MapEditSend; brush: Brush;
     <Modal visible animationType="slide" onRequestClose={props.onDone}>
       <View testID="mapa-brocha-completo" className="flex-1 bg-background">
         <WorkMapSurface view={view} moves stretches={brushLinesOf(props.map, props.brush)} onTap={(place) => void strokes.tap(place)} />
-        <View testID="mapa-brocha" className="absolute inset-x-3 rounded-2xl border border-primary/30 bg-surface p-3" style={{ top: margins.cabecera + 8 }}>
+        <View testID="mapa-brocha" className="absolute inset-x-3 rounded-2xl border border-primary/30 bg-surface p-3" style={{ top: margins.cabecera + BAND_GAP }}>
           <Text className="text-[15px] font-semibold text-on-surface">{strokes.busy ? 'Guardando…' : brushTitle(props.map, props.brush)}</Text>
           {strokes.error ? <Text testID="brocha-error" className="mt-1 text-[13px] font-semibold text-error">{strokes.error}</Text> : null}
           <View className="mt-2 flex-row gap-2">

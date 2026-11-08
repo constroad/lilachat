@@ -80,20 +80,20 @@ function GroupTitle(props: { group: StageGroup }) {
 /**
  * The sheet under the map (design `o-01-mapa-obra`, phone): the big figure with the bar by work,
  * the streets under their stage, and the day the map is cut at. Admins see the units of the runway
- * control report on top (`o-07`).
+ * control report after the streets (`o-07`; audit 08/11 item 14: it came before them).
  */
 export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; filter: WorkMapFilter; badge?: ReactNode; top?: ReactNode; deleteStreet?: StreetDeleteSend; /** «Ver tramos» (o-03). */ onOpenStreet?: (streetId: string) => void }) {
   return (
     <View className="-mx-4 -mt-5 rounded-t-3xl border-t border-outline/15 bg-surface px-4 pb-4 pt-2">
       <View className="mb-3 h-1 w-10 self-center rounded-full bg-outline/30" />
       <PanelHead view={props.view} groups={props.groups} badge={props.badge} />
-      {props.top ? <View className="mt-4">{props.top}</View> : null}
       {props.groups.map((group) => (
         <View key={group.id}>
           <GroupTitle group={group} />
           <View className="gap-3">{group.streets.map((street) => <StreetCard key={street.id} street={street} deleteStreet={props.deleteStreet} onOpen={props.onOpenStreet ? () => props.onOpenStreet?.(street.id) : undefined} />)}</View>
         </View>
       ))}
+      {props.top ? <View className="mt-4">{props.top}</View> : null}
       <Text testID="mapa-corte-pie" className="mt-4 text-right font-mono text-[12px] text-on-surface-variant">Corte: {workMapCutChip(props.filter)}</Text>
     </View>
   );

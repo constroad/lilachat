@@ -878,3 +878,6 @@ contra la meta: una calle nueva no tiene largo conocido. La ayuda muestra los me
 
 **E2E de la vista previa (web prod, Test).** «Registrar avance» mostró la calle con sus
 progresivas, y con «+10 m» ×6 el tramo nuevo creció en azul hasta 0+060. Se canceló sin enviar.
+
+**APK, punto 14 y la franja de la brocha.** El Control de pista ahora va después de las calles en
+el panel del APK. La franja de `BrushMap` deja 20 dp bajo la barra de estado.

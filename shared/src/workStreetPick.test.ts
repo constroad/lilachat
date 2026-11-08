@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EMPTY_STREET, streetDraftLengthM, streetDraftPins, streetDraftProblem, DRAFT_NEEDS_STREET } from './workStreetDraft.js';
-import { modeChangeLoss, NO_STREET_THERE, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, tapStreetDraft, undoStreetDraft } from './workStreetPick.js';
+import { handPointsLabel, modeChangeLoss, NO_STREET_THERE, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, tapStreetDraft, undoStreetDraft } from './workStreetPick.js';
 
 /** Audit 07/11 (José: «fácil y fluido para un ingeniero de campo»): tap the street, then its start and end. */
 const M_PER_DEG_LNG = 111_195 * Math.cos((12 * Math.PI) / 180);
@@ -127,5 +127,13 @@ describe('modeChangeLoss (o-02: switching the way to draw no longer wipes the st
 
   it('the stage chosen survives the switch', () => {
     expect(setDrawMode({ ...marked, stageId: 'e1' }, 'gps').stageId).toBe('e1');
+  });
+});
+
+describe('handPointsLabel (APK E2E 08/11: the hand counter read «1 puntos»)', () => {
+  it('singular for one point, plural otherwise', () => {
+    expect(handPointsLabel(1)).toBe('1 punto');
+    expect(handPointsLabel(0)).toBe('0 puntos');
+    expect(handPointsLabel(3)).toBe('3 puntos');
   });
 });

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import { Footprints, Save, Square, Undo2, X } from 'lucide-react-native';
-import { DRAW_MODES, EMPTY_STREET, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, walkedDraft, walkHint, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
+import { DRAW_MODES, EMPTY_STREET, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, walkedDraft, walkHint, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
 import { useCurrentLocation } from '../../../chat/location/useCurrentLocation';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
@@ -103,7 +103,7 @@ export function WorkStreetEditor(props: EditorProps) {
           {switching ? <SwitchQuestion question={switching.question} onYes={() => switchTo(switching.mode)} onNo={() => setSwitching(null)} /> : null}
           <View className="mt-2 flex-row items-center justify-between gap-2">
             <Text testID="editor-calle-ayuda" className="flex-1 text-[15px] font-semibold text-on-primary">{draft.mode === 'gps' ? (gps.denied ? GPS_DENIED : walkHint(gps.walk)) : streetDraftHint(draft)}</Text>
-            {draft.mode === 'hand' ? <Text testID="editor-calle-puntos" className="rounded-md bg-on-primary/15 px-2 py-0.5 font-mono text-[12px] text-on-primary">{draft.points.length} puntos</Text> : null}
+            {draft.mode === 'hand' ? <Text testID="editor-calle-puntos" className="rounded-md bg-on-primary/15 px-2 py-0.5 font-mono text-[12px] text-on-primary">{handPointsLabel(draft.points.length)}</Text> : null}
           </View>
           {draft.mode === 'gps' ? (
             <Pressable testID={gps.walk.walking ? 'editor-gps-terminar' : 'editor-gps-empezar'} onPress={gps.walk.walking ? gps.stop : () => void gps.start()} className="mt-2 h-14 flex-row items-center justify-center gap-2 rounded-xl bg-surface">

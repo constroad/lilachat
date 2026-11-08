@@ -22,10 +22,13 @@ export const NO_STREET_THERE = 'Ahí no hay una calle del mapa. Toca sobre la v�
 /** Another way of drawing starts the line again; the name and the width stay. */
 export const setDrawMode = (draft: StreetDraft, mode: DrawMode): StreetDraft => (draft.mode === mode ? draft : { ...EMPTY_STREET, name: draft.name, widthM: draft.widthM, ...(draft.stageId ? { stageId: draft.stageId } : {}), mode });
 
+/** The «A mano» counter: «1 punto», «3 puntos». */
+export const handPointsLabel = (count: number): string => (count === 1 ? '1 punto' : `${count} puntos`);
+
 /** What a switch of the way to draw would erase, as a question; `null` when nothing is lost (audit 08/11: 734 m gone in silence). */
 export function modeChangeLoss(draft: StreetDraft, mode: DrawMode): string | null {
   if (draft.mode === mode || draft.points.length === 0) return null;
-  const what = draft.points.length === 1 ? '1 punto' : `${streetDraftLengthM(draft)} m`;
+  const what = draft.points.length === 1 ? handPointsLabel(1) : `${streetDraftLengthM(draft)} m`;
   return `Cambiar de forma borra lo que marcaste (${what}). ¿Cambiar igual?`;
 }
 

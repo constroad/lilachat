@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { lazyChunk } from '../../../ui/lazyChunk';
 import { Footprints, Save, Square, Undo2, X } from 'lucide-react';
-import { DRAW_MODES, EMPTY_STREET, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, walkedDraft, walkHint, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
+import { DRAW_MODES, EMPTY_STREET, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, walkedDraft, walkHint, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
 import { KICKER } from './WorkMapPanel';
 import type { StreetSend } from './workProgressSender';
 import { useGpsWalk } from './useGpsWalk';
@@ -63,7 +63,7 @@ export function WorkStreetEditor(props: EditorProps) {
         ) : null}
         <div className="mt-2 flex items-center justify-between gap-2">
           <p data-testid="editor-calle-ayuda" className="text-[14px] font-semibold">{draft.mode === 'gps' ? (gps.denied ? GPS_DENIED : walkHint(gps.walk)) : streetDraftHint(draft)}</p>
-          {draft.mode === 'hand' ? <span data-testid="editor-calle-puntos" className="shrink-0 rounded-md bg-on-primary/15 px-2 py-0.5 font-mono text-[11px]">{draft.points.length} puntos</span> : null}
+          {draft.mode === 'hand' ? <span data-testid="editor-calle-puntos" className="shrink-0 rounded-md bg-on-primary/15 px-2 py-0.5 font-mono text-[11px]">{handPointsLabel(draft.points.length)}</span> : null}
         </div>
         {draft.mode === 'gps' ? <WalkButton walking={gps.walk.walking} onStart={gps.start} onStop={gps.stop} /> : null}
         <div className="mt-2 grid grid-cols-2 gap-2">

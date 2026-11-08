@@ -775,3 +775,38 @@ por el boleto (90748f1 y agentes dd1baa7).
   «Seguir aquí» dejó los 113 m. Se canceló sin guardar. El campo «Etapa» no sale en Test porque
   no tiene etapas (no se crean de prueba: Portal no puede borrarlas): sin verificar en vivo, lo
   cubre el test del editor.
+
+## PDFs con avance aprobado (08/11) y «Etapas» / «Trabajos» con brocha (o-04, o-05)
+
+**PDFs comparados con o-14/o-15 (Test, avance QA aprobado por Portal con OK de José).** El de
+cliente salió en 4 hojas, en ~35 s. El plano A3 salió en 1 hoja, en ~10 s. Portal arregló cuatro
+diferencias en b6489ccb:
+- «1 días» pasa a «1 día».
+- El encuadre ahora llena el plano.
+- Dice «120 de 191 m».
+- La etiqueta con el largo sobre el trazo.
+
+Quedan opcionales: estado y nota por jornada en la hoja 3, y medir los 35 s. El avance y la foto
+QA se borraron por la ruta de la app.
+
+**APK OTA 207a02f2 (08/11).** rn-smoke verde antes y después. Pasaron en Test:
+- «Registrar avance»: con una sola calle abre directo en 0+060.
+- La hoja «Exportar» hace scroll.
+- El aviso al cambiar de forma.
+
+El contador «A mano» decía «1 puntos». Ahora usa `handPointsLabel`.
+
+**o-04 y o-05 (auditoría, punto 2).** Motor `shared/src/workMapBrush.ts`, con 21 tests:
+- `stageCardsOf`: por etapa, calles, m, m², %, y «Jornadas del … al …» sacado del avance
+  aprobado. También lista las calles sin etapa.
+- `workRowsOf`: trabajos numerados, con calles y metros.
+- `brushRequests`: un toque alterna el pincel en todos los tramos de la calle. Una calle sin
+  tramos recibe uno de toda la calle.
+- `brushUndoRequests`: «Deshacer» devuelve los tramos como estaban.
+- `streetAtTap`: la calle más cercana, a 30 m como máximo.
+- `brushLinesOf` y `brushTitle`.
+
+En la web, «Etapas» y «Trabajos» están en la barra del mapa. El panel `WorkLayers` muestra las
+tarjetas, «Nueva etapa» o «Agregar trabajo», y «Tocar calles» o «Pintar». Con la brocha encendida,
+una franja sobre el mapa muestra «Deshacer» y «Listo», y las calles pintadas se ven gruesas. Cada
+toque pasa por `work_scope` de Portal, que lo valida otra vez.

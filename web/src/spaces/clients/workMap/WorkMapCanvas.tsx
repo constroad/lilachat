@@ -6,6 +6,8 @@ import { PLACE_ZOOM, type MapFrame, STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STAT
 
 maplibregl.setWorkerUrl(workerUrl);
 
+/** The holder keeps its map: the tutorial recorder taps a street by its place (`tapMap`). */
+export type MapHolder = HTMLDivElement & { workMap?: maplibregl.Map };
 const PLANNED = 'work-map-planned';
 const DONE = 'work-map-done';
 const STRETCH = 'work-map-stretch';
@@ -134,6 +136,7 @@ export default function WorkMapCanvas(props: { view: WorkMapView; expanded: bool
       setReady(true);
     });
     map.current = created;
+    (holder.current as MapHolder).workMap = created;
     return () => {
       map.current = null;
       created.remove();

@@ -62,6 +62,8 @@ describe('validateTutorialScript', () => {
         { say: twelve, action: { kind: 'goto', url: '' } },
         { say: twelve, action: { kind: 'drag', selector: 'testid:mano-inicio', dx: 0, dy: 0 } },
         { say: twelve, action: { kind: 'dragToward', selector: 'testid:editor-extremo-end', toward: 'testid:editor-extremo-start', share: 1.2 } },
+        { say: twelve, action: { kind: 'tapMap', lat: -120, lng: -77.04 } },
+        { say: twelve, action: { kind: 'tapMap', lat: -12.046, lng: -77.04 } },
       ],
     }));
     expect(check.errors).toEqual([
@@ -71,6 +73,7 @@ describe('validateTutorialScript', () => {
       'Paso 4: «goto» sin url',
       'Paso 5: «drag» sin desplazamiento',
       'Paso 6: «dragToward» sin destino o con una fracción fuera de 0 a 1',
+      'Paso 7: «tapMap» fuera del mapa',
     ]);
   });
 

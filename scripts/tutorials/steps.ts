@@ -89,6 +89,17 @@ async function dragBy(page: RecorderPage, selector: string, dx: number, dy: numb
   return true;
 }
 
+/** A real click where a place falls on the map now on screen (the last ready one: the editor's or the board's). */
+async function tapMap(page: RecorderPage, lat: number, lng: number): Promise<string | null> {
+  const point = (await page.evaluate(`(() => { const holders = [...document.querySelectorAll('[data-testid="mapa-lienzo"]')].filter((el) => el.workMap);
+    const el = holders[holders.length - 1]; if (!el) return null; const p = el.workMap.project([${lng}, ${lat}]); const r = el.getBoundingClientRect();
+    return { x: r.left + p.x, y: r.top + p.y }; })()`)) as { x: number; y: number } | null;
+  if (!point) return 'no hay un mapa listo para tocar';
+  await page.mouse.click(point.x, point.y, { delay: 40 });
+  await sleep(CLICK_SETTLE_MS);
+  return null;
+}
+
 async function highlight(page: RecorderPage, selector: string): Promise<boolean> {
   const found = Boolean(await overlay(page, 'scrollTo', selector));
   await sleep(MOVE_SETTLE_MS);
@@ -109,6 +120,7 @@ async function act(page: RecorderPage, action: TutorialAction, baseUrl: string):
     await sleep(CLICK_SETTLE_MS);
     return null;
   }
+  if (action.kind === 'tapMap') return tapMap(page, action.lat, action.lng);
   if (!(await waitFor(page, action.selector))) return `no encontró «${action.selector}»`;
   if (action.kind === 'type') return typeInto(page, action.selector, action.text);
   if (action.kind === 'dragToward') {

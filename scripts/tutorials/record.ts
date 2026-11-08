@@ -106,6 +106,9 @@ async function runScript(page: Page, script: TutorialScript, narration: Narratio
   }
   await overlay(page, 'hideCaption');
   await sleep(options.rehearsal ? 300 : OUTRO_CARD_MS);
+  // Authoring aid (rehearsal only): `--evaluar=<expression>` prints what the page answers, e.g. a street's line.
+  const probe = arg('evaluar');
+  if (options.rehearsal && probe) console.log(JSON.stringify(await page.evaluate(probe)));
   return { warnings, spokeAt };
 }
 

@@ -21,6 +21,8 @@ export type TutorialAction =
   | { kind: 'drag'; selector: string; dx: number; dy: number }
   /** Drags an element a share of the way toward another: a street end along its own street. */
   | { kind: 'dragToward'; selector: string; toward: string; share: number }
+  /** Taps the map of the screen at a place: a street to paint with the brush. */
+  | { kind: 'tapMap'; lat: number; lng: number }
   /** Only narrates: the screen stays still. */
   | { kind: 'pause' };
 
@@ -82,6 +84,9 @@ export const INTRO_CARD_MS = 3200;
 export const OUTRO_CARD_MS = 1800;
 
 /** What the screen takes to answer each action (measured in Portal). */
+const MAX_LAT = 90;
+const MAX_LNG = 180;
+
 const ACTION_COST_MS: Record<TutorialAction['kind'], number> = {
   goto: 2600,
   scrollTo: 1100,
@@ -92,6 +97,7 @@ const ACTION_COST_MS: Record<TutorialAction['kind'], number> = {
   press: 700,
   drag: 1600,
   dragToward: 1600,
+  tapMap: 900,
   pause: 0,
 };
 
@@ -114,7 +120,7 @@ export const scriptDurationMs = (script: TutorialScript): number =>
   (script.intro ? INTRO_CARD_MS : 0) + script.steps.reduce((total, step) => total + stepMs(step), 0) + OUTRO_CARD_MS;
 
 /** Actions that operate an element: each needs its selector, and some their text or offset. */
-const elementActionError = (action: Exclude<TutorialAction, { kind: 'goto' | 'press' | 'pause' }>): string | null => {
+const elementActionError = (action: Exclude<TutorialAction, { kind: 'goto' | 'press' | 'pause' | 'tapMap' }>): string | null => {
   if (!action.selector.trim()) return `«${action.kind}» sin selector`;
   if (action.kind === 'type' && !action.text.trim()) return '«type» sin texto';
   if (action.kind === 'drag' && !action.dx && !action.dy) return '«drag» sin desplazamiento';
@@ -126,6 +132,7 @@ const actionError = (action: TutorialAction | undefined): string | null => {
   if (!action || action.kind === 'pause') return null;
   if (action.kind === 'goto') return action.url.trim() ? null : '«goto» sin url';
   if (action.kind === 'press') return action.key.trim() ? null : '«press» sin tecla';
+  if (action.kind === 'tapMap') return Math.abs(action.lat) <= MAX_LAT && Math.abs(action.lng) <= MAX_LNG ? null : '«tapMap» fuera del mapa';
   return elementActionError(action);
 };
 

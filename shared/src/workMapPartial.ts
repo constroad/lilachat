@@ -2,9 +2,8 @@ import { mergeIntervals } from '@constroad/shared/obra';
 import { metersLabel, stationLabel, workMapView, type WorkMap, type WorkMapFilter, type WorkMapLine } from './workMap.js';
 
 /**
- * «Avance parcial» (design o-08, José 06/11: «estas calles en base, estas imprimadas, estas
- * asfaltadas»): what each work has done, street by street, for the stage and the day the map
- * shows. Only approved progress, as the client sees it. PURE: the web and the APK draw it.
+ * Partial progress (design o-08, José 06/11: which streets are in base, primed or paved): what
+ * each work has done, street by street, for the stage and the day the map shows. Only approved progress, as the client sees it. PURE: the web and the APK draw it.
  */
 export type PartialRow = { workId: string; name: string; color: string; streets: string };
 export type PartialSummary = { rows: PartialRow[]; streetsWithProgress: number; streetsTotal: number; doneLabel: string };

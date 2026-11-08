@@ -629,3 +629,12 @@ ver «Borrados»; cubierto solo por test).
   `video/*`, y la comprobación local los tiraba. Ahora el boleto conserva los dos tipos de trazado
   (`KMZ_TYPE`, `KML_TYPE` viven en `driveUpload.ts`) y lo demás sigue fuera. Test en
   `driveUpload.test.ts`.
+- **Tras el deploy de 90748f1 (03:09Z del 08/11) el import sigue bloqueado, ahora fuera de
+  Lilachat.** El boleto que llega a la web trae solo los seis tipos de foto y video, aunque Portal
+  (`driveUploadTicket.ts`, `SERVICE_DRIVE_MIME_TYPES`) suma los de trazado y los genéricos. El
+  filtro está en agentes: pedido a esa sesión el 08/11. Ningún archivo QA llegó al Drive y no se
+  creó ninguna calle.
+- **OTA 295864d1 (git 90748f1):** rn-smoke verde antes y después. El emulador lo bajó
+  (`DownloadComplete`, `NEW_UPDATE_LOADED`) y quedó en el espacio Constroad. Los paneles en el APK
+  no se volvieron a recorrer con este OTA: son los mismos del 683c5a64 más el PDF y el interruptor
+  del informe, que se probaron en la web.

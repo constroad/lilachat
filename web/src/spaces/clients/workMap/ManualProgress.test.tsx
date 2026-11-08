@@ -31,6 +31,7 @@ describe('ManualProgress', () => {
     fireEvent.click(screen.getByTestId('avance-manual-mas'));
     fireEvent.change(screen.getByTestId('avance-manual-hasta'), { target: { value: '240' } });
     expect(screen.getByTestId('avance-manual-hasta-progresiva')).toHaveTextContent('Progresiva 0+240');
+    expect(screen.getByTestId('avance-pasos')).toHaveAttribute('data-paso', '3');
     expect(await screen.findByTestId('avance-mapa-lienzo')).toHaveAttribute('data-tramo', '120-240');
     expect(screen.getByTestId('avance-mapa-lienzo')).toHaveAttribute('data-progresivas', '4');
     fireEvent.change(screen.getByTestId('avance-foto-archivo'), { target: { files: [new File(['x'], 'base.jpg', { type: 'image/jpeg' })] } });

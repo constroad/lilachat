@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
-import { Footprints, Pause, Play, Save, Square, Undo2, X } from 'lucide-react-native';
-import { DRAW_MODES, EMPTY_STREET, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, walkedDraft, walkHint, walkPositionPins, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
+import { Footprints, Navigation, Pause, Play, Save, Square, Undo2, X } from 'lucide-react-native';
+import { DRAW_MODES, EMPTY_STREET, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, WORK_MAP_DRAFT_COLOR, WORK_MAP_PLANNED_COLOR, walkedDraft, walkHint, walkPositionPins, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
 import { useCurrentLocation } from '../../../chat/location/useCurrentLocation';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
@@ -59,6 +59,22 @@ function StageField(props: { stages: WorkMapStage[]; stageId?: string; onPick: (
         })}
       </View>
     </View>
+  );
+}
+
+/** Legend and north over the editor's map (design o-02): what the violet line is, and which way is up. */
+function EditorLegend() {
+  const colors = useColores();
+  return (
+    <>
+      <View testID="editor-leyenda" pointerEvents="none" className="absolute bottom-3 left-3 gap-1 rounded-xl border border-outline/15 bg-surface px-3 py-2">
+        <View className="flex-row items-center gap-2"><View className="h-1 w-6 rounded-full" style={{ backgroundColor: WORK_MAP_DRAFT_COLOR }} /><Text className="text-[12px] font-semibold text-on-surface">Calle nueva</Text></View>
+        <View className="flex-row items-center gap-2"><View className="h-0 w-6 border-t-2 border-dashed" style={{ borderColor: WORK_MAP_PLANNED_COLOR }} /><Text className="text-[12px] font-semibold text-on-surface">Calles de la obra</Text></View>
+      </View>
+      <View testID="editor-norte" accessibilityLabel="Norte arriba" pointerEvents="none" className="absolute left-3 top-3 h-11 w-11 items-center justify-center rounded-full border border-outline/15 bg-surface">
+        <Navigation size={14} color={colors['on-surface']} /><Text className="text-[10px] font-bold text-on-surface">N</Text>
+      </View>
+    </>
   );
 }
 
@@ -132,6 +148,7 @@ export function WorkStreetEditor(props: EditorProps) {
         </View>
         <View className="flex-1">
           {props.open ? <WorkMapSurface view={view} moves pins={[...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} near={current.state === 'ready' ? current.location : null} /> : null}
+          <EditorLegend />
         </View>
         <View className="border-t border-outline/15 bg-surface px-4 pt-3" style={{ paddingBottom: margins.pie + 12 }}>
           <Text className={LABEL}>Nombre</Text>

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import * as Crypto from 'expo-crypto';
 import { CheckCircle2, MapPin, SlidersHorizontal } from 'lucide-react-native';
-import { confirmDischargeLabel, dischargeHeadline, dischargeRowsOf, metersLabel, progressEntryOf, stationLabel, stretchWorksOf, type DischargeRow, type DischargeSuggestion, type ProgressEntry, type StretchRange, type SuggestedStretch, type WorkMap } from '@lilachat/shared';
+import { usefulWidthLabel, confirmDischargeLabel, dischargeHeadline, dischargeRowsOf, metersLabel, progressEntryOf, stationLabel, stretchWorksOf, type DischargeRow, type DischargeSuggestion, type ProgressEntry, type StretchRange, type SuggestedStretch, type WorkMap } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 
 export type ProgressSend = (entry: ProgressEntry) => Promise<{ ok: true; message: string } | { ok: false; message: string }>;
@@ -70,6 +70,7 @@ function StretchCard(props: { map: WorkMap; serviceId: string; stretch: Suggeste
         <View className="flex-1 border-r border-outline/15 p-3"><Text className={KICKER}>Progresivas</Text><Text testID="avance-progresivas" className="text-[15px] font-semibold text-on-surface">{stationLabel(range.fromM)} a {stationLabel(range.toM)}</Text></View>
         <View className="flex-1 p-3"><Text className={KICKER}>Volumen</Text><Text className="text-[15px] font-semibold text-on-surface">{String(stretch.volumeM3).replace('.', ',')} m³</Text></View>
       </View>
+      <View className="rounded-xl border border-outline/15 p-3"><Text className={KICKER}>Ancho útil</Text><Text testID="avance-ancho-util" className="text-[15px] font-semibold text-on-surface">{usefulWidthLabel(map, stretch.streetId, range)}</Text></View>
       <View className="flex-row items-center gap-1.5"><MapPin size={14} color={colors['on-surface-variant']} /><Text className="text-[13px] text-on-surface-variant">El lugar sale de las fotos de cada unidad.</Text></View>
       {adjusting ? <RangeInputs range={range} onRange={props.onRange} /> : null}
       {props.send ? (

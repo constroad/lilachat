@@ -5,7 +5,7 @@ import type { CommandOutcome } from './botCommands.js';
 import type { WorkProgressDeps } from './workProgressSend.js';
 import { lineLengthM, workMapOf, type WorkMap } from './workMap.js';
 import type { MapEditSend } from './workScopeDraft.js';
-import { GPS_BEHIND, GPS_OFF_STREET, GPS_WEAK, manualEndFromGps, addManualPhoto, manualPhotoOf, MANUAL_PHOTO_UNLINKED, runManualProgress, MANUAL_FAILED, MANUAL_NO_LENGTH, MANUAL_PAST_STREET, MANUAL_PHOTOS_MAX, MANUAL_PICK_WORK, MANUAL_SENT, manualDraftFor, manualFigures, manualProblem, manualStartOf, nudgeManualEnd, pickManualWork, progressPreviewOf, sendWorkManualProgress, workManualProgressRequest, progressTargetOf } from './workManualProgress.js';
+import { GPS_BEHIND, GPS_OFF_STREET, GPS_WEAK, manualEndFromGps, addManualPhoto, manualPhotoOf, MANUAL_PHOTO_UNLINKED, runManualProgress, MANUAL_FAILED, MANUAL_NO_LENGTH, MANUAL_PAST_STREET, MANUAL_PHOTOS_MAX, MANUAL_PICK_WORK, MANUAL_SENT, manualDraftFor, manualFigures, manualProblem, manualStartOf, nudgeManualEnd, pickManualWork, progressPreviewOf, manualStepOf, MANUAL_STEPS, sendWorkManualProgress, workManualProgressRequest, progressTargetOf } from './workManualProgress.js';
 
 /** Design o-06 (Portal 57f06ec7): progress marked by hand, without trucks. */
 const line = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.997 }];
@@ -205,5 +205,16 @@ describe('progressPreviewOf (audit 08/11 item 6: the stations were picked blind)
 
   it('no stretch while the end has not moved past the start', () => {
     expect(progressPreviewOf(map, 's1', { workId: 'w', fromM: 100, toM: 100, photoIds: [], note: '' }).stretch).toEqual([]);
+  });
+});
+
+describe('manualStepOf (audit 08/11 item 19: o-06 shows the step the person is in)', () => {
+  const base = { workId: 'w', fromM: 0, toM: 60, photoIds: ['p'], note: '' };
+  it('walks 1 Trabajo, 2 Hasta dónde, 3 Foto, 4 Enviar', () => {
+    expect(manualStepOf({ ...base, workId: null })).toBe(1);
+    expect(manualStepOf({ ...base, toM: 0 })).toBe(2);
+    expect(manualStepOf({ ...base, photoIds: [] })).toBe(3);
+    expect(manualStepOf(base)).toBe(4);
+    expect(MANUAL_STEPS).toEqual(['Trabajo', 'Hasta dónde', 'Foto', 'Enviar']);
   });
 });

@@ -3,12 +3,27 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import type * as ImagePicker from 'expo-image-picker';
 import { Camera, Check, Crosshair, Minus, Plus, Send } from 'lucide-react-native';
-import { addManualPhoto, GPS_UNAVAILABLE, manualEndFromGps, MANUAL_NOTE_MAX, MANUAL_PHOTOS_MAX, MANUAL_STEP_M, manualDraftFor, manualFigures, nudgeManualEnd, pickManualWork, progressPreviewOf, runManualProgress, stationLabel, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkMap } from '@lilachat/shared';
+import { addManualPhoto, GPS_UNAVAILABLE, manualEndFromGps, MANUAL_NOTE_MAX, MANUAL_PHOTOS_MAX, MANUAL_STEP_M, manualDraftFor, manualFigures, nudgeManualEnd, pickManualWork, progressPreviewOf, manualStepOf, MANUAL_STEPS, runManualProgress, stationLabel, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkMap } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { takeFieldPhoto } from '../useDriveUpload';
 import { readGpsOnce } from './useGpsWalk';
 import { KICKER } from './WorkMapPanel';
 import { WorkMapSurface } from './WorkMapSurface';
+
+/** 1 Trabajo · 2 Hasta dónde · 3 Foto · 4 Enviar (design o-06): where the person is. */
+function ManualSteps(props: { draft: ManualProgressDraft }) {
+  const step = manualStepOf(props.draft);
+  return (
+    <View testID="avance-pasos" className="flex-row gap-1.5">
+      {MANUAL_STEPS.map((label, index) => {
+        const at = index + 1;
+        const tone = at === step ? 'border-primary bg-primary' : at < step ? 'border-primary/30' : 'border-outline/20';
+        const text = at === step ? 'text-on-primary' : at < step ? 'text-primary' : 'text-on-surface-variant';
+        return <View key={label} accessibilityState={{ selected: at === step }} className={`h-10 flex-1 items-center justify-center rounded-lg border ${tone}`}><Text numberOfLines={1} className={`text-[12px] font-semibold ${text}`}>{at} {label}</Text></View>;
+      })}
+    </View>
+  );
+}
 
 /** The street over the form (design o-06): what is done, and the new stretch up to «Hasta dónde». */
 export function ProgressPreview(props: { map: WorkMap; streetId: string; draft: Pick<ManualProgressDraft, 'workId' | 'fromM' | 'toM'> }) {
@@ -133,6 +148,7 @@ export function ManualProgress(props: Props) {
   return (
     <View testID="avance-manual" className="gap-3">
       <ProgressPreview map={props.map} streetId={props.streetId} draft={draft} />
+      <ManualSteps draft={draft} />
       <View className={CARD}>
         <Text className={`${KICKER} text-primary`}>Registrar avance</Text>
         <Text className={LABEL}>1 · Trabajo</Text>

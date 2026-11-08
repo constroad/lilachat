@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { CheckCircle2, MapPin, SlidersHorizontal } from 'lucide-react';
-import { confirmDischargeLabel, dischargeHeadline, dischargeRowsOf, metersLabel, progressEntryOf, stationLabel, stretchWorksOf, type DischargeRow, type DischargeSuggestion, type ProgressEntry, type SuggestedStretch, type WorkMap } from '@lilachat/shared';
+import { usefulWidthLabel, confirmDischargeLabel, dischargeHeadline, dischargeRowsOf, metersLabel, progressEntryOf, stationLabel, stretchWorksOf, type DischargeRow, type DischargeSuggestion, type ProgressEntry, type SuggestedStretch, type WorkMap } from '@lilachat/shared';
 
 export type ProgressSend = (entry: ProgressEntry) => Promise<{ ok: true; message: string } | { ok: false; message: string }>;
 type Range = { fromM: number; toM: number };
@@ -23,10 +23,10 @@ function UnitRow(props: { row: DischargeRow }) {
   );
 }
 
-function Figures(props: { stretch: SuggestedStretch; range: Range }) {
+function Figures(props: { map: WorkMap; stretch: SuggestedStretch; range: Range }) {
   const { stretch, range } = props;
   return (
-    <div className="mt-2 grid grid-cols-2 divide-x divide-outline/15 rounded-xl border border-outline/15">
+    <div className="mt-2 grid grid-cols-3 divide-x divide-outline/15 rounded-xl border border-outline/15">
       <div className="p-2.5">
         <p className={KICKER}>Progresivas</p>
         <p data-testid="avance-progresivas" className="font-mono text-[14px] font-semibold tabular-nums text-on-surface">{stationLabel(range.fromM)} a {stationLabel(range.toM)}</p>
@@ -34,6 +34,10 @@ function Figures(props: { stretch: SuggestedStretch; range: Range }) {
       <div className="p-2.5">
         <p className={KICKER}>Volumen</p>
         <p className="font-mono text-[14px] font-semibold tabular-nums text-on-surface">{String(stretch.volumeM3).replace('.', ',')} m³</p>
+      </div>
+      <div className="p-2.5">
+        <p className={KICKER}>Ancho útil</p>
+        <p data-testid="avance-ancho-util" className="font-mono text-[14px] font-semibold tabular-nums text-on-surface">{usefulWidthLabel(props.map, stretch.streetId, range)}</p>
       </div>
     </div>
   );
@@ -80,7 +84,7 @@ function StretchCard(props: { map: WorkMap; serviceId: string; stretch: Suggeste
           ))}
         </div>
       ) : null}
-      <Figures stretch={stretch} range={range} />
+      <Figures map={props.map} stretch={stretch} range={range} />
       <p className="mt-2 flex items-center gap-1.5 text-[12px] text-on-surface-variant"><MapPin size={13} /> El lugar sale de las fotos de cada unidad.</p>
       {adjusting ? <Adjust range={range} onRange={props.onRange} /> : null}
       {props.send ? (

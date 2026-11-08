@@ -168,3 +168,12 @@ export const stretchLinesOf = (map: Pick<WorkMap, 'streets'>, stretches: Suggest
     const line = stretchLineOf(map, stretch.streetId, range.fromM, range.toM);
     return line ? [line] : [];
   });
+
+/** «Ancho útil» on the runway control card (o-07): the width Portal multiplies by, and the area it gives. */
+export function usefulWidthLabel(map: Pick<WorkMap, 'streets' | 'scopes'>, streetId: string, range: StretchRange): string {
+  const scope = map.scopes.find((one) => one.streetId === streetId && one.fromM <= range.fromM && range.fromM < one.toM);
+  const widthM = scope?.widthM ?? map.streets.find((street) => street.id === streetId)?.widthM;
+  if (!widthM) return 'Sin ancho: cárgalo en Portal';
+  const areaM2 = Math.round(Math.max(0, range.toM - range.fromM) * widthM);
+  return `${widthM.toFixed(1).replace('.', ',')} m · ${metersLabel(areaM2).replace(/ m$/, '')} m²`;
+}

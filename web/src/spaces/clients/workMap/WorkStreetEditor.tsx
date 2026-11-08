@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useState } from 'react';
 import { lazyChunk } from '../../../ui/lazyChunk';
-import { Footprints, Pause, Play, Save, Square, Undo2, X } from 'lucide-react';
-import { DRAW_MODES, EMPTY_STREET, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, walkedDraft, walkHint, walkPositionPins, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
+import { Footprints, Navigation, Pause, Play, Save, Square, Undo2, X } from 'lucide-react';
+import { DRAW_MODES, EMPTY_STREET, handPointsLabel, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, WORK_MAP_DRAFT_COLOR, WORK_MAP_PLANNED_COLOR, walkedDraft, walkHint, walkPositionPins, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
 import { KICKER } from './WorkMapPanel';
 import type { StreetSend } from './workProgressSender';
 import { useGpsWalk } from './useGpsWalk';
@@ -75,6 +75,7 @@ export function WorkStreetEditor(props: EditorProps) {
         <Suspense fallback={<div className="absolute inset-0 animate-pulse bg-surface-variant" />}>
           <WorkMapCanvas view={view} expanded={false} pins={[...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} />
         </Suspense>
+        <EditorLegend />
       </div>
       </div>
       <div className="flex flex-col border-outline/15 bg-surface lg:w-[400px] lg:shrink-0 lg:overflow-y-auto lg:border-l">
@@ -102,6 +103,19 @@ function ModeSwitch({ mode, onMode }: { mode: DrawMode; onMode: (mode: DrawMode)
 
 /** «Empezar» / «Terminar» of the walk (o-13): one big button, used with the phone in one hand. */
 const WALK_BUTTON = 'mt-2 flex h-12 items-center justify-center gap-2 rounded-xl bg-surface text-[15px] font-bold text-primary';
+
+/** Legend and north over the editor's map (design o-02): what the violet line is, and which way is up. */
+function EditorLegend() {
+  return (
+    <>
+      <div data-testid="editor-leyenda" className="pointer-events-none absolute bottom-3 left-3 z-10 space-y-1 rounded-xl border border-outline/15 bg-surface/95 px-3 py-2 text-[12px] font-semibold text-on-surface shadow">
+        <p className="flex items-center gap-2"><span aria-hidden className="h-1 w-6 rounded-full" style={{ backgroundColor: WORK_MAP_DRAFT_COLOR }} />Calle nueva</p>
+        <p className="flex items-center gap-2"><span aria-hidden className="h-0 w-6 border-t-2 border-dashed" style={{ borderColor: WORK_MAP_PLANNED_COLOR }} />Calles de la obra</p>
+      </div>
+      <div data-testid="editor-norte" aria-label="Norte arriba" className="pointer-events-none absolute left-3 top-3 z-10 flex h-10 w-10 flex-col items-center justify-center rounded-full border border-outline/15 bg-surface/95 text-[10px] font-bold text-on-surface shadow"><Navigation size={14} />N</div>
+    </>
+  );
+}
 
 function WalkButton(props: { walking: boolean; paused: boolean; onStart: () => void; onStop: () => void; onPause: () => void; onResume: () => void }) {
   return props.walking

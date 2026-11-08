@@ -1,12 +1,25 @@
 import { Suspense, useMemo, useRef, useState } from 'react';
 import { Camera, Check, Crosshair, Minus, Plus, Send, X } from 'lucide-react';
-import { addManualPhoto, GPS_UNAVAILABLE, manualEndFromGps, MANUAL_PHOTOS_MAX, MANUAL_STEP_M, manualDraftFor, manualFigures, nudgeManualEnd, pickManualWork, progressPreviewOf, runManualProgress, stationLabel, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkMap } from '@lilachat/shared';
+import { addManualPhoto, GPS_UNAVAILABLE, manualEndFromGps, MANUAL_PHOTOS_MAX, MANUAL_STEP_M, manualDraftFor, manualFigures, nudgeManualEnd, pickManualWork, progressPreviewOf, manualStepOf, MANUAL_STEPS, runManualProgress, stationLabel, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkMap } from '@lilachat/shared';
 import { DrivePhotoInput } from '../ServiceDriveWeb';
 import { readGpsOnce } from './useGpsWalk';
 import { KICKER } from './WorkMapPanel';
 import { lazyChunk } from '../../../ui/lazyChunk';
 
 const WorkMapCanvas = lazyChunk(() => import('./WorkMapCanvas'));
+
+/** 1 Trabajo · 2 Hasta dónde · 3 Foto · 4 Enviar (design o-06): where the person is. */
+function ManualSteps(props: { draft: ManualProgressDraft }) {
+  const step = manualStepOf(props.draft);
+  return (
+    <ol data-testid="avance-pasos" data-paso={step} className="grid grid-cols-4 gap-1.5">
+      {MANUAL_STEPS.map((label, index) => {
+        const at = index + 1;
+        return <li key={label} aria-current={at === step ? 'step' : undefined} className={`flex h-9 items-center justify-center gap-1 rounded-lg border text-[12px] font-semibold ${at === step ? 'border-primary bg-primary text-on-primary' : at < step ? 'border-primary/30 text-primary' : 'border-outline/20 text-on-surface-variant'}`}><span className="font-mono">{at}</span><span className="truncate">{label}</span></li>;
+      })}
+    </ol>
+  );
+}
 
 /** The street over the form (design o-06): what is done, and the new stretch up to «Hasta dónde». */
 export function ProgressPreview(props: { map: WorkMap; streetId: string; draft: Pick<ManualProgressDraft, 'workId' | 'fromM' | 'toM'> }) {
@@ -89,6 +102,7 @@ export function ManualProgress(props: Props) {
   return (
     <div data-testid="avance-manual" className="space-y-3">
       <ProgressPreview map={props.map} streetId={props.streetId} draft={draft} />
+      <ManualSteps draft={draft} />
       <section className={CARD}>
         <p className={`${KICKER} text-primary`}>Registrar avance</p>
         <p className="mt-2 text-[12px] font-semibold uppercase text-on-surface-variant">1 · Trabajo</p>

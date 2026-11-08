@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SuggestedStretch } from './workMapDischarges.js';
-import { dischargePinCollection, dischargePinsOf, dischargeRowsOf, dischargesOf, NO_PLATE, progressEntryOf, stretchLineOf, stretchLinesOf, stretchWorksOf } from './workMapProgress.js';
+import { dischargePinCollection, dischargePinsOf, dischargeRowsOf, dischargesOf, NO_PLATE, progressEntryOf, stretchLineOf, stretchLinesOf, stretchWorksOf, usefulWidthLabel } from './workMapProgress.js';
 
 /** Portal's `discharges` (07/11): snake_case, ISO hours in UTC, points sorted by `at`. */
 const raw = (overrides: Record<string, unknown> = {}) => ({
@@ -177,5 +177,19 @@ describe('stretchLinesOf', () => {
     const lines = stretchLinesOf(map, stretches, { s1: { fromM: 50, toM: 60 } });
     expect(lines).toHaveLength(1);
     expect(lines[0]).toMatchObject({ streetId: 's1', fromM: 50, toM: 60 });
+  });
+});
+
+describe('usefulWidthLabel (audit 08/11 item 20: o-07 shows the width the m² come from)', () => {
+  const line = [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.998 }];
+  const map = { streets: [{ id: 's1', name: 'A', line, lengthM: 218, widthM: 6 }, { id: 's2', name: 'B', line, lengthM: 218 }], scopes: [{ id: 'c1', streetId: 's1', fromM: 100, toM: 218, workIds: ['w'], widthM: 4.5 }] };
+
+  it('the stretch\'s width where the range starts, else the street\'s, with the area it gives', () => {
+    expect(usefulWidthLabel(map, 's1', { fromM: 120, toM: 160 })).toBe('4,5 m · 180 m²');
+    expect(usefulWidthLabel(map, 's1', { fromM: 0, toM: 50 })).toBe('6,0 m · 300 m²');
+  });
+
+  it('says when the street has no width, the case Portal refuses', () => {
+    expect(usefulWidthLabel(map, 's2', { fromM: 0, toM: 50 })).toBe('Sin ancho: cárgalo en Portal');
   });
 });

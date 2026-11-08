@@ -160,3 +160,12 @@ export function progressPreviewOf(map: WorkMap, streetId: string, draft: Pick<Ma
   const line = draft.toM > draft.fromM ? stretchLineOf(map, streetId, draft.fromM, draft.toM) : null;
   return { view: workMapView(only), stretch: line ? [color ? { ...line, color } : line] : [], stations: stationMarksOf(only.streets) };
 }
+
+/** The four steps of «Registrar avance» (o-06), shown on top so the person knows where they are. */
+export const MANUAL_STEPS = ['Trabajo', 'Hasta dónde', 'Foto', 'Enviar'] as const;
+
+export function manualStepOf(draft: Pick<ManualProgressDraft, 'workId' | 'fromM' | 'toM' | 'photoIds'>): 1 | 2 | 3 | 4 {
+  if (!draft.workId) return 1;
+  if (draft.toM <= draft.fromM) return 2;
+  return draft.photoIds.length ? 4 : 3;
+}

@@ -899,3 +899,20 @@ el APK en Constroad.
 Etapas/Trabajos usa `keyboard="avoid"`, así el teclado de «Nueva etapa» o «Agregar trabajo» no
 tapa los colores ni «Crear». Queda sin revisar el mismo teclado en «Agregar tramo», que vive en un
 Modal y no en la hoja.
+
+**Detalles menores (auditoría, puntos 16 a 21; José: «corrige los detalles menores»).**
+- **Punto 20 (o-07), «Ancho útil».** La tarjeta del Control de pista muestra el ancho que usa
+  Portal y el área que da: «4,5 m · 180 m²». `usefulWidthLabel`, con 2 tests, toma el ancho del
+  tramo donde empieza el rango y, si no hay, el de la calle. Sin ancho dice «cárgalo en Portal», el
+  mismo caso que Portal rechaza. Web y APK.
+- **Punto 19 (o-06), indicador de pasos.** «1 Trabajo · 2 Hasta dónde · 3 Foto · 4 Enviar» arriba
+  del formulario, con el paso actual marcado (`manualStepOf`, 1 test). Web y APK.
+- **Punto 17 (o-02), leyenda y norte.** El editor muestra «Calle nueva» y «Calles de la obra», y
+  una «N» arriba a la izquierda. Web y APK.
+- **Punto 21 (o-10).** Los pasos ya iban numerados. El fondo de mapa no se hizo: el mapa del
+  servicio no trae su ubicación, y centrarlo en un lugar fijo sería inventar.
+- **Punto 17, largo editable: no se hizo.** `guardar_calle_de_obra` calcula el largo con el trazo
+  («Portal calcula el largo»). Aceptar un largo medido en obra cambia el esquema de la herramienta
+  y pide la reaprobación de José. Queda a decisión suya.
+- **Punto 16.** La barra por trabajo y el estado «Asfalto hasta 0+350» ya estaban en las
+  tarjetas de calle. Los botones del APK siguen siendo solo ícono, con nombre accesible.

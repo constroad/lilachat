@@ -241,7 +241,7 @@ export function ServiceDetailView(props: ServiceDetailProps) {
   return (
     <View className="flex-1">
       <ServiceCrumbs service={props.service.name} onBack={props.onBack} onToChat={props.onToChat} />
-      <ScrollView testID="detalle-servicio" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
+      <ScrollView testID="detalle-servicio" keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
         <ServiceHead service={props.service} detail={null} />
         <ServiceDrive target={props.target} service={props.service} chatId={props.chatId} onBack={props.onBack} />
       </ScrollView>
@@ -281,7 +281,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   return (
     <View className="flex-1">
     <ServiceCrumbs service={props.service.name} onBack={props.onBack} onToChat={props.onToChat} />
-    <ScrollView testID="detalle-servicio" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
+    <ScrollView testID="detalle-servicio" keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
       {onMap ? null : <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} admin={Boolean(props.admin)} />}
       {answer === null ? <Skeleton /> : null}
       {answer?.ok ? <DetailTabs onContinueReport={setReport} detail={answer.value} target={props.target} service={props.service} chatId={props.chatId} seesDrive={Boolean(props.seesDrive)} onBack={onBack} onOpenFile={files.open} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} startTab={startTab} startOrderId={startTab === 'orders' ? props.startOrderId : undefined} onTabChange={onTabChange} /> : null}

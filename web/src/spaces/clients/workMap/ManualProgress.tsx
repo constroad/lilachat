@@ -37,7 +37,8 @@ const CARD = 'rounded-xl border-[1.5px] border-outline/15 bg-surface p-4';
 const CHIP = 'flex h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold';
 const STEP = 'flex h-14 flex-col items-center justify-center rounded-xl border border-outline/20 bg-surface text-[15px] font-bold font-mono text-on-surface disabled:opacity-50';
 type Answer = { ok: boolean; message: string } | null;
-type Props = { map: WorkMap; streetId: string; lengthM: number; widthM?: number; send: MapEditSend; uploadPhoto?: ManualPhotoUpload<File>; onDone: () => void };
+/** `initial`: the form already filled, as the Control de imprimación suggests it (#253). */
+type Props = { map: WorkMap; streetId: string; lengthM: number; widthM?: number; send: MapEditSend; uploadPhoto?: ManualPhotoUpload<File>; initial?: ManualProgressDraft; onDone: () => void };
 
 /** Step 3: photos already in the service's Drive; Portal only takes those as evidence. */
 function Photos(props: { count: number; uploadPhoto?: ManualPhotoUpload<File>; onPhoto: (mediaId: string) => void }) {
@@ -70,7 +71,7 @@ function Photos(props: { count: number; uploadPhoto?: ManualPhotoUpload<File>; o
 /** Design o-06: which work, up to where, a photo and send; it waits for an admin's approval. */
 export function ManualProgress(props: Props) {
   const start = useMemo(() => manualDraftFor(props.map, props.streetId), [props.map, props.streetId]);
-  const [draft, setDraft] = useState<ManualProgressDraft>(start.draft);
+  const [draft, setDraft] = useState<ManualProgressDraft>(props.initial ?? start.draft);
   const [entryId] = useState(() => crypto.randomUUID());
   const [answer, setAnswer] = useState<Answer>(null);
   const [sending, setSending] = useState(false);

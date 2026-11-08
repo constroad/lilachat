@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ArrowLeft, Pencil, Plus, TrendingUp, Trash2 } from 'lucide-react';
-import { metersLabel, type ManualPhotoUpload, scopeDraftFor, sendWorkScopeDelete, streetDetailOf, workScopeDeleteRequest, type MapEditSend, type ScopeDraft, type StreetLayer, type StreetScopeRow, type WorkMap } from '@lilachat/shared';
+import { metersLabel, type ManualPhotoUpload, scopeDraftFor, sendWorkScopeDelete, streetDetailOf, workScopeDeleteRequest, type MapEditSend, type ScopeDraft, type StreetLayer, type ManualProgressDraft, type StreetScopeRow, type StretchState, type WorkMap } from '@lilachat/shared';
 import { KICKER } from './WorkMapPanel';
 import { ManualProgress, ProgressPreview } from './ManualProgress';
 
@@ -21,6 +21,13 @@ function LayerRow({ layer }: { layer: StreetLayer }) {
 }
 
 /** A stretch with its size, stage and works; edit and a two-step delete (logical, an admin restores it). */
+/** The state pill of o-03, with the theme's tones (the agenda's pills). */
+const STATE_TONE: Record<StretchState, string> = {
+  Pendiente: 'border-outline/20 bg-background text-on-surface-variant',
+  'En proceso': 'border-tertiary/30 bg-tertiary/10 text-tertiary',
+  Terminado: 'border-primary/40 bg-primary/15 text-primary',
+};
+
 function ScopeCard(props: { row: StreetScopeRow; send?: MapEditSend; onEdit: () => void }) {
   const { row } = props;
   const [asking, setAsking] = useState(false);
@@ -39,7 +46,10 @@ function ScopeCard(props: { row: StreetScopeRow; send?: MapEditSend; onEdit: () 
           <p className="text-[14px] font-bold text-on-surface">{row.title}: <span className="font-mono">{row.range}</span></p>
           <p className="mt-0.5 font-mono text-[12px] text-on-surface-variant">{row.summary}</p>
         </div>
-        {row.stageName ? <span className="shrink-0 rounded-md border border-primary/30 px-1.5 py-0.5 text-[11px] font-bold uppercase text-primary">{row.stageName}</span> : null}
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          {row.state ? <span data-testid={`tramo-estado-${row.id}`} className={`rounded-md border px-1.5 py-0.5 text-[11px] font-bold uppercase ${STATE_TONE[row.state]}`}>{row.state}</span> : null}
+          {row.stageName ? <span className="rounded-md border border-primary/30 px-1.5 py-0.5 text-[11px] font-bold uppercase text-primary">{row.stageName}</span> : null}
+        </div>
       </div>
       {row.works.length ? (
         <div className="mt-3 flex flex-wrap gap-2">
@@ -70,10 +80,10 @@ function ScopeCard(props: { row: StreetScopeRow; send?: MapEditSend; onEdit: () 
 type Editing = { draft: ScopeDraft; scopeId?: string } | null;
 
 /** Design o-03: a street, what each work did on it, and its stretches to add, edit or delete (José 07/11: everyone updates). */
-export function StreetScopes(props: { map: WorkMap; streetId: string; send?: MapEditSend; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<File>; /** «Registrar avance» from the map opens the form straight away. */ startRecording?: boolean; onBack: () => void }) {
+export function StreetScopes(props: { map: WorkMap; streetId: string; send?: MapEditSend; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<File>; /** «Registrar avance» from the map opens the form straight away. */ startRecording?: boolean; /** The form already filled (#253). */ recordDraft?: ManualProgressDraft; onBack: () => void }) {
   const detail = useMemo(() => streetDetailOf(props.map, props.streetId), [props.map, props.streetId]);
   const [editing, setEditing] = useState<Editing>(null);
-  const [recording, setRecording] = useState(props.startRecording ?? false);
+  const [recording, setRecording] = useState(Boolean(props.startRecording || props.recordDraft));
   if (!detail) return <p className="p-4 text-[14px] text-on-surface-variant">Esta calle ya no está en el mapa.</p>;
   const editOf = (row: StreetScopeRow): Editing => ({ scopeId: row.id, draft: { fromM: row.scope.fromM, toM: row.scope.toM, workIds: row.scope.workIds, stageId: row.scope.stageId ?? null, widthM: row.scope.widthM ?? null } });
   return (
@@ -85,7 +95,7 @@ export function StreetScopes(props: { map: WorkMap; streetId: string; send?: Map
       </div>
       {recording ? null : <div className="mt-4"><ProgressPreview map={props.map} streetId={detail.id} draft={STREET_ONLY} /></div>}
       {props.send && !recording ? <button type="button" data-testid="avance-manual-abrir" onClick={() => setRecording(true)} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-[15px] font-semibold text-on-primary"><TrendingUp size={18} />Registrar avance</button> : null}
-      {props.send && recording ? <div className="mt-4"><ManualProgress map={props.map} streetId={detail.id} lengthM={detail.lengthM} widthM={detail.widthM ?? undefined} send={props.send} uploadPhoto={props.uploadPhoto} onDone={() => setRecording(false)} /></div> : null}
+      {props.send && recording ? <div className="mt-4"><ManualProgress map={props.map} streetId={detail.id} lengthM={detail.lengthM} widthM={detail.widthM ?? undefined} send={props.send} uploadPhoto={props.uploadPhoto} initial={props.recordDraft} onDone={() => setRecording(false)} /></div> : null}
       {detail.layers.length ? (
         <section className="mt-4 rounded-xl border-[1.5px] border-outline/15 bg-surface p-4">
           <p className={KICKER}>Avance por trabajo</p>

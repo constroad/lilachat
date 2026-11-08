@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { lazyChunk } from '../../../ui/lazyChunk';
 import { ArchiveRestore, ChevronRight, Download, ExternalLink, Layers, Maximize2, Minimize2, Paintbrush, Plus, Share2, TrendingUp, Undo2, X } from 'lucide-react';
-import { bareLinesOf, visibleStationMarks, brushLinesOf, brushTitle, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type MapPhoto } from '@lilachat/shared';
+import { bareLinesOf, visibleStationMarks, brushLinesOf, brushTitle, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type MapPhoto, type ManualProgressDraft } from '@lilachat/shared';
 import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
 import { ShareProgress } from './ShareProgress';
@@ -12,6 +12,7 @@ import { StreetScopes } from './StreetScopes';
 import { DeletedWork } from './DeletedWork';
 import { useBrush, WorkLayers, type LayersKind } from './WorkLayers';
 import { PhotoToggle, usePhotoLayer } from './MapPhotos';
+import { PrimeCoatSuggestions } from './PrimeCoat';
 
 const WorkMapCanvas = lazyChunk(() => import('./WorkMapCanvas'));
 
@@ -152,9 +153,10 @@ export function WorkMapBoard(props: BoardProps) {
   const brushLines = useMemo(() => linesFor(map, brushing.brush), [map, brushing.brush]);
   const closeLayers = () => { setLayers(null); brushing.setBrush(null); };
   const [recordingStart, setRecordingStart] = useState(false);
+  const [recordDraft, setRecordDraft] = useState<ManualProgressDraft | undefined>(undefined);
   const [choosing, setChoosing] = useState<ProgressTarget | null>(null);
   const target = useMemo(() => progressTargetOf(map), [map]);
-  const openStreet = (id: string | null, record = false) => { setChoosing(null); setRecordingStart(record); setStreetId(id); };
+  const openStreet = (id: string | null, record = false, draft?: ManualProgressDraft) => { setChoosing(null); setRecordingStart(record); setRecordDraft(draft); setStreetId(id); };
   const record = () => (target.kind === 'street' ? openStreet(target.streetId, true) : setChoosing(target));
   const view = useMemo(() => workMapView(map, filter), [map, filter]);
   const groups = useMemo(() => workMapStageGroups(map, view), [map, view]);
@@ -164,8 +166,10 @@ export function WorkMapBoard(props: BoardProps) {
   const photoLayer = usePhotoLayer(map, props.mapPhotos);
   const { holder, expanded, open, close } = useFullScreen();
   const wide = useWide(holder);
-  const top = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null;
-  const streetPanel = streetId ? <StreetScopes key={`${streetId}|${recordingStart}`} map={map} streetId={streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} startRecording={recordingStart} onBack={() => openStreet(null)} /> : null;
+  const discharges = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null;
+  const primeCoat = props.editMap && props.mapPhotos?.length ? <PrimeCoatSuggestions map={map} photos={props.mapPhotos} onRecord={(id, draft) => openStreet(id, true, draft)} /> : null;
+  const top = discharges || primeCoat ? <div className="space-y-5">{discharges}{primeCoat}</div> : null;
+  const streetPanel = streetId ? <StreetScopes key={`${streetId}|${recordingStart}|${recordDraft?.fromM}-${recordDraft?.toM}`} map={map} streetId={streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} startRecording={recordingStart} recordDraft={recordDraft} onBack={() => openStreet(null)} /> : null;
   const pickPanel = choosing?.kind === 'choose' ? <StreetPick streets={choosing.streets} onPick={(id) => openStreet(id, true)} onClose={() => setChoosing(null)} /> : null;
   const deletedPanel = seeingDeleted && props.editMap ? <DeletedWork map={map} send={props.editMap} onClose={() => setSeeingDeleted(false)} /> : null;
   const sidePanel = side === 'export'

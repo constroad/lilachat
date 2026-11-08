@@ -63,6 +63,19 @@ describe('a street and its stretches (design o-03)', () => {
     expect(streetDetailOf(bare, 's1')).toMatchObject({ headline: '320 m', layers: [], scopes: [] });
     expect(streetDetailOf(map, 'nope')).toBeNull();
   });
+
+  it('each stretch says its state, like the pill of o-03: in progress, done, not started or without works', () => {
+    // Arrange
+    const map = mapOf();
+    const done: WorkMap = { ...map, progress: [...map.progress, { streetId: 's1', workId: 'asfalto', fromM: 40, toM: 160, date: '2026-11-03', rework: false }] };
+    const bare: WorkMap = { ...map, scopes: map.scopes.map((scope) => (scope.id === 'c2' ? { ...scope, workIds: [] } : scope)) };
+    // Act
+    const states = (one: WorkMap) => streetDetailOf(one, 's1')?.scopes.map((scope) => scope.state);
+    // Assert
+    expect(states(map)).toEqual(['En proceso', 'Pendiente']);
+    expect(states(done)).toEqual(['Terminado', 'Pendiente']);
+    expect(states(bare)).toEqual(['En proceso', null]);
+  });
 });
 
 describe('adding or editing a stretch', () => {

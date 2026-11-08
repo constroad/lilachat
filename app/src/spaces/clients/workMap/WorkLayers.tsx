@@ -110,7 +110,7 @@ export function BrushMap(props: { map: WorkMap; send: MapEditSend; brush: Brush;
   return (
     <Modal visible animationType="slide" onRequestClose={props.onDone}>
       <View testID="mapa-brocha-completo" className="flex-1 bg-background">
-        <WorkMapSurface view={view} moves stretches={brushLinesOf(props.map, props.brush)} onTap={(place) => void strokes.tap(place)} />
+        <WorkMapSurface view={view} moves controlsInset={margins.pie} stretches={brushLinesOf(props.map, props.brush)} onTap={(place) => void strokes.tap(place)} />
         <View testID="mapa-brocha" className="absolute inset-x-3 rounded-2xl border border-primary/30 bg-surface p-3" style={{ top: margins.cabecera + BAND_GAP }}>
           <Text className="text-[15px] font-semibold text-on-surface">{strokes.busy ? 'Guardando…' : brushTitle(props.map, props.brush)}</Text>
           {strokes.error ? <Text testID="brocha-error" className="mt-1 text-[13px] font-semibold text-error">{strokes.error}</Text> : null}

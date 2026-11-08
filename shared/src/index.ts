@@ -208,3 +208,4 @@ export * from './workMapPhotos.js';
 export * from './placeSearch.js';
 export * from './tutorialScript.js';
 export * from './photoPhase.js';
+export * from './workPrimeCoat.js';

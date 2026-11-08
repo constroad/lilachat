@@ -28,6 +28,16 @@ describe('StreetScopes', () => {
     expect(screen.getByTestId('tramo-c1')).toHaveTextContent('Tramo 1: 0+000 a 0+160');
     expect(screen.getByTestId('tramo-c1')).toHaveTextContent('Etapa 1');
     expect(screen.getByTestId('tramo-c1')).toHaveTextContent('Base 50 %');
+    expect(screen.getByTestId('tramo-estado-c1')).toHaveTextContent('En proceso');
+  });
+
+  it('opens «Registrar avance» already filled when the Control de imprimación suggests it (#253)', () => {
+    // Act
+    render(<StreetScopes map={mapOf()} streetId="s1" send={sender()} recordDraft={{ workId: 'base', fromM: 80, toM: 150, photoIds: [], note: '' }} onBack={vi.fn()} />);
+    // Assert
+    expect(screen.getByTestId('avance-manual-desde')).toHaveTextContent('0+080');
+    expect(screen.getByTestId('avance-manual-hasta-progresiva')).toHaveTextContent('Progresiva 0+150');
+    expect(screen.getByTestId('avance-manual-trabajo-base')).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('adds a stretch: the whole street by default, the works tapped and the stage picked', async () => {

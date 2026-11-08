@@ -41,7 +41,8 @@ const CHIP = 'h-10 flex-row items-center gap-1.5 rounded-full border px-3';
 const STEP = 'h-16 flex-1 items-center justify-center rounded-xl border border-outline/20 bg-surface';
 type Answer = { ok: boolean; message: string } | null;
 export type PhotoAsset = ImagePicker.ImagePickerAsset;
-type Props = { map: WorkMap; streetId: string; lengthM: number; widthM?: number; send: MapEditSend; uploadPhoto?: ManualPhotoUpload<PhotoAsset>; onDone: () => void };
+/** `initial`: the form already filled, as the Control de imprimación suggests it (#253). */
+type Props = { map: WorkMap; streetId: string; lengthM: number; widthM?: number; send: MapEditSend; uploadPhoto?: ManualPhotoUpload<PhotoAsset>; initial?: ManualProgressDraft; onDone: () => void };
 
 /** Step 3: a photo taken in the field, to the service's Drive; Portal only takes those as evidence. */
 function Photos(props: { count: number; uploadPhoto?: ManualPhotoUpload<PhotoAsset>; onPhoto: (mediaId: string) => void }) {
@@ -117,7 +118,7 @@ function Reach(props: { draft: ManualProgressDraft; lengthM: number; widthM?: nu
 export function ManualProgress(props: Props) {
   const colors = useColores();
   const start = useMemo(() => manualDraftFor(props.map, props.streetId), [props.map, props.streetId]);
-  const [draft, setDraft] = useState<ManualProgressDraft>(start.draft);
+  const [draft, setDraft] = useState<ManualProgressDraft>(props.initial ?? start.draft);
   const [entryId] = useState(() => randomUUID());
   const [answer, setAnswer] = useState<Answer>(null);
   const [sending, setSending] = useState(false);

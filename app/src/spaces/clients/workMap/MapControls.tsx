@@ -10,6 +10,7 @@ const ZOOM_MIN = 3;
 const ZOOM_MAX = 19;
 const ZOOM_STEP_MS = 200;
 const LOCATE_ZOOM = 17;
+const CONTROLS_BOTTOM = 16;
 const BUTTON = 'h-11 w-11 items-center justify-center bg-surface';
 
 const zoomWithin = (zoom: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom));
@@ -18,7 +19,8 @@ const zoomWithin = (zoom: number) => Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom)
  * Design o-01 and o-02: zoom in, zoom out and «mi ubicación» over the map (side-by-side audit 07/11:
  * the APK had none). The location is asked only when the person taps it, and only while in use.
  */
-export function MapControls(props: { map: RefObject<MapRef | null>; camera: RefObject<CameraRef | null> }) {
+/** `bottomInset` lifts the buttons over the system bar on a full-screen map (APK brush map, 08/11). */
+export function MapControls(props: { map: RefObject<MapRef | null>; camera: RefObject<CameraRef | null>; bottomInset?: number }) {
   const colors = useColores();
   const [locating, setLocating] = useState(false);
   const { current } = useCurrentLocation(locating);
@@ -37,7 +39,7 @@ export function MapControls(props: { map: RefObject<MapRef | null>; camera: RefO
     if (view) props.camera.current?.easeTo({ center: view[0], zoom: zoomWithin(view[1] + step), duration: ZOOM_STEP_MS });
   };
   return (
-    <View pointerEvents="box-none" className="absolute bottom-4 right-3 gap-2">
+    <View pointerEvents="box-none" className="absolute right-3 gap-2" style={{ bottom: CONTROLS_BOTTOM + (props.bottomInset ?? 0) }}>
       <View className="overflow-hidden rounded-xl border border-outline/20">
         <Pressable testID="mapa-acercar" accessibilityLabel="Acercar" onPress={() => void zoomBy(1)} className={`${BUTTON} border-b border-outline/15`}><Plus size={18} color={colors['on-surface']} /></Pressable>
         <Pressable testID="mapa-alejar" accessibilityLabel="Alejar" onPress={() => void zoomBy(-1)} className={BUTTON}><Minus size={18} color={colors['on-surface']} /></Pressable>

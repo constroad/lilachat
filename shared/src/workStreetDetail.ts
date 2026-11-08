@@ -6,7 +6,9 @@ import { approvedMetersIn, metersLabel, stationLabel, type WorkMap, type WorkMap
  * PURE: the APK and the web draw from here.
  */
 export type StreetLayer = { workId: string; name: string; color: string; doneM: number; totalM: number; percent: number };
-export type StreetScopeRow = { id: string; title: string; range: string; summary: string; stageName: string | null; works: StreetLayer[]; scope: WorkMapScope };
+/** The pill of a stretch in o-03; null when it has no works to measure. */
+export type StretchState = 'Pendiente' | 'En proceso' | 'Terminado';
+export type StreetScopeRow = { id: string; title: string; range: string; summary: string; stageName: string | null; works: StreetLayer[]; state: StretchState | null; scope: WorkMapScope };
 export type StreetDetail = { id: string; name: string; lengthM: number; widthM: number | null; headline: string; layers: StreetLayer[]; scopes: StreetScopeRow[] };
 
 const FULL_PCT = 100;
@@ -23,6 +25,12 @@ function layerOf(map: WorkMap, work: WorkMapWork, scopes: WorkMapScope[]): Stree
   return { workId: work.id, name: work.name, color: work.color, doneM, totalM, percent: percentOf(doneM, totalM) };
 }
 
+function stretchStateOf(works: StreetLayer[]): StretchState | null {
+  if (!works.length) return null;
+  if (works.every((work) => work.totalM > 0 && work.doneM >= work.totalM)) return 'Terminado';
+  return works.some((work) => work.doneM > 0) ? 'En proceso' : 'Pendiente';
+}
+
 function scopeRow(map: WorkMap, scope: WorkMapScope, index: number, streetWidthM: number | null): StreetScopeRow {
   const lengthM = Math.max(0, scope.toM - scope.fromM);
   const widthM = scope.widthM ?? streetWidthM;
@@ -35,6 +43,7 @@ function scopeRow(map: WorkMap, scope: WorkMapScope, index: number, streetWidthM
     summary: size.join(' · '),
     stageName: map.stages.find((stage) => stage.id === scope.stageId)?.name ?? null,
     works,
+    state: stretchStateOf(works),
     scope,
   };
 }

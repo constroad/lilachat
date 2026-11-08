@@ -48,9 +48,10 @@ function photoOf(raw: unknown): MapPhoto[] {
 /** `mapPhotos` of the service detail, by a whitelist: what has no place or no link is not drawn. */
 export const mapPhotosOf = (value: unknown): MapPhoto[] => (Array.isArray(value) ? value.flatMap(photoOf).slice(0, MAP_PHOTOS_MAX) : []);
 
-type Placed = { photo: MapPhoto; streetId: string | null; atM: number };
+/** A photo on its street and chainage; `streetId` null when it fell off the work. */
+export type Placed = { photo: MapPhoto; streetId: string | null; atM: number };
 
-function placeOnStreets(map: Pick<WorkMap, 'streets'>, photo: MapPhoto): Placed {
+export function placeOnStreets(map: Pick<WorkMap, 'streets'>, photo: MapPhoto): Placed {
   let best: Placed = { photo, streetId: null, atM: 0 };
   let bestDistance = PHOTO_STREET_REACH_M;
   for (const street of map.streets) {

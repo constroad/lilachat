@@ -1109,3 +1109,46 @@ pantalla».
   2. Volver a abrir la app: la marca llegó desde Portal en `photoMarks`.
   3. «Sin marcar» y guardar. La foto volvió a como estaba.
 - El APK lleva lo mismo; sale en la próxima OTA.
+
+## Pendientes del mapa cerrados antes del tutorial 2 (José 08/11: «¿ya terminaste todos tus pendientes del mapa?»)
+
+**Avance sugerido desde el Control de imprimación (#253).** Motor `shared/src/workPrimeCoat.ts`, con 6 tests.
+- Lee las `mapPhotos` con `reportType: 'CTL-IMP'`. Cada foto cae en su calle, con la misma
+  proyección de la capa «Fotos» (`placeOnStreets`).
+- Un informe sobre una calle es un tramo: va de la primera a la última foto. Dos días de riego son
+  dos tramos.
+- Las fotos fuera de las calles no suman y se dicen: «No suman: 1 foto fuera de las calles de la obra».
+- Cuando el trabajo de imprimación (nombre con «imprim») ya tiene aprobado ese rango, deja de sugerirse.
+- La tarjeta «Avance que marcan las fotos del riego» dice «Las 3 fotos del riego caen entre 0+010 y
+  0+090 de Jr. Los Pinos. Revisa el tramo y regístralo: recién ahí se suma al avance.».
+- «Revisar y registrar» abre el «Registrar avance» de esa calle ya lleno, con el trabajo Imprimación,
+  «Desde» y «Hasta dónde». Es la propuesta de Portal: la herramienta manual que ya existe, sin una
+  nueva ni reaprobación. Sin un trabajo de imprimación en la calle, la persona lo elige.
+- Sale para quien puede editar el mapa, en la web (`PrimeCoat.tsx`) y en el APK.
+- **Sin verificar en vivo:** en Test no hay un Control de imprimación con fotos ubicadas sobre una
+  calle. Las de «Mejoramiento del Corredor Vial Pachacútec» son del 4 al 6/11, de antes de que
+  Portal guardara `metadata.geo`, y ese servicio no tiene calles. El tutorial 6 crea uno en
+  QA-CTLPIS y ahí se recorre.
+
+**Estado de cada tramo en «Ver tramos» (auditoría, punto 15, lo que faltaba).** Como la pastilla de
+o-03: «Pendiente», «En proceso» o «Terminado» (`StretchState` en `workStreetDetail.ts`). «Terminado»
+cuando todos sus trabajos tienen aprobado todo el tramo, medido en metros y no en el % redondeado.
+Un tramo sin trabajos no lleva pastilla. Web y APK.
+
+**APK: el teclado tapaba los formularios del mapa.** Visto en el emulador (OTA 5656fea2, Test):
+- en el editor de calle, el teclado tapaba el propio campo «Nombre»;
+- en «Agregar tramo», tapaba los trabajos, la etapa y «Guardar tramo», y no se podía bajar.
+- Causa: `KeyboardAvoidingView` solo actuaba en iOS. Ahora usa `padding` en los dos, como `Sheet`.
+- Visto de paso, fuera del mapa: `CreateUserScreen` y `CompleteProfileScreen` tienen el mismo
+  `undefined` en Android.
+
+**APK: el primer toque en «Buscar» solo cerraba el teclado.** Reproducido en el emulador: el primer
+toque cerró el teclado sin buscar; el segundo buscó. Causa: los toques del editor (un `Modal`)
+pasan por sus ancestros de React, y el `ScrollView` del detalle del servicio no tenía
+`keyboardShouldPersistTaps`, así que capturaba el toque para cerrar el teclado. Ahora es `handled`
+en las dos vistas del detalle.
+
+**APK: «Mi ubicación» pegado a la barra del sistema** en la brocha y en el mapa completo. Los
+controles suben lo que mide la barra (`controlsInset`).
+
+Los tres arreglos del APK van en la próxima OTA, que aprueba José.

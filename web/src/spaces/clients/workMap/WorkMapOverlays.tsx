@@ -82,15 +82,27 @@ export function MapFilters(props: FilterProps & { floating: boolean }) {
 
 /** «Convenciones» (o-01): each work's line, and the dashed one still to build. */
 export function MapLegend(props: { view: WorkMapView; compact: boolean }) {
+  const pending = <span className="flex items-center gap-2 text-[12px] text-on-surface-variant"><span aria-hidden className="w-4 shrink-0 border-t-2 border-dashed border-on-surface-variant/60" />Pendiente de ejecución</span>;
+  // On a phone it floated over the top-left of the map and hid the streets there (José 08/11, tutorial video): a row above the map.
+  if (props.compact) {
+    return (
+      <div data-testid="mapa-leyenda" className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 pb-2 text-[12px] font-medium text-on-surface">
+        {props.view.works.map((work) => (
+          <span key={work.id} className="flex items-center gap-2"><span aria-hidden className="h-1 w-4 shrink-0 rounded-full" style={{ backgroundColor: work.color }} />{work.name}</span>
+        ))}
+        {pending}
+      </div>
+    );
+  }
   return (
-    <div className={`pointer-events-none absolute z-10 ${FLOATING} ${props.compact ? 'left-3 top-3 max-w-[60%] px-2.5 py-2' : 'bottom-4 left-4 max-w-[320px] p-3'}`}>
-      {props.compact ? null : <p className={`${KICKER} mb-2`}>Convenciones</p>}
+    <div data-testid="mapa-leyenda" className={`pointer-events-none absolute bottom-4 left-4 z-10 max-w-[320px] p-3 ${FLOATING}`}>
+      <p className={`${KICKER} mb-2`}>Convenciones</p>
       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12px] font-medium text-on-surface">
         {props.view.works.map((work) => (
           <span key={work.id} className="flex items-center gap-2"><span aria-hidden className="h-1 w-4 shrink-0 rounded-full" style={{ backgroundColor: work.color }} />{work.name}</span>
         ))}
       </div>
-      <p className="mt-2 flex items-center gap-2 border-t border-outline/10 pt-2 text-[12px] text-on-surface-variant"><span aria-hidden className="w-4 shrink-0 border-t-2 border-dashed border-on-surface-variant/60" />Pendiente de ejecución</p>
+      <p className="mt-2 border-t border-outline/10 pt-2">{pending}</p>
     </div>
   );
 }

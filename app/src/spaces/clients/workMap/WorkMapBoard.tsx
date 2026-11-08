@@ -153,14 +153,14 @@ export function WorkMapBoard(props: BoardProps) {
       ) : null}
       {props.editMap ? <LayerButtons onOpen={setLayers} /> : null}
       <WorkMapFilters map={map} view={view} filter={filter} onFilter={setFilter} />
+      <WorkMapLegend view={view} />
+      {props.notice ? <Text testID="mapa-aviso" accessibilityRole="alert" className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-[14px] font-semibold text-on-surface">{props.notice}</Text> : null}
       <View className="-mx-4 overflow-hidden bg-surface-variant" style={{ height }}>
         <View pointerEvents="none" className="absolute inset-0">
           {wide ? null : <WorkMapSurface view={view} moves={false} stations={stations} bare={bare} pins={photos.shown ? photos.pins : pista.pins} stretches={pista.stretches} />}
         </View>
         {/* The small map does not take taps: «Fotos» opens the full one, where a marker opens its photos. */}
         {photos.available ? <PhotoToggle shown={photos.shown} count={photos.count} onToggle={() => { photos.setShown(true); setWide(true); }} style={{ bottom: 16 }} /> : null}
-        <WorkMapLegend view={view} />
-        {props.notice ? <Text testID="mapa-aviso" accessibilityRole="alert" className="absolute left-3 right-16 top-3 self-start rounded-xl border border-primary/30 bg-surface px-3 py-2 text-[14px] font-semibold text-on-surface">{props.notice}</Text> : null}
         <Pressable testID="mapa-pantalla-completa" accessibilityLabel="Ver mapa completo" onPress={() => setWide(true)} className="absolute right-3 top-3 h-11 w-11 items-center justify-center rounded-xl border border-outline/15 bg-surface">
           <Maximize2 size={18} color={colors['on-surface']} />
         </Pressable>

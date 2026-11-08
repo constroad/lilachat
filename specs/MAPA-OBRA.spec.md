@@ -1076,3 +1076,16 @@ pantalla».
   - En el APK, el primer toque en «Buscar» con el teclado abierto solo cerró el teclado. Con
     «Enter» busca. Queda anotado.
 - El APK volvió a Constroad y el emulador quedó apagado.
+
+**José 08/11, viendo el tutorial 1: «percibo errores de UI, la calle aparece abajo de un chip».**
+- En el teléfono, la leyenda («Carpeta asfáltica · Pendiente de ejecución») flotaba arriba a la
+  izquierda del mapa y tapaba las calles y los marcadores de esa esquina. El aviso «Calle
+  guardada» quedaba debajo de ella.
+- Ahora, en pantalla angosta, la leyenda es una fila arriba del mapa, bajo los filtros, en web y
+  APK. El aviso va en esa misma zona, fuera del mapa. En pantalla ancha la leyenda sigue abajo a
+  la izquierda.
+- Verificado con la sonda del grabador a 390 px: las 2 calles, los marcadores 1, 2, 3 y 4 y las
+  progresivas se ven completos.
+- La OTA 7b0e66fb (git e835bdf, OK de José: «sí publica») lleva la búsqueda con «Jr.», el
+  buscador que se esconde, el encuadre de la calle entera y «Calle guardada». rn-smoke en verde
+  antes y después. La leyenda en fila va en la OTA siguiente.

@@ -95,15 +95,16 @@ export function WorkMapFilters(props: FilterProps) {
 }
 
 /** «Convenciones» over the map: each work's line and the dashed one still to build. */
+/** A row above the map: floating over its top-left it hid the streets there (José 08/11, tutorial video). */
 export function WorkMapLegend(props: { view: WorkMapView }) {
   return (
-    <View pointerEvents="none" className="absolute left-3 top-3 max-w-[62%] rounded-xl border border-outline/15 bg-surface px-2.5 py-2">
+    <View testID="mapa-leyenda" className="flex-row flex-wrap items-center gap-x-3 gap-y-1">
       <View className="flex-row flex-wrap gap-x-3 gap-y-1">
         {props.view.works.map((work) => (
           <View key={work.id} className="flex-row items-center gap-1.5"><View className="h-1 w-4 rounded-full" style={{ backgroundColor: work.color }} /><Text className="text-[12px] font-medium text-on-surface">{work.name}</Text></View>
         ))}
       </View>
-      <View className="mt-1.5 flex-row items-center gap-1.5 border-t border-outline/10 pt-1.5">
+      <View className="flex-row items-center gap-1.5">
         <View className="w-4 border-t-2 border-dashed border-on-surface-variant/60" />
         <Text className="text-[12px] text-on-surface-variant">Pendiente de ejecución</Text>
       </View>

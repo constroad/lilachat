@@ -139,6 +139,8 @@ describe('WorkStreetEditor, trimming the picked street (José 08/11)', () => {
     fireEvent.click(await screen.findByTestId('lienzo-tocar-calle'));
     expect(screen.getByTestId('mapa-lienzo').dataset.handles).toBe('0+000,0+500');
     expect(screen.getByTestId('mapa-lienzo').dataset.pins).toBe('0');
+    // With a street drawn the search steps aside: on a phone the map had shrunk to a strip (APK E2E 08/11).
+    expect(screen.queryByTestId('editor-buscar-lugar')).toBeNull();
     fireEvent.click(screen.getByTestId('lienzo-soltar-fin'));
     expect(screen.getByTestId('editor-calle-largo')).toHaveTextContent('400 m');
     expect(screen.getByTestId('mapa-lienzo').dataset.handles).toBe('0+000,0+400');

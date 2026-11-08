@@ -39,7 +39,7 @@ describe('placeQueryOf', () => {
   it('coordinates go straight, a short link to the server, a name to the search', () => {
     expect(placeQueryOf('-12.05,-77.03')).toEqual({ kind: 'point', point: { lat: -12.05, lng: -77.03 } });
     expect(placeQueryOf('https://maps.app.goo.gl/AbC')).toEqual({ kind: 'short_link', url: 'https://maps.app.goo.gl/AbC' });
-    expect(placeQueryOf('  Jr. Lampa 500, Lima ')).toEqual({ kind: 'name', text: 'Jr. Lampa 500, Lima' });
+    expect(placeQueryOf('  Jr. Lampa 500, Lima ')).toEqual({ kind: 'name', text: 'Jirón Lampa 500, Lima' });
     expect(placeQueryOf('ab')).toEqual({ kind: 'too_short' });
   });
 });
@@ -60,10 +60,25 @@ describe('findPlace', () => {
     expect(await findPlace('-12.05, -77.03', ask)).toEqual({ ok: true, results: [{ name: '-12.05, -77.03', lat: -12.05, lng: -77.03 }] });
     expect(ask).not.toHaveBeenCalled();
     await findPlace(' Jr. Lampa ', ask, { lat: -12, lng: -77 });
-    expect(ask).toHaveBeenCalledWith('Jr. Lampa', { lat: -12, lng: -77 });
+    expect(ask).toHaveBeenCalledWith('Jirón Lampa', { lat: -12, lng: -77 });
   });
 
   it('a server that does not answer is a message, not an error', async () => {
     expect(await findPlace('Jr. Lampa', async () => { throw new Error('offline'); })).toEqual({ ok: false, message: PLACE_SEARCH_FAILED });
+  });
+});
+
+describe('placeQueryOf with Peruvian street abbreviations (APK E2E 08/11: «Jr. Lampa Lima» found nothing)', () => {
+  it('spells out Jr., Av., Psje., Ca. and Urb. for the search', () => {
+    expect(placeQueryOf('Jr. Lampa Lima')).toEqual({ kind: 'name', text: 'Jirón Lampa Lima' });
+    expect(placeQueryOf('av Arequipa 500, Lince')).toEqual({ kind: 'name', text: 'Avenida Arequipa 500, Lince' });
+    expect(placeQueryOf('Psje. Las Flores')).toEqual({ kind: 'name', text: 'Pasaje Las Flores' });
+    expect(placeQueryOf('Ca. Los Pinos')).toEqual({ kind: 'name', text: 'Calle Los Pinos' });
+    expect(placeQueryOf('Urb. Santa Rosa')).toEqual({ kind: 'name', text: 'Urbanización Santa Rosa' });
+  });
+
+  it('leaves words that only start like one alone', () => {
+    expect(placeQueryOf('Javier Prado')).toEqual({ kind: 'name', text: 'Javier Prado' });
+    expect(placeQueryOf('Avenida Brasil')).toEqual({ kind: 'name', text: 'Avenida Brasil' });
   });
 });

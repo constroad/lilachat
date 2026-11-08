@@ -63,7 +63,7 @@ export function WorkStreetEditor(props: EditorProps) {
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
       <div className="flex min-h-0 flex-1 flex-col">
       <div className="bg-primary px-4 py-3 text-on-primary">
-        <PlaceSearch ask={props.findPlace} near={focus ?? props.start} onPick={setFocus} />
+        {draft.points.length ? null : <PlaceSearch ask={props.findPlace} near={focus ?? props.start} onPick={setFocus} />}
         <ModeSwitch mode={draft.mode} onMode={(mode) => { const question = modeChangeLoss(draft, mode); if (question) { setSwitching({ mode, question }); return; } setError(null); gps.reset(); setDraft((before) => setDrawMode(before, mode)); }} />
         {switching ? (
           <div data-testid="editor-calle-cambiar-modo" role="alertdialog" className="mt-2 rounded-xl bg-on-primary/15 p-3">

@@ -1057,3 +1057,22 @@ pantalla».
   - La imagen sale rota porque es la URL de la semilla QA y su archivo no existe en lila.
   - Defecto: una foto de unidad sin `reportType` decía «Avance registrado». Ahora dice «Unidad
     QAA-001».
+
+**OTA 738451a4 (git 5bba71a), APK en Test, 08/11. José dio el OK: «si a ambos».**
+- rn-smoke en verde antes y después, con 3 aperturas en frío.
+- Mapa del servicio: «Fotos · 8». Al tocarlo se abre el mapa completo con los marcadores (1, 2, 2,
+  1 y 2 en rojo fuera de las calles).
+- Tocar el marcador de 0+070 abre el visor con «Unidad QAC-003 · QA-MAPA calle — borrar · 0+070»,
+  1 de 2. La imagen sale negra porque es la URL de la semilla.
+- La calle 2 se ve con el avance aprobado del día 1 (Portal aprobó 6af0b26a02e17b9996f881d1).
+- Editor: al tocar Jirón Moquegua vinieron sus extremos y los ±10 m (335 m).
+- Arrastre por `ViewAnnotation` con pulsación larga: el extremo «0+000» se movió y la calle quedó
+  en 86 m. Cancelé sin guardar.
+- **Defectos encontrados, ya arreglados (van en la próxima OTA):**
+  - «Jr. Lampa Lima» daba «No encontramos ese lugar», porque OpenStreetMap escribe «Jirón». Ahora
+    se expanden Jr., Av., Psje., Ca./Cl. y Urb. antes de buscar (2 tests).
+  - Con el buscador, el aviso, los ±10 m y los botones, el mapa del editor quedaba como una tira
+    en el teléfono. El buscador se esconde cuando ya hay una calle marcada.
+  - En el APK, el primer toque en «Buscar» con el teclado abierto solo cerró el teclado. Con
+    «Enter» busca. Queda anotado.
+- El APK volvió a Constroad y el emulador quedó apagado.

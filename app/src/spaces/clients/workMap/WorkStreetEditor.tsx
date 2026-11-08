@@ -145,7 +145,7 @@ export function WorkStreetEditor(props: EditorProps) {
         <View className="bg-primary px-4 pb-3" style={{ paddingTop: margins.cabecera + 8 }}>
           <Text className="font-mono text-[11px] font-bold uppercase tracking-[2px] text-on-primary/80" numberOfLines={1}>{props.title}</Text>
           <Text className="text-[20px] font-bold text-on-primary">Definir área de trabajo</Text>
-          <PlaceSearch ask={props.findPlace} near={focus ?? props.start} onPick={setFocus} />
+          {draft.points.length ? null : <PlaceSearch ask={props.findPlace} near={focus ?? props.start} onPick={setFocus} />}
           <ModeSwitch mode={draft.mode} onMode={(mode) => { const question = modeChangeLoss(draft, mode); if (question) setSwitching({ mode, question }); else switchTo(mode); }} />
           {switching ? <SwitchQuestion question={switching.question} onYes={() => switchTo(switching.mode)} onNo={() => setSwitching(null)} /> : null}
           <View className="mt-2 flex-row items-center justify-between gap-2">

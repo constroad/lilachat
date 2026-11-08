@@ -52,12 +52,24 @@ export function isShortMapsLink(text: string): boolean {
   }
 }
 
+/** How a Peruvian address is written, spelled out: OpenStreetMap has «Jirón Lampa», not «Jr. Lampa». */
+const STREET_ABBREVIATIONS: ReadonlyArray<[RegExp, string]> = [
+  [/\bjr\.?(?=\s)/gi, 'Jirón'],
+  [/\bav\.?(?=\s)/gi, 'Avenida'],
+  [/\bpsje\.?(?=\s)/gi, 'Pasaje'],
+  [/\bca\.(?=\s)/gi, 'Calle'],
+  [/\bcl\.(?=\s)/gi, 'Calle'],
+  [/\burb\.?(?=\s)/gi, 'Urbanización'],
+];
+
+const spelledOut = (text: string): string => STREET_ABBREVIATIONS.reduce((written, [pattern, word]) => written.replace(pattern, word), text);
+
 export function placeQueryOf(raw: string): PlaceQuery {
   const text = raw.trim().slice(0, PLACE_QUERY_MAX);
   const point = coordsFromText(text);
   if (point) return { kind: 'point', point };
   if (isShortMapsLink(text)) return { kind: 'short_link', url: text };
-  return text.length < PLACE_QUERY_MIN ? { kind: 'too_short' } : { kind: 'name', text };
+  return text.length < PLACE_QUERY_MIN ? { kind: 'too_short' } : { kind: 'name', text: spelledOut(text) };
 }
 
 /** Nominatim's `search` answer, by a whitelist. */
@@ -84,7 +96,7 @@ export async function findPlace(raw: string, ask: PlaceAsk, near?: GeoPoint): Pr
   if (query.kind === 'point') return { ok: true, results: [{ name: `${query.point.lat}, ${query.point.lng}`, ...query.point }] };
   if (query.kind === 'too_short') return { ok: false, message: PLACE_NOT_FOUND };
   try {
-    return await ask(raw.trim(), near);
+    return await ask(query.kind === 'name' ? query.text : raw.trim(), near);
   } catch {
     // The server never answered: the person tries again.
     return { ok: false, message: PLACE_SEARCH_FAILED };

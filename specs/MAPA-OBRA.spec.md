@@ -752,3 +752,21 @@ por el boleto (90748f1 y agentes dd1baa7).
   herramientas del mapa. `progressTargetOf` (shared) decide: con una sola calle con tramos de
   trabajo abre su formulario de avance directo; con varias pregunta «¿En qué calle?»; sin ninguna
   el botón no sale. La calle abre con «Registrar avance» ya desplegado (`startRecording`).
+
+### Puntos 3, 4 y 5 de la auditoría del 08/11 (web y APK)
+
+- **Etapa al crear la calle (o-02):** el editor muestra «Etapa» (web: lista; APK: chips) cuando la
+  obra tiene etapas. Portal guarda la etapa en el tramo, así que `saveStreetWithStage` guarda la
+  calle y, con su `calleId` y `largoM`, un tramo 0 a largo con esa etapa (`entry_id` de la calle
+  + «-etapa», sin duplicar en un reintento). Si la etapa falla, la calle queda y se dice
+  «Ponla desde «Ver tramos»». Sin herramienta nueva ni reaprobación.
+- **Cambiar de forma ya no borra en silencio (o-02, o-13):** `modeChangeLoss` pregunta
+  «Cambiar de forma borra lo que marcaste (80 m). ¿Cambiar igual?» con «Cambiar» y «Seguir aquí».
+  La etapa elegida sobrevive al cambio.
+- **Importar en un servicio sin calles (o-10):** la tarjeta «Todavía no hay calles» trae
+  «Importar KMZ o KML» debajo de «Dibujar la primera calle».
+- Web: «Pantalla completa», «Borrados» y «Abrir en Portal» quedan como ícono con su nombre
+  (`title` y texto para lector de pantalla); con «Registrar avance» la barra cortaba las migas y la
+  pestaña «Mapa».
+- Test «wide board»: el doble de `ResizeObserver` reportaba al último observador (a veces el del
+  lienzo); ahora solo al del tablero. Era el falso rojo intermitente.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EMPTY_STREET, streetDraftLengthM, streetDraftPins, streetDraftProblem, DRAFT_NEEDS_STREET } from './workStreetDraft.js';
-import { NO_STREET_THERE, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, tapStreetDraft, undoStreetDraft } from './workStreetPick.js';
+import { modeChangeLoss, NO_STREET_THERE, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, tapStreetDraft, undoStreetDraft } from './workStreetPick.js';
 
 /** Audit 07/11 (José: «fácil y fluido para un ingeniero de campo»): tap the street, then its start and end. */
 const M_PER_DEG_LNG = 111_195 * Math.cos((12 * Math.PI) / 180);
@@ -106,5 +106,26 @@ describe('the start is where the person tapped first (web E2E 07/11)', () => {
     draft = undoStreetDraft(draft);
     expect(draft.pick?.fromM).toBeCloseTo(320, 0);
     expect(draft.reversed).toBe(false);
+  });
+});
+
+describe('modeChangeLoss (o-02: switching the way to draw no longer wipes the street silently)', () => {
+  const marked = { ...EMPTY_STREET, points: [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.999 }] };
+
+  it('names what a switch would erase', () => {
+    expect(modeChangeLoss(marked, 'gps')).toBe('Cambiar de forma borra lo que marcaste (109 m). ¿Cambiar igual?');
+  });
+
+  it('asks nothing when nothing is marked or the mode stays', () => {
+    expect(modeChangeLoss(EMPTY_STREET, 'gps')).toBeNull();
+    expect(modeChangeLoss(marked, 'street')).toBeNull();
+  });
+
+  it('a single point is still work to lose', () => {
+    expect(modeChangeLoss({ ...EMPTY_STREET, points: [{ lat: -12, lng: -77 }] }, 'hand')).toBe('Cambiar de forma borra lo que marcaste (1 punto). ¿Cambiar igual?');
+  });
+
+  it('the stage chosen survives the switch', () => {
+    expect(setDrawMode({ ...marked, stageId: 'e1' }, 'gps').stageId).toBe('e1');
   });
 });

@@ -96,14 +96,16 @@ function StreetPick(props: { streets: Array<{ id: string; name: string }>; onPic
 
 function Actions(props: { pageUrl: string; expanded: boolean; wide: boolean; onToggle: () => void; onExport: () => void; onShare: () => void; onRecord?: () => void; onDraw?: () => void; onDeleted?: () => void }) {
   const label = (text: string) => (props.wide ? text : <span className="sr-only">{text}</span>);
+  /** Secondary actions stay an icon with its name (design o-01): the bar keeps room for the crumbs and tabs. */
+  const quiet = (text: string) => <span className="sr-only">{text}</span>;
   return (
     <div className={`flex shrink-0 items-center gap-2 ${props.wide ? 'pb-3' : 'pb-2'}`}>
-      <button type="button" data-testid="mapa-pantalla-completa" onClick={props.onToggle} className={ACTION}>
-        {props.expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />} {label(props.expanded ? 'Salir' : 'Pantalla completa')}
+      <button type="button" data-testid="mapa-pantalla-completa" title={props.expanded ? 'Salir de pantalla completa' : 'Pantalla completa'} onClick={props.onToggle} className={ACTION}>
+        {props.expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />} {quiet(props.expanded ? 'Salir de pantalla completa' : 'Pantalla completa')}
       </button>
       {props.onDraw ? <button type="button" data-testid="mapa-nueva-calle" onClick={props.onDraw} className={ACTION}><Plus size={16} /> {label('Nueva calle')}</button> : null}
-      {props.onDeleted ? <button type="button" data-testid="mapa-borrados-abrir" onClick={props.onDeleted} className={ACTION}><ArchiveRestore size={16} /> {label('Borrados')}</button> : null}
-      <a data-testid="mapa-abrir" href={props.pageUrl} target="_blank" rel="noopener noreferrer" className={ACTION}><ExternalLink size={16} /> {label('Portal')}</a>
+      {props.onDeleted ? <button type="button" data-testid="mapa-borrados-abrir" title="Borrados" onClick={props.onDeleted} className={ACTION}><ArchiveRestore size={16} /> {quiet('Borrados')}</button> : null}
+      <a data-testid="mapa-abrir" title="Abrir en Portal" href={props.pageUrl} target="_blank" rel="noopener noreferrer" className={ACTION}><ExternalLink size={16} /> {quiet('Abrir en Portal')}</a>
       <button type="button" data-testid="mapa-exportar" onClick={props.onExport} className={ACTION}><Download size={16} /> {label('Exportar')}</button>
       <button type="button" data-testid="mapa-compartir" onClick={props.onShare} className={ACTION}><Share2 size={16} /> {props.wide ? 'Compartir avance' : 'Compartir'}</button>
       {props.onRecord ? <button type="button" data-testid="mapa-registrar-avance" onClick={props.onRecord} className={`${ACTION} border-primary bg-primary text-on-primary hover:bg-primary/90`}><TrendingUp size={16} /> {props.wide ? 'Registrar avance' : 'Registrar'}</button> : null}

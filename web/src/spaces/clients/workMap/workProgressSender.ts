@@ -1,4 +1,4 @@
-import { type MapEditSend, serviceLinkRequest, serviceMapUrl, type ChannelLinks, noticeOf, sendWorkProgress, sendWorkStreet, sendWorkStreetDelete, workProgressRequest, workStreetDeleteRequest, workStreetRequest, type StreetDraft, type WorkProgressResult } from '@lilachat/shared';
+import { type MapEditSend, serviceLinkRequest, serviceMapUrl, type ChannelLinks, noticeOf, saveStreetWithStage, sendWorkProgress, sendWorkScope, sendWorkStreet, type FormValues, type ReportFormRequest, sendWorkStreetDelete, workProgressRequest, workStreetDeleteRequest, workStreetRequest, type StreetDraft, type WorkProgressResult } from '@lilachat/shared';
 import { submitAppForm } from '../../../chat/commands/commandsApi';
 import { currentSocket } from '../../../useSocket';
 import { openReportForm } from '../reports/reportsApi';
@@ -20,12 +20,14 @@ export const workProgressSender = (target: ServiceAskTarget, chatId: string, ser
 export type StreetSend = (draft: StreetDraft, entryId: string) => Promise<WorkProgressResult>;
 
 /** «Guardar calle» (design o-02) through the same door: Portal's `guardar_calle_de_obra` with the line as context. */
-export const workStreetSender = (target: ServiceAskTarget, chatId: string, serviceId: string): StreetSend => (draft, entryId) =>
-  sendWorkStreet({
-    open: () => openReportForm(target, serviceId, workStreetRequest(draft, entryId)),
-    submit: (commandId, values) => submitAppForm(target.jwt, { chatId }, commandId, values),
-    notice: (commandId) => noticeOf(currentSocket(), commandId),
+export const workStreetSender = (target: ServiceAskTarget, chatId: string, serviceId: string): StreetSend => (draft, entryId) => {
+  const door = (request: ReportFormRequest) => ({
+    open: () => openReportForm(target, serviceId, request),
+    submit: (commandId: string, values: FormValues) => submitAppForm(target.jwt, { chatId }, commandId, values),
+    notice: (commandId: string) => noticeOf(currentSocket(), commandId),
   });
+  return saveStreetWithStage(() => sendWorkStreet(door(workStreetRequest(draft, entryId))), (request) => sendWorkScope(door(request)), draft.stageId, entryId);
+};
 
 /** «Borrar calle» through the same door: Portal's logical `borrar_calle_de_obra` (José 07/11). */
 export const workStreetDeleteSender = (target: ServiceAskTarget, chatId: string, serviceId: string): StreetDeleteSend => (streetId) =>

@@ -67,3 +67,42 @@ describe('WorkStreetEditor, walking with GPS', () => {
     expect(screen.getByTestId('editor-calle-ayuda')).toHaveTextContent('El navegador no deja usar tu ubicación');
   });
 });
+
+describe('WorkStreetEditor, what the audit of 08/11 found', () => {
+  const walked = () => {
+    fireEvent.click(screen.getByTestId('editor-modo-gps'));
+    fireEvent.click(screen.getByTestId('editor-gps-empezar'));
+    walkTo(0);
+    walkTo(80);
+    fireEvent.click(screen.getByTestId('editor-gps-terminar'));
+  };
+
+  it('switching the way to draw asks before erasing what was walked', () => {
+    render(<WorkStreetEditor title="Obra" map={null} send={vi.fn()} onClose={vi.fn()} onSaved={vi.fn()} />);
+    walked();
+    fireEvent.click(screen.getByTestId('editor-modo-hand'));
+    expect(screen.getByTestId('editor-calle-cambiar-modo')).toHaveTextContent('Cambiar de forma borra lo que marcaste (80 m). ¿Cambiar igual?');
+    fireEvent.click(screen.getByTestId('editor-calle-cambiar-no'));
+    expect(screen.getByTestId('editor-calle-largo')).toHaveTextContent('80 m');
+    fireEvent.click(screen.getByTestId('editor-modo-hand'));
+    fireEvent.click(screen.getByTestId('editor-calle-cambiar-si'));
+    expect(screen.getByTestId('editor-calle-largo')).toHaveTextContent('0 m');
+  });
+
+  it('the stage is chosen with the street and travels with it', async () => {
+    const send = vi.fn<StreetSend>(async () => ({ ok: true, message: 'Calle guardada.' }));
+    const map = { streets: [], scopes: [], progress: [], works: [], stages: [{ id: 'e2', name: 'Etapa 2' }] };
+    render(<WorkStreetEditor title="Obra" map={map} send={send} onClose={vi.fn()} onSaved={vi.fn()} />);
+    walked();
+    fireEvent.change(screen.getByTestId('editor-calle-nombre'), { target: { value: 'Psje. Sol' } });
+    fireEvent.change(screen.getByTestId('editor-calle-etapa'), { target: { value: 'e2' } });
+    fireEvent.click(screen.getByTestId('editor-calle-guardar'));
+    await waitFor(() => expect(send).toHaveBeenCalledTimes(1));
+    expect(send.mock.calls[0]![0]).toMatchObject({ name: 'Psje. Sol', stageId: 'e2' });
+  });
+
+  it('without stages there is no stage field', () => {
+    render(<WorkStreetEditor title="Obra" map={null} send={vi.fn()} onClose={vi.fn()} onSaved={vi.fn()} />);
+    expect(screen.queryByTestId('editor-calle-etapa')).toBeNull();
+  });
+});

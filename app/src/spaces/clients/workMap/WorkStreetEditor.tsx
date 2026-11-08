@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import { Footprints, Save, Square, Undo2, X } from 'lucide-react-native';
-import { DRAW_MODES, EMPTY_STREET, metersLabel, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, walkedDraft, walkHint, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint } from '@lilachat/shared';
+import { DRAW_MODES, EMPTY_STREET, metersLabel, modeChangeLoss, setDrawMode, streetDraftArea, streetDraftEnds, streetDraftHint, streetDraftLengthM, streetDraftLines, streetDraftPins, streetDraftProblem, tapStreetDraft, undoStreetDraft, walkedDraft, walkHint, workMapView, type DrawMode, type StreetDraft, type TapFeatures, type WorkMap, type WorkMapPoint, type WorkMapStage } from '@lilachat/shared';
 import { useCurrentLocation } from '../../../chat/location/useCurrentLocation';
 import { useColores } from '../../../ui/tema';
 import { useMargenes } from '../../../ui/useMargenes';
@@ -32,11 +32,43 @@ function ModeSwitch({ mode, onMode }: { mode: DrawMode; onMode: (mode: DrawMode)
 }
 
 /** Design o-02, audited 07/11: tap the street, then where the work starts and ends on it; or draw it by hand. */
+/** «Cambiar de forma borra lo que marcaste»: asked before a switch erases a street (audit 08/11). */
+function SwitchQuestion(props: { question: string; onYes: () => void; onNo: () => void }) {
+  return (
+    <View testID="editor-calle-cambiar-modo" className="mt-2 rounded-xl bg-on-primary/15 p-3">
+      <Text className="text-[14px] font-semibold text-on-primary">{props.question}</Text>
+      <View className="mt-2 flex-row gap-2">
+        <Pressable testID="editor-calle-cambiar-si" onPress={props.onYes} className="h-11 flex-1 items-center justify-center rounded-xl bg-surface"><Text className="text-[14px] font-semibold text-primary">Cambiar</Text></Pressable>
+        <Pressable testID="editor-calle-cambiar-no" onPress={props.onNo} className="h-11 flex-1 items-center justify-center rounded-xl bg-on-primary/15"><Text className="text-[14px] font-semibold text-on-primary">Seguir aquí</Text></Pressable>
+      </View>
+    </View>
+  );
+}
+
+/** The stage chosen with the street (o-02): it rides on a stretch over the whole street. */
+function StageField(props: { stages: WorkMapStage[]; stageId?: string; onPick: (stageId?: string) => void }) {
+  if (!props.stages.length) return null;
+  const options = [{ id: '', name: 'Sin etapa' }, ...props.stages];
+  return (
+    <View className="mt-3">
+      <Text className={LABEL}>Etapa</Text>
+      <View className="mt-1 flex-row flex-wrap gap-2">
+        {options.map((stage) => {
+          const on = (props.stageId ?? '') === stage.id;
+          return <Pressable key={stage.id || 'ninguna'} testID={`editor-calle-etapa-${stage.id || 'ninguna'}`} onPress={() => props.onPick(stage.id || undefined)} className={`h-10 justify-center rounded-xl border px-3 ${on ? 'border-primary bg-primary/10' : 'border-outline/25'}`}><Text className={`text-[14px] font-semibold ${on ? 'text-primary' : 'text-on-surface'}`}>{stage.name}</Text></Pressable>;
+        })}
+      </View>
+    </View>
+  );
+}
+
 export function WorkStreetEditor(props: EditorProps) {
   const [draft, setDraft] = useState<StreetDraft>(EMPTY_STREET);
   const [entryId] = useState(() => randomUUID());
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [switching, setSwitching] = useState<{ mode: DrawMode; question: string } | null>(null);
+  const switchTo = (mode: DrawMode) => { setSwitching(null); setError(null); gps.reset(); setDraft((before) => setDrawMode(before, mode)); };
   const view = useMemo(() => workMapView(props.map ?? NO_STREETS), [props.map]);
   const gps = useGpsWalk();
   useEffect(() => { setDraft((before) => (before.mode === 'gps' ? walkedDraft(before, gps.walk) : before)); }, [gps.walk]);
@@ -67,7 +99,8 @@ export function WorkStreetEditor(props: EditorProps) {
         <View className="bg-primary px-4 pb-3" style={{ paddingTop: margins.cabecera + 8 }}>
           <Text className="font-mono text-[11px] font-bold uppercase tracking-[2px] text-on-primary/80" numberOfLines={1}>{props.title}</Text>
           <Text className="text-[20px] font-bold text-on-primary">Definir área de trabajo</Text>
-          <ModeSwitch mode={draft.mode} onMode={(mode) => { setError(null); gps.reset(); setDraft((before) => setDrawMode(before, mode)); }} />
+          <ModeSwitch mode={draft.mode} onMode={(mode) => { const question = modeChangeLoss(draft, mode); if (question) setSwitching({ mode, question }); else switchTo(mode); }} />
+          {switching ? <SwitchQuestion question={switching.question} onYes={() => switchTo(switching.mode)} onNo={() => setSwitching(null)} /> : null}
           <View className="mt-2 flex-row items-center justify-between gap-2">
             <Text testID="editor-calle-ayuda" className="flex-1 text-[15px] font-semibold text-on-primary">{draft.mode === 'gps' ? (gps.denied ? GPS_DENIED : walkHint(gps.walk)) : streetDraftHint(draft)}</Text>
             {draft.mode === 'hand' ? <Text testID="editor-calle-puntos" className="rounded-md bg-on-primary/15 px-2 py-0.5 font-mono text-[12px] text-on-primary">{draft.points.length} puntos</Text> : null}
@@ -104,6 +137,7 @@ export function WorkStreetEditor(props: EditorProps) {
               <TextInput testID="editor-calle-ancho" keyboardType="decimal-pad" value={draft.widthM === null ? '' : String(draft.widthM)} placeholder="6.0" onChangeText={(text) => change({ widthM: text.trim() ? Number(text.replace(',', '.')) : null })} className={FIELD} />
             </View>
           </View>
+          <StageField stages={props.map?.stages ?? []} stageId={draft.stageId} onPick={(stageId) => change({ stageId })} />
           {streetDraftArea(draft) ? <View className="mt-3 flex-row items-center justify-between rounded-xl border border-outline/15 bg-background px-3 py-2"><Text className="text-[13px] text-on-surface-variant">Área neta</Text><Text testID="editor-calle-area" className="font-mono text-[15px] font-bold text-on-surface">{streetDraftArea(draft)}</Text></View> : null}
           {error ? <Text testID="editor-calle-error" className="mt-2 text-[13px] font-semibold text-error">{error}</Text> : null}
           <Pressable testID="editor-calle-guardar" disabled={saving} onPress={() => void save()} className={`mt-3 h-12 flex-row items-center justify-center gap-2 rounded-xl bg-primary ${saving ? 'opacity-60' : ''}`}>

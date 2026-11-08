@@ -8,6 +8,7 @@ import type { TraceFile } from './useDriveUpload';
 import { WorkMapBoard } from './workMap/WorkMapBoard';
 import type { ProgressSend } from './workMap/WorkMapDischarges';
 import { WorkMapFirst } from './workMap/WorkMapFirst';
+import { ImportTrace } from './workMap/ImportTrace';
 import { WorkStreetEditor } from './workMap/WorkStreetEditor';
 import type { StreetDeleteSend } from './workMap/StreetDelete';
 import type { StreetSend } from './workMap/workProgressSender';
@@ -71,6 +72,6 @@ export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; targe
     );
   }
   const editor = props.drawStreet ? <WorkStreetEditor open={drawing} title={props.title} map={state.map} send={props.drawStreet} onClose={() => setDrawing(false)} onSaved={() => { setDrawing(false); void ask(); }} /> : null;
-  if (!state.map) return <>{editor}<WorkMapFirst drawUrl={props.drawUrl ?? null} onDraw={onDraw} /></>;
+  if (!state.map) return <>{editor}<WorkMapFirst drawUrl={props.drawUrl ?? null} onDraw={onDraw} trace={editMap && props.uploadTrace ? <ImportTrace send={editMap} upload={props.uploadTrace} /> : null} /></>;
   return <>{editor}<WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} height={height} title={props.title} serviceId={props.target.serviceId} badge={props.badge} discharges={props.discharges} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} editMap={editMap} admin={props.admin} uploadPhoto={props.uploadPhoto} uploadTrace={props.uploadTrace} mapInReport={props.mapInReport} /></>;
 }

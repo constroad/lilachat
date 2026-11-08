@@ -6,6 +6,7 @@ import { useWorkMap } from './workMap/useWorkMap';
 import { MAP_HEAD_BAR, WorkMapBoard } from './workMap/WorkMapBoard';
 import type { ProgressSend } from './workMap/WorkMapDischarges';
 import { WorkMapFirst } from './workMap/WorkMapFirst';
+import { ImportTrace } from './workMap/ImportTrace';
 import { WorkStreetEditor } from './workMap/WorkStreetEditor';
 import type { StreetSend } from './workMap/workProgressSender';
 import type { StreetDeleteSend } from './workMap/StreetDelete';
@@ -55,6 +56,6 @@ export function ServiceMapWeb(props: MapProps) {
     );
   }
   if (drawing && props.drawStreet) return <WorkStreetEditor title={props.title} map={state.map} send={props.drawStreet} onClose={() => setDrawing(false)} onSaved={() => { setDrawing(false); void retry(); }} />;
-  if (!state.map) return <Frame head={props.head} tabs={props.tabs}><WorkMapFirst drawUrl={props.drawUrl ?? null} onDraw={onDraw} /></Frame>;
+  if (!state.map) return <Frame head={props.head} tabs={props.tabs}><WorkMapFirst drawUrl={props.drawUrl ?? null} onDraw={onDraw} trace={editMap && props.uploadTrace ? <ImportTrace send={editMap} upload={props.uploadTrace} /> : null} /></Frame>;
   return <WorkMapBoard map={state.map} pageUrl={pageOf(state.url)} title={props.title} serviceId={props.target.serviceId} head={props.head} tabs={props.tabs} badge={props.badge} discharges={props.discharges} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} editMap={editMap} admin={props.admin} uploadPhoto={props.uploadPhoto} uploadTrace={props.uploadTrace} mapInReport={props.mapInReport} />;
 }

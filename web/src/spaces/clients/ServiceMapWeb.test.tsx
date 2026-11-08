@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ChannelLinks, MapEditSend, UnitDischarge, WorkMap, WorkMapView } from '@lilachat/shared';
+import type { ChannelLinks, MapEditSend, TraceUpload, UnitDischarge, WorkMap, WorkMapView } from '@lilachat/shared';
 import { ServiceMapWeb } from './ServiceMapWeb';
 import type { ProgressSend } from './workMap/WorkMapDischarges';
 import type { StreetSend } from './workMap/workProgressSender';
@@ -36,7 +36,7 @@ const workMap: WorkMap = {
   works: [{ id: 'base', name: 'Base', color: '#c08a1e' }, { id: 'asfalto', name: 'Asfaltado', color: '#111111' }],
   stages: [{ id: 'e1', name: 'Etapa 1' }, { id: 'e2', name: 'Etapa 2' }],
 };
-const showMap = (map: ChannelLinks['map'] = vi.fn(async () => ({ ok: true as const, url })), extra: { drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend; drawStreet?: StreetSend; deleteStreet?: StreetDeleteSend; editMap?: MapEditSend } = {}) => render(<ServiceMapWeb jwt="jwt-1" links={linksWith(map)} target={target} title="Pavimentación Los Olivos" {...extra} />);
+const showMap = (map: ChannelLinks['map'] = vi.fn(async () => ({ ok: true as const, url })), extra: { drawUrl?: string | null; discharges?: UnitDischarge[]; send?: ProgressSend; drawStreet?: StreetSend; deleteStreet?: StreetDeleteSend; editMap?: MapEditSend; uploadTrace?: TraceUpload<File> } = {}) => render(<ServiceMapWeb jwt="jwt-1" links={linksWith(map)} target={target} title="Pavimentación Los Olivos" {...extra} />);
 
 /** A spot on Av. Los Olivos, so many meters from its start (it runs east along -12). */
 const METERS_PER_DEGREE_LNG = 111_195 * Math.cos((12 * Math.PI) / 180);
@@ -87,8 +87,10 @@ describe('ServiceMapWeb', () => {
     let report: (width: number) => void = () => undefined;
     vi.stubGlobal('ResizeObserver', class {
       constructor(private readonly onResize: ResizeObserverCallback) {}
-      observe() { report = (width) => this.onResize([{ contentRect: { width } } as ResizeObserverEntry], this as unknown as ResizeObserver); }
-      disconnect() { report = () => undefined; }
+      // Only the board's own observer: the canvas observes too, and the last one used to win under load.
+      private board = false;
+      observe(target: Element) { if ((target as HTMLElement).dataset.testid !== 'mapa-servicio') return; this.board = true; report = (width) => this.onResize([{ contentRect: { width } } as ResizeObserverEntry], this as unknown as ResizeObserver); }
+      disconnect() { if (this.board) report = () => undefined; }
     });
     showMap();
     await screen.findByTestId('mapa-lienzo');
@@ -271,6 +273,13 @@ describe('ServiceMapWeb', () => {
     expect(card).toHaveTextContent('Dibuja las calles');
     expect(screen.getByTestId('mapa-dibujar-portal')).toHaveAttribute('href', drawUrl);
     expect(screen.queryByTestId('mapa-vacio')).not.toBeInTheDocument();
+  });
+
+  it('a service without streets can start from a KMZ or KML (audit 08/11)', async () => {
+    askServer.mockResolvedValue({ ok: true, data: { map: null } });
+    showMap(undefined, { editMap: vi.fn(), uploadTrace: vi.fn() });
+    await screen.findByTestId('mapa-primera-calle');
+    expect(screen.getByTestId('importar-trazado')).toBeInTheDocument();
   });
 
   it('without the Portal page there is no button that leads nowhere', async () => {

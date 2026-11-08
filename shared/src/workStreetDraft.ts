@@ -3,6 +3,7 @@ import { lineLengthM, type WorkMapLine, type WorkMapPoint } from './workMap.js';
 import type { DischargePin } from './workMapProgress.js';
 import { FORMS_LEVEL } from './appForms.js';
 import { sendMapTool, type WorkProgressDeps, type WorkProgressResult } from './workProgressSend.js';
+import type { WorkScopeRequest } from './workScopeDraft.js';
 
 /**
  * Drawing a street of the work (design o-02, José 07/11: everyone draws and updates). The person
@@ -12,7 +13,8 @@ import { sendMapTool, type WorkProgressDeps, type WorkProgressResult } from './w
 /** `street`: tap a street of the map, then where the work starts and ends on it (audit 07/11); `gps`: walk it (o-13); `hand`: tap every bend. */
 export type DrawMode = 'street' | 'gps' | 'hand';
 /** `reversed`: the person marked the start further along the map's road than the end; the line is turned so 0+000 is their start. */
-export type StreetDraft = { name: string; points: WorkMapPoint[]; widthM: number | null; mode: DrawMode; pick: StreetPick | null; reversed?: boolean };
+/** `stageId`: the stage chosen with the street (o-02); it rides on a stretch over the whole street. */
+export type StreetDraft = { name: string; points: WorkMapPoint[]; widthM: number | null; mode: DrawMode; pick: StreetPick | null; reversed?: boolean; stageId?: string };
 
 export const STREET_POINTS_MAX = 500;
 export const STREET_NAME_MAX = 80;
@@ -77,3 +79,22 @@ export const workStreetRequest = (draft: StreetDraft, entryId: string): WorkStre
 
 /** The street lives in the context the server put together; the form only confirms it. */
 export const sendWorkStreet = (deps: WorkProgressDeps): Promise<WorkProgressResult> => sendMapTool(deps, {}, { sent: STREET_SAVED, failed: STREET_FAILED });
+
+export const STREET_STAGE_FAILED = 'La calle se guardó, pero no se pudo ponerle la etapa. Ponla desde «Ver tramos».';
+
+const savedStreetOf = (data: Record<string, unknown> | undefined): { id: string; lengthM: number } | null => {
+  const id = data?.calleId;
+  const lengthM = data?.largoM;
+  return typeof id === 'string' && typeof lengthM === 'number' && lengthM > 0 ? { id, lengthM } : null;
+};
+
+/** The street first; with a stage, a stretch over the whole street carries it (Portal keeps stages on stretches). */
+export async function saveStreetWithStage(save: () => Promise<WorkProgressResult>, saveScope: (request: WorkScopeRequest) => Promise<WorkProgressResult>, stageId: string | undefined, entryId: string): Promise<WorkProgressResult> {
+  const saved = await save();
+  if (!saved.ok || !stageId) return saved;
+  const street = savedStreetOf(saved.data);
+  if (!street) return { ok: true, message: STREET_STAGE_FAILED };
+  const request: WorkScopeRequest = { kind: 'work_scope', street_id: street.id, from_m: 0, to_m: street.lengthM, tag_ids: [], partida_ids: [], stage_id: stageId, entry_id: `${entryId}-etapa`, forms: FORMS_LEVEL };
+  const staged = await saveScope(request);
+  return { ok: true, message: staged.ok ? saved.message : STREET_STAGE_FAILED };
+}

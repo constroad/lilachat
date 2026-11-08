@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FORMS_LEVEL } from './appForms';
-import { addStreetPoint, DRAFT_BAD_WIDTH, sendWorkStreet, STREET_FAILED, workStreetRequest, streetDraftLines, streetDraftPins, WORK_MAP_DRAFT_COLOR, DRAFT_NAME_TOO_LONG, DRAFT_NEEDS_NAME, DRAFT_NEEDS_POINTS, EMPTY_STREET, STREET_POINTS_MAX, streetDraftLengthM, streetDraftProblem, undoStreetPoint, type StreetDraft } from './workStreetDraft';
+import { addStreetPoint, DRAFT_BAD_WIDTH, saveStreetWithStage, sendWorkStreet, STREET_FAILED, STREET_SAVED, STREET_STAGE_FAILED, workStreetRequest, streetDraftLines, streetDraftPins, WORK_MAP_DRAFT_COLOR, DRAFT_NAME_TOO_LONG, DRAFT_NEEDS_NAME, DRAFT_NEEDS_POINTS, EMPTY_STREET, STREET_POINTS_MAX, streetDraftLengthM, streetDraftProblem, undoStreetPoint, type StreetDraft } from './workStreetDraft';
 
 /** About 100 m east along -12, the way a street is tapped on the map (design o-02). */
 const START = { lat: -12, lng: -77 };
@@ -99,5 +99,34 @@ describe('saving the street through Portal (guardar_calle_de_obra)', () => {
   it('without signal it says what to do', async () => {
     const deps = { open: async () => ({ ok: false as const }), submit: vi.fn(), notice: vi.fn() };
     expect(await sendWorkStreet(deps as never)).toEqual({ ok: false, message: STREET_FAILED });
+  });
+});
+
+describe('saveStreetWithStage (o-02: the stage is chosen with the street)', () => {
+  const saved = { ok: true as const, message: STREET_SAVED, data: { calleId: '6af000000000000000000001', largoM: 320, creada: true } };
+
+  it('without a stage only the street is saved', async () => {
+    const scope = vi.fn();
+    expect(await saveStreetWithStage(async () => saved, scope, undefined, 'e-1')).toEqual(saved);
+    expect(scope).not.toHaveBeenCalled();
+  });
+
+  it('with a stage, a stretch over the whole street carries it', async () => {
+    const scope = vi.fn(async () => ({ ok: true as const, message: 'ok' }));
+    const result = await saveStreetWithStage(async () => saved, scope, 'e2', 'e-1');
+    expect(scope).toHaveBeenCalledWith({ kind: 'work_scope', street_id: '6af000000000000000000001', from_m: 0, to_m: 320, tag_ids: [], partida_ids: [], stage_id: 'e2', entry_id: 'e-1-etapa', forms: FORMS_LEVEL });
+    expect(result).toEqual({ ok: true, message: STREET_SAVED });
+  });
+
+  it('a stage that fails keeps the street and says where to finish', async () => {
+    const result = await saveStreetWithStage(async () => saved, async () => ({ ok: false, message: 'x' }), 'e2', 'e-1');
+    expect(result).toEqual({ ok: true, message: STREET_STAGE_FAILED });
+  });
+
+  it('a street that fails sends no stage, and an answer without the id cannot place it', async () => {
+    const scope = vi.fn();
+    expect(await saveStreetWithStage(async () => ({ ok: false, message: STREET_FAILED }), scope, 'e2', 'e-1')).toEqual({ ok: false, message: STREET_FAILED });
+    expect(await saveStreetWithStage(async () => ({ ok: true, message: STREET_SAVED }), scope, 'e2', 'e-1')).toEqual({ ok: true, message: STREET_STAGE_FAILED });
+    expect(scope).not.toHaveBeenCalled();
   });
 });

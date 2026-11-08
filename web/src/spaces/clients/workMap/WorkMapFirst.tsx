@@ -1,9 +1,11 @@
+import type { ReactNode } from 'react';
 import { Plus } from 'lucide-react';
 import { WORK_MAP_FIRST } from '@lilachat/shared';
 import { KICKER } from './WorkMapPanel';
 
 /** Design o-10: a service without streets, and where to draw them (José 07/11: everyone draws and updates). */
-export function WorkMapFirst({ drawUrl, onDraw }: { drawUrl: string | null; onDraw?: () => void }) {
+/** `trace`: «Importar KMZ o KML» (o-12), so a service without streets can start from a file (audit 08/11). */
+export function WorkMapFirst({ drawUrl, onDraw, trace }: { drawUrl: string | null; onDraw?: () => void; trace?: ReactNode }) {
   return (
     <section data-testid="mapa-primera-calle" className="rounded-2xl border border-outline/15 bg-surface p-5">
       <p className={`${KICKER} text-primary`}>{WORK_MAP_FIRST.kicker}</p>
@@ -23,6 +25,7 @@ export function WorkMapFirst({ drawUrl, onDraw }: { drawUrl: string | null; onDr
           {WORK_MAP_FIRST.draw}
         </button>
       ) : null}
+      {trace ? <div className="mt-4">{trace}</div> : null}
       {drawUrl ? <a data-testid="mapa-dibujar-portal" href={drawUrl} target="_blank" rel="noopener noreferrer" className="mt-2 block text-center text-[13px] font-semibold text-primary">{WORK_MAP_FIRST.action}</a> : null}
     </section>
   );

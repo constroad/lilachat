@@ -20,7 +20,14 @@ export const DRAW_MODES: ReadonlyArray<{ mode: DrawMode; label: string }> = [
 export const NO_STREET_THERE = 'Ahí no hay una calle del mapa. Toca sobre la vía, o dibújala «A mano».';
 
 /** Another way of drawing starts the line again; the name and the width stay. */
-export const setDrawMode = (draft: StreetDraft, mode: DrawMode): StreetDraft => (draft.mode === mode ? draft : { ...EMPTY_STREET, name: draft.name, widthM: draft.widthM, mode });
+export const setDrawMode = (draft: StreetDraft, mode: DrawMode): StreetDraft => (draft.mode === mode ? draft : { ...EMPTY_STREET, name: draft.name, widthM: draft.widthM, ...(draft.stageId ? { stageId: draft.stageId } : {}), mode });
+
+/** What a switch of the way to draw would erase, as a question; `null` when nothing is lost (audit 08/11: 734 m gone in silence). */
+export function modeChangeLoss(draft: StreetDraft, mode: DrawMode): string | null {
+  if (draft.mode === mode || draft.points.length === 0) return null;
+  const what = draft.points.length === 1 ? '1 punto' : `${streetDraftLengthM(draft)} m`;
+  return `Cambiar de forma borra lo que marcaste (${what}). ¿Cambiar igual?`;
+}
 
 const withPick = (draft: StreetDraft, pick: StreetPick, reversed = false): StreetDraft => {
   const line = pickedLine(pick);

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { Plus } from 'lucide-react-native';
 import { WORK_MAP_FIRST } from '@lilachat/shared';
@@ -5,7 +6,8 @@ import { useColores } from '../../../ui/tema';
 import { KICKER } from './WorkMapPanel';
 
 /** Design o-10: a service without streets, and where to draw them (José 07/11: everyone draws and updates). */
-export function WorkMapFirst({ drawUrl, onDraw }: { drawUrl: string | null; onDraw?: () => void }) {
+/** `trace`: «Importar KMZ o KML» (o-12), so a service without streets can start from a file (audit 08/11). */
+export function WorkMapFirst({ drawUrl, onDraw, trace }: { drawUrl: string | null; onDraw?: () => void; trace?: ReactNode }) {
   const colores = useColores();
   return (
     <View testID="mapa-primera-calle" className="rounded-2xl border border-outline/15 bg-surface p-5">
@@ -28,6 +30,7 @@ export function WorkMapFirst({ drawUrl, onDraw }: { drawUrl: string | null; onDr
           <Text className="text-[15px] font-semibold text-on-primary">{WORK_MAP_FIRST.draw}</Text>
         </Pressable>
       ) : null}
+      {trace ? <View className="mt-4">{trace}</View> : null}
       {drawUrl ? (
         <Pressable testID="mapa-dibujar-portal" accessibilityRole="link" onPress={() => void Linking.openURL(drawUrl)} className="mt-1 min-h-[44px] items-center justify-center">
           <Text className="text-[14px] font-semibold text-primary">{WORK_MAP_FIRST.action}</Text>

@@ -61,7 +61,9 @@ describe('when the units of the Control de pista show', () => {
   it('reads the name without accents or case', () => {
     expect(isPavingWork({ name: 'CARPETA ASFALTICA 2"' })).toBe(true);
     expect(isPavingWork({ name: 'Asfaltado' })).toBe(true);
+    expect(isPavingWork({ name: 'Asfalto QA' })).toBe(true);
     expect(isPavingWork({ name: 'Imprimación asfáltica' })).toBe(false);
+    expect(isPavingWork({ name: 'Riego de liga asfáltico' })).toBe(false);
     expect(isPavingWork({ name: 'Bacheo' })).toBe(false);
   });
 });

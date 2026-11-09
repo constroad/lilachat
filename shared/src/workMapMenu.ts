@@ -45,11 +45,16 @@ export function mapLegendEntries(view: Pick<WorkMapView, 'works'>, waiting: numb
   return [...works, todo, ...toApprove];
 }
 
-const PAVING = /carpeta|asfaltado/;
+const PAVING = /carpeta|asfalt/;
+/** Asphalt that is not the mat: the prime coat and the tack coat have their own report. */
+const NOT_PAVING = /imprima|riego|liga/;
 const plain = (name: string): string => name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 /** «Colocación de carpeta asfáltica»: the work the Control de pista measures. Works carry only a name. */
-export const isPavingWork = (work: Pick<WorkMapWork, 'name'>): boolean => PAVING.test(plain(work.name));
+export const isPavingWork = (work: Pick<WorkMapWork, 'name'>): boolean => {
+  const name = plain(work.name);
+  return PAVING.test(name) && !NOT_PAVING.test(name);
+};
 
 /** The units' numbers and plates, and the stretches they suggest, only with the paving work chosen (José 09/11). */
 export function showsUnitPins(map: { works: ReadonlyArray<Pick<WorkMapWork, 'id' | 'name'>> }, filter: Pick<WorkMapFilter, 'workId'>): boolean {

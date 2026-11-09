@@ -1313,8 +1313,9 @@ avise.
   los trabajos» u otro trabajo, no salen. El panel «Avance que marcan las
   unidades» sigue igual.
 - **Cuál es la carpeta.** Los trabajos solo tienen nombre. `isPavingWork`
-  busca «carpeta» o «asfaltado», sin tildes ni mayúsculas. «Imprimación
-  asfáltica» no cuenta. Si Portal suma un código de trabajo, se cambia ahí.
+  busca «carpeta» o «asfalt», sin tildes ni mayúsculas. Quedan fuera
+  «imprimación», «riego» y «liga», que tienen su propio informe. En Test el
+  trabajo se llama «Asfalto QA». Si Portal suma un código de trabajo, se cambia ahí.
 - **Color encima.** La capa de tramos sugeridos y por aprobar (morada, 11 px
   al 55 %) quedaba sobre la línea hecha y la tapaba. Ahora va debajo, en web
   (`WorkMapCanvas`) y APK (`WorkMapSurface`). El color del trabajo queda arriba.

@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { botCardSummary, type BotCard, type BotPost } from '@lilachat/shared';
+import { botCardSummary, botFilesSummary, type BotCard, type BotPost, type GalleryItem } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Chat, type Message } from '../chatModels.js';
 import { chatMemberIds, sendMessage } from '../chatService.js';
 import { createChecklistInChat } from '../checklistService.js';
@@ -81,8 +81,9 @@ async function publishText(installation: Installation, chatId: Types.ObjectId, p
     skipMemberPermissions: true,
     clientKey: `bot:${installation._id}:${post.idempotencyKey}`,
     kind: 'text',
-    body: post.text ?? botCardSummary(post.card!),
+    body: post.text ?? (post.card ? botCardSummary(post.card) : botFilesSummary(post.files ?? [])),
     ...(post.card ? { card: post.card } : {}),
+    ...(post.files ? { files: post.files } : {}),
     ...(sharedBy ? { sharedBy } : {}),
     ...(post.threadOf ? { hiloDe: post.threadOf } : {}),
   });
@@ -112,7 +113,7 @@ async function publishChecklist(installation: Installation, chatId: Types.Object
 async function publishAll(installation: Installation, chatId: Types.ObjectId, post: BotPost, assignees: Map<string, Types.ObjectId>, sharedBy?: Message['sharedBy']): Promise<Message | BotApiError | null> {
   try {
     let last: Message | null = null;
-    if (post.text || post.card) last = await publishText(installation, chatId, post, sharedBy);
+    if (post.text || post.card || post.files) last = await publishText(installation, chatId, post, sharedBy);
     if (post.checklist) last = (await publishChecklist(installation, chatId, post, assignees)) ?? last;
     return last;
   } catch (error) {
@@ -137,14 +138,28 @@ export async function postBotMessage(installation: Installation, post: BotPost, 
 }
 
 /** A bot replaces the text or the card of ITS message: the card closed after the click. No push; the members see it change. */
-export async function updateBotMessage(installation: Installation, messageId: string, change: { text?: string; card?: BotCard }, notify: (members: string[], edited: Record<string, unknown>) => void): Promise<{ message: PostedMessage } | BotApiError> {
+export async function updateBotMessage(installation: Installation, messageId: string, change: { text?: string; card?: BotCard; files?: GalleryItem[] }, notify: (members: string[], edited: Record<string, unknown>) => void): Promise<{ message: PostedMessage } | BotApiError> {
   if (!Types.ObjectId.isValid(messageId)) return fail(404, 'message_not_found', 'Ese mensaje no existe.');
-  const message = await MessageModel.findOne({ _id: messageId, senderId: installation.botUserId, deletedAt: { $exists: false } }).select('_id chatId seq body card').lean<Message | null>();
+  const message = await MessageModel.findOne({ _id: messageId, senderId: installation.botUserId, deletedAt: { $exists: false } }).select('_id chatId seq body card files').lean<Message | null>();
   if (!message) return fail(404, 'message_not_found', 'Ese mensaje no existe o no es de este bot.');
-  const card = change.card ?? message.card;
-  const body = change.text ?? (change.card ? botCardSummary(change.card) : message.body);
-  const editedAt = change.text !== undefined ? new Date() : undefined;
-  await MessageModel.updateOne({ _id: message._id }, { $set: { body, ...(card ? { card } : {}), ...(editedAt ? { editedAt } : {}) } });
-  notify(await chatMemberIds(message.chatId), { chatId: String(message.chatId), seq: message.seq, body, ...(card ? { card } : {}), ...(editedAt ? { editedAt } : {}) });
+  const fields = editedFields(message, change);
+  await MessageModel.updateOne({ _id: message._id }, { $set: fields });
+  notify(await chatMemberIds(message.chatId), { chatId: String(message.chatId), seq: message.seq, ...fields });
   return { message: posted(message) };
+}
+
+/** What a bot's edit leaves on its message: the new text, card or album, and «Editado» only for a new text. */
+function editedFields(message: Pick<Message, 'body' | 'card' | 'files'>, change: { text?: string; card?: BotCard; files?: GalleryItem[] }) {
+  const card = change.card ?? message.card;
+  const files = change.files ?? message.files;
+  const body = change.text ?? editedSummary(message, change);
+  const editedAt = change.text !== undefined ? new Date() : undefined;
+  return { body, ...(card ? { card } : {}), ...(files ? { files } : {}), ...(editedAt ? { editedAt } : {}) };
+}
+
+/** The list preview after an edit without text: the card's, then the album's, else the old one. */
+function editedSummary(message: Pick<Message, 'body' | 'card'>, change: { card?: BotCard; files?: GalleryItem[] }): string | undefined {
+  if (change.card) return botCardSummary(change.card);
+  if (change.files && !message.card) return botFilesSummary(change.files);
+  return message.body;
 }

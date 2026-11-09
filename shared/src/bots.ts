@@ -2,7 +2,8 @@ import { cutAtWord } from './textCut.js';
 import { normalizePeruPhone } from './phone.js';
 import { TOPIC_KEY } from './noticeTopics.js';
 import { validateChecklist } from './checklists.js';
-import { BLOCK_LIMITS, commandLineOf, validateBotBlocks, type BotBlock } from './botBlocks.js';
+import { BLOCK_LIMITS, commandLineOf, validateBotBlocks, validateBotFiles, type BotBlock, type GalleryItem } from './botBlocks.js';
+export { validateBotFiles };
 import type { BotCommand } from './botCommands.js';
 import type { AppCategory } from './botManifest.js';
 
@@ -36,7 +37,7 @@ const TASK_KEY_MAX = 60;
 export type BotTarget = { channelId: string } | { topic: string } | { userPhone: string } | { userId: string } | { client: string };
 /** What a message to a client is about, so the «Servicios» tab can show it under its service. */
 export type BotClientRef = { kind: string; serviceId?: string; recordId?: string };
-export type BotPost = { target: BotTarget; text?: string; card?: BotCard; checklist?: BotChecklist; threadOf?: number; clientRef?: BotClientRef; idempotencyKey: string };
+export type BotPost = { target: BotTarget; text?: string; card?: BotCard; /** Photos and videos drawn as a person's album (José via agentes 09/11). */ files?: GalleryItem[]; checklist?: BotChecklist; threadOf?: number; clientRef?: BotClientRef; idempotencyKey: string };
 export type BotPostError = { ok: false; error: 'invalid_request'; message: string };
 
 export const BOT_LIMITS = { text: 4000, idempotencyKey: 120, fields: 12, actions: 3, actionValue: 2000, kicker: 60, title: 120, status: 24, label: 40, value: 120, linkLabel: 40, actionLabel: 24, actionId: 40, url: 500 };
@@ -171,6 +172,11 @@ export function validateBotPost(raw: unknown): { ok: true; post: BotPost } | Bot
     if (!card.ok) return refuse(card.message);
     post.card = card.card;
   }
+  if (body.files !== undefined) {
+    const files = validateBotFiles(body.files);
+    if (!files.ok) return refuse(files.message);
+    post.files = files.files;
+  }
   if (body.checklist !== undefined) {
     const checklist = validateBotChecklist(body.checklist);
     if (!checklist.ok) return checklist;
@@ -182,8 +188,16 @@ export function validateBotPost(raw: unknown): { ok: true; post: BotPost } | Bot
     if (!clientRef) return refuse('kind va como «order.created» (minúsculas, con un punto) y refs como { service_id?, record_id? }.');
     post.clientRef = clientRef;
   }
-  if (!post.text && !post.card && !post.checklist) return refuse('Manda un texto, una tarjeta o un checklist.');
+  if (!post.text && !post.card && !post.files && !post.checklist) return refuse('Manda un texto, una tarjeta, archivos o un checklist.');
   return { ok: true, post };
+}
+
+/** What the chat list and the notice say of a message of files: «2 fotos y 1 video». */
+export function botFilesSummary(files: readonly Pick<GalleryItem, 'mime'>[]): string {
+  const videos = files.filter((one) => one.mime.startsWith('video/')).length;
+  const photos = files.length - videos;
+  const parts = [photos ? `${photos} ${photos === 1 ? 'foto' : 'fotos'}` : '', videos ? `${videos} ${videos === 1 ? 'video' : 'videos'}` : ''].filter(Boolean);
+  return parts.join(' y ');
 }
 
 /** What the chat list, the notification and the search read of a card. */

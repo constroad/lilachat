@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appDeliveryWarning, appInstalledLine, botCardSummary, validateBotCard, validateBotPost } from './bots.js';
+import { appDeliveryWarning, appInstalledLine, botCardSummary, botFilesSummary, validateBotFiles, validateBotCard, validateBotPost } from './bots.js';
 
 const card = {
   kicker: 'PORTAL · PEDIDOS',
@@ -108,5 +108,21 @@ describe('Integraciones lines', () => {
     expect(appDeliveryWarning({ lastDelivery: { at: 'x', ok: false, error: 'HTTP 500' } })).toBe('El último aviso a la app falló (HTTP 500). Se reintenta solo.');
     expect(appDeliveryWarning({ lastDelivery: { at: 'x', ok: true } })).toBeNull();
     expect(appDeliveryWarning({})).toBeNull();
+  });
+});
+
+/** José via agentes 09/11: a unit's photos and videos in #planta as a person's album, not a card. */
+describe('a bot message with files', () => {
+  const photo = { url: 'https://lila.constroad.com/files/a.jpg', thumb_url: 'https://lila.constroad.com/files/a-t.jpg', mime: 'image/jpeg' };
+  const video = { url: 'https://lila.constroad.com/files/b.mp4', mime: 'video/mp4' };
+  it('posts files alone, with the same hosts and kinds as the gallery', () => {
+    expect(validateBotPost({ channel_id: 'c1', files: [photo, video, { ...photo, url: 'https://evil.example/x.jpg' }], idempotency_key: 'k' })).toEqual({ ok: true, post: { target: { channelId: 'c1' }, files: [{ url: photo.url, thumbUrl: photo.thumb_url, mime: 'image/jpeg' }, { url: video.url, mime: 'video/mp4' }], idempotencyKey: 'k' } });
+  });
+  it('refuses files with none valid', () => {
+    expect(validateBotFiles([{ url: 'https://evil.example/x.jpg', mime: 'image/jpeg' }])).toMatchObject({ ok: false });
+  });
+  it('says what it holds for the chat list and the notice', () => {
+    expect(botFilesSummary([{ url: 'a', mime: 'image/jpeg' }, { url: 'b', mime: 'image/png' }, { url: 'c', mime: 'video/mp4' }])).toBe('2 fotos y 1 video');
+    expect(botFilesSummary([{ url: 'a', mime: 'image/jpeg' }])).toBe('1 foto');
   });
 });

@@ -1,5 +1,5 @@
 import type { LiveLocation } from '@lilachat/shared';
-import type { BotCard } from '@lilachat/shared';
+import type { BotCard, GalleryItem } from '@lilachat/shared';
 import type { MencionEnMensaje, NotificationLevel, OutboxItem, Reaccion, ResumenDeHiloEnCliente, VistaDelFijado } from '@lilachat/shared';
 
 /**
@@ -93,6 +93,8 @@ export type ChatMessage = {
   location?: LiveLocation;
   /** A bot's card (`specs/BOTS-API.spec.md` §b): `body` carries its summary. */
   card?: BotCard;
+  /** A bot's photos and videos, drawn as an album (José via agentes 09/11). */
+  files?: GalleryItem[];
   /** An app's answer sent to the channel by who asked: «José usó /clima» on top. */
   sharedBy?: { name: string; command: string };
   /** El sobre de un chat secreto: llega EN VEZ de `body`. La web no lo abre. */

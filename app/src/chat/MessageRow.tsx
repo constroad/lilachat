@@ -1,3 +1,4 @@
+import { BotFilesAlbum } from './BotFilesAlbum';
 import { Pressable, Text, View } from 'react-native';
 import { memo } from 'react';
 import * as Haptics from 'expo-haptics';
@@ -360,6 +361,8 @@ function FilaDeMensaje({
             </Text>
           ) : botCard && jwt && !isPending(item) ? (
             <BotCardView card={botCard} chatId={item.chatId} seq={item.seq} jwt={jwt} />
+          ) : !isPending(item) && item.files?.length ? (
+            <BotFilesAlbum seq={item.seq} files={item.files} />
           ) : contacto && jwt ? (
             <ContactCard contact={contacto} mine={mine} jwt={jwt} myUserId={myUserId} />
           ) : sharedLocation ? (

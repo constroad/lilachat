@@ -1209,3 +1209,34 @@ fotos y videos.
   mapa completo. Web y APK (`BlockMap`).
 - La privacidad es del producto: agentes solo manda el punto si el canal es
   privado (`GET /api/bots/channels` → `visibility`).
+
+## c-duovicies. Archivos nativos en un mensaje de bot: el álbum (José vía agentes, 09/11)
+
+Un bot manda fotos y videos como los manda una persona. Se dibujan con el mismo
+álbum (grilla, «+N», ▶ en los videos) y abren el mismo visor, en APK y web.
+
+```http
+POST /api/bots/messages
+{ "chatId": "…", "files": [{ "url": "https://lila.constroad.com/…", "thumb_url": "…", "mime": "image/jpeg", "name": "…" }], "text": "opcional" }
+
+PATCH /api/bots/messages/:id
+{ "files": [ … ] }   ← reemplaza el conjunto completo
+```
+
+- Hasta 20 archivos. Solo hosts de Constroad (`lila.constroad.com`,
+  `www.constroad.com`), los mismos que `gallery`: la miniatura carga en el
+  teléfono de cada miembro.
+- `mime` de imagen o video; otro tipo da 400 con el campo que falla.
+- `text` es opcional. Sin texto, la vista previa de la lista dice
+  «2 fotos y 1 video» (`botFilesSummary`).
+- Con `card`, gana la tarjeta: para fotos dentro de una tarjeta va el bloque
+  `gallery` (c-vicies).
+- PATCH avisa por `msg.edited` con `files`. APK y web reemplazan el álbum en
+  vivo y en la copia local.
+- Borrar el mensaje borra también `files`.
+
+Archivos: `shared/src/bots.ts` (validación y resumen), `server/src/bots/botMessages.ts`,
+`app/src/chat/BotFilesAlbum.tsx`, `web/src/chat/BotFilesAlbum.tsx`.
+Tests: `shared/src/bots.test.ts`, `server/src/bots/bots.test.ts`
+(«photos and videos as an album; PATCH replaces the whole set»),
+`web/src/chat/BotFilesAlbum.test.tsx`.

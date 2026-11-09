@@ -1,5 +1,5 @@
 import type { LiveLocation } from '@lilachat/shared';
-import type { BotCard } from '@lilachat/shared';
+import type { BotCard, GalleryItem } from '@lilachat/shared';
 import type { MencionEnMensaje, MessageRef, ResumenDeHiloEnCliente, Reaccion } from '@lilachat/shared';
 import { avisarTarjeta, refrescarTodas } from '@lilachat/shared';
 import { io, type Socket } from 'socket.io-client';
@@ -37,6 +37,8 @@ export type ServerMessage = {
   location?: LiveLocation;
   /** A bot's card (`specs/BOTS-API.spec.md` §b): `body` carries its summary. */
   card?: BotCard;
+  /** A bot's photos and videos, drawn as an album (José via agentes 09/11). */
+  files?: GalleryItem[];
   /** An app's answer sent to the channel by who asked: «José usó /clima» on top. */
   sharedBy?: { name: string; command: string };
   /** El sobre cifrado, en chats secretos (F9). Llega en vez de `body`. */

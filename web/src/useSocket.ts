@@ -47,7 +47,7 @@ function soltarSocket(): void {
     }
   }, 0);
 }
-import { APAGADO_DE_ESCRIBIENDO_MS, avisarTarjeta, refrescarTodas, type BotCard } from '@lilachat/shared';
+import { APAGADO_DE_ESCRIBIENDO_MS, avisarTarjeta, refrescarTodas, type BotCard, type GalleryItem } from '@lilachat/shared';
 import type { ChatMessage } from './chat/types';
 
 /**
@@ -77,7 +77,7 @@ export function useSocket(params: {
   /** Reacciones (`msg.reacciones`, 20/10): la lista entera del mensaje. */
   onReacciones?: (data: { chatId: string; seq: number; reacciones: Reaccion[] }) => void;
   /** Editado (`msg.edited`). */
-  onEditado?: (data: { chatId: string; seq: number; body: string; editedAt?: string; card?: BotCard; location?: LiveLocation }) => void;
+  onEditado?: (data: { chatId: string; seq: number; body: string; editedAt?: string; card?: BotCard; files?: GalleryItem[]; location?: LiveLocation }) => void;
   /** Algo del chat cambió en otro dispositivo (nombre, foto, archivado…). */
   onCambioDeChat?: (data: { chatId: string }) => void;
   /** My company spaces changed (a request, approved, added, deactivated): read them again. */
@@ -176,7 +176,7 @@ export function useSocket(params: {
     );
     socket.on('msg.deleted', (data: { chatId: string; seq: number }) => handlers.current.onBorrado?.(data));
     // A bot closing its card (PATCH) comes the same way, with the new card and no «editado».
-    socket.on('msg.edited', (data: { chatId: string; seq: number; body: string; editedAt?: string; card?: BotCard; location?: LiveLocation }) =>
+    socket.on('msg.edited', (data: { chatId: string; seq: number; body: string; editedAt?: string; card?: BotCard; files?: GalleryItem[]; location?: LiveLocation }) =>
       handlers.current.onEditado?.(data)
     );
     socket.on('chat.changed', (data: { chatId: string }) => handlers.current.onCambioDeChat?.(data));

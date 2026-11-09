@@ -201,6 +201,16 @@ describe('the bot publishes (§b) and reads (§d)', () => {
     expect(closed!.card!.actions).toBeUndefined();
   });
 
+  it('photos and videos as an album; PATCH replaces the whole set (José via agentes 09/11)', async () => {
+    const { token } = await install();
+    const photo = (name: string) => ({ url: `https://lila.constroad.com/files/${name}.jpg`, mime: 'image/jpeg' });
+    const sent = await request(app).post('/api/bots/messages').set(asBot(token)).send({ channel_id: String(channel), files: [photo('a'), photo('b')], idempotency_key: 'k-files' }).expect(201);
+    expect(await MessageModel.findById(sent.body.message.id).lean()).toMatchObject({ body: '2 fotos', files: [{ url: photo('a').url }, { url: photo('b').url }] });
+    await request(app).patch(`/api/bots/messages/${sent.body.message.id}`).set(asBot(token)).send({ files: [photo('a'), photo('b'), { url: 'https://lila.constroad.com/files/c.mp4', mime: 'video/mp4' }] }).expect(200);
+    expect(await MessageModel.findById(sent.body.message.id).lean()).toMatchObject({ body: '2 fotos y 1 video', files: [{}, {}, { mime: 'video/mp4' }] });
+    await request(app).patch(`/api/bots/messages/${sent.body.message.id}`).set(asBot(token)).send({ files: [{ url: 'https://evil.example/x.jpg', mime: 'image/jpeg' }] }).expect(400);
+  });
+
   it('a checklist with its person by phone; someone outside the space is refused', async () => {
     const { token } = await install();
     await request(app).post('/api/bots/messages').set(asBot(token)).send({ channel_id: String(channel), idempotency_key: 'k6', checklist: { title: 'Despacho 1024', items: [{ text: 'Cargar tolva', assignee_phone: '51987654321' }] } }).expect(201);

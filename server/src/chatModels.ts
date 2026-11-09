@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Model, type QueryFilter, type Types } from 'mongoose';
-import type { BotCard, MessageRef } from '@lilachat/shared';
+import type { BotCard, GalleryItem, MessageRef } from '@lilachat/shared';
 import { HIGHLIGHTED_NOTICE_EVENTS } from '@lilachat/shared';
 
 /**
@@ -126,6 +126,8 @@ export interface Message {
   ref?: MessageRef;
   /** A bot's card (`specs/BOTS-API.spec.md` §b): `body` carries its summary for the list, notices and search. */
   card?: BotCard;
+  /** A bot's photos and videos, drawn as a person's album (José via agentes 09/11); `body` says how many. */
+  files?: GalleryItem[];
   /** An app's answer to a command, sent to the channel by who asked (José, 23/10): drawn as «José usó /clima» on top. */
   sharedBy?: { userId: Types.ObjectId; name: string; command: string };
   /** A message an app posted to a client's channel (pending 21, §157): what it is about. */
@@ -303,6 +305,8 @@ const messageSchema = new Schema<Message>(
     },
     // Validated by `validateBotCard` (shared) before it gets here.
     card: { type: Schema.Types.Mixed },
+    // Validated by `validateBotFiles` (shared): Constroad hosts, images and videos, up to 20.
+    files: { type: Schema.Types.Mixed, default: undefined },
     sharedBy: { userId: Schema.Types.ObjectId, name: String, command: String },
     clientRef: { type: new Schema({ kind: String, serviceId: String, recordId: String }, { _id: false }), default: undefined },
     envelope: {

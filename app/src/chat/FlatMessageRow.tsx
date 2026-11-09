@@ -1,3 +1,4 @@
+import { BotFilesAlbum } from './BotFilesAlbum';
 import { memo } from 'react';
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { Image } from 'expo-image';
@@ -153,6 +154,8 @@ function FlatRow(props: {
             <Text testID={`eliminado-${id}`} className="text-[15px] italic text-on-surface-variant">{TEXTO_ELIMINADO}</Text>
           ) : !isPending(item) && item.card && props.jwt ? (
             <BotCardView card={item.card} chatId={item.chatId} seq={item.seq} jwt={props.jwt} />
+          ) : !isPending(item) && item.files?.length ? (
+            <BotFilesAlbum seq={item.seq} files={item.files} />
           ) : !isPending(item) && sharedLocationOf(item) ? (
             <LocationCard location={sharedLocationOf(item)!} mine={mine} onOwnBubble={false} live={props.jwt ? { jwt: props.jwt, chatId: item.chatId, seq: item.seq } : undefined} selecting={props.selecting} onSelect={select} />
           ) : sharedContactOf(item) && props.jwt ? (

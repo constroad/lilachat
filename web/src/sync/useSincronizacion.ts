@@ -12,7 +12,7 @@ import { accionPorSocket, enviarPorSocket, pedirSincronizacion, type ResultadoDe
 import { sendNudgeBySocket, sendWinkBySocket } from './envioPorSocket';
 import { ocultar } from '../local/ocultos';
 import { aplicarAcuseALista, aplicarBorradoALista, aplicarEdicionALista, aplicarMensajeALista, aplicarReaccion, debeAvisarEscribiendo, type AcuseEnVivo, type CursoresEnVivo, type MencionEnMensaje, type Reaccion } from '@lilachat/shared';
-import type { BotCard } from '@lilachat/shared';
+import type { BotCard, GalleryItem } from '@lilachat/shared';
 import type { WinkId } from '@lilachat/shared';
 import { cambiarFila } from '../local/listaLocal';
 import { sincronizar } from './sincronizar';
@@ -101,7 +101,7 @@ export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401
         if (base) void aplicarBorrado(base, { ...dato, deletedAt: ahora });
         enLaFila(dato.chatId, (chats) => aplicarBorradoALista(chats, dato, ahora));
       },
-      onEditado: (dato: { chatId: string; seq: number; body: string; editedAt?: string; card?: BotCard; location?: LiveLocation }) => {
+      onEditado: (dato: { chatId: string; seq: number; body: string; editedAt?: string; card?: BotCard; files?: GalleryItem[]; location?: LiveLocation }) => {
         if (base) void aplicarEdicion(base, dato);
         enLaFila(dato.chatId, (chats) => aplicarEdicionALista(chats, dato));
       },

@@ -85,6 +85,8 @@ export async function sendMessage(params: {
   ref?: Message['ref'];
   /** A bot's card (`bots/botMessages.ts`). */
   card?: Message['card'];
+  /** A bot's album (`bots/botMessages.ts`). */
+  files?: Message['files'];
   /** Who sent an app's answer to the channel (`shareCommandAnswer`). */
   sharedBy?: Message['sharedBy'];
   replyToSeq?: number;
@@ -173,6 +175,7 @@ export async function sendMessage(params: {
       media: params.media,
       ref: params.ref,
       ...(params.card ? { card: params.card } : {}),
+      ...(params.files?.length ? { files: params.files } : {}),
       ...(params.sharedBy ? { sharedBy: params.sharedBy } : {}),
       ...(params.contact && !params.envelope ? { contact: params.contact } : {}),
       ...(params.location && !params.envelope ? { location: params.location } : {}),
@@ -319,7 +322,7 @@ export async function chatMemberIds(chatId: Types.ObjectId): Promise<string[]> {
  * and a bot card's figures used to stay, and a deleted call line kept being
  * drawn by its `system`. What places it stays: kind, seq, the reply and thread.
  */
-export const DELETED_CONTENT = Object.fromEntries(['body', 'envelope', 'media', 'contact', 'location', 'card', 'system', 'wink', 'menciones', 'reacciones'].map((field) => [field, ''])) as Record<string, ''>;
+export const DELETED_CONTENT = Object.fromEntries(['body', 'envelope', 'media', 'contact', 'location', 'card', 'files', 'system', 'wink', 'menciones', 'reacciones'].map((field) => [field, ''])) as Record<string, ''>;
 
 export async function deleteMessage(params: {
   chatId: string;

@@ -1,5 +1,5 @@
 import express, { Router, type NextFunction, type Request, type Response } from 'express';
-import { toInternationalPhone, validateAppManifest, validateBotCard, validateBotCommands, validateBotPost } from '@lilachat/shared';
+import { toInternationalPhone, validateAppManifest, validateBotCard, validateBotCommands, validateBotFiles, validateBotPost } from '@lilachat/shared';
 import { ChatModel, type Chat } from '../chatModels.js';
 import { crearLimiteDeIntentos } from '../limiteDeIntentos.js';
 import { UserModel } from '../models.js';
@@ -114,9 +114,11 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
     const body = (req.body ?? {}) as Record<string, unknown>;
     const card = body.card === undefined ? undefined : validateBotCard(body.card);
     if (card && !card.ok) return void res.status(400).json({ error: 'invalid_request', message: card.message });
+    const files = body.files === undefined ? undefined : validateBotFiles(body.files);
+    if (files && !files.ok) return void res.status(400).json({ error: 'invalid_request', message: files.message });
     const text = typeof body.text === 'string' && body.text.trim() ? body.text.trim() : undefined;
-    if (!text && !card) return void res.status(400).json({ error: 'invalid_request', message: 'Manda text o card.' });
-    const outcome = await updateBotMessage(req.bot!, String(req.params.id), { ...(text ? { text } : {}), ...(card?.ok ? { card: card.card } : {}) }, notifyEdited);
+    if (!text && !card && !files) return void res.status(400).json({ error: 'invalid_request', message: 'Manda text, card o files.' });
+    const outcome = await updateBotMessage(req.bot!, String(req.params.id), { ...(text ? { text } : {}), ...(card?.ok ? { card: card.card } : {}), ...(files?.ok ? { files: files.files } : {}) }, notifyEdited);
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.json(outcome);
   }));

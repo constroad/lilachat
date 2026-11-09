@@ -1,3 +1,4 @@
+import { BotFilesAlbum } from './BotFilesAlbum';
 import { LineaDeLlamada } from './LineaDeLlamada';
 import { memo, useContext, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -259,6 +260,7 @@ function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; m
   // A bot's card (Lila): its summary in `body` is for the list and notices; here the card itself.
   const shared = mensaje.sharedBy ? <p data-testid={`compartido-por-${mensaje.seq}`} className="mb-1 text-[12px] text-on-surface-variant">{sharedByLine(mensaje.sharedBy)}</p> : null;
   if (mensaje.card) return <>{shared}<BotCardView card={mensaje.card} chatId={chat.id} seq={mensaje.seq} jwt={jwt} /></>;
+  if (mensaje.files?.length) return <>{shared}<BotFilesAlbum seq={mensaje.seq} files={mensaje.files} /></>;
   const media = mensaje.media;
   if (media?.url && media.mime?.startsWith('audio/')) {
     return <NotaDeVoz id={`${chat.id}:${mensaje.seq}`} chatId={chat.id} authorName={mio ? 'Tú' : (nombres.get(mensaje.senderId) ?? chat.name ?? 'Nota de voz')} url={media.url} durationMs={media.durationMs} onda={media.onda} mio={mio} />;

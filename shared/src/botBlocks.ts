@@ -141,6 +141,13 @@ function galleryItemOf(raw: unknown): GalleryItem | null {
   return { url, ...(thumbUrl ? { thumbUrl } : {}), mime, ...withText('name', sent.name, BLOCK_LIMITS.label), ...withText('label', sent.label, BLOCK_LIMITS.short) };
 }
 
+/** A bot message's own files (`files`): the gallery's rules, up to 20. */
+export function validateBotFiles(raw: unknown): { ok: true; files: GalleryItem[] } | { ok: false; message: string } {
+  const sent = Array.isArray(raw) ? raw : [];
+  const files = sent.map(galleryItemOf).filter((one): one is GalleryItem => one !== null).slice(0, BLOCK_LIMITS.gallery);
+  return files.length ? { ok: true, files } : { ok: false, message: 'files necesita fotos o videos https de Constroad.' };
+}
+
 function galleryBlock(raw: Record<string, unknown>): Result<BotBlock> {
   const sent = Array.isArray(raw.items) ? raw.items : [];
   const items = sent.map(galleryItemOf).filter((one): one is GalleryItem => one !== null).slice(0, BLOCK_LIMITS.gallery);

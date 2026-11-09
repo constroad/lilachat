@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { barColumns, barFractions, linePath, peopleOnCard, peoplePhotos, personEvidence, personTime, tankDeltaTrend, tankFill, tankPercent, validateBotBlocks, BLOCK_LIMITS, PEOPLE_ON_CARD, cardCommandsOf, rowIsForAnyone, type BotBlock } from './botBlocks.js';
+import { barColumns, barFractions, linePath, peopleOnCard, peoplePhotos, personEvidence, personTime, tankDeltaTrend, tankFill, tankPercent, validateBotBlocks, BLOCK_LIMITS, PEOPLE_ON_CARD, cardCommandsOf, rowIsForAnyone, galleryFiles, galleryStrip, type BotBlock } from './botBlocks.js';
 import { validateBotCard } from './bots.js';
 
 /** The card kit (§118.4, José 23/10): what agents and webhooks can draw in a card, validated once for server, app and web. */
@@ -255,5 +255,37 @@ describe('rowIsForAnyone', () => {
     if (!valid.ok) throw new Error(valid.message);
     const rows = valid.blocks[0]!.type === 'rows' ? valid.blocks[0]!.rows : [];
     expect(rows.map((row) => row.anyone)).toEqual([true, undefined, undefined]);
+  });
+});
+
+/** Each unit's photos and videos on its root card in #planta (José via agentes, 09/11). */
+describe('the gallery block', () => {
+  const photo = { url: 'https://lila.constroad.com/files/a.jpg', thumb_url: 'https://lila.constroad.com/files/a-t.jpg', mime: 'image/jpeg', name: 'a.jpg', label: 'Llegada' };
+  it('keeps photos and videos from Constroad hosts, with their thumbnails', () => {
+    const video = { url: 'https://lila.constroad.com/files/b.mp4', mime: 'video/mp4', name: 'b.mp4' };
+    expect(validateBotBlocks([{ type: 'gallery', items: [photo, video] }], 8)).toEqual({ ok: true, blocks: [{ type: 'gallery', items: [
+      { url: photo.url, thumbUrl: photo.thumb_url, mime: 'image/jpeg', name: 'a.jpg', label: 'Llegada' },
+      { url: video.url, mime: 'video/mp4', name: 'b.mp4' },
+    ] }] });
+  });
+  it('drops files from other hosts, plain http and other kinds, and keeps 20 at most', () => {
+    const many = Array.from({ length: 25 }, (_, index) => ({ ...photo, url: `https://lila.constroad.com/files/${index}.jpg` }));
+    const checked = validateBotBlocks([{ type: 'gallery', items: [{ ...photo, url: 'https://evil.example/a.jpg' }, { ...photo, url: 'http://lila.constroad.com/a.jpg' }, { ...photo, mime: 'application/pdf' }, ...many] }], 8);
+    expect(checked.ok && checked.blocks[0]?.type === 'gallery' ? checked.blocks[0].items.length : -1).toBe(BLOCK_LIMITS.gallery);
+  });
+  it('drops a thumbnail from another host but keeps the file', () => {
+    const checked = validateBotBlocks([{ type: 'gallery', items: [{ ...photo, thumb_url: 'https://evil.example/t.jpg' }] }], 8);
+    expect(checked).toMatchObject({ ok: true, blocks: [{ type: 'gallery', items: [{ url: photo.url }] }] });
+    expect(checked.ok && checked.blocks[0]?.type === 'gallery' ? checked.blocks[0].items[0]?.thumbUrl : 'x').toBeUndefined();
+  });
+  it('refuses a gallery with no valid file', () => {
+    expect(validateBotBlocks([{ type: 'gallery', items: [{ url: 'https://evil.example/a.jpg', mime: 'image/jpeg' }] }], 8)).toMatchObject({ ok: false });
+  });
+  it('turns its items into files the viewer swipes through', () => {
+    expect(galleryFiles({ type: 'gallery', items: [{ url: photo.url, thumbUrl: photo.thumb_url, mime: 'image/jpeg', name: 'a.jpg', label: 'Llegada' }] })).toEqual([{ url: photo.url, thumbUrl: photo.thumb_url, mime: 'image/jpeg', name: 'a.jpg', when: 'Llegada' }]);
+  });
+  it('shows four thumbnails and counts the rest', () => {
+    expect(galleryStrip(6)).toEqual({ shown: 4, more: 2 });
+    expect(galleryStrip(3)).toEqual({ shown: 3, more: 0 });
   });
 });

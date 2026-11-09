@@ -223,3 +223,16 @@ describe('a row with a command (José, 05/11: «si toco un distrito no muestra e
     expect(screen.getByText('Miraflores').closest('button')).toBeNull();
   });
 });
+
+describe('the gallery on a unit card (José via agentes, 09/11)', () => {
+  const items = Array.from({ length: 6 }, (_, index) => ({ url: `https://lila.constroad.com/files/u${index}.jpg`, mime: 'image/jpeg', name: `Foto ${index + 1}` }));
+  const gallery = validateBotCard({ kicker: 'DESPACHO', title: 'Unidad ABC-123', fields: [], blocks: [{ type: 'gallery', items }] });
+  it('shows four thumbnails, counts the rest, and opens the viewer on the tapped one', () => {
+    if (!gallery.ok) throw new Error(gallery.message);
+    render(<BotCardView card={gallery.card} chatId="c" seq={2} jwt="j" />);
+    expect(screen.getAllByTestId(/^bloque-galeria-\d$/)).toHaveLength(4);
+    expect(screen.getByRole('button', { name: 'Ver 2 más' }).textContent).toContain('+2');
+    fireEvent.click(screen.getByTestId('bloque-galeria-1'));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+});

@@ -30,9 +30,15 @@ export type BotBlock =
   /** `times[i]` is the time of `names[i]`, as the app wrote it; '' when that person has none (José, 04/11). */
   | { type: 'people'; names: string[]; times?: string[]; evidence?: PersonEvidence[]; more?: number }
   | { type: 'attachments'; count: number; label: string; url: string }
+  /** Photos and videos shown as thumbnails; a tap opens the viewer (José via agentes, 09/11: each unit's root card in #planta). */
+  | { type: 'gallery'; items: GalleryItem[] }
   | WeatherBlock;
+export type GalleryItem = { url: string; thumbUrl?: string; mime: string; name?: string; label?: string };
 
-export const BLOCK_LIMITS = { cardBlocks: 8, detailBlocks: 12, chips: 6, points: 31, tanks: 12, rows: 40, people: 40, label: 40, short: 24, text: 200, url: 500, cardBytes: 16_000 };
+export const BLOCK_LIMITS = { cardBlocks: 8, detailBlocks: 12, chips: 6, points: 31, tanks: 12, rows: 40, people: 40, label: 40, short: 24, text: 200, url: 500, gallery: 20, cardBytes: 16_000 };
+/** Where a gallery's files may live: a card's thumbnails load on every member's device, so no tracking pixel from anyone else. */
+const GALLERY_HOSTS: readonly string[] = ['lila.constroad.com', 'www.constroad.com'];
+const GALLERY_STRIP = 4;
 const TONES: readonly CardTone[] = ['ok', 'warn', 'error', 'info', 'neutral'];
 const KINDS: readonly ChartKind[] = ['bar-h', 'bar-v', 'line'];
 
@@ -105,6 +111,37 @@ const httpsLink = (value: unknown): string => {
   return clean.startsWith('https://') ? clean : '';
 };
 
+const galleryLink = (value: unknown): string => {
+  const link = httpsLink(value);
+  try {
+    return link && GALLERY_HOSTS.includes(new URL(link).hostname) ? link : '';
+  } catch {
+    return '';
+  }
+};
+
+function galleryItemOf(raw: unknown): GalleryItem | null {
+  const sent = record(raw);
+  const url = galleryLink(sent.url);
+  const mime = text(sent.mime, BLOCK_LIMITS.short).toLowerCase();
+  if (!url || !(mime.startsWith('image/') || mime.startsWith('video/'))) return null;
+  const thumbUrl = galleryLink(sent.thumb_url ?? sent.thumbUrl);
+  return { url, ...(thumbUrl ? { thumbUrl } : {}), mime, ...withText('name', sent.name, BLOCK_LIMITS.label), ...withText('label', sent.label, BLOCK_LIMITS.short) };
+}
+
+function galleryBlock(raw: Record<string, unknown>): Result<BotBlock> {
+  const sent = Array.isArray(raw.items) ? raw.items : [];
+  const items = sent.map(galleryItemOf).filter((one): one is GalleryItem => one !== null).slice(0, BLOCK_LIMITS.gallery);
+  return items.length ? { ok: true, value: { type: 'gallery', items } } : { ok: false, message: 'La galería necesita fotos o videos https de Constroad.' };
+}
+
+/** The gallery's files as the viewer takes them; the label shows as the file's line. */
+export const galleryFiles = (block: Extract<BotBlock, { type: 'gallery' }>): ViewableFile[] =>
+  block.items.map((one) => ({ url: one.url, ...(one.thumbUrl ? { thumbUrl: one.thumbUrl } : {}), mime: one.mime, name: one.name ?? (one.mime.startsWith('video/') ? 'Video' : 'Foto'), ...(one.label ? { when: one.label } : {}) }));
+
+/** How many thumbnails the card draws and how many the «+N» counts. */
+export const galleryStrip = (count: number): { shown: number; more: number } => ({ shown: Math.min(count, GALLERY_STRIP), more: Math.max(0, count - GALLERY_STRIP) });
+
 function evidenceOf(raw: unknown): PersonEvidence {
   const sent = record(raw);
   const photo = httpsLink(sent.photo);
@@ -148,6 +185,7 @@ function block(raw: Record<string, unknown>): Result<BotBlock> | null {
     case 'rows': return { ok: true, value: { type: 'rows', rows: list(raw.rows, BLOCK_LIMITS.rows).map((item) => { const row = record(item); return { label: text(row.label, BLOCK_LIMITS.label), value: text(row.value, BLOCK_LIMITS.text), ...withText('sub', row.sub, BLOCK_LIMITS.text), ...(row.bar !== undefined ? { bar: clamp01(row.bar) } : {}), tone: tone(row.tone), ...withCommand(row) }; }).filter((row) => row.label) } };
     case 'people': return peopleBlock(raw);
     case 'attachments': return attachmentsBlock(raw);
+    case 'gallery': return galleryBlock(raw);
     case 'weather': return validateWeatherBlock(raw);
     default: return null;
   }

@@ -4,6 +4,7 @@ import { peopleOnCard, peoplePhotos, personEvidence, personTime, shortPersonName
 import { usePortalFileViewer } from '../../spaces/clients/PortalFileViewer';
 import { Avatar } from '../../ui/Avatar';
 import { BlockChart } from './BlockChart';
+import { BlockGallery } from './BlockGallery';
 import { BlockTank } from './BlockTank';
 import { BlockWeather } from './BlockWeather';
 import { useCardCommand } from './cardCommand';
@@ -149,6 +150,8 @@ function Block({ block }: { block: BotBlock }) {
           <Paperclip size={14} className="text-on-surface-variant" /> {block.label}
         </a>
       );
+    case 'gallery':
+      return <BlockGallery block={block} />;
     case 'weather':
       return <BlockWeather block={block} />;
   }

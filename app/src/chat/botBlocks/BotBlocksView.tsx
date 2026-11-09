@@ -8,6 +8,7 @@ import { Avatar } from '../../ui/Avatar';
 import { useColores } from '../../ui/tema';
 import { useAccionesDeTarjeta } from '../accionesDeTarjeta';
 import { BlockChart } from './BlockChart';
+import { BlockGallery } from './BlockGallery';
 import { BlockTank } from './BlockTank';
 import { BlockWeather } from './BlockWeather';
 import { TONE_CLASS, TONE_COLOR } from './tones';
@@ -175,6 +176,8 @@ function Block({ block }: { block: BotBlock }) {
           <Text className="text-[13px] font-semibold text-on-surface">{block.label}</Text>
         </Pressable>
       );
+    case 'gallery':
+      return <BlockGallery block={block} />;
     case 'weather':
       return <BlockWeather block={block} />;
   }

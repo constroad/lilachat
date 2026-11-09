@@ -1160,3 +1160,28 @@ haya creado una persona. Trae `item.key` y `item.source_key`.
 **Sin verificar:** dos llamadas simultáneas sobre un canal sin etapas podrían crear
 etapas repetidas, porque no hay índice único por `{chatId, stage}` y crearlo en
 producción pide el OK de José. Agentes llama una vez por pedido.
+
+## c-vicies. Bloque `gallery`: fotos y videos en la tarjeta (José vía agentes, 09/11)
+
+Cada unidad de Inframaq tiene su hilo en #planta. La tarjeta raíz muestra sus
+fotos y videos.
+
+```json
+{ "type": "gallery", "items": [
+  { "url": "https://lila.constroad.com/files/…", "thumb_url": "https://lila.constroad.com/files/…",
+    "mime": "image/jpeg", "name": "salida-1.jpg", "label": "Salida" } ] }
+```
+
+- Hasta 20 archivos. Solo `image/*` y `video/*`.
+- Solo hosts `lila.constroad.com` y `www.constroad.com`, por https. Las
+  miniaturas cargan en el teléfono de cada miembro: nada de terceros.
+- Un archivo inválido se descarta; si no queda ninguno, 400.
+- Una `thumb_url` de otro host se descarta y el archivo queda.
+- `label` sale como la línea del archivo en el visor («Salida», «Llegada»).
+- La tarjeta dibuja 4 miniaturas de 64 px; la cuarta lleva «+N». Un toque
+  abre el visor con todos: se desliza entre fotos y videos.
+- Las fotos llegan después de la salida: `PATCH /api/bots/messages/:id` con
+  la `card` entera la reemplaza y avisa por socket. No hace falta un mensaje
+  nuevo.
+- Código: `shared/src/botBlocks.ts` (`galleryBlock`, `galleryFiles`,
+  `galleryStrip`, con tests). Vistas: `web|app/src/chat/botBlocks/BlockGallery.tsx`.

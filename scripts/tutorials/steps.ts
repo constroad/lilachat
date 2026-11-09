@@ -91,6 +91,10 @@ async function dragBy(page: RecorderPage, selector: string, dx: number, dy: numb
 
 /** A real click where a place falls on the map now on screen (the last ready one: the editor's or the board's). */
 async function tapMap(page: RecorderPage, lat: number, lng: number): Promise<string | null> {
+  // On the phone the panel sits under the map: bring the map on screen before tapping it.
+  await page.evaluate(`(() => { const holders = [...document.querySelectorAll('[data-testid="mapa-lienzo"]')].filter((el) => el.workMap);
+    holders[holders.length - 1]?.scrollIntoView({ block: 'center', behavior: 'smooth' }); })()`);
+  await sleep(MOVE_SETTLE_MS);
   const point = (await page.evaluate(`(() => { const holders = [...document.querySelectorAll('[data-testid="mapa-lienzo"]')].filter((el) => el.workMap);
     const el = holders[holders.length - 1]; if (!el) return null; const p = el.workMap.project([${lng}, ${lat}]); const r = el.getBoundingClientRect();
     return { x: r.left + p.x, y: r.top + p.y }; })()`)) as { x: number; y: number } | null;

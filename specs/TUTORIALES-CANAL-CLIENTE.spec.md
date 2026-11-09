@@ -178,3 +178,28 @@ pantalla. El visor todavía no está. Esto es lo que ya existe:
   de −18,8 dB y pico de −4,0 dB.
 - La calle grabada se borró por «Borrar calle» y el mapa volvió a 2 calles. También se borró la
   de la grabación descartada.
+
+### Tutorial 2 grabado: «Etapas, trabajos y capas del mapa» (09/11)
+
+- Guion `scripts/tutorials/guiones/etapas-trabajos.ts`: 29 pasos, en el teléfono (390 px), Test,
+  QA-CTLPIS.
+- Qué enseña:
+  - crear «Etapa 2» y pintarla sobre la Avenida Abancay con «Tocar calles» (la tarjeta pasa a
+    «1 calle · 120 m · 720 m²»);
+  - «Deshacer» y «Listo»;
+  - crear el trabajo «Bacheo» con su color y pintarlo sobre la misma calle;
+  - filtrar el mapa por capa y volver a «Todos»;
+  - borrar el trabajo y la etapa, con su pregunta.
+- Buenas prácticas en cámara: una etapa por calle y ninguna suelta, un color distinto por capa, las
+  capas en el orden en que se ejecutan.
+- El video crea y borra lo suyo, así que la limpieza va por el camino de la app y Test queda como
+  estaba.
+- Acciones nuevas del grabador:
+  - `tapMap`: toca el mapa en una coordenada y antes lo trae a la pantalla.
+  - Esperar a que la franja de la brocha deje de decir «Guardando…»: sin esa espera, la voz
+    hablaba sobre un mapa sin pintar.
+- **Verificado:** 4:27,8 tanto en el archivo como en el `.json`; 29 subtítulos; audio en −19,4 dB
+  de media; hoja de contacto revisada; sin avisos. Video en `.tutorials-out/etapas-trabajos.webm`
+  (3,5 MB).
+- **Visto y menor:** la pregunta de borrar el trabajo queda medio tapada por el subtítulo durante
+  su paso. Las pastillas 1, 2 y 3 del Control de pista tapan parte de la calle pintada.

@@ -203,3 +203,20 @@ pantalla. El visor todavía no está. Esto es lo que ya existe:
   (3,5 MB).
 - **Visto y menor:** la pregunta de borrar el trabajo queda medio tapada por el subtítulo durante
   su paso. Las pastillas 1, 2 y 3 del Control de pista tapan parte de la calle pintada.
+
+### Tutorial 3 grabado: «Partir la calle en tramos» (09/11)
+
+- Guion `scripts/tutorials/guiones/tramos.ts`: 18 pasos, en el teléfono, Test.
+- Qué muestra, en la Avenida Abancay:
+  - la vista previa de la calle y el estado de cada tramo;
+  - «Agregar tramo» de 0+120 a 0+191, con su trabajo y su etapa;
+  - el tramo nuevo «Pendiente»;
+  - el lápiz para editarlo y «Cancelar»;
+  - la papelera, con su pregunta, para borrarlo.
+- Buena práctica en cámara: los tramos van uno detrás del otro, sin huecos y sin montarse.
+- El tramo se borra en cámara. Queda en «Borrados», que es lo que hace el borrado lógico de Portal,
+  y la calle vuelve a tener un solo tramo.
+- **Verificado:** 2:42,2 en el archivo y en el `.json`; audio en −19,0 dB; sin avisos. Video en
+  `.tutorials-out/tramos.webm` (3,5 MB).
+- **Visto, para la ronda de usabilidad:** en el mapa chico, el crédito de OpenFreeMap tapa un cuarto
+  del recuadro.

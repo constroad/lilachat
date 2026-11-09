@@ -1194,3 +1194,18 @@ fotos y videos.
   nuevo.
 - Código: `shared/src/botBlocks.ts` (`galleryBlock`, `galleryFiles`,
   `galleryStrip`, con tests). Vistas: `web|app/src/chat/botBlocks/BlockGallery.tsx`.
+
+## c-unvicies. Bloque `map`: el lugar de una tarjeta (José vía agentes, 09/11)
+
+```json
+{ "type": "map", "lat": -12.02, "lng": -76.94, "label": "Planta Huachipa", "precision_m": 12 }
+```
+
+- `lat` en ±90 y `lng` en ±180, como números. Si no, 400.
+- `label` va opcional, hasta 40 caracteres. `precision_m` va opcional, en
+  metros redondeados, y se descarta si es negativo.
+- Se dibuja como la tarjeta de ubicación del chat: un mapa quieto hecho con
+  teselas (no un mapa vivo por mensaje), con la precisión. Un toque abre el
+  mapa completo. Web y APK (`BlockMap`).
+- La privacidad es del producto: agentes solo manda el punto si el canal es
+  privado (`GET /api/bots/channels` → `visibility`).

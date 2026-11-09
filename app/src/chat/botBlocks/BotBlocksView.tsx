@@ -9,6 +9,7 @@ import { useColores } from '../../ui/tema';
 import { useAccionesDeTarjeta } from '../accionesDeTarjeta';
 import { BlockChart } from './BlockChart';
 import { BlockGallery } from './BlockGallery';
+import { BlockMap } from './BlockMap';
 import { BlockTank } from './BlockTank';
 import { BlockWeather } from './BlockWeather';
 import { TONE_CLASS, TONE_COLOR } from './tones';
@@ -178,6 +179,8 @@ function Block({ block }: { block: BotBlock }) {
       );
     case 'gallery':
       return <BlockGallery block={block} />;
+    case 'map':
+      return <BlockMap block={block} />;
     case 'weather':
       return <BlockWeather block={block} />;
   }

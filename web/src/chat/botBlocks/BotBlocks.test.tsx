@@ -236,3 +236,12 @@ describe('the gallery on a unit card (José via agentes, 09/11)', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 });
+
+describe('the map block on an attendance card (José via agentes, 09/11)', () => {
+  it('shows the place name and its still map', () => {
+    const marked = validateBotCard({ kicker: 'ASISTENCIA', title: 'Darío Paredes · 07:12', fields: [], blocks: [{ type: 'map', lat: -12.02, lng: -76.94, label: 'Planta Huachipa', precision_m: 12 }] });
+    if (!marked.ok) throw new Error(marked.message);
+    render(<BotCardView card={marked.card} chatId="c" seq={3} jwt="j" />);
+    expect(screen.getByTestId('bloque-mapa')).toHaveTextContent('Planta Huachipa');
+  });
+});

@@ -32,6 +32,8 @@ export type BotBlock =
   | { type: 'attachments'; count: number; label: string; url: string }
   /** Photos and videos shown as thumbnails; a tap opens the viewer (José via agentes, 09/11: each unit's root card in #planta). */
   | { type: 'gallery'; items: GalleryItem[] }
+  /** Where something happened, as the chat's location card (José via agentes 09/11: the place of an attendance mark). */
+  | { type: 'map'; lat: number; lng: number; label?: string; precisionM?: number }
   | WeatherBlock;
 export type GalleryItem = { url: string; thumbUrl?: string; mime: string; name?: string; label?: string };
 
@@ -120,6 +122,16 @@ const galleryLink = (value: unknown): string => {
   }
 };
 
+const MAX_LAT = 90;
+const MAX_LNG = 180;
+
+function mapBlock(raw: Record<string, unknown>): Result<BotBlock> {
+  const [lat, lng] = [finite(raw.lat), finite(raw.lng)];
+  if (lat === null || lng === null || Math.abs(lat) > MAX_LAT || Math.abs(lng) > MAX_LNG) return { ok: false, message: 'El mapa necesita lat y lng válidos.' };
+  const precision = finite(raw.precision_m ?? raw.precisionM);
+  return { ok: true, value: { type: 'map', lat, lng, ...withText('label', raw.label, BLOCK_LIMITS.label), ...(precision !== null && precision >= 0 ? { precisionM: Math.round(precision) } : {}) } };
+}
+
 function galleryItemOf(raw: unknown): GalleryItem | null {
   const sent = record(raw);
   const url = galleryLink(sent.url);
@@ -186,6 +198,7 @@ function block(raw: Record<string, unknown>): Result<BotBlock> | null {
     case 'people': return peopleBlock(raw);
     case 'attachments': return attachmentsBlock(raw);
     case 'gallery': return galleryBlock(raw);
+    case 'map': return mapBlock(raw);
     case 'weather': return validateWeatherBlock(raw);
     default: return null;
   }

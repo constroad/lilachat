@@ -289,3 +289,17 @@ describe('the gallery block', () => {
     expect(galleryStrip(3)).toEqual({ shown: 3, more: 0 });
   });
 });
+
+/** José via agentes 09/11: each attendance mark shows where it was signed, as a small map. */
+describe('the map block', () => {
+  it('keeps a place with its label and precision', () => {
+    expect(validateBotBlocks([{ type: 'map', lat: -12.05, lng: -77.04, label: 'Planta Huachipa', precision_m: 12.4 }], 8)).toEqual({ ok: true, blocks: [{ type: 'map', lat: -12.05, lng: -77.04, label: 'Planta Huachipa', precisionM: 12 }] });
+  });
+  it('refuses a point off the planet or without numbers', () => {
+    expect(validateBotBlocks([{ type: 'map', lat: 95, lng: 0 }], 8)).toMatchObject({ ok: false });
+    expect(validateBotBlocks([{ type: 'map', lat: '-12', lng: -77 }], 8)).toMatchObject({ ok: false });
+  });
+  it('drops a negative precision but keeps the place', () => {
+    expect(validateBotBlocks([{ type: 'map', lat: 0, lng: 0, precision_m: -3 }], 8)).toEqual({ ok: true, blocks: [{ type: 'map', lat: 0, lng: 0 }] });
+  });
+});

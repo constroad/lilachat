@@ -1,3 +1,4 @@
+import { scrollFlatListTo } from './scrollSafely';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AccionesDeTarjetaContext, type AccionesDeTarjeta } from './accionesDeTarjeta';
 import { Alert, FlatList, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
@@ -146,7 +147,7 @@ export function HiloScreen(props: {
     jumpedKey.current = key;
     const scrollToReply = () => {
       const index = replyRowOf(latestRows.current, props.highlightReply);
-      if (index >= 0) lista.current?.scrollToIndex({ index, animated: false, viewPosition: 0.4 });
+      scrollFlatListTo(lista.current, { index, animated: false, viewPosition: 0.4 });
     };
     scrollToReply();
     setTimeout(scrollToReply, SECOND_PASS_MS);

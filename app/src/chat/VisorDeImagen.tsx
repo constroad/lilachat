@@ -1,3 +1,4 @@
+import { scrollFlatListTo } from './scrollSafely';
 import { useCallback, useEffect, useRef, useState, type MutableRefObject, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View, type ViewToken, useWindowDimensions } from 'react-native';
 import { Modal } from '../ui/Modal';
@@ -271,7 +272,7 @@ function usePagerSync(index: number, onPick: ((photo: FotoDelVisor) => void) | u
   useEffect(() => {
     if (index === visibleIndex.current) return;
     visibleIndex.current = index;
-    pager.current?.scrollToIndex({ index, animated: false });
+    scrollFlatListTo(pager.current, { index, animated: false });
   }, [index]);
   const onPickRef = useRef(onPick);
   onPickRef.current = onPick;

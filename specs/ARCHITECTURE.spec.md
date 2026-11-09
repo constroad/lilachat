@@ -15696,3 +15696,15 @@ ahora es un botón:
 Pedido a Portal:
 - que «Datos» no venga `done` con un requerido vacío;
 - que el texto distinga «escantillón en cm» de «foto de escantillón».
+
+## «scrollToIndex out of range» en el chat (José 09/11, reporte 3921979f)
+
+Un salto calcula su fila en un render y se ejecuta en otro (segundo pase, divisor
+de no leídos, respuesta de un hilo, tira del visor). Si la lista ya tenía menos
+filas, `FlatList` lanzaba «requested index 4 is out of 0 to 0» y la app caía.
+Ahora los cuatro saltos pasan por `app/src/chat/scrollSafely.ts`:
+`scrollFlatListTo` cuenta las filas que la lista tiene EN ESE MOMENTO
+(`props.data`) y `scrollWithinRows` hace lo mismo con FlashList, que no expone
+`props`. Fuera de rango no se mueve nada. Regla en `shared/src/listIndex.ts`
+(`indexInRange`). Sin verificar: qué pantalla exacta lo disparó; el reporte no
+trae la pila completa.

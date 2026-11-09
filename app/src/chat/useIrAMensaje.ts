@@ -1,3 +1,4 @@
+import { scrollWithinRows } from './scrollSafely';
 import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import type { FlashListRef } from '@shopify/flash-list';
 import { isPending, type Row } from './MessageRow';
@@ -45,7 +46,7 @@ export function useIrAMensaje(params: {
   const anchorRef = useRef<JumpAnchor | null>(null);
   const indexOfSeq = useCallback((seq: number) => rowsRef.current.findIndex((fila) => !isPending(fila) && fila.seq === seq), []);
   const scrollTo = useCallback(
-    (index: number) => listaRef.current?.scrollToIndex({ index, animated: false, viewPosition: VIEW_POSITION }),
+    (index: number) => scrollWithinRows(listaRef.current, { index, animated: false, viewPosition: VIEW_POSITION }, rowsRef.current.length),
     [listaRef]
   );
 

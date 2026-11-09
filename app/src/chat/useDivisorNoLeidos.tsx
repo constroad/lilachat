@@ -1,3 +1,4 @@
+import { scrollWithinRows } from './scrollSafely';
 import { useCallback, useRef, useState, useEffect, type RefObject } from 'react';
 import { Text, View } from 'react-native';
 import type { FlashListRef } from '@shopify/flash-list';
@@ -57,7 +58,7 @@ export function useDivisorNoLeidos(params: {
     placedAtEndWaiting.current = false;
     const indice = rowsRef.current.findIndex((fila) => !isPending(fila) && fila.seq === seq);
     if (indice < 0) return;
-    params.listaRef.current?.scrollToIndex({ index: indice, animated: false, viewPosition: 0.15 });
+    scrollWithinRows(params.listaRef.current, { index: indice, animated: false, viewPosition: 0.15 }, rowsRef.current.length);
     setPlacedLate((count) => count + 1);
   }, [hayFilas, params.rows.length, calcular, params.listaRef]);
 
@@ -66,7 +67,7 @@ export function useDivisorNoLeidos(params: {
     const seq = calcular();
     const indice = seq === null ? -1 : rowsRef.current.findIndex((fila) => !isPending(fila) && fila.seq === seq);
     if (indice >= 0) {
-      params.listaRef.current?.scrollToIndex({ index: indice, animated: false, viewPosition: 0.15 });
+      scrollWithinRows(params.listaRef.current, { index: indice, animated: false, viewPosition: 0.15 }, rowsRef.current.length);
       return 'away';
     }
     params.listaRef.current?.scrollToEnd({ animated: false });

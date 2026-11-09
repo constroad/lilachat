@@ -110,13 +110,13 @@ function Actions(props: ActionProps) {
     else props.onDeleted?.();
   };
   return (
-    <div className={`flex shrink-0 items-center gap-2 ${props.wide ? 'pb-3' : 'pb-2'}`}>
+    <div className={`flex shrink-0 items-center gap-2 ${props.wide ? 'pb-3' : 'w-full pb-2'}`}>
       <button type="button" data-testid="mapa-pantalla-completa" title={props.expanded ? 'Salir de pantalla completa' : 'Pantalla completa'} onClick={props.onToggle} className={ACTION}>
         {props.expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />} <span className="sr-only">{props.expanded ? 'Salir de pantalla completa' : 'Pantalla completa'}</span>
       </button>
       <MapMoreMenu pageUrl={props.pageUrl} onPick={pick} draws={Boolean(props.onDraw)} edits={Boolean(props.onLayers)} admin={Boolean(props.onDeleted)} className={ACTION} />
       <button type="button" data-testid="mapa-compartir" onClick={props.onShare} className={ACTION}><Share2 size={16} /> {props.wide ? 'Compartir avance' : 'Compartir'}</button>
-      {props.onRecord ? <button type="button" data-testid="mapa-registrar-avance" onClick={props.onRecord} className={`${ACTION} border-primary bg-primary text-on-primary hover:bg-primary/90`}><TrendingUp size={16} /> {props.wide ? 'Registrar avance' : 'Registrar'}</button> : null}
+      {props.onRecord ? <button type="button" data-testid="mapa-registrar-avance" onClick={props.onRecord} className={`${ACTION} ${props.wide ? '' : 'ml-auto'} border-primary bg-primary text-on-primary hover:bg-primary/90`}><TrendingUp size={16} /> {props.wide ? 'Registrar avance' : 'Registrar'}</button> : null}
     </div>
   );
 }
@@ -187,7 +187,8 @@ export function WorkMapBoard(props: BoardProps) {
   return (
     <div ref={holder} data-testid="mapa-servicio" data-expanded={expanded} data-wide={wide} className={`flex flex-col bg-background ${expanded ? 'fixed inset-0 z-50' : 'min-h-0 flex-1'} ${wide ? 'overflow-hidden' : 'overflow-y-auto'}`}>
       <header className={`${MAP_HEAD_BAR} relative z-20 flex-wrap`}>
-        <div className="min-w-0 flex-1">{props.head}{wide ? props.tabs : null}</div>
+        {/* Narrow, the title takes its own row: beside the actions it broke into four lines (José 09/11). */}
+        <div className={`min-w-0 ${wide ? 'flex-1' : 'basis-full'}`}>{props.head}{wide ? props.tabs : null}</div>
         <Actions pageUrl={pageUrl} expanded={expanded} wide={wide} onToggle={expanded ? close : open} onExport={() => toggleSide('export')} onShare={() => toggleSide('share')} onRecord={props.editMap && target.kind !== 'none' ? () => { setSide(null); record(); } : undefined} onDraw={props.onDraw} onDeleted={props.admin && props.editMap ? () => setSeeingDeleted((shown) => !shown) : undefined} onLayers={props.editMap ? (kind) => { setSide(null); brushing.setBrush(null); setLayers((shown) => (shown === kind ? null : kind)); } : undefined} />
         {wide ? null : <div className="-mt-2 min-w-0 basis-full">{props.tabs}</div>}
       </header>

@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { Camera as CameraIcon, Video } from 'lucide-react-native';
+import { useColores } from '../../../ui/tema';
 import { Camera, GeoJSONSource, Layer, Map as MapSurface, ViewAnnotation, type CameraRef, type MapRef, type StyleSpecification } from '@maplibre/maplibre-react-native';
 import { MapControls } from './MapControls';
 import { PLACE_ZOOM, type MapFrame, dischargePinCollection, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView , STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark } from '@lilachat/shared';
@@ -48,6 +50,23 @@ function EndHandle(props: { handle: StreetHandle; onDrop?: (handle: StreetEnd, p
   );
 }
 
+/** A spot of the «Fotos» layer: a camera or a film with how many it holds (José 09/11: bare numbers confused). */
+function IconPin(props: { pin: DischargePin; onPin?: (id: string) => void }) {
+  const colors = useColores();
+  const { pin } = props;
+  const Icon = pin.icon === 'video' ? Video : CameraIcon;
+  return (
+    <ViewAnnotation id={`pin-${pin.id}`} lngLat={[pin.lng, pin.lat]} anchor="center">
+      <Pressable testID={`pin-${pin.id}`} accessibilityLabel={`${pin.label} ${pin.icon === 'video' ? 'videos' : 'fotos'} aquí`} disabled={!props.onPin} onPress={() => props.onPin?.(pin.id)} className={`h-10 w-10 items-center justify-center rounded-full border-2 border-surface ${pin.outside ? 'bg-error' : 'bg-primary'}`}>
+        <Icon size={18} color={colors['on-primary']} />
+        <View className="absolute -right-1.5 -top-1.5 h-[18px] min-w-[18px] items-center justify-center rounded-full border border-surface bg-surface px-1">
+          <Text className="text-[10px] font-bold text-primary">{pin.label}</Text>
+        </View>
+      </Pressable>
+    </ViewAnnotation>
+  );
+}
+
 /** `onTap` draws a street (o-02): each tap is a bend. `near` frames where the phone is when there is nothing drawn yet. */
 export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void; near?: WorkMapPoint | null; /** Draggable ends of a picked street (José 08/11). */ handles?: StreetHandle[]; onHandleDrop?: (handle: StreetEnd, point: WorkMapPoint) => void; /** A tap on a pin (the «Fotos» layer, José 08/11). */ onPin?: (id: string) => void; /** A place found by the search: the map flies there (José 08/11). */ focus?: WorkMapPoint | null; /** A street just picked whole: the map shows both of its ends. */ frame?: MapFrame | null; /** Room for the system bar under a full-screen map. */ controlsInset?: number }) {
   const { view, moves } = props;
@@ -88,7 +107,10 @@ export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?
       <GeoJSONSource id="work-map-pins" data={dischargePinCollection(props.pins ?? NO_PINS)} onPress={props.onPin ? (event) => { const id = event.nativeEvent.features[0]?.properties?.id; if (typeof id === 'string') props.onPin?.(id); } : undefined}>
         <Layer id="work-map-pin-dot" type="circle" paint={{ 'circle-color': ['get', 'color'], 'circle-radius': 11, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 }} />
         <Layer id="work-map-pin-number" type="symbol" layout={{ 'text-field': ['get', 'label'], 'text-font': PIN_FONT, 'text-size': 12, 'text-allow-overlap': true }} paint={{ 'text-color': '#ffffff' }} />
+        {/* The unit's plate under its number (José 09/11): which unit was where. */}
+        <Layer id="work-map-pin-plate" type="symbol" layout={{ 'text-field': ['get', 'caption'], 'text-font': PIN_FONT, 'text-size': 11, 'text-offset': [0, 1.7], 'text-allow-overlap': true }} paint={{ 'text-color': '#111827', 'text-halo-color': '#ffffff', 'text-halo-width': 2 }} />
       </GeoJSONSource>
+      {(props.pins ?? NO_PINS).filter((pin) => pin.icon).map((pin) => <IconPin key={pin.id} pin={pin} onPin={props.onPin} />)}
       {(props.handles ?? NO_HANDLES).map((handle) => <EndHandle key={`${handle.handle}-${handle.label}`} handle={handle} onDrop={props.onHandleDrop} />)}
     </MapSurface>
     <MapControls map={map} camera={camera} bottomInset={props.controlsInset} />

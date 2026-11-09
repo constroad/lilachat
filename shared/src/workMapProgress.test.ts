@@ -148,7 +148,7 @@ describe('dischargePinsOf and stretchLineOf (what the canvas draws)', () => {
       { state: 'outside', unit: unit('d', -11.99), point: { lat: -11.98, lng: -77 } },
       { state: 'noPlace', unit: { ...unit('e', -12), points: [] } },
     ] });
-    expect(pins).toEqual([{ id: 'a', label: '1', lat: -11.999, lng: -77, outside: false }, { id: 'd', label: '2', lat: -11.98, lng: -77, outside: true }]);
+    expect(pins).toEqual([{ id: 'a', label: '1', lat: -11.999, lng: -77, outside: false, caption: 'X' }, { id: 'd', label: '2', lat: -11.98, lng: -77, outside: true, caption: 'X' }]);
   });
 
   it('draws the stretch the person is about to confirm', () => {
@@ -164,9 +164,14 @@ describe('dischargePinCollection (the APK draws pins as a layer)', () => {
   it('turns each pin into a point with its number and its color', () => {
     const collection = dischargePinCollection([{ id: 'a', label: '1', lat: -12, lng: -77, outside: false }, { id: 'd', label: '2', lat: -11.98, lng: -77, outside: true }]);
     expect(collection.features.map((feature) => [feature.properties, feature.geometry.coordinates])).toEqual([
-      [{ id: 'a', label: '1', color: '#7c3aed' }, [-77, -12]],
-      [{ id: 'd', label: '2', color: '#dc2626' }, [-77, -11.98]],
+      [{ id: 'a', label: '1', caption: '', color: '#7c3aed' }, [-77, -12]],
+      [{ id: 'd', label: '2', caption: '', color: '#dc2626' }, [-77, -11.98]],
     ]);
+  });
+
+  it('carries the plate under the number and leaves the photo spots to the views (José 09/11)', () => {
+    const collection = dischargePinCollection([{ id: 'a', label: '1', lat: -12, lng: -77, outside: false, caption: 'AXN780' }, { id: 'fotos-1', label: '3', lat: -12, lng: -77, outside: false, icon: 'photo' }]);
+    expect(collection.features.map((feature) => feature.properties)).toEqual([{ id: 'a', label: '1', caption: 'AXN780', color: '#7c3aed' }]);
   });
 });
 

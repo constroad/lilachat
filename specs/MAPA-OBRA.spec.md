@@ -1281,3 +1281,26 @@ Cómo quedó (`shared/src/workMapMenu.ts`, puro, con test):
 
 Pendiente: los tutoriales 1 a 3 se vuelven a grabar con esta barra cuando José
 avise.
+
+### Selector de trabajo propio, marcadores con ícono y placas, chips alineados (José 09/11, tarde)
+
+- **Web, selector de trabajo:** el `select` nativo no mostraba el color. Ahora es
+  una lista propia: `mapa-trabajo` la abre y cada opción es
+  `mapa-trabajo-<id|todos>`, con el punto de color y el porcentaje.
+  `useDismiss` (en `MapMoreMenu.tsx`) la cierra con Escape o con un clic afuera,
+  igual que «Más». El guion `etapas-trabajos` la abre con clics; dura 4:50.
+- **Capa «Fotos»:** los números sueltos confundían. Cada lugar muestra una
+  cámara, o una película si todo lo que tiene son videos, y una burbuja con
+  cuántos hay (`DischargePin.icon`).
+  - Web: marcador HTML.
+  - APK: `ViewAnnotation` con ícono de lucide.
+- **Control de pista:** cada unidad lleva su número y debajo su placa
+  (`DischargePin.caption`).
+  - Web: etiqueta HTML.
+  - APK: capa de texto `work-map-pin-plate` con halo.
+- **Chips de trabajo del panel derecho:** se desalineaban con nombres largos
+  (alto fijo y texto centrado). Ahora crecen en alto, el texto va a la
+  izquierda y el punto no se encoge. El punto lleva un anillo, para que un color
+  oscuro (la carpeta asfáltica) se vea en el tema oscuro.
+- **«Registrar avance» queda fuera de «Más» en el celular, a propósito:** es la
+  acción principal del `o-01` y la que más se usa en campo.

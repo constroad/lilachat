@@ -32,15 +32,46 @@ function addWorkLayers(map: maplibregl.Map) {
   map.addLayer({ id: `${STATIONS}-text`, type: 'symbol', source: STATIONS, layout: STATION_TEXT_LAYOUT as maplibregl.SymbolLayerSpecification['layout'], paint: STATION_TEXT_PAINT });
 }
 
-/** A numbered pin per unit (design o-07): an HTML marker, so no font of the style is needed. */
+/** Lucide's camera and film, inline: a marker is plain DOM, outside React. */
+const PIN_ICONS = {
+  photo: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
+  video: '<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
+} as const;
+
+function iconPin(pin: DischargePin & { icon: 'photo' | 'video' }, element: HTMLElement) {
+  element.className = `relative flex h-9 w-9 items-center justify-center rounded-full border-2 border-surface text-on-primary shadow-md ${pin.outside ? 'bg-error' : 'bg-primary'}`;
+  element.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PIN_ICONS[pin.icon]}</svg>`;
+  const count = document.createElement('span');
+  count.className = 'absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-surface bg-surface px-1 text-[10px] font-bold text-primary';
+  count.textContent = pin.label;
+  element.append(count);
+}
+
+/**
+ * A pin over the map (design o-07). A unit: its number and its plate under it. A spot of
+ * «Fotos»: a camera or a film with how many it holds (José 09/11: bare numbers confused).
+ */
 function pinElement(pin: DischargePin, onPin: { current: ((id: string) => void) | undefined }): HTMLElement {
   const element = document.createElement(onPin.current ? 'button' : 'div');
   element.dataset.testid = `pin-${pin.id}`;
-  element.className = `flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-surface px-1 text-[11px] font-bold text-on-primary shadow ${pin.outside ? 'bg-error' : 'bg-primary'}`;
-  element.textContent = pin.label;
+  if (pin.icon) {
+    iconPin({ ...pin, icon: pin.icon }, element);
+  } else {
+    element.className = 'flex flex-col items-center';
+    const dot = document.createElement('span');
+    dot.className = `flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-surface px-1 text-[11px] font-bold text-on-primary shadow ${pin.outside ? 'bg-error' : 'bg-primary'}`;
+    dot.textContent = pin.label;
+    element.append(dot);
+    if (pin.caption) {
+      const plate = document.createElement('span');
+      plate.className = 'mt-0.5 rounded-md bg-surface px-1.5 font-mono text-[10px] font-bold text-on-surface shadow';
+      plate.textContent = pin.caption;
+      element.append(plate);
+    }
+  }
   if (onPin.current) {
     // A photo marker (José 08/11): the click opens its photos and does not reach the map.
-    element.setAttribute('aria-label', `${pin.label} fotos aquí`);
+    element.setAttribute('aria-label', `${pin.label} ${pin.icon === 'video' ? 'videos' : 'fotos'} aquí`);
     element.addEventListener('click', (event) => { event.stopPropagation(); onPin.current?.(pin.id); });
   }
   return element;

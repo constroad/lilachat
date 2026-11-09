@@ -110,7 +110,7 @@ export function ManualProgress(props: Props) {
         <div className="mt-1 flex flex-wrap gap-2">
           {start.works.map((work) => {
             const on = draft.workId === work.id;
-            return <button key={work.id} type="button" aria-pressed={on} data-testid={`avance-manual-trabajo-${work.id}`} onClick={() => change(pickManualWork(props.map, props.streetId, draft, work.id))} className={`${CHIP} ${on ? 'border-primary bg-primary/10 text-primary' : 'border-outline/20 text-on-surface'}`}><span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: work.color }} />{work.name}</button>;
+            return <button key={work.id} type="button" aria-pressed={on} data-testid={`avance-manual-trabajo-${work.id}`} onClick={() => change(pickManualWork(props.map, props.streetId, draft, work.id))} className={`${CHIP} ${on ? 'border-primary bg-primary/10 text-primary' : 'border-outline/20 text-on-surface'}`}><span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-on-surface/25" style={{ backgroundColor: work.color }} />{work.name}</button>;
           })}
           {start.works.length ? null : <p className="text-[13px] text-on-surface-variant">Esta calle no tiene trabajos en sus tramos. Agrega un tramo con su trabajo primero.</p>}
         </div>

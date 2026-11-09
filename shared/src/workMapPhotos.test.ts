@@ -47,7 +47,7 @@ describe('photoSpotsOf, one marker per spot of the street', () => {
 
   it('a pin per spot, numbered by how many photos it holds', () => {
     const pins = photoSpotPins(photoSpotsOf(map, [photo('p1', north(40)), photo('p2', north(45))]));
-    expect(pins).toEqual([expect.objectContaining({ label: '2', outside: false })]);
+    expect(pins).toEqual([expect.objectContaining({ label: '2', outside: false, icon: 'photo' })]);
   });
 });
 
@@ -65,5 +65,15 @@ describe('photoSpotFiles, for the viewer', () => {
   it('a video stays a video, each named by its source', () => {
     const [spot] = photoSpotsOf(map, [photo('v1', north(40), { kind: 'video', plate: 'QAA-002' })]);
     expect(photoSpotFiles(spot!)).toEqual([{ url: 'https://lila.test/v1.jpg', name: 'Control de pista · QAA-002 · Jr. Los Pinos · 0+040', mime: 'video/mp4', thumbUrl: 'https://lila.test/v1-t.jpg', when: '2026-11-06T14:05:00.000Z' }]);
+  });
+});
+
+describe('the «Fotos» pins show what they hold (José 09/11: bare numbers confused)', () => {
+  it('a film when every one is a video, a camera otherwise', () => {
+    // Arrange
+    const spot = (kinds: Array<'photo' | 'video'>) => ({ id: 's', lat: -12, lng: -77, streetId: 'x', streetName: null, atM: null, photos: kinds.map((kind, index) => ({ id: `p${index}`, lat: -12, lng: -77, at: '2026-11-09T12:00:00.000Z', kind, url: 'https://x', thumbnailUrl: 'https://x' })) });
+    // Act / Assert
+    expect(photoSpotPins([spot(['video', 'video'])] as never)[0]?.icon).toBe('video');
+    expect(photoSpotPins([spot(['video', 'photo'])] as never)[0]?.icon).toBe('photo');
   });
 });

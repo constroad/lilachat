@@ -109,7 +109,7 @@ export const photoSpotTitle = (spot: Pick<PhotoSpot, 'streetName' | 'atM'>): str
 
 /** One pin per spot, with how many photos it holds. */
 export const photoSpotPins = (spots: PhotoSpot[]): DischargePin[] =>
-  spots.map((spot) => ({ id: `fotos-${spot.id}`, label: String(spot.photos.length), lat: spot.lat, lng: spot.lng, outside: spot.streetId === null }));
+  spots.map((spot) => ({ id: `fotos-${spot.id}`, label: String(spot.photos.length), lat: spot.lat, lng: spot.lng, outside: spot.streetId === null, icon: spot.photos.every((photo) => photo.kind === 'video') ? 'video' as const : 'photo' as const }));
 
 /** «Control de pista · QAA-001», «Control de imprimación», or a photo of «Registrar avance». */
 export function photoSourceLabel(photo: Pick<MapPhoto, 'reportType' | 'plate'>): string {

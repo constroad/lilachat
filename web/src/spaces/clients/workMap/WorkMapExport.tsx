@@ -7,7 +7,7 @@ import { PdfAction } from './PdfAction';
 
 const CARD = 'rounded-xl border-[1.5px] border-outline/15 bg-surface p-4';
 const SEGMENT = 'min-h-[40px] rounded-lg border px-3 py-1.5 text-[12px] font-semibold';
-const CHIP = 'flex h-8 items-center gap-1.5 rounded-full border px-2.5 text-[12px] font-semibold';
+const CHIP = 'flex min-h-8 max-w-full items-center gap-2 rounded-xl border px-2.5 py-1.5 text-left text-[12px] font-semibold leading-tight';
 type Props = { map: WorkMap; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; title: string; pageUrl: string; onClose: () => void; /** «Importar KMZ o KML» (o-12): Portal's tools and the Drive upload. */ send?: MapEditSend; uploadTrace?: TraceUpload<File> };
 
 /** The browser saves the bytes with the work's name; the link is gone once the click took it. */
@@ -45,7 +45,7 @@ function WhatLeaves(props: Props) {
           <div className="mt-1 flex flex-wrap gap-2">
             {works.map((work) => {
               const on = !filter.workId || filter.workId === work.id;
-              return <button key={work.id} type="button" aria-pressed={on} data-testid={`exportar-trabajo-${work.id}`} onClick={() => props.onFilter(workMapWorkFilter(filter, filter.workId === work.id ? undefined : work.id))} className={`${CHIP} ${on ? 'border-outline/25 bg-surface text-on-surface' : 'border-outline/10 text-on-surface-variant opacity-60'}`}><span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: work.color }} />{work.name}</button>;
+              return <button key={work.id} type="button" aria-pressed={on} data-testid={`exportar-trabajo-${work.id}`} onClick={() => props.onFilter(workMapWorkFilter(filter, filter.workId === work.id ? undefined : work.id))} className={`${CHIP} ${on ? 'border-outline/25 bg-surface text-on-surface' : 'border-outline/10 text-on-surface-variant opacity-60'}`}><span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-on-surface/25" style={{ backgroundColor: work.color }} />{work.name}</button>;
             })}
           </div>
         </div>

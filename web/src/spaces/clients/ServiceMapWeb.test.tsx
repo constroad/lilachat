@@ -119,11 +119,12 @@ describe('ServiceMapWeb', () => {
     askServer.mockResolvedValue({ ok: true, data: { map: twoDays } });
     showMap();
     // Act
-    fireEvent.change(await screen.findByTestId('mapa-trabajo'), { target: { value: 'base' } });
+    fireEvent.click(await screen.findByTestId('mapa-trabajo'));
+    fireEvent.click(screen.getByTestId('mapa-trabajo-base'));
     fireEvent.change(screen.getByTestId('mapa-corte'), { target: { value: '2026-11-01' } });
     // Assert
     expect(screen.getByTestId('mapa-avance')).toHaveTextContent('100 m de 600 m');
-    expect(screen.getByTestId('mapa-trabajo')).toHaveValue('base');
+    expect(screen.getByTestId('mapa-trabajo')).toHaveTextContent('Base');
     expect(within(screen.getByTestId('mapa-corte')).getByRole('option', { name: 'Hasta el 1 nov' })).toBeInTheDocument();
   });
 
@@ -153,10 +154,12 @@ describe('ServiceMapWeb', () => {
 
   it('the work select narrows the map, and every work stays to pick (José 09/11: a select, not chips)', async () => {
     showMap();
-    fireEvent.change(await screen.findByTestId('mapa-trabajo'), { target: { value: 'asfalto' } });
+    fireEvent.click(await screen.findByTestId('mapa-trabajo'));
+    fireEvent.click(screen.getByTestId('mapa-trabajo-asfalto'));
     expect(screen.getByTestId('mapa-avance')).toHaveTextContent('0 %');
-    expect(within(screen.getByTestId('mapa-trabajo')).getAllByRole('option')).toHaveLength(3);
-    fireEvent.change(screen.getByTestId('mapa-trabajo'), { target: { value: '' } });
+    fireEvent.click(screen.getByTestId('mapa-trabajo'));
+    expect(within(screen.getByTestId('mapa-trabajo-lista')).getAllByRole('option')).toHaveLength(3);
+    fireEvent.click(screen.getByTestId('mapa-trabajo-todos'));
     expect(screen.getByTestId('mapa-avance')).toHaveTextContent('40 %');
   });
 
@@ -169,7 +172,8 @@ describe('ServiceMapWeb', () => {
 
   it('a stage that lacks the chosen work does not leave an empty map', async () => {
     showMap();
-    fireEvent.change(await screen.findByTestId('mapa-trabajo'), { target: { value: 'asfalto' } });
+    fireEvent.click(await screen.findByTestId('mapa-trabajo'));
+    fireEvent.click(screen.getByTestId('mapa-trabajo-asfalto'));
     fireEvent.change(screen.getByTestId('mapa-etapa'), { target: { value: 'e2' } });
     expect(screen.getByTestId('mapa-calle-s2')).toBeInTheDocument();
   });

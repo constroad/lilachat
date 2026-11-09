@@ -60,7 +60,7 @@ export function ScopeForm(props: FormProps) {
       <div className="mt-1 flex flex-wrap gap-2">
         {map.works.map((work) => {
           const on = draft.workIds.includes(work.id);
-          return <button key={work.id} type="button" aria-pressed={on} data-testid={`tramo-trabajo-${work.id}`} onClick={() => setDraft((before) => toggleScopeWork(before, work.id))} className={`${CHIP} ${on ? 'border-primary bg-primary/10 text-primary' : 'border-outline/20 text-on-surface'}`}><span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: work.color }} />{work.name}</button>;
+          return <button key={work.id} type="button" aria-pressed={on} data-testid={`tramo-trabajo-${work.id}`} onClick={() => setDraft((before) => toggleScopeWork(before, work.id))} className={`${CHIP} ${on ? 'border-primary bg-primary/10 text-primary' : 'border-outline/20 text-on-surface'}`}><span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-on-surface/25" style={{ backgroundColor: work.color }} />{work.name}</button>;
         })}
         <NewLabel testId="trabajo" placeholder="Nuevo trabajo" colors={WORK_TAG_COLORS} onCreate={(name, color) => createdOrRefusal(props.send(workTagRequest(name, color), sendWorkTag))} />
       </div>

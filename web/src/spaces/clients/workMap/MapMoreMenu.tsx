@@ -7,19 +7,18 @@ const ICONS: Record<MapMoreKey, LucideIcon> = { draw: Plus, stages: Layers, work
 const TEST_IDS: Record<MapMoreKey, string> = { draw: 'mapa-nueva-calle', stages: 'mapa-etapas-abrir', works: 'mapa-trabajos-abrir', export: 'mapa-exportar', open: 'mapa-abrir', deleted: 'mapa-borrados-abrir' };
 const ITEM = 'flex h-11 w-full items-center gap-3 rounded-lg px-3 text-left text-[14px] font-semibold text-on-surface hover:bg-background';
 
-export type MoreActions = { pageUrl: string; onPick: (key: Exclude<MapMoreKey, 'open'>) => void; draws: boolean; edits: boolean; admin: boolean; className: string };
-
-/** «Más» (José 09/11): everything that is not «Registrar avance» or «Compartir», in one list. */
-export function MapMoreMenu(props: MoreActions) {
-  const [open, setOpen] = useState(false);
+/** Closes a popover on Escape or a press outside its holder. */
+export function useDismiss(open: boolean, close: () => void) {
   const holder = useRef<HTMLDivElement>(null);
+  const latest = useRef(close);
+  latest.current = close;
   useEffect(() => {
     if (!open) return undefined;
     const closeOutside = (event: PointerEvent) => {
-      if (!holder.current?.contains(event.target as Node)) setOpen(false);
+      if (!holder.current?.contains(event.target as Node)) latest.current();
     };
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key === 'Escape') latest.current();
     };
     document.addEventListener('pointerdown', closeOutside);
     document.addEventListener('keydown', closeOnEscape);
@@ -28,6 +27,15 @@ export function MapMoreMenu(props: MoreActions) {
       document.removeEventListener('keydown', closeOnEscape);
     };
   }, [open]);
+  return holder;
+}
+
+export type MoreActions = { pageUrl: string; onPick: (key: Exclude<MapMoreKey, 'open'>) => void; draws: boolean; edits: boolean; admin: boolean; className: string };
+
+/** «Más» (José 09/11): everything that is not «Registrar avance» or «Compartir», in one list. */
+export function MapMoreMenu(props: MoreActions) {
+  const [open, setOpen] = useState(false);
+  const holder = useDismiss(open, () => setOpen(false));
   const items = mapMoreItems(props);
   return (
     <div ref={holder} className="relative">

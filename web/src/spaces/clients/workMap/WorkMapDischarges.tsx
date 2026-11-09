@@ -6,7 +6,7 @@ export type ProgressSend = (entry: ProgressEntry) => Promise<{ ok: true; message
 type Range = { fromM: number; toM: number };
 
 const KICKER = 'text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant';
-const CHIP = 'flex h-8 items-center gap-1.5 rounded-full border px-3 text-[13px] font-semibold';
+const CHIP = 'flex min-h-8 max-w-full items-center gap-2 rounded-xl border px-3 py-1.5 text-left text-[13px] font-semibold leading-tight';
 const FIELD = 'h-10 w-full rounded-xl border border-outline/20 bg-surface px-3 text-[14px] text-on-surface';
 const STATE_TONE: Record<DischargeRow['state'], string> = { placed: 'border-outline/15', outside: 'border-error/40 bg-error/5', noPlace: 'border-outline/15 opacity-70' };
 
@@ -80,7 +80,7 @@ function StretchCard(props: { map: WorkMap; serviceId: string; stretch: Suggeste
         <div className="mt-2 flex flex-wrap gap-2">
           {works.map((work) => (
             <button key={work.id} type="button" data-testid={`avance-trabajo-${work.id}`} aria-pressed={workId === work.id} onClick={() => setWorkId(work.id)} className={`${CHIP} ${workId === work.id ? 'border-primary bg-primary text-on-primary' : 'border-outline/20 bg-surface text-on-surface'}`}>
-              <span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: work.color }} />{work.name}
+              <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-on-surface/25" style={{ backgroundColor: work.color }} />{work.name}
             </button>
           ))}
         </div>

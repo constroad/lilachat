@@ -146,3 +146,26 @@ export const arrivalKeyOf = (item: RepeatItem): string | undefined => photoSlots
 
 /** What the summary of a unit says beside its plate, without the «Terminó» line the pill already shows. */
 export const unitLineOf = (item: RepeatItem): string => item.summary.filter((one) => !FINISHED_LINE.test(one)).join(TITLE_SEPARATOR);
+
+const UNIT_NUMBER = /^Unidad (\d+)\b/;
+const PHOTO_OF = /falta foto de ([a-záéíóúñ]+)/i;
+const plain = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+/**
+ * Where a «Todavía falta» line of Portal points: «Unidad 2 AXN780: falta escantillón» opens the
+ * data of unit 2; «… falta foto de escantillón», its photo. Null when the line names no unit.
+ */
+export function blockerPathOf(report: Pick<FieldDocument, 'sections'>, line: string): SectionPath | null {
+  const number = UNIT_NUMBER.exec(line.trim())?.[1];
+  if (!number) return null;
+  for (const section of report.sections) {
+    if (section.kind !== 'repeat') continue;
+    const item = section.items.find((one) => UNIT_NUMBER.exec(one.title)?.[1] === number);
+    if (!item) continue;
+    const photoWord = PHOTO_OF.exec(line)?.[1];
+    const photo = photoWord ? item.sections.find((one) => one.photoKind && plain(one.photoKind) === plain(photoWord)) : undefined;
+    const target = photo ?? dataSectionOf(item);
+    return target ? { sectionId: section.id, itemId: item.id, key: target.id } : null;
+  }
+  return null;
+}

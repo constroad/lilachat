@@ -219,3 +219,22 @@ describe('waitingLayoutOf (with several units on site the rows fell two screens 
   });
 });
 
+
+describe('a «Todavía falta» line opens what it names (José 09/11: Jeremy never found the escantillón in cm)', () => {
+  it('«Unidad 2 AXN780: falta escantillón» opens the data of unit 2; a line without a unit opens nothing', async () => {
+    // Arrange
+    const { blockerPathOf } = await import('./reportUnits.js');
+    const section = { kind: 'repeat', id: 'tramos', items: [
+      { id: 'd1', title: 'Unidad 1 · QAP-101', sections: [{ id: 'datos', state: 'done' }] },
+      { id: 'd2', title: 'Unidad 2 · AXN780', sections: [{ id: 'datos', state: 'done' }, { id: 'foto-escantillon', tool: 'agregar_foto_de_informe', photoKind: 'escantillon', state: 'done' }] },
+      { id: 'd12', title: 'Unidad 12 · ZZZ-999', sections: [{ id: 'datos', state: 'empty' }] },
+    ] };
+    const report = { sections: [{ kind: 'form', id: 'general' }, section] } as never;
+    // Act / Assert
+    expect(blockerPathOf(report, 'Unidad 2 AXN780: falta escantillón.')).toEqual({ sectionId: 'tramos', itemId: 'd2', key: 'datos' });
+    expect(blockerPathOf(report, 'Unidad 12 ZZZ-999: falta temperatura.')).toEqual({ sectionId: 'tramos', itemId: 'd12', key: 'datos' });
+    expect(blockerPathOf(report, 'Unidad 2 AXN780: falta foto de escantillón.')).toEqual({ sectionId: 'tramos', itemId: 'd2', key: 'foto-escantillon' });
+    expect(blockerPathOf(report, 'Hay cambios sin enviar.')).toBeNull();
+    expect(blockerPathOf(report, 'Unidad 7 X: falta escantillón.')).toBeNull();
+  });
+});

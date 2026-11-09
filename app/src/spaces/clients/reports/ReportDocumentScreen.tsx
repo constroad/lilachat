@@ -175,7 +175,7 @@ export function ReportDocumentScreen(props: Props) {
       </ScrollView>
       {report && (!items || (items.kind === 'repeat' && isUnitsRepeat(items))) ? <ReportFooter report={report} blocker={publishFooterLine(report, blockers)} asking={pdf.asking} onPublish={() => screen.setPublishing(true)} onPdf={() => void pdf.ask(report.id ?? '', `${report.title} · PDF`)} onPreview={() => void pdf.ask(report.id ?? '', `${report.title} · vista previa`, true)} onDone={() => props.onClose(true)} /> : null}
       {files.viewer}
-      {report ? <PublishSheet document={report} blockers={blockers} visible={screen.publishing} onClose={() => screen.setPublishing(false)} onPublish={publish} /> : null}
+      {report ? <PublishSheet document={report} blockers={blockers} visible={screen.publishing} onClose={() => screen.setPublishing(false)} onPublish={publish} onOpen={(path) => { screen.setPublishing(false); actions.openSection(path); }} /> : null}
       {document.form ? <AppFormSheet key={formKeyOf(document.form)} cameraFirst answer={document.form} onSubmit={actions.submit} onUpload={actions.upload} onClose={actions.closeForm} /> : null}
       {forms.answers.openForm ? (
         <AppFormSheet key={formKeyOf(forms.answers.openForm)} answer={forms.answers.openForm} onSubmit={(values) => forms.answers.submitForm(forms.answers.openForm!, values)} onUpload={(photo, stamp) => forms.answers.uploadPhoto(forms.answers.openForm!.commandId, photo, stamp)} onRefresh={(values) => forms.answers.refreshForm(forms.answers.openForm!, values)} onPreview={(values) => forms.answers.previewForm(forms.answers.openForm!, values)} onClose={() => forms.answers.dismiss(forms.answers.openForm!.commandId)} />

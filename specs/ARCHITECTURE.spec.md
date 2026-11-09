@@ -15663,3 +15663,18 @@ admite cualquier nombre. «Crear informe» se apaga si queda vacío. El nombre l
 - **OTA:** `readServed` espera hasta 25 s un 200 del manifest y del bundle servido. Un server
   que reinicia ya no se lee como bundle malo, y el mensaje pide no correr `--embedded`. La
   ruta del fallo solo está probada por test: el OTA `79c0b8a9` respondió a la primera.
+
+## «Todavía falta» abre lo que nombra (José 09/11, Control de pista de Jeremy)
+
+Jeremy no pudo publicar: Portal decía «Unidad 2 AXN780: falta escantillón». Lo
+leyó como la foto, que sí estaba. Portal mira el NÚMERO `escantillonCm` de
+«Datos» de la unidad, y ese número nunca se guardó en las unidades 2 y 3
+(relojes de Portal, 6aef173cb2530e0ad71a7db4). Una línea que nombra una unidad
+ahora es un botón:
+- `blockerPathOf`: «falta foto de X» abre esa foto; cualquier otro faltante abre
+  los «Datos» de la unidad.
+- Web: `PublishDialog`. APK: `PublishSheet`.
+
+Pedido a Portal:
+- que «Datos» no venga `done` con un requerido vacío;
+- que el texto distinga «escantillón en cm» de «foto de escantillón».

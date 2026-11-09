@@ -141,7 +141,7 @@ export function ReportDocumentWeb(props: Props) {
       <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={page.setItemsOf} onRetry={actions.refresh} onView={viewPhoto} />
       {files.viewer}
       {report && (!items || (items.kind === 'repeat' && isUnitsRepeat(items))) ? <ReportFooter report={report} blocker={publishFooterLine(report, blockers)} pdf={pdf} onPublish={() => page.setPublishing(true)} onDone={() => props.onClose(true)} /> : null}
-      {report && page.publishing ? <PublishDialog report={report} blockers={blockers} onClose={() => page.setPublishing(false)} onPublish={page.publish} /> : null}
+      {report && page.publishing ? <PublishDialog report={report} blockers={blockers} onClose={() => page.setPublishing(false)} onPublish={page.publish} onOpen={(path) => { page.setPublishing(false); actions.openSection(path); }} /> : null}
       {document.form ? <AppFormDialog key={formKeyOf(document.form)} answer={document.form} personName={loadPerfil()?.name} onSubmit={actions.submit} onUpload={actions.upload} onClose={actions.closeForm} /> : null}
       {forms.answers.openForm ? (
         <AppFormDialog key={formKeyOf(forms.answers.openForm)} answer={forms.answers.openForm} personName={loadPerfil()?.name} onSubmit={(values) => forms.answers.submitForm(forms.answers.openForm!, values)} onUpload={(file, stamp) => forms.answers.uploadPhoto(forms.answers.openForm!.commandId, file, stamp)} onRefresh={(values) => forms.answers.refreshForm(forms.answers.openForm!, values)} onPreview={(values) => forms.answers.previewForm(forms.answers.openForm!, values)} onClose={() => forms.answers.dismiss(forms.answers.openForm!.commandId)} />

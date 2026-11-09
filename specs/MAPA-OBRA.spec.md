@@ -1221,9 +1221,13 @@ sigue pidiendo uno; se le preguntó a Portal si reusa el vigente.
   - tarjeta «Pendiente de aprobar» arriba del panel del mapa, en web y APK (`PendingProgress.tsx`): cada avance con calle, tramo, trabajo, día y quién; el admin tiene «Aprobar» y «Rechazar», y «Rechazar» pide confirmación.
   - La lista se vuelve a pedir cada vez que el mapa se recarga, así que el avance recién enviado aparece solo.
   - Sin pendientes, o mientras José no apruebe las herramientas en Agentes, la tarjeta no se dibuja.
-- **Sin verificar en vivo:** falta que José apruebe las dos herramientas en Agentes. Después:
-  - E2E en Test;
-  - rechazar el avance QA (calle 1, «Asfalto QA», 0+000 a 0+030) con «Rechazar».
+- **E2E en vivo (09/11, Test, José ya aprobó las herramientas):**
+  - APK (OTA ea2519df): «1 avance por aprobar», con calle, tramo, trabajo y día, «Aprobar» y «Rechazar».
+  - Primer «Rechazar» (04:29Z): Portal contestó «no se responde en un grupo». Agentes firmaba esta herramienta con el canal del chat, porque no lleva `servicioId`. Lo corrigió en bb856fd: va como `direct` solo si el formulario trae cliente y servicio.
+  - Web, 04:35:41Z: «Rechazar» → «Avance rechazado.». La lista volvió vacía y la tarjeta se fue en 2,9 s. El avance QA quedó rechazado por el camino de la app (limpieza hecha).
+  - En el camino se arreglaron dos defectos de Lilachat:
+    - la lista llegaba en `data.data` y no se leía (c3b1bd3);
+    - una lectura recargaba el mapa, lo que dejaba la lista en bucle (a84d318).
 - El pendiente todavía no se dibuja sobre la calle; queda como mejora.
 
 **Mapa base propio («se ve feo, no se parece en nada a tus diseños»).**

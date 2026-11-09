@@ -1170,5 +1170,17 @@ Antes, quien escribía mal «Etapa 2» o creaba un trabajo de más se quedaba co
 - «Borrados» también lista las etapas y los trabajos («Etapa «X»», «Trabajo «X»»). «Restaurar»
   manda `stage_id` o `tag_id` y el server lo pasa como `etapaId` o `etiquetaId` (uno solo de los
   cuatro). Vacío dice «No hay nada borrado en el mapa.».
-- **Sin verificar en vivo:** José tiene que aprobar las cuatro herramientas en Agentes. Después:
-  crear «QA etapa — borrar», renombrarla, borrarla y restaurarla en Test, y dejarla borrada.
+- **E2E en vivo (José aprobó las herramientas a las 00:17Z del 09/11; Test, QA-CTLPIS):**
+  - Con el grabador en ensayo: se creó «QA etapa — borrar», se renombró a «QA etapa 2 — borrar»
+    y se borró. También se creó «QA trabajo — borrar» y se borró.
+  - En el Chrome de José, contra producción (00:24–00:27Z):
+    - «Borrados» listó la etapa y el trabajo en 3 s, con quién y cuándo.
+    - «Restaurar» devolvió los dos al mapa (3 s cada uno).
+    - Renombrar a «etapa  qa» avisó «Ya hay otra con ese nombre.» sin enviar.
+    - Los dos se volvieron a borrar (3,8 s y 3,3 s) y quedaron borrados.
+    - Borrar «Asfalto QA», que tiene avance aprobado, mostró el rechazo de Portal y no borró nada.
+  - Test quedó como estaba: «Etapa QA» y «Asfalto QA».
+  - Con el grabador, el server local quedaba sin responder el envío del formulario
+    («Borrando…» y «Borrados» cargando). En producción no pasa. Sospecha: el server local es
+    HTTP/1.1, con un tope de 6 conexiones por host. Sin confirmar.
+  - Portal escribe «ya tiene 1 avances registrados»: se le avisó.

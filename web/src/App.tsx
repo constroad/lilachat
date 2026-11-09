@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { isRealPhone, type MyProfile } from '@lilachat/shared';
+import { profileGateScreen, type MyProfile } from '@lilachat/shared';
 import { AdminUsersScreen } from './admin/AdminUsersScreen';
 import { AccessScreens } from './auth/AccessScreens';
 import { useEmailLink } from './auth/emailLink';
@@ -39,7 +39,7 @@ export function App() {
   // Waiting for the profile answer: nothing, rather than the chats for an instant and then the form.
   if (profileGate.checking) return null;
   if (profileGate.incomplete) {
-    if (!isRealPhone(sesion.credential.phone)) {
+    if (profileGateScreen(profileGate.incomplete) === 'create') {
       const { credential } = sesion;
       const named = (profile: MyProfile) => {
         sesion.entrar({ ...credential, name: profile.name ?? undefined });

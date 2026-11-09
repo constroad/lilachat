@@ -101,3 +101,13 @@ export function profileGateAfter(answer: { ok: true; profile?: MyProfile } | { o
 
 /** Where the device remembers that this person completed it. */
 export const profileCompleteKey = (userId: string): string => `lilachat.profile-complete.${userId}`;
+
+/**
+ * Which screen completes the profile: «Crea tu usuario» only asks the name, so when the birthday
+ * is missing it must be «Completa tu perfil». Decided by what the server says is missing, never by
+ * the phone saved on the device: an account that came in by email and later added its number owes
+ * the birthday while its stored credential still looks like an email one (Jhoan and Medaly, 09/11:
+ * the name screen came back on every start).
+ */
+export const profileGateScreen = (profile: Pick<MyProfile, 'missing'>): 'create' | 'complete' =>
+  (profile.missing.includes('birthday') ? 'complete' : 'create');

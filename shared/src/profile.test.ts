@@ -92,3 +92,12 @@ describe('profile gate', () => {
     expect(profileCompleteKey('u1')).not.toBe(profileCompleteKey('u2'));
   });
 });
+
+describe('which screen completes the profile (Jhoan, 09/11: «Crea tu usuario» on every start)', () => {
+  it('a missing birthday needs «Completa tu perfil»; only the name, «Crea tu usuario»', async () => {
+    const { profileGateScreen } = await import('./profile.js');
+    expect(profileGateScreen({ missing: ['birthday'] })).toBe('complete');
+    expect(profileGateScreen({ missing: ['name', 'birthday'] })).toBe('complete');
+    expect(profileGateScreen({ missing: ['name'] })).toBe('create');
+  });
+});

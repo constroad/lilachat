@@ -10972,6 +10972,16 @@ número de teléfono válidos». Es la parte de alta del backlog 17.
 - Campos nuevos en `users`: `birthday {day, month, year?}`,
   `birthdayVisible`, `emailVerifiedAt`. Sin índices nuevos.
 
+**Qué pantalla abre la puerta (09/11/2026).** La decide
+`profileGateScreen(profile)`, no el teléfono de la credencial guardada. Si
+falta el cumpleaños, va «Completa tu perfil»; si solo falta el nombre, va
+«Crea tu usuario». Antes se miraba `isRealPhone(credential.phone)`. Jhoan y
+Medaly entraron por correo y después sumaron su teléfono. Desde ahí el server
+les pide cumpleaños (`birthdayOptional` solo sin teléfono real). Pero la
+credencial seguía sin teléfono y les abría «Crea tu usuario», que no pide
+cumpleaños. Guardaban el nombre, faltaba el cumpleaños y la ventana volvía en
+cada arranque. La base estaba bien.
+
 **App y web.**
 - `useProfileGate` lee `GET /profile` al entrar. Si `missing` no está vacío,
   la pantalla tapa todo y no se puede saltar.

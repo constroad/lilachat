@@ -47,7 +47,7 @@ import { RestaurarRespaldo } from './src/settings/RestaurarRespaldo';
 import type { ChatMessage } from './src/chat/useChat';
 import { decidirServicio } from './src/chat/servicioDeConexion';
 import { agendaPorTelefono, olvidarAgenda, precargarAgenda } from './src/contacts/agendaEnMemoria';
-import { isRealPhone, nombreDeContacto } from '@lilachat/shared';
+import { nombreDeContacto, profileGateScreen } from '@lilachat/shared';
 import { ProveedorTema, useColores, useTema } from './src/ui/tema';
 import {
   guardarSegundoPlano,
@@ -427,7 +427,7 @@ function Contenido() {
         </View>
       ) : boot.phase === 'home' && profileGate.incomplete ? (
         <View style={FORMULARIO_CENTRADO}>
-          {isRealPhone(boot.credential.phone) ? (
+          {profileGateScreen(profileGate.incomplete) === 'complete' ? (
             <CompleteProfileScreen credential={boot.credential} profile={profileGate.incomplete} onDone={profileGate.done} />
           ) : (
             <CreateUserScreen credential={boot.credential} email={profileGate.incomplete.email} onDone={profileGate.done} />

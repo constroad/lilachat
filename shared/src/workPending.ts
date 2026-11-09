@@ -79,7 +79,14 @@ export const PENDING_LOADING: PendingState = { state: 'loading' };
 
 /** «Por aprobar» above the map (web and APK): asked through the door. */
 export async function loadPendingProgress(send: MapEditSend): Promise<PendingState> {
-  const result = await send(workPendingRequest(), sendWorkPending);
+  let result: WorkProgressResult | undefined;
+  try {
+    result = await send(workPendingRequest(), sendWorkPending);
+  } catch {
+    // A door that threw is the same «no answer» as one that refused.
+    result = undefined;
+  }
+  if (!result) return { state: 'failed', message: PENDING_FAILED };
   return result.ok ? { state: 'ready', pending: pendingProgressOf(result.data) } : { state: 'failed', message: result.message };
 }
 

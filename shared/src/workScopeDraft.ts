@@ -86,11 +86,14 @@ export const sendWorkTag = (deps: WorkProgressDeps): Promise<WorkProgressResult>
 /** One of the map's edits through the server's door: the request it opens and how its answer reads. */
 export type MapEditSend = (request: ReportFormRequest, run: (deps: WorkProgressDeps) => Promise<WorkProgressResult>) => Promise<WorkProgressResult>;
 
-/** An edit that worked asks for the map again, so the panel shows what Portal kept. */
+/** Lists that only read: asking them changes nothing on the map (the pending one is asked on every reload). */
+const READS_ONLY = new Set<ReportFormRequest['kind']>(['work_pending', 'work_deleted']);
+
+/** An edit that worked asks for the map again, so the panel shows what Portal kept; a read does not. */
 export const editThenReload = (send: MapEditSend | undefined, reload: () => Promise<unknown>): MapEditSend | undefined =>
   send && (async (request, run) => {
     const result = await send(request, run);
-    if (result.ok) await reload();
+    if (result?.ok && !READS_ONLY.has(request.kind)) await reload();
     return result;
   });
 

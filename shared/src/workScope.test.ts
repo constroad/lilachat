@@ -143,6 +143,17 @@ describe('an edit of the map, then the map again', () => {
     expect(reloads).toBe(1);
     expect(editThenReload(undefined, reload)).toBeUndefined();
   });
+
+  it('a read changes nothing on the map: it never reloads it (the pending list asked again on every reload, 09/11)', async () => {
+    // Arrange
+    let reloads = 0;
+    const read = editThenReload(async () => ({ ok: true, message: '' }), async () => { reloads += 1; })!;
+    // Act
+    await read({ kind: 'work_pending', forms: 1 }, sendWorkStage);
+    await read({ kind: 'work_deleted', forms: 1 }, sendWorkStage);
+    // Assert
+    expect(reloads).toBe(0);
+  });
 });
 
 describe('the inline forms (shared by the web and the APK)', () => {

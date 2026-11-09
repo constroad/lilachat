@@ -13,6 +13,7 @@ import { DeletedWork } from './DeletedWork';
 import { useBrush, WorkLayers, type LayersKind } from './WorkLayers';
 import { PhotoToggle, usePhotoLayer } from './MapPhotos';
 import { PrimeCoatSuggestions } from './PrimeCoat';
+import { PendingProgressCard } from './PendingProgress';
 
 const WorkMapCanvas = lazyChunk(() => import('./WorkMapCanvas'));
 
@@ -168,7 +169,9 @@ export function WorkMapBoard(props: BoardProps) {
   const wide = useWide(holder);
   const discharges = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null;
   const primeCoat = props.editMap && props.mapPhotos?.length ? <PrimeCoatSuggestions map={map} photos={props.mapPhotos} onRecord={(id, draft) => openStreet(id, true, draft)} /> : null;
-  const top = discharges || primeCoat ? <div className="space-y-5">{discharges}{primeCoat}</div> : null;
+  // José 09/11: what was sent waits here until approved, instead of vanishing.
+  const pending = props.editMap ? <PendingProgressCard send={props.editMap} admin={Boolean(props.admin)} reloadKey={map} /> : null;
+  const top = discharges || primeCoat || pending ? <div className="space-y-5">{pending}{discharges}{primeCoat}</div> : null;
   const streetPanel = streetId ? <StreetScopes key={`${streetId}|${recordingStart}|${recordDraft?.fromM}-${recordDraft?.toM}`} map={map} streetId={streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} startRecording={recordingStart} recordDraft={recordDraft} onBack={() => openStreet(null)} /> : null;
   const pickPanel = choosing?.kind === 'choose' ? <StreetPick streets={choosing.streets} onPick={(id) => openStreet(id, true)} onClose={() => setChoosing(null)} /> : null;
   const deletedPanel = seeingDeleted && props.editMap ? <DeletedWork map={map} send={props.editMap} onClose={() => setSeeingDeleted(false)} /> : null;

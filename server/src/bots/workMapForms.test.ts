@@ -159,3 +159,27 @@ describe('«Mapa en el informe del servicio» (o-08, Portal 926b9723)', () => {
     expect(workMapFormInputOf({ kind: 'work_map_in_report', include: 'si' })).toBeNull();
   });
 });
+
+describe('pending progress, through the door (Portal a9b1c3ba; José 09/11)', () => {
+  it('lists with only the service', () => {
+    const prepared = workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_pending' })!);
+    expect(prepared.form.id).toBe('avances_pendientes_de_obra');
+    expect(prepared.context).toEqual({ servicioId: SERVICE });
+  });
+
+  it('resolves one with exactly what Portal\'s strict schema takes: no service', () => {
+    const approve = workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_resolve', progress_id: 'p1', decision: 'aprobar' })!);
+    expect(approve.form.id).toBe('resolver_avance_de_obra');
+    expect(approve.form.submitLabel).toBe('Aprobar');
+    expect(approve.context).toEqual({ avanceId: 'p1', decision: 'aprobar' });
+    const reject = workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'work_resolve', progress_id: 'p1', decision: 'rechazar', note: ' mal medido ' })!);
+    expect(reject.form.submitLabel).toBe('Rechazar');
+    expect(reject.context).toEqual({ avanceId: 'p1', decision: 'rechazar', nota: 'mal medido' });
+  });
+
+  it('refuses a decision or a progress that came wrong', () => {
+    expect(workMapFormInputOf({ kind: 'work_resolve', progress_id: 'p1', decision: 'borrar' })).toBeNull();
+    expect(workMapFormInputOf({ kind: 'work_resolve', progress_id: '', decision: 'aprobar' })).toBeNull();
+    expect(workMapFormInputOf({ kind: 'work_resolve', progress_id: 'p1', decision: 'aprobar', note: 'x'.repeat(2000) })).toBeNull();
+  });
+});

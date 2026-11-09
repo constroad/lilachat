@@ -28,6 +28,8 @@ export type WorkMapFormInput =
   | { kind: 'work_tag_delete'; tagId: string }
   | { kind: 'work_restore'; target: RestoreTarget; id: string }
   | { kind: 'work_deleted' }
+  | { kind: 'work_pending' }
+  | { kind: 'work_resolve'; progressId: string; decision: 'aprobar' | 'rechazar'; note: string | null }
   | { kind: 'work_progress_link'; stageId: string | null; until: string | null; photos: boolean }
   | { kind: 'work_import'; mediaId: string; entryId: string | null }
   | { kind: 'work_map_in_report'; include: boolean; stageId: string | null; until: string | null }
@@ -70,6 +72,17 @@ function scopeInputOf(raw: Record<string, unknown>): WorkScopeInput | null {
   const extras = scopeExtrasOf(raw);
   if (!streetId || fromM === null || toM === null || toM <= fromM || !extras || (!scopeId && !entryId)) return null;
   return { kind: 'work_scope', streetId, scopeId: scopeId || null, fromM, toM, ...extras, entryId: scopeId ? null : entryId };
+}
+
+/** Portal's `resolver_avance_de_obra` takes a note up to 280 characters (a9b1c3ba). */
+const RESOLVE_NOTE_MAX = 280;
+const DECISIONS = new Set(['aprobar', 'rechazar']);
+
+function resolveInputOf(raw: Record<string, unknown>): WorkMapFormInput | null {
+  const progressId = idOf(raw.progress_id);
+  const note = typeof raw.note === 'string' ? raw.note.trim() : '';
+  if (!progressId || typeof raw.decision !== 'string' || !DECISIONS.has(raw.decision) || note.length > RESOLVE_NOTE_MAX) return null;
+  return { kind: 'work_resolve', progressId, decision: raw.decision as 'aprobar' | 'rechazar', note: note || null };
 }
 
 const RESTORE_KEYS: Array<[string, RestoreTarget]> = [['street_id', 'calleId'], ['scope_id', 'tramoId'], ['stage_id', 'etapaId'], ['tag_id', 'etiquetaId']];
@@ -144,6 +157,8 @@ export function workMapFormInputOf(raw: Record<string, unknown>): WorkMapFormInp
   if (raw.kind === 'work_stage_edit' || raw.kind === 'work_tag_edit') return editInputOf(raw);
   if (raw.kind === 'work_stage_delete' || raw.kind === 'work_tag_delete') return deleteInputOf(raw);
   if (raw.kind === 'work_deleted') return { kind: 'work_deleted' };
+  if (raw.kind === 'work_pending') return { kind: 'work_pending' };
+  if (raw.kind === 'work_resolve') return resolveInputOf(raw);
   if (raw.kind === 'work_progress_link') return progressLinkInputOf(raw);
   if (raw.kind === 'work_import') return importInputOf(raw);
   if (raw.kind === 'work_progress_pdf') return progressPdfInputOf(raw);
@@ -152,7 +167,7 @@ export function workMapFormInputOf(raw: Record<string, unknown>): WorkMapFormInp
 }
 
 /** The kinds the door opens; restore and the deleted list since agentes checks their service (890b02e). */
-const FORM_KINDS = new Set(['work_scope', 'work_scope_delete', 'work_stage', 'work_tag', 'work_stage_edit', 'work_tag_edit', 'work_stage_delete', 'work_tag_delete', 'work_restore', 'work_deleted', 'work_progress_link', 'work_import', 'work_progress_pdf', 'work_map_in_report']);
+const FORM_KINDS = new Set(['work_scope', 'work_scope_delete', 'work_stage', 'work_tag', 'work_stage_edit', 'work_tag_edit', 'work_stage_delete', 'work_tag_delete', 'work_restore', 'work_deleted', 'work_pending', 'work_resolve', 'work_progress_link', 'work_import', 'work_progress_pdf', 'work_map_in_report']);
 export const isWorkMapFormKind = (kind: unknown): boolean => typeof kind === 'string' && FORM_KINDS.has(kind);
 
 /** Narrows the door's union to these kinds. */
@@ -191,6 +206,9 @@ export function workMapFormPrepared(serviceId: string, input: WorkMapFormInput):
     case 'work_tag_delete': return { form: formOf('borrar_etiqueta_de_obra', 'Borrar trabajo', 'Borrar'), context: { servicioId: serviceId, etiquetaId: input.tagId } };
     case 'work_restore': return { form: formOf('restaurar_de_obra', 'Restaurar', 'Restaurar'), context: restoreContext(serviceId, input) };
     case 'work_deleted': return { form: formOf('borrados_de_obra', 'Lo borrado del mapa', 'Ver'), context: { servicioId: serviceId } };
+    case 'work_pending': return { form: formOf('avances_pendientes_de_obra', 'Avances por aprobar', 'Ver'), context: { servicioId: serviceId } };
+    // Portal's schema is strict and takes no service: the progress already names it.
+    case 'work_resolve': return { form: formOf('resolver_avance_de_obra', 'Aprobar o rechazar avance', input.decision === 'aprobar' ? 'Aprobar' : 'Rechazar'), context: { avanceId: input.progressId, decision: input.decision, ...(input.note ? { nota: input.note } : {}) } };
     case 'work_progress_pdf': return { form: formOf('pdf_de_avance_de_obra', 'PDF del avance', 'Generar'), context: { servicioId: serviceId, ...(input.stageId ? { etapaId: input.stageId } : {}), ...(input.until ? { hasta: input.until } : {}), formato: input.format, ...(input.size ? { tamano: input.size } : {}), ...(input.workIds ? { trabajoIds: input.workIds } : {}) } };
     case 'work_map_in_report': return { form: formOf('mapa_en_informe_de_servicio', 'Mapa en el informe', input.include ? 'Incluir' : 'Quitar'), context: { servicioId: serviceId, incluir: input.include, ...(input.stageId ? { etapaId: input.stageId } : {}), ...(input.until ? { hasta: input.until } : {}) } };
     case 'work_import': return { form: formOf('importar_calles_de_obra', 'Importar calles', input.entryId ? 'Crear calles' : 'Revisar'), context: { servicioId: serviceId, mediaId: input.mediaId, confirmar: Boolean(input.entryId), ...(input.entryId ? { entradaId: input.entryId } : {}) } };

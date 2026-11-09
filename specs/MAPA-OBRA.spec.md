@@ -1212,8 +1212,19 @@ sigue pidiendo uno; se le preguntó a Portal si reusa el vigente.
 - Con eso, Lilachat:
   - dibuja el pendiente punteado;
   - muestra «N avances por aprobar» con Aprobar y Rechazar.
-- Pendiente de Portal y de la aprobación de José en Agentes.
-- QA: queda un avance pendiente en Test (calle 1, «Asfalto QA», 0+000 a 0+030). Se rechaza por la herramienta nueva.
+- Portal publicó las dos herramientas el 09/11 (a9b1c3ba):
+  - `avances_pendientes_de_obra { servicioId }`: un admin ve todos los pendientes; los demás, solo los que marcaron. Hasta 30.
+  - `resolver_avance_de_obra { avanceId, decision: aprobar|rechazar, nota? }`, solo admins. Su esquema es estricto y no lleva el servicio.
+- Lilachat (09/11):
+  - formularios `work_pending` y `work_resolve` en la puerta (`server/src/bots/workMapForms.ts`);
+  - motor `shared/src/workPending.ts`;
+  - tarjeta «Pendiente de aprobar» arriba del panel del mapa, en web y APK (`PendingProgress.tsx`): cada avance con calle, tramo, trabajo, día y quién; el admin tiene «Aprobar» y «Rechazar», y «Rechazar» pide confirmación.
+  - La lista se vuelve a pedir cada vez que el mapa se recarga, así que el avance recién enviado aparece solo.
+  - Sin pendientes, o mientras José no apruebe las herramientas en Agentes, la tarjeta no se dibuja.
+- **Sin verificar en vivo:** falta que José apruebe las dos herramientas en Agentes. Después:
+  - E2E en Test;
+  - rechazar el avance QA (calle 1, «Asfalto QA», 0+000 a 0+030) con «Rechazar».
+- El pendiente todavía no se dibuja sobre la calle; queda como mejora.
 
 **Mapa base propio («se ve feo, no se parece en nada a tus diseños»).**
 - La base era «positron» de OpenFreeMap:

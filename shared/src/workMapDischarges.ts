@@ -20,7 +20,8 @@ export type PlacedDischarge =
   | { state: 'outside'; unit: UnitDischarge; point: WorkMapPoint }
   | { state: 'noPlace'; unit: UnitDischarge };
 export type { SuggestedStretch };
-export type DischargeSuggestion = { units: PlacedDischarge[]; stretches: SuggestedStretch[] };
+/** `hasWork` false: the service has no streets, so no unit is «outside» anything (Portal via José 09/11). */
+export type DischargeSuggestion = { units: PlacedDischarge[]; stretches: SuggestedStretch[]; hasWork?: boolean };
 
 type PlacedUnit = SharedSuggestion['units'][number];
 
@@ -46,7 +47,7 @@ export function suggestDischarges(map: WorkMap, discharges: UnitDischarge[]): Di
     const unit = byDispatch.get(placed.dispatchId);
     return unit ? [withUnit(placed, unit)] : [];
   });
-  return { units, stretches: suggestion.stretches };
+  return { units, stretches: suggestion.stretches, hasWork: map.streets.length > 0 };
 }
 
 /** «3 de 4 unidades ubicadas»: «listas» read like a checklist (José 08/11: «no estoy entendiendo esta pantalla»). */
@@ -62,8 +63,8 @@ export function dischargeExplain(stretch: Pick<SuggestedStretch, 'dispatchIds' |
 }
 
 /** The units that add nothing to the stretch, and why; `null` when every unit is on a street. */
-export function dischargeGaps({ units }: Pick<DischargeSuggestion, 'units'>): string | null {
-  const outside = units.filter((one) => one.state === 'outside').length;
+export function dischargeGaps({ units, hasWork }: Pick<DischargeSuggestion, 'units' | 'hasWork'>): string | null {
+  const outside = hasWork === false ? 0 : units.filter((one) => one.state === 'outside').length;
   const noPlace = units.filter((one) => one.state === 'noPlace').length;
   const parts = [outside ? `${outside} fuera de las calles de la obra` : null, noPlace ? `${noPlace} sin ubicación en sus fotos` : null].filter(Boolean);
   return parts.length ? parts.join(' · ') : null;

@@ -40,6 +40,16 @@ describe('photoSpotsOf, one marker per spot of the street', () => {
     expect(photoSpotTitle(spot!)).toBe('Fuera de las calles de la obra');
   });
 
+  it('without streets nothing falls off the work: no red pin, no «Fuera de las calles»', () => {
+    // Arrange
+    const bare = { streets: [] };
+    // Act
+    const spots = photoSpotsOf(bare, [photo('p1', north(10)), photo('p2', north(400))]);
+    // Assert
+    expect(spots.map(photoSpotTitle)).toEqual(['Fotos de este lugar', 'Fotos de este lugar']);
+    expect(photoSpotPins(spots).every((pin) => !pin.outside)).toBe(true);
+  });
+
   it('the newest photo goes first inside a spot', () => {
     const [spot] = photoSpotsOf(map, [photo('old', north(40), { at: '2026-11-05T14:00:00.000Z' }), photo('new', north(42), { at: '2026-11-06T14:00:00.000Z' })]);
     expect(spot!.photos.map((one) => one.id)).toEqual(['new', 'old']);

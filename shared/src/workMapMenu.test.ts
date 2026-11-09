@@ -57,6 +57,8 @@ describe('when the units of the Control de pista show', () => {
   it('hides them under every work or another work', () => {
     expect(showsUnitPins({ works }, {})).toBe(false);
     expect(showsUnitPins({ works }, { workId: 'w1' })).toBe(false);
+    expect(showsUnitPins({ works: [], streets: [] }, {})).toBe(true);
+    expect(showsUnitPins({ works, streets: [{}] }, {})).toBe(false);
   });
   it('reads the name without accents or case', () => {
     expect(isPavingWork({ name: 'CARPETA ASFALTICA 2"' })).toBe(true);

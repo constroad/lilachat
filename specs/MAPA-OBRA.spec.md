@@ -1329,3 +1329,20 @@ avise.
   (`at`) y abre en el archivo tocado: `galleryIndexOf` en
   `shared/src/fileViewer.ts`. Igual en web (`PortalFileViewer`) y APK
   (`useFileViewer`).
+
+## Servicio sin calles dibujadas (Portal vía José, 09/11)
+
+Caso real: servicio de Globofast Solkali con controles de pista e imprimación
+de varios días, fotos con posición y ninguna calle.
+
+- **Tab «Mapa»**: sale siempre, con calles o sin ellas (`serviceTabs`).
+- **Nada en rojo.** Sin calles no hay obra de la cual salirse:
+  - las fotos y las unidades no son «fuera de la obra» (`PhotoSpot.offWork`, `DischargeSuggestion.hasWork`);
+  - el visor titula «Fotos de este lugar»;
+  - «No suman» no cuenta unidades «fuera de las calles».
+- **Unidades siempre visibles** sin calles, con su número y su placa
+  (`showsUnitPins`). Con calles sigue la regla de la colocación de carpeta.
+- **Pendiente: el selector de día** («Todos» o un día de colocación), con el
+  número de la unidad contado dentro de su día. Saldrá de una función de
+  `@constroad/shared/obra` que Portal sube con el OK de José. No se copia.
+- **Sin verificar** en el teléfono con el servicio de Globofast: solo tests del motor.

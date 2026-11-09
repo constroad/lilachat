@@ -205,6 +205,13 @@ describe('confirmDischargeLabel', () => {
 
 /** José 08/11 «no estoy entendiendo esta pantalla»: the card says in words what the figures mean. */
 describe('the suggested progress, in words', () => {
+  it('without streets no unit counts as «fuera de las calles»', () => {
+    const units = [unit('6aeea2fdf3e8b385195281f1', 'QAP-101', 7.5, north(40))];
+    const suggestion = suggestDischarges({ ...workMap(), streets: [] }, units);
+    expect(suggestion.hasWork).toBe(false);
+    expect(dischargeGaps(suggestion)).toBeNull();
+  });
+
   it('says which units fell where, and that nothing counts until it is confirmed', () => {
     const units = [unit('6aeea2fdf3e8b385195281f1', 'QAP-101', 7.5, north(40)), unit('6aeea2fdf3e8b385195281f2', 'QAP-104', 7.5, north(120))];
     const suggestion = suggestDischarges(workMap(), units);

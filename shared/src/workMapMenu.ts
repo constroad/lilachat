@@ -56,8 +56,12 @@ export const isPavingWork = (work: Pick<WorkMapWork, 'name'>): boolean => {
   return PAVING.test(name) && !NOT_PAVING.test(name);
 };
 
-/** The units' numbers and plates, and the stretches they suggest, only with the paving work chosen (José 09/11). */
-export function showsUnitPins(map: { works: ReadonlyArray<Pick<WorkMapWork, 'id' | 'name'>> }, filter: Pick<WorkMapFilter, 'workId'>): boolean {
+/**
+ * The units' numbers and plates, and the stretches they suggest, only with the paving work chosen (José 09/11).
+ * A service without streets has no works to choose: its units always show, to see where they emptied (Portal via José 09/11).
+ */
+export function showsUnitPins(map: { works: ReadonlyArray<Pick<WorkMapWork, 'id' | 'name'>>; streets?: readonly unknown[] }, filter: Pick<WorkMapFilter, 'workId'>): boolean {
+  if (map.streets?.length === 0) return true;
   const chosen = map.works.find((work) => work.id === filter.workId);
   return Boolean(chosen && isPavingWork(chosen));
 }

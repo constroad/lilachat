@@ -23,7 +23,7 @@ export type MapPhoto = WorkMapPoint & {
   dispatchId?: string;
   plate?: string;
 };
-export type PhotoSpot = WorkMapPoint & { id: string; streetId: string | null; streetName: string | null; atM: number | null; photos: MapPhoto[] };
+export type PhotoSpot = WorkMapPoint & { id: string; streetId: string | null; streetName: string | null; atM: number | null; photos: MapPhoto[]; /** Off the drawn streets; never when the service has none (Portal via José 09/11: no work to fall off). */ offWork?: boolean };
 
 /** What one service can carry to the phone; the newest stay. */
 export const MAP_PHOTOS_MAX = 300;
@@ -83,14 +83,14 @@ function streetSpots(map: Pick<WorkMap, 'streets'>, streetId: string, placed: Pl
   });
 }
 
-function looseSpots(photos: MapPhoto[]): PhotoSpot[] {
+function looseSpots(photos: MapPhoto[], offWork: boolean): PhotoSpot[] {
   const groups: MapPhoto[][] = [];
   for (const photo of photos) {
     const near = groups.find((group) => haversineMeters(group[0]!, photo) <= PHOTO_SPOT_M);
     if (near) near.push(photo);
     else groups.push([photo]);
   }
-  return groups.map((group) => ({ id: `fuera-${group[0]!.id}`, lat: group[0]!.lat, lng: group[0]!.lng, streetId: null, streetName: null, atM: null, photos: newestFirst(group) }));
+  return groups.map((group) => ({ id: `fuera-${group[0]!.id}`, lat: group[0]!.lat, lng: group[0]!.lng, streetId: null, streetName: null, atM: null, photos: newestFirst(group), offWork }));
 }
 
 /** Street by street in the map's order, along each street from 0+000; the loose ones last. */
@@ -100,16 +100,18 @@ export function photoSpotsOf(map: Pick<WorkMap, 'streets'>, photos: MapPhoto[]):
     const mine = placed.filter((one) => one.streetId === street.id);
     return mine.length ? streetSpots(map, street.id, mine) : [];
   });
-  return [...onStreets, ...looseSpots(placed.filter((one) => one.streetId === null).map((one) => one.photo))];
+  return [...onStreets, ...looseSpots(placed.filter((one) => one.streetId === null).map((one) => one.photo), map.streets.length > 0)];
 }
 
 /** «Jr. Los Pinos · 0+044», or that it fell off the work. */
-export const photoSpotTitle = (spot: Pick<PhotoSpot, 'streetName' | 'atM'>): string =>
-  spot.streetName !== null && spot.atM !== null ? `${spot.streetName} · ${stationLabel(spot.atM)}` : 'Fuera de las calles de la obra';
+export function photoSpotTitle(spot: Pick<PhotoSpot, 'streetName' | 'atM' | 'offWork'>): string {
+  if (spot.streetName !== null && spot.atM !== null) return `${spot.streetName} · ${stationLabel(spot.atM)}`;
+  return spot.offWork ? 'Fuera de las calles de la obra' : 'Fotos de este lugar';
+}
 
 /** One pin per spot, with how many photos it holds. */
 export const photoSpotPins = (spots: PhotoSpot[]): DischargePin[] =>
-  spots.map((spot) => ({ id: `fotos-${spot.id}`, label: String(spot.photos.length), lat: spot.lat, lng: spot.lng, outside: spot.streetId === null, icon: spot.photos.every((photo) => photo.kind === 'video') ? 'video' as const : 'photo' as const }));
+  spots.map((spot) => ({ id: `fotos-${spot.id}`, label: String(spot.photos.length), lat: spot.lat, lng: spot.lng, outside: spot.offWork === true, icon: spot.photos.every((photo) => photo.kind === 'video') ? 'video' as const : 'photo' as const }));
 
 /** «Control de pista · QAA-001», «Control de imprimación», or a photo of «Registrar avance». */
 export function photoSourceLabel(photo: Pick<MapPhoto, 'reportType' | 'plate'>): string {

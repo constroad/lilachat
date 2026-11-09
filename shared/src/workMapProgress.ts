@@ -142,10 +142,10 @@ export const stretchWorksOf = (map: Pick<WorkMap, 'scopes' | 'works'>, streetId:
 export type DischargePin = { id: string; label: string; lat: number; lng: number; outside: boolean; caption?: string; icon?: 'photo' | 'video' };
 
 /** A numbered pin where each unit emptied; the one outside the work stands apart. */
-export const dischargePinsOf = ({ units }: Pick<DischargeSuggestion, 'units'>): DischargePin[] =>
+export const dischargePinsOf = ({ units, hasWork }: Pick<DischargeSuggestion, 'units' | 'hasWork'>): DischargePin[] =>
   units.flatMap((placed, index) => {
     const spot = placed.state === 'outside' ? placed.point : placed.unit.points.at(-1);
-    return spot ? [{ id: placed.unit.dispatchId, label: String(index + 1), lat: spot.lat, lng: spot.lng, outside: placed.state === 'outside', ...(placed.unit.plate ? { caption: placed.unit.plate } : {}) }] : [];
+    return spot ? [{ id: placed.unit.dispatchId, label: String(index + 1), lat: spot.lat, lng: spot.lng, outside: placed.state === 'outside' && hasWork !== false, ...(placed.unit.plate ? { caption: placed.unit.plate } : {}) }] : [];
   });
 
 /** The stretch about to be confirmed, as a line the canvas draws over the street. */

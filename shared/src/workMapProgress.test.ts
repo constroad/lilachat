@@ -151,6 +151,12 @@ describe('dischargePinsOf and stretchLineOf (what the canvas draws)', () => {
     expect(pins).toEqual([{ id: 'a', label: '1', lat: -11.999, lng: -77, outside: false, caption: 'X' }, { id: 'd', label: '2', lat: -11.98, lng: -77, outside: true, caption: 'X' }]);
   });
 
+  it('without streets a unit is not «outside»: its pin is not red', () => {
+    const unit = { dispatchId: 'd', plate: 'X', m3: 1, arrivalAt: null, points: [] };
+    const pins = dischargePinsOf({ hasWork: false, units: [{ state: 'outside', unit, point: { lat: -11.98, lng: -77 } }] });
+    expect(pins[0]?.outside).toBe(false);
+  });
+
   it('draws the stretch the person is about to confirm', () => {
     const map = { streets: [{ id: 's1', name: 'Calle', line: [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.99 }], lengthM: 1090 }] };
     const line = stretchLineOf(map, 's1', 0, 545);

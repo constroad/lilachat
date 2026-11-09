@@ -1322,3 +1322,9 @@ avise.
   por todas las fotos de la capa, en orden del mapa: `photoLayerFiles`.
 - Sin verificar en el teléfono todavía: el orden de capas en el APK se mira
   con el OTA.
+- **El visor quedaba en «1 de 8».** En el APK el OTA 1d12d389 abría las 8 fotos,
+  pero no avanzaba. El visor buscaba la foto por su dirección, y varias fotos
+  pueden compartir una (la siembra de QA lo hace). Ahora guarda la posición
+  (`at`) y abre en el archivo tocado: `galleryIndexOf` en
+  `shared/src/fileViewer.ts`. Igual en web (`PortalFileViewer`) y APK
+  (`useFileViewer`).

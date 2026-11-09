@@ -39,6 +39,13 @@ export function openingOf(mime: string): FileOpening {
 /** What swipes in the gallery: the photos and videos among the files, in their order. */
 export const galleryOf = (files: readonly ViewableFile[]): ViewableFile[] => files.filter((file) => openingOf(mimeOf(file)) === 'gallery');
 
+/** Where the viewer opens: the tapped file itself, then its address, then the first. Several files may share an address. */
+export function galleryIndexOf(files: readonly ViewableFile[], file: ViewableFile): number {
+  const same = files.indexOf(file);
+  if (same >= 0) return same;
+  return Math.max(0, files.findIndex((one) => one.url === file.url));
+}
+
 export const pdfsOf = (files: readonly ViewableFile[]): ViewableFile[] => files.filter((file) => openingOf(mimeOf(file)) === 'pdf');
 
 const ISO_MOMENT = /^\d{4}-\d{2}-\d{2}T/;

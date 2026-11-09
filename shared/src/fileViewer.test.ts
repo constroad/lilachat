@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { galleryOf, mimeOf, openingOf, pdfReadinessOf, retryAfterMsOf, untilPdfReady, viewerWhenOf } from './fileViewer.js';
+import { galleryIndexOf, galleryOf, mimeOf, openingOf, pdfReadinessOf, retryAfterMsOf, untilPdfReady, viewerWhenOf } from './fileViewer.js';
 
 /** José 30/10: Portal's files open in Lilachat's viewer, not in Portal. */
 describe('fileViewer', () => {
@@ -84,5 +84,18 @@ describe('a Portal PDF that may still be generating (quote-pdf, Portal f09e3dc1)
     expect(forever).toBe('generating');
     expect(wait).toHaveBeenCalledTimes(2);
     expect(expired).toBe('expired');
+  });
+});
+
+/** José 09/11: the map's viewer stayed on «1 de 8» when several photos shared one address. */
+describe('galleryIndexOf, where the viewer opens', () => {
+  const same = 'https://lila.constroad.com/files/a.jpg';
+  const files = [{ url: same, name: 'a', mime: 'image/jpeg' }, { url: same, name: 'b', mime: 'image/jpeg' }, { url: 'https://lila.constroad.com/files/c.jpg', name: 'c', mime: 'image/jpeg' }];
+  it('finds the tapped file itself, even when another shares its address', () => {
+    expect(galleryIndexOf(files, files[1]!)).toBe(1);
+  });
+  it('falls back to the address, then to the first', () => {
+    expect(galleryIndexOf(files, { url: 'https://lila.constroad.com/files/c.jpg', name: 'x' })).toBe(2);
+    expect(galleryIndexOf(files, { url: 'https://nowhere/z.jpg', name: 'z' })).toBe(0);
   });
 });

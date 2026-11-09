@@ -124,7 +124,10 @@ export const photoSpotFiles = (spot: Pick<PhotoSpot, 'photos' | 'streetName' | '
 
 /** A marker opens its own spot first, and the viewer swipes through every spot of the layer (José 09/11). */
 export function photoLayerFiles(spots: ReadonlyArray<Pick<PhotoSpot, 'id' | 'photos' | 'streetName' | 'atM'>>, pinId: string): { first: ViewableFile; all: ViewableFile[] } | null {
-  const tapped = spots.find((one) => `fotos-${one.id}` === pinId);
-  const first = tapped ? photoSpotFiles(tapped)[0] : undefined;
-  return first ? { first, all: spots.flatMap((one) => photoSpotFiles(one)) } : null;
+  const at = spots.findIndex((one) => `fotos-${one.id}` === pinId);
+  if (at < 0 || !spots[at]?.photos.length) return null;
+  const all = spots.flatMap((one) => photoSpotFiles(one));
+  const before = spots.slice(0, at).reduce((sum, one) => sum + one.photos.length, 0);
+  const first = all[before];
+  return first ? { first, all } : null;
 }

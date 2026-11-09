@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Download, ExternalLink, FileText, Film, Image as ImageIcon, Play } from 'lucide-react';
-import { galleryOf, mimeOf, openingOf, PDF_READINESS_TEXT, untilPdfReady, type PdfReadiness, type ViewableFile } from '@lilachat/shared';
+import { galleryIndexOf, galleryOf, mimeOf, openingOf, PDF_READINESS_TEXT, untilPdfReady, type PdfReadiness, type ViewableFile } from '@lilachat/shared';
 import { PhotoViewer } from '../../chat/VisorDeFotos';
 import type { MensajeEnPantalla } from '../../chat/types';
 import { Overlay } from '../../ui/Overlay';
 
-type Session = { files: ViewableFile[]; url: string; action?: ViewerAction; removal?: ViewerRemoval; footerOf?: ViewerFooter };
+type Session = { files: ViewableFile[]; url: string; /** Position in the gallery: several files may share an address. */ at: number; action?: ViewerAction; removal?: ViewerRemoval; footerOf?: ViewerFooter };
 /** What goes under the photo on screen, by its url: «Antes / Después» in a service's Drive (José 08/11). */
 export type ViewerFooter = (url: string) => ReactNode;
 export type ViewerAction = { label: string; onPress: () => void };
@@ -101,16 +101,16 @@ export function usePortalFileViewer() {
   const [pdf, setPdf] = useState<ViewableFile | null>(null);
   const open = useCallback((file: ViewableFile, siblings?: readonly ViewableFile[], action?: ViewerAction, removal?: ViewerRemoval, footerOf?: ViewerFooter) => {
     const opening = openingOf(mimeOf(file));
-    if (opening === 'gallery') return setSession({ files: galleryOf(siblings ?? [file]), url: file.url, ...(removal ? { removal } : {}), ...(footerOf ? { footerOf } : {}), ...(action ? { action: { label: action.label, onPress: () => { setSession(null); action.onPress(); } } } : {}) });
+    if (opening === 'gallery') return setSession({ files: galleryOf(siblings ?? [file]), url: file.url, at: galleryIndexOf(galleryOf(siblings ?? [file]), file), ...(removal ? { removal } : {}), ...(footerOf ? { footerOf } : {}), ...(action ? { action: { label: action.label, onPress: () => { setSession(null); action.onPress(); } } } : {}) });
     if (opening === 'pdf') return setPdf(file);
     window.open(file.url, '_blank', 'noopener');
   }, []);
   const photos = useMemo(() => (session ? session.files.map(asMessage) : []), [session]);
-  const index = photos.findIndex((photo) => photo.media?.url === session?.url);
+  const index = session && photos[session.at]?.media?.url === session.url ? session.at : photos.findIndex((photo) => photo.media?.url === session?.url);
   const removeShown = session?.removal?.canRemove(session.url) ? () => { if (session.removal?.remove(session.url)) setSession(null); } : undefined;
   const viewer: ReactNode = (
     <>
-      {session && index >= 0 ? <PhotoViewer fotos={photos} indice={index} onCambiar={(next) => setSession({ ...session, url: photos[next]?.media?.url ?? session.url })} onCerrar={() => setSession(null)} {...(removeShown ? { onRemove: removeShown } : {})} {...(session.action ? { action: session.action } : {})} footer={session.footerOf?.(session.url)} /> : null}
+      {session && index >= 0 ? <PhotoViewer fotos={photos} indice={index} onCambiar={(next) => setSession({ ...session, url: photos[next]?.media?.url ?? session.url, at: photos[next] ? next : session.at })} onCerrar={() => setSession(null)} {...(removeShown ? { onRemove: removeShown } : {})} {...(session.action ? { action: session.action } : {})} footer={session.footerOf?.(session.url)} /> : null}
       {pdf ? <PortalPdf file={pdf} onClose={() => setPdf(null)} /> : null}
     </>
   );

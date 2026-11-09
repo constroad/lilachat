@@ -86,6 +86,8 @@ describe('photoLayerFiles, the viewer over every spot', () => {
     const opened = photoLayerFiles(spots as never, 'fotos-b');
     expect(opened?.first.url).toBe('https://x/3.jpg');
     expect(opened?.all.map((file) => file.url)).toEqual(['https://x/1.jpg', 'https://x/2.jpg', 'https://x/3.jpg']);
+    // The same object as in the list: the viewer finds it even if two photos share an address.
+    expect(opened?.all.indexOf(opened.first)).toBe(2);
   });
   it('gives nothing for a pin that is not a spot', () => {
     expect(photoLayerFiles(spots as never, 'fotos-z')).toBeNull();

@@ -151,6 +151,7 @@ export * from './clientTasks.js';
 export * from './taskReminders.js';
 export * from './serviceMap.js';
 export * from './workMap.js';
+export * from './workMapStyle.js';
 export * from './workMapDischarges.js';
 export * from './workMapExport.js';
 export * from './workMapPanel.js';

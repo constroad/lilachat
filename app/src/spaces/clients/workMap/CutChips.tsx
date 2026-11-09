@@ -26,7 +26,7 @@ function ChipRow(props: { testID: string; label: string; options: CutOption[]; s
   return (
     <View className="gap-1.5">
       <Text className={SHEET_LABEL}>{props.label}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+      <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
         {props.options.map((option) => {
           const on = option.id === props.selected;
           return (

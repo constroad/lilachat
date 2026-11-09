@@ -166,7 +166,7 @@ export function ReportDocumentScreen(props: Props) {
   };
   return (
     <View className="flex-1">
-      <ScrollView testID="informe-documento" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 24 }}>
+      <ScrollView keyboardShouldPersistTaps="handled" testID="informe-documento" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 24 }}>
         <ReportHeader kicker={items ? `${kicker} · ${items.title}` : kicker} title={props.service.name} report={report} onBack={screen.back} />
         <QueueCard saves={saves} offline={offline} onFix={(save) => actions.openSection(save.path)} onDiscard={(save) => void actions.discard(save.clientKey)} />
         <EphemeralAnswers answers={forms.answers.answers} onDismiss={forms.answers.dismiss} onOpenForm={forms.answers.showForm} chatId={props.chatId} jwt={props.target.jwt} embedded />

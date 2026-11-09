@@ -1190,3 +1190,43 @@ Antes, quien escribía mal «Etapa 2» o creaba un trabajo de más se quedaba co
 cada edición. Ahora la recarga tras una edición vuelve a leer con el enlace que ya tiene
 (`reloadWorkMap`, 2 tests), y pide uno nuevo solo si ese ya no sirve. Web y APK. Abrir el mapa
 sigue pidiendo uno; se le preguntó a Portal si reusa el vigente.
+
+## Usabilidad (José 09/11): «Registrar avance» que no responde, Buscar con dos toques y el mapa base
+
+**«Registrar avance» no hacía nada (reproducido en el emulador, OTA 5656fea2).**
+- La causa es la misma que la de la lupa de Buscar.
+- Tras buscar el servicio, el campo «Buscar servicio» queda con el foco aunque el teclado se esconda.
+- Cada lista sin `keyboardShouldPersistTaps` gasta el toque en soltar ese foco. Fallaron dos toques seguidos.
+- Abrir «Etapas» soltaba el foco, y desde ahí el botón andaba.
+- La lista de servicios también se comía el primer toque sobre la tarjeta.
+- Arreglo: las 14 listas de `spaces/clients/**` llevan `keyboardShouldPersistTaps="handled"`.
+- Un test (`app/src/test/scrollKeepsTaps.test.ts`) falla si una lista nueva del canal lo omite.
+
+**El avance enviado «desaparece».**
+- Portal contesta «pendiente hasta que el residente lo apruebe».
+- La calle sigue en 0 m y nada dice que hay algo pendiente: Lilachat solo lee lo aprobado.
+- Además, la aprobación vive solo en Portal.
+- Pedido a Portal el 09/11:
+  - los pendientes en el JSON interno del mapa (nunca en el enlace del cliente);
+  - `resolver_avance_de_obra`, solo para admins.
+- Con eso, Lilachat:
+  - dibuja el pendiente punteado;
+  - muestra «N avances por aprobar» con Aprobar y Rechazar.
+- Pendiente de Portal y de la aprobación de José en Agentes.
+- QA: queda un avance pendiente en Test (calle 1, «Asfalto QA», 0+000 a 0+030). Se rechaza por la herramienta nueva.
+
+**Mapa base propio («se ve feo, no se parece en nada a tus diseños»).**
+- La base era «positron» de OpenFreeMap:
+  - gris lavado;
+  - las calles en inglés («Moquegua Street»), porque toma `name_en`.
+- Ahora es un estilo propio, `shared/src/workMapStyle.ts`, con las mismas teselas gratuitas (sin llave ni tarjeta):
+  - suelo gris claro y manzanas blancas;
+  - calles blancas anchas y avenidas en amarillo suave;
+  - parques en verde;
+  - nombres en español y en MAYÚSCULAS («JIRÓN MOQUEGUA», «AVENIDA NICOLÁS DE PIÉROLA»), como el diseño o-01.
+- Las capas `transportation` y `transportation_name` conservan sus nombres: tocar una calle para dibujarla sigue leyéndolas (test).
+- **Google Maps, evaluado y no adoptado:**
+  - Map Tiles API 2D: 100 000 teselas gratis al mes y luego USD 0,60 por cada 1 000. Un mapa abierto pide 20–40 teselas.
+  - Sus teselas son imágenes: el toque sobre la calle se rompe salvo que se carguen además las de OpenFreeMap, invisibles.
+  - Tampoco se parece al diseño.
+  - Queda como opción de José si prefiere su aspecto.

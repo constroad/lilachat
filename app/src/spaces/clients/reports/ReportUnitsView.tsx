@@ -65,7 +65,7 @@ function ExtraStrip({ item, section, onOpen, onView }: { item: RepeatItem; secti
   return (
     <View testID={`adicionales-${item.id}`} className="mt-3 border-t border-outline/10 pt-2">
       <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{extraPhotosTitle(extras.photos.length)}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-2" contentContainerStyle={{ gap: 8 }}>
+      <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} className="mt-2" contentContainerStyle={{ gap: 8 }}>
         {extras.photos.map((one) => (
           <Pressable key={one.id || one.url} onPress={() => onView({ section: extras.section, url: one.url, path })} accessibilityLabel={[one.caption, one.hour].filter(Boolean).join(' · ') || extras.section.title} className="items-center" style={{ width: EXTRA_THUMB }}>
             <Image source={{ uri: one.thumbUrl }} style={{ width: EXTRA_THUMB, height: EXTRA_THUMB, borderRadius: 12 }} />
@@ -179,7 +179,7 @@ export function ReportUnitsView({ section, onOpen, onView }: { section: RepeatSe
       {section.items.length === 0 ? <Text className="pt-4 text-center text-[14px] text-on-surface-variant">{NO_UNITS}</Text> : null}
       {strip ? (
         <Group title={UNIT_GROUP_TITLES.waiting} count={groups.waiting.length}>
-          <ScrollView horizontal testID="unidades-por-llegar" showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+          <ScrollView keyboardShouldPersistTaps="handled" horizontal testID="unidades-por-llegar" showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
             {groups.waiting.map((item) => <ArrivalChip key={item.id} item={item} section={section} onOpen={onOpen} />)}
           </ScrollView>
         </Group>

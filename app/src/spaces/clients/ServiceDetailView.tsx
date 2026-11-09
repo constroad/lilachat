@@ -116,7 +116,7 @@ function TabStrip(props: { detail: ServiceDetail; seesDrive: boolean; seesMap: b
     strip.current?.scrollTo({ x: Math.max(0, (starts.current[key] ?? 0) - TAB_SCROLL_MARGIN), animated: true });
   };
   return (
-    <ScrollView ref={strip} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }} className="flex-grow-0 rounded-xl border border-outline/15 bg-surface p-1">
+    <ScrollView keyboardShouldPersistTaps="handled" ref={strip} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }} className="flex-grow-0 rounded-xl border border-outline/15 bg-surface p-1">
       {serviceTabs(props.detail, props.seesDrive, props.seesMap).map((one) => (
         <Pressable key={one.key} testID={`pestana-detalle-${one.key}`} onLayout={(event) => (starts.current[one.key] = event.nativeEvent.layout.x)} onPress={() => pick(one.key)} accessibilityRole="tab" accessibilityState={{ selected: props.tab === one.key }} className={`min-h-[40px] justify-center rounded-lg px-3 ${props.tab === one.key ? 'bg-primary' : ''}`}>
           <Text className={`text-[14px] ${props.tab === one.key ? 'font-semibold text-on-primary' : 'text-on-surface-variant'}`}>{one.label}</Text>

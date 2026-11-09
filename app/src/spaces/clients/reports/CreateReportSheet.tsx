@@ -80,7 +80,7 @@ export function CreateReportSheet(props: { visible: boolean; portalUrl?: string;
       <Text className="mt-1 text-[22px] font-bold text-on-surface">¿Qué informe vas a hacer?</Text>
       <Text className="mb-3 mt-1 text-[14px] text-on-surface-variant">Se guarda como borrador mientras lo llenas</Text>
       {/* Eight rows do not fit a phone under the sheet's cap: they scroll, so the last ones and «Cancelar» stay above the system bar (José, 06/11). */}
-      <ScrollView testID="tipos-de-informe" style={{ flexShrink: 1 }} contentContainerStyle={{ gap: 8, paddingBottom: 4 }} showsVerticalScrollIndicator={false}>
+      <ScrollView keyboardShouldPersistTaps="handled" testID="tipos-de-informe" style={{ flexShrink: 1 }} contentContainerStyle={{ gap: 8, paddingBottom: 4 }} showsVerticalScrollIndicator={false}>
         {REPORT_TYPE_OPTIONS.map((option) => <TypeRow key={option.code} option={option} portalUrl={props.portalUrl} onPick={setCode} />)}
         <Pressable testID="cancelar-crear-informe" onPress={props.onClose} className="mt-1 min-h-[52px] items-center justify-center rounded-2xl border border-outline/20 bg-surface">
           <Text className="text-[16px] font-semibold text-on-surface">Cancelar</Text>

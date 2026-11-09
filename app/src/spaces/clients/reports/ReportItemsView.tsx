@@ -11,7 +11,7 @@ function PhotoStrip({ section, itemId, onView }: { section: FormSection; itemId:
   const photos = sectionPhotos(section);
   if (!photos.length) return null;
   return (
-    <ScrollView horizontal testID={`fotos-${itemId}`} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 8 }}>
+    <ScrollView keyboardShouldPersistTaps="handled" horizontal testID={`fotos-${itemId}`} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingTop: 8 }}>
       {photos.map((photo) => (
         <Pressable key={photo.id} testID={`ver-foto-${photo.id}`} accessibilityLabel="Ver la foto" onPress={() => onView(photo.url)} style={{ width: THUMB }}>
           <Image source={{ uri: photo.thumbUrl }} style={{ width: THUMB, height: THUMB, borderRadius: 12 }} />

@@ -40,7 +40,7 @@ export function ArchivedClientsScreen(props: { archived: Entry[]; onOpen: (chat:
             <Search size={18} color={colors['on-surface-variant']} />
             <TextInput testID="buscar-archivados" value={query} onChangeText={setQuery} placeholder="Buscar cliente o RUC…" placeholderTextColor={colors['on-surface-variant']} className="flex-1 text-[15px] text-on-surface" />
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3" contentContainerStyle={{ gap: 8 }}>
+          <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} className="mt-3" contentContainerStyle={{ gap: 8 }}>
             {CHIPS.map((chip) => (
               <Pressable key={chip.key} testID={`chip-archivados-${chip.key}`} onPress={() => setFilter(chip.key)} accessibilityState={{ selected: filter === chip.key }} className={`min-h-[40px] flex-row items-center gap-1.5 rounded-full px-4 ${filter === chip.key ? 'bg-primary' : 'border border-outline/20 bg-surface'}`}>
                 <Text className={`text-[14px] ${filter === chip.key ? 'font-bold text-on-primary' : 'text-on-surface'}`}>{chip.label}</Text>

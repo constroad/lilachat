@@ -52,7 +52,7 @@ export function DeletedWork(props: { open: boolean; map: WorkMap; send: MapEditS
           <Pressable testID="mapa-borrados-cerrar" accessibilityLabel="Volver al mapa" onPress={props.onClose} className="h-11 w-11 items-center justify-center rounded-xl"><ArrowLeft size={22} color={colors['on-surface']} /></Pressable>
           <View className="flex-1"><Text className="text-[20px] font-bold text-on-surface">Borrados</Text><Text className="text-[12px] text-on-surface-variant">Una calle vuelve con los tramos que se borraron con ella.</Text></View>
         </View>
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: margins.pie + 24, gap: 12 }}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, paddingBottom: margins.pie + 24, gap: 12 }}>
           {list.state === 'loading' ? <View className="h-24 rounded-xl bg-surface-variant" /> : null}
           {list.state === 'failed' ? <Text className="text-[14px] font-semibold text-error">{list.message}</Text> : null}
           {list.state === 'ready' && !list.rows.length ? <Text className="text-[14px] text-on-surface-variant">{NOTHING_DELETED}</Text> : null}

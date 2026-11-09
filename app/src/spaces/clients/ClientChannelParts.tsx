@@ -36,7 +36,7 @@ function ServiceFilters(props: { query: string; onQuery: (query: string) => void
         <Search size={16} color={colors['on-surface-variant']} />
         <TextInput testID="buscar-servicio" value={props.query} onChangeText={props.onQuery} placeholder="Buscar servicio" placeholderTextColor={colors['on-surface-variant']} className="flex-1 text-[14px] text-on-surface" />
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+      <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
         {(Object.keys(SERVICE_FILTER_LABELS) as ServiceFilter[]).map((key) => (
           <Pressable key={key} testID={`filtro-servicio-${key}`} onPress={() => props.onFilter(key)} accessibilityState={{ selected: props.filter === key }} className={`min-h-[36px] flex-row items-center gap-1.5 rounded-full border px-3 ${props.filter === key ? 'border-primary bg-primary' : 'border-outline/20 bg-surface'}`}>
             <Text className={`text-[13px] font-semibold ${props.filter === key ? 'text-on-primary' : 'text-on-surface-variant'}`}>{`${SERVICE_FILTER_LABELS[key]} · ${props.counts[key]}`}</Text>
@@ -134,7 +134,7 @@ export function ClientServices(props: { /** The channel hides its chrome while a
   if (opened && props.target) return <ServiceDetailView people={[...props.members.values()]} target={props.target} chatId={props.client.chat_id} service={opened} seesMoney={Boolean(props.client.access?.money)} admin={Boolean(props.client.access?.admin)} seesDrive={sees.drive} driveOnly={!sees.detail} onToChat={props.onToChat} onBack={close} links={links} startOrderId={startOrderId} />;
   const total = props.client.services.length;
   return (
-    <ScrollView testID="servicios-cliente" contentContainerStyle={{ padding: 16, gap: 12 }}>
+    <ScrollView keyboardShouldPersistTaps="handled" testID="servicios-cliente" contentContainerStyle={{ padding: 16, gap: 12 }}>
       {props.target ? <ClientAccessRow target={props.target} members={props.members} me={props.me} /> : null}
       {/* José 31/10: the client's link here; an order's in its sheet, a service's on its card. */}
       {links?.can('client') ? (

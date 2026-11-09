@@ -32,7 +32,7 @@ export function ServiceCollectionView(props: { target: ServiceAskTarget; service
     return () => subscription.remove();
   }, [onBack]);
   return (
-    <ScrollView testID="cobranza-servicio" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
+    <ScrollView keyboardShouldPersistTaps="handled" testID="cobranza-servicio" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
       <Pressable testID="volver-a-cuenta" onPress={onBack} className="min-h-[40px] flex-row items-center gap-1 self-start">
         <ChevronLeft size={18} color={colors.primary} />
         <Text className="text-[14px] font-semibold text-primary">Cuenta</Text>

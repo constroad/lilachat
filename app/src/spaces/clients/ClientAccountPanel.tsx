@@ -111,7 +111,7 @@ export function ClientAccountPanel(props: { target: ServiceAskTarget; services: 
   const back = useCallback(() => setOpened(null), []);
   if (opened) return <ServiceCollectionView target={props.target} service={opened} onBack={back} onPaid={askAgain} />;
   return (
-    <ScrollView testID="cuenta-cliente" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
+    <ScrollView keyboardShouldPersistTaps="handled" testID="cuenta-cliente" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 40 }}>
       {answer === null ? <View testID="cuenta-cargando" className="h-40 rounded-2xl bg-surface-variant" /> : null}
       {answer?.ok ? <AccountBody account={answer.value} services={props.services} onOpenService={setOpened} /> : null}
       {answer && !answer.ok ? <Text testID="cuenta-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-[15px] font-semibold text-on-surface">{answer.message}</Text> : null}

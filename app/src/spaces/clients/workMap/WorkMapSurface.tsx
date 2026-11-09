@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { Text, View } from 'react-native';
-import { Camera, GeoJSONSource, Layer, Map as MapSurface, ViewAnnotation, type CameraRef, type MapRef } from '@maplibre/maplibre-react-native';
+import { Camera, GeoJSONSource, Layer, Map as MapSurface, ViewAnnotation, type CameraRef, type MapRef, type StyleSpecification } from '@maplibre/maplibre-react-native';
 import { MapControls } from './MapControls';
-import { PLACE_ZOOM, type MapFrame, dischargePinCollection, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE_URL, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView , STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark } from '@lilachat/shared';
+import { PLACE_ZOOM, type MapFrame, dischargePinCollection, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView , STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark } from '@lilachat/shared';
 
 const LINE_ENDS = { 'line-cap': 'round', 'line-join': 'round' } as const;
 const EDGE = { top: 48, right: 48, bottom: 48, left: 48 };
@@ -67,7 +67,7 @@ export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?
   const corners = view.bounds;
   return (
     <View style={{ flex: 1 }}>
-    <MapSurface ref={map} testID="mapa-lienzo" style={{ flex: 1 }} mapStyle={WORK_MAP_STYLE_URL} androidView="texture" logo={false} compass={false} dragPan={moves} touchZoom={moves} doubleTapZoom={moves} doubleTapHoldZoom={moves} touchRotate={false} touchPitch={false} onPress={props.onTap ? (event) => void press(event.nativeEvent.lngLat as [number, number], event.nativeEvent.point as [number, number]) : undefined}>
+    <MapSurface ref={map} testID="mapa-lienzo" style={{ flex: 1 }} mapStyle={WORK_MAP_STYLE as unknown as StyleSpecification} androidView="texture" logo={false} compass={false} dragPan={moves} touchZoom={moves} doubleTapZoom={moves} doubleTapHoldZoom={moves} touchRotate={false} touchPitch={false} onPress={props.onTap ? (event) => void press(event.nativeEvent.lngLat as [number, number], event.nativeEvent.point as [number, number]) : undefined}>
       {corners ? <Camera ref={camera} bounds={[...corners[0], ...corners[1]]} padding={EDGE} duration={0} /> : props.near ? <Camera ref={camera} center={[props.near.lng, props.near.lat]} zoom={DRAW_ZOOM} duration={0} /> : <Camera ref={camera} />}
       <GeoJSONSource id="work-map-bare" data={workMapCollection(props.bare ?? NO_LINES)}>
         <Layer id="work-map-bare-line" type="line" layout={LINE_ENDS} paint={{ 'line-color': ['get', 'color'], 'line-width': 3 }} />

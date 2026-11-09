@@ -67,7 +67,7 @@ function WorkChips(props: FilterProps) {
   if (!view.works.length) return null;
   const chip = (on: boolean) => `min-h-[36px] flex-row items-center gap-1.5 rounded-lg border px-3 ${on ? 'border-primary bg-primary' : 'border-outline/20 bg-surface'}`;
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+    <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
       <Pressable testID="mapa-trabajo-todos" accessibilityState={{ selected: !filter.workId }} onPress={() => onFilter(workMapWorkFilter(filter))} className={chip(!filter.workId)}>
         <Text className={`text-[13px] font-semibold ${filter.workId ? 'text-on-surface' : 'text-on-primary'}`}>Todos</Text>
       </Pressable>

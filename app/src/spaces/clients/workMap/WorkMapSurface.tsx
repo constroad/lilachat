@@ -54,7 +54,9 @@ const PIN_IMAGES = { 'pin-photo': require('../../../../assets/map/camera.png') a
 const iconPinCollection = (pins: DischargePin[]) => {
   const base = dischargePinCollection(pins.filter((pin) => pin.icon).map((pin) => ({ ...pin, icon: undefined })));
   const icons = new Map(pins.map((pin) => [pin.id, pin.icon]));
-  return { ...base, features: base.features.map((feature) => ({ ...feature, properties: { ...feature.properties, icon: `pin-${icons.get(feature.properties.id) ?? 'photo'}` } })) };
+  // A photo is filled with its day's color (José 09/11); one off the work keeps its red.
+  const fills = new Map(pins.flatMap((pin) => (pin.dayColor && !pin.outside ? [[pin.id, pin.dayColor] as const] : [])));
+  return { ...base, features: base.features.map((feature) => ({ ...feature, properties: { ...feature.properties, color: fills.get(feature.properties.id) ?? feature.properties.color, icon: `pin-${icons.get(feature.properties.id) ?? 'photo'}` } })) };
 };
 
 /** `onTap` draws a street (o-02): each tap is a bend. `near` frames where the phone is when there is nothing drawn yet. */
@@ -96,7 +98,8 @@ export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?
         <Layer id="work-map-station-text" type="symbol" layout={STATION_TEXT_LAYOUT as never} paint={STATION_TEXT_PAINT} />
       </GeoJSONSource>
       <GeoJSONSource id="work-map-pins" data={dischargePinCollection(props.pins ?? NO_PINS)} onPress={props.onPin ? (event) => { const id = event.nativeEvent.features[0]?.properties?.id; if (typeof id === 'string') props.onPin?.(id); } : undefined}>
-        <Layer id="work-map-pin-dot" type="circle" paint={{ 'circle-color': ['get', 'color'], 'circle-radius': 11, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 }} />
+        {/* The day's color as a ring when the work has several days (José 09/11). */}
+        <Layer id="work-map-pin-dot" type="circle" paint={{ 'circle-color': ['get', 'color'], 'circle-radius': 11, 'circle-stroke-color': ['get', 'ring'], 'circle-stroke-width': ['get', 'ringWidth'] }} />
         <Layer id="work-map-pin-number" type="symbol" layout={{ 'text-field': ['get', 'label'], 'text-font': PIN_FONT, 'text-size': 12, 'text-allow-overlap': true }} paint={{ 'text-color': '#ffffff' }} />
         {/* The unit's plate under its number (José 09/11): which unit was where. */}
         <Layer id="work-map-pin-plate" type="symbol" layout={{ 'text-field': ['get', 'caption'], 'text-font': PIN_FONT, 'text-size': 11, 'text-offset': [0, 1.7], 'text-allow-overlap': true }} paint={{ 'text-color': '#111827', 'text-halo-color': '#ffffff', 'text-halo-width': 2 }} />

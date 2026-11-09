@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { lazyChunk } from '../../../ui/lazyChunk';
 import { ChevronRight, Maximize2, Minimize2, Paintbrush, Share2, TrendingUp, Undo2, X } from 'lucide-react';
-import { bareLinesOf, visibleStationMarks, brushLinesOf, brushTitle, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, withPendingLines, showsUnitPins, type DischargePin, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type MapPhoto, type ManualProgressDraft } from '@lilachat/shared';
+import { bareLinesOf, visibleStationMarks, brushLinesOf, brushTitle, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withPendingLines, showsUnitPins, type DischargePin, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type MapPhoto, type ManualProgressDraft } from '@lilachat/shared';
 import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
 import { ShareProgress } from './ShareProgress';
@@ -12,6 +12,7 @@ import { StreetScopes } from './StreetScopes';
 import { DeletedWork } from './DeletedWork';
 import { useBrush, WorkLayers, type LayersKind } from './WorkLayers';
 import { PhotoToggle, usePhotoLayer } from './MapPhotos';
+import { MapDayChips, useMapDays } from './MapDays';
 import { PrimeCoatSuggestions } from './PrimeCoat';
 import { PendingProgressCard } from './PendingProgress';
 import { MapMoreMenu } from './MapMoreMenu';
@@ -68,13 +69,15 @@ function useFullScreen() {
 }
 
 const NO_DISCHARGES: UnitDischarge[] = [];
+const NO_MAP_PHOTOS: MapPhoto[] = [];
 const NO_UNIT_PINS: DischargePin[] = [];
 
 /** The units of the Control de pista over the map: the suggestion, its pins and the stretches being confirmed. */
-function useDischarges(map: WorkMap, discharges: UnitDischarge[]) {
+function useDischarges(map: WorkMap, discharges: UnitDischarge[], day: string, days: string[]) {
   const suggestion = useMemo(() => suggestDischarges(map, discharges), [map, discharges]);
   const [ranges, setRanges] = useState<Record<string, StretchRange>>({});
-  const pins = useMemo(() => dischargePinsOf(suggestion), [suggestion]);
+  // The chosen day's units, numbered inside their day and ringed with its color (José 09/11).
+  const pins = useMemo(() => unitPinsOfDay(suggestion, discharges, day, days), [suggestion, discharges, day, days]);
   const stretches = useMemo(() => stretchLinesOf(map, suggestion.stretches, ranges), [map, suggestion, ranges]);
   const onRange = (streetId: string, range: StretchRange) => setRanges((before) => ({ ...before, [streetId]: range }));
   return { suggestion, ranges, onRange, pins, stretches };
@@ -166,11 +169,12 @@ export function WorkMapBoard(props: BoardProps) {
   const groups = useMemo(() => workMapStageGroups(map, view), [map, view]);
   const stations = useMemo(() => visibleStationMarks(map.streets, view.streets.map((street) => street.id)), [map, view]);
   const bare = useMemo(() => bareLinesOf({ streets: map.streets.filter((street) => view.streets.some((shown) => shown.id === street.id)), scopes: map.scopes }), [map, view]);
-  const pista = useDischarges(map, props.discharges ?? NO_DISCHARGES);
+  const mapDays = useMapDays(props.mapPhotos ?? NO_MAP_PHOTOS, props.discharges ?? NO_DISCHARGES);
+  const pista = useDischarges(map, props.discharges ?? NO_DISCHARGES, mapDays.day, mapDays.days);
   // The units' numbers, plates and stretches only under the paving work (José 09/11).
   const units = showsUnitPins(map, filter);
   const unitPins = units ? pista.pins : NO_UNIT_PINS;
-  const photoLayer = usePhotoLayer(map, props.mapPhotos);
+  const photoLayer = usePhotoLayer(map, mapDays.photos, mapDays.days);
   const [pendingItems, setPendingItems] = useState<PendingProgress[]>([]);
   const stretches = useMemo(() => withPendingLines(map, units ? pista.stretches : [], pendingItems), [map, units, pista.stretches, pendingItems]);
   const { holder, expanded, open, close } = useFullScreen();
@@ -198,6 +202,7 @@ export function WorkMapBoard(props: BoardProps) {
       </header>
       {wide ? null : <MapFilters map={map} view={view} filter={filter} onFilter={setFilter} floating={false} waiting={pendingItems.length} />}
       
+      {mapDays.options.length ? <div className="px-4 pb-2"><MapDayChips options={mapDays.options} day={mapDays.day} onDay={mapDays.setDay} /></div> : null}
       {props.notice ? <p role="status" data-testid="mapa-aviso" className="mx-4 mb-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-[13px] font-semibold text-on-surface">{props.notice}</p> : null}
       <div className={wide ? 'flex min-h-0 flex-1' : 'flex flex-col'}>
         <div className={`relative overflow-hidden bg-surface-variant ${wide ? 'min-w-0 flex-1' : 'h-[58vh] min-h-[320px] shrink-0'}`}>

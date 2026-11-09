@@ -208,6 +208,7 @@ export * from './chatExport.js';
 export * from './workMapBrush.js';
 export * from './workMapStations.js';
 export * from './workMapPhotos.js';
+export * from './workMapDays.js';
 export * from './placeSearch.js';
 export * from './tutorialScript.js';
 export * from './photoPhase.js';

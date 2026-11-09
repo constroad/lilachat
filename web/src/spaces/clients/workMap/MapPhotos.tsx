@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Camera } from 'lucide-react';
-import { photoLayerFiles, photoSpotPins, photoSpotsOf, type MapPhoto, type WorkMap } from '@lilachat/shared';
+import { photoLayerFiles, photoPinsOfDay, photoSpotsOf, type MapPhoto, type WorkMap } from '@lilachat/shared';
 import { usePortalFileViewer } from '../PortalFileViewer';
 
 const NO_PHOTOS: MapPhoto[] = [];
@@ -9,10 +9,10 @@ const NO_PHOTOS: MapPhoto[] = [];
  * The «Fotos» layer (José 08/11): every field photo lands on its street and chainage; a marker per
  * spot, and a marker opens that spot's photos and videos in the viewer every map already has.
  */
-export function usePhotoLayer(map: WorkMap, photos: MapPhoto[] = NO_PHOTOS) {
+export function usePhotoLayer(map: WorkMap, photos: MapPhoto[] = NO_PHOTOS, days: string[] = []) {
   const [shown, setShown] = useState(false);
   const spots = useMemo(() => photoSpotsOf(map, photos), [map, photos]);
-  const pins = useMemo(() => photoSpotPins(spots), [spots]);
+  const pins = useMemo(() => photoPinsOfDay(spots, days), [spots, days]);
   const viewer = usePortalFileViewer();
   const openPin = (pinId: string) => {
     const opened = photoLayerFiles(spots, pinId);

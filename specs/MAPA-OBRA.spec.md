@@ -1342,7 +1342,16 @@ de varios días, fotos con posición y ninguna calle.
   - «No suman» no cuenta unidades «fuera de las calles».
 - **Unidades siempre visibles** sin calles, con su número y su placa
   (`showsUnitPins`). Con calles sigue la regla de la colocación de carpeta.
-- **Pendiente: el selector de día** («Todos» o un día de colocación), con el
-  número de la unidad contado dentro de su día. Saldrá de una función de
-  `@constroad/shared/obra` que Portal sube con el OK de José. No se copia.
+- **Día de colocación**: un chip por día, más «Todos», solo si la obra tiene
+  más de un día. Lo arma `useMapDays` + `MapDayChips` en web y APK.
+  - Elegir un día filtra las fotos y las unidades del mapa. La sugerencia del
+    Control de pista sigue con todas las unidades.
+  - El número de cada unidad se cuenta dentro de su día, con o sin día elegido.
+  - El color del día va en el chip, en el relleno del marcador de foto y como
+    aro más grueso en la unidad. Una foto fuera de las calles conserva su rojo.
+  - El día de un marcador de fotos es el de su foto más nueva. El día es el
+    de Lima.
+  - Reglas en `@constroad/shared/obra` v0.16.0, iguales a las de Portal:
+    `mediaDaysOf`, `unitNumbersOf`, `dayColorsOf`, `dayLabel`. Lilachat solo
+    adapta formas en `shared/src/workMapDays.ts`.
 - **Sin verificar** en el teléfono con el servicio de Globofast: solo tests del motor.

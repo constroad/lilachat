@@ -41,6 +41,8 @@ const PIN_ICONS = {
 
 function iconPin(pin: DischargePin & { icon: 'photo' | 'video' }, element: HTMLElement) {
   element.className = `relative flex h-9 w-9 items-center justify-center rounded-full border-2 border-surface text-on-primary shadow-md ${pin.outside ? 'bg-error' : 'bg-primary'}`;
+  // A photo is filled with its day's color when the work has several days (José 09/11); off the work it stays red.
+  if (pin.dayColor && !pin.outside) element.style.backgroundColor = pin.dayColor;
   element.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${PIN_ICONS[pin.icon]}</svg>`;
   const count = document.createElement('span');
   count.className = 'absolute -right-1.5 -top-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full border border-surface bg-surface px-1 text-[10px] font-bold text-primary';
@@ -62,6 +64,8 @@ function pinElement(pin: DischargePin, onPin: { current: ((id: string) => void) 
     const dot = document.createElement('span');
     dot.className = `flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-surface px-1 text-[11px] font-bold text-on-primary shadow ${pin.outside ? 'bg-error' : 'bg-primary'}`;
     dot.textContent = pin.label;
+    // A unit wears its day as a thicker ring (José 09/11).
+    if (pin.dayColor) { dot.style.borderColor = pin.dayColor; dot.style.borderWidth = '4px'; }
     element.append(dot);
     if (pin.caption) {
       const plate = document.createElement('span');

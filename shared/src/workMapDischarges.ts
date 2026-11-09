@@ -27,7 +27,7 @@ type PlacedUnit = SharedSuggestion['units'][number];
 
 /** The rules live in `@constroad/shared/obra` (one engine with Portal, 07/11); this only changes the shapes. */
 const axisOf = (street: WorkMapStreet): StreetAxis => ({ _id: street.id, name: street.name, geometry: street.line, lengthM: street.lengthM });
-const sharedDischargeOf = (unit: UnitDischarge): Discharge => ({
+export const sharedDischargeOf = (unit: UnitDischarge): Discharge => ({
   dispatch_id: unit.dispatchId,
   plate: unit.plate,
   ...(unit.m3 === null ? {} : { m3: unit.m3 }),

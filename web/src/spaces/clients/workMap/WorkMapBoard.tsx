@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { lazyChunk } from '../../../ui/lazyChunk';
 import { ChevronRight, Maximize2, Minimize2, Paintbrush, Share2, TrendingUp, Undo2, X } from 'lucide-react';
-import { bareLinesOf, visibleStationMarks, brushLinesOf, brushTitle, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, withPendingLines, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type MapPhoto, type ManualProgressDraft } from '@lilachat/shared';
+import { bareLinesOf, visibleStationMarks, brushLinesOf, brushTitle, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, withPendingLines, showsUnitPins, type DischargePin, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type MapPhoto, type ManualProgressDraft } from '@lilachat/shared';
 import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
 import { ShareProgress } from './ShareProgress';
@@ -68,6 +68,7 @@ function useFullScreen() {
 }
 
 const NO_DISCHARGES: UnitDischarge[] = [];
+const NO_UNIT_PINS: DischargePin[] = [];
 
 /** The units of the Control de pista over the map: the suggestion, its pins and the stretches being confirmed. */
 function useDischarges(map: WorkMap, discharges: UnitDischarge[]) {
@@ -166,9 +167,12 @@ export function WorkMapBoard(props: BoardProps) {
   const stations = useMemo(() => visibleStationMarks(map.streets, view.streets.map((street) => street.id)), [map, view]);
   const bare = useMemo(() => bareLinesOf({ streets: map.streets.filter((street) => view.streets.some((shown) => shown.id === street.id)), scopes: map.scopes }), [map, view]);
   const pista = useDischarges(map, props.discharges ?? NO_DISCHARGES);
+  // The units' numbers, plates and stretches only under the paving work (José 09/11).
+  const units = showsUnitPins(map, filter);
+  const unitPins = units ? pista.pins : NO_UNIT_PINS;
   const photoLayer = usePhotoLayer(map, props.mapPhotos);
   const [pendingItems, setPendingItems] = useState<PendingProgress[]>([]);
-  const stretches = useMemo(() => withPendingLines(map, pista.stretches, pendingItems), [map, pista.stretches, pendingItems]);
+  const stretches = useMemo(() => withPendingLines(map, units ? pista.stretches : [], pendingItems), [map, units, pista.stretches, pendingItems]);
   const { holder, expanded, open, close } = useFullScreen();
   const wide = useWide(holder);
   const discharges = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null;
@@ -198,7 +202,7 @@ export function WorkMapBoard(props: BoardProps) {
       <div className={wide ? 'flex min-h-0 flex-1' : 'flex flex-col'}>
         <div className={`relative overflow-hidden bg-surface-variant ${wide ? 'min-w-0 flex-1' : 'h-[58vh] min-h-[320px] shrink-0'}`}>
           <Suspense fallback={<div data-testid="mapa-cargando-lienzo" className="absolute inset-0 animate-pulse bg-surface-variant" />}>
-            <WorkMapCanvas view={view} expanded={expanded} stations={stations} bare={bare} pins={photoLayer.shown ? photoLayer.pins : pista.pins} onPin={photoLayer.shown ? photoLayer.openPin : undefined} stretches={brushing.brush ? brushLines : stretches} onTap={brushing.brush ? (place) => void brushing.tap(place) : undefined} />
+            <WorkMapCanvas view={view} expanded={expanded} stations={stations} bare={bare} pins={photoLayer.shown ? photoLayer.pins : unitPins} onPin={photoLayer.shown ? photoLayer.openPin : undefined} stretches={brushing.brush ? brushLines : stretches} onTap={brushing.brush ? (place) => void brushing.tap(place) : undefined} />
           </Suspense>
           {photoLayer.available && !brushing.brush ? <PhotoToggle shown={photoLayer.shown} count={photoLayer.count} onToggle={photoLayer.toggle} /> : null}
           {wide && !brushing.brush ? <MapFilters map={map} view={view} filter={filter} onFilter={setFilter} floating waiting={pendingItems.length} /> : null}

@@ -1304,3 +1304,21 @@ avise.
   oscuro (la carpeta asfáltica) se vea en el tema oscuro.
 - **«Registrar avance» queda fuera de «Más» en el celular, a propósito:** es la
   acción principal del `o-01` y la que más se usa en campo.
+
+## Placas solo bajo la carpeta, su color encima y el visor por todas las fotos (José 09/11)
+
+- **Placas.** Los números y placas de las unidades del Control de pista, y los
+  tramos que sugieren, salen solo con el trabajo de carpeta elegido.
+  `showsUnitPins(map, filter)` en `shared/src/workMapMenu.ts`. Bajo «Todos
+  los trabajos» u otro trabajo, no salen. El panel «Avance que marcan las
+  unidades» sigue igual.
+- **Cuál es la carpeta.** Los trabajos solo tienen nombre. `isPavingWork`
+  busca «carpeta» o «asfaltado», sin tildes ni mayúsculas. «Imprimación
+  asfáltica» no cuenta. Si Portal suma un código de trabajo, se cambia ahí.
+- **Color encima.** La capa de tramos sugeridos y por aprobar (morada, 11 px
+  al 55 %) quedaba sobre la línea hecha y la tapaba. Ahora va debajo, en web
+  (`WorkMapCanvas`) y APK (`WorkMapSurface`). El color del trabajo queda arriba.
+- **Visor.** Un marcador de fotos abre su punto primero. El visor se desliza
+  por todas las fotos de la capa, en orden del mapa: `photoLayerFiles`.
+- Sin verificar en el teléfono todavía: el orden de capas en el APK se mira
+  con el OTA.

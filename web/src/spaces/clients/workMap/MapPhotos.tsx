@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Camera } from 'lucide-react';
-import { photoSpotFiles, photoSpotPins, photoSpotsOf, type MapPhoto, type WorkMap } from '@lilachat/shared';
+import { photoLayerFiles, photoSpotPins, photoSpotsOf, type MapPhoto, type WorkMap } from '@lilachat/shared';
 import { usePortalFileViewer } from '../PortalFileViewer';
 
 const NO_PHOTOS: MapPhoto[] = [];
@@ -15,9 +15,8 @@ export function usePhotoLayer(map: WorkMap, photos: MapPhoto[] = NO_PHOTOS) {
   const pins = useMemo(() => photoSpotPins(spots), [spots]);
   const viewer = usePortalFileViewer();
   const openPin = (pinId: string) => {
-    const spot = spots.find((one) => `fotos-${one.id}` === pinId);
-    const files = spot ? photoSpotFiles(spot) : [];
-    if (files[0]) viewer.open(files[0], files);
+    const opened = photoLayerFiles(spots, pinId);
+    if (opened) viewer.open(opened.first, opened.all);
   };
   return { available: photos.length > 0, shown, toggle: () => setShown((before) => !before), pins, openPin, viewer: viewer.viewer, count: photos.length };
 }

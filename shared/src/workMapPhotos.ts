@@ -121,3 +121,10 @@ export function photoSourceLabel(photo: Pick<MapPhoto, 'reportType' | 'plate'>):
 /** The spot's photos for the viewer every map already has: newest first, named by where they came from. */
 export const photoSpotFiles = (spot: Pick<PhotoSpot, 'photos' | 'streetName' | 'atM'>): ViewableFile[] =>
   spot.photos.map((photo) => ({ url: photo.url, name: `${photoSourceLabel(photo)} · ${photoSpotTitle(spot)}`, mime: photo.kind === 'video' ? 'video/mp4' : 'image/jpeg', thumbUrl: photo.thumbnailUrl, when: photo.at }));
+
+/** A marker opens its own spot first, and the viewer swipes through every spot of the layer (José 09/11). */
+export function photoLayerFiles(spots: ReadonlyArray<Pick<PhotoSpot, 'id' | 'photos' | 'streetName' | 'atM'>>, pinId: string): { first: ViewableFile; all: ViewableFile[] } | null {
+  const tapped = spots.find((one) => `fotos-${one.id}` === pinId);
+  const first = tapped ? photoSpotFiles(tapped)[0] : undefined;
+  return first ? { first, all: spots.flatMap((one) => photoSpotFiles(one)) } : null;
+}

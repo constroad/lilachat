@@ -233,6 +233,10 @@ describe('ServiceMapWeb', () => {
     showMap(undefined, { discharges });
     // Assert
     const canvas = await screen.findByTestId('mapa-lienzo');
+    // Under every work the plates stay off the map (José 09/11); the paving work brings them.
+    expect(canvas).toHaveAttribute('data-pins', '0');
+    fireEvent.click(screen.getByTestId('mapa-trabajo'));
+    fireEvent.click(screen.getByTestId('mapa-trabajo-asfalto'));
     expect(screen.getByTestId('avance-listas')).toHaveTextContent('2 de 3 unidades ubicadas');
     expect(within(screen.getByTestId('tramo-sugerido-s1')).getByText('+60 m')).toBeInTheDocument();
     expect(screen.getByTestId('avance-progresivas')).toHaveTextContent('0+010 a 0+070');

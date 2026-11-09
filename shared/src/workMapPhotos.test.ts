@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { WorkMap, WorkMapPoint } from './workMap.js';
-import { mapPhotosOf, photoSourceLabel, photoSpotFiles, photoSpotPins, photoSpotsOf, photoSpotTitle, type MapPhoto } from './workMapPhotos.js';
+import { mapPhotosOf, photoSourceLabel, photoSpotFiles, photoLayerFiles, photoSpotPins, photoSpotsOf, photoSpotTitle, type MapPhoto } from './workMapPhotos.js';
 
 /** José 08/11: «en el mapa, en la calle X, si activo ese CTA debería tener un marcador para ver las fotos y videos». */
 const METERS_PER_DEGREE = 111_195;
@@ -75,5 +75,19 @@ describe('the «Fotos» pins show what they hold (José 09/11: bare numbers conf
     // Act / Assert
     expect(photoSpotPins([spot(['video', 'video'])] as never)[0]?.icon).toBe('video');
     expect(photoSpotPins([spot(['video', 'photo'])] as never)[0]?.icon).toBe('photo');
+  });
+});
+
+/** José 09/11: «el visor me debería poder navegar entre todos los puntos de fotos». */
+describe('photoLayerFiles, the viewer over every spot', () => {
+  const spot = (id: string, urls: string[]) => ({ id, streetName: 'Jr. A', atM: 10, photos: urls.map((url) => ({ url, kind: 'photo' as const, at: '2026-11-09T10:00:00.000Z' })) });
+  const spots = [spot('a', ['https://x/1.jpg', 'https://x/2.jpg']), spot('b', ['https://x/3.jpg'])];
+  it('opens on the tapped spot and swipes through all of them in map order', () => {
+    const opened = photoLayerFiles(spots as never, 'fotos-b');
+    expect(opened?.first.url).toBe('https://x/3.jpg');
+    expect(opened?.all.map((file) => file.url)).toEqual(['https://x/1.jpg', 'https://x/2.jpg', 'https://x/3.jpg']);
+  });
+  it('gives nothing for a pin that is not a spot', () => {
+    expect(photoLayerFiles(spots as never, 'fotos-z')).toBeNull();
   });
 });

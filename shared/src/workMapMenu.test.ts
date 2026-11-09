@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapLegendEntries, mapMoreItems, workChoiceLabel, workChoicesOf } from './workMapMenu.js';
+import { mapLegendEntries, mapMoreItems, workChoiceLabel, workChoicesOf, isPavingWork, showsUnitPins } from './workMapMenu.js';
 
 /** José 09/11: the actions were piled up; the rest goes under «Más», the works in a select, the legend folds. */
 const view = { works: [{ id: 'w1', name: 'Base granular', color: '#a16207', percent: 100 }, { id: 'w2', name: 'Imprimación', color: '#2563eb', percent: 41.5 }] };
@@ -45,5 +45,23 @@ describe('the legend', () => {
     expect(quiet[2]).toEqual({ key: 'todo', kind: 'todo', label: 'Pendiente de ejecución', color: null });
     expect(waiting.at(-1)).toEqual({ key: 'waiting', kind: 'waiting', label: 'Por aprobar (2)', color: null });
     expect(mapLegendEntries(view, 1).at(-1)?.label).toBe('Por aprobar (1)');
+  });
+});
+
+/** José 09/11: the plates only under «Colocación de carpeta asfáltica», the work the Control de pista measures. */
+describe('when the units of the Control de pista show', () => {
+  const works = [{ id: 'w1', name: 'Imprimación', color: '#0ea5e9' }, { id: 'w2', name: 'Colocación de carpeta asfáltica', color: '#111827' }];
+  it('shows them with the paving work chosen', () => {
+    expect(showsUnitPins({ works }, { workId: 'w2' })).toBe(true);
+  });
+  it('hides them under every work or another work', () => {
+    expect(showsUnitPins({ works }, {})).toBe(false);
+    expect(showsUnitPins({ works }, { workId: 'w1' })).toBe(false);
+  });
+  it('reads the name without accents or case', () => {
+    expect(isPavingWork({ name: 'CARPETA ASFALTICA 2"' })).toBe(true);
+    expect(isPavingWork({ name: 'Asfaltado' })).toBe(true);
+    expect(isPavingWork({ name: 'Imprimación asfáltica' })).toBe(false);
+    expect(isPavingWork({ name: 'Bacheo' })).toBe(false);
   });
 });

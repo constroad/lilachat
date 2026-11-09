@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, Text } from 'react-native';
 import { Camera } from 'lucide-react-native';
-import { photoSpotFiles, photoSpotPins, photoSpotsOf, type MapPhoto, type WorkMap } from '@lilachat/shared';
+import { photoLayerFiles, photoSpotPins, photoSpotsOf, type MapPhoto, type WorkMap } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { useFileViewer } from '../useFileViewer';
 
@@ -17,9 +17,8 @@ export function usePhotoLayer(map: WorkMap, photos: MapPhoto[] = NO_PHOTOS) {
   const pins = useMemo(() => photoSpotPins(spots), [spots]);
   const files = useFileViewer();
   const openPin = (pinId: string) => {
-    const spot = spots.find((one) => `fotos-${one.id}` === pinId);
-    const found = spot ? photoSpotFiles(spot) : [];
-    if (found[0]) files.open(found[0], found);
+    const opened = photoLayerFiles(spots, pinId);
+    if (opened) files.open(opened.first, opened.all);
   };
   return { available: photos.length > 0, shown, setShown, pins, openPin, viewer: files.viewer, count: photos.length };
 }

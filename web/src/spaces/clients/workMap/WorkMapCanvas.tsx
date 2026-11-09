@@ -24,9 +24,10 @@ function addWorkLayers(map: maplibregl.Map) {
   map.addSource(PLANNED, { type: 'geojson', data: workMapCollection([]) });
   map.addSource(DONE, { type: 'geojson', data: workMapCollection([]) });
   map.addLayer({ id: PLANNED, type: 'line', source: PLANNED, layout: LINE_ROUND, paint: { 'line-color': WORK_MAP_PLANNED_COLOR, 'line-width': 5, 'line-dasharray': [1.2, 1.4] } });
-  map.addLayer({ id: DONE, type: 'line', source: DONE, layout: LINE_ROUND, paint: { 'line-color': ['get', 'color'], 'line-width': 7 } });
+  // Suggested and waiting stretches under the done line: the chosen work's color stays on top (José 09/11).
   map.addSource(STRETCH, { type: 'geojson', data: workMapCollection([]) });
   map.addLayer({ id: STRETCH, type: 'line', source: STRETCH, layout: LINE_ROUND, paint: { 'line-color': ['get', 'color'], 'line-width': 11, 'line-opacity': 0.55 } });
+  map.addLayer({ id: DONE, type: 'line', source: DONE, layout: LINE_ROUND, paint: { 'line-color': ['get', 'color'], 'line-width': 7 } });
   map.addSource(STATIONS, { type: 'geojson', data: stationMarkCollection([]) });
   map.addLayer({ id: `${STATIONS}-dot`, type: 'circle', source: STATIONS, paint: STATION_DOT_PAINT });
   map.addLayer({ id: `${STATIONS}-text`, type: 'symbol', source: STATIONS, layout: STATION_TEXT_LAYOUT as maplibregl.SymbolLayerSpecification['layout'], paint: STATION_TEXT_PAINT });

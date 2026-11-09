@@ -84,11 +84,12 @@ export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?
       <GeoJSONSource id="work-map-planned" data={workMapCollection(view.planned)}>
         <Layer id="work-map-planned-line" type="line" layout={LINE_ENDS} paint={{ 'line-color': WORK_MAP_PLANNED_COLOR, 'line-width': 4, 'line-dasharray': [1.2, 1.4] }} />
       </GeoJSONSource>
-      <GeoJSONSource id="work-map-done" data={workMapCollection(view.done)}>
-        <Layer id="work-map-done-line" type="line" layout={LINE_ENDS} paint={{ 'line-color': ['get', 'color'], 'line-width': 6 }} />
-      </GeoJSONSource>
+      {/* Suggested and waiting stretches under the done line: the chosen work's color stays on top (José 09/11). */}
       <GeoJSONSource id="work-map-stretch" data={workMapCollection(props.stretches ?? NO_LINES)}>
         <Layer id="work-map-stretch-line" type="line" layout={LINE_ENDS} paint={{ 'line-color': ['get', 'color'], 'line-width': 10, 'line-opacity': 0.55 }} />
+      </GeoJSONSource>
+      <GeoJSONSource id="work-map-done" data={workMapCollection(view.done)}>
+        <Layer id="work-map-done-line" type="line" layout={LINE_ENDS} paint={{ 'line-color': ['get', 'color'], 'line-width': 6 }} />
       </GeoJSONSource>
       <GeoJSONSource id="work-map-stations" data={stationMarkCollection(props.stations ?? NO_STATIONS)}>
         <Layer id="work-map-station-dot" type="circle" paint={STATION_DOT_PAINT} />

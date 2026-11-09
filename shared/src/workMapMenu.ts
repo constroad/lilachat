@@ -1,4 +1,4 @@
-import { percentLabel, type WorkMapView } from './workMap.js';
+import { percentLabel, type WorkMapFilter, type WorkMapView, type WorkMapWork } from './workMap.js';
 
 /**
  * The work map's bar, kept short (José 09/11: «todo amontonado»). The design (o-01) has three
@@ -43,4 +43,16 @@ export function mapLegendEntries(view: Pick<WorkMapView, 'works'>, waiting: numb
   const todo: MapLegendEntry = { key: 'todo', kind: 'todo', label: 'Pendiente de ejecución', color: null };
   const toApprove: MapLegendEntry[] = waiting > 0 ? [{ key: 'waiting', kind: 'waiting', label: `Por aprobar (${waiting})`, color: null }] : [];
   return [...works, todo, ...toApprove];
+}
+
+const PAVING = /carpeta|asfaltado/;
+const plain = (name: string): string => name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+/** «Colocación de carpeta asfáltica»: the work the Control de pista measures. Works carry only a name. */
+export const isPavingWork = (work: Pick<WorkMapWork, 'name'>): boolean => PAVING.test(plain(work.name));
+
+/** The units' numbers and plates, and the stretches they suggest, only with the paving work chosen (José 09/11). */
+export function showsUnitPins(map: { works: ReadonlyArray<Pick<WorkMapWork, 'id' | 'name'>> }, filter: Pick<WorkMapFilter, 'workId'>): boolean {
+  const chosen = map.works.find((work) => work.id === filter.workId);
+  return Boolean(chosen && isPavingWork(chosen));
 }

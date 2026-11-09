@@ -9,6 +9,7 @@ import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
 import { CheckField, ChoiceField, LocationField, PhotoField, TypedField, type PhotoUpload } from './AppFormFields';
 import { DateField } from './DateField';
+import { FormSummary } from './FormSummary';
 import { ListField } from './ListField';
 import { PhotoListField } from './PhotoListField';
 import { LiveSelfie, type LiveSelfieHandle } from './LiveSelfie';
@@ -18,7 +19,6 @@ import { useLiveSigning } from './useLiveSigning';
 import { useFormLive } from './useFormLive';
 import { useAppFormState } from './useAppFormState';
 import { isRichChoice, MultiField, RichChoiceField } from './RichChoiceFields';
-import { BotBlocksView } from '../botBlocks/BotBlocksView';
 
 const SHEET_PADDING = 16;
 /** A sheet on a tablet or a turned phone stays the width of a phone. */
@@ -195,12 +195,7 @@ function SheetFooter(props: { summary: PreviewReply['blocks']; message: string; 
   const colors = useColores();
   return (
     <View className="px-4">
-      {props.summary.length ? (
-        <View testID="formulario-resumen" className="mb-2 mt-2 rounded-2xl border border-outline/15 p-3">
-          <Text className="mb-2 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">Resumen</Text>
-          <BotBlocksView blocks={props.summary} />
-        </View>
-      ) : null}
+      {props.summary.length ? <FormSummary blocks={props.summary} /> : null}
       {props.message ? <Text testID="formulario-error" accessibilityRole="alert" className="mb-2 pt-2 text-[14px] text-error">{props.message}</Text> : null}
       <Pressable testID="btn-enviar-formulario" disabled={props.busy} onPress={props.onSend} className={`h-[72px] flex-row items-center justify-center gap-2 rounded-2xl bg-primary ${props.busy ? 'opacity-60' : ''}`}>
         {props.busy ? <ActivityIndicator color={colors['on-primary']} /> : null}

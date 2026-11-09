@@ -690,6 +690,10 @@ después de cada cambio, Lilachat manda `form.preview.requested` firmado con
 
 - La respuesta `{blocks, errors?}` lleva bloques del kit (`metric`, `rows`, `chips`,
   `text`, hasta 8). Se dibujan arriba de «Enviar». `errors` va bajo cada campo.
+- **Plegado** (Wilson 02/11: «el resumen tapa casi todo»). Arranca en una
+  línea: «Resumen · 11,48 gl/m³ · 3 avisos» (`summaryHeadline`), en color de
+  aviso si hay avisos. Un toque lo abre, y abierto ocupa a lo sumo el 35 % de
+  la pantalla con su propio scroll. `FormSummary` en app y web.
 - Si falla o tarda, no hay resumen y se envía igual.
 - Rutas de Lilachat: `POST …/commands/:commandId/refresh` y `…/preview` con `{values}`.
   Responden 409 si el formulario no tiene `x-refresh` o `x-preview`.

@@ -154,3 +154,11 @@ export function previewReplyOf(raw: unknown): PreviewReply {
   const errors = Object.fromEntries(Object.entries(record(body.errors)).flatMap(([path, message]) => (typeof message === 'string' && message.trim() ? [[path, line(message, BLOCK_LIMITS.text)]] : [])));
   return { blocks: checked.ok ? checked.blocks : [], errors };
 }
+
+/** The folded summary in one line (Wilson 02/11: the summary covered the form): its main figure and how many warnings. */
+export function summaryHeadline(blocks: readonly BotBlock[]): string {
+  const metric = blocks.find((block): block is Extract<BotBlock, { type: 'metric' }> => block.type === 'metric');
+  const warnings = blocks.filter((block) => block.type === 'text' && (block.tone === 'warn' || block.tone === 'error')).length;
+  const figure = metric ? `${metric.value}${metric.unit ? ` ${metric.unit}` : ''}` : '';
+  return ['Resumen', figure, warnings ? `${warnings} ${warnings === 1 ? 'aviso' : 'avisos'}` : ''].filter(Boolean).join(' · ');
+}

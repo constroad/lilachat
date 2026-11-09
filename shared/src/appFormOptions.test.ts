@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FORMS_LEVEL, formFields, formLevelOf, initialValues, validateFormSpec, validateFormValues, type AppForm, type FormSchemaProperty } from './appForms.js';
-import { choiceOptions, draftValues, keptAfterRefresh, optionsForRow, previewReplyOf, rowTitleOf } from './appFormOptions.js';
+import { choiceOptions, draftValues, keptAfterRefresh, optionsForRow, previewReplyOf, summaryHeadline, rowTitleOf } from './appFormOptions.js';
 
 /**
  * Fuel consumption (agentes 2483da7, 30/10): Wilson picks the week's orders,
@@ -197,5 +197,20 @@ describe('a form that grows when its owner is picked (agentes bcf4966: Inframaq 
     const typed = { duenoId: 'acme', materialId: 'gone', fletero: 'ABC-123', m3: 12 };
     const grown = formFields(form({ duenoId: owner, materialId: material, fletero: plate, m3: cubes }));
     expect(keptAfterRefresh(grown, typed)).toEqual({ duenoId: 'acme', fletero: 'ABC-123', m3: 12 });
+  });
+});
+
+/** Wilson 02/11: «el resumen tapa casi todo». Folded, the summary is one line by the button. */
+describe('summaryHeadline, the folded summary', () => {
+  it('counts the warnings and errors', () => {
+    expect(summaryHeadline([
+      { type: 'text', text: 'Falta elegir al menos un pedido.', tone: 'warn' },
+      { type: 'text', text: 'Falta un tanque con inicio y fin.', tone: 'error' },
+      { type: 'metric', value: '11,48', unit: 'gl/m³', tone: 'neutral' },
+    ])).toBe('Resumen · 11,48 gl/m³ · 2 avisos');
+  });
+  it('says one warning in singular, and nothing extra when all is fine', () => {
+    expect(summaryHeadline([{ type: 'text', text: 'x', tone: 'warn' }])).toBe('Resumen · 1 aviso');
+    expect(summaryHeadline([{ type: 'text', text: 'Todo bien', tone: 'ok' }])).toBe('Resumen');
   });
 });

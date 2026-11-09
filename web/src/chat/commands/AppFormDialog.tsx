@@ -6,6 +6,7 @@ import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { CheckField, ChoiceField, DateField, LocationField, NumberField, PhotoField, TextField } from './AppFormFields';
 import { ListField } from './ListField';
+import { FormSummary } from './FormSummary';
 import { isRichChoice, MultiField, RichChoiceField } from './RichChoiceFields';
 import { PhotoListField } from './PhotoListField';
 import { LiveSelfie, type LiveSelfieHandle } from './LiveSelfie';
@@ -14,7 +15,6 @@ import type { PlaceLookup } from './usePlaceName';
 import { useLiveSigning } from './useLiveSigning';
 import { useFormLive } from './useFormLive';
 import { useAppFormState } from './useAppFormState';
-import { BotBlocksView } from '../botBlocks/BotBlocksView';
 
 /** The two steps of a signing, as design e-32 writes them. */
 const LIVE_CHOICE_KICKER = '1 · Qué marcas';
@@ -114,12 +114,7 @@ function FormIntro(props: { answer: EphemeralAnswer; refreshing: boolean; clock:
 function FormFooter(props: { summary: PreviewReply['blocks']; message: string; busy: boolean; label: string; note: string; onSend: () => void }) {
   return (
     <div>
-      {props.summary.length ? (
-        <section data-testid="formulario-resumen" className="mb-3 rounded-2xl border border-outline/15 p-3">
-          <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">Resumen</p>
-          <BotBlocksView blocks={props.summary} />
-        </section>
-      ) : null}
+      {props.summary.length ? <FormSummary blocks={props.summary} /> : null}
       {props.message ? <div data-testid="formulario-error" className="mb-2"><FieldError>{props.message}</FieldError></div> : null}
       <PrimaryButton testId="btn-enviar-formulario" disabled={props.busy} onClick={props.onSend}>{props.label}</PrimaryButton>
       {props.note ? <p className="mt-2 text-center text-[12px] text-on-surface-variant">{props.note}</p> : null}

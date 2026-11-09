@@ -4,7 +4,6 @@ import { dischargesOf } from './workMapProgress.js';
 import { mapPhotosOf, type MapPhoto } from './workMapPhotos.js';
 import { photoMarksOf, type PhotoMark } from './photoPhase.js';
 import { billingOf, type ServiceBilling } from './serviceBilling.js';
-import type { ClientRecord } from './spaceClients.js';
 /**
  * The detail of a client's service (José, 30/10: there was no way to see a
  * service's reports, orders and dispatches): agentes answers

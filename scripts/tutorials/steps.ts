@@ -67,6 +67,18 @@ async function typeInto(page: RecorderPage, selector: string, text: string): Pro
   return written.trim() === text.trim() ? null : `escribió «${text}» y el campo quedó en «${written}»`;
 }
 
+/** Picks an option of a select the way React hears it: the native setter, then «change». */
+async function chooseIn(page: RecorderPage, selector: string, value: string): Promise<string | null> {
+  if (!(await highlight(page, selector))) return `no encontró «${selector}»`;
+  const chosen = String(await page.evaluate(`(() => { const el = window.__tutorial.resolve(${JSON.stringify(selector)});
+    if (!(el instanceof HTMLSelectElement)) return '\u0000';
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(el, ${JSON.stringify(value)});
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    return el.value; })()`));
+  await sleep(CLICK_SETTLE_MS);
+  return chosen === value ? null : `«${selector}» no tiene la opción «${value}»`;
+}
+
 /** The offset that takes `selector` a share of the way to `toward`, read on screen at that moment. */
 async function offsetToward(page: RecorderPage, selector: string, toward: string, share: number): Promise<{ dx: number; dy: number } | null> {
   const [from, to] = [await boxOf(page, selector), await boxOf(page, toward)];
@@ -127,6 +139,7 @@ async function act(page: RecorderPage, action: TutorialAction, baseUrl: string):
   if (action.kind === 'tapMap') return tapMap(page, action.lat, action.lng);
   if (!(await waitFor(page, action.selector))) return `no encontró «${action.selector}»`;
   if (action.kind === 'type') return typeInto(page, action.selector, action.text);
+  if (action.kind === 'choose') return chooseIn(page, action.selector, action.value);
   if (action.kind === 'dragToward') {
     const offset = await offsetToward(page, action.selector, action.toward, action.share);
     return offset && (await dragBy(page, action.selector, offset.dx, offset.dy)) ? null : `no encontró «${action.toward}»`;

@@ -119,11 +119,11 @@ describe('ServiceMapWeb', () => {
     askServer.mockResolvedValue({ ok: true, data: { map: twoDays } });
     showMap();
     // Act
-    fireEvent.click(await screen.findByTestId('mapa-trabajo-base'));
+    fireEvent.change(await screen.findByTestId('mapa-trabajo'), { target: { value: 'base' } });
     fireEvent.change(screen.getByTestId('mapa-corte'), { target: { value: '2026-11-01' } });
     // Assert
     expect(screen.getByTestId('mapa-avance')).toHaveTextContent('100 m de 600 m');
-    expect(screen.getByTestId('mapa-trabajo-base')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('mapa-trabajo')).toHaveValue('base');
     expect(within(screen.getByTestId('mapa-corte')).getByRole('option', { name: 'Hasta el 1 nov' })).toBeInTheDocument();
   });
 
@@ -137,7 +137,8 @@ describe('ServiceMapWeb', () => {
 
   it('keeps Portal one tap away, in its own tab', async () => {
     showMap();
-    const open = await screen.findByTestId('mapa-abrir');
+    fireEvent.click(await screen.findByTestId('mapa-mas'));
+    const open = screen.getByTestId('mapa-abrir');
     expect(open).toHaveAttribute('href', `${url}/service/${serviceId}?section=map`);
     expect(open).toHaveAttribute('target', '_blank');
   });
@@ -150,12 +151,12 @@ describe('ServiceMapWeb', () => {
     expect(screen.getByTestId('mapa-calle-s2')).toHaveTextContent('Sin avance');
   });
 
-  it('a work chip narrows the map, and the other chips stay', async () => {
+  it('the work select narrows the map, and every work stays to pick (José 09/11: a select, not chips)', async () => {
     showMap();
-    fireEvent.click(await screen.findByTestId('mapa-trabajo-asfalto'));
+    fireEvent.change(await screen.findByTestId('mapa-trabajo'), { target: { value: 'asfalto' } });
     expect(screen.getByTestId('mapa-avance')).toHaveTextContent('0 %');
-    expect(screen.getByTestId('mapa-trabajo-base')).toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('mapa-trabajo-todos'));
+    expect(within(screen.getByTestId('mapa-trabajo')).getAllByRole('option')).toHaveLength(3);
+    fireEvent.change(screen.getByTestId('mapa-trabajo'), { target: { value: '' } });
     expect(screen.getByTestId('mapa-avance')).toHaveTextContent('40 %');
   });
 
@@ -168,7 +169,7 @@ describe('ServiceMapWeb', () => {
 
   it('a stage that lacks the chosen work does not leave an empty map', async () => {
     showMap();
-    fireEvent.click(await screen.findByTestId('mapa-trabajo-asfalto'));
+    fireEvent.change(await screen.findByTestId('mapa-trabajo'), { target: { value: 'asfalto' } });
     fireEvent.change(screen.getByTestId('mapa-etapa'), { target: { value: 'e2' } });
     expect(screen.getByTestId('mapa-calle-s2')).toBeInTheDocument();
   });
@@ -194,6 +195,7 @@ describe('ServiceMapWeb', () => {
     await screen.findByTestId('mapa-lienzo');
     fireEvent.change(screen.getByTestId('mapa-etapa'), { target: { value: 'e1' } });
     // Act
+    fireEvent.click(screen.getByTestId('mapa-mas'));
     fireEvent.click(screen.getByTestId('mapa-exportar'));
     fireEvent.click(screen.getByTestId('mapa-descargar-kmz'));
     // Assert
@@ -211,6 +213,7 @@ describe('ServiceMapWeb', () => {
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
     showMap();
     await screen.findByTestId('mapa-lienzo');
+    fireEvent.click(screen.getByTestId('mapa-mas'));
     fireEvent.click(screen.getByTestId('mapa-exportar'));
     // Act
     fireEvent.click(screen.getByTestId('mapa-copiar-enlace-visor'));
@@ -395,7 +398,8 @@ describe('ServiceMapWeb', () => {
     const drawStreet = vi.fn<StreetSend>(async () => ({ ok: true, message: 'Calle guardada.' }));
     taps.count = 1;
     showMap(undefined, { drawStreet });
-    fireEvent.click(await screen.findByTestId('mapa-nueva-calle'));
+    fireEvent.click(await screen.findByTestId('mapa-mas'));
+    fireEvent.click(screen.getByTestId('mapa-nueva-calle'));
     // Act
     fireEvent.click(await screen.findByTestId('mapa-tocar'));
     // Assert
@@ -418,7 +422,8 @@ describe('ServiceMapWeb', () => {
     askServer.mockResolvedValue({ ok: true, data: { map: workMap } });
     const drawStreet = vi.fn<StreetSend>(async () => ({ ok: false, message: 'Ese trazo deja fuera un avance aprobado.' }));
     showMap(undefined, { drawStreet });
-    fireEvent.click(await screen.findByTestId('mapa-nueva-calle'));
+    fireEvent.click(await screen.findByTestId('mapa-mas'));
+    fireEvent.click(screen.getByTestId('mapa-nueva-calle'));
     fireEvent.click(await screen.findByTestId('editor-modo-hand'));
     fireEvent.click(await screen.findByTestId('mapa-tocar'));
     fireEvent.click(screen.getByTestId('mapa-tocar'));

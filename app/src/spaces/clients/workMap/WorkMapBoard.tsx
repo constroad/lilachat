@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
-import { ArchiveRestore, ChevronRight, Download, ExternalLink, Layers, Maximize2, Paintbrush, Plus, Share2, TrendingUp, X } from 'lucide-react-native';
-import { bareLinesOf, visibleStationMarks, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, withPendingLines, type PendingProgress, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StationMark, type StretchRange, type UnitDischarge, type MapPhoto, type ManualProgressDraft, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { ChevronRight, Maximize2, Share2, TrendingUp, X } from 'lucide-react-native';
+import { bareLinesOf, visibleStationMarks, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, withPendingLines, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StationMark, type StretchRange, type UnitDischarge, type MapPhoto, type ManualProgressDraft, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
@@ -9,7 +9,8 @@ import { useMargenes } from '../../../ui/useMargenes';
 import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
 import { ShareProgress } from './ShareProgress';
-import { WorkMapFilters, WorkMapLegend } from './WorkMapFilters';
+import { WorkMapFilters } from './WorkMapFilters';
+import { MapMoreMenu } from './MapMoreMenu';
 import { WorkMapPanel } from './WorkMapPanel';
 import type { StreetDeleteSend } from './StreetDelete';
 import type { PhotoAsset } from './ManualProgress';
@@ -72,47 +73,16 @@ function StreetPick(props: { target: ProgressTarget | null; onPick: (streetId: s
   );
 }
 
-function TitleRow(props: { pageUrl: string; onExport: () => void; onShare: () => void; onDraw?: () => void; onDeleted?: () => void }) {
+/** Title, «Más» and «Compartir» (o-01; José 09/11: the other buttons were piled up here). */
+function TitleRow(props: { onShare: () => void; onMore: (key: MapMoreKey) => void; draws: boolean; edits: boolean; admin: boolean }) {
   const colors = useColores();
   return (
-    <View className="gap-2">
-      <Text className="text-[20px] font-bold text-on-surface">Mapa de la obra</Text>
-      <View className="flex-row items-center justify-end gap-2">
-        {props.onDraw ? (
-          <Pressable testID="mapa-nueva-calle" accessibilityLabel="Nueva calle" onPress={props.onDraw} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20">
-            <Plus size={18} color={colors['on-surface']} />
-          </Pressable>
-        ) : null}
-        {props.onDeleted ? (
-          <Pressable testID="mapa-borrados-abrir" accessibilityLabel="Borrados" onPress={props.onDeleted} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20">
-            <ArchiveRestore size={18} color={colors['on-surface']} />
-          </Pressable>
-        ) : null}
-        <Pressable testID="mapa-abrir" accessibilityLabel="Abrir en Portal" onPress={() => void Linking.openURL(props.pageUrl)} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20">
-          <ExternalLink size={18} color={colors['on-surface']} />
-        </Pressable>
-        <Pressable testID="mapa-exportar" accessibilityLabel="Exportar" onPress={props.onExport} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20">
-          <Download size={18} color={colors['on-surface']} />
-        </Pressable>
-        <Pressable testID="mapa-compartir" onPress={props.onShare} className="h-11 flex-row items-center gap-2 rounded-xl bg-primary px-3">
-          <Share2 size={18} color={colors['on-primary']} />
-          <Text className="text-[15px] font-semibold text-on-primary">Compartir</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-/** «Etapas» and «Trabajos» under «Registrar avance» (o-04, o-05): the title row has no room left. */
-function LayerButtons(props: { onOpen: (kind: LayersKind) => void }) {
-  const colors = useColores();
-  return (
-    <View className="flex-row gap-2">
-      <Pressable testID="mapa-etapas-abrir" onPress={() => props.onOpen('stages')} className="min-h-[48px] flex-1 flex-row items-center justify-center gap-2 rounded-xl border border-outline/25 bg-surface">
-        <Layers size={18} color={colors['on-surface']} /><Text className="text-[15px] font-semibold text-on-surface">Etapas</Text>
-      </Pressable>
-      <Pressable testID="mapa-trabajos-abrir" onPress={() => props.onOpen('works')} className="min-h-[48px] flex-1 flex-row items-center justify-center gap-2 rounded-xl border border-outline/25 bg-surface">
-        <Paintbrush size={18} color={colors['on-surface']} /><Text className="text-[15px] font-semibold text-on-surface">Trabajos</Text>
+    <View className="flex-row items-center gap-2">
+      <Text className="flex-1 text-[20px] font-bold text-on-surface">Mapa de la obra</Text>
+      <MapMoreMenu onPick={props.onMore} draws={props.draws} edits={props.edits} admin={props.admin} />
+      <Pressable testID="mapa-compartir" onPress={props.onShare} className="h-11 flex-row items-center gap-2 rounded-xl bg-primary px-3">
+        <Share2 size={18} color={colors['on-primary']} />
+        <Text className="text-[15px] font-semibold text-on-primary">Compartir</Text>
       </Pressable>
     </View>
   );
@@ -151,18 +121,23 @@ export function WorkMapBoard(props: BoardProps) {
   // José 09/11: what was sent waits here until approved, instead of vanishing. It is drawn over its street too.
   const pending = props.editMap ? <PendingProgressCard send={props.editMap} admin={Boolean(props.admin)} reloadKey={map} onList={setPendingItems} /> : null;
   const top = discharges || primeCoat || pending ? <View className="gap-5">{pending}{discharges}{primeCoat}</View> : null;
+  const more = (key: MapMoreKey) => {
+    if (key === 'draw') props.onDraw?.();
+    else if (key === 'stages' || key === 'works') setLayers(key);
+    else if (key === 'export') setSide('export');
+    else if (key === 'open') void Linking.openURL(pageUrl);
+    else setSeeingDeleted(true);
+  };
   return (
     <View testID="mapa-servicio" className="gap-3">
-      <TitleRow pageUrl={pageUrl} onExport={() => setSide('export')} onShare={() => setSide('share')} onDraw={props.onDraw} onDeleted={props.admin && props.editMap ? () => setSeeingDeleted(true) : undefined} />
+      <TitleRow onShare={() => setSide('share')} onMore={more} draws={Boolean(props.onDraw)} edits={Boolean(props.editMap)} admin={Boolean(props.admin)} />
       {props.editMap && target.kind !== 'none' ? (
         <Pressable testID="mapa-registrar-avance" onPress={() => (target.kind === 'street' ? openStreet(target.streetId, true) : setChoosing(target))} className="min-h-[52px] flex-row items-center justify-center gap-2 rounded-xl bg-primary">
           <TrendingUp size={18} color={colors['on-primary']} />
           <Text className="text-[16px] font-semibold text-on-primary">Registrar avance</Text>
         </Pressable>
       ) : null}
-      {props.editMap ? <LayerButtons onOpen={setLayers} /> : null}
-      <WorkMapFilters map={map} view={view} filter={filter} onFilter={setFilter} />
-      <WorkMapLegend view={view} />
+      <WorkMapFilters map={map} view={view} filter={filter} onFilter={setFilter} waiting={pendingItems.length} />
       {props.notice ? <Text testID="mapa-aviso" accessibilityRole="alert" className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-[14px] font-semibold text-on-surface">{props.notice}</Text> : null}
       <View className="-mx-4 overflow-hidden bg-surface-variant" style={{ height }}>
         <View pointerEvents="none" className="absolute inset-0">

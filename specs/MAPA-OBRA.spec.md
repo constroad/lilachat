@@ -1245,3 +1245,39 @@ sigue pidiendo uno; se le preguntó a Portal si reusa el vigente.
   - Sus teselas son imágenes: el toque sobre la calle se rompe salvo que se carguen además las de OpenFreeMap, invisibles.
   - Tampoco se parece al diseño.
   - Queda como opción de José si prefiere su aspecto.
+
+## Barra del mapa ordenada: «Más», trabajo en selector y leyenda plegable (José 09/11)
+
+José, con capturas del APK y de la web: «todo desordenado… ¿eso es diseño Stitch?
+¿Por qué no agrupa un Más y abre un menú de opciones?». Además: el selector de
+capas tiene que ser un select y la leyenda tiene que seguir el mismo criterio.
+
+**No era Stitch.** El `o-01` tiene tres acciones: «Registrar avance»,
+«Compartir» y «Editar obra», más Etapa y día como selectores. Nueva calle,
+Etapas, Trabajos, Borrados, Abrir en Portal y Exportar se fueron sumando como
+botones sueltos.
+
+Cómo quedó (`shared/src/workMapMenu.ts`, puro, con test):
+- **Barra:**
+  - Web: pantalla completa, «Más», «Compartir» y «Registrar avance».
+  - APK: título, «Más» y «Compartir»; debajo, «Registrar avance» a todo el ancho.
+- **«Más»** (`mapMoreItems`) lista, en este orden:
+  - Nueva calle, Etapas y Trabajos: para quien edita.
+  - Exportar y Abrir en Portal: para todos.
+  - Borrados: para un admin que edita.
+  - Web: menú desplegable; se cierra con Escape o con un clic afuera.
+  - APK: hoja inferior con filas de 52 dp.
+  - Cada opción conserva el `testid` que tenía su botón, para el E2E y los
+    guiones de tutorial. Los guiones tienen que abrir antes `mapa-mas`.
+- **Trabajo** (`workChoicesOf`): un selector «Todos los trabajos» o
+  «Nombre · 41,5 %», con el punto de color del elegido.
+  - Web: `select` nativo (`mapa-trabajo`).
+  - APK: chip que abre la hoja de opciones con el color de cada trabajo.
+  - Desaparece la fila de chips, que se cortaba con los nombres largos.
+- **Leyenda** (`mapLegendEntries`): plegada hasta tocar «Leyenda»
+  (`mapa-leyenda-abrir`). Abierta muestra una línea por trabajo,
+  «Pendiente de ejecución» y, solo si hay algo esperando, «Por aprobar (N)»,
+  con la franja clara que el mapa dibuja sobre la calle.
+
+Pendiente: los tutoriales 1 a 3 se vuelven a grabar con esta barra cuando José
+avise.

@@ -1,29 +1,27 @@
-import { CalendarDays } from 'lucide-react';
-import { workMapCutDays, workMapCutLabel, workMapDayFilter, workMapStageFilter, workMapWorkFilter, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { useState } from 'react';
+import { CalendarDays, ChevronDown } from 'lucide-react';
+import { mapLegendEntries, workChoicesOf, workMapCutDays, workMapCutLabel, workMapDayFilter, workMapStageFilter, workMapWorkFilter, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { KICKER } from './WorkMapPanel';
 
-const CHIP = 'flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-[12px] font-semibold';
-const CHIP_ON = 'border-primary bg-primary text-on-primary';
-const CHIP_OFF = 'border-outline/20 bg-surface text-on-surface hover:bg-background';
 /** A white card over the map (o-01): its border carries the hierarchy, its shadow almost none. */
 const FLOATING = 'rounded-xl border border-outline/15 bg-surface shadow-sm';
 const SELECT = 'h-8 min-w-0 rounded-lg bg-transparent pr-1 text-[13px] font-semibold text-primary outline-none';
 
 type FilterProps = { map: WorkMap; view: WorkMapView; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void };
 
-function WorkChips(props: FilterProps) {
+/** The works as a select, not a row of chips (José 09/11): long names fit, and the chosen one keeps its color. */
+function WorkSelect(props: FilterProps) {
   const { view, filter } = props;
   if (!view.works.length) return null;
+  const color = view.works.find((work) => work.id === filter.workId)?.color;
   return (
-    <div className="flex min-w-0 gap-1.5 overflow-x-auto">
-      <button type="button" data-testid="mapa-trabajo-todos" aria-pressed={!filter.workId} onClick={() => props.onFilter(workMapWorkFilter(filter))} className={`${CHIP} ${filter.workId ? CHIP_OFF : CHIP_ON}`}>Todos</button>
-      {view.works.map((work) => (
-        <button key={work.id} type="button" data-testid={`mapa-trabajo-${work.id}`} aria-pressed={filter.workId === work.id} onClick={() => props.onFilter(workMapWorkFilter(filter, work.id))} className={`${CHIP} ${filter.workId === work.id ? CHIP_ON : CHIP_OFF}`}>
-          <span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: work.color }} />
-          {work.name} <span className="font-mono tabular-nums">{work.percent}%</span>
-        </button>
-      ))}
-    </div>
+    <label className="flex h-10 min-w-0 items-center gap-2 px-3">
+      <span className={KICKER}>Trabajo</span>
+      {color ? <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} /> : null}
+      <select data-testid="mapa-trabajo" aria-label="Trabajo" value={filter.workId ?? ''} onChange={(event) => props.onFilter(workMapWorkFilter(filter, event.target.value || undefined))} className={`${SELECT} max-w-[260px] truncate`}>
+        {workChoicesOf(view).map((choice) => <option key={choice.id} value={choice.id}>{choice.label}</option>)}
+      </select>
+    </label>
   );
 }
 
@@ -58,11 +56,11 @@ function CutSelect(props: FilterProps) {
 }
 
 /** Works, stage and day: cards floating over the map on a wide screen, rows over it on a narrow one (o-01). */
-export function MapFilters(props: FilterProps & { floating: boolean }) {
+export function MapFilters(props: FilterProps & { floating: boolean; waiting: number }) {
   if (props.floating) {
     return (
       <div className="pointer-events-none absolute inset-x-4 top-4 z-10 flex flex-wrap items-start gap-2 pr-12">
-        {props.view.works.length ? <div className={`pointer-events-auto max-w-full p-1.5 ${FLOATING}`}><WorkChips {...props} /></div> : null}
+        {props.view.works.length ? <div className={`pointer-events-auto max-w-full ${FLOATING}`}><WorkSelect {...props} /></div> : null}
         {props.map.stages.length ? <div className={`pointer-events-auto ${FLOATING}`}><StageSelect {...props} /></div> : null}
         <div className={`pointer-events-auto ${FLOATING}`}><CutSelect {...props} /></div>
       </div>
@@ -75,34 +73,37 @@ export function MapFilters(props: FilterProps & { floating: boolean }) {
         <span className="font-mono text-[12px] text-on-surface-variant">{props.view.streets.length === 1 ? '1 calle' : `${props.view.streets.length} calles`}</span>
         <div className="ml-auto rounded-lg border border-outline/20"><CutSelect {...props} /></div>
       </div>
-      <WorkChips {...props} />
+      {props.view.works.length ? <div className="min-w-0 rounded-lg border border-outline/20"><WorkSelect {...props} /></div> : null}
+      <MapLegend view={props.view} waiting={props.waiting} compact />
     </div>
   );
 }
 
-/** «Convenciones» (o-01): each work's line, and the dashed one still to build. */
-export function MapLegend(props: { view: WorkMapView; compact: boolean }) {
-  const pending = <span className="flex items-center gap-2 text-[12px] text-on-surface-variant"><span aria-hidden className="w-4 shrink-0 border-t-2 border-dashed border-on-surface-variant/60" />Pendiente de ejecución</span>;
-  // On a phone it floated over the top-left of the map and hid the streets there (José 08/11, tutorial video): a row above the map.
-  if (props.compact) {
-    return (
-      <div data-testid="mapa-leyenda" className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 pb-2 text-[12px] font-medium text-on-surface">
-        {props.view.works.map((work) => (
-          <span key={work.id} className="flex items-center gap-2"><span aria-hidden className="h-1 w-4 shrink-0 rounded-full" style={{ backgroundColor: work.color }} />{work.name}</span>
-        ))}
-        {pending}
-      </div>
-    );
-  }
-  return (
-    <div data-testid="mapa-leyenda" className={`pointer-events-none absolute bottom-4 left-4 z-10 max-w-[320px] p-3 ${FLOATING}`}>
-      <p className={`${KICKER} mb-2`}>Convenciones</p>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[12px] font-medium text-on-surface">
-        {props.view.works.map((work) => (
-          <span key={work.id} className="flex items-center gap-2"><span aria-hidden className="h-1 w-4 shrink-0 rounded-full" style={{ backgroundColor: work.color }} />{work.name}</span>
-        ))}
-      </div>
-      <p className="mt-2 border-t border-outline/10 pt-2">{pending}</p>
-    </div>
+const swatchOf = (entry: ReturnType<typeof mapLegendEntries>[number]) => {
+  if (entry.kind === 'todo') return <span aria-hidden className="w-4 shrink-0 border-t-2 border-dashed border-on-surface-variant/60" />;
+  // An approval waits: the wide, pale band the map draws over the street.
+  if (entry.kind === 'waiting') return <span aria-hidden className="h-2.5 w-4 shrink-0 rounded-full bg-on-surface/30" />;
+  return <span aria-hidden className="h-1 w-4 shrink-0 rounded-full" style={{ backgroundColor: entry.color ?? undefined }} />;
+};
+
+/**
+ * «Convenciones» (o-01), folded until asked (José 09/11): open, one line per work, what is still to
+ * build and, when something waits, what is to approve. Over the map's corner on a wide screen.
+ */
+export function MapLegend(props: { view: WorkMapView; waiting: number; compact: boolean }) {
+  const [open, setOpen] = useState(false);
+  const entries = mapLegendEntries(props.view, props.waiting);
+  const toggle = (
+    <button type="button" data-testid="mapa-leyenda-abrir" aria-expanded={open} onClick={() => setOpen((shown) => !shown)} className="flex h-9 items-center gap-2 px-3 text-[12px] font-semibold text-on-surface">
+      <span className="flex -space-x-1">{props.view.works.slice(0, 4).map((work) => <span key={work.id} aria-hidden className="h-2.5 w-2.5 rounded-full ring-2 ring-surface" style={{ backgroundColor: work.color }} />)}</span>
+      Leyenda <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+    </button>
   );
+  const list = open ? (
+    <ul data-testid="mapa-leyenda" className="space-y-1.5 px-3 pb-3 text-[12px] font-medium text-on-surface">
+      {entries.map((entry) => <li key={entry.key} className={`flex items-center gap-2 ${entry.kind === 'work' ? '' : 'text-on-surface-variant'}`}>{swatchOf(entry)}<span className="min-w-0">{entry.label}</span></li>)}
+    </ul>
+  ) : null;
+  if (props.compact) return <div className="rounded-lg border border-outline/20">{toggle}{list}</div>;
+  return <div className={`absolute bottom-4 left-4 z-10 max-w-[320px] ${FLOATING}`}>{list}{toggle}</div>;
 }

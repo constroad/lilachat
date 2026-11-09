@@ -1,7 +1,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { lazyChunk } from '../../../ui/lazyChunk';
-import { ArchiveRestore, ChevronRight, Download, ExternalLink, Layers, Maximize2, Minimize2, Paintbrush, Plus, Share2, TrendingUp, Undo2, X } from 'lucide-react';
-import { bareLinesOf, visibleStationMarks, brushLinesOf, brushTitle, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, withPendingLines, type PendingProgress, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type MapPhoto, type ManualProgressDraft } from '@lilachat/shared';
+import { ChevronRight, Maximize2, Minimize2, Paintbrush, Share2, TrendingUp, Undo2, X } from 'lucide-react';
+import { bareLinesOf, visibleStationMarks, brushLinesOf, brushTitle, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, withPendingLines, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type UnitDischarge, type WorkMap, type WorkMapFilter, type StretchRange, type MapPhoto, type ManualProgressDraft } from '@lilachat/shared';
 import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
 import { ShareProgress } from './ShareProgress';
@@ -14,6 +14,7 @@ import { useBrush, WorkLayers, type LayersKind } from './WorkLayers';
 import { PhotoToggle, usePhotoLayer } from './MapPhotos';
 import { PrimeCoatSuggestions } from './PrimeCoat';
 import { PendingProgressCard } from './PendingProgress';
+import { MapMoreMenu } from './MapMoreMenu';
 
 const WorkMapCanvas = lazyChunk(() => import('./WorkMapCanvas'));
 
@@ -98,21 +99,22 @@ function StreetPick(props: { streets: Array<{ id: string; name: string }>; onPic
   );
 }
 
-function Actions(props: { pageUrl: string; expanded: boolean; wide: boolean; onToggle: () => void; onExport: () => void; onShare: () => void; onRecord?: () => void; onDraw?: () => void; onDeleted?: () => void; onLayers?: (kind: LayersKind) => void }) {
-  const label = (text: string) => (props.wide ? text : <span className="sr-only">{text}</span>);
-  /** Secondary actions stay an icon with its name (design o-01): the bar keeps room for the crumbs and tabs. */
-  const quiet = (text: string) => <span className="sr-only">{text}</span>;
+type ActionProps = { pageUrl: string; expanded: boolean; wide: boolean; onToggle: () => void; onExport: () => void; onShare: () => void; onRecord?: () => void; onDraw?: () => void; onDeleted?: () => void; onLayers?: (kind: LayersKind) => void };
+
+/** «Registrar avance», «Compartir» and «Más» (o-01; José 09/11: the rest was piled up beside them). */
+function Actions(props: ActionProps) {
+  const pick = (key: Exclude<MapMoreKey, 'open'>) => {
+    if (key === 'draw') props.onDraw?.();
+    else if (key === 'stages' || key === 'works') props.onLayers?.(key);
+    else if (key === 'export') props.onExport();
+    else props.onDeleted?.();
+  };
   return (
     <div className={`flex shrink-0 items-center gap-2 ${props.wide ? 'pb-3' : 'pb-2'}`}>
       <button type="button" data-testid="mapa-pantalla-completa" title={props.expanded ? 'Salir de pantalla completa' : 'Pantalla completa'} onClick={props.onToggle} className={ACTION}>
-        {props.expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />} {quiet(props.expanded ? 'Salir de pantalla completa' : 'Pantalla completa')}
+        {props.expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />} <span className="sr-only">{props.expanded ? 'Salir de pantalla completa' : 'Pantalla completa'}</span>
       </button>
-      {props.onDraw ? <button type="button" data-testid="mapa-nueva-calle" onClick={props.onDraw} className={ACTION}><Plus size={16} /> {label('Nueva calle')}</button> : null}
-      {props.onLayers ? <button type="button" data-testid="mapa-etapas-abrir" title="Etapas" onClick={() => props.onLayers?.('stages')} className={ACTION}><Layers size={16} /> {label('Etapas')}</button> : null}
-      {props.onLayers ? <button type="button" data-testid="mapa-trabajos-abrir" title="Trabajos" onClick={() => props.onLayers?.('works')} className={ACTION}><Paintbrush size={16} /> {label('Trabajos')}</button> : null}
-      {props.onDeleted ? <button type="button" data-testid="mapa-borrados-abrir" title="Borrados" onClick={props.onDeleted} className={ACTION}><ArchiveRestore size={16} /> {quiet('Borrados')}</button> : null}
-      <a data-testid="mapa-abrir" title="Abrir en Portal" href={props.pageUrl} target="_blank" rel="noopener noreferrer" className={ACTION}><ExternalLink size={16} /> {quiet('Abrir en Portal')}</a>
-      <button type="button" data-testid="mapa-exportar" onClick={props.onExport} className={ACTION}><Download size={16} /> {label('Exportar')}</button>
+      <MapMoreMenu pageUrl={props.pageUrl} onPick={pick} draws={Boolean(props.onDraw)} edits={Boolean(props.onLayers)} admin={Boolean(props.onDeleted)} className={ACTION} />
       <button type="button" data-testid="mapa-compartir" onClick={props.onShare} className={ACTION}><Share2 size={16} /> {props.wide ? 'Compartir avance' : 'Compartir'}</button>
       {props.onRecord ? <button type="button" data-testid="mapa-registrar-avance" onClick={props.onRecord} className={`${ACTION} border-primary bg-primary text-on-primary hover:bg-primary/90`}><TrendingUp size={16} /> {props.wide ? 'Registrar avance' : 'Registrar'}</button> : null}
     </div>
@@ -184,13 +186,13 @@ export function WorkMapBoard(props: BoardProps) {
   const panel = deletedPanel ?? layersPanel ?? sidePanel ?? pickPanel ?? (streetPanel ?? <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} scrolls={wide} deleteStreet={props.deleteStreet} onOpenStreet={(id) => openStreet(id)} />);
   return (
     <div ref={holder} data-testid="mapa-servicio" data-expanded={expanded} data-wide={wide} className={`flex flex-col bg-background ${expanded ? 'fixed inset-0 z-50' : 'min-h-0 flex-1'} ${wide ? 'overflow-hidden' : 'overflow-y-auto'}`}>
-      <header className={`${MAP_HEAD_BAR} flex-wrap`}>
+      <header className={`${MAP_HEAD_BAR} relative z-20 flex-wrap`}>
         <div className="min-w-0 flex-1">{props.head}{wide ? props.tabs : null}</div>
         <Actions pageUrl={pageUrl} expanded={expanded} wide={wide} onToggle={expanded ? close : open} onExport={() => toggleSide('export')} onShare={() => toggleSide('share')} onRecord={props.editMap && target.kind !== 'none' ? () => { setSide(null); record(); } : undefined} onDraw={props.onDraw} onDeleted={props.admin && props.editMap ? () => setSeeingDeleted((shown) => !shown) : undefined} onLayers={props.editMap ? (kind) => { setSide(null); brushing.setBrush(null); setLayers((shown) => (shown === kind ? null : kind)); } : undefined} />
         {wide ? null : <div className="-mt-2 min-w-0 basis-full">{props.tabs}</div>}
       </header>
-      {wide ? null : <MapFilters map={map} view={view} filter={filter} onFilter={setFilter} floating={false} />}
-      {wide ? null : <MapLegend view={view} compact />}
+      {wide ? null : <MapFilters map={map} view={view} filter={filter} onFilter={setFilter} floating={false} waiting={pendingItems.length} />}
+      
       {props.notice ? <p role="status" data-testid="mapa-aviso" className="mx-4 mb-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-[13px] font-semibold text-on-surface">{props.notice}</p> : null}
       <div className={wide ? 'flex min-h-0 flex-1' : 'flex flex-col'}>
         <div className={`relative overflow-hidden bg-surface-variant ${wide ? 'min-w-0 flex-1' : 'h-[58vh] min-h-[320px] shrink-0'}`}>
@@ -198,9 +200,9 @@ export function WorkMapBoard(props: BoardProps) {
             <WorkMapCanvas view={view} expanded={expanded} stations={stations} bare={bare} pins={photoLayer.shown ? photoLayer.pins : pista.pins} onPin={photoLayer.shown ? photoLayer.openPin : undefined} stretches={brushing.brush ? brushLines : stretches} onTap={brushing.brush ? (place) => void brushing.tap(place) : undefined} />
           </Suspense>
           {photoLayer.available && !brushing.brush ? <PhotoToggle shown={photoLayer.shown} count={photoLayer.count} onToggle={photoLayer.toggle} /> : null}
-          {wide && !brushing.brush ? <MapFilters map={map} view={view} filter={filter} onFilter={setFilter} floating /> : null}
+          {wide && !brushing.brush ? <MapFilters map={map} view={view} filter={filter} onFilter={setFilter} floating waiting={pendingItems.length} /> : null}
           {brushing.brush ? <BrushBand title={brushTitle(map, brushing.brush)} error={brushing.error} busy={brushing.busy} canUndo={brushing.canUndo} onUndo={() => void brushing.undo()} onDone={() => brushing.setBrush(null)} /> : null}
-          {wide ? <MapLegend view={view} compact={false} /> : null}
+          {wide ? <MapLegend view={view} waiting={pendingItems.length} compact={false} /> : null}
         </div>
         <aside className={wide ? 'flex w-[380px] shrink-0 flex-col overflow-hidden border-l border-outline/15 bg-surface xl:w-[400px]' : 'relative z-10 -mt-5 flex flex-col overflow-hidden rounded-t-3xl border-t border-outline/15 bg-surface shadow-[0_-8px_24px_rgb(0_0_0/0.08)]'}>
           {wide ? null : <span aria-hidden className="mx-auto mt-2 h-1 w-10 rounded-full bg-outline/30" />}

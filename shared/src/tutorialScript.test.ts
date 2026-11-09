@@ -95,3 +95,13 @@ describe('validateTutorialScript', () => {
     ]);
   });
 });
+
+describe('«choose» picks an option of a select (José 09/11: the works filter is a select)', () => {
+  it('needs its selector; the empty value is the «all» option and is valid', () => {
+    // Arrange
+    const step = (action: { kind: 'choose'; selector: string; value: string }) => scriptOf({ steps: [{ say: twelve, action }] });
+    // Act / Assert
+    expect(validateTutorialScript(step({ kind: 'choose', selector: 'testid:mapa-trabajo', value: '' })).errors).toEqual([]);
+    expect(validateTutorialScript(step({ kind: 'choose', selector: ' ', value: 'w1' })).errors.join(' ')).toContain('«choose» sin selector');
+  });
+});

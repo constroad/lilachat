@@ -15,6 +15,8 @@ export type TutorialAction =
   | { kind: 'hover'; selector: string }
   /** Types key by key: a value set by hand is not seen by React. */
   | { kind: 'type'; selector: string; text: string }
+  /** Picks an option of a select by its value ('' is the «all» one): a native list does not film. */
+  | { kind: 'choose'; selector: string; value: string }
   /** Presses a key on the focused element (Enter to search). */
   | { kind: 'press'; key: string }
   /** Drags an element by an offset in CSS pixels. */
@@ -94,6 +96,7 @@ const ACTION_COST_MS: Record<TutorialAction['kind'], number> = {
   click: 900,
   hover: 700,
   type: 1800,
+  choose: 900,
   press: 700,
   drag: 1600,
   dragToward: 1600,

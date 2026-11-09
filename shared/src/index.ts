@@ -212,3 +212,4 @@ export * from './tutorialScript.js';
 export * from './photoPhase.js';
 export * from './workPrimeCoat.js';
 export * from './workLayerEdit.js';
+export * from './workMapMenu.js';

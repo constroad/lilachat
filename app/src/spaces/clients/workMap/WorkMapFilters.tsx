@@ -1,13 +1,13 @@
 import { useState, type ReactNode } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { CalendarDays, Check, ChevronDown } from 'lucide-react-native';
-import { workMapCutChip, workMapCutDays, workMapCutLabel, workMapDayFilter, workMapStageFilter, workMapWorkFilter, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { mapLegendEntries, workChoiceLabel, workChoicesOf, workMapCutChip, workMapCutDays, workMapCutLabel, workMapDayFilter, workMapStageFilter, workMapWorkFilter, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
 import { KICKER } from './WorkMapPanel';
 
 type FilterProps = { map: WorkMap; view: WorkMapView; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void };
-type Choice = { testID: string; label: string; on: boolean; pick: () => void };
+type Choice = { testID: string; label: string; on: boolean; pick: () => void; color?: string | null };
 
 function ChoiceSheet(props: { title: string; open: boolean; onClose: () => void; choices: Choice[] }) {
   const colors = useColores();
@@ -16,7 +16,10 @@ function ChoiceSheet(props: { title: string; open: boolean; onClose: () => void;
       <Text className={`${KICKER} mb-2`}>{props.title}</Text>
       {props.choices.map((choice) => (
         <Pressable key={choice.testID} testID={choice.testID} accessibilityState={{ selected: choice.on }} onPress={() => { choice.pick(); props.onClose(); }} className="min-h-[48px] flex-row items-center justify-between border-b border-outline/10">
-          <Text className={`text-[15px] ${choice.on ? 'font-semibold text-primary' : 'text-on-surface'}`}>{choice.label}</Text>
+          <View className="flex-1 flex-row items-center gap-2">
+            {choice.color ? <View className="h-3 w-3 rounded-full" style={{ backgroundColor: choice.color }} /> : null}
+            <Text className={`flex-1 text-[15px] ${choice.on ? 'font-semibold text-primary' : 'text-on-surface'}`}>{choice.label}</Text>
+          </View>
           {choice.on ? <Check size={18} color={colors.primary} /> : null}
         </Pressable>
       ))}
@@ -62,52 +65,59 @@ function StageAndDay(props: FilterProps) {
   );
 }
 
-function WorkChips(props: FilterProps) {
+/** The works as a select, not a row of chips (José 09/11), and the legend folded beside it. */
+function WorkAndLegend(props: FilterProps & { waiting: number }) {
   const { view, filter, onFilter } = props;
-  if (!view.works.length) return null;
-  const chip = (on: boolean) => `min-h-[36px] flex-row items-center gap-1.5 rounded-lg border px-3 ${on ? 'border-primary bg-primary' : 'border-outline/20 bg-surface'}`;
-  return (
-    <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-      <Pressable testID="mapa-trabajo-todos" accessibilityState={{ selected: !filter.workId }} onPress={() => onFilter(workMapWorkFilter(filter))} className={chip(!filter.workId)}>
-        <Text className={`text-[13px] font-semibold ${filter.workId ? 'text-on-surface' : 'text-on-primary'}`}>Todos</Text>
-      </Pressable>
-      {view.works.map((work) => {
-        const on = filter.workId === work.id;
-        return (
-          <Pressable key={work.id} testID={`mapa-trabajo-${work.id}`} accessibilityState={{ selected: on }} onPress={() => onFilter(workMapWorkFilter(filter, work.id))} className={chip(on)}>
-            <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: work.color }} />
-            <Text className={`text-[13px] font-semibold ${on ? 'text-on-primary' : 'text-on-surface'}`}>{work.name} <Text className="font-mono">{work.percent}%</Text></Text>
-          </Pressable>
-        );
-      })}
-    </ScrollView>
-  );
-}
-
-/** The rows over the map (o-01, phone): stage, how many streets, the cut day, and the works. */
-export function WorkMapFilters(props: FilterProps) {
+  const colors = useColores();
+  const [picking, setPicking] = useState(false);
+  const [legend, setLegend] = useState(false);
+  const chosen = view.works.find((work) => work.id === filter.workId);
   return (
     <View className="gap-2">
-      <StageAndDay {...props} />
-      <WorkChips {...props} />
+      <View className="flex-row gap-2">
+        {view.works.length ? (
+          <Pressable testID="mapa-trabajo" onPress={() => setPicking(true)} className="min-h-[44px] flex-1 flex-row items-center gap-2 rounded-lg border border-outline/20 bg-surface px-3">
+            {chosen ? <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: chosen.color }} /> : null}
+            <Text numberOfLines={1} className="flex-1 text-[14px] font-semibold text-on-surface">{workChoiceLabel(view, filter.workId)}</Text>
+            <ChevronDown size={16} color={colors['on-surface-variant']} />
+          </Pressable>
+        ) : <View className="flex-1" />}
+        <Pressable testID="mapa-leyenda-abrir" accessibilityState={{ expanded: legend }} onPress={() => setLegend(!legend)} className="min-h-[44px] flex-row items-center gap-1.5 rounded-lg border border-outline/20 bg-surface px-3">
+          <Text className="text-[14px] font-semibold text-on-surface">Leyenda</Text>
+          <ChevronDown size={16} color={colors['on-surface-variant']} style={{ transform: [{ rotate: legend ? '180deg' : '0deg' }] }} />
+        </Pressable>
+      </View>
+      {legend ? <WorkMapLegend view={view} waiting={props.waiting} /> : null}
+      <ChoiceSheet title="Trabajo" open={picking} onClose={() => setPicking(false)} choices={workChoicesOf(view).map((choice) => ({
+        testID: choice.id ? `mapa-trabajo-${choice.id}` : 'mapa-trabajo-todos', label: choice.label, color: choice.color, on: (filter.workId ?? '') === choice.id,
+        pick: () => onFilter(workMapWorkFilter(filter, choice.id || undefined)),
+      }))} />
     </View>
   );
 }
 
-/** «Convenciones» over the map: each work's line and the dashed one still to build. */
-/** A row above the map: floating over its top-left it hid the streets there (José 08/11, tutorial video). */
-export function WorkMapLegend(props: { view: WorkMapView }) {
+/** The rows over the map (o-01, phone): stage, how many streets, the cut day, the work and the legend. */
+export function WorkMapFilters(props: FilterProps & { waiting: number }) {
   return (
-    <View testID="mapa-leyenda" className="flex-row flex-wrap items-center gap-x-3 gap-y-1">
-      <View className="flex-row flex-wrap gap-x-3 gap-y-1">
-        {props.view.works.map((work) => (
-          <View key={work.id} className="flex-row items-center gap-1.5"><View className="h-1 w-4 rounded-full" style={{ backgroundColor: work.color }} /><Text className="text-[12px] font-medium text-on-surface">{work.name}</Text></View>
-        ))}
-      </View>
-      <View className="flex-row items-center gap-1.5">
-        <View className="w-4 border-t-2 border-dashed border-on-surface-variant/60" />
-        <Text className="text-[12px] text-on-surface-variant">Pendiente de ejecución</Text>
-      </View>
+    <View className="gap-2">
+      <StageAndDay {...props} />
+      <WorkAndLegend {...props} />
+    </View>
+  );
+}
+
+/** «Convenciones», opened from «Leyenda»: one line per work, what is still to build and what waits approval. */
+function WorkMapLegend(props: { view: WorkMapView; waiting: number }) {
+  return (
+    <View testID="mapa-leyenda" className="gap-1.5 rounded-lg border border-outline/15 bg-surface px-3 py-2">
+      {mapLegendEntries(props.view, props.waiting).map((entry) => (
+        <View key={entry.key} className="flex-row items-center gap-2">
+          {entry.kind === 'todo' ? <View className="w-4 border-t-2 border-dashed border-on-surface-variant/60" />
+            : entry.kind === 'waiting' ? <View className="h-2.5 w-4 rounded-full bg-on-surface/30" />
+            : <View className="h-1 w-4 rounded-full" style={{ backgroundColor: entry.color ?? undefined }} />}
+          <Text className={`flex-1 text-[13px] ${entry.kind === 'work' ? 'font-medium text-on-surface' : 'text-on-surface-variant'}`}>{entry.label}</Text>
+        </View>
+      ))}
     </View>
   );
 }

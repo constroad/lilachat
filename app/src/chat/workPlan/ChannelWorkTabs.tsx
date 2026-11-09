@@ -99,7 +99,7 @@ function ChannelPanels(props: { fullScreen: boolean; onServiceOpen: (open: boole
     <>
       {shown === 'services' ? (
         <View className="bg-background" style={cover}>
-          <ClientServices onServiceOpen={props.onServiceOpen} onToChat={props.onToChat} client={client} records={props.records} onOpenRecord={toMessage} target={target} members={props.people} me={params.yo} links={props.links} focusSeq={props.focusSeq} onFocused={props.clearFocus} />
+          <ClientServices onServiceOpen={props.onServiceOpen} onToChat={props.onToChat} client={client} records={props.records} target={target} members={props.people} me={params.yo} links={props.links} focusSeq={props.focusSeq} onFocused={props.clearFocus} />
         </View>
       ) : null}
       {shown === 'account' && target ? <View className="bg-background" style={cover}><ClientAccountPanel target={target} services={client.services} /></View> : null}

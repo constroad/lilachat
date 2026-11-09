@@ -5654,11 +5654,16 @@ pedidos, así que no tiene sentido un tab despachos».
 - Un despacho cuyo pedido no llegó entre los 100 que manda Portal sale aparte,
   en «Despachos de otros pedidos» (`orphanDispatchesOf`).
 
-**Registros de la tarjeta del servicio, por día.** José, 01/11: «tampoco están
-agrupados los informes por fecha de un servicio».
-- Los informes, cotizaciones y pagos que cuelgan de cada servicio en
-  «Servicios» van bajo el título de su día en Lima (`recordDays`), igual que
-  los informes del detalle.
+**Registros de la tarjeta del servicio, por día (retirado el 09/11).** José,
+01/11: «tampoco están agrupados los informes por fecha de un servicio».
+- Los informes, cotizaciones y pagos colgaban de cada servicio en «Servicios»,
+  bajo el título de su día en Lima (`recordDays`).
+- José, 09/11: «la lista de servicios no debe mostrar las jornadas, informes y
+  despachos, no tiene sentido en esa vista».
+- Desde entonces la tarjeta muestra solo el nombre, el estado, el inicio, el
+  avance y los enlaces. Los registros viven en el detalle del servicio
+  («Pedidos, despachos e informes»).
+- `recordsByService` y `recordDays` se borraron de shared: ya nadie los usaba.
 
 **Fecha de inicio en la lista.** En prod había 0 de 26 servicios con
 `startedAt`.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dayWithYearOf, detailEmptyText, detailRows, detailTabs, moreInPortal, serviceTabs, orphanDispatchesOf, recordDays, reportGroups, serviceDetailOf } from './serviceDetail.js';
+import { dayWithYearOf, detailEmptyText, detailRows, detailTabs, moreInPortal, serviceTabs, orphanDispatchesOf, reportGroups, serviceDetailOf } from './serviceDetail.js';
 
 /** The detail of a client's service (José, 30/10: «qué informes hay, qué pedidos, qué despachos»), from `client.service.requested`. */
 const body = {
@@ -187,21 +187,6 @@ describe('reportGroups', () => {
   });
 });
 
-describe('recordDays (José 01/11: «tampoco están agrupados los informes por fecha de un servicio»)', () => {
-  const record = (seq: number, at: string) => ({ seq, at, service_id: 's1', title: `Informe ${seq}` });
-  it('the records of a service card under a header per day in Lima, keeping the newest first', () => {
-    // Arrange: 00:30 of the 7th in UTC is still the 6th in Lima.
-    const records = [record(9, '2026-10-07T15:00:00.000Z'), record(8, '2026-10-07T00:30:00.000Z'), record(7, '2026-10-06T14:00:00.000Z')];
-    // Act
-    const days = recordDays(records);
-    // Assert
-    expect(days.map((day) => [day.title, day.records.map((one) => one.seq)])).toEqual([['7 de octubre', [9]], ['6 de octubre', [8, 7]]]);
-  });
-
-  it('no records, no days', () => {
-    expect(recordDays([])).toEqual([]);
-  });
-});
 
 describe('an empty tab with Portal counting some (01/11: «Informes · 1» over «Todavía no hay informes»)', () => {
   const none = { orders: 0, dispatches: 0, reports: 0 };

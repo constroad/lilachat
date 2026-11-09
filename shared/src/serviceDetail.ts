@@ -315,15 +315,6 @@ export function reportGroups(detail: Pick<ServiceDetail, 'reports'>): ReportGrou
     return { title, rows: byDay.get(date)!.map((report) => ({ ...reportRow(report), title: date ? withoutDay(report.title, title) : report.title, line: reportTypeOf(report) ?? '' })) };
   });
 }
-/** A service card's records (informes, quotes, payments) under a header per day in Lima, newest first (José 01/11). */
-export function recordDays(records: readonly ClientRecord[]): { title: string; records: ClientRecord[] }[] {
-  const byDay = new Map<string, ClientRecord[]>();
-  for (const record of records) {
-    const day = limaDateOf(record.at);
-    byDay.set(day, [...(byDay.get(day) ?? []), record]);
-  }
-  return [...byDay.entries()].map(([day, rows]) => ({ title: dayInWordsOf(day), records: rows }));
-}
 /** The rows of one tab: a pedido has no number of its own in Portal, a dispatch shows its departure or the planned hour. */
 export function detailRows(detail: ServiceDetail, tab: DetailTabKey): DetailRow[] {
   if (tab === 'orders') return detail.orders.map((order) => orderRow(order, dispatchesOf(detail, order.id).length));

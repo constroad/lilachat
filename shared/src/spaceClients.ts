@@ -188,9 +188,3 @@ export function orderFocusOf<Service extends { id: string }>(services: readonly 
   return service ? { service, orderId: record.record_id } : null;
 }
 
-/** The records grouped by service, keeping the server's order (newest first). */
-export function recordsByService(records: readonly ClientRecord[]): Map<string, ClientRecord[]> {
-  const grouped = new Map<string, ClientRecord[]>();
-  for (const record of records) grouped.set(record.service_id, [...(grouped.get(record.service_id) ?? []), record]);
-  return grouped;
-}

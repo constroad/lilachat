@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Archive, ChevronRight, ExternalLink, FileText, FolderOpen, Link2, Search } from 'lucide-react';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, serviceAccessOf, orderFocusOf, recordDays, recordsByService, SERVICE_FILTER_LABELS, dayOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
+import { Archive, ChevronRight, ExternalLink, FolderOpen, Link2, Search } from 'lucide-react';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, serviceAccessOf, orderFocusOf, SERVICE_FILTER_LABELS, dayOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
 import { ServiceDetailWeb } from './ServiceDetailWeb';
 import { STATUS_TONE } from './tones';
 import type { ServiceAskTarget } from './useServiceAsk';
@@ -60,7 +60,7 @@ function ServiceSummary({ service }: { service: SpaceClientService }) {
 }
 
 /** The head opens its expediente; without the space (no way to ask), its Portal link. «Enlace del servicio» makes its link (José 31/10). */
-function ServiceCard(props: { service: SpaceClientService; records: ClientRecord[] | null; canOpen: boolean; onOpen: () => void; onOpenRecord?: (seq: number) => void; onShare?: () => void }) {
+function ServiceCard(props: { service: SpaceClientService; canOpen: boolean; onOpen: () => void; onShare?: () => void }) {
   const { service } = props;
   const head = 'block w-full text-left';
   return (
@@ -77,7 +77,6 @@ function ServiceCard(props: { service: SpaceClientService; records: ClientRecord
         </div>
       )}
       {props.onShare ? <button type="button" data-testid={`enlace-servicio-${service.id}`} onClick={props.onShare} className="mt-3 inline-flex h-8 items-center gap-1.5 rounded-lg border border-outline/20 px-3 text-[12px] font-semibold text-primary hover:bg-background"><Link2 size={14} /> Enlace del servicio</button> : null}
-      <ServiceRecords records={props.records} onOpen={props.onOpenRecord} />
     </article>
   );
 }
@@ -95,7 +94,7 @@ const ClientDriveLink = ({ url }: { url: string }) => (
  * and its records (informes, quotes, payments) — tapping one goes to its
  * message. The service opens its expediente with its Drive (José, 06/11).
  */
-export function ClientServices(props: { /** Who can be a report's responsible. */ people?: readonly string[]; /** The channel hides its chrome while a service is open. */ onServiceOpen?: (open: boolean) => void; onToChat?: () => void; client: SpaceClient; records: ClientRecord[] | null; onOpenRecord?: (seq: number) => void; target: ServiceAskTarget | null; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void }) {
+export function ClientServices(props: { /** Who can be a report's responsible. */ people?: readonly string[]; /** The channel hides its chrome while a service is open. */ onServiceOpen?: (open: boolean) => void; onToChat?: () => void; client: SpaceClient; records: ClientRecord[] | null; target: ServiceAskTarget | null; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void }) {
   const { links } = props;
   const clientId = props.client.id;
   const [query, setQuery] = useState('');
@@ -120,7 +119,6 @@ export function ClientServices(props: { /** Who can be a report's responsible. *
     return () => onServiceOpen?.(false);
   }, [showsDetail, onServiceOpen]);
   const { services, counts } = filterServices(props.client.services, { query, filter });
-  const grouped = props.records ? recordsByService(props.records) : null;
   const total = props.client.services.length;
   const sees = serviceAccessOf(props.client.access);
   return (
@@ -136,7 +134,7 @@ export function ClientServices(props: { /** Who can be a report's responsible. *
           {total === 0 ? <p className="pt-10 text-center text-sm text-on-surface-variant">Este cliente todavía no tiene servicios.</p> : null}
           {total > 0 && services.length === 0 ? <p className="pt-6 text-center text-sm text-on-surface-variant">Ningún servicio con ese filtro.</p> : null}
           {services.map((service) => (
-            <ServiceCard key={service.id} service={service} records={grouped ? (grouped.get(service.id) ?? []) : null} canOpen={Boolean(props.target)} onOpen={() => setOpened(service)} onOpenRecord={props.onOpenRecord} onShare={links?.can('service') ? () => links.open({ kind: 'service', clientId, serviceId: service.id }) : undefined} />
+            <ServiceCard key={service.id} service={service} canOpen={Boolean(props.target)} onOpen={() => setOpened(service)} onShare={links?.can('service') ? () => links.open({ kind: 'service', clientId, serviceId: service.id }) : undefined} />
           ))}
         </div>
       )}
@@ -144,30 +142,3 @@ export function ClientServices(props: { /** Who can be a report's responsible. *
   );
 }
 
-/** The service's records under a header per day (José 01/11: «tampoco están agrupados los informes por fecha»). */
-function ServiceRecords(props: { records: ClientRecord[] | null; onOpen?: (seq: number) => void }) {
-  if (props.records === null) return <div className="mt-3 h-8 animate-pulse rounded-lg bg-background" />;
-  if (props.records.length === 0) return null;
-  return (
-    <div className="mt-3 border-t border-outline/10">
-      {recordDays(props.records).map((day) => (
-        <section key={day.title} data-testid={`dia-registros-${day.title}`}>
-          <p className="pt-2 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">{day.title}</p>
-          <ul className="divide-y divide-outline/10">
-            {day.records.map((record) => (
-              <li key={record.seq}>
-                <button type="button" data-testid={`registro-${record.seq}`} onClick={() => props.onOpen?.(record.seq)} className="flex w-full items-center gap-2.5 py-2 text-left hover:bg-background">
-                  <FileText size={15} className="shrink-0 text-on-surface-variant" />
-                  <span className="min-w-0 flex-1">
-                    {record.kicker ? <span className="block text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">{record.kicker}</span> : null}
-                    <span className="block truncate text-[13px]">{record.title}</span>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ))}
-    </div>
-  );
-}

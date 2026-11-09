@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Archive, ChevronRight, ExternalLink, FileText, FolderOpen, Link2, Search } from 'lucide-react-native';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, serviceAccessOf, orderFocusOf, recordDays, recordsByService, SERVICE_FILTER_LABELS, dayOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
+import { Archive, ChevronRight, ExternalLink, FolderOpen, Link2, Search } from 'lucide-react-native';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, serviceAccessOf, orderFocusOf, SERVICE_FILTER_LABELS, dayOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { ClientAccessRow } from './ClientAccess';
 import { ServiceDetailView } from './ServiceDetailView';
@@ -48,7 +48,7 @@ function ServiceFilters(props: { query: string; onQuery: (query: string) => void
 }
 
 /** Tapping the head opens its expediente; without the space (no way to ask), its Portal link. «Enlace del servicio» makes its link (José 31/10). */
-function ServiceCard(props: { service: SpaceClientService; records: ClientRecord[] | null; canOpen: boolean; onOpen: () => void; onOpenRecord: (seq: number) => void; onShare?: () => void }) {
+function ServiceCard(props: { service: SpaceClientService; canOpen: boolean; onOpen: () => void; onShare?: () => void }) {
   const colors = useColores();
   const { service } = props;
   const action = props.canOpen ? props.onOpen : service.url ? () => service.url && void Linking.openURL(service.url) : undefined;
@@ -80,7 +80,6 @@ function ServiceCard(props: { service: SpaceClientService; records: ClientRecord
           <Text className="text-[13px] font-semibold text-primary">Enlace del servicio</Text>
         </Pressable>
       ) : null}
-      <ServiceRecords records={props.records} onOpen={props.onOpenRecord} />
     </View>
   );
 }
@@ -104,7 +103,7 @@ function ClientDriveLink({ url }: { url: string }) {
  * (informes, quotes, payments) — tapping one goes to its message in the chat.
  * Tapping the service opens its expediente with its Drive (José, 06/11).
  */
-export function ClientServices(props: { /** The channel hides its chrome while a service is open. */ onServiceOpen?: (open: boolean) => void; onToChat?: () => void; client: SpaceClient; records: ClientRecord[] | null; onOpenRecord: (seq: number) => void; target: ServiceAskTarget | null; members: ReadonlyMap<string, string>; me: string; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void }) {
+export function ClientServices(props: { /** The channel hides its chrome while a service is open. */ onServiceOpen?: (open: boolean) => void; onToChat?: () => void; client: SpaceClient; records: ClientRecord[] | null; target: ServiceAskTarget | null; members: ReadonlyMap<string, string>; me: string; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void }) {
   const colors = useColores();
   const { links } = props;
   const clientId = props.client.id;
@@ -129,7 +128,6 @@ export function ClientServices(props: { /** The channel hides its chrome while a
     return () => onServiceOpen?.(false);
   }, [showsDetail, onServiceOpen]);
   const { services, counts } = filterServices(props.client.services, { query, filter });
-  const grouped = props.records ? recordsByService(props.records) : null;
   const sees = serviceAccessOf(props.client.access);
   if (opened && props.target) return <ServiceDetailView people={[...props.members.values()]} target={props.target} chatId={props.client.chat_id} service={opened} seesMoney={Boolean(props.client.access?.money)} admin={Boolean(props.client.access?.admin)} seesDrive={sees.drive} driveOnly={!sees.detail} onToChat={props.onToChat} onBack={close} links={links} startOrderId={startOrderId} />;
   const total = props.client.services.length;
@@ -148,33 +146,9 @@ export function ClientServices(props: { /** The channel hides its chrome while a
       {total === 0 ? <Text className="pt-10 text-center text-[14px] text-on-surface-variant">Este cliente todavía no tiene servicios.</Text> : null}
       {total > 0 && services.length === 0 ? <Text className="pt-6 text-center text-[14px] text-on-surface-variant">Ningún servicio con ese filtro.</Text> : null}
       {services.map((service) => (
-        <ServiceCard key={service.id} service={service} records={grouped ? (grouped.get(service.id) ?? []) : null} canOpen={Boolean(props.target)} onOpen={() => setOpened(service)} onOpenRecord={props.onOpenRecord} onShare={links?.can('service') ? () => links.open({ kind: 'service', clientId, serviceId: service.id }) : undefined} />
+        <ServiceCard key={service.id} service={service} canOpen={Boolean(props.target)} onOpen={() => setOpened(service)} onShare={links?.can('service') ? () => links.open({ kind: 'service', clientId, serviceId: service.id }) : undefined} />
       ))}
     </ScrollView>
   );
 }
 
-/** The service's records under a header per day (José 01/11: «tampoco están agrupados los informes por fecha»). */
-function ServiceRecords(props: { records: ClientRecord[] | null; onOpen: (seq: number) => void }) {
-  const colors = useColores();
-  if (props.records === null) return <View className="mt-3 h-8 rounded-lg bg-background" />;
-  if (props.records.length === 0) return null;
-  return (
-    <View className="mt-3 border-t border-outline/10">
-      {recordDays(props.records).map((day) => (
-        <View key={day.title} testID={`dia-registros-${day.title}`}>
-          <Text className="pt-2 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{day.title}</Text>
-          {day.records.map((record) => (
-            <Pressable key={record.seq} testID={`registro-${record.seq}`} onPress={() => props.onOpen(record.seq)} className="min-h-[48px] flex-row items-center gap-2.5 border-b border-outline/10 py-2">
-              <FileText size={16} color={colors['on-surface-variant']} />
-              <View className="min-w-0 flex-1">
-                {record.kicker ? <Text className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{record.kicker}</Text> : null}
-                <Text numberOfLines={1} className="text-[14px] text-on-surface">{record.title}</Text>
-              </View>
-            </Pressable>
-          ))}
-        </View>
-      ))}
-    </View>
-  );
-}

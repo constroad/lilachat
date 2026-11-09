@@ -883,6 +883,11 @@ un id. Una lista de fotos dice «Se registra con las fotos», no «con tu foto»
   una foto de 1 MB o más llega con el lado largo en 1600 px como máximo y por
   debajo de 1 MB; una más liviana llega como se tomó. Un HEIC siempre llega en
   JPEG. Si sharp no puede leerla, se guarda tal como llegó.
+- **Vista grande** (Wilson vía José, 09/11). Tocar una miniatura abre el
+  visor de los adjuntos en esa foto, y se desliza entre todas las del campo.
+  La X sigue quitándola. APK y web, en `PhotoListField`; nombres con
+  `formShotFiles` (`shared/src/fileViewer.ts`). Una foto suelta (`PhotoField`)
+  no cambia.
 
 ## c-duodecies) Listas largas con buscador y el PIN (0.1.168)
 

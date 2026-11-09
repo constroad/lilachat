@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { galleryIndexOf, galleryOf, mimeOf, openingOf, pdfReadinessOf, retryAfterMsOf, untilPdfReady, viewerWhenOf } from './fileViewer.js';
+import { formShotFiles, galleryIndexOf, galleryOf, mimeOf, openingOf, pdfReadinessOf, retryAfterMsOf, untilPdfReady, viewerWhenOf } from './fileViewer.js';
 
 /** José 30/10: Portal's files open in Lilachat's viewer, not in Portal. */
 describe('fileViewer', () => {
@@ -97,5 +97,18 @@ describe('galleryIndexOf, where the viewer opens', () => {
   it('falls back to the address, then to the first', () => {
     expect(galleryIndexOf(files, { url: 'https://lila.constroad.com/files/c.jpg', name: 'x' })).toBe(2);
     expect(galleryIndexOf(files, { url: 'https://nowhere/z.jpg', name: 'z' })).toBe(0);
+  });
+});
+
+/** Wilson via José 09/11: the photos of a form open big, not only as a small thumbnail. */
+describe('formShotFiles, the photos of a form for the viewer', () => {
+  it('names each photo by its place in the list, as JPEG', () => {
+    expect(formShotFiles(['blob:a', 'blob:b'], 'Fotos de la wincha')).toEqual([
+      { url: 'blob:a', name: 'Fotos de la wincha · 1 de 2', mime: 'image/jpeg' },
+      { url: 'blob:b', name: 'Fotos de la wincha · 2 de 2', mime: 'image/jpeg' },
+    ]);
+  });
+  it('gives nothing for no photos', () => {
+    expect(formShotFiles([], 'Fotos')).toEqual([]);
   });
 });

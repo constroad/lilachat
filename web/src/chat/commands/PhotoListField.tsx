@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { Camera, Loader2, X } from 'lucide-react';
-import { fileStampOf, type FormPhotoStamp, type FormField } from '@lilachat/shared';
+import { fileStampOf, formShotFiles, type FormPhotoStamp, type FormField } from '@lilachat/shared';
+import { usePortalFileViewer } from '../../spaces/clients/PortalFileViewer';
 
 type PhotoList = Extract<FormField, { kind: 'photo' }>;
 type Shot = { key: string; preview: string; fileId: string | null };
@@ -40,6 +41,9 @@ export function PhotoListField({ field, error, onChange, upload }: { field: Phot
     publish(next);
   };
   const uploading = shots.some((shot) => shot.fileId === null);
+  // A tap opens the photo big, swiping through the rest (Wilson via José 09/11); the X still removes it.
+  const viewer = usePortalFileViewer();
+  const files = formShotFiles(shots.map((shot) => shot.preview), field.label);
   return (
     <div data-testid={`fotos-${field.name}`} className="rounded-2xl border border-outline/15 p-3">
       <p className="text-[14px] font-semibold">{field.label}</p>
@@ -48,7 +52,7 @@ export function PhotoListField({ field, error, onChange, upload }: { field: Phot
       <div className="mt-2 flex flex-wrap gap-2">
         {shots.map((shot, index) => (
           <div key={shot.key} className="relative h-20 w-20 overflow-hidden rounded-xl border border-outline/20">
-            <img src={shot.preview} alt="" className="h-full w-full object-cover" />
+            <button type="button" data-testid={`ver-foto-${field.name}-${index}`} aria-label={`Ver la foto ${index + 1}`} onClick={() => files[index] && viewer.open(files[index], files)} className="block h-full w-full"><img src={shot.preview} alt="" className="h-full w-full object-cover" /></button>
             {shot.fileId === null ? <span className="absolute inset-0 grid place-items-center bg-on-surface/40"><Loader2 size={18} className="animate-spin text-surface" /></span> : null}
             <button type="button" data-testid={`quitar-foto-${field.name}-${index}`} aria-label={`Quitar la foto ${index + 1}`} onClick={() => remove(shot.key)} className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-on-surface/70 text-surface"><X size={13} /></button>
           </div>
@@ -60,6 +64,7 @@ export function PhotoListField({ field, error, onChange, upload }: { field: Phot
         )}
       </div>
       <input ref={input} data-testid={`archivo-${field.name}`} type="file" multiple accept="image/jpeg,image/png,image/webp,image/heic" capture={field.gallery ? undefined : 'environment'} className="hidden" onChange={(event) => { void add(event.target.files); event.target.value = ''; }} />
+      {viewer.viewer}
       {message ?? error ? <p role="alert" className="mt-1 text-[12px] text-error">{message ?? error}</p> : null}
     </div>
   );

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { ActivityIndicator, Image, Pressable, Text, View } from 'react-native';
 import { Camera, Image as ImageIcon, X } from 'lucide-react-native';
-import type { FormField, FormPhotoStamp } from '@lilachat/shared';
+import { formShotFiles, type FormField, type FormPhotoStamp } from '@lilachat/shared';
+import { useFileViewer } from '../../spaces/clients/useFileViewer';
 import { useColores } from '../../ui/tema';
 import { CAMERA_DENIED, cameraAllowed, FormCamera, type CameraShot } from '../camara/FormCamera';
 import type { PhotoUpload } from './AppFormFields';
@@ -56,6 +57,9 @@ export function PhotoListField(props: { field: PhotoList; error?: string; onChan
     if (picked) await keep(picked.shot, async () => picked.stamp);
   };
   const uploading = shots.some((shot) => shot.fileId === null);
+  // A tap opens the photo big, swiping through the rest (Wilson via José 09/11); the X still removes it.
+  const viewer = useFileViewer();
+  const files = formShotFiles(shots.map((shot) => shot.uri), props.field.label);
   const full = shots.length >= props.field.max;
   return (
     <View testID={`fotos-${props.field.name}`} className="rounded-2xl border border-outline/15 p-3">
@@ -65,7 +69,9 @@ export function PhotoListField(props: { field: PhotoList; error?: string; onChan
       <View className="mt-2 flex-row flex-wrap gap-2">
         {shots.map((shot, index) => (
           <View key={shot.key} className="overflow-hidden rounded-xl border border-outline/20" style={{ width: THUMB, height: THUMB }}>
-            <Image source={{ uri: shot.uri }} style={{ width: THUMB, height: THUMB }} />
+            <Pressable testID={`ver-foto-${props.field.name}-${index}`} accessibilityLabel={`Ver la foto ${index + 1}`} onPress={() => files[index] && viewer.open(files[index], files)}>
+              <Image source={{ uri: shot.uri }} style={{ width: THUMB, height: THUMB }} />
+            </Pressable>
             {shot.fileId === null ? <View className="absolute inset-0 items-center justify-center bg-black/40"><ActivityIndicator color="white" /></View> : null}
             <Pressable testID={`quitar-foto-${props.field.name}-${index}`} accessibilityLabel={`Quitar la foto ${index + 1}`} onPress={() => report(shots.filter((one) => one.key !== shot.key))} className="absolute right-1 top-1 h-7 w-7 items-center justify-center rounded-full bg-black/60">
               <X size={15} color="white" />
@@ -85,6 +91,7 @@ export function PhotoListField(props: { field: PhotoList; error?: string; onChan
           </Pressable>
         )}
       </View>
+      {viewer.viewer}
       {message ?? props.error ? <Text className="mt-1 text-[13px] text-error">{message ?? props.error}</Text> : null}
       {aiming ? <FormCamera title={props.field.label} onShot={(shot) => void keep(shot, place.stamp)} onClose={() => setAiming(false)} /> : null}
     </View>

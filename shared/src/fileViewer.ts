@@ -104,3 +104,7 @@ export const PDF_READINESS_TEXT: Record<'generating' | 'expired' | 'missing', st
   expired: 'El enlace del PDF venció. Vuelve a abrirlo desde el servicio.',
   missing: 'Este PDF no existe o todavía no se generó en el Portal.',
 };
+
+/** The photos a form holds before sending (local previews), as the viewer takes them (Wilson via José 09/11). */
+export const formShotFiles = (previews: readonly string[], label: string): ViewableFile[] =>
+  previews.map((url, index) => ({ url, name: `${label} · ${index + 1} de ${previews.length}`, mime: 'image/jpeg' }));

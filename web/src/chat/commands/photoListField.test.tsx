@@ -26,4 +26,19 @@ describe('a list of photos in an app form', () => {
     expect(onChange).toHaveBeenLastCalledWith(['f2']);
     expect(screen.getByTestId('campo-fotos')).toBeInTheDocument();
   });
+
+  it('opens a photo big on a tap, with the rest to swipe (Wilson via José 09/11)', async () => {
+    // Arrange
+    if (fotos?.kind !== 'photo') throw new Error('photo');
+    let made = 0;
+    URL.createObjectURL = vi.fn(() => `blob:p${(made += 1)}`);
+    const upload = vi.fn(async () => ({ ok: true as const, fileId: 'f' }));
+    render(<PhotoListField field={fotos} onChange={vi.fn()} upload={upload} />);
+    fireEvent.change(screen.getByTestId('archivo-fotos'), { target: { files: [new File(['x'], 'a.jpg', { type: 'image/jpeg' }), new File(['x'], 'b.jpg', { type: 'image/jpeg' })] } });
+    await waitFor(() => expect(upload).toHaveBeenCalledTimes(2));
+    // Act
+    fireEvent.click(screen.getByTestId('ver-foto-fotos-1'));
+    // Assert
+    expect(screen.getByRole('dialog')).toHaveTextContent('Fotos de la wincha · 2 de 2');
+  });
 });

@@ -113,19 +113,24 @@ const HOUR_END = 16;
 const hourInLima = (iso: string) => new Date(Date.parse(iso) - LIMA_OFFSET_MS).toISOString().slice(HOUR_START, HOUR_END);
 const volumeLabel = (m3: number) => `${String(m3).replace('.', ',')} m³`;
 
-export type DischargeRow = { dispatchId: string; number: number; title: string; line: string; state: PlacedDischarge['state'] };
+/** `loose`: the service has no street yet, so a unit is not «outside» anything (Portal via José 09/11). */
+export type DischargeRow = { dispatchId: string; number: number; title: string; line: string; state: PlacedDischarge['state'] | 'loose' };
 
-function placeOf(placed: PlacedDischarge): string {
+function placeOf(placed: PlacedDischarge, hasWork: boolean): string {
   if (placed.state === 'placed') return `${stationLabel(placed.fromM)} a ${stationLabel(placed.toM)}`;
-  return placed.state === 'outside' ? 'Fuera de la obra' : 'Sin lugar en sus fotos';
+  if (placed.state === 'outside') return hasWork ? 'Fuera de la obra' : 'Sin calles dibujadas';
+  return 'Sin lugar en sus fotos';
 }
 
 /** The units as design o-07 lists them, in the order they arrived. */
-export const dischargeRowsOf = ({ units }: Pick<DischargeSuggestion, 'units'>): DischargeRow[] =>
+/** `numbers`: each unit's number inside its day, as the map's pins say it (José 09/11). */
+export const dischargeRowsOf = ({ units, hasWork }: Pick<DischargeSuggestion, 'units' | 'hasWork'>, numbers?: ReadonlyMap<string, number>): DischargeRow[] =>
   units.map((placed, index) => {
     const { unit } = placed;
-    const parts = [unit.arrivalAt ? hourInLima(unit.arrivalAt) : null, unit.m3 === null ? null : volumeLabel(unit.m3), placeOf(placed)];
-    return { dispatchId: unit.dispatchId, number: index + 1, title: `Unidad ${index + 1} · ${unit.plate}`, line: parts.filter(Boolean).join(' · '), state: placed.state };
+    const number = numbers?.get(unit.dispatchId) ?? index + 1;
+    const parts = [unit.arrivalAt ? hourInLima(unit.arrivalAt) : null, unit.m3 === null ? null : volumeLabel(unit.m3), placeOf(placed, hasWork !== false)];
+    const state = placed.state === 'outside' && hasWork === false ? 'loose' : placed.state;
+    return { dispatchId: unit.dispatchId, number, title: `Unidad ${number} · ${unit.plate}`, line: parts.filter(Boolean).join(' · '), state };
   });
 
 /** The works planned on a street: the progress of the stretch is one of them. */

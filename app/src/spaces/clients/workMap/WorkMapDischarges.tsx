@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import * as Crypto from 'expo-crypto';
 import { CheckCircle2, SlidersHorizontal } from 'lucide-react-native';
-import { usefulWidthLabel, confirmDischargeLabel, DISCHARGE_HOW, DISCHARGE_TITLE, dischargeExplain, dischargeGaps, dischargeHeadline, dischargeRowsOf, metersLabel, progressEntryOf, stationLabel, stretchWorksOf, type DischargeRow, type DischargeSuggestion, type ProgressEntry, type StretchRange, type SuggestedStretch, type WorkMap } from '@lilachat/shared';
+import { usefulWidthLabel, confirmDischargeLabel, DISCHARGE_HOW, DISCHARGE_TITLE, dischargeExplain, dischargeGaps, dischargeHeadline, dischargeRowsOf, unitNumbers, metersLabel, progressEntryOf, stationLabel, stretchWorksOf, type DischargeRow, type DischargeSuggestion, type ProgressEntry, type StretchRange, type SuggestedStretch, type WorkMap } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 
 export type ProgressSend = (entry: ProgressEntry) => Promise<{ ok: true; message: string } | { ok: false; message: string }>;
@@ -90,7 +90,7 @@ function StretchCard(props: { map: WorkMap; serviceId: string; stretch: Suggeste
 
 /** «Avance sugerido» (design `o-07-mapa-pista`): where the units emptied, as the stretch to confirm. Admins only. */
 export function WorkMapDischarges(props: { map: WorkMap; serviceId: string; suggestion: DischargeSuggestion; send?: ProgressSend; ranges: Record<string, StretchRange>; onRange: (streetId: string, range: StretchRange) => void }) {
-  const rows = useMemo(() => dischargeRowsOf(props.suggestion), [props.suggestion]);
+  const rows = useMemo(() => dischargeRowsOf(props.suggestion, unitNumbers(props.suggestion.units.map((one) => one.unit))), [props.suggestion]);
   return (
     <View testID="avance-sugerido" className="gap-3">
       <View className="gap-1">

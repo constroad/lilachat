@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { CheckCircle2, MapPin, SlidersHorizontal } from 'lucide-react';
-import { usefulWidthLabel, confirmDischargeLabel, DISCHARGE_HOW, DISCHARGE_TITLE, dischargeExplain, dischargeGaps, dischargeHeadline, dischargeRowsOf, metersLabel, progressEntryOf, stationLabel, stretchWorksOf, type DischargeRow, type DischargeSuggestion, type ProgressEntry, type SuggestedStretch, type WorkMap } from '@lilachat/shared';
+import { usefulWidthLabel, confirmDischargeLabel, DISCHARGE_HOW, DISCHARGE_TITLE, dischargeExplain, dischargeGaps, dischargeHeadline, dischargeRowsOf, unitNumbers, metersLabel, progressEntryOf, stationLabel, stretchWorksOf, type DischargeRow, type DischargeSuggestion, type ProgressEntry, type SuggestedStretch, type WorkMap } from '@lilachat/shared';
 
 export type ProgressSend = (entry: ProgressEntry) => Promise<{ ok: true; message: string } | { ok: false; message: string }>;
 type Range = { fromM: number; toM: number };
@@ -8,7 +8,7 @@ type Range = { fromM: number; toM: number };
 const KICKER = 'text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant';
 const CHIP = 'flex min-h-8 max-w-full items-center gap-2 rounded-xl border px-3 py-1.5 text-left text-[13px] font-semibold leading-tight';
 const FIELD = 'h-10 w-full rounded-xl border border-outline/20 bg-surface px-3 text-[14px] text-on-surface';
-const STATE_TONE: Record<DischargeRow['state'], string> = { placed: 'border-outline/15', outside: 'border-error/40 bg-error/5', noPlace: 'border-outline/15 opacity-70' };
+const STATE_TONE: Record<DischargeRow['state'], string> = { placed: 'border-outline/15', outside: 'border-error/40 bg-error/5', noPlace: 'border-outline/15 opacity-70', loose: 'border-outline/15' };
 
 function UnitRow(props: { row: DischargeRow }) {
   const { row } = props;
@@ -100,7 +100,7 @@ function StretchCard(props: { map: WorkMap; serviceId: string; stretch: Suggeste
 
 /** «Avance sugerido» (design `o-07-mapa-pista`): where the units emptied, as the stretch to confirm. Admins only. */
 export function WorkMapDischarges(props: { map: WorkMap; serviceId: string; suggestion: DischargeSuggestion; send?: ProgressSend; ranges: Record<string, Range>; onRange: (streetId: string, range: Range) => void }) {
-  const rows = useMemo(() => dischargeRowsOf(props.suggestion), [props.suggestion]);
+  const rows = useMemo(() => dischargeRowsOf(props.suggestion, unitNumbers(props.suggestion.units.map((one) => one.unit))), [props.suggestion]);
   return (
     <div data-testid="avance-sugerido" className="space-y-3">
       <header className="flex items-start justify-between gap-2">

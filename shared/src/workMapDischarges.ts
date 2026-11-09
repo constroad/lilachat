@@ -51,8 +51,8 @@ export function suggestDischarges(map: WorkMap, discharges: UnitDischarge[]): Di
 }
 
 /** «3 de 4 unidades ubicadas»: «listas» read like a checklist (José 08/11: «no estoy entendiendo esta pantalla»). */
-export const dischargeHeadline = ({ units }: Pick<DischargeSuggestion, 'units'>) =>
-  `${units.filter((one) => one.state === 'placed').length} de ${units.length} unidades ubicadas`;
+export const dischargeHeadline = ({ units, hasWork }: Pick<DischargeSuggestion, 'units' | 'hasWork'>) =>
+  hasWork === false ? `${units.length} ${units.length === 1 ? 'unidad' : 'unidades'} · sin calles dibujadas` : `${units.filter((one) => one.state === 'placed').length} de ${units.length} unidades ubicadas`;
 
 /** What the stretch is, in one sentence: whose photos, where, and that nothing counts yet. */
 export function dischargeExplain(stretch: Pick<SuggestedStretch, 'dispatchIds' | 'fromM' | 'toM' | 'streetName'>): string {

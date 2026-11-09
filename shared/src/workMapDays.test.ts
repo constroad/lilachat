@@ -89,3 +89,16 @@ describe('a map with photos and no streets', () => {
     expect(withMediaBounds(workMapView(EMPTY_WORK_MAP), [], []).bounds).toBeNull();
   });
 });
+
+describe('the list of units with no street drawn', () => {
+  it('says there are no streets, not that each unit fell off the work, and numbers them inside their day', async () => {
+    const { dischargeRowsOf } = await import('./workMapProgress.js');
+    const { dischargeHeadline } = await import('./workMapDischarges.js');
+    const units = [unit('u1', late7), unit('u2', morning8)];
+    const suggestion = { hasWork: false, stretches: [], units: units.map((one) => ({ state: 'outside' as const, unit: one, point: { lat: -12, lng: -77 } })) };
+    const rows = dischargeRowsOf(suggestion, unitNumbers(units));
+    expect(rows.map((row) => [row.title, row.state])).toEqual([['Unidad 1 · U1', 'loose'], ['Unidad 1 · U2', 'loose']]);
+    expect(rows[0]!.line).toContain('Sin calles dibujadas');
+    expect(dischargeHeadline(suggestion)).toBe('2 unidades · sin calles dibujadas');
+  });
+});

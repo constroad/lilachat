@@ -4,7 +4,7 @@
  * The Stitch design (o-01) draws a quiet plan: white blocks on a light ground, wide pale
  * streets, parks in soft green and the street names in Spanish and in capitals, so the work's
  * colored lines are what stands out. OpenFreeMap's positron was washed-out gray and named the
- * streets in English («Moquegua Street»). Same tiles (free: no token, no card, data ©
+ * streets in English. Same tiles (free: no token, no card, data from
  * OpenStreetMap), our own style. The road layers keep their OpenMapTiles names: a tap on a
  * street reads them (`ROAD_SOURCE_LAYERS`). MapLibre paint cannot read CSS variables, so the
  * colors are literal HSL here, one place for the web and the APK.

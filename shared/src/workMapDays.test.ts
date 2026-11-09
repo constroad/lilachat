@@ -71,3 +71,21 @@ describe('unitPinsOfDay', () => {
     expect(unitPinsOfDay(suggestion, units, 'all', days).map((pin) => pin.label)).toEqual(['1', '1', '2']);
   });
 });
+
+/** Portal via José 09/11: the map shows where the photos were taken even with no street drawn. */
+describe('a map with photos and no streets', () => {
+  it('frames the photos and the units when there is no street to frame', async () => {
+    const { withMediaBounds, EMPTY_WORK_MAP } = await import('./workMapDays.js');
+    const { workMapView } = await import('./workMap.js');
+    const view = withMediaBounds(workMapView(EMPTY_WORK_MAP), [{ ...photo('a', morning8), lat: -12.1, lng: -76.9 }], [{ ...unit('u1', morning8), points: [{ kind: 'vacia', lat: -12.2, lng: -77, at: morning8 }] }]);
+    expect(view.bounds).toEqual([[-77, -12.2], [-76.9, -12.1]]);
+  });
+
+  it('keeps the streets\' frame when there are streets, and none with nothing at all', async () => {
+    const { withMediaBounds, EMPTY_WORK_MAP } = await import('./workMapDays.js');
+    const { workMapView } = await import('./workMap.js');
+    const framed = { ...workMapView(EMPTY_WORK_MAP), bounds: [[1, 1], [2, 2]] as [[number, number], [number, number]] };
+    expect(withMediaBounds(framed, [photo('a', morning8)], []).bounds).toEqual([[1, 1], [2, 2]]);
+    expect(withMediaBounds(workMapView(EMPTY_WORK_MAP), [], []).bounds).toBeNull();
+  });
+});

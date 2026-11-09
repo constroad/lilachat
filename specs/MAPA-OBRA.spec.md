@@ -1336,6 +1336,14 @@ Caso real: servicio de Globofast Solkali con controles de pista e imprimación
 de varios días, fotos con posición y ninguna calle.
 
 - **Tab «Mapa»**: sale siempre, con calles o sin ellas (`serviceTabs`).
+- **Sin calles pero con fotos o unidades con lugar**, el tablero abre igual
+  sobre un mapa vacío (`EMPTY_WORK_MAP`), enfocado en las fotos y unidades
+  (`withMediaBounds`). «Nueva calle» sigue en «Más». La tarjeta «Todavía no
+  hay calles» queda solo para un servicio sin calles, fotos ni unidades.
+  Antes la tarjeta tapaba todo (Globofast TRAMO 4 OCT, 09/11).
+- **Detalle pesado**: el de Globofast pesa 360 KiB. Agentes lee hasta 512 KiB
+  y Lilachat corta a 600 KB (`REPLY_MAX_BYTES`). Antes los dos cortaban en
+  256 KiB y el detalle no abría.
 - **Nada en rojo.** Sin calles no hay obra de la cual salirse:
   - las fotos y las unidades no son «fuera de la obra» (`PhotoSpot.offWork`, `DischargeSuggestion.hasWork`);
   - el visor titula «Fotos de este lugar»;

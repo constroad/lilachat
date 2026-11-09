@@ -1,4 +1,5 @@
 import { ALL_DAYS, dayColorsOf, dayLabel, dischargeDayOf, limaDayOf, mediaDaysOf, unitNumbersOf } from '@constroad/shared/obra';
+import type { WorkMap, WorkMapView } from './workMap.js';
 import { sharedDischargeOf, type UnitDischarge } from './workMapDischarges.js';
 import type { MapPhoto, PhotoSpot } from './workMapPhotos.js';
 import { dischargePinsOf, type DischargePin } from './workMapProgress.js';
@@ -62,3 +63,15 @@ export function unitPinsOfDay(suggestion: Pick<DischargeSuggestion, 'units' | 'h
 /** The photo markers filled with their day's color; one off the work keeps its red. */
 export const photoPinsOfDay = (spots: readonly PhotoSpot[], days: readonly string[]): DischargePin[] =>
   withDayColors(photoSpotPins([...spots]), photoSpotDays(spots), days);
+
+/** A service with photos or units and no street yet: the board opens over them (Portal via José 09/11). */
+export const EMPTY_WORK_MAP: WorkMap = { streets: [], scopes: [], progress: [], works: [], stages: [] };
+
+/** With no street to frame, the map frames where the photos were taken and the units emptied. */
+export function withMediaBounds(view: WorkMapView, photos: readonly MapPhoto[], units: readonly UnitDischarge[]): WorkMapView {
+  if (view.bounds) return view;
+  const points = [...photos, ...units.flatMap((one) => one.points)];
+  if (!points.length) return view;
+  const [lngs, lats] = [points.map((point) => point.lng), points.map((point) => point.lat)];
+  return { ...view, bounds: [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]] };
+}

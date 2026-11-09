@@ -43,12 +43,17 @@ function PendingRow(props: { item: PendingProgress; admin: boolean; onResolve: (
  * in Portal). An admin approves or rejects it here; anyone else sees what they marked. Asked again
  * when `reloadKey` changes (the map reloads after every edit, a new progress included).
  */
-export function PendingProgressCard(props: { send: MapEditSend; admin: boolean; reloadKey: unknown }) {
+export function PendingProgressCard(props: { send: MapEditSend; admin: boolean; reloadKey: unknown; onList?: (items: PendingProgress[]) => void }) {
   const [list, setList] = useState<PendingState>(PENDING_LOADING);
   // The sender is new on every render: the latest one answers.
   const send = useRef(props.send);
   send.current = props.send;
-  const load = () => void loadPendingProgress(send.current).then(setList);
+  const onList = useRef(props.onList);
+  onList.current = props.onList;
+  const load = () => void loadPendingProgress(send.current).then((next) => {
+    setList(next);
+    onList.current?.(next.state === 'ready' ? next.pending.items : []);
+  });
   useEffect(load, [props.reloadKey]);
   if (list.state !== 'ready' || !list.pending.items.length) return null;
   const { items, more } = list.pending;

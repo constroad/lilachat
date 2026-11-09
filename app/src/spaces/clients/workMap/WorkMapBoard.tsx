@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { ArchiveRestore, ChevronRight, Download, ExternalLink, Layers, Maximize2, Paintbrush, Plus, Share2, TrendingUp, X } from 'lucide-react-native';
-import { bareLinesOf, visibleStationMarks, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StationMark, type StretchRange, type UnitDischarge, type MapPhoto, type ManualProgressDraft, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { bareLinesOf, visibleStationMarks, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, dischargePinsOf, withPendingLines, type PendingProgress, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StationMark, type StretchRange, type UnitDischarge, type MapPhoto, type ManualProgressDraft, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
@@ -144,10 +144,12 @@ export function WorkMapBoard(props: BoardProps) {
   const bare = useMemo(() => bareLinesOf({ streets: map.streets.filter((street) => view.streets.some((shown) => shown.id === street.id)), scopes: map.scopes }), [map, view]);
   const pista = useDischarges(map, props.discharges ?? NO_DISCHARGES);
   const photos = usePhotoLayer(map, props.mapPhotos);
+  const [pendingItems, setPendingItems] = useState<PendingProgress[]>([]);
+  const stretches = useMemo(() => withPendingLines(map, pista.stretches, pendingItems), [map, pista.stretches, pendingItems]);
   const discharges = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null;
   const primeCoat = props.editMap && props.mapPhotos?.length ? <PrimeCoatSuggestions map={map} photos={props.mapPhotos} onRecord={(id, draft) => openStreet(id, true, draft)} /> : null;
-  // José 09/11: what was sent waits here until approved, instead of vanishing.
-  const pending = props.editMap ? <PendingProgressCard send={props.editMap} admin={Boolean(props.admin)} reloadKey={map} /> : null;
+  // José 09/11: what was sent waits here until approved, instead of vanishing. It is drawn over its street too.
+  const pending = props.editMap ? <PendingProgressCard send={props.editMap} admin={Boolean(props.admin)} reloadKey={map} onList={setPendingItems} /> : null;
   const top = discharges || primeCoat || pending ? <View className="gap-5">{pending}{discharges}{primeCoat}</View> : null;
   return (
     <View testID="mapa-servicio" className="gap-3">
@@ -164,7 +166,7 @@ export function WorkMapBoard(props: BoardProps) {
       {props.notice ? <Text testID="mapa-aviso" accessibilityRole="alert" className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-[14px] font-semibold text-on-surface">{props.notice}</Text> : null}
       <View className="-mx-4 overflow-hidden bg-surface-variant" style={{ height }}>
         <View pointerEvents="none" className="absolute inset-0">
-          {wide ? null : <WorkMapSurface view={view} moves={false} stations={stations} bare={bare} pins={photos.shown ? photos.pins : pista.pins} stretches={pista.stretches} />}
+          {wide ? null : <WorkMapSurface view={view} moves={false} stations={stations} bare={bare} pins={photos.shown ? photos.pins : pista.pins} stretches={stretches} />}
         </View>
         {/* The small map does not take taps: «Fotos» opens the full one, where a marker opens its photos. */}
         {photos.available ? <PhotoToggle shown={photos.shown} count={photos.count} onToggle={() => { photos.setShown(true); setWide(true); }} style={{ bottom: 16 }} /> : null}
@@ -173,7 +175,7 @@ export function WorkMapBoard(props: BoardProps) {
         </Pressable>
       </View>
       <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} deleteStreet={props.deleteStreet} onOpenStreet={(id) => openStreet(id)} />
-      <FullMap view={view} open={wide} onClose={() => setWide(false)} pins={pista.pins} stretches={pista.stretches} stations={stations} bare={bare} photos={photos} />
+      <FullMap view={view} open={wide} onClose={() => setWide(false)} pins={pista.pins} stretches={stretches} stations={stations} bare={bare} photos={photos} />
       {props.editMap ? <DeletedWork open={seeingDeleted} map={map} send={props.editMap} onClose={() => setSeeingDeleted(false)} /> : null}
       <StreetScopes map={map} streetId={streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} startRecording={recordingStart} recordDraft={recordDraft} onClose={() => openStreet(null)} />
       <StreetPick target={choosing} onPick={(id) => openStreet(id, true)} onClose={() => setChoosing(null)} />

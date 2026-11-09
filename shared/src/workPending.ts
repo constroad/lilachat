@@ -1,6 +1,7 @@
 import { FORMS_LEVEL } from './appForms.js';
 import { dayOf } from './serviceDetail.js';
-import { stationLabel } from './workMap.js';
+import { stationLabel, type WorkMap, type WorkMapLine } from './workMap.js';
+import { stretchLineOf } from './workMapProgress.js';
 import { sendMapTool, type WorkProgressDeps, type WorkProgressResult } from './workProgressSend.js';
 import type { MapEditSend } from './workScopeDraft.js';
 
@@ -99,3 +100,17 @@ export async function resolvePendingProgress(send: MapEditSend, id: string, deci
   const result = await send(workResolveRequest(id, decision, note), sendWorkResolve);
   return result.ok ? null : result.message;
 }
+
+/** Each pending one over its stretch, in its work's color: drawn like a stretch not yet counted. */
+export function pendingLinesOf(map: Pick<WorkMap, 'streets' | 'works'>, items: readonly PendingProgress[]): WorkMapLine[] {
+  return items.flatMap((item) => {
+    if (!item.streetId || item.fromM === null || item.toM === null || item.toM <= item.fromM) return [];
+    const line = stretchLineOf(map, item.streetId, item.fromM, item.toM);
+    const color = map.works.find((work) => work.name === item.work)?.color;
+    return line ? [color ? { ...line, color } : line] : [];
+  });
+}
+
+/** The stretches the map draws, plus each progress still waiting for approval over its street. */
+export const withPendingLines = (map: Pick<WorkMap, 'streets' | 'works'>, stretches: WorkMapLine[], items: readonly PendingProgress[]): WorkMapLine[] =>
+  items.length ? [...stretches, ...pendingLinesOf(map, items)] : stretches;

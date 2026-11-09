@@ -1228,7 +1228,7 @@ sigue pidiendo uno; se le preguntó a Portal si reusa el vigente.
   - En el camino se arreglaron dos defectos de Lilachat:
     - la lista llegaba en `data.data` y no se leía (c3b1bd3);
     - una lectura recargaba el mapa, lo que dejaba la lista en bucle (a84d318).
-- El pendiente todavía no se dibuja sobre la calle; queda como mejora.
+- El pendiente se dibuja sobre su calle, con el color de su trabajo (`pendingLinesOf`, `withPendingLines`). La tarjeta le pasa la lista al tablero (`onList`); si la lectura falla, no se dibuja nada. Con la brocha activa se ven solo los trazos de la brocha. Web y APK (mapa chico y pantalla completa).
 
 **Mapa base propio («se ve feo, no se parece en nada a tus diseños»).**
 - La base era «positron» de OpenFreeMap:

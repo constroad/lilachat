@@ -43,4 +43,17 @@ describe('«Por aprobar» above the work map', () => {
     await waitFor(() => expect(calls).toEqual(['work_pending']));
     expect(container).toBeEmptyDOMElement();
   });
+  it('tells the board what waits, so the map draws it over its street; empty when it fails', async () => {
+    // Arrange
+    const onList = vi.fn();
+    const { send } = sender(data);
+    const failing = vi.fn(async () => { throw new Error('offline'); }) as unknown as MapEditSend;
+    // Act
+    render(<PendingProgressCard send={send} admin reloadKey={1} onList={onList} />);
+    render(<PendingProgressCard send={failing} admin reloadKey={1} onList={onList} />);
+    // Assert
+    await waitFor(() => expect(onList).toHaveBeenCalledTimes(2));
+    expect(onList).toHaveBeenCalledWith([expect.objectContaining({ id: 'a1', streetId: 's1', fromM: 0, toM: 30 })]);
+    expect(onList).toHaveBeenCalledWith([]);
+  });
 });

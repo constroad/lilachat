@@ -56,12 +56,17 @@ function PendingRow(props: { item: PendingProgress; admin: boolean; onResolve: (
  * «Por aprobar» above the map on the phone (José 09/11: the progress sent «disappeared»). An admin
  * approves or rejects it here; anyone else sees what they marked. Asked again when the map reloads.
  */
-export function PendingProgressCard(props: { send: MapEditSend; admin: boolean; reloadKey: unknown }) {
+export function PendingProgressCard(props: { send: MapEditSend; admin: boolean; reloadKey: unknown; onList?: (items: PendingProgress[]) => void }) {
   const colors = useColores();
   const [list, setList] = useState<PendingState>(PENDING_LOADING);
   const send = useRef(props.send);
   send.current = props.send;
-  const load = () => void loadPendingProgress(send.current).then(setList);
+  const onList = useRef(props.onList);
+  onList.current = props.onList;
+  const load = () => void loadPendingProgress(send.current).then((next) => {
+    setList(next);
+    onList.current?.(next.state === 'ready' ? next.pending.items : []);
+  });
   useEffect(load, [props.reloadKey]);
   if (list.state !== 'ready' || !list.pending.items.length) return null;
   const resolve = (id: string) => async (decision: PendingDecision) => {

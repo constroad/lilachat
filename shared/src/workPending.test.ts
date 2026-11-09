@@ -63,3 +63,26 @@ describe('through the door', () => {
     expect(await resolvePendingProgress(refused, 'a1', 'rechazar')).toBe('Solo admins.');
   });
 });
+
+describe('pending progress over the map', () => {
+  it('draws each one over its stretch in its work\'s color; one without a stretch is not drawn', async () => {
+    // Arrange
+    const { pendingLinesOf } = await import('./workPending.js');
+    const map = {
+      streets: [{ id: 's1', name: 'Jr. Moquegua', lengthM: 100, widthM: 6, line: [{ lat: -12.05, lng: -77.04 }, { lat: -12.05, lng: -77.039 }] }],
+      works: [{ id: 'w1', name: 'Asfalto QA', color: '#2563eb' }],
+    };
+    // Act
+    const lines = pendingLinesOf(map as never, pendingProgressOf(data).items);
+    // Assert
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatchObject({ streetId: 's1', color: '#2563eb', fromM: 0, toM: 30 });
+    const drawn = [{ streetId: 's1', color: '#000', coordinates: [] }];
+    const { withPendingLines } = await import('./workPending.js');
+    expect(withPendingLines(map as never, drawn, [])).toBe(drawn);
+    expect(withPendingLines(map as never, drawn, pendingProgressOf(data).items)).toHaveLength(2);
+    const loose = { ...pendingProgressOf(data).items[0], streetId: null };
+    expect(pendingLinesOf(map as never, [loose])).toEqual([]);
+    expect(lines[0]!.coordinates.length).toBeGreaterThanOrEqual(2);
+  });
+});

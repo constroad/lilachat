@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, useWindowDimensions, View } from 'react-native';
-import { afterQuietReload, deleteThenReload, editThenReload, loadWorkMap, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, serviceMapPage, type ChannelLinks, type UnitDischarge, type MapPhoto, type WorkMap, type WorkMapState } from '@lilachat/shared';
+import { afterQuietReload, reloadWorkMap, deleteThenReload, editThenReload, loadWorkMap, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, serviceMapPage, type ChannelLinks, type UnitDischarge, type MapPhoto, type WorkMap, type WorkMapState } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 import type { PhotoAsset } from './workMap/ManualProgress';
@@ -21,6 +21,8 @@ type ServiceTarget = { kind: 'service'; clientId: string; serviceId: string };
 /** The map of the service, asked when it opens; only the latest question answers. */
 function useServiceMap(jwt: string, links: ChannelLinks, target: ServiceTarget) {
   const [state, setState] = useState<WorkMapState>({ kind: 'loading' });
+  const shown = useRef(state);
+  shown.current = state;
   const latestLinks = useRef(links);
   latestLinks.current = links;
   const turn = useRef(0);
@@ -31,7 +33,9 @@ function useServiceMap(jwt: string, links: ChannelLinks, target: ServiceTarget) 
     const asked = turn.current;
     if (!quiet) setState({ kind: 'loading' });
     const read = (link: string) => jsonCall<{ map: WorkMap | null }>(`${BASE_URL}/api/service-work-map`, jwt, { method: 'POST', body: JSON.stringify({ link, serviceId }) });
-    const next = await loadWorkMap(() => latestLinks.current.map({ kind: 'service', clientId, serviceId }), read);
+    const link = () => latestLinks.current.map({ kind: 'service', clientId, serviceId });
+    // After an edit the link on screen is read again: a new one is a new public link in Portal.
+    const next = quiet ? await reloadWorkMap(shown.current, link, read) : await loadWorkMap(link, read);
     if (asked === turn.current) setState((previous) => (quiet ? afterQuietReload(previous, next) : next));
   }, [jwt, clientId, serviceId]);
   useEffect(() => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lineLengthM, loadWorkMap, metersLabel, percentLabel, projectOntoLine, sliceLine, stationLabel, WORK_MAP_FAILED, workMapCollection, workMapCutDays, workMapCutLabel, workMapHeadline, workMapOf, workMapRequest, workMapStageFilter, workMapView, workMapWorkFilter, type WorkMap } from './workMap.js';
+import { lineLengthM, loadWorkMap, reloadWorkMap, metersLabel, percentLabel, projectOntoLine, sliceLine, stationLabel, WORK_MAP_FAILED, workMapCollection, workMapCutDays, workMapCutLabel, workMapHeadline, workMapOf, workMapRequest, workMapStageFilter, workMapView, workMapWorkFilter, type WorkMap } from './workMap.js';
 
 const lineOf = (points: Array<[number, number]>) => points.map(([lat, lng]) => ({ lat, lng }));
 const LONG_STREET = lineOf([[-12, -77], [-12, -76.99]]);
@@ -333,6 +333,33 @@ describe('workMapStageFilter', () => {
 
   it('an empty stage is the whole work', () => {
     expect(workMapStageFilter(parsed(), { stageId: 'e2', workId: 'base' }, '')).toEqual({ workId: 'base' });
+  });
+});
+
+describe('reloadWorkMap, after an edit (agentes 09/11: 16 service links in 10 minutes)', () => {
+  const url = 'https://constroad.com/public/test/service-report/abc';
+  const ready = { kind: 'ready' as const, url, map: null };
+
+  it('reads again with the link it already has: no new public link', async () => {
+    // Arrange
+    let minted = 0;
+    const link = async () => { minted += 1; return { ok: true as const, url: 'https://constroad.com/public/test/service-report/new' }; };
+    const read = async (asked: string) => ({ ok: true as const, data: { map: asked === url ? parsed() : null } });
+    // Act
+    const state = await reloadWorkMap(ready, link, read);
+    // Assert
+    expect(minted).toBe(0);
+    expect(state.kind === 'ready' && state.url).toBe(url);
+    expect(state.kind === 'ready' && state.map?.streets).toHaveLength(2);
+  });
+
+  it('asks a new link only when the old one no longer reads, or there was none', async () => {
+    let minted = 0;
+    const link = async () => { minted += 1; return { ok: true as const, url: 'https://constroad.com/public/test/service-report/new' }; };
+    const read = async (asked: string) => (asked === url ? { ok: false as const } : { ok: true as const, data: { map: null } });
+    expect(await reloadWorkMap(ready, link, read)).toMatchObject({ kind: 'ready', url: 'https://constroad.com/public/test/service-report/new' });
+    expect(await reloadWorkMap({ kind: 'loading' }, link, read)).toMatchObject({ kind: 'ready' });
+    expect(minted).toBe(2);
   });
 });
 

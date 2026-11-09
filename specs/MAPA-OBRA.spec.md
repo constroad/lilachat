@@ -1184,3 +1184,9 @@ Antes, quien escribía mal «Etapa 2» o creaba un trabajo de más se quedaba co
     («Borrando…» y «Borrados» cargando). En producción no pasa. Sospecha: el server local es
     HTTP/1.1, con un tope de 6 conexiones por host. Sin confirmar.
   - Portal escribe «ya tiene 1 avances registrados»: se le avisó.
+
+**El mapa ya no pide un enlace nuevo tras cada edición (agentes 09/11).** En 10 minutos de prueba,
+`crear_enlace_de_servicio` corrió 16 veces: el mapa pedía su enlace al abrirse y otra vez después de
+cada edición. Ahora la recarga tras una edición vuelve a leer con el enlace que ya tiene
+(`reloadWorkMap`, 2 tests), y pide uno nuevo solo si ese ya no sirve. Web y APK. Abrir el mapa
+sigue pidiendo uno; se le preguntó a Portal si reusa el vigente.

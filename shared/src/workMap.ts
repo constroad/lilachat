@@ -327,3 +327,17 @@ export async function loadWorkMap(
   if (!reply.ok) return { kind: 'failed', message: reply.message ?? WORK_MAP_FAILED, url: made.url };
   return { kind: 'ready', url: made.url, map: reply.data.map ?? null };
 }
+
+/**
+ * After an edit: read again with the link the map already has. Every new link is a public
+ * link of a day in Portal (agentes 09/11 saw 16 in 10 minutes); a new one only when the old fails.
+ */
+export async function reloadWorkMap(
+  previous: WorkMapState,
+  link: () => Promise<ServiceMapResult>,
+  read: (url: string) => Promise<{ ok: true; data: { map?: WorkMap | null } } | { ok: false; message?: string }>,
+): Promise<WorkMapState> {
+  if (previous.kind !== 'ready') return loadWorkMap(link, read);
+  const reply = await read(previous.url);
+  return reply.ok ? { kind: 'ready', url: previous.url, map: reply.data.map ?? null } : loadWorkMap(link, read);
+}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { afterQuietReload, loadWorkMap, type ChannelLinks, type WorkMap, type WorkMapState } from '@lilachat/shared';
+import { afterQuietReload, reloadWorkMap, loadWorkMap, type ChannelLinks, type WorkMap, type WorkMapState } from '@lilachat/shared';
 import { api } from '../../../api';
 
 type ServiceTarget = { kind: 'service'; clientId: string; serviceId: string };
@@ -7,6 +7,8 @@ type ServiceTarget = { kind: 'service'; clientId: string; serviceId: string };
 /** The map of a service; only the latest question answers. */
 export function useWorkMap(jwt: string, links: ChannelLinks, target: ServiceTarget) {
   const [state, setState] = useState<WorkMapState>({ kind: 'loading' });
+  const shown = useRef(state);
+  shown.current = state;
   const latestLinks = useRef(links);
   latestLinks.current = links;
   const turn = useRef(0);
@@ -17,7 +19,9 @@ export function useWorkMap(jwt: string, links: ChannelLinks, target: ServiceTarg
     const asked = turn.current;
     if (!quiet) setState({ kind: 'loading' });
     const read = (link: string) => api<{ map: WorkMap | null }>('/service-work-map', { jwt, body: { link, serviceId } });
-    const next = await loadWorkMap(() => latestLinks.current.map({ kind: 'service', clientId, serviceId }), read);
+    const link = () => latestLinks.current.map({ kind: 'service', clientId, serviceId });
+    // After an edit the link on screen is read again: a new one is a new public link in Portal.
+    const next = quiet ? await reloadWorkMap(shown.current, link, read) : await loadWorkMap(link, read);
     if (asked === turn.current) setState((previous) => (quiet ? afterQuietReload(previous, next) : next));
   }, [jwt, clientId, serviceId]);
   useEffect(() => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countdownLabel, invitedByLine, owesItsName, spacesToOpen, canChangeRole, canDeactivate, canManageMembers, joinCodePrefix, makeJoinCode, normalizeChannelName, normalizeJoinCode, statusAfterJoin, workspacesOf } from './workspaces.js';
+import { countdownLabel, invitedByLine, owesItsName, accountOwesItsName, spacesToOpen, canChangeRole, canDeactivate, canManageMembers, joinCodePrefix, makeJoinCode, normalizeChannelName, normalizeJoinCode, statusAfterJoin, workspacesOf } from './workspaces.js';
 
 /** E1 (José, 20/10): personal account plus company spaces; join with a code or be added by phone. */
 describe('join code', () => {
@@ -109,5 +109,20 @@ describe('sign-in by workspace (spec INGRESO-POR-ESPACIO)', () => {
   it('says who invited, and still reads well when that account is gone', () => {
     expect(invitedByLine({ invitedBy: 'Darío Paredes' })).toBe('Te invitó Darío Paredes');
     expect(invitedByLine({ invitedBy: null })).toBe('Te invitaron a este espacio');
+  });
+});
+
+/** Medaly 09/11: «cada vez que abro el enlace» asked her name again; the phone kept the credential of her first email sign-in. */
+describe('accountOwesItsName, asked to the account and not to the stored credential', () => {
+  const emailCredential = { phone: 'mail:abc', name: null };
+  it('skips the name when the account already has one', () => {
+    expect(accountOwesItsName(emailCredential, { missing: ['birthday'] })).toBe(false);
+  });
+  it('asks it when the account still lacks it, or when the account could not be read', () => {
+    expect(accountOwesItsName(emailCredential, { missing: ['name', 'birthday'] })).toBe(true);
+    expect(accountOwesItsName(emailCredential, null)).toBe(true);
+  });
+  it('never asks a credential that already has its name', () => {
+    expect(accountOwesItsName({ phone: 'mail:abc', name: 'Ana' }, null)).toBe(false);
   });
 });

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronRight, CirclePlus, RectangleEllipsis } from 'lucide-react-native';
-import { invitedByLine, membersLabel, owesItsName, spacesToOpen, type ClientWorkspace, type MyProfile, type SpaceInvitation } from '@lilachat/shared';
+import { invitedByLine, membersLabel, owesItsName, accountOwesItsName, spacesToOpen, type ClientWorkspace, type MyProfile, type SpaceInvitation } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
 import { CreateUserScreen } from '../onboarding/CreateUserScreen';
 import { Logo } from '../ui/Logo';
@@ -12,6 +12,7 @@ import { setCurrentSpaceId } from './currentSpace';
 import { JoinSpaceScreen } from './JoinSpaceScreen';
 import { SpaceLogo } from './SpaceSwitcherSheet';
 import { acceptSpaceInvitation, mySpaces, spaceInvitations } from './spacesApi';
+import { getProfile } from '../api/profileApi';
 import { markWelcomeSeen } from './welcomeSeen';
 
 type EnteredSpace = { name: string; logoUrl?: string };
@@ -54,7 +55,13 @@ export function YourSpacesScreen(props: { credential: Credential; account: strin
     onEnter({ ...credential, name: ownName.current });
   }, [credential, onEnter]);
 
-  const afterName = (space: EnteredSpace, next: () => void) => (owesItsName(credential) ? setNaming({ space, next }) : next());
+  // The stored credential can be older than the account (Medaly 09/11): ask the account before asking the name.
+  const afterName = async (space: EnteredSpace, next: () => void) => {
+    if (!owesItsName(credential)) return next();
+    const account = await getProfile(credential.jwt);
+    if (account.ok && account.data.profile.name) ownName.current = account.data.profile.name;
+    return accountOwesItsName(credential, account.ok ? account.data.profile : null) ? setNaming({ space, next }) : next();
+  };
 
   const accept = async (invitation: SpaceInvitation) => {
     setAccepting(invitation.id);
@@ -87,7 +94,7 @@ export function YourSpacesScreen(props: { credential: Credential; account: strin
 
         {error ? <Text testID="error-espacios" className="mt-4 text-sm text-error" onPress={() => void load()}>{error}{error === LOAD_ERROR ? ' Toca para reintentar.' : ''}</Text> : null}
         {!lists && !error ? <ActivityIndicator testID="cargando-espacios" className="mt-10" color={colors.primary} /> : null}
-        {lists ? <SpaceLists lists={lists} accepting={accepting} onOpen={(space) => afterName(space, () => leave(space.id))} onJoin={(invitation) => afterName(invitation.workspace, () => void accept(invitation))} /> : null}
+        {lists ? <SpaceLists lists={lists} accepting={accepting} onOpen={(space) => void afterName(space, () => leave(space.id))} onJoin={(invitation) => void afterName(invitation.workspace, () => void accept(invitation))} /> : null}
 
         <View className="mt-6 border-t border-outline/20 pt-2">
           <LinkRow testID="btn-unirme-codigo" title="Unirme con un código" Icon={RectangleEllipsis} onPress={() => setSheet('join')} />
@@ -100,7 +107,7 @@ export function YourSpacesScreen(props: { credential: Credential; account: strin
         </Pressable>
       </ScrollView>
       <JoinSpaceScreen visible={sheet === 'join'} jwt={credential.jwt} onJoined={leave} onClose={() => setSheet(null)} />
-      <CreateSpaceScreen visible={sheet === 'create'} jwt={credential.jwt} onCreated={(space) => afterName(space, () => leave(space.id))} onJoinInstead={() => setSheet('join')} onClose={() => setSheet(null)} />
+      <CreateSpaceScreen visible={sheet === 'create'} jwt={credential.jwt} onCreated={(space) => void afterName(space, () => leave(space.id))} onJoinInstead={() => setSheet('join')} onClose={() => setSheet(null)} />
     </View>
   );
 }

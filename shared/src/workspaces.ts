@@ -126,6 +126,10 @@ export const spacesToOpen = <Space extends Pick<ClientWorkspace, 'status'>>(spac
 /** Only an account born from an email writes its name in «Crea tu usuario» (design i-04); a phone account has its own form. */
 export const owesItsName = (account: { name?: string | null; phone: string }): boolean => !isRealPhone(account.phone) && !account.name?.trim();
 
+/** The stored credential can be older than the account (Medaly 09/11): only the account's own `missing` decides. `null`: it could not be read, so ask. */
+export const accountOwesItsName = (credential: { name?: string | null; phone: string }, account: { missing: readonly string[] } | null): boolean =>
+  owesItsName(credential) && (account === null || account.missing.includes('name'));
+
 export const invitedByLine = (invitation: Pick<SpaceInvitation, 'invitedBy'>): string => (invitation.invitedBy ? `Te invitó ${invitation.invitedBy}` : 'Te invitaron a este espacio');
 
 /** «0:42», as design `i-02` writes the wait to ask for the code again. */

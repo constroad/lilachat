@@ -10982,6 +10982,14 @@ credencial seguía sin teléfono y les abría «Crea tu usuario», que no pide
 cumpleaños. Guardaban el nombre, faltaba el cumpleaños y la ventana volvía en
 cada arranque. La base estaba bien.
 
+**Segundo camino, el del enlace (Medaly, 09/11).** Abrir un enlace de
+invitación pasa por «Tus espacios», que pedía el nombre con
+`owesItsName(credential)`. La credencial guardada era la del primer ingreso
+por correo, sin nombre, y la cuenta ya lo tenía. Ahora, antes de pedirlo, se
+lee la cuenta: `accountOwesItsName(credential, profile)`, en
+`shared/src/workspaces.ts`. Si la cuenta tiene nombre, se sigue y la
+credencial se actualiza. Si no se puede leer, se pide como antes.
+
 **App y web.**
 - `useProfileGate` lee `GET /profile` al entrar. Si `missing` no está vacío,
   la pantalla tapa todo y no se puede saltar.

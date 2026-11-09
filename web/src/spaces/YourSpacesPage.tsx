@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { ChevronRight, CirclePlus, RectangleEllipsis } from 'lucide-react';
-import { invitedByLine, membersLabel, owesItsName, spacesToOpen, type ClientWorkspace, type MyProfile, type SpaceInvitation } from '@lilachat/shared';
+import { invitedByLine, membersLabel, owesItsName, accountOwesItsName, spacesToOpen, type ClientWorkspace, type MyProfile, type SpaceInvitation } from '@lilachat/shared';
 import type { Credential } from '../api';
 import { CreateUserPage } from '../profile/CreateUserPage';
 import { Logo } from '../ui/Logo';
@@ -9,6 +9,7 @@ import { setCurrentSpaceId } from './currentSpace';
 import { JoinSpaceDialog } from './JoinSpaceDialog';
 import { SpaceLogo } from './SpaceLogo';
 import { acceptSpaceInvitation, mySpaces, spaceInvitations } from './spacesApi';
+import { getProfile } from '../profile/profileApi';
 import { markWelcomeSeen } from './welcomeSeen';
 
 type EnteredSpace = { name: string; logoUrl?: string };
@@ -47,7 +48,13 @@ export function YourSpacesPage(props: { credential: Credential; account: string;
     onEnter({ ...credential, name: ownName.current });
   }, [credential, onEnter]);
 
-  const afterName = (space: EnteredSpace, next: () => void) => (owesItsName(credential) ? setNaming({ space, next }) : next());
+  // The stored credential can be older than the account (Medaly 09/11): ask the account before asking the name.
+  const afterName = async (space: EnteredSpace, next: () => void) => {
+    if (!owesItsName(credential)) return next();
+    const account = await getProfile(credential.jwt);
+    if (account.ok && account.data.profile.name) ownName.current = account.data.profile.name;
+    return accountOwesItsName(credential, account.ok ? account.data.profile : null) ? setNaming({ space, next }) : next();
+  };
 
   const accept = async (invitation: SpaceInvitation) => {
     setAccepting(invitation.id);
@@ -75,7 +82,7 @@ export function YourSpacesPage(props: { credential: Credential; account: string;
         <h1 className="mt-6 text-[26px] font-bold leading-8 tracking-tight">Tus espacios de trabajo</h1>
         <p className="mt-1 text-[15px] text-on-surface-variant">{props.account}</p>
         {error ? <button type="button" data-testid="error-espacios" onClick={() => void load()} className="mt-4 block text-left text-sm text-error">{error}{error === LOAD_ERROR ? ' Reintentar' : ''}</button> : null}
-        {lists ? <SpaceLists lists={lists} accepting={accepting} onOpen={(space) => afterName(space, () => leave(space.id))} onJoin={(invitation) => afterName(invitation.workspace, () => void accept(invitation))} /> : null}
+        {lists ? <SpaceLists lists={lists} accepting={accepting} onOpen={(space) => void afterName(space, () => leave(space.id))} onJoin={(invitation) => void afterName(invitation.workspace, () => void accept(invitation))} /> : null}
         <div className="mt-6 border-t border-outline/20 pt-2">
           <LinkRow testId="btn-unirme-codigo" title="Unirme con un código" icon={<RectangleEllipsis size={22} />} onClick={() => setSheet('join')} />
           <LinkRow testId="btn-crear-espacio-ingreso" title="Crear un espacio" icon={<CirclePlus size={22} />} onClick={() => setSheet('create')} />
@@ -83,7 +90,7 @@ export function YourSpacesPage(props: { credential: Credential; account: string;
         <button type="button" data-testid="btn-sin-espacio" onClick={() => leave(null)} className="mt-6 w-full py-2 text-sm text-on-surface-variant hover:underline">Usar sin espacio de trabajo</button>
       </div>
       {sheet === 'join' ? <JoinSpaceDialog jwt={jwt} onJoined={leave} onClose={() => setSheet(null)} /> : null}
-      {sheet === 'create' ? <CreateSpaceDialog jwt={jwt} onCreated={(space) => afterName(space, () => leave(space.id))} onJoinInstead={() => setSheet('join')} onClose={() => setSheet(null)} /> : null}
+      {sheet === 'create' ? <CreateSpaceDialog jwt={jwt} onCreated={(space) => void afterName(space, () => leave(space.id))} onJoinInstead={() => setSheet('join')} onClose={() => setSheet(null)} /> : null}
     </main>
   );
 }

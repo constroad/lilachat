@@ -112,6 +112,17 @@ describe('the service detail on demand (José, 30/10: pedidos, despachos e infor
     expect(response.body.detail.totals.orders).toBe(148);
   });
 
+  it('a detail of ~400 KB arrives whole (Globofast 09/11: 250 photos over many days, agentes reads up to 512 KiB)', async () => {
+    // Arrange
+    const mapPhotos = Array.from({ length: 300 }, (_, index) => ({ id: `foto-${index}`, lat: -12.07, lng: -76.95, at: '2026-08-31T15:00:00.000Z', kind: 'photo', url: `https://lila.constroad.com/f/control-de-imprimacion-${index}-${'x'.repeat(600)}`, thumbnailUrl: `https://lila.constroad.com/t/${index}-${'y'.repeat(600)}` }));
+    answer = { status: 200, body: { service: { id: 'srv-318', name: 'Pavimentación' }, orders: [], dispatches: [], reports: [], mapPhotos, totals: { orders: 0, dispatches: 0, reports: 0 } } };
+    expect(JSON.stringify(answer.body).length).toBeGreaterThan(300_000);
+    // Act
+    const response = await detailOf(jose).expect(200);
+    // Assert
+    expect(response.body.detail?.mapPhotos).toHaveLength(300);
+  });
+
   it('a service the app did not list or someone outside the channel: 404 and no event; a failure says so with the Portal link', async () => {
     expect((await detailOf(jose, 'srv-999')).status).toBe(404);
     expect((await detailOf(outsider)).status).toBe(404);

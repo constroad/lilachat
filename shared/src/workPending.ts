@@ -47,8 +47,12 @@ function itemOf(one: Raw): PendingProgress | null {
   };
 }
 
+const objectOf = (raw: unknown): Raw => (raw && typeof raw === 'object' ? (raw as Raw) : {});
+
 export function pendingProgressOf(data: unknown): PendingList {
-  const raw = (data && typeof data === 'object' ? data : {}) as Raw;
+  const outer = objectOf(data);
+  // Portal answers `structuredContent: { data }`, and the door hands that over as the tool's data.
+  const raw = 'pendientes' in outer ? outer : objectOf(outer.data);
   return { items: listOf(raw.pendientes).flatMap((one) => itemOf(one) ?? []), seesAll: raw.verTodos === true, more: raw.hayMas === true };
 }
 

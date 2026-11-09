@@ -30,6 +30,10 @@ describe('pending progress of the work map', () => {
     expect(pendingProgressOf(undefined)).toEqual({ items: [], seesAll: false, more: false });
   });
 
+  it('reads it wrapped once more, as the door hands it over (`data.data`, live 09/11)', () => {
+    expect(pendingProgressOf({ data }).items.map((one) => one.id)).toEqual(['a1', 'a2']);
+  });
+
   it('says how many wait, in words a site engineer reads', () => {
     expect(pendingTitle(0)).toBe('Nada por aprobar');
     expect(pendingTitle(1)).toBe('1 avance por aprobar');

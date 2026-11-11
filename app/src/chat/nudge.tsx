@@ -24,7 +24,7 @@ const POP_STEP_MS = 120;
 const WINK_VIBRATION = [0, 60, 60, 60];
 
 /** A nudge or a wink straight to the server, with its refusal (limit, group setting) told back. */
-async function sendFun(chatId: string, payload: { kind: 'zumbido' } | { kind: 'guino'; wink: WinkId }, what: string): Promise<{ ok: true } | { ok: false; reason: string }> {
+async function sendFun(chatId: string, payload: { kind: 'zumbido' } | { kind: 'guino'; wink: WinkId; replyToSeq?: number }, what: string): Promise<{ ok: true } | { ok: false; reason: string }> {
   const socket = getSocket();
   if (!socket?.connected) return { ok: false, reason: `Sin conexión: ${what} no salió.` };
   try {
@@ -37,8 +37,8 @@ async function sendFun(chatId: string, payload: { kind: 'zumbido' } | { kind: 'g
 
 /** The MSN nudge (backlog 3). */
 export const sendNudge = (chatId: string) => sendFun(chatId, { kind: 'zumbido' }, 'El zumbido');
-/** A wink (José, 21/10). */
-export const sendWink = (chatId: string, wink: WinkId) => sendFun(chatId, { kind: 'guino', wink }, 'El guiño');
+/** A wink (José, 21/10); from the quote strip it answers that message (José 10/11). */
+export const sendWink = (chatId: string, wink: WinkId, replyToSeq?: number) => sendFun(chatId, { kind: 'guino', wink, ...(replyToSeq ? { replyToSeq } : {}) }, 'El guiño');
 
 /** «Ver otra vez» in a wink's line asks the open chat to play it again. */
 type ReplayListener = (fun: FunToPlay) => void;
@@ -173,7 +173,7 @@ export function useFunPlayback(params: { messages: readonly { seq: number; kind?
  * a group only if an admin switched them on (the server checks it too); never
  * in a draft or the chat with yourself.
  */
-export function useFunActions(params: { chatId: string; isGroup: boolean; isDraft: boolean; detailAllows?: boolean; onError: (text: string) => void }): { onNudge?: () => void; onWink?: (wink: WinkId) => void } {
+export function useFunActions(params: { chatId: string; isGroup: boolean; isDraft: boolean; detailAllows?: boolean; onError: (text: string) => void }): { onNudge?: () => void; onWink?: (wink: WinkId, replyToSeq?: number) => void } {
   const listAllows = useSyncExternalStore(suscribirChatsEnMemoria, () => chatsEnMemoria()?.find((chat) => chat.id === params.chatId)?.funAllowed);
   const allowed = funAvailable({ isDraft: params.isDraft, isGroup: params.isGroup, detailAllows: params.detailAllows, listAllows });
   const { chatId, onError } = params;
@@ -185,12 +185,12 @@ export function useFunActions(params: { chatId: string; isGroup: boolean; isDraf
               playOnTap({ kind: 'zumbido' });
               void sendNudge(chatId).then((result) => result.ok || onError(result.reason));
             },
-            onWink: (wink: WinkId) => {
+            onWink: (wink: WinkId, replyToSeq?: number) => {
               beginInteraction('enviar-guino');
               closeEmojiPanel(false);
               // A frame later: the panel starts sliding out before the sketch mounts (~500 ms of JS, F4 02/11).
               requestAnimationFrame(() => playOnTap({ kind: 'guino', wink }));
-              void sendWink(chatId, wink).then((result) => result.ok || onError(result.reason));
+              void sendWink(chatId, wink, replyToSeq).then((result) => result.ok || onError(result.reason));
             },
           }
         : {},

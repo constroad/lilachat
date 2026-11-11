@@ -1,5 +1,5 @@
 import { ContactNoteBannerWeb } from '../routines/ContactNoteBannerWeb';
-import type { NotificationLevel, WinkId } from '@lilachat/shared';
+import type { MessageTarget, NotificationLevel, WinkId } from '@lilachat/shared';
 import { alreadyGreeted, newAlbumId, peopleNamesOf } from '@lilachat/shared';
 import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { PanelDeInfo } from './info/PanelDeInfo';
@@ -108,7 +108,8 @@ export function ConversacionConAcciones(
   const mencionables = useMentionCandidatesWeb({ jwt: props.jwt, workspaceId: chat.workspaceId, isGroup: chat.kind === 'group', detail: detalle, myUserId: yo });
   const people = useMemo(() => peopleNamesOf(mencionables ?? [], detalle?.appIds ?? new Set<string>()), [mencionables, detalle]);
   const outsideMentions = useOutsideMentionsWeb({ jwt: props.jwt, chatId: chat.id });
-  const [archivos, setArchivos] = useState<File[] | null>(null);
+  /** The files of the preview and where they go: an answer from the chat, or a reply in the open thread (José 10/11). */
+  const [archivos, setArchivos] = useState<{ files: File[]; target: MessageTarget } | null>(null);
   const [fotoAbierta, setFotoAbierta] = useState<number | null>(null);
   // Photos, GIFs and videos; never a sticker (José, 22/10: they showed up while swiping).
   const viewerPhotos = useMemo(() => (mensajes ?? []).filter(opensInPhotoViewer), [mensajes]);
@@ -118,10 +119,13 @@ export function ConversacionConAcciones(
   const canGreet = useCallback((noticeSeq: number) => !alreadyGreeted((mensajes ?? []).map((one) => ({ seq: one.seq, senderId: one.senderId, pending: Boolean(one.estado) })), noticeSeq, yo), [mensajes, yo]);
   /** A la cola (auditoría 19/10): cada burbuja aparece ya y sube por detrás; el pie va en el primero. */
   const subir = (lista: File[], pie: string, hd: boolean) => {
+    const target = archivos?.target ?? {};
     setArchivos(null);
+    // The answer is spent like with a text: the quote strip closes.
+    if (target.replyToSeq) acciones.cancelarContexto();
     // Two or more photos or videos together go as one album (pending 12).
     const albumId = lista.filter((archivo) => /^(image|video)\//.test(archivo.type)).length >= 2 ? newAlbumId() : undefined;
-    lista.forEach((archivo, indice) => void colaDeArchivosWeb.encolar(chat.id, archivo, { caption: indice === 0 && pie ? pie : undefined, hd, albumId: /^(image|video)\//.test(archivo.type) ? albumId : undefined }));
+    lista.forEach((archivo, indice) => void colaDeArchivosWeb.encolar(chat.id, archivo, { caption: indice === 0 && pie ? pie : undefined, hd, albumId: /^(image|video)\//.test(archivo.type) ? albumId : undefined, target }));
   };
   const citado = useCallback((seq: number) => mensajes?.find((uno) => uno.seq === seq), [mensajes]);
   // Fijar mensajes (19/10): en un grupo, solo los admins.
@@ -218,13 +222,18 @@ export function ConversacionConAcciones(
         onCall={canCall ? (video) => calls.call(chat.id, chat.name ?? chat.phone ?? 'Llamada', video) : groupCall ? (video) => calls.callGroup(chat.id, chat.name ?? 'Grupo', video) : undefined}
         callStrip={groupCall ? <GroupCallStripFor chatId={chat.id} chatName={chat.name ?? 'Grupo'} /> : undefined}
         callExtras={canCall ? <CallExtrasMenu jwt={props.jwt} chat={{ id: chat.id, name: chat.name ?? chat.phone ?? 'Conversación' }} /> : undefined}
-        onWink={funAllowed ? sendWink : undefined}
+        onWink={funAllowed ? (wink) => {
+          // From the quote strip a wink answers that message, like a sticker (José 10/11).
+          const replyToSeq = acciones.replyingTo;
+          void sync.sendWink(chat.id, wink, replyToSeq).then((result) => result.ok || onAviso(result.motivo));
+          if (replyToSeq) acciones.cancelarContexto();
+        } : undefined}
         mencionables={mencionables}
         people={people}
         onOutsideMentions={outsideMentions.notify}
         avisoDeMencion={<OutsideMentionNotice outside={outsideMentions} />}
         jwtParaEnlaces={chat.encrypted ? undefined : props.jwt}
-        onElegirArchivos={setArchivos}
+        onElegirArchivos={(files) => setArchivos({ files, target: acciones.replyingTo ? { replyToSeq: acciones.replyingTo } : {} })}
         onNotaDeVoz={(nota) => void colaDeArchivosWeb.encolar(chat.id, nota.file, { durationMs: nota.ms, onda: nota.onda, hd: true })}
         mensajes={ventana.window ? windowOnScreen(ventana.window, hilos.visibles ?? []) : hilos.visibles}
         hayAnteriores={ventana.window ? ventana.window.hasOlder : props.hayAnteriores}
@@ -285,6 +294,7 @@ export function ConversacionConAcciones(
           onReintentar={props.onReintentar}
           onDescartar={props.onDescartar}
           onEdit={(seq, text) => sync.editar(chat.id, seq, text)}
+          onFiles={chat.encrypted ? undefined : (files, enElChat) => setArchivos({ files, target: { hiloDe: hilos.raiz!.seq, ...(enElChat ? { enElChat: true } : {}) } })}
           stickers={chat.encrypted ? undefined : { jwt: props.jwt, me: yo, chatId: chat.id, chatName: chat.name ?? chat.phone ?? '' }}
           onCerrar={hilos.cerrar}
         />
@@ -344,7 +354,7 @@ export function ConversacionConAcciones(
           }}
         />
       ) : null}
-      {archivos ? <EnviarArchivos archivos={archivos} onCerrar={() => setArchivos(null)} onEnviar={subir} /> : null}
+      {archivos ? <EnviarArchivos archivos={archivos.files} onCerrar={() => setArchivos(null)} onEnviar={subir} /> : null}
       {fotoAbierta !== null ? <PhotoViewer fotos={viewerPhotos} indice={fotoAbierta} onCambiar={setFotoAbierta} onCerrar={() => setFotoAbierta(null)} onMakeSticker={chat.encrypted ? undefined : (foto) => void saveGif({ chatId: chat.id, seq: foto.seq }).then(onAviso)} /> : null}
       {personCard.element}
       {pdfAbierto?.media?.url ? <PdfViewer jwt={props.jwt} chatId={chat.id} seq={pdfAbierto.seq} fileName={pdfAbierto.media.fileName ?? 'Documento PDF'} downloadUrl={pdfAbierto.media.url} onClose={() => setPdfAbierto(null)} /> : null}

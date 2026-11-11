@@ -194,7 +194,7 @@ export function ChatScreen({
   );
   const alAdjuntar = useCallback(() => setAttachOpen(true), []);
   const { fotosElegidas, cerrarFotos, alEnviarFotos, alCamara, alNotaDeVoz, pickFromGallery, pickMedia, pastePhoto, pickFile, camara } =
-    useAdjuntosDelChat({ chatId, onError: setMediaError });
+    useAdjuntosDelChat({ chatId, onError: setMediaError, target: () => (respuesta.respondiendoA ? { replyToSeq: respuesta.respondiendoA.seq } : {}), onTargetSpent: respuesta.cancelarRespuesta });
 
   const nombreVisible = infoPropia.name ?? chatName;
 

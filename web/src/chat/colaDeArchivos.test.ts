@@ -31,6 +31,15 @@ describe('cola de archivos de la web', () => {
     expect(comoMensaje(cola.delChat(CHAT)[0]!, YO)).toMatchObject({ estado: 'enviando', senderId: YO, media: { url: 'blob:vista' } });
   });
 
+  it('una respuesta o un hilo viaja con la subida y con la burbuja pendiente (José 10/11)', async () => {
+    const { cola, deps } = armar();
+    void cola.encolar(CHAT, foto(), { target: { replyToSeq: 12, hiloDe: 40, enElChat: true } });
+    expect(comoMensaje(cola.delChat(CHAT)[0]!, YO)).toMatchObject({ replyToSeq: 12, hiloDe: 40, enElChat: true });
+    await esperar();
+    await esperar();
+    expect(deps.subir).toHaveBeenCalledWith(expect.objectContaining({ target: { replyToSeq: 12, hiloDe: 40, enElChat: true } }));
+  });
+
   it('al subir, entrega el confirmado ANTES de quitar la pendiente', async () => {
     const { cola } = armar();
     const vistos: number[] = [];

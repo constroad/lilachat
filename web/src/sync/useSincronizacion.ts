@@ -167,7 +167,7 @@ function useAccionesDelChat(params: {
   /** The MSN nudge (backlog 3). */
   const sendNudge = useCallback((chatId: string) => sendNudgeBySocket(socket.current, chatId), [socket]);
   /** A wink (José, 21/10). */
-  const sendWink = useCallback((chatId: string, wink: WinkId) => sendWinkBySocket(socket.current, chatId, wink), [socket]);
+  const sendWink = useCallback((chatId: string, wink: WinkId, replyToSeq?: number) => sendWinkBySocket(socket.current, chatId, wink, replyToSeq), [socket]);
 
   /** Reenviar un texto a varios chats: uno por chat, cada uno con su clave. */
   const reenviar = useCallback(

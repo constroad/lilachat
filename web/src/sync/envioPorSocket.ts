@@ -80,10 +80,10 @@ export async function accionPorSocket(
 
 /** The MSN nudge (backlog 3): straight to the server, not queued (it means something only now). */
 export const sendNudgeBySocket = (socket: Socket | null, chatId: string) => sendFunBySocket(socket, chatId, { kind: 'zumbido' }, 'el zumbido');
-/** A wink (José, 21/10), the same way. */
-export const sendWinkBySocket = (socket: Socket | null, chatId: string, wink: WinkId) => sendFunBySocket(socket, chatId, { kind: 'guino', wink }, 'el guiño');
+/** A wink (José, 21/10), the same way; it can answer a message (José 10/11). */
+export const sendWinkBySocket = (socket: Socket | null, chatId: string, wink: WinkId, replyToSeq?: number) => sendFunBySocket(socket, chatId, { kind: 'guino', wink, ...(replyToSeq ? { replyToSeq } : {}) }, 'el guiño');
 
-async function sendFunBySocket(socket: Socket | null, chatId: string, payload: { kind: 'zumbido' } | { kind: 'guino'; wink: WinkId }, what: string): Promise<ResultadoDeAccion> {
+async function sendFunBySocket(socket: Socket | null, chatId: string, payload: { kind: 'zumbido' } | { kind: 'guino'; wink: WinkId; replyToSeq?: number }, what: string): Promise<ResultadoDeAccion> {
   if (!socket?.connected) return { ok: false, motivo: `Sin conexión: ${what} no salió.` };
   try {
     return resultadoDeAccion(await socket.timeout(ESPERA_DEL_ACUSE_MS).emitWithAck('msg.send', { chatId, clientKey: crypto.randomUUID(), ...payload }));

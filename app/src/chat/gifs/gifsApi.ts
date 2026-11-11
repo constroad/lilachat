@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { GifResult } from '@lilachat/shared';
+import type { GifResult, MessageTarget } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 
@@ -9,7 +9,7 @@ const url = (path: string) => `${BASE_URL}/api/gifs${path}`;
 export const searchGifs = (jwt: string, q: string, offset: number) => jsonCall<{ gifs: GifResult[] }>(url(`/search?${new URLSearchParams({ q, offset: String(offset) })}`), jwt);
 
 /** A new key per tap: the same tap retried by the network is one message on the server. */
-export const sendGif = (jwt: string, chatId: string, gifId: string, clientKey: string) => jsonCall<{ message: unknown }>(url('/send'), jwt, { method: 'POST', body: JSON.stringify({ chatId, gifId, clientKey }) });
+export const sendGif = (jwt: string, chatId: string, gifId: string, clientKey: string, target: MessageTarget = {}) => jsonCall<{ message: unknown }>(url('/send'), jwt, { method: 'POST', body: JSON.stringify({ chatId, gifId, clientKey, ...target }) });
 
 let known: boolean | null = null;
 

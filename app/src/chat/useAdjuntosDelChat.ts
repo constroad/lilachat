@@ -1,3 +1,4 @@
+import type { MessageTarget } from '@lilachat/shared';
 import { useCallback, useRef, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -13,7 +14,14 @@ import { newAlbumId } from '@lilachat/shared';
  * la cámara —que pasan por la previsualización con pie (FL9b)—, archivos y
  * notas de voz. Todo termina en la cola persistida (`colaDeArchivos`).
  */
-export function useAdjuntosDelChat(params: { chatId: string; onError: (texto: string) => void }) {
+export function useAdjuntosDelChat(params: {
+  chatId: string;
+  onError: (texto: string) => void;
+  /** The message being answered when the file goes (José 10/11), read at that moment. */
+  target?: () => MessageTarget;
+  /** The answer was used: the quote strip closes, like after a text. */
+  onTargetSpent?: () => void;
+}) {
   /** Las fotos elegidas que se están por mandar; vacío = previsualización cerrada. */
   const [fotosElegidas, setFotosElegidas] = useState<FotoElegida[]>([]);
   const [camaraAbierta, setCamaraAbierta] = useState(false);
@@ -38,8 +46,10 @@ export function useAdjuntosDelChat(params: { chatId: string; onError: (texto: st
     albumId?: string;
   }) => {
     params.onError('');
+    const target = params.target?.() ?? {};
     try {
-      await encolarArchivo({ chatId: params.chatId, ...file });
+      await encolarArchivo({ chatId: params.chatId, ...file, ...(target.replyToSeq || target.hiloDe ? { target } : {}) });
+      if (target.replyToSeq) params.onTargetSpent?.();
     } catch (error) {
       reportarError('encolarArchivo', error);
       params.onError('No se pudo preparar el archivo para enviarlo.');

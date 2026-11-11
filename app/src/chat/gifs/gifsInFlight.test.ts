@@ -10,6 +10,12 @@ describe('GIFs and stickers in flight', () => {
     expect(gifAsQueuedFile(gif, 'c1', 'gif-1', '2026-10-22T10:00:00Z')).toMatchObject({ clientKey: 'gif-1', chatId: 'c1', uri: gif.previewUrl, mimeType: 'image/gif', width: 200, height: 150 });
   });
 
+  it('José 10/11: the pending GIF is the sharp rendition and keeps the message it answers', () => {
+    const sharp = { ...gif, sharpUrl: 'https://media.giphy.com/abc/200.webp' };
+    expect(gifAsQueuedFile(sharp, 'c1', 'gif-2', '2026-11-10T10:00:00Z', { replyToSeq: 41 })).toMatchObject({ uri: sharp.sharpUrl, target: { replyToSeq: 41 } });
+    expect(gifAsQueuedFile(sharp, 'c1', 'gif-3', '2026-11-10T10:00:00Z', {}).target).toBeUndefined();
+  });
+
   it('a sticker waits as itself: the same image the panel showed (already cached), marked as a sticker', () => {
     expect(stickerAsQueuedFile(sticker, 'c1', 'st-1', '2026-11-02T10:00:00Z')).toMatchObject({ clientKey: 'st-1', chatId: 'c1', uri: sticker.url, mimeType: 'image/webp', width: 512, height: 512, sticker: true });
   });

@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { MAX_BYTES_BY_KIND, dimensionValida, validateMedia, isAlbumId, sealedMediaSize, type MediaKind } from '@lilachat/shared';
+import { MAX_BYTES_BY_KIND, dimensionValida, validateMedia, isAlbumId, messageTargetOf, sealedMediaSize, type MediaKind } from '@lilachat/shared';
 import { Types } from 'mongoose';
 import { ChatModel } from './chatModels.js';
 import { parseSealedUpload, sealedSizeProblem } from './sealedUpload.js';
 import { ForbiddenChatError, mensajePropioPorClave, sendMessage } from './chatService.js';
-import { publicarMensaje } from './socket.js';
+import { notifyThread, publicarMensaje } from './socket.js';
 import { toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
 import { defaultMediaUploader } from './localMediaUploader.js';
 import { requireSession } from './requireSession.js';
@@ -113,6 +113,8 @@ export function buildMediaRouter(uploader: MediaUploader = defaultMediaUploader(
         senderId: req.session!.userId,
         clientKey,
         kind: validation.kind,
+        // An answer to a message or a reply in a thread, like a text (José 10/11).
+        ...messageTargetOf(req.body),
         ...(sealed?.ok ? { envelope: sealed.envelope } : { body: typeof req.body?.caption === 'string' ? req.body.caption.trim() : undefined }),
         media: sealed ? sealedMedia(uploaded.media, file.size) : {
           mediaId: uploaded.media.storageName,
@@ -151,6 +153,7 @@ export function buildMediaRouter(uploader: MediaUploader = defaultMediaUploader(
        * se repartió cuando se creó de verdad.
        */
       if (!result.duplicate) await publicarMensaje(result.message, result.members);
+      if (!result.duplicate && result.hilo && result.message.hiloDe !== undefined) notifyThread(chatId, result.message.hiloDe, result.hilo, result.members ?? []);
       // A voucher sent to an app (pending 90): it hears the file by a signed address. Never awaited by who sent it.
       if (!result.duplicate) void botsHearMessage(result.message, result.members ?? []).catch((error) => console.error('[bots] no se pudo avisar el archivo:', error?.message ?? error));
 

@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import { GIF_MAX_BYTES, gifRenditionToSend, gifsFromGiphy, type GifResult } from '@lilachat/shared';
+import { GIF_MAX_BYTES, gifRenditionToSend, gifsFromGiphy, messageTargetOf, type GifResult } from '@lilachat/shared';
 import { ForbiddenChatError, mensajePropioPorClave, sendMessage } from './chatService.js';
 import { toAbsoluteMediaUrl, type MediaUploader } from './mediaClient.js';
 import { defaultMediaUploader } from './localMediaUploader.js';
 import { toClientMessage } from './messageView.js';
 import { asyncRoute, requireSession } from './requireSession.js';
-import { publicarMensaje } from './socket.js';
+import { notifyThread, publicarMensaje } from './socket.js';
 
 /**
  * GIPHY through the server (backlog 37, José 21/10; design
@@ -96,9 +96,11 @@ export function buildGifRouter(options: { apiKey?: string; fetchers?: GiphyFetch
         senderId: req.session!.userId,
         clientKey,
         kind: 'image',
+        ...messageTargetOf(req.body),
         media: { mediaId: uploaded.media.storageName, fileName: `giphy-${gifId}.gif`, sizeBytes: bytes.length, width: rendition.width || undefined, height: rendition.height || undefined, thumbUrl: uploaded.media.thumbnailUrl, url: uploaded.media.url, mime: 'image/gif' },
       });
       if (!result.duplicate) await publicarMensaje(result.message, result.members);
+      if (!result.duplicate && result.hilo && result.message.hiloDe !== undefined) notifyThread(chatId, result.message.hiloDe, result.hilo, result.members ?? []);
       res.status(201).json({ message: toClientMessage(result.message), duplicate: result.duplicate, url: toAbsoluteMediaUrl(uploaded.media.url) });
     } catch (error) {
       if (error instanceof ForbiddenChatError) return void res.status(403).json({ message: error.message });

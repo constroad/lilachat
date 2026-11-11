@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import type { MessageTarget } from '@lilachat/shared';
 import type { ChatMessage, MensajeEnPantalla } from './types';
 
 /**
@@ -26,13 +27,15 @@ export type ArchivoPendiente = {
   onda?: number[];
   /** Sent together with other photos (pending 12): a retry keeps it in its album. */
   albumId?: string;
+  /** An answer to a message or a reply in a thread (José 10/11). */
+  target?: MessageTarget;
   queuedAt: string;
   preparando: boolean;
   progreso?: number;
   fallo?: string;
 };
 
-export type DatosDeSubida = Pick<ArchivoPendiente, 'archivo' | 'nombre' | 'chatId' | 'clientKey' | 'caption' | 'width' | 'height' | 'durationMs' | 'onda'> & {
+export type DatosDeSubida = Pick<ArchivoPendiente, 'archivo' | 'nombre' | 'chatId' | 'clientKey' | 'caption' | 'width' | 'height' | 'durationMs' | 'onda' | 'target'> & {
   albumId?: ArchivoPendiente['albumId'];
   onProgreso: (razon: number) => void;
 };
@@ -47,7 +50,7 @@ export type DependenciasDeLaCola = {
   ahora: () => string;
 };
 
-export type OpcionesDeEnvio = { caption?: string; hd?: boolean; durationMs?: number; onda?: number[]; albumId?: string };
+export type OpcionesDeEnvio = { caption?: string; hd?: boolean; durationMs?: number; onda?: number[]; albumId?: string; target?: MessageTarget };
 
 export function crearColaDeArchivos(deps: DependenciasDeLaCola) {
   let cola: ArchivoPendiente[] = [];
@@ -140,6 +143,8 @@ export function comoMensaje(archivo: ArchivoPendiente, yo: string): MensajeEnPan
     estado: archivo.fallo ? 'fallido' : 'enviando',
     motivoDelFallo: archivo.fallo,
     progreso: archivo.progreso,
+    // A reply in a thread waits in its panel, not in the chat; an answer shows its quote at once.
+    ...archivo.target,
   };
 }
 

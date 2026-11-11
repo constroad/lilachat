@@ -1,3 +1,4 @@
+import type { MessageTarget } from '@lilachat/shared';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Crypto from 'expo-crypto';
@@ -143,6 +144,7 @@ type ArchivoNuevo = {
   height?: number;
   onda?: number[];
   albumId?: string;
+  target?: MessageTarget;
 };
 
 /**
@@ -262,6 +264,7 @@ export async function drenarArchivos(): Promise<void> {
         height: archivo.height,
         onda: archivo.onda,
         albumId: archivo.albumId,
+        target: archivo.target,
         sealed: archivo.sealed,
         onProgress: (ratio) => {
           const avisado = progreso?.clientKey === archivo.clientKey ? progreso.ratio : null;

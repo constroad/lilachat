@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { MessageTarget } from '@lilachat/shared';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { ArrowLeft, X } from 'lucide-react-native';
 import { Modal } from '../../ui/Modal';
@@ -14,12 +15,12 @@ const SEARCH_COLUMNS = 3;
  * GIF» with the keyboard up and the results under it. Picking one sends it and
  * comes back to the chat; «←» comes back to the panel.
  */
-export function GifSearchScreen(props: { visible: boolean; jwt: string; chatId: string; onClose: () => void }) {
+export function GifSearchScreen(props: { visible: boolean; jwt: string; chatId: string; onClose: () => void; target?: () => MessageTarget; onSent?: () => void }) {
   const colors = useColores();
   const margins = useMargenes();
   const [text, setText] = useState('');
   const search = useGifSearch(props.jwt, text.trim());
-  const { send, error } = useGifSend(props.jwt, props.chatId);
+  const { send, error } = useGifSend(props.jwt, props.chatId, props.target, props.onSent);
   useEffect(() => {
     if (props.visible) setText('');
   }, [props.visible]);

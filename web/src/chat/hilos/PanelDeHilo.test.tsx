@@ -59,6 +59,23 @@ describe('PanelDeHilo', () => {
     expect(screen.getByTestId('input-hilo')).toHaveFocus();
   });
 
+  it('a pasted screenshot or an attached photo goes to the thread, with «También enviar al chat» (José 10/11)', async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    const onFiles = vi.fn();
+    render(
+      <ConversacionContext.Provider value={conversation}>
+        <PanelDeHilo chat={chat} raiz={raiz} respuestas={[respuesta]} yo="yo" nombres={new Map()} onEnviar={vi.fn()} onReintentar={vi.fn()} onDescartar={vi.fn()} onEdit={vi.fn()} onCerrar={vi.fn()} onFiles={onFiles} />
+      </ConversacionContext.Provider>
+    );
+    const shot = new File(['x'], 'captura.png', { type: 'image/png' });
+    await userEvent.click(screen.getByTestId('casilla-tambien-al-chat'));
+    await userEvent.upload(screen.getByTestId('archivo-hilo'), shot);
+    expect(onFiles).toHaveBeenLastCalledWith([shot], true);
+    screen.getByTestId('input-hilo').focus();
+    await userEvent.paste({ files: [shot] } as unknown as DataTransfer);
+    expect(onFiles).toHaveBeenCalledTimes(2);
+  });
+
   it('«Responder» on a reply answers in this thread, never quotes it in the main chat (pending 110)', async () => {
     // Arrange
     Element.prototype.scrollIntoView = vi.fn();

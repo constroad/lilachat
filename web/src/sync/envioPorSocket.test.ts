@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { enviarPorSocket, resultadoDeAccion, resultadoDelAck } from './envioPorSocket';
+import { enviarPorSocket, resultadoDeAccion, resultadoDelAck, sendWinkBySocket } from './envioPorSocket';
 
 /** El acuse de `msg.send` (server/src/socket.ts) traducido al motor de la cola. */
 describe('resultadoDelAck', () => {
@@ -57,5 +57,17 @@ describe('enviarPorSocket con hilo', () => {
     const r = await enviarPorSocket(socket as never, { clientKey: 'k', chatId: 'c', kind: 'text', body: 'yo', hiloDe: 3, enElChat: true, queuedAt: 'x', attempts: 0 });
     expect(r).toEqual({ status: 'sent', seq: 9 });
     expect(frame).toMatchObject({ hiloDe: 3, enElChat: true });
+  });
+});
+
+/** José 10/11: a wink sent from the quote strip answers that message. */
+describe('sendWinkBySocket', () => {
+  it('carries the quoted message, and nothing when there is none', async () => {
+    const frames: Record<string, unknown>[] = [];
+    const socket = { connected: true, timeout: () => ({ emitWithAck: async (_event: string, data: Record<string, unknown>) => (frames.push(data), { ok: true }) }) };
+    await sendWinkBySocket(socket as never, 'c', 'baile' as never, 12);
+    await sendWinkBySocket(socket as never, 'c', 'baile' as never);
+    expect(frames[0]).toMatchObject({ kind: 'guino', wink: 'baile', replyToSeq: 12 });
+    expect(frames[1]).not.toHaveProperty('replyToSeq');
   });
 });

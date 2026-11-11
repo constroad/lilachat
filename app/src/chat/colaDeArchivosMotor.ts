@@ -1,3 +1,4 @@
+import type { MessageTarget } from '@lilachat/shared';
 import { retryDelayMs } from '@lilachat/shared';
 import type { SealedUpload, UploadResult } from './mediaUpload';
 
@@ -25,6 +26,8 @@ export type ArchivoEnCola = {
   onda?: number[];
   /** Sent together with other photos (pending 12): a retry keeps it in its album. */
   albumId?: string;
+  /** An answer to a message (José 10/11): the photo quotes it like a text. */
+  target?: MessageTarget;
   queuedAt: string;
   intentos: number;
   fallo?: string;

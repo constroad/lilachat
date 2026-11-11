@@ -75,7 +75,7 @@ export const EmojiStickerPanel = memo(function EmojiStickerPanel(props: {
   /** The message being replied to when the sticker is tapped: it quotes it (20/10). */
   replyTo?: () => number | undefined;
   /** Winks (José, 21/10): the «Guiños» tab, where nudges and winks are allowed; the nudge lives on top of it. */
-  onWink?: (wink: WinkId) => void;
+  onWink?: (wink: WinkId, replyToSeq?: number) => void;
   onNudge?: () => void;
 }) {
   const { onWink } = props;
@@ -122,9 +122,9 @@ export const EmojiStickerPanel = memo(function EmojiStickerPanel(props: {
       {tab === 'emoji' ? (
         <PanelDeEmojis onElegir={props.onPickEmoji} />
       ) : tab === 'gifs' ? (
-        <GifPanel jwt={props.jwt} chatId={props.chatId} />
+        <GifPanel jwt={props.jwt} chatId={props.chatId} target={() => ({ ...props.thread, replyToSeq: props.replyTo?.() })} onSent={props.onStickerSent} />
       ) : tab === 'winks' && onWink ? (
-        <WinkPanel recipient={props.chatName} onSend={onWink} onNudge={props.onNudge} />
+        <WinkPanel recipient={props.chatName} onSend={(wink) => { onWink(wink, props.replyTo?.()); props.onStickerSent?.(); }} onNudge={props.onNudge} />
       ) : (
         <View style={{ flex: 1 }}>
           <StickerPanel stickers={stickers} onSend={(sticker) => void stickers.send(props.chatId, sticker, { ...props.thread, replyToSeq: props.replyTo?.() }).then((sent) => sent && props.onStickerSent?.())} onCreate={() => { setEditorSession((before) => before + 1); setCreating(true); }} onFromGif={() => void fromGif()} />

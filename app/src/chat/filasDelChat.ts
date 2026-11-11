@@ -197,6 +197,8 @@ export function filaDeArchivoEnCola(archivo: ArchivoEnCola, progreso?: number) {
     progreso,
     fallo: archivo.fallo,
     sticker: archivo.sticker,
+    // The quote shows while it goes up (José 10/11).
+    replyToSeq: archivo.target?.replyToSeq,
   };
 }
 

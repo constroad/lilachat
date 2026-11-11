@@ -449,6 +449,36 @@ server → cliente : msg.new {message} · receipt {chatId, userId, readSeq}
                    presence {userId, online} · event.reminder {event}
 ```
 
+### 6.1-bis Responder y escribir en un hilo con cualquier cosa (10/11/2026)
+
+José: «cuando le doy responder a un mensaje no puedo responder con una imagen o
+sticker/guiño» y «en un hilo no puedo pegar una imagen». El texto y el sticker
+ya llevaban `replyToSeq`. La foto, el GIF y el guiño lo perdían en el camino.
+
+- **Un solo contrato en `shared/src/messageTarget.ts`**:
+  `MessageTarget = { replyToSeq?, hiloDe?, enElChat? }`. `messageTargetOf(body)`
+  lo lee del multipart o del JSON (números o strings, solo enteros positivos;
+  `enElChat` solo con `hiloDe`). `messageTargetFields(target)` lo escribe en un
+  `FormData`.
+- **Server**: `mediaRoutes` y `gifRoutes` pasan el target a `sendMessage` y,
+  si fue en un hilo, avisan con `notifyThread`, igual que el socket. Test:
+  `server/src/mediaTarget.test.ts`.
+- **Web**: la cola de archivos guarda el target por archivo. Adjuntar o pegar
+  con la franja de «Respondiendo a» abierta responde a ese mensaje y la cierra.
+  El panel del hilo tiene clip y pegar (`btn-adjuntar-hilo`). El GIF y el guiño
+  leen el mensaje respondido al tocarlos.
+- **APK**: `useAdjuntosDelChat` lee el target al encolar (`target`,
+  `onTargetSpent`). `uploadMedia` lo manda. La fila pendiente ya muestra la
+  cita. `useGifSend` y `sendWink` reciben el `replyToSeq` de la franja.
+- **Pendiente**: el clip dentro de `HiloScreen` del APK. En el APK, las fotos
+  del hilo todavía se mandan desde el chat.
+
+**GIF nítidos (José, 10/11).** En el panel de la web los GIF se veían «feos»:
+era la versión de 100 px de Giphy estirada a la celda. `GifResult.sharpUrl`
+sale de `fixed_height` (200 px de alto, webp si hay). La grilla usa celdas de
+140 px como mínimo. El APK usa la misma URL nítida en la grilla y en la burbuja
+pendiente.
+
 ### 6.2 Envío idempotente (server)
 
 ```ts

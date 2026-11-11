@@ -170,6 +170,11 @@ describe('filaDeArchivoEnCola', () => {
       fallo: undefined,
     });
   });
+
+  it('José 10/11: a photo sent as an answer shows the quote while it goes up', () => {
+    const archivo = { clientKey: '3f2b8c1e-6a4d-4e2f-9b7a-1c2d3e4f5a6c', chatId: '6a90cf9012ab34cd56ef7890', uri: 'file:///cola/foto.jpg', fileName: 'foto.jpg', mimeType: 'image/jpeg', sizeBytes: 1000, target: { replyToSeq: 87 }, queuedAt: '2026-11-10T10:00:00.000Z', intentos: 0 };
+    expect(filaDeArchivoEnCola(archivo).replyToSeq).toBe(87);
+  });
 });
 
 /**

@@ -1,4 +1,4 @@
-import { validateMedia } from '@lilachat/shared';
+import { messageTargetFields, validateMedia } from '@lilachat/shared';
 import type { DatosDeSubida, ResultadoDeSubida } from './colaDeArchivos';
 import type { ChatMessage } from './types';
 
@@ -42,6 +42,7 @@ function cuerpoDe(datos: DatosDeSubida & { mime: string }): FormData {
   // Separada por comas: es lo que lee el server (`ondaValida`), igual que la app.
   if (datos.onda?.length) cuerpo.append('onda', datos.onda.join(','));
   if (datos.albumId) cuerpo.append('albumId', datos.albumId);
+  for (const [field, value] of messageTargetFields(datos.target ?? {})) cuerpo.append(field, value);
   cuerpo.append('file', new File([datos.archivo], datos.nombre, { type: datos.mime }));
   return cuerpo;
 }

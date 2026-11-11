@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import type { GifResult } from '@lilachat/shared';
+import type { GifResult, MessageTarget } from '@lilachat/shared';
 import type { MensajeEnPantalla } from '../types';
 
 /**
@@ -9,7 +9,7 @@ import type { MensajeEnPantalla } from '../types';
  * preview, «sending». When the real message arrives (same `clientKey`) the
  * conversation drops the pending one.
  */
-type InFlight = { chatId: string; clientKey: string; gif: GifResult; at: string };
+type InFlight = { chatId: string; clientKey: string; gif: GifResult; at: string; target?: MessageTarget };
 let inFlight: InFlight[] = [];
 const listeners = new Set<() => void>();
 const announce = () => listeners.forEach((listener) => listener());
@@ -18,8 +18,8 @@ const subscribe = (listener: () => void) => {
   return () => listeners.delete(listener);
 };
 
-export function addGifInFlight(chatId: string, clientKey: string, gif: GifResult): void {
-  inFlight = [...inFlight, { chatId, clientKey, gif, at: new Date().toISOString() }];
+export function addGifInFlight(chatId: string, clientKey: string, gif: GifResult, target?: MessageTarget): void {
+  inFlight = [...inFlight, { chatId, clientKey, gif, at: new Date().toISOString(), ...(target ? { target } : {}) }];
   announce();
 }
 
@@ -32,7 +32,7 @@ export function removeGifInFlight(clientKey: string): void {
 
 /** The pending bubble: GIPHY's preview with its shape, «sending». */
 export function gifAsPendingMessage(one: InFlight, me: string): MensajeEnPantalla {
-  return { chatId: one.chatId, seq: Number.MAX_SAFE_INTEGER, senderId: me, clientKey: one.clientKey, kind: 'image', media: { url: one.gif.previewUrl, mime: 'image/gif', width: one.gif.width || undefined, height: one.gif.height || undefined }, at: one.at, estado: 'enviando' };
+  return { chatId: one.chatId, seq: Number.MAX_SAFE_INTEGER, senderId: me, clientKey: one.clientKey, kind: 'image', media: { url: one.gif.sharpUrl ?? one.gif.previewUrl, mime: 'image/gif', width: one.gif.width || undefined, height: one.gif.height || undefined }, at: one.at, estado: 'enviando', ...one.target };
 }
 
 let snapshot: { all: InFlight[]; byChat: Map<string, InFlight[]> } = { all: inFlight, byChat: new Map() };

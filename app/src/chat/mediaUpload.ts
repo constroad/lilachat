@@ -1,3 +1,4 @@
+import { messageTargetFields, type MessageTarget } from '@lilachat/shared';
 import { resolveMediaKind, validateMedia, type Envelope } from '@lilachat/shared';
 import { subirPorXhr } from './subidaXhr';
 import { mensajeSubido } from './mensajeSubido';
@@ -43,6 +44,8 @@ export async function uploadMedia(params: {
   onda?: number[];
   /** Sent together with other photos (pending 12). */
   albumId?: string;
+  /** An answer to a message or a thread reply (José 10/11). */
+  target?: MessageTarget;
   /** 0→1 mientras suben los bytes. Un video sin progreso parece colgado. */
   onProgress?: (ratio: number) => void;
   /** A secret chat's photo or video (pending 67): only the encrypted file and its sealed text go up. */
@@ -83,6 +86,7 @@ function plainForm(params: Parameters<typeof uploadMedia>[0]): FormData {
   if (params.durationMs) form.append('durationMs', String(params.durationMs));
   if (params.onda?.length) form.append('onda', params.onda.join(','));
   if (params.albumId) form.append('albumId', params.albumId);
+  for (const [field, value] of messageTargetFields(params.target ?? {})) form.append(field, value);
   if (params.width && params.height) {
     form.append('width', String(params.width));
     form.append('height', String(params.height));

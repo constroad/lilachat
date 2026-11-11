@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
-import { GIF_SUGGESTIONS, type GifResult } from '@lilachat/shared';
+import { GIF_SUGGESTIONS, type GifResult, type MessageTarget } from '@lilachat/shared';
 import { newGifKey, searchGifs, sendGif } from './gifsApi';
 import { addGifInFlight, removeGifInFlight } from './gifsInFlight';
 
@@ -38,7 +38,7 @@ function useGifSearch(jwt: string, q: string) {
  * `g-01-panel-gif-giphy`): search, suggestion chips, a grid of moving
  * previews and «Powered by GIPHY». A click sends it.
  */
-export function GifPanel(props: { jwt: string; chatId: string }) {
+export function GifPanel(props: { jwt: string; chatId: string; /** An answer or a thread reply (José 10/11). */ target?: MessageTarget; onSent?: () => void }) {
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const { gifs, failed, more } = useGifSearch(props.jwt, text.trim());
@@ -46,12 +46,13 @@ export function GifPanel(props: { jwt: string; chatId: string }) {
     setError(null);
     const clientKey = newGifKey();
     // In the chat at once, as GIPHY's preview «sending» (22/10): the server takes a few seconds to store it.
-    addGifInFlight(props.chatId, clientKey, gif);
-    const result = await sendGif(props.jwt, props.chatId, gif.id, clientKey);
+    addGifInFlight(props.chatId, clientKey, gif, props.target);
+    const result = await sendGif(props.jwt, props.chatId, gif.id, clientKey, props.target);
     if (!result.ok) {
       removeGifInFlight(clientKey);
       return setError(result.message);
     }
+    props.onSent?.();
     // The conversation already drops it when the real message arrives; this only tidies up.
     window.setTimeout(() => removeGifInFlight(clientKey), HANDOVER_MS);
   };
@@ -75,10 +76,11 @@ export function GifPanel(props: { jwt: string; chatId: string }) {
         ) : gifs.length === 0 ? (
           <p className="p-4 text-center text-[13px] text-on-surface-variant">No encontramos GIF con eso.</p>
         ) : (
-          <div className="grid grid-cols-2 gap-2 pb-2">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-1.5 pb-2">
+            {/* Narrow tiles with the 200 px tall version: two wide columns stretched the 100 px preview (José 10/11). */}
             {gifs.map((gif) => (
               <button key={gif.id} type="button" data-testid={`gif-${gif.id}`} title={gif.title || 'GIF'} onClick={() => void send(gif)} className="overflow-hidden rounded-lg bg-background">
-                <img src={gif.previewUrl} alt={gif.title || 'GIF'} loading="lazy" className="h-28 w-full object-cover" />
+                <img src={gif.sharpUrl ?? gif.previewUrl} alt={gif.title || 'GIF'} loading="lazy" className="h-28 w-full object-cover" />
               </button>
             ))}
           </div>

@@ -6,7 +6,8 @@
  * with its content filter at `pg-13` and the «Powered by GIPHY» its license
  * asks for.
  */
-export type GifResult = { id: string; title: string; previewUrl: string; width: number; height: number };
+/** `sharpUrl`: GIPHY's 200 px tall version, for a panel tile wider than the 100 px preview (José 10/11). */
+export type GifResult = { id: string; title: string; previewUrl: string; sharpUrl?: string; width: number; height: number };
 
 /** A GIF heavier than this is not stored: the 200 px rendition is usually far below. */
 export const GIF_MAX_BYTES = 4 * 1024 * 1024;
@@ -39,10 +40,12 @@ export function gifsFromGiphy(raw: unknown): GifResult[] {
     const images = record(record(item).images);
     const small = record(images.fixed_width_small) as Rendition;
     const regular = record(images.fixed_width) as Rendition;
+    const tall = record(images.fixed_height) as Rendition;
+    const sharpUrl = text(tall.webp) || text(tall.url);
     const previewUrl = text(small.webp) || text(small.url) || text(regular.url);
     const id = text(record(item).id);
     if (!id || !previewUrl || !isGiphyMediaUrl(previewUrl)) return [];
-    return [{ id, title: text(record(item).title), previewUrl, width: number(regular.width) || number(small.width), height: number(regular.height) || number(small.height) }];
+    return [{ id, title: text(record(item).title), previewUrl, ...(sharpUrl && isGiphyMediaUrl(sharpUrl) ? { sharpUrl } : {}), width: number(regular.width) || number(small.width), height: number(regular.height) || number(small.height) }];
   });
 }
 

@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Check, ClipboardCheck, SendHorizontal, Smile, X } from 'lucide-react';
+import { Check, ClipboardCheck, Paperclip, SendHorizontal, Smile, X } from 'lucide-react';
 import { formatClock } from '@lilachat/shared';
 import type { MencionElegida, MencionEnMensaje } from '@lilachat/shared';
 import { ConversacionContext, useConversacion, type ContextoDeLaConversacion } from '../contextoDeLaConversacion';
@@ -46,6 +46,8 @@ export function PanelDeHilo(props: {
   /** Emojis and stickers in the thread (20/10); without it (a secret chat), emojis only. */
   stickers?: Omit<StickerChat, 'thread' | 'onSent'>;
   onCerrar: () => void;
+  /** Photos, videos and files into the thread (José 10/11: pasting a screenshot did nothing). The chat's preview opens. */
+  onFiles?: (files: File[], alsoInChat: boolean) => void;
 }) {
   const clave = `${props.chat.id}:${props.raiz.seq}`;
   const [texto, setTexto] = useState(() => borradores.get(clave) ?? '');
@@ -212,6 +214,12 @@ export function PanelDeHilo(props: {
         ) : null}
         {notice ? <p role="alert" data-testid="aviso-hilo" className="mb-1 text-[12px] text-error">{notice}</p> : null}
         <div className="flex items-end gap-2">
+          {props.onFiles && !editing ? (
+            <label data-testid="btn-adjuntar-hilo" aria-label="Adjuntar al hilo" title="Adjuntar" className="grid h-11 w-10 shrink-0 cursor-pointer place-items-center rounded-xl text-on-surface-variant hover:bg-background">
+              <Paperclip size={19} />
+              <input data-testid="archivo-hilo" type="file" multiple className="hidden" onChange={(event) => { const files = [...(event.target.files ?? [])]; event.target.value = ''; if (files.length) props.onFiles?.(files, enElChat); }} />
+            </label>
+          ) : null}
           <button type="button" data-testid="btn-emojis-hilo" aria-label="Emojis y stickers" aria-expanded={picking} onClick={() => setPicking((before) => !before)} className="grid h-11 w-10 shrink-0 place-items-center rounded-xl text-on-surface-variant hover:bg-background">
             <Smile size={20} />
           </button>
@@ -227,6 +235,13 @@ export function PanelDeHilo(props: {
               menciones.alCambiar(evento.target.value, evento.target.selectionStart ?? evento.target.value.length);
               // While editing, the draft of a new reply is kept as it was (it comes back after saving).
               if (!editing) borradores.set(clave, evento.target.value);
+            }}
+            onPaste={(evento) => {
+              // A pasted screenshot goes to the preview, like in the chat (José 10/11).
+              const pasted = [...evento.clipboardData.files];
+              if (!pasted.length || !props.onFiles || editing) return;
+              evento.preventDefault();
+              props.onFiles(pasted, enElChat);
             }}
             onKeyDown={(evento) => {
               if (!editing && menciones.alTeclear(evento, chooseMention)) return;

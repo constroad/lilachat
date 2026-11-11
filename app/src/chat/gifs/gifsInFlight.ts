@@ -1,4 +1,4 @@
-import type { GifResult, LibrarySticker } from '@lilachat/shared';
+import type { GifResult, MessageTarget, LibrarySticker } from '@lilachat/shared';
 import type { ArchivoEnCola } from '../colaDeArchivosMotor';
 
 /**
@@ -17,8 +17,8 @@ const listeners = new Set<() => void>();
 const announce = () => listeners.forEach((listener) => listener());
 
 /** The pending bubble of a GIF: GIPHY's preview with its shape, as a file of the queue. */
-export function gifAsQueuedFile(gif: GifResult, chatId: string, clientKey: string, queuedAt: string): ArchivoEnCola {
-  return { clientKey, chatId, uri: gif.previewUrl, fileName: `giphy-${gif.id}.gif`, mimeType: 'image/gif', sizeBytes: 0, width: gif.width || undefined, height: gif.height || undefined, queuedAt, intentos: 0 };
+export function gifAsQueuedFile(gif: GifResult, chatId: string, clientKey: string, queuedAt: string, target?: MessageTarget): ArchivoEnCola {
+  return { ...(target?.replyToSeq ? { target } : {}), clientKey, chatId, uri: gif.sharpUrl ?? gif.previewUrl, fileName: `giphy-${gif.id}.gif`, mimeType: 'image/gif', sizeBytes: 0, width: gif.width || undefined, height: gif.height || undefined, queuedAt, intentos: 0 };
 }
 
 /** The pending sticker: the image the panel already showed (cached), drawn as a sticker. */

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, ScrollView, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { GIF_SUGGESTIONS, type GifResult } from '@lilachat/shared';
+import { GIF_SUGGESTIONS, type GifResult, type MessageTarget } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { searchGifs, sendGif } from './gifsApi';
 import { addMediaInFlight, gifAsQueuedFile, HANDOVER_MS, removeMediaInFlight } from './gifsInFlight';
@@ -36,15 +36,17 @@ export function useGifSearch(jwt: string, q: string) {
 }
 
 /** Sends a GIF and shows it in the chat at once; answers the error to show, if any. */
-export function useGifSend(jwt: string, chatId: string) {
+/** `target`: the answer or the thread, read when the GIF is tapped (José 10/11); `onSent` closes the quote. */
+export function useGifSend(jwt: string, chatId: string, target?: () => MessageTarget, onSent?: () => void) {
   const [error, setError] = useState<string | null>(null);
   const send = async (gif: GifResult) => {
     setError(null);
     beginInteraction('enviar-gif', SEND_FRAME_WINDOW_MS);
     const clientKey = `gif-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     // In the chat at once, as GIPHY's preview «sending» (22/10): the server takes a few seconds to store it.
-    addMediaInFlight(chatId, gifAsQueuedFile(gif, chatId, clientKey, new Date().toISOString()));
-    const result = await sendGif(jwt, chatId, gif.id, clientKey);
+    const where = target?.() ?? {};
+    addMediaInFlight(chatId, gifAsQueuedFile(gif, chatId, clientKey, new Date().toISOString(), where));
+    const result = await sendGif(jwt, chatId, gif.id, clientKey, where);
     if (!result.ok) {
       removeMediaInFlight(clientKey);
       setError(result.message ?? 'No se pudo mandar el GIF.');
@@ -52,6 +54,7 @@ export function useGifSend(jwt: string, chatId: string) {
     }
     // The real message arrived by the socket by now (or arrives in a moment): it takes the bubble's place.
     setTimeout(() => removeMediaInFlight(clientKey), HANDOVER_MS);
+    onSent?.();
     return true;
   };
   return { send, error };
@@ -94,7 +97,7 @@ export function GifGrid(props: { search: ReturnType<typeof useGifSearch>; column
         <Pressable testID={`gif-${item.id}`} accessibilityLabel={item.title || 'GIF'} onPress={() => props.onPick(item)} className="flex-1 p-1" style={{ maxWidth: `${100 / props.columns}%` }}>
           {/* The tile keeps its place (and a tint) while the preview loads. */}
           <View className="overflow-hidden rounded-lg bg-surface-variant" style={{ height: TILE_HEIGHT }}>
-            <Image source={{ uri: item.previewUrl }} style={{ width: '100%', height: TILE_HEIGHT }} contentFit="cover" recyclingKey={item.id} />
+            <Image source={{ uri: item.sharpUrl ?? item.previewUrl }} style={{ width: '100%', height: TILE_HEIGHT }} contentFit="cover" recyclingKey={item.id} />
           </View>
         </Pressable>
       )}

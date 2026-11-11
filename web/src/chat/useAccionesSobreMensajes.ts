@@ -17,7 +17,7 @@ export type AccionesDeSync = {
   /** The MSN nudge (backlog 3). */
   sendNudge: (chatId: string) => Promise<ResultadoDeAccion>;
   /** A wink (José, 21/10). */
-  sendWink: (chatId: string, wink: WinkId) => Promise<ResultadoDeAccion>;
+  sendWink: (chatId: string, wink: WinkId, replyToSeq?: number) => Promise<ResultadoDeAccion>;
 };
 
 /**

@@ -46,7 +46,7 @@ export default function EmojiStickerPanel({ onPickEmoji, chat, winks }: { onPick
           ))}
         </div>
       ) : null}
-      {tab === 'stickers' && chat ? <Stickers chat={chat} /> : tab === 'gifs' && chat ? <div className="h-80"><GifPanel jwt={chat.jwt} chatId={chat.chatId} /></div> : tab === 'winks' && winks ? <WinkPanel recipient={winks.recipient} onSend={winks.onSend} onNudge={winks.onNudge} /> : <PanelDeEmojis onElegir={onPickEmoji} />}
+      {tab === 'stickers' && chat ? <Stickers chat={chat} /> : tab === 'gifs' && chat ? <div className="h-80"><GifPanel jwt={chat.jwt} chatId={chat.chatId} target={{ ...chat.thread, replyToSeq: chat.replyToSeq }} onSent={chat.onSent} /></div> : tab === 'winks' && winks ? <WinkPanel recipient={winks.recipient} onSend={winks.onSend} onNudge={winks.onNudge} /> : <PanelDeEmojis onElegir={onPickEmoji} />}
     </div>
   );
 }

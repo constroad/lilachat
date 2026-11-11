@@ -7,14 +7,21 @@ const giphy = {
   images: {
     fixed_width_small: { url: 'https://media2.giphy.com/media/abc123/100w.gif', webp: 'https://media2.giphy.com/media/abc123/100w.webp', width: '100', height: '75' },
     fixed_width: { url: 'https://media2.giphy.com/media/abc123/200w.gif', width: '200', height: '150', size: '512000' },
+    fixed_height: { url: 'https://media2.giphy.com/media/abc123/200.gif', webp: 'https://media2.giphy.com/media/abc123/200.webp', width: '267', height: '200' },
   },
 };
 
 /** Backlog 37 (José, 21/10): GIFs and GIPHY, through the server (the key never reaches the app or the web). */
 describe('gifs', () => {
   it('a GIPHY result becomes what the panel needs, the light preview first', () => {
-    expect(gifsFromGiphy({ data: [giphy, { id: 'broken' }] })).toEqual([{ id: 'abc123', title: 'Buen trabajo GIF', previewUrl: 'https://media2.giphy.com/media/abc123/100w.webp', width: 200, height: 150 }]);
+    expect(gifsFromGiphy({ data: [giphy, { id: 'broken' }] })).toEqual([{ id: 'abc123', title: 'Buen trabajo GIF', previewUrl: 'https://media2.giphy.com/media/abc123/100w.webp', sharpUrl: 'https://media2.giphy.com/media/abc123/200.webp', width: 200, height: 150 }]);
     expect(gifsFromGiphy(null)).toEqual([]);
+  });
+
+  it('the panel tile shows the 200 px tall version: the 100 px one stretched over a wide tile looked blurred (José 10/11)', () => {
+    expect(gifsFromGiphy({ data: [{ ...giphy, images: { ...giphy.images } }] })[0]?.sharpUrl).toBe('https://media2.giphy.com/media/abc123/200.webp');
+    const withoutTall = { ...giphy, images: { fixed_width_small: giphy.images.fixed_width_small, fixed_width: giphy.images.fixed_width } };
+    expect(gifsFromGiphy({ data: [withoutTall] })[0]?.sharpUrl).toBeUndefined();
   });
 
   it('what is sent is the 200 px GIF, only from GIPHY and not too heavy', () => {

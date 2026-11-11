@@ -55,6 +55,14 @@ describe('citadosPorSeq', () => {
     expect(quotes.has(3)).toBe(false);
   });
 
+  it('a thread root deleted for everyone is marked, so the thread line does not quote it (E2E 11/11)', () => {
+    const rows = [msj(1, { body: 'Se eliminó este mensaje', deletedAt: '2026-11-11T18:00:00Z' }), msj(2, { hiloDe: 1, enElChat: true, senderId: 'yo' })];
+
+    const quotes = citadosPorSeq(rows, contexto, preview);
+
+    expect(quotes.get(2)).toEqual({ autor: 'Wilson', texto: 'Se eliminó este mensaje', enHilo: 1, deleted: true });
+  });
+
   it('si el citado es mío, el autor es «Tú»', () => {
     const mensajes = [msj(1, { senderId: 'yo', body: 'mío' }), msj(2, { replyToSeq: 1 })];
 

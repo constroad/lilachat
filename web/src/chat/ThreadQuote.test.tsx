@@ -50,6 +50,11 @@ describe('a thread reply also sent to the chat', () => {
     expect(openThread).toHaveBeenCalledWith(151);
   });
 
+  it('in the Slack format, a deleted original is not quoted (E2E 11/11 read «…: Se eliminó este mensaje»)', () => {
+    draw({ citado: (seq) => (seq === 151 ? { ...root, deletedAt: new Date().toISOString() } : undefined) }, true);
+    expect(screen.getByTestId('cita-hilo-151').textContent).toBe('Respondió en el hilo de Wilson');
+  });
+
   it('in the Slack format, an original not loaded yet says only that it is a thread reply', () => {
     draw({ citado: () => undefined }, true);
     expect(screen.getByTestId('cita-hilo-151').textContent).toBe('Respondió en un hilo');

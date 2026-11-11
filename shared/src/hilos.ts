@@ -69,10 +69,12 @@ export const THREAD_QUOTE_MAX = 80;
  * 25/10), now naming the message it answered (José 11/11: it only said it was
  * a thread reply, not which message it answered).
  */
-export function threadQuoteLine(original: { author?: string | null; preview?: string | null; mine?: boolean }): string {
+export function threadQuoteLine(original: { author?: string | null; preview?: string | null; mine?: boolean; deleted?: boolean }): string {
+  const whose = original.mine ? 'Respondió en tu hilo' : original.author ? `Respondió en el hilo de ${original.author}` : 'Respondió en un hilo';
+  // A deleted original is not quoted, not even as «Se eliminó este mensaje» (E2E 11/11).
+  if (original.deleted) return whose;
   const preview = (original.preview ?? '').replace(/\s+/g, ' ').trim();
   if (!preview) return 'Respondió en un hilo';
   const short = preview.length > THREAD_QUOTE_MAX ? `${preview.slice(0, THREAD_QUOTE_MAX).trimEnd()}…` : preview;
-  if (original.mine) return `Respondió en tu hilo: ${short}`;
-  return original.author ? `Respondió en el hilo de ${original.author}: ${short}` : `Respondió en un hilo: ${short}`;
+  return `${whose}: ${short}`;
 }

@@ -325,8 +325,8 @@ function FilaDeMensaje({
               </Text>
             </Pressable>
           ) : null}
-          {/* La cita llega resuelta desde la pantalla, que tiene todos los mensajes. */}
-          {citado ? (
+          {/* La cita llega resuelta desde la pantalla, que tiene todos los mensajes. A deleted message quotes nothing (E2E 11/11). */}
+          {citado && (isPending(item) || !item.deletedAt) ? (
             <CitaDeRespuesta
               citado={citado}
               enBurbujaPropia={mine}

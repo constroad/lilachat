@@ -216,7 +216,7 @@ function ThreadQuote({ root, mine, compact = false }: { root: number; mine: bool
   const preview = rootMessage?.deletedAt ? 'Se eliminó este mensaje' : rootMessage?.body ?? (rootMessage?.media ? 'Archivo' : 'Mensaje anterior');
   if (compact) {
     // One line, now with the message it answered (José 11/11).
-    const line = threadQuoteLine(rootMessage ? { author: nombres.get(rootMessage.senderId), preview, mine: rootMessage.senderId === yo } : {});
+    const line = threadQuoteLine(rootMessage ? { author: nombres.get(rootMessage.senderId), preview, mine: rootMessage.senderId === yo, deleted: Boolean(rootMessage.deletedAt) } : {});
     return (
       <button type="button" data-testid={`cita-hilo-${root}`} onClick={() => onAbrirHilo?.(root)} className="mb-0.5 flex max-w-full items-center gap-1 truncate text-left text-[12px] text-on-surface-variant hover:underline">
         <CornerDownRight size={13} className="shrink-0" />

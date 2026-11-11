@@ -68,7 +68,7 @@ export function sinPendientesConfirmados<P extends { clientKey: string }>(
 }
 
 /** `enHilo`: it is a thread reply sent to the chat too; the quote is its root and opens the thread. */
-export type Citado = { autor: string; texto: string; enHilo?: number };
+export type Citado = { autor: string; texto: string; enHilo?: number; /** The original was deleted for everyone: a thread line does not quote it (E2E 11/11). */ deleted?: boolean };
 
 /**
  * La cita de cada respuesta, por `seq` de la respuesta. Se calcula una vez por
@@ -104,7 +104,7 @@ export function citadosPorSeq<M extends FilaMinima>(
         : contexto.esGrupo
           ? (contexto.nombres?.get(String(respondido.senderId)) ?? '')
           : contexto.nombreDelOtro;
-    citados.set(mensaje.seq, { autor, texto: preview(respondido), ...(threadRoot !== undefined ? { enHilo: threadRoot } : {}) });
+    citados.set(mensaje.seq, { autor, texto: preview(respondido), ...(threadRoot !== undefined ? { enHilo: threadRoot } : {}), ...(respondido.deletedAt ? { deleted: true } : {}) });
   }
   return citados;
 }

@@ -29,7 +29,7 @@ export function CitaDeRespuesta({
     return (
       <Pressable testID={testID} onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined} accessibilityHint={onPress ? 'Abrir el hilo' : undefined} className="mt-0.5 min-h-[24px] flex-row items-center gap-1 self-start">
         <CornerDownRight size={13} color={colores['on-surface-variant']} />
-        <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>{threadQuoteLine({ author: citado.autor, preview: citado.texto, mine: citado.autor === 'Tú' })}</Text>
+        <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>{threadQuoteLine({ author: citado.autor, preview: citado.texto, mine: citado.autor === 'Tú', deleted: citado.deleted })}</Text>
       </Pressable>
     );
   }

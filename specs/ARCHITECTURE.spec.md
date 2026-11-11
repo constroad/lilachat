@@ -15838,6 +15838,13 @@ trae la pila completa.
    compartido (`shared/hilos.ts › threadQuoteLine`, tope de 80 caracteres) lo
    usan la web (`ThreadQuote compact`) y la app (`CitaDeRespuesta compact`). La
    cita en bloque del modo burbuja ya mostraba el original y no cambió.
+   El E2E en el APK encontró «Respondió en tu hilo: Se eliminó este mensaje»: un
+   original borrado no se cita (solo «Respondió en tu hilo» o «en el hilo de
+   Ana»; `Citado.deleted` en la app), y un mensaje borrado ya no muestra su cita
+   en la app, como en la web.
+   E2E: web en producción, Test #general: «Respondió en tu hilo: QA pegar
+   11/11». APK 183 con la OTA `b7a0681e`: «↳ Respondió en tu hilo: QA hilo app
+   11/11». Todo lo de QA se borró para todos.
 2. **Llamada con la web y el APK abiertos.** Las dos rutas están bien en el
    código y tienen test: el APK con `llamada-nativa` recibe siempre el push
    solo-datos, aunque la web esté conectada. Si la app está adelante, la trae
@@ -15852,11 +15859,14 @@ trae la pila completa.
    el panel del hilo). El campo se vacía solo al enviar; si se cancela, el texto
    queda donde estaba. En el diálogo, Enter envía, Shift+Enter no, y no envía
    si no queda ningún archivo válido (`EnviarArchivos.test.tsx`,
-   `Composer.test.tsx`).
+   `Composer.test.tsx`). E2E en producción: con «QA pegar 11/11» escrito, un
+   pegado sintético abrió el diálogo con ese comentario, Enter lo envió con la
+   foto y el campo quedó vacío.
 4. **Web: el punto del riel quedaba en el espacio que se dejó.** El número en
    vivo solo se aplicaba al espacio abierto. Al salir, volvía el número viejo
    del server, pedido antes de leer. `keepLiveUnread` (`currentSpace.ts`)
    escribe en la lista compartida lo que mostraba la lista en vivo, y cambiar
    de espacio vuelve a pedir los números 2 s después (no en la primera carga).
-   Lo cubre `currentSpace.test.tsx`.
+   Lo cubre `currentSpace.test.tsx`. **Sin E2E en navegador:** hacen falta
+   mensajes sin leer en dos espacios, y solo Test es de pruebas.
 

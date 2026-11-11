@@ -111,6 +111,12 @@ describe('threadQuoteLine', () => {
     expect(threadQuoteLine({ author: 'Ana', preview: '   ' })).toBe('Respondió en un hilo');
   });
 
+  it('a deleted original is not quoted: it says whose thread it was (E2E 11/11 read «…: Se eliminó este mensaje»)', () => {
+    expect(threadQuoteLine({ author: 'Tú', mine: true, preview: 'Se eliminó este mensaje', deleted: true })).toBe('Respondió en tu hilo');
+    expect(threadQuoteLine({ author: 'Ana', preview: 'Se eliminó este mensaje', deleted: true })).toBe('Respondió en el hilo de Ana');
+    expect(threadQuoteLine({ deleted: true })).toBe('Respondió en un hilo');
+  });
+
   it('keeps a long or multi-line original on one short line', () => {
     const line = threadQuoteLine({ author: 'Ana', preview: `primera línea\nsegunda ${'x'.repeat(200)}` });
     expect(line).not.toContain('\n');

@@ -90,3 +90,19 @@ describe('the space list before the session renews', () => {
     await waitFor(() => expect(result.current.chats?.map((one) => one.id)).toEqual(['general']));
   });
 });
+
+describe('a chat changed outside the list on screen', () => {
+  it('leaves the other spaces lists stale, so they ask again when shown (shared channel ended, 11/11)', async () => {
+    const { spaceChatsCache, chatChangedElsewhere } = await import('./spaceCache');
+    const fetchedAt = Date.now();
+    for (const id of ['a', 'b', 'shown']) spaceChatsCache.hydrate(`${id}:chats`, { chats: [], activity: { mentions: 0, threads: 0 } }, fetchedAt);
+
+    chatChangedElsewhere(['a', 'b']);
+
+    expect(spaceChatsCache.get('a:chats').fetchedAt).toBe(0);
+    expect(spaceChatsCache.get('b:chats').fetchedAt).toBe(0);
+    expect(spaceChatsCache.get('a:chats').value).toBeDefined();
+    expect(spaceChatsCache.get('shown:chats').fetchedAt).toBe(fetchedAt);
+  });
+});
+

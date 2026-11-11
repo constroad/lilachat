@@ -79,6 +79,15 @@ export const fetchSpaceChats = (jwt: string, spaceId: string) => async (): Promi
   const activity = page.activity ?? dataOf(await spaceActivity(jwt, spaceId, { countsOnly: true })).unread;
   return rememberSpaceChats({ chats: applyMyReads(page.chats, myReads), activity });
 };
+/**
+ * A chat changed outside the list on screen (11/11: a shared channel ended while
+ * another space was open, and its old row stayed in that space's cached list).
+ * The lists of those spaces stay shown but ask again when next shown.
+ */
+export function chatChangedElsewhere(spaceIds: readonly string[]): void {
+  for (const spaceId of spaceIds) spaceChatsCache.expire(`${spaceId}:chats`);
+}
+
 /** Someone joined, left or changed in the space: its directories refresh where they are open (`workspace.members.changed`). */
 export function membersChanged(spaceId: string): void {
   membersCache.expire(`${spaceId}:members`);

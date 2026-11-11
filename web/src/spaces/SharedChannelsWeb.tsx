@@ -118,10 +118,10 @@ export function ShareChannelDialog(props: { jwt: string; ownerSpaceId: string; c
 }
 
 /** The settings row that opens it, for the owner space's admins on a channel that is not #general. */
-export function ShareChannelRow(props: { jwt: string; chatId: string; channelName: string; ownerSpaceId: string; spaces: readonly ClientWorkspace[] | null; isGeneral: boolean; sharedFrom: boolean }) {
+export function ShareChannelRow(props: { jwt: string; chatId: string; channelName: string; ownerSpaceId: string; spaces: readonly ClientWorkspace[] | null; isGeneral: boolean }) {
   const [open, setOpen] = useState(false);
-  const currentId = useCurrentSpaceId();
-  const viewingSpaceId = props.sharedFrom ? currentId : props.ownerSpaceId;
+  // The space it is looked at from; the chat object here may come from the plain list, without `sharedFrom` (E2E 11/11).
+  const viewingSpaceId = useCurrentSpaceId() ?? props.ownerSpaceId;
   const card = shareCardFor({ ownerSpaceId: props.ownerSpaceId, viewingSpaceId, spaces: props.spaces, isGeneral: props.isGeneral });
   const viewing = props.spaces?.find((space) => space.id === viewingSpaceId);
   if (card === 'leave' && viewing) return <LeaveSharedChannelRow jwt={props.jwt} chatId={props.chatId} channelName={props.channelName} viewing={viewing} />;

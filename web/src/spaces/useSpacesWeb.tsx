@@ -5,7 +5,7 @@ import type { ChatMessage, ChatSummary } from '../chat/types';
 import { forgetMySpaces, keepLiveUnread, setCurrentSpaceId, useCurrentSpaceId, useMySpaces } from './currentSpace';
 import { chatOfChannel, createSpaceChat, spaceActivity, spaceChats } from './spacesApi';
 import { markSpacesSeen, readSeenSpaces } from './seenSpaces';
-import { fetchSpaceChats, forgetAllSpaces, forgetSpace, isSpaceChat, membersChanged, prefetchSpace, rememberMyRead, setSpaceCacheDisk, spaceChatsCache, useCached } from './spaceCache';
+import { chatChangedElsewhere, fetchSpaceChats, forgetAllSpaces, forgetSpace, isSpaceChat, membersChanged, prefetchSpace, rememberMyRead, setSpaceCacheDisk, spaceChatsCache, useCached } from './spaceCache';
 import type { BaseLocal } from '../local/baseLocal';
 import { memberName } from './memberWeb';
 import { openedChat } from './openedChat';
@@ -142,6 +142,8 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
     if (event.type === 'receipt' && event.userId === myUserId) rememberMyRead(event.chatId, event.readSeq);
     const key = spaceId ? `${spaceId}:chats` : null;
     const inList = Boolean(key && spaceChatsCache.get(key).value?.chats.some((chat) => chat.id === event.chatId));
+    // A shared channel lists in several spaces: the others are asked again when shown.
+    if (event.type === 'changed') chatChangedElsewhere((spaces ?? []).map((space) => space.id).filter((id) => id !== spaceId));
     if (!inList) {
       if (spaceId && !isSpaceChat(event.chatId)) reloadChatsSoon();
       reloadRailSoon();
@@ -154,7 +156,7 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
     });
     // A mention or a thread may have arrived: the chips are read with the next quiet refresh.
     if (event.type === 'message' && (event.message.hiloDe !== undefined || event.message.body?.includes('@'))) reloadChatsSoon();
-  }, [spaceId, myUserId, params.selectedChatId, reloadChatsSoon, reloadRailSoon]);
+  }, [spaceId, spaces, myUserId, params.selectedChatId, reloadChatsSoon, reloadRailSoon]);
   // Opening a chat of the space reads it: its count goes away on the next load.
   const selectedInSpace = Boolean(params.selectedChatId && chats?.some((chat) => chat.id === params.selectedChatId));
   useEffect(() => {

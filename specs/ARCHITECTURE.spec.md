@@ -15928,6 +15928,9 @@ Pedido de José, traído por la sesión de Portal: el canal «administración» 
 - El selector para agregar respondió 200 con la gente de los espacios con acceso (solo tú, ya en el canal).
 - Un mensaje enviado desde Test 2 llegó al canal y se borró con «Eliminar para todos».
 - Salió del E2E: «1 miembros» (ahora «1 miembro»), el texto vacío del selector decía «nadie más en Lilachat» (ahora lo propio del canal compartido) y el espacio que recibe no tenía cómo dejarlo (ahora sí).
+- Segunda vuelta (OTA 45b0ef0b, git e5707f5, y web): en la app, Test 2 mostró la sección «TEST 🔗»; «Dejar de ver este canal en Test 2» con confirmación lo sacó de la lista sin recargar, y el server listó 0 compartidos. Se volvió a compartir y se eliminó Test 2 con el compartido activo: 200, el server listó 0 compartidos y el canal quedó sin `channel.shared`. La app, que estaba en Test 2, pasó sola a Personal.
+- Dos fallas más de esa vuelta, ya arregladas: en la web la fila para dejarlo no salía, porque el chat del panel viene de la lista general sin `sharedFrom` (ahora decide el espacio actual contra el dueño, como la app); y la lista de Test en caché siguió mostrando el ícono de enlace hasta recargar (ahora un `chat.changed` marca viejas las listas de los otros espacios: `chatChangedElsewhere`).
+- Limpieza: el mensaje QA se borró con «Eliminar para todos», Test 2 se eliminó desde Ajustes del espacio, la web quedó en Personal y la app en Constroad.
 
 **Diferencias con los diseños, a propósito:**
 - `sc-03` y `sc-05` dibujan la pastilla del espacio también para la gente del espacio desde el que se mira. Acá solo la lleva quien viene de otro espacio: la del propio espacio no informa nada.

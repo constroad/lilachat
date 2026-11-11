@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ClientWorkspace } from '@lilachat/shared';
 import { ShareChannelRow, ShareInvitesCard } from './SharedChannelsWeb';
@@ -25,20 +25,21 @@ afterEach(() => {
 });
 
 describe('ShareChannelRow', () => {
-  it('only an admin of the owner space sees it, and never on #general or a channel shared from elsewhere', () => {
-    const { rerender } = render(<ShareChannelRow jwt="t" chatId="c1" channelName="administracion" ownerSpaceId="gl" spaces={spaces} isGeneral={false} sharedFrom={false} />);
+  it('only an admin of the owner space sees it, and never on #general or when looking from another space', () => {
+    const { rerender } = render(<ShareChannelRow jwt="t" chatId="c1" channelName="administracion" ownerSpaceId="gl" spaces={spaces} isGeneral={false} />);
     expect(screen.queryByTestId('compartir-canal')).toBeNull();
-    rerender(<ShareChannelRow jwt="t" chatId="c1" channelName="general" ownerSpaceId="im" spaces={spaces} isGeneral sharedFrom={false} />);
+    rerender(<ShareChannelRow jwt="t" chatId="c1" channelName="general" ownerSpaceId="im" spaces={spaces} isGeneral />);
     expect(screen.queryByTestId('compartir-canal')).toBeNull();
-    rerender(<ShareChannelRow jwt="t" chatId="c1" channelName="administracion" ownerSpaceId="im" spaces={spaces} isGeneral={false} sharedFrom />);
-    expect(screen.queryByTestId('compartir-canal')).toBeNull();
-    rerender(<ShareChannelRow jwt="t" chatId="c1" channelName="administracion" ownerSpaceId="im" spaces={spaces} isGeneral={false} sharedFrom={false} />);
+    rerender(<ShareChannelRow jwt="t" chatId="c1" channelName="administracion" ownerSpaceId="im" spaces={spaces} isGeneral={false} />);
     expect(screen.getByTestId('compartir-canal')).toBeTruthy();
+    act(() => setCurrentSpaceId('cr'));
+    expect(screen.queryByTestId('compartir-canal')).toBeNull();
+    expect(screen.getByTestId('dejar-canal-compartido')).toBeTruthy();
   });
 
   it('lists my other spaces with their state and shares with one', async () => {
     const calls = answer({ '/shares': { shares: [{ workspaceId: 'cr', name: 'Constroad', status: 'active' }] } });
-    render(<ShareChannelRow jwt="t" chatId="c1" channelName="administracion" ownerSpaceId="im" spaces={spaces} isGeneral={false} sharedFrom={false} />);
+    render(<ShareChannelRow jwt="t" chatId="c1" channelName="administracion" ownerSpaceId="im" spaces={spaces} isGeneral={false} />);
 
     await userEvent.click(screen.getByTestId('compartir-canal'));
     await waitFor(() => expect(screen.getByTestId('dejar-de-compartir-cr').textContent).toBe('Dejar de compartir'));
@@ -50,7 +51,7 @@ describe('ShareChannelRow', () => {
 
   it('counts one member in singular', async () => {
     answer({ '/shares': { shares: [] } });
-    render(<ShareChannelRow jwt="t" chatId="c1" channelName="administracion" ownerSpaceId="im" spaces={[...spaces, { ...space('t2', 'Test 2', 'owner'), members: 1 }]} isGeneral={false} sharedFrom={false} />);
+    render(<ShareChannelRow jwt="t" chatId="c1" channelName="administracion" ownerSpaceId="im" spaces={[...spaces, { ...space('t2', 'Test 2', 'owner'), members: 1 }]} isGeneral={false} />);
 
     await userEvent.click(screen.getByTestId('compartir-canal'));
 
@@ -61,7 +62,7 @@ describe('ShareChannelRow', () => {
   it('seen from the space that receives it, its admin stops receiving it, after confirming', async () => {
     const calls = answer({});
     setCurrentSpaceId('cr');
-    render(<ShareChannelRow jwt="t" chatId="c1" channelName="administracion" ownerSpaceId="im" spaces={spaces} isGeneral={false} sharedFrom />);
+    render(<ShareChannelRow jwt="t" chatId="c1" channelName="administracion" ownerSpaceId="im" spaces={spaces} isGeneral={false} />);
 
     expect(screen.queryByTestId('compartir-canal')).toBeNull();
     await userEvent.click(screen.getByTestId('dejar-canal-compartido'));
@@ -73,7 +74,7 @@ describe('ShareChannelRow', () => {
 
   it('a plain member of the receiving space does not see it', () => {
     setCurrentSpaceId('gl');
-    render(<ShareChannelRow jwt="t" chatId="c1" channelName="administracion" ownerSpaceId="im" spaces={spaces} isGeneral={false} sharedFrom />);
+    render(<ShareChannelRow jwt="t" chatId="c1" channelName="administracion" ownerSpaceId="im" spaces={spaces} isGeneral={false} />);
     expect(screen.queryByTestId('dejar-canal-compartido')).toBeNull();
   });
 });

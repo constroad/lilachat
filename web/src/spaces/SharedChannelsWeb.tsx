@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Link2 } from 'lucide-react';
-import { canManageMembers, type ChannelShare, type ClientWorkspace, type ShareInvite } from '@lilachat/shared';
+import { canManageMembers, shareInvitesStore, type ChannelShare, type ClientWorkspace } from '@lilachat/shared';
 import { Overlay, PrimaryButton } from '../ui/Overlay';
 import { SpaceLogo } from './SpaceLogo';
 import { answerShareInvite, channelShares, endChannelShare, shareChannel, shareInvites } from './spacesApi';
@@ -13,23 +13,14 @@ import { answerShareInvite, channelShares, endChannelShare, shareChannel, shareI
 
 /** Channels offered to this space and waiting for an admin (design `sc-04`): a card on top of the list. */
 export function ShareInvitesCard(props: { jwt: string; space: ClientWorkspace; onAnswered: () => void }) {
-  const [invites, setInvites] = useState<ShareInvite[]>([]);
-  const [busy, setBusy] = useState<string | null>(null);
-  const isAdmin = canManageMembers(props.space.role);
-  const load = useCallback(async () => {
-    if (!isAdmin) return setInvites([]);
-    const response = await shareInvites(props.jwt, props.space.id);
-    setInvites(response.ok ? response.data.invites : []);
-  }, [props.jwt, props.space.id, isAdmin]);
+  const { jwt, space } = props;
+  const store = useMemo(() => shareInvitesStore({ role: space.role, list: () => shareInvites(jwt, space.id), answer: (chatId, accept) => answerShareInvite(jwt, space.id, chatId, accept) }), [jwt, space.id, space.role]);
+  const { invites, busy } = useSyncExternalStore(store.subscribe, store.get);
   // The space object changes when the server says something changed (`spaces.changed`): an invite arrives that way.
-  useEffect(() => void load(), [load, props.space]);
-  const answer = async (chatId: string, accept: boolean) => {
-    setBusy(chatId);
-    await answerShareInvite(props.jwt, props.space.id, chatId, accept);
-    setBusy(null);
-    await load();
-    props.onAnswered();
-  };
+  useEffect(() => {
+    void store.load();
+  }, [store, space]);
+  const answer = (chatId: string, accept: boolean) => void store.answer(chatId, accept).then(props.onAnswered);
   if (invites.length === 0) return null;
   return (
     <div className="space-y-2 px-3 pb-2">
@@ -41,8 +32,8 @@ export function ShareInvitesCard(props: { jwt: string; space: ClientWorkspace; o
             {invite.invitedBy ?? 'Alguien'} quiere compartir este canal con {props.space.name}. Si aceptas, entras al canal y puedes agregar a tu equipo.
           </p>
           <div className="mt-3 flex justify-end gap-2">
-            <button type="button" data-testid={`rechazar-canal-${invite.chatId}`} disabled={busy === invite.chatId} onClick={() => void answer(invite.chatId, false)} className="h-9 rounded-lg border border-outline/30 px-3 text-sm font-semibold">Rechazar</button>
-            <button type="button" data-testid={`aceptar-canal-${invite.chatId}`} disabled={busy === invite.chatId} onClick={() => void answer(invite.chatId, true)} className="h-9 rounded-lg bg-primary px-3 text-sm font-semibold text-on-primary">Aceptar</button>
+            <button type="button" data-testid={`rechazar-canal-${invite.chatId}`} disabled={busy === invite.chatId} onClick={() => answer(invite.chatId, false)} className="h-9 rounded-lg border border-outline/30 px-3 text-sm font-semibold">Rechazar</button>
+            <button type="button" data-testid={`aceptar-canal-${invite.chatId}`} disabled={busy === invite.chatId} onClick={() => answer(invite.chatId, true)} className="h-9 rounded-lg bg-primary px-3 text-sm font-semibold text-on-primary">Aceptar</button>
           </div>
         </div>
       ))}

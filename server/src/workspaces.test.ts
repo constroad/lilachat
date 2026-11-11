@@ -263,7 +263,7 @@ describe('channels (E2)', () => {
     const seen = (await request(app).get(`/api/workspaces/${space.id}/channels`).set('Authorization', jwt('beto')).expect(200)).body.channels.map((c: { name: string }) => c.name);
     expect(seen).not.toContain('obra');
     expect(await MessageModel.countDocuments({ chatId: work.id, 'system.evento': 'visibilidad', 'system.valor': 'privado' })).toBe(1);
-    expect((await request(app).get(`/api/chats/${work.id}/detail`).set('Authorization', jwt('ana')).expect(200)).body.channel).toEqual({ visibility: 'private', general: false });
+    expect((await request(app).get(`/api/chats/${work.id}/detail`).set('Authorization', jwt('ana')).expect(200)).body.channel).toEqual({ visibility: 'private', general: false, workspaceId: expect.any(String) });
     // A channel's name is a channel's name: lowercase with hyphens, and not one the space already has.
     expect((await edit('jose', work.id, { name: 'Obra Norte' }).expect(200)).body.name).toBe('obra-norte');
     expect((await edit('jose', work.id, { name: 'Flota' }).expect(400)).body.message).toMatch(/#flota/);

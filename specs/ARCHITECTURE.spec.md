@@ -15889,6 +15889,7 @@ Pedido de José, traído por la sesión de Portal: el canal «administración» 
 - Cualquier miembro del canal agrega gente de cualquiera de los espacios con acceso (`spaceIdsWithAccess` + `activeInAny` en `miembrosDelChat.ts`). Otro espacio cualquiera da 403.
 - Dejar de compartir (espacio dueño), cancelar una invitación o salir (espacio que recibe) saca del canal a quien solo tenía acceso por ese espacio (`dropOutsiders`). Las apps se quedan.
 - Desactivar a alguien en su espacio, o que salga del espacio, también lo saca de los canales compartidos hacia ese espacio. No queda suspendido ahí: si se lo reactiva, alguien tiene que volver a agregarlo.
+- Eliminar un espacio termina todo lo que compartía y todo lo que recibía (`endSharesOfDeletedSpace`, desde `workspaceDelete.ts`): no queda ninguna invitación esperando en otro espacio, y quien estaba en un canal solo por el espacio eliminado sale de él.
 
 **Lo que ve cada lado.**
 - `GET /api/chats?workspace=<B>` también lista los canales compartidos hacia B (`spaceChatScope`), cada uno con `sharedFrom` {workspaceId, name, logoUrl} del espacio dueño.
@@ -15910,13 +15911,20 @@ Pedido de José, traído por la sesión de Portal: el canal «administración» 
 **Pantallas.**
 - Web: `SharedChannelsWeb.tsx` con `ShareInvitesCard`, `SharedSectionTitle`, `ShareChannelDialog` y `ShareChannelRow`. La fila va en la pestaña de ajustes del canal.
 - App: `SharedChannelsApp.tsx`, con lo mismo como hoja, al lado de «Canal privado».
+- La tarjeta de invitaciones es la misma lógica en los dos: `shareInvitesStore` en `shared/sharedChannels.ts` (sin React; cada plataforma se suscribe con `useSyncExternalStore`). Solo un admin las pide; responder recarga las que quedan.
 
 **Diseño.** Stitch, proyecto `15540754270713720465`, pantallas `sc-01` a `sc-05` en los tres dispositivos (ids en `design/stitch/registro.jsonl`). Al pasar a un proceso por dispositivo se cortó una generación en curso de `sc-02` móvil: puede haber una pantalla repetida sin id en el proyecto.
 
 **Tests.**
-- `server/src/sharedChannels.test.ts`: 7 pruebas de punta a punta sobre la API (compartir, aceptar, rechazos, personas, riel, avisos, salida y desactivación).
+- `server/src/sharedChannels.test.ts`: 9 pruebas de punta a punta sobre la API (compartir, aceptar, rechazos, personas, riel, avisos, salida, desactivación y espacio eliminado, el que recibe y el dueño).
 - `shared/src/sharedChannels.test.ts`.
 - `web/src/spaces/SharedChannelsWeb.test.tsx`.
+
+**Diferencias con los diseños, a propósito:**
+- `sc-03` y `sc-05` dibujan la pastilla del espacio también para la gente del espacio desde el que se mira. Acá solo la lleva quien viene de otro espacio: la del propio espacio no informa nada.
+- `sc-05` trae «Pueden ver los mensajes anteriores» y «Solo los administradores del canal pueden sumar». No se hicieron: no hay historial parcial en Lilachat, y la regla pedida es que cualquiera del canal agregue.
+- `sc-05` filtra el selector por espacio con chips (Todos / Inframaq / Constroad). Pendiente: hoy se busca por nombre o teléfono.
+- `sc-03` dibuja «Sincronizado en vivo», «Entregado a Inframaq» y un código de enlace del canal: leyendas que Stitch inventó, no se muestran.
 
 **Sin hacer en esta versión:**
 - Un miembro del espacio que recibe no puede unirse solo desde «Explorar canales» a un canal público compartido: alguien del canal lo agrega.

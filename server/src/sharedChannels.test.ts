@@ -13,8 +13,8 @@ import { viewingSpacesOf } from './sharedChannels.js';
 import { signSession } from './sessions.js';
 
 /**
- * José 11/11 (via Portal): «el canal administración de Inframaq compartido con
- * Constroad y Globofast», seen from each space under «Inframaq», and people
+ * José 11/11 (via Portal): the «administración» channel of Inframaq shared with
+ * Constroad and Globofast, seen from each space under «Inframaq», and people
  * from other spaces added to it. Like Slack Connect.
  */
 let mongo: MongoMemoryServer;
@@ -158,5 +158,26 @@ describe('people of the other spaces', () => {
     await request(app).patch(`/api/workspaces/${spaces.constroad}/members/${anaRow!._id}`).set('Authorization', jwt('jose')).send({ status: 'deactivated' }).expect(200);
     ids = (await ChatModel.findById(channelId).lean())!.members.map((m) => String(m.userId));
     expect(ids).not.toContain(String(users.ana));
+  });
+
+  it('end when the receiving space is deleted: its people leave and the channel is no longer shared', async () => {
+    await api('jose').post(`/api/chats/${channelId}/members`, { userId: String(users.ana) });
+
+    await request(app).post(`/api/workspaces/${spaces.constroad}/delete`).set('Authorization', jwt('jose')).send({ confirmName: 'Constroad' }).expect(200);
+
+    const chat = (await ChatModel.findById(channelId).lean())!;
+    expect(chat.members.map((m) => String(m.userId))).not.toContain(String(users.ana));
+    expect(chat.channel?.shared).toBeUndefined();
+    expect((await api('jose').get(sharesPath())).body.shares).toEqual([]);
+  });
+
+  it('end when the owner space is deleted: no invitation is left waiting in the other space', async () => {
+    await api('jose').post(sharesPath(), { workspaceId: String(spaces.globofast) });
+    expect((await api('luis').get(`/api/workspaces/${spaces.globofast}/share-invites`)).body.invites).toHaveLength(1);
+
+    await request(app).post(`/api/workspaces/${spaces.inframaq}/delete`).set('Authorization', jwt('jose')).send({ confirmName: 'Inframaq' }).expect(200);
+
+    expect((await api('luis').get(`/api/workspaces/${spaces.globofast}/share-invites`)).body.invites).toEqual([]);
+    expect(await SharedChannelModel.countDocuments({ status: { $ne: 'removed' } })).toBe(0);
   });
 });

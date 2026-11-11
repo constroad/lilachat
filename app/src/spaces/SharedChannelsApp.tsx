@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Link2 } from 'lucide-react-native';
-import { canManageMembers, type ChannelShare, type ClientWorkspace, type ShareInvite } from '@lilachat/shared';
+import { canManageMembers, shareInvitesStore, type ChannelShare, type ClientWorkspace } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { Sheet } from '../ui/Sheet';
 import { useMySpaces } from './currentSpace';
@@ -28,22 +28,15 @@ export function SharedSectionTitle(props: { space: { name: string; logoUrl?: str
 
 /** Channels offered to this space and waiting for an admin (design `sc-04`): a card on top of the list. */
 export function ShareInvitesCard(props: { jwt: string; space: ClientWorkspace; onAnswered: () => void }) {
-  const [invites, setInvites] = useState<ShareInvite[]>([]);
-  const [busy, setBusy] = useState<string | null>(null);
-  const isAdmin = canManageMembers(props.space.role);
-  const load = useCallback(async () => {
-    if (!isAdmin) return setInvites([]);
-    const response = await shareInvites(props.jwt, props.space.id);
-    setInvites(response.ok ? response.data.invites : []);
-  }, [props.jwt, props.space.id, isAdmin]);
-  // The space object changes when the server says something changed (`spaces.changed`): an invite arrives that way.
-  useEffect(() => void load(), [load, props.space]);
-  const answer = async (chatId: string, accept: boolean) => {
-    setBusy(chatId);
-    await answerShareInvite(props.jwt, props.space.id, chatId, accept);
-    setBusy(null);
-    await load();
-    props.onAnswered();
+  const { jwt, space, onAnswered } = props;
+  const store = useMemo(() => shareInvitesStore({ role: space.role, list: () => shareInvites(jwt, space.id), answer: (chatId, accept) => answerShareInvite(jwt, space.id, chatId, accept) }), [jwt, space.id, space.role]);
+  const { invites, busy } = useSyncExternalStore(store.subscribe, store.get);
+  // An invite arrives with `spaces.changed`, which hands a new space object.
+  useEffect(() => {
+    void store.load();
+  }, [store, space]);
+  const answer = (chatId: string, accept: boolean) => {
+    void store.answer(chatId, accept).then(onAnswered);
   };
   if (invites.length === 0) return null;
   return (
@@ -54,10 +47,10 @@ export function ShareInvitesCard(props: { jwt: string; space: ClientWorkspace; o
           <Text className="mt-0.5 text-[16px] font-bold text-on-surface">{`# ${invite.channelName}`}</Text>
           <Text className="mt-1 text-[14px] text-on-surface-variant">{`${invite.invitedBy ?? 'Alguien'} quiere compartir este canal con ${props.space.name}. Si aceptas, entras al canal y puedes agregar a tu equipo.`}</Text>
           <View className="mt-3 flex-row justify-end gap-2">
-            <Pressable testID={`rechazar-canal-${invite.chatId}`} disabled={busy === invite.chatId} onPress={() => void answer(invite.chatId, false)} className="min-h-[44px] items-center justify-center rounded-xl border border-outline/30 px-4">
+            <Pressable testID={`rechazar-canal-${invite.chatId}`} disabled={busy === invite.chatId} onPress={() => answer(invite.chatId, false)} className="min-h-[44px] items-center justify-center rounded-xl border border-outline/30 px-4">
               <Text className="text-[14px] font-semibold text-on-surface">Rechazar</Text>
             </Pressable>
-            <Pressable testID={`aceptar-canal-${invite.chatId}`} disabled={busy === invite.chatId} onPress={() => void answer(invite.chatId, true)} className="min-h-[44px] items-center justify-center rounded-xl bg-primary px-4">
+            <Pressable testID={`aceptar-canal-${invite.chatId}`} disabled={busy === invite.chatId} onPress={() => answer(invite.chatId, true)} className="min-h-[44px] items-center justify-center rounded-xl bg-primary px-4">
               <Text className="text-[14px] font-bold text-on-primary">Aceptar</Text>
             </Pressable>
           </View>
@@ -101,7 +94,9 @@ function ShareChannelSheet(props: { jwt: string; chatId: string; channelName: st
     const response = await channelShares(props.jwt, props.owner.id, props.chatId);
     setShares(response.ok ? response.data.shares : []);
   }, [props.jwt, props.owner.id, props.chatId]);
-  useEffect(() => void refresh(), [refresh]);
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
   const act = async (spaceId: string, run: () => Promise<{ ok: boolean; message?: string }>) => {
     setBusy(spaceId);
     setError('');

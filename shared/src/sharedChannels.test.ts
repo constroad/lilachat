@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { channelPeopleAsContacts, memberSpacePill, shareRefusal, shareStatusFor, spacesWithAccess } from './sharedChannels.js';
+import { describe, expect, it, vi } from 'vitest';
+import { channelPeopleAsContacts, memberSpacePill, shareInvitesStore, shareRefusal, shareStatusFor, spacesWithAccess, type ShareInvite } from './sharedChannels.js';
 import { spaceSections } from './spaceSections.js';
 
 /** José 11/11 (via Portal): a channel of one space shared with others, like Slack Connect. */
@@ -81,3 +81,40 @@ describe('channelPeopleAsContacts', () => {
   });
 });
 
+describe('shareInvitesStore', () => {
+  const invite: ShareInvite = { chatId: 'c1', channelName: 'administracion', from: { workspaceId: 'im', name: 'Inframaq' }, invitedBy: 'José Zamora' };
+
+  it('an admin loads the invitations; a plain member never asks', async () => {
+    const list = vi.fn(async () => ({ ok: true as const, data: { invites: [invite] } }));
+    const admin = shareInvitesStore({ role: 'admin', list, answer: vi.fn() });
+    const member = shareInvitesStore({ role: 'member', list, answer: vi.fn() });
+
+    await admin.load();
+    await member.load();
+
+    expect(admin.get().invites).toEqual([invite]);
+    expect(member.get().invites).toEqual([]);
+    expect(list).toHaveBeenCalledTimes(1);
+  });
+
+  it('answering marks it busy, sends the answer, and reloads what is left', async () => {
+    let left = [invite];
+    const answer = vi.fn(async () => { left = []; });
+    const store = shareInvitesStore({ role: 'owner', list: async () => ({ ok: true as const, data: { invites: left } }), answer });
+    await store.load();
+    const seen: (string | null)[] = [];
+    store.subscribe(() => seen.push(store.get().busy));
+
+    await store.answer('c1', true);
+
+    expect(answer).toHaveBeenCalledWith('c1', true);
+    expect(seen[0]).toBe('c1');
+    expect(store.get()).toEqual({ invites: [], busy: null });
+  });
+
+  it('a failed list leaves no invitations', async () => {
+    const store = shareInvitesStore({ role: 'admin', list: async () => ({ ok: false as const }), answer: vi.fn() });
+    await store.load();
+    expect(store.get().invites).toEqual([]);
+  });
+});

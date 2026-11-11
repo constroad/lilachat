@@ -157,6 +157,21 @@ export async function endShare(viewingId: string, actorId: Types.ObjectId, chatI
   await dropOutsiders(row.chatId);
 }
 
+/**
+ * A deleted space shares nothing and receives nothing: every share it owns or
+ * received ends, and the people who were in a channel only through it leave.
+ */
+export async function endSharesOfDeletedSpace(workspaceId: Types.ObjectId, actorId: Types.ObjectId): Promise<void> {
+  const rows = await SharedChannelModel.find({ $or: [{ ownerWorkspaceId: workspaceId }, { workspaceId }], status: { $in: ['pending', 'active'] } }).select('chatId').lean();
+  if (rows.length === 0) return;
+  await SharedChannelModel.updateMany({ _id: { $in: rows.map((row) => row._id) } }, { $set: { status: 'removed', removedBy: actorId } });
+  const chatIds = [...new Map(rows.map((row) => [String(row.chatId), row.chatId])).values()];
+  await Promise.all(chatIds.map(async (chatId) => {
+    await syncSharedFlag(chatId);
+    await dropOutsiders(chatId);
+  }));
+}
+
 /** Members no longer active in any space with access leave the channel (a share ended, or someone left their space). */
 export async function dropOutsiders(chatId: Types.ObjectId): Promise<void> {
   const chat = await ChatModel.findById(chatId).select('workspaceId channel members.userId').lean<Chat | null>();

@@ -8,6 +8,7 @@ import { noticeSpacesChanged } from './workspaceNotices.js';
 import { BotInstallationModel, type BotInstallation } from './bots/botModels.js';
 import { revokeInstallation } from './bots/botInstall.js';
 import { sendBotEvent } from './bots/botEvents.js';
+import { endSharesOfDeletedSpace } from './sharedChannels.js';
 
 /**
  * Deleting a space (José 10/11: «no es posible eliminar un espacio»). Only its
@@ -28,6 +29,7 @@ export async function deleteWorkspace(workspaceId: string, actorId: Types.Object
   // Native driver: an update pipeline copies each chat's own members aside in one statement.
   await ChatModel.collection.updateMany({ workspaceId: space._id, 'members.0': { $exists: true } }, [{ $set: { deletedWithSpace: { at, by: actorId, members: '$members' }, members: [] } }]);
   await uninstallSpaceApps(space._id, actorId);
+  await endSharesOfDeletedSpace(space._id, actorId);
   noticeSpacesChanged(members);
 }
 

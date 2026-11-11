@@ -55,3 +55,44 @@ export function channelPeopleAsContacts(people: readonly ChannelPerson[], viewin
   return groupContactsByLetter(contacts);
 }
 
+/** What the invitations card shows (design `sc-04`): the invitations waiting and the one being answered. */
+export type ShareInvitesState = { invites: ShareInvite[]; busy: string | null };
+type ShareInvitesSource = {
+  role: WorkspaceRole;
+  list: () => Promise<{ ok: true; data: { invites: ShareInvite[] } } | { ok: false }>;
+  answer: (chatId: string, accept: boolean) => Promise<unknown>;
+};
+
+/**
+ * The invitations card without React, so web and phone share it: only an admin
+ * asks for them, and answering one reloads what is left. Each platform
+ * subscribes with `useSyncExternalStore`.
+ */
+export function shareInvitesStore(source: ShareInvitesSource) {
+  let state: ShareInvitesState = { invites: [], busy: null };
+  const listeners = new Set<() => void>();
+  const update = (next: Partial<ShareInvitesState>) => {
+    state = { ...state, ...next };
+    listeners.forEach((listener) => listener());
+  };
+  const load = async () => {
+    if (!canManageMembers(source.role)) return update({ invites: [] });
+    const response = await source.list();
+    update({ invites: response.ok ? response.data.invites : [] });
+  };
+  return {
+    get: () => state,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      return () => void listeners.delete(listener);
+    },
+    load,
+    answer: async (chatId: string, accept: boolean) => {
+      update({ busy: chatId });
+      await source.answer(chatId, accept);
+      await load();
+      update({ busy: null });
+    },
+  };
+}
+

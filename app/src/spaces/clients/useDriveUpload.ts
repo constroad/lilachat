@@ -2,7 +2,7 @@ import { useState } from 'react';
 import * as Crypto from 'expo-crypto';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { DRIVE_UPLOAD_DONE, DRIVE_VIDEO_SECONDS, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type ManualPhotoUpload } from '@lilachat/shared';
+import { DRIVE_UPLOAD_DONE, DRIVE_VIDEO_SECONDS, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, OBSERVATION_VIDEO_SECONDS, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type EvidenceFile, type ManualPhotoUpload, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps } from '@lilachat/shared';
 import { submitAppForm } from '../../chat/commands/commandsApi';
 import { shrinkPhotoFile } from '../../chat/shrinkPhoto';
 import { getSocket } from '../../chat/socketClient';
@@ -10,7 +10,7 @@ import { subirPorXhr } from '../../chat/subidaXhr';
 import { openReportForm } from './reports/reportsApi';
 import type { ServiceAskTarget } from './useServiceAsk';
 
-type DriveFile = { uri: string; name: string; mime: string };
+export type DriveFile = { uri: string; name: string; mime: string };
 type UploadState = { sending: boolean; progress: number; message: string; failed: boolean };
 type UploadTarget = { target: ServiceAskTarget; chatId: string; serviceId: string; onDone: () => void };
 
@@ -107,3 +107,32 @@ export const mapTraceUploader = (target: ServiceAskTarget, chatId: string, servi
   const facts = { mime, ...(file.sizeBytes ? { sizeBytes: file.sizeBytes } : {}) };
   return manualPhotoOf(await uploadToDrive(depsOf({ target, chatId, serviceId }, () => undefined), { source, facts }, Crypto.randomUUID()));
 };
+
+/** A photo or video of an observation as the screen shows it before it leaves the phone. */
+export type EvidencePreview = { uri: string; mime: string; seconds?: number };
+export type CapturedEvidence = { file: EvidenceFile<DriveFile>; preview: EvidencePreview };
+
+/**
+ * One photo or one video of an observation (José 11/11, designs `ob-02` and `ob-03`), from the
+ * camera's door: a photo leaves at Portal's size, a video stops at 30 s. Null when the person cancels.
+ */
+export async function captureEvidence(kind: 'photo' | 'video'): Promise<CapturedEvidence | { message: string } | null> {
+  const permission = await ImagePicker.requestCameraPermissionsAsync();
+  if (!permission.granted) return { message: CAMERA_DENIED };
+  const picked = await ImagePicker.launchCameraAsync({ mediaTypes: [kind === 'video' ? 'videos' : 'images'], quality: 1, videoMaxDuration: OBSERVATION_VIDEO_SECONDS });
+  const asset = picked.canceled ? null : picked.assets[0];
+  if (!asset) return null;
+  const ready = await prepared(asset);
+  const preview = { uri: ready.source.uri, mime: ready.facts.mime, ...(ready.facts.seconds ? { seconds: ready.facts.seconds } : {}) };
+  return { file: { key: Crypto.randomUUID(), ...ready }, preview };
+}
+
+/** An observation's write from this phone: the run of the client's app, its answer, and each file straight to Portal. */
+export const observationWriteDeps = (to: Omit<UploadTarget, 'onDone'>, request: ObservationRegisterRequest | ObservationLiftRequest, progress?: (sent: number, total: number) => void): ObservationWriteDeps<DriveFile> => ({
+  open: () => openReportForm(to.target, to.serviceId, request),
+  submit: (commandId, values) => submitAppForm(to.target.jwt, { chatId: to.chatId }, commandId, values),
+  notice: (commandId) => noticeOf(getSocket(), commandId),
+  send: (upload, file, clientUploadId) => sendToDrive(upload, file, clientUploadId, () => undefined),
+  ...(progress ? { progress } : {}),
+});
+

@@ -40,7 +40,7 @@ export const isMoneyRecord = (record: { kicker?: string; title: string }): boole
  * which carries prices. A list of what is allowed: a type nobody reviewed stays hidden. Portal filters
  * first; this is the second lock.
  */
-const FIELD_REPORT_LABELS = new Set(['control de pista', 'conformacion de capa', 'control de imprimacion', 'area adicional', 'recepcion de campo', 'levantamiento de observaciones', 'fresado de pavimento', 'solicitud de imprimacion']);
+const FIELD_REPORT_LABELS = new Set(['control de pista', 'conformacion de capa', 'control de imprimacion', 'area adicional', 'recepcion de campo', 'levantamiento de observaciones', 'registro de observaciones', 'fresado de pavimento', 'solicitud de imprimacion']);
 const plainLabel = (label: string): string => label.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
 export const isFieldReport = (report: { typeLabel?: string }): boolean => FIELD_REPORT_LABELS.has(plainLabel(report.typeLabel ?? ''));
 

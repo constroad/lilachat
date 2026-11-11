@@ -64,6 +64,8 @@ function pinElement(pin: DischargePin, onPin: { current: ((id: string) => void) 
     const dot = document.createElement('span');
     dot.className = `flex h-7 min-w-7 items-center justify-center rounded-full border-2 border-surface px-1 text-[11px] font-bold text-on-primary shadow ${pin.outside ? 'bg-error' : 'bg-primary'}`;
     dot.textContent = pin.label;
+    // An observation brings its own fill: red pending, green lifted (design `ob-01`).
+    if (pin.fill) dot.style.backgroundColor = pin.fill;
     // A unit wears its day as a thicker ring (José 09/11).
     if (pin.dayColor) { dot.style.borderColor = pin.dayColor; dot.style.borderWidth = '4px'; }
     element.append(dot);

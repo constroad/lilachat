@@ -75,7 +75,7 @@ describe('an open service takes the whole conversation (José 06/11: «ocupe tod
 });
 
 describe('ServiceDetailWeb', () => {
-  it('José 05/11: «Crear informe» for everyone with the services; the picker offers the eight types, the ones not here open Portal, and CTL-IMP opens the report', async () => {
+  it('José 05/11: «Crear informe» for everyone with the services; the picker offers the nine types (REG-OBS since 11/11), the ones not here open Portal, and CTL-IMP opens the report', async () => {
     // Arrange
     const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith('/reports/draft') ? { error: 'report_draft_failed', message: 'No se pudo abrir el informe' } : { detail }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
@@ -86,7 +86,7 @@ describe('ServiceDetailWeb', () => {
     fireEvent.click(screen.getByTestId('crear-informe'));
     // Assert
     const types = within(screen.getByTestId('crear-informe-tipos')).getAllByTestId(/^tipo-informe-/);
-    expect(types).toHaveLength(8);
+    expect(types).toHaveLength(9);
     expect(screen.getByTestId('tipo-informe-IAA')).toHaveAttribute('href', 'https://portal.constroad.com/s/318');
     expect(screen.getByTestId('tipo-informe-IAA')).toHaveTextContent('En Portal');
     fireEvent.click(screen.getByTestId('tipo-informe-CTL-IMP'));

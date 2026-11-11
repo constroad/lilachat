@@ -144,7 +144,7 @@ export const stretchWorksOf = (map: Pick<WorkMap, 'scopes' | 'works'>, streetId:
  * (José 09/11: «así sabremos qué unidad estuvo en cierto lugar»); a spot of the «Fotos» layer
  * carries a camera or a film and how many it holds, never a bare number.
  */
-export type DischargePin = { id: string; label: string; lat: number; lng: number; outside: boolean; caption?: string; icon?: 'photo' | 'video'; /** The color of its day when the work has several (José 09/11): a photo is filled with it, a unit wears it as a ring. */ dayColor?: string };
+export type DischargePin = { id: string; label: string; lat: number; lng: number; outside: boolean; caption?: string; icon?: 'photo' | 'video'; /** The color of its day when the work has several (José 09/11): a photo is filled with it, a unit wears it as a ring. */ dayColor?: string; /** Its own fill: an observation is red while pending and green once lifted (design `ob-01`). */ fill?: string };
 
 /** A numbered pin where each unit emptied; the one outside the work stands apart. */
 export const dischargePinsOf = ({ units, hasWork }: Pick<DischargeSuggestion, 'units' | 'hasWork'>, numbers?: ReadonlyMap<string, number>): DischargePin[] =>
@@ -166,7 +166,7 @@ const OUTSIDE_COLOR = '#dc2626';
 /** The numbered pins as a MapLibre source: the APK draws a circle, its number and the plate; icon pins go as views. */
 export const dischargePinCollection = (pins: DischargePin[]) => ({
   type: 'FeatureCollection' as const,
-  features: pins.filter((pin) => !pin.icon).map((pin) => ({ type: 'Feature' as const, properties: { id: pin.id, label: pin.label, caption: pin.caption ?? '', color: pin.outside ? OUTSIDE_COLOR : STRETCH_COLOR, ring: pin.dayColor ?? '#ffffff', ringWidth: pin.dayColor ? 4 : 2 }, geometry: { type: 'Point' as const, coordinates: [pin.lng, pin.lat] as [number, number] } })),
+  features: pins.filter((pin) => !pin.icon).map((pin) => ({ type: 'Feature' as const, properties: { id: pin.id, label: pin.label, caption: pin.caption ?? '', color: pin.fill ?? (pin.outside ? OUTSIDE_COLOR : STRETCH_COLOR), ring: pin.dayColor ?? '#ffffff', ringWidth: pin.dayColor ? 4 : 2 }, geometry: { type: 'Point' as const, coordinates: [pin.lng, pin.lat] as [number, number] } })),
 });
 
 export type StretchRange = { fromM: number; toM: number };

@@ -867,3 +867,106 @@ José: en un borrador solo estaba el botón grande «Publicar». Pidió «Ver PD
   acepta. Sin señal o con rechazo, la persona lo lee y nada cambia.
 - Portal rechaza un informe publicado y es idempotente con la misma confirmación.
 
+
+## 13. Registro y levantamiento de observaciones (REG-OBS / LEV-OBS, José 11/11)
+
+APK para campo, web para oficina. Diseños Stitch `design/stitch/obs/ob-01-lista.png`
+(lista con mapa y pestañas), `ob-02-nueva.png` (nueva observación),
+`ob-03-levantar.png` (antes y después) y `ob-07b-lienzo-mapa.png` (resumen de
+oficina).
+
+### Contrato (Portal ead85b1a, agentes 275fb32 y 506f753)
+
+- **Lectura:** el mismo evento `client.report.draft.requested` con `type`
+  REG-OBS o LEV-OBS. agentes lo envía a
+  `informe_de_observaciones({ servicioId, tipo, informeId? })` y devuelve
+  `document`. La sección `observaciones` trae `items`:
+  `{ id, code, note, lat, lng, at, status open|lifted, liftedAt?, liftNote?, media[], liftMedia[], segment? }`.
+  Cada media es `{ url, thumbUrl?, mime, durationS? }`. El mapa viene como
+  `{ streets[{ id, name, geometry }], imageUrl? }`, y además llega
+  `publish { label, missing[] }`. Topes: 200 ítems y 10 medios por lado.
+  agentes pone `lat`/`lng` en null si están fuera de rango. Lilachat no guarda
+  este documento: no arma formularios de sección con él.
+- **Escrituras:** son corridas del formulario de la app del cliente. El
+  contexto llega dentro de `values`, y los esquemas de Portal son `.strict()`.
+  - `registrar_observacion { servicioId, informeId?, entradaId (uuid), lat, lng, nota? ≤600 }`.
+    Sin nota, Portal escribe «Observación registrada en campo, sin nota.».
+    `informeId` solo sale desde un REG-OBS. Desde un LEV-OBS, Portal la
+    archiva en el registro abierto del servicio.
+  - `levantar_observacion { servicioId, observacionId, informeId?, nota? }`.
+    `informeId` solo sale desde un LEV-OBS. Es idempotente: si se repite,
+    conserva la fecha y cambia solo la nota.
+  - La respuesta trae `data` = `{ informeId, observacionId, codigo }` y aparte
+    `upload` (el mismo ticket que `subir_al_drive`). Cada foto o video va del
+    teléfono a Portal en un multipart, con `clientUploadId` = la clave del
+    archivo. Portal responde 201 o 200 si es repetido. Un 410 vuelve a
+    confirmar con la misma `entradaId` (o el mismo `observacionId`) y trae un
+    ticket nuevo, una sola vez. Video: mp4, webm o quicktime de hasta 30 s.
+- **Publicar:** todavía no desde Lilachat (solo el navegador de Portal dibuja el
+  mapa del PDF). `publish.missing` dice «Por ahora este informe se publica desde
+  Portal.» y la pantalla lo muestra.
+
+### Interruptor
+
+`OBSERVATIONS_OPEN_HERE = false` (`shared/src/observations.ts`) hasta que José
+apruebe las tres herramientas en Agentes (mientras tanto responden 502). Con el
+interruptor apagado:
+
+- REG-OBS (nuevo en «Nuevo informe») y LEV-OBS abren la página de Portal, como
+  antes.
+- El server no acepta los tipos de observación en `reports/draft` ni los kinds
+  `observation_register` y `observation_lift`.
+
+Para encenderlo hay que cambiar esa constante, correr los gates, publicar la web
+y el OTA, y hacer el E2E de abajo.
+
+### Qué está hecho
+
+- `shared/observations.ts`: lee el documento, separa pendientes de levantadas,
+  calcula totales y % de avance, arma los pines (rojo pendiente, verde
+  levantada; `DischargePin.fill`), encuadra el mapa sin calles, nombra el lugar
+  («Av. Los Incas 0+240» por segmento o por la calle a ≤30 m), y arma la
+  insignia de evidencia y la hora de Lima.
+- `shared/observationWrite.ts`: arma los pedidos, deja las notas en blanco
+  afuera, lee la respuesta y tiene `writeObservation` (confirma, sube archivo
+  por archivo y reconfirma ante un 410). Lo que dice la pantalla sale de
+  `writeOutcome`.
+- `driveUpload.formRunAnswer` y `uploadFailure` se comparten con el Drive.
+- Server: `bots/observationForms.ts` (los dos kinds con el interruptor), la
+  lectura en `clientReportDraft`, y «Registro de observaciones» en
+  `isFieldReport`.
+- APK (`spaces/clients/observations/*`):
+  - Lista: mapa, pestañas Pendientes/Levantadas, tarjetas y «Nueva
+    observación».
+  - Nueva: botones Foto/Video de 72 px, GPS al abrir con reintento, nota
+    opcional y «Registrar observación». La clave de la entrada vive lo que
+    dura la pantalla.
+  - Levantar: antes en el visor, después con cámara y nota, y «Marcar como
+    levantada» bloqueado hasta tener una foto o video del después.
+  - La cámara entra por la puerta `useDriveUpload.captureEvidence`.
+- Web (`ObservationsWeb`): totales Total/Levantadas/Pendientes/Avance con
+  barra, mapa, filtro Todas/Pendientes/Levantadas, y cada fila abre su antes y
+  su después en el visor. Solo lectura: el registro y el levantamiento se hacen
+  en campo.
+
+### Diferencias con el diseño
+
+- Sin responsable, plazo («en 4 días», «Vence hoy») ni autor de la
+  observación: el contrato no los trae.
+- Sin «Mover pin»: el punto es el GPS del teléfono.
+- Sin el micrófono propio: el texto apunta al dictado del teclado. Agregarlo
+  pide una librería de voz.
+- La web no es el lienzo de `ob-07b`: es el resumen. El editor del documento
+  sigue en Portal.
+
+### Sin verificar todavía
+
+- **Contra Portal real:** las herramientas no están aprobadas.
+- **La cola sin señal:** hoy un registro sin red falla y queda en pantalla para
+  reintentarse con la misma clave. No se encola.
+- **Al aprobar,** E2E en el espacio Test:
+  - APK: registrar con foto y video, verlo en la lista y en el mapa, y
+    levantarlo con foto del después.
+  - Web: verlo en el resumen.
+  - Portal: revisar el hilo bajo la tarjeta del REG-OBS.
+  - Limpieza por el camino de la app.

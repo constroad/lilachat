@@ -1,6 +1,6 @@
 import { FORMS_LEVEL } from './appForms.js';
 import type { FormSubmitReply } from './appActions.js';
-import type { CommandNotice, CommandOutcome } from './botCommands.js';
+import type { CommandNotice, CommandOutcome, CommandResponse } from './botCommands.js';
 
 /**
  * A photo or a video sent straight to a service's Drive (José, 06/11: videos
@@ -75,20 +75,32 @@ export function driveFileRefusal(upload: DriveUpload, file: DriveFileFacts): str
   return null;
 }
 
-const refusalOf = (reply: Extract<FormSubmitReply, { ok: false }>): string => reply.errors?._ ?? Object.values(reply.errors ?? {})[0] ?? reply.message ?? DRIVE_UPLOAD_FAILED;
+const refusalOf = (reply: Extract<FormSubmitReply, { ok: false }>, failed: string): string => reply.errors?._ ?? Object.values(reply.errors ?? {})[0] ?? reply.message ?? failed;
 
-/** A new run each time: agentes answers a repeated one with its text alone. */
-async function ticketOf<F>(deps: DriveUploadDeps<F>): Promise<{ upload: DriveUpload } | { message: string }> {
+/** What it takes to open a run of the client's app, confirm it and hear its answer. */
+export type FormRunDeps = Pick<DriveUploadDeps<unknown>, 'open' | 'submit' | 'notice'>;
+
+/** A new run each time: agentes answers a repeated one with its text alone. `failed` is said when nothing usable came back. */
+export async function formRunAnswer(deps: FormRunDeps, failed: string): Promise<{ response: CommandResponse } | { message: string }> {
   const opened = await deps.open();
-  if (!opened.ok) return { message: DRIVE_UPLOAD_FAILED };
+  if (!opened.ok) return { message: failed };
   const { commandId } = opened.data;
   const reply = await deps.submit(commandId);
-  if (!reply.ok) return { message: refusalOf(reply) };
+  if (!reply.ok) return { message: refusalOf(reply, failed) };
   const { outcome } = reply;
-  if (outcome.outcome === 'failed') return { message: outcome.message ?? DRIVE_UPLOAD_FAILED };
+  if (outcome.outcome === 'failed') return { message: outcome.message ?? failed };
   const response = outcome.outcome === 'pending' ? (await deps.notice(commandId))?.response : outcome.response;
-  return response?.upload ? { upload: response.upload } : { message: DRIVE_UPLOAD_FAILED };
+  return response ? { response } : { message: failed };
 }
+
+async function ticketOf<F>(deps: DriveUploadDeps<F>): Promise<{ upload: DriveUpload } | { message: string }> {
+  const answer = await formRunAnswer(deps, DRIVE_UPLOAD_FAILED);
+  if ('message' in answer) return answer;
+  return answer.response.upload ? { upload: answer.response.upload } : { message: DRIVE_UPLOAD_FAILED };
+}
+
+/** What Portal's answer to a file means to the person. */
+export const uploadFailure = (status?: number, message?: string): string => FAILURES[status ?? 0] ?? message ?? DRIVE_UPLOAD_FAILED;
 
 /** One ticket and one send: `null` asks for a new ticket. */
 async function attempt<F>(deps: DriveUploadDeps<F>, file: { source: F; facts: DriveFileFacts }, clientUploadId: string): Promise<DriveUploadResult | null> {
@@ -99,7 +111,7 @@ async function attempt<F>(deps: DriveUploadDeps<F>, file: { source: F; facts: Dr
   const { status, message, mediaId } = await deps.send(ticket.upload, file.source, clientUploadId);
   if (status === EXPIRED) return null;
   if (status && status < 300) return mediaId ? { ok: true, mediaId } : { ok: true };
-  return { ok: false, message: FAILURES[status ?? 0] ?? message ?? DRIVE_UPLOAD_FAILED };
+  return { ok: false, message: uploadFailure(status, message) };
 }
 
 /** The same `clientUploadId` on a retry: Portal answers the file it already has. */

@@ -18,6 +18,8 @@ import type { EphemeralAnswer } from './botCommands.js';
 import type { DriveUploadRequest } from './driveUpload.js';
 import { fieldDocumentOf, type DocumentSection, type DocumentStatus, type FieldDocument, type RepeatSection, type SectionPath, type SectionState } from './fieldDocument.js';
 import { clientServicePath } from './serviceAsk.js';
+import { OBSERVATIONS_OPEN_HERE, observationDocumentOf, type ObservationDocument } from './observations.js';
+import type { ObservationLiftRequest, ObservationRegisterRequest } from './observationWrite.js';
 import { locationMapLink } from './sharedLocation.js';
 import type { DetailTone } from './serviceDetail.js';
 
@@ -29,14 +31,15 @@ import type { DetailTone } from './serviceDetail.js';
  */
 export type ReportTypeOption = { code: string; label: string; caption: string; /** Created here; the rest open Portal's public page. */ opensHere: boolean };
 
-/** The eight types of Portal's public page (`isFieldReport`), the three that come first on top. */
+/** The types of Portal's public page (`isFieldReport`), the ones filled here on top. */
 export const REPORT_TYPE_OPTIONS: readonly ReportTypeOption[] = [
   { code: 'CTL-IMP', label: 'Control de imprimación', caption: 'Tasa de riego por tramo, con bandejas y fotos', opensHere: true },
   { code: 'IAA', label: 'Área adicional', caption: 'Zonas medidas sobre la foto', opensHere: false },
   { code: 'CTL-PIS', label: 'Control de pista', caption: 'Llegada, temperaturas, escantillón y 4 fotos por volquete', opensHere: true },
   { code: 'CON-CAP', label: 'Conformación de capa', caption: 'Espesor y compactación en campo', opensHere: false },
   { code: 'RCP-CAM', label: 'Recepción de campo', caption: 'Conformidad con firma de supervisión', opensHere: false },
-  { code: 'LEV-OBS', label: 'Levantamiento de observaciones', caption: 'Correcciones validadas en campo', opensHere: false },
+  { code: 'REG-OBS', label: 'Registro de observaciones', caption: 'Lo encontrado en obra, con foto, video y ubicación', opensHere: OBSERVATIONS_OPEN_HERE },
+  { code: 'LEV-OBS', label: 'Levantamiento de observaciones', caption: 'Correcciones validadas en campo', opensHere: OBSERVATIONS_OPEN_HERE },
   { code: 'FRE-PAV', label: 'Fresado de pavimento', caption: 'Área fresada y profundidad', opensHere: false },
   { code: 'SOL-IMP', label: 'Solicitud de imprimación', caption: 'Pedido previo al riego, con firma', opensHere: false },
 ];
@@ -75,6 +78,14 @@ export function readReportDraft(body: ReportDraftBody | null): ReportDraftResult
   return document ? { ok: true, document } : { ok: false, message: body?.message ?? DRAFT_FAILED };
 }
 
+export type ObservationDraftResult = { ok: true; document: ObservationDocument } | { ok: false; message: string };
+
+/** The same door for an observation report: Portal's `informe_de_observaciones` answers it (agentes 275fb32). */
+export function readObservationDraft(body: ReportDraftBody | null): ObservationDraftResult {
+  const document = body?.document !== undefined ? observationDocumentOf(body.document) : null;
+  return document ? { ok: true, document } : { ok: false, message: body?.message ?? DRAFT_FAILED };
+}
+
 /** Where and when a photo was taken; the place may be missing, the hour may not (server `placeOf`). */
 export type DevicePlace = { lat?: number; lng?: number; at: string };
 /** The button under a place field (José, 06/11). */
@@ -84,7 +95,7 @@ export const placeFieldValue = ({ lat, lng }: DevicePlace): string | null => (la
 export type SectionFormRequest = { kind: 'section'; type: string; section_id: string; item_id: string | null; key: string; report_id?: string; forms: number; /** The save's own key: Portal tells a photo sent twice from a second one. */ client_key?: string } & Partial<DevicePlace>;
 export type PublishFormRequest = { kind: 'publish'; report_id: string; forms: number };
 export type RemovePhotoRequest = { kind: 'remove_photo'; report_id: string; photo_id: string; forms: number };
-export type ReportFormRequest = SectionFormRequest | PublishFormRequest | RemovePhotoRequest | DriveUploadRequest | WorkProgressRequest | WorkStreetRequest | WorkStreetDeleteRequest | ServiceLinkRequest | WorkScopeRequest | WorkScopeDeleteRequest | WorkStageRequest | WorkTagRequest | WorkRestoreRequest | WorkDeletedRequest | WorkManualProgressRequest | WorkProgressLinkRequest | WorkImportRequest | WorkProgressPdfRequest | WorkMapInReportRequest | PhotoPhaseRequest | LayerEditRequest | LayerDeleteRequest | WorkPendingRequest | WorkResolveRequest;
+export type ReportFormRequest = SectionFormRequest | PublishFormRequest | RemovePhotoRequest | DriveUploadRequest | WorkProgressRequest | WorkStreetRequest | WorkStreetDeleteRequest | ServiceLinkRequest | WorkScopeRequest | WorkScopeDeleteRequest | WorkStageRequest | WorkTagRequest | WorkRestoreRequest | WorkDeletedRequest | WorkManualProgressRequest | WorkProgressLinkRequest | WorkImportRequest | WorkProgressPdfRequest | WorkMapInReportRequest | PhotoPhaseRequest | LayerEditRequest | LayerDeleteRequest | WorkPendingRequest | WorkResolveRequest | ObservationRegisterRequest | ObservationLiftRequest;
 
 /** What `POST …/reports/forms` takes to open a section: its path, the report once it exists, and what this app can draw. */
 export function sectionFormRequest(document: FieldDocument, path: SectionPath, place?: DevicePlace | null, clientKey?: string): SectionFormRequest {

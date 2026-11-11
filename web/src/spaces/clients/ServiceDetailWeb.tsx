@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, ExternalLink, FilePlus, FileText } from 'lucide-react';
-import { draftToContinue, CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { draftToContinue, isObservationType, CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { usePortalFileViewer } from './PortalFileViewer';
 import type { OpenSheetFile } from './RecordSheetWeb';
 import { RecordSheetWeb } from './RecordSheetWeb';
@@ -14,6 +14,7 @@ import { useReportPdf } from './useReportPdf';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
 import { CreateReportDialog } from './reports/CreateReportDialog';
 import { ReportDocumentWeb } from './reports/ReportDocumentWeb';
+import { ObservationsWeb } from './observations/ObservationsWeb';
 
 const PortalLink = (props: { url: string; label: string; testId: string }) => (
   <a href={props.url} target="_blank" rel="noreferrer" data-testid={props.testId} className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary hover:underline">
@@ -234,6 +235,8 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
     const crumbs = <ServiceCrumbs service={props.service.name} onBack={props.onBack} onToChat={props.onToChat} />;
     return <MapWorkspace admin={props.seesMoney} crumbs={crumbs} detail={answer.value} service={props.service} tabs={serviceTabs(answer.value, Boolean(props.seesDrive), true)} onTab={pickTab} links={doorMapLinks(props.links, props.target, props.chatId, props.service.id)} target={props.target} chatId={props.chatId} />;
   }
+  // José 11/11: the registry and the lifting of observations have their own view (design ob-07b).
+  if (report && isObservationType(report.type)) return <ObservationsWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} portalUrl={portalUrl} onClose={closeReport} />;
   if (report) return <ReportDocumentWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={portalUrl} onClose={closeReport} />;
   return (
     <div data-testid="detalle-servicio" className="mx-auto flex max-w-3xl flex-col gap-3">

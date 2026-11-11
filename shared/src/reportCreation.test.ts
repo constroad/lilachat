@@ -3,7 +3,7 @@ import { FORMS_LEVEL } from './appForms';
 import { isFieldReport } from './clientAccess';
 import { fieldDocumentOf } from './fieldDocument';
 import { locationMapLink } from './sharedLocation';
-import { draftToContinue, itemsLine, removePhotoRequest, pageLine, placeFieldValue, progressLine, progressPercent, publishFormRequest, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, openPublishForm, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, staleAnswerIds, STATUS_BADGE, type TrackStart } from './reportCreation';
+import { draftToContinue, itemsLine, removePhotoRequest, pageLine, placeFieldValue, progressLine, progressPercent, publishFormRequest, readObservationDraft, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, openPublishForm, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, staleAnswerIds, STATUS_BADGE, type TrackStart } from './reportCreation';
 
 /** A CTL-IMP as Portal answers it, with one tramo whose photos go through their own tool. */
 const form = (title: string) => ({ type: 'object', properties: { campo: { type: 'string', title } } });
@@ -29,7 +29,7 @@ const tramos = () => {
 
 describe('the types a report can be', () => {
   it('offers the eight types of the public page, and CTL-IMP and CTL-PIS open here', () => {
-    expect(REPORT_TYPE_OPTIONS).toHaveLength(8);
+    expect(REPORT_TYPE_OPTIONS).toHaveLength(9);
     expect(REPORT_TYPE_OPTIONS.filter((option) => option.opensHere).map((option) => option.code)).toEqual(['CTL-IMP', 'CTL-PIS']);
     expect(REPORT_TYPE_OPTIONS.slice(0, 3).map((option) => option.code)).toEqual(['CTL-IMP', 'IAA', 'CTL-PIS']);
     REPORT_TYPE_OPTIONS.forEach((option) => expect(isFieldReport({ typeLabel: option.label })).toBe(true));
@@ -210,3 +210,15 @@ describe('removePhotoRequest', () => {
   });
 });
 
+describe('readObservationDraft', () => {
+  it('reads Portal\'s observation document, and says why when there is none', () => {
+    const document = { id: 'r1', type: 'REG-OBS', title: 'Registro', status: 'draft', forms: {}, sections: [{ id: 'observaciones', items: [] }], map: { streets: [] }, publish: { label: 'Publicar', missing: [] } };
+    expect(readObservationDraft({ document })).toEqual({ ok: true, document: expect.objectContaining({ id: 'r1', observations: [] }) });
+    expect(readObservationDraft({ error: 'x', message: 'Esa herramienta no está aprobada' })).toEqual({ ok: false, message: 'Esa herramienta no está aprobada' });
+    expect(readObservationDraft(null)).toEqual({ ok: false, message: 'No se pudo abrir el informe' });
+  });
+
+  it('the registry is a field report a restricted member may see', () => {
+    expect(isFieldReport({ typeLabel: 'Registro de observaciones' })).toBe(true);
+  });
+});

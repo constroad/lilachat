@@ -217,3 +217,5 @@ export * from './photoPhase.js';
 export * from './workPrimeCoat.js';
 export * from './workLayerEdit.js';
 export * from './workMapMenu.js';
+export * from './observations.js';
+export * from './observationWrite.js';

@@ -550,6 +550,20 @@ deformable y la purga (11/11, «sí a los 4»).
     APK 0.1.182 (183) y otro runtime de OTA.
   - Los dos se detienen a los 8 s como WhatsApp y se reanudan al tocarlos.
   - Mis stickers animados propios (de un GIF) siguen como imagen.
+  - En el APK, la burbuja, la fila del canal y el hilo usan el mismo
+    `useStickerPlayback` + `StickerArt` (`StickerMessage.tsx`). El primer APK
+    0.1.182 tenía Lottie solo en la burbuja; en los canales seguía el WebP.
+    El E2E del emulador en Test #general lo destapó: no había ninguna
+    `LottieAnimationView` en `dumpsys activity top`. El test
+    `stickerRenderers.test.ts` falla si una pantalla dibuja un sticker por
+    su cuenta.
+  - El mismo E2E mostró el «10» del oso como una mancha, en web y APK. El
+    script dibujaba el texto en una ventana de 720 px y lo cortaba a un
+    tercio. Ahora la ventana mide lo que el dibujo y se detiene si un PNG
+    sale de otro tamaño.
+  - Los `.json` se sirven `immutable` un año: la URL lleva `lv=` con
+    `ANIMATED_LOTTIE_VERSION` (hoy 2). `lottieFiles.test.ts` guarda el
+    sha256 de los archivos y falla si se regeneran sin subir la versión.
 - **Pendiente**: fase 3 (arte deformable: formas que se doblan, no solo piezas
   que giran) y fase 4 (los guiños en Lottie, con su sonido aparte).
 

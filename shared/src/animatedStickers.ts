@@ -73,6 +73,14 @@ export function stickerIsAnimated(media: { url?: string | null; animated?: boole
 }
 
 /**
+ * Version of the pack's Lottie files, part of their URL. They are served
+ * `immutable` for a year, so regenerating them must bump it or nobody who
+ * already loaded one gets the new file (11/11: the bear's «10» came out cut).
+ * `web/src/chat/stickers/lottieFiles.test.ts` fails until it is bumped.
+ */
+export const ANIMATED_LOTTIE_VERSION = 2;
+
+/**
  * The Lottie of a sticker of the animated pack (José 11/11, like Telegram's):
  * the same name beside its WebP, which stays as the fallback while it loads or
  * where Lottie cannot play. My own animated stickers (from a GIF) have none.
@@ -81,5 +89,5 @@ export function lottieUrlOf(url: string | null | undefined): string | null {
   if (!url || !isAnimatedSticker(url)) return null;
   const [path, query] = url.split('?');
   if (!path!.endsWith('.webp')) return null;
-  return `${path!.slice(0, -'.webp'.length)}.json${query === undefined ? '' : `?${query}`}`;
+  return `${path!.slice(0, -'.webp'.length)}.json?${query === undefined ? '' : `${query}&`}lv=${ANIMATED_LOTTIE_VERSION}`;
 }

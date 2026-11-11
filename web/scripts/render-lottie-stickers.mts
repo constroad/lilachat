@@ -21,6 +21,7 @@ import { danceToLottie, type LottieAnimation, type PartImage } from '../../share
 import { svgToLottieShapes } from '../../shared/src/lottie/svgToLottie.ts';
 
 type Page = {
+  setViewportSize(size: { width: number; height: number }): Promise<void>;
   setContent(html: string): Promise<void>;
   addScriptTag(options: { path: string }): Promise<unknown>;
   evaluate<R, A>(fn: (arg: A) => R | Promise<R>, arg: A): Promise<R>;
@@ -41,10 +42,19 @@ const PREVIEW_SIDE = 128;
 /** Telegram's ceiling for a TGS sticker, gzipped. */
 const TELEGRAM_MAX_GZIP = 64 * 1024;
 
-/** Draws one part's text alone (everything else hidden) and cuts each text out as a PNG. */
+/** Width and height of a PNG, read from its IHDR chunk. */
+const pngSize = (png: Buffer): [number, number] => [png.readUInt32BE(16), png.readUInt32BE(20)];
+
+/**
+ * Draws one part's text alone (everything else hidden) and cuts each text out
+ * as a PNG. The viewport is the whole drawing: with the default 720 px the
+ * bear's «10» (y ≈ 670 px at 4 px per unit) came out cut to its top third and
+ * Lottie stretched it into a smudge (11/11), so a cut picture now stops the run.
+ */
 async function textImagesOf(page: Page, art: WinkArt, part: WinkArtPart): Promise<PartImage[]> {
   if (!part.markup.includes('<text')) return [];
   const [, , width, height] = art.viewBox.split(/\s+/).map(Number);
+  await page.setViewportSize({ width: Math.ceil(width! * TEXT_PIXELS_PER_UNIT), height: Math.ceil(height! * TEXT_PIXELS_PER_UNIT) });
   const hideShapes = '<style>svg :not(text):not(tspan):not(g):not(defs) { visibility: hidden }</style>';
   await page.setContent(`<html><body style="margin:0;background:transparent">${hideShapes}<svg xmlns="http://www.w3.org/2000/svg" viewBox="${art.viewBox}" width="${width! * TEXT_PIXELS_PER_UNIT}" height="${height! * TEXT_PIXELS_PER_UNIT}">${art.defs ? `<defs>${art.defs}</defs>` : ''}${part.markup}</svg></body></html>`);
   const boxes = await page.evaluate(() => [...document.querySelectorAll('svg text')].map((text) => text.getBoundingClientRect()).map((box) => [box.x, box.y, box.width, box.height]), null);
@@ -53,6 +63,8 @@ async function textImagesOf(page: Page, art: WinkArt, part: WinkArtPart): Promis
   for (const [index, [x, y, w, h]] of boxes.entries()) {
     const clip = { x: Math.max(0, Math.floor(x! - pad)), y: Math.max(0, Math.floor(y! - pad)), width: Math.ceil(w! + pad * 2), height: Math.ceil(h! + pad * 2) };
     const png = await page.screenshot({ clip, omitBackground: true });
+    const [pngWidth, pngHeight] = pngSize(png);
+    if (pngWidth !== clip.width || pngHeight !== clip.height) throw new Error(`${part.part}: the text picture came out ${pngWidth}x${pngHeight}, not ${clip.width}x${clip.height}`);
     images.push({ id: `${part.part}-text-${index}`, dataUri: `data:image/png;base64,${png.toString('base64')}`, x: clip.x / TEXT_PIXELS_PER_UNIT, y: clip.y / TEXT_PIXELS_PER_UNIT, width: clip.width / TEXT_PIXELS_PER_UNIT, height: clip.height / TEXT_PIXELS_PER_UNIT, pixelsPerUnit: TEXT_PIXELS_PER_UNIT });
   }
   return images;

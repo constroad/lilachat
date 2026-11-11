@@ -110,6 +110,11 @@ export function ContactPicker({
                     {contacto.phone}
                   </span>
                 </span>
+                {contacto.space ? (
+                  <span data-testid={`espacio-de-${contacto.id}`} className="shrink-0 rounded-full border border-outline/30 bg-background px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">
+                    {contacto.space}
+                  </span>
+                ) : null}
                 {elegido(contacto) ? (
                   <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary text-on-primary">
                     <Check size={14} />

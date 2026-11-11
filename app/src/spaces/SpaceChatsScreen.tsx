@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import { BackHandler, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
-import { Archive, AtSign, ChevronDown, ChevronRight, Hash, Inbox, Lock, MessagesSquare, Plus, Search, UserPlus } from 'lucide-react-native';
+import { Archive, AtSign, ChevronDown, ChevronRight, Hash, Inbox, Link2, Lock, MessagesSquare, Plus, Search, UserPlus } from 'lucide-react-native';
 import { anyChatUnread, aplicarMensajeALista, canManageMembers, clientChatIds, formatChatTimestamp, marcarLeido, nombreDeContacto, spaceListReady, spaceSections, splitArchived, splitClients, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
 import type { MensajeEnVivo as LiveMessage } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
@@ -21,6 +21,7 @@ import type { SpaceApps } from './apps/useSpaceApps';
 import { useSpaceClients } from './clients/useSpaceClients';
 import { ClientsSection } from './clients/ClientsSection';
 import { ArchivedClientsScreen } from './clients/ArchivedClientsScreen';
+import { SharedSectionTitle, ShareInvitesCard } from './SharedChannelsApp';
 import { askMuteDuration } from '../chat/askMuteDuration';
 import { useRenderCost } from '../diagnostico/frameMonitor';
 import { useDisposicion } from '../ui/useDisposicion';
@@ -210,13 +211,14 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
       {ready && chats?.length === 0 && !query ? appsSection([]) : null}
       {ready ? <ClientsSection jwt={props.jwt} spaceId={space.id} live={clientSplit.live} query={query} archived={clientSplit.archived} archivedUnread={clientSplit.archivedUnread} folded={foldedClients} onToggle={() => setFoldedClients((before) => !before)} openChatId={props.openChatId} onOpen={onOpenChat} onArchived={() => setOpenArchivedClients(true)} /> : null}
       {openArchivedClients ? <ArchivedClientsScreen archived={clientSplit.archived} onClose={() => setOpenArchivedClients(false)} onOpen={(chat) => { setOpenArchivedClients(false); onOpenChat(chat); }} /> : null}
+      <ShareInvitesCard jwt={props.jwt} space={space} onAnswered={() => void load()} />
       {ready && (chats?.length || query)
         ? sections.map((section) => section.key === 'apps' ? (
             appsSection(section.chats)
           ) : (
             <View key={section.key} testID={`seccion-${section.key}`} className="border-t border-outline/10 pt-1">
               <Pressable testID={`plegar-${section.key}`} onPress={() => toggle(section.key)} className="min-h-[44px] flex-row items-center px-4">
-                <Text className="flex-1 text-[12px] font-bold uppercase tracking-widest text-on-surface-variant">{section.title}</Text>
+                {section.space ? <SharedSectionTitle space={section.space} /> : <Text className="flex-1 text-[12px] font-bold uppercase tracking-widest text-on-surface-variant">{section.title}</Text>}
                 {/* A space creates channels, not groups (pending 109, José 28/10): only direct messages have a «+» here. */}
                 {section.key === 'directs' ? (
                   <Pressable testID="nuevo-directs" onPress={props.onNewDirect} accessibilityLabel="Nuevo mensaje directo" hitSlop={8} className="mr-2 h-9 w-9 items-center justify-center">
@@ -228,7 +230,7 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
               {folded.has(section.key)
                 ? null
                 : section.chats.map((chat) =>
-                    section.key === 'channels' ? (
+                    section.key === 'channels' || section.space ? (
                       <ChannelRow key={chat.id} chat={chat} open={chat.id === props.openChatId} onOpen={() => props.onOpenChat(chat)} />
                     ) : (
                       <FilaDeChat key={chat.id} chat={chat} titulo={title(chat)} miUserId={props.myUserId} marcado={selection.selected.has(chat.id)} enLinea={false} escribiendo={false} onTocar={tapRow} onMantener={selection.toggle} open={chat.id === props.openChatId} />
@@ -276,6 +278,7 @@ function ChannelRow(props: { chat: ChatSummary; open: boolean; onOpen: () => voi
     <Pressable testID={`canal-fila-${chat.id}`} onPress={props.onOpen} android_ripple={{ color: colors.outline }} className={`min-h-[48px] flex-row items-center gap-3 px-4 ${props.open ? 'bg-surface' : ''}`}>
       <Icon size={18} color={unread ? colors.primary : colors['on-surface-variant']} />
       <Text numberOfLines={1} className={`flex-1 text-[16px] ${unread ? 'font-bold text-on-surface' : 'text-on-surface'}`}>{chat.name}</Text>
+      {chat.channel?.shared || chat.sharedFrom ? <Link2 size={14} color={colors['on-surface-variant']} accessibilityLabel="Compartido con otros espacios" /> : null}
       <PendingMarker chatId={chat.id} />
       {unread ? (
         <View className="h-6 min-w-[24px] items-center justify-center rounded-full bg-primary px-1.5"><Text className="text-[12px] font-bold text-on-primary">{chat.unread}</Text></View>

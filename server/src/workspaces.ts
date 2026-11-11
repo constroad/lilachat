@@ -13,6 +13,7 @@ import {
 } from '@lilachat/shared';
 import { InvitationModel, UserModel } from './models.js';
 import { ChatModel, ReceiptModel } from './chatModels.js';
+import { SharedChannelModel } from './sharedChannelModel.js';
 import { WorkspaceMemberModel, WorkspaceModel, type Workspace, type WorkspaceMember } from './workspaceModels.js';
 import { leaveWorkspaceChats, restoreToWorkspaceChats, suspendFromWorkspaceChats } from './workspaceChats.js';
 import { membershipExtras } from './workspaceInfo.js';
@@ -126,14 +127,21 @@ async function activeMembersOf(workspaceIds: Types.ObjectId[]): Promise<Map<stri
 
 /** The switcher's badge: how many of my chats in each space have something I have not read (like WhatsApp counts chats, not messages). */
 async function unreadChatsOf(userId: Types.ObjectId, workspaceIds: Types.ObjectId[]): Promise<Map<string, number>> {
-  const chats = await ChatModel.find({ workspaceId: { $in: workspaceIds }, 'members.userId': userId, lastSeq: { $gt: 0 } }).select('workspaceId lastSeq lastMainSeq').lean();
+  // José 11/11: a channel shared into a space counts there too, so nobody has to switch to see it.
+  const shares = await SharedChannelModel.find({ workspaceId: { $in: workspaceIds }, status: 'active' }).select('chatId workspaceId').lean();
+  const scope = shares.length ? { $or: [{ workspaceId: { $in: workspaceIds } }, { _id: { $in: shares.map((share) => share.chatId) } }] } : { workspaceId: { $in: workspaceIds } };
+  const chats = await ChatModel.find({ ...scope, 'members.userId': userId, lastSeq: { $gt: 0 } }).select('workspaceId lastSeq lastMainSeq').lean();
   if (chats.length === 0) return new Map();
   const receipts = await ReceiptModel.find({ userId, chatId: { $in: chats.map((chat) => chat._id) } }).select('chatId readSeq').lean();
   const readSeq = new Map(receipts.map((receipt) => [String(receipt.chatId), receipt.readSeq]));
+  const mine = new Set(workspaceIds.map(String));
   const unread = new Map<string, number>();
+  const count = (spaceId: string) => unread.set(spaceId, (unread.get(spaceId) ?? 0) + 1);
   for (const chat of chats) {
     // A thread reply alone does not light the space (pending 108).
-    if ((chat.lastMainSeq ?? chat.lastSeq) > (readSeq.get(String(chat._id)) ?? 0)) unread.set(String(chat.workspaceId), (unread.get(String(chat.workspaceId)) ?? 0) + 1);
+    if ((chat.lastMainSeq ?? chat.lastSeq) <= (readSeq.get(String(chat._id)) ?? 0)) continue;
+    if (chat.workspaceId && mine.has(String(chat.workspaceId))) count(String(chat.workspaceId));
+    for (const share of shares) if (share.chatId.equals(chat._id)) count(String(share.workspaceId));
   }
   return unread;
 }

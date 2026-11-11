@@ -27,6 +27,7 @@ import { useEditarChat } from './useEditarChat';
 import { useClientOfChat } from '../../spaces/clients/useSpaceClients';
 import { useMySpaces } from '../../spaces/currentSpace';
 import { ClientAccessSection } from '../../spaces/clients/ClientAccessWeb';
+import { ShareChannelRow } from '../../spaces/SharedChannelsWeb';
 
 const NO_APPS: ReadonlySet<string> = new Set();
 
@@ -101,6 +102,7 @@ export function PanelDeInfo(props: {
           <ParticipantesDelChat
             jwt={props.jwt}
             workspaceId={chat.workspaceId}
+            sharedChatId={chat.channel?.shared || chat.sharedFrom ? chat.id : undefined}
             miembros={info.miembros}
             appIds={appIds}
             puedeAgregar={info.puedeAgregar}
@@ -120,6 +122,7 @@ export function PanelDeInfo(props: {
             <span className="text-sm text-on-surface-variant">{NOTIFICATION_LEVEL_TEXT[level].title}</span>
           </button>
         ) : null}
+        {tab === 'settings' && chat.channel && chat.workspaceId ? <ShareChannelRow jwt={props.jwt} chatId={chat.id} channelName={chat.name ?? ''} ownerSpaceId={chat.workspaceId} spaces={spaces} isGeneral={Boolean(detalle?.channel?.general)} sharedFrom={Boolean(chat.sharedFrom)} /> : null}
         {tab === 'settings' && (chat.channel || detalle?.channel) ? <ChannelVisibilityRow chatId={chat.id} jwt={props.jwt} isPrivate={detalle?.channel ? detalle.channel.isPrivate : chat.channel?.visibility === 'private'} isAdmin={Boolean(detalle?.soyAdmin)} isGeneral={Boolean(detalle?.channel?.general)} onNotice={props.onAviso} /> : null}
         {tab === 'settings' && chat.kind !== 'notas' ? <RoutinesRow chatId={chat.id} jwt={props.jwt} isDirect={chat.kind === 'direct'} name={otherMember?.nombre ?? chat.name ?? ''} quietHours={detalle?.routines?.quietHours} contactNote={detalle?.routines?.contactNote} onNotice={props.onAviso} /> : null}
         {tab === 'settings' && chat.kind === 'direct' && otherMember ? <BlockContactRow jwt={props.jwt} personId={otherMember.id} name={otherMember.nombre} blockedByMe={detalle?.blockedByMe === true} onNotice={props.onAviso} /> : null}

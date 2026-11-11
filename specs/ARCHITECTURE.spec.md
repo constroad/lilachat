@@ -15870,3 +15870,55 @@ trae la pila completa.
    Lo cubre `currentSpace.test.tsx`. **Sin E2E en navegador:** hacen falta
    mensajes sin leer en dos espacios, y solo Test es de pruebas.
 
+
+## Canales compartidos entre espacios (José 11/11, como Slack Connect)
+
+Pedido de José, traído por la sesión de Portal: el canal «administración» de Inframaq compartido con Constroad y Globofast. Que desde cada espacio lo vean «sin estar cambiando a cada rato de espacio», y poder agregar gente de otros espacios.
+
+**Modelo.**
+- Tabla lateral `SharedChannel` {chatId, ownerWorkspaceId, workspaceId (el que recibe), status pending|active|removed, invitedBy, acceptedBy, removedBy}, en `server/src/sharedChannelModel.ts`. Índices: único {chatId, workspaceId} y {workspaceId, status}.
+- El canal sigue siendo del espacio dueño (`chat.workspaceId`).
+- `channel.shared` marca los que tienen al menos un compartido activo. Así los demás canales no pagan consultas de más (`syncSharedFlag`).
+
+**Reglas** (`shared/sharedChannels.ts`, puro, y `server/src/sharedChannels.ts`):
+- Comparte un admin o el dueño del espacio dueño, con otro espacio del que también es miembro activo.
+- No se comparten #general ni los canales de cliente.
+- Si quien comparte también es admin del espacio que recibe, queda activo al instante y entra al canal. Es el caso de José, dueño de los tres espacios.
+- Si no, queda pendiente: los admins del otro espacio ven una tarjeta arriba de su lista (`sc-04`). Al aceptar, entran al canal.
+- En el espacio que recibe solo ven el canal las personas agregadas.
+- Cualquier miembro del canal agrega gente de cualquiera de los espacios con acceso (`spaceIdsWithAccess` + `activeInAny` en `miembrosDelChat.ts`). Otro espacio cualquiera da 403.
+- Dejar de compartir (espacio dueño), cancelar una invitación o salir (espacio que recibe) saca del canal a quien solo tenía acceso por ese espacio (`dropOutsiders`). Las apps se quedan.
+- Desactivar a alguien en su espacio, o que salga del espacio, también lo saca de los canales compartidos hacia ese espacio. No queda suspendido ahí: si se lo reactiva, alguien tiene que volver a agregarlo.
+
+**Lo que ve cada lado.**
+- `GET /api/chats?workspace=<B>` también lista los canales compartidos hacia B (`spaceChatScope`), cada uno con `sharedFrom` {workspaceId, name, logoUrl} del espacio dueño.
+- `spaceSections` los pone en una sección por espacio dueño (`shared:<id>`), con su nombre y logo, después de «Canales» (`sc-02`).
+- En el espacio dueño el canal sigue en «Canales», con `channel.shared` y el ícono de enlace.
+- El número del riel (`unreadChatsOf`) cuenta el canal en cada espacio desde el que se ve. «Marcar todo como leído» de B también lo lee.
+- En el detalle, cada miembro de un canal compartido trae `space` {id, name}. Quien no está en el espacio dueño muestra el nombre de su espacio como pastilla (`pillOf` en la app, `aDetalle` en la web).
+- El selector para agregar (`GET /api/workspaces/:id/channels/:chatId/people`) muestra a todos los de los espacios con acceso, con la pastilla del espacio cuando no es el que se está mirando (`channelPeopleAsContacts`).
+
+**Avisos.** El push de un mensaje lleva, para cada persona, el espacio desde el que ve el canal (`viewingSpacesOf`: el dueño si está activa ahí, si no el espacio compartido donde está activa). El toque lo abre en ese espacio.
+
+**Rutas.**
+- `GET|POST /api/workspaces/:id/channels/:chatId/shares`
+- `DELETE …/shares/:targetId`
+- `GET …/channels/:chatId/people`
+- `GET /api/workspaces/:id/share-invites`
+- `POST …/share-invites/:chatId {accept}`
+
+**Pantallas.**
+- Web: `SharedChannelsWeb.tsx` con `ShareInvitesCard`, `SharedSectionTitle`, `ShareChannelDialog` y `ShareChannelRow`. La fila va en la pestaña de ajustes del canal.
+- App: `SharedChannelsApp.tsx`, con lo mismo como hoja, al lado de «Canal privado».
+
+**Diseño.** Stitch, proyecto `15540754270713720465`, pantallas `sc-01` a `sc-05` en los tres dispositivos (ids en `design/stitch/registro.jsonl`). Al pasar a un proceso por dispositivo se cortó una generación en curso de `sc-02` móvil: puede haber una pantalla repetida sin id en el proyecto.
+
+**Tests.**
+- `server/src/sharedChannels.test.ts`: 7 pruebas de punta a punta sobre la API (compartir, aceptar, rechazos, personas, riel, avisos, salida y desactivación).
+- `shared/src/sharedChannels.test.ts`.
+- `web/src/spaces/SharedChannelsWeb.test.tsx`.
+
+**Sin hacer en esta versión:**
+- Un miembro del espacio que recibe no puede unirse solo desde «Explorar canales» a un canal público compartido: alguien del canal lo agrega.
+- El cargo y el rol de un externo no salen en el canal; sale el nombre de su espacio.
+- Compartir por código con un espacio del que no se es miembro.

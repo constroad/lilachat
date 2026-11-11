@@ -10,9 +10,10 @@ import { compareNames, compareOrdinal } from './compareText.js';
  * creates channels, not groups (pending 109, José 28/10), so it only lists
  * the ones made before. PURE.
  */
-export type SpaceSectionKey = 'channels' | 'groups' | 'directs' | 'apps';
-type SpaceChat = { kind: 'direct' | 'group' | 'notas'; name?: string; channel?: { visibility: string } | null; lastAt?: string; appId?: string };
-export type SpaceSection<T> = { key: SpaceSectionKey; title: string; chats: T[] };
+export type SpaceSectionKey = 'channels' | 'groups' | 'directs' | 'apps' | `shared:${string}`;
+type SpaceChat = { kind: 'direct' | 'group' | 'notas'; name?: string; channel?: { visibility: string } | null; lastAt?: string; appId?: string; sharedFrom?: { workspaceId: string; name: string; logoUrl?: string } | null };
+/** `space`: the owner of the channels of a `shared:<id>` section, for its name and logo (José 11/11). */
+export type SpaceSection<T> = { key: SpaceSectionKey; title: string; chats: T[]; space?: { id: string; name: string; logoUrl?: string } };
 
 const byRecent = (a: SpaceChat, b: SpaceChat) => compareOrdinal(b.lastAt ?? '', a.lastAt ?? '');
 const byChannelName = (a: SpaceChat, b: SpaceChat) => {
@@ -24,12 +25,32 @@ const byChannelName = (a: SpaceChat, b: SpaceChat) => {
 export function spaceSections<T extends SpaceChat>(chats: readonly T[]): SpaceSection<T>[] {
   const groups = chats.filter((chat) => chat.kind === 'group' && !chat.channel).sort(byRecent);
   return [
-    { key: 'channels', title: 'Canales', chats: chats.filter((chat) => chat.channel).sort(byChannelName) },
+    { key: 'channels', title: 'Canales', chats: chats.filter((chat) => chat.channel && !chat.sharedFrom).sort(byChannelName) },
+    ...sharedSections(chats),
     ...(groups.length ? [{ key: 'groups' as const, title: 'Grupos', chats: groups }] : []),
     { key: 'directs', title: 'Mensajes directos', chats: chats.filter((chat) => chat.kind === 'direct' && !chat.appId).sort(byRecent) },
     // The 1:1s with apps, like Slack's «Apps» (design e-23): the list adds the installed apps not talked to yet.
     { key: 'apps', title: 'Apps', chats: chats.filter((chat) => chat.kind === 'direct' && chat.appId).sort(byRecent) },
   ];
+}
+
+/** Channels of other spaces (José 11/11, like Slack Connect): one section per owner space, named after it, by space name and then channel name. */
+function sharedSections<T extends SpaceChat>(chats: readonly T[]): SpaceSection<T>[] {
+  const bySpace = new Map<string, { space: NonNullable<SpaceChat['sharedFrom']>; chats: T[] }>();
+  for (const chat of chats) {
+    if (!chat.sharedFrom) continue;
+    const entry = bySpace.get(chat.sharedFrom.workspaceId) ?? { space: chat.sharedFrom, chats: [] };
+    entry.chats.push(chat);
+    bySpace.set(chat.sharedFrom.workspaceId, entry);
+  }
+  return [...bySpace.values()]
+    .sort((a, b) => compareNames(a.space.name, b.space.name))
+    .map(({ space, chats: inSpace }) => ({
+      key: `shared:${space.workspaceId}` as const,
+      title: space.name,
+      chats: inSpace.sort(byChannelName),
+      space: { id: space.workspaceId, name: space.name, ...(space.logoUrl ? { logoUrl: space.logoUrl } : {}) },
+    }));
 }
 
 /** The square logo of a space without its own picture: the initials of its first two words, or its first two letters. */

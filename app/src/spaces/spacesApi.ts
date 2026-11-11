@@ -1,4 +1,4 @@
-import type { AppLink } from '@lilachat/shared';
+import type { AppLink, ChannelPerson, ChannelShare, ShareInvite } from '@lilachat/shared';
 import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, SpaceInvitation, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, SpaceAppDirectory, TopicRoute, AppChannel, AppItemRow, AppItemSetting, AppSchedules, ScheduleRow, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
 import { BASE_URL, type ChatSummary } from '../api/client';
 import { jsonCall } from '../api/jsonCall';
@@ -21,6 +21,14 @@ export const inviteToSpaceByEmail = (jwt: string, spaceId: string, email: string
 export const spaceChannels = (jwt: string, spaceId: string) => jsonCall<{ channels: ClientChannel[] }>(url(`/${spaceId}/channels`), jwt);
 export const createChannel = (jwt: string, spaceId: string, input: { name: string; descripcion?: string; visibility: 'public' | 'private' }) => jsonCall<{ channel: ClientChannel }>(url(`/${spaceId}/channels`), jwt, post(input));
 export const joinChannel = (jwt: string, spaceId: string, chatId: string) => jsonCall<{ channel: ClientChannel }>(url(`/${spaceId}/channels/${chatId}/join`), jwt, post({}));
+
+/** José 11/11: channels shared with other spaces, like Slack Connect. */
+export const channelShares = (jwt: string, spaceId: string, chatId: string) => jsonCall<{ shares: ChannelShare[] }>(url(`/${spaceId}/channels/${chatId}/shares`), jwt);
+export const shareChannel = (jwt: string, spaceId: string, chatId: string, workspaceId: string) => jsonCall<{ shares: ChannelShare[] }>(url(`/${spaceId}/channels/${chatId}/shares`), jwt, post({ workspaceId }));
+export const endChannelShare = (jwt: string, spaceId: string, chatId: string, workspaceId: string) => jsonCall<{ ok: true }>(url(`/${spaceId}/channels/${chatId}/shares/${workspaceId}`), jwt, { method: 'DELETE' });
+export const shareInvites = (jwt: string, spaceId: string) => jsonCall<{ invites: ShareInvite[] }>(url(`/${spaceId}/share-invites`), jwt);
+export const answerShareInvite = (jwt: string, spaceId: string, chatId: string, accept: boolean) => jsonCall<{ ok: true }>(url(`/${spaceId}/share-invites/${chatId}`), jwt, post({ accept }));
+export const channelPeople = (jwt: string, spaceId: string, chatId: string) => jsonCall<{ people: ChannelPerson[] }>(url(`/${spaceId}/channels/${chatId}/people`), jwt);
 
 /** The chats of a space; each one carries its space, so it opens in the Slack format. */
 export async function spaceChats(jwt: string, spaceId: string) {

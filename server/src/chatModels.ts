@@ -58,7 +58,7 @@ export interface Chat {
   /** E1: the company space it belongs to; without it, it is personal. */
   workspaceId?: Types.ObjectId;
   /** E2: a group of a space that is a CHANNEL (`name` is its slug); public ones are found and joined without an invitation. */
-  channel?: { visibility: 'public' | 'private' };
+  channel?: { visibility: 'public' | 'private'; /** Shared with other spaces and accepted (José 11/11, `sharedChannels.ts`). */ shared?: boolean };
   members: ChatMember[];
   /** E1: people deactivated in the space, out of `members` until reactivated (`workspaceChats`). */
   suspendedMembers?: Pick<ChatMember, 'userId' | 'role' | 'joinedAt'>[];
@@ -239,7 +239,7 @@ const chatSchema = new Schema<Chat>(
     birthdayNotices: { type: Map, of: String, default: undefined },
     birthdayHeadsUps: { type: Map, of: String, default: undefined },
     workspaceId: { type: Schema.Types.ObjectId },
-    channel: { visibility: { type: String, enum: ['public', 'private'] } },
+    channel: { visibility: { type: String, enum: ['public', 'private'] }, shared: { type: Boolean } },
     suspendedMembers: {
       type: [{ userId: { type: Schema.Types.ObjectId, required: true }, role: { type: String, enum: ['admin', 'member'] }, joinedAt: { type: Date }, _id: false }],
       default: undefined,

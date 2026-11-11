@@ -47,9 +47,9 @@ export type Respuesta = {
   blockedByMe?: boolean;
   routines?: { quietHours?: QuietHours; contactNote?: ContactNote };
   birthdaysOn?: boolean;
-  channel?: { visibility: 'public' | 'private'; general: boolean };
+  channel?: { visibility: 'public' | 'private'; general: boolean; shared?: boolean; workspaceId?: string };
   disappearSeconds?: number;
-  members: { id: string; name: string | null; phone: string | null; avatarUrl?: string; role?: 'admin' | 'member'; esYo?: boolean; title?: string; spaceRole?: string; app?: boolean }[];
+  members: { id: string; name: string | null; phone: string | null; avatarUrl?: string; role?: 'admin' | 'member'; esYo?: boolean; title?: string; spaceRole?: string; app?: boolean; /** José 11/11: in a shared channel, the space they come from. */ space?: { id: string; name: string } }[];
 };
 
 /** Lo último que se vio de cada chat: cambiar de chat y volver no espera a la red. */
@@ -59,7 +59,8 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
   const miembros = new Map<string, MiembroDelChat>();
   const pills = new Map<string, MemberPill>();
   for (const uno of respuesta.members) {
-    pills.set(uno.id, { role: uno.app ? 'app' : (uno.spaceRole ?? uno.role ?? 'member'), title: uno.title });
+    // José 11/11: someone from another space than the channel's owner shows that space as their pill.
+    pills.set(uno.id, { role: uno.app ? 'app' : (uno.spaceRole ?? uno.role ?? 'member'), title: uno.title ?? (!uno.spaceRole && uno.space ? uno.space.name : undefined) });
     miembros.set(uno.id, {
       id: uno.id,
       // «Tú» como en la app; sin nombre, el teléfono; sin nada, «Alguien».

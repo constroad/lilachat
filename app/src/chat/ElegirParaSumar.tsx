@@ -32,6 +32,7 @@ export function ElegirParaSumar({
   yaEstan,
   spaceId,
   chatId,
+  sharedChatId,
   onCerrar,
   onElegir,
 }: {
@@ -42,6 +43,8 @@ export function ElegirParaSumar({
   yaEstan: readonly string[];
   /** The group or channel; a client's channel asks a space admin what the person sees (José 30/10 night). */
   chatId: string;
+  /** José 11/11: a channel shared with other spaces offers their people too, each with their space. */
+  sharedChatId?: string;
   onCerrar: () => void;
   /** `history`: whether they see the earlier messages (José 30/10, always asked). */
   onElegir: (userId: string, history: boolean, access?: MemberAccess) => void;
@@ -95,6 +98,7 @@ export function ElegirParaSumar({
             vacio={spaceId ? 'Todos los miembros del espacio ya están aquí.' : 'Todos tus contactos de Lilachat ya están en este grupo.'}
             conInvitar={!spaceId}
             spaceId={spaceId}
+            sharedChatId={sharedChatId}
             onToggle={(contacto) => setPicked({ id: contacto.id, name: contacto.name ?? contacto.phone })}
           />
         ) : null}

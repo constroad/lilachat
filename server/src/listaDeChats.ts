@@ -4,6 +4,8 @@ import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Message } from './chatModels.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { fijadosParaLaLista, type FijadoEnLista } from './mensajesFijados.js';
+import { sharedChatIdsInto } from './sharedChannels.js';
+import { WorkspaceModel } from './workspaceModels.js';
 
 /**
  * La lista de chats de una persona: la primera pantalla de la app. Salió de
@@ -63,7 +65,9 @@ export type ChatSummary = {
   /** El chat contigo («Tú», 20/10). */
   propio?: boolean;
   /** E2: a channel of the space (its `name` is the slug). */
-  channel?: { visibility: 'public' | 'private' };
+  channel?: { visibility: 'public' | 'private'; shared?: boolean };
+  /** José 11/11: a channel of ANOTHER space shared into the one listed; it goes under that space's name. */
+  sharedFrom?: { workspaceId: string; name: string; logoUrl?: string };
   /** Nudges and winks switched on by an admin of the group (José, 21/10). */
   funAllowed?: boolean;
   memberPermissions?: MemberPermissions;
@@ -91,9 +95,26 @@ function thumbFor(last: Message, secret: boolean): { thumb?: string } {
   return path ? { thumb: toAbsoluteMediaUrl(path) } : {};
 }
 
+/** A space lists its own chats plus the channels other spaces shared into it (José 11/11); without a space, the personal ones. */
+export async function spaceChatScope(workspaceId?: Types.ObjectId | null): Promise<Record<string, unknown>> {
+  if (!workspaceId) return { workspaceId: { $exists: false } };
+  const shared = await sharedChatIdsInto(workspaceId);
+  return shared.length ? { $or: [{ workspaceId }, { _id: { $in: shared } }] } : { workspaceId };
+}
+
+/** The owner space of each shared channel listed in another space: its name and logo for the section. */
+async function sharedOwnersOf(chats: readonly { workspaceId?: Types.ObjectId }[], workspaceId?: Types.ObjectId): Promise<Map<string, { workspaceId: string; name: string; logoUrl?: string }>> {
+  if (!workspaceId) return new Map();
+  const ownerIds = [...new Set(chats.flatMap((chat) => (chat.workspaceId && !chat.workspaceId.equals(workspaceId) ? [String(chat.workspaceId)] : [])))];
+  if (ownerIds.length === 0) return new Map();
+  const owners = await WorkspaceModel.find({ _id: { $in: ownerIds } }).select('name logoUrl').lean();
+  return new Map(owners.map((owner) => [String(owner._id), { workspaceId: String(owner._id), name: owner.name, ...(owner.logoUrl ? { logoUrl: toAbsoluteMediaUrl(owner.logoUrl) } : {}) }]));
+}
+
 export async function listChats(userId: Types.ObjectId, workspaceId?: Types.ObjectId): Promise<ChatSummary[]> {
-  const chats = await ChatModel.find({ 'members.userId': userId, workspaceId: workspaceId ?? { $exists: false } }).lean();
+  const chats = await ChatModel.find({ 'members.userId': userId, ...(await spaceChatScope(workspaceId)) }).lean();
   if (chats.length === 0) return [];
+  const sharedOwners = await sharedOwnersOf(chats, workspaceId);
 
   const chatIds = chats.map((chat) => chat._id);
   // Paralelo: son dos consultas independientes y la lista de chats es la
@@ -189,7 +210,8 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
         return foto ? toAbsoluteMediaUrl(foto) : undefined;
       })(),
       ...(chat.propio ? { propio: true } : {}),
-      ...(chat.channel ? { channel: { visibility: chat.channel.visibility } } : {}),
+      ...(chat.channel ? { channel: { visibility: chat.channel.visibility, ...(chat.channel.shared ? { shared: true } : {}) } } : {}),
+      ...(chat.workspaceId && sharedOwners.has(String(chat.workspaceId)) ? { sharedFrom: sharedOwners.get(String(chat.workspaceId)) } : {}),
       ...(chat.funAllowed ? { funAllowed: true } : {}),
       // Pending 8: only when an admin changed them, so the composer knows who may write.
       ...(chat.memberPermissions ? { memberPermissions: memberPermissionsOf(chat.memberPermissions) } : {}),

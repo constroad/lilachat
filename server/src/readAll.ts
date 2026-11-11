@@ -1,3 +1,4 @@
+import { spaceChatScope } from './listaDeChats.js';
 import { Router } from 'express';
 import { Types } from 'mongoose';
 import { ChatModel, ReceiptModel } from './chatModels.js';
@@ -23,7 +24,8 @@ function hasUnread(chat: ChatToRead, userId: Types.ObjectId, readSeq: number): b
  * Returns how many chats changed.
  */
 export async function readAll(userId: Types.ObjectId, workspaceId: Types.ObjectId | null): Promise<number> {
-  const chats = await ChatModel.find({ 'members.userId': userId, workspaceId: workspaceId ?? { $exists: false } }).select('_id lastSeq members.userId members.markedUnread').lean<ChatToRead[]>();
+  // José 11/11: «Marcar todo como leído» in a space also reads the channels shared into it.
+  const chats = await ChatModel.find({ 'members.userId': userId, ...(await spaceChatScope(workspaceId)) }).select('_id lastSeq members.userId members.markedUnread').lean<ChatToRead[]>();
   const receipts = await ReceiptModel.find({ userId, chatId: { $in: chats.map((chat) => chat._id) } }).select('chatId readSeq').lean();
   const readOf = new Map(receipts.map((receipt) => [String(receipt.chatId), receipt.readSeq ?? 0]));
   let changed = 0;

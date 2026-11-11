@@ -5,11 +5,12 @@ import {
   candidatosParaSumar,
   groupContactsByLetter,
   spaceMembersAsContacts,
+  channelPeopleAsContacts,
   type Contact,
   type ContactGroup,
 } from '@lilachat/shared';
 import type { Credential } from '../auth/credentialStore';
-import { spaceMembers } from '../spaces/spacesApi';
+import { channelPeople, spaceMembers } from '../spaces/spacesApi';
 import { emparejarAgenda, listContacts } from './contactsApi';
 import { useAgendaDelTelefono, useAgendaParaInvitar } from './useAgendaParaInvitar';
 import { buscarEn, indexarParaBuscar } from './busqueda';
@@ -56,6 +57,7 @@ export function ContactPicker({
   excluidos,
   vacio,
   spaceId,
+  sharedChatId,
 }: {
   credential: Credential;
   selected: string[];
@@ -84,6 +86,8 @@ export function ContactPicker({
    * «Invitar».
    */
   spaceId?: string;
+  /** José 11/11: in a shared channel, the people of every space it reaches (`GET …/channels/:id/people`). */
+  sharedChatId?: string;
 }) {
   const colores = useColores();
   const [groups, setGroups] = useState<ContactGroup[] | null>(null);
@@ -127,13 +131,19 @@ export function ContactPicker({
   useEffect(() => {
     if (!spaceId) return;
     let current = true;
-    void spaceMembers(credential.jwt, spaceId).then((result) => {
-      if (current) setGroups(result.ok ? spaceMembersAsContacts(result.data.members) : []);
-    });
+    if (sharedChatId) {
+      void channelPeople(credential.jwt, spaceId, sharedChatId).then((result) => {
+        if (current) setGroups(result.ok ? channelPeopleAsContacts(result.data.people, spaceId) : []);
+      });
+    } else {
+      void spaceMembers(credential.jwt, spaceId).then((result) => {
+        if (current) setGroups(result.ok ? spaceMembersAsContacts(result.data.members) : []);
+      });
+    }
     return () => {
       current = false;
     };
-  }, [credential.jwt, spaceId]);
+  }, [credential.jwt, spaceId, sharedChatId]);
 
   const consultaDiferida = useConsultaDiferida(query);
 
@@ -232,6 +242,11 @@ export function ContactPicker({
                         {contact.directChatId ? 'Ya tienen conversación' : contact.phone}
                       </Text>
                     </View>
+                    {contact.space ? (
+                      <View testID={`espacio-de-${contact.id}`} className="rounded-full border border-outline/30 bg-background px-2 py-0.5">
+                        <Text className="text-[10px] font-bold uppercase text-on-surface-variant">{contact.space}</Text>
+                      </View>
+                    ) : null}
                     {/* El círculo de selección de la captura. En modo de uno
                         solo no se dibuja: ahí tocar YA es elegir, y un radio
                         que nunca se ve marcado confunde. */}

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Archive, AtSign, ChevronDown, ChevronRight, Copy, Hash, Lock, MessagesSquare, PanelLeftClose, Plus, Search, Settings, UserPlus, type LucideIcon } from 'lucide-react';
+import { Archive, AtSign, ChevronDown, ChevronRight, Copy, Hash, Link2, Lock, MessagesSquare, PanelLeftClose, Plus, Search, Settings, UserPlus, type LucideIcon } from 'lucide-react';
+import { SharedSectionTitle, ShareInvitesCard } from './SharedChannelsWeb';
 import { clientChatIds, formatChatTimestamp, spaceListReady, spaceSections, splitArchived, splitClients, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { ChatRow } from '../chat/FilaDeChat';
@@ -139,6 +140,7 @@ export function SpaceChatList(props: Props) {
         {ready ? (
           <ClientsSection jwt={props.jwt} spaceId={space.id} live={clientSplit.live} query={query} archived={clientSplit.archived} archivedUnread={clientSplit.archivedUnread} folded={foldedClients} onToggle={() => setFoldedClients((before) => !before)} selectedChatId={props.selectedChatId} onOpen={props.onOpenChat} onArchived={() => setOpenArchivedClients(true)} />
         ) : null}
+        {props.jwt ? <ShareInvitesCard jwt={props.jwt} space={space} onAnswered={props.onRetry} /> : null}
         {ready && (chats?.length || query)
           ? sections.map((section) => section.key === 'apps' ? (
               props.apps ? <AppsSection key="apps" chats={section.chats} apps={props.apps} folded={folded.has('apps')} onToggle={() => toggle('apps')} selectedChatId={props.selectedChatId} onOpenChat={props.onOpenChat} /> : null
@@ -147,17 +149,17 @@ export function SpaceChatList(props: Props) {
                 <div className="flex items-center pr-2">
                   <button type="button" data-testid={`plegar-${section.key}`} aria-expanded={!folded.has(section.key)} onClick={() => toggle(section.key)} className="flex h-10 flex-1 items-center gap-1.5 px-4 text-left">
                     {folded.has(section.key) ? <ChevronRight size={14} className="text-on-surface-variant" /> : <ChevronDown size={14} className="text-on-surface-variant" />}
-                    <span className="flex-1 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{section.title}</span>
+                    {section.space ? <SharedSectionTitle space={section.space} /> : <span className="flex-1 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{section.title}</span>}
                     <span className="text-[11px] text-on-surface-variant">{section.chats.length}</span>
                   </button>
-                  {section.key === 'groups' ? null : (
-                    <button type="button" data-testid={`nuevo-${section.key}`} aria-label={NEW_IN_SECTION[section.key]} title={NEW_IN_SECTION[section.key]} onClick={section.key === 'channels' ? props.onChannels : props.onNewDirect} className="grid h-8 w-8 place-items-center rounded-full text-on-surface-variant hover:bg-background"><Plus size={16} /></button>
+                  {section.key === 'groups' || section.space ? null : (
+                    <button type="button" data-testid={`nuevo-${section.key}`} aria-label={newInSection(section.key)} title={newInSection(section.key)} onClick={section.key === 'channels' ? props.onChannels : props.onNewDirect} className="grid h-8 w-8 place-items-center rounded-full text-on-surface-variant hover:bg-background"><Plus size={16} /></button>
                   )}
                 </div>
                 {folded.has(section.key)
                   ? null
                   : section.chats.map((chat) =>
-                      section.key === 'channels' ? (
+                      section.key === 'channels' || section.space ? (
                         <ChannelRow key={chat.id} chat={chat} open={chat.id === props.selectedChatId} onOpen={() => props.onOpenChat(chat)} />
                       ) : (
                         <ChatRow key={chat.id} chat={chat} yo={props.yo} seleccionado={chat.id === props.selectedChatId} onSelect={() => props.onOpenChat(chat)} onAccion={props.onAccion} />
@@ -215,7 +217,8 @@ function ActivityChip(props: { testId: string; Icon: LucideIcon; label: string; 
 }
 
 /** A space creates channels, not groups (pending 109, José 28/10): the groups section has no «+». */
-const NEW_IN_SECTION: Record<Exclude<SpaceSectionKey, 'groups'>, string> = { channels: 'Agregar canal', directs: 'Nuevo mensaje directo', apps: 'Agregar apps' };
+const NEW_IN_SECTION: Record<'channels' | 'directs' | 'apps', string> = { channels: 'Agregar canal', directs: 'Nuevo mensaje directo', apps: 'Agregar apps' };
+const newInSection = (key: SpaceSectionKey): string => (key === 'channels' || key === 'directs' || key === 'apps' ? NEW_IN_SECTION[key] : '');
 
 /** A channel as a short row (design `s-03`): «# name», bold with something new, and its count or time. */
 function ChannelRow(props: { chat: ChatSummary; open: boolean; onOpen: () => void }) {
@@ -226,6 +229,7 @@ function ChannelRow(props: { chat: ChatSummary; open: boolean; onOpen: () => voi
     <button type="button" data-testid={`canal-fila-${chat.id}`} aria-current={props.open} onClick={props.onOpen} className={`flex h-10 w-full items-center gap-2.5 px-4 text-left ${props.open ? 'bg-primary/10 text-primary' : 'hover:bg-background'}`}>
       <Icon size={16} className={unread || props.open ? 'text-primary' : 'text-on-surface-variant'} />
       <span className={`min-w-0 flex-1 truncate text-sm ${unread ? 'font-bold' : ''}`}>{chat.name}</span>
+      {chat.channel?.shared || chat.sharedFrom ? <Link2 size={13} aria-label="Compartido con otros espacios" className="shrink-0 text-on-surface-variant" /> : null}
       <PendingMarker chatId={chat.id} />
       {unread ? (
         <span className="grid h-5 min-w-[20px] place-items-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-on-primary">{chat.unread}</span>

@@ -1,6 +1,20 @@
 import type { Types } from 'mongoose';
 import { ChatModel } from './chatModels.js';
 import { WorkspaceMemberModel } from './workspaceModels.js';
+import { SharedChannelModel } from './sharedChannelModel.js';
+import { dropOutsiders } from './sharedChannels.js';
+
+/**
+ * José 11/11: in the channels shared INTO this space, whoever was there only through it goes out
+ * (deactivated or gone). They are not suspended there: reactivating them does not bring them back,
+ * someone adds them again.
+ */
+async function dropFromSharedInto(workspaceId: Types.ObjectId, userId: Types.ObjectId): Promise<void> {
+  const shares = await SharedChannelModel.find({ workspaceId, status: 'active' }).select('chatId').lean();
+  if (shares.length === 0) return;
+  const chats = await ChatModel.find({ _id: { $in: shares.map((share) => share.chatId) }, 'members.userId': userId }).select('_id').lean();
+  await Promise.all(chats.map((chat) => dropOutsiders(chat._id)));
+}
 
 /**
  * Chats that belong to a company space (E1, spec §66). Deactivating someone
@@ -9,6 +23,7 @@ import { WorkspaceMemberModel } from './workspaceModels.js';
  * reactivating moves them back with their role.
  */
 export async function suspendFromWorkspaceChats(workspaceId: Types.ObjectId, userId: Types.ObjectId): Promise<void> {
+  await dropFromSharedInto(workspaceId, userId);
   const chats = await ChatModel.find({ workspaceId, 'members.userId': userId }).select('members').lean();
   await Promise.all(
     chats.map((chat) => {
@@ -30,6 +45,7 @@ export async function restoreToWorkspaceChats(workspaceId: Types.ObjectId, userI
 
 /** Leaving a space leaves its chats too. */
 export async function leaveWorkspaceChats(workspaceId: Types.ObjectId, userId: Types.ObjectId): Promise<void> {
+  await dropFromSharedInto(workspaceId, userId);
   await ChatModel.updateMany({ workspaceId }, { $pull: { members: { userId }, suspendedMembers: { userId } } });
 }
 

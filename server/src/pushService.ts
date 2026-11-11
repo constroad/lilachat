@@ -1,5 +1,6 @@
 import { interesadosEnElHilo } from './hilos.js';
 import { repartirPorToken } from './repartoDePush.js';
+import { viewingSpacesOf } from './sharedChannels.js';
 import { firmarRespuesta } from './tokenDeRespuesta.js';
 import type { Message } from './chatModels.js';
 import { ChatModel } from './chatModels.js';
@@ -61,7 +62,7 @@ export async function notifyOffline(params: {
       .select('pushToken platform userId capacidades')
       .lean(),
     UserModel.findById(params.senderId).select('name phone avatarUrl').lean(),
-    ChatModel.findById(params.message.chatId).select('kind name encrypted avatarUrl workspaceId').lean(),
+    ChatModel.findById(params.message.chatId).select('kind name encrypted avatarUrl workspaceId channel').lean(),
     previewHiddenFor(candidatos),
   ]);
   if (dispositivos.length === 0) return;
@@ -99,12 +100,21 @@ export async function notifyOffline(params: {
   // B8: whoever turned the preview off gets who wrote, not what.
   const veiled = (d: DispositivoDePush) => hidden.has(String(d.userId));
 
+  // José 11/11: a shared channel lands each person in the space they see it from.
+  const viewing = chat?.channel?.shared ? await viewingSpacesOf(chat, candidatos) : new Map<string, string>();
+  const spaceOf = (d: DispositivoDePush) => viewing.get(String(d.userId)) ?? workspaceId;
+  const noticesIn = (space: string) => {
+    const inSpace = (d: DispositivoDePush) => spaceOf(d) === space;
+    const spaceData = { ...data, workspaceId: space };
+    return [
+      ...sendCommon(splitPushTargets(comunes.filter((d) => inSpace(d) && !veiled(d))), { ...text, data: spaceData }),
+      ...sendCommon(splitPushTargets(comunes.filter((d) => inSpace(d) && veiled(d))), { ...withoutPreview(text), data: spaceData }),
+      ...mensajeSoloDatos({ message: params.message, nativos: nativos.filter(inSpace), silenciados, hidden, workspaceId: space, hiloDe, autor, telefono: sender_?.phone ?? '', chat: nombreDelGrupo ?? '', secreto: chat?.encrypted === true, text, photo: sender_?.avatarUrl, chatPhoto: chat?.kind === 'group' ? chat.avatarUrl : undefined }),
+    ];
+  };
+
   try {
-    await Promise.all([
-      ...sendCommon(splitPushTargets(comunes.filter((d) => !veiled(d))), { ...text, data }),
-      ...sendCommon(splitPushTargets(comunes.filter(veiled)), { ...withoutPreview(text), data }),
-      ...mensajeSoloDatos({ message: params.message, nativos, silenciados, hidden, workspaceId, hiloDe, autor, telefono: sender_?.phone ?? '', chat: nombreDelGrupo ?? '', secreto: chat?.encrypted === true, text, photo: sender_?.avatarUrl, chatPhoto: chat?.kind === 'group' ? chat.avatarUrl : undefined }),
-    ]);
+    await Promise.all([...new Set([...comunes, ...nativos].map(spaceOf))].flatMap(noticesIn));
   } catch (error) {
     // Un push que no sale no puede tumbar el envío: el mensaje YA está
     // guardado y el destinatario lo va a ver al sincronizar.

@@ -22,6 +22,8 @@ export function ParticipantesDelChat(props: {
   jwt: string;
   /** Inside a space, «Agregar miembros» lists the space's members. */
   workspaceId?: string;
+  /** José 11/11: a channel shared with other spaces offers their people too. */
+  sharedChatId?: string;
   miembros: MiembroEnInfo[];
   /** The installed apps among them (pending 91). */
   appIds: ReadonlySet<string>;
@@ -95,6 +97,7 @@ export function ParticipantesDelChat(props: {
         <AddParticipant
           jwt={props.jwt}
           workspaceId={props.workspaceId}
+          sharedChatId={props.sharedChatId}
           yaEstan={new Set(props.miembros.map((uno) => uno.id))}
           onElegir={(contact) => {
             setAgregando(false);
@@ -157,8 +160,8 @@ export function ParticipantesDelChat(props: {
 }
 
 /** Pick who to add: the contacts with Lilachat that are not in yet (inside a space, its members). */
-function AddParticipant(props: { jwt: string; workspaceId?: string; yaEstan: ReadonlySet<string>; onElegir: (contact: Contact) => void; onCerrar: () => void }) {
-  const groups = useAddCandidates(props.jwt, props.workspaceId);
+function AddParticipant(props: { jwt: string; workspaceId?: string; sharedChatId?: string; yaEstan: ReadonlySet<string>; onElegir: (contact: Contact) => void; onCerrar: () => void }) {
+  const groups = useAddCandidates(props.jwt, props.workspaceId, props.sharedChatId);
   const available = (groups ?? []).map((group) => ({ ...group, contacts: group.contacts.filter((one) => !props.yaEstan.has(one.id)) })).filter((group) => group.contacts.length);
   return (
     <Overlay title="Añadir participante" onClose={props.onCerrar}>

@@ -1,4 +1,4 @@
-import type { AppChannel, AppLink } from '@lilachat/shared';
+import type { AppChannel, AppLink, ChannelShare, ShareInvite } from '@lilachat/shared';
 import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, SpaceInvitation, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, SpaceAppDirectory, TopicRoute, AppItemRow, AppItemSetting, AppSchedules, ScheduleRow, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
 import { api } from '../api';
 import type { ChatSummary } from '../chat/types';
@@ -22,6 +22,15 @@ export const leaveSpace = (jwt: string, spaceId: string) => api<Record<string, n
 export const spaceChannels = (jwt: string, spaceId: string) => api<{ channels: ClientChannel[] }>(path(`/${spaceId}/channels`), { jwt });
 export const createChannel = (jwt: string, spaceId: string, input: { name: string; descripcion?: string; visibility: 'public' | 'private' }) => api<{ channel: ClientChannel }>(path(`/${spaceId}/channels`), { jwt, body: input });
 export const joinChannel = (jwt: string, spaceId: string, chatId: string) => api<{ channel: ClientChannel }>(path(`/${spaceId}/channels/${chatId}/join`), { jwt, method: 'POST' });
+
+/** José 11/11: channels shared with other spaces, like Slack Connect. */
+export type ChannelPersonWire = { userId: string; name?: string; phone: string; avatarUrl?: string; space: { id: string; name: string }; inChannel: boolean };
+export const channelShares = (jwt: string, spaceId: string, chatId: string) => api<{ shares: ChannelShare[] }>(path(`/${spaceId}/channels/${chatId}/shares`), { jwt });
+export const shareChannel = (jwt: string, spaceId: string, chatId: string, workspaceId: string) => api<{ shares: ChannelShare[] }>(path(`/${spaceId}/channels/${chatId}/shares`), { jwt, body: { workspaceId } });
+export const endChannelShare = (jwt: string, spaceId: string, chatId: string, workspaceId: string) => api<{ ok: true }>(path(`/${spaceId}/channels/${chatId}/shares/${workspaceId}`), { jwt, method: 'DELETE' });
+export const shareInvites = (jwt: string, spaceId: string) => api<{ invites: ShareInvite[] }>(path(`/${spaceId}/share-invites`), { jwt });
+export const answerShareInvite = (jwt: string, spaceId: string, chatId: string, accept: boolean) => api<{ ok: true }>(path(`/${spaceId}/share-invites/${chatId}`), { jwt, body: { accept } });
+export const channelPeople = (jwt: string, spaceId: string, chatId: string) => api<{ people: ChannelPersonWire[] }>(path(`/${spaceId}/channels/${chatId}/people`), { jwt });
 
 /** The chats of a space; each one carries its space, so it opens in the Slack format. */
 export async function spaceChats(jwt: string, spaceId: string) {

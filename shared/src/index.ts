@@ -104,6 +104,7 @@ export * from './flatLayout.js';
 export * from './voiceNote.js';
 export * from './panelTab.js';
 export * from './spaceSections.js';
+export * from './sharedChannels.js';
 export * from './mediaLibrary.js';
 export * from './workspaceMembers.js';
 export * from './activity.js';

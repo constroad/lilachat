@@ -2,11 +2,12 @@ import { nombreDeContacto, type MemberPill } from '@lilachat/shared';
 
 export type MiembroConNombre = { id: string; name: string | null; phone: string | null; avatarUrl?: string; role?: 'admin' | 'member' };
 /** What a company space's chat adds to each member: the job title and the role there (design s-01). */
-export type SpaceMemberFields = { title?: string; spaceRole?: string; /** An installed app (Lila): its pill says «App». */ app?: boolean };
+export type SpaceMemberFields = { title?: string; spaceRole?: string; /** An installed app (Lila): its pill says «App». */ app?: boolean; /** José 11/11: in a shared channel, the space they come from. */ space?: { id: string; name: string } };
 
 /** A member's pill: the space's job title and role when there are, else the chat's role. */
 export function pillOf(member: MiembroConNombre & SpaceMemberFields): MemberPill {
-  return { role: member.app ? 'app' : (member.spaceRole ?? member.role ?? 'member'), title: member.title };
+  // José 11/11: someone from another space than the channel's owner shows that space as their pill.
+  return { role: member.app ? 'app' : (member.spaceRole ?? member.role ?? 'member'), title: member.title ?? (!member.spaceRole && member.space ? member.space.name : undefined) };
 }
 
 /**

@@ -1,9 +1,10 @@
 import { Types } from 'mongoose';
 import { memberPermissionsOf, muteStateOf, notificationLevel } from '@lilachat/shared';
-import { ChatModel } from './chatModels.js';
+import { ChatModel, type Chat } from './chatModels.js';
+import { viewingSpacesOf } from './sharedChannels.js';
 import { UserModel } from './models.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
-import { WorkspaceMemberModel } from './workspaceModels.js';
+import { WorkspaceMemberModel, WorkspaceModel } from './workspaceModels.js';
 import { GENERAL_CHANNEL } from './workspaceGeneral.js';
 
 /** Pending 17: my own routines in this chat, only for me; nothing when there are none. */
@@ -26,6 +27,14 @@ function routinesOf(mine: { quietHours?: unknown; contactNote?: unknown } | unde
  * the one in YOUR address book — can only be resolved by the phone. It leaks
  * nothing new: these are people you already share a conversation with.
  */
+/** Each member's space in a shared channel, with its name. */
+async function homesOf(chat: Pick<Chat, '_id' | 'workspaceId' | 'channel'>, userIds: string[]): Promise<Map<string, { id: string; name: string }>> {
+  const viewing = await viewingSpacesOf(chat, userIds);
+  const spaces = await WorkspaceModel.find({ _id: { $in: [...new Set(viewing.values())] } }).select('name').lean();
+  const names = new Map(spaces.map((space) => [String(space._id), space.name]));
+  return new Map([...viewing].flatMap(([userId, spaceId]) => (names.has(spaceId) ? [[userId, { id: spaceId, name: names.get(spaceId)! }] as const] : [])));
+}
+
 export async function chatDetail(chatId: string, userId: Types.ObjectId) {
   // Membership first: without it, the gap between «does not exist» and «not
   // allowed» would let anyone probe for other people's chats.
@@ -40,6 +49,8 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId) {
   // In a company space the pill says the job title and the space role (design s-01), not the chat's.
   const spaceMembers = chat.workspaceId ? await WorkspaceMemberModel.find({ workspaceId: chat.workspaceId, userId: { $in: ids } }).select('userId title role').lean() : [];
   const spaceMemberById = new Map(spaceMembers.map((member) => [String(member.userId), member]));
+  // José 11/11: in a shared channel each person carries the space they come from, for their pill.
+  const homes = chat.channel?.shared ? await homesOf(chat, ids.map(String)) : null;
   // In a 1:1 the photo IS the other person's profile photo (FL9), as in the list.
   const other = chat.kind === 'direct' ? people.find((person) => String(person._id) !== String(userId)) : undefined;
   const photo = chat.avatarUrl ?? other?.avatarUrl;
@@ -59,7 +70,7 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId) {
     // R31/10-B6: the chat's timer; 0 = off.
     disappearSeconds: chat.disappearSeconds ?? 0,
     // Pending 93: a channel's admins change who finds it; #general is always public.
-    ...(chat.channel ? { channel: { visibility: chat.channel.visibility, general: chat.name === GENERAL_CHANNEL } } : {}),
+    ...(chat.channel ? { channel: { visibility: chat.channel.visibility, general: chat.name === GENERAL_CHANNEL, ...(chat.channel.shared ? { shared: true } : {}), ...(chat.workspaceId ? { workspaceId: String(chat.workspaceId) } : {}) } } : {}),
     // MY mute (it is per person): the detail's switch shows it as it is,
     // instead of always starting off.
     // R31/10: muted only while it holds, with its end («Silenciado hasta…»).
@@ -80,6 +91,7 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId) {
         role: m.role ?? 'member',
         esYo: String(m.userId) === String(userId),
         ...(inSpace ? { spaceRole: inSpace.role, ...(inSpace.title ? { title: inSpace.title } : {}) } : {}),
+        ...(homes?.get(String(m.userId)) ? { space: homes.get(String(m.userId)) } : {}),
       };
     }),
   };

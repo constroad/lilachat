@@ -1,3 +1,4 @@
+import { answerShareInvite, channelPeople, endShare, listShareInvites, listShares, shareChannel } from './sharedChannels.js';
 import { deleteWorkspace } from './workspaceDelete.js';
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import { Types } from 'mongoose';
@@ -184,5 +185,18 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
     res.json({ ok: true });
   }));
   router.post('/:id/channels/:chatId/join', handled(async (req, res) => res.json({ channel: await joinChannel(req.params.id!, me(req), req.params.chatId!) })));
+  // José 11/11: channels shared with other spaces, like Slack Connect (`sharedChannels.ts`).
+  router.get('/:id/channels/:chatId/shares', handled(async (req, res) => res.json({ shares: await listShares(req.params.id!, me(req), req.params.chatId!) })));
+  router.post('/:id/channels/:chatId/shares', handled(async (req, res) => res.status(201).json({ shares: await shareChannel(req.params.id!, me(req), req.params.chatId!, req.body?.workspaceId) })));
+  router.delete('/:id/channels/:chatId/shares/:targetId', handled(async (req, res) => {
+    await endShare(req.params.id!, me(req), req.params.chatId!, req.params.targetId!);
+    res.json({ ok: true });
+  }));
+  router.get('/:id/channels/:chatId/people', handled(async (req, res) => res.json({ people: await channelPeople(req.params.id!, me(req), req.params.chatId!) })));
+  router.get('/:id/share-invites', handled(async (req, res) => res.json({ invites: await listShareInvites(req.params.id!, me(req)) })));
+  router.post('/:id/share-invites/:chatId', handled(async (req, res) => {
+    await answerShareInvite(req.params.id!, me(req), req.params.chatId!, req.body?.accept === true);
+    res.json({ ok: true });
+  }));
   return router;
 }

@@ -1,3 +1,4 @@
+import { activeInAny, spaceIdsWithAccess } from './sharedChannels.js';
 import { Types } from 'mongoose';
 import {
   decidirSalida,
@@ -22,7 +23,6 @@ import { ChatModel, ReceiptModel, type Chat } from './chatModels.js';
 import { addBotsToPublicChannel } from './bots/botInstall.js';
 import { BotInstallationModel } from './bots/botModels.js';
 import { GENERAL_CHANNEL } from './workspaceGeneral.js';
-import { allActiveIn } from './workspaceChats.js';
 
 /**
  * Quién está en un chat y cómo: sumar, sacar, cambiar el rol, salir, el nombre
@@ -51,9 +51,10 @@ function mayInGroup(chat: Chat, who: Types.ObjectId, permission: MemberPermissio
  * Who may be added to a chat of a space: its active members, or an app installed there
  * (an app comes back to a channel this way after an admin took it out, pending 91).
  */
-async function mayJoinSpaceChat(spaceId: Types.ObjectId, userId: Types.ObjectId): Promise<boolean> {
-  if (await allActiveIn(spaceId, [userId])) return true;
-  return Boolean(await BotInstallationModel.exists({ workspaceId: spaceId, botUserId: userId, revokedAt: { $exists: false } }));
+async function mayJoinSpaceChat(chat: Chat, userId: Types.ObjectId): Promise<boolean> {
+  // José 11/11: a shared channel also takes people from the spaces it is shared with.
+  if (await activeInAny(await spaceIdsWithAccess(chat), userId)) return true;
+  return Boolean(await BotInstallationModel.exists({ workspaceId: chat.workspaceId, botUserId: userId, revokedAt: { $exists: false } }));
 }
 
 export async function addMember(params: {
@@ -69,7 +70,7 @@ export async function addMember(params: {
   // In a space, only a member of this chat who is still active in the space lets people in (Agentes, 25/10/2026).
   if (chat.workspaceId) {
     const inChat = chat.members.some((member) => String(member.userId) === String(params.quien));
-    if (!inChat || !(await allActiveIn(chat.workspaceId, [params.quien]))) return forbidden('Solo quien está en este canal y sigue activo en el espacio puede agregar gente.');
+    if (!inChat || !(await activeInAny(await spaceIdsWithAccess(chat), params.quien))) return forbidden('Solo quien está en este canal y sigue activo en el espacio puede agregar gente.');
   }
 
   const decision = puedeAgregar({
@@ -89,7 +90,7 @@ export async function addMember(params: {
   // aparece en la lista y no es nadie.
   const persona = await UserModel.findById(params.aQuien).select('_id').lean();
   if (!persona) return { ok: false, motivo: 'No encontramos a esa persona.' };
-  if (chat.workspaceId && !(await mayJoinSpaceChat(chat.workspaceId, persona._id))) return forbidden('Esa persona no es miembro activo del espacio.');
+  if (chat.workspaceId && !(await mayJoinSpaceChat(chat, persona._id))) return forbidden('Esa persona no es miembro activo del espacio.');
 
   const actualizado = await ChatModel.findOneAndUpdate(
     // `$ne` en la condición y no solo `$addToSet`: así dos toques simultáneos no

@@ -77,7 +77,7 @@ type Detalle = {
   routines?: { quietHours?: QuietHours; contactNote?: ContactNote };
   birthdaysOn?: boolean;
   /** A channel (pending 93): who finds it, and whether it is #general. */
-  channel?: { visibility: 'public' | 'private'; general: boolean };
+  channel?: { visibility: 'public' | 'private'; general: boolean; /** José 11/11: shared with other spaces, and its owner space. */ shared?: boolean; workspaceId?: string };
   members: Miembro[];
 };
 
@@ -499,7 +499,7 @@ export function ChatDetailScreen({
                 onShowPerson={(miembro) => personCard.show(personOfMember({ member: miembro, displayName: nombreDe(miembro), pill: { role: miembro.app ? 'app' : miembro.role }, isMe: miembro.esYo }))}
               />
             ) : null}
-            {tab === 'settings' && detalle!.channel ? <ChannelVisibilityCard chatId={chatId} jwt={credential.jwt} isPrivate={detalle!.channel.visibility === 'private'} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} isGeneral={detalle!.channel.general} /> : null}
+            {tab === 'settings' && detalle!.channel ? <ChannelVisibilityCard chatId={chatId} jwt={credential.jwt} isPrivate={detalle!.channel.visibility === 'private'} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} isGeneral={detalle!.channel.general} channelName={detalle!.name ?? ''} ownerSpaceId={detalle!.channel.workspaceId} /> : null}
             {tab === 'settings' && esGrupo ? <GroupPermissionsCard chatId={chatId} jwt={credential.jwt} permissions={detalle!.memberPermissions} isAdmin={detalle!.members.some((uno) => uno.esYo && uno.role === 'admin')} /> : null}
             {tab === 'settings' && !esBorrador ? <RoutinesCard chatId={chatId} jwt={credential.jwt} isDirect={detalle!.kind === 'direct'} name={nombreVisible} quietHours={detalle!.routines?.quietHours} contactNote={detalle!.routines?.contactNote} /> : null}
             {tab === 'settings' && detalle!.kind === 'direct' && detalle!.members.some((uno) => !uno.esYo) ? <BlockContactCard jwt={credential.jwt} personId={detalle!.members.find((uno) => !uno.esYo)!.id} name={nombreVisible} blockedByMe={detalle!.blockedByMe === true} /> : null}
@@ -583,7 +583,7 @@ export function ChatDetailScreen({
           visible={agregando}
           credential={credential}
           yaEstan={yaEstan}
-          spaceId={workspaceId} chatId={chatId}
+          spaceId={workspaceId} chatId={chatId} sharedChatId={detalle?.channel?.shared ? chatId : undefined}
           onCerrar={() => setAgregando(false)}
           onElegir={async (userId, history, access) => {
             setAgregando(false);

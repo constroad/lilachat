@@ -20,7 +20,9 @@ export type ChatSummary = {
   workspaceId?: string;
   /** A 1:1 with an app's bot (design e-23): it goes to «Apps», not to the direct messages. */
   appId?: string;
-  channel?: { visibility: string };
+  channel?: { visibility: string; /** José 11/11: shared with other spaces. */ shared?: boolean };
+  /** José 11/11: a channel of another space shared into this one; it lists under that space's name. */
+  sharedFrom?: { workspaceId: string; name: string; logoUrl?: string };
   /** El chat contigo («Tú · Envíate un mensaje», 20/10). */
   propio?: boolean;
   name?: string;

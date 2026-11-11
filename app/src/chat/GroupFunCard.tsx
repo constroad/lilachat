@@ -1,3 +1,4 @@
+import { ShareChannelCard } from '../spaces/SharedChannelsApp';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Interruptor } from '../ui/Interruptor';
@@ -61,10 +62,12 @@ export function BirthdaysCard(props: { chatId: string; jwt: string; on: boolean;
  * «Canal privado» in a channel's info (pending 93; José, 23/10: a public channel
  * could not be made private). Only its admins move it; #general stays public.
  */
-export function ChannelVisibilityCard(props: { chatId: string; jwt: string; isPrivate: boolean; isAdmin: boolean; isGeneral: boolean }) {
+export function ChannelVisibilityCard(props: { chatId: string; jwt: string; isPrivate: boolean; isAdmin: boolean; isGeneral: boolean; /** José 11/11: sharing it with other spaces sits beside it. */ channelName?: string; ownerSpaceId?: string }) {
   const canChange = props.isAdmin && !props.isGeneral;
   const hint = props.isGeneral ? '#general es de todo el espacio: siempre es público.' : `Privado, solo lo ven sus miembros; público, cualquiera del espacio lo encuentra en «Canales».${canChange ? '' : ' Solo los admins del canal pueden cambiarlo.'}`;
   return (
+    <>
+    <ShareChannelCard jwt={props.jwt} chatId={props.chatId} channelName={props.channelName ?? ''} ownerSpaceId={props.ownerSpaceId} isGeneral={props.isGeneral} />
     <ChatToggleCard
       testID="tarjeta-canal-privado"
       switchTestID="switch-canal-privado"
@@ -77,6 +80,7 @@ export function ChannelVisibilityCard(props: { chatId: string; jwt: string; isPr
       value={props.isPrivate}
       canChange={canChange}
     />
+    </>
   );
 }
 

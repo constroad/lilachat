@@ -11,6 +11,8 @@ export type Contact = {
   phone: string;
   /** Si ya existe una conversación 1:1 con esta persona. */
   directChatId?: string | null;
+  /** José 11/11: in a shared channel, the other space this person comes from (their pill). */
+  space?: string;
 };
 
 export type ContactGroup = { letter: string; contacts: Contact[] };

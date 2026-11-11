@@ -2,7 +2,7 @@ import { scrollFlatListTo } from './scrollSafely';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { AccionesDeTarjetaContext, type AccionesDeTarjeta } from './accionesDeTarjeta';
 import { Alert, FlatList, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
-import { Image } from 'expo-image';
+import { StickerArt, useStickerPlayback } from './stickers/StickerMessage';
 import { Modal } from '../ui/Modal';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { useScrollConTeclado } from './useScrollConTeclado';
@@ -467,6 +467,8 @@ function BurbujaDelHilo(props: { mensaje: Respuesta; mia: boolean; autor: string
   const colorAutor = !pendiente ? (colores[`autor-${colorDeAutor(String(mensaje.senderId))}` as keyof typeof colores] as string) : undefined;
   const enlace = !pendiente && !eliminado && mensaje.body ? primerEnlace(mensaje.body) : null;
   const meta = { hora, mia, entrega: pendiente ? ('pending' as const) : props.entrega, id: mensaje.clientKey, fallido: pendiente && Boolean(mensaje.fallo), editado: !pendiente && Boolean(mensaje.editedAt) && !eliminado };
+  // Same player as the chat: the animated pack as Lottie, and it stops after a while (11/11).
+  const stickerPlayback = useStickerPlayback(!pendiente && !eliminado && mensaje.kind === 'sticker' ? mensaje.media : null);
   // A checklist made in the thread: its live card, as in the chat.
   if (!pendiente && !eliminado && mensaje.ref?.tipo === 'checklist') {
     return (
@@ -480,9 +482,9 @@ function BurbujaDelHilo(props: { mensaje: Respuesta; mia: boolean; autor: string
   // A sticker reply (20/10): no bubble, like in the chat.
   if (!pendiente && !eliminado && mensaje.kind === 'sticker' && mensaje.media?.url) {
     return (
-      <Pressable testID={`respuesta-${mensaje.clientKey}`} onLongPress={props.onLongPress} delayLongPress={350} className={mia ? 'items-end self-end' : 'items-start self-start'}>
+      <Pressable testID={`respuesta-${mensaje.clientKey}`} onPress={stickerPlayback.stopped ? stickerPlayback.replay : undefined} onLongPress={props.onLongPress} delayLongPress={350} className={mia ? 'items-end self-end' : 'items-start self-start'}>
         {!mia && props.conAutor ? <Text className="pb-0.5 text-[13px] font-semibold" style={{ color: colorAutor }}>{props.autor}</Text> : null}
-        <Image source={{ uri: mensaje.media.url }} style={{ width: STICKER_IN_THREAD, height: STICKER_IN_THREAD }} contentFit="contain" recyclingKey={mensaje.clientKey} />
+        <StickerArt playback={stickerPlayback} url={mensaje.media.url} side={STICKER_IN_THREAD} recyclingKey={mensaje.clientKey} />
         <Text className="text-[11px] text-on-surface-variant">{hora}</Text>
       </Pressable>
     );

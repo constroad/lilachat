@@ -91,27 +91,19 @@ export function StickerPair(props: Omit<StickerProps, 'item' | 'quote' | 'select
  */
 const StickerCell = memo(function StickerCell(props: { item: ChatMessage; mine: boolean; jwt: string; delivery: DeliveryState; starred: boolean; side: number; selecting: boolean; onSelect?: (seq: number) => void }) {
   const { item, mine } = props;
-  // The pack plays as Lottie (José 11/11); my own animated stickers stay images.
-  const lottieUrl = lottieUrlOf(item.media?.url);
-  const animated = useAnimatedStop(lottieUrl ? undefined : item.media?.url, false, !lottieUrl && item.media?.animated === true);
-  const lottie = useLottieStop(Boolean(lottieUrl));
-  const stopped = lottie.stopped || animated.stopped;
+  const playback = useStickerPlayback(item.media);
   const showOptions = () => showStickerOptions(props.jwt, item, mine);
   return (
     <>
       <Pressable
-        onPress={() => (props.selecting ? props.onSelect?.(item.seq) : stopped ? (lottie.stopped ? lottie.replay() : animated.replay()) : showOptions())}
+        onPress={() => (props.selecting ? props.onSelect?.(item.seq) : playback.stopped ? playback.replay() : showOptions())}
         onLongPress={() => {
           void Haptics.selectionAsync();
           props.onSelect?.(item.seq);
         }}
         delayLongPress={350}
       >
-        {lottieUrl ? (
-          <LottieStickerView ref={lottie.ref} lottieUrl={lottieUrl} webpUrl={item.media!.url!} side={props.side} />
-        ) : (
-          <Image ref={animated.ref} source={{ uri: item.media?.url }} style={{ width: props.side, height: props.side }} contentFit="contain" recyclingKey={item.clientKey} transition={120} />
-        )}
+        <StickerArt playback={playback} url={item.media!.url!} side={props.side} recyclingKey={item.clientKey} transition={STICKER_FADE_MS} />
       </Pressable>
       <View className={`mt-0.5 rounded-full bg-black/35 px-1.5 py-0.5 ${mine ? 'self-end' : 'self-start'}`}>
         <MetaDeMensaje hora={formatClock(item.at)} mia={mine} entrega={props.delivery} id={String(item.seq)} sobreFoto destacado={props.starred} />
@@ -128,6 +120,32 @@ export function showStickerOptions(jwt: string, item: ChatMessage, mine: boolean
     { text: 'Agregar a favoritos', onPress: () => void keep(true) },
     ...(mine ? [] : [{ text: 'Guardar en Mis stickers', onPress: () => void keep(false) }]),
   ]);
+}
+
+/** Fade-in of a sticker image in the bubble (ms). */
+const STICKER_FADE_MS = 120;
+
+/**
+ * Which player a sticker uses and its play-then-stop state. The animated pack
+ * plays as Lottie (José 11/11, like Telegram); my own animated stickers stay
+ * images. Shared by the bubble, the channel row and the thread: on 11/11 only
+ * the bubble had Lottie and channels kept playing the old WebP.
+ */
+export function useStickerPlayback(media: ChatMessage['media'] | null | undefined) {
+  const lottieUrl = lottieUrlOf(media?.url) ?? undefined;
+  const image = useAnimatedStop(lottieUrl ? undefined : (media?.url ?? undefined), false, !lottieUrl && media?.animated === true);
+  const lottie = useLottieStop(Boolean(lottieUrl));
+  const replay = () => (lottie.stopped ? lottie.replay() : image.replay());
+  return { lottieUrl, lottie, image, stopped: lottie.stopped || image.stopped, replay };
+}
+
+export type StickerPlayback = ReturnType<typeof useStickerPlayback>;
+
+/** The sticker itself, with the player `useStickerPlayback` chose. */
+export function StickerArt(props: { playback: StickerPlayback; url: string; side: number; recyclingKey: string; transition?: number }) {
+  const { playback } = props;
+  if (playback.lottieUrl) return <LottieStickerView ref={playback.lottie.ref} lottieUrl={playback.lottieUrl} webpUrl={props.url} side={props.side} />;
+  return <Image ref={playback.image.ref} source={{ uri: props.url }} style={{ width: props.side, height: props.side }} contentFit="contain" recyclingKey={props.recyclingKey} transition={props.transition} />;
 }
 
 /**

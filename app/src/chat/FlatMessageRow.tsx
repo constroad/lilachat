@@ -1,7 +1,6 @@
 import { BotFilesAlbum } from './BotFilesAlbum';
 import { memo } from 'react';
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
-import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { CircleAlert } from 'lucide-react-native';
 import { TEXTO_ELIMINADO, formatClock, groupsWithPrevious, primerEnlace, sharedByLine, type DeliveryState } from '@lilachat/shared';
@@ -23,7 +22,7 @@ import { LocationCard } from './location/LocationCard';
 import { ContactCard } from './contactCard/ContactCard';
 import { pendingStickerItem, type Citado } from './filasDelChat';
 import { CardBody } from './TarjetaDelChat';
-import { showStickerOptions, useAnimatedStop } from './stickers/StickerMessage';
+import { showStickerOptions, StickerArt, useStickerPlayback } from './stickers/StickerMessage';
 import { showGifOptions } from './gifs/gifOptions';
 
 /** The avatar of a flat row and the gap to its text (design `s-01`): the reactions and the thread chip line up after them. */
@@ -90,7 +89,7 @@ function FlatRow(props: {
   const card = drawsAsCard(item) && !isPending(item) && props.jwt ? item : null;
   // A sticker on its way is already a sticker (02/11): the real one takes its place without a jump.
   const sticker = deleted || !props.jwt ? null : isPending(item) ? pendingStickerItem(item, props.myUserId, '') : item.kind === 'sticker' && item.media?.url ? item : null;
-  const animated = useAnimatedStop(sticker?.media?.url, false, sticker?.media?.animated === true);
+  const playback = useStickerPlayback(sticker?.media);
   const press = isPending(item) ? (failed ? () => props.onFailed?.(item.clientKey, failed) : undefined) : props.selecting ? () => props.onSelect?.(item.seq) : undefined;
   const select = () => {
     if (isPending(item)) return;
@@ -144,8 +143,8 @@ function FlatRow(props: {
               <CardBody item={card} jwt={props.jwt!} yo={props.myUserId} everyName={props.everyName} selecting={props.selecting} onSelect={props.onSelect} />
             </View>
           ) : sticker ? (
-            <Pressable testID={`sticker-${sticker.seq}`} onPress={isPending(item) ? undefined : () => (props.selecting ? props.onSelect?.(sticker.seq) : animated.stopped ? animated.replay() : showStickerOptions(props.jwt!, sticker, mine))} className="self-start">
-              <Image ref={animated.ref} source={{ uri: sticker.media!.url }} style={{ width: FLAT_STICKER, height: FLAT_STICKER }} contentFit="contain" recyclingKey={sticker.clientKey} />
+            <Pressable testID={`sticker-${sticker.seq}`} onPress={isPending(item) ? undefined : () => (props.selecting ? props.onSelect?.(sticker.seq) : playback.stopped ? playback.replay() : showStickerOptions(props.jwt!, sticker, mine))} className="self-start">
+              <StickerArt playback={playback} url={sticker.media!.url!} side={FLAT_STICKER} recyclingKey={sticker.clientKey} />
             </Pressable>
           ) : (
             <MessageMedia item={item} mine={false} flat selecting={props.selecting} onSelect={props.onSelect} onOpen={props.onOpenMedia} onGifTap={props.jwt && !isPending(item) ? (seq) => showGifOptions({ jwt: props.jwt!, chatId: item.chatId, seq, onOpen: () => props.onOpenMedia?.(seq) }) : undefined} />

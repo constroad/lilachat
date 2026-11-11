@@ -66,8 +66,8 @@ export const THREAD_QUOTE_MAX = 80;
 
 /**
  * The one line a thread reply sent to the chat carries (Slack format, José
- * 25/10), now naming the message it answered (José 11/11: «solo dice se
- * respondió en un hilo, no cuál fue el mensaje original»).
+ * 25/10), now naming the message it answered (José 11/11: it only said it was
+ * a thread reply, not which message it answered).
  */
 export function threadQuoteLine(original: { author?: string | null; preview?: string | null; mine?: boolean }): string {
   const preview = (original.preview ?? '').replace(/\s+/g, ' ').trim();

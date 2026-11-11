@@ -29,7 +29,7 @@ export async function medidasDeImagen(archivo: File): Promise<{ width?: number; 
  * (vacío o demasiado pesado) se marca acá, antes de subir. Las fotos salen más
  * livianas, como en WhatsApp (19/10); «HD» manda la original.
  */
-export function EnviarArchivos(props: {
+export function SendFilesDialog(props: {
   archivos: File[];
   /** What was in the composer when the picture was pasted (José 11/11): it starts as the caption. */
   initialCaption?: string;

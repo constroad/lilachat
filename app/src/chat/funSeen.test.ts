@@ -8,6 +8,9 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
   },
 }));
 
+/** Two fresh module graphs in one test: under the gates' load each import took over 5 s (11/11). */
+const TWO_STARTS_TIMEOUT_MS = 30_000;
+
 /** A fresh module is a fresh app start: only what was saved survives. */
 async function startApp() {
   vi.resetModules();
@@ -34,7 +37,7 @@ describe('what this phone already played survives a restart (pending 107, José 
     const after = await startApp();
     // Assert: the group's read cursor lags at 35 (pending 108), the ledger says 52.
     expect(after.funSeenFloor('lokillos', 35)).toBe(52);
-  });
+  }, TWO_STARTS_TIMEOUT_MS);
 
   it('a chat never opened here starts from its read cursor; a newer cursor wins', async () => {
     // Arrange

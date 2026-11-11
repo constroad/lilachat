@@ -1,11 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import { EnviarArchivos } from './EnviarArchivos';
+import { SendFilesDialog } from './EnviarArchivos';
 
 const voucher = () => new File(['voucher'], 'voucher.png', { type: 'image/png' });
 
-describe('EnviarArchivos: the caption is where the keyboard lands (José, 04/11)', () => {
+describe('SendFilesDialog: the caption is where the keyboard lands (José, 04/11)', () => {
   beforeAll(() => {
     URL.createObjectURL = vi.fn(() => 'blob:voucher');
     URL.revokeObjectURL = vi.fn();
@@ -15,7 +15,7 @@ describe('EnviarArchivos: the caption is where the keyboard lands (José, 04/11)
     render(<textarea data-testid="input-mensaje" autoFocus />);
     expect(document.activeElement).toBe(screen.getByTestId('input-mensaje'));
 
-    render(<EnviarArchivos archivos={[voucher()]} onCerrar={() => undefined} onEnviar={() => undefined} />);
+    render(<SendFilesDialog archivos={[voucher()]} onCerrar={() => undefined} onEnviar={() => undefined} />);
 
     expect(document.activeElement).toBe(screen.getByTestId('input-pie'));
   });
@@ -24,7 +24,7 @@ describe('EnviarArchivos: the caption is where the keyboard lands (José, 04/11)
     const user = userEvent.setup();
     const send = vi.fn();
     const file = voucher();
-    render(<EnviarArchivos archivos={[file]} onCerrar={() => undefined} onEnviar={send} />);
+    render(<SendFilesDialog archivos={[file]} onCerrar={() => undefined} onEnviar={send} />);
 
     await user.keyboard('/gastos pago parcial');
     await user.click(screen.getByTestId('btn-enviar-archivos'));
@@ -36,7 +36,7 @@ describe('EnviarArchivos: the caption is where the keyboard lands (José, 04/11)
     const user = userEvent.setup();
     const send = vi.fn();
     const file = voucher();
-    render(<EnviarArchivos archivos={[file]} initialCaption="adelanto de Juan" onCerrar={() => undefined} onEnviar={send} />);
+    render(<SendFilesDialog archivos={[file]} initialCaption="adelanto de Juan" onCerrar={() => undefined} onEnviar={send} />);
 
     expect((screen.getByTestId('input-pie') as HTMLInputElement).value).toBe('adelanto de Juan');
     await user.keyboard(' 50%');
@@ -49,7 +49,7 @@ describe('EnviarArchivos: the caption is where the keyboard lands (José, 04/11)
     const user = userEvent.setup();
     const send = vi.fn();
     const file = voucher();
-    render(<EnviarArchivos archivos={[file]} onCerrar={() => undefined} onEnviar={send} />);
+    render(<SendFilesDialog archivos={[file]} onCerrar={() => undefined} onEnviar={send} />);
 
     await user.keyboard('pago{Shift>}{Enter}{/Shift}');
     expect(send).not.toHaveBeenCalled();
@@ -62,7 +62,7 @@ describe('EnviarArchivos: the caption is where the keyboard lands (José, 04/11)
     const user = userEvent.setup();
     const send = vi.fn();
     const empty = new File([], 'vacio.png', { type: 'image/png' });
-    render(<EnviarArchivos archivos={[empty]} onCerrar={() => undefined} onEnviar={send} />);
+    render(<SendFilesDialog archivos={[empty]} onCerrar={() => undefined} onEnviar={send} />);
 
     await user.keyboard('{Enter}');
 

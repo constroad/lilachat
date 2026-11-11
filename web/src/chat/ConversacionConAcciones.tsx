@@ -11,7 +11,7 @@ import { ListaDeFijados, TarjetaDeFijados } from './fijados/ListaDeFijados';
 import { ChecklistsCard } from './tarjetas/ChecklistsCard';
 import { useFijarEnLaWeb } from './useFijarEnLaWeb';
 import type { AccionSobreMensaje } from './contextoDeLaConversacion';
-import { EnviarArchivos, type TypedCaption } from './EnviarArchivos';
+import { SendFilesDialog, type TypedCaption } from './EnviarArchivos';
 import { PhotoViewer } from './VisorDeFotos';
 import { PdfViewer } from './PdfViewer';
 import type { MensajeEnPantalla } from './types';
@@ -356,7 +356,7 @@ export function ConversacionConAcciones(
           }}
         />
       ) : null}
-      {archivos ? <EnviarArchivos archivos={archivos.files} initialCaption={archivos.typed?.text} onCerrar={() => setArchivos(null)} onEnviar={subir} /> : null}
+      {archivos ? <SendFilesDialog archivos={archivos.files} initialCaption={archivos.typed?.text} onCerrar={() => setArchivos(null)} onEnviar={subir} /> : null}
       {fotoAbierta !== null ? <PhotoViewer fotos={viewerPhotos} indice={fotoAbierta} onCambiar={setFotoAbierta} onCerrar={() => setFotoAbierta(null)} onMakeSticker={chat.encrypted ? undefined : (foto) => void saveGif({ chatId: chat.id, seq: foto.seq }).then(onAviso)} /> : null}
       {personCard.element}
       {pdfAbierto?.media?.url ? <PdfViewer jwt={props.jwt} chatId={chat.id} seq={pdfAbierto.seq} fileName={pdfAbierto.media.fileName ?? 'Documento PDF'} downloadUrl={pdfAbierto.media.url} onClose={() => setPdfAbierto(null)} /> : null}

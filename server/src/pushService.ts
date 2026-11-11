@@ -241,7 +241,7 @@ export async function avisarLlamada(params: { chatId: string; from: string; memb
     (d) => d.platform !== 'web' && Boolean(d.capacidades?.includes(CAPACIDAD_LLAMADA_NATIVA))
   );
   const resto = comunes.filter((d) => !isOnline(String(d.userId)));
-  // José 11/11: «sonó en la web y no en el APK», and no trace said which leg failed. Counts only: no tokens, no phones.
+  // José 11/11: it rang on the web and not on the APK, and no trace said which leg failed. Counts only: no tokens, no phones.
   console.info(`[call] push chat=${params.chatId} native=${nativos.length} common=${resto.length} commonOnline=${comunes.length - resto.length}`);
   const aviso = {
     title: `${params.video ? 'Videollamada' : 'Llamada'} de ${nombre}`,

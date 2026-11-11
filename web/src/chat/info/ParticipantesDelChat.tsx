@@ -67,6 +67,7 @@ export function ParticipantesDelChat(props: {
               {miembro.telefono && !miembro.esYo ? <span className="block text-xs text-on-surface-variant">{miembro.telefono}</span> : null}
             </span>
           </MemberTap>
+          {miembro.espacio ? <span title="De otro espacio" className="max-w-[40%] shrink-0 truncate rounded-full border border-outline/30 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">{miembro.espacio}</span> : null}
           {miembro.rol === 'admin' ? <span className="shrink-0 rounded-full border border-primary/30 bg-primary/[0.08] px-2.5 py-0.5 text-[11px] font-semibold text-primary">Admin del grupo</span> : null}
           {miembro.acciones.length ? (
             <DropdownMenu.Root modal={false}>

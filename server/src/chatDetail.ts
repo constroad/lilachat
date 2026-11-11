@@ -1,7 +1,7 @@
 import { Types } from 'mongoose';
 import { memberPermissionsOf, muteStateOf, notificationLevel } from '@lilachat/shared';
 import { ChatModel, type Chat } from './chatModels.js';
-import { viewingSpacesOf } from './sharedChannels.js';
+import { spaceIdsWithAccess, viewingSpacesOf } from './sharedChannels.js';
 import { UserModel } from './models.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { WorkspaceMemberModel, WorkspaceModel } from './workspaceModels.js';
@@ -27,15 +27,26 @@ function routinesOf(mine: { quietHours?: unknown; contactNote?: unknown } | unde
  * the one in YOUR address book — can only be resolved by the phone. It leaks
  * nothing new: these are people you already share a conversation with.
  */
-/** Each member's space in a shared channel, with its name. */
-async function homesOf(chat: Pick<Chat, '_id' | 'workspaceId' | 'channel'>, userIds: string[]): Promise<Map<string, { id: string; name: string }>> {
+/**
+ * The space a shared channel's detail is looked at from (local E2E 11/11: seen
+ * from the receiving space, the owner's roles showed and nobody's pill did). It
+ * counts only when the channel reaches it; otherwise, the channel's own space.
+ */
+async function lookingFrom(chat: Pick<Chat, '_id' | 'workspaceId' | 'channel'>, viewing?: string): Promise<Types.ObjectId | undefined> {
+  if (!viewing || !chat.channel?.shared || !Types.ObjectId.isValid(viewing)) return chat.workspaceId ?? undefined;
+  return (await spaceIdsWithAccess(chat)).find((id) => String(id) === viewing) ?? chat.workspaceId ?? undefined;
+}
+
+/** Each member's space in a shared channel, with its name: the one looked from for whoever is in it. */
+async function homesOf(chat: Pick<Chat, '_id' | 'workspaceId' | 'channel'>, userIds: string[], from: { id?: Types.ObjectId; members: ReadonlySet<string> }): Promise<Map<string, { id: string; name: string }>> {
   const viewing = await viewingSpacesOf(chat, userIds);
+  if (from.id) for (const userId of from.members) viewing.set(userId, String(from.id));
   const spaces = await WorkspaceModel.find({ _id: { $in: [...new Set(viewing.values())] } }).select('name').lean();
   const names = new Map(spaces.map((space) => [String(space._id), space.name]));
   return new Map([...viewing].flatMap(([userId, spaceId]) => (names.has(spaceId) ? [[userId, { id: spaceId, name: names.get(spaceId)! }] as const] : [])));
 }
 
-export async function chatDetail(chatId: string, userId: Types.ObjectId) {
+export async function chatDetail(chatId: string, userId: Types.ObjectId, viewingSpaceId?: string) {
   // Membership first: without it, the gap between «does not exist» and «not
   // allowed» would let anyone probe for other people's chats.
   if (!Types.ObjectId.isValid(chatId)) return null;
@@ -47,10 +58,12 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId) {
     .lean<{ _id: unknown; name?: string; phone: string; avatarUrl?: string; app?: unknown }[]>();
   const personById = new Map(people.map((person) => [String(person._id), person]));
   // In a company space the pill says the job title and the space role (design s-01), not the chat's.
-  const spaceMembers = chat.workspaceId ? await WorkspaceMemberModel.find({ workspaceId: chat.workspaceId, userId: { $in: ids } }).select('userId title role').lean() : [];
+  const from = await lookingFrom(chat, viewingSpaceId);
+  const spaceMembers = from ? await WorkspaceMemberModel.find({ workspaceId: from, userId: { $in: ids } }).select('userId title role status').lean() : [];
   const spaceMemberById = new Map(spaceMembers.map((member) => [String(member.userId), member]));
   // José 11/11: in a shared channel each person carries the space they come from, for their pill.
-  const homes = chat.channel?.shared ? await homesOf(chat, ids.map(String)) : null;
+  const activeHere = new Set(spaceMembers.filter((member) => member.status === 'active').map((member) => String(member.userId)));
+  const homes = chat.channel?.shared ? await homesOf(chat, ids.map(String), { id: from, members: activeHere }) : null;
   // In a 1:1 the photo IS the other person's profile photo (FL9), as in the list.
   const other = chat.kind === 'direct' ? people.find((person) => String(person._id) !== String(userId)) : undefined;
   const photo = chat.avatarUrl ?? other?.avatarUrl;

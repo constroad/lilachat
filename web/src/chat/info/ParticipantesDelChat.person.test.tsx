@@ -41,3 +41,20 @@ describe('member rows', () => {
     expect(screen.getByTestId('participante-u-max')).toBeInTheDocument();
   });
 });
+
+describe('a shared channel (local E2E 11/11)', () => {
+  it('someone from another space carries that space as a pill; someone from mine does not', () => {
+    const shared = aDetalle({
+      members: [
+        { id: 'u-jc', name: 'Juan Carlos', phone: '900000001', role: 'admin', esYo: true, spaceRole: 'owner', space: { id: 'gl', name: 'Globofast' } },
+        { id: 'u-max', name: 'Max', phone: '987000111', role: 'member', space: { id: 'im', name: 'Inframaq' } },
+        { id: 'u-ana', name: 'Ana', phone: '987000222', role: 'member', spaceRole: 'member', space: { id: 'gl', name: 'Globofast' } },
+      ],
+    });
+    render(<PanelDeInfo chat={{ ...group, memberIds: ['u-jc', 'u-max', 'u-ana'] }} detalle={shared} yo="u-jc" jwt="jwt" base={null} onCerrar={vi.fn()} onAviso={vi.fn()} onCambio={vi.fn()} onAccionDeChat={vi.fn()} onLevel={vi.fn()} onVerFoto={vi.fn()} />);
+
+    expect(screen.getByTestId('participante-u-max').textContent).toContain('Inframaq');
+    expect(screen.getByTestId('participante-u-ana').textContent).not.toContain('Globofast');
+  });
+});
+

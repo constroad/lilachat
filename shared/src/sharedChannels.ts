@@ -111,3 +111,16 @@ export function shareInvitesStore(source: ShareInvitesSource) {
   };
 }
 
+/** The chat detail asked from the space it is looked at (`?workspace=`): in a shared channel, roles and pills depend on it. */
+export function chatDetailPath(chatId: string, viewingSpaceId?: string | null): string {
+  return `/chats/${chatId}/detail${viewingSpaceId ? `?workspace=${encodeURIComponent(viewingSpaceId)}` : ''}`;
+}
+
+/**
+ * In a shared channel's member list, the space name beside someone who is not
+ * in the space it is looked from (the server leaves their `spaceRole` out), or null.
+ */
+export function otherSpaceName(member: { spaceRole?: string; space?: { name: string } }): string | null {
+  return !member.spaceRole && member.space ? member.space.name : null;
+}
+

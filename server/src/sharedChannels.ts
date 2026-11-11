@@ -180,6 +180,11 @@ export async function endSharesOfDeletedSpace(workspaceId: Types.ObjectId, actor
   }));
 }
 
+/** A deleted channel is shared with nobody: its shares end (its members were already set aside). */
+export async function endSharesOfChannel(chatId: Types.ObjectId, actorId: Types.ObjectId): Promise<void> {
+  await SharedChannelModel.updateMany({ chatId, status: { $in: ['pending', 'active'] } }, { $set: { status: 'removed', removedBy: actorId } });
+}
+
 /** Members no longer active in any space with access leave the channel (a share ended, or someone left their space). */
 export async function dropOutsiders(chatId: Types.ObjectId): Promise<void> {
   const chat = await ChatModel.findById(chatId).select('workspaceId channel members.userId').lean<Chat | null>();

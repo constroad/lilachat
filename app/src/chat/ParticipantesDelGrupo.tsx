@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from 'react-native';
-import { formatPhoneDisplay, membersHeading } from '@lilachat/shared';
+import { formatPhoneDisplay, membersHeading, otherSpaceName } from '@lilachat/shared';
 import { MoreVertical, UserPlus } from 'lucide-react-native';
 import { Avatar } from '../ui/Avatar';
 import { Rotulo } from '../ui/Rotulo';
@@ -15,6 +15,9 @@ export type Miembro = {
   esYo: boolean;
   /** An installed app (pending 91): an admin only takes it out of the channel. */
   app?: boolean;
+  /** In a shared channel: their role in the space looked from, and the space they come from. */
+  spaceRole?: string;
+  space?: { id: string; name: string };
 };
 
 /** El avatar de cada participante (dp), el de las filas de contacto. */
@@ -81,6 +84,11 @@ export function ParticipantesDelGrupo(props: {
                 {!miembro.esYo && miembro.phone ? <Text className="text-[13px] text-on-surface-variant" numberOfLines={1}>{formatPhoneDisplay(miembro.phone)}</Text> : null}
               </View>
             </Pressable>
+            {otherSpaceName(miembro) ? (
+              <View testID={`espacio-de-${miembro.id}`} className="max-w-[40%] shrink-0 rounded-full border border-outline/30 px-2.5 py-1">
+                <Text numberOfLines={1} className="text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">{otherSpaceName(miembro)}</Text>
+              </View>
+            ) : null}
             {miembro.role === 'admin' ? (
               <View className="shrink-0 rounded-full border border-primary/30 bg-primary/[0.08] px-2.5 py-1">
                 <Text className="text-[11px] font-semibold text-primary">Admin del grupo</Text>

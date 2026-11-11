@@ -15932,6 +15932,23 @@ Pedido de José, traído por la sesión de Portal: el canal «administración» 
 - Dos fallas más de esa vuelta, ya arregladas: en la web la fila para dejarlo no salía, porque el chat del panel viene de la lista general sin `sharedFrom` (ahora decide el espacio actual contra el dueño, como la app); y la lista de Test en caché siguió mostrando el ícono de enlace hasta recargar (ahora un `chat.changed` marca viejas las listas de los otros espacios: `chatChangedElsewhere`).
 - Limpieza: el mensaje QA se borró con «Eliminar para todos», Test 2 se eliminó desde Ajustes del espacio, la web quedó en Personal y la app en Constroad.
 
+**E2E local con dos personas (11/11).** Lo que en producción no se podía probar, porque solo existe la cuenta de José: la invitación pendiente y gente de otro espacio. El arnés vive en el scratchpad y no en el repo:
+- Mongo en memoria, cuatro personas inventadas (teléfonos `qa-1x`, nadie puede entrar como ellas) y dos espacios: Inframaq QA (José dueño, Marco) y Globofast QA (Luis dueño, José y Ana miembros).
+- El server arranca con `buildApp` + `attachSocket`, sin crons, sin el `.env` del repo, en :4003. La web de desarrollo va en :4004.
+- La sesión usa dispositivos vinculados sembrados (no pasa por constroad-auth). Una ruta del arnés pone la cookie y la web hace lo demás.
+
+Recorrido:
+- José compartió #administracion con Globofast QA, donde es solo miembro: quedó «Pendiente — Esperando que un admin de Globofast QA lo acepte».
+- Luis vio la tarjeta de `sc-04` con la pastilla y la nota, aceptó, y apareció la sección «Inframaq QA».
+- Luis agregó a Ana desde el selector. Desde Globofast, Marco lleva «Inframaq QA»; José y Ana, que están en Globofast, no llevan pastilla. Desde Inframaq, Ana y Luis llevan «Globofast QA».
+- Luis dejó el canal desde la web y la sección desapareció.
+
+Fallas que encontró, arregladas en el mismo cambio:
+- El detalle calculaba rol y espacio desde el espacio dueño: visto desde el que recibe, José salía «Dueño» y nadie llevaba su espacio. Ahora el detalle acepta `?workspace=` (`chatDetailPath`), y rol, cargo y espacio salen del espacio desde el que se mira, si el canal llega a él.
+- La lista de miembros (web y app) no mostraba el espacio de nadie: ahora lleva la pastilla con `otherSpaceName`.
+- En la web, el admin del espacio que recibe veía «Compartir con otros espacios» y «Eliminar canal», porque la lista sella el chat con el espacio actual. El dueño ahora sale del detalle (`channel.ownerSpaceId`).
+- Borrar un canal compartido dejaba sus compartidos vivos: ahora `endSharesOfChannel` los cierra.
+
 **Diferencias con los diseños, a propósito:**
 - `sc-03` y `sc-05` dibujan la pastilla del espacio también para la gente del espacio desde el que se mira. Acá solo la lleva quien viene de otro espacio: la del propio espacio no informa nada.
 - `sc-05` trae «Pueden ver los mensajes anteriores» y «Solo los administradores del canal pueden sumar». No se hicieron: no hay historial parcial en Lilachat, y la regla pedida es que cualquiera del canal agregue.

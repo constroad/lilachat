@@ -8,6 +8,7 @@ import { actorIn, WorkspaceError } from './workspaces.js';
 import { WorkspaceModel } from './workspaceModels.js';
 import { ensureGeneralChannel } from './workspaceGeneral.js';
 import { noticeChannelJoined } from './workspaceNotices.js';
+import { endSharesOfChannel } from './sharedChannels.js';
 
 /**
  * Channels of a company space (E2, spec §47): a group with `channel` set.
@@ -103,5 +104,6 @@ export async function deleteChannel(workspaceId: string, userId: Types.ObjectId,
     { _id: chat._id },
     { $set: { members: [], deletedChannel: { name: chat.name ?? '', visibility: chat.channel?.visibility ?? 'public', deletedAt: new Date(), deletedBy: userId, members } }, $unset: { channel: '' } }
   );
+  await endSharesOfChannel(chat._id, userId);
   for (const member of members) avisarCambioDeChat(String(member.userId), String(chat._id));
 }

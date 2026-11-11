@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { agendaPorTelefono, suscribirAgenda } from '../contacts/agendaEnMemoria';
 import { getSocket } from './socketClient';
+import { useCurrentSpaceId } from '../spaces/currentSpace';
 import type { MentionableMember } from './useMenciones';
 import { fotosPorMiembro, membresiaPorRespuesta, nombresPorMiembro, type MiembroConNombre } from './nombresDelGrupo';
 import type { SpaceMemberFields } from './nombresDelGrupo';
 import { pillOf } from './nombresDelGrupo';
-import { BLOCKED_BY_ME_COMPOSER, memberMay, type ContactNote, memberPermissionDenied, type MemberPermission, type MemberPill } from '@lilachat/shared';
+import { BLOCKED_BY_ME_COMPOSER, chatDetailPath, memberMay, type ContactNote, memberPermissionDenied, type MemberPermission, type MemberPill } from '@lilachat/shared';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
 const PLAZO_MS = 10_000;
@@ -58,7 +59,10 @@ export function useGrupo(
   contactNote: ContactNote | undefined;
 } {
   const agenda = useSyncExternalStore(suscribirAgenda, agendaPorTelefono, agendaPorTelefono);
-  const [miembros, setMiembros] = useState<Member[]>(() => cache.get(chatId) ?? []);
+  // A shared channel's roles and pills depend on the space it is looked from (local E2E 11/11).
+  const viewing = useCurrentSpaceId();
+  const membersKey = `${chatId}@${viewing ?? ''}`;
+  const [miembros, setMiembros] = useState<Member[]>(() => cache.get(membersKey) ?? []);
   const [funAllowed, setFunAllowed] = useState<boolean | undefined>(() => funCache.get(chatId));
   const [permissions, setPermissions] = useState<unknown>(() => permissionsCache.get(chatId));
   const [blockedByMe, setBlockedByMe] = useState(() => blockedCache.get(chatId) === true);
@@ -71,7 +75,7 @@ export function useGrupo(
     const socket = getSocket();
     const alCambiar = (frame: { chatId?: string }) => {
       if (frame?.chatId !== chatId) return;
-      cache.delete(chatId);
+      for (const key of [...cache.keys()]) if (key.startsWith(`${chatId}@`)) cache.delete(key);
       funCache.delete(chatId);
       permissionsCache.delete(chatId);
       blockedCache.delete(chatId);
@@ -85,11 +89,11 @@ export function useGrupo(
   }, [chatId]);
 
   useEffect(() => {
-    if (cache.has(chatId)) return;
+    if (cache.has(membersKey)) return;
     let vigente = true;
     void (async () => {
       try {
-        const respuesta = await fetch(`${BASE_URL}/api/chats/${chatId}/detail`, {
+        const respuesta = await fetch(`${BASE_URL}/api${chatDetailPath(chatId, viewing)}`, {
           headers: { Authorization: `Bearer ${jwt}` },
           signal: AbortSignal.timeout(PLAZO_MS),
         });
@@ -98,7 +102,7 @@ export function useGrupo(
         if (!respuesta.ok) return;
         const detail = (await respuesta.json()) as { members?: Member[]; funAllowed?: boolean; memberPermissions?: unknown; blockedByMe?: boolean; routines?: { contactNote?: ContactNote } };
         const loaded = detail.members ?? [];
-        cache.set(chatId, loaded);
+        cache.set(membersKey, loaded);
         funCache.set(chatId, detail.funAllowed === true);
         permissionsCache.set(chatId, detail.memberPermissions);
         blockedCache.set(chatId, detail.blockedByMe === true);
@@ -117,7 +121,7 @@ export function useGrupo(
     return () => {
       vigente = false;
     };
-  }, [chatId, jwt, esGrupo, version]);
+  }, [chatId, membersKey, viewing, jwt, esGrupo, version]);
 
   const nombres = useMemo(() => nombresPorMiembro(miembros, agenda), [miembros, agenda]);
   const fotos = useMemo(() => fotosPorMiembro(miembros), [miembros]);

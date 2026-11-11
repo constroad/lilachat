@@ -274,7 +274,9 @@ export function buildChatRouter(uploader: MediaUploader = defaultMediaUploader()
 
   /** A conversation's detail: who is in it and with what role (`chatDetail.ts`). */
   router.get('/:chatId/detail', async (req, res) => {
-    const detail = await chatDetail(String(req.params.chatId), new Types.ObjectId(req.session!.userId));
+    // `?workspace=` is the space it is looked at from (a shared channel, José 11/11).
+    const viewing = typeof req.query.workspace === 'string' ? req.query.workspace : undefined;
+    const detail = await chatDetail(String(req.params.chatId), new Types.ObjectId(req.session!.userId), viewing);
     if (!detail) return res.status(404).json({ message: 'No encontramos esa conversación.' });
     return res.json(detail);
   });

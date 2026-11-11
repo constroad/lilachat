@@ -163,6 +163,21 @@ describe('people of the other spaces', () => {
     expect(ids).not.toContain(String(users.ana));
   });
 
+  it('seen from the space that receives it, roles and pills are that space\'s (local E2E 11/11)', async () => {
+    await api('jose').post(`/api/chats/${channelId}/members`, { userId: String(users.ana) });
+
+    const fromConstroad = await api('ana').get(`/api/chats/${channelId}/detail?workspace=${spaces.constroad}`).expect(200);
+    const seen = (who: Who) => fromConstroad.body.members.find((member: { id: string }) => member.id === String(users[who]));
+    expect(seen('ana')).toMatchObject({ spaceRole: 'member', space: { id: String(spaces.constroad) } });
+    expect(seen('jose')).toMatchObject({ spaceRole: 'owner', space: { id: String(spaces.constroad) } });
+    expect(seen('marco').spaceRole).toBeUndefined();
+    expect(seen('marco').space).toEqual({ id: String(spaces.inframaq), name: 'Inframaq' });
+
+    // A space the channel does not reach is ignored: the owner's view.
+    const elsewhere = await api('ana').get(`/api/chats/${channelId}/detail?workspace=${spaces.otra}`).expect(200);
+    expect(elsewhere.body.members.find((member: { id: string }) => member.id === String(users.marco)).spaceRole).toBe('member');
+  });
+
   it('the receiving space leaves on its own: its people go out, and whoever stays hears the channel changed', async () => {
     await api('jose').post(`/api/chats/${channelId}/members`, { userId: String(users.ana) });
     vi.mocked(avisarCambioDeChat).mockClear();
@@ -183,6 +198,15 @@ describe('people of the other spaces', () => {
     expect(chat.members.map((m) => String(m.userId))).not.toContain(String(users.ana));
     expect(chat.channel?.shared).toBeUndefined();
     expect((await api('jose').get(sharesPath())).body.shares).toEqual([]);
+  });
+
+  it('end when the channel itself is deleted: no invitation to a deleted channel is left', async () => {
+    await api('jose').post(sharesPath(), { workspaceId: String(spaces.globofast) });
+
+    await api('jose').delete(`/api/workspaces/${spaces.inframaq}/channels/${channelId}`).expect(200);
+
+    expect((await api('luis').get(`/api/workspaces/${spaces.globofast}/share-invites`)).body.invites).toEqual([]);
+    expect(await SharedChannelModel.countDocuments({ chatId: channelId, status: { $ne: 'removed' } })).toBe(0);
   });
 
   it('end when the owner space is deleted: no invitation is left waiting in the other space', async () => {

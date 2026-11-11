@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { channelPeopleAsContacts, memberSpacePill, shareCardFor, shareInvitesStore, shareRefusal, shareStatusFor, spacesWithAccess, type ShareInvite } from './sharedChannels.js';
+import { chatDetailPath, channelPeopleAsContacts, otherSpaceName, memberSpacePill, shareCardFor, shareInvitesStore, shareRefusal, shareStatusFor, spacesWithAccess, type ShareInvite } from './sharedChannels.js';
 import { spaceSections } from './spaceSections.js';
 
 /** José 11/11 (via Portal): a channel of one space shared with others, like Slack Connect. */
@@ -137,6 +137,22 @@ describe('shareCardFor', () => {
   it('nothing while the spaces load or without an owner space', () => {
     expect(shareCardFor({ ownerSpaceId: 'im', viewingSpaceId: 'im', spaces: null, isGeneral: false })).toBeNull();
     expect(shareCardFor({ ownerSpaceId: undefined, viewingSpaceId: 'im', spaces, isGeneral: false })).toBeNull();
+  });
+});
+
+describe('chatDetailPath', () => {
+  it('names the space it is looked from, when there is one', () => {
+    expect(chatDetailPath('c1', 'gl')).toBe('/chats/c1/detail?workspace=gl');
+    expect(chatDetailPath('c1', null)).toBe('/chats/c1/detail');
+    expect(chatDetailPath('c1')).toBe('/chats/c1/detail');
+  });
+});
+
+describe('otherSpaceName', () => {
+  it('names the space of someone outside the one looked from, never of someone in it', () => {
+    expect(otherSpaceName({ space: { name: 'Inframaq' } })).toBe('Inframaq');
+    expect(otherSpaceName({ spaceRole: 'member', space: { name: 'Globofast' } })).toBeNull();
+    expect(otherSpaceName({})).toBeNull();
   });
 });
 

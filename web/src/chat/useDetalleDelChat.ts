@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { api } from '../api';
 import { agendaNameFor, getAgendaNames, requestAgendaNames, subscribeAgendaNames } from '../contacts/phoneAgenda';
-import type { ContactNote, MemberPill, QuietHours } from '@lilachat/shared';
+import { chatDetailPath, otherSpaceName, type ContactNote, type MemberPill, type QuietHours } from '@lilachat/shared';
+import { useCurrentSpaceId } from '../spaces/currentSpace';
 import type { BaseLocal } from '../local/baseLocal';
 
 /** Un miembro como lo pinta la web: el nombre ya resuelto. */
-export type MiembroDelChat = { id: string; nombre: string; foto?: string; telefono?: string; rol: 'admin' | 'member'; esYo: boolean };
+export type MiembroDelChat = { id: string; nombre: string; foto?: string; telefono?: string; rol: 'admin' | 'member'; esYo: boolean; /** In a shared channel, the space of someone who is not in the one looked from. */ espacio?: string };
 export type DetalleDelChat = {
   miembros: Map<string, MiembroDelChat>;
   /** Each member's pill: in a company space, the job title and the role there (design s-01). */
@@ -29,7 +30,7 @@ export type DetalleDelChat = {
   /** Birthdays on in this chat (pending 17). */
   birthdaysOn?: boolean;
   /** A channel (pending 93): who finds it, and whether it is #general. */
-  channel?: { isPrivate: boolean; general: boolean };
+  channel?: { isPrivate: boolean; general: boolean; /** The space that owns it: in a list the chat carries the space looked from. */ ownerSpaceId?: string };
   /** The installed apps among the members (pending 91): an admin only takes them out. */
   appIds?: ReadonlySet<string>;
   /** R31/10-B6: the chat's disappearing timer in seconds; 0 = off. */
@@ -69,6 +70,7 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
       telefono: uno.phone ?? undefined,
       rol: uno.role ?? 'member',
       esYo: uno.esYo === true,
+      ...(otherSpaceName(uno) ? { espacio: otherSpaceName(uno)! } : {}),
     });
   }
   return {
@@ -85,7 +87,7 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
     blockedByMe: respuesta.blockedByMe === true,
     routines: respuesta.routines,
     birthdaysOn: respuesta.birthdaysOn === true,
-    ...(respuesta.channel ? { channel: { isPrivate: respuesta.channel.visibility === 'private', general: respuesta.channel.general } } : {}),
+    ...(respuesta.channel ? { channel: { isPrivate: respuesta.channel.visibility === 'private', general: respuesta.channel.general, ...(respuesta.channel.workspaceId ? { ownerSpaceId: respuesta.channel.workspaceId } : {}) } } : {}),
     appIds: new Set(respuesta.members.filter((member) => member.app).map((member) => member.id)),
     disappearSeconds: respuesta.disappearSeconds ?? 0,
   };
@@ -111,28 +113,31 @@ export function detailWithAgenda(detail: DetalleDelChat, agenda: ReadonlyMap<str
  * (W4): sin red, los autores siguen con su nombre y no «Alguien».
  */
 export function useDetalleDelChat(chatId: string | null, jwt: string, base: BaseLocal | null, version: number | string = 0): DetalleDelChat | null {
-  const [detalle, setDetalle] = useState<DetalleDelChat | null>(() => (chatId ? vistos.get(chatId) ?? null : null));
+  // A shared channel's roles and pills depend on the space it is looked from (local E2E 11/11).
+  const viewing = useCurrentSpaceId();
+  const seenKey = chatId ? `${chatId}@${viewing ?? ''}` : null;
+  const [detalle, setDetalle] = useState<DetalleDelChat | null>(() => (seenKey ? vistos.get(seenKey) ?? null : null));
 
   useEffect(() => {
-    setDetalle(chatId ? vistos.get(chatId) ?? null : null);
-    if (!chatId) return;
+    setDetalle(seenKey ? vistos.get(seenKey) ?? null : null);
+    if (!chatId || !seenKey) return;
     let vigente = true;
     // Lo guardado primero (sin red es lo único que hay); la red, después.
     void base?.meta.get(claveGuardada(chatId)).then((fila) => {
-      if (vigente && fila?.valor && !vistos.has(chatId)) setDetalle(aDetalle(fila.valor as Respuesta));
+      if (vigente && fila?.valor && !vistos.has(seenKey)) setDetalle(aDetalle(fila.valor as Respuesta));
     });
     if (!jwt) return;
-    void api<Respuesta>(`/chats/${chatId}/detail`, { jwt }).then((respuesta) => {
+    void api<Respuesta>(chatDetailPath(chatId, viewing), { jwt }).then((respuesta) => {
       if (!respuesta.ok || !vigente) return;
       const nuevo = aDetalle(respuesta.data);
-      vistos.set(chatId, nuevo);
+      vistos.set(seenKey, nuevo);
       setDetalle(nuevo);
       void base?.meta.put({ clave: claveGuardada(chatId), valor: respuesta.data });
     });
     return () => {
       vigente = false;
     };
-  }, [chatId, jwt, base, version]);
+  }, [chatId, seenKey, viewing, jwt, base, version]);
 
   const agenda = useSyncExternalStore(subscribeAgendaNames, getAgendaNames, getAgendaNames);
   useEffect(() => {

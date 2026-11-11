@@ -68,7 +68,9 @@ export function PanelDeInfo(props: {
   const [choosingLevel, setChoosingLevel] = useState(false);
   const [tab, setTab] = useState<ChatDetailTab>(() => initialChatDetailTab(chat.kind));
   const isChannel = Boolean(chat.channel || detalle?.channel);
-  const channelDeletable = useChannelDeletable({ jwt: props.jwt, chatId: chat.id, workspaceId: chat.workspaceId, isChannel, isGeneral: Boolean(detalle?.channel?.general) });
+  // A list stamps the space it is looked from on the chat; a shared channel's owner comes with it or with the detail (local E2E 11/11).
+  const ownerSpaceId = chat.sharedFrom?.workspaceId ?? detalle?.channel?.ownerSpaceId ?? chat.workspaceId;
+  const channelDeletable = useChannelDeletable({ jwt: props.jwt, chatId: chat.id, workspaceId: ownerSpaceId, isChannel, isGeneral: Boolean(detalle?.channel?.general) });
   // José 30/10 night: in a client's channel a space admin decides what each member sees.
   const client = useClientOfChat(chat.id);
   const { spaces } = useMySpaces(props.jwt);
@@ -122,7 +124,7 @@ export function PanelDeInfo(props: {
             <span className="text-sm text-on-surface-variant">{NOTIFICATION_LEVEL_TEXT[level].title}</span>
           </button>
         ) : null}
-        {tab === 'settings' && chat.channel && chat.workspaceId ? <ShareChannelRow jwt={props.jwt} chatId={chat.id} channelName={chat.name ?? ''} ownerSpaceId={chat.workspaceId} spaces={spaces} isGeneral={Boolean(detalle?.channel?.general)} /> : null}
+        {tab === 'settings' && chat.channel && chat.workspaceId ? <ShareChannelRow jwt={props.jwt} chatId={chat.id} channelName={chat.name ?? ''} ownerSpaceId={ownerSpaceId} spaces={spaces} isGeneral={Boolean(detalle?.channel?.general)} /> : null}
         {tab === 'settings' && (chat.channel || detalle?.channel) ? <ChannelVisibilityRow chatId={chat.id} jwt={props.jwt} isPrivate={detalle?.channel ? detalle.channel.isPrivate : chat.channel?.visibility === 'private'} isAdmin={Boolean(detalle?.soyAdmin)} isGeneral={Boolean(detalle?.channel?.general)} onNotice={props.onAviso} /> : null}
         {tab === 'settings' && chat.kind !== 'notas' ? <RoutinesRow chatId={chat.id} jwt={props.jwt} isDirect={chat.kind === 'direct'} name={otherMember?.nombre ?? chat.name ?? ''} quietHours={detalle?.routines?.quietHours} contactNote={detalle?.routines?.contactNote} onNotice={props.onAviso} /> : null}
         {tab === 'settings' && chat.kind === 'direct' && otherMember ? <BlockContactRow jwt={props.jwt} personId={otherMember.id} name={otherMember.nombre} blockedByMe={detalle?.blockedByMe === true} onNotice={props.onAviso} /> : null}

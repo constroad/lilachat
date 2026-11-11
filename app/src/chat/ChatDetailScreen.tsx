@@ -1,13 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { Modal } from '../ui/Modal';
-import {
-  ArrowLeft,
-  Phone,
-  Search,
-  UserPlus,
-  Video,
-} from 'lucide-react-native';
+import { ArrowLeft, Phone, Search, UserPlus, Video } from 'lucide-react-native';
+import { getCurrentSpaceId } from '../spaces/currentSpace';
 import {
   accionesDeMiembro,
   nombreDeContacto,
@@ -17,7 +12,7 @@ import {
   type AccionDeMiembro,
   type NotificationLevel,
 } from '@lilachat/shared';
-import { chatDetailTabs, groupSubtitle, initialChatDetailTab, personOfMember, type ChatDetailTab, type ContactNote, type MemberPermissions, type QuietHours } from '@lilachat/shared';
+import { chatDetailPath, chatDetailTabs, groupSubtitle, initialChatDetailTab, personOfMember, type ChatDetailTab, type ContactNote, type MemberPermissions, type QuietHours } from '@lilachat/shared';
 import { DetailTabBar, RoundAction } from './DetailTabBar';
 import { EditarNombreDeGrupo } from './EditarNombreDeGrupo';
 import { elegirFotoDeGrupo, subirFotoDeGrupo } from './fotoDeGrupo';
@@ -204,7 +199,7 @@ export function ChatDetailScreen({
   const cargar = useCallback(async () => {
     setEstado({ fase: 'cargando' });
     try {
-      const respuesta = await fetch(`${BASE_URL}/api/chats/${chatId}/detail`, {
+      const respuesta = await fetch(`${BASE_URL}/api${chatDetailPath(chatId, getCurrentSpaceId())}`, {
         headers: { Authorization: `Bearer ${credential.jwt}` },
         signal: AbortSignal.timeout(10_000),
       });

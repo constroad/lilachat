@@ -2,7 +2,8 @@ import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Alert, Pressable, Text, ToastAndroid, useWindowDimensions, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
-import { ANIMATED_STICKER_PLAY_MS, formatClock, stickerIsAnimated, type DeliveryState } from '@lilachat/shared';
+import { ANIMATED_STICKER_PLAY_MS, formatClock, lottieUrlOf, stickerIsAnimated, type DeliveryState } from '@lilachat/shared';
+import { LottieStickerView, useLottieStop } from './LottieStickerView';
 import type { ChatMessage } from '../useChat';
 import { Avatar } from '../../ui/Avatar';
 import { AVATAR_DE_AUTOR } from '../burbuja';
@@ -90,19 +91,27 @@ export function StickerPair(props: Omit<StickerProps, 'item' | 'quote' | 'select
  */
 const StickerCell = memo(function StickerCell(props: { item: ChatMessage; mine: boolean; jwt: string; delivery: DeliveryState; starred: boolean; side: number; selecting: boolean; onSelect?: (seq: number) => void }) {
   const { item, mine } = props;
-  const animated = useAnimatedStop(item.media?.url, false, item.media?.animated === true);
+  // The pack plays as Lottie (José 11/11); my own animated stickers stay images.
+  const lottieUrl = lottieUrlOf(item.media?.url);
+  const animated = useAnimatedStop(lottieUrl ? undefined : item.media?.url, false, !lottieUrl && item.media?.animated === true);
+  const lottie = useLottieStop(Boolean(lottieUrl));
+  const stopped = lottie.stopped || animated.stopped;
   const showOptions = () => showStickerOptions(props.jwt, item, mine);
   return (
     <>
       <Pressable
-        onPress={() => (props.selecting ? props.onSelect?.(item.seq) : animated.stopped ? animated.replay() : showOptions())}
+        onPress={() => (props.selecting ? props.onSelect?.(item.seq) : stopped ? (lottie.stopped ? lottie.replay() : animated.replay()) : showOptions())}
         onLongPress={() => {
           void Haptics.selectionAsync();
           props.onSelect?.(item.seq);
         }}
         delayLongPress={350}
       >
-        <Image ref={animated.ref} source={{ uri: item.media?.url }} style={{ width: props.side, height: props.side }} contentFit="contain" recyclingKey={item.clientKey} transition={120} />
+        {lottieUrl ? (
+          <LottieStickerView ref={lottie.ref} lottieUrl={lottieUrl} webpUrl={item.media!.url!} side={props.side} />
+        ) : (
+          <Image ref={animated.ref} source={{ uri: item.media?.url }} style={{ width: props.side, height: props.side }} contentFit="contain" recyclingKey={item.clientKey} transition={120} />
+        )}
       </Pressable>
       <View className={`mt-0.5 rounded-full bg-black/35 px-1.5 py-0.5 ${mine ? 'self-end' : 'self-start'}`}>
         <MetaDeMensaje hora={formatClock(item.at)} mia={mine} entrega={props.delivery} id={String(item.seq)} sobreFoto destacado={props.starred} />

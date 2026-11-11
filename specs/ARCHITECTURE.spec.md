@@ -517,6 +517,42 @@ José: «no es posible eliminar un espacio, analízalo e impleméntalo».
 - Test: `server/src/workspaceDelete.test.ts`, `shared` (`workspaces.test.ts`) y
   `web/src/spaces/enterprise.test.tsx`.
 
+### 6.1-quater Stickers animados en Lottie, como Telegram (11/11/2026)
+
+José: «los stickers animados de Telegram son mejores y más animados, tratemos de
+replicarlo». Aprobó las librerías, un APK nuevo, stickers y guiños, arte
+deformable y la purga (11/11, «sí a los 4»).
+
+- **Por qué se veían peor**: el paquete `lila-mov` eran WebP a 12 fps de 170 a
+  370 KB (3,6 MB los 15). Telegram usa Lottie (TGS): vector, 60 fps, hasta 64 KB
+  comprimido.
+- **Fase 1, vector a 60 fps**:
+  - `shared/src/lottie/svgToLottie.ts` convierte el SVG de cada parte en formas
+    de Lottie. Lo valida `web/scripts/verify-lottie-parts.mts` contra el SVG
+    original en Chrome: 513 partes, la peor difiere 0,16 %.
+  - `shared/src/lottie/rigToLottie.ts` arma el personaje con su baile igual que
+    `render-animated-stickers.mts`: escenario, cuerpo entero sobre (120, 160) y
+    cada parte en su pivote. `smooth` (3t² − 2t³) es exacto como Bézier
+    (1/3, 0, 2/3, 1). El test compara cada parte con `danceAt` en los 15.
+  - Texto sin contornos de letra («10», «PARE»): Chrome lo dibuja una vez como
+    PNG y cuelga de su parte (`PartImage`).
+  - `web/scripts/render-lottie-stickers.mts` escribe
+    `web/public/stickers/lila-mov/<slug>.json`: 20 a 33 KB, 2 a 4 KB con gzip.
+    `--preview` arma una hoja de cuadros reproducidos por lottie-web.
+- **Fase 2, rebote y arrastre** (en `rigToLottie`): el cuerpo se estira en el
+  aire y se aplasta antes y después del salto, sobre los pies (120, 300). La
+  cabeza y la cola siguen al cuerpo con 3 cuadros de retraso, sin salto al
+  cerrar el bucle.
+- **Clientes**: `lottieUrlOf(url)` da el `.json` junto al `.webp`. La WebP queda
+  quieta debajo mientras carga y es el respaldo si falla.
+  - Web: `LottieSticker` con `lottie_light` en su propio chunk (48 KB gzip).
+  - APK: `LottieStickerView` con `lottie-react-native` ~7.3.8. Es nativo:
+    APK 0.1.182 (183) y otro runtime de OTA.
+  - Los dos se detienen a los 8 s como WhatsApp y se reanudan al tocarlos.
+  - Mis stickers animados propios (de un GIF) siguen como imagen.
+- **Pendiente**: fase 3 (arte deformable: formas que se doblan, no solo piezas
+  que giran) y fase 4 (los guiños en Lottie, con su sonido aparte).
+
 ### 6.2 Envío idempotente (server)
 
 ```ts

@@ -64,7 +64,8 @@ describe('a sticker in the web conversation', () => {
 
 /** Backlog 31: an animated sticker plays for a while and stops on a still frame; a click plays it again. */
 describe('an animated sticker on the web', () => {
-  const animated = () => sticker({ media: { url: 'https://lilachat.test/stickers/lila-mov/panda-hug.webp', mime: 'image/webp', width: 512, height: 512 } as MensajeEnPantalla['media'] });
+  // One of my own (made from a GIF, pending 37): the pack plays as Lottie since 11/11 (`LottieSticker.test.tsx`).
+  const animated = () => sticker({ media: { url: 'https://storage.test/mine-2026.webp', mime: 'image/webp', width: 512, height: 512, animated: true } as MensajeEnPantalla['media'] });
   const loaded = (image: HTMLElement, width: number) => {
     Object.defineProperty(image, 'complete', { configurable: true, value: true });
     Object.defineProperty(image, 'naturalWidth', { configurable: true, value: width });

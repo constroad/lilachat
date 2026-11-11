@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DANCES } from './winkDances.js';
 import { WINK_ART } from './winkArt.js';
-import { ANIMATED_STICKERS, ANIMATED_STICKER_FPS, animatedStickerFrames, danceAt, isAnimatedSticker, stickerIsAnimated } from './animatedStickers.js';
+import { ANIMATED_STICKERS, ANIMATED_STICKER_FPS, animatedStickerFrames, danceAt, isAnimatedSticker, lottieUrlOf, stickerIsAnimated } from './animatedStickers.js';
 import { STICKER_PACKS, findPackSticker } from './stickers.js';
 
 /** Backlog 31 (José, 21/10): stickers with movement, from the same characters and dances as the winks. */
@@ -65,5 +65,16 @@ describe('stickerIsAnimated', () => {
     expect(stickerIsAnimated({ url: 'https://storage.test/image-2026.webp', animated: true })).toBe(true);
     expect(stickerIsAnimated({ url: 'https://storage.test/image-2026.webp' })).toBe(false);
     expect(stickerIsAnimated(undefined)).toBe(false);
+  });
+});
+
+/** José 11/11 (like Telegram): the pack's stickers play as Lottie, the WebP stays as the fallback. */
+describe('lottieUrlOf', () => {
+  it('a sticker of the animated pack has its Lottie beside its WebP; anything else has none', () => {
+    expect(lottieUrlOf('https://lilachat.constroad.com/stickers/lila-mov/panda-hug.webp')).toBe('https://lilachat.constroad.com/stickers/lila-mov/panda-hug.json');
+    expect(lottieUrlOf('https://lilachat.constroad.com/stickers/lila-mov/panda-hug.webp?v=2')).toBe('https://lilachat.constroad.com/stickers/lila-mov/panda-hug.json?v=2');
+    expect(lottieUrlOf('https://lilachat.constroad.com/stickers/lila-1/ok.webp')).toBeNull();
+    expect(lottieUrlOf('https://storage.test/image-2026.webp')).toBeNull();
+    expect(lottieUrlOf(undefined)).toBeNull();
   });
 });

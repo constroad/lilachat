@@ -71,3 +71,15 @@ export function isAnimatedSticker(url: string | null | undefined): boolean {
 export function stickerIsAnimated(media: { url?: string | null; animated?: boolean } | null | undefined): boolean {
   return media?.animated === true || isAnimatedSticker(media?.url);
 }
+
+/**
+ * The Lottie of a sticker of the animated pack (José 11/11, like Telegram's):
+ * the same name beside its WebP, which stays as the fallback while it loads or
+ * where Lottie cannot play. My own animated stickers (from a GIF) have none.
+ */
+export function lottieUrlOf(url: string | null | undefined): string | null {
+  if (!url || !isAnimatedSticker(url)) return null;
+  const [path, query] = url.split('?');
+  if (!path!.endsWith('.webp')) return null;
+  return `${path!.slice(0, -'.webp'.length)}.json${query === undefined ? '' : `?${query}`}`;
+}

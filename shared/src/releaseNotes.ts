@@ -17,6 +17,17 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.182',
+    // Everyone: Lottie stickers, answering with a photo, GIF or wink, sharp GIFs, deleting a space.
+    audience: 'all',
+    items: [
+      'Los stickers animados se mueven más fluidos, saltan con rebote y pesan diez veces menos.',
+      'Puedes responder a un mensaje con una foto, un GIF o un guiño.',
+      'Los GIF se ven nítidos al elegirlos.',
+      'El dueño de un espacio puede eliminarlo desde Ajustes del espacio.',
+    ],
+  },
+  {
     version: '0.1.181',
     // Company spaces: the work map, Cubicar, the ⚡ and the photos of the plant forms.
     audience: 'spaces',

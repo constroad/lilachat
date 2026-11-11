@@ -44,6 +44,7 @@
     "expo-updates": "~57.0.26",
     "expo-video": "~57.0.3",
     "js-sha256": "^1.0.0",
+    "lottie-react-native": "~7.3.8",
     "lucide-react-native": "^1.33.0",
     "nativewind": "^4.2.6",
     "react": "19.2.3",

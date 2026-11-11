@@ -63,13 +63,8 @@ export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string
     setLogoUrl(undefined);
     props.onSaved(response.data.workspace);
   };
-  const newCode = () =>
-    Alert.alert('¿Cambiar el código?', 'El código actual deja de funcionar. Quienes ya están en el espacio siguen igual.', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Cambiar', onPress: () => void save({ newCode: true }) },
-    ]);
+  const newCode = () => Alert.alert('¿Cambiar el código?', 'El código actual deja de funcionar. Quienes ya están en el espacio siguen igual.', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Cambiar', onPress: () => void save({ newCode: true }) }]);
 
-  // One screen at a time: the confirmation replaces the settings.
   if (deleting) return <DeleteSpaceScreen space={space} jwt={props.jwt} onDeleted={() => props.onDeleted?.()} onClose={() => setDeleting(false)} />;
   return (
     <Modal visible animationType="slide" onRequestClose={props.onClose}>

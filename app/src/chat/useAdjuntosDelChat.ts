@@ -9,52 +9,59 @@ import type { NotaGrabada } from './useGrabadorDeVoz';
 import { reportarError } from '../ui/reportarError';
 import { newAlbumId } from '@lilachat/shared';
 
-/**
- * Lo que se adjunta en un chat (salió de `ChatScreen`): fotos de la galería o
- * la cámara —que pasan por la previsualización con pie (FL9b)—, archivos y
- * notas de voz. Todo termina en la cola persistida (`colaDeArchivos`).
- */
-export function useAdjuntosDelChat(params: {
+type AttachmentParams = {
   chatId: string;
-  onError: (texto: string) => void;
+  onError: (message: string) => void;
   /** The message being answered when the file goes (José 10/11), read at that moment. */
   target?: () => MessageTarget;
   /** The answer was used: the quote strip closes, like after a text. */
   onTargetSpent?: () => void;
-}) {
+};
+type QueuedFile = Omit<Parameters<typeof encolarArchivo>[0], 'chatId' | 'target'>;
+
+/**
+ * Photo, file or voice note to the PERSISTED queue (FL8): the bubble shows at
+ * once, like WhatsApp, and goes up when there is signal, even if the chat or
+ * the app closes; a refusal stays in sight as «No se envió».
+ */
+async function uploadToQueue(params: AttachmentParams, file: QueuedFile): Promise<void> {
+  params.onError('');
+  const target = params.target?.() ?? {};
+  try {
+    await encolarArchivo({ chatId: params.chatId, ...file, ...(target.replyToSeq || target.hiloDe ? { target } : {}) });
+    if (target.replyToSeq) params.onTargetSpent?.();
+  } catch (error) {
+    reportarError('encolarArchivo', error);
+    params.onError('No se pudo preparar el archivo para enviarlo.');
+  }
+}
+
+/**
+ * The gallery untouched (`quality: 1`, no editing): the queue shrinks each one
+ * when preparing it, except «HD» (José 19/10). Several at once, previewed with
+ * their captions before going (FL9b).
+ */
+async function pickGalleryMedia(): Promise<FotoElegida[]> {
+  const picked = await ImagePicker.launchImageLibraryAsync({ quality: 1, mediaTypes: ['images', 'videos'], allowsMultipleSelection: true, selectionLimit: MAXIMO_DE_FOTOS, orderedSelection: true });
+  return picked.canceled ? [] : (picked.assets ?? []);
+}
+
+/** Several documents at once (pending 112); each goes untouched, in the order chosen (the queue keeps it). */
+async function pickDocuments(): Promise<QueuedFile[]> {
+  const picked = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true, multiple: true });
+  return picked.canceled ? [] : documentsToSend(picked.assets);
+}
+
+/**
+ * What is attached in a chat (it came out of `ChatScreen`): photos from the
+ * gallery or the camera, which go through the preview with captions (FL9b),
+ * files and voice notes. Everything ends in the persisted queue.
+ */
+export function useChatAttachments(params: AttachmentParams) {
   /** Las fotos elegidas que se están por mandar; vacío = previsualización cerrada. */
   const [fotosElegidas, setFotosElegidas] = useState<FotoElegida[]>([]);
   const [camaraAbierta, setCamaraAbierta] = useState(false);
-
-  /**
-   * Foto, archivo o nota de voz: a la cola PERSISTIDA (FL8). La burbuja aparece
-   * al instante —como WhatsApp— y sube cuando hay red, aunque se salga del chat
-   * o se cierre la app; si el server la rechaza queda «No se envió» a la vista.
-   */
-  const upload = async (file: {
-    uri: string;
-    fileName: string;
-    mimeType: string;
-    sizeBytes: number;
-    durationMs?: number;
-    caption?: string;
-    width?: number;
-    height?: number;
-    onda?: number[];
-    /** Mandar como está, sin achicar (la foto con «HD», un documento). */
-    hd?: boolean;
-    albumId?: string;
-  }) => {
-    params.onError('');
-    const target = params.target?.() ?? {};
-    try {
-      await encolarArchivo({ chatId: params.chatId, ...file, ...(target.replyToSeq || target.hiloDe ? { target } : {}) });
-      if (target.replyToSeq) params.onTargetSpent?.();
-    } catch (error) {
-      reportarError('encolarArchivo', error);
-      params.onError('No se pudo preparar el archivo para enviarlo.');
-    }
-  };
+  const upload = (file: QueuedFile) => uploadToQueue(params, file);
 
   /**
    * La nota de voz pasa por el MISMO `upload` que una foto. Por un ref: el
@@ -84,21 +91,9 @@ export function useAdjuntosDelChat(params: {
     setCamaraAbierta(true);
   }
 
-
-
   const pickFromGallery = async () => {
-    const picked = await ImagePicker.launchImageLibraryAsync({
-      // `quality: 1` y sin edición: la original llega intacta a la cola, que la
-      // achica al prepararla (salvo «HD», José 19/10).
-      quality: 1,
-      mediaTypes: ['images', 'videos'],
-      // FL9b: varias a la vez, y antes de mandarlas se ven y llevan su pie.
-      allowsMultipleSelection: true,
-      selectionLimit: MAXIMO_DE_FOTOS,
-      orderedSelection: true,
-    });
-    if (picked.canceled || !picked.assets?.length) return;
-    setFotosElegidas(picked.assets);
+    const media = await pickGalleryMedia();
+    if (media.length) setFotosElegidas(media);
   };
 
   /**
@@ -114,10 +109,7 @@ export function useAdjuntosDelChat(params: {
   };
 
   const pickFile = async () => {
-    // Several at once (pending 112); each goes untouched, in the order chosen (the queue keeps it).
-    const picked = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true, multiple: true });
-    if (picked.canceled) return;
-    await Promise.all(documentsToSend(picked.assets).map((file) => upload(file)));
+    await Promise.all((await pickDocuments()).map((file) => upload(file)));
   };
 
   // Por un ref: `pickFromCamera` se rearma en cada render y el Composer es memo.

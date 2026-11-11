@@ -53,11 +53,8 @@ export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string
     setLogoUrl(undefined);
     props.onSaved(response.data.workspace);
   };
-  const newCode = () => {
-    if (window.confirm('¿Cambiar el código? El actual deja de funcionar; quienes ya están en el espacio siguen igual.')) void save({ newCode: true });
-  };
+  const newCode = () => window.confirm('¿Cambiar el código? El actual deja de funcionar; quienes ya están en el espacio siguen igual.') && void save({ newCode: true });
 
-  // One overlay at a time: two would both close on Escape.
   if (deleting) return <DeleteSpaceDialog space={space} jwt={props.jwt} onDeleted={() => props.onDeleted?.()} onClose={() => setDeleting(false)} />;
   return (
     <Overlay title="Ajustes del espacio" onClose={props.onClose} footer={
@@ -93,15 +90,21 @@ export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string
       <JoinSection code={code} approval={approval} busy={busy} onNewCode={newCode} onApproval={() => setApproval((before) => !before)} />
       <NoticesSection on={taskNotices} onToggle={() => setTaskNotices((before) => !before)} />
       <IntegrationsSection jwt={props.jwt} spaceId={space.id} onOpenApp={props.onOpenApp} />
-      {canDeleteSpace(space.role) ? (
-        <div className="mt-6 border-t border-outline/15 pt-4">
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-error">Zona de peligro</p>
-          <button type="button" data-testid="ajustes-eliminar-espacio" onClick={() => setDeleting(true)} className="mt-2 flex h-10 items-center gap-2 rounded-lg border border-error/40 px-3 text-sm font-semibold text-error hover:bg-error/10">
-            <Trash2 size={15} /> Eliminar espacio
-          </button>
-        </div>
-      ) : null}
+      <DangerZone space={space} onDelete={() => setDeleting(true)} />
     </Overlay>
+  );
+}
+
+/** Only for the owner (José 10/11). The confirmation takes the settings' place: two overlays would both close on Escape. */
+function DangerZone(props: { space: ClientWorkspace; onDelete: () => void }) {
+  if (!canDeleteSpace(props.space.role)) return null;
+  return (
+    <div className="mt-6 border-t border-outline/15 pt-4">
+      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-error">Zona de peligro</p>
+      <button type="button" data-testid="ajustes-eliminar-espacio" onClick={props.onDelete} className="mt-2 flex h-10 items-center gap-2 rounded-lg border border-error/40 px-3 text-sm font-semibold text-error hover:bg-error/10">
+        <Trash2 size={15} /> Eliminar espacio
+      </button>
+    </div>
   );
 }
 

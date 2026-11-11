@@ -35,8 +35,9 @@ export type ArchivoPendiente = {
   fallo?: string;
 };
 
-export type DatosDeSubida = Pick<ArchivoPendiente, 'archivo' | 'nombre' | 'chatId' | 'clientKey' | 'caption' | 'width' | 'height' | 'durationMs' | 'onda' | 'target'> & {
+export type DatosDeSubida = Pick<ArchivoPendiente, 'archivo' | 'nombre' | 'chatId' | 'clientKey' | 'caption' | 'width' | 'height' | 'durationMs' | 'onda'> & {
   albumId?: ArchivoPendiente['albumId'];
+  target?: ArchivoPendiente['target'];
   onProgreso: (razon: number) => void;
 };
 export type ResultadoDeSubida = { ok: true; mensaje?: ChatMessage } | { ok: false; message: string; reintentable: boolean };

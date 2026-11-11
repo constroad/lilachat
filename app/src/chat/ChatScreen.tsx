@@ -37,7 +37,7 @@ import { VisorDelChat } from './VisorDelChat';
 import { usePdfViewer } from './pdf/usePdfViewer';
 import { EncabezadoDelChat } from './EncabezadoDelChat';
 import { EnviarFotos } from './EnviarFotos';
-import { useAdjuntosDelChat } from './useAdjuntosDelChat';
+import { useChatAttachments } from './useAdjuntosDelChat';
 import { sinOcultos, useOcultos } from './ocultos';
 import { useDivisorNoLeidos } from './useDivisorNoLeidos';
 import { useMargenes } from '../ui/useMargenes';
@@ -194,7 +194,7 @@ export function ChatScreen({
   );
   const alAdjuntar = useCallback(() => setAttachOpen(true), []);
   const { fotosElegidas, cerrarFotos, alEnviarFotos, alCamara, alNotaDeVoz, pickFromGallery, pickMedia, pastePhoto, pickFile, camara } =
-    useAdjuntosDelChat({ chatId, onError: setMediaError, target: () => (respuesta.respondiendoA ? { replyToSeq: respuesta.respondiendoA.seq } : {}), onTargetSpent: respuesta.cancelarRespuesta });
+    useChatAttachments({ chatId, onError: setMediaError, target: () => (respuesta.respondiendoA ? { replyToSeq: respuesta.respondiendoA.seq } : {}), onTargetSpent: respuesta.cancelarRespuesta });
 
   const nombreVisible = infoPropia.name ?? chatName;
 

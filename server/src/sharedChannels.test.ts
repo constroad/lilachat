@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose, { Types } from 'mongoose';
 import request from 'supertest';
@@ -11,6 +11,9 @@ import { WorkspaceMemberModel, WorkspaceModel } from './workspaceModels.js';
 import { SharedChannelModel } from './sharedChannelModel.js';
 import { viewingSpacesOf } from './sharedChannels.js';
 import { signSession } from './sessions.js';
+import { avisarCambioDeChat } from './reparto.js';
+
+vi.mock('./reparto.js', async (original) => ({ ...(await original<typeof import('./reparto.js')>()), avisarCambioDeChat: vi.fn() }));
 
 /**
  * José 11/11 (via Portal): the «administración» channel of Inframaq shared with
@@ -158,6 +161,17 @@ describe('people of the other spaces', () => {
     await request(app).patch(`/api/workspaces/${spaces.constroad}/members/${anaRow!._id}`).set('Authorization', jwt('jose')).send({ status: 'deactivated' }).expect(200);
     ids = (await ChatModel.findById(channelId).lean())!.members.map((m) => String(m.userId));
     expect(ids).not.toContain(String(users.ana));
+  });
+
+  it('the receiving space leaves on its own: its people go out, and whoever stays hears the channel changed', async () => {
+    await api('jose').post(`/api/chats/${channelId}/members`, { userId: String(users.ana) });
+    vi.mocked(avisarCambioDeChat).mockClear();
+
+    await api('jose').delete(`/api/workspaces/${spaces.constroad}/channels/${channelId}/shares/${spaces.constroad}`).expect(200);
+
+    expect((await ChatModel.findById(channelId).lean())!.members.map((m) => String(m.userId))).not.toContain(String(users.ana));
+    expect(vi.mocked(avisarCambioDeChat)).toHaveBeenCalledWith(String(users.jose), String(channelId));
+    expect(vi.mocked(avisarCambioDeChat)).toHaveBeenCalledWith(String(users.marco), String(channelId));
   });
 
   it('end when the receiving space is deleted: its people leave and the channel is no longer shared', async () => {

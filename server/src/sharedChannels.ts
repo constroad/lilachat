@@ -155,6 +155,13 @@ export async function endShare(viewingId: string, actorId: Types.ObjectId, chatI
   await SharedChannelModel.updateOne({ _id: row._id }, { $set: { status: 'removed', removedBy: actorId } });
   await syncSharedFlag(row.chatId);
   await dropOutsiders(row.chatId);
+  await noticeWhoStays(row.chatId);
+}
+
+/** Whoever is still in the channel reads it again: it may leave or change section in one of their spaces. */
+async function noticeWhoStays(chatId: Types.ObjectId): Promise<void> {
+  const chat = await ChatModel.findById(chatId).select('members.userId').lean<Pick<Chat, 'members'> | null>();
+  for (const member of chat?.members ?? []) avisarCambioDeChat(String(member.userId), String(chatId));
 }
 
 /**
@@ -169,6 +176,7 @@ export async function endSharesOfDeletedSpace(workspaceId: Types.ObjectId, actor
   await Promise.all(chatIds.map(async (chatId) => {
     await syncSharedFlag(chatId);
     await dropOutsiders(chatId);
+    await noticeWhoStays(chatId);
   }));
 }
 

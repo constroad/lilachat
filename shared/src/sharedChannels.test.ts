@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { channelPeopleAsContacts, memberSpacePill, shareInvitesStore, shareRefusal, shareStatusFor, spacesWithAccess, type ShareInvite } from './sharedChannels.js';
+import { channelPeopleAsContacts, memberSpacePill, shareCardFor, shareInvitesStore, shareRefusal, shareStatusFor, spacesWithAccess, type ShareInvite } from './sharedChannels.js';
 import { spaceSections } from './spaceSections.js';
 
 /** José 11/11 (via Portal): a channel of one space shared with others, like Slack Connect. */
@@ -118,3 +118,25 @@ describe('shareInvitesStore', () => {
     expect(store.get().invites).toEqual([]);
   });
 });
+
+describe('shareCardFor', () => {
+  const spaces = [{ id: 'im', role: 'owner' as const }, { id: 'cr', role: 'admin' as const }, { id: 'gl', role: 'member' as const }];
+
+  it('from its own space, an admin shares it; never #general, never a plain member', () => {
+    expect(shareCardFor({ ownerSpaceId: 'im', viewingSpaceId: 'im', spaces, isGeneral: false })).toBe('share');
+    expect(shareCardFor({ ownerSpaceId: 'im', viewingSpaceId: 'im', spaces, isGeneral: true })).toBeNull();
+    expect(shareCardFor({ ownerSpaceId: 'gl', viewingSpaceId: 'gl', spaces, isGeneral: false })).toBeNull();
+  });
+
+  it('from the space that receives it, its admin stops receiving it; a plain member sees nothing', () => {
+    expect(shareCardFor({ ownerSpaceId: 'im', viewingSpaceId: 'cr', spaces, isGeneral: false })).toBe('leave');
+    expect(shareCardFor({ ownerSpaceId: 'im', viewingSpaceId: 'gl', spaces, isGeneral: false })).toBeNull();
+    expect(shareCardFor({ ownerSpaceId: 'im', viewingSpaceId: null, spaces, isGeneral: false })).toBeNull();
+  });
+
+  it('nothing while the spaces load or without an owner space', () => {
+    expect(shareCardFor({ ownerSpaceId: 'im', viewingSpaceId: 'im', spaces: null, isGeneral: false })).toBeNull();
+    expect(shareCardFor({ ownerSpaceId: undefined, viewingSpaceId: 'im', spaces, isGeneral: false })).toBeNull();
+  });
+});
+

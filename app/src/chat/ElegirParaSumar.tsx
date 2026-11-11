@@ -95,7 +95,7 @@ export function ElegirParaSumar({
             selected={[]}
             multiple={false}
             excluidos={yaEstan}
-            vacio={spaceId ? 'Todos los miembros del espacio ya están aquí.' : 'Todos tus contactos de Lilachat ya están en este grupo.'}
+            vacio={sharedChatId ? 'Ya están en el canal todas las personas de los espacios con acceso.' : spaceId ? 'Todos los miembros del espacio ya están aquí.' : 'Todos tus contactos de Lilachat ya están en este grupo.'}
             conInvitar={!spaceId}
             spaceId={spaceId}
             sharedChatId={sharedChatId}

@@ -15889,6 +15889,8 @@ Pedido de José, traído por la sesión de Portal: el canal «administración» 
 - Cualquier miembro del canal agrega gente de cualquiera de los espacios con acceso (`spaceIdsWithAccess` + `activeInAny` en `miembrosDelChat.ts`). Otro espacio cualquiera da 403.
 - Dejar de compartir (espacio dueño), cancelar una invitación o salir (espacio que recibe) saca del canal a quien solo tenía acceso por ese espacio (`dropOutsiders`). Las apps se quedan.
 - Desactivar a alguien en su espacio, o que salga del espacio, también lo saca de los canales compartidos hacia ese espacio. No queda suspendido ahí: si se lo reactiva, alguien tiene que volver a agregarlo.
+- El espacio que recibe puede dejar de verlo cuando quiera: su admin tiene «Dejar de ver este canal en <espacio>» en los ajustes del canal, con confirmación (web y app). Qué tarjeta va en los ajustes lo decide `shareCardFor` (puro): compartir para un admin del espacio dueño, dejar de verlo para un admin del espacio desde el que se mira, nada para el resto.
+- Cuando termina un compartido, quien sigue en el canal recibe `chat.changed` (`noticeWhoStays`): su lista lo saca de la sección o le quita la marca sin recargar.
 - Eliminar un espacio termina todo lo que compartía y todo lo que recibía (`endSharesOfDeletedSpace`, desde `workspaceDelete.ts`): no queda ninguna invitación esperando en otro espacio, y quien estaba en un canal solo por el espacio eliminado sale de él.
 
 **Lo que ve cada lado.**
@@ -15916,14 +15918,22 @@ Pedido de José, traído por la sesión de Portal: el canal «administración» 
 **Diseño.** Stitch, proyecto `15540754270713720465`, pantallas `sc-01` a `sc-05` en los tres dispositivos (ids en `design/stitch/registro.jsonl`). Al pasar a un proceso por dispositivo se cortó una generación en curso de `sc-02` móvil: puede haber una pantalla repetida sin id en el proyecto.
 
 **Tests.**
-- `server/src/sharedChannels.test.ts`: 9 pruebas de punta a punta sobre la API (compartir, aceptar, rechazos, personas, riel, avisos, salida, desactivación y espacio eliminado, el que recibe y el dueño).
+- `server/src/sharedChannels.test.ts`: 10 pruebas de punta a punta sobre la API (compartir, aceptar, rechazos, personas, riel, avisos, salida del dueño y del que recibe, desactivación y espacio eliminado, el que recibe y el dueño).
 - `shared/src/sharedChannels.test.ts`.
 - `web/src/spaces/SharedChannelsWeb.test.tsx`.
+
+**E2E en producción (11/11, web).** Con un espacio QA «Test 2» creado para la prueba y el canal #administracion del espacio Test:
+- «Compartir con otros espacios» lista tus 5 otros espacios; compartir con Test 2 respondió 201 y quedó «Compartido» al instante (eres dueño de los dos).
+- En Test 2 apareció la sección «TEST» con su logo y el ícono de enlace, con #administracion y el ícono en la fila.
+- El selector para agregar respondió 200 con la gente de los espacios con acceso (solo tú, ya en el canal).
+- Un mensaje enviado desde Test 2 llegó al canal y se borró con «Eliminar para todos».
+- Salió del E2E: «1 miembros» (ahora «1 miembro»), el texto vacío del selector decía «nadie más en Lilachat» (ahora lo propio del canal compartido) y el espacio que recibe no tenía cómo dejarlo (ahora sí).
 
 **Diferencias con los diseños, a propósito:**
 - `sc-03` y `sc-05` dibujan la pastilla del espacio también para la gente del espacio desde el que se mira. Acá solo la lleva quien viene de otro espacio: la del propio espacio no informa nada.
 - `sc-05` trae «Pueden ver los mensajes anteriores» y «Solo los administradores del canal pueden sumar». No se hicieron: no hay historial parcial en Lilachat, y la regla pedida es que cualquiera del canal agregue.
 - `sc-05` filtra el selector por espacio con chips (Todos / Inframaq / Constroad). Pendiente: hoy se busca por nombre o teléfono.
+- La invitación lleva la pastilla «PENDIENTE» y la nota «Los mensajes siguen siendo de X; Y puede dejar de verlo cuando quiera» de `sc-04`. La página central de `sc-04` (anfitrión, invitado, miembros) no se hizo: la tarjeta alcanza para decidir.
 - `sc-03` dibuja «Sincronizado en vivo», «Entregado a Inframaq» y un código de enlace del canal: leyendas que Stitch inventó, no se muestran.
 
 **Sin hacer en esta versión:**

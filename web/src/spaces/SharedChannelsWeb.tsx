@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { Link2 } from 'lucide-react';
-import { canManageMembers, shareInvitesStore, type ChannelShare, type ClientWorkspace } from '@lilachat/shared';
+import { Link2, Link2Off } from 'lucide-react';
+import { canManageMembers, memberCountLabel, shareCardFor, shareInvitesStore, type ChannelShare, type ClientWorkspace } from '@lilachat/shared';
 import { Overlay, PrimaryButton } from '../ui/Overlay';
 import { SpaceLogo } from './SpaceLogo';
+import { useCurrentSpaceId } from './currentSpace';
 import { answerShareInvite, channelShares, endChannelShare, shareChannel, shareInvites } from './spacesApi';
 
 /**
@@ -26,7 +27,10 @@ export function ShareInvitesCard(props: { jwt: string; space: ClientWorkspace; o
     <div className="space-y-2 px-3 pb-2">
       {invites.map((invite) => (
         <div key={invite.chatId} data-testid={`invitacion-canal-${invite.chatId}`} className="rounded-xl border border-outline/20 border-t-[3px] border-t-primary bg-surface p-3">
-          <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Invitación de {invite.from.name}</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-primary">Invitación de {invite.from.name}</p>
+            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${STATUS_PILL.pending.className}`}>{STATUS_PILL.pending.label}</span>
+          </div>
           <p className="mt-0.5 font-bold"># {invite.channelName}</p>
           <p className="mt-1 text-[13px] text-on-surface-variant">
             {invite.invitedBy ?? 'Alguien'} quiere compartir este canal con {props.space.name}. Si aceptas, entras al canal y puedes agregar a tu equipo.
@@ -35,6 +39,7 @@ export function ShareInvitesCard(props: { jwt: string; space: ClientWorkspace; o
             <button type="button" data-testid={`rechazar-canal-${invite.chatId}`} disabled={busy === invite.chatId} onClick={() => answer(invite.chatId, false)} className="h-9 rounded-lg border border-outline/30 px-3 text-sm font-semibold">Rechazar</button>
             <button type="button" data-testid={`aceptar-canal-${invite.chatId}`} disabled={busy === invite.chatId} onClick={() => answer(invite.chatId, true)} className="h-9 rounded-lg bg-primary px-3 text-sm font-semibold text-on-primary">Aceptar</button>
           </div>
+          <p className="mt-3 border-t border-outline/15 pt-2 text-[12px] text-on-surface-variant">Los mensajes siguen siendo de {invite.from.name}; {props.space.name} puede dejar de verlo cuando quiera.</p>
         </div>
       ))}
     </div>
@@ -90,7 +95,7 @@ export function ShareChannelDialog(props: { jwt: string; ownerSpaceId: string; c
               <SpaceLogo space={space} size={36} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">{space.name}</p>
-                {share ? <span className={`mt-0.5 inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${STATUS_PILL[share.status].className}`}>{STATUS_PILL[share.status].label}</span> : <p className="text-[12px] text-on-surface-variant">{space.members} miembros</p>}
+                {share ? <span className={`mt-0.5 inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${STATUS_PILL[share.status].className}`}>{STATUS_PILL[share.status].label}</span> : <p className="text-[12px] text-on-surface-variant">{memberCountLabel(space.members)}</p>}
                 {share?.status === 'pending' ? <p className="mt-1 text-[12px] text-on-surface-variant">Esperando que un admin de {space.name} lo acepte</p> : null}
               </div>
               {shares === null ? null : share ? (
@@ -115,8 +120,12 @@ export function ShareChannelDialog(props: { jwt: string; ownerSpaceId: string; c
 /** The settings row that opens it, for the owner space's admins on a channel that is not #general. */
 export function ShareChannelRow(props: { jwt: string; chatId: string; channelName: string; ownerSpaceId: string; spaces: readonly ClientWorkspace[] | null; isGeneral: boolean; sharedFrom: boolean }) {
   const [open, setOpen] = useState(false);
-  const owner = props.spaces?.find((space) => space.id === props.ownerSpaceId);
-  if (!owner || !canManageMembers(owner.role) || props.isGeneral || props.sharedFrom) return null;
+  const currentId = useCurrentSpaceId();
+  const viewingSpaceId = props.sharedFrom ? currentId : props.ownerSpaceId;
+  const card = shareCardFor({ ownerSpaceId: props.ownerSpaceId, viewingSpaceId, spaces: props.spaces, isGeneral: props.isGeneral });
+  const viewing = props.spaces?.find((space) => space.id === viewingSpaceId);
+  if (card === 'leave' && viewing) return <LeaveSharedChannelRow jwt={props.jwt} chatId={props.chatId} channelName={props.channelName} viewing={viewing} />;
+  if (card !== 'share') return null;
   return (
     <>
       <button type="button" data-testid="compartir-canal" onClick={() => setOpen(true)} className="flex min-h-[56px] w-full items-center gap-4 px-4 text-left hover:bg-background">
@@ -130,3 +139,36 @@ export function ShareChannelRow(props: { jwt: string; chatId: string; channelNam
     </>
   );
 }
+
+/**
+ * The receiving side of a share (design `sc-04`: «puede dejar de verlo cuando
+ * quiera»): an admin of the space it is seen from ends it for that space. Its
+ * people leave the channel; the messages stay with the owner.
+ */
+function LeaveSharedChannelRow(props: { jwt: string; chatId: string; channelName: string; viewing: ClientWorkspace }) {
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const leave = async () => {
+    const response = await endChannelShare(props.jwt, props.viewing.id, props.chatId, props.viewing.id);
+    if (response.ok) setConfirming(false);
+    else setError(response.message ?? 'No se pudo. Prueba de nuevo.');
+  };
+  return (
+    <>
+      <button type="button" data-testid="dejar-canal-compartido" onClick={() => setConfirming(true)} className="flex min-h-[56px] w-full items-center gap-4 px-4 text-left hover:bg-background">
+        <Link2Off size={20} className="text-error" />
+        <span className="min-w-0 flex-1">
+          <span className="block font-medium text-error">Dejar de ver este canal en {props.viewing.name}</span>
+          <span className="block text-[13px] text-on-surface-variant">Es un canal compartido: termina para todo el espacio</span>
+        </span>
+      </button>
+      {confirming ? (
+        <Overlay title={`Dejar de ver # ${props.channelName} en ${props.viewing.name}`} onClose={() => setConfirming(false)} footer={<PrimaryButton testId="confirmar-dejar-canal" onClick={() => void leave()}>Dejar de verlo</PrimaryButton>}>
+          <p className="text-sm text-on-surface-variant">Las personas de {props.viewing.name} salen del canal y deja de aparecer en su lista. Los mensajes siguen en el espacio que lo compartió.</p>
+          {error ? <p role="alert" className="mt-3 text-sm text-error">{error}</p> : null}
+        </Overlay>
+      ) : null}
+    </>
+  );
+}
+

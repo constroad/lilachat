@@ -159,13 +159,15 @@ export function ParticipantesDelChat(props: {
   );
 }
 
+const SHARED_CHANNEL_FULL = 'Ya están en el canal todas las personas de los espacios con acceso.';
+
 /** Pick who to add: the contacts with Lilachat that are not in yet (inside a space, its members). */
 function AddParticipant(props: { jwt: string; workspaceId?: string; sharedChatId?: string; yaEstan: ReadonlySet<string>; onElegir: (contact: Contact) => void; onCerrar: () => void }) {
   const groups = useAddCandidates(props.jwt, props.workspaceId, props.sharedChatId);
   const available = (groups ?? []).map((group) => ({ ...group, contacts: group.contacts.filter((one) => !props.yaEstan.has(one.id)) })).filter((group) => group.contacts.length);
   return (
     <Overlay title="Añadir participante" onClose={props.onCerrar}>
-      <ContactPicker groups={available} selected={[]} onToggle={(contact) => props.onElegir(contact)} loading={groups === null} multiple={false} />
+      <ContactPicker groups={available} selected={[]} onToggle={(contact) => props.onElegir(contact)} loading={groups === null} multiple={false} emptyText={props.sharedChatId ? SHARED_CHANNEL_FULL : undefined} />
     </Overlay>
   );
 }

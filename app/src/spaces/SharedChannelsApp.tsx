@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { Link2 } from 'lucide-react-native';
-import { canManageMembers, shareInvitesStore, type ChannelShare, type ClientWorkspace } from '@lilachat/shared';
+import { Link2, Link2Off } from 'lucide-react-native';
+import { memberCountLabel, shareCardFor, shareInvitesStore, type ChannelShare, type ClientWorkspace } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { Sheet } from '../ui/Sheet';
-import { useMySpaces } from './currentSpace';
+import { useCurrentSpaceId, useMySpaces } from './currentSpace';
 import { SpaceLogo } from './SpaceSwitcherSheet';
 import { answerShareInvite, channelShares, endChannelShare, shareChannel, shareInvites } from './spacesApi';
 
@@ -43,7 +43,10 @@ export function ShareInvitesCard(props: { jwt: string; space: ClientWorkspace; o
     <View className="gap-2 px-4 pb-2 pt-1">
       {invites.map((invite) => (
         <View key={invite.chatId} testID={`invitacion-canal-${invite.chatId}`} className="rounded-2xl border border-outline/20 border-t-[3px] border-t-primary bg-surface p-4">
-          <Text className="text-[11px] font-bold uppercase tracking-widest text-primary">{`Invitación de ${invite.from.name}`}</Text>
+          <View className="flex-row items-center justify-between gap-2">
+            <Text className="shrink text-[11px] font-bold uppercase tracking-widest text-primary">{`Invitación de ${invite.from.name}`}</Text>
+            <View className={`rounded-full border px-2 py-0.5 ${STATUS_PILL.pending.box}`}><Text className={`text-[10px] font-bold ${STATUS_PILL.pending.text}`}>{STATUS_PILL.pending.label}</Text></View>
+          </View>
           <Text className="mt-0.5 text-[16px] font-bold text-on-surface">{`# ${invite.channelName}`}</Text>
           <Text className="mt-1 text-[14px] text-on-surface-variant">{`${invite.invitedBy ?? 'Alguien'} quiere compartir este canal con ${props.space.name}. Si aceptas, entras al canal y puedes agregar a tu equipo.`}</Text>
           <View className="mt-3 flex-row justify-end gap-2">
@@ -54,6 +57,7 @@ export function ShareInvitesCard(props: { jwt: string; space: ClientWorkspace; o
               <Text className="text-[14px] font-bold text-on-primary">Aceptar</Text>
             </Pressable>
           </View>
+          <Text className="mt-3 border-t border-outline/15 pt-2 text-[13px] text-on-surface-variant">{`Los mensajes siguen siendo de ${invite.from.name}; ${props.space.name} puede dejar de verlo cuando quiera.`}</Text>
         </View>
       ))}
     </View>
@@ -70,8 +74,12 @@ export function ShareChannelCard(props: { jwt: string; chatId: string; channelNa
   const colors = useColores();
   const { spaces } = useMySpaces(props.jwt);
   const [open, setOpen] = useState(false);
+  const viewingSpaceId = useCurrentSpaceId() ?? props.ownerSpaceId ?? null;
+  const card = shareCardFor({ ownerSpaceId: props.ownerSpaceId, viewingSpaceId, spaces, isGeneral: props.isGeneral });
   const owner = spaces?.find((space) => space.id === props.ownerSpaceId);
-  if (!owner || !canManageMembers(owner.role) || props.isGeneral) return null;
+  const viewing = spaces?.find((space) => space.id === viewingSpaceId);
+  if (card === 'leave' && viewing) return <LeaveSharedChannelCard jwt={props.jwt} chatId={props.chatId} channelName={props.channelName} viewing={viewing} />;
+  if (card !== 'share' || !owner) return null;
   return (
     <>
       <Pressable testID="compartir-canal" onPress={() => setOpen(true)} className="mx-4 mt-3 min-h-[56px] flex-row items-center gap-3 rounded-2xl border border-outline/15 bg-surface px-4 py-3">
@@ -123,7 +131,7 @@ function ShareChannelSheet(props: { jwt: string; chatId: string; channelName: st
               {share ? (
                 <View className={`mt-1 self-start rounded-full border px-2 py-0.5 ${STATUS_PILL[share.status].box}`}><Text className={`text-[10px] font-bold ${STATUS_PILL[share.status].text}`}>{STATUS_PILL[share.status].label}</Text></View>
               ) : (
-                <Text className="text-[13px] text-on-surface-variant">{`${space.members} miembros`}</Text>
+                <Text className="text-[13px] text-on-surface-variant">{memberCountLabel(space.members)}</Text>
               )}
             </View>
             {shares === null ? null : (
@@ -143,6 +151,36 @@ function ShareChannelSheet(props: { jwt: string; chatId: string; channelName: st
       <Text className="mt-4 text-[13px] text-on-surface-variant">Solo ven el canal las personas agregadas. Cualquiera del canal puede agregar gente de los espacios conectados.</Text>
       <Pressable testID="listo-compartir" onPress={props.onClose} className="mt-4 min-h-[52px] items-center justify-center rounded-2xl bg-primary"><Text className="text-[16px] font-bold text-on-primary">Listo</Text></Pressable>
     </Sheet>
+  );
+}
+
+/** The receiving side (design `sc-04`): an admin of the space it is seen from stops receiving it. */
+function LeaveSharedChannelCard(props: { jwt: string; chatId: string; channelName: string; viewing: ClientWorkspace }) {
+  const colors = useColores();
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState('');
+  const leave = async () => {
+    const response = await endChannelShare(props.jwt, props.viewing.id, props.chatId, props.viewing.id);
+    if (response.ok) setConfirming(false);
+    else setError(response.message ?? 'No se pudo. Prueba de nuevo.');
+  };
+  return (
+    <>
+      <Pressable testID="dejar-canal-compartido" onPress={() => setConfirming(true)} className="mx-4 mt-3 min-h-[56px] flex-row items-center gap-3 rounded-2xl border border-outline/15 bg-surface px-4 py-3">
+        <Link2Off size={20} color={colors.error} />
+        <View className="flex-1">
+          <Text className="text-[15px] font-semibold text-error">{`Dejar de ver este canal en ${props.viewing.name}`}</Text>
+          <Text className="text-[13px] text-on-surface-variant">Es un canal compartido: termina para todo el espacio</Text>
+        </View>
+      </Pressable>
+      <Sheet visible={confirming} onClose={() => setConfirming(false)} testID="hoja-dejar-canal" className="px-4 pb-2 pt-1">
+        <Text className="text-[20px] font-bold text-on-surface">{`Dejar de ver # ${props.channelName} en ${props.viewing.name}`}</Text>
+        <Text className="mt-2 text-[15px] text-on-surface-variant">{`Las personas de ${props.viewing.name} salen del canal y deja de aparecer en su lista. Los mensajes siguen en el espacio que lo compartió.`}</Text>
+        {error ? <Text className="mt-3 text-[14px] text-error">{error}</Text> : null}
+        <Pressable testID="confirmar-dejar-canal" onPress={() => void leave()} className="mt-4 min-h-[56px] items-center justify-center rounded-2xl bg-error"><Text className="text-[16px] font-bold text-white">Dejar de verlo</Text></Pressable>
+        <Pressable onPress={() => setConfirming(false)} className="mt-2 min-h-[48px] items-center justify-center"><Text className="text-[15px] font-semibold text-on-surface">Cancelar</Text></Pressable>
+      </Sheet>
+    </>
   );
 }
 

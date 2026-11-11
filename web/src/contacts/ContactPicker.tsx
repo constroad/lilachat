@@ -17,12 +17,15 @@ export function ContactPicker({
   onToggle,
   loading,
   multiple,
+  emptyText,
 }: {
   groups: ContactGroup[];
   selected: Contact[];
   onToggle: (contact: Contact) => void;
   loading: boolean;
   multiple: boolean;
+  /** What an empty list says when the default («nadie más en Lilachat») is not true here. */
+  emptyText?: string;
 }) {
   const [query, setQuery] = useState('');
 
@@ -82,7 +85,7 @@ export function ContactPicker({
         <p className="py-6 text-center text-sm leading-5 text-on-surface-variant">
           {query
             ? 'Nadie coincide con lo que buscas.'
-            : 'Todavía no hay nadie más en Lilachat. Invita a alguien y aparecerá aquí.'}
+            : (emptyText ?? 'Todavía no hay nadie más en Lilachat. Invita a alguien y aparecerá aquí.')}
         </p>
       ) : (
         visibles.map((grupo) => (

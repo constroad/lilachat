@@ -43,6 +43,21 @@ export function memberSpacePill(member: { spaceId?: string; spaceName?: string }
   return member.spaceName;
 }
 
+/**
+ * Which card a channel's settings show: «Compartir con otros espacios» for an
+ * admin of its own space, «Dejar de ver este canal» for an admin of the space
+ * it is seen from (design `sc-04`: that space may leave whenever it wants), or none.
+ */
+export function shareCardFor(params: { ownerSpaceId?: string; viewingSpaceId: string | null; spaces: readonly { id: string; role: WorkspaceRole }[] | null; isGeneral: boolean }): 'share' | 'leave' | null {
+  if (!params.ownerSpaceId || !params.spaces) return null;
+  const isAdminOf = (spaceId: string | null) => {
+    const role = params.spaces?.find((space) => space.id === spaceId)?.role;
+    return Boolean(role && canManageMembers(role));
+  };
+  if (params.viewingSpaceId !== params.ownerSpaceId) return isAdminOf(params.viewingSpaceId) ? 'leave' : null;
+  return isAdminOf(params.ownerSpaceId) && !params.isGeneral ? 'share' : null;
+}
+
 /** Someone who can be added to a shared channel, with their space (`GET …/channels/:id/people`). */
 export type ChannelPerson = { userId: string; name?: string; phone: string; space: { id: string; name: string }; inChannel: boolean };
 

@@ -106,6 +106,7 @@ export function PanelDeInfo(props: {
             workspaceId={chat.workspaceId}
             sharedChatId={chat.channel?.shared || chat.sharedFrom ? chat.id : undefined}
             miembros={info.miembros}
+            memberSpaces={detalle?.memberSpaces}
             appIds={appIds}
             puedeAgregar={info.puedeAgregar}
             hasHistory={chat.lastSeq > 0}
@@ -124,7 +125,7 @@ export function PanelDeInfo(props: {
             <span className="text-sm text-on-surface-variant">{NOTIFICATION_LEVEL_TEXT[level].title}</span>
           </button>
         ) : null}
-        {tab === 'settings' && chat.channel && chat.workspaceId ? <ShareChannelRow jwt={props.jwt} chatId={chat.id} channelName={chat.name ?? ''} ownerSpaceId={ownerSpaceId} spaces={spaces} isGeneral={Boolean(detalle?.channel?.general)} /> : null}
+        {tab === 'settings' && chat.channel && chat.workspaceId ? <ShareChannelRow jwt={props.jwt} chatId={chat.id} channelName={chat.name ?? ''} ownerSpaceId={ownerSpaceId ?? chat.workspaceId} spaces={spaces} isGeneral={Boolean(detalle?.channel?.general)} /> : null}
         {tab === 'settings' && (chat.channel || detalle?.channel) ? <ChannelVisibilityRow chatId={chat.id} jwt={props.jwt} isPrivate={detalle?.channel ? detalle.channel.isPrivate : chat.channel?.visibility === 'private'} isAdmin={Boolean(detalle?.soyAdmin)} isGeneral={Boolean(detalle?.channel?.general)} onNotice={props.onAviso} /> : null}
         {tab === 'settings' && chat.kind !== 'notas' ? <RoutinesRow chatId={chat.id} jwt={props.jwt} isDirect={chat.kind === 'direct'} name={otherMember?.nombre ?? chat.name ?? ''} quietHours={detalle?.routines?.quietHours} contactNote={detalle?.routines?.contactNote} onNotice={props.onAviso} /> : null}
         {tab === 'settings' && chat.kind === 'direct' && otherMember ? <BlockContactRow jwt={props.jwt} personId={otherMember.id} name={otherMember.nombre} blockedByMe={detalle?.blockedByMe === true} onNotice={props.onAviso} /> : null}

@@ -25,6 +25,8 @@ export function ParticipantesDelChat(props: {
   /** José 11/11: a channel shared with other spaces offers their people too. */
   sharedChatId?: string;
   miembros: MiembroEnInfo[];
+  /** In a shared channel, the space of whoever comes from another one. */
+  memberSpaces?: ReadonlyMap<string, string>;
   /** The installed apps among them (pending 91). */
   appIds: ReadonlySet<string>;
   puedeAgregar: boolean;
@@ -67,7 +69,7 @@ export function ParticipantesDelChat(props: {
               {miembro.telefono && !miembro.esYo ? <span className="block text-xs text-on-surface-variant">{miembro.telefono}</span> : null}
             </span>
           </MemberTap>
-          {miembro.espacio ? <span title="De otro espacio" className="max-w-[40%] shrink-0 truncate rounded-full border border-outline/30 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">{miembro.espacio}</span> : null}
+          {props.memberSpaces?.has(miembro.id) ? <span title="De otro espacio" className="max-w-[40%] shrink-0 truncate rounded-full border border-outline/30 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-on-surface-variant">{props.memberSpaces.get(miembro.id)}</span> : null}
           {miembro.rol === 'admin' ? <span className="shrink-0 rounded-full border border-primary/30 bg-primary/[0.08] px-2.5 py-0.5 text-[11px] font-semibold text-primary">Admin del grupo</span> : null}
           {miembro.acciones.length ? (
             <DropdownMenu.Root modal={false}>

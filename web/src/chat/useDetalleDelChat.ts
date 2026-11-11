@@ -6,11 +6,13 @@ import { useCurrentSpaceId } from '../spaces/currentSpace';
 import type { BaseLocal } from '../local/baseLocal';
 
 /** Un miembro como lo pinta la web: el nombre ya resuelto. */
-export type MiembroDelChat = { id: string; nombre: string; foto?: string; telefono?: string; rol: 'admin' | 'member'; esYo: boolean; /** In a shared channel, the space of someone who is not in the one looked from. */ espacio?: string };
+export type MiembroDelChat = { id: string; nombre: string; foto?: string; telefono?: string; rol: 'admin' | 'member'; esYo: boolean };
 export type DetalleDelChat = {
   miembros: Map<string, MiembroDelChat>;
   /** Each member's pill: in a company space, the job title and the role there (design s-01). */
   pills: Map<string, MemberPill>;
+  /** José 11/11: in a shared channel, the space of whoever is not in the one looked from, for their pill. */
+  memberSpaces?: ReadonlyMap<string, string>;
   soyAdmin: boolean;
   secreto: boolean;
   /** Para el panel de info (W3b): MI silenciado, la foto y el nombre propio del chat. */
@@ -59,7 +61,10 @@ const vistos = new Map<string, DetalleDelChat>();
 export function aDetalle(respuesta: Respuesta): DetalleDelChat {
   const miembros = new Map<string, MiembroDelChat>();
   const pills = new Map<string, MemberPill>();
+  const memberSpaces = new Map<string, string>();
   for (const uno of respuesta.members) {
+    const home = otherSpaceName(uno);
+    if (home) memberSpaces.set(uno.id, home);
     // José 11/11: someone from another space than the channel's owner shows that space as their pill.
     pills.set(uno.id, { role: uno.app ? 'app' : (uno.spaceRole ?? uno.role ?? 'member'), title: uno.title ?? (!uno.spaceRole && uno.space ? uno.space.name : undefined) });
     miembros.set(uno.id, {
@@ -70,12 +75,12 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
       telefono: uno.phone ?? undefined,
       rol: uno.role ?? 'member',
       esYo: uno.esYo === true,
-      ...(otherSpaceName(uno) ? { espacio: otherSpaceName(uno)! } : {}),
     });
   }
   return {
     miembros,
     pills,
+    memberSpaces,
     soyAdmin: respuesta.members.some((uno) => uno.esYo && uno.role === 'admin'),
     secreto: respuesta.encrypted === true,
     silenciado: respuesta.muted === true,

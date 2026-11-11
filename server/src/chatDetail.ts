@@ -46,6 +46,20 @@ async function homesOf(chat: Pick<Chat, '_id' | 'workspaceId' | 'channel'>, user
   return new Map([...viewing].flatMap(([userId, spaceId]) => (names.has(spaceId) ? [[userId, { id: spaceId, name: names.get(spaceId)! }] as const] : [])));
 }
 
+/**
+ * The space side of the detail. In a company space the pill says the job title
+ * and the space role (design s-01), not the chat's; in a shared channel each
+ * person also carries the space they come from (José 11/11).
+ */
+async function spaceSideOf(chat: Pick<Chat, '_id' | 'workspaceId' | 'channel'>, ids: Types.ObjectId[], viewingSpaceId?: string) {
+  const from = await lookingFrom(chat, viewingSpaceId);
+  const spaceMembers = from ? await WorkspaceMemberModel.find({ workspaceId: from, userId: { $in: ids } }).select('userId title role status').lean() : [];
+  const spaceMemberById = new Map(spaceMembers.map((member) => [String(member.userId), member]));
+  const activeHere = new Set(spaceMembers.filter((member) => member.status === 'active').map((member) => String(member.userId)));
+  const homes = chat.channel?.shared ? await homesOf(chat, ids.map(String), { id: from, members: activeHere }) : null;
+  return { spaceMemberById, homes };
+}
+
 export async function chatDetail(chatId: string, userId: Types.ObjectId, viewingSpaceId?: string) {
   // Membership first: without it, the gap between «does not exist» and «not
   // allowed» would let anyone probe for other people's chats.
@@ -57,13 +71,7 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId, viewing
     .select('name phone avatarUrl app')
     .lean<{ _id: unknown; name?: string; phone: string; avatarUrl?: string; app?: unknown }[]>();
   const personById = new Map(people.map((person) => [String(person._id), person]));
-  // In a company space the pill says the job title and the space role (design s-01), not the chat's.
-  const from = await lookingFrom(chat, viewingSpaceId);
-  const spaceMembers = from ? await WorkspaceMemberModel.find({ workspaceId: from, userId: { $in: ids } }).select('userId title role status').lean() : [];
-  const spaceMemberById = new Map(spaceMembers.map((member) => [String(member.userId), member]));
-  // José 11/11: in a shared channel each person carries the space they come from, for their pill.
-  const activeHere = new Set(spaceMembers.filter((member) => member.status === 'active').map((member) => String(member.userId)));
-  const homes = chat.channel?.shared ? await homesOf(chat, ids.map(String), { id: from, members: activeHere }) : null;
+  const { spaceMemberById, homes } = await spaceSideOf(chat, ids, viewingSpaceId);
   // In a 1:1 the photo IS the other person's profile photo (FL9), as in the list.
   const other = chat.kind === 'direct' ? people.find((person) => String(person._id) !== String(userId)) : undefined;
   const photo = chat.avatarUrl ?? other?.avatarUrl;

@@ -26,6 +26,7 @@ import { loadPerfil } from '../api';
 import { lazyChunk } from '../ui/lazyChunk';
 import { EmojiSuggestions } from './emojiShortcode/EmojiSuggestions';
 import { useEmojiShortcode } from './emojiShortcode/useEmojiShortcode';
+import type { TypedCaption } from './EnviarArchivos';
 
 /**
  * La barra de escritura del diseño: «+» suelto a la izquierda, el campo con
@@ -100,7 +101,7 @@ function ComposerField({
   onCreateReminder?: () => void;
   onCreateChecklist?: () => void;
   /** Las fotos o archivos elegidos (o pegados). Quien recibe esto muestra la vista previa y sube. */
-  onElegirArchivos: (files: File[]) => void;
+  onElegirArchivos: (files: File[], typed?: TypedCaption) => void;
 }) {
   const [text, setText] = useState(() => readDraft(chatId));
   // Saved as it is typed, since a reload runs no cleanup. The text of a message being edited is not a draft.
@@ -326,7 +327,16 @@ function ComposerField({
             const pegados = [...event.clipboardData.files];
             if (pegados.length === 0) return;
             event.preventDefault();
-            onElegirArchivos(pegados);
+            const typed = text.trim()
+              ? {
+                  text,
+                  consume: () => {
+                    setText('');
+                    menciones.limpiar();
+                  },
+                }
+              : undefined;
+            onElegirArchivos(pegados, typed);
           }}
           onKeyDown={(event) => {
             if (commands?.onKey(event, pickCommand)) return;

@@ -6,7 +6,7 @@ import { AlertCircle, BellRing, CalendarDays, Check, CheckCheck, ChevronRight, C
 import { Overlay } from '../ui/Overlay';
 import { RecordatorioEnElChat } from './tarjetas/RecordatorioEnElChat';
 import { colorDeAutor, esAvisoDestacado, type DeliveryState, formatClock, primerEnlace, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
-import { isAnimatedImage, isHiddenNotice, sharedByLine } from '@lilachat/shared';
+import { isAnimatedImage, isHiddenNotice, sharedByLine, threadQuoteLine } from '@lilachat/shared';
 import { GifInBubble } from './gifs/GifInBubble';
 import { TarjetaDeEnlace } from './TarjetaDeEnlace';
 import { NotaDeVoz } from './NotaDeVoz';
@@ -210,18 +210,20 @@ function AuthorTap(props: { onTap?: () => void; testId: string; label: string; c
  * and a click opens the thread. Inside the thread panel it does not show.
  */
 function ThreadQuote({ root, mine, compact = false }: { root: number; mine: boolean; /** Slack format: one line, «↳ Respondió en un hilo», not a block that grows the row (José 25/10). */ compact?: boolean }) {
-  const { citado, nombres, onAbrirHilo, inThread } = useConversacion();
+  const { citado, nombres, onAbrirHilo, inThread, yo } = useConversacion();
   if (inThread) return null;
+  const rootMessage = citado(root);
+  const preview = rootMessage?.deletedAt ? 'Se eliminó este mensaje' : rootMessage?.body ?? (rootMessage?.media ? 'Archivo' : 'Mensaje anterior');
   if (compact) {
+    // One line, now with the message it answered (José 11/11).
+    const line = threadQuoteLine(rootMessage ? { author: nombres.get(rootMessage.senderId), preview, mine: rootMessage.senderId === yo } : {});
     return (
       <button type="button" data-testid={`cita-hilo-${root}`} onClick={() => onAbrirHilo?.(root)} className="mb-0.5 flex max-w-full items-center gap-1 truncate text-left text-[12px] text-on-surface-variant hover:underline">
         <CornerDownRight size={13} className="shrink-0" />
-        <span className="truncate">Respondió en un hilo</span>
+        <span className="truncate">{line}</span>
       </button>
     );
   }
-  const rootMessage = citado(root);
-  const preview = rootMessage?.deletedAt ? 'Se eliminó este mensaje' : rootMessage?.body ?? (rootMessage?.media ? 'Archivo' : 'Mensaje anterior');
   return (
     <button type="button" data-testid={`cita-hilo-${root}`} onClick={() => onAbrirHilo?.(root)} className={`mb-1 block w-full rounded-lg border-l-4 px-2 py-1 text-left text-[13px] ${mine ? 'border-on-primary/60 bg-black/10' : 'border-primary bg-background'}`}>
       <span className="block text-[11px] opacity-80">Respondió en un hilo</span>

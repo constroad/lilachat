@@ -60,3 +60,19 @@ export function aplicarResumenDeHilo<M extends { seq: number; hilo?: ResumenDeHi
   if (indice === -1) return mensajes;
   return mensajes.map((mensaje, i) => (i === indice ? { ...mensaje, hilo } : mensaje));
 }
+
+/** How much of the original a one-line thread quote shows. */
+export const THREAD_QUOTE_MAX = 80;
+
+/**
+ * The one line a thread reply sent to the chat carries (Slack format, José
+ * 25/10), now naming the message it answered (José 11/11: «solo dice se
+ * respondió en un hilo, no cuál fue el mensaje original»).
+ */
+export function threadQuoteLine(original: { author?: string | null; preview?: string | null; mine?: boolean }): string {
+  const preview = (original.preview ?? '').replace(/\s+/g, ' ').trim();
+  if (!preview) return 'Respondió en un hilo';
+  const short = preview.length > THREAD_QUOTE_MAX ? `${preview.slice(0, THREAD_QUOTE_MAX).trimEnd()}…` : preview;
+  if (original.mine) return `Respondió en tu hilo: ${short}`;
+  return original.author ? `Respondió en el hilo de ${original.author}: ${short}` : `Respondió en un hilo: ${short}`;
+}

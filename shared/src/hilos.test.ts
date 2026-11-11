@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aplicarResumenDeHilo, hayRespuestasNuevas, canOpenThread, respuestasDelHilo, textoDelChipDeHilo, visibleEnElChat, replyOpensThread } from './hilos.js';
+import { aplicarResumenDeHilo, hayRespuestasNuevas, canOpenThread, respuestasDelHilo, textoDelChipDeHilo, visibleEnElChat, replyOpensThread, threadQuoteLine, THREAD_QUOTE_MAX } from './hilos.js';
 
 /** E3 (20/10): hilos. */
 describe('visibleEnElChat', () => {
@@ -89,5 +89,32 @@ describe('replyOpensThread (pending 110, José 28/10)', () => {
     expect(replyOpensThread({ flat: true, message: { ...message, deletedAt: '2026-10-28T10:00:00Z' } })).toBe(false);
     expect(replyOpensThread({ flat: true, message: { ...message, seq: null } })).toBe(false);
     expect(replyOpensThread({ flat: true, message: { ...message, cifrado: true } })).toBe(false);
+  });
+});
+
+/** José 11/11: a thread reply sent to the chat said only «Respondió en un hilo», not which message it answered. */
+describe('threadQuoteLine', () => {
+  it('names the original message and its author, in one line', () => {
+    expect(threadQuoteLine({ author: 'Ana', preview: '¿Llegó el cemento?' })).toBe('Respondió en el hilo de Ana: ¿Llegó el cemento?');
+  });
+
+  it('my own message reads «tu hilo»', () => {
+    expect(threadQuoteLine({ author: 'Tú', mine: true, preview: 'Ya salió el volquete' })).toBe('Respondió en tu hilo: Ya salió el volquete');
+  });
+
+  it('without an author it still shows the message', () => {
+    expect(threadQuoteLine({ preview: 'Foto' })).toBe('Respondió en un hilo: Foto');
+  });
+
+  it('without the original loaded it says only that it is a thread reply', () => {
+    expect(threadQuoteLine({ author: 'Ana' })).toBe('Respondió en un hilo');
+    expect(threadQuoteLine({ author: 'Ana', preview: '   ' })).toBe('Respondió en un hilo');
+  });
+
+  it('keeps a long or multi-line original on one short line', () => {
+    const line = threadQuoteLine({ author: 'Ana', preview: `primera línea\nsegunda ${'x'.repeat(200)}` });
+    expect(line).not.toContain('\n');
+    expect(line.length).toBeLessThanOrEqual(THREAD_QUOTE_MAX + 'Respondió en el hilo de Ana: '.length + 1);
+    expect(line.endsWith('…')).toBe(true);
   });
 });

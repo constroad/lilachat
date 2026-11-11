@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { aplicarMensajeALista, marcarLeido, newlyAddedSpaces, railSpaces, welcomeGate, withLiveUnread, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember, type DirectoryApp } from '@lilachat/shared';
 import { api } from '../api';
 import type { ChatMessage, ChatSummary } from '../chat/types';
-import { forgetMySpaces, setCurrentSpaceId, useCurrentSpaceId, useMySpaces } from './currentSpace';
+import { forgetMySpaces, keepLiveUnread, setCurrentSpaceId, useCurrentSpaceId, useMySpaces } from './currentSpace';
 import { chatOfChannel, createSpaceChat, spaceActivity, spaceChats } from './spacesApi';
 import { markSpacesSeen, readSeenSpaces } from './seenSpaces';
 import { fetchSpaceChats, forgetAllSpaces, forgetSpace, isSpaceChat, membersChanged, prefetchSpace, rememberMyRead, setSpaceCacheDisk, spaceChatsCache, useCached } from './spaceCache';
@@ -160,6 +160,18 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
   useEffect(() => {
     if (selectedInSpace && spaceId && params.selectedChatId) spaceChatsCache.patch(`${spaceId}:chats`, (current) => ({ ...current, chats: marcarLeido(current.chats, params.selectedChatId!) }));
   }, [params.selectedChatId, selectedInSpace, spaceId]);
+
+  // What the open space's list shows is its rail count, also after leaving it (José 11/11).
+  useEffect(() => {
+    if (spaceId && chats) keepLiveUnread(spaceId, chats, myUserId);
+  }, [spaces, spaceId, chats, myUserId]);
+  // Switching spaces asks the server again: reads made elsewhere reach the other badges. Not on the first load.
+  const shownSpace = useRef(spaceId);
+  useEffect(() => {
+    if (shownSpace.current === spaceId) return;
+    shownSpace.current = spaceId;
+    reloadRailSoon();
+  }, [spaceId, reloadRailSoon]);
 
   const enter = useCallback(async (next: string | null) => {
     setDialog(null);

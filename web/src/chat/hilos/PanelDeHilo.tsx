@@ -13,6 +13,7 @@ import type { ChatSummary, MensajeEnPantalla } from '../types';
 import { SugerenciasDeMencion, type Mencionable } from '../SugerenciasDeMencion';
 import { useMencionesDelCampo } from '../useMencionesDelCampo';
 import { lazyChunk } from '../../ui/lazyChunk';
+import type { TypedCaption } from '../EnviarArchivos';
 
 const EmojiStickerPanel = lazyChunk(() => import('../stickers/EmojiStickerPanel'));
 
@@ -47,7 +48,7 @@ export function PanelDeHilo(props: {
   stickers?: Omit<StickerChat, 'thread' | 'onSent'>;
   onCerrar: () => void;
   /** Photos, videos and files into the thread (José 10/11: pasting a screenshot did nothing). The chat's preview opens. */
-  onFiles?: (files: File[], alsoInChat: boolean) => void;
+  onFiles?: (files: File[], alsoInChat: boolean, typed?: TypedCaption) => void;
 }) {
   const clave = `${props.chat.id}:${props.raiz.seq}`;
   const [texto, setTexto] = useState(() => borradores.get(clave) ?? '');
@@ -241,7 +242,12 @@ export function PanelDeHilo(props: {
               const pasted = [...evento.clipboardData.files];
               if (!pasted.length || !props.onFiles || editing) return;
               evento.preventDefault();
-              props.onFiles(pasted, enElChat);
+              // What was typed becomes the caption, and leaves the field only if it is sent (José 11/11).
+              const consume = () => {
+                setTexto('');
+                borradores.set(clave, '');
+              };
+              props.onFiles(pasted, enElChat, texto.trim() ? { text: texto, consume } : undefined);
             }}
             onKeyDown={(evento) => {
               if (!editing && menciones.alTeclear(evento, chooseMention)) return;

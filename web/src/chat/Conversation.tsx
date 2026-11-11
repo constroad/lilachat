@@ -15,6 +15,7 @@ import { AppCommandsBar, AppConversationHeader, type AppConversationTab } from '
 import { AppDetail } from '../spaces/apps/AppDetail';
 import type { SpaceApps } from '../spaces/apps/useSpaceApps';
 import type { Mencionable } from './SugerenciasDeMencion';
+import type { TypedCaption } from './EnviarArchivos';
 import type { NotaDeVozGrabada } from './useGrabadoraDeVoz';
 import { ListaDeMensajes } from './ListaDeMensajes';
 import { useWithoutDisappeared } from './useWithoutDisappeared';
@@ -82,7 +83,7 @@ export function Conversation(props: {
   onCreateChecklist?: () => void;
   /** Editar uno desde su tarjeta (W3c). */
   onEditReminder?: (recordatorio: AgendaReminder) => void;
-  onElegirArchivos: (files: File[]) => void;
+  onElegirArchivos: (files: File[], typed?: TypedCaption) => void;
   /** La franja del mensaje fijado (19/10), bajo la cabecera. */
   franja?: ReactNode;
   /** The cards queued over the writing bar (backlog 36). */

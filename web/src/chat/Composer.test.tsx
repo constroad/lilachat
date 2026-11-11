@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Composer } from './Composer';
@@ -141,5 +141,37 @@ describe('Composer: «:hug» and the focus (José, 30/10)', () => {
     window.matchMedia = vi.fn().mockReturnValue({ matches: true }) as unknown as typeof window.matchMedia;
     render(composer({ chatId: 'general' }));
     expect(document.activeElement).toBe(field());
+  });
+});
+
+describe('Composer: pasting a picture takes what was typed (José 11/11)', () => {
+  beforeEach(() => localStorage.clear());
+
+  const paste = (file: File) => fireEvent.paste(field(), { clipboardData: { files: [file], getData: () => '' } });
+
+  it('hands the typed text to the preview, and empties the field only once it is used', async () => {
+    const user = userEvent.setup();
+    const onFiles = vi.fn();
+    render(composer({ chatId: 'general', onElegirArchivos: onFiles }));
+    await user.type(field(), 'comprobante de hoy');
+    const shot = new File(['png'], 'captura.png', { type: 'image/png' });
+
+    paste(shot);
+
+    expect(onFiles).toHaveBeenCalledWith([shot], expect.objectContaining({ text: 'comprobante de hoy' }));
+    expect(field().value).toBe('comprobante de hoy');
+    const typed = onFiles.mock.calls[0]![1] as { consume: () => void };
+    act(() => typed.consume());
+    expect(field().value).toBe('');
+  });
+
+  it('with an empty field there is no text to hand over', () => {
+    const onFiles = vi.fn();
+    render(composer({ chatId: 'general', onElegirArchivos: onFiles }));
+    const shot = new File(['png'], 'captura.png', { type: 'image/png' });
+
+    paste(shot);
+
+    expect(onFiles).toHaveBeenCalledWith([shot], undefined);
   });
 });

@@ -1,5 +1,6 @@
 import { Pressable, Text } from 'react-native';
 import { CornerDownRight } from 'lucide-react-native';
+import { threadQuoteLine } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import type { Citado } from './filasDelChat';
 
@@ -28,7 +29,7 @@ export function CitaDeRespuesta({
     return (
       <Pressable testID={testID} onPress={onPress} disabled={!onPress} accessibilityRole={onPress ? 'button' : undefined} accessibilityHint={onPress ? 'Abrir el hilo' : undefined} className="mt-0.5 min-h-[24px] flex-row items-center gap-1 self-start">
         <CornerDownRight size={13} color={colores['on-surface-variant']} />
-        <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>Respondió en un hilo</Text>
+        <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>{threadQuoteLine({ author: citado.autor, preview: citado.texto, mine: citado.autor === 'Tú' })}</Text>
       </Pressable>
     );
   }

@@ -1,7 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { FileText, X } from 'lucide-react';
 import { formatBytes, validateMedia } from '@lilachat/shared';
 import { Overlay, PrimaryButton } from '../ui/Overlay';
+
+/**
+ * What was typed when a picture was pasted (José 11/11): it starts as the
+ * caption, and `consume` empties the field only once the files are sent, so
+ * closing the preview leaves the text where it was, like WhatsApp Web.
+ */
+export type TypedCaption = { text: string; consume: () => void };
 
 /** La forma de una foto, para que la burbuja no salte al cargar. Sin soporte: sin medidas. */
 export async function medidasDeImagen(archivo: File): Promise<{ width?: number; height?: number }> {
@@ -22,9 +29,15 @@ export async function medidasDeImagen(archivo: File): Promise<{ width?: number; 
  * (vacío o demasiado pesado) se marca acá, antes de subir. Las fotos salen más
  * livianas, como en WhatsApp (19/10); «HD» manda la original.
  */
-export function EnviarArchivos(props: { archivos: File[]; onCerrar: () => void; onEnviar: (archivos: File[], pie: string, hd: boolean) => void }) {
+export function EnviarArchivos(props: {
+  archivos: File[];
+  /** What was in the composer when the picture was pasted (José 11/11): it starts as the caption. */
+  initialCaption?: string;
+  onCerrar: () => void;
+  onEnviar: (archivos: File[], pie: string, hd: boolean) => void;
+}) {
   const [lista, setLista] = useState(props.archivos);
-  const [pie, setPie] = useState('');
+  const [pie, setPie] = useState(props.initialCaption ?? '');
   const [hd, setHd] = useState(false);
   const hayFotos = lista.some((archivo) => archivo.type.startsWith('image/') && archivo.type !== 'image/gif');
   const vistas = useMemo(() => lista.map((archivo) => (archivo.type.startsWith('image/') ? URL.createObjectURL(archivo) : null)), [lista]);
@@ -33,11 +46,20 @@ export function EnviarArchivos(props: { archivos: File[]; onCerrar: () => void; 
     if (lista.length === 0) props.onCerrar();
   }, [lista.length, props]);
   const validos = lista.filter((archivo) => validateMedia({ mimeType: archivo.type, sizeBytes: archivo.size }).ok);
+  const send = () => {
+    if (validos.length > 0) props.onEnviar(validos, pie.trim(), hd);
+  };
+  // Enter sends, like in the chat (José 11/11); Shift+Enter and an IME mid-word do not.
+  const sendOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    send();
+  };
   return (
     <Overlay
       title={lista.length === 1 ? 'Enviar 1 archivo' : `Enviar ${lista.length} archivos`}
       onClose={props.onCerrar}
-      footer={<PrimaryButton testId="btn-enviar-archivos" disabled={validos.length === 0} onClick={() => props.onEnviar(validos, pie.trim(), hd)}>Enviar</PrimaryButton>}
+      footer={<PrimaryButton testId="btn-enviar-archivos" disabled={validos.length === 0} onClick={send}>Enviar</PrimaryButton>}
     >
       <ul className="mb-3 grid grid-cols-3 gap-2">
         {lista.map((archivo, indice) => {
@@ -70,7 +92,7 @@ export function EnviarArchivos(props: { archivos: File[]; onCerrar: () => void; 
           </span>
         </label>
       ) : null}
-      <input data-testid="input-pie" autoFocus value={pie} onChange={(evento) => setPie(evento.target.value)} placeholder="Añade un comentario" className="min-h-[44px] w-full rounded-lg border border-outline/25 bg-background px-3 text-sm outline-none focus:border-primary" />
+      <input data-testid="input-pie" autoFocus value={pie} onChange={(evento) => setPie(evento.target.value)} onKeyDown={sendOnEnter} placeholder="Añade un comentario" className="min-h-[44px] w-full rounded-lg border border-outline/25 bg-background px-3 text-sm outline-none focus:border-primary" />
     </Overlay>
   );
 }

@@ -31,4 +31,41 @@ describe('EnviarArchivos: the caption is where the keyboard lands (José, 04/11)
 
     expect(send).toHaveBeenCalledWith([file], '/gastos pago parcial', false);
   });
+
+  it('pasting with text in the composer brings that text as the caption (José 11/11)', async () => {
+    const user = userEvent.setup();
+    const send = vi.fn();
+    const file = voucher();
+    render(<EnviarArchivos archivos={[file]} initialCaption="adelanto de Juan" onCerrar={() => undefined} onEnviar={send} />);
+
+    expect((screen.getByTestId('input-pie') as HTMLInputElement).value).toBe('adelanto de Juan');
+    await user.keyboard(' 50%');
+    await user.click(screen.getByTestId('btn-enviar-archivos'));
+
+    expect(send).toHaveBeenCalledWith([file], 'adelanto de Juan 50%', false);
+  });
+
+  it('Enter in the caption sends, Shift+Enter does not (José 11/11)', async () => {
+    const user = userEvent.setup();
+    const send = vi.fn();
+    const file = voucher();
+    render(<EnviarArchivos archivos={[file]} onCerrar={() => undefined} onEnviar={send} />);
+
+    await user.keyboard('pago{Shift>}{Enter}{/Shift}');
+    expect(send).not.toHaveBeenCalled();
+    await user.keyboard('{Enter}');
+
+    expect(send).toHaveBeenCalledWith([file], 'pago', false);
+  });
+
+  it('Enter with nothing valid to send does nothing', async () => {
+    const user = userEvent.setup();
+    const send = vi.fn();
+    const empty = new File([], 'vacio.png', { type: 'image/png' });
+    render(<EnviarArchivos archivos={[empty]} onCerrar={() => undefined} onEnviar={send} />);
+
+    await user.keyboard('{Enter}');
+
+    expect(send).not.toHaveBeenCalled();
+  });
 });

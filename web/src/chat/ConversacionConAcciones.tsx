@@ -11,7 +11,7 @@ import { ListaDeFijados, TarjetaDeFijados } from './fijados/ListaDeFijados';
 import { ChecklistsCard } from './tarjetas/ChecklistsCard';
 import { useFijarEnLaWeb } from './useFijarEnLaWeb';
 import type { AccionSobreMensaje } from './contextoDeLaConversacion';
-import { EnviarArchivos } from './EnviarArchivos';
+import { EnviarArchivos, type TypedCaption } from './EnviarArchivos';
 import { PhotoViewer } from './VisorDeFotos';
 import { PdfViewer } from './PdfViewer';
 import type { MensajeEnPantalla } from './types';
@@ -109,7 +109,7 @@ export function ConversacionConAcciones(
   const people = useMemo(() => peopleNamesOf(mencionables ?? [], detalle?.appIds ?? new Set<string>()), [mencionables, detalle]);
   const outsideMentions = useOutsideMentionsWeb({ jwt: props.jwt, chatId: chat.id });
   /** The files of the preview and where they go: an answer from the chat, or a reply in the open thread (José 10/11). */
-  const [archivos, setArchivos] = useState<{ files: File[]; target: MessageTarget } | null>(null);
+  const [archivos, setArchivos] = useState<{ files: File[]; target: MessageTarget; typed?: TypedCaption } | null>(null);
   const [fotoAbierta, setFotoAbierta] = useState<number | null>(null);
   // Photos, GIFs and videos; never a sticker (José, 22/10: they showed up while swiping).
   const viewerPhotos = useMemo(() => (mensajes ?? []).filter(opensInPhotoViewer), [mensajes]);
@@ -120,6 +120,8 @@ export function ConversacionConAcciones(
   /** A la cola (auditoría 19/10): cada burbuja aparece ya y sube por detrás; el pie va en el primero. */
   const subir = (lista: File[], pie: string, hd: boolean) => {
     const target = archivos?.target ?? {};
+    // The pasted-with text went out as the caption: the field it came from empties now (José 11/11).
+    archivos?.typed?.consume();
     setArchivos(null);
     // The answer is spent like with a text: the quote strip closes.
     if (target.replyToSeq) acciones.cancelarContexto();
@@ -233,7 +235,7 @@ export function ConversacionConAcciones(
         onOutsideMentions={outsideMentions.notify}
         avisoDeMencion={<OutsideMentionNotice outside={outsideMentions} />}
         jwtParaEnlaces={chat.encrypted ? undefined : props.jwt}
-        onElegirArchivos={(files) => setArchivos({ files, target: acciones.replyingTo ? { replyToSeq: acciones.replyingTo } : {} })}
+        onElegirArchivos={(files, typed) => setArchivos({ files, typed, target: acciones.replyingTo ? { replyToSeq: acciones.replyingTo } : {} })}
         onNotaDeVoz={(nota) => void colaDeArchivosWeb.encolar(chat.id, nota.file, { durationMs: nota.ms, onda: nota.onda, hd: true })}
         mensajes={ventana.window ? windowOnScreen(ventana.window, hilos.visibles ?? []) : hilos.visibles}
         hayAnteriores={ventana.window ? ventana.window.hasOlder : props.hayAnteriores}
@@ -294,7 +296,7 @@ export function ConversacionConAcciones(
           onReintentar={props.onReintentar}
           onDescartar={props.onDescartar}
           onEdit={(seq, text) => sync.editar(chat.id, seq, text)}
-          onFiles={chat.encrypted ? undefined : (files, enElChat) => setArchivos({ files, target: { hiloDe: hilos.raiz!.seq, ...(enElChat ? { enElChat: true } : {}) } })}
+          onFiles={chat.encrypted ? undefined : (files, enElChat, typed) => setArchivos({ files, typed, target: { hiloDe: hilos.raiz!.seq, ...(enElChat ? { enElChat: true } : {}) } })}
           stickers={chat.encrypted ? undefined : { jwt: props.jwt, me: yo, chatId: chat.id, chatName: chat.name ?? chat.phone ?? '' }}
           onCerrar={hilos.cerrar}
         />
@@ -354,7 +356,7 @@ export function ConversacionConAcciones(
           }}
         />
       ) : null}
-      {archivos ? <EnviarArchivos archivos={archivos.files} onCerrar={() => setArchivos(null)} onEnviar={subir} /> : null}
+      {archivos ? <EnviarArchivos archivos={archivos.files} initialCaption={archivos.typed?.text} onCerrar={() => setArchivos(null)} onEnviar={subir} /> : null}
       {fotoAbierta !== null ? <PhotoViewer fotos={viewerPhotos} indice={fotoAbierta} onCambiar={setFotoAbierta} onCerrar={() => setFotoAbierta(null)} onMakeSticker={chat.encrypted ? undefined : (foto) => void saveGif({ chatId: chat.id, seq: foto.seq }).then(onAviso)} /> : null}
       {personCard.element}
       {pdfAbierto?.media?.url ? <PdfViewer jwt={props.jwt} chatId={chat.id} seq={pdfAbierto.seq} fileName={pdfAbierto.media.fileName ?? 'Documento PDF'} downloadUrl={pdfAbierto.media.url} onClose={() => setPdfAbierto(null)} /> : null}

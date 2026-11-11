@@ -7607,7 +7607,9 @@ recarga de la lista mostraba «1». El riel del espacio tampoco se actualizaba a
 - **En vivo** (`aplicarMensajeALista`), una respuesta solo en el hilo mueve la vista
   previa pero no suma no leídos. El hilo tiene su propio chip.
 - **Web:** el número del espacio actual en el riel sale de su lista en vivo
-  (`withLiveUnread`). Al leer un chat, baja en el momento.
+  (`withLiveUnread`). Al leer un chat, baja en el momento. Desde el 11/11 ese
+  número también queda al salir del espacio (`keepLiveUnread` lo escribe en la
+  lista de espacios), y cambiar de espacio vuelve a pedir los números al server.
 - Medido en la base antes del cambio: 20 grupos y canales de José, 0 con el cursor
   trabado. En toda la base, 16 cursores atrasados, todos con mensajes visibles sin leer.
   El caso aparece con respuestas que llegan después de leer, no en datos viejos.
@@ -7914,7 +7916,7 @@ Probado de punta a punta en el espacio «Test»: web en el Chrome de José (`64d
   ubicación y guardar los habría borrado**. `FIELDS` los incluye y `eventRoutes.test.ts` lo cubre.
 - **Una tarjeta eliminada para todos seguía dibujándose en el modo Slack de la app** (`FlatMessageRow` miraba solo `ref`;
   la burbuja ya usaba `drawsAsCard`, que excluye `deletedAt`). Ahora se lee «Se eliminó este mensaje» en los dos modos.
-- La cita de hilo del modo Slack en la **web** (`ThreadQuote compact`) es una línea «↳ Respondió en un hilo», como en la app.
+- La cita de hilo del modo Slack en la **web** (`ThreadQuote compact`) es una línea, como en la app. Desde el 11/11 nombra el original (`threadQuoteLine`, §José 11/11).
 
 Verificado en vivo: el aviso previo de 1 h sonó en el emulador («Empieza en 1 h», `Posponer 10 min` / `Listo`); la tarjeta
 muestra «Avisa 1 h, 30 min y 15 min antes» y «Cómo llegar a…», que abre «Google Maps / Waze / Cancelar» (Waze no está
@@ -15826,3 +15828,35 @@ Ahora los cuatro saltos pasan por `app/src/chat/scrollSafely.ts`:
 `props`. Fuera de rango no se mueve nada. Regla en `shared/src/listIndex.ts`
 (`indexInRange`). Sin verificar: qué pantalla exacta lo disparó; el reporte no
 trae la pila completa.
+
+## José 11/11: cuatro arreglos de chat en una iteración
+
+1. **La respuesta de hilo enviada al chat dice a qué respondió.** José: solo
+   decía «se respondió en un hilo». Ahora es una línea con el original:
+   «Respondió en el hilo de Wilson: ¿Vamos el jueves?», «Respondió en tu hilo:
+   …», o solo «Respondió en un hilo» si el original no está cargado. Un motor
+   compartido (`shared/hilos.ts › threadQuoteLine`, tope de 80 caracteres) lo
+   usan la web (`ThreadQuote compact`) y la app (`CitaDeRespuesta compact`). La
+   cita en bloque del modo burbuja ya mostraba el original y no cambió.
+2. **Llamada con la web y el APK abiertos.** Las dos rutas están bien en el
+   código y tienen test: el APK con `llamada-nativa` recibe siempre el push
+   solo-datos, aunque la web esté conectada. Si la app está adelante, la trae
+   el socket. Sin el registro del teléfono de José en la base (leerlo lo decide
+   él) no se pudo saber qué tramo falló. Por eso el server deja una línea por
+   llamada, solo con conteos: `[call] push chat=… native=N common=M
+   commonOnline=K` (`llamadas.test.ts` fija que no lleva tokens ni teléfonos).
+   **Queda sin reproducir**: hacen falta dos cuentas reales, y crear una cuenta
+   de QA está prohibido.
+3. **Web: pegar una imagen con texto escrito.** El texto del campo pasa como
+   comentario del diálogo de envío (`TypedCaption`, desde el compositor y desde
+   el panel del hilo). El campo se vacía solo al enviar; si se cancela, el texto
+   queda donde estaba. En el diálogo, Enter envía, Shift+Enter no, y no envía
+   si no queda ningún archivo válido (`EnviarArchivos.test.tsx`,
+   `Composer.test.tsx`).
+4. **Web: el punto del riel quedaba en el espacio que se dejó.** El número en
+   vivo solo se aplicaba al espacio abierto. Al salir, volvía el número viejo
+   del server, pedido antes de leer. `keepLiveUnread` (`currentSpace.ts`)
+   escribe en la lista compartida lo que mostraba la lista en vivo, y cambiar
+   de espacio vuelve a pedir los números 2 s después (no en la primera carga).
+   Lo cubre `currentSpace.test.tsx`.
+

@@ -38,15 +38,21 @@ describe('a thread reply also sent to the chat', () => {
   });
 
   // José 25/10: in the Slack format the quote block grew the row; Slack shows one line.
-  it('in the Slack format it is one line without the root text, and still opens the thread', async () => {
+  // José 11/11: that line must say WHICH message it answered.
+  it('in the Slack format it is one line that names the original, and still opens the thread', async () => {
     const openThread = draw({}, true);
 
     const quote = screen.getByTestId('cita-hilo-151');
-    expect(quote.textContent).toBe('Respondió en un hilo');
+    expect(quote.textContent).toBe('Respondió en el hilo de Wilson: ¿Vamos el jueves?');
     expect(quote.className).not.toContain('border-l-4');
     expect(quote.className).toContain('truncate');
     await userEvent.click(quote);
     expect(openThread).toHaveBeenCalledWith(151);
+  });
+
+  it('in the Slack format, an original not loaded yet says only that it is a thread reply', () => {
+    draw({ citado: () => undefined }, true);
+    expect(screen.getByTestId('cita-hilo-151').textContent).toBe('Respondió en un hilo');
   });
 });
 

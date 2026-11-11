@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
-import { workspacesOf, type ClientWorkspace } from '@lilachat/shared';
+import { withLiveUnread, workspacesOf, type ClientWorkspace } from '@lilachat/shared';
 import { mySpaces } from './spacesApi';
 
 /** Which space the list shows (E1): `null` is the personal account. Remembered in this browser. */
@@ -71,6 +71,19 @@ export function forgetMySpaces(): void {
   } catch {
     // Nothing to remove.
   }
+  notify();
+}
+
+/**
+ * The count a space's live list shows becomes the space's count (José 11/11):
+ * the server's list is from before reading, so a space read and then left
+ * kept its old badge on the rail. No change, no notify.
+ */
+export function keepLiveUnread(spaceId: string, chats: readonly { unread: number }[], userId?: string): void {
+  const next = withLiveUnread(spaces, spaceId, chats);
+  if (!next || next === spaces) return;
+  spaces = next;
+  if (userId) saveSpaces(userId, next);
   notify();
 }
 

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { forgetMySpaces, useMySpaces } from './currentSpace';
+import { forgetMySpaces, keepLiveUnread, useMySpaces } from './currentSpace';
 
 /**
  * My spaces, asked from several places (the first load, the switcher, a space
@@ -45,5 +45,21 @@ describe('useMySpaces', () => {
     localStorage.setItem('lilachat.espacios', JSON.stringify({ userId: 'u1', spaces: [{ id: 'w1', name: 'Constroad', status: 'active' }] }));
     const other = renderHook(() => useMySpaces('t', 'u2'));
     expect(other.result.current.spaces).toBeNull();
+  });
+
+  /** José 11/11: read in Constroad, then in Inframaq: the rail kept Constroad's old count, and Inframaq's after going back. */
+  it('the count a space showed live stays after leaving it, and nothing changes when it is the same', async () => {
+    localStorage.setItem('lilachat.espacios', JSON.stringify({ userId: 'u1', spaces: [{ id: 'w1', name: 'Constroad', status: 'active', unreadChats: 1 }, { id: 'w2', name: 'Inframaq', status: 'active', unreadChats: 1 }] }));
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => undefined)));
+    const { result } = renderHook(() => useMySpaces('t', 'u1'));
+    const before = result.current.spaces;
+
+    act(() => keepLiveUnread('w1', [{ unread: 0 }, { unread: 0 }], 'u1'));
+    act(() => keepLiveUnread('w1', [{ unread: 0 }], 'u1'));
+    act(() => keepLiveUnread('w9', [{ unread: 3 }], 'u1'));
+
+    expect(result.current.spaces?.map((space) => space.unreadChats)).toEqual([0, 1]);
+    expect(result.current.spaces?.[1]).toBe(before?.[1]);
+    expect(JSON.parse(localStorage.getItem('lilachat.espacios') ?? '{}').spaces[0].unreadChats).toBe(0);
   });
 });

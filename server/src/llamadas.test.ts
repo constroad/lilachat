@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MongoMemoryServer } from 'mongodb-memory-server';
 import { startTestMongo } from './testMongo.js';
 import mongoose, { Types } from 'mongoose';
@@ -254,6 +254,25 @@ describe('avisarLlamada', () => {
     expect(verificarRechazo(String(datos[0]!.data.rechazo))).toEqual({ chatId, userId: String(jose) });
     // Relativo y no una hora: el reloj del teléfono puede no coincidir.
     expect(datos[0]!.data.queda).toBe(String(CALL_TIMEOUT_MS));
+  });
+
+  it('leaves one trace line per call with counts only, never a token or a phone (José 11/11)', async () => {
+    const ana = (await UserModel.create({ phone: '999999999', name: 'Ana' }))._id;
+    const jose = (await UserModel.create({ phone: '902049935', name: 'José' }))._id;
+    await DeviceModel.create([
+      { deviceId: 'apk', userId: jose, platform: 'android', pushToken: 'tok-apk', capacidades: [CAPACIDAD_LLAMADA_NATIVA] },
+      { deviceId: 'web', userId: jose, platform: 'web', pushToken: 'https://push.example/web-endpoint' },
+    ]);
+    markOnline(String(jose));
+    const chatId = String(new Types.ObjectId());
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+
+    await avisarLlamada({ chatId, from: String(ana), members: [String(ana), String(jose)], video: false });
+
+    const lines = info.mock.calls.map((call) => String(call[0])).filter((line) => line.startsWith('[call]'));
+    info.mockRestore();
+    expect(lines).toEqual([`[call] push chat=${chatId} native=1 common=0 commonOnline=1`]);
+    expect(datos.map((push) => push.tokens)).toEqual([['tok-apk']]);
   });
 
   /**

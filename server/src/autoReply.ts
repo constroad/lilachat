@@ -32,7 +32,7 @@ const stateSchema = new Schema<AutoReplyState>({
 });
 stateSchema.index({ userId: 1, chatId: 1 }, { unique: true });
 
-const AutoReplyStateModel: Model<AutoReplyState> =
+export const AutoReplyStateModel: Model<AutoReplyState> =
   (mongoose.models.AutoReplyState as Model<AutoReplyState>) ??
   mongoose.model<AutoReplyState>('AutoReplyState', stateSchema);
 

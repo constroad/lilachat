@@ -500,8 +500,20 @@ José: «no es posible eliminar un espacio, analízalo e impleméntalo».
   - Los miembros reciben el aviso de espacios y el riel lo quita en vivo.
 - **Recuperar**: a mano. Se borra `deletedAt` y se devuelve
   `deletedWithSpace.members` a cada chat. Las apps se reinstalan.
-- **Pendiente**: no hay purga definitiva. Borrar de verdad los datos pide el
-  OK de José, porque es escritura en la base de producción.
+- **Purga definitiva** (OK de José 11/11): `server/src/workspacePurge.ts`
+  corre cada 6 h dentro del server. Un espacio eliminado hace más de 30 días
+  (`PURGE_AFTER_DAYS`) se borra de verdad: mensajes, acuses, checklists,
+  destacados, eventos, recordatorios, encuestas, programados y respuestas
+  automáticas de sus chats; miembros, invitaciones, emojis, apps y sus bots,
+  canales de cliente, borradores de informe y horarios; los chats y el espacio.
+  - Cada `deleteMany` comprueba que el modelo tenga el campo del filtro: sin
+    eso, un campo ausente podría vaciar la colección entera.
+  - `purgeWorkspace` se niega con un espacio que no está eliminado.
+  - Orden reanudable: primero el contenido de los chats, después las filas del
+    espacio y al final el espacio. Si algo falla, la siguiente pasada termina.
+  - Los archivos en disco quedan, igual que con «Eliminar para todos»: las
+    miniaturas se nombran por contenido y pueden ser de chats de otros espacios.
+  - Test: `server/src/workspacePurge.test.ts`.
 - Test: `server/src/workspaceDelete.test.ts`, `shared` (`workspaces.test.ts`) y
   `web/src/spaces/enterprise.test.tsx`.
 

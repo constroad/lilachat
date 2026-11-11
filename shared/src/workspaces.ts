@@ -36,6 +36,18 @@ export function normalizeJoinCode(input: string): string | null {
 
 export const canManageMembers = (role: WorkspaceRole): boolean => role === 'owner' || role === 'admin';
 
+/** Only the owner deletes a space (José 10/11), like Slack's primary owner. */
+export const canDeleteSpace = (role: WorkspaceRole): boolean => role === 'owner';
+
+const foldName = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('es');
+
+/** The typed name confirms the deletion: the same letters, not minding case, accents or extra spaces. */
+export function confirmsSpaceName(typed: unknown, name: string): boolean {
+  if (typeof typed !== 'string') return false;
+  const folded = foldName(typed);
+  return folded !== '' && folded === foldName(name);
+}
+
 /** Only the owner names admins; the owner's role never changes here (transferring it is its own action). */
 export function canChangeRole(params: { actor: WorkspaceRole; target: WorkspaceRole; to: WorkspaceRole }): boolean {
   const { actor, target, to } = params;

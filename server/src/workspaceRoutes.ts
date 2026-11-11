@@ -1,3 +1,4 @@
+import { deleteWorkspace } from './workspaceDelete.js';
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import { Types } from 'mongoose';
 import { asyncRoute, requireSession } from './requireSession.js';
@@ -71,6 +72,11 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
   }));
   router.delete('/:id/logo', handled(async (req, res) => res.json({ workspace: await setWorkspaceLogo(req.params.id!, me(req), null) })));
   router.patch('/:id', handled(async (req, res) => res.json({ workspace: await updateWorkspace(req.params.id!, me(req), req.body ?? {}) })));
+  // José 10/11: the owner deletes the space, typing its name.
+  router.post('/:id/delete', handled(async (req, res) => {
+    await deleteWorkspace(req.params.id!, me(req), req.body ?? {});
+    res.json({ ok: true });
+  }));
   router.post('/:id/leave', handled(async (req, res) => {
     await leaveWorkspace(req.params.id!, me(req));
     res.status(204).end();

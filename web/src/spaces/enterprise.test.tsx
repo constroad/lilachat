@@ -103,6 +103,24 @@ describe('MembersDialog (e1-10, e1-11)', () => {
 });
 
 describe('SpaceSettingsDialog (e1-12)', () => {
+  it('José 10/11: the owner deletes the space typing its name; an admin does not see the button', async () => {
+    answer('/workspaces/w1/delete', { ok: true }, 200, 'POST');
+    const onDeleted = vi.fn();
+    const { unmount } = render(<SpaceSettingsDialog space={space()} jwt="t" onSaved={() => undefined} onClose={() => undefined} onDeleted={onDeleted} />);
+    await userEvent.click(screen.getByTestId('ajustes-eliminar-espacio'));
+    const confirm = screen.getByTestId('eliminar-espacio-confirmar');
+    expect(confirm).toBeDisabled();
+    await userEvent.type(screen.getByTestId('eliminar-espacio-nombre'), 'qa obra');
+    expect(confirm).toBeEnabled();
+    await userEvent.click(confirm);
+    await waitFor(() => expect(onDeleted).toHaveBeenCalled());
+    expect(calls.find((call) => call.url.includes('/workspaces/w1/delete'))?.body).toEqual({ confirmName: 'qa obra' });
+    unmount();
+    render(<SpaceSettingsDialog space={space({ role: 'admin' })} jwt="t" onSaved={() => undefined} onClose={() => undefined} />);
+    expect(screen.queryByTestId('ajustes-eliminar-espacio')).toBeNull();
+  });
+
+
   it('task notices are born off and saving sends the switch (José 06/11)', async () => {
     answer('/workspaces/w1', { workspace: space({ taskNotices: true }) }, 200, 'PATCH');
     render(<SpaceSettingsDialog space={space()} jwt="t" onSaved={() => undefined} onClose={() => undefined} />);

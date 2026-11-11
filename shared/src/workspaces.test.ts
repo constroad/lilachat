@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countdownLabel, invitedByLine, owesItsName, accountOwesItsName, spacesToOpen, canChangeRole, canDeactivate, canManageMembers, joinCodePrefix, makeJoinCode, normalizeChannelName, normalizeJoinCode, statusAfterJoin, workspacesOf } from './workspaces.js';
+import { canDeleteSpace, confirmsSpaceName, countdownLabel, invitedByLine, owesItsName, accountOwesItsName, spacesToOpen, canChangeRole, canDeactivate, canManageMembers, joinCodePrefix, makeJoinCode, normalizeChannelName, normalizeJoinCode, statusAfterJoin, workspacesOf } from './workspaces.js';
 
 /** E1 (José, 20/10): personal account plus company spaces; join with a code or be added by phone. */
 describe('join code', () => {
@@ -124,5 +124,22 @@ describe('accountOwesItsName, asked to the account and not to the stored credent
   });
   it('never asks a credential that already has its name', () => {
     expect(accountOwesItsName({ phone: 'mail:abc', name: 'Ana' }, null)).toBe(false);
+  });
+});
+
+/** José 10/11: deleting a space asks for its name, like GitHub; only the owner sees the button. */
+describe('deleting a space', () => {
+  it('only the owner deletes it', () => {
+    expect(canDeleteSpace('owner')).toBe(true);
+    expect(canDeleteSpace('admin')).toBe(false);
+    expect(canDeleteSpace('member')).toBe(false);
+  });
+
+  it('the typed name confirms without minding case, accents or extra spaces', () => {
+    expect(confirmsSpaceName('  obras  ñandu ', 'Obras Ñandú')).toBe(true);
+    expect(confirmsSpaceName('Obras', 'Obras Ñandú')).toBe(false);
+    expect(confirmsSpaceName('', '')).toBe(false);
+    expect(confirmsSpaceName(undefined, 'Obras')).toBe(false);
+    expect(confirmsSpaceName(42, '42')).toBe(false);
   });
 });

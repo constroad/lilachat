@@ -479,6 +479,32 @@ sale de `fixed_height` (200 px de alto, webp si hay). La grilla usa celdas de
 140 px como mínimo. El APK usa la misma URL nítida en la grilla y en la burbuja
 pendiente.
 
+### 6.1-ter Eliminar un espacio (10/11/2026)
+
+José: «no es posible eliminar un espacio, analízalo e impleméntalo».
+
+- **Quién**: solo el dueño (`canDeleteSpace`), como el dueño principal de
+  Slack. Un admin no ve el botón y el server responde 403.
+- **Confirmación**: se escribe el nombre del espacio, como en GitHub.
+  `confirmsSpaceName` no distingue mayúsculas, tildes ni espacios de más.
+- **Dónde**: Ajustes del espacio → «Zona de peligro» → «Eliminar espacio»
+  (web `DeleteSpaceDialog`, APK `DeleteSpaceScreen`). Ruta
+  `POST /api/workspaces/:id/delete {confirmName}`.
+- **Qué pasa** (`server/src/workspaceDelete.ts`): no se borra nada.
+  - El espacio queda con `deletedAt` y `deletedBy`.
+  - `myWorkspaces`, `actorIn` y el código para unirse lo ignoran: para todos
+    es un espacio que no existe (404).
+  - Cada chat del espacio guarda sus miembros en `deletedWithSpace` y queda sin
+    miembros, igual que un canal eliminado con `deletedChannel`.
+  - Las apps reciben `app.uninstalled` y su token muere.
+  - Los miembros reciben el aviso de espacios y el riel lo quita en vivo.
+- **Recuperar**: a mano. Se borra `deletedAt` y se devuelve
+  `deletedWithSpace.members` a cada chat. Las apps se reinstalan.
+- **Pendiente**: no hay purga definitiva. Borrar de verdad los datos pide el
+  OK de José, porque es escritura en la base de producción.
+- Test: `server/src/workspaceDelete.test.ts`, `shared` (`workspaces.test.ts`) y
+  `web/src/spaces/enterprise.test.tsx`.
+
 ### 6.2 Envío idempotente (server)
 
 ```ts

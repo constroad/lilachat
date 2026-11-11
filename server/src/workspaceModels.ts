@@ -20,6 +20,9 @@ export type Workspace = {
   taskNotices?: boolean;
   /** Its #general (José, 22/10): every active member is in it and «X se unió al espacio» lands there (`workspaceGeneral.ts`). */
   generalChatId?: Types.ObjectId;
+  /** Deleted by its owner (José 10/11): gone for everyone, its data kept (`workspaceDelete.ts`). */
+  deletedAt?: Date;
+  deletedBy?: Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -69,6 +72,8 @@ const workspaceSchema = new Schema<Workspace>(
     joinPolicy: { type: String, enum: ['open', 'approval'], default: 'approval' },
     taskNotices: { type: Boolean, default: false },
     generalChatId: { type: Schema.Types.ObjectId },
+    deletedAt: { type: Date },
+    deletedBy: { type: Schema.Types.ObjectId },
   },
   { timestamps: true }
 );

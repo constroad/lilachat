@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { ArrowLeft, Check, KeyRound } from 'lucide-react-native';
-import { membersLabel, SPACE_RUBROS, type ClientWorkspace } from '@lilachat/shared';
+import { ArrowLeft, Check, KeyRound, Trash2 } from 'lucide-react-native';
+import { canDeleteSpace, membersLabel, SPACE_RUBROS, type ClientWorkspace } from '@lilachat/shared';
 import { Modal } from '../ui/Modal';
 import { Interruptor } from '../ui/Interruptor';
 import { useColores } from '../ui/tema';
@@ -10,6 +10,7 @@ import { SpaceLogo } from './SpaceSwitcherSheet';
 import { removeSpaceLogo, updateSpace, uploadSpaceLogo } from './spacesApi';
 import { elegirFotoRedonda } from '../chat/fotoDeGrupo';
 import { IntegrationsSection } from './IntegrationsSection';
+import { DeleteSpaceScreen } from './DeleteSpaceScreen';
 
 const NAME_MAX = 60;
 
@@ -18,7 +19,7 @@ const NAME_MAX = 60;
  * name, the trade, whether an admin approves who comes in, and a new code
  * (the old one stops working), and its logo: an image, or its initials.
  */
-export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string; onSaved: (space: ClientWorkspace) => void; onClose: () => void; onOpenApp?: (appId: string) => void }) {
+export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string; onSaved: (space: ClientWorkspace) => void; onClose: () => void; onOpenApp?: (appId: string) => void; onDeleted?: () => void }) {
   const colors = useColores();
   const margins = useMargenes();
   const { space } = props;
@@ -30,6 +31,7 @@ export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string
   const [logoUrl, setLogoUrl] = useState(space.logoUrl);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const clean = name.trim();
   const changed = clean !== space.name || rubro !== (space.rubro ?? '') || approval !== (space.joinPolicy === 'approval') || taskNotices !== (space.taskNotices === true);
 
@@ -67,6 +69,8 @@ export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string
       { text: 'Cambiar', onPress: () => void save({ newCode: true }) },
     ]);
 
+  // One screen at a time: the confirmation replaces the settings.
+  if (deleting) return <DeleteSpaceScreen space={space} jwt={props.jwt} onDeleted={() => props.onDeleted?.()} onClose={() => setDeleting(false)} />;
   return (
     <Modal visible animationType="slide" onRequestClose={props.onClose}>
       <View testID="pantalla-ajustes-espacio" className="flex-1 bg-background" style={{ paddingTop: margins.cabecera }}>
@@ -93,6 +97,7 @@ export function SpaceSettingsScreen(props: { space: ClientWorkspace; jwt: string
           <JoinSection code={code} approval={approval} busy={busy} onNewCode={newCode} onApproval={setApproval} />
           <NoticesSection taskNotices={taskNotices} onTaskNotices={setTaskNotices} />
           <IntegrationsSection jwt={props.jwt} spaceId={space.id} onOpenApp={props.onOpenApp} />
+          {canDeleteSpace(space.role) ? <DangerSection onDelete={() => setDeleting(true)} /> : null}
         </ScrollView>
       </View>
     </Modal>
@@ -170,6 +175,20 @@ function JoinSection(props: JoinProps) {
         </View>
         <Interruptor testID="ajustes-aprobar" value={props.approval} onValueChange={props.onApproval} />
       </View>
+    </View>
+  );
+}
+
+/** Only for the owner (José 10/11): deleting the space opens its own confirmation. */
+function DangerSection(props: { onDelete: () => void }) {
+  const colors = useColores();
+  return (
+    <View className="mt-6 border-t border-outline/15 pt-4">
+      <Text className="text-[11px] font-bold uppercase tracking-widest text-error">Zona de peligro</Text>
+      <Pressable testID="ajustes-eliminar-espacio" onPress={props.onDelete} className="mt-2 min-h-[48px] flex-row items-center gap-2 self-start rounded-xl border border-error/40 px-3">
+        <Trash2 size={16} color={colors.error} />
+        <Text className="text-[15px] font-semibold text-error">Eliminar espacio</Text>
+      </Pressable>
     </View>
   );
 }

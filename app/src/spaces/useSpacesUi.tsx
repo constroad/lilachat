@@ -272,7 +272,7 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
         <MembersScreen space={current} jwt={jwt} myUserId={myUserId} initialTab={sheet === 'requests' ? 'pending' : 'active'} onInvite={() => setSheet('invite')} onChanged={() => void reload()} onClose={() => setSheet(null)} />
       ) : null}
       {current && sheet === 'apps' ? <AppDirectoryScreen space={current} apps={apps} jwt={jwt} initialAppId={appsInitialId} onClose={() => { setSheet(null); setAppsInitialId(null); }} /> : null}
-      {current && sheet === 'settings' ? <SpaceSettingsScreen space={current} jwt={jwt} onSaved={() => void reload()} onClose={() => setSheet(null)} onOpenApp={(appId) => { setAppsInitialId(appId); setSheet('apps'); }} /> : null}
+      {current && sheet === 'settings' ? <SpaceSettingsScreen space={current} jwt={jwt} onSaved={() => void reload()} onClose={() => setSheet(null)} onOpenApp={(appId) => { setAppsInitialId(appId); setSheet('apps'); }} onDeleted={() => { setSheet(null); void enter(null); void reload(); }} /> : null}
       {firstWelcome === 'show' && !sheet ? <WelcomeScreen jwt={jwt} detectedCode={joinCode} onPersonal={() => leaveWelcome(null)} onJoin={() => leaveWelcome('join')} onCreate={() => leaveWelcome('create')} /> : null}
       {welcome && !sheet && !appReturn && !returning ? (
         <AddedToSpaceScreen

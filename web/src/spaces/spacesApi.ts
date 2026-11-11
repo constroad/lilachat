@@ -15,6 +15,8 @@ export const joinSpace = (jwt: string, code: string) => api<{ workspaceId: strin
 export const createSpace = (jwt: string, input: { name: string; rubro?: string; joinPolicy: JoinPolicy }) => api<{ workspace: ClientWorkspace }>(path(''), { jwt, body: input });
 export const addToSpace = (jwt: string, spaceId: string, phone: string) => api<{ member: { id: string; status: WorkspaceMemberStatus } }>(path(`/${spaceId}/members`), { jwt, body: { phone } });
 /** Leave a space, or withdraw a request still waiting (design `e1-03`). */
+/** José 10/11: only the owner, with the space's name typed as confirmation. */
+export const deleteSpace = (jwt: string, spaceId: string, confirmName: string) => api<{ ok: true }>(path(`/${spaceId}/delete`), { jwt, body: { confirmName } });
 export const leaveSpace = (jwt: string, spaceId: string) => api<Record<string, never>>(path(`/${spaceId}/leave`), { jwt, method: 'POST' });
 
 export const spaceChannels = (jwt: string, spaceId: string) => api<{ channels: ClientChannel[] }>(path(`/${spaceId}/channels`), { jwt });

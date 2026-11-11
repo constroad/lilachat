@@ -30,6 +30,8 @@ export async function spaceChats(jwt: string, spaceId: string) {
   return { ...result, data: { chats: result.data.chats.map((chat) => ({ ...chat, workspaceId: spaceId })), activity: result.data.activity } };
 }
 /** Leave a space, or withdraw a request still waiting («Cancelar solicitud», design `e1-03`). */
+/** José 10/11: only the owner, with the space's name typed as confirmation. */
+export const deleteSpace = (jwt: string, spaceId: string, confirmName: string) => jsonCall<{ ok: true }>(url(`/${spaceId}/delete`), jwt, post({ confirmName }));
 export const leaveSpace = (jwt: string, spaceId: string) => jsonCall<Record<string, never>>(url(`/${spaceId}/leave`), jwt, post({}));
 
 /** The people of a space (designs `e1-08`, `e1-10`, `e1-11`): active for everyone; pending and deactivated for admins. */

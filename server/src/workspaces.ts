@@ -75,7 +75,7 @@ export async function createWorkspace(ownerId: Types.ObjectId, input: { name?: u
 
 async function workspaceByCode(code: unknown): Promise<Workspace> {
   const normalized = typeof code === 'string' ? normalizeJoinCode(code) : null;
-  const workspace = normalized ? await WorkspaceModel.findOne({ joinCode: normalized }).lean<Workspace | null>() : null;
+  const workspace = normalized ? await WorkspaceModel.findOne({ joinCode: normalized, deletedAt: { $exists: false } }).lean<Workspace | null>() : null;
   if (!workspace) throw new WorkspaceError(404, 'Ese código no es de ningún espacio.');
   return workspace;
 }
@@ -109,7 +109,7 @@ export async function joinByCode(userId: Types.ObjectId, code: unknown): Promise
 export async function myWorkspaces(userId: Types.ObjectId) {
   const memberships = await WorkspaceMemberModel.find({ userId, status: { $in: ['active', 'pending', 'deactivated'] } }).select('workspaceId role status addedBy').lean();
   const ids = memberships.map((m) => m.workspaceId);
-  const [workspaces, counts, unread, extras] = await Promise.all([WorkspaceModel.find({ _id: { $in: ids } }).lean<Workspace[]>(), activeMembersOf(ids), unreadChatsOf(userId, ids), membershipExtras(userId, memberships)]);
+  const [workspaces, counts, unread, extras] = await Promise.all([WorkspaceModel.find({ _id: { $in: ids }, deletedAt: { $exists: false } }).lean<Workspace[]>(), activeMembersOf(ids), unreadChatsOf(userId, ids), membershipExtras(userId, memberships)]);
   const byId = new Map(workspaces.map((w) => [String(w._id), w]));
   return memberships.flatMap((m) => {
     const workspace = byId.get(String(m.workspaceId));
@@ -143,15 +143,20 @@ async function adminIdsOf(workspaceId: Types.ObjectId): Promise<Types.ObjectId[]
 }
 
 /** Who is active in the space (and matches `filter`); a pending request is nobody yet. */
-async function activeIdsOf(workspaceId: Types.ObjectId, filter: Record<string, unknown> = {}): Promise<Types.ObjectId[]> {
+export async function activeIdsOf(workspaceId: Types.ObjectId, filter: Record<string, unknown> = {}): Promise<Types.ObjectId[]> {
   const members = await WorkspaceMemberModel.find({ workspaceId, status: 'active', ...filter }).select('userId').lean();
   return members.flatMap((member) => (member.userId ? [member.userId] : []));
 }
 
 /** The person's ACTIVE membership in the space, or a 404 that says nothing about the space. */
 export async function actorIn(workspaceId: string, userId: Types.ObjectId): Promise<WorkspaceMember> {
-  const member = await WorkspaceMemberModel.findOne({ workspaceId: asId(workspaceId), userId, status: 'active' }).lean<WorkspaceMember | null>();
-  if (!member) throw new WorkspaceError(404, NOT_FOUND);
+  const id = asId(workspaceId);
+  const [member, deleted] = await Promise.all([
+    WorkspaceMemberModel.findOne({ workspaceId: id, userId, status: 'active' }).lean<WorkspaceMember | null>(),
+    // A deleted space answers like one that never existed (José 10/11).
+    WorkspaceModel.exists({ _id: id, deletedAt: { $exists: true } }),
+  ]);
+  if (!member || deleted) throw new WorkspaceError(404, NOT_FOUND);
   return member;
 }
 

@@ -71,7 +71,7 @@ export function SpacesLayer(props: {
       {current && (dialog === 'members' || dialog === 'requests') ? (
         <MembersDialog space={current} jwt={jwt} myUserId={props.myUserId} online={props.online} initialTab={dialog === 'requests' ? 'pending' : 'active'} onInvite={() => on.dialog('invite')} onChanged={on.reload} onClose={close} />
       ) : null}
-      {current && dialog === 'settings' ? <SpaceSettingsDialog space={current} jwt={jwt} onSaved={on.reload} onClose={close} onOpenApp={on.openApp} /> : null}
+      {current && dialog === 'settings' ? <SpaceSettingsDialog space={current} jwt={jwt} onSaved={on.reload} onClose={close} onOpenApp={on.openApp} onDeleted={() => { close(); on.enter(null); on.reload(); }} /> : null}
       {props.welcome && !dialog ? <AddedToSpaceDialog space={props.welcome} jwt={jwt} onEnter={() => on.welcomeSeen('enter')} onDirectory={() => on.welcomeSeen('directory')} onLater={() => on.welcomeSeen()} /> : null}
       {current && props.activityTab ? <ActivityDialog spaceId={current.id} spaceName={current.name} jwt={jwt} myUserId={props.myUserId} initialTab={props.activityTab} onOpen={on.activityItem} onClose={() => on.activity(null)} /> : null}
       {props.removed ? <AccessRemovedDialog space={props.removed} onPersonal={on.removedSeen} onTalkTo={on.talkTo} /> : null}

@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Check, KeyRound } from 'lucide-react';
-import { membersLabel, SPACE_RUBROS, type ClientWorkspace } from '@lilachat/shared';
+import { Check, KeyRound, Trash2 } from 'lucide-react';
+import { canDeleteSpace, membersLabel, SPACE_RUBROS, type ClientWorkspace } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../ui/Overlay';
 import { SpaceLogo } from './SpaceLogo';
 import { removeSpaceLogo, updateSpace, uploadSpaceLogo } from './spacesApi';
 import { IntegrationsSection } from './IntegrationsSection';
+import { DeleteSpaceDialog } from './DeleteSpaceDialog';
 
 const NAME_MAX = 60;
 
@@ -13,7 +14,7 @@ const NAME_MAX = 60;
  * name, the trade, whether an admin approves who comes in, and a new code
  * (the old one stops working), and its logo: an image, or its initials.
  */
-export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string; onSaved: (space: ClientWorkspace) => void; onClose: () => void; onOpenApp?: (appId: string) => void }) {
+export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string; onSaved: (space: ClientWorkspace) => void; onClose: () => void; onOpenApp?: (appId: string) => void; onDeleted?: () => void }) {
   const { space } = props;
   const [name, setName] = useState(space.name);
   const [rubro, setRubro] = useState(space.rubro ?? '');
@@ -23,6 +24,7 @@ export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string
   const [logoUrl, setLogoUrl] = useState(space.logoUrl);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const clean = name.trim();
   const changed = clean !== space.name || rubro !== (space.rubro ?? '') || approval !== (space.joinPolicy === 'approval') || taskNotices !== (space.taskNotices === true);
 
@@ -55,6 +57,8 @@ export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string
     if (window.confirm('¿Cambiar el código? El actual deja de funcionar; quienes ya están en el espacio siguen igual.')) void save({ newCode: true });
   };
 
+  // One overlay at a time: two would both close on Escape.
+  if (deleting) return <DeleteSpaceDialog space={space} jwt={props.jwt} onDeleted={() => props.onDeleted?.()} onClose={() => setDeleting(false)} />;
   return (
     <Overlay title="Ajustes del espacio" onClose={props.onClose} footer={
       <PrimaryButton testId="ajustes-espacio-guardar" disabled={!clean || !changed || busy} onClick={() => void save({ name: clean, rubro: rubro || undefined, joinPolicy: approval ? 'approval' : 'open', taskNotices })}>
@@ -89,6 +93,14 @@ export function SpaceSettingsDialog(props: { space: ClientWorkspace; jwt: string
       <JoinSection code={code} approval={approval} busy={busy} onNewCode={newCode} onApproval={() => setApproval((before) => !before)} />
       <NoticesSection on={taskNotices} onToggle={() => setTaskNotices((before) => !before)} />
       <IntegrationsSection jwt={props.jwt} spaceId={space.id} onOpenApp={props.onOpenApp} />
+      {canDeleteSpace(space.role) ? (
+        <div className="mt-6 border-t border-outline/15 pt-4">
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-error">Zona de peligro</p>
+          <button type="button" data-testid="ajustes-eliminar-espacio" onClick={() => setDeleting(true)} className="mt-2 flex h-10 items-center gap-2 rounded-lg border border-error/40 px-3 text-sm font-semibold text-error hover:bg-error/10">
+            <Trash2 size={15} /> Eliminar espacio
+          </button>
+        </div>
+      ) : null}
     </Overlay>
   );
 }

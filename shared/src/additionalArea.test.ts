@@ -41,6 +41,19 @@ describe('areaDocumentOf', () => {
     expect(document.areas[0]!.method).toBeNull();
   });
 
+  it('keeps up to 100 photos per area: Portal has a real area with 85 (agentes 3006ed9)', () => {
+    const pictures = Array.from({ length: 101 }, (_, index) => ({ url: `https://lila.constroad.com/m/${index}.jpg` }));
+    expect(areaDocumentOf({ areas: [{ id: 'a', areaM2: 1, fotos: pictures.slice(0, 85) }] })!.areas[0]!.photos).toHaveLength(85);
+    expect(areaDocumentOf({ areas: [{ id: 'a', areaM2: 1, fotos: pictures }] })!.areas[0]!.photos).toHaveLength(100);
+  });
+
+  it('photos with no area come at the report level (`fotosSinArea`, Portal and agentes 3006ed9)', () => {
+    const document = areaDocumentOf({ ...portalDocument, fotosSinArea: [{ url: 'https://lila.constroad.com/m/suelta.jpg', thumbnailUrl: 'https://lila.constroad.com/m/suelta-t.jpg' }, { url: 'http://insegura' }] })!;
+    expect(document.loosePhotos).toEqual([{ url: 'https://lila.constroad.com/m/suelta.jpg', thumbUrl: 'https://lila.constroad.com/m/suelta-t.jpg', mime: 'image/jpeg' }]);
+    expect(areaDocumentOf(JSON.parse(JSON.stringify(document)))!.loosePhotos).toEqual(document.loosePhotos);
+    expect(areaDocumentOf(portalDocument)!.loosePhotos).toEqual([]);
+  });
+
   it('totals add up the areas when Portal sends none', () => {
     expect(areaDocumentOf({ areas: [{ id: 'a', areaM2: 1.25 }, { id: 'b', areaM2: 2.5, volumenM3: 0.1 }] })!.totals).toEqual({ areaM2: 3.75, volumeM3: 0.1 });
   });

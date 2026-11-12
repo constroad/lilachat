@@ -54,6 +54,16 @@ describe('AreasWeb', () => {
     expect(screen.getByTestId('area-1')).toHaveTextContent('Jr. Moquegua');
     expect(screen.getByTestId('area-2')).toHaveTextContent('A mano');
     expect(screen.queryByText(/Verifica/)).toBeNull();
+    expect(screen.queryByTestId('fotos-sin-area')).toBeNull();
+  });
+
+  it('photos with no area show under the report, outside the areas', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ document: { ...documentOf([area('1', 4.8)]), fotosSinArea: [{ url: 'https://lila.constroad.com/m/suelta.jpg' }] } }), { status: 200, headers: { 'Content-Type': 'application/json' } })));
+    render(<AreasWeb target={target} chatId="ch1" service={service} iphone onClose={vi.fn()} />);
+
+    const loose = await screen.findByTestId('fotos-sin-area');
+    expect(loose).toHaveTextContent('Fotos sin área (1)');
+    expect(loose.querySelectorAll('img')).toHaveLength(1);
   });
 
   it('with no areas yet, says so and offers the first one', async () => {

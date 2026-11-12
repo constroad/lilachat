@@ -24,11 +24,13 @@ export type AdditionalArea = {
   method: AreaMethod | null; lat: number | null; lng: number | null; precisionM?: number; approximate?: true; photos: AreaPhoto[];
 };
 export type AreaTotals = { areaM2: number; volumeM3: number };
-export type AreaDocument = { id: string; code?: string; type: typeof AREA_TYPE; status: string; date?: string; areas: AdditionalArea[]; totals: AreaTotals };
+/** `loosePhotos`: Portal's photos with no area (`fotosSinArea`), shown under the report so none stays only in Portal. */
+export type AreaDocument = { id: string; code?: string; type: typeof AREA_TYPE; status: string; date?: string; areas: AdditionalArea[]; loosePhotos: AreaPhoto[]; totals: AreaTotals };
 
 type Raw = Record<string, unknown>;
 const AREAS_MAX = 300;
-const PHOTOS_MAX = 20;
+/** Portal's real reports have an area with 85 photos (agentes 3006ed9 lets 100 through). */
+const PHOTOS_MAX = 100;
 const METHODS: readonly AreaMethod[] = ['medidas-iphone', 'a-mano', 'ar-app', 'foto-medida'];
 const record = (value: unknown): Raw => (value && typeof value === 'object' && !Array.isArray(value) ? (value as Raw) : {});
 const trimmed = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
@@ -45,6 +47,8 @@ function photoOf(raw: unknown): AreaPhoto | null {
   const capture = photo.captura === true || photo.capture === true;
   return { url, ...kept('thumbUrl', trimmed(either(photo, 'thumbnailUrl', 'thumbUrl'))), mime, ...(capture ? { capture: true as const } : {}) };
 }
+
+const photosOf = (raw: unknown): AreaPhoto[] => (Array.isArray(raw) ? raw : []).flatMap((one) => photoOf(one) ?? []).slice(0, PHOTOS_MAX);
 
 function pointOf(raw: Raw): Pick<AdditionalArea, 'lat' | 'lng'> {
   const [lat, lng] = [numeric(raw.lat), numeric(raw.lng)];
@@ -71,7 +75,7 @@ function areaOf(raw: unknown): AdditionalArea | null {
     id, ...kept('item', trimmed(area.item)), ...kept('place', trimmed(either(area, 'ubicacion', 'place'))), ...kept('description', trimmed(either(area, 'descripcion', 'description'))),
     ...figuresOf(area), areaM2, ...kept('volumeM3', numeric(either(area, 'volumenM3', 'volumeM3'))),
     method, ...pointOf(area), ...kept('precisionM', precisionM), ...(approximate ? { approximate: true as const } : {}),
-    photos: (Array.isArray(either(area, 'fotos', 'photos')) ? (either(area, 'fotos', 'photos') as unknown[]) : []).flatMap((one) => photoOf(one) ?? []).slice(0, PHOTOS_MAX),
+    photos: photosOf(either(area, 'fotos', 'photos')),
   };
 }
 
@@ -93,7 +97,7 @@ export function areaDocumentOf(raw: unknown): AreaDocument | null {
   const areas = list.flatMap((one) => areaOf(one) ?? []).slice(0, AREAS_MAX);
   return {
     id: trimmed(document.id), ...kept('code', trimmed(either(document, 'codigo', 'code'))), type: AREA_TYPE, status: trimmed(either(document, 'estado', 'status')) || 'draft',
-    ...kept('date', trimmed(either(document, 'fecha', 'date'))), areas, totals: totalsOf(either(document, 'totales', 'totals'), areas),
+    ...kept('date', trimmed(either(document, 'fecha', 'date'))), areas, loosePhotos: photosOf(either(document, 'fotosSinArea', 'loosePhotos')), totals: totalsOf(either(document, 'totales', 'totals'), areas),
   };
 }
 

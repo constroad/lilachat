@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { ChevronLeft, ExternalLink, Ruler } from 'lucide-react';
-import { AREA_TYPE, areaCardLines, areaCreateRequest, areaDraftKey, areaTotalsLine, areaWriteStore, readAreaDraft, reportTypeLabel, type AdditionalArea, type AreaDocument, type AreaDraftPoint, type EvidenceFile, type SpaceClientService } from '@lilachat/shared';
+import { AREA_TYPE, areaCardLines, areaCreateRequest, areaDraftKey, areaTotalsLine, areaWriteStore, readAreaDraft, reportTypeLabel, type AdditionalArea, type AreaDocument, type AreaPhoto, type AreaDraftPoint, type EvidenceFile, type SpaceClientService } from '@lilachat/shared';
 import { isIos } from '../../../pwa/iosInstall';
 import { observationWriteDeps, prepared, type DriveFile } from '../useDriveUpload';
 import { fieldPointNow } from '../observations/ObservationFormsWeb';
@@ -57,6 +57,19 @@ function useAreaWrite(to: { target: ServiceAskTarget; chatId: string; serviceId:
   return { busy, line, save };
 }
 
+/** Portal's photos with no area (`fotosSinArea`): under the report, so none stays only in Portal. */
+function LoosePhotos({ photos }: { photos: readonly AreaPhoto[] }) {
+  if (!photos.length) return null;
+  return (
+    <section data-testid="fotos-sin-area" className="space-y-2 rounded-xl border border-outline/20 bg-surface p-3">
+      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Fotos sin área ({photos.length})</p>
+      <div className="flex gap-2 overflow-x-auto">
+        {photos.map((photo) => <a key={photo.url} href={photo.url} target="_blank" rel="noreferrer" className="shrink-0"><img src={photo.thumbUrl ?? photo.url} alt="" className="h-16 w-16 rounded-lg object-cover" /></a>)}
+      </div>
+    </section>
+  );
+}
+
 function Failure(props: { message: string; portalUrl?: string; onRetry: () => void }) {
   return (
     <div data-testid="areas-fallo" className="rounded-xl border border-outline/20 bg-surface p-4">
@@ -101,6 +114,7 @@ export function AreasWeb(props: Props) {
         <>
           <p data-testid="areas-total" className="rounded-xl border border-outline/20 bg-surface p-4 text-lg font-bold tabular-nums">{areaTotalsLine({ count: report.areas.length, totals: report.totals })}</p>
           {report.areas.length ? <ul className="space-y-2">{report.areas.map((area) => <AreaCard key={area.id} area={area} />)}</ul> : <p data-testid="areas-vacio" className="py-4 text-center text-sm text-on-surface-variant">Todavía no hay áreas en este informe.</p>}
+          <LoosePhotos photos={report.loosePhotos} />
           {reading ? (
             <div className="rounded-xl border border-outline/20 bg-surface p-4 pb-0">
               <div className="mb-3 flex items-center justify-between"><h3 className="text-lg font-bold">Nueva área</h3><button type="button" onClick={() => setReading(null)} className="h-11 px-3 text-sm font-semibold text-on-surface-variant">Cerrar</button></div>

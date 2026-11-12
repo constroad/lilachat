@@ -1066,6 +1066,10 @@ prueba de José → E2E en TEST → lienzo REG/LEV → embed de Lilachat web, y 
   estado, fecha, areas[], totales}. Cada área: id, item, ubicacion, descripcion,
   largoM, anchoM, espesorCm, areaM2, volumenM3, metodo, verificar, lat, lng,
   precisionM, fuente, aproximada y fotos (mediaId, url, thumbnailUrl, captura).
+- Fotos: hasta 100 por área y 1 000 por informe (agentes 3006ed9). Portal
+  tiene un área real con 85 fotos y 25 con más de 10. Las fotos sin área llegan
+  a nivel del informe en `fotosSinArea` (siempre presente, vacío si no hay) y
+  Lilachat las muestra bajo el informe, fuera de las áreas.
 - Escritura: `registrar_area_adicional` con `kind: 'crear'`, la `entradaId`
   (idempotencia) y las cifras como contexto. Los dos textos (`ubicacion`,
   `descripcion`) van como valores del formulario y son opcionales. En blanco no

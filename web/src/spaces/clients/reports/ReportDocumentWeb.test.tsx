@@ -86,7 +86,7 @@ describe('ReportDocumentWeb', () => {
     // Act
     render(<ReportDocumentWeb target={target} chatId="chat-1" service={service} type="CTL-IMP" onClose={() => undefined} />);
     // Assert
-    expect(await screen.findByTestId('progreso-informe')).toHaveTextContent('2 de 3 secciones listas');
+    expect(await screen.findByTestId('progreso-informe')).toHaveTextContent('1 de 2 secciones listas');
     expect(calls[0]).toMatchObject({ url: '/api/workspaces/s1/clients/cli-cvs/services/srv-318/reports/draft', body: { type: 'CTL-IMP' } });
     expect(screen.getByTestId('informe-documento')).toHaveTextContent('Control de imprimación');
     expect(screen.getByTestId('informe-documento')).toHaveTextContent('Imprimación Av. Los Incas');

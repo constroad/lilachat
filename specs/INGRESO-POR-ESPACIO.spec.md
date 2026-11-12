@@ -193,3 +193,20 @@ el correo.
   sesión que lo pase a español neutro.
 - `spaceInviteEmail` y `spaceInviteMailto` se borraron: nadie más los usaba.
 
+**E2E 12/11 (prod, `ec1ae1b4`):** la invitación a una dirección QA de José en Test dijo
+«CORREO ENVIADO», no abrió ninguna app de correo y el correo llegó (12:21). **Su botón llevaba
+a `https://chat.constroad.com/login/callback?d=…`** (lo vio José). Causa: la llave «lilachat»
+en Torre › Identidad declaraba solo `https://chat.constroad.com/login/callback` y dos
+localhost, y la variable `CONSTROAD_AUTH_CALLBACK` de la mini apunta a chat. Los correos de
+código llevaban el mismo botón equivocado desde agosto.
+- Con OK de José: la llave ahora declara primero `https://lilachat.constroad.com/login/callback`
+  y `chat.constroad.com` salió.
+- `CONSTROAD_AUTH_CALLBACK` en la mini pasó de chat a `https://lilachat.constroad.com/login/callback`
+  (lila-2, 12:51, con el OK de José en su sesión; el deploy es `~/deploys/chat`, servicio
+  `com.constroad.chat`, en Torre la app se llama «chat»).
+- **Verificado 12/11:** una invitación nueva a otra dirección QA llegó con «Entrar a LILACHAT»
+  apuntando a `https://lilachat.constroad.com/login/callback?d=…`; abierto, carga Lilachat y la
+  dirección queda en `/`. Sin probar: el mismo enlace sin sesión (el correo escrito en «Entrar
+  con mi correo»), que cubre `emailHintOf` en test.
+- Las dos invitaciones QA se retiraron desde «Miembros y roles › Invitados».
+

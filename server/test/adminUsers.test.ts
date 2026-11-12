@@ -44,10 +44,12 @@ describe('users panel access', () => {
     await request(app).get('/api/admin/users').set(auth(ana)).expect(403);
   });
 
-  it('the creator, without any variable; an operator of LILACHAT_OPERADORES too', async () => {
+  // José 12/11: only the superadmin sees who is in Lilachat; an operator runs backups and nothing else.
+  it('the creator, without any variable; an operator of LILACHAT_OPERADORES does not', async () => {
     expect((await request(app).get('/api/admin').set(auth(jose)).expect(200)).body).toEqual({ superadmin: true });
     process.env.LILACHAT_OPERADORES = '911222333';
-    await request(app).get('/api/admin').set(auth(beto)).expect(200);
+    await request(app).get('/api/admin').set(auth(beto)).expect(403);
+    await request(app).get('/api/admin/users').set(auth(beto)).expect(403);
   });
 });
 

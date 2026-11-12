@@ -11034,7 +11034,7 @@ básica, nada de leer mensajes».
   Hasta el 12/11 también lo veían los teléfonos de `LILACHAT_OPERADORES`.
   José, 12/11: «solo el super admin puede ver los usuarios que existen en
   Lilachat». Un operador hace respaldos, no lee quién está
-  (`server/src/adminRoutes.test.ts`).
+  (`server/test/adminUsers.test.ts`).
 - El creador es un dato del producto, no configuración: no hace falta nada
   en Torre (constroad-code-quality §3-bis).
 - El respaldo a mano sigue igual: solo `LILACHAT_OPERADORES` (`isOperator`,

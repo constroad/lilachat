@@ -1131,3 +1131,43 @@ prueba de José → E2E en TEST → lienzo REG/LEV → embed de Lilachat web, y 
   app.
 - Un aviso global «Tienes un área a medio guardar» si iOS reinicia Lilachat.
   Hoy lo cubre el texto del paso 6.
+
+## 15. Editor 2.0 de Portal dentro de Lilachat web (José 11/11)
+
+Decisión de José: todo miembro del canal edita el informe, solo los admins
+borran, y cualquier versión anterior se restaura (eso vive en Portal). En el
+teléfono y en el APK sigue el formulario de este spec.
+
+**Contrato (Portal y agentes, 11/11):**
+
+| Pieza | Valor |
+| --- | --- |
+| Marca por informe | `editor: 'v2'` en `client.service.requested`. Hoy: CTL-PIS, CTL-IMP, REG-OBS, LEV-OBS y CON-CAP. VAL-SRV y LIQ-SRV entran después, sin cambios acá |
+| Pedido del enlace | `GET …/services/:serviceId/reports/:reportId/embed` → evento `client.report.embed.requested` {client_id, service_id, report_id, user} → herramienta `abrir_editor_de_informe` (agentes 9ec3e8c) |
+| Respuesta | `{url, expires_at}`; url = `https://www.constroad.com/embed/report/<id>#t=<token>`. Token por miembro y por pedido, 12 h, en el fragmento (no llega a logs ni Referer) |
+| Rol | Lo firma agentes (`space_role`, de la lista de miembros); el evento no lo lleva |
+| Origen | Solo `https://www.constroad.com` (en dev también `http://localhost:3000`). `frame-src` de la CSP lo permite |
+| Mensajes v1, Portal → Lilachat | `portal-embed:ready`, `:dirty` {dirty}, `:saved` {reportId, savedAt}, `:published` {reportId, pdfUrl?}, `:closed`, `:error` {code} |
+| Mensajes v1, Lilachat → Portal | `portal-embed:close-request`, `portal-embed:theme` {mode} |
+| Ancho | Ventana ≥ 1024 px (umbral del lienzo). Más angosta: la ficha o el formulario de hoy |
+
+**Qué hace Lilachat** (`shared/src/portalEmbed.ts`, `web/src/spaces/clients/reports/PortalEmbedWeb.tsx`):
+- Tocar un informe marcado, en ventana ancha, abre una capa sobre toda la
+  ventana: barra de 56 px (Volver, servicio, informe) y el marco debajo. Abre
+  así aunque sea un borrador.
+- Pide el enlace una vez por apertura. El server y la web validan origen,
+  ruta, token y vencimiento; otro origen es una falla y no se enmarca.
+- Solo acepta mensajes del origen de Portal y de ESE marco, con `version: 1`.
+- `ready` → le manda el tema (claro u oscuro) y lo sigue si cambia.
+- Volver o Escape: antes de `ready` cierra al toque; después manda
+  `close-request` y espera `closed`. Sin cambios, cierra solo a los 3 s si
+  Portal no contesta. Con cambios espera a Portal («Guardando antes de
+  cerrar…»), que guarda primero.
+- Con cambios sin guardar, cerrar la pestaña del navegador pregunta.
+- `saved` o `published` → al cerrar se vuelve a pedir el detalle una vez. Sin
+  polling.
+- `error expired` → pide otro enlace y recarga el marco. Otro código se
+  muestra en palabras, con Reintentar y «Abrir en el Portal».
+
+**Pendiente:** E2E en TEST cuando Portal publique el embed y José apruebe la
+herramienta en agentes.

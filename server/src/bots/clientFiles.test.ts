@@ -242,3 +242,36 @@ describe('a report\'s PDF on demand (agentes 30/10, Portal 588e3ff9: client.repo
     expect((await pdfOf(jose).expect(200)).body).toEqual({ error: 'report_pdf_failed', message: 'No se pudo traer el PDF del informe' });
   });
 });
+
+describe('Portal\'s canvas editor framed in the web (Portal 11/11: client.report.embed.requested)', () => {
+  const embedOf = (who: Types.ObjectId, report = 'rep-1') => request(app).get(`/api/workspaces/${spaceId}/clients/cli-cvs/services/srv-318/reports/${report}/embed`).set(auth(who));
+  const link = { url: 'https://www.constroad.com/embed/report/rep-1#t=tok.EN_1', expires_at: '2026-11-12T08:00:00.000Z' };
+
+  it('asks with client, service, report and who (agentes signs the space role itself, 9ec3e8c); answers the link', async () => {
+    // Arrange
+    answer = { status: 200, body: link };
+    // Act
+    const admin = await embedOf(jose).expect(200);
+    const member = await embedOf(ana).expect(200);
+    // Assert
+    expect(received[0]).toEqual({ type: 'client.report.embed.requested', space: String(spaceId), data: { client_id: 'cli-cvs', service_id: 'srv-318', report_id: 'rep-1', user: { id: String(jose), name: 'José', phone: '51902049935', sees_billing: true } } });
+    expect(received[1]?.data?.user).toEqual({ id: String(ana), name: 'Ana', phone: '51922222222' });
+    expect(admin.body).toEqual({ embed: { url: link.url, expiresAt: link.expires_at } });
+    expect(member.headers['cache-control']).toBe('no-store');
+  });
+
+  it('a link from another origin or without its token is a failure, never framed', async () => {
+    answer = { status: 200, body: { ...link, url: 'https://evil.example.com/embed/report/rep-1#t=x' } };
+    expect((await embedOf(jose).expect(200)).body).toEqual({ error: 'report_embed_failed', message: 'No se pudo abrir el editor del Portal.' });
+    answer = { status: 200, body: { ...link, url: 'https://www.constroad.com/embed/report/rep-1' } };
+    expect((await embedOf(jose).expect(200)).body.error).toBe('report_embed_failed');
+  });
+
+  it('a bad report id or someone outside the channel: 404 and no event; Portal\'s 404 says the report is gone', async () => {
+    expect((await embedOf(jose, 'mal id')).status).toBe(404);
+    expect((await embedOf(outsider)).status).toBe(404);
+    expect(received).toHaveLength(0);
+    answer = { status: 404, body: { code: 'not-found' } };
+    expect((await embedOf(jose).expect(200)).body).toEqual({ error: 'report_embed_failed', message: 'Este informe ya no está en el Portal.' });
+  });
+});

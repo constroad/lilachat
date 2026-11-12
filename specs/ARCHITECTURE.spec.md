@@ -6458,6 +6458,7 @@ enlace secundario al pie.
   - Servidor: `GET /api/workspaces/:id/clients/:clientId/services/:serviceId/reports/:reportId/pdf`,
     con la misma validación de canal y servicio que el detalle.
   - Código: `shared/src/reportPdf.ts` (`askReportPdfUntilDone`) y `useReportPdf` en app y web.
+- **Editor 2.0 de Portal enmarcado** (Portal y agentes 9ec3e8c, 11/11; `client.report.embed.requested` → `abrir_editor_de_informe`): enlace por miembro de 12 h con el token en el fragmento, solo desde `https://www.constroad.com`, en ventana ≥ 1024 px. Detalle: `INFORMES-DESDE-LILACHAT.spec.md` §15.
 
 ## 172. APK 0.1.175: compartir pantalla, guardia nativa del log y APK más liviano (30/10/2026)
 

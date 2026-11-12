@@ -181,6 +181,28 @@ describe('ServiceDetailWeb', () => {
     expect(screen.getByTestId('visor-fotos')).toBeInTheDocument();
   });
 
+  it('a report Portal edits in its canvas opens framed over the window from 1024 px, even a draft; narrower, its sheet (Portal 11/11)', async () => {
+    // Arrange
+    const reports = [{ id: 'r7', title: 'Control de pista · 11 de noviembre', date: '2026-11-11', status: { label: 'Borrador', tone: 'neutral' }, editor: 'v2' }];
+    const link = { url: 'https://www.constroad.com/embed/report/r7#t=a1', expiresAt: '2026-11-12T08:00:00.000Z' };
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(String(url).endsWith('/embed') ? { embed: link } : { detail: { ...detail, reports, totals: { ...detail.totals, reports: 1 } } }), { status: 200 })));
+    vi.stubGlobal('innerWidth', 1280);
+    const { unmount } = render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={() => undefined} />);
+    // Act
+    fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
+    fireEvent.click(within(screen.getByTestId('fila-r7')).getByText('Control de pista'));
+    // Assert
+    expect(await screen.findByTestId('editor-portal-marco')).toHaveAttribute('src', link.url);
+    fireEvent.click(screen.getByTestId('editor-portal-volver'));
+    expect(screen.queryByTestId('editor-portal')).toBeNull();
+    unmount();
+    vi.stubGlobal('innerWidth', 800);
+    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={() => undefined} />);
+    fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
+    fireEvent.click(within(screen.getByTestId('fila-r7')).getByText('Control de pista'));
+    expect(screen.queryByTestId('editor-portal')).toBeNull();
+  });
+
   it('the reports come under a header per day, newest first (José 31/10: «como lo hace la web»)', async () => {
     // Arrange
     const status = { label: 'Borrador', tone: 'neutral' };

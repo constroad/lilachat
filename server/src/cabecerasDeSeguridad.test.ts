@@ -35,10 +35,10 @@ describe('cabecerasDeSeguridad', () => {
     expect(csp).toContain('wss://lilachat.constroad.com');
   });
 
-  it('frames: only the four video players besides our own (pending 6), never any https site', () => {
+  it('frames: only the four video players and the Portal editor besides our own (pending 6; Portal 11/11), never any https site', () => {
     const frames = politicaDeContenido('lilachat.constroad.com').split('; ').find((rule) => rule.startsWith('frame-src'));
 
-    expect(frames).toBe("frame-src 'self' blob: https://www.youtube-nocookie.com https://www.tiktok.com https://www.instagram.com https://www.facebook.com");
+    expect(frames).toBe("frame-src 'self' blob: https://www.youtube-nocookie.com https://www.tiktok.com https://www.instagram.com https://www.facebook.com https://www.constroad.com");
   });
 
   it('el recorte de stickers de la web: wasm sí (no el eval de JS) y el modelo solo del almacenamiento de MediaPipe', () => {

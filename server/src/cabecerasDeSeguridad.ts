@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { VIDEO_EMBED_ORIGINS } from '@lilachat/shared';
+import { PORTAL_EMBED_ORIGINS, VIDEO_EMBED_ORIGINS } from '@lilachat/shared';
 
 /**
  * Las cabeceras de seguridad de la web (W0, 19/10).
@@ -43,7 +43,8 @@ export function politicaDeContenido(host: string): string {
     "object-src 'none'",
     // The PDF viewer (José, 21/10) shows the file from memory (`blob:`) in a frame of the page itself,
     // and a YouTube, TikTok, Instagram or Facebook video plays in that site's own player (pending 6).
-    `frame-src 'self' blob: ${VIDEO_EMBED_ORIGINS.join(' ')}`,
+    // Portal's canvas editor of a report (Portal 11/11), only from its production origin; the dev web has no CSP.
+    `frame-src 'self' blob: ${VIDEO_EMBED_ORIGINS.join(' ')} ${PORTAL_EMBED_ORIGINS.production}`,
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",

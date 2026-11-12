@@ -58,6 +58,13 @@ describe('serviceDetailOf', () => {
     expect(at(undefined)).toBeUndefined();
   });
 
+  it('marks a report Portal edits in its canvas (`editor: \'v2\'`, Portal 11/11), and only that value', () => {
+    const detail = serviceDetailOf({ ...body, reports: [{ id: 'r1', title: 'Control de pista', editor: 'v2', status_label: 'Borrador', tone: 'warn' }, { id: 'r2', title: 'Densidad', editor: 'v3', status_label: 'Completado', tone: 'ok' }] })!;
+    expect(detail.reports[0]!.editor).toBe('v2');
+    expect(detail.reports[1]!.editor).toBeUndefined();
+    expect(serviceDetailOf(JSON.parse(JSON.stringify(detail)))!.reports[0]!.editor).toBe('v2');
+  });
+
   it('is null without a service or without the lists', () => {
     expect(serviceDetailOf({ orders: [] })).toBeNull();
     expect(serviceDetailOf(null)).toBeNull();

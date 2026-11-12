@@ -223,3 +223,4 @@ export * from './observationWrite.js';
 export * from './sharedInFlight.js';
 export * from './areaMeasure.js';
 export * from './additionalArea.js';
+export * from './portalEmbed.js';

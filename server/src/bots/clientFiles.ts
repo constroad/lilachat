@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { canManageMembers, canSeeDrive, canSeeTab, CLIENT_ID, isFieldReport, clientAccountOf, REPORT_PDF_FAILED, reportPdfOf, serviceDetailOf, serviceFilesOf, type ClientAccount, type MyClientAccess, type RestrictableTab, type ReportPdf, type ServiceDetail, type ServiceFiles, type ServiceOrder } from '@lilachat/shared';
+import { canManageMembers, canSeeDrive, canSeeTab, CLIENT_ID, EMBED_FAILED, embedLinkOf, isFieldReport, clientAccountOf, PORTAL_EMBED_ORIGINS, REPORT_PDF_FAILED, reportPdfOf, serviceDetailOf, serviceFilesOf, type ClientAccount, type EmbedLink, type MyClientAccess, type RestrictableTab, type ReportPdf, type ServiceDetail, type ServiceFiles, type ServiceOrder } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { actorIn } from '../workspaces.js';
@@ -115,6 +115,19 @@ const DETAIL: ServiceAsk<ServiceDetail> = { event: 'client.service.requested', p
 const BILLING: ServiceAsk<ServiceDetail> = { ...DETAIL, failed: BILLING_FAILED, label: 'Cobranza del servicio', need: 'money' };
 const ACCOUNT: ServiceAsk<ClientAccount> = { event: 'client.account.requested', parse: clientAccountOf, failed: ACCOUNT_FAILED, gone: 'Este cliente ya no está en el Portal.', label: 'Cuenta del cliente', need: 'money' };
 const REPORT_PDF: ServiceAsk<ReportPdf> = { event: 'client.report.requested', parse: reportPdfOf, failed: REPORT_PDF_FAILED, gone: 'Este informe ya no está en el Portal.', label: 'PDF del informe', need: 'services' };
+
+/** Where Portal's editor may come from: production only in production (its CSP frames nothing else). */
+const EMBED_ORIGINS: readonly string[] = process.env.NODE_ENV === 'production' ? [PORTAL_EMBED_ORIGINS.production] : [PORTAL_EMBED_ORIGINS.production, PORTAL_EMBED_ORIGINS.development];
+const REPORT_EMBED: ServiceAsk<EmbedLink> = { event: 'client.report.embed.requested', parse: (body) => embedLinkOf(body, EMBED_ORIGINS), failed: EMBED_FAILED, gone: 'Este informe ya no está en el Portal.', label: 'Editor del informe', need: 'services' };
+
+/**
+ * The link to Portal's canvas editor of one report (Portal 11/11, agentes 9ec3e8c): per member and request, 12 h,
+ * its token in the fragment. Who deletes is the space role agentes signs from the member list, never this event.
+ */
+export function clientReportEmbed(workspaceId: string, clientId: string, serviceId: string, reportId: string, userId: Types.ObjectId): Promise<AskOutcome<EmbedLink> | NotFound> {
+  if (!CLIENT_ID.test(reportId)) return Promise.resolve(notFound());
+  return askAboutService(REPORT_EMBED, workspaceId, clientId, serviceId, userId, { report_id: reportId });
+}
 
 /** The Drive of a client's service (pending 121, agentes c27e939). */
 export async function clientServiceFiles(workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId): Promise<FilesOutcome | NotFound> {

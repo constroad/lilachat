@@ -28,7 +28,7 @@ import multer from 'multer';
 import { CUSTOM_EMOJI_MAX_BYTES } from '@lilachat/shared';
 import { addCustomEmoji, listCustomEmojis, removeCustomEmoji } from './customEmojiCatalog.js';
 import { clientRecords, listClients } from './bots/botClients.js';
-import { clientAccount, clientReportPdf, clientServiceBilling, clientServiceDetail, clientServiceFiles } from './bots/clientFiles.js';
+import { clientAccount, clientReportEmbed, clientReportPdf, clientServiceBilling, clientServiceDetail, clientServiceFiles } from './bots/clientFiles.js';
 import { clientReportDraft, openReportForm } from './bots/clientReports.js';
 import { liftRestrictionsOfAdmin, listBillingViewers, listClientAccess, setBillingViewer, setClientAccess } from './bots/clientBillingViewers.js';
 
@@ -133,6 +133,12 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
     const found = await clientReportPdf(req.params.id!, req.params.clientId!, req.params.serviceId!, req.params.reportId!, me(req), req.query.preview === '1');
     if ('error' in found) return res.status(found.status).json({ error: found.error, message: found.message });
     res.json(found.ok ? { pdf: found.value } : { error: 'report_pdf_failed', message: found.message });
+  }));
+  // Portal 11/11: its canvas editor framed on a wide window; the link carries its token in the fragment.
+  router.get('/:id/clients/:clientId/services/:serviceId/reports/:reportId/embed', handled(async (req, res) => {
+    const found = await clientReportEmbed(req.params.id!, req.params.clientId!, req.params.serviceId!, req.params.reportId!, me(req));
+    if ('error' in found) return res.status(found.status).json({ error: found.error, message: found.message });
+    res.json(found.ok ? { embed: found.value } : { error: 'report_embed_failed', message: found.message });
   }));
   // José 05/11: a field report filled from the channel by sections (spec INFORMES-DESDE-LILACHAT). The document first…
   router.post('/:id/clients/:clientId/services/:serviceId/reports/draft', handled(async (req, res) => {

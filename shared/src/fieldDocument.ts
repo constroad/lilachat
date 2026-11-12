@@ -281,3 +281,18 @@ export function publishFooterLine(document: FieldDocument, blockers: readonly st
 export function publishBlockers(document: FieldDocument, queue: readonly unknown[], offline = false): string[] {
   return [...document.publish.missing, ...(queue.length ? [PENDING_TEXT] : []), ...(offline ? [OFFLINE_TEXT] : [])];
 }
+
+/** Portal's «Enviar al grupo» on a report photo: the WhatsApp to the client's group (Portal 0b9a77c1). */
+export const GROUP_SEND_FIELD = 'enviarAlGrupo';
+
+function formWithoutGroupSend(form: FormSchema): FormSchema {
+  if (!form.properties || !(GROUP_SEND_FIELD in form.properties)) return form;
+  const { [GROUP_SEND_FIELD]: _send, ...properties } = form.properties;
+  return { ...form, properties, ...(form.required ? { required: form.required.filter((key) => key !== GROUP_SEND_FIELD) } : {}) };
+}
+
+/** José 12/11: «lo de enviar por whatsapp solo admins en lilachat». A member's forms come without it; Portal refuses it too. */
+export function withoutGroupSend(document: FieldDocument, admin: boolean): FieldDocument {
+  if (admin) return document;
+  return { ...document, forms: Object.fromEntries(Object.entries(document.forms).map(([key, form]) => [key, formWithoutGroupSend(form)])) };
+}

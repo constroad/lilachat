@@ -100,6 +100,18 @@ describe('the document', () => {
     expect((await ReportDraftModel.findOne({ userId: ana }).lean())?.document.id).toBe('6aed0a1b2c3d4e5f60718293');
   });
 
+  it('«Enviar al grupo» reaches only an admin (José 12/11: «lo de enviar por whatsapp solo admins en lilachat»)', async () => {
+    const withSend = { ...photosForm, properties: { ...photosForm.properties, enviarAlGrupo: { type: 'boolean', title: 'Enviar al grupo', default: false } } };
+    answers['client.report.draft.requested'] = { status: 200, body: { ...document, forms: { ...document.forms, fotos: withSend } } };
+
+    const member = await draftOf(ana).expect(200);
+    const admin = await draftOf(jose).expect(200);
+
+    expect(member.body.document.forms.fotos.properties).not.toHaveProperty('enviarAlGrupo');
+    expect((await ReportDraftModel.findOne({ userId: ana }).lean())?.document.forms.fotos?.properties).not.toHaveProperty('enviarAlGrupo');
+    expect(admin.body.document.forms.fotos.properties).toHaveProperty('enviarAlGrupo');
+  });
+
   it('is a 404 outside the channel and a 400 for a type that does not open here', async () => {
     await draftOf(outsider).expect(404);
     await draftOf(ana, { type: 'LIQ-SRV' }).expect(400);

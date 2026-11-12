@@ -1,6 +1,6 @@
 import mongoose, { Types, type Model } from 'mongoose';
 import { AREA_TYPE, areaDocumentOf, AREAS_OPEN_HERE, isObservationType, observationDocumentOf, OBSERVATIONS_OPEN_HERE, type AreaDocument, type ObservationDocument } from '@lilachat/shared';
-import { channelValuesOf, CLIENT_ID, SERVICE_LINK_ACTION, fieldDocumentOf, formLevelOf, photoKindOf, requiresLocation, SECTION_TOOL, sectionAt, sectionFormOf, type AppForm, type CommandOutcome, type FieldDocument, type FormSchema, type SectionPath } from '@lilachat/shared';
+import { channelValuesOf, CLIENT_ID, SERVICE_LINK_ACTION, fieldDocumentOf, withoutGroupSend, formLevelOf, photoKindOf, requiresLocation, SECTION_TOOL, sectionAt, sectionFormOf, type AppForm, type CommandOutcome, type FieldDocument, type FormSchema, type SectionPath } from '@lilachat/shared';
 import { OUTDATED_FORM_MESSAGE, type CommandError } from './botCommands.js';
 import { askAboutService, findAskedService, notFound, type AskOutcome, type NotFound, type ServiceAsk } from './clientFiles.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botModels.js';
@@ -65,7 +65,8 @@ draftSchema.index({ workspaceId: 1, userId: 1, serviceId: 1, type: 1 }, { unique
 draftSchema.index({ updatedAt: 1 }, { expireAfterSeconds: DRAFT_KEPT_S });
 export const ReportDraftModel: Model<ReportDraft> = (mongoose.models.ReportDraft as Model<ReportDraft>) ?? mongoose.model<ReportDraft>('ReportDraft', draftSchema);
 
-const DRAFT: ServiceAsk<FieldDocument> = { event: 'client.report.draft.requested', parse: fieldDocumentOf, failed: DRAFT_FAILED, gone: 'Este informe ya no está en el Portal.', label: 'Borrador del informe', need: 'services' };
+/** A member's copy comes without «Enviar al grupo» (José 12/11: WhatsApp only for admins); the kept copy is that one, so its forms lack it too. */
+const DRAFT: ServiceAsk<FieldDocument> = { event: 'client.report.draft.requested', parse: fieldDocumentOf, failed: DRAFT_FAILED, gone: 'Este informe ya no está en el Portal.', label: 'Borrador del informe', need: 'services', scrub: withoutGroupSend };
 /** The same event for an observation report: agentes sends it to `informe_de_observaciones` (275fb32). Nothing is kept: no section form is built from it. */
 const OBSERVATIONS: ServiceAsk<ObservationDocument> = { event: DRAFT.event, parse: observationDocumentOf, failed: DRAFT_FAILED, gone: DRAFT.gone, label: 'Informe de observaciones', need: 'services' };
 const opensObservations = (type: unknown): boolean => OBSERVATIONS_OPEN_HERE && isObservationType(type);

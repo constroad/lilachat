@@ -1249,3 +1249,13 @@ los 45 s, 272da5fb); «Día del protocolo» vacío (arreglado en Portal); valore
 imposibles sin aviso (22,2 g/cm³ dio 986,7 %) y la hoja que se desplaza sola al
 guardar: pendientes en Portal. Cerrar sin escribir manda `dirty` y un `saved`:
 avisado a Portal por si suma una versión vacía al historial.
+
+### «Enviar al grupo» solo para admins (José 12/11)
+
+José: «lo de enviar por whatsapp solo admins en lilachat». La casilla
+`enviarAlGrupo` de las fotos de CTL-IMP y CTL-PIS (Portal 0b9a77c1: el
+WhatsApp al grupo del cliente, detrás del interruptor por tipo de la empresa)
+llega solo a un admin del espacio. El server la quita del documento de un
+miembro (`withoutGroupSend`, el mismo `scrub` que esconde la plata) y guarda
+esa copia, así que los formularios de sección tampoco la traen. Portal la
+rechaza también si la pide un miembro (pedido el 12/11, a la espera de su sha).

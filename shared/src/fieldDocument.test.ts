@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applySavedSection, channelValuesOf, fieldDocumentOf, nextSection, photoKindOf, progressOf, publishBlockers, requiresLocation, SECTION_TOOL, sectionFormOf, type RepeatSection } from './fieldDocument';
+import { applySavedSection, channelValuesOf, fieldDocumentOf, withoutGroupSend, nextSection, photoKindOf, progressOf, publishBlockers, requiresLocation, SECTION_TOOL, sectionFormOf, type RepeatSection } from './fieldDocument';
 
 /** The document Portal's `informe_de_campo` answers (spec INFORMES-DESDE-LILACHAT §3.1), for a CTL-IMP with one tramo. */
 const generalForm = { type: 'object', properties: { liquido: { type: 'string', title: 'Líquido', oneOf: [{ const: 'MC-30', title: 'MC-30' }, { const: 'EMULSION', title: 'Emulsión' }] }, proyecto: { type: 'string', title: 'Proyecto' } }, required: ['liquido', 'proyecto'] };
@@ -235,5 +235,22 @@ describe('a control de pista (contract 06/11): the units come from the dispatche
     expect(nextSection(empty)).toBeNull();
     expect(progressOf(pista([dispatch]))).toEqual({ done: 1, total: 6 });
     expect(nextSection(pista([dispatch]))).toEqual({ sectionId: 'unidades', itemId: 'd1', key: 'datos' });
+  });
+});
+
+describe('withoutGroupSend (José 12/11: «lo de enviar por whatsapp solo admins en lilachat»)', () => {
+  const withSend = () => fieldDocumentOf({ ...body, forms: { ...body.forms, fotos: { ...photosForm, properties: { ...photosForm.properties, enviarAlGrupo: { type: 'boolean', title: 'Enviar al grupo', default: false } }, required: ['foto', 'enviarAlGrupo'] } } })!;
+
+  it('a member does not see «Enviar al grupo»; the rest of the photo form stays', () => {
+    const form = withoutGroupSend(withSend(), false).forms.fotos!;
+
+    expect(Object.keys(form.properties ?? {})).toEqual(['foto', 'descripcion']);
+    expect(form.required).toEqual(['foto']);
+  });
+
+  it('an admin keeps it, and a document without it is left as it was', () => {
+    expect(withoutGroupSend(withSend(), true).forms.fotos!.properties).toHaveProperty('enviarAlGrupo');
+    const plain = parsed();
+    expect(withoutGroupSend(plain, false)).toEqual(plain);
   });
 });

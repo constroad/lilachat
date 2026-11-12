@@ -62,6 +62,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   for (const socket of abiertos) socket.close();
+  // The server's disconnect handlers still write (gates 12/11: «client was closed» twice under load); same settle as groupCallSocket.
+  await new Promise((resolve) => setTimeout(resolve, 300));
   await new Promise<void>((resolve) => httpServer.close(() => resolve()));
   await mongoose.disconnect();
   await mongo.stop();

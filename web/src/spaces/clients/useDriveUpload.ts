@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { DRIVE_UPLOAD_DONE, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type ManualPhotoUpload } from '@lilachat/shared';
+import { DRIVE_UPLOAD_DONE, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type ManualPhotoUpload, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps } from '@lilachat/shared';
 import { submitAppForm } from '../../chat/commands/commandsApi';
 import { shrinkPhotoBlob } from '../../chat/shrinkPhoto';
 import { currentSocket } from '../../useSocket';
 import { openReportForm } from './reports/reportsApi';
 import type { ServiceAskTarget } from './useServiceAsk';
 
-type DriveFile = { blob: Blob; name: string };
+export type DriveFile = { blob: Blob; name: string };
 type UploadState = { sending: boolean; message: string; failed: boolean };
 type UploadTarget = { target: ServiceAskTarget; chatId: string; serviceId: string; onDone: () => void };
 
@@ -43,7 +43,8 @@ function videoSecondsOf(file: Blob): Promise<number | undefined> {
   });
 }
 
-async function prepared(file: File): Promise<{ source: DriveFile; facts: DriveFileFacts }> {
+/** A photo leaves at Portal's size; a video goes as it is, with its length when the browser reads it. */
+export async function prepared(file: File): Promise<{ source: DriveFile; facts: DriveFileFacts }> {
   if (file.type.startsWith('image/')) {
     const photo = await shrinkPhotoBlob(file, file.name);
     return { source: { blob: photo.blob, name: photo.name }, facts: { mime: photo.mime, sizeBytes: photo.blob.size } };
@@ -82,3 +83,12 @@ export const mapTraceUploader = (target: ServiceAskTarget, chatId: string, servi
   const source = { blob: file, name: file.name };
   return manualPhotoOf(await uploadToDrive(depsOf({ target, chatId, serviceId }), { source, facts: { mime, sizeBytes: file.size } }, crypto.randomUUID()));
 };
+
+/** An observation's write from the browser (an iPhone's PWA is the field's form too): the run, its answer and each file straight to Portal. */
+export const observationWriteDeps = (to: Omit<UploadTarget, 'onDone'>, request: ObservationRegisterRequest | ObservationLiftRequest): ObservationWriteDeps<DriveFile> => ({
+  open: () => openReportForm(to.target, to.serviceId, request),
+  submit: (commandId, values) => submitAppForm(to.target.jwt, { chatId: to.chatId }, commandId, values),
+  notice: (commandId) => noticeOf(currentSocket(), commandId),
+  send: sendToDrive,
+});
+

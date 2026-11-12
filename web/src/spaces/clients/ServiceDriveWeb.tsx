@@ -159,6 +159,11 @@ export const DrivePhotoInput = forwardRef<HTMLInputElement, { testId: string; on
   return <input ref={ref} data-testid={props.testId} type="file" accept="image/*" capture="environment" hidden onChange={(event) => { props.onFile(event.target.files?.[0]); event.target.value = ''; }} />;
 });
 
+/** A photo or a video of an observation (José 11/11): the camera at once on a phone, a file on a computer. */
+export const EvidenceInput = forwardRef<HTMLInputElement, { testId: string; kind: 'photo' | 'video'; onFile: (file: File | undefined) => void }>(function EvidenceInput(props, ref) {
+  return <input ref={ref} data-testid={props.testId} type="file" accept={props.kind === 'video' ? 'video/*' : 'image/*'} capture="environment" hidden onChange={(event) => { props.onFile(event.target.files?.[0]); event.target.value = ''; }} />;
+});
+
 /** A KMZ or KML for «Importar» of the map (o-12). */
 export const DriveTraceInput = forwardRef<HTMLInputElement, { testId: string; onFile: (file: File | undefined) => void }>(function DriveTraceInput(props, ref) {
   return <input ref={ref} data-testid={props.testId} type="file" accept=".kmz,.kml,application/vnd.google-earth.kmz,application/vnd.google-earth.kml+xml" hidden onChange={(event) => { props.onFile(event.target.files?.[0]); event.target.value = ''; }} />;

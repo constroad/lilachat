@@ -64,3 +64,61 @@ describe('ObservationsWeb (design ob-07b)', () => {
     expect((await screen.findByTestId('observaciones-fallo')).textContent).toContain('No se pudo traer el informe');
   });
 });
+
+describe('registering and lifting from the browser (an iPhone has no APK)', () => {
+  const ticket = { url: 'https://portal.constroad.com/api/obs/upload', method: 'POST', fields: { t: 'x' }, fileField: 'file', expiresAt: '2030-01-01T00:00:00.000Z', maxBytes: 50_000_000, maxSeconds: 30, mimeTypes: ['image/jpeg', 'image/png', 'video/mp4'] };
+  const answered = (data: Record<string, unknown>) => ({ commandId: 'c1', outcome: 'answered', response: { responseType: 'ephemeral', data, upload: ticket } });
+
+  /** Portal behind the server: the document, the run, its answer and the file. */
+  function portal(after: unknown[]) {
+    const calls: string[] = [];
+    let reads = 0;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      const body = typeof init?.body === 'string' ? init.body : '';
+      calls.push(`${String(url)} ${body}`);
+      const reply = String(url).includes('/reports/draft') ? { document: documentOf(reads++ === 0 ? [item('1', 'open', 'Fisura')] : after) }
+        : String(url).includes('/reports/forms') ? { commandId: 'c1', appId: 'a', appName: 'Portal', outcome: 'form', response: { responseType: 'form' } }
+        : String(url).includes('/commands/c1/form') ? answered({ informeId: 'r1', observacionId: 'o9', codigo: 'OBS-009' })
+        : { mediaId: 'm1', url: 'https://lila.constroad.com/m/1.jpg' };
+      return new Response(JSON.stringify(reply), { status: String(url).includes('/obs/upload') ? 201 : 200, headers: { 'Content-Type': 'application/json' } });
+    }));
+    return calls;
+  }
+  const photo = () => new File([new Uint8Array([255, 216, 255])], 'foto.jpg', { type: 'image/jpeg' });
+
+  it('«Nueva observación» opens the camera, reads the GPS and registers with its precision', async () => {
+    const calls = portal([item('1', 'open', 'Fisura'), item('9', 'open', 'Bache')]);
+    vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition: (ok: PositionCallback) => ok({ coords: { latitude: -12.05, longitude: -77.03, accuracy: 6.4 } } as GeolocationPosition) } });
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => 'blob:x', revokeObjectURL: () => undefined }));
+    render(<ObservationsWeb target={target} chatId="ch1" service={service} type="REG-OBS" onClose={vi.fn()} />);
+
+    await userEvent.click(await screen.findByTestId('nueva-observacion'));
+    await userEvent.upload(screen.getByTestId('entrada-nueva'), photo());
+    expect(await screen.findByTestId('gps-nueva')).toHaveTextContent('GPS ±6 m');
+    await userEvent.click(screen.getByTestId('registrar-observacion'));
+
+    await waitFor(() => expect(calls.some((call) => call.includes('/obs/upload'))).toBe(true));
+    const opened = calls.find((call) => call.includes('/reports/forms'))!;
+    expect(opened).toContain('"kind":"observation_register"');
+    expect(opened).toContain('"precision_m":6');
+    expect(opened).toContain('"source":"web"');
+    await waitFor(() => expect(screen.queryByTestId('nueva-observacion-web')).toBeNull());
+    expect(await screen.findByTestId('observacion-OBS-009')).toBeTruthy();
+  });
+
+  it('a pending one: the button takes the photo of after first, then lifts it', async () => {
+    const calls = portal([item('1', 'lifted', 'Fisura')]);
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => 'blob:x', revokeObjectURL: () => undefined }));
+    render(<ObservationsWeb target={target} chatId="ch1" service={service} type="LEV-OBS" onClose={vi.fn()} />);
+
+    await userEvent.click(await screen.findByTestId('observacion-OBS-001'));
+    expect(screen.getByTestId('marcar-levantada')).toHaveTextContent('Tomar foto del después');
+    await userEvent.upload(screen.getAllByTestId('entrada-foto')[0]!, photo());
+    await waitFor(() => expect(screen.getByTestId('marcar-levantada')).toHaveTextContent('Marcar como levantada'));
+    await userEvent.click(screen.getByTestId('marcar-levantada'));
+
+    await waitFor(() => expect(calls.some((call) => call.includes('"kind":"observation_lift"') && call.includes('"observation_id":"1"'))).toBe(true));
+    await waitFor(() => expect(screen.getByTestId('observacion-OBS-001')).toHaveTextContent('Levantada'));
+  });
+});
+

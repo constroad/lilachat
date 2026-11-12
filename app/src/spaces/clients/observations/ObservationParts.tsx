@@ -15,7 +15,7 @@ export function ObservationHeader(props: { kicker: string; title: string; captio
   const colors = useColores();
   return (
     <View className="flex-row items-start gap-2 border-b border-outline/10 bg-surface px-3 pb-3 pt-2">
-      <Pressable testID="volver-observaciones" onPress={props.onBack} accessibilityLabel="Volver" className="h-11 w-11 items-center justify-center rounded-full">
+      <Pressable testID="volver-observaciones" onPress={props.onBack} accessibilityLabel="Volver" className="h-14 w-14 items-center justify-center rounded-full">
         <ChevronLeft size={22} color={colors.primary} />
       </Pressable>
       <View className="min-w-0 flex-1">
@@ -114,12 +114,13 @@ export function ObservationMapView(props: { map: ObservationMap; observations: r
 const hereAsObservation: Observation = { id: 'aqui', code: '', note: '', lat: null, lng: null, at: null, status: 'open', media: [], liftMedia: [] };
 
 /** The one action of the screen, at the bottom; what stops it is said under it. */
-export function BottomAction(props: { testID: string; label: string; icon: ReactNode; disabled: boolean; busy: boolean; tone?: 'primary' | 'ok'; note?: string | null; onPress: () => void }) {
+/** Never turned off (§5-ter rule 4): the screen gives it the next pending step. Only a write in course holds it. */
+export function BottomAction(props: { testID: string; label: string; icon: ReactNode; busy: boolean; tone?: 'primary' | 'ok'; note?: string | null; onPress: () => void }) {
   const colors = useColores();
   const fill = props.tone === 'ok' ? 'bg-en-linea' : 'bg-primary';
   return (
     <View className="gap-1.5 border-t border-outline/10 bg-surface px-4 pb-4 pt-3">
-      <Pressable testID={props.testID} disabled={props.disabled || props.busy} onPress={props.onPress} className={`min-h-[60px] flex-row items-center justify-center gap-2 rounded-2xl ${fill} ${props.disabled || props.busy ? 'opacity-50' : ''}`}>
+      <Pressable testID={props.testID} disabled={props.busy} onPress={props.onPress} className={`min-h-[60px] flex-row items-center justify-center gap-2 rounded-2xl ${fill} ${props.busy ? 'opacity-50' : ''}`}>
         {props.busy ? <ActivityIndicator color={colors['on-primary']} /> : props.icon}
         <Text className="text-[17px] font-bold text-on-primary">{props.label}</Text>
       </Pressable>

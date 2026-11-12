@@ -128,11 +128,10 @@ export async function captureEvidence(kind: 'photo' | 'video'): Promise<Captured
 }
 
 /** An observation's write from this phone: the run of the client's app, its answer, and each file straight to Portal. */
-export const observationWriteDeps = (to: Omit<UploadTarget, 'onDone'>, request: ObservationRegisterRequest | ObservationLiftRequest, progress?: (sent: number, total: number) => void): ObservationWriteDeps<DriveFile> => ({
+export const observationWriteDeps = (to: Omit<UploadTarget, 'onDone'>, request: ObservationRegisterRequest | ObservationLiftRequest): ObservationWriteDeps<DriveFile> => ({
   open: () => openReportForm(to.target, to.serviceId, request),
   submit: (commandId, values) => submitAppForm(to.target.jwt, { chatId: to.chatId }, commandId, values),
   notice: (commandId) => noticeOf(getSocket(), commandId),
   send: (upload, file, clientUploadId) => sendToDrive(upload, file, clientUploadId, () => undefined),
-  ...(progress ? { progress } : {}),
 });
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ScrollView, Text, TextInput, View } from 'react-native';
-import { CheckCircle2, MapPin } from 'lucide-react-native';
-import { evidenceFiles, liftBlocker, liftRequest, OBSERVATION_NOTE_MAX, observationPlace, registeredLine, STATUS_PILLS, type Observation, type ObservationDocument } from '@lilachat/shared';
+import { Camera, CheckCircle2, MapPin } from 'lucide-react-native';
+import { approximateLine, evidenceFiles, liftAction, liftRequest, OBSERVATION_NOTE_MAX, observationPlace, registeredLine, STATUS_PILLS, type Observation, type ObservationDocument } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { Pill } from '../reports/ReportSections';
 import { useFileViewer } from '../useFileViewer';
@@ -20,6 +20,7 @@ function PlaceCard({ observation, report }: { observation: Observation; report: 
         <Text className="font-mono text-[14px] text-on-surface">{observationPlace(observation, report.map)}</Text>
       </View>
       <Text className="text-[13px] text-on-surface-variant">{registeredLine(observation)}</Text>
+      {approximateLine(observation) ? <Text testID="ubicacion-aproximada" className="text-[13px] font-semibold text-warning">{approximateLine(observation)}</Text> : null}
     </View>
   );
 }
@@ -62,8 +63,8 @@ export function LiftObservationScreen(props: { to: ObservationTarget; report: Ob
   const files = useFileViewer();
   const before = evidenceFiles(observation.media, `${observation.code} · antes`);
   const after = evidenceFiles(observation.liftMedia, `${observation.code} · después`);
-  const blocker = liftBlocker(evidence.items.length);
-  const lift = () => void write.run(liftRequest(report, observation.id), note, evidence.items, 'levantada');
+  const action = liftAction(evidence.items.length);
+  const press = () => void (action.kind === 'take-after' ? evidence.take('photo') : write.run(liftRequest(report, observation.id), note, evidence.items, 'levantada'));
   return (
     <View className="flex-1 bg-background">
       <ObservationHeader kicker={`Levantamiento · ${observation.code}`} title={observation.note} onBack={props.onBack} side={<Pill badge={STATUS_PILLS[observation.status]} testID="estado-observacion" />} />
@@ -80,7 +81,7 @@ export function LiftObservationScreen(props: { to: ObservationTarget; report: Ob
         </View>
         {files.notice ? <Text className="text-center text-[13px] text-error">{files.notice}</Text> : null}
       </ScrollView>
-      {observation.status === 'open' ? <BottomAction testID="marcar-levantada" tone="ok" label="Marcar como levantada" icon={<CheckCircle2 size={20} color={colors['on-primary']} />} disabled={Boolean(blocker)} busy={write.busy} note={write.line ?? blocker} onPress={lift} /> : null}
+      {observation.status === 'open' ? <BottomAction testID="marcar-levantada" tone={action.kind === 'lift' ? 'ok' : 'primary'} label={action.label} icon={action.kind === 'lift' ? <CheckCircle2 size={20} color={colors['on-primary']} /> : <Camera size={20} color={colors['on-primary']} />} busy={write.busy} note={write.line} onPress={press} /> : null}
       {files.viewer}
     </View>
   );

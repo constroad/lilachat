@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { BackHandler } from 'react-native';
-import { OBSERVATION_GPS_MISSING, readObservationDraft, writeObservation, writeOutcome, type ObservationDraftResult, type ObservationLiftRequest, type ObservationRegisterRequest, type WorkMapPoint } from '@lilachat/shared';
+import { observationWriteStore, readObservationDraft, type ObservationDraftResult, type ObservationLiftRequest, type ObservationRegisterRequest, type WorkMapPoint } from '@lilachat/shared';
 import { freshPoint } from '../../../chat/location/freshPoint';
 import { askReportDraft } from '../reports/reportsApi';
 import { captureEvidence, observationWriteDeps, type CapturedEvidence } from '../useDriveUpload';
@@ -34,25 +34,37 @@ export function useObservationReport(to: ObservationTarget, type: string, report
   return { draft, reload };
 }
 
-type PlaceState = { state: 'reading' } | { state: 'ready'; point: WorkMapPoint & { precision?: number } } | { state: 'missing' };
+type FieldPoint = WorkMapPoint & { precision?: number };
+type PlaceState = { state: 'reading' } | { state: 'ready'; point: FieldPoint } | { state: 'missing' };
 
-/** The phone's place, read when the screen opens (design `ob-02`: «GPS activo»); the person can ask again. */
-export function useFieldPlace() {
+/**
+ * The phone's place (design `ob-02`: «GPS activo»). `first` is the reading
+ * started when the camera opened (§5-ter rule 2: read by itself at the shot);
+ * the person can ask again.
+ */
+export function useFieldPlace(first?: Promise<FieldPoint | null>) {
   const [place, setPlace] = useState<PlaceState>({ state: 'reading' });
-  const read = useCallback(async () => {
+  const settle = useCallback(async (reading: Promise<FieldPoint | null>) => {
     setPlace({ state: 'reading' });
-    const point = await freshPoint();
+    const point = await reading;
     setPlace(point ? { state: 'ready', point } : { state: 'missing' });
   }, []);
   useEffect(() => {
-    void read();
-  }, [read]);
-  return { place, retry: read };
+    void settle(first ?? freshPoint());
+  }, [settle, first]);
+  return { place, retry: () => void settle(freshPoint()) };
+}
+
+/** «Nueva observación» opens the camera at once (§5-ter rule 2), with the GPS reading at the same time. */
+export async function startObservation(): Promise<{ shot: CapturedEvidence; reading: Promise<FieldPoint | null> } | { message: string } | null> {
+  const reading = freshPoint();
+  const shot = await captureEvidence('photo');
+  return shot && 'file' in shot ? { shot, reading } : shot;
 }
 
 /** The photos and videos taken for one write, before they leave the phone. */
-export function useEvidence() {
-  const [items, setItems] = useState<CapturedEvidence[]>([]);
+export function useEvidence(first: readonly CapturedEvidence[] = []) {
+  const [items, setItems] = useState<CapturedEvidence[]>([...first]);
   const [message, setMessage] = useState<string | null>(null);
   const take = useCallback(async (kind: 'photo' | 'video') => {
     setMessage(null);
@@ -64,21 +76,14 @@ export function useEvidence() {
   return { items, message, take, remove };
 }
 
-/** One write and what it said: the same request again sends only the files Portal does not have yet. */
+/** One write and what it said (`observationWriteStore`): the same request again sends only the files Portal does not have yet. */
 export function useObservationWrite(to: ObservationTarget, onDone: (reportId: string) => void) {
-  const [busy, setBusy] = useState(false);
-  const [line, setLine] = useState<string | null>(null);
+  const store = useMemo(() => observationWriteStore(), []);
+  const { busy, line } = useSyncExternalStore(store.subscribe, store.get);
   const run = useCallback(async (request: ObservationRegisterRequest | ObservationLiftRequest | null, note: string, evidence: readonly CapturedEvidence[], done: string) => {
-    if (!request) return setLine(OBSERVATION_GPS_MISSING);
-    setBusy(true);
-    setLine(null);
-    const progress = (sent: number, total: number) => setLine(`Subiendo ${sent} de ${total}…`);
-    const result = await writeObservation(observationWriteDeps(to, request, progress), note, evidence.map((one) => one.file));
-    const outcome = writeOutcome(result, done);
-    setBusy(false);
-    setLine(outcome.line);
-    if (outcome.done && result.ok) onDone(result.answer.reportId);
-  }, [to, onDone]);
+    const reportId = await store.run(request ? observationWriteDeps(to, request) : null, note, evidence.map((one) => one.file), done);
+    if (reportId) onDone(reportId);
+  }, [store, to, onDone]);
   return { busy, line, run };
 }
 

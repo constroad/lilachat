@@ -30,7 +30,7 @@ const tramos = () => {
 describe('the types a report can be', () => {
   it('offers the eight types of the public page, and CTL-IMP and CTL-PIS open here', () => {
     expect(REPORT_TYPE_OPTIONS).toHaveLength(9);
-    expect(REPORT_TYPE_OPTIONS.filter((option) => option.opensHere).map((option) => option.code)).toEqual(['CTL-IMP', 'CTL-PIS']);
+    expect(REPORT_TYPE_OPTIONS.filter((option) => option.opensHere).map((option) => option.code)).toEqual(['CTL-IMP', 'CTL-PIS', 'REG-OBS', 'LEV-OBS']);
     expect(REPORT_TYPE_OPTIONS.slice(0, 3).map((option) => option.code)).toEqual(['CTL-IMP', 'IAA', 'CTL-PIS']);
     REPORT_TYPE_OPTIONS.forEach((option) => expect(isFieldReport({ typeLabel: option.label })).toBe(true));
   });

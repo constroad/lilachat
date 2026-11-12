@@ -14,7 +14,7 @@ const ID_MAX = 64;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export type ObservationFormInput =
-  | { kind: 'observation_register'; entryId: string; lat: number; lng: number; reportId: string | null }
+  | { kind: 'observation_register'; entryId: string; lat: number; lng: number; precisionM: number | null; source: 'apk' | 'web'; reportId: string | null }
   | { kind: 'observation_lift'; observationId: string; reportId: string | null };
 export type ObservationFormContext = Record<string, string | number>;
 
@@ -22,6 +22,9 @@ const NOTE: FormSchema = { type: 'object', properties: { nota: { type: 'string',
 const LIFT_NOTE: FormSchema = { type: 'object', properties: { nota: { type: 'string', title: 'Cómo se corrigió', maxLength: OBSERVATION_NOTE_MAX } } };
 
 const idOf = (raw: unknown): string => (typeof raw === 'string' && raw.trim().length <= ID_MAX ? raw.trim() : '');
+const PRECISION_MAX_M = 5000;
+/** Portal 56dce11c: the GPS's «±N m», 0–5000; anything else goes as nothing. */
+const precisionOf = (raw: unknown): number | null => (typeof raw === 'number' && Number.isFinite(raw) && raw >= 0 && raw <= PRECISION_MAX_M ? raw : null);
 const coordinate = (raw: unknown, limit: number): number | null => (typeof raw === 'number' && Number.isFinite(raw) && Math.abs(raw) <= limit ? raw : null);
 
 /** Off until José approves Portal's tools: the kinds do not exist meanwhile (`OBSERVATIONS_OPEN_HERE`). */
@@ -36,7 +39,8 @@ export function observationFormInputOf(raw: Record<string, unknown>): Observatio
   }
   const [lat, lng] = [coordinate(raw.lat, 90), coordinate(raw.lng, 180)];
   const entryId = typeof raw.entry_id === 'string' && UUID.test(raw.entry_id) ? raw.entry_id : '';
-  return entryId && lat !== null && lng !== null ? { kind: 'observation_register', entryId, lat, lng, reportId } : null;
+  if (!entryId || lat === null || lng === null || (raw.source !== 'apk' && raw.source !== 'web')) return null;
+  return { kind: 'observation_register', entryId, lat, lng, precisionM: precisionOf(raw.precision_m), source: raw.source, reportId };
 }
 
 export function observationFormPrepared(serviceId: string, input: ObservationFormInput): { form: AppForm; context: ObservationFormContext } {
@@ -44,5 +48,5 @@ export function observationFormPrepared(serviceId: string, input: ObservationFor
   if (input.kind === 'observation_lift') {
     return { form: { id: LIFT_OBSERVATION_TOOL, title: 'Levantar observación', submitLabel: 'Marcar como levantada', schema: LIFT_NOTE }, context: { servicioId: serviceId, observacionId: input.observationId, ...report } };
   }
-  return { form: { id: REGISTER_OBSERVATION_TOOL, title: 'Nueva observación', submitLabel: 'Registrar observación', schema: NOTE }, context: { servicioId: serviceId, entradaId: input.entryId, lat: input.lat, lng: input.lng, ...report } };
+  return { form: { id: REGISTER_OBSERVATION_TOOL, title: 'Nueva observación', submitLabel: 'Registrar observación', schema: NOTE }, context: { servicioId: serviceId, entradaId: input.entryId, lat: input.lat, lng: input.lng, ...(input.precisionM !== null ? { precisionM: input.precisionM } : {}), fuente: input.source, ...report } };
 }

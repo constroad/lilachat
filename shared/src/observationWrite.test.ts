@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { CommandResponse } from './botCommands.js';
-import { liftRequest, noteValues, observationAnswerOf, registerRequest, writeObservation, writeOutcome, type ObservationWriteDeps } from './observationWrite.js';
+import { liftRequest, noteValues, observationAnswerOf, registerRequest, observationWriteStore, writeObservation, writeOutcome, type ObservationWriteDeps } from './observationWrite.js';
 
 const ticket = { url: 'https://portal.constroad.com/api/obs/upload', method: 'POST' as const, fields: { t: 'x' }, fileField: 'file', expiresAt: '2026-11-11T18:00:00.000Z', maxBytes: 50_000_000, maxSeconds: 30, mimeTypes: ['image/jpeg', 'video/mp4'] };
 const answered = (data: Record<string, unknown>, upload: typeof ticket | null = ticket): CommandResponse => ({ responseType: 'ephemeral', data, ...(upload ? { upload } : {}) });
@@ -25,8 +25,9 @@ const video = { key: 'k2', source: 'clip.mp4', facts: { mime: 'video/mp4', secon
 
 describe('the requests', () => {
   it('a registry passes its id; from a lifting the observation lands in the open registry', () => {
-    expect(registerRequest({ id: 'r1', type: 'REG-OBS' }, 'e1', { lat: -12, lng: -77 })).toEqual({ kind: 'observation_register', entry_id: 'e1', lat: -12, lng: -77, report_id: 'r1', forms: expect.any(Number) });
-    expect(registerRequest({ id: 'l1', type: 'LEV-OBS' }, 'e1', { lat: -12, lng: -77 })).not.toHaveProperty('report_id');
+    expect(registerRequest({ id: 'r1', type: 'REG-OBS' }, 'e1', { lat: -12, lng: -77, precision: 4.4 }, 'apk')).toEqual({ kind: 'observation_register', entry_id: 'e1', lat: -12, lng: -77, precision_m: 4, source: 'apk', report_id: 'r1', forms: expect.any(Number) });
+    expect(registerRequest({ id: 'l1', type: 'LEV-OBS' }, 'e1', { lat: -12, lng: -77 }, 'web')).not.toHaveProperty('report_id');
+    expect(registerRequest(null, 'e1', { lat: -12, lng: -77, precision: 9000 }, 'web')).not.toHaveProperty('precision_m');
     expect(liftRequest({ id: 'l1', type: 'LEV-OBS' }, 'o1')).toEqual({ kind: 'observation_lift', observation_id: 'o1', report_id: 'l1', forms: expect.any(Number) });
     expect(liftRequest({ id: 'r1', type: 'REG-OBS' }, 'o1')).not.toHaveProperty('report_id');
   });
@@ -108,6 +109,31 @@ describe('writeOutcome', () => {
     expect(writeOutcome({ ok: true, answer, failed: [{ key: 'k', message: 'El archivo pesa demasiado.' }] }, 'levantada')).toEqual({ done: false, line: 'OBS-003 levantada; falta 1 archivo: El archivo pesa demasiado.' });
     expect(writeOutcome({ ok: true, answer: { ...answer, code: undefined }, failed: [{ key: 'a', message: 'x' }, { key: 'b', message: 'y' }] }, 'registrada').line).toBe('La observación registrada; faltan 2 archivos: x');
     expect(writeOutcome({ ok: false, message: 'Sin señal' }, 'registrada')).toEqual({ done: false, line: 'Sin señal' });
+  });
+});
+
+describe('observationWriteStore', () => {
+  it('says the progress while it writes and answers the report once everything landed', async () => {
+    const { fake } = deps([answered(PORTAL)], [201, 201]);
+    const store = observationWriteStore();
+    const lines: (string | null)[] = [];
+    store.subscribe(() => lines.push(store.get().line));
+
+    const reportId = await store.run(fake, 'x', [photo, video], 'registrada');
+
+    expect(reportId).toBe('r1');
+    expect(lines).toEqual([null, 'Subiendo 1 de 2…', 'Subiendo 2 de 2…', 'OBS-001 registrada.']);
+    expect(store.get().busy).toBe(false);
+  });
+
+  it('without a GPS fix nothing is sent, and a file that failed keeps the screen open', async () => {
+    const store = observationWriteStore();
+    expect(await store.run(null, 'x', [photo], 'registrada')).toBeNull();
+    expect(store.get().line).toBe('No se pudo leer tu ubicación. Revisa el permiso y el GPS.');
+
+    const { fake } = deps([answered(PORTAL)], [413]);
+    expect(await store.run(fake, 'x', [photo], 'registrada')).toBeNull();
+    expect(store.get().line).toBe('OBS-001 registrada; falta 1 archivo: El archivo pesa demasiado.');
   });
 });
 

@@ -1,8 +1,10 @@
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ExternalLink } from 'lucide-react';
-import { evidenceFiles, observationCounts, observationPins, observationPlace, observationWorkMap, readObservationDraft, registeredLine, reportTypeLabel, STATUS_PILLS, type Observation, type ObservationDocument, type ObservationDraftResult, type ObservationStatus, type SpaceClientService } from '@lilachat/shared';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Camera, ChevronLeft, ExternalLink } from 'lucide-react';
+import { approximateLine, evidenceFiles, LIFTING_TYPE, observationCounts, observationPins, observationPlace, observationWorkMap, readObservationDraft, registeredLine, reportTypeLabel, STATUS_PILLS, type Observation, type ObservationDocument, type ObservationDraftResult, type ObservationStatus, type SpaceClientService } from '@lilachat/shared';
 import { lazyChunk } from '../../../ui/lazyChunk';
 import { FileThumb, usePortalFileViewer } from '../PortalFileViewer';
+import { EvidenceInput } from '../ServiceDriveWeb';
+import { fieldPointNow, LiftObservationWeb, NewObservationWeb, type ObservationTo } from './ObservationFormsWeb';
 import { askReportDraft } from '../reports/reportsApi';
 import type { ServiceAskTarget } from '../useServiceAsk';
 
@@ -16,15 +18,20 @@ const PILL_CLASS = { error: 'border-error/30 bg-error/10 text-error', ok: 'borde
 /** The report as Portal answers it (agentes sends REG-OBS and LEV-OBS to `informe_de_observaciones`). */
 function useObservationDraft(target: ServiceAskTarget, serviceId: string, type: string, reportId: string | null) {
   const [draft, setDraft] = useState<ObservationDraftResult | null>(null);
+  const [id, setId] = useState(reportId);
   const load = useCallback(async () => {
-    setDraft(null);
-    const reply = await askReportDraft(target, serviceId, type, reportId);
+    const reply = await askReportDraft(target, serviceId, type, id);
     setDraft(readObservationDraft(reply.ok ? reply.data : { message: reply.message }));
-  }, [target, serviceId, type, reportId]);
+  }, [target, serviceId, type, id]);
   useEffect(() => {
     void load();
   }, [load]);
-  return { draft, reload: load };
+  /** A first write creates the report: from then on its id is asked for. */
+  const reload = useCallback((nextId?: string) => {
+    if (nextId && nextId !== id) setId(nextId);
+    else void load();
+  }, [id, load]);
+  return { draft, reload };
 }
 
 /** Total, lifted, pending and progress, with the bar (design `ob-07b`). */
@@ -67,7 +74,9 @@ function ObservationMap({ report }: { report: ObservationDocument }) {
 }
 
 /** Before and after of one observation, opened under its row. */
-function ObservationDetail({ observation, onOpen }: { observation: Observation; onOpen: ReturnType<typeof usePortalFileViewer>['open'] }) {
+type Write = { to: ObservationTo; report: ObservationDocument; onDone: (reportId: string) => void };
+
+function ObservationDetail({ observation, onOpen, write }: { observation: Observation; onOpen: ReturnType<typeof usePortalFileViewer>['open']; write: Write }) {
   const before = evidenceFiles(observation.media, `${observation.code} · antes`);
   const after = evidenceFiles(observation.liftMedia, `${observation.code} · después`);
   const strip = (files: typeof before, label: string) => (
@@ -79,18 +88,22 @@ function ObservationDetail({ observation, onOpen }: { observation: Observation; 
     </div>
   );
   return (
-    <div data-testid={`detalle-${observation.code}`} className="grid gap-3 border-t border-outline/15 px-4 py-3 sm:grid-cols-2">
-      {strip(before, 'Antes')}
-      <div>
-        {strip(after, 'Después')}
-        {observation.status === 'lifted' ? <p className="mt-2 text-sm text-on-surface-variant">{registeredLine({ at: observation.liftedAt ?? null }, 'Levantada')}</p> : null}
-        {observation.liftNote ? <p className="mt-1 text-sm">{observation.liftNote}</p> : null}
+    <>
+      <div data-testid={`detalle-${observation.code}`} className="grid gap-3 border-t border-outline/15 px-4 py-3 sm:grid-cols-2">
+        {strip(before, 'Antes')}
+        <div>
+          {strip(after, 'Después')}
+          {observation.status === 'lifted' ? <p className="mt-2 text-sm text-on-surface-variant">{registeredLine({ at: observation.liftedAt ?? null }, 'Levantada')}</p> : null}
+          {observation.liftNote ? <p className="mt-1 text-sm">{observation.liftNote}</p> : null}
+          {approximateLine(observation) ? <p className="mt-1 text-sm font-semibold text-warning">{approximateLine(observation)}</p> : null}
+        </div>
       </div>
-    </div>
+      {observation.status === 'open' ? <LiftObservationWeb to={write.to} report={write.report} observation={observation} onDone={write.onDone} /> : null}
+    </>
   );
 }
 
-function ObservationRow(props: { observation: Observation; place: string; open: boolean; onToggle: () => void; onOpen: ReturnType<typeof usePortalFileViewer>['open'] }) {
+function ObservationRow(props: { observation: Observation; place: string; open: boolean; onToggle: () => void; onOpen: ReturnType<typeof usePortalFileViewer>['open']; write: Write }) {
   const { observation } = props;
   const pill = STATUS_PILLS[observation.status];
   const first = evidenceFiles(observation.media, observation.code)[0];
@@ -106,12 +119,12 @@ function ObservationRow(props: { observation: Observation; place: string; open: 
         </span>
         <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${PILL_CLASS[pill.tone]}`}>{pill.label}</span>
       </button>
-      {props.open ? <ObservationDetail observation={observation} onOpen={props.onOpen} /> : null}
+      {props.open ? <ObservationDetail observation={observation} onOpen={props.onOpen} write={props.write} /> : null}
     </li>
   );
 }
 
-function ObservationTable({ report, onOpen }: { report: ObservationDocument; onOpen: ReturnType<typeof usePortalFileViewer>['open'] }) {
+function ObservationTable({ report, onOpen, write }: { report: ObservationDocument; onOpen: ReturnType<typeof usePortalFileViewer>['open']; write: Write }) {
   const [filter, setFilter] = useState<Filter>('all');
   const [opened, setOpened] = useState<string | null>(null);
   const shown = filter === 'all' ? report.observations : report.observations.filter((one) => one.status === filter);
@@ -125,21 +138,43 @@ function ObservationTable({ report, onOpen }: { report: ObservationDocument; onO
         ))}
       </div>
       {shown.length ? (
-        <ul className="space-y-2">{shown.map((one) => <ObservationRow key={one.id} observation={one} place={observationPlace(one, report.map)} open={opened === one.id} onToggle={() => setOpened(opened === one.id ? null : one.id)} onOpen={onOpen} />)}</ul>
+        <ul className="space-y-2">{shown.map((one) => <ObservationRow key={one.id} observation={one} place={observationPlace(one, report.map)} open={opened === one.id} onToggle={() => setOpened(opened === one.id ? null : one.id)} onOpen={onOpen} write={write} />)}</ul>
       ) : <p className="py-6 text-center text-sm text-on-surface-variant">No hay observaciones aquí.</p>}
     </section>
   );
 }
 
 /**
- * The office's view of the observations (José 11/11, design `ob-07b`): totals,
- * map and the list with each before and after. Registering and lifting happen
- * in the field, in the APK; publishing, in Portal for now (Portal ead85b1a).
+ * The observations on the web (José 11/11, design `ob-07b`): totals, map and
+ * the list with each before and after. An iPhone has no APK, so the mobile
+ * PWA registers and lifts too (`ObservationFormsWeb`); publishing is in Portal
+ * for now (Portal ead85b1a).
  */
+/** «Nueva observación»: the camera at the first tap (§5-ter rule 2) and the GPS read at the same time. */
+function useNewObservation() {
+  const input = useRef<HTMLInputElement>(null);
+  const reading = useRef<ReturnType<typeof fieldPointNow> | null>(null);
+  const [started, setStarted] = useState<{ file: File; reading: ReturnType<typeof fieldPointNow> } | null>(null);
+  const begin = () => {
+    reading.current = fieldPointNow();
+    input.current?.click();
+  };
+  const shot = (file: File | undefined) => {
+    if (file) setStarted({ file, reading: reading.current ?? fieldPointNow() });
+  };
+  return { input, started, begin, shot, close: () => setStarted(null) };
+}
+
 export function ObservationsWeb(props: Props) {
   const { draft, reload } = useObservationDraft(props.target, props.service.id, props.type, props.reportId ?? null);
   const viewer = usePortalFileViewer();
   const report = draft?.ok ? draft.document : null;
+  const fresh = useNewObservation();
+  const to = useMemo(() => ({ target: props.target, chatId: props.chatId, serviceId: props.service.id }), [props.target, props.chatId, props.service.id]);
+  const written = useCallback((reportId: string) => {
+    fresh.close();
+    reload(props.type === LIFTING_TYPE ? undefined : reportId);
+  }, [fresh, reload, props.type]);
   return (
     <div data-testid="observaciones-web" className="mx-auto flex max-w-4xl flex-col gap-3">
       <header className="flex items-start gap-2">
@@ -161,8 +196,15 @@ export function ObservationsWeb(props: Props) {
         <>
           <Totals observations={report.observations} />
           <ObservationMap report={report} />
-          <ObservationTable report={report} onOpen={viewer.open} />
+          {fresh.started ? <NewObservationWeb to={to} report={report} first={fresh.started.file} reading={fresh.started.reading} onBack={fresh.close} onDone={written} /> : null}
+          <ObservationTable report={report} onOpen={viewer.open} write={{ to, report, onDone: written }} />
           {report.publish.missing[0] ? <p data-testid="publicar-desde-portal" className="text-center text-sm text-on-surface-variant">{report.publish.missing[0]}</p> : null}
+          {fresh.started ? null : (
+            <div className="sticky bottom-0 border-t border-outline/10 bg-background py-3">
+              <button type="button" data-testid="nueva-observacion" onClick={fresh.begin} className="flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl bg-primary text-base font-bold text-on-primary"><Camera size={18} /> Nueva observación</button>
+              <EvidenceInput ref={fresh.input} testId="entrada-nueva" kind="photo" onFile={fresh.shot} />
+            </div>
+          )}
         </>
       ) : null}
       {viewer.viewer}

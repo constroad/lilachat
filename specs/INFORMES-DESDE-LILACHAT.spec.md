@@ -908,17 +908,45 @@ oficina).
 
 ### Interruptor
 
-`OBSERVATIONS_OPEN_HERE = false` (`shared/src/observations.ts`) hasta que José
-apruebe las tres herramientas en Agentes (mientras tanto responden 502). Con el
-interruptor apagado:
+`OBSERVATIONS_OPEN_HERE` (`shared/src/observations.ts`) está **encendido
+desde el 11/11**. José aprobó las tres herramientas en Agentes (agentes c255abc):
+`informe_de_observaciones` a las 23:07:40Z, `levantar_observacion` a las
+23:07:42Z y `registrar_observacion` (ya con `precisionM` y `fuente`) a las
+23:56:31Z. Si se apaga, REG-OBS y LEV-OBS vuelven a abrir la página de Portal y
+el server rechaza los tipos y los kinds.
 
-- REG-OBS (nuevo en «Nuevo informe») y LEV-OBS abren la página de Portal, como
-  antes.
-- El server no acepta los tipos de observación en `reports/draft` ni los kinds
-  `observation_register` y `observation_lift`.
+### Reglas de campo aplicadas (stitch-design §5-ter, José 11/11)
 
-Para encenderlo hay que cambiar esa constante, correr los gates, publicar la web
-y el OTA, y hacer el E2E de abajo.
+José: «tomar foto, plin, dato aquí, ubicación del teléfono y listo». Esto lo
+auditó Portal sobre `ob-01…03`.
+
+- «Nueva observación» abre la cámara al primer toque, y el GPS se lee al mismo
+  tiempo. Son 3 toques: Nueva, disparar, Registrar. Sin campos obligatorios.
+- El botón de abajo hace siempre el siguiente paso pendiente y nunca está
+  apagado (`registerAction`, `liftAction`):
+  - mientras busca la ubicación dice «Buscando tu ubicación…»;
+  - sin GPS dice «Leer el GPS de nuevo»;
+  - antes de la foto del después, dice «Tomar foto del después».
+- Se muestra «GPS ±N m», nunca las coordenadas, y el lugar en la calle cuando
+  hay mapa de obra.
+- Al registrar se envían `precisionM` (redondeado, de 0 a 5000) y
+  `fuente: 'apk' | 'web'`.
+- Portal marca `aproximada` cuando el GPS pasa de 15 m, y la pantalla dice
+  «Ubicación aproximada (±N m)».
+- Los objetivos táctiles miden 56 dp o más.
+
+### La web también registra
+
+José, por medio de Portal: un iPhone no tiene APK, así que la PWA móvil es el
+formulario de campo. `ObservationFormsWeb` registra y levanta con las mismas
+reglas:
+
+- la cámara entra por la puerta `ServiceDriveWeb.EvidenceInput`;
+- el GPS se lee con `navigator.geolocation` y su precisión;
+- `fuente: 'web'`.
+
+El estado de la escritura es el mismo store compartido
+(`observationWriteStore`) en el APK y en la web.
 
 ### Qué está hecho
 
@@ -944,16 +972,20 @@ y el OTA, y hacer el E2E de abajo.
   - Levantar: antes en el visor, después con cámara y nota, y «Marcar como
     levantada» bloqueado hasta tener una foto o video del después.
   - La cámara entra por la puerta `useDriveUpload.captureEvidence`.
-- Web (`ObservationsWeb`): totales Total/Levantadas/Pendientes/Avance con
-  barra, mapa, filtro Todas/Pendientes/Levantadas, y cada fila abre su antes y
-  su después en el visor. Solo lectura: el registro y el levantamiento se hacen
-  en campo.
+- Web (`ObservationsWeb`):
+  - totales Total/Levantadas/Pendientes/Avance con barra;
+  - mapa y filtro Todas/Pendientes/Levantadas;
+  - cada fila abre su antes y su después en el visor, y una pendiente se
+    levanta ahí mismo;
+  - «Nueva observación» abre la cámara del teléfono o el selector de archivos
+    en la computadora.
 
 ### Diferencias con el diseño
 
 - Sin responsable, plazo («en 4 días», «Vence hoy») ni autor de la
   observación: el contrato no los trae.
-- Sin «Mover pin»: el punto es el GPS del teléfono.
+- Sin «Mover pin»: el punto es el GPS del teléfono (§5-ter regla 3: mover es
+  opcional).
 - Sin el micrófono propio: el texto apunta al dictado del teclado. Agregarlo
   pide una librería de voz.
 - La web no es el lienzo de `ob-07b`: es el resumen. El editor del documento

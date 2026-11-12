@@ -12,14 +12,20 @@ import type { WorkMapPoint } from './workMap.js';
  * Portal with it, like the Drive (`driveUpload`). The entry's key makes a
  * repeat land on the same observation. PURE.
  */
-export type ObservationRegisterRequest = { kind: 'observation_register'; entry_id: string; lat: number; lng: number; report_id?: string; forms: number };
+export type ObservationRegisterRequest = { kind: 'observation_register'; entry_id: string; lat: number; lng: number; precision_m?: number; source: ObservationSource; report_id?: string; forms: number };
+/** Where it was registered from (Portal 56dce11c): an iPhone's PWA is the web. */
+export type ObservationSource = 'apk' | 'web';
+const PRECISION_MAX_M = 5000;
 export type ObservationLiftRequest = { kind: 'observation_lift'; observation_id: string; report_id?: string; forms: number };
 type ReportOf = Pick<ObservationDocument, 'id' | 'type'> | null;
 
 /** The registry's id goes only from a registry: from a lifting, Portal files it in the service's open registry. */
-export const registerRequest = (report: ReportOf, entryId: string, place: WorkMapPoint): ObservationRegisterRequest => ({
-  kind: 'observation_register', entry_id: entryId, lat: place.lat, lng: place.lng, ...(report?.id && report.type === REGISTRY_TYPE ? { report_id: report.id } : {}), forms: FORMS_LEVEL,
+export const registerRequest = (report: ReportOf, entryId: string, place: WorkMapPoint & { precision?: number }, source: ObservationSource): ObservationRegisterRequest => ({
+  kind: 'observation_register', entry_id: entryId, lat: place.lat, lng: place.lng, ...precisionOf(place.precision), source, ...(report?.id && report.type === REGISTRY_TYPE ? { report_id: report.id } : {}), forms: FORMS_LEVEL,
 });
+
+/** The GPS's «±N m», whole meters, only when the phone gave a sane one. */
+const precisionOf = (meters: number | undefined): { precision_m?: number } => (meters !== undefined && Number.isFinite(meters) && meters >= 0 && meters <= PRECISION_MAX_M ? { precision_m: Math.round(meters) } : {});
 
 /** The lifting's id goes only from a lifting: from the registry, Portal files it in the service's open lifting. */
 export const liftRequest = (report: ReportOf, observationId: string): ObservationLiftRequest => ({
@@ -107,5 +113,33 @@ export function writeOutcome(result: ObservationWriteResult, done: string): { do
   const count = result.failed.length;
   if (!count) return { done: true, line: `${who} ${done}.` };
   return { done: false, line: `${who} ${done}; ${count === 1 ? 'falta 1 archivo' : `faltan ${count} archivos`}: ${result.failed[0]!.message}` };
+}
+
+export type ObservationWriteState = { busy: boolean; line: string | null };
+
+/**
+ * One screen's write and what it says, for the APK and the web alike. `run`
+ * answers the report's id when everything landed, else null; the same deps
+ * again send only what Portal does not have yet. No deps: the GPS is missing.
+ */
+export function observationWriteStore() {
+  let state: ObservationWriteState = { busy: false, line: null };
+  const listeners = new Set<() => void>();
+  const set = (next: ObservationWriteState) => {
+    state = next;
+    listeners.forEach((listener) => listener());
+  };
+  async function run<F>(deps: ObservationWriteDeps<F> | null, note: string, files: readonly EvidenceFile<F>[], done: string): Promise<string | null> {
+    if (!deps) {
+      set({ busy: false, line: OBSERVATION_GPS_MISSING });
+      return null;
+    }
+    set({ busy: true, line: null });
+    const result = await writeObservation({ ...deps, progress: (sent, total) => set({ busy: true, line: `Subiendo ${sent} de ${total}…` }) }, note, files);
+    const outcome = writeOutcome(result, done);
+    set({ busy: false, line: outcome.line });
+    return outcome.done && result.ok ? result.answer.reportId : null;
+  }
+  return { get: () => state, subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; }, run };
 }
 

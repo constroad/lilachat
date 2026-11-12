@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  approximateLine,
   clipLength,
   evidenceBadge,
   evidenceFiles,
   isObservationType,
-  liftBlocker,
+  gpsLine,
+  liftAction,
+  registerAction,
   observationCounts,
   observationDocumentOf,
   observationPins,
@@ -108,9 +111,17 @@ describe('what a card says', () => {
     expect(registeredLine({ ...base, at: null })).toBe('Registrada');
   });
 
-  it('a lifting needs a photo or a video of after', () => {
-    expect(liftBlocker(0)).toBe('Falta una foto o video del después');
-    expect(liftBlocker(1)).toBeNull();
+  it('the bottom button does the next pending step, never turned off', () => {
+    expect(liftAction(0)).toEqual({ kind: 'take-after', label: 'Tomar foto del después' });
+    expect(liftAction(1).kind).toBe('lift');
+    expect(registerAction('reading').kind).toBe('gps-wait');
+    expect(registerAction('missing').label).toBe('Leer el GPS de nuevo');
+    expect(registerAction('ready').label).toBe('Registrar observación');
+  });
+
+  it('shows the GPS precision, not the coordinates', () => {
+    expect(gpsLine(4.4)).toBe('GPS ±4 m');
+    expect(gpsLine()).toBe('GPS activo');
   });
 
   it('knows the two observation types', () => {
@@ -123,6 +134,14 @@ describe('what a card says', () => {
 describe('evidenceFiles', () => {
   it('names each file after its observation, for the viewer', () => {
     expect(evidenceFiles([{ url: 'https://lila.constroad.com/a', mime: 'image/jpeg', thumbUrl: 'https://lila.constroad.com/t' }], 'OBS-003 · antes')).toEqual([{ name: 'OBS-003 · antes 1', mime: 'image/jpeg', url: 'https://lila.constroad.com/a', thumbUrl: 'https://lila.constroad.com/t' }]);
+  });
+});
+
+describe('an approximate place (Portal marks it past 15 m)', () => {
+  it('reads the precision and the mark, and says it', () => {
+    const [far, near] = observationDocumentOf(body([item('1', 'open', { precisionM: 40, aproximada: true }), item('2', 'open', { precisionM: 4 })]))!.observations;
+    expect(approximateLine(far!)).toBe('Ubicación aproximada (±40 m)');
+    expect(approximateLine(near!)).toBeNull();
   });
 });
 

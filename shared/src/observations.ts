@@ -20,7 +20,7 @@ export const LIFTING_TYPE: ObservationReportType = 'LEV-OBS';
  * Off until José approves Portal's three tools in Agentes (until then they
  * answer 502): both types open Portal's page meanwhile (Portal, 11/11).
  */
-export const OBSERVATIONS_OPEN_HERE = false;
+export const OBSERVATIONS_OPEN_HERE = true;
 /** Portal's ticket says it again; the camera stops here. */
 export const OBSERVATION_VIDEO_SECONDS = 30;
 export const OBSERVATION_NOTE_MAX = 600;
@@ -42,6 +42,10 @@ export type Observation = {
   media: ObservationMedia[];
   liftMedia: ObservationMedia[];
   segment?: ObservationSegment;
+  /** The GPS's «±N m» when it was registered (Portal 56dce11c). */
+  precisionM?: number;
+  /** Portal marks it past 15 m: the place is approximate. */
+  approximate?: true;
 };
 export type ObservationStreet = { id: string; name: string; geometry: WorkMapPoint[] };
 export type ObservationMap = { streets: ObservationStreet[]; imageUrl?: string };
@@ -90,6 +94,7 @@ function observationOf(raw: unknown): Observation | null {
     id, code, note: textOf(item.note), ...placeOf(item), at: textOf(item.at) || null, status: item.status,
     media: mediaListOf(item.media), liftMedia: mediaListOf(item.liftMedia),
     ...optional('liftedAt', textOf(item.liftedAt)), ...optional('liftNote', textOf(item.liftNote)), ...optional('segment', segmentOf(item.segment)),
+    ...optional('precisionM', finite(item.precisionM)), ...(item.aproximada === true ? { approximate: true as const } : {}),
   };
 }
 
@@ -150,6 +155,10 @@ export function observationWorkMap(map: ObservationMap, observations: readonly O
   return { ...view, bounds: [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]] };
 }
 
+/** «Ubicación aproximada (±40 m)» when Portal marks it; nothing otherwise. */
+export const approximateLine = (observation: Pick<Observation, 'approximate' | 'precisionM'>): string | null =>
+  observation.approximate ? `Ubicación aproximada${observation.precisionM !== undefined ? ` (±${Math.round(observation.precisionM)} m)` : ''}` : null;
+
 /** «Av. Los Incas 0+240»: its segment, else the street it lies on (30 m), else that it has a GPS fix. */
 export function observationPlace(observation: Observation, map: ObservationMap): string {
   const streets = map.streets.map((street) => ({ id: street.id, name: street.name, line: street.geometry, lengthM: lineLengthM(street.geometry) }));
@@ -186,8 +195,23 @@ export function registeredLine(observation: Pick<Observation, 'at'>, word = 'Reg
 
 export const STATUS_PILLS: Record<ObservationStatus, { label: string; tone: 'error' | 'ok' }> = { open: { label: 'Pendiente', tone: 'error' }, lifted: { label: 'Levantada', tone: 'ok' } };
 
-/** «Marcar como levantada» waits for the after (design `ob-03`). */
-export const liftBlocker = (afterFiles: number): string | null => (afterFiles > 0 ? null : 'Falta una foto o video del después');
+/**
+ * The button at the bottom always does the next pending step (stitch-design
+ * §5-ter rule 4, José 11/11: «tomar foto, plin, dato aquí… y listo»): never a
+ * button turned off.
+ */
+export type FieldAction = { kind: 'gps-wait' | 'gps-retry' | 'register' | 'take-after' | 'lift'; label: string };
+export type PlaceReading = 'reading' | 'ready' | 'missing';
+const REGISTER_ACTIONS: Record<PlaceReading, FieldAction> = {
+  reading: { kind: 'gps-wait', label: 'Buscando tu ubicación…' },
+  missing: { kind: 'gps-retry', label: 'Leer el GPS de nuevo' },
+  ready: { kind: 'register', label: 'Registrar observación' },
+};
+export const registerAction = (place: PlaceReading): FieldAction => REGISTER_ACTIONS[place];
+/** «Marcar como levantada» once there is a photo or video of after; before, the button takes it. */
+export const liftAction = (afterFiles: number): FieldAction => (afterFiles > 0 ? { kind: 'lift', label: 'Marcar como levantada' } : { kind: 'take-after', label: 'Tomar foto del después' });
+/** «GPS ±4 m» (rule 3): the precision in sight, never the coordinates. */
+export const gpsLine = (precision?: number): string => (precision !== undefined && Number.isFinite(precision) ? `GPS ±${Math.round(precision)} m` : 'GPS activo');
 
 /** The evidence as files the viewer opens: «OBS-003 · antes 1». */
 export const evidenceFiles = (media: readonly ObservationMedia[], name: string): ServiceFile[] =>

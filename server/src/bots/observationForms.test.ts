@@ -15,14 +15,15 @@ describe('observation forms (Portal ead85b1a)', () => {
   });
 
   it('registering carries the service, the entry and the place as values; the note is optional', () => {
-    const input = observationFormInputOf({ kind: 'observation_register', entry_id: ENTRY, lat: -12.05, lng: -77.03, report_id: 'r1' });
+    const input = observationFormInputOf({ kind: 'observation_register', entry_id: ENTRY, lat: -12.05, lng: -77.03, precision_m: 4, source: 'apk', report_id: 'r1' });
 
     const ready = observationFormPrepared(SERVICE, input!);
 
     expect(ready.form).toMatchObject({ id: 'registrar_observacion', submitLabel: 'Registrar observación' });
     expect(ready.form.schema.required ?? []).not.toContain('nota');
     expect(ready.form.schema.properties?.nota).toMatchObject({ type: 'string', maxLength: 600 });
-    expect(ready.context).toEqual({ servicioId: SERVICE, entradaId: ENTRY, lat: -12.05, lng: -77.03, informeId: 'r1' });
+    expect(ready.context).toEqual({ servicioId: SERVICE, entradaId: ENTRY, lat: -12.05, lng: -77.03, precisionM: 4, fuente: 'apk', informeId: 'r1' });
+    expect(observationFormPrepared(SERVICE, observationFormInputOf({ kind: 'observation_register', entry_id: ENTRY, lat: -12, lng: -77, precision_m: 9000, source: 'web' })!).context).toEqual({ servicioId: SERVICE, entradaId: ENTRY, lat: -12, lng: -77, fuente: 'web' });
   });
 
   it('lifting carries the service and the observation; no place nor hour', () => {
@@ -33,9 +34,10 @@ describe('observation forms (Portal ead85b1a)', () => {
   });
 
   it('refuses an entry that is not a uuid, a place off the map or a missing observation', () => {
-    expect(observationFormInputOf({ kind: 'observation_register', entry_id: 'k1', lat: -12, lng: -77 })).toBeNull();
-    expect(observationFormInputOf({ kind: 'observation_register', entry_id: ENTRY, lat: 120, lng: -77 })).toBeNull();
-    expect(observationFormInputOf({ kind: 'observation_register', entry_id: ENTRY, lat: '-12', lng: -77 })).toBeNull();
+    expect(observationFormInputOf({ kind: 'observation_register', entry_id: 'k1', lat: -12, lng: -77, source: 'apk' })).toBeNull();
+    expect(observationFormInputOf({ kind: 'observation_register', entry_id: ENTRY, lat: -12, lng: -77, source: 'ios' })).toBeNull();
+    expect(observationFormInputOf({ kind: 'observation_register', entry_id: ENTRY, lat: 120, lng: -77, source: 'apk' })).toBeNull();
+    expect(observationFormInputOf({ kind: 'observation_register', entry_id: ENTRY, lat: '-12', lng: -77, source: 'apk' })).toBeNull();
     expect(observationFormInputOf({ kind: 'observation_lift' })).toBeNull();
   });
 });

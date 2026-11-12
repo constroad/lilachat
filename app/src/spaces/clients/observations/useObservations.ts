@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { BackHandler } from 'react-native';
-import { observationWriteStore, readObservationDraft, type ObservationDraftResult, type ObservationLiftRequest, type ObservationRegisterRequest, type WorkMapPoint } from '@lilachat/shared';
+import { observationWriteStore, readObservationDraft, type ObservationDocument, type ObservationDraftResult, type ObservationLiftRequest, type ObservationRegisterRequest, type WorkMapPoint } from '@lilachat/shared';
 import { freshPoint } from '../../../chat/location/freshPoint';
 import { askReportDraft } from '../reports/reportsApi';
 import { captureEvidence, observationWriteDeps, type CapturedEvidence } from '../useDriveUpload';
@@ -15,11 +15,16 @@ export type ObservationTarget = { target: ServiceAskTarget; chatId: string; serv
  */
 export function useObservationReport(to: ObservationTarget, type: string, reportId: string | null) {
   const [draft, setDraft] = useState<ObservationDraftResult | null>(null);
+  // The last report Portal gave: a failed second ask does not close the screen being filled.
+  const [lastReport, setLastReport] = useState<ObservationDocument | null>(null);
   const [id, setId] = useState(reportId);
   const alive = useRef(true);
   const load = useCallback(async (nextId: string | null) => {
     const reply = await askReportDraft(to.target, to.serviceId, type, nextId);
-    if (alive.current) setDraft(readObservationDraft(reply.ok ? reply.data : { message: reply.message }));
+    if (!alive.current) return;
+    const next = readObservationDraft(reply.ok ? reply.data : { message: reply.message });
+    setDraft(next);
+    if (next.ok) setLastReport(next.document);
   }, [to.target, to.serviceId, type]);
   useEffect(() => {
     alive.current = true;
@@ -31,7 +36,7 @@ export function useObservationReport(to: ObservationTarget, type: string, report
     if (nextId && nextId !== id) setId(nextId);
     else void load(id);
   }, [id, load]);
-  return { draft, reload };
+  return { draft, lastReport, reload };
 }
 
 type FieldPoint = WorkMapPoint & { precision?: number };

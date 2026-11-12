@@ -1,5 +1,5 @@
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BackHandler, Pressable, ScrollView, Text, ToastAndroid, View } from 'react-native';
 import { CHANNEL_TAB_LABELS, channelLinksOf, channelTabs, checklistMembers, noticeOf, withoutApps, type ChannelLinks, type ChannelTab, type ShortcutRow, type ShortcutValues, type SpaceClient, type WorkStage } from '@lilachat/shared';
 import { useWorkPlan } from './useWorkPlan';
@@ -38,6 +38,9 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
   const client = useClientOfChat(params.chatId);
   const records = useClientRecords(params.jwt, params.spaceId, client?.id, tab === 'services');
   const plan = useWorkPlan(params.jwt, params.chatId, params.enabled && Boolean(client));
+  // One target per channel, not per render: the screens under it ask Portal again when it changes (the after photo was lost on the way back from the camera, 11/11).
+  const clientId = client?.id;
+  const target = useMemo<ServiceAskTarget | null>(() => (params.spaceId && clientId ? { jwt: params.jwt, spaceId: params.spaceId, clientId } : null), [params.jwt, params.spaceId, clientId]);
   const [openTask, setOpenTask] = useState<OpenTask | null>(null);
   // Android's BACK on the checklist goes back to the chat first; the last listener added runs first.
   useEffect(() => {
@@ -54,7 +57,6 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
   const stages = plan.stages ?? [];
   const nameOf = (userId: string) => params.names.get(userId) ?? 'Alguien';
   const people = withoutApps(params.names, params.apps);
-  const target = params.spaceId ? { jwt: params.jwt, spaceId: params.spaceId, clientId: client.id } : null;
   const toMessage = (seq: number) => {
     setTab('chat');
     params.onOpenRecord?.(seq);

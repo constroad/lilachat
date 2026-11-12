@@ -3,7 +3,7 @@ import { useLastSeen } from './useLastSeen';
 import { usePresenceStatus } from '../presence/presenceStatus';
 import { NotificationsBanner } from '../notify/NotificationsBanner';
 import { ConversacionContext } from './contextoDeLaConversacion';
-import { useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ArrowLeft, Building2, Phone, Search, Video } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import type { AgendaReminder, DirectoryApp, MencionElegida, MencionEnMensaje, WinkId } from '@lilachat/shared';
@@ -360,7 +360,11 @@ function BannerWithSession() {
 /** «Servicios» asks for its records only while it is open. */
 function ClientServicesPanel(props: { people: readonly string[]; client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; links: ChannelLinks; focusSeq: number | null; onFocused: () => void; onServiceOpen: (open: boolean) => void; onToChat: () => void }) {
   const records = useClientRecords(props.jwt, props.spaceId, props.client.id);
-  return <ClientServices people={props.people} client={props.client} records={records} focusSeq={props.focusSeq} onFocused={props.onFocused} target={props.jwt && props.spaceId ? { jwt: props.jwt, spaceId: props.spaceId, clientId: props.client.id } : null} links={props.links} onServiceOpen={props.onServiceOpen} onToChat={props.onToChat} />;
+  // One target per channel: the screens under it ask Portal again when it changes, not at every message.
+  const { jwt, spaceId } = props;
+  const clientId = props.client.id;
+  const target = useMemo(() => (jwt && spaceId ? { jwt, spaceId, clientId } : null), [jwt, spaceId, clientId]);
+  return <ClientServices people={props.people} client={props.client} records={records} focusSeq={props.focusSeq} onFocused={props.onFocused} target={target} links={props.links} onServiceOpen={props.onServiceOpen} onToChat={props.onToChat} />;
 }
 
 /**

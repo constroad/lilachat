@@ -57,7 +57,8 @@ function ObservationCard(props: { observation: Observation; place: string; onPre
         <Text className="mt-1 text-[15px] font-bold text-on-surface" numberOfLines={2}>{observation.note}</Text>
         <Text className="mt-0.5 text-[13px] text-on-surface-variant" numberOfLines={1}>{props.place}</Text>
       </View>
-      <Pill badge={STATUS_PILLS[observation.status]} />
+      {/* In a row a pill stretches to the card's height (an oval): it keeps its own. */}
+      <View className="self-start"><Pill badge={STATUS_PILLS[observation.status]} /></View>
     </Pressable>
   );
 }
@@ -86,7 +87,7 @@ function ObservationList(props: { report: ObservationDocument; tab: ObservationS
 export function ObservationsScreen(props: Props) {
   const colors = useColores();
   const to = useMemo(() => ({ target: props.target, chatId: props.chatId, serviceId: props.serviceId }), [props.target, props.chatId, props.serviceId]);
-  const { draft, reload } = useObservationReport(to, props.type, props.reportId ?? null);
+  const { draft, lastReport, reload } = useObservationReport(to, props.type, props.reportId ?? null);
   const [open, setOpen] = useState<Open>({ kind: 'list' });
   const [tab, setTab] = useState<ObservationStatus>('open');
   const [changed, setChanged] = useState(false);
@@ -106,8 +107,8 @@ export function ObservationsScreen(props: Props) {
     if (started && 'shot' in started) setOpen({ kind: 'new', start: started });
     else if (started) setNotice(started.message);
   }, []);
-  if (open.kind === 'new') return <NewObservationScreen to={to} report={report} start={open.start} onBack={back} onDone={written} />;
-  if (open.kind === 'one' && report) return <LiftObservationScreen to={to} report={report} observation={open.observation} onBack={back} onDone={written} />;
+  if (open.kind === 'new') return <NewObservationScreen to={to} report={lastReport} start={open.start} onBack={back} onDone={written} />;
+  if (open.kind === 'one' && lastReport) return <LiftObservationScreen to={to} report={lastReport} observation={open.observation} onBack={back} onDone={written} />;
   return (
     <View className="flex-1 bg-background">
       <ObservationHeader kicker={reportTypeLabel(props.type)} title="Observaciones" caption={props.service.name} onBack={back} />

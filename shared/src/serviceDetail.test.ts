@@ -183,6 +183,22 @@ describe('reportGroups', () => {
     ]);
   });
 
+  it('each row says who created the report (José 12/11), after its type; a blank or overlong name says nothing', () => {
+    // Arrange
+    const detail = reportsOf([
+      { id: 'r1', title: 'Control de pista · 6 de octubre', type_label: 'Control de pista', date: '2026-10-06', created_by: ' Ana Torres ', ...status },
+      { id: 'r2', title: 'Densidades de campo', type_label: 'Densidad', date: '2026-10-06', created_by: 'Luis Rojas', ...status },
+      { id: 'r3', title: 'Losa', date: '2026-10-06', created_by: '   ', ...status },
+      { id: 'r4', title: 'Muro', date: '2026-10-06', created_by: 'x'.repeat(81), ...status },
+    ]);
+    // Act
+    const rows = reportGroups(detail)[0]!.rows;
+    // Assert
+    expect(rows.map((row) => row.line)).toEqual(['Creado por Ana Torres', 'Densidad · Creado por Luis Rojas', '', '']);
+    expect(detailRows(detail, 'reports')[0]!.line).toContain('Creado por Ana Torres');
+    expect(serviceDetailOf(JSON.parse(JSON.stringify(detail)))!.reports[0]!.createdBy).toBe('Ana Torres');
+  });
+
   it('a report without a day goes last, under «Sin fecha»; no reports, no groups', () => {
     // Arrange
     const detail = reportsOf([{ id: 'r9', title: 'Área adicional', ...status }, { id: 'r1', title: 'Losa', date: '2026-09-10', ...status }]);

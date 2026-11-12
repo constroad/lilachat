@@ -40,7 +40,7 @@ export type DispatchPicture = { url: string; thumbUrl?: string; mime: string; na
 /** The truck's cubicaje as the client reads it: «Volquete cubica X m³», its shape and measures. */
 export type DispatchCubicage = { m3?: number; shape?: string; dimensions: { label: string; value: string }[] };
 export type ServiceDispatch = { id: string; orderId?: string; at?: string; plate?: string; driver?: string; quantity?: number; unit?: string; status: DetailStatus; guideUrl?: string; guideNumber?: string; url?: string; pictures?: DispatchPicture[]; cubicage?: DispatchCubicage };
-export type ServiceReport = { id: string; title: string; typeLabel?: string; date?: string; status: DetailStatus; pdfUrl?: string; url?: string; /** Portal edits it in its canvas: on a wide window it opens framed (`portalEmbed`). */ editor?: 'v2' };
+export type ServiceReport = { id: string; title: string; typeLabel?: string; date?: string; status: DetailStatus; pdfUrl?: string; url?: string; /** Portal edits it in its canvas: on a wide window it opens framed (`portalEmbed`). */ editor?: 'v2'; /** Who created it (José 12/11). */ createdBy?: string };
 export type QuoteItem = { name: string; quantity?: number; unit?: string; unitPrice?: number; total?: number };
 export type ServiceQuote = { id: string; code?: string; date?: string; total?: number; status: DetailStatus; url?: string; items?: QuoteItem[]; pdfUrl?: string };
 export type DetailTotals = { orders: number; dispatches: number; reports: number; quotes?: number };
@@ -149,7 +149,10 @@ const dispatchOf = (raw: Raw): ServiceDispatch =>
     pictures: Array.isArray(raw.pictures) ? raw.pictures.flatMap(pictureOf).slice(0, PICTURES_MAX) : undefined,
     cubicage: cubicageOf(raw.cubicage),
   });
-const reportOf = (raw: Raw): ServiceReport => defined({ id: text(raw.id)!, title: text(raw.title) ?? 'Informe', typeLabel: text(raw.type_label), date: dateOnly(raw.date), status: statusOf(raw), pdfUrl: https(raw.pdf_url), url: https(raw.url), editor: raw.editor === 'v2' ? ('v2' as const) : undefined });
+/** A person's name as Portal sends it; blank or overlong reads as none. */
+const NAME_MAX = 80;
+const nameOf = (value: unknown): string | undefined => { const name = text(value); return name && name.length <= NAME_MAX ? name : undefined; };
+const reportOf = (raw: Raw): ServiceReport => defined({ id: text(raw.id)!, title: text(raw.title) ?? 'Informe', typeLabel: text(raw.type_label), date: dateOnly(raw.date), status: statusOf(raw), pdfUrl: https(raw.pdf_url), url: https(raw.url), editor: raw.editor === 'v2' ? ('v2' as const) : undefined, createdBy: nameOf(raw.created_by ?? raw.createdBy) });
 const quoteItemOf = (one: unknown): QuoteItem[] => {
   const raw = record(one);
   const name = text(raw?.name);
@@ -285,9 +288,10 @@ const titleStartsWith = (title: string, type: string) => title.toLowerCase().sta
 
 /** Portal titles a report «Producción de planta · 10 de setiembre»: the line only adds what the title does not say. */
 const reportTypeOf = (report: ServiceReport) => (report.typeLabel && !titleStartsWith(report.title, report.typeLabel) ? report.typeLabel : undefined);
+const createdByOf = (report: ServiceReport) => (report.createdBy ? `Creado por ${report.createdBy}` : undefined);
 function reportLine(report: ServiceReport): string {
   const day = report.date && !titleHasDay(report.title, report.date) ? dayOf(report.date) : undefined;
-  return joined([reportTypeOf(report), day]);
+  return joined([reportTypeOf(report), day, createdByOf(report)]);
 }
 const reportRow = (report: ServiceReport): DetailRow => ({ id: report.id, title: report.title, line: reportLine(report), status: report.status, ...urlOf(report.url), ...fileOf(report.pdfUrl, 'PDF') });
 
@@ -311,7 +315,7 @@ export function reportGroups(detail: Pick<ServiceDetail, 'reports'>): ReportGrou
   return days.map((date) => {
     const title = date ? dayInWordsOf(date) : NO_DATE_GROUP;
     // Under its day's header a row says only what the header does not: its type.
-    return { title, rows: byDay.get(date)!.map((report) => ({ ...reportRow(report), title: date ? withoutDay(report.title, title) : report.title, line: reportTypeOf(report) ?? '' })) };
+    return { title, rows: byDay.get(date)!.map((report) => ({ ...reportRow(report), title: date ? withoutDay(report.title, title) : report.title, line: joined([reportTypeOf(report), createdByOf(report)]) })) };
   });
 }
 /** The rows of one tab: a pedido has no number of its own in Portal, a dispatch shows its departure or the planned hour. */

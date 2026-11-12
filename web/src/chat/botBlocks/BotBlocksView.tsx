@@ -4,6 +4,7 @@ import { peopleOnCard, peoplePhotos, personEvidence, personTime, shortPersonName
 import { usePortalFileViewer } from '../../spaces/clients/PortalFileViewer';
 import { Avatar } from '../../ui/Avatar';
 import { BlockChart } from './BlockChart';
+import { BlockSection, BlockStat, BlockTiles } from './BlockDesign';
 import { BlockGallery } from './BlockGallery';
 import { BlockMap } from './BlockMap';
 import { BlockTank } from './BlockTank';
@@ -39,7 +40,7 @@ function MarkPhoto(props: { name: string; url: string; onOpen: () => void }) {
 function MarkPlace({ evidence }: { evidence: PersonEvidence }) {
   const { map, place } = evidence;
   if (!map && !place) return null;
-  const label = <><MapPin size={13} aria-hidden className="shrink-0" /><span className="truncate">{place ?? 'Ver en el mapa'}</span></>;
+  const label = <><MapPin size={13} aria-hidden className="shrink-0" /><span className="break-words">{place ?? 'Ver en el mapa'}</span></>;
   if (!map) return <span data-testid="lugar-de-marca" className="mt-0.5 flex items-center gap-1 text-[12px] text-on-surface-variant">{label}</span>;
   return <a data-testid="lugar-de-marca" href={map} target="_blank" rel="noopener noreferrer" className="mt-0.5 flex w-fit max-w-full items-center gap-1 text-[12px] font-semibold text-primary">{label}</a>;
 }
@@ -79,9 +80,13 @@ function RowBody({ row, tappable }: { row: RowsBlock['rows'][number]; tappable: 
   return (
     <>
       <div className="flex items-center gap-3 text-[14px]">
-        <span className="min-w-0 flex-1 truncate">{row.label}</span>
+        <span className="min-w-0 flex-1 break-words">{row.label}</span>
+        {row.mid ? <span data-testid="fila-medio" className="text-[13px] tabular-nums text-on-surface-variant">{row.mid}</span> : null}
         {row.bar !== undefined ? <span className="h-1.5 w-16 overflow-hidden rounded-full bg-surface-variant"><span className={`block h-full rounded-full ${TONE[row.tone].bar}`} style={{ width: `${Math.round(row.bar * 100)}%` }} /></span> : null}
-        <span className={`text-[13px] font-semibold tabular-nums ${row.tone === 'neutral' ? '' : TONE[row.tone].text}`}>{row.value}</span>
+        <span className={`text-right text-[13px] font-semibold tabular-nums ${row.tone === 'neutral' ? '' : TONE[row.tone].text}`}>
+          {row.before ? <><s data-testid="fila-antes" className="font-normal text-on-surface-variant">{row.before}</s>{' → '}</> : null}
+          {row.value}
+        </span>
         {tappable ? <ChevronRight size={16} className="shrink-0 text-on-surface-variant" /> : null}
       </div>
       {row.sub ? <span className="mt-0.5 text-[12px] text-on-surface-variant">{row.sub}</span> : null}
@@ -119,7 +124,7 @@ function Block({ block }: { block: BotBlock }) {
           {block.items.map((chip) => (
             <div key={chip.label} className={`flex flex-1 flex-col items-center rounded-lg border px-1 py-1.5 ${TONE[chip.tone].soft}`}>
               <span className={`text-[12px] font-semibold ${TONE[chip.tone].text}`}>{chip.label}</span>
-              {chip.sub ? <span className={`truncate text-[11px] ${TONE[chip.tone].text}`}>{chip.sub}</span> : null}
+              {chip.sub ? <span className={`break-words text-center text-[11px] ${TONE[chip.tone].text}`}>{chip.sub}</span> : null}
             </div>
           ))}
         </div>
@@ -157,6 +162,12 @@ function Block({ block }: { block: BotBlock }) {
       return <BlockMap block={block} />;
     case 'weather':
       return <BlockWeather block={block} />;
+    case 'stat':
+      return <BlockStat block={block} />;
+    case 'section':
+      return <BlockSection block={block} />;
+    case 'tiles':
+      return <BlockTiles block={block} />;
   }
 }
 

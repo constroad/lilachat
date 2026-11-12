@@ -2,7 +2,7 @@ import { cutAtWord } from './textCut.js';
 import { normalizePeruPhone } from './phone.js';
 import { TOPIC_KEY } from './noticeTopics.js';
 import { validateChecklist } from './checklists.js';
-import { BLOCK_LIMITS, commandLineOf, validateBotBlocks, validateBotFiles, type BotBlock, type GalleryItem } from './botBlocks.js';
+import { BLOCK_LIMITS, commandLineOf, upToWord, validateBotBlocks, validateBotFiles, type BotBlock, type GalleryItem } from './botBlocks.js';
 export { validateBotFiles };
 import type { BotCommand } from './botCommands.js';
 import type { AppCategory } from './botManifest.js';
@@ -18,12 +18,22 @@ export type CardTone = 'ok' | 'warn' | 'error' | 'info' | 'neutral';
 export type CardActionStyle = 'primary' | 'secondary' | 'danger';
 /** `command`: the button runs that line for whoever taps it, instead of reaching the bot as `button.click`. */
 export type CardAction = { id: string; label: string; style: CardActionStyle; value: string; command?: string };
+/** The bar on top of a card (Stitch a10): the space's brand, or a tone (a corrected one, warn). */
+export type CardAccent = 'brand' | CardTone;
 export type BotCard = {
   kicker?: string;
   title: string;
   status?: { label: string; tone: CardTone };
   fields: { label: string; value: string }[];
-  link?: { label: string; url: string };
+  /** `style: 'button'`: the solid footer button («Ver consumo ›») instead of a text link. */
+  link?: { label: string; url: string; style?: 'button' };
+  accent?: CardAccent;
+  /** A muted line under the title («Consorcio Lomas»). */
+  subtitle?: string;
+  /** A tap on the card's body opens it; its buttons and command rows keep their own tap. */
+  url?: string;
+  /** A muted line left of the button («Registró Wilson Zamora · 9:28»). */
+  footer?: string;
   actions?: CardAction[];
   /** The kit (§118.4): what the card draws, its detail for the sheet, and when its data was taken. */
   blocks?: BotBlock[];
@@ -40,7 +50,8 @@ export type BotClientRef = { kind: string; serviceId?: string; recordId?: string
 export type BotPost = { target: BotTarget; text?: string; card?: BotCard; /** Photos and videos drawn as a person's album (José via agentes 09/11). */ files?: GalleryItem[]; checklist?: BotChecklist; threadOf?: number; clientRef?: BotClientRef; idempotencyKey: string };
 export type BotPostError = { ok: false; error: 'invalid_request'; message: string };
 
-export const BOT_LIMITS = { text: 4000, idempotencyKey: 120, fields: 12, actions: 3, actionValue: 2000, kicker: 60, title: 120, status: 24, label: 40, value: 120, linkLabel: 40, actionLabel: 24, actionId: 40, url: 500 };
+export const BOT_LIMITS = { text: 4000, idempotencyKey: 120, fields: 12, actions: 3, actionValue: 2000, kicker: 60, title: 120, subtitle: 120, footer: 120, status: 24, label: 40, value: 120, linkLabel: 40, actionLabel: 24, actionId: 40, url: 500 };
+const ACCENTS: readonly CardAccent[] = ['brand', 'ok', 'warn', 'error', 'info', 'neutral'];
 const TONES: readonly CardTone[] = ['ok', 'warn', 'error', 'info', 'neutral'];
 const STYLES: readonly CardActionStyle[] = ['primary', 'secondary', 'danger'];
 const ACTION_ID = /^[a-z0-9_-]+$/;
@@ -69,6 +80,18 @@ function validateActions(raw: unknown): { ok: true; actions: CardAction[] } | { 
   return { ok: true, actions };
 }
 
+type CardDesign = Pick<BotCard, 'accent' | 'subtitle' | 'url' | 'footer'>;
+
+/** What Stitch a10 added to a card: bar, subtitle, the card as a link and its footer. */
+function cardDesignOf(card: Record<string, unknown>): { ok: true; design: CardDesign } | { ok: false; message: string } {
+  const url = line(card.url, BOT_LIMITS.url);
+  if (url && !url.startsWith('https://')) return { ok: false, message: 'El enlace de la tarjeta debe empezar con https://.' };
+  const subtitle = upToWord(card.subtitle, BOT_LIMITS.subtitle);
+  const footer = upToWord(card.footer, BOT_LIMITS.footer);
+  const accent = ACCENTS.find((one) => one === card.accent);
+  return { ok: true, design: { ...(accent ? { accent } : {}), ...(subtitle ? { subtitle } : {}), ...(url ? { url } : {}), ...(footer ? { footer } : {}) } };
+}
+
 export function validateBotCard(raw: unknown): { ok: true; card: BotCard } | { ok: false; message: string } {
   const card = record(raw);
   const title = line(card.title, BOT_LIMITS.title);
@@ -84,6 +107,8 @@ export function validateBotCard(raw: unknown): { ok: true; card: BotCard } | { o
   if (url && !url.startsWith('https://')) return { ok: false, message: 'El enlace de la tarjeta debe empezar con https://.' };
   const actions = validateActions(card.actions);
   if (!actions.ok) return actions;
+  const design = cardDesignOf(card);
+  if (!design.ok) return design;
   const kicker = line(card.kicker, BOT_LIMITS.kicker);
   const blocks = validateBotBlocks(card.blocks, BLOCK_LIMITS.cardBlocks);
   if (!blocks.ok) return blocks;
@@ -96,7 +121,8 @@ export function validateBotCard(raw: unknown): { ok: true; card: BotCard } | { o
     title,
     ...(statusLabel ? { status: { label: statusLabel, tone: (status.tone as CardTone | undefined) ?? 'neutral' } } : {}),
     fields,
-    ...(url ? { link: { label: cutAtWord(line(link.label, BOT_LIMITS.text), BOT_LIMITS.linkLabel) || 'Abrir', url } } : {}),
+    ...design.design,
+    ...(url ? { link: { label: cutAtWord(line(link.label, BOT_LIMITS.text), BOT_LIMITS.linkLabel) || 'Abrir', url, ...(link.style === 'button' ? { style: 'button' as const } : {}) } } : {}),
     ...(actions.actions.length ? { actions: actions.actions } : {}),
     ...(blocks.blocks.length ? { blocks: blocks.blocks } : {}),
     ...(detailBlocks.blocks.length ? { detail: { title: line(rawDetail.title, BOT_LIMITS.title) || title, blocks: detailBlocks.blocks } } : {}),

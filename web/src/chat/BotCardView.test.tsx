@@ -27,14 +27,13 @@ describe('bot card', () => {
     expect(screen.getByRole('link', { name: /Ver en Portal/ }).getAttribute('href')).toBe('https://portal.example.com/pedidos/1024');
   });
 
-  // Agentes, 24/10: «Registró: Lilachat · (51902049…)» came cut on one line.
-  it('a long field value wraps to two lines and keeps its full text on hover', () => {
+  // Agentes, 24/10: «Registró: Lilachat · (51902049…)» came cut on one line. Stitch a10 (12/11): no clamp either.
+  it('a long field value wraps whole, never cut nor clamped', () => {
     const long = 'Lilachat · (51902049935) · José Zamora';
     render(<BotCardView card={{ title: 'Asistencia', fields: [{ label: 'Registró', value: long }] }} chatId="c1" seq={7} jwt="jwt" />);
     const value = screen.getByText(long);
-    expect(value.className).toContain('line-clamp-2');
-    expect(value.className).not.toContain('truncate');
-    expect(value.getAttribute('title')).toBe(long);
+    expect(value.className).not.toMatch(/line-clamp|truncate/);
+    expect(value.className).toContain('break-words');
   });
 
   it('a tap on an action reaches the bot, and the buttons say it was sent', async () => {

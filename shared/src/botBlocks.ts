@@ -25,8 +25,17 @@ export type BotBlock =
   | { type: 'progress'; value: number; max: number; label: string; tone: CardTone }
   | { type: 'tank'; items: TankItem[] }
   | { type: 'text'; text: string; tone: CardTone }
-  /** `command`: the line a person would type; tapping the row runs it (José, 05/11). */
-  | { type: 'rows'; rows: { label: string; value: string; sub?: string; bar?: number; tone: CardTone; command?: string; anyone?: boolean }[] }
+  /**
+   * `command`: the line a person would type; tapping the row runs it (José, 05/11).
+   * `mid`: a muted middle column («24,43 gl/m³»); `before`: the previous value, struck through (Stitch a10).
+   */
+  | { type: 'rows'; rows: { label: string; value: string; sub?: string; mid?: string; before?: string; bar?: number; tone: CardTone; command?: string; anyone?: boolean }[] }
+  /** The inset figure (Stitch a10): a caption on top, the label on the left and the big value on the right. */
+  | { type: 'stat'; caption?: string; label: string; value: string; unit?: string }
+  /** A section header with a text on the right («Combustible … Consumo total en planta»). */
+  | { type: 'section'; title: string; aside?: string }
+  /** A grid of label and value (materials): 2 columns. */
+  | { type: 'tiles'; items: { label: string; value: string }[] }
   /** `times[i]` is the time of `names[i]`, as the app wrote it; '' when that person has none (José, 04/11). */
   | { type: 'people'; names: string[]; times?: string[]; evidence?: PersonEvidence[]; more?: number }
   | { type: 'attachments'; count: number; label: string; url: string }
@@ -37,7 +46,7 @@ export type BotBlock =
   | WeatherBlock;
 export type GalleryItem = { url: string; thumbUrl?: string; mime: string; name?: string; label?: string };
 
-export const BLOCK_LIMITS = { cardBlocks: 8, detailBlocks: 12, chips: 6, points: 31, tanks: 12, rows: 40, people: 40, label: 40, short: 24, text: 200, url: 500, gallery: 20, cardBytes: 16_000 };
+export const BLOCK_LIMITS = { cardBlocks: 8, detailBlocks: 12, chips: 6, points: 31, tanks: 12, rows: 40, people: 40, label: 40, short: 24, caption: 80, text: 200, url: 500, gallery: 20, tiles: 12, cardBytes: 16_000 };
 /** Where a gallery's files may live: a card's thumbnails load on every member's device, so no tracking pixel from anyone else. */
 const GALLERY_HOSTS: readonly string[] = ['lila.constroad.com', 'www.constroad.com'];
 const GALLERY_STRIP = 4;
@@ -65,6 +74,23 @@ const withCommand = (row: Record<string, unknown>): { command?: string; anyone?:
 };
 const withText = <K extends string>(key: K, value: unknown, max: number): Partial<Record<K, string>> => {
   const clean = text(value, max);
+  return clean ? ({ [key]: clean } as Record<K, string>) : {};
+};
+
+/**
+ * Too long is cut at the last whole word, without «…» (Stitch a10: no text of a card is cut
+ * with «…» nor broken mid-word). A single word longer than `max` is cut hard.
+ */
+export function upToWord(value: unknown, max: number): string {
+  const clean = typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
+  if (clean.length <= max) return clean;
+  const lastSpace = clean.slice(0, max + 1).lastIndexOf(' ');
+  return (lastSpace > 0 ? clean.slice(0, lastSpace) : clean.slice(0, max)).replace(/[\s,;:.·\-–—]+$/, '');
+}
+/** A text that is a figure («268,00 m³», «−6,08 gl»): a section's aside then reads as a total, not a note. */
+export const isFigure = (value: string): boolean => /^[−–+-]?\d/.test(value.trim());
+const withWords = <K extends string>(key: K, value: unknown, max: number): Partial<Record<K, string>> => {
+  const clean = upToWord(value, max);
   return clean ? ({ [key]: clean } as Record<K, string>) : {};
 };
 
@@ -189,6 +215,39 @@ function peopleBlock(raw: Record<string, unknown>): Result<BotBlock> {
   };
 }
 
+function rowOf(item: unknown): Extract<BotBlock, { type: 'rows' }>['rows'][number] {
+  const row = record(item);
+  return {
+    label: text(row.label, BLOCK_LIMITS.label),
+    value: text(row.value, BLOCK_LIMITS.text),
+    ...withText('sub', row.sub, BLOCK_LIMITS.text),
+    ...withWords('mid', row.mid, BLOCK_LIMITS.short),
+    ...withWords('before', row.before, BLOCK_LIMITS.short),
+    ...(row.bar !== undefined ? { bar: clamp01(row.bar) } : {}),
+    tone: tone(row.tone),
+    ...withCommand(row),
+  };
+}
+
+function statBlock(raw: Record<string, unknown>): Result<BotBlock> {
+  const label = upToWord(raw.label, BLOCK_LIMITS.label);
+  const value = upToWord(raw.value, BLOCK_LIMITS.short);
+  if (!label || !value) return { ok: false, message: 'La cifra necesita etiqueta y valor.' };
+  return { ok: true, value: { type: 'stat', ...withWords('caption', raw.caption, BLOCK_LIMITS.caption), label, value, ...withWords('unit', raw.unit, BLOCK_LIMITS.short) } };
+}
+
+function sectionBlock(raw: Record<string, unknown>): Result<BotBlock> {
+  const title = upToWord(raw.title, BLOCK_LIMITS.label);
+  return title ? { ok: true, value: { type: 'section', title, ...withWords('aside', raw.aside, BLOCK_LIMITS.label) } } : { ok: false, message: 'La sección necesita un título.' };
+}
+
+function tilesBlock(raw: Record<string, unknown>): Result<BotBlock> {
+  const items = list(raw.items, BLOCK_LIMITS.tiles)
+    .map((item) => ({ label: upToWord(record(item).label, BLOCK_LIMITS.label), value: upToWord(record(item).value, BLOCK_LIMITS.short) }))
+    .filter((tile) => tile.label && tile.value);
+  return items.length ? { ok: true, value: { type: 'tiles', items } } : { ok: false, message: 'Las casillas necesitan etiqueta y valor.' };
+}
+
 /** One block as the server keeps it, or null for an unknown type (ignored, not an error: newer apps may send more). */
 function block(raw: Record<string, unknown>): Result<BotBlock> | null {
   switch (raw.type) {
@@ -201,7 +260,10 @@ function block(raw: Record<string, unknown>): Result<BotBlock> | null {
     }
     case 'tank': return tankBlock(raw);
     case 'text': return text(raw.text, BLOCK_LIMITS.text) ? { ok: true, value: { type: 'text', text: text(raw.text, BLOCK_LIMITS.text), tone: tone(raw.tone) } } : { ok: false, message: 'El texto del bloque está vacío.' };
-    case 'rows': return { ok: true, value: { type: 'rows', rows: list(raw.rows, BLOCK_LIMITS.rows).map((item) => { const row = record(item); return { label: text(row.label, BLOCK_LIMITS.label), value: text(row.value, BLOCK_LIMITS.text), ...withText('sub', row.sub, BLOCK_LIMITS.text), ...(row.bar !== undefined ? { bar: clamp01(row.bar) } : {}), tone: tone(row.tone), ...withCommand(row) }; }).filter((row) => row.label) } };
+    case 'rows': return { ok: true, value: { type: 'rows', rows: list(raw.rows, BLOCK_LIMITS.rows).map(rowOf).filter((row) => row.label) } };
+    case 'stat': return statBlock(raw);
+    case 'section': return sectionBlock(raw);
+    case 'tiles': return tilesBlock(raw);
     case 'people': return peopleBlock(raw);
     case 'attachments': return attachmentsBlock(raw);
     case 'gallery': return galleryBlock(raw);

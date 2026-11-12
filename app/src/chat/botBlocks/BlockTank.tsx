@@ -44,10 +44,10 @@ function TankDelta({ delta, big }: { delta: string; big: boolean }) {
 function TankFacts({ tank, big }: { tank: TankItem; big: boolean }) {
   return (
     <View className="min-w-0 flex-1">
-      <Text numberOfLines={1} className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">{tank.name}</Text>
+      <Text className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">{tank.name}</Text>
       <Text className={`${big ? 'text-[26px]' : 'text-[15px]'} font-bold ${tank.tone === 'error' ? 'text-error' : 'text-on-surface'}`} style={{ fontVariant: ['tabular-nums'] }}>{tank.value}</Text>
       {/* The fill and the verdict, like design r155 and Portal's WhatsApp report (José, 24/10). */}
-      <Text numberOfLines={1} className="text-[12px] text-on-surface-variant" style={{ fontVariant: ['tabular-nums'] }}>{tank.sub ? `${tank.sub} · ${tankPercent(tank.level)}` : tankPercent(tank.level)}</Text>
+      <Text className="text-[12px] text-on-surface-variant" style={{ fontVariant: ['tabular-nums'] }}>{tank.sub ? `${tank.sub} · ${tankPercent(tank.level)}` : tankPercent(tank.level)}</Text>
       {tank.status ? <View testID="tanque-estado" className={`mt-1 self-start rounded-md border px-1.5 py-0.5 ${TONE_CLASS[tank.tone].soft}`}><Text className={`text-[11px] font-semibold ${TONE_CLASS[tank.tone].text}`}>{tank.status}</Text></View> : null}
       {tank.delta ? <TankDelta delta={tank.delta} big={big} /> : null}
     </View>

@@ -1240,3 +1240,43 @@ Archivos: `shared/src/bots.ts` (validación y resumen), `server/src/bots/botMess
 Tests: `shared/src/bots.test.ts`, `server/src/bots/bots.test.ts`
 («photos and videos as an album; PATCH replaces the whole set»),
 `web/src/chat/BotFilesAlbum.test.tsx`.
+
+## c-tervicies. Tarjeta de consumo de Inframaq: diseño Stitch a10 (José vía agentes, 12/11)
+
+José aprobó el diseño nuevo de las tarjetas de consumo (Inframaq Stitch a10,
+proyecto 5215133259325220132, pantallas 7f299d22… escritorio y fc247743…
+móvil; spec de inframaq `I10-CUSTODIA-EN-INFRAMAQ.spec.md` §14). Agentes
+propuso diez agregados genéricos y opcionales. Lilachat los aceptó tal cual.
+
+En la tarjeta:
+- `accent`: `brand | ok | warn | error | info | neutral`. Es una barra de 3 px
+  arriba. `brand` es el acento del espacio; otro valor no se dibuja.
+- `subtitle` (≤ 120): una línea apagada bajo el título.
+- `url` (https, ≤ 500): tocar el cuerpo de la tarjeta lo abre. Los botones,
+  los enlaces y las filas con comando conservan su propio toque. En la web el
+  título es además un enlace, para el teclado. Un `url` sin https rechaza la
+  tarjeta.
+- `link.style: 'button'`: el enlace es el botón sólido del pie, con «›».
+- `footer` (≤ 120): una línea apagada a la izquierda del botón.
+
+Bloques nuevos:
+- `{ type: 'stat', caption?, label, value, unit? }`: el recuadro con la
+  cifra. Sin etiqueta o sin valor se rechaza.
+- `{ type: 'section', title, aside? }`: el encabezado de sección. Un `aside`
+  que empieza con número se dibuja como total, en negrita (`isFigure`).
+- `{ type: 'tiles', items: [{ label, value }] }`: hasta 12 casillas en dos
+  columnas, la etiqueta sobre el valor.
+- En `rows`: `mid` (≤ 24) es la columna del medio apagada; `before` (≤ 24)
+  es el valor anterior, tachado, antes de «→».
+
+Ningún texto de una tarjeta se corta con «…» ni con un tope de líneas: se
+parte entre palabras. Eso vale para el título, el kicker, los campos, las
+filas, los chips, las personas y los lugares. Solo las cifras de las barras
+verticales del gráfico se achican para caber (app). Lo que pasa de su límite
+se corta en la última palabra entera, sin «…» (`upToWord`).
+
+Una APK sin la OTA no conoce `stat`, `section` ni `tiles` y los salta. Por
+eso agentes manda también las cifras clave en `fields` o en `rows` hasta que
+Lilachat confirme la web y la OTA.
+
+Tests: `shared/src/botCardDesign.test.ts` y `web/src/chat/BotCardDesign.test.tsx`.

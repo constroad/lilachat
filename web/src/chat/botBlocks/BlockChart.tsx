@@ -13,7 +13,7 @@ function BarsH({ chart }: { chart: Chart }) {
       {chart.points.map((point, index) => (
         <div key={`${point.label}-${index}`}>
           <div className="flex items-baseline justify-between gap-2 text-[12px]">
-            <span className="min-w-0 truncate">{point.label}{point.note ? <span className={`ml-2 text-[11px] font-bold ${TONE[point.tone].text}`}>{point.note}</span> : null}</span>
+            <span className="min-w-0 break-words">{point.label}{point.note ? <span className={`ml-2 text-[11px] font-bold ${TONE[point.tone].text}`}>{point.note}</span> : null}</span>
             <span className={`font-semibold tabular-nums ${point.tone === 'error' ? 'text-error' : ''}`}>{shown(point, chart.unit)}</span>
           </div>
           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-variant">
@@ -33,12 +33,12 @@ function BarsV({ chart }: { chart: Chart }) {
       <div className="grid items-end" style={{ gridTemplateColumns: `repeat(${chart.points.length}, minmax(${BAR_V_MIN_COLUMN}px, 1fr))` }}>
         {chart.points.map((point, index) => (
           <div key={`${point.label}-${index}`} className="flex min-w-0 flex-col items-center">
-            <span className={`max-w-full truncate text-[12px] font-bold tabular-nums ${TONE[point.tone].text}`}>{shown(point, chart.unit)}</span>
+            <span className={`max-w-full break-words text-center text-[12px] font-bold tabular-nums ${TONE[point.tone].text}`}>{shown(point, chart.unit)}</span>
             <div className="flex w-full items-end justify-center" style={{ height: BAR_V_HEIGHT }}>
               <div className={`w-3/5 max-w-8 rounded-t-md ${TONE[point.tone].bar}`} style={{ height: Math.max(3, Math.round(fractions[index]! * BAR_V_HEIGHT)) }} />
             </div>
-            <span className="mt-1 max-w-full truncate text-[12px] font-semibold">{point.label}</span>
-            {point.note ? <span className="max-w-full truncate text-[11px] text-on-surface-variant">{point.note}</span> : null}
+            <span className="mt-1 max-w-full break-words text-center text-[12px] font-semibold">{point.label}</span>
+            {point.note ? <span className="max-w-full break-words text-center text-[11px] text-on-surface-variant">{point.note}</span> : null}
           </div>
         ))}
       </div>

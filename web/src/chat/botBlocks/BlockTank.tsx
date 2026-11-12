@@ -41,10 +41,10 @@ function TankDelta({ delta, big }: { delta: string; big: boolean }) {
 function TankFacts({ tank, big }: { tank: TankItem; big: boolean }) {
   return (
     <div className="min-w-0 flex-1">
-      <p className="truncate text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">{tank.name}</p>
+      <p className="break-words text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">{tank.name}</p>
       <p className={`${big ? 'text-[26px]' : 'text-[15px]'} font-bold tabular-nums ${tank.tone === 'error' ? 'text-error' : ''}`}>{tank.value}</p>
       {/* The fill and the verdict, like design r155 and Portal's WhatsApp report (José, 24/10). */}
-      <p className="truncate text-[12px] tabular-nums text-on-surface-variant">{tank.sub ? `${tank.sub} · ${tankPercent(tank.level)}` : tankPercent(tank.level)}</p>
+      <p className="break-words text-[12px] tabular-nums text-on-surface-variant">{tank.sub ? `${tank.sub} · ${tankPercent(tank.level)}` : tankPercent(tank.level)}</p>
       {tank.status ? <span data-testid="tanque-estado" className={`mt-1 inline-block rounded-md border px-1.5 py-0.5 text-[11px] font-semibold ${TONE[tank.tone].soft} ${TONE[tank.tone].text}`}>{tank.status}</span> : null}
       {tank.delta ? <TankDelta delta={tank.delta} big={big} /> : null}
     </div>

@@ -1,9 +1,10 @@
 import { useContext, useState } from 'react';
 import { ChevronRight, ExternalLink } from 'lucide-react';
-import { formatClock, isOrderCard, type BotCard, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
+import { formatClock, isOrderCard, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BotBlocksView } from './botBlocks/BotBlocksView';
 import { BotCardDetail } from './botBlocks/BotCardDetail';
 import { CardCommandContext, OrderCardContext, useCardCommand } from './botBlocks/cardCommand';
+import { TONE as BLOCK_TONE } from './botBlocks/tones';
 
 /** The status pill's tone (design `e-21`): background faint, border at 30 %, text strong. */
 const TONE: Record<CardTone, string> = {
@@ -13,11 +14,64 @@ const TONE: Record<CardTone, string> = {
   info: 'border-primary/30 bg-primary/10 text-primary',
   neutral: 'border-outline/30 bg-background text-on-surface-variant',
 };
+/** The bar on top (Stitch a10): the space's brand or a tone; never a color of the message. */
+const ACCENT_BAR = (accent: CardAccent): string => (accent === 'brand' ? 'bg-primary-brand' : BLOCK_TONE[accent].bar);
 const ACTION: Record<CardActionStyle, string> = {
   primary: 'bg-primary text-on-primary',
   secondary: 'border border-outline/25 text-on-surface hover:bg-background',
   danger: 'border border-error/30 text-error hover:bg-error/5',
 };
+
+/** Kicker, title (a link when the whole card is one), status and subtitle; every text wraps, none is cut. */
+function CardHead({ card }: { card: BotCard }) {
+  return (
+    <>
+      {card.kicker || card.updatedAt ? (
+        <div className="flex items-start gap-2">
+          <p className="min-w-0 flex-1 break-words text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{card.kicker}</p>
+          {card.updatedAt ? <span data-testid="tarjeta-actualizada" className="shrink-0 text-[10px] text-on-surface-variant">Actualizado {formatClock(card.updatedAt)}</span> : null}
+        </div>
+      ) : null}
+      <div className="flex flex-wrap items-start gap-2">
+        {card.url ? (
+          <a data-testid="tarjeta-titulo" href={card.url} target="_blank" rel="noopener noreferrer" className="min-w-[60%] flex-1 break-words text-[15px] font-bold leading-5 hover:underline">{card.title}</a>
+        ) : <p className="min-w-[60%] flex-1 break-words text-[15px] font-bold leading-5">{card.title}</p>}
+        {card.status ? <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${TONE[card.status.tone]}`}>{card.status.label}</span> : null}
+      </div>
+      {card.subtitle ? <p data-testid="tarjeta-subtitulo" className="-mt-1 break-words text-[13px] text-on-surface-variant">{card.subtitle}</p> : null}
+    </>
+  );
+}
+
+/** The link as text, or (Stitch a10) the footer line with the solid button on its right. */
+function CardLink({ card }: { card: BotCard }) {
+  const { link, footer } = card;
+  if (link?.style === 'button' || (footer && link)) {
+    return (
+      <div data-testid="tarjeta-pie" className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-outline/10 pt-2.5">
+        {footer ? <p className="min-w-0 flex-1 break-words text-[12px] text-on-surface-variant">{footer}</p> : <span />}
+        {link ? (
+          <a href={link.url} target="_blank" rel="noopener noreferrer" className={link.style === 'button' ? 'inline-flex min-h-9 items-center gap-1 rounded-lg bg-primary px-3.5 text-[13px] font-semibold text-on-primary hover:opacity-90' : 'inline-flex items-center gap-1 text-[13px] font-semibold text-primary hover:underline'}>
+            {link.label} {link.style === 'button' ? <ChevronRight size={15} /> : <ExternalLink size={13} />}
+          </a>
+        ) : null}
+      </div>
+    );
+  }
+  if (footer) return <p data-testid="tarjeta-pie" className="break-words border-t border-outline/10 pt-2.5 text-[12px] text-on-surface-variant">{footer}</p>;
+  if (!link) return null;
+  return (
+    <a href={link.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary hover:underline">
+      {link.label} <ExternalLink size={13} />
+    </a>
+  );
+}
+
+/** A tap on the body of a card with `url` opens it; a button, a link or a command row keeps its own tap. */
+function openCardUrl(url: string | undefined, target: EventTarget) {
+  if (!url || (target instanceof Element && target.closest('a, button, [role="button"], input, textarea'))) return;
+  window.open(url, '_blank', 'noopener,noreferrer');
+}
 
 /**
  * A bot's card in the chat (`specs/BOTS-API.spec.md` §b; design `e-21`):
@@ -48,24 +102,16 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
   const actions = card.actions?.filter((action) => !action.command || runRow) ?? [];
   return (
     <CardCommandContext.Provider value={runRow}>
-    <div data-testid="tarjeta-bot" className="mb-1 w-[calc(100%-0.5rem)] max-w-sm overflow-hidden rounded-xl border border-outline/15 bg-surface text-on-surface">
+    <div data-testid="tarjeta-bot" onClick={(event) => openCardUrl(card.url, event.target)} className={`mb-1 w-[calc(100%-0.5rem)] max-w-sm overflow-hidden rounded-xl border border-outline/15 bg-surface text-on-surface ${card.url ? 'cursor-pointer' : ''}`}>
+      {card.accent ? <div data-testid="tarjeta-acento" aria-hidden className={`h-[3px] ${ACCENT_BAR(card.accent)}`} /> : null}
       <div className="space-y-2 px-3.5 py-3">
-        {card.kicker || card.updatedAt ? (
-          <div className="flex items-center gap-2">
-            <p className="min-w-0 flex-1 truncate text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{card.kicker}</p>
-            {card.updatedAt ? <span data-testid="tarjeta-actualizada" className="shrink-0 text-[10px] text-on-surface-variant">Actualizado {formatClock(card.updatedAt)}</span> : null}
-          </div>
-        ) : null}
-        <div className="flex flex-wrap items-start gap-2">
-          <p className="min-w-[60%] flex-1 text-[15px] font-bold leading-5">{card.title}</p>
-          {card.status ? <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${TONE[card.status.tone]}`}>{card.status.label}</span> : null}
-        </div>
+        <CardHead card={card} />
         {card.fields.length ? (
           <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[13px]">
             {card.fields.map((field) => (
               <div key={`${field.label}-${field.value}`} className="min-w-0">
                 <dt className="text-[11px] text-on-surface-variant">{field.label}</dt>
-                <dd title={field.value} className="line-clamp-2 break-words font-semibold">{field.value}</dd>
+                <dd className="break-words font-semibold">{field.value}</dd>
               </div>
             ))}
           </dl>
@@ -81,11 +127,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
             Ver despachos y fotos <ChevronRight size={14} className="text-on-surface-variant" />
           </button>
         ) : null}
-        {card.link ? (
-          <a href={card.link.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary hover:underline">
-            {card.link.label} <ExternalLink size={13} />
-          </a>
-        ) : null}
+        <CardLink card={card} />
       </div>
       {actions.length ? (
         <div className="flex flex-wrap gap-2 border-t border-outline/10 px-3.5 py-2.5">

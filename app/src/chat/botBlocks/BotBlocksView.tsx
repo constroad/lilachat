@@ -8,6 +8,7 @@ import { Avatar } from '../../ui/Avatar';
 import { useColores } from '../../ui/tema';
 import { useAccionesDeTarjeta } from '../accionesDeTarjeta';
 import { BlockChart } from './BlockChart';
+import { BlockSection, BlockStat, BlockTiles } from './BlockDesign';
 import { BlockGallery } from './BlockGallery';
 import { BlockMap } from './BlockMap';
 import { BlockTank } from './BlockTank';
@@ -26,7 +27,7 @@ function PeopleOnCard({ block }: { block: PeopleBlock }) {
       {names.map((name, index) => (
         <View key={`${name}-${index}`} className="flex-row items-center gap-1.5">
           <Avatar nombre={name} tamano={PEOPLE_SIZE} />
-          <Text numberOfLines={1} className="text-[13px] text-on-surface">{shortPersonName(name)}</Text>
+          <Text className="text-[13px] text-on-surface">{shortPersonName(name)}</Text>
           {personTime(block, index) ? <Text className="text-[12px] text-on-surface-variant" style={{ fontVariant: ['tabular-nums'] }}>{personTime(block, index)}</Text> : null}
         </View>
       ))}
@@ -54,7 +55,7 @@ function MarkPlace({ evidence }: { evidence: PersonEvidence }) {
   return (
     <Pressable testID="lugar-de-marca" disabled={!map} accessibilityRole={map ? 'link' : undefined} onPress={() => map && void Linking.openURL(map)} className="mt-0.5 flex-row items-center gap-1 self-start">
       <MapPin size={13} color={colors[map ? 'primary' : 'on-surface-variant']} />
-      <Text numberOfLines={1} className={`shrink text-[12px] ${map ? 'font-semibold text-primary' : 'text-on-surface-variant'}`}>{place ?? 'Ver en el mapa'}</Text>
+      <Text className={`shrink text-[12px] ${map ? 'font-semibold text-primary' : 'text-on-surface-variant'}`}>{place ?? 'Ver en el mapa'}</Text>
     </Pressable>
   );
 }
@@ -95,13 +96,18 @@ function RowBody({ row, tappable }: { row: RowsBlock['rows'][number]; tappable: 
   return (
     <>
       <View className="flex-row items-center gap-3">
-        <Text numberOfLines={1} className="min-w-0 flex-1 text-[14px] text-on-surface">{row.label}</Text>
+        <Text className="min-w-0 flex-1 text-[14px] text-on-surface">{row.label}</Text>
+        {row.mid ? <Text testID="fila-medio" className="text-[13px] text-on-surface-variant" style={{ fontVariant: ['tabular-nums'] }}>{row.mid}</Text> : null}
         {row.bar !== undefined ? (
           <View className="h-1.5 w-16 overflow-hidden rounded-full bg-surface-variant">
             <View className="h-full rounded-full" style={{ width: `${Math.round(row.bar * 100)}%`, backgroundColor: colors[TONE_COLOR[row.tone]] }} />
           </View>
         ) : null}
-        <Text className={`text-[13px] font-semibold ${row.tone === 'neutral' ? 'text-on-surface' : TONE_CLASS[row.tone].text}`} style={{ fontVariant: ['tabular-nums'] }}>{row.value}</Text>
+        <Text className={`text-[13px] font-semibold ${row.tone === 'neutral' ? 'text-on-surface' : TONE_CLASS[row.tone].text}`} style={{ fontVariant: ['tabular-nums'] }}>
+          {row.before ? <Text testID="fila-antes" className="font-normal text-on-surface-variant" style={{ textDecorationLine: 'line-through' }}>{row.before}</Text> : null}
+          {row.before ? ' → ' : null}
+          {row.value}
+        </Text>
         {tappable ? <ChevronRight size={16} color={colors['on-surface-variant']} /> : null}
       </View>
       {row.sub ? <Text className="mt-0.5 text-[12px] text-on-surface-variant">{row.sub}</Text> : null}
@@ -141,7 +147,7 @@ function Block({ block }: { block: BotBlock }) {
           {block.items.map((chip) => (
             <View key={chip.label} className={`flex-1 items-center rounded-lg border px-1 py-1.5 ${TONE_CLASS[chip.tone].soft}`}>
               <Text className={`text-[12px] font-semibold ${TONE_CLASS[chip.tone].text}`}>{chip.label}</Text>
-              {chip.sub ? <Text numberOfLines={1} className={`text-[11px] ${TONE_CLASS[chip.tone].text}`}>{chip.sub}</Text> : null}
+              {chip.sub ? <Text className={`text-center text-[11px] ${TONE_CLASS[chip.tone].text}`}>{chip.sub}</Text> : null}
             </View>
           ))}
         </View>
@@ -183,6 +189,12 @@ function Block({ block }: { block: BotBlock }) {
       return <BlockMap block={block} />;
     case 'weather':
       return <BlockWeather block={block} />;
+    case 'stat':
+      return <BlockStat block={block} />;
+    case 'section':
+      return <BlockSection block={block} />;
+    case 'tiles':
+      return <BlockTiles block={block} />;
   }
 }
 

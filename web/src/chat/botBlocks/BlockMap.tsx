@@ -5,7 +5,7 @@ import { LocationCardWeb } from '../LocationCardWeb';
 export function BlockMap({ block }: { block: Extract<BotBlock, { type: 'map' }> }) {
   return (
     <div data-testid="bloque-mapa" className="flex flex-col gap-1">
-      {block.label ? <p className="line-clamp-2 text-[13px] font-semibold">{block.label}</p> : null}
+      {block.label ? <p className="break-words text-[13px] font-semibold">{block.label}</p> : null}
       <LocationCardWeb location={{ lat: block.lat, lng: block.lng, ...(block.precisionM !== undefined ? { accuracy: block.precisionM } : {}) }} mio={false} />
     </div>
   );

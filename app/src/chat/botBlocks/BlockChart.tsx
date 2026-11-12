@@ -21,7 +21,7 @@ function BarsH({ chart }: { chart: Chart }) {
       {chart.points.map((point, index) => (
         <View key={`${point.label}-${index}`}>
           <View className="flex-row items-baseline justify-between gap-2">
-            <Text numberOfLines={1} className="min-w-0 flex-1 text-[12px] text-on-surface">{point.label}{point.note ? <Text className={`text-[11px] font-bold ${TONE_CLASS[point.tone].text}`}>{`  ${point.note}`}</Text> : null}</Text>
+            <Text className="min-w-0 flex-1 text-[12px] text-on-surface">{point.label}{point.note ? <Text className={`text-[11px] font-bold ${TONE_CLASS[point.tone].text}`}>{`  ${point.note}`}</Text> : null}</Text>
             <Text className={`text-[12px] font-semibold ${point.tone === 'error' ? 'text-error' : 'text-on-surface'}`} style={{ fontVariant: ['tabular-nums'] }}>{shown(point, chart.unit)}</Text>
           </View>
           <View className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-variant">
@@ -46,7 +46,7 @@ function BarsV({ chart }: { chart: Chart }) {
         <View className="rounded-t-md" style={{ width: layout.bar, height: Math.max(3, Math.round(fractions[index]! * BAR_V_HEIGHT)), backgroundColor: colors[TONE_COLOR[point.tone]] }} />
       </View>
       <Text numberOfLines={1} adjustsFontSizeToFit className="mt-1 text-[12px] font-semibold text-on-surface">{point.label}</Text>
-      {point.note ? <Text numberOfLines={1} className="text-[11px] text-on-surface-variant">{point.note}</Text> : null}
+      {point.note ? <Text className="text-center text-[11px] text-on-surface-variant">{point.note}</Text> : null}
     </View>
   ));
   return (

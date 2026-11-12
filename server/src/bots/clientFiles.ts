@@ -117,7 +117,9 @@ const ACCOUNT: ServiceAsk<ClientAccount> = { event: 'client.account.requested', 
 const REPORT_PDF: ServiceAsk<ReportPdf> = { event: 'client.report.requested', parse: reportPdfOf, failed: REPORT_PDF_FAILED, gone: 'Este informe ya no está en el Portal.', label: 'PDF del informe', need: 'services' };
 
 /** Where Portal's editor may come from: production only in production (its CSP frames nothing else). */
-const EMBED_ORIGINS: readonly string[] = process.env.NODE_ENV === 'production' ? [PORTAL_EMBED_ORIGINS.production] : [PORTAL_EMBED_ORIGINS.production, PORTAL_EMBED_ORIGINS.development];
+/** Portal's dev server: its embed links are accepted only outside production. */
+const PORTAL_DEV_ORIGIN = 'http://localhost:3000';
+const EMBED_ORIGINS: readonly string[] = process.env.NODE_ENV === 'production' ? [PORTAL_EMBED_ORIGINS.production] : [PORTAL_EMBED_ORIGINS.production, PORTAL_DEV_ORIGIN];
 const REPORT_EMBED: ServiceAsk<EmbedLink> = { event: 'client.report.embed.requested', parse: (body) => embedLinkOf(body, EMBED_ORIGINS), failed: EMBED_FAILED, gone: 'Este informe ya no está en el Portal.', label: 'Editor del informe', need: 'services' };
 
 /**

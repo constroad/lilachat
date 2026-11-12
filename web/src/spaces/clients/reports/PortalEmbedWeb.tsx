@@ -19,7 +19,9 @@ type Props = { target: ServiceAskTarget; serviceId: string; serviceName: string;
 type LinkState = { kind: 'asking' } | { kind: 'ready'; link: EmbedLink } | { kind: 'failed'; message: string };
 
 /** The dev web frames the local Portal too; the built one, production only (its CSP frames nothing else). */
-const FRAMED_ORIGINS: readonly string[] = import.meta.env.DEV ? [PORTAL_EMBED_ORIGINS.production, PORTAL_EMBED_ORIGINS.development] : [PORTAL_EMBED_ORIGINS.production];
+/** Portal's dev server, framed only while developing. */
+const PORTAL_DEV_ORIGIN = 'http://localhost:3000';
+const FRAMED_ORIGINS: readonly string[] = import.meta.env.DEV ? [PORTAL_EMBED_ORIGINS.production, PORTAL_DEV_ORIGIN] : [PORTAL_EMBED_ORIGINS.production];
 /** With nothing unsaved, Portal answers at once; a frame that does not answer does not keep the person in. */
 const CLOSE_WAIT_MS = 3000;
 /** E2E 12/11: Portal's save hung on «Guardando…» and its «Cerrar editor» never posted `closed`; past this, Lilachat's bar offers a way out. */

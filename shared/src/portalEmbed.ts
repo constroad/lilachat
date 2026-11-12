@@ -6,7 +6,8 @@
  * mints a link per member and request (`#t=<token>` in the fragment, 12 h);
  * both sides talk by `postMessage`, version 1. PURE: server and web.
  */
-export const PORTAL_EMBED_ORIGINS = { production: 'https://www.constroad.com', development: 'http://localhost:3000' } as const;
+/** Portal's own origin. Its development origin lives in the web and the server, the only ones that frame it: the APK bundles this package and its OTA refuses development hosts. */
+export const PORTAL_EMBED_ORIGINS = { production: 'https://www.constroad.com' } as const;
 /** Portal's canvas threshold: narrower, the report keeps the form. */
 export const EMBED_MIN_WIDTH_PX = 1024;
 export const EMBED_VERSION = 1;

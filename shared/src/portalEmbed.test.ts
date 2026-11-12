@@ -27,7 +27,7 @@ describe('embedLinkOf', () => {
   it('the local Portal only where the caller allows it', () => {
     const local = { ...link, url: 'http://localhost:3000/embed/report/r1#t=abc' };
     expect(embedLinkOf(local, prod)).toBeNull();
-    expect(embedLinkOf(local, [PORTAL_EMBED_ORIGINS.production, PORTAL_EMBED_ORIGINS.development])?.url).toBe(local.url);
+    expect(embedLinkOf(local, [PORTAL_EMBED_ORIGINS.production, 'http://localhost:3000'])?.url).toBe(local.url);
   });
 
   it('without a valid expiry or a url it is not an answer', () => {

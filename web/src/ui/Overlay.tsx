@@ -10,9 +10,9 @@ import { X } from 'lucide-react';
  * en el celular deja al usuario tocando el botón de atrás, que cierra la
  * pestaña entera.
  *
- * Vive al final del body (E2E 12/11): dentro del panel que la abría, en el
- * celular quedaba debajo del panel del hilo, que también es `fixed z-30` y
- * viene después en la página. «Editar» de un gasto no mostraba nada.
+ * It lives at the end of the body (E2E 12/11): inside the panel that opened it,
+ * on the phone it sat under the thread panel, also `fixed z-30` and later in
+ * the page, so «Editar» on an expense showed nothing.
  */
 export function Overlay({
   title,

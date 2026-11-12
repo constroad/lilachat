@@ -673,8 +673,14 @@ un `default: []` en filas fijas es una lista sin filas. El formulario se abre y 
 hay opciones para elegir» o «No hay filas para completar». Antes, Test sin pedidos en el
 periodo rechazaba el formulario entero y la persona veía «Portal no pudo responder.».
 
-**Refresco** (`x-refresh: true` en un campo, p. ej. `desde` y `hasta`): 600 ms después del
-último cambio, Lilachat reenvía el MISMO evento que abrió el formulario:
+**Refresco** (`x-refresh: true` en un campo, p. ej. `desde` y `hasta`): Lilachat reenvía el
+MISMO evento que abrió el formulario. Una elección (segmentado, lista, casilla, fecha) sale al
+toque; lo que se tipea (texto o número) espera 600 ms quieto (`refreshDelayMs`, Andrea 12/11:
+«Completar gasto» tardaba en traer los clientes y luego las partidas, y agentes medía 72–87 ms
+de su lado). «Actualizando las opciones…» va junto al botón, a la vista. Un formulario con una
+lista o un selector largo abre el diálogo ancho en la computadora (`isWideForm`), y el panel
+del selector se abre dentro del formulario, no flotando: el scroll del diálogo lo recortaba.
+El evento:
 
 - `shortcut.invoked` o `command.invoked`, con el mismo `command_id`;
 - más `values` (el borrador, sin fotos ni ubicación) y `refresh: true`.

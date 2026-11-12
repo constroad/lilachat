@@ -1,6 +1,6 @@
 import { useMemo, useRef, type RefObject } from 'react';
 import { CheckCheck } from 'lucide-react';
-import { CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, formRows, liveSelfieFieldOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
+import { CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, formRows, isWideForm, liveSelfieFieldOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
@@ -64,11 +64,11 @@ export function AppFormDialog(props: DialogProps) {
   const step = signingStepOf(fields, state.values);
   // The three `gps` numbers are one block, drawn where the latitude goes.
   const shown = visibleFields(fields, state.values).filter((field) => field.name !== signer?.name && (step === 'sign' || field.kind === 'location') && !(field.kind === 'number' && field.gps && field.gps !== 'lat'));
-  const footer = <FormFooter summary={live.summary.blocks} message={state.message} busy={state.sending || waiting} label={label} note={evidence ? (selfieField ? LIVE_FOOTER : evidence) : ''} onSend={() => void state.send()} />;
+  const footer = <FormFooter summary={live.summary.blocks} message={state.message} busy={state.sending || waiting} refreshing={live.refreshing} label={label} note={evidence ? (selfieField ? LIVE_FOOTER : evidence) : ''} onSend={() => void state.send()} />;
   return (
-    <Overlay title={form.title} onClose={props.onClose} footer={step === 'sign' ? footer : undefined}>
+    <Overlay title={form.title} onClose={props.onClose} footer={step === 'sign' ? footer : undefined} wide={isWideForm(fields)}>
       <div ref={body} data-testid={`formulario-${form.id}`} className="space-y-4">
-        <FormIntro answer={props.answer} refreshing={live.refreshing} clock={Boolean(evidence) && !selfieField} personName={props.personName} />
+        <FormIntro answer={props.answer} clock={Boolean(evidence) && !selfieField} personName={props.personName} />
         {form.checkAll ? (
           <button type="button" data-testid="marcar-todo" onClick={() => state.fill(checkAllValues(fields, state.values))} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 text-[14px] font-semibold text-primary hover:bg-primary/15">
             <CheckCheck size={18} /> {CHECK_ALL_LABEL}
@@ -91,13 +91,12 @@ export function AppFormDialog(props: DialogProps) {
   );
 }
 
-/** Above the fields: the app's line, why the options are changing, and the clock of a registration. */
-function FormIntro(props: { answer: EphemeralAnswer; refreshing: boolean; clock: boolean; personName?: string }) {
+/** Above the fields: the app's line and the clock of a registration. */
+function FormIntro(props: { answer: EphemeralAnswer; clock: boolean; personName?: string }) {
   const { answer } = props;
   const today = new Date();
   return (
     <>
-      {props.refreshing ? <p data-testid="formulario-actualizando" className="text-[13px] text-on-surface-variant">Actualizando las opciones…</p> : null}
       {answer.response?.text ? <p data-testid="formulario-texto" className="rounded-xl bg-primary/10 px-3 py-2.5 text-[14px]">{answer.response.text}</p> : null}
       {answer.response?.form?.intro ? <p className="text-[14px] text-on-surface-variant">{answer.response.form.intro}</p> : null}
       <div className="flex items-center gap-2 text-[13px] text-on-surface-variant">
@@ -115,9 +114,11 @@ function FormIntro(props: { answer: EphemeralAnswer; refreshing: boolean; clock:
 }
 
 /** By the button, never at the end of the scroll: a refusal there looked like a dead button (E2E 24/10). */
-function FormFooter(props: { summary: PreviewReply['blocks']; message: string; busy: boolean; label: string; note: string; onSend: () => void }) {
+function FormFooter(props: { summary: PreviewReply['blocks']; message: string; busy: boolean; refreshing: boolean; label: string; note: string; onSend: () => void }) {
   return (
     <div>
+      {/* By the button too (Andrea 12/11): at the top it was out of sight while picking the partida. */}
+      {props.refreshing ? <p data-testid="formulario-actualizando" role="status" className="mb-2 animate-pulse text-center text-[13px] text-on-surface-variant">Actualizando las opciones…</p> : null}
       {props.summary.length ? <FormSummary blocks={props.summary} /> : null}
       {props.message ? <div data-testid="formulario-error" className="mb-2"><FieldError>{props.message}</FieldError></div> : null}
       <PrimaryButton testId="btn-enviar-formulario" disabled={props.busy} onClick={props.onSend}>{props.label}</PrimaryButton>

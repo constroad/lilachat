@@ -18,12 +18,15 @@ export function SearchableChoice({ field, value, onChange, compact }: { field: C
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const search = useRef<HTMLInputElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
   const picked = field.options.find((option) => option.value === value);
   const shown = useMemo(() => filterChoiceOptions(field.options, query), [field.options, query]);
   // A search box over three rows is noise (José, 24/10: the carriers and quarries are dropdowns even when short).
   const withSearch = field.options.length > SEARCHABLE_FROM;
   useEffect(() => {
-    if (open) search.current?.focus();
+    if (!open) return;
+    search.current?.focus({ preventScroll: true });
+    panel.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' });
   }, [open]);
   const pick = (option: ChoiceOption) => {
     onChange(option.value);
@@ -41,7 +44,8 @@ export function SearchableChoice({ field, value, onChange, compact }: { field: C
         <ChevronDown size={18} className="text-on-surface-variant" />
       </button>
       {open ? (
-        <div data-testid={`hoja-${field.name}`} className="absolute left-0 right-0 top-14 z-20 flex max-h-80 flex-col overflow-hidden rounded-2xl border border-outline/15 bg-surface shadow-2xl">
+        // In the form's flow, not floating (Andrea 12/11): the dialog's scroll cut a floating panel to a few rows.
+        <div ref={panel} data-testid={`hoja-${field.name}`} className="mt-2 flex max-h-[min(60vh,30rem)] flex-col overflow-hidden rounded-2xl border border-outline/15 bg-surface shadow-lg">
           {withSearch ? (
             <div className="flex items-center gap-2 border-b border-outline/10 px-3 py-2">
               <Search size={16} className="text-on-surface-variant" />

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { draftValues, type FormField, type FormValues, type PreviewReply } from '@lilachat/shared';
+import { draftValues, refreshDelayMs, type FormField, type FormValues, type PreviewReply } from '@lilachat/shared';
 
 /** How long the person must stop typing before the app is asked (agentes 30/10: its budget is 3 s). */
 export const LIVE_DEBOUNCE_MS = 600;
@@ -27,15 +27,18 @@ export function useFormLive({ fields, values, preview, onRefresh, onPreview }: P
   const [summary, setSummary] = useState<PreviewReply>(NO_SUMMARY);
   const [refreshing, setRefreshing] = useState(false);
   const sentRefresh = useRef(refreshKey);
+  const sentValues = useRef(values);
   const latest = useRef(0);
 
   useEffect(() => {
     if (!onRefresh || refreshKey === sentRefresh.current) return undefined;
+    // Andrea 12/11: a pick leaves at once; only typing waits until it settles.
     const timer = setTimeout(() => {
       sentRefresh.current = refreshKey;
+      sentValues.current = values;
       setRefreshing(true);
       void onRefresh(draft).finally(() => setRefreshing(false));
-    }, LIVE_DEBOUNCE_MS);
+    }, refreshDelayMs(fields, sentValues.current, values));
     return () => clearTimeout(timer);
     // The draft travels as it is when the period settles; only the refresh fields start it.
   }, [refreshKey]);

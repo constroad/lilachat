@@ -124,7 +124,7 @@ export function AppFormSheet(props: SheetProps) {
           <View className="mt-3 h-1.5 w-11 self-center rounded-full bg-outline/30" />
           <SheetHeader answer={props.answer} onClose={close} />
           <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }} contentContainerStyle={{ padding: SHEET_PADDING, gap: 14 }}>
-            <FormIntro answer={props.answer} refreshing={formLive.refreshing} clock={Boolean(evidence) && !live} personName={props.personName} />
+            <FormIntro answer={props.answer} clock={Boolean(evidence) && !live} personName={props.personName} />
             {form.checkAll ? <CheckAllButton onPress={() => state.fill(checkAllValues(fields, state.values))} /> : null}
             {signer && step === 'who' ? <SignerPicker field={signer} onPick={state.set(signer.name)} /> : null}
             {signer && step === 'sign' ? <SignerCard field={signer} value={state.values[signer.name]} error={slot.errors[signer.name]} onChange={() => state.set(signer.name)('')} /> : null}
@@ -139,7 +139,7 @@ export function AppFormSheet(props: SheetProps) {
               )
             )}
           </ScrollView>
-          {step === 'sign' ? <SheetFooter summary={formLive.summary.blocks} message={state.message} busy={state.sending || waiting} label={label} note={evidence ? (live ? LIVE_FOOTER : evidence) : ''} onSend={() => void state.send()} /> : null}
+          {step === 'sign' ? <SheetFooter summary={formLive.summary.blocks} message={state.message} busy={state.sending || waiting} refreshing={formLive.refreshing} label={label} note={evidence ? (live ? LIVE_FOOTER : evidence) : ''} onSend={() => void state.send()} /> : null}
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -176,12 +176,11 @@ function SheetHeader(props: { answer: EphemeralAnswer; onClose: () => void }) {
   );
 }
 
-/** Above the fields: why the options are changing, the app's line, and the clock of a registration. */
-function FormIntro(props: { answer: EphemeralAnswer; refreshing: boolean; clock: boolean; personName?: string }) {
+/** Above the fields: the app's line and the clock of a registration. */
+function FormIntro(props: { answer: EphemeralAnswer; clock: boolean; personName?: string }) {
   const { answer } = props;
   return (
     <>
-      {props.refreshing ? <Text testID="formulario-actualizando" className="text-[14px] text-on-surface-variant">Actualizando las opciones…</Text> : null}
       {answer.response?.text ? <Text testID="formulario-texto" className="rounded-xl bg-primary/10 px-3 py-2.5 text-[15px] text-on-surface">{answer.response.text}</Text> : null}
       {answer.response?.form?.intro ? <Text className="text-[15px] text-on-surface-variant">{answer.response.form.intro}</Text> : null}
       {props.clock ? (
@@ -195,10 +194,12 @@ function FormIntro(props: { answer: EphemeralAnswer; refreshing: boolean; clock:
 }
 
 /** By the button, never at the end of the scroll: a refusal there looked like a dead button (E2E 24/10). */
-function SheetFooter(props: { summary: PreviewReply['blocks']; message: string; busy: boolean; label: string; note: string; onSend: () => void }) {
+function SheetFooter(props: { summary: PreviewReply['blocks']; message: string; busy: boolean; refreshing: boolean; label: string; note: string; onSend: () => void }) {
   const colors = useColores();
   return (
     <View className="px-4">
+      {/* By the button too (Andrea 12/11): at the top it was out of sight while picking the partida. */}
+      {props.refreshing ? <Text testID="formulario-actualizando" accessibilityLiveRegion="polite" className="pb-2 pt-1 text-center text-[14px] text-on-surface-variant">Actualizando las opciones…</Text> : null}
       {props.summary.length ? <FormSummary blocks={props.summary} /> : null}
       {props.message ? <Text testID="formulario-error" accessibilityRole="alert" className="mb-2 pt-2 text-[14px] text-error">{props.message}</Text> : null}
       <Pressable testID="btn-enviar-formulario" disabled={props.busy} onPress={props.onSend} className={`h-[72px] flex-row items-center justify-center gap-2 rounded-2xl bg-primary ${props.busy ? 'opacity-60' : ''}`}>

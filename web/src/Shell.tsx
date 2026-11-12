@@ -49,6 +49,7 @@ import { CallProvider } from './calls/CallProvider';
 import { CallsHistory } from './calls/CallsDialog';
 import type { IncomingOffer } from './calls/useWebCall';
 import { useSpacesWeb } from './spaces/useSpacesWeb';
+import { useLinkedChatSpace } from './spaces/linkedChatSpace';
 import { forgetPendingInChats, refreshPendingInChats } from './chat/queue/pendingInChats';
 import { membersChanged } from './spaces/spaceCache';
 import type { SpaceChatEvent } from './spaces/useSpacesWeb';
@@ -84,6 +85,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
   useReportQueueStart(credential.jwt, yo);
   const chatsGuardados = useChatsLocales(base);
   const [selectedId, abrirChat] = useChatDeLaUrl();
+  const [linkedChatId] = useState(selectedId);
   const [query, setQuery] = useState('');
   const width = useAnchoDeVentana();
   const [aviso, setAviso] = useState('');
@@ -203,10 +205,13 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
   // Another space (or personal) shows other chats: the one open belonged to the previous one, and on a
   // phone it would keep the list hidden behind an empty conversation. Not on the first load (a /c/ link).
   const spaceShown = useRef<string | null | undefined>(undefined);
+  // The space a linked chat took us to: that switch keeps the chat open.
+  const linkedChatSpace = useRef<string | null | undefined>(undefined);
   const currentSpaceId = espacios.current?.id ?? null;
   useEffect(() => {
     if (espacios.spaces === null) return;
-    if (spaceShown.current !== undefined && spaceShown.current !== currentSpaceId) abrirChat(null);
+    if (spaceShown.current !== undefined && spaceShown.current !== currentSpaceId && linkedChatSpace.current !== currentSpaceId) abrirChat(null);
+    if (spaceShown.current !== currentSpaceId) linkedChatSpace.current = undefined;
     spaceShown.current = currentSpaceId;
     // Only when the space changes; `abrirChat` is stable for the page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -232,6 +237,19 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
 
   const enEspacio = espacios.chatById(selectedId);
   const selected = chats.find((chat) => chat.id === selectedId) ?? (enEspacio ? withPresence(enEspacio) : null);
+  const myActiveSpaceIds = useMemo(() => espacios.spaces?.filter((space) => space.status === 'active').map((space) => space.id) ?? null, [espacios.spaces]);
+  useLinkedChatSpace({
+    jwt: credential.jwt,
+    linkedChatId,
+    selectedChatId: selectedId,
+    found: selected !== null,
+    currentSpaceId,
+    mySpaceIds: myActiveSpaceIds,
+    onSwitch: (spaceId) => {
+      linkedChatSpace.current = spaceId;
+      espacios.enter(spaceId);
+    },
+  });
   const panel = resolveVisiblePanel({ width, selectedChatId: selectedId });
   const elsewhere = unreadElsewhere({ spaces: espacios.spaces, currentId: espacios.current?.id ?? null, personalUnread: chatsSinLeer(chats) });
   const listLayout = useListLayout(width);

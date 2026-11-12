@@ -11663,6 +11663,19 @@ chat de esa lista. (Resuelto en la §87, salvo APPS y Llamadas.)
   `InviteToSpaceDialog`, `ChannelsDialog` (con `wide` en el `Overlay`
   compartido) y `CreateChannelDialog`.
 - El espacio abierto se recuerda en este navegador (`lilachat.espacio`).
+- **Un enlace `/c/<chat>` de otro espacio** (E2E 12/11). El espacio es
+  uno por navegador, compartido entre pestañas. Un enlace de Test abierto
+  donde se vio Inframaq pintaba Inframaq y ninguna conversación. Ahora:
+  - Solo cuenta el chat con el que abrió la página: un enlace o una
+    notificación, que navega con `sw.js`.
+  - Si ese chat no está en la lista personal ni en la del espacio, la
+    página pregunta una vez `GET /api/chats/:id/spaces`. La respuesta
+    trae los espacios desde los que se ve el chat (un canal compartido
+    trae varios) y es 404 para quien no es miembro.
+  - Va a ese espacio si la persona está activa en él, y a Personal si el
+    chat no tiene espacio. Ese cambio no cierra el chat.
+  - Motor y hook: `web/src/spaces/linkedChatSpace.ts`, con su test.
+  - La app no lo necesita: el aviso trae su espacio (`useAbrirDesdeAviso`).
 - **Sin polling:** un evento del socket (`msg.new`, `receipt`,
   `chat.changed`) de un chat que no está en la lista personal recarga la
   lista del espacio (600 ms) y las cuentas del riel (2 s), una vez por ráfaga.

@@ -43,6 +43,7 @@ import { requireSession } from './requireSession.js';
 import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
 import { infoDeMensaje } from './infoDeMensaje.js';
 import { chatDetail } from './chatDetail.js';
+import { spaceIdsWithAccess } from './sharedChannels.js';
 import { ONE_PAGE_PARAM_ONLY, readMessagePage } from './messageWindow.js';
 
 /**
@@ -279,6 +280,15 @@ export function buildChatRouter(uploader: MediaUploader = defaultMediaUploader()
     const detail = await chatDetail(String(req.params.chatId), new Types.ObjectId(req.session!.userId), viewing);
     if (!detail) return res.status(404).json({ message: 'No encontramos esa conversación.' });
     return res.json(detail);
+  });
+
+  // E2E 12/11: a /c/<chat> link opened where another space was shown; the spaces it is seen from.
+  router.get('/:chatId/spaces', async (req, res) => {
+    const chatId = String(req.params.chatId);
+    const member = { _id: chatId, 'members.userId': new Types.ObjectId(req.session!.userId) };
+    const chat = Types.ObjectId.isValid(chatId) ? await ChatModel.findOne(member).select('workspaceId channel').lean() : null;
+    if (!chat) return res.status(404).json({ message: 'No encontramos esa conversación.' });
+    return res.json({ spaceIds: (await spaceIdsWithAccess(chat)).map(String) });
   });
 
   // R31/10-B6: disappearing messages for the whole chat; the notice says who and for how long.

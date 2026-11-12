@@ -74,8 +74,11 @@ export const embedTheme = (mode: 'light' | 'dark'): EmbedCommand => ({ type: `${
 /** A report Portal edits in its canvas, on a window wide enough for it. */
 export const opensEmbed = (windowWidth: number, report: { editor?: 'v2' }): boolean => windowWidth >= EMBED_MIN_WIDTH_PX && report.editor === 'v2';
 
+const GONE = 'Este informe ya no está en el Portal.';
+/** Portal's page says `not_found` (aa4cf2d9); agentes' answers say `not-found`. */
 const ERROR_LINES: Record<string, string> = {
-  'not-found': 'Este informe ya no está en el Portal.',
+  not_found: GONE,
+  'not-found': GONE,
   forbidden: 'No tienes permiso para editar este informe.',
 };
 export const EMBED_FAILED = 'No se pudo abrir el editor del Portal.';

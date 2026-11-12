@@ -1169,5 +1169,21 @@ teléfono y en el APK sigue el formulario de este spec.
 - `error expired` → pide otro enlace y recarga el marco. Otro código se
   muestra en palabras, con Reintentar y «Abrir en el Portal».
 
-**Pendiente:** E2E en TEST cuando Portal publique el embed y José apruebe la
-herramienta en agentes.
+**Lo que Portal publicó (aa4cf2d9, 11/11)** con `REPORT_EMBED_LIVE = false`,
+así que ningún informe trae todavía `editor: 'v2'`:
+- Códigos de error de la página: `expired` (vencido, inválido o recargado sin
+  `#t`) y `not_found` (el informe ya no está o no es de ese enlace). Agentes
+  usa `not-found`; Lilachat lee los dos igual.
+- Tras `:closed` pueden llegar el `:dirty false` o el `:saved` de ese mismo
+  guardado: Lilachat ignora todo lo que llega después de `:closed`.
+- Si el guardado del cierre falla, Portal no manda `:closed` y muestra el
+  error en el marco; Volver lo vuelve a pedir.
+- El marco no lleva `sandbox`. Si algún día lo lleva, necesita
+  `allow-downloads allow-scripts allow-same-origin allow-forms allow-popups`.
+- Distinto del editor de admin: sin «Imprimir» ni «Enviar por WhatsApp» (el
+  `/print` no se deja enmarcar) y sin elegir firma o sello (viven en el Drive
+  de la empresa). Sí están «Publicar PDF» y «Descargar PDF».
+
+**Pendiente:** José aprueba `abrir_editor_de_informe` en agentes; Portal
+enciende la marca en su propio commit y pasa el sha. Recién ahí, E2E en TEST:
+abrir, editar, guardar, cerrar con cambios sin guardar y enlace vencido.

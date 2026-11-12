@@ -75,6 +75,21 @@ describe('PortalEmbedWeb', () => {
     expect(onClose).toHaveBeenCalledWith(true);
   });
 
+  it('closes once: what Portal posts after «closed» (the same save\'s dirty or saved) is ignored', async () => {
+    portal([{ embed: linkOf('a1') }]);
+    const onClose = vi.fn();
+    render(<PortalEmbedWeb target={target} serviceId="sv1" serviceName="Av. Los Incas" report={report} onClose={onClose} />);
+    await waitFor(() => expect(frame().src).toContain('#t=a1'));
+    fromPortal({ type: 'portal-embed:ready', version: 1 });
+    const source = frame().contentWindow;
+
+    fromPortal({ type: 'portal-embed:closed', version: 1 });
+    fromPortal({ type: 'portal-embed:saved', version: 1, reportId: 'r1', savedAt: '2026-11-11T20:00:00.000Z' }, PORTAL, source);
+    fromPortal({ type: 'portal-embed:closed', version: 1 }, PORTAL, source);
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledWith(false);
+  });
+
   it('Escape asks the same; before Portal is ready, Volver closes at once', async () => {
     portal([{ embed: linkOf('a1') }]);
     const onClose = vi.fn();

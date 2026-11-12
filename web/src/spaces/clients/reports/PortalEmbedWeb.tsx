@@ -45,6 +45,8 @@ function useEmbedTalk(frame: React.RefObject<HTMLIFrameElement | null>, link: Em
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const changed = useRef(false);
+  // After «closed» the same save may still post its dirty or saved (Portal aa4cf2d9): nothing counts any more.
+  const closed = useRef(false);
   // The latest callbacks, so a parent's re-render does not reset the frame's state.
   const handlers = useRef({ onClose, onExpired });
   handlers.current = { onClose, onExpired };
@@ -55,14 +57,17 @@ function useEmbedTalk(frame: React.RefObject<HTMLIFrameElement | null>, link: Em
   }, [link?.url]);
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      if (event.origin !== origin || event.source !== frame.current?.contentWindow) return;
+      if (closed.current || event.origin !== origin || event.source !== frame.current?.contentWindow) return;
       const message = embedEventOf(event.data);
       if (message?.type === 'ready') {
         setReady(true);
         post(embedTheme(modeNow()));
       } else if (message?.type === 'dirty') setDirty(message.dirty);
       else if (message?.type === 'saved' || message?.type === 'published') changed.current = true;
-      else if (message?.type === 'closed') handlers.current.onClose(changed.current);
+      else if (message?.type === 'closed') {
+        closed.current = true;
+        handlers.current.onClose(changed.current);
+      }
       else if (message?.type === 'error') (message.code === 'expired' ? handlers.current.onExpired() : setError(embedErrorLine(message.code)));
     };
     window.addEventListener('message', onMessage);

@@ -80,6 +80,7 @@ describe('opensEmbed', () => {
 describe('embedErrorLine', () => {
   it('says why in words, never the code', () => {
     expect(embedErrorLine('not-found')).toBe('Este informe ya no está en el Portal.');
+    expect(embedErrorLine('not_found')).toBe('Este informe ya no está en el Portal.');
     expect(embedErrorLine('forbidden')).toMatch(/permiso/);
     expect(embedErrorLine('whatever')).toBe('No se pudo abrir el editor del Portal.');
   });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { filterChannels, railSpaces, unreadElsewhere, splitArchived, SPACE_RUBROS, spaceInitials, spaceInviteEmail, spaceInviteMailto, spaceInviteMessage, spaceJoinLink, joinCodeFromLink, spaceSections, spaceSubtitle } from './spaceSections.js';
+import { filterChannels, railSpaces, unreadElsewhere, splitArchived, SPACE_RUBROS, emailInviteBadge, spaceInitials, spaceInviteMessage, spaceJoinLink, joinCodeFromLink, spaceSections, spaceSubtitle } from './spaceSections.js';
 import { spaceRoleBadge, spaceSettingsRows, withLiveUnread } from './spaceSections.js';
 
 /** The chats of a company space by sections, like Slack (designs `s-03-lista-con-secciones` and `e1-07-chats-del-espacio`). */
@@ -127,51 +127,17 @@ describe('railSpaces', () => {
 });
 
 /**
- * The invitation by email, the first option (José, 21/10: a company invites
- * by email first, then by WhatsApp). It goes from the inviter's own mail
- * app: where to get Lilachat (phone or computer), that one enters with the
- * phone number, and the code.
+ * José 12/11: the invitation email goes from Lilachat (constroad-auth), not from
+ * the inviter's mail app. The pill says whether it went, so a failed one is resent.
  */
-describe('spaceInviteEmail', () => {
-  it('a subject with the space, and a body with who invites, the steps and the code', () => {
-    const email = spaceInviteEmail({ spaceName: 'CONSTROAD', code: 'CONS-7K3P', inviterName: 'José Zamora' });
-    expect(email.subject).toBe('Invitación al espacio de CONSTROAD en Lilachat');
-    expect(email.body).toContain('José Zamora te invita al espacio de CONSTROAD en Lilachat');
-    expect(email.body).toContain('https://lilastore.constroad.com/app/lilachat');
-    expect(email.body).toContain('https://lilachat.constroad.com');
-    expect(email.body).toContain('Entra con tu número de celular');
-    expect(email.body).toContain('«Unirme con un código» y escribe: CONS-7K3P');
-    expect(email.body).toContain('Tus chats personales no se comparten con la empresa.');
+describe('emailInviteBadge', () => {
+  it('in the space, the email on its way, or the email still to send', () => {
+    expect(emailInviteBadge({ status: 'active' })).toEqual({ label: 'AGREGADO', tone: 'ok' });
+    expect(emailInviteBadge({ status: 'invited', emailSent: true })).toEqual({ label: 'CORREO ENVIADO', tone: 'info' });
+    expect(emailInviteBadge({ status: 'invited', emailSent: false })).toEqual({ label: 'SIN ENVIAR', tone: 'warn' });
   });
-  it('without the inviter\'s name it still reads well', () => {
-    expect(spaceInviteEmail({ spaceName: 'Inframaq', code: 'INFR-2B9Q' }).body).toMatch(/^Hola:\n\nTe invitamos al espacio de Inframaq en Lilachat/);
-  });
-  it('the mail link opens the mail app with the subject and the body, line breaks included', () => {
-    const link = spaceInviteMailto({ spaceName: 'CONSTROAD', code: 'CONS-7K3P' });
-    expect(link.startsWith('mailto:?subject=')).toBe(true);
-    const params = new URLSearchParams(link.slice('mailto:?'.length));
-    expect(params.get('subject')).toBe('Invitación al espacio de CONSTROAD en Lilachat');
-    expect(params.get('body')).toContain('escribe: CONS-7K3P');
-    // `+` is not a space in a mailto: spaces travel as %20 and line breaks as %0A.
-    expect(link).not.toContain('+');
-    expect(link).toContain('%0A');
-  });
-  it('invited by email (José 12/11, Globofast): enter with that email and «Unirme», by device, with no phone and no profile step', () => {
-    const email = spaceInviteEmail({ spaceName: 'Globofast', code: 'GLOB-4H2K', inviterName: 'José Zamora', to: 'luis@empresa.pe' });
-    expect(email.body).toContain('Entra con este correo (luis@empresa.pe): te llega un código y listo. No hay contraseña.');
-    expect(email.body).toContain('En Android: descarga la app en https://lilastore.constroad.com/app/lilachat');
-    expect(email.body).toContain('En iPhone: abre https://lilachat.constroad.com/?d=luis%40empresa.pe en Safari y toca Compartir › «Agregar a inicio».');
-    expect(email.body).toContain('En la computadora: https://lilachat.constroad.com/?d=luis%40empresa.pe');
-    expect(email.body).toContain('Toca «Unirme» en Globofast. La primera vez te pide tu nombre.');
-    expect(email.body).not.toMatch(/número de celular|Completa tu perfil/);
-    const link = spaceInviteMailto({ spaceName: 'Globofast', code: 'GLOB-4H2K', to: 'luis@empresa.pe' });
-    expect(link.startsWith('mailto:luis%40empresa.pe?subject=')).toBe(true);
-  });
-  it('without an email (the code by mail), the same three devices, entering with the phone and the code', () => {
-    const body = spaceInviteEmail({ spaceName: 'CONSTROAD', code: 'CONS-7K3P' }).body;
-    expect(body).toContain('En Android: descarga la app en https://lilastore.constroad.com/app/lilachat');
-    expect(body).toContain('En iPhone: abre https://lilachat.constroad.com en Safari y toca Compartir › «Agregar a inicio».');
-    expect(body).toContain('Entra con tu número de celular');
+  it('an answer without `emailSent` (an older server) is not shown as sent', () => {
+    expect(emailInviteBadge({ status: 'invited' })).toEqual({ label: 'SIN ENVIAR', tone: 'warn' });
   });
 });
 

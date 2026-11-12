@@ -25,11 +25,12 @@ export function useEmailLink(): EmailLink | null {
 }
 
 /**
- * The invitation email's link (José 12/11, Globofast): `/?d=<email>` with no code. «Entrar con mi correo»
+ * The invitation email's link (José 12/11, Globofast): `?d=<email>` with no code, on `/` or on the
+ * callback (the button of the email Lilachat sends through constroad-auth). «Entrar con mi correo»
  * opens with that email written; the person still asks for the code here.
  */
 export function emailHintOf(pathname: string, search: string): string | null {
-  if (pathname === CALLBACK_PATH) return null;
+  if (emailLinkOf(pathname, search)) return null;
   return normalizeEmail(new URLSearchParams(search).get('d')) || null;
 }
 

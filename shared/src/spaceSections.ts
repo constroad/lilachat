@@ -82,58 +82,31 @@ export function joinCodeFromLink(url: string | null | undefined): string | null 
 }
 
 /** Where to get Lilachat, by device (José 12/11: the APK is Android only; an iPhone installs the web from Safari). */
-function deviceSteps(webLink: string, computer: boolean): string[] {
-  return [
-    `En Android: ${computer ? 'descarga la app en ' : ''}${ENLACE_DE_DESCARGA}`,
-    `En iPhone: abre ${webLink} en Safari y toca Compartir › «Agregar a inicio».`,
-    ...(computer ? [`En la computadora: ${webLink}`] : []),
-  ];
-}
+const deviceSteps = (): string[] => [
+  `En Android: ${ENLACE_DE_DESCARGA}`,
+  `En iPhone: abre ${LILACHAT_WEB_URL} en Safari y toca Compartir › «Agregar a inicio».`,
+];
 
 export function spaceInviteMessage(params: { spaceName: string; code: string }): string {
   return [
     `Te invito al espacio de ${params.spaceName} en Lilachat. Entra con este enlace: ${spaceJoinLink(params.code)}`,
     '',
     'Si todavía no tienes Lilachat:',
-    ...deviceSteps(LILACHAT_WEB_URL, false),
+    ...deviceSteps(),
     `Entra con tu número. ${joinStep(params.code)}`,
   ].join('\n');
 }
 
-/** The web with the email already written in «Entrar con mi correo» (`?d=`, the same key constroad-auth uses). */
-const webLinkFor = (email?: string): string => (email ? `${LILACHAT_WEB_URL}/?d=${encodeURIComponent(email)}` : LILACHAT_WEB_URL);
+/** What the server answers to an email invitation (José 12/11: Lilachat sends the email through constroad-auth). */
+export type SpaceEmailInvite = { id: string; email: string; status: 'active' | 'invited'; emailSent?: boolean; emailError?: string };
 
-/**
- * The invitation by email, the first option for a company (José, 21/10): it goes from the inviter's
- * own mail app. Invited by email (José 12/11, Globofast), the person enters with THAT email and taps
- * «Unirme» (spec INGRESO-POR-ESPACIO): no phone, no profile step. Otherwise, the phone and the code.
- */
-export function spaceInviteEmail(params: { spaceName: string; code: string; inviterName?: string; to?: string }): { subject: string; body: string } {
-  const who = params.inviterName?.trim();
-  const entry = params.to
-    ? [`Entra con este correo (${params.to}): te llega un código y listo. No hay contraseña.`, `Toca «Unirme» en ${params.spaceName}. La primera vez te pide tu nombre.`]
-    : ['Entra con tu número de celular.', joinStep(params.code)];
-  return {
-    subject: `Invitación al espacio de ${params.spaceName} en Lilachat`,
-    body: [
-      'Hola:',
-      '',
-      `${who ? `${who} te invita` : 'Te invitamos'} al espacio de ${params.spaceName} en Lilachat, donde coordinamos el trabajo del equipo.`,
-      '',
-      'Para unirte, abre Lilachat:',
-      ...deviceSteps(webLinkFor(params.to), true),
-      '',
-      ...entry,
-      '',
-      'Tus chats personales no se comparten con la empresa.',
-    ].join('\n'),
-  };
-}
+/** Under «Invitar por correo»: nobody writes the email, Lilachat sends it. */
+export const EMAIL_INVITE_HINT = 'Lilachat le envía un correo con el enlace: entra con ese correo y toca «Unirme».';
 
-/** The same invitation as a `mailto:` link: the mail app opens with the subject and the body, and the person picks the recipients. */
-export function spaceInviteMailto(params: { spaceName: string; code: string; inviterName?: string; to?: string }): string {
-  const email = spaceInviteEmail(params);
-  return `mailto:${params.to ? encodeURIComponent(params.to) : ''}?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.body)}`;
+/** The pill next to an invited email: in the space, the email on its way, or the email still to send. */
+export function emailInviteBadge(invite: Pick<SpaceEmailInvite, 'status' | 'emailSent'>): { label: string; tone: 'ok' | 'info' | 'warn' } {
+  if (invite.status === 'active') return { label: 'AGREGADO', tone: 'ok' };
+  return invite.emailSent ? { label: 'CORREO ENVIADO', tone: 'info' } : { label: 'SIN ENVIAR', tone: 'warn' };
 }
 
 export type ChannelFilter = 'all' | 'public' | 'private';

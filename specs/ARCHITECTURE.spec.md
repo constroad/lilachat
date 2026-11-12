@@ -11586,10 +11586,8 @@ checklist.**
 
 **Invitar por correo primero** (José, 21/10).
 - «Enviar por correo» es el botón principal; después van WhatsApp y Copiar.
-- Usa `mailto:` desde el correo de quien invita, con asunto y cuerpo de
-  `spaceInviteEmail`.
-- El correo enviado por el server queda para cuando constroad-auth tenga un
-  texto que diga que se entra con el número e incluya el código (§84).
+- ~~Usa `mailto:` desde el correo de quien invita.~~ Desde el 12/11 lo envía el
+  server por constroad-auth (`INGRESO-POR-ESPACIO.spec.md` §9).
 
 **«Responder» abre el teclado** (José, 21/10, como WhatsApp): en la app la
 barra toma el foco 250 ms después de que se cierra el menú del mensaje. La web
@@ -11724,6 +11722,8 @@ email y luego por WhatsApp»).
   bajar Lilachat (teléfono o computadora), que se entra con el número y el
   código. En la app, sin app de correo, se abre el menú de compartir.
 - El mensaje de WhatsApp ahora también dice dónde bajar la app.
+- **Reemplazado el 12/11:** el server envía el correo por constroad-auth
+  (`INGRESO-POR-ESPACIO.spec.md` §9). Lo de abajo queda como historia.
 - **Por qué no un correo enviado por el server:** constroad-auth ya tiene
   `POST /v1/invitaciones`, pero su texto dice «entrá con este mismo correo»
   (Lilachat entra con el número), está en voseo y no lleva el código. Además,

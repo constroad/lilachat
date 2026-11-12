@@ -25,6 +25,7 @@ const codeService: AuthClient = {
   requestCode: () => Promise.resolve({ ok: true, valor: { canal: 'email' } }),
   verifyCode: () => Promise.resolve({ ok: true, valor: { secreto: 's' } }),
   validateDevice: () => Promise.resolve({ ok: true, valor: { companyId: 'constroad', identidad: 'x', app: 'lilachat' } }),
+  sendInvitation: () => Promise.resolve({ ok: true, valor: { canal: 'email' } }),
 };
 const app = buildApp({ authClient: codeService });
 type Who = 'jose' | 'marco' | 'ana' | 'luis' | 'rosa';

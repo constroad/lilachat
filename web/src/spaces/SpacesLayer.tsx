@@ -60,7 +60,7 @@ export function SpacesLayer(props: {
       {dialog === 'switcher' ? <SpaceSwitcher spaces={props.spaces} currentId={current?.id ?? null} me={props.me} personalUnread={props.personalUnread} onPick={on.enter} onJoin={() => on.dialog('join')} onCreate={() => on.dialog('create')} onClose={close} onOpen={on.reload} /> : null}
       {dialog === 'join' ? <JoinSpaceDialog jwt={jwt} initialCode={props.joinCode ?? undefined} onJoined={on.enter} onClose={() => { close(); on.reload(); }} /> : null}
       {dialog === 'create' ? <CreateSpaceDialog jwt={jwt} onJoinInstead={() => on.dialog('join')} onCreated={on.created} onClose={close} /> : null}
-      {props.invitee ? <InviteToSpaceDialog space={props.invitee} jwt={jwt} inviterName={props.me.name ?? undefined} onClose={on.closeInvite} /> : null}
+      {props.invitee ? <InviteToSpaceDialog space={props.invitee} jwt={jwt} onClose={on.closeInvite} /> : null}
       {current && dialog === 'channels' ? <ChannelsDialog space={current} jwt={jwt} onOpenChannel={on.channel} onClose={close} /> : null}
       {current && (dialog === 'directory' || dialog === 'newDirect') ? (
         <DirectoryDialog space={current} jwt={jwt} myUserId={props.myUserId} online={props.online} picking={dialog === 'newDirect'} onOpenMember={on.profile} onMessage={on.writeTo} onInvite={current.joinCode ? () => on.dialog('invite') : undefined} onClose={close} />

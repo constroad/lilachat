@@ -170,3 +170,26 @@ Revisión antes de invitar a la gente de Globofast:
 - **El recorrido:** correo → código → «Tus espacios» con «Unirme» → nombre → adentro. El
   E2E del 04/11 lo pasó contra un server local; el correo real lo prueba José, porque crea
   una cuenta en producción.
+
+## 9. Lilachat envía el correo de invitación (José 12/11)
+
+José: «¿por qué me abre el email de la Mac? yo no lo voy a hacer». Desde hoy nadie escribe
+el correo.
+
+- **Quién lo envía:** el server de Lilachat, con su llave, por `POST /v1/invitaciones` de
+  constroad-auth (`authClient.sendInvitation`). Va el espacio, quién invita y el cargo si se
+  escribió. El texto y el SMTP son de constroad-auth.
+- **El botón** es `https://lilachat.constroad.com/login/callback?d=<correo>`. El callback ya
+  está en los `enlaces` de la llave; un origen pelado solo vale si Torre lo declara pelado.
+  La web lee `?d=` sin código como «entrar con este correo» (`emailHintOf`).
+- **Respuesta:** `emailSent` y, si falló, `emailError`. Cinco por hora y destino es el tope
+  de constroad-auth (`demasiadas_invitaciones`). La invitación queda guardada igual.
+- **Web y APK:** la fila dice «CORREO ENVIADO», o «SIN ENVIAR» con el motivo y «Reenviar».
+  Reenviar es el mismo `POST /invites`: no duplica la invitación.
+- **Una cuenta que ya tiene ese correo verificado** entra al toque y no recibe correo.
+- **Se perdió** el paso por equipo del correo viejo (APK en Android, Safari en iPhone): el
+  texto de constroad-auth no lo trae. La web del enlace sí ofrece descargar la app.
+- **Pendiente de constroad-auth:** su texto va en voseo («Entrá», «ignorá»). Se pidió a su
+  sesión que lo pase a español neutro.
+- `spaceInviteEmail` y `spaceInviteMailto` se borraron: nadie más los usaba.
+

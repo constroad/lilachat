@@ -301,7 +301,7 @@ describe('ChannelsDialog', () => {
 
 describe('InviteToSpaceDialog', () => {
   it('inviting by email comes first (a company invites by email, 22/10), then the code by WhatsApp; a bad email is caught here', async () => {
-    render(<InviteToSpaceDialog space={space()} jwt="t" inviterName="José Zamora" onClose={() => undefined} />);
+    render(<InviteToSpaceDialog space={space()} jwt="t" onClose={() => undefined} />);
     const email = screen.getByTestId('input-correo-espacio');
     const whatsapp = screen.getByTestId('btn-whatsapp-codigo');
     expect(email.compareDocumentPosition(whatsapp) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

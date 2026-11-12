@@ -20,7 +20,7 @@ import {
   WorkspaceError,
 } from './workspaces.js';
 import { createChannel, deleteChannel, joinChannel, listChannels } from './workspaceChannels.js';
-import { acceptInvitation, emailInvitesOf, invitationsOf, inviteByEmail, revokeEmailInvite } from './workspaceEmailInvites.js';
+import { acceptInvitation, emailInvitesOf, invitationsOf } from './workspaceEmailInvites.js';
 import { type MediaUploader } from './mediaClient.js';
 import { defaultMediaUploader } from './localMediaUploader.js';
 import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
@@ -36,10 +36,10 @@ import { liftRestrictionsOfAdmin, listBillingViewers, listClientAccess, setBilli
 const CODE_TRIES_PER_MINUTE = 10;
 const ONE_MINUTE_MS = 60_000;
 
-const me = (req: Request) => new Types.ObjectId(req.session!.userId);
+export const me = (req: Request) => new Types.ObjectId(req.session!.userId);
 
 /** A `WorkspaceError` becomes its status and message; anything else goes to Express. */
-function handled(handler: (req: Request, res: Response) => Promise<unknown>) {
+export function handled(handler: (req: Request, res: Response) => Promise<unknown>) {
   return asyncRoute(async (req: Request, res: Response, next: NextFunction) => {
     try {
       await handler(req, res);
@@ -88,11 +88,7 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
     const emails = req.query.status === 'invited' || req.query.status === 'all' ? await emailInvitesOf(new Types.ObjectId(req.params.id!)) : [];
     res.json({ members: [...members, ...emails] });
   }));
-  router.post('/:id/invites', handled(async (req, res) => res.status(201).json(await inviteByEmail(req.params.id!, me(req), req.body ?? {}))));
-  router.delete('/:id/invites/:inviteId', handled(async (req, res) => {
-    await revokeEmailInvite(req.params.id!, me(req), req.params.inviteId!);
-    res.status(204).end();
-  }));
+  // POST and DELETE `/:id/invites` live in `workspaceInviteRoutes.ts` (José 12/11: the email's sender is injected).
   router.post('/:id/members', handled(async (req, res) => res.status(201).json({ member: await addByPhone(req.params.id!, me(req), req.body ?? {}) })));
   router.delete('/:id/members/:memberId', handled(async (req, res) => {
     await rejectRequest(req.params.id!, me(req), req.params.memberId!);

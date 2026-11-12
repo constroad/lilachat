@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MongoMemoryServer } from 'mongodb-memory-server';
 import { startTestMongo } from './testMongo.js';
 import mongoose, { Types } from 'mongoose';
@@ -21,6 +21,7 @@ const codeService: AuthClient = {
   requestCode: () => Promise.resolve({ ok: true, valor: { canal: 'email' } }),
   verifyCode: () => Promise.resolve({ ok: true, valor: { secreto: 's' } }),
   validateDevice: () => Promise.resolve({ ok: true, valor: { companyId: 'constroad', identidad: 'x', app: 'lilachat' } }),
+  sendInvitation: vi.fn<AuthClient['sendInvitation']>(() => Promise.resolve({ ok: true, valor: { canal: 'email' } })),
 };
 const app = buildApp({ authClient: codeService });
 const users: Record<'jose' | 'ana' | 'beto' | 'luis', Types.ObjectId> = {} as never;
@@ -44,6 +45,7 @@ beforeEach(async () => {
     { phone: '976543210', name: 'Beto Ramos', email: 'beto@empresa.pe' },
     { phone: '954321098', name: 'Luis Huamán' },
   ]);
+  vi.mocked(codeService.sendInvitation).mockClear();
   [users.jose, users.ana, users.beto, users.luis] = created.map((user) => user._id) as [Types.ObjectId, Types.ObjectId, Types.ObjectId, Types.ObjectId];
 });
 
@@ -173,6 +175,38 @@ describe('inviting by email (José, 22/10: one account per person)', () => {
     await request(app).delete(`/api/workspaces/${space.id}/invites/${sent.id}`).set('Authorization', jwt('jose')).expect(204);
     await request(app).post('/api/me/email/verify').set('Authorization', jwt('luis')).send({ email: 'luis@empresa.pe', code: '123456' }).expect(200);
     expect(await memberOf(space.id, 'luis')).toBeNull();
+  });
+
+  /** José 12/11: «¿por qué me abre el correo de la Mac?». Lilachat sends it, through constroad-auth. */
+  it('the invitation email goes from Lilachat: the space, who invites and the role', async () => {
+    // Arrange
+    const space = await createSpace();
+    // Act
+    const sent = (await invite(space.id, { email: 'luis@empresa.pe', title: 'Supervisor' }).expect(201)).body;
+    // Assert
+    expect(sent).toMatchObject({ status: 'invited', email: 'luis@empresa.pe', emailSent: true });
+    expect(codeService.sendInvitation).toHaveBeenCalledWith({ to: 'luis@empresa.pe', spaceName: 'CONSTROAD', inviterName: 'José Zamora', role: 'Supervisor' });
+  });
+
+  it('a refused email keeps the invitation and says why; inviting again sends it again', async () => {
+    // Arrange
+    const space = await createSpace();
+    vi.mocked(codeService.sendInvitation).mockResolvedValueOnce({ ok: false, codigo: 'demasiadas_invitaciones' }).mockResolvedValueOnce({ ok: false, codigo: 'sin_respuesta' });
+    // Act
+    const tooMany = (await invite(space.id, { email: 'luis@empresa.pe' }).expect(201)).body;
+    const down = (await invite(space.id, { email: 'luis@empresa.pe' }).expect(201)).body;
+    const again = (await invite(space.id, { email: 'luis@empresa.pe' }).expect(201)).body;
+    // Assert
+    expect(tooMany).toMatchObject({ status: 'invited', emailSent: false, emailError: 'Ya le enviamos varias invitaciones en la última hora. Prueba de nuevo más tarde.' });
+    expect(down).toMatchObject({ status: 'invited', emailSent: false, emailError: 'La invitación quedó guardada, pero el correo no salió. Toca Reenviar.' });
+    expect(again).toMatchObject({ emailSent: true });
+    expect(await WorkspaceEmailInviteModel.countDocuments({ email: 'luis@empresa.pe' })).toBe(1);
+  });
+
+  it('an account that already owns the email joins at once, with no email', async () => {
+    const space = await createSpace();
+    expect((await invite(space.id, { email: 'ana@empresa.pe' }).expect(201)).body).toMatchObject({ status: 'active' });
+    expect(codeService.sendInvitation).not.toHaveBeenCalled();
   });
 });
 

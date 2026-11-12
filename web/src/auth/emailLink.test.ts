@@ -40,4 +40,11 @@ describe('the invitation link (José 12/11: «Entra con este correo» from the i
     expect(emailHintOf('/', '')).toBeNull();
     expect(emailHintOf('/login/callback', '?d=luis%40empresa.pe&c=123456')).toBeNull();
   });
+
+  /** José 12/11: the invitation Lilachat sends (constroad-auth) has its button on the callback the key declares, with no code. */
+  it('the callback with an email and no code is the invitation\'s button: the email is written', () => {
+    expect(emailHintOf('/login/callback', '?d=luis%40empresa.pe')).toBe('luis@empresa.pe');
+    expect(emailHintOf('/login/callback', '?d=luis%40empresa.pe&c=12')).toBe('luis@empresa.pe');
+    expect(emailLinkOf('/login/callback', '?d=luis%40empresa.pe')).toBeNull();
+  });
 });

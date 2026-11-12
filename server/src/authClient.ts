@@ -6,6 +6,9 @@
  * - `POST /v1/codigo`      {companyId, destino, enlaceBase} → {canal}
  * - `POST /v1/verificar`   {companyId, destino, codigo, deviceId} → {secreto?}
  * - `POST /v1/dispositivos/:id/validar` {secreto} → {companyId, identidad, app}
+ * - `POST /v1/invitaciones` {companyId, destino, espacio, rol, invitadoPor, enlaceBase} → {canal}
+ *   Its button is `<enlaceBase>?d=<email>`. The base is the callback: the key declares it as is,
+ *   and a bare origin only counts if Torre declares it bare (`enlacePermitido`).
  *
  * Dos reglas que el tipo `AuthOutcome` obliga a respetar:
  * - **Fail-closed**: sin llave configurada, `sin_configurar` — nunca un
@@ -16,6 +19,9 @@
  */
 
 export type AuthOutcome<T> = { ok: true; valor: T } | { ok: false; codigo: string };
+
+/** The invitation to a space by email (José 12/11): constroad-auth writes and sends it. */
+export type SpaceInvitationMail = { to: string; spaceName: string; inviterName?: string; role?: string };
 
 export interface AuthClient {
   requestCode(email: string): Promise<AuthOutcome<{ canal: string }>>;
@@ -28,6 +34,7 @@ export interface AuthClient {
     deviceId: string,
     deviceSecret: string
   ): Promise<AuthOutcome<{ companyId: string; identidad: string; app: string }>>;
+  sendInvitation(mail: SpaceInvitationMail): Promise<AuthOutcome<{ canal: string }>>;
 }
 
 const COMPANY_ID = 'constroad';
@@ -78,5 +85,7 @@ export function buildHttpAuthClient(): AuthClient {
       call('/v1/verificar', { destino: email, codigo: code, deviceId }),
     validateDevice: (deviceId, deviceSecret) =>
       call(`/v1/dispositivos/${encodeURIComponent(deviceId)}/validar`, { secreto: deviceSecret }),
+    sendInvitation: (mail) =>
+      call('/v1/invitaciones', { destino: mail.to, espacio: mail.spaceName, rol: mail.role ?? '', invitadoPor: mail.inviterName ?? '', enlaceBase: callbackUrl() }),
   };
 }

@@ -1,5 +1,6 @@
 import { Types } from 'mongoose';
 import { canManageMembers, type SpaceInvitation } from '@lilachat/shared';
+import type { AuthOutcome, SpaceInvitationMail } from './authClient.js';
 import { normalizeEmail } from './invitationGate.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { UserModel } from './models.js';
@@ -37,7 +38,29 @@ async function admitAccount(workspaceId: Types.ObjectId, user: { _id: Types.Obje
   return member;
 }
 
-export async function inviteByEmail(workspaceId: string, actorId: Types.ObjectId, input: { email?: unknown; title?: unknown; area?: unknown }) {
+/** Who sends the invitation email: constroad-auth, through the server's key. */
+export type InvitationMailer = (mail: SpaceInvitationMail) => Promise<AuthOutcome<unknown>>;
+
+const MAIL_REFUSALS: Record<string, string> = {
+  demasiadas_invitaciones: 'Ya le enviamos varias invitaciones en la última hora. Prueba de nuevo más tarde.',
+};
+const MAIL_FAILED = 'La invitación quedó guardada, pero el correo no salió. Toca Reenviar.';
+
+/**
+ * José 12/11: «¿por qué me abre el correo de la Mac? yo no lo voy a hacer». Lilachat sends the
+ * email itself, through constroad-auth: the space, who invites, the role and the button to the web.
+ */
+async function mailInvitation(send: InvitationMailer, workspaceId: Types.ObjectId, actorId: Types.ObjectId, to: string, fields: MemberFields) {
+  const [space, inviter] = await Promise.all([
+    WorkspaceModel.findById(workspaceId).select('name').lean(),
+    UserModel.findById(actorId).select('name').lean(),
+  ]);
+  const mail: SpaceInvitationMail = { to, spaceName: space?.name ?? '', ...(inviter?.name ? { inviterName: inviter.name } : {}), ...(fields.title ? { role: fields.title } : {}) };
+  const sent = await send(mail);
+  return sent.ok ? { emailSent: true } : { emailSent: false, emailError: MAIL_REFUSALS[sent.codigo] ?? MAIL_FAILED };
+}
+
+export async function inviteByEmail(workspaceId: string, actorId: Types.ObjectId, input: { email?: unknown; title?: unknown; area?: unknown }, send: InvitationMailer) {
   const actor = await actorIn(workspaceId, actorId);
   if (!canManageMembers(actor.role)) throw new WorkspaceError(403, ONLY_ADMINS);
   const email = normalizeEmail(input.email);
@@ -53,7 +76,7 @@ export async function inviteByEmail(workspaceId: string, actorId: Types.ObjectId
     { $set: fields, $setOnInsert: { addedBy: actorId } },
     { upsert: true, returnDocument: 'after' }
   ).lean();
-  return { id: String(invite!._id), email, status: 'invited' as const };
+  return { id: String(invite!._id), email, status: 'invited' as const, ...(await mailInvitation(send, actor.workspaceId, actorId, email, fields)) };
 }
 
 /** The «Invitados» list shows the emails waiting too, next to the phones. */

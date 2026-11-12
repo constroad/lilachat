@@ -1,4 +1,4 @@
-import type { AppLink, ChannelPerson, ChannelShare, ShareInvite } from '@lilachat/shared';
+import type { AppLink, ChannelPerson, ChannelShare, ShareInvite, SpaceEmailInvite } from '@lilachat/shared';
 import type { ActivityItem, ActivityType, ClientChannel, ClientWorkspace, ClientWorkspaceMember, JoinPolicy, SpaceInvitation, MediaLibraryItem, MediaLibraryType, SpaceApp, AvailableApp, SpaceAppDirectory, TopicRoute, AppChannel, AppItemRow, AppItemSetting, AppSchedules, ScheduleRow, WorkspaceMemberStatus, WorkspacePreview, WorkspaceRole } from '@lilachat/shared';
 import { BASE_URL, type ChatSummary } from '../api/client';
 import { jsonCall } from '../api/jsonCall';
@@ -16,7 +16,7 @@ export const joinSpace = (jwt: string, code: string) => jsonCall<{ workspaceId: 
 export const createSpace = (jwt: string, input: { name: string; rubro?: string; joinPolicy: JoinPolicy }) => jsonCall<{ workspace: ClientWorkspace }>(url(''), jwt, post(input));
 export const addToSpace = (jwt: string, spaceId: string, phone: string) => jsonCall<{ member: { id: string; status: WorkspaceMemberStatus } }>(url(`/${spaceId}/members`), jwt, post({ phone }));
 /** A company invites by email (22/10): `active` if a verified account owns it, otherwise `invited` until that email is verified. */
-export const inviteToSpaceByEmail = (jwt: string, spaceId: string, email: string) => jsonCall<{ id: string; email: string; status: 'active' | 'invited' }>(url(`/${spaceId}/invites`), jwt, post({ email }));
+export const inviteToSpaceByEmail = (jwt: string, spaceId: string, email: string) => jsonCall<SpaceEmailInvite>(url(`/${spaceId}/invites`), jwt, post({ email }));
 
 export const spaceChannels = (jwt: string, spaceId: string) => jsonCall<{ channels: ClientChannel[] }>(url(`/${spaceId}/channels`), jwt);
 export const createChannel = (jwt: string, spaceId: string, input: { name: string; descripcion?: string; visibility: 'public' | 'private' }) => jsonCall<{ channel: ClientChannel }>(url(`/${spaceId}/channels`), jwt, post(input));

@@ -262,7 +262,7 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
         }}
         onClose={() => setSheet(null)}
       />
-      {inviting || sheet === 'invite' ? <InviteToSpaceScreen space={inviting ?? current} jwt={jwt} inviterName={params.me.name || undefined} onClose={() => { setInviting(null); setSheet(null); }} /> : null}
+      {inviting || sheet === 'invite' ? <InviteToSpaceScreen space={inviting ?? current} jwt={jwt} onClose={() => { setInviting(null); setSheet(null); }} /> : null}
       {sheet === 'channels' ? <ChannelsScreen space={current} jwt={jwt} onOpenChannel={openChannel} onClose={() => setSheet(null)} /> : null}
       {current && (sheet === 'directory' || sheet === 'newDirect') ? (
         <DirectoryScreen space={current} jwt={jwt} myUserId={myUserId} picking={sheet === 'newDirect'} onOpenMember={setProfile} onMessage={(member) => void writeTo(member)} onInvite={current.joinCode ? () => setSheet('invite') : undefined} onClose={() => setSheet(null)} />

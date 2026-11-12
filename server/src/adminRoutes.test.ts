@@ -8,8 +8,8 @@ import { UserModel } from './models.js';
 import { signSession } from './sessions.js';
 
 /**
- * José, 12/11/2026: «solo el super admin puede ver los usuarios que existen en
- * Lilachat». The users panel is the creator's alone; an operator of
+ * José, 12/11/2026: only the superadmin may see the people who exist in
+ * Lilachat. The users panel is the creator's alone; an operator of
  * `LILACHAT_OPERADORES` runs backups, never reads who is in Lilachat.
  */
 let mongo: MongoMemoryServer;

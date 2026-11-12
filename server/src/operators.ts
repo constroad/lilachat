@@ -35,8 +35,8 @@ export async function isOperator(userId: Types.ObjectId): Promise<boolean> {
 }
 
 /**
- * Who sees the users panel (`adminRoutes.ts`): the creator alone (José 12/11: «solo el super admin
- * puede ver los usuarios que existen en Lilachat»). An operator runs backups, never reads who is in.
+ * Who sees the users panel (`adminRoutes.ts`): the creator alone (José 12/11: only the superadmin
+ * may see the people who exist in Lilachat). An operator runs backups, never reads who is in.
  */
 export async function isSuperadmin(userId: Types.ObjectId): Promise<boolean> {
   const phone = await phoneOf(userId);

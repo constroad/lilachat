@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { Camera, CheckCircle2, Plus, ChevronDown, ChevronRight, ChevronUp, Clock, Container, Ruler, Thermometer, Truck } from 'lucide-react-native';
-import { ADD_EXTRA_PHOTO, ARRIVED_LABEL, arrivalKeyOf, extraPhotosOf, extraPhotosTitle, dataSectionOf, pageLine, photoSlotsOf, sectionRowLine, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
+import { ADD_EXTRA_PHOTO, ARRIVED_LABEL, arrivalKeyOf, extraPhotosOf, extraPhotosTitle, dataRowLine, dataSectionOf, pageLine, photoSlotsOf, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { Pill, ResultsStrip, StateDot } from './ReportSections';
 
@@ -107,7 +107,7 @@ function ArrivedCard({ item, section, onOpen, onView }: { item: RepeatItem; sect
       {data ? (
         <Pressable testID={`datos-${item.id}`} onPress={() => onOpen({ sectionId: section.id, itemId: item.id, key: data.id })} className="mt-3 min-h-[44px] flex-row items-center gap-2 border-t border-outline/10 pt-2">
           <StateDot state={data.state} small />
-          <Text className="flex-1 text-[14px] font-semibold text-on-surface" numberOfLines={1}>{sectionRowLine(data)}</Text>
+          <Text className="flex-1 text-[14px] font-semibold text-on-surface" numberOfLines={1}>{dataRowLine(data)}</Text>
           <ChevronRight size={16} color={colors.primary} />
         </Pressable>
       ) : null}

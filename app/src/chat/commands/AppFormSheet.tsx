@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from 'react';
 import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
-import { CheckCheck, X } from 'lucide-react-native';
+import { CheckCheck, Clock, X } from 'lucide-react-native';
 import { cameraFirstFieldOf, CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, formRows, liveSelfieFieldOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
@@ -179,13 +179,19 @@ function SheetHeader(props: { answer: EphemeralAnswer; onClose: () => void }) {
 /** Above the fields: the app's line and the clock of a registration. */
 function FormIntro(props: { answer: EphemeralAnswer; clock: boolean; personName?: string }) {
   const { answer } = props;
+  const colors = useColores();
   return (
     <>
       {answer.response?.text ? <Text testID="formulario-texto" className="rounded-xl bg-primary/10 px-3 py-2.5 text-[15px] text-on-surface">{answer.response.text}</Text> : null}
       {answer.response?.form?.intro ? <Text className="text-[15px] text-on-surface-variant">{answer.response.form.intro}</Text> : null}
       {props.clock ? (
-        <View testID="formulario-hora" className="flex-row items-center justify-between gap-3 rounded-xl border border-outline/15 px-3 py-2">
-          <Text className="text-[20px] font-bold text-on-surface" style={{ fontVariant: ['tabular-nums'] }}>{CLOCK.format(new Date())}</Text>
+        // Audit 12/11: a bare «17:41» in a box read as a field to fill; it is the hour this is registered at.
+        <View testID="formulario-hora" className="flex-row items-center justify-between gap-3 rounded-xl bg-primary/5 px-3 py-2">
+          <View className="flex-row items-center gap-2">
+            <Clock size={18} color={colors.primary} />
+            <Text className="text-[13px] text-on-surface-variant">Se registra a las</Text>
+            <Text className="text-[20px] font-bold text-on-surface" style={{ fontVariant: ['tabular-nums'] }}>{CLOCK.format(new Date())}</Text>
+          </View>
           {props.personName ? <Text className="flex-shrink text-[14px] text-on-surface-variant" numberOfLines={1}>{props.personName}</Text> : null}
         </View>
       ) : null}

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Check, ChevronRight, CloudOff } from 'lucide-react-native';
-import { progressLine, progressOf, progressPercent, queueLine, type FieldDocument, type ReportSave, type ResultTone, type SectionResult, type SectionState, type StateBadge } from '@lilachat/shared';
+import { progressLine, progressPercent, sectionsProgressOf, queueLine, type FieldDocument, type ReportSave, type ResultTone, type SectionResult, type SectionState, type StateBadge } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { DETAIL_TONE } from '../tones';
 
@@ -103,7 +103,7 @@ export function QueueCard({ saves, offline, onFix, onDiscard }: { saves: readonl
 
 /** «2 de 4 secciones listas» with its bar, on top of the hub. */
 export function ProgressCard({ document }: { document: FieldDocument }) {
-  const progress = progressOf(document);
+  const progress = sectionsProgressOf(document);
   const percent = progressPercent(progress);
   return (
     <View testID="progreso-informe" className="rounded-2xl border border-outline/15 bg-surface p-4">

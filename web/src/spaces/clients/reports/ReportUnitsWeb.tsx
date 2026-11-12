@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Camera, CheckCircle2, Plus, ChevronDown, ChevronRight, ChevronUp, Clock, Container, Ruler, Thermometer, Truck } from 'lucide-react';
-import { ADD_EXTRA_PHOTO, ARRIVED_LABEL, arrivalKeyOf, extraPhotosOf, extraPhotosTitle, dataSectionOf, pageLine, photoSlotsOf, sectionRowLine, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
+import { ADD_EXTRA_PHOTO, ARRIVED_LABEL, arrivalKeyOf, extraPhotosOf, extraPhotosTitle, dataRowLine, dataSectionOf, pageLine, photoSlotsOf, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
 import { Pill, ResultsStrip, StateDot } from './ReportSectionsWeb';
 
 /** Design j-05 (José 06/11): for the operator on the pista. Big plate, big slots, one click per action. */
@@ -95,7 +95,7 @@ function ArrivedCard({ item, section, onOpen, onView }: { item: RepeatItem; sect
       {data ? (
         <button type="button" data-testid={`datos-${item.id}`} onClick={() => onOpen({ sectionId: section.id, itemId: item.id, key: data.id })} className="mt-3 flex min-h-[44px] w-full items-center gap-2 border-t border-outline/10 pt-2 text-left hover:bg-background/60">
           <StateDot state={data.state} small />
-          <span className="flex-1 truncate text-sm font-semibold">{sectionRowLine(data)}</span>
+          <span className="flex-1 truncate text-sm font-semibold">{dataRowLine(data)}</span>
           <ChevronRight size={16} className="shrink-0 text-on-surface-variant" />
         </button>
       ) : null}

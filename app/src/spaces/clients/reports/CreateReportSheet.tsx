@@ -21,7 +21,7 @@ function TypeRow({ option, portalUrl, onPick }: { option: ReportTypeOption; port
       </View>
       <View className="min-w-0 flex-1">
         <Text className="text-[15px] font-semibold text-on-surface" numberOfLines={1}>{option.label}</Text>
-        <Text className="mt-0.5 text-[12px] text-on-surface-variant" numberOfLines={1}>{option.caption}</Text>
+        <Text className="mt-0.5 text-[12px] text-on-surface-variant" numberOfLines={2}>{option.caption}</Text>
       </View>
       {!here ? <Text className="rounded-md bg-surface-variant px-2 py-1 text-[10px] font-bold uppercase tracking-[1px] text-on-surface-variant">En Portal</Text> : null}
       <ChevronRight size={18} color={colors.primary} />

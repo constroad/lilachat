@@ -97,6 +97,9 @@ function templateOf(raw: unknown, forms: Record<string, FormSchema>): SectionTem
   return template;
 }
 
+/** «Unidad 1 · » when the plate is not known yet: the separator with nothing beside it goes (audit 12/11). */
+const withoutLooseSeparator = (title: string): string => title.replace(/^\s*·\s*|\s*·\s*$/g, '').trim();
+
 /** An item carries only state and values per section; titles and forms come from the template. */
 function itemOf(raw: Raw, template: SectionTemplate[], forms: Record<string, FormSchema>): RepeatItem | null {
   const id = text(raw.id, LIMITS.title);
@@ -108,7 +111,7 @@ function itemOf(raw: Raw, template: SectionTemplate[], forms: Record<string, For
     if (!section) return null;
     sections.push(section);
   }
-  return { id, title: text(raw.title, LIMITS.title) || id, summary: lines(raw.summary), results: resultsOf(raw.results), sections };
+  return { id, title: withoutLooseSeparator(text(raw.title, LIMITS.title)) || id, summary: lines(raw.summary), results: resultsOf(raw.results), sections };
 }
 
 /** `{ current, total }` from 1, or nothing: a page off its book is no page. */
@@ -216,7 +219,9 @@ export function sectionFormOf(document: FieldDocument, path: SectionPath): AppFo
   const asked = Object.entries(schema.properties ?? {}).filter(([name]) => !KNOWN_BY_CHANNEL.includes(name));
   const properties = Object.fromEntries(asked.map(([name, property]) => [name, withDefault(property, found.values[name])]));
   const required = schema.required?.filter((name) => !KNOWN_BY_CHANNEL.includes(name));
-  return { id: found.tool ?? SECTION_TOOL, title: found.title, schema: { ...schema, properties, ...(required ? { required } : {}) }, ...(schema['x-check-all'] ? { checkAll: true as const } : {}) };
+  // Audit 12/11: «Enviar» on a part of a draft read as sending the report; it only keeps that part.
+  const submitLabel = asked.some(([, property]) => property['x-input'] === 'photo') ? 'Guardar foto' : 'Guardar';
+  return { id: found.tool ?? SECTION_TOOL, title: found.title, submitLabel, schema: { ...schema, properties, ...(required ? { required } : {}) }, ...(schema['x-check-all'] ? { checkAll: true as const } : {}) };
 }
 
 /** Portal's own value of what the form does not ask: it rides with the answers, because Portal blanks a field a saved section leaves out. */
@@ -244,10 +249,20 @@ function leavesOf(document: FieldDocument): Leaf[] {
   return leaves;
 }
 
-/** Required sections done over required sections, the tramos' included. */
+/** Required sections done over required sections, the tramos' included: what «Siguiente» walks. */
 export function progressOf(document: FieldDocument): { done: number; total: number } {
   const required = leavesOf(document).filter((leaf) => leaf.required);
   return { done: required.filter((leaf) => leaf.done).length, total: required.length };
+}
+
+/**
+ * The hub's line and bar: the cards a person sees (audit 12/11 on the APK: «1 de 28 secciones
+ * listas» with six cards, because each of five units counted its five parts). A repeat is done
+ * when Portal says so; its own card says how many units or tramos are.
+ */
+export function sectionsProgressOf(document: FieldDocument): { done: number; total: number } {
+  const required = document.sections.filter((section) => section.required || (section.kind === 'repeat' && section.min > 0));
+  return { done: required.filter((section) => section.state === 'done').length, total: required.length };
 }
 
 /** The first required section still open, or null when all are done. */

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Check, ChevronRight, CloudOff } from 'lucide-react';
-import { progressLine, progressOf, progressPercent, queueLine, type FieldDocument, type ReportSave, type ResultTone, type SectionResult, type SectionState, type StateBadge } from '@lilachat/shared';
+import { progressLine, progressPercent, sectionsProgressOf, queueLine, type FieldDocument, type ReportSave, type ResultTone, type SectionResult, type SectionState, type StateBadge } from '@lilachat/shared';
 import { DETAIL_TONE } from '../tones';
 
 /** A result's number in its tone (design j-02: «1.02 lt/m²» green when in range). */
@@ -90,7 +90,7 @@ export function QueueCard({ saves, offline, onFix, onDiscard }: { saves: readonl
 
 /** «2 de 4 secciones listas» with its bar, on top of the hub. */
 export function ProgressCard({ report }: { report: FieldDocument }) {
-  const progress = progressOf(report);
+  const progress = sectionsProgressOf(report);
   const percent = progressPercent(progress);
   return (
     <section data-testid="progreso-informe" className="rounded-xl border border-outline/15 bg-surface p-4">

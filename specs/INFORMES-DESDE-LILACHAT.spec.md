@@ -1336,3 +1336,39 @@ antes y después de la OTA.
 Limpieza: el informe QA 6af5d892964a44515e18e561 no se puede borrar desde
 Lilachat ni desde el editor embebido; solo desde la pestaña «Informes» del
 admin de Portal. Se le pidió a la sesión de Portal.
+
+## 17. Auditoría de fotos y llenado en el celular (José 12/11)
+
+José preguntó si es simple subir fotos y llenar los informes en el celular.
+Se recorrió Control de pista en el APK (`lilafotos-qa`), en el servicio QA-CTLPIS.
+
+**Corregido en Lilachat:**
+- **Progreso.** Decía «1 de 28 secciones listas» con seis tarjetas en pantalla.
+  Cada una de las 5 unidades contaba sus 5 partes. La línea y la barra cuentan
+  ahora las tarjetas obligatorias (`sectionsProgressOf`), y la tarjeta de
+  Unidades dice cuántas hay. «Siguiente» sigue con `progressOf`, por partes.
+- **«Enviar» → «Guardar».** El botón de una sección guarda una parte del
+  borrador. Ahora dice «Guardar», o «Guardar foto» si la sección pide foto.
+- **Reloj de registro.** Un «17:41» suelto en un recuadro parecía un campo.
+  Ahora dice «Se registra a las 17:41», con el ícono del reloj.
+- **Título de la cámara.** Era texto blanco sin fondo y desaparecía con luz
+  fuerte. Ahora va en una pastilla oscura.
+- **Unidad sin placa.** «Unidad 1 · » dejaba un punto suelto y «Unidad 1 · ·
+  Datos» en el formulario. El separador sin nada al lado se quita al leer.
+- **Fila de datos de la unidad.** Decía solo «Falta». Ahora «Datos · Falta».
+- **Inicio de colocación.** Portal renombró «Hora inicio» y el campo quedaba
+  vacío. La regla también reconoce «Inicio de colocación»; «Fin de…» nunca.
+- **Hoja de nuevo informe.** La línea bajo cada tipo usa dos renglones.
+
+**Para Portal** (enviado a su sesión):
+- «Terminadas 0 de 0» con 5 unidades en el pedido: debería ser «0 de 5».
+- Escantillón es opcional en el formulario, pero publicar lo exige.
+- Turno y Clima son texto libre; con opciones se eligen con un toque.
+
+**Sin verificar:**
+- El emulador dio ANR mientras se escribía. El hilo principal esperaba al de
+  dibujo (`nSyncAndDrawFrame`), con la Mac en 6,7 GB de swap; otra sesión lo
+  apagó después. En reposo la app dibuja 0 cuadros en el inicio. Falta medir
+  la pantalla de unidades con el emulador estable.
+- La foto de prueba del emulador salió negra. Falta ver si pasa en un teléfono.
+- Faltan Control de imprimación, Registro y Levantamiento de observaciones.

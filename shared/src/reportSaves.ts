@@ -40,7 +40,8 @@ const LOCAL_ITEM = 'local-';
 const GENERAL_SECTION = 'general';
 const MEMBER_FIELD = 'responsable';
 const PLACE_FIELD = 'ubicacion';
-const START_HOUR = /^hora (de )?inicio/i;
+/** «Hora inicio», «Hora de inicio» and CTL-PIS's «Inicio de colocación» (audit 12/11); never «Fin de…». */
+const START_HOUR = /^(hora (de )?)?inicio\b/i;
 const PHOTOS_VALUE = 'fotos';
 const PHOTO_MIME = 'image/jpeg';
 /** The viewer's action on a report's photo. It never deletes: a swipe can change which one is on screen. */
@@ -165,6 +166,9 @@ export function sectionRowLine(section: FormSection): string {
   if (section.tool) return photosLine(section);
   return section.summary[0] ?? sectionBadge(section.state, section.required).label;
 }
+
+/** A unit's data row, which has no title beside it: «Datos · Falta» instead of a lone «Falta» (audit 12/11). */
+export const dataRowLine = (section: FormSection): string => `${section.title} · ${sectionRowLine(section)}`;
 
 /** The save waiting on a card of the hub; a repeat waits while any of its tramos does. */
 export function pendingOf(section: DocumentSection): string | undefined {

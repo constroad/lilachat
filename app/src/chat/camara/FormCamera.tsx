@@ -69,7 +69,10 @@ export function FormCamera(props: { title: string; onShot: (shot: CameraShot) =>
           <Pressable testID="btn-cerrar-camara-formulario" accessibilityLabel="Cerrar la cámara" onPress={props.onClose} className="h-11 w-11 items-center justify-center rounded-full bg-black/40">
             <X size={24} color="white" />
           </Pressable>
-          <Text className="min-w-0 flex-1 text-center text-[15px] font-semibold" style={{ color: 'white' }} numberOfLines={1}>{props.title}</Text>
+          {/* Audit 12/11: white on a bright frame (the sun on site) vanished; it sits on its own dark pill. */}
+          <View className="min-w-0 flex-1 items-center">
+            <Text className="max-w-full rounded-full bg-black/55 px-3 py-1 text-center text-[15px] font-semibold" style={{ color: 'white' }} numberOfLines={1}>{props.title}</Text>
+          </View>
           <Pressable testID="btn-flash-formulario" accessibilityLabel={`Flash: ${FLASH_LABEL[flash]}`} onPress={() => setFlash((before) => NEXT_FLASH[before])} className="h-11 flex-row items-center gap-1 rounded-full bg-black/40 px-3">
             {flash === 'off' ? <ZapOff size={20} color="white" /> : <Zap size={20} color="white" />}
             <Text className="text-[13px] font-semibold" style={{ color: 'white' }}>{FLASH_LABEL[flash]}</Text>

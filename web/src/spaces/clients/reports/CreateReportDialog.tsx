@@ -16,7 +16,7 @@ function TypeText({ option }: { option: ReportTypeOption }) {
   return (
     <span className="min-w-0 flex-1">
       <span className="block truncate text-[15px] font-semibold">{option.label}</span>
-      <span className="block truncate text-[12px] text-on-surface-variant">{option.caption}</span>
+      <span className="line-clamp-2 block text-[12px] text-on-surface-variant">{option.caption}</span>
     </span>
   );
 }

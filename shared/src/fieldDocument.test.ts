@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applySavedSection, channelValuesOf, fieldDocumentOf, withoutGroupSend, nextSection, photoKindOf, progressOf, publishBlockers, requiresLocation, SECTION_TOOL, sectionFormOf, itemFormTitle, type RepeatSection } from './fieldDocument';
+import { applySavedSection, channelValuesOf, fieldDocumentOf, withoutGroupSend, nextSection, photoKindOf, progressOf, publishBlockers, requiresLocation, SECTION_TOOL, sectionFormOf, sectionsProgressOf, itemFormTitle, type RepeatSection } from './fieldDocument';
 
 /** The document Portal's `informe_de_campo` answers (spec INFORMES-DESDE-LILACHAT §3.1), for a CTL-IMP with one tramo. */
 const generalForm = { type: 'object', properties: { liquido: { type: 'string', title: 'Líquido', oneOf: [{ const: 'MC-30', title: 'MC-30' }, { const: 'EMULSION', title: 'Emulsión' }] }, proyecto: { type: 'string', title: 'Proyecto' } }, required: ['liquido', 'proyecto'] };
@@ -127,6 +127,12 @@ describe('what the channel already knows (José, 06/11)', () => {
 });
 
 describe('sectionFormOf', () => {
+  /** Audit 12/11: a section said «Enviar» although it only keeps a part of the draft. */
+  it('saves with «Guardar», and a photo with «Guardar foto»', () => {
+    expect(sectionFormOf(parsed(), { sectionId: 'tramos', itemId: 't1', key: 'ubicacion' })?.submitLabel).toBe('Guardar');
+    expect(sectionFormOf(parsed(), { sectionId: 'tramos', itemId: 't1', key: 'fotos' })?.submitLabel).toBe('Guardar foto');
+  });
+
   it('is the section tool with the saved values as defaults, titled by its tramo', () => {
     const form = sectionFormOf(parsed(), { sectionId: 'tramos', itemId: 't1', key: 'ubicacion' })!;
 
@@ -233,6 +239,25 @@ describe('a control de pista (contract 06/11): the units come from the dispatche
     expect(units(pista([], { canAdd: undefined, addLabel: 'Agregar' })).canAdd).toBe(true);
     expect(units(pista([], { page: { current: 0, total: 3 } })).page).toBeUndefined();
     expect(units(pista([], { page: { current: 4, total: 3 } })).page).toBeUndefined();
+  });
+
+  /** Audit 12/11 on the APK: «1 de 28 secciones listas» with six cards on screen, because each of five units counted its five parts. */
+  it('the line counts the cards a person sees, not the parts of every unit', () => {
+    // Arrange
+    const units5 = [1, 2, 3, 4, 5].map((n) => ({ ...dispatch, id: `d${n}` }));
+    // Act
+    const progress = sectionsProgressOf(pista(units5));
+    // Assert
+    expect(progressOf(pista(units5)).total).toBe(26);
+    expect(progress).toEqual({ done: 1, total: 2 });
+    expect(sectionsProgressOf(pista(units5, { state: 'done' }))).toEqual({ done: 2, total: 2 });
+  });
+
+  /** A unit with no plate yet came as «Unidad 1 · » and the form said «Unidad 1 · · Datos» (audit 12/11). */
+  it('a title that ends in its separator loses it', () => {
+    const document = pista([{ ...dispatch, title: 'Unidad 1 · ' }, { ...dispatch, id: 'd2', title: ' · QAP-103' }]);
+    expect(units(document).items.map((item) => item.title)).toEqual(['Unidad 1', 'QAP-103']);
+    expect(sectionFormOf(document, { sectionId: 'unidades', itemId: 'd1', key: 'datos' })?.title).toBe('Unidad 1 · Datos');
   });
 
   it('with no unit yet nobody owes the first one: the units come from the dispatches, not from «Agregar»', () => {

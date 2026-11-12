@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fieldDocumentOf, type FieldDocument, type SectionPath } from './fieldDocument';
-import { applySave, blankDocumentOf, documentWithQueue, judgeFailure, judgeNotice, judgeReply, RATE_LIMIT_WAIT_MS, landedBefore, newItemOf, nextSave, pendingOf, removablePhotoId, photoRemovalLine, photoViewOf, photosLine, queueLine, queueSave, reportFormAnswer, reportKeyOf, reportSaveOf, resolveItem, savesOf, sectionPhotos, sectionRowLine, sentMarkOf, withoutSave, type ReportRef, type ReportSave } from './reportSaves';
+import { applySave, blankDocumentOf, documentWithQueue, judgeFailure, judgeNotice, judgeReply, RATE_LIMIT_WAIT_MS, landedBefore, newItemOf, nextSave, pendingOf, removablePhotoId, photoRemovalLine, photoViewOf, photosLine, queueLine, queueSave, reportFormAnswer, reportKeyOf, dataRowLine, reportSaveOf, resolveItem, savesOf, sectionPhotos, sectionRowLine, sentMarkOf, withoutSave, type ReportRef, type ReportSave } from './reportSaves';
 
 const photosForm = { type: 'object', properties: { foto: { type: 'string', title: 'Foto', 'x-input': 'photo' }, descripcion: { type: 'string', title: 'Descripción', maxLength: 200 } }, required: ['foto'] };
 const textForm = (name: string) => ({ type: 'object', properties: { [name]: { type: 'string', title: name } }, required: [name] });
@@ -323,6 +323,15 @@ describe('the report form on the phone', () => {
       const properties = hoursOf(reportFormAnswer(withTimes({ horaInicio: '08:05' }), generalPath, { startHour: '14:20' }));
       expect(properties?.horaInicio?.default).toBe('08:05');
     });
+
+    /** Audit 12/11: Portal's CTL-PIS calls them «Inicio de colocación» and «Fin de colocación»; the start stayed empty. */
+    it('also fills «Inicio de colocación», never «Fin de colocación»', () => {
+      const placing = { type: 'object', properties: { horaInicio: { type: 'string', format: 'time', title: 'Inicio de colocación' }, horaFinal: { type: 'string', format: 'time', title: 'Fin de colocación' } } };
+      const document = fieldDocumentOf({ ...body, forms: { ...body.forms, general: placing }, sections: [{ id: 'general', kind: 'form', title: 'Tramo', form: 'general', required: false, enabled: true, state: 'empty', values: {} }] });
+      const properties = hoursOf(reportFormAnswer(document, generalPath, { startHour: '14:20' }));
+      expect(properties?.horaInicio?.default).toBe('14:20');
+      expect(properties?.horaFinal?.default).toBeUndefined();
+    });
   });
 
   describe('general data (José, 06/11)', () => {
@@ -367,6 +376,9 @@ describe('what the cards say', () => {
     expect(sectionRowLine(bandejasLeaf!)).toBe('Falta');
     expect(sectionRowLine({ ...ubicacion!, summary: ['Carril derecho'] })).toBe('Carril derecho');
     expect(sectionRowLine({ ...photos!, pending: 'k1' })).toBe('Pendiente de enviar');
+    // A unit's data row has no title beside it (audit 12/11: a lone «Falta»).
+    expect(dataRowLine(bandejasLeaf!)).toBe('Bandejas · Falta');
+    expect(dataRowLine({ ...ubicacion!, summary: ['Carril derecho'] })).toBe('Ubicación · Carril derecho');
   });
 
   it('a card waits while any of its tramos does', () => {

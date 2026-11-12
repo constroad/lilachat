@@ -1,5 +1,5 @@
 import { useMemo, useRef, type RefObject } from 'react';
-import { CheckCheck } from 'lucide-react';
+import { CheckCheck, Clock } from 'lucide-react';
 import { CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, formRows, isWideForm, liveSelfieFieldOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { Avatar } from '../../ui/Avatar';
@@ -104,8 +104,9 @@ function FormIntro(props: { answer: EphemeralAnswer; clock: boolean; personName?
         <span>{answer.appName} · hoy, {today.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
       </div>
       {props.clock ? (
-        <div data-testid="formulario-hora" className="flex items-center justify-between gap-3 rounded-xl border border-outline/15 px-3 py-2">
-          <p className="text-xl font-bold tabular-nums tracking-tight">{today.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })}</p>
+        // Audit 12/11: a bare «17:41» in a box read as a field to fill; it is the hour this is registered at.
+        <div data-testid="formulario-hora" className="flex items-center justify-between gap-3 rounded-xl bg-primary/5 px-3 py-2">
+          <p className="flex items-center gap-2"><Clock size={18} className="text-primary" aria-hidden /><span className="text-[13px] text-on-surface-variant">Se registra a las</span><span className="text-xl font-bold tabular-nums tracking-tight">{today.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false })}</span></p>
           {props.personName ? <p className="min-w-0 truncate text-[13px] text-on-surface-variant">{props.personName}</p> : null}
         </div>
       ) : null}

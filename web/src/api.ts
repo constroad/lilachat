@@ -128,6 +128,25 @@ export async function salirDelServer(): Promise<void> {
 
 const NO_CONNECTION = 'Sin conexión. Revisa tu internet.';
 const NO_SESSION = 'Sin sesión.';
+const SLOW_CONNECTION = 'La conexión está lenta. Inténtalo de nuevo.';
+/**
+ * E2E 12/11: a list request stuck behind the browser never ended, and the screen showed its skeleton
+ * forever with no retry. A read gives up here; the server already cuts its own asks at 8 s. A write
+ * waits: an upload or a new report may take longer.
+ */
+const READ_TIMEOUT_MS = 30_000;
+
+type Deadline = { signal: AbortSignal; timedOut: () => boolean; clear: () => void };
+/** The caller's signal plus a timer, without `AbortSignal.any` (older Safari in installed PWAs). */
+function deadlineOf(signal: AbortSignal | undefined, ms: number): Deadline {
+  const controller = new AbortController();
+  let expired = false;
+  const timer = setTimeout(() => { expired = true; controller.abort(); }, ms);
+  const follow = () => controller.abort();
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener('abort', follow, { once: true });
+  return { signal: controller.signal, timedOut: () => expired, clear: () => { clearTimeout(timer); signal?.removeEventListener('abort', follow); } };
+}
 
 /** The body as JSON, or `undefined` when it was cut or is not JSON. An empty body is `{}`. */
 async function readJson(response: Response): Promise<{ message?: string } | undefined> {
@@ -148,10 +167,12 @@ export async function api<T>(
 ): Promise<ApiResult<T>> {
   // An empty token is a call that needs the session before it is ready: the hook asks again when the token arrives.
   if (options.jwt === '') return { ok: false, status: 401, message: NO_SESSION };
+  const method = options.method ?? (options.body ? 'POST' : 'GET');
+  const deadline = method === 'GET' ? deadlineOf(options.signal, READ_TIMEOUT_MS) : null;
   try {
     const response = await fetch(`/api${path}`, {
-      signal: options.signal,
-      method: options.method ?? (options.body ? 'POST' : 'GET'),
+      signal: deadline?.signal ?? options.signal,
+      method,
       headers: {
         ...(options.body ? { 'Content-Type': 'application/json' } : {}),
         ...(options.jwt ? { Authorization: `Bearer ${options.jwt}` } : {}),
@@ -173,8 +194,11 @@ export async function api<T>(
     if (!data) return { ok: false, status: 0, message: NO_CONNECTION };
     return { ok: true, data: data as T };
   } catch {
+    if (deadline?.timedOut()) return { ok: false, status: 0, message: SLOW_CONNECTION };
     // Sin red NO se dice «rechazado»: son cosas distintas y confundirlas hace
     // que el usuario borre su sesión creyendo que caducó.
     return { ok: false, status: 0, message: NO_CONNECTION };
+  } finally {
+    deadline?.clear();
   }
 }

@@ -1164,7 +1164,14 @@ teléfono y en el APK sigue el formulario de este spec.
   marca. Bajo 1024 px sigue el formulario.
 - Una sola barra, la de Portal (José 12/11: «doble toolbar para regresar»):
   su «Cerrar editor» guarda y manda `closed`. La barra de Lilachat (Volver,
-  servicio, informe) solo aparece mientras Portal no está listo o si falla.
+  servicio, informe) solo aparece mientras Portal no está listo, si falla o
+  si sus cambios siguen sin guardarse a los 45 s.
+- Salida de emergencia (E2E 12/11, CON-CAP: «Guardando…» más de un minuto,
+  sin `saved` ni `closed`, y Escape con el foco en el marco no llega a
+  Lilachat): con `dirty` 45 s seguidos sin un `saved`, vuelve la barra de
+  Lilachat con «Los cambios aún no se guardan en el Portal.» y «Salir igual».
+  Cada `saved` reinicia la cuenta. Salir igual (o Volver) cierra al toque: lo
+  último sin guardar puede perderse, y lo decide la persona.
 - Pide el enlace una vez por apertura. El server y la web validan origen,
   ruta, token y vencimiento; otro origen es una falla y no se enmarca.
 - Solo acepta mensajes del origen de Portal y de ESE marco, con `version: 1`.

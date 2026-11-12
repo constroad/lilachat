@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PortalEmbedWeb } from './PortalEmbedWeb';
 
@@ -29,6 +29,7 @@ function fromPortal(data: unknown, origin = PORTAL, source: MessageEventSource |
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   document.documentElement.classList.remove('dark');
 });
@@ -112,6 +113,41 @@ describe('PortalEmbedWeb', () => {
     fromPortal({ type: 'portal-embed:error', version: 1, code: 'not_found' });
     await userEvent.click(await screen.findByTestId('editor-portal-volver'));
     expect(onClose).toHaveBeenCalledWith(false);
+  });
+
+  it('a save that hangs does not trap the person (E2E 12/11: «Guardando…» for a minute, no «closed»): after 45 s unsaved Lilachat\'s bar comes back with «Salir igual»', async () => {
+    portal([{ embed: linkOf('a1') }]);
+    const onClose = vi.fn();
+    render(<PortalEmbedWeb target={target} serviceId="sv1" serviceName="Av. Los Incas" report={report} onClose={onClose} />);
+    await waitFor(() => expect(frame().src).toContain('#t=a1'));
+    vi.useFakeTimers();
+    fromPortal({ type: 'portal-embed:ready', version: 1 });
+    fromPortal({ type: 'portal-embed:dirty', version: 1, dirty: true });
+
+    act(() => { vi.advanceTimersByTime(44_000); });
+    expect(screen.queryByTestId('editor-portal-atascado')).toBeNull();
+    act(() => { vi.advanceTimersByTime(1_000); });
+    expect(screen.getByTestId('editor-portal-atascado')).toHaveTextContent('Los cambios aún no se guardan en el Portal');
+    fireEvent.click(screen.getByTestId('editor-portal-salir'));
+    expect(onClose).toHaveBeenCalledWith(false);
+  });
+
+  it('a save on time keeps Portal\'s bar alone: each «saved» starts the count again, and a clean editor never warns', async () => {
+    portal([{ embed: linkOf('a1') }]);
+    render(<PortalEmbedWeb target={target} serviceId="sv1" serviceName="Av. Los Incas" report={report} onClose={vi.fn()} />);
+    await waitFor(() => expect(frame().src).toContain('#t=a1'));
+    vi.useFakeTimers();
+    fromPortal({ type: 'portal-embed:ready', version: 1 });
+    fromPortal({ type: 'portal-embed:dirty', version: 1, dirty: true });
+
+    act(() => { vi.advanceTimersByTime(30_000); });
+    fromPortal({ type: 'portal-embed:saved', version: 1, reportId: 'r1', savedAt: '2026-11-12T12:00:00.000Z' });
+    act(() => { vi.advanceTimersByTime(30_000); });
+    expect(screen.queryByTestId('editor-portal-atascado')).toBeNull();
+    fromPortal({ type: 'portal-embed:dirty', version: 1, dirty: false });
+    act(() => { vi.advanceTimersByTime(120_000); });
+    expect(screen.queryByTestId('editor-portal-atascado')).toBeNull();
+    expect(screen.queryByTestId('editor-portal-volver')).toBeNull();
   });
 
   it('an expired link is asked again and the frame reloads with the new one', async () => {

@@ -10,7 +10,8 @@ import type { ServiceAskTarget } from '../useServiceAsk';
  * 11/11, José: every member edits, only admins delete, versions restorable in
  * Portal). One bar, Portal's (José 12/11: «doble toolbar para regresar»): its
  * «Cerrar editor» saves and posts `closed`. Lilachat's bar shows only while
- * Portal is not ready or failed; Escape asks Portal to close.
+ * Portal is not ready or failed, or when its changes stay unsaved too long;
+ * Escape asks Portal to close.
  */
 /** An existing report (its id), or a new one of a type (José 12/11: on the wide web reports are born in the editor). */
 type EmbedReport = { id?: string; title: string; url?: string; create?: EmbedCreateRequest };
@@ -21,6 +22,8 @@ type LinkState = { kind: 'asking' } | { kind: 'ready'; link: EmbedLink } | { kin
 const FRAMED_ORIGINS: readonly string[] = import.meta.env.DEV ? [PORTAL_EMBED_ORIGINS.production, PORTAL_EMBED_ORIGINS.development] : [PORTAL_EMBED_ORIGINS.production];
 /** With nothing unsaved, Portal answers at once; a frame that does not answer does not keep the person in. */
 const CLOSE_WAIT_MS = 3000;
+/** E2E 12/11: Portal's save hung on «Guardando…» and its «Cerrar editor» never posted `closed`; past this, Lilachat's bar offers a way out. */
+const UNSAVED_TOO_LONG_MS = 45_000;
 
 function useEmbedLink(target: ServiceAskTarget, serviceId: string, report: EmbedReport) {
   const { jwt, spaceId, clientId } = target;
@@ -53,6 +56,7 @@ function useEmbedTalk(frame: React.RefObject<HTMLIFrameElement | null>, link: Em
   const [ready, setReady] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
   const changed = useRef(false);
   // After «closed» the same save may still post its dirty or saved (Portal aa4cf2d9): nothing counts any more.
   const closed = useRef(false);
@@ -72,7 +76,10 @@ function useEmbedTalk(frame: React.RefObject<HTMLIFrameElement | null>, link: Em
         setReady(true);
         post(embedTheme(modeNow()));
       } else if (message?.type === 'dirty') setDirty(message.dirty);
-      else if (message?.type === 'saved' || message?.type === 'published') changed.current = true;
+      else if (message?.type === 'saved' || message?.type === 'published') {
+        changed.current = true;
+        if (message.type === 'saved') setSavedAt(message.savedAt);
+      }
       else if (message?.type === 'closed') {
         closed.current = true;
         handlers.current.onClose(changed.current);
@@ -88,7 +95,28 @@ function useEmbedTalk(frame: React.RefObject<HTMLIFrameElement | null>, link: Em
     watch.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     return () => watch.disconnect();
   }, [ready, post]);
-  return { ready, dirty, error, changed, post };
+  return { ready, dirty, error, savedAt, changed, post };
+}
+
+/** True once Portal's changes stay unsaved too long: every «saved» starts the count again. */
+function useUnsavedTooLong(dirty: boolean, savedAt: string | null): boolean {
+  const [tooLong, setTooLong] = useState(false);
+  useEffect(() => {
+    setTooLong(false);
+    if (!dirty) return;
+    const timer = setTimeout(() => setTooLong(true), UNSAVED_TOO_LONG_MS);
+    return () => clearTimeout(timer);
+  }, [dirty, savedAt]);
+  return tooLong;
+}
+
+function StuckNotice({ onLeave }: { onLeave: () => void }) {
+  return (
+    <div data-testid="editor-portal-atascado" role="status" className="flex shrink-0 items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-1.5 text-sm">
+      <span className="font-semibold text-warning">Los cambios aún no se guardan en el Portal.</span>
+      <button type="button" data-testid="editor-portal-salir" onClick={onLeave} className="h-9 rounded-lg border border-outline/30 bg-surface px-3 text-sm font-semibold">Salir igual</button>
+    </div>
+  );
 }
 
 function useLeaveGuards(dirty: boolean, requestClose: () => void) {
@@ -124,11 +152,13 @@ export function PortalEmbedWeb(props: Props) {
   const link = state.kind === 'ready' ? state.link : null;
   const { onClose } = props;
   const talk = useEmbedTalk(frame, link, onClose, again);
+  const stuck = useUnsavedTooLong(talk.dirty, talk.savedAt);
+  const leave = useCallback(() => onClose(talk.changed.current), [onClose, talk.changed]);
   const requestClose = useCallback(() => {
-    if (!talk.ready || talk.error) return onClose(talk.changed.current);
+    if (!talk.ready || talk.error || stuck) return leave();
     talk.post(embedCloseRequest());
     setClosing(true);
-  }, [talk, onClose]);
+  }, [talk, stuck, leave]);
   useEffect(() => {
     if (!closing || talk.dirty) return;
     const timer = setTimeout(() => onClose(talk.changed.current), CLOSE_WAIT_MS);
@@ -136,7 +166,7 @@ export function PortalEmbedWeb(props: Props) {
   }, [closing, talk.dirty, talk.changed, onClose]);
   useLeaveGuards(talk.dirty, requestClose);
   const failure = state.kind === 'failed' ? state.message : talk.error;
-  const ownBar = !talk.ready || Boolean(failure);
+  const ownBar = !talk.ready || Boolean(failure) || stuck;
   return createPortal(
     <div data-testid="editor-portal" role="dialog" aria-label={`Editor de ${props.report.title}`} className="fixed inset-0 z-50 flex flex-col bg-background text-on-surface">
       {ownBar ? <header className="flex h-14 shrink-0 items-center gap-2 border-b border-outline/15 px-2">
@@ -145,6 +175,7 @@ export function PortalEmbedWeb(props: Props) {
           <p className="truncate text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{props.serviceName}</p>
           <p className="truncate text-[15px] font-semibold">{props.report.title}</p>
         </div>
+        {stuck && !failure ? <StuckNotice onLeave={leave} /> : null}
       </header> : null}
       <div className="relative flex flex-1">
         {failure ? <Failure message={failure} {...(props.report.url ? { url: props.report.url } : {})} onRetry={again} /> : null}

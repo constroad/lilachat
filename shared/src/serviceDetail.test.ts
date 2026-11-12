@@ -183,7 +183,7 @@ describe('reportGroups', () => {
     ]);
   });
 
-  it('each row says who created the report (José 12/11), after its type; a blank or overlong name says nothing', () => {
+  it('each row says who created the report (José 12/11), after its type; a blank name says nothing, an overlong one is cut to 80 with «…» like agentes (cc0c560)', () => {
     // Arrange
     const detail = reportsOf([
       { id: 'r1', title: 'Control de pista · 6 de octubre', type_label: 'Control de pista', date: '2026-10-06', created_by: ' Ana Torres ', ...status },
@@ -194,7 +194,8 @@ describe('reportGroups', () => {
     // Act
     const rows = reportGroups(detail)[0]!.rows;
     // Assert
-    expect(rows.map((row) => row.line)).toEqual(['Creado por Ana Torres', 'Densidad · Creado por Luis Rojas', '', '']);
+    expect(rows.map((row) => row.line)).toEqual(['Creado por Ana Torres', 'Densidad · Creado por Luis Rojas', '', `Creado por ${'x'.repeat(79)}…`]);
+    expect(serviceDetailOf(JSON.parse(JSON.stringify(detail)))!.reports[3]!.createdBy).toBe(`${'x'.repeat(79)}…`);
     expect(detailRows(detail, 'reports')[0]!.line).toContain('Creado por Ana Torres');
     expect(serviceDetailOf(JSON.parse(JSON.stringify(detail)))!.reports[0]!.createdBy).toBe('Ana Torres');
   });

@@ -151,7 +151,8 @@ const dispatchOf = (raw: Raw): ServiceDispatch =>
   });
 /** A person's name as Portal sends it; blank or overlong reads as none. */
 const NAME_MAX = 80;
-const nameOf = (value: unknown): string | undefined => { const name = text(value); return name && name.length <= NAME_MAX ? name : undefined; };
+/** Agentes cuts an overlong name to 80 with «…» (cc0c560); Lilachat does the same, so a long name is shortened, never lost. */
+const nameOf = (value: unknown): string | undefined => { const name = text(value); return name && name.length > NAME_MAX ? `${name.slice(0, NAME_MAX - 1)}…` : name ?? undefined; };
 const reportOf = (raw: Raw): ServiceReport => defined({ id: text(raw.id)!, title: text(raw.title) ?? 'Informe', typeLabel: text(raw.type_label), date: dateOnly(raw.date), status: statusOf(raw), pdfUrl: https(raw.pdf_url), url: https(raw.url), editor: raw.editor === 'v2' ? ('v2' as const) : undefined, createdBy: nameOf(raw.created_by ?? raw.createdBy) });
 const quoteItemOf = (one: unknown): QuoteItem[] => {
   const raw = record(one);

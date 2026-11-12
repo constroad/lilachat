@@ -23,3 +23,24 @@ export function useEmailLink(): EmailLink | null {
   }, []);
   return link;
 }
+
+/**
+ * The invitation email's link (José 12/11, Globofast): `/?d=<email>` with no code. «Entrar con mi correo»
+ * opens with that email written; the person still asks for the code here.
+ */
+export function emailHintOf(pathname: string, search: string): string | null {
+  if (pathname === CALLBACK_PATH) return null;
+  return normalizeEmail(new URLSearchParams(search).get('d')) || null;
+}
+
+/** Read once, and `d` leaves the address so the email does not stay in the history. */
+export function useEmailHint(): string | null {
+  const [hint] = useState(() => emailHintOf(window.location.pathname, window.location.search));
+  useEffect(() => {
+    if (!hint) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('d');
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+  }, [hint]);
+  return hint;
+}

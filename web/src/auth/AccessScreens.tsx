@@ -24,8 +24,8 @@ const abrePorQr = (): boolean => typeof window.matchMedia === 'function' && wind
 
 type Door = 'qr' | 'email' | 'phone' | 'personal';
 
-export function AccessScreens({ onReady, emailLink }: { onReady: (credential: Credential) => void; emailLink?: EmailLink | null }) {
-  const [door, setDoor] = useState<Door>(() => (!emailLink && abrePorQr() ? 'qr' : 'email'));
+export function AccessScreens({ onReady, emailLink, emailHint }: { onReady: (credential: Credential) => void; emailLink?: EmailLink | null; /** The invitation email's `?d=` (José 12/11). */ emailHint?: string | null }) {
+  const [door, setDoor] = useState<Door>(() => (!emailLink && !emailHint && abrePorQr() ? 'qr' : 'email'));
   const [arrived, setArrived] = useState<{ credential: Credential; account: string } | null>(null);
   const [invited] = useState(() => peekPendingJoin() !== null);
   const [calledIn] = useState(() => peekPendingCallLink() !== null);
@@ -60,7 +60,7 @@ export function AccessScreens({ onReady, emailLink }: { onReady: (credential: Cr
         </p>
       ) : null}
       {door === 'qr' ? <PantallaDeVincular onReady={ready} onUsarTelefono={() => setDoor('email')} /> : null}
-      {door === 'email' ? <EmailSignIn link={emailLink} onVerified={arrive} onUsePhone={() => setDoor('phone')} onUsePersonal={() => setDoor('personal')} onUseQr={() => setDoor('qr')} /> : null}
+      {door === 'email' ? <EmailSignIn link={emailLink} initialEmail={emailHint ?? undefined} onVerified={arrive} onUsePhone={() => setDoor('phone')} onUsePersonal={() => setDoor('personal')} onUseQr={() => setDoor('qr')} /> : null}
       {door === 'phone' || door === 'personal' ? (
         <>
           <IngresoPorTelefono onReady={fromPhone} onUsarQr={() => setDoor('qr')} />

@@ -148,3 +148,25 @@ cuenta de correo, que no cruza nada con la agenda.
 
 1. Las cuatro pantallas: aprobadas.
 2. La clave interna de §4: aprobada, sin agregar complejidad innecesaria.
+
+## 8. La invitación por correo, de punta a punta (José 12/11, Globofast)
+
+Revisión antes de invitar a la gente de Globofast:
+
+- **Nadie recibe un correo automático.** «Invitar por correo» guarda la invitación y abre
+  el correo del admin con el mensaje listo (`spaceInviteMailto`); el admin lo envía.
+  constroad-auth tiene `POST /v1/invitaciones` para mandarlo solo, pero su texto va en voseo
+  («Entrá», «ignorá») y el enlace tiene que estar en los `enlaces` de la llave: queda
+  propuesto, sin usar.
+- **El mensaje decía lo de antes** (entrar con el número y verificar el correo en el
+  perfil). Ahora dice lo que hace la app: abrir Lilachat según el equipo, entrar con ESE
+  correo, tocar «Unirme» y poner el nombre la primera vez.
+- **Por equipo:** Android descarga el APK de LilaStore; iPhone abre la web en Safari y toca
+  Compartir › «Agregar a inicio» (no hay app de iPhone); la computadora usa la web. El
+  mensaje por WhatsApp (`spaceInviteMessage`) distingue Android e iPhone igual.
+- **El enlace del correo** es `https://lilachat.constroad.com/?d=<correo>`: la web abre
+  «Entrar con mi correo» con el correo escrito, también en pantalla ancha (sin el QR), y
+  saca `d` de la dirección (`emailHintOf`).
+- **El recorrido:** correo → código → «Tus espacios» con «Unirme» → nombre → adentro. El
+  E2E del 04/11 lo pasó contra un server local; el correo real lo prueba José, porque crea
+  una cuenta en producción.

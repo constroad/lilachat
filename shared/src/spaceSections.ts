@@ -81,21 +81,38 @@ export function joinCodeFromLink(url: string | null | undefined): string | null 
   return match ? normalizeJoinCode(decodeURIComponent(match[1]!)) : null;
 }
 
-export function spaceInviteMessage(params: { spaceName: string; code: string }): string {
-  return `Te invito al espacio de ${params.spaceName} en Lilachat. Entra con este enlace: ${spaceJoinLink(params.code)}\n\nSi todavía no tienes Lilachat, descárgala en ${ENLACE_DE_DESCARGA} y entra con tu número. ${joinStep(params.code)}`;
+/** Where to get Lilachat, by device (José 12/11: the APK is Android only; an iPhone installs the web from Safari). */
+function deviceSteps(webLink: string, computer: boolean): string[] {
+  return [
+    `En Android: ${computer ? 'descarga la app en ' : ''}${ENLACE_DE_DESCARGA}`,
+    `En iPhone: abre ${webLink} en Safari y toca Compartir › «Agregar a inicio».`,
+    ...(computer ? [`En la computadora: ${webLink}`] : []),
+  ];
 }
 
+export function spaceInviteMessage(params: { spaceName: string; code: string }): string {
+  return [
+    `Te invito al espacio de ${params.spaceName} en Lilachat. Entra con este enlace: ${spaceJoinLink(params.code)}`,
+    '',
+    'Si todavía no tienes Lilachat:',
+    ...deviceSteps(LILACHAT_WEB_URL, false),
+    `Entra con tu número. ${joinStep(params.code)}`,
+  ].join('\n');
+}
+
+/** The web with the email already written in «Entrar con mi correo» (`?d=`, the same key constroad-auth uses). */
+const webLinkFor = (email?: string): string => (email ? `${LILACHAT_WEB_URL}/?d=${encodeURIComponent(email)}` : LILACHAT_WEB_URL);
+
 /**
- * The invitation by email, the first option for a company (José, 21/10): it
- * goes from the inviter's own mail app, with who invites, where to get
- * Lilachat on the phone or the computer, that one enters with the phone
- * number, and the code.
+ * The invitation by email, the first option for a company (José, 21/10): it goes from the inviter's
+ * own mail app. Invited by email (José 12/11, Globofast), the person enters with THAT email and taps
+ * «Unirme» (spec INGRESO-POR-ESPACIO): no phone, no profile step. Otherwise, the phone and the code.
  */
-export function spaceInviteEmail(params: { spaceName: string; code: string; inviterName?: string; /** Invited by email (22/10): verifying it in the profile lets them in. */ to?: string }): { subject: string; body: string } {
+export function spaceInviteEmail(params: { spaceName: string; code: string; inviterName?: string; to?: string }): { subject: string; body: string } {
   const who = params.inviterName?.trim();
-  const steps = params.to
-    ? [`3. En «Completa tu perfil», verifica este correo (${params.to}) y entras solo al espacio.`, `   Si ya lo verificaste con otro correo: ${joinStep(params.code)}`]
-    : [`3. ${joinStep(params.code)}`];
+  const entry = params.to
+    ? [`Entra con este correo (${params.to}): te llega un código y listo. No hay contraseña.`, `Toca «Unirme» en ${params.spaceName}. La primera vez te pide tu nombre.`]
+    : ['Entra con tu número de celular.', joinStep(params.code)];
   return {
     subject: `Invitación al espacio de ${params.spaceName} en Lilachat`,
     body: [
@@ -103,11 +120,10 @@ export function spaceInviteEmail(params: { spaceName: string; code: string; invi
       '',
       `${who ? `${who} te invita` : 'Te invitamos'} al espacio de ${params.spaceName} en Lilachat, donde coordinamos el trabajo del equipo.`,
       '',
-      'Para unirte:',
-      `1. Descarga Lilachat en tu celular: ${ENLACE_DE_DESCARGA}`,
-      `   o úsalo en la computadora: ${LILACHAT_WEB_URL}`,
-      '2. Entra con tu número de celular.',
-      ...steps,
+      'Para unirte, abre Lilachat:',
+      ...deviceSteps(webLinkFor(params.to), true),
+      '',
+      ...entry,
       '',
       'Tus chats personales no se comparten con la empresa.',
     ].join('\n'),

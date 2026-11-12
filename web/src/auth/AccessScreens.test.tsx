@@ -48,6 +48,15 @@ describe('AccessScreens (W5)', () => {
     expect(cuerpos.find((cuerpo) => String(cuerpo.url).endsWith('/esperar'))).toMatchObject({ id: 'v1', clave: 'clave', mantener: true });
   });
 
+  it('the invitation email\'s link opens «Entrar con mi correo» with that email written, even on a wide screen (José 12/11)', async () => {
+    conPantallaAncha(true);
+    servidorDeVinculacion();
+    render(<AccessScreens onReady={vi.fn()} emailHint="luis@empresa.pe" />);
+
+    expect(screen.queryByTestId('codigo-qr')).toBeNull();
+    expect(await screen.findByDisplayValue('luis@empresa.pe')).toBeInTheDocument();
+  });
+
   it('en pantalla angosta abre con el número, y se puede pasar al QR y volver', async () => {
     conPantallaAncha(false);
     servidorDeVinculacion();

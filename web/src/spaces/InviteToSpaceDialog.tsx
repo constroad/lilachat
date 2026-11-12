@@ -64,7 +64,7 @@ export function InviteToSpaceDialog(props: { space: ClientWorkspace; jwt: string
             <div className="h-[3px] bg-primary" />
             <div className="p-4">
               <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Invitar por correo</p>
-              <p className="mt-1 text-[13px] text-on-surface-variant">Entra solo al espacio cuando verifique ese correo en su perfil de Lilachat.</p>
+              <p className="mt-1 text-[13px] text-on-surface-variant">Al invitar se abre tu correo con el mensaje listo: entra con ese correo y toca «Unirme».</p>
               <form noValidate className="mt-3 flex gap-2" onSubmit={(event) => { event.preventDefault(); void inviteByEmail(); }}>
                 <input data-testid="input-correo-espacio" type="email" value={email} onChange={(event) => { setEmail(event.target.value); setEmailError(''); }} placeholder="nombre@empresa.pe" autoComplete="off" className="h-11 min-w-0 flex-1 rounded-xl border border-outline/25 bg-background px-3 text-sm outline-none focus:border-primary" />
                 <button type="submit" data-testid="btn-invitar-correo" className="flex h-11 items-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-on-primary"><Mail size={16} /> Invitar</button>

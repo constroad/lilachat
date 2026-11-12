@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { profileGateScreen, type MyProfile } from '@lilachat/shared';
 import { AdminUsersScreen } from './admin/AdminUsersScreen';
 import { AccessScreens } from './auth/AccessScreens';
-import { useEmailLink } from './auth/emailLink';
+import { useEmailHint, useEmailLink } from './auth/emailLink';
 import { CodigoParaLaApp } from './auth/CodigoParaLaApp';
 import { InstallAppScreen } from './apps/InstallAppScreen';
 import { CompleteProfileScreen } from './profile/CompleteProfileScreen';
@@ -27,6 +27,7 @@ import { ScreenLockGate } from './privacy/ScreenLockGate';
 export function App() {
   const sesion = useSesion();
   const emailLink = useEmailLink();
+  const emailHint = useEmailHint();
   // Name, birthday and a verified email are required (backlog 17): a session without them completes them first.
   const profileGate = useProfileGate({ jwt: sesion.credential?.jwt || null, userId: sesion.credential?.userId ?? null, sessionSettled: sesion.refrescoResuelto });
   // Desde la primera visita, también sin sesión (W4): así la app ya queda guardada.
@@ -35,7 +36,7 @@ export function App() {
   }, []);
   // El QR de vincular abierto con la cámara del teléfono (W5): no es una sesión, es una indicación.
   if (window.location.pathname.startsWith('/v/')) return <CodigoParaLaApp />;
-  if (!sesion.credential) return <AccessScreens onReady={sesion.entrar} emailLink={emailLink} />;
+  if (!sesion.credential) return <AccessScreens onReady={sesion.entrar} emailLink={emailLink} emailHint={emailHint} />;
   // Waiting for the profile answer: nothing, rather than the chats for an instant and then the form.
   if (profileGate.checking) return null;
   if (profileGate.incomplete) {

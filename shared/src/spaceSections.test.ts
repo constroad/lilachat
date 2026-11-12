@@ -156,12 +156,30 @@ describe('spaceInviteEmail', () => {
     expect(link).not.toContain('+');
     expect(link).toContain('%0A');
   });
-  it('invited by email (José, 22/10): addressed to that email, and verifying it in the profile is the way in; the code stays as a fallback', () => {
-    const email = spaceInviteEmail({ spaceName: 'CONSTROAD', code: 'CONS-7K3P', to: 'luis@empresa.pe' });
-    expect(email.body).toContain('En «Completa tu perfil», verifica este correo (luis@empresa.pe) y entras solo al espacio.');
-    expect(email.body).toContain('escribe: CONS-7K3P');
-    const link = spaceInviteMailto({ spaceName: 'CONSTROAD', code: 'CONS-7K3P', to: 'luis@empresa.pe' });
+  it('invited by email (José 12/11, Globofast): enter with that email and «Unirme», by device, with no phone and no profile step', () => {
+    const email = spaceInviteEmail({ spaceName: 'Globofast', code: 'GLOB-4H2K', inviterName: 'José Zamora', to: 'luis@empresa.pe' });
+    expect(email.body).toContain('Entra con este correo (luis@empresa.pe): te llega un código y listo. No hay contraseña.');
+    expect(email.body).toContain('En Android: descarga la app en https://lilastore.constroad.com/app/lilachat');
+    expect(email.body).toContain('En iPhone: abre https://lilachat.constroad.com/?d=luis%40empresa.pe en Safari y toca Compartir › «Agregar a inicio».');
+    expect(email.body).toContain('En la computadora: https://lilachat.constroad.com/?d=luis%40empresa.pe');
+    expect(email.body).toContain('Toca «Unirme» en Globofast. La primera vez te pide tu nombre.');
+    expect(email.body).not.toMatch(/número de celular|Completa tu perfil/);
+    const link = spaceInviteMailto({ spaceName: 'Globofast', code: 'GLOB-4H2K', to: 'luis@empresa.pe' });
     expect(link.startsWith('mailto:luis%40empresa.pe?subject=')).toBe(true);
+  });
+  it('without an email (the code by mail), the same three devices, entering with the phone and the code', () => {
+    const body = spaceInviteEmail({ spaceName: 'CONSTROAD', code: 'CONS-7K3P' }).body;
+    expect(body).toContain('En Android: descarga la app en https://lilastore.constroad.com/app/lilachat');
+    expect(body).toContain('En iPhone: abre https://lilachat.constroad.com en Safari y toca Compartir › «Agregar a inicio».');
+    expect(body).toContain('Entra con tu número de celular');
+  });
+});
+
+describe('spaceInviteMessage by device (José 12/11: the APK for Android, the web for iPhone)', () => {
+  it('tells Android and iPhone apart', () => {
+    const text = spaceInviteMessage({ spaceName: 'Globofast', code: 'GLOB-4H2K' });
+    expect(text).toContain('En Android: https://lilastore.constroad.com/app/lilachat');
+    expect(text).toContain('En iPhone: abre https://lilachat.constroad.com en Safari y toca Compartir › «Agregar a inicio».');
   });
 });
 

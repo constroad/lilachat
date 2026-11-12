@@ -102,7 +102,7 @@ export function InviteToSpaceScreen(props: { space: ClientWorkspace | null; jwt:
               <View className="h-[3px] bg-primary" />
               <View className="p-4">
                 <Text className="text-[12px] font-bold uppercase tracking-widest text-on-surface-variant">Invitar por correo</Text>
-                <Text className="mt-1 text-[14px] text-on-surface-variant">Entra solo al espacio cuando verifique ese correo en su perfil de Lilachat.</Text>
+                <Text className="mt-1 text-[14px] text-on-surface-variant">Al invitar se abre tu correo con el mensaje listo: entra con ese correo y toca «Unirme».</Text>
                 <View className="mt-3 flex-row gap-3">
                   <TextInput testID="input-correo-espacio" value={email} onChangeText={(value) => { setEmail(value); setEmailError(''); }} keyboardType="email-address" autoCapitalize="none" autoCorrect={false} placeholder="nombre@empresa.pe" placeholderTextColor={colors['on-surface-variant']} className="min-h-[52px] flex-1 rounded-xl border border-outline/25 px-3 text-[16px] text-on-surface" />
                   <Pressable testID="btn-invitar-correo" onPress={() => void inviteByEmail()} className="min-h-[52px] flex-row items-center justify-center gap-2 rounded-xl bg-primary px-4">

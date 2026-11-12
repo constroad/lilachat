@@ -15,8 +15,8 @@ type SignedIn = { jwt: string; user: { id: string; name: string | null; phone: s
  * the email and its code first, like Slack; the phone and the QR stay one click
  * away, and a discreet link keeps the personal use.
  */
-export function EmailSignIn(props: { onVerified: (credential: Credential, email: string) => void; onUsePhone: () => void; onUsePersonal: () => void; onUseQr: () => void; link?: EmailLink | null }) {
-  const [rawEmail, setRawEmail] = useState(props.link?.email ?? '');
+export function EmailSignIn(props: { onVerified: (credential: Credential, email: string) => void; onUsePhone: () => void; onUsePersonal: () => void; onUseQr: () => void; link?: EmailLink | null; initialEmail?: string }) {
+  const [rawEmail, setRawEmail] = useState(props.link?.email ?? props.initialEmail ?? '');
   const [openLink, setOpenLink] = useState(props.link ?? null);
   const [sent, setSent] = useState(false);
   const [code, setCode] = useState('');

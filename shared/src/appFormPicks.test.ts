@@ -21,13 +21,13 @@ const expenseForm = (rowFields: Record<string, unknown>, required: string[] = ['
   },
 });
 const listOf = (form: AppForm) => formFields(form).find((field) => field.name === 'partidas') as Extract<FormField, { kind: 'list' }>;
-const monto = { monto: { type: 'number', title: 'Monto', exclusiveMinimum: 0, 'x-unit': 'S/', 'x-width': 'half' } };
+const amountField = { monto: { type: 'number', title: 'Monto', exclusiveMinimum: 0, 'x-unit': 'S/', 'x-width': 'half' } };
 
 describe('a list keyed by one choice (the expense partidas)', () => {
   it('is picked by its choice, one row per option at most, for «Partes iguales» and «A mano»', () => {
     // Act
     const equal = listOf(expenseForm({}));
-    const byHand = listOf(expenseForm(monto, ['partidaId', 'monto']));
+    const byHand = listOf(expenseForm(amountField, ['partidaId', 'monto']));
     // Assert
     expect(equal).toMatchObject({ kind: 'list', pickBy: 'partidaId', min: 1, max: 3 });
     expect(byHand).toMatchObject({ kind: 'list', pickBy: 'partidaId', max: 3 });
@@ -47,7 +47,7 @@ describe('a list keyed by one choice (the expense partidas)', () => {
 
   it('a tick adds the row in the options order and a second tick takes it out, keeping the other amounts', () => {
     // Arrange
-    const field = listOf(expenseForm(monto, ['partidaId', 'monto']));
+    const field = listOf(expenseForm(amountField, ['partidaId', 'monto']));
     // Act
     const two = togglePick(field, togglePick(field, [], 'p3'), 'p1');
     const typed = two.map((row) => (row.partidaId === 'p3' ? { ...row, monto: 40 } : row));
@@ -70,7 +70,7 @@ describe('a list keyed by one choice (the expense partidas)', () => {
 
   it('sends the rows as agentes reads them, and asks the amount of each ticked one by hand', () => {
     // Arrange
-    const fields = formFields(expenseForm(monto, ['partidaId', 'monto']));
+    const fields = formFields(expenseForm(amountField, ['partidaId', 'monto']));
     // Act
     const missing = validateFormValues(fields, { reparto: 'A mano', partidas: [{ partidaId: 'p1', monto: 50 }, { partidaId: 'p2' }] });
     const sent = validateFormValues(fields, { reparto: 'A mano', partidas: [{ partidaId: 'p1', monto: '50' }, { partidaId: 'p2', monto: 30.5 }] });

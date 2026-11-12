@@ -21,4 +21,30 @@ describe('loadChunkOrReload', () => {
     await expect(loadChunkOrReload(failing, reload)).rejects.toThrow('dynamically imported');
     expect(reload).toHaveBeenCalledTimes(1);
   });
+
+  /**
+   * E2E 12/11: the work map crashed the app. A deploy had reloaded the tab hours before, no other
+   * piece loaded since, so the mark stayed and the next deploy's stale chunk went up as an error.
+   */
+  it('a reload long ago does not count: the next deploy reloads again', async () => {
+    // Arrange
+    const reload = vi.fn();
+    const failing = async () => { throw new TypeError('Failed to fetch dynamically imported module'); };
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-11-12T09:00:00-05:00') });
+    void loadChunkOrReload(failing, reload);
+    await vi.waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+    // Act
+    vi.setSystemTime(new Date('2026-11-12T10:53:00-05:00'));
+    void loadChunkOrReload(failing, reload);
+    // Assert
+    await vi.waitFor(() => expect(reload).toHaveBeenCalledTimes(2));
+    vi.useRealTimers();
+  });
+
+  it('an old mark of the previous version («1») is read as long ago', async () => {
+    window.sessionStorage.setItem('lilachat.chunk-reloaded', '1');
+    const reload = vi.fn();
+    void loadChunkOrReload(async () => { throw new TypeError('Failed to fetch dynamically imported module'); }, reload);
+    await vi.waitFor(() => expect(reload).toHaveBeenCalledTimes(1));
+  });
 });

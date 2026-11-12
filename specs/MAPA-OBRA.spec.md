@@ -669,6 +669,9 @@ ver «Borrados»; cubierto solo por test).
   ya había reemplazado. El mapa usaba `lazy` pelado y no `lazyChunk`, que recarga una vez (José
   30/10, mismo caso con los emojis). Ahora los dos usos del lienzo pasan por `lazyChunk`, y
   `web/src/ui/lazyChunkUsage.test.ts` falla si alguien vuelve a escribir `lazy(() => import(…))`.
+- **Se volvió a caer el 12/11, ya con `lazyChunk`.** La marca de «ya recargué» no vencía: una
+  recarga de horas antes hacía que el deploy siguiente subiera el error. Ahora vence al minuto
+  (`ARCHITECTURE.spec.md`, «Abrir el panel de emojis rompía la web»).
 
 ### Informe visual para el cliente: diseño Stitch contra los PDF de hoy (José 08/11)
 

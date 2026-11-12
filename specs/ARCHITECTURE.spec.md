@@ -6326,6 +6326,10 @@ José pidió los diez en una sola iteración. Lo que cambió:
     `stickers/` (`staleAssets.ts`).
   - Web: `lazyChunk` recarga una sola vez (marca en `sessionStorage`) y, si
     vuelve a fallar, lanza el error.
+  - La marca guarda la HORA de la recarga y vale un minuto (E2E 12/11).
+    Antes era «1» y solo se borraba cuando cargaba otra pieza. Si no cargaba
+    ninguna, el chunk viejo del deploy siguiente iba directo a «Algo falló».
+    Así se cayó el mapa de obra dos veces el 12/11.
 - **«:hug» sugiere emojis (web y app).** `emojiShortcode.ts` en shared:
   `shortcodeAt`, `searchEmojis` e `insertShortcodeEmoji`.
   - La tabla de nombres (en + es, de emoji-picker-react 4.22.3) vive en

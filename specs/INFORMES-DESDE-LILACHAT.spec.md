@@ -1314,4 +1314,15 @@ Encontrado y arreglado en el camino:
   solo la lista lateral pedía los clientes. Ahora el canal los pide una vez.
 - El título del formulario decía «Punto · Punto»; ahora «Punto 1».
 
-Sin verificar: el recorrido en el APK (emulador cedido a Lilaspeak).
+### E2E de CON-CAP en el APK (12/11, emulador, OTA 7e6d1ff3)
+
+Mismo borrador, abierto en el APK 0.1.182 (versionCode 183) con la OTA
+7e6d1ff3 (git f390130). GPS del emulador sobre Jr. Comercio. «Agregar punto»
+abrió el formulario «Punto» (ya no «Punto · Punto»). Leyó el GPS solo
+(± 5 m), eligió «Jr. Comercio a 4 m» y puso 0+133. Solo se escribió la
+densidad (2.21). Portal calculó 98,2 %. Smoke de 3 aperturas en frío limpio
+antes y después de la OTA.
+
+Limpieza: el informe QA 6af5d892964a44515e18e561 no se puede borrar desde
+Lilachat ni desde el editor embebido; solo desde la pestaña «Informes» del
+admin de Portal. Se le pidió a la sesión de Portal.

@@ -15962,3 +15962,15 @@ Fallas que encontró, arregladas en el mismo cambio:
 - Un miembro del espacio que recibe no puede unirse solo desde «Explorar canales» a un canal público compartido: alguien del canal lo agrega.
 - El cargo y el rol de un externo no salen en el canal; sale el nombre de su espacio.
 - Compartir por código con un espacio del que no se es miembro.
+
+
+### Modo claro opción A (José 12/11: «muy triste, muy blanco»)
+
+José eligió la opción A de tres (Stitch `screens/325c51357491444f80d3913acfe41738`; B y C
+dibujadas sobre su HTML). Tokens nuevos en `shared/src/tokens.ts`, claro y oscuro: `rail`
+(tinta violeta `#1e1338`), `onRail`, `railActive` (cuadro blanco), `onRailActive`,
+`listBackground` (lila `#f3effc`). En oscuro no cambia el aspecto. El riel de la web
+(`AppRail`, `SpacesRail`) y las listas (`ChatList`, `SpaceChatList`) los usan; la fila
+abierta es una tarjeta blanca con sombra corta; la cabecera del chat pasó de
+`bg-primary/5` (se veía transparente) a superficie blanca con borde y sombra. La APK no
+tiene riel en el teléfono: queda igual.

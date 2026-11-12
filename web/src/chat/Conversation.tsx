@@ -299,7 +299,7 @@ function CabeceraDeLaConversacion(props: { chat: ChatSummary; /** A client's cha
   // A channel of a space reads as Slack's: «#planta-web».
   const title = chat.channel && !props.isClient ? `#${chat.name ?? ''}` : (chat.name ?? chat.phone ?? 'Conversación');
   return (
-    <header className="flex items-center gap-3 border-b border-outline/15 bg-primary/5 px-4 py-3">
+    <header className="relative z-10 flex items-center gap-3 border-b border-outline/15 bg-surface px-4 py-3 shadow-sm">
       {props.showBack ? (
         <button type="button" data-testid="btn-volver" aria-label="Volver" onClick={props.onBack} className="grid h-11 w-11 place-items-center rounded-full text-on-surface-variant hover:bg-surface">
           <ArrowLeft size={20} />

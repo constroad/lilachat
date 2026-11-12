@@ -40,6 +40,15 @@ export const vividPulse = {
        */
       chatBackground: '#f3f1fb',
       /**
+       * Light mode option A (José 12/11: «muy triste, muy blanco»): the rail in violet ink with
+       * light icons and the active one in a white square; the list on a light lilac.
+       */
+      rail: '#1e1338',
+      onRail: '#cbc2e8',
+      railActive: '#ffffff',
+      onRailActive: '#6b38d4',
+      listBackground: '#f3effc',
+      /**
        * La propia es violeta SÓLIDO con texto blanco (FL13; diseño FL6 de
        * Stitch). La lavanda clara con texto oscuro era el diseño viejo de FL3.
        */
@@ -121,6 +130,12 @@ export const vividPulse = {
       error: '#ffb4ab',
       /** En oscuro la propia es violeta PROFUNDO: una lavanda clara deslumbra. */
       chatBackground: '#0b1222',
+      /** Dark keeps its look: the rail a bit deeper than the background, the list the usual surface. */
+      rail: '#0b1222',
+      onRail: '#a8b0c6',
+      railActive: '#253048',
+      onRailActive: '#e7e9f3',
+      listBackground: '#1a2337',
       bubbleOwn: '#3b2a6b',
       onBubbleOwn: '#f1ecff',
       onBubbleOwnMuted: '#b9addf',

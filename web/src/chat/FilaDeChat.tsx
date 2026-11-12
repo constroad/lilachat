@@ -24,7 +24,7 @@ export function ChatRow(props: { chat: ChatSummary; yo?: string; seleccionado: b
         data-testid={`chat-${chat.id}`}
         aria-current={props.seleccionado}
         onClick={props.onSelect}
-        className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${props.seleccionado ? 'bg-primary/10' : 'hover:bg-background'}`}
+        className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${props.seleccionado ? 'bg-surface shadow-sm dark:bg-primary/10 dark:shadow-none' : 'hover:bg-background'}`}
       >
         {/* El chat contigo («Tú») va como una persona, no con la libreta del borrador. */}
         <Avatar name={chat.name ?? chat.phone} kind={chat.propio ? 'direct' : chat.kind} online={chat.propio ? undefined : chat.online} foto={chat.avatarUrl} />

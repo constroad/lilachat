@@ -27,6 +27,12 @@ const PALETTE = {
   error: 'error',
   'on-primary': 'onPrimary',
   'chat-bg': 'chatBackground',
+  // Light mode option A (José 12/11): the rail in violet ink, the list on a light lilac.
+  rail: 'rail',
+  'on-rail': 'onRail',
+  'rail-active': 'railActive',
+  'on-rail-active': 'onRailActive',
+  list: 'listBackground',
   'en-linea': 'online',
   // Read checks (José, 22/10: in dark mode «read» looked like «delivered»): the app's blue, light and dark.
   'check-leido': 'readTick',

@@ -134,7 +134,7 @@ export function ChatList({
   return (
     <aside
       data-testid="panel-lista"
-      className={`flex h-full w-full min-w-0 flex-col bg-surface ${width ? 'shrink-0' : 'border-r border-outline/15 md:w-[340px] md:shrink-0 lg:w-[400px]'}`}
+      className={`flex h-full w-full min-w-0 flex-col bg-list ${width ? 'shrink-0' : 'border-r border-outline/15 md:w-[340px] md:shrink-0 lg:w-[400px]'}`}
       style={width ? { width } : undefined}
     >
       <header className="flex items-center gap-2 px-4 py-3">

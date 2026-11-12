@@ -92,7 +92,7 @@ export function SpaceChatList(props: Props) {
   };
 
   return (
-    <aside data-testid="panel-espacio" className={`flex h-full w-full min-w-0 flex-col bg-surface ${props.width ? 'shrink-0' : 'border-r border-outline/15 md:w-[340px] md:shrink-0 lg:w-[400px]'}`} style={props.width ? { width: props.width } : undefined}>
+    <aside data-testid="panel-espacio" className={`flex h-full w-full min-w-0 flex-col bg-list ${props.width ? 'shrink-0' : 'border-r border-outline/15 md:w-[340px] md:shrink-0 lg:w-[400px]'}`} style={props.width ? { width: props.width } : undefined}>
       <header className="flex items-center gap-2 px-4 py-3">
         <SpaceTitleMenu space={space} onOpen={props.onWorkspace} onSwitch={props.onSwitch} phone={props.phone} elsewhere={props.elsewhere} />
         {props.jwt ? <SpaceQuickActions jwt={props.jwt} spaceId={space.id} spaceName={space.name} /> : null}
@@ -226,7 +226,7 @@ function ChannelRow(props: { chat: ChatSummary; open: boolean; onOpen: () => voi
   const unread = chat.unread > 0;
   const Icon = chat.channel?.visibility === 'private' ? Lock : Hash;
   return (
-    <button type="button" data-testid={`canal-fila-${chat.id}`} aria-current={props.open} onClick={props.onOpen} className={`flex h-10 w-full items-center gap-2.5 px-4 text-left ${props.open ? 'bg-primary/10 text-primary' : 'hover:bg-background'}`}>
+    <button type="button" data-testid={`canal-fila-${chat.id}`} aria-current={props.open} onClick={props.onOpen} className={`flex h-10 w-full items-center gap-2.5 px-4 text-left ${props.open ? 'bg-surface shadow-sm dark:bg-primary/10 dark:shadow-none text-primary' : 'hover:bg-background'}`}>
       <Icon size={16} className={unread || props.open ? 'text-primary' : 'text-on-surface-variant'} />
       <span className={`min-w-0 flex-1 truncate text-sm ${unread ? 'font-bold' : ''}`}>{chat.name}</span>
       {chat.channel?.shared || chat.sharedFrom ? <Link2 size={13} aria-label="Compartido con otros espacios" className="shrink-0 text-on-surface-variant" /> : null}

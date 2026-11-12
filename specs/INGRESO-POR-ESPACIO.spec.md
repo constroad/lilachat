@@ -210,3 +210,29 @@ código llevaban el mismo botón equivocado desde agosto.
   con mi correo»), que cubre `emailHintOf` en test.
 - Las dos invitaciones QA se retiraron desde «Miembros y roles › Invitados».
 
+
+## 10. Superadmin oculto (José 12/11, Globofast)
+
+José da soporte en Globofast cerca de una semana como dueño (superadmin). Él
+agrega a la gente y luego deja a su hermana como admin. Los miembros no deben
+verlo en el espacio. Es temporal: después pedirá que lo saquen.
+
+- **El dato:** `hidden: true` en su `WorkspaceMember` de ese espacio. Solo se
+  pone por la base: no hay pantalla, porque es un caso de soporte.
+- **Qué deja de ver el resto** (`server/src/hiddenMembers.ts`): el directorio
+  y «Miembros y roles», también para un admin. Tampoco lo cuentan el selector
+  de espacios, la vista previa del código ni los canales. No sale en las
+  personas de un canal o grupo, en las menciones ni en «Info» del mensaje.
+  No cuenta para el doble check, no sale en «Agregar personas» de un canal
+  compartido ni como admin para «Hablar con un admin».
+- **Tampoco lo nombra:** «Te agregó José» queda sin nombre. El correo dice
+  «Te invitaron a Lilachat · Globofast». «Tus espacios» no dice quién invitó.
+- **Él sí ve todo**, a sí mismo incluido, y el conteo lo incluye solo para él.
+- **Lo que sigue a la vista**, a propósito: sus mensajes firmados y su
+  «escribiendo». Un 1:1 con él lo muestra, porque es la conversación con él.
+  Los avisos de chat que él dispara («José agregó a Ana» en un canal) también.
+  La API de apps (`GET /api/bots/members`) lo sigue listando: una app necesita
+  saber quién aprueba.
+- **Quitarlo:** pasar a la hermana a admin desde «Miembros y roles» y luego
+  sacarlo. Si se quiere solo mostrarlo, `$unset: { hidden: 1 }`.
+- **Test:** `server/src/hiddenMember.test.ts` (7 casos).

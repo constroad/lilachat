@@ -5,6 +5,7 @@ import { normalizeEmail } from './invitationGate.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { UserModel } from './models.js';
 import { WorkspaceEmailInviteModel, WorkspaceMemberModel, WorkspaceModel, type WorkspaceMember } from './workspaceModels.js';
+import { hiddenInSpace, hiddenMembersOf } from './hiddenMembers.js';
 import { welcomeToGeneral } from './workspaceGeneral.js';
 import { noticeSpacesChanged } from './workspaceNotices.js';
 import { actorIn, cleanText, ONLY_ADMINS, WorkspaceError } from './workspaces.js';
@@ -50,10 +51,11 @@ const MAIL_FAILED = 'La invitación quedó guardada, pero el correo no salió. T
  * José 12/11: «¿por qué me abre el correo de la Mac? yo no lo voy a hacer». Lilachat sends the
  * email itself, through constroad-auth: the space, who invites, the role and the button to the web.
  */
-async function mailInvitation(send: InvitationMailer, workspaceId: Types.ObjectId, actorId: Types.ObjectId, to: string, fields: MemberFields) {
+async function mailInvitation(send: InvitationMailer, workspaceId: Types.ObjectId, actor: Pick<WorkspaceMember, 'userId' | 'hidden'>, to: string, fields: MemberFields) {
+  // A hidden member invites unnamed: «Te invitaron a Lilachat · Globofast» (`hiddenMembers.ts`).
   const [space, inviter] = await Promise.all([
     WorkspaceModel.findById(workspaceId).select('name').lean(),
-    UserModel.findById(actorId).select('name').lean(),
+    actor.hidden ? null : UserModel.findById(actor.userId).select('name').lean(),
   ]);
   const mail: SpaceInvitationMail = { to, spaceName: space?.name ?? '', ...(inviter?.name ? { inviterName: inviter.name } : {}), ...(fields.title ? { role: fields.title } : {}) };
   const sent = await send(mail);
@@ -76,7 +78,7 @@ export async function inviteByEmail(workspaceId: string, actorId: Types.ObjectId
     { $set: fields, $setOnInsert: { addedBy: actorId } },
     { upsert: true, returnDocument: 'after' }
   ).lean();
-  return { id: String(invite!._id), email, status: 'invited' as const, ...(await mailInvitation(send, actor.workspaceId, actorId, email, fields)) };
+  return { id: String(invite!._id), email, status: 'invited' as const, ...(await mailInvitation(send, actor.workspaceId, actor, email, fields)) };
 }
 
 /** The «Invitados» list shows the emails waiting too, next to the phones. */
@@ -122,9 +124,10 @@ export async function invitationsOf(userId: Types.ObjectId): Promise<SpaceInvita
   const account = await verifiedAccount(userId);
   if (!account?.email) return [];
   const invites = await WorkspaceEmailInviteModel.find({ email: account.email }).sort({ createdAt: 1 }).lean();
-  const [workspaces, inviters] = await Promise.all([
+  const [workspaces, inviters, hidden] = await Promise.all([
     WorkspaceModel.find({ _id: { $in: invites.map((invite) => invite.workspaceId) } }).select('name logoUrl').lean(),
     UserModel.find({ _id: { $in: invites.map((invite) => invite.addedBy) } }).select('name').lean(),
+    hiddenMembersOf(invites.map((invite) => invite.workspaceId)),
   ]);
   const spaces = new Map(workspaces.map((workspace) => [String(workspace._id), workspace]));
   const names = new Map(inviters.map((inviter) => [String(inviter._id), inviter.name]));
@@ -132,7 +135,7 @@ export async function invitationsOf(userId: Types.ObjectId): Promise<SpaceInvita
     const space = spaces.get(String(invite.workspaceId));
     if (!space) return [];
     const logoUrl = space.logoUrl ? toAbsoluteMediaUrl(space.logoUrl) : undefined;
-    return [{ id: String(invite._id), workspace: { id: String(space._id), name: space.name, ...(logoUrl ? { logoUrl } : {}) }, invitedBy: names.get(String(invite.addedBy)) ?? null }];
+    return [{ id: String(invite._id), workspace: { id: String(space._id), name: space.name, ...(logoUrl ? { logoUrl } : {}) }, invitedBy: hiddenInSpace(hidden, invite.workspaceId, String(userId)).has(String(invite.addedBy)) ? null : (names.get(String(invite.addedBy)) ?? null) }];
   });
 }
 

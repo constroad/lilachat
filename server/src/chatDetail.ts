@@ -5,6 +5,7 @@ import { spaceIdsWithAccess, viewingSpacesOf } from './sharedChannels.js';
 import { UserModel } from './models.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { WorkspaceMemberModel, WorkspaceModel } from './workspaceModels.js';
+import { hiddenInChat, hiddenMembersOf } from './hiddenMembers.js';
 import { GENERAL_CHANNEL } from './workspaceGeneral.js';
 
 /** Pending 17: my own routines in this chat, only for me; nothing when there are none. */
@@ -66,10 +67,16 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId, viewing
   if (!Types.ObjectId.isValid(chatId)) return null;
   const chat = await ChatModel.findOne({ _id: chatId, 'members.userId': userId }).lean();
   if (!chat) return null;
-  const ids = chat.members.map((m) => m.userId);
-  const people = await UserModel.find({ _id: { $in: ids } })
-    .select('name phone avatarUrl app')
-    .lean<{ _id: unknown; name?: string; phone: string; avatarUrl?: string; app?: unknown }[]>();
+  // A hidden member of the space is not among the people the others see (`hiddenMembers.ts`).
+  const [hiddenBySpace, people] = await Promise.all([
+    hiddenMembersOf(chat.kind === 'direct' ? [] : [chat.workspaceId]),
+    UserModel.find({ _id: { $in: chat.members.map((m) => m.userId) } })
+      .select('name phone avatarUrl app')
+      .lean<{ _id: unknown; name?: string; phone: string; avatarUrl?: string; app?: unknown }[]>(),
+  ]);
+  const hidden = hiddenInChat(hiddenBySpace, chat, String(userId));
+  const shownMembers = chat.members.filter((m) => !hidden.has(String(m.userId)));
+  const ids = shownMembers.map((m) => m.userId);
   const personById = new Map(people.map((person) => [String(person._id), person]));
   const { spaceMemberById, homes } = await spaceSideOf(chat, ids, viewingSpaceId);
   // In a 1:1 the photo IS the other person's profile photo (FL9), as in the list.
@@ -98,7 +105,7 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId, viewing
     ...muteStateOf(chat.members.find((m) => String(m.userId) === String(userId))),
     avisos: notificationLevel(chat.members.find((m) => String(m.userId) === String(userId)) ?? {}),
     avatarUrl: photo ? toAbsoluteMediaUrl(photo) : undefined,
-    members: chat.members.map((m) => {
+    members: shownMembers.map((m) => {
       const person = personById.get(String(m.userId));
       const inSpace = spaceMemberById.get(String(m.userId));
       return {

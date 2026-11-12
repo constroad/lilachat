@@ -7,6 +7,7 @@ import { avisarCambioDeChat } from './reparto.js';
 import { actorIn, WorkspaceError } from './workspaces.js';
 import { WorkspaceModel } from './workspaceModels.js';
 import { ensureGeneralChannel } from './workspaceGeneral.js';
+import { hiddenInSpace, hiddenMembersOf } from './hiddenMembers.js';
 import { noticeChannelJoined } from './workspaceNotices.js';
 import { endSharesOfChannel } from './sharedChannels.js';
 
@@ -18,13 +19,13 @@ import { endSharesOfChannel } from './sharedChannels.js';
  */
 const asVisibility = (value: unknown): ChannelVisibility => (value === 'private' ? 'private' : 'public');
 
-export function toClientChannel(chat: Pick<Chat, '_id' | 'name' | 'descripcion' | 'channel' | 'members'>, userId: Types.ObjectId) {
+export function toClientChannel(chat: Pick<Chat, '_id' | 'name' | 'descripcion' | 'channel' | 'members'>, userId: Types.ObjectId, hidden: ReadonlySet<string> = new Set()) {
   return {
     id: String(chat._id),
     name: chat.name ?? '',
     descripcion: chat.descripcion,
     visibility: chat.channel?.visibility ?? 'public',
-    members: chat.members.length,
+    members: chat.members.filter((member) => !hidden.has(String(member.userId))).length,
     joined: chat.members.some((member) => String(member.userId) === String(userId)),
   };
 }
@@ -56,15 +57,19 @@ export async function listChannels(workspaceId: string, userId: Types.ObjectId) 
   const actor = await actorIn(workspaceId, userId);
   // A space from before #general (22/10) gets it here, with everyone already active.
   await ensureGeneralChannel(actor.workspaceId);
-  const chats = await ChatModel.find({
-    workspaceId: actor.workspaceId,
-    'channel.visibility': { $exists: true },
-    $or: [{ 'channel.visibility': 'public' }, { 'members.userId': userId }],
-  })
-    .select('name descripcion channel members.userId')
-    .sort({ name: 1 })
-    .lean<Chat[]>();
-  return chats.map((chat) => toClientChannel(chat, userId));
+  const [chats, hiddenBySpace] = await Promise.all([
+    ChatModel.find({
+      workspaceId: actor.workspaceId,
+      'channel.visibility': { $exists: true },
+      $or: [{ 'channel.visibility': 'public' }, { 'members.userId': userId }],
+    })
+      .select('name descripcion channel members.userId')
+      .sort({ name: 1 })
+      .lean<Chat[]>(),
+    hiddenMembersOf([actor.workspaceId]),
+  ]);
+  const hidden = hiddenInSpace(hiddenBySpace, actor.workspaceId, String(userId));
+  return chats.map((chat) => toClientChannel(chat, userId, hidden));
 }
 
 export async function joinChannel(workspaceId: string, userId: Types.ObjectId, chatId: string) {

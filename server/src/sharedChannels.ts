@@ -230,7 +230,8 @@ export async function channelPeople(viewingId: string, actorId: Types.ObjectId, 
   if (!chat?.workspaceId) throw new WorkspaceError(404, NO_CHANNEL);
   const spaceIds = await spaceIdsWithAccess(chat);
   const [rows, spaces] = await Promise.all([
-    WorkspaceMemberModel.find({ workspaceId: { $in: spaceIds }, status: 'active', userId: { $exists: true } }).select('workspaceId userId phone').lean(),
+    // A hidden member is offered only to himself (`hiddenMembers.ts`).
+    WorkspaceMemberModel.find({ workspaceId: { $in: spaceIds }, status: 'active', userId: { $exists: true }, $or: [{ hidden: { $ne: true } }, { userId: actorId }] }).select('workspaceId userId phone').lean(),
     WorkspaceModel.find({ _id: { $in: spaceIds } }).select('name').lean(),
   ]);
   const names = new Map(spaces.map((space) => [String(space._id), space.name]));

@@ -6,6 +6,7 @@ import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { fijadosParaLaLista, type FijadoEnLista } from './mensajesFijados.js';
 import { sharedChatIdsInto } from './sharedChannels.js';
 import { WorkspaceModel } from './workspaceModels.js';
+import { hiddenInChat, hiddenMembersOf } from './hiddenMembers.js';
 
 /**
  * La lista de chats de una persona: la primera pantalla de la app. Salió de
@@ -134,7 +135,7 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
   // mensaje de todos los chats sale de UNA agregación sobre el índice
   // {chatId, seq} —antes era un `findOne` por chat—, y los nombres van en el
   // mismo viaje en vez de esperar a los otros dos.
-  const [allReceipts, ultimos, otros, fijados, yoUsuario] = await Promise.all([
+  const [allReceipts, ultimos, otros, fijados, yoUsuario, hiddenBySpace] = await Promise.all([
     ReceiptModel.find({ chatId: { $in: chatIds } }).lean(),
     MessageModel.aggregate<{ _id: Types.ObjectId; ultimo: Message }>([
       { $match: { chatId: { $in: chatIds } } },
@@ -146,6 +147,8 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
     fijadosParaLaLista(chats, userId),
     // R31/10: my «Confirmaciones de lectura»; off, I do not see the others' «leído» in a 1:1 either.
     UserModel.findById(userId).select('readReceiptsOff').lean(),
+    // A hidden member of a space is not among the others' people nor their checks (`hiddenMembers.ts`).
+    hiddenMembersOf(chats.flatMap((chat) => (chat.kind === 'direct' ? [] : [chat.workspaceId]))),
   ]);
   const ultimoPorChat = new Map(ultimos.map((fila) => [String(fila._id), fila.ultimo]));
   const lastMessages = chats.map((chat) => ultimoPorChat.get(String(chat._id)) ?? null);
@@ -181,9 +184,9 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
 
   return visibles.map(({ chat, last }) => {
     // El subdoc de ESTE usuario: de ahí salen sus flags de silenciado/fijado.
-    const acusan = chat.members
-      .map((member) => String(member.userId))
-      .filter((id) => id !== String(userId) && telefonos.get(id) !== TELEFONO_DE_LILA);
+    const hidden = hiddenInChat(hiddenBySpace, chat, String(userId));
+    const shownIds = chat.members.map((member) => String(member.userId)).filter((id) => !hidden.has(id));
+    const acusan = shownIds.filter((id) => id !== String(userId) && telefonos.get(id) !== TELEFONO_DE_LILA);
     const acuses = acusesPorChat.get(String(chat._id));
     const yo = chat.members.find((member) => String(member.userId) === String(userId));
     const otroId =
@@ -221,7 +224,7 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
       pinned: yo?.pinned === true,
       archived: yo?.archived === true,
       markedUnread: yo?.markedUnread === true,
-      memberIds: chat.members.map((member) => String(member.userId)),
+      memberIds: shownIds,
       acuseDe: acusan,
       lastSeq: chat.lastSeq,
       readSeq: readByChat.get(String(chat._id)) ?? 0,

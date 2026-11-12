@@ -3,6 +3,7 @@ import { resolveDeliveryState, TELEFONO_DE_LILA, type DeliveryState } from '@lil
 import { ChatModel, MessageModel, ReceiptModel } from './chatModels.js';
 import { UserModel } from './models.js';
 import { anyHidesRead } from './readPrivacy.js';
+import { hiddenInChat, hiddenMembersOf } from './hiddenMembers.js';
 
 export type MiembroDeInfo = { id: string; name: string | null; phone: string | null; estado: DeliveryState };
 
@@ -22,14 +23,16 @@ export async function infoDeMensaje(params: {
   }
   const chatId = new Types.ObjectId(params.chatId);
   const [chat, mensaje] = await Promise.all([
-    ChatModel.findOne({ _id: chatId, 'members.userId': params.quien }).select('kind members.userId').lean(),
+    ChatModel.findOne({ _id: chatId, 'members.userId': params.quien }).select('kind workspaceId members.userId').lean(),
     MessageModel.findOne({ chatId, seq: params.seq }).select('senderId').lean(),
   ]);
   if (!chat || !mensaje || String(mensaje.senderId) !== String(params.quien)) {
     return { ok: false, motivo: 'No encontramos ese mensaje.' };
   }
 
-  const otros = chat.members.map((member) => member.userId).filter((id) => String(id) !== String(params.quien));
+  // A hidden member of the space is not told among who read it (`hiddenMembers.ts`).
+  const hidden = hiddenInChat(await hiddenMembersOf(chat.kind === 'direct' ? [] : [chat.workspaceId]), chat, String(params.quien));
+  const otros = chat.members.map((member) => member.userId).filter((id) => String(id) !== String(params.quien) && !hidden.has(String(id)));
   const [personas, acuses] = await Promise.all([
     UserModel.find({ _id: { $in: otros } }).select('name phone').lean(),
     ReceiptModel.find({ chatId, userId: { $in: otros } }).select('userId readSeq deliveredSeq').lean(),

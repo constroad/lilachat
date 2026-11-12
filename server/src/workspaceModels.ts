@@ -58,6 +58,8 @@ export type WorkspaceMember = {
   area?: string;
   addedBy?: Types.ObjectId;
   joinedAt?: Date;
+  /** Seen only by himself (José 12/11: a superadmin supporting the space for a while; `hiddenMembers.ts`). */
+  hidden?: boolean;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -90,6 +92,7 @@ const memberSchema = new Schema<WorkspaceMember>(
     area: { type: String, trim: true, maxlength: 40 },
     addedBy: { type: Schema.Types.ObjectId },
     joinedAt: { type: Date },
+    hidden: { type: Boolean },
   },
   { timestamps: true }
 );

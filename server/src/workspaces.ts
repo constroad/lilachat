@@ -83,7 +83,7 @@ async function workspaceByCode(code: unknown): Promise<Workspace> {
 
 export async function previewByCode(code: unknown) {
   const workspace = await workspaceByCode(code);
-  const members = await WorkspaceMemberModel.countDocuments({ workspaceId: workspace._id, status: 'active' });
+  const members = await WorkspaceMemberModel.countDocuments({ workspaceId: workspace._id, status: 'active', hidden: { $ne: true } });
   return { id: String(workspace._id), name: workspace.name, rubro: workspace.rubro, logoUrl: workspace.logoUrl ? toAbsoluteMediaUrl(workspace.logoUrl) : undefined, members, joinPolicy: workspace.joinPolicy };
 }
 
@@ -108,20 +108,22 @@ export async function joinByCode(userId: Types.ObjectId, code: unknown): Promise
 }
 
 export async function myWorkspaces(userId: Types.ObjectId) {
-  const memberships = await WorkspaceMemberModel.find({ userId, status: { $in: ['active', 'pending', 'deactivated'] } }).select('workspaceId role status addedBy').lean();
+  const memberships = await WorkspaceMemberModel.find({ userId, status: { $in: ['active', 'pending', 'deactivated'] } }).select('workspaceId role status addedBy hidden').lean();
   const ids = memberships.map((m) => m.workspaceId);
   const [workspaces, counts, unread, extras] = await Promise.all([WorkspaceModel.find({ _id: { $in: ids }, deletedAt: { $exists: false } }).lean<Workspace[]>(), activeMembersOf(ids), unreadChatsOf(userId, ids), membershipExtras(userId, memberships)]);
   const byId = new Map(workspaces.map((w) => [String(w._id), w]));
   return memberships.flatMap((m) => {
     const workspace = byId.get(String(m.workspaceId));
     const key = String(m.workspaceId);
-    return workspace ? [{ ...toClientWorkspace(workspace, m), members: counts.get(key) ?? 0, unreadChats: m.status === 'active' ? (unread.get(key) ?? 0) : 0, ...extras.get(key) }] : [];
+    // A hidden member counts himself: only the others do not count him (`hiddenMembers.ts`).
+    const self = m.hidden === true && m.status === 'active' ? 1 : 0;
+    return workspace ? [{ ...toClientWorkspace(workspace, m), members: (counts.get(key) ?? 0) + self, unreadChats: m.status === 'active' ? (unread.get(key) ?? 0) : 0, ...extras.get(key) }] : [];
   });
 }
 
 /** «48 miembros» on the space switcher (design `e1-06`): the active ones, in one aggregation for all my spaces. */
 async function activeMembersOf(workspaceIds: Types.ObjectId[]): Promise<Map<string, number>> {
-  const rows = await WorkspaceMemberModel.aggregate<{ _id: Types.ObjectId; count: number }>([{ $match: { workspaceId: { $in: workspaceIds }, status: 'active' } }, { $group: { _id: '$workspaceId', count: { $sum: 1 } } }]);
+  const rows = await WorkspaceMemberModel.aggregate<{ _id: Types.ObjectId; count: number }>([{ $match: { workspaceId: { $in: workspaceIds }, status: 'active', hidden: { $ne: true } } }, { $group: { _id: '$workspaceId', count: { $sum: 1 } } }]);
   return new Map(rows.map((row) => [String(row._id), row.count]));
 }
 
@@ -184,7 +186,8 @@ export async function listMembers(workspaceId: string, userId: Types.ObjectId, s
   const wanted: WorkspaceMemberStatus[] = status === 'all' ? ['active', 'pending', 'invited', 'deactivated'] : [status === 'pending' || status === 'invited' || status === 'deactivated' ? status : 'active'];
   if (wanted.some((one) => one !== 'active') && !canManageMembers(actor.role)) throw new WorkspaceError(403, ONLY_ADMINS);
   const members = await WorkspaceMemberModel.find({ workspaceId: actor.workspaceId, status: { $in: wanted } }).sort({ createdAt: 1 }).lean<WorkspaceMember[]>();
-  return toClientMembers(members);
+  // A hidden member is in his own directory and in nobody else's (`hiddenMembers.ts`).
+  return toClientMembers(members.filter((member) => member.hidden !== true || String(member.userId) === String(userId)));
 }
 
 export async function addByPhone(workspaceId: string, actorId: Types.ObjectId, input: { phone?: unknown; title?: unknown; area?: unknown }) {

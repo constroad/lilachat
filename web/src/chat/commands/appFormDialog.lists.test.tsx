@@ -140,3 +140,44 @@ describe('two short fields share a row (José, 28/10: «se generan sábanas de f
     expect(quantity?.contains(screen.getByTestId('campo-precio'))).toBe(true);
   });
 });
+
+/** agentes' «Completar gasto» by hand (José 12/11: «no puedo seleccionar más de 1»): the partidas are checks with the amount beside. */
+describe('a list keyed by one choice (the expense partidas)', () => {
+  const split: Record<string, FormSchemaProperty> = {
+    reparto: { type: 'string', title: 'Repartir', enum: ['Una partida', 'Partes iguales', 'Según partida', 'A mano'], default: 'A mano' },
+    partidas: {
+      type: 'array', title: 'Partidas', minItems: 1,
+      items: { type: 'object', required: ['partidaId', 'monto'], properties: { partidaId: { type: 'string', title: 'Partida', oneOf: [{ const: 'p1', title: 'IMPRIMACION MC30' }, { const: 'p2', title: 'CARPETA ASFALTICA' }, { const: 'p3', title: 'SEÑALIZACION' }] }, monto: { type: 'number', title: 'Monto', exclusiveMinimum: 0, 'x-unit': 'S/' } } },
+    },
+  };
+
+  it('ticks two partidas, asks the amount on their own line and sends them in the options order', async () => {
+    // Arrange
+    const onSubmit = draw(answerWith(split, ['reparto', 'partidas']));
+    expect(screen.getAllByRole('radio')).toHaveLength(4);
+    // Act
+    fireEvent.click(screen.getByTestId('opcion-partidas-p3'));
+    fireEvent.click(screen.getByTestId('opcion-partidas-p1'));
+    fireEvent.change(screen.getByTestId('campo-partidas-0-monto'), { target: { value: '120' } });
+    fireEvent.change(screen.getByTestId('campo-partidas-1-monto'), { target: { value: '80.5' } });
+    fireEvent.click(screen.getByTestId('btn-enviar-formulario'));
+    // Assert
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ reparto: 'A mano', partidas: [{ partidaId: 'p1', monto: '120' }, { partidaId: 'p3', monto: '80.5' }] }));
+    expect(screen.getByTestId('elegidos-partidas')).toHaveTextContent('2 elegidas');
+    expect(screen.queryByTestId('agregar-partidas')).toBeNull();
+  });
+
+  it('a second tick takes the partida out, and an amount left empty is asked on its line', async () => {
+    // Arrange
+    const onSubmit = draw(answerWith(split, ['reparto', 'partidas']));
+    // Act
+    fireEvent.click(screen.getByTestId('opcion-partidas-p1'));
+    fireEvent.click(screen.getByTestId('opcion-partidas-p2'));
+    fireEvent.click(screen.getByTestId('opcion-partidas-p1'));
+    fireEvent.click(screen.getByTestId('btn-enviar-formulario'));
+    // Assert
+    expect(await screen.findByTestId('campo-partidas-0-monto')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByTestId('opcion-partidas-p1')).toHaveAttribute('aria-checked', 'false');
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+});

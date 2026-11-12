@@ -664,6 +664,19 @@ Wilson. Agentes resuelve `x-options` del producto a lo que Lilachat dibuja. Dise
 **Varias opciones**: `type: array` con `items.oneOf` (o `items.enum`) es un multi-select
 de filas con casilla. `minItems` es el mínimo («Elige al menos una.»); el máximo, todas.
 
+**Lista con casillas** (12/11, «Completar gasto» de agentes): una lista de objetos cuyas
+filas tienen UNA sola elección requerida (≥ 2 opciones) y, al lado, hasta dos campos cortos
+(número o texto ≤ 60) se dibuja como casillas: una línea por opción, y la marcada muestra su
+campo corto en la misma línea (el monto «A mano»). Arranca sin nada marcado; el máximo es el
+número de opciones; las filas viajan en el orden de las opciones, igual que antes
+(`[{partidaId, monto}]`). José no podía elegir una segunda partida: cada fila era un
+desplegable y había que encontrar «Agregar fila». Motor: `pickBy` en `appForms.ts` y
+`togglePick` en `appFormRows.ts`.
+
+**Dos columnas** (12/11): una elección de 3 o 4 opciones que no entran lado a lado pero miden
+≤ 18 caracteres («Partes iguales», «Según partida») va en una grilla de 2×2, no en una lista
+que se abre (`columns: 2`).
+
 **Filas fijas**: una lista con `x-fixed-rows: true` toma sus filas de `default` (una por
 tanque), sin agregar ni quitar. `x-row-title: "<campo>"` titula cada fila con la etiqueta
 de esa opción, y ese campo no se edita.

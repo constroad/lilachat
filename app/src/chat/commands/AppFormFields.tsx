@@ -44,6 +44,14 @@ export function ChoiceField({ field, value, error, onChange, compact }: FieldPro
         <Text testID={`sin-opciones-${field.name}`} className="rounded-xl border border-dashed border-outline/30 px-3 py-3 text-[14px] text-on-surface-variant">No hay opciones para elegir</Text>
       ) : field.searchable ? (
         <SearchableChoice field={field} value={value} onChange={onChange} compact={compact} />
+      ) : field.columns === 2 ? (
+        <View accessibilityRole="radiogroup" className="flex-row flex-wrap justify-between gap-y-1.5">
+          {field.options.map((option) => (
+            <Pressable key={option.value} testID={`opcion-${field.name}-${option.value}`} accessibilityRole="radio" accessibilityState={{ checked: value === option.value }} onPress={() => onChange(option.value)} style={{ width: '49%' }} className={`min-h-[44px] items-center justify-center rounded-xl border px-2 ${value === option.value ? 'border-primary bg-primary' : 'border-outline/25'}`}>
+              <Text className={`text-center text-[14px] font-semibold ${value === option.value ? 'text-on-primary' : 'text-on-surface-variant'}`}>{option.label}</Text>
+            </Pressable>
+          ))}
+        </View>
       ) : field.segmented ? (
         <Segmentado opciones={field.options.map((option) => ({ key: option.value, etiqueta: option.label, testID: `opcion-${field.name}-${option.value}` }))} valor={typeof value === 'string' ? value : ''} onCambiar={onChange} />
       ) : (

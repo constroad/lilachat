@@ -60,7 +60,7 @@ export type AppForm = { id: string; title: string; submitLabel?: string; /** The
 
 type Base = { name: string; label: string; help?: string; required: boolean; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number | true; /** `x-refresh`: changing it asks the app for the form again. */ refresh?: true };
 export type FormField =
-  | (Base & { kind: 'choice'; options: ChoiceOption[]; segmented: boolean; /** A long list (the company's people, agentes 24/10): a field that opens a sheet with a search. */ searchable: boolean; /** `x-avatar: initials`: each option with its initials. */ initials?: true })
+  | (Base & { kind: 'choice'; options: ChoiceOption[]; segmented: boolean; /** A few short options in two columns (José 12/11: two controls per line, not a list to open). */ columns?: 2; /** A long list (the company's people, agentes 24/10): a field that opens a sheet with a search. */ searchable: boolean; /** `x-avatar: initials`: each option with its initials. */ initials?: true })
   | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true; /** `x-input: place`: a text with the button that writes where the device is. */ place?: true; /** `x-input: work-street`: a street of the service's work map, picked (Portal's CON-CAP, 12/11). */ street?: true; /** `x-input: work-station`: the station on that street, computed from the reading and editable. */ station?: true })
   | (Base & { kind: 'number'; unit?: string; min?: number; max?: number; /** The limit itself is out: «Mayor que 0». */ minExclusive?: true; maxExclusive?: true; integer: boolean; /** `x-input: gps`: written by the device's reading, never typed (Portal's CON-CAP point). */ gps?: GpsRole })
   | (Base & { kind: 'date'; /** `format: date | time | date-time`: a picker for the day, the hour or both (José, 24/10). */ mode: DateMode })
@@ -85,6 +85,8 @@ export type FormField =
       fixedRows?: true;
       /** `x-row-title`: the item field that titles each fixed row (and is not edited). */
       rowTitle?: string;
+      /** The rows are keyed by this choice: one per option ticked, its short fields beside it (agentes 12/11: the expense's partidas). */
+      pickBy?: string;
     });
 /** A field inside a list's item. */
 export type ItemField = Exclude<FormField, { kind: 'list' } | { kind: 'location' } | { kind: 'multi' }>;
@@ -96,6 +98,11 @@ export const FORM_LIMITS = { id: 64, title: 60, submitLabel: 40, intro: 240, fie
 const SEGMENTED_MAX = 4;
 /** Side by side, the longest label times the number of options must fit this many characters: «Refrigerio» ×4 does, three mix designs do not. */
 const SEGMENTED_ROW_CHARS = 40;
+/** Options this short that do not fit side by side go two per line (José 12/11: «Partes iguales», «Según partida»). */
+const COLUMN_OPTION_CHARS = 18;
+/** Beside a list's key choice: up to this many short typed fields (the expense's amount), else it is a list of cards. */
+const PICK_SIDE_FIELDS = 2;
+const PICK_TEXT_MAX = 60;
 /** More options than this become a field with a search (a company's 31 people did not fit as buttons). */
 export const SEARCHABLE_FROM = 8;
 /** A database id (Mongo ObjectId or UUID): options with these are records that grow, never a fixed set. */
@@ -167,7 +174,19 @@ function listField(base: Base, property: FormSchemaProperty): FormField | string
   const min = Math.min(max, Math.max(base.required ? 1 : 0, Math.floor(property.minItems ?? 0)));
   const initialItems = defaultItems(property.default, fields, max);
   const addLabel = line(property['x-add-label'], FORM_LIMITS.label) || 'Agregar fila';
-  return { ...base, required: min > 0, kind: 'list', fields, min, max, addLabel, layout: fitsInRow(fields) ? 'row' : 'card', ...(initialItems ? { initialItems } : {}) };
+  const pick = pickKeyOf(fields);
+  const picked = pick ? { pickBy: pick.name, max: Math.min(max, pick.options.length), min: Math.min(min, pick.options.length) } : {};
+  return { ...base, required: min > 0, kind: 'list', fields, min, max, addLabel, layout: fitsInRow(fields) ? 'row' : 'card', ...(initialItems ? { initialItems } : {}), ...picked };
+}
+
+/** The rows' only choice, when beside it there are at most two short typed fields: the list is then a set of checks. */
+function pickKeyOf(fields: readonly ItemField[]): Extract<ItemField, { kind: 'choice' }> | null {
+  const choices = fields.filter((field): field is Extract<ItemField, { kind: 'choice' }> => field.kind === 'choice');
+  const key = choices.length === 1 ? choices[0]! : null;
+  if (!key || !key.required || key.options.length < 2 || key.visibleIf) return null;
+  const rest = fields.filter((field) => field !== key);
+  const short = rest.every((field) => field.kind === 'number' || (field.kind === 'text' && !field.multiline && (field.maxLength ?? Infinity) <= PICK_TEXT_MAX));
+  return short && rest.length <= PICK_SIDE_FIELDS ? key : null;
 }
 
 /** One row per `default` item (one per tank), titled by `x-row-title`: as many as the app sent, no more, no less. */
@@ -254,12 +273,13 @@ function textInputOf(input: string | undefined): { place?: true; street?: true; 
 }
 
 /** How a choice is drawn: side by side while it fits, a dropdown for records, long labels and long lists, else a list of rows. */
-function choiceLayout(options: ChoiceOption[]): { segmented: boolean; searchable: boolean } {
+function choiceLayout(options: ChoiceOption[]): { segmented: boolean; searchable: boolean; columns?: 2 } {
   // A list of records (carriers, quarries, sites; José, 24/10) is a dropdown even with three: side by side it squeezes long names.
   const records = options.some((option) => RECORD_ID.test(option.value));
   const longest = Math.max(0, ...options.map((option) => option.label.length));
   const fewEnough = options.length > 0 && options.length <= SEGMENTED_MAX;
   const segmented = !records && fewEnough && longest * options.length <= SEGMENTED_ROW_CHARS;
+  if (!records && !segmented && fewEnough && options.length > 2 && longest <= COLUMN_OPTION_CHARS) return { segmented, searchable: false, columns: 2 };
   return { segmented, searchable: records || options.length > SEARCHABLE_FROM || (fewEnough && !segmented) };
 }
 
@@ -291,7 +311,8 @@ export function newItem(fields: readonly ItemField[], now: Date = new Date()): F
 /** The app's default items, or `min` new ones (agentes, 28/10: «arranca con minItems ítems»). */
 function startingItems(field: Extract<FormField, { kind: 'list' }>, now: Date): FormValues[] {
   if (field.initialItems) return field.initialItems.map((item) => ({ ...newItem(field.fields, now), ...item }));
-  return Array.from({ length: field.min }, () => newItem(field.fields, now));
+  // A list of checks starts with none ticked: a blank row would be a partida nobody chose.
+  return field.pickBy ? [] : Array.from({ length: field.min }, () => newItem(field.fields, now));
 }
 
 /** Where an item's field answers, in the errors both Lilachat and the app write: `despachos[0].m3`. */

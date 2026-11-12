@@ -1,4 +1,4 @@
-import type { FormField, FormValues } from './appForms.js';
+import { newItem, type FormField, type FormValues } from './appForms.js';
 
 /** Every one-line text with a limit (José 06/11: two per row wherever it can be; Portal declares its report fields with 200). */
 const SHORT_TEXT_MAX = 200;
@@ -61,4 +61,21 @@ export function cameraFirstFieldOf(shown: readonly FormField[], values: FormValu
   const photo = photos[0];
   if (photos.length !== 1 || !photo || photo.multiple || isAnswered(values[photo.name])) return null;
   return shown.some((field) => field !== photo && field.required && !isAnswered(values[field.name])) ? null : photo.name;
+}
+
+type PickList = Extract<FormField, { kind: 'list' }>;
+
+/**
+ * Ticks or unticks an option of a list keyed by one choice (`pickBy`, agentes 12/11: the
+ * expense's partidas): a new row starts with the item's defaults, and the rows keep the options'
+ * order so the list reads like the checks it is drawn as. PURE.
+ */
+export function togglePick(field: PickList, items: readonly FormValues[], option: string): FormValues[] {
+  const key = field.pickBy;
+  if (!key) return [...items];
+  if (items.some((row) => row[key] === option)) return items.filter((row) => row[key] !== option);
+  const choice = field.fields.find((child) => child.name === key);
+  const order = choice?.kind === 'choice' ? choice.options.map((one) => one.value) : [];
+  const rows = [...items.filter((row) => row[key] !== undefined && row[key] !== ''), { ...newItem(field.fields), [key]: option }];
+  return rows.sort((left, right) => order.indexOf(String(left[key])) - order.indexOf(String(right[key])));
 }

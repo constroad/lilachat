@@ -1,7 +1,7 @@
 import { useRef, type ReactNode } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
-import { Plus, Trash2 } from 'lucide-react-native';
-import { formRows, itemPath, newItem, optionsForRow, rowTitleOf, visibleFields, type FormField, type FormValues, type ItemField } from '@lilachat/shared';
+import { Check, Plus, Trash2 } from 'lucide-react-native';
+import { formRows, itemPath, newItem, optionsForRow, rowTitleOf, togglePick, visibleFields, type FormField, type FormValues, type ItemField } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { ErrorLine, Label } from './AppFormFields';
 
@@ -30,7 +30,11 @@ const asItems = (value: unknown): FormValues[] => (Array.isArray(value) ? value.
  * a row; anything else is a card per item with the sheet's own fields. «+ Agregar» adds one
  * up to the maximum, the bin removes one down to the minimum.
  */
-export function ListField({ field, value, errors, onChange, renderField }: Props) {
+export function ListField(props: Props) {
+  return props.field.pickBy ? <PickItems {...props} /> : <RowsOrCards {...props} />;
+}
+
+function RowsOrCards({ field, value, errors, onChange, renderField }: Props) {
   const colors = useColores();
   const items = asItems(value);
   // Stable keys: removing the second row must not hand its typing to the third.
@@ -124,6 +128,50 @@ function RowItems(props: { field: ListOfItems; items: FormValues[]; keys: number
           </View>
         );
       })}
+    </View>
+  );
+}
+
+/**
+ * A list keyed by one choice (agentes 12/11: the expense's partidas), drawn as checks: one line
+ * per option, and a ticked one shows its amount on the same line (José: two controls per line,
+ * not a sheet of rows to fill).
+ */
+function PickItems({ field, value, errors, onChange }: Props) {
+  const colors = useColores();
+  const items = asItems(value);
+  const key = field.pickBy!;
+  const choice = field.fields.find((child) => child.name === key);
+  const options = choice?.kind === 'choice' ? choice.options : [];
+  const side = field.fields.filter((child) => child.name !== key);
+  const setCell = (index: number, name: string) => (cell: unknown) => onChange(items.map((item, at) => (at === index ? { ...item, [name]: cell } : item)), itemPath(field.name, index, name));
+  return (
+    <View testID={`lista-${field.name}`}>
+      <View className="flex-row items-center justify-between">
+        <Label field={field} />
+        {items.length ? <Text testID={`elegidos-${field.name}`} className="mb-1.5 text-[13px] font-semibold text-primary">{`${items.length} ${items.length === 1 ? 'elegida' : 'elegidas'}`}</Text> : null}
+      </View>
+      {field.help ? <Text className="-mt-1 mb-1.5 text-[13px] text-on-surface-variant">{field.help}</Text> : null}
+      <View className="gap-1.5">
+        {options.map((option) => {
+          const index = items.findIndex((item) => item[key] === option.value);
+          const on = index >= 0;
+          const rowErrors = on ? side.flatMap((child) => errors[itemPath(field.name, index, child.name)] ?? []) : [];
+          return (
+            <View key={option.value} testID={`fila-${field.name}-${option.value}`}>
+              <View className={`min-h-[52px] flex-row items-center gap-2 rounded-xl border px-3 py-1 ${on ? 'border-primary bg-primary/[0.06]' : 'border-outline/25'}`}>
+                <Pressable testID={`opcion-${field.name}-${option.value}`} accessibilityRole="checkbox" accessibilityState={{ checked: on }} onPress={() => onChange(togglePick(field, items, option.value), field.name)} className="min-h-[44px] flex-1 flex-row items-center gap-3">
+                  <View className={`h-6 w-6 items-center justify-center rounded-md border ${on ? 'border-primary bg-primary' : 'border-outline/40'}`}>{on ? <Check size={15} color={colors['on-primary']} /> : null}</View>
+                  <Text className="flex-1 text-[15px] text-on-surface" numberOfLines={2}>{option.label}</Text>
+                </Pressable>
+                {on ? side.map((child) => <View key={child.name} className="w-32"><RowCell field={child} testID={`campo-${field.name}-${index}-${child.name}`} value={items[index]![child.name]} invalid={Boolean(errors[itemPath(field.name, index, child.name)])} onChange={setCell(index, child.name)} /></View>) : null}
+              </View>
+              {rowErrors.length ? <ErrorLine text={rowErrors.join(' ')} /> : null}
+            </View>
+          );
+        })}
+      </View>
+      <ErrorLine text={errors[field.name]} />
     </View>
   );
 }

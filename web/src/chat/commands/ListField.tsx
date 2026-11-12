@@ -1,6 +1,6 @@
 import { useRef, type ReactNode } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
-import { formRows, itemPath, newItem, optionsForRow, rowTitleOf, visibleFields, type FormField, type FormValues, type ItemField } from '@lilachat/shared';
+import { Check, Plus, Trash2 } from 'lucide-react';
+import { formRows, itemPath, newItem, optionsForRow, rowTitleOf, togglePick, visibleFields, type FormField, type FormValues, type ItemField } from '@lilachat/shared';
 import { FieldError } from '../../ui/Overlay';
 import { Label } from './AppFormFields';
 
@@ -29,7 +29,11 @@ const cellsOf = (field: ListOfItems, item: FormValues): ItemField[] =>
  * button to add rows; agentes: the quote's products). The app's twin is `ListField` there:
  * short typed fields side by side in a row, anything else a card per item.
  */
-export function ListField({ field, value, errors, onChange, renderField }: Props) {
+export function ListField(props: Props) {
+  return props.field.pickBy ? <PickItems {...props} /> : <RowsOrCards {...props} />;
+}
+
+function RowsOrCards({ field, value, errors, onChange, renderField }: Props) {
   const items = asItems(value);
   // Stable keys: removing the second row must not hand its typing to the third.
   const keys = useRef<number[]>([]);
@@ -127,5 +131,69 @@ function RowItems(props: { field: ListOfItems; items: FormValues[]; keys: number
         );
       })}
     </div>
+  );
+}
+
+/**
+ * A list keyed by one choice (agentes 12/11: the expense's partidas), drawn as checks: one line
+ * per option, and a ticked one shows its short fields beside it (the amount by hand). José could
+ * not pick a second partida from a dropdown per row.
+ */
+function PickItems({ field, value, errors, onChange }: Props) {
+  const items = asItems(value);
+  const key = field.pickBy!;
+  const choice = field.fields.find((child) => child.name === key);
+  const options = choice?.kind === 'choice' ? choice.options : [];
+  const side = field.fields.filter((child) => child.name !== key);
+  const setCell = (index: number, name: string) => (cell: unknown) => onChange(items.map((item, at) => (at === index ? { ...item, [name]: cell } : item)), itemPath(field.name, index, name));
+  return (
+    <div data-testid={`lista-${field.name}`}>
+      <div className="flex items-center justify-between gap-2">
+        <Label field={field} />
+        {items.length ? <span data-testid={`elegidos-${field.name}`} className="mb-1.5 rounded-full border border-primary/30 px-2.5 py-0.5 text-[12px] font-semibold text-primary">{`${items.length} ${items.length === 1 ? 'elegida' : 'elegidas'}`}</span> : null}
+      </div>
+      {field.help ? <p className="-mt-1 mb-1.5 text-[12px] text-on-surface-variant">{field.help}</p> : null}
+      <div role="group" aria-label={field.label} className="space-y-2">
+        {options.map((option) => {
+          const index = items.findIndex((item) => item[key] === option.value);
+          const on = index >= 0;
+          const rowErrors = on ? side.flatMap((child) => errors[itemPath(field.name, index, child.name)] ?? []) : [];
+          return (
+            <div key={option.value} data-testid={`fila-${field.name}-${option.value}`}>
+              <div className={`flex min-h-[52px] items-center gap-2 rounded-xl border px-3 py-1.5 ${on ? 'border-primary bg-primary/[0.06]' : 'border-outline/25'}`}>
+                <button type="button" role="checkbox" aria-checked={on} data-testid={`opcion-${field.name}-${option.value}`} onClick={() => onChange(togglePick(field, items, option.value), field.name)} className="flex min-w-0 flex-1 items-center gap-3 py-1.5 text-left">
+                  <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-md border ${on ? 'border-primary bg-primary text-on-primary' : 'border-outline/40'}`}>{on ? <Check size={15} strokeWidth={3} /> : null}</span>
+                  <span className="min-w-0 flex-1 text-[15px]">{option.label}</span>
+                </button>
+                {on ? side.map((child) => <SideCell key={child.name} field={child} testId={`campo-${field.name}-${index}-${child.name}`} value={items[index]![child.name]} invalid={Boolean(errors[itemPath(field.name, index, child.name)])} onChange={setCell(index, child.name)} />) : null}
+              </div>
+              {rowErrors.length ? <FieldError>{rowErrors.join(' ')}</FieldError> : null}
+            </div>
+          );
+        })}
+      </div>
+      <FieldError>{errors[field.name]}</FieldError>
+    </div>
+  );
+}
+
+/** The amount beside a ticked option: a short box with its unit. */
+function SideCell(props: { field: ItemField; testId: string; value: unknown; invalid: boolean; onChange: (value: unknown) => void }) {
+  const { field } = props;
+  const number = field.kind === 'number';
+  return (
+    <label className={`flex h-10 w-36 shrink-0 items-center rounded-lg border bg-background px-2.5 focus-within:border-primary ${props.invalid ? 'border-error' : 'border-outline/25'}`}>
+      {number && field.unit ? <span className="mr-1 text-[13px] font-semibold text-on-surface-variant">{field.unit}</span> : null}
+      <input
+        data-testid={props.testId}
+        aria-label={field.label}
+        aria-invalid={props.invalid || undefined}
+        placeholder={field.label}
+        inputMode={number ? (field.integer ? 'numeric' : 'decimal') : undefined}
+        value={typeof props.value === 'string' || typeof props.value === 'number' ? String(props.value) : ''}
+        onChange={(event) => props.onChange(event.target.value === '' ? undefined : event.target.value)}
+        className="h-full min-w-0 flex-1 bg-transparent text-[15px] tabular-nums outline-none"
+      />
+    </label>
   );
 }

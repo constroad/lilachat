@@ -42,6 +42,17 @@ export function ChoiceField({ field, value, error, onChange, compact }: FieldPro
           ))}
         </div>
         </>
+      ) : field.columns === 2 ? (
+        <>
+          <Label field={field} />
+          <div role="radiogroup" aria-label={field.label} className="grid grid-cols-2 gap-1.5">
+            {field.options.map((option) => (
+              <button key={option.value} type="button" role="radio" aria-checked={value === option.value} data-testid={`opcion-${field.name}-${option.value}`} onClick={() => onChange(option.value)} className={`min-h-[44px] rounded-xl border px-2 text-[14px] font-semibold transition-colors ${value === option.value ? 'border-primary bg-primary text-on-primary' : 'border-outline/25 text-on-surface-variant hover:bg-surface'}`}>
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </>
       ) : field.searchable ? (
         <>
           <Label field={field} />

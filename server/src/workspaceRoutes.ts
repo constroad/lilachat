@@ -28,7 +28,7 @@ import multer from 'multer';
 import { CUSTOM_EMOJI_MAX_BYTES } from '@lilachat/shared';
 import { addCustomEmoji, listCustomEmojis, removeCustomEmoji } from './customEmojiCatalog.js';
 import { clientRecords, listClients } from './bots/botClients.js';
-import { clientAccount, clientReportEmbed, clientReportPdf, clientServiceBilling, clientServiceDetail, clientServiceFiles } from './bots/clientFiles.js';
+import { clientAccount, clientReportEmbed, clientReportEmbedNew, clientReportPdf, clientServiceBilling, clientServiceDetail, clientServiceFiles } from './bots/clientFiles.js';
 import { clientReportDraft, openReportForm } from './bots/clientReports.js';
 import { liftRestrictionsOfAdmin, listBillingViewers, listClientAccess, setBillingViewer, setClientAccess } from './bots/clientBillingViewers.js';
 
@@ -137,6 +137,12 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
   // Portal 11/11: its canvas editor framed on a wide window; the link carries its token in the fragment.
   router.get('/:id/clients/:clientId/services/:serviceId/reports/:reportId/embed', handled(async (req, res) => {
     const found = await clientReportEmbed(req.params.id!, req.params.clientId!, req.params.serviceId!, req.params.reportId!, me(req));
+    if ('error' in found) return res.status(found.status).json({ error: found.error, message: found.message });
+    res.json(found.ok ? { embed: found.value } : { error: 'report_embed_failed', message: found.message });
+  }));
+  // José 12/11: on the wide web a new report is born in Portal's editor, never in Lilachat's form.
+  router.post('/:id/clients/:clientId/services/:serviceId/reports/embed', handled(async (req, res) => {
+    const found = await clientReportEmbedNew(req.params.id!, req.params.clientId!, req.params.serviceId!, req.body, me(req));
     if ('error' in found) return res.status(found.status).json({ error: found.error, message: found.message });
     res.json(found.ok ? { embed: found.value } : { error: 'report_embed_failed', message: found.message });
   }));

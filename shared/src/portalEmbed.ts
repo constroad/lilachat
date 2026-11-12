@@ -89,3 +89,28 @@ export const embedErrorLine = (code: string): string => ERROR_LINES[code] ?? EMB
 export type EmbedBody = { embed?: EmbedLink; message?: string };
 export const reportEmbedPath = (spaceId: string, clientId: string, serviceId: string, reportId: string): string =>
   `/workspaces/${spaceId}/clients/${encodeURIComponent(clientId)}/services/${encodeURIComponent(serviceId)}/reports/${encodeURIComponent(reportId)}/embed`;
+
+/**
+ * The types Portal's editor creates (José 12/11: the web shows the editor; forms only on the APK and the
+ * phone-width PWA). The same five Portal marks `editor: 'v2'` on its rows.
+ */
+export const EMBED_CREATE_TYPES: readonly string[] = ['CTL-PIS', 'CTL-IMP', 'REG-OBS', 'LEV-OBS', 'CON-CAP'];
+/** On a wide window a new report of these types is born in Portal's editor, never in Lilachat's form. */
+export const createsInEmbed = (windowWidth: number, type: string): boolean => windowWidth >= EMBED_MIN_WIDTH_PX && EMBED_CREATE_TYPES.includes(type);
+
+const EMBED_REPORT_ID = /^\/embed\/report\/([A-Za-z0-9_-]{1,64})$/;
+/** The report a link opens: a created report is asked by its id from then on, so an expired link never creates another. */
+export function embedReportIdOf(url: string): string | null {
+  const parsed = parsedUrl(url);
+  return parsed ? (EMBED_REPORT_ID.exec(parsed.pathname)?.[1] ?? null) : null;
+}
+
+/** Portal's `crear_informe_en_editor` takes 80 (agentes ae4c2c7); a longer name is refused, never cut. */
+export const RESPONSIBLE_MAX = 80;
+export type EmbedCreateRequest = { type: string; responsible?: string };
+export function embedCreateRequest(type: string, responsible: string): EmbedCreateRequest {
+  const name = responsible.trim();
+  return { type, ...(name ? { responsible: name } : {}) };
+}
+export const reportEmbedCreatePath = (spaceId: string, clientId: string, serviceId: string): string =>
+  `/workspaces/${spaceId}/clients/${encodeURIComponent(clientId)}/services/${encodeURIComponent(serviceId)}/reports/embed`;

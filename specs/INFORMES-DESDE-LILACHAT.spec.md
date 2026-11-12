@@ -1154,6 +1154,14 @@ teléfono y en el APK sigue el formulario de este spec.
 **Qué hace Lilachat** (`shared/src/portalEmbed.ts`, `web/src/spaces/clients/reports/PortalEmbedWeb.tsx`):
 - Tocar un informe marcado, en ventana ancha, abre una capa sobre toda la
   ventana con el marco. Abre así aunque sea un borrador.
+- **En la web ancha no hay formularios** (José 12/11: «en la web, el editor;
+  formularios solo en la APK y la PWA en modo móvil»). «Crear informe» de
+  CTL-PIS, CTL-IMP, REG-OBS, LEV-OBS y CON-CAP nace en el editor: `POST
+  …/reports/embed` {type, responsible?} → el mismo evento sin `report_id` →
+  `crear_informe_en_editor` de Portal, que reusa solo el borrador de esa
+  persona, de ese tipo y de HOY. Un enlace vencido pide ese informe por su id,
+  nunca crea otro. Un borrador de esos tipos abre el editor aunque falte la
+  marca. Bajo 1024 px sigue el formulario.
 - Una sola barra, la de Portal (José 12/11: «doble toolbar para regresar»):
   su «Cerrar editor» guarda y manda `closed`. La barra de Lilachat (Volver,
   servicio, informe) solo aparece mientras Portal no está listo o si falla.

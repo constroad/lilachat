@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, ExternalLink, FilePlus, FileText } from 'lucide-react';
-import { AREA_TYPE, draftToContinue, opensEmbed, isObservationType, CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceTabKey, type ServiceDetail, type ServiceReport, type SpaceClientService } from '@lilachat/shared';
+import { AREA_TYPE, createsInEmbed, draftToContinue, embedCreateRequest, opensEmbed, reportTypeLabel, isObservationType, CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceTabKey, type EmbedCreateRequest, type ServiceDetail, type ServiceReport, type SpaceClientService } from '@lilachat/shared';
 import { usePortalFileViewer } from './PortalFileViewer';
 import type { OpenSheetFile } from './RecordSheetWeb';
 import { RecordSheetWeb } from './RecordSheetWeb';
@@ -140,10 +140,11 @@ function DetailTabs({ detail, target, service, chatId, seesDrive, links, seesMon
   const sheet = top ? detailSheet(detail, top.tab, top.id) : null;
   const reportPdf = useReportPdf(target, serviceId);
   const openRow = (id: string) => {
-    // Portal 11/11: a report its canvas edits opens there on a wide window, draft or not.
-    const framed = listTab === 'reports' ? detail.reports.find((one) => one.id === id && opensEmbed(window.innerWidth, one)) : undefined;
-    const draft = listTab === 'reports' && !framed ? draftToContinue(detail, id) : null;
-    if (framed) onOpenEmbed(framed);
+    // Portal 11/11, José 12/11: on a wide window a report its canvas edits opens there, draft or not; a draft
+    // of an editor type too, even if the mark did not arrive: the wide web never shows the form.
+    const row = listTab === 'reports' ? detail.reports.find((one) => one.id === id) : undefined;
+    const draft = row ? draftToContinue(detail, id) : null;
+    if (row && (opensEmbed(window.innerWidth, row) || (draft && createsInEmbed(window.innerWidth, draft.type)))) onOpenEmbed(row);
     else if (draft) onContinueReport(draft);
     else setOpened([{ tab: listTab, id }]);
   };
@@ -215,7 +216,9 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   // José 05/11: a field report is filled here, not in Portal's public page (spec INFORMES-DESDE-LILACHAT); it takes the detail's place.
   const [picker, setPicker] = useState(false);
   const [report, setReport] = useState<{ type: string; reportId?: string; responsible?: string } | null>(null);
-  const [framed, setFramed] = useState<ServiceReport | null>(null);
+  const [framed, setFramed] = useState<(Pick<ServiceReport, 'title'> & Partial<Pick<ServiceReport, 'id' | 'url'>> & { create?: EmbedCreateRequest }) | null>(null);
+  // José 12/11: on the wide web a new report is born in Portal's editor; the form is for the APK and the phone.
+  const pickNew = (code: string, responsible: string) => (createsInEmbed(window.innerWidth, code) ? setFramed({ title: reportTypeLabel(code), create: embedCreateRequest(code, responsible) }) : setReport({ type: code, responsible }));
   const closeFramed = useCallback((changed: boolean) => {
     setFramed(null);
     if (changed) askAgain();
@@ -256,7 +259,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
       <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} admin={Boolean(props.admin)} />
       {answer === null ? <div data-testid="detalle-cargando" className="h-48 animate-pulse rounded-xl bg-surface" /> : null}
       {answer?.ok ? <DetailTabs onContinueReport={setReport} onOpenEmbed={setFramed} detail={answer.value} target={props.target} service={props.service} chatId={props.chatId} seesDrive={Boolean(props.seesDrive)} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} tab={tab} onTab={pickTab} startOrderId={tab === 'orders' ? startOrderId : undefined} /> : null}
-      {picker ? <CreateReportDialog portalUrl={portalUrl} people={props.people ?? []} onPick={(code, responsible) => { setPicker(false); setReport({ type: code, responsible }); }} onClose={() => setPicker(false)} /> : null}
+      {picker ? <CreateReportDialog portalUrl={portalUrl} people={props.people ?? []} inEditor={(code) => createsInEmbed(window.innerWidth, code)} onPick={(code, responsible) => { setPicker(false); pickNew(code, responsible); }} onClose={() => setPicker(false)} /> : null}
       {framed ? <PortalEmbedWeb target={props.target} serviceId={props.service.id} serviceName={props.service.name} report={framed} onClose={closeFramed} /> : null}
       {answer && !answer.ok ? (
         <div data-testid="detalle-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm">

@@ -275,3 +275,27 @@ describe('Portal\'s canvas editor framed in the web (Portal 11/11: client.report
     expect((await embedOf(jose).expect(200)).body).toEqual({ error: 'report_embed_failed', message: 'Este informe ya no está en el Portal.' });
   });
 });
+
+describe('a new report born in Portal\'s editor (José 12/11: no forms on the wide web)', () => {
+  const createIn = (who: Types.ObjectId, body: object) => request(app).post(`/api/workspaces/${spaceId}/clients/cli-cvs/services/srv-318/reports/embed`).set(auth(who)).send(body);
+  const link = { url: 'https://www.constroad.com/embed/report/6af0000000000000000000a1#t=tok.EN_1', expires_at: '2026-11-13T08:00:00.000Z' };
+
+  it('asks with the type and the responsible, no report id; answers the new report\'s link', async () => {
+    answer = { status: 200, body: { ...link, informeId: '6af0000000000000000000a1' } };
+    const created = await createIn(ana, { type: 'CTL-IMP', responsible: ' Ana Torres ' }).expect(200);
+    expect(received).toEqual([{ type: 'client.report.embed.requested', space: String(spaceId), data: { client_id: 'cli-cvs', service_id: 'srv-318', type: 'CTL-IMP', responsible: 'Ana Torres', user: { id: String(ana), name: 'Ana', phone: '51922222222' } } }]);
+    expect(created.body).toEqual({ embed: { url: link.url, expiresAt: link.expires_at } });
+  });
+
+  it('a type the editor does not create, or a bad body, is a 400 and no event', async () => {
+    expect((await createIn(jose, { type: 'VAL-SRV' })).status).toBe(400);
+    expect((await createIn(jose, { type: 'CTL-IMP', responsible: 'x'.repeat(81) })).status).toBe(400);
+    expect((await createIn(jose, {})).status).toBe(400);
+    expect(received).toHaveLength(0);
+  });
+
+  it('someone outside the channel: 404 and no event', async () => {
+    expect((await createIn(outsider, { type: 'CTL-IMP' })).status).toBe(404);
+    expect(received).toHaveLength(0);
+  });
+});

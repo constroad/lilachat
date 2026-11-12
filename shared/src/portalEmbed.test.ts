@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EMBED_MIN_WIDTH_PX, PORTAL_EMBED_ORIGINS, embedCloseRequest, embedErrorLine, embedEventOf, embedLinkOf, embedTheme, opensEmbed } from './portalEmbed.js';
+import { EMBED_MIN_WIDTH_PX, PORTAL_EMBED_ORIGINS, createsInEmbed, embedCloseRequest, embedCreateRequest, embedErrorLine, embedEventOf, embedLinkOf, embedReportIdOf, embedTheme, opensEmbed, reportEmbedCreatePath } from './portalEmbed.js';
 
 /** Portal's editor 2.0 framed in Lilachat web (Portal 11/11: `/embed/report/<id>#t=<token>`, messages v1). */
 const prod = [PORTAL_EMBED_ORIGINS.production];
@@ -83,5 +83,26 @@ describe('embedErrorLine', () => {
     expect(embedErrorLine('not_found')).toBe('Este informe ya no está en el Portal.');
     expect(embedErrorLine('forbidden')).toMatch(/permiso/);
     expect(embedErrorLine('whatever')).toBe('No se pudo abrir el editor del Portal.');
+  });
+});
+
+describe('creating a report in the editor (José 12/11: «en la web, el editor; formularios solo en la APK y la PWA móvil»)', () => {
+  it('on a wide window the five editor types are created in Portal\'s editor; the rest keep their way', () => {
+    for (const type of ['CTL-PIS', 'CTL-IMP', 'REG-OBS', 'LEV-OBS', 'CON-CAP']) expect(createsInEmbed(EMBED_MIN_WIDTH_PX, type)).toBe(true);
+    expect(createsInEmbed(EMBED_MIN_WIDTH_PX - 1, 'CTL-IMP')).toBe(false);
+    expect(createsInEmbed(1440, 'IAA')).toBe(false);
+    expect(createsInEmbed(1440, 'VAL-SRV')).toBe(false);
+  });
+
+  it('the new report\'s id comes from its link, so an expired link asks for that report and never creates another', () => {
+    expect(embedReportIdOf('https://www.constroad.com/embed/report/6aee7f1a4dac30603af48028#t=abc')).toBe('6aee7f1a4dac30603af48028');
+    expect(embedReportIdOf('https://www.constroad.com/admin/report/r1')).toBeNull();
+    expect(embedReportIdOf('no es url')).toBeNull();
+  });
+
+  it('the create request carries the type and, when written, the responsible', () => {
+    expect(embedCreateRequest('CTL-IMP', '  Ana Torres ')).toEqual({ type: 'CTL-IMP', responsible: 'Ana Torres' });
+    expect(embedCreateRequest('REG-OBS', '')).toEqual({ type: 'REG-OBS' });
+    expect(reportEmbedCreatePath('w1', 'c 1', 's1')).toBe('/workspaces/w1/clients/c%201/services/s1/reports/embed');
   });
 });

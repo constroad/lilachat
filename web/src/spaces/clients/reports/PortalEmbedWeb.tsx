@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ExternalLink } from 'lucide-react';
-import { EMBED_FAILED, PORTAL_EMBED_ORIGINS, embedCloseRequest, embedErrorLine, embedEventOf, embedLinkOf, embedTheme, reportEmbedPath, type EmbedBody, type EmbedCommand, type EmbedLink, type ServiceReport } from '@lilachat/shared';
+import { EMBED_FAILED, PORTAL_EMBED_ORIGINS, embedCloseRequest, embedErrorLine, embedEventOf, embedLinkOf, embedReportIdOf, embedTheme, reportEmbedCreatePath, reportEmbedPath, type EmbedBody, type EmbedCommand, type EmbedCreateRequest, type EmbedLink } from '@lilachat/shared';
 import { api } from '../../../api';
 import type { ServiceAskTarget } from '../useServiceAsk';
 
@@ -12,7 +12,9 @@ import type { ServiceAskTarget } from '../useServiceAsk';
  * «Cerrar editor» saves and posts `closed`. Lilachat's bar shows only while
  * Portal is not ready or failed; Escape asks Portal to close.
  */
-type Props = { target: ServiceAskTarget; serviceId: string; serviceName: string; report: Pick<ServiceReport, 'id' | 'title' | 'url'>; onClose: (changed: boolean) => void };
+/** An existing report (its id), or a new one of a type (José 12/11: on the wide web reports are born in the editor). */
+type EmbedReport = { id?: string; title: string; url?: string; create?: EmbedCreateRequest };
+type Props = { target: ServiceAskTarget; serviceId: string; serviceName: string; report: EmbedReport; onClose: (changed: boolean) => void };
 type LinkState = { kind: 'asking' } | { kind: 'ready'; link: EmbedLink } | { kind: 'failed'; message: string };
 
 /** The dev web frames the local Portal too; the built one, production only (its CSP frames nothing else). */
@@ -20,20 +22,26 @@ const FRAMED_ORIGINS: readonly string[] = import.meta.env.DEV ? [PORTAL_EMBED_OR
 /** With nothing unsaved, Portal answers at once; a frame that does not answer does not keep the person in. */
 const CLOSE_WAIT_MS = 3000;
 
-function useEmbedLink(target: ServiceAskTarget, serviceId: string, reportId: string) {
+function useEmbedLink(target: ServiceAskTarget, serviceId: string, report: EmbedReport) {
   const { jwt, spaceId, clientId } = target;
   const [state, setState] = useState<LinkState>({ kind: 'asking' });
   const [round, setRound] = useState(0);
+  // A created report is asked by its id from its first link on: an expired link never creates another.
+  const known = useRef(report.id ?? null);
+  const create = useRef(report.create);
   useEffect(() => {
     let alive = true;
     setState({ kind: 'asking' });
-    void api<EmbedBody>(reportEmbedPath(spaceId, clientId, serviceId, reportId), { jwt }).then((reply) => {
+    const id = known.current;
+    const asked = id ? api<EmbedBody>(reportEmbedPath(spaceId, clientId, serviceId, id), { jwt }) : api<EmbedBody>(reportEmbedCreatePath(spaceId, clientId, serviceId), { jwt, body: create.current });
+    void asked.then((reply) => {
       if (!alive) return;
       const link = reply.ok ? embedLinkOf(reply.data.embed, FRAMED_ORIGINS) : null;
+      if (link) known.current = embedReportIdOf(link.url) ?? known.current;
       setState(link ? { kind: 'ready', link } : { kind: 'failed', message: reply.ok ? reply.data.message ?? EMBED_FAILED : reply.message });
     });
     return () => { alive = false; };
-  }, [jwt, spaceId, clientId, serviceId, reportId, round]);
+  }, [jwt, spaceId, clientId, serviceId, round]);
   return { state, again: useCallback(() => setRound((count) => count + 1), []) };
 }
 
@@ -109,7 +117,7 @@ function Failure({ message, url, onRetry }: { message: string; url?: string; onR
 }
 
 export function PortalEmbedWeb(props: Props) {
-  const { state, again } = useEmbedLink(props.target, props.serviceId, props.report.id);
+  const { state, again } = useEmbedLink(props.target, props.serviceId, props.report);
   const frame = useRef<HTMLIFrameElement>(null);
   const [loaded, setLoaded] = useState(false);
   const [closing, setClosing] = useState(false);

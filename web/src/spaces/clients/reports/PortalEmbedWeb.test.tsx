@@ -124,6 +124,25 @@ describe('PortalEmbedWeb', () => {
     expect(asked).toHaveLength(2);
   });
 
+  it('a new report is created in the editor with its type and responsible; an expired link asks for that report, never creates another', async () => {
+    const created = 'https://www.constroad.com/embed/report/6af0000000000000000000a1';
+    const calls: { url: string; body: string }[] = [];
+    const replies = [{ embed: { url: `${created}#t=n1`, expiresAt: '2026-11-13T08:00:00.000Z' } }, { embed: { url: `${created}#t=n2`, expiresAt: '2026-11-13T09:00:00.000Z' } }];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      calls.push({ url: String(url), body: typeof init?.body === 'string' ? init.body : '' });
+      return new Response(JSON.stringify(replies[Math.min(calls.length - 1, 1)]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }));
+    render(<PortalEmbedWeb target={target} serviceId="sv1" serviceName="Av. Los Incas" report={{ title: 'Control de imprimación', create: { type: 'CTL-IMP', responsible: 'Ana Torres' } }} onClose={vi.fn()} />);
+
+    await waitFor(() => expect(frame().src).toBe(`${created}#t=n1`));
+    expect(calls[0]!.url).toContain('/workspaces/w1/clients/c1/services/sv1/reports/embed');
+    expect(JSON.parse(calls[0]!.body)).toEqual({ type: 'CTL-IMP', responsible: 'Ana Torres' });
+    fromPortal({ type: 'portal-embed:error', version: 1, code: 'expired' });
+    await waitFor(() => expect(frame().src).toContain('#t=n2'));
+    expect(calls[1]!.url).toContain('/reports/6af0000000000000000000a1/embed');
+    expect(calls[1]!.body).toBe('');
+  });
+
   it('says why when the editor does not open, and asks again on Reintentar', async () => {
     const asked = portal([{ error: 'report_embed_failed', message: 'Este informe ya no está en el Portal.' }, { embed: linkOf('a1') }]);
     render(<PortalEmbedWeb target={target} serviceId="sv1" serviceName="Av. Los Incas" report={report} onClose={vi.fn()} />);

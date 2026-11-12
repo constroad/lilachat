@@ -75,8 +75,42 @@ describe('an open service takes the whole conversation (José 06/11: «ocupe tod
 });
 
 describe('ServiceDetailWeb', () => {
-  it('José 05/11: «Crear informe» for everyone with the services; the picker offers the nine types (REG-OBS since 11/11), the ones not here open Portal, and CTL-IMP opens the report', async () => {
+  it('José 12/11: on the wide web a draft of an editor type opens the editor even without Portal\'s mark', async () => {
+    const reports = [{ id: 'r8', title: 'Control de imprimación · 12 de noviembre', typeLabel: 'Control de imprimación', date: '2026-11-12', status: { label: 'Borrador', tone: 'neutral' } }];
+    const link = { url: 'https://www.constroad.com/embed/report/r8#t=a1', expiresAt: '2026-11-13T08:00:00.000Z' };
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(JSON.stringify(String(url).endsWith('/embed') ? { embed: link } : { detail: { ...detail, reports, totals: { ...detail.totals, reports: 1 } } }), { status: 200 })));
+    vi.stubGlobal('innerWidth', 1280);
+    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={() => undefined} />);
+    fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
+    fireEvent.click(within(screen.getByTestId('fila-r8')).getByText('Control de imprimación'));
+    expect(await screen.findByTestId('editor-portal-marco')).toHaveAttribute('src', link.url);
+    expect(screen.queryByTestId('informe-documento')).toBeNull();
+  });
+
+  it('José 12/11: on the wide web «Crear informe» opens Portal\'s editor, never the form; CON-CAP too', async () => {
     // Arrange
+    const link = { url: 'https://www.constroad.com/embed/report/6af0000000000000000000a1#t=n1', expiresAt: '2026-11-13T08:00:00.000Z' };
+    const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith('/reports/embed') ? { embed: link } : { detail }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('innerWidth', 1280);
+    render(<ServiceDetailWeb people={['Rosa Vega']} target={target} chatId="chat-1" service={service} seesMoney={false} onBack={() => undefined} />);
+    fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
+    // Act
+    fireEvent.click(screen.getByTestId('crear-informe'));
+    expect(screen.getByTestId('tipo-informe-CON-CAP').tagName).toBe('BUTTON');
+    fireEvent.click(screen.getByTestId('tipo-informe-CTL-IMP'));
+    fireEvent.click(screen.getByTestId('responsable-opcion-Rosa Vega'));
+    fireEvent.click(screen.getByTestId('responsable-confirmar'));
+    // Assert
+    expect(await screen.findByTestId('editor-portal-marco')).toHaveAttribute('src', link.url);
+    expect(screen.queryByTestId('informe-documento')).toBeNull();
+    const created = fetchMock.mock.calls.find((call) => String((call as unknown as [string])[0]).endsWith('/reports/embed')) as unknown as [string, RequestInit];
+    expect(JSON.parse(String(created[1].body))).toEqual({ type: 'CTL-IMP', responsible: 'Rosa Vega' });
+  });
+
+  it('José 05/11: «Crear informe» for everyone with the services; the picker offers the nine types (REG-OBS since 11/11), the ones not here open Portal, and on a phone-width web CTL-IMP opens the form', async () => {
+    // Arrange
+    vi.stubGlobal('innerWidth', 800);
     const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith('/reports/draft') ? { error: 'report_draft_failed', message: 'No se pudo abrir el informe' } : { detail }), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
     render(<ServiceDetailWeb people={['Rosa Vega']} target={target} chatId="chat-1" service={service} seesMoney={false} onBack={() => undefined} />);

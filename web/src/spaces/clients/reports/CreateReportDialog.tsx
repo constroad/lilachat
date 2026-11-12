@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronRight, ClipboardCheck, Droplets, FileSignature, Hammer, Layers, ScanSearch, Square, Truck, UserCheck, type LucideIcon } from 'lucide-react';
-import { asksResponsible, REPORT_TYPE_OPTIONS, reportTypeLabel, type ReportTypeOption } from '@lilachat/shared';
+import { asksResponsible, REPORT_TYPE_OPTIONS, RESPONSIBLE_MAX, reportTypeLabel, type ReportTypeOption } from '@lilachat/shared';
 import { loadPerfil } from '../../../api';
 import { Overlay } from '../../../ui/Overlay';
 
@@ -42,7 +42,7 @@ function ResponsibleStep(props: { code: string; people: readonly string[]; onCon
     <div data-testid="responsable-de-informe" className="flex flex-col gap-3">
       <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">{reportTypeLabel(props.code)}</p>
       <label htmlFor="responsable-nombre" className="text-sm font-semibold">¿Quién es el responsable?</label>
-      <input id="responsable-nombre" data-testid="responsable-nombre" value={name} onChange={(event) => setName(event.target.value)} placeholder="Nombre del responsable" className="h-11 w-full rounded-xl border border-outline/25 bg-background px-3 text-sm" />
+      <input id="responsable-nombre" data-testid="responsable-nombre" value={name} maxLength={RESPONSIBLE_MAX} onChange={(event) => setName(event.target.value)} placeholder="Nombre del responsable" className="h-11 w-full rounded-xl border border-outline/25 bg-background px-3 text-sm" />
       {props.people.length ? (
         <div className="flex flex-wrap gap-2">
           {props.people.map((person) => <button key={person} type="button" data-testid={`responsable-opcion-${person}`} aria-pressed={name === person} onClick={() => setName(person)} className={`min-h-[40px] rounded-xl border px-3 text-sm ${name === person ? 'border-primary bg-primary/10' : 'border-outline/25 bg-surface'}`}>{person}</button>)}
@@ -59,7 +59,8 @@ function ResponsibleStep(props: { code: string; people: readonly string[]; onCon
  * Only the ones Lilachat fills open here; the rest open the service in Portal
  * until their turn comes (spec INFORMES-DESDE-LILACHAT §5).
  */
-export function CreateReportDialog(props: { portalUrl?: string; people?: readonly string[]; onPick: (code: string, responsible: string) => void; onClose: () => void }) {
+/** `inEditor`: on the wide web the types Portal's editor creates are picked here too (José 12/11), and born there. */
+export function CreateReportDialog(props: { portalUrl?: string; people?: readonly string[]; inEditor?: (code: string) => boolean; onPick: (code: string, responsible: string) => void; onClose: () => void }) {
   const [code, setCode] = useState<string | null>(null);
   if (code) return <Overlay title="Nuevo informe" onClose={props.onClose}><ResponsibleStep code={code} people={props.people ?? []} onConfirm={(name) => props.onPick(code, name)} onBack={() => setCode(null)} /></Overlay>;
   return (
@@ -67,7 +68,7 @@ export function CreateReportDialog(props: { portalUrl?: string; people?: readonl
       <div data-testid="crear-informe-tipos" className="flex flex-col gap-2">
         <p className="-mt-1 mb-1 text-sm text-on-surface-variant">Se guarda como borrador mientras lo llenas</p>
         {REPORT_TYPE_OPTIONS.map((option) =>
-          option.opensHere ? (
+          option.opensHere || props.inEditor?.(option.code) ? (
             <button key={option.code} type="button" data-testid={`tipo-informe-${option.code}`} onClick={() => (asksResponsible(option.code) ? setCode(option.code) : props.onPick(option.code, ''))} className={`${ROW} border-primary/40 hover:bg-primary/5`}>
               <TypeIcon code={option.code} />
               <TypeText option={option} />

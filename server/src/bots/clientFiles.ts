@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { canManageMembers, canSeeDrive, canSeeTab, CLIENT_ID, EMBED_FAILED, embedLinkOf, isFieldReport, clientAccountOf, PORTAL_EMBED_ORIGINS, REPORT_PDF_FAILED, reportPdfOf, serviceDetailOf, serviceFilesOf, type ClientAccount, type EmbedLink, type MyClientAccess, type RestrictableTab, type ReportPdf, type ServiceDetail, type ServiceFiles, type ServiceOrder } from '@lilachat/shared';
+import { canManageMembers, canSeeDrive, canSeeTab, CLIENT_ID, EMBED_CREATE_TYPES, EMBED_FAILED, embedLinkOf, RESPONSIBLE_MAX, isFieldReport, clientAccountOf, PORTAL_EMBED_ORIGINS, REPORT_PDF_FAILED, reportPdfOf, serviceDetailOf, serviceFilesOf, type ClientAccount, type EmbedLink, type MyClientAccess, type RestrictableTab, type ReportPdf, type ServiceDetail, type ServiceFiles, type ServiceOrder } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { actorIn } from '../workspaces.js';
@@ -127,6 +127,21 @@ const REPORT_EMBED: ServiceAsk<EmbedLink> = { event: 'client.report.embed.reques
 export function clientReportEmbed(workspaceId: string, clientId: string, serviceId: string, reportId: string, userId: Types.ObjectId): Promise<AskOutcome<EmbedLink> | NotFound> {
   if (!CLIENT_ID.test(reportId)) return Promise.resolve(notFound());
   return askAboutService(REPORT_EMBED, workspaceId, clientId, serviceId, userId, { report_id: reportId });
+}
+
+export type BadRequest = { status: 400; error: string; message: string };
+const badCreate = (): BadRequest => ({ status: 400, error: 'invalid_embed_create', message: 'Ese informe no se crea en el editor.' });
+
+/**
+ * A new report born in Portal's editor (José 12/11: no forms on the wide web; Portal's `crear_informe_en_editor`):
+ * the same event without a report id. Portal reuses only this person's draft of that type dated today.
+ */
+export function clientReportEmbedNew(workspaceId: string, clientId: string, serviceId: string, body: unknown, userId: Types.ObjectId): Promise<AskOutcome<EmbedLink> | NotFound | BadRequest> {
+  const input = (body && typeof body === 'object' ? body : {}) as { type?: unknown; responsible?: unknown };
+  const responsible = typeof input.responsible === 'string' ? input.responsible.trim() : '';
+  const typeOk = typeof input.type === 'string' && EMBED_CREATE_TYPES.includes(input.type);
+  if (!typeOk || responsible.length > RESPONSIBLE_MAX || (input.responsible !== undefined && typeof input.responsible !== 'string')) return Promise.resolve(badCreate());
+  return askAboutService(REPORT_EMBED, workspaceId, clientId, serviceId, userId, { type: input.type as string, ...(responsible ? { responsible } : {}) });
 }
 
 /** The Drive of a client's service (pending 121, agentes c27e939). */

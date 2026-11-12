@@ -1184,6 +1184,25 @@ así que ningún informe trae todavía `editor: 'v2'`:
   `/print` no se deja enmarcar) y sin elegir firma o sello (viven en el Drive
   de la empresa). Sí están «Publicar PDF» y «Descargar PDF».
 
-**Pendiente:** José aprueba `abrir_editor_de_informe` en agentes; Portal
-enciende la marca en su propio commit y pasa el sha. Recién ahí, E2E en TEST:
-abrir, editar, guardar, cerrar con cambios sin guardar y enlace vencido.
+**E2E (12/11, 10:15–10:20 UTC, producción, Chrome de José, espacio Test).**
+José aprobó la herramienta a las 09:36 UTC; Portal 6385dd3e encendió la marca
+y agentes 1e619bc dejó pasar `editor` (antes copiaba los campos del informe
+uno por uno y lo perdía). Informe CTL-IMP 6aee7f1a… de «QA-CTLPIS — borrar»:
+
+| Paso | Resultado |
+| --- | --- |
+| Tocar la fila marcada (ventana de 1633 px) | Capa a pantalla completa, enlace 200 con `#t`, `ready`, tema oscuro aplicado |
+| Escribir «Ubicación» | `dirty` → `saved` en ~3,7 s, «Guardado 05:17» |
+| Escribir y Volver al toque | «Guardando antes de cerrar…», `closed` a 340 ms; al reabrir el cambio estaba |
+| Marco recargado sin `#t` | `error expired` a 451 ms → enlace nuevo (200) → `ready` a 1,8 s, sin error en pantalla |
+| Historial → Restaurar 05:17 | Confirmación, informe como antes, fila «Antes de restaurar» |
+| Tema claro con el editor abierto | Portal lo sigue al instante |
+| Volver sin cambios | `closed` en 733 ms; la lista se vuelve a pedir |
+
+Limpieza: el informe quedó como estaba, restaurado desde el historial del
+editor (el camino de la app). Quedan las filas del historial, como dijo
+Portal. La web volvió al espacio Personal.
+
+Hallazgos para Portal (avisados): en modo oscuro no aparece la barra de
+formato de texto (en claro sí), y la página del editor pide la sesión de
+next-auth (`/api/auth/session`) y falla.

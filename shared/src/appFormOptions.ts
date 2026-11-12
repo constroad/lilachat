@@ -135,9 +135,21 @@ const draftable = (field: FormField): boolean => field.kind !== 'photo' && field
  * The draft that goes to `x-refresh` and `x-preview`: only the form's own
  * answers, each item of a list with its own answers. Not checked: it is a draft.
  */
+/**
+ * A typed amount is text in the input; the app reads numbers (E2E 12/11: «A mano» sent "300" and
+ * agentes answered «Falta el monto»). A blank goes out as nothing; something that is not a number
+ * travels as typed, so the app can say what is wrong with it.
+ */
+function draftNumber(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  if (!value.trim()) return undefined;
+  const parsed = Number(value.trim().replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : value;
+}
+
 export function draftValues(fields: readonly FormField[], raw: FormValues): FormValues {
   return Object.fromEntries(fields.filter(draftable).flatMap((field) => {
-    const value = raw[field.name];
+    const value = field.kind === 'number' ? draftNumber(raw[field.name]) : raw[field.name];
     if (value === undefined || value === null) return [];
     if (field.kind !== 'list') return [[field.name, value]];
     const items = Array.isArray(value) ? value.map((item) => draftValues(field.fields, record(item))) : [];

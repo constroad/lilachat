@@ -159,6 +159,15 @@ describe('the draft that travels to refresh or to sum up', () => {
     // Assert
     expect(draft).toEqual({ pedidos: ['p1'], lecturas: [{ tanque: PEN, inicioId: 'r1' }] });
   });
+  it('a typed amount travels as a number, in a row too (E2E 12/11: «Falta el monto» with 300 typed)', () => {
+    // Arrange
+    const amounts = { type: 'array', title: 'Partidas', items: { type: 'object', properties: { partidaId: { type: 'string', title: 'Partida' }, monto: { type: 'number', title: 'Monto' } }, required: ['partidaId'] } } as FormSchemaProperty;
+    const fields = formFields(form({ monto: { type: 'number', title: 'Monto' }, partidas: amounts }));
+    // Act
+    const draft = draftValues(fields, { monto: '500', partidas: [{ partidaId: 'a', monto: '300' }, { partidaId: 'b', monto: '12,5' }, { partidaId: 'c', monto: '  ' }, { partidaId: 'd', monto: 'abc' }] });
+    // Assert
+    expect(draft).toEqual({ monto: 500, partidas: [{ partidaId: 'a', monto: 300 }, { partidaId: 'b', monto: 12.5 }, { partidaId: 'c' }, { partidaId: 'd', monto: 'abc' }] });
+  });
 });
 
 describe('previewReplyOf', () => {

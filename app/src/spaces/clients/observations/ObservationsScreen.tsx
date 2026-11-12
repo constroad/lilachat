@@ -93,11 +93,13 @@ export function ObservationsScreen(props: Props) {
   const [changed, setChanged] = useState(false);
   const back = useCallback(() => (open.kind === 'list' ? props.onClose(changed) : setOpen({ kind: 'list' })), [open.kind, props, changed]);
   useBackTo(back);
-  const written = useCallback((reportId: string) => {
+  const written = useCallback((reportId: string | undefined) => {
     setChanged(true);
     setOpen({ kind: 'list' });
     reload(props.type === LIFTING_TYPE ? undefined : reportId);
   }, [reload, props.type]);
+  // A lift answers with the lifting report (LEV-OBS) even from the registry: this screen keeps asking for its own.
+  const lifted = useCallback(() => written(undefined), [written]);
   const report = draft?.ok ? draft.document : null;
   const [notice, setNotice] = useState<string | null>(null);
   // §5-ter rule 2: the first tap opens the camera; the form comes after the shot.
@@ -108,7 +110,7 @@ export function ObservationsScreen(props: Props) {
     else if (started) setNotice(started.message);
   }, []);
   if (open.kind === 'new') return <NewObservationScreen to={to} report={lastReport} start={open.start} onBack={back} onDone={written} />;
-  if (open.kind === 'one' && lastReport) return <LiftObservationScreen to={to} report={lastReport} observation={open.observation} onBack={back} onDone={written} />;
+  if (open.kind === 'one' && lastReport) return <LiftObservationScreen to={to} report={lastReport} observation={open.observation} onBack={back} onDone={lifted} />;
   return (
     <View className="flex-1 bg-background">
       <ObservationHeader kicker={reportTypeLabel(props.type)} title="Observaciones" caption={props.service.name} onBack={back} />

@@ -171,10 +171,12 @@ export function ObservationsWeb(props: Props) {
   const report = draft?.ok ? draft.document : null;
   const fresh = useNewObservation();
   const to = useMemo(() => ({ target: props.target, chatId: props.chatId, serviceId: props.service.id }), [props.target, props.chatId, props.service.id]);
-  const written = useCallback((reportId: string) => {
+  const written = useCallback((reportId: string | undefined) => {
     fresh.close();
     reload(props.type === LIFTING_TYPE ? undefined : reportId);
   }, [fresh, reload, props.type]);
+  // A lift answers with the lifting report (LEV-OBS) even from the registry: this screen keeps asking for its own.
+  const lifted = useCallback(() => written(undefined), [written]);
   return (
     <div data-testid="observaciones-web" className="mx-auto flex max-w-4xl flex-col gap-3">
       <header className="flex items-start gap-2">
@@ -200,7 +202,7 @@ export function ObservationsWeb(props: Props) {
           <Totals observations={report.observations} />
           <ObservationMap report={report} />
           {fresh.started ? <NewObservationWeb to={to} report={report} first={fresh.started.file} reading={fresh.started.reading} onBack={fresh.close} onDone={written} /> : null}
-          <ObservationTable report={report} onOpen={viewer.open} write={{ to, report, onDone: written }} />
+          <ObservationTable report={report} onOpen={viewer.open} write={{ to, report, onDone: lifted }} />
           {report.publish.missing[0] ? <p data-testid="publicar-desde-portal" className="text-center text-sm text-on-surface-variant">{report.publish.missing[0]}</p> : null}
           {fresh.started ? null : (
             <div className="sticky bottom-0 border-t border-outline/10 bg-background py-3">

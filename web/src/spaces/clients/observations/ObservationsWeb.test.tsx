@@ -70,7 +70,7 @@ describe('registering and lifting from the browser (an iPhone has no APK)', () =
   const answered = (data: Record<string, unknown>) => ({ commandId: 'c1', outcome: 'answered', response: { responseType: 'ephemeral', data, upload: ticket } });
 
   /** Portal behind the server: the document, the run, its answer and the file. */
-  function portal(after: unknown[]) {
+  function portal(after: unknown[], answeredId = 'r1') {
     const calls: string[] = [];
     let reads = 0;
     vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
@@ -78,7 +78,7 @@ describe('registering and lifting from the browser (an iPhone has no APK)', () =
       calls.push(`${String(url)} ${body}`);
       const reply = String(url).includes('/reports/draft') ? { document: documentOf(reads++ === 0 ? [item('1', 'open', 'Fisura')] : after) }
         : String(url).includes('/reports/forms') ? { commandId: 'c1', appId: 'a', appName: 'Portal', outcome: 'form', response: { responseType: 'form' } }
-        : String(url).includes('/commands/c1/form') ? answered({ informeId: 'r1', observacionId: 'o9', codigo: 'OBS-009' })
+        : String(url).includes('/commands/c1/form') ? answered({ informeId: answeredId, observacionId: 'o9', codigo: 'OBS-009' })
         : { mediaId: 'm1', url: 'https://lila.constroad.com/m/1.jpg' };
       return new Response(JSON.stringify(reply), { status: String(url).includes('/obs/upload') ? 201 : 200, headers: { 'Content-Type': 'application/json' } });
     }));
@@ -119,6 +119,22 @@ describe('registering and lifting from the browser (an iPhone has no APK)', () =
 
     await waitFor(() => expect(calls.some((call) => call.includes('"kind":"observation_lift"') && call.includes('"observation_id":"1"'))).toBe(true));
     await waitFor(() => expect(screen.getByTestId('observacion-OBS-001')).toHaveTextContent('Levantada'));
+  });
+
+  it('a lift from the registry asks the registry again, not the lifting report Portal answers with', async () => {
+    const calls = portal([item('1', 'lifted', 'Fisura')], 'lev9');
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => 'blob:x', revokeObjectURL: () => undefined }));
+    render(<ObservationsWeb target={target} chatId="ch1" service={service} type="REG-OBS" reportId="r1" onClose={vi.fn()} />);
+
+    await userEvent.click(await screen.findByTestId('observacion-OBS-001'));
+    await userEvent.upload(screen.getAllByTestId('entrada-foto')[0]!, photo());
+    await waitFor(() => expect(screen.getByTestId('marcar-levantada')).toHaveTextContent('Marcar como levantada'));
+    await userEvent.click(screen.getByTestId('marcar-levantada'));
+
+    await waitFor(() => expect(screen.getByTestId('observacion-OBS-001')).toHaveTextContent('Levantada'));
+    const asks = calls.filter((call) => call.includes('/reports/draft'));
+    expect(asks.at(-1)).toContain('"type":"REG-OBS"');
+    expect(asks.at(-1)).not.toContain('lev9');
   });
 });
 

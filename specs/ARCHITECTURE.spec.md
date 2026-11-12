@@ -13795,6 +13795,7 @@ qué mostrar si el navegador no deja usar IndexedDB.
 | JWT en memoria | En `localStorage` solo el perfil (quién soy, id del navegador). Sin red al abrir: sin JWT, la pantalla sale de la base y la sesión se renueva sola al volver la red | web `api.ts`, `sesion/useSesion.ts`, `auth/AccessScreens.tsx` |
 | CSP y cabeceras | `script-src 'self'` sin `eval`, `object-src 'none'`, `frame-ancestors 'none'`, socket al mismo host, fotos y audios por https; `nosniff`, `Referrer-Policy`, `X-Frame-Options`. Solo en lo que sirve la web, no en `/api` | server `cabecerasDeSeguridad.ts` (+3 tests), `app.ts` |
 | Instalable y tarjeta | `manifest.json` con íconos 192/512 y enmascarable (el logo al 80 % para que el círculo no lo corte), `apple-touch-icon`, metas `og:*` con imagen absoluta 1200×630; el aviso del SW usa el ícono real y abre `/c/<id>` | web `public/manifest.json`, `public/icons/*`, `index.html`, `public/sw.js` |
+| La API sin pasar por el SW (12/11) | Un detalle esperó 48 s en el navegador ANTES de salir (resource timing: `fetchStart − startTime`; el server contestó en 1,2 s): el SW no hace nada con `/api` ni `/socket.io`, pero cada pedido esperaba a que despertara. Al instalar, `addRoutes` (Chrome 123+) los manda directo a la red; si el navegador lo rechaza, solo avisa y la instalación sigue | web `public/sw.js`, `src/pwa/swRoutes.test.ts` (+3 tests) |
 
 **E2E (19/10, web compilada servida por el server local):** cabeceras y
 tarjeta con `curl -A WhatsApp`; entrar por código → en `localStorage` solo

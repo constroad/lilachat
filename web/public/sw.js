@@ -12,8 +12,19 @@ const CACHE = `lilachat-${VERSION}`;
 const SHELL = '/';
 const ESPERA_DE_RED_MS = 4000;
 
+/**
+ * E2E 12/11: a request waited 48 s for this worker to wake up, and the worker does nothing with it.
+ * Static routing (Chrome 123+) sends the API and the socket straight to the network. A refused
+ * route only warns: failing the install would keep the old version forever.
+ */
+const STRAIGHT_TO_NETWORK = [
+  { condition: { urlPattern: '/api/*' }, source: 'network' },
+  { condition: { urlPattern: '/socket.io/*' }, source: 'network' },
+];
+
 /** Al instalar: la app y los archivos que nombra, para que la primera vez sin red ya abra. */
 self.addEventListener('install', (evento) => {
+  if (typeof evento.addRoutes === 'function') evento.waitUntil(evento.addRoutes(STRAIGHT_TO_NETWORK).catch((error) => console.warn('[sw] static routes not set:', error)));
   evento.waitUntil(
     (async () => {
       const cache = await caches.open(CACHE);

@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { ChevronRight, ClipboardCheck, Droplets, FileSignature, Hammer, Layers, Square, Truck, UserCheck, type LucideIcon } from 'lucide-react';
-import { REPORT_TYPE_OPTIONS, reportTypeLabel, type ReportTypeOption } from '@lilachat/shared';
+import { ChevronRight, ClipboardCheck, Droplets, FileSignature, Hammer, Layers, ScanSearch, Square, Truck, UserCheck, type LucideIcon } from 'lucide-react';
+import { isObservationType, REPORT_TYPE_OPTIONS, reportTypeLabel, type ReportTypeOption } from '@lilachat/shared';
 import { loadPerfil } from '../../../api';
 import { Overlay } from '../../../ui/Overlay';
 
-const ICONS: Record<string, LucideIcon> = { 'CTL-IMP': Droplets, IAA: Square, 'CTL-PIS': Truck, 'CON-CAP': Layers, 'RCP-CAM': UserCheck, 'LEV-OBS': ClipboardCheck, 'FRE-PAV': Hammer, 'SOL-IMP': FileSignature };
+const ICONS: Record<string, LucideIcon> = { 'CTL-IMP': Droplets, IAA: Square, 'CTL-PIS': Truck, 'CON-CAP': Layers, 'RCP-CAM': UserCheck, 'REG-OBS': ScanSearch, 'LEV-OBS': ClipboardCheck, 'FRE-PAV': Hammer, 'SOL-IMP': FileSignature };
 const ROW = 'flex min-h-[64px] w-full items-center gap-3 rounded-xl border bg-surface px-3 py-2.5 text-left';
 
 function TypeIcon({ code }: { code: string }) {
@@ -68,7 +68,7 @@ export function CreateReportDialog(props: { portalUrl?: string; people?: readonl
         <p className="-mt-1 mb-1 text-sm text-on-surface-variant">Se guarda como borrador mientras lo llenas</p>
         {REPORT_TYPE_OPTIONS.map((option) =>
           option.opensHere ? (
-            <button key={option.code} type="button" data-testid={`tipo-informe-${option.code}`} onClick={() => setCode(option.code)} className={`${ROW} border-primary/40 hover:bg-primary/5`}>
+            <button key={option.code} type="button" data-testid={`tipo-informe-${option.code}`} onClick={() => (isObservationType(option.code) ? props.onPick(option.code, '') : setCode(option.code))} className={`${ROW} border-primary/40 hover:bg-primary/5`}>
               <TypeIcon code={option.code} />
               <TypeText option={option} />
               <ChevronRight size={18} className="shrink-0 text-primary" />

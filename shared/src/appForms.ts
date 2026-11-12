@@ -61,8 +61,8 @@ export type AppForm = { id: string; title: string; submitLabel?: string; /** The
 type Base = { name: string; label: string; help?: string; required: boolean; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number | true; /** `x-refresh`: changing it asks the app for the form again. */ refresh?: true };
 export type FormField =
   | (Base & { kind: 'choice'; options: ChoiceOption[]; segmented: boolean; /** A long list (the company's people, agentes 24/10): a field that opens a sheet with a search. */ searchable: boolean; /** `x-avatar: initials`: each option with its initials. */ initials?: true })
-  | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true; /** `x-input: place`: a text with the button that writes where the device is. */ place?: true })
-  | (Base & { kind: 'number'; unit?: string; min?: number; max?: number; /** The limit itself is out: «Mayor que 0». */ minExclusive?: true; maxExclusive?: true; integer: boolean })
+  | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true; /** `x-input: place`: a text with the button that writes where the device is. */ place?: true; /** `x-input: work-street`: a street of the service's work map, picked (Portal's CON-CAP, 12/11). */ street?: true; /** `x-input: work-station`: the station on that street, computed from the reading and editable. */ station?: true })
+  | (Base & { kind: 'number'; unit?: string; min?: number; max?: number; /** The limit itself is out: «Mayor que 0». */ minExclusive?: true; maxExclusive?: true; integer: boolean; /** `x-input: gps`: written by the device's reading, never typed (Portal's CON-CAP point). */ gps?: GpsRole })
   | (Base & { kind: 'date'; /** `format: date | time | date-time`: a picker for the day, the hour or both (José, 24/10). */ mode: DateMode })
   | (Base & { kind: 'photo'; /** A list (`type: array`) where each photo can be removed and taken again; otherwise one photo. */ multiple: boolean; max: number; min: number; /** Also from the gallery, unless the form asks for the camera alone. */ gallery?: boolean; /** `x-gallery: true`: its files go with no stamp. */ plainGallery?: true })
   | (Base & { kind: 'location' })
@@ -113,7 +113,11 @@ const MULTILINE_FROM = 200;
 /** A field for free writing, whatever its limit. */
 const FREE_WRITING = /observaci|comentario/i;
 const FORM_ID = /^[a-z][a-z0-9_-]*$/;
-const INPUTS = ['photo', 'location', 'textarea', 'otp', 'pin', 'place'];
+const INPUTS = ['photo', 'location', 'textarea', 'otp', 'pin', 'place', 'gps', 'work-street', 'work-station'];
+export type GpsRole = 'lat' | 'lng' | 'precision';
+const GPS_PARTS: ReadonlyArray<[GpsRole, RegExp]> = [['lat', /^lat/i], ['lng', /^(lng|lon)/i], ['precision', /^(precision|accuracy)/i]];
+/** Which part of a reading a `gps` number holds, by its name: Portal names them lat, lng and precisionM. */
+export const gpsRoleOf = (name: string): GpsRole | null => GPS_PARTS.find(([, pattern]) => pattern.test(name))?.[0] ?? null;
 /** A code longer than this is not typed by hand. */
 const CODE_MAX_DIGITS = 8;
 const DIGITS_PATTERN = /^\^\\d\{(\d)\}\$$/;
@@ -208,6 +212,8 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
   const width = property['x-width'] === 'half' || property['x-width'] === 'full' ? property['x-width'] : undefined;
   const base: Base = { name, label: line(property.title, FORM_LIMITS.label) || labelOf(name), ...(property.description ? { help: line(property.description, FORM_LIMITS.help) } : {}), required, ...(visibleIf ? { visibleIf } : {}), ...(width ? { width } : {}), ...(property['x-refresh'] === true ? { refresh: true as const } : {}) };
   if (input === 'photo') return photoField(base, property);
+  const gps = input === 'gps' ? gpsRoleOf(name) : null;
+  if (input === 'gps' && (!gps || (property.type !== 'number' && property.type !== 'integer'))) return `El campo «${name}» pide x-input «gps», que Lilachat no sabe dibujar ahí.`;
   const picks = property.type === 'array' && input === undefined ? choiceOptions(record(property.items) as FormSchemaProperty) : null;
   if (picks) return multiField(base, property, picks);
   if (property.type === 'array' && input === undefined) return listField(base, property);
@@ -221,7 +227,7 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
   if (property.type === 'number' || property.type === 'integer') {
     const given = numberOf(property.default);
     const initial = given === undefined ? {} : { initial: given };
-    return { ...base, ...initial, kind: 'number', ...(property['x-unit'] ? { unit: line(property['x-unit'], 12) } : {}), ...numberLimits(property), integer: property.type === 'integer' };
+    return { ...base, ...initial, kind: 'number', ...(property['x-unit'] ? { unit: line(property['x-unit'], 12) } : {}), ...numberLimits(property), integer: property.type === 'integer', ...(gps ? { gps } : {}) };
   }
   const mode = property.type === 'string' ? dateModeOf(property.format) : null;
   if (mode) {
@@ -235,9 +241,16 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
     const maxLength = typeof property.maxLength === 'number' ? Math.min(property.maxLength, FORM_LIMITS.text) : undefined;
     const digits = codeDigitsOf(input, property, maxLength);
     const initial = typeof property.default === 'string' && property.default.trim() ? { initial: line(property.default, maxLength ?? FORM_LIMITS.text) } : {};
-    return { ...base, ...initial, kind: 'text', multiline: !digits && (input === 'textarea' || (maxLength ?? 0) > MULTILINE_FROM || FREE_WRITING.test(name)), ...(maxLength ? { maxLength } : {}), ...(digits ? { digits } : {}), ...(input === 'place' ? { place: true as const } : {}) };
+    return { ...base, ...initial, kind: 'text', multiline: !digits && (input === 'textarea' || (maxLength ?? 0) > MULTILINE_FROM || FREE_WRITING.test(name)), ...(maxLength ? { maxLength } : {}), ...(digits ? { digits } : {}), ...textInputOf(input) };
   }
   return `El campo «${name}» es de un tipo que Lilachat no sabe dibujar.`;
+}
+
+/** What a text's `x-input` adds: the place button, or a street or station of the work map. */
+function textInputOf(input: string | undefined): { place?: true; street?: true; station?: true } {
+  if (input === 'place') return { place: true };
+  if (input === 'work-street') return { street: true };
+  return input === 'work-station' ? { station: true } : {};
 }
 
 /** How a choice is drawn: side by side while it fits, a dropdown for records, long labels and long lists, else a list of rows. */

@@ -38,9 +38,12 @@ function canBeHalf(field: FormField): boolean {
     case 'photo':
       return false;
     case 'text':
-      return !field.multiline && !field.digits && !field.secret && !field.place;
+      return !field.multiline && !field.digits && !field.secret && !field.place && !field.street;
     case 'date':
       return field.mode !== 'date-time';
+    case 'number':
+      // The `gps` numbers are one block with the reading and its precision (CON-CAP point).
+      return !field.gps;
     default:
       return true;
   }

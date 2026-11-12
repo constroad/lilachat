@@ -1,6 +1,6 @@
 import { useMemo, useRef, type RefObject } from 'react';
 import { CheckCheck } from 'lucide-react';
-import { CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, formRows, liveSelfieFieldOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply } from '@lilachat/shared';
+import { CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, formRows, liveSelfieFieldOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
@@ -15,6 +15,8 @@ import type { PlaceLookup } from './usePlaceName';
 import { useLiveSigning } from './useLiveSigning';
 import { useFormLive } from './useFormLive';
 import { useAppFormState } from './useAppFormState';
+import { useFieldAutofill } from './useFieldAutofill';
+import { GpsReadingField, WorkStreetField } from './WorkPlaceFields';
 
 /** The two steps of a signing, as design e-32 writes them. */
 const LIVE_CHOICE_KICKER = '1 · Qué marcas';
@@ -23,7 +25,7 @@ const LIVE_FOOTER = 'Al tocar se toma la foto con la hora y el lugar, y se enví
 
 type Upload = (file: File, stamp?: FormPhotoStamp) => Promise<{ ok: true; fileId: string } | { ok: false; message: string }>;
 
-type DialogProps = { answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: Upload; /** The address under a signing's camera. */ onPlace?: PlaceLookup; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply> };
+type DialogProps = { answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: Upload; /** The address under a signing's camera. */ onPlace?: PlaceLookup; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply>; /** The service's work-map streets for a `work-street` field; `null` while they load. */ workStreets?: readonly WorkMapStreet[] | null };
 
 /** After a refusal the dialog goes to the first field with an error (E2E 28/10: «Diseño» was out of sight). */
 function revealField(body: HTMLDivElement | null, name: string) {
@@ -50,16 +52,18 @@ export function AppFormDialog(props: DialogProps) {
   const signing = useLiveSigning({ live: selfieField, locationName, selfie, upload: props.onUpload });
   const body = useRef<HTMLDivElement>(null);
   const state = useAppFormState({ fields, refused: props.answer.errors, signing, onSubmit: props.onSubmit, reveal: (name) => revealField(body.current, name) });
+  const place = useFieldAutofill({ fields, values: state.values, fill: state.fill, streets: props.workStreets ?? null });
   const live = useFormLive({ fields, values: state.values, preview: form.preview, onRefresh: props.onRefresh, onPreview: props.onPreview });
   // The summary's remarks («la lectura de fin va después del inicio») under their fields; the person's own errors win.
-  const slot: SlotContext = { fields, values: state.values, errors: { ...live.summary.errors, ...state.errors }, selfieField, locationName, selfie, upload: props.onUpload, onPlace: props.onPlace, set: state.set, setList: state.setList };
+  const slot: SlotContext = { fields, values: state.values, errors: { ...live.summary.errors, ...state.errors }, selfieField, locationName, selfie, upload: props.onUpload, onPlace: props.onPlace, set: state.set, setList: state.setList, place, workStreets: props.workStreets ?? null };
   // Sent and answered later (consensus 24/10): «Enviando…» until the answer closes it or the errors come back here.
   const waiting = props.answer.waiting === true;
   const evidence = evidenceLine(fields);
   const label = waiting ? 'Enviando…' : state.sending ? signing.phaseLabel : submitLabelOf(form, fields, state.values);
   // José 06/11: the name first, like Portal; until then only the place keeps reading, and the camera stays off.
   const step = signingStepOf(fields, state.values);
-  const shown = visibleFields(fields, state.values).filter((field) => field.name !== signer?.name && (step === 'sign' || field.kind === 'location'));
+  // The three `gps` numbers are one block, drawn where the latitude goes.
+  const shown = visibleFields(fields, state.values).filter((field) => field.name !== signer?.name && (step === 'sign' || field.kind === 'location') && !(field.kind === 'number' && field.gps && field.gps !== 'lat'));
   const footer = <FormFooter summary={live.summary.blocks} message={state.message} busy={state.sending || waiting} label={label} note={evidence ? (selfieField ? LIVE_FOOTER : evidence) : ''} onSend={() => void state.send()} />;
   return (
     <Overlay title={form.title} onClose={props.onClose} footer={step === 'sign' ? footer : undefined}>
@@ -134,6 +138,8 @@ type SlotContext = {
   onPlace?: PlaceLookup;
   set: (name: string) => (value: unknown) => void;
   setList: (name: string) => (items: FormValues[], changed: string) => void;
+  place: ReturnType<typeof useFieldAutofill>;
+  workStreets: readonly WorkMapStreet[] | null;
 };
 
 /** One field; `half` when it shares its row. */
@@ -141,6 +147,8 @@ function FieldSlot(props: { field: FormField; half?: boolean; context: SlotConte
   const { field, half = false } = props;
   const { values, errors, selfieField, locationName, upload } = props.context;
   const chips = field.kind === 'choice' && chipsFor(props.context.fields, field);
+  const place = placeSlot(field, props.context);
+  if (place) return place;
   if (selfieField && field.name === selfieField.name) {
     return <LiveSelfie ref={props.context.selfie} testId={`campo-${field.name}`} label={LIVE_PHOTO_KICKER} onPlace={props.context.onPlace} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />;
   }
@@ -157,6 +165,18 @@ function FieldSlot(props: { field: FormField; half?: boolean; context: SlotConte
       )}
     </div>
   );
+}
+
+/** The fields the reading fills (CON-CAP): the point's place and the work map's street. */
+function placeSlot(field: FormField, context: SlotContext) {
+  const { place, values, errors } = context;
+  if (field.kind === 'number' && field.gps === 'lat') {
+    const group = place.group;
+    const error = group ? errors[group.lat] ?? errors[group.lng] ?? (group.precision ? errors[group.precision] : undefined) : undefined;
+    return <div data-field={field.name}><GpsReadingField reading={place.reading} state={place.state} error={error} onTake={place.take} /></div>;
+  }
+  if (field.kind === 'text' && field.street) return <div data-field={field.name}><WorkStreetField field={field} value={values[field.name]} error={errors[field.name]} onChange={context.set(field.name)} streets={context.workStreets} reading={place.reading} /></div>;
+  return null;
 }
 
 function Field(props: { field: Exclude<FormField, { kind: 'list' }>; value: unknown; error?: string; onChange: (value: unknown) => void; upload: Upload; half?: boolean }) {

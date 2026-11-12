@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from 'react';
 import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { CheckCheck, X } from 'lucide-react-native';
-import { cameraFirstFieldOf, CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, formRows, liveSelfieFieldOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply } from '@lilachat/shared';
+import { cameraFirstFieldOf, CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, formRows, liveSelfieFieldOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { Modal } from '../../ui/Modal';
@@ -18,6 +18,8 @@ import type { PlaceLookup } from './usePlaceName';
 import { useLiveSigning } from './useLiveSigning';
 import { useFormLive } from './useFormLive';
 import { useAppFormState } from './useAppFormState';
+import { useFieldAutofill } from './useFieldAutofill';
+import { GpsReadingField, WorkStreetField } from './WorkPlaceFields';
 import { isRichChoice, MultiField, RichChoiceField } from './RichChoiceFields';
 
 const SHEET_PADDING = 16;
@@ -36,7 +38,7 @@ const ROW_GAP = 12;
 const TODAY = new Intl.DateTimeFormat('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
 const CLOCK = new Intl.DateTimeFormat('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false });
 
-type SheetProps = { /** A report's photo: the form starts at the camera when that is all it still needs. */ cameraFirst?: boolean; answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: PhotoUpload; /** The address under a signing's camera. */ onPlace?: PlaceLookup; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply> };
+type SheetProps = { /** A report's photo: the form starts at the camera when that is all it still needs. */ cameraFirst?: boolean; answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: PhotoUpload; /** The address under a signing's camera. */ onPlace?: PlaceLookup; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply>; /** The service's work-map streets for a `work-street` field; `null` while they load. */ workStreets?: readonly WorkMapStreet[] | null };
 
 /** The keyboard's height: the sheet rises above it and shrinks to fit (José, 23/10: he typed the code without seeing it). */
 function useKeyboardHeight() {
@@ -99,7 +101,8 @@ export function AppFormSheet(props: SheetProps) {
   const formLive = useFormLive({ fields, values: state.values, preview: form.preview, onRefresh: props.onRefresh, onPreview: props.onPreview });
   const sheetWidth = Math.min(width, SHEET_MAX_WIDTH);
   // The summary's remarks under their fields; the person's own errors win.
-  const slot: SlotContext = { cameraField, onCameraDismissed: props.onClose, fields, onPlace: props.onPlace, values: state.values, errors: { ...formLive.summary.errors, ...state.errors }, live, locationName, selfie, upload: props.onUpload, set: state.set, setList: state.setList, width: sheetWidth, positions };
+  const place = useFieldAutofill({ fields, values: state.values, fill: state.fill, streets: props.workStreets ?? null });
+  const slot: SlotContext = { place, workStreets: props.workStreets ?? null, cameraField, onCameraDismissed: props.onClose, fields, onPlace: props.onPlace, values: state.values, errors: { ...formLive.summary.errors, ...state.errors }, live, locationName, selfie, upload: props.onUpload, set: state.set, setList: state.setList, width: sheetWidth, positions };
   // Sent and answered later (consensus 24/10): «Enviando…» until the answer closes it or the errors come back here.
   const waiting = props.answer.waiting === true;
   const evidence = evidenceLine(fields);
@@ -109,7 +112,8 @@ export function AppFormSheet(props: SheetProps) {
   };
   // José 06/11: the name first, like Portal; until then only the place keeps reading, and the camera stays off.
   const step = signingStepOf(fields, state.values);
-  const shown = visibleFields(fields, state.values).filter((field) => field.name !== signer?.name && (step === 'sign' || field.kind === 'location'));
+  // The three `gps` numbers are one block, drawn where the latitude goes.
+  const shown = visibleFields(fields, state.values).filter((field) => field.name !== signer?.name && (step === 'sign' || field.kind === 'location') && !(field.kind === 'number' && field.gps && field.gps !== 'lat'));
   const label = waiting ? 'Enviando…' : state.sending ? signing.phaseLabel : submitLabelOf(form, fields, state.values);
   return (
     <Modal visible transparent animationType="slide" onRequestClose={close}>
@@ -222,6 +226,8 @@ type SlotContext = {
   setList: (name: string) => (items: FormValues[], changed: string) => void;
   width: number;
   positions: MutableRefObject<Record<string, number>>;
+  place: ReturnType<typeof useFieldAutofill>;
+  workStreets: readonly WorkMapStreet[] | null;
 };
 
 /** One field; in a row of two (`half`) its position is the row's, written by the row. */
@@ -229,6 +235,8 @@ function FieldSlot(props: { field: FormField; half: boolean; context: SlotContex
   const { field, half } = props;
   const { values, errors, live, locationName, upload, width } = props.context;
   const chips = field.kind === 'choice' && chipsFor(props.context.fields, field);
+  const place = placeSlot(field, props.context);
+  if (place) return <View onLayout={(event) => (props.context.positions.current[field.name] = event.nativeEvent.layout.y)}>{place}</View>;
   if (live && field.name === live.name) {
     return <LiveSelfie ref={props.context.selfie} testID={`campo-${field.name}`} label={LIVE_PHOTO_KICKER} onPlace={props.context.onPlace} width={width - SHEET_PADDING * 2} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />;
   }
@@ -251,6 +259,18 @@ function FieldSlot(props: { field: FormField; half: boolean; context: SlotContex
       )}
     </View>
   );
+}
+
+/** The fields the reading fills (CON-CAP): the point's place and the work map's street. */
+function placeSlot(field: FormField, context: SlotContext) {
+  const { place, values, errors } = context;
+  if (field.kind === 'number' && field.gps === 'lat') {
+    const group = place.group;
+    const error = group ? errors[group.lat] ?? errors[group.lng] ?? (group.precision ? errors[group.precision] : undefined) : undefined;
+    return <GpsReadingField reading={place.reading} state={place.state} error={error} onTake={place.take} />;
+  }
+  if (field.kind === 'text' && field.street) return <WorkStreetField field={field} value={values[field.name]} error={errors[field.name]} onChange={context.set(field.name)} streets={context.workStreets} reading={place.reading} />;
+  return null;
 }
 
 function Field(props: { field: Exclude<FormField, { kind: 'list' }>; value: unknown; error?: string; onChange: (value: unknown) => void; upload: PhotoUpload; width: number; half?: boolean; opensCamera?: boolean; onCameraDismissed?: () => void }) {

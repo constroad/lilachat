@@ -252,7 +252,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   // José 12/11, option B: the additional area is measured here (Medición on an iPhone); the picker offers it only once Portal's tools are live.
   if (report?.type === AREA_TYPE) return <AreasWeb target={props.target} chatId={props.chatId} service={props.service} {...(report.reportId ? { reportId: report.reportId } : {})} portalUrl={portalUrl} onClose={closeReport} />;
   if (report && isObservationType(report.type)) return <ObservationsWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} portalUrl={portalUrl} onClose={closeReport} />;
-  if (report) return <ReportDocumentWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={portalUrl} onClose={closeReport} />;
+  if (report) return <ReportDocumentWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={portalUrl} links={props.links} onClose={closeReport} />;
   return (
     <div data-testid="detalle-servicio" className="mx-auto flex max-w-3xl flex-col gap-3">
       <ServiceCrumbs service={props.service.name} onBack={props.onBack} onToChat={props.onToChat} />

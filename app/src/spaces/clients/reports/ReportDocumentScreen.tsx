@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { AlertTriangle, ChevronLeft, ExternalLink, FileText } from 'lucide-react-native';
-import { formKeyOf, isUnitsRepeat, PREVIEW_ASKING, PREVIEW_LABEL, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
+import { wantsWorkStreets, type ChannelLinks, formKeyOf, isUnitsRepeat, PREVIEW_ASKING, PREVIEW_LABEL, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
 import { AppFormSheet } from '../../../chat/commands/AppFormSheet';
+import { useWorkStreets } from './useWorkStreets';
 import { EphemeralAnswers } from '../../../chat/commands/EphemeralAnswers';
 import { useColores } from '../../../ui/tema';
 import { useFileViewer } from '../useFileViewer';
@@ -16,7 +17,7 @@ import { Pill, ProgressCard, QueueCard, SectionCard } from './ReportSections';
 import { useFieldDocument } from './useFieldDocument';
 import { useReportForms } from './useReportForms';
 
-type Props = { /** Who the person named before creating it (José 06/11). */ responsible?: string; target: ServiceAskTarget; chatId: string; service: SpaceClientService; type: string; /** The draft a row asked to continue. */ reportId?: string; portalUrl?: string; onClose: (changed: boolean) => void };
+type Props = { /** Who the person named before creating it (José 06/11). */ responsible?: string; target: ServiceAskTarget; chatId: string; service: SpaceClientService; type: string; /** The draft a row asked to continue. */ reportId?: string; portalUrl?: string; /** The channel's links: the work map's streets for a form that picks one. */ links?: ChannelLinks; onClose: (changed: boolean) => void };
 
 /** Kicker, title and state (design j-02): the type over the service, the pill at the right. */
 function ReportHeader({ kicker, title, report, onBack }: { kicker: string; title: string; report: FieldDocument | null; onBack: () => void }) {
@@ -153,6 +154,7 @@ export function ReportDocumentScreen(props: Props) {
   const { actions, saves, offline } = document;
   const files = useFileViewer();
   const pdf = useReportPdf(props.target, props.service.id, files.open);
+  const streets = useWorkStreets(props.target.jwt, props.links, props.target.clientId, props.service.id, wantsWorkStreets(document.form?.response?.form));
   const kicker = report ? report.title : reportTypeLabel(props.type);
   const notice = files.notice ?? pdf.message;
   const blockers = report ? publishBlockers(report, saves, offline) : [];
@@ -176,7 +178,7 @@ export function ReportDocumentScreen(props: Props) {
       {report && (!items || (items.kind === 'repeat' && isUnitsRepeat(items))) ? <ReportFooter report={report} blocker={publishFooterLine(report, blockers)} asking={pdf.asking} onPublish={() => screen.setPublishing(true)} onPdf={() => void pdf.ask(report.id ?? '', `${report.title} · PDF`)} onPreview={() => void pdf.ask(report.id ?? '', `${report.title} · vista previa`, true)} onDone={() => props.onClose(true)} /> : null}
       {files.viewer}
       {report ? <PublishSheet document={report} blockers={blockers} visible={screen.publishing} onClose={() => screen.setPublishing(false)} onPublish={publish} onOpen={(path) => { screen.setPublishing(false); actions.openSection(path); }} /> : null}
-      {document.form ? <AppFormSheet key={formKeyOf(document.form)} cameraFirst answer={document.form} onSubmit={actions.submit} onUpload={actions.upload} onClose={actions.closeForm} /> : null}
+      {document.form ? <AppFormSheet key={formKeyOf(document.form)} cameraFirst workStreets={streets} answer={document.form} onSubmit={actions.submit} onUpload={actions.upload} onClose={actions.closeForm} /> : null}
       {forms.answers.openForm ? (
         <AppFormSheet key={formKeyOf(forms.answers.openForm)} answer={forms.answers.openForm} onSubmit={(values) => forms.answers.submitForm(forms.answers.openForm!, values)} onUpload={(photo, stamp) => forms.answers.uploadPhoto(forms.answers.openForm!.commandId, photo, stamp)} onRefresh={(values) => forms.answers.refreshForm(forms.answers.openForm!, values)} onPreview={(values) => forms.answers.previewForm(forms.answers.openForm!, values)} onClose={() => forms.answers.dismiss(forms.answers.openForm!.commandId)} />
       ) : null}

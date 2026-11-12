@@ -1259,3 +1259,41 @@ llega solo a un admin del espacio. El server la quita del documento de un
 miembro (`withoutGroupSend`, el mismo `scrub` que esconde la plata) y guarda
 esa copia, así que los formularios de sección tampoco la traen. Portal la
 rechaza también si la pide un miembro (pedido el 12/11, a la espera de su sha).
+
+## 16. CON-CAP en campo: ubicación, calle y progresiva solas (José 12/11)
+
+José: «es para un ing de campo… quitarle trabajo en lugar de darle trabajo».
+Portal (8bc64e18, reemplaza a c9f858f2) arma el formulario de campo del
+CON-CAP: tramo, laboratorio, método y puntos de densidad. Lilachat dibuja tres
+marcas nuevas de `x-input`:
+
+| Marca | Campos de Portal | Qué hace Lilachat |
+| --- | --- | --- |
+| `gps` | `lat`, `lng`, `precisionM` (números) | Un solo bloque «Ubicación del punto». Lee el GPS al abrir y llena los tres. «Volver a tomar» lee otra vez. |
+| `work-street` | `calleId` (punto), `calleTramoId` (general) | Lista de calles del mapa de obra del servicio. Elige sola la más cercana, hasta 40 m. |
+| `work-station` | `progresiva` (punto) | Proyecta el GPS sobre la calle elegida: «0+060». Es texto: se corrige a mano. |
+
+Reglas (motor puro `shared/src/fieldAutofill.ts`, con tests):
+- **Precisión**: hasta 15 m dice «Precisión ± N m». Con más, «Ubicación
+  aproximada (± N m)…». El punto se guarda igual (acordado con Portal).
+- **Nunca pisa lo del ingeniero.** Lilachat recuerda lo que escribió. Un campo
+  que todavía tiene ese valor sigue al GPS nuevo; lo demás es del ingeniero.
+- Si el ingeniero elige una calle lejos del GPS, la progresiva de Lilachat se
+  borra. Nunca queda una progresiva de otra calle.
+- Un borrador retomado con lectura la conserva hasta «Volver a tomar».
+- El mapa de obra se pide solo si el formulario tiene calle o progresiva. Es
+  una consulta a Portal por informe abierto, no por punto.
+- Sin calles en el mapa, o sin poder leerlo: «No hay calles del mapa de obra
+  para elegir.» La calle es opcional en el contrato.
+- El valor de la calle es el `_id` de WorkStreet de Portal, el mismo
+  `streets[].id` de `/service-work-map`.
+- `via` (general) la llena Portal desde `calleTramoId` si viene vacía.
+
+Orden de salida: Lilachat primero. Una versión sin estas marcas rechaza el
+formulario entero («no sabe dibujar»). Después Portal sube 8bc64e18 y José
+reaprueba `informe_de_campo` y `guardar_seccion_de_informe` en agentes.
+
+Verificado: tests del motor (shared) y del diálogo web con GPS falso (web).
+**Sin verificar todavía**: el APK no tiene tests de componentes de
+formularios; el E2E real en Test queda para después del deploy de Portal y la
+reaprobación.

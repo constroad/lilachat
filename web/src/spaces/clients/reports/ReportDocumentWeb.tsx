@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { AlertTriangle, ChevronLeft, ExternalLink, FileText } from 'lucide-react';
-import { formKeyOf, isUnitsRepeat, PREVIEW_ASKING, PREVIEW_LABEL, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService } from '@lilachat/shared';
+import { formKeyOf, isUnitsRepeat, PREVIEW_ASKING, PREVIEW_LABEL, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService, type ChannelLinks, wantsWorkStreets } from '@lilachat/shared';
 import { loadPerfil } from '../../../api';
 import { AppFormDialog } from '../../../chat/commands/AppFormDialog';
 import { EphemeralAnswers } from '../../../chat/commands/EphemeralAnswers';
@@ -14,8 +14,9 @@ import { ReportUnitsWeb } from './ReportUnitsWeb';
 import { Pill, ProgressCard, QueueCard, SectionCard } from './ReportSectionsWeb';
 import { useFieldDocument } from './useFieldDocument';
 import { useReportForms } from './useReportForms';
+import { useWorkStreets } from './useWorkStreets';
 
-type Props = { /** Who the person named before creating it (José 06/11). */ responsible?: string; target: ServiceAskTarget; chatId: string; service: SpaceClientService; type: string; /** The draft a row asked to continue. */ reportId?: string; portalUrl?: string; onClose: (changed: boolean) => void };
+type Props = { /** Who the person named before creating it (José 06/11). */ responsible?: string; target: ServiceAskTarget; chatId: string; service: SpaceClientService; type: string; /** The draft a row asked to continue. */ reportId?: string; portalUrl?: string; /** The channel's links: the work map's streets for a form that picks one. */ links?: ChannelLinks; onClose: (changed: boolean) => void };
 
 /** Kicker, title and state (design j-02 desktop): the type over the service, the pill at the right. */
 function ReportHeader({ kicker, title, report, onBack }: { kicker: string; title: string; report: FieldDocument | null; onBack: () => void }) {
@@ -129,6 +130,7 @@ export function ReportDocumentWeb(props: Props) {
   const kicker = report ? report.title : reportTypeLabel(props.type);
   const blockers = report ? publishBlockers(report, saves, offline) : [];
   const files = usePortalFileViewer();
+  const streets = useWorkStreets(props.target.jwt, props.links, props.target.clientId, props.service.id, wantsWorkStreets(document.form?.response?.form));
   const viewPhoto = ({ section, url, path }: PhotoToView) => {
     const view = photoViewOf(section, url);
     if (view) files.open(view.file, view.siblings, { label: TAKE_ANOTHER_PHOTO, onPress: () => actions.openSection(path) }, photoRemovalOf(report, section, actions.removePhoto));
@@ -142,7 +144,7 @@ export function ReportDocumentWeb(props: Props) {
       {files.viewer}
       {report && (!items || (items.kind === 'repeat' && isUnitsRepeat(items))) ? <ReportFooter report={report} blocker={publishFooterLine(report, blockers)} pdf={pdf} onPublish={() => page.setPublishing(true)} onDone={() => props.onClose(true)} /> : null}
       {report && page.publishing ? <PublishDialog report={report} blockers={blockers} onClose={() => page.setPublishing(false)} onPublish={page.publish} onOpen={(path) => { page.setPublishing(false); actions.openSection(path); }} /> : null}
-      {document.form ? <AppFormDialog key={formKeyOf(document.form)} answer={document.form} personName={loadPerfil()?.name} onSubmit={actions.submit} onUpload={actions.upload} onClose={actions.closeForm} /> : null}
+      {document.form ? <AppFormDialog key={formKeyOf(document.form)} answer={document.form} personName={loadPerfil()?.name} workStreets={streets} onSubmit={actions.submit} onUpload={actions.upload} onClose={actions.closeForm} /> : null}
       {forms.answers.openForm ? (
         <AppFormDialog key={formKeyOf(forms.answers.openForm)} answer={forms.answers.openForm} personName={loadPerfil()?.name} onSubmit={(values) => forms.answers.submitForm(forms.answers.openForm!, values)} onUpload={(file, stamp) => forms.answers.uploadPhoto(forms.answers.openForm!.commandId, file, stamp)} onRefresh={(values) => forms.answers.refreshForm(forms.answers.openForm!, values)} onPreview={(values) => forms.answers.previewForm(forms.answers.openForm!, values)} onClose={() => forms.answers.dismiss(forms.answers.openForm!.commandId)} />
       ) : null}

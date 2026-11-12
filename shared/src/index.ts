@@ -218,5 +218,8 @@ export * from './workPrimeCoat.js';
 export * from './workLayerEdit.js';
 export * from './workMapMenu.js';
 export * from './observations.js';
+export * from './formFilesWrite.js';
 export * from './observationWrite.js';
 export * from './sharedInFlight.js';
+export * from './areaMeasure.js';
+export * from './additionalArea.js';

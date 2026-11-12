@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DRIVE_UPLOAD_DONE, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type ManualPhotoUpload, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps } from '@lilachat/shared';
+import { DRIVE_UPLOAD_DONE, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type ManualPhotoUpload, type AreaCreateRequest, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps } from '@lilachat/shared';
 import { submitAppForm } from '../../chat/commands/commandsApi';
 import { shrinkPhotoBlob } from '../../chat/shrinkPhoto';
 import { currentSocket } from '../../useSocket';
@@ -13,10 +13,12 @@ type UploadTarget = { target: ServiceAskTarget; chatId: string; serviceId: strin
 const IDLE: UploadState = { sending: false, message: '', failed: false };
 
 /** Straight to Portal: the file never goes through Lilachat, and no session travels with it. */
-async function sendToDrive(upload: DriveUpload, file: DriveFile, clientUploadId: string): Promise<{ status?: number; message?: string; mediaId?: string }> {
+async function sendToDrive(upload: DriveUpload, file: DriveFile, clientUploadId: string, fields?: Record<string, string>): Promise<{ status?: number; message?: string; mediaId?: string }> {
   const body = new FormData();
   Object.entries(upload.fields).forEach(([name, value]) => body.append(name, value));
   body.append('clientUploadId', clientUploadId);
+  // The file's own fields (`captura` on the Medición picture, 12/11) after the ticket's: they never replace them.
+  Object.entries(fields ?? {}).forEach(([name, value]) => body.append(name, value));
   body.append(upload.fileField, file.blob, file.name);
   try {
     const response = await fetch(upload.url, { method: 'POST', body });
@@ -84,8 +86,8 @@ export const mapTraceUploader = (target: ServiceAskTarget, chatId: string, servi
   return manualPhotoOf(await uploadToDrive(depsOf({ target, chatId, serviceId }), { source, facts: { mime, sizeBytes: file.size } }, crypto.randomUUID()));
 };
 
-/** An observation's write from the browser (an iPhone's PWA is the field's form too): the run, its answer and each file straight to Portal. */
-export const observationWriteDeps = (to: Omit<UploadTarget, 'onDone'>, request: ObservationRegisterRequest | ObservationLiftRequest): ObservationWriteDeps<DriveFile> => ({
+/** An observation's or an area's write from the browser (an iPhone's PWA is the field's form too): the run, its answer and each file straight to Portal. */
+export const observationWriteDeps = (to: Omit<UploadTarget, 'onDone'>, request: ObservationRegisterRequest | ObservationLiftRequest | AreaCreateRequest): ObservationWriteDeps<DriveFile> => ({
   open: () => openReportForm(to.target, to.serviceId, request),
   submit: (commandId, values) => submitAppForm(to.target.jwt, { chatId: to.chatId }, commandId, values),
   notice: (commandId) => noticeOf(currentSocket(), commandId),

@@ -1,11 +1,11 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, ChevronLeft, ExternalLink } from 'lucide-react';
-import { approximateLine, evidenceFiles, LIFTING_TYPE, observationCounts, observationPins, observationPlace, observationWorkMap, readObservationDraft, registeredLine, reportTypeLabel, STATUS_PILLS, type Observation, type ObservationDocument, type ObservationDraftResult, type ObservationStatus, type SpaceClientService } from '@lilachat/shared';
+import { approximateLine, evidenceFiles, LIFTING_TYPE, observationCounts, observationPins, observationPlace, observationWorkMap, readObservationDraft, registeredLine, reportTypeLabel, STATUS_PILLS, type Observation, type ObservationDocument, type ObservationStatus, type SpaceClientService } from '@lilachat/shared';
 import { lazyChunk } from '../../../ui/lazyChunk';
 import { FileThumb, usePortalFileViewer } from '../PortalFileViewer';
 import { EvidenceInput } from '../ServiceDriveWeb';
 import { fieldPointNow, LiftObservationWeb, NewObservationWeb, type ObservationTo } from './ObservationFormsWeb';
-import { askReportDraft } from '../reports/reportsApi';
+import { useReportDraftRead } from '../reports/useReportDraftRead';
 import type { ServiceAskTarget } from '../useServiceAsk';
 
 const WorkMapCanvas = lazyChunk(() => import('../workMap/WorkMapCanvas'));
@@ -14,25 +14,6 @@ type Props = { target: ServiceAskTarget; chatId: string; service: SpaceClientSer
 type Filter = 'all' | ObservationStatus;
 const FILTERS: { key: Filter; label: string }[] = [{ key: 'all', label: 'Todas' }, { key: 'open', label: 'Pendientes' }, { key: 'lifted', label: 'Levantadas' }];
 const PILL_CLASS = { error: 'border-error/30 bg-error/10 text-error', ok: 'border-en-linea/30 bg-en-linea/10 text-en-linea' } as const;
-
-/** The report as Portal answers it (agentes sends REG-OBS and LEV-OBS to `informe_de_observaciones`). */
-function useObservationDraft(target: ServiceAskTarget, serviceId: string, type: string, reportId: string | null) {
-  const [draft, setDraft] = useState<ObservationDraftResult | null>(null);
-  const [id, setId] = useState(reportId);
-  const load = useCallback(async () => {
-    const reply = await askReportDraft(target, serviceId, type, id);
-    setDraft(readObservationDraft(reply.ok ? reply.data : { message: reply.message }));
-  }, [target, serviceId, type, id]);
-  useEffect(() => {
-    void load();
-  }, [load]);
-  /** A first write creates the report: from then on its id is asked for. */
-  const reload = useCallback((nextId?: string) => {
-    if (nextId && nextId !== id) setId(nextId);
-    else void load();
-  }, [id, load]);
-  return { draft, reload };
-}
 
 /** Total, lifted, pending and progress, with the bar (design `ob-07b`). */
 function Totals({ observations }: { observations: readonly Observation[] }) {
@@ -166,7 +147,8 @@ function useNewObservation() {
 }
 
 export function ObservationsWeb(props: Props) {
-  const { draft, reload } = useObservationDraft(props.target, props.service.id, props.type, props.reportId ?? null);
+  // agentes sends REG-OBS and LEV-OBS to `informe_de_observaciones`.
+  const { draft, reload } = useReportDraftRead(props.target, props.service.id, props.type, props.reportId ?? null, readObservationDraft);
   const viewer = usePortalFileViewer();
   const report = draft?.ok ? draft.document : null;
   const fresh = useNewObservation();

@@ -1,5 +1,5 @@
 import mongoose, { Types, type Model } from 'mongoose';
-import { isObservationType, observationDocumentOf, OBSERVATIONS_OPEN_HERE, type ObservationDocument } from '@lilachat/shared';
+import { AREA_TYPE, areaDocumentOf, AREAS_OPEN_HERE, isObservationType, observationDocumentOf, OBSERVATIONS_OPEN_HERE, type AreaDocument, type ObservationDocument } from '@lilachat/shared';
 import { channelValuesOf, CLIENT_ID, SERVICE_LINK_ACTION, fieldDocumentOf, formLevelOf, photoKindOf, requiresLocation, SECTION_TOOL, sectionAt, sectionFormOf, type AppForm, type CommandOutcome, type FieldDocument, type FormSchema, type SectionPath } from '@lilachat/shared';
 import { OUTDATED_FORM_MESSAGE, type CommandError } from './botCommands.js';
 import { askAboutService, findAskedService, notFound, type AskOutcome, type NotFound, type ServiceAsk } from './clientFiles.js';
@@ -10,6 +10,7 @@ import { photoPhaseInputOf, photoPhasePrepared, type PhotoPhaseContext, type Pho
 import { workStreetDeleteInputOf, workStreetDeletePrepared, workStreetInputOf, workStreetPrepared, type StreetContext, type WorkStreetDeleteInput, type WorkStreetInput } from './workStreetForm.js';
 import { workManualProgressInputOf, workManualProgressPrepared, type WorkManualProgressInput } from './workManualProgressForm.js';
 import { isObservationFormKind, observationFormInputOf, observationFormPrepared, type ObservationFormInput } from './observationForms.js';
+import { areaFormInputOf, areaFormPrepared, isAreaFormKind, type AreaFormInput } from './areaForms.js';
 import { isWorkMapFormInput, isWorkMapFormKind, workMapFormInputOf, workMapFormPrepared, type WorkMapFormContext, type WorkMapFormInput } from './workMapForms.js';
 
 /**
@@ -68,16 +69,20 @@ const DRAFT: ServiceAsk<FieldDocument> = { event: 'client.report.draft.requested
 /** The same event for an observation report: agentes sends it to `informe_de_observaciones` (275fb32). Nothing is kept: no section form is built from it. */
 const OBSERVATIONS: ServiceAsk<ObservationDocument> = { event: DRAFT.event, parse: observationDocumentOf, failed: DRAFT_FAILED, gone: DRAFT.gone, label: 'Informe de observaciones', need: 'services' };
 const opensObservations = (type: unknown): boolean => OBSERVATIONS_OPEN_HERE && isObservationType(type);
+/** The additional-area report (José 12/11): agentes sends IAA to `informe_area_adicional`. Nothing is kept either. */
+const AREAS: ServiceAsk<AreaDocument> = { event: DRAFT.event, parse: areaDocumentOf, failed: DRAFT_FAILED, gone: DRAFT.gone, label: 'Informe de área adicional', need: 'services' };
+const opensAreas = (type: unknown): boolean => AREAS_OPEN_HERE && type === AREA_TYPE;
 const fail = (status: CommandError['status'], error: string, message: string): CommandError => ({ status, error, message });
 const text = (value: unknown, max = TEXT_MAX): string => (typeof value === 'string' ? value.trim().slice(0, max) : '');
 const isOpenType = (value: unknown): value is (typeof OPEN_REPORT_TYPES)[number] => OPEN_REPORT_TYPES.includes(value as (typeof OPEN_REPORT_TYPES)[number]);
 
 /** The document of a report, or the empty one for a new report of that type; kept for the forms that follow. */
-export async function clientReportDraft(workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId, input: unknown): Promise<AskOutcome<FieldDocument | ObservationDocument> | NotFound | CommandError> {
+export async function clientReportDraft(workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId, input: unknown): Promise<AskOutcome<FieldDocument | ObservationDocument | AreaDocument> | NotFound | CommandError> {
   const body = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
   const reportId = text(body.report_id, 64);
   if (reportId && !CLIENT_ID.test(reportId)) return fail(400, 'invalid_request', 'Ese tipo de informe no se crea desde Lilachat.');
   if (opensObservations(body.type)) return askAboutService(OBSERVATIONS, workspaceId, clientId, serviceId, userId, { type: String(body.type), ...(reportId ? { report_id: reportId } : {}) });
+  if (opensAreas(body.type)) return askAboutService(AREAS, workspaceId, clientId, serviceId, userId, { type: AREA_TYPE, ...(reportId ? { report_id: reportId } : {}) });
   if (!isOpenType(body.type)) return fail(400, 'invalid_request', 'Ese tipo de informe no se crea desde Lilachat.');
   const page = pageOf(body.page);
   if (page === 'invalid') return fail(400, 'invalid_request', 'La página de unidades empieza en 1.');
@@ -107,7 +112,8 @@ type OpenInput =
   | WorkStreetDeleteInput
   | PhotoPhaseInput
   | WorkMapFormInput
-  | ObservationFormInput;
+  | ObservationFormInput
+  | AreaFormInput;
 
 const pathOf = (raw: Record<string, unknown>): SectionPath | null => {
   const sectionId = text(raw.section_id, 64);
@@ -141,6 +147,7 @@ function openInputOf(input: unknown): OpenInput | null {
   if (raw.kind === 'photo_phase') return photoPhaseInputOf(raw);
   if (isWorkMapFormKind(raw.kind)) return workMapFormInputOf(raw);
   if (isObservationFormKind(raw.kind)) return observationFormInputOf(raw);
+  if (isAreaFormKind(raw.kind)) return areaFormInputOf(raw);
   const reportId = text(raw.report_id, 64);
   if (raw.kind === 'publish') return reportId ? { kind: 'publish', reportId } : null;
   if (raw.kind === 'remove_photo') return removalOf(reportId, text(raw.photo_id, 64));
@@ -187,6 +194,7 @@ function prepared(workspaceId: string, clientId: string, serviceId: string, user
   if (input.kind === 'photo_phase') return photoPhasePrepared(serviceId, input);
   if (isWorkMapFormInput(input)) return workMapFormPrepared(serviceId, input);
   if (input.kind === 'observation_register' || input.kind === 'observation_lift') return observationFormPrepared(serviceId, input);
+  if (input.kind === 'area_create') return areaFormPrepared(serviceId, input);
   if (input.kind === 'service_link') return { form: { id: SERVICE_LINK_ACTION, title: 'Enlace del servicio', submitLabel: 'Crear enlace', schema: SERVICE_LINK_FORM }, context: { servicioId: serviceId } };
   if (input.kind === 'drive_upload') return { form: { id: DRIVE_UPLOAD_TOOL, title: 'Subir al Drive', submitLabel: 'Subir', schema: NOTHING_TO_FILL }, context: { servicioId: serviceId } };
   if (input.kind === 'remove_photo') return { form: { id: REMOVE_PHOTO_TOOL, title: 'Quitar foto', submitLabel: 'Quitar', schema: NOTHING_TO_FILL }, context: { servicioId: serviceId, informeId: input.reportId, fotoId: input.photoId } };

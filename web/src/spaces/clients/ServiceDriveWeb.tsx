@@ -159,9 +159,12 @@ export const DrivePhotoInput = forwardRef<HTMLInputElement, { testId: string; on
   return <input ref={ref} data-testid={props.testId} type="file" accept="image/*" capture="environment" hidden onChange={(event) => { props.onFile(event.target.files?.[0]); event.target.value = ''; }} />;
 });
 
-/** A photo or a video of an observation (José 11/11): the camera at once on a phone, a file on a computer. */
-export const EvidenceInput = forwardRef<HTMLInputElement, { testId: string; kind: 'photo' | 'video'; onFile: (file: File | undefined) => void }>(function EvidenceInput(props, ref) {
-  return <input ref={ref} data-testid={props.testId} type="file" accept={props.kind === 'video' ? 'video/*' : 'image/*'} capture="environment" hidden onChange={(event) => { props.onFile(event.target.files?.[0]); event.target.value = ''; }} />;
+/**
+ * A photo or a video of an observation (José 11/11): the camera at once on a phone, a file on a computer.
+ * `fromLibrary` opens the photos already taken instead (the picture of Apple's «Medición», José 12/11).
+ */
+export const EvidenceInput = forwardRef<HTMLInputElement, { testId: string; kind: 'photo' | 'video'; fromLibrary?: boolean; onFile: (file: File | undefined) => void }>(function EvidenceInput(props, ref) {
+  return <input ref={ref} data-testid={props.testId} type="file" accept={props.kind === 'video' ? 'video/*' : 'image/*'} {...(props.fromLibrary ? {} : { capture: 'environment' as const })} hidden onChange={(event) => { props.onFile(event.target.files?.[0]); event.target.value = ''; }} />;
 });
 
 /** A KMZ or KML for «Importar» of the map (o-12). */

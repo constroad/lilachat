@@ -1049,3 +1049,81 @@ espacio Test, con «QA-CTLPIS — borrar»:
 - **El hilo bajo la tarjeta del REG-OBS** en el canal.
 - **Limpieza:** se le pidió a Portal por el camino de la app (OBS-001/002 y
   los borradores REG-OBS/LEV-OBS del 11/11).
+
+## 14. Área adicional en iPhone: opción B (IAA, José 12/11)
+
+José: «vamos con la opción B, pero desde Lilachat instrúyelo qué aplicación
+abrir desde el iPhone, paso a paso qué debe hacer, cómo calcular y cómo volver
+a Lilachat para guardar esos valores. 15 metros está bien. El orden que
+propones también me parece». Ese orden es el de Portal: precisión →
+prueba de José → E2E en TEST → lienzo REG/LEV → embed de Lilachat web, y el
+área adicional **después**. Por eso Lilachat queda listo detrás de
+`AREAS_OPEN_HERE = false` y se enciende cuando Portal publique sus herramientas.
+
+### Contrato con Portal (acordado el 12/11, propuesta hasta su sha)
+
+- Lectura: `informe_area_adicional` {servicioId, informeId?} → {id, codigo,
+  estado, fecha, areas[], totales}. Cada área: id, item, ubicacion, descripcion,
+  largoM, anchoM, espesorCm, areaM2, volumenM3, metodo, verificar, lat, lng,
+  precisionM, fuente, aproximada y fotos (mediaId, url, thumbnailUrl, captura).
+- Escritura: `registrar_area_adicional` con `kind: 'crear'`, la `entradaId`
+  (idempotencia) y las cifras como contexto. Los dos textos (`ubicacion`,
+  `descripcion`) van como valores del formulario y son opcionales. En blanco no
+  se manda nada: Portal pone la calle del punto (≤30 m) y «Bacheo localizado».
+  Nunca un relleno nuestro.
+- Archivos como en observaciones: la respuesta trae {informeId, areaId, codigo}
+  y el boleto. Cada archivo va con `clientUploadId`, y la captura de Medición
+  lleva `captura: true`. Portal guarda cada área `manual: true`: si no, sus
+  fotos la recalculan a 0.
+- `metodo`: iPhone `medidas-iphone`; Android y computadora `a-mano`. `ar-app`
+  queda reservado (AR nativo, más adelante) y `foto-medida` es de Portal.
+  `verificar` y `aproximada` los calcula Portal: se leen, nunca se mandan, y en
+  campo no se muestra «Verifica esta área».
+- Límites (los de Portal, de sus 68 áreas reales): largo y ancho de 0,1 a
+  500 m; área de 0,05 a 5 000 m², con «¿Seguro?» desde 1 000 m²; espesor de 1 a
+  50 cm. Decimales: 2 en largo, ancho y área; 1 en espesor; 3 en volumen.
+  Volumen = área × espesor / 100.
+
+### Lo que hace Lilachat
+
+- `shared/areaMeasure.ts`: los 7 pasos para el iPhone, sacados de la guía de
+  Apple (es-LA, iOS 27). La app se llama **«Medición»** y está en la carpeta
+  **Utilidades**. Apple recomienda medir entre 0,5 y 3 m y aclara que las
+  medidas son aproximadas. Los pasos: abrir Medición, apuntar al piso, largo
+  con «+», ancho con «+», foto con el botón blanco (o captura con botón lateral
+  y subir volumen), volver a Lilachat y escribir. Además lee las cifras
+  («3,25», «325 cm», «17,6 m²»), las calcula (área de los lados ya redondeados)
+  y aplica la regla de 15 m (`APPROXIMATE_FROM_M`).
+- El borrador sobrevive a ir a Medición: lo escrito y el GPS se guardan en el
+  navegador por servicio, durante 2 h. Al volver, la pantalla abre sola el
+  área a medio llenar. Si iOS cerró Lilachat, el paso 6 dice el camino: canal
+  del cliente → Servicios → servicio → Informes → Área adicional.
+- `shared/additionalArea.ts`: lee el informe y también su propia salida (la
+  lección de la primera corrida de observaciones). Arma el pedido y la escritura.
+- `shared/formFilesWrite.ts`: la escritura con archivos de observaciones pasó
+  a ser genérica. Observaciones y áreas la usan igual; los tests de
+  observaciones no cambiaron.
+- Web (`areas/AreasWeb`, `areas/AreaMeasureWeb`): total, tarjetas (m², lados,
+  método, lugar), «Nueva área» con la guía abierta en iPhone, largo × ancho o
+  área total, espesor opcional, cálculo en vivo, captura desde Fotos (en
+  iPhone, sin `capture`), GPS «±N m» o «Ubicación aproximada (±N m)» y
+  «Guardar área» abajo.
+- Server (`bots/areaForms.ts`): el `kind` `area_create` y la lectura IAA,
+  apagados con el mismo interruptor. Refuerzan los límites de Portal antes de
+  la puerta (lados que no dan el área, AR, método de Portal, medio punto).
+- Los dos selectores (APK y web) saltan «responsable» en observaciones y áreas
+  (`asksResponsible`).
+
+### Sin hacer todavía
+
+- **APK:** la pantalla de áreas para Android (`a-mano`). Hasta tenerla, el
+  interruptor no se enciende: hoy IAA abre la página de Portal en las dos.
+- **Diseño Stitch** del flujo de campo: Portal dijo que es nuestro. Se genera
+  antes de encender, con el pie 1.82.0 (sin textos obvios ni internos).
+- **Editar y quitar** un área (`editar`, `quitar`): el contrato los tiene,
+  Lilachat todavía no.
+- **E2E:** necesita las herramientas de Portal. Se hará en TEST desde un iPhone
+  real (Medición no corre en el emulador), con la limpieza por el camino de la
+  app.
+- Un aviso global «Tienes un área a medio guardar» si iOS reinicia Lilachat.
+  Hoy lo cubre el texto del paso 6.

@@ -18,8 +18,9 @@ import type { EphemeralAnswer } from './botCommands.js';
 import type { DriveUploadRequest } from './driveUpload.js';
 import { fieldDocumentOf, type DocumentSection, type DocumentStatus, type FieldDocument, type RepeatSection, type SectionPath, type SectionState } from './fieldDocument.js';
 import { clientServicePath } from './serviceAsk.js';
-import { OBSERVATIONS_OPEN_HERE, observationDocumentOf, type ObservationDocument } from './observations.js';
+import { isObservationType, OBSERVATIONS_OPEN_HERE, observationDocumentOf, type ObservationDocument } from './observations.js';
 import type { ObservationLiftRequest, ObservationRegisterRequest } from './observationWrite.js';
+import { AREA_TYPE, AREAS_OPEN_HERE, areaDocumentOf, type AreaCreateRequest, type AreaDocument } from './additionalArea.js';
 import { locationMapLink } from './sharedLocation.js';
 import type { DetailTone } from './serviceDetail.js';
 
@@ -34,7 +35,7 @@ export type ReportTypeOption = { code: string; label: string; caption: string; /
 /** The types of Portal's public page (`isFieldReport`), the ones filled here on top. */
 export const REPORT_TYPE_OPTIONS: readonly ReportTypeOption[] = [
   { code: 'CTL-IMP', label: 'Control de imprimación', caption: 'Tasa de riego por tramo, con bandejas y fotos', opensHere: true },
-  { code: 'IAA', label: 'Área adicional', caption: 'Zonas medidas sobre la foto', opensHere: false },
+  { code: 'IAA', label: 'Área adicional', caption: AREAS_OPEN_HERE ? 'Largo y ancho medidos en obra, con su foto' : 'Zonas medidas sobre la foto', opensHere: AREAS_OPEN_HERE },
   { code: 'CTL-PIS', label: 'Control de pista', caption: 'Llegada, temperaturas, escantillón y 4 fotos por volquete', opensHere: true },
   { code: 'CON-CAP', label: 'Conformación de capa', caption: 'Espesor y compactación en campo', opensHere: false },
   { code: 'RCP-CAM', label: 'Recepción de campo', caption: 'Conformidad con firma de supervisión', opensHere: false },
@@ -59,6 +60,9 @@ export const REPORT_KEEPER = 'Portal';
 const PERCENT = 100;
 
 /** The type's name for the screen's kicker before Portal answers the document. */
+/** Observations and areas have no responsible in Portal's contract: the picker goes straight to the report (§5-ter rule 1). */
+export const asksResponsible = (code: string): boolean => !isObservationType(code) && code !== AREA_TYPE;
+
 export const reportTypeLabel = (code: string): string => REPORT_TYPE_OPTIONS.find((option) => option.code === code)?.label ?? code;
 export const DRAFT_FAILED = 'No se pudo abrir el informe';
 
@@ -86,6 +90,14 @@ export function readObservationDraft(body: ReportDraftBody | null): ObservationD
   return document ? { ok: true, document } : { ok: false, message: body?.message ?? DRAFT_FAILED };
 }
 
+export type AreaDraftResult = { ok: true; document: AreaDocument } | { ok: false; message: string };
+
+/** The additional-area report: Portal's `informe_area_adicional` answers it (José 12/11, option B). */
+export function readAreaDraft(body: ReportDraftBody | null): AreaDraftResult {
+  const document = body?.document !== undefined ? areaDocumentOf(body.document) : null;
+  return document ? { ok: true, document } : { ok: false, message: body?.message ?? DRAFT_FAILED };
+}
+
 /** Where and when a photo was taken; the place may be missing, the hour may not (server `placeOf`). */
 export type DevicePlace = { lat?: number; lng?: number; at: string };
 /** The button under a place field (José, 06/11). */
@@ -95,7 +107,7 @@ export const placeFieldValue = ({ lat, lng }: DevicePlace): string | null => (la
 export type SectionFormRequest = { kind: 'section'; type: string; section_id: string; item_id: string | null; key: string; report_id?: string; forms: number; /** The save's own key: Portal tells a photo sent twice from a second one. */ client_key?: string } & Partial<DevicePlace>;
 export type PublishFormRequest = { kind: 'publish'; report_id: string; forms: number };
 export type RemovePhotoRequest = { kind: 'remove_photo'; report_id: string; photo_id: string; forms: number };
-export type ReportFormRequest = SectionFormRequest | PublishFormRequest | RemovePhotoRequest | DriveUploadRequest | WorkProgressRequest | WorkStreetRequest | WorkStreetDeleteRequest | ServiceLinkRequest | WorkScopeRequest | WorkScopeDeleteRequest | WorkStageRequest | WorkTagRequest | WorkRestoreRequest | WorkDeletedRequest | WorkManualProgressRequest | WorkProgressLinkRequest | WorkImportRequest | WorkProgressPdfRequest | WorkMapInReportRequest | PhotoPhaseRequest | LayerEditRequest | LayerDeleteRequest | WorkPendingRequest | WorkResolveRequest | ObservationRegisterRequest | ObservationLiftRequest;
+export type ReportFormRequest = SectionFormRequest | PublishFormRequest | RemovePhotoRequest | DriveUploadRequest | WorkProgressRequest | WorkStreetRequest | WorkStreetDeleteRequest | ServiceLinkRequest | WorkScopeRequest | WorkScopeDeleteRequest | WorkStageRequest | WorkTagRequest | WorkRestoreRequest | WorkDeletedRequest | WorkManualProgressRequest | WorkProgressLinkRequest | WorkImportRequest | WorkProgressPdfRequest | WorkMapInReportRequest | PhotoPhaseRequest | LayerEditRequest | LayerDeleteRequest | WorkPendingRequest | WorkResolveRequest | ObservationRegisterRequest | ObservationLiftRequest | AreaCreateRequest;
 
 /** What `POST …/reports/forms` takes to open a section: its path, the report once it exists, and what this app can draw. */
 export function sectionFormRequest(document: FieldDocument, path: SectionPath, place?: DevicePlace | null, clientKey?: string): SectionFormRequest {

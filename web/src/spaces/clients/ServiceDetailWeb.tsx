@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, ExternalLink, FilePlus, FileText } from 'lucide-react';
-import { draftToContinue, isObservationType, CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { AREA_TYPE, draftToContinue, isObservationType, CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { usePortalFileViewer } from './PortalFileViewer';
 import type { OpenSheetFile } from './RecordSheetWeb';
 import { RecordSheetWeb } from './RecordSheetWeb';
@@ -15,6 +15,7 @@ import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
 import { CreateReportDialog } from './reports/CreateReportDialog';
 import { ReportDocumentWeb } from './reports/ReportDocumentWeb';
 import { ObservationsWeb } from './observations/ObservationsWeb';
+import { AreasWeb } from './areas/AreasWeb';
 
 const PortalLink = (props: { url: string; label: string; testId: string }) => (
   <a href={props.url} target="_blank" rel="noreferrer" data-testid={props.testId} className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary hover:underline">
@@ -236,6 +237,8 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
     return <MapWorkspace admin={props.seesMoney} crumbs={crumbs} detail={answer.value} service={props.service} tabs={serviceTabs(answer.value, Boolean(props.seesDrive), true)} onTab={pickTab} links={doorMapLinks(props.links, props.target, props.chatId, props.service.id)} target={props.target} chatId={props.chatId} />;
   }
   // José 11/11: the registry and the lifting of observations have their own view (design ob-07b).
+  // José 12/11, option B: the additional area is measured here (Medición on an iPhone); the picker offers it only once Portal's tools are live.
+  if (report?.type === AREA_TYPE) return <AreasWeb target={props.target} chatId={props.chatId} service={props.service} {...(report.reportId ? { reportId: report.reportId } : {})} portalUrl={portalUrl} onClose={closeReport} />;
   if (report && isObservationType(report.type)) return <ObservationsWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} portalUrl={portalUrl} onClose={closeReport} />;
   if (report) return <ReportDocumentWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={portalUrl} onClose={closeReport} />;
   return (

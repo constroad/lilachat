@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronRight, ClipboardCheck, Droplets, FileSignature, Hammer, Layers, ScanSearch, Square, Truck, UserCheck, type LucideIcon } from 'lucide-react';
-import { isObservationType, REPORT_TYPE_OPTIONS, reportTypeLabel, type ReportTypeOption } from '@lilachat/shared';
+import { asksResponsible, REPORT_TYPE_OPTIONS, reportTypeLabel, type ReportTypeOption } from '@lilachat/shared';
 import { loadPerfil } from '../../../api';
 import { Overlay } from '../../../ui/Overlay';
 
@@ -68,7 +68,7 @@ export function CreateReportDialog(props: { portalUrl?: string; people?: readonl
         <p className="-mt-1 mb-1 text-sm text-on-surface-variant">Se guarda como borrador mientras lo llenas</p>
         {REPORT_TYPE_OPTIONS.map((option) =>
           option.opensHere ? (
-            <button key={option.code} type="button" data-testid={`tipo-informe-${option.code}`} onClick={() => (isObservationType(option.code) ? props.onPick(option.code, '') : setCode(option.code))} className={`${ROW} border-primary/40 hover:bg-primary/5`}>
+            <button key={option.code} type="button" data-testid={`tipo-informe-${option.code}`} onClick={() => (asksResponsible(option.code) ? setCode(option.code) : props.onPick(option.code, ''))} className={`${ROW} border-primary/40 hover:bg-primary/5`}>
               <TypeIcon code={option.code} />
               <TypeText option={option} />
               <ChevronRight size={18} className="shrink-0 text-primary" />

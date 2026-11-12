@@ -1,7 +1,7 @@
 import { FORMS_LEVEL } from './appForms.js';
-import type { FormSubmitReply } from './appActions.js';
 import type { CommandResponse } from './botCommands.js';
-import { driveFileRefusal, formRunAnswer, uploadFailure, type DriveFileFacts, type DriveUpload, type FormRunDeps } from './driveUpload.js';
+import type { DriveUpload } from './driveUpload.js';
+import { formFilesWriteStore, writeWithFiles, writtenOutcome, type EvidenceFile, type FormFilesWriteDeps, type FormFilesWriteResult, type WriteKind, type WriteState } from './formFilesWrite.js';
 import { LIFTING_TYPE, OBSERVATION_NOTE_MAX, REGISTRY_TYPE, type ObservationDocument } from './observations.js';
 import type { WorkMapPoint } from './workMap.js';
 
@@ -48,98 +48,27 @@ export function observationAnswerOf(response: CommandResponse): ObservationAnswe
   return reportId && observationId ? { reportId, observationId, ...(code ? { code } : {}), upload: response.upload ?? null } : null;
 }
 
-/** One photo or video; its key is its `clientUploadId`, so a retry never makes a second copy. */
-export type EvidenceFile<F> = { key: string; source: F; facts: DriveFileFacts };
-export type ObservationWriteDeps<F> = Pick<FormRunDeps, 'open' | 'notice'> & {
-  submit(commandId: string, values: Record<string, string>): Promise<FormSubmitReply>;
-  send(upload: DriveUpload, file: F, clientUploadId: string): Promise<{ status?: number; message?: string; mediaId?: string }>;
-  progress?(sent: number, total: number): void;
-};
-export type ObservationWriteResult = { ok: true; answer: ObservationAnswer; failed: { key: string; message: string }[] } | { ok: false; message: string };
+export type { EvidenceFile } from './formFilesWrite.js';
+export type ObservationWriteDeps<F> = FormFilesWriteDeps<F>;
+export type ObservationWriteResult = FormFilesWriteResult<ObservationAnswer>;
 
 export const OBSERVATION_WRITE_FAILED = 'No se pudo guardar la observación. Revisa tu señal y vuelve a intentarlo.';
-const NO_TICKET = 'No llegó el permiso para subir el archivo. Vuelve a intentarlo.';
-const EXPIRED = 410;
-const TICKET_TRIES = 2;
-const SUCCESS_BELOW = 300;
-
-async function confirm<F>(deps: ObservationWriteDeps<F>, values: Record<string, string>): Promise<ObservationAnswer | { message: string }> {
-  const answer = await formRunAnswer({ open: deps.open, notice: deps.notice, submit: (commandId) => deps.submit(commandId, values) }, OBSERVATION_WRITE_FAILED);
-  if ('message' in answer) return answer;
-  return observationAnswerOf(answer.response) ?? { message: OBSERVATION_WRITE_FAILED };
-}
-
-/** One file with the ticket in hand. A 410 confirms again (same entry, same ids) for a fresh ticket, once. */
-async function sendOne<F>(deps: ObservationWriteDeps<F>, values: Record<string, string>, ticket: { upload: DriveUpload | null }, file: EvidenceFile<F>): Promise<string | null> {
-  for (let attempt = 0; attempt < TICKET_TRIES; attempt += 1) {
-    if (!ticket.upload) return NO_TICKET;
-    const refusal = driveFileRefusal(ticket.upload, file.facts);
-    if (refusal) return refusal;
-    const { status, message } = await deps.send(ticket.upload, file.source, file.key);
-    if (status && status < SUCCESS_BELOW) return null;
-    if (status !== EXPIRED) return uploadFailure(status, message);
-    const again = await confirm(deps, values);
-    if ('message' in again) return again.message;
-    ticket.upload = again.upload;
-  }
-  return uploadFailure(EXPIRED);
-}
+const OBSERVATION_WRITE: WriteKind<ObservationAnswer> = { failed: OBSERVATION_WRITE_FAILED, answerOf: observationAnswerOf, who: 'La observación' };
 
 /**
  * Writes the observation, then its files one by one. A file that fails is
  * reported and the rest still go; calling it again with the same request and
  * files sends only what Portal does not have yet.
  */
-export async function writeObservation<F>(deps: ObservationWriteDeps<F>, note: string, files: readonly EvidenceFile<F>[]): Promise<ObservationWriteResult> {
-  const values = noteValues(note);
-  const answer = await confirm(deps, values);
-  if ('message' in answer) return { ok: false, message: answer.message };
-  const ticket = { upload: answer.upload };
-  const failed: { key: string; message: string }[] = [];
-  for (const [index, file] of files.entries()) {
-    const message = await sendOne(deps, values, ticket, file);
-    if (message) failed.push({ key: file.key, message });
-    deps.progress?.(index + 1, files.length);
-  }
-  return { ok: true, answer, failed };
-}
+export const writeObservation = <F>(deps: ObservationWriteDeps<F>, note: string, files: readonly EvidenceFile<F>[]): Promise<ObservationWriteResult> =>
+  writeWithFiles(deps, noteValues(note), files, OBSERVATION_WRITE);
 
 export const OBSERVATION_GPS_MISSING = 'No se pudo leer tu ubicación. Revisa el permiso y el GPS.';
 
 /** What the screen says after a write: done, or which files still have to go (the same entry sends only those). */
-export function writeOutcome(result: ObservationWriteResult, done: string): { done: boolean; line: string } {
-  if (!result.ok) return { done: false, line: result.message };
-  const who = result.answer.code ?? 'La observación';
-  const count = result.failed.length;
-  if (!count) return { done: true, line: `${who} ${done}.` };
-  return { done: false, line: `${who} ${done}; ${count === 1 ? 'falta 1 archivo' : `faltan ${count} archivos`}: ${result.failed[0]!.message}` };
-}
+export const writeOutcome = (result: ObservationWriteResult, done: string): { done: boolean; line: string } => writtenOutcome(result, done, OBSERVATION_WRITE.who);
 
-export type ObservationWriteState = { busy: boolean; line: string | null };
+export type ObservationWriteState = WriteState;
 
-/**
- * One screen's write and what it says, for the APK and the web alike. `run`
- * answers the report's id when everything landed, else null; the same deps
- * again send only what Portal does not have yet. No deps: the GPS is missing.
- */
-export function observationWriteStore() {
-  let state: ObservationWriteState = { busy: false, line: null };
-  const listeners = new Set<() => void>();
-  const set = (next: ObservationWriteState) => {
-    state = next;
-    listeners.forEach((listener) => listener());
-  };
-  async function run<F>(deps: ObservationWriteDeps<F> | null, note: string, files: readonly EvidenceFile<F>[], done: string): Promise<string | null> {
-    if (!deps) {
-      set({ busy: false, line: OBSERVATION_GPS_MISSING });
-      return null;
-    }
-    set({ busy: true, line: null });
-    const result = await writeObservation({ ...deps, progress: (sent, total) => set({ busy: true, line: `Subiendo ${sent} de ${total}…` }) }, note, files);
-    const outcome = writeOutcome(result, done);
-    set({ busy: false, line: outcome.line });
-    return outcome.done && result.ok ? result.answer.reportId : null;
-  }
-  return { get: () => state, subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener); }; }, run };
-}
-
+/** One screen's write of an observation (`formFilesWriteStore`); no deps: the GPS is missing. */
+export const observationWriteStore = () => formFilesWriteStore(OBSERVATION_WRITE, noteValues, OBSERVATION_GPS_MISSING);

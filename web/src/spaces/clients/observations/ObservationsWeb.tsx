@@ -189,7 +189,10 @@ export function ObservationsWeb(props: Props) {
       {draft && !draft.ok ? (
         <div data-testid="observaciones-fallo" className="rounded-xl border border-outline/20 bg-surface p-4">
           <p className="font-semibold">{draft.message}</p>
-          <button type="button" onClick={() => void reload()} className="mt-3 h-9 rounded-lg border border-primary/30 bg-primary/10 px-3 text-sm font-semibold text-primary">Reintentar</button>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" onClick={() => void reload()} className="h-11 rounded-lg border border-primary/30 bg-primary/10 px-3 text-sm font-semibold text-primary">Reintentar</button>
+            {props.portalUrl ? <a data-testid="observaciones-portal" href={props.portalUrl} target="_blank" rel="noreferrer" className="flex h-11 items-center gap-1.5 rounded-lg border border-outline/30 px-3 text-sm font-semibold"><ExternalLink size={14} /> Abrir el servicio en el Portal</a> : null}
+          </div>
         </div>
       ) : null}
       {report ? (

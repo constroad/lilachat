@@ -94,7 +94,7 @@ function observationOf(raw: unknown): Observation | null {
     id, code, note: textOf(item.note), ...placeOf(item), at: textOf(item.at) || null, status: item.status,
     media: mediaListOf(item.media), liftMedia: mediaListOf(item.liftMedia),
     ...optional('liftedAt', textOf(item.liftedAt)), ...optional('liftNote', textOf(item.liftNote)), ...optional('segment', segmentOf(item.segment)),
-    ...optional('precisionM', finite(item.precisionM)), ...(item.aproximada === true ? { approximate: true as const } : {}),
+    ...optional('precisionM', finite(item.precisionM)), ...(item.aproximada === true || item.approximate === true ? { approximate: true as const } : {}),
   };
 }
 
@@ -110,15 +110,26 @@ function mapOf(raw: unknown): ObservationMap {
   return { streets: listOf(map.streets).flatMap((one) => streetOf(one) ?? []), ...(image.startsWith('https://') ? { imageUrl: image } : {}) };
 }
 
-/** Portal's `informe_de_observaciones` document as agentes passes it; anything off the contract is no document. */
+/** The items: Portal's section `observaciones`, or `observations` once read (first production run 12/11: the server sends what it read). */
+function itemsOf(raw: Raw): unknown[] | null {
+  if (Array.isArray(raw.observations)) return raw.observations;
+  if (!Array.isArray(raw.sections)) return null;
+  return listOf(recordOf(raw.sections.find((one) => recordOf(one).id === OBSERVATIONS_SECTION)).items);
+}
+
+/**
+ * Portal's `informe_de_observaciones` document as agentes passes it, or that
+ * same document once read: the server reads it and the phone reads it again.
+ * Anything off the contract is no document.
+ */
 export function observationDocumentOf(body: unknown): ObservationDocument | null {
   const raw = recordOf(body);
   const publish = recordOf(raw.publish);
-  if (!isObservationType(raw.type) || !raw.publish || !Array.isArray(raw.sections)) return null;
-  const section = recordOf(raw.sections.find((one) => recordOf(one).id === OBSERVATIONS_SECTION));
+  const items = itemsOf(raw);
+  if (!isObservationType(raw.type) || !raw.publish || !items) return null;
   return {
     id: textOf(raw.id) || null, type: raw.type, title: textOf(raw.title), status: raw.status === 'published' ? 'published' : 'draft',
-    observations: listOf(section.items).flatMap((one) => observationOf(one) ?? []).slice(0, ITEMS_MAX),
+    observations: items.flatMap((one) => observationOf(one) ?? []).slice(0, ITEMS_MAX),
     map: mapOf(raw.map),
     publish: { label: textOf(publish.label), missing: listOf(publish.missing).map(textOf).filter(Boolean) },
   };

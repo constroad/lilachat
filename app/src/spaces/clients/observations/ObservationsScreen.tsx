@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { Camera, Play } from 'lucide-react-native';
 import { approximateLine, evidenceBadge, LIFTING_TYPE, observationCounts, observationNumber, observationPlace, observationsIn, registeredLine, reportTypeLabel, STATUS_PILLS, type Observation, type ObservationDocument, type ObservationStatus, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
@@ -116,7 +116,12 @@ export function ObservationsScreen(props: Props) {
         {draft && !draft.ok ? (
           <View testID="observaciones-fallo" className="gap-3 rounded-2xl border border-outline/15 bg-surface p-4">
             <Text className="text-[15px] font-semibold text-on-surface">{draft.message}</Text>
-            <Pressable testID="observaciones-reintentar" onPress={() => reload()} className="min-h-[48px] items-center justify-center rounded-xl border border-primary/30 bg-primary/10"><Text className="text-[15px] font-semibold text-primary">Reintentar</Text></Pressable>
+            <Pressable testID="observaciones-reintentar" onPress={() => reload()} className="min-h-[56px] items-center justify-center rounded-xl border border-primary/30 bg-primary/10"><Text className="text-[15px] font-semibold text-primary">Reintentar</Text></Pressable>
+            {props.portalUrl ? (
+              <Pressable testID="observaciones-portal" onPress={() => void Linking.openURL(props.portalUrl!)} className="min-h-[56px] items-center justify-center rounded-xl border border-outline/20">
+                <Text className="text-[15px] font-semibold text-primary">Abrir el servicio en el Portal</Text>
+              </Pressable>
+            ) : null}
           </View>
         ) : null}
         {report ? <ObservationList report={report} tab={tab} onTab={setTab} onOpen={(observation) => setOpen({ kind: 'one', observation })} /> : null}

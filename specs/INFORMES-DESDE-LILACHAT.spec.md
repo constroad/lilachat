@@ -915,6 +915,20 @@ desde el 11/11**. José aprobó las tres herramientas en Agentes (agentes c255ab
 23:56:31Z. Si se apaga, REG-OBS y LEV-OBS vuelven a abrir la página de Portal y
 el server rechaza los tipos y los kinds.
 
+**Primera corrida en producción (12/11, 00:33Z): «No se pudo abrir el informe».**
+agentes respondió bien: 838 bytes, un borrador vacío. El server lo leyó con
+`observationDocumentOf` y le mandó a la app el resultado, que ya no trae
+`sections` sino `observations`. La app lo volvió a leer y lo rechazó. Con
+`fieldDocumentOf` esto no pasaba porque devuelve la misma forma que lee. El
+lector ahora acepta también su propia salida, y un test lo fija leyendo dos
+veces el mismo documento. Lo diagnosticaron lila-2 (log del server sin la línea
+de «sin respuesta») y agentes (log de las dos respuestas ok).
+
+En la misma corrida apareció otro defecto: el selector preguntaba «¿Quién es el
+responsable?» también para las observaciones. El contrato no tiene ese campo y
+§5-ter regla 1 dice que no se tipea, así que ahora se salta. Además, REG-OBS
+llevaba el ícono de la imprimación y ahora tiene uno propio.
+
 ### Reglas de campo aplicadas (stitch-design §5-ter, José 11/11)
 
 José: «tomar foto, plin, dato aquí, ubicación del teléfono y listo». Esto lo

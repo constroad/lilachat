@@ -49,6 +49,12 @@ describe('observationDocumentOf', () => {
     expect(document?.observations[0]).toEqual(expect.objectContaining({ lat: null, lng: null }));
   });
 
+  it('reads its own output again: the server reads Portal\'s answer and the phone reads what the server sent', () => {
+    const once = observationDocumentOf(body([item('1', 'open', { precisionM: 40, aproximada: true }), item('2', 'lifted', { liftedAt: '2026-11-11T18:00:00.000Z', segment: { streetId: 's1', fromM: 10, toM: 20 } })]));
+
+    expect(observationDocumentOf(JSON.parse(JSON.stringify(once)))).toEqual(once);
+  });
+
   it('refuses a document of another type or without publish', () => {
     expect(observationDocumentOf(body([], { type: 'CTL-PIS' }))).toBeNull();
     expect(observationDocumentOf({ ...body([]), publish: undefined })).toBeNull();

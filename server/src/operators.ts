@@ -34,8 +34,11 @@ export async function isOperator(userId: Types.ObjectId): Promise<boolean> {
   return phone !== '' && operators.includes(phone);
 }
 
-/** Who sees the users panel (`adminRoutes.ts`): the creator and the operators. */
+/**
+ * Who sees the users panel (`adminRoutes.ts`): the creator alone (José 12/11: «solo el super admin
+ * puede ver los usuarios que existen en Lilachat»). An operator runs backups, never reads who is in.
+ */
 export async function isSuperadmin(userId: Types.ObjectId): Promise<boolean> {
   const phone = await phoneOf(userId);
-  return phone !== '' && (CREATOR_PHONES.includes(phone) || operatorPhones().includes(phone));
+  return phone !== '' && CREATOR_PHONES.includes(phone);
 }

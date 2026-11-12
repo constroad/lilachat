@@ -20,7 +20,7 @@ import { fieldDocumentOf, type DocumentSection, type DocumentStatus, type FieldD
 import { clientServicePath } from './serviceAsk.js';
 import { isObservationType, OBSERVATIONS_OPEN_HERE, observationDocumentOf, type ObservationDocument } from './observations.js';
 import type { ObservationLiftRequest, ObservationRegisterRequest } from './observationWrite.js';
-import { AREA_TYPE, AREAS_OPEN_HERE, areaDocumentOf, type AreaCreateRequest, type AreaDocument } from './additionalArea.js';
+import { AREA_TYPE, AREAS_OPEN_HERE, areaDocumentOf, type AreaCreateRequest, type AreaDocument, type AreaRemoveRequest } from './additionalArea.js';
 import { locationMapLink } from './sharedLocation.js';
 import type { DetailTone } from './serviceDetail.js';
 
@@ -30,12 +30,15 @@ import type { DetailTone } from './serviceDetail.js';
  * asks the server and what the cards say. The APK and the web draw from
  * here. PURE.
  */
-export type ReportTypeOption = { code: string; label: string; caption: string; /** Created here; the rest open Portal's public page. */ opensHere: boolean };
+export type ReportTypeOption = { code: string; label: string; caption: string; /** Created here; the rest open Portal's public page. */ opensHere: boolean; /** Only the web has its screen (IAA: the iPhone's Medición). */ webOnly?: true };
+
+/** What the APK fills itself; a web-only type opens Portal from the APK. */
+export const opensInApp = (option: ReportTypeOption): boolean => option.opensHere && !option.webOnly;
 
 /** The types of Portal's public page (`isFieldReport`), the ones filled here on top. */
 export const REPORT_TYPE_OPTIONS: readonly ReportTypeOption[] = [
   { code: 'CTL-IMP', label: 'Control de imprimación', caption: 'Tasa de riego por tramo, con bandejas y fotos', opensHere: true },
-  { code: 'IAA', label: 'Área adicional', caption: AREAS_OPEN_HERE ? 'Largo y ancho medidos en obra, con su foto' : 'Zonas medidas sobre la foto', opensHere: AREAS_OPEN_HERE },
+  { code: 'IAA', label: 'Área adicional', caption: AREAS_OPEN_HERE ? 'Largo y ancho medidos en obra, con su foto' : 'Zonas medidas sobre la foto', opensHere: AREAS_OPEN_HERE, webOnly: true },
   { code: 'CTL-PIS', label: 'Control de pista', caption: 'Llegada, temperaturas, escantillón y 4 fotos por volquete', opensHere: true },
   { code: 'CON-CAP', label: 'Conformación de capa', caption: 'Densidad por punto, con GPS y calle solos', opensHere: true },
   { code: 'RCP-CAM', label: 'Recepción de campo', caption: 'Conformidad con firma de supervisión', opensHere: false },
@@ -107,7 +110,7 @@ export const placeFieldValue = ({ lat, lng }: DevicePlace): string | null => (la
 export type SectionFormRequest = { kind: 'section'; type: string; section_id: string; item_id: string | null; key: string; report_id?: string; forms: number; /** The save's own key: Portal tells a photo sent twice from a second one. */ client_key?: string } & Partial<DevicePlace>;
 export type PublishFormRequest = { kind: 'publish'; report_id: string; forms: number };
 export type RemovePhotoRequest = { kind: 'remove_photo'; report_id: string; photo_id: string; forms: number };
-export type ReportFormRequest = SectionFormRequest | PublishFormRequest | RemovePhotoRequest | DriveUploadRequest | WorkProgressRequest | WorkStreetRequest | WorkStreetDeleteRequest | ServiceLinkRequest | WorkScopeRequest | WorkScopeDeleteRequest | WorkStageRequest | WorkTagRequest | WorkRestoreRequest | WorkDeletedRequest | WorkManualProgressRequest | WorkProgressLinkRequest | WorkImportRequest | WorkProgressPdfRequest | WorkMapInReportRequest | PhotoPhaseRequest | LayerEditRequest | LayerDeleteRequest | WorkPendingRequest | WorkResolveRequest | ObservationRegisterRequest | ObservationLiftRequest | AreaCreateRequest;
+export type ReportFormRequest = SectionFormRequest | PublishFormRequest | RemovePhotoRequest | DriveUploadRequest | WorkProgressRequest | WorkStreetRequest | WorkStreetDeleteRequest | ServiceLinkRequest | WorkScopeRequest | WorkScopeDeleteRequest | WorkStageRequest | WorkTagRequest | WorkRestoreRequest | WorkDeletedRequest | WorkManualProgressRequest | WorkProgressLinkRequest | WorkImportRequest | WorkProgressPdfRequest | WorkMapInReportRequest | PhotoPhaseRequest | LayerEditRequest | LayerDeleteRequest | WorkPendingRequest | WorkResolveRequest | ObservationRegisterRequest | ObservationLiftRequest | AreaCreateRequest | AreaRemoveRequest;
 
 /** What `POST …/reports/forms` takes to open a section: its path, the report once it exists, and what this app can draw. */
 export function sectionFormRequest(document: FieldDocument, path: SectionPath, place?: DevicePlace | null, clientKey?: string): SectionFormRequest {

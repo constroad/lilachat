@@ -3,7 +3,7 @@ import { FORMS_LEVEL } from './appForms';
 import { isFieldReport } from './clientAccess';
 import { fieldDocumentOf } from './fieldDocument';
 import { locationMapLink } from './sharedLocation';
-import { draftToContinue, itemsLine, removePhotoRequest, pageLine, placeFieldValue, progressLine, progressPercent, publishFormRequest, readObservationDraft, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, openPublishForm, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, staleAnswerIds, STATUS_BADGE, type TrackStart } from './reportCreation';
+import { draftToContinue, opensInApp, itemsLine, removePhotoRequest, pageLine, placeFieldValue, progressLine, progressPercent, publishFormRequest, readObservationDraft, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, openPublishForm, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, staleAnswerIds, STATUS_BADGE, type TrackStart } from './reportCreation';
 
 /** A CTL-IMP as Portal answers it, with one tramo whose photos go through their own tool. */
 const form = (title: string) => ({ type: 'object', properties: { campo: { type: 'string', title } } });
@@ -31,7 +31,9 @@ describe('the types a report can be', () => {
   it('offers the eight types of the public page, and CTL-IMP, CTL-PIS and CON-CAP open here', () => {
     expect(REPORT_TYPE_OPTIONS).toHaveLength(9);
     // CON-CAP in the field since 12/11 (Portal 8bc64e18): GPS, street and station fill themselves.
-    expect(REPORT_TYPE_OPTIONS.filter((option) => option.opensHere).map((option) => option.code)).toEqual(['CTL-IMP', 'CTL-PIS', 'CON-CAP', 'REG-OBS', 'LEV-OBS']);
+    // IAA since Portal's tools (12/11), on the web only: the iPhone's Medición; the APK has no screen for it.
+    expect(REPORT_TYPE_OPTIONS.filter((option) => option.opensHere).map((option) => option.code)).toEqual(['CTL-IMP', 'IAA', 'CTL-PIS', 'CON-CAP', 'REG-OBS', 'LEV-OBS']);
+    expect(REPORT_TYPE_OPTIONS.filter((option) => opensInApp(option)).map((option) => option.code)).toEqual(['CTL-IMP', 'CTL-PIS', 'CON-CAP', 'REG-OBS', 'LEV-OBS']);
     expect(REPORT_TYPE_OPTIONS.slice(0, 3).map((option) => option.code)).toEqual(['CTL-IMP', 'IAA', 'CTL-PIS']);
     REPORT_TYPE_OPTIONS.forEach((option) => expect(isFieldReport({ typeLabel: option.label })).toBe(true));
   });

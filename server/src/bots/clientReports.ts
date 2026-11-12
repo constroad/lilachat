@@ -195,7 +195,7 @@ function prepared(workspaceId: string, clientId: string, serviceId: string, user
   if (input.kind === 'photo_phase') return photoPhasePrepared(serviceId, input);
   if (isWorkMapFormInput(input)) return workMapFormPrepared(serviceId, input);
   if (input.kind === 'observation_register' || input.kind === 'observation_lift') return observationFormPrepared(serviceId, input);
-  if (input.kind === 'area_create') return areaFormPrepared(serviceId, input);
+  if (input.kind === 'area_create' || input.kind === 'area_remove') return areaFormPrepared(serviceId, input);
   if (input.kind === 'service_link') return { form: { id: SERVICE_LINK_ACTION, title: 'Enlace del servicio', submitLabel: 'Crear enlace', schema: SERVICE_LINK_FORM }, context: { servicioId: serviceId } };
   if (input.kind === 'drive_upload') return { form: { id: DRIVE_UPLOAD_TOOL, title: 'Subir al Drive', submitLabel: 'Subir', schema: NOTHING_TO_FILL }, context: { servicioId: serviceId } };
   if (input.kind === 'remove_photo') return { form: { id: REMOVE_PHOTO_TOOL, title: 'Quitar foto', submitLabel: 'Quitar', schema: NOTHING_TO_FILL }, context: { servicioId: serviceId, informeId: input.reportId, fotoId: input.photoId } };

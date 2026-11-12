@@ -49,3 +49,19 @@ describe('additional area forms (Portal 12/11, proposed contract)', () => {
     expect(areaFormPrepared(SERVICE, areaFormInputOf({ ...sides, precision_m: 9000 })!).context).not.toHaveProperty('precisionM');
   });
 });
+
+/** «Quitar área»: Portal's `quitar` takes only the area; its photos go to Portal's trash. */
+describe('removing an area', () => {
+  it('knows the kind and sends the area as context, nothing to fill', () => {
+    expect(isAreaFormKind('area_remove')).toBe(true);
+    const ready = areaFormPrepared(SERVICE, areaFormInputOf({ kind: 'area_remove', area_id: 'a-7' })!);
+    expect(ready.form).toMatchObject({ id: 'registrar_area_adicional', title: 'Quitar área', submitLabel: 'Quitar' });
+    expect(Object.keys(ready.form.schema.properties ?? {})).toEqual([]);
+    expect(ready.context).toEqual({ servicioId: SERVICE, kind: 'quitar', areaId: 'a-7' });
+  });
+
+  it('without its area, or an id too long, it is a 400 before the door', () => {
+    expect(areaFormInputOf({ kind: 'area_remove' })).toBeNull();
+    expect(areaFormInputOf({ kind: 'area_remove', area_id: 'x'.repeat(65) })).toBeNull();
+  });
+});

@@ -63,6 +63,8 @@ describe('the consumption card of Stitch a10 on the web', () => {
     expect(within(sections[1]!).getByText('268,00 m³').className).toContain('font-bold');
     expect(screen.getByTestId('fila-medio').textContent).toBe('24,43 gl/m³');
     expect(screen.getByTestId('bloque-casillas').className).toContain('grid-cols-2');
+    // agentes 12/11: the materials go as sent («Arena primaria»), never forced to capitals.
+    expect(screen.getByText('Arena primaria').className).not.toContain('uppercase');
     expect(screen.getByTestId('fila-antes').tagName).toBe('S');
   });
 

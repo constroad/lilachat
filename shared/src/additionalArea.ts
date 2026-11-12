@@ -15,7 +15,7 @@ import type { ObservationSource } from './observationWrite.js';
  */
 export const AREA_TYPE = 'IAA';
 /** Off until Portal publishes its tools (after the Lilachat embed, the order José approved 12/11). */
-export const AREAS_OPEN_HERE = false;
+export const AREAS_OPEN_HERE = true;
 
 export type AreaPhoto = { url: string; thumbUrl?: string; mime: string; capture?: true };
 export type AdditionalArea = {
@@ -151,6 +151,16 @@ export function areaAnswerOf(response: CommandResponse): AreaAnswer | null {
 }
 
 export const AREA_WRITE_FAILED = 'No se pudo guardar el área. Revisa tu señal y vuelve a intentarlo.';
+
+/** «Quitar área» (Portal's `quitar`): only the area; Portal takes it off the table and trashes its photos. */
+export type AreaRemoveRequest = { kind: 'area_remove'; area_id: string; forms: number };
+export const areaRemoveRequest = (areaId: string): AreaRemoveRequest => ({ kind: 'area_remove', area_id: areaId, forms: FORMS_LEVEL });
+export const AREA_REMOVED = 'Área quitada.';
+export const AREA_REMOVE_FAILED = 'No se pudo quitar el área. Revisa tu señal y vuelve a intentarlo.';
+export const areaRemoveAsk = (item?: string): { title: string; hint: string } => ({ title: item ? `¿Quitar el área ${item}?` : '¿Quitar esta área?', hint: 'Sale del cuadro y sus fotos van a la papelera de Portal.' });
+/** Portal only lets the field remove what the field measured: an area measured on its photos is the office's. */
+const FIELD_METHODS: readonly AreaMethod[] = ['medidas-iphone', 'a-mano'];
+export const isRemovableArea = (area: Pick<AdditionalArea, 'method'>): boolean => area.method !== null && FIELD_METHODS.includes(area.method);
 const AREA_WRITE: WriteKind<AreaAnswer> = { failed: AREA_WRITE_FAILED, answerOf: areaAnswerOf, who: 'El área' };
 
 /** One screen's write of an area: the area, then its photos (the Medición capture marked). */

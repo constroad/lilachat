@@ -22,10 +22,13 @@ const PRODUCT_SLACK_M2 = 0.01;
 /** What the field sends today: AR is for later, «Medida en foto» is Portal's own. */
 const FIELD_METHODS: readonly AreaMethod[] = ['medidas-iphone', 'a-mano'];
 
-export type AreaFormInput = {
+export type AreaCreateInput = {
   kind: 'area_create'; entryId: string; lengthM: number | null; widthM: number | null; areaM2: number; thicknessCm: number | null;
   method: AreaMethod; lat: number | null; lng: number | null; precisionM: number | null; source: 'apk' | 'web'; reportId: string | null;
 };
+/** «Quitar área»: Portal's `quitar` with only the area; its photos go to Portal's trash. */
+export type AreaRemoveInput = { kind: 'area_remove'; areaId: string };
+export type AreaFormInput = AreaCreateInput | AreaRemoveInput;
 export type AreaFormContext = Record<string, string | number>;
 
 const FORM: FormSchema = {
@@ -39,9 +42,10 @@ const FORM: FormSchema = {
 const inRange = (raw: unknown, range: { min: number; max: number }): number | null => (typeof raw === 'number' && Number.isFinite(raw) && raw >= range.min && raw <= range.max ? raw : null);
 const coordinate = (raw: unknown, limit: number): number | null => (typeof raw === 'number' && Number.isFinite(raw) && Math.abs(raw) <= limit ? raw : null);
 const idOf = (raw: unknown): string => (typeof raw === 'string' && raw.trim().length <= ID_MAX ? raw.trim() : '');
+const NOTHING_TO_FILL: FormSchema = { type: 'object', properties: {} };
 
 /** Off until Portal publishes its tools (`AREAS_OPEN_HERE`): the kind does not exist meanwhile. */
-export const isAreaFormKind = (kind: unknown): kind is AreaFormInput['kind'] => AREAS_OPEN_HERE && kind === 'area_create';
+export const isAreaFormKind = (kind: unknown): kind is AreaFormInput['kind'] => AREAS_OPEN_HERE && (kind === 'area_create' || kind === 'area_remove');
 
 /** Both sides or none; with both, the area is their product. */
 function sidesOf(raw: Record<string, unknown>, areaM2: number): { lengthM: number | null; widthM: number | null } | null {
@@ -60,6 +64,14 @@ function placeOf(raw: Record<string, unknown>): { lat: number | null; lng: numbe
 
 /** What the phone asked; anything off Portal's limits is a 400 before the door. */
 export function areaFormInputOf(raw: Record<string, unknown>): AreaFormInput | null {
+  if (raw.kind === 'area_remove') {
+    const areaId = idOf(raw.area_id);
+    return areaId ? { kind: 'area_remove', areaId } : null;
+  }
+  return areaCreateInputOf(raw);
+}
+
+function areaCreateInputOf(raw: Record<string, unknown>): AreaCreateInput | null {
   const entryId = typeof raw.entry_id === 'string' && UUID.test(raw.entry_id) ? raw.entry_id : '';
   const areaM2 = inRange(raw.area_m2, AREA_M2);
   const method = FIELD_METHODS.find((one) => one === raw.method);
@@ -75,6 +87,9 @@ export function areaFormInputOf(raw: Record<string, unknown>): AreaFormInput | n
 const some = (key: string, value: number | string | null): AreaFormContext => (value === null ? {} : { [key]: value });
 
 export function areaFormPrepared(serviceId: string, input: AreaFormInput): { form: AppForm; context: AreaFormContext } {
+  if (input.kind === 'area_remove') {
+    return { form: { id: REGISTER_AREA_TOOL, title: 'Quitar área', submitLabel: 'Quitar', schema: NOTHING_TO_FILL }, context: { servicioId: serviceId, kind: 'quitar', areaId: input.areaId } };
+  }
   return {
     form: { id: REGISTER_AREA_TOOL, title: 'Nueva área', submitLabel: 'Guardar área', schema: FORM },
     context: {

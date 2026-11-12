@@ -36,7 +36,7 @@ export function BlockTiles({ block }: { block: TilesBlock }) {
     <div data-testid="bloque-casillas" className="grid grid-cols-2 gap-2">
       {block.items.map((tile, index) => (
         <div key={`${tile.label}-${index}`} className="min-w-0 rounded-lg border border-outline/15 px-2.5 py-2">
-          <p className="break-words text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{tile.label}</p>
+          <p className="break-words text-[12px] text-on-surface-variant">{tile.label}</p>
           <p className="break-words text-[15px] font-semibold tabular-nums">{tile.value}</p>
         </div>
       ))}

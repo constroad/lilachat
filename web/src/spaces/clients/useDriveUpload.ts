@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DRIVE_UPLOAD_DONE, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type ManualPhotoUpload, type AreaCreateRequest, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps } from '@lilachat/shared';
+import { DRIVE_UPLOAD_DONE, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type ManualPhotoUpload, type AreaCreateRequest, type AreaRemoveRequest, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps } from '@lilachat/shared';
 import { submitAppForm } from '../../chat/commands/commandsApi';
 import { shrinkPhotoBlob } from '../../chat/shrinkPhoto';
 import { currentSocket } from '../../useSocket';
@@ -87,7 +87,7 @@ export const mapTraceUploader = (target: ServiceAskTarget, chatId: string, servi
 };
 
 /** An observation's or an area's write from the browser (an iPhone's PWA is the field's form too): the run, its answer and each file straight to Portal. */
-export const observationWriteDeps = (to: Omit<UploadTarget, 'onDone'>, request: ObservationRegisterRequest | ObservationLiftRequest | AreaCreateRequest): ObservationWriteDeps<DriveFile> => ({
+export const observationWriteDeps = (to: Omit<UploadTarget, 'onDone'>, request: ObservationRegisterRequest | ObservationLiftRequest | AreaCreateRequest | AreaRemoveRequest): ObservationWriteDeps<DriveFile> => ({
   open: () => openReportForm(to.target, to.serviceId, request),
   submit: (commandId, values) => submitAppForm(to.target.jwt, { chatId: to.chatId }, commandId, values),
   notice: (commandId) => noticeOf(currentSocket(), commandId),

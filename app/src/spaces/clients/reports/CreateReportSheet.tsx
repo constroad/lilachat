@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { ChevronRight, ClipboardCheck, Droplets, FileSignature, Hammer, Layers, ScanSearch, Square, Truck, UserCheck, type LucideIcon } from 'lucide-react-native';
-import { asksResponsible, REPORT_TYPE_OPTIONS, reportTypeLabel, type ReportTypeOption } from '@lilachat/shared';
+import { asksResponsible, opensInApp, REPORT_TYPE_OPTIONS, reportTypeLabel, type ReportTypeOption } from '@lilachat/shared';
 import { loadCredential } from '../../../auth/credentialStore';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
@@ -11,8 +11,9 @@ const ICONS: Record<string, LucideIcon> = { 'CTL-IMP': Droplets, IAA: Square, 'C
 function TypeRow({ option, portalUrl, onPick }: { option: ReportTypeOption; portalUrl?: string; onPick: (code: string) => void }) {
   const colors = useColores();
   const Icon = ICONS[option.code] ?? Droplets;
-  const press = () => (option.opensHere ? onPick(option.code) : portalUrl ? void Linking.openURL(portalUrl) : undefined);
-  const enabled = option.opensHere || Boolean(portalUrl);
+  const here = opensInApp(option);
+  const press = () => (here ? onPick(option.code) : portalUrl ? void Linking.openURL(portalUrl) : undefined);
+  const enabled = here || Boolean(portalUrl);
   return (
     <Pressable testID={`tipo-informe-${option.code}`} onPress={press} disabled={!enabled} className={`min-h-[72px] flex-row items-center gap-3 rounded-2xl border bg-surface px-3 py-3 ${option.opensHere ? 'border-primary/40' : 'border-outline/15'} ${enabled ? '' : 'opacity-50'}`}>
       <View className="h-12 w-12 items-center justify-center rounded-full bg-primary/10">
@@ -22,7 +23,7 @@ function TypeRow({ option, portalUrl, onPick }: { option: ReportTypeOption; port
         <Text className="text-[15px] font-semibold text-on-surface" numberOfLines={1}>{option.label}</Text>
         <Text className="mt-0.5 text-[12px] text-on-surface-variant" numberOfLines={1}>{option.caption}</Text>
       </View>
-      {!option.opensHere ? <Text className="rounded-md bg-surface-variant px-2 py-1 text-[10px] font-bold uppercase tracking-[1px] text-on-surface-variant">En Portal</Text> : null}
+      {!here ? <Text className="rounded-md bg-surface-variant px-2 py-1 text-[10px] font-bold uppercase tracking-[1px] text-on-surface-variant">En Portal</Text> : null}
       <ChevronRight size={18} color={colors.primary} />
     </Pressable>
   );

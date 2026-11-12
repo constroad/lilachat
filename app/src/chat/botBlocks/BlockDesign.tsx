@@ -41,7 +41,7 @@ export function BlockTiles({ block }: { block: TilesBlock }) {
     <View testID="bloque-casillas" className="flex-row flex-wrap" style={{ gap: 8 }}>
       {block.items.map((tile, index) => (
         <View key={`${tile.label}-${index}`} className="rounded-lg border border-outline/15 px-2.5 py-2" style={{ flexBasis: '47%', flexGrow: 1 }}>
-          <Text className="text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant">{tile.label}</Text>
+          <Text className="text-[12px] text-on-surface-variant">{tile.label}</Text>
           <Text className="text-[15px] font-semibold text-on-surface" style={FIGURES}>{tile.value}</Text>
         </View>
       ))}

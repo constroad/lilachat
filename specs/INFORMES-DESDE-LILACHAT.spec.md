@@ -1118,14 +1118,24 @@ prueba de José → E2E en TEST → lienzo REG/LEV → embed de Lilachat web, y 
 - Los dos selectores (APK y web) saltan «responsable» en observaciones y áreas
   (`asksResponsible`).
 
+### Encendido en la web (12/11, Portal con sus herramientas en vivo)
+
+- `AREAS_OPEN_HERE = true`, pero IAA es `webOnly`: el APK no tiene su
+  pantalla, así que en el APK sigue abriendo la página de Portal
+  (`opensInApp`). En la web (el iPhone por PWA) se llena aquí.
+- **Quitar área** (`kind: 'area_remove'` → `quitar` de Portal): el ícono de
+  papelera en cada área tomada en campo (`medidas-iphone`, `a-mano`). Pregunta
+  antes («¿Quitar el área 3?»), y Portal la saca del cuadro y manda sus fotos a
+  su papelera. Un área medida sobre sus fotos en Portal es de la oficina: no
+  lleva el botón (`isRemovableArea`). Es también el camino de la app para
+  limpiar las áreas de QA.
+
 ### Sin hacer todavía
 
-- **APK:** la pantalla de áreas para Android (`a-mano`). Hasta tenerla, el
-  interruptor no se enciende: hoy IAA abre la página de Portal en las dos.
-- **Diseño Stitch** del flujo de campo: Portal dijo que es nuestro. Se genera
-  antes de encender, con el pie 1.82.0 (sin textos obvios ni internos).
-- **Editar y quitar** un área (`editar`, `quitar`): el contrato los tiene,
-  Lilachat todavía no.
+- **APK:** la pantalla de áreas para Android (`a-mano`).
+- **Diseño Stitch** del flujo de campo: no se generó antes de encender. Queda
+  pendiente compararlo contra la pantalla, con el pie 1.82.0.
+- **Editar** un área (`editar`): el contrato lo tiene, Lilachat todavía no.
 - **E2E:** necesita las herramientas de Portal. Se hará en TEST desde un iPhone
   real (Medición no corre en el emulador), con la limpieza por el camino de la
   app.

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { ChevronLeft, ExternalLink, Ruler } from 'lucide-react';
-import { AREA_TYPE, areaCardLines, areaCreateRequest, areaDraftKey, areaTotalsLine, areaWriteStore, readAreaDraft, reportTypeLabel, type AdditionalArea, type AreaDocument, type AreaPhoto, type AreaDraftPoint, type EvidenceFile, type SpaceClientService } from '@lilachat/shared';
+import { ChevronLeft, ExternalLink, Ruler, Trash2 } from 'lucide-react';
+import { AREA_REMOVE_FAILED, AREA_REMOVED, AREA_TYPE, areaCardLines, areaCreateRequest, areaDraftKey, areaRemoveAsk, areaRemoveRequest, areaTotalsLine, areaWriteStore, isRemovableArea, readAreaDraft, reportTypeLabel, runStreetDelete, sendMapTool, STREET_DELETE_ASKING, STREET_DELETE_IDLE, type AdditionalArea, type AreaDocument, type AreaPhoto, type AreaDraftPoint, type EvidenceFile, type SpaceClientService, type StreetDeleteState, type WorkProgressResult } from '@lilachat/shared';
 import { isIos } from '../../../pwa/iosInstall';
 import { observationWriteDeps, prepared, type DriveFile } from '../useDriveUpload';
 import { fieldPointNow } from '../observations/ObservationFormsWeb';
@@ -24,11 +24,33 @@ const hasDraft = (serviceId: string): boolean => {
   }
 };
 
-function AreaCard({ area }: { area: AdditionalArea }) {
+type AreaRemoveSend = (areaId: string) => Promise<WorkProgressResult>;
+
+/** «Quitar área» (Portal's `quitar`): it asks first, naming the area, and keeps Portal's refusal in sight. */
+function AreaRemove({ area, send }: { area: AdditionalArea; send: AreaRemoveSend }) {
+  const [{ asking, busy, error }, setState] = useState<StreetDeleteState>(STREET_DELETE_IDLE);
+  const ask = areaRemoveAsk(area.item);
+  if (!asking) {
+    return <button type="button" data-testid={`quitar-area-${area.id}`} onClick={() => setState(STREET_DELETE_ASKING)} aria-label={ask.title} className="grid h-10 w-10 shrink-0 place-items-center rounded-lg text-on-surface-variant hover:bg-background hover:text-error"><Trash2 size={17} /></button>;
+  }
+  return (
+    <div role="alertdialog" aria-label={ask.title} className="basis-full rounded-xl border border-error/30 bg-error/5 p-3">
+      <p className="text-[14px] font-bold">{ask.title}</p>
+      <p className="mt-1 text-[12px] text-on-surface-variant">{ask.hint}</p>
+      {error ? <p role="alert" className="mt-2 text-[13px] font-semibold text-error">{error}</p> : null}
+      <div className="mt-3 flex gap-2">
+        <button type="button" onClick={() => setState(STREET_DELETE_IDLE)} disabled={busy} className="h-11 flex-1 rounded-xl border border-outline/20 text-[13px] font-semibold">Cancelar</button>
+        <button type="button" data-testid={`quitar-area-si-${area.id}`} onClick={() => void runStreetDelete(send, area.id, setState)} disabled={busy} className="h-11 flex-1 rounded-xl bg-error text-[13px] font-bold text-background disabled:opacity-60">{busy ? 'Quitando…' : 'Quitar'}</button>
+      </div>
+    </div>
+  );
+}
+
+function AreaCard({ area, remove }: { area: AdditionalArea; remove?: AreaRemoveSend }) {
   const lines = areaCardLines(area);
   const cover = area.photos[0];
   return (
-    <li data-testid={`area-${area.id}`} className="flex gap-3 rounded-xl border border-outline/20 bg-surface p-3">
+    <li data-testid={`area-${area.id}`} className="flex flex-wrap gap-3 rounded-xl border border-outline/20 bg-surface p-3">
       {cover ? <img src={cover.thumbUrl ?? cover.url} alt="" className="h-16 w-16 shrink-0 rounded-lg object-cover" /> : <span className="grid h-16 w-16 shrink-0 place-items-center rounded-lg bg-surface-variant"><Ruler size={20} className="text-on-surface-variant" /></span>}
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-baseline gap-x-2">
@@ -37,8 +59,9 @@ function AreaCard({ area }: { area: AdditionalArea }) {
           {lines.volume ? <span className="text-sm text-on-surface-variant">{lines.volume}</span> : null}
         </p>
         <p className="text-sm text-on-surface-variant">{[lines.sides, lines.method].filter(Boolean).join(' · ')}</p>
-        {area.place ? <p className="truncate text-sm">{area.place}</p> : null}
+        {area.place ? <p className="break-words text-sm">{area.place}</p> : null}
       </div>
+      {remove && isRemovableArea(area) ? <AreaRemove area={area} send={remove} /> : null}
     </li>
   );
 }
@@ -91,6 +114,15 @@ export function AreasWeb(props: Props) {
   // Coming back from Medición, a half-filled area opens by itself.
   const [reading, setReading] = useState<Promise<AreaDraftPoint | null> | null>(() => (hasDraft(props.service.id) ? fieldPointNow() : null));
   const [changed, setChanged] = useState(false);
+  // A removed area leaves the table at once: the report is read again after Portal answers.
+  const remove = useCallback(async (areaId: string) => {
+    const result = await sendMapTool(observationWriteDeps(to, areaRemoveRequest(areaId)), {}, { sent: AREA_REMOVED, failed: AREA_REMOVE_FAILED });
+    if (result.ok) {
+      setChanged(true);
+      reload(report?.id);
+    }
+    return result;
+  }, [to, reload, report?.id]);
   const save = useCallback(async (area: MeasuredArea) => {
     const reportId = await write.save(report, area);
     if (!reportId) return false;
@@ -113,7 +145,7 @@ export function AreasWeb(props: Props) {
       {report ? (
         <>
           <p data-testid="areas-total" className="rounded-xl border border-outline/20 bg-surface p-4 text-lg font-bold tabular-nums">{areaTotalsLine({ count: report.areas.length, totals: report.totals })}</p>
-          {report.areas.length ? <ul className="space-y-2">{report.areas.map((area) => <AreaCard key={area.id} area={area} />)}</ul> : <p data-testid="areas-vacio" className="py-4 text-center text-sm text-on-surface-variant">Todavía no hay áreas en este informe.</p>}
+          {report.areas.length ? <ul className="space-y-2">{report.areas.map((area) => <AreaCard key={area.id} area={area} remove={remove} />)}</ul> : <p data-testid="areas-vacio" className="py-4 text-center text-sm text-on-surface-variant">Todavía no hay áreas en este informe.</p>}
           <LoosePhotos photos={report.loosePhotos} />
           {reading ? (
             <div className="rounded-xl border border-outline/20 bg-surface p-4 pb-0">

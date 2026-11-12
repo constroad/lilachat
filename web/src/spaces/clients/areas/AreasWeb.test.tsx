@@ -116,4 +116,19 @@ describe('AreasWeb', () => {
 
     expect(await screen.findByTestId('areas-fallo')).toHaveTextContent('No se pudo traer el informe');
   });
+
+  it('«Quitar área» asks first, sends the quitar of Portal with only the area, and reads the report again', async () => {
+    // Arrange
+    const sent = portal([area('1', 4.8), area('2', 12.5, { metodo: 'foto-medida' })], [area('2', 12.5, { metodo: 'foto-medida' })]);
+    render(<AreasWeb target={target} chatId="ch1" service={service} iphone onClose={vi.fn()} />);
+    await screen.findByTestId('area-1');
+    // Act
+    await userEvent.click(screen.getByTestId('quitar-area-1'));
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('¿Quitar el área 1?');
+    await userEvent.click(screen.getByTestId('quitar-area-si-1'));
+    // Assert
+    await waitFor(() => expect(screen.queryByTestId('area-1')).toBeNull());
+    expect(sent.calls.some((call) => call.includes('/reports/forms') && call.includes('"kind":"area_remove"') && call.includes('"area_id":"1"'))).toBe(true);
+    expect(screen.queryByTestId('quitar-area-2')).toBeNull();
+  });
 });

@@ -121,8 +121,11 @@ describe('ServiceDetailWeb', () => {
     // Assert
     const types = within(screen.getByTestId('crear-informe-tipos')).getAllByTestId(/^tipo-informe-/);
     expect(types).toHaveLength(9);
-    expect(screen.getByTestId('tipo-informe-IAA')).toHaveAttribute('href', 'https://portal.constroad.com/s/318');
-    expect(screen.getByTestId('tipo-informe-IAA')).toHaveTextContent('En Portal');
+    expect(screen.getByTestId('tipo-informe-RCP-CAM')).toHaveAttribute('href', 'https://portal.constroad.com/s/318');
+    expect(screen.getByTestId('tipo-informe-RCP-CAM')).toHaveTextContent('En Portal');
+    // IAA opens here since Portal's tools (12/11): the iPhone's Medición.
+    expect(screen.getByTestId('tipo-informe-IAA')).not.toHaveAttribute('href');
+    expect(screen.getByTestId('tipo-informe-IAA')).not.toHaveTextContent('En Portal');
     fireEvent.click(screen.getByTestId('tipo-informe-CTL-IMP'));
     expect(screen.getByTestId('responsable-de-informe')).toHaveTextContent('¿Quién es el responsable?');
     fireEvent.change(screen.getByTestId('responsable-nombre'), { target: { value: '' } });

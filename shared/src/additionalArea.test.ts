@@ -1,5 +1,6 @@
+import { FORMS_LEVEL } from './appForms.js';
 import { describe, expect, it } from 'vitest';
-import { AREA_TYPE, areaAnswerOf, areaCardLines, areaCreateRequest, areaDocumentOf, areaPlaceValues, areaTotalsLine, areaWriteStore } from './additionalArea.js';
+import { AREA_TYPE, areaAnswerOf, areaRemoveAsk, areaRemoveRequest, isRemovableArea, areaCardLines, areaCreateRequest, areaDocumentOf, areaPlaceValues, areaTotalsLine, areaWriteStore } from './additionalArea.js';
 
 /** Portal's `informe_area_adicional` as agentes passes it (Portal 12/11, proposed contract). */
 const portalArea = {
@@ -108,5 +109,21 @@ describe('areaCardLines', () => {
     const [first, second] = areaDocumentOf(portalDocument)!.areas;
     expect(areaCardLines(first!)).toEqual({ size: '4,80 m²', sides: '3,20 × 1,50 m', volume: '0,240 m³', method: 'Medidas (iPhone)' });
     expect(areaCardLines(second!)).toEqual({ size: '12,50 m²', sides: null, volume: null, method: 'A mano' });
+  });
+});
+
+/** «Quitar área» (Portal's `quitar`, 12/11): it leaves the table and its photos go to Portal's trash. */
+describe('removing an area', () => {
+  it('asks by its item and sends only the area', () => {
+    expect(areaRemoveAsk('3')).toEqual({ title: '¿Quitar el área 3?', hint: 'Sale del cuadro y sus fotos van a la papelera de Portal.' });
+    expect(areaRemoveRequest('a-7')).toEqual({ kind: 'area_remove', area_id: 'a-7', forms: FORMS_LEVEL });
+  });
+
+  it('only an area taken in the field: one measured on its photos in Portal is the office\'s', () => {
+    const base = { id: 'a1', areaM2: 4.8, lat: null, lng: null, photos: [] };
+    expect(isRemovableArea({ ...base, method: 'medidas-iphone' })).toBe(true);
+    expect(isRemovableArea({ ...base, method: 'a-mano' })).toBe(true);
+    expect(isRemovableArea({ ...base, method: 'foto-medida' })).toBe(false);
+    expect(isRemovableArea({ ...base, method: null })).toBe(false);
   });
 });

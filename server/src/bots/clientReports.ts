@@ -23,7 +23,7 @@ import { isWorkMapFormInput, isWorkMapFormKind, workMapFormInputOf, workMapFormP
  */
 export const PUBLISH_TOOL = 'publicar_informe';
 /** The report types that open from Lilachat today; Portal's `tipo` enum says the same. */
-export const OPEN_REPORT_TYPES = ['CTL-IMP', 'CTL-PIS'] as const;
+export const OPEN_REPORT_TYPES = ['CTL-IMP', 'CTL-PIS', 'CON-CAP'] as const;
 const DRAFT_FAILED = 'No se pudo abrir el informe';
 const DRAFT_KEPT_S = 24 * 60 * 60;
 const COMMAND_TTL_MS = 15 * 60_000;

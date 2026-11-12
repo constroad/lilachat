@@ -112,6 +112,11 @@ describe('the document', () => {
     expect(admin.body.document.forms.fotos.properties).toHaveProperty('enviarAlGrupo');
   });
 
+  it('a CON-CAP opens here too (Portal 8bc64e18, 12/11)', async () => {
+    await draftOf(ana, { type: 'CON-CAP' }).expect(200);
+    expect(received[0]?.data).toMatchObject({ type: 'CON-CAP' });
+  });
+
   it('is a 404 outside the channel and a 400 for a type that does not open here', async () => {
     await draftOf(outsider).expect(404);
     await draftOf(ana, { type: 'LIQ-SRV' }).expect(400);

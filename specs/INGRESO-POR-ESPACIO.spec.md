@@ -227,6 +227,9 @@ verlo en el espacio. Es temporal: después pedirá que lo saquen.
   compartido ni como admin para «Hablar con un admin».
 - **Tampoco lo nombra:** «Te agregó José» queda sin nombre. El correo dice
   «Te invitaron a Lilachat · Globofast». «Tus espacios» no dice quién invitó.
+- **Canales compartidos que el espacio recibe** (Globofast recibe los de
+  Inframaq): ahí él es miembro por Inframaq. Visto desde Globofast sale con
+  la etiqueta «Inframaq» y sin rol, nunca «Globofast · Dueño».
 - **Él sí ve todo**, a sí mismo incluido, y el conteo lo incluye solo para él.
 - **Lo que sigue a la vista**, a propósito: sus mensajes firmados y su
   «escribiendo». Un 1:1 con él lo muestra, porque es la conversación con él.
@@ -235,4 +238,5 @@ verlo en el espacio. Es temporal: después pedirá que lo saquen.
   saber quién aprueba.
 - **Quitarlo:** pasar a la hermana a admin desde «Miembros y roles» y luego
   sacarlo. Si se quiere solo mostrarlo, `$unset: { hidden: 1 }`.
-- **Test:** `server/src/hiddenMember.test.ts` (7 casos).
+- **Test:** `server/src/hiddenMember.test.ts` (7 casos) y el caso del canal
+  compartido en `server/src/sharedChannels.test.ts`.

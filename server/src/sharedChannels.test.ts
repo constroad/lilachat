@@ -179,6 +179,22 @@ describe('people of the other spaces', () => {
     expect(elsewhere.body.members.find((member: { id: string }) => member.id === String(users.marco)).spaceRole).toBe('member');
   });
 
+  /** José 12/11: hidden in Globofast, which receives Inframaq's channels; there he is Inframaq's, never «Globofast · Dueño». */
+  it('seen from a space where he is hidden, a member carries his other space and no role there', async () => {
+    await api('jose').post(`/api/chats/${channelId}/members`, { userId: String(users.ana) });
+    await WorkspaceMemberModel.updateOne({ workspaceId: spaces.constroad, userId: users.jose }, { $set: { hidden: true } });
+
+    const fromConstroad = await api('ana').get(`/api/chats/${channelId}/detail?workspace=${spaces.constroad}`).expect(200);
+    const jose = fromConstroad.body.members.find((member: { id: string }) => member.id === String(users.jose));
+    expect(jose.spaceRole).toBeUndefined();
+    expect(jose.space).toEqual({ id: String(spaces.inframaq), name: 'Inframaq' });
+    const people = (await api('ana').get(`/api/workspaces/${spaces.constroad}/channels/${channelId}/people`).expect(200)).body.people as { userId: string; space: { name: string } }[];
+    expect(people.find((person) => person.userId === String(users.jose))?.space.name).toBe('Inframaq');
+    // He himself still sees his own role there.
+    const own = await api('jose').get(`/api/chats/${channelId}/detail?workspace=${spaces.constroad}`).expect(200);
+    expect(own.body.members.find((member: { id: string }) => member.id === String(users.jose))).toMatchObject({ spaceRole: 'owner', space: { id: String(spaces.constroad) } });
+  });
+
   it('the receiving space leaves on its own: its people go out, and whoever stays hears the channel changed', async () => {
     await api('jose').post(`/api/chats/${channelId}/members`, { userId: String(users.ana) });
     vi.mocked(avisarCambioDeChat).mockClear();

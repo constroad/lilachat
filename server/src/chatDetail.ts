@@ -52,9 +52,12 @@ async function homesOf(chat: Pick<Chat, '_id' | 'workspaceId' | 'channel'>, user
  * and the space role (design s-01), not the chat's; in a shared channel each
  * person also carries the space they come from (José 11/11).
  */
-async function spaceSideOf(chat: Pick<Chat, '_id' | 'workspaceId' | 'channel'>, ids: Types.ObjectId[], viewingSpaceId?: string) {
+async function spaceSideOf(chat: Pick<Chat, '_id' | 'workspaceId' | 'channel'>, ids: Types.ObjectId[], viewerId: string, viewingSpaceId?: string) {
   const from = await lookingFrom(chat, viewingSpaceId);
-  const spaceMembers = from ? await WorkspaceMemberModel.find({ workspaceId: from, userId: { $in: ids } }).select('userId title role status').lean() : [];
+  const rows = from ? await WorkspaceMemberModel.find({ workspaceId: from, userId: { $in: ids } }).select('userId title role status hidden').lean() : [];
+  // Hidden in the space looked from (José in Globofast, which receives Inframaq's channels): there he
+  // carries his other space and no role, never «Globofast · Dueño» (`hiddenMembers.ts`).
+  const spaceMembers = rows.filter((member) => member.hidden !== true || String(member.userId) === viewerId);
   const spaceMemberById = new Map(spaceMembers.map((member) => [String(member.userId), member]));
   const activeHere = new Set(spaceMembers.filter((member) => member.status === 'active').map((member) => String(member.userId)));
   const homes = chat.channel?.shared ? await homesOf(chat, ids.map(String), { id: from, members: activeHere }) : null;
@@ -78,7 +81,7 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId, viewing
   const shownMembers = chat.members.filter((m) => !hidden.has(String(m.userId)));
   const ids = shownMembers.map((m) => m.userId);
   const personById = new Map(people.map((person) => [String(person._id), person]));
-  const { spaceMemberById, homes } = await spaceSideOf(chat, ids, viewingSpaceId);
+  const { spaceMemberById, homes } = await spaceSideOf(chat, ids, String(userId), viewingSpaceId);
   // In a 1:1 the photo IS the other person's profile photo (FL9), as in the list.
   const other = chat.kind === 'direct' ? people.find((person) => String(person._id) !== String(userId)) : undefined;
   const photo = chat.avatarUrl ?? other?.avatarUrl;

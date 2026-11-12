@@ -1153,8 +1153,10 @@ teléfono y en el APK sigue el formulario de este spec.
 
 **Qué hace Lilachat** (`shared/src/portalEmbed.ts`, `web/src/spaces/clients/reports/PortalEmbedWeb.tsx`):
 - Tocar un informe marcado, en ventana ancha, abre una capa sobre toda la
-  ventana: barra de 56 px (Volver, servicio, informe) y el marco debajo. Abre
-  así aunque sea un borrador.
+  ventana con el marco. Abre así aunque sea un borrador.
+- Una sola barra, la de Portal (José 12/11: «doble toolbar para regresar»):
+  su «Cerrar editor» guarda y manda `closed`. La barra de Lilachat (Volver,
+  servicio, informe) solo aparece mientras Portal no está listo o si falla.
 - Pide el enlace una vez por apertura. El server y la web validan origen,
   ruta, token y vencimiento; otro origen es una falla y no se enmarca.
 - Solo acepta mensajes del origen de Portal y de ESE marco, con `version: 1`.

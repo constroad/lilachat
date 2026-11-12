@@ -8,8 +8,9 @@ import type { ServiceAskTarget } from '../useServiceAsk';
 /**
  * Portal's canvas editor of a report, framed over the whole window (Portal
  * 11/11, José: every member edits, only admins delete, versions restorable in
- * Portal). Lilachat keeps a 56 px bar; Volver and Escape ask Portal to close,
- * and Portal saves first when something is unsaved.
+ * Portal). One bar, Portal's (José 12/11: «doble toolbar para regresar»): its
+ * «Cerrar editor» saves and posts `closed`. Lilachat's bar shows only while
+ * Portal is not ready or failed; Escape asks Portal to close.
  */
 type Props = { target: ServiceAskTarget; serviceId: string; serviceName: string; report: Pick<ServiceReport, 'id' | 'title' | 'url'>; onClose: (changed: boolean) => void };
 type LinkState = { kind: 'asking' } | { kind: 'ready'; link: EmbedLink } | { kind: 'failed'; message: string };
@@ -127,16 +128,16 @@ export function PortalEmbedWeb(props: Props) {
   }, [closing, talk.dirty, talk.changed, onClose]);
   useLeaveGuards(talk.dirty, requestClose);
   const failure = state.kind === 'failed' ? state.message : talk.error;
+  const ownBar = !talk.ready || Boolean(failure);
   return createPortal(
     <div data-testid="editor-portal" role="dialog" aria-label={`Editor de ${props.report.title}`} className="fixed inset-0 z-50 flex flex-col bg-background text-on-surface">
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-outline/15 px-2">
+      {ownBar ? <header className="flex h-14 shrink-0 items-center gap-2 border-b border-outline/15 px-2">
         <button type="button" data-testid="editor-portal-volver" onClick={requestClose} aria-label="Volver" className="grid h-11 w-11 place-items-center rounded-full hover:bg-surface"><ChevronLeft size={20} /></button>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{props.serviceName}</p>
           <p className="truncate text-[15px] font-semibold">{props.report.title}</p>
         </div>
-        {closing && talk.dirty ? <span className="px-3 text-sm text-on-surface-variant">Guardando antes de cerrar…</span> : null}
-      </header>
+      </header> : null}
       <div className="relative flex flex-1">
         {failure ? <Failure message={failure} {...(props.report.url ? { url: props.report.url } : {})} onRetry={again} /> : null}
         {link && !failure ? <iframe ref={frame} key={link.url} data-testid="editor-portal-marco" src={link.url} title={`Editor de ${props.report.title}`} onLoad={() => setLoaded(true)} className="h-full w-full flex-1 border-0" /> : null}

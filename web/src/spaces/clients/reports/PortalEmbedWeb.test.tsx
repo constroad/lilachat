@@ -59,7 +59,7 @@ describe('PortalEmbedWeb', () => {
     expect(post).toHaveBeenCalledWith({ type: 'portal-embed:theme', version: 1, mode: 'dark' }, PORTAL);
   });
 
-  it('Volver asks Portal to close; after a save, its «closed» closes saying something changed', async () => {
+  it('once Portal is ready only its bar shows (José 12/11); Escape asks Portal to close, and after a save its «closed» says something changed', async () => {
     portal([{ embed: linkOf('a1') }]);
     const onClose = vi.fn();
     render(<PortalEmbedWeb target={target} serviceId="sv1" serviceName="Av. Los Incas" report={report} onClose={onClose} />);
@@ -67,8 +67,9 @@ describe('PortalEmbedWeb', () => {
     const post = vi.spyOn(frame().contentWindow!, 'postMessage');
     fromPortal({ type: 'portal-embed:ready', version: 1 });
     fromPortal({ type: 'portal-embed:saved', version: 1, reportId: 'r1', savedAt: '2026-11-11T20:00:00.000Z' });
+    expect(screen.queryByTestId('editor-portal-volver')).toBeNull();
 
-    await userEvent.click(screen.getByTestId('editor-portal-volver'));
+    await userEvent.keyboard('{Escape}');
     expect(post).toHaveBeenCalledWith({ type: 'portal-embed:close-request', version: 1 }, PORTAL);
     expect(onClose).not.toHaveBeenCalled();
     fromPortal({ type: 'portal-embed:closed', version: 1 });
@@ -90,12 +91,26 @@ describe('PortalEmbedWeb', () => {
     expect(onClose).toHaveBeenCalledWith(false);
   });
 
-  it('Escape asks the same; before Portal is ready, Volver closes at once', async () => {
+  it('before Portal is ready its own bar has Volver, which closes at once; so does Escape', async () => {
     portal([{ embed: linkOf('a1') }]);
     const onClose = vi.fn();
     render(<PortalEmbedWeb target={target} serviceId="sv1" serviceName="Av. Los Incas" report={report} onClose={onClose} />);
     await waitFor(() => expect(frame().src).toContain('#t=a1'));
+    await userEvent.click(screen.getByTestId('editor-portal-volver'));
+    expect(onClose).toHaveBeenCalledWith(false);
     await userEvent.keyboard('{Escape}');
+    expect(onClose).toHaveBeenCalledTimes(2);
+  });
+
+  it('a Portal error brings Lilachat\'s bar back, so the person can leave', async () => {
+    portal([{ embed: linkOf('a1') }]);
+    const onClose = vi.fn();
+    render(<PortalEmbedWeb target={target} serviceId="sv1" serviceName="Av. Los Incas" report={report} onClose={onClose} />);
+    await waitFor(() => expect(frame().src).toContain('#t=a1'));
+    fromPortal({ type: 'portal-embed:ready', version: 1 });
+    expect(screen.queryByTestId('editor-portal-volver')).toBeNull();
+    fromPortal({ type: 'portal-embed:error', version: 1, code: 'not_found' });
+    await userEvent.click(await screen.findByTestId('editor-portal-volver'));
     expect(onClose).toHaveBeenCalledWith(false);
   });
 

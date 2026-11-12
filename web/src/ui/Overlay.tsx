@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 /**
@@ -8,6 +9,10 @@ import { X } from 'lucide-react';
  * además responde a Escape y al clic en el fondo. Un modal sin salida visible
  * en el celular deja al usuario tocando el botón de atrás, que cierra la
  * pestaña entera.
+ *
+ * Vive al final del body (E2E 12/11): dentro del panel que la abría, en el
+ * celular quedaba debajo del panel del hilo, que también es `fixed z-30` y
+ * viene después en la página. «Editar» de un gasto no mostraba nada.
  */
 export function Overlay({
   title,
@@ -31,7 +36,7 @@ export function Overlay({
     return () => window.removeEventListener('keydown', alTeclear);
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-30 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
       onClick={onClose}
@@ -60,7 +65,8 @@ export function Overlay({
 
         {footer ? <div className="border-t border-outline/15 px-4 py-3">{footer}</div> : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

@@ -1005,14 +1005,47 @@ El estado de la escritura es el mismo store compartido
 - La web no es el lienzo de `ob-07b`: es el resumen. El editor del documento
   sigue en Portal.
 
+**Segunda y tercera corrida (12/11, 00:58Z–01:53Z): tres defectos más.**
+
+- **La foto del después se perdía al volver de la cámara.** El canal de
+  cliente armaba su `target` en cada render. La pantalla volvía a pedir el
+  informe cada vez que cambiaba, y al volver de la cámara una respuesta
+  fallida desmontaba el levantamiento con la foto recién tomada. Ahora el
+  `target` se memoriza por sus tres valores (APK y web), y las pantallas
+  conservan el último informe bueno mientras llega otro (663c98f4).
+- **Ráfagas de lecturas.** Por lo mismo, cada apertura mandaba la misma
+  lectura de 8 a 18 veces por segundo. agentes tiene un tope de 20 llamadas
+  por minuto y persona, así que rechazó seis («No se pudo traer el
+  informe»). En la obra eso deja a la persona sin herramientas un minuto,
+  escrituras incluidas. Desde el memo, agentes contó una lectura por apertura.
+  Además, las lecturas del mismo informe que se pisan comparten una sola
+  petición (`sharedInFlight`, e94262f8).
+- **«Este informe ya no está en el Portal» después de levantar.** Levantar
+  desde el registro contesta con el id del LEV-OBS. La pantalla del REG-OBS
+  lo adoptaba y Portal respondía `not_found`. Ahora solo un registro adopta el
+  id que contesta. Un levantamiento vuelve a pedir el informe de la pantalla.
+- La pastilla de estado de la tarjeta ya no se estira hasta formar un óvalo.
+
+**Verificado (OTA 35b5c959, web index-B0zXk8kj):** en el emulador, en el
+espacio Test, con «QA-CTLPIS — borrar»:
+- OBS-001 y OBS-002 registradas con foto, GPS ±5 m y nota.
+- Levantadas con foto del después y nota. Quedaron en «Levantadas 2», con el
+  pin verde y «Levantada 11/11 · 20:52».
+- Portal creó el borrador LEV-OBS del día.
+- La web, en el Chrome de José, muestra total 2, levantadas 2 y avance
+  100 %, con las dos imágenes del antes y del después.
+- agentes confirmó en su log `registrar_observacion` y `levantar_observacion`
+  ok, y una lectura por apertura después del memo.
+
 ### Sin verificar todavía
 
-- **Contra Portal real:** las herramientas no están aprobadas.
 - **La cola sin señal:** hoy un registro sin red falla y queda en pantalla para
   reintentarse con la misma clave. No se encola.
-- **Al aprobar,** E2E en el espacio Test:
-  - APK: registrar con foto y video, verlo en la lista y en el mapa, y
-    levantarlo con foto del después.
-  - Web: verlo en el resumen.
-  - Portal: revisar el hilo bajo la tarjeta del REG-OBS.
-  - Limpieza por el camino de la app.
+- **Video en el APK y registro desde la web:** la extensión de Playwright no
+  sube archivos, y en el emulador solo se probó la foto. La web lo cubre un
+  test de componente.
+- **Ubicación aproximada (> 15 m) y la calle por tramo:** el emulador da ±5 m
+  y la obra de prueba no tiene la calle donde cae el GPS.
+- **El hilo bajo la tarjeta del REG-OBS** en el canal.
+- **Limpieza:** se le pidió a Portal por el camino de la app (OBS-001/002 y
+  los borradores REG-OBS/LEV-OBS del 11/11).

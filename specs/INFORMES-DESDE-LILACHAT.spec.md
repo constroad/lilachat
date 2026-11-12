@@ -1223,3 +1223,29 @@ Portal. La web volvió al espacio Personal.
 Hallazgos para Portal (avisados): en modo oscuro no aparece la barra de
 formato de texto (en claro sí), y la página del editor pide la sesión de
 next-auth (`/api/auth/session`) y falla.
+
+**Crear en el editor (E2E 12/11, 12:22–12:31 UTC, producción, espacio Test).**
+CTL-IMP creado en 7,7 s y reusado (mismo id) en 3,9 s; REG-OBS en 2,8 s;
+CON-CAP creado. Ningún formulario a 1633 px; solo la barra de Portal. Portal
+borró los tres por el camino de la app (quedan en 0).
+
+### Los 9 puntos de José (12/11)
+
+| # | Pedido | Estado |
+| --- | --- | --- |
+| 1 | Quién creó el informe en la lista | Hecho: «Creado por J zamora» (Portal 49b334aa, agentes cc0c560). Un nombre de más de 80 se acorta con «…», como agentes |
+| 2 | Doble barra para regresar | Hecho: una sola barra, la de Portal (c5e2ed44) |
+| 3 | Mapa sin calles, muy gris | El mapa ya trae nombres de calles; el plano con barrios y referencias lo publica Portal |
+| 4 | Subir archivos, pegar, firma y sello | Portal: firmas y sellos solo para admins del espacio (36112c33, 9af52e93). Sin probar aquí todavía |
+| 5 | Marca de Portal o Lilachat | Hecho: «Portal» con su logo en la barra del editor (Portal 49b334aa) |
+| 6 | Ver la imagen al tocarla | Pendiente en Portal |
+| 7 | Título más grande que la empresa | Hecho: «TEST COMPANY» más grande que el título (Portal 49b334aa) |
+| 8 | CTL-IMP: MC-30 y emulsión | Casos A–D verificados a mano en el editor (A 0,946/1,05; B 0,50/0,53; C 0,538 escaso; D 0,976/1,02). Unidades: bandejas en g, camión y consumo en gal (Portal 85a3bd4b); 2 decimales |
+| 9 | CON-CAP: nuclear, cono de arena | Caso E en parte en el editor (100,9 % sí; 97,8 % no; +1,8 humedad no; 5 puntos = incompleto). El resto, con el motor de Portal contra EG-2013: 6 densidades con cotas ±10 mm y espesores 20,5/19,5 de 20 = CONFORME; 19,5/19,5 = NO por espesor medio; 18,5 (92,5 %) = NO por espesor individual; cota a 11 mm = NO, a 10 mm pasa; subrasante 95,5 % = cumple |
+
+Defectos que salieron en el E2E: guardado trabado sin `:closed` (Portal corta
+el PATCH a 20 s y ofrece «Cerrar sin guardar»; Lilachat ofrece «Salir igual» a
+los 45 s, 272da5fb); «Día del protocolo» vacío (arreglado en Portal); valores
+imposibles sin aviso (22,2 g/cm³ dio 986,7 %) y la hoja que se desplaza sola al
+guardar: pendientes en Portal. Cerrar sin escribir manda `dirty` y un `saved`:
+avisado a Portal por si suma una versión vacía al historial.

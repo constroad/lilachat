@@ -211,7 +211,7 @@ export function PhotoField({ field, value, error, onChange, upload, opensCamera,
         ) : null}
         <ErrorLine text={status.message ?? error} />
       </View>
-      {aiming ? <FormCamera title={field.label} onShot={(shot) => void keep(shot, place.stamp)} onClose={dismiss} /> : null}
+      {aiming ? <FormCamera title={field.label} onShot={(shot) => void keep(shot, place.stamp)} onClose={dismiss} onGallery={field.gallery ? () => (setAiming(false), void fromGallery()) : undefined} /> : null}
       <VisorDeFoto foto={viewing ? preview : null} titulo={field.label} onCerrar={() => setViewing(false)} />
     </View>
   );

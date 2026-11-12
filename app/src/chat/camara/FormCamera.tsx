@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { Animated, Pressable, Text, View } from 'react-native';
 import { CameraView, type CameraCapturedPicture } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
-import { X, Zap, ZapOff } from 'lucide-react-native';
+import { Image as ImageIcon, X, Zap, ZapOff } from 'lucide-react-native';
 import { Modal } from '../../ui/Modal';
 import { reportarError } from '../../ui/reportarError';
 import { useMargenes } from '../../ui/useMargenes';
@@ -15,6 +15,7 @@ export const CAMERA_DENIED = 'Permite la cámara para tomar la foto.';
 const PHOTO_QUALITY = 1;
 const PHOTO_MIME = 'image/jpeg';
 const SHUTTER = 76;
+const SIDE_BUTTON = 48;
 const BLINK_IN_MS = 60;
 const BLINK_OUT_MS = 140;
 
@@ -37,8 +38,10 @@ export async function cameraAllowed(): Promise<boolean> {
  * and the photo showing up in the app). The phone's own camera had to start, show
  * the shot and wait for its confirmation. This one is ready when it opens and hands
  * the photo over at the shutter, like `CamaraDelChat` did for the chat on 20/10.
+ * `onGallery` (audit 12/11): a report's photo opens the camera at once, so the form's
+ * «Galería» stayed out of reach — closing the camera closes the form. It lives here too.
  */
-export function FormCamera(props: { title: string; onShot: (shot: CameraShot) => void; onClose: () => void }) {
+export function FormCamera(props: { title: string; onShot: (shot: CameraShot) => void; onClose: () => void; onGallery?: () => void }) {
   const margins = useMargenes();
   const camera = useRef<CameraView>(null);
   const blink = useRef(new Animated.Value(0)).current;
@@ -72,10 +75,17 @@ export function FormCamera(props: { title: string; onShot: (shot: CameraShot) =>
             <Text className="text-[13px] font-semibold" style={{ color: 'white' }}>{FLASH_LABEL[flash]}</Text>
           </Pressable>
         </View>
-        <View className="absolute bottom-0 left-0 right-0 items-center bg-black/55 pt-4" style={{ paddingBottom: margins.pie + 12 }}>
+        <View className="absolute bottom-0 left-0 right-0 flex-row items-center justify-around bg-black/55 pt-4" style={{ paddingBottom: margins.pie + 12 }}>
+          {props.onGallery ? (
+            <Pressable testID="btn-galeria-formulario" accessibilityLabel="Elegir de la galería" disabled={shooting} onPress={props.onGallery} className="items-center justify-center rounded-full bg-white/15" style={{ width: SIDE_BUTTON, height: SIDE_BUTTON }}>
+              <ImageIcon size={22} color="white" />
+            </Pressable>
+          ) : null}
           <Pressable testID="btn-disparar-formulario" accessibilityLabel="Tomar la foto" disabled={shooting} onPress={() => void shoot()} className="items-center justify-center rounded-full border-4 border-white" style={{ width: SHUTTER, height: SHUTTER }}>
             <View className={`rounded-full bg-white ${shooting ? 'opacity-60' : ''}`} style={{ width: SHUTTER - 16, height: SHUTTER - 16 }} />
           </Pressable>
+          {/* Keeps the shutter in the middle when the gallery sits on its left. */}
+          {props.onGallery ? <View style={{ width: SIDE_BUTTON, height: SIDE_BUTTON }} /> : null}
         </View>
       </View>
     </Modal>

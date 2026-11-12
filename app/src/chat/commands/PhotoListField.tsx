@@ -93,7 +93,7 @@ export function PhotoListField(props: { field: PhotoList; error?: string; onChan
       </View>
       {viewer.viewer}
       {message ?? props.error ? <Text className="mt-1 text-[13px] text-error">{message ?? props.error}</Text> : null}
-      {aiming ? <FormCamera title={props.field.label} onShot={(shot) => void keep(shot, place.stamp)} onClose={() => setAiming(false)} /> : null}
+      {aiming ? <FormCamera title={props.field.label} onShot={(shot) => void keep(shot, place.stamp)} onClose={() => setAiming(false)} onGallery={props.field.gallery ? () => (setAiming(false), void take('gallery')) : undefined} /> : null}
     </View>
   );
 }

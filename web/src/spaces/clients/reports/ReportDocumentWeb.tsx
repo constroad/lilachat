@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import { readFieldConditions } from '../../../chat/commands/commandsApi';
 import { AlertTriangle, ChevronLeft, ExternalLink, FileText } from 'lucide-react';
-import { formKeyOf, isUnitsRepeat, PREVIEW_ASKING, PREVIEW_LABEL, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService, type ChannelLinks, wantsWorkStreets } from '@lilachat/shared';
+import { formKeyOf, isUnitsRepeat, PREVIEW_ASKING, PREVIEW_LABEL, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService, type ChannelLinks, wantsWorkStreets, type GeoPoint } from '@lilachat/shared';
 import { loadPerfil } from '../../../api';
 import { AppFormDialog } from '../../../chat/commands/AppFormDialog';
 import { EphemeralAnswers } from '../../../chat/commands/EphemeralAnswers';
@@ -131,6 +132,7 @@ export function ReportDocumentWeb(props: Props) {
   const blockers = report ? publishBlockers(report, saves, offline) : [];
   const files = usePortalFileViewer();
   const streets = useWorkStreets(props.target.jwt, props.links, props.target.clientId, props.service.id, wantsWorkStreets(document.form?.response?.form));
+  const conditionsOf = useCallback((point: GeoPoint) => readFieldConditions(props.target.jwt, point), [props.target.jwt]);
   const viewPhoto = ({ section, url, path }: PhotoToView) => {
     const view = photoViewOf(section, url);
     if (view) files.open(view.file, view.siblings, { label: TAKE_ANOTHER_PHOTO, onPress: () => actions.openSection(path) }, photoRemovalOf(report, section, actions.removePhoto));
@@ -144,7 +146,7 @@ export function ReportDocumentWeb(props: Props) {
       {files.viewer}
       {report && (!items || (items.kind === 'repeat' && isUnitsRepeat(items))) ? <ReportFooter report={report} blocker={publishFooterLine(report, blockers)} pdf={pdf} onPublish={() => page.setPublishing(true)} onDone={() => props.onClose(true)} /> : null}
       {report && page.publishing ? <PublishDialog report={report} blockers={blockers} onClose={() => page.setPublishing(false)} onPublish={page.publish} onOpen={(path) => { page.setPublishing(false); actions.openSection(path); }} /> : null}
-      {document.form ? <AppFormDialog key={formKeyOf(document.form)} answer={document.form} personName={loadPerfil()?.name} workStreets={streets} onSubmit={actions.submit} onUpload={actions.upload} onClose={actions.closeForm} /> : null}
+      {document.form ? <AppFormDialog key={formKeyOf(document.form)} answer={document.form} personName={loadPerfil()?.name} workStreets={streets} onConditions={conditionsOf} onSubmit={actions.submit} onUpload={actions.upload} onClose={actions.closeForm} /> : null}
       {forms.answers.openForm ? (
         <AppFormDialog key={formKeyOf(forms.answers.openForm)} answer={forms.answers.openForm} personName={loadPerfil()?.name} onSubmit={(values) => forms.answers.submitForm(forms.answers.openForm!, values)} onUpload={(file, stamp) => forms.answers.uploadPhoto(forms.answers.openForm!.commandId, file, stamp)} onRefresh={(values) => forms.answers.refreshForm(forms.answers.openForm!, values)} onPreview={(values) => forms.answers.previewForm(forms.answers.openForm!, values)} onClose={() => forms.answers.dismiss(forms.answers.openForm!.commandId)} />
       ) : null}

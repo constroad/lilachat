@@ -17,6 +17,7 @@ import { SignerCard, SignerPicker, SigningChips } from './SignerPicker';
 import type { PlaceLookup } from './usePlaceName';
 import { useLiveSigning } from './useLiveSigning';
 import { useFormLive } from './useFormLive';
+import { useConditionsAutofill, type ConditionsLookup } from './useConditionsAutofill';
 import { useAppFormState } from './useAppFormState';
 import { useFieldAutofill } from './useFieldAutofill';
 import { GpsReadingField, WorkStreetField } from './WorkPlaceFields';
@@ -38,7 +39,7 @@ const ROW_GAP = 12;
 const TODAY = new Intl.DateTimeFormat('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
 const CLOCK = new Intl.DateTimeFormat('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false });
 
-type SheetProps = { /** A report's photo: the form starts at the camera when that is all it still needs. */ cameraFirst?: boolean; answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: PhotoUpload; /** The address under a signing's camera. */ onPlace?: PlaceLookup; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply>; /** The service's work-map streets for a `work-street` field; `null` while they load. */ workStreets?: readonly WorkMapStreet[] | null };
+type SheetProps = { /** A report's photo: the form starts at the camera when that is all it still needs. */ cameraFirst?: boolean; answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: PhotoUpload; /** The address under a signing's camera. */ onPlace?: PlaceLookup; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply>; /** The service's work-map streets for a `work-street` field; `null` while they load. */ workStreets?: readonly WorkMapStreet[] | null; /** A report's shift, weather and street, filled on opening (José 12/11). */ onConditions?: ConditionsLookup };
 
 /** The keyboard's height: the sheet rises above it and shrinks to fit (José, 23/10: he typed the code without seeing it). */
 function useKeyboardHeight() {
@@ -102,6 +103,7 @@ export function AppFormSheet(props: SheetProps) {
   const sheetWidth = Math.min(width, SHEET_MAX_WIDTH);
   // The summary's remarks under their fields; the person's own errors win.
   const place = useFieldAutofill({ fields, values: state.values, fill: state.fill, streets: props.workStreets ?? null });
+  useConditionsAutofill({ fields, values: state.values, fill: state.fill, ask: props.onConditions });
   const slot: SlotContext = { place, workStreets: props.workStreets ?? null, cameraField, onCameraDismissed: props.onClose, fields, onPlace: props.onPlace, values: state.values, errors: { ...formLive.summary.errors, ...state.errors }, live, locationName, selfie, upload: props.onUpload, set: state.set, setList: state.setList, width: sheetWidth, positions };
   // Sent and answered later (consensus 24/10): «Enviando…» until the answer closes it or the errors come back here.
   const waiting = props.answer.waiting === true;

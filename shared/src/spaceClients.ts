@@ -160,13 +160,17 @@ export type ServiceFilter = 'all' | 'open' | 'completed' | 'rejected';
 export const SERVICE_FILTER_LABELS: Record<ServiceFilter, string> = { all: 'Todos', open: 'En curso', completed: 'Completados', rejected: 'Rechazados' };
 const inFilter = (status: ClientServiceStatus, filter: ServiceFilter) => filter === 'all' || (filter === 'open' ? OPEN_STATUSES.includes(status) : status === filter);
 
+const startOf = (service: SpaceClientService): number => (service.started_at ? Date.parse(service.started_at) || 0 : 0);
+/** The open ones first; within each, the newest start on top and the undated last (José 12/11: «el último primero»). */
+const openThenNewest = (a: SpaceClientService, b: SpaceClientService): number => Number(OPEN_STATUSES.includes(b.status)) - Number(OPEN_STATUSES.includes(a.status)) || startOf(b) - startOf(a);
+
 /** «Servicios» of a client channel (José 29/10): search by name without accents, a chip per state with its count, the open ones first. */
 export function filterServices(services: readonly SpaceClientService[], params: { query: string; filter: ServiceFilter }): { services: SpaceClientService[]; counts: Record<ServiceFilter, number> } {
   const text = normalize(params.query.trim());
   const matching = services.filter((service) => !text || normalize(service.name).includes(text));
   const counts = { all: matching.length, open: 0, completed: 0, rejected: 0 };
   for (const service of matching) for (const key of ['open', 'completed', 'rejected'] as const) if (inFilter(service.status, key)) counts[key] += 1;
-  const shown = matching.filter((service) => inFilter(service.status, params.filter)).sort((a, b) => Number(OPEN_STATUSES.includes(b.status)) - Number(OPEN_STATUSES.includes(a.status)));
+  const shown = matching.filter((service) => inFilter(service.status, params.filter)).sort(openThenNewest);
   return { services: shown, counts };
 }
 

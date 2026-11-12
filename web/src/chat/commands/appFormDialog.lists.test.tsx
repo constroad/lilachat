@@ -181,3 +181,26 @@ describe('a list keyed by one choice (the expense partidas)', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 });
+
+/** José 12/11, CTL-PIS «Información de control»: the shift by the hour, the weather and the street by the GPS. */
+describe('a report form that fills its conditions', () => {
+  const control: Record<string, FormSchemaProperty> = {
+    tramo: { type: 'string', title: 'Tramo', maxLength: 200 },
+    turno: { type: 'string', title: 'Turno', maxLength: 200 },
+    clima: { type: 'string', title: 'Clima', maxLength: 200 },
+  };
+
+  it('writes the shift at once and the street and the weather where the phone is, leaving what was typed', async () => {
+    // Arrange
+    vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition: (ok: (position: { coords: { latitude: number; longitude: number } }) => void) => ok({ coords: { latitude: -12.05, longitude: -76.94 } }) } });
+    const onConditions = vi.fn(async () => ({ street: 'Av. Los Incas, Ate', weather: 'Nublado · 18 °C' }));
+    // Act
+    render(<AppFormDialog answer={answerWith(control, ['tramo'])} onSubmit={vi.fn()} onUpload={vi.fn()} onClose={vi.fn()} onConditions={onConditions} />);
+    // Assert
+    await waitFor(() => expect(screen.getByTestId('campo-clima')).toHaveValue('Nublado · 18 °C'));
+    expect(screen.getByTestId('campo-tramo')).toHaveValue('Av. Los Incas, Ate');
+    expect(['Mañana', 'Tarde', 'Noche']).toContain((screen.getByTestId('campo-turno') as HTMLInputElement).value);
+    expect(onConditions).toHaveBeenCalledWith({ lat: -12.05, lng: -76.94, precision: 0 });
+    vi.unstubAllGlobals();
+  });
+});

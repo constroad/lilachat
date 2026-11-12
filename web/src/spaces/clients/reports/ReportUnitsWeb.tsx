@@ -55,10 +55,11 @@ function ExtraStrip({ item, section, onOpen, onView }: { item: RepeatItem; secti
 /** A volquete on its way, in one row: any of them can be next, because the order of arrival depends on nothing. «Llegó» opens its ingreso photo; the data comes after (José 07/11). */
 function WaitingRow({ item, section, onOpen }: { item: RepeatItem; section: RepeatSection; onOpen: Open }) {
   const arrival = arrivalKeyOf(item);
-  const { plate } = unitTitleOf(item);
+  const { kicker, plate } = unitTitleOf(item);
   return (
     <li data-testid={`unidad-${item.id}`} className="flex items-center gap-3 border-b border-outline/10 px-3 py-2 last:border-b-0">
       <div className="min-w-0 flex-1">
+        {kicker ? <p data-testid={`orden-${item.id}`} className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{kicker}</p> : null}
         <p className="truncate font-mono text-[21px] font-bold leading-tight">{plate}</p>
         {unitLineOf(item) ? <p className="truncate text-xs text-on-surface-variant">{unitLineOf(item)}</p> : null}
       </div>

@@ -1372,3 +1372,25 @@ Se recorrió Control de pista en el APK (`lilafotos-qa`), en el servicio QA-CTLP
   la pantalla de unidades con el emulador estable.
 - La foto de prueba del emulador salió negra. Falta ver si pasa en un teléfono.
 - Faltan Control de imprimación, Registro y Levantamiento de observaciones.
+
+## 18. Prueba de José en el APK, 12/11 (QA-PISTA-APK)
+
+- **Turno, clima y tramo se llenan solos** en «Información de control», solo si están vacíos y una
+  vez al abrir. Turno = hora del teléfono: Mañana desde las 5, Tarde desde las 12 y Noche desde las 18.
+  Clima = Open-Meteo y tramo = calle de Nominatim, ambos en el punto del GPS, vía
+  `GET /api/field-conditions?lat=&lng=` (`server/src/fieldConditions.ts`, gratis y sin llave; lo
+  que falle vuelve null y se escribe a mano). Los campos se reconocen por `x-input`
+  (`shift`, `weather` y `place-street`) o, mientras Portal no los mande, por el nombre (`turno`,
+  `clima`, `tramo`). Motor: `shared/src/fieldConditions.ts`. **Ojo:** un Lilachat anterior a este
+  cambio rechaza el formulario entero si trae un `x-input` desconocido. Portal no publica esos
+  `x-input` hasta que este OTA y la web estén en la calle.
+- **Foto de ingreso**: la descripción viene sugerida: «Ingreso de la unidad 3 de QAP-103 a
+  descarga». Si la unidad no trae número: «Ingreso de la unidad QAP-103 a descarga».
+- **Unidades por llegar** muestran «Unidad N» (el orden de salida en planta) encima de la placa,
+  cuando Portal titula el despacho «Unidad N · PLACA» (Portal ed310c2f).
+- **Campo de fecha (APK)**: se dibuja como los demás inputs, con el mismo borde, alto y tamaño de
+  letra. Antes era una casilla teñida con «Día».
+- **Servicios del canal**: primero los abiertos y, dentro de cada grupo, el inicio más reciente
+  arriba.
+- **«1 de 28 secciones»** en sus capturas era el OTA anterior, que contaba las hojas (las fotos de
+  cada unidad). Desde e4063585 cuenta las secciones requeridas de primer nivel.

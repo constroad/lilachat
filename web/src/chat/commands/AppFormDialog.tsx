@@ -14,6 +14,7 @@ import { SignerCard, SignerPicker, SigningChips } from './SignerPicker';
 import type { PlaceLookup } from './usePlaceName';
 import { useLiveSigning } from './useLiveSigning';
 import { useFormLive } from './useFormLive';
+import { useConditionsAutofill, type ConditionsLookup } from './useConditionsAutofill';
 import { useAppFormState } from './useAppFormState';
 import { useFieldAutofill } from './useFieldAutofill';
 import { GpsReadingField, WorkStreetField } from './WorkPlaceFields';
@@ -25,7 +26,7 @@ const LIVE_FOOTER = 'Al tocar se toma la foto con la hora y el lugar, y se enví
 
 type Upload = (file: File, stamp?: FormPhotoStamp) => Promise<{ ok: true; fileId: string } | { ok: false; message: string }>;
 
-type DialogProps = { answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: Upload; /** The address under a signing's camera. */ onPlace?: PlaceLookup; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply>; /** The service's work-map streets for a `work-street` field; `null` while they load. */ workStreets?: readonly WorkMapStreet[] | null };
+type DialogProps = { answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: Upload; /** The address under a signing's camera. */ onPlace?: PlaceLookup; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply>; /** The service's work-map streets for a `work-street` field; `null` while they load. */ workStreets?: readonly WorkMapStreet[] | null; /** A report's shift, weather and street, filled on opening (José 12/11). */ onConditions?: ConditionsLookup };
 
 /** After a refusal the dialog goes to the first field with an error (E2E 28/10: «Diseño» was out of sight). */
 function revealField(body: HTMLDivElement | null, name: string) {
@@ -53,6 +54,7 @@ export function AppFormDialog(props: DialogProps) {
   const body = useRef<HTMLDivElement>(null);
   const state = useAppFormState({ fields, refused: props.answer.errors, signing, onSubmit: props.onSubmit, reveal: (name) => revealField(body.current, name) });
   const place = useFieldAutofill({ fields, values: state.values, fill: state.fill, streets: props.workStreets ?? null });
+  useConditionsAutofill({ fields, values: state.values, fill: state.fill, ask: props.onConditions });
   const live = useFormLive({ fields, values: state.values, preview: form.preview, onRefresh: props.onRefresh, onPreview: props.onPreview });
   // The summary's remarks («la lectura de fin va después del inicio») under their fields; the person's own errors win.
   const slot: SlotContext = { fields, values: state.values, errors: { ...live.summary.errors, ...state.errors }, selfieField, locationName, selfie, upload: props.onUpload, onPlace: props.onPlace, set: state.set, setList: state.setList, place, workStreets: props.workStreets ?? null };

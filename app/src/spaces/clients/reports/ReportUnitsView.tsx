@@ -37,10 +37,11 @@ function PhotoSlot({ slot, itemId, onOpen, onView }: { slot: UnitSlot; itemId: s
 function WaitingRow({ item, section, last, onOpen }: { item: RepeatItem; section: RepeatSection; last: boolean; onOpen: Open }) {
   const colors = useColores();
   const arrival = arrivalKeyOf(item);
-  const { plate } = unitTitleOf(item);
+  const { kicker, plate } = unitTitleOf(item);
   return (
     <View testID={`unidad-${item.id}`} className={`flex-row items-center gap-3 px-3 py-2 ${last ? '' : 'border-b border-outline/10'}`}>
       <View className="min-w-0 flex-1">
+        {kicker ? <Text testID={`orden-${item.id}`} className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{kicker}</Text> : null}
         <Text className="text-[21px] font-bold text-on-surface" style={{ fontFamily: PLATE_FONT }} numberOfLines={1}>{plate}</Text>
         {unitLineOf(item) ? <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>{unitLineOf(item)}</Text> : null}
       </View>

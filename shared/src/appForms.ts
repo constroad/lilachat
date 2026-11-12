@@ -58,7 +58,7 @@ export type FieldWidth = 'half' | 'full';
 export type FormSchema = { type?: string; description?: string; properties?: Record<string, FormSchemaProperty>; required?: string[]; /** The read tool that sums up the draft above «Enviar». */ 'x-preview'?: { tool?: string }; /** A checklist (CTL-PIS, 06/11): one button answers every choice with its first option. */ 'x-check-all'?: boolean };
 export type AppForm = { id: string; title: string; submitLabel?: string; /** The schema's `description`: a line under the title. */ intro?: string; schema: FormSchema; /** `x-preview`'s tool: the summary above «Enviar». */ preview?: string; /** `x-check-all`: the «Marcar todo» button. */ checkAll?: true };
 
-type Base = { name: string; label: string; help?: string; required: boolean; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number | true; /** `x-refresh`: changing it asks the app for the form again. */ refresh?: true };
+type Base = { name: string; label: string; help?: string; required: boolean; /** `x-input: shift | weather | place-street`: the phone fills it when empty. */ condition?: 'shift' | 'weather' | 'street'; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number | true; /** `x-refresh`: changing it asks the app for the form again. */ refresh?: true };
 export type FormField =
   | (Base & { kind: 'choice'; options: ChoiceOption[]; segmented: boolean; /** A few short options in two columns (José 12/11: two controls per line, not a list to open). */ columns?: 2; /** A long list (the company's people, agentes 24/10): a field that opens a sheet with a search. */ searchable: boolean; /** `x-avatar: initials`: each option with its initials. */ initials?: true })
   | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true; /** `x-input: place`: a text with the button that writes where the device is. */ place?: true; /** `x-input: work-street`: a street of the service's work map, picked (Portal's CON-CAP, 12/11). */ street?: true; /** `x-input: work-station`: the station on that street, computed from the reading and editable. */ station?: true })
@@ -120,7 +120,9 @@ const MULTILINE_FROM = 200;
 /** A field for free writing, whatever its limit. */
 const FREE_WRITING = /observaci|comentario/i;
 const FORM_ID = /^[a-z][a-z0-9_-]*$/;
-const INPUTS = ['photo', 'location', 'textarea', 'otp', 'pin', 'place', 'gps', 'work-street', 'work-station'];
+const INPUTS = ['photo', 'location', 'textarea', 'otp', 'pin', 'place', 'gps', 'work-street', 'work-station', 'shift', 'weather', 'place-street'];
+/** What the phone writes by itself in a field (José 12/11): the shift by the hour, the weather and the street by the GPS. */
+const CONDITION_INPUTS: Record<string, 'shift' | 'weather' | 'street'> = { shift: 'shift', weather: 'weather', 'place-street': 'street' };
 export type GpsRole = 'lat' | 'lng' | 'precision';
 const GPS_PARTS: ReadonlyArray<[GpsRole, RegExp]> = [['lat', /^lat/i], ['lng', /^(lng|lon)/i], ['precision', /^(precision|accuracy)/i]];
 /** Which part of a reading a `gps` number holds, by its name: Portal names them lat, lng and precisionM. */
@@ -229,7 +231,7 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
   if (input !== undefined && !INPUTS.includes(input)) return `El campo «${name}» pide x-input «${input}», que Lilachat no sabe dibujar.`;
   const visibleIf = visibleIfOf(property['x-visible-if']);
   const width = property['x-width'] === 'half' || property['x-width'] === 'full' ? property['x-width'] : undefined;
-  const base: Base = { name, label: line(property.title, FORM_LIMITS.label) || labelOf(name), ...(property.description ? { help: line(property.description, FORM_LIMITS.help) } : {}), required, ...(visibleIf ? { visibleIf } : {}), ...(width ? { width } : {}), ...(property['x-refresh'] === true ? { refresh: true as const } : {}) };
+  const base: Base = { name, label: line(property.title, FORM_LIMITS.label) || labelOf(name), ...(property.description ? { help: line(property.description, FORM_LIMITS.help) } : {}), required, ...(visibleIf ? { visibleIf } : {}), ...(width ? { width } : {}), ...(property['x-refresh'] === true ? { refresh: true as const } : {}), ...(input && CONDITION_INPUTS[input] ? { condition: CONDITION_INPUTS[input] } : {}) };
   if (input === 'photo') return photoField(base, property);
   const gps = input === 'gps' ? gpsRoleOf(name) : null;
   if (input === 'gps' && (!gps || (property.type !== 'number' && property.type !== 'integer'))) return `El campo «${name}» pide x-input «gps», que Lilachat no sabe dibujar ahí.`;

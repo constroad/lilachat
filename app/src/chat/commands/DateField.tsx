@@ -1,10 +1,9 @@
-import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { CalendarDays, Clock } from 'lucide-react-native';
 import { combinarFecha, formatFormDate, parseFormDate, type FormField } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
-import { Casilla } from '../../ui/SelectorDeCuando';
 import { ErrorLine, Label } from './AppFormFields';
 
 type DateFieldDefinition = Extract<FormField, { kind: 'date' }>;
@@ -36,12 +35,25 @@ export function DateField(props: { field: DateFieldDefinition; value: unknown; e
     <View>
       <Label field={field} />
       <View className="flex-row gap-2">
-        {withDay ? <Casilla compacta={props.compact} testID={withHour ? `campo-${field.name}-dia` : `campo-${field.name}`} icono={<CalendarDays size={18} color={colors.primary} />} rotulo="Día" valor={current ? DAY.format(current).replace('.', '') : 'Elige el día'} vacio={!current} onPress={() => setPicker('date')} /> : null}
-        {withHour ? <Casilla compacta={props.compact} testID={withDay ? `campo-${field.name}-hora` : `campo-${field.name}`} icono={<Clock size={18} color={colors.primary} />} rotulo="Hora" valor={current ? CLOCK.format(current) : 'Elige la hora'} vacio={!current} onPress={() => setPicker('time')} /> : null}
+        {withDay ? <PickerBox testID={withHour ? `campo-${field.name}-dia` : `campo-${field.name}`} icon={<CalendarDays size={18} color={colors.primary} />} text={current ? DAY.format(current).replace(/\./g, '') : 'Elige el día'} empty={!current} onPress={() => setPicker('date')} /> : null}
+        {withHour ? <PickerBox testID={withDay ? `campo-${field.name}-hora` : `campo-${field.name}`} icon={<Clock size={18} color={colors.primary} />} text={current ? CLOCK.format(current) : 'Elige la hora'} empty={!current} onPress={() => setPicker('time')} /> : null}
       </View>
       {picker ? <DateTimePicker value={current ?? new Date()} mode={picker} is24Hour onChange={onPicked} /> : null}
       {field.help ? <Text className="mt-1 text-[13px] text-on-surface-variant">{field.help}</Text> : null}
       <ErrorLine text={props.error} />
     </View>
+  );
+}
+
+/**
+ * The box that opens the picker, drawn like the form's other inputs (José 12/11: the tinted
+ * «Día» tile beside «Responsable» looked out of place): same border, height and text size.
+ */
+function PickerBox(props: { testID: string; icon: ReactNode; text: string; empty: boolean; onPress: () => void }) {
+  return (
+    <Pressable testID={props.testID} accessibilityRole="button" onPress={props.onPress} className="min-h-[48px] flex-1 flex-row items-center gap-2 rounded-xl border border-outline/25 bg-background px-3">
+      {props.icon}
+      <Text className={`min-w-0 flex-1 text-[16px] ${props.empty ? 'text-on-surface-variant' : 'text-on-surface'}`} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{props.text}</Text>
+    </Pressable>
   );
 }

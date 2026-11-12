@@ -1,4 +1,4 @@
-import { FORMS_LEVEL, commandScopePath, formSubmitFailure, stampFieldsOf, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoStamp, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
+import { FORMS_LEVEL, type FieldConditions, commandScopePath, formSubmitFailure, stampFieldsOf, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoStamp, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -60,6 +60,17 @@ async function sendFormPhoto(jwt: string, scope: CommandScope, commandId: string
   const fileId = reply.payload.fileId;
   if (reply.status >= 200 && reply.status < 300 && typeof fileId === 'string') return { ok: true, fileId };
   return { ok: false, status: reply.status, message: typeof reply.payload.message === 'string' ? reply.payload.message : 'No se pudo subir la foto.' };
+}
+
+/** The street and the weather where the phone is, for a report's «Información de control» (José 12/11); `null` when they do not arrive. */
+export async function readFieldConditions(jwt: string, point: GeoPoint): Promise<FieldConditions | null> {
+  const query = new URLSearchParams({ lat: String(point.lat), lng: String(point.lng) });
+  try {
+    const response = await fetch(`${BASE_URL}/api/field-conditions?${query}`, { headers: { Authorization: `Bearer ${jwt}` } });
+    return response.ok ? ((await response.json()) as FieldConditions) : null;
+  } catch {
+    return null;
+  }
 }
 
 /** The address of a reading, for the camera of a signing; `null` when it does not arrive. */

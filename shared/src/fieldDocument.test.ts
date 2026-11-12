@@ -225,6 +225,20 @@ describe('a control de pista (contract 06/11): the units come from the dispatche
     expect(requiresLocation(document, { ...photoPath, key: 'datos' })).toBe(false);
   });
 
+  it('suggests the ingreso photo\'s description with the unit and its plate (José 12/11), and keeps one already written', () => {
+    // Arrange
+    const numbered = pista([{ ...dispatch, title: 'Unidad 3 · QAP-103' }]);
+    const plateOnly = pista([dispatch]);
+    const written = pista([{ ...dispatch, sections: [{ id: 'foto-ingreso', state: 'empty', values: { descripcion: 'Llegó con lona' } }] }]);
+    // Act
+    const caption = (document: ReturnType<typeof pista>, key = 'foto-ingreso') => sectionFormOf(document, { ...photoPath, key })?.schema.properties.descripcion?.default;
+    // Assert
+    expect(caption(numbered)).toBe('Ingreso de la unidad 3 de QAP-103 a descarga');
+    expect(caption(plateOnly)).toBe('Ingreso de la unidad QAP-103 a descarga');
+    expect(caption(written)).toBe('Llegó con lona');
+    expect(caption(numbered, 'foto-temperatura')).toBeUndefined();
+  });
+
   it('the repeat keeps the results Portal computed over all the units (Carros, Volumen, Terminadas)', () => {
     const results = [{ label: 'Carros', value: '4', tone: 'neutral' }, { label: 'Terminadas', value: '1', tone: 'ok' }];
     expect(units(pista([], { results })).results).toEqual(results);

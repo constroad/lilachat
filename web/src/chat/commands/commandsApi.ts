@@ -1,4 +1,4 @@
-import { FORMS_LEVEL, commandScopePath, formSubmitFailure, stampFieldsOf, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoStamp, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
+import { FORMS_LEVEL, type FieldConditions, commandScopePath, formSubmitFailure, stampFieldsOf, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoStamp, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
 import { api } from '../../api';
 import { shrinkPhotoBlob } from '../shrinkPhoto';
 
@@ -30,6 +30,17 @@ export const refreshAppForm = (jwt: string, scope: CommandScope, commandId: stri
 
 /** `x-preview`: the app's summary of the draft; an empty one when it cannot answer. */
 export const previewAppForm = (jwt: string, scope: CommandScope, commandId: string, values: FormValues) => api<PreviewReply>(`${pathOf(scope)}/commands/${commandId}/preview`, { jwt, body: { values } });
+
+/** The street and the weather where the phone is, for a report's «Información de control» (José 12/11); `null` when they do not arrive. */
+export async function readFieldConditions(jwt: string, point: GeoPoint): Promise<FieldConditions | null> {
+  const query = new URLSearchParams({ lat: String(point.lat), lng: String(point.lng) });
+  try {
+    const response = await fetch(`/api/field-conditions?${query}`, { headers: { Authorization: `Bearer ${jwt}` } });
+    return response.ok ? ((await response.json()) as FieldConditions) : null;
+  } catch {
+    return null;
+  }
+}
 
 /** The address of a reading, for the camera of a signing; `null` when it does not arrive. */
 export async function readFormPlace(jwt: string, scope: CommandScope, commandId: string, point: GeoPoint): Promise<string | null> {

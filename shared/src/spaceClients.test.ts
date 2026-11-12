@@ -197,6 +197,21 @@ describe('filterServices (José 29/10: the services of a client channel with the
     expect(shown.services.map((one) => one.id)).toEqual(['1', '2', '3', '4']);
   });
 
+  it('the newest start first among the open ones and among the closed ones (José 12/11)', () => {
+    // Arrange
+    const dated = [
+      { ...service('a', 'Corredor Pachacútec', 'in_progress'), started_at: '2026-07-01' },
+      { ...service('b', 'b1', 'pending'), started_at: '2026-07-13' },
+      { ...service('c', 'Sin fecha', 'pending') },
+      { ...service('d', 'QA-PISTA-APK', 'pending'), started_at: '2026-11-12' },
+      { ...service('e', 'Parchado viejo', 'completed'), started_at: '2026-12-01' },
+    ];
+    // Act
+    const shown = filterServices(dated, { query: '', filter: 'all' });
+    // Assert
+    expect(shown.services.map((one) => one.id)).toEqual(['d', 'b', 'a', 'c', 'e']);
+  });
+
   it('a chip keeps only its state, and the search finds by name without accents', () => {
     expect(filterServices(services, { query: '', filter: 'open' }).services.map((one) => one.id)).toEqual(['1', '2']);
     expect(filterServices(services, { query: 'alamos', filter: 'all' }).services.map((one) => one.id)).toEqual(['1']);

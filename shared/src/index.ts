@@ -135,6 +135,7 @@ export * from './botManifest.js';
 export * from './appDirectory.js';
 export * from './appForms.js';
 export * from './fieldAutofill.js';
+export * from './fieldConditions.js';
 export * from './fieldDocument.js';
 export * from './reportCreation.js';
 export * from './reportSaves.js';

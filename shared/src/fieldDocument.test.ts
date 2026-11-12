@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applySavedSection, channelValuesOf, fieldDocumentOf, withoutGroupSend, nextSection, photoKindOf, progressOf, publishBlockers, requiresLocation, SECTION_TOOL, sectionFormOf, type RepeatSection } from './fieldDocument';
+import { applySavedSection, channelValuesOf, fieldDocumentOf, withoutGroupSend, nextSection, photoKindOf, progressOf, publishBlockers, requiresLocation, SECTION_TOOL, sectionFormOf, itemFormTitle, type RepeatSection } from './fieldDocument';
 
 /** The document Portal's `informe_de_campo` answers (spec INFORMES-DESDE-LILACHAT §3.1), for a CTL-IMP with one tramo. */
 const generalForm = { type: 'object', properties: { liquido: { type: 'string', title: 'Líquido', oneOf: [{ const: 'MC-30', title: 'MC-30' }, { const: 'EMULSION', title: 'Emulsión' }] }, proyecto: { type: 'string', title: 'Proyecto' } }, required: ['liquido', 'proyecto'] };
@@ -142,6 +142,12 @@ describe('sectionFormOf', () => {
 
     expect(form.id).toBe('agregar_foto_de_informe');
     expect(form.schema.properties?.foto).not.toHaveProperty('default');
+  });
+
+  it('a section named like its item is not said twice (E2E 12/11: «Punto · Punto»)', () => {
+    expect(itemFormTitle('Punto', 'Punto')).toBe('Punto');
+    expect(itemFormTitle('Punto 1', 'Punto')).toBe('Punto 1');
+    expect(itemFormTitle('Tramo 1', 'Ubicación')).toBe('Tramo 1 · Ubicación');
   });
 
   it('a new tramo opens its first section empty', () => {

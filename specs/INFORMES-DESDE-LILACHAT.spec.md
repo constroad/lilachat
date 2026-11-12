@@ -1297,3 +1297,21 @@ Verificado: tests del motor (shared) y del diálogo web con GPS falso (web).
 **Sin verificar todavía**: el APK no tiene tests de componentes de
 formularios; el E2E real en Test queda para después del deploy de Portal y la
 reaprobación.
+
+### E2E de CON-CAP en Test (12/11, web a 430 px)
+
+Servicio «Mejoramiento vial — Av. El Sol, Pachacámac» (5 calles), GPS simulado
+sobre Jr. Comercio. Calle del tramo elegida sola («a 4 m»); punto con GPS
+± 7 m, calle y progresiva 0+133 solas; compactación 96,9 % y humedad −0,3 %
+calculadas por Portal; el PDF trae la calle, el método y el croquis con P1.
+Reabrir un punto guardado conserva su lectura (no vuelve a leer el GPS).
+En escritorio el mismo borrador abre el editor de Portal.
+
+Encontrado y arreglado en el camino:
+- El selector marcaba CON-CAP «En Portal» y el server no la dejaba crear
+  (16fd4541).
+- Recargar un canal de cliente en el celular perdía «Cuenta» y «Servicios»:
+  solo la lista lateral pedía los clientes. Ahora el canal los pide una vez.
+- El título del formulario decía «Punto · Punto»; ahora «Punto 1».
+
+Sin verificar: el recorrido en el APK (emulador cedido a Lilaspeak).

@@ -24,7 +24,7 @@ import { mapDepsOf } from '../spaces/clients/ServiceMapWeb';
 import { PendingWeb, TaskDetailWeb, type OpenTask } from './workPlan/WorkListsWeb';
 import { ClientAccountWeb } from '../spaces/clients/ClientAccountWeb';
 import { CHANNEL_TAB_LABELS, channelTabs, type ChannelLinks, type ChannelTab } from '@lilachat/shared';
-import { useClientOfChat } from '../spaces/clients/useSpaceClients';
+import { useClientOfChat, useClientsOfChannelSpace } from '../spaces/clients/useSpaceClients';
 import { ArchivedClientBanner, ArchivedComposerNote, ClientServices } from '../spaces/clients/ClientChannelParts';
 import { useClientRecords } from '../spaces/clients/useSpaceClients';
 import type { ChatSummary, MensajeEnPantalla } from './types';
@@ -122,6 +122,7 @@ export function Conversation(props: {
   }, []);
   // Pending 21 (design f-03): a client's channel adds «Servicios» and, archived, its banner.
   const client = useClientOfChat(chat.id);
+  useClientsOfChannelSpace(props.jwtParaEnlaces, chat.workspaceId, isChannel && !client);
   // José 29/10: Checklist and Pendientes belong to a client's channel only.
   const isClientChannel = isChannel && Boolean(client);
   const workPlan = useWorkPlanWeb(props.jwtParaEnlaces ?? '', chat.id, isClientChannel && Boolean(props.jwtParaEnlaces));

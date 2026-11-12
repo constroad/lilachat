@@ -186,10 +186,16 @@ export function sectionAt(document: FieldDocument, path: SectionPath): Found | n
   const entry = section.template.find((one) => one.id === path.key);
   if (!entry) return null;
   const tool = { ...(entry.tool ? { tool: entry.tool } : {}), ...marksOf(entry) };
-  if (path.itemId === null) return { title: `${section.itemTitle} · ${entry.title}`, form: entry.form, ...tool, values: {} };
+  if (path.itemId === null) return { title: itemFormTitle(section.itemTitle, entry.title), form: entry.form, ...tool, values: {} };
   const item = section.items.find((one) => one.id === path.itemId);
   const saved = item?.sections.find((one) => one.id === path.key);
-  return item && saved ? { title: `${item.title} · ${entry.title}`, form: entry.form, ...tool, values: saved.values } : null;
+  return item && saved ? { title: itemFormTitle(item.title, entry.title), form: entry.form, ...tool, values: saved.values } : null;
+}
+
+/** «Tramo 1 · Ubicación»; a section named like its item says it once: «Punto 1», never «Punto 1 · Punto» (E2E 12/11). */
+export function itemFormTitle(itemTitle: string, sectionTitle: string): string {
+  const same = itemTitle === sectionTitle || itemTitle.startsWith(`${sectionTitle} `);
+  return same ? itemTitle : `${itemTitle} · ${sectionTitle}`;
 }
 
 /** The `tipoFoto` the photo tool gets for this section, when Portal fixed one. */

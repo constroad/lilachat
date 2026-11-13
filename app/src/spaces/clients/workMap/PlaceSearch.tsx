@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Keyboard, Pressable, Text, TextInput, View } from 'react-native';
 import { MapPin, Search } from 'lucide-react-native';
 import { findPlace, type PlaceAsk, type PlaceResult, type WorkMapPoint } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
@@ -16,8 +16,10 @@ export function PlaceSearch(props: { ask?: PlaceAsk; near?: WorkMapPoint; onPick
   const [results, setResults] = useState<PlaceResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const pick = (place: PlaceResult) => { setResults([]); props.onPick({ lat: place.lat, lng: place.lng }); };
+  // The keyboard goes away so the map shows where it went (E2E 12/11: it stayed open over a map squeezed to nothing).
+  const pick = (place: PlaceResult) => { Keyboard.dismiss(); setResults([]); props.onPick({ lat: place.lat, lng: place.lng }); };
   const search = async () => {
+    Keyboard.dismiss();
     setBusy(true);
     setError(null);
     const answer = await findPlace(text, props.ask ?? NO_ASK, props.near);

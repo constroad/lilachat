@@ -1366,3 +1366,18 @@ de varios días, fotos con posición y ninguna calle.
     `mediaDaysOf`, `unitNumbersOf`, `dayColorsOf`, `dayLabel`. Lilachat solo
     adapta formas en `shared/src/workMapDays.ts`.
 - **Sin verificar** en el teléfono con el servicio de Globofast: solo tests del motor.
+
+## Usabilidad revisada en el emulador (José 12/11: «Registrar avance», Buscar y el mapa base)
+
+- **«Registrar avance» responde al primer toque** (OTA a8b53d06, Test, QA-CTLPIS): calle → trabajo →
+  «Hasta dónde» → «Tomar foto» abre la cámara nueva con el sello. No se envió nada.
+- **Buscar con un solo toque en la lupa** y otro en el resultado. Tres fallas vistas y arregladas:
+  - «Plaza San Martín» traía también Buenos Aires, Córdoba y México. Nominatim se pide con
+    `countrycodes=pe` (`server/src/placeSearch.ts`): todas las obras están en Perú.
+  - El teclado seguía abierto tras elegir el resultado, y el mapa quedaba aplastado a cero: no se veía
+    adónde fue. La búsqueda y la elección cierran el teclado (APK `Keyboard.dismiss`, web `blur`).
+  - Con el mapa aplastado, sus botones (+, −, GPS, leyenda) se montaban sobre la cabecera y tapaban
+    «A mano» y «Cancelar». El recuadro del mapa recorta lo que se sale (`overflow-hidden`).
+- **Mapa base de Google: pendiente de José.** Necesita una llave de Google Maps Platform con facturación
+  (Map Tiles API: 100 000 teselas gratis al mes; después USD 0,60 por cada 1 000). No hay ninguna llave
+  en Lilachat ni en Portal, y crearla es de José.

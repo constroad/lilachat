@@ -37,6 +37,8 @@ describe('createPlaceSearch', () => {
     expect(found).toEqual({ ok: true, results: [{ name: 'Jirón Lampa, Lima', lat: -12.05, lng: -77.03 }] });
     const [url, init] = fetcher.mock.calls[0]! as unknown as [string, RequestInit];
     expect(url).toContain('viewbox=');
+    // José 12/11: «Plaza San Martín» showed Buenos Aires, Córdoba and México under the one in Lima.
+    expect(url).toContain('countrycodes=pe');
     expect(url).toContain('bounded=0');
     expect(url).toContain('limit=6');
     expect((init.headers as Record<string, string>)['User-Agent']).toMatch(/^lilachat/);

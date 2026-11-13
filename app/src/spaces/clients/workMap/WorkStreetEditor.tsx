@@ -181,7 +181,8 @@ export function WorkStreetEditor(props: EditorProps) {
             </Pressable>
           </View>
         </View>
-        <View className="flex-1">
+        {/* overflow-hidden: with the keyboard open the map shrinks and its buttons spilled over the header (E2E 12/11). */}
+        <View className="flex-1 overflow-hidden">
           {props.open ? <WorkMapSurface view={view} moves pins={handles.length ? NO_PINS : [...streetDraftPins(draft), ...walkPositionPins(gps.walk)]} stretches={streetDraftLines(draft)} onTap={onTap} handles={handles} onHandleDrop={onHandleDrop} focus={focus} frame={frame} near={props.start ?? (current.state === 'ready' ? current.location : null)} /> : null}
           <EditorLegend />
         </View>

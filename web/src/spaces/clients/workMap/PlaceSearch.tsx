@@ -11,7 +11,8 @@ export function PlaceSearch(props: { ask?: PlaceAsk; near?: WorkMapPoint; onPick
   const [results, setResults] = useState<PlaceResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const pick = (place: PlaceResult) => { setResults([]); props.onPick({ lat: place.lat, lng: place.lng }); };
+  // A phone's keyboard goes away so the map shows where it went (E2E 12/11).
+  const pick = (place: PlaceResult) => { (document.activeElement as HTMLElement | null)?.blur(); setResults([]); props.onPick({ lat: place.lat, lng: place.lng }); };
   const search = async () => {
     setBusy(true);
     setError(null);

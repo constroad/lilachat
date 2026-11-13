@@ -20,6 +20,8 @@ const PER_MINUTE = 20;
 const MINUTE_MS = 60_000;
 /** Half a degree around what is on screen: a city, for the bias; results outside still come. */
 const VIEW_HALF_DEG = 0.25;
+/** Every work is in Peru: «Plaza San Martín» is the one in Lima, never Buenos Aires or México (E2E 12/11). */
+const WORK_COUNTRIES = 'pe';
 const LINK_NAME = 'Ubicación del enlace';
 const TOO_MANY = 'Muchas búsquedas seguidas. Espera un minuto.';
 
@@ -64,7 +66,7 @@ async function longUrlOf(url: string, fetcher: Fetcher): Promise<string | null> 
 }
 
 async function askNominatim(text: string, near: WorkMapPoint | undefined, fetcher: Fetcher): Promise<PlaceResult[] | null> {
-  const query = new URLSearchParams({ q: text, format: 'jsonv2', limit: String(PLACE_RESULTS_MAX), 'accept-language': 'es' });
+  const query = new URLSearchParams({ q: text, format: 'jsonv2', limit: String(PLACE_RESULTS_MAX), 'accept-language': 'es', countrycodes: WORK_COUNTRIES });
   if (near) {
     query.set('viewbox', [near.lng - VIEW_HALF_DEG, near.lat + VIEW_HALF_DEG, near.lng + VIEW_HALF_DEG, near.lat - VIEW_HALF_DEG].join(','));
     query.set('bounded', '0');

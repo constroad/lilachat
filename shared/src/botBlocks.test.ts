@@ -303,3 +303,14 @@ describe('the map block', () => {
     expect(validateBotBlocks([{ type: 'map', lat: 0, lng: 0, precision_m: -3 }], 8)).toEqual({ ok: true, blocks: [{ type: 'map', lat: 0, lng: 0 }] });
   });
 });
+
+// José 13/11: the reception card in #agregados shows the load's photos, served by Inframaq.
+describe('gallery hosts', () => {
+  it('a photo on inframaq.constroad.com is kept; one from anywhere else is dropped', async () => {
+    const { validateBotFiles } = await import('./botBlocks.js');
+    const inframaq = { url: 'https://inframaq.constroad.com/media/r1.jpg', thumb_url: 'https://inframaq.constroad.com/media/r1-t.jpg', mime: 'image/jpeg' };
+    const outside = { url: 'https://tracker.example.com/r1.jpg', mime: 'image/jpeg' };
+    const checked = validateBotFiles([inframaq, outside]);
+    expect(checked.ok && checked.files.map((one) => one.url)).toEqual([inframaq.url]);
+  });
+});

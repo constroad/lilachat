@@ -48,7 +48,8 @@ export type GalleryItem = { url: string; thumbUrl?: string; mime: string; name?:
 
 export const BLOCK_LIMITS = { cardBlocks: 8, detailBlocks: 12, chips: 6, points: 31, tanks: 12, rows: 40, people: 40, label: 40, short: 24, caption: 80, text: 200, url: 500, gallery: 20, tiles: 12, cardBytes: 16_000 };
 /** Where a gallery's files may live: a card's thumbnails load on every member's device, so no tracking pixel from anyone else. */
-const GALLERY_HOSTS: readonly string[] = ['lila.constroad.com', 'www.constroad.com'];
+// inframaq.constroad.com (José 13/11): the photos of a material reception, served by Inframaq itself.
+const GALLERY_HOSTS: readonly string[] = ['lila.constroad.com', 'www.constroad.com', 'inframaq.constroad.com'];
 const GALLERY_STRIP = 4;
 const TONES: readonly CardTone[] = ['ok', 'warn', 'error', 'info', 'neutral'];
 const KINDS: readonly ChartKind[] = ['bar-h', 'bar-v', 'line'];

@@ -15,3 +15,15 @@ export function replaceOrAppend<T extends WithId>(layers: T[], layer: T): T[] {
 export function removeLayer<T extends WithId>(layers: T[], id: number): T[] {
   return layers.some((layer) => layer.id === id) ? layers.filter((layer) => layer.id !== id) : layers;
 }
+
+type Insets = { top: number; right: number; bottom: number; left: number };
+
+/**
+ * The insets a sheet drawn at the root gets. José 13/11: the chat lives inside the tabs, which hand
+ * their screens a bottom inset of 0 (the tab bar takes it), and the sheet, drawn in the window's
+ * host, inherited that 0: «Fotos recientes» sat under Android's three buttons. PURE.
+ */
+export function overlayInsets(local: Insets | null, root: Insets | null): Insets | null {
+  if (!local || !root) return local ?? root;
+  return { ...local, bottom: Math.max(local.bottom, root.bottom) };
+}

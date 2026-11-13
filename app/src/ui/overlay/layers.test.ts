@@ -36,3 +36,13 @@ describe('replaceOrAppend', () => {
     expect(replaceOrAppend([layer(1), layer(2)], layer(1, 'new'))).toEqual([layer(1, 'new'), layer(2)]);
   });
 });
+
+describe('overlayInsets (José 13/11: the clip sheet under Android\'s buttons)', () => {
+  const window = { top: 24, right: 0, bottom: 48, left: 0 };
+  it('a screen inside the tabs (bottom 0) still leaves room for the nav bar', async () => {
+    const { overlayInsets } = await import('./layers');
+    expect(overlayInsets({ top: 0, right: 0, bottom: 0, left: 0 }, window)).toEqual({ top: 0, right: 0, bottom: 48, left: 0 });
+    expect(overlayInsets(null, window)).toBe(window);
+    expect(overlayInsets(window, null)).toBe(window);
+  });
+});

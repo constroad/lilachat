@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BackHandler, StyleSheet, View } from 'react-native';
+import { SafeAreaInsetsContext, type EdgeInsets } from 'react-native-safe-area-context';
 import { removeLayer, replaceOrAppend } from './layers';
 
 /**
@@ -25,12 +26,16 @@ export const useOverlayHost = () => useContext(OverlayHostContext);
 /** The session's host: what must cover the whole window (the photo viewer), even on a tablet's chat pane. */
 const RootOverlayHostContext = createContext<OverlayHostHandle | null>(null);
 export const useRootOverlayHost = () => useContext(RootOverlayHostContext);
+/** The window's own insets, read by the outermost host (above the tabs, which zero the bottom). */
+export const RootInsetsContext = createContext<EdgeInsets | null>(null);
 
 let lastOverlayId = 0;
 export const newOverlayId = () => ++lastOverlayId;
 
 export function OverlayHost(props: { children: ReactNode }) {
   const outer = useRootOverlayHost();
+  const insets = useContext(SafeAreaInsetsContext);
+  const rootInsets = useContext(RootInsetsContext) ?? insets;
   const [layers, setLayers] = useState<Layer[]>([]);
   const handle = useMemo<OverlayHostHandle>(
     () => ({
@@ -55,12 +60,14 @@ export function OverlayHost(props: { children: ReactNode }) {
   // direct child, its exit animation runs.
   return (
     <RootOverlayHostContext.Provider value={outer ?? handle}>
-      <OverlayHostContext.Provider value={handle}>
-        <View style={styles.host}>
-          {props.children}
-          {layers.map((layer) => layer.node)}
-        </View>
-      </OverlayHostContext.Provider>
+      <RootInsetsContext.Provider value={rootInsets}>
+        <OverlayHostContext.Provider value={handle}>
+          <View style={styles.host}>
+            {props.children}
+            {layers.map((layer) => layer.node)}
+          </View>
+        </OverlayHostContext.Provider>
+      </RootInsetsContext.Provider>
     </RootOverlayHostContext.Provider>
   );
 }

@@ -516,6 +516,12 @@ Lo que `specs/ARCHITECTURE.spec.md` (§120 a §134) afirma de la interfaz y no e
   con alto máximo no se achica solo: crecía por debajo de los botones de
   Android. Con `flexShrink: 1` hacen scroll. Le pasaba a «Fotos recientes» del
   clip y a «Entregado a» de «Info». Se aplicó a todas las hojas con lista.
+  **La causa de fondo era otra:** el chat vive dentro de las pestañas, que le
+  dan a sus pantallas un margen inferior de 0, y la hoja (dibujada en la capa
+  de la ventana) heredaba ese 0: quedaba sin aire para los 3 botones de Android.
+  Ahora el puente de contexto usa el inferior real de la ventana
+  (`overlayInsets`, `RootInsetsContext`). Reproducido en el emulador con la
+  barra de 3 botones.
 - **Compositor que crece.** APK hasta un 30 % de la pantalla; web hasta 40vh
   (`field-sizing: content`, o el alto medido donde no existe).
 - **Videollamada: apagar mi cámara ya no oculta la del otro.** Un solo `video`

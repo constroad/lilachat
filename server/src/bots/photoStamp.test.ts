@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import sharp from 'sharp';
-import { stampPhoto } from './photoStamp.js';
+import { stampPhoto, stampTimemark } from './photoStamp.js';
 
 /** Pending 94: the selfie of a form carries the date, the hour and the place in its pixels. */
 describe('stampPhoto', () => {
@@ -50,5 +50,43 @@ describe('a stamped selfie follows Portal\'s standard (28/10)', () => {
     // Assert
     expect(await sharp(stamped.bytes).metadata()).toMatchObject({ width: 1600, height: 1200, format: 'jpeg' });
     expect(stamped.bytes.length).toBeLessThan(big.length);
+  });
+});
+
+/** José 12/11: the report camera burns the Timemark-like stamp it showed live, bottom left, upright or sideways. */
+describe('stampTimemark', () => {
+  const stamp = { hour: '07:42', date: '12/11/2026', weekday: 'jueves', address: 'Av. Los Incas 1240, Ate, Lima', coords: '-12.0217, -76.8817 · ±6 m' };
+  const whiteOf = (width: number, height: number) => sharp({ create: { width, height, channels: 3, background: '#ffffff' } }).jpeg().toBuffer();
+  const pixelsOf = async (bytes: Buffer) => {
+    const { data, info } = await sharp(bytes).raw().toBuffer({ resolveWithObject: true });
+    return { info, at: (x: number, y: number) => data[(y * info.width + x) * info.channels]! };
+  };
+
+  it('shades the bottom and writes there, keeps the top and the size, upright and sideways', async () => {
+    for (const [width, height] of [[600, 800], [800, 600]] as const) {
+      // Act
+      const stamped = await stampTimemark(await whiteOf(width, height), stamp, null);
+      // Assert
+      const { info, at } = await pixelsOf(stamped.bytes);
+      expect([info.width, info.height]).toEqual([width, height]);
+      expect(at(5, 5)).toBeGreaterThan(240);
+      expect(at(width - 5, height - 3)).toBeLessThan(200);
+    }
+  });
+
+  it('puts the logo at the bottom left when its chip is on', async () => {
+    // Arrange: a solid black logo.
+    const logo = await sharp({ create: { width: 64, height: 64, channels: 3, background: '#000000' } }).png().toBuffer();
+    const withLogo = await stampTimemark(await whiteOf(600, 800), stamp, { dataUri: `data:image/png;base64,${logo.toString('base64')}` });
+    const without = await stampTimemark(await whiteOf(600, 800), stamp, null);
+    // Act
+    const a = await pixelsOf(withLogo.bytes);
+    const b = await pixelsOf(without.bytes);
+    // Assert: inside the logo square (margin 24, size 60) it is black only with the logo.
+    const insideLogo = [Math.round(24 + 30), 0] as const;
+    const look = { y: 0 };
+    let darker = 0;
+    for (let y = 500; y < 780; y += 4) if (a.at(insideLogo[0], y) < 40 && b.at(insideLogo[0], y) > 60) darker += 1;
+    expect(darker + look.y).toBeGreaterThan(3);
   });
 });

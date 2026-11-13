@@ -1,5 +1,5 @@
 import mongoose, { Types, type Model } from 'mongoose';
-import { formFields, isAckBody, photoHourLines, photoStampLines, validateFormReply, validateFormValues, type CommandOutcome, type CommandScope, type FormField, type FormValues, type GeoPoint } from '@lilachat/shared';
+import { formFields, isAckBody, photoHourLines, photoStampLines, timemarkOf, validateFormReply, validateFormValues, type CommandOutcome, type CommandScope, type FormField, type FormValues, type GeoPoint } from '@lilachat/shared';
 import { ChatModel, MessageModel } from '../chatModels.js';
 import { readMediaBytes, type UploadOutcome } from '../mediaClient.js';
 import { defaultMediaUploader } from '../localMediaUploader.js';
@@ -9,7 +9,8 @@ import { commandAnswerTimeout, deliverResponse, recordRunFailure, restartingMess
 import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botModels.js';
 import { channelOf, personOf } from './botTriggers.js';
 import { shrinkPhotoBuffer } from '../photoShrink.js';
-import { stampPhoto } from './photoStamp.js';
+import { stampPhoto, stampTimemark } from './photoStamp.js';
+import { spaceStampLogo } from './spaceStampLogo.js';
 import { placeNameOf } from '../placeName.js';
 import { signedFormFileUrl, verifyFileToken } from './botFiles.js';
 
@@ -75,7 +76,7 @@ export async function openRun(userId: Types.ObjectId, scope: CommandScope, comma
 }
 
 /** A signing brings the place the form has; a camera photo only asks for the hour (José 06/11: tank and materials). */
-export type PhotoStampAsked = { location?: GeoPoint; hourOnly?: true; /** A photo of the gallery: its own date, not the upload's. */ takenAt?: Date };
+export type PhotoStampAsked = { location?: GeoPoint; hourOnly?: true; /** A photo of the gallery: its own date, not the upload's. */ takenAt?: Date; /** The report camera's Timemark-like stamp (José 12/11), with the space's logo when asked. */ timemark?: { logo: boolean } };
 
 async function stampLinesOf({ location, hourOnly, takenAt }: PhotoStampAsked): Promise<readonly string[]> {
   const at = takenAt ?? new Date();
@@ -84,10 +85,22 @@ async function stampLinesOf({ location, hourOnly, takenAt }: PhotoStampAsked): P
   return photoStampLines({ at, ...(location ? { location } : {}), place });
 }
 
+/** The space a form's photo belongs to: the ⚡'s own, or the one of the chat it was opened in. */
+type SpaceOfRun = () => Promise<Types.ObjectId | undefined>;
+const spaceOfRun = (run: { workspaceId?: Types.ObjectId | null; chatId?: Types.ObjectId | null }): SpaceOfRun => async () =>
+  run.workspaceId ?? (run.chatId ? ((await ChatModel.findById(run.chatId).select('workspaceId').lean())?.workspaceId ?? undefined) : undefined);
+
+/** The camera's stamp with the server's hour: what the camera showed live, the logo only when its chip was on. */
+async function burnTimemark(bytes: Buffer, stamp: PhotoStampAsked, spaceOf: SpaceOfRun) {
+  const place = stamp.location ? await placeNameOf(stamp.location) : null;
+  const logo = stamp.timemark?.logo ? await spaceStampLogo(await spaceOf()) : null;
+  return stampTimemark(bytes, timemarkOf({ at: new Date(), point: stamp.location ?? null, place }), logo);
+}
+
 /** The server burns ITS hour into the photo (pending 94); a photo it cannot read goes as it came. */
-async function stamped(file: { originalname: string; mimetype: string; buffer: Buffer }, stamp: PhotoStampAsked): Promise<{ fileName: string; mimeType: string; bytes: Buffer }> {
+async function stamped(file: { originalname: string; mimetype: string; buffer: Buffer }, stamp: PhotoStampAsked, spaceOf: SpaceOfRun = async () => undefined): Promise<{ fileName: string; mimeType: string; bytes: Buffer }> {
   try {
-    const photo = await stampPhoto(file.buffer, await stampLinesOf(stamp));
+    const photo = stamp.timemark ? await burnTimemark(file.buffer, stamp, spaceOf) : await stampPhoto(file.buffer, await stampLinesOf(stamp));
     console.log(`[forms] foto sellada ${photo.log}`);
     return { fileName: file.originalname.replace(/\.\w+$/, '') + '.jpg', mimeType: photo.mimeType, bytes: photo.bytes };
   } catch (error) {
@@ -124,7 +137,7 @@ export async function storeFormPhoto(userId: Types.ObjectId, scope: CommandScope
   const run = await openRun(userId, scope, commandId);
   if ('error' in run) return run;
   if (!FORM_PHOTO_TYPES.includes(file.mimetype) || file.size > FORM_PHOTO_MAX_BYTES) return fail(400, 'invalid_photo', 'La foto va en JPEG, PNG, WEBP o HEIC, hasta 10 MB.');
-  const photo = stamp ? await stamped(file, stamp) : await shrunk(file);
+  const photo = stamp ? await stamped(file, stamp, spaceOfRun(run)) : await shrunk(file);
   // The media folder is the chat's, or the space's for the ⚡.
   const uploaded = await upload({ chatId: String(run.chatId ?? run.workspaceId), ...photo });
   if (!uploaded.ok) return fail(409, 'upload_failed', 'No se pudo guardar la foto. Inténtalo de nuevo.');

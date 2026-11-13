@@ -7,7 +7,6 @@ import { useColores } from '../../ui/tema';
 import { CAMERA_DENIED, cameraAllowed, FormCamera, type CameraShot } from '../camara/FormCamera';
 import type { PhotoUpload } from './AppFormFields';
 import { pickFromGallery } from './galleryPick';
-import { useCameraPlace } from './useCameraPlace';
 
 type PhotoList = Extract<FormField, { kind: 'photo' }>;
 type Shot = { key: string; uri: string; fileId: string | null };
@@ -29,7 +28,6 @@ export function PhotoListField(props: { field: PhotoList; error?: string; onChan
     props.onChange(ids.length ? ids : undefined);
   };
   const [aiming, setAiming] = useState(false);
-  const place = useCameraPlace();
   const keep = async (picked: CameraShot, stampOf: () => Promise<FormPhotoStamp | undefined>) => {
     const shot: Shot = { key: `${Date.now()}`, uri: picked.uri, fileId: null };
     setAiming(false);
@@ -48,7 +46,6 @@ export function PhotoListField(props: { field: PhotoList; error?: string; onChan
   const take = async (source: 'camera' | 'gallery') => {
     if (source === 'camera') {
       if (await cameraAllowed()) {
-        place.start();
         setAiming(true);
       } else setMessage(CAMERA_DENIED);
       return;
@@ -93,7 +90,7 @@ export function PhotoListField(props: { field: PhotoList; error?: string; onChan
       </View>
       {viewer.viewer}
       {message ?? props.error ? <Text className="mt-1 text-[13px] text-error">{message ?? props.error}</Text> : null}
-      {aiming ? <FormCamera title={props.field.label} onShot={(shot) => void keep(shot, place.stamp)} onClose={() => setAiming(false)} onGallery={props.field.gallery ? () => (setAiming(false), void take('gallery')) : undefined} /> : null}
+      {aiming ? <FormCamera title={props.field.label} onShot={(shot, stamp) => void keep(shot, async () => stamp)} onClose={() => setAiming(false)} onGallery={props.field.gallery ? () => (setAiming(false), void take('gallery')) : undefined} /> : null}
     </View>
   );
 }

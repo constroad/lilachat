@@ -234,6 +234,24 @@ describe('an app answers a command with a form', () => {
     expect(data[(200 * info.width + 2) * info.channels]!).toBeGreaterThan(240);
   });
 
+  it('the report camera asks for the Timemark-like stamp: it comes back shaded and written at the bottom, the top untouched (José 12/11)', async () => {
+    // Arrange: a sideways photo, with the reading and the logo chip on (this space has no logo: it goes without).
+    const commandId = await openForm();
+    const white = await sharp({ create: { width: 480, height: 320, channels: 3, background: '#ffffff' } }).jpeg().toBuffer();
+    // Act
+    const { fileId } = (await request(app).post(`/api/chats/${channel}/commands/${commandId}/files`).set(asAna).field('stamp', 'timemark').field('logo', '1').field('lat', '-12.0217').field('lng', '-76.8817').field('precision', '6').attach('file', white, { filename: 'ingreso.jpg', contentType: 'image/jpeg' }).expect(201)).body;
+    answer = json({ text: 'Ingreso marcado' });
+    received.length = 0;
+    await submit(commandId, { accion: 'ingreso', ubicacion: here, foto: fileId }).expect(200);
+    // Assert
+    const photoUrl = new URL(String((received[0]!.data.values as Record<string, unknown>).foto));
+    const photo = (await request(app).get(photoUrl.pathname).expect(200)).body as Buffer;
+    const { data, info } = await sharp(photo).raw().toBuffer({ resolveWithObject: true });
+    expect([info.width, info.height]).toEqual([480, 320]);
+    expect(data[(4 * info.width + 4) * info.channels]!).toBeGreaterThan(240);
+    expect(data[((info.height - 2) * info.width + info.width - 4) * info.channels]!).toBeLessThan(200);
+  });
+
   it('a photo of the gallery comes back stamped with its own date, not the upload (José 06/11)', async () => {
     // Arrange
     const commandId = await openForm();

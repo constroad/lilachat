@@ -76,3 +76,9 @@ export function useSpaceName(spaceId: string | undefined): string {
   const current = useSyncExternalStore(subscribe, () => spaces);
   return current?.find((space) => space.id === spaceId)?.name ?? '';
 }
+
+/** A space's logo from the spaces already read: the report camera's stamp shows it (José 12/11). */
+export function useSpaceLogo(spaceId: string | null | undefined): string | null {
+  const current = useSyncExternalStore(subscribe, () => spaces);
+  return current?.find((space) => space.id === spaceId)?.logoUrl ?? null;
+}

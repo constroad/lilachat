@@ -48,6 +48,11 @@ describe('stampFieldsOf', () => {
     expect(stampFieldsOf(point)).toEqual({ stamp: '1', lat: '-12.0464', lng: '-77.0428', precision: '8' });
     expect(stampFieldsOf({ takenAt: '2026-11-06T23:32:10.000Z' })).toEqual({ stamp: 'taken', takenAt: '2026-11-06T23:32:10.000Z' });
   });
+
+  it('the report camera asks for its Timemark-like stamp, with the reading and whether the logo goes (José 12/11)', () => {
+    expect(stampFieldsOf({ timemark: true, point, logo: true })).toEqual({ stamp: 'timemark', logo: '1', lat: '-12.0464', lng: '-77.0428', precision: '8' });
+    expect(stampFieldsOf({ timemark: true, point: null, logo: false })).toEqual({ stamp: 'timemark', logo: '0' });
+  });
 });
 
 describe('takenAtFrom (the server does not trust the phone blindly)', () => {

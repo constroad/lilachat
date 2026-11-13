@@ -18,6 +18,8 @@ const OLDEST_PHOTO = Date.UTC(2000, 0, 1);
 const CLOCK_SLACK_MS = 5 * 60_000;
 
 export const cameraStampOf = (point: GeoPoint | null): FormPhotoStamp => point ?? HOUR_STAMP;
+/** What the upload says for the report camera's stamp. */
+export const TIMEMARK_STAMP = 'timemark';
 
 export function exifTakenAtOf(exif: ExifData | null | undefined): string | null {
   const raw = exif?.DateTimeOriginal ?? exif?.DateTimeDigitized ?? exif?.DateTime;
@@ -40,6 +42,7 @@ export function stampFieldsOf(stamp: FormPhotoStamp | undefined): Record<string,
   if (!stamp) return {};
   if (stamp === HOUR_STAMP) return { stamp: HOUR_STAMP };
   if ('takenAt' in stamp) return { stamp: 'taken', takenAt: stamp.takenAt };
+  if ('timemark' in stamp) return { stamp: TIMEMARK_STAMP, logo: stamp.logo ? '1' : '0', ...(stamp.point ? pointFields(stamp.point) : {}) };
   return { stamp: '1', ...pointFields(stamp) };
 }
 

@@ -3,7 +3,6 @@ import { ActivityIndicator, Image, Linking, Pressable, Text, TextInput, View } f
 import { Camera, Check, Image as ImageIcon, LocateFixed } from 'lucide-react-native';
 import { geoPointOf, precisionLabel, type FormField, type GeoPoint, type FormPhotoStamp } from '@lilachat/shared';
 import { pickFromGallery } from './galleryPick';
-import { useCameraPlace } from './useCameraPlace';
 import { Segmentado } from '../../ui/Segmentado';
 import { SearchableChoice } from './SearchableChoice';
 import { useColores } from '../../ui/tema';
@@ -166,7 +165,6 @@ export function CheckField({ field, value, error, onChange }: FieldProps<'check'
 }
 
 export function PhotoField({ field, value, error, onChange, upload, opensCamera, onCameraDismissed }: FieldProps<'photo'> & { upload: PhotoUpload; opensCamera?: boolean; onCameraDismissed?: () => void }) {
-  const place = useCameraPlace();
   const colors = useColores();
   const [preview, setPreview] = useState<string | null>(null);
   const [status, setStatus] = useState<{ busy: boolean; message?: string }>({ busy: false });
@@ -174,7 +172,6 @@ export function PhotoField({ field, value, error, onChange, upload, opensCamera,
   const [viewing, setViewing] = useState(false);
   const take = async () => {
     if (await cameraAllowed()) {
-      place.start();
       setAiming(true);
     } else setStatus({ busy: false, message: CAMERA_DENIED });
   };
@@ -219,7 +216,7 @@ export function PhotoField({ field, value, error, onChange, upload, opensCamera,
         ) : null}
         <ErrorLine text={status.message ?? error} />
       </View>
-      {aiming ? <FormCamera title={field.label} onShot={(shot) => void keep(shot, place.stamp)} onClose={dismiss} onGallery={field.gallery ? () => (setAiming(false), void fromGallery()) : undefined} /> : null}
+      {aiming ? <FormCamera title={field.label} onShot={(shot, stamp) => void keep(shot, async () => stamp)} onClose={dismiss} onGallery={field.gallery ? () => (setAiming(false), void fromGallery()) : undefined} /> : null}
       <VisorDeFoto foto={viewing ? preview : null} titulo={field.label} onCerrar={() => setViewing(false)} />
     </View>
   );

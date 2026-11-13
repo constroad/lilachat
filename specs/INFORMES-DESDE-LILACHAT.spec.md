@@ -1397,3 +1397,26 @@ Se recorrió Control de pista en el APK (`lilafotos-qa`), en el servicio QA-CTLP
   arriba.
 - **«1 de 28 secciones»** en sus capturas era el OTA anterior, que contaba las hojas (las fotos de
   cada unidad). Desde e4063585 cuenta las secciones requeridas de primer nivel.
+
+## 19. Cámara con sello tipo Timemark (José 12/11, diseños cam-01/02/03)
+
+- **Una sola cámara a pantalla completa** para toda foto de informe y de formulario en el APK
+  (`app/src/chat/camara/FormCamera.tsx`; la usan `PhotoField` y `PhotoListField`). Arriba: cerrar,
+  el nombre del campo en una píldora oscura y el flash. Debajo, los chips **«Logo»** (pone y quita
+  el logo del espacio; la preferencia queda en el teléfono, `cameraLogoPref.ts`, encendida por
+  defecto) y **«GPS ±N m»**. Abajo: galería (si el campo la permite), disparador de 76 y girar cámara.
+- **Sello en vivo** abajo a la izquierda (`StampOverlay.tsx`): hora grande, barra de acento, fecha
+  y día, dirección y coordenadas con su precisión. **Nunca el nombre de quien toma la foto.** El
+  tamaño sale del lado corto del cuadro (`timemarkLayoutOf`, `shared/src/timemarkStamp.ts`), así
+  que vertical y apaisada se ven igual. Apaisada: los controles van en una columna a la derecha.
+- **Revisión antes de usarla**: la foto con su sello, «Repetir» o «Usar foto».
+- **Quién quema el sello**: el servidor (sharp, `stampTimemark` en `server/src/bots/photoStamp.ts`)
+  con SU hora, la dirección de Nominatim y el logo de `WorkspaceModel.logoUrl` si el chip estaba
+  encendido. El APK no trae Skia ni view-shot y un OTA no puede sumar módulos nativos. El campo
+  `stamp=timemark` (+ `logo=1|0`, `lat`, `lng`, `precision`) viaja en la subida.
+- **Fotos de informe (cola de informes)**: suben SIN sello de Lilachat y las sella Portal, como
+  hasta ahora. El sello en vivo se ve en la cámara, pero el PDF lleva el de Portal hasta que
+  Portal reciba `selloLilachat: true` en `agregar_foto_de_informe` (Portal 448d0c04) y José
+  re-apruebe esa herramienta en agentes. Ahí la cola manda `stamp=timemark` y Portal no sella.
+- **Pendiente**: la cámara del chat (`CamaraDelChat`, foto y video), la PWA móvil (`getUserMedia`)
+  y el sello en video (diseños cam-04/05/06).

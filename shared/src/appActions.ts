@@ -203,7 +203,9 @@ export const HOUR_STAMP = 'hour';
 /** A photo of the gallery: the date and place of when it was taken, not of the upload (José 06/11). */
 /** A photo of the gallery: only its date, never a place (José 07/11). */
 export type GalleryStamp = { takenAt: string };
-export type FormPhotoStamp = GeoPoint | typeof HOUR_STAMP | GalleryStamp;
+/** The report camera's Timemark-like stamp (José 12/11): the server burns the hour, the date, the place of the reading and, with its chip on, the space's logo. */
+export type TimemarkStampAsked = { timemark: true; point: GeoPoint | null; logo: boolean };
+export type FormPhotoStamp = GeoPoint | typeof HOUR_STAMP | GalleryStamp | TimemarkStampAsked;
 
 /**
  * The two lines burned into a form's photo (pending 94, José 23/10: a

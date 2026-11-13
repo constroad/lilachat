@@ -79,6 +79,7 @@ export function WebCamera(props: { ask: WebCameraAsk; onDone: (file: File | null
       {taken ? <ReviewBar video={taken.blob.type.startsWith('video/')} onRetake={() => setTaken(null)} onUse={use} /> : null}
       {taken || camera.state === 'denied' ? null : <ShutterBar mode={mode} canVideo={Boolean(props.ask.video)} recording={recorder.recording} onMode={setMode} onShoot={() => void shoot()} onFlip={() => setFacing(facing === 'environment' ? 'user' : 'environment')} onGallery={() => gallery.current?.click()} />}
       {/* As the APK: the gallery from inside the camera; a picked file carries no stamp (it was not shot now). */}
+      {/* gates-allow: camara this IS the camera's own gallery button, not a second way to shoot */}
       <input ref={gallery} type="file" data-testid="galeria-camara" accept={props.ask.video ? 'image/*,video/*' : 'image/*'} hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) props.onDone(file); }} />
     </div>
   );

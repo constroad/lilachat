@@ -167,7 +167,7 @@ function ComposerField({
     if (nota) onNotaDeVoz?.(nota);
   };
   // A photo waiting in the field sends, like a text (José 13/11): the mic only with nothing to send.
-  const conMicrofono = Boolean(onNotaDeVoz) && !text.trim() && !staged?.files.length && contexto?.tipo !== 'edicion';
+  const showsMic = Boolean(onNotaDeVoz) && !text.trim() && !staged?.files.length && contexto?.tipo !== 'edicion';
   const pickEmoji = (emoji: string) => {
     const done = emojis.pick(text, campoRef.current?.selectionStart ?? text.length, emoji);
     if (!done) return;
@@ -326,7 +326,7 @@ function ComposerField({
         <ComposerCameraButton onShot={(file) => onElegirArchivos([file])} />
         {commands ? <ChatQuickActions commands={commands} onWriteCommand={writeCommand} /> : null}
 
-        {/* The field's border holds the photos waiting AND the text, as the APK (José 13/11: «dentro del input»). */}
+        {/* The field's border holds the photos waiting AND the text, as in the APK (José 13/11). */}
         <div className="relative min-w-0 flex-1 rounded-lg border border-outline/25 bg-background focus-within:border-primary">
         {staged?.files.length ? <StagedFilesWeb files={staged.files} onRemove={staged.onRemove} onPreview={staged.onPreview} /> : null}
         <SugerenciasDeMencion opciones={menciones.opciones} activa={menciones.activa} onElegir={elegirMencion} />
@@ -385,7 +385,7 @@ function ComposerField({
           {conEmojis ? <X size={20} /> : <Smile size={20} />}
         </button>
 
-        {conMicrofono ? (
+        {showsMic ? (
           <button type="button" data-testid="btn-microfono" aria-label="Grabar una nota de voz" onClick={() => void voz.empezar()} className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary text-on-primary">
             <Mic size={18} />
           </button>

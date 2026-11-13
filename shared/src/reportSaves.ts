@@ -301,7 +301,7 @@ function arrivalOrderOf(section: RepeatSection, itemId: string, ingresoKey: stri
     return ingreso ? sectionPhotos(ingreso)[0]?.hour || null : null;
   };
   const arrived = section.items.map((item, index) => ({ id: item.id, at: arrivedAt(item), index })).filter((one) => one.at !== null);
-  arrived.sort((a, b) => a.at!.localeCompare(b.at!) || a.index - b.index);
+  arrived.sort((a, b) => (a.at! < b.at! ? -1 : a.at! > b.at! ? 1 : a.index - b.index));
   const rank = arrived.findIndex((one) => one.id === itemId);
   return rank >= 0 ? rank + 1 : arrived.length + 1;
 }

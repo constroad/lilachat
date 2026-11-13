@@ -4,7 +4,7 @@ import { reportFormAnswer } from './reportSaves.js';
 
 /**
  * José 12/11, on the WhatsApp of a CTL-PIS photo that said only «Ingreso»: the description says
- * which stage the photo is (ingreso, temperatura, escantillón, vacía), the unit's order of arrival
+ * which stage the photo is (arrival, temperature, gauge, empty), the unit's order of arrival
  * at the paver and its plate.
  */
 const photosForm = { type: 'object', properties: { foto: { type: 'string', title: 'Foto', 'x-input': 'photo' }, descripcion: { type: 'string', title: 'Descripción', maxLength: 200 } }, required: ['foto'] };

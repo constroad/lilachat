@@ -612,3 +612,18 @@ Lo que `specs/ARCHITECTURE.spec.md` (§120 a §134) afirma de la interfaz y no e
   `GestureHandlerRootView`.
 - **Sin verificar todavía:** la cámara web en un iPhone real y el pellizco en
   un teléfono (el emulador no tiene gran angular).
+
+### E2E web 13/11 (Playwright en el Chrome de José, producción)
+
+- **Riel claro:** las iniciales «JZ» de Personal se leen (lila claro sobre el riel violeta).
+- **Foto en espera (web):** aparece la miniatura, la vista previa abre y cierra, ✕ la quita; nada se envía.
+  Dos defectos encontrados y arreglados: la miniatura quedaba fuera del borde del campo y el botón
+  seguía siendo el micrófono. Ahora va dentro del campo y el botón dice Enviar (test en `Composer.test.tsx`).
+- **Incógnito (web):** en #oficina de Globofast no hay campo de texto, se ve el aviso y el espacio cuenta 2 miembros.
+- **Borrar en el chat con uno mismo:** «Eliminar para mí» oculta solo en ese navegador (`web/src/local/ocultos.ts`),
+  así que la otra computadora lo seguía mostrando. En ese chat lo propio se borra para todos en el server
+  (`accionesDeMensaje` con `selfChat`); el `msg.deleted` llega a todas las sesiones. Pendiente general:
+  «para mí» en los demás chats sigue siendo por dispositivo.
+- **Galería de Inframaq:** `inframaq.constroad.com` entra en los hosts de la galería, para las fotos de
+  la recepción en el hilo de #agregados (agentes 9bddd27 arma el `gallery` con `data.fotos`).
+- **Visto en consola:** un script en línea bloqueado por la CSP es el que inyecta Cloudflare, no de la app.

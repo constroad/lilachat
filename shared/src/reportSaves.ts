@@ -311,7 +311,7 @@ function arrivalOrderOf(section: RepeatSection, itemId: string, ingresoKey: stri
  * and its plate («Ingreso · llegada n.º 2 a descarga · F2K-908»). Only when nothing is written.
  */
 function withUnitCaption(form: AppForm, document: FieldDocument, path: SectionPath): AppForm {
-  const caption = form.schema.properties[CAPTION_FIELD];
+  const caption = form.schema.properties?.[CAPTION_FIELD];
   const section = document.sections.find((one) => one.id === path.sectionId);
   if (!caption || caption.default !== undefined || section?.kind !== 'repeat' || !path.itemId) return form;
   const entry = section.template.find((one) => one.id === path.key);

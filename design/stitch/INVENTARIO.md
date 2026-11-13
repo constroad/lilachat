@@ -281,3 +281,13 @@ El cliente del enlace de servicio vive en el proyecto `773748608093847613`: `o-1
 Lo que Stitch inventó y NO va: el chip «TRAMO: KM 14+320» de cam-02 y la cuadrícula de fondo. El
 sello va pegado ABAJO A LA IZQUIERDA del cuadro (en cam-01 y cam-03 Stitch lo dejó a media
 altura). Nunca lleva el nombre de quien toma la foto.
+
+## Drive del servicio (José 13/11: un solo «Subir», vista lista y cuadrícula)
+
+Proyecto 15540754270713720465. Ids en `design/stitch/registro.jsonl`. Spec: `specs/ARCHITECTURE.spec.md`, «Drive del servicio».
+
+| Slug | Pantalla | Estado |
+| --- | --- | --- |
+| `drv-01-lista` | Drive en lista: cabecera con conteo, Lista / Cuadrícula, «+ Subir», buscador, chips por tipo, carpetas y recientes | implementado APK y web |
+| `drv-02-cuadricula` | Drive en cuadrícula: carpetas en tarjetas, archivos en miniaturas por día | implementado APK y web |
+| `drv-03-subir` | «Subir» abierto: hoja inferior en el celular, menú en escritorio, «Suelta aquí» y un archivo subiendo | implementado (la barra de progreso por archivo queda como línea de estado) |

@@ -195,6 +195,7 @@ export * from './mediaCrypto.js';
 export * from './groupCall.js';
 export * from './routines.js';
 export * from './serviceFiles.js';
+export * from './driveView.js';
 export * from './driveUpload.js';
 export * from './compareText.js';
 export * from './serviceDetail.js';

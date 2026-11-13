@@ -1,18 +1,19 @@
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { Camera, ChevronLeft, ChevronRight, Cloud, ExternalLink, FileText, Folder, Search, Upload, Video } from 'lucide-react';
-import { DRIVE_DOCUMENT_ACCEPT, DRIVE_VIDEO_SECONDS, OBSERVATION_VIDEO_SECONDS, photoMarkOf, withPhotoMark, type PhotoMark, DRIVE_UPLOADING, driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService, type ViewableFile } from '@lilachat/shared';
+import { ChevronLeft, ChevronRight, Cloud, CloudUpload, ExternalLink, Folder, Search } from 'lucide-react';
+import { DRIVE_DOCUMENT_ACCEPT, DRIVE_VIDEO_SECONDS, OBSERVATION_VIDEO_SECONDS, filesOfKind, photoMarkOf, withPhotoMark, type DriveKind, type DriveLayout, type DriveUploadOption, type PhotoMark, driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService, type ViewableFile } from '@lilachat/shared';
 import { FileThumb, usePortalFileViewer } from './PortalFileViewer';
 import { cameraEnvironment, liveCameraFits } from '../../chat/camera/shotStamp';
 import { openWebCamera, shootOrPick, type PickerHandle } from '../../chat/camera/cameraRequests';
 import { useDriveUpload } from './useDriveUpload';
+import { DriveGridWeb, DriveHeaderWeb, DriveKindChipsWeb, FolderCardsWeb } from './DriveParts';
 import { PhotoPhaseBar } from './PhotoPhaseBar';
 import { photoPhaseSender } from './workMap/workProgressSender';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
 
-const RECENT = 3;
+const RECENT = 6;
 const SEARCH_MIN = 2;
 const LIST = 'divide-y divide-outline/10 overflow-hidden rounded-xl border border-outline/15 bg-surface';
-const KICKER = 'mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant';
+const KICKER = 'text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant';
 
 const viewableOf = (file: ServiceFile): ViewableFile => ({ url: file.url, name: file.name, mime: file.mime, ...(file.thumbUrl ? { thumbUrl: file.thumbUrl } : {}), ...(file.modifiedAt ? { when: file.modifiedAt } : {}) });
 type OpenFile = (file: ServiceFile) => void;
@@ -30,41 +31,57 @@ function FileRow({ file, onOpen }: { file: ServiceFile; onOpen: OpenFile }) {
   );
 }
 
-function FolderRows(props: { files: readonly ServiceFile[]; onOpen: (folder: string) => void }) {
+function FolderRows(props: { files: readonly ServiceFile[]; layout: DriveLayout; onOpen: (folder: string) => void }) {
   const folders = driveFolders(props.files);
   if (!folders.length) return null;
   return (
     <section>
-      <p className={`${KICKER} flex justify-between`}>Carpetas principales <span className="font-mono normal-case tracking-normal">{folders.length === 1 ? '1 carpeta' : `${folders.length} carpetas`}</span></p>
-      <div className={LIST}>
-        {folders.map((one) => (
-          <button key={one.name} type="button" data-testid={`carpeta-${one.name}`} onClick={() => props.onOpen(one.name)} className="flex min-h-[52px] w-full items-center gap-3 px-3 text-left hover:bg-background">
-            <Folder size={18} className="text-primary" />
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold">{one.name}</span>
-            <span className="text-sm font-semibold tabular-nums text-on-surface-variant">{one.count}</span>
-            <ChevronRight size={15} className="text-on-surface-variant" />
-          </button>
-        ))}
-      </div>
+      <p className={`${KICKER} flex justify-between`}>Carpetas <span className="font-mono normal-case tracking-normal">{folders.length === 1 ? '1 carpeta' : `${folders.length} carpetas`}</span></p>
+      {props.layout === 'grid' ? <FolderCardsWeb folders={folders} onOpen={props.onOpen} /> : (
+        <div className={LIST}>
+          {folders.map((one) => (
+            <button key={one.name} type="button" data-testid={`carpeta-${one.name}`} onClick={() => props.onOpen(one.name)} className="flex min-h-[52px] w-full items-center gap-3 px-3 text-left hover:bg-background">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary"><Folder size={16} /></span>
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold">{one.name}</span>
+              <span className="text-sm font-semibold tabular-nums text-on-surface-variant">{one.count}</span>
+              <ChevronRight size={15} className="text-on-surface-variant" />
+            </button>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
 
-/** Search results, one folder, or the root: top folders, the newest and the loose files. */
-function DriveBody(props: { files: ServiceFile[]; query: string; folder: string | null; onFolder: (folder: string) => void; onOpen: OpenFile }) {
-  const found = useMemo(() => searchServiceFiles(props.files, props.query), [props.files, props.query]);
+/** The same files as rows or as tiles by day (designs drv-01, drv-02). */
+function FileSet(props: { files: readonly ServiceFile[]; layout: DriveLayout; onOpen: OpenFile }) {
+  if (props.layout === 'grid') return <DriveGridWeb files={props.files} onOpen={props.onOpen} />;
+  return <div className={LIST}>{props.files.map((file) => <FileRow key={file.url} file={file} onOpen={props.onOpen} />)}</div>;
+}
+
+type BodyProps = { files: ServiceFile[]; query: string; folder: string | null; kind: DriveKind; layout: DriveLayout; onFolder: (folder: string) => void; onOpen: OpenFile };
+
+/** The files the search, the folder and the chip leave, or null at the root with «Todo». */
+function narrowed(props: BodyProps): ServiceFile[] | null {
+  if (props.query.trim().length >= SEARCH_MIN) return filesOfKind(searchServiceFiles(props.files, props.query), props.kind);
+  if (props.folder) return filesOfKind(filesInFolder(props.files, props.folder), props.kind);
+  return props.kind === 'all' ? null : filesOfKind(props.files, props.kind);
+}
+
+/** Search results, one folder, one kind, or the root: folders, the newest and the loose files. */
+function DriveBody(props: BodyProps) {
+  const shown = narrowed(props);
   if (!props.files.length) return <p className="py-6 text-center text-sm text-on-surface-variant">Este servicio todavía no tiene archivos.</p>;
-  if (props.query.trim().length >= SEARCH_MIN) return <div className={LIST}>{found.length ? found.map((file) => <FileRow key={file.url} file={file} onOpen={props.onOpen} />) : <p className="p-4 text-sm text-on-surface-variant">{`Nada coincide con «${props.query.trim()}».`}</p>}</div>;
-  if (props.folder) return <div className={LIST}>{filesInFolder(props.files, props.folder).map((file) => <FileRow key={file.url} file={file} onOpen={props.onOpen} />)}</div>;
-  const loose = filesInFolder(props.files, null);
+  if (shown) return shown.length ? <FileSet files={shown} layout={props.layout} onOpen={props.onOpen} /> : <p className="p-4 text-sm text-on-surface-variant">{props.query.trim() ? `Nada coincide con «${props.query.trim()}».` : 'No hay archivos de este tipo.'}</p>;
+  const recent = props.files.slice(0, RECENT);
+  const rest = filesInFolder(props.files, null).filter((file) => !recent.includes(file));
   return (
     <>
-      <FolderRows files={props.files} onOpen={props.onFolder} />
+      <FolderRows files={props.files} layout={props.layout} onOpen={props.onFolder} />
       <section>
-        <p className={KICKER}>Recientes</p>
-        <div className={LIST}>{props.files.slice(0, RECENT).map((file) => <FileRow key={file.url} file={file} onOpen={props.onOpen} />)}</div>
+        <p className={`${KICKER} mb-2`}>Recientes</p>
+        <FileSet files={[...recent, ...rest]} layout={props.layout} onOpen={props.onOpen} />
       </section>
-      {loose.length ? <div className={LIST}>{loose.map((file) => <FileRow key={file.url} file={file} onOpen={props.onOpen} />)}</div> : null}
     </>
   );
 }
@@ -79,35 +96,78 @@ function Breadcrumb(props: { folder: string; onRoot: () => void }) {
   );
 }
 
-/** José 06/11: photos and videos go to the Drive from here, never to a report; documents too (Jeremy, 13/11). */
-function DriveUploadBar({ upload }: { upload: ReturnType<typeof useDriveUpload> }) {
-  const picker = useRef<HTMLInputElement>(null);
+const LAYOUT_KEY = 'lilachat.drive.vista';
+function readLayout(): DriveLayout {
+  try {
+    return localStorage.getItem(LAYOUT_KEY) === 'grid' ? 'grid' : 'list';
+  } catch {
+    return 'list';
+  }
+}
+function saveLayout(layout: DriveLayout): void {
+  try {
+    localStorage.setItem(LAYOUT_KEY, layout);
+  } catch {
+    // Blocked storage: the view holds until the tab closes.
+  }
+}
+
+/**
+ * The ways in behind «Subir» (José 06/11; documents, Jeremy 13/11; one button, José 13/11): the
+ * live camera on a phone, the file pickers everywhere. The inputs stay hidden here.
+ */
+function useDriveUploads(upload: ReturnType<typeof useDriveUpload>) {
+  const media = useRef<HTMLInputElement>(null);
   const documents = useRef<HTMLInputElement>(null);
-  const pick = (files: FileList | null) => {
-    const file = files?.[0];
-    if (file) void upload.send(file);
-    if (picker.current) picker.current.value = '';
-  };
   const camera = liveCameraFits(cameraEnvironment(), {});
   const shoot = (video: boolean) => void openWebCamera({ title: video ? 'Video al Drive' : 'Foto al Drive', video: { maxSeconds: DRIVE_VIDEO_SECONDS, first: video } }).then((file) => file && upload.send(file));
-  const button = 'flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-outline/15 bg-surface px-3 text-sm font-semibold text-primary disabled:opacity-60';
-  return (
-    <div className="flex flex-col gap-1.5">
-      {/* On a phone four buttons: two by two, so each keeps its word and a thumb-sized target. */}
-      <div className={camera ? 'grid grid-cols-2 gap-2' : 'flex gap-2'}>
-        {camera ? <button type="button" data-testid="drive-foto" disabled={upload.sending} onClick={() => shoot(false)} className={button}><Camera size={16} /> Foto</button> : null}
-        {camera ? <button type="button" data-testid="drive-video" disabled={upload.sending} onClick={() => shoot(true)} className={button}><Video size={16} /> Video</button> : null}
-        <button type="button" data-testid="subir-al-drive" disabled={upload.sending} onClick={() => picker.current?.click()} className={button}>
-          <Upload size={16} /> {upload.sending ? DRIVE_UPLOADING : camera ? 'Galería' : 'Subir foto o video'}
-        </button>
-        <button type="button" data-testid="drive-documento" disabled={upload.sending} onClick={() => documents.current?.click()} className={button}><FileText size={16} /> Documento</button>
-      </div>
-      <input ref={picker} data-testid="archivo-para-drive" type="file" accept="image/*,video/*" hidden onChange={(event) => pick(event.target.files)} />
-      <input ref={documents} data-testid="documento-para-drive" type="file" accept={DRIVE_DOCUMENT_ACCEPT} hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload.send(file); event.target.value = ''; }} />
-      {upload.message ? <p role="status" className={upload.failed ? 'text-sm text-error' : 'text-sm text-on-surface-variant'}>{upload.message}</p> : null}
-    </div>
+  const options: DriveUploadOption['id'][] = camera ? ['photo', 'video', 'gallery', 'document'] : ['gallery', 'document'];
+  const pick = (option: DriveUploadOption['id']) => {
+    if (option === 'photo' || option === 'video') return shoot(option === 'video');
+    (option === 'gallery' ? media : documents).current?.click();
+  };
+  const sendFirst = (input: HTMLInputElement) => {
+    const file = input.files?.[0];
+    if (file) void upload.send(file);
+    input.value = '';
+  };
+  const inputs = (
+    <>
+      <input ref={media} data-testid="archivo-para-drive" type="file" accept="image/*,video/*" hidden onChange={(event) => sendFirst(event.target)} />
+      <input ref={documents} data-testid="documento-para-drive" type="file" accept={DRIVE_DOCUMENT_ACCEPT} hidden onChange={(event) => sendFirst(event.target)} />
+    </>
   );
+  return { options, pick, inputs };
 }
+
+/** On a computer a file dropped on the Drive goes up too (design drv-03, «Suelta aquí»). */
+function useDropZone(onFile: (file: File) => void) {
+  const [over, setOver] = useState(false);
+  const handlers = {
+    onDragOver: (event: React.DragEvent) => {
+      if (!event.dataTransfer.types.includes('Files')) return;
+      event.preventDefault();
+      setOver(true);
+    },
+    onDragLeave: (event: React.DragEvent) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setOver(false);
+    },
+    onDrop: (event: React.DragEvent) => {
+      event.preventDefault();
+      setOver(false);
+      const file = event.dataTransfer.files[0];
+      if (file) onFile(file);
+    },
+  };
+  return { over, handlers };
+}
+
+const DropHint = () => (
+  <div data-testid="drive-soltar" className="flex items-center gap-3 rounded-xl border-2 border-dashed border-primary/50 bg-primary/5 p-4 text-sm">
+    <CloudUpload size={22} className="text-primary" />
+    <span><b>Suelta aquí para subirlo al servicio</b><br /><span className="text-on-surface-variant">Fotos, videos o documentos PDF, Word, Excel o PowerPoint.</span></span>
+  </div>
+);
 
 /**
  * The Drive of one service, a tab of its detail (José 06/11; design f-06):
@@ -147,11 +207,18 @@ export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: Spac
   const viewer = usePortalFileViewer();
   const [folder, setFolder] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [kind, setKind] = useState<DriveKind>('all');
+  const [layout, setLayout] = useState<DriveLayout>(readLayout);
+  const uploads = useDriveUploads(upload);
+  const drop = useDropZone((file) => void upload.send(file));
   const driveUrl = answer?.ok ? answer.value.driveUrl : (answer?.portalUrl ?? null);
   return (
-    <div data-testid="drive-servicio" className="flex flex-col gap-3">
+    <div data-testid="drive-servicio" className="flex flex-col gap-3" {...drop.handlers}>
+      <DriveHeaderWeb count={answer?.ok ? answer.value.files.length : null} layout={layout} onLayout={(next) => (saveLayout(next), setLayout(next))} options={uploads.options} sending={upload.sending} onPick={uploads.pick} />
+      {uploads.inputs}
+      {upload.message ? <p role="status" className={upload.failed ? 'text-sm text-error' : 'text-sm text-on-surface-variant'}>{upload.message}</p> : null}
+      {drop.over ? <DropHint /> : null}
       {folder ? <Breadcrumb folder={folder} onRoot={() => setFolder(null)} /> : null}
-      <DriveUploadBar upload={upload} />
       {answer === null ? <div data-testid="drive-cargando" className="h-32 animate-pulse rounded-xl bg-surface" /> : null}
       {answer && !answer.ok ? <p data-testid="drive-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm font-semibold">{answer.message}</p> : null}
       {answer?.ok ? (
@@ -160,7 +227,8 @@ export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: Spac
           <input data-testid="buscar-drive" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar en el Drive del servicio…" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
         </label>
       ) : null}
-      {answer?.ok ? <DriveBody files={answer.value.files} query={query} folder={folder} onFolder={setFolder} onOpen={(file) => viewer.open(viewableOf(file), answer.value.files.map(viewableOf), undefined, undefined, phaseOf)} /> : null}
+      {answer?.ok && answer.value.files.length ? <DriveKindChipsWeb kind={kind} onKind={setKind} /> : null}
+      {answer?.ok ? <DriveBody files={answer.value.files} query={query} folder={folder} kind={kind} layout={layout} onFolder={setFolder} onOpen={(file) => viewer.open(viewableOf(file), answer.value.files.map(viewableOf), undefined, undefined, phaseOf)} /> : null}
       {viewer.viewer}
       {driveUrl ? <a href={driveUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary"><ExternalLink size={14} /> {answer?.ok ? 'Abrir en Google Drive' : 'Abrir el servicio en el Portal'}</a> : null}
     </div>

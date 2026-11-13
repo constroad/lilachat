@@ -109,7 +109,7 @@ describe('sending a file to the service Drive (José 06/11)', () => {
     // Arrange
     ticket.mimeTypes = [...ticket.mimeTypes, 'application/pdf'];
     const calls = open();
-    await screen.findByTestId('drive-documento');
+    await screen.findByTestId('subir-al-drive');
     // Act
     fireEvent.change(screen.getByTestId('documento-para-drive'), { target: { files: [new File(['%PDF'], 'Acta de entrega.pdf', { type: '' })] } });
     // Assert
@@ -168,5 +168,41 @@ describe('marking a Drive photo «antes» or «después» (José 08/11, Portal 2
     fireEvent.click(screen.getByTestId('archivo-drive'));
     expect(await screen.findByTestId('visor-foto')).toBeInTheDocument();
     expect(screen.queryByTestId('foto-fase')).toBeNull();
+  });
+});
+
+describe('one «Subir», list or grid, and the chips (José 13/11, designs drv-01/02/03)', () => {
+  afterEach(() => localStorage.clear());
+  const files = [
+    { ...file('t1.jpg', 'Fotos de obra'), modifiedAt: '2026-11-13T15:00:00.000Z' },
+    { ...file('acta.pdf'), modifiedAt: '2026-11-12T15:00:00.000Z' },
+  ];
+
+  it('a single «Subir» opens the menu; on a computer it offers the files of the equipment and documents', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', reply({ files, drive_url: null }));
+    render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" />);
+    // Act
+    fireEvent.click(await screen.findByTestId('subir-al-drive'));
+    // Assert
+    expect(screen.getByTestId('menu-subir-drive')).toBeInTheDocument();
+    expect(screen.getByTestId('drive-galeria')).toHaveTextContent('Fotos y videos del equipo');
+    expect(screen.getByTestId('drive-documento')).toHaveTextContent('PDF, Word, Excel o PowerPoint');
+    expect(screen.queryByTestId('drive-foto')).toBeNull();
+  });
+
+  it('the grid groups by day and is remembered; the chip «Documentos» leaves only the PDF', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', reply({ files, drive_url: null }));
+    const { unmount } = render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" />);
+    // Act
+    fireEvent.click(await screen.findByTestId('drive-vista-cuadricula'));
+    // Assert
+    expect(screen.getByTestId('drive-cuadricula')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('drive-tipo-document'));
+    expect(screen.getAllByTestId('archivo-drive').map((one) => one.textContent)).toEqual([expect.stringContaining('acta.pdf')]);
+    unmount();
+    render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" />);
+    expect(await screen.findByTestId('drive-cuadricula')).toBeInTheDocument();
   });
 });

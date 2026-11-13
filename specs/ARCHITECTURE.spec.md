@@ -15618,13 +15618,26 @@ Sin verificar: la cuenta real. No se leyó la base; se dedujo del código y de l
 - En la web, `connect-src` permite `https://constroad.com`. Sin eso el navegador
   corta la subida antes de salir.
 
-- **Documentos (Jeremy vía José, 13/11: «no hay forma de adjuntar documento»).** APK: cuarto botón
-  «Documento» (los cuatro con el ícono sobre la palabra). Web: «Documento» junto a «Galería» (en el
-  celular, dos por fila). PDF, Word, Excel y PowerPoint. El tipo sale de la extensión
-  (`documentTypeOf`, `shared/src/driveUpload.ts`): Android y algunos navegadores mandan un PDF como
-  `application/octet-stream` o sin tipo. Solo sube si el ticket de Portal lo anuncia. Sin eso dice
-  «Ese tipo de archivo no se puede subir al Drive.». Lo de Portal (`SERVICE_DRIVE_MIME_TYPES`) se le
-  pidió a su sesión el 13/11.
+- **Documentos (Jeremy vía José, 13/11: «no hay forma de adjuntar documento»).** PDF, Word, Excel y
+  PowerPoint. El tipo sale de la extensión (`documentTypeOf`, `shared/src/driveUpload.ts`): Android y
+  algunos navegadores mandan un PDF como `application/octet-stream` o sin tipo. Solo sube si el ticket
+  de Portal lo anuncia; sin eso dice «Ese tipo de archivo no se puede subir al Drive.». Portal los
+  acepta desde 7822bc25 (13/11), con el tope de 50 MB, en la raíz del Drive del servicio.
+- **Un solo «Subir», lista o cuadrícula (José 13/11: «nunca vi un diseño que tenga varios botones en
+  un drive»; diseños Stitch drv-01/02/03).** La primera versión de documentos puso cuatro botones
+  (Foto, Video, Galería, Documento) sin diseño. Ahora:
+  - Cabecera «DRIVE DEL SERVICIO · N archivos», el selector Lista / Cuadrícula y UN botón «Subir».
+  - «Subir» abre una hoja en el APK (`DriveUploadSheet`) y un menú en la web (`DriveParts.tsx`):
+    «Tomar foto», «Grabar video», «Desde la galería», «Documento». En una computadora sin cámara en
+    vivo, solo galería («Fotos y videos del equipo») y documento. Las opciones salen de
+    `DRIVE_UPLOAD_OPTIONS` (`shared/src/driveView.ts`).
+  - Chips Todo · Fotos · Videos · Documentos (`filesOfKind`).
+  - Cuadrícula con miniaturas por día en Lima, «Hoy · 13 nov» (`driveDayGroups`); carpetas en
+    tarjetas. Las columnas se miden por ancho (2, 3 o 5). La vista elegida se recuerda: en la web en
+    `localStorage` (`lilachat.drive.vista`), en el APK mientras la app está abierta.
+  - En la web se puede soltar un archivo sobre el Drive («Suelta aquí…»).
+  - Lo que Stitch inventó y NO va: la descripción de cada carpeta («Registro fotográfico con GPS»),
+    el peso en la tarjeta y el candado del PDF. Portal no manda esos datos.
 
 ## Cierre de la app: `scrollToIndex out of range` (José 06/11)
 

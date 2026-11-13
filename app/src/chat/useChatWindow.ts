@@ -4,7 +4,7 @@ import { extendWindow, nextWindowPage, targetStatus, windowFromPage, type Messag
 import { messageWindowPage } from '../api/client';
 import { windowRows } from './messageWindowRows';
 import { filaDeArchivoEnCola, pendientesEnOrden, sinPendientesConfirmados } from './filasDelChat';
-import { sinOcultos } from './ocultos';
+import { withoutHidden } from './ocultos';
 import { useWithoutDisappeared } from './useWithoutDisappeared';
 import { planNotInList } from './planNotInList';
 import { isPending, type Row } from './rowKinds';
@@ -42,7 +42,7 @@ export function useChatWindow(p: {
   const liveRows: Row[] = useMemo(
     () => [
       // «Eliminar para mí» (FL9): hidden on this phone.
-      ...sinOcultos(chatRows, ocultos),
+      ...withoutHidden(chatRows, ocultos),
       // What is pending, in the order it was sent. The echo can arrive before the ack:
       // without the filter the bubble showed twice (files share their `clientKey`).
       ...pendientesEnOrden(

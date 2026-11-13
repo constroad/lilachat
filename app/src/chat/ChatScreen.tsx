@@ -38,7 +38,7 @@ import { usePdfViewer } from './pdf/usePdfViewer';
 import { EncabezadoDelChat } from './EncabezadoDelChat';
 import { EnviarFotos } from './EnviarFotos';
 import { useChatAttachments } from './useAdjuntosDelChat';
-import { sinOcultos, useOcultos } from './ocultos';
+import { withoutHidden, useOcultos } from './ocultos';
 import { useDivisorNoLeidos } from './useDivisorNoLeidos';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
@@ -260,9 +260,9 @@ export function ChatScreen({
   });
 
   // Buscar dentro del chat (FL9): sobre lo que se ve —sin lo «eliminado para mí»—.
-  const visiblesParaBuscar = useMemo(() => sinOcultos(messages, ocultos), [messages, ocultos]);
+  const visibleForSearch = useMemo(() => withoutHidden(messages, ocultos), [messages, ocultos]);
   // A match above the drawn rows opens its window (pending 44): scrolling alone did nothing (E2E, 22/10).
-  const busqueda = useBuscarEnChat({ mensajes: visiblesParaBuscar, irA: (seq) => saltarA(seq, 'No se pudo abrir ese mensaje.') });
+  const busqueda = useBuscarEnChat({ mensajes: visibleForSearch, irA: (seq) => saltarA(seq, 'No se pudo abrir ese mensaje.') });
   const menuKind = esBorrador ? 'notes' : chatName.startsWith('# ') ? 'channel' : esGrupoChat ? 'group' : 'direct';
   const headerMenu = useChatHeaderMenu({ chatId, jwt: credential.jwt, kind: menuKind, onDetail: (section) => (setDetailSection(section ?? null), setVerDetalle(true)), onSearch: busqueda.abrir, onError: setMediaError });
 

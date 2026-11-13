@@ -12,7 +12,7 @@ afterEach(async () => {
   await base.delete();
 });
 
-/** «Eliminar para mí»: se oculta en este navegador al instante; el server lo guarda para los otros dispositivos (13/11). */
+/** «Eliminar para mí»: hidden in this browser at once; the server keeps it for my other devices (13/11). */
 describe('ocultos', () => {
   it('ocultar uno lo agrega al chat, sin repetir', async () => {
     nuevaBase();

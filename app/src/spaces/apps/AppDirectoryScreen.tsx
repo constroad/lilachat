@@ -34,20 +34,7 @@ export function AppDirectoryScreen(props: { space: ClientWorkspace; apps: SpaceA
   return (
     <Modal visible animationType="slide" onRequestClose={props.onClose}>
       <View testID="pantalla-apps" className="flex-1 bg-background" style={{ paddingTop: margins.cabecera }}>
-        <View className="flex-row items-center gap-2 border-b border-outline/10 px-3 pb-2">
-          <Pressable testID="apps-volver" onPress={props.onClose} accessibilityLabel="Volver" className="h-11 w-11 items-center justify-center">
-            <ArrowLeft size={22} color={colors['on-surface']} />
-          </Pressable>
-          <View className="min-w-0 flex-1">
-            <View className="flex-row items-center gap-2">
-              <Text className="text-[22px] font-bold text-on-surface">Apps</Text>
-              {apps.directory ? (
-                <View className="rounded-full bg-primary/10 px-2.5 py-0.5"><Text className="text-[13px] font-semibold text-primary">{`${all.length} ${all.length === 1 ? 'disponible' : 'disponibles'}`}</Text></View>
-              ) : null}
-            </View>
-            <Text numberOfLines={1} className="text-[13px] text-on-surface-variant">{`Espacio ${space.name}`}</Text>
-          </View>
-        </View>
+        <DirectoryHeader count={apps.directory ? all.length : null} spaceName={space.name} onBack={props.onClose} />
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 24 }} keyboardShouldPersistTaps="handled">
           <View style={{ width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' }}>
             <View className="min-h-[48px] flex-row items-center gap-2 rounded-xl border border-outline/20 bg-surface px-3">
@@ -83,7 +70,7 @@ export function AppDirectoryScreen(props: { space: ClientWorkspace; apps: SpaceA
       </View>
       {chosen ? (
         <AppDetailScreen
-          {...(props.initialTab && chosen.appId === props.initialAppId ? { initialTab: props.initialTab } : {})}
+          initialTab={tabFor(props, chosen.appId)}
           app={chosen}
           jwt={props.jwt}
           spaceId={space.id}
@@ -128,5 +115,31 @@ function DirectoryRow(props: { app: DirectoryApp; first: boolean; admin: boolean
         </Pressable>
       ) : null}
     </Pressable>
+  );
+}
+
+/** The tab a link asked for («/avisos», José 13/11), only for the app it named. */
+function tabFor(props: { initialAppId?: string | null; initialTab?: AppDetailTab }, appId: string): AppDetailTab | undefined {
+  return props.initialTab && appId === props.initialAppId ? props.initialTab : undefined;
+}
+
+/** «Apps», how many there are once read, and the space's name. */
+function DirectoryHeader(props: { count: number | null; spaceName: string; onBack: () => void }) {
+  const colors = useColores();
+  return (
+    <View className="flex-row items-center gap-2 border-b border-outline/10 px-3 pb-2">
+      <Pressable testID="apps-volver" onPress={props.onBack} accessibilityLabel="Volver" className="h-11 w-11 items-center justify-center">
+        <ArrowLeft size={22} color={colors['on-surface']} />
+      </Pressable>
+      <View className="min-w-0 flex-1">
+        <View className="flex-row items-center gap-2">
+          <Text className="text-[22px] font-bold text-on-surface">Apps</Text>
+          {props.count === null ? null : (
+            <View className="rounded-full bg-primary/10 px-2.5 py-0.5"><Text className="text-[13px] font-semibold text-primary">{`${props.count} ${props.count === 1 ? 'disponible' : 'disponibles'}`}</Text></View>
+          )}
+        </View>
+        <Text numberOfLines={1} className="text-[13px] text-on-surface-variant">{`Espacio ${props.spaceName}`}</Text>
+      </View>
+    </View>
   );
 }

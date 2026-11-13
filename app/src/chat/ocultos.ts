@@ -14,7 +14,7 @@ import { mergeHidden } from './hiddenRows';
 const clave = (chatId: string) => `lilachat.ocultos.${chatId}`;
 const hiddenUrl = (chatId: string) => `${BASE_URL}/api/chats/${chatId}/ocultos`;
 
-export { mergeHidden, sinOcultos } from './hiddenRows';
+export { mergeHidden, withoutHidden } from './hiddenRows';
 
 async function readLocal(chatId: string): Promise<Set<number>> {
   const raw = await AsyncStorage.getItem(clave(chatId)).catch(() => null);

@@ -1,9 +1,9 @@
 import type { BaseLocal } from './baseLocal';
 
 /**
- * «Eliminar para mí» (W2): el mensaje se oculta en este navegador al instante,
- * y desde el 13/11 el server guarda la lista para mis otros dispositivos. Vive en `meta` como la lista de `seq` de
- * cada chat; cerrar sesión lo borra junto con la base.
+ * «Eliminar para mí» (W2): the message hides in this browser at once, and
+ * since 13/11 the server keeps the list for my other devices. It lives in
+ * `meta` as each chat's list of `seq`; signing out wipes it with the base.
  */
 const clave = (chatId: string) => `ocultos:${chatId}`;
 

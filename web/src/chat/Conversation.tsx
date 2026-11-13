@@ -9,6 +9,7 @@ import { Avatar } from '../ui/Avatar';
 import type { AgendaReminder, DirectoryApp, MencionElegida, MencionEnMensaje, WinkId } from '@lilachat/shared';
 import { channelLinksOf, chatHasActionPlace, clientHeaderSubtitle, formatUltimaVez, presenceLine, type PresenceStatus, memberCountLabel } from '@lilachat/shared';
 import { Composer, type ContextoDelComposer } from './Composer';
+import type { ComponentProps } from 'react';
 import { CardCommandContext, OrderCardContext, type CardCommand } from './botBlocks/cardCommand';
 import { useChatCommandsWithActions } from './commands/useChatCommands';
 import { AppCommandsBar, AppConversationHeader, type AppConversationTab } from '../spaces/apps/AppConversation';
@@ -84,6 +85,8 @@ export function Conversation(props: {
   /** Editar uno desde su tarjeta (W3c). */
   onEditReminder?: (recordatorio: AgendaReminder) => void;
   onElegirArchivos: (files: File[], typed?: TypedCaption) => void;
+  /** José 13/11: files waiting inside the composer. */
+  staged?: ComponentProps<typeof Composer>['staged'];
   /** La franja del mensaje fijado (19/10), bajo la cabecera. */
   franja?: ReactNode;
   /** The cards queued over the writing bar (backlog 36). */
@@ -273,6 +276,7 @@ export function Conversation(props: {
         onWink={props.onWink}
         recipient={chat.name ?? chat.phone}
         onElegirArchivos={props.onElegirArchivos}
+        staged={props.staged}
         contexto={props.contexto}
         onCancelarContexto={props.onCancelarContexto}
         mencionables={props.mencionables}

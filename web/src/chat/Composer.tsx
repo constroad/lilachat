@@ -1,3 +1,4 @@
+import { StagedFilesWeb, type StagedFilesProps } from './StagedFilesWeb';
 import { Suspense, useEffect, useLayoutEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { insertarEnTexto, type MencionEnMensaje } from '@lilachat/shared';
 import type { MencionElegida } from '@lilachat/shared';
@@ -58,6 +59,7 @@ function ComposerField({
   onCreateReminder,
   onCreateChecklist,
   onElegirArchivos,
+  staged,
   contexto,
   onCancelarContexto,
   mencionables,
@@ -102,6 +104,8 @@ function ComposerField({
   onCreateChecklist?: () => void;
   /** Las fotos o archivos elegidos (o pegados). Quien recibe esto muestra la vista previa y sube. */
   onElegirArchivos: (files: File[], typed?: TypedCaption) => void;
+  /** José 13/11: files waiting inside the field; send takes the text as caption. */
+  staged?: StagedFilesProps & { onSend: (caption: string) => void };
 }) {
   const [text, setText] = useState(() => readDraft(chatId));
   // Saved as it is typed, since a reload runs no cleanup. The text of a message being edited is not a draft.
@@ -214,6 +218,11 @@ function ComposerField({
 
   const submit = () => {
     const value = text.trim();
+    if (staged?.files.length) {
+      setText('');
+      staged.onSend(value);
+      return;
+    }
     if (!value) return;
     setText('');
     const rangos = menciones.mencionesDe(value);
@@ -315,6 +324,7 @@ function ComposerField({
         {commands ? <ChatQuickActions commands={commands} onWriteCommand={writeCommand} /> : null}
 
         <div className="relative min-w-0 flex-1">
+        {staged?.files.length ? <StagedFilesWeb files={staged.files} onRemove={staged.onRemove} onPreview={staged.onPreview} /> : null}
         <SugerenciasDeMencion opciones={menciones.opciones} activa={menciones.activa} onElegir={elegirMencion} />
         <EmojiSuggestions options={emojis.options} active={emojis.active} onPick={pickEmoji} />
         <textarea
@@ -381,7 +391,7 @@ function ComposerField({
           data-testid="btn-enviar"
           aria-label={contexto?.tipo === 'edicion' ? 'Guardar' : 'Enviar'}
           onClick={submit}
-          disabled={!text.trim()}
+          disabled={!text.trim() && !staged?.files.length}
           className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary text-on-primary transition-opacity disabled:opacity-40"
         >
           <Send size={18} />

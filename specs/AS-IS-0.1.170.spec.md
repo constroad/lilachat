@@ -544,3 +544,12 @@ Lo que `specs/ARCHITECTURE.spec.md` (§120 a §134) afirma de la interfaz y no e
 - **Diagnóstico con medidas de pantalla** (`diag-pantalla`): ventana,
   pantalla, capa raíz y márgenes del sistema, para cerrar la hoja tapada por
   los 3 botones sin adivinar.
+- **Web: archivos que esperan en el compositor.** Lo elegido con el clip, lo
+  pegado y lo soltado sobre el chat queda como miniaturas dentro del campo
+  (`StagedFilesWeb`, `stageFiles`); un clic abre el único preview
+  (`SendFilesDialog`) y Enter manda todo con el texto como pie. En un hilo
+  sigue el diálogo directo.
+- **Hoja del clip (APK): «Fotos recientes» va primero.** Las medidas del
+  diagnóstico dieron bien (ventana 914 dp, margen inferior 48 dp) y aun así lo
+  último de la hoja se veía bajo los 3 botones. Con la tira arriba nunca queda
+  tapada, y la lista suma el margen inferior al final.

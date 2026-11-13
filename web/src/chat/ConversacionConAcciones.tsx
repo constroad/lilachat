@@ -13,6 +13,7 @@ import { ChecklistsCard } from './tarjetas/ChecklistsCard';
 import { useFijarEnLaWeb } from './useFijarEnLaWeb';
 import type { AccionSobreMensaje } from './contextoDeLaConversacion';
 import { SendFilesDialog, type TypedCaption } from './EnviarArchivos';
+import { stageFiles } from './stagedFiles';
 import { PhotoViewer } from './VisorDeFotos';
 import { PdfViewer } from './PdfViewer';
 import type { MensajeEnPantalla } from './types';
@@ -111,6 +112,8 @@ export function ConversacionConAcciones(
   const outsideMentions = useOutsideMentionsWeb({ jwt: props.jwt, chatId: chat.id });
   /** The files of the preview and where they go: an answer from the chat, or a reply in the open thread (José 10/11). */
   const [archivos, setArchivos] = useState<{ files: File[]; target: MessageTarget; typed?: TypedCaption } | null>(null);
+  /** José 13/11: picked files wait inside the composer; the dialog is their one preview. */
+  const [staged, setStaged] = useState<File[]>([]);
   const [fotoAbierta, setFotoAbierta] = useState<number | null>(null);
   // Photos, GIFs and videos; never a sticker (José, 22/10: they showed up while swiping).
   const viewerPhotos = useMemo(() => (mensajes ?? []).filter(opensInPhotoViewer), [mensajes]);
@@ -118,12 +121,14 @@ export function ConversacionConAcciones(
   const [pdfAbierto, setPdfAbierto] = useState<MensajeEnPantalla | null>(null);
   const greet = useCallback(() => void sync.enviarTexto(chat.id, '👋'), [sync, chat.id]);
   const canGreet = useCallback((noticeSeq: number) => !alreadyGreeted((mensajes ?? []).map((one) => ({ seq: one.seq, senderId: one.senderId, pending: Boolean(one.estado) })), noticeSeq, yo), [mensajes, yo]);
+  const replyTarget = (): MessageTarget => (acciones.replyingTo ? { replyToSeq: acciones.replyingTo } : {});
   /** A la cola (auditoría 19/10): cada burbuja aparece ya y sube por detrás; el pie va en el primero. */
   const subir = (lista: File[], pie: string, hd: boolean) => {
-    const target = archivos?.target ?? {};
+    const target = archivos?.target ?? replyTarget();
     // The pasted-with text went out as the caption: the field it came from empties now (José 11/11).
     archivos?.typed?.consume();
     setArchivos(null);
+    setStaged([]);
     // The answer is spent like with a text: the quote strip closes.
     if (target.replyToSeq) acciones.cancelarContexto();
     // Two or more photos or videos together go as one album (pending 12).
@@ -236,7 +241,8 @@ export function ConversacionConAcciones(
         onOutsideMentions={outsideMentions.notify}
         avisoDeMencion={<OutsideMentionNotice outside={outsideMentions} />}
         jwtParaEnlaces={chat.encrypted ? undefined : props.jwt}
-        onElegirArchivos={(files, typed) => setArchivos({ files, typed, target: acciones.replyingTo ? { replyToSeq: acciones.replyingTo } : {} })}
+        onElegirArchivos={(files) => setStaged((current) => stageFiles(current, files))}
+        staged={staged.length ? { files: staged, onRemove: (index) => setStaged((current) => current.filter((_, at) => at !== index)), onPreview: () => setArchivos({ files: staged, target: replyTarget() }), onSend: (caption) => subir(staged, caption, false) } : undefined}
         onNotaDeVoz={(nota) => void colaDeArchivosWeb.encolar(chat.id, nota.file, { durationMs: nota.ms, onda: nota.onda, hd: true })}
         mensajes={ventana.window ? windowOnScreen(ventana.window, hilos.visibles ?? []) : hilos.visibles}
         hayAnteriores={ventana.window ? ventana.window.hasOlder : props.hayAnteriores}

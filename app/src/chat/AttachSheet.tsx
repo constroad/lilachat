@@ -208,26 +208,12 @@ export function AttachSheet(props: {
         </>
       ) : (
         // José 13/11: without shrinking, the list grew past the sheet and «Fotos recientes» sat under Android's buttons.
-        <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingBottom: selected.length ? SEND_BUTTON_ROOM : 8 }}>
-          {sections.map((section, index) => (
-            <View key={section.title} className={`mx-5 py-3 ${index > 0 ? 'border-t border-outline/15' : ''}`}>
-              <Kicker>{section.title}</Kicker>
-              <View className="mt-3 flex-row" style={{ marginHorizontal: -SHEET_PADDING / 2 }}>
-                {section.options.map(({ key, label, Icon, action, testID }) => (
-                  <Pressable key={key} testID={testID} onPress={() => run(action)} android_ripple={{ color: colors.outline, borderless: true, radius: 36 }} className="items-center" style={{ width: optionWidth }}>
-                    <View className="h-14 w-14 items-center justify-center rounded-full border border-outline/15 bg-primary/10">
-                      <Icon size={22} color={colors.primary} />
-                    </View>
-                    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} className="mt-1.5 text-[13px] font-medium text-on-surface">{label}</Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          ))}
-          <View className="border-t border-outline/15 pt-3" style={{ marginHorizontal: SHEET_PADDING }}>
+        <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingBottom: (selected.length ? SEND_BUTTON_ROOM : 8) + margins.pie }}>
+          {/* José 13/11: first, so a phone's buttons never cover it (it sat at the bottom, under Samsung's three buttons). */}
+          <View className="pt-1" style={{ marginHorizontal: SHEET_PADDING }}>
             <Kicker>Fotos recientes</Kicker>
           </View>
-          <View className="pt-3">
+          <View className="pb-3 pt-3">
             {limitedBanner}
             {permissionPrompt}
             {canSeePhotos ? (
@@ -246,6 +232,21 @@ export function AttachSheet(props: {
               )
             ) : null}
           </View>
+          {sections.map((section) => (
+            <View key={section.title} className="mx-5 border-t border-outline/15 py-3">
+              <Kicker>{section.title}</Kicker>
+              <View className="mt-3 flex-row" style={{ marginHorizontal: -SHEET_PADDING / 2 }}>
+                {section.options.map(({ key, label, Icon, action, testID }) => (
+                  <Pressable key={key} testID={testID} onPress={() => run(action)} android_ripple={{ color: colors.outline, borderless: true, radius: 36 }} className="items-center" style={{ width: optionWidth }}>
+                    <View className="h-14 w-14 items-center justify-center rounded-full border border-outline/15 bg-primary/10">
+                      <Icon size={22} color={colors.primary} />
+                    </View>
+                    <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} className="mt-1.5 text-[13px] font-medium text-on-surface">{label}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ))}
         </ScrollView>
       )}
       {selected.length ? (

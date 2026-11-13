@@ -15618,6 +15618,14 @@ Sin verificar: la cuenta real. No se leyó la base; se dedujo del código y de l
 - En la web, `connect-src` permite `https://constroad.com`. Sin eso el navegador
   corta la subida antes de salir.
 
+- **Documentos (Jeremy vía José, 13/11: «no hay forma de adjuntar documento»).** APK: cuarto botón
+  «Documento» (los cuatro con el ícono sobre la palabra). Web: «Documento» junto a «Galería» (en el
+  celular, dos por fila). PDF, Word, Excel y PowerPoint. El tipo sale de la extensión
+  (`documentTypeOf`, `shared/src/driveUpload.ts`): Android y algunos navegadores mandan un PDF como
+  `application/octet-stream` o sin tipo. Solo sube si el ticket de Portal lo anuncia. Sin eso dice
+  «Ese tipo de archivo no se puede subir al Drive.». Lo de Portal (`SERVICE_DRIVE_MIME_TYPES`) se le
+  pidió a su sesión el 13/11.
+
 ## Cierre de la app: `scrollToIndex out of range` (José 06/11)
 
 Reportado en el OTA `4ce1614d`, pantalla chat: «index 6 is out of 0 to 5». El mensaje

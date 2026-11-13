@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { BackHandler, Linking, Pressable, Text, TextInput, View } from 'react-native';
-import { Camera, ChevronLeft, ChevronRight, Cloud, ExternalLink, Folder, Image as ImageIcon, Search, Video } from 'lucide-react-native';
+import { Camera, ChevronLeft, ChevronRight, Cloud, ExternalLink, FileText, Folder, Image as ImageIcon, Search, Video } from 'lucide-react-native';
 import { FileThumb } from './FileThumb';
 import { photoMarkOf, withPhotoMark, type PhotoMark, driveFileLine, driveUploadingLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
@@ -102,14 +102,14 @@ function Breadcrumb(props: { folder: string; onRoot: () => void }) {
 
 function UploadButton(props: { testID: string; label: string; icon: ReactNode; disabled: boolean; onPress: () => void }) {
   return (
-    <Pressable testID={props.testID} accessibilityRole="button" accessibilityLabel={props.label} disabled={props.disabled} onPress={props.onPress} className="min-h-[52px] flex-1 flex-row items-center justify-center gap-1.5 rounded-xl border border-outline/15 bg-surface px-2" style={{ opacity: props.disabled ? 0.6 : 1 }}>
+    <Pressable testID={props.testID} accessibilityRole="button" accessibilityLabel={props.label} disabled={props.disabled} onPress={props.onPress} className="min-h-[60px] flex-1 items-center justify-center gap-1 rounded-xl border border-outline/15 bg-surface px-1 py-2" style={{ opacity: props.disabled ? 0.6 : 1 }}>
       {props.icon}
       <Text className="text-[14px] font-semibold text-primary" numberOfLines={1}>{props.label}</Text>
     </Pressable>
   );
 }
 
-/** José 06/11: photos and videos go to the Drive from here, never to a report. */
+/** José 06/11: photos and videos go to the Drive from here, never to a report; documents too (Jeremy, 13/11). Four in a row, the icon over its word. */
 function DriveUploadBar({ upload }: { upload: ReturnType<typeof useDriveUpload> }) {
   const colors = useColores();
   return (
@@ -118,6 +118,7 @@ function DriveUploadBar({ upload }: { upload: ReturnType<typeof useDriveUpload> 
         <UploadButton testID="drive-tomar-foto" label="Foto" icon={<Camera size={17} color={colors.primary} />} disabled={upload.sending} onPress={upload.takePhoto} />
         <UploadButton testID="drive-grabar-video" label="Video" icon={<Video size={17} color={colors.primary} />} disabled={upload.sending} onPress={upload.recordVideo} />
         <UploadButton testID="drive-galeria" label="Galería" icon={<ImageIcon size={17} color={colors.primary} />} disabled={upload.sending} onPress={upload.pickFromGallery} />
+        <UploadButton testID="drive-documento" label="Documento" icon={<FileText size={17} color={colors.primary} />} disabled={upload.sending} onPress={upload.pickDocument} />
       </View>
       {upload.sending ? <Text testID="drive-subiendo" className="text-center text-[13px] text-on-surface-variant">{driveUploadingLine(upload.progress)}</Text> : null}
       {upload.message ? <Text testID="drive-aviso" className={upload.failed ? 'text-center text-[13px] text-error' : 'text-center text-[13px] text-on-surface-variant'}>{upload.message}</Text> : null}

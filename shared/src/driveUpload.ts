@@ -30,7 +30,7 @@ export const driveUploadingLine = (ratio: number): string => (ratio > 0 ? `${DRI
 /** What the phone's camera records at most: Portal says it again in each ticket. */
 export const DRIVE_VIDEO_SECONDS = 60;
 
-const NOT_ALLOWED = 'Solo se admiten fotos y videos.';
+const NOT_ALLOWED = 'Ese tipo de archivo no se puede subir al Drive.';
 const EXPIRED = 410;
 const BYTES_PER_MB = 1_048_576;
 const FIELD_MAX = 64;
@@ -42,7 +42,32 @@ export const KMZ_TYPE = 'application/vnd.google-earth.kmz';
 export const KML_TYPE = 'application/vnd.google-earth.kml+xml';
 /** The traces «Importar» sends (o-12): Portal announces them in every ticket since 07/11. */
 const TRACE_TYPES: readonly string[] = [KMZ_TYPE, KML_TYPE];
-const isAnnouncedType = (one: string): boolean => MEDIA_TYPE.test(one) || TRACE_TYPES.includes(one);
+/**
+ * Jeremy via José 13/11: documents go to the service Drive too. By extension, because Android and
+ * some browsers send a PDF or an Excel as `application/octet-stream` or with no type at all.
+ */
+const DOCUMENT_TYPES: Readonly<Record<string, string>> = {
+  pdf: 'application/pdf',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ppt: 'application/vnd.ms-powerpoint',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+};
+const DOCUMENT_MIME_TYPES: readonly string[] = Object.values(DOCUMENT_TYPES);
+/** What the Drive's «Documento» picker offers. */
+export const DRIVE_DOCUMENT_ACCEPT = [...DOCUMENT_MIME_TYPES, ...Object.keys(DOCUMENT_TYPES).map((extension) => `.${extension}`)].join(',');
+export const DRIVE_DOCUMENT_MIME_TYPES = DOCUMENT_MIME_TYPES;
+
+/** The document type of a file by its extension; null for anything that is not a document. */
+export function documentTypeOf(name: string, type: string): string | null {
+  const byName = DOCUMENT_TYPES[name.split('.').pop()?.toLowerCase() ?? ''];
+  if (byName) return byName;
+  return DOCUMENT_MIME_TYPES.includes(type) ? type : null;
+}
+
+const isAnnouncedType = (one: string): boolean => MEDIA_TYPE.test(one) || TRACE_TYPES.includes(one) || DOCUMENT_MIME_TYPES.includes(one);
 
 const isPositive = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0;
 const isShortText = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && value.length <= FIELD_MAX;

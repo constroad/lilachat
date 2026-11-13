@@ -30,6 +30,8 @@ const BLINK_OUT_MS = 180;
 /** The chips sit under the top bar; the stamp sits above the bottom panel. */
 const CHIPS_BELOW = 92;
 const BOTTOM_PANEL = 200;
+/** Held sideways the controls go to a column on the right (as the form camera, design cam-02). */
+const SIDE_COLUMN = 132;
 type Mode = CameraMode;
 
 type Props = { visible: boolean; nombreDelChat: string; onEnviar: (fotos: FotoAEnviar[], opciones: { hd: boolean }) => void; onGaleria: () => void; onCerrar: () => void };
@@ -72,6 +74,7 @@ function ChatCameraBody(props: Props & { backRef: { current: (() => boolean) | n
   const spaceLogo = useSpaceLogo(getCurrentSpaceId());
   const video = useVideoRecording(camera, sound);
   const withLogo = Boolean(logoOn && spaceLogo);
+  const landscape = width > height;
 
   useEffect(() => {
     void loadRecent().then(setRecent);
@@ -103,10 +106,10 @@ function ChatCameraBody(props: Props & { backRef: { current: (() => boolean) | n
       {/* While it captures, the preview goes transparent (the chat shows behind): black until «Enviar». */}
       {shooting || taken ? <View pointerEvents="none" className="absolute inset-0 bg-black" /> : null}
       <Animated.View pointerEvents="none" className="absolute inset-0 bg-white" style={{ opacity: blink }} />
-      {taken ? null : <StampOverlay stamp={live.stamp} logoUrl={withLogo ? spaceLogo : null} width={width} height={height} bottomInset={BOTTOM_PANEL + margins.pie} />}
-      <ChatCameraTop name={props.nombreDelChat} flash={flash} recordingMs={video.recording ? video.elapsedMs : null} onClose={props.onCerrar} onFlash={() => setFlash((before) => NEXT_FLASH[before])} />
+      {taken ? null : <StampOverlay stamp={live.stamp} logoUrl={withLogo ? spaceLogo : null} width={landscape ? width - SIDE_COLUMN : width} height={height} bottomInset={landscape ? margins.pie : BOTTOM_PANEL + margins.pie} />}
+      <ChatCameraTop name={props.nombreDelChat} flash={flash} right={landscape ? SIDE_COLUMN : 0} recordingMs={video.recording ? video.elapsedMs : null} onClose={props.onCerrar} onFlash={() => setFlash((before) => NEXT_FLASH[before])} />
       {taken ? null : <CameraChips logoOn={logoOn} logoUrl={spaceLogo} precision={live.point?.precision ?? null} top={margins.cabecera + CHIPS_BELOW} sound={mode === 'video' && !video.recording ? { on: sound, onToggle: () => setSound((before) => !before) } : undefined} />}
-      <BottomPanel mode={mode} recent={recent} recording={video.recording} shooting={shooting} onMode={setMode} onPick={(asset) => setTaken(assetOf(asset))} onShoot={() => void (mode === 'video' ? record() : shoot())} onFlip={() => setFront((before) => !before)} onGallery={props.onGaleria} />
+      <BottomPanel landscape={landscape} mode={mode} recent={recent} recording={video.recording} shooting={shooting} onMode={setMode} onPick={(asset) => setTaken(assetOf(asset))} onShoot={() => void (mode === 'video' ? record() : shoot())} onFlip={() => setFront((before) => !before)} onGallery={props.onGaleria} />
       <EnviarFotos
         embebido
         backRef={sendScreenBack}
@@ -132,11 +135,19 @@ function backStep(state: { sendScreenBack: (() => void) | null; recording: boole
   return false;
 }
 
-type BottomProps = { mode: Mode; recent: MediaLibrary.Asset[]; recording: boolean; shooting: boolean; onMode: (mode: Mode) => void; onPick: (asset: MediaLibrary.Asset) => void; onShoot: () => void; onFlip: () => void; onGallery: () => void };
+type BottomProps = { landscape: boolean; mode: Mode; recent: MediaLibrary.Asset[]; recording: boolean; shooting: boolean; onMode: (mode: Mode) => void; onPick: (asset: MediaLibrary.Asset) => void; onShoot: () => void; onFlip: () => void; onGallery: () => void };
 
 /** The recent photos (in photo mode), FOTO / VIDEO and the shutter row (design cam-04). */
 function BottomPanel(props: BottomProps) {
   const margins = useMargenes();
+  if (props.landscape) {
+    return (
+      <View testID="columna-de-camara" className="absolute bottom-0 right-0 top-0 items-center justify-center gap-6 bg-black/45" style={{ width: SIDE_COLUMN }}>
+        {props.recording ? null : <ModeSwitch vertical mode={props.mode} onMode={props.onMode} />}
+        <ShutterRow vertical mode={props.mode} recording={props.recording} shooting={props.shooting} onShoot={props.onShoot} onFlip={props.onFlip} onGallery={props.onGallery} />
+      </View>
+    );
+  }
   return (
     <View className="absolute bottom-0 left-0 right-0 bg-black/45 pt-3" style={{ paddingBottom: margins.pie + 12 }}>
       {props.mode === 'picture' && props.recent.length ? <RecentStrip recent={props.recent} onPick={props.onPick} /> : null}
@@ -148,10 +159,10 @@ function BottomPanel(props: BottomProps) {
 
 const assetOf = (asset: MediaLibrary.Asset): FotoElegida => ({ uri: asset.uri, fileName: asset.filename, mimeType: 'image/jpeg', width: asset.width, height: asset.height });
 
-function ChatCameraTop(props: { name: string; flash: FlashMode; recordingMs: number | null; onClose: () => void; onFlash: () => void }) {
+function ChatCameraTop(props: { name: string; flash: FlashMode; right: number; recordingMs: number | null; onClose: () => void; onFlash: () => void }) {
   const margins = useMargenes();
   return (
-    <View className="absolute left-0 right-0 top-0 items-center" style={{ paddingTop: margins.cabecera }}>
+    <View className="absolute left-0 top-0 items-center" style={{ paddingTop: margins.cabecera, right: props.right }}>
       <View className="w-full flex-row items-center justify-between gap-3 px-3">
         <Pressable testID="btn-cerrar-camara" accessibilityLabel="Cerrar la cámara" onPress={props.onClose} className="h-11 w-11 items-center justify-center rounded-full bg-black/45">
           <X size={24} color="white" />
@@ -190,10 +201,10 @@ function RecentStrip(props: { recent: MediaLibrary.Asset[]; onPick: (asset: Medi
   );
 }
 
-function ShutterRow(props: { mode: Mode; recording: boolean; shooting: boolean; onShoot: () => void; onFlip: () => void; onGallery: () => void }) {
+function ShutterRow(props: { vertical?: boolean; mode: Mode; recording: boolean; shooting: boolean; onShoot: () => void; onFlip: () => void; onGallery: () => void }) {
   const inner = SHUTTER - 16;
   return (
-    <View className="flex-row items-center justify-around">
+    <View className={props.vertical ? 'items-center gap-6' : 'flex-row items-center justify-around'}>
       {props.recording ? <View style={{ width: SIDE_BUTTON }} /> : (
         <Pressable testID="btn-galeria-camara" accessibilityLabel="Elegir de la galería" onPress={props.onGallery} className="items-center justify-center rounded-full bg-white/15" style={{ width: SIDE_BUTTON, height: SIDE_BUTTON }}>
           <GalleryIcon size={22} color="white" />

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import * as Crypto from 'expo-crypto';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { DRIVE_UPLOAD_DONE, DRIVE_VIDEO_SECONDS, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, OBSERVATION_VIDEO_SECONDS, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type EvidenceFile, type ManualPhotoUpload, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps, stampFieldsOf, type TimemarkStampAsked } from '@lilachat/shared';
+import { documentTypeOf, DRIVE_DOCUMENT_MIME_TYPES, DRIVE_UPLOAD_DONE, DRIVE_VIDEO_SECONDS, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, OBSERVATION_VIDEO_SECONDS, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type EvidenceFile, type ManualPhotoUpload, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps, stampFieldsOf, type TimemarkStampAsked } from '@lilachat/shared';
 import * as FileSystem from 'expo-file-system/legacy';
 import { submitAppForm } from '../../chat/commands/commandsApi';
 import { openCamera, type CapturedShot } from '../../chat/camara/cameraRequests';
@@ -19,6 +19,7 @@ type UploadState = { sending: boolean; progress: number; message: string; failed
 type UploadTarget = { target: ServiceAskTarget; chatId: string; serviceId: string; onDone: () => void };
 
 const IDLE: UploadState = { sending: false, progress: 0, message: '', failed: false };
+const NOT_A_DOCUMENT = 'Solo se suben documentos PDF, Word, Excel o PowerPoint.';
 /** A 60-second video on a field connection: 6 MB took 11 s from an office (06/11). */
 const UPLOAD_TIMEOUT_MS = 10 * 60_000;
 const CAMERA_DENIED = 'Lilachat necesita permiso para usar la cámara.';
@@ -104,8 +105,18 @@ export function useDriveUpload(upload: UploadTarget) {
     if (shot === 'denied') return setState({ ...IDLE, message: CAMERA_DENIED, failed: true });
     if (shot) await sendFile(preparedShot(shot));
   };
+  // Jeremy via José 13/11: a PDF, Word, Excel or PowerPoint to the Drive too.
+  const fromFiles = async () => {
+    const picked = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true, multiple: false, type: [...DRIVE_DOCUMENT_MIME_TYPES] });
+    const asset = picked.canceled ? null : picked.assets[0];
+    if (!asset) return;
+    const mime = documentTypeOf(asset.name, asset.mimeType ?? '');
+    if (!mime) return setState({ ...IDLE, message: NOT_A_DOCUMENT, failed: true });
+    await sendFile(Promise.resolve({ source: { uri: asset.uri, name: asset.name, mime }, facts: { mime, ...(asset.size ? { sizeBytes: asset.size } : {}) } }));
+  };
   return {
     ...state,
+    pickDocument: () => void fromFiles(),
     takePhoto: () => void fromCamera(false),
     recordVideo: () => void fromCamera(true),
     pickFromGallery: () => void ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images', 'videos'], quality: 1 }).then(fromGallery),

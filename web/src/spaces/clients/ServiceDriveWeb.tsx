@@ -1,6 +1,6 @@
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { Camera, ChevronLeft, ChevronRight, Cloud, ExternalLink, Folder, Search, Upload, Video } from 'lucide-react';
-import { DRIVE_VIDEO_SECONDS, OBSERVATION_VIDEO_SECONDS, photoMarkOf, withPhotoMark, type PhotoMark, DRIVE_UPLOADING, driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService, type ViewableFile } from '@lilachat/shared';
+import { Camera, ChevronLeft, ChevronRight, Cloud, ExternalLink, FileText, Folder, Search, Upload, Video } from 'lucide-react';
+import { DRIVE_DOCUMENT_ACCEPT, DRIVE_VIDEO_SECONDS, OBSERVATION_VIDEO_SECONDS, photoMarkOf, withPhotoMark, type PhotoMark, DRIVE_UPLOADING, driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService, type ViewableFile } from '@lilachat/shared';
 import { FileThumb, usePortalFileViewer } from './PortalFileViewer';
 import { cameraEnvironment, liveCameraFits } from '../../chat/camera/shotStamp';
 import { openWebCamera, shootOrPick, type PickerHandle } from '../../chat/camera/cameraRequests';
@@ -79,9 +79,10 @@ function Breadcrumb(props: { folder: string; onRoot: () => void }) {
   );
 }
 
-/** José 06/11: photos and videos go to the Drive from here, never to a report. */
+/** José 06/11: photos and videos go to the Drive from here, never to a report; documents too (Jeremy, 13/11). */
 function DriveUploadBar({ upload }: { upload: ReturnType<typeof useDriveUpload> }) {
   const picker = useRef<HTMLInputElement>(null);
+  const documents = useRef<HTMLInputElement>(null);
   const pick = (files: FileList | null) => {
     const file = files?.[0];
     if (file) void upload.send(file);
@@ -92,14 +93,17 @@ function DriveUploadBar({ upload }: { upload: ReturnType<typeof useDriveUpload> 
   const button = 'flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-outline/15 bg-surface px-3 text-sm font-semibold text-primary disabled:opacity-60';
   return (
     <div className="flex flex-col gap-1.5">
-      <div className="flex gap-2">
+      {/* On a phone four buttons: two by two, so each keeps its word and a thumb-sized target. */}
+      <div className={camera ? 'grid grid-cols-2 gap-2' : 'flex gap-2'}>
         {camera ? <button type="button" data-testid="drive-foto" disabled={upload.sending} onClick={() => shoot(false)} className={button}><Camera size={16} /> Foto</button> : null}
         {camera ? <button type="button" data-testid="drive-video" disabled={upload.sending} onClick={() => shoot(true)} className={button}><Video size={16} /> Video</button> : null}
         <button type="button" data-testid="subir-al-drive" disabled={upload.sending} onClick={() => picker.current?.click()} className={button}>
           <Upload size={16} /> {upload.sending ? DRIVE_UPLOADING : camera ? 'Galería' : 'Subir foto o video'}
         </button>
+        <button type="button" data-testid="drive-documento" disabled={upload.sending} onClick={() => documents.current?.click()} className={button}><FileText size={16} /> Documento</button>
       </div>
       <input ref={picker} data-testid="archivo-para-drive" type="file" accept="image/*,video/*" hidden onChange={(event) => pick(event.target.files)} />
+      <input ref={documents} data-testid="documento-para-drive" type="file" accept={DRIVE_DOCUMENT_ACCEPT} hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) void upload.send(file); event.target.value = ''; }} />
       {upload.message ? <p role="status" className={upload.failed ? 'text-sm text-error' : 'text-sm text-on-surface-variant'}>{upload.message}</p> : null}
     </div>
   );

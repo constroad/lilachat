@@ -1,5 +1,5 @@
 import { Image, Pressable, Text, View } from 'react-native';
-import { Check, Mic, MicOff } from 'lucide-react-native';
+import { Check, ImageOff, Mic, MicOff } from 'lucide-react-native';
 import { setCameraLogo } from './cameraLogoPref';
 
 const LOGO_CHIP_SIDE = 18;
@@ -20,7 +20,14 @@ export function CameraChips(props: Props) {
           <Text className="text-[14px] font-semibold" style={{ color: props.logoOn ? DARK_TEXT : 'white' }}>Logo</Text>
           {props.logoOn ? <Check size={15} color={DARK_TEXT} /> : null}
         </Pressable>
-      ) : null}
+      ) : (
+        // José 13/11: «no he visto la opción de prender o apagar el logo». A chat outside a space, or a
+        // space with no logo, said nothing; now the chip says why there is none.
+        <View testID="chip-sin-logo" accessibilityLabel="Este chat no tiene logo de espacio" className="h-9 flex-row items-center gap-1.5 rounded-full border border-white/40 bg-black/45 px-3">
+          <ImageOff size={15} color="white" />
+          <Text className="text-[14px] font-semibold" style={{ color: 'white', opacity: 0.8 }}>Sin logo</Text>
+        </View>
+      )}
       <View testID="chip-gps" className="h-9 flex-row items-center gap-1.5 rounded-full bg-black/45 px-3">
         <View className={`h-2 w-2 rounded-full ${props.precision === null ? 'bg-white/50' : 'bg-en-linea'}`} />
         <Text className="text-[14px] font-semibold" style={{ color: 'white' }}>{props.precision === null ? 'Buscando GPS…' : `GPS ±${Math.round(props.precision)} m`}</Text>

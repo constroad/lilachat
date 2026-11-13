@@ -105,6 +105,21 @@ describe('sending a file to the service Drive (José 06/11)', () => {
     expect(await screen.findByText('Ese servicio ya no existe.')).toBeInTheDocument();
   });
 
+  it('a PDF the browser left without a type goes from «Documento» as application/pdf when Portal takes documents (Jeremy, 13/11)', async () => {
+    // Arrange
+    ticket.mimeTypes = [...ticket.mimeTypes, 'application/pdf'];
+    const calls = open();
+    await screen.findByTestId('drive-documento');
+    // Act
+    fireEvent.change(screen.getByTestId('documento-para-drive'), { target: { files: [new File(['%PDF'], 'Acta de entrega.pdf', { type: '' })] } });
+    // Assert
+    expect(await screen.findByText('Archivo subido al Drive.')).toBeInTheDocument();
+    const sent = (calls.find((call) => call.url === ticket.url)!.body as FormData).get('file') as File;
+    expect(sent.name).toBe('Acta de entrega.pdf');
+    expect(sent.type).toBe('application/pdf');
+    ticket.mimeTypes = ticket.mimeTypes.filter((one) => one !== 'application/pdf');
+  });
+
   it('a file that is not a photo or a video stays here', async () => {
     // Arrange
     const calls = open();
@@ -112,7 +127,7 @@ describe('sending a file to the service Drive (José 06/11)', () => {
     // Act
     fireEvent.change(screen.getByTestId('archivo-para-drive'), { target: { files: [new File(['x'], 'nota.pdf', { type: 'application/pdf' })] } });
     // Assert
-    expect(await screen.findByText('Solo se admiten fotos y videos.')).toBeInTheDocument();
+    expect(await screen.findByText('Ese tipo de archivo no se puede subir al Drive.')).toBeInTheDocument();
     expect(calls.some((call) => call.url === ticket.url)).toBe(false);
   });
 });

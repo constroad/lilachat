@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DRIVE_UPLOAD_FAILED, driveFileRefusal, driveUploadingLine, driveUploadOf, driveUploadRequest, uploadToDrive, type DriveUpload, type DriveUploadDeps } from './driveUpload';
+import { documentTypeOf, DRIVE_UPLOAD_FAILED, driveFileRefusal, driveUploadingLine, driveUploadOf, driveUploadRequest, uploadToDrive, type DriveUpload, type DriveUploadDeps } from './driveUpload';
 import { FORMS_LEVEL } from './appForms';
 import { validateCommandResponse } from './botCommands';
 
@@ -35,7 +35,7 @@ describe('driveUploadOf', () => {
     expect(driveUploadOf({ ...wire, maxBytes: 0 })).toBeNull();
     expect(driveUploadOf({ ...wire, expiresAt: 'mañana' })).toBeNull();
     expect(driveUploadOf({ ...wire, fields: { a: 1 } })).toBeNull();
-    expect(driveUploadOf({ ...wire, mimeTypes: ['application/pdf'] })).toBeNull();
+    expect(driveUploadOf({ ...wire, mimeTypes: ['application/x-msdownload'] })).toBeNull();
     expect(driveUploadOf(null)).toBeNull();
   });
 });
@@ -65,7 +65,7 @@ describe('driveFileRefusal', () => {
   });
 
   it('says why a file does not go', () => {
-    expect(driveFileRefusal(upload, { mime: 'application/pdf' })).toBe('Solo se admiten fotos y videos.');
+    expect(driveFileRefusal(upload, { mime: 'application/pdf' })).toBe('Ese tipo de archivo no se puede subir al Drive.');
     expect(driveFileRefusal(upload, { mime: 'image/jpeg', sizeBytes: 52428801 })).toBe('El archivo pesa más de 50 MB.');
     expect(driveFileRefusal(upload, { mime: 'video/mp4', seconds: 61 })).toBe('El video dura más de 60 segundos.');
   });
@@ -160,7 +160,7 @@ describe('uploadToDrive', () => {
     // Act
     const result = await uploadToDrive(depsWith(send), { source: 'x', facts: { mime: 'application/pdf' } }, 'key-1');
     // Assert
-    expect(result).toEqual({ ok: false, message: 'Solo se admiten fotos y videos.' });
+    expect(result).toEqual({ ok: false, message: 'Ese tipo de archivo no se puede subir al Drive.' });
     expect(send).not.toHaveBeenCalled();
   });
 
@@ -179,7 +179,7 @@ describe('uploadToDrive', () => {
   it('each refusal of the upload says its reason, and a lost signal says that', async () => {
     const failing = (status?: number) => uploadToDrive(depsWith(async () => (status ? { status } : {})), file, 'key-1');
     expect(await failing(413)).toEqual({ ok: false, message: 'El archivo pesa demasiado.' });
-    expect(await failing(415)).toEqual({ ok: false, message: 'Solo se admiten fotos y videos.' });
+    expect(await failing(415)).toEqual({ ok: false, message: 'Ese tipo de archivo no se puede subir al Drive.' });
     expect(await failing(409)).toEqual({ ok: false, message: 'Ese archivo ya se está subiendo.' });
     expect(await failing(500)).toEqual({ ok: false, message: DRIVE_UPLOAD_FAILED });
     expect(await failing()).toEqual({ ok: false, message: DRIVE_UPLOAD_FAILED });
@@ -198,5 +198,33 @@ describe('uploadToDrive', () => {
   it('with no signal to open the ticket it fails the same way', async () => {
     const deps = depsWith(vi.fn(), { open: async () => ({ ok: false }) });
     expect(await uploadToDrive(deps, file, 'key-1')).toEqual({ ok: false, message: DRIVE_UPLOAD_FAILED });
+  });
+});
+
+/**
+ * Jeremy via José 13/11: «en el drive del servicio no hay forma de adjuntar documento». A PDF, a
+ * Word, an Excel or a PowerPoint goes to the Drive too, when Portal's ticket announces its type.
+ */
+describe('documents in the service Drive', () => {
+  const ticket = (mimeTypes: string[]) => driveUploadOf({ url: 'https://constroad.com/api/public/service-drive-upload/t', method: 'POST', fields: {}, fileField: 'file', expiresAt: '2026-11-13T12:00:00.000Z', maxBytes: 50 * 1024 * 1024, maxSeconds: 60, mimeTypes })!;
+
+  it('takes the type from the name when the phone sends a generic one, and nothing that is not a document', () => {
+    // Act
+    const cases = [documentTypeOf('Plano.PDF', 'application/octet-stream'), documentTypeOf('metrado.xlsx', ''), documentTypeOf('acta.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'), documentTypeOf('foto.jpg', 'image/jpeg'), documentTypeOf('virus.exe', 'application/octet-stream')];
+    // Assert
+    expect(cases).toEqual(['application/pdf', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', null, null]);
+  });
+
+  it('keeps the document types a ticket announces, and refuses a PDF a ticket does not take', () => {
+    // Arrange
+    const withDocs = ticket(['image/jpeg', 'application/pdf', 'application/x-msdownload']);
+    const withoutDocs = ticket(['image/jpeg', 'video/mp4']);
+    // Act
+    const refusedWith = driveFileRefusal(withDocs, { mime: 'application/pdf', sizeBytes: 1000 });
+    const refusedWithout = driveFileRefusal(withoutDocs, { mime: 'application/pdf', sizeBytes: 1000 });
+    // Assert
+    expect(withDocs.mimeTypes).toEqual(['image/jpeg', 'application/pdf']);
+    expect(refusedWith).toBeNull();
+    expect(refusedWithout).toBe('Ese tipo de archivo no se puede subir al Drive.');
   });
 });

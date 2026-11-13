@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { stampFieldsOf, type TimemarkStampAsked, DRIVE_UPLOAD_DONE, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type ManualPhotoUpload, type AreaCreateRequest, type AreaRemoveRequest, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps } from '@lilachat/shared';
+import { documentTypeOf, stampFieldsOf, type TimemarkStampAsked, DRIVE_UPLOAD_DONE, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type ManualPhotoUpload, type AreaCreateRequest, type AreaRemoveRequest, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps } from '@lilachat/shared';
 import { submitAppForm } from '../../chat/commands/commandsApi';
 import { shrinkPhotoBlob } from '../../chat/shrinkPhoto';
 import { stampOfFile } from '../../chat/camera/shotStamp';
@@ -76,6 +76,9 @@ function videoSecondsOf(file: Blob): Promise<number | undefined> {
 export async function prepared(file: File): Promise<{ source: DriveFile; facts: DriveFileFacts }> {
   const stamp = stampOfFile(file);
   if (stamp) return preparedShot(file, stamp);
+  // A document goes with its real type: a browser often leaves a PDF or an Excel without one (Jeremy, 13/11).
+  const document = documentTypeOf(file.name, file.type);
+  if (document) return { source: { blob: new Blob([file], { type: document }), name: file.name }, facts: { mime: document, sizeBytes: file.size } };
   if (file.type.startsWith('image/')) {
     const photo = await shrinkPhotoBlob(file, file.name);
     return { source: { blob: photo.blob, name: photo.name }, facts: { mime: photo.mime, sizeBytes: photo.blob.size } };

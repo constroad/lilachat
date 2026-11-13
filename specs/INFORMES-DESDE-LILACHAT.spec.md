@@ -1474,6 +1474,13 @@ Se recorrió Control de pista en el APK (`lilafotos-qa`), en el servicio QA-CTLP
   informes (`PhotoField`, `PhotoListField`), las observaciones, «Registrar avance» y el Drive
   («Foto», «Video» y «Galería»). Lo que va a Drive pasa por `/api/stamped-forward`, como en el APK.
   El sello viaja al lado del archivo (`withStamp` / `stampOfFile`), nunca dentro de los bytes.
+- **Horizontal y «Sin logo» (José 13/11: «no he visto la opción del logo ni la de video; ¿probaste
+  horizontal y vertical?»).** En el emulador, en Constroad, la cámara del chat mostraba «Logo» y FOTO /
+  VIDEO. Pero en un chat fuera de un espacio, o en un espacio sin logo, el chip no salía. Ahora dice
+  «Sin logo». Girada, la cámara del chat tapaba media pantalla con su panel y el sello subía arriba.
+  Ahora los controles van en una columna a la derecha, con FOTO / VIDEO uno sobre otro, como la cámara
+  de formularios. Las fotos de un informe no tienen VIDEO: el informe guarda fotos. El video está en el
+  chat, en las observaciones y en el Drive.
 - **«Enviar» del chat muestra el video** (antes, solo un ícono): se reproduce en bucle con controles.
 - **El sello ya no se pega a FOTO / VIDEO**: la altura del pie cuenta el margen inferior del sistema.
 - **«Agregar tramo» abre donde terminó el anterior** (CTL-IMP, Portal d85a6e57): el formulario del

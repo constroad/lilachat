@@ -168,7 +168,7 @@ function ShutterBar(props: ShutterProps) {
   const along = props.landscape ? 'absolute bottom-0 right-0 top-0 items-center justify-around py-6' : 'absolute bottom-0 left-0 right-0 items-center pt-3';
   return (
     <View className={along} style={props.landscape ? { width: SIDE_BAR, paddingRight: margins.pie } : { paddingBottom: margins.pie + 12 }}>
-      {props.onMode && !props.recording ? <ModeSwitch mode={props.mode} onMode={props.onMode} /> : null}
+      {props.onMode && !props.recording ? <ModeSwitch vertical={props.landscape} mode={props.mode} onMode={props.onMode} /> : null}
       <View className={props.landscape ? 'flex-1 items-center justify-around' : 'w-full flex-row items-center justify-around'}>
         {props.onGallery && !props.recording ? (
           <Pressable testID="btn-galeria-formulario" accessibilityLabel="Elegir de la galería" disabled={props.shooting} onPress={props.onGallery} className="items-center justify-center rounded-xl bg-white/15" style={{ width: SIDE_BUTTON, height: SIDE_BUTTON }}>

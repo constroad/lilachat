@@ -12,10 +12,11 @@ const SHORT_TEXT_MAX = 200;
  */
 export function formRows<F extends FormField>(fields: readonly F[]): F[][] {
   const rows: F[][] = [];
+  const shares = (field: F) => fitsHalf(field) && !field.step;
   for (let index = 0; index < fields.length; index += 1) {
     const field = fields[index]!;
     const next = fields[index + 1];
-    if (next && fitsHalf(field) && fitsHalf(next)) {
+    if (next && shares(field) && shares(next)) {
       rows.push([field, next]);
       index += 1;
     } else rows.push([field]);

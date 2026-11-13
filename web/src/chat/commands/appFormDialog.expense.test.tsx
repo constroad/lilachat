@@ -59,3 +59,40 @@ describe('«Completar gasto» on the web', () => {
     expect(panel.querySelectorAll('[role="option"]')).toHaveLength(12);
   });
 });
+
+/** José 13/11: «debe permitir seleccionar varias partidas y ofrecer repartir el monto, debe ser inteligente». */
+describe('the partidas split the amount by themselves', () => {
+  const withPartidas: Record<string, FormSchemaProperty> = {
+    monto: { type: 'number', title: 'Monto', 'x-unit': 'S/', default: 500 },
+    partidas: {
+      type: 'array',
+      title: 'Partidas',
+      items: {
+        type: 'object',
+        required: ['partidaId'],
+        properties: {
+          partidaId: { type: 'string', title: 'Partida', enum: ['mat', 'mo'], 'x-labels': { mat: 'Materiales', mo: 'Mano de obra' } },
+          monto: { type: 'number', title: 'Monto', 'x-unit': 'S/' },
+        },
+      },
+    },
+  };
+  const split: EphemeralAnswer = { ...answer, response: { responseType: 'form', form: { id: 'completar_gasto', title: 'Completar gasto', schema: { type: 'object', properties: withPartidas } } } };
+
+  it('two ticked share it; typing one adjusts the other; «Partes iguales» starts over', () => {
+    // Arrange
+    render(<AppFormDialog answer={split} onSubmit={vi.fn()} onUpload={vi.fn()} onClose={vi.fn()} />);
+    // Act
+    fireEvent.click(screen.getByTestId('opcion-partidas-mat'));
+    fireEvent.click(screen.getByTestId('opcion-partidas-mo'));
+    // Assert
+    expect(screen.getByTestId('campo-partidas-0-monto')).toHaveValue('250');
+    expect(screen.getByTestId('campo-partidas-1-monto')).toHaveValue('250');
+    expect(screen.getByTestId('reparto-partidas')).toHaveTextContent('Asignado S/ 500.00 de S/ 500.00');
+    fireEvent.change(screen.getByTestId('campo-partidas-0-monto'), { target: { value: '300' } });
+    expect(screen.getByTestId('campo-partidas-1-monto')).toHaveValue('200');
+    expect(screen.getByTestId('ajustado-partidas-mo')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('partes-iguales-partidas'));
+    expect(screen.getByTestId('campo-partidas-0-monto')).toHaveValue('250');
+  });
+});

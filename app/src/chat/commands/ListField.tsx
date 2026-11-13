@@ -1,7 +1,7 @@
-import { useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Check, Plus, Trash2 } from 'lucide-react-native';
-import { formRows, itemPath, newItem, optionsForRow, rowTitleOf, togglePick, visibleFields, type FormField, type FormValues, type ItemField } from '@lilachat/shared';
+import { formRows, itemPath, newItem, optionsForRow, rowTitleOf, splitLineOf, splitRows, togglePick, typedAfterEdit, visibleFields, type FormField, type FormValues, type ItemField, type ListSplit } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { ErrorLine, Label } from './AppFormFields';
 
@@ -20,6 +20,8 @@ type Props = {
   /** The new items, and which cell changed: its error goes, the others stay. */
   onChange: (items: FormValues[], changed: string) => void;
   renderField: RenderItemField;
+  /** The total this list splits among its ticked rows (José 13/11: the expense's partidas). */
+  split?: ListSplit;
 };
 
 const asItems = (value: unknown): FormValues[] => (Array.isArray(value) ? value.map((item) => (item && typeof item === 'object' ? (item as FormValues) : {})) : []);
@@ -137,14 +139,15 @@ function RowItems(props: { field: ListOfItems; items: FormValues[]; keys: number
  * per option, and a ticked one shows its amount on the same line (José: two controls per line,
  * not a sheet of rows to fill).
  */
-function PickItems({ field, value, errors, onChange }: Props) {
+function PickItems({ field, value, errors, onChange, split }: Props) {
   const colors = useColores();
   const items = asItems(value);
   const key = field.pickBy!;
   const choice = field.fields.find((child) => child.name === key);
   const options = choice?.kind === 'choice' ? choice.options : [];
   const side = field.fields.filter((child) => child.name !== key);
-  const setCell = (index: number, name: string) => (cell: unknown) => onChange(items.map((item, at) => (at === index ? { ...item, [name]: cell } : item)), itemPath(field.name, index, name));
+  const shared = usePickSplit({ field, items, onChange, split });
+  const { setCell, toggle, typed } = shared;
   return (
     <View testID={`lista-${field.name}`}>
       <View className="flex-row items-center justify-between">
@@ -160,10 +163,11 @@ function PickItems({ field, value, errors, onChange }: Props) {
           return (
             <View key={option.value} testID={`fila-${field.name}-${option.value}`}>
               <View className={`min-h-[52px] flex-row items-center gap-2 rounded-xl border px-3 py-1 ${on ? 'border-primary bg-primary/[0.06]' : 'border-outline/25'}`}>
-                <Pressable testID={`opcion-${field.name}-${option.value}`} accessibilityRole="checkbox" accessibilityState={{ checked: on }} onPress={() => onChange(togglePick(field, items, option.value), field.name)} className="min-h-[44px] flex-1 flex-row items-center gap-3">
+                <Pressable testID={`opcion-${field.name}-${option.value}`} accessibilityRole="checkbox" accessibilityState={{ checked: on }} onPress={() => toggle(option.value)} className="min-h-[44px] flex-1 flex-row items-center gap-3">
                   <View className={`h-6 w-6 items-center justify-center rounded-md border ${on ? 'border-primary bg-primary' : 'border-outline/40'}`}>{on ? <Check size={15} color={colors['on-primary']} /> : null}</View>
                   <Text className="flex-1 text-[15px] text-on-surface" numberOfLines={2}>{option.label}</Text>
                 </Pressable>
+                {on && split && typed.size > 0 && !typed.has(option.value) ? <Text testID={`ajustado-${field.name}-${option.value}`} className="text-[10px] font-bold uppercase text-on-surface-variant">ajustado</Text> : null}
                 {on ? side.map((child) => <View key={child.name} className="w-32"><RowCell field={child} testID={`campo-${field.name}-${index}-${child.name}`} value={items[index]![child.name]} invalid={Boolean(errors[itemPath(field.name, index, child.name)])} onChange={setCell(index, child.name)} /></View>) : null}
               </View>
               {rowErrors.length ? <ErrorLine text={rowErrors.join(' ')} /> : null}
@@ -171,7 +175,59 @@ function PickItems({ field, value, errors, onChange }: Props) {
           );
         })}
       </View>
+      {split && items.length ? <SplitLine field={field.name} split={split} items={items} onEven={items.length > 1 ? shared.even : undefined} /> : null}
       <ErrorLine text={errors[field.name]} />
+    </View>
+  );
+}
+
+/**
+ * The list splits a total (José 13/11: «ofrecer repartir el monto, debe ser inteligente»): a tick
+ * shares the total among the ticked rows, an amount typed by hand stays and the rest adjusts.
+ */
+function usePickSplit(params: { field: ListOfItems; items: FormValues[]; onChange: Props['onChange']; split?: ListSplit }) {
+  const { field, items, onChange, split } = params;
+  const key = field.pickBy!;
+  const [typed, setTyped] = useState<ReadonlySet<string>>(new Set());
+  const settle = (rows: FormValues[], kept: ReadonlySet<string>) => (split ? splitRows(rows, split.plan, key, split.total, kept) : rows);
+  const toggle = (option: string) => onChange(settle(togglePick(field, items, option), typed), field.name);
+  const setCell = (index: number, name: string) => (cell: unknown) => {
+    const rows = items.map((item, at) => (at === index ? { ...item, [name]: cell } : item));
+    const kept = typedAfterEdit(typed, split?.plan, name, items[index]?.[key]);
+    if (kept !== typed) setTyped(kept);
+    onChange(settle(rows, kept), itemPath(field.name, index, name));
+  };
+  const even = () => {
+    setTyped(new Set());
+    onChange(settle(items, new Set()), field.name);
+  };
+  // The total changed (typed, or read from the voucher): the untyped rows follow it.
+  const latest = useRef({ items, settle, typed, onChange });
+  latest.current = { items, settle, typed, onChange };
+  const total = split?.total ?? 0;
+  useEffect(() => {
+    const now = latest.current;
+    if (!now.items.length) return;
+    const next = now.settle(now.items, now.typed);
+    if (JSON.stringify(next) !== JSON.stringify(now.items)) now.onChange(next, field.name);
+  }, [total, field.name]);
+  return { toggle, setCell, even, typed };
+}
+
+const SPLIT_TONE = { ok: 'text-en-linea', warn: 'text-warning', error: 'text-error', neutral: 'text-on-surface-variant' } as const;
+
+/** «Asignado S/ 500.00 de S/ 500.00», or what is missing or over, and «Partes iguales». */
+function SplitLine(props: { field: string; split: ListSplit; items: FormValues[]; onEven?: () => void }) {
+  const { split } = props;
+  const line = splitLineOf(split.total, props.items, split.plan, split.unit);
+  return (
+    <View testID={`reparto-${props.field}`} className="mt-2 flex-row flex-wrap items-center justify-between gap-2">
+      <Text className={`flex-1 text-[13px] font-semibold ${SPLIT_TONE[line.tone]}`}>{line.text}</Text>
+      {props.onEven ? (
+        <Pressable testID={`partes-iguales-${props.field}`} onPress={props.onEven} className="min-h-[36px] justify-center rounded-full border border-outline/25 px-3">
+          <Text className="text-[13px] font-semibold text-on-surface">Partes iguales</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

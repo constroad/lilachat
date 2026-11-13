@@ -1,6 +1,6 @@
-import { useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Check, Plus, Trash2 } from 'lucide-react';
-import { formRows, itemPath, newItem, optionsForRow, rowTitleOf, togglePick, visibleFields, type FormField, type FormValues, type ItemField } from '@lilachat/shared';
+import { formRows, itemPath, newItem, optionsForRow, rowTitleOf, splitLineOf, splitRows, togglePick, typedAfterEdit, visibleFields, type FormField, type FormValues, type ItemField, type ListSplit } from '@lilachat/shared';
 import { FieldError } from '../../ui/Overlay';
 import { Label } from './AppFormFields';
 
@@ -14,6 +14,8 @@ type Props = {
   /** The new items, and which cell changed: its error goes, the others stay. */
   onChange: (items: FormValues[], changed: string) => void;
   renderField: RenderItemField;
+  /** The total this list splits among its ticked rows (José 13/11: the expense's partidas). */
+  split?: ListSplit;
 };
 
 const asItems = (value: unknown): FormValues[] => (Array.isArray(value) ? value.map((item) => (item && typeof item === 'object' ? (item as FormValues) : {})) : []);
@@ -139,13 +141,13 @@ function RowItems(props: { field: ListOfItems; items: FormValues[]; keys: number
  * per option, and a ticked one shows its short fields beside it (the amount by hand). José could
  * not pick a second partida from a dropdown per row.
  */
-function PickItems({ field, value, errors, onChange }: Props) {
+function PickItems({ field, value, errors, onChange, split }: Props) {
   const items = asItems(value);
   const key = field.pickBy!;
   const choice = field.fields.find((child) => child.name === key);
   const options = choice?.kind === 'choice' ? choice.options : [];
   const side = field.fields.filter((child) => child.name !== key);
-  const setCell = (index: number, name: string) => (cell: unknown) => onChange(items.map((item, at) => (at === index ? { ...item, [name]: cell } : item)), itemPath(field.name, index, name));
+  const { setCell, toggle, even, typed } = useSplitPick(field, items, onChange, split);
   return (
     <div data-testid={`lista-${field.name}`}>
       <div className="flex items-center justify-between gap-2">
@@ -161,10 +163,11 @@ function PickItems({ field, value, errors, onChange }: Props) {
           return (
             <div key={option.value} data-testid={`fila-${field.name}-${option.value}`}>
               <div className={`flex min-h-[52px] items-center gap-2 rounded-xl border px-3 py-1.5 ${on ? 'border-primary bg-primary/[0.06]' : 'border-outline/25'}`}>
-                <button type="button" role="checkbox" aria-checked={on} data-testid={`opcion-${field.name}-${option.value}`} onClick={() => onChange(togglePick(field, items, option.value), field.name)} className="flex min-w-0 flex-1 items-center gap-3 py-1.5 text-left">
+                <button type="button" role="checkbox" aria-checked={on} data-testid={`opcion-${field.name}-${option.value}`} onClick={() => toggle(option.value)} className="flex min-w-0 flex-1 items-center gap-3 py-1.5 text-left">
                   <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-md border ${on ? 'border-primary bg-primary text-on-primary' : 'border-outline/40'}`}>{on ? <Check size={15} strokeWidth={3} /> : null}</span>
                   <span className="min-w-0 flex-1 text-[15px]">{option.label}</span>
                 </button>
+                {on && split && typed.size > 0 && !typed.has(option.value) ? <span data-testid={`ajustado-${field.name}-${option.value}`} className="rounded border border-outline/30 px-1.5 text-[10px] font-bold uppercase text-on-surface-variant">ajustado</span> : null}
                 {on ? side.map((child) => <SideCell key={child.name} field={child} testId={`campo-${field.name}-${index}-${child.name}`} value={items[index]![child.name]} invalid={Boolean(errors[itemPath(field.name, index, child.name)])} onChange={setCell(index, child.name)} />) : null}
               </div>
               {rowErrors.length ? <FieldError>{rowErrors.join(' ')}</FieldError> : null}
@@ -172,9 +175,46 @@ function PickItems({ field, value, errors, onChange }: Props) {
           );
         })}
       </div>
+      {split && items.length ? (
+        <div data-testid={`reparto-${field.name}`} className="mt-2 flex flex-wrap items-center justify-between gap-2">
+          <p className={`text-[13px] font-semibold ${SPLIT_TONE[splitLineOf(split.total, items, split.plan, split.unit).tone]}`}>{splitLineOf(split.total, items, split.plan, split.unit).text}</p>
+          {items.length > 1 ? <button type="button" data-testid={`partes-iguales-${field.name}`} onClick={even} className="min-h-9 rounded-full border border-outline/25 px-3 text-[13px] font-semibold hover:bg-background">Partes iguales</button> : null}
+        </div>
+      ) : null}
       <FieldError>{errors[field.name]}</FieldError>
     </div>
   );
+}
+
+const SPLIT_TONE = { ok: 'text-en-linea', warn: 'text-warning', error: 'text-error', neutral: 'text-on-surface-variant' } as const;
+
+/** A tick shares the total among the ticked rows; an amount typed by hand stays and the rest adjusts (José 13/11). */
+function useSplitPick(field: ListOfItems, items: FormValues[], onChange: Props['onChange'], split?: ListSplit) {
+  const [typed, setTyped] = useState<ReadonlySet<string>>(new Set());
+  const key = field.pickBy!;
+  const settle = (rows: FormValues[], kept: ReadonlySet<string>) => (split ? splitRows(rows, split.plan, key, split.total, kept) : rows);
+  const current = useRef({ items, settle, typed, onChange });
+  current.current = { items, settle, typed, onChange };
+  const total = split?.total ?? 0;
+  // The total changed (typed, or read from the voucher): the untyped rows follow it.
+  useEffect(() => {
+    const { items: rows, settle: apply, typed: kept, onChange: emit } = current.current;
+    const next = rows.length ? apply(rows, kept) : rows;
+    if (JSON.stringify(next) !== JSON.stringify(rows)) emit(next, field.name);
+  }, [total, field.name]);
+  return {
+    typed,
+    toggle: (option: string) => onChange(settle(togglePick(field, items, option), typed), field.name),
+    even: () => {
+      setTyped(new Set());
+      onChange(settle(items, new Set()), field.name);
+    },
+    setCell: (index: number, name: string) => (cell: unknown) => {
+      const kept = typedAfterEdit(typed, split?.plan, name, items[index]?.[key]);
+      setTyped(kept);
+      onChange(settle(items.map((item, at) => (at === index ? { ...item, [name]: cell } : item)), kept), itemPath(field.name, index, name));
+    },
+  };
 }
 
 /** The amount beside a ticked option: a short box with its unit. */

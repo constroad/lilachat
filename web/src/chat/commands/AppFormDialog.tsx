@@ -1,6 +1,6 @@
 import { useMemo, useRef, type RefObject } from 'react';
 import { CheckCheck, Clock } from 'lucide-react';
-import { CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, formRows, isWideForm, liveSelfieFieldOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
+import { CHECK_ALL_LABEL, checkAllValues, chipsFor, splitFor, evidenceLine, formFields, formRows, isWideForm, liveSelfieFieldOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
@@ -163,7 +163,7 @@ function FieldSlot(props: { field: FormField; half?: boolean; context: SlotConte
       {chips ? (
         <SigningChips field={field} value={values[field.name]} error={errors[field.name]} onChange={props.context.set(field.name)} />
       ) : field.kind === 'list' ? (
-        <ListField field={field} value={values[field.name]} errors={errors} onChange={props.context.setList(field.name)} renderField={(child, value, error, onChange, key, halfCell) => <Field key={key} field={child} value={value} error={error} onChange={onChange} upload={upload} half={halfCell} />} />
+        <ListField field={field} value={values[field.name]} errors={errors} onChange={props.context.setList(field.name)} split={splitFor(props.context.fields, values, field.name)} renderField={(child, value, error, onChange, key, halfCell) => <Field key={key} field={child} value={value} error={error} onChange={onChange} upload={upload} half={halfCell} />} />
       ) : (
         <Field field={field} value={values[field.name]} error={errors[field.name]} onChange={props.context.set(field.name)} upload={upload} half={half} />
       )}

@@ -58,7 +58,7 @@ export type FieldWidth = 'half' | 'full';
 export type FormSchema = { type?: string; description?: string; properties?: Record<string, FormSchemaProperty>; required?: string[]; /** The read tool that sums up the draft above «Enviar». */ 'x-preview'?: { tool?: string }; /** A checklist (CTL-PIS, 06/11): one button answers every choice with its first option. */ 'x-check-all'?: boolean };
 export type AppForm = { id: string; title: string; submitLabel?: string; /** The schema's `description`: a line under the title. */ intro?: string; schema: FormSchema; /** `x-preview`'s tool: the summary above «Enviar». */ preview?: string; /** `x-check-all`: the «Marcar todo» button. */ checkAll?: true };
 
-type Base = { name: string; label: string; help?: string; required: boolean; /** `x-input: shift | weather | place-street | temperature | clock`: the phone fills it when empty. */ condition?: 'shift' | 'weather' | 'street' | 'temperature' | 'clock'; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number | true; /** `x-refresh`: changing it asks the app for the form again. */ refresh?: true };
+type Base = { name: string; label: string; help?: string; required: boolean; /** `x-input: shift | weather | place-street | temperature | clock`: the phone fills it when empty. */ condition?: 'shift' | 'weather' | 'street' | 'temperature' | 'clock'; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number | true; /** `x-refresh`: changing it asks the app for the form again. */ refresh?: true; /** Other fields show by its answer: the form's step, alone in its row (José 13/11). */ step?: true };
 export type FormField =
   | (Base & { kind: 'choice'; options: ChoiceOption[]; segmented: boolean; /** A few short options in two columns (José 12/11: two controls per line, not a list to open). */ columns?: 2; /** A long list (the company's people, agentes 24/10): a field that opens a sheet with a search. */ searchable: boolean; /** `x-avatar: initials`: each option with its initials. */ initials?: true })
   | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true; /** `x-input: place`: a text with the button that writes where the device is. */ place?: true; /** `x-input: work-street`: a street of the service's work map, picked (Portal's CON-CAP, 12/11). */ street?: true; /** `x-input: work-station`: the station on that street, computed from the reading and editable. */ station?: true })
@@ -344,11 +344,14 @@ export function visibleFields<F extends Pick<FormField, 'visibleIf'>>(fields: re
 /** The fields to draw, in the schema's order. A field Lilachat cannot draw throws: `validateFormSpec` catches it first. */
 export function formFields(form: AppForm): FormField[] {
   const required = new Set(form.schema.required ?? []);
-  return Object.entries(form.schema.properties ?? {}).map(([name, property]) => {
+  const fields = Object.entries(form.schema.properties ?? {}).map(([name, property]) => {
     const field = fieldOf(name, property, required.has(name));
     if (typeof field === 'string') throw new Error(field);
     return field;
   });
+  // A field others depend on to show is a step of the form (José 13/11): it never shares its row.
+  const steps = new Set(fields.flatMap((field) => Object.keys(field.visibleIf ?? {})));
+  return fields.map((field) => (steps.has(field.name) ? { ...field, step: true as const } : field));
 }
 
 /**

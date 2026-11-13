@@ -300,3 +300,4 @@ Proyecto 15540754270713720465. Ids en `design/stitch/registro.jsonl`. Spec: `spe
 | --- | --- | --- |
 | `gst-01-tarjetas` | Tarjetas del gasto en el hilo: por completar (monto grande, comercio, comisión, pregunta y «Completar gasto» a todo el ancho con «Descartar» debajo) y registrado (destino, partidas, «Registrado por · Ver en Finanzas») | dibujo genérico hecho (estado en la línea del kicker, acciones apiladas); falta el texto de Portal y la auditoría |
 | `gst-02-completar` | Formulario «Completar gasto» | sin generar: Stitch cortó por tiempo, el id no volvió |
+| `gst-02-completar-v2` | «Completar gasto» con «¿A qué va?» Servicio / Proyecto, las partidas del servicio con casilla y monto, «Partes iguales» y el reparto que se ajusta solo | regenerado el 13/11 con OK de José; Lilachat hace el reparto y el paso; los campos (partidas, voucher leído) los manda agentes |

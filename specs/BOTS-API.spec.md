@@ -673,6 +673,23 @@ número de opciones; las filas viajan en el orden de las opciones, igual que ant
 desplegable y había que encontrar «Agregar fila». Motor: `pickBy` en `appForms.ts` y
 `togglePick` en `appFormRows.ts`.
 
+**Reparto inteligente** (José 13/11: «debe permitir seleccionar varias partidas y ofrecer repartir
+el monto, debe ser inteligente»; Stitch `gst-02-completar-v2`). Una lista con casillas cuyo campo
+corto es un número con el MISMO nombre que un número del formulario (`partidas[].monto` y `monto`)
+reparte ese total. Lilachat lo hace solo, sin marca nueva de agentes (`splitOf`, `splitFor` en
+`appFormSplit.ts`):
+- Marcar o desmarcar reparte en partes iguales, al céntimo (100 entre 3 = 33,34 + 33,33 + 33,33).
+- Escribir un monto a mano lo fija, y las demás se ajustan con lo que falta, con la etiqueta
+  «ajustado». Nunca quedan negativas.
+- Si cambia el total, las no tocadas lo siguen.
+- Debajo: «Asignado S/ 500.00 de S/ 500.00», «Faltan S/ 40.00» o «Sobran…», y «Partes iguales»,
+  que vuelve a empezar.
+- Se envía lo mismo de siempre (`[{partidaId, monto}]`). El server de la app sigue validando.
+
+**El paso del formulario** (José 13/11): un campo del que dependen otros (`x-visible-if`) es un
+paso y va solo en su fila aunque venga `x-width: half`. «¿De qué es?» compartía la fila con
+«Estado» y no se leía como la primera pregunta (`step` en `formFields`).
+
 **Dos columnas** (12/11): una elección de 3 o 4 opciones que no entran lado a lado pero miden
 ≤ 18 caracteres («Partes iguales», «Según partida») va en una grilla de 2×2, no en una lista
 que se abre (`columns: 2`).

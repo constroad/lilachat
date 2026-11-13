@@ -54,6 +54,23 @@ describe('cameraFirstFieldOf (José 06/11: tile, camera, shutter)', () => {
 });
 
 describe('two short fields share a row (José, 28/10: «unidad, hora, m³ podrían ser una sola fila»)', () => {
+  // José 13/11: «el modal del gasto debe preguntar proyecto o servicio y de allí desplegar las partidas». The choice
+  // that decides what comes next is the form's first step: it never shares its row, even marked half.
+  it('a choice other fields depend on takes the whole row, even with x-width half', () => {
+    // Arrange
+    const steps = formWith({
+      deQue: { type: 'string', enum: ['proyecto', 'servicio'], title: '¿De qué es?', 'x-width': 'half' },
+      estado: { type: 'string', enum: ['pagado', 'por_pagar'], title: 'Estado', 'x-width': 'half' },
+      servicioId: { type: 'string', title: 'Servicio', enum: ['6a5503b40afd38abc67ff7aa'], 'x-visible-if': { deQue: ['servicio'] } },
+    });
+    // Act
+    const rows = rowsOf(steps, { deQue: 'servicio' });
+    // Assert
+    expect(rows).toEqual([['deQue'], ['estado'], ['servicioId']]);
+    // Before choosing, the fields that depend on it are hidden: it is still the step.
+    expect(rowsOf(steps)).toEqual([['deQue'], ['estado']]);
+  });
+
   it('a number beside a day goes in one row; choices, long texts and photos keep theirs', () => {
     // Arrange
     const values = { deQue: 'proyecto' };

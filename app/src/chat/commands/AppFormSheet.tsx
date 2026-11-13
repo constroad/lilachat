@@ -11,6 +11,7 @@ import { CheckField, ChoiceField, LocationField, PhotoField, TypedField, type Ph
 import { DateField } from './DateField';
 import { FormSummary } from './FormSummary';
 import { ListField } from './ListField';
+import { splitFor } from '@lilachat/shared';
 import { PhotoListField } from './PhotoListField';
 import { LiveSelfie, type LiveSelfieHandle } from './LiveSelfie';
 import { SignerCard, SignerPicker, SigningChips } from './SignerPicker';
@@ -261,6 +262,7 @@ function FieldSlot(props: { field: FormField; half: boolean; context: SlotContex
           value={values[field.name]}
           errors={errors}
           onChange={props.context.setList(field.name)}
+          split={splitFor(props.context.fields, values, field.name)}
           renderField={(child, value, error, onChange, key, halfCell) => <Field key={key} field={child} value={value} error={error} onChange={onChange} upload={upload} width={width - SHEET_PADDING * 4} half={halfCell} />}
         />
       ) : (

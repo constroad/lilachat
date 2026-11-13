@@ -17,6 +17,19 @@ async function dropFromSharedInto(workspaceId: Types.ObjectId, userId: Types.Obj
 }
 
 /**
+ * José 12/11 (Medaly): this space's channels shared with others that the person still reaches
+ * through one of those spaces, where they stay active. Leaving or being deactivated here does not
+ * take them out of those.
+ */
+async function reachedElsewhere(workspaceId: Types.ObjectId, userId: Types.ObjectId): Promise<Types.ObjectId[]> {
+  const shares = await SharedChannelModel.find({ ownerWorkspaceId: workspaceId, status: 'active' }).select('chatId workspaceId').lean();
+  if (shares.length === 0) return [];
+  const active = await WorkspaceMemberModel.find({ workspaceId: { $in: shares.map((share) => share.workspaceId) }, userId, status: 'active' }).select('workspaceId').lean();
+  const spaces = new Set(active.map((row) => String(row.workspaceId)));
+  return shares.filter((share) => spaces.has(String(share.workspaceId))).map((share) => share.chatId);
+}
+
+/**
  * Chats that belong to a company space (E1, spec §66). Deactivating someone
  * moves them from `members` to `suspendedMembers` in every chat of that space:
  * every existing membership check in the server then denies them, and
@@ -24,7 +37,8 @@ async function dropFromSharedInto(workspaceId: Types.ObjectId, userId: Types.Obj
  */
 export async function suspendFromWorkspaceChats(workspaceId: Types.ObjectId, userId: Types.ObjectId): Promise<void> {
   await dropFromSharedInto(workspaceId, userId);
-  const chats = await ChatModel.find({ workspaceId, 'members.userId': userId }).select('members').lean();
+  const kept = await reachedElsewhere(workspaceId, userId);
+  const chats = await ChatModel.find({ workspaceId, 'members.userId': userId, _id: { $nin: kept } }).select('members').lean();
   await Promise.all(
     chats.map((chat) => {
       const member = chat.members.find((m) => String(m.userId) === String(userId));
@@ -46,7 +60,8 @@ export async function restoreToWorkspaceChats(workspaceId: Types.ObjectId, userI
 /** Leaving a space leaves its chats too. */
 export async function leaveWorkspaceChats(workspaceId: Types.ObjectId, userId: Types.ObjectId): Promise<void> {
   await dropFromSharedInto(workspaceId, userId);
-  await ChatModel.updateMany({ workspaceId }, { $pull: { members: { userId }, suspendedMembers: { userId } } });
+  const kept = await reachedElsewhere(workspaceId, userId);
+  await ChatModel.updateMany({ workspaceId, _id: { $nin: kept } }, { $pull: { members: { userId }, suspendedMembers: { userId } } });
 }
 
 /** Whether these people are all ACTIVE in the space (the creator included). */

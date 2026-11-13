@@ -27,4 +27,6 @@ const sharedChannelSchema = new Schema<SharedChannel>(
 );
 sharedChannelSchema.index({ chatId: 1, workspaceId: 1 }, { unique: true });
 sharedChannelSchema.index({ workspaceId: 1, status: 1 });
+/** The shares a space gives out, read when someone leaves it or is deactivated there (12/11). */
+sharedChannelSchema.index({ ownerWorkspaceId: 1, status: 1 });
 export const SharedChannelModel = model<SharedChannel>('SharedChannel', sharedChannelSchema);

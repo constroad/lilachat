@@ -240,3 +240,9 @@ verlo en el espacio. Es temporal: después pedirá que lo saquen.
   sacarlo. Si se quiere solo mostrarlo, `$unset: { hidden: 1 }`.
 - **Test:** `server/src/hiddenMember.test.ts` (7 casos) y el caso del canal
   compartido en `server/src/sharedChannels.test.ts`.
+
+**Salir de un espacio o ser desactivado ahí** (12/11, Medaly sale de Inframaq): la persona sale
+de los canales de ese espacio salvo de los que el espacio comparte con OTRO donde ella sigue
+activa. Esos los sigue viendo desde ese otro espacio. Antes la sacaba de todos y el canal
+compartido la perdía aunque Globofast le diera acceso (`reachedElsewhere` en
+`workspaceChats.ts`, índice `{ownerWorkspaceId, status}`).

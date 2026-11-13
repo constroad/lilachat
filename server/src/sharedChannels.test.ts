@@ -164,6 +164,20 @@ describe('people of the other spaces', () => {
     expect(ids).not.toContain(String(users.ana));
   });
 
+  /** José 12/11, Medaly: out of Inframaq, she keeps the Inframaq channels shared into Globofast, where she is admin. */
+  it('deactivated in the owner space, someone keeps the shared channels they reach through another space', async () => {
+    // Arrange: Marco is in Inframaq and in Constroad; «administracion» is shared with Constroad, #general is not.
+    await member('constroad', 'marco', 'member');
+    const marcoRow = await WorkspaceMemberModel.findOne({ workspaceId: spaces.inframaq, userId: users.marco }).lean();
+    // Act
+    await request(app).patch(`/api/workspaces/${spaces.inframaq}/members/${marcoRow!._id}`).set('Authorization', jwt('jose')).send({ status: 'deactivated' }).expect(200);
+    // Assert
+    const inChannel = (await ChatModel.findById(channelId).lean())!.members.map((m) => String(m.userId));
+    const inGeneral = (await ChatModel.findById(generalId).lean())!.members.map((m) => String(m.userId));
+    expect(inChannel).toContain(String(users.marco));
+    expect(inGeneral).not.toContain(String(users.marco));
+  });
+
   it('seen from the space that receives it, roles and pills are that space\'s (local E2E 11/11)', async () => {
     await api('jose').post(`/api/chats/${channelId}/members`, { userId: String(users.ana) });
 

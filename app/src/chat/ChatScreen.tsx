@@ -389,6 +389,7 @@ export function ChatScreen({
           jwt={credential.jwt}
           yo={credential.userId}
           chatSecreto={Boolean(encrypted)}
+          selfChat={otherUserId === credential.userId}
           onCancelar={seleccion.soltar}
           onResponder={(seq) => {
             const elegido = seleccion.mensajes.find((uno) => uno.seq === seq);

@@ -29,6 +29,8 @@ export function SeleccionDeMensaje(params: {
   mensajes: ChatMessage[];
   yo: string;
   chatSecreto: boolean;
+  /** The chat with myself (José 13/11): my messages are deleted on the server, so every device sees it. */
+  selfChat?: boolean;
   /** Para pedir la «Info» de un mensaje propio (FL9). */
   chatId: string;
   jwt: string;
@@ -67,6 +69,7 @@ export function SeleccionDeMensaje(params: {
         conTexto: Boolean(uno.body?.trim()),
         esMedia: Boolean(uno.media),
         chatSecreto: params.chatSecreto,
+        selfChat: params.selfChat,
         esRespuestaDeHilo: uno.hiloDe !== undefined,
         editable: puedeEditar({
           yo: params.yo,

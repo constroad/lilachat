@@ -28,6 +28,7 @@ export function MenuDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; m
     esRespuestaDeHilo: mensaje.hiloDe !== undefined,
     destacado: destacados?.has(mensaje.seq),
     funLine: mensaje.kind === 'zumbido' || mensaje.kind === 'guino',
+    selfChat: chat.kind === 'direct' && chat.memberIds.every((id) => id === yo),
   });
   // A received (or own) sticker can be kept in «Mis stickers» or as a favorite (20/10), like the app.
   const isSticker = mensaje.kind === 'sticker' && Boolean(mensaje.media?.url) && !mensaje.deletedAt && Boolean(onStickerAction);

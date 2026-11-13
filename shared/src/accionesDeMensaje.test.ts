@@ -160,3 +160,19 @@ describe('accionesDeMensaje — a nudge or a wink line', () => {
     expect(accionesDeMensaje({ ...base, mio: false })).toEqual({ responder: false, copiar: false, reenviar: false, editar: false, info: false, eliminarParaTodos: false, eliminarParaMi: true, fijar: null, hilo: false, destacar: null });
   });
 });
+
+// José 13/11: in the chat with himself he deleted «para mí» on one computer and the other kept showing it.
+describe('accionesDeMensaje in the chat with myself', () => {
+  const base = { eliminado: false, conTexto: true, esMedia: false, chatSecreto: false, editable: false };
+
+  it('my own message is only deleted for all (the server syncs it); «para mí» is not offered', () => {
+    const actions = accionesDeMensaje({ ...base, mio: true, selfChat: true });
+    expect(actions.eliminarParaTodos).toBe(true);
+    expect(actions.eliminarParaMi).toBe(false);
+  });
+
+  it('a bot\'s message in that chat and any other chat keep «para mí»', () => {
+    expect(accionesDeMensaje({ ...base, mio: false, selfChat: true }).eliminarParaMi).toBe(true);
+    expect(accionesDeMensaje({ ...base, mio: true }).eliminarParaMi).toBe(true);
+  });
+});

@@ -42,6 +42,11 @@ export function accionesDeMensaje(params: {
   destacado?: boolean;
   /** A nudge or a wink line (José, 02/11): nothing to reply to, copy or forward, only deleted. */
   funLine?: boolean;
+  /**
+   * The chat with myself (José 13/11): «para mí» only hides it in this device, so the other computer kept
+   * showing it. There my own message is deleted on the server, which reaches every open session.
+   */
+  selfChat?: boolean;
 }): AccionesDeMensaje {
   if (params.eliminado) {
     return { responder: false, copiar: false, reenviar: false, editar: false, info: false, eliminarParaTodos: false, eliminarParaMi: true, fijar: null, hilo: false, destacar: null };
@@ -56,7 +61,7 @@ export function accionesDeMensaje(params: {
     editar: params.editable,
     info: params.mio,
     eliminarParaTodos: params.mio,
-    eliminarParaMi: true,
+    eliminarParaMi: !(params.selfChat && params.mio),
     fijar: params.puedeFijar ? (params.fijado ? 'desfijar' : 'fijar') : null,
     hilo: !params.chatSecreto && !params.esRespuestaDeHilo,
     destacar: params.chatSecreto ? null : params.destacado ? 'quitar' : 'destacar',

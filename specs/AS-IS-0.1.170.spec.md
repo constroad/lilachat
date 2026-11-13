@@ -570,3 +570,25 @@ Lo que `specs/ARCHITECTURE.spec.md` (§120 a §134) afirma de la interfaz y no e
 - **E2E 13/11 (emulador, 3 botones, OTA cbf3b2c5):** «Reenviado» en
   #administracion de Test; «Info» abre y la X cierra; mensajes QA borrados
   con «Eliminar para todos».
+
+
+### APK 0.1.183 (14/11): ventana chica de la videollamada y .6x
+
+- **Ventana chica (PiP):** una videollamada contestada se achica al salir de la
+  app, como WhatsApp. `app/src/calls/pip.ts` decide (`wantsPip`, `isPipWindow`,
+  con test). `Pip.kt` del módulo `llamada-entrante` la arma desde JS (`pipArm`);
+  Android 12+ entra solo (auto-enter) y los anteriores desde `onUserLeaveHint`,
+  que agrega el plugin `withCallPictureInPicture` (con test) junto con
+  `supportsPictureInPicture` en el manifiesto. En la ventana chica se dibuja
+  `PipCallView` (solo el video del otro) fuera del Modal de la llamada.
+- **La cámara sigue viva de fondo:** el servicio «Llamada en curso» pasa a
+  `microphone|camera` en una videollamada (con el permiso de cámara dado). Con
+  solo micrófono Android le quita la cámara a la app de fondo. Es la causa más
+  probable del corte al cambiar de app; **sin confirmar en un teléfono real**.
+- **Zoom .6x:** `camara/zoom.ts` trabaja en relación (.6x, 1x, 2x; pellizco
+  multiplica). expo-camera no bajaba de 1x: `app/patches/expo-camera+57.0.6.patch`
+  (patch-package en `postinstall`) lee un zoom negativo como relación absoluta
+  hasta el mínimo del lente. Un teléfono sin gran angular se queda en 1x.
+- **Light mode del riel (web):** las iniciales de «Personal» usaban
+  `text-on-rail-active` (violeta, para la ficha blanca) sobre el riel violeta
+  oscuro. Ahora `text-on-rail`, con test.

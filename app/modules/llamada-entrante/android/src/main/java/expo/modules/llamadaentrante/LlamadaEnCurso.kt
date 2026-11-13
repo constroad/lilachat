@@ -112,12 +112,24 @@ class ServicioDeLlamada : Service() {
       desde = intent?.getLongExtra(EXTRA_DESDE, 0L) ?: 0L
     )
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-      startForeground(ID_AVISO, aviso, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+      val video = intent?.getBooleanExtra(EXTRA_VIDEO, false) ?: false
+      startForeground(ID_AVISO, aviso, serviceTypes(video))
     } else {
       startForeground(ID_AVISO, aviso)
     }
     // Si el sistema lo mata, NO se levanta solo: sin la app no hay llamada que sostener.
     return START_NOT_STICKY
+  }
+
+  /**
+   * A video call also keeps the camera (José 13/11): with only `microphone`, Android takes the
+   * camera from an app in the back and the other side sees a frozen picture. The camera type needs
+   * the permission granted, or Android 14 refuses to start the service.
+   */
+  private fun serviceTypes(video: Boolean): Int {
+    val microphone = ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+    val withCamera = video && checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    return if (withCamera) microphone or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA else microphone
   }
 
   override fun onDestroy() {

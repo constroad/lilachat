@@ -46,6 +46,7 @@ class LlamadaEntranteModule : Module() {
       ServicioDeLlamada.iniciar(contexto, chatId, nombre, video, desde.toLong())
     }
     Function("finDeEnCurso") { ServicioDeLlamada.detener(contexto) }
+    Function("pipArm") { on: Boolean -> Pip.arm(appContext.currentActivity, on) }
     // FL8.2: el aviso de mensaje tocado, y limpiar el de un chat al abrirlo.
     Function("chatPendiente") { Puente.tomarChatPendiente() }
     // The same tap with its destination: space, thread and message (agentes 25/10/2026).

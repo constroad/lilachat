@@ -114,7 +114,7 @@ function ChatCameraBody(props: Props & { backRef: { current: (() => boolean) | n
   return (
     <View testID="camara-del-chat" className="flex-1 bg-black">
       <GestureDetector gesture={zoom.pinch}>
-        <CameraView ref={camera} style={{ flex: 1 }} mode={mode} facing={front ? 'front' : 'back'} flash={flash} mute={!sound} videoQuality="720p" videoBitrate={VIDEO_BITRATE} active={!taken} zoom={zoom.zoom} />
+        <CameraView ref={camera} style={{ flex: 1 }} mode={mode} facing={front ? 'front' : 'back'} flash={flash} mute={!sound} videoQuality="720p" videoBitrate={VIDEO_BITRATE} active={!taken} zoom={zoom.native} />
       </GestureDetector>
       {/* While it captures, the preview goes transparent (the chat shows behind): black until «Enviar». */}
       {shooting || taken ? <View pointerEvents="none" className="absolute inset-0 bg-black" /> : null}

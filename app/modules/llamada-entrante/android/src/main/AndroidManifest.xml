@@ -8,6 +8,8 @@
        corta hasta volver. -->
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+  <!-- A video call keeps the camera while the app is in the small window (José 13/11). -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
   <application>
     <!-- Prioridad MAYOR que la del servicio de expo-notifications (-1): FCM
          entrega al de mayor prioridad. Este extiende al de expo, así que lo que
@@ -33,6 +35,6 @@
     <service
       android:name=".ServicioDeLlamada"
       android:exported="false"
-      android:foregroundServiceType="microphone" />
+      android:foregroundServiceType="microphone|camera" />
   </application>
 </manifest>

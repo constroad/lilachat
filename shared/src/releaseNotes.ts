@@ -17,6 +17,17 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.183',
+    // Everyone: a video call shrinks to a small window, the camera's .6x, photos waiting in the composer.
+    audience: 'all',
+    items: [
+      'Al salir de la app en una videollamada, la llamada sigue en una ventana pequeña.',
+      'La cámara del chat tiene .6x (gran angular, si tu teléfono lo tiene), 1x y 2x.',
+      'Las fotos que eliges esperan como miniaturas dentro del campo de texto.',
+      'Los mensajes reenviados dicen «Reenviado».',
+    ],
+  },
+  {
     version: '0.1.182',
     // Everyone: Lottie stickers, answering with a photo, GIF or wink, sharp GIFs, deleting a space.
     audience: 'all',

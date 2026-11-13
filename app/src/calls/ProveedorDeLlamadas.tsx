@@ -3,6 +3,8 @@ import { callHoldsScreen, nombreDeContacto } from '@lilachat/shared';
 import { chatsEnMemoria } from '../chat/chatsGuardados';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { CallScreen } from './CallScreen';
+import { PipCallView } from './PipCallView';
+import { isPipWindow, wantsPip } from './pip';
 import { CallPill } from './CallControls';
 import { leyendaDeLlamada } from './estadoDeMedios';
 import type { EstadoDeMedios } from './estadoDeMedios';
@@ -12,7 +14,7 @@ import { useCallScreenHold } from './useCallScreenHold';
 import { llamadaNativa } from '../../modules/llamada-entrante/src';
 import { BASE_URL } from '../api/client';
 import { groupCallBanner, type GroupCallRoom } from '@lilachat/shared';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { Users } from 'lucide-react-native';
 import { useColores } from '../ui/tema';
 import { useGroupCall } from './group/useGroupCall';
@@ -89,6 +91,14 @@ export function ProveedorDeLlamadas({ jwt, me, children, onOpenChat }: { jwt: st
   useEffect(() => {
     if (fase !== 'activa' && fase !== 'llamando') setMinimized(false);
   }, [fase]);
+  // José 13/11: leaving the app in a video call shrinks it to Android's small window.
+  const pipWanted = wantsPip(llamada.state, llamada.video);
+  useEffect(() => {
+    llamadaNativa.pipArm(pipWanted);
+    return () => llamadaNativa.pipArm(false);
+  }, [pipWanted]);
+  const screenSize = useWindowDimensions();
+  const inPip = pipWanted && isPipWindow(screenSize.width, screenSize.height);
   const chatDeLaLlamada = llamada.chatId;
   const sendMessage = useMemo(
     () => (onOpenChat && chatDeLaLlamada ? () => { setMinimized(true); onOpenChat(chatDeLaLlamada); } : undefined),
@@ -114,10 +124,11 @@ export function ProveedorDeLlamadas({ jwt, me, children, onOpenChat }: { jwt: st
       ) : null}
       {inGroupCall && groupMinimized ? <GroupCallPill group={group} onRestore={() => setGroupMinimized(false)} /> : null}
       {inGroupCall && !groupMinimized ? <GroupCallScreen group={group} me={me} onMinimize={() => setGroupMinimized(true)} /> : null}
-      {llamada.state && minimized ? (
+      {inPip ? <PipCallView remote={llamada.remoteStream} local={llamada.localStream} /> : null}
+      {llamada.state && minimized && !inPip ? (
         <MinimizedCall state={llamada.state} medios={llamada.medios} video={llamada.video} peerName={llamada.peerName} onRestore={() => setMinimized(false)} />
       ) : null}
-      {llamada.state && !minimized ? (
+      {llamada.state && !minimized && !inPip ? (
         <CallScreen
           visible
           state={llamada.state}

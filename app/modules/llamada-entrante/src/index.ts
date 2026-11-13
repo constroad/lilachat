@@ -49,6 +49,7 @@ type LlamadaNativa = {
   abrirAjustesPantallaCompleta(): void;
   enCurso(chatId: string, nombre: string, video: boolean, desdeMs: number): void;
   finDeEnCurso(): void;
+  pipArm?(on: boolean): void;
   addListener(evento: 'onAccion', oyente: (accion: NoticeAction) => void): Suscripcion;
 };
 
@@ -106,6 +107,8 @@ export const llamadaNativa = {
   enCurso: (chatId: string, nombre: string, video: boolean, desdeMs: number): void =>
     seguro(() => nativo?.enCurso(chatId, nombre, video, desdeMs), undefined),
   finDeEnCurso: (): void => seguro(() => nativo?.finDeEnCurso(), undefined),
+  /** Arms the small window of an answered video call (José 13/11); older builds do nothing. */
+  pipArm: (on: boolean): void => seguro(() => nativo?.pipArm?.(on), undefined),
   alTocar: (oyente: (accion: NoticeTap) => void): Suscripcion =>
     seguro(() => nativo?.addListener('onAccion', (accion) => accion.accion !== 'recordatorio' && oyente(accion)), undefined) ?? { remove: () => undefined },
   /** A reminder's full screen opened the app while it was alive (pending 63). */

@@ -1,0 +1,18 @@
+diff --git a/node_modules/expo-camera/android/src/main/java/expo/modules/camera/ExpoCameraView.kt b/node_modules/expo-camera/android/src/main/java/expo/modules/camera/ExpoCameraView.kt
+index 999a22c..49f5596 100644
+--- a/node_modules/expo-camera/android/src/main/java/expo/modules/camera/ExpoCameraView.kt
++++ b/node_modules/expo-camera/android/src/main/java/expo/modules/camera/ExpoCameraView.kt
+@@ -646,8 +646,11 @@ class ExpoCameraView(
+   }
+ 
+   private fun setCameraZoom(value: Float) {
+-    val maxZoomRatio = camera?.cameraInfo?.zoomState?.value?.maxZoomRatio ?: 1f
+-    val targetZoomRatio = max(1f, min(maxZoomRatio, value.coerceIn(0f, 1f) * maxZoomRatio))
++    val zoomState = camera?.cameraInfo?.zoomState?.value
++    val maxZoomRatio = zoomState?.maxZoomRatio ?: 1f
++    val minZoomRatio = zoomState?.minZoomRatio ?: 1f
++    // Lilachat: a negative zoom is an absolute ratio (-0.6 = 0.6x), down to the lens's minimum (the wide lens).
++    val targetZoomRatio = if (value < 0f) (-value).coerceIn(minZoomRatio, maxZoomRatio) else max(1f, min(maxZoomRatio, value.coerceIn(0f, 1f) * maxZoomRatio))
+     camera?.cameraControl?.setZoomRatio(targetZoomRatio)
+   }
+ 

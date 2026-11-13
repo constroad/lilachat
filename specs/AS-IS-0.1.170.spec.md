@@ -627,3 +627,32 @@ Lo que `specs/ARCHITECTURE.spec.md` (§120 a §134) afirma de la interfaz y no e
 - **Galería de Inframaq:** `inframaq.constroad.com` entra en los hosts de la galería, para las fotos de
   la recepción en el hilo de #agregados (agentes 9bddd27 arma el `gallery` con `data.fotos`).
 - **Visto en consola:** un script en línea bloqueado por la CSP es el que inyecta Cloudflare, no de la app.
+
+## 13/11 noche: una sola cámara, «para mí» en todos lados y enlace a Avisos
+
+- **Una sola cámara en el APK** (José: «solo un componente cámara»).
+  `app/src/chat/camara/Camera.tsx` tiene el visor, la barra de arriba, los
+  chips, el zoom, el sello, el obturador, la columna apaisada y la captura.
+  `CamaraDelChat.tsx` y `FormCamera.tsx` quedan como adaptadores de lo que
+  pasa después del disparo:
+  - El chat abre «Enviar» encima.
+  - Un formulario muestra la toma con su sello congelado y «Repetir / Usar foto».
+  Los testID son uno solo: `btn-disparar`, `btn-flash`, `btn-cerrar-camara`
+  y `btn-galeria-camara`. El sello del formulario se congela al disparar.
+- **«Eliminar para mí» en todos mis dispositivos.** Colección
+  `hidden_messages` (persona + chat → seqs) y `GET/POST
+  /api/chats/:id/ocultos`. El evento `msg.hidden` llega solo a mis sesiones.
+  La web y el APK siguen ocultando en local al instante. Al abrir un chat
+  juntan lo que guarda el server.
+- **`/s/<espacio>/apps/<client_id>/avisos`** (`appNoticesLink`) abre la app
+  en su pestaña Avisos, en web y APK. Es el «Elegir canal» que Portal pone
+  en cotizaciones. José decidió que el canal se elige en Lilachat.
+- **Galería de #agregados en la web.** La miniatura salía en 0×0 porque la
+  caja era un span en línea dentro del botón. Ahora es `block`.
+
+Sin verificar todavía:
+- Una llamada real con ventana flotante.
+- La cámara web en un iPhone.
+- El pellizco para el zoom en un teléfono real.
+- «Entregado a» con otros miembros.
+- Borrar en el chat con uno mismo: lo prueba José, porque son sus chats.

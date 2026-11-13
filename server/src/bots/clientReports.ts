@@ -172,9 +172,16 @@ function contextFor(form: AppForm, serviceId: string, input: Extract<OpenInput, 
   const { lat, lng, at } = input.place;
   const placed = lat !== undefined && lng !== undefined;
   if (terms.requireLocation && !placed) return fail(400, 'invalid_request', 'Esta foto necesita la ubicación del teléfono.');
-  // Only the fixed-photo tool declares `tipoFoto`; the extra photo's tool has none and agentes refuses unknown keys (José 07/11).
-  const kind: Record<string, string> = photoKind && form.id === KINDED_PHOTO_TOOL ? { tipoFoto: photoKind } : {};
-  return { context: { servicioId: serviceId, informeId: reportId, tramoId, at, ...(placed ? { lat, lng } : {}), ...kind, ...(input.clientKey ? { clientKey: input.clientKey } : {}), ...(input.sealed && form.id === KINDED_PHOTO_TOOL ? { selloLilachat: true } : {}) } };
+  return { context: { servicioId: serviceId, informeId: reportId, tramoId, at, ...(placed ? { lat, lng } : {}), ...kindedPhotoKeys(form, input, photoKind), ...(input.clientKey ? { clientKey: input.clientKey } : {}) } };
+}
+
+/**
+ * What only the fixed-photo tool declares: `tipoFoto` (José 07/11) and `selloLilachat` (José 12/11).
+ * The extra photo's tool has neither, and agentes refuses unknown keys.
+ */
+function kindedPhotoKeys(form: AppForm, input: Extract<OpenInput, { kind: 'section' }>, photoKind: string | undefined): Record<string, string | boolean> {
+  if (form.id !== KINDED_PHOTO_TOOL) return {};
+  return { ...(photoKind ? { tipoFoto: photoKind } : {}), ...(input.sealed ? { selloLilachat: true } : {}) };
 }
 
 /** The section's form comes from the document Portal answered to THIS person; the report, section and tramo ride as context. */

@@ -56,6 +56,23 @@ describe('stampVideo', () => {
     await rm(folder, { recursive: true, force: true });
   }, 60_000);
 
+  it('a phone video held sideways, with an odd side and Opus sound, comes out upright, stamped and playable', async () => {
+    // Arrange: 640×361 recorded sideways (rotation 90) with Opus, as some phones save it.
+    const folder = await mkdtemp(join(tmpdir(), 'video-stamp-test-'));
+    const [flat, sideways] = [join(folder, 'flat.mp4'), join(folder, 'side.mp4')];
+    await run('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=white:s=640x361:d=1', '-f', 'lavfi', '-i', 'sine=duration=1', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-vf', 'scale=640:360', '-c:a', 'libopus', '-shortest', flat]);
+    await run('ffmpeg', ['-y', '-loglevel', 'error', '-display_rotation', '90', '-i', flat, '-c', 'copy', sideways]);
+    // Act
+    const stamped = await stampVideo(await readFile(sideways), stamp, null);
+    // Assert
+    expect(stamped).not.toBeNull();
+    const out = join(folder, 'out.mp4');
+    await import('node:fs/promises').then((fs) => fs.writeFile(out, stamped!));
+    const { stdout } = await run('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_name,width,height', '-of', 'csv=p=0', out]);
+    expect(stdout.trim().split('\n')).toEqual(['h264,360,640', 'aac']);
+    await rm(folder, { recursive: true, force: true });
+  }, 60_000);
+
   it('gives null for bytes that are not a video, and the caller sends it as it came', async () => {
     // Act
     const stamped = await stampVideo(Buffer.from('not a video'), stamp, null);

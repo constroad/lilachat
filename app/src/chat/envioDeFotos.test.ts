@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { armarEnvioDeFotos, quitarFoto, MAXIMO_DE_FOTOS } from './envioDeFotos';
+import { armarEnvioDeFotos, quitarFoto, MAXIMO_DE_FOTOS, sendTitleOf } from './envioDeFotos';
 
 /** Varias fotos con su pie, como WhatsApp (FL9b; auditoría §46.2). */
 describe('armarEnvioDeFotos', () => {
@@ -49,5 +49,18 @@ describe('the camera stamp of a shot', () => {
     // Assert
     expect(sent[0]).toMatchObject({ uri: 'cam', stamp });
     expect(sent[1]).not.toHaveProperty('stamp');
+  });
+});
+
+/** E2E 12/11: a video from the chat camera said «1 foto» over its send screen. */
+describe('sendTitleOf', () => {
+  it('names photos, videos or both by what was picked', () => {
+    // Arrange
+    const photo = { uri: 'a', mimeType: 'image/jpeg' };
+    const video = { uri: 'b', mimeType: 'video/mp4' };
+    // Act
+    const titles = [sendTitleOf([photo]), sendTitleOf([video]), sendTitleOf([video, video]), sendTitleOf([photo, video]), sendTitleOf([photo, photo])];
+    // Assert
+    expect(titles).toEqual(['1 foto', '1 video', '2 videos', '2 archivos', '2 fotos']);
   });
 });

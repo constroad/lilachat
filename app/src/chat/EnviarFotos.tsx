@@ -4,7 +4,7 @@ import { Modal } from '../ui/Modal';
 import { Image } from 'expo-image';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Crop, Send, Video, X } from 'lucide-react-native';
-import { armarEnvioDeFotos, quitarFoto, type FotoAEnviar, type FotoElegida } from './envioDeFotos';
+import { armarEnvioDeFotos, quitarFoto, sendTitleOf, type FotoAEnviar, type FotoElegida } from './envioDeFotos';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { CropEditor } from './crop/CropEditor';
@@ -77,7 +77,7 @@ export function EnviarFotos(props: {
           <X size={24} color="white" />
         </Pressable>
         <Text className="flex-1 text-base font-semibold" style={{ color: 'white' }}>
-          {fotos.length === 1 ? '1 foto' : `${fotos.length} fotos`}
+          {sendTitleOf(fotos)}
         </Text>
         {vista && !esVideo(vista) ? (
           <Pressable testID="btn-recortar" accessibilityLabel="Recortar y girar" onPress={() => setCropping(vista)} className="h-11 w-11 items-center justify-center">

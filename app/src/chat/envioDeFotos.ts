@@ -54,3 +54,12 @@ export function quitarFoto<T>(fotos: readonly T[], indice: number, actual: numbe
   const siguiente = indice < actual ? actual - 1 : actual;
   return { fotos: quedan, actual: Math.max(0, Math.min(siguiente, quedan.length - 1)) };
 }
+
+const isVideo = (picked: Pick<FotoElegida, 'mimeType'>) => Boolean(picked.mimeType?.startsWith('video/'));
+
+/** «1 foto», «2 videos», «3 archivos» over the send screen (E2E 12/11: a video said «1 foto»). */
+export function sendTitleOf(picked: readonly Pick<FotoElegida, 'mimeType'>[]): string {
+  const videos = picked.filter(isVideo).length;
+  const noun = videos === 0 ? ['foto', 'fotos'] : videos === picked.length ? ['video', 'videos'] : ['archivo', 'archivos'];
+  return picked.length === 1 ? `1 ${noun[0]}` : `${picked.length} ${noun[1]}`;
+}

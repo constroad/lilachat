@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, FlatList, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { CameraView, type CameraCapturedPicture } from 'expo-camera';
-import { GestureDetector } from 'react-native-gesture-handler';
+import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useCameraZoom, ZoomChips } from './ZoomControls';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import { Image } from 'expo-image';
@@ -53,7 +53,8 @@ export function ChatCamera(props: Props) {
   const back = useRef<(() => boolean) | null>(null);
   return (
     <Modal visible={props.visible} animationType="fade" onRequestClose={() => (back.current?.() ? undefined : props.onCerrar())} statusBarTranslucent>
-      {props.visible ? <ChatCameraBody {...props} backRef={back} /> : null}
+      {/* An Android Modal needs its own gesture root, or the pinch to zoom never arrives. */}
+      <GestureHandlerRootView style={{ flex: 1 }}>{props.visible ? <ChatCameraBody {...props} backRef={back} /> : null}</GestureHandlerRootView>
     </Modal>
   );
 }

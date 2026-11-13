@@ -592,3 +592,23 @@ Lo que `specs/ARCHITECTURE.spec.md` (§120 a §134) afirma de la interfaz y no e
 - **Light mode del riel (web):** las iniciales de «Personal» usaban
   `text-on-rail-active` (violeta, para la ficha blanca) sobre el riel violeta
   oscuro. Ahora `text-on-rail`, con test.
+
+### Una sola cámara, APK y PWA (José 13/11 noche)
+
+- **Web/PWA (los usuarios de iPhone):** `WebCamera` es la cámara de toda la web
+  en un celular: formularios, listas de fotos, Drive y ahora el **chat** (botón
+  Cámara del compositor, `ComposerCameraButton`). Suma chips .6x/1x/2x donde el
+  navegador expone `zoom` (Android Chrome; **iPhone Safari no**, ahí no salen),
+  flash donde hay linterna (`torch`) y galería dentro de la cámara
+  (`cameraControls.ts` con test, `useLensControls`). La subida del chat manda el
+  sello (`stampFieldsOf`) y no recomprime la toma: el server la achica al sellar.
+  `<input capture>` queda solo como respaldo de una computadora sin cámara.
+- **APK:** `FormCamera` (informes, observaciones, Drive) suma el mismo zoom que
+  la del chat. Las dos cámaras ya comparten sello, chips, grabación, flash y
+  logo; siguen siendo dos pantallas (la del chat lleva la tira de la galería y va
+  a «Enviar»). Unirlas en una es el paso siguiente.
+- **Pellizco:** las dos cámaras estaban en un Modal de Android sin raíz de
+  gestos propia; el pellizco no llegaba. Ahora cada una lleva su
+  `GestureHandlerRootView`.
+- **Sin verificar todavía:** la cámara web en un iPhone real y el pellizco en
+  un teléfono (el emulador no tiene gran angular).

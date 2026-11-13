@@ -17,6 +17,8 @@ import { useLiveStamp } from './useLiveStamp';
 import { useVideoRecording } from './useVideoRecording';
 import { recordingLabel, VIDEO_BITRATE } from '@lilachat/shared';
 import { ModeSwitch, RECORD_RED, type CameraMode } from './ModeSwitch';
+import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import { useCameraZoom, ZoomChips } from './ZoomControls';
 
 export type CameraShot = { uri: string; mime: string; /** A video's length, for the ticket's limit. */ seconds?: number };
 
@@ -39,6 +41,8 @@ const SIDE_BAR = 110;
 const CHIPS_BELOW = 56;
 /** The chips' own height: the logo goes under them, not behind them. */
 const CHIP_ROW = 44;
+/** The zoom chips' gap to the right edge (or to the side column), as the chat's camera. */
+const ZOOM_EDGE = 16;
 
 /**
  * Asks only when it has to. Android refuses a request while another one is open,
@@ -76,17 +80,22 @@ export function FormCamera(props: Props) {
   const spaceLogo = useSpaceLogo(getCurrentSpaceId());
   const logoUrl = logoOn ? spaceLogo : null;
   const capture = useFormCapture(camera, props.video?.maxSeconds);
+  // José 13/11: one camera everywhere; the report's has the chat's .6x / 1x / 2x and the pinch.
+  const zoom = useCameraZoom();
   const { shot } = capture;
   const use = () => shot && props.onShot(shot, { timemark: true, point: live.point, logo: Boolean(logoUrl), takenAt: shot.takenAt });
   return (
     <Modal visible animationType="fade" onRequestClose={shot ? capture.retake : props.onClose}>
+      {/* An Android Modal needs its own gesture root, or the pinch to zoom never arrives. */}
+      <GestureHandlerRootView style={{ flex: 1 }}>
       <View testID="camara-formulario" className="flex-1 bg-black">
-        <ShotOrPreview camera={camera} shot={shot} mode={mode} facing={facing} flash={flash} />
+        <ShotOrPreview camera={camera} shot={shot} mode={mode} facing={facing} flash={flash} zoom={zoom} />
         {/* While it captures the preview goes transparent and would show the form behind it. */}
         {capture.shooting ? <View pointerEvents="none" className="absolute inset-0 bg-black" /> : null}
         <Animated.View pointerEvents="none" className="absolute inset-0 bg-white" style={{ opacity: capture.blink }} />
         <StampOverlay stamp={live.stamp} logoUrl={logoUrl} width={width} height={height} bottomInset={landscape ? 0 : BOTTOM_BAR + margins.pie + (props.video ? MODE_SWITCH : 0)} topInset={margins.cabecera + CHIPS_BELOW + CHIP_ROW} rightInset={landscape ? SIDE_BAR : 0} />
         <TopBar title={props.title} flash={flash} reviewing={Boolean(shot)} landscape={landscape} recording={capture.recording ? recordingLabel(capture.elapsedMs, props.video?.maxSeconds) : null} onClose={props.onClose} onFlash={() => setFlash((before) => NEXT_FLASH[before])} />
+        {shot ? null : <ZoomChips zoom={zoom.zoom} onZoom={zoom.setZoom} right={(landscape ? SIDE_BAR : 0) + ZOOM_EDGE} />}
         {shot || capture.recording ? null : <CameraChips logoOn={logoOn} logoUrl={spaceLogo} precision={live.point?.precision ?? null} top={margins.cabecera + CHIPS_BELOW} />}
         {shot ? (
           <ReviewBar landscape={landscape} video={isVideoShot(shot)} onRetake={capture.retake} onUse={use} />
@@ -94,6 +103,7 @@ export function FormCamera(props: Props) {
           <ShutterBar landscape={landscape} mode={mode} recording={capture.recording} shooting={capture.shooting} onMode={props.video ? setMode : undefined} onShoot={() => void (mode === 'video' ? capture.record() : capture.shoot())} onFlip={() => setFacing((before) => (before === 'back' ? 'front' : 'back'))} onGallery={props.onGallery} />
         )}
       </View>
+      </GestureHandlerRootView>
     </Modal>
   );
 }
@@ -128,10 +138,14 @@ function useFormCapture(camera: RefObject<CameraView | null>, maxSeconds: number
 }
 
 /** The live camera, or the shot to review: the photo, or the video playing in a loop (design cam-06). */
-function ShotOrPreview(props: { camera: RefObject<CameraView | null>; shot: CameraShot | null; mode: CameraMode; facing: 'back' | 'front'; flash: FlashMode }) {
+function ShotOrPreview(props: { camera: RefObject<CameraView | null>; shot: CameraShot | null; mode: CameraMode; facing: 'back' | 'front'; flash: FlashMode; zoom: ReturnType<typeof useCameraZoom> }) {
   if (props.shot && isVideoShot(props.shot)) return <VideoPreview uri={props.shot.uri} fit="cover" />;
   if (props.shot) return <Image source={{ uri: props.shot.uri }} style={{ flex: 1 }} resizeMode="cover" />;
-  return <CameraView ref={props.camera} style={{ flex: 1 }} mode={props.mode} facing={props.facing} flash={props.flash} videoQuality="720p" videoBitrate={VIDEO_BITRATE} />;
+  return (
+    <GestureDetector gesture={props.zoom.pinch}>
+      <CameraView ref={props.camera} style={{ flex: 1 }} mode={props.mode} facing={props.facing} flash={props.flash} videoQuality="720p" videoBitrate={VIDEO_BITRATE} zoom={props.zoom.native} />
+    </GestureDetector>
+  );
 }
 
 

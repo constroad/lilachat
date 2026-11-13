@@ -40,6 +40,8 @@ type SheetProps = {
   bottomRoom?: number;
   /** The back button, when it does not simply close: a typed text is not thrown away. */
   onBack?: () => void;
+  /** In the window's layer, not the screen's: the chat's layer reaches under Android's buttons (José 13/11). */
+  fullWindow?: boolean;
   /**
    * `dismiss` (default): it closes the keyboard, which would cover it: the card lives in the app's window.
    * `avoid`: a sheet with a text field rises with it. `keep`: a search that opens it and keeps its height.
@@ -53,7 +55,7 @@ type SheetProps = {
 /** Closed, a sheet is nothing: no gesture and no animated styles (a chat holds several, and each render paid for them). */
 export function Sheet(props: SheetProps) {
   return (
-    <Modal visible={props.visible} transparent animationType="none" onRequestClose={props.onBack ?? props.onClose} measured={false}>
+    <Modal visible={props.visible} transparent animationType="none" onRequestClose={props.onBack ?? props.onClose} measured={false} fullWindow={props.fullWindow}>
       {props.visible ? <SheetBody {...props} /> : null}
     </Modal>
   );

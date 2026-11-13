@@ -52,7 +52,7 @@ export function InfoDelMensaje(props: { visible: boolean; chatId: string; seq: n
     nombreDeContacto({ delServidor: miembro.name, telefono: miembro.phone, agenda }) || 'Alguien';
 
   return (
-    <Sheet visible={visible} onClose={props.onCerrar} testID="hoja-info-mensaje" className="max-h-[70%] px-5" dragArea="handle" bottomRoom={8}>
+    <Sheet fullWindow visible={visible} onClose={props.onCerrar} testID="hoja-info-mensaje" className="max-h-[70%] px-5" dragArea="handle" bottomRoom={8}>
       <View className="mb-2 flex-row items-center">
         <Text className="flex-1 text-base font-bold text-on-surface">Info del mensaje</Text>
         <Pressable testID="btn-cerrar-info" accessibilityLabel="Cerrar" onPress={props.onCerrar} className="h-11 w-11 items-center justify-center">

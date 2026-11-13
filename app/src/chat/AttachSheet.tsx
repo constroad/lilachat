@@ -182,7 +182,7 @@ export function AttachSheet(props: {
 
   return (
     // Plan 1, F1: in the app's window; dragged down by its handle (the gallery inside scrolls).
-    <Sheet visible={props.visible} onClose={props.onClose} testID="attach-sheet" dragArea="handle" maxHeight={height * SHEET_MAX_FRACTION} bottomRoom={0}>
+    <Sheet fullWindow visible={props.visible} onClose={props.onClose} testID="attach-sheet" dragArea="handle" maxHeight={height * SHEET_MAX_FRACTION} bottomRoom={0}>
       {allPhotos ? (
         <>
           <View className="flex-row items-center gap-1 px-2 pb-2">

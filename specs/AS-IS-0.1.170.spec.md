@@ -521,7 +521,10 @@ Lo que `specs/ARCHITECTURE.spec.md` (§120 a §134) afirma de la interfaz y no e
   de la ventana) heredaba ese 0: quedaba sin aire para los 3 botones de Android.
   Ahora el puente de contexto usa el inferior real de la ventana
   (`overlayInsets`, `RootInsetsContext`). Reproducido en el emulador con la
-  barra de 3 botones.
+  barra de 3 botones. Con eso solo NO alcanzó (OTA b3498fc9, misma captura):
+  la capa propia del chat llega por debajo de los botones. Las hojas del clip y
+  de «Info» se dibujan ahora en la capa de la ventana (`Sheet fullWindow`), la
+  misma donde el selector de espacios ya quedaba bien.
 - **Compositor que crece.** APK hasta un 30 % de la pantalla; web hasta 40vh
   (`field-sizing: content`, o el alto medido donde no existe).
 - **Videollamada: apagar mi cámara ya no oculta la del otro.** Un solo `video`

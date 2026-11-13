@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { photoBubbleStyle } from './photoBubbleStyle';
 
 describe('the frame of a photo in the web chat', () => {
+  it('a tall stamped shot is cropped from the bottom, where its stamp is (José 13/11)', () => {
+    expect(photoBubbleStyle({ width: 720, height: 1280, stamped: true })).toEqual({ width: 240, height: 320, maxWidth: '100%', maxHeight: 'none', objectPosition: 'bottom' });
+  });
+
   it('a tall voucher takes the portrait frame instead of a band of its middle', () => {
     expect(photoBubbleStyle({ width: 359, height: 865 })).toEqual({ width: 240, height: 320, maxWidth: '100%', maxHeight: 'none' });
   });

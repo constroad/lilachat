@@ -2,7 +2,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { CircleAlert, Play } from 'lucide-react-native';
-import { isAnimatedImage } from '@lilachat/shared';
+import { bubbleCropAnchor, isAnimatedImage } from '@lilachat/shared';
 import { useAnimatedStop } from './stickers/StickerMessage';
 import { FileCard } from './TarjetaDeArchivo';
 import { NotaDeVoz } from './NotaDeVoz';
@@ -111,6 +111,7 @@ export function MessageMedia({ item, mine, selecting, onSelect, onOpen, onGifTap
               source={{ uri: copiaLocalDe(item.clientKey) ?? miniaturaDe(item.media) }}
               style={photoStyle(item.media)}
               contentFit="cover"
+              contentPosition={bubbleCropAnchor(item.media)}
               transition={120}
             />
           ) : (

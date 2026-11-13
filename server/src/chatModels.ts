@@ -148,6 +148,8 @@ export interface Message {
     mime?: string;
     /** An animated sticker of my own (pending 37): it plays a while and stops, like the pack's. */
     animated?: boolean;
+    /** Burned with the camera's stamp at the bottom: the bubble crops from there (José 13/11). */
+    stamped?: boolean;
     /** Sent together with other photos or videos (pending 12): the chat draws one card. */
     album?: string;
     /**
@@ -335,6 +337,7 @@ const messageSchema = new Schema<Message>(
       onda: { type: [Number], default: undefined },
       mime: String,
       animated: Boolean,
+      stamped: Boolean,
       album: String,
           fileName: String,
       sizeBytes: Number,

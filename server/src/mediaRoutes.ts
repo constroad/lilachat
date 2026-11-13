@@ -97,7 +97,8 @@ export function buildMediaRouter(uploader: MediaUploader = defaultMediaUploader(
       const problem = await chatProblem(chatId, req.session!.userId, Boolean(sealed));
       if (problem) return res.status(problem.status).json({ message: problem.message });
       // The chat camera's stamp (José 12/11): burned here, once, while it is compressed.
-      const content = (sealed ? null : await stampedUpload(file, validation.kind, req.body, chatId)) ?? { bytes: file.buffer, mimeType: file.mimetype, fileName: file.originalname };
+      const stamped = sealed ? null : await stampedUpload(file, validation.kind, req.body, chatId);
+      const content = stamped ?? { bytes: file.buffer, mimeType: file.mimetype, fileName: file.originalname };
       const uploaded = await uploader.upload({
         chatId,
         fileName: sealed ? SEALED_NAME : content.fileName,
@@ -147,6 +148,8 @@ export function buildMediaRouter(uploader: MediaUploader = defaultMediaUploader(
           thumbUrl: uploaded.media.thumbnailUrl,
           url: uploaded.media.url,
           mime: content.mimeType,
+          // The bubble crops a stamped shot from the bottom, where the stamp is (José 13/11).
+          stamped: stamped ? true : undefined,
         },
       });
 

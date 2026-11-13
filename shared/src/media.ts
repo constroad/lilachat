@@ -112,6 +112,14 @@ export function dimensionValida(valor: unknown): number | undefined {
 const BURBUJA = { anchoMaximo: 240, altoMaximo: 320, minimo: 120, cuadrado: 220, anchoMinimoNatural: 200 } as const;
 
 /**
+ * Where a cropped bubble keeps its picture: a shot from Lilachat's camera carries its stamp at the
+ * bottom, and a tall one cropped from the middle lost it (José 13/11: «en el chat no se ve el sello»).
+ */
+export function bubbleCropAnchor(media: { stamped?: boolean }): 'bottom' | 'center' {
+  return media.stamped ? 'bottom' : 'center';
+}
+
+/**
  * El tamaño de la burbuja de una foto o un video (FL9): su forma real dentro
  * de 240×320, como WhatsApp, y nunca menos de 120 de lado (una tira de 4000×200
  * sería una línea). Sin dimensiones —los mensajes viejos— el cuadrado de 220.

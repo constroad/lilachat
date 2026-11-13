@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   dimensionValida,
   tamanoDeBurbuja,
+  bubbleCropAnchor,
   MAX_BYTES_BY_KIND,
   buildMediaPath,
   buildStorageName,
@@ -153,5 +154,16 @@ describe('tamanoDeBurbuja', () => {
 
   it('el frente del límite: un pelo más angosta que 200 ya es marco completo', () => {
     expect(tamanoDeBurbuja({ width: 1000, height: 1700 })).toEqual({ ancho: 240, alto: 320 });
+  });
+});
+
+describe('bubbleCropAnchor', () => {
+  it('a stamped shot is cropped from the bottom, where the stamp is (José 13/11)', () => {
+    expect(bubbleCropAnchor({ stamped: true })).toBe('bottom');
+  });
+
+  it('any other photo keeps its middle', () => {
+    expect(bubbleCropAnchor({})).toBe('center');
+    expect(bubbleCropAnchor({ stamped: false })).toBe('center');
   });
 });

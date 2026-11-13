@@ -196,7 +196,9 @@ function ViewerBody({
   closeRef,
 }: VisorProps & { foto: FotoDelVisor; closeRef: MutableRefObject<(() => void) | null> }) {
   const margins = useMargenes();
-  const { width, height } = useWindowDimensions();
+  const { width, height: screenHeight } = useWindowDimensions();
+  // The photo stays above Android's buttons: under them they hid the stamp (José 13/11).
+  const height = screenHeight - margins.pie;
   const [zoomed, setZoomed] = useState(false);
   const [barsShown, setBarsShown] = useState(true);
   const photos = otras && otras.length > 0 ? otras : [foto];

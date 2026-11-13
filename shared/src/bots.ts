@@ -238,6 +238,29 @@ export function cardActionLayout(actions: readonly Pick<CardAction, 'style'>[]):
   return primaries === 1 && secondaries > 0 && primaries + secondaries === actions.length ? 'stacked' : 'row';
 }
 
+/**
+ * What a form shows above its fields about the card it was opened from (design gst-02: the voucher's
+ * figure, the shop, what was read). Only what a person needs to remember while correcting.
+ */
+export type CardContext = { kicker?: string; /** «S/ 500.00», when the title starts with an amount. */ figure?: string; title: string; status?: { label: string; tone: CardTone }; fields: { label: string; value: string }[] };
+
+/** «S/ 500.00 · Ferretería El Constructor»: a money amount, then what it was for. */
+const FIGURE_TITLE = /^((?:S\/|US\$|\$|USD|PEN)\s?\d[\d.,]*)\s+·\s+(.+)$/;
+const CONTEXT_FIELDS = 4;
+
+export function cardContextOf(card: Pick<BotCard, 'kicker' | 'title' | 'status' | 'fields'>): CardContext | null {
+  const full = card.title.trim();
+  if (!full) return null;
+  const match = FIGURE_TITLE.exec(full);
+  return {
+    ...(card.kicker ? { kicker: card.kicker } : {}),
+    ...(match ? { figure: match[1]! } : {}),
+    title: match ? match[2]! : full,
+    ...(card.status ? { status: card.status } : {}),
+    fields: card.fields.slice(0, CONTEXT_FIELDS),
+  };
+}
+
 export const botCardSummary = (card: Pick<BotCard, 'title' | 'status'>): string => [card.title, card.status?.label].filter(Boolean).join(' · ');
 
 /**

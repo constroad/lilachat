@@ -20,6 +20,7 @@ export function Overlay({
   children,
   footer,
   wide,
+  header,
 }: {
   title: string;
   onClose: () => void;
@@ -27,6 +28,8 @@ export function Overlay({
   footer?: ReactNode;
   /** A list to explore (the channels of a space), not a form: twice the width on a computer. */
   wide?: boolean;
+  /** Its own header (an app's form, design gst-02): the title and the close button keep their place. */
+  header?: ReactNode;
 }) {
   useEffect(() => {
     const alTeclear = (evento: KeyboardEvent) => {
@@ -48,8 +51,8 @@ export function Overlay({
         onClick={(evento) => evento.stopPropagation()}
         className={`flex max-h-[92%] w-full flex-col overflow-hidden rounded-t-2xl bg-surface shadow-2xl ${wide ? 'sm:max-w-2xl' : 'sm:max-w-md'} sm:rounded-2xl`}
       >
-        <header className="flex items-center gap-2 border-b border-outline/15 px-4 py-3">
-          <h2 className="line-clamp-2 min-w-0 flex-1 text-base font-bold tracking-tight">{title}</h2>
+        <header className={`flex gap-2 border-b border-outline/15 px-4 py-3 ${header ? 'items-start' : 'items-center'}`}>
+          {header ? <div className="min-w-0 flex-1">{header}</div> : <h2 className="line-clamp-2 min-w-0 flex-1 text-base font-bold tracking-tight">{title}</h2>}
           <button
             type="button"
             data-testid="btn-cerrar-overlay"

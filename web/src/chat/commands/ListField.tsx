@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { Check, Plus, Trash2 } from 'lucide-react';
-import { formRows, itemPath, newItem, optionsForRow, rowTitleOf, splitLineOf, splitRows, togglePick, typedAfterEdit, visibleFields, type FormField, type FormValues, type ItemField, type ListSplit } from '@lilachat/shared';
+import { Check, CircleAlert, CircleCheck, Plus, Trash2 } from 'lucide-react';
+import { formRows, itemPath, newItem, optionsForRow, rowAmounts, rowTitleOf, sharePercent, splitLineOf, splitRows, togglePick, typedAfterEdit, visibleFields, type ChoiceOption, type FormField, type FormValues, type ItemField, type ListSplit } from '@lilachat/shared';
 import { FieldError } from '../../ui/Overlay';
 import { Label } from './AppFormFields';
 
@@ -137,9 +137,9 @@ function RowItems(props: { field: ListOfItems; items: FormValues[]; keys: number
 }
 
 /**
- * A list keyed by one choice (agentes 12/11: the expense's partidas), drawn as checks: one line
- * per option, and a ticked one shows its short fields beside it (the amount by hand). José could
- * not pick a second partida from a dropdown per row.
+ * A list keyed by one choice (agentes 12/11: the expense's partidas), as design gst-02 draws it: every option a chip
+ * to tick, and only a ticked one a row, with its share of the total and its amount by hand. José could not pick a
+ * second partida from a dropdown per row, and a long list of rows pushed the amount out of sight.
  */
 function PickItems({ field, value, errors, onChange, split }: Props) {
   const items = asItems(value);
@@ -148,45 +148,74 @@ function PickItems({ field, value, errors, onChange, split }: Props) {
   const options = choice?.kind === 'choice' ? choice.options : [];
   const side = field.fields.filter((child) => child.name !== key);
   const { setCell, toggle, even, typed } = useSplitPick(field, items, onChange, split);
+  const ticked = options.filter((option) => items.some((item) => item[key] === option.value));
   return (
     <div data-testid={`lista-${field.name}`}>
       <div className="flex items-center justify-between gap-2">
         <Label field={field} />
-        {items.length ? <span data-testid={`elegidos-${field.name}`} className="mb-1.5 rounded-full border border-primary/30 px-2.5 py-0.5 text-[12px] font-semibold text-primary">{`${items.length} ${items.length === 1 ? 'elegida' : 'elegidas'}`}</span> : null}
+        {items.length ? <span data-testid={`elegidos-${field.name}`} className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-primary">{`${items.length} ${items.length === 1 ? 'elegida' : 'elegidas'}`}</span> : null}
       </div>
       {field.help ? <p className="-mt-1 mb-1.5 text-[12px] text-on-surface-variant">{field.help}</p> : null}
-      <div role="group" aria-label={field.label} className="space-y-2">
-        {options.map((option) => {
-          const index = items.findIndex((item) => item[key] === option.value);
-          const on = index >= 0;
-          const rowErrors = on ? side.flatMap((child) => errors[itemPath(field.name, index, child.name)] ?? []) : [];
-          return (
-            <div key={option.value} data-testid={`fila-${field.name}-${option.value}`}>
-              <div className={`flex min-h-[52px] items-center gap-2 rounded-xl border px-3 py-1.5 ${on ? 'border-primary bg-primary/[0.06]' : 'border-outline/25'}`}>
-                <button type="button" role="checkbox" aria-checked={on} data-testid={`opcion-${field.name}-${option.value}`} onClick={() => toggle(option.value)} className="flex min-w-0 flex-1 items-center gap-3 py-1.5 text-left">
-                  <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-md border ${on ? 'border-primary bg-primary text-on-primary' : 'border-outline/40'}`}>{on ? <Check size={15} strokeWidth={3} /> : null}</span>
-                  <span className="min-w-0 flex-1 text-[15px]">{option.label}</span>
-                </button>
-                {on && split && typed.size > 0 && !typed.has(option.value) ? <span data-testid={`ajustado-${field.name}-${option.value}`} className="rounded border border-outline/30 px-1.5 text-[10px] font-bold uppercase text-on-surface-variant">ajustado</span> : null}
-                {on ? side.map((child) => <SideCell key={child.name} field={child} testId={`campo-${field.name}-${index}-${child.name}`} value={items[index]![child.name]} invalid={Boolean(errors[itemPath(field.name, index, child.name)])} onChange={setCell(index, child.name)} />) : null}
-              </div>
-              {rowErrors.length ? <FieldError>{rowErrors.join(' ')}</FieldError> : null}
-            </div>
-          );
-        })}
+      <div role="group" aria-label={field.label} className="flex flex-wrap gap-2">
+        {options.map((option) => <PickChip key={option.value} name={field.name} option={option} on={items.some((item) => item[key] === option.value)} onToggle={() => toggle(option.value)} />)}
       </div>
-      {split && items.length ? (
-        <div data-testid={`reparto-${field.name}`} className="mt-2 flex flex-wrap items-center justify-between gap-2">
-          <p className={`text-[13px] font-semibold ${SPLIT_TONE[splitLineOf(split.total, items, split.plan, split.unit).tone]}`}>{splitLineOf(split.total, items, split.plan, split.unit).text}</p>
-          {items.length > 1 ? <button type="button" data-testid={`partes-iguales-${field.name}`} onClick={even} className="min-h-9 rounded-full border border-outline/25 px-3 text-[13px] font-semibold hover:bg-background">Partes iguales</button> : null}
+      {ticked.length ? (
+        <div className="mt-3 space-y-2">
+          {ticked.map((option) => {
+            const index = items.findIndex((item) => item[key] === option.value);
+            const percent = split ? sharePercent(rowAmounts([items[index]!], split.plan.amount)[0]!, split.total) : null;
+            const adjusted = Boolean(split) && typed.size > 0 && !typed.has(option.value);
+            const rowErrors = side.flatMap((child) => errors[itemPath(field.name, index, child.name)] ?? []);
+            return (
+              <div key={option.value} data-testid={`fila-${field.name}-${option.value}`}>
+                <div className="flex min-h-[52px] items-center gap-2.5 rounded-xl border-[1.5px] border-primary bg-primary/[0.04] p-3">
+                  <button type="button" aria-label={`Quitar ${option.label}`} data-testid={`quitar-${field.name}-${option.value}`} onClick={() => toggle(option.value)} className="grid h-5 w-5 shrink-0 place-items-center rounded-md bg-primary text-on-primary"><Check size={13} strokeWidth={3} /></button>
+                  <span className="min-w-0 flex-1 text-[13px] font-bold">
+                    <span className="break-words">{option.label}</span>
+                    {percent !== null ? <span className="ml-1.5 text-[11px] font-medium text-on-surface-variant tabular-nums">{`(${percent} %)`}</span> : null}
+                  </span>
+                  {adjusted ? <span data-testid={`ajustado-${field.name}-${option.value}`} className="rounded border border-outline/30 px-1.5 text-[10px] font-bold uppercase text-on-surface-variant">ajustado</span> : null}
+                  {side.map((child) => <SideCell key={child.name} field={child} testId={`campo-${field.name}-${index}-${child.name}`} value={items[index]![child.name]} invalid={Boolean(errors[itemPath(field.name, index, child.name)])} onChange={setCell(index, child.name)} />)}
+                </div>
+                {rowErrors.length ? <FieldError>{rowErrors.join(' ')}</FieldError> : null}
+              </div>
+            );
+          })}
         </div>
       ) : null}
+      {split && items.length ? <SplitBanner name={field.name} split={split} items={items} onEven={items.length > 1 ? even : undefined} /> : null}
       <FieldError>{errors[field.name]}</FieldError>
     </div>
   );
 }
 
-const SPLIT_TONE = { ok: 'text-en-linea', warn: 'text-warning', error: 'text-error', neutral: 'text-on-surface-variant' } as const;
+/** One partida to tick: a chip, outlined and ticked when it is in (design gst-02). */
+function PickChip(props: { name: string; option: ChoiceOption; on: boolean; onToggle: () => void }) {
+  return (
+    <button type="button" role="checkbox" aria-checked={props.on} data-testid={`opcion-${props.name}-${props.option.value}`} onClick={props.onToggle} className={`inline-flex min-h-9 items-center gap-1.5 rounded-xl border px-3 text-[13px] transition-colors ${props.on ? 'border-primary bg-primary/10 font-bold text-primary' : 'border-outline/25 font-medium text-on-surface-variant hover:bg-background'}`}>
+      <span className={`grid h-4 w-4 shrink-0 place-items-center rounded border ${props.on ? 'border-primary bg-primary text-on-primary' : 'border-outline/40'}`}>{props.on ? <Check size={11} strokeWidth={3.5} /> : null}</span>
+      {props.option.label}
+    </button>
+  );
+}
+
+const BANNER_TONE = { ok: 'border-en-linea/30 bg-en-linea/10 text-en-linea', warn: 'border-warning/30 bg-warning/10 text-warning', error: 'border-error/30 bg-error/5 text-error', neutral: 'border-outline/20 bg-background text-on-surface-variant' } as const;
+
+/** «Asignado S/ 500.00 de S/ 500.00 · 100 % cuadrado», or what is missing or over (design gst-02). */
+function SplitBanner(props: { name: string; split: ListSplit; items: FormValues[]; /** Starts over in equal shares; none with a single row. */ onEven?: () => void }) {
+  const line = splitLineOf(props.split.total, props.items, props.split.plan, props.split.unit);
+  const Icon = line.tone === 'ok' ? CircleCheck : CircleAlert;
+  return (
+    <div data-testid={`reparto-${props.name}`} className={`mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2 ${BANNER_TONE[line.tone]}`}>
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-semibold">
+        <Icon size={16} aria-hidden className="shrink-0" />
+        {line.text}
+        {line.tone === 'ok' ? <span data-testid={`cuadrado-${props.name}`} className="rounded border border-en-linea/40 bg-en-linea/10 px-1.5 text-[10px] font-bold uppercase tracking-wider">100 % cuadrado</span> : null}
+      </p>
+      {props.onEven ? <button type="button" data-testid={`partes-iguales-${props.name}`} onClick={props.onEven} className="min-h-8 rounded-full border border-current/30 px-3 text-xs font-semibold hover:bg-background/60">Partes iguales</button> : null}
+    </div>
+  );
+}
 
 /** A tick shares the total among the ticked rows; an amount typed by hand stays and the rest adjusts (José 13/11). */
 function useSplitPick(field: ListOfItems, items: FormValues[], onChange: Props['onChange'], split?: ListSplit) {

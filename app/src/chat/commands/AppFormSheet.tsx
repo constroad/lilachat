@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from 'react';
 import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { CheckCheck, Clock, X } from 'lucide-react-native';
-import { cameraFirstFieldOf, CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, formRows, liveSelfieFieldOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
+import { cameraFirstFieldOf, CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, formRows, isSplitForm, liveSelfieFieldOf, numberedStepsOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { Modal } from '../../ui/Modal';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
-import { CheckField, ChoiceField, LocationField, PhotoField, TypedField, type PhotoUpload } from './AppFormFields';
+import { CheckField, ChoiceField, FormStyleContext, LocationField, PhotoField, TypedField, type PhotoUpload } from './AppFormFields';
+import { FormContextCard, FormSheetHeader } from './FormHeader';
 import { DateField } from './DateField';
 import { FormSummary } from './FormSummary';
 import { ListField } from './ListField';
@@ -40,7 +41,7 @@ const ROW_GAP = 12;
 const TODAY = new Intl.DateTimeFormat('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
 const CLOCK = new Intl.DateTimeFormat('es-PE', { hour: '2-digit', minute: '2-digit', hour12: false });
 
-type SheetProps = { /** A report's photo: the form starts at the camera when that is all it still needs. */ cameraFirst?: boolean; answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: PhotoUpload; /** The address under a signing's camera. */ onPlace?: PlaceLookup; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply>; /** The service's work-map streets for a `work-street` field; `null` while they load. */ workStreets?: readonly WorkMapStreet[] | null; /** A report's shift, weather and street, filled on opening (José 12/11). */ onConditions?: ConditionsLookup };
+type SheetProps = { /** A report's photo: the form starts at the camera when that is all it still needs. */ cameraFirst?: boolean; answer: EphemeralAnswer; personName?: string; /** «#flujo-caja»: the channel it was opened in. */ where?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: PhotoUpload; /** The address under a signing's camera. */ onPlace?: PlaceLookup; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply>; /** The service's work-map streets for a `work-street` field; `null` while they load. */ workStreets?: readonly WorkMapStreet[] | null; /** A report's shift, weather and street, filled on opening (José 12/11). */ onConditions?: ConditionsLookup };
 
 /** The keyboard's height: the sheet rises above it and shrinks to fit (José, 23/10: he typed the code without seeing it). */
 function useKeyboardHeight() {
@@ -102,10 +103,8 @@ export function AppFormSheet(props: SheetProps) {
   const [cameraField] = useState(() => (props.cameraFirst && !live ? cameraFirstFieldOf(visibleFields(fields, state.values), state.values) : null));
   const formLive = useFormLive({ fields, values: state.values, preview: form.preview, onRefresh: props.onRefresh, onPreview: props.onPreview });
   const sheetWidth = Math.min(width, SHEET_MAX_WIDTH);
-  // The summary's remarks under their fields; the person's own errors win.
   const place = useFieldAutofill({ fields, values: state.values, fill: state.fill, streets: props.workStreets ?? null });
   useConditionsAutofill({ fields, values: state.values, fill: state.fill, ask: props.onConditions });
-  const slot: SlotContext = { place, workStreets: props.workStreets ?? null, cameraField, onCameraDismissed: props.onClose, fields, onPlace: props.onPlace, values: state.values, errors: { ...formLive.summary.errors, ...state.errors }, live, locationName, selfie, upload: props.onUpload, set: state.set, setList: state.setList, width: sheetWidth, positions };
   // Sent and answered later (consensus 24/10): «Enviando…» until the answer closes it or the errors come back here.
   const waiting = props.answer.waiting === true;
   const evidence = evidenceLine(fields);
@@ -117,6 +116,11 @@ export function AppFormSheet(props: SheetProps) {
   const step = signingStepOf(fields, state.values);
   // The three `gps` numbers are one block, drawn where the latitude goes.
   const shown = visibleFields(fields, state.values).filter((field) => field.name !== signer?.name && (step === 'sign' || field.kind === 'location') && !(field.kind === 'number' && field.gps && field.gps !== 'lat'));
+  // A form that splits an amount wears design gst-02 from its first step, even while its partidas are hidden.
+  const designed = isSplitForm(fields);
+  const steps = numberedStepsOf(fields, shown);
+  // The summary's remarks under their fields; the person's own errors win.
+  const slot: SlotContext = { place, workStreets: props.workStreets ?? null, cameraField, onCameraDismissed: props.onClose, fields, onPlace: props.onPlace, values: state.values, errors: { ...formLive.summary.errors, ...state.errors }, live, locationName, selfie, upload: props.onUpload, set: state.set, setList: state.setList, width: sheetWidth, positions, designed, steps };
   const label = waiting ? 'Enviando…' : state.sending ? signing.phaseLabel : submitLabelOf(form, fields, state.values);
   return (
     <Modal visible transparent animationType="slide" onRequestClose={close}>
@@ -125,8 +129,9 @@ export function AppFormSheet(props: SheetProps) {
         {/* The sheet caps its height and the fields scroll inside it: the button stays in sight (José, 23/10: a long form hid «Marcar»). */}
         <View testID={`formulario-${form.id}`} className="rounded-t-3xl bg-surface" style={{ maxHeight: (height - keyboard) * MAX_SCREEN_SHARE, paddingBottom: keyboard ? 8 : margins.pie + 8 }}>
           <View className="mt-3 h-1.5 w-11 self-center rounded-full bg-outline/30" />
-          <SheetHeader answer={props.answer} onClose={close} />
+          {designed ? <FormSheetHeader title={form.title} appName={props.answer.appName} avatarUrl={props.answer.avatarUrl} where={props.where} personName={props.personName} onClose={close} /> : <SheetHeader answer={props.answer} onClose={close} />}
           <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }} contentContainerStyle={{ padding: SHEET_PADDING, gap: 14 }}>
+            {designed && props.answer.context ? <FormContextCard context={props.answer.context} /> : null}
             <FormIntro answer={props.answer} clock={Boolean(evidence) && !live} personName={props.personName} />
             {form.checkAll ? <CheckAllButton onPress={() => state.fill(checkAllValues(fields, state.values))} /> : null}
             {signer && step === 'who' ? <SignerPicker field={signer} onPick={state.set(signer.name)} /> : null}
@@ -238,6 +243,9 @@ type SlotContext = {
   positions: MutableRefObject<Record<string, number>>;
   place: ReturnType<typeof useFieldAutofill>;
   workStreets: readonly WorkMapStreet[] | null;
+  /** A form that splits an amount, and the step number of each of its steps (design gst-02). */
+  designed: boolean;
+  steps: Record<string, number>;
 };
 
 /** One field; in a row of two (`half`) its position is the row's, written by the row. */
@@ -251,7 +259,8 @@ function FieldSlot(props: { field: FormField; half: boolean; context: SlotContex
     return <LiveSelfie ref={props.context.selfie} testID={`campo-${field.name}`} label={LIVE_PHOTO_KICKER} onPlace={props.context.onPlace} width={width - SHEET_PADDING * 2} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />;
   }
   return (
-    // In a signing the place shows inside the camera; its field keeps reading behind it.
+    <FormStyleContext.Provider value={{ designed: props.context.designed, step: props.context.steps[field.name] }}>
+    {/* In a signing the place shows inside the camera; its field keeps reading behind it. */}
     <View onLayout={half ? undefined : (event) => (props.context.positions.current[field.name] = event.nativeEvent.layout.y)} style={live && field.kind === 'location' ? { display: 'none' } : half ? { flex: 1, minWidth: 0 } : undefined}>
       {chips ? <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{LIVE_CHOICE_KICKER}</Text> : null}
       {chips ? (
@@ -269,6 +278,7 @@ function FieldSlot(props: { field: FormField; half: boolean; context: SlotContex
         <Field field={field} value={values[field.name]} error={errors[field.name]} onChange={props.context.set(field.name)} upload={upload} width={width - SHEET_PADDING * 2} half={half} opensCamera={props.context.cameraField === field.name} onCameraDismissed={props.context.onCameraDismissed} />
       )}
     </View>
+    </FormStyleContext.Provider>
   );
 }
 

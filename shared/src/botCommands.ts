@@ -1,5 +1,5 @@
 import { validateFormSpec, type AppForm } from './appForms.js';
-import { validateBotCard, type BotCard } from './bots.js';
+import { validateBotCard, type BotCard, type CardContext } from './bots.js';
 import { driveUploadOf, type DriveUpload } from './driveUpload.js';
 
 /**
@@ -214,6 +214,8 @@ export type EphemeralAnswer = {
   waiting?: true;
   /** The app's logo (pending 101): its answers and forms show it instead of the generic robot. */
   avatarUrl?: string;
+  /** The card whose button opened this form: the form shows it above its fields (design gst-02). */
+  context?: CardContext;
 };
 export const EPHEMERAL_KEPT = 3;
 

@@ -57,6 +57,7 @@ function ComposerField({
   onNudge,
   onWink,
   recipient,
+  where,
   onCreateReminder,
   onCreateChecklist,
   onElegirArchivos,
@@ -100,6 +101,8 @@ function ComposerField({
   onWink?: (wink: WinkId) => void;
   /** Who the winks go to: «Una animación a pantalla completa para Ana». */
   recipient?: string;
+  /** «#flujo-caja»: the channel, for the header of the app's forms; none in a person's chat. */
+  where?: string;
   /** W3c: solo cuando se puede (en un grupo, sus admins; nunca en un secreto). */
   onCreateReminder?: () => void;
   onCreateChecklist?: () => void;
@@ -251,6 +254,7 @@ function ComposerField({
           key={formKeyOf(commands.appAnswers.openForm)}
           answer={commands.appAnswers.openForm}
           personName={loadPerfil()?.name}
+          where={where}
           onSubmit={(values) => commands.appAnswers.submitForm(commands.appAnswers.openForm!, values)}
           onUpload={(file, stamp) => commands.appAnswers.uploadPhoto(commands.appAnswers.openForm!.commandId, file, stamp)}
           onPlace={(point) => commands.appAnswers.placeOf(commands.appAnswers.openForm!.commandId, point)}

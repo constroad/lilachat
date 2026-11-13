@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { channelButtonRows, commandOf, matchCommands, parseSlashInput, quickActionRows, slashQuery, unknownCommandMessage, type CommandGroup } from '@lilachat/shared';
+import { channelButtonRows, commandOf, matchCommands, parseSlashInput, quickActionRows, slashQuery, unknownCommandMessage, type CardContext, type CommandGroup } from '@lilachat/shared';
 import { currentSocket } from '../../useSocket';
 import { runCardCommand, runCommand, shareCommandAnswer, spaceCommands } from './commandsApi';
 import { useAppAnswers } from './useAppAnswers';
@@ -109,11 +109,11 @@ export function useChatCommands(params: { jwt?: string; chatId: string; workspac
 
   /** A card's row: a stored card (`seq`) runs where the app posted it, even with the command off; one only I see, like typing it. */
   const runCardLine = useCallback(
-    async (line: string, seq?: number): Promise<boolean | 'not-command'> => {
+    async (line: string, seq?: number, context?: CardContext): Promise<boolean | 'not-command'> => {
       const parsed = parseSlashInput(line);
       if (!seq) return runIfCommand(line);
       if (!jwt || !parsed) return false;
-      return track({ appName: 'La app', command: parsed.command }, () => runCardCommand(jwt, chatId, { seq, line }));
+      return track({ appName: 'La app', command: parsed.command, ...(context ? { context } : {}) }, () => runCardCommand(jwt, chatId, { seq, line }));
     },
     [runIfCommand, jwt, chatId, track]
   );

@@ -1,13 +1,13 @@
 import { useContext, useState } from 'react';
 import { ChevronRight, ExternalLink } from 'lucide-react';
-import { cardActionLayout, formatClock, isOrderCard, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
+import { cardActionLayout, cardContextOf, formatClock, isOrderCard, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BotBlocksView } from './botBlocks/BotBlocksView';
 import { BotCardDetail } from './botBlocks/BotCardDetail';
 import { CardCommandContext, OrderCardContext, useCardCommand } from './botBlocks/cardCommand';
 import { TONE as BLOCK_TONE } from './botBlocks/tones';
 
 /** The status pill's tone (design `e-21`): background faint, border at 30 %, text strong. */
-const TONE: Record<CardTone, string> = {
+export const TONE: Record<CardTone, string> = {
   ok: 'border-en-linea/30 bg-en-linea/10 text-en-linea',
   warn: 'border-warning/30 bg-warning/10 text-warning',
   error: 'border-error/30 bg-error/10 text-error',
@@ -113,7 +113,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
   const [detailOpen, setDetailOpen] = useState(false);
   const run = useCardCommand();
   const openOrder = useContext(OrderCardContext);
-  const runRow = run ? (line: string) => run(line, props.seq) : null;
+  const runRow = run ? (line: string) => run(line, props.seq, cardContextOf(card) ?? undefined) : null;
   const tap = async (actionId: string) => {
     setSent({ id: actionId, state: 'sending' });
     setError('');

@@ -7,6 +7,7 @@ import type { FormField, FormValues } from './appForms.js';
  */
 
 const CENTS = 100;
+const PERCENT = 100;
 const HALF_CENT = 0.005;
 const toCents = (amount: number) => Math.round(amount * CENTS);
 const fromCents = (cents: number) => cents / CENTS;
@@ -73,6 +74,12 @@ export function rowAmounts(rows: readonly FormValues[], amount: string): number[
 /** An amount typed by hand in a row: that row (by its tick) is kept from then on, and the rest adjusts. */
 export function typedAfterEdit(typed: ReadonlySet<string>, plan: SplitPlan | undefined, cell: string, tick: unknown): ReadonlySet<string> {
   return plan && cell === plan.amount ? new Set(typed).add(String(tick)) : typed;
+}
+
+/** A row's share of the total in whole percent (design gst-02: «Materiales (60 %)»); none without a total. */
+export function sharePercent(amount: number, total: number): number | null {
+  if (!Number.isFinite(amount) || !(total > 0)) return null;
+  return Math.round((amount / total) * PERCENT);
 }
 
 /** What a split line says (José 13/11): all assigned, what is missing, or what is over. */

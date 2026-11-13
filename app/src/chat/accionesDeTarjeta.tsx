@@ -1,4 +1,5 @@
 import { createContext, useContext } from 'react';
+import type { CardContext } from '@lilachat/shared';
 import type { AgendaReminder } from '../agenda/agendaApi';
 import type { CallBackActions } from './useCallBack';
 
@@ -13,7 +14,7 @@ import type { CallBackActions } from './useCallBack';
  * `runLine`: a card's row runs its line, with the `seq` of a stored card; absent where its answer could not be shown.
  * `openOrderCard`: an order's card opens that order in «Servicios»; only in a client's channel whose tab this person has.
  */
-export type AccionesDeTarjeta = { editarRecordatorio?: (recordatorio: AgendaReminder) => void; callBack?: CallBackActions; runLine?: (line: string, seq?: number) => void; openOrderCard?: (seq: number) => void };
+export type AccionesDeTarjeta = { editarRecordatorio?: (recordatorio: AgendaReminder) => void; callBack?: CallBackActions; runLine?: (line: string, seq?: number, context?: CardContext) => void; openOrderCard?: (seq: number) => void };
 
 export const AccionesDeTarjetaContext = createContext<AccionesDeTarjeta>({});
 

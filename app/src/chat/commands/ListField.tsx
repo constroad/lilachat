@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
-import { Check, Plus, Trash2 } from 'lucide-react-native';
-import { formRows, itemPath, newItem, optionsForRow, rowTitleOf, splitLineOf, splitRows, togglePick, typedAfterEdit, visibleFields, type FormField, type FormValues, type ItemField, type ListSplit } from '@lilachat/shared';
+import { Check, CircleAlert, CircleCheck, Plus, Trash2 } from 'lucide-react-native';
+import { formRows, itemPath, newItem, optionsForRow, rowAmounts, rowTitleOf, sharePercent, splitLineOf, splitRows, togglePick, typedAfterEdit, visibleFields, type ChoiceOption, type FormField, type FormValues, type ItemField, type ListSplit } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { ErrorLine, Label } from './AppFormFields';
 
@@ -135,9 +135,9 @@ function RowItems(props: { field: ListOfItems; items: FormValues[]; keys: number
 }
 
 /**
- * A list keyed by one choice (agentes 12/11: the expense's partidas), drawn as checks: one line
- * per option, and a ticked one shows its amount on the same line (José: two controls per line,
- * not a sheet of rows to fill).
+ * A list keyed by one choice (agentes 12/11: the expense's partidas), as design gst-02 draws it: every option a chip
+ * to tick, and only a ticked one a row, with its share of the total and its amount by hand (José: two controls per
+ * line, not a sheet of rows to fill).
  */
 function PickItems({ field, value, errors, onChange, split }: Props) {
   const colors = useColores();
@@ -148,36 +148,57 @@ function PickItems({ field, value, errors, onChange, split }: Props) {
   const side = field.fields.filter((child) => child.name !== key);
   const shared = usePickSplit({ field, items, onChange, split });
   const { setCell, toggle, typed } = shared;
+  const ticked = options.filter((option) => items.some((item) => item[key] === option.value));
   return (
     <View testID={`lista-${field.name}`}>
       <View className="flex-row items-center justify-between">
         <Label field={field} />
-        {items.length ? <Text testID={`elegidos-${field.name}`} className="mb-1.5 text-[13px] font-semibold text-primary">{`${items.length} ${items.length === 1 ? 'elegida' : 'elegidas'}`}</Text> : null}
+        {items.length ? <Text testID={`elegidos-${field.name}`} className="mb-1.5 text-[11px] font-bold uppercase tracking-[1px] text-primary">{`${items.length} ${items.length === 1 ? 'elegida' : 'elegidas'}`}</Text> : null}
       </View>
       {field.help ? <Text className="-mt-1 mb-1.5 text-[13px] text-on-surface-variant">{field.help}</Text> : null}
-      <View className="gap-1.5">
-        {options.map((option) => {
-          const index = items.findIndex((item) => item[key] === option.value);
-          const on = index >= 0;
-          const rowErrors = on ? side.flatMap((child) => errors[itemPath(field.name, index, child.name)] ?? []) : [];
-          return (
-            <View key={option.value} testID={`fila-${field.name}-${option.value}`}>
-              <View className={`min-h-[52px] flex-row items-center gap-2 rounded-xl border px-3 py-1 ${on ? 'border-primary bg-primary/[0.06]' : 'border-outline/25'}`}>
-                <Pressable testID={`opcion-${field.name}-${option.value}`} accessibilityRole="checkbox" accessibilityState={{ checked: on }} onPress={() => toggle(option.value)} className="min-h-[44px] flex-1 flex-row items-center gap-3">
-                  <View className={`h-6 w-6 items-center justify-center rounded-md border ${on ? 'border-primary bg-primary' : 'border-outline/40'}`}>{on ? <Check size={15} color={colors['on-primary']} /> : null}</View>
-                  <Text className="flex-1 text-[15px] text-on-surface" numberOfLines={2}>{option.label}</Text>
-                </Pressable>
-                {on && split && typed.size > 0 && !typed.has(option.value) ? <Text testID={`ajustado-${field.name}-${option.value}`} className="text-[10px] font-bold uppercase text-on-surface-variant">ajustado</Text> : null}
-                {on ? side.map((child) => <View key={child.name} className="w-32"><RowCell field={child} testID={`campo-${field.name}-${index}-${child.name}`} value={items[index]![child.name]} invalid={Boolean(errors[itemPath(field.name, index, child.name)])} onChange={setCell(index, child.name)} /></View>) : null}
-              </View>
-              {rowErrors.length ? <ErrorLine text={rowErrors.join(' ')} /> : null}
-            </View>
-          );
-        })}
+      <View className="flex-row flex-wrap gap-2">
+        {options.map((option) => <PickChip key={option.value} name={field.name} option={option} on={items.some((item) => item[key] === option.value)} onToggle={() => toggle(option.value)} />)}
       </View>
+      {ticked.length ? (
+        <View className="mt-3 gap-2">
+          {ticked.map((option) => {
+            const index = items.findIndex((item) => item[key] === option.value);
+            const percent = split ? sharePercent(rowAmounts([items[index]!], split.plan.amount)[0]!, split.total) : null;
+            const adjusted = Boolean(split) && typed.size > 0 && !typed.has(option.value);
+            const rowErrors = side.flatMap((child) => errors[itemPath(field.name, index, child.name)] ?? []);
+            return (
+              <View key={option.value} testID={`fila-${field.name}-${option.value}`}>
+                <View className="min-h-[56px] flex-row items-center gap-2.5 rounded-xl border-[1.5px] border-primary bg-primary/[0.04] p-3">
+                  <Pressable testID={`quitar-${field.name}-${option.value}`} accessibilityRole="button" accessibilityLabel={`Quitar ${option.label}`} onPress={() => toggle(option.value)} hitSlop={10} className="h-6 w-6 items-center justify-center rounded-md bg-primary">
+                    <Check size={15} color={colors['on-primary']} />
+                  </Pressable>
+                  <Text className="flex-1 text-[14px] font-bold text-on-surface" numberOfLines={2}>
+                    {option.label}
+                    {percent !== null ? <Text className="text-[12px] font-medium text-on-surface-variant">{`  (${percent} %)`}</Text> : null}
+                  </Text>
+                  {adjusted ? <Text testID={`ajustado-${field.name}-${option.value}`} className="text-[10px] font-bold uppercase text-on-surface-variant">ajustado</Text> : null}
+                  {side.map((child) => <View key={child.name} className="w-32"><RowCell field={child} testID={`campo-${field.name}-${index}-${child.name}`} value={items[index]![child.name]} invalid={Boolean(errors[itemPath(field.name, index, child.name)])} onChange={setCell(index, child.name)} /></View>)}
+                </View>
+                {rowErrors.length ? <ErrorLine text={rowErrors.join(' ')} /> : null}
+              </View>
+            );
+          })}
+        </View>
+      ) : null}
       {split && items.length ? <SplitLine field={field.name} split={split} items={items} onEven={items.length > 1 ? shared.even : undefined} /> : null}
       <ErrorLine text={errors[field.name]} />
     </View>
+  );
+}
+
+/** One partida to tick: a chip, outlined and ticked when it is in (design gst-02). */
+function PickChip(props: { name: string; option: ChoiceOption; on: boolean; onToggle: () => void }) {
+  const colors = useColores();
+  return (
+    <Pressable testID={`opcion-${props.name}-${props.option.value}`} accessibilityRole="checkbox" accessibilityState={{ checked: props.on }} onPress={props.onToggle} className={`min-h-[44px] flex-row items-center gap-2 rounded-xl border px-3 ${props.on ? 'border-primary bg-primary/10' : 'border-outline/25'}`}>
+      <View className={`h-5 w-5 items-center justify-center rounded border ${props.on ? 'border-primary bg-primary' : 'border-outline/40'}`}>{props.on ? <Check size={13} color={colors['on-primary']} /> : null}</View>
+      <Text className={`text-[14px] ${props.on ? 'font-bold text-primary' : 'font-medium text-on-surface-variant'}`}>{props.option.label}</Text>
+    </Pressable>
   );
 }
 
@@ -214,17 +235,29 @@ function usePickSplit(params: { field: ListOfItems; items: FormValues[]; onChang
   return { toggle, setCell, even, typed };
 }
 
-const SPLIT_TONE = { ok: 'text-en-linea', warn: 'text-warning', error: 'text-error', neutral: 'text-on-surface-variant' } as const;
+const BANNER_TONE = {
+  ok: { box: 'border-en-linea/30 bg-en-linea/10', text: 'text-en-linea', icon: 'en-linea' },
+  warn: { box: 'border-warning/30 bg-warning/10', text: 'text-warning', icon: 'warning' },
+  error: { box: 'border-error/30 bg-error/5', text: 'text-error', icon: 'error' },
+  neutral: { box: 'border-outline/20 bg-background', text: 'text-on-surface-variant', icon: 'on-surface-variant' },
+} as const;
 
-/** «Asignado S/ 500.00 de S/ 500.00», or what is missing or over, and «Partes iguales». */
+/** «Asignado S/ 500.00 de S/ 500.00 · 100 % cuadrado», or what is missing or over, and «Partes iguales» (design gst-02). */
 function SplitLine(props: { field: string; split: ListSplit; items: FormValues[]; onEven?: () => void }) {
+  const colors = useColores();
   const { split } = props;
   const line = splitLineOf(split.total, props.items, split.plan, split.unit);
+  const tone = BANNER_TONE[line.tone];
+  const Icon = line.tone === 'ok' ? CircleCheck : CircleAlert;
   return (
-    <View testID={`reparto-${props.field}`} className="mt-2 flex-row flex-wrap items-center justify-between gap-2">
-      <Text className={`flex-1 text-[13px] font-semibold ${SPLIT_TONE[line.tone]}`}>{line.text}</Text>
+    <View testID={`reparto-${props.field}`} className={`mt-3 flex-row flex-wrap items-center justify-between gap-2 rounded-xl border px-3 py-2.5 ${tone.box}`}>
+      <View className="flex-1 flex-row flex-wrap items-center gap-x-2 gap-y-1">
+        <Icon size={16} color={colors[tone.icon]} />
+        <Text className={`text-[14px] font-semibold ${tone.text}`}>{line.text}</Text>
+        {line.tone === 'ok' ? <Text testID={`cuadrado-${props.field}`} className="rounded border border-en-linea/40 bg-en-linea/10 px-1.5 text-[10px] font-bold uppercase tracking-[1px] text-en-linea">100 % cuadrado</Text> : null}
+      </View>
       {props.onEven ? (
-        <Pressable testID={`partes-iguales-${props.field}`} onPress={props.onEven} className="min-h-[36px] justify-center rounded-full border border-outline/25 px-3">
+        <Pressable testID={`partes-iguales-${props.field}`} onPress={props.onEven} className="min-h-[44px] justify-center rounded-full border border-outline/25 px-3.5">
           <Text className="text-[13px] font-semibold text-on-surface">Partes iguales</Text>
         </Pressable>
       ) : null}

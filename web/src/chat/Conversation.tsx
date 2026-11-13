@@ -275,6 +275,7 @@ export function Conversation(props: {
         onNudge={props.onNudge}
         onWink={props.onWink}
         recipient={chat.name ?? chat.phone}
+        where={isChannel && chat.name ? `#${chat.name}` : undefined}
         onElegirArchivos={props.onElegirArchivos}
         staged={props.staged}
         contexto={props.contexto}

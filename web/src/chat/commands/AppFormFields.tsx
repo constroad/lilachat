@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { Camera, LocateFixed, MapPin, RefreshCw } from 'lucide-react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { Camera, Check, ClipboardList, LayoutGrid, LocateFixed, MapPin, RefreshCw, type LucideIcon } from 'lucide-react';
 import { stampOfFile } from '../camera/shotStamp';
 import { shootOrPick } from '../camera/cameraRequests';
 import { geoPointOf, mapTilesFor, precisionLabel, type FormField, type GeoPoint, fileStampOf, type FormPhotoStamp } from '@lilachat/shared';
@@ -15,23 +15,87 @@ export const inputClass = 'h-11 w-full rounded-xl border border-outline/25 bg-ba
 
 type FieldProps<K extends FormField['kind']> = { field: Extract<FormField, { kind: K }>; value: unknown; error?: string; onChange: (value: unknown) => void };
 
+/**
+ * How a form that splits an amount is drawn (design gst-02): `designed` for the whole form, and the `step`
+ * number of the field that is one. Any other form keeps the plain look, and so does every other field.
+ */
+export type FormStyle = { designed: boolean; step?: number };
+export const FormStyleContext = createContext<FormStyle>({ designed: false });
+
 export function Label(props: { field: FormField }) {
+  const { designed, step } = useContext(FormStyleContext);
+  const optional = props.field.required ? null : <span className="font-normal normal-case tracking-normal text-on-surface-variant"> · opcional</span>;
+  if (designed) {
+    // The labels of a designed form are small capitals (design gst-02); a step also says its number.
+    return (
+      <p {...(step !== undefined ? { 'data-testid': `paso-${props.field.name}` } : {})} className="mb-1.5 text-[10.5px] font-bold uppercase tracking-wider text-on-surface-variant">
+        {step !== undefined ? <span>{step}. </span> : null}{props.field.label}{optional}
+      </p>
+    );
+  }
   return (
     <p className="mb-1.5 text-[13px] font-semibold text-on-surface">
       {props.field.label}
-      {props.field.required ? null : <span className="font-normal text-on-surface-variant"> · opcional</span>}
+      {optional}
     </p>
+  );
+}
+
+/** The picture of each big tile of a step (design gst-02: «Servicio», «Proyecto»); others go without. */
+const TILE_ICONS: Record<string, LucideIcon> = { servicio: ClipboardList, proyecto: LayoutGrid };
+
+/** A step with two or three options: big tiles, the picked one outlined and ticked (design gst-02). */
+function StepTiles(props: { field: Extract<FormField, { kind: 'choice' }>; value: unknown; onChange: (value: unknown) => void }) {
+  const { field } = props;
+  return (
+    <div role="radiogroup" aria-label={field.label} className="grid grid-cols-2 gap-2">
+      {field.options.map((option) => {
+        const on = props.value === option.value;
+        const Icon = TILE_ICONS[option.label.trim().toLowerCase()];
+        return (
+          <button key={option.value} type="button" role="radio" aria-checked={on} data-testid={`opcion-${field.name}-${option.value}`} onClick={() => props.onChange(option.value)} className={`flex h-14 items-center justify-center gap-2 rounded-xl px-3 text-sm transition-colors ${on ? 'border-2 border-primary bg-primary/10 font-extrabold text-primary' : 'border-[1.5px] border-outline/25 font-bold text-on-surface-variant hover:bg-background'}`}>
+            {Icon ? <Icon size={18} aria-hidden /> : null}
+            {option.label}
+            {on ? <Check size={16} strokeWidth={3} aria-hidden /> : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A few short options as pills, the picked one filled and ticked (design gst-02: «Partes iguales», «Por porcentaje»). */
+function OptionPills(props: { field: Extract<FormField, { kind: 'choice' }>; value: unknown; onChange: (value: unknown) => void }) {
+  const { field } = props;
+  return (
+    <div role="radiogroup" aria-label={field.label} className="flex flex-wrap gap-2">
+      {field.options.map((option) => {
+        const on = props.value === option.value;
+        return (
+          <button key={option.value} type="button" role="radio" aria-checked={on} data-testid={`opcion-${field.name}-${option.value}`} onClick={() => props.onChange(option.value)} className={`inline-flex h-9 items-center gap-1.5 rounded-full px-3.5 text-xs transition-colors ${on ? 'bg-primary font-bold text-on-primary' : 'border border-outline/25 font-semibold text-on-surface-variant hover:bg-background'}`}>
+            {on ? <Check size={13} strokeWidth={3} aria-hidden /> : null}
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
 /** Up to four side by side (design e-28), more in a list. */
 export function ChoiceField({ field, value, error, onChange, compact }: FieldProps<'choice'> & { /** Half a row. */ compact?: boolean }) {
+  const { designed, step } = useContext(FormStyleContext);
   return (
     <div>
       {field.options.length === 0 ? (
         <>
           <Label field={field} />
           <p data-testid={`sin-opciones-${field.name}`} className="rounded-xl border border-dashed border-outline/30 px-3 py-3 text-[14px] text-on-surface-variant">No hay opciones para elegir</p>
+        </>
+      ) : field.segmented && step !== undefined ? (
+        <>
+          <Label field={field} />
+          <StepTiles field={field} value={value} onChange={onChange} />
         </>
       ) : field.segmented ? (
         <>
@@ -43,6 +107,11 @@ export function ChoiceField({ field, value, error, onChange, compact }: FieldPro
             </button>
           ))}
         </div>
+        </>
+      ) : field.columns === 2 && designed ? (
+        <>
+          <Label field={field} />
+          <OptionPills field={field} value={value} onChange={onChange} />
         </>
       ) : field.columns === 2 ? (
         <>

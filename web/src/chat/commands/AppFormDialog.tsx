@@ -1,10 +1,11 @@
 import { useMemo, useRef, type RefObject } from 'react';
 import { CheckCheck, Clock } from 'lucide-react';
-import { CHECK_ALL_LABEL, checkAllValues, chipsFor, splitFor, evidenceLine, formFields, formRows, isWideForm, liveSelfieFieldOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
+import { CHECK_ALL_LABEL, checkAllValues, chipsFor, splitFor, evidenceLine, formFields, formRows, isSplitForm, isWideForm, liveSelfieFieldOf, numberedStepsOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
-import { CheckField, ChoiceField, DateField, LocationField, NumberField, PhotoField, TextField } from './AppFormFields';
+import { CheckField, ChoiceField, DateField, FormStyleContext, LocationField, NumberField, PhotoField, TextField } from './AppFormFields';
+import { FormContextCard, FormHeader } from './FormHeader';
 import { ListField } from './ListField';
 import { FormSummary } from './FormSummary';
 import { isRichChoice, MultiField, RichChoiceField } from './RichChoiceFields';
@@ -26,7 +27,7 @@ const LIVE_FOOTER = 'Al tocar se toma la foto con la hora y el lugar, y se enví
 
 type Upload = (file: File, stamp?: FormPhotoStamp) => Promise<{ ok: true; fileId: string } | { ok: false; message: string }>;
 
-type DialogProps = { answer: EphemeralAnswer; personName?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: Upload; /** The address under a signing's camera. */ onPlace?: PlaceLookup; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply>; /** The service's work-map streets for a `work-street` field; `null` while they load. */ workStreets?: readonly WorkMapStreet[] | null; /** A report's shift, weather and street, filled on opening (José 12/11). */ onConditions?: ConditionsLookup };
+type DialogProps = { answer: EphemeralAnswer; personName?: string; /** «#flujo-caja»: the channel it was opened in. */ where?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: Upload; /** The address under a signing's camera. */ onPlace?: PlaceLookup; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply>; /** The service's work-map streets for a `work-street` field; `null` while they load. */ workStreets?: readonly WorkMapStreet[] | null; /** A report's shift, weather and street, filled on opening (José 12/11). */ onConditions?: ConditionsLookup };
 
 /** After a refusal the dialog goes to the first field with an error (E2E 28/10: «Diseño» was out of sight). */
 function revealField(body: HTMLDivElement | null, name: string) {
@@ -56,8 +57,6 @@ export function AppFormDialog(props: DialogProps) {
   const place = useFieldAutofill({ fields, values: state.values, fill: state.fill, streets: props.workStreets ?? null });
   useConditionsAutofill({ fields, values: state.values, fill: state.fill, ask: props.onConditions });
   const live = useFormLive({ fields, values: state.values, preview: form.preview, onRefresh: props.onRefresh, onPreview: props.onPreview });
-  // The summary's remarks («la lectura de fin va después del inicio») under their fields; the person's own errors win.
-  const slot: SlotContext = { fields, values: state.values, errors: { ...live.summary.errors, ...state.errors }, selfieField, locationName, selfie, upload: props.onUpload, onPlace: props.onPlace, set: state.set, setList: state.setList, place, workStreets: props.workStreets ?? null };
   // Sent and answered later (consensus 24/10): «Enviando…» until the answer closes it or the errors come back here.
   const waiting = props.answer.waiting === true;
   const evidence = evidenceLine(fields);
@@ -66,11 +65,17 @@ export function AppFormDialog(props: DialogProps) {
   const step = signingStepOf(fields, state.values);
   // The three `gps` numbers are one block, drawn where the latitude goes.
   const shown = visibleFields(fields, state.values).filter((field) => field.name !== signer?.name && (step === 'sign' || field.kind === 'location') && !(field.kind === 'number' && field.gps && field.gps !== 'lat'));
+  // A form that splits an amount wears design gst-02 from its first step, even while its partidas are hidden.
+  const designed = isSplitForm(fields);
+  const steps = numberedStepsOf(fields, shown);
+  // The summary's remarks («la lectura de fin va después del inicio») under their fields; the person's own errors win.
+  const slot: SlotContext = { fields, values: state.values, errors: { ...live.summary.errors, ...state.errors }, selfieField, locationName, selfie, upload: props.onUpload, onPlace: props.onPlace, set: state.set, setList: state.setList, place, workStreets: props.workStreets ?? null, designed, steps };
   const footer = <FormFooter summary={live.summary.blocks} message={state.message} busy={state.sending || waiting} refreshing={live.refreshing} label={label} note={evidence ? (selfieField ? LIVE_FOOTER : evidence) : ''} onSend={() => void state.send()} />;
   return (
-    <Overlay title={form.title} onClose={props.onClose} footer={step === 'sign' ? footer : undefined} wide={isWideForm(fields)}>
+    <Overlay title={form.title} onClose={props.onClose} footer={step === 'sign' ? footer : undefined} wide={isWideForm(fields) || designed} header={designed ? <FormHeader title={form.title} appName={props.answer.appName} avatarUrl={props.answer.avatarUrl} where={props.where} personName={props.personName} /> : undefined}>
       <div ref={body} data-testid={`formulario-${form.id}`} className="space-y-4">
-        <FormIntro answer={props.answer} clock={Boolean(evidence) && !selfieField} personName={props.personName} />
+        {designed && props.answer.context ? <FormContextCard context={props.answer.context} /> : null}
+        <FormIntro answer={props.answer} clock={Boolean(evidence) && !selfieField} personName={props.personName} app={!designed} />
         {form.checkAll ? (
           <button type="button" data-testid="marcar-todo" onClick={() => state.fill(checkAllValues(fields, state.values))} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 text-[14px] font-semibold text-primary hover:bg-primary/15">
             <CheckCheck size={18} /> {CHECK_ALL_LABEL}
@@ -94,17 +99,19 @@ export function AppFormDialog(props: DialogProps) {
 }
 
 /** Above the fields: the app's line and the clock of a registration. */
-function FormIntro(props: { answer: EphemeralAnswer; clock: boolean; personName?: string }) {
+function FormIntro(props: { answer: EphemeralAnswer; clock: boolean; personName?: string; /** The app's line, when the header does not say it already. */ app: boolean }) {
   const { answer } = props;
   const today = new Date();
   return (
     <>
       {answer.response?.text ? <p data-testid="formulario-texto" className="rounded-xl bg-primary/10 px-3 py-2.5 text-[14px]">{answer.response.text}</p> : null}
       {answer.response?.form?.intro ? <p className="text-[14px] text-on-surface-variant">{answer.response.form.intro}</p> : null}
-      <div className="flex items-center gap-2 text-[13px] text-on-surface-variant">
-        {answer.avatarUrl ? <AppLogo avatarUrl={answer.avatarUrl} size={22} rounded="rounded-md" /> : <Avatar name={answer.appName} size={22} bot />}
-        <span>{answer.appName} · hoy, {today.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-      </div>
+      {props.app ? (
+        <div className="flex items-center gap-2 text-[13px] text-on-surface-variant">
+          {answer.avatarUrl ? <AppLogo avatarUrl={answer.avatarUrl} size={22} rounded="rounded-md" /> : <Avatar name={answer.appName} size={22} bot />}
+          <span>{answer.appName} · hoy, {today.toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+        </div>
+      ) : null}
       {props.clock ? (
         // Audit 12/11: a bare «17:41» in a box read as a field to fill; it is the hour this is registered at.
         <div data-testid="formulario-hora" className="flex items-center justify-between gap-3 rounded-xl bg-primary/5 px-3 py-2">
@@ -144,6 +151,9 @@ type SlotContext = {
   setList: (name: string) => (items: FormValues[], changed: string) => void;
   place: ReturnType<typeof useFieldAutofill>;
   workStreets: readonly WorkMapStreet[] | null;
+  /** A form that splits an amount, and the step number of each of its steps (design gst-02). */
+  designed: boolean;
+  steps: Record<string, number>;
 };
 
 /** One field; `half` when it shares its row. */
@@ -158,6 +168,7 @@ function FieldSlot(props: { field: FormField; half?: boolean; context: SlotConte
   }
   return (
     // In a signing the place shows inside the camera; its field keeps reading behind it.
+    <FormStyleContext.Provider value={{ designed: props.context.designed, step: props.context.steps[field.name] }}>
     <div data-field={field.name} hidden={Boolean(selfieField) && field.kind === 'location'}>
       {chips ? <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">{LIVE_CHOICE_KICKER}</p> : null}
       {chips ? (
@@ -168,6 +179,7 @@ function FieldSlot(props: { field: FormField; half?: boolean; context: SlotConte
         <Field field={field} value={values[field.name]} error={errors[field.name]} onChange={props.context.set(field.name)} upload={upload} half={half} />
       )}
     </div>
+    </FormStyleContext.Provider>
   );
 }
 

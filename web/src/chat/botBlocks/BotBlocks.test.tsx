@@ -154,8 +154,9 @@ describe('tapping a tank opens its detail (José, 24/10)', () => {
 });
 
 describe('a row with a command (José, 05/11: «si toco un distrito no muestra el detalle»)', () => {
+  const weatherTitle = 'Clima de hoy';
   const weather = validateBotCard({
-    title: 'Clima de hoy',
+    title: weatherTitle,
     fields: [],
     blocks: [{ type: 'rows', rows: [{ label: 'Miraflores', value: '21°', command: '/clima hoy en Miraflores' }] }],
     detail: { title: 'Distritos', blocks: [{ type: 'rows', rows: [{ label: 'Ate', value: '24°', command: '/clima hoy en Ate' }, { label: 'Lurín', value: '22°' }] }] },
@@ -172,7 +173,7 @@ describe('a row with a command (José, 05/11: «si toco un distrito no muestra e
     // Act
     fireEvent.click(screen.getByRole('button', { name: /Miraflores/ }));
     // Assert
-    expect(run).toHaveBeenCalledWith('/clima hoy en Miraflores', 1);
+    expect(run).toHaveBeenCalledWith('/clima hoy en Miraflores', 1, expect.objectContaining({ title: weatherTitle }));
   });
 
   describe('a button with a line (José, 05/11: «Completar» on a card that lacks a piece of data)', () => {
@@ -190,7 +191,7 @@ describe('a row with a command (José, 05/11: «si toco un distrito no muestra e
       // Act
       fireEvent.click(screen.getByTestId('accion-tarjeta-completar'));
       // Assert
-      expect(run).toHaveBeenCalledWith('/gastos completar 7', 4);
+      expect(run).toHaveBeenCalledWith('/gastos completar 7', 4, expect.objectContaining({ title: 'Gasto' }));
       expect(sent).not.toHaveBeenCalled();
       expect((screen.getByTestId('accion-tarjeta-descartar') as HTMLButtonElement).disabled).toBe(false);
       sent.mockRestore();
@@ -208,7 +209,7 @@ describe('a row with a command (José, 05/11: «si toco un distrito no muestra e
     renderCard(run);
     fireEvent.click(screen.getByTestId('tarjeta-ver-detalle'));
     fireEvent.click(screen.getByRole('button', { name: /Ate/ }));
-    expect(run).toHaveBeenCalledWith('/clima hoy en Ate', 1);
+    expect(run).toHaveBeenCalledWith('/clima hoy en Ate', 1, expect.objectContaining({ title: weatherTitle }));
     expect(screen.queryByTestId('detalle-tarjeta')).toBeNull();
   });
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { answerOfOutcome, formSubmitOutcome, giveUpPending, giveUpWaiting, markWaiting, noticeIsFor, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, WRITE_GIVE_UP_MS, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type ShortcutRow, type ShortcutValues } from '@lilachat/shared';
+import { answerOfOutcome, formSubmitOutcome, giveUpPending, giveUpWaiting, markWaiting, noticeIsFor, PENDING_GIVE_UP_MS, replaceAnswer, withAnswer, withNotice, WRITE_GIVE_UP_MS, type CardContext, type CommandNotice, type CommandOutcome, type CommandScope, type EphemeralAnswer, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type ShortcutRow, type ShortcutValues } from '@lilachat/shared';
 import type { JsonResult } from '../../api/jsonCall';
 import { connectSocket } from '../socketClient';
 import { previewAppForm, refreshAppForm, runShortcut, submitAppForm, readFormPlace, uploadFormPhoto } from './commandsApi';
@@ -31,10 +31,11 @@ export function useAppAnswers(params: { jwt: string; scope: CommandScope | null 
     setOpenFormId(null);
   }, [key]);
 
-  const track = useCallback(async (start: { appName: string; command: string; action?: string; avatarUrl?: string }, call: () => Promise<JsonResult<CommandOutcome>>): Promise<boolean> => {
+  const track = useCallback(async (start: { appName: string; command: string; action?: string; avatarUrl?: string; /** The card whose button started it (design gst-02). */ context?: CardContext }, call: () => Promise<JsonResult<CommandOutcome>>): Promise<boolean> => {
     const placeholderId = `sending-${Date.now()}`;
     const label = start.action ? { action: start.action } : {};
     const logo = start.avatarUrl ? { avatarUrl: start.avatarUrl } : {};
+    const card = start.context ? { context: start.context } : {};
     setAnswers((list) => withAnswer(list, { commandId: placeholderId, appName: start.appName, command: start.command, ...label, ...logo, state: 'pending' }));
     const result = await call();
     if (!result.ok) {
@@ -42,7 +43,7 @@ export function useAppAnswers(params: { jwt: string; scope: CommandScope | null 
       return false;
     }
     const answer = answerOfOutcome(result.data, start.command);
-    setAnswers((list) => replaceAnswer(list, placeholderId, answer ? { ...answer, ...label } : null));
+    setAnswers((list) => replaceAnswer(list, placeholderId, answer ? { ...answer, ...label, ...card } : null));
     if (answer?.state === 'form') setOpenFormId(answer.commandId);
     return true;
   }, []);
@@ -68,7 +69,9 @@ export function useAppAnswers(params: { jwt: string; scope: CommandScope | null 
       if (!outcome.done && outcome.waiting) setAnswers((list) => markWaiting(list, answer.commandId));
       if (outcome.done) {
         const label = answer.action ? { action: answer.action } : {};
-        setAnswers((list) => replaceAnswer(list, answer.commandId, outcome.answer ? { ...outcome.answer, ...label } : null));
+        // The next form (the code after the destination) still belongs to the same card.
+        const card = answer.context ? { context: answer.context } : {};
+        setAnswers((list) => replaceAnswer(list, answer.commandId, outcome.answer ? { ...outcome.answer, ...label, ...card } : null));
         // The app answered with the next form (the code after the destination): it opens on its own.
         setOpenFormId(outcome.answer?.state === 'form' ? outcome.answer.commandId : null);
       }

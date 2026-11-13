@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { ChevronRight, ExternalLink } from 'lucide-react-native';
-import { cardActionLayout, formatClock, isOrderCard, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
+import { cardActionLayout, cardContextOf, formatClock, isOrderCard, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BASE_URL } from '../api/client';
 import { useColores } from '../ui/tema';
 import { AccionesDeTarjetaContext, useAccionesDeTarjeta } from './accionesDeTarjeta';
@@ -16,7 +16,7 @@ const CARD_MIN_FILL = 240;
 const ACCENT_HEIGHT = 3;
 
 /** The status pill's tone (design `e-21`): background faint, border at 30 %, text strong. */
-const TONE: Record<CardTone, { pill: string; text: string }> = {
+export const TONE: Record<CardTone, { pill: string; text: string }> = {
   ok: { pill: 'border-en-linea/30 bg-en-linea/10', text: 'text-en-linea' },
   warn: { pill: 'border-warning/30 bg-warning/10', text: 'text-warning' },
   error: { pill: 'border-error/30 bg-error/10', text: 'text-error' },
@@ -136,7 +136,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
   const [detailOpen, setDetailOpen] = useState(false);
   const actions = useAccionesDeTarjeta();
   const { runLine, openOrderCard } = actions;
-  const runRow = runLine ? (line: string) => runLine(line, props.seq) : undefined;
+  const runRow = runLine ? (line: string) => runLine(line, props.seq, cardContextOf(card) ?? undefined) : undefined;
   const tap = async (actionId: string) => {
     setSent({ id: actionId, state: 'sending' });
     setError('');

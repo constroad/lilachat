@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import type { CommandNotice, ShortcutRow } from '@lilachat/shared';
+import type { CardContext, CommandNotice, CommandOutcome, ShortcutRow } from '@lilachat/shared';
 
 type Listener = (notice: CommandNotice) => void;
 const listeners = new Set<Listener>();
@@ -8,7 +8,8 @@ const socket = { on: (_: string, listener: Listener) => listeners.add(listener),
 let liveSocket: typeof socket | null = socket;
 vi.mock('../../useSocket', () => ({ currentSocket: () => liveSocket }));
 const runShortcut = vi.fn(async () => ({ ok: true, data: { commandId: 'c1', appId: 'a1', appName: 'Portal', outcome: 'pending' } }));
-vi.mock('./commandsApi', () => ({ runShortcut: (...args: unknown[]) => runShortcut(...(args as [])), previewAppForm: vi.fn(), refreshAppForm: vi.fn(), submitAppForm: vi.fn(), uploadFormPhoto: vi.fn() }));
+const submitAppForm = vi.fn();
+vi.mock('./commandsApi', () => ({ runShortcut: (...args: unknown[]) => runShortcut(...(args as [])), previewAppForm: vi.fn(), refreshAppForm: vi.fn(), submitAppForm: (...args: unknown[]) => submitAppForm(...args), uploadFormPhoto: vi.fn() }));
 const { useAppAnswers } = await import('./useAppAnswers');
 const { announceSocketTurn } = await import('../../socketTurn');
 
@@ -41,5 +42,37 @@ describe('a late answer in the space (01/11: the service report opened the ⚡ t
     act(() => listeners.forEach((listener) => listener(late)));
     // Assert
     expect(quickActions.result.current.answers).toMatchObject([{ commandId: 'c1', state: 'answered' }]);
+  });
+});
+
+describe('the card a form was opened from (design gst-02: the voucher stays above the form)', () => {
+  const voucher: CardContext = { kicker: 'Gasto', figure: 'S/ 500.00', title: 'Ferretería El Constructor', fields: [{ label: 'Medio', value: 'Yape' }] };
+  const form = { id: 'completar', title: 'Completar gasto', schema: { type: 'object', properties: {} } };
+  const formOutcome = (commandId: string): CommandOutcome => ({ commandId, appId: 'a1', appName: 'Portal', outcome: 'form', response: { responseType: 'ephemeral', form } } as unknown as CommandOutcome);
+
+  it('the form that the card\'s button opens carries that card', async () => {
+    // Arrange
+    const hook = renderHook(() => useAppAnswers({ jwt: 'jwt', scope: { chatId: 'c1' } }));
+    // Act
+    await act(async () => void (await hook.result.current.track({ appName: 'La app', command: 'gastos', context: voucher }, async () => ({ ok: true, data: formOutcome('f1') }))));
+    // Assert
+    expect(hook.result.current.openForm).toMatchObject({ commandId: 'f1', state: 'form', context: voucher });
+  });
+
+  it('a form opened from a button with no card carries none', async () => {
+    const hook = renderHook(() => useAppAnswers({ jwt: 'jwt', scope: { chatId: 'c1' } }));
+    await act(async () => void (await hook.result.current.track({ appName: 'La app', command: 'gastos' }, async () => ({ ok: true, data: formOutcome('f2') }))));
+    expect(hook.result.current.openForm?.context).toBeUndefined();
+  });
+
+  it('the next form the app asks for (after the destination) keeps the card', async () => {
+    // Arrange
+    const hook = renderHook(() => useAppAnswers({ jwt: 'jwt', scope: { chatId: 'c1' } }));
+    await act(async () => void (await hook.result.current.track({ appName: 'La app', command: 'gastos', context: voucher }, async () => ({ ok: true, data: formOutcome('f3') }))));
+    submitAppForm.mockResolvedValueOnce({ ok: true, outcome: formOutcome('f4') });
+    // Act
+    await act(async () => void (await hook.result.current.submitForm(hook.result.current.openForm!, {})));
+    // Assert
+    expect(hook.result.current.openForm).toMatchObject({ commandId: 'f4', context: voucher });
   });
 });

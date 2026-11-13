@@ -515,7 +515,7 @@ export function ChatScreen({
           staged={staged}
           onCamara={alCamara} onEscribiendo={avisarEscribiendo}
           jwt={credential.jwt} conVistaPrevia={!encrypted}
-          miembros={mencionables} onOutsideMentions={outsideMentions.notify} notice={outsideMentions.banner} commands={encrypted ? undefined : commands} myName={credential.name ?? undefined}
+          miembros={mencionables} onOutsideMentions={outsideMentions.notify} notice={outsideMentions.banner} commands={encrypted ? undefined : commands} myName={credential.name ?? undefined} where={workspaceId && esGrupoChat && !appId && !encrypted && nombreVisible ? `#${nombreVisible}` : undefined}
           onEnviar={alEnviar}
           onProgramar={programados.abrir}
           onNotaDeVoz={alNotaDeVoz}

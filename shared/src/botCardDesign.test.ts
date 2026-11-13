@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardActionLayout, validateBotCard } from './bots.js';
+import { cardActionLayout, cardContextOf, validateBotCard, type BotCard } from './bots.js';
 import { isFigure, validateBotBlocks } from './botBlocks.js';
 
 /**
@@ -102,5 +102,31 @@ describe('the actions of a card (Stitch gst-01, José 13/11: «la tarjeta sigue 
   it('a lone button is a row of one', () => {
     expect(cardActionLayout([action('ver', 'primary')])).toBe('row');
     expect(cardActionLayout([])).toBe('row');
+  });
+});
+
+describe('cardContextOf: the card a form was opened from, shown above the form (design gst-02)', () => {
+  const voucher: BotCard = { kicker: 'Gasto', title: 'S/ 120.00 · FERRETERIA QA PRUEBA SAC', status: { label: 'Falta un dato', tone: 'warn' }, fields: [{ label: 'Fecha', value: 'Hoy' }, { label: 'Detalle', value: 'Cemento, pintura y clavos' }, { label: 'Operación', value: 'B001-000777' }, { label: 'Medio', value: 'Yape' }, { label: 'Nota', value: 'No cabe' }], actions: [{ id: 'a', label: 'Completar', command: '/gastos' }] };
+
+  it('splits «S/ 120.00 · Comercio» into the figure and the name, and carries the kicker and the status', () => {
+    expect(cardContextOf(voucher)).toMatchObject({ kicker: 'Gasto', figure: 'S/ 120.00', title: 'FERRETERIA QA PRUEBA SAC', status: { label: 'Falta un dato', tone: 'warn' } });
+  });
+
+  it('keeps the first four fields: a card has more than a form needs to remember', () => {
+    expect(cardContextOf(voucher)?.fields.map((field) => field.label)).toEqual(['Fecha', 'Detalle', 'Operación', 'Medio']);
+  });
+
+  it('reads dollars and thousands separators as a figure too', () => {
+    expect(cardContextOf({ ...voucher, title: 'US$ 1,250.50 · Proveedor' })).toMatchObject({ figure: 'US$ 1,250.50', title: 'Proveedor' });
+  });
+
+  it('keeps a title with no figure whole, with no figure', () => {
+    const context = cardContextOf({ ...voucher, title: 'Pedido 2026-014 · Av. El Sol' });
+    expect(context?.title).toBe('Pedido 2026-014 · Av. El Sol');
+    expect(context?.figure).toBeUndefined();
+  });
+
+  it('a card with no title says nothing', () => {
+    expect(cardContextOf({ ...voucher, title: '   ' })).toBeNull();
   });
 });

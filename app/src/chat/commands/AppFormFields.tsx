@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Image, Linking, Pressable, Text, TextInput, View } from 'react-native';
-import { Camera, Check, Image as ImageIcon, LocateFixed } from 'lucide-react-native';
+import { Camera, Check, ClipboardList, Image as ImageIcon, LayoutGrid, LocateFixed, type LucideIcon } from 'lucide-react-native';
 import { geoPointOf, precisionLabel, type FormField, type GeoPoint, type FormPhotoStamp } from '@lilachat/shared';
 import { pickFromGallery } from './galleryPick';
 import { Segmentado } from '../../ui/Segmentado';
@@ -25,24 +25,90 @@ export function ErrorLine(props: { text?: string }) {
   return props.text ? <Text className="mt-1 text-[13px] text-error">{props.text}</Text> : null;
 }
 
+/**
+ * How a form that splits an amount is drawn (design gst-02): `designed` for the whole form, and the `step`
+ * number of the field that is one. Any other form keeps the plain look, and so does every other field.
+ */
+export type FormStyle = { designed: boolean; step?: number };
+export const FormStyleContext = createContext<FormStyle>({ designed: false });
+
 export function Label(props: { field: FormField }) {
+  const { designed, step } = useContext(FormStyleContext);
+  const optional = props.field.required ? '' : <Text className="font-normal normal-case tracking-normal text-on-surface-variant"> · opcional</Text>;
+  if (designed) {
+    // The labels of a designed form are small capitals (design gst-02); a step also says its number.
+    return (
+      <Text testID={step !== undefined ? `paso-${props.field.name}` : undefined} className="mb-1.5 text-[11px] font-bold uppercase tracking-[1px] text-on-surface-variant">
+        {step !== undefined ? `${step}. ` : ''}{props.field.label}{optional}
+      </Text>
+    );
+  }
   return (
     <Text className="mb-1.5 text-[14px] font-semibold text-on-surface">
       {props.field.label}
-      {props.field.required ? '' : <Text className="font-normal text-on-surface-variant"> · opcional</Text>}
+      {optional}
     </Text>
+  );
+}
+
+/** The picture of each big tile of a step (design gst-02: «Servicio», «Proyecto»); others go without. */
+const TILE_ICONS: Record<string, LucideIcon> = { servicio: ClipboardList, proyecto: LayoutGrid };
+
+/** A step with two or three options: big tiles, the picked one outlined and ticked (design gst-02). */
+function StepTiles(props: { field: Extract<FormField, { kind: 'choice' }>; value: unknown; onChange: (value: unknown) => void }) {
+  const colors = useColores();
+  const { field } = props;
+  return (
+    <View accessibilityRole="radiogroup" className="flex-row gap-2">
+      {field.options.map((option) => {
+        const on = props.value === option.value;
+        const Icon = TILE_ICONS[option.label.trim().toLowerCase()];
+        const tint = on ? colors.primary : colors['on-surface-variant'];
+        return (
+          <Pressable key={option.value} testID={`opcion-${field.name}-${option.value}`} accessibilityRole="radio" accessibilityState={{ checked: on }} onPress={() => props.onChange(option.value)} className={`h-14 flex-1 flex-row items-center justify-center gap-2 rounded-xl px-3 ${on ? 'border-2 border-primary bg-primary/10' : 'border-[1.5px] border-outline/25'}`}>
+            {Icon ? <Icon size={18} color={tint} /> : null}
+            <Text className={`text-[15px] ${on ? 'font-extrabold text-primary' : 'font-bold text-on-surface-variant'}`}>{option.label}</Text>
+            {on ? <Check size={16} color={tint} /> : null}
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/** A few short options as pills, the picked one filled and ticked (design gst-02: «Partes iguales», «Por porcentaje»). */
+function OptionPills(props: { field: Extract<FormField, { kind: 'choice' }>; value: unknown; onChange: (value: unknown) => void }) {
+  const colors = useColores();
+  const { field } = props;
+  return (
+    <View accessibilityRole="radiogroup" className="flex-row flex-wrap gap-2">
+      {field.options.map((option) => {
+        const on = props.value === option.value;
+        return (
+          <Pressable key={option.value} testID={`opcion-${field.name}-${option.value}`} accessibilityRole="radio" accessibilityState={{ checked: on }} onPress={() => props.onChange(option.value)} className={`min-h-[44px] flex-row items-center justify-center gap-1.5 rounded-full px-4 ${on ? 'bg-primary' : 'border border-outline/25'}`}>
+            {on ? <Check size={14} color={colors['on-primary']} /> : null}
+            <Text className={`text-[14px] ${on ? 'font-bold text-on-primary' : 'font-semibold text-on-surface-variant'}`}>{option.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
 /** Up to four fixed choices side by side (design e-28), records and long lists in a dropdown; always with its title. */
 export function ChoiceField({ field, value, error, onChange, compact }: FieldProps<'choice'> & { /** Half a row. */ compact?: boolean }) {
+  const { designed, step } = useContext(FormStyleContext);
   return (
     <View>
       <Label field={field} />
       {field.options.length === 0 ? (
         <Text testID={`sin-opciones-${field.name}`} className="rounded-xl border border-dashed border-outline/30 px-3 py-3 text-[14px] text-on-surface-variant">No hay opciones para elegir</Text>
+      ) : field.segmented && step !== undefined ? (
+        <StepTiles field={field} value={value} onChange={onChange} />
       ) : field.searchable ? (
         <SearchableChoice field={field} value={value} onChange={onChange} compact={compact} />
+      ) : field.columns === 2 && designed ? (
+        <OptionPills field={field} value={value} onChange={onChange} />
       ) : field.columns === 2 ? (
         <View accessibilityRole="radiogroup" className="flex-row flex-wrap justify-between gap-y-1.5">
           {field.options.map((option) => (

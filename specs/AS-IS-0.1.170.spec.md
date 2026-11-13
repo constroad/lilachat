@@ -656,3 +656,35 @@ Sin verificar todavía:
 - El pellizco para el zoom en un teléfono real.
 - «Entregado a» con otros miembros.
 - Borrar en el chat con uno mismo: lo prueba José, porque son sus chats.
+
+## 13/11 noche (2): el formulario de gasto, según el diseño gst-02
+
+José, al ver el modal: «que asco, ¿te parece lo mejor que pudo hacer Stitch?». El diseño
+`gst-02-completar-v2` existía desde la tarde (móvil y escritorio, ids en
+`design/stitch/registro.jsonl`) y el dibujo no lo seguía: se había implementado la lógica del reparto
+y no la composición. Afirmé primero que el formulario nunca pasó por Stitch: era falso.
+
+Un formulario con una lista de casillas («partidas») se dibuja ahora como el diseño, en web y APK
+(`isSplitForm`, `shared/src/appFormSteps.ts`; los demás formularios no cambian):
+
+- **Cabecera:** logo de la app, su nombre y «APP» sobre el título, y «Canal #flujo-caja · Registra: Nombre».
+- **Tarjeta del comprobante arriba:** la tarjeta del hilo que abrió el formulario (`cardContextOf`:
+  cifra, comercio, estado y hasta cuatro datos). Viaja por `EphemeralAnswer.context`: el botón de la
+  tarjeta la pasa a `runCardLine`, y el formulario siguiente (tras el destino) la conserva.
+- **Pasos numerados** (`numberedStepsOf`): «1. ¿A QUÉ VA?» con dos fichas grandes, «2. SERVICIO» y
+  «3. PARTIDAS DEL SERVICIO». «Repartir» no es un paso: son las píldoras de la lista. Todas las
+  etiquetas del formulario son versalitas pequeñas.
+- **Partidas:** cada una es una ficha con casilla; solo las marcadas tienen fila, con su % del total
+  (`sharePercent`), «ajustado» y el monto a mano. El aviso «Asignado S/ 500.00 de S/ 500.00 · 100 %
+  CUADRADO» es verde; si falta o sobra, el aviso lo dice y el envío sigue bloqueado.
+- El diálogo web es más ancho en estos formularios.
+
+Lo que Lilachat no puede resolver solo y se pidió a Portal / agentes:
+- Un solo formulario: hoy «Completar» y «Corregir datos» son dos modales. El diseño trae «Corregir
+  datos» plegable dentro del mismo.
+- Una sección plegable en el esquema (`x-section`) para los campos que se corrigen, que Lilachat
+  dibujaría; y el texto del botón («Registrar gasto · S/ 505.05») con comisión e ITF.
+- «Según partida» muestra un selector de una sola partida en vez de las casillas.
+
+Sin verificar todavía: el formulario real en el hilo (web y APK) con un servicio de varias partidas,
+y la lista de ocho o más partidas en el celular.

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BotCardView } from './BotCardView';
-import { OrderCardContext } from './botBlocks/cardCommand';
+import { CardCommandContext, OrderCardContext } from './botBlocks/cardCommand';
 
 afterEach(() => {
   cleanup();
@@ -99,5 +99,20 @@ describe('an order\'s card in a client\'s channel', () => {
   it('an answer that is not stored has no message to look up', () => {
     render(<OrderCardContext.Provider value={vi.fn()}><BotCardView card={order} chatId="c1" seq={0} jwt="jwt" /></OrderCardContext.Provider>);
     expect(screen.queryByTestId('tarjeta-ver-pedido')).toBeNull();
+  });
+});
+
+/** Design gst-02: the form shows the voucher it was opened from, so the card hands itself over with the button. */
+describe('a card button that runs a command', () => {
+  const voucher = { kicker: 'Gasto', title: 'S/ 500.00 · Ferretería El Constructor', status: { label: 'Por completar', tone: 'warn' as const }, fields: [{ label: 'Medio', value: 'Yape' }], actions: [{ id: 'complete', label: 'Completar gasto', style: 'primary' as const, value: '', command: '/gastos completar 7' }] };
+
+  it('runs the line with the card\'s seq and what the form shows of it', () => {
+    // Arrange
+    const run = vi.fn();
+    render(<CardCommandContext.Provider value={run}><BotCardView card={voucher} chatId="c1" seq={7} jwt="jwt" /></CardCommandContext.Provider>);
+    // Act
+    fireEvent.click(screen.getByTestId('accion-tarjeta-complete'));
+    // Assert
+    expect(run).toHaveBeenCalledWith('/gastos completar 7', 7, { kicker: 'Gasto', figure: 'S/ 500.00', title: 'Ferretería El Constructor', status: { label: 'Por completar', tone: 'warn' }, fields: [{ label: 'Medio', value: 'Yape' }] });
   });
 });

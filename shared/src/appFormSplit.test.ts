@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formFields, type AppForm, type FormSchemaProperty } from './appForms.js';
-import { splitErrorOf, rebalanceSplit, splitEvenly, splitLineOf, splitFor, splitOf, splitRows, splitStatus, typedAfterEdit } from './appFormSplit.js';
+import { splitErrorOf, rebalanceSplit, sharePercent, splitEvenly, splitLineOf, splitFor, splitOf, splitRows, splitStatus, typedAfterEdit } from './appFormSplit.js';
 
 const formWith = (properties: Record<string, FormSchemaProperty>): AppForm => ({ id: 'f', title: 'F', schema: { type: 'object', properties } });
 
@@ -138,5 +138,25 @@ describe('splitErrorOf: the split blocks sending unless it matches the total', (
     const checked = validateFormValues(fields, { monto: 500, partidas: [{ partidaId: 'mat', monto: 300 }] });
     expect(checked.ok).toBe(false);
     expect(!checked.ok && checked.errors.partidas).toMatch(/faltan S\/ 200.00/);
+  });
+});
+
+describe('sharePercent: a row\'s share of the total in whole percent (design gst-02: «Materiales (60 %)»)', () => {
+  it('rounds to the nearest whole percent', () => {
+    expect(sharePercent(300, 500)).toBe(60);
+    expect(sharePercent(200, 500)).toBe(40);
+    expect(sharePercent(1, 3)).toBe(33);
+    expect(sharePercent(2, 3)).toBe(67);
+  });
+
+  it('a row of nothing is 0 %, and one that takes more than the total says so', () => {
+    expect(sharePercent(0, 500)).toBe(0);
+    expect(sharePercent(600, 500)).toBe(120);
+  });
+
+  it('has no share without a total or with an amount that is not a number', () => {
+    expect(sharePercent(10, 0)).toBeNull();
+    expect(sharePercent(10, -5)).toBeNull();
+    expect(sharePercent(Number.NaN, 100)).toBeNull();
   });
 });

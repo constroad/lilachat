@@ -16,10 +16,11 @@ export function useCameraZoom() {
   return { zoom, setZoom, pinch };
 }
 
-export function ZoomChips(props: { zoom: number; onZoom: (zoom: number) => void; bottom: number }) {
+/** A column on the right edge, at mid height: clear of the stamp (bottom) and the logo (top). */
+export function ZoomChips(props: { zoom: number; onZoom: (zoom: number) => void; right: number }) {
   const active = ZOOM_CHIPS.find((chip) => Math.abs(chip.zoom - props.zoom) < 0.001);
   return (
-    <View pointerEvents="box-none" className="absolute left-0 right-0 flex-row justify-center gap-2" style={{ bottom: props.bottom }}>
+    <View pointerEvents="box-none" className="absolute flex-col-reverse items-center gap-2" style={{ top: '42%', right: props.right }}>
       {ZOOM_CHIPS.map((chip) => {
         const on = chip === active;
         return (

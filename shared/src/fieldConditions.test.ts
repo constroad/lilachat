@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { formFields, type AppForm } from './appForms.js';
-import { conditionRolesOf, conditionValues, shiftOf, weatherLabelOf } from './fieldConditions.js';
+import { conditionKindsOf, conditionValues, shiftOf, weatherLabelOf } from './fieldConditions.js';
 
 /**
- * José 12/11, on CTL-PIS «Información de control»: «el turno y el clima deberían sacarse solos: a las 7 am
- * dice mañana, y el clima del distrito donde está el ingeniero; el tramo, la calle del GPS del celular».
+ * José 12/11, on CTL-PIS «Información de control»: the shift and the weather should come by themselves
+ * (at 7 am, morning; the weather of where the engineer stands), and the stretch is the street under the GPS.
  */
 const controlForm = (extra: Record<string, unknown> = {}): AppForm => ({
   id: 'guardar_seccion_de_informe',
@@ -42,8 +42,8 @@ describe('weatherLabelOf', () => {
 describe('conditionValues', () => {
   it('finds turno, clima and tramo by name, or by the x-input the app declares', () => {
     // Act
-    const byName = conditionRolesOf(formFields(controlForm()));
-    const declared = conditionRolesOf(formFields(controlForm({ cuadrilla: { type: 'string', title: 'Turno de la cuadrilla', 'x-input': 'shift' } })));
+    const byName = conditionKindsOf(formFields(controlForm()));
+    const declared = conditionKindsOf(formFields(controlForm({ cuadrilla: { type: 'string', title: 'Turno de la cuadrilla', 'x-input': 'shift' } })));
     // Assert
     expect(byName).toEqual({ tramo: 'street', turno: 'shift', clima: 'weather' });
     expect(declared.cuadrilla).toBe('shift');

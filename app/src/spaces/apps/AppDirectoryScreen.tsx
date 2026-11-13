@@ -43,14 +43,7 @@ export function AppDirectoryScreen(props: { space: ClientWorkspace; apps: SpaceA
             </View>
             {apps.directory ? <FilterChips chips={chips} filter={filter} onFilter={setFilter} /> : null}
             <Text className="mb-1 mt-5 text-[12px] font-bold uppercase tracking-widest text-on-surface-variant">Catálogo del espacio</Text>
-            {apps.failed ? (
-              <Pressable testID="apps-reintentar" onPress={apps.refresh} className="mt-2 rounded-xl bg-error/10 px-4 py-3"><Text className="text-[13px] text-error">No se pudieron cargar las apps. Toca para reintentar.</Text></Pressable>
-            ) : null}
-            {!apps.directory && !apps.failed ? [0, 1, 2].map((index) => <View key={index} className="mt-2 h-16 rounded-2xl bg-surface-variant" />) : null}
-            {apps.directory && shown.length === 0 ? <Text className="mt-6 text-center text-[14px] text-on-surface-variant">No hay apps con ese nombre o categoría.</Text> : null}
-            {shown.map((app, index) => (
-              <DirectoryRow key={app.appId} app={app} first={index === 0} admin={admin} onOpen={() => setChosenId(app.appId)} onInstall={() => apps.install(app)} />
-            ))}
+            <DirectoryList apps={apps} shown={shown} admin={admin} onOpen={setChosenId} />
           </View>
         </ScrollView>
         {apps.directory && !admin ? (
@@ -136,7 +129,7 @@ function DirectoryHeader(props: { count: number | null; spaceName: string; onBac
   );
 }
 
-/** Todas · Instaladas · por categoría: one picked at a time. */
+/** All, installed, or one category: one picked at a time. */
 function FilterChips(props: { chips: ReturnType<typeof directoryChips>; filter: DirectoryFilter; onFilter: (filter: DirectoryFilter) => void }) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3" contentContainerStyle={{ gap: 8 }}>
@@ -146,5 +139,22 @@ function FilterChips(props: { chips: ReturnType<typeof directoryChips>; filter: 
         </Pressable>
       ))}
     </ScrollView>
+  );
+}
+
+/** The catalog's rows, or why there are none yet: loading, failed, or nothing that matches. */
+function DirectoryList(props: { apps: SpaceApps; shown: DirectoryApp[]; admin: boolean; onOpen: (appId: string) => void }) {
+  const { apps } = props;
+  if (apps.failed) {
+    return <Pressable testID="apps-reintentar" onPress={apps.refresh} className="mt-2 rounded-xl bg-error/10 px-4 py-3"><Text className="text-[13px] text-error">No se pudieron cargar las apps. Toca para reintentar.</Text></Pressable>;
+  }
+  if (!apps.directory) return <>{[0, 1, 2].map((index) => <View key={index} className="mt-2 h-16 rounded-2xl bg-surface-variant" />)}</>;
+  if (props.shown.length === 0) return <Text className="mt-6 text-center text-[14px] text-on-surface-variant">No hay apps con ese nombre o categoría.</Text>;
+  return (
+    <>
+      {props.shown.map((app, index) => (
+        <DirectoryRow key={app.appId} app={app} first={index === 0} admin={props.admin} onOpen={() => props.onOpen(app.appId)} onInstall={() => apps.install(app)} />
+      ))}
+    </>
   );
 }

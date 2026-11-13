@@ -112,7 +112,7 @@ export async function fillConditions(run: FillRun): Promise<void> {
 type LatestForm = { current: { fields: readonly FormField[]; values: FormValues; fill: (next: FormValues) => void; ask?: FillRun['ask'] } };
 
 /** The effect of both sides' hook: runs `fillConditions` for the form now open, and the cleanup stops it. */
-export function startConditionsFill(latest: LatestForm, locate: FillRun['locate']): () => void {
+export function subscribeConditionsFill(latest: LatestForm, locate: FillRun['locate']): () => void {
   let open = true;
   const ask = latest.current.ask;
   if (ask) void fillConditions({ fields: latest.current.fields, current: () => latest.current.values, fill: (next) => latest.current.fill(next), locate, ask, open: () => open });

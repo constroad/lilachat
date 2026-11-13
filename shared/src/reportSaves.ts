@@ -280,8 +280,47 @@ export function reportFormAnswer(document: FieldDocument, path: SectionPath, con
   if (!found) return null;
   const filled = path.key === GENERAL_SECTION ? withDeviceFields(found, personName?.trim()) : found;
   const arrived = arrivalHour ? withHour(filled, arrivalHour) : filled;
-  const form = startHour ? withStartHour(arrived, startHour) : arrived;
+  const form = withUnitCaption(startHour ? withStartHour(arrived, startHour) : arrived, document, path);
   return { commandId: `report-${path.sectionId}-${path.itemId ?? 'new'}-${path.key}`, appName: REPORT_KEEPER, command: '', action: form.title, state: 'form', response: { responseType: 'form', form }, ...(errors ? { errors } : {}) };
+}
+
+const CAPTION_FIELD = 'descripcion';
+const UNIT_TITLE_SEPARATOR = ' · ';
+const PHOTO_WORD = /^foto\s+(de(l)?\s+)?/i;
+
+/** «Foto del escantillón» → «Escantillón»: the stage a unit photo is. */
+const stageOf = (title: string): string => {
+  const stage = title.replace(PHOTO_WORD, '').trim();
+  return stage.charAt(0).toUpperCase() + stage.slice(1);
+};
+
+/** When each unit reached the paver: the hour of its ingreso photo, or nothing yet. */
+function arrivalOrderOf(section: RepeatSection, itemId: string, ingresoKey: string | undefined): number {
+  const arrivedAt = (item: RepeatItem): string | null => {
+    const ingreso = item.sections.find((one) => one.id === ingresoKey);
+    return ingreso ? sectionPhotos(ingreso)[0]?.hour || null : null;
+  };
+  const arrived = section.items.map((item, index) => ({ id: item.id, at: arrivedAt(item), index })).filter((one) => one.at !== null);
+  arrived.sort((a, b) => a.at!.localeCompare(b.at!) || a.index - b.index);
+  const rank = arrived.findIndex((one) => one.id === itemId);
+  return rank >= 0 ? rank + 1 : arrived.length + 1;
+}
+
+/**
+ * José 12/11: a unit photo's description says its stage, the unit's order of arrival at the paver
+ * and its plate («Ingreso · llegada n.º 2 a descarga · F2K-908»). Only when nothing is written.
+ */
+function withUnitCaption(form: AppForm, document: FieldDocument, path: SectionPath): AppForm {
+  const caption = form.schema.properties[CAPTION_FIELD];
+  const section = document.sections.find((one) => one.id === path.sectionId);
+  if (!caption || caption.default !== undefined || section?.kind !== 'repeat' || !path.itemId) return form;
+  const entry = section.template.find((one) => one.id === path.key);
+  const item = section.items.find((one) => one.id === path.itemId);
+  if (!entry?.photoKind || !item) return form;
+  const plate = item.title.split(UNIT_TITLE_SEPARATOR).pop()!.trim();
+  const ingresoKey = section.template.find((one) => one.photoKind === 'ingreso')?.id;
+  const text = `${stageOf(entry.title)} · llegada n.º ${arrivalOrderOf(section, item.id, ingresoKey)} a descarga · ${plate}`;
+  return { ...form, schema: { ...form.schema, properties: { ...form.schema.properties, [CAPTION_FIELD]: { ...caption, default: text } } } };
 }
 
 /** The hour the form must say and nobody wrote: its required time field with no value. */

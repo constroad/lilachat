@@ -209,19 +209,6 @@ export const requiresLocation = (document: FieldDocument, path: SectionPath): bo
 /** The channel is the client's and the report hangs from a service (José, 06/11): nobody types them. */
 const KNOWN_BY_CHANNEL = ['cliente', 'proyecto'];
 
-const CAPTION_FIELD = 'descripcion';
-const UNIT_TITLE = /^Unidad (\d+) · (.+)$/;
-
-/** «Ingreso de la unidad 3 de QAP-103 a descarga»: the first photo of a unit says itself (José 12/11). */
-function ingresoCaptionOf(document: FieldDocument, path: SectionPath, photoKind: string | undefined): string | undefined {
-  if (photoKind !== 'ingreso' || !path.itemId) return undefined;
-  const section = document.sections.find((one) => one.id === path.sectionId);
-  const title = section?.kind === 'repeat' ? section.items.find((one) => one.id === path.itemId)?.title : undefined;
-  if (!title) return undefined;
-  const numbered = UNIT_TITLE.exec(title);
-  return numbered ? `Ingreso de la unidad ${numbered[1]} de ${numbered[2]} a descarga` : `Ingreso de la unidad ${title} a descarga`;
-}
-
 const withDefault = (property: FormSchemaProperty, value: unknown): FormSchemaProperty => (value === undefined || value === '' ? property : { ...property, default: value });
 
 /** The section as the form the engine draws: `guardar_seccion_de_informe` (or the section's own tool) with the saved values as defaults. */
@@ -230,8 +217,7 @@ export function sectionFormOf(document: FieldDocument, path: SectionPath): AppFo
   const schema = found ? document.forms[found.form] : undefined;
   if (!found || !schema) return null;
   const asked = Object.entries(schema.properties ?? {}).filter(([name]) => !KNOWN_BY_CHANNEL.includes(name));
-  const suggested: Record<string, string | undefined> = { [CAPTION_FIELD]: ingresoCaptionOf(document, path, found.photoKind) };
-  const properties = Object.fromEntries(asked.map(([name, property]) => [name, withDefault(property, found.values[name] || suggested[name])]));
+  const properties = Object.fromEntries(asked.map(([name, property]) => [name, withDefault(property, found.values[name])]));
   const required = schema.required?.filter((name) => !KNOWN_BY_CHANNEL.includes(name));
   // Audit 12/11: «Enviar» on a part of a draft read as sending the report; it only keeps that part.
   const submitLabel = asked.some(([, property]) => property['x-input'] === 'photo') ? 'Guardar foto' : 'Guardar';

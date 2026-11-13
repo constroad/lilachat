@@ -1384,8 +1384,11 @@ Se recorrió Control de pista en el APK (`lilafotos-qa`), en el servicio QA-CTLP
   `clima`, `tramo`). Motor: `shared/src/fieldConditions.ts`. **Ojo:** un Lilachat anterior a este
   cambio rechaza el formulario entero si trae un `x-input` desconocido. Portal no publica esos
   `x-input` hasta que este OTA y la web estén en la calle.
-- **Foto de ingreso**: la descripción viene sugerida: «Ingreso de la unidad 3 de QAP-103 a
-  descarga». Si la unidad no trae número: «Ingreso de la unidad QAP-103 a descarga».
+- **Descripción de toda foto de unidad** (José, tras ver el WhatsApp que decía solo «Ingreso»):
+  dice la etapa, el orden de llegada a descarga y la placa, por ejemplo «Ingreso · llegada n.º 2 a
+  descarga · F2K-908» o «Escantillón · llegada n.º 2 a descarga · F2K-908». El orden sale de la
+  hora de la foto de ingreso de cada unidad; una unidad sin ingreso es la siguiente. Si ya hay
+  algo escrito, no se toca. Está en `withUnitCaption`, dentro de `reportSaves.ts`.
 - **Unidades por llegar** muestran «Unidad N» (el orden de salida en planta) encima de la placa,
   cuando Portal titula el despacho «Unidad N · PLACA» (Portal ed310c2f).
 - **Campo de fecha (APK)**: se dibuja como los demás inputs, con el mismo borde, alto y tamaño de

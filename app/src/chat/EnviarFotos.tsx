@@ -9,6 +9,7 @@ import { sendTitleOf } from './envioDeFotos';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { CropEditor } from './crop/CropEditor';
+import { VideoPreview } from './camara/VideoPreview';
 
 /**
  * Antes de mandar fotos: verlas, sacar alguna y ponerle su pie a cada una,
@@ -103,11 +104,8 @@ export function EnviarFotos(props: {
       </View>
 
       <View className="flex-1 items-center justify-center">
-        {vista && !esVideo(vista) ? (
-          <Image source={{ uri: vista.uri }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
-        ) : (
-          <Video size={64} color="white" />
-        )}
+        {vista && esVideo(vista) ? <VideoPreview key={vista.uri} uri={vista.uri} fit="contain" controls /> : null}
+        {vista && !esVideo(vista) ? <Image source={{ uri: vista.uri }} style={{ width: '100%', height: '100%' }} contentFit="contain" /> : null}
       </View>
 
       {fotos.length > 1 ? (

@@ -2,6 +2,7 @@ import { Suspense, useMemo, useRef, useState } from 'react';
 import { Camera, Check, Crosshair, Minus, Plus, Send, X } from 'lucide-react';
 import { addManualPhoto, GPS_UNAVAILABLE, manualEndFromGps, MANUAL_PHOTOS_MAX, MANUAL_STEP_M, manualDraftFor, manualFigures, nudgeManualEnd, pickManualWork, progressPreviewOf, manualStepOf, MANUAL_STEPS, runManualProgress, stationLabel, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkMap } from '@lilachat/shared';
 import { DrivePhotoInput } from '../ServiceDriveWeb';
+import type { PickerHandle } from '../../../chat/camera/cameraRequests';
 import { readGpsOnce } from './useGpsWalk';
 import { KICKER } from './WorkMapPanel';
 import { lazyChunk } from '../../../ui/lazyChunk';
@@ -42,7 +43,7 @@ type Props = { map: WorkMap; streetId: string; lengthM: number; widthM?: number;
 
 /** Step 3: photos already in the service's Drive; Portal only takes those as evidence. */
 function Photos(props: { count: number; uploadPhoto?: ManualPhotoUpload<File>; onPhoto: (mediaId: string) => void }) {
-  const input = useRef<HTMLInputElement>(null);
+  const input = useRef<PickerHandle>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   if (!props.uploadPhoto) return null;

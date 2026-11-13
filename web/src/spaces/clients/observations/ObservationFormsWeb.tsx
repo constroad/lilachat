@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { Camera, CheckCircle2, LocateFixed, Play, Video, X } from 'lucide-react';
 import { clipLength, gpsLine, liftAction, liftRequest, OBSERVATION_NOTE_MAX, observationPlace, observationWriteStore, registerAction, registerRequest, type EvidenceFile, type Observation, type ObservationDocument, type ObservationLiftRequest, type ObservationRegisterRequest, type WorkMapPoint } from '@lilachat/shared';
 import { EvidenceInput } from '../ServiceDriveWeb';
+import type { PickerHandle } from '../../../chat/camera/cameraRequests';
 import { observationWriteDeps, prepared, type DriveFile } from '../useDriveUpload';
 import type { ServiceAskTarget } from '../useServiceAsk';
 
@@ -75,7 +76,7 @@ function useWrite(to: ObservationTo, onDone: (reportId: string) => void) {
 }
 
 /** The thumbnails and the two big buttons that open the camera (56 dp and more). */
-function EvidenceStrip(props: { items: readonly WebEvidence[]; busy: boolean; onAdd: (file: File | undefined) => void; onRemove: (key: string) => void; inputs: Record<Kind, React.RefObject<HTMLInputElement>> }) {
+function EvidenceStrip(props: { items: readonly WebEvidence[]; busy: boolean; onAdd: (file: File | undefined) => void; onRemove: (key: string) => void; inputs: Record<Kind, React.RefObject<PickerHandle>> }) {
   return (
     <div className="space-y-2">
       {props.items.length ? (
@@ -108,7 +109,7 @@ function BottomButton(props: { testId: string; label: string; tone: 'primary' | 
   );
 }
 
-const useInputs = (): Record<Kind, React.RefObject<HTMLInputElement>> => ({ photo: useRef<HTMLInputElement>(null), video: useRef<HTMLInputElement>(null) });
+const useInputs = (): Record<Kind, React.RefObject<PickerHandle>> => ({ photo: useRef<PickerHandle>(null), video: useRef<PickerHandle>(null) });
 
 /** «Nueva observación» after the first shot (design `ob-02`). The entry's key lives as long as the panel. */
 export function NewObservationWeb(props: { to: ObservationTo; report: ObservationDocument; first: File; reading: Promise<FieldPoint | null>; onBack: () => void; onDone: (reportId: string) => void }) {

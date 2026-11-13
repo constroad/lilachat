@@ -1,4 +1,5 @@
 import { useReportQueueStart } from './spaces/clients/reports/reportQueueStore';
+import { WebCameraHost } from './chat/camera/WebCamera';
 import { CreateChecklistOverlay } from './agenda/CreateChecklistOverlay';
 import { WEB_BUILD, webVersionLabel } from './ui/webVersion';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -273,6 +274,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
     <div className="relative flex h-full">
       <WebNotices sinConexion={sinConexion} />
       <WhatsNewDialog />
+      <WebCameraHost />
       {panel === 'both' ? (
         <AppRail
           spaces={espacios.spaces}

@@ -1465,5 +1465,19 @@ Se recorrió Control de pista en el APK (`lilafotos-qa`), en el servicio QA-CTLP
   del chat y una foto o un video. La galería sigue yendo directo al ticket, sin sello.
 - **Fuera a propósito**: el escáner QR de vinculación (no es una foto), la foto del grupo (avatar,
   sin sello) y la selfie de asistencia (`LiveSelfie`, su propio diseño y ya sellada en el servidor).
-- **Pendiente**: la PWA móvil (`getUserMedia`) y la vista previa de un video en «Enviar» (hoy solo
-  un ícono).
+- **La web en el celular, con la misma cámara** (José 12/11: «cierra todos los pendientes»).
+  `web/src/chat/camera/WebCamera.tsx` abre la cámara trasera con `getUserMedia` y muestra el mismo
+  sello en vivo, los chips «Logo» y «GPS», FOTO / VIDEO y la revisión. Video con `MediaRecorder`:
+  MP4 en un iPhone, WebM en Android Chrome; el servidor lo pasa a MP4 al quemar el sello. La abre
+  `shootOrPick` (`cameraRequests.ts`) solo en un navegador táctil con cámara y en un campo que no es
+  de galería; en una computadora sigue el selector de archivos. La usan las fotos de formularios e
+  informes (`PhotoField`, `PhotoListField`), las observaciones, «Registrar avance» y el Drive
+  («Foto», «Video» y «Galería»). Lo que va a Drive pasa por `/api/stamped-forward`, como en el APK.
+  El sello viaja al lado del archivo (`withStamp` / `stampOfFile`), nunca dentro de los bytes.
+- **«Enviar» del chat muestra el video** (antes, solo un ícono): se reproduce en bucle con controles.
+- **El sello ya no se pega a FOTO / VIDEO**: la altura del pie cuenta el margen inferior del sistema.
+- **«Agregar tramo» abre donde terminó el anterior** (CTL-IMP, Portal d85a6e57): el formulario del
+  tramo nuevo trae `repeat.nextValues` (`progresivaDesde` = fin del último tramo) escrito, y se puede
+  cambiar. Solo llena los campos que esa sección tiene.
+- **Sin probar todavía**: la cámara web en un celular real (el E2E corre en Chrome de escritorio, donde
+  sigue el selector), la grabación en un teléfono real y cuánto tarda el sellado de 3 min en la mini.

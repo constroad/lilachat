@@ -1,5 +1,4 @@
 import { useRef, useState, type RefObject } from 'react';
-import { useVideoPlayer, VideoView } from 'expo-video';
 import { Animated, Image, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { CameraView, type CameraCapturedPicture } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -11,11 +10,12 @@ import { useMargenes } from '../../ui/useMargenes';
 import { getCurrentSpaceId, useSpaceLogo } from '../../spaces/currentSpace';
 import { FLASH_LABEL, NEXT_FLASH, type FlashMode } from './flash';
 import { StampOverlay } from './StampOverlay';
+import { VideoPreview } from './VideoPreview';
 import { useCameraLogo } from './cameraLogoPref';
 import { CameraChips } from './CameraChips';
 import { useLiveStamp } from './useLiveStamp';
 import { useVideoRecording } from './useVideoRecording';
-import { recordingLabel, VIDEO_BITRATE } from './videoClock';
+import { recordingLabel, VIDEO_BITRATE } from '@lilachat/shared';
 import { ModeSwitch, RECORD_RED, type CameraMode } from './ModeSwitch';
 
 export type CameraShot = { uri: string; mime: string; /** A video's length, for the ticket's limit. */ seconds?: number };
@@ -26,8 +26,8 @@ const PHOTO_QUALITY = 1;
 const PHOTO_MIME = 'image/jpeg';
 const VIDEO_MIME = 'video/mp4';
 const MS_PER_SECOND = 1000;
-/** The FOTO / VIDEO row above the shutter. */
-const MODE_SWITCH = 40;
+/** The FOTO / VIDEO row above the shutter: label, dot and its margin. */
+const MODE_SWITCH = 52;
 const SHUTTER = 76;
 const SIDE_BUTTON = 48;
 const BLINK_IN_MS = 60;
@@ -83,7 +83,7 @@ export function FormCamera(props: Props) {
         {/* While it captures the preview goes transparent and would show the form behind it. */}
         {capture.shooting ? <View pointerEvents="none" className="absolute inset-0 bg-black" /> : null}
         <Animated.View pointerEvents="none" className="absolute inset-0 bg-white" style={{ opacity: capture.blink }} />
-        <StampOverlay stamp={live.stamp} logoUrl={logoUrl} width={width} height={height} bottomInset={landscape ? 0 : BOTTOM_BAR + (props.video ? MODE_SWITCH : 0)} />
+        <StampOverlay stamp={live.stamp} logoUrl={logoUrl} width={width} height={height} bottomInset={landscape ? 0 : BOTTOM_BAR + margins.pie + (props.video ? MODE_SWITCH : 0)} />
         <TopBar title={props.title} flash={flash} reviewing={Boolean(shot)} landscape={landscape} recording={capture.recording ? recordingLabel(capture.elapsedMs, props.video?.maxSeconds) : null} onClose={props.onClose} onFlash={() => setFlash((before) => NEXT_FLASH[before])} />
         {shot || capture.recording ? null : <CameraChips logoOn={logoOn} logoUrl={spaceLogo} precision={live.point?.precision ?? null} top={margins.cabecera + CHIPS_BELOW} />}
         {shot ? (
@@ -127,18 +127,11 @@ function useFormCapture(camera: RefObject<CameraView | null>, maxSeconds: number
 
 /** The live camera, or the shot to review: the photo, or the video playing in a loop (design cam-06). */
 function ShotOrPreview(props: { camera: RefObject<CameraView | null>; shot: CameraShot | null; mode: CameraMode; facing: 'back' | 'front'; flash: FlashMode }) {
-  if (props.shot && isVideoShot(props.shot)) return <VideoReview uri={props.shot.uri} />;
+  if (props.shot && isVideoShot(props.shot)) return <VideoPreview uri={props.shot.uri} fit="cover" />;
   if (props.shot) return <Image source={{ uri: props.shot.uri }} style={{ flex: 1 }} resizeMode="cover" />;
   return <CameraView ref={props.camera} style={{ flex: 1 }} mode={props.mode} facing={props.facing} flash={props.flash} videoQuality="720p" videoBitrate={VIDEO_BITRATE} />;
 }
 
-function VideoReview(props: { uri: string }) {
-  const player = useVideoPlayer(props.uri, (created) => {
-    created.loop = true;
-    created.play();
-  });
-  return <VideoView player={player} style={{ flex: 1 }} contentFit="cover" nativeControls={false} />;
-}
 
 function TopBar(props: { title: string; flash: FlashMode; reviewing: boolean; landscape: boolean; recording: string | null; onClose: () => void; onFlash: () => void }) {
   const margins = useMargenes();

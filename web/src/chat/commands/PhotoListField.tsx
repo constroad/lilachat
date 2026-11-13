@@ -2,6 +2,8 @@ import { useRef, useState } from 'react';
 import { Camera, Loader2, X } from 'lucide-react';
 import { fileStampOf, formShotFiles, type FormPhotoStamp, type FormField } from '@lilachat/shared';
 import { usePortalFileViewer } from '../../spaces/clients/PortalFileViewer';
+import { stampOfFile } from '../camera/shotStamp';
+import { shootOrPick } from '../camera/cameraRequests';
 
 type PhotoList = Extract<FormField, { kind: 'photo' }>;
 type Shot = { key: string; preview: string; fileId: string | null };
@@ -20,7 +22,7 @@ export function PhotoListField({ field, error, onChange, upload }: { field: Phot
     const ids = next.map((shot) => shot.fileId).filter((id): id is string => id !== null);
     onChange(ids.length ? ids : undefined);
   };
-  const add = async (files: FileList | null) => {
+  const add = async (files: FileList | File[] | null) => {
     const room = field.max - shots.length;
     const picked = Array.from(files ?? []).slice(0, room).map((file) => ({ file, shot: { key: `${Date.now()}-${file.name}`, preview: URL.createObjectURL(file), fileId: null } as Shot }));
     if (!picked.length) return;
@@ -28,7 +30,7 @@ export function PhotoListField({ field, error, onChange, upload }: { field: Phot
     let current = [...shots, ...picked.map((one) => one.shot)];
     setShots(current);
     for (const { file, shot } of picked) {
-      const uploaded = await upload(file, fileStampOf(field, file.lastModified));
+      const uploaded = await upload(file, stampOfFile(file) ?? fileStampOf(field, file.lastModified));
       current = uploaded.ok ? current.map((one) => (one.key === shot.key ? { ...one, fileId: uploaded.fileId } : one)) : current.filter((one) => one.key !== shot.key);
       if (!uploaded.ok) setMessage(uploaded.message);
       setShots(current);
@@ -58,7 +60,7 @@ export function PhotoListField({ field, error, onChange, upload }: { field: Phot
           </div>
         ))}
         {shots.length >= field.max ? null : (
-          <button type="button" data-testid={`campo-${field.name}`} disabled={uploading} onClick={() => input.current?.click()} className="grid h-20 w-20 place-items-center rounded-xl border-2 border-dashed border-outline/30 text-primary disabled:opacity-50">
+          <button type="button" data-testid={`campo-${field.name}`} disabled={uploading} onClick={() => shootOrPick({ title: field.label }, field, () => input.current?.click(), (file) => void add([file]))} className="grid h-20 w-20 place-items-center rounded-xl border-2 border-dashed border-outline/30 text-primary disabled:opacity-50">
             <span className="flex flex-col items-center gap-0.5 text-[12px] font-semibold"><Camera size={20} />{shots.length ? 'Otra' : 'Agregar'}</span>
           </button>
         )}

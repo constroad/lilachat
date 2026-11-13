@@ -285,3 +285,39 @@ describe('withoutGroupSend (José 12/11: «lo de enviar por whatsapp solo admins
     expect(withoutGroupSend(plain, false)).toEqual(plain);
   });
 });
+
+/**
+ * Portal d85a6e57: «Agregar tramo» brings `repeat.nextValues: { progresivaDesde }` with the end of
+ * the last tramo. The new tramo's form opens with it written; the person can change it.
+ */
+describe('a new tramo opens where the last one ended', () => {
+  const withNext = (nextValues: unknown) => {
+    const ubicacion = { type: 'object', properties: { progresivaDesde: { type: 'string', title: 'Desde' }, progresivaHasta: { type: 'string', title: 'Hasta' } } };
+    const tramos = { ...body.sections[1], repeat: { ...body.sections[1].repeat, nextValues } };
+    return fieldDocumentOf({ ...body, forms: { ...body.forms, ubicacion }, sections: [body.sections[0], tramos, body.sections[2]] })!;
+  };
+  const newTramo = { sectionId: 'tramos', key: 'ubicacion', itemId: null };
+
+  it('fills the new tramo with the values Portal sent, only in the section that has those fields', () => {
+    // Arrange
+    const document = withNext({ progresivaDesde: '12+350' });
+    // Act
+    const form = sectionFormOf(document, newTramo);
+    const bandejas = sectionFormOf(document, { ...newTramo, key: 'bandejas' });
+    // Assert
+    expect(form?.schema.properties?.progresivaDesde?.default).toBe('12+350');
+    expect(form?.schema.properties?.progresivaHasta?.default).toBeUndefined();
+    expect(Object.values(bandejas?.schema.properties ?? {}).some((one) => one.default === '12+350')).toBe(false);
+  });
+
+  it('leaves an existing tramo as it was saved, and ignores what is not a plain value', () => {
+    // Arrange
+    const document = withNext({ progresivaDesde: { km: 12 }, tramo: 'x'.repeat(500) });
+    // Act
+    const fresh = sectionFormOf(document, newTramo);
+    const saved = sectionFormOf(withNext({ progresivaDesde: '12+350' }), { ...newTramo, itemId: 't1' });
+    // Assert
+    expect(fresh?.schema.properties?.progresivaDesde?.default).toBeUndefined();
+    expect(saved?.schema.properties?.progresivaDesde?.default).toBeUndefined();
+  });
+});

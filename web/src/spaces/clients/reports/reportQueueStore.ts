@@ -86,6 +86,9 @@ function exclusive(task: () => Promise<void>): Promise<unknown> {
 
 export const reportQueue = createReportQueue({ vault, wire, exclusive });
 
+/** The live session's token, for what reads beside the queue (the camera's address). */
+export const reportSessionJwt = (): string | null => session?.jwt ?? null;
+
 /** The session the queue sends with, and what was left on the disk on its way; it tries again when the network is back. */
 export function useReportQueueStart(jwt: string, userId: string | null): void {
   useEffect(() => {

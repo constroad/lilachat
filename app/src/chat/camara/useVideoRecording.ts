@@ -1,7 +1,7 @@
 import { useEffect, useState, type RefObject } from 'react';
 import { Camera, type CameraView } from 'expo-camera';
 import { reportarError } from '../../ui/reportarError';
-import { MAX_VIDEO_SECONDS } from './videoClock';
+import { MAX_VIDEO_SECONDS } from '@lilachat/shared';
 
 const TICK_MS = 1000;
 export type RecordedVideo = { uri: string; startedAt: string };

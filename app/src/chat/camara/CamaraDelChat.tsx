@@ -17,7 +17,7 @@ import { StampOverlay } from './StampOverlay';
 import { useCameraLogo } from './cameraLogoPref';
 import { useLiveStamp } from './useLiveStamp';
 import { useVideoRecording, type RecordedVideo } from './useVideoRecording';
-import { recordingLabel, VIDEO_BITRATE } from './videoClock';
+import { recordingLabel, VIDEO_BITRATE } from '@lilachat/shared';
 import { ModeSwitch, RECORD_RED, type CameraMode } from './ModeSwitch';
 
 /** How many recent photos the strip shows (only if the gallery is already allowed). */

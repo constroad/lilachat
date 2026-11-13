@@ -73,6 +73,22 @@ describe('stampVideo', () => {
     await rm(folder, { recursive: true, force: true });
   }, 60_000);
 
+  it('a WebM from a phone browser (Android Chrome, VP8 and Opus) comes out as a stamped MP4', async () => {
+    // Arrange: what MediaRecorder writes in the web's camera (José 12/11: the PWA too).
+    const folder = await mkdtemp(join(tmpdir(), 'video-stamp-test-'));
+    const webm = join(folder, 'shot.webm');
+    await run('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=white:s=640x480:d=1', '-f', 'lavfi', '-i', 'sine=duration=1', '-c:v', 'libvpx', '-c:a', 'libopus', '-shortest', webm]);
+    // Act
+    const stamped = await stampVideo(await readFile(webm), stamp, null);
+    // Assert
+    expect(stamped).not.toBeNull();
+    const out = join(folder, 'out.mp4');
+    await import('node:fs/promises').then((fs) => fs.writeFile(out, stamped!));
+    const { stdout } = await run('ffprobe', ['-v', 'error', '-show_entries', 'stream=codec_name,width,height', '-of', 'csv=p=0', out]);
+    expect(stdout.trim().split('\n')).toEqual(['h264,640,480', 'aac']);
+    await rm(folder, { recursive: true, force: true });
+  }, 60_000);
+
   it('gives null for bytes that are not a video, and the caller sends it as it came', async () => {
     // Act
     const stamped = await stampVideo(Buffer.from('not a video'), stamp, null);

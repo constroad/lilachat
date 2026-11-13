@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Camera, CheckCircle2, ImagePlus, LocateFixed, Ruler, X } from 'lucide-react';
 import { areaDraftKey, areaFigures, fieldPlaceLine, IPHONE_MEASURE_STEPS, isApproximatePlace, measureMethodFor, restoredAreaDraft, type AreaDraft, type AreaDraftPoint, type AreaFigures, type AreaMethod, type AreaMode } from '@lilachat/shared';
 import { EvidenceInput } from '../ServiceDriveWeb';
+import type { PickerHandle } from '../../../chat/camera/cameraRequests';
 import { fieldPointNow } from '../observations/ObservationFormsWeb';
 
 /**
@@ -126,7 +127,7 @@ function Figures(props: { draft: AreaDraft; figures: AreaFigures | null; onMode:
 }
 
 function PhotoStrip(props: { iphone: boolean; photos: { url: string }[]; onAdd: (file: File | undefined) => void; onRemove: (index: number) => void }) {
-  const input = useRef<HTMLInputElement>(null);
+  const input = useRef<PickerHandle>(null);
   return (
     <div className="space-y-2">
       <p className={KICKER}>{props.iphone ? 'Captura de Medición' : 'Foto del área'}</p>

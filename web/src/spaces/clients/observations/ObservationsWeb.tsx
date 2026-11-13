@@ -4,6 +4,7 @@ import { approximateLine, evidenceFiles, LIFTING_TYPE, observationCounts, observ
 import { lazyChunk } from '../../../ui/lazyChunk';
 import { FileThumb, usePortalFileViewer } from '../PortalFileViewer';
 import { EvidenceInput } from '../ServiceDriveWeb';
+import type { PickerHandle } from '../../../chat/camera/cameraRequests';
 import { fieldPointNow, LiftObservationWeb, NewObservationWeb, type ObservationTo } from './ObservationFormsWeb';
 import { useReportDraftRead } from '../reports/useReportDraftRead';
 import type { ServiceAskTarget } from '../useServiceAsk';
@@ -133,7 +134,7 @@ function ObservationTable({ report, onOpen, write }: { report: ObservationDocume
  */
 /** «Nueva observación»: the camera at the first tap (§5-ter rule 2) and the GPS read at the same time. */
 function useNewObservation() {
-  const input = useRef<HTMLInputElement>(null);
+  const input = useRef<PickerHandle>(null);
   const reading = useRef<ReturnType<typeof fieldPointNow> | null>(null);
   const [started, setStarted] = useState<{ file: File; reading: ReturnType<typeof fieldPointNow> } | null>(null);
   const begin = () => {

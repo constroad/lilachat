@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { DRIVE_UPLOAD_DONE, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type ManualPhotoUpload, type AreaCreateRequest, type AreaRemoveRequest, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps } from '@lilachat/shared';
+import { stampFieldsOf, type TimemarkStampAsked, DRIVE_UPLOAD_DONE, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type ManualPhotoUpload, type AreaCreateRequest, type AreaRemoveRequest, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps } from '@lilachat/shared';
 import { submitAppForm } from '../../chat/commands/commandsApi';
 import { shrinkPhotoBlob } from '../../chat/shrinkPhoto';
+import { stampOfFile } from '../../chat/camera/shotStamp';
 import { currentSocket } from '../../useSocket';
 import { openReportForm } from './reports/reportsApi';
 import type { ServiceAskTarget } from './useServiceAsk';
 
-export type DriveFile = { blob: Blob; name: string };
+export type DriveFile = { blob: Blob; name: string; /** Lilachat's camera: the server burns it on the way (`/api/stamped-forward`). */ stamp?: TimemarkStampAsked };
+type Sender = { jwt: string; chatId: string };
 type UploadState = { sending: boolean; message: string; failed: boolean };
 type UploadTarget = { target: ServiceAskTarget; chatId: string; serviceId: string; onDone: () => void };
 
@@ -29,6 +31,31 @@ async function sendToDrive(upload: DriveUpload, file: DriveFile, clientUploadId:
   }
 }
 
+/**
+ * A shot of Lilachat's camera goes ONCE to Lilachat's server, whole: it burns the stamp while it
+ * compresses it and forwards it to the same ticket, server to server (as the APK, José 12/11).
+ */
+async function sendStamped(upload: DriveUpload, file: DriveFile, clientUploadId: string, sender: Sender): Promise<{ status?: number; message?: string; mediaId?: string }> {
+  const body = new FormData();
+  body.append('target', upload.url);
+  body.append('fileField', upload.fileField);
+  body.append('fields', JSON.stringify(upload.fields));
+  body.append('clientUploadId', clientUploadId);
+  body.append('chatId', sender.chatId);
+  Object.entries(stampFieldsOf(file.stamp)).forEach(([name, value]) => body.append(name, value));
+  body.append('file', file.blob, file.name);
+  try {
+    const response = await fetch('/api/stamped-forward', { method: 'POST', headers: { Authorization: `Bearer ${sender.jwt}` }, body });
+    const { message, mediaId } = (await response.json().catch(() => ({}))) as { message?: unknown; mediaId?: unknown };
+    return { status: response.status, ...(typeof message === 'string' ? { message } : {}), ...(typeof mediaId === 'string' ? { mediaId } : {}) };
+  } catch {
+    return {};
+  }
+}
+
+const sendFor = (sender: Sender) => (upload: DriveUpload, file: DriveFile, clientUploadId: string, fields?: Record<string, string>) =>
+  file.stamp ? sendStamped(upload, file, clientUploadId, sender) : sendToDrive(upload, file, clientUploadId, fields);
+
 /** How long a video lasts, from its header. A browser that cannot read it leaves the question to Portal. */
 function videoSecondsOf(file: Blob): Promise<number | undefined> {
   return new Promise((resolve) => {
@@ -47,6 +74,8 @@ function videoSecondsOf(file: Blob): Promise<number | undefined> {
 
 /** A photo leaves at Portal's size; a video goes as it is, with its length when the browser reads it. */
 export async function prepared(file: File): Promise<{ source: DriveFile; facts: DriveFileFacts }> {
+  const stamp = stampOfFile(file);
+  if (stamp) return preparedShot(file, stamp);
   if (file.type.startsWith('image/')) {
     const photo = await shrinkPhotoBlob(file, file.name);
     return { source: { blob: photo.blob, name: photo.name }, facts: { mime: photo.mime, sizeBytes: photo.blob.size } };
@@ -55,11 +84,18 @@ export async function prepared(file: File): Promise<{ source: DriveFile; facts: 
   return { source: { blob: file, name: file.name }, facts: { mime: file.type, sizeBytes: file.size, ...(seconds === undefined ? {} : { seconds }) } };
 }
 
+/** A shot of the camera: whole (the server shrinks it once), and a video as the MP4 the server turns it into. */
+async function preparedShot(file: File, stamp: TimemarkStampAsked): Promise<{ source: DriveFile; facts: DriveFileFacts }> {
+  const video = file.type.startsWith('video/');
+  const seconds = video ? await videoSecondsOf(file) : undefined;
+  return { source: { blob: file, name: file.name, stamp }, facts: { mime: video ? 'video/mp4' : file.type, sizeBytes: file.size, ...(seconds === undefined ? {} : { seconds }) } };
+}
+
 const depsOf = ({ target, chatId, serviceId }: Omit<UploadTarget, 'onDone'>): DriveUploadDeps<DriveFile> => ({
   open: () => openReportForm(target, serviceId, driveUploadRequest()),
   submit: (commandId) => submitAppForm(target.jwt, { chatId }, commandId, {}),
   notice: (commandId) => noticeOf(currentSocket(), commandId),
-  send: sendToDrive,
+  send: sendFor({ jwt: target.jwt, chatId }),
 });
 
 /** A photo or a video to the service's Drive (José, 06/11). The list is asked again when it landed. */
@@ -91,6 +127,6 @@ export const observationWriteDeps = (to: Omit<UploadTarget, 'onDone'>, request: 
   open: () => openReportForm(to.target, to.serviceId, request),
   submit: (commandId, values) => submitAppForm(to.target.jwt, { chatId: to.chatId }, commandId, values),
   notice: (commandId) => noticeOf(currentSocket(), commandId),
-  send: sendToDrive,
+  send: sendFor({ jwt: to.target.jwt, chatId: to.chatId }),
 });
 

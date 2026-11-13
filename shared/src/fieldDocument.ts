@@ -24,7 +24,7 @@ export type SectionTemplate = PhotoMarks & { id: string; title: string; required
 /** The window of items on screen when Portal pages them (50 units of a control de pista). */
 export type ItemsPage = { current: number; total: number };
 export type RepeatItem = { id: string; title: string; summary: string[]; results: SectionResult[]; sections: FormSection[] };
-export type RepeatSection = { kind: 'repeat'; id: string; title: string; required: boolean; enabled: boolean; state: SectionState; summary: string[]; /** Over all the items (Portal's Carros, Volumen, Terminadas). */ results: SectionResult[]; itemTitle: string; addLabel: string; /** False when the items come from elsewhere (the dispatches of an order): no «Agregar». */ canAdd: boolean; page?: ItemsPage; min: number; template: SectionTemplate[]; items: RepeatItem[] };
+export type RepeatSection = { kind: 'repeat'; id: string; title: string; required: boolean; enabled: boolean; state: SectionState; summary: string[]; /** Over all the items (Portal's Carros, Volumen, Terminadas). */ results: SectionResult[]; itemTitle: string; addLabel: string; /** False when the items come from elsewhere (the dispatches of an order): no «Agregar». */ canAdd: boolean; page?: ItemsPage; min: number; template: SectionTemplate[]; items: RepeatItem[]; /** What a new item opens with (Portal d85a6e57: the end of the last tramo). */ nextValues?: FormValues };
 export type DocumentSection = FormSection | RepeatSection;
 /** `id` is null until the first section is saved: Portal creates nothing on a read. */
 export type FieldDocument = { id: string | null; type: string; title: string; status: DocumentStatus; forms: Record<string, FormSchema>; sections: DocumentSection[]; publish: { label: string; missing: string[]; /** Shown without blocking «Publicar» (dispatches of the order with no row yet). */ warnings: string[] } };
@@ -124,6 +124,15 @@ function pageOf(raw: unknown): ItemsPage | undefined {
 /** José 06/11: the units of a control de pista are the order's dispatches, nobody adds one. An empty «Agregar» says the same. */
 const canAddOf = (repeat: Raw): boolean => repeat.canAdd !== false && !(typeof repeat.addLabel === 'string' && repeat.addLabel.trim() === '');
 
+const NEXT_VALUE_MAX = 200;
+const NEXT_VALUES_MAX = 20;
+
+/** Plain values only: a text Portal could not know the size of, or an object, never reaches a form. */
+function nextValuesOf(raw: unknown): FormValues | undefined {
+  const entries = Object.entries(record(raw)).slice(0, NEXT_VALUES_MAX).filter(([, value]) => typeof value === 'number' || typeof value === 'boolean' || (typeof value === 'string' && value.length <= NEXT_VALUE_MAX));
+  return entries.length ? Object.fromEntries(entries) : undefined;
+}
+
 function repeatOf(raw: Raw, forms: Record<string, FormSchema>): RepeatSection | null {
   const id = text(raw.id, LIMITS.title);
   const title = text(raw.title, LIMITS.title);
@@ -139,8 +148,9 @@ function repeatOf(raw: Raw, forms: Record<string, FormSchema>): RepeatSection | 
   }
   const min = typeof repeat.min === 'number' && repeat.min > 0 ? Math.floor(repeat.min) : 0;
   const page = pageOf(repeat.page);
+  const nextValues = nextValuesOf(repeat.nextValues);
   return {
-    kind: 'repeat', id, title, template, items, min, canAdd: canAddOf(repeat), ...(page ? { page } : {}),
+    kind: 'repeat', id, title, template, items, min, canAdd: canAddOf(repeat), ...(page ? { page } : {}), ...(nextValues ? { nextValues } : {}),
     required: raw.required === true, enabled: raw.enabled !== false,
     state: oneOf(raw.state, SECTION_STATES, 'empty'), summary: lines(raw.summary), results: resultsOf(repeat.results ?? raw.results),
     itemTitle: text(repeat.itemTitle, LIMITS.title) || title, addLabel: text(repeat.addLabel, LIMITS.title) || 'Agregar',
@@ -189,10 +199,16 @@ export function sectionAt(document: FieldDocument, path: SectionPath): Found | n
   const entry = section.template.find((one) => one.id === path.key);
   if (!entry) return null;
   const tool = { ...(entry.tool ? { tool: entry.tool } : {}), ...marksOf(entry) };
-  if (path.itemId === null) return { title: itemFormTitle(section.itemTitle, entry.title), form: entry.form, ...tool, values: {} };
+  if (path.itemId === null) return { title: itemFormTitle(section.itemTitle, entry.title), form: entry.form, ...tool, values: valuesForForm(section.nextValues, document.forms[entry.form]) };
   const item = section.items.find((one) => one.id === path.itemId);
   const saved = item?.sections.find((one) => one.id === path.key);
   return item && saved ? { title: itemFormTitle(item.title, entry.title), form: entry.form, ...tool, values: saved.values } : null;
+}
+
+/** The values Portal sent for a new item that this section's form has a field for. */
+function valuesForForm(values: FormValues | undefined, form: FormSchema | undefined): FormValues {
+  const properties = form?.properties ?? {};
+  return Object.fromEntries(Object.entries(values ?? {}).filter(([key]) => key in properties));
 }
 
 /** «Tramo 1 · Ubicación»; a section named like its item says it once: «Punto 1», never «Punto 1 · Punto» (E2E 12/11). */

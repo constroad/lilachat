@@ -1,7 +1,9 @@
-import { forwardRef, useCallback, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Cloud, ExternalLink, Folder, Search, Upload } from 'lucide-react';
-import { photoMarkOf, withPhotoMark, type PhotoMark, DRIVE_UPLOADING, driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService, type ViewableFile } from '@lilachat/shared';
+import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { Camera, ChevronLeft, ChevronRight, Cloud, ExternalLink, Folder, Search, Upload, Video } from 'lucide-react';
+import { DRIVE_VIDEO_SECONDS, OBSERVATION_VIDEO_SECONDS, photoMarkOf, withPhotoMark, type PhotoMark, DRIVE_UPLOADING, driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService, type ViewableFile } from '@lilachat/shared';
 import { FileThumb, usePortalFileViewer } from './PortalFileViewer';
+import { cameraEnvironment, liveCameraFits } from '../../chat/camera/shotStamp';
+import { openWebCamera, shootOrPick, type PickerHandle } from '../../chat/camera/cameraRequests';
 import { useDriveUpload } from './useDriveUpload';
 import { PhotoPhaseBar } from './PhotoPhaseBar';
 import { photoPhaseSender } from './workMap/workProgressSender';
@@ -85,11 +87,18 @@ function DriveUploadBar({ upload }: { upload: ReturnType<typeof useDriveUpload> 
     if (file) void upload.send(file);
     if (picker.current) picker.current.value = '';
   };
+  const camera = liveCameraFits(cameraEnvironment(), {});
+  const shoot = (video: boolean) => void openWebCamera({ title: video ? 'Video al Drive' : 'Foto al Drive', video: { maxSeconds: DRIVE_VIDEO_SECONDS, first: video } }).then((file) => file && upload.send(file));
+  const button = 'flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-outline/15 bg-surface px-3 text-sm font-semibold text-primary disabled:opacity-60';
   return (
     <div className="flex flex-col gap-1.5">
-      <button type="button" data-testid="subir-al-drive" disabled={upload.sending} onClick={() => picker.current?.click()} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-outline/15 bg-surface px-4 text-sm font-semibold text-primary disabled:opacity-60">
-        <Upload size={16} /> {upload.sending ? DRIVE_UPLOADING : 'Subir foto o video'}
-      </button>
+      <div className="flex gap-2">
+        {camera ? <button type="button" data-testid="drive-foto" disabled={upload.sending} onClick={() => shoot(false)} className={button}><Camera size={16} /> Foto</button> : null}
+        {camera ? <button type="button" data-testid="drive-video" disabled={upload.sending} onClick={() => shoot(true)} className={button}><Video size={16} /> Video</button> : null}
+        <button type="button" data-testid="subir-al-drive" disabled={upload.sending} onClick={() => picker.current?.click()} className={button}>
+          <Upload size={16} /> {upload.sending ? DRIVE_UPLOADING : camera ? 'Galería' : 'Subir foto o video'}
+        </button>
+      </div>
       <input ref={picker} data-testid="archivo-para-drive" type="file" accept="image/*,video/*" hidden onChange={(event) => pick(event.target.files)} />
       {upload.message ? <p role="status" className={upload.failed ? 'text-sm text-error' : 'text-sm text-on-surface-variant'}>{upload.message}</p> : null}
     </div>
@@ -154,17 +163,20 @@ export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: Spac
   );
 }
 
-/** One field photo for the service's Drive, from the camera or a file (o-06 «Registrar avance»): the camera's door. */
-export const DrivePhotoInput = forwardRef<HTMLInputElement, { testId: string; onFile: (file: File | undefined) => void }>(function DrivePhotoInput(props, ref) {
-  return <input ref={ref} data-testid={props.testId} type="file" accept="image/*" capture="environment" hidden onChange={(event) => { props.onFile(event.target.files?.[0]); event.target.value = ''; }} />;
+/** One field photo for the service's Drive (o-06 «Registrar avance»): Lilachat's camera on a phone, a file on a computer. */
+export const DrivePhotoInput = forwardRef<PickerHandle, { testId: string; onFile: (file: File | undefined) => void }>(function DrivePhotoInput(props, ref) {
+  return <EvidenceInput ref={ref} testId={props.testId} kind="photo" title="Foto de avance" onFile={props.onFile} />;
 });
 
 /**
- * A photo or a video of an observation (José 11/11): the camera at once on a phone, a file on a computer.
- * `fromLibrary` opens the photos already taken instead (the picture of Apple's «Medición», José 12/11).
+ * A photo or a video of an observation (José 11/11): Lilachat's camera with its stamp on a phone (José 12/11),
+ * a file on a computer. `fromLibrary` opens the photos already taken instead (the picture of Apple's «Medición»).
  */
-export const EvidenceInput = forwardRef<HTMLInputElement, { testId: string; kind: 'photo' | 'video'; fromLibrary?: boolean; onFile: (file: File | undefined) => void }>(function EvidenceInput(props, ref) {
-  return <input ref={ref} data-testid={props.testId} type="file" accept={props.kind === 'video' ? 'video/*' : 'image/*'} {...(props.fromLibrary ? {} : { capture: 'environment' as const })} hidden onChange={(event) => { props.onFile(event.target.files?.[0]); event.target.value = ''; }} />;
+export const EvidenceInput = forwardRef<PickerHandle, { testId: string; kind: 'photo' | 'video'; title?: string; fromLibrary?: boolean; onFile: (file: File | undefined) => void }>(function EvidenceInput(props, ref) {
+  const input = useRef<HTMLInputElement>(null);
+  const ask = { title: props.title ?? (props.kind === 'video' ? 'Video de la observación' : 'Foto de la observación'), ...(props.kind === 'video' ? { video: { maxSeconds: OBSERVATION_VIDEO_SECONDS, first: true } } : {}) };
+  useImperativeHandle(ref, () => ({ click: () => shootOrPick(ask, { gallery: props.fromLibrary }, () => input.current?.click(), props.onFile) }));
+  return <input ref={input} data-testid={props.testId} type="file" accept={props.kind === 'video' ? 'video/*' : 'image/*'} {...(props.fromLibrary ? {} : { capture: 'environment' as const })} hidden onChange={(event) => { props.onFile(event.target.files?.[0]); event.target.value = ''; }} />;
 });
 
 /** A KMZ or KML for «Importar» of the map (o-12). */

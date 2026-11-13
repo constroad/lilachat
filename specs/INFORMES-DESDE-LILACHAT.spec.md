@@ -1508,6 +1508,14 @@ Se recorrió Control de pista en el APK (`lilafotos-qa`), en el servicio QA-CTLP
   ponía la foto debajo de los botones de Android, que tapaban el sello: la página termina encima
   (`margins.pie`). Sin probar: un teléfono real con fotos 3:4 (no se recortan) y la PWA en el
   celular.
+- **El pie escrito en «Enviar» se perdía con la cámara (José 13/11: «ingreso el mensaje pero no
+  llega, solo la foto o video»).** La cámara le pasaba a «Enviar» una lista NUEVA en cada render
+  (cada segundo, por el reloj del sello en vivo) y «Enviar» borraba los pies cada vez que cambiaba
+  la lista. Ahora reinicia solo cuando cambian las tomas (`shotsKeyOf`) y la cámara memoriza su
+  lista. La galería no fallaba: su lista no cambia.
+- **La miniatura de una foto borrada seguía en la lista de chats (José 13/11).** El server ya no la
+  manda (`listThumbPath`), pero el aviso en vivo `msg.deleted` dejaba `thumb`, `wink` y `mime` en la
+  fila. `aplicarBorradoALista` los quita (APK y web).
 - **«Enviar» del chat muestra el video** (antes, solo un ícono): se reproduce en bucle con controles.
 - **El sello ya no se pega a FOTO / VIDEO**: la altura del pie cuenta el margen inferior del sistema.
 - **«Agregar tramo» abre donde terminó el anterior** (CTL-IMP, Portal d85a6e57): el formulario del

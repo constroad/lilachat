@@ -60,6 +60,15 @@ export function quitarFoto<T>(fotos: readonly T[], indice: number, actual: numbe
 const isVideo = (picked: Pick<FotoElegida, 'mimeType'>) => Boolean(picked.mimeType?.startsWith('video/'));
 
 /** «1 foto», «2 videos», «3 archivos» over the send screen (E2E 12/11: a video said «1 foto»). */
+/**
+ * Which shots «Enviar» shows, as one string: a new list with the same shots is the same send, so
+ * the captions typed so far stay (José 13/11: the camera's list was new every second and the caption
+ * never reached the chat).
+ */
+export function shotsKeyOf(shots: readonly Pick<FotoElegida, 'uri'>[]): string {
+  return shots.map((shot) => shot.uri).join('|');
+}
+
 export function sendTitleOf(picked: readonly Pick<FotoElegida, 'mimeType'>[]): string {
   const videos = picked.filter(isVideo).length;
   const noun = videos === 0 ? ['foto', 'fotos'] : videos === picked.length ? ['video', 'videos'] : ['archivo', 'archivos'];

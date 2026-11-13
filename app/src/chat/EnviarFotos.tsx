@@ -6,6 +6,7 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import { Crop, Send, Video, X } from 'lucide-react-native';
 import { armarEnvioDeFotos, quitarFoto, type FotoAEnviar, type FotoElegida } from './envioDeFotos';
 import { sendTitleOf } from './envioDeFotos';
+import { shotsKeyOf } from './envioDeFotos';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { CropEditor } from './crop/CropEditor';
@@ -37,14 +38,17 @@ export function EnviarFotos(props: {
   /** The photo being cropped (01/11, like WhatsApp). */
   const [cropping, setCropping] = useState<FotoElegida | null>(null);
 
-  // Cada vez que se abre con fotos nuevas, arranca de cero.
+  // Cada vez que se abre con fotos nuevas, arranca de cero. By the shots, not the array: the camera
+  // hands a new list on each render and the caption being typed was wiped (José 13/11).
+  const shotsKey = shotsKeyOf(props.fotos);
   useEffect(() => {
     setFotos(props.fotos);
     setActual(0);
     setPies({});
     setHd(false);
     setCropping(null);
-  }, [props.fotos]);
+    // The shots, by their key: the list itself is new on every render of the camera.
+  }, [shotsKey]);
   const { backRef } = props;
   useEffect(() => {
     if (!backRef) return;

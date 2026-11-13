@@ -346,6 +346,17 @@ describe('ediciones y borrados en la vista previa', () => {
     expect(nuevos[0]?.lastMessage).toMatchObject({ deletedAt: '2026-10-19T20:00:00.000Z', body: undefined });
   });
 
+  // José 13/11: «cuando elimino un mensaje de tipo foto y salgo a la lista, se sigue viendo en la miniatura».
+  it('a deleted photo, sticker or wink leaves no picture in the row', () => {
+    const photo = { ...chat().lastMessage!, kind: 'image', thumb: 'https://lilachat.constroad.com/files/t.jpg', mime: 'image/jpeg', wink: 'w1' };
+    const chats = [chat({ lastMessage: photo } as Partial<ChatSummary>)];
+    const row = aplicarBorradoALista(chats, { chatId: CHAT, seq: 4 }, '2026-11-13T13:00:00.000Z')[0]?.lastMessage as Record<string, unknown>;
+    expect(row.thumb).toBeUndefined();
+    expect(row.wink).toBeUndefined();
+    expect(row.mime).toBeUndefined();
+    expect(row.deletedAt).toBe('2026-11-13T13:00:00.000Z');
+  });
+
   it('un aviso sin forma o de otro chat no cambia nada', () => {
     const chats = [chat()];
     expect(aplicarBorradoALista(chats, { chatId: 'otro', seq: 4 }, 'x')).toBe(chats);

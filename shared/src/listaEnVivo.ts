@@ -210,11 +210,17 @@ export function aplicarEdicionALista<C extends ResumenEnVivo>(chats: C[], cambio
   return chats.map((chat, i) => (i === indice ? { ...actual, lastMessage } : chat));
 }
 
+/** The fields that draw a picture beside the preview: a deleted photo kept its thumbnail in the list (José 13/11). */
+const PICTURE_FIELDS = ['thumb', 'wink', 'mime'];
+function withoutPicture<L extends object>(last: L): L {
+  return Object.fromEntries(Object.entries(last).filter(([field]) => !PICTURE_FIELDS.includes(field))) as L;
+}
+
 /** Borraron el último para todos: la vista previa dice «Se eliminó este mensaje». */
 export function aplicarBorradoALista<C extends ResumenEnVivo>(chats: C[], cambio: CambioDeMensaje, ahora: string): C[] {
   const indice = filaDelUltimo(chats, cambio);
   const actual = chats[indice];
   if (!actual?.lastMessage) return chats;
-  const lastMessage = { ...actual.lastMessage, body: undefined, deletedAt: ahora };
+  const lastMessage = { ...withoutPicture(actual.lastMessage), body: undefined, deletedAt: ahora };
   return chats.map((chat, i) => (i === indice ? { ...actual, lastMessage } : chat));
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { armarEnvioDeFotos, quitarFoto, MAXIMO_DE_FOTOS, sendTitleOf } from './envioDeFotos';
+import { shotsKeyOf } from './envioDeFotos';
 
 /** Varias fotos con su pie, como WhatsApp (FL9b; auditoría §46.2). */
 describe('armarEnvioDeFotos', () => {
@@ -62,5 +63,20 @@ describe('sendTitleOf', () => {
     const titles = [sendTitleOf([photo]), sendTitleOf([video]), sendTitleOf([video, video]), sendTitleOf([photo, video]), sendTitleOf([photo, photo])];
     // Assert
     expect(titles).toEqual(['1 foto', '1 video', '2 videos', '2 archivos', '2 fotos']);
+  });
+});
+
+// José 13/11: «tomo foto o video, ingreso el mensaje pero el mensaje no llega, solo la foto». The camera
+// handed «Enviar» a NEW list on each render (every second, for the live clock): the captions reset.
+describe('shotsKeyOf', () => {
+  it('the same shots in a new list keep their key, so the captions stay', () => {
+    const shot = { uri: 'file:///cam/1.jpg' };
+    expect(shotsKeyOf([shot])).toBe(shotsKeyOf([{ ...shot }]));
+  });
+
+  it('another shot, one more or none changes it', () => {
+    expect(shotsKeyOf([{ uri: 'a' }])).not.toBe(shotsKeyOf([{ uri: 'b' }]));
+    expect(shotsKeyOf([{ uri: 'a' }])).not.toBe(shotsKeyOf([{ uri: 'a' }, { uri: 'b' }]));
+    expect(shotsKeyOf([])).toBe('');
   });
 });

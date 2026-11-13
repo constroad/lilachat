@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, FlatList, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { CameraView, type CameraCapturedPicture } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library/legacy';
@@ -69,6 +69,8 @@ function ChatCameraBody(props: Props & { backRef: { current: (() => boolean) | n
   const [recent, setRecent] = useState<MediaLibrary.Asset[]>([]);
   /** What was just taken: «Enviar» opens ON TOP, in this same screen. */
   const [taken, setTaken] = useState<FotoElegida | null>(null);
+  // One list per shot: a new one each second (the live clock) wiped the caption in «Enviar» (José 13/11).
+  const takenList = useMemo(() => (taken ? [taken] : []), [taken]);
   /** While the photo is being cropped, «back» closes the crop (01/11). */
   const sendScreenBack = useRef<(() => void) | null>(null);
   const live = useLiveStamp();
@@ -117,7 +119,7 @@ function ChatCameraBody(props: Props & { backRef: { current: (() => boolean) | n
       <EnviarFotos
         embebido
         backRef={sendScreenBack}
-        fotos={taken ? [taken] : []}
+        fotos={takenList}
         onCancelar={() => {
           setTaken(null);
           setShooting(false);

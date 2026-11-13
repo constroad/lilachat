@@ -4,12 +4,14 @@
  */
 export const MAXIMO_DE_FOTOS = 10;
 
-import type { TimemarkStampAsked } from '@lilachat/shared';
+import type { Timemark, TimemarkStampAsked } from '@lilachat/shared';
 
 /** Lo que devuelve el selector (expo-image-picker), lo justo. */
 export type FotoElegida = {
   /** A shot of the chat's camera (José 12/11): the server burns this stamp into it. */
   stamp?: TimemarkStampAsked;
+  /** That stamp as the camera showed it: «Enviar» draws it over the shot (José 13/11). */
+  seen?: { stamp: Timemark; logoUrl: string | null };
   uri: string;
   fileName?: string | null;
   mimeType?: string | null;

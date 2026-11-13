@@ -15636,6 +15636,15 @@ Sin verificar: la cuenta real. No se leyó la base; se dedujo del código y de l
     tarjetas. Las columnas se miden por ancho (2, 3 o 5). La vista elegida se recuerda: en la web en
     `localStorage` (`lilachat.drive.vista`), en el APK mientras la app está abierta.
   - En la web se puede soltar un archivo sobre el Drive («Suelta aquí…»).
+  - Botón de cámara junto a «Subir» (José 13/11; stitch-design 5-ter, regla 2: la evidencia abre la
+    cámara al primer toque). Abre la cámara nueva con FOTO / VIDEO, sello y GPS. En la web aparece
+    en cualquier equipo con cámara, también la de una computadora, y el menú ofrece las cuatro
+    opciones.
+  - Un documento con miniatura (la primera hoja que manda Portal) lleva su etiqueta PDF / XLSX
+    encima: una hoja casi blanca no se distinguía.
+  - **Por qué no subía un PDF (13/11):** agentes filtraba `upload.mimeTypes` contra su propia lista
+    (fotos, videos, KMZ). Lo corrigió en a636426. Probado en el APK y la web con dos PDF de QA en el
+    servicio de Test «QA-PISTA-APK — borrar».
   - Lo que Stitch inventó y NO va: la descripción de cada carpeta («Registro fotográfico con GPS»),
     el peso en la tarjeta y el candado del PDF. Portal no manda esos datos.
 

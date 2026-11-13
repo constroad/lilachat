@@ -178,6 +178,19 @@ describe('one «Subir», list or grid, and the chips (José 13/11, designs drv-0
     { ...file('acta.pdf'), modifiedAt: '2026-11-12T15:00:00.000Z' },
   ];
 
+  it('with a camera (a webcam too) the camera is one tap away beside «Subir», and the menu offers it as well', async () => {
+    // Arrange
+    vi.stubGlobal('navigator', { ...navigator, mediaDevices: { getUserMedia: vi.fn() } });
+    vi.stubGlobal('fetch', reply({ files, drive_url: null }));
+    render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" />);
+    // Act
+    fireEvent.click(await screen.findByTestId('subir-al-drive'));
+    // Assert
+    expect(screen.getByTestId('drive-camara')).toHaveAccessibleName('Abrir la cámara');
+    expect(screen.getByTestId('drive-foto')).toHaveTextContent('Tomar foto');
+    expect(screen.getByTestId('drive-video')).toHaveTextContent('Grabar video');
+  });
+
   it('a single «Subir» opens the menu; on a computer it offers the files of the equipment and documents', async () => {
     // Arrange
     vi.stubGlobal('fetch', reply({ files, drive_url: null }));

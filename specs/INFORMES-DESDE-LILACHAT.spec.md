@@ -1384,6 +1384,14 @@ Se recorrió Control de pista en el APK (`lilafotos-qa`), en el servicio QA-CTLP
   `clima`, `tramo`). Motor: `shared/src/fieldConditions.ts`. **Ojo:** un Lilachat anterior a este
   cambio rechaza el formulario entero si trae un `x-input` desconocido. Portal no publica esos
   `x-input` hasta que este OTA y la web estén en la calle.
+- **Temperatura y hora de inicio (José 13/11: «¿el de imprimación ya autocompleta datos obvios…?»).**
+  El CTL-IMP no marcaba ningún campo: solo «Tramo» se llenaba, por su nombre. Lilachat suma dos
+  fuentes. `x-input: clock`, en un campo `format: time`, nace con la hora del teléfono. `x-input:
+  temperature`, en un número, toma los °C del clima del GPS, redondeados (`temperatureOf`, sale de la
+  misma etiqueta «Nublado · 18 °C»; el server no cambia). Se le pidió a Portal marcar en
+  `imprimacionFields.ts`: `horaInicio` → clock, `temperaturaAmbiente` → temperature, `ubicacion` →
+  place-street y `tramo` → work-street. **Mismo ojo que arriba:** Portal no los publica hasta que
+  este OTA y la web estén en la calle.
 - **Descripción de toda foto de unidad** (José, tras ver el WhatsApp que decía solo «Ingreso»):
   dice la etapa, el orden de llegada a descarga y la placa, por ejemplo «Ingreso · llegada n.º 2 a
   descarga · F2K-908» o «Escantillón · llegada n.º 2 a descarga · F2K-908». El orden sale de la
@@ -1486,6 +1494,14 @@ Se recorrió Control de pista en el APK (`lilafotos-qa`), en el servicio QA-CTLP
   un lado del 16 % del lado corto. El servidor lo quema ahí (sharp y ffmpeg usan el mismo SVG). En
   vivo, el APK y la web lo dibujan debajo de los chips. En horizontal, el APK lo pone a la izquierda de
   la columna de controles. La web lee el logo del espacio abierto (`useCurrentSpaceLogo`).
+- **El sello en «Enviar» y en el visor (José 13/11: «tomo la foto y en el preview no se ve el sello…
+  toco la imagen y no se ve»).** Dos causas en el APK. «Enviar» mostraba la foto cruda: el sello se
+  quema en el server. Ahora `StampedPreview` dibuja encima el mismo sello que la cámara mostraba al
+  disparar (`seen`), sobre el rectángulo de la foto y no sobre el negro de alrededor. Y lo que uno
+  acababa de mandar se seguía viendo desde la copia del teléfono, sin sello (`copiaLocalDe`, 19/10:
+  para que no parpadee). Una toma con sello ya no guarda esa copia (`keepsLocalCopy`), así que la
+  burbuja y el visor leen el archivo sellado. En la web no pasaba: su copia local solo vive mientras
+  sube.
 - **«Enviar» del chat muestra el video** (antes, solo un ícono): se reproduce en bucle con controles.
 - **El sello ya no se pega a FOTO / VIDEO**: la altura del pie cuenta el margen inferior del sistema.
 - **«Agregar tramo» abre donde terminó el anterior** (CTL-IMP, Portal d85a6e57): el formulario del

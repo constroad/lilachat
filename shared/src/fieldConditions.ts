@@ -1,11 +1,12 @@
 import type { FormField, FormValues } from './appForms.js';
+import { formatFormDate } from './formDates.js';
 
 /**
  * The conditions of the work a field report asks for and the phone already knows (José 12/11, CTL-PIS
  * «Información de control»): the shift by the hour, the weather where the engineer stands and the
  * street under the GPS. They are suggestions: only an empty field is written, and the person edits it.
  */
-export type ConditionRole = 'shift' | 'weather' | 'street';
+export type ConditionRole = 'shift' | 'weather' | 'street' | 'temperature' | 'clock';
 /** What the server says of a reading: the street and the weather in words; null when it did not arrive. */
 export type FieldConditions = { street: string | null; weather: string | null };
 
@@ -19,14 +20,26 @@ const NIGHT_FROM = 18;
 export function conditionKindsOf(fields: readonly FormField[]): Record<string, ConditionRole> {
   const kinds: Record<string, ConditionRole> = {};
   for (const field of fields) {
-    if (field.kind !== 'text' && field.kind !== 'choice') continue;
     const role = field.condition ?? ROLE_BY_NAME[field.name];
-    if (role) kinds[field.name] = role;
+    if (role && fitsRole(field, role)) kinds[field.name] = role;
   }
   return kinds;
 }
 
-/** «Mañana» from 5, «Tarde» from 12, «Noche» from 18: the phone's own hour. */
+/** A number takes the temperature, an hour takes the clock, a text or a choice the rest. */
+function fitsRole(field: FormField, role: ConditionRole): boolean {
+  if (role === 'temperature') return field.kind === 'number';
+  if (role === 'clock') return field.kind === 'date' && field.mode === 'time';
+  return field.kind === 'text' || field.kind === 'choice';
+}
+
+const DEGREES = /(-?\d+(?:\.\d+)?)\s*°C/;
+/** «Nublado · 18 °C» → 18: the ambient temperature the weather already brings. */
+export function temperatureOf(weather: string | null): number | null {
+  const found = weather ? DEGREES.exec(weather) : null;
+  return found ? Math.round(Number(found[1])) : null;
+}
+
 export function shiftOf(at: Date): string {
   const hour = at.getHours();
   if (hour >= MORNING_FROM && hour < AFTERNOON_FROM) return 'Mañana';
@@ -56,7 +69,8 @@ const normalize = (text: string): string => text.normalize('NFD').replace(/[̀-�
 const isEmpty = (value: unknown): boolean => value === undefined || value === null || value === '';
 
 /** A choice takes the option whose label or value starts the way the suggestion does; a text takes it whole. */
-function valueFor(field: FormField, suggestion: string): string | null {
+function valueFor(field: FormField, suggestion: string): string | number | null {
+  if (field.kind === 'number') return Number(suggestion);
   if (field.kind !== 'choice') return suggestion;
   const wanted = normalize(suggestion.split(' · ')[0] ?? suggestion);
   const option = field.options.find((one) => normalize(one.label) === wanted || normalize(one.value) === wanted || wanted.startsWith(normalize(one.label)));
@@ -66,21 +80,23 @@ function valueFor(field: FormField, suggestion: string): string | null {
 /** What to write now in the empty fields: the shift always, the street and the weather once the server answered. PURE. */
 export function conditionValues(fields: readonly FormField[], values: FormValues, input: { now: Date; conditions: FieldConditions | null }): FormValues {
   const kinds = conditionKindsOf(fields);
-  const known: Record<ConditionRole, string | null> = { shift: shiftOf(input.now), weather: input.conditions?.weather ?? null, street: input.conditions?.street ?? null };
+  const weather = input.conditions?.weather ?? null;
+  const degrees = temperatureOf(weather);
+  const known: Record<ConditionRole, string | null> = { shift: shiftOf(input.now), weather, street: input.conditions?.street ?? null, temperature: degrees === null ? null : String(degrees), clock: formatFormDate(input.now, 'time') };
   const filled: FormValues = {};
   for (const field of fields) {
     const role = kinds[field.name];
     const suggestion = role ? known[role] : null;
     if (!suggestion || !isEmpty(values[field.name])) continue;
     const value = valueFor(field, suggestion);
-    if (value) filled[field.name] = value;
+    if (value !== null && value !== '') filled[field.name] = value;
   }
   return filled;
 }
 
 /** Whether the form asks for something only the reading gives: then the phone is asked where it is. */
 export const needsReading = (fields: readonly FormField[], values: FormValues): boolean =>
-  Object.entries(conditionKindsOf(fields)).some(([name, role]) => role !== 'shift' && isEmpty(values[name]));
+  Object.entries(conditionKindsOf(fields)).some(([name, role]) => role !== 'shift' && role !== 'clock' && isEmpty(values[name]));
 
 type FillRun = {
   fields: readonly FormField[];

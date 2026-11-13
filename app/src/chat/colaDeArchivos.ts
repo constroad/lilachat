@@ -5,6 +5,7 @@ import * as Crypto from 'expo-crypto';
 import { loadCredential } from '../auth/credentialStore';
 import { reportarError } from '../ui/reportarError';
 import { decidirSubida, paraPersistir, siguienteArchivo, type ArchivoEnCola } from './colaDeArchivosMotor';
+import { keepsLocalCopy } from './colaDeArchivosMotor';
 import { uploadMedia, type SealedUpload } from './mediaUpload';
 import { createMediaKey, serializeMediaSecret, validateMedia, type Envelope } from '@lilachat/shared';
 import { File } from 'expo-file-system';
@@ -229,7 +230,7 @@ async function sacar(clientKey: string, opciones: { confirmado?: boolean } = {})
   const archivo = cola.find((uno) => uno.clientKey === clientKey);
   cola = cola.filter((uno) => uno.clientKey !== clientKey);
   // Lo que subió conserva su copia para la burbuja; lo descartado, no.
-  if (archivo && opciones.confirmado && !archivo.preparando) copiasConfirmadas.set(clientKey, archivo.uri);
+  if (archivo && opciones.confirmado && keepsLocalCopy(archivo)) copiasConfirmadas.set(clientKey, archivo.uri);
   else if (archivo && !archivo.preparando) await FileSystem.deleteAsync(archivo.uri, { idempotent: true }).catch(() => undefined);
   // The encrypted copy only had to go up.
   if (archivo?.sealed) await FileSystem.deleteAsync(archivo.sealed.uri, { idempotent: true }).catch(() => undefined);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { decidirSubida, paraPersistir, siguienteArchivo, type ArchivoEnCola } from './colaDeArchivosMotor';
+import { keepsLocalCopy } from './colaDeArchivosMotor';
 
 /**
  * Fotos, archivos y notas de voz a una cola PERSISTIDA (FL8; auditoría
@@ -63,5 +64,22 @@ describe('paraPersistir', () => {
     const cola = [archivo({ clientKey: 'a', preparando: true }), archivo({ clientKey: 'b' })];
 
     expect(paraPersistir(cola).map((uno) => uno.clientKey)).toEqual(['b']);
+  });
+});
+
+describe('keepsLocalCopy (José 13/11: «en el preview no se ve el sello»)', () => {
+  it('a plain photo keeps its copy on the phone for the bubble and the viewer', () => {
+    // Act / Assert
+    expect(keepsLocalCopy(archivo())).toBe(true);
+  });
+
+  it('a shot the server stamps does not: the copy has no stamp, so the bubble and the viewer read the stamped file', () => {
+    // Act / Assert
+    expect(keepsLocalCopy(archivo({ stamp: { timemark: true, point: null, logo: true, takenAt: '2026-11-13T15:00:00.000Z' } }))).toBe(false);
+  });
+
+  it('a file still being prepared never keeps one', () => {
+    // Act / Assert
+    expect(keepsLocalCopy(archivo({ preparando: true }))).toBe(false);
   });
 });

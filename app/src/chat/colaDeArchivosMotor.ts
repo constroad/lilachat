@@ -66,3 +66,9 @@ export function siguienteArchivo(cola: readonly ArchivoEnCola[]): ArchivoEnCola 
 export function paraPersistir(cola: readonly ArchivoEnCola[]): ArchivoEnCola[] {
   return cola.filter((archivo) => !archivo.preparando);
 }
+
+/**
+ * Whether what went up stays shown from the phone's copy (19/10: no flicker). Not a camera shot the
+ * server stamps (José 13/11): that copy has no stamp, and the bubble and the viewer showed it so.
+ */
+export const keepsLocalCopy = (archivo: ArchivoEnCola): boolean => !archivo.preparando && !archivo.stamp;

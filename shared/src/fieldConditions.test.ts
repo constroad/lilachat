@@ -69,3 +69,43 @@ describe('conditionValues', () => {
     expect(filled).toEqual({ turno: 'tarde' });
   });
 });
+
+/**
+ * José 13/11: «¿el informe de imprimación ya autocompleta datos obvios… como el de control de pista?».
+ * Two more sources: the ambient temperature of the weather and the clock for the starting hour.
+ */
+describe('temperature and clock (CTL-IMP)', () => {
+  const primeCoat = (): AppForm => ({
+    id: 'guardar_tramo',
+    title: 'Tramo',
+    schema: {
+      type: 'object',
+      properties: {
+        horaInicio: { type: 'string', format: 'time', title: 'Hora inicio', 'x-input': 'clock' },
+        temperaturaAmbiente: { type: 'number', title: 'Ambiente', 'x-unit': '°C', 'x-input': 'temperature' },
+        ubicacion: { type: 'string', title: 'Ubicación', 'x-input': 'place-street' },
+      },
+    },
+  });
+
+  it('the hour starts at the phone clock and the temperature comes with the weather, rounded', () => {
+    // Arrange
+    const fields = formFields(primeCoat());
+    // Act
+    const atOnce = conditionValues(fields, {}, { now: at(7), conditions: null });
+    const arrived = conditionValues(fields, atOnce, { now: at(7), conditions: { street: 'Av. Los Incas, Ate', weather: 'Nublado · 18 °C' } });
+    // Assert
+    expect(atOnce).toEqual({ horaInicio: '07:05' });
+    expect(arrived).toEqual({ temperaturaAmbiente: 18, ubicacion: 'Av. Los Incas, Ate' });
+  });
+
+  it('what the engineer typed stays, and a weather without degrees leaves the temperature empty', () => {
+    // Arrange
+    const fields = formFields(primeCoat());
+    // Act
+    const filled = conditionValues(fields, { horaInicio: '06:30', temperaturaAmbiente: 21 }, { now: at(7), conditions: { street: null, weather: 'Nublado' } });
+    // Assert
+    expect(filled).toEqual({});
+    expect(conditionKindsOf(fields)).toEqual({ horaInicio: 'clock', temperaturaAmbiente: 'temperature', ubicacion: 'street' });
+  });
+});

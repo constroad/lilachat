@@ -197,7 +197,7 @@ export function ServiceDrive(props: { target: ServiceAskTarget; service: SpaceCl
   return (
     <View testID="drive-servicio" className="gap-3">
       {folder ? <Breadcrumb folder={folder} onRoot={() => setFolder(null)} /> : null}
-      <DriveHeader count={answer?.ok ? answer.value.files.length : null} layout={layout} onLayout={setLayout} sending={upload.sending} onUpload={() => setChoosing(true)} />
+      <DriveHeader count={answer?.ok ? answer.value.files.length : null} layout={layout} onLayout={setLayout} sending={upload.sending} onUpload={() => setChoosing(true)} onCamera={upload.takePhoto} />
       <UploadStatus upload={upload} />
       <DriveUploadSheet visible={choosing} onClose={() => setChoosing(false)} onPick={(option) => UPLOADS[option](upload)} />
       {answer === null ? <View testID="drive-cargando" className="h-40 rounded-2xl bg-surface-variant" /> : null}

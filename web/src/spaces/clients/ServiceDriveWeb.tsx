@@ -2,7 +2,7 @@ import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState
 import { ChevronLeft, ChevronRight, Cloud, CloudUpload, ExternalLink, Folder, Search } from 'lucide-react';
 import { DRIVE_DOCUMENT_ACCEPT, DRIVE_VIDEO_SECONDS, OBSERVATION_VIDEO_SECONDS, filesOfKind, photoMarkOf, withPhotoMark, type DriveKind, type DriveLayout, type DriveUploadOption, type PhotoMark, driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService, type ViewableFile } from '@lilachat/shared';
 import { FileThumb, usePortalFileViewer } from './PortalFileViewer';
-import { cameraEnvironment, liveCameraFits } from '../../chat/camera/shotStamp';
+import { cameraEnvironment } from '../../chat/camera/shotStamp';
 import { openWebCamera, shootOrPick, type PickerHandle } from '../../chat/camera/cameraRequests';
 import { useDriveUpload } from './useDriveUpload';
 import { DriveGridWeb, DriveHeaderWeb, DriveKindChipsWeb, FolderCardsWeb } from './DriveParts';
@@ -119,7 +119,8 @@ function saveLayout(layout: DriveLayout): void {
 function useDriveUploads(upload: ReturnType<typeof useDriveUpload>) {
   const media = useRef<HTMLInputElement>(null);
   const documents = useRef<HTMLInputElement>(null);
-  const camera = liveCameraFits(cameraEnvironment(), {});
+  // Any device with a camera, a computer's webcam too (José 13/11, design drv-03 on desktop).
+  const camera = cameraEnvironment().media;
   const shoot = (video: boolean) => void openWebCamera({ title: video ? 'Video al Drive' : 'Foto al Drive', video: { maxSeconds: DRIVE_VIDEO_SECONDS, first: video } }).then((file) => file && upload.send(file));
   const options: DriveUploadOption['id'][] = camera ? ['photo', 'video', 'gallery', 'document'] : ['gallery', 'document'];
   const pick = (option: DriveUploadOption['id']) => {

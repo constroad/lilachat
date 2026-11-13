@@ -46,8 +46,9 @@ function UploadMenu(props: { options: readonly Option[]; sending: boolean; onPic
   );
 }
 
-/** Design drv-01/02: «DRIVE DEL SERVICIO · 70 archivos», Lista / Cuadrícula and ONE «Subir». */
+/** Design drv-01/02: «DRIVE DEL SERVICIO · 70 archivos», Lista / Cuadrícula and ONE «Subir»; the camera one tap away beside it (José 13/11). */
 export function DriveHeaderWeb(props: { count: number | null; layout: DriveLayout; onLayout: (layout: DriveLayout) => void; options: readonly Option[]; sending: boolean; onPick: (option: Option) => void }) {
+  const camera = props.options.includes('photo');
   const toggle = (layout: DriveLayout, Icon: typeof List, label: string) => (
     <button type="button" data-testid={`drive-vista-${layout === 'list' ? 'lista' : 'cuadricula'}`} aria-pressed={props.layout === layout} aria-label={label} title={label} onClick={() => props.onLayout(layout)} className={`grid h-9 w-10 place-items-center rounded-lg ${props.layout === layout ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:bg-background'}`}>
       <Icon size={17} />
@@ -63,6 +64,11 @@ export function DriveHeaderWeb(props: { count: number | null; layout: DriveLayou
         {toggle('list', List, 'Ver como lista')}
         {toggle('grid', LayoutGrid, 'Ver como cuadrícula')}
       </div>
+      {camera ? (
+        <button type="button" data-testid="drive-camara" aria-label="Abrir la cámara" title="Abrir la cámara" disabled={props.sending} onClick={() => props.onPick('photo')} className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary disabled:opacity-60">
+          <Camera size={18} />
+        </button>
+      ) : null}
       <UploadMenu options={props.options} sending={props.sending} onPick={props.onPick} />
     </div>
   );
@@ -90,6 +96,7 @@ function Tile(props: { file: ServiceFile; onOpen: (file: ServiceFile) => void })
         <span className="relative block aspect-square bg-background">
           <img src={preview} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
           {kind === 'video' ? <span className="absolute inset-0 grid place-items-center bg-black/20 text-white"><Play size={26} fill="currentColor" /></span> : null}
+          {kind === 'document' ? <span className={`absolute bottom-2 left-2 rounded-md px-1.5 py-0.5 text-[11px] font-bold text-white ${sheet ? 'bg-en-linea' : 'bg-error'}`}>{extensionOf(props.file.name)}</span> : null}
         </span>
       ) : (
         <span className={`flex aspect-square flex-col items-center justify-center gap-2 ${kind === 'video' ? 'bg-primary/10 text-primary' : sheet ? 'bg-en-linea/10 text-en-linea' : 'bg-error/[0.08] text-error'}`}>

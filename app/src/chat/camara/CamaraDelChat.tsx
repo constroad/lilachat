@@ -77,6 +77,8 @@ function ChatCameraBody(props: Props & { backRef: { current: (() => boolean) | n
   const video = useVideoRecording(camera, sound);
   const withLogo = Boolean(logoOn && spaceLogo);
   const landscape = width > height;
+  /** What the shot showed, frozen when it is taken: «Enviar» draws it (José 13/11). */
+  const seen = { stamp: live.stamp, logoUrl: withLogo ? spaceLogo : null };
 
   useEffect(() => {
     void loadRecent().then(setRecent);
@@ -90,7 +92,7 @@ function ChatCameraBody(props: Props & { backRef: { current: (() => boolean) | n
     const takenAt = new Date().toISOString();
     try {
       // `quality: 1`: native and whole; the server shrinks it once while it burns the stamp.
-      await camera.current.takePictureAsync({ quality: 1, onPictureSaved: (picture: CameraCapturedPicture) => setTaken({ ...pictureOf(picture), stamp: stampOf(live.point, withLogo, takenAt) }) });
+      await camera.current.takePictureAsync({ quality: 1, onPictureSaved: (picture: CameraCapturedPicture) => setTaken({ ...pictureOf(picture), stamp: stampOf(live.point, withLogo, takenAt), seen }) });
     } catch (error) {
       reportarError('CamaraDelChat.shoot', error);
       setShooting(false);
@@ -99,7 +101,7 @@ function ChatCameraBody(props: Props & { backRef: { current: (() => boolean) | n
   const record = async () => {
     if (video.recording) return video.stop();
     const recorded = await video.start();
-    if (recorded) setTaken(videoOf(recorded, stampOf(live.point, withLogo, recorded.startedAt)));
+    if (recorded) setTaken({ ...videoOf(recorded, stampOf(live.point, withLogo, recorded.startedAt)), seen });
   };
 
   return (

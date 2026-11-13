@@ -30,6 +30,7 @@ function Tile(props: { file: ServiceFile; size: number; onOpen: (file: ServiceFi
         <View style={{ width: props.size, height: props.size }} className="bg-background">
           <Image recyclingKey={preview} source={{ uri: preview }} style={{ width: props.size, height: props.size }} contentFit="cover" />
           {kind === 'video' ? <View className="absolute inset-0 items-center justify-center bg-black/20"><Play size={26} color="white" fill="white" /></View> : null}
+          {kind === 'document' ? <Text testID="drive-etiqueta-documento" className={`absolute bottom-2 left-2 rounded-md px-1.5 py-0.5 text-[11px] font-bold text-white ${sheet ? 'bg-secondary' : 'bg-error'}`}>{extensionOf(props.file.name)}</Text> : null}
         </View>
       ) : (
         <View style={{ width: props.size, height: props.size }} className={`items-center justify-center gap-2 ${sheet ? 'bg-secondary/10' : 'bg-error/10'}`}>

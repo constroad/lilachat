@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateBotCard } from './bots.js';
+import { cardActionLayout, validateBotCard } from './bots.js';
 import { isFigure, validateBotBlocks } from './botBlocks.js';
 
 /**
@@ -83,5 +83,24 @@ describe('the consumption card of Stitch a10', () => {
   it('an aside that starts with a number is a figure; words are a note', () => {
     expect(['268,00 m³', '−6,08 gl', '+12 gl'].map(isFigure)).toEqual([true, true, true]);
     expect(['Consumo total en planta', 'm³ 12'].map(isFigure)).toEqual([false, false]);
+  });
+});
+
+describe('the actions of a card (Stitch gst-01, José 13/11: «la tarjeta sigue pésimo»)', () => {
+  const action = (id: string, style: 'primary' | 'secondary' | 'danger') => ({ id, label: id, style, value: id });
+
+  it('one primary with secondaries stacks: the primary across the card, the rest as text under it', () => {
+    expect(cardActionLayout([action('completar', 'primary'), action('descartar', 'secondary')])).toBe('stacked');
+  });
+
+  it('two choices of the same weight, or a danger one, stay side by side', () => {
+    expect(cardActionLayout([action('aprobar', 'primary'), action('rechazar', 'danger')])).toBe('row');
+    expect(cardActionLayout([action('si', 'secondary'), action('no', 'secondary')])).toBe('row');
+    expect(cardActionLayout([action('a', 'primary'), action('b', 'primary')])).toBe('row');
+  });
+
+  it('a lone button is a row of one', () => {
+    expect(cardActionLayout([action('ver', 'primary')])).toBe('row');
+    expect(cardActionLayout([])).toBe('row');
   });
 });

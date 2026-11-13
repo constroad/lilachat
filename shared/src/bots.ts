@@ -227,6 +227,17 @@ export function botFilesSummary(files: readonly Pick<GalleryItem, 'mime'>[]): st
 }
 
 /** What the chat list, the notification and the search read of a card. */
+/**
+ * How a card lays out its buttons (Stitch gst-01): one primary with secondaries stacks, the primary
+ * across the card and the others as text under it («Completar gasto» / «Descartar»). Choices of the
+ * same weight, or a danger one, stay side by side.
+ */
+export function cardActionLayout(actions: readonly Pick<CardAction, 'style'>[]): 'stacked' | 'row' {
+  const primaries = actions.filter((action) => action.style === 'primary').length;
+  const secondaries = actions.filter((action) => action.style === 'secondary').length;
+  return primaries === 1 && secondaries > 0 && primaries + secondaries === actions.length ? 'stacked' : 'row';
+}
+
 export const botCardSummary = (card: Pick<BotCard, 'title' | 'status'>): string => [card.title, card.status?.label].filter(Boolean).join(' · ');
 
 /**

@@ -1502,6 +1502,12 @@ Se recorrió Control de pista en el APK (`lilafotos-qa`), en el servicio QA-CTLP
   para que no parpadee). Una toma con sello ya no guarda esa copia (`keepsLocalCopy`), así que la
   burbuja y el visor leen el archivo sellado. En la web no pasaba: su copia local solo vive mientras
   sube.
+  E2E del 13/11 (emulador, #planta de Test) destapó dos más. La burbuja recorta una foto o un video
+  alto a 3:4 desde el centro y el sello, que va abajo, quedaba fuera: el mensaje guarda ahora
+  `media.stamped` y la burbuja recorta desde abajo (`bubbleCropAnchor`, APK y web). Y el visor
+  ponía la foto debajo de los botones de Android, que tapaban el sello: la página termina encima
+  (`margins.pie`). Sin probar: un teléfono real con fotos 3:4 (no se recortan) y la PWA en el
+  celular.
 - **«Enviar» del chat muestra el video** (antes, solo un ícono): se reproduce en bucle con controles.
 - **El sello ya no se pega a FOTO / VIDEO**: la altura del pie cuenta el margen inferior del sistema.
 - **«Agregar tramo» abre donde terminó el anterior** (CTL-IMP, Portal d85a6e57): el formulario del

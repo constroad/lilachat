@@ -27,6 +27,20 @@ describe('bot card', () => {
     expect(screen.getByRole('link', { name: /Ver en Portal/ }).getAttribute('href')).toBe('https://portal.example.com/pedidos/1024');
   });
 
+  // José 13/11 («la tarjeta sigue pésimo»), Stitch gst-01: the status beside the title squeezed «S/ 500.00 · Ferretería».
+  it('the status rides the kicker line and the expense actions stack', () => {
+    const expense = { kicker: 'Gasto · Yape', title: 'S/ 500.00 · Ferretería El Constructor', status: { label: 'Por completar', tone: 'warn' as const }, fields: [], actions: [{ id: 'complete', label: 'Completar gasto', style: 'primary' as const, value: 'g1' }, { id: 'discard', label: 'Descartar', style: 'secondary' as const, value: 'g1' }] };
+    render(<BotCardView card={expense} chatId="c1" seq={7} jwt="jwt" />);
+    expect(screen.getByTestId('tarjeta-estado').parentElement?.textContent).toContain('Gasto · Yape');
+    expect(screen.getByTestId('tarjeta-acciones-apiladas')).toBeTruthy();
+    expect(screen.getByTestId('accion-tarjeta-complete').className).toContain('w-full');
+  });
+
+  it('approve and reject stay side by side', () => {
+    render(<BotCardView card={card} chatId="c1" seq={7} jwt="jwt" />);
+    expect(screen.queryByTestId('tarjeta-acciones-apiladas')).toBeNull();
+  });
+
   // Agentes, 24/10: «Registró: Lilachat · (51902049…)» came cut on one line. Stitch a10 (12/11): no clamp either.
   it('a long field value wraps whole, never cut nor clamped', () => {
     const long = 'Lilachat · (51902049935) · José Zamora';

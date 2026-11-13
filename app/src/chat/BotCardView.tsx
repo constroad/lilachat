@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { ChevronRight, ExternalLink } from 'lucide-react-native';
-import { formatClock, isOrderCard, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
+import { cardActionLayout, formatClock, isOrderCard, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BASE_URL } from '../api/client';
 import { useColores } from '../ui/tema';
 import { AccionesDeTarjetaContext, useAccionesDeTarjeta } from './accionesDeTarjeta';
@@ -31,24 +31,26 @@ const ACTION: Record<CardActionStyle, { box: string; text: string }> = {
   danger: { box: 'border border-error/30', text: 'text-error' },
 };
 
-/** Kicker, title, status and subtitle; every text wraps, none is cut (Stitch a10). */
+/**
+ * Kicker, status, title and subtitle; every text wraps, none is cut (Stitch a10). The status rides
+ * the kicker's line (Stitch gst-01): beside the title it took half its width and «S/ 500.00 ·
+ * Ferretería» broke into three lines (José 13/11).
+ */
 function CardHead({ card }: { card: BotCard }) {
   return (
     <>
-      {card.kicker || card.updatedAt ? (
-        <View className="flex-row items-start gap-2">
+      {card.kicker || card.updatedAt || card.status ? (
+        <View className="flex-row items-center gap-2">
           {card.kicker ? <Text className="min-w-0 flex-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{card.kicker}</Text> : <View className="flex-1" />}
           {card.updatedAt ? <Text testID="tarjeta-actualizada" className="text-[10px] text-on-surface-variant">Actualizado {formatClock(card.updatedAt)}</Text> : null}
+          {card.status ? (
+            <View testID="tarjeta-estado" className={`max-w-[60%] rounded-full border px-2 py-0.5 ${TONE[card.status.tone].pill}`}>
+              <Text className={`text-[10px] font-bold uppercase ${TONE[card.status.tone].text}`}>{card.status.label}</Text>
+            </View>
+          ) : null}
         </View>
       ) : null}
-      <View className="flex-row items-start gap-2">
-        <Text className="min-w-0 flex-1 text-[15px] font-bold leading-5 text-on-surface">{card.title}</Text>
-        {card.status ? (
-          <View className={`max-w-[50%] rounded-full border px-2 py-0.5 ${TONE[card.status.tone].pill}`}>
-            <Text className={`text-[10px] font-bold uppercase ${TONE[card.status.tone].text}`}>{card.status.label}</Text>
-          </View>
-        ) : null}
-      </View>
+      <Text className="text-[15px] font-bold leading-5 text-on-surface">{card.title}</Text>
       {card.subtitle ? <Text testID="tarjeta-subtitulo" className="-mt-1 text-[13px] text-on-surface-variant">{card.subtitle}</Text> : null}
     </>
   );
@@ -83,6 +85,32 @@ function CardLink({ card }: { card: BotCard }) {
   );
 }
 
+type SentAction = { id: string; state: 'sending' | 'sent' } | null;
+const sentLabel = (action: CardAction, sent: SentAction) => (sent?.id === action.id ? (sent.state === 'sending' ? 'Enviando…' : 'Enviado ✓') : action.label);
+
+/**
+ * The buttons: side by side, or (Stitch gst-01) the one primary across the card with the others as
+ * text under it — «Completar gasto» and «Descartar».
+ */
+function CardButtons(props: { buttons: CardAction[]; sent: SentAction; onPress: (action: CardAction) => void }) {
+  const { buttons, sent } = props;
+  const stacked = cardActionLayout(buttons) === 'stacked';
+  const boxOf = (action: CardAction) => {
+    if (!stacked) return `h-10 flex-1 rounded-full px-3 ${ACTION[action.style].box}`;
+    return action.style === 'primary' ? 'h-12 self-stretch rounded-xl bg-primary px-4' : 'h-10 self-stretch px-4';
+  };
+  const textOf = (action: CardAction) => (stacked && action.style !== 'primary' ? 'text-on-surface-variant' : ACTION[action.style].text);
+  return (
+    <View testID={stacked ? 'tarjeta-acciones-apiladas' : undefined} className={`border-t border-outline/10 px-3.5 ${stacked ? 'gap-1 pb-1.5 pt-3' : 'flex-row gap-2 py-2.5'}`}>
+      {buttons.map((action) => (
+        <Pressable key={action.id} testID={`accion-tarjeta-${action.id}`} disabled={sent !== null} onPress={() => props.onPress(action)} className={`items-center justify-center ${boxOf(action)} ${sent !== null ? 'opacity-60' : ''}`}>
+          <Text className={`${stacked && action.style === 'primary' ? 'text-[15px] font-bold' : 'text-[13px] font-semibold'} ${textOf(action)}`}>{sentLabel(action, sent)}</Text>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 /**
  * A card with `url` opens it from its body (Stitch a10); its buttons and command rows answer
  * first, since RN gives the tap to the innermost. Without `url` it is a plain view, not a disabled button.
@@ -102,7 +130,7 @@ function CardBody(props: { url?: string; children: ReactNode }) {
 export function BotCardView(props: { card: BotCard; chatId: string; seq: number; jwt: string }) {
   const { card } = props;
   const colors = useColores();
-  const [sent, setSent] = useState<{ id: string; state: 'sending' | 'sent' } | null>(null);
+  const [sent, setSent] = useState<SentAction>(null);
   const [error, setError] = useState('');
   // The kit (§118.4): the detail opens in a sheet with the data that came with the message.
   const [detailOpen, setDetailOpen] = useState(false);
@@ -153,15 +181,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
         ) : null}
         <CardLink card={card} />
       </CardBody>
-      {buttons.length ? (
-        <View className="flex-row gap-2 border-t border-outline/10 px-3.5 py-2.5">
-          {buttons.map((action) => (
-            <Pressable key={action.id} testID={`accion-tarjeta-${action.id}`} disabled={sent !== null} onPress={() => press(action)} className={`h-10 flex-1 items-center justify-center rounded-full px-3 ${ACTION[action.style].box} ${sent !== null ? 'opacity-60' : ''}`}>
-              <Text className={`text-[13px] font-semibold ${ACTION[action.style].text}`}>{sent?.id === action.id ? (sent.state === 'sending' ? 'Enviando…' : 'Enviado ✓') : action.label}</Text>
-            </Pressable>
-          ))}
-        </View>
-      ) : null}
+      {buttons.length ? <CardButtons buttons={buttons} sent={sent} onPress={press} /> : null}
       {error ? <Text className="border-t border-outline/10 px-3.5 py-2 text-[12px] text-error">{error}</Text> : null}
       <BotCardDetail card={card} visible={detailOpen} onClose={() => setDetailOpen(false)} />
     </View>

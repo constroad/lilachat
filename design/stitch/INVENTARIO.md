@@ -291,3 +291,12 @@ Proyecto 15540754270713720465. Ids en `design/stitch/registro.jsonl`. Spec: `spe
 | `drv-01-lista` | Drive en lista: cabecera con conteo, Lista / Cuadrícula, «+ Subir», buscador, chips por tipo, carpetas y recientes | implementado APK y web |
 | `drv-02-cuadricula` | Drive en cuadrícula: carpetas en tarjetas, archivos en miniaturas por día | implementado APK y web |
 | `drv-03-subir` | «Subir» abierto: hoja inferior en el celular, menú en escritorio, «Suelta aquí» y un archivo subiendo | implementado (la barra de progreso por archivo queda como línea de estado) |
+
+## Gasto del voucher (José 13/11: «la tarjeta sigue pésimo»)
+
+Proyecto 15540754270713720465. Ids en `design/stitch/registro.jsonl`. Spec: `specs/BOTS-API.spec.md`, «c-gastos».
+
+| Slug | Pantalla | Estado |
+| --- | --- | --- |
+| `gst-01-tarjetas` | Tarjetas del gasto en el hilo: por completar (monto grande, comercio, comisión, pregunta y «Completar gasto» a todo el ancho con «Descartar» debajo) y registrado (destino, partidas, «Registrado por · Ver en Finanzas») | dibujo genérico hecho (estado en la línea del kicker, acciones apiladas); falta el texto de Portal y la auditoría |
+| `gst-02-completar` | Formulario «Completar gasto» | sin generar: Stitch cortó por tiempo, el id no volvió |

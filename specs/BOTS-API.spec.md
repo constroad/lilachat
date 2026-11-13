@@ -1299,3 +1299,31 @@ eso agentes manda también las cifras clave en `fields` o en `rows` hasta que
 Lilachat confirme la web y la OTA.
 
 Tests: `shared/src/botCardDesign.test.ts` y `web/src/chat/BotCardDesign.test.tsx`.
+
+## c-gastos. Tarjeta del gasto del voucher: diseño Stitch gst-01 (José 13/11)
+
+José, 13/11: «hay que corregir nuevamente el modal de registro de gastos así como la
+tarjeta, sigue pésimo». Stitch `gst-01-tarjetas` (móvil y escritorio, ids en
+`design/stitch/registro.jsonl`). Lilachat cambia el DIBUJO de toda tarjeta; el texto lo
+manda la app que la publica.
+
+Lo que hace Lilachat (APK y web, para toda tarjeta):
+- **La pastilla de estado va en la línea del kicker**, a la derecha, no junto al título.
+  Junto al título ocupaba la mitad del ancho y «S/ 500.00 · Ferretería El Constructor»
+  se partía en tres líneas. El título ocupa ahora todo el ancho.
+- **Una primaria con secundarias se apilan** (`cardActionLayout`): la primaria a todo el
+  ancho (48 px en el APK) y las secundarias como texto debajo («Completar gasto» /
+  «Descartar»). Dos de igual peso, o una `danger` («Aprobar» / «Rechazar»), siguen lado a
+  lado.
+
+Lo que la tarjeta necesita del que la publica (pedido a Portal el 13/11):
+- Estado corto: «Descartado», no «Descartado por J Zamora» (quién va en `footer`).
+- El monto como cifra (`stat` o `metric`) y el comercio como título o `subtitle`.
+- Las partidas sin repetir en cada fila «Gasto · hora · servicio · Lilachat · persona»:
+  eso va una vez, arriba o en el pie.
+- «Registrado por … · Ver en Finanzas» como `footer` + `link`.
+
+Pendiente: la auditoría `design/stitch/auditorias/gst-01-tarjetas.md` y las rutas en el
+INVENTARIO, cuando llegue el texto nuevo (sin él la comparación sale casi toda «falta»).
+`gst-02-completar` (el formulario) no se generó: Stitch cortó por tiempo el 13/11 y el id
+no volvió; no se regenera a ciegas (stitch-design §4-bis).

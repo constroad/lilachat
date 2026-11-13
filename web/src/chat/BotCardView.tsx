@@ -1,6 +1,6 @@
 import { useContext, useState } from 'react';
 import { ChevronRight, ExternalLink } from 'lucide-react';
-import { formatClock, isOrderCard, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
+import { cardActionLayout, formatClock, isOrderCard, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BotBlocksView } from './botBlocks/BotBlocksView';
 import { BotCardDetail } from './botBlocks/BotCardDetail';
 import { CardCommandContext, OrderCardContext, useCardCommand } from './botBlocks/cardCommand';
@@ -22,22 +22,23 @@ const ACTION: Record<CardActionStyle, string> = {
   danger: 'border border-error/30 text-error hover:bg-error/5',
 };
 
-/** Kicker, title (a link when the whole card is one), status and subtitle; every text wraps, none is cut. */
+/**
+ * Kicker, status, title (a link when the whole card is one) and subtitle; every text wraps, none is
+ * cut. The status rides the kicker's line (Stitch gst-01): beside the title it squeezed it (José 13/11).
+ */
 function CardHead({ card }: { card: BotCard }) {
   return (
     <>
-      {card.kicker || card.updatedAt ? (
-        <div className="flex items-start gap-2">
+      {card.kicker || card.updatedAt || card.status ? (
+        <div className="flex items-center gap-2">
           <p className="min-w-0 flex-1 break-words text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{card.kicker}</p>
           {card.updatedAt ? <span data-testid="tarjeta-actualizada" className="shrink-0 text-[10px] text-on-surface-variant">Actualizado {formatClock(card.updatedAt)}</span> : null}
+          {card.status ? <span data-testid="tarjeta-estado" className={`max-w-[60%] rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${TONE[card.status.tone]}`}>{card.status.label}</span> : null}
         </div>
       ) : null}
-      <div className="flex flex-wrap items-start gap-2">
-        {card.url ? (
-          <a data-testid="tarjeta-titulo" href={card.url} target="_blank" rel="noopener noreferrer" className="min-w-[60%] flex-1 break-words text-[15px] font-bold leading-5 hover:underline">{card.title}</a>
-        ) : <p className="min-w-[60%] flex-1 break-words text-[15px] font-bold leading-5">{card.title}</p>}
-        {card.status ? <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${TONE[card.status.tone]}`}>{card.status.label}</span> : null}
-      </div>
+      {card.url ? (
+        <a data-testid="tarjeta-titulo" href={card.url} target="_blank" rel="noopener noreferrer" className="break-words text-[15px] font-bold leading-5 hover:underline">{card.title}</a>
+      ) : <p className="break-words text-[15px] font-bold leading-5">{card.title}</p>}
       {card.subtitle ? <p data-testid="tarjeta-subtitulo" className="-mt-1 break-words text-[13px] text-on-surface-variant">{card.subtitle}</p> : null}
     </>
   );
@@ -67,6 +68,30 @@ function CardLink({ card }: { card: BotCard }) {
   );
 }
 
+type SentAction = { id: string; state: 'sending' | 'sent' } | null;
+
+/**
+ * The buttons: side by side, or (Stitch gst-01) the one primary across the card with the others as
+ * text under it — «Completar gasto» and «Descartar».
+ */
+function CardButtons(props: { actions: CardAction[]; sent: SentAction; onPress: (action: CardAction) => void }) {
+  const { actions, sent } = props;
+  const stacked = cardActionLayout(actions) === 'stacked';
+  const classOf = (action: CardAction) => {
+    if (!stacked) return `h-9 flex-1 rounded-full px-3 text-[13px] font-semibold ${ACTION[action.style]}`;
+    return action.style === 'primary' ? 'h-11 w-full rounded-xl bg-primary px-4 text-[15px] font-bold text-on-primary hover:opacity-90' : 'h-9 w-full rounded-lg px-4 text-[13px] font-semibold text-on-surface-variant hover:bg-background';
+  };
+  return (
+    <div data-testid={stacked ? 'tarjeta-acciones-apiladas' : undefined} className={`border-t border-outline/10 px-3.5 ${stacked ? 'flex flex-col gap-1 pb-1.5 pt-3' : 'flex flex-wrap gap-2 py-2.5'}`}>
+      {actions.map((action) => (
+        <button key={action.id} type="button" data-testid={`accion-tarjeta-${action.id}`} disabled={sent !== null} onClick={() => props.onPress(action)} className={`disabled:opacity-60 ${classOf(action)}`}>
+          {sent?.id === action.id ? (sent.state === 'sending' ? 'Enviando…' : 'Enviado ✓') : action.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 /** A tap on the body of a card with `url` opens it; a button, a link or a command row keeps its own tap. */
 function openCardUrl(url: string | undefined, target: EventTarget) {
   if (!url || (target instanceof Element && target.closest('a, button, [role="button"], input, textarea'))) return;
@@ -82,7 +107,7 @@ function openCardUrl(url: string | undefined, target: EventTarget) {
  */
 export function BotCardView(props: { card: BotCard; chatId: string; seq: number; jwt: string }) {
   const { card } = props;
-  const [sent, setSent] = useState<{ id: string; state: 'sending' | 'sent' } | null>(null);
+  const [sent, setSent] = useState<SentAction>(null);
   const [error, setError] = useState('');
   // The kit (§118.4): the detail opens over the window with the data that came with the message.
   const [detailOpen, setDetailOpen] = useState(false);
@@ -129,15 +154,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
         ) : null}
         <CardLink card={card} />
       </div>
-      {actions.length ? (
-        <div className="flex flex-wrap gap-2 border-t border-outline/10 px-3.5 py-2.5">
-          {actions.map((action) => (
-            <button key={action.id} type="button" data-testid={`accion-tarjeta-${action.id}`} disabled={sent !== null} onClick={() => press(action)} className={`h-9 flex-1 rounded-full px-3 text-[13px] font-semibold disabled:opacity-60 ${ACTION[action.style]}`}>
-              {sent?.id === action.id ? (sent.state === 'sending' ? 'Enviando…' : 'Enviado ✓') : action.label}
-            </button>
-          ))}
-        </div>
-      ) : null}
+      {actions.length ? <CardButtons actions={actions} sent={sent} onPress={press} /> : null}
       {error ? <p role="alert" className="border-t border-outline/10 px-3.5 py-2 text-[12px] text-error">{error}</p> : null}
       {detailOpen ? <BotCardDetail card={card} onClose={() => setDetailOpen(false)} /> : null}
     </div>

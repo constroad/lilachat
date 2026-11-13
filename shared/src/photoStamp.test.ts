@@ -1,17 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { HOUR_STAMP } from './appActions';
-import { cameraStampOf, exifTakenAtOf, fileStampOf, galleryStampOf, phoneShrinksPhoto, stampFieldsOf, takenAtFrom } from './photoStamp';
+import { exifTakenAtOf, fileStampOf, galleryStampOf, phoneShrinksPhoto, stampFieldsOf, takenAtFrom } from './photoStamp';
 
 /** José 06/11: the photo of a tank or a material carries its date, hour and place, from the camera or from the gallery. */
 const point = { lat: -12.0464, lng: -77.0428, precision: 8 };
 const NOW = new Date('2026-11-07T01:00:00.000Z');
 
-describe('cameraStampOf', () => {
-  it('a fresh reading burns the place; without one, the hour still goes', () => {
-    expect(cameraStampOf(point)).toEqual(point);
-    expect(cameraStampOf(null)).toBe(HOUR_STAMP);
-  });
-});
 
 describe('exifTakenAtOf', () => {
   it('reads the camera\'s date as Peru time, which has no zone in the file', () => {

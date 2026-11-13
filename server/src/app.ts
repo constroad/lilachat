@@ -1,3 +1,4 @@
+import { buildStampedForwardRouter } from './stampedForward.js';
 import { buildChatExportRouter } from './chatExportRoutes.js';
 import { buildReadAllRouter } from './readAll.js';
 import { existsSync, readFileSync } from 'node:fs';
@@ -176,6 +177,8 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/chats', buildChatExportRouter());
   app.use('/api/chats', buildReadAllRouter());
   app.use('/api/chats', buildChatRouter(deps.mediaUploader));
+  // José 12/11: the new camera's shots bound for a Portal ticket are stamped here first.
+  app.use('/api/stamped-forward', buildStampedForwardRouter());
   app.use('/api/media', buildMediaLibraryRouter());
   app.use('/api/media', buildMediaRouter(deps.mediaUploader));
   app.use('/api/gifs', buildGifRouter({ apiKey: deps.giphy?.apiKey ?? process.env.GIPHY_API_KEY, fetchers: deps.giphy?.fetchers, uploader: deps.mediaUploader }));

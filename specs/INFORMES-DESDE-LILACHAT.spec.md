@@ -1447,8 +1447,23 @@ Se recorrió Control de pista en el APK (`lilafotos-qa`), en el servicio QA-CTLP
   `stamp=timemark`). Un chat secreto no lleva sello: el servidor no puede leer sus bytes.
 - **Sin probar todavía**: la grabación en un teléfono real (el emulador no tiene cámara de verdad)
   y cuánto tarda el sellado de 3 min en la mini.
-- **Todavía con la cámara del sistema** (sin sello en vivo): las observaciones (REG-OBS/LEV-OBS,
-  `captureEvidence`), «Registrar avance» (`takeFieldPhoto`) y el Drive del servicio. Van a Drive
-  directo a Portal, sin pasar por el sello del servidor.
-- **Pendiente**: la PWA móvil (`getUserMedia`). El diseño cam-06 (revisión del video) se perdió
-  por un corte de Stitch antes de anotar su id; no se regeneró a ciegas.
+- **La misma cámara en toda el APK** (José 12/11: «debemos usar ahora la nueva cámara en toda la
+  APK»). Una sola entrada: `openCamera({ title, video? })` (`app/src/chat/camara/cameraRequests.ts`)
+  abre la `FormCamera` montada una vez en la raíz (`CameraHost.tsx`, en `App.tsx`) y devuelve la
+  toma, `null` si se cerró o `'denied'` sin permiso. La usan:
+  - las observaciones (REG-OBS / LEV-OBS, `captureEvidence`): foto o video de hasta 30 s;
+  - «Registrar avance» del mapa de obra (`takeFieldPhoto`): solo foto;
+  - el Drive del servicio (`fromCamera`): foto o video de hasta 60 s.
+  Con video, la cámara muestra FOTO / VIDEO y la revisión del video (cam-06: se reproduce en bucle,
+  «Repetir» o «Usar video»). La cámara del sistema (`launchCameraAsync`) ya no se usa en el APK y
+  se borró, con `cameraStampOf` (el sello que se calculaba en el teléfono).
+- **Sello en lo que va a Drive** (`POST /api/stamped-forward`, `server/src/stampedForward.ts`):
+  esas tres subidas van a un ticket de Portal (Drive), no a la cola de informes. Con sello, el
+  teléfono manda la toma a Lilachat con el ticket; el servidor quema el sello (foto con sharp,
+  video con ffmpeg), comprime una vez y la reenvía a Portal servidor a servidor. Solo acepta los
+  tres tickets de Portal (`isPortalUploadTicket`, `shared/src/driveUpload.ts`), exige ser miembro
+  del chat y una foto o un video. La galería sigue yendo directo al ticket, sin sello.
+- **Fuera a propósito**: el escáner QR de vinculación (no es una foto), la foto del grupo (avatar,
+  sin sello) y la selfie de asistencia (`LiveSelfie`, su propio diseño y ya sellada en el servidor).
+- **Pendiente**: la PWA móvil (`getUserMedia`) y la vista previa de un video en «Enviar» (hoy solo
+  un ícono).

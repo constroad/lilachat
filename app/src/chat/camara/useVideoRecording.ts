@@ -7,10 +7,10 @@ const TICK_MS = 1000;
 export type RecordedVideo = { uri: string; startedAt: string };
 
 /**
- * The chat camera's recording (José 12/11, design cam-05): starts, counts the time and stops by
- * itself at three minutes. With «Sonido» on it asks for the microphone first; refused, it records mute.
+ * The camera's recording (José 12/11, design cam-05): starts, counts the time and stops by itself
+ * at its ceiling (three minutes in the chat, less where a ticket says so). With «Sonido» on it asks for the microphone first; refused, it records mute.
  */
-export function useVideoRecording(camera: RefObject<CameraView | null>, sound: boolean) {
+export function useVideoRecording(camera: RefObject<CameraView | null>, sound: boolean, maxSeconds = MAX_VIDEO_SECONDS) {
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -26,7 +26,7 @@ export function useVideoRecording(camera: RefObject<CameraView | null>, sound: b
     setStartedAt(began);
     setNow(began);
     try {
-      const video = await camera.current.recordAsync({ maxDuration: MAX_VIDEO_SECONDS });
+      const video = await camera.current.recordAsync({ maxDuration: maxSeconds });
       return video?.uri ? { uri: video.uri, startedAt: new Date(began).toISOString() } : null;
     } catch (error) {
       reportarError('useVideoRecording.start', error);

@@ -11,6 +11,7 @@ import { FunScreen } from './src/chat/FunScreen';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { ErrorBoundary } from './src/ui/ErrorBoundary';
 import { FrameMonitorHost } from './src/diagnostico/FrameMonitorHost';
+import { CameraHost } from './src/chat/camara/CameraHost';
 import './global.css';
 import { listChats, olvidarPushDeEsteTelefono, refreshSession } from './src/api/client';
 import { olvidarCola } from './src/chat/outboxStore';
@@ -139,6 +140,8 @@ export default function App() {
           <FunScreen>
             <Contenido />
           </FunScreen>
+          {/* José 12/11: the new camera, asked from any screen (observations, avance, Drive). */}
+          <CameraHost />
         </ErrorBoundary>
       </ProveedorTema>
     </SafeAreaProvider>

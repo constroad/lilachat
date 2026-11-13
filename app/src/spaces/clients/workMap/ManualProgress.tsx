@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
-import type * as ImagePicker from 'expo-image-picker';
+import type { CapturedShot } from '../../../chat/camara/cameraRequests';
 import { Camera, Check, Crosshair, Minus, Plus, Send } from 'lucide-react-native';
 import { addManualPhoto, GPS_UNAVAILABLE, manualEndFromGps, MANUAL_NOTE_MAX, MANUAL_PHOTOS_MAX, MANUAL_STEP_M, manualDraftFor, manualFigures, nudgeManualEnd, pickManualWork, progressPreviewOf, manualStepOf, MANUAL_STEPS, runManualProgress, stationLabel, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkMap } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
@@ -40,7 +40,7 @@ const LABEL = 'text-[12px] font-semibold uppercase text-on-surface-variant';
 const CHIP = 'h-10 flex-row items-center gap-1.5 rounded-full border px-3';
 const STEP = 'h-16 flex-1 items-center justify-center rounded-xl border border-outline/20 bg-surface';
 type Answer = { ok: boolean; message: string } | null;
-export type PhotoAsset = ImagePicker.ImagePickerAsset;
+export type PhotoAsset = CapturedShot;
 /** `initial`: the form already filled, as the prime coat report suggests it (#253). */
 type Props = { map: WorkMap; streetId: string; lengthM: number; widthM?: number; send: MapEditSend; uploadPhoto?: ManualPhotoUpload<PhotoAsset>; initial?: ManualProgressDraft; onDone: () => void };
 
@@ -57,7 +57,7 @@ function Photos(props: { count: number; uploadPhoto?: ManualPhotoUpload<PhotoAss
     if ('message' in taken) return setError(taken.message);
     setBusy(true);
     setError(null);
-    const result = await upload(taken.asset);
+    const result = await upload(taken.shot);
     setBusy(false);
     if (result.ok) props.onPhoto(result.mediaId);
     else setError(result.message);

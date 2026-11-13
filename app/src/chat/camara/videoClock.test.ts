@@ -10,6 +10,13 @@ describe('recordingLabel', () => {
     expect(labels).toEqual(['00:00 · máx. 3:00', '00:42 · máx. 3:00', '02:05 · máx. 3:00']);
   });
 
+  it('counts against a shorter ceiling when the ticket asks for one (an observation: 30 s)', () => {
+    // Act
+    const labels = [recordingLabel(12_000, 30), recordingLabel(45_000, 30), recordingLabel(10_000, 60)];
+    // Assert
+    expect(labels).toEqual(['00:12 · máx. 0:30', '00:30 · máx. 0:30', '00:10 · máx. 1:00']);
+  });
+
   it('never shows more than the ceiling, nor less than zero', () => {
     // Act
     const labels = [recordingLabel(MAX_VIDEO_SECONDS * 1000 + 900), recordingLabel(-5)];

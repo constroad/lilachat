@@ -67,6 +67,10 @@ export function driveUploadOf(raw: unknown): DriveUpload | null {
 
 export const driveUploadRequest = (): DriveUploadRequest => ({ kind: 'drive_upload', forms: FORMS_LEVEL });
 
+/** Portal's three upload tickets: the only addresses Lilachat's server forwards a stamped shot to (José 12/11). */
+const PORTAL_TICKET_PATH = /^https:\/\/([a-z0-9-]+\.)*constroad\.com(:\d+)?\/api\/public\/(service-drive-upload|observation-evidence-upload|additional-area-upload)\/[^/?#]+$/i;
+export const isPortalUploadTicket = (url: unknown): url is string => typeof url === 'string' && PORTAL_TICKET_PATH.test(url);
+
 /** Why a file does not go, before spending the person's data on it. */
 export function driveFileRefusal(upload: DriveUpload, file: DriveFileFacts): string | null {
   if (!upload.mimeTypes.includes(file.mime)) return NOT_ALLOWED;

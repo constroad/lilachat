@@ -17,7 +17,6 @@ const OLDEST_PHOTO = Date.UTC(2000, 0, 1);
 /** A phone's clock can run a little ahead of the server's. */
 const CLOCK_SLACK_MS = 5 * 60_000;
 
-export const cameraStampOf = (point: GeoPoint | null): FormPhotoStamp => point ?? HOUR_STAMP;
 /** What the upload says for the report camera's stamp. */
 export const TIMEMARK_STAMP = 'timemark';
 /** The largest form photo the server takes. */

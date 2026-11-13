@@ -18,6 +18,7 @@ import { useCameraLogo } from './cameraLogoPref';
 import { useLiveStamp } from './useLiveStamp';
 import { useVideoRecording, type RecordedVideo } from './useVideoRecording';
 import { recordingLabel, VIDEO_BITRATE } from './videoClock';
+import { ModeSwitch, RECORD_RED, type CameraMode } from './ModeSwitch';
 
 /** How many recent photos the strip shows (only if the gallery is already allowed). */
 const RECENT = 12;
@@ -29,8 +30,7 @@ const BLINK_OUT_MS = 180;
 /** The chips sit under the top bar; the stamp sits above the bottom panel. */
 const CHIPS_BELOW = 92;
 const BOTTOM_PANEL = 200;
-const RECORD_RED = '#dc2626';
-type Mode = 'picture' | 'video';
+type Mode = CameraMode;
 
 type Props = { visible: boolean; nombreDelChat: string; onEnviar: (fotos: FotoAEnviar[], opciones: { hd: boolean }) => void; onGaleria: () => void; onCerrar: () => void };
 
@@ -187,22 +187,6 @@ function RecentStrip(props: { recent: MediaLibrary.Asset[]; onPick: (asset: Medi
         </Pressable>
       )}
     />
-  );
-}
-
-/** FOTO / VIDEO under the stamp (design cam-04). */
-function ModeSwitch(props: { mode: Mode; onMode: (mode: Mode) => void }) {
-  const option = (mode: Mode, label: string) => (
-    <Pressable testID={`modo-${mode}`} accessibilityRole="tab" accessibilityState={{ selected: props.mode === mode }} onPress={() => props.onMode(mode)} className="items-center px-4 py-1">
-      <Text className="text-[15px] font-bold tracking-widest" style={{ color: 'white', opacity: props.mode === mode ? 1 : 0.55 }}>{label}</Text>
-      <View className="mt-1 h-1.5 w-1.5 rounded-full" style={{ backgroundColor: props.mode === mode ? (mode === 'video' ? RECORD_RED : 'white') : 'transparent' }} />
-    </Pressable>
-  );
-  return (
-    <View className="mb-2 flex-row justify-center gap-4">
-      {option('picture', 'FOTO')}
-      {option('video', 'VIDEO')}
-    </View>
   );
 }
 

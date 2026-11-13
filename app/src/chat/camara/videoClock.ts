@@ -10,8 +10,8 @@ const MS_PER_SECOND = 1000;
 
 const clock = (seconds: number) => `${String(Math.floor(seconds / SECONDS_PER_MINUTE)).padStart(2, '0')}:${String(seconds % SECONDS_PER_MINUTE).padStart(2, '0')}`;
 
-/** «00:42 · máx. 3:00». */
-export function recordingLabel(elapsedMs: number): string {
-  const seconds = Math.min(MAX_VIDEO_SECONDS, Math.max(0, Math.floor(elapsedMs / MS_PER_SECOND)));
-  return `${clock(seconds)} · máx. ${Math.floor(MAX_VIDEO_SECONDS / SECONDS_PER_MINUTE)}:00`;
+/** «00:42 · máx. 3:00»; «00:12 · máx. 0:30» for a 30-second ceiling. */
+export function recordingLabel(elapsedMs: number, maxSeconds = MAX_VIDEO_SECONDS): string {
+  const seconds = Math.min(maxSeconds, Math.max(0, Math.floor(elapsedMs / MS_PER_SECOND)));
+  return `${clock(seconds)} · máx. ${Math.floor(maxSeconds / SECONDS_PER_MINUTE)}:${String(maxSeconds % SECONDS_PER_MINUTE).padStart(2, '0')}`;
 }

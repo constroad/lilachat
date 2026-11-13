@@ -266,3 +266,15 @@ Proyecto `15540754270713720465`. Cada pantalla en móvil, tablet y escritorio; l
 | `o-15-plano-avance-pdf` | Plano de avance A3 apaisado con leyenda, metrados y cajetín (08/11) |
 
 El cliente del enlace de servicio vive en el proyecto `773748608093847613`: `o-11-reporte-cliente-mapa`.
+
+### Cámara de los informes (José 12/11) — MOBILE
+
+| slug | qué es |
+| --- | --- |
+| `cam-01-camara-vertical` | Cámara a pantalla completa en vertical, con sello en vivo (hora grande, fecha, día, dirección, GPS) y chips «Logo» y «GPS ±6 m» |
+| `cam-02-camara-horizontal` | La misma cámara en horizontal: el sello abajo a la izquierda y los controles en columna a la derecha. Logo apagado |
+| `cam-03-revision` | Revisión de la foto con el sello quemado: «Repetir» y «Usar foto» |
+
+Lo que Stitch inventó y NO va: el chip «TRAMO: KM 14+320» de cam-02 y la cuadrícula de fondo. El
+sello va pegado ABAJO A LA IZQUIERDA del cuadro (en cam-01 y cam-03 Stitch lo dejó a media
+altura). Nunca lleva el nombre de quien toma la foto.

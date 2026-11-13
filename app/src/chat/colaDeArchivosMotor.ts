@@ -1,4 +1,4 @@
-import type { MessageTarget } from '@lilachat/shared';
+import type { MessageTarget, TimemarkStampAsked } from '@lilachat/shared';
 import { retryDelayMs } from '@lilachat/shared';
 import type { SealedUpload, UploadResult } from './mediaUpload';
 
@@ -28,6 +28,8 @@ export type ArchivoEnCola = {
   albumId?: string;
   /** An answer to a message (José 10/11): the photo quotes it like a text. */
   target?: MessageTarget;
+  /** The chat camera's stamp (José 12/11): the server burns it, once. */
+  stamp?: TimemarkStampAsked;
   queuedAt: string;
   intentos: number;
   fallo?: string;

@@ -12,6 +12,8 @@ import { requireSession } from './requireSession.js';
 import { ondaValida } from './ondaDeVoz.js';
 import { toClientMessage } from './messageView.js';
 import { botsHearMessage } from './bots/botTriggers.js';
+import { stampAskedOf } from './bots/stampAsked.js';
+import { stampedChatMedia, type ChatFile } from './chatMediaStamp.js';
 
 /**
  * Subir un archivo y publicarlo como mensaje, en UN request.
@@ -54,6 +56,13 @@ const upload = multer({
   limits: { fileSize: sealedMediaSize(Math.max(...Object.values(MAX_BYTES_BY_KIND))) },
 });
 
+/** A photo or a video that asked for the camera's stamp, burned; null for anything else. */
+async function stampedUpload(file: Express.Multer.File, kind: MediaKind, body: unknown, chatId: string): Promise<ChatFile | null> {
+  const asked = stampAskedOf(body);
+  if (!asked?.timemark || (kind !== 'image' && kind !== 'video')) return null;
+  return stampedChatMedia({ bytes: file.buffer, mimeType: file.mimetype, fileName: file.originalname }, kind, asked, chatId);
+}
+
 export function buildMediaRouter(uploader: MediaUploader = defaultMediaUploader()): Router {
   const router = Router();
   router.use(requireSession);
@@ -87,13 +96,15 @@ export function buildMediaRouter(uploader: MediaUploader = defaultMediaUploader(
       // sealed one in an ordinary chat, used to be stored and then refused.
       const problem = await chatProblem(chatId, req.session!.userId, Boolean(sealed));
       if (problem) return res.status(problem.status).json({ message: problem.message });
+      // The chat camera's stamp (José 12/11): burned here, once, while it is compressed.
+      const content = (sealed ? null : await stampedUpload(file, validation.kind, req.body, chatId)) ?? { bytes: file.buffer, mimeType: file.mimetype, fileName: file.originalname };
       const uploaded = await uploader.upload({
         chatId,
-        fileName: sealed ? SEALED_NAME : file.originalname,
-        mimeType: sealed ? SEALED_MIME : file.mimetype,
+        fileName: sealed ? SEALED_NAME : content.fileName,
+        mimeType: sealed ? SEALED_MIME : content.mimeType,
         // As a plain file: no thumbnail is tried on bytes nobody can read here.
         kind: sealed ? 'file' : validation.kind,
-        bytes: file.buffer,
+        bytes: content.bytes,
       });
       if (!uploaded.ok) {
         // Distinguir «no pude preguntar» de «me dijeron que no»: el 503 es
@@ -119,8 +130,8 @@ export function buildMediaRouter(uploader: MediaUploader = defaultMediaUploader(
         media: sealed ? sealedMedia(uploaded.media, file.size) : {
           mediaId: uploaded.media.storageName,
           // El nombre que la persona ve en su teléfono, no el del storage.
-          fileName: file.originalname,
-          sizeBytes: file.size,
+          fileName: content.fileName,
+          sizeBytes: content.bytes.length,
           // La duración real de una nota de voz. El `m4a` remoto reporta mal su
           // duración hasta que carga entero, así que en reposo se muestra ESTA.
           durationMs: Number(req.body?.durationMs) || undefined,
@@ -135,7 +146,7 @@ export function buildMediaRouter(uploader: MediaUploader = defaultMediaUploader(
           // RELATIVAS a propósito: se resuelven al servir (`messageView`).
           thumbUrl: uploaded.media.thumbnailUrl,
           url: uploaded.media.url,
-          mime: file.mimetype,
+          mime: content.mimeType,
         },
       });
 

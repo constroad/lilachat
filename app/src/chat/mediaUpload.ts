@@ -1,5 +1,5 @@
 import { messageTargetFields, type MessageTarget } from '@lilachat/shared';
-import { resolveMediaKind, validateMedia, type Envelope } from '@lilachat/shared';
+import { resolveMediaKind, stampFieldsOf, validateMedia, type Envelope, type TimemarkStampAsked } from '@lilachat/shared';
 import { subirPorXhr } from './subidaXhr';
 import { mensajeSubido } from './mensajeSubido';
 import type { ServerMessage } from './socketClient';
@@ -50,6 +50,8 @@ export async function uploadMedia(params: {
   onProgress?: (ratio: number) => void;
   /** A secret chat's photo or video (pending 67): only the encrypted file and its sealed text go up. */
   sealed?: SealedUpload;
+  /** The chat camera's stamp (José 12/11). */
+  stamp?: TimemarkStampAsked;
 }): Promise<UploadResult> {
   // La MISMA validación que el server (motor compartido): así el usuario se
   // entera antes de esperar una subida que iba a morir al final.
@@ -86,6 +88,7 @@ function plainForm(params: Parameters<typeof uploadMedia>[0]): FormData {
   if (params.durationMs) form.append('durationMs', String(params.durationMs));
   if (params.onda?.length) form.append('onda', params.onda.join(','));
   if (params.albumId) form.append('albumId', params.albumId);
+  Object.entries(stampFieldsOf(params.stamp)).forEach(([name, value]) => form.append(name, value));
   for (const [field, value] of messageTargetFields(params.target ?? {})) form.append(field, value);
   if (params.width && params.height) {
     form.append('width', String(params.width));

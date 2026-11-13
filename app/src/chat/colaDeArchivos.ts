@@ -1,4 +1,4 @@
-import type { MessageTarget } from '@lilachat/shared';
+import type { MessageTarget, TimemarkStampAsked } from '@lilachat/shared';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Crypto from 'expo-crypto';
@@ -145,6 +145,7 @@ type ArchivoNuevo = {
   onda?: number[];
   albumId?: string;
   target?: MessageTarget;
+  stamp?: TimemarkStampAsked;
 };
 
 /**
@@ -184,7 +185,8 @@ export async function encolarArchivo(params: ArchivoNuevo & { hd?: boolean }): P
 /** La foto comprimida (o el archivo tal cual), ya en la carpeta de la app. */
 async function prepararArchivo(archivo: ArchivoNuevo, clientKey: string, hd: boolean) {
   // Portal's standard (28/10): a photo of 1 MB or more goes lighter; anything else, «HD» or a failure, as it is.
-  const isImage = archivo.mimeType.startsWith('image/');
+  // A stamped shot goes whole: the server shrinks it once while it burns the stamp (José 12/11).
+  const isImage = archivo.mimeType.startsWith('image/') && !archivo.stamp;
   const shrunk = isImage ? await shrinkPhotoFile(archivo, { hd }) : null;
   const fuente = shrunk ?? { uri: archivo.uri, fileName: archivo.fileName, mimeType: archivo.mimeType, sizeBytes: archivo.sizeBytes, width: archivo.width, height: archivo.height };
   const temporal = shrunk?.temporary === true;
@@ -266,6 +268,7 @@ export async function drenarArchivos(): Promise<void> {
         albumId: archivo.albumId,
         target: archivo.target,
         sealed: archivo.sealed,
+        stamp: archivo.stamp,
         onProgress: (ratio) => {
           const avisado = progreso?.clientKey === archivo.clientKey ? progreso.ratio : null;
           // Por pasos visibles (FL12): cada aviso redibuja la pantalla del chat.

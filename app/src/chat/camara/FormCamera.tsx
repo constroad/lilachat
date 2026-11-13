@@ -3,14 +3,15 @@ import { Animated, Image, Pressable, Text, View, useWindowDimensions } from 'rea
 import { CameraView, type CameraCapturedPicture } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { Check, Image as ImageIcon, RefreshCw, RotateCcw, X, Zap, ZapOff } from 'lucide-react-native';
-import type { TimemarkStampAsked, Timemark } from '@lilachat/shared';
+import type { TimemarkStampAsked } from '@lilachat/shared';
 import { Modal } from '../../ui/Modal';
 import { reportarError } from '../../ui/reportarError';
 import { useMargenes } from '../../ui/useMargenes';
 import { getCurrentSpaceId, useSpaceLogo } from '../../spaces/currentSpace';
 import { FLASH_LABEL, NEXT_FLASH, type FlashMode } from './flash';
 import { StampOverlay } from './StampOverlay';
-import { setCameraLogo, useCameraLogo } from './cameraLogoPref';
+import { useCameraLogo } from './cameraLogoPref';
+import { CameraChips } from './CameraChips';
 import { useLiveStamp } from './useLiveStamp';
 
 export type CameraShot = { uri: string; mime: string };
@@ -26,6 +27,8 @@ const BLINK_OUT_MS = 140;
 /** Where the controls sit, so the stamp stays above them. */
 const BOTTOM_BAR = 120;
 const SIDE_BAR = 110;
+/** The chips sit under the top bar. */
+const CHIPS_BELOW = 56;
 
 /**
  * Asks only when it has to. Android refuses a request while another one is open,
@@ -59,6 +62,7 @@ export function FormCamera(props: Props) {
   const [facing, setFacing] = useState<'back' | 'front'>('back');
   const [shooting, setShooting] = useState(false);
   const [shot, setShot] = useState<CameraShot | null>(null);
+  const margins = useMargenes();
   const live = useLiveStamp();
   const logoOn = useCameraLogo();
   const spaceLogo = useSpaceLogo(getCurrentSpaceId());
@@ -85,7 +89,7 @@ export function FormCamera(props: Props) {
         <Animated.View pointerEvents="none" className="absolute inset-0 bg-white" style={{ opacity: blink }} />
         <StampOverlay stamp={live.stamp} logoUrl={logoUrl} width={width} height={height} bottomInset={inset} />
         <TopBar title={props.title} flash={flash} reviewing={Boolean(shot)} landscape={landscape} onClose={props.onClose} onFlash={() => setFlash((before) => NEXT_FLASH[before])} />
-        {shot ? null : <Chips logoOn={logoOn} hasLogo={Boolean(spaceLogo)} logoUrl={spaceLogo} stamp={live.stamp} precision={live.point?.precision ?? null} />}
+        {shot ? null : <CameraChips logoOn={logoOn} logoUrl={spaceLogo} precision={live.point?.precision ?? null} top={margins.cabecera + CHIPS_BELOW} />}
         {shot ? (
           <ReviewBar landscape={landscape} onRetake={() => setShot(null)} onUse={use} />
         ) : (
@@ -113,26 +117,6 @@ function TopBar(props: { title: string; flash: FlashMode; reviewing: boolean; la
           <Text className="text-[13px] font-semibold" style={{ color: 'white' }}>{FLASH_LABEL[props.flash]}</Text>
         </Pressable>
       )}
-    </View>
-  );
-}
-
-/** «Logo» turns the space's logo on and off in the stamp; «GPS ±6 m» says how good the reading is. */
-function Chips(props: { logoOn: boolean; hasLogo: boolean; logoUrl: string | null; stamp: Timemark; precision: number | null }) {
-  const margins = useMargenes();
-  return (
-    <View className="absolute left-0 right-0 flex-row justify-center gap-2" style={{ top: margins.cabecera + 56 }}>
-      {props.hasLogo ? (
-        <Pressable testID="chip-logo" accessibilityRole="switch" accessibilityState={{ checked: props.logoOn }} onPress={() => setCameraLogo(!props.logoOn)} className={`h-9 flex-row items-center gap-1.5 rounded-full px-3 ${props.logoOn ? 'bg-white' : 'border border-white/70 bg-black/45'}`}>
-          {props.logoUrl ? <Image source={{ uri: props.logoUrl }} style={{ width: 18, height: 18, borderRadius: 4 }} /> : null}
-          <Text className="text-[14px] font-semibold" style={{ color: props.logoOn ? '#111' : 'white' }}>Logo</Text>
-          {props.logoOn ? <Check size={15} color="#111" /> : null}
-        </Pressable>
-      ) : null}
-      <View testID="chip-gps" className="h-9 flex-row items-center gap-1.5 rounded-full bg-black/45 px-3">
-        <View className={`h-2 w-2 rounded-full ${props.precision === null ? 'bg-white/50' : 'bg-en-linea'}`} />
-        <Text className="text-[14px] font-semibold" style={{ color: 'white' }}>{props.precision === null ? 'Buscando GPS…' : `GPS ±${Math.round(props.precision)} m`}</Text>
-      </View>
     </View>
   );
 }

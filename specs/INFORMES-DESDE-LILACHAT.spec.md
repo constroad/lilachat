@@ -1431,10 +1431,24 @@ Se recorrió Control de pista en el APK (`lilafotos-qa`), en el servicio QA-CTLP
   el thumbnail una vez (640 px). Portal guarda los bytes tal cual con `selloLilachat`. La web y la
   galería todavía suben sin el sello de Lilachat: ahí sigue sellando (y recomprimiendo) Portal
   hasta que la PWA tenga la misma cámara.
-- **Video**: nadie lo comprime (lila solo hace `faststart` y el póster). Lo comprime el teléfono
-  antes de subir, en el APK nativo siguiente (no entra en un OTA).
+- **Cámara del chat: foto y video con el mismo sello** (José 12/11, diseños cam-04/cam-05;
+  `app/src/chat/camara/CamaraDelChat.tsx`). FOTO / VIDEO bajo el sello; chips Logo, GPS y, en
+  video, Sonido; el reloj «● 00:42 · máx. 3:00» arriba mientras graba, y para solo a los 3 min. El
+  cuerpo se monta solo con la cámara abierta: el GPS y el reloj del sello no corren detrás del chat.
+  Lo tomado pasa por «Enviar» (pie, recorte) como siempre. La galería y la tira de recientes no
+  llevan sello.
+- **Video sin módulo nativo nuevo** (entra en un OTA): la cámara ya graba a 720p y ~2,5 Mbps
+  (`videoClock.ts`: 3 min ≈ 60 MB, bajo los 90 MB de un video del chat). El servidor quema el sello
+  con ffmpeg en la única pasada que lo recodifica (`server/src/videoStamp.ts`: lo endereza, pone el
+  sello del tamaño del cuadro, H.264 a 3 Mbps como techo, `faststart`). Sin ffmpeg o con un archivo
+  que no lee, el video va como llegó. Lila no recomprime videos (solo `faststart` y el póster).
+- **Foto del chat con sello**: sube entera (la cola no la achica, `colaDeArchivos.ts`) y el
+  servidor la achica una vez al quemar el sello (`chatMediaStamp.ts`, en `POST /api/media` con
+  `stamp=timemark`). Un chat secreto no lleva sello: el servidor no puede leer sus bytes.
+- **Sin probar todavía**: la grabación en un teléfono real (el emulador no tiene cámara de verdad)
+  y cuánto tarda el sellado de 3 min en la mini.
 - **Todavía con la cámara del sistema** (sin sello en vivo): las observaciones (REG-OBS/LEV-OBS,
   `captureEvidence`), «Registrar avance» (`takeFieldPhoto`) y el Drive del servicio. Van a Drive
   directo a Portal, sin pasar por el sello del servidor.
-- **Pendiente**: la cámara del chat (`CamaraDelChat`, foto y video), la PWA móvil (`getUserMedia`)
-  y el sello en video (diseños cam-04/05/06).
+- **Pendiente**: la PWA móvil (`getUserMedia`). El diseño cam-06 (revisión del video) se perdió
+  por un corte de Stitch antes de anotar su id; no se regeneró a ciegas.

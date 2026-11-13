@@ -38,3 +38,16 @@ describe('quitarFoto', () => {
     expect(quitarFoto(['a'], 0, 0)).toEqual({ fotos: [], actual: 0 });
   });
 });
+
+/** José 12/11: a shot of the chat's camera asks the server for its stamp; a gallery pick never does. */
+describe('the camera stamp of a shot', () => {
+  it('goes with the shot that carries it and with no other', () => {
+    // Arrange
+    const stamp = { timemark: true as const, point: { lat: -12, lng: -77, precision: 6 }, logo: true };
+    // Act
+    const sent = armarEnvioDeFotos([{ uri: 'cam', stamp }, { uri: 'gal' }], {});
+    // Assert
+    expect(sent[0]).toMatchObject({ uri: 'cam', stamp });
+    expect(sent[1]).not.toHaveProperty('stamp');
+  });
+});

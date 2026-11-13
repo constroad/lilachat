@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { ArrowLeft, Lock, Search } from 'lucide-react-native';
-import { directoryChips, filterDirectory, type ClientWorkspace, type DirectoryApp, type DirectoryFilter } from '@lilachat/shared';
+import { directoryChips, filterDirectory, type ClientWorkspace, type AppDetailTab, type DirectoryApp, type DirectoryFilter } from '@lilachat/shared';
 import { Modal } from '../../ui/Modal';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
@@ -18,7 +18,7 @@ const ROW_LOGO_SIZE = 48;
  * its detail (e-25). Installing opens the app's page in the browser; coming
  * back reads the directory again.
  */
-export function AppDirectoryScreen(props: { space: ClientWorkspace; apps: SpaceApps; jwt: string; initialAppId?: string | null; onClose: () => void }) {
+export function AppDirectoryScreen(props: { space: ClientWorkspace; apps: SpaceApps; jwt: string; initialAppId?: string | null; initialTab?: AppDetailTab; onClose: () => void }) {
   const colors = useColores();
   const margins = useMargenes();
   const { apps, space } = props;
@@ -83,6 +83,7 @@ export function AppDirectoryScreen(props: { space: ClientWorkspace; apps: SpaceA
       </View>
       {chosen ? (
         <AppDetailScreen
+          {...(props.initialTab && chosen.appId === props.initialAppId ? { initialTab: props.initialTab } : {})}
           app={chosen}
           jwt={props.jwt}
           spaceId={space.id}

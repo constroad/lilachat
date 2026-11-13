@@ -40,6 +40,7 @@ import { cabecerasDeSeguridad } from './cabecerasDeSeguridad.js';
 import { montarServiceWorker } from './serviceWorker.js';
 import { buildVincularRouters, type OpcionesDeVinculacion } from './vincularRoutes.js';
 import { buildFijadosRouter } from './fijadosRoutes.js';
+import { buildHiddenMessagesRouter } from './hiddenMessages.js';
 import { buildDestacadosRouter } from './destacadosRoutes.js';
 import { buildActivityRouter } from './activityRoutes.js';
 import { buildFunRouter } from './funRoutes.js';
@@ -170,6 +171,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api', buildStickersRouter(deps.mediaUploader, deps.animatedStickers));
   app.use('/api/chats', buildFileViewRouter());
   app.use('/api/chats', buildFijadosRouter());
+  app.use('/api/chats', buildHiddenMessagesRouter());
   app.use('/api/chats', buildReenvioRouter());
   app.use('/api/chats', buildHilosRouter());
   app.use('/api/chats', buildContactShareRouter());

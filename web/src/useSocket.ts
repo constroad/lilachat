@@ -76,6 +76,8 @@ export function useSocket(params: {
   onHilo?: (data: { chatId: string; raiz: number; hilo: NonNullable<ChatMessage['hilo']> }) => void;
   /** Reacciones (`msg.reacciones`, 20/10): la lista entera del mensaje. */
   onReacciones?: (data: { chatId: string; seq: number; reacciones: Reaccion[] }) => void;
+  /** «Eliminar para mí» from another device of mine (13/11). */
+  onHidden?: (data: { chatId: string; seqs: number[] }) => void;
   /** Editado (`msg.edited`). */
   onEditado?: (data: { chatId: string; seq: number; body: string; editedAt?: string; card?: BotCard; files?: GalleryItem[]; location?: LiveLocation }) => void;
   /** Algo del chat cambió en otro dispositivo (nombre, foto, archivado…). */
@@ -186,6 +188,7 @@ export function useSocket(params: {
     // E3: el resumen nuevo de una raíz («4 respuestas · última 10:42»).
     socket.on('msg.hilo', (data: { chatId: string; raiz: number; hilo: NonNullable<ChatMessage['hilo']> }) => handlers.current.onHilo?.(data));
     socket.on('msg.reacciones', (data: { chatId: string; seq: number; reacciones: Reaccion[] }) => handlers.current.onReacciones?.(data));
+    socket.on('msg.hidden', (data: { chatId: string; seqs: number[] }) => handlers.current.onHidden?.(data));
 
     // El snapshot llega al conectar y trae a TODOS los que ya están en línea.
     // Sin él, los puntos verdes solo aparecerían para quien se conecte después

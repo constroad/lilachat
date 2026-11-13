@@ -213,7 +213,7 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
     const app = directory.apps.find((one) => one.clientId === appReturn.clientId);
     // Pending 49: an installed app's 1:1; otherwise its detail.
     if (appReturn.chat && app?.installation) message(app);
-    else openDirectory(app?.appId);
+    else openDirectory(app?.appId, appReturn.notices && app?.installation ? 'notices' : undefined);
   }, [appReturn, spaceId, directory, openDirectory, message]);
   const talkTo = useCallback(async (admin: { userId: string }) => {
     setRemoved(null);

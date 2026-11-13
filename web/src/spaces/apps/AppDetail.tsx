@@ -11,6 +11,8 @@ import { AppCommandsPanel } from './AppCommandsPanel';
 import { NoticeTopicsSection } from './NoticeTopicsSection';
 
 type AppDetailProps = {
+  /** The tab it opens on: «Avisos» from a product's «Elegir canal» link (José, 13/11). */
+  initialTab?: AppDetailTab;
   app: DirectoryApp;
   jwt: string;
   /** Without it (a test, or a session still renewing) the parts the detail asks on its own are left out. */
@@ -60,7 +62,7 @@ function CommandRow(props: { command: string; usageHint?: string; description: s
  */
 export function AppDetail(props: AppDetailProps) {
   const tabs = appDetailTabs(Boolean(props.app.installation));
-  const [tab, setTab] = useState<AppDetailTab>('info');
+  const [tab, setTab] = useState<AppDetailTab>(props.initialTab ?? 'info');
   // Uninstalled while on Avisos or Ajustes: those tabs go, and the detail falls back to Información.
   const shownTab = tabs.some((one) => one.key === tab) ? tab : 'info';
   return (

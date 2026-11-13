@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { SpaceQuickActions } from './apps/SpaceQuickActions';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { ChevronDown } from 'lucide-react-native';
-import { appReturnFromLink, joinCodeFromLink, newlyAddedSpaces, spaceSubtitle, unreadElsewhere, welcomeGate, type ActivityItem, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember, type DirectoryApp } from '@lilachat/shared';
+import { appReturnFromLink, joinCodeFromLink, newlyAddedSpaces, spaceSubtitle, unreadElsewhere, welcomeGate, type ActivityItem, type ActivityType, type ClientChannel, type ClientWorkspace, type ClientWorkspaceMember, type DirectoryApp, type AppDetailTab } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 import { createChat } from '../contacts/contactsApi';
 import { getSocket } from '../chat/socketClient';
@@ -71,8 +71,10 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
   const [sheet, setSheet] = useState<Sheet>(null);
   /** A space's join link (pending 47): Android opens the app on it, and «Unirme» opens with its code. */
   const [joinCode, setJoinCode] = useState<string | null>(null);
-  const [appReturn, setAppReturn] = useState<{ spaceId: string; clientId: string; chat?: true } | null>(null);
+  const [appReturn, setAppReturn] = useState<{ spaceId: string; clientId: string; chat?: true; notices?: true } | null>(null);
   const [appsInitialId, setAppsInitialId] = useState<string | null>(null);
+  /** «/avisos» at the end of the link (José, 13/11): the app opens on its Avisos tab. */
+  const [appsInitialTab, setAppsInitialTab] = useState<AppDetailTab | undefined>(undefined);
   /** While the return opens its app, the «te agregaron» screen waits: two windows at once and the second never showed (emulator, 23/10). */
   const [returning, setReturning] = useState(false);
   useEffect(() => {
@@ -207,6 +209,7 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
         // Pending 49: «/chat» opens an installed app's 1:1; otherwise its detail.
         if (wanted.chat && app?.installation) return messageApp(app);
         setAppsInitialId(app?.appId ?? null);
+        setAppsInitialTab(wanted.notices && app?.installation ? 'notices' : undefined);
         setSheet('apps');
       })
       .finally(() => setReturning(false));
@@ -271,7 +274,7 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
       {current && (sheet === 'members' || sheet === 'requests') ? (
         <MembersScreen space={current} jwt={jwt} myUserId={myUserId} initialTab={sheet === 'requests' ? 'pending' : 'active'} onInvite={() => setSheet('invite')} onChanged={() => void reload()} onClose={() => setSheet(null)} />
       ) : null}
-      {current && sheet === 'apps' ? <AppDirectoryScreen space={current} apps={apps} jwt={jwt} initialAppId={appsInitialId} onClose={() => { setSheet(null); setAppsInitialId(null); }} /> : null}
+      {current && sheet === 'apps' ? <AppDirectoryScreen space={current} apps={apps} jwt={jwt} initialAppId={appsInitialId} initialTab={appsInitialTab} onClose={() => { setSheet(null); setAppsInitialId(null); setAppsInitialTab(undefined); }} /> : null}
       {current && sheet === 'settings' ? <SpaceSettingsScreen space={current} jwt={jwt} onSaved={() => void reload()} onClose={() => setSheet(null)} onOpenApp={(appId) => { setAppsInitialId(appId); setSheet('apps'); }} onDeleted={() => { setSheet(null); void enter(null); void reload(); }} /> : null}
       {firstWelcome === 'show' && !sheet ? <WelcomeScreen jwt={jwt} detectedCode={joinCode} onPersonal={() => leaveWelcome(null)} onJoin={() => leaveWelcome('join')} onCreate={() => leaveWelcome('create')} /> : null}
       {welcome && !sheet && !appReturn && !returning ? (

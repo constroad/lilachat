@@ -46,7 +46,7 @@ export function StorageFilesScreen(props: { source: FilesSource | null; jwt: str
   const hideChosen = async () => {
     const byChat = new Map<string, number[]>();
     for (const file of chosen) byChat.set(file.chatId, [...(byChat.get(file.chatId) ?? []), file.seq]);
-    await Promise.all([...byChat].map(([chatId, seqs]) => hideForMe(chatId, seqs)));
+    await Promise.all([...byChat].map(([chatId, seqs]) => hideForMe(chatId, seqs, props.jwt)));
     setFiles((before) => (before ?? []).filter((file) => !picked.has(keyOf(file))));
     setPicked(new Set());
     props.onHidden();

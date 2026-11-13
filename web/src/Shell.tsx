@@ -127,6 +127,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
     onEditado: (dato) => eventos.current.onEditado?.(dato),
     onHilo: (dato) => eventos.current.onHilo?.(dato),
     onReacciones: (dato) => eventos.current.onReacciones?.(dato),
+    onHidden: (dato) => eventos.current.onHidden?.(dato),
     onCambioDeChat: (dato) => {
       eventos.current.onCambioDeChat?.();
       eventoDeEspacio.current({ type: 'changed', chatId: dato.chatId });

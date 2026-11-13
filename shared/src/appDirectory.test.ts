@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activeChannelsLine, appActivityLine, appChatLink, appDetailTabs, appInstalledByLine, appReturnFromLink, appReturnLink, directoryChips, filterDirectory, installedWithoutChat, uninstallWarning } from './appDirectory.js';
+import { activeChannelsLine, appActivityLine, appChatLink, appDetailTabs, appNoticesLink, appInstalledByLine, appReturnFromLink, appReturnLink, directoryChips, filterDirectory, installedWithoutChat, uninstallWarning } from './appDirectory.js';
 import type { DirectoryApp } from './bots.js';
 
 const app = (name: string, extra: Partial<DirectoryApp> = {}): DirectoryApp => ({ appId: name.toLowerCase(), clientId: `lca_${name.toLowerCase()}`, name, features: [], commands: [], ...extra });
@@ -58,6 +58,9 @@ describe('back to Lilachat after installing (agentes\' return address)', () => {
     // Pending 49: «/chat» at the end opens the 1:1 with the app (a product that answers only in private sends it).
     expect(appReturnFromLink('https://lilachat.constroad.com/s/6adbb0887ca6f18809904536/apps/lca_x1/chat')).toEqual({ spaceId: '6adbb0887ca6f18809904536', clientId: 'lca_x1', chat: true });
     expect(appChatLink('6adbb0887ca6f18809904536', 'lca_x1')).toBe('https://lilachat.constroad.com/s/6adbb0887ca6f18809904536/apps/lca_x1/chat');
+    // 13/11 (José): Portal shows «Elegir canal» and opens the app's Avisos tab, where the admin routes each topic.
+    expect(appReturnFromLink('/s/6adbb0887ca6f18809904536/apps/lca_x1/avisos')).toEqual({ spaceId: '6adbb0887ca6f18809904536', clientId: 'lca_x1', notices: true });
+    expect(appNoticesLink('6adbb0887ca6f18809904536', 'lca_x1')).toBe('https://lilachat.constroad.com/s/6adbb0887ca6f18809904536/apps/lca_x1/avisos');
   });
 
   it('anything else is not a return address', () => {

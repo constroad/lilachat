@@ -10,7 +10,7 @@ import { aplicarBorrado, aplicarEdicion, aplicarEntrante, aplicarReacciones, apl
 import type { ChatMessage, ChatSummary } from '../chat/types';
 import { accionPorSocket, enviarPorSocket, pedirSincronizacion, type ResultadoDeAccion } from './envioPorSocket';
 import { sendNudgeBySocket, sendWinkBySocket } from './envioPorSocket';
-import { ocultar } from '../local/ocultos';
+import { hideManyLocally, ocultar } from '../local/ocultos';
 import { aplicarAcuseALista, aplicarBorradoALista, aplicarEdicionALista, aplicarMensajeALista, aplicarReaccion, debeAvisarEscribiendo, type AcuseEnVivo, type CursoresEnVivo, type MencionEnMensaje, type Reaccion } from '@lilachat/shared';
 import type { BotCard, GalleryItem } from '@lilachat/shared';
 import type { WinkId } from '@lilachat/shared';
@@ -108,6 +108,7 @@ export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401
       onCambioDeChat: () => recargarPronto(),
       onHilo: (dato: { chatId: string; raiz: number; hilo: NonNullable<ChatMessage['hilo']> }) => base && void aplicarResumenDeHilo(base, dato),
       onReacciones: (dato: { chatId: string; seq: number; reacciones: Reaccion[] }) => base && void aplicarReacciones(base, dato),
+      onHidden: (dato: { chatId: string; seqs: number[] }) => base && void hideManyLocally(base, dato.chatId, dato.seqs),
     };
   }, [base, yo, recargarPronto]);
 
@@ -136,6 +137,7 @@ function useAccionesDelChat(params: {
       const respuesta = await api<{ messages: ChatMessage[]; lastSeq: number }>(`/chats/${chatId}/messages?${query}`, { jwt });
       if (!respuesta.ok) return null;
       await guardarPagina(base, chatId, respuesta.data.messages, antesDe ? undefined : respuesta.data.lastSeq);
+      if (!antesDe) void pullHidden(base, jwt, chatId);
       return { hayMas: respuesta.data.messages.length >= TAMANO_DE_PAGINA, ultimo: respuesta.data.messages.at(-1) };
     },
     [base, jwt]
@@ -214,7 +216,9 @@ function useAccionesDelChat(params: {
 
   const eliminarParaMi = useCallback(async (chatId: string, seq: number) => {
     if (base) await ocultar(base, chatId, seq);
-  }, [base]);
+    // My other devices hide it too (José, 13/11); offline it stays hidden here and the next one is kept.
+    if (jwt) void api(`/chats/${chatId}/ocultos`, { jwt, body: { seqs: [seq] } });
+  }, [base, jwt]);
 
   const reintentar = useCallback(
     async (clientKey: string) => {
@@ -338,4 +342,10 @@ async function sonarSiCorresponde(base: BaseLocal | null, mensaje: ChatMessage, 
   const silenciado = base ? Boolean((await base.chats.get(mensaje.chatId))?.muted) : false;
   const visible = document.visibilityState === 'visible';
   if (debeSonarEnLaWeb({ senderId: mensaje.senderId, yo, chatId: mensaje.chatId, abierto, visible, silenciado, kind: mensaje.kind, soloEnElHilo: mensaje.hiloDe !== undefined && !mensaje.enElChat })) sonarMensaje();
+}
+
+/** What my other devices hid in this chat (José, 13/11), merged when it opens. */
+async function pullHidden(base: BaseLocal, jwt: string, chatId: string): Promise<void> {
+  const hidden = await api<{ seqs: number[] }>(`/chats/${chatId}/ocultos`, { jwt });
+  if (hidden.ok) await hideManyLocally(base, chatId, hidden.data.seqs);
 }

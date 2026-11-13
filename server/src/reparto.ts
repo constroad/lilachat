@@ -62,6 +62,11 @@ export function notifyDeleted(chatId: string, seq: number, members: string[], th
 }
 
 /** A thread changed (a reply arrived outside the socket, like a sticker): its new summary to every member. */
+/** «Eliminar para mí» reached my other devices (José, 13/11): only to me. */
+export function emitHiddenForMe(userId: string, chatId: string, seqs: readonly number[]): void {
+  ioVivo?.to(userRoom(userId)).emit('msg.hidden', { chatId, seqs });
+}
+
 export function notifyThread(chatId: string, rootSeq: number, summary: unknown, members: string[]): void {
   for (const member of members) ioVivo?.to(userRoom(member)).emit('msg.hilo', { chatId, raiz: rootSeq, hilo: summary });
 }

@@ -162,7 +162,7 @@ export function ChatScreen({
   /** Los mensajes elegidos con pulsación larga (FL9: uno o varios). */
   const seleccion = useSeleccionDeMensajes(messages);
   const destacados = useDestacadosDelChat({ chatId, jwt: credential.jwt, secreto: Boolean(encrypted) });
-  const { ocultos, ocultar } = useOcultos(chatId);
+  const { ocultos, ocultar } = useOcultos(chatId, credential.jwt);
   const commands = useChatCommandsWithActions({ jwt: credential.jwt, chatId, workspaceId, shareable: !esBorrador && !otherUserId, actionPlace: !esBorrador && chatHasActionPlace({ workspaceId, isGroup: !otherUserId, appId }) });
   const [verDetalle, setVerDetalle] = useState(false);
   const [detailSection, setDetailSection] = useState<DetailSection | null>(null);

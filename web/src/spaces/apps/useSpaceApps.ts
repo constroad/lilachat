@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DirectoryApp, SpaceAppDirectory } from '@lilachat/shared';
+import type { AppDetailTab, DirectoryApp, SpaceAppDirectory } from '@lilachat/shared';
 import { currentSocket } from '../../useSocket';
 import { appDirectory, openAppChat, uninstallApp } from '../spacesApi';
 import { useSocketTurn } from '../../socketTurn';
@@ -10,8 +10,8 @@ const FOCUS_REFRESH_MS = 15_000;
 export type SpaceApps = {
   directory: SpaceAppDirectory | null;
   /** The directory layer (design e-24), with the app chosen in its detail. */
-  open: { appId: string | null } | null;
-  openDirectory: (appId?: string) => void;
+  open: { appId: string | null; tab?: AppDetailTab } | null;
+  openDirectory: (appId?: string, tab?: AppDetailTab) => void;
   closeDirectory: () => void;
   message: (app: DirectoryApp) => void;
   install: (app: DirectoryApp) => void;
@@ -35,7 +35,7 @@ export type SpaceApps = {
 export function useSpaceApps(params: { jwt: string; spaceId: string | null; onChat: (app: DirectoryApp, chat: { chatId: string; botUserId: string }) => void }): SpaceApps {
   const { jwt, spaceId, onChat } = params;
   const [directory, setDirectory] = useState<SpaceAppDirectory | null>(null);
-  const [open, setOpen] = useState<{ appId: string | null } | null>(null);
+  const [open, setOpen] = useState<{ appId: string | null; tab?: AppDetailTab } | null>(null);
   const [openedChats, setOpenedChats] = useState<Record<string, string>>({});
   const [uninstallingId, setUninstallingId] = useState<string | null>(null);
   const lastRead = useRef(0);
@@ -98,5 +98,5 @@ export function useSpaceApps(params: { jwt: string; spaceId: string | null; onCh
     },
     [jwt, spaceId, refresh]
   );
-  return { directory, open, openDirectory: (appId) => setOpen({ appId: appId ?? null }), closeDirectory: () => setOpen(null), message, install, uninstall, openedChats, uninstallingId, refresh: () => void refresh(), jwt, spaceId };
+  return { directory, open, openDirectory: (appId, tab) => setOpen({ appId: appId ?? null, ...(tab ? { tab } : {}) }), closeDirectory: () => setOpen(null), message, install, uninstall, openedChats, uninstallingId, refresh: () => void refresh(), jwt, spaceId };
 }

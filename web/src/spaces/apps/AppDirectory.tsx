@@ -72,7 +72,7 @@ export function AppDirectory(props: { space: ClientWorkspace; apps: SpaceApps })
         <section data-testid="directorio-detalle" className={`min-h-0 flex-1 overflow-y-auto p-4 md:block md:p-8 ${chosen ? 'block' : 'hidden'}`}>
           {detailed ? (
             <div className="mx-auto max-w-3xl">
-              <AppDetail key={detailed.appId} app={detailed} jwt={apps.jwt} spaceId={apps.spaceId} spaceName={space.name} admin={admin} onMessage={() => apps.message(detailed)} onInstall={() => apps.install(detailed)} onUninstall={admin ? () => apps.uninstall(detailed) : undefined} uninstalling={apps.uninstallingId === detailed.appId} onChannelsChanged={apps.refresh} />
+              <AppDetail key={detailed.appId} app={detailed} {...(apps.open?.tab && apps.open.appId === detailed.appId ? { initialTab: apps.open.tab } : {})} jwt={apps.jwt} spaceId={apps.spaceId} spaceName={space.name} admin={admin} onMessage={() => apps.message(detailed)} onInstall={() => apps.install(detailed)} onUninstall={admin ? () => apps.uninstall(detailed) : undefined} uninstalling={apps.uninstallingId === detailed.appId} onChannelsChanged={apps.refresh} />
             </div>
           ) : (
             <p className="mt-24 text-center text-[14px] text-on-surface-variant">Elige una app para ver qué hace.</p>

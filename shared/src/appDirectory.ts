@@ -67,14 +67,20 @@ export function appInstalledByLine(installation: Pick<Installation, 'installedBy
 export const appReturnLink = (spaceId: string, clientId: string): string => `${LILACHAT_WEB_URL}/s/${spaceId}/apps/${encodeURIComponent(clientId)}`;
 
 /** A regex, not `URL`: React Native's is incomplete. A full address must be Lilachat's; a bare path is the web's own. */
-const RETURN_LINK = /^(?:https:\/\/lilachat\.constroad\.com)?\/s\/([0-9a-f]{24})\/apps\/([A-Za-z0-9_-]{4,64})(\/chat)?(?:[/?#]|$)/i;
+const RETURN_LINK = /^(?:https:\/\/lilachat\.constroad\.com)?\/s\/([0-9a-f]{24})\/apps\/([A-Za-z0-9_-]{4,64})(\/chat|\/avisos)?(?:[/?#]|$)/i;
 
 /** The 1:1 with an app (pending 49): what a product sends when an answer is only for whoever asked. */
 export const appChatLink = (spaceId: string, clientId: string): string => `${appReturnLink(spaceId, clientId)}/chat`;
 
-export function appReturnFromLink(url: string | null | undefined): { spaceId: string; clientId: string; chat?: true } | null {
+/** The app's Avisos tab (José, 13/11): a product says «Elegir canal» and the admin routes its topics there. */
+export const appNoticesLink = (spaceId: string, clientId: string): string => `${appReturnLink(spaceId, clientId)}/avisos`;
+
+export function appReturnFromLink(url: string | null | undefined): { spaceId: string; clientId: string; chat?: true; notices?: true } | null {
   const match = RETURN_LINK.exec(url ?? '');
-  return match ? { spaceId: match[1]!.toLowerCase(), clientId: match[2]!, ...(match[3] ? { chat: true as const } : {}) } : null;
+  if (!match) return null;
+  const end = match[3]?.toLowerCase();
+  const tail = end === '/chat' ? { chat: true as const } : end === '/avisos' ? { notices: true as const } : {};
+  return { spaceId: match[1]!.toLowerCase(), clientId: match[2]!, ...tail };
 }
 
 /**

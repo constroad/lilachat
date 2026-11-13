@@ -1,8 +1,8 @@
 import { useEffect, type ReactNode } from 'react';
-import { Keyboard, Pressable, StyleSheet, View, type DimensionValue } from 'react-native';
+import { Keyboard, Pressable, StyleSheet, View, useWindowDimensions, type DimensionValue } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
-import Animated, { FadeOut, runOnJS, SlideInDown, SlideOutDown, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeOut, runOnJS, SlideOutDown, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { Modal } from './Modal';
 import { useMargenes } from './useMargenes';
 import { backdropOpacity, clampDrag, shouldDismiss } from './overlay/sheetGesture';
@@ -68,12 +68,19 @@ function SheetBody(props: SheetProps) {
   const drag = useSharedValue(0);
   const height = useSharedValue(0);
   const shown = useSharedValue(0);
+  // José 13/11: the entry is our own value, not a layout animation. A sheet that re-renders while it
+  // slides in (the clip loading the gallery) was left halfway down, its last row under Android's buttons.
+  const { height: windowHeight } = useWindowDimensions();
+  const entry = useSharedValue(1);
 
   useEffect(() => {
     shown.value = withTiming(1, { duration: BACKDROP_MS });
+    entry.value = withTiming(0, { duration: SLIDE_MS, easing: Easing.out(Easing.cubic) }, (finished) => {
+      if (finished) runOnJS(endInteractionAfterPaint)(FRAME_WINDOW);
+    });
     beginInteraction(FRAME_WINDOW);
     if (keyboard === 'dismiss') Keyboard.dismiss();
-  }, [shown, keyboard]);
+  }, [shown, entry, keyboard]);
 
   const pan = Gesture.Pan()
     .activeOffsetY([-DRAG_START_PX, DRAG_START_PX])
@@ -86,16 +93,11 @@ function SheetBody(props: SheetProps) {
     });
 
   const backdropStyle = useAnimatedStyle(() => ({ opacity: shown.value * backdropOpacity(drag.value, height.value, BACKDROP_MAX) }));
-  const cardStyle = useAnimatedStyle(() => ({ transform: [{ translateY: drag.value }] }));
-  const slideIn = SlideInDown.duration(SLIDE_MS).withCallback((finished: boolean) => {
-    'worklet';
-    if (finished) runOnJS(endInteractionAfterPaint)(FRAME_WINDOW);
-  });
+  const cardStyle = useAnimatedStyle(() => ({ transform: [{ translateY: drag.value + entry.value * windowHeight }] }));
 
   const handle = <View className="h-1.5 w-10 self-center rounded-full bg-outline/30" />;
   const card = (
     <Animated.View
-      entering={slideIn}
       exiting={SlideOutDown.duration(SLIDE_MS)}
       style={[cardStyle, { paddingBottom: margins.pie + bottomRoom, ...(maxHeight ? { maxHeight } : {}), ...(fixedHeight ? { height: fixedHeight } : {}) }]}
       className={`rounded-t-3xl ${tone === 'surface' ? 'bg-surface' : 'bg-background'} ${props.className ?? ''}`}

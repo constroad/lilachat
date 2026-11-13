@@ -553,3 +553,9 @@ Lo que `specs/ARCHITECTURE.spec.md` (§120 a §134) afirma de la interfaz y no e
   diagnóstico dieron bien (ventana 914 dp, margen inferior 48 dp) y aun así lo
   último de la hoja se veía bajo los 3 botones. Con la tira arriba nunca queda
   tapada, y la lista suma el margen inferior al final.
+- **La hoja quedaba a medio entrar.** Con «Fotos recientes» arriba, lo último
+  (Organizar) seguía bajo los botones y la lista no hacía scroll: la hoja
+  estaba corrida hacia abajo. La entrada era una animación de layout de
+  Reanimated; el clip se redibuja mientras entra (carga la galería) y quedaba
+  a mitad de camino. Ahora la entrada es un valor propio (`entry`) sumado al
+  arrastre, que un redibujo no corta.

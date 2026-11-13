@@ -128,6 +128,13 @@ describe('SpacesRail', () => {
     await userEvent.click(screen.getByTestId('riel-personal'));
     expect(onPick).toHaveBeenCalledWith(null);
   });
+
+  // José 13/11: in light mode the rail is dark violet; the violet «active» ink made the initials vanish.
+  it('the personal initials use the rail ink, not the ink meant for the white active chip', () => {
+    render(<SpacesRail spaces={[]} currentId={null} me={{ name: 'José Zamora', phone: '902049935' }} personalUnread={0} onPick={() => undefined} onAdd={() => undefined} />);
+    expect(screen.getByTestId('riel-personal')).toHaveClass('text-on-rail');
+    expect(screen.getByTestId('riel-personal')).not.toHaveClass('text-on-rail-active');
+  });
 });
 
 describe('SpaceChatList', () => {

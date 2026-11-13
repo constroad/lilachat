@@ -41,15 +41,7 @@ export function AppDirectoryScreen(props: { space: ClientWorkspace; apps: SpaceA
               <Search size={18} color={colors['on-surface-variant']} />
               <TextInput testID="buscar-apps" value={query} onChangeText={setQuery} placeholder="Busca por nombre o categoría" placeholderTextColor={colors['on-surface-variant']} className="flex-1 text-[15px] text-on-surface" />
             </View>
-            {apps.directory ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3" contentContainerStyle={{ gap: 8 }}>
-                {chips.map((chip) => (
-                  <Pressable key={chip.key} testID={`chip-apps-${chip.key}`} onPress={() => setFilter(chip.key)} className={`min-h-[40px] justify-center rounded-xl border px-4 ${filter === chip.key ? 'border-primary bg-primary' : 'border-outline/20 bg-surface'}`}>
-                    <Text className={`text-[14px] font-semibold ${filter === chip.key ? 'text-on-primary' : 'text-on-surface'}`}>{chip.label}</Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
-            ) : null}
+            {apps.directory ? <FilterChips chips={chips} filter={filter} onFilter={setFilter} /> : null}
             <Text className="mb-1 mt-5 text-[12px] font-bold uppercase tracking-widest text-on-surface-variant">Catálogo del espacio</Text>
             {apps.failed ? (
               <Pressable testID="apps-reintentar" onPress={apps.refresh} className="mt-2 rounded-xl bg-error/10 px-4 py-3"><Text className="text-[13px] text-error">No se pudieron cargar las apps. Toca para reintentar.</Text></Pressable>
@@ -141,5 +133,18 @@ function DirectoryHeader(props: { count: number | null; spaceName: string; onBac
         <Text numberOfLines={1} className="text-[13px] text-on-surface-variant">{`Espacio ${props.spaceName}`}</Text>
       </View>
     </View>
+  );
+}
+
+/** Todas · Instaladas · por categoría: one picked at a time. */
+function FilterChips(props: { chips: ReturnType<typeof directoryChips>; filter: DirectoryFilter; onFilter: (filter: DirectoryFilter) => void }) {
+  return (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3" contentContainerStyle={{ gap: 8 }}>
+      {props.chips.map((chip) => (
+        <Pressable key={chip.key} testID={`chip-apps-${chip.key}`} onPress={() => props.onFilter(chip.key)} className={`min-h-[40px] justify-center rounded-xl border px-4 ${props.filter === chip.key ? 'border-primary bg-primary' : 'border-outline/20 bg-surface'}`}>
+          <Text className={`text-[14px] font-semibold ${props.filter === chip.key ? 'text-on-primary' : 'text-on-surface'}`}>{chip.label}</Text>
+        </Pressable>
+      ))}
+    </ScrollView>
   );
 }

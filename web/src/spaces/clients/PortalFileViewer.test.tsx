@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { usePortalFileViewer } from './PortalFileViewer';
+import { FileThumb, usePortalFileViewer } from './PortalFileViewer';
 
 /**
  * 31/10: Portal and lila send their PDFs SAMEORIGIN, so a frame of their URL is
@@ -60,5 +60,16 @@ describe('the Portal PDF viewer on the web', () => {
     fireEvent.click(screen.getByText('abrir'));
     expect(await screen.findByTestId('pdf-no-disponible')).toHaveTextContent('otra pestaña');
     expect(screen.queryByTestId('pdf-visor')).toBeNull();
+  });
+});
+
+// 13/11: inside a gallery button (not a flex box) an inline box ignored its
+// 64×64 and the reception's photo drew at 0×0 in #agregados.
+describe('FileThumb box', () => {
+  it('is a block, so its size holds outside a flex parent', () => {
+    const { container } = render(<button type="button"><FileThumb file={{ url: 'https://inframaq.constroad.com/api/media/a/b', name: 'foto.jpg', mime: 'image/jpeg' }} size={64} /></button>);
+    const box = container.querySelector('img')?.parentElement;
+    expect(box?.className).toMatch(/\bblock\b/);
+    expect(box?.style.width).toBe('64px');
   });
 });

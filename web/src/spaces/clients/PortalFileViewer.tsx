@@ -129,7 +129,7 @@ export function FileThumb(props: { file: ViewableFile; size?: number }) {
   const preview = mime.startsWith('image/') ? (props.file.thumbUrl ?? props.file.url) : props.file.thumbUrl;
   if (preview) {
     return (
-      <span className="relative shrink-0 overflow-hidden rounded-lg bg-background" style={box}>
+      <span className="relative block shrink-0 overflow-hidden rounded-lg bg-background" style={box}>
         <img src={preview} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
         {mime.startsWith('video/') ? <span className="absolute inset-0 grid place-items-center bg-black/25 text-white"><Play size={16} fill="currentColor" /></span> : null}
       </span>

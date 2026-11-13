@@ -230,15 +230,24 @@ verlo en el espacio. Es temporal: después pedirá que lo saquen.
 - **Canales compartidos que el espacio recibe** (Globofast recibe los de
   Inframaq): ahí él es miembro por Inframaq. Visto desde Globofast sale con
   la etiqueta «Inframaq» y sin rol, nunca «Globofast · Dueño».
-- **Él sí ve todo**, a sí mismo incluido, y el conteo lo incluye solo para él.
+- **Modo incógnito (José 13/11):** tampoco se ve a sí mismo como miembro, en
+  ningún lado: ni en el directorio, ni en las personas de un canal, ni en el
+  conteo del selector de espacios. Y **solo lee**: el server rechaza sus
+  mensajes en los chats de ese espacio (`ensureNotIncognito`, también 1:1), y
+  el detalle trae `incognito: true` para que web y APK cierren el compositor
+  con «Estás en modo incógnito en este espacio: solo puedes leer.».
+  Los mensajes de apps y de Lila (`skipMemberPermissions`) no pasan por ahí.
 - **Lo que sigue a la vista**, a propósito: sus mensajes firmados y su
   «escribiendo». Un 1:1 con él lo muestra, porque es la conversación con él.
   Los avisos de chat que él dispara («José agregó a Ana» en un canal) también.
   La API de apps (`GET /api/bots/members`) lo sigue listando: una app necesita
   saber quién aprueba.
+- **Medaly, admin de todos los canales (13/11, pedido de José):** se la puso
+  admin en los 5 canales de Globofast por la base, sin aviso en el chat (el
+  aviso nombraría a José). Un canal NUEVO no la suma solo: hay que agregarla.
 - **Quitarlo:** pasar a la hermana a admin desde «Miembros y roles» y luego
   sacarlo. Si se quiere solo mostrarlo, `$unset: { hidden: 1 }`.
-- **Test:** `server/src/hiddenMember.test.ts` (7 casos) y el caso del canal
+- **Test:** `server/src/hiddenMember.test.ts` (9 casos) y el caso del canal
   compartido en `server/src/sharedChannels.test.ts`.
 
 **Salir de un espacio o ser desactivado ahí** (12/11, Medaly sale de Inframaq): la persona sale

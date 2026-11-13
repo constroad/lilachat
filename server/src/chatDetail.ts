@@ -5,7 +5,7 @@ import { spaceIdsWithAccess, viewingSpacesOf } from './sharedChannels.js';
 import { UserModel } from './models.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { WorkspaceMemberModel, WorkspaceModel } from './workspaceModels.js';
-import { hiddenInChat, hiddenMembersOf } from './hiddenMembers.js';
+import { hiddenInChat, hiddenMembersOf, isIncognitoIn } from './hiddenMembers.js';
 import { GENERAL_CHANNEL } from './workspaceGeneral.js';
 
 /** Pending 17: my own routines in this chat, only for me; nothing when there are none. */
@@ -72,7 +72,7 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId, viewing
   if (!chat) return null;
   // A hidden member of the space is not among the people the others see (`hiddenMembers.ts`).
   const [hiddenBySpace, people] = await Promise.all([
-    hiddenMembersOf(chat.kind === 'direct' ? [] : [chat.workspaceId]),
+    hiddenMembersOf([chat.workspaceId]),
     UserModel.find({ _id: { $in: chat.members.map((m) => m.userId) } })
       .select('name phone avatarUrl app')
       .lean<{ _id: unknown; name?: string; phone: string; avatarUrl?: string; app?: unknown }[]>(),
@@ -98,6 +98,8 @@ export async function chatDetail(chatId: string, userId: Types.ObjectId, viewing
     ...routinesOf(chat.members.find((m) => String(m.userId) === String(userId))),
     ...(chat.kind === 'direct' ? { blockedByMe: (chat.blockedBy ?? []).some((id) => String(id) === String(userId)) } : {}),
     encrypted: chat.encrypted === true,
+    // José 13/11: hidden in this chat's space, he only reads (`hiddenMembers.ts`).
+    ...(isIncognitoIn(hiddenBySpace, chat.workspaceId, String(userId)) ? { incognito: true } : {}),
     // R31/10-B6: the chat's timer; 0 = off.
     disappearSeconds: chat.disappearSeconds ?? 0,
     // Pending 93: a channel's admins change who finds it; #general is always public.

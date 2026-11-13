@@ -41,7 +41,7 @@ export function CallReactionSheet(props: { peerName: string; onSend: (reaction: 
         {tab === 'winks' ? (
           <WinkPanel recipient={props.peerName} onSend={(id) => send({ kind: 'wink', id })} />
         ) : (
-          <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+          <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12 }}>
             {STICKER_PACK_SECTIONS.map((pack) => (
               <View key={pack.id} className="mb-3">
                 <Text className="mb-2 text-[13px] font-semibold text-on-surface-variant">{pack.title}</Text>

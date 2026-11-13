@@ -3,7 +3,9 @@ import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-nati
 import { Sheet } from '../ui/Sheet';
 import { Check, CheckCheck, X } from 'lucide-react-native';
 import { nombreDeContacto } from '@lilachat/shared';
+import { formatReceiptTime } from '@lilachat/shared';
 import { infoDeMensaje, type MiembroDeInfo } from '../api/client';
+import type { InfoMember } from '../api/client';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useColores } from '../ui/tema';
 
@@ -15,10 +17,17 @@ const SECCIONES = [
   { estado: 'sent', titulo: 'Todavía no le llegó a' },
 ] as const;
 
+/** José 13/11: when, like WhatsApp; empty for receipts older than the log. */
+const receiptTimeOf = (member: InfoMember) => {
+  const at = member.estado === 'read' ? member.readAt : member.deliveredAt;
+  return at ? formatReceiptTime(at) : '';
+};
+
 /**
  * «Info» de un mensaje propio (FL9), como WhatsApp: quién lo leyó, a quién le
  * llegó y a quién todavía no. Los acuses son un cursor por persona: se dice el
  * estado, no la hora. Los nombres, con la agenda del teléfono.
+ * José 13/11: each row also says when (`InfoMember`).
  */
 export function InfoDelMensaje(props: { visible: boolean; chatId: string; seq: number; jwt: string; onCerrar: () => void }) {
   const colores = useColores();
@@ -57,7 +66,8 @@ export function InfoDelMensaje(props: { visible: boolean; chatId: string; seq: n
       ) : carga.fase === 'error' ? (
         <Text className="py-4 text-sm text-error">{carga.motivo}</Text>
       ) : (
-        <ScrollView>
+        // José 13/11: it shrinks inside the sheet; it grew past it and «Entregado a» fell off the screen.
+        <ScrollView style={{ flexShrink: 1 }}>
           {SECCIONES.map(({ estado, titulo }) => {
             const deEstaSeccion = carga.miembros.filter((miembro) => miembro.estado === estado);
             if (deEstaSeccion.length === 0) return null;
@@ -72,9 +82,10 @@ export function InfoDelMensaje(props: { visible: boolean; chatId: string; seq: n
                   <Text className="text-[13px] font-semibold text-on-surface-variant">{titulo}</Text>
                 </View>
                 {deEstaSeccion.map((miembro) => (
-                  <Text key={miembro.id} className="min-h-[36px] py-2 pl-6 text-[15px] text-on-surface">
-                    {nombreDe(miembro)}
-                  </Text>
+                  <View key={miembro.id} className="min-h-[44px] flex-row items-center gap-3 py-2 pl-6">
+                    <Text numberOfLines={1} className="flex-1 text-[15px] text-on-surface">{nombreDe(miembro)}</Text>
+                    {receiptTimeOf(miembro) ? <Text testID="info-hora" className="text-[12px] text-on-surface-variant">{receiptTimeOf(miembro)}</Text> : null}
+                  </View>
                 ))}
               </View>
             );

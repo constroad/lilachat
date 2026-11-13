@@ -392,6 +392,8 @@ export const pedirVistaPrevia = (url: string, token: string) =>
 
 /** Un miembro en la «Info» de un mensaje propio (FL9): su estado, sin hora. */
 export type MiembroDeInfo = { id: string; name: string | null; phone: string | null; estado: 'pending' | 'sent' | 'delivered' | 'read' };
+/** José 13/11: when it was read and got there, like WhatsApp. */
+export type InfoMember = MiembroDeInfo & { readAt?: string; deliveredAt?: string };
 
 export const infoDeMensaje = (chatId: string, seq: number, token: string) =>
   get<{ miembros: MiembroDeInfo[] }>(`/api/chats/${chatId}/messages/${seq}/info`, token);

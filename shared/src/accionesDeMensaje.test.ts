@@ -114,16 +114,21 @@ describe('accionesDeMensaje — destacar', () => {
 
 /** Auditoría (19/10): reenviar fotos y archivos, no solo texto. */
 describe('planDeReenvio', () => {
-  it('en orden: el texto viaja como texto; la foto y el archivo, por referencia (con su pie)', () => {
+  it('en orden, todo por referencia (con su pie); lo vacío no sale', () => {
     const plan = planDeReenvio([
       { chatId: 'c', seq: 5, body: 'mira esto', media: { url: 'x' } },
       { chatId: 'c', seq: 3, body: ' hola ' },
       { chatId: 'c', seq: 4 },
     ]);
     expect(plan).toEqual([
-      { tipo: 'texto', texto: 'hola' },
+      { tipo: 'mensaje', chatId: 'c', seq: 3 },
       { tipo: 'mensaje', chatId: 'c', seq: 5 },
     ]);
+  });
+
+  it('José 13/11: a text goes by reference too, so the copy says «Reenviado»; from a secret chat it travels as text', () => {
+    expect(planDeReenvio([{ chatId: 'c', seq: 3, body: ' hola ' }])).toEqual([{ tipo: 'mensaje', chatId: 'c', seq: 3 }]);
+    expect(planDeReenvio([{ chatId: 'c', seq: 3, body: ' hola ' }], { secret: true })).toEqual([{ tipo: 'texto', texto: 'hola' }]);
   });
 });
 

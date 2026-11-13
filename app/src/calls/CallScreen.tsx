@@ -10,7 +10,7 @@ import type { CallReaction } from '@lilachat/shared';
 import type { CallEmoji } from '@lilachat/shared';
 import { CallReactionOverlay, CallReactionSheet } from './CallReactions';
 import { CallBar, CallMoreSheet, CallNotice, CallTopBar, EffectsButton } from './CallControls';
-import { callBarButtons, moreOptions } from './callBarLayout';
+import { callBarButtons, callVideos, moreOptions } from './callBarLayout';
 import { leyendaDeLlamada, type EstadoDeMedios } from './estadoDeMedios';
 import { useColores, useTema } from '../ui/tema';
 import { useMargenes } from '../ui/useMargenes';
@@ -39,6 +39,7 @@ export function CallScreen({
   medios,
   peerName,
   video,
+  cameraOn = true,
   muted,
   speaker,
   localStream,
@@ -68,6 +69,8 @@ export function CallScreen({
   medios: EstadoDeMedios;
   peerName: string;
   video: boolean;
+  /** My camera (José 13/11): off hides only my box, never the other's video. */
+  cameraOn?: boolean;
   muted: boolean;
   speaker: boolean;
   localStream: MediaStream | null;
@@ -114,6 +117,7 @@ export function CallScreen({
   }, [state.fase]);
 
   const leyenda = leyendaDeLlamada({ state, medios, video, ahora });
+  const shows = callVideos({ video, cameraOn, remote: Boolean(remoteStream), local: Boolean(localStream) });
   const [reacting, setReacting] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const sendEmoji = (emoji: CallEmoji) => onSendReaction({ kind: 'emoji', id: emoji });
@@ -129,7 +133,7 @@ export function CallScreen({
         {/* Video: el remoto llena la pantalla y el propio va en un recuadro
             arriba a la derecha, como en el diseño «Video Llamada». El audio no
             los tiene y cae al avatar de abajo. */}
-        {video && remoteStream ? (
+        {shows.remote && remoteStream ? (
           <RTCView
             streamURL={remoteStream.toURL()}
             objectFit="cover"
@@ -139,11 +143,11 @@ export function CallScreen({
             style={StyleSheet.absoluteFill}
           />
         ) : null}
-        {video && localStream ? (
+        {shows.local && localStream ? (
           <RTCView streamURL={localStream.toURL()} objectFit="cover" mirror={mirrorsSelfView(facing)} zOrder={1} style={estilos.propio} />
         ) : null}
         {/* Like WhatsApp (design c-02): switching the camera and the effects sit under my own view. */}
-        {video && localStream?.getVideoTracks().length ? (
+        {shows.local && localStream?.getVideoTracks().length ? (
           <View style={estilos.selfActions} className="flex-row gap-3">
             {screen.sharing ? null : (
               <Pressable testID="btn-girar-camara" accessibilityLabel={facing === 'user' ? 'Usar la cámara trasera' : 'Usar la cámara frontal'} onPress={onSwitchCamera} className="h-11 w-11 items-center justify-center rounded-full bg-black/45">
@@ -165,7 +169,7 @@ export function CallScreen({
 
         <View className="flex-1 items-center justify-center">
           {/* With the other's video the face would cover it. */}
-          {video && remoteStream ? null : <PeerFace photo={peerPhoto} initials={inicialesDelOtro ?? ''} />}
+          {shows.remote ? null : <PeerFace photo={peerPhoto} initials={inicialesDelOtro ?? ''} />}
         </View>
 
         <View className="px-4" style={{ paddingBottom: margenes.pie + 24 }}>
@@ -181,7 +185,7 @@ export function CallScreen({
           ) : (
             <>
               <CallNotice text={screen.sharing ? 'Estás compartiendo tu pantalla' : notice} />
-              <CallBar buttons={callBarButtons(puedeAlternarVideo)} video={video} muted={muted} speaker={speaker} onMore={() => setMoreOpen(true)} onToggleVideo={onToggleVideo} onToggleSpeaker={onToggleSpeaker} onToggleMute={onToggleMute} onHangUp={onHangUp} />
+              <CallBar buttons={callBarButtons(puedeAlternarVideo)} video={video && cameraOn} muted={muted} speaker={speaker} onMore={() => setMoreOpen(true)} onToggleVideo={onToggleVideo} onToggleSpeaker={onToggleSpeaker} onToggleMute={onToggleMute} onHangUp={onHangUp} />
             </>
           )}
         </View>

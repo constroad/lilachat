@@ -500,3 +500,28 @@ Lo que `specs/ARCHITECTURE.spec.md` (§120 a §134) afirma de la interfaz y no e
 - **Botón fijo «Instalar en <espacio>» / «Mensaje» en el detalle de la app** (§122, diseño e-25). Fijo al pie solo en la app (`DetailFoot`, app/src/spaces/apps/AppDetailScreen.tsx:166-196). En la web el botón va dentro de la tarjeta de arriba, y se va con el scroll (web/src/spaces/apps/AppDetail.tsx:58-65).
 - **Pestaña Ajustes con el espacio abierto, en la web.** El spec (§131) describe la pestaña sin distinguir plataforma; en la web no existe (solo la sección «Espacio de trabajo» de la lista del espacio, web/src/spaces/SpaceChatList.tsx:195-214). La versión con espacio arriba es solo de la app (app/src/spaces/SpaceSettingsSection.tsx:18).
 - **Aviso de versión según `audience`, en la web.** El spec (§131) habla de «la banda» y de la app que lee las notas publicadas; en `web/src` no hay ninguna referencia a `audience` ni a `updateMatters`, así que la web no filtra por audiencia (el filtro vive en app/src/settings/useActualizacionesDeLaApp.ts:100-111).
+
+## José 13/11 noche: chat, llamadas y hojas
+
+- **Reenviado, como WhatsApp.** Todo reenvío va por `POST /api/chats/:id/reenviar`,
+  texto incluido: el server marca la copia `forwarded: true` y las burbujas
+  dicen «↪ Reenviado» (`ForwardedLabel` en el APK, `BurbujaDeMensaje` en la web).
+  El texto de un chat secreto sigue saliendo como texto: en el server solo hay
+  el sobre cifrado. Test: `server/src/reenvio.test.ts`, `planDeReenvio`.
+- **«Info del mensaje» con la hora.** El acuse era un cursor sin hora. Ahora
+  cada `Receipt` guarda las últimas 60 subidas (`readLog`, `deliveredLog`) y
+  «Info» dice «Hoy, 10:32 a. m.» (`timeOfSeq`, `formatReceiptTime`). Lo leído
+  antes de este cambio sale sin hora.
+- **Hojas que se salían de la pantalla.** Un `ScrollView` dentro de una hoja
+  con alto máximo no se achica solo: crecía por debajo de los botones de
+  Android. Con `flexShrink: 1` hacen scroll. Le pasaba a «Fotos recientes» del
+  clip y a «Entregado a» de «Info». Se aplicó a todas las hojas con lista.
+- **Compositor que crece.** APK hasta un 30 % de la pantalla; web hasta 40vh
+  (`field-sizing: content`, o el alto medido donde no existe).
+- **Videollamada: apagar mi cámara ya no oculta la del otro.** Un solo `video`
+  decía «es videollamada» y «mi cámara prendida». Ahora `cameraOn` va aparte
+  (`callVideos`, test en `callBarLayout.test.ts`).
+- **Riel en modo claro:** las iniciales de «Personal» usan `on-rail-active`.
+- **Sin verificar todavía:** la videollamada que se corta al cambiar de app
+  (falta Picture-in-Picture nativo, va en el próximo APK) y el zoom 0.6x de la
+  cámara (expo-camera no baja de 1x en Android: va con un parche nativo).

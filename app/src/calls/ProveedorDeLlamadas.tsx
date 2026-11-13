@@ -125,6 +125,7 @@ export function ProveedorDeLlamadas({ jwt, me, children, onOpenChat }: { jwt: st
           peerName={llamada.peerName}
           peerPhoto={chatsEnMemoria()?.find((uno) => uno.id === llamada.chatId)?.avatarUrl}
           video={llamada.video}
+          cameraOn={llamada.cameraOn}
           puedeAlternarVideo={llamada.conVideoDesdeElInicio}
           muted={llamada.muted}
           speaker={llamada.speaker}

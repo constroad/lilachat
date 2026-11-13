@@ -57,7 +57,7 @@ export function StickerPanel(props: { stickers: StickersState; onSend: (sticker:
       {library === null ? (
         <View className="flex-1 items-center justify-center"><ActivityIndicator color={colors.primary} /></View>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingHorizontal: GAP, paddingBottom: 12 }}>
+        <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingHorizontal: GAP, paddingBottom: 12 }}>
           {visible.map((section, index) => (
             <View key={section.key} testID={`seccion-stickers-${section.key}`}>
               <View className="flex-row items-center justify-between px-1 pb-2 pt-2">

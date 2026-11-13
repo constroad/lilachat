@@ -3,6 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { memo } from 'react';
 import * as Haptics from 'expo-haptics';
 import { CircleAlert } from 'lucide-react-native';
+import { ForwardedLabel } from './ForwardedLabel';
 import { AVATAR_DE_AUTOR, colorDeAutor, dondeVaLaHora, mostrarAutor, radiosDeBurbuja } from './burbuja';
 import { DeslizarParaResponder } from './DeslizarParaResponder';
 import { HighlightedNotice } from './HighlightedNotice';
@@ -341,6 +342,7 @@ function FilaDeMensaje({
             />
           ) : null}
 
+          {!isPending(item) && item.forwarded && !item.deletedAt ? <ForwardedLabel testID={`reenviado-${item.seq}`} className="px-3 pt-1 " /> : null}
           {album ? <AlbumGrid items={album} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} /> : <MessageMedia item={item} mine={mine} selecting={enSeleccion} onSelect={onSeleccionar} onOpen={onVerImagen} onGifTap={jwt && !isPending(item) ? (seq) => showGifOptions({ jwt, chatId: item.chatId, seq, onOpen: () => onVerImagen?.(seq) }) : undefined} author={{ name: mine ? 'Tú' : (nombreAutor ?? ''), photo: fotoAutor }} />}
 
           {!isPending(item) && item.sharedBy && !item.deletedAt ? (

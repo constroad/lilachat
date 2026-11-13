@@ -54,7 +54,7 @@ export function HojaDeReacciones(props: {
           </Pressable>
         ))}
       </ScrollView>
-      <ScrollView>
+      <ScrollView style={{ flexShrink: 1 }}>
         {ordenadas.map((una) => {
           const mia = una.userId === props.yo;
           return (

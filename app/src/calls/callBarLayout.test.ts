@@ -24,3 +24,12 @@ describe('moreOptions', () => {
     expect(moreOptions(true, false)).toEqual(['message', 'reactions']);
   });
 });
+
+describe('callVideos (José 13/11: «si apago mi cámara ya no puedo ver la cámara de mi contacto»)', () => {
+  it('my camera off hides only my box; the other keeps showing', async () => {
+    const { callVideos } = await import('./callBarLayout');
+    expect(callVideos({ video: true, cameraOn: false, remote: true, local: true })).toEqual({ remote: true, local: false });
+    expect(callVideos({ video: true, cameraOn: true, remote: true, local: true })).toEqual({ remote: true, local: true });
+    expect(callVideos({ video: false, cameraOn: true, remote: true, local: true })).toEqual({ remote: false, local: false });
+  });
+});

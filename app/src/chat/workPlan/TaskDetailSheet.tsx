@@ -77,7 +77,7 @@ export function TaskDetailSheet(props: Props) {
       {resolved ? (
         <>
           <Header resolved={resolved} channelName={props.channelName} onClose={props.onClose} />
-          <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
+          <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ padding: 16, gap: 12 }}>
             <Facts resolved={resolved} nameOf={props.nameOf} />
             <Evidence files={resolved.item.evidence ?? []} canUpload={canMark} uploading={busy === 'subir'} onUpload={askUpload} onOpen={(file) => { props.onClose(); props.onOpenMessage(file.seq); }} onRemove={askRemove} />
             <Activity item={resolved.item} nameOf={props.nameOf} />

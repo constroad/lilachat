@@ -116,12 +116,13 @@ export type PasoDeReenvio = { tipo: 'texto'; texto: string } | { tipo: 'mensaje'
  * texto como texto; una foto o un archivo, por referencia —el server copia el
  * archivo y su pie (`POST /api/chats/:id/reenviar`)—. Lo vacío no sale.
  */
-export function planDeReenvio(mensajes: readonly { chatId: string; seq: number; body?: string; media?: unknown }[]): PasoDeReenvio[] {
+export function planDeReenvio(mensajes: readonly { chatId: string; seq: number; body?: string; media?: unknown }[], options: { secret?: boolean } = {}): PasoDeReenvio[] {
   return [...mensajes]
     .sort((a, b) => a.seq - b.seq)
     .flatMap((mensaje): PasoDeReenvio[] => {
-      if (mensaje.media) return [{ tipo: 'mensaje', chatId: mensaje.chatId, seq: mensaje.seq }];
       const texto = mensaje.body?.trim();
+      // José 13/11: by reference, the server marks the copy «Reenviado». A secret chat's text only exists here.
+      if (mensaje.media || (texto && !options.secret)) return [{ tipo: 'mensaje', chatId: mensaje.chatId, seq: mensaje.seq }];
       return texto ? [{ tipo: 'texto', texto }] : [];
     });
 }

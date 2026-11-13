@@ -41,6 +41,8 @@ export type ServerMessage = {
   files?: GalleryItem[];
   /** An app's answer sent to the channel by who asked: «José usó /clima» on top. */
   sharedBy?: { name: string; command: string };
+  /** José 13/11: a copy forwarded from another chat. */
+  forwarded?: boolean;
   /** El sobre cifrado, en chats secretos (F9). Llega en vez de `body`. */
   envelope?: { v: 1; nonce: string; ciphertext: string };
   /** La encuesta o el evento que publica este mensaje (18/10): se dibuja como tarjeta. */

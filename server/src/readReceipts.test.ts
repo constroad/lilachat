@@ -104,3 +104,38 @@ describe('who learns «leído»', () => {
     expect(await receiptAudience('no-es-un-id')).toEqual({ members: [], hideRead: false });
   });
 });
+
+describe('«Info» says WHEN, like WhatsApp (José 13/11: «no se ve el tiempo que vieron el mensaje»)', () => {
+  it('the time the cursor passed the message, for read and for delivered', async () => {
+    // Arrange
+    const { markDelivered, markRead } = await import('./acusesDelChat.js');
+    await ChatModel.updateOne({ _id: groupId }, { $set: { lastSeq: 5 } });
+    await MessageModel.insertMany([4, 5].map((seq) => ({ chatId: groupId, seq, senderId: jose, clientKey: `g${seq}`, body: `g${seq}`, kind: 'text' as const })));
+    // Act
+    await markDelivered({ chatId: String(groupId), userId: ana, seq: 5 });
+    await markRead({ chatId: String(groupId), userId: ana, seq: 4 });
+    const info = await infoDeMensaje({ chatId: String(groupId), seq: 5, quien: jose });
+    const four = await infoDeMensaje({ chatId: String(groupId), seq: 4, quien: jose });
+    // Assert
+    const anaOn5 = info.ok ? info.miembros.find((member) => member.id === String(ana)) : undefined;
+    expect(anaOn5).toMatchObject({ estado: 'delivered', deliveredAt: expect.any(String) });
+    expect(anaOn5?.readAt).toBeUndefined();
+    const anaOn4 = four.ok ? four.miembros.find((member) => member.id === String(ana)) : undefined;
+    expect(anaOn4).toMatchObject({ estado: 'read', readAt: expect.any(String), deliveredAt: expect.any(String) });
+    // A receipt from before the log existed says the state, without a time.
+    const betoOn4 = four.ok ? four.miembros.find((member) => member.id === String(beto)) : undefined;
+    expect(betoOn4).toMatchObject({ estado: 'sent' });
+    expect(betoOn4?.readAt).toBeUndefined();
+  });
+});
+
+describe('timeOfSeq', () => {
+  it('the first advance that reached the message; none when the log never did', async () => {
+    const { timeOfSeq } = await import('./acusesDelChat.js');
+    const log = [{ seq: 2, at: new Date('2026-11-13T10:00:00Z') }, { seq: 6, at: new Date('2026-11-13T10:05:00Z') }];
+    expect(timeOfSeq(log, 2)?.toISOString()).toBe('2026-11-13T10:00:00.000Z');
+    expect(timeOfSeq(log, 3)?.toISOString()).toBe('2026-11-13T10:05:00.000Z');
+    expect(timeOfSeq(log, 7)).toBeUndefined();
+    expect(timeOfSeq(undefined, 1)).toBeUndefined();
+  });
+});

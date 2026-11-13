@@ -115,9 +115,8 @@ export async function myWorkspaces(userId: Types.ObjectId) {
   return memberships.flatMap((m) => {
     const workspace = byId.get(String(m.workspaceId));
     const key = String(m.workspaceId);
-    // A hidden member counts himself: only the others do not count him (`hiddenMembers.ts`).
-    const self = m.hidden === true && m.status === 'active' ? 1 : 0;
-    return workspace ? [{ ...toClientWorkspace(workspace, m), members: (counts.get(key) ?? 0) + self, unreadChats: m.status === 'active' ? (unread.get(key) ?? 0) : 0, ...extras.get(key) }] : [];
+    // A hidden member is not counted, not even by himself (José 13/11, `hiddenMembers.ts`).
+    return workspace ? [{ ...toClientWorkspace(workspace, m), members: counts.get(key) ?? 0, unreadChats: m.status === 'active' ? (unread.get(key) ?? 0) : 0, ...extras.get(key) }] : [];
   });
 }
 
@@ -186,8 +185,8 @@ export async function listMembers(workspaceId: string, userId: Types.ObjectId, s
   const wanted: WorkspaceMemberStatus[] = status === 'all' ? ['active', 'pending', 'invited', 'deactivated'] : [status === 'pending' || status === 'invited' || status === 'deactivated' ? status : 'active'];
   if (wanted.some((one) => one !== 'active') && !canManageMembers(actor.role)) throw new WorkspaceError(403, ONLY_ADMINS);
   const members = await WorkspaceMemberModel.find({ workspaceId: actor.workspaceId, status: { $in: wanted } }).sort({ createdAt: 1 }).lean<WorkspaceMember[]>();
-  // A hidden member is in his own directory and in nobody else's (`hiddenMembers.ts`).
-  return toClientMembers(members.filter((member) => member.hidden !== true || String(member.userId) === String(userId)));
+  // A hidden member is in nobody's directory, his own included (José 13/11, `hiddenMembers.ts`).
+  return toClientMembers(members.filter((member) => member.hidden !== true));
 }
 
 export async function addByPhone(workspaceId: string, actorId: Types.ObjectId, input: { phone?: unknown; title?: unknown; area?: unknown }) {

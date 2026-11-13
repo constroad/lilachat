@@ -130,6 +130,8 @@ export interface Message {
   files?: GalleryItem[];
   /** An app's answer to a command, sent to the channel by who asked (José, 23/10): drawn as «José usó /clima» on top. */
   sharedBy?: { userId: Types.ObjectId; name: string; command: string };
+  /** José 13/11: a copy of another chat's message, shown «Reenviado» like WhatsApp. */
+  forwarded?: boolean;
   /** A message an app posted to a client's channel (pending 21, §157): what it is about. */
   clientRef?: { kind: string; serviceId?: string; recordId?: string };
   /**
@@ -224,7 +226,12 @@ export interface Receipt {
   userId: Types.ObjectId;
   deliveredSeq: number;
   readSeq: number;
+  /** José 13/11: WHEN each cursor advanced (the last few), so «Info» says the time, like WhatsApp. */
+  readLog?: ReceiptMark[];
+  deliveredLog?: ReceiptMark[];
 }
+
+export type ReceiptMark = { seq: number; at: Date };
 
 const chatSchema = new Schema<Chat>(
   {
@@ -310,6 +317,7 @@ const messageSchema = new Schema<Message>(
     // Validated by `validateBotFiles` (shared): Constroad hosts, images and videos, up to 20.
     files: { type: Schema.Types.Mixed, default: undefined },
     sharedBy: { userId: Schema.Types.ObjectId, name: String, command: String },
+    forwarded: { type: Boolean },
     clientRef: { type: new Schema({ kind: String, serviceId: String, recordId: String }, { _id: false }), default: undefined },
     envelope: {
       v: { type: Number },
@@ -385,6 +393,8 @@ const receiptSchema = new Schema<Receipt>(
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     deliveredSeq: { type: Number, default: 0 },
     readSeq: { type: Number, default: 0 },
+    readLog: { type: [{ seq: Number, at: Date, _id: false }], default: undefined },
+    deliveredLog: { type: [{ seq: Number, at: Date, _id: false }], default: undefined },
   },
   { timestamps: true }
 );

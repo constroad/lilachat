@@ -40,7 +40,7 @@ export function QuickActionsSheet(props: QuickActionsSheetProps) {
         <Text className="flex-1 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{props.title}</Text>
         <Pressable accessibilityLabel="Cerrar" onPress={props.onClose} hitSlop={8} className="h-10 w-10 items-center justify-center rounded-full bg-surface-variant"><X size={18} color={colors['on-surface-variant']} /></Pressable>
       </View>
-      <ScrollView contentContainerStyle={{ padding: SHEET_PADDING, gap: 12 }} keyboardShouldPersistTaps="handled">
+      <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ padding: SHEET_PADDING, gap: 12 }} keyboardShouldPersistTaps="handled">
         <Text className="text-[13px] text-on-surface-variant">{props.hint}</Text>
         {props.children}
         {props.loading ? SKELETON_ROWS.map((index) => <View key={index} className="h-16 rounded-2xl bg-surface-variant" />) : null}

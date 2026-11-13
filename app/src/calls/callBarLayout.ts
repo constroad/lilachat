@@ -14,3 +14,11 @@ export function callBarButtons(canToggleVideo: boolean): CallBarButton[] {
 export function moreOptions(hasChat: boolean, canShareScreen = false): MoreOption[] {
   return [...(hasChat ? (['message'] as const) : []), ...(canShareScreen ? (['screen'] as const) : []), 'reactions'];
 }
+
+/**
+ * Which videos a 1:1 video call shows. José 13/11: turning MY camera off hid the other's video too,
+ * because one flag said both «video call» and «my camera on». PURE.
+ */
+export function callVideos(params: { video: boolean; cameraOn: boolean; remote: boolean; local: boolean }): { remote: boolean; local: boolean } {
+  return { remote: params.video && params.remote, local: params.video && params.cameraOn && params.local };
+}

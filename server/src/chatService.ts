@@ -11,6 +11,7 @@ import {
 import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Chat, type Message, type ResumenDeHilo } from './chatModels.js';
 import { anotarRespuesta, descontarRespuesta, validarRaiz } from './hilos.js';
+import { ensureNotIncognito } from './hiddenMembers.js';
 import { BlockedContactError, CifradoRequeridoError, ForbiddenChatError, OnlyAdminsSendError } from './erroresDelChat.js';
 
 export { CifradoRequeridoError, ForbiddenChatError } from './erroresDelChat.js';
@@ -89,6 +90,8 @@ export async function sendMessage(params: {
   files?: Message['files'];
   /** Who sent an app's answer to the channel (`shareCommandAnswer`). */
   sharedBy?: Message['sharedBy'];
+  /** Forwarded from another chat (`reenvio.ts`). */
+  forwarded?: boolean;
   replyToSeq?: number;
   /** Las @menciones que mandó el cliente: se guardan solo las que valen. */
   menciones?: unknown;
@@ -113,6 +116,9 @@ export async function sendMessage(params: {
   // así que no hace falta mirar la membresía antes (un viaje menos).
   const existing = await mensajePropioPorClave({ chatId, senderId: params.senderId, clientKey: params.clientKey });
   if (existing) return { message: existing, duplicate: true };
+
+  // José 13/11: a hidden superadmin only reads the chats of his space (`hiddenMembers.ts`).
+  if (!params.skipMemberPermissions) await ensureNotIncognito(chatId, params.senderId);
 
   // Un hilo se valida ANTES de reservar el `seq`: una raíz inválida no gasta número.
   if (params.hiloDe !== undefined) await validarRaiz(chatId, params.hiloDe, Boolean(params.envelope));
@@ -177,6 +183,7 @@ export async function sendMessage(params: {
       ...(params.card ? { card: params.card } : {}),
       ...(params.files?.length ? { files: params.files } : {}),
       ...(params.sharedBy ? { sharedBy: params.sharedBy } : {}),
+      ...(params.forwarded ? { forwarded: true } : {}),
       ...(params.contact && !params.envelope ? { contact: params.contact } : {}),
       ...(params.location && !params.envelope ? { location: params.location } : {}),
       replyToSeq: params.replyToSeq,

@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { ChatModel, MessageModel, ReceiptModel, type Message } from './chatModels.js';
+import { ChatModel, MessageModel, ReceiptModel, type Message, type ReceiptMark } from './chatModels.js';
 import { ForbiddenChatError } from './erroresDelChat.js';
 
 /**
@@ -60,6 +60,20 @@ async function ultimoSeqDelMiembro(chatId: string, userId: Types.ObjectId): Prom
   return { id, lastSeq: chat.lastSeq ?? 0 };
 }
 
+/** How many advances each receipt remembers: older messages keep their state, without a time. */
+const RECEIPT_LOG_MAX = 60;
+const LOG_OF = { readSeq: 'readLog', deliveredSeq: 'deliveredLog' } as const;
+
+/** The `$push` that remembers when these cursors reached `seq`. */
+function logPush(campos: readonly ('readSeq' | 'deliveredSeq')[], seq: number, at: Date) {
+  return { $push: Object.fromEntries(campos.map((campo) => [LOG_OF[campo], { $each: [{ seq, at }], $slice: -RECEIPT_LOG_MAX }])) };
+}
+
+/** When the cursor first reached `seq`: the first logged advance at or past it. PURE. */
+export function timeOfSeq(log: readonly ReceiptMark[] | undefined, seq: number): Date | undefined {
+  return log?.find((mark) => mark.seq >= seq)?.at;
+}
+
 async function moverCursor(
   filtro: { chatId: Types.ObjectId; userId: Types.ObjectId },
   campos: ('readSeq' | 'deliveredSeq')[],
@@ -70,7 +84,9 @@ async function moverCursor(
     { $max: Object.fromEntries(campos.map((campo) => [campo, seq])) },
     { upsert: true, new: false, projection: { readSeq: 1, deliveredSeq: 1 } }
   ).lean();
-  return !anterior || campos.some((campo) => (anterior[campo] ?? 0) < seq);
+  const advanced = campos.filter((campo) => !anterior || (anterior[campo] ?? 0) < seq);
+  if (advanced.length) await ReceiptModel.updateOne(filtro, logPush(advanced, seq, new Date()));
+  return advanced.length > 0;
 }
 
 /**
@@ -147,7 +163,7 @@ export async function entregarAlConectar(userId: Types.ObjectId): Promise<{ chat
   const atrasados = chats.filter((chat) => chat.lastSeq > (entregado.get(String(chat._id)) ?? 0));
   if (atrasados.length === 0) return [];
   await ReceiptModel.bulkWrite(
-    atrasados.map((chat) => ({ updateOne: { filter: { chatId: chat._id, userId }, update: { $max: { deliveredSeq: chat.lastSeq } }, upsert: true } }))
+    atrasados.map((chat) => ({ updateOne: { filter: { chatId: chat._id, userId }, update: { $max: { deliveredSeq: chat.lastSeq }, ...logPush(['deliveredSeq'], chat.lastSeq, new Date()) }, upsert: true } }))
   );
   return atrasados.map((chat) => ({ chatId: String(chat._id), seq: chat.lastSeq, miembros: chat.members.map((miembro) => String(miembro.userId)) }));
 }

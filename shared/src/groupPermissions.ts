@@ -47,3 +47,6 @@ export function memberPermissionsPatch(raw: unknown): Partial<MemberPermissions>
   }
   return Object.keys(patch).length ? patch : null;
 }
+
+/** José 13/11: a hidden superadmin (`hiddenMembers.ts` in the server) only reads the space's chats. */
+export const INCOGNITO_COMPOSER = 'Estás en modo incógnito en este espacio: solo puedes leer.';

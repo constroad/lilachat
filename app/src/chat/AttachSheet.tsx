@@ -194,6 +194,7 @@ export function AttachSheet(props: {
           {limitedBanner}
           <FlatList
             testID="attach-galeria-reciente"
+            style={{ flexShrink: 1 }}
             data={assets}
             numColumns={COLUMNS}
             keyExtractor={(asset) => asset.id}
@@ -206,7 +207,8 @@ export function AttachSheet(props: {
           />
         </>
       ) : (
-        <ScrollView contentContainerStyle={{ paddingBottom: selected.length ? SEND_BUTTON_ROOM : 8 }}>
+        // José 13/11: without shrinking, the list grew past the sheet and «Fotos recientes» sat under Android's buttons.
+        <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingBottom: selected.length ? SEND_BUTTON_ROOM : 8 }}>
           {sections.map((section, index) => (
             <View key={section.title} className={`mx-5 py-3 ${index > 0 ? 'border-t border-outline/15' : ''}`}>
               <Kicker>{section.title}</Kicker>

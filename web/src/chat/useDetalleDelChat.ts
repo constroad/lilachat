@@ -27,6 +27,7 @@ export type DetalleDelChat = {
   memberPermissions?: unknown;
   /** Pending 9: in a 1:1, whether I blocked the other one. */
   blockedByMe?: boolean;
+  incognito?: boolean;
   /** Pending 17: my own routines in this chat. */
   routines?: { quietHours?: QuietHours; contactNote?: ContactNote };
   /** Birthdays on in this chat (pending 17). */
@@ -48,6 +49,7 @@ export type Respuesta = {
   funAllowed?: boolean;
   memberPermissions?: unknown;
   blockedByMe?: boolean;
+  incognito?: boolean;
   routines?: { quietHours?: QuietHours; contactNote?: ContactNote };
   birthdaysOn?: boolean;
   channel?: { visibility: 'public' | 'private'; general: boolean; shared?: boolean; workspaceId?: string };
@@ -90,6 +92,7 @@ export function aDetalle(respuesta: Respuesta): DetalleDelChat {
     funAllowed: respuesta.funAllowed === true,
     memberPermissions: respuesta.memberPermissions,
     blockedByMe: respuesta.blockedByMe === true,
+    incognito: respuesta.incognito === true,
     routines: respuesta.routines,
     birthdaysOn: respuesta.birthdaysOn === true,
     ...(respuesta.channel ? { channel: { isPrivate: respuesta.channel.visibility === 'private', general: respuesta.channel.general, ...(respuesta.channel.workspaceId ? { ownerSpaceId: respuesta.channel.workspaceId } : {}) } } : {}),

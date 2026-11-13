@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { beginInteraction, SEND_FRAME_WINDOW_MS, timed, useRenderCost } from '../diagnostico/frameMonitor';
 import { Camera, Paperclip, Send, X } from 'lucide-react-native';
@@ -35,6 +35,8 @@ const ESPERA_PARA_GUARDAR_MS = 500;
 const REPLY_FOCUS_DELAY_MS = 250;
 /** Solo un texto con algo así lleva tarjeta: sin esto, cada tecla redibujaría la barra. */
 const PARECE_UN_LINK = /https?:\/\/|www\./i;
+/** José 13/11: how much of the screen a long text may take before the field scrolls. */
+const COMPOSER_MAX_SHARE = 0.3;
 
 export type Respondiendo = { seq: number; texto: string; mio: boolean };
 
@@ -113,6 +115,7 @@ export const Composer = memo(function Composer(props: {
   const colores = useColores();
   // The bar is one point above the bubble (16 at Mediana, as it was).
   const font = useChatFont();
+  const { height: windowHeight } = useWindowDimensions();
   /**
    * El campo NO es controlado (FL12, §49 #15): con `value` cada tecla iba y
    * volvía entre JS y el nativo y redibujaba la barra, y con el hilo JS ocupado
@@ -348,8 +351,9 @@ export const Composer = memo(function Composer(props: {
         onBlur={() => setFocused(false)}
         // 46 + el borde = 48: la misma altura que el micrófono (FL13). Con 44
         // el multilínea de Android crecía y quedaban desalineados.
-        className="max-h-28 min-h-[46px] min-w-0 flex-1 py-3 pr-3 text-on-surface"
-        style={{ fontSize: font.size + 1 }}
+        className="min-h-[46px] min-w-0 flex-1 py-3 pr-3 text-on-surface"
+        // José 13/11: it grows with a long text, like Claude's input, up to a third of the screen.
+        style={{ fontSize: font.size + 1, maxHeight: Math.round(windowHeight * COMPOSER_MAX_SHARE) }}
         // «Mensaje», como WhatsApp: con el emoji adentro, «Escribe un mensaje» se partía en dos líneas.
         placeholder="Mensaje"
         placeholderTextColor={colores.outline}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Check, CheckCheck, Clock } from 'lucide-react';
 import { puedeEliminar } from '@lilachat/shared';
+import { formatReceiptTime } from '@lilachat/shared';
 import { api } from '../api';
 import { Avatar } from '../ui/Avatar';
 import { Overlay, PrimaryButton } from '../ui/Overlay';
@@ -48,11 +49,19 @@ export function DialogoEliminar(props: {
 
 
 type MiembroDeInfo = { id: string; name: string | null; phone: string | null; estado: 'pending' | 'sent' | 'delivered' | 'read' };
+/** José 13/11: when it was read and got there, like WhatsApp. */
+type InfoMember = MiembroDeInfo & { readAt?: string; deliveredAt?: string };
 const GRUPOS: { estado: MiembroDeInfo['estado']; titulo: string }[] = [
   { estado: 'read', titulo: 'Leído por' },
   { estado: 'delivered', titulo: 'Entregado a' },
   { estado: 'sent', titulo: 'Enviado' },
 ];
+
+/** José 13/11: when, like WhatsApp; empty for receipts older than the log. */
+const receiptTimeOf = (member: InfoMember) => {
+  const at = member.estado === 'read' ? member.readAt : member.deliveredAt;
+  return at ? formatReceiptTime(at) : '';
+};
 
 /** «Info» de un mensaje propio: quién lo leyó y a quién le llegó. */
 export function DialogoInfo(props: { chatId: string; mensaje: MensajeEnPantalla; jwt: string; onCerrar: () => void }) {
@@ -78,7 +87,10 @@ export function DialogoInfo(props: { chatId: string; mensaje: MensajeEnPantalla;
               {titulo}
             </h3>
             {deEste.map((uno) => (
-              <p key={uno.id} className="py-1 text-sm">{uno.name ?? uno.phone ?? 'Alguien'}</p>
+              <p key={uno.id} className="flex items-baseline justify-between gap-3 py-1 text-sm">
+                <span className="truncate">{uno.name ?? uno.phone ?? 'Alguien'}</span>
+                {receiptTimeOf(uno) ? <span className="shrink-0 text-[12px] text-on-surface-variant" data-testid="info-hora">{receiptTimeOf(uno)}</span> : null}
+              </p>
             ))}
           </section>
         );

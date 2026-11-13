@@ -383,3 +383,14 @@ describe('nudge preview', () => {
     expect(resolveChatPreview({ typing: false, lastKind: 'guino' })).toEqual({ text: 'Guiño', style: 'normal' });
   });
 });
+
+describe('formatReceiptTime (José 13/11: «Info» says when)', () => {
+  it('the day and the clock; nothing for a bad date', async () => {
+    const { formatReceiptTime, formatClock } = await import('./chatDisplay.js');
+    const now = new Date(2026, 10, 13, 18, 0);
+    const today = new Date(2026, 10, 13, 10, 32);
+    expect(formatReceiptTime(today, now)).toBe(`Hoy, ${formatClock(today)}`);
+    expect(formatReceiptTime(new Date(2026, 10, 12, 9, 5), now)).toMatch(/^Ayer, /);
+    expect(formatReceiptTime('no-date', now)).toBe('');
+  });
+});

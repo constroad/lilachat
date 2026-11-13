@@ -30,7 +30,7 @@ export function SpacesRail(props: { spaces: readonly ClientWorkspace[] | null; c
     // A scrolling box also clips sideways: both boxes take the rail's full width, so the ring and the
     // badges that stick out of each 40 px icon have room, and the scrollbar is hidden so it eats none.
     <Wrapper data-testid="riel-de-espacios" aria-label="Espacios" className={props.embedded ? 'rail-scroll flex min-h-0 w-full flex-1 flex-col items-center gap-2.5 overflow-y-auto py-2' : 'flex h-full w-[64px] shrink-0 flex-col items-center gap-2.5 bg-rail py-3'}>
-      <button type="button" data-testid="riel-personal" title="Personal" aria-current={props.currentId === null} aria-label={props.personalUnread ? `Personal, ${props.personalUnread} sin leer` : 'Personal'} onClick={() => props.onPick(null)} className={`${item(props.currentId === null, 'rounded-full')} bg-primary/10 text-sm font-bold text-primary`}>
+      <button type="button" data-testid="riel-personal" title="Personal" aria-current={props.currentId === null} aria-label={props.personalUnread ? `Personal, ${props.personalUnread} sin leer` : 'Personal'} onClick={() => props.onPick(null)} className={`${item(props.currentId === null, 'rounded-full')} bg-on-rail/15 text-sm font-bold text-on-rail-active`}>
         {spaceInitials(props.me.name || props.me.phone)}
         <Badge count={props.personalUnread} />
       </button>

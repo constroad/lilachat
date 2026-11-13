@@ -77,6 +77,8 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
   const nombreDeRef = useRef(params.nombreDe);
   nombreDeRef.current = params.nombreDe;
   const [video, setVideo] = useState(false);
+  /** My camera, apart from «video call» (José 13/11). */
+  const [cameraOn, setCameraOn] = useState(true);
   const [muted, setMuted] = useState(false);
   const [speaker, setSpeaker] = useState(false);
   /** Front or rear camera (pending 97); every call starts with the front one. */
@@ -335,6 +337,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       setPeerName(nombreRef.current);
       conVideoRef.current = Boolean(data.video);
       setVideo(Boolean(data.video));
+      setCameraOn(true);
       setConVideoDesdeElInicio(Boolean(data.video));
       // El ref YA: si se tocó «Contestar» en la notificación, se decide en
       // este mismo tick, antes del render que actualizaría el ref.
@@ -438,6 +441,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       conVideoRef.current = conVideo;
       setPeerName(nombre);
       setVideo(conVideo);
+      setCameraOn(true);
       setConVideoDesdeElInicio(conVideo);
       setSpeaker(conVideo);
       setState({ fase: 'llamando', desde: Date.now(), entrante: false });
@@ -589,8 +593,9 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
     },
     clearReaction,
     switchCamera: () => switchCameraTrack({ track: localRef.current?.getVideoTracks()[0], facing, switching: switchingRef, onSwitched: setFacing }),
+    cameraOn,
     alternarVideo: () =>
-      setVideo((valor) => {
+      setCameraOn((valor) => {
         const nuevo = !valor;
         localRef.current?.getVideoTracks().forEach((track) => (track.enabled = nuevo));
         return nuevo;

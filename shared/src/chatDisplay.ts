@@ -249,3 +249,9 @@ export function esAcuseDeOtro(params: { de: string; yo: string }): boolean {
   if (!params.yo) return false;
   return params.de !== params.yo;
 }
+
+/** José 13/11: when someone read or got a message, in «Info», like WhatsApp: «Hoy, 10:32 a. m.». */
+export function formatReceiptTime(at: string | Date, now: Date = new Date()): string {
+  const reloj = formatClock(at);
+  return reloj ? `${formatDayLabel(at, now)}, ${reloj}` : '';
+}

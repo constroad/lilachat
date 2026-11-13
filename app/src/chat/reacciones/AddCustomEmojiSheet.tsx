@@ -59,7 +59,7 @@ export function AddCustomEmojiSheet(props: { visible: boolean; onClose: () => vo
             <Text className="text-[20px] font-bold text-on-surface">Agregar emoji</Text>
           </View>
         </View>
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled">
+        <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled">
           <Step title="Paso 1 · Imagen del emoji" done={Boolean(image)}>
             <Pressable testID="btn-elegir-imagen-emoji" onPress={() => void pick()} className="h-40 w-40 items-center justify-center self-center rounded-2xl border-2 border-dashed border-primary/40 bg-surface-variant/40">
               {image ? <Image source={{ uri: image.uri }} style={{ width: 96, height: 96 }} contentFit="contain" /> : <Upload size={32} color={colors.primary} />}

@@ -118,6 +118,13 @@ function ComposerField({
   const archivoRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const campoRef = useRef<HTMLTextAreaElement>(null);
+  // José 13/11: the field grows with a long text (CSS `field-sizing` where the browser has it).
+  useLayoutEffect(() => {
+    const field = campoRef.current;
+    if (!field || (typeof CSS !== 'undefined' && CSS.supports?.('field-sizing', 'content'))) return;
+    field.style.height = 'auto';
+    field.style.height = `${field.scrollHeight}px`;
+  }, [text]);
   const menciones = useMencionesDelCampo(mencionables);
   const emojis = useEmojiShortcode();
   // Opening a chat on a computer leaves the cursor in the field (José 30/10); on a phone it would raise the keyboard.
@@ -349,7 +356,7 @@ function ComposerField({
             if (event.key === 'Escape' && contexto) cancelarContexto();
           }}
           placeholder={commands?.enabled ? "Escribe un mensaje o / para comandos" : "Escribe un mensaje..."}
-          className="block min-h-[40px] max-h-32 w-full resize-none rounded-lg border border-outline/25 bg-background px-3 py-2.5 text-[length:var(--chat-font,14px)] leading-[var(--chat-line,20px)] outline-none placeholder:text-on-surface-variant focus:border-primary"
+          className="block min-h-[40px] max-h-[40vh] w-full resize-none overflow-y-auto [field-sizing:content] rounded-lg border border-outline/25 bg-background px-3 py-2.5 text-[length:var(--chat-font,14px)] leading-[var(--chat-line,20px)] outline-none placeholder:text-on-surface-variant focus:border-primary"
         />
         </div>
 

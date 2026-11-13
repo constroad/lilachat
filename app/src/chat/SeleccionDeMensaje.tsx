@@ -248,7 +248,7 @@ export function SeleccionDeMensaje(params: {
       />
       <ForwardScreen
         visible={reenviando}
-        steps={planDeReenvio(mensajes.map((uno) => ({ ...uno, chatId: params.chatId })))}
+        steps={planDeReenvio(mensajes.map((uno) => ({ ...uno, chatId: params.chatId })), { secret: params.chatSecreto })}
         token={params.jwt}
         onError={params.onError}
         onClose={() => setReenviando(false)}

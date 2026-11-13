@@ -2,7 +2,7 @@ import { BotFilesAlbum } from './BotFilesAlbum';
 import { LineaDeLlamada } from './LineaDeLlamada';
 import { memo, useContext, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertCircle, BellRing, CalendarDays, Check, CheckCheck, ChevronRight, Clock, CornerDownRight, FileText, Lock, Play } from 'lucide-react';
+import { AlertCircle, BellRing, CalendarDays, Check, CheckCheck, ChevronRight, Clock, CornerDownRight, FileText, Forward, Lock, Play } from 'lucide-react';
 import { Overlay } from '../ui/Overlay';
 import { RecordatorioEnElChat } from './tarjetas/RecordatorioEnElChat';
 import { colorDeAutor, esAvisoDestacado, type DeliveryState, formatClock, primerEnlace, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
@@ -260,7 +260,10 @@ function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; m
     );
   }
   // A bot's card (Lila): its summary in `body` is for the list and notices; here the card itself.
-  const shared = mensaje.sharedBy ? <p data-testid={`compartido-por-${mensaje.seq}`} className="mb-1 text-[12px] text-on-surface-variant">{sharedByLine(mensaje.sharedBy)}</p> : null;
+  // José 13/11: a forwarded copy says so, like WhatsApp.
+  const forwarded = mensaje.forwarded ? <p data-testid={`reenviado-${mensaje.seq}`} className="mb-1 flex items-center gap-1 text-[12px] italic text-on-surface-variant"><Forward size={12} aria-hidden />Reenviado</p> : null;
+  const sharedLine = mensaje.sharedBy ? <p data-testid={`compartido-por-${mensaje.seq}`} className="mb-1 text-[12px] text-on-surface-variant">{sharedByLine(mensaje.sharedBy)}</p> : null;
+  const shared = forwarded || sharedLine ? <>{forwarded}{sharedLine}</> : null;
   if (mensaje.card) return <>{shared}<BotCardView card={mensaje.card} chatId={chat.id} seq={mensaje.seq} jwt={jwt} /></>;
   if (mensaje.files?.length) return <>{shared}<BotFilesAlbum seq={mensaje.seq} files={mensaje.files} /></>;
   const media = mensaje.media;

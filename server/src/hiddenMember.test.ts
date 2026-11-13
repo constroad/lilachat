@@ -10,6 +10,7 @@ import { WorkspaceMemberModel, WorkspaceModel } from './workspaceModels.js';
 import { sendMessage } from './chatService.js';
 import { signSession } from './sessions.js';
 import { hiddenInChat } from './hiddenMembers.js';
+import { INCOGNITO_COMPOSER } from '@lilachat/shared';
 import { invitationsOf, inviteByEmail } from './workspaceEmailInvites.js';
 import type { SpaceInvitationMail } from './authClient.js';
 
@@ -30,16 +31,19 @@ describe('hiddenInChat', () => {
     expect([...dropped]).toEqual(['jose']);
   });
 
-  it('drops nobody for the hidden member himself, in a 1:1, in another space or in a personal chat', () => {
+  it('drops the hidden member for himself too (José 13/11: «no mostrarme como miembro en ningún lado»)', () => {
+    expect([...hiddenInChat(hidden, { workspaceId: 'space-a', kind: 'group' }, 'jose')]).toEqual(['jose']);
+  });
+
+  it('drops nobody in a 1:1, in another space or in a personal chat', () => {
     // Arrange
     const cases = [
-      hiddenInChat(hidden, { workspaceId: 'space-a', kind: 'group' }, 'jose'),
       hiddenInChat(hidden, { workspaceId: 'space-a', kind: 'direct' }, 'ana'),
       hiddenInChat(hidden, { workspaceId: 'space-b', kind: 'group' }, 'ana'),
       hiddenInChat(hidden, { kind: 'group' }, 'ana'),
     ];
     // Assert
-    expect(cases.map((dropped) => dropped.size)).toEqual([0, 0, 0, 0]);
+    expect(cases.map((dropped) => dropped.size)).toEqual([0, 0, 0]);
   });
 });
 
@@ -82,16 +86,16 @@ async function spaceWithHiddenOwner() {
 const userIdsOf = (members: { userId?: string; id?: string }[]) => members.map((member) => member.userId ?? member.id).sort();
 
 describe('a hidden member of a space', () => {
-  it('is not in the directory nor in the counts of the others, and is in his own', async () => {
+  it('is not in the directory nor in the counts, not even his own', async () => {
     const space = await spaceWithHiddenOwner();
 
     // Beto as the admin his sister will be: her full list («Miembros y roles») leaves him out too.
     await WorkspaceMemberModel.updateOne({ workspaceId: space.id, userId: users.beto }, { $set: { role: 'admin' } });
     expect(userIdsOf((await get('beto', `/api/workspaces/${space.id}/members?status=all`)).members)).toEqual([String(users.ana), String(users.beto)].sort());
     expect(userIdsOf((await get('ana', `/api/workspaces/${space.id}/members`)).members)).toEqual([String(users.ana), String(users.beto)].sort());
-    expect(userIdsOf((await get('jose', `/api/workspaces/${space.id}/members`)).members)).toContain(String(users.jose));
+    expect(userIdsOf((await get('jose', `/api/workspaces/${space.id}/members`)).members)).not.toContain(String(users.jose));
     expect((await get('ana', '/api/workspaces')).workspaces).toEqual([expect.objectContaining({ id: space.id, members: 2 })]);
-    expect((await get('jose', '/api/workspaces')).workspaces).toEqual([expect.objectContaining({ id: space.id, members: 3, role: 'owner' })]);
+    expect((await get('jose', '/api/workspaces')).workspaces).toEqual([expect.objectContaining({ id: space.id, members: 2, role: 'owner' })]);
     expect((await get('carla', `/api/workspaces/preview/${space.joinCode}`)).members).toBe(2);
   });
 
@@ -106,8 +110,18 @@ describe('a hidden member of a space', () => {
     expect(general?.acuseDe).toEqual([String(users.beto)]);
     expect(userIdsOf((await get('ana', `/api/workspaces/${space.id}/channels/${space.generalId}/people`)).people)).not.toContain(String(users.jose));
 
-    expect(userIdsOf((await get('jose', `/api/chats/${space.generalId}/detail`)).members)).toContain(String(users.jose));
-    expect((await get('jose', `/api/workspaces/${space.id}/channels`)).channels.find((channel: { id: string }) => channel.id === space.generalId)?.members).toBe(3);
+    const mine = await get('jose', `/api/chats/${space.generalId}/detail`);
+    expect(userIdsOf(mine.members)).not.toContain(String(users.jose));
+    expect(mine.incognito).toBe(true);
+    expect((await get('ana', `/api/chats/${space.generalId}/detail`)).incognito).toBeUndefined();
+    expect((await get('jose', `/api/workspaces/${space.id}/channels`)).channels.find((channel: { id: string }) => channel.id === space.generalId)?.members).toBe(2);
+  });
+
+  it('cannot write in the chats of that space (José 13/11: «en ese modo no debo poder escribir»)', async () => {
+    const space = await spaceWithHiddenOwner();
+
+    await expect(sendMessage({ chatId: space.generalId, senderId: users.jose, clientKey: 'k-jose', body: 'hola' })).rejects.toThrow(INCOGNITO_COMPOSER);
+    await expect(sendMessage({ chatId: space.generalId, senderId: users.ana, clientKey: 'k-ana', body: 'hola' })).resolves.toMatchObject({ duplicate: false });
   });
 
   it('is not in the «Info» of a message, but a 1:1 with him still shows him', async () => {

@@ -24,7 +24,7 @@ export async function reenviarMensaje(params: { quien: Types.ObjectId; desde: st
   const original = await MessageModel.findOne({ chatId: desde, seq: params.seq, deletedAt: null }).select('kind body media envelope').lean<Message | null>();
   if (!original || original.envelope || (!original.media && !original.body)) return NO_EXISTE;
   try {
-    const result = await sendMessage({ chatId: params.hacia, senderId: params.quien, clientKey: params.clientKey, kind: original.kind, body: original.body, media: original.media });
+    const result = await sendMessage({ chatId: params.hacia, senderId: params.quien, clientKey: params.clientKey, kind: original.kind, body: original.body, media: original.media, forwarded: true });
     return { ok: true, ...result, duplicate: Boolean(result.duplicate) };
   } catch (error) {
     if (error instanceof ForbiddenChatError) return { ok: false, status: 403, motivo: 'No puedes escribir en ese chat.' };

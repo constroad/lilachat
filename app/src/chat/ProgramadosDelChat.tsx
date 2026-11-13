@@ -36,7 +36,7 @@ export function ProgramadosDelChat(props: { pendientes: Programado[]; onCancelar
       </Pressable>
       <Sheet visible={abierto} onClose={() => setAbierto(false)} testID="hoja-programados" className="max-h-[70%] px-5" dragArea="handle" bottomRoom={0}>
         <Text className="mb-2 text-base font-bold text-on-surface">{textoDeProgramados(props.pendientes.length)}</Text>
-        <ScrollView>
+        <ScrollView style={{ flexShrink: 1 }}>
           {props.pendientes.map((programado) => (
             <View key={programado.id} className="min-h-[56px] flex-row items-center gap-3 border-b border-outline/10 py-2">
               <View className="min-w-0 flex-1">

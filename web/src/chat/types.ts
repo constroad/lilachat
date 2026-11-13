@@ -99,6 +99,8 @@ export type ChatMessage = {
   files?: GalleryItem[];
   /** An app's answer sent to the channel by who asked: «José usó /clima» on top. */
   sharedBy?: { name: string; command: string };
+  /** José 13/11: a copy forwarded from another chat. */
+  forwarded?: boolean;
   /** El sobre de un chat secreto: llega EN VEZ de `body`. La web no lo abre. */
   envelope?: { v: number; nonce: string; ciphertext: string };
   ref?: MessageRef;

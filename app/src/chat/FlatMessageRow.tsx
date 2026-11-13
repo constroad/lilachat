@@ -3,6 +3,7 @@ import { memo } from 'react';
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { CircleAlert } from 'lucide-react-native';
+import { ForwardedLabel } from './ForwardedLabel';
 import { TEXTO_ELIMINADO, formatClock, groupsWithPrevious, primerEnlace, sharedByLine, type DeliveryState } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
@@ -136,6 +137,7 @@ function FlatRow(props: {
               <MetaDeMensaje {...meta} />
             </View>
           )}
+          {!isPending(item) && item.forwarded && !deleted ? <ForwardedLabel testID={`reenviado-${item.seq}`} className="" /> : null}
           {!isPending(item) && item.sharedBy && !deleted ? <Text testID={`compartido-por-${item.seq}`} className="text-[12px] text-on-surface-variant">{sharedByLine(item.sharedBy)}</Text> : null}
           {props.quoted && !deleted ? <CitaDeRespuesta citado={props.quoted} enBurbujaPropia={false} compact testID={`cita-${id}`} onPress={isPending(item) ? undefined : props.selecting ? () => props.onSelect?.(item.seq) : quoteAction(props.quoted, item.replyToSeq, props.onOpenThread, props.onGoToQuote)} /> : null}
           {card ? (

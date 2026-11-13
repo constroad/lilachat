@@ -75,20 +75,19 @@ describe('stampTimemark', () => {
     }
   });
 
-  it('puts the logo at the bottom left when its chip is on', async () => {
+  it('puts the logo at the top right when its chip is on, upright and sideways (José 13/11, like Timemark)', async () => {
     // Arrange: a solid black logo.
     const logo = await sharp({ create: { width: 64, height: 64, channels: 3, background: '#000000' } }).png().toBuffer();
-    const withLogo = await stampTimemark(await whiteOf(600, 800), stamp, { dataUri: `data:image/png;base64,${logo.toString('base64')}` });
-    const without = await stampTimemark(await whiteOf(600, 800), stamp, null);
-    // Act
-    const a = await pixelsOf(withLogo.bytes);
-    const b = await pixelsOf(without.bytes);
-    // Assert: inside the logo square (margin 24, size 60) it is black only with the logo.
-    const insideLogo = [Math.round(24 + 30), 0] as const;
-    const look = { y: 0 };
-    let darker = 0;
-    for (let y = 500; y < 780; y += 4) if (a.at(insideLogo[0], y) < 40 && b.at(insideLogo[0], y) > 60) darker += 1;
-    expect(darker + look.y).toBeGreaterThan(3);
+    for (const [width, height] of [[600, 800], [800, 600]] as const) {
+      const withLogo = await pixelsOf((await stampTimemark(await whiteOf(width, height), stamp, { dataUri: `data:image/png;base64,${logo.toString('base64')}` })).bytes);
+      const without = await pixelsOf((await stampTimemark(await whiteOf(width, height), stamp, null)).bytes);
+      // Act: the middle of the logo box (margin 24, size 96 on a 600 px short side).
+      const middle = [width - 24 - 48, 24 + 48] as const;
+      // Assert: black there only with the logo; the bottom-left corner keeps no logo.
+      expect(withLogo.at(...middle)).toBeLessThan(40);
+      expect(without.at(...middle)).toBeGreaterThan(240);
+      expect(withLogo.at(30, 24 + 48)).toBeGreaterThan(240);
+    }
   });
 });
 

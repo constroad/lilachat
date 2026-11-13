@@ -29,6 +29,8 @@ const BLINK_IN_MS = 60;
 const BLINK_OUT_MS = 180;
 /** The chips sit under the top bar; the stamp sits above the bottom panel. */
 const CHIPS_BELOW = 92;
+/** The chips' own height: the logo goes under them, not behind them. */
+const CHIP_ROW = 44;
 const BOTTOM_PANEL = 200;
 /** Held sideways the controls go to a column on the right (as the form camera, design cam-02). */
 const SIDE_COLUMN = 132;
@@ -106,7 +108,7 @@ function ChatCameraBody(props: Props & { backRef: { current: (() => boolean) | n
       {/* While it captures, the preview goes transparent (the chat shows behind): black until «Enviar». */}
       {shooting || taken ? <View pointerEvents="none" className="absolute inset-0 bg-black" /> : null}
       <Animated.View pointerEvents="none" className="absolute inset-0 bg-white" style={{ opacity: blink }} />
-      {taken ? null : <StampOverlay stamp={live.stamp} logoUrl={withLogo ? spaceLogo : null} width={landscape ? width - SIDE_COLUMN : width} height={height} bottomInset={landscape ? margins.pie : BOTTOM_PANEL + margins.pie} />}
+      {taken ? null : <StampOverlay stamp={live.stamp} logoUrl={withLogo ? spaceLogo : null} width={landscape ? width - SIDE_COLUMN : width} height={height} bottomInset={landscape ? margins.pie : BOTTOM_PANEL + margins.pie} topInset={margins.cabecera + CHIPS_BELOW + CHIP_ROW} rightInset={landscape ? SIDE_COLUMN : 0} />}
       <ChatCameraTop name={props.nombreDelChat} flash={flash} right={landscape ? SIDE_COLUMN : 0} recordingMs={video.recording ? video.elapsedMs : null} onClose={props.onCerrar} onFlash={() => setFlash((before) => NEXT_FLASH[before])} />
       {taken ? null : <CameraChips logoOn={logoOn} logoUrl={spaceLogo} precision={live.point?.precision ?? null} top={margins.cabecera + CHIPS_BELOW} sound={mode === 'video' && !video.recording ? { on: sound, onToggle: () => setSound((before) => !before) } : undefined} />}
       <BottomPanel landscape={landscape} mode={mode} recent={recent} recording={video.recording} shooting={shooting} onMode={setMode} onPick={(asset) => setTaken(assetOf(asset))} onShoot={() => void (mode === 'video' ? record() : shoot())} onFlip={() => setFront((before) => !before)} onGallery={props.onGaleria} />

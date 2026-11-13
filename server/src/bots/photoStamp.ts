@@ -1,5 +1,5 @@
 import { shrinkPhotoBuffer, type ShrunkPhoto } from '../photoShrink.js';
-import { timemarkLayoutOf, type Timemark } from '@lilachat/shared';
+import { timemarkLayoutOf, timemarkLogoBoxOf, type Timemark } from '@lilachat/shared';
 
 /** The band takes this share of the height, and the text this share of the width (readable on a phone). */
 const BAND_SHARE = 0.17;
@@ -32,36 +32,34 @@ export async function stampPhoto(bytes: Buffer, lines: readonly string[]): Promi
   return stamped;
 }
 
-/** The space's logo, ready to sit inside the stamp: a PNG as a data URI, or nothing. */
+/** The space's logo, ready to sit at the top right of the frame: a PNG as a data URI, or nothing. */
 export type StampLogo = { dataUri: string } | null;
 
 /** «07:42» in Helvetica Bold: four digits of 0.556 em and a colon of 0.333 em; the bar goes after it. */
 const HOUR_WIDTH_EM = 2.6;
-const LOGO_RADIUS_SHARE = 0.18;
 const SHADE_SHARE = 0.42;
 const ACCENT = '#8b5cf6';
 
-/** The Timemark-like stamp as an SVG the size of the photo (design cam-01/cam-02): bottom left, over a soft shade. */
+/** The Timemark-like stamp as an SVG the size of the photo (design cam-01/cam-02): the lines bottom left over a soft shade, the logo top right (José 13/11). */
 export function timemarkSvg(width: number, height: number, stamp: Timemark, logo: StampLogo): Buffer {
   const look = timemarkLayoutOf(width, height);
   const lines = [stamp.address, stamp.coords].filter((line): line is string => Boolean(line));
-  const left = look.margin + (logo ? look.logoSize + look.margin / 2 : 0);
+  const left = look.margin;
+  const box = timemarkLogoBoxOf(width, height);
   const bottom = height - look.margin;
   const placeHeight = lines.length * look.lineSize * 1.35;
   const hourBase = bottom - placeHeight - look.lineSize * 0.4;
   const barX = left + look.hourSize * HOUR_WIDTH_EM + look.margin / 3;
-  const logoY = Math.round(hourBase - look.hourSize * 0.8);
-  const radius = Math.round(look.logoSize * LOGO_RADIUS_SHARE);
   const text = (x: number, y: number, size: number, weight: number, body: string, opacity = 1) => `<text x="${Math.round(x)}" y="${Math.round(y)}" font-family="Helvetica, Arial, sans-serif" font-size="${size}" font-weight="${weight}" fill="#ffffff" fill-opacity="${opacity}">${escapeXml(body)}</text>`;
   const parts = [
-    `<defs><linearGradient id="shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.6"/></linearGradient><clipPath id="logo"><rect x="${look.margin}" y="${logoY}" width="${look.logoSize}" height="${look.logoSize}" rx="${radius}"/></clipPath></defs>`,
+    `<defs><linearGradient id="shade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.6"/></linearGradient><clipPath id="logo"><rect x="${box.x}" y="${box.y}" width="${box.size}" height="${box.size}" rx="${box.radius}"/></clipPath></defs>`,
     `<rect x="0" y="${Math.round(height * (1 - SHADE_SHARE))}" width="${width}" height="${Math.round(height * SHADE_SHARE)}" fill="url(#shade)"/>`,
     text(left, hourBase, look.hourSize, 700, stamp.hour),
     `<rect x="${Math.round(barX)}" y="${Math.round(hourBase - look.hourSize * 0.72)}" width="${look.bar}" height="${Math.round(look.hourSize * 0.72)}" fill="${ACCENT}"/>`,
     text(barX + look.bar * 3, hourBase - look.hourSize * 0.4, look.lineSize, 700, stamp.date),
     text(barX + look.bar * 3, hourBase - look.hourSize * 0.02, look.lineSize, 500, stamp.weekday, 0.85),
     ...lines.map((line, index) => text(left, hourBase + look.lineSize * 1.35 * (index + 1), index === 0 ? look.lineSize : look.smallSize, index === 0 ? 600 : 500, line, index === 0 ? 1 : 0.85)),
-    logo ? `<image x="${look.margin}" y="${logoY}" width="${look.logoSize}" height="${look.logoSize}" href="${logo.dataUri}" preserveAspectRatio="xMidYMid slice" clip-path="url(#logo)"/>` : '',
+    logo ? `<image x="${box.x}" y="${box.y}" width="${box.size}" height="${box.size}" href="${logo.dataUri}" preserveAspectRatio="xMidYMid slice" clip-path="url(#logo)"/>` : '',
   ];
   return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}">${parts.join('')}</svg>`);
 }

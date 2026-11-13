@@ -4,6 +4,7 @@ import { precisionLabel, recordingLabel, type GeoPoint, type Timemark } from '@l
 import { useWebCameraAsk, type WebCameraAsk } from './cameraRequests';
 import { frameOf, useCameraStream, useWebLiveStamp, useWebRecorder, type CameraMode } from './useWebCamera';
 import { shotNameOf, withStamp } from './shotStamp';
+import { useCurrentSpaceLogo } from '../../spaces/currentSpace';
 
 const LOGO_KEY = 'lilachat.camara.logo';
 const MS_PER_SECOND = 1000;
@@ -40,6 +41,7 @@ export function WebCamera(props: { ask: WebCameraAsk; onDone: (file: File | null
   const [mode, setMode] = useState<CameraMode>(props.ask.video?.first ? 'video' : 'picture');
   const [facing, setFacing] = useState<'environment' | 'user'>('environment');
   const [logo, setLogo] = useState(readLogoPref);
+  const spaceLogo = useCurrentSpaceLogo();
   const [taken, setTaken] = useState<Taken | null>(null);
   const camera = useCameraStream(mode, facing);
   const live = useWebLiveStamp();
@@ -68,6 +70,7 @@ export function WebCamera(props: { ask: WebCameraAsk; onDone: (file: File | null
       <ShotOrLive camera={camera} taken={taken} facing={facing} />
       <TopBar title={props.ask.title} clock={clock} onClose={() => props.onDone(null)} />
       {taken || recorder.recording || camera.state !== 'live' ? null : <Chips point={live.point} logo={logo} onLogo={() => (saveLogoPref(!logo), setLogo(!logo))} />}
+      {logo && spaceLogo && camera.state !== 'denied' ? <img data-testid="sello-logo" src={spaceLogo} alt="" className="pointer-events-none absolute right-4 top-[calc(max(12px,env(safe-area-inset-top))+104px)] h-16 w-16 rounded-xl object-cover" /> : null}
       {camera.state === 'denied' ? <Denied onClose={() => props.onDone(null)} /> : <StampOverlay stamp={live.stamp} lifted={Boolean(props.ask.video) && !taken} />}
       {taken ? <ReviewBar video={taken.blob.type.startsWith('video/')} onRetake={() => setTaken(null)} onUse={use} /> : null}
       {taken || camera.state === 'denied' ? null : <ShutterBar mode={mode} canVideo={Boolean(props.ask.video)} recording={recorder.recording} onMode={setMode} onShoot={() => void shoot()} onFlip={() => setFacing(facing === 'environment' ? 'user' : 'environment')} />}

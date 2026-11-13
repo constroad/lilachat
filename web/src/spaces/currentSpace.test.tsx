@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { forgetMySpaces, keepLiveUnread, useMySpaces } from './currentSpace';
+import { forgetMySpaces, keepLiveUnread, setCurrentSpaceId, useCurrentSpaceLogo, useMySpaces } from './currentSpace';
 
 /**
  * My spaces, asked from several places (the first load, the switcher, a space
@@ -61,5 +61,27 @@ describe('useMySpaces', () => {
     expect(result.current.spaces?.map((space) => space.unreadChats)).toEqual([0, 1]);
     expect(result.current.spaces?.[1]).toBe(before?.[1]);
     expect(JSON.parse(localStorage.getItem('lilachat.espacios') ?? '{}').spaces[0].unreadChats).toBe(0);
+  });
+});
+
+describe('useCurrentSpaceLogo', () => {
+  afterEach(() => {
+    forgetMySpaces();
+    setCurrentSpaceId(null);
+    localStorage.clear();
+  });
+
+  it('gives the open space\'s logo for the camera, and nothing in the personal account (José 13/11)', () => {
+    // Arrange
+    localStorage.setItem('lilachat.espacios', JSON.stringify({ userId: 'u1', spaces: [{ id: 'w1', name: 'Constroad', status: 'active', logoUrl: 'https://x/logo.png' }] }));
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => undefined)));
+    renderHook(() => useMySpaces('t', 'u1'));
+    const logo = renderHook(() => useCurrentSpaceLogo());
+    // Act
+    act(() => setCurrentSpaceId('w1'));
+    // Assert
+    expect(logo.result.current).toBe('https://x/logo.png');
+    act(() => setCurrentSpaceId(null));
+    expect(logo.result.current).toBeNull();
   });
 });

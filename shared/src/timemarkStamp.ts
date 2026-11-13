@@ -8,6 +8,8 @@ import { cutAtWord } from './textCut.js';
  * PURE: the app, the web and the server.
  */
 export type Timemark = { hour: string; date: string; weekday: string; address: string | null; coords: string | null };
+/** Where the space's logo sits: its own corner, apart from the lines. */
+export type TimemarkLogoBox = { x: number; y: number; size: number; radius: number };
 export type TimemarkLayout = { landscape: boolean; margin: number; hourSize: number; lineSize: number; smallSize: number; logoSize: number; bar: number };
 
 /** Peru has no daylight saving: the hour is UTC minus five, without building an Intl per call (Hermes). */
@@ -32,13 +34,20 @@ export function timemarkOf(input: { at: Date; point?: GeoPoint | null; place?: s
 const HOUR_SHARE = 0.11;
 const LINE_SHARE = 0.036;
 const SMALL_SHARE = 0.029;
-const LOGO_SHARE = 0.1;
+const LOGO_SHARE = 0.16;
+const LOGO_RADIUS_SHARE = 0.18;
 const MARGIN_SHARE = 0.04;
 const BAR_SHARE = 0.006;
 
-/** Where and how big: bottom left of the frame, sized by its short side (design cam-01, cam-02). */
+/** Where and how big: the lines at the bottom left of the frame, sized by its short side (design cam-01, cam-02). */
 export function timemarkLayoutOf(width: number, height: number): TimemarkLayout {
   const short = Math.min(width, height);
   const size = (share: number) => Math.max(1, Math.round(short * share));
   return { landscape: width > height, margin: size(MARGIN_SHARE), hourSize: size(HOUR_SHARE), lineSize: size(LINE_SHARE), smallSize: size(SMALL_SHARE), logoSize: size(LOGO_SHARE), bar: size(BAR_SHARE) };
+}
+
+/** The space's logo at the top right of the frame, like Timemark (José 13/11), upright and sideways. */
+export function timemarkLogoBoxOf(width: number, height: number): TimemarkLogoBox {
+  const look = timemarkLayoutOf(width, height);
+  return { x: width - look.margin - look.logoSize, y: look.margin, size: look.logoSize, radius: Math.round(look.logoSize * LOGO_RADIUS_SHARE) };
 }

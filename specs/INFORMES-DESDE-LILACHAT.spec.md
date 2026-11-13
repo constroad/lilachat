@@ -1481,6 +1481,11 @@ Se recorrió Control de pista en el APK (`lilafotos-qa`), en el servicio QA-CTLP
   Ahora los controles van en una columna a la derecha, con FOTO / VIDEO uno sobre otro, como la cámara
   de formularios. Las fotos de un informe no tienen VIDEO: el informe guarda fotos. El video está en el
   chat, en las observaciones y en el Drive.
+- **El logo va arriba a la derecha, como Timemark (José 13/11).** Antes iba pegado a la hora, abajo a
+  la izquierda. Ahora `timemarkLogoBoxOf` (shared) lo ubica en su propia esquina, con el mismo margen y
+  un lado del 16 % del lado corto. El servidor lo quema ahí (sharp y ffmpeg usan el mismo SVG). En
+  vivo, el APK y la web lo dibujan debajo de los chips. En horizontal, el APK lo pone a la izquierda de
+  la columna de controles. La web lee el logo del espacio abierto (`useCurrentSpaceLogo`).
 - **«Enviar» del chat muestra el video** (antes, solo un ícono): se reproduce en bucle con controles.
 - **El sello ya no se pega a FOTO / VIDEO**: la altura del pie cuenta el margen inferior del sistema.
 - **«Agregar tramo» abre donde terminó el anterior** (CTL-IMP, Portal d85a6e57): el formulario del

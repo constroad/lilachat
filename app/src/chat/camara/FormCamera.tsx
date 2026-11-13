@@ -37,6 +37,8 @@ const BOTTOM_BAR = 120;
 const SIDE_BAR = 110;
 /** The chips sit under the top bar. */
 const CHIPS_BELOW = 56;
+/** The chips' own height: the logo goes under them, not behind them. */
+const CHIP_ROW = 44;
 
 /**
  * Asks only when it has to. Android refuses a request while another one is open,
@@ -83,7 +85,7 @@ export function FormCamera(props: Props) {
         {/* While it captures the preview goes transparent and would show the form behind it. */}
         {capture.shooting ? <View pointerEvents="none" className="absolute inset-0 bg-black" /> : null}
         <Animated.View pointerEvents="none" className="absolute inset-0 bg-white" style={{ opacity: capture.blink }} />
-        <StampOverlay stamp={live.stamp} logoUrl={logoUrl} width={width} height={height} bottomInset={landscape ? 0 : BOTTOM_BAR + margins.pie + (props.video ? MODE_SWITCH : 0)} />
+        <StampOverlay stamp={live.stamp} logoUrl={logoUrl} width={width} height={height} bottomInset={landscape ? 0 : BOTTOM_BAR + margins.pie + (props.video ? MODE_SWITCH : 0)} topInset={margins.cabecera + CHIPS_BELOW + CHIP_ROW} rightInset={landscape ? SIDE_BAR : 0} />
         <TopBar title={props.title} flash={flash} reviewing={Boolean(shot)} landscape={landscape} recording={capture.recording ? recordingLabel(capture.elapsedMs, props.video?.maxSeconds) : null} onClose={props.onClose} onFlash={() => setFlash((before) => NEXT_FLASH[before])} />
         {shot || capture.recording ? null : <CameraChips logoOn={logoOn} logoUrl={spaceLogo} precision={live.point?.precision ?? null} top={margins.cabecera + CHIPS_BELOW} />}
         {shot ? (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { timemarkLayoutOf, timemarkOf } from './timemarkStamp.js';
+import { timemarkLayoutOf, timemarkLogoBoxOf, timemarkOf } from './timemarkStamp.js';
 
 /**
  * José 12/11: the camera of every report shows and burns a stamp like Timemark's: the hour big,
@@ -45,5 +45,29 @@ describe('timemarkLayoutOf', () => {
     expect(upright.margin).toBeGreaterThan(0);
     expect(upright.hourSize).toBeGreaterThan(upright.lineSize * 2);
     expect(upright.logoSize).toBeGreaterThan(upright.lineSize);
+  });
+});
+
+describe('timemarkLogoBoxOf', () => {
+  it('puts the logo at the top right of the frame, like Timemark, upright and sideways (José 13/11)', () => {
+    for (const [width, height] of [[3000, 4000], [4000, 3000]] as const) {
+      // Act
+      const box = timemarkLogoBoxOf(width, height);
+      const look = timemarkLayoutOf(width, height);
+      // Assert
+      expect(box.x + box.size).toBe(width - look.margin);
+      expect(box.y).toBe(look.margin);
+      expect(box.size).toBe(look.logoSize);
+      expect(box.radius).toBeGreaterThan(0);
+    }
+  });
+
+  it('the logo is the same size whichever way the phone is held, and bigger than the date line', () => {
+    // Act
+    const upright = timemarkLogoBoxOf(1080, 1920);
+    const sideways = timemarkLogoBoxOf(1920, 1080);
+    // Assert
+    expect(upright.size).toBe(sideways.size);
+    expect(upright.size).toBeGreaterThan(timemarkLayoutOf(1080, 1920).hourSize);
   });
 });

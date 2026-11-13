@@ -26,6 +26,13 @@ const subscribe = (listener: () => void) => {
 
 export const useCurrentSpaceId = () => useSyncExternalStore(subscribe, () => currentId);
 
+/** The open space's logo from the spaces already read: the camera shows it top right (José 13/11). */
+export function useCurrentSpaceLogo(): string | null {
+  const id = useSyncExternalStore(subscribe, () => currentId);
+  const list = useSyncExternalStore(subscribe, () => spaces);
+  return list?.find((space) => space.id === id)?.logoUrl ?? null;
+}
+
 export function setCurrentSpaceId(spaceId: string | null): void {
   currentId = spaceId;
   try {

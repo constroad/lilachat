@@ -80,3 +80,20 @@ describe('shotsKeyOf', () => {
     expect(shotsKeyOf([])).toBe('');
   });
 });
+
+describe('photos waiting in the composer (José 13/11: «dentro del input se muestren las miniaturas»)', () => {
+  const shot = (uri: string) => ({ uri, fileName: `${uri}.jpg`, mimeType: 'image/jpeg', fileSize: 10 });
+
+  it('more picks add up without repeating, up to the limit', async () => {
+    const { stageMore } = await import('./envioDeFotos');
+    expect(stageMore([shot('a')], [shot('a'), shot('b')]).map((one) => one.uri)).toEqual(['a', 'b']);
+    const many = Array.from({ length: MAXIMO_DE_FOTOS + 3 }, (_, index) => shot(`p${index}`));
+    expect(stageMore([], many)).toHaveLength(MAXIMO_DE_FOTOS);
+  });
+
+  it('the typed text goes as the first one\'s caption; nothing typed, no caption', async () => {
+    const { stagedToSend } = await import('./envioDeFotos');
+    expect(stagedToSend([shot('a'), shot('b')], '  mira el avance ').map((one) => one.caption)).toEqual(['mira el avance', undefined]);
+    expect(stagedToSend([shot('a')], '   ')[0]?.caption).toBeUndefined();
+  });
+});

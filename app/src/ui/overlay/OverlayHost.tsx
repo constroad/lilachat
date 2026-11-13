@@ -28,6 +28,8 @@ const RootOverlayHostContext = createContext<OverlayHostHandle | null>(null);
 export const useRootOverlayHost = () => useContext(RootOverlayHostContext);
 /** The window's own insets, read by the outermost host (above the tabs, which zero the bottom). */
 export const RootInsetsContext = createContext<EdgeInsets | null>(null);
+/** The root layer's measured height (José 13/11: the clip sheet hid under Android's buttons); read by «Diagnóstico». */
+export const rootLayerSize = { height: 0, width: 0 };
 
 let lastOverlayId = 0;
 export const newOverlayId = () => ++lastOverlayId;
@@ -62,7 +64,10 @@ export function OverlayHost(props: { children: ReactNode }) {
     <RootOverlayHostContext.Provider value={outer ?? handle}>
       <RootInsetsContext.Provider value={rootInsets}>
         <OverlayHostContext.Provider value={handle}>
-          <View style={styles.host}>
+          <View
+            style={styles.host}
+            onLayout={outer ? undefined : (event) => Object.assign(rootLayerSize, { height: event.nativeEvent.layout.height, width: event.nativeEvent.layout.width })}
+          >
             {props.children}
             {layers.map((layer) => layer.node)}
           </View>

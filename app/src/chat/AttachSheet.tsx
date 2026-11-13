@@ -251,7 +251,7 @@ export function AttachSheet(props: {
       {selected.length ? (
         <Pressable testID="attach-enviar" onPress={sendSelected} className="absolute bottom-0 right-4 h-14 flex-row items-center gap-2 rounded-full bg-primary px-5" style={{ marginBottom: margins.pie + 12 }}>
           <Send size={20} color={colors['on-primary']} />
-          <Text className="text-[15px] font-semibold text-on-primary">Enviar {selected.length}</Text>
+          <Text className="text-[15px] font-semibold text-on-primary">Agregar {selected.length}</Text>
         </Pressable>
       ) : null}
     </Sheet>

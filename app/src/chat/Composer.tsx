@@ -12,6 +12,7 @@ import { precalentarPermisoDeVoz, useGrabadorDeVoz, type NotaGrabada } from './u
 import { guardarBorrador, leerBorrador } from './borradores';
 import { useClipboardImage } from './useClipboardImage';
 import { PasteImageChip } from './PasteImageChip';
+import { StagedStrip, type StagedPhotos } from './StagedStrip';
 import type { FotoElegida } from './envioDeFotos';
 import { BotonDeVoz } from './BotonDeVoz';
 import { formaDelTexto, type FormaDelTexto } from './campoDeTexto';
@@ -101,6 +102,8 @@ export const Composer = memo(function Composer(props: {
   onProgramar: (texto: string) => void;
   /** The copied image, pasted from the chip over the bar (21/10): it goes to the usual photo preview. */
   onPasteImage?: (photo: FotoElegida) => void;
+  /** José 13/11: photos waiting inside the field; a tap previews them, send takes the text as caption. */
+  staged?: StagedPhotos;
   onNotaDeVoz: (nota: NotaGrabada) => Promise<void>;
   /**
    * Chat secreto (auditoría 17/10/2026). `bloqueado`: la clave todavía no está
@@ -294,11 +297,16 @@ export const Composer = memo(function Composer(props: {
   };
 
   const sealedMode = props.modoSecreto === 'sealed';
+  const hasStaged = Boolean(props.staged?.items.length);
 
   const enviar = () => {
     const texto = textoRef.current;
     limpiarCampo();
     programarBorrador();
+    if (props.staged?.items.length && !props.editando) {
+      props.staged.send(texto);
+      return;
+    }
     if (props.editando) {
       const { seq } = props.editando;
       void props.onEditar(seq, texto).then((ok) => {
@@ -332,7 +340,9 @@ export const Composer = memo(function Composer(props: {
   // derecha, como el diseño y WhatsApp. Con texto escrito, clip y cámara se
   // esconden y el campo gana ancho.
   const campoDeTexto = (
-    <View className="min-w-0 flex-1 flex-row items-end rounded-3xl border border-outline/15 bg-background pr-1">
+    <View className="min-w-0 flex-1 rounded-3xl border border-outline/15 bg-background">
+      {props.staged?.items.length ? <StagedStrip staged={props.staged} /> : null}
+      <View className="flex-row items-end pr-1">
       <EmojiToggle onKeyboard={focusInput} />
       <TextInput
         key={inicial.version}
@@ -393,6 +403,7 @@ export const Composer = memo(function Composer(props: {
         <Camera size={20} color={colores.outline} />
       </Pressable>
       ) : null}
+      </View>
     </View>
   );
 
@@ -532,14 +543,14 @@ export const Composer = memo(function Composer(props: {
               >
                 <Send size={20} color={colores['on-primary']} />
               </Pressable>
-            ) : modoVoz === 'normal' && (forma.conTexto || sealedMode) ? (
+            ) : modoVoz === 'normal' && (forma.conTexto || sealedMode || hasStaged) ? (
               <Pressable
                 testID="btn-enviar"
                 accessibilityLabel="Enviar"
-                disabled={!forma.conTexto}
+                disabled={!forma.conTexto && !hasStaged}
                 onLongPress={sealedMode ? undefined : () => props.onProgramar(textoRef.current.trim())}
                 onPress={sendTimed}
-                className={`h-12 w-12 items-center justify-center rounded-full bg-primary ${forma.conTexto ? '' : 'opacity-40'}`}
+                className={`h-12 w-12 items-center justify-center rounded-full bg-primary ${forma.conTexto || hasStaged ? '' : 'opacity-40'}`}
               >
                 <Send size={20} color={colores['on-primary']} />
               </Pressable>

@@ -12,6 +12,7 @@ import type { EntradaDiagnostico } from './motor';
 import { describeRunningCode } from '../updates/runningCode';
 import { pushStatus } from '../chat/pushRegistration';
 import { pushStatusLine } from '../chat/pushTokenSend';
+import { ScreenMetricsLine } from './ScreenMetricsLine';
 
 const MS_LENTO = 1_000;
 /** Which code this phone runs: the APK's own or an OTA update (the same build can run either). */
@@ -82,6 +83,7 @@ export function DiagnosticoAjuste() {
             <Text className="text-[12px] text-on-surface-variant" testID="diag-codigo">
               Código en uso: {RUNNING_CODE.code} · runtime {RUNNING_CODE.runtime}
             </Text>
+            <ScreenMetricsLine />
             <Text className="text-[12px] text-on-surface-variant" testID="diag-avisos">
               {pushStatusLine(pushStatus(), Date.now())}
             </Text>

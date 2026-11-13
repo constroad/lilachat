@@ -193,7 +193,7 @@ export function ChatScreen({
     [send, cancelarRespuesta]
   );
   const alAdjuntar = useCallback(() => setAttachOpen(true), []);
-  const { fotosElegidas, cerrarFotos, alEnviarFotos, alCamara, alNotaDeVoz, pickFromGallery, pickMedia, pastePhoto, pickFile, camara } =
+  const { staged, fotosElegidas, cerrarFotos, alEnviarFotos, alCamara, alNotaDeVoz, pickFromGallery, pickMedia, pastePhoto, pickFile, camara } =
     useChatAttachments({ chatId, onError: setMediaError, target: () => (respuesta.respondiendoA ? { replyToSeq: respuesta.respondiendoA.seq } : {}), onTargetSpent: respuesta.cancelarRespuesta });
 
   const nombreVisible = infoPropia.name ?? chatName;
@@ -511,6 +511,7 @@ export function ChatScreen({
           subiendo={false}
           margenPie={margenes.pie}
           onAdjuntar={encrypted ? pickFromGallery : alAdjuntar} onPasteImage={pastePhoto}
+          staged={staged}
           onCamara={alCamara} onEscribiendo={avisarEscribiendo}
           jwt={credential.jwt} conVistaPrevia={!encrypted}
           miembros={mencionables} onOutsideMentions={outsideMentions.notify} notice={outsideMentions.banner} commands={encrypted ? undefined : commands} myName={credential.name ?? undefined}

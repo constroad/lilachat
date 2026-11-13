@@ -1,10 +1,11 @@
 import type { MessageTarget } from '@lilachat/shared';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { encolarArchivo } from './colaDeArchivos';
 import { documentsToSend } from './attachSelection';
 import { MAXIMO_DE_FOTOS, type FotoAEnviar, type FotoElegida } from './envioDeFotos';
+import { stageMore, stagedToSend } from './envioDeFotos';
 import type { NotaGrabada } from './useGrabadorDeVoz';
 import { reportarError } from '../ui/reportarError';
 import { newAlbumId } from '@lilachat/shared';
@@ -61,6 +62,8 @@ export function useChatAttachments(params: AttachmentParams) {
   /** Las fotos elegidas que se están por mandar; vacío = previsualización cerrada. */
   const [fotosElegidas, setFotosElegidas] = useState<FotoElegida[]>([]);
   const [camaraAbierta, setCamaraAbierta] = useState(false);
+  /** José 13/11: picked photos wait inside the composer as thumbnails until sent. */
+  const [staged, setStaged] = useState<FotoElegida[]>([]);
   const upload = (file: QueuedFile) => uploadToQueue(params, file);
 
   /**
@@ -93,7 +96,7 @@ export function useChatAttachments(params: AttachmentParams) {
 
   const pickFromGallery = async () => {
     const media = await pickGalleryMedia();
-    if (media.length) setFotosElegidas(media);
+    if (media.length) setStaged((current) => stageMore(current, media));
   };
 
   /**
@@ -103,6 +106,7 @@ export function useChatAttachments(params: AttachmentParams) {
    */
   const alEnviarFotos = async (fotosAEnviar: FotoAEnviar[], opciones: { hd: boolean } = { hd: false }) => {
     setFotosElegidas([]);
+    setStaged([]);
     // Two or more photos or videos together go as one album (pending 12).
     const albumId = fotosAEnviar.length >= 2 ? newAlbumId() : undefined;
     await Promise.all(fotosAEnviar.map((foto) => upload({ ...foto, hd: opciones.hd, albumId })));
@@ -121,10 +125,24 @@ export function useChatAttachments(params: AttachmentParams) {
   // La cámara propia manda sola (su «Enviar» va adentro): acá solo se abre, se cierra o salta a la galería.
   /** From the clip's gallery (20/10): straight to the preview with captions and HD. */
   const pickMedia = useCallback((photos: FotoElegida[]) => {
-    if (photos.length) setFotosElegidas(photos);
+    if (photos.length) setStaged((current) => stageMore(current, photos));
   }, []);
+  // The waiting photos: a tap opens the one preview (`EnviarFotos`); send takes the typed text as caption.
+  const sendRef = useRef(alEnviarFotos);
+  sendRef.current = alEnviarFotos;
+  const stagedRef = useRef(staged);
+  stagedRef.current = staged;
+  const waiting = useMemo(
+    () => ({
+      items: staged,
+      remove: (uri: string) => setStaged((current) => current.filter((shot) => shot.uri !== uri)),
+      preview: () => setFotosElegidas(stagedRef.current),
+      send: (text: string) => void sendRef.current(stagedToSend(stagedRef.current, text)),
+    }),
+    [staged]
+  );
   /** A pasted image (21/10), stable for the memoized bar. */
   const pastePhoto = useCallback((photo: FotoElegida) => pickMedia([photo]), [pickMedia]);
   const camara = { abierta: camaraAbierta, enviar: alEnviarFotos, cerrar: () => setCamaraAbierta(false), aLaGaleria: () => { setCamaraAbierta(false); void pickFromGallery(); } };
-  return { fotosElegidas, cerrarFotos, alEnviarFotos, alCamara, alNotaDeVoz, pickFromCamera, pickFromGallery, pickMedia, pastePhoto, pickFile, camara };
+  return { staged: waiting, fotosElegidas, cerrarFotos, alEnviarFotos, alCamara, alNotaDeVoz, pickFromCamera, pickFromGallery, pickMedia, pastePhoto, pickFile, camara };
 }

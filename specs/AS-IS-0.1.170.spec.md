@@ -534,3 +534,13 @@ Lo que `specs/ARCHITECTURE.spec.md` (§120 a §134) afirma de la interfaz y no e
 - **Sin verificar todavía:** la videollamada que se corta al cambiar de app
   (falta Picture-in-Picture nativo, va en el próximo APK) y el zoom 0.6x de la
   cámara (expo-camera no baja de 1x en Android: va con un parche nativo).
+- **Fotos que esperan en el compositor (José 13/11, APK).** Lo elegido en el
+  clip o la galería (y lo pegado) ya no abre el preview: queda como miniaturas
+  de 64 dp DENTRO del campo, con ✕ para quitar. Tocar una abre el único
+  preview (`EnviarFotos`: pie, recorte, HD). Enviar manda todas y el texto va
+  de pie de la primera (`stageMore`, `stagedToSend`). La cámara del chat sigue
+  con su propio paso de «Enviar», como pidió José. El botón de la hoja del clip
+  dice «Agregar N».
+- **Diagnóstico con medidas de pantalla** (`diag-pantalla`): ventana,
+  pantalla, capa raíz y márgenes del sistema, para cerrar la hoja tapada por
+  los 3 botones sin adivinar.

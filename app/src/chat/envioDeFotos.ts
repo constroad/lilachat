@@ -74,3 +74,16 @@ export function sendTitleOf(picked: readonly Pick<FotoElegida, 'mimeType'>[]): s
   const noun = videos === 0 ? ['foto', 'fotos'] : videos === picked.length ? ['video', 'videos'] : ['archivo', 'archivos'];
   return picked.length === 1 ? `1 ${noun[0]}` : `${picked.length} ${noun[1]}`;
 }
+
+/** José 13/11: more picks join the ones waiting in the composer, without repeats, up to the limit. PURE. */
+export function stageMore(current: readonly FotoElegida[], added: readonly FotoElegida[]): FotoElegida[] {
+  const seen = new Set(current.map((shot) => shot.uri));
+  return [...current, ...added.filter((shot) => !seen.has(shot.uri) && Boolean(seen.add(shot.uri)))].slice(0, MAXIMO_DE_FOTOS);
+}
+
+/** The waiting photos with the composer's text as the first one's caption, like WhatsApp. PURE. */
+export function stagedToSend(staged: readonly FotoElegida[], text: string): FotoAEnviar[] {
+  const caption = text.trim();
+  const first = staged[0];
+  return armarEnvioDeFotos(staged, first && caption ? { [first.uri]: caption } : {});
+}

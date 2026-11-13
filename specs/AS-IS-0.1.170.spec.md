@@ -559,3 +559,14 @@ Lo que `specs/ARCHITECTURE.spec.md` (§120 a §134) afirma de la interfaz y no e
   Reanimated; el clip se redibuja mientras entra (carga la galería) y quedaba
   a mitad de camino. Ahora la entrada es un valor propio (`entry`) sumado al
   arrastre, que un redibujo no corta.
+- **La causa real de las hojas cortadas (13/11, tarde):** cuando el contenido
+  de una hoja crece DESPUÉS de abrirse (el clip carga la galería, «Info» carga
+  a las personas), la hoja crecía hacia abajo y lo último quedaba bajo los
+  botones. Ahora la tarjeta va anclada al borde inferior (`position: absolute;
+  bottom: 0`) y crece hacia arriba. La X de «Info» cierra (verificado).
+- **Zoom de la cámara del chat:** pellizco y botones 1x / 2x
+  (`camara/zoom.ts`). expo-camera no baja de 1x en Android y no dice el zoom
+  máximo (se asume 8x): el 0.6x llega con el cambio nativo del próximo APK.
+- **E2E 13/11 (emulador, 3 botones, OTA cbf3b2c5):** «Reenviado» en
+  #administracion de Test; «Info» abre y la X cierra; mensajes QA borrados
+  con «Eliminar para todos».

@@ -128,8 +128,12 @@ function SheetBody(props: SheetProps) {
           {draggable}
         </KeyboardAvoidingView>
       ) : (
-        <View style={styles.bottom} pointerEvents="box-none">
-          {draggable}
+        // José 13/11: anchored to the bottom edge, so a sheet whose content grows after opening (the
+        // clip loading the gallery, «Info» loading its people) grows UP, not under Android's buttons.
+        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          <View style={styles.anchored} pointerEvents="box-none">
+            {draggable}
+          </View>
         </View>
       )}
     </>
@@ -139,4 +143,5 @@ function SheetBody(props: SheetProps) {
 const styles = StyleSheet.create({
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#000000' },
   bottom: { flex: 1, justifyContent: 'flex-end' },
+  anchored: { position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '100%' },
 });

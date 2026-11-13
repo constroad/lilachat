@@ -1,5 +1,5 @@
 import mongoose, { Types, type Model } from 'mongoose';
-import { formFields, isAckBody, photoHourLines, photoStampLines, timemarkOf, validateFormReply, validateFormValues, type CommandOutcome, type CommandScope, type FormField, type FormValues, type GeoPoint } from '@lilachat/shared';
+import { FORM_PHOTO_MAX_BYTES, formFields, isAckBody, photoHourLines, photoStampLines, timemarkOf, validateFormReply, validateFormValues, type CommandOutcome, type CommandScope, type FormField, type FormValues, type GeoPoint } from '@lilachat/shared';
 import { ChatModel, MessageModel } from '../chatModels.js';
 import { readMediaBytes, type UploadOutcome } from '../mediaClient.js';
 import { defaultMediaUploader } from '../localMediaUploader.js';
@@ -39,7 +39,7 @@ export const FormFileModel: Model<FormFile> = (mongoose.models.FormFile as Model
 
 /** The photos a form takes (agentes: JPEG, PNG, WEBP or HEIC, up to 10 MB). */
 export const FORM_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic'];
-export const FORM_PHOTO_MAX_BYTES = 10 * 1024 * 1024;
+export { FORM_PHOTO_MAX_BYTES };
 const isId = (value: unknown): value is string => typeof value === 'string' && Types.ObjectId.isValid(value);
 const fail = (status: CommandError['status'] | 422, error: string, message: string) => ({ status, error, message });
 

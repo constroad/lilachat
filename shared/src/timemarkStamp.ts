@@ -22,8 +22,9 @@ export function timemarkOf(input: { at: Date; point?: GeoPoint | null; place?: s
   const hour = `${two(lima.getUTCHours())}:${two(lima.getUTCMinutes())}`;
   const date = `${two(lima.getUTCDate())}/${two(lima.getUTCMonth() + 1)}/${lima.getUTCFullYear()}`;
   const { point } = input;
-  const coords = point ? `${point.lat.toFixed(COORD_DECIMALS)}, ${point.lng.toFixed(COORD_DECIMALS)} · ±${Math.round(point.precision)} m` : null;
   const address = input.place?.trim() ? cutAtWord(input.place.trim(), ADDRESS_MAX) : null;
+  // José 12/11: the address is what the client reads; the numbers stand in only where there is none (a road, open land).
+  const coords = point && !address ? `${point.lat.toFixed(COORD_DECIMALS)}, ${point.lng.toFixed(COORD_DECIMALS)} · ±${Math.round(point.precision)} m` : null;
   return { hour, date, weekday: WEEKDAYS[lima.getUTCDay()]!, address, coords };
 }
 

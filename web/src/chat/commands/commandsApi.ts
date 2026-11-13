@@ -1,4 +1,4 @@
-import { FORMS_LEVEL, type FieldConditions, commandScopePath, formSubmitFailure, stampFieldsOf, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoStamp, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
+import { FORMS_LEVEL, type FieldConditions, commandScopePath, formSubmitFailure, stampFieldsOf, phoneShrinksPhoto, FORM_PHOTO_MAX_BYTES, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoStamp, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
 import { api } from '../../api';
 import { shrinkPhotoBlob } from '../shrinkPhoto';
 
@@ -55,7 +55,9 @@ export async function readFormPlace(jwt: string, scope: CommandScope, commandId:
 
 /** A form's photo, the moment it is picked, lighter with Portal's standard (28/10): the form then carries its id. */
 export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandId: string, file: Blob, stamp?: FormPhotoStamp): Promise<FormPhotoUpload> {
-  const photo = await shrinkPhotoBlob(file, file instanceof File ? file.name : 'foto.jpg');
+  const name = file instanceof File ? file.name : 'foto.jpg';
+  // A stamped photo goes whole: the server shrinks it once while it burns the stamp (José 12/11).
+  const photo = await shrinkPhotoBlob(file, name, { hd: !phoneShrinksPhoto(stamp, file.size, FORM_PHOTO_MAX_BYTES) });
   const body = new FormData();
   body.append('file', photo.blob, photo.name);
   // A signing's selfie: the server burns its hour and this place into it (pending 94).

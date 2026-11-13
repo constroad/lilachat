@@ -1,4 +1,4 @@
-import { FORMS_LEVEL, type FieldConditions, commandScopePath, formSubmitFailure, stampFieldsOf, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoStamp, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
+import { FORMS_LEVEL, type FieldConditions, commandScopePath, formSubmitFailure, stampFieldsOf, phoneShrinksPhoto, FORM_PHOTO_MAX_BYTES, type CommandGroup, type CommandOutcome, type CommandScope, type FormPhotoStamp, type FormPhotoUpload, type FormSubmitReply, type FormValues, type GeoPoint, type CommandsPlace, type PreviewReply, type ShortcutValues } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -36,13 +36,21 @@ export const refreshAppForm = (jwt: string, scope: CommandScope, commandId: stri
 export const previewAppForm = (jwt: string, scope: CommandScope, commandId: string, values: FormValues) =>
   jsonCall<PreviewReply>(`${BASE_URL}${commandScopePath(scope)}/commands/${commandId}/preview`, jwt, { method: 'POST', body: JSON.stringify({ values }) });
 
+/** The size on disk, or null when it cannot be read. */
+async function fileSizeOf(uri: string): Promise<number | null> {
+  const info = await FileSystem.getInfoAsync(uri).catch(() => null);
+  return info?.exists && typeof info.size === 'number' ? info.size : null;
+}
+
 /**
  * A form's photo, the moment it is taken: made lighter with Portal's standard
  * (28/10), then read from disk by the native multipart, never through JS memory.
  */
 export async function uploadFormPhoto(jwt: string, scope: CommandScope, commandId: string, photo: { uri: string; mime: string }, stamp?: FormPhotoStamp): Promise<FormPhotoUpload> {
   const name = photo.mime === 'image/png' ? 'foto.png' : 'foto.jpg';
-  const shrunk = await shrinkPhotoFile({ uri: photo.uri, mimeType: photo.mime, fileName: name });
+  // A stamped photo goes whole: the server shrinks it once while it burns the stamp (José 12/11).
+  const whole = !phoneShrinksPhoto(stamp, await fileSizeOf(photo.uri), FORM_PHOTO_MAX_BYTES);
+  const shrunk = await shrinkPhotoFile({ uri: photo.uri, mimeType: photo.mime, fileName: name }, { hd: whole });
   try {
     return await sendFormPhoto(jwt, scope, commandId, shrunk, stamp);
   } finally {

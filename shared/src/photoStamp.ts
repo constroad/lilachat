@@ -20,6 +20,18 @@ const CLOCK_SLACK_MS = 5 * 60_000;
 export const cameraStampOf = (point: GeoPoint | null): FormPhotoStamp => point ?? HOUR_STAMP;
 /** What the upload says for the report camera's stamp. */
 export const TIMEMARK_STAMP = 'timemark';
+/** The largest form photo the server takes. */
+export const FORM_PHOTO_MAX_BYTES = 10 * 1024 * 1024;
+
+/**
+ * José 12/11: a photo is encoded once. A stamped one goes up whole and the server shrinks it while it
+ * burns the stamp; shrinking it on the phone first was a second JPEG encode. The phone still shrinks
+ * an unstamped photo, and anything the server would refuse or whose size it cannot read.
+ */
+export function phoneShrinksPhoto(stamp: FormPhotoStamp | undefined, sizeBytes: number | null, maxBytes: number): boolean {
+  if (!stamp) return true;
+  return sizeBytes === null || sizeBytes > maxBytes;
+}
 
 export function exifTakenAtOf(exif: ExifData | null | undefined): string | null {
   const raw = exif?.DateTimeOriginal ?? exif?.DateTimeDigitized ?? exif?.DateTime;

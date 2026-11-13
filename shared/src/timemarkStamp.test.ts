@@ -6,13 +6,13 @@ import { timemarkLayoutOf, timemarkOf } from './timemarkStamp.js';
  * the date and the weekday beside it, then the address and the GPS. Never the person's name.
  */
 describe('timemarkOf', () => {
-  it('writes the hour, the date and the weekday in Lima, the address and the coordinates with their precision', () => {
+  it('writes the hour, the date and the weekday in Lima and the address, without coordinates when there is an address', () => {
     // Arrange: 12:42 UTC is 07:42 in Lima.
     const at = new Date('2026-11-12T12:42:10Z');
     // Act
     const stamp = timemarkOf({ at, point: { lat: -12.02174, lng: -76.88173, precision: 6.4 }, place: 'Av. Los Incas 1240, Ate, Lima' });
     // Assert
-    expect(stamp).toEqual({ hour: '07:42', date: '12/11/2026', weekday: 'jueves', address: 'Av. Los Incas 1240, Ate, Lima', coords: '-12.0217, -76.8817 · ±6 m' });
+    expect(stamp).toEqual({ hour: '07:42', date: '12/11/2026', weekday: 'jueves', address: 'Av. Los Incas 1240, Ate, Lima', coords: null });
   });
 
   it('just after midnight in Lima is still the day before in UTC, and with no reading there is no place line', () => {

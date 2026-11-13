@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { HOUR_STAMP } from './appActions';
-import { cameraStampOf, exifTakenAtOf, fileStampOf, galleryStampOf, stampFieldsOf, takenAtFrom } from './photoStamp';
+import { cameraStampOf, exifTakenAtOf, fileStampOf, galleryStampOf, phoneShrinksPhoto, stampFieldsOf, takenAtFrom } from './photoStamp';
 
 /** José 06/11: the photo of a tank or a material carries its date, hour and place, from the camera or from the gallery. */
 const point = { lat: -12.0464, lng: -77.0428, precision: 8 };
@@ -76,5 +76,28 @@ describe('fileStampOf: a browser file keeps its own date', () => {
     const stamps = [fileStampOf({ gallery: true }, lastModified), fileStampOf({ gallery: true, plainGallery: true }, lastModified), fileStampOf({ gallery: false }, lastModified)];
     // Assert
     expect(stamps).toEqual([{ takenAt: '2026-11-05T14:30:00.000Z' }, undefined, HOUR_STAMP]);
+  });
+});
+
+/** José 12/11: a stamped photo is encoded once, by the server that burns the stamp, never by the phone first. */
+describe('phoneShrinksPhoto', () => {
+  const tenMb = 10 * 1024 * 1024;
+
+  it('leaves a stamped photo whole for the server, and shrinks an unstamped one on the phone', () => {
+    // Act
+    const stamped = phoneShrinksPhoto({ timemark: true, point: null, logo: true }, 6 * 1024 * 1024, tenMb);
+    const plain = phoneShrinksPhoto(undefined, 6 * 1024 * 1024, tenMb);
+    // Assert
+    expect(stamped).toBe(false);
+    expect(plain).toBe(true);
+  });
+
+  it('still shrinks on the phone what the server would refuse, or a file whose size it cannot read', () => {
+    // Act
+    const huge = phoneShrinksPhoto(HOUR_STAMP, tenMb + 1, tenMb);
+    const unknown = phoneShrinksPhoto(HOUR_STAMP, null, tenMb);
+    // Assert
+    expect(huge).toBe(true);
+    expect(unknown).toBe(true);
   });
 });

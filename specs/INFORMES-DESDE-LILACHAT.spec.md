@@ -1406,7 +1406,8 @@ Se recorrió Control de pista en el APK (`lilafotos-qa`), en el servicio QA-CTLP
   el logo del espacio; la preferencia queda en el teléfono, `cameraLogoPref.ts`, encendida por
   defecto) y **«GPS ±N m»**. Abajo: galería (si el campo la permite), disparador de 76 y girar cámara.
 - **Sello en vivo** abajo a la izquierda (`StampOverlay.tsx`): hora grande, barra de acento, fecha
-  y día, dirección y coordenadas con su precisión. **Nunca el nombre de quien toma la foto.** El
+  y día y dirección. Las coordenadas solo salen cuando no hay dirección (una carretera, un terreno):
+  José preguntó si hacían falta; la dirección es lo que lee el cliente. El punto se guarda igual. **Nunca el nombre de quien toma la foto.** El
   tamaño sale del lado corto del cuadro (`timemarkLayoutOf`, `shared/src/timemarkStamp.ts`), así
   que vertical y apaisada se ven igual. Apaisada: los controles van en una columna a la derecha.
 - **Revisión antes de usarla**: la foto con su sello, «Repetir» o «Usar foto».
@@ -1418,5 +1419,14 @@ Se recorrió Control de pista en el APK (`lilafotos-qa`), en el servicio QA-CTLP
   hasta ahora. El sello en vivo se ve en la cámara, pero el PDF lleva el de Portal hasta que
   Portal reciba `selloLilachat: true` en `agregar_foto_de_informe` (Portal 448d0c04) y José
   re-apruebe esa herramienta en agentes. Ahí la cola manda `stamp=timemark` y Portal no sella.
+- **Una sola compresión por foto** (José 12/11: «no está bien que se haga 2 veces»). Quien quema
+  el sello es quien comprime, una vez, con el sello ya puesto: una foto con sello sube entera
+  (`phoneShrinksPhoto`, `shared/src/photoStamp.ts`; tope 10 MB, encima de eso el teléfono sí la
+  achica) y el servidor la deja en 1600 px y ~1 MB. Lila no recomprime (solo sobre 2560 px) y hace
+  el thumbnail una vez (640 px). Portal guarda los bytes tal cual con `selloLilachat`; sin él, hoy
+  la foto de informe la achica el APK y Portal la recomprime al sellarla (82 %): dos compresiones
+  hasta que José re-apruebe `agregar_foto_de_informe`.
+- **Video**: nadie lo comprime (lila solo hace `faststart` y el póster). Lo comprime el teléfono
+  antes de subir, en el APK nativo siguiente (no entra en un OTA).
 - **Pendiente**: la cámara del chat (`CamaraDelChat`, foto y video), la PWA móvil (`getUserMedia`)
   y el sello en video (diseños cam-04/05/06).

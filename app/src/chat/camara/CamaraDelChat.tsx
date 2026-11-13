@@ -41,7 +41,7 @@ type Props = { visible: boolean; nombreDelChat: string; onEnviar: (fotos: FotoAE
  * (two modals do not stack well on Android). The body mounts only while it is open: the GPS and the
  * clock of the stamp do not run behind a closed chat.
  */
-export function CamaraDelChat(props: Props) {
+export function ChatCamera(props: Props) {
   const back = useRef<(() => boolean) | null>(null);
   return (
     <Modal visible={props.visible} animationType="fade" onRequestClose={() => (back.current?.() ? undefined : props.onCerrar())} statusBarTranslucent>
@@ -76,12 +76,7 @@ function ChatCameraBody(props: Props & { backRef: { current: (() => boolean) | n
   useEffect(() => {
     void loadRecent().then(setRecent);
   }, []);
-  props.backRef.current = () => {
-    if (sendScreenBack.current) return (sendScreenBack.current(), true);
-    if (video.recording) return (video.stop(), true);
-    if (taken) return (setTaken(null), setShooting(false), true);
-    return false;
-  };
+  props.backRef.current = () => backStep({ sendScreenBack: sendScreenBack.current, recording: video.recording, stop: video.stop, taken: Boolean(taken), retake: () => (setTaken(null), setShooting(false)) });
 
   const shoot = async () => {
     if (shooting || !camera.current) return;
@@ -111,11 +106,7 @@ function ChatCameraBody(props: Props & { backRef: { current: (() => boolean) | n
       {taken ? null : <StampOverlay stamp={live.stamp} logoUrl={withLogo ? spaceLogo : null} width={width} height={height} bottomInset={BOTTOM_PANEL + margins.pie} />}
       <ChatCameraTop name={props.nombreDelChat} flash={flash} recordingMs={video.recording ? video.elapsedMs : null} onClose={props.onCerrar} onFlash={() => setFlash((before) => NEXT_FLASH[before])} />
       {taken ? null : <CameraChips logoOn={logoOn} logoUrl={spaceLogo} precision={live.point?.precision ?? null} top={margins.cabecera + CHIPS_BELOW} sound={mode === 'video' && !video.recording ? { on: sound, onToggle: () => setSound((before) => !before) } : undefined} />}
-      <View className="absolute bottom-0 left-0 right-0 bg-black/45 pt-3" style={{ paddingBottom: margins.pie + 12 }}>
-        {mode === 'picture' && recent.length ? <RecentStrip recent={recent} onPick={(asset) => setTaken({ uri: asset.uri, fileName: asset.filename, mimeType: 'image/jpeg', width: asset.width, height: asset.height })} /> : null}
-        {video.recording ? null : <ModeSwitch mode={mode} onMode={setMode} />}
-        <ShutterRow mode={mode} recording={video.recording} shooting={shooting} onShoot={() => void (mode === 'video' ? record() : shoot())} onFlip={() => setFront((before) => !before)} onGallery={props.onGaleria} />
-      </View>
+      <BottomPanel mode={mode} recent={recent} recording={video.recording} shooting={shooting} onMode={setMode} onPick={(asset) => setTaken(assetOf(asset))} onShoot={() => void (mode === 'video' ? record() : shoot())} onFlip={() => setFront((before) => !before)} onGallery={props.onGaleria} />
       <EnviarFotos
         embebido
         backRef={sendScreenBack}
@@ -132,6 +123,30 @@ function ChatCameraBody(props: Props & { backRef: { current: (() => boolean) | n
     </View>
   );
 }
+
+/** Android's «back», one step at a time: the crop, the recording, the shot, and only then the camera. */
+function backStep(state: { sendScreenBack: (() => void) | null; recording: boolean; stop: () => void; taken: boolean; retake: () => void }): boolean {
+  if (state.sendScreenBack) return (state.sendScreenBack(), true);
+  if (state.recording) return (state.stop(), true);
+  if (state.taken) return (state.retake(), true);
+  return false;
+}
+
+type BottomProps = { mode: Mode; recent: MediaLibrary.Asset[]; recording: boolean; shooting: boolean; onMode: (mode: Mode) => void; onPick: (asset: MediaLibrary.Asset) => void; onShoot: () => void; onFlip: () => void; onGallery: () => void };
+
+/** The recent photos (in photo mode), FOTO / VIDEO and the shutter row (design cam-04). */
+function BottomPanel(props: BottomProps) {
+  const margins = useMargenes();
+  return (
+    <View className="absolute bottom-0 left-0 right-0 bg-black/45 pt-3" style={{ paddingBottom: margins.pie + 12 }}>
+      {props.mode === 'picture' && props.recent.length ? <RecentStrip recent={props.recent} onPick={props.onPick} /> : null}
+      {props.recording ? null : <ModeSwitch mode={props.mode} onMode={props.onMode} />}
+      <ShutterRow mode={props.mode} recording={props.recording} shooting={props.shooting} onShoot={props.onShoot} onFlip={props.onFlip} onGallery={props.onGallery} />
+    </View>
+  );
+}
+
+const assetOf = (asset: MediaLibrary.Asset): FotoElegida => ({ uri: asset.uri, fileName: asset.filename, mimeType: 'image/jpeg', width: asset.width, height: asset.height });
 
 function ChatCameraTop(props: { name: string; flash: FlashMode; recordingMs: number | null; onClose: () => void; onFlash: () => void }) {
   const margins = useMargenes();

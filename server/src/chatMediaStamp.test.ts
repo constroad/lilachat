@@ -15,8 +15,8 @@ import { ChatModel, MessageModel } from './chatModels.js';
 import { signSession } from './sessions.js';
 
 /**
- * José 12/11: «en los chats de canales, cuando se presiona la cámara, debería mostrarse (y permitir
- * foto y video)» with the Timemark-like stamp. The phone sends the shot whole and asks for the stamp;
+ * José 12/11: in a channel the camera shows the same Timemark-like stamp, and takes photos and
+ * videos. The phone sends the shot whole and asks for the stamp;
  * the server burns it once, compressing it in the same pass.
  */
 const run = promisify(execFile);

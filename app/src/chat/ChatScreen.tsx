@@ -70,7 +70,7 @@ import { HiloScreen } from './HiloScreen';
 import type { PropsDelChat } from './propsDelChat';
 import { useReaccionesEnPantalla } from './reacciones/useReaccionesEnPantalla';
 import { ChatInfoCards } from './ChatInfoCards';
-import { CamaraDelChat } from './camara/CamaraDelChat';
+import { ChatCamera } from './camara/CamaraDelChat';
 import { useChatWindow } from './useChatWindow';
 import { useClipSharing } from './useClipSharing';
 import { offerCallLink } from './scheduledCall/callLinks';
@@ -524,7 +524,7 @@ export function ChatScreen({
 
       </ChatBottom>
 
-      <CamaraDelChat visible={camara.abierta} nombreDelChat={nombreVisible} onEnviar={(lista, opciones) => void camara.enviar(lista, opciones)} onGaleria={camara.aLaGaleria} onCerrar={camara.cerrar} />
+      <ChatCamera visible={camara.abierta} nombreDelChat={nombreVisible} onEnviar={(lista, opciones) => void camara.enviar(lista, opciones)} onGaleria={camara.aLaGaleria} onCerrar={camara.cerrar} />
       <EnviarFotos fotos={fotosElegidas} onCancelar={cerrarFotos} onEnviar={(lista, opciones) => void alEnviarFotos(lista, opciones)} />
       <HiloScreen
         raiz={hilos.raiz} highlightReply={highlightReply} focusInput={hilos.focusInput}

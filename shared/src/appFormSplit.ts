@@ -81,8 +81,8 @@ export function splitLineOf(total: number, rows: readonly FormValues[], plan: Sp
   if (!(total > 0)) return { text: 'Escribe el monto y se reparte solo.', tone: 'neutral' };
   const status = splitStatus(total, rowAmounts(rows, plan.amount));
   if (Math.abs(status.missing) < HALF_CENT) return { text: `Asignado ${money(status.assigned)} de ${money(total)}`, tone: 'ok' };
-  // José 12/11: what no partida takes stays as a general expense of the service; it can be sent.
-  if (status.missing > 0) return { text: `Sin asignar ${money(status.missing)} de ${money(total)}: queda como gasto general`, tone: 'warn' };
+  // José 13/11: a split must match the total to the cent; what is missing blocks, like what is over.
+  if (status.missing > 0) return { text: `Faltan ${money(status.missing)} por asignar de ${money(total)}`, tone: 'error' };
   return { text: `Sobran ${money(-status.missing)}: baja alguna partida`, tone: 'error' };
 }
 
@@ -93,4 +93,24 @@ export function splitFor(fields: readonly FormField[], values: FormValues, list:
   if (!plan || plan.list !== list) return undefined;
   const total = fields.find((field) => field.name === plan.total);
   return { plan, total: amountOf(values[plan.total]), unit: total?.kind === 'number' ? total.unit : undefined };
+}
+
+/**
+ * The error that stops sending a split that does not match its total to the cent (José 13/11). A list
+ * with no rows, or no total yet, splits nothing: the expense stays general. PURE.
+ */
+export function splitErrorOf(fields: readonly FormField[], values: FormValues): Record<string, string> {
+  const plan = splitOf(fields);
+  const rows = plan && Array.isArray(values[plan.list]) ? (values[plan.list] as FormValues[]) : [];
+  if (!plan || rows.length === 0) return {};
+  const total = amountOf(values[plan.total]);
+  if (!(total > 0)) return {};
+  const unit = fields.find((field) => field.name === plan.total);
+  const money = (amount: number) => `${unit?.kind === 'number' && unit.unit ? `${unit.unit} ` : ''}${amount.toFixed(2)}`;
+  const status = splitStatus(total, rowAmounts(rows, plan.amount));
+  if (Math.abs(status.missing) < HALF_CENT) return {};
+  const message = status.missing > 0
+    ? `Repartiste ${money(status.assigned)} de ${money(total)}: faltan ${money(status.missing)} por asignar.`
+    : `Sobran ${money(-status.missing)}: baja alguna partida.`;
+  return { [plan.list]: message };
 }

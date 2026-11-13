@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formFields, type AppForm, type FormSchemaProperty } from './appForms.js';
-import { rebalanceSplit, splitEvenly, splitLineOf, splitFor, splitOf, splitRows, splitStatus, typedAfterEdit } from './appFormSplit.js';
+import { splitErrorOf, rebalanceSplit, splitEvenly, splitLineOf, splitFor, splitOf, splitRows, splitStatus, typedAfterEdit } from './appFormSplit.js';
 
 const formWith = (properties: Record<string, FormSchemaProperty>): AppForm => ({ id: 'f', title: 'F', schema: { type: 'object', properties } });
 
@@ -96,7 +96,7 @@ describe('the split line and the typed rows', () => {
 
   it('says what is assigned, missing or over, in the total\'s unit', () => {
     expect(splitLineOf(500, [{ monto: 300 }, { monto: 200 }], plan, 'S/')).toEqual({ text: 'Asignado S/ 500.00 de S/ 500.00', tone: 'ok' });
-    expect(splitLineOf(500, [{ monto: 300 }, { monto: 160 }], plan, 'S/')).toEqual({ text: 'Sin asignar S/ 40.00 de S/ 500.00: queda como gasto general', tone: 'warn' });
+    expect(splitLineOf(500, [{ monto: 300 }, { monto: 160 }], plan, 'S/')).toEqual({ text: 'Faltan S/ 40.00 por asignar de S/ 500.00', tone: 'error' });
     expect(splitLineOf(500, [{ monto: 600 }], plan, 'S/')).toEqual({ text: 'Sobran S/ 100.00: baja alguna partida', tone: 'error' });
     expect(splitLineOf(0, [], plan).tone).toBe('neutral');
   });
@@ -114,5 +114,29 @@ describe('splitFor', () => {
     const fields = formFields(expense);
     expect(splitFor(fields, { monto: '505,05' }, 'partidas')).toEqual({ plan: { list: 'partidas', amount: 'monto', total: 'monto' }, total: 505.05, unit: 'S/' });
     expect(splitFor(fields, {}, 'otra')).toBeUndefined();
+  });
+});
+
+// José 13/11 (via Portal): a service expense split by Lila must match to the cent; without partidas it stays general.
+describe('splitErrorOf: the split blocks sending unless it matches the total', () => {
+  const fields = formFields(expense);
+
+  it('missing or over blocks, under the list', () => {
+    expect(splitErrorOf(fields, { monto: 500, partidas: [{ partidaId: 'mat', monto: 300 }, { partidaId: 'mo', monto: 160 }] })).toEqual({ partidas: 'Repartiste S/ 460.00 de S/ 500.00: faltan S/ 40.00 por asignar.' });
+    expect(splitErrorOf(fields, { monto: 500, partidas: [{ partidaId: 'mat', monto: 600 }] })).toEqual({ partidas: 'Sobran S/ 100.00: baja alguna partida.' });
+  });
+
+  it('a split to the cent, no partidas or no total does not block', () => {
+    expect(splitErrorOf(fields, { monto: 100, partidas: [{ partidaId: 'mat', monto: 33.34 }, { partidaId: 'mo', monto: 33.33 }, { partidaId: 'eq', monto: 33.33 }] })).toEqual({});
+    expect(splitErrorOf(fields, { monto: 500, partidas: [] })).toEqual({});
+    expect(splitErrorOf(fields, { monto: 500 })).toEqual({});
+    expect(splitErrorOf(fields, { partidas: [{ partidaId: 'mat', monto: 10 }] })).toEqual({});
+  });
+
+  it('validateFormValues refuses the form with that error', async () => {
+    const { validateFormValues } = await import('./appForms.js');
+    const checked = validateFormValues(fields, { monto: 500, partidas: [{ partidaId: 'mat', monto: 300 }] });
+    expect(checked.ok).toBe(false);
+    expect(!checked.ok && checked.errors.partidas).toMatch(/faltan S\/ 200.00/);
   });
 });

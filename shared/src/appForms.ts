@@ -1,4 +1,5 @@
 import { cutAtWord } from './textCut.js';
+import { splitErrorOf } from './appFormSplit.js';
 import { normalizeFormDate, startingMoment, type DateMode } from './formDates.js';
 import { choiceOptions, previewToolOf, refusalOf, type ChoiceOption } from './appFormOptions.js';
 /**
@@ -513,8 +514,12 @@ export function validateFormValues(fields: readonly FormField[], raw: unknown, o
   const input = record(raw);
   const { values, errors } = checkFields(fields, input);
   if (options.requireFresh) Object.assign(errors, staleLocation(fields, input, values));
+  if (!errors[splitListOf(fields)]) Object.assign(errors, splitErrorOf(fields, values));
   return Object.keys(errors).length ? { ok: false, errors } : { ok: true, values };
 }
+
+/** The list a split blocks on, so a list error already there is not replaced. */
+const splitListOf = (fields: readonly FormField[]) => fields.find((field) => field.kind === 'list' && field.pickBy)?.name ?? '';
 
 /** The shown fields of a form or of one item: a field hidden by the other answers is neither required nor sent. */
 function checkFields(fields: readonly FormField[], input: FormValues, row?: FormValues): { values: FormValues; errors: Record<string, string> } {

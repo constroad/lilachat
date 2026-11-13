@@ -96,7 +96,7 @@ describe('the split line and the typed rows', () => {
 
   it('says what is assigned, missing or over, in the total\'s unit', () => {
     expect(splitLineOf(500, [{ monto: 300 }, { monto: 200 }], plan, 'S/')).toEqual({ text: 'Asignado S/ 500.00 de S/ 500.00', tone: 'ok' });
-    expect(splitLineOf(500, [{ monto: 300 }, { monto: 160 }], plan, 'S/')).toEqual({ text: 'Faltan S/ 40.00 de S/ 500.00', tone: 'warn' });
+    expect(splitLineOf(500, [{ monto: 300 }, { monto: 160 }], plan, 'S/')).toEqual({ text: 'Sin asignar S/ 40.00 de S/ 500.00: queda como gasto general', tone: 'warn' });
     expect(splitLineOf(500, [{ monto: 600 }], plan, 'S/')).toEqual({ text: 'Sobran S/ 100.00: baja alguna partida', tone: 'error' });
     expect(splitLineOf(0, [], plan).tone).toBe('neutral');
   });

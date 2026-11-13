@@ -81,7 +81,8 @@ export function splitLineOf(total: number, rows: readonly FormValues[], plan: Sp
   if (!(total > 0)) return { text: 'Escribe el monto y se reparte solo.', tone: 'neutral' };
   const status = splitStatus(total, rowAmounts(rows, plan.amount));
   if (Math.abs(status.missing) < HALF_CENT) return { text: `Asignado ${money(status.assigned)} de ${money(total)}`, tone: 'ok' };
-  if (status.missing > 0) return { text: `Faltan ${money(status.missing)} de ${money(total)}`, tone: 'warn' };
+  // José 12/11: what no partida takes stays as a general expense of the service; it can be sent.
+  if (status.missing > 0) return { text: `Sin asignar ${money(status.missing)} de ${money(total)}: queda como gasto general`, tone: 'warn' };
   return { text: `Sobran ${money(-status.missing)}: baja alguna partida`, tone: 'error' };
 }
 

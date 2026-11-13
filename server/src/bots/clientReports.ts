@@ -37,6 +37,8 @@ const PUBLISH_FORM: FormSchema = { type: 'object', properties: { nota: { type: '
 const REMOVE_PHOTO_TOOL = 'quitar_foto_de_informe';
 /** The photo tool that takes the photo's kind (`tipoFoto`). */
 const KINDED_PHOTO_TOOL = 'agregar_foto_de_informe';
+/** CTL-PIS extra photos: the same keys minus `tipoFoto` (Portal `EXTRA_PHOTO_PROPERTIES`). */
+const EXTRA_PHOTO_TOOL = 'agregar_foto_adicional';
 /** Portal's `subir_al_drive`: its answer is the ticket the phone sends the file with. */
 const DRIVE_UPLOAD_TOOL = 'subir_al_drive';
 const NOTHING_TO_FILL: FormSchema = { type: 'object', properties: {} };
@@ -176,12 +178,12 @@ function contextFor(form: AppForm, serviceId: string, input: Extract<OpenInput, 
 }
 
 /**
- * What only the fixed-photo tool declares: `tipoFoto` (José 07/11) and `selloLilachat` (José 12/11).
- * The extra photo's tool has neither, and agentes refuses unknown keys.
+ * Keys only some photo tools declare, and agentes refuses unknown ones: `tipoFoto` only the fixed-photo
+ * tool (José 07/11); `selloLilachat` both photo tools (José 12/11, Portal 448d0c04).
  */
 function kindedPhotoKeys(form: AppForm, input: Extract<OpenInput, { kind: 'section' }>, photoKind: string | undefined): Record<string, string | boolean> {
-  if (form.id !== KINDED_PHOTO_TOOL) return {};
-  return { ...(photoKind ? { tipoFoto: photoKind } : {}), ...(input.sealed ? { selloLilachat: true } : {}) };
+  const sealed: Record<string, boolean> = input.sealed && (form.id === KINDED_PHOTO_TOOL || form.id === EXTRA_PHOTO_TOOL) ? { selloLilachat: true } : {};
+  return { ...(photoKind && form.id === KINDED_PHOTO_TOOL ? { tipoFoto: photoKind } : {}), ...sealed };
 }
 
 /** The section's form comes from the document Portal answered to THIS person; the report, section and tramo ride as context. */

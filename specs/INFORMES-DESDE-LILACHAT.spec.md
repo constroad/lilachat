@@ -1418,11 +1418,12 @@ Se recorrió Control de pista en el APK (`lilafotos-qa`), en el servicio QA-CTLP
 - **Fotos de informe (cola de informes, todos los tipos)**: una foto de la cámara de Lilachat
   viaja en la cola con su sello (`QueuedPhoto.stamp`, con la hora en que se TOMÓ: la cola puede
   mandarla horas después). La sección se abre con `sello_lilachat: true` y el servidor pone
-  `selloLilachat: true` en el contexto SOLO de `agregar_foto_de_informe` (la única herramienta que
-  lo declara; agentes rechaza claves desconocidas). Portal (448d0c04) guarda esa foto sin sellar ni
-  recomprimir. Con cualquier otra herramienta de foto (`agregar_foto_adicional`), el servidor NO
-  quema el sello (`portalStampsIt`) y lo pone Portal, como antes: nunca dos sellos. Un cliente viejo
-  no manda ni sello ni marca: Portal sella. Requiere que José re-apruebe `agregar_foto_de_informe`.
+  `selloLilachat: true` en el contexto de las dos herramientas que agregan fotos y lo declaran:
+  `agregar_foto_de_informe` (CTL-IMP, las 4 fijas de CTL-PIS, CON-CAP) y `agregar_foto_adicional`
+  (extras de CTL-PIS). agentes rechaza claves desconocidas. Portal (448d0c04) guarda esa foto sin
+  sellar ni recomprimir. Si una herramienta nueva no lo declara, el servidor NO quema el sello
+  (`portalStampsIt`) y lo pone Portal: nunca dos sellos. Un cliente viejo
+  no manda ni sello ni marca: Portal sella. José re-aprobó las dos herramientas el 12/11.
 - **Una sola compresión por foto** (José 12/11: «no está bien que se haga 2 veces»). Quien quema
   el sello es quien comprime, una vez, con el sello ya puesto: una foto con sello sube entera
   (`phoneShrinksPhoto`, `shared/src/photoStamp.ts`; tope 10 MB, encima de eso el teléfono sí la

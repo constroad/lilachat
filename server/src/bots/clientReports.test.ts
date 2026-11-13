@@ -374,6 +374,9 @@ describe('a control de pista (06/11): units from the dispatches, photos with the
     expect(opened.body.response.form).toMatchObject({ id: 'agregar_foto_adicional' });
     const run = await BotCommandRunModel.findById(opened.body.commandId).lean();
     expect(run?.context).toEqual({ servicioId: 'srv-318', informeId: '6aed0a1b2c3d4e5f60718293', tramoId: 'd1', clientKey: 'k-extra-1', lat: -12.0464, lng: -77.0428, at });
+    // …and it declares `selloLilachat` too (Portal 448d0c04): an extra photo is also stamped and encoded once.
+    const sealed = await openOf(ana, { kind: 'section', type: 'CTL-PIS', section_id: 'unidades', item_id: 'd1', key: 'foto-adicional', lat: -12.0464, lng: -77.0428, at, client_key: 'k-extra-2', sello_lilachat: true }).expect(200);
+    expect((await BotCommandRunModel.findById(sealed.body.commandId).lean())?.context).toMatchObject({ clientKey: 'k-extra-2', selloLilachat: true });
   });
 
   it('a unit\'s data section is saved under its form id (`unidad`), the key Portal accepts, with the dispatch as tramo', async () => {

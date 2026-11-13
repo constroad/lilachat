@@ -1,263 +1,48 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, FlatList, Pressable, Text, View, useWindowDimensions } from 'react-native';
-import { CameraView, type CameraCapturedPicture } from 'expo-camera';
-import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useCameraZoom, ZoomChips } from './ZoomControls';
-import * as MediaLibrary from 'expo-media-library/legacy';
-import { Image } from 'expo-image';
-import { Image as GalleryIcon, RefreshCcw, X, Zap, ZapOff } from 'lucide-react-native';
-import type { GeoPoint, TimemarkStampAsked } from '@lilachat/shared';
-import { Modal } from '../../ui/Modal';
-import { useMargenes } from '../../ui/useMargenes';
-import { reportarError } from '../../ui/reportarError';
-import { getCurrentSpaceId, useSpaceLogo } from '../../spaces/currentSpace';
+import { useMemo, useRef } from 'react';
 import type { FotoAEnviar, FotoElegida } from '../envioDeFotos';
 import { EnviarFotos } from '../EnviarFotos';
-import { FLASH_LABEL, NEXT_FLASH, type FlashMode } from './flash';
-import { CameraChips } from './CameraChips';
-import { StampOverlay } from './StampOverlay';
-import { useCameraLogo } from './cameraLogoPref';
-import { useLiveStamp } from './useLiveStamp';
-import { useVideoRecording, type RecordedVideo } from './useVideoRecording';
-import { recordingLabel, VIDEO_BITRATE } from '@lilachat/shared';
-import { ModeSwitch, RECORD_RED, type CameraMode } from './ModeSwitch';
-
-/** How many recent photos the strip shows (only if the gallery is already allowed). */
-const RECENT = 12;
-const THUMB = 56;
-const SHUTTER = 76;
-const SIDE_BUTTON = 48;
-const BLINK_IN_MS = 60;
-const BLINK_OUT_MS = 180;
-/** The chips sit under the top bar; the stamp sits above the bottom panel. */
-const CHIPS_BELOW = 92;
-/** The chips' own height: the logo goes under them, not behind them. */
-const CHIP_ROW = 44;
-const BOTTOM_PANEL = 200;
-/** The zoom chips' gap to the right edge (or to the side column). */
-const ZOOM_EDGE = 16;
-/** Held sideways the controls go to a column on the right (as the form camera, design cam-02). */
-const SIDE_COLUMN = 132;
-type Mode = CameraMode;
+import { Camera, type TakenMedia } from './Camera';
 
 type Props = { visible: boolean; nombreDelChat: string; onEnviar: (fotos: FotoAEnviar[], opciones: { hd: boolean }) => void; onGaleria: () => void; onCerrar: () => void };
 
 /**
- * The chat's own camera (José 20/10, design `f2-app-camara`; José 12/11, designs cam-04/cam-05):
- * photo and video, with the live Timemark-like stamp (hour, date, address and the space's logo by
- * its chip) that the server burns into what is sent. «Enviar» opens on top of this same screen
- * (two modals do not stack well on Android). The body mounts only while it is open: the GPS and the
- * clock of the stamp do not run behind a closed chat.
+ * The APK's one camera (`Camera`) in a chat (José 20/10, design `f2-app-camara`; 12/11, cam-04/05):
+ * photo and video with sound, the recent photos over the shutter, and «Enviar» opening on top of
+ * the same screen (two modals do not stack well on Android). It mounts only while open: the GPS
+ * and the clock of the stamp do not run behind a closed chat.
  */
 export function ChatCamera(props: Props) {
-  const back = useRef<(() => boolean) | null>(null);
-  return (
-    <Modal visible={props.visible} animationType="fade" onRequestClose={() => (back.current?.() ? undefined : props.onCerrar())} statusBarTranslucent>
-      {/* An Android Modal needs its own gesture root, or the pinch to zoom never arrives. */}
-      <GestureHandlerRootView style={{ flex: 1 }}>{props.visible ? <ChatCameraBody {...props} backRef={back} /> : null}</GestureHandlerRootView>
-    </Modal>
-  );
-}
-
-const stampOf = (point: GeoPoint | null, logo: boolean, takenAt: string): TimemarkStampAsked => ({ timemark: true, point, logo, takenAt });
-
-function ChatCameraBody(props: Props & { backRef: { current: (() => boolean) | null } }) {
-  const margins = useMargenes();
-  const { width, height } = useWindowDimensions();
-  const camera = useRef<CameraView>(null);
-  const zoom = useCameraZoom();
-  const blink = useRef(new Animated.Value(0)).current;
-  const [mode, setMode] = useState<Mode>('picture');
-  const [front, setFront] = useState(false);
-  const [flash, setFlash] = useState<FlashMode>('auto');
-  const [sound, setSound] = useState(true);
-  const [shooting, setShooting] = useState(false);
-  const [recent, setRecent] = useState<MediaLibrary.Asset[]>([]);
-  /** What was just taken: «Enviar» opens ON TOP, in this same screen. */
-  const [taken, setTaken] = useState<FotoElegida | null>(null);
-  // One list per shot: a new one each second (the live clock) wiped the caption in «Enviar» (José 13/11).
-  const takenList = useMemo(() => (taken ? [taken] : []), [taken]);
   /** While the photo is being cropped, «back» closes the crop (01/11). */
   const sendScreenBack = useRef<(() => void) | null>(null);
-  const live = useLiveStamp();
-  const logoOn = useCameraLogo();
-  const spaceLogo = useSpaceLogo(getCurrentSpaceId());
-  const video = useVideoRecording(camera, sound);
-  const withLogo = Boolean(logoOn && spaceLogo);
-  const landscape = width > height;
-  /** What the shot showed, frozen when it is taken: «Enviar» draws it (José 13/11). */
-  const seen = { stamp: live.stamp, logoUrl: withLogo ? spaceLogo : null };
-
-  useEffect(() => {
-    void loadRecent().then(setRecent);
-  }, []);
-  props.backRef.current = () => backStep({ sendScreenBack: sendScreenBack.current, recording: video.recording, stop: video.stop, taken: Boolean(taken), retake: () => (setTaken(null), setShooting(false)) });
-
-  const shoot = async () => {
-    if (shooting || !camera.current) return;
-    setShooting(true);
-    Animated.sequence([Animated.timing(blink, { toValue: 1, duration: BLINK_IN_MS, useNativeDriver: true }), Animated.timing(blink, { toValue: 0, duration: BLINK_OUT_MS, useNativeDriver: true })]).start();
-    const takenAt = new Date().toISOString();
-    try {
-      // `quality: 1`: native and whole; the server shrinks it once while it burns the stamp.
-      await camera.current.takePictureAsync({ quality: 1, onPictureSaved: (picture: CameraCapturedPicture) => setTaken({ ...pictureOf(picture), stamp: stampOf(live.point, withLogo, takenAt), seen }) });
-    } catch (error) {
-      reportarError('CamaraDelChat.shoot', error);
-      setShooting(false);
-    }
-  };
-  const record = async () => {
-    if (video.recording) return video.stop();
-    const recorded = await video.start();
-    if (recorded) setTaken({ ...videoOf(recorded, stampOf(live.point, withLogo, recorded.startedAt)), seen });
-  };
-
+  const takenBack = useRef<(() => boolean) | null>(() => (sendScreenBack.current ? (sendScreenBack.current(), true) : false));
+  if (!props.visible) return null;
   return (
-    <View testID="camara-del-chat" className="flex-1 bg-black">
-      <GestureDetector gesture={zoom.pinch}>
-        <CameraView ref={camera} style={{ flex: 1 }} mode={mode} facing={front ? 'front' : 'back'} flash={flash} mute={!sound} videoQuality="720p" videoBitrate={VIDEO_BITRATE} active={!taken} zoom={zoom.native} />
-      </GestureDetector>
-      {/* While it captures, the preview goes transparent (the chat shows behind): black until «Enviar». */}
-      {shooting || taken ? <View pointerEvents="none" className="absolute inset-0 bg-black" /> : null}
-      <Animated.View pointerEvents="none" className="absolute inset-0 bg-white" style={{ opacity: blink }} />
-      {taken ? null : <StampOverlay stamp={live.stamp} logoUrl={withLogo ? spaceLogo : null} width={landscape ? width - SIDE_COLUMN : width} height={height} bottomInset={landscape ? margins.pie : BOTTOM_PANEL + margins.pie} topInset={margins.cabecera + CHIPS_BELOW + CHIP_ROW} rightInset={landscape ? SIDE_COLUMN : 0} />}
-      <ChatCameraTop name={props.nombreDelChat} flash={flash} right={landscape ? SIDE_COLUMN : 0} recordingMs={video.recording ? video.elapsedMs : null} onClose={props.onCerrar} onFlash={() => setFlash((before) => NEXT_FLASH[before])} />
-      {taken ? null : <CameraChips logoOn={logoOn} logoUrl={spaceLogo} precision={live.point?.precision ?? null} top={margins.cabecera + CHIPS_BELOW} sound={mode === 'video' && !video.recording ? { on: sound, onToggle: () => setSound((before) => !before) } : undefined} />}
-      {taken ? null : <ZoomChips zoom={zoom.zoom} onZoom={zoom.setZoom} right={(landscape ? SIDE_COLUMN : 0) + ZOOM_EDGE} />}
-      <BottomPanel landscape={landscape} mode={mode} recent={recent} recording={video.recording} shooting={shooting} onMode={setMode} onPick={(asset) => setTaken(assetOf(asset))} onShoot={() => void (mode === 'video' ? record() : shoot())} onFlip={() => setFront((before) => !before)} onGallery={props.onGaleria} />
-      <EnviarFotos
-        embebido
-        backRef={sendScreenBack}
-        fotos={takenList}
-        onCancelar={() => {
-          setTaken(null);
-          setShooting(false);
-        }}
-        onEnviar={(fotos, opciones) => {
-          props.onEnviar(fotos, opciones);
-          props.onCerrar();
-        }}
-      />
-    </View>
-  );
-}
-
-/** Android's «back», one step at a time: the crop, the recording, the shot, and only then the camera. */
-function backStep(state: { sendScreenBack: (() => void) | null; recording: boolean; stop: () => void; taken: boolean; retake: () => void }): boolean {
-  if (state.sendScreenBack) return (state.sendScreenBack(), true);
-  if (state.recording) return (state.stop(), true);
-  if (state.taken) return (state.retake(), true);
-  return false;
-}
-
-type BottomProps = { landscape: boolean; mode: Mode; recent: MediaLibrary.Asset[]; recording: boolean; shooting: boolean; onMode: (mode: Mode) => void; onPick: (asset: MediaLibrary.Asset) => void; onShoot: () => void; onFlip: () => void; onGallery: () => void };
-
-/** The recent photos (in photo mode), FOTO / VIDEO and the shutter row (design cam-04). */
-function BottomPanel(props: BottomProps) {
-  const margins = useMargenes();
-  if (props.landscape) {
-    return (
-      <View testID="columna-de-camara" className="absolute bottom-0 right-0 top-0 items-center justify-center gap-6 bg-black/45" style={{ width: SIDE_COLUMN }}>
-        {props.recording ? null : <ModeSwitch vertical mode={props.mode} onMode={props.onMode} />}
-        <ShutterRow vertical mode={props.mode} recording={props.recording} shooting={props.shooting} onShoot={props.onShoot} onFlip={props.onFlip} onGallery={props.onGallery} />
-      </View>
-    );
-  }
-  return (
-    <View className="absolute bottom-0 left-0 right-0 bg-black/45 pt-3" style={{ paddingBottom: margins.pie + 12 }}>
-      {props.mode === 'picture' && props.recent.length ? <RecentStrip recent={props.recent} onPick={props.onPick} /> : null}
-      {props.recording ? null : <ModeSwitch mode={props.mode} onMode={props.onMode} />}
-      <ShutterRow mode={props.mode} recording={props.recording} shooting={props.shooting} onShoot={props.onShoot} onFlip={props.onFlip} onGallery={props.onGallery} />
-    </View>
-  );
-}
-
-const assetOf = (asset: MediaLibrary.Asset): FotoElegida => ({ uri: asset.uri, fileName: asset.filename, mimeType: 'image/jpeg', width: asset.width, height: asset.height });
-
-function ChatCameraTop(props: { name: string; flash: FlashMode; right: number; recordingMs: number | null; onClose: () => void; onFlash: () => void }) {
-  const margins = useMargenes();
-  return (
-    <View className="absolute left-0 top-0 items-center" style={{ paddingTop: margins.cabecera, right: props.right }}>
-      <View className="w-full flex-row items-center justify-between gap-3 px-3">
-        <Pressable testID="btn-cerrar-camara" accessibilityLabel="Cerrar la cámara" onPress={props.onClose} className="h-11 w-11 items-center justify-center rounded-full bg-black/45">
-          <X size={24} color="white" />
-        </Pressable>
-        {props.recordingMs === null ? (
-          <Text className="min-w-0 flex-1 rounded-full bg-black/55 px-3 py-1.5 text-center text-[14px] font-semibold" style={{ color: 'white' }} numberOfLines={1}>{`Para: ${props.name}`}</Text>
-        ) : (
-          <View testID="reloj-de-video" className="flex-row items-center gap-2 rounded-full border border-red-500 bg-black/60 px-3 py-1.5">
-            <View className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: RECORD_RED }} />
-            <Text className="text-[15px] font-bold" style={{ color: 'white', fontVariant: ['tabular-nums'] }}>{recordingLabel(props.recordingMs)}</Text>
-          </View>
-        )}
-        <Pressable testID="btn-flash" accessibilityLabel={`Flash: ${FLASH_LABEL[props.flash]}`} onPress={props.onFlash} className="h-11 flex-row items-center gap-1.5 rounded-full bg-black/45 px-3">
-          {props.flash === 'off' ? <ZapOff size={20} color="white" /> : <Zap size={20} color="white" />}
-          <Text className="text-[13px] font-semibold" style={{ color: 'white' }}>{FLASH_LABEL[props.flash]}</Text>
-        </Pressable>
-      </View>
-    </View>
-  );
-}
-
-function RecentStrip(props: { recent: MediaLibrary.Asset[]; onPick: (asset: MediaLibrary.Asset) => void }) {
-  return (
-    <FlatList
-      horizontal
-      data={props.recent}
-      keyExtractor={(asset) => asset.id}
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingBottom: 12 }}
-      renderItem={({ item }) => (
-        <Pressable testID={`reciente-${item.id}`} onPress={() => props.onPick(item)}>
-          <Image source={{ uri: item.uri }} style={{ width: THUMB, height: THUMB, borderRadius: 10 }} contentFit="cover" />
-        </Pressable>
-      )}
+    <Camera
+      testID="camara-del-chat"
+      title={`Para: ${props.nombreDelChat}`}
+      video={{}}
+      soundChip
+      recent
+      onGallery={props.onGaleria}
+      onClose={props.onCerrar}
+      takenBack={takenBack}
+      renderTaken={(taken, retake) => <SendTaken taken={taken} backRef={sendScreenBack} onCancel={retake} onSend={(fotos, opciones) => (props.onEnviar(fotos, opciones), props.onCerrar())} />}
     />
   );
 }
 
-function ShutterRow(props: { vertical?: boolean; mode: Mode; recording: boolean; shooting: boolean; onShoot: () => void; onFlip: () => void; onGallery: () => void }) {
-  const inner = SHUTTER - 16;
-  return (
-    <View className={props.vertical ? 'items-center gap-6' : 'flex-row items-center justify-around'}>
-      {props.recording ? <View style={{ width: SIDE_BUTTON }} /> : (
-        <Pressable testID="btn-galeria-camara" accessibilityLabel="Elegir de la galería" onPress={props.onGallery} className="items-center justify-center rounded-full bg-white/15" style={{ width: SIDE_BUTTON, height: SIDE_BUTTON }}>
-          <GalleryIcon size={22} color="white" />
-        </Pressable>
-      )}
-      <Pressable testID="btn-disparar" accessibilityLabel={props.mode === 'video' ? (props.recording ? 'Detener el video' : 'Grabar video') : 'Tomar la foto'} disabled={props.shooting} onPress={props.onShoot} className="items-center justify-center rounded-full border-4 border-white" style={{ width: SHUTTER, height: SHUTTER }}>
-        {props.recording ? (
-          <View className="rounded-md" style={{ width: inner / 2, height: inner / 2, backgroundColor: RECORD_RED }} />
-        ) : (
-          <View className={`rounded-full ${props.shooting ? 'opacity-60' : ''}`} style={{ width: inner, height: inner, backgroundColor: props.mode === 'video' ? RECORD_RED : 'white' }} />
-        )}
-      </Pressable>
-      {props.recording ? <View style={{ width: SIDE_BUTTON }} /> : (
-        <Pressable testID="btn-girar-camara" accessibilityLabel="Girar la cámara" onPress={props.onFlip} className="items-center justify-center rounded-full bg-white/15" style={{ width: SIDE_BUTTON, height: SIDE_BUTTON }}>
-          <RefreshCcw size={22} color="white" />
-        </Pressable>
-      )}
-    </View>
-  );
+function SendTaken(props: { taken: TakenMedia; backRef: { current: (() => void) | null }; onCancel: () => void; onSend: (fotos: FotoAEnviar[], opciones: { hd: boolean }) => void }) {
+  // One list per shot: a new one each second (the live clock) wiped the caption in «Enviar» (José 13/11).
+  const list = useMemo(() => [elegidaOf(props.taken)], [props.taken]);
+  return <EnviarFotos embebido backRef={props.backRef} fotos={list} onCancelar={props.onCancel} onEnviar={props.onSend} />;
 }
 
-function pictureOf(picture: CameraCapturedPicture): FotoElegida {
-  return { uri: picture.uri, fileName: `foto-${Date.now()}.jpg`, mimeType: 'image/jpeg', width: picture.width, height: picture.height };
-}
-
-function videoOf(recorded: RecordedVideo, stamp: TimemarkStampAsked): FotoElegida {
-  return { uri: recorded.uri, fileName: `video-${Date.now()}.mp4`, mimeType: 'video/mp4', stamp };
-}
-
-/** The latest photos of the gallery, ONLY if it is already allowed (the camera asks for nothing more). */
-async function loadRecent(): Promise<MediaLibrary.Asset[]> {
-  try {
-    const allowed = await MediaLibrary.getPermissionsAsync(false, ['photo']);
-    if (!allowed.granted) return [];
-    const page = await MediaLibrary.getAssetsAsync({ first: RECENT, mediaType: MediaLibrary.MediaType.photo, sortBy: [[MediaLibrary.SortBy.creationTime, false]] });
-    return page.assets;
-  } catch (error) {
-    reportarError('CamaraDelChat.recent', error);
-    return [];
-  }
-}
+const elegidaOf = (taken: TakenMedia): FotoElegida => ({
+  uri: taken.uri,
+  fileName: taken.fileName,
+  mimeType: taken.mime,
+  ...(taken.width ? { width: taken.width } : {}),
+  ...(taken.height ? { height: taken.height } : {}),
+  ...(taken.stamp ? { stamp: taken.stamp } : {}),
+  ...(taken.seen ? { seen: taken.seen } : {}),
+});

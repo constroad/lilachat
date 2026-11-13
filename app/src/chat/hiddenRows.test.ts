@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { mergeHidden, withoutHidden } from './hiddenRows';
 
-/** «Eliminar para mí» (FL9): se oculta en ESTE teléfono, el resto lo sigue viendo. */
+/** «Eliminar para mí» (FL9): hidden on THIS phone, everyone else still sees it. */
 describe('withoutHidden', () => {
-  it('saca los ocultos y deja lo pendiente (no tiene seq todavía)', () => {
-    const filas = [{ seq: 1 }, { seq: 2 }, { clientKey: 'p1' }, { seq: 3 }];
+  it('drops the hidden ones and keeps the pending (no seq yet)', () => {
+    const rows = [{ seq: 1 }, { seq: 2 }, { clientKey: 'p1' }, { seq: 3 }];
 
-    expect(withoutHidden(filas, new Set([2]))).toEqual([{ seq: 1 }, { clientKey: 'p1' }, { seq: 3 }]);
+    expect(withoutHidden(rows, new Set([2]))).toEqual([{ seq: 1 }, { clientKey: 'p1' }, { seq: 3 }]);
   });
 
-  it('sin ocultos devuelve la MISMA lista (no rompe la memoización)', () => {
-    const filas = [{ seq: 1 }];
+  it('with nothing hidden it returns the SAME list (memoization holds)', () => {
+    const rows = [{ seq: 1 }];
 
-    expect(withoutHidden(filas, new Set())).toBe(filas);
+    expect(withoutHidden(rows, new Set())).toBe(rows);
   });
 });
 

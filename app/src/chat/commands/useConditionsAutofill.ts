@@ -6,7 +6,7 @@ import { devicePlaceNow } from '../../spaces/clients/reports/devicePlace';
 export type ConditionsLookup = (point: GeoPoint) => Promise<FieldConditions | null>; // gates-allow: duplicate (the APK and the web are two bundles; each imports its own devicePlaceNow)
 
 /** A report's «Información de control» fills itself on opening (José 12/11): `fillConditions` in shared. */
-export function useConditionsAutofill(params: { fields: readonly FormField[]; values: FormValues; fill: (next: FormValues) => void; ask?: ConditionsLookup }): void {
+export function useConditionsAutofill(params: { fields: readonly FormField[]; values: FormValues; fill: (next: FormValues) => void; ask?: ConditionsLookup }): void { // gates-allow: duplicate (twin of the other bundle)
   const latest = useRef(params);
   latest.current = params;
   useEffect(() => {

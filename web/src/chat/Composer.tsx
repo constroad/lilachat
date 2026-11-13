@@ -166,7 +166,8 @@ function ComposerField({
     const nota = await voz.terminar(cancelar);
     if (nota) onNotaDeVoz?.(nota);
   };
-  const conMicrofono = Boolean(onNotaDeVoz) && !text.trim() && contexto?.tipo !== 'edicion';
+  // A photo waiting in the field sends, like a text (José 13/11): the mic only with nothing to send.
+  const conMicrofono = Boolean(onNotaDeVoz) && !text.trim() && !staged?.files.length && contexto?.tipo !== 'edicion';
   const pickEmoji = (emoji: string) => {
     const done = emojis.pick(text, campoRef.current?.selectionStart ?? text.length, emoji);
     if (!done) return;
@@ -325,7 +326,8 @@ function ComposerField({
         <ComposerCameraButton onShot={(file) => onElegirArchivos([file])} />
         {commands ? <ChatQuickActions commands={commands} onWriteCommand={writeCommand} /> : null}
 
-        <div className="relative min-w-0 flex-1">
+        {/* The field's border holds the photos waiting AND the text, as the APK (José 13/11: «dentro del input»). */}
+        <div className="relative min-w-0 flex-1 rounded-lg border border-outline/25 bg-background focus-within:border-primary">
         {staged?.files.length ? <StagedFilesWeb files={staged.files} onRemove={staged.onRemove} onPreview={staged.onPreview} /> : null}
         <SugerenciasDeMencion opciones={menciones.opciones} activa={menciones.activa} onElegir={elegirMencion} />
         <EmojiSuggestions options={emojis.options} active={emojis.active} onPick={pickEmoji} />
@@ -368,7 +370,7 @@ function ComposerField({
             if (event.key === 'Escape' && contexto) cancelarContexto();
           }}
           placeholder={commands?.enabled ? "Escribe un mensaje o / para comandos" : "Escribe un mensaje..."}
-          className="block min-h-[40px] max-h-[40vh] w-full resize-none overflow-y-auto [field-sizing:content] rounded-lg border border-outline/25 bg-background px-3 py-2.5 text-[length:var(--chat-font,14px)] leading-[var(--chat-line,20px)] outline-none placeholder:text-on-surface-variant focus:border-primary"
+          className="block min-h-[40px] max-h-[40vh] w-full resize-none overflow-y-auto [field-sizing:content] rounded-lg bg-transparent px-3 py-2.5 text-[length:var(--chat-font,14px)] leading-[var(--chat-line,20px)] outline-none placeholder:text-on-surface-variant"
         />
         </div>
 

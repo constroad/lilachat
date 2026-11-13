@@ -175,3 +175,16 @@ describe('Composer: pasting a picture takes what was typed (José 11/11)', () =>
     expect(onFiles).toHaveBeenCalledWith([shot], undefined);
   });
 });
+
+// José 13/11 E2E: with a photo waiting and no text the composer offered the mic, and the photo sat outside the field.
+describe('Composer: photos waiting in the field', () => {
+  it('a waiting photo turns the mic into «Enviar», and the thumbnail is inside the field border', () => {
+    vi.stubGlobal('URL', Object.assign(URL, { createObjectURL: () => 'blob:qa', revokeObjectURL: () => undefined }));
+    const file = new File(['x'], 'foto.png', { type: 'image/png' });
+    const staged = { files: [file], onRemove: () => undefined, onPreview: () => undefined, onSend: () => undefined };
+    render(composer({ chatId: 'general', onNotaDeVoz: () => undefined, staged }));
+    expect(screen.queryByTestId('btn-microfono')).toBeNull();
+    expect(screen.getByTestId('btn-enviar')).toBeEnabled();
+    expect(screen.getByTestId('adjuntos-en-espera').parentElement).toContainElement(screen.getByTestId('input-mensaje'));
+  });
+});

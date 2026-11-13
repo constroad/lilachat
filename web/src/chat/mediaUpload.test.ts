@@ -85,3 +85,22 @@ describe('subirArchivo', () => {
     expect(enviados).toHaveLength(0);
   });
 });
+
+// José 13/11: the chat camera of the web (PWA on iPhone) stamps like the APK's: the stamp rides beside the shot.
+describe('subirArchivo con el sello de la cámara', () => {
+  it('a shot of the camera sends its stamp; a picked file sends none', async () => {
+    const { withStamp } = await import('./camera/shotStamp');
+    const enviados: FormData[] = [];
+    vi.stubGlobal('XMLHttpRequest', xhrFalso(enviados, {}));
+    const base = { jwt: 'j', mime: 'image/jpeg', chatId: 'c1', nombre: 'foto.jpg', onProgreso: () => undefined };
+    const shot = withStamp(new File(['abc'], 'foto.jpg', { type: 'image/jpeg' }), { timemark: true, point: null, logo: true, takenAt: '2026-11-13T15:00:00.000Z' });
+
+    await subirArchivo({ ...base, clientKey: 'k1', archivo: shot });
+    await subirArchivo({ ...base, clientKey: 'k2', archivo: new File(['abc'], 'foto.jpg', { type: 'image/jpeg' }) });
+
+    expect(enviados[0]!.get('stamp')).toBeTruthy();
+    expect(enviados[0]!.get('logo')).toBe('1');
+    expect(enviados[0]!.get('takenAt')).toBe('2026-11-13T15:00:00.000Z');
+    expect(enviados[1]!.get('stamp')).toBeNull();
+  });
+});

@@ -1,4 +1,5 @@
-import { messageTargetFields, validateMedia } from '@lilachat/shared';
+import { messageTargetFields, stampFieldsOf, validateMedia } from '@lilachat/shared';
+import { stampOfFile } from './camera/shotStamp';
 import type { DatosDeSubida, ResultadoDeSubida } from './colaDeArchivos';
 import type { ChatMessage } from './types';
 
@@ -43,6 +44,9 @@ function cuerpoDe(datos: DatosDeSubida & { mime: string }): FormData {
   if (datos.onda?.length) cuerpo.append('onda', datos.onda.join(','));
   if (datos.albumId) cuerpo.append('albumId', datos.albumId);
   for (const [field, value] of messageTargetFields(datos.target ?? {})) cuerpo.append(field, value);
+  // A shot of Lilachat's camera carries its stamp (José 13/11): the server burns it once, as from the APK.
+  const stamp = datos.archivo instanceof File ? stampOfFile(datos.archivo) : undefined;
+  for (const [field, value] of Object.entries(stampFieldsOf(stamp))) cuerpo.append(field, value);
   cuerpo.append('file', new File([datos.archivo], datos.nombre, { type: datos.mime }));
   return cuerpo;
 }

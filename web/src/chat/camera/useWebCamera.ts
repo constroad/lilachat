@@ -107,3 +107,28 @@ export function useWebRecorder(stream: MediaStream | null, maxSeconds: number) {
   const stop = () => recorder.current?.stop();
   return { recording: startedAt !== null, elapsedMs: startedAt === null ? 0 : now - startedAt, start, stop };
 }
+
+/** What the lens of this browser allows: zoom and the torch (Android Chrome yes; iPhone Safari no). */
+type LensCapabilities = MediaTrackCapabilities & { zoom?: { min: number; max: number }; torch?: boolean };
+type LensConstraint = MediaTrackConstraintSet & { zoom?: number; torch?: boolean };
+
+/** Zoom and flash of the open camera (José 13/11: the PWA camera as the APK's); nothing where the browser cannot. */
+export function useLensControls(stream: MediaStream | null) {
+  const track = stream?.getVideoTracks()[0] ?? null;
+  const capabilities = (track?.getCapabilities?.() ?? {}) as LensCapabilities;
+  const [zoom, setZoomState] = useState(1);
+  const [torch, setTorchState] = useState(false);
+  useEffect(() => {
+    setZoomState(1);
+    setTorchState(false);
+  }, [track]);
+  const apply = (constraint: LensConstraint) => track?.applyConstraints({ advanced: [constraint] }).catch(() => undefined);
+  return {
+    range: capabilities.zoom ? { min: capabilities.zoom.min, max: capabilities.zoom.max } : null,
+    zoom,
+    setZoom: (ratio: number) => (setZoomState(ratio), void apply({ zoom: ratio })),
+    canTorch: capabilities.torch === true,
+    torch,
+    toggleTorch: () => (setTorchState(!torch), void apply({ torch: !torch })),
+  };
+}

@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
-import { Check, RefreshCw, RotateCcw, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Check, Image as GalleryIcon, RefreshCw, RotateCcw, X, Zap, ZapOff } from 'lucide-react';
 import { precisionLabel, recordingLabel, type GeoPoint, type Timemark } from '@lilachat/shared';
 import { useWebCameraAsk, type WebCameraAsk } from './cameraRequests';
-import { frameOf, useCameraStream, useWebLiveStamp, useWebRecorder, type CameraMode } from './useWebCamera';
+import { frameOf, useCameraStream, useLensControls, useWebLiveStamp, useWebRecorder, type CameraMode } from './useWebCamera';
+import { activeZoomChip, zoomChipsFor } from './cameraControls';
 import { shotNameOf, withStamp } from './shotStamp';
 import { useCurrentSpaceLogo } from '../../spaces/currentSpace';
 
@@ -46,6 +47,8 @@ export function WebCamera(props: { ask: WebCameraAsk; onDone: (file: File | null
   const camera = useCameraStream(mode, facing);
   const live = useWebLiveStamp();
   const recorder = useWebRecorder(camera.stream, props.ask.video?.maxSeconds ?? 0);
+  const lens = useLensControls(camera.stream);
+  const gallery = useRef<HTMLInputElement>(null);
   useEffect(() => () => void (taken && URL.revokeObjectURL(taken.url)), [taken]);
   const keep = (blob: Blob, takenAt: string, seconds?: number) => setTaken({ blob, url: URL.createObjectURL(blob), takenAt, ...(seconds ? { seconds } : {}) });
   const shoot = async () => {
@@ -68,12 +71,15 @@ export function WebCamera(props: { ask: WebCameraAsk; onDone: (file: File | null
   return (
     <div data-testid="camara-web" role="dialog" aria-label={props.ask.title} className="fixed inset-0 z-[90] flex flex-col bg-black text-white">
       <ShotOrLive camera={camera} taken={taken} facing={facing} />
-      <TopBar title={props.ask.title} clock={clock} onClose={() => props.onDone(null)} />
+      <TopBar title={props.ask.title} clock={clock} onClose={() => props.onDone(null)} flash={lens.canTorch && !taken ? { on: lens.torch, toggle: lens.toggleTorch } : null} />
+      {taken || camera.state !== 'live' ? null : <ZoomColumn lens={lens} />}
       {taken || recorder.recording || camera.state !== 'live' ? null : <Chips point={live.point} logo={logo} onLogo={() => (saveLogoPref(!logo), setLogo(!logo))} />}
       {logo && spaceLogo && camera.state !== 'denied' ? <img data-testid="sello-logo" src={spaceLogo} alt="" className="pointer-events-none absolute right-4 top-[calc(max(12px,env(safe-area-inset-top))+104px)] h-16 w-16 rounded-xl object-cover" /> : null}
       {camera.state === 'denied' ? <Denied onClose={() => props.onDone(null)} /> : <StampOverlay stamp={live.stamp} lifted={Boolean(props.ask.video) && !taken} />}
       {taken ? <ReviewBar video={taken.blob.type.startsWith('video/')} onRetake={() => setTaken(null)} onUse={use} /> : null}
-      {taken || camera.state === 'denied' ? null : <ShutterBar mode={mode} canVideo={Boolean(props.ask.video)} recording={recorder.recording} onMode={setMode} onShoot={() => void shoot()} onFlip={() => setFacing(facing === 'environment' ? 'user' : 'environment')} />}
+      {taken || camera.state === 'denied' ? null : <ShutterBar mode={mode} canVideo={Boolean(props.ask.video)} recording={recorder.recording} onMode={setMode} onShoot={() => void shoot()} onFlip={() => setFacing(facing === 'environment' ? 'user' : 'environment')} onGallery={() => gallery.current?.click()} />}
+      {/* As the APK: the gallery from inside the camera; a picked file carries no stamp (it was not shot now). */}
+      <input ref={gallery} type="file" data-testid="galeria-camara" accept={props.ask.video ? 'image/*,video/*' : 'image/*'} hidden onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) props.onDone(file); }} />
     </div>
   );
 }
@@ -89,14 +95,30 @@ function ShotOrLive(props: { camera: ReturnType<typeof useCameraStream>; taken: 
   );
 }
 
-function TopBar(props: { title: string; clock: string | null; onClose: () => void }) {
+function TopBar(props: { title: string; clock: string | null; onClose: () => void; flash: { on: boolean; toggle: () => void } | null }) {
   return (
     <div className="absolute inset-x-0 top-0 flex items-center gap-3 px-3 pt-[max(12px,env(safe-area-inset-top))]">
       <button type="button" data-testid="cerrar-camara" aria-label="Cerrar la cámara" onClick={props.onClose} className="grid h-11 w-11 place-items-center rounded-full bg-black/45"><X size={22} /></button>
       <p className="min-w-0 flex-1 truncate text-center text-[15px] font-semibold">
         {props.clock ? <span className="inline-flex items-center gap-2 rounded-full border border-red-500 bg-black/55 px-3 py-1 tabular-nums"><span className="h-2 w-2 rounded-full bg-red-600" />{props.clock}</span> : props.title}
       </p>
-      <span className="h-11 w-11" />
+      {props.flash ? (
+        <button type="button" data-testid="flash-camara" aria-pressed={props.flash.on} aria-label={props.flash.on ? 'Apagar el flash' : 'Prender el flash'} onClick={props.flash.toggle} className="grid h-11 w-11 place-items-center rounded-full bg-black/45">{props.flash.on ? <Zap size={20} /> : <ZapOff size={20} />}</button>
+      ) : <span className="h-11 w-11" />}
+    </div>
+  );
+}
+
+/** Right edge, mid height (as the APK): clear of the stamp at the bottom and the logo at the top. */
+function ZoomColumn(props: { lens: ReturnType<typeof useLensControls> }) {
+  const chips = zoomChipsFor(props.lens.range);
+  if (!chips.length) return null;
+  const active = activeZoomChip(chips, props.lens.zoom);
+  return (
+    <div data-testid="zoom-camara" className="absolute right-4 top-[42%] flex flex-col-reverse items-center gap-2">
+      {chips.map((chip) => (
+        <button key={chip.label} type="button" data-testid={`zoom-${chip.label}`} aria-pressed={chip === active} onClick={() => props.lens.setZoom(chip.ratio)} className={`grid h-10 min-w-10 place-items-center rounded-full px-2 text-[13px] font-bold ${chip === active ? 'bg-black/80 text-warning' : 'bg-black/45 text-white'}`}>{chip.label}</button>
+      ))}
     </div>
   );
 }
@@ -125,7 +147,7 @@ function StampOverlay(props: { stamp: Timemark; lifted: boolean }) {
   );
 }
 
-function ShutterBar(props: { mode: CameraMode; canVideo: boolean; recording: boolean; onMode: (mode: CameraMode) => void; onShoot: () => void; onFlip: () => void }) {
+function ShutterBar(props: { mode: CameraMode; canVideo: boolean; recording: boolean; onMode: (mode: CameraMode) => void; onShoot: () => void; onFlip: () => void; onGallery: () => void }) {
   const label = props.mode === 'video' ? (props.recording ? 'Detener el video' : 'Grabar video') : 'Tomar la foto';
   return (
     <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-3 pb-[max(20px,env(safe-area-inset-bottom))] pt-3">
@@ -135,7 +157,7 @@ function ShutterBar(props: { mode: CameraMode; canVideo: boolean; recording: boo
         </div>
       ) : null}
       <div className="flex w-full items-center justify-around">
-        <span className="h-12 w-12" />
+        {props.recording ? <span className="h-12 w-12" /> : <button type="button" data-testid="galeria" aria-label="Elegir de la galería" onClick={props.onGallery} className="grid h-12 w-12 place-items-center rounded-full bg-black/45"><GalleryIcon size={22} /></button>}
         <button type="button" data-testid="disparador" aria-label={label} onClick={props.onShoot} className="grid h-[76px] w-[76px] place-items-center rounded-full border-4 border-white">
           <span className={props.recording ? 'h-7 w-7 rounded-md bg-red-600' : `h-[60px] w-[60px] rounded-full ${props.mode === 'video' ? 'bg-red-600' : 'bg-white'}`} />
         </button>

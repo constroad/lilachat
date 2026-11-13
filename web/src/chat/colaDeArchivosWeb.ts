@@ -2,6 +2,7 @@ import { crearColaDeArchivos } from './colaDeArchivos';
 import { medidasDeImagen } from './EnviarArchivos';
 import { subirArchivo } from './mediaUpload';
 import { shrinkPhotoBlob } from './shrinkPhoto';
+import { stampOfFile } from './camera/shotStamp';
 
 /** El JWT vigente: se renueva en memoria y la cola lo lee al subir. */
 let jwtVigente = '';
@@ -14,6 +15,8 @@ export function usarJwtParaSubir(jwt: string): void {
  * the app. With «HD», a light photo, no canvas or a failure, the original.
  */
 async function preparar(archivo: File, hd: boolean) {
+  // A shot of the camera goes whole with its stamp: the server shrinks it once while it burns it (as from the APK).
+  if (stampOfFile(archivo)) return { archivo: archivo as Blob, nombre: archivo.name, mime: archivo.type, ...(await medidasDeImagen(archivo)) };
   const shrunk = await shrinkPhotoBlob(archivo, archivo.name, { hd });
   if (shrunk.blob !== archivo) return { archivo: shrunk.blob, nombre: shrunk.name, mime: shrunk.mime, width: shrunk.width, height: shrunk.height };
   return { archivo: archivo as Blob, nombre: archivo.name, mime: archivo.type, ...(await medidasDeImagen(archivo)) };

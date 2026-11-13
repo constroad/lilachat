@@ -16,6 +16,7 @@ import { BarraDeGrabacion } from './BarraDeGrabacion';
 import { useGrabadoraDeVoz, type NotaDeVozGrabada } from './useGrabadoraDeVoz';
 import type { StickerChat } from './stickers/EmojiStickerPanel';
 import { AttachMenu } from './AttachMenu';
+import { ComposerCameraButton } from './camera/ComposerCameraButton';
 import { useDismiss } from '../ui/useDismiss';
 import { subscribeComposerInserts } from './composerInsert';
 import type { ChatCommands } from './commands/useChatCommands';
@@ -321,6 +322,7 @@ function ComposerField({
         </div>
 
         {/* The ⚡ of a channel or the chat with an app: its actions and its commands, one button (José 06/11). */}
+        <ComposerCameraButton onShot={(file) => onElegirArchivos([file])} />
         {commands ? <ChatQuickActions commands={commands} onWriteCommand={writeCommand} /> : null}
 
         <div className="relative min-w-0 flex-1">

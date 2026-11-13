@@ -1,5 +1,5 @@
 import { arrivalHourOf, clockHourOf } from './reportUnits.js';
-import type { FormSubmitOutcome } from './appActions.js';
+import type { FormPhotoStamp, FormSubmitOutcome, TimemarkStampAsked } from './appActions.js';
 import type { FormValues } from './appForms.js';
 import type { EphemeralAnswer } from './botCommands.js';
 import { requiresLocation, type FieldDocument, type SectionPath } from './fieldDocument.js';
@@ -51,9 +51,9 @@ export const PHOTO_PLACE_WAIT_MS = 3000;
 const hasFix = (place: DevicePlace): boolean => place.lat !== undefined && place.lng !== undefined;
 
 /** `place` is null after a reading without a fix: the next «Enviar» reads again, once the person turned the GPS on. */
-type HeldPhoto = { kept: KeptPhoto; place: Promise<DevicePlace> | null; takenAt: string };
+type HeldPhoto = { kept: KeptPhoto; place: Promise<DevicePlace> | null; takenAt: string; stamp?: TimemarkStampAsked };
 /** A held photo on its way to the queue, with where it was finally taken. */
-type Shot = { field: string; kept: KeptPhoto; place: DevicePlace };
+type Shot = { field: string; kept: KeptPhoto; place: DevicePlace; stamp?: TimemarkStampAsked };
 
 const photoFieldOf = (answer: EphemeralAnswer): string | undefined => Object.entries(answer.response?.form?.schema.properties ?? {}).find(([, property]) => property['x-input'] === 'photo')?.[0];
 
@@ -138,7 +138,7 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
 
   function saveOf(document: FieldDocument, path: SectionPath, values: FormValues, shot: Shot | null): ReportSave {
     const save = reportSaveOf({ ref, document, path, values, clientKey: deps.newKey(), now: deps.now() });
-    return shot ? { ...save, photo: { field: shot.field, ...shot.kept }, place: shot.place } : save;
+    return shot ? { ...save, photo: { field: shot.field, ...shot.kept, ...(shot.stamp ? { stamp: shot.stamp } : {}) }, place: shot.place } : save;
   }
 
   return {
@@ -161,14 +161,16 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
       tell();
     },
     /** The photo field's upload: it only stays on the device, at once. Where it was taken is settled at «Enviar». */
-    async upload(source: P): Promise<{ ok: true; fileId: string } | { ok: false; message: string }> {
+    /** Only Lilachat's camera stamp rides with the photo; any other is left for Portal to stamp, as before. */
+    async upload(source: P, stamp?: FormPhotoStamp): Promise<{ ok: true; fileId: string } | { ok: false; message: string }> {
       let kept: KeptPhoto;
       try {
         kept = await deps.keepPhoto(source);
       } catch {
         return { ok: false, message: PHOTO_NOT_KEPT };
       }
-      photos.set(kept.ref, { kept, place: aiming ?? readPlace(), takenAt: deps.now() });
+      const takenAt = deps.now();
+      photos.set(kept.ref, { kept, place: aiming ?? readPlace(), takenAt, ...(typeof stamp === 'object' && 'timemark' in stamp ? { stamp: { ...stamp, takenAt } } : {}) });
       aiming = null;
       return { ok: true, fileId: kept.ref };
     },
@@ -188,7 +190,7 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
         return { done: false, errors: {}, message: NO_GPS_PHOTO };
       }
       try {
-        await deps.queue.add(saveOf(document, opened.path, values, field && held && place ? { field, kept: held.kept, place } : null));
+        await deps.queue.add(saveOf(document, opened.path, values, field && held && place ? { field, kept: held.kept, place, stamp: held.stamp } : null));
       } catch {
         return { done: false, errors: {}, message: NOT_KEPT };
       }

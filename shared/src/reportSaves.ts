@@ -1,5 +1,5 @@
 import type { AppForm, FormSchemaProperty, FormValues } from './appForms.js';
-import type { FormSubmitReply } from './appActions.js';
+import type { FormSubmitReply, TimemarkStampAsked } from './appActions.js';
 import type { ViewableFile } from './fileViewer.js';
 import type { CommandNotice, EphemeralAnswer } from './botCommands.js';
 import { applySavedSection, sectionAt, sectionFormOf, type DocumentSection, type FieldDocument, type FormSection, type RepeatItem, type RepeatSection, type SectionPath, type SectionTemplate } from './fieldDocument.js';
@@ -12,7 +12,7 @@ import { PUBLISH_LABEL, REPORT_KEEPER, sectionBadge, type DevicePlace } from './
  * show on the document at once, over what Portal last answered. PURE.
  */
 export type ReportRef = { spaceId: string; clientId: string; chatId: string; serviceId: string; type: string };
-export type QueuedPhoto = { field: string; ref: string; mime: string; preview: string };
+export type QueuedPhoto = { field: string; ref: string; mime: string; preview: string; /** Lilachat's camera stamp (José 12/11): the server burns it and Portal keeps the photo as it is. */ stamp?: TimemarkStampAsked };
 export type SaveRefusal = { message: string; errors: Record<string, string> };
 /** What the report had when the write went out: with the answer lost, it tells a write that landed. */
 export type SentMark = { items: string[]; photos: number; /** The empty tramo this write fills. */ seed?: string };

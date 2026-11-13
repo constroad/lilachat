@@ -72,7 +72,7 @@ const wire: ReportWire = {
   async upload(ref, commandId, photo) {
     const blob = await photoBlobOf(photo.ref);
     if (!session || !blob) return NO_SESSION;
-    return uploadFormPhoto(session.jwt, { chatId: ref.chatId }, commandId, blob);
+    return uploadFormPhoto(session.jwt, { chatId: ref.chatId }, commandId, blob, photo.stamp);
   },
   submit: async (ref, commandId, values) => (session ? submitAppForm(session.jwt, { chatId: ref.chatId }, commandId, values) : NO_SESSION),
   notice: (commandId) => noticeOf(currentSocket(), commandId),

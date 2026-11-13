@@ -107,14 +107,14 @@ export type DevicePlace = { lat?: number; lng?: number; at: string };
 export const PLACE_BUTTON = { take: 'Usar mi ubicación', taking: 'Buscando tu ubicación…', failed: 'No se pudo leer tu ubicación. Revisa el permiso y el GPS.' };
 /** What a place field holds: the same link to the map the service's own place has. */
 export const placeFieldValue = ({ lat, lng }: DevicePlace): string | null => (lat === undefined || lng === undefined ? null : locationMapLink({ lat, lng }));
-export type SectionFormRequest = { kind: 'section'; type: string; section_id: string; item_id: string | null; key: string; report_id?: string; forms: number; /** The save's own key: Portal tells a photo sent twice from a second one. */ client_key?: string } & Partial<DevicePlace>;
+export type SectionFormRequest = { kind: 'section'; type: string; section_id: string; item_id: string | null; key: string; report_id?: string; forms: number; /** The save's own key: Portal tells a photo sent twice from a second one. */ client_key?: string; /** The photo carries Lilachat's stamp: Portal neither stamps nor re-encodes it. */ sello_lilachat?: true } & Partial<DevicePlace>;
 export type PublishFormRequest = { kind: 'publish'; report_id: string; forms: number };
 export type RemovePhotoRequest = { kind: 'remove_photo'; report_id: string; photo_id: string; forms: number };
 export type ReportFormRequest = SectionFormRequest | PublishFormRequest | RemovePhotoRequest | DriveUploadRequest | WorkProgressRequest | WorkStreetRequest | WorkStreetDeleteRequest | ServiceLinkRequest | WorkScopeRequest | WorkScopeDeleteRequest | WorkStageRequest | WorkTagRequest | WorkRestoreRequest | WorkDeletedRequest | WorkManualProgressRequest | WorkProgressLinkRequest | WorkImportRequest | WorkProgressPdfRequest | WorkMapInReportRequest | PhotoPhaseRequest | LayerEditRequest | LayerDeleteRequest | WorkPendingRequest | WorkResolveRequest | ObservationRegisterRequest | ObservationLiftRequest | AreaCreateRequest | AreaRemoveRequest;
 
 /** What `POST …/reports/forms` takes to open a section: its path, the report once it exists, and what this app can draw. */
-export function sectionFormRequest(document: FieldDocument, path: SectionPath, place?: DevicePlace | null, clientKey?: string): SectionFormRequest {
-  return { kind: 'section', type: document.type, section_id: path.sectionId, item_id: path.itemId, key: path.key, ...(document.id ? { report_id: document.id } : {}), forms: FORMS_LEVEL, ...(place ?? {}), ...(clientKey ? { client_key: clientKey } : {}) };
+export function sectionFormRequest(document: FieldDocument, path: SectionPath, place?: DevicePlace | null, clientKey?: string, sealed?: boolean): SectionFormRequest {
+  return { kind: 'section', type: document.type, section_id: path.sectionId, item_id: path.itemId, key: path.key, ...(document.id ? { report_id: document.id } : {}), forms: FORMS_LEVEL, ...(place ?? {}), ...(clientKey ? { client_key: clientKey } : {}), ...(sealed ? { sello_lilachat: true as const } : {}) };
 }
 
 export const removePhotoRequest = (reportId: string, photoId: string): RemovePhotoRequest => ({ kind: 'remove_photo', report_id: reportId, photo_id: photoId, forms: FORMS_LEVEL });

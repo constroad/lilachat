@@ -572,3 +572,55 @@ describe('taking a sent photo out of a draft (José 06/11)', () => {
   });
 });
 
+
+/**
+ * José 12/11: a report photo is stamped and compressed once. One taken with Lilachat's camera goes up
+ * with its stamp (and the hour it was taken, not the hour the queue sends it), and its section opens
+ * with `sello_lilachat` so Portal keeps it as it is. Any other photo goes as before and Portal stamps it.
+ */
+describe('a report photo with the Lilachat stamp', () => {
+  const photosPath: SectionPath = { sectionId: 'tramos', itemId: 't1', key: 'fotos' };
+  const start = { id: 'r1', tramos: [{ id: 't1', photos: 0 }] };
+  const timemark = { timemark: true as const, point: { lat: -12, lng: -77, precision: 6 }, logo: true };
+
+  const watched = (test: ReturnType<typeof screenWith>) => {
+    const opens: Record<string, unknown>[] = [];
+    const uploads: unknown[] = [];
+    const { open, upload } = test.portal.wire;
+    test.portal.wire.open = (reportRef, request) => (opens.push(request as Record<string, unknown>), open(reportRef, request));
+    test.portal.wire.upload = (reportRef, commandId, photo) => (uploads.push(photo.stamp), upload(reportRef, commandId, photo));
+    return { opens, uploads };
+  };
+
+  it('goes up with its stamp and the hour it was taken, and its section tells Portal not to stamp it again', async () => {
+    // Arrange
+    const test = screenWith(start);
+    const seen = watched(test);
+    await settled(test);
+    test.screen.openSection(photosPath);
+    await test.screen.upload({ uri: 'a.jpg' }, timemark);
+    // Act
+    await test.screen.submit({ foto: 'kept-a.jpg' });
+    await settled(test);
+    // Assert
+    expect(seen.opens.at(-1)).toMatchObject({ kind: 'section', sello_lilachat: true });
+    expect(seen.uploads).toEqual([{ ...timemark, takenAt: NOW }]);
+    test.stop();
+  });
+
+  it('a photo without that stamp goes as before: no stamp on the upload and nothing told to Portal', async () => {
+    // Arrange
+    const test = screenWith(start);
+    const seen = watched(test);
+    await settled(test);
+    test.screen.openSection(photosPath);
+    await test.screen.upload({ uri: 'a.jpg' }, { takenAt: NOW });
+    // Act
+    await test.screen.submit({ foto: 'kept-a.jpg' });
+    await settled(test);
+    // Assert
+    expect(seen.opens.at(-1)).not.toHaveProperty('sello_lilachat');
+    expect(seen.uploads).toEqual([undefined]);
+    test.stop();
+  });
+});

@@ -102,7 +102,7 @@ function pageOf(raw: unknown): number | null | 'invalid' {
 
 type Place = { lat?: number; lng?: number; at: string };
 type OpenInput =
-  | { kind: 'section'; type: string; path: SectionPath; reportId: string | null; tramoId: string | null; place: Place | null; /** The save's own key: Portal tells a photo sent twice from a second one. */ clientKey: string | null }
+  | { kind: 'section'; type: string; path: SectionPath; reportId: string | null; tramoId: string | null; place: Place | null; /** The save's own key: Portal tells a photo sent twice from a second one. */ clientKey: string | null; /** The photo carries Lilachat's stamp: Portal neither stamps nor re-encodes it (José 12/11). */ sealed: boolean }
   | { kind: 'publish'; reportId: string }
   | { kind: 'remove_photo'; reportId: string; photoId: string }
   | { kind: 'drive_upload' }
@@ -157,15 +157,15 @@ function openInputOf(input: unknown): OpenInput | null {
   if (!path || !isOpenType(raw.type) || place === 'invalid') return null;
   const tramoId = text(raw.tramo_id, 64);
   const clientKey = text(raw.client_key, 64);
-  return { kind: 'section', type: raw.type, path, reportId: reportId || null, tramoId: tramoId || null, place, clientKey: clientKey || null };
+  return { kind: 'section', type: raw.type, path, reportId: reportId || null, tramoId: tramoId || null, place, clientKey: clientKey || null, sealed: raw.sello_lilachat === true };
 }
 
-type Prepared = { form: AppForm; context: Record<string, string | number | string[]> | StreetContext | WorkMapFormContext | PhotoPhaseContext };
+type Prepared = { form: AppForm; context: Record<string, string | number | boolean | string[]> | StreetContext | WorkMapFormContext | PhotoPhaseContext };
 
 type PhotoTerms = { reportId: string | null; tramoId: string | null; /** Portal's `seccion` is the form the person filled, not the template entry (`datos` → `unidad` in CTL-PIS; equal in CTL-IMP). */ sectionForm: string; /** The section's `tipoFoto` (CTL-PIS) and whether it refuses a capture without a fix. */ photoKind?: string; requireLocation: boolean };
 
 /** Each tool takes only the keys it declares (agentes refuses the rest): the photo one wants the report, the tramo, the hour, its kind and its key. */
-function contextFor(form: AppForm, serviceId: string, input: Extract<OpenInput, { kind: 'section' }>, terms: PhotoTerms): { context: Record<string, string | number> } | CommandError {
+function contextFor(form: AppForm, serviceId: string, input: Extract<OpenInput, { kind: 'section' }>, terms: PhotoTerms): { context: Record<string, string | number | boolean> } | CommandError {
   const { reportId, tramoId, photoKind } = terms;
   if (form.id === SECTION_TOOL) return { context: { servicioId: serviceId, tipo: input.type, seccion: terms.sectionForm, ...(reportId ? { informeId: reportId } : {}), ...(tramoId ? { tramoId } : {}) } };
   if (!reportId || !tramoId || !input.place) return fail(400, 'invalid_request', 'Una foto necesita el informe, el tramo y la hora de la captura.');
@@ -174,7 +174,7 @@ function contextFor(form: AppForm, serviceId: string, input: Extract<OpenInput, 
   if (terms.requireLocation && !placed) return fail(400, 'invalid_request', 'Esta foto necesita la ubicación del teléfono.');
   // Only the fixed-photo tool declares `tipoFoto`; the extra photo's tool has none and agentes refuses unknown keys (José 07/11).
   const kind: Record<string, string> = photoKind && form.id === KINDED_PHOTO_TOOL ? { tipoFoto: photoKind } : {};
-  return { context: { servicioId: serviceId, informeId: reportId, tramoId, at, ...(placed ? { lat, lng } : {}), ...kind, ...(input.clientKey ? { clientKey: input.clientKey } : {}) } };
+  return { context: { servicioId: serviceId, informeId: reportId, tramoId, at, ...(placed ? { lat, lng } : {}), ...kind, ...(input.clientKey ? { clientKey: input.clientKey } : {}), ...(input.sealed && form.id === KINDED_PHOTO_TOOL ? { selloLilachat: true } : {}) } };
 }
 
 /** The section's form comes from the document Portal answered to THIS person; the report, section and tramo ride as context. */

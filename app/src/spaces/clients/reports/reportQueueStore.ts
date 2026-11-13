@@ -48,7 +48,7 @@ const targetOf = (ref: ReportRef, jwt: string) => ({ jwt, spaceId: ref.spaceId, 
 const wire: ReportWire = {
   read: (ref, reportId) => withJwt((jwt) => askReportDraft(targetOf(ref, jwt), ref.serviceId, ref.type, reportId)),
   open: (ref, request) => withJwt((jwt) => openReportForm(targetOf(ref, jwt), ref.serviceId, request)),
-  upload: (ref, commandId, photo) => withJwt((jwt) => uploadFormPhoto(jwt, { chatId: ref.chatId }, commandId, { uri: photo.ref, mime: photo.mime })),
+  upload: (ref, commandId, photo) => withJwt((jwt) => uploadFormPhoto(jwt, { chatId: ref.chatId }, commandId, { uri: photo.ref, mime: photo.mime }, photo.stamp)),
   submit: (ref, commandId, values) => withJwt((jwt) => submitAppForm(jwt, { chatId: ref.chatId }, commandId, values)),
   notice: (commandId) => noticeOf(getSocket(), commandId),
 };

@@ -109,7 +109,11 @@ export function buildBotUserRouter(): Router {
       const takenAt = takenAtFrom(fields.takenAt, new Date());
       return takenAt ? { takenAt } : { hourOnly: true };
     }
-    if (fields.stamp === TIMEMARK_STAMP) return { timemark: { logo: fields.logo === '1' }, ...(pointOf(fields) ? { location: pointOf(fields)! } : {}) };
+    if (fields.stamp === TIMEMARK_STAMP) {
+      // A report photo the queue sends later says when it was taken; a broken clock falls back to now.
+      const takenAt = takenAtFrom(fields.takenAt, new Date());
+      return { timemark: { logo: fields.logo === '1' }, ...(pointOf(fields) ? { location: pointOf(fields)! } : {}), ...(takenAt ? { takenAt } : {}) };
+    }
     if (fields.stamp !== '1') return undefined;
     const location = pointOf(fields);
     return location ? { location } : {};

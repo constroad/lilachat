@@ -350,6 +350,18 @@ describe('a control de pista (06/11): units from the dispatches, photos with the
     expect(run?.context).toEqual({ servicioId: 'srv-318', informeId: '6aed0a1b2c3d4e5f60718293', tramoId: 'd1', tipoFoto: 'ingreso', clientKey: 'k-ingreso-1', lat: -12.0464, lng: -77.0428, at });
   });
 
+  it('a photo stamped by Lilachat\'s camera tells Portal so, and Portal keeps it as it is (José 12/11: one stamp, one encode)', async () => {
+    // Arrange
+    answers['client.report.draft.requested'] = { status: 200, body: pista };
+    await draftOf(ana, { type: 'CTL-PIS' }).expect(200);
+    // Act
+    const sealed = await openOf(ana, { kind: 'section', type: 'CTL-PIS', section_id: 'unidades', item_id: 'd1', key: 'foto-ingreso', lat: -12.0464, lng: -77.0428, at, client_key: 'k-ingreso-2', sello_lilachat: true }).expect(200);
+    const loose = await openOf(ana, { kind: 'section', type: 'CTL-PIS', section_id: 'unidades', item_id: 'd1', key: 'foto-ingreso', lat: -12.0464, lng: -77.0428, at, client_key: 'k-ingreso-3', sello_lilachat: 'si' }).expect(200);
+    // Assert
+    expect((await BotCommandRunModel.findById(sealed.body.commandId).lean())?.context).toMatchObject({ clientKey: 'k-ingreso-2', selloLilachat: true });
+    expect((await BotCommandRunModel.findById(loose.body.commandId).lean())?.context).not.toHaveProperty('selloLilachat');
+  });
+
   it('an extra photo goes through its own tool without `tipoFoto`, which that tool does not declare (José 07/11)', async () => {
     // Arrange
     const extra = { id: 'foto-adicional', title: 'Fotos adicionales', required: false, form: 'fotos', tool: 'agregar_foto_adicional', photoKind: 'adicional', requireLocation: true };

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import sharp from 'sharp';
 import { stampPhoto, stampTimemark } from './photoStamp.js';
+import { portalStampsIt } from './botForms.js';
 
 /** Pending 94: the selfie of a form carries the date, the hour and the place in its pixels. */
 describe('stampPhoto', () => {
@@ -88,5 +89,27 @@ describe('stampTimemark', () => {
     let darker = 0;
     for (let y = 500; y < 780; y += 4) if (a.at(insideLogo[0], y) < 40 && b.at(insideLogo[0], y) > 60) darker += 1;
     expect(darker + look.y).toBeGreaterThan(3);
+  });
+});
+
+describe('portalStampsIt', () => {
+  const timemark = { timemark: { logo: true } };
+
+  it('leaves a report photo to Portal unless the run says Lilachat stamps it (José 12/11: never two stamps)', () => {
+    // Act
+    const portalOwns = portalStampsIt({ informeId: 'r1' }, timemark);
+    const lilachatOwns = portalStampsIt({ informeId: 'r1', selloLilachat: true }, timemark);
+    // Assert
+    expect(portalOwns).toBe(true);
+    expect(lilachatOwns).toBe(false);
+  });
+
+  it('a form that is not a report, or a photo with no Timemark stamp, is never handed over', () => {
+    // Act
+    const tank = portalStampsIt({ tanqueId: 't1' }, timemark);
+    const hourOnly = portalStampsIt({ informeId: 'r1' }, { hourOnly: true });
+    const none = portalStampsIt(undefined, undefined);
+    // Assert
+    expect([tank, hourOnly, none]).toEqual([false, false, false]);
   });
 });

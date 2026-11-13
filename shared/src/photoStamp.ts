@@ -53,8 +53,8 @@ const pointFields = (point: GeoPoint) => ({ lat: String(point.lat), lng: String(
 export function stampFieldsOf(stamp: FormPhotoStamp | undefined): Record<string, string> {
   if (!stamp) return {};
   if (stamp === HOUR_STAMP) return { stamp: HOUR_STAMP };
+  if ('timemark' in stamp) return { stamp: TIMEMARK_STAMP, logo: stamp.logo ? '1' : '0', ...(stamp.point ? pointFields(stamp.point) : {}), ...(stamp.takenAt ? { takenAt: stamp.takenAt } : {}) };
   if ('takenAt' in stamp) return { stamp: 'taken', takenAt: stamp.takenAt };
-  if ('timemark' in stamp) return { stamp: TIMEMARK_STAMP, logo: stamp.logo ? '1' : '0', ...(stamp.point ? pointFields(stamp.point) : {}) };
   return { stamp: '1', ...pointFields(stamp) };
 }
 

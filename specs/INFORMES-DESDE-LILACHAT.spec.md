@@ -1415,18 +1415,25 @@ Se recorrió Control de pista en el APK (`lilafotos-qa`), en el servicio QA-CTLP
   con SU hora, la dirección de Nominatim y el logo de `WorkspaceModel.logoUrl` si el chip estaba
   encendido. El APK no trae Skia ni view-shot y un OTA no puede sumar módulos nativos. El campo
   `stamp=timemark` (+ `logo=1|0`, `lat`, `lng`, `precision`) viaja en la subida.
-- **Fotos de informe (cola de informes)**: suben SIN sello de Lilachat y las sella Portal, como
-  hasta ahora. El sello en vivo se ve en la cámara, pero el PDF lleva el de Portal hasta que
-  Portal reciba `selloLilachat: true` en `agregar_foto_de_informe` (Portal 448d0c04) y José
-  re-apruebe esa herramienta en agentes. Ahí la cola manda `stamp=timemark` y Portal no sella.
+- **Fotos de informe (cola de informes, todos los tipos)**: una foto de la cámara de Lilachat
+  viaja en la cola con su sello (`QueuedPhoto.stamp`, con la hora en que se TOMÓ: la cola puede
+  mandarla horas después). La sección se abre con `sello_lilachat: true` y el servidor pone
+  `selloLilachat: true` en el contexto SOLO de `agregar_foto_de_informe` (la única herramienta que
+  lo declara; agentes rechaza claves desconocidas). Portal (448d0c04) guarda esa foto sin sellar ni
+  recomprimir. Con cualquier otra herramienta de foto (`agregar_foto_adicional`), el servidor NO
+  quema el sello (`portalStampsIt`) y lo pone Portal, como antes: nunca dos sellos. Un cliente viejo
+  no manda ni sello ni marca: Portal sella. Requiere que José re-apruebe `agregar_foto_de_informe`.
 - **Una sola compresión por foto** (José 12/11: «no está bien que se haga 2 veces»). Quien quema
   el sello es quien comprime, una vez, con el sello ya puesto: una foto con sello sube entera
   (`phoneShrinksPhoto`, `shared/src/photoStamp.ts`; tope 10 MB, encima de eso el teléfono sí la
   achica) y el servidor la deja en 1600 px y ~1 MB. Lila no recomprime (solo sobre 2560 px) y hace
-  el thumbnail una vez (640 px). Portal guarda los bytes tal cual con `selloLilachat`; sin él, hoy
-  la foto de informe la achica el APK y Portal la recomprime al sellarla (82 %): dos compresiones
-  hasta que José re-apruebe `agregar_foto_de_informe`.
+  el thumbnail una vez (640 px). Portal guarda los bytes tal cual con `selloLilachat`. La web y la
+  galería todavía suben sin el sello de Lilachat: ahí sigue sellando (y recomprimiendo) Portal
+  hasta que la PWA tenga la misma cámara.
 - **Video**: nadie lo comprime (lila solo hace `faststart` y el póster). Lo comprime el teléfono
   antes de subir, en el APK nativo siguiente (no entra en un OTA).
+- **Todavía con la cámara del sistema** (sin sello en vivo): las observaciones (REG-OBS/LEV-OBS,
+  `captureEvidence`), «Registrar avance» (`takeFieldPhoto`) y el Drive del servicio. Van a Drive
+  directo a Portal, sin pasar por el sello del servidor.
 - **Pendiente**: la cámara del chat (`CamaraDelChat`, foto y video), la PWA móvil (`getUserMedia`)
   y el sello en video (diseños cam-04/05/06).

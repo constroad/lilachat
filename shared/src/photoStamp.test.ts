@@ -101,3 +101,12 @@ describe('phoneShrinksPhoto', () => {
     expect(unknown).toBe(true);
   });
 });
+
+describe('the Timemark stamp of a queued report photo', () => {
+  it('says the hour it was taken, and is never read as a gallery photo', () => {
+    // Act
+    const fields = stampFieldsOf({ timemark: true, point: null, logo: false, takenAt: '2026-11-12T12:42:00.000Z' });
+    // Assert
+    expect(fields).toEqual({ stamp: 'timemark', logo: '0', takenAt: '2026-11-12T12:42:00.000Z' });
+  });
+});

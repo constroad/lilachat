@@ -142,7 +142,7 @@ async function send({ wire, store, pace }: QueueCore, save: ReportSave, document
   await store.editSave(save.clientKey, (one) => ({ ...one, sent }));
   const path = save.createsItem ? { ...save.path, itemId: sent.seed ?? null } : save.path;
   // Only a photo carries its key: Portal tells a photo sent twice from a second one; a section written twice changes nothing.
-  const opened = await wire.open(save.ref, sectionFormRequest(document, path, save.place, save.photo ? save.clientKey : undefined));
+  const opened = await wire.open(save.ref, sectionFormRequest(document, path, save.place, save.photo ? save.clientKey : undefined, Boolean(save.photo?.stamp)));
   if (!opened.ok) return judgeFailure(opened);
   const { commandId } = opened.data;
   const uploaded = save.photo ? await wire.upload(save.ref, commandId, save.photo) : null;

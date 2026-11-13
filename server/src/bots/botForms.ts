@@ -94,7 +94,7 @@ const spaceOfRun = (run: { workspaceId?: Types.ObjectId | null; chatId?: Types.O
 async function burnTimemark(bytes: Buffer, stamp: PhotoStampAsked, spaceOf: SpaceOfRun) {
   const place = stamp.location ? await placeNameOf(stamp.location) : null;
   const logo = stamp.timemark?.logo ? await spaceStampLogo(await spaceOf()) : null;
-  return stampTimemark(bytes, timemarkOf({ at: new Date(), point: stamp.location ?? null, place }), logo);
+  return stampTimemark(bytes, timemarkOf({ at: stamp.takenAt ?? new Date(), point: stamp.location ?? null, place }), logo);
 }
 
 /** The server burns ITS hour into the photo (pending 94); a photo it cannot read goes as it came. */
@@ -133,11 +133,20 @@ export async function formPlace(userId: Types.ObjectId, scope: CommandScope, com
   return { place: await placeNameOf(point) };
 }
 
+/**
+ * A report photo goes on to Portal, which stamps it unless the run says Lilachat did (`selloLilachat`,
+ * only on the tool that declares it). Burning ours too would put two stamps on it (José 12/11).
+ */
+export function portalStampsIt(context: Record<string, unknown> | undefined, stamp: PhotoStampAsked | undefined): boolean {
+  return Boolean(stamp?.timemark && context?.informeId && context.selloLilachat !== true);
+}
+
 export async function storeFormPhoto(userId: Types.ObjectId, scope: CommandScope, commandId: string, file: { originalname: string; mimetype: string; size: number; buffer: Buffer }, stamp?: PhotoStampAsked): Promise<{ fileId: string } | ReturnType<typeof fail>> {
   const run = await openRun(userId, scope, commandId);
   if ('error' in run) return run;
   if (!FORM_PHOTO_TYPES.includes(file.mimetype) || file.size > FORM_PHOTO_MAX_BYTES) return fail(400, 'invalid_photo', 'La foto va en JPEG, PNG, WEBP o HEIC, hasta 10 MB.');
-  const photo = stamp ? await stamped(file, stamp, spaceOfRun(run)) : await shrunk(file);
+  const burn = portalStampsIt(run.context, stamp) ? undefined : stamp;
+  const photo = burn ? await stamped(file, burn, spaceOfRun(run)) : await shrunk(file);
   // The media folder is the chat's, or the space's for the ⚡.
   const uploaded = await upload({ chatId: String(run.chatId ?? run.workspaceId), ...photo });
   if (!uploaded.ok) return fail(409, 'upload_failed', 'No se pudo guardar la foto. Inténtalo de nuevo.');

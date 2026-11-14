@@ -1,5 +1,5 @@
 import express, { Router, type NextFunction, type Request, type Response } from 'express';
-import { toInternationalPhone, validateAppManifest, validateBotCard, validateBotCommands, validateBotFiles, validateBotPost, validateVisitCard } from '@lilachat/shared';
+import { toInternationalPhone, validateAppManifest, validateBotCard, validateBotCommands, validateBotFiles, validateBotPost, validateVisitCard, clientRefOf, type BotClientRef } from '@lilachat/shared';
 import { ChatModel, type Chat } from '../chatModels.js';
 import { crearLimiteDeIntentos } from '../limiteDeIntentos.js';
 import { UserModel } from '../models.js';
@@ -45,6 +45,12 @@ async function requireBot(req: Request, res: Response, next: NextFunction): Prom
   if (!installation) return void res.status(401).json({ error: 'invalid_token', message: 'El token del bot no vale o fue revocado.' });
   req.bot = installation;
   next();
+}
+
+/** A visit card's edit carries the five buttons of lv01: one born with its refs, or one that brings them now. */
+async function editedCardOf(bot: Parameters<typeof isVisitMessage>[0], messageId: string, raw: unknown, clientRef: BotClientRef | null) {
+  const visit = Boolean(clientRef?.visitId) || (await isVisitMessage(bot, messageId));
+  return visit ? validateVisitCard(raw) : validateBotCard(raw);
 }
 
 export function buildOAuthRouter(): Router {
@@ -112,13 +118,14 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
   }));
   router.patch('/messages/:id', asyncRoute(async (req, res) => {
     const body = (req.body ?? {}) as Record<string, unknown>;
-    const card = body.card === undefined ? undefined : (await isVisitMessage(req.bot!, String(req.params.id))) ? validateVisitCard(body.card) : validateBotCard(body.card);
+    const clientRef = body.kind === undefined ? null : clientRefOf(body);
+    const card = body.card === undefined ? undefined : await editedCardOf(req.bot!, String(req.params.id), body.card, clientRef);
     if (card && !card.ok) return void res.status(400).json({ error: 'invalid_request', message: card.message });
     const files = body.files === undefined ? undefined : validateBotFiles(body.files);
     if (files && !files.ok) return void res.status(400).json({ error: 'invalid_request', message: files.message });
     const text = typeof body.text === 'string' && body.text.trim() ? body.text.trim() : undefined;
     if (!text && !card && !files) return void res.status(400).json({ error: 'invalid_request', message: 'Manda text, card o files.' });
-    const outcome = await updateBotMessage(req.bot!, String(req.params.id), { ...(text ? { text } : {}), ...(card?.ok ? { card: card.card } : {}), ...(files?.ok ? { files: files.files } : {}) }, notifyEdited);
+    const outcome = await updateBotMessage(req.bot!, String(req.params.id), { ...(text ? { text } : {}), ...(card?.ok ? { card: card.card } : {}), ...(files?.ok ? { files: files.files } : {}), ...(clientRef?.visitId ? { clientRef } : {}) }, notifyEdited);
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.json(outcome);
   }));

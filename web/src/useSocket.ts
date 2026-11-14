@@ -79,7 +79,7 @@ export function useSocket(params: {
   /** «Eliminar para mí» from another device of mine (13/11). */
   onHidden?: (data: { chatId: string; seqs: number[] }) => void;
   /** Editado (`msg.edited`). */
-  onEditado?: (data: { chatId: string; seq: number; body: string; editedAt?: string; card?: BotCard; files?: GalleryItem[]; location?: LiveLocation }) => void;
+  onEditado?: (data: { chatId: string; seq: number; body: string; editedAt?: string; card?: BotCard; files?: GalleryItem[]; location?: LiveLocation; clientRef?: { visitId?: string } }) => void;
   /** Algo del chat cambió en otro dispositivo (nombre, foto, archivado…). */
   onCambioDeChat?: (data: { chatId: string }) => void;
   /** My company spaces changed (a request, approved, added, deactivated): read them again. */
@@ -178,7 +178,7 @@ export function useSocket(params: {
     );
     socket.on('msg.deleted', (data: { chatId: string; seq: number }) => handlers.current.onBorrado?.(data));
     // A bot closing its card (PATCH) comes the same way, with the new card and no «editado».
-    socket.on('msg.edited', (data: { chatId: string; seq: number; body: string; editedAt?: string; card?: BotCard; files?: GalleryItem[]; location?: LiveLocation }) =>
+    socket.on('msg.edited', (data: { chatId: string; seq: number; body: string; editedAt?: string; card?: BotCard; files?: GalleryItem[]; location?: LiveLocation; clientRef?: { visitId?: string } }) =>
       handlers.current.onEditado?.(data)
     );
     socket.on('chat.changed', (data: { chatId: string }) => handlers.current.onCambioDeChat?.(data));

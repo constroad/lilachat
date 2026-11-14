@@ -168,7 +168,8 @@ export const CLIENT_ID = /^[A-Za-z0-9_-]{1,64}$/;
 const CLIENT_KIND = /^[a-z_]{1,32}\.[a-z_]{1,32}$/;
 const VISIT_REF = /^[a-f0-9]{24}$/i;
 
-function clientRefOf(body: Record<string, unknown>): BotClientRef | null {
+/** `kind` + `refs` of a post, or of a bot's edit (agentes 14/11: an old visit card gains its refs on PATCH). */
+export function clientRefOf(body: Record<string, unknown>): BotClientRef | null {
   if (typeof body.kind !== 'string' || !CLIENT_KIND.test(body.kind)) return null;
   const refs = record(body.refs);
   const serviceId = typeof refs.service_id === 'string' && CLIENT_ID.test(refs.service_id) ? refs.service_id : undefined;

@@ -71,9 +71,10 @@ export async function aplicarBorrado(
 /** Edición: el texto nuevo y la marca «Editado». */
 export async function aplicarEdicion(
   base: BaseLocal,
-  { chatId, seq, body, editedAt, card, files, location }: { chatId: string; seq: number; body: string; editedAt?: string; card?: ChatMessage['card']; files?: ChatMessage['files']; location?: ChatMessage['location'] }
+  { chatId, seq, body, editedAt, card, files, location, clientRef }: { chatId: string; seq: number; body: string; editedAt?: string; card?: ChatMessage['card']; files?: ChatMessage['files']; location?: ChatMessage['location']; clientRef?: ChatMessage['clientRef'] }
 ): Promise<void> {
-  await base.mensajes.where('[chatId+seq]').equals([chatId, seq]).modify({ body, ...(editedAt ? { editedAt } : {}), ...(card ? { card } : {}), ...(files ? { files } : {}), ...(location ? { location } : {}) });
+  // An old visit card gains its refs on an edit (agentes 14/11): sync never reads that message again.
+  await base.mensajes.where('[chatId+seq]').equals([chatId, seq]).modify({ body, ...(editedAt ? { editedAt } : {}), ...(card ? { card } : {}), ...(files ? { files } : {}), ...(location ? { location } : {}), ...(clientRef ? { clientRef } : {}) });
 }
 
 /** Los últimos `limite` mensajes de un chat, del más viejo al más nuevo. */

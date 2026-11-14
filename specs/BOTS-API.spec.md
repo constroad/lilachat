@@ -223,6 +223,9 @@ Límites: título 120, kicker 60, hasta 12 campos (etiqueta 40, valor 120), hast
 punto, Entrevista, Foto suelta, Terminar) y el croquis. Desde 4 botones la
 tarjeta los pone de a dos (Stitch lv01), con el último impar a todo el ancho
 (14/11: con el tope de 3, el POST de agentes daba 400 y la tarjeta no salía).
+El `PATCH` de un mensaje de visita también lleva 5, y puede traer `kind` +
+`refs.visit_id`: Lilachat los guarda y los manda en `msg.edited`, así una
+tarjeta nacida sin refs (VIS-0070) gana sus botones en el próximo redibujo.
 
 ### `PATCH /api/bots/messages/:id`
 

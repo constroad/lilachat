@@ -215,6 +215,19 @@ describe('the bot publishes (§b) and reads (§d)', () => {
     await request(app).patch(`/api/bots/messages/${plain.body.message.id}`).set(asBot(token)).send({ card: { title: 'Otra', actions: five } }).expect(400);
   });
 
+  it('an old visit card gains its refs on its next PATCH, and with them the five buttons (agentes 14/11)', async () => {
+    // Arrange
+    const { token } = await install();
+    const five = ['visita_marcar_punto', 'visita_entrevista', 'visita_foto', 'visita_terminar', 'visita_croquis'].map((id) => ({ id, label: id.slice(7, 30), value: '' }));
+    const old = await request(app).post('/api/bots/messages').set(asBot(token)).send({ channel_id: String(channel), card: { title: 'Visita técnica' }, idempotency_key: 'v3' }).expect(201);
+    // Act
+    await request(app).patch(`/api/bots/messages/${old.body.message.id}`).set(asBot(token)).send({ kind: 'visita.updated', refs: { visit_id: '65f0000000000000000000a2' }, card: { title: 'Visita técnica', actions: five } }).expect(200);
+    // Assert
+    const saved = await MessageModel.findById(old.body.message.id).lean<Message>();
+    expect(saved!.clientRef).toEqual({ kind: 'visita.updated', visitId: '65f0000000000000000000a2' });
+    expect(saved!.card!.actions).toHaveLength(5);
+  });
+
   it('photos and videos as an album; PATCH replaces the whole set (José via agentes 09/11)', async () => {
     const { token } = await install();
     const photo = (name: string) => ({ url: `https://lila.constroad.com/files/${name}.jpg`, mime: 'image/jpeg' });

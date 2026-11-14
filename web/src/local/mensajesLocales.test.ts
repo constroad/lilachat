@@ -145,6 +145,16 @@ describe('borrar y editar', () => {
     expect(editado?.editedAt).toBe('2026-10-19T16:00:00.000Z');
   });
 
+  it('a visit card edited with its refs keeps them: its buttons open the visit (agentes 14/11)', async () => {
+    nuevaBase();
+    await aplicarEntrante(base, mensaje(5));
+
+    await aplicarEdicion(base, { chatId: 'c1', seq: 5, body: 'Visita técnica', clientRef: { visitId: '65f0000000000000000000a2' } });
+
+    const [card] = await mensajesDelChat(base, 'c1', 50);
+    expect(card?.clientRef?.visitId).toBe('65f0000000000000000000a2');
+  });
+
   it('borrar o editar uno que no está no inventa nada', async () => {
     nuevaBase();
 

@@ -101,7 +101,7 @@ export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401
         if (base) void aplicarBorrado(base, { ...dato, deletedAt: ahora });
         enLaFila(dato.chatId, (chats) => aplicarBorradoALista(chats, dato, ahora));
       },
-      onEditado: (dato: { chatId: string; seq: number; body: string; editedAt?: string; card?: BotCard; files?: GalleryItem[]; location?: LiveLocation }) => {
+      onEditado: (dato: { chatId: string; seq: number; body: string; editedAt?: string; card?: BotCard; files?: GalleryItem[]; location?: LiveLocation; clientRef?: { visitId?: string } }) => {
         if (base) void aplicarEdicion(base, dato);
         enLaFila(dato.chatId, (chats) => aplicarEdicionALista(chats, dato));
       },

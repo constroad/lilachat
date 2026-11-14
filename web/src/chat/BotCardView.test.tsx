@@ -188,4 +188,15 @@ describe('a technical visit card', () => {
     await waitFor(() => expect(post).toHaveBeenCalled());
     expect(open).not.toHaveBeenCalled();
   });
+  it('its five buttons go two by two, the croquis across the card', () => {
+    // Arrange
+    const ids = ['visita_marcar_punto', 'visita_entrevista', 'visita_foto', 'visita_terminar', 'visita_croquis'];
+    const five = { ...visitCard, actions: ids.map((id, index) => ({ id, label: id, style: index ? ('secondary' as const) : ('primary' as const), value: '' })) };
+    // Act
+    render(<BotCardView card={five} chatId="c1" seq={7} jwt="jwt" visitId="65f0000000000000000000a1" />);
+    // Assert
+    expect(screen.getByTestId('tarjeta-acciones-grilla').children).toHaveLength(5);
+    expect(screen.getByTestId('accion-tarjeta-visita_croquis').className).toContain('col-span-2');
+    expect(screen.getByTestId('accion-tarjeta-visita_terminar').className).not.toContain('col-span-2');
+  });
 });

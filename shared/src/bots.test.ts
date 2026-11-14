@@ -151,4 +151,19 @@ describe('a technical visit card in the reports topic (agentes 14/11)', () => {
     const checked = validateBotPost({ topic: 'informes', idempotency_key: 'k1', kind: 'visita.created', refs: { visit_id: '../x' }, card: { title: 'Visita técnica' } });
     expect(checked.ok && checked.post.clientRef).toEqual({ kind: 'visita.created' });
   });
+  const five = ['visita_marcar_punto', 'visita_entrevista', 'visita_foto', 'visita_terminar', 'visita_croquis'].map((id) => ({ id, label: id.slice(7, 30), value: '' }));
+  it('a visit card carries the five buttons of lv01 and the croquis', () => {
+    // Arrange
+    const raw = { topic: 'informes', idempotency_key: 'k1', kind: 'visita.updated', refs: { visit_id: '65f0000000000000000000a1' }, card: { title: 'Visita técnica', actions: five } };
+    // Act
+    const checked = validateBotPost(raw);
+    // Assert
+    expect(checked.ok && checked.post.card?.actions?.length).toBe(5);
+  });
+  it('any other card, or a visit card with a sixth button, is refused', () => {
+    expect(validateBotPost({ topic: 'informes', idempotency_key: 'k1', card: { title: 'T', actions: five } })).toMatchObject({ ok: false, message: 'La tarjeta lleva hasta 3 acciones.' });
+    expect(validateBotPost({ topic: 'informes', idempotency_key: 'k1', kind: 'visita.created', refs: { visit_id: '../x' }, card: { title: 'T', actions: five } })).toMatchObject({ ok: false });
+    const six = [...five, { id: 'visita_pdf', label: 'PDF', value: '' }];
+    expect(validateBotPost({ topic: 'informes', idempotency_key: 'k1', kind: 'visita.updated', refs: { visit_id: '65f0000000000000000000a1' }, card: { title: 'T', actions: six } })).toMatchObject({ ok: false, message: 'La tarjeta lleva hasta 5 acciones.' });
+  });
 });

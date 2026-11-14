@@ -1,6 +1,6 @@
 import { useContext, useState, type ReactNode } from 'react';
-import { ChevronRight, ExternalLink } from 'lucide-react';
-import { cardActionLayout, cardContextOf, visitCardActionOf, formatClock, isOrderCard, viewableLinkOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
+import { Camera, ChevronRight, CircleCheck, ClipboardCheck, ExternalLink, FileText, ImagePlus, Map as MapIcon, type LucideIcon } from 'lucide-react';
+import { cardActionLayout, cardContextOf, visitCardActionOf, formatClock, isOrderCard, viewableLinkOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone, type VisitCardAction } from '@lilachat/shared';
 import { BotBlocksView } from './botBlocks/BotBlocksView';
 import { BotCardDetail } from './botBlocks/BotCardDetail';
 import { CardCommandContext, OrderCardContext, useCardCommand } from './botBlocks/cardCommand';
@@ -86,13 +86,46 @@ function CardLink({ card }: { card: BotCard }) {
 
 type SentAction = { id: string; state: 'sending' | 'sent' } | null;
 
+/** lv01: each visit button with its icon; «Terminar» in the online tone. */
+const VISIT_ICON: Record<VisitCardAction, { icon: LucideIcon; tone: string }> = {
+  point: { icon: Camera, tone: '' },
+  interview: { icon: ClipboardCheck, tone: 'text-primary' },
+  photo: { icon: ImagePlus, tone: 'text-primary' },
+  finish: { icon: CircleCheck, tone: 'text-en-linea' },
+  pdf: { icon: FileText, tone: 'text-primary' },
+  croquis: { icon: MapIcon, tone: 'text-primary' },
+};
+
+/** Four or more buttons two by two (Stitch lv01), 56 px tall, an odd last one across the card. */
+function GridButtons(props: { actions: CardAction[]; sent: SentAction; onPress: (action: CardAction) => void }) {
+  const { actions, sent } = props;
+  return (
+    <div data-testid="tarjeta-acciones-grilla" className="grid grid-cols-2 gap-2 border-t border-outline/10 px-3.5 py-3">
+      {actions.map((action, index) => {
+        const visit = visitCardActionOf(action.id);
+        const Icon = visit ? VISIT_ICON[visit].icon : null;
+        const wide = index === actions.length - 1 && actions.length % 2 === 1 ? 'col-span-2' : '';
+        const look = action.style === 'primary' ? 'bg-primary text-on-primary' : `border border-outline/25 bg-surface text-on-surface hover:bg-background`;
+        return (
+          <button key={action.id} type="button" data-testid={`accion-tarjeta-${action.id}`} disabled={sent !== null} onClick={() => props.onPress(action)} className={`flex min-h-[56px] items-center justify-center gap-2 rounded-xl px-3 text-[14px] font-bold uppercase disabled:opacity-60 ${look} ${wide}`}>
+            {Icon ? <Icon size={20} className={action.style === 'primary' ? '' : VISIT_ICON[visit!].tone} aria-hidden /> : null}
+            <span>{sent?.id === action.id ? (sent.state === 'sending' ? 'Enviando…' : 'Enviado ✓') : action.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 /**
  * The buttons: side by side, or (Stitch gst-01) the one primary across the card with the others as
  * text under it — «Completar gasto» and «Descartar».
  */
 function CardButtons(props: { actions: CardAction[]; sent: SentAction; onPress: (action: CardAction) => void }) {
   const { actions, sent } = props;
-  const stacked = cardActionLayout(actions) === 'stacked';
+  const layout = cardActionLayout(actions);
+  if (layout === 'grid') return <GridButtons {...props} />;
+  const stacked = layout === 'stacked';
   const classOf = (action: CardAction) => {
     if (!stacked) return `min-h-9 flex-auto whitespace-nowrap rounded-full px-3 text-[13px] font-semibold ${ACTION[action.style]}`;
     return action.style === 'primary' ? 'h-11 w-full rounded-xl bg-primary px-4 text-[15px] font-bold text-on-primary hover:opacity-90' : 'h-9 w-full rounded-lg px-4 text-[13px] font-semibold text-on-surface-variant hover:bg-background';

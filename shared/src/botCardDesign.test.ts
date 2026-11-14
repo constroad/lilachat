@@ -99,6 +99,12 @@ describe('the actions of a card (Stitch gst-01, José 13/11: «la tarjeta sigue 
     expect(cardActionLayout([action('a', 'primary'), action('b', 'primary')])).toBe('row');
   });
 
+  it('four or more buttons go two by two, as the visit card lv01', () => {
+    const four = [action('punto', 'primary'), action('entrevista', 'secondary'), action('foto', 'secondary'), action('terminar', 'secondary')];
+    expect(cardActionLayout(four)).toBe('grid');
+    expect(cardActionLayout([...four, action('croquis', 'secondary')])).toBe('grid');
+  });
+
   it('a lone button is a row of one', () => {
     expect(cardActionLayout([action('ver', 'primary')])).toBe('row');
     expect(cardActionLayout([])).toBe('row');

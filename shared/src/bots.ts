@@ -51,7 +51,7 @@ export type BotClientRef = { kind: string; serviceId?: string; recordId?: string
 export type BotPost = { target: BotTarget; text?: string; card?: BotCard; /** Photos and videos drawn as a person's album (José via agentes 09/11). */ files?: GalleryItem[]; checklist?: BotChecklist; threadOf?: number; clientRef?: BotClientRef; idempotencyKey: string };
 export type BotPostError = { ok: false; error: 'invalid_request'; message: string };
 
-export const BOT_LIMITS = { text: 4000, idempotencyKey: 120, fields: 12, actions: 3, actionValue: 2000, kicker: 60, title: 120, subtitle: 120, footer: 120, status: 24, label: 40, value: 120, linkLabel: 40, actionLabel: 24, actionId: 40, url: 500 };
+export const BOT_LIMITS = { text: 4000, idempotencyKey: 120, fields: 12, actions: 3, /** lv01: Marcar punto, Entrevista, Foto suelta, Terminar and the croquis (agentes 14/11). */ visitActions: 5, actionValue: 2000, kicker: 60, title: 120, subtitle: 120, footer: 120, status: 24, label: 40, value: 120, linkLabel: 40, actionLabel: 24, actionId: 40, url: 500 };
 const ACCENTS: readonly CardAccent[] = ['brand', 'ok', 'warn', 'error', 'info', 'neutral'];
 const TONES: readonly CardTone[] = ['ok', 'warn', 'error', 'info', 'neutral'];
 const STYLES: readonly CardActionStyle[] = ['primary', 'secondary', 'danger'];
@@ -61,9 +61,9 @@ const line = (value: unknown, max: number): string => (typeof value === 'string'
 const record = (value: unknown): Record<string, unknown> => (value && typeof value === 'object' ? (value as Record<string, unknown>) : {});
 const refuse = (message: string): BotPostError => ({ ok: false, error: 'invalid_request', message });
 
-function validateActions(raw: unknown): { ok: true; actions: CardAction[] } | { ok: false; message: string } {
+function validateActions(raw: unknown, max: number): { ok: true; actions: CardAction[] } | { ok: false; message: string } {
   const list = Array.isArray(raw) ? raw : [];
-  if (list.length > BOT_LIMITS.actions) return { ok: false, message: `La tarjeta lleva hasta ${BOT_LIMITS.actions} acciones.` };
+  if (list.length > max) return { ok: false, message: `La tarjeta lleva hasta ${max} acciones.` };
   const actions: CardAction[] = [];
   for (const item of list) {
     const action = record(item);
@@ -110,7 +110,7 @@ export function validateBotCard(raw: unknown): { ok: true; card: BotCard } | { o
   const link = record(card.link);
   const url = line(link.url, BOT_LIMITS.url);
   if (url && !url.startsWith('https://')) return { ok: false, message: 'El enlace de la tarjeta debe empezar con https://.' };
-  const actions = validateActions(card.actions);
+  const actions = validateActions(card.actions, BOT_LIMITS.actions);
   if (!actions.ok) return actions;
   const design = cardDesignOf(card);
   if (!design.ok) return design;
@@ -191,6 +191,16 @@ function validateTarget(body: Record<string, unknown>): { ok: true; target: BotT
   return phone ? { ok: true, target: { userPhone: phone } } : refuse('user lleva { id } o { phone } con un celular de Perú.');
 }
 
+/** A visit card (with `refs.visit_id`) carries the five buttons of lv01; any other card, three. */
+function validatePostCard(body: Record<string, unknown>): ReturnType<typeof validateBotCard> {
+  const raw = record(body.card);
+  if (body.kind === undefined || !clientRefOf(body)?.visitId) return validateBotCard(raw);
+  const actions = validateActions(raw.actions, BOT_LIMITS.visitActions);
+  if (!actions.ok) return actions;
+  const card = validateBotCard({ ...raw, actions: [] });
+  return card.ok && actions.actions.length ? { ok: true, card: { ...card.card, actions: actions.actions } } : card;
+}
+
 export function validateBotPost(raw: unknown): { ok: true; post: BotPost } | BotPostError {
   const body = record(raw);
   const target = validateTarget(body);
@@ -201,7 +211,7 @@ export function validateBotPost(raw: unknown): { ok: true; post: BotPost } | Bot
   if (text.length > BOT_LIMITS.text) return refuse(`El texto es demasiado largo (máximo ${BOT_LIMITS.text}).`);
   const post: BotPost = { target: target.target, ...(text ? { text } : {}), idempotencyKey };
   if (body.card !== undefined) {
-    const card = validateBotCard(body.card);
+    const card = validatePostCard(body);
     if (!card.ok) return refuse(card.message);
     post.card = card.card;
   }
@@ -234,12 +244,15 @@ export function botFilesSummary(files: readonly Pick<GalleryItem, 'mime'>[]): st
 }
 
 /** What the chat list, the notification and the search read of a card. */
+/** From four buttons on, two by two (Stitch lv01: the visit's card). */
+const GRID_ACTIONS = 4;
 /**
  * How a card lays out its buttons (Stitch gst-01): one primary with secondaries stacks, the primary
  * across the card and the others as text under it («Completar gasto» / «Descartar»). Choices of the
  * same weight, or a danger one, stay side by side.
  */
-export function cardActionLayout(actions: readonly Pick<CardAction, 'style'>[]): 'stacked' | 'row' {
+export function cardActionLayout(actions: readonly Pick<CardAction, 'style'>[]): 'stacked' | 'row' | 'grid' {
+  if (actions.length >= GRID_ACTIONS) return 'grid';
   const primaries = actions.filter((action) => action.style === 'primary').length;
   const secondaries = actions.filter((action) => action.style === 'secondary').length;
   return primaries === 1 && secondaries > 0 && primaries + secondaries === actions.length ? 'stacked' : 'row';

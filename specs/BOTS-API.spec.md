@@ -218,7 +218,11 @@ espacio.
 
 Límites: título 120, kicker 60, hasta 12 campos (etiqueta 40, valor 120), hasta
 3 acciones (`id` con `[a-z0-9_-]`, hasta 40; etiqueta 24). Lilachat no lee
-`value`: se lo devuelve tal cual en `button.click`.
+`value`: se lo devuelve tal cual en `button.click`. Una tarjeta de visita
+(`kind` + `refs.visit_id` válido) lleva hasta **5**: las cuatro de lv01 (Marcar
+punto, Entrevista, Foto suelta, Terminar) y el croquis. Desde 4 botones la
+tarjeta los pone de a dos (Stitch lv01), con el último impar a todo el ancho
+(14/11: con el tope de 3, el POST de agentes daba 400 y la tarjeta no salía).
 
 ### `PATCH /api/bots/messages/:id`
 

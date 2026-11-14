@@ -24,9 +24,9 @@ function RouteDot(props: { index: number; left: number; top: number; label?: str
 /** The visit's place (lv01): a building in the accent, never a number; the route starts there. */
 function PlaceDot(props: { left: number; top: number }) {
   return (
-    <span data-testid="mapa-lugar" className="absolute flex flex-col items-center" style={{ left: props.left - 12, top: props.top - 12 }}>
+    <span data-testid="mapa-lugar" className="absolute flex items-center gap-1" style={{ left: props.left - 12, top: props.top - 12 }}>
       <span className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-primary text-on-primary shadow"><Building2 size={13} aria-hidden /></span>
-      <span className="mt-0.5 rounded bg-black/80 px-1 text-[9px] font-bold uppercase leading-3 text-white">Lugar</span>
+      <span className="rounded bg-black/80 px-1 text-[9px] font-bold uppercase leading-3 text-white">Lugar</span>
     </span>
   );
 }

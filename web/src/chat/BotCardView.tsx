@@ -1,5 +1,5 @@
 import { useContext, useState, type ReactNode } from 'react';
-import { Camera, ChevronRight, CircleCheck, ClipboardCheck, ExternalLink, FileText, ImagePlus, Map as MapIcon, MapPin, type LucideIcon } from 'lucide-react';
+import { Camera, ChevronRight, CircleCheck, ExternalLink, FileText, ImagePlus, ListChecks, Map as MapIcon, MapPin, type LucideIcon } from 'lucide-react';
 import { cardActionLayout, cardContextOf, visitCardActionOf, formatClock, isOrderCard, viewableLinkOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone, type VisitCardAction } from '@lilachat/shared';
 import { BotBlocksView } from './botBlocks/BotBlocksView';
 import { BotCardDetail } from './botBlocks/BotCardDetail';
@@ -53,7 +53,7 @@ function CardHead({ card, visit }: { card: BotCard; visit: boolean }) {
       ) : null}
       {card.url ? (
         <a data-testid="tarjeta-titulo" href={card.url} target="_blank" rel="noopener noreferrer" className="break-words text-[15px] font-bold leading-5 hover:underline">{card.title}</a>
-      ) : <p className="break-words text-[15px] font-bold leading-5">{card.title}</p>}
+      ) : <p className={`break-words font-bold ${visit ? 'text-[18px] leading-6' : 'text-[15px] leading-5'}`}>{card.title}</p>}
       {card.subtitle && visit ? (
         <p data-testid="tarjeta-subtitulo" className="-mt-1 flex items-start gap-1.5 text-[13px] text-on-surface-variant"><MapPin size={15} className="mt-0.5 shrink-0 text-primary" aria-hidden /><span data-testid="visita-direccion" className="min-w-0 truncate">{card.subtitle}</span></p>
       ) : card.subtitle ? <p data-testid="tarjeta-subtitulo" className="-mt-1 break-words text-[13px] text-on-surface-variant">{card.subtitle}</p> : null}
@@ -106,7 +106,7 @@ type SentAction = { id: string; state: 'sending' | 'sent' } | null;
 /** lv01: each visit button with its icon; «Terminar» in the online tone. */
 const VISIT_ICON: Record<VisitCardAction, { icon: LucideIcon; tone: string }> = {
   point: { icon: Camera, tone: '' },
-  interview: { icon: ClipboardCheck, tone: 'text-primary' },
+  interview: { icon: ListChecks, tone: 'text-primary' },
   photo: { icon: ImagePlus, tone: 'text-primary' },
   finish: { icon: CircleCheck, tone: 'text-en-linea' },
   pdf: { icon: FileText, tone: 'text-primary' },

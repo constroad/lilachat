@@ -35,6 +35,8 @@ export async function leerChatsGuardados(): Promise<ChatSummary[] | null> {
     const datos = JSON.parse(crudo);
     if (!Array.isArray(datos)) return null;
     enMemoria = datos as ChatSummary[];
+    // José 14/11: «Compartir en» waits on this list; read from disk, it is news too.
+    oyentes.forEach((oyente) => oyente());
     return enMemoria;
   } catch {
     return null;

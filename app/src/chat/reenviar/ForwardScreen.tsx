@@ -81,7 +81,9 @@ export function ForwardScreen(props: ForwardScreenProps) {
               <TargetRow chat={item.chat} chosen={picker.chosen.includes(item.chat.id)} onToggle={() => picker.toggle(item.chat.id)} />
             )
           }
-          ListEmptyComponent={<Text className="px-5 py-8 text-center text-[14px] text-on-surface-variant">No hay chats con ese nombre.</Text>}
+          ListEmptyComponent={picker.loading ? null : <Text className="px-5 py-8 text-center text-[14px] text-on-surface-variant">No hay chats con ese nombre.</Text>}
+          // José 14/11: while the lists arrive, rows with the real geometry, not a list with only «Tú».
+          ListFooterComponent={picker.loading ? <TargetRowsLoading /> : null}
         />
         {picker.chosen.length ? <SendBar names={picker.names} note={picker.note} onNote={picker.setNote} sending={sending} bottomInset={insets.pie} onSend={() => void send()} /> : null}
       </View>
@@ -102,7 +104,7 @@ function useTargetPicker(visible: boolean, token: string) {
     setNote('');
     void leerFrecuencias().then(setFrequencies);
   }, [visible]);
-  const known = useKnownChats(token, visible);
+  const { chats: known, loading } = useKnownChats(token, visible);
   const possible = useMemo(() => (visible ? possibleTargets(known) : []), [visible, known]);
   const rows = useMemo(() => targetRows(possible, frequencies, query), [possible, frequencies, query]);
   const names = chosen.map((id) => possible.find((chat) => chat.id === id)?.nombre ?? '');
@@ -111,7 +113,7 @@ function useTargetPicker(visible: boolean, token: string) {
     if (next.lleno) ToastAndroid.show(`Puedes reenviar a ${MAXIMO_DE_DESTINOS} chats como máximo.`, ToastAndroid.SHORT);
     setChosen(next.elegidos);
   };
-  return { query, setQuery, chosen, names, note, setNote, rows, toggle };
+  return { query, setQuery, chosen, names, note, setNote, rows, toggle, loading };
 }
 
 function possibleTargets(known: readonly ChatSummary[]): ChatParaReenviar[] {
@@ -235,6 +237,24 @@ function SendBar(props: { names: string[]; note: string; onNote: (text: string) 
       <Pressable testID="btn-enviar-reenviar" accessibilityLabel="Enviar" disabled={props.sending} onPress={props.onSend} className={`h-14 w-14 items-center justify-center rounded-full bg-primary ${props.sending ? 'opacity-60' : ''}`}>
         <Send size={22} color={colors['on-primary']} />
       </Pressable>
+    </View>
+  );
+}
+
+const LOADING_ROWS = [0, 1, 2, 3];
+
+function TargetRowsLoading() {
+  return (
+    <View testID="reenviar-cargando" accessibilityLabel="Cargando chats">
+      {LOADING_ROWS.map((index) => (
+        <View key={index} className="min-h-[64px] flex-row items-center gap-3 px-5">
+          <View className="h-12 w-12 rounded-full bg-surface-variant" />
+          <View className="flex-1">
+            <View className="h-4 w-1/3 rounded bg-surface-variant" />
+            <View className="mt-2 h-3 w-2/3 rounded bg-surface-variant" />
+          </View>
+        </View>
+      ))}
     </View>
   );
 }

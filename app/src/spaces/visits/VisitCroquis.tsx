@@ -76,7 +76,7 @@ export function VisitCroquis({ visit, document, onClose }: { visit: ReturnType<t
   const shown = failed || bridge.error;
   return (
     <Modal visible animationType="slide" onRequestClose={bridge.requestClose} statusBarTranslucent>
-      <View testID="visita-croquis" className="flex-1 bg-background" style={{ paddingTop: margins.cabecera }}>
+      <View testID="visita-croquis" className="flex-1 bg-background" style={{ paddingTop: margins.cabecera, paddingBottom: margins.pie }}>
         <View className="flex-row items-center gap-2 border-b border-outline/15 px-2 pb-2">
           <Pressable testID="visita-croquis-cerrar" accessibilityLabel="Cerrar el croquis" onPress={bridge.requestClose} className="h-11 w-11 items-center justify-center rounded-full"><X size={22} color={colors['on-surface']} /></Pressable>
           <View className="min-w-0 flex-1">
@@ -98,7 +98,7 @@ export function VisitCroquis({ visit, document, onClose }: { visit: ReturnType<t
             setSupportMultipleWindows={false}
             allowFileAccess={false}
             domStorageEnabled
-            style={{ flex: 1, paddingBottom: margins.pie }}
+            style={{ flex: 1 }}
           />
         ) : null}
       </View>

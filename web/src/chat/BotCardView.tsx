@@ -29,13 +29,13 @@ const ACTION: Record<CardActionStyle, string> = {
  * cut. The status rides the kicker's line (Stitch gst-01): beside the title it squeezed it (José 13/11). In a
  * narrow thread the pieces wrap into a second line, never squeeze the kicker («GAS / TO», José 13/11 night).
  */
-function CardHead({ card }: { card: BotCard }) {
+function CardHead({ card, visit }: { card: BotCard; visit: boolean }) {
   return (
     <>
       {card.kicker || card.updatedAt || card.status ? (
         <div data-testid="tarjeta-cabecera" className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <p className="min-w-0 flex-auto break-words text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{card.kicker}</p>
-          {card.updatedAt ? <span data-testid="tarjeta-actualizada" className="shrink-0 text-[10px] text-on-surface-variant">Actualizado {formatClock(card.updatedAt)}</span> : null}
+          <p className={`min-w-0 break-words text-[10px] font-bold uppercase tracking-[0.18em] ${visit ? 'flex-1 text-primary' : 'flex-auto text-on-surface-variant'}`}>{card.kicker}</p>
+          {card.updatedAt && !visit ? <span data-testid="tarjeta-actualizada" className="shrink-0 text-[10px] text-on-surface-variant">Actualizado {formatClock(card.updatedAt)}</span> : null}
           {card.status ? <span data-testid="tarjeta-estado" className={`max-w-[60%] rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${TONE[card.status.tone]}`}>{card.status.label}</span> : null}
         </div>
       ) : null}
@@ -84,6 +84,9 @@ function CardLink({ card }: { card: BotCard }) {
   );
 }
 
+/** lv01 has no clock on the kicker line: a visit card says when it changed beside who changed it. */
+const withUpdateInFooter = (card: BotCard): BotCard => (card.footer && card.updatedAt ? { ...card, footer: `${card.footer} · ${formatClock(card.updatedAt)}` } : card);
+
 type SentAction = { id: string; state: 'sending' | 'sent' } | null;
 
 /** lv01: each visit button with its icon; «Terminar» in the online tone. */
@@ -104,7 +107,8 @@ function GridButtons(props: { actions: CardAction[]; sent: SentAction; onPress: 
       {actions.map((action, index) => {
         const visit = visitCardActionOf(action.id);
         const Icon = visit ? VISIT_ICON[visit].icon : null;
-        const wide = index === actions.length - 1 && actions.length % 2 === 1 ? 'col-span-2' : '';
+        // An odd number: the first (the primary, «Marcar punto») across the card, the rest two by two.
+        const wide = index === 0 && actions.length % 2 === 1 ? 'col-span-2' : '';
         const look = action.style === 'primary' ? 'bg-primary text-on-primary' : `border border-outline/25 bg-surface text-on-surface hover:bg-background`;
         return (
           <button key={action.id} type="button" data-testid={`accion-tarjeta-${action.id}`} disabled={sent !== null} onClick={() => props.onPress(action)} className={`flex min-h-[56px] items-center justify-center gap-2 rounded-xl px-3 text-[14px] font-bold uppercase disabled:opacity-60 ${look} ${wide}`}>
@@ -121,9 +125,9 @@ function GridButtons(props: { actions: CardAction[]; sent: SentAction; onPress: 
  * The buttons: side by side, or (Stitch gst-01) the one primary across the card with the others as
  * text under it — «Completar gasto» and «Descartar».
  */
-function CardButtons(props: { actions: CardAction[]; sent: SentAction; onPress: (action: CardAction) => void }) {
+function CardButtons(props: { actions: CardAction[]; sent: SentAction; onPress: (action: CardAction) => void; grid?: boolean }) {
   const { actions, sent } = props;
-  const layout = cardActionLayout(actions);
+  const layout = props.grid ? 'grid' : cardActionLayout(actions);
   if (layout === 'grid') return <GridButtons {...props} />;
   const stacked = layout === 'stacked';
   const classOf = (action: CardAction) => {
@@ -185,7 +189,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
     <div data-testid="tarjeta-bot" onClick={(event) => openCardUrl(card.url, event.target)} className={`mb-1 w-[calc(100%-0.5rem)] max-w-sm overflow-hidden rounded-xl border border-outline/15 bg-surface text-on-surface ${card.url ? 'cursor-pointer' : ''}`}>
       {card.accent ? <div data-testid="tarjeta-acento" aria-hidden className={`h-[3px] ${ACCENT_BAR(card.accent)}`} /> : null}
       <div className="space-y-2 px-3.5 py-3">
-        <CardHead card={card} />
+        <CardHead card={card} visit={Boolean(props.visitId)} />
         {card.fields.length ? (
           <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[13px]">
             {card.fields.map((field) => (
@@ -207,9 +211,9 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
             Ver despachos y fotos <ChevronRight size={14} className="text-on-surface-variant" />
           </button>
         ) : null}
-        <CardLink card={card} />
+        <CardLink card={props.visitId ? withUpdateInFooter(card) : card} />
       </div>
-      {actions.length ? <CardButtons actions={actions} sent={sent} onPress={press} /> : null}
+      {actions.length ? <CardButtons actions={actions} sent={sent} onPress={press} grid={Boolean(props.visitId)} /> : null}
       {error ? <p role="alert" className="border-t border-outline/10 px-3.5 py-2 text-[12px] text-error">{error}</p> : null}
       {detailOpen ? <BotCardDetail card={card} onClose={() => setDetailOpen(false)} /> : null}
     </div>

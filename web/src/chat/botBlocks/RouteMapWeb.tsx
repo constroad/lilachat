@@ -1,3 +1,4 @@
+import { Building2 } from 'lucide-react';
 import { routeTilesFor, type RoutePoint } from '@lilachat/shared';
 
 const BOX = { width: 260, height: 160 };
@@ -20,10 +21,24 @@ function RouteDot(props: { index: number; left: number; top: number; label?: str
   );
 }
 
-/** `numbered`: each point with its number inside (lv02), the saved ones grey and `current` in the accent with a halo. */
-export function RouteMapWeb(props: { points: readonly (RoutePoint & { n?: number })[]; box?: { width: number; height: number }; numbered?: boolean; current?: number }) {
+/** The visit's place (lv01): a building in the accent, never a number; the route starts there. */
+function PlaceDot(props: { left: number; top: number }) {
+  return (
+    <span data-testid="mapa-lugar" className="absolute flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-primary text-on-primary shadow" style={{ left: props.left - 12, top: props.top - 12 }}>
+      <Building2 size={13} aria-hidden />
+    </span>
+  );
+}
+
+/**
+ * `numbered`: each point with its number inside (lv02), the saved ones grey and `current` in the accent with a halo.
+ * `place`: where the visit is (lv01), drawn apart from the points so it is never «1».
+ */
+export function RouteMapWeb(props: { points: readonly (RoutePoint & { n?: number })[]; box?: { width: number; height: number }; numbered?: boolean; current?: number; place?: RoutePoint }) {
   const box = props.box ?? BOX;
-  const map = routeTilesFor(props.points, box);
+  const map = routeTilesFor(props.place ? [props.place, ...props.points] : props.points, box);
+  const placeAt = props.place ? map.points[0] : undefined;
+  const dots = props.place ? map.points.slice(1) : map.points;
   const line = map.points.map((point) => `${point.left},${point.top}`).join(' ');
   return (
     <span data-testid="mapa-ruta" className="relative block overflow-hidden rounded-lg bg-background" style={{ width: box.width, height: box.height }}>
@@ -33,7 +48,8 @@ export function RouteMapWeb(props: { points: readonly (RoutePoint & { n?: number
       <svg className="absolute inset-0 text-primary" width={box.width} height={box.height} aria-hidden="true">
         <polyline points={line} fill="none" stroke="currentColor" strokeWidth={2.5} strokeDasharray="6 5" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      {map.points.map((point, index) => (
+      {placeAt ? <PlaceDot left={placeAt.left} top={placeAt.top} /> : null}
+      {dots.map((point, index) => (
         <RouteDot key={`${point.left}-${point.top}-${index}`} index={index} left={point.left} top={point.top} label={props.numbered ? undefined : point.label} n={props.points[index]?.n ?? index + 1} grey={props.numbered === true && props.current !== undefined && index !== props.current} halo={index === props.current} />
       ))}
       <span className="absolute bottom-0 right-0 bg-white/80 px-1 text-[9px] text-black/70">© OpenStreetMap</span>

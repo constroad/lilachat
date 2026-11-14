@@ -196,7 +196,32 @@ describe('a technical visit card', () => {
     render(<BotCardView card={five} chatId="c1" seq={7} jwt="jwt" visitId="65f0000000000000000000a1" />);
     // Assert
     expect(screen.getByTestId('tarjeta-acciones-grilla').children).toHaveLength(5);
-    expect(screen.getByTestId('accion-tarjeta-visita_croquis').className).toContain('col-span-2');
-    expect(screen.getByTestId('accion-tarjeta-visita_terminar').className).not.toContain('col-span-2');
+    expect(screen.getByTestId('accion-tarjeta-visita_marcar_punto').className).toContain('col-span-2');
+    expect(screen.getByTestId('accion-tarjeta-visita_croquis').className).not.toContain('col-span-2');
+  });
+  it('drawn as lv01: status on the kicker line, the place on the map apart from the points, figures in one row and what is missing', () => {
+    // Arrange
+    const lv01 = {
+      kicker: 'Visita técnica · VIS-2026-0072', title: 'Condominio', status: { label: 'BORRADOR', tone: 'info' as const }, fields: [], updatedAt: '2026-11-14T12:14:00.000Z', footer: 'Actualizada por J zamora',
+      blocks: [
+        { type: 'text' as const, text: 'Santa Clara', tone: 'neutral' as const },
+        { type: 'map' as const, lat: -12.0216, lng: -76.8816 },
+        { type: 'tiles' as const, items: [{ label: 'Puntos', value: '1' }, { label: 'Fotos', value: '0' }] },
+        { type: 'text' as const, text: 'Falta: Al menos un punto en el mapa o una foto', tone: 'warn' as const },
+      ],
+      actions: visitCard.actions.concat([{ id: 'visita_terminar', label: 'Terminar', style: 'secondary' as const, value: '' }]),
+    };
+    // Act
+    render(<BotCardView card={lv01} chatId="c1" seq={7} jwt="jwt" visitId="65f0000000000000000000a1" />);
+    // Assert
+    expect(screen.getByTestId('tarjeta-cabecera').textContent).toContain('BORRADOR');
+    expect(screen.queryByTestId('tarjeta-actualizada')).toBeNull();
+    expect(screen.getByTestId('tarjeta-pie').textContent).toMatch(/Actualizada por J zamora · \d/);
+    expect(screen.getByTestId('visita-direccion').textContent).toBe('Santa Clara');
+    expect(screen.getByTestId('mapa-lugar')).toBeTruthy();
+    expect(screen.queryByTestId('punto-ruta-1')).toBeNull();
+    expect(screen.getByTestId('visita-cifras').children).toHaveLength(2);
+    expect(screen.getByTestId('visita-falta').textContent).toContain('Pendiente');
+    expect(screen.getByTestId('accion-tarjeta-visita_marcar_punto').className).toContain('col-span-2');
   });
 });

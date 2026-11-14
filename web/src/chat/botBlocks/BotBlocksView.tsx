@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { ChevronRight, MapPin, Paperclip } from 'lucide-react';
 import { peopleOnCard, peoplePhotos, personEvidence, personTime, shortPersonName, type BotBlock, type PersonEvidence } from '@lilachat/shared';
 import { usePortalFileViewer } from '../../spaces/clients/PortalFileViewer';
 import { Avatar } from '../../ui/Avatar';
+import { InVisitCardContext } from '../../spaces/visits/visitActionContext';
+import { VisitFigures, VisitText } from '../../spaces/visits/VisitCardBlocks';
 import { BlockChart } from './BlockChart';
 import { BlockSection, BlockStat, BlockTiles } from './BlockDesign';
 import { BlockGallery } from './BlockGallery';
@@ -110,6 +112,7 @@ function Rows({ rows }: { rows: RowsBlock['rows'] }) {
 }
 
 function Block({ block }: { block: BotBlock }) {
+  const inVisit = useContext(InVisitCardContext);
   switch (block.type) {
     case 'metric':
       return (
@@ -144,6 +147,7 @@ function Block({ block }: { block: BotBlock }) {
     case 'tank':
       return <BlockTank items={block.items} />;
     case 'text':
+      if (inVisit) return <VisitText block={block} />;
       // A warning or an error is a tinted box (design r155: «3 faltan: …»); the rest, a plain line.
       return <p data-testid="bloque-texto" className={`text-[13px] ${block.tone === 'neutral' ? 'text-on-surface-variant' : TONE[block.tone].text} ${block.tone === 'warn' || block.tone === 'error' ? `rounded-lg border px-2.5 py-1.5 ${TONE[block.tone].soft}` : ''}`}>{block.text}</p>;
     case 'rows':
@@ -167,7 +171,7 @@ function Block({ block }: { block: BotBlock }) {
     case 'section':
       return <BlockSection block={block} />;
     case 'tiles':
-      return <BlockTiles block={block} />;
+      return inVisit ? <VisitFigures block={block} /> : <BlockTiles block={block} />;
   }
 }
 

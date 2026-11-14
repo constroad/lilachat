@@ -4,7 +4,7 @@ Stitch: `screens/32a018203f8d4829bed09e35af2f7ca2` (design/stitch/lv03-visita-en
 Captura: design/stitch/impl/lv03-web-movil.jpg (móvil, 390 px)
 Banco local con el documento real de Portal y la pregunta escrita de Test («Área aproximada a pavimentar», m²). En producción se respondió en VIS-2026-0073.
 Revisor: subagente independiente (solo vio las dos imágenes). Las faltas que marcó se arreglaron y se recapturó.
-Fecha: 2026-11-14 07:55
+Fecha: 2026-11-14 09:03 (revisión de fc270de3; la web, 07:55)
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |
@@ -22,3 +22,5 @@ Fecha: 2026-11-14 07:55
 | Siguiente | barra fija con fondo y divisor, radio 10 | igual (antes flotaba sin superficie) | igual |
 
 Segunda revisión (mismo revisor, solo imágenes): todo igual salvo los chips, que estimó en 53 pt de alto y peso 400. En el DOM miden 56 px de alto, radio 8 y peso 500 sin elegir: la diferencia es de medición sobre la imagen reducida.
+
+Revisión 2026-11-14 09:03: fc270de3 solo reemplaza el texto por la constante NO_INTERVIEW, el mismo texto; sin cambio visual.

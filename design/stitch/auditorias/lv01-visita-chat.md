@@ -4,7 +4,7 @@ Stitch: `screens/d830679c9ffb4c72b4890930633d8321` (design/stitch/lv01-visita-ch
 Captura: design/stitch/impl/lv01-web-movil.jpg (móvil, 390 px)
 Banco local con la tarjeta que arma el builder real de agentes (8223426). En producción se verificó en Test, VIS-2026-0072.
 Revisor: subagente independiente (solo vio las dos imágenes). Las faltas que marcó se arreglaron y se recapturó.
-Fecha: 2026-11-14 07:55
+Fecha: 2026-11-14 09:02 (APK; la web, 07:55)
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |

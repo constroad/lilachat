@@ -279,12 +279,13 @@ export function markedPointOf(data: unknown): { pointId: string; n: number; uplo
 }
 
 /** What a button of the visit card lv01 opens on the phone (agentes 14/11): its own screen, never the app. */
-export type VisitCardAction = 'point' | 'interview' | 'photo' | 'finish' | 'pdf';
+export type VisitCardAction = 'point' | 'interview' | 'photo' | 'finish' | 'pdf' | 'croquis';
 const VISIT_CARD_ACTIONS: Readonly<Record<string, VisitCardAction>> = {
   visita_marcar_punto: 'point',
   visita_entrevista: 'interview',
   visita_foto: 'photo',
   visita_terminar: 'finish',
   visita_pdf: 'pdf',
+  visita_croquis: 'croquis',
 };
 export const visitCardActionOf = (actionId: string): VisitCardAction | null => (Object.hasOwn(VISIT_CARD_ACTIONS, actionId) ? VISIT_CARD_ACTIONS[actionId]! : null);

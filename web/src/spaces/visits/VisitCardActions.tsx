@@ -11,6 +11,7 @@ import type { OpenVisitAction } from './visitActionContext';
 
 
 type Active = { visitId: string; action: VisitCardAction; at: number };
+const CROQUIS_SOON = 'El editor de croquis de Portal llega en la próxima versión.';
 
 /** The quick ones (a loose photo, finishing, the PDF) run once the visit is read, then close. */
 type OpenFile = ReturnType<typeof usePortalFileViewer>['open'];
@@ -60,7 +61,8 @@ export function useVisitCardActions(place: VisitChatRef | null) {
   const [active, setActive] = useState<Active | null>(null);
   const [notice, setNotice] = useState('');
   const files = usePortalFileViewer();
-  const open = useMemo<OpenVisitAction | null>(() => (place ? (visitId, action) => setActive({ visitId, action, at: Date.now() }) : null), [place]);
+  // «Abrir croquis» opens Portal's croquis editor once its embed exists (Portal 14/11); until then it says so.
+  const open = useMemo<OpenVisitAction | null>(() => (place ? (visitId, action) => (action === 'croquis' ? setNotice(CROQUIS_SOON) : setActive({ visitId, action, at: Date.now() })) : null), [place]);
   const finish = (said: string) => {
     setActive(null);
     setNotice(said);

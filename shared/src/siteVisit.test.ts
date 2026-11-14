@@ -104,7 +104,7 @@ describe('the photo ticket a point answers', () => {
 
 describe('the buttons of the visit card lv01 (agentes 14/11)', () => {
   it('each visita_* id opens its own screen, never the app', () => {
-    expect(['visita_marcar_punto', 'visita_entrevista', 'visita_foto', 'visita_terminar', 'visita_pdf'].map(visitCardActionOf)).toEqual(['point', 'interview', 'photo', 'finish', 'pdf']);
+    expect(['visita_marcar_punto', 'visita_entrevista', 'visita_foto', 'visita_terminar', 'visita_pdf', 'visita_croquis'].map(visitCardActionOf)).toEqual(['point', 'interview', 'photo', 'finish', 'pdf', 'croquis']);
   });
   it('any other button stays the app\'s', () => {
     expect(visitCardActionOf('aprobar')).toBeNull();

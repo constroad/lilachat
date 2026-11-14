@@ -6,7 +6,7 @@ import { BotCardDetail } from './botBlocks/BotCardDetail';
 import { CardCommandContext, OrderCardContext, useCardCommand } from './botBlocks/cardCommand';
 import { TONE as BLOCK_TONE } from './botBlocks/tones';
 import { usePortalFileViewer } from '../spaces/clients/PortalFileViewer';
-import { VisitActionContext } from '../spaces/visits/visitActionContext';
+import { InVisitCardContext, VisitActionContext } from '../spaces/visits/visitActionContext';
 
 /** The status pill's tone (design `e-21`): background faint, border at 30 %, text strong. */
 export const TONE: Record<CardTone, string> = {
@@ -163,7 +163,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
             ))}
           </dl>
         ) : null}
-        {card.blocks ? <BotBlocksView blocks={card.blocks} /> : null}
+        {card.blocks ? <InVisitCardContext.Provider value={Boolean(props.visitId)}><BotBlocksView blocks={card.blocks} /></InVisitCardContext.Provider> : null}
         {card.detail ? (
           <button type="button" data-testid="tarjeta-ver-detalle" onClick={() => setDetailOpen(true)} className="inline-flex min-h-9 items-center gap-1 rounded-full border border-outline/20 px-3 text-[13px] font-semibold hover:bg-background">
             Ver detalle <ChevronRight size={14} className="text-on-surface-variant" />

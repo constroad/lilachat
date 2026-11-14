@@ -11,6 +11,8 @@ export type InterviewQuestion = { key: string; n: number; title: string; options
 export type Interview = { questions: InterviewQuestion[]; answered: number; total: number; next: string | null };
 
 const INTERVIEW_SECTION = 'entrevista';
+/** Slots r01…r20 are plain ASCII: no Intl collator per call (Hermes, gate rn-perf). */
+const byKey = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
 
 function optionsOf(property: FormSchemaProperty): InterviewOption[] {
   if (property.oneOf?.length) return property.oneOf.filter((one) => one.const !== undefined).map((one) => ({ value: String(one.const), label: one.title ?? String(one.const) }));
@@ -21,7 +23,7 @@ function optionsOf(property: FormSchemaProperty): InterviewOption[] {
 export function interviewOf(document: VisitDocument): Interview | null {
   const section = document.sections.find((one) => one.id === INTERVIEW_SECTION);
   const schema = section?.form ? document.forms[section.form] : undefined;
-  const entries = Object.entries(schema?.properties ?? {}).sort(([a], [b]) => a.localeCompare(b));
+  const entries = Object.entries(schema?.properties ?? {}).sort(([a], [b]) => byKey(a, b));
   if (!section || !entries.length) return null;
   const questions = entries.map(([key, property], index) => {
     const saved = section.values[key];

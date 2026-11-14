@@ -202,10 +202,9 @@ describe('a technical visit card', () => {
   it('drawn as lv01: status on the kicker line, the place on the map apart from the points, figures in one row and what is missing', () => {
     // Arrange
     const lv01 = {
-      kicker: 'Visita técnica · VIS-2026-0072', title: 'Condominio', status: { label: 'BORRADOR', tone: 'info' as const }, fields: [], updatedAt: '2026-11-14T12:14:00.000Z', footer: 'Actualizada por J zamora',
+      kicker: 'Visita técnica · VIS-2026-0072', title: 'Condominio', subtitle: 'Santa Clara · GPS ±6 m', status: { label: 'BORRADOR', tone: 'info' as const }, fields: [], updatedAt: '2026-11-14T12:14:00.000Z', footer: 'Actualizada por J zamora',
       blocks: [
-        { type: 'text' as const, text: 'Santa Clara', tone: 'neutral' as const },
-        { type: 'map' as const, lat: -12.0216, lng: -76.8816 },
+        { type: 'map' as const, lat: -12.0216, lng: -76.8816, label: 'Lugar de la visita', points: [{ lat: -12.0218, lng: -76.8813, label: '1' }, { lat: -12.0214, lng: -76.8819, label: 'F' }] },
         { type: 'tiles' as const, items: [{ label: 'Puntos', value: '1' }, { label: 'Fotos', value: '0' }] },
         { type: 'text' as const, text: 'Falta: Al menos un punto en el mapa o una foto', tone: 'warn' as const },
       ],
@@ -217,11 +216,18 @@ describe('a technical visit card', () => {
     expect(screen.getByTestId('tarjeta-cabecera').textContent).toContain('BORRADOR');
     expect(screen.queryByTestId('tarjeta-actualizada')).toBeNull();
     expect(screen.getByTestId('tarjeta-pie').textContent).toMatch(/Actualizada por J zamora · \d/);
-    expect(screen.getByTestId('visita-direccion').textContent).toBe('Santa Clara');
+    expect(screen.getByTestId('visita-direccion').textContent).toBe('Santa Clara · GPS ±6 m');
     expect(screen.getByTestId('mapa-lugar')).toBeTruthy();
-    expect(screen.queryByTestId('punto-ruta-1')).toBeNull();
+    expect(screen.getByTestId('punto-ruta-1').textContent).toBe('1');
+    expect(screen.getByTestId('punto-ruta-2').textContent).toBe('F');
     expect(screen.getByTestId('visita-cifras').children).toHaveLength(2);
     expect(screen.getByTestId('visita-falta').textContent).toContain('Pendiente');
     expect(screen.getByTestId('accion-tarjeta-visita_marcar_punto').className).toContain('col-span-2');
+  });
+  it('without the place\'s label the map centers on the first point and draws no place pin (agentes 14/11)', () => {
+    const card = { kicker: 'Visita técnica', title: 'C', fields: [], blocks: [{ type: 'map' as const, lat: -12.0218, lng: -76.8813, points: [{ lat: -12.0218, lng: -76.8813, label: '1' }] }] };
+    render(<BotCardView card={card} chatId="c1" seq={7} jwt="jwt" visitId="65f0000000000000000000a1" />);
+    expect(screen.queryByTestId('mapa-lugar')).toBeNull();
+    expect(screen.getByTestId('punto-ruta-1').textContent).toBe('1');
   });
 });

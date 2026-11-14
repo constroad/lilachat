@@ -9,7 +9,7 @@ const DOT = 18;
  * a dotted line in the order they came, and each point with its label (or its number without one).
  */
 /** One point: its number inside (or its label beside it); a saved one grey, the current one with a halo (lv02). */
-function RouteDot(props: { index: number; left: number; top: number; label?: string; n: number; grey: boolean; halo: boolean }) {
+function RouteDot(props: { index: number; left: number; top: number; label?: string; n: number | string; grey: boolean; halo: boolean }) {
   const fill = props.grey ? 'bg-on-surface-variant' : 'bg-primary';
   return (
     <span data-testid={`punto-ruta-${props.index + 1}`} className="absolute flex items-center gap-1" style={{ left: props.left - DOT / 2, top: props.top - DOT / 2 }}>
@@ -34,7 +34,7 @@ function PlaceDot(props: { left: number; top: number }) {
  * `numbered`: each point with its number inside (lv02), the saved ones grey and `current` in the accent with a halo.
  * `place`: where the visit is (lv01), drawn apart from the points so it is never «1».
  */
-export function RouteMapWeb(props: { points: readonly (RoutePoint & { n?: number })[]; box?: { width: number; height: number }; numbered?: boolean; current?: number; place?: RoutePoint }) {
+export function RouteMapWeb(props: { points: readonly (RoutePoint & { n?: number | string })[]; box?: { width: number; height: number }; numbered?: boolean; current?: number; place?: RoutePoint }) {
   const box = props.box ?? BOX;
   const map = routeTilesFor(props.place ? [props.place, ...props.points] : props.points, box);
   const placeAt = props.place ? map.points[0] : undefined;

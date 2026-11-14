@@ -66,7 +66,7 @@ export function ErrorNote({ message, onRetry }: { message: string; onRetry: () =
   );
 }
 
-export const EmptyNote = () => <p data-testid="admin-vacio" className="p-6 text-center text-sm text-on-surface-variant">Nadie coincide con esa búsqueda.</p>;
+export const EmptyNote = ({ text = 'Nadie coincide con esa búsqueda.' }: { text?: string }) => <p data-testid="admin-vacio" className="p-6 text-center text-sm text-on-surface-variant">{text}</p>;
 
 /** «Mostrando …» and the previous/next buttons; `last` is the last page. */
 export function Pager({ label, page, last, onPage }: { label: string; page: number; last: number; onPage: (page: number) => void }) {

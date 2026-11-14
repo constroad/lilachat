@@ -172,6 +172,33 @@ describe('users panel, by space (web)', () => {
     expect(within(card).getByTestId('admin-miembro-u1')).toBeTruthy();
   });
 
+  it('a contracted space stays contracted after a search reloads the groups', async () => {
+    const urls = serve({});
+    render(<AdminUsersScreen jwt="jwt" />);
+    const card = await screen.findByTestId(`admin-espacio-${GF}`);
+    fireEvent.click(within(card).getByRole('button', { name: /contraer/i }));
+    // A slow answer, as in production: the skeleton replaces the cards meanwhile.
+    const answer = vi.mocked(globalThis.fetch).getMockImplementation()!;
+    vi.mocked(globalThis.fetch).mockImplementation(async (input, init) => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      return answer(input, init);
+    });
+    fireEvent.change(screen.getByTestId('admin-buscar'), { target: { value: 'an' } });
+    await waitFor(() => expect(urls.at(-1)).toContain('q=an'));
+    // The reload unmounts the cards: wait for the new one, not the old node.
+    await waitFor(() => expect(screen.getByTestId(`admin-espacio-${GF}`)).not.toBe(card));
+    const again = screen.getByTestId(`admin-espacio-${GF}`);
+    expect(within(again).getByRole('button', { name: /expandir/i })).toBeTruthy();
+    expect(within(again).queryByTestId('admin-miembro-u1')).toBeNull();
+  });
+
+  it('a chosen space with nobody active says so, without talking about a search', async () => {
+    window.history.replaceState(null, '', `/?espacio=${GF}`);
+    serve({ members: membersPage({ members: [], total: 0 }) });
+    render(<AdminUsersScreen jwt="jwt" />);
+    expect((await screen.findByTestId('admin-vacio')).textContent).toBe('Este espacio no tiene miembros activos.');
+  });
+
   it('the toggle switches to every person, and a search with nobody says so', async () => {
     const urls = serve({ spaces: overview({ spaces: [], groups: [], people: 0, noSpace: { members: 0, preview: [] } }) });
     render(<AdminUsersScreen jwt="jwt" />);

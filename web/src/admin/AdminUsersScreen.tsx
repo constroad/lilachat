@@ -91,7 +91,7 @@ export function AdminUsersScreen({ jwt }: { jwt: string }) {
       {query.view === 'people' ? (
         <PeopleList load={loads.users} onPage={(page) => setQuery((current) => ({ ...current, page }))} onRetry={retry} />
       ) : (
-        <AdminSpacesView overview={loads.groups} members={query.space ? loads.members : null} space={query.space} onSpace={(space) => setQuery((current) => ({ ...current, space, page: 1 }))} onPage={(page) => setQuery((current) => ({ ...current, page }))} onRetry={retry} />
+        <AdminSpacesView overview={loads.groups} members={query.space ? loads.members : null} space={query.space} onSpace={(space) => setQuery((current) => ({ ...current, space, page: 1 }))} onPage={(page) => setQuery((current) => ({ ...current, page }))} onRetry={retry} searched={query.q !== ''} />
       )}
     </Frame>
   );
@@ -105,7 +105,7 @@ function ViewToggle({ view, onView }: { view: AdminPanelView; onView: (view: Adm
   return (
     <div role="group" aria-label="Vista" className="flex rounded-lg border border-outline/15 bg-surface p-1 max-sm:w-full">
       {options.map((option) => (
-        <button key={option.value} type="button" data-testid={option.testid} aria-pressed={view === option.value} onClick={() => view !== option.value && onView(option.value)} className={`h-10 rounded-md px-4 text-sm font-semibold max-sm:flex-1 ${view === option.value ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>
+        <button key={option.value} type="button" data-testid={option.testid} aria-pressed={view === option.value} onClick={() => view !== option.value && onView(option.value)} className={`h-11 rounded-md px-4 text-sm font-semibold max-sm:flex-1 ${view === option.value ? 'bg-primary text-on-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>
           {option.label}
         </button>
       ))}

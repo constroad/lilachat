@@ -119,3 +119,20 @@ Lo que falta es la tabla de escritorio: el reparto de columnas parte «a. m.», 
 FIX: #9, #10, #11, #13, #14 (escritorio) y #30 (móvil).
 MINOR: #2 (círculo de la flecha), #4 (franja de cifras apretada), #7 (conteo sin pastilla), #12 (Se unió desparejo), #17 (Lo invitó a la izquierda), #22 (subtítulo), #27 (ROL centrado).
 Para la próxima ronda: captura de la página completa en escritorio («Sin espacio», «Expandir», paginación, vacío) y una en tema claro.
+
+## Segunda revisión, independiente (14/11, capturas v2 sobre 99951620)
+
+Revisor: un subagente que no implementó la pantalla. Leyó el mockup, las capturas v2 y el código antes de esta auditoría.
+
+**Veredicto: pasa con observaciones.** Los FIX de la primera ronda (#9–#14 y #30) se ven corregidos en las capturas v2. No hay hex ni voseo.
+
+Corregido en el mismo día:
+- P1. `SpaceLogo` no tenía fallback: con el logo roto quedaba un hueco. Ahora cae a las iniciales (`web/src/spaces/SpaceLogo.tsx`, con test). Los logos vacíos de las capturas eran el CSS que oculta imágenes antes de capturar, no un defecto.
+- P2. El segmentado medía 40 px: pasa a 44 (`h-11`).
+- P4. Con el espacio contraído, la cabecera dejaba un borde doble: `md:border-b` solo si está abierto.
+- P5. Al buscar o paginar, todo se volvía a abrir: el estado de contraído sube a `AdminSpacesView`, por encima del esqueleto de carga (con test).
+- P6. Un espacio elegido sin miembros activos decía «Nadie coincide con esa búsqueda.» sin búsqueda: ahora dice «Este espacio no tiene miembros activos.» (con test).
+
+Queda como MINOR (ya anotado en la primera ronda): paginador ‹ › en vez de números, colores de rol de `memberWeb`, «Lo invitó» a la izquierda, rol centrado en la tarjeta móvil, conteo sin pastilla, «DISPOSITIVOS» y «LO INVITÓ» apretados a 1440 px.
+
+Sin verificar: tema claro, estados contraído, cargando, error y vacío en captura, y el ancho real de 390 px (Chrome de escritorio no baja de 433).

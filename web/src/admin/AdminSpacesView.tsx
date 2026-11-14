@@ -29,6 +29,7 @@ import type { AdminLoad } from './useAdminLoad';
  */
 const MEMBER_COLUMNS = 'md:grid md:grid-cols-[minmax(0,2.4fr)_minmax(0,0.9fr)_minmax(0,1.7fr)_minmax(0,1.1fr)_minmax(0,1.5fr)_minmax(0,1.3fr)_minmax(0,1fr)] md:items-center md:gap-3';
 const CARD = 'md:overflow-hidden md:rounded-xl md:border md:border-outline/15 md:bg-surface';
+const NOBODY_ACTIVE = 'Este espacio no tiene miembros activos.';
 const PILL = 'rounded-md border px-1.5 text-[10px] font-bold uppercase leading-5';
 
 type Props = {
@@ -38,28 +39,39 @@ type Props = {
   onSpace: (space: string | null) => void;
   onPage: (page: number) => void;
   onRetry: () => void;
+  /** A search is on: an empty list then means «nobody matches», not «nobody here». */
+  searched: boolean;
 };
 
 export function AdminSpacesView(props: Props) {
   const ready = props.overview.status === 'ready' ? props.overview.data : null;
+  // Lives above the loading switch: a search or a page reload unmounts the cards (review of adm-01).
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const toggle = (id: string) => setCollapsed((current) => {
+    const next = new Set(current);
+    if (!next.delete(id)) next.add(id);
+    return next;
+  });
   return (
     <div className="mt-6 lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start lg:gap-6">
       <SpaceFilter overview={ready} space={props.space} onSpace={props.onSpace} />
       <div className="min-w-0 space-y-6 max-lg:mt-4">
-        <SpacesContent {...props} />
+        <SpacesContent {...props} collapsed={collapsed} onToggle={toggle} />
       </div>
     </div>
   );
 }
 
-function SpacesContent(props: Props) {
+type ContentProps = Props & { collapsed: ReadonlySet<string>; onToggle: (id: string) => void };
+
+function SpacesContent(props: ContentProps) {
   const load = props.space ? props.members : props.overview;
   // The groups failing also leaves the filter and the totals empty: «Reintentar» either way.
   const failed = [props.overview, load].find((candidate) => candidate?.status === 'error');
   if (failed?.status === 'error') return <section className="rounded-xl border border-outline/15 bg-surface"><ErrorNote message={failed.message} onRetry={props.onRetry} /></section>;
   if (!load || load.status === 'loading') return <section className={`${CARD} max-md:rounded-xl max-md:border max-md:border-outline/15 max-md:bg-surface`}><SkeletonRows /></section>;
-  if (props.space && props.members?.status === 'ready') return <SelectedSpace page={props.members.data} space={props.space} onPage={props.onPage} />;
-  return props.overview.status === 'ready' ? <Groups overview={props.overview.data} onSpace={props.onSpace} onPage={props.onPage} /> : null;
+  if (props.space && props.members?.status === 'ready') return <SelectedSpace page={props.members.data} space={props.space} searched={props.searched} onPage={props.onPage} />;
+  return props.overview.status === 'ready' ? <Groups overview={props.overview.data} collapsed={props.collapsed} onToggle={props.onToggle} onSpace={props.onSpace} onPage={props.onPage} /> : null;
 }
 
 type FilterOption = { id: string | null; testid: string; name: string; count: number; logoUrl: string | null };
@@ -126,18 +138,14 @@ function FilterRow({ option, selected, onSpace }: { option: FilterOption; select
   );
 }
 
-function Groups({ overview, onSpace, onPage }: { overview: AdminSpacesOverview; onSpace: (space: string | null) => void; onPage: (page: number) => void }) {
-  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
-  const toggle = (id: string) => setCollapsed((current) => {
-    const next = new Set(current);
-    if (!next.delete(id)) next.add(id);
-    return next;
-  });
+type GroupsProps = { overview: AdminSpacesOverview; collapsed: ReadonlySet<string>; onToggle: (id: string) => void; onSpace: (space: string | null) => void; onPage: (page: number) => void };
+
+function Groups({ overview, collapsed, onToggle, onSpace, onPage }: GroupsProps) {
   if (overview.groups.length === 0 && overview.noSpace.members === 0) return <section className="rounded-xl border border-outline/15 bg-surface"><EmptyNote /></section>;
   return (
     <>
       {overview.groups.map((group) => (
-        <SpaceCard key={group.id} space={group} open={!collapsed.has(group.id)} onToggle={() => toggle(group.id)}>
+        <SpaceCard key={group.id} space={group} open={!collapsed.has(group.id)} onToggle={() => onToggle(group.id)}>
           <MemberRows members={group.preview} />
           <SeeAll count={group.members} shown={group.preview.length} label={`Ver los ${group.members} de ${group.name}`} testid={group.id} onClick={() => onSpace(group.id)} />
         </SpaceCard>
@@ -155,8 +163,8 @@ function Groups({ overview, onSpace, onPage }: { overview: AdminSpacesOverview; 
   );
 }
 
-function SelectedSpace({ page, space, onPage }: { page: AdminSpaceMembersPage; space: string; onPage: (page: number) => void }) {
-  const list = page.members.length === 0 ? <EmptyNote /> : <MemberRows members={page.members} />;
+function SelectedSpace({ page, space, searched, onPage }: { page: AdminSpaceMembersPage; space: string; searched: boolean; onPage: (page: number) => void }) {
+  const list = page.members.length === 0 ? <EmptyNote text={searched ? undefined : NOBODY_ACTIVE} /> : <MemberRows members={page.members} />;
   const pager = <Pager label={adminUsersRange(page)} page={page.page} last={lastPage(page.total, page.pageSize)} onPage={onPage} />;
   if (!page.space) return <NoSpaceCard count={page.total}>{list}{pager}</NoSpaceCard>;
   return <SpaceCard key={space} space={page.space}>{list}{pager}</SpaceCard>;
@@ -166,7 +174,7 @@ function SelectedSpace({ page, space, onPage }: { page: AdminSpaceMembersPage; s
 function SpaceCard({ space, open = true, onToggle, children }: { space: AdminSpaceSummary; open?: boolean; onToggle?: () => void; children: ReactNode }) {
   return (
     <section data-testid={`admin-espacio-${space.id}`} className={CARD}>
-      <header className="flex items-center gap-3 border-outline/15 bg-surface px-4 py-3 max-md:rounded-xl max-md:border md:border-b md:px-6">
+      <header className={`flex items-center gap-3 border-outline/15 bg-surface px-4 py-3 max-md:rounded-xl max-md:border md:px-6 ${open ? 'md:border-b' : ''}`}>
         <SpaceLogo space={{ name: space.name, logoUrl: space.logoUrl ?? undefined }} size={44} />
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-lg font-bold">{space.name}</h2>

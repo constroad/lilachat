@@ -994,10 +994,28 @@ José corrigió el diseño: el selector de espacios **no** lleva «Ver incógnit
     Foto suelta desde la tarjeta, Terminar, tarjeta terminada con la «F», Ver PDF en el visor.
   - Limpieza: Portal borró las visitas; las tarjetas QA se quitaron con «Eliminar para todos».
 - **Falta:**
-  - «Abrir croquis»: espera el embed de Portal (`/embed/site-visit/<id>?vista=croquis`) y que José reapruebe
-    la herramienta de agentes `abrir_visita_en_editor`.
-  - La tarjeta del APK sigue con el diseño viejo: falta lv01 en RN, con su auditoría sobre capturas del emulador.
-  - VIS-0075 salió con la entrevista vacía («0 de 0»). Se le preguntó a Portal; con 0 preguntas, «Entrevista»
-    responde «Abre la visita de nuevo para seguir», que no explica nada.
-  - Al borrar una visita en Portal, su tarjeta queda en el chat. Portal propone un aviso `visita.deleted` con
-    agentes.
+  - Lo que quedaba aquí se resolvió por la tarde (sección siguiente), salvo el croquis en vivo.
+
+## 14/11 tarde: croquis, tarjeta lv01 en el APK y el bot borra sus mensajes
+
+- **Tarjeta lv01 en el APK** (`VisitCardBlocks`, `VisitCardButtons`, `VisitMap`): la misma que la web, con la
+  lógica compartida en `shared/src/visitCard.ts` (13 tests). Auditada sobre capturas del emulador por dos
+  revisores independientes (`design/stitch/auditorias/lv01-visita-chat.md`).
+- **Entrevista sin preguntas:** con 0 preguntas la empresa no tiene entrevista y se dice así
+  (`visitInterviewNotice`, `NO_INTERVIEW`), en web y APK.
+- **«Abrir croquis»** (web y APK):
+  - La puerta `POST /api/workspaces/<id>/visits/forms` con `kind=croquis` pide a agentes
+    `abrir_visita_en_editor` con `{visitaId, vista:'croquis'}`; otra vista da 400. Vuelve `{url, expiresAt}`.
+  - El enlace se valida con `embedLinkOf(raw, origins, 'site-visit')`: solo `/embed/site-visit/<id>` con
+    `?vista=croquis` o sin búsqueda, y el token en el `#`. El enlace no se guarda ni se manda en un mensaje:
+    abre la visita a cualquiera durante 12 h.
+  - Web: `VisitCroquisWeb` sobre `PortalEmbedFrame` (iframe y puente `portal-embed:*` v1).
+  - APK: `VisitCroquis` (Modal + WebView). El puente de Portal en el WebView (8d2fe4a5) llega como JSON por
+    `onMessage` (`nativeEmbedEventOf`); el ✕ y el atrás mandan `close-request` (`nativeEmbedCommand`) para que
+    Portal guarde, con 3 s de espera si no contesta; `closed` cierra; `expired` pide el enlace de nuevo.
+  - E2E APK (OTA d96c945, VIS-2026-0077): la pantalla abre, el aviso de Portal se ve y el ✕ vuelve a la
+    tarjeta. **Sin verificar:** el editor de croquis cargado, porque agentes contestó que
+    `abrir_visita_en_editor` falta aprobar (13:15). Se le preguntó a agentes si cambió el texto de la herramienta.
+- **El bot borra su propio mensaje:** `DELETE /api/bots/messages/:id` y `DELETE /api/bots/messages?idempotency_key=`
+  (`deleteBotMessage`): 204, 404 `message_not_found`, 409 `not_deleted`. Avisa a web y APK como un borrado
+  normal. Contrato en `specs/BOTS-API.spec.md`. Es lo que usará agentes para el aviso `visita.deleted`.

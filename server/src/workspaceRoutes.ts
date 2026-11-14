@@ -30,7 +30,7 @@ import { addCustomEmoji, listCustomEmojis, removeCustomEmoji } from './customEmo
 import { clientRecords, listClients } from './bots/botClients.js';
 import { clientAccount, clientReportEmbed, clientReportEmbedNew, clientReportPdf, clientServiceBilling, clientServiceDetail, clientServiceFiles } from './bots/clientFiles.js';
 import { clientReportDraft, openReportForm } from './bots/clientReports.js';
-import { openVisitForm, siteVisitDraft } from './bots/siteVisitDoor.js';
+import { openVisitForm, siteVisitDraft, visitDoorOf } from './bots/siteVisitDoor.js';
 import { liftRestrictionsOfAdmin, listBillingViewers, listClientAccess, setBillingViewer, setClientAccess } from './bots/clientBillingViewers.js';
 
 /** Tries of a code per person and minute: enough to fix a typo, not to guess codes. */
@@ -156,6 +156,10 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
     res.json(outcome);
   }));
   // José 13/11 (contract with agentes 14/11): a technical visit from its channel or the 1:1 with the app. The document…
+  // Whether this chat is a visits door (the `visitas` topic's channel or the 1:1 with the app): no call to agentes.
+  router.get('/:id/visits/door', handled(async (req, res) => {
+    res.json({ open: Boolean(await visitDoorOf(req.params.id!, req.query.chat_id, me(req))) });
+  }));
   router.post('/:id/visits/draft', handled(async (req, res) => {
     const found = await siteVisitDraft(req.params.id!, me(req), req.body);
     if ('error' in found) return res.status(found.status).json({ error: found.error, message: found.message });

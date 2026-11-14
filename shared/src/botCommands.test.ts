@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { answerOfOutcome, COMMAND_LIMITS, formKeyOf, unknownCommandMessage, giveUpPending, giveUpWaiting, isAckBody, markWaiting, commandOf, matchCommands, noticeIsFor, replaceAnswer, sharedByLine, validateFormReply, parseSlashInput, slashQuery, validateBotCommands, validateCommandResponse, withAnswer, withNotice, type CommandGroup } from './botCommands.js';
+import { answerOfOutcome, answerTextShown, COMMAND_LIMITS, formKeyOf, unknownCommandMessage, giveUpPending, giveUpWaiting, isAckBody, markWaiting, commandOf, matchCommands, noticeIsFor, replaceAnswer, sharedByLine, validateFormReply, parseSlashInput, slashQuery, validateBotCommands, validateCommandResponse, withAnswer, withNotice, type CommandGroup } from './botCommands.js';
 
 /** The slash commands contract, `specs/BOTS-API.spec.md` §c. */
 describe('command registry', () => {
@@ -34,6 +34,19 @@ describe('command registry', () => {
     const long = validateBotCommands({ commands: [{ command: 'clima', description: 'd'.repeat(300), usage_hint: 'u'.repeat(300) }] });
     expect(long.ok && long.commands[0].description.length).toBe(COMMAND_LIMITS.description);
     expect(long.ok && long.commands[0].usageHint?.length).toBe(COMMAND_LIMITS.usageHint);
+  });
+});
+
+describe('an answer\'s text beside its card', () => {
+  it('a card with a link stands for the text: its backup address is not said twice (agentes 14/11)', () => {
+    // Arrange
+    const card = { title: 'Informe listo', fields: [], link: { label: 'Abrir PDF', url: 'https://www.constroad.com/x.pdf', mime: 'application/pdf' } };
+    // Act + Assert
+    expect(answerTextShown({ responseType: 'ephemeral', text: 'Informe listo: https://www.constroad.com/x.pdf', card })).toBe(false);
+    expect(answerTextShown({ responseType: 'ephemeral', text: 'Hecho.', card: { title: 'Resumen', fields: [] } })).toBe(true);
+    expect(answerTextShown({ responseType: 'ephemeral', text: 'Hecho.' })).toBe(true);
+    expect(answerTextShown({ responseType: 'ephemeral' })).toBe(false);
+    expect(answerTextShown(undefined)).toBe(false);
   });
 });
 

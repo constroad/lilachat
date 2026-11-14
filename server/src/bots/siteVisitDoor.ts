@@ -14,7 +14,7 @@ import { topicRoutesOf } from './botTopics.js';
  * person and visit for the section forms, as a field report's draft is.
  */
 export type VisitPlace = 'topic_channel' | 'direct';
-type Door = { installation: { _id: Types.ObjectId; workspaceId: Types.ObjectId; signingSecret: string; appId: Types.ObjectId }; app: { _id: Types.ObjectId; name: string; webhookUrl: string }; place: VisitPlace; chatId: Types.ObjectId };
+type Door = { installation: { _id: Types.ObjectId; workspaceId: Types.ObjectId; signingSecret: string; appId: Types.ObjectId }; app: { _id: Types.ObjectId; name: string; webhookUrl: string }; place: VisitPlace; chatId: Types.ObjectId; chatKind: string };
 
 const ASK_TIMEOUT_MS = 8_000;
 const COMMAND_TTL_MS = 15 * 60_000;
@@ -66,7 +66,7 @@ export async function visitDoorOf(workspaceId: string, chatId: unknown, userId: 
   for (const installation of installations) {
     const app = apps.find((one) => String(one._id) === String(installation.appId));
     const place = app?.webhookUrl ? await placeOf(chat, installation) : null;
-    if (app?.webhookUrl && place) return { installation, app: { _id: app._id, name: app.name, webhookUrl: app.webhookUrl }, place, chatId: chat._id };
+    if (app?.webhookUrl && place) return { installation, app: { _id: app._id, name: app.name, webhookUrl: app.webhookUrl }, place, chatId: chat._id, chatKind: chat.kind };
   }
   return null;
 }
@@ -91,7 +91,7 @@ export async function siteVisitDraft(workspaceId: string, userId: Types.ObjectId
   if (body.visit_id !== undefined && !visitId) return fail(400, 'invalid_request', 'Esa visita no existe.');
   const door = await visitDoorOf(workspaceId, body.chat_id, userId);
   if (!door) return notFound();
-  const reply = await callBotWebhook({ ...door.installation, webhookUrl: door.app.webhookUrl }, 'visit.draft.requested', { ...(visitId ? { visita_id: visitId } : {}), channel_id: String(door.chatId), place: door.place, user: await askerOf(userId) }, ASK_TIMEOUT_MS);
+  const reply = await callBotWebhook({ ...door.installation, webhookUrl: door.app.webhookUrl }, 'visit.draft.requested', { ...(visitId ? { visita_id: visitId } : {}), channel_id: String(door.chatId), channel: { id: String(door.chatId), kind: door.chatKind }, place: door.place, user: await askerOf(userId) }, ASK_TIMEOUT_MS);
   const answer = record(reply.body);
   const document = reply.status === 200 ? visitDocumentOf(answer.document) : null;
   recordLastDelivery(door.installation._id, document ? { ok: true } : { ok: false, error: reply.error ?? `HTTP ${reply.status}` });

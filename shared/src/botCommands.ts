@@ -219,6 +219,9 @@ export type EphemeralAnswer = {
 };
 export const EPHEMERAL_KEPT = 3;
 
+/** A card with a link already says it (agentes 14/11: «Informe listo» with «Abrir PDF»): the text is its backup address. */
+export const answerTextShown = (response: CommandResponse | undefined): boolean => Boolean(response?.text) && !response?.card?.link;
+
 export function answerOfOutcome(outcome: CommandOutcome, command: string): EphemeralAnswer | null {
   if (outcome.outcome === 'posted') return null;
   const base = { commandId: outcome.commandId, appName: outcome.appName, command };

@@ -15,6 +15,8 @@ import type { ServiceAskTarget } from './useServiceAsk';
 
 export type DriveFile = { uri: string; name: string; mime: string; /** A shot of the new camera: our server burns it and forwards it (José 12/11). */ stamp?: TimemarkStampAsked };
 type Sender = { jwt: string; chatId: string };
+/** What a send needs of a Portal ticket: Drive's and the visit's (José 14/11) alike. */
+type TicketTarget = Pick<DriveUpload, 'url' | 'fields' | 'fileField'>;
 type UploadState = { sending: boolean; progress: number; message: string; failed: boolean };
 type UploadTarget = { target: ServiceAskTarget; chatId: string; serviceId: string; onDone: () => void };
 
@@ -29,14 +31,14 @@ const MS_PER_SECOND = 1000;
  * Straight to Portal: the file never goes through Lilachat, and no session travels with it.
  * By XHR, as every upload of the app: `fetch` cannot send a file by its `uri` (`subidaXhr`).
  */
-async function sendToDrive(upload: DriveUpload, file: DriveFile, clientUploadId: string, onProgress: (ratio: number) => void, sender: Sender): Promise<{ status?: number; message?: string; mediaId?: string }> {
+export async function sendToDrive(upload: TicketTarget, file: DriveFile, clientUploadId: string, onProgress: (ratio: number) => void, sender: Sender): Promise<{ status?: number; message?: string; mediaId?: string }> {
   const reply = file.stamp ? await sendStamped(upload, file, clientUploadId, onProgress, sender) : await subirPorXhr({ url: upload.url, form: ticketForm(upload, file, clientUploadId), timeoutMs: UPLOAD_TIMEOUT_MS, onProgress });
   if (reply.tipo === 'fallo') return { message: reply.motivo };
   const { message, mediaId } = reply.payload;
   return { status: reply.status, ...(typeof message === 'string' ? { message } : {}), ...(typeof mediaId === 'string' ? { mediaId } : {}) };
 }
 
-function ticketForm(upload: DriveUpload, file: DriveFile, clientUploadId: string): FormData {
+function ticketForm(upload: TicketTarget, file: DriveFile, clientUploadId: string): FormData {
   const form = new FormData();
   Object.entries(upload.fields).forEach(([name, value]) => form.append(name, value));
   form.append('clientUploadId', clientUploadId);
@@ -48,7 +50,7 @@ function ticketForm(upload: DriveUpload, file: DriveFile, clientUploadId: string
  * A shot of the new camera goes ONCE to Lilachat's server, whole: it burns the stamp while it
  * compresses it and forwards it to the same ticket, server to server (José 12/11, «ok si»).
  */
-function sendStamped(upload: DriveUpload, file: DriveFile, clientUploadId: string, onProgress: (ratio: number) => void, sender: Sender) {
+function sendStamped(upload: TicketTarget, file: DriveFile, clientUploadId: string, onProgress: (ratio: number) => void, sender: Sender) {
   const form = new FormData();
   form.append('target', upload.url);
   form.append('fileField', upload.fileField);

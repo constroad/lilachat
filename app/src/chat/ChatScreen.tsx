@@ -28,6 +28,7 @@ import { useChatCommandsWithActions } from './commands/useChatCommands';
 import { ChatDetailScreen } from './ChatDetailScreen';
 import { useChat } from './useChat';
 import { GroupCallStrip, useLlamadas } from '../calls/ProveedorDeLlamadas';
+import { useVisitDoor } from '../spaces/visits/useVisitDoor';
 import { useArchivosDelChat } from './useArchivosDelChat';
 import { useLimpiarAvisoDelChat } from './useLimpiarAvisoDelChat';
 import { SeleccionDeMensaje } from './SeleccionDeMensaje';
@@ -224,6 +225,8 @@ export function ChatScreen({
   // Fuera del grupo no se listan miembros: ya no es «QA Ana, Vos».
   const otherStatus = usePresenceStatus(otherUserId);
   const channelWork = useChannelWork({ enabled: Boolean(workspaceId && esGrupoChat && !appId && !encrypted), jwt: credential.jwt, chatId, channelName: nombreVisible, yo: credential.userId, names: nombresDelGrupo, apps: grupo.appIds, spaceId: workspaceId, onOpenRecord: (seq) => saltarA(seq, 'Ese registro está más arriba: sube para cargarlo.'), actions: commands.buttons, runAction: commands.appAnswers.runAction });
+  // José 13/11: the technical visit, from its channel or the 1:1 with the app (off until he turns it on).
+  const visitDoor = useVisitDoor({ jwt: credential.jwt, spaceId: workspaceId, chatId });
   const accionesDeTarjeta = useMemo(() => ({ editarRecordatorio: puedeEditarRecordatorios ? (recordatorio: AgendaReminder) => setCreando({ recordatorio }) : undefined, callBack: callBack.actions, runLine, openOrderCard: channelWork.openOrderCard }), [puedeEditarRecordatorios, callBack.actions, runLine, channelWork.openOrderCard]);
   const subtitulo = useChatSubtitle({ fueraDelGrupo, esBorrador, esGrupo: esGrupoChat, workspaceId, escriben: [...escribiendo], otroEnLinea, otroEstado: otherStatus, ultimaVez, nombres: nombresDelGrupo, totalMembers: grupo.members.length, yo: credential.userId });
   const fotoVisible = infoPropia.avatarUrl ?? chatAvatarUrl;
@@ -436,7 +439,7 @@ export function ChatScreen({
         />
       )}
 
-      {fijar.franja}{esGrupoChat ? <GroupCallStrip chatId={chatId} chatName={nombreVisible} me={credential.userId} /> : null}{channelWork.tabs}<ContactNoteBanner chatId={chatId} jwt={credential.jwt} note={grupo.contactNote} />
+      {fijar.franja}{esGrupoChat ? <GroupCallStrip chatId={chatId} chatName={nombreVisible} me={credential.userId} /> : null}{channelWork.tabs}{visitDoor.strip}<ContactNoteBanner chatId={chatId} jwt={credential.jwt} note={grupo.contactNote} />
       </View>
       <ChatKeyboardArea style={{ flex: 1, zIndex: 1 }}>
       {fijar.hoja}{channelWork.panel}
@@ -599,6 +602,7 @@ export function ChatScreen({
       />
       ) : null}
     </ChatKeyboardArea>
+    {visitDoor.screen}
     </View></OverlayHost></SpaceEmojisProvider>
   );
 }

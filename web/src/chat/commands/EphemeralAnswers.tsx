@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, ClipboardList, EyeOff, Send, X } from 'lucide-react';
-import { canCloseAll, ephemeralLabel, ephemeralSummary, openAnswerId, toggleAnswer, type EphemeralAnswer, type StackChoice } from '@lilachat/shared';
+import { answerTextShown, canCloseAll, ephemeralLabel, ephemeralSummary, openAnswerId, toggleAnswer, type EphemeralAnswer, type StackChoice } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { BotCardView } from '../BotCardView';
@@ -81,7 +81,7 @@ function AnswerBody(props: Props & { answer: EphemeralAnswer }) {
           <ClipboardList size={14} /> Abrir «{answer.response?.form?.title}»
         </button>
       ) : null}
-      {answer.response?.text ? <p className="whitespace-pre-wrap break-words text-[14px] text-on-surface"><LinkedText text={answer.response.text} own={false} /></p> : null}
+      {answerTextShown(answer.response) ? <p className="whitespace-pre-wrap break-words text-[14px] text-on-surface"><LinkedText text={answer.response?.text ?? ''} own={false} /></p> : null}
       {answer.response?.card ? (
         <div className="mt-2">
           <BotCardView card={{ ...answer.response.card, actions: [] }} chatId={props.chatId} seq={0} jwt={props.jwt} />

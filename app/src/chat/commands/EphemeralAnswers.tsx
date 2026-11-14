@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native';
 import { ChevronDown, ChevronUp, ClipboardList, EyeOff, Send, X } from 'lucide-react-native';
-import { canCloseAll, ephemeralLabel, ephemeralSummary, openAnswerId, toggleAnswer, type EphemeralAnswer, type StackChoice } from '@lilachat/shared';
+import { answerTextShown, canCloseAll, ephemeralLabel, ephemeralSummary, openAnswerId, toggleAnswer, type EphemeralAnswer, type StackChoice } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { useColores } from '../../ui/tema';
@@ -97,9 +97,9 @@ function AnswerBody(props: Props & { answer: EphemeralAnswer }) {
           <Text className="text-[14px] font-semibold text-primary">{`Abrir «${answer.response?.form?.title ?? 'formulario'}»`}</Text>
         </Pressable>
       ) : null}
-      {answer.response?.text ? (
+      {answerTextShown(answer.response) ? (
         <Text selectable className="text-[15px] text-on-surface">
-          <TextoConEnlaces texto={answer.response.text} />
+          <TextoConEnlaces texto={answer.response?.text ?? ''} />
         </Text>
       ) : null}
       {answer.response?.card ? (

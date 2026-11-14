@@ -77,15 +77,23 @@ describe('the visit\'s door', () => {
     // Act
     const answered = await draftOf({ chat_id: String(visitsChannel), visit_id: VISIT }).expect(200);
     // Assert
-    expect(received[0]).toMatchObject({ type: 'visit.draft.requested', data: { visita_id: VISIT, channel_id: String(visitsChannel), place: 'topic_channel', user: { id: String(ana), name: 'Ana' } } });
+    expect(received[0]).toMatchObject({ type: 'visit.draft.requested', data: { visita_id: VISIT, channel_id: String(visitsChannel), channel: { id: String(visitsChannel), kind: 'group' }, place: 'topic_channel', user: { id: String(ana), name: 'Ana' } } });
     expect(answered.body.document).toMatchObject({ id: VISIT, code: 'VIS-2026-0003', figures: { points: 1 } });
   });
   it('from the 1:1 with the app the place is «direct»; a new visit brings the open ones', async () => {
     answers['visit.draft.requested'] = { status: 200, body: NEW_VISIT };
     const answered = await draftOf({ chat_id: String(direct) }).expect(200);
-    expect(received[0]?.data).toMatchObject({ place: 'direct', channel_id: String(direct) });
+    // Agentes knows the 1:1 only by `channel.kind` (14/11).
+    expect(received[0]?.data).toMatchObject({ place: 'direct', channel_id: String(direct), channel: { id: String(direct), kind: 'direct' } });
     expect(received[0]?.data).not.toHaveProperty('visita_id');
     expect(answered.body.visits).toEqual([expect.objectContaining({ id: VISIT })]);
+  });
+  it('the chat asks whether it is a door without reaching agentes', async () => {
+    const doorOf = (chatId: Types.ObjectId) => request(app).get(`/api/workspaces/${spaceId}/visits/door`).query({ chat_id: String(chatId) }).set(auth(ana)).expect(200);
+    expect((await doorOf(visitsChannel)).body).toEqual({ open: true });
+    expect((await doorOf(direct)).body).toEqual({ open: true });
+    expect((await doorOf(general)).body).toEqual({ open: false });
+    expect(received).toHaveLength(0);
   });
   it('any other channel is no door: 404 and nothing reaches agentes', async () => {
     await draftOf({ chat_id: String(general) }).expect(404);

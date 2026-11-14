@@ -1390,7 +1390,7 @@ Portal construyó la visita (`PRIMERA-VISITA.spec.md` §9). Agentes aceptó este
 - **Puerta**: solo el canal elegido para el tema `visitas` de la instalación Portal, o el 1:1 con la app. Lilachat
   manda `channel_id` y `place: 'topic_channel' | 'direct'` fuera de `values`. Agentes lo comprueba otra vez: si no
   es así, responde 403 `not_visits_channel`.
-- **Lectura**: el evento `visit.draft.requested` `{visita_id?, channel_id, place, user}` llama a `visita_tecnica`
+- **Lectura**: el evento `visit.draft.requested` `{visita_id?, channel_id, channel: {id, kind}, place, user}` llama a `visita_tecnica`
   como la persona. Responde `{document, visitas}` sin id y `{document}` con id. Un error de Portal llega como
   `{error, message}`, por ejemplo `visitas_apagadas` mientras el interruptor de Portal está apagado.
 - **Escrituras**: `form.submitted` con `form_id` = `guardar_visita`, `marcar_punto_de_visita`,
@@ -1398,8 +1398,12 @@ Portal construyó la visita (`PRIMERA-VISITA.spec.md` §9). Agentes aceptó este
   servicio. La respuesta trae `data`:
   - el punto: `{puntoId, n, upload}`;
   - la foto: `{upload}`;
-  - terminar con faltantes: `{missing}`;
-  - el PDF: `{status, url}`.
+  - guardar los datos de una visita nueva: `{visitaId, codigo}`;
+  - terminar con faltantes: `{missing}` (una respuesta normal, no un error);
+  - el PDF: `{status: 'ready', url}` o `{status: 'generating', retry_after_s}`. Un fallo de Portal llega como
+    `errors._`;
+  - el mismo form reenviado: `data: null`.
+- **Puerta en el cliente**: `GET /api/workspaces/:id/visits/door?chat_id=` contesta `{open}` sin llamar a agentes.
 - **Fotos**: van del teléfono a Portal con el ticket `site-visit-upload`, que dura 30 min y admite
   `clientUploadId`. El ticket no se guarda.
 - **Tarjeta**: `visita.created`, `visita.updated` y `visita.closed`, con clave `<integración>:visita:<visitId>` y sin

@@ -47,6 +47,7 @@ import type { StickerAction } from './contextoDeLaConversacion';
 import { memberBadge, opensInPhotoViewer, replyOpensThread, usesFlatLayout } from '@lilachat/shared';
 import { useGroupsAsList } from '../ui/groupsAsList';
 import { GroupCallStripFor, useCalls } from '../calls/CallProvider';
+import { useVisitDoor } from '../spaces/visits/useVisitDoor';
 import { ChatQueue } from './queue/ChatQueue';
 import { gifAsPendingMessage, useGifsInFlight } from './gifs/gifsInFlight';
 import { useMessageWindow } from './useMessageWindow';
@@ -144,6 +145,8 @@ export function ConversacionConAcciones(
   const sendLock = detalle?.incognito ? INCOGNITO_COMPOSER : detalle?.blockedByMe ? BLOCKED_BY_ME_COMPOSER : chat.kind === 'group' && detalle && !memberMay({ permission: 'sendMessages', role: myRole, permissions: detalle.memberPermissions }) ? memberPermissionDenied('sendMessages') : null;
   const fijados = useMemo(() => fijadosVigentes(chat.fijados, Date.now()), [chat.fijados]);
   const seqsFijados = useMemo(() => new Set(fijados.map((uno) => uno.seq)), [fijados]);
+  // José 13/11: the technical visit, from its channel or the 1:1 with the app (off until he turns it on).
+  const visitDoor = useVisitDoor({ jwt: props.jwt, spaceId: chat.workspaceId, chatId: chat.id });
   const fijar = useFijarEnLaWeb({ chatId: chat.id, jwt: props.jwt, onAviso, onCambio: props.onRecargarChats });
   const [salto, setSalto] = useState<{ seq: number; vez: number } | null>(null);
   // An old message opens with its context (pending 44) instead of «sube para cargarlo».
@@ -258,6 +261,7 @@ export function ConversacionConAcciones(
         }}
         franja={
           <>
+          {visitDoor.strip}
           {chat.kind === 'direct' ? <ContactNoteBannerWeb chatId={chat.id} jwt={props.jwt} note={detalle?.routines?.contactNote} /> : null}
           <FranjaDeFijados
             fijados={fijados}
@@ -336,6 +340,7 @@ export function ConversacionConAcciones(
       {verFijados ? (
         <ListaDeFijados fijados={fijados} nombreDe={nombreDe} textoLocal={textoLocal} puedeDesfijar={puedeFijar} onIr={(seq) => setSalto({ seq, vez: Date.now() })} onDesfijar={(seq) => void fijar.desfijar(seq)} onCerrar={() => setVerFijados(false)} />
       ) : null}
+      {visitDoor.screen}
       {fijar.pidiendo !== null ? <DialogoFijar onFijar={(duracion) => void fijar.fijar(duracion)} onCerrar={fijar.cancelar} /> : null}
       {acciones.eliminando ? (
         <DialogoEliminar

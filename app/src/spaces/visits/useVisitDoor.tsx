@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ChevronRight, MapPinned } from 'lucide-react-native';
-import { SITE_VISITS_OPEN_HERE } from '@lilachat/shared';
+import { watchVisitDoor } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { VisitScreen } from './VisitScreen';
 import { askVisitDoor, type VisitPlaceRef } from './visitsApi';
@@ -19,12 +19,7 @@ export function useVisitDoor(params: { jwt: string; spaceId?: string; chatId: st
   useEffect(() => {
     setOpen(false);
     setShowing(false);
-    if (!SITE_VISITS_OPEN_HERE || !place) return;
-    let alive = true;
-    void askVisitDoor(place).then((answer) => alive && setOpen(answer.ok && answer.data.open));
-    return () => {
-      alive = false;
-    };
+    return place ? watchVisitDoor(() => askVisitDoor(place), setOpen) : undefined;
   }, [place]);
   if (!open || !place) return { strip: null, screen: null };
   const strip = (

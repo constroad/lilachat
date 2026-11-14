@@ -9,13 +9,15 @@ import type { ServiceAskTarget } from './useServiceAsk';
 
 export type DriveFile = { blob: Blob; name: string; /** Lilachat's camera: the server burns it on the way (`/api/stamped-forward`). */ stamp?: TimemarkStampAsked };
 type Sender = { jwt: string; chatId: string };
+/** What a send needs of a Portal ticket: Drive's and the visit's (José 14/11) alike. */
+type TicketTarget = Pick<DriveUpload, 'url' | 'fields' | 'fileField'>;
 type UploadState = { sending: boolean; message: string; failed: boolean };
 type UploadTarget = { target: ServiceAskTarget; chatId: string; serviceId: string; onDone: () => void };
 
 const IDLE: UploadState = { sending: false, message: '', failed: false };
 
 /** Straight to Portal: the file never goes through Lilachat, and no session travels with it. */
-async function sendToDrive(upload: DriveUpload, file: DriveFile, clientUploadId: string, fields?: Record<string, string>): Promise<{ status?: number; message?: string; mediaId?: string }> {
+async function sendToDrive(upload: TicketTarget, file: DriveFile, clientUploadId: string, fields?: Record<string, string>): Promise<{ status?: number; message?: string; mediaId?: string }> {
   const body = new FormData();
   Object.entries(upload.fields).forEach(([name, value]) => body.append(name, value));
   body.append('clientUploadId', clientUploadId);
@@ -35,7 +37,7 @@ async function sendToDrive(upload: DriveUpload, file: DriveFile, clientUploadId:
  * A shot of Lilachat's camera goes ONCE to Lilachat's server, whole: it burns the stamp while it
  * compresses it and forwards it to the same ticket, server to server (as the APK, José 12/11).
  */
-async function sendStamped(upload: DriveUpload, file: DriveFile, clientUploadId: string, sender: Sender): Promise<{ status?: number; message?: string; mediaId?: string }> {
+async function sendStamped(upload: TicketTarget, file: DriveFile, clientUploadId: string, sender: Sender): Promise<{ status?: number; message?: string; mediaId?: string }> {
   const body = new FormData();
   body.append('target', upload.url);
   body.append('fileField', upload.fileField);
@@ -53,7 +55,7 @@ async function sendStamped(upload: DriveUpload, file: DriveFile, clientUploadId:
   }
 }
 
-const sendFor = (sender: Sender) => (upload: DriveUpload, file: DriveFile, clientUploadId: string, fields?: Record<string, string>) =>
+export const sendFor = (sender: Sender) => (upload: TicketTarget, file: DriveFile, clientUploadId: string, fields?: Record<string, string>) =>
   file.stamp ? sendStamped(upload, file, clientUploadId, sender) : sendToDrive(upload, file, clientUploadId, fields);
 
 /** How long a video lasts, from its header. A browser that cannot read it leaves the question to Portal. */

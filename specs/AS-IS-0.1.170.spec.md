@@ -901,6 +901,30 @@ José corrigió el diseño: el selector de espacios **no** lleva «Ver incógnit
   `POST /api/workspaces/:id/visits/draft` y `…/visits/forms`. La corrida lleva `visit`, y `form.submitted` manda
   `channel_id` y `place` aparte. Tiene 8 tests de integración con el hook real. Se escribieron junto con el
   código, no antes.
-- Falta: las pantallas lv01–lv03 en el APK y la web, la entrada en el ⚡ y el «+», el envío de la foto al
-  ticket y el E2E en vivo (necesita el interruptor de Portal y el lado de agentes).
-  `SITE_VISITS_OPEN_HERE = false`.
+- **Pantallas (14/11, APK y web)**, detrás de `SITE_VISITS_OPEN_HERE = false`:
+  - `shared/src/visitFlow.ts` (12 tests): cada escritura es una corrida que se abre y se manda en el acto. El punto
+    va primero; después su foto va al ticket `site-visit-upload`, con `clientUploadId`. Si la foto falla, el punto
+    queda guardado. Un ticket vencido (410) pide otro una vez. «Terminar» dice el primer faltante. El PDF abre
+    con `status: 'ready'` y `url`; si dice `generating`, avisa.
+  - `shared/src/visitScreen.ts` (7 tests): el estado de la pantalla, igual en las dos plataformas. Al guardar los
+    datos de una visita nueva llega `data.visitaId` (agentes 14/11), y desde ahí la pantalla es esa visita.
+  - El server ya manda la visita leída (`visitDocumentOf`). El cliente solo revisa su forma y no la lee otra vez.
+  - Entrada: la franja «Visitas técnicas» en el canal del tema `visitas` o en el 1:1 con la app. La pregunta va a
+    `GET /api/workspaces/:id/visits/door?chat_id=` (sin agentes) y solo con el interruptor encendido.
+  - En el APK, la visita se dibuja **dentro del chat, no en un `Modal`**: la cámara (`CameraHost`) vive en la raíz
+    y quedaría detrás. En la web es una capa fija.
+  - Marcar un punto (lv02): la cámara se abre primero; el GPS sale del sello de la foto o de una lectura fresca.
+    Después van los 12 tipos en chips, la medida con su unidad, la nota y «Guardar punto N» (72 px). Sin GPS el
+    botón no se habilita.
+  - Lo que no está: el mapa de la tarjeta lv01 (el diseño lo dibuja, pero hoy hay una lista de puntos) y abrir
+    la visita desde su tarjeta del chat (el teléfono no recibe la clave de la tarjeta; hace falta que el server la
+    exponga). No hay cola sin señal: la visita necesita señal y lo dice.
+  - `visit.draft.requested` manda `channel: {id, kind}`: agentes reconoce el 1:1 solo por `kind` (14/11).
+  - `driveUpload.isPortalUploadTicket` admite `site-visit-upload`, para que el server reenvíe la foto con sello.
+  - Test web `VisitScreenWeb.test.tsx` (4): las cifras y las acciones, abrir una visita de la lista, «Terminar»
+    con faltantes y el interruptor apagado.
+- **Sin probar en vivo:** agentes desplegó fb5bb54, pero el interruptor de Portal sigue apagado en Test. El E2E
+  (crear la visita, marcar un punto con su foto, la entrevista, terminar y el PDF) se corre cuando José lo
+  encienda.
+- **Respuesta con tarjeta y enlace (agentes 14/11):** si la tarjeta trae `link`, el texto de respaldo con la URL
+  ya no se muestra dos veces (`answerTextShown`, APK y web).

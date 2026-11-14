@@ -1,10 +1,11 @@
-import { useContext, useState } from 'react';
+import { useContext, useState, type ReactNode } from 'react';
 import { ChevronRight, ExternalLink } from 'lucide-react';
-import { cardActionLayout, cardContextOf, formatClock, isOrderCard, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
+import { cardActionLayout, cardContextOf, formatClock, isOrderCard, viewableLinkOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BotBlocksView } from './botBlocks/BotBlocksView';
 import { BotCardDetail } from './botBlocks/BotCardDetail';
 import { CardCommandContext, OrderCardContext, useCardCommand } from './botBlocks/cardCommand';
 import { TONE as BLOCK_TONE } from './botBlocks/tones';
+import { usePortalFileViewer } from '../spaces/clients/PortalFileViewer';
 
 /** The status pill's tone (design `e-21`): background faint, border at 30 %, text strong. */
 export const TONE: Record<CardTone, string> = {
@@ -45,6 +46,19 @@ function CardHead({ card }: { card: BotCard }) {
   );
 }
 
+/** A card's link: a file (a quote's PDF) opens in Lilachat's viewer (José 13/11); a page, in a new tab. */
+function LinkOut(props: { link: NonNullable<BotCard['link']>; className: string; children: ReactNode }) {
+  const viewer = usePortalFileViewer();
+  const file = viewableLinkOf(props.link);
+  if (!file) return <a href={props.link.url} target="_blank" rel="noopener noreferrer" className={props.className}>{props.children}</a>;
+  return (
+    <>
+      <button type="button" data-testid="tarjeta-archivo" onClick={() => viewer.open(file)} className={props.className}>{props.children}</button>
+      {viewer.viewer}
+    </>
+  );
+}
+
 /** The link as text, or (Stitch a10) the footer line with the solid button on its right. */
 function CardLink({ card }: { card: BotCard }) {
   const { link, footer } = card;
@@ -53,9 +67,9 @@ function CardLink({ card }: { card: BotCard }) {
       <div data-testid="tarjeta-pie" className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-outline/10 pt-2.5">
         {footer ? <p className="min-w-0 flex-1 break-words text-[12px] text-on-surface-variant">{footer}</p> : <span />}
         {link ? (
-          <a href={link.url} target="_blank" rel="noopener noreferrer" className={link.style === 'button' ? 'inline-flex min-h-9 items-center gap-1 rounded-lg bg-primary px-3.5 text-[13px] font-semibold text-on-primary hover:opacity-90' : 'inline-flex items-center gap-1 text-[13px] font-semibold text-primary hover:underline'}>
+          <LinkOut link={link} className={link.style === 'button' ? 'inline-flex min-h-9 items-center gap-1 rounded-lg bg-primary px-3.5 text-[13px] font-semibold text-on-primary hover:opacity-90' : 'inline-flex items-center gap-1 text-[13px] font-semibold text-primary hover:underline'}>
             {link.label} {link.style === 'button' ? <ChevronRight size={15} /> : <ExternalLink size={13} />}
-          </a>
+          </LinkOut>
         ) : null}
       </div>
     );
@@ -63,9 +77,9 @@ function CardLink({ card }: { card: BotCard }) {
   if (footer) return <p data-testid="tarjeta-pie" className="break-words border-t border-outline/10 pt-2.5 text-[12px] text-on-surface-variant">{footer}</p>;
   if (!link) return null;
   return (
-    <a href={link.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary hover:underline">
+    <LinkOut link={link} className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary hover:underline">
       {link.label} <ExternalLink size={13} />
-    </a>
+    </LinkOut>
   );
 }
 

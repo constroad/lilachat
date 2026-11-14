@@ -26,7 +26,7 @@ export type BotCard = {
   status?: { label: string; tone: CardTone };
   fields: { label: string; value: string }[];
   /** `style: 'button'`: the solid footer button («Ver consumo ›») instead of a text link. */
-  link?: { label: string; url: string; style?: 'button' };
+  link?: { label: string; url: string; style?: 'button'; /** A file the viewer shows (José 13/11): «Ver PDF» opens in Lilachat. */ mime?: string };
   accent?: CardAccent;
   /** A muted line under the title («Consorcio Lomas»). */
   subtitle?: string;
@@ -92,6 +92,10 @@ function cardDesignOf(card: Record<string, unknown>): { ok: true; design: CardDe
   return { ok: true, design: { ...(accent ? { accent } : {}), ...(subtitle ? { subtitle } : {}), ...(url ? { url } : {}), ...(footer ? { footer } : {}) } };
 }
 
+/** The mimes a card link may say, the ones the viewer shows; anything else stays a page. */
+const VIEWABLE_LINK_MIME = /^(application\/pdf|image\/[a-z0-9.+-]+|video\/[a-z0-9.+-]+)$/;
+const linkMimeOf = (mime: unknown): { mime?: string } => (typeof mime === 'string' && VIEWABLE_LINK_MIME.test(mime) ? { mime } : {});
+
 export function validateBotCard(raw: unknown): { ok: true; card: BotCard } | { ok: false; message: string } {
   const card = record(raw);
   const title = line(card.title, BOT_LIMITS.title);
@@ -122,7 +126,7 @@ export function validateBotCard(raw: unknown): { ok: true; card: BotCard } | { o
     ...(statusLabel ? { status: { label: statusLabel, tone: (status.tone as CardTone | undefined) ?? 'neutral' } } : {}),
     fields,
     ...design.design,
-    ...(url ? { link: { label: cutAtWord(line(link.label, BOT_LIMITS.text), BOT_LIMITS.linkLabel) || 'Abrir', url, ...(link.style === 'button' ? { style: 'button' as const } : {}) } } : {}),
+    ...(url ? { link: { label: cutAtWord(line(link.label, BOT_LIMITS.text), BOT_LIMITS.linkLabel) || 'Abrir', url, ...(link.style === 'button' ? { style: 'button' as const } : {}), ...linkMimeOf(link.mime) } } : {}),
     ...(actions.actions.length ? { actions: actions.actions } : {}),
     ...(blocks.blocks.length ? { blocks: blocks.blocks } : {}),
     ...(detailBlocks.blocks.length ? { detail: { title: line(rawDetail.title, BOT_LIMITS.title) || title, blocks: detailBlocks.blocks } } : {}),

@@ -1328,6 +1328,9 @@ En la tarjeta:
   título es además un enlace, para el teclado. Un `url` sin https rechaza la
   tarjeta.
 - `link.style: 'button'`: el enlace es el botón sólido del pie, con «›».
+- `link.mime` (14/11, José: «Ver PDF» debía abrir el visor): `application/pdf`, `image/*` o `video/*`. El enlace
+  se abre en el visor de Lilachat, no en el navegador. Sin `mime`, vale la extensión de la dirección (`.pdf`).
+  Otro tipo se ignora y el enlace sigue abriendo afuera.
 - `footer` (≤ 120): una línea apagada a la izquierda del botón.
 
 Bloques nuevos:

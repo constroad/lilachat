@@ -1,8 +1,9 @@
 import { useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { ChevronRight, ExternalLink } from 'lucide-react-native';
-import { cardActionLayout, cardContextOf, formatClock, isOrderCard, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
+import { cardActionLayout, cardContextOf, formatClock, isOrderCard, viewableLinkOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BASE_URL } from '../api/client';
+import { useFileViewer } from '../spaces/clients/useFileViewer';
 import { useColores } from '../ui/tema';
 import { AccionesDeTarjetaContext, useAccionesDeTarjeta } from './accionesDeTarjeta';
 import { BotBlocksView } from './botBlocks/BotBlocksView';
@@ -60,7 +61,10 @@ function CardHead({ card }: { card: BotCard }) {
 function CardLink({ card }: { card: BotCard }) {
   const colors = useColores();
   const { link, footer } = card;
-  const open = () => link && void Linking.openURL(link.url);
+  // José 13/11: a quote's «Ver PDF» opened the browser; a file link opens in Lilachat's viewer.
+  const viewer = useFileViewer();
+  const file = viewableLinkOf(link);
+  const open = () => (file ? viewer.open(file) : link && void Linking.openURL(link.url));
   if (link?.style === 'button' || (footer && link)) {
     const solid = link?.style === 'button';
     return (
@@ -72,16 +76,20 @@ function CardLink({ card }: { card: BotCard }) {
             {solid ? <ChevronRight size={15} color={colors['on-primary']} /> : <ExternalLink size={13} color={colors.primary} />}
           </Pressable>
         ) : null}
+        {viewer.viewer}
       </View>
     );
   }
   if (footer) return <Text testID="tarjeta-pie" className="border-t border-outline/10 pt-2.5 text-[12px] text-on-surface-variant">{footer}</Text>;
   if (!link) return null;
   return (
-    <Pressable testID="tarjeta-enlace" onPress={open} hitSlop={6} className="flex-row items-center gap-1 self-start">
-      <Text className="text-[13px] font-semibold text-primary">{link.label}</Text>
-      <ExternalLink size={13} color={colors.primary} />
-    </Pressable>
+    <>
+      <Pressable testID="tarjeta-enlace" onPress={open} hitSlop={6} className="flex-row items-center gap-1 self-start">
+        <Text className="text-[13px] font-semibold text-primary">{link.label}</Text>
+        <ExternalLink size={13} color={colors.primary} />
+      </Pressable>
+      {viewer.viewer}
+    </>
   );
 }
 

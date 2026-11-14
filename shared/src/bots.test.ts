@@ -126,3 +126,14 @@ describe('a bot message with files', () => {
     expect(botFilesSummary([{ url: 'a', mime: 'image/jpeg' }])).toBe('1 foto');
   });
 });
+
+describe('a card link that is a file (José 13/11: «Ver PDF» must open the viewer)', () => {
+  it('keeps the mime of a PDF, a photo or a video, and drops any other', () => {
+    // Arrange / Act
+    const pdf = validateBotCard({ title: 'Cotización COT-0000318', link: { label: 'Ver PDF', url: 'https://portal.constroad.com/api/public/quote-pdf/318', mime: 'application/pdf' } });
+    const page = validateBotCard({ title: 'T', link: { label: 'Abrir', url: 'https://x.com', mime: 'text/html' } });
+    // Assert
+    expect(pdf.ok && pdf.card.link).toEqual({ label: 'Ver PDF', url: 'https://portal.constroad.com/api/public/quote-pdf/318', mime: 'application/pdf' });
+    expect(page.ok && page.card.link).toEqual({ label: 'Abrir', url: 'https://x.com' });
+  });
+});

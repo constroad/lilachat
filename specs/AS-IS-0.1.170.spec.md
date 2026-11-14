@@ -879,3 +879,12 @@ José corrigió el diseño: el selector de espacios **no** lleva «Ver incógnit
 - **Para Portal**: un documento nuevo (`id: null`) marca «Datos de la jornada» como LISTA con los valores
   por defecto, y las demás secciones salen apagadas sin decir por qué hasta guardarla.
 - **Sin verificar**: el clima no se llenó solo. El emulador no tenía GPS al abrir la sección.
+
+## 14/11 madrugada: «Ver PDF» de una tarjeta abre el visor
+
+- José 13/11, tarjeta de cotización en Constroad #admin: «Ver PDF» y «Abrir PDF» abrían el navegador.
+- `shared/fileViewer.viewableLinkOf`: el enlace de una tarjeta es un archivo si su `mime` (nuevo, `link.mime`)
+  o su extensión dicen PDF, foto o video. Web (`BotCardView` → `LinkOut`) y APK (`CardLink`) lo abren con su visor.
+- La URL del PDF de Portal no termina en `.pdf`: hace falta que agentes o Portal manden `link.mime`. Pedido.
+- **Sin verificar en vivo**: falta una tarjeta real con `mime`. Tests: `fileViewer.test.ts`, `bots.test.ts`,
+  `BotCardView.test.tsx`.

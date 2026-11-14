@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { formShotFiles, galleryIndexOf, galleryOf, mimeOf, openingOf, pdfReadinessOf, retryAfterMsOf, untilPdfReady, viewerWhenOf } from './fileViewer.js';
+import { formShotFiles, galleryIndexOf, galleryOf, mimeOf, openingOf, pdfReadinessOf, retryAfterMsOf, untilPdfReady, viewableLinkOf, viewerWhenOf } from './fileViewer.js';
 
 /** José 30/10: Portal's files open in Lilachat's viewer, not in Portal. */
 describe('fileViewer', () => {
@@ -110,5 +110,21 @@ describe('formShotFiles, the photos of a form for the viewer', () => {
   });
   it('gives nothing for no photos', () => {
     expect(formShotFiles([], 'Fotos')).toEqual([]);
+  });
+});
+
+/** José 13/11: «Ver PDF» of a quote card opened the browser; a card's file link opens in Lilachat's viewer. */
+describe('viewableLinkOf', () => {
+  it('a link to a PDF opens in the viewer, by its address or by the mime the app sends', () => {
+    // Arrange
+    const byAddress = { label: 'Ver PDF', url: 'https://lila.constroad.com/files/COT-SER-318.pdf' };
+    const byMime = { label: 'Abrir PDF', url: 'https://portal.constroad.com/api/public/quote-pdf/318?token=t', mime: 'application/pdf' };
+    // Act / Assert
+    expect(viewableLinkOf(byAddress)).toEqual({ url: byAddress.url, name: 'Ver PDF' });
+    expect(viewableLinkOf(byMime)).toEqual({ url: byMime.url, name: 'Abrir PDF', mime: 'application/pdf' });
+  });
+  it('a page is no file: it keeps opening outside, and no link is nothing', () => {
+    expect(viewableLinkOf({ label: 'Abrir cubicaje', url: 'https://inframaq.constroad.com/cubicaje?t=abc' })).toBeNull();
+    expect(viewableLinkOf(undefined)).toBeNull();
   });
 });

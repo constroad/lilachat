@@ -31,6 +31,13 @@ export function mimeOf(file: ViewableFile): string {
   return EXTENSION_MIMES[extensionOf(file.url) ?? ''] ?? UNKNOWN_MIME;
 }
 
+/** A card's link that is a file the viewer shows (José 13/11: a quote's «Ver PDF» opened the browser); a page is null. */
+export function viewableLinkOf(link: { label: string; url: string; mime?: string } | undefined): ViewableFile | null {
+  if (!link) return null;
+  const file: ViewableFile = { url: link.url, name: link.label, ...(link.mime ? { mime: link.mime } : {}) };
+  return openingOf(mimeOf(file)) === 'other' ? null : file;
+}
+
 export function openingOf(mime: string): FileOpening {
   if (mime.startsWith('image/') || mime.startsWith('video/')) return 'gallery';
   return mime === 'application/pdf' ? 'pdf' : 'other';

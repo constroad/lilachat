@@ -144,3 +144,23 @@ describe('a card in a narrow thread', () => {
     }
   });
 });
+
+/** José 13/11, a quote card in #admin: «al dar click en ver pdf debió abrir el visor». */
+describe('a card link that is a file', () => {
+  it('«Ver PDF» opens Lilachat\'s PDF viewer, not a new tab', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(null, { status: 200, headers: { 'Content-Type': 'application/pdf' } })));
+    const opened = vi.spyOn(window, 'open').mockReturnValue(null);
+    const quote = { kicker: 'COTIZACIÓN NUEVA', title: 'Cotización COT - 0000318', fields: [], link: { label: 'Ver PDF', url: 'https://portal.example.com/api/public/quote-pdf/318', style: 'button' as const, mime: 'application/pdf' } };
+    render(<BotCardView card={quote} chatId="c1" seq={9} jwt="jwt" />);
+    // Act
+    fireEvent.click(screen.getByRole('button', { name: /Ver PDF/ }));
+    // Assert
+    await waitFor(() => expect(screen.queryByTestId('pdf-visor') ?? screen.queryByTestId('pdf-preparando')).toBeTruthy());
+    expect(opened).not.toHaveBeenCalled();
+  });
+  it('a page keeps opening in a new tab', () => {
+    render(<BotCardView card={{ title: 'Cubicaje', fields: [], link: { label: 'Abrir cubicaje', url: 'https://inframaq.example.com/cubicaje?t=1' } }} chatId="c1" seq={10} jwt="jwt" />);
+    expect(screen.getByRole('link', { name: /Abrir cubicaje/ }).getAttribute('target')).toBe('_blank');
+  });
+});

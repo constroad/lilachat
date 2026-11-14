@@ -63,6 +63,15 @@ describe('the visit screen\'s state', () => {
     expect(await making.pdf()).toBeNull();
     expect(making.snapshot().notice).toBe('El PDF se está generando. Vuelve a tocar en un momento.');
   });
+  it('«Abrir croquis» gives Portal\'s link; a refused one is said and nothing opens', async () => {
+    const link = { url: `https://www.constroad.com/embed/site-visit/${VISIT}?vista=croquis#t=abc`, expiresAt: '2026-11-15T02:00:00.000Z' };
+    const ready = createVisitScreen(depsOf(answered(link)), VISIT);
+    expect(await ready.croquis(['https://www.constroad.com'])).toEqual(link);
+    expect(ready.snapshot()).toMatchObject({ busy: null, notice: '' });
+    const refused = createVisitScreen(depsOf(answered({ url: 'https://evil.example/x' })), VISIT);
+    expect(await refused.croquis(['https://www.constroad.com'])).toBeNull();
+    expect(refused.snapshot().notice).toBe('No se pudo abrir el croquis.');
+  });
   it('a failure on the way is said, never left spinning', async () => {
     const deps = depsOf();
     deps.open.mockRejectedValueOnce(new Error('offline'));

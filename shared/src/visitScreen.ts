@@ -1,5 +1,6 @@
 import type { VisitPointDraft } from './siteVisit.js';
-import { addVisitPhoto, createdVisitIdOf, finishVisit, markVisitPoint, saveVisitAnswers, visitDraftResultOf, visitPdf, visitPointRequest, type VisitDraftResult, type VisitFlowDeps, type VisitPhotoPlace, type VisitSource } from './visitFlow.js';
+import type { EmbedLink } from './portalEmbed.js';
+import { addVisitPhoto, createdVisitIdOf, finishVisit, markVisitPoint, saveVisitAnswers, visitDraftResultOf, visitCroquis, visitPdf, visitPointRequest, type VisitDraftResult, type VisitFlowDeps, type VisitPhotoPlace, type VisitSource } from './visitFlow.js';
 
 /**
  * The visit's screen, the same on the phone and the web (designs lv01–lv03): which visit is open,
@@ -71,6 +72,15 @@ export function createVisitScreen<F>(deps: VisitScreenDeps<F>, startId: string |
       const asked = await visitPdf(deps, visitId).catch(() => ({ ok: false as const, message: ON_THE_WAY_FAILED }));
       set({ busy: null, notice: asked.ok ? '' : asked.message });
       return asked.ok ? asked.url : null;
+    },
+    /** «Abrir croquis»: Portal's editor link (12 h), only from `origins`; never kept in the state. */
+    croquis: async (origins: readonly string[]): Promise<EmbedLink | null> => {
+      const { visitId } = state;
+      if (!visitId) return null;
+      set({ busy: 'Abriendo el croquis…', notice: '' });
+      const asked = await visitCroquis(deps, visitId, origins).catch(() => ({ ok: false as const, message: ON_THE_WAY_FAILED }));
+      set({ busy: null, notice: asked.ok ? '' : asked.message });
+      return asked.ok ? asked.link : null;
     },
   };
 }

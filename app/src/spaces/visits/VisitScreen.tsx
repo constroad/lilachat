@@ -10,6 +10,7 @@ import { useMargenes } from '../../ui/useMargenes';
 import { devicePlaceNow } from '../clients/reports/devicePlace';
 import { useFileViewer } from '../clients/useFileViewer';
 import { MarkPointSheet } from './MarkPointSheet';
+import { VisitCroquis } from './VisitCroquis';
 import { useVisit } from './useVisit';
 import type { VisitPlaceRef } from './visitsApi';
 
@@ -86,7 +87,7 @@ async function loosePhoto(visit: Visit) {
 }
 
 /** The card's button runs once the visit is read: a point opens its sheet, the rest do their step. */
-function useStartAction(action: VisitCardAction | undefined, visit: Visit, run: { mark: () => void; pdf: () => void }) {
+function useStartAction(action: VisitCardAction | undefined, visit: Visit, run: { mark: () => void; pdf: () => void; croquis: () => void }) {
   const ran = useRef(false);
   const ready = Boolean(visit.draft?.ok && visit.draft.document.id);
   useEffect(() => {
@@ -98,7 +99,7 @@ function useStartAction(action: VisitCardAction | undefined, visit: Visit, run: 
       photo: () => void loosePhoto(visit),
       finish: () => void visit.screen.finish(),
       pdf: run.pdf,
-      croquis: () => undefined,
+      croquis: run.croquis,
     };
     steps[action]();
   }, [action, ready, visit, run]);
@@ -199,6 +200,7 @@ export function VisitScreen(props: Props) {
   const visit = useVisit(props.place, props.visitId ?? null);
   const files = useFileViewer();
   const [marking, setMarking] = useState(false);
+  const [croquis, setCroquis] = useState(false);
   const document = visit.draft?.ok ? visit.draft.document : null;
   const { onClose } = props;
   useEffect(() => {
@@ -213,7 +215,7 @@ export function VisitScreen(props: Props) {
     const url = await visit.screen.pdf();
     if (url && document) files.open({ url, name: `${document.code}.pdf`, mime: 'application/pdf' });
   };
-  useStartAction(props.startAction, visit, { mark: () => setMarking(true), pdf: () => void pdf() });
+  useStartAction(props.startAction, visit, { mark: () => setMarking(true), pdf: () => void pdf(), croquis: () => setCroquis(true) });
   const openForm = visit.answers.openForm;
   return (
     <View testID="visita-pantalla" className="absolute inset-0 bg-background" style={{ paddingTop: margins.cabecera, zIndex: VISIT_SCREEN_LAYER, elevation: VISIT_SCREEN_LAYER }}>
@@ -227,6 +229,7 @@ export function VisitScreen(props: Props) {
       {marking && document ? <MarkPointSheet document={document} n={nextPointNumber(document)} onClose={() => setMarking(false)} onSave={(point, photo) => { setMarking(false); void visit.screen.markPoint(point, photo); }} /> : null}
       {openForm ? <AppFormSheet key={formKeyOf(openForm)} answer={openForm} onSubmit={(values) => visit.answers.submitForm(openForm, values)} onUpload={(photo, stamp) => visit.answers.uploadPhoto(openForm.commandId, photo, stamp)} onClose={() => visit.answers.dismiss(openForm.commandId)} /> : null}
       {files.viewer}
+      {croquis && document ? <VisitCroquis visit={visit} document={document} onClose={() => setCroquis(false)} /> : null}
     </View>
   );
 }

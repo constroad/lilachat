@@ -16,12 +16,12 @@ import type { ServiceAskTarget } from '../useServiceAsk';
 /** An existing report (its id), or a new one of a type (José 12/11: on the wide web reports are born in the editor). */
 type EmbedReport = { id?: string; title: string; url?: string; create?: EmbedCreateRequest };
 type Props = { target: ServiceAskTarget; serviceId: string; serviceName: string; report: EmbedReport; onClose: (changed: boolean) => void };
-type LinkState = { kind: 'asking' } | { kind: 'ready'; link: EmbedLink } | { kind: 'failed'; message: string };
+export type LinkState = { kind: 'asking' } | { kind: 'ready'; link: EmbedLink } | { kind: 'failed'; message: string };
 
 /** The dev web frames the local Portal too; the built one, production only (its CSP frames nothing else). */
 /** Portal's dev server, framed only while developing. */
 const PORTAL_DEV_ORIGIN = 'http://localhost:3000';
-const FRAMED_ORIGINS: readonly string[] = import.meta.env.DEV ? [PORTAL_EMBED_ORIGINS.production, PORTAL_DEV_ORIGIN] : [PORTAL_EMBED_ORIGINS.production];
+export const FRAMED_ORIGINS: readonly string[] = import.meta.env.DEV ? [PORTAL_EMBED_ORIGINS.production, PORTAL_DEV_ORIGIN] : [PORTAL_EMBED_ORIGINS.production];
 /** With nothing unsaved, Portal answers at once; a frame that does not answer does not keep the person in. */
 const CLOSE_WAIT_MS = 3000;
 /** E2E 12/11: Portal's save hung on «Guardando…» and its «Cerrar editor» never posted `closed`; past this, Lilachat's bar offers a way out. */
@@ -146,15 +146,31 @@ function Failure({ message, url, onRetry }: { message: string; url?: string; onR
   );
 }
 
+/** A report in Portal's editor: its link asked by the service, then the shared frame. */
 export function PortalEmbedWeb(props: Props) {
   const { state, again } = useEmbedLink(props.target, props.serviceId, props.report);
-  const frame = useRef<HTMLIFrameElement>(null);
-  const [loaded, setLoaded] = useState(false);
+  return <PortalEmbedFrame state={state} again={again} kicker={props.serviceName} title={props.report.title} {...(props.report.url ? { fallbackUrl: props.report.url } : {})} onClose={props.onClose} />;
+}
+
+/** Lilachat's own bar, only while Portal's is not there (not ready, failed, or stuck saving). */
+function EmbedBar(props: { kicker: string; title: string; onBack: () => void; onLeave?: () => void }) {
+  return (
+    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-outline/15 px-2">
+      <button type="button" data-testid="editor-portal-volver" onClick={props.onBack} aria-label="Volver" className="grid h-11 w-11 place-items-center rounded-full hover:bg-surface"><ChevronLeft size={20} /></button>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{props.kicker}</p>
+        <p className="truncate text-[15px] font-semibold">{props.title}</p>
+      </div>
+      {props.onLeave ? <StuckNotice onLeave={props.onLeave} /> : null}
+    </header>
+  );
+}
+
+type EmbedTalk = ReturnType<typeof useEmbedTalk>;
+
+/** Closing asks Portal first (it saves and posts `closed`); a frame not ready, failed or stuck is left at once. */
+function useEmbedClose(talk: EmbedTalk, stuck: boolean, onClose: (changed: boolean) => void) {
   const [closing, setClosing] = useState(false);
-  const link = state.kind === 'ready' ? state.link : null;
-  const { onClose } = props;
-  const talk = useEmbedTalk(frame, link, onClose, again);
-  const stuck = useUnsavedTooLong(talk.dirty, talk.savedAt);
   const leave = useCallback(() => onClose(talk.changed.current), [onClose, talk.changed]);
   const requestClose = useCallback(() => {
     if (!talk.ready || talk.error || stuck) return leave();
@@ -167,23 +183,38 @@ export function PortalEmbedWeb(props: Props) {
     return () => clearTimeout(timer);
   }, [closing, talk.dirty, talk.changed, onClose]);
   useLeaveGuards(talk.dirty, requestClose);
+  return { leave, requestClose };
+}
+
+/** The frame itself, its failure, and a skeleton until Portal says it is ready. */
+function EmbedBody(props: { failure: string | null; link: EmbedLink | null; ready: boolean; frame: React.RefObject<HTMLIFrameElement>; title: string; fallbackUrl?: string; onRetry: () => void }) {
+  const [loaded, setLoaded] = useState(false);
+  const { failure, link } = props;
+  return (
+    <div className="relative flex flex-1">
+      {failure ? <Failure message={failure} {...(props.fallbackUrl ? { url: props.fallbackUrl } : {})} onRetry={props.onRetry} /> : null}
+      {link && !failure ? <iframe ref={props.frame} key={link.url} data-testid="editor-portal-marco" src={link.url} title={`Editor de ${props.title}`} onLoad={() => setLoaded(true)} className="h-full w-full flex-1 border-0" /> : null}
+      {!failure && (!link || !loaded) && !props.ready ? <div className="pointer-events-none absolute inset-4 animate-pulse rounded-xl bg-surface" /> : null}
+    </div>
+  );
+}
+
+type FrameProps = { state: LinkState; again: () => void; kicker: string; title: string; fallbackUrl?: string; onClose: (changed: boolean) => void };
+
+/** Portal's editor over the whole window, whatever it edits (a report, a visit's croquis): one bar, Portal's. */
+export function PortalEmbedFrame(props: FrameProps) {
+  const { state, again } = props;
+  const frame = useRef<HTMLIFrameElement>(null);
+  const link = state.kind === 'ready' ? state.link : null;
+  const talk = useEmbedTalk(frame, link, props.onClose, again);
+  const stuck = useUnsavedTooLong(talk.dirty, talk.savedAt);
+  const { leave, requestClose } = useEmbedClose(talk, stuck, props.onClose);
   const failure = state.kind === 'failed' ? state.message : talk.error;
   const ownBar = !talk.ready || Boolean(failure) || stuck;
   return createPortal(
-    <div data-testid="editor-portal" role="dialog" aria-label={`Editor de ${props.report.title}`} className="fixed inset-0 z-50 flex flex-col bg-background text-on-surface">
-      {ownBar ? <header className="flex h-14 shrink-0 items-center gap-2 border-b border-outline/15 px-2">
-        <button type="button" data-testid="editor-portal-volver" onClick={requestClose} aria-label="Volver" className="grid h-11 w-11 place-items-center rounded-full hover:bg-surface"><ChevronLeft size={20} /></button>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{props.serviceName}</p>
-          <p className="truncate text-[15px] font-semibold">{props.report.title}</p>
-        </div>
-        {stuck && !failure ? <StuckNotice onLeave={leave} /> : null}
-      </header> : null}
-      <div className="relative flex flex-1">
-        {failure ? <Failure message={failure} {...(props.report.url ? { url: props.report.url } : {})} onRetry={again} /> : null}
-        {link && !failure ? <iframe ref={frame} key={link.url} data-testid="editor-portal-marco" src={link.url} title={`Editor de ${props.report.title}`} onLoad={() => setLoaded(true)} className="h-full w-full flex-1 border-0" /> : null}
-        {!failure && (!link || !loaded) && !talk.ready ? <div className="pointer-events-none absolute inset-4 animate-pulse rounded-xl bg-surface" /> : null}
-      </div>
+    <div data-testid="editor-portal" role="dialog" aria-label={`Editor de ${props.title}`} className="fixed inset-0 z-50 flex flex-col bg-background text-on-surface">
+      {ownBar ? <EmbedBar kicker={props.kicker} title={props.title} onBack={requestClose} {...(stuck && !failure ? { onLeave: leave } : {})} /> : null}
+      <EmbedBody failure={failure} link={link} ready={talk.ready} frame={frame} title={props.title} {...(props.fallbackUrl ? { fallbackUrl: props.fallbackUrl } : {})} onRetry={again} />
     </div>,
     document.body
   );

@@ -6,13 +6,13 @@ import { prepared } from '../clients/useDriveUpload';
 import { usePortalFileViewer } from '../clients/PortalFileViewer';
 import { MarkPointWeb } from './MarkPointWeb';
 import { useVisit } from './useVisit';
+import { VisitCroquisWeb } from './VisitCroquisWeb';
 import { VisitInterviewWeb } from './VisitInterviewWeb';
 import type { VisitChatRef } from './visitsApi';
 import type { OpenVisitAction } from './visitActionContext';
 
 
 type Active = { visitId: string; action: VisitCardAction; at: number };
-const CROQUIS_SOON = 'El editor de croquis de Portal llega en la próxima versión.';
 
 /** The quick ones (a loose photo, finishing, the PDF) run once the visit is read, then close. */
 type OpenFile = ReturnType<typeof usePortalFileViewer>['open'];
@@ -48,6 +48,7 @@ function VisitActionScreen({ place, active, openFile, onClose }: { place: VisitC
   const document = visit.draft?.ok ? visit.draft.document : null;
   if (!document) return visit.draft && !visit.draft.ok ? <VisitNotice text={visit.draft.message} onClose={() => onClose('')} /> : null;
   if (active.action === 'interview') return <VisitInterviewWeb document={document} busy={Boolean(visit.busy)} onAnswer={(values) => void visit.screen.answer(values)} onClose={close} />;
+  if (active.action === 'croquis') return <VisitCroquisWeb visit={visit} document={document} onClose={() => onClose('')} />;
   if (active.action === 'point') return <MarkPointWeb document={document} n={nextPointNumber(document)} onSave={(point, photo) => void visit.screen.markPoint(point, photo).then(close)} onClose={() => onClose('')} />;
   return null;
 }
@@ -65,8 +66,7 @@ export function useVisitCardActions(place: VisitChatRef | null) {
   const [active, setActive] = useState<Active | null>(null);
   const [notice, setNotice] = useState('');
   const files = usePortalFileViewer();
-  // «Abrir croquis» opens Portal's croquis editor once its embed exists (Portal 14/11); until then it says so.
-  const open = useMemo<OpenVisitAction | null>(() => (place ? (visitId, action) => (action === 'croquis' ? setNotice(CROQUIS_SOON) : setActive({ visitId, action, at: Date.now() })) : null), [place]);
+  const open = useMemo<OpenVisitAction | null>(() => (place ? (visitId, action) => setActive({ visitId, action, at: Date.now() }) : null), [place]);
   const finish = (said: string) => {
     setActive(null);
     setNotice(said);

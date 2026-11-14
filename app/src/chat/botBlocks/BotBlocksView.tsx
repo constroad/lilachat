@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ChevronRight, MapPin, Paperclip } from 'lucide-react-native';
 import { peopleOnCard, peoplePhotos, personEvidence, personTime, shortPersonName, type BotBlock, type PersonEvidence } from '@lilachat/shared';
 import { useFileViewer } from '../../spaces/clients/useFileViewer';
+import { InVisitCardContext } from '../../spaces/visits/visitCardContext';
+import { VisitFigures, VisitText } from '../../spaces/visits/VisitCardBlocks';
 import { Avatar } from '../../ui/Avatar';
 import { useColores } from '../../ui/tema';
 import { useAccionesDeTarjeta } from '../accionesDeTarjeta';
@@ -198,11 +200,19 @@ function Block({ block }: { block: BotBlock }) {
   }
 }
 
+/** In a visit card (lv01) the address, what is missing and the figures follow the design; the rest as always. */
+function CardBlock({ block, inVisit }: { block: BotBlock; inVisit: boolean }) {
+  if (inVisit && block.type === 'text') return <VisitText block={block} />;
+  if (inVisit && block.type === 'tiles') return <VisitFigures block={block} />;
+  return <Block block={block} />;
+}
+
 /** The kit's blocks (§118.4), one under the other with the card's rhythm. */
 export function BotBlocksView({ blocks, detail = false }: { blocks: readonly BotBlock[]; detail?: boolean }) {
+  const inVisit = useContext(InVisitCardContext);
   return (
     <View className="gap-3">
-      {blocks.map((block, index) => (detail && block.type === 'people' ? <PeopleList key={`${block.type}-${index}`} block={block} /> : <Block key={`${block.type}-${index}`} block={block} />))}
+      {blocks.map((block, index) => (detail && block.type === 'people' ? <PeopleList key={`${block.type}-${index}`} block={block} /> : <CardBlock key={`${block.type}-${index}`} block={block} inVisit={inVisit} />))}
     </View>
   );
 }

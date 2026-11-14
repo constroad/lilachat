@@ -1,13 +1,13 @@
 import { useContext, useState, type ReactNode } from 'react';
 import { Camera, ChevronRight, CircleCheck, ExternalLink, FileText, ImagePlus, ListChecks, Map as MapIcon, MapPin, type LucideIcon } from 'lucide-react';
-import { cardActionLayout, cardContextOf, visitCardActionOf, formatClock, isOrderCard, viewableLinkOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone, type VisitCardAction } from '@lilachat/shared';
+import { cardActionLayout, cardContextOf, visitBlocksOf, visitCardActionOf, visitKickerParts, formatClock, isOrderCard, viewableLinkOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone, type VisitCardAction } from '@lilachat/shared';
 import { BotBlocksView } from './botBlocks/BotBlocksView';
 import { BotCardDetail } from './botBlocks/BotCardDetail';
 import { CardCommandContext, OrderCardContext, useCardCommand } from './botBlocks/cardCommand';
 import { TONE as BLOCK_TONE } from './botBlocks/tones';
 import { usePortalFileViewer } from '../spaces/clients/PortalFileViewer';
 import { InVisitCardContext, VisitActionContext } from '../spaces/visits/visitActionContext';
-import { visitBlocksOf, VisitText } from '../spaces/visits/VisitCardBlocks';
+import { VisitText } from '../spaces/visits/VisitCardBlocks';
 
 /** The status pill's tone (design `e-21`): background faint, border at 30 %, text strong. */
 export const TONE: Record<CardTone, string> = {
@@ -32,8 +32,7 @@ const ACTION: Record<CardActionStyle, string> = {
  */
 /** lv01: «VISITA TÉCNICA ·» in the accent, the visit's code in mono grey. */
 function VisitKicker({ kicker }: { kicker: string }) {
-  const cut = kicker.lastIndexOf(' · ');
-  const [lead, code] = cut > 0 ? [kicker.slice(0, cut + 3), kicker.slice(cut + 3)] : [kicker, ''];
+  const { lead, code } = visitKickerParts(kicker);
   return (
     <p className="min-w-0 flex-1 truncate text-[11px] font-bold uppercase tracking-[0.08em] text-primary">
       {lead}{code ? <span className="font-mono font-semibold tracking-normal text-on-surface-variant">{code}</span> : null}

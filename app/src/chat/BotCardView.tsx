@@ -1,9 +1,12 @@
 import { useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { ChevronRight, ExternalLink } from 'lucide-react-native';
-import { cardActionLayout, cardContextOf, formatClock, isOrderCard, viewableLinkOf, visitCardActionOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
+import { cardActionLayout, cardContextOf, formatClock, isOrderCard, viewableLinkOf, visitBlocksOf, visitCardActionOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BASE_URL } from '../api/client';
 import { useFileViewer } from '../spaces/clients/useFileViewer';
+import { InVisitCardContext } from '../spaces/visits/visitCardContext';
+import { VisitAddress, VisitKicker, VisitText } from '../spaces/visits/VisitCardBlocks';
+import { VisitCardButtons } from '../spaces/visits/VisitCardButtons';
 import { useColores } from '../ui/tema';
 import { AccionesDeTarjetaContext, useAccionesDeTarjeta } from './accionesDeTarjeta';
 import { BotBlocksView } from './botBlocks/BotBlocksView';
@@ -56,6 +59,27 @@ function CardHead({ card }: { card: BotCard }) {
     </>
   );
 }
+
+/** lv01's head: the kicker split in two, the stage in a square neutral pill, the title at 18 and the address with its pin. */
+function VisitCardHead({ card }: { card: BotCard }) {
+  return (
+    <>
+      <View testID="tarjeta-cabecera" className="flex-row items-center gap-2">
+        <VisitKicker kicker={card.kicker} />
+        {card.status ? (
+          <View testID="tarjeta-estado" className={`rounded-md border px-2 py-0.5 ${TONE.neutral.pill}`}>
+            <Text className={`text-[10px] font-bold uppercase ${TONE.neutral.text}`}>{card.status.label}</Text>
+          </View>
+        ) : null}
+      </View>
+      <Text className="text-[18px] font-bold leading-6 text-on-surface">{card.title}</Text>
+      {card.subtitle ? <VisitAddress text={card.subtitle} /> : null}
+    </>
+  );
+}
+
+/** lv01 has no clock on the kicker line: a visit card says when it changed beside who changed it. */
+const withUpdateInFooter = (card: BotCard): BotCard => (card.footer && card.updatedAt ? { ...card, footer: `${card.footer} · ${formatClock(card.updatedAt)}` } : card);
 
 /** The link as text, or (Stitch a10) the footer line with the solid button on its right. */
 function CardLink({ card }: { card: BotCard }) {
@@ -163,12 +187,13 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
   };
   const buttons = card.actions?.filter((action) => !action.command || runRow) ?? [];
   const width = cardWidthOf(useWindowDimensions().width);
+  const visit = Boolean(props.visitId);
   return (
     <AccionesDeTarjetaContext.Provider value={{ ...actions, runLine: runRow }}>
-    <View testID="tarjeta-bot" className="m-1 overflow-hidden rounded-xl border border-outline/15 bg-surface" style={{ minWidth: Math.min(CARD_MIN_FILL, width), maxWidth: card.blocks ? width : Math.min(CARD_TEXT_WIDTH, width), width: card.blocks ? width : undefined }}>
+    <View testID="tarjeta-bot" className={`m-1 overflow-hidden ${visit ? 'rounded-[10px]' : 'rounded-xl'} border border-outline/15 bg-surface`} style={{ minWidth: Math.min(CARD_MIN_FILL, width), maxWidth: card.blocks ? width : Math.min(CARD_TEXT_WIDTH, width), width: card.blocks ? width : undefined }}>
       {card.accent ? <View testID="tarjeta-acento" style={{ height: ACCENT_HEIGHT, backgroundColor: colors[ACCENT_COLOR(card.accent)] }} /> : null}
       <CardBody url={card.url}>
-        <CardHead card={card} />
+        {visit ? <VisitCardHead card={card} /> : <CardHead card={card} />}
         {card.fields.length ? (
           <View className="flex-row flex-wrap">
             {card.fields.map((field) => (
@@ -179,7 +204,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
             ))}
           </View>
         ) : null}
-        {card.blocks ? <BotBlocksView blocks={card.blocks} /> : null}
+        {card.blocks ? <InVisitCardContext.Provider value={visit}><BotBlocksView blocks={visit ? visitBlocksOf(card.blocks).body : card.blocks} /></InVisitCardContext.Provider> : null}
         {card.detail ? (
           <Pressable testID="tarjeta-ver-detalle" onPress={() => setDetailOpen(true)} className="min-h-[36px] flex-row items-center gap-1 self-start rounded-full border border-outline/20 px-3">
             <Text className="text-[13px] font-semibold text-on-surface">Ver detalle</Text>
@@ -192,9 +217,11 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
             <ChevronRight size={14} color={colors['on-surface-variant']} />
           </Pressable>
         ) : null}
-        <CardLink card={card} />
+        <CardLink card={visit ? withUpdateInFooter(card) : card} />
       </CardBody>
-      {buttons.length ? <CardButtons buttons={buttons} sent={sent} onPress={press} /> : null}
+      {buttons.length && visit ? <VisitCardButtons actions={buttons} sent={sent} onPress={press} /> : null}
+      {buttons.length && !visit ? <CardButtons buttons={buttons} sent={sent} onPress={press} /> : null}
+      {visit && card.blocks ? visitBlocksOf(card.blocks).missing.map((block, index) => <View key={`falta-${index}`} className="px-3.5 pb-3"><VisitText block={block} /></View>) : null}
       {error ? <Text className="border-t border-outline/10 px-3.5 py-2 text-[12px] text-error">{error}</Text> : null}
       <BotCardDetail card={card} visible={detailOpen} onClose={() => setDetailOpen(false)} />
     </View>

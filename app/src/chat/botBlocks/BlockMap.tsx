@@ -1,6 +1,9 @@
+import { useContext } from 'react';
 import { Text, View } from 'react-native';
 import type { BotBlock } from '@lilachat/shared';
 import { LocationCard } from '../location/LocationCard';
+import { InVisitCardContext } from '../../spaces/visits/visitCardContext';
+import { VisitMap } from '../../spaces/visits/VisitMap';
 import { RouteMap } from './RouteMap';
 
 /**
@@ -8,6 +11,8 @@ import { RouteMap } from './RouteMap';
  * full one. With a route (Portal 13/11, visits), the points joined by a dotted line.
  */
 export function BlockMap({ block }: { block: Extract<BotBlock, { type: 'map' }> }) {
+  // A visit card (lv01): the place and its points; «Abrir croquis» is the card's own button.
+  if (useContext(InVisitCardContext)) return <VisitMap block={block} />;
   return (
     <View testID="bloque-mapa" className="gap-1">
       {block.label ? <Text className="text-[13px] font-semibold text-on-surface">{block.label}</Text> : null}

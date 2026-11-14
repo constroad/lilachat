@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState } from 'react';
-import type { BotBlock } from '@lilachat/shared';
+import { VISIT_MAP_LOOK, visitMapOf, type BotBlock } from '@lilachat/shared';
 import { InVisitCardContext } from '../../spaces/visits/visitActionContext';
 import { LocationCardWeb } from '../LocationCardWeb';
 import { RouteMapWeb } from './RouteMapWeb';
@@ -14,6 +14,7 @@ import { RouteMapWeb } from './RouteMapWeb';
  */
 function VisitMap({ block }: { block: Extract<BotBlock, { type: 'map' }> }) {
   const [width, setWidth] = useState(0);
+  const map = visitMapOf(block);
   const frame = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const node = frame.current;
@@ -26,14 +27,10 @@ function VisitMap({ block }: { block: Extract<BotBlock, { type: 'map' }> }) {
   }, []);
   return (
     <div ref={frame} data-testid="bloque-mapa" className="w-full">
-      <RouteMapWeb points={(block.points ?? []).map((point, index) => ({ lat: point.lat, lng: point.lng, n: point.label || index + 1 }))} numbered {...(block.label ? { place: { lat: block.lat, lng: block.lng } } : {})} box={{ width: width || VISIT_MAP_FALLBACK_WIDTH, height: VISIT_MAP_HEIGHT }} look={{ dot: VISIT_DOT, maxZoom: VISIT_MAX_ZOOM, ...(block.precisionM !== undefined ? { badge: `GPS ACTIVO · ±${Math.round(block.precisionM)} m` } : {}) }} />
+      <RouteMapWeb points={map.points} numbered {...(map.place ? { place: map.place } : {})} box={{ width: width || VISIT_MAP_FALLBACK_WIDTH, height: VISIT_MAP_LOOK.height }} look={{ dot: VISIT_MAP_LOOK.dot, maxZoom: VISIT_MAP_LOOK.maxZoom, ...(map.badge ? { badge: map.badge } : {}) }} />
     </div>
   );
 }
-const VISIT_MAP_HEIGHT = 125;
-const VISIT_DOT = 20;
-/** OpenStreetMap serves 19; a visit's points are a few meters apart. */
-const VISIT_MAX_ZOOM = 19;
 const VISIT_MAP_FALLBACK_WIDTH = 320;
 
 export function BlockMap({ block }: { block: Extract<BotBlock, { type: 'map' }> }) {

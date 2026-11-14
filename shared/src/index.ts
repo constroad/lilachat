@@ -235,6 +235,7 @@ export * from './additionalArea.js';
 export * from './portalEmbed.js';
 export * from './videoClock.js';
 export * from './siteVisit.js';
+export * from './visitCard.js';
 export * from './visitFlow.js';
 export * from './visitScreen.js';
 export * from './visitInterview.js';

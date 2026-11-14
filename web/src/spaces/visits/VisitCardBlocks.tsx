@@ -1,22 +1,16 @@
 import { ClipboardList, MapPin } from 'lucide-react';
-import type { BotBlock } from '@lilachat/shared';
+import { figureParts, type BotBlock } from '@lilachat/shared';
 import { TONE } from '../../chat/botBlocks/tones';
 
 type TextBlock = Extract<BotBlock, { type: 'text' }>;
 type TilesBlock = Extract<BotBlock, { type: 'tiles' }>;
 
-/** lv01 closes the card with what is missing, under the buttons: those lines leave the body. */
-export function visitBlocksOf(blocks: readonly BotBlock[]): { body: BotBlock[]; missing: TextBlock[] } {
-  const missing = blocks.filter((block): block is TextBlock => block.type === 'text' && (block.tone === 'warn' || block.tone === 'error'));
-  return { body: blocks.filter((block) => !missing.includes(block as TextBlock)), missing };
-}
-
 /** «6 de 10»: the count bold, «de 10» small and grey (lv01). */
 function FigureValue({ value, accent }: { value: string; accent: boolean }) {
-  const parts = /^(\S+)\s+(de\s+.+)$/.exec(value);
+  const { count, rest } = figureParts(value);
   const tone = accent ? 'text-primary' : 'text-on-surface';
-  if (!parts) return <p className={`mt-0.5 break-words text-[20px] font-bold tabular-nums ${tone}`}>{value}</p>;
-  return <p className={`mt-0.5 text-[20px] font-bold tabular-nums ${tone}`}>{parts[1]} <span className="font-mono text-[13px] font-normal text-on-surface-variant">{parts[2]}</span></p>;
+  if (!rest) return <p className={`mt-0.5 break-words text-[20px] font-bold tabular-nums ${tone}`}>{value}</p>;
+  return <p className={`mt-0.5 text-[20px] font-bold tabular-nums ${tone}`}>{count} <span className="font-mono text-[13px] font-normal text-on-surface-variant">{rest}</span></p>;
 }
 
 /**

@@ -888,3 +888,19 @@ José corrigió el diseño: el selector de espacios **no** lleva «Ver incógnit
 - La URL del PDF de Portal no termina en `.pdf`: hace falta que agentes o Portal manden `link.mime`. Pedido.
 - **Sin verificar en vivo**: falta una tarjeta real con `mime`. Tests: `fileViewer.test.ts`, `bots.test.ts`,
   `BotCardView.test.tsx`.
+
+## 14/11 madrugada: visita técnica, el motor y la puerta del server (apagado)
+
+- José 14/11: para los parches de mañana va la **visita técnica**, no REG-OBS. En Lilachat no existía.
+- Portal tiene la visita lista (12–13/11). Su interruptor «Visitas técnicas desde Lilachat» está **apagado** en TEST
+  y en Constroad; lo enciende José. Agentes aceptó el contrato (BOTS-API c-visitas) y arma su lado.
+- `shared/src/siteVisit.ts`: lee el documento real de Portal y calcula las cifras de la tarjeta, los puntos, el
+  formulario de la entrevista con lo guardado, el único botón de abajo, los chequeos del punto y el ticket de fotos.
+  Hay 15 tests sobre las respuestas reales que pasó Portal (`siteVisit.fixture.ts`).
+- `server/src/bots/siteVisitDoor.ts`: la puerta es el canal del tema `visitas` o el 1:1 con la app. Expone
+  `POST /api/workspaces/:id/visits/draft` y `…/visits/forms`. La corrida lleva `visit`, y `form.submitted` manda
+  `channel_id` y `place` aparte. Tiene 8 tests de integración con el hook real. Se escribieron junto con el
+  código, no antes.
+- Falta: las pantallas lv01–lv03 en el APK y la web, la entrada en el ⚡ y el «+», el envío de la foto al
+  ticket y el E2E en vivo (necesita el interruptor de Portal y el lado de agentes).
+  `SITE_VISITS_OPEN_HERE = false`.

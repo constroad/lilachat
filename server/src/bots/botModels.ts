@@ -76,6 +76,8 @@ export type BotCommandRun = {
   placeConfirmed?: string[];
   /** The client's service the door checked (`findAskedService`): goes beside `values` so agentes can hold the border between clients. */
   service?: { clientId: string; serviceId: string };
+  /** A technical visit's write (14/11): the door's chat and place go beside `values` so agentes holds it again. */
+  visit?: { channelId: string; place: 'topic_channel' | 'direct' };
   expiresAt: Date;
   createdAt: Date;
 };
@@ -232,6 +234,7 @@ const commandRunSchema = new Schema<BotCommandRun>(
     placeValues: { type: Schema.Types.Mixed },
     placeConfirmed: { type: [String], default: undefined },
     service: { type: Schema.Types.Mixed },
+    visit: { type: Schema.Types.Mixed },
     expiresAt: { type: Date, required: true },
   },
   { timestamps: { createdAt: true, updatedAt: false } }

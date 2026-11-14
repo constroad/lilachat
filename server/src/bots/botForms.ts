@@ -215,7 +215,7 @@ export async function submitForm(userId: Types.ObjectId, scope: CommandScope, co
   try {
     // A field report's section (05/11): the server's context rides with the answers, and the checked service beside them.
     const values = { ...(checked.values as FormValues), ...(run.context ?? {}), ...(action ? { [ACTION_KEY]: action.id } : {}) };
-    const service = run.service ? { client_id: run.service.clientId, service_id: run.service.serviceId } : {};
+    const service = run.service ? { client_id: run.service.clientId, service_id: run.service.serviceId } : run.visit ? { channel_id: run.visit.channelId, place: run.visit.place } : {};
     const reply = await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, 'form.submitted', { form_id: run.form!.id, command_id: commandId, values, ...photosOf(photos, values), ...service, channel: chat ? channelOf(chat) : null, user }, commandAnswerTimeout());
     const outcome = await answerOf(reply, { installation, run, chat, base });
     return 'outcome' in outcome && outcome.outcome === 'pending' ? ((await late.within()) ?? outcome) : outcome;

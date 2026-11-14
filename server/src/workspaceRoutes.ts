@@ -30,6 +30,7 @@ import { addCustomEmoji, listCustomEmojis, removeCustomEmoji } from './customEmo
 import { clientRecords, listClients } from './bots/botClients.js';
 import { clientAccount, clientReportEmbed, clientReportEmbedNew, clientReportPdf, clientServiceBilling, clientServiceDetail, clientServiceFiles } from './bots/clientFiles.js';
 import { clientReportDraft, openReportForm } from './bots/clientReports.js';
+import { openVisitForm, siteVisitDraft } from './bots/siteVisitDoor.js';
 import { liftRestrictionsOfAdmin, listBillingViewers, listClientAccess, setBillingViewer, setClientAccess } from './bots/clientBillingViewers.js';
 
 /** Tries of a code per person and minute: enough to fix a typo, not to guess codes. */
@@ -151,6 +152,18 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
   // …then each section, photo or «Publicar» is a form of the app, sent through the form routes.
   router.post('/:id/clients/:clientId/services/:serviceId/reports/forms', handled(async (req, res) => {
     const outcome = await openReportForm(req.params.id!, req.params.clientId!, req.params.serviceId!, me(req), req.body);
+    if ('error' in outcome) return res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+    res.json(outcome);
+  }));
+  // José 13/11 (contract with agentes 14/11): a technical visit from its channel or the 1:1 with the app. The document…
+  router.post('/:id/visits/draft', handled(async (req, res) => {
+    const found = await siteVisitDraft(req.params.id!, me(req), req.body);
+    if ('error' in found) return res.status(found.status).json({ error: found.error, message: found.message });
+    res.json(found.ok ? { document: found.document, visits: found.visits } : { error: found.code ?? 'visit_draft_failed', message: found.message });
+  }));
+  // …then each section, point, photo ticket, «Terminar» or PDF is a form of the app, sent through the form routes.
+  router.post('/:id/visits/forms', handled(async (req, res) => {
+    const outcome = await openVisitForm(req.params.id!, me(req), req.body);
     if ('error' in outcome) return res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.json(outcome);
   }));

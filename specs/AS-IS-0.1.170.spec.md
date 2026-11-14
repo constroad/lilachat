@@ -784,4 +784,11 @@ José corrigió el diseño: el selector de espacios **no** lleva «Ver incógnit
   siempre: solo lee (`INCOGNITO_COMPOSER`).
 - **Diseño.** El `inc-02-selector` de Stitch (selector con la fila «Ver incógnitos») queda sustituido por esta decisión:
   la lista y la pantalla de Ajustes no tienen captura de Stitch (la generación de la pantalla se cortó a los 300 s).
+- **E2E (14/11, producción; web `index-C58-62b-`, APK con el OTA `a3c94d7`).** Web: el riel ya no lista Globofast;
+  Ajustes → Superadmin → «Ver incógnitos» → «Globofast · 2 miembros · solo lees» → «Entrar» abre Globofast (pide
+  `?incognito=`), #general sin compositor y con el aviso de incógnito; al recargar sigue en Globofast; al volver a Test
+  sale del riel en el acto. APK: el selector no lo lista; Ajustes → «Ver incógnitos» → «Entrar» → Chats de Globofast;
+  tras un arranque en frío sigue en Globofast; el selector lo muestra «ACTIVO» mientras está abierto y desaparece al
+  volver a Test. Retoques de la web tras el E2E: la lista se desplaza a la vista al abrirse (en el panel de Ajustes
+  quedaba bajo el pliegue) y «Entrar» ya no toca el borde derecho.
 

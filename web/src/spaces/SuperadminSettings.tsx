@@ -7,6 +7,9 @@ const ROW = 'flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-le
 
 type Listing = { state: 'loading' } | { state: 'failed' } | { state: 'ready'; spaces: ClientWorkspace[] };
 
+/** The list opens at the bottom of the settings panel, below the fold: it scrolls into view once. */
+const bringIntoView = (node: HTMLUListElement | null) => node?.scrollIntoView?.({ block: 'nearest' });
+
 /** The spaces where he is hidden, read each time the row opens (the list is short and rarely read). */
 function useIncognitoList(jwt: string, open: boolean): { listing: Listing; retry: () => void } {
   const [listing, setListing] = useState<Listing>({ state: 'loading' });
@@ -40,7 +43,7 @@ function IncognitoList(props: { listing: Listing; onRetry: () => void; onEnter: 
   }
   if (listing.spaces.length === 0) return <p data-testid="incognitos-vacio" className="mx-3 mb-2 text-xs text-on-surface-variant">No estás oculto en ningún espacio.</p>;
   return (
-    <ul data-testid="lista-incognitos" className="mb-1 ml-5 border-l border-outline/15 pl-3">
+    <ul ref={bringIntoView} data-testid="lista-incognitos" className="mb-1 ml-5 border-l border-outline/15 pl-3 pr-3">
       {listing.spaces.map((space) => (
         <li key={space.id} className="flex min-h-[44px] items-center gap-2">
           <div className="min-w-0 flex-1">

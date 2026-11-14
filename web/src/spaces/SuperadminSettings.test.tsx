@@ -50,6 +50,20 @@ describe('SuperadminSettings', () => {
     expect(String((fetchSpy.mock.calls[0] as unknown[])[0])).toContain('/admin/incognito');
   });
 
+  it('brings the list into view when it opens: in the settings panel it lands below the fold', async () => {
+    const original = Element.prototype.scrollIntoView;
+    const scrollIntoView = vi.fn();
+    Element.prototype.scrollIntoView = scrollIntoView;
+    vi.stubGlobal('fetch', answer([globofast]));
+    render(<SuperadminSettings jwt="t" onEnter={vi.fn()} />);
+
+    open();
+
+    await screen.findByText('Globofast');
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
+    Element.prototype.scrollIntoView = original;
+  });
+
   it('opens the space he picks', async () => {
     const onEnter = vi.fn();
     vi.stubGlobal('fetch', answer([globofast]));

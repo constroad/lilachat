@@ -215,7 +215,8 @@ describe('«Revisar gasto» is one form from its first step (agentes 13/11)', ()
 describe('the app\'s live remarks wait for what the person fills (José 13/11)', () => {
   const withPreview = (reply: Record<string, string>): { onPreview: ReturnType<typeof vi.fn> } => {
     const answer = review();
-    if (answer.response.responseType === 'form') answer.response.form.preview = 'revisar_gasto_preview';
+    const form = answer.response?.form;
+    if (form) form.preview = 'revisar_gasto_preview';
     const onPreview = vi.fn(async () => ({ blocks: [], errors: reply }));
     render(<AppFormDialog answer={answer} onSubmit={vi.fn(async () => ({ done: true }) as FormSubmitOutcome)} onUpload={vi.fn()} onClose={vi.fn()} onPreview={onPreview} />);
     return { onPreview };

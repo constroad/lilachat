@@ -10,7 +10,7 @@ const openSpaceId = () => localStorage.getItem('lilachat.espacio');
 const SPACE = { id: 's1', name: 'CONSTROAD', status: 'active', role: 'member', joinPolicy: 'open', members: 12, unreadChats: 0 };
 const INVITATION = { id: 'i1', workspace: { id: 's2', name: 'Lab Vial' }, invitedBy: 'Darío Paredes' };
 
-type Server = { calls: string[]; name: string | null };
+type Server = { calls: string[]; name: string | null; profileSaved?: unknown };
 
 function fakeServer(account: { name: string | null; phone?: string }, lists: { workspaces?: unknown[]; invitations?: unknown[] } = {}): Server {
   const server: Server = { calls: [], name: account.name };
@@ -25,7 +25,7 @@ function fakeServer(account: { name: string | null; phone?: string }, lists: { w
       if (path === '/workspaces') return answer({ workspaces: lists.workspaces ?? [] });
       if (path === '/workspaces/invitations') return answer({ invitations: lists.invitations ?? [] });
       if (path === '/workspaces/invitations/i1/accept') return answer({ workspaceId: 's2' });
-      if (path === '/me/profile') return answer({ profile: { name: JSON.parse(String(init?.body)).name, phone: 'mail:abc', avatarUrl: null, email: EMAIL, emailVerified: true, birthday: null, birthdayVisible: true, missing: [] } });
+      if (path === '/me/profile') return answer({ profile: { name: (server.profileSaved = JSON.parse(String(init?.body)) as { name: string }).name, phone: 'mail:abc', avatarUrl: null, email: EMAIL, emailVerified: true, birthday: null, birthdayVisible: true, missing: [] } });
       return new Response('{}', { status: 404 });
     })
   );
@@ -87,8 +87,13 @@ describe('sign-in by workspace on the web', () => {
     expect(screen.getByText(EMAIL)).toBeInTheDocument();
     expect(screen.getByTestId('btn-entrar-espacio')).toBeDisabled();
     await userEvent.type(screen.getByTestId('input-nombre-completo'), 'Ana Torres');
+    // José, 14/11: the name alone is not enough; the birthday is asked like in the phone's sign-up.
+    expect(screen.getByTestId('btn-entrar-espacio')).toBeDisabled();
+    await userEvent.type(screen.getByTestId('perfil-dia'), '29');
+    await userEvent.type(screen.getByTestId('perfil-mes'), '8');
     await userEvent.click(screen.getByTestId('btn-entrar-espacio'));
     await waitFor(() => expect(onReady).toHaveBeenCalled());
+    expect(server.profileSaved).toEqual({ name: 'Ana Torres', birthday: { day: 29, month: 8 } });
     expect(server.calls.indexOf('PUT /me/profile')).toBeLessThan(server.calls.indexOf('POST /workspaces/invitations/i1/accept'));
     expect(onReady).toHaveBeenCalledWith(expect.objectContaining({ name: 'Ana Torres' }));
     expect(localStorage.getItem('lilachat.novedades.vista')).toBeTruthy();

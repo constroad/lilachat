@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Image } from 'expo-image';
 import { Camera, Mail, Plus } from 'lucide-react-native';
-import type { MyProfile } from '@lilachat/shared';
+import { birthdayDraftOf, birthdayFromFields, canFinishProfile, type MyProfile } from '@lilachat/shared';
 import { saveProfile } from '../api/profileApi';
 import type { Credential } from '../auth/credentialStore';
 import { elegirFotoRedonda } from '../chat/fotoDeGrupo';
@@ -10,23 +10,30 @@ import { aplicarPerfil, subirFotoDePerfil } from '../settings/perfilPropio';
 import { SpaceLogo } from '../spaces/SpaceSwitcherSheet';
 import { useColores } from '../ui/tema';
 import { useMargenes } from '../ui/useMargenes';
+import { BirthdayFields } from './BirthdayFields';
 
 const AVATAR_SIZE = 112;
+const LABEL = 'mb-2 mt-7 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant';
+const FIELD = 'h-[52px] rounded-lg border border-outline/20 bg-surface-variant/40 px-4 text-base text-on-surface';
 
 /**
  * «Crea tu usuario» (design `i-04-crea-tu-usuario`): an account born from an
  * email writes its name once, and the photo is optional. There is no password:
  * the code is the way in. Without a space chosen yet, it speaks of Lilachat.
+ * The birthday is required too, like the phone's sign-up (José, 14/11: the
+ * people invited by email were never asked).
  */
 export function CreateUserScreen(props: { credential: Credential; email: string | null; space?: { name: string; logoUrl?: string }; onDone: (profile: MyProfile) => void }) {
   const colors = useColores();
   const margins = useMargenes();
   const { credential, space } = props;
   const [name, setName] = useState('');
+  const [draft, setDraft] = useState(() => birthdayDraftOf(null));
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState<'photo' | 'save' | null>(null);
   const [error, setError] = useState('');
-  const ready = Boolean(name.trim()) && busy === null;
+  const birthday = birthdayFromFields(draft);
+  const ready = canFinishProfile({ name, birthdayOk: birthday.ok }) && busy === null;
 
   const addPhoto = async () => {
     const choice = await elegirFotoRedonda({ titulo: 'Tu foto', mensaje: 'Así te verán en Lilachat.', nombrePorDefecto: 'perfil.jpg' });
@@ -40,10 +47,10 @@ export function CreateUserScreen(props: { credential: Credential; email: string 
   };
 
   const finish = async () => {
-    if (!ready) return;
+    if (!ready || !birthday.ok) return;
     setBusy('save');
     setError('');
-    const saved = await saveProfile(credential.jwt, { name: name.trim() });
+    const saved = await saveProfile(credential.jwt, { name: name.trim(), birthday: birthday.birthday });
     setBusy(null);
     if (!saved.ok) return setError(saved.message ?? 'No se pudo guardar. Inténtalo de nuevo.');
     const profile = saved.data.profile;
@@ -76,10 +83,12 @@ export function CreateUserScreen(props: { credential: Credential; email: string 
           <Text className="text-[13px] text-on-surface-variant">Opcional</Text>
         </Pressable>
 
-        <Text className="mb-2 mt-7 text-[11px] font-bold uppercase tracking-widest text-on-surface-variant">Nombre completo</Text>
-        <TextInput testID="input-nombre-completo" className="h-[52px] rounded-lg border border-outline/20 bg-surface-variant/40 px-4 text-base text-on-surface" placeholder="Nombre y apellido" placeholderTextColor={colors.outline} autoCapitalize="words" autoComplete="name" value={name} onChangeText={setName} />
+        <Text className={LABEL}>Nombre completo</Text>
+        <TextInput testID="input-nombre-completo" className={FIELD} placeholder="Nombre y apellido" placeholderTextColor={colors.outline} autoCapitalize="words" autoComplete="name" value={name} onChangeText={setName} />
         {/* Under the field it speaks of: below the email it read as a complaint about the email (José 06/11). */}
         {error ? <Text testID="error-crea-usuario" className="mt-2 text-sm text-error">{error}</Text> : null}
+        <Text className={LABEL}>Tu cumpleaños</Text>
+        <BirthdayFields value={draft} onChange={setDraft} fieldClass={FIELD} />
         {props.email ? (
           <View className="mt-3 flex-row items-center gap-2">
             <Mail size={16} color={colors['on-surface-variant']} />

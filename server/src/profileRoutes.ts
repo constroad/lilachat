@@ -33,8 +33,10 @@ function profileView(user: ProfileUser) {
     emailVerified,
     birthday: user.birthday ?? null,
     birthdayVisible: user.birthdayVisible !== false,
-    // «Crea tu usuario» (design i-04) asks for the name alone: the birthday belongs to the phone accounts.
+    // An account born from an email is not blocked for its birthday: «Crea tu usuario» asks it since 14/11,
+    // and older ones get a reminder card from `birthdayMissing` instead (José, 14/11).
     missing: profileMissing({ name: user.name, birthday: user.birthday, birthdayOptional: !isRealPhone(user.phone) }),
+    birthdayMissing: !user.birthday,
   };
 }
 

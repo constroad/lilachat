@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { backupNeedsEmail, birthdayFieldError, birthdayFromFields, birthdayLabel, canFinishProfile, profileGateAfter, profileGateNow, profileCompleteKey, normalizeEmail, profileMissing, validateBirthday } from './profile.js';
+import { backupNeedsEmail, birthdayDraftOf, birthdayFieldError, birthdayFromFields, birthdayLabel, canFinishProfile, profileGateAfter, profileGateNow, profileCompleteKey, normalizeEmail, profileMissing, validateBirthday } from './profile.js';
 
 const NOW = new Date('2026-10-21T15:00:00Z');
 
@@ -99,5 +99,14 @@ describe('which screen completes the profile (Jhoan, 09/11: «Crea tu usuario» 
     expect(profileGateScreen({ missing: ['birthday'] })).toBe('complete');
     expect(profileGateScreen({ missing: ['name', 'birthday'] })).toBe('complete');
     expect(profileGateScreen({ missing: ['name'] })).toBe('create');
+  });
+});
+
+describe('the birthday boxes as typed', () => {
+  it('start from the saved birthday, empty when there is none', () => {
+    expect(birthdayDraftOf({ day: 29, month: 8, year: 1990 })).toEqual({ day: '29', month: '8', year: '1990' });
+    expect(birthdayDraftOf({ day: 5, month: 1 })).toEqual({ day: '5', month: '1', year: '' });
+    expect(birthdayDraftOf(null)).toEqual({ day: '', month: '', year: '' });
+    expect(birthdayDraftOf(undefined)).toEqual({ day: '', month: '', year: '' });
   });
 });

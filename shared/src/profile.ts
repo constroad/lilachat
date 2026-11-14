@@ -55,16 +55,28 @@ export type MyProfile = {
   birthday: Birthday | null;
   birthdayVisible: boolean;
   missing: ProfileField[];
+  /**
+   * No birthday saved (José, 14/11). Accounts born from an email invite were never asked for it and
+   * are not blocked for it (`missing`): the chat list reminds them instead. Absent from an older server.
+   */
+  birthdayMissing?: boolean;
 };
 
 /** «Completa tu perfil»'s three birthday boxes, as typed (the year may stay empty). */
-export function birthdayFromFields(fields: { day: string; month: string; year: string }, now: Date = new Date()): { ok: true; birthday: Birthday } | { ok: false; message: string } {
+export type BirthdayDraft = { day: string; month: string; year: string };
+
+const boxOf = (value?: number) => (value ? String(value) : '');
+
+/** The boxes start from the saved birthday; empty when there is none. */
+export const birthdayDraftOf = (birthday?: Birthday | null): BirthdayDraft => ({ day: boxOf(birthday?.day), month: boxOf(birthday?.month), year: boxOf(birthday?.year) });
+
+export function birthdayFromFields(fields: BirthdayDraft, now: Date = new Date()): { ok: true; birthday: Birthday } | { ok: false; message: string } {
   if (!fields.day.trim() || !fields.month.trim()) return { ok: false, message: 'Escribe el día y el mes de tu cumpleaños.' };
   return validateBirthday({ day: Number(fields.day), month: Number(fields.month), ...(fields.year.trim() ? { year: Number(fields.year) } : {}) }, now);
 }
 
 /** The error to show under the birthday: only once day and month are typed, never for boxes still empty. */
-export function birthdayFieldError(fields: { day: string; month: string; year: string }, now: Date = new Date()): string | null {
+export function birthdayFieldError(fields: BirthdayDraft, now: Date = new Date()): string | null {
   if (!fields.day.trim() || !fields.month.trim()) return null;
   const birthday = birthdayFromFields(fields, now);
   return birthday.ok ? null : birthday.message;

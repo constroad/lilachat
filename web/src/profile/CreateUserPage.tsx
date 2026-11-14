@@ -1,22 +1,29 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import { Camera, Mail, Plus } from 'lucide-react';
-import type { MyProfile } from '@lilachat/shared';
+import { birthdayDraftOf, birthdayFromFields, canFinishProfile, type MyProfile } from '@lilachat/shared';
 import { SpaceLogo } from '../spaces/SpaceLogo';
+import { BirthdayFields } from './BirthdayFields';
 import { saveProfile, uploadProfilePhoto } from './profileApi';
+
+const LABEL = 'mt-7 block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant';
+const BIRTHDAY_FIELD = 'mt-2 h-12 rounded-lg border border-outline/25 bg-surface px-3 text-base outline-none placeholder:text-on-surface-variant focus:border-primary';
 
 /**
  * «Crea tu usuario» on the web (design `i-04-crea-tu-usuario`): an account born
  * from an email writes its name once, and the photo is optional. Without a space
- * chosen yet, it speaks of Lilachat.
+ * chosen yet, it speaks of Lilachat. The birthday is required too, like the
+ * phone's sign-up (José, 14/11: the people invited by email were never asked).
  */
 export function CreateUserPage(props: { jwt: string; email: string | null; space?: { name: string; logoUrl?: string }; onDone: (profile: MyProfile) => void }) {
   const { jwt, space } = props;
   const [name, setName] = useState('');
+  const [draft, setDraft] = useState(() => birthdayDraftOf(null));
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
-  const ready = Boolean(name.trim()) && !busy;
+  const birthday = birthdayFromFields(draft);
+  const ready = canFinishProfile({ name, birthdayOk: birthday.ok }) && !busy;
 
   const addPhoto = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -31,10 +38,10 @@ export function CreateUserPage(props: { jwt: string; email: string | null; space
   };
 
   const finish = async () => {
-    if (!ready) return;
+    if (!ready || !birthday.ok) return;
     setBusy(true);
     setError('');
-    const saved = await saveProfile(jwt, { name: name.trim() });
+    const saved = await saveProfile(jwt, { name: name.trim(), birthday: birthday.birthday });
     setBusy(false);
     if (saved.ok) props.onDone(saved.data.profile);
     else setError(saved.message);
@@ -59,10 +66,12 @@ export function CreateUserPage(props: { jwt: string; email: string | null; space
           <span className="block text-[13px] text-on-surface-variant">Opcional</span>
         </button>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(event) => void addPhoto(event)} />
-        <label className="mt-7 block text-[11px] font-bold uppercase tracking-widest text-on-surface-variant" htmlFor="nombre-completo">Nombre completo</label>
+        <label className={LABEL} htmlFor="nombre-completo">Nombre completo</label>
         <input id="nombre-completo" data-testid="input-nombre-completo" autoFocus autoComplete="name" placeholder="Nombre y apellido" value={name} onChange={(event) => setName(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && void finish()} className="mt-2 h-12 w-full rounded-lg border border-outline/25 bg-surface px-4 text-base outline-none placeholder:text-on-surface-variant focus:border-primary" />
         {/* Under the field it speaks of: below the email it read as a complaint about the email (José 06/11). */}
         {error ? <p data-testid="error-crea-usuario" className="mt-2 text-sm text-error">{error}</p> : null}
+        <p className={LABEL}>Tu cumpleaños</p>
+        <BirthdayFields value={draft} onChange={setDraft} fieldClass={BIRTHDAY_FIELD} />
         {props.email ? <p className="mt-3 flex items-center gap-2 text-[13px] text-on-surface-variant"><Mail size={16} /><span className="min-w-0 truncate">Entras con <b className="font-medium text-on-surface">{props.email}</b></span></p> : null}
         <button type="button" data-testid="btn-entrar-espacio" disabled={!ready} onClick={() => void finish()} className="mt-8 h-12 w-full rounded-lg bg-primary text-[15px] font-bold text-on-primary disabled:opacity-40">{space ? `Entrar a ${space.name}` : 'Entrar'}</button>
       </div>

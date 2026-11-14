@@ -28,8 +28,9 @@ sale de su versión de escritorio.
    la pantalla de hoy.
 3. **Tus espacios de trabajo** (`i-03`): los espacios de la persona con «Abrir»,
    las invitaciones con «Unirme», «Unirme con un código» y «Crear un espacio».
-4. **Crea tu usuario** (`i-04`): solo la primera vez. Nombre completo y foto
-   opcional, sin contraseña.
+4. **Crea tu usuario** (`i-04`): solo la primera vez. Nombre completo, cumpleaños
+   (día y mes obligatorios, año opcional; desde el 14/11) y foto opcional, sin
+   contraseña.
 
 «Usar sin espacio de trabajo» lleva al ingreso por teléfono de hoy y a los chats
 personales. Quien ya tiene sesión no ve nada de esto.
@@ -74,8 +75,17 @@ cruza con la agenda. Esas cuentas tienen el correo verificado por el código.
   y la cuenta que lo tenía sin verificar lo suelta, como en `profileRoutes.ts`.
 - **La invitación por correo espera a «Unirme»**, como el Join de Slack. Entrar por
   correo no une a nadie. Verificar el correo en el perfil sigue uniendo solo.
-- **El cumpleaños no se le pide a una cuenta de correo.** `i-04` pide solo el nombre,
-  así que `missing` no incluye `birthday` si el `phone` es una clave interna.
+- **El cumpleaños de una cuenta de correo se pide en `i-04`, pero no bloquea.** Hasta
+  el 14/11 `i-04` pedía solo el nombre y los invitados por correo (Globofast,
+  ConstRoad…) quedaron sin cumpleaños. Desde entonces `i-04` lo exige, con las
+  mismas cajas y validación que «Completa tu perfil» (`BirthdayFields`,
+  `birthdayFromFields`). `missing` sigue sin incluir `birthday` si el `phone` es una
+  clave interna, para no bloquear a las cuentas que ya existen: a esas
+  `/me/profile` les manda `birthdayMissing: true` y la lista de chats (web y APK)
+  muestra «Agrega tu cumpleaños». «Agregar» abre «Completa tu perfil» con una
+  salida (`onCancel`); «Ahora no» la esconde en ese dispositivo
+  `BIRTHDAY_REMINDER_SNOOZE_DAYS` (7) días (`shared/birthdayReminder.ts`). Guardado
+  el cumpleaños, no vuelve.
 - **El nombre se pide antes de aceptar.** `welcomeToGeneral` no avisa sin nombre, así
   que «Unirme» pasa primero por `i-04` y recién acepta. Lo mismo con «Abrir» y «Crear
   un espacio». Quien se une con un código pasa por `i-04` al entrar, sin el aviso.

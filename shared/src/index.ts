@@ -33,6 +33,7 @@ export * from './presenceMode.js';
 export * from './albums.js';
 export * from './stickerRows.js';
 export * from './birthdays.js';
+export * from './birthdayReminder.js';
 export * from './conciliarMensajes.js';
 export * from './notaDeVoz.js';
 export * from './mediasDelChat.js';

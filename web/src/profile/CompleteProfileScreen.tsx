@@ -1,32 +1,30 @@
 import { useState } from 'react';
-import { CheckCircle2 } from 'lucide-react';
-import { birthdayFieldError, birthdayFromFields, canFinishProfile, normalizeEmail, type MyProfile } from '@lilachat/shared';
+import { CheckCircle2, X } from 'lucide-react';
+import { birthdayDraftOf, birthdayFromFields, canFinishProfile, normalizeEmail, type MyProfile } from '@lilachat/shared';
+import { BirthdayFields } from './BirthdayFields';
 import { getProfile, requestEmailCode, saveProfile, verifyEmailCode } from './profileApi';
 
 const FIELD = 'h-11 rounded-xl border border-outline/25 bg-background px-3 text-[15px] outline-none focus:border-primary';
 const Label = ({ children }: { children: string }) => <p className="mb-2 mt-5 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{children}</p>;
-const pad = (value?: number) => (value ? String(value) : '');
 
 /**
  * «Completa tu perfil» on the web, like the app's (José, 21/10; backlog 17):
  * name and birthday are required to use Lilachat, and this page cannot be
  * skipped. The email is optional (22/10, backlog 51) and proved with a code to
- * that address; only the phone's backup asks for it.
+ * that address; only the phone's backup asks for it. Opened from the birthday
+ * reminder (José, 14/11) it gets `onCancel`: a way out, since nothing blocks.
  */
-export function CompleteProfileScreen(props: { jwt: string; profile: MyProfile; onDone: (profile: MyProfile) => void }) {
+export function CompleteProfileScreen(props: { jwt: string; profile: MyProfile; onDone: (profile: MyProfile) => void; onCancel?: () => void }) {
   const { jwt, profile } = props;
   const [name, setName] = useState(profile.name ?? '');
-  const [day, setDay] = useState(pad(profile.birthday?.day));
-  const [month, setMonth] = useState(pad(profile.birthday?.month));
-  const [year, setYear] = useState(pad(profile.birthday?.year));
+  const [draft, setDraft] = useState(() => birthdayDraftOf(profile.birthday));
   const [email, setEmail] = useState(profile.email ?? '');
   const [emailVerified, setEmailVerified] = useState(profile.emailVerified);
   const [codeSent, setCodeSent] = useState(false);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState<'code' | 'verify' | 'save' | null>(null);
   const [error, setError] = useState<{ field: 'email' | 'save'; text: string } | null>(null);
-  const birthday = birthdayFromFields({ day, month, year });
-  const birthdayHint = birthdayFieldError({ day, month, year });
+  const birthday = birthdayFromFields(draft);
   const ready = canFinishProfile({ name, birthdayOk: birthday.ok });
 
   const sendCode = async () => {
@@ -65,7 +63,10 @@ export function CompleteProfileScreen(props: { jwt: string; profile: MyProfile; 
 
   return (
     <main className="grid min-h-full place-items-center px-4 py-8">
-      <form data-testid="pantalla-completa-perfil" onSubmit={(event) => (event.preventDefault(), void finish())} className="w-full max-w-md rounded-2xl border border-outline/15 bg-surface p-6 shadow-sm">
+      <form data-testid="pantalla-completa-perfil" onSubmit={(event) => (event.preventDefault(), void finish())} className="relative w-full max-w-md rounded-2xl border border-outline/15 bg-surface p-6 shadow-sm">
+        {props.onCancel ? (
+          <button type="button" data-testid="perfil-cerrar" aria-label="Cerrar" onClick={props.onCancel} className="absolute right-2 top-2 grid h-11 w-11 place-items-center rounded-full text-on-surface-variant hover:bg-background"><X size={18} /></button>
+        ) : null}
         <img src="/icons/icon-192.png" alt="" className="h-12 w-12 rounded-xl" />
         <h1 className="mt-4 text-xl font-bold tracking-tight">Completa tu perfil</h1>
         <p className="mt-1 text-[14px] text-on-surface-variant">Para usar Lilachat necesitamos tu nombre y tu cumpleaños.</p>
@@ -74,12 +75,7 @@ export function CompleteProfileScreen(props: { jwt: string; profile: MyProfile; 
         <input data-testid="perfil-nombre" className={`${FIELD} w-full`} placeholder="Nombre y apellido" autoComplete="name" maxLength={60} value={name} onChange={(event) => setName(event.target.value)} />
 
         <Label>Tu cumpleaños</Label>
-        <div className="flex gap-2">
-          <input data-testid="perfil-dia" className={`${FIELD} w-20 text-center`} placeholder="Día" inputMode="numeric" maxLength={2} value={day} onChange={(event) => setDay(event.target.value)} />
-          <input data-testid="perfil-mes" className={`${FIELD} w-20 text-center`} placeholder="Mes" inputMode="numeric" maxLength={2} value={month} onChange={(event) => setMonth(event.target.value)} />
-          <input data-testid="perfil-anio" className={`${FIELD} min-w-0 flex-1 text-center`} placeholder="Año (opcional)" inputMode="numeric" maxLength={4} value={year} onChange={(event) => setYear(event.target.value)} />
-        </div>
-        {birthdayHint ? <p data-testid="perfil-error-cumple" role="alert" className="mt-2 text-[13px] text-error">{birthdayHint}</p> : null}
+        <BirthdayFields value={draft} onChange={setDraft} fieldClass={FIELD} />
 
         <Label>Tu correo (opcional)</Label>
         {emailVerified ? (

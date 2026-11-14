@@ -38,7 +38,7 @@ beforeEach(async () => {
 describe('my profile', () => {
   it('says what is missing', async () => {
     const profile = (await request(app).get('/api/me/profile').set(auth()).expect(200)).body.profile;
-    expect(profile).toMatchObject({ name: 'Ana', phone: '987654321', emailVerified: false, missing: ['birthday'] });
+    expect(profile).toMatchObject({ name: 'Ana', phone: '987654321', emailVerified: false, birthdayMissing: true, missing: ['birthday'] });
   });
 
   it('saves the birthday and who sees it; a day the month does not have is refused', async () => {
@@ -68,6 +68,16 @@ describe('my profile', () => {
     await request(app).post('/api/me/email/verify').set(auth()).send({ email: 'ana@example.com', code: '123456' }).expect(200);
     expect((await UserModel.findById(old).lean())!.email).toBeUndefined();
     expect((await UserModel.findById(ana).lean())!.email).toBe('ana@example.com');
+  });
+
+  /** José, 14/11: people invited by email only wrote their name; the clients remind them of the birthday. */
+  it('says whether the birthday is missing, without blocking an account born from an email', async () => {
+    const invited = (await UserModel.create({ phone: 'mail:abc', name: 'Medaly', email: 'medaly@example.com', emailVerifiedAt: new Date() }))._id;
+    const asInvited = { Authorization: `Bearer ${signSession({ userId: String(invited), deviceId: 'd-med', email: 'medaly@example.com' })}` };
+    const before = (await request(app).get('/api/me/profile').set(asInvited).expect(200)).body.profile;
+    expect(before).toMatchObject({ birthday: null, birthdayMissing: true, missing: [] });
+    const after = (await request(app).put('/api/me/profile').set(asInvited).send({ birthday: { day: 3, month: 5 } }).expect(200)).body.profile;
+    expect(after).toMatchObject({ birthday: { day: 3, month: 5 }, birthdayMissing: false, missing: [] });
   });
 
   /** Backlog 51 (José, 22/10): the phone already proved who it is; the email is optional. */

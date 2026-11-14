@@ -22,6 +22,7 @@ import { NewChatScreen } from '../contacts/NewChatScreen';
 import { publishPublicKey } from '../crypto/deviceKeys';
 import { BackupScreen } from '../settings/BackupScreen';
 import { BandaDeActualizacion } from '../settings/BandaDeActualizacion';
+import { BirthdayReminderBanner } from '../onboarding/BirthdayReminderBanner';
 import { NovedadesDeLaVersion } from '../settings/NovedadesDeLaVersion';
 import { UpdateLockScreen } from '../settings/UpdateLockScreen';
 import { NowPlayingBar } from '../chat/NowPlayingBar';
@@ -429,6 +430,8 @@ export function TabsShell({
             onAbrirTienda={actualizaciones.abrirTienda}
             onDescartar={actualizaciones.descartarAviso}
           />
+          {/* José, 14/11: the people invited by email never wrote their birthday. */}
+          <BirthdayReminderBanner credential={credential} />
           <ErrorBoundary pantalla="lista">
           {espacios.current ? (
             <CoverableSpaceChats key={espacios.current.id} covered={listCovered({ chatOpen: chatAbierto !== null, focused: enFoco, twoPanes: dosPaneles })} space={espacios.current} jwt={credential.jwt} myUserId={credential.userId} active={tab === 'chats'} openChatId={chatAbierto} onOpenChat={onOpenChat} onChannels={espacios.openChannels} onInvite={espacios.openInvite} {...espacios.listProps} />

@@ -78,8 +78,8 @@ const ROUTE_MIN_ZOOM = 3;
 export const ROUTE_PADDING_PX = 28;
 
 /** The closest zoom at which every point fits the box with its padding. */
-function routeZoom(points: readonly RoutePoint[], box: { width: number; height: number }): number {
-  for (let zoom = ROUTE_MAX_ZOOM; zoom > ROUTE_MIN_ZOOM; zoom -= 1) {
+function routeZoom(points: readonly RoutePoint[], box: { width: number; height: number }, maxZoom: number): number {
+  for (let zoom = maxZoom; zoom > ROUTE_MIN_ZOOM; zoom -= 1) {
     const pixels = points.map((point) => worldPixel(point.lat, point.lng, zoom));
     const spanX = Math.max(...pixels.map((pixel) => pixel.x)) - Math.min(...pixels.map((pixel) => pixel.x));
     const spanY = Math.max(...pixels.map((pixel) => pixel.y)) - Math.min(...pixels.map((pixel) => pixel.y));
@@ -92,8 +92,9 @@ function routeZoom(points: readonly RoutePoint[], box: { width: number; height: 
  * A still map that fits every point of a route (Portal 13/11, visits: lv01 joins the visit's
  * points with a dotted line). The tiles and where each point lands, in the box's pixels.
  */
-export function routeTilesFor(points: readonly RoutePoint[], box: { width: number; height: number }): { tiles: MapTile[]; points: { left: number; top: number; label?: string }[]; zoom: number } {
-  const zoom = routeZoom(points, box);
+/** `maxZoom`: a visit's card asks one closer (19, OpenStreetMap's last); its points are a few meters apart. */
+export function routeTilesFor(points: readonly RoutePoint[], box: { width: number; height: number }, maxZoom: number = ROUTE_MAX_ZOOM): { tiles: MapTile[]; points: { left: number; top: number; label?: string }[]; zoom: number } {
+  const zoom = routeZoom(points, box, maxZoom);
   const pixels = points.map((point) => worldPixel(point.lat, point.lng, zoom));
   const middleX = (Math.max(...pixels.map((pixel) => pixel.x)) + Math.min(...pixels.map((pixel) => pixel.x))) / 2;
   const middleY = (Math.max(...pixels.map((pixel) => pixel.y)) + Math.min(...pixels.map((pixel) => pixel.y))) / 2;

@@ -5,6 +5,20 @@ import { TONE } from '../../chat/botBlocks/tones';
 type TextBlock = Extract<BotBlock, { type: 'text' }>;
 type TilesBlock = Extract<BotBlock, { type: 'tiles' }>;
 
+/** lv01 closes the card with what is missing, under the buttons: those lines leave the body. */
+export function visitBlocksOf(blocks: readonly BotBlock[]): { body: BotBlock[]; missing: TextBlock[] } {
+  const missing = blocks.filter((block): block is TextBlock => block.type === 'text' && (block.tone === 'warn' || block.tone === 'error'));
+  return { body: blocks.filter((block) => !missing.includes(block as TextBlock)), missing };
+}
+
+/** «6 de 10»: the count bold, «de 10» small and grey (lv01). */
+function FigureValue({ value, accent }: { value: string; accent: boolean }) {
+  const parts = /^(\S+)\s+(de\s+.+)$/.exec(value);
+  const tone = accent ? 'text-primary' : 'text-on-surface';
+  if (!parts) return <p className={`mt-0.5 break-words text-[20px] font-bold tabular-nums ${tone}`}>{value}</p>;
+  return <p className={`mt-0.5 text-[20px] font-bold tabular-nums ${tone}`}>{parts[1]} <span className="font-mono text-[13px] font-normal text-on-surface-variant">{parts[2]}</span></p>;
+}
+
 /**
  * A visit card's lines (Stitch lv01): the address with its pin under the title, and what is missing
  * as one line with «Pendiente» on its right. Any other tone stays a plain line.
@@ -30,11 +44,11 @@ export function VisitText({ block }: { block: TextBlock }) {
 /** The figures in one bordered row, split by thin lines (lv01): kicker on top, the number under it. */
 export function VisitFigures({ block }: { block: TilesBlock }) {
   return (
-    <div data-testid="visita-cifras" className="flex divide-x divide-outline/15 rounded-xl border border-outline/15">
+    <div data-testid="visita-cifras" className="flex divide-x divide-outline/15 rounded-[8px] bg-surface-variant/60">
       {block.items.map((tile, index) => (
         <div key={`${tile.label}-${index}`} className="min-w-0 flex-1 px-2 py-2.5 text-center">
-          <p className="truncate text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">{tile.label}</p>
-          <p className={`mt-0.5 break-words text-[20px] font-bold tabular-nums ${/^puntos$/i.test(tile.label) ? 'text-primary' : 'text-on-surface'}`}>{tile.value}</p>
+          <p className="truncate text-[10px] font-bold uppercase tracking-[0.08em] text-on-surface-variant">{tile.label}</p>
+          <FigureValue value={tile.value} accent={/^puntos$/i.test(tile.label)} />
         </div>
       ))}
     </div>

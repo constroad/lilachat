@@ -81,6 +81,12 @@ describe('routeTilesFor', () => {
     expect(map.points[0]).toMatchObject({ left: box.width / 2, top: box.height / 2 });
   });
 
+  it('a visit\'s points, a few meters apart, may come one zoom closer (lv01 audit 14/11: they sat in the middle)', () => {
+    const close = [{ lat: -12.0802, lng: -76.9403 }, { lat: -12.0805, lng: -76.9399 }];
+    expect(routeTilesFor(close, box).zoom).toBe(ROUTE_MAX_ZOOM);
+    expect(routeTilesFor(close, box, ROUTE_MAX_ZOOM + 1).zoom).toBe(ROUTE_MAX_ZOOM + 1);
+  });
+
   it('the tiles cover the whole box', () => {
     const map = routeTilesFor(visit, box);
     expect(Math.min(...map.tiles.map((tile) => tile.left))).toBeLessThanOrEqual(0);

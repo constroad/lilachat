@@ -7,6 +7,7 @@ import { CardCommandContext, OrderCardContext, useCardCommand } from './botBlock
 import { TONE as BLOCK_TONE } from './botBlocks/tones';
 import { usePortalFileViewer } from '../spaces/clients/PortalFileViewer';
 import { InVisitCardContext, VisitActionContext } from '../spaces/visits/visitActionContext';
+import { visitBlocksOf, VisitText } from '../spaces/visits/VisitCardBlocks';
 
 /** The status pill's tone (design `e-21`): background faint, border at 30 %, text strong. */
 export const TONE: Record<CardTone, string> = {
@@ -29,21 +30,32 @@ const ACTION: Record<CardActionStyle, string> = {
  * cut. The status rides the kicker's line (Stitch gst-01): beside the title it squeezed it (José 13/11). In a
  * narrow thread the pieces wrap into a second line, never squeeze the kicker («GAS / TO», José 13/11 night).
  */
+/** lv01: «VISITA TÉCNICA ·» in the accent, the visit's code in mono grey. */
+function VisitKicker({ kicker }: { kicker: string }) {
+  const cut = kicker.lastIndexOf(' · ');
+  const [lead, code] = cut > 0 ? [kicker.slice(0, cut + 3), kicker.slice(cut + 3)] : [kicker, ''];
+  return (
+    <p className="min-w-0 flex-1 truncate text-[11px] font-bold uppercase tracking-[0.08em] text-primary">
+      {lead}{code ? <span className="font-mono font-semibold tracking-normal text-on-surface-variant">{code}</span> : null}
+    </p>
+  );
+}
+
 function CardHead({ card, visit }: { card: BotCard; visit: boolean }) {
   return (
     <>
       {card.kicker || card.updatedAt || card.status ? (
         <div data-testid="tarjeta-cabecera" className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <p className={`min-w-0 break-words text-[10px] font-bold uppercase tracking-[0.18em] ${visit ? 'flex-1 text-primary' : 'flex-auto text-on-surface-variant'}`}>{card.kicker}</p>
+          {visit ? <VisitKicker kicker={card.kicker ?? ''} /> : <p className="min-w-0 flex-auto break-words text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{card.kicker}</p>}
           {card.updatedAt && !visit ? <span data-testid="tarjeta-actualizada" className="shrink-0 text-[10px] text-on-surface-variant">Actualizado {formatClock(card.updatedAt)}</span> : null}
-          {card.status ? <span data-testid="tarjeta-estado" className={`max-w-[60%] rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${TONE[card.status.tone]}`}>{card.status.label}</span> : null}
+          {card.status ? <span data-testid="tarjeta-estado" className={`max-w-[60%] border px-2 py-0.5 text-[10px] font-bold uppercase ${visit ? `rounded-md ${TONE.neutral}` : `rounded-full ${TONE[card.status.tone]}`}`}>{card.status.label}</span> : null}
         </div>
       ) : null}
       {card.url ? (
         <a data-testid="tarjeta-titulo" href={card.url} target="_blank" rel="noopener noreferrer" className="break-words text-[15px] font-bold leading-5 hover:underline">{card.title}</a>
       ) : <p className="break-words text-[15px] font-bold leading-5">{card.title}</p>}
       {card.subtitle && visit ? (
-        <p data-testid="tarjeta-subtitulo" className="-mt-1 flex items-start gap-1.5 text-[13px] text-on-surface-variant"><MapPin size={15} className="mt-0.5 shrink-0 text-primary" aria-hidden /><span data-testid="visita-direccion" className="min-w-0 break-words">{card.subtitle}</span></p>
+        <p data-testid="tarjeta-subtitulo" className="-mt-1 flex items-start gap-1.5 text-[13px] text-on-surface-variant"><MapPin size={15} className="mt-0.5 shrink-0 text-primary" aria-hidden /><span data-testid="visita-direccion" className="min-w-0 truncate">{card.subtitle}</span></p>
       ) : card.subtitle ? <p data-testid="tarjeta-subtitulo" className="-mt-1 break-words text-[13px] text-on-surface-variant">{card.subtitle}</p> : null}
     </>
   );
@@ -113,7 +125,7 @@ function GridButtons(props: { actions: CardAction[]; sent: SentAction; onPress: 
         const wide = index === 0 && actions.length % 2 === 1 ? 'col-span-2' : '';
         const look = action.style === 'primary' ? 'bg-primary text-on-primary' : `border border-outline/25 bg-surface text-on-surface hover:bg-background`;
         return (
-          <button key={action.id} type="button" data-testid={`accion-tarjeta-${action.id}`} disabled={sent !== null} onClick={() => props.onPress(action)} className={`flex min-h-[56px] items-center justify-center gap-2 rounded-xl px-3 text-[14px] font-bold uppercase disabled:opacity-60 ${look} ${wide}`}>
+          <button key={action.id} type="button" data-testid={`accion-tarjeta-${action.id}`} disabled={sent !== null} onClick={() => props.onPress(action)} className={`flex min-h-[56px] items-center justify-center gap-2 whitespace-nowrap rounded-[10px] px-2 text-[13px] font-bold uppercase disabled:opacity-60 ${look} ${wide}`}>
             {Icon ? <Icon size={20} className={action.style === 'primary' ? '' : VISIT_ICON[visit!].tone} aria-hidden /> : null}
             <span>{sent?.id === action.id ? (sent.state === 'sending' ? 'Enviando…' : 'Enviado ✓') : action.label}</span>
           </button>
@@ -188,7 +200,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
   const actions = card.actions?.filter((action) => !action.command || runRow) ?? [];
   return (
     <CardCommandContext.Provider value={runRow}>
-    <div data-testid="tarjeta-bot" onClick={(event) => openCardUrl(card.url, event.target)} className={`mb-1 w-[calc(100%-0.5rem)] max-w-sm overflow-hidden rounded-xl border border-outline/15 bg-surface text-on-surface ${card.url ? 'cursor-pointer' : ''}`}>
+    <div data-testid="tarjeta-bot" onClick={(event) => openCardUrl(card.url, event.target)} className={`mb-1 w-[calc(100%-0.5rem)] max-w-sm overflow-hidden border border-outline/15 bg-surface text-on-surface ${props.visitId ? 'rounded-[10px]' : 'rounded-xl'} ${card.url ? 'cursor-pointer' : ''}`}>
       {card.accent ? <div data-testid="tarjeta-acento" aria-hidden className={`h-[3px] ${ACCENT_BAR(card.accent)}`} /> : null}
       <div className="space-y-2 px-3.5 py-3">
         <CardHead card={card} visit={Boolean(props.visitId)} />
@@ -202,7 +214,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
             ))}
           </dl>
         ) : null}
-        {card.blocks ? <InVisitCardContext.Provider value={Boolean(props.visitId)}><BotBlocksView blocks={card.blocks} /></InVisitCardContext.Provider> : null}
+        {card.blocks ? <InVisitCardContext.Provider value={Boolean(props.visitId)}><BotBlocksView blocks={props.visitId ? visitBlocksOf(card.blocks).body : card.blocks} /></InVisitCardContext.Provider> : null}
         {card.detail ? (
           <button type="button" data-testid="tarjeta-ver-detalle" onClick={() => setDetailOpen(true)} className="inline-flex min-h-9 items-center gap-1 rounded-full border border-outline/20 px-3 text-[13px] font-semibold hover:bg-background">
             Ver detalle <ChevronRight size={14} className="text-on-surface-variant" />
@@ -216,6 +228,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
         <CardLink card={props.visitId ? withUpdateInFooter(card) : card} />
       </div>
       {actions.length ? <CardButtons actions={actions} sent={sent} onPress={press} grid={Boolean(props.visitId)} /> : null}
+      {props.visitId && card.blocks ? visitBlocksOf(card.blocks).missing.map((block, index) => <div key={`falta-${index}`} className="px-3.5 pb-3"><VisitText block={block} /></div>) : null}
       {error ? <p role="alert" className="border-t border-outline/10 px-3.5 py-2 text-[12px] text-error">{error}</p> : null}
       {detailOpen ? <BotCardDetail card={card} onClose={() => setDetailOpen(false)} /> : null}
     </div>

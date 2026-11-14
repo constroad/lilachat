@@ -720,5 +720,33 @@ y reparte en partes iguales. No sube `FORMS_LEVEL`.
 Valores de agentes: `reparto` = «Una partida» (`partidaId`), «Partes iguales», «Según partida», «A mano» (las
 tres últimas con `partidas` = filas `{partidaId, monto}`). `x-preview: reparto_de_gasto` se sigue usando.
 
-Sin verificar todavía: el formulario real en el hilo con la sección plegada (web y APK), el scroll al error
-dentro de la sección en la APK, y un borrador de punta a punta contra agentes.
+Verificado en vivo en la web (13/11, ver (4)). Sin verificar todavía: el formulario en la APK y el scroll al
+error dentro de la sección en la APK.
+
+## 13/11 noche (4): «Revisar gasto» probado en vivo y cuatro arreglos
+
+E2E en el Chrome de José (Test #flujo-caja, producción, agentes sha b5edb59), voucher B001-000779 de S/ 180:
+tarjeta con «Revisar gasto» / «Descartar» → Servicio → destino → «Según partida» → 3 partidas con los pesos de la
+partida (11.86 + 20.59 + 147.55 = 180.00, «100 % CUADRADO») → «Corregir datos» plegado con sus 9 campos → «Por
+pagar» → «Guardar borrador» (la tarjeta se actualiza, no registra; botones «Aprobar / Revisar gasto / Descartar»)
+→ reabrir: los valores siguen → «Registrar gasto»: tarjeta REGISTRADO con las 3 partidas.
+
+Lo que el E2E destapó, de Lilachat (web y APK, sin tocar el contrato):
+
+- **El diseño gst-02 desde el primer paso.** Con «Una partida» no hay lista de partidas y el formulario salía
+  sobrio; el diseño aparecía recién al elegir otro reparto (el aspecto saltaba a mitad del flujo).
+  `isDesignedForm(fields)` = lista con `pickBy` **o** algún campo con `x-section`; `numberedStepsOf` la usa y numera
+  «1. ¿De qué servicio?», «2. Partida». `isSplitForm` queda para «hay una lista de partidas».
+- **Avisos en vivo solo de lo que se llenó.** «Elige al menos una partida.» salía en rojo antes de tocar nada: era
+  la respuesta de `x-preview`. `filledRemarks(remarks, fields, values)` (`appFormLive.ts`) deja pasar el aviso de un
+  campo con respuesta, el de una fila de lista y los que no son de ningún campo; el de un campo vacío lo dice el envío.
+- **Tarjeta del bot en un hilo angosto.** El rótulo «GASTO» se partía en «GAS / TO» y «Revisar gasto» en dos líneas.
+  La cabecera hace `flex-wrap` (el estado baja a una segunda línea) y los botones en fila quedan en una línea
+  (`whitespace-nowrap`, `flex-auto`) y bajan de fila si no caben. APK: `flex-wrap`, `grow`, `numberOfLines={1}`.
+- **La raíz del hilo con foto.** El hilo de un comprobante decía «Archivo» donde el chat mostraba la foto. La raíz
+  usa lo mismo que la burbuja (`MessageContent` en la web; `MessageMedia` en la APK): foto o archivo con su pie.
+  En la APK la foto de la raíz (y las de las respuestas) todavía no abre el visor: pendiente.
+
+De agentes (sha 4453271, tras el reporte del E2E): una tarjeta con la misma operación y monto sale «Ya registrado»
+sin «Aprobar» (solo «Revisar gasto» y «Descartar»); el aviso «apruébalo igual» queda para el pago parecido por monto
+y fecha. En un recibo sin otro número, la serie-número es la operación.

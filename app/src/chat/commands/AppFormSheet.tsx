@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from 'react';
 import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { CheckCheck, Clock, X } from 'lucide-react-native';
-import { cameraFirstFieldOf, CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, formRows, groupedBySection, isSplitForm, liveSelfieFieldOf, numberedStepsOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmit, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
+import { cameraFirstFieldOf, CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, filledRemarks, formFields, formRows, groupedBySection, isDesignedForm, liveSelfieFieldOf, numberedStepsOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmit, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { Modal } from '../../ui/Modal';
@@ -122,10 +122,10 @@ export function AppFormSheet(props: SheetProps) {
   // The three `gps` numbers are one block, drawn where the latitude goes.
   const shown = visibleFields(fields, state.values).filter((field) => field.name !== signer?.name && (step === 'sign' || field.kind === 'location') && !(field.kind === 'number' && field.gps && field.gps !== 'lat'));
   // A form that splits an amount wears design gst-02 from its first step, even while its partidas are hidden.
-  const designed = isSplitForm(fields);
+  const designed = isDesignedForm(fields);
   const steps = numberedStepsOf(fields, shown);
   // The summary's remarks under their fields; the person's own errors win.
-  const slot: SlotContext = { place, workStreets: props.workStreets ?? null, cameraField, onCameraDismissed: props.onClose, fields, onPlace: props.onPlace, values: state.values, errors: { ...formLive.summary.errors, ...state.errors }, live, locationName, selfie, upload: props.onUpload, set: state.set, setList: state.setList, width: sheetWidth, positions, designed, steps };
+  const slot: SlotContext = { place, workStreets: props.workStreets ?? null, cameraField, onCameraDismissed: props.onClose, fields, onPlace: props.onPlace, values: state.values, errors: { ...filledRemarks(formLive.summary.errors, fields, state.values), ...state.errors }, live, locationName, selfie, upload: props.onUpload, set: state.set, setList: state.setList, width: sheetWidth, positions, designed, steps };
   const label = waiting ? 'Enviando…' : state.sending ? signing.phaseLabel : submitLabelOf(form, fields, state.values);
   return (
     <Modal visible transparent animationType="slide" onRequestClose={close}>

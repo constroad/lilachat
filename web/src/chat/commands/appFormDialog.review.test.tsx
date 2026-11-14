@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { EphemeralAnswer, FormSchemaProperty, FormSubmitOutcome, FormValues } from '@lilachat/shared';
 import { AppFormDialog } from './AppFormDialog';
@@ -188,5 +188,50 @@ describe('«Según partida» shares by the weight of each partida', () => {
     properties.partidas = partidas({ default: [{ partidaId: 'mat' }, { partidaId: 'mo' }] });
     draw(review(properties));
     expect(amounts()).toEqual(['60', '40']);
+  });
+});
+
+describe('«Revisar gasto» is one form from its first step (agentes 13/11)', () => {
+  /** The first mode: one partida, no list of ticks yet; only the folded «Corregir datos» says it is the designed form. */
+  const onePartida = (): Record<string, FormSchemaProperty> => ({
+    reparto: { type: 'string', title: 'Repartir', enum: ['Una partida', 'Partes iguales', 'Según partida', 'A mano'], default: 'Una partida' },
+    partidaId: { type: 'string', title: 'Partida', enum: ['mat', 'mo'], 'x-labels': { mat: 'Materiales', mo: 'Mano de obra' } },
+    monto: { type: 'number', title: 'Monto', 'x-unit': 'S/', default: 100, ...fold },
+  });
+
+  it('wears the design with one partida too: the look does not jump when the person picks another way to split', () => {
+    draw(review(onePartida(), ['monto']));
+    expect(screen.getByTestId('formulario-cabecera')).toHaveTextContent('Revisar gasto');
+    expect(screen.getByTestId(HEADER)).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('a form without sections and without a list keeps the plain look', () => {
+    const plain = { monto: { type: 'number', title: 'Monto', 'x-unit': 'S/', default: 100 } } as Record<string, FormSchemaProperty>;
+    draw(review(plain, ['monto'], null));
+    expect(screen.queryByTestId('formulario-cabecera')).toBeNull();
+  });
+});
+
+describe('the app\'s live remarks wait for what the person fills (José 13/11)', () => {
+  const withPreview = (reply: Record<string, string>): { onPreview: ReturnType<typeof vi.fn> } => {
+    const answer = review();
+    if (answer.response.responseType === 'form') answer.response.form.preview = 'revisar_gasto_preview';
+    const onPreview = vi.fn(async () => ({ blocks: [], errors: reply }));
+    render(<AppFormDialog answer={answer} onSubmit={vi.fn(async () => ({ done: true }) as FormSubmitOutcome)} onUpload={vi.fn()} onClose={vi.fn()} onPreview={onPreview} />);
+    return { onPreview };
+  };
+
+  it('«Elige al menos una partida» does not stand in red before a partida is picked', async () => {
+    const { onPreview } = withPreview({ partidas: 'Elige al menos una partida.' });
+    await waitFor(() => expect(onPreview).toHaveBeenCalled());
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 50)); });
+    expect(screen.queryByText('Elige al menos una partida.')).toBeNull();
+  });
+
+  it('a remark about what is filled shows, and opens the folded section it sits in', async () => {
+    const { onPreview } = withPreview({ monto: 'Ese monto ya está registrado.' });
+    await waitFor(() => expect(onPreview).toHaveBeenCalled());
+    expect(await screen.findByText('Ese monto ya está registrado.')).toBeInTheDocument();
+    expect(screen.getByTestId(HEADER)).toHaveAttribute('aria-expanded', 'true');
   });
 });

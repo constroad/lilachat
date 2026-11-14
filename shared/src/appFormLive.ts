@@ -1,4 +1,5 @@
 import type { FormField, FormValues } from './appForms.js';
+import { isBlankAnswer } from './appFormSections.js';
 
 /** How long typing must stop before the app is asked again (agentes 30/10: its budget is 3 s). */
 export const LIVE_TYPING_PAUSE_MS = 600;
@@ -17,3 +18,13 @@ export function refreshDelayMs(fields: readonly FormField[], before: FormValues,
 
 /** A list or a long picker needs room (Andrea 12/11: the partidas showed in a tiny space): the dialog goes wide. */
 export const isWideForm = (fields: readonly FormField[]): boolean => fields.some((field) => field.kind === 'list' || (field.kind === 'choice' && field.searchable && !field.segmented));
+
+/**
+ * The app's live remarks (`x-preview`) that may show under their field. A blank field's remark is «falta esto»: the send
+ * says it (José 13/11: «Elige al menos una partida» stood in red before the person had touched anything). A remark on a
+ * row of a list, or one that belongs to no field, stays.
+ */
+export function filledRemarks(remarks: Readonly<Record<string, string>>, fields: readonly FormField[], values: FormValues): Record<string, string> {
+  const blank = new Set(fields.filter((field) => isBlankAnswer(values[field.name])).map((field) => field.name));
+  return Object.fromEntries(Object.entries(remarks).filter(([path]) => !blank.has(path)));
+}

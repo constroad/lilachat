@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { formFields, type AppForm, type FormSchemaProperty } from './appForms.js';
-import { isWideForm, LIVE_TYPING_PAUSE_MS, refreshDelayMs } from './appFormLive.js';
+import { filledRemarks, isWideForm, LIVE_TYPING_PAUSE_MS, refreshDelayMs } from './appFormLive.js';
 
 const fieldsOf = (properties: Record<string, FormSchemaProperty>) => formFields({ id: 'f', title: 'F', schema: { type: 'object', properties } } as AppForm);
 const services = Array.from({ length: 12 }, (_, index) => `6a5503b40afd38abc67ff7${String(index).padStart(2, '0')}`);
@@ -44,5 +44,35 @@ describe('isWideForm (Andrea 12/11: the partidas showed in a tiny space)', () =>
 
   it('a short form with a segmented and a few fields stays narrow', () => {
     expect(isWideForm(fieldsOf({ estado: { type: 'string', enum: ['pagado', 'por_pagar'] }, monto: { type: 'number', title: 'Monto' } }))).toBe(false);
+  });
+});
+
+describe('filledRemarks: the app\'s live remarks sit under what the person has filled in (José 13/11)', () => {
+  const fields = fieldsOf({
+    monto: { type: 'number', title: 'Monto' },
+    nota: { type: 'string', title: 'Nota' },
+    partidas: { type: 'array', title: 'Partidas', items: { type: 'object', properties: { monto: { type: 'number', title: 'Monto' } } } },
+  });
+  const remarks = { partidas: 'Elige al menos una partida.', monto: 'Ese monto ya está registrado.', 'partidas[0].monto': 'No cuadra.', _: 'Revisa el gasto.' };
+
+  it('«Elige al menos una partida» waits: nothing is picked, and the send is the one that asks for it', () => {
+    expect(filledRemarks(remarks, fields, { monto: 120 })).not.toHaveProperty('partidas');
+  });
+
+  it('a remark under a field with an answer stays, a zero too', () => {
+    expect(filledRemarks(remarks, fields, { monto: 0 }).monto).toBe('Ese monto ya está registrado.');
+    expect(filledRemarks(remarks, fields, { monto: 120 }).monto).toBe('Ese monto ya está registrado.');
+  });
+
+  it('a blank text, a missing value and an empty list all count as nothing answered', () => {
+    const blank = filledRemarks({ nota: 'Muy corta.', monto: 'Falta.', partidas: 'Falta.' }, fields, { nota: '  ', partidas: [] });
+    expect(blank).toEqual({});
+  });
+
+  it('a remark on a row, or one that belongs to no field, stays', () => {
+    const kept = filledRemarks(remarks, fields, { partidas: [{ monto: 10 }] });
+    expect(kept['partidas[0].monto']).toBe('No cuadra.');
+    expect(kept.partidas).toBe('Elige al menos una partida.');
+    expect(kept._).toBe('Revisa el gasto.');
   });
 });

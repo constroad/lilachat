@@ -1,6 +1,6 @@
 import { useMemo, useRef, type RefObject } from 'react';
 import { CheckCheck, Clock } from 'lucide-react';
-import { CHECK_ALL_LABEL, checkAllValues, chipsFor, groupedBySection, splitFor, evidenceLine, formFields, formRows, isSplitForm, isWideForm, liveSelfieFieldOf, numberedStepsOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmit, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
+import { CHECK_ALL_LABEL, checkAllValues, chipsFor, groupedBySection, splitFor, evidenceLine, filledRemarks, formFields, formRows, isDesignedForm, isWideForm, liveSelfieFieldOf, numberedStepsOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmit, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
@@ -70,10 +70,10 @@ export function AppFormDialog(props: DialogProps) {
   // The three `gps` numbers are one block, drawn where the latitude goes.
   const shown = visibleFields(fields, state.values).filter((field) => field.name !== signer?.name && (step === 'sign' || field.kind === 'location') && !(field.kind === 'number' && field.gps && field.gps !== 'lat'));
   // A form that splits an amount wears design gst-02 from its first step, even while its partidas are hidden.
-  const designed = isSplitForm(fields);
+  const designed = isDesignedForm(fields);
   const steps = numberedStepsOf(fields, shown);
   // The summary's remarks («la lectura de fin va después del inicio») under their fields; the person's own errors win.
-  const slot: SlotContext = { fields, values: state.values, errors: { ...live.summary.errors, ...state.errors }, selfieField, locationName, selfie, upload: props.onUpload, onPlace: props.onPlace, set: state.set, setList: state.setList, place, workStreets: props.workStreets ?? null, designed, steps };
+  const slot: SlotContext = { fields, values: state.values, errors: { ...filledRemarks(live.summary.errors, fields, state.values), ...state.errors }, selfieField, locationName, selfie, upload: props.onUpload, onPlace: props.onPlace, set: state.set, setList: state.setList, place, workStreets: props.workStreets ?? null, designed, steps };
   const footer = <FormFooter summary={live.summary.blocks} message={state.message} busy={state.sending || waiting} refreshing={live.refreshing} label={label} others={form.submits?.slice(1) ?? []} note={evidence ? (selfieField ? LIVE_FOOTER : evidence) : ''} onSend={(action) => void state.send(action ?? form.submits?.[0])} />;
   return (
     <Overlay title={form.title} onClose={props.onClose} footer={step === 'sign' ? footer : undefined} wide={isWideForm(fields) || designed} header={designed ? <FormHeader title={form.title} appName={props.answer.appName} avatarUrl={props.answer.avatarUrl} where={props.where} personName={props.personName} /> : undefined}>

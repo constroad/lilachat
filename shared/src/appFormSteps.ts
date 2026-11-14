@@ -17,8 +17,15 @@ const isStep = (field: FormField): boolean => {
 /** A form with a list of ticks, even while it is hidden: it wears the design from the first step. */
 export const isSplitForm = (fields: readonly FormField[]): boolean => fields.some((field) => field.kind === 'list' && Boolean(field.pickBy));
 
-/** The number of each step among the fields on screen (`shown`), in order; none when the form splits nothing. */
+/**
+ * The form wears design gst-02 from its first step: it splits an amount, or it declares sections (agentes 13/11:
+ * «Revisar gasto» is one form whose first mode, one partida, has no list of ticks yet; its look must not jump when the
+ * person picks another way to split).
+ */
+export const isDesignedForm = (fields: readonly FormField[]): boolean => isSplitForm(fields) || fields.some((field) => field.section !== undefined);
+
+/** The number of each step among the fields on screen (`shown`), in order; none when the form is not the designed one. */
 export function numberedStepsOf(fields: readonly FormField[], shown: readonly FormField[] = fields): Record<string, number> {
-  if (!isSplitForm(fields)) return {};
+  if (!isDesignedForm(fields)) return {};
   return Object.fromEntries(shown.filter(isStep).map((field, index) => [field.name, index + 1]));
 }

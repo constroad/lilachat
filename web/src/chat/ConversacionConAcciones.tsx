@@ -48,6 +48,8 @@ import { memberBadge, opensInPhotoViewer, replyOpensThread, usesFlatLayout } fro
 import { useGroupsAsList } from '../ui/groupsAsList';
 import { GroupCallStripFor, useCalls } from '../calls/CallProvider';
 import { useVisitDoor } from '../spaces/visits/useVisitDoor';
+import { useVisitCardActions } from '../spaces/visits/VisitCardActions';
+import { VisitActionContext } from '../spaces/visits/visitActionContext';
 import { ChatQueue } from './queue/ChatQueue';
 import { gifAsPendingMessage, useGifsInFlight } from './gifs/gifsInFlight';
 import { useMessageWindow } from './useMessageWindow';
@@ -147,6 +149,8 @@ export function ConversacionConAcciones(
   const seqsFijados = useMemo(() => new Set(fijados.map((uno) => uno.seq)), [fijados]);
   // José 13/11: the technical visit, from its channel or the 1:1 with the app (off until he turns it on).
   const visitDoor = useVisitDoor({ jwt: props.jwt, spaceId: chat.workspaceId, chatId: chat.id });
+  const visitPlace = useMemo(() => (chat.workspaceId ? { jwt: props.jwt, spaceId: chat.workspaceId, chatId: chat.id } : null), [props.jwt, chat.workspaceId, chat.id]);
+  const visitCard = useVisitCardActions(visitPlace);
   const fijar = useFijarEnLaWeb({ chatId: chat.id, jwt: props.jwt, onAviso, onCambio: props.onRecargarChats });
   const [salto, setSalto] = useState<{ seq: number; vez: number } | null>(null);
   // An old message opens with its context (pending 44) instead of «sube para cargarlo».
@@ -292,6 +296,7 @@ export function ConversacionConAcciones(
       />
       {hilos.raiz ? (
         <PanelBoundary label="el hilo" onClose={hilos.cerrar}>
+        <VisitActionContext.Provider value={visitCard.open}>
         <CardCommandContext.Provider value={cardCommand}>
         <PanelDeHilo
           chat={chat}
@@ -312,6 +317,7 @@ export function ConversacionConAcciones(
           onCerrar={hilos.cerrar}
         />
         </CardCommandContext.Provider>
+        </VisitActionContext.Provider>
         </PanelBoundary>
       ) : null}
       {infoAbierta ? (
@@ -341,6 +347,7 @@ export function ConversacionConAcciones(
         <ListaDeFijados fijados={fijados} nombreDe={nombreDe} textoLocal={textoLocal} puedeDesfijar={puedeFijar} onIr={(seq) => setSalto({ seq, vez: Date.now() })} onDesfijar={(seq) => void fijar.desfijar(seq)} onCerrar={() => setVerFijados(false)} />
       ) : null}
       {visitDoor.screen}
+      {visitCard.overlay}
       {fijar.pidiendo !== null ? <DialogoFijar onFijar={(duracion) => void fijar.fijar(duracion)} onCerrar={fijar.cancelar} /> : null}
       {acciones.eliminando ? (
         <DialogoEliminar

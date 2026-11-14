@@ -1,11 +1,12 @@
 import { useContext, useState, type ReactNode } from 'react';
 import { ChevronRight, ExternalLink } from 'lucide-react';
-import { cardActionLayout, cardContextOf, formatClock, isOrderCard, viewableLinkOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
+import { cardActionLayout, cardContextOf, visitCardActionOf, formatClock, isOrderCard, viewableLinkOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BotBlocksView } from './botBlocks/BotBlocksView';
 import { BotCardDetail } from './botBlocks/BotCardDetail';
 import { CardCommandContext, OrderCardContext, useCardCommand } from './botBlocks/cardCommand';
 import { TONE as BLOCK_TONE } from './botBlocks/tones';
 import { usePortalFileViewer } from '../spaces/clients/PortalFileViewer';
+import { VisitActionContext } from '../spaces/visits/visitActionContext';
 
 /** The status pill's tone (design `e-21`): background faint, border at 30 %, text strong. */
 export const TONE: Record<CardTone, string> = {
@@ -120,7 +121,8 @@ function openCardUrl(url: string | undefined, target: EventTarget) {
  * after the tap the buttons only say it was sent. A button with a `command`
  * runs its line instead, and the card stays open: its form can be closed.
  */
-export function BotCardView(props: { card: BotCard; chatId: string; seq: number; jwt: string }) {
+/** `visitId`: a technical visit's card (lv01, agentes 14/11): its `visita_*` buttons open Lilachat's screens. */
+export function BotCardView(props: { card: BotCard; chatId: string; seq: number; jwt: string; visitId?: string }) {
   const { card } = props;
   const [sent, setSent] = useState<SentAction>(null);
   const [error, setError] = useState('');
@@ -138,7 +140,12 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
     setSent(null);
     setError(data.message ?? 'No se pudo enviar. Revisa tu conexión.');
   };
-  const press = (action: CardAction) => (action.command ? runRow?.(action.command) : void tap(action.id));
+  const openVisit = useContext(VisitActionContext);
+  const press = (action: CardAction) => {
+    const visitAction = props.visitId && openVisit ? visitCardActionOf(action.id) : null;
+    if (visitAction) return openVisit!(props.visitId!, visitAction);
+    return action.command ? runRow?.(action.command) : void tap(action.id);
+  };
   const actions = card.actions?.filter((action) => !action.command || runRow) ?? [];
   return (
     <CardCommandContext.Provider value={runRow}>

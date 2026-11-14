@@ -31,7 +31,7 @@ export function ChatQuickActions(props: { commands: ChatCommands; onWriteCommand
                 setOpen(false);
                 const line = commandToWrite(row);
                 if (line) props.onWriteCommand(line);
-                else void appAnswers.runAction(row);
+                else void props.commands.runRow(row);
               }}
             />
           </div>

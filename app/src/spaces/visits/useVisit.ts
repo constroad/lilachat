@@ -14,7 +14,7 @@ export function useVisit(ref: VisitPlaceRef, startId: string | null) {
   const screen = useMemo(() => createVisitScreen<DriveFile>({
     askDraft: (visitId) => askVisitDraft(ref, visitId),
     open: (request) => openVisitForm(ref, request),
-    submit: (commandId) => submitAppForm(ref.jwt, { chatId: ref.chatId }, commandId, {}),
+    submit: (commandId, values) => submitAppForm(ref.jwt, { chatId: ref.chatId }, commandId, values ?? {}),
     notice: (commandId) => noticeOf(getSocket(), commandId),
     send: (upload, file, key) => sendToDrive(upload, file, key, () => undefined, { jwt: ref.jwt, chatId: ref.chatId }),
     newKey: Crypto.randomUUID,

@@ -937,5 +937,36 @@ José corrigió el diseño: el selector de espacios **no** lleva «Ver incógnit
   guardar, agentes devolvió 422 `{entradaId: 'Falta.'}`: `guardar_visita` exige `entradaId` en CADA sección. Ahora
   el server pone un UUID por formulario abierto (reenviar el mismo formulario no duplica). Test en `siteVisitDoor`.
   Un error de un campo que el formulario no muestra no se ve en pantalla: el diálogo queda quieto.
+- **Lo que Portal hace y lo que Lila puede (Portal 14/11, código en main):**
+  - Lista (v01): en Portal pestañas, filtros, Excel. Lila: hasta 20 abiertas, sin filtros.
+  - Nueva (v07): Portal con RUC, cliente, link de Maps, pin, fecha e ingeniero. Lila: prospecto, contacto,
+    teléfono, GPS; fecha = ahora, ingeniero = el miembro.
+  - Expediente (v02): Terminar (Lila sí), «No se concretó», Convertir y vincular cliente (solo Portal).
+  - Entrevista: Portal por tipo con nota y preguntas nuevas. Lila: ranuras r01–r20, solo el valor.
+  - «Para la ejecución»: solo Portal. Conclusión: Lila solo el texto.
+  - Fotos: Portal con GPS EXIF, ubicar, pasar a un punto. Lila: sube sueltas o de un punto, sin GPS.
+  - Mapa (v03/v04): Portal edita puntos, calles, área, dibujos, elementos. Lila: solo crea un punto con GPS y
+    fotos; lo demás se lee.
+  - Convertir (v06): solo Portal (la cotización tiene montos: solo admins).
+  - Lienzo v08 y PDF: Lila arma el PDF al terminar y lo devuelve. El croquis del lienzo hoy es una imagen fija.
+  - **Por eso, en escritorio y tablet la visita se abre en el editor 2.0 de Portal embebido**
+    (`/embed/site-visit/[id]`, con el croquis que abre su editor de croquis, José 14/11). Portal lo diseña
+    después de la copia del cubicaje; su contrato (token, ruta, postMessage v1) llega antes de tocar
+    `portalEmbed.ts`. En el celular van lv01–lv03.
+- **Rehecha como los diseños (14/11, web):**
+  - **lv01:** la tarjeta la arma agentes con los bloques genéricos y la publica en el tema `informes`
+    (`kind: visita.*`, `refs.visit_id` → `clientRef.visitId`). En la web, sus botones `visita_*` abren pantallas
+    de Lilachat (`VisitCardActions.tsx`, contexto `visitActionContext.ts`); sin `visitId` siguen siendo de la app.
+    Un cliente viejo que toca uno recibe 409 «Actualiza Lilachat para abrir la visita.» y agentes no se entera.
+  - **lv02** (`MarkPointWeb.tsx`): pastilla «GPS activo», mapa con los puntos y el nuevo, «Clasificación de campo ·
+    ¿Qué es?» con «1 elegido» y chips con ícono. Falta la línea de calle con «Mover» (Portal no la manda).
+  - **lv03** (`VisitInterviewWeb.tsx`, motor `shared/visitInterview.ts`): una tarjeta por pregunta, chips grandes
+    con check, «Respondida», «n de m» con barra y «Siguiente: n sin responder». Cada toque guarda solo esa
+    respuesta (`saveVisitAnswers`, la misma corrida de `guardar_visita` con `values`).
+  - **Crear:** «Visita técnica» sale en el ⚡ y en el «+» donde el admin la encendió. La web la intercepta
+    (`useAppAnswers` → `startVisit`): lee una visita nueva y abre «Datos» con el GPS. Desde el ⚡ la puerta es
+    `place: 'space'`, sin canal (agentes 4ab988c).
+  - Auditorías de Stitch: `design/stitch/auditorias/lv02-visita-punto.md` y `lv03-visita-entrevista.md`.
+  - **Falta:** el APK (intercepción, lv03 en RN, lv02 al día) y el embed del editor 2.0 en escritorio (Portal).
 - **Respuesta con tarjeta y enlace (agentes 14/11):** si la tarjeta trae `link`, el texto de respaldo con la URL
   ya no se muestra dos veces (`answerTextShown`, APK y web).

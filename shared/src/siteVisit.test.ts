@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { markedPointOf, nextPointNumber, openVisitRowsOf, pointLine, pointProblem, visitDocumentOf, visitIdOfKey, visitNextStep, visitSectionForm, visitUploadOf } from './siteVisit.js';
+import { markedPointOf, nextPointNumber, openVisitRowsOf, pointLine, pointProblem, visitDocumentOf, visitIdOfKey, visitNextStep, visitSectionForm, visitUploadOf, visitCardActionOf } from './siteVisit.js';
 import { NEW_VISIT, VISIT_WITH_ID } from './siteVisit.fixture.js';
 
 /** The technical visit on the phone (José 13/11, Portal PRIMERA-VISITA §9; designs lv01–lv03). */
@@ -99,5 +99,16 @@ describe('the photo ticket a point answers', () => {
     expect(visitUploadOf({ ...ticket, method: 'PUT' })).toBeNull();
     expect(visitUploadOf({ ...ticket, mimeTypes: ['video/mp4'] })).toBeNull();
     expect(markedPointOf({ n: 4 })).toBeNull();
+  });
+});
+
+describe('the buttons of the visit card lv01 (agentes 14/11)', () => {
+  it('each visita_* id opens its own screen, never the app', () => {
+    expect(['visita_marcar_punto', 'visita_entrevista', 'visita_foto', 'visita_terminar', 'visita_pdf'].map(visitCardActionOf)).toEqual(['point', 'interview', 'photo', 'finish', 'pdf']);
+  });
+  it('any other button stays the app\'s', () => {
+    expect(visitCardActionOf('aprobar')).toBeNull();
+    expect(visitCardActionOf('visita_otra')).toBeNull();
+    expect(visitCardActionOf('toString')).toBeNull();
   });
 });

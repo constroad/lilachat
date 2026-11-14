@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { availableTo, canManageMembers, cardCommandsOf, COMMAND_LIMITS, formLevelOf, isAckBody, itemSettingOf, mayUseItem, parseSlashInput, rowIsForAnyone, SITE_VISIT_SHORTCUT, withoutKnownFields, shortcutValuesOf, validateCommandResponse, validateFormReply, type AppForm, type ShortcutAudience, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope, type ShortcutValues, worksAt } from '@lilachat/shared';
+import { availableTo, canManageMembers, cardCommandsOf, COMMAND_LIMITS, formLevelOf, isAckBody, itemSettingOf, mayUseItem, parseSlashInput, rowIsForAnyone, withoutKnownFields, shortcutValuesOf, validateCommandResponse, validateFormReply, type AppForm, type ShortcutAudience, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope, type ShortcutValues, worksAt } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Chat, type Message } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { callBotWebhook, isRestarting, recordLastDelivery, type WebhookReply } from './botEvents.js';
@@ -104,8 +104,7 @@ export async function commandGroupsOf(workspaceId: string, userId: Types.ObjectI
         return availableTo(kind, key, setting, place === 'space' ? 'space' : itemPlaceOf(chat, installation, clientChat), person);
       };
       const commands = (app.commands ?? []).filter((entry) => open('command', entry.command));
-      // The visit is a door (its strip in the chat), never an action to run: «Comandos» shows it, the ⚡ and «/» do not.
-      const shortcuts = (app.shortcuts ?? []).filter((entry) => entry.key !== SITE_VISIT_SHORTCUT && open('shortcut', entry.key, entry.audience));
+      const shortcuts = (app.shortcuts ?? []).filter((entry) => open('shortcut', entry.key, entry.audience));
       return { appId: String(app._id), appName: app.name, commands, ...(app.avatarUrl ? { avatarUrl: app.avatarUrl } : {}), shortcuts };
     })
     .filter((group) => group.commands.length > 0 || group.shortcuts.length > 0);

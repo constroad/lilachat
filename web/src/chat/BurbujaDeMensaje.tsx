@@ -264,7 +264,7 @@ function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; m
   const forwarded = mensaje.forwarded ? <p data-testid={`reenviado-${mensaje.seq}`} className="mb-1 flex items-center gap-1 text-[12px] italic text-on-surface-variant"><Forward size={12} aria-hidden />Reenviado</p> : null;
   const sharedLine = mensaje.sharedBy ? <p data-testid={`compartido-por-${mensaje.seq}`} className="mb-1 text-[12px] text-on-surface-variant">{sharedByLine(mensaje.sharedBy)}</p> : null;
   const shared = forwarded || sharedLine ? <>{forwarded}{sharedLine}</> : null;
-  if (mensaje.card) return <>{shared}<BotCardView card={mensaje.card} chatId={chat.id} seq={mensaje.seq} jwt={jwt} /></>;
+  if (mensaje.card) return <>{shared}<BotCardView card={mensaje.card} chatId={chat.id} seq={mensaje.seq} jwt={jwt} {...(mensaje.clientRef?.visitId ? { visitId: mensaje.clientRef.visitId } : {})} /></>;
   if (mensaje.files?.length) return <>{shared}<BotFilesAlbum seq={mensaje.seq} files={mensaje.files} /></>;
   const media = mensaje.media;
   if (media?.url && media.mime?.startsWith('audio/')) {

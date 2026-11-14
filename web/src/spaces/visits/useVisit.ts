@@ -6,16 +6,16 @@ import { useAppAnswers } from '../../chat/commands/useAppAnswers';
 import { currentSocket } from '../../useSocket';
 import { devicePlaceNow } from '../clients/reports/devicePlace';
 import { sendFor, type DriveFile } from '../clients/useDriveUpload';
-import { askVisitDraft, openVisitForm, type VisitPlaceRef } from './visitsApi';
+import { askVisitDraft, openVisitForm, type VisitChatRef } from './visitsApi';
 
 /** The visit's screen on the web (`shared/visitScreen`), as the APK's: its state, and its sections as Portal's forms. */
-export function useVisit(ref: VisitPlaceRef, startId: string | null) {
+export function useVisit(ref: VisitChatRef, startId: string | null) {
   const screen = useMemo(() => {
     const send = sendFor({ jwt: ref.jwt, chatId: ref.chatId });
     return createVisitScreen<DriveFile>({
       askDraft: (visitId) => askVisitDraft(ref, visitId),
       open: (request) => openVisitForm(ref, request),
-      submit: (commandId) => submitAppForm(ref.jwt, { chatId: ref.chatId }, commandId, {}),
+      submit: (commandId, values) => submitAppForm(ref.jwt, { chatId: ref.chatId }, commandId, values ?? {}),
       notice: (commandId) => noticeOf(currentSocket(), commandId),
       send: (upload, file, key) => send(upload, file, key),
       newKey: () => crypto.randomUUID(),

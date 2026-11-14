@@ -7,7 +7,7 @@ import { NEW_VISIT, VISIT_WITH_ID } from '../../../shared/src/siteVisit.fixture.
 import { startTestMongo } from '../testMongo.js';
 import { buildApp } from '../app.js';
 import { UserModel } from '../models.js';
-import { ChatModel } from '../chatModels.js';
+import { ChatModel, MessageModel } from '../chatModels.js';
 import { WorkspaceMemberModel, WorkspaceModel } from '../workspaceModels.js';
 import { signSession } from '../sessions.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botModels.js';
@@ -113,9 +113,23 @@ describe('the visit\'s door', () => {
     await draftFor(ana).expect(404);
     expect(received).toHaveLength(0);
   });
-  it('a door, not a command: the ⚡ and «/» do not offer it', async () => {
+  it('the ⚡ and «/» offer «Visita técnica» where it is on: the phone opens the visit, not the app', async () => {
     const offered = await request(app).get(`/api/workspaces/${spaceId}/commands`).query({ chat: String(visitsChannel) }).set(auth(ana)).expect(200);
-    expect(JSON.stringify(offered.body)).not.toContain(SITE_VISIT_SHORTCUT);
+    expect(JSON.stringify(offered.body)).toContain(SITE_VISIT_SHORTCUT);
+  });
+  it('from the space\'s ⚡ (no chat): the place is «space», with no channel, only where the admin turned the ⚡ on', async () => {
+    // Arrange: off in the ⚡
+    await draftOf({}).expect(404);
+    await BotInstallationModel.updateOne({}, { $set: { [`itemSettings.${itemKey('shortcut', SITE_VISIT_SHORTCUT)}.global`]: true } });
+    answers['visit.draft.requested'] = { status: 200, body: NEW_VISIT };
+    // Act
+    await draftOf({}).expect(200);
+    // Assert
+    expect(received[0]?.data).toMatchObject({ place: 'space' });
+    expect(received[0]?.data).not.toHaveProperty('channel_id');
+    expect(received[0]?.data).not.toHaveProperty('channel');
+    const start = await openOf({ kind: 'section', section: 'datos', lat: -12.1, lng: -77 }).expect(200);
+    expect((await BotCommandRunModel.findById(start.body.commandId).lean())?.visit).toEqual({ place: 'space' });
   });
   it('Portal\'s refusal: its own text reaches the person', async () => {
     answers['visit.draft.requested'] = { status: 200, body: { error: 'visitas_apagadas', message: 'Las visitas técnicas desde Lilachat están apagadas: se encienden en Empresa › Lila.' } };
@@ -158,5 +172,18 @@ describe('a visit\'s writes', () => {
     const finish = await openOf({ chat_id: String(visitsChannel), kind: 'finish', visit_id: VISIT }).expect(200);
     expect(finish.body.response.form).toMatchObject({ id: 'terminar_visita', schema: { properties: {} } });
     await openOf({ chat_id: String(general), kind: 'finish', visit_id: VISIT }).expect(404);
+  });
+});
+
+describe('the visit card lv01 on an app from before its screens', () => {
+  it('a «visita_*» tap is refused with «Actualiza Lilachat» and never reaches agentes', async () => {
+    // Arrange
+    const card = { title: 'Condominio Los Álamos', fields: [], actions: [{ id: 'visita_entrevista', label: 'Entrevista', style: 'secondary', value: VISIT }] };
+    await MessageModel.create({ chatId: general, seq: 1, senderId: ana, clientKey: 'k-visita', kind: 'text', body: 'Visita', card, at: new Date() });
+    // Act
+    const tapped = await request(app).post(`/api/chats/${general}/card-actions`).set(auth(ana)).send({ seq: 1, action_id: 'visita_entrevista' }).expect(409);
+    // Assert
+    expect(tapped.body.message).toBe('Actualiza Lilachat para abrir la visita.');
+    expect(received).toHaveLength(0);
   });
 });

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BotCardView } from './BotCardView';
 import { CardCommandContext, OrderCardContext } from './botBlocks/cardCommand';
+import { VisitActionContext } from '../spaces/visits/visitActionContext';
 
 afterEach(() => {
   cleanup();
@@ -162,5 +163,29 @@ describe('a card link that is a file', () => {
   it('a page keeps opening in a new tab', () => {
     render(<BotCardView card={{ title: 'Cubicaje', fields: [], link: { label: 'Abrir cubicaje', url: 'https://inframaq.example.com/cubicaje?t=1' } }} chatId="c1" seq={10} jwt="jwt" />);
     expect(screen.getByRole('link', { name: /Abrir cubicaje/ }).getAttribute('target')).toBe('_blank');
+  });
+});
+
+/** The visit card lv01 (agentes 14/11): its buttons open Lilachat's screens, never reach the app. */
+describe('a technical visit card', () => {
+  const visitCard = { kicker: 'VISITA TÉCNICA · VIS-2026-0014', title: 'Condominio Los Álamos', fields: [], actions: [{ id: 'visita_marcar_punto', label: 'Marcar punto', style: 'primary' as const, value: '65f0000000000000000000a1' }, { id: 'visita_entrevista', label: 'Entrevista', style: 'secondary' as const, value: '65f0000000000000000000a1' }] };
+  it('«Entrevista» opens the visit\'s interview and posts nothing to the app', () => {
+    // Arrange
+    const open = vi.fn();
+    const post = vi.spyOn(globalThis, 'fetch');
+    render(<VisitActionContext.Provider value={open}><BotCardView card={visitCard} chatId="c1" seq={7} jwt="jwt" visitId="65f0000000000000000000a1" /></VisitActionContext.Provider>);
+    // Act
+    fireEvent.click(screen.getByRole('button', { name: 'Entrevista' }));
+    // Assert
+    expect(open).toHaveBeenCalledWith('65f0000000000000000000a1', 'interview');
+    expect(post).not.toHaveBeenCalled();
+  });
+  it('without the visit\'s id the button stays the app\'s', async () => {
+    const open = vi.fn();
+    const post = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('{}', { status: 200 }));
+    render(<VisitActionContext.Provider value={open}><BotCardView card={visitCard} chatId="c1" seq={7} jwt="jwt" /></VisitActionContext.Provider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Entrevista' }));
+    await waitFor(() => expect(post).toHaveBeenCalled());
+    expect(open).not.toHaveBeenCalled();
   });
 });

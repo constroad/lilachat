@@ -4,7 +4,7 @@ import type { FormSubmitReply } from './appActions.js';
 import { NEW_VISIT, VISIT_WITH_ID } from './siteVisit.fixture.js';
 import { openVisitRowsOf, visitDocumentOf } from './siteVisit.js';
 import { isPortalUploadTicket } from './driveUpload.js';
-import { addVisitPhoto, finishVisit, markVisitPoint, visitDraftResultOf, visitPdf, visitPointRequest, createdVisitIdOf, type VisitFlowDeps } from './visitFlow.js';
+import { addVisitPhoto, finishVisit, markVisitPoint, visitDraftResultOf, visitPdf, visitPointRequest, createdVisitIdOf, saveVisitAnswers, type VisitFlowDeps } from './visitFlow.js';
 
 const VISIT = '65f0000000000000000000a1';
 const POINT = '0b6f1a4e-2c3d-4e5f-8a9b-1c2d3e4f5a6b';
@@ -99,5 +99,18 @@ describe('one more photo, finishing and the PDF', () => {
   it('the PDF opens by its address; while it is made the person reads so', async () => {
     expect(await visitPdf(depsOf(answered({ status: 'ready', url: 'https://www.constroad.com/x.pdf' })), VISIT)).toEqual({ ok: true, url: 'https://www.constroad.com/x.pdf' });
     expect(await visitPdf(depsOf(answered({ status: 'generating' })), VISIT)).toEqual({ ok: false, message: 'El PDF se está generando. Vuelve a tocar en un momento.' });
+  });
+});
+
+describe('an interview answer (lv03)', () => {
+  it('opens the interview of that visit and sends only the answered slot', async () => {
+    // Arrange
+    const deps = depsOf({ ok: true, outcome: { commandId: 'c1', appId: 'a1', appName: 'Portal', outcome: 'ephemeral', response: { responseType: 'ephemeral', text: 'Guardado.' } } });
+    // Act
+    const saved = await saveVisitAnswers(deps, VISIT, { r02: 'Arena' });
+    // Assert
+    expect(deps.open).toHaveBeenCalledWith({ kind: 'section', section: 'entrevista', visit_id: VISIT });
+    expect(deps.submit).toHaveBeenCalledWith('c1', { r02: 'Arena' });
+    expect(saved).toEqual({ ok: true, message: 'Guardado.' });
   });
 });

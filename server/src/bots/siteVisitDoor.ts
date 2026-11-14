@@ -16,8 +16,8 @@ import { WorkspaceMemberModel } from '../workspaceModels.js';
  * picks the 1:1, the channels and who, as with any command. No company switch in Portal. The document is
  * kept per person and visit for the section forms, as a field report's draft is.
  */
-export type VisitPlace = 'channel' | 'direct';
-type Door = { installation: { _id: Types.ObjectId; workspaceId: Types.ObjectId; signingSecret: string; appId: Types.ObjectId }; app: { _id: Types.ObjectId; name: string; webhookUrl: string }; place: VisitPlace; chatId: Types.ObjectId; chatKind: string };
+export type VisitPlace = 'channel' | 'direct' | 'space';
+type Door = { installation: { _id: Types.ObjectId; workspaceId: Types.ObjectId; signingSecret: string; appId: Types.ObjectId }; app: { _id: Types.ObjectId; name: string; webhookUrl: string }; place: VisitPlace; chatId?: Types.ObjectId; chatKind?: string };
 
 const ASK_TIMEOUT_MS = 8_000;
 const COMMAND_TTL_MS = 15 * 60_000;
@@ -46,40 +46,49 @@ draftSchema.index({ updatedAt: 1 }, { expireAfterSeconds: DRAFT_KEPT_S });
 export const VisitDraftModel: Model<VisitDraft> = (mongoose.models.VisitDraft as Model<VisitDraft>) ?? mongoose.model<VisitDraft>('VisitDraft', draftSchema);
 
 const fail = (status: CommandError['status'], error: string, message: string): CommandError => ({ status, error, message });
-const notFound = (): CommandError => fail(404, 'not_found', 'Las visitas técnicas se hacen en su canal.');
+const notFound = (): CommandError => fail(404, 'not_found', 'Las visitas técnicas no están encendidas aquí. Pídeselo a un admin del espacio.');
 const record = (value: unknown): Record<string, unknown> => (value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {});
 const visitIdOf = (value: unknown): string | null => (typeof value === 'string' && VISIT_ID.test(value) ? value : null);
 
 type DoorInstallation = Door['installation'] & { botUserId: Types.ObjectId; itemSettings?: Parameters<typeof itemSettingOf>[0]; itemsV2?: boolean };
 type DoorChat = NonNullable<Parameters<typeof itemPlaceOf>[0]>;
 
-/** Whether the admin's setting of the `visita_tecnica` item lets this person in at this chat. */
-function placeOf(chat: DoorChat, installation: DoorInstallation, person: { userId: string; spaceAdmin: boolean }, client: boolean): VisitPlace | null {
+type Person = { userId: string; spaceAdmin: boolean };
+
+/** Whether the admin's setting of the `visita_tecnica` item lets this person in here: a chat, or the space's ⚡ (no chat). */
+function placeOf(chat: DoorChat | null, installation: DoorInstallation, person: Person, client: boolean): VisitPlace | null {
   const setting = itemSettingOf(installation.itemSettings, 'shortcut', SITE_VISIT_SHORTCUT, !installation.itemsV2);
   const place = itemPlaceOf(chat, installation, client);
-  if (place === 'space' || !availableTo('shortcut', SITE_VISIT_SHORTCUT, setting, place, person)) return null;
+  if (!availableTo('shortcut', SITE_VISIT_SHORTCUT, setting, place, person)) return null;
+  if (place === 'space') return 'space';
   return place === 'direct' ? 'direct' : 'channel';
 }
 
-/** The door: an active member of this chat, where an installed app's `visita_tecnica` item is on for them. */
+const validChat = (chatId: unknown): chatId is string => typeof chatId === 'string' && Types.ObjectId.isValid(chatId);
+
+/** The door: an active member, in this chat (or the space's ⚡ when none is given), where an installed app's `visita_tecnica` item is on for them. */
 export async function visitDoorOf(workspaceId: string, chatId: unknown, userId: Types.ObjectId): Promise<Door | null> {
-  if (!Types.ObjectId.isValid(workspaceId) || typeof chatId !== 'string' || !Types.ObjectId.isValid(chatId)) return null;
+  const inChat = validChat(chatId);
+  if (!Types.ObjectId.isValid(workspaceId) || (chatId !== undefined && chatId !== '' && !inChat)) return null;
   const [chat, member, apps, client] = await Promise.all([
-    ChatModel.findOne({ _id: chatId, workspaceId, 'members.userId': userId }).select('_id kind members.userId').lean<DoorChat | null>(),
+    inChat ? ChatModel.findOne({ _id: chatId, workspaceId, 'members.userId': userId }).select('_id kind members.userId').lean<DoorChat | null>() : null,
     WorkspaceMemberModel.findOne({ workspaceId, userId, status: 'active' }).select('role').lean(),
     BotAppModel.find({ 'shortcuts.key': SITE_VISIT_SHORTCUT }).select('_id name webhookUrl').lean(),
-    isClientChat(chatId),
+    inChat ? isClientChat(chatId) : false,
   ]);
-  if (!chat || !member || !apps.length) return null;
+  if ((inChat && !chat) || !member || !apps.length) return null;
   const person = { userId: String(userId), spaceAdmin: canManageMembers(member.role) };
   const installations = await BotInstallationModel.find({ workspaceId: new Types.ObjectId(workspaceId), appId: { $in: apps.map((app) => app._id) }, revokedAt: { $exists: false } }).select('_id workspaceId signingSecret appId botUserId itemSettings itemsV2').lean<DoorInstallation[]>();
   for (const installation of installations) {
     const app = apps.find((one) => String(one._id) === String(installation.appId));
     const place = app?.webhookUrl ? placeOf(chat, installation, person, client) : null;
-    if (app?.webhookUrl && place) return { installation, app: { _id: app._id, name: app.name, webhookUrl: app.webhookUrl }, place, chatId: chat._id, chatKind: chat.kind };
+    if (app?.webhookUrl && place) return { installation, app: { _id: app._id, name: app.name, webhookUrl: app.webhookUrl }, place, ...(chat ? { chatId: chat._id, chatKind: chat.kind } : {}) };
   }
   return null;
 }
+
+/** The chat the visit is done from; the space's ⚡ has none (agentes 14/11: `place: 'space'` without `channel`). */
+const channelOfDoor = (door: Door) => (door.chatId ? { channel_id: String(door.chatId), channel: { id: String(door.chatId), kind: door.chatKind } } : {});
 
 async function askerOf(userId: Types.ObjectId) {
   const user = await UserModel.findById(userId).select('name phone').lean();
@@ -101,7 +110,7 @@ export async function siteVisitDraft(workspaceId: string, userId: Types.ObjectId
   if (body.visit_id !== undefined && !visitId) return fail(400, 'invalid_request', 'Esa visita no existe.');
   const door = await visitDoorOf(workspaceId, body.chat_id, userId);
   if (!door) return notFound();
-  const reply = await callBotWebhook({ ...door.installation, webhookUrl: door.app.webhookUrl }, 'visit.draft.requested', { ...(visitId ? { visita_id: visitId } : {}), channel_id: String(door.chatId), channel: { id: String(door.chatId), kind: door.chatKind }, place: door.place, user: await askerOf(userId) }, ASK_TIMEOUT_MS);
+  const reply = await callBotWebhook({ ...door.installation, webhookUrl: door.app.webhookUrl }, 'visit.draft.requested', { ...(visitId ? { visita_id: visitId } : {}), ...channelOfDoor(door), place: door.place, user: await askerOf(userId) }, ASK_TIMEOUT_MS);
   const answer = record(reply.body);
   const document = reply.status === 200 ? visitDocumentOf(answer.document) : null;
   recordLastDelivery(door.installation._id, document ? { ok: true } : { ok: false, error: reply.error ?? `HTTP ${reply.status}` });
@@ -191,9 +200,9 @@ export async function openVisitForm(workspaceId: string, userId: Types.ObjectId,
   const formsLevel = typeof body.forms === 'number' ? body.forms : DEFAULT_FORMS_LEVEL;
   if (formLevelOf(ready.form) > formsLevel) return fail(409, 'outdated_app', OUTDATED_FORM_MESSAGE);
   const run = await BotCommandRunModel.create({
-    installationId: door.installation._id, chatId: door.chatId, workspaceId: new Types.ObjectId(workspaceId), userId,
+    installationId: door.installation._id, ...(door.chatId ? { chatId: door.chatId } : {}), workspaceId: new Types.ObjectId(workspaceId), userId,
     command: ready.form.id, formsLevel, trigger: 'shortcut', form: ready.form, context: ready.context,
-    visit: { channelId: String(door.chatId), place: door.place }, expiresAt: new Date(Date.now() + COMMAND_TTL_MS),
+    visit: { ...(door.chatId ? { channelId: String(door.chatId) } : {}), place: door.place }, expiresAt: new Date(Date.now() + COMMAND_TTL_MS),
   });
   return { commandId: String(run._id), appId: String(door.app._id), appName: door.app.name, outcome: 'form', response: { responseType: 'form', form: ready.form } };
 }

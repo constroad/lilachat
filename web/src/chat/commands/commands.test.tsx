@@ -12,6 +12,7 @@ const groups: CommandGroup[] = [
 ];
 
 const stubCommands = (overrides: Partial<ChatCommands> = {}): ChatCommands => ({
+  runRow: vi.fn(async () => true),
   enabled: true,
   suggestions: [],
   activeCommand: null,

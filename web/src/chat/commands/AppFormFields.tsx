@@ -248,7 +248,7 @@ export function LocationField({ field, value, error, onChange }: FieldProps<'loc
       </div>
       {map ? (
         <div className="relative overflow-hidden rounded-xl bg-background" style={{ height: MAP.height }}>
-          {map.tiles.map((tile) => <img key={tile.url} src={tile.url} alt="" draggable={false} className="absolute max-w-none" style={{ left: tile.left, top: tile.top, width: 256, height: 256 }} />)}
+          {map.tiles.map((tile) => <img key={tile.url} src={tile.url} alt="" referrerPolicy="strict-origin-when-cross-origin" draggable={false} className="absolute max-w-none" style={{ left: tile.left, top: tile.top, width: 256, height: 256 }} />)}
           <span className="absolute text-primary" style={{ left: map.pin.left - PIN / 2, top: map.pin.top - PIN }}><MapPin size={PIN} fill="currentColor" stroke="white" strokeWidth={1.5} /></span>
           <span className="absolute bottom-0 right-0 bg-white/80 px-1 text-[9px] text-black/70">© OpenStreetMap</span>
         </div>

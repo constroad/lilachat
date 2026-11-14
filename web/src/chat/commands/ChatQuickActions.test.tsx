@@ -5,7 +5,7 @@ import { ChatQuickActions } from './ChatQuickActions';
 import type { ChatCommands } from './useChatCommands';
 
 const consumo: ShortcutRow = { kind: 'shortcut', appId: 'a2', appName: 'Portal', key: 'registrar_consumo', name: 'Registrar consumo' };
-const commandsWith = (actions: ShortcutRow[], runAction = vi.fn()) => ({ actions, appAnswers: { runAction } }) as unknown as ChatCommands;
+const commandsWith = (actions: ShortcutRow[], runAction = vi.fn()) => ({ actions, runRow: runAction, appAnswers: { runAction } }) as unknown as ChatCommands;
 
 /** The ⚡ of a chat (R31/10): the actions an admin turned on for a channel or the chat with the app. */
 describe('ChatQuickActions', () => {

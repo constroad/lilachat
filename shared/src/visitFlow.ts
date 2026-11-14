@@ -67,15 +67,24 @@ export function visitPointRequest(visitId: string, entryId: string, draft: Visit
 
 export type VisitFlowDeps<F> = {
   open(request: VisitFormRequest): Promise<{ ok: true; data: CommandOutcome } | { ok: false; message?: string }>;
-  submit(commandId: string): Promise<FormSubmitReply>;
+  /** Most writes have nothing to fill; the interview sends its answers (lv03). */
+  submit(commandId: string, values?: Record<string, string>): Promise<FormSubmitReply>;
   notice(commandId: string): Promise<CommandNotice | null>;
   /** Straight to Portal's ticket (or through our server, for a stamped shot). */
   send(upload: VisitUpload, file: F, clientUploadId: string): Promise<{ status?: number; message?: string }>;
   newKey(): string;
 };
 
-async function answerOf<F>(deps: VisitFlowDeps<F>, request: VisitFormRequest, failed: string): Promise<{ response: CommandResponse } | { message: string }> {
-  return formRunAnswer({ open: () => deps.open(request), submit: deps.submit, notice: deps.notice }, failed);
+async function answerOf<F>(deps: VisitFlowDeps<F>, request: VisitFormRequest, failed: string, values?: Record<string, string>): Promise<{ response: CommandResponse } | { message: string }> {
+  return formRunAnswer({ open: () => deps.open(request), submit: (commandId: string) => (values ? deps.submit(commandId, values) : deps.submit(commandId)), notice: deps.notice }, failed);
+}
+
+const ANSWER_FAILED = 'No se pudo guardar la respuesta.';
+
+/** An interview answer (lv03): the visit's interview opens and only what changed is sent. */
+export async function saveVisitAnswers<F>(deps: VisitFlowDeps<F>, visitId: string, values: Record<string, string>): Promise<{ ok: boolean; message: string }> {
+  const answer = await answerOf(deps, { kind: 'section', section: 'entrevista', visit_id: visitId }, ANSWER_FAILED, values);
+  return 'message' in answer ? { ok: false, message: answer.message } : { ok: true, message: answer.response.text ?? 'Guardado.' };
 }
 
 /** One send; `null` when the ticket expired and a new one should be asked. */

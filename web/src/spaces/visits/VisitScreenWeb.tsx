@@ -9,9 +9,9 @@ import { prepared } from '../clients/useDriveUpload';
 import { usePortalFileViewer } from '../clients/PortalFileViewer';
 import { MarkPointWeb } from './MarkPointWeb';
 import { useVisit } from './useVisit';
-import type { VisitPlaceRef } from './visitsApi';
+import type { VisitChatRef } from './visitsApi';
 
-type Props = { place: VisitPlaceRef; visitId?: string | null; onClose: () => void };
+type Props = { place: VisitChatRef; visitId?: string | null; onClose: () => void };
 type Visit = ReturnType<typeof useVisit>;
 
 function Header({ document, onBack }: { document: VisitDocument | null; onBack: () => void }) {

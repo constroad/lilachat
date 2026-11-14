@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
-import { channelButtonRows, commandOf, matchCommands, parseSlashInput, quickActionRows, slashQuery, unknownCommandMessage, type CardContext, type CommandGroup } from '@lilachat/shared';
+import { channelButtonRows, commandOf, matchCommands, parseSlashInput, quickActionRows, slashQuery, unknownCommandMessage, type CardContext, type CommandGroup, type ShortcutRow, type ShortcutValues } from '@lilachat/shared';
 import { currentSocket } from '../../useSocket';
 import { runCardCommand, runCommand, shareCommandAnswer, spaceCommands } from './commandsApi';
 import { useAppAnswers } from './useAppAnswers';
+import { runVisitShortcut } from '../../spaces/visits/visitShortcut';
 import { useSocketTurn } from '../../socketTurn';
 
 export type ChatCommands = ReturnType<typeof useChatCommands>;
@@ -149,7 +150,9 @@ export function useChatCommands(params: { jwt?: string; chatId: string; workspac
   const actions = useMemo(() => quickActionRows(groups), [groups]);
   /** A client channel's buttons (José 01/11): links and the service report, out of the ⚡. */
   const buttons = useMemo(() => channelButtonRows(groups), [groups]);
-  return { enabled, suggestions, activeCommand: flat[Math.min(active, flat.length - 1)] ?? null, onType, onKey, runIfCommand, runCardLine, answers: appAnswers.answers, dismiss: appAnswers.dismiss, appAnswers, actions, buttons, loadActions: load, share: params.shareable ? share : undefined, jwt: jwt ?? '', chatId };
+  // «Visita técnica» opens the visit's «Datos» (José 14/11); every other row is the app's.
+  const runRow = (row: ShortcutRow, values?: ShortcutValues) => runVisitShortcut(row, jwt && workspaceId ? { jwt, spaceId: workspaceId, chatId } : null, track) ?? appAnswers.runAction(row, values);
+  return { runRow, enabled, suggestions, activeCommand: flat[Math.min(active, flat.length - 1)] ?? null, onType, onKey, runIfCommand, runCardLine, answers: appAnswers.answers, dismiss: appAnswers.dismiss, appAnswers, actions, buttons, loadActions: load, share: params.shareable ? share : undefined, jwt: jwt ?? '', chatId };
 }
 
 /** A channel or the chat with an app also asks for its actions on open, for its ⚡ (R31/10); a person's chat asks nothing. */

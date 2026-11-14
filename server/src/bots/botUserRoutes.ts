@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { Types } from 'mongoose';
-import { canManageMembers, normalizePeruPhone, toInternationalPhone, type CommandScope } from '@lilachat/shared';
+import { canManageMembers, normalizePeruPhone, toInternationalPhone, visitCardActionOf, type CommandScope } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Message } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { crearLimiteDeIntentos } from '../limiteDeIntentos.js';
@@ -145,6 +145,8 @@ export function buildBotUserRouter(): Router {
     const message = await MessageModel.findOne({ chatId, seq, deletedAt: { $exists: false } }).select('_id chatId seq senderId card').lean<Message | null>();
     const action = message?.card?.actions?.find((one) => one.id === actionId);
     if (!message || !action) return void res.status(404).json({ message: 'Esa acción ya no está en la tarjeta.' });
+    // A visit card's buttons open the phone's own screens (lv02, lv03); an app from before them never reaches agentes.
+    if (visitCardActionOf(action.id)) return void res.status(409).json({ error: 'outdated_app', message: 'Actualiza Lilachat para abrir la visita.' });
     const heard = await botHearsAction({ message, action: { id: action.id, value: action.value }, userId });
     if (!heard) return void res.status(404).json({ message: 'La app de esa tarjeta ya no está instalada.' });
     res.status(202).json({ ok: true });

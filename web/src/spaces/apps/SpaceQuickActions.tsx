@@ -8,6 +8,7 @@ import { AppActionList } from '../../chat/commands/AppActionList';
 import { AppFormDialog } from '../../chat/commands/AppFormDialog';
 import { EphemeralAnswers } from '../../chat/commands/EphemeralAnswers';
 import { spaceCommands } from '../../chat/commands/commandsApi';
+import { runVisitShortcut } from '../visits/visitShortcut';
 import { useAppAnswers } from '../../chat/commands/useAppAnswers';
 import { useSocketTurn } from '../../socketTurn';
 
@@ -64,7 +65,7 @@ export function SpaceQuickActions(props: { jwt: string; spaceId: string; spaceNa
     setOpen(true);
     if (!groups) void load();
   };
-  const run = (row: ShortcutRow) => void answers.runAction(row);
+  const run = (row: ShortcutRow) => void (runVisitShortcut(row, { jwt, spaceId }, answers.track) ?? answers.runAction(row));
   return (
     <>
       <button type="button" data-testid="btn-acciones-espacio" aria-label="Acciones rápidas" title="Acciones rápidas" onClick={show} className="grid h-9 w-9 place-items-center rounded-full bg-warning/10 text-warning hover:bg-warning/20">

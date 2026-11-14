@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ChevronRight, MapPinned } from 'lucide-react';
 import { watchVisitDoor } from '@lilachat/shared';
 import { VisitScreenWeb } from './VisitScreenWeb';
-import { askVisitDoor, type VisitPlaceRef } from './visitsApi';
+import { askVisitDoor, type VisitChatRef } from './visitsApi';
 
 /**
  * «Visitas técnicas» in the chat that is their door: the `visitas` channel or the 1:1 with the app
@@ -11,7 +11,7 @@ import { askVisitDoor, type VisitPlaceRef } from './visitsApi';
 export function useVisitDoor({ jwt, spaceId, chatId }: { jwt: string; spaceId?: string; chatId: string }): { strip: ReactNode; screen: ReactNode } {
   // The door is per chat: a new chat starts closed and is asked again.
   const [door, setDoor] = useState<{ chatId: string; open: boolean; showing: boolean }>({ chatId, open: false, showing: false });
-  const place = useMemo<VisitPlaceRef | null>(() => (spaceId ? { jwt, spaceId, chatId } : null), [jwt, spaceId, chatId]);
+  const place = useMemo<VisitChatRef | null>(() => (spaceId ? { jwt, spaceId, chatId } : null), [jwt, spaceId, chatId]);
   useEffect(() => {
     setDoor({ chatId, open: false, showing: false });
     if (!place) return undefined;

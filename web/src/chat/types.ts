@@ -95,6 +95,8 @@ export type ChatMessage = {
   location?: LiveLocation;
   /** A bot's card (`specs/BOTS-API.spec.md` §b): `body` carries its summary. */
   card?: BotCard;
+  /** What an app's message points to: a technical visit's card carries its id (lv01, agentes 14/11). */
+  clientRef?: { visitId?: string };
   /** A bot's photos and videos, drawn as an album (José via agentes 09/11). */
   files?: GalleryItem[];
   /** An app's answer sent to the channel by who asked: «José usó /clima» on top. */

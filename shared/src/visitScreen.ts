@@ -1,5 +1,5 @@
 import type { VisitPointDraft } from './siteVisit.js';
-import { addVisitPhoto, createdVisitIdOf, finishVisit, markVisitPoint, visitDraftResultOf, visitPdf, visitPointRequest, type VisitDraftResult, type VisitFlowDeps, type VisitSource } from './visitFlow.js';
+import { addVisitPhoto, createdVisitIdOf, finishVisit, markVisitPoint, saveVisitAnswers, visitDraftResultOf, visitPdf, visitPointRequest, type VisitDraftResult, type VisitFlowDeps, type VisitSource } from './visitFlow.js';
 
 /**
  * The visit's screen, the same on the phone and the web (designs lv01–lv03): which visit is open,
@@ -57,6 +57,7 @@ export function createVisitScreen<F>(deps: VisitScreenDeps<F>, startId: string |
       if (!marked.ok) return marked.message;
       return marked.photoFailed ? `Punto ${marked.n} guardado. ${marked.photoFailed}` : `Punto ${marked.n} guardado.`;
     }),
+    answer: (values: Record<string, string>) => run('Guardando…', async (visitId) => (await saveVisitAnswers(deps, visitId, values)).message),
     addPhoto: (photo: F, pointId?: string) => run('Subiendo la foto…', async (visitId) => {
       const sent = await addVisitPhoto(deps, visitId, photo, pointId);
       return sent.ok ? 'Foto agregada.' : sent.message;

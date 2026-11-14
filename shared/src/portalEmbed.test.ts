@@ -106,3 +106,27 @@ describe('creating a report in the editor (José 12/11: «en la web, el editor; 
     expect(reportEmbedCreatePath('w1', 'c 1', 's1')).toBe('/workspaces/w1/clients/c%201/services/s1/reports/embed');
   });
 });
+
+describe('the visit\'s croquis in Portal\'s embed (Portal 14/11, main 29a6e408)', () => {
+  const croquis = { url: 'https://www.constroad.com/embed/site-visit/6af86624b29826f4d5c7e082?vista=croquis#t=abc.DEF_123-x', expires_at: '2026-11-14T20:00:00.000Z' };
+
+  it('reads the croquis link when the caller asks for a visit', () => {
+    expect(embedLinkOf(croquis, prod, 'site-visit')).toEqual({ url: croquis.url, expiresAt: '2026-11-14T20:00:00.000Z' });
+  });
+
+  it('reads the visit\'s sheet too (the same path without «vista»)', () => {
+    const sheet = { ...croquis, url: 'https://www.constroad.com/embed/site-visit/6af86624b29826f4d5c7e082#t=abc' };
+    expect(embedLinkOf(sheet, prod, 'site-visit')?.url).toBe(sheet.url);
+  });
+
+  it('refuses a visit link where a report is asked, and any other view', () => {
+    expect(embedLinkOf(croquis, prod)).toBeNull();
+    expect(embedLinkOf(link, prod, 'site-visit')).toBeNull();
+    expect(embedLinkOf({ ...croquis, url: croquis.url.replace('vista=croquis', 'vista=admin') }, prod, 'site-visit')).toBeNull();
+    expect(embedLinkOf({ ...croquis, url: croquis.url.replace('#t=abc.DEF_123-x', '') }, prod, 'site-visit')).toBeNull();
+  });
+
+  it('reads «saved» with the visit\'s id', () => {
+    expect(embedEventOf({ type: 'portal-embed:saved', version: 1, visitId: 'v1', savedAt: '2026-11-14T14:00:00.000Z' })).toEqual({ type: 'saved', visitId: 'v1', savedAt: '2026-11-14T14:00:00.000Z' });
+  });
+});

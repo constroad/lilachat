@@ -13,11 +13,16 @@ export const EMBED_MIN_WIDTH_PX = 1024;
 export const EMBED_VERSION = 1;
 const PREFIX = 'portal-embed:';
 const EMBED_PATH = /^\/embed\/report\/[A-Za-z0-9_-]{1,64}$/;
+/** A visit's sheet or its croquis (Portal 14/11, `?vista=croquis`). */
+const VISIT_EMBED_PATH = /^\/embed\/site-visit\/[A-Za-z0-9_-]{1,64}$/;
+const VISIT_VIEWS = ['', '?vista=croquis'];
+/** What Portal's editor shows: a report (editor 2.0) or a technical visit. */
+export type EmbedKind = 'report' | 'site-visit';
 const TOKEN = /^#t=[A-Za-z0-9._~-]{1,4096}$/;
 
 export type EmbedLink = { url: string; expiresAt: string };
 export type EmbedEvent =
-  | { type: 'ready' } | { type: 'dirty'; dirty: boolean } | { type: 'saved'; reportId: string; savedAt: string }
+  | { type: 'ready' } | { type: 'dirty'; dirty: boolean } | { type: 'saved'; reportId: string; savedAt: string } | { type: 'saved'; visitId: string; savedAt: string }
   | { type: 'published'; reportId: string; pdfUrl?: string } | { type: 'closed' } | { type: 'error'; code: string };
 export type EmbedCommand = { type: `${typeof PREFIX}close-request`; version: typeof EMBED_VERSION } | { type: `${typeof PREFIX}theme`; version: typeof EMBED_VERSION; mode: 'light' | 'dark' };
 
@@ -34,25 +39,31 @@ function parsedUrl(value: unknown): URL | null {
 }
 
 /** Portal's answer `{url, expires_at}` (or this module's own `expiresAt`), only from an origin the caller frames, on the embed path, with its token. */
-export function embedLinkOf(raw: unknown, origins: readonly string[]): EmbedLink | null {
+const pathFits = (url: URL, kind: EmbedKind): boolean => (kind === 'report' ? EMBED_PATH.test(url.pathname) && !url.search : VISIT_EMBED_PATH.test(url.pathname) && VISIT_VIEWS.includes(url.search));
+
+export function embedLinkOf(raw: unknown, origins: readonly string[], kind: EmbedKind = 'report'): EmbedLink | null {
   const answer = record(raw);
   const url = parsedUrl(answer?.url);
   const expiresAt = text(answer?.expires_at ?? answer?.expiresAt);
   if (!url || !expiresAt || Number.isNaN(Date.parse(expiresAt))) return null;
-  if (!origins.includes(url.origin) || !EMBED_PATH.test(url.pathname) || url.search || !TOKEN.test(url.hash)) return null;
+  if (!origins.includes(url.origin) || !pathFits(url, kind) || !TOKEN.test(url.hash)) return null;
   return { url: url.href, expiresAt };
 }
 
 const https = (value: unknown): string | undefined => (typeof value === 'string' && value.startsWith('https://') ? value : undefined);
 
+/** «saved» names the report it saved, or the visit (Portal 14/11). */
+function savedEvent(reportId: string | null, visitId: string | null, savedAt: string | null): EmbedEvent | null {
+  if (!savedAt) return null;
+  if (reportId) return { type: 'saved', reportId, savedAt };
+  return visitId ? { type: 'saved', visitId, savedAt } : null;
+}
+
 function eventBody(kind: string, message: Raw): EmbedEvent | null {
   if (kind === 'ready' || kind === 'closed') return { type: kind };
   if (kind === 'dirty') return typeof message.dirty === 'boolean' ? { type: 'dirty', dirty: message.dirty } : null;
   const reportId = text(message.reportId);
-  if (kind === 'saved') {
-    const savedAt = text(message.savedAt);
-    return reportId && savedAt ? { type: 'saved', reportId, savedAt } : null;
-  }
+  if (kind === 'saved') return savedEvent(reportId, text(message.visitId), text(message.savedAt));
   if (kind === 'published') {
     const pdfUrl = https(message.pdfUrl);
     return reportId ? { type: 'published', reportId, ...(pdfUrl ? { pdfUrl } : {}) } : null;

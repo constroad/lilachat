@@ -49,7 +49,7 @@ async function uniqueCode(name: string): Promise<string> {
   throw new WorkspaceError(409, 'No se pudo generar un código. Prueba de nuevo.');
 }
 
-export function toClientWorkspace(workspace: Workspace, member: Pick<WorkspaceMember, 'role' | 'status'>) {
+export function toClientWorkspace(workspace: Workspace, member: Pick<WorkspaceMember, 'role' | 'status' | 'hidden'>) {
   return {
     id: String(workspace._id),
     name: workspace.name,
@@ -60,6 +60,8 @@ export function toClientWorkspace(workspace: Workspace, member: Pick<WorkspaceMe
     status: member.status,
     // The code is for those who can invite; a member asks an admin.
     ...(canManageMembers(member.role) ? { joinCode: workspace.joinCode, taskNotices: workspace.taskNotices === true } : {}),
+    // Hidden here, he only reads: the clients keep it out of the switcher (José 13/11, `hiddenMembers.ts`).
+    ...(member.hidden ? { incognito: true } : {}),
   };
 }
 
@@ -107,8 +109,26 @@ export async function joinByCode(userId: Types.ObjectId, code: unknown): Promise
   return { workspaceId: String(workspace._id), status };
 }
 
-export async function myWorkspaces(userId: Types.ObjectId) {
-  const memberships = await WorkspaceMemberModel.find({ userId, status: { $in: ['active', 'pending', 'deactivated'] } }).select('workspaceId role status addedBy hidden').lean();
+/**
+ * What the switcher lists. A space where I am hidden is not in it (José 13/11: «Ver incógnitos» is a
+ * setting of the superadmin, not a row of the switcher): I enter it from Ajustes, and `enterId`
+ * (the space open now) brings it back for as long as it is the open one.
+ */
+export async function myWorkspaces(userId: Types.ObjectId, enterId?: unknown) {
+  const entering = typeof enterId === 'string' && Types.ObjectId.isValid(enterId) ? enterId : '';
+  return listSpaces(userId, (member) => !member.hidden || (member.status === 'active' && String(member.workspaceId) === entering));
+}
+
+/** The spaces where I am hidden: the superadmin's «Ver incógnitos». */
+export async function incognitoWorkspaces(userId: Types.ObjectId) {
+  return listSpaces(userId, (member) => member.hidden === true && member.status === 'active');
+}
+
+type MembershipRow = Pick<WorkspaceMember, 'workspaceId' | 'role' | 'status' | 'addedBy' | 'hidden'>;
+
+async function listSpaces(userId: Types.ObjectId, keep: (member: MembershipRow) => boolean) {
+  const found = await WorkspaceMemberModel.find({ userId, status: { $in: ['active', 'pending', 'deactivated'] } }).select('workspaceId role status addedBy hidden').lean<MembershipRow[]>();
+  const memberships = found.filter(keep);
   const ids = memberships.map((m) => m.workspaceId);
   const [workspaces, counts, unread, extras] = await Promise.all([WorkspaceModel.find({ _id: { $in: ids }, deletedAt: { $exists: false } }).lean<Workspace[]>(), activeMembersOf(ids), unreadChatsOf(userId, ids), membershipExtras(userId, memberships)]);
   const byId = new Map(workspaces.map((w) => [String(w._id), w]));

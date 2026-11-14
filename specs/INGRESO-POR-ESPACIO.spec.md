@@ -237,6 +237,10 @@ verlo en el espacio. Es temporal: después pedirá que lo saquen.
   el detalle trae `incognito: true` para que web y APK cierren el compositor
   con «Estás en modo incógnito en este espacio: solo puedes leer.».
   Los mensajes de apps y de Lila (`skipMemberPermissions`) no pasan por ahí.
+  **El selector de espacios no lista un espacio donde estoy oculto** (José 13/11, corregido: «Ver incógnitos» va en
+  Ajustes del superadmin, no en el selector). Entro desde Ajustes → Superadmin → «Ver incógnitos»
+  (`GET /api/admin/incognito`); mientras ese espacio es el abierto, `GET /api/workspaces?incognito=<id>` lo trae
+  marcado `incognito: true`, y al abrir otro sale de la lista.
 - **Lo que sigue a la vista**, a propósito: sus mensajes firmados y su
   «escribiendo». Un 1:1 con él lo muestra, porque es la conversación con él.
   Los avisos de chat que él dispara («José agregó a Ana» en un canal) también.

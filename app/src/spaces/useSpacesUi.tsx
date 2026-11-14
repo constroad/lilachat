@@ -155,7 +155,7 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
   const enter = useCallback(async (spaceId: string | null) => {
     setSheet(null);
     // A space just created or joined is not in the old list (the fallback above would send it back to personal); a known one switches at once.
-    if (spaceId && !spaces?.some((space) => space.id === spaceId)) await reload();
+    if (spaceId && !spaces?.some((space) => space.id === spaceId)) await reload(spaceId);
     setCurrentSpaceId(spaceId);
   }, [reload, spaces]);
   const openChannel = useCallback((channel: ClientChannel) => {
@@ -303,6 +303,8 @@ export function useSpacesUi(params: { jwt: string; myUserId: string; me: { name:
     directoryTab,
     mentionsTab,
     openChannels: () => setSheet('channels'),
+    /** Opens a space by id: Ajustes → Superadmin → «Ver incógnitos» enters one the switcher does not list. */
+    enter: (spaceId: string | null) => void enter(spaceId),
     /** The space's part of the «Ajustes» tab (José, 24/10; design e-34). */
     settingsSection: current ? { space: current, apps: (apps.directory?.apps ?? []).filter((app) => app.installation).map((app) => app.name), open: (link: 'settings' | 'members' | 'channels' | 'apps' | 'invite' | 'switch') => setSheet(link === 'switch' ? 'switcher' : link) } : null,
     openInvite: () => setSheet('invite'),

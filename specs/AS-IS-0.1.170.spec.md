@@ -750,3 +750,38 @@ Lo que el E2E destapó, de Lilachat (web y APK, sin tocar el contrato):
 De agentes (sha 4453271, tras el reporte del E2E): una tarjeta con la misma operación y monto sale «Ya registrado»
 sin «Aprobar» (solo «Revisar gasto» y «Descartar»); el aviso «apruébalo igual» queda para el pago parecido por monto
 y fecha. En un recibo sin otro número, la serie-número es la operación.
+
+### Verificado de nuevo con el bundle publicado (14/11, web `index-DvCHasKo` y APK OTA e2e0680)
+
+Voucher B001-000780 de S/ 210 en Test #flujo-caja. **Web:** cabecera «GASTO» + «FALTA UN DATO» en una fila, botones
+«Revisar gasto» (144×36) y «Descartar» (122×36) lado a lado, la raíz del hilo con la foto (sin «Archivo»), formulario
+con «¿Proyecto o servicio?» desde el primer paso y sin aviso rojo. **APK:** lo mismo, y el recorrido entero: Servicio →
+«Mejoramiento vial Jr. Comercio…» → «Según partida» → 3 partidas (13.83 + 24.02 + 172.15 = 210.00, «Asignado S/ 210.00:
+todo el gasto») → «Registrar gasto» → tarjeta REGISTRADO con las 3 partidas. Defecto nuevo, arreglado: el subtítulo
+del formulario en la APK decía «Canal ## flujo-caja» (el nombre del canal ya trae «# »); `channelTag()`
+(`cabeceraDelChat.ts`) deja un solo «#» y la web no cambia.
+
+## 13/11 noche (5): «Ver incógnitos» está en Ajustes → Superadmin, no en el selector
+
+José corrigió el diseño: el selector de espacios **no** lleva «Ver incógnitos». Donde él es miembro oculto
+(`WorkspaceMember.hidden`), el selector simplemente no lista ese espacio; entra desde Ajustes.
+
+- **Server.** `myWorkspaces(userId, enterId?)` deja fuera las membresías `hidden`, salvo la del espacio que se pasa en
+  `GET /api/workspaces?incognito=<id>` (el espacio abierto, o el que está por abrirse); ese vuelve marcado
+  `incognito: true` (`toClientWorkspace`). `GET /api/admin/incognito` (solo superadmin, 403 a cualquier otro) lista los
+  espacios donde estoy oculto. Un id que no es de un espacio donde estoy oculto no agrega nada ni repite nada.
+  Cuentas, no-leídos y contadores salen de la misma lista, así que un espacio oculto tampoco enciende insignias.
+- **Clientes.** `ClientWorkspace.incognito?` y `withoutClosedIncognito(spaces, openId)` (shared): el espacio
+  incógnito solo queda en la lista mientras es el abierto; al abrir otro sale al instante, sin pedir al server. Web:
+  `currentSpace.ts` pide con el espacio abierto (`reload(openId?)`; `enter(id)` pasa el que va a abrir) y filtra lo
+  guardado. APK: lo mismo, y `createPrefStore().ready()` espera la lectura del espacio abierto antes de pedir o de
+  restaurar la lista guardada (sin eso, al abrir la app en frío el espacio incógnito se veía «cerrado» y la pantalla
+  volvía a Personal). Defecto de paso arreglado: un `set` hecho antes de terminar la lectura ya no lo pisa el valor viejo.
+- **UI.** Web: panel de Ajustes → bloque «Superadmin» (`SuperadminSettings.tsx`) con «Usuarios de Lilachat» y
+  «Ver incógnitos» (lista inline con «Entrar»; vacío, cargando y error con «Reintentar»). APK: Ajustes → rótulo
+  «Superadmin» → fila «Ver incógnitos» (`SuperadminSetting.tsx`, solo si `GET /api/admin` responde 200) → pantalla
+  `IncognitoScreen` con «Entrar», que abre el espacio y vuelve a Chats. En el espacio incógnito sigue valiendo lo de
+  siempre: solo lee (`INCOGNITO_COMPOSER`).
+- **Diseño.** El `inc-02-selector` de Stitch (selector con la fila «Ver incógnitos») queda sustituido por esta decisión:
+  la lista y la pantalla de Ajustes no tienen captura de Stitch (la generación de la pantalla se cortó a los 300 s).
+

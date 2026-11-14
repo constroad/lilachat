@@ -8,7 +8,12 @@ import { subirFotoRedonda } from '../chat/fotoDeGrupo';
 const url = (path: string) => `${BASE_URL}/api/workspaces${path}`;
 const post = (body: Record<string, unknown>) => ({ method: 'POST', body: JSON.stringify(body) });
 
-export const mySpaces = (jwt: string) => jsonCall<{ workspaces: ClientWorkspace[] }>(url(''), jwt);
+/** `openId`: the space open now, so a space where I am hidden comes back while I am in it (José 13/11). */
+export const mySpaces = (jwt: string, openId?: string | null) => jsonCall<{ workspaces: ClientWorkspace[] }>(url(openId ? `?incognito=${encodeURIComponent(openId)}` : ''), jwt);
+/** The superadmin's «Ver incógnitos»: the spaces where I am hidden, which the switcher does not list. */
+export const incognitoSpaces = (jwt: string) => jsonCall<{ workspaces: ClientWorkspace[] }>(`${BASE_URL}/api/admin/incognito`, jwt);
+/** Whether this account is the superadmin: 200 for him, 403 for anyone else. */
+export const adminAccess = (jwt: string) => jsonCall<{ superadmin: boolean }>(`${BASE_URL}/api/admin`, jwt);
 export const spaceInvitations = (jwt: string) => jsonCall<{ invitations: SpaceInvitation[] }>(url('/invitations'), jwt);
 export const acceptSpaceInvitation = (jwt: string, invitationId: string) => jsonCall<{ workspaceId: string }>(url(`/invitations/${invitationId}/accept`), jwt, post({}));
 export const previewSpace = (jwt: string, code: string) => jsonCall<WorkspacePreview>(url(`/preview/${encodeURIComponent(code)}`), jwt);

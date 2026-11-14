@@ -178,7 +178,7 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
   const enter = useCallback(async (next: string | null) => {
     setDialog(null);
     // A space just created or joined is not in the old list (the fallback would send it back to personal); a known one switches at once.
-    if (next && !spaces?.some((space) => space.id === next)) await reload();
+    if (next && !spaces?.some((space) => space.id === next)) await reload(next);
     setCurrentSpaceId(next);
   }, [reload, spaces]);
   const open = useCallback((chat: ChatSummary) => {

@@ -6,12 +6,13 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { ChatRail } from './chat/ChatRail';
 import { ListResizeHandle } from './chat/ListResizeHandle';
 import { readThemeChoice, saveThemeChoice, type ThemeChoice } from './ui/tema';
-import { Bell, BellOff, LogOut, UsersRound, WifiOff, X } from 'lucide-react';
+import { Bell, BellOff, LogOut, WifiOff, X } from 'lucide-react';
 import { useDismiss } from './ui/useDismiss';
 import { useSinConexion } from './pwa/conexion';
 import { InstallRow } from './pwa/IphoneInstallGuide';
 import { PullToRefresh } from './pwa/pullToRefresh';
 import { SpacePhoneLinks } from './spaces/SpacePhoneLinks';
+import { SuperadminSettings } from './spaces/SuperadminSettings';
 import type { Credential } from './api';
 import { AgendaOverlay } from './agenda/AgendaOverlay';
 import { CreateEventOverlay, CreatePollOverlay, NewChatOverlay, type ChatDestino } from './agenda/CreatePanels';
@@ -437,7 +438,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
       ) : null}
       {creando?.tipo === 'recordatorio' ? <CrearRecordatorio jwt={credential.jwt} chat={creando.chat} editando={creando.editando} onClose={() => setCreando(null)} onGuardado={() => setCreando(null)} /> : null}
 
-      {aviso === 'ajustes' ? <PanelDeAjustes jwt={credential.jwt} userId={credential.userId} onAviso={setAviso} onSalir={logout} onCerrar={() => setAviso('')} spaceLinks={panel === 'list' && espacios.current ? <SpacePhoneLinks space={espacios.current} onOpen={espacios.openWorkspace} onInvite={espacios.openInvite} /> : null} superadmin={superadmin} /> : aviso ? (
+      {aviso === 'ajustes' ? <PanelDeAjustes jwt={credential.jwt} userId={credential.userId} onAviso={setAviso} onSalir={logout} onCerrar={() => setAviso('')} spaceLinks={panel === 'list' && espacios.current ? <SpacePhoneLinks space={espacios.current} onOpen={espacios.openWorkspace} onInvite={espacios.openInvite} /> : null} superadmin={superadmin} onEnterIncognito={(spaceId) => { setAviso(''); espacios.enter(spaceId); }} /> : aviso ? (
         <p data-testid="aviso" role="status" className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-lg bg-on-surface px-4 py-2 text-sm text-surface">
           {aviso}
         </p>
@@ -469,6 +470,7 @@ function PanelDeAjustes(props: {
   onSalir: () => void;
   onCerrar: () => void;
   superadmin: boolean;
+  onEnterIncognito: (spaceId: string) => void;
   spaceLinks?: ReactNode;
 }) {
   const { jwt, onAviso, onSalir, onCerrar, superadmin } = props;
@@ -502,12 +504,7 @@ function PanelDeAjustes(props: {
         <span className="min-w-0 flex-1">{push === 'encendido' ? 'Desactivar notificaciones' : 'Activar notificaciones'}</span>
       </button>
       <InstallRow jwt={jwt} onDone={onCerrar} />
-      {superadmin ? (
-        <a href="/admin" data-testid="btn-usuarios-lilachat" className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-left text-sm hover:bg-background">
-          <UsersRound size={16} />
-          Usuarios de Lilachat
-        </a>
-      ) : null}
+      {superadmin ? <SuperadminSettings jwt={jwt} onEnter={props.onEnterIncognito} /> : null}
       <button type="button" data-testid="btn-salir" onClick={onSalir} className="flex min-h-[44px] w-full items-center gap-3 rounded-lg px-3 text-left text-sm text-error hover:bg-error/5">
         <LogOut size={16} />
         Cerrar sesión

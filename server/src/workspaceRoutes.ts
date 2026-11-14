@@ -58,7 +58,7 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
     codeTries.permitir(String(req.session!.userId)) ? next() : void res.status(429).json({ message: 'Demasiados intentos. Espera un minuto.' });
   router.use(requireSession);
 
-  router.get('/', handled(async (req, res) => res.json({ workspaces: await myWorkspaces(me(req)) })));
+  router.get('/', handled(async (req, res) => res.json({ workspaces: await myWorkspaces(me(req), req.query.incognito) })));
   router.post('/', handled(async (req, res) => res.status(201).json({ workspace: await createWorkspace(me(req), req.body ?? {}) })));
   router.get('/preview/:code', limited, handled(async (req, res) => res.json(await previewByCode(req.params.code))));
   router.post('/join', limited, handled(async (req, res) => res.json(await joinByCode(me(req), req.body?.code))));

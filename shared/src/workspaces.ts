@@ -102,6 +102,8 @@ export type ClientWorkspace = {
   addedBy?: { name?: string; phone: string };
   /** Without access: who to talk to (design `e1-14`). */
   admins?: { userId: string; name?: string; phone: string }[];
+  /** Hidden here, so I only read (José 13/11): not in the switcher, entered from Ajustes → Superadmin. */
+  incognito?: boolean;
 };
 
 /**
@@ -112,6 +114,16 @@ export type ClientWorkspace = {
 export function workspacesOf(body: unknown): ClientWorkspace[] | null {
   const list = (body as { workspaces?: unknown } | null)?.workspaces;
   return Array.isArray(list) ? (list as ClientWorkspace[]) : null;
+}
+
+/**
+ * The spaces a client keeps: an incognito one stays only while it is the open one (José 13/11).
+ * Leaving it for another space drops it from the switcher at once, with no new request.
+ * The same array comes back when there is nothing to drop, so nobody re-renders for nothing.
+ */
+export function withoutClosedIncognito<Space extends Pick<ClientWorkspace, 'id' | 'incognito'>>(spaces: Space[], openId: string | null): Space[] {
+  const closed = (space: Space) => space.incognito === true && space.id !== openId;
+  return spaces.some(closed) ? spaces.filter((space) => !closed(space)) : spaces;
 }
 
 /** A person of a space as `GET /api/workspaces/:id/members` returns it. */

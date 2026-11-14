@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canDeleteSpace, confirmsSpaceName, countdownLabel, invitedByLine, owesItsName, accountOwesItsName, spacesToOpen, canChangeRole, canDeactivate, canManageMembers, joinCodePrefix, makeJoinCode, normalizeChannelName, normalizeJoinCode, statusAfterJoin, workspacesOf } from './workspaces.js';
+import { canDeleteSpace, confirmsSpaceName, countdownLabel, invitedByLine, owesItsName, accountOwesItsName, spacesToOpen, canChangeRole, canDeactivate, canManageMembers, joinCodePrefix, makeJoinCode, normalizeChannelName, normalizeJoinCode, statusAfterJoin, withoutClosedIncognito, workspacesOf } from './workspaces.js';
 
 /** E1 (José, 20/10): personal account plus company spaces; join with a code or be added by phone. */
 describe('join code', () => {
@@ -141,5 +141,33 @@ describe('deleting a space', () => {
     expect(confirmsSpaceName('', '')).toBe(false);
     expect(confirmsSpaceName(undefined, 'Obras')).toBe(false);
     expect(confirmsSpaceName(42, '42')).toBe(false);
+  });
+});
+
+/** José 13/11: «Ver incógnitos» is a setting of the superadmin; the switcher only keeps the incognito space that is open. */
+describe('withoutClosedIncognito', () => {
+  const normal = { id: 'inframaq' };
+  const hidden = { id: 'globofast', incognito: true };
+  const otherHidden = { id: 'lilarte', incognito: true };
+
+  it('drops an incognito space that is not the open one', () => {
+    expect(withoutClosedIncognito([normal, hidden], 'inframaq')).toEqual([normal]);
+  });
+
+  it('keeps the incognito space that is open', () => {
+    expect(withoutClosedIncognito([normal, hidden], 'globofast')).toEqual([normal, hidden]);
+  });
+
+  it('drops every other incognito space when one is open', () => {
+    expect(withoutClosedIncognito([hidden, otherHidden, normal], 'lilarte')).toEqual([otherHidden, normal]);
+  });
+
+  it('keeps every normal space, whichever is open, in the same order', () => {
+    expect(withoutClosedIncognito([normal, { id: 'torre' }], null)).toEqual([normal, { id: 'torre' }]);
+  });
+
+  it('returns the very same list when there is nothing to drop', () => {
+    const list = [normal, hidden];
+    expect(withoutClosedIncognito(list, 'globofast')).toBe(list);
   });
 });

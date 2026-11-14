@@ -6,6 +6,7 @@ import { DeviceModel, InvitationModel, UserModel, type User } from './models.js'
 import { isSuperadmin } from './operators.js';
 import { asyncRoute, requireSession } from './requireSession.js';
 import { WorkspaceMemberModel } from './workspaceModels.js';
+import { incognitoWorkspaces } from './workspaces.js';
 
 /**
  * The superadmin's panel (José, 21/10): who is in Lilachat, when they joined
@@ -90,6 +91,8 @@ export function buildAdminRouter(): Router {
   }));
   // The web asks this to decide whether Ajustes shows the panel.
   router.get('/', (_req, res) => void res.json({ superadmin: true }));
+  // «Ver incógnitos» (José 13/11): the spaces where he is hidden, which the switcher does not list.
+  router.get('/incognito', asyncRoute(async (req, res) => void res.json({ workspaces: await incognitoWorkspaces(new Types.ObjectId(req.session!.userId)) })));
   router.get('/users', asyncRoute(async (req, res) => {
     const { q, page } = adminUsersQuery(req.query);
     const filter = { ...PEOPLE, ...searchFilter(q) };

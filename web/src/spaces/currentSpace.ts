@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
-import { withLiveUnread, workspacesOf, type ClientWorkspace } from '@lilachat/shared';
+import { withLiveUnread, withoutClosedIncognito, workspacesOf, type ClientWorkspace } from '@lilachat/shared';
 import { mySpaces } from './spacesApi';
 
 /** Which space the list shows (E1): `null` is the personal account. Remembered in this browser. */
@@ -35,6 +35,8 @@ export function useCurrentSpaceLogo(): string | null {
 
 export function setCurrentSpaceId(spaceId: string | null): void {
   currentId = spaceId;
+  // Leaving an incognito space takes it out of the switcher at once (José 13/11).
+  if (spaces) spaces = withoutClosedIncognito(spaces, spaceId);
   try {
     if (spaceId) localStorage.setItem(CURRENT_SPACE_KEY, spaceId);
     else localStorage.removeItem(CURRENT_SPACE_KEY);
@@ -53,7 +55,7 @@ const SAVED_SPACES_KEY = 'lilachat.espacios';
 function readSavedSpaces(userId: string): ClientWorkspace[] | null {
   try {
     const saved = JSON.parse(localStorage.getItem(SAVED_SPACES_KEY) ?? 'null') as { userId?: string; spaces?: ClientWorkspace[] } | null;
-    return saved?.userId === userId && Array.isArray(saved.spaces) ? saved.spaces : null;
+    return saved?.userId === userId && Array.isArray(saved.spaces) ? withoutClosedIncognito(saved.spaces, currentId) : null;
   } catch {
     return null;
   }
@@ -95,15 +97,16 @@ export function keepLiveUnread(spaceId: string, chats: readonly { unread: number
 }
 
 /** My spaces, shared by the rail, the header and the switcher. */
-export function useMySpaces(jwt: string, userId?: string): { spaces: ClientWorkspace[] | null; reload: () => Promise<void> } {
+export function useMySpaces(jwt: string, userId?: string): { spaces: ClientWorkspace[] | null; reload: (openId?: string | null) => Promise<void> } {
   // The first frame paints what this browser saw (a lazy, idempotent start of the module's list).
   if (spaces === null && userId) spaces = readSavedSpaces(userId);
   const current = useSyncExternalStore(subscribe, () => spaces);
-  const reload = useCallback(async () => {
+  // `openId`: the space about to open, so a hidden one entered from Ajustes is in the answer (José 13/11).
+  const reload = useCallback(async (openId?: string | null) => {
     if (!jwt) return;
     const turn = ++latestRequest;
     askedThisSession = true;
-    const response = await mySpaces(jwt);
+    const response = await mySpaces(jwt, openId ?? currentId);
     const list = response.ok ? workspacesOf(response.data) : null;
     if (!list || turn !== latestRequest) return;
     spaces = list;

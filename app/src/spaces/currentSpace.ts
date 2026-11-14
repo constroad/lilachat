@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
-import { workspacesOf, type ClientWorkspace } from '@lilachat/shared';
+import { withoutClosedIncognito, workspacesOf, type ClientWorkspace } from '@lilachat/shared';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createPrefStore } from '../ui/prefStore';
 import { mySpaces } from './spacesApi';
@@ -7,7 +7,6 @@ import { mySpaces } from './spacesApi';
 /** Which space the Chats tab shows (E1): `null` is the personal account. Remembered on the device. */
 const currentSpaceStore = createPrefStore<string | null>('lilachat.pref.space', (stored) => stored || null, null, (value) => value ?? '');
 export const useCurrentSpaceId = currentSpaceStore.use;
-export const setCurrentSpaceId = currentSpaceStore.set;
 /** The space the Chats tab shows right now, outside React (what «Compartir en» lists first). */
 export const getCurrentSpaceId = currentSpaceStore.get;
 
@@ -31,13 +30,26 @@ const SAVED_SPACES_KEY = 'lilachat:my-spaces';
 let askedThisRun = false;
 const announce = () => listeners.forEach((listener) => listener());
 
+/** Changing the open space; leaving an incognito one takes it out of the switcher at once (José 13/11). */
+export function setCurrentSpaceId(spaceId: string | null): void {
+  currentSpaceStore.set(spaceId);
+  if (!spaces) return;
+  const kept = withoutClosedIncognito(spaces, spaceId);
+  if (kept === spaces) return;
+  spaces = kept;
+  announce();
+}
+
 async function restoreSaved(userId: string): Promise<void> {
   const raw = await AsyncStorage.getItem(SAVED_SPACES_KEY).catch(() => null);
   if (!raw || spaces !== null) return;
   try {
     const saved = JSON.parse(raw) as { userId?: string; spaces?: ClientWorkspace[] };
     if (saved.userId !== userId || !Array.isArray(saved.spaces) || spaces !== null) return;
-    spaces = saved.spaces;
+    // The open space is read from the phone too: without waiting, an incognito space entered before closing the app would look closed.
+    const open = await currentSpaceStore.ready();
+    if (spaces !== null) return;
+    spaces = withoutClosedIncognito(saved.spaces, open);
     announce();
   } catch {
     // A broken copy is just not used: the server answers anyway.
@@ -52,12 +64,13 @@ export async function forgetMySpaces(): Promise<void> {
   await AsyncStorage.removeItem(SAVED_SPACES_KEY).catch(() => undefined);
 }
 
-export function useMySpaces(jwt: string, userId?: string): { spaces: ClientWorkspace[] | null; reload: () => Promise<void> } {
+export function useMySpaces(jwt: string, userId?: string): { spaces: ClientWorkspace[] | null; reload: (openId?: string | null) => Promise<void> } {
   const current = useSyncExternalStore(subscribe, () => spaces);
-  const reload = useCallback(async () => {
+  // `openId`: the space about to open, so a hidden one entered from Ajustes is in the answer (José 13/11).
+  const reload = useCallback(async (openId?: string | null) => {
     const turn = ++latestRequest;
     askedThisRun = true;
-    const response = await mySpaces(jwt);
+    const response = await mySpaces(jwt, openId ?? (await currentSpaceStore.ready()));
     const list = response.ok ? workspacesOf(response.data) : null;
     if (!list || turn !== latestRequest) return;
     spaces = list;

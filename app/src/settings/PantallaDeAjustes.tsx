@@ -28,6 +28,7 @@ import { SpaceSettingsSection, type SpaceSettingsLink } from '../spaces/SpaceSet
 import { MediaScreen } from '../media/MediaScreen';
 import { ReadReceiptsSetting } from './ReadReceiptsSetting';
 import { NoticePreviewSetting } from './NoticePreviewSetting';
+import { SuperadminSetting } from './SuperadminSetting';
 
 /**
  * La pestaña Ajustes (salió de `TabsShell`, que pasaba de 560 líneas). Listas
@@ -54,6 +55,8 @@ export function PantallaDeAjustes(props: {
   onAbrirDestacado: (chatId: string, seq: number) => void;
   /** «Medios» of the personal chats or of the space open (pending 38): its chat at that message. */
   media: { spaceId: string | null; spaceName?: string; onOpen: (item: MediaLibraryItem) => void };
+  /** Ajustes → Superadmin → «Ver incógnitos»: open a space the switcher does not list (José 13/11). */
+  onEnterIncognito: (spaceId: string) => void;
   /** The space open goes first (José, 24/10: the space's settings belong in this tab). */
   space: { space: ClientWorkspace; apps: readonly string[]; open: (link: Exclude<SpaceSettingsLink, 'media'>) => void } | null;
 }) {
@@ -158,6 +161,8 @@ export function PantallaDeAjustes(props: {
             onVerificar={() => void actualizaciones.verificar()}
           />
         </GrupoDeAjustes>
+
+        <SuperadminSetting jwt={credential.jwt} onEnter={props.onEnterIncognito} />
 
         <Rotulo>Cuenta</Rotulo>
         <GrupoDeAjustes>

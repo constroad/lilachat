@@ -85,3 +85,74 @@ describe('useCurrentSpaceLogo', () => {
     expect(logo.result.current).toBeNull();
   });
 });
+
+/**
+ * José 13/11 (corrected): a space where he is hidden is not in the switcher. He enters it from
+ * Ajustes → Superadmin; it stays in the list only while it is the open one.
+ */
+describe('an incognito space in my spaces', () => {
+  const saved = { userId: 'u1', spaces: [{ id: 'w1', name: 'Inframaq', status: 'active' }, { id: 'g1', name: 'Globofast', status: 'active', incognito: true }] };
+
+  afterEach(() => {
+    forgetMySpaces();
+    setCurrentSpaceId(null);
+    localStorage.clear();
+  });
+
+  it('is left out of what paints first when it is not the open space', () => {
+    localStorage.setItem('lilachat.espacios', JSON.stringify(saved));
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => undefined)));
+
+    const { result } = renderHook(() => useMySpaces('t', 'u1'));
+
+    expect(result.current.spaces?.map((space) => space.id)).toEqual(['w1']);
+  });
+
+  it('stays while it is the open space, and goes when another one is opened', () => {
+    setCurrentSpaceId('g1');
+    localStorage.setItem('lilachat.espacios', JSON.stringify(saved));
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => undefined)));
+    const { result } = renderHook(() => useMySpaces('t', 'u1'));
+    expect(result.current.spaces?.map((space) => space.id)).toEqual(['w1', 'g1']);
+
+    act(() => setCurrentSpaceId('w1'));
+
+    expect(result.current.spaces?.map((space) => space.id)).toEqual(['w1']);
+  });
+
+  it('asks the server with the open space, so the hidden one entered from Ajustes comes back', async () => {
+    setCurrentSpaceId('g1');
+    const fetchSpy = vi.fn(() => Promise.resolve(new Response(JSON.stringify({ workspaces: [{ id: 'g1', name: 'Globofast', status: 'active', incognito: true }] }), { status: 200 })));
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const { result } = renderHook(() => useMySpaces('t', 'u1'));
+
+    await waitFor(() => expect(result.current.spaces?.map((space) => space.id)).toEqual(['g1']));
+    expect(String((fetchSpy.mock.calls[0] as unknown[])[0])).toContain('/workspaces?incognito=g1');
+  });
+
+  it('asks with the space about to open, which is how a hidden one is entered', async () => {
+    const fetchSpy = vi.fn(() => Promise.resolve(new Response(JSON.stringify({ workspaces: [{ id: 'g1', name: 'Globofast', status: 'active', incognito: true }] }), { status: 200 })));
+    vi.stubGlobal('fetch', fetchSpy);
+    const { result } = renderHook(() => useMySpaces('t', 'u1'));
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      await result.current.reload('g1');
+    });
+
+    expect(String((fetchSpy.mock.calls[1] as unknown[])[0])).toContain('/workspaces?incognito=g1');
+    expect(result.current.spaces?.map((space) => space.id)).toEqual(['g1']);
+  });
+
+  it('asks plainly when no space is open', async () => {
+    const fetchSpy = vi.fn(() => Promise.resolve(new Response(JSON.stringify({ workspaces: [] }), { status: 200 })));
+    vi.stubGlobal('fetch', fetchSpy);
+
+    renderHook(() => useMySpaces('t', 'u1'));
+
+    await waitFor(() => expect(fetchSpy).toHaveBeenCalled());
+    expect(String((fetchSpy.mock.calls[0] as unknown[])[0])).not.toContain('incognito');
+  });
+});
+

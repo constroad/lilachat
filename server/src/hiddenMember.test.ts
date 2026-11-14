@@ -95,7 +95,7 @@ describe('a hidden member of a space', () => {
     expect(userIdsOf((await get('ana', `/api/workspaces/${space.id}/members`)).members)).toEqual([String(users.ana), String(users.beto)].sort());
     expect(userIdsOf((await get('jose', `/api/workspaces/${space.id}/members`)).members)).not.toContain(String(users.jose));
     expect((await get('ana', '/api/workspaces')).workspaces).toEqual([expect.objectContaining({ id: space.id, members: 2 })]);
-    expect((await get('jose', '/api/workspaces')).workspaces).toEqual([expect.objectContaining({ id: space.id, members: 2, role: 'owner' })]);
+    expect((await get('jose', `/api/workspaces?incognito=${space.id}`)).workspaces).toEqual([expect.objectContaining({ id: space.id, members: 2, role: 'owner', incognito: true })]);
     expect((await get('carla', `/api/workspaces/preview/${space.joinCode}`)).members).toBe(2);
   });
 
@@ -158,5 +158,76 @@ describe('a hidden member of a space', () => {
     expect(mails).toEqual([expect.objectContaining({ to: 'nicole@globofast.pe', spaceName: 'Globofast' })]);
     expect(mails[0]).not.toHaveProperty('inviterName');
     expect((await invitationsOf(nicole._id)).map((invite) => invite.invitedBy)).toEqual([null]);
+  });
+});
+
+/**
+ * José 13/11 (corrected): «Ver incógnitos» is a setting of the superadmin, not a row of the space
+ * switcher. The switcher simply does not list a space where its owner is hidden; he enters it from
+ * Ajustes, and only then does it come back to his list (flagged, so the clients can drop it again).
+ */
+describe('the spaces of someone hidden in one of them', () => {
+  it('leaves the hidden space out of the switcher, and keeps it for everyone else', async () => {
+    const space = await spaceWithHiddenOwner();
+
+    expect((await get('jose', '/api/workspaces')).workspaces).toEqual([]);
+    expect((await get('ana', '/api/workspaces')).workspaces).toEqual([expect.objectContaining({ id: space.id })]);
+  });
+
+  it('keeps his other spaces in the switcher', async () => {
+    const hidden = await spaceWithHiddenOwner();
+    const own = (await request(app).post('/api/workspaces').set('Authorization', jwt('jose')).send({ name: 'Inframaq' }).expect(201)).body.workspace as { id: string };
+
+    const ids = ((await get('jose', '/api/workspaces')).workspaces as { id: string }[]).map((space) => space.id);
+
+    expect(ids).toEqual([own.id]);
+    expect(ids).not.toContain(hidden.id);
+  });
+
+  it('brings the space back, flagged, when he enters it', async () => {
+    const space = await spaceWithHiddenOwner();
+
+    const list = (await get('jose', `/api/workspaces?incognito=${space.id}`)).workspaces as { id: string; incognito?: boolean }[];
+
+    expect(list).toEqual([expect.objectContaining({ id: space.id, incognito: true })]);
+  });
+
+  it('does not flag or repeat a space the asker is not hidden in', async () => {
+    const space = await spaceWithHiddenOwner();
+
+    const ana = (await get('ana', `/api/workspaces?incognito=${space.id}`)).workspaces as { id: string; incognito?: boolean }[];
+    const carla = (await get('carla', `/api/workspaces?incognito=${space.id}`)).workspaces;
+
+    expect(ana).toHaveLength(1);
+    expect(ana[0]?.incognito).toBeUndefined();
+    expect(carla).toEqual([]);
+  });
+
+  it('ignores an id that is not one', async () => {
+    const space = await spaceWithHiddenOwner();
+
+    expect((await get('ana', '/api/workspaces?incognito=zzz')).workspaces).toEqual([expect.objectContaining({ id: space.id })]);
+  });
+});
+
+describe('GET /api/admin/incognito', () => {
+  it('lists the spaces where the superadmin is hidden, flagged and counted without him', async () => {
+    const space = await spaceWithHiddenOwner();
+
+    const body = await get('jose', '/api/admin/incognito');
+
+    expect(body.workspaces).toEqual([expect.objectContaining({ id: space.id, name: 'Globofast', incognito: true, members: 2, role: 'owner' })]);
+  });
+
+  it('lists nothing when he is hidden nowhere', async () => {
+    await request(app).post('/api/workspaces').set('Authorization', jwt('jose')).send({ name: 'Inframaq' }).expect(201);
+
+    expect((await get('jose', '/api/admin/incognito')).workspaces).toEqual([]);
+  });
+
+  it('is only for the superadmin', async () => {
+    await spaceWithHiddenOwner();
+
+    await request(app).get('/api/admin/incognito').set('Authorization', jwt('ana')).expect(403);
   });
 });

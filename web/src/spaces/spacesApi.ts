@@ -7,7 +7,10 @@ import { shrinkPhotoBlob } from '../chat/shrinkPhoto';
 /** The company spaces (E1) and their channels (E2), the same `/api/workspaces` the phone uses (§72). */
 const path = (rest: string) => `/workspaces${rest}`;
 
-export const mySpaces = (jwt: string) => api<{ workspaces: ClientWorkspace[] }>(path(''), { jwt });
+/** `openId`: the space open now, so a space where I am hidden comes back while I am in it (José 13/11). */
+export const mySpaces = (jwt: string, openId?: string | null) => api<{ workspaces: ClientWorkspace[] }>(path(openId ? `?incognito=${encodeURIComponent(openId)}` : ''), { jwt });
+/** The superadmin's «Ver incógnitos»: the spaces where I am hidden, which the switcher does not list. */
+export const incognitoSpaces = (jwt: string) => api<{ workspaces: ClientWorkspace[] }>('/admin/incognito', { jwt });
 export const spaceInvitations = (jwt: string) => api<{ invitations: SpaceInvitation[] }>(path('/invitations'), { jwt });
 export const acceptSpaceInvitation = (jwt: string, invitationId: string) => api<{ workspaceId: string }>(path(`/invitations/${invitationId}/accept`), { jwt, method: 'POST' });
 export const previewSpace = (jwt: string, code: string) => api<WorkspacePreview>(path(`/preview/${encodeURIComponent(code)}`), { jwt });

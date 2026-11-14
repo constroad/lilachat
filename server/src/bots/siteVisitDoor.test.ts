@@ -89,11 +89,10 @@ describe('the visit\'s door', () => {
     expect(received[0]?.data).not.toHaveProperty('visita_id');
     expect(answered.body.visits).toEqual([expect.objectContaining({ id: VISIT })]);
   });
-  it('the chat asks whether it is a door without reaching agentes', async () => {
+  it('while the screens are not lv01–lv04 the chat is told no door, and agentes is not asked', async () => {
     const doorOf = (chatId: Types.ObjectId) => request(app).get(`/api/workspaces/${spaceId}/visits/door`).query({ chat_id: String(chatId) }).set(auth(ana)).expect(200);
-    expect((await doorOf(visitsChannel)).body).toEqual({ open: true });
-    expect((await doorOf(direct)).body).toEqual({ open: true });
-    expect((await doorOf(general)).body).toEqual({ open: false });
+    expect((await doorOf(visitsChannel)).body).toEqual({ open: false });
+    expect((await doorOf(direct)).body).toEqual({ open: false });
     expect(received).toHaveLength(0);
   });
   it('any other channel is no door: 404 and nothing reaches agentes', async () => {
@@ -105,14 +104,13 @@ describe('the visit\'s door', () => {
     const bea = (await UserModel.create({ phone: '51933333333', name: 'Bea' }))._id as Types.ObjectId;
     await WorkspaceMemberModel.create({ workspaceId: spaceId, userId: bea, phone: '51933333333', role: 'member', status: 'active' });
     await ChatModel.updateOne({ _id: visitsChannel }, { $push: { members: { userId: bea, role: 'member' } } });
-    const doorFor = (userId: Types.ObjectId) => request(app).get(`/api/workspaces/${spaceId}/visits/door`).query({ chat_id: String(visitsChannel) }).set(auth(userId)).expect(200);
+    const draftFor = (userId: Types.ObjectId) => request(app).post(`/api/workspaces/${spaceId}/visits/draft`).set(auth(userId)).send({ chat_id: String(visitsChannel) });
     // Act + Assert: only Ana is chosen
     await BotInstallationModel.updateOne({}, { $set: { [`itemSettings.${itemKey('shortcut', SITE_VISIT_SHORTCUT)}.who`]: { kind: 'people', userIds: [String(ana)] } } });
-    expect((await doorFor(bea)).body).toEqual({ open: false });
+    await draftFor(bea).expect(404);
     // Untouched: off in every channel
     await BotInstallationModel.updateOne({}, { $set: { itemSettings: {} } });
-    expect((await doorFor(ana)).body).toEqual({ open: false });
-    await draftOf({ chat_id: String(visitsChannel) }).expect(404);
+    await draftFor(ana).expect(404);
     expect(received).toHaveLength(0);
   });
   it('a door, not a command: the ⚡ and «/» do not offer it', async () => {

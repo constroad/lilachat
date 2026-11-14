@@ -12,6 +12,8 @@ import { validateFormSpec, type AppForm, type FormSchema } from './appForms.js';
  * turns it on in «Comandos» and picks the 1:1, the channels and who. Not a command: never offered in the ⚡ or «/».
  */
 export const SITE_VISIT_SHORTCUT = 'visita_tecnica';
+/** The phone's visit screens follow lv01–lv04 (the card in the chat); until then the door answers closed. */
+export const SITE_VISIT_SCREENS_READY: boolean = false;
 /** Portal: the place is approximate past 15 m. */
 export const VISIT_APPROXIMATE_M = 15;
 export const VISIT_POINT_NOTE_MAX = 200;

@@ -25,7 +25,7 @@ import { type MediaUploader } from './mediaClient.js';
 import { defaultMediaUploader } from './localMediaUploader.js';
 import { multerDeAvatar, subirFotoRedonda } from './subirAvatar.js';
 import multer from 'multer';
-import { CUSTOM_EMOJI_MAX_BYTES } from '@lilachat/shared';
+import { CUSTOM_EMOJI_MAX_BYTES, SITE_VISIT_SCREENS_READY } from '@lilachat/shared';
 import { addCustomEmoji, listCustomEmojis, removeCustomEmoji } from './customEmojiCatalog.js';
 import { clientRecords, listClients } from './bots/botClients.js';
 import { clientAccount, clientReportEmbed, clientReportEmbedNew, clientReportPdf, clientServiceBilling, clientServiceDetail, clientServiceFiles } from './bots/clientFiles.js';
@@ -158,7 +158,8 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
   // José 13/11 (contract with agentes 14/11): a technical visit from its channel or the 1:1 with the app. The document…
   // Whether this chat is a visits door (the `visitas` topic's channel or the 1:1 with the app): no call to agentes.
   router.get('/:id/visits/door', handled(async (req, res) => {
-    res.json({ open: Boolean(await visitDoorOf(req.params.id!, req.query.chat_id, me(req))) });
+    // José 14/11: the strip and its screen are not lv01–lv04 (the card in the reports channel). Hidden until rebuilt.
+    res.json({ open: SITE_VISIT_SCREENS_READY && Boolean(await visitDoorOf(req.params.id!, req.query.chat_id, me(req))) });
   }));
   router.post('/:id/visits/draft', handled(async (req, res) => {
     const found = await siteVisitDraft(req.params.id!, me(req), req.body);

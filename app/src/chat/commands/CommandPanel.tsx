@@ -1,12 +1,13 @@
-import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Slash } from 'lucide-react-native';
 import type { CommandGroup } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
+import { MONO_FONT } from '../../ui/monoFont';
 import { useColores } from '../../ui/tema';
 
 const PANEL_MAX_HEIGHT = 300;
 const APP_AVATAR = 20;
-const MONO = Platform.select({ android: 'monospace', ios: 'Menlo', default: 'monospace' });
+const MONO = MONO_FONT;
 
 /**
  * «Comandos rápidos» over the bar (design `e-20-comandos-barra-app`), grouped

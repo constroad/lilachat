@@ -4,6 +4,7 @@ import { Image } from 'expo-image';
 import Svg, { Polyline } from 'react-native-svg';
 import { Building2 } from 'lucide-react-native';
 import { routeTilesFor, VISIT_MAP_LOOK, visitMapOf, type BotBlock } from '@lilachat/shared';
+import { MONO_FONT } from '../../ui/monoFont';
 import { useColores } from '../../ui/tema';
 
 /** OpenStreetMap asks every app to say who it is; a generic client gets blocked. */
@@ -52,7 +53,7 @@ function VisitMapFrame({ block, width }: { block: Extract<BotBlock, { type: 'map
       {visit.badge ? (
         <View testID="mapa-gps" className="absolute bottom-1.5 left-1.5 flex-row items-center gap-1 rounded-md bg-white/90 px-1.5 py-0.5">
           <View className="h-1.5 w-1.5 rounded-full bg-en-linea" />
-          <Text className="font-mono text-[10px] font-semibold text-black/80">{visit.badge}</Text>
+          <Text className="text-[10px] font-semibold text-black/80" style={{ fontFamily: MONO_FONT }}>{visit.badge}</Text>
         </View>
       ) : null}
       <Text className="absolute bottom-0 right-0 bg-white/80 px-1 text-[9px] text-black/70">© OpenStreetMap</Text>
@@ -64,7 +65,7 @@ function VisitMapFrame({ block, width }: { block: Extract<BotBlock, { type: 'map
 export function VisitMap({ block }: { block: Extract<BotBlock, { type: 'map' }> }) {
   const [width, setWidth] = useState(0);
   return (
-    <View testID="bloque-mapa" onLayout={(event) => setWidth(Math.round(event.nativeEvent.layout.width))} className="overflow-hidden rounded-lg border border-outline/20 bg-background" style={{ height: VISIT_MAP_LOOK.height }}>
+    <View testID="bloque-mapa" onLayout={(event) => setWidth(Math.round(event.nativeEvent.layout.width))} className="overflow-hidden rounded-[8px] border border-outline/20 bg-background" style={{ height: VISIT_MAP_LOOK.height }}>
       {width ? <VisitMapFrame block={block} width={width} /> : null}
     </View>
   );

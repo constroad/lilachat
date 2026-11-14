@@ -2,6 +2,7 @@ import { Text, View } from 'react-native';
 import { ClipboardList, MapPin } from 'lucide-react-native';
 import { figureParts, visitKickerParts, type BotBlock } from '@lilachat/shared';
 import { TONE_CLASS, TONE_COLOR } from '../../chat/botBlocks/tones';
+import { MONO_FONT } from '../../ui/monoFont';
 import { useColores } from '../../ui/tema';
 
 type TextBlock = Extract<BotBlock, { type: 'text' }>;
@@ -12,7 +13,7 @@ export function VisitKicker({ kicker }: { kicker?: string }) {
   const { lead, code } = visitKickerParts(kicker);
   return (
     <Text numberOfLines={1} className="min-w-0 flex-1 text-[11px] font-bold uppercase tracking-[1px] text-primary">
-      {lead}{code ? <Text className="font-mono font-semibold tracking-normal text-on-surface-variant">{code}</Text> : null}
+      {lead}{code ? <Text className="font-semibold tracking-normal text-on-surface-variant" style={{ fontFamily: MONO_FONT }}>{code}</Text> : null}
     </Text>
   );
 }
@@ -48,7 +49,7 @@ function FigureValue({ value, accent }: { value: string; accent: boolean }) {
   const { count, rest } = figureParts(value);
   return (
     <Text className={`mt-0.5 text-[20px] font-bold ${accent ? 'text-primary' : 'text-on-surface'}`} style={{ fontVariant: ['tabular-nums'] }}>
-      {count}{rest ? <Text className="font-mono text-[13px] font-normal text-on-surface-variant">{` ${rest}`}</Text> : null}
+      {count}{rest ? <Text className="text-[13px] font-normal text-on-surface-variant" style={{ fontFamily: MONO_FONT }}>{` ${rest}`}</Text> : null}
     </Text>
   );
 }
@@ -56,7 +57,7 @@ function FigureValue({ value, accent }: { value: string; accent: boolean }) {
 /** The figures in one tinted row, split by thin lines (lv01): kicker on top, the number under it. */
 export function VisitFigures({ block }: { block: TilesBlock }) {
   return (
-    <View testID="visita-cifras" className="flex-row rounded-lg bg-surface-variant/60">
+    <View testID="visita-cifras" className="flex-row rounded-[8px] bg-surface-variant/60">
       {block.items.map((tile, index) => (
         <View key={`${tile.label}-${index}`} className={`min-w-0 flex-1 items-center px-2 py-2.5 ${index ? 'border-l border-outline/15' : ''}`}>
           <Text numberOfLines={1} className="text-[10px] font-bold uppercase tracking-[1px] text-on-surface-variant">{tile.label}</Text>

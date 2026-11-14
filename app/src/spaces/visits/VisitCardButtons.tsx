@@ -36,7 +36,7 @@ export function VisitCardButtons(props: { actions: CardAction[]; sent: SentActio
         return (
           <Pressable key={action.id} testID={`accion-tarjeta-${action.id}`} disabled={sent !== null} onPress={() => props.onPress(action)} style={{ width: wide ? '100%' : '48.5%' }} className={`min-h-[56px] flex-row items-center justify-center gap-2 rounded-[10px] px-2 ${primary ? 'bg-primary' : 'border border-outline/25 bg-surface'} ${sent !== null ? 'opacity-60' : ''}`}>
             {Icon ? <Icon size={BUTTON_ICON} color={primary ? colors['on-primary'] : colors[VISIT_ICON[visit!].tone]} /> : null}
-            <Text numberOfLines={1} className={`text-[13px] font-bold uppercase ${primary ? 'text-on-primary' : 'text-on-surface'}`}>{labelOf(action, sent)}</Text>
+            <Text numberOfLines={2} className={`shrink text-center text-[13px] font-bold uppercase ${primary ? 'text-on-primary' : 'text-on-surface'}`}>{labelOf(action, sent)}</Text>
           </Pressable>
         );
       })}

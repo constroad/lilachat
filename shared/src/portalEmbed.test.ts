@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EMBED_MIN_WIDTH_PX, PORTAL_EMBED_ORIGINS, createsInEmbed, embedCloseRequest, embedCreateRequest, embedErrorLine, embedEventOf, embedLinkOf, embedReportIdOf, embedTheme, opensEmbed, reportEmbedCreatePath } from './portalEmbed.js';
+import { EMBED_MIN_WIDTH_PX, PORTAL_EMBED_ORIGINS, createsInEmbed, embedCloseRequest, embedCreateRequest, nativeEmbedCommand, nativeEmbedEventOf, embedErrorLine, embedEventOf, embedLinkOf, embedReportIdOf, embedTheme, opensEmbed, reportEmbedCreatePath } from './portalEmbed.js';
 
 /** Portal's editor 2.0 framed in Lilachat web (Portal 11/11: `/embed/report/<id>#t=<token>`, messages v1). */
 const prod = [PORTAL_EMBED_ORIGINS.production];
@@ -128,5 +128,22 @@ describe('the visit\'s croquis in Portal\'s embed (Portal 14/11, main 29a6e408)'
 
   it('reads «saved» with the visit\'s id', () => {
     expect(embedEventOf({ type: 'portal-embed:saved', version: 1, visitId: 'v1', savedAt: '2026-11-14T14:00:00.000Z' })).toEqual({ type: 'saved', visitId: 'v1', savedAt: '2026-11-14T14:00:00.000Z' });
+  });
+});
+
+describe('the bridge with the APK\'s WebView (Portal 8d2fe4a5: window.ReactNativeWebView)', () => {
+  it('reads Portal\'s message as the JSON text the WebView hands over', () => {
+    expect(nativeEmbedEventOf(JSON.stringify({ type: 'portal-embed:closed', version: 1 }))).toEqual({ type: 'closed' });
+    expect(nativeEmbedEventOf(JSON.stringify({ type: 'portal-embed:dirty', version: 1, dirty: true }))).toEqual({ type: 'dirty', dirty: true });
+  });
+
+  it('ignores what is not JSON or not Portal\'s', () => {
+    expect(nativeEmbedEventOf('not json')).toBeNull();
+    expect(nativeEmbedEventOf(JSON.stringify({ type: 'other', version: 1 }))).toBeNull();
+    expect(nativeEmbedEventOf(JSON.stringify({ type: 'portal-embed:closed', version: 2 }))).toBeNull();
+  });
+
+  it('writes the close request as the text the WebView posts', () => {
+    expect(JSON.parse(nativeEmbedCommand(embedCloseRequest()))).toEqual({ type: 'portal-embed:close-request', version: 1 });
   });
 });

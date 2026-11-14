@@ -126,3 +126,15 @@ export function embedCreateRequest(type: string, responsible: string): EmbedCrea
 }
 export const reportEmbedCreatePath = (spaceId: string, clientId: string, serviceId: string): string =>
   `/workspaces/${spaceId}/clients/${encodeURIComponent(clientId)}/services/${encodeURIComponent(serviceId)}/reports/embed`;
+
+/** Portal's message as the APK's WebView hands it over (JSON text, Portal 8d2fe4a5); null for anything else. */
+export function nativeEmbedEventOf(data: string): EmbedEvent | null {
+  try {
+    return embedEventOf(JSON.parse(data));
+  } catch {
+    return null;
+  }
+}
+
+/** A command to Portal from the APK: `postMessage` of a WebView takes text. */
+export const nativeEmbedCommand = (command: EmbedCommand): string => JSON.stringify(command);

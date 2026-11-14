@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { nextPointNumber, type VisitCardAction } from '@lilachat/shared';
 import { openWebCamera } from '../../chat/camera/cameraRequests';
+import { devicePlaceNow } from '../clients/reports/devicePlace';
 import { prepared } from '../clients/useDriveUpload';
 import { usePortalFileViewer } from '../clients/PortalFileViewer';
 import { MarkPointWeb } from './MarkPointWeb';
@@ -25,7 +26,10 @@ function useQuickAction(active: Active, visit: ReturnType<typeof useVisit>, open
     const runs: Record<string, () => Promise<void>> = {
       photo: async () => {
         const file = await openWebCamera({ title: 'Foto de la visita' });
-        if (file) await visit.screen.addPhoto((await prepared(file)).source);
+        if (!file) return;
+        // Where and when it was taken: Portal draws it as «F» on the card's map (43a1f701).
+        const where = await devicePlaceNow();
+        await visit.screen.addPhoto((await prepared(file)).source, undefined, { lat: where.lat, lng: where.lng, takenAt: where.at });
       },
       finish: () => visit.screen.finish(),
       pdf: async () => {

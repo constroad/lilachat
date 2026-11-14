@@ -22,4 +22,21 @@ describe('the visit interview on the web', () => {
     // Assert
     expect(onAnswer).toHaveBeenCalledWith({ r02: 'Arena' });
   });
+  it('a written answer (the area in m²) is saved when the field is left, only if it changed', () => {
+    // Arrange
+    const section = document.sections.find((one) => one.id === 'entrevista')!;
+    const form = document.forms[section.form!]!;
+    const withArea = { ...document, forms: { ...document.forms, [section.form!]: { ...form, properties: { ...form.properties, r99: { type: 'string', title: 'Área aproximada', 'x-unit': 'm²' } } } } };
+    const onAnswer = vi.fn();
+    render(<VisitInterviewWeb document={withArea} busy={false} onAnswer={onAnswer} onClose={() => undefined} />);
+    const field = screen.getByTestId('respuesta-r99');
+    // Act
+    fireEvent.blur(field);
+    fireEvent.change(field, { target: { value: '1200' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    // Assert
+    expect(screen.getByTestId('pregunta-r99')).toHaveTextContent('m²');
+    expect(onAnswer).toHaveBeenCalledTimes(1);
+    expect(onAnswer).toHaveBeenCalledWith({ r99: '1200' });
+  });
 });

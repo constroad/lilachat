@@ -21,6 +21,16 @@ describe('the interview of lv03', () => {
     expect(interview.total).toBe(interview.questions.length);
     expect(interview.next).toBe('r02');
   });
+  it('a question without options is written, with its unit (Portal: «Área aproximada», x-unit m²)', () => {
+    // Arrange
+    const section = document.sections.find((one) => one.id === 'entrevista')!;
+    const form = document.forms[section.form!]!;
+    const withArea = { ...document, forms: { ...document.forms, [section.form!]: { ...form, properties: { ...form.properties, r99: { type: 'string', title: 'Área aproximada', 'x-unit': 'm²', maxLength: 200 } } } } };
+    // Act
+    const area = interviewOf(withArea)!.questions.find((question) => question.key === 'r99')!;
+    // Assert
+    expect(area).toMatchObject({ options: [], unit: 'm²', maxLength: 200 });
+  });
   it('a visit without interview questions has no interview', () => {
     const empty = { ...document, sections: document.sections.filter((section) => section.id !== 'entrevista') };
     expect(interviewOf(empty)).toBeNull();

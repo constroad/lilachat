@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { ArrowDown, ArrowLeft, Check, ClipboardCheck } from 'lucide-react';
 import { interviewOf, type InterviewOption, type InterviewQuestion, type VisitDocument } from '@lilachat/shared';
 
@@ -54,6 +54,21 @@ function OptionChip({ question, option, busy, binary, onChoose }: { question: In
 
 const YES_NO = /^(s[ií]|no)$/i;
 
+/** A question without options (Portal: «Área aproximada», m²): written, saved when the field is left or on Enter. */
+function WrittenAnswer({ question, busy, onChoose }: { question: InterviewQuestion; busy: boolean; onChoose: (value: string) => void }) {
+  const [text, setText] = useState(question.value ?? '');
+  const save = () => {
+    const value = text.trim();
+    if (value && value !== (question.value ?? '')) onChoose(value);
+  };
+  return (
+    <label className="mt-3 flex min-h-[56px] items-center gap-2 rounded-lg border-2 border-outline/15 bg-surface px-3 focus-within:border-primary">
+      <input data-testid={`respuesta-${question.key}`} value={text} disabled={busy} maxLength={question.maxLength} inputMode={question.unit ? 'decimal' : 'text'} placeholder="Escribe la respuesta" onChange={(event) => setText(event.target.value)} onBlur={save} onKeyDown={(event) => event.key === 'Enter' && save()} className="min-w-0 flex-1 bg-transparent text-[16px] font-semibold text-on-surface outline-none placeholder:font-normal placeholder:text-on-surface-variant" />
+      {question.unit ? <span className="shrink-0 text-[14px] font-semibold text-on-surface-variant">{question.unit}</span> : null}
+    </label>
+  );
+}
+
 function QuestionCard({ question, busy, onChoose }: { question: InterviewQuestion; busy: boolean; onChoose: (value: string) => void }) {
   const binary = question.options.length === 2 && question.options.every((option) => YES_NO.test(option.label));
   return (
@@ -63,9 +78,11 @@ function QuestionCard({ question, busy, onChoose }: { question: InterviewQuestio
         {question.value !== undefined ? <span className="rounded-md border border-en-linea/30 bg-en-linea/10 px-2 py-0.5 text-[11px] font-bold uppercase text-en-linea">Respondida</span> : null}
       </div>
       <h3 className="mt-1 text-[16px] font-bold text-on-surface">{question.title}</h3>
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        {question.options.map((option) => <OptionChip key={option.value} question={question} option={option} busy={busy} binary={binary} onChoose={onChoose} />)}
-      </div>
+      {question.options.length ? (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {question.options.map((option) => <OptionChip key={option.value} question={question} option={option} busy={busy} binary={binary} onChoose={onChoose} />)}
+        </div>
+      ) : <WrittenAnswer question={question} busy={busy} onChoose={onChoose} />}
     </section>
   );
 }

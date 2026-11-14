@@ -4,7 +4,7 @@ import type { FormSubmitReply } from './appActions.js';
 import { NEW_VISIT, VISIT_WITH_ID } from './siteVisit.fixture.js';
 import { openVisitRowsOf, visitDocumentOf } from './siteVisit.js';
 import { isPortalUploadTicket } from './driveUpload.js';
-import { addVisitPhoto, finishVisit, markVisitPoint, visitDraftResultOf, visitPdf, visitPointRequest, createdVisitIdOf, saveVisitAnswers, type VisitFlowDeps } from './visitFlow.js';
+import { addVisitPhoto, finishVisit, markVisitPoint, visitDraftResultOf, visitPdf, visitPhotoFields, visitPointRequest, createdVisitIdOf, saveVisitAnswers, type VisitFlowDeps } from './visitFlow.js';
 
 const VISIT = '65f0000000000000000000a1';
 const POINT = '0b6f1a4e-2c3d-4e5f-8a9b-1c2d3e4f5a6b';
@@ -54,10 +54,10 @@ describe('marking a point', () => {
     const send = vi.fn(async () => ({ status: 201 }));
     const deps = depsOf(answered({ puntoId: POINT, n: 2, upload: TICKET }), send);
     // Act
-    const outcome = await markVisitPoint(deps, POINT_REQUEST, 'photo.jpg');
+    const outcome = await markVisitPoint(deps, POINT_REQUEST, 'photo.jpg', '2026-11-14T12:00:00.000Z');
     // Assert
     expect(outcome).toEqual({ ok: true, n: 2, pointId: POINT });
-    expect(send).toHaveBeenCalledWith(expect.objectContaining({ url: TICKET.url, fileField: 'file' }), 'photo.jpg', 'k-1');
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({ url: TICKET.url, fileField: 'file', fields: expect.objectContaining({ lat: '-12.02', lng: '-76.88', takenAt: '2026-11-14T12:00:00.000Z' }) }), 'photo.jpg', 'k-1');
   });
   it('the point stays saved when its photo fails: the screen offers to send the photo again', async () => {
     const deps = depsOf(answered({ puntoId: POINT, n: 2, upload: TICKET }), vi.fn(async () => ({ message: 'Sin señal.' })));
@@ -90,7 +90,20 @@ describe('one more photo, finishing and the PDF', () => {
     expect(outcome).toEqual({ ok: true });
     expect(deps.open).toHaveBeenCalledTimes(2);
     expect(deps.open).toHaveBeenCalledWith({ kind: 'photo', visit_id: VISIT, point_id: POINT });
-    expect(send).toHaveBeenNthCalledWith(2, expect.anything(), 'p.jpg', 'k-1');
+    expect(send).toHaveBeenNthCalledWith(2, expect.objectContaining({ fields: TICKET.fields }), 'p.jpg', 'k-1');
+  });
+  it('a loose photo carries where and when it was taken: Portal draws it as «F» (Portal 43a1f701)', async () => {
+    // Arrange
+    const send = vi.fn(async () => ({ status: 201 }));
+    const deps = depsOf(answered({ upload: TICKET }), send);
+    // Act
+    await addVisitPhoto(deps, VISIT, 'p.jpg', undefined, { lat: -12.0216, lng: -76.8816, precisionM: 38, takenAt: '2026-11-14T12:34:00.000Z' });
+    // Assert
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({ fields: { lat: '-12.0216', lng: '-76.8816', precisionM: '38', takenAt: '2026-11-14T12:34:00.000Z', ...TICKET.fields } }), 'p.jpg', 'k-1');
+  });
+  it('without a position the photo still says when; a broken place is left out', () => {
+    expect(visitPhotoFields({ takenAt: '2026-11-14T12:34:00.000Z' })).toEqual({ takenAt: '2026-11-14T12:34:00.000Z' });
+    expect(visitPhotoFields({ lat: Number.NaN, lng: -76.88, takenAt: '2026-11-14T12:34:00.000Z' })).toEqual({ takenAt: '2026-11-14T12:34:00.000Z' });
   });
   it('finishing with something missing says the first thing', async () => {
     expect(await finishVisit(depsOf(answered({ missing: ['la conclusión', 'un punto'] })), VISIT)).toEqual({ ok: false, message: 'Falta: la conclusión' });

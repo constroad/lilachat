@@ -7,7 +7,8 @@ import type { VisitDocument } from './siteVisit.js';
  * «Siguiente: n sin responder». PURE: the screen only draws it.
  */
 export type InterviewOption = { value: string; label: string };
-export type InterviewQuestion = { key: string; n: number; title: string; options: InterviewOption[]; value?: string };
+/** Without options the answer is written (`unit`: «m²» beside it). */
+export type InterviewQuestion = { key: string; n: number; title: string; options: InterviewOption[]; value?: string; unit?: string; maxLength?: number };
 export type Interview = { questions: InterviewQuestion[]; answered: number; total: number; next: string | null };
 
 const INTERVIEW_SECTION = 'entrevista';
@@ -27,7 +28,8 @@ export function interviewOf(document: VisitDocument): Interview | null {
   if (!section || !entries.length) return null;
   const questions = entries.map(([key, property], index) => {
     const saved = section.values[key];
-    return { key, n: index + 1, title: property.title ?? key, options: optionsOf(property), ...(saved !== undefined && saved !== '' ? { value: saved } : {}) };
+    const written = { ...(property['x-unit'] ? { unit: property['x-unit'] } : {}), ...(property.maxLength ? { maxLength: property.maxLength } : {}) };
+    return { key, n: index + 1, title: property.title ?? key, options: optionsOf(property), ...written, ...(saved !== undefined && saved !== '' ? { value: saved } : {}) };
   });
   const answered = questions.filter((question) => question.value !== undefined).length;
   return { questions, answered, total: questions.length, next: questions.find((question) => question.value === undefined)?.key ?? null };

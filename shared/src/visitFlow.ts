@@ -87,40 +87,55 @@ export async function saveVisitAnswers<F>(deps: VisitFlowDeps<F>, visitId: strin
   return 'message' in answer ? { ok: false, message: answer.message } : { ok: true, message: answer.response.text ?? 'Guardado.' };
 }
 
+/** Where and when a photo was taken (Portal 43a1f701): a loose one with a place is drawn as «F» on the card. */
+export type VisitPhotoPlace = { lat?: number; lng?: number; precisionM?: number; takenAt: string };
+
+/** The multipart's text fields: the place only when it is a real one; the hour always. */
+export function visitPhotoFields(place: VisitPhotoPlace): Record<string, string> {
+  const located = Number.isFinite(place.lat) && Number.isFinite(place.lng);
+  const precise = located && place.precisionM !== undefined && Number.isFinite(place.precisionM);
+  return { ...(located ? { lat: String(place.lat), lng: String(place.lng) } : {}), ...(precise ? { precisionM: String(place.precisionM) } : {}), takenAt: place.takenAt };
+}
+
 /** One send; `null` when the ticket expired and a new one should be asked. */
-async function sent<F>(deps: VisitFlowDeps<F>, upload: VisitUpload, file: F, key: string): Promise<{ ok: true } | { ok: false; message: string } | null> {
-  const { status, message } = await deps.send(upload, file, key);
+async function sent<F>(deps: VisitFlowDeps<F>, upload: VisitUpload, file: F, key: string, fields?: Record<string, string>): Promise<{ ok: true } | { ok: false; message: string } | null> {
+  // Where and when ride as the ticket's own text fields, so the web, the APK and a stamped shot all send them; the ticket's win.
+  const target = fields ? { ...upload, fields: { ...fields, ...upload.fields } } : upload;
+  const { status, message } = await deps.send(target, file, key);
   if (status === EXPIRED) return null;
   if (status && status < 300) return { ok: true };
   return { ok: false, message: status ? uploadFailure(status, message) : VISIT_PHOTO_FAILED };
 }
 
-async function photoOnce<F>(deps: VisitFlowDeps<F>, request: VisitFormRequest, file: F, key: string) {
+async function photoOnce<F>(deps: VisitFlowDeps<F>, request: VisitFormRequest, file: F, key: string, fields?: Record<string, string>) {
   const answer = await answerOf(deps, request, VISIT_PHOTO_FAILED);
   if ('message' in answer) return { ok: false as const, message: answer.message };
   const upload = visitUploadOf(record(answer.response.data).upload);
-  return upload ? sent(deps, upload, file, key) : { ok: false as const, message: VISIT_PHOTO_FAILED };
+  return upload ? sent(deps, upload, file, key, fields) : { ok: false as const, message: VISIT_PHOTO_FAILED };
 }
 
 /** One more photo of the visit or of a point: a fresh ticket each time, the same upload key on a retry. */
-export async function addVisitPhoto<F>(deps: VisitFlowDeps<F>, visitId: string, file: F, pointId?: string): Promise<{ ok: true } | { ok: false; message: string }> {
+export async function addVisitPhoto<F>(deps: VisitFlowDeps<F>, visitId: string, file: F, pointId?: string, place?: VisitPhotoPlace): Promise<{ ok: true } | { ok: false; message: string }> {
   const request: VisitFormRequest = { kind: 'photo', visit_id: visitId, ...(pointId ? { point_id: pointId } : {}) };
   const key = deps.newKey();
-  return (await photoOnce(deps, request, file, key)) ?? (await photoOnce(deps, request, file, key)) ?? { ok: false, message: uploadFailure(EXPIRED) };
+  const fields = place ? visitPhotoFields(place) : undefined;
+  return (await photoOnce(deps, request, file, key, fields)) ?? (await photoOnce(deps, request, file, key, fields)) ?? { ok: false, message: uploadFailure(EXPIRED) };
 }
 
 export type MarkedPoint = { ok: true; n: number; pointId: string; photoFailed?: string } | { ok: false; message: string };
 
 /** «Guardar punto N»: the point first, then its photo; a photo that fails leaves the point saved. */
-export async function markVisitPoint<F>(deps: VisitFlowDeps<F>, request: VisitPointRequest, file: F | null): Promise<MarkedPoint> {
+/** The point's photo carries the point's own place and the hour (Portal 43a1f701). */
+export async function markVisitPoint<F>(deps: VisitFlowDeps<F>, request: VisitPointRequest, file: F | null, takenAt: string = new Date().toISOString()): Promise<MarkedPoint> {
   const answer = await answerOf(deps, request, POINT_FAILED);
   if ('message' in answer) return { ok: false, message: answer.message };
   const marked = markedPointOf(answer.response.data);
   if (!marked) return { ok: false, message: answer.response.text ?? POINT_FAILED };
   const point = { ok: true as const, n: marked.n, pointId: marked.pointId };
   if (file === null) return point;
-  const photo = marked.upload ? await sent(deps, marked.upload, file, deps.newKey()) : null;
-  const done = photo ?? (await addVisitPhoto(deps, request.visit_id, file, marked.pointId));
+  const place = { lat: request.lat, lng: request.lng, ...(request.precision_m !== undefined ? { precisionM: request.precision_m } : {}), takenAt };
+  const photo = marked.upload ? await sent(deps, marked.upload, file, deps.newKey(), visitPhotoFields(place)) : null;
+  const done = photo ?? (await addVisitPhoto(deps, request.visit_id, file, marked.pointId, place));
   return done.ok ? point : { ...point, photoFailed: done.message };
 }
 

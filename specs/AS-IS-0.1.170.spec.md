@@ -1013,9 +1013,12 @@ José corrigió el diseño: el selector de espacios **no** lleva «Ver incógnit
   - APK: `VisitCroquis` (Modal + WebView). El puente de Portal en el WebView (8d2fe4a5) llega como JSON por
     `onMessage` (`nativeEmbedEventOf`); el ✕ y el atrás mandan `close-request` (`nativeEmbedCommand`) para que
     Portal guarde, con 3 s de espera si no contesta; `closed` cierra; `expired` pide el enlace de nuevo.
-  - E2E APK (OTA d96c945, VIS-2026-0077): la pantalla abre, el aviso de Portal se ve y el ✕ vuelve a la
-    tarjeta. **Sin verificar:** el editor de croquis cargado, porque agentes contestó que
-    `abrir_visita_en_editor` falta aprobar (13:15). Se le preguntó a agentes si cambió el texto de la herramienta.
+  - La herramienta `abrir_visita_en_editor` nunca había sido aprobada; José la aprobó el 14/11 por la tarde.
+  - E2E (VIS-2026-0077, 19:25Z): APK con OTA 1d16883 y web en producción. El editor de Portal carga; «Cerrar
+    editor» y el ✕ cierran y vuelven a la tarjeta. El margen inferior va en el contenedor, no en el estilo del
+    WebView: ahí no movía la página y la hoja «Estructura · Elementos» quedaba bajo la barra de Android.
+- **`visita.deleted` (agentes f10b625):** al borrar la visita en Portal, agentes baja la tarjeta con su clave
+  (`portal:visita:<id>`). Verificado con VIS-2026-0078: «Se eliminó este mensaje» en web y APK.
 - **El bot borra su propio mensaje:** `DELETE /api/bots/messages/:id` y `DELETE /api/bots/messages?idempotency_key=`
   (`deleteBotMessage`): 204, 404 `message_not_found`, 409 `not_deleted`. Avisa a web y APK como un borrado
   normal. Contrato en `specs/BOTS-API.spec.md`. Es lo que usará agentes para el aviso `visita.deleted`.

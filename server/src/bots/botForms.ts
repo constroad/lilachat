@@ -13,6 +13,7 @@ import { stampPhoto, stampTimemark } from './photoStamp.js';
 import { spaceStampLogo } from './spaceStampLogo.js';
 import { placeNameOf } from '../placeName.js';
 import { signedFormFileUrl, verifyFileToken } from './botFiles.js';
+import { photosAmong, placeOfStamp, signPhotoValues, type PhotoPlace, type PhotoSigner } from './formPhotoPlaces.js';
 
 /**
  * App forms (R160, `specs/BOTS-API.spec.md` §c-ter; José, 23/10: mark
@@ -22,7 +23,7 @@ import { signedFormFileUrl, verifyFileToken } from './botFiles.js';
  * (Inframaq allows only that host, against SSRF). Sending the form is the
  * person's confirmation: the app hears `form.submitted`.
  */
-export type FormFile = { _id: Types.ObjectId; runId: Types.ObjectId; userId: Types.ObjectId; url: string; mime: string; size: number; createdAt: Date };
+export type FormFile = { _id: Types.ObjectId; runId: Types.ObjectId; userId: Types.ObjectId; url: string; mime: string; size: number; createdAt: Date } & PhotoPlace;
 const fileSchema = new mongoose.Schema<FormFile>(
   {
     runId: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
@@ -30,6 +31,9 @@ const fileSchema = new mongoose.Schema<FormFile>(
     url: { type: String, required: true },
     mime: { type: String, required: true },
     size: { type: Number, required: true },
+    // Where and when it was taken (José 13/11): the app places it on the report's sketch.
+    point: { lat: Number, lng: Number, precision: Number },
+    takenAt: { type: Date },
   },
   { timestamps: { createdAt: true, updatedAt: false } }
 );
@@ -150,30 +154,23 @@ export async function storeFormPhoto(userId: Types.ObjectId, scope: CommandScope
   // The media folder is the chat's, or the space's for the ⚡.
   const uploaded = await upload({ chatId: String(run.chatId ?? run.workspaceId), ...photo });
   if (!uploaded.ok) return fail(409, 'upload_failed', 'No se pudo guardar la foto. Inténtalo de nuevo.');
-  const stored = await FormFileModel.create({ runId: run._id, userId, url: uploaded.media.url, mime: photo.mimeType, size: photo.bytes.length });
+  const stored = await FormFileModel.create({ runId: run._id, userId, url: uploaded.media.url, mime: photo.mimeType, size: photo.bytes.length, ...placeOfStamp(stamp) });
   return { fileId: String(stored._id) };
 }
 
-/** A photo field carries the id of a photo of THIS form; it goes to the app as its signed address. */
-async function withSignedPhotos(runId: Types.ObjectId, fields: readonly FormField[], raw: Record<string, unknown>): Promise<Record<string, unknown>> {
-  const values = { ...raw };
-  const signed = async (fileId: unknown) => (isId(fileId) && (await FormFileModel.exists({ _id: fileId, runId })) ? signedFormFileUrl(String(fileId)) : null);
-  for (const field of fields) {
-    const raw = values[field.name];
-    // A list's items (28/10): each item's photos signed the same way.
-    if (field.kind === 'list') {
-      if (Array.isArray(raw)) values[field.name] = await Promise.all(raw.map((item) => (item && typeof item === 'object' ? withSignedPhotos(runId, field.fields, item as Record<string, unknown>) : item)));
-      continue;
-    }
-    if (field.kind !== 'photo') continue;
-    // A list of photos (José, 24/10): each one signed; one that is not this form's is dropped.
-    const urls = Array.isArray(raw) ? (await Promise.all(raw.map(signed))).filter((url): url is string => url !== null) : null;
-    const url = urls ? null : await signed(raw);
-    if (urls) values[field.name] = urls;
-    else if (url) values[field.name] = url;
-    else delete values[field.name];
-  }
-  return values;
+/**
+ * A photo field carries the id of a photo of THIS form; it goes to the app as
+ * its signed address, and where and when it was taken apart (José 13/11). One
+ * read for all the form's files.
+ */
+async function withSignedPhotos(runId: Types.ObjectId, fields: readonly FormField[], raw: Record<string, unknown>) {
+  const files = await FormFileModel.find({ runId }).select('_id point takenAt').lean();
+  const byId = new Map(files.map((file) => [String(file._id), file]));
+  const sign: PhotoSigner = (fileId) => {
+    const file = isId(fileId) ? byId.get(fileId) : undefined;
+    return file ? { url: signedFormFileUrl(String(file._id)), ...(file.point?.lat !== undefined ? { point: file.point } : {}), ...(file.takenAt ? { takenAt: file.takenAt } : {}) } : null;
+  };
+  return signPhotoValues(fields, raw, sign);
 }
 
 /** 429: agentes' «too many calls» (06/11), with its code and the seconds to wait, so the report queue waits instead of refusing. */
@@ -193,12 +190,18 @@ export async function formParty(run: OpenRun, commandId: string) {
   return { installation, chat, user, app, base };
 }
 
+/** `photos` beside `values` only when a photo is still among the answers (an app that does not read it sees nothing new). */
+const photosOf = (photos: ReturnType<typeof photosAmong>, values: FormValues) => {
+  const sent = photosAmong(photos, values);
+  return sent.length ? { photos: sent } : {};
+};
+
 export async function submitForm(userId: Types.ObjectId, scope: CommandScope, commandId: string, raw: unknown): Promise<FormOutcome | ReturnType<typeof fail>> {
   const run = await openRun(userId, scope, commandId);
   if ('error' in run) return run;
   const fields = formFields(run.form!);
   const input = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
-  const values = await withSignedPhotos(run._id, fields, input);
+  const { values, photos } = await withSignedPhotos(run._id, fields, input);
   // The button pressed (agentes 13/11): only one the form declared; none or another is the first, the strict one. A draft saves what is filled.
   const action = submitChosen(run.form!.submits, input[ACTION_KEY]);
   // A signing takes the place of NOW (José, 24/10): a reading the phone kept is refused.
@@ -213,7 +216,7 @@ export async function submitForm(userId: Types.ObjectId, scope: CommandScope, co
     // A field report's section (05/11): the server's context rides with the answers, and the checked service beside them.
     const values = { ...(checked.values as FormValues), ...(run.context ?? {}), ...(action ? { [ACTION_KEY]: action.id } : {}) };
     const service = run.service ? { client_id: run.service.clientId, service_id: run.service.serviceId } : {};
-    const reply = await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, 'form.submitted', { form_id: run.form!.id, command_id: commandId, values, ...service, channel: chat ? channelOf(chat) : null, user }, commandAnswerTimeout());
+    const reply = await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, 'form.submitted', { form_id: run.form!.id, command_id: commandId, values, ...photosOf(photos, values), ...service, channel: chat ? channelOf(chat) : null, user }, commandAnswerTimeout());
     const outcome = await answerOf(reply, { installation, run, chat, base });
     return 'outcome' in outcome && outcome.outcome === 'pending' ? ((await late.within()) ?? outcome) : outcome;
   } finally {

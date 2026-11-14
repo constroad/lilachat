@@ -312,9 +312,9 @@ Proyecto 15540754270713720465. Ids en `design/stitch/registro.jsonl` (móvil, ta
 | Slug | Pantalla | Estado |
 | --- | --- | --- |
 | `pla-01-rayo` | ⚡ de #planta: grupos «Planta» (6 acciones de Portal) y «Tanques e insumos» (Inframaq), «Las usa cualquier miembro del espacio» | generado 13/11. Stitch inventó el botón «Cubicar volquete de inmediato»: no va |
-| `pla-02-cubicar` | Cubicar volquete: placa con recientes, forma con dibujo, medidas con cotas, «Volquete cubica» y «Quiero N m³ → altura de despacho» | generado 13/11. Las medidas reales son A1…A5 y B2 (Portal): el dibujo es referencia |
-| `pla-03-cubicaje-tarjeta` | Tarjeta del cubicaje en el canal, con medidas plegadas | en generación |
-| `pla-04-produccion` | Producción del día: cifras, tanques PEN, silo, diseño en uso y bitácora | en generación |
+| `pla-02-cubicar` | Cubicar volquete: placa con recientes, forma con dibujo, medidas con cotas, «Volquete cubica» y «Quiero N m³ → altura de despacho» | móvil y tablet 13/11. Las medidas reales son A1…A5 y B2 en metros (Portal): el dibujo es referencia. «+ Nuevo volquete» no va (crear unidades no entra en cubicar). La forma con dibujo ya existe en el kit: `x-cards` (13/11). Escritorio: la llamada se cortó a los 30 min, no se regeneró a ciegas |
+| `pla-03-cubicaje-tarjeta` | Tarjeta del cubicaje en el canal, con medidas plegadas | móvil 13/11. Cabe en el kit de tarjetas (kicker, estado, cifras, «Quiero N m³ → X cm»). El subtítulo del canal («Terex Magnum 140») es inventado. Tablet: la llamada se cortó a los 30 min, no se regeneró a ciegas |
+| `pla-04-produccion` | Producción del día: cifras, tanques PEN, silo, diseño en uso y bitácora | móvil: la llamada se cortó a los 30 min (Stitch colgado con 5 generaciones a la vez); puede existir en el lienzo sin id. No se regeneró a ciegas: lo decide José |
 | `pla-05-bitacora` | Bitácora: horas con «Ahora», horómetro, kWh, fajas y evidencia | en generación |
 | `pla-06-temperatura` | Temperatura del silo con su rango | en generación |
 | `pla-07-incidencia` | Incidencia de planta: tipo, texto, duración y foto | en generación |

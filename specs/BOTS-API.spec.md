@@ -362,6 +362,13 @@ día, la hora o ambos. Hasta 20 campos.
 - La foto sube a Lilachat al elegirla. La app recibe una URL firmada
   `https://lilachat.constroad.com/api/bots/files/<payload>.<firma>`, válida 15
   minutos (después 410).
+- **Dónde y cuándo se tomó cada foto** (13/11, José: los informes de campo ubican
+  cada foto en su croquis). `form.submitted` trae, aparte de `values`, la lista
+  `photos: [{ field, url, taken_at, lat?, lng?, precision_m? }]`, una por foto que
+  sigue entre las respuestas. `url` es la misma de `values` (así se cruzan), `field`
+  es el campo (`fotos`, `tramos[0].foto`). El punto sale de la lectura de la cámara;
+  una foto de la galería solo lleva su fecha (José 07/11). Sin fotos no llega la
+  clave, y `values` no cambia: una app que no la lee sigue igual.
 - Enviar es la confirmación de la persona. Llega `form.submitted { form_id,
   command_id, values, channel, user }`. La app responde como a un comando, o
   con `{ "errors": { "campo": "…", "_": "…" } }` y el formulario queda abierto

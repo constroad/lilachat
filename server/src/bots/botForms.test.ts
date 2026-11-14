@@ -252,6 +252,21 @@ describe('an app answers a command with a form', () => {
     expect(data[((info.height - 2) * info.width + info.width - 4) * info.channels]!).toBeLessThan(200);
   });
 
+  it('every photo travels with where and when it was taken, apart from values (José 13/11: the reports place them on the sketch)', async () => {
+    // Arrange
+    const commandId = await openForm();
+    const white = await sharp({ create: { width: 320, height: 240, channels: 3, background: '#ffffff' } }).jpeg().toBuffer();
+    const { fileId } = (await request(app).post(`/api/chats/${channel}/commands/${commandId}/files`).set(asAna).field('stamp', 'timemark').field('logo', '0').field('lat', '-12.0217').field('lng', '-76.8817').field('precision', '6').field('takenAt', '2026-11-13T15:04:00.000Z').attach('file', white, { filename: 'fresado.jpg', contentType: 'image/jpeg' }).expect(201)).body;
+    answer = json({ text: 'Ingreso marcado' });
+    received.length = 0;
+    // Act
+    await submit(commandId, { accion: 'ingreso', ubicacion: here, foto: fileId }).expect(200);
+    // Assert: values keep the address an app already reads; the place goes apart, matched by it.
+    const data = received[0]!.data as { values: Record<string, unknown>; photos?: unknown };
+    expect(typeof data.values.foto).toBe('string');
+    expect(data.photos).toEqual([{ field: 'foto', url: data.values.foto, taken_at: '2026-11-13T15:04:00.000Z', lat: -12.0217, lng: -76.8817, precision_m: 6 }]);
+  });
+
   it('a photo of the gallery comes back stamped with its own date, not the upload (José 06/11)', async () => {
     // Arrange
     const commandId = await openForm();

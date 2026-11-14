@@ -47,6 +47,8 @@ export function accionesDeMensaje(params: {
    * showing it. There my own message is deleted on the server, which reaches every open session.
    */
   selfChat?: boolean;
+  /** An app's card and I am a space or channel admin (José 13/11): I delete it for everyone. */
+  appMessageByAdmin?: boolean;
 }): AccionesDeMensaje {
   if (params.eliminado) {
     return { responder: false, copiar: false, reenviar: false, editar: false, info: false, eliminarParaTodos: false, eliminarParaMi: true, fijar: null, hilo: false, destacar: null };
@@ -60,7 +62,7 @@ export function accionesDeMensaje(params: {
     reenviar: (params.conTexto || params.esMedia) && !params.chatSecreto,
     editar: params.editable,
     info: params.mio,
-    eliminarParaTodos: params.mio,
+    eliminarParaTodos: params.mio || Boolean(params.appMessageByAdmin),
     eliminarParaMi: !(params.selfChat && params.mio),
     fijar: params.puedeFijar ? (params.fijado ? 'desfijar' : 'fijar') : null,
     hilo: !params.chatSecreto && !params.esRespuestaDeHilo,

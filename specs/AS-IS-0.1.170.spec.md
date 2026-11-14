@@ -842,3 +842,19 @@ José corrigió el diseño: el selector de espacios **no** lleva «Ver incógnit
   en el APK con «Ver certificado» (hoja CUB-2026-0001). La web en una pestaña OCULTA no pinta
   los mensajes nuevos ni carga imágenes: no es un defecto, se verifica en el APK o con la
   pestaña visible. Inframaq borró la unidad y el cubicaje de prueba.
+
+## 13/11 noche (8): un admin borra para todos la tarjeta de una app
+
+- **Por qué** (José 13/11): una app no puede borrar lo que publicó, así que la tarjeta QA de cubicaje
+  de Test #planta no tenía camino. José eligió construir el camino en la app, no borrar en la base.
+- **Regla** (`shared/eliminarMensaje.ts`, `accionesDeMensaje.ts`): `appMessageByAdmin` deja borrar
+  para todos un mensaje ajeno solo si es de una app. Un mensaje de una persona sigue siendo solo de su autor.
+- **Server** (`chatService.deleteMessage`): lo decide el server, no el cliente. El autor tiene que ser
+  el bot de una app (`User.app`) y quien borra, admin del canal o owner/admin del espacio de esa app.
+  Queda la lápida y llega `msg.deleted` por socket, como cualquier borrado.
+- **Web**: el diálogo ofrece «Eliminar para todos» si soy admin del canal y el autor tiene la pastilla
+  de app. **APK**: la selección lo ofrece con los `appIds` del grupo cuando soy admin.
+- **Sin verificar en los clientes**: un owner/admin del espacio que NO es admin del canal. El server
+  lo acepta, pero web y APK solo miran el rol en el canal y no le muestran la opción.
+- Tests: `server/src/deleteAppCard.test.ts` (4, rojos sin la regla), `shared` (6),
+  `web/src/chat/dialogoEliminar.appCard.test.tsx` (2).

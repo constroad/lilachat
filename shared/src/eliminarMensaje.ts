@@ -26,6 +26,11 @@ export function puedeEliminar(params: {
   autor: string;
   /** Si ya está borrado. */
   yaEliminado?: boolean;
+  /**
+   * The message is an app's card and I am a space or channel admin (José 13/11):
+   * an app cannot delete what it posted, so its QA cards stayed forever.
+   */
+  appMessageByAdmin?: boolean;
 }): DecisionDeBorrado {
   /**
    * **Solo el autor borra para todos.**
@@ -34,7 +39,7 @@ export function puedeEliminar(params: {
    * un permiso que se pueda dar y revisar después: hay que negarlo en el server,
    * porque un cliente modificado se saltea cualquier validación de la app.
    */
-  if (params.autor !== params.yo) {
+  if (params.autor !== params.yo && !params.appMessageByAdmin) {
     return { permitido: false, motivo: 'Solo puedes eliminar tus propios mensajes.' };
   }
 

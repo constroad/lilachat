@@ -17,13 +17,15 @@ const BOTON_SECUNDARIO = 'flex min-h-[44px] w-full items-center justify-center r
 export function DialogoEliminar(props: {
   mensaje: MensajeEnPantalla;
   yo: string;
+  /** An app's card and I admin the channel (José 13/11): I delete it for everyone. */
+  appMessageByAdmin?: boolean;
   onParaTodos: () => Promise<ResultadoDeAccion>;
   onParaMi: () => Promise<void>;
   onCerrar: () => void;
   onAviso: (texto: string) => void;
 }) {
   const [trabajando, setTrabajando] = useState(false);
-  const paraTodos = puedeEliminar({ yo: props.yo, autor: props.mensaje.senderId, yaEliminado: Boolean(props.mensaje.deletedAt) }).permitido;
+  const forEveryone = puedeEliminar({ yo: props.yo, autor: props.mensaje.senderId, yaEliminado: Boolean(props.mensaje.deletedAt), appMessageByAdmin: props.appMessageByAdmin }).permitido;
   const hacer = async (accion: () => Promise<ResultadoDeAccion | void>) => {
     setTrabajando(true);
     const resultado = await accion();
@@ -33,7 +35,7 @@ export function DialogoEliminar(props: {
   return (
     <Overlay title="¿Eliminar el mensaje?" onClose={props.onCerrar}>
       <div className="flex flex-col gap-2">
-        {paraTodos ? (
+        {forEveryone ? (
           <button type="button" data-testid="btn-eliminar-para-todos" disabled={trabajando} onClick={() => void hacer(props.onParaTodos)} className={`${BOTON_SECUNDARIO} text-error`}>
             Eliminar para todos
           </button>

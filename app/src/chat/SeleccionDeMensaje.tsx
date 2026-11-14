@@ -31,6 +31,8 @@ export function SeleccionDeMensaje(params: {
   chatSecreto: boolean;
   /** The chat with myself (José 13/11): my messages are deleted on the server, so every device sees it. */
   selfChat?: boolean;
+  /** The channel's apps, when I admin it (José 13/11): their cards I delete for everyone. */
+  appCardsIDelete?: ReadonlySet<string>;
   /** Para pedir la «Info» de un mensaje propio (FL9). */
   chatId: string;
   jwt: string;
@@ -70,6 +72,7 @@ export function SeleccionDeMensaje(params: {
         esMedia: Boolean(uno.media),
         chatSecreto: params.chatSecreto,
         selfChat: params.selfChat,
+        appMessageByAdmin: params.appCardsIDelete?.has(uno.senderId),
         esRespuestaDeHilo: uno.hiloDe !== undefined,
         editable: puedeEditar({
           yo: params.yo,

@@ -13,7 +13,7 @@ import type { MensajeEnPantalla } from './types';
  * Lo pendiente o fallido no tiene menú: todavía no existe en el server.
  */
 export function MenuDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio: boolean }) {
-  const { chat, yo, onAccion, puedeFijar, fijados, onAbrirHilo, destacados, onStickerAction } = useConversacion();
+  const { chat, yo, detalle, isAppOf, onAccion, puedeFijar, fijados, onAbrirHilo, destacados, onStickerAction } = useConversacion();
   if (mensaje.estado) return null;
   const secreto = Boolean(chat.encrypted);
   const acciones = accionesDeMensaje({
@@ -29,6 +29,7 @@ export function MenuDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; m
     destacado: destacados?.has(mensaje.seq),
     funLine: mensaje.kind === 'zumbido' || mensaje.kind === 'guino',
     selfChat: chat.kind === 'direct' && chat.memberIds.every((id) => id === yo),
+    appMessageByAdmin: Boolean(detalle?.soyAdmin && isAppOf?.(mensaje.senderId)),
   });
   // A received (or own) sticker can be kept in «Mis stickers» or as a favorite (20/10), like the app.
   const isSticker = mensaje.kind === 'sticker' && Boolean(mensaje.media?.url) && !mensaje.deletedAt && Boolean(onStickerAction);

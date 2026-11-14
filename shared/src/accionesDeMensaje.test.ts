@@ -176,3 +176,20 @@ describe('accionesDeMensaje in the chat with myself', () => {
     expect(accionesDeMensaje({ ...base, mio: true }).eliminarParaMi).toBe(true);
   });
 });
+
+describe('accionesDeMensaje: an app card for a space admin (José 13/11)', () => {
+  const card = { mio: false, eliminado: false, conTexto: true, esMedia: false, chatSecreto: false, editable: false };
+  it('a space admin sees «Eliminar para todos» on an app card, and still no info', () => {
+    // Act
+    const acciones = accionesDeMensaje({ ...card, appMessageByAdmin: true });
+    // Assert
+    expect(acciones.eliminarParaTodos).toBe(true);
+    expect(acciones.info).toBe(false);
+  });
+  it('a member who is not admin does not see it', () => {
+    expect(accionesDeMensaje({ ...card, appMessageByAdmin: false }).eliminarParaTodos).toBe(false);
+  });
+  it('a deleted card offers only «para mí»', () => {
+    expect(accionesDeMensaje({ ...card, eliminado: true, appMessageByAdmin: true }).eliminarParaTodos).toBe(false);
+  });
+});

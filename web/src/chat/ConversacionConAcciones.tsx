@@ -341,6 +341,7 @@ export function ConversacionConAcciones(
         <DialogoEliminar
           mensaje={acciones.eliminando}
           yo={yo}
+          appMessageByAdmin={Boolean(detalle?.soyAdmin && isAppOf(acciones.eliminando.senderId))}
           onParaTodos={() => sync.eliminarParaTodos(chat.id, acciones.eliminando!.seq)}
           onParaMi={() => sync.eliminarParaMi(chat.id, acciones.eliminando!.seq)}
           onCerrar={acciones.cerrarEliminar}

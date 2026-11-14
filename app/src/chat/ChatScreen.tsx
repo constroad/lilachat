@@ -391,6 +391,7 @@ export function ChatScreen({
           yo={credential.userId}
           chatSecreto={Boolean(encrypted)}
           selfChat={otherUserId === credential.userId}
+          appCardsIDelete={soyAdminDelGrupo ? grupo.appIds : undefined}
           onCancelar={seleccion.soltar}
           onResponder={(seq) => {
             const elegido = seleccion.mensajes.find((uno) => uno.seq === seq);

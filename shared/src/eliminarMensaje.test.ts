@@ -74,3 +74,18 @@ describe('TEXTO_ELIMINADO', () => {
     expect(TEXTO_ELIMINADO).toMatch(/elimin/i);
   });
 });
+
+describe('puedeEliminar: an app card by a space admin (José 13/11)', () => {
+  it('a space admin deletes for everyone a card an app posted', () => {
+    // Arrange / Act
+    const decision = puedeEliminar({ yo: 'ana', autor: 'bot-inframaq', appMessageByAdmin: true });
+    // Assert
+    expect(decision).toEqual({ permitido: true });
+  });
+  it('without being admin, an app card stays as any other foreign message', () => {
+    expect(puedeEliminar({ yo: 'ana', autor: 'bot-inframaq', appMessageByAdmin: false })).toEqual({ permitido: false, motivo: 'Solo puedes eliminar tus propios mensajes.' });
+  });
+  it('an app card already deleted is not deleted twice', () => {
+    expect(puedeEliminar({ yo: 'ana', autor: 'bot-inframaq', appMessageByAdmin: true, yaEliminado: true })).toEqual({ permitido: false, motivo: 'Ese mensaje ya estaba eliminado.' });
+  });
+});

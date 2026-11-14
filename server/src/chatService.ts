@@ -9,6 +9,7 @@ import {
   disappearsAtFor,
 } from '@lilachat/shared';
 import { UserModel } from './models.js';
+import { WorkspaceMemberModel } from './workspaceModels.js';
 import { ChatModel, MessageModel, ReceiptModel, type Chat, type Message, type ResumenDeHilo } from './chatModels.js';
 import { anotarRespuesta, descontarRespuesta, validarRaiz } from './hilos.js';
 import { ensureNotIncognito } from './hiddenMembers.js';
@@ -331,6 +332,20 @@ export async function chatMemberIds(chatId: Types.ObjectId): Promise<string[]> {
  */
 export const DELETED_CONTENT = Object.fromEntries(['body', 'envelope', 'media', 'contact', 'location', 'card', 'files', 'system', 'wink', 'menciones', 'reacciones'].map((field) => [field, ''])) as Record<string, ''>;
 
+/**
+ * The message is an app's card and the requester admins the channel or the app's
+ * space (José 13/11): an app cannot delete what it posted, so a QA card stayed.
+ */
+async function isAppCardForAdmin(chat: Chat, message: Message, userId: Types.ObjectId): Promise<boolean> {
+  const sender = await UserModel.findById(message.senderId).select('app').lean();
+  const workspaceId = sender?.app?.workspaceId;
+  if (!workspaceId) return false;
+  const me = chat.members.find((member) => String(member.userId) === String(userId));
+  if (me?.role === 'admin') return true;
+  const spaceRole = await WorkspaceMemberModel.exists({ workspaceId, userId, status: 'active', role: { $in: ['owner', 'admin'] } });
+  return Boolean(spaceRole);
+}
+
 export async function deleteMessage(params: {
   chatId: string;
   seq: number;
@@ -354,6 +369,7 @@ export async function deleteMessage(params: {
     yo: String(params.userId),
     autor: String(mensaje.senderId),
     yaEliminado: Boolean(mensaje.deletedAt),
+    appMessageByAdmin: String(mensaje.senderId) !== String(params.userId) && (await isAppCardForAdmin(chat as Chat, mensaje, params.userId)),
   });
   if (!decision.permitido) return { ok: false, motivo: decision.motivo };
 

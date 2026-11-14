@@ -1,18 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BackHandler, Pressable, ScrollView, Text, View } from 'react-native';
 import { AlertTriangle, Camera, CheckCircle2, ChevronLeft, ClipboardList, FileText, ImagePlus, MapPin, Plus } from 'lucide-react-native';
-import { formKeyOf, nextPointNumber, pointLine, visitNextStep, type OpenVisitRow, type VisitDocument } from '@lilachat/shared';
+import { formKeyOf, nextPointNumber, pointLine, visitNextStep, type OpenVisitRow, type VisitCardAction, type VisitDocument } from '@lilachat/shared';
 import { AppFormSheet } from '../../chat/commands/AppFormSheet';
 import { EphemeralAnswers } from '../../chat/commands/EphemeralAnswers';
 import { openCamera } from '../../chat/camara/cameraRequests';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
+import { devicePlaceNow } from '../clients/reports/devicePlace';
 import { useFileViewer } from '../clients/useFileViewer';
 import { MarkPointSheet } from './MarkPointSheet';
 import { useVisit } from './useVisit';
 import type { VisitPlaceRef } from './visitsApi';
 
-type Props = { place: VisitPlaceRef; visitId?: string | null; onClose: () => void };
+/** `startAction`: the visit card's button that opened it (lv01); it runs once the visit is read. */
+type Props = { place: VisitPlaceRef; visitId?: string | null; startAction?: VisitCardAction; onClose: () => void };
 type Visit = ReturnType<typeof useVisit>;
 
 function Header({ document, onBack }: { document: VisitDocument | null; onBack: () => void }) {
@@ -62,18 +64,41 @@ function Actions({ document, visit, onMark, onPdf }: { document: VisitDocument; 
   const colors = useColores();
   const busy = Boolean(visit.busy);
   if (document.finished) return <ActionButton testID="visita-pdf" label="Ver PDF" icon={<FileText size={18} color={colors['on-primary']} />} primary disabled={busy} onPress={onPdf} />;
-  const loosePhoto = async () => {
-    const shot = await openCamera({ title: 'Foto de la visita' });
-    if (shot && shot !== 'denied') void visit.screen.addPhoto({ uri: shot.uri, name: `visita-${Date.now()}.jpg`, mime: shot.mime, stamp: shot.stamp });
-  };
   return (
     <View className="flex-row flex-wrap gap-2">
       <ActionButton testID="visita-marcar-punto" label="Marcar punto" icon={<Camera size={18} color={colors['on-primary']} />} primary disabled={busy} onPress={onMark} />
       <ActionButton testID="visita-abrir-entrevista" label="Entrevista" icon={<ClipboardList size={18} color={colors.primary} />} disabled={busy} onPress={() => void visit.openSection('entrevista')} />
-      <ActionButton testID="visita-foto-suelta" label="Foto suelta" icon={<ImagePlus size={18} color={colors.primary} />} disabled={busy} onPress={() => void loosePhoto()} />
+      <ActionButton testID="visita-foto-suelta" label="Foto suelta" icon={<ImagePlus size={18} color={colors.primary} />} disabled={busy} onPress={() => void loosePhoto(visit)} />
       <ActionButton testID="visita-terminar" label="Terminar" icon={<CheckCircle2 size={18} color={colors.primary} />} disabled={busy} onPress={() => void visit.screen.finish()} />
     </View>
   );
+}
+
+/** A loose photo with where and when it was taken: Portal draws it as «F» on the card (43a1f701). */
+async function loosePhoto(visit: Visit) {
+  const shot = await openCamera({ title: 'Foto de la visita' });
+  if (!shot || shot === 'denied') return;
+  const where = await devicePlaceNow();
+  void visit.screen.addPhoto({ uri: shot.uri, name: `visita-${Date.now()}.jpg`, mime: shot.mime, stamp: shot.stamp }, undefined, { lat: where.lat, lng: where.lng, takenAt: where.at });
+}
+
+/** The card's button runs once the visit is read: a point opens its sheet, the rest do their step. */
+function useStartAction(action: VisitCardAction | undefined, visit: Visit, run: { mark: () => void; pdf: () => void }) {
+  const ran = useRef(false);
+  const ready = Boolean(visit.draft?.ok && visit.draft.document.id);
+  useEffect(() => {
+    if (ran.current || !ready || !action) return;
+    ran.current = true;
+    const steps: Record<VisitCardAction, () => void> = {
+      point: run.mark,
+      interview: () => void visit.openSection('entrevista'),
+      photo: () => void loosePhoto(visit),
+      finish: () => void visit.screen.finish(),
+      pdf: run.pdf,
+      croquis: () => undefined,
+    };
+    steps[action]();
+  }, [action, ready, visit, run]);
 }
 
 function SectionRows({ document, visit }: { document: VisitDocument; visit: Visit }) {
@@ -185,6 +210,7 @@ export function VisitScreen(props: Props) {
     const url = await visit.screen.pdf();
     if (url && document) files.open({ url, name: `${document.code}.pdf`, mime: 'application/pdf' });
   };
+  useStartAction(props.startAction, visit, { mark: () => setMarking(true), pdf: () => void pdf() });
   const openForm = visit.answers.openForm;
   return (
     <View testID="visita-pantalla" className="absolute inset-0 bg-background" style={{ paddingTop: margins.cabecera }}>

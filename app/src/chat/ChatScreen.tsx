@@ -227,7 +227,7 @@ export function ChatScreen({
   const channelWork = useChannelWork({ enabled: Boolean(workspaceId && esGrupoChat && !appId && !encrypted), jwt: credential.jwt, chatId, channelName: nombreVisible, yo: credential.userId, names: nombresDelGrupo, apps: grupo.appIds, spaceId: workspaceId, onOpenRecord: (seq) => saltarA(seq, 'Ese registro está más arriba: sube para cargarlo.'), actions: commands.buttons, runAction: commands.appAnswers.runAction });
   // José 13/11: the technical visit, from its channel or the 1:1 with the app (off until he turns it on).
   const visitDoor = useVisitDoor({ jwt: credential.jwt, spaceId: workspaceId, chatId });
-  const accionesDeTarjeta = useMemo(() => ({ editarRecordatorio: puedeEditarRecordatorios ? (recordatorio: AgendaReminder) => setCreando({ recordatorio }) : undefined, callBack: callBack.actions, runLine, openOrderCard: channelWork.openOrderCard }), [puedeEditarRecordatorios, callBack.actions, runLine, channelWork.openOrderCard]);
+  const accionesDeTarjeta = useMemo(() => ({ editarRecordatorio: puedeEditarRecordatorios ? (recordatorio: AgendaReminder) => setCreando({ recordatorio }) : undefined, callBack: callBack.actions, runLine, openOrderCard: channelWork.openOrderCard, openVisit: visitDoor.openVisit }), [puedeEditarRecordatorios, callBack.actions, runLine, channelWork.openOrderCard, visitDoor.openVisit]);
   const subtitulo = useChatSubtitle({ fueraDelGrupo, esBorrador, esGrupo: esGrupoChat, workspaceId, escriben: [...escribiendo], otroEnLinea, otroEstado: otherStatus, ultimaVez, nombres: nombresDelGrupo, totalMembers: grupo.members.length, yo: credential.userId });
   const fotoVisible = infoPropia.avatarUrl ?? chatAvatarUrl;
 

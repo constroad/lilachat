@@ -37,6 +37,8 @@ export type ServerMessage = {
   location?: LiveLocation;
   /** A bot's card (`specs/BOTS-API.spec.md` §b): `body` carries its summary. */
   card?: BotCard;
+  /** What a bot's card points to (agentes 14/11): a visit's card opens Lilachat's visit screens. */
+  clientRef?: { kind?: string; visitId?: string };
   /** A bot's photos and videos, drawn as an album (José via agentes 09/11). */
   files?: GalleryItem[];
   /** An app's answer sent to the channel by who asked: «José usó /clima» on top. */

@@ -362,7 +362,7 @@ function FilaDeMensaje({
               {TEXTO_ELIMINADO}
             </Text>
           ) : botCard && jwt && !isPending(item) ? (
-            <BotCardView card={botCard} chatId={item.chatId} seq={item.seq} jwt={jwt} />
+            <BotCardView card={botCard} chatId={item.chatId} seq={item.seq} jwt={jwt} visitId={isPending(item) ? undefined : item.clientRef?.visitId} />
           ) : !isPending(item) && item.files?.length ? (
             <BotFilesAlbum seq={item.seq} files={item.files} />
           ) : contacto && jwt ? (

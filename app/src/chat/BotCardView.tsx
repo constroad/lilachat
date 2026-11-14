@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { ChevronRight, ExternalLink } from 'lucide-react-native';
-import { cardActionLayout, cardContextOf, formatClock, isOrderCard, viewableLinkOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
+import { cardActionLayout, cardContextOf, formatClock, isOrderCard, viewableLinkOf, visitCardActionOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BASE_URL } from '../api/client';
 import { useFileViewer } from '../spaces/clients/useFileViewer';
 import { useColores } from '../ui/tema';
@@ -135,7 +135,8 @@ function CardBody(props: { url?: string; children: ReactNode }) {
  * tap reaches the bot as `button.click`; the bot closes the card, so after the
  * tap the buttons only say it was sent.
  */
-export function BotCardView(props: { card: BotCard; chatId: string; seq: number; jwt: string }) {
+/** `visitId`: a technical visit's card (lv01, agentes 14/11): its `visita_*` buttons open Lilachat's visit screen. */
+export function BotCardView(props: { card: BotCard; chatId: string; seq: number; jwt: string; visitId?: string }) {
   const { card } = props;
   const colors = useColores();
   const [sent, setSent] = useState<SentAction>(null);
@@ -143,7 +144,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
   // The kit (§118.4): the detail opens in a sheet with the data that came with the message.
   const [detailOpen, setDetailOpen] = useState(false);
   const actions = useAccionesDeTarjeta();
-  const { runLine, openOrderCard } = actions;
+  const { runLine, openOrderCard, openVisit } = actions;
   const runRow = runLine ? (line: string) => runLine(line, props.seq, cardContextOf(card) ?? undefined) : undefined;
   const tap = async (actionId: string) => {
     setSent({ id: actionId, state: 'sending' });
@@ -155,7 +156,11 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
     setError(data.message ?? 'No se pudo enviar. Revisa tu conexión.');
   };
   // A button with a `command` runs its line and the card stays open: its form can be closed.
-  const press = (action: CardAction) => (action.command ? runRow?.(action.command) : void tap(action.id));
+  const press = (action: CardAction) => {
+    const visitAction = props.visitId && openVisit ? visitCardActionOf(action.id) : null;
+    if (visitAction) return openVisit!(props.visitId!, visitAction);
+    return action.command ? runRow?.(action.command) : void tap(action.id);
+  };
   const buttons = card.actions?.filter((action) => !action.command || runRow) ?? [];
   const width = cardWidthOf(useWindowDimensions().width);
   return (

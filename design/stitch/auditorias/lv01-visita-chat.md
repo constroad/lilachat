@@ -4,7 +4,7 @@ Stitch: `screens/d830679c9ffb4c72b4890930633d8321` (design/stitch/lv01-visita-ch
 Captura: design/stitch/impl/lv01-web-movil.jpg (móvil, 390 px)
 Banco local con la tarjeta que arma el builder real de agentes (8223426). En producción se verificó en Test, VIS-2026-0072.
 Revisor: subagente independiente (solo vio las dos imágenes). Las faltas que marcó se arreglaron y se recapturó.
-Fecha: 2026-11-14 09:02 (APK; la web, 07:55)
+Fecha: 2026-11-14 09:22 (corrección b290a2d8 en código; APK captura 09:21; código 09:02; la web, 07:55)
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |
@@ -67,3 +67,40 @@ Segunda lectura del código: 2026-11-14 09:02, correcciones de 5dde714b verifica
 Fuera de la tarjeta queda `font-mono` en la pantalla de la visita (`VisitScreen.tsx:165`, `MarkPointSheet.tsx:53`), con el mismo problema en Android.
 
 Pendiente: segunda revisión sobre capturas del emulador.
+
+## APK — segunda revisión sobre captura del emulador
+
+Fecha: 2026-11-14 09:21
+Mockup: design/stitch/lv01-visita-chat.png (tarjeta VIS-2026-0014).
+Captura: design/stitch/impl/lv01-apk-movil.png (emulador 1080×2400, 420 dpi, tarjeta VIS-2026-0076).
+Revisor: subagente independiente; solo vio las dos imágenes, sin código. Medidas en dp (1 dp = 2,625 px).
+Diferencias de datos (no son faltas): sin puntos, sin precisión GPS, sin preguntas de entrevista, 5 botones, pie «Creada por … · hora». Los colores salen del tema de la empresa.
+
+| Elemento | Mockup | Captura APK | Veredicto |
+| --- | --- | --- | --- |
+| Barra de acento | ~3 pt arriba, radio de la tarjeta | ~3 dp, sigue el radio | ✓ |
+| Tarjeta | radio ~10, borde 1 px, padding ~15 | radio ~10, borde fino, padding ~14 | ✓ |
+| Kicker | «VISITA TÉCNICA ·» en acento, código en mono | «VISITA TÉCNICA» en acento, código en mono gris (monospace de Android) | ✓ (el «·» sale gris, no en acento: detalle mínimo) |
+| Estado | pastilla neutra con borde, radio ~6 | «BORRADOR» neutra con borde, radio ~6 | ✓ |
+| Título | 18 pt bold, una línea | ~18 dp bold, una línea | ✓ |
+| Dirección | pin en acento + texto gris, una línea | pin en acento + «Santa Clara», una línea | ✓ |
+| Mapa: marco | ~123 pt, borde 1 px, radio 8 | ~124 dp, borde fino, radio 8 | ✓ |
+| Mapa: fondo | plano estilizado (manzanas grises) | teselas reales de OSM con atribución | ≈ mapa real, igual que la web |
+| Mapa: lugar | edificio en acento, borde blanco, «ACCESO» debajo | edificio en acento, borde blanco, «LUGAR» al costado | ≈ ya aprobado en la web |
+| Mapa: puntos y GPS | 3 puntos, ruta punteada, badge GPS | ninguno | (datos) |
+| Cifras | fondo gris, radio 8, divisores cortos, ~62 pt | fondo gris, radio 8, ~63 dp; Puntos en acento, Fotos oscuro | ≈ el divisor va a todo el alto (ya anotado) |
+| Pie «Creada por …» | no tiene | línea fina encima, 13 dp gris | (datos) |
+| Separador antes de los botones | no hay | en la captura, segunda línea a todo el ancho; b290a2d8 le quita el borde al bloque de botones | ✓ corregido en código (queda solo la línea del pie) |
+| Primario | relleno acento, ícono + texto on-primary, 56 pt | relleno acento, ícono + texto blanco, 56 dp, a lo ancho | ≈ a lo ancho por el 5.º botón |
+| Secundarios 2×2 | borde neutro, radio ~10, ícono acento a la izquierda, 56 pt, gap ~11 | borde neutro, radio ~10, ícono acento, 56 dp, gap ~8–9 | ✓ |
+| Íconos | cámara, lista, cámara+, check verde | cámara, lista con check, imagen+, check verde, mapa | ≈ imagen+ por cámara+, como la web |
+| «ABRIR CROQUIS» | — | parte en dos líneas; «FOTO SUELTA» entra en una | ≈ el mockup parte igual «MARCAR / PUNTO»; en la web entra en una |
+| «Falta» + PENDIENTE | línea inset arriba, ícono naranja, texto gris, pastilla amarilla | línea inset arriba, portapapeles naranja, texto en 2 líneas, pastilla con borde | ✓ (portapapeles sin reloj, ya ≈) |
+| Orden | kicker → título → dirección → mapa → cifras → botones → «Falta» | igual, con el pie entre cifras y botones | ✓ |
+
+### Faltas (✗), corregidas en b290a2d8
+
+1. Entre las cifras y los botones hay dos líneas: la del pie (con margen) y otra a todo el ancho de la tarjeta. El mockup no tiene ninguna, y el resto de los divisores respetan el padding. Quitar el borde superior del bloque de botones (o dejarlo con el mismo margen interno), para que quede una sola línea, la del pie.
+
+Corrección verificada en código: 2026-11-14 09:22 (b290a2d8)
+`VisitCardButtons.tsx` ya no lleva `border-t border-outline/10` (padding `pb-3 pt-1`). `BotCardView.tsx:222` lo monta sin contenedor con borde, así que solo queda la línea del pie (`BotCardView.tsx:107`). Falta confirmarlo en una captura nueva.

@@ -302,6 +302,36 @@ describe('the map block', () => {
   it('drops a negative precision but keeps the place', () => {
     expect(validateBotBlocks([{ type: 'map', lat: 0, lng: 0, precision_m: -3 }], 8)).toEqual({ ok: true, blocks: [{ type: 'map', lat: 0, lng: 0 }] });
   });
+
+  /** Portal 13/11 (visits, lv01): the visit's points joined by a dotted line, each with its label. */
+  it('keeps a route of points in order, with their labels', () => {
+    const route = [{ lat: -12.1201, lng: -77.0301, label: '1 · Ingreso' }, { lat: -12.1205, lng: -77.0309, label: '2 · Rampa' }];
+    expect(validateBotBlocks([{ type: 'map', points: route }], 8)).toEqual({ ok: true, blocks: [{ type: 'map', lat: -12.1201, lng: -77.0301, points: route }] });
+  });
+
+  it('a route also carries lat and lng: an old phone draws its first point', () => {
+    const result = validateBotBlocks([{ type: 'map', label: 'Visita V-0012', points: [{ lat: -12.1, lng: -77.1 }, { lat: -12.2, lng: -77.2 }] }], 8);
+    expect(result).toMatchObject({ ok: true, blocks: [{ type: 'map', lat: -12.1, lng: -77.1, label: 'Visita V-0012' }] });
+  });
+
+  it('drops a route point off the planet and keeps the rest', () => {
+    const result = validateBotBlocks([{ type: 'map', points: [{ lat: -12.1, lng: -77.1 }, { lat: 120, lng: 0 }, { lat: -12.3, lng: -77.3 }] }], 8);
+    expect(result).toMatchObject({ ok: true, blocks: [{ points: [{ lat: -12.1, lng: -77.1 }, { lat: -12.3, lng: -77.3 }] }] });
+  });
+
+  it('keeps up to 31 points', () => {
+    const points = Array.from({ length: 40 }, (_, index) => ({ lat: -12 - index / 1000, lng: -77 }));
+    const result = validateBotBlocks([{ type: 'map', points }], 8);
+    expect(result.ok && result.blocks[0]?.type === 'map' ? result.blocks[0].points?.length : 0).toBe(31);
+  });
+
+  it('a single point is a place, not a route', () => {
+    expect(validateBotBlocks([{ type: 'map', points: [{ lat: -12.1, lng: -77.1, label: 'Acceso' }] }], 8)).toEqual({ ok: true, blocks: [{ type: 'map', lat: -12.1, lng: -77.1 }] });
+  });
+
+  it('refuses a route with no valid point and no place', () => {
+    expect(validateBotBlocks([{ type: 'map', points: [{ lat: 'x', lng: 0 }] }], 8)).toMatchObject({ ok: false });
+  });
 });
 
 // José 13/11: the reception card in #agregados shows the load's photos, served by Inframaq.

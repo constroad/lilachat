@@ -1246,6 +1246,24 @@ fotos y videos.
 - La privacidad es del producto: agentes solo manda el punto si el canal es
   privado (`GET /api/bots/channels` → `visibility`).
 
+**Ruta (Portal 13/11, visitas técnicas: `lv01`).** El mismo bloque lleva los puntos de una
+visita unidos por una línea punteada:
+
+```json
+{ "type": "map", "label": "Visita V-0012", "points": [
+  { "lat": -12.1201, "lng": -77.0301, "label": "1 · Ingreso" },
+  { "lat": -12.1205, "lng": -77.0309, "label": "2 · Rampa" } ] }
+```
+
+- Hasta 31 puntos, en el orden en que llegan (Portal los manda por su número). Un punto
+  fuera del planeta se descarta y el resto queda; `label` hasta 40 caracteres.
+- `lat` y `lng` pasan a ser opcionales con `points`: el server pone el primer punto. Así una
+  APK sin el OTA dibuja ese punto como antes, en vez de nada.
+- Con un solo punto válido es un lugar, no una ruta (el bloque queda sin `points`).
+- Se dibuja con teselas de OpenStreetMap que encuadran todos los puntos con 28 px de margen
+  (`routeTilesFor` en `shared/src/sharedLocation.ts`, con tests), la línea punteada en el
+  acento y cada punto con su etiqueta; sin etiqueta, su número. Web `RouteMapWeb`, APK `RouteMap`.
+
 ## c-duovicies. Archivos nativos en un mensaje de bot: el álbum (José vía agentes, 09/11)
 
 Un bot manda fotos y videos como los manda una persona. Se dibujan con el mismo

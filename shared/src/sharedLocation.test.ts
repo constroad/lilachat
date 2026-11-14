@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accuracyLabel, cleanSharedLocation, locationMapLink, mapTilesFor, SHARED_LOCATION_BODY } from './sharedLocation.js';
+import { accuracyLabel, cleanSharedLocation, locationMapLink, mapTilesFor, ROUTE_MAX_ZOOM, ROUTE_PADDING_PX, routeTilesFor, SHARED_LOCATION_BODY } from './sharedLocation.js';
 
 describe('a shared location (pending 11)', () => {
   it('keeps a real point, rounded to about 10 cm, with its accuracy in whole meters', () => {
@@ -45,5 +45,48 @@ describe('a shared location (pending 11)', () => {
     const map = mapTilesFor({ lat: 0, lng: 179.9999 }, { width: 260, height: 140 }, 2);
     expect(map.tiles.some((tile) => tile.url.includes('/2/0/'))).toBe(true);
     expect(map.tiles.every((tile) => !tile.url.includes('/2/4/'))).toBe(true);
+  });
+});
+
+/** Portal 13/11 (visits, lv01): a still map that fits every point of a route. */
+describe('routeTilesFor', () => {
+  const box = { width: 320, height: 180 };
+  const visit = [{ lat: -12.1201, lng: -77.0301, label: '1 · Ingreso' }, { lat: -12.1205, lng: -77.0309, label: '2 · Rampa' }, { lat: -12.1199, lng: -77.0312, label: '3 · Estac.' }];
+
+  it('places every point inside the box, away from the edges', () => {
+    // Act
+    const map = routeTilesFor(visit, box);
+    // Assert
+    for (const point of map.points) {
+      expect(point.left).toBeGreaterThanOrEqual(ROUTE_PADDING_PX);
+      expect(point.left).toBeLessThanOrEqual(box.width - ROUTE_PADDING_PX);
+      expect(point.top).toBeGreaterThanOrEqual(ROUTE_PADDING_PX);
+      expect(point.top).toBeLessThanOrEqual(box.height - ROUTE_PADDING_PX);
+    }
+  });
+
+  it('keeps the order and the labels of the points', () => {
+    expect(routeTilesFor(visit, box).points.map((point) => point.label)).toEqual(['1 · Ingreso', '2 · Rampa', '3 · Estac.']);
+  });
+
+  it('zooms out when the points are far apart', () => {
+    const near = routeTilesFor(visit, box).zoom;
+    const far = routeTilesFor([{ lat: -12.05, lng: -77.04 }, { lat: -11.95, lng: -76.9 }], box).zoom;
+    expect(far).toBeLessThan(near);
+  });
+
+  it('a route whose points are all the same spot stays at the closest zoom, centered', () => {
+    const map = routeTilesFor([{ lat: -12.1, lng: -77.1 }, { lat: -12.1, lng: -77.1 }], box);
+    expect(map.zoom).toBe(ROUTE_MAX_ZOOM);
+    expect(map.points[0]).toMatchObject({ left: box.width / 2, top: box.height / 2 });
+  });
+
+  it('the tiles cover the whole box', () => {
+    const map = routeTilesFor(visit, box);
+    expect(Math.min(...map.tiles.map((tile) => tile.left))).toBeLessThanOrEqual(0);
+    expect(Math.min(...map.tiles.map((tile) => tile.top))).toBeLessThanOrEqual(0);
+    expect(Math.max(...map.tiles.map((tile) => tile.left + 256))).toBeGreaterThanOrEqual(box.width);
+    expect(Math.max(...map.tiles.map((tile) => tile.top + 256))).toBeGreaterThanOrEqual(box.height);
+    expect(map.tiles.every((tile) => tile.url.startsWith(`https://tile.openstreetmap.org/${map.zoom}/`))).toBe(true);
   });
 });

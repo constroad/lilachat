@@ -42,8 +42,10 @@ export type BotBlock =
   /** Photos and videos shown as thumbnails; a tap opens the viewer (José via agentes, 09/11: each unit's root card in #planta). */
   | { type: 'gallery'; items: GalleryItem[] }
   /** Where something happened, as the chat's location card (José via agentes 09/11: the place of an attendance mark). */
-  | { type: 'map'; lat: number; lng: number; label?: string; precisionM?: number }
+  | { type: 'map'; lat: number; lng: number; label?: string; precisionM?: number; points?: MapRoutePoint[] }
   | WeatherBlock;
+/** A point of a route on the map block (Portal 13/11, visits: up to 31, in order, joined by a dotted line). */
+export type MapRoutePoint = { lat: number; lng: number; label?: string };
 export type GalleryItem = { url: string; thumbUrl?: string; mime: string; name?: string; label?: string };
 
 export const BLOCK_LIMITS = { cardBlocks: 8, detailBlocks: 12, chips: 6, points: 31, tanks: 12, rows: 40, people: 40, label: 40, short: 24, caption: 80, text: 200, url: 500, gallery: 20, tiles: 12, cardBytes: 16_000 };
@@ -152,11 +154,24 @@ const galleryLink = (value: unknown): string => {
 const MAX_LAT = 90;
 const MAX_LNG = 180;
 
+const onThePlanet = (lat: number | null, lng: number | null): boolean => lat !== null && lng !== null && Math.abs(lat) <= MAX_LAT && Math.abs(lng) <= MAX_LNG;
+
+/** The route's points that are on the planet, in order; a bad one is dropped, not the whole map. */
+function routePointsOf(raw: unknown): MapRoutePoint[] {
+  return list(raw, BLOCK_LIMITS.points).flatMap((item) => {
+    const point = record(item);
+    const [lat, lng] = [finite(point.lat), finite(point.lng)];
+    return lat !== null && lng !== null && onThePlanet(lat, lng) ? [{ lat, lng, ...withText('label', point.label, BLOCK_LIMITS.label) }] : [];
+  });
+}
+
 function mapBlock(raw: Record<string, unknown>): Result<BotBlock> {
-  const [lat, lng] = [finite(raw.lat), finite(raw.lng)];
-  if (lat === null || lng === null || Math.abs(lat) > MAX_LAT || Math.abs(lng) > MAX_LNG) return { ok: false, message: 'El mapa necesita lat y lng válidos.' };
+  const points = routePointsOf(raw.points);
+  // A route also carries a place (its first point): a phone without the route draws that one.
+  const [lat, lng] = [finite(raw.lat) ?? points[0]?.lat ?? null, finite(raw.lng) ?? points[0]?.lng ?? null];
+  if (lat === null || lng === null || !onThePlanet(lat, lng)) return { ok: false, message: 'El mapa necesita lat y lng válidos.' };
   const precision = finite(raw.precision_m ?? raw.precisionM);
-  return { ok: true, value: { type: 'map', lat, lng, ...withText('label', raw.label, BLOCK_LIMITS.label), ...(precision !== null && precision >= 0 ? { precisionM: Math.round(precision) } : {}) } };
+  return { ok: true, value: { type: 'map', lat, lng, ...withText('label', raw.label, BLOCK_LIMITS.label), ...(precision !== null && precision >= 0 ? { precisionM: Math.round(precision) } : {}), ...(points.length > 1 ? { points } : {}) } };
 }
 
 function galleryItemOf(raw: unknown): GalleryItem | null {

@@ -245,4 +245,17 @@ describe('the map block on an attendance card (José via agentes, 09/11)', () =>
     render(<BotCardView card={marked.card} chatId="c" seq={3} jwt="j" />);
     expect(screen.getByTestId('bloque-mapa')).toHaveTextContent('Planta Huachipa');
   });
+
+  /** Portal 13/11 (visits, lv01): the visit's points in order, joined by a dotted line, each with its label. */
+  it('draws a route with its points and labels', () => {
+    const visit = validateBotCard({ kicker: 'VISITA TÉCNICA · V-0012', title: 'Condominio Los Álamos', fields: [], blocks: [{ type: 'map', points: [{ lat: -12.1201, lng: -77.0301, label: '1 · Ingreso' }, { lat: -12.1205, lng: -77.0309, label: '2 · Rampa' }, { lat: -12.1199, lng: -77.0312 }] }] });
+    if (!visit.ok) throw new Error(visit.message);
+
+    render(<BotCardView card={visit.card} chatId="c" seq={4} jwt="j" />);
+
+    expect(screen.getByTestId('mapa-ruta').querySelector('polyline')?.getAttribute('stroke-dasharray')).toBeTruthy();
+    expect(screen.getByTestId('punto-ruta-1')).toHaveTextContent('1 · Ingreso');
+    expect(screen.getByTestId('punto-ruta-2')).toHaveTextContent('2 · Rampa');
+    expect(screen.getByTestId('punto-ruta-3')).toHaveTextContent('3');
+  });
 });

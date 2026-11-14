@@ -27,7 +27,7 @@ import type { AdminLoad } from './useAdminLoad';
  * first members and «Sin espacio». Choosing a space lists all its members,
  * 50 per page. Desktop-first; below `md` each person is a card.
  */
-const MEMBER_COLUMNS = 'md:grid md:grid-cols-[minmax(0,2.2fr)_minmax(0,0.9fr)_minmax(0,2fr)_1fr_1fr_1.1fr_1fr] md:items-center md:gap-4';
+const MEMBER_COLUMNS = 'md:grid md:grid-cols-[minmax(0,2.4fr)_minmax(0,0.9fr)_minmax(0,1.7fr)_minmax(0,1.1fr)_minmax(0,1.5fr)_minmax(0,1.3fr)_minmax(0,1fr)] md:items-center md:gap-3';
 const CARD = 'md:overflow-hidden md:rounded-xl md:border md:border-outline/15 md:bg-surface';
 const PILL = 'rounded-md border px-1.5 text-[10px] font-bold uppercase leading-5';
 
@@ -212,7 +212,7 @@ function MemberRows({ members }: { members: AdminSpaceMember[] }) {
   return (
     <>
       <div className={`hidden border-b border-outline/10 px-6 py-2 ${MEMBER_COLUMNS} ${KICKER}`}>
-        <span>Persona</span><span>Rol</span><span>Correo</span><span>Se unió</span><span>Última vez</span><span>Dispositivos</span><span>Lo invitó</span>
+        <span>Persona</span><span>Rol</span><span>Correo</span><span className="whitespace-nowrap">Se unió</span><span className="whitespace-nowrap">Última vez</span><span>Dispositivos</span><span className="whitespace-nowrap">Lo invitó</span>
       </div>
       <ul className="max-md:mt-3 max-md:space-y-3 md:divide-y md:divide-outline/10">
         {members.map((member) => <MemberRow key={member.id} member={member} />)}
@@ -234,7 +234,7 @@ function RoleAndHidden({ member }: { member: AdminSpaceMember }) {
 function AlsoIn({ member }: { member: AdminSpaceMember }) {
   const label = adminAlsoInLabel(member.alsoIn);
   if (!label) return null;
-  return <span title={label} className="mt-1 inline-block max-w-full truncate rounded-md border border-outline/20 bg-background px-1.5 text-[11px] leading-5 text-on-surface-variant">{label}</span>;
+  return <span title={label} className="mt-1 inline-block max-w-full truncate rounded-md md:whitespace-normal border border-outline/20 bg-background px-1.5 text-[11px] leading-5 text-on-surface-variant">{label}</span>;
 }
 
 /** A row of the table from `md`; below, a card: person and role, then the email and two facts per line. */

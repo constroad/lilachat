@@ -44,9 +44,13 @@ export function adminUsersRange(page: Pick<AdminUsersPage, 'page' | 'pageSize' |
   return `Mostrando ${from}–${to} de ${page.total}`;
 }
 
+/** A non-breaking space: a figure and its unit (or «a. m.») never split across two lines (audit adm-01, 14/11). */
+const NBSP = '\u00a0';
+const unbroken = (text: string): string => text.replace(/ /g, NBSP);
+
 /** «2 Android · 1 web», or «Sin dispositivos». */
 export function adminDevicesLabel(devices: AdminUser['devices']): string {
-  const parts = [devices.android ? `${devices.android} Android` : '', devices.web ? `${devices.web} web` : ''].filter(Boolean);
+  const parts = [devices.android ? `${devices.android}${NBSP}Android` : '', devices.web ? `${devices.web}${NBSP}web` : ''].filter(Boolean);
   return parts.length ? parts.join(' · ') : 'Sin dispositivos';
 }
 
@@ -63,7 +67,7 @@ export function adminJoinedLabel(at: string): string {
 export function adminLastSeenLabel(at: string | null, now: Date = new Date()): string {
   if (!at) return 'Nunca';
   const day = formatDayLabel(at, now);
-  if (day === 'Hoy') return `hoy ${formatClock(at)}`;
-  if (day === 'Ayer') return `ayer ${formatClock(at)}`;
+  if (day === 'Hoy') return unbroken(`hoy ${formatClock(at)}`);
+  if (day === 'Ayer') return unbroken(`ayer ${formatClock(at)}`);
   return day;
 }

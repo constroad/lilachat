@@ -25,7 +25,7 @@ export function PersonCell({ user, under, aside }: { user: AdminUser; under?: Re
     <div className="flex min-w-0 items-center gap-3">
       <Avatar name={user.name ?? user.phone} foto={user.avatarUrl ?? undefined} size={36} />
       <div className="min-w-0 flex-1">
-        <p className="truncate font-semibold">{user.name ?? 'Sin nombre'}</p>
+        <p className="line-clamp-2 break-words font-semibold">{user.name ?? 'Sin nombre'}</p>
         <p className="font-mono text-[12px] text-on-surface-variant">{formatPhoneDisplay(user.phone)}</p>
         {under}
       </div>

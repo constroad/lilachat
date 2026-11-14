@@ -21,8 +21,8 @@ describe('users panel labels', () => {
   });
 
   it('the devices, by platform', () => {
-    expect(adminDevicesLabel({ android: 2, web: 1 })).toBe('2 Android · 1 web');
-    expect(adminDevicesLabel({ android: 0, web: 1 })).toBe('1 web');
+    expect(adminDevicesLabel({ android: 2, web: 1 })).toBe('2\u00a0Android · 1\u00a0web');
+    expect(adminDevicesLabel({ android: 0, web: 1 })).toBe('1\u00a0web');
     expect(adminDevicesLabel({ android: 0, web: 0 })).toBe('Sin dispositivos');
   });
 });
@@ -36,9 +36,11 @@ describe('users panel dates', () => {
   });
 
   it('last seen: today and yesterday with the clock, older by day, never', () => {
-    expect(adminLastSeenLabel(new Date(2026, 9, 22, 7, 31).toISOString(), now)).toMatch(/^hoy 7:31/);
-    expect(adminLastSeenLabel(new Date(2026, 9, 21, 21, 5).toISOString(), now)).toMatch(/^ayer 9:05/);
+    expect(adminLastSeenLabel(new Date(2026, 9, 22, 7, 31).toISOString(), now)).toMatch(/^hoy\u00a07:31/);
+    expect(adminLastSeenLabel(new Date(2026, 9, 21, 21, 5).toISOString(), now)).toMatch(/^ayer\u00a09:05/);
     expect(adminLastSeenLabel(new Date(2026, 9, 12, 8, 0).toISOString(), now)).toMatch(/^12 oct/);
     expect(adminLastSeenLabel(null, now)).toBe('Nunca');
+    // José 14/11 (audit adm-01): «a. m.» never splits across two lines in a narrow column.
+    expect(adminLastSeenLabel(new Date(2026, 9, 22, 7, 31).toISOString(), now)).not.toMatch(/ /);
   });
 });

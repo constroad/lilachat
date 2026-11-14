@@ -154,9 +154,11 @@ export async function updateBotMessage(installation: Installation, messageId: st
  * The bot takes down its own message, as «Eliminar para todos» does (Portal 14/11: a deleted visit takes its card
  * with it): the tombstone, off the pinned bar, its thread recounted, and every member told.
  */
-export async function deleteBotMessage(installation: Installation, messageId: string): Promise<{ deleted: true } | BotApiError> {
-  if (!Types.ObjectId.isValid(messageId)) return fail(404, 'message_not_found', 'Ese mensaje no existe.');
-  const message = await MessageModel.findOne({ _id: messageId, senderId: installation.botUserId, deletedAt: { $exists: false } }).select('chatId seq').lean<Message | null>();
+export async function deleteBotMessage(installation: Installation, which: { id: string } | { idempotencyKey: string }): Promise<{ deleted: true } | BotApiError> {
+  if ('id' in which && !Types.ObjectId.isValid(which.id)) return fail(404, 'message_not_found', 'Ese mensaje no existe.');
+  // Agentes keeps no ids: the key it posted with finds the message (agentes 14/11).
+  const match = 'id' in which ? { _id: which.id } : { clientKey: `bot:${installation._id}:${which.idempotencyKey}` };
+  const message = await MessageModel.findOne({ ...match, senderId: installation.botUserId, deletedAt: { $exists: false } }).select('chatId seq').lean<Message | null>();
   if (!message) return fail(404, 'message_not_found', 'Ese mensaje no existe o no es de este bot.');
   const chatId = String(message.chatId);
   const deleted = await deleteMessage({ chatId, seq: message.seq, userId: installation.botUserId });

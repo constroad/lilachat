@@ -244,6 +244,19 @@ describe('the bot publishes (§b) and reads (§d)', () => {
     expect((await MessageModel.findById(someone._id).lean<Message>())!.deletedAt).toBeUndefined();
   });
 
+  it('agentes keeps no message ids: it takes a card down by the idempotency key it posted with; twice is 404 (agentes 14/11)', async () => {
+    // Arrange
+    const { token } = await install();
+    const sent = await request(app).post('/api/bots/messages').set(asBot(token)).send({ channel_id: String(channel), card: { title: 'Visita técnica' }, idempotency_key: 'visita:65f0000000000000000000a4' }).expect(201);
+    // Act
+    await request(app).delete('/api/bots/messages').query({ idempotency_key: 'visita:65f0000000000000000000a4' }).set(asBot(token)).expect(204);
+    // Assert
+    expect((await MessageModel.findById(sent.body.message.id).lean<Message>())!.deletedAt).toBeInstanceOf(Date);
+    const again = await request(app).delete('/api/bots/messages').query({ idempotency_key: 'visita:65f0000000000000000000a4' }).set(asBot(token)).expect(404);
+    expect(again.body.error).toBe('message_not_found');
+    await request(app).delete('/api/bots/messages').set(asBot(token)).expect(400);
+  });
+
   it('photos and videos as an album; PATCH replaces the whole set (José via agentes 09/11)', async () => {
     const { token } = await install();
     const photo = (name: string) => ({ url: `https://lila.constroad.com/files/${name}.jpg`, mime: 'image/jpeg' });

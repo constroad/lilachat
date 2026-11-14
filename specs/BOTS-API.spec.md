@@ -252,6 +252,11 @@ Queda la lápida «Se eliminó este mensaje», sale de los fijados, su hilo se r
 `msg.deleted`. `204` si se borró. `404 message_not_found` si no existe, no es de este bot o ya se borró.
 `409 not_deleted` si el chat no lo deja (por ejemplo, el bot ya no está en el canal).
 
+También por la clave con que se publicó: `DELETE /api/bots/messages?idempotency_key=<clave>` (agentes 14/11: no
+guarda ids; encuentra la tarjeta por su clave, p. ej. `visita:<visitId>`). Solo mensajes de este bot. Las mismas
+respuestas; un segundo DELETE da `404` con `error: 'message_not_found'`. Sin la clave, `400`. El cliente muestra la
+lápida «Se eliminó este mensaje», igual que un borrado de una persona.
+
 ## c) Entrada: eventos firmados hacia agentes
 
 Lilachat hace `POST webhook_url` con:

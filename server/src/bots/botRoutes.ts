@@ -91,6 +91,12 @@ async function channelsOf(installation: BotInstallation) {
   return chats.map((chat) => ({ id: String(chat._id), name: chat.name, visibility: chat.channel!.visibility, is_member: chat.members.some((member) => String(member.userId) === String(installation.botUserId)) }));
 }
 
+/** A bot's delete: 204, or its error as every bot route answers it. */
+function sendDeleted(res: Response, outcome: { deleted: true } | { status: number; error: string; message: string }): void {
+  if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+  res.status(204).end();
+}
+
 export function buildBotRouter(notifyEdited: (members: string[], edited: Record<string, unknown>) => void): Router {
   const router = Router();
   const messageTries = crearLimiteDeIntentos({ maximo: MESSAGES_PER_MINUTE, ventanaMs: ONE_MINUTE_MS });
@@ -129,10 +135,11 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.json(outcome);
   }));
-  router.delete('/messages/:id', asyncRoute(async (req, res) => {
-    const outcome = await deleteBotMessage(req.bot!, String(req.params.id));
-    if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
-    res.status(204).end();
+  router.delete('/messages/:id', asyncRoute(async (req, res) => sendDeleted(res, await deleteBotMessage(req.bot!, { id: String(req.params.id) }))));
+  router.delete('/messages', asyncRoute(async (req, res) => {
+    const key = typeof req.query.idempotency_key === 'string' ? req.query.idempotency_key.trim() : '';
+    if (!key) return void res.status(400).json({ error: 'invalid_request', message: 'Falta idempotency_key.' });
+    sendDeleted(res, await deleteBotMessage(req.bot!, { idempotencyKey: key }));
   }));
   router.get('/messages/:id/files', asyncRoute(async (req, res) => {
     const files = await filesHeardBy(req.bot!, String(req.params.id));

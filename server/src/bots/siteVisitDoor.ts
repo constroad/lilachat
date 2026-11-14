@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import mongoose, { Types, type Model } from 'mongoose';
-import { availableTo, canManageMembers, formLevelOf, itemSettingOf, openVisitRowsOf, pointProblem, SITE_VISIT_SHORTCUT, visitDocumentOf, visitSectionForm, type AppForm, type CommandOutcome, type FormSchema, type OpenVisitRow, type VisitDocument, type VisitPointDraft } from '@lilachat/shared';
+import { availableTo, canManageMembers, INCOGNITO_COMPOSER, formLevelOf, itemSettingOf, openVisitRowsOf, pointProblem, SITE_VISIT_SHORTCUT, visitDocumentOf, visitSectionForm, type AppForm, type CommandOutcome, type FormSchema, type OpenVisitRow, type VisitDocument, type VisitPointDraft } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { OUTDATED_FORM_MESSAGE, type CommandError } from './botCommands.js';
@@ -47,6 +47,12 @@ export const VisitDraftModel: Model<VisitDraft> = (mongoose.models.VisitDraft as
 
 const fail = (status: CommandError['status'], error: string, message: string): CommandError => ({ status, error, message });
 const notFound = (): CommandError => fail(404, 'not_found', 'Las visitas técnicas no están encendidas aquí. Pídeselo a un admin del espacio.');
+/** José 14/11: hidden in the space (incognito) he only reads, and is told so instead of «not on here». */
+async function incognitoRefusal(workspaceId: string, userId: Types.ObjectId): Promise<CommandError | null> {
+  if (!Types.ObjectId.isValid(workspaceId)) return null;
+  const hidden = await WorkspaceMemberModel.exists({ workspaceId, userId, status: 'active', hidden: true });
+  return hidden ? fail(403, 'incognito', INCOGNITO_COMPOSER) : null;
+}
 const record = (value: unknown): Record<string, unknown> => (value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {});
 const visitIdOf = (value: unknown): string | null => (typeof value === 'string' && VISIT_ID.test(value) ? value : null);
 
@@ -106,6 +112,8 @@ function refusalOf(body: unknown): { message: string; code?: string } | null {
 /** A visit's document, or a new one with the open visits; kept for the section forms that follow. */
 export async function siteVisitDraft(workspaceId: string, userId: Types.ObjectId, input: unknown): Promise<VisitDraftOutcome | CommandError> {
   const body = record(input);
+  const incognito = await incognitoRefusal(workspaceId, userId);
+  if (incognito) return incognito;
   const visitId = body.visit_id === undefined ? null : visitIdOf(body.visit_id);
   if (body.visit_id !== undefined && !visitId) return fail(400, 'invalid_request', 'Esa visita no existe.');
   const door = await visitDoorOf(workspaceId, body.chat_id, userId);
@@ -202,6 +210,8 @@ function opened(workspaceId: string, userId: Types.ObjectId, body: Record<string
  */
 export async function openVisitForm(workspaceId: string, userId: Types.ObjectId, input: unknown): Promise<CommandOutcome | CommandError> {
   const body = record(input);
+  const incognito = await incognitoRefusal(workspaceId, userId);
+  if (incognito) return incognito;
   const door = await visitDoorOf(workspaceId, body.chat_id, userId);
   if (!door) return notFound();
   const ready = await opened(workspaceId, userId, body);

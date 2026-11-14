@@ -12,7 +12,7 @@ import { WorkspaceMemberModel, WorkspaceModel } from '../workspaceModels.js';
 import { signSession } from '../sessions.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botModels.js';
 import { VisitDraftModel } from './siteVisitDoor.js';
-import { itemKey, SITE_VISIT_SHORTCUT } from '@lilachat/shared';
+import { INCOGNITO_COMPOSER, itemKey, SITE_VISIT_SHORTCUT } from '@lilachat/shared';
 
 /** A technical visit from the phone (José 13/11; contract with agentes 14/11, BOTS-API c-visitas). */
 let mongo: MongoMemoryServer;
@@ -130,6 +130,15 @@ describe('the visit\'s door', () => {
     expect(received[0]?.data).not.toHaveProperty('channel');
     const start = await openOf({ kind: 'section', section: 'datos', lat: -12.1, lng: -77 }).expect(200);
     expect((await BotCommandRunModel.findById(start.body.commandId).lean())?.visit).toEqual({ place: 'space' });
+  });
+  it('incognito (a hidden superadmin) is told he only reads, not that visits are off (José 14/11)', async () => {
+    // Arrange
+    await WorkspaceMemberModel.updateOne({ workspaceId: spaceId, userId: ana }, { $set: { hidden: true } });
+    // Act
+    const answered = await openOf({ chat_id: String(visitsChannel), kind: 'croquis', visit_id: VISIT, vista: 'croquis' }).expect(403);
+    // Assert
+    expect(answered.body).toMatchObject({ error: 'incognito', message: INCOGNITO_COMPOSER });
+    expect(received).toHaveLength(0);
   });
   it('Portal\'s refusal: its own text reaches the person', async () => {
     answers['visit.draft.requested'] = { status: 200, body: { error: 'visitas_apagadas', message: 'Las visitas técnicas desde Lilachat están apagadas: se encienden en Empresa › Lila.' } };

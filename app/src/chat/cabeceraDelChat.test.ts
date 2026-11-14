@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { subtituloDelChat } from './cabeceraDelChat';
+import { channelTag, subtituloDelChat } from './cabeceraDelChat';
 
 const nombres = new Map([
   ['yo', 'José'],
@@ -111,5 +111,23 @@ describe('subtituloDelChat — many miembros', () => {
 
   it('Slack: quien escribe sigue ganándole a la cuenta', () => {
     expect(subtituloDelChat({ ...base, nombres: many, listMode: true, escriben: ['a'] })).toBe('Ana está escribiendo…');
+  });
+});
+
+describe('channelTag', () => {
+  it('names a channel the way a sentence does: one «#», no space', () => {
+    expect(channelTag('# flujo-caja')).toBe('#flujo-caja');
+  });
+
+  it('does not double the «#» of a name that already has it glued', () => {
+    expect(channelTag('#flujo-caja')).toBe('#flujo-caja');
+  });
+
+  it('adds the «#» to a bare name', () => {
+    expect(channelTag('flujo-caja')).toBe('#flujo-caja');
+  });
+
+  it('keeps a «#» that belongs inside the name', () => {
+    expect(channelTag('# obra #2')).toBe('#obra #2');
   });
 });

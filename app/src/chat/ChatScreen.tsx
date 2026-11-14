@@ -50,6 +50,7 @@ import { useGrupo } from './useGrupo';
 import { usePersonCard } from './personCard/usePersonCard';
 import { ComposerLocked } from './FueraDelGrupo';
 import { useChatSubtitle } from './useChatSubtitle';
+import { channelTag } from './cabeceraDelChat';
 import { usePresenceStatus } from './presenceStatus';
 import { useDibujarFila, type MessageCell } from './useDibujarFila';
 import { useUltimaVez } from './useUltimaVez';
@@ -515,7 +516,7 @@ export function ChatScreen({
           staged={staged}
           onCamara={alCamara} onEscribiendo={avisarEscribiendo}
           jwt={credential.jwt} conVistaPrevia={!encrypted}
-          miembros={mencionables} onOutsideMentions={outsideMentions.notify} notice={outsideMentions.banner} commands={encrypted ? undefined : commands} myName={credential.name ?? undefined} where={workspaceId && esGrupoChat && !appId && !encrypted && nombreVisible ? `#${nombreVisible}` : undefined}
+          miembros={mencionables} onOutsideMentions={outsideMentions.notify} notice={outsideMentions.banner} commands={encrypted ? undefined : commands} myName={credential.name ?? undefined} where={workspaceId && esGrupoChat && !appId && !encrypted && nombreVisible ? channelTag(nombreVisible) : undefined}
           onEnviar={alEnviar}
           onProgramar={programados.abrir}
           onNotaDeVoz={alNotaDeVoz}

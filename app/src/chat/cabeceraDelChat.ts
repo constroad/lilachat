@@ -45,3 +45,11 @@ export function subtituloDelChat(params: {
 
 /** How many members a group header names before counting the rest. */
 const MAX_NAMES_SHOWN = 3;
+
+/**
+ * A channel named inside a sentence: one «#», no space («Canal #flujo-caja»).
+ * The list keeps the name as «# flujo-caja»; a bare name gets the «#».
+ */
+export function channelTag(name: string): string {
+  return `#${name.replace(/^#\s*/, '')}`;
+}

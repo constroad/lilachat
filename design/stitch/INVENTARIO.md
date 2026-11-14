@@ -302,3 +302,37 @@ Proyecto 15540754270713720465. Ids en `design/stitch/registro.jsonl`. Spec: `spe
 | `gst-02-completar` | Formulario «Completar gasto» | sin generar: Stitch cortó por tiempo, el id no volvió |
 | `gst-02-completar-v2` | «Completar gasto» con «¿A qué va?» Servicio / Proyecto, las partidas del servicio con casilla y monto, «Partes iguales» y el reparto que se ajusta solo | regenerado el 13/11 con OK de José; Lilachat hace el reparto y el paso; los campos (partidas, voucher leído) los manda agentes. **Dibujo implementado en web y APK el 13/11 noche** (cabecera, tarjeta del comprobante, pasos 1-2-3, fichas con %, aviso «100 % cuadrado»); falta «Corregir datos» plegable (Portal) |
 | `inc-02-selector` | «Cambiar de espacio» (APK) sin los espacios donde estoy oculto y una sola fila «Ver incógnitos · SUPERADMIN · Solo tú lo ves · N ›» bajo la lista | generado y bajado el 13/11 noche. **Sustituido por decisión de José (13/11 noche):** «Ver incógnitos» va en Ajustes → Superadmin, no en el selector; el selector solo deja de listar los espacios ocultos. Esta captura ya no se implementa. La lista con «Entrar» y la fila de Ajustes no tienen captura de Stitch (la pantalla se perdió: Stitch cortó por tiempo y el id no volvió; no se regenera a ciegas) |
+
+## Acciones de planta en el ⚡ (José 13/11: cubicar y producción salen de las páginas públicas de Portal)
+
+Proyecto 15540754270713720465. Ids en `design/stitch/registro.jsonl` (móvil, tablet y escritorio). Generador:
+`.stitch-work/screens_rayo_planta.py`. Inventario de lo que hacen hoy las páginas: mensaje de Portal del 13/11
+(rutas reales `/public/[slug]/cubicar` y `/public/[slug]/asphalt-tank-production`).
+
+| Slug | Pantalla | Estado |
+| --- | --- | --- |
+| `pla-01-rayo` | ⚡ de #planta: grupos «Planta» (6 acciones de Portal) y «Tanques e insumos» (Inframaq), «Las usa cualquier miembro del espacio» | generado 13/11. Stitch inventó el botón «Cubicar volquete de inmediato»: no va |
+| `pla-02-cubicar` | Cubicar volquete: placa con recientes, forma con dibujo, medidas con cotas, «Volquete cubica» y «Quiero N m³ → altura de despacho» | generado 13/11. Las medidas reales son A1…A5 y B2 (Portal): el dibujo es referencia |
+| `pla-03-cubicaje-tarjeta` | Tarjeta del cubicaje en el canal, con medidas plegadas | en generación |
+| `pla-04-produccion` | Producción del día: cifras, tanques PEN, silo, diseño en uso y bitácora | en generación |
+| `pla-05-bitacora` | Bitácora: horas con «Ahora», horómetro, kWh, fajas y evidencia | en generación |
+| `pla-06-temperatura` | Temperatura del silo con su rango | en generación |
+| `pla-07-incidencia` | Incidencia de planta: tipo, texto, duración y foto | en generación |
+| `pla-08-diseno-mezcla` | Diseño de mezcla: elegir y ver las tolvas | en generación |
+| `pla-09-produccion-tarjeta` | Tarjeta del día que se actualiza sola | en generación |
+
+## FRE-PAV y RCP-CAM en campo (José 13/11, vía la sesión Editor 2.0)
+
+Solo móvil: en escritorio y tablet Lilachat abre el editor 2.0 de Portal embebido. Generador:
+`.stitch-work/screens_fresado_recepcion.py`. Ingeniero de campo, de pie, con una mano, cámara primero; lo que sale
+del GPS, del reloj y de la sesión va precargado y lo calculado nunca se pide.
+
+| Slug | Pantalla | Estado |
+| --- | --- | --- |
+| `fp-01-fresado-hub` | Informe FRE-PAV: datos precargados, equipo, tramos con área y volumen, accesos y resumen | en generación |
+| `fp-02-tramo` | Nuevo tramo: «Inicio aquí» / «Fin aquí» con el GPS, ancho y espesor, resultado en vivo | en generación |
+| `fp-03-cotas-iri` | Control de cotas, rugosidad IRI y material retirado | en generación |
+| `fp-04-camara` | Cámara primero con el sello de calle y progresiva, y la clasificación de un toque | en generación |
+| `rc-01-recepcion-hub` | Recepción: calles del mapa con su estado, progreso y firmas | en generación |
+| `rc-02-calle` | Calle: conforme u observada, tareas del servicio y observaciones con foto | en generación |
+| `rc-03-firma` | Firma de la supervisión y cierre | en generación |

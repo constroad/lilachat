@@ -41,10 +41,10 @@ export const REPORT_TYPE_OPTIONS: readonly ReportTypeOption[] = [
   { code: 'IAA', label: 'Área adicional', caption: AREAS_OPEN_HERE ? 'Largo y ancho medidos en obra, con su foto' : 'Zonas medidas sobre la foto', opensHere: AREAS_OPEN_HERE, webOnly: true },
   { code: 'CTL-PIS', label: 'Control de pista', caption: 'Llegada, temperaturas, escantillón y 4 fotos por volquete', opensHere: true },
   { code: 'CON-CAP', label: 'Conformación de capa', caption: 'Densidad por punto, con GPS y calle solos', opensHere: true },
-  { code: 'RCP-CAM', label: 'Recepción de campo', caption: 'Conformidad con firma de supervisión', opensHere: false },
+  { code: 'RCP-CAM', label: 'Recepción de campo', caption: 'Conformidad por calle, con fotos y firma de supervisión', opensHere: true },
   { code: 'REG-OBS', label: 'Registro de observaciones', caption: 'Lo encontrado en obra, con foto, video y ubicación', opensHere: OBSERVATIONS_OPEN_HERE },
   { code: 'LEV-OBS', label: 'Levantamiento de observaciones', caption: 'Correcciones validadas en campo', opensHere: OBSERVATIONS_OPEN_HERE },
-  { code: 'FRE-PAV', label: 'Fresado de pavimento', caption: 'Área fresada y profundidad', opensHere: false },
+  { code: 'FRE-PAV', label: 'Fresado de pavimento', caption: 'Tramos fresados con progresivas, profundidad y fotos', opensHere: true },
   { code: 'SOL-IMP', label: 'Solicitud de imprimación', caption: 'Pedido previo al riego, con firma', opensHere: false },
 ];
 

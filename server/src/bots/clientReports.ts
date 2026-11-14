@@ -23,7 +23,7 @@ import { isWorkMapFormInput, isWorkMapFormKind, workMapFormInputOf, workMapFormP
  */
 export const PUBLISH_TOOL = 'publicar_informe';
 /** The report types that open from Lilachat today; Portal's `tipo` enum says the same. */
-export const OPEN_REPORT_TYPES = ['CTL-IMP', 'CTL-PIS', 'CON-CAP'] as const;
+export const OPEN_REPORT_TYPES = ['CTL-IMP', 'CTL-PIS', 'CON-CAP', 'FRE-PAV', 'RCP-CAM'] as const;
 const DRAFT_FAILED = 'No se pudo abrir el informe';
 const DRAFT_KEPT_S = 24 * 60 * 60;
 const COMMAND_TTL_MS = 15 * 60_000;
@@ -39,6 +39,13 @@ const REMOVE_PHOTO_TOOL = 'quitar_foto_de_informe';
 const KINDED_PHOTO_TOOL = 'agregar_foto_de_informe';
 /** CTL-PIS extra photos: the same keys minus `tipoFoto` (Portal `EXTRA_PHOTO_PROPERTIES`). */
 const EXTRA_PHOTO_TOOL = 'agregar_foto_adicional';
+/**
+ * FRE-PAV and RCP-CAM save through their own tools (Portal 1af15e55): the shared one is near its
+ * size cap. They take the section and the row, never `tipo`; their photo tool takes the tramo's moment.
+ */
+const SITE_PART_SAVE_TOOLS: readonly string[] = ['guardar_seccion_de_fresado', 'guardar_seccion_de_recepcion'];
+const PART_PHOTO_TOOL = 'agregar_foto_de_parte';
+const STAMPED_PHOTO_TOOLS: readonly string[] = [KINDED_PHOTO_TOOL, EXTRA_PHOTO_TOOL, PART_PHOTO_TOOL];
 /** Portal's `subir_al_drive`: its answer is the ticket the phone sends the file with. */
 const DRIVE_UPLOAD_TOOL = 'subir_al_drive';
 const NOTHING_TO_FILL: FormSchema = { type: 'object', properties: {} };
@@ -169,7 +176,9 @@ type PhotoTerms = { reportId: string | null; tramoId: string | null; /** Portal'
 /** Each tool takes only the keys it declares (agentes refuses the rest): the photo one wants the report, the tramo, the hour, its kind and its key. */
 function contextFor(form: AppForm, serviceId: string, input: Extract<OpenInput, { kind: 'section' }>, terms: PhotoTerms): { context: Record<string, string | number | boolean> } | CommandError {
   const { reportId, tramoId, photoKind } = terms;
-  if (form.id === SECTION_TOOL) return { context: { servicioId: serviceId, tipo: input.type, seccion: terms.sectionForm, ...(reportId ? { informeId: reportId } : {}), ...(tramoId ? { tramoId } : {}) } };
+  const row = { ...(reportId ? { informeId: reportId } : {}), ...(tramoId ? { tramoId } : {}) };
+  if (form.id === SECTION_TOOL) return { context: { servicioId: serviceId, tipo: input.type, seccion: terms.sectionForm, ...row } };
+  if (SITE_PART_SAVE_TOOLS.includes(form.id)) return { context: { servicioId: serviceId, seccion: terms.sectionForm, ...row } };
   if (!reportId || !tramoId || !input.place) return fail(400, 'invalid_request', 'Una foto necesita el informe, el tramo y la hora de la captura.');
   const { lat, lng, at } = input.place;
   const placed = lat !== undefined && lng !== undefined;
@@ -182,8 +191,9 @@ function contextFor(form: AppForm, serviceId: string, input: Extract<OpenInput, 
  * tool (José 07/11); `selloLilachat` both photo tools (José 12/11, Portal 448d0c04).
  */
 function kindedPhotoKeys(form: AppForm, input: Extract<OpenInput, { kind: 'section' }>, photoKind: string | undefined): Record<string, string | boolean> {
-  const sealed: Record<string, boolean> = input.sealed && (form.id === KINDED_PHOTO_TOOL || form.id === EXTRA_PHOTO_TOOL) ? { selloLilachat: true } : {};
-  return { ...(photoKind && form.id === KINDED_PHOTO_TOOL ? { tipoFoto: photoKind } : {}), ...sealed };
+  const sealed: Record<string, boolean> = input.sealed && STAMPED_PHOTO_TOOLS.includes(form.id) ? { selloLilachat: true } : {};
+  const kinded = form.id === KINDED_PHOTO_TOOL || form.id === PART_PHOTO_TOOL;
+  return { ...(photoKind && kinded ? { tipoFoto: photoKind } : {}), ...sealed };
 }
 
 /** The section's form comes from the document Portal answered to THIS person; the report, section and tramo ride as context. */

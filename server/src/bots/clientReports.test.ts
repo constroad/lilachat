@@ -517,3 +517,63 @@ describe('marking a photo «antes» or «después» (José 08/11, Portal 2ef2717
     await openOf(outsider, { kind: 'photo_phase', photo_id: 'f-1', phase: 'antes', forms: 3 }).expect(404);
   });
 });
+
+describe('a fresado and a recepción de campo (Portal 1af15e55, José 13/11): their own tools, the row as tramoId', () => {
+  const generalFresado = { type: 'object', properties: { turno: { type: 'string', title: 'Turno', 'x-input': 'shift', oneOf: [{ const: 'DIURNO', title: 'Diurno' }, { const: 'NOCTURNO', title: 'Nocturno' }] } } };
+  const tramoForm = { type: 'object', properties: { calleFresadoId: { type: 'string', title: 'Calle', 'x-input': 'work-street' }, progresivaInicio: { type: 'number', title: 'Inicio', 'x-unit': 'm' } } };
+  const fresado = {
+    ...document, id: '6aed0a1b2c3d4e5f60718294', type: 'FRE-PAV', title: 'Fresado de pavimento', forms: { general: generalFresado, tramo: tramoForm, fotos: photosForm },
+    sections: [
+      { id: 'general', title: 'Datos generales', required: true, state: 'empty', summary: [], results: [], form: 'general', tool: 'guardar_seccion_de_fresado', values: {} },
+      {
+        id: 'tramos', kind: 'repeat', title: 'Tramos', required: true, state: 'empty', summary: [], itemTitle: 'Tramo', addLabel: 'Agregar tramo', min: 1,
+        template: [{ id: 'tramo', title: 'Tramo', required: true, form: 'tramo', tool: 'guardar_seccion_de_fresado' }, { id: 'foto-durante', title: 'Foto durante', required: false, form: 'fotos', tool: 'agregar_foto_de_parte', photoKind: 'DURANTE' }],
+        items: [{ id: 'tr1', title: 'Av. Los Incas 0+000', summary: [], sections: [] }],
+      },
+    ],
+  };
+  const at = '2026-11-13T15:04:00.000Z';
+
+  it('a FRE-PAV opens here and its general section goes to guardar_seccion_de_fresado with the section, without tipo', async () => {
+    // Arrange
+    answers['client.report.draft.requested'] = { status: 200, body: { ...fresado, id: null } };
+    await draftOf(ana, { type: 'FRE-PAV' }).expect(200);
+    // Act
+    const opened = await openOf(ana, { kind: 'section', type: 'FRE-PAV', section_id: 'general', item_id: null, key: 'general' }).expect(200);
+    // Assert
+    expect(received[0]?.data).toMatchObject({ type: 'FRE-PAV' });
+    expect(opened.body.response.form).toMatchObject({ id: 'guardar_seccion_de_fresado' });
+    expect((await BotCommandRunModel.findById(opened.body.commandId).lean())?.context).toEqual({ servicioId: 'srv-318', seccion: 'general' });
+  });
+
+  it('a saved tramo goes again with its own id as tramoId, and with the report', async () => {
+    answers['client.report.draft.requested'] = { status: 200, body: fresado };
+    await draftOf(ana, { type: 'FRE-PAV' }).expect(200);
+    const opened = await openOf(ana, { kind: 'section', type: 'FRE-PAV', section_id: 'tramos', item_id: 'tr1', key: 'tramo' }).expect(200);
+    expect((await BotCommandRunModel.findById(opened.body.commandId).lean())?.context).toEqual({ servicioId: 'srv-318', seccion: 'tramo', informeId: '6aed0a1b2c3d4e5f60718294', tramoId: 'tr1' });
+  });
+
+  it("a tramo's photo goes through agregar_foto_de_parte with its moment, its place and Lilachat's stamp", async () => {
+    answers['client.report.draft.requested'] = { status: 200, body: fresado };
+    await draftOf(ana, { type: 'FRE-PAV' }).expect(200);
+    const opened = await openOf(ana, { kind: 'section', type: 'FRE-PAV', section_id: 'tramos', item_id: 'tr1', key: 'foto-durante', lat: -12.0217, lng: -76.8817, at, client_key: 'k-fresado-1', sello_lilachat: true }).expect(200);
+    expect(opened.body.response.form).toMatchObject({ id: 'agregar_foto_de_parte' });
+    expect((await BotCommandRunModel.findById(opened.body.commandId).lean())?.context).toEqual({ servicioId: 'srv-318', informeId: '6aed0a1b2c3d4e5f60718294', tramoId: 'tr1', tipoFoto: 'DURANTE', selloLilachat: true, clientKey: 'k-fresado-1', lat: -12.0217, lng: -76.8817, at });
+  });
+
+  it("a RCP-CAM's street section goes to guardar_seccion_de_recepcion", async () => {
+    // Arrange
+    const calleForm = { type: 'object', properties: { calleRecepcionId: { type: 'string', title: 'Calle', 'x-input': 'work-street' }, estado: { type: 'string', title: 'Estado', oneOf: [{ const: 'CONFORME', title: 'Conforme' }, { const: 'NO_CONFORME', title: 'No conforme' }] } } };
+    const recepcion = {
+      ...document, id: '6aed0a1b2c3d4e5f60718295', type: 'RCP-CAM', title: 'Recepción de campo', forms: { general: generalForm, calle: calleForm, fotos: photosForm },
+      sections: [{ id: 'calles', kind: 'repeat', title: 'Calles', required: true, state: 'empty', summary: [], itemTitle: 'Calle', addLabel: 'Agregar calle', min: 1, template: [{ id: 'calle', title: 'Calle', required: true, form: 'calle', tool: 'guardar_seccion_de_recepcion' }], items: [] }],
+    };
+    answers['client.report.draft.requested'] = { status: 200, body: recepcion };
+    await draftOf(ana, { type: 'RCP-CAM' }).expect(200);
+    // Act: a new street, no row yet
+    const opened = await openOf(ana, { kind: 'section', type: 'RCP-CAM', section_id: 'calles', item_id: null, key: 'calle' }).expect(200);
+    // Assert
+    expect(opened.body.response.form).toMatchObject({ id: 'guardar_seccion_de_recepcion' });
+    expect((await BotCommandRunModel.findById(opened.body.commandId).lean())?.context).toEqual({ servicioId: 'srv-318', seccion: 'calle', informeId: '6aed0a1b2c3d4e5f60718295' });
+  });
+});

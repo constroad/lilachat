@@ -858,3 +858,15 @@ José corrigió el diseño: el selector de espacios **no** lleva «Ver incógnit
   lo acepta, pero web y APK solo miran el rol en el canal y no le muestran la opción.
 - Tests: `server/src/deleteAppCard.test.ts` (4, rojos sin la regla), `shared` (6),
   `web/src/chat/dialogoEliminar.appCard.test.tsx` (2).
+
+## 13/11 noche (9): FRE-PAV y RCP-CAM se llenan desde el canal del cliente
+
+- Portal 1af15e55 abrió las dos herramientas y José las aprobó en agentes (13/11, aviso de la sesión Portal).
+- `OPEN_REPORT_TYPES` suma `FRE-PAV` y `RCP-CAM`; el selector (`REPORT_TYPE_OPTIONS`) los abre aquí.
+- Cada sección trae su `tool`. `guardar_seccion_de_fresado` y `guardar_seccion_de_recepcion` reciben
+  `servicioId`, `seccion` (el form), `informeId` y `tramoId` (el id de la fila), nunca `tipo`: no lo declaran.
+- Las fotos van por `agregar_foto_de_parte` con `tipoFoto` = el `photoKind` del documento
+  (ANTES/DURANTE/DESPUES), el lugar, la hora, `clientKey` y `selloLilachat`.
+- Turno, clima y calle salen de los `x-input` que ya existían (`shift`, `weather`, `work-street`).
+- Tests: `server/src/bots/clientReports.test.ts` (4 nuevos, rojos sin el cambio).
+- E2E en vivo en Test: pendiente al escribir esto.

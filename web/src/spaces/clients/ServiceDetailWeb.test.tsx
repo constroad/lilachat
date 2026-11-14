@@ -121,8 +121,10 @@ describe('ServiceDetailWeb', () => {
     // Assert
     const types = within(screen.getByTestId('crear-informe-tipos')).getAllByTestId(/^tipo-informe-/);
     expect(types).toHaveLength(9);
-    expect(screen.getByTestId('tipo-informe-RCP-CAM')).toHaveAttribute('href', 'https://portal.constroad.com/s/318');
-    expect(screen.getByTestId('tipo-informe-RCP-CAM')).toHaveTextContent('En Portal');
+    expect(screen.getByTestId('tipo-informe-SOL-IMP')).toHaveAttribute('href', 'https://portal.constroad.com/s/318');
+    expect(screen.getByTestId('tipo-informe-SOL-IMP')).toHaveTextContent('En Portal');
+    // FRE-PAV and RCP-CAM open here since Portal's tools (José 13/11).
+    expect(screen.getByTestId('tipo-informe-FRE-PAV')).not.toHaveAttribute('href');
     // IAA opens here since Portal's tools (12/11): the iPhone's Medición.
     expect(screen.getByTestId('tipo-informe-IAA')).not.toHaveAttribute('href');
     expect(screen.getByTestId('tipo-informe-IAA')).not.toHaveTextContent('En Portal');

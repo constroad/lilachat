@@ -116,3 +116,31 @@ describe('a card button that runs a command', () => {
     expect(run).toHaveBeenCalledWith('/gastos completar 7', 7, { kicker: 'Gasto', figure: 'S/ 500.00', title: 'Ferretería El Constructor', status: { label: 'Por completar', tone: 'warn' }, fields: [{ label: 'Medio', value: 'Yape' }] });
   });
 });
+
+// José 13/11 (thread, 400 px): «GASTO» broke into «GAS / TO» beside «Actualizado» and the pill; «Revisar gasto» into two lines.
+describe('a card in a narrow thread', () => {
+  const review = {
+    kicker: 'Gasto',
+    title: 'S/ 150.00 · Ferretería QA',
+    updatedAt: '2026-11-13T19:36:00-05:00',
+    status: { label: 'Posible duplicado', tone: 'warn' as const },
+    fields: [],
+    actions: [{ id: 'gasto_aprobar', label: 'Aprobar', style: 'primary' as const, value: 'g1' }, { id: 'gasto_editar', label: 'Revisar gasto', style: 'secondary' as const, value: 'g1' }, { id: 'gasto_descartar', label: 'Descartar', style: 'danger' as const, value: 'g1' }],
+  };
+
+  it('the head wraps its pieces instead of squeezing the kicker letter by letter', () => {
+    render(<BotCardView card={review} chatId="c1" seq={7} jwt="jwt" />);
+    const head = screen.getByTestId('tarjeta-cabecera');
+    expect(head.className).toContain('flex-wrap');
+    expect(screen.getByText('Gasto').className).not.toContain('flex-1');
+  });
+
+  it('three buttons keep each label on one line and wrap into rows when they do not fit', () => {
+    render(<BotCardView card={review} chatId="c1" seq={7} jwt="jwt" />);
+    for (const id of ['gasto_aprobar', 'gasto_editar', 'gasto_descartar']) {
+      const button = screen.getByTestId(`accion-tarjeta-${id}`);
+      expect(button.className).toContain('whitespace-nowrap');
+      expect(button.className).not.toContain('flex-1');
+    }
+  });
+});

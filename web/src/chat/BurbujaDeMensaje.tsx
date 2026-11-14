@@ -453,3 +453,5 @@ function ChipDeLaRaiz({ seq, hilo }: { seq: number; hilo: NonNullable<MensajeEnP
   return <ChipDeHilo seq={seq} hilo={hilo} nombres={contexto.nombres} photos={contexto.photos} nuevas={contexto.hiloConNuevas?.(seq) ?? false} onAbrir={contexto.onAbrirHilo} />;
 }
 
+/** What a message holds, as the bubble and the thread's root draw it: its photo, file, card or text. */
+export { MessageContent };

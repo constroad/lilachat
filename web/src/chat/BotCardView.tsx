@@ -24,14 +24,15 @@ const ACTION: Record<CardActionStyle, string> = {
 
 /**
  * Kicker, status, title (a link when the whole card is one) and subtitle; every text wraps, none is
- * cut. The status rides the kicker's line (Stitch gst-01): beside the title it squeezed it (José 13/11).
+ * cut. The status rides the kicker's line (Stitch gst-01): beside the title it squeezed it (José 13/11). In a
+ * narrow thread the pieces wrap into a second line, never squeeze the kicker («GAS / TO», José 13/11 night).
  */
 function CardHead({ card }: { card: BotCard }) {
   return (
     <>
       {card.kicker || card.updatedAt || card.status ? (
-        <div className="flex items-center gap-2">
-          <p className="min-w-0 flex-1 break-words text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{card.kicker}</p>
+        <div data-testid="tarjeta-cabecera" className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="min-w-0 flex-auto break-words text-[10px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{card.kicker}</p>
           {card.updatedAt ? <span data-testid="tarjeta-actualizada" className="shrink-0 text-[10px] text-on-surface-variant">Actualizado {formatClock(card.updatedAt)}</span> : null}
           {card.status ? <span data-testid="tarjeta-estado" className={`max-w-[60%] rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${TONE[card.status.tone]}`}>{card.status.label}</span> : null}
         </div>
@@ -78,7 +79,7 @@ function CardButtons(props: { actions: CardAction[]; sent: SentAction; onPress: 
   const { actions, sent } = props;
   const stacked = cardActionLayout(actions) === 'stacked';
   const classOf = (action: CardAction) => {
-    if (!stacked) return `h-9 flex-1 rounded-full px-3 text-[13px] font-semibold ${ACTION[action.style]}`;
+    if (!stacked) return `min-h-9 flex-auto whitespace-nowrap rounded-full px-3 text-[13px] font-semibold ${ACTION[action.style]}`;
     return action.style === 'primary' ? 'h-11 w-full rounded-xl bg-primary px-4 text-[15px] font-bold text-on-primary hover:opacity-90' : 'h-9 w-full rounded-lg px-4 text-[13px] font-semibold text-on-surface-variant hover:bg-background';
   };
   return (

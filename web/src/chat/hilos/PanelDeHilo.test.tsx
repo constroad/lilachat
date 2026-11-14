@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ChatSummary, MensajeEnPantalla } from '../types';
 import { ConversacionContext, type ContextoDeLaConversacion } from '../contextoDeLaConversacion';
@@ -47,6 +47,32 @@ describe('PanelDeHilo', () => {
     );
     expect(screen.getByTestId('tarjeta-recordatorio-1')).toBeInTheDocument();
     expect(screen.queryByText('Recordatorio: Pagar baño portátil')).toBeNull();
+  });
+
+  // José 13/11: the voucher's thread read «Archivo» at its root while the chat showed the photo.
+  it('a photo at the root shows as the photo (with its caption), not as the word «Archivo»', () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    const photoRoot = { ...raiz, kind: 'image', body: undefined, media: { url: 'https://lila.example.com/m/voucher.jpg', thumbUrl: 'https://lila.example.com/m/voucher-t.jpg', mime: 'image/jpeg', width: 420, height: 560 } } as unknown as MensajeEnPantalla;
+    render(
+      <ConversacionContext.Provider value={conversation}>
+        <PanelDeHilo chat={chat} raiz={photoRoot} respuestas={[]} yo="yo" nombres={new Map()} onEnviar={vi.fn()} onReintentar={vi.fn()} onDescartar={vi.fn()} onEdit={vi.fn()} onCerrar={vi.fn()} />
+      </ConversacionContext.Provider>
+    );
+    expect(within(screen.getByTestId('raiz-del-hilo')).getByTestId('foto-r1')).toBeInTheDocument();
+    expect(within(screen.getByTestId('raiz-del-hilo')).queryByText('Archivo')).toBeNull();
+  });
+
+  it('a photo with a caption at the root shows both', () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    const captioned = { ...raiz, kind: 'image', body: 'Factura de la ferretería', media: { url: 'https://lila.example.com/m/f.jpg', thumbUrl: 'https://lila.example.com/m/f-t.jpg', mime: 'image/jpeg' } } as unknown as MensajeEnPantalla;
+    render(
+      <ConversacionContext.Provider value={conversation}>
+        <PanelDeHilo chat={chat} raiz={captioned} respuestas={[]} yo="yo" nombres={new Map()} onEnviar={vi.fn()} onReintentar={vi.fn()} onDescartar={vi.fn()} onEdit={vi.fn()} onCerrar={vi.fn()} />
+      </ConversacionContext.Provider>
+    );
+    const root = within(screen.getByTestId('raiz-del-hilo'));
+    expect(root.getByTestId('foto-r1')).toBeInTheDocument();
+    expect(root.getByText('Factura de la ferretería')).toBeInTheDocument();
   });
 
   it('opening a thread puts the cursor in its reply field (pending 110: typing went to the main chat)', () => {

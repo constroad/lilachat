@@ -40,8 +40,8 @@ function CardHead({ card }: { card: BotCard }) {
   return (
     <>
       {card.kicker || card.updatedAt || card.status ? (
-        <View className="flex-row items-center gap-2">
-          {card.kicker ? <Text className="min-w-0 flex-1 text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{card.kicker}</Text> : <View className="flex-1" />}
+        <View testID="tarjeta-cabecera" className="flex-row flex-wrap items-center gap-x-2 gap-y-1">
+          {card.kicker ? <Text className="min-w-0 grow text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">{card.kicker}</Text> : <View className="grow" />}
           {card.updatedAt ? <Text testID="tarjeta-actualizada" className="text-[10px] text-on-surface-variant">Actualizado {formatClock(card.updatedAt)}</Text> : null}
           {card.status ? (
             <View testID="tarjeta-estado" className={`max-w-[60%] rounded-full border px-2 py-0.5 ${TONE[card.status.tone].pill}`}>
@@ -96,15 +96,15 @@ function CardButtons(props: { buttons: CardAction[]; sent: SentAction; onPress: 
   const { buttons, sent } = props;
   const stacked = cardActionLayout(buttons) === 'stacked';
   const boxOf = (action: CardAction) => {
-    if (!stacked) return `h-10 flex-1 rounded-full px-3 ${ACTION[action.style].box}`;
+    if (!stacked) return `min-h-10 grow rounded-full px-3 ${ACTION[action.style].box}`;
     return action.style === 'primary' ? 'h-12 self-stretch rounded-xl bg-primary px-4' : 'h-10 self-stretch px-4';
   };
   const textOf = (action: CardAction) => (stacked && action.style !== 'primary' ? 'text-on-surface-variant' : ACTION[action.style].text);
   return (
-    <View testID={stacked ? 'tarjeta-acciones-apiladas' : undefined} className={`border-t border-outline/10 px-3.5 ${stacked ? 'gap-1 pb-1.5 pt-3' : 'flex-row gap-2 py-2.5'}`}>
+    <View testID={stacked ? 'tarjeta-acciones-apiladas' : undefined} className={`border-t border-outline/10 px-3.5 ${stacked ? 'gap-1 pb-1.5 pt-3' : 'flex-row flex-wrap gap-2 py-2.5'}`}>
       {buttons.map((action) => (
         <Pressable key={action.id} testID={`accion-tarjeta-${action.id}`} disabled={sent !== null} onPress={() => props.onPress(action)} className={`items-center justify-center ${boxOf(action)} ${sent !== null ? 'opacity-60' : ''}`}>
-          <Text className={`${stacked && action.style === 'primary' ? 'text-[15px] font-bold' : 'text-[13px] font-semibold'} ${textOf(action)}`}>{sentLabel(action, sent)}</Text>
+          <Text numberOfLines={1} className={`${stacked && action.style === 'primary' ? 'text-[15px] font-bold' : 'text-[13px] font-semibold'} ${textOf(action)}`}>{sentLabel(action, sent)}</Text>
         </Pressable>
       ))}
     </View>

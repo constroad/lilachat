@@ -5,7 +5,7 @@ import type { MencionElegida, MencionEnMensaje } from '@lilachat/shared';
 import { ConversacionContext, useConversacion, type ContextoDeLaConversacion } from '../contextoDeLaConversacion';
 import type { StickerChat } from '../stickers/EmojiStickerPanel';
 import { Avatar } from '../../ui/Avatar';
-import { BurbujaDeMensaje } from '../BurbujaDeMensaje';
+import { BurbujaDeMensaje, MessageContent } from '../BurbujaDeMensaje';
 import { TarjetaDelMensaje } from '../tarjetas/TarjetaDelMensaje';
 import { TextoDelMensaje } from '../TextoDelMensaje';
 import { CreateChecklistOverlay } from '../../agenda/CreateChecklistOverlay';
@@ -160,7 +160,10 @@ export function PanelDeHilo(props: {
             {props.raiz.deletedAt ? 'Se eliminó este mensaje' : props.raiz.ref ? (
               // A reminder, poll, event or checklist opens its thread as its card (Wilson, 30/10: it read as plain text).
               <ConversacionContext.Provider value={threadContext}><TarjetaDelMensaje mensaje={props.raiz} mio={false} conAutor={false} /></ConversacionContext.Provider>
-            ) : props.raiz.body ? <TextoDelMensaje clave={`raiz-${props.raiz.clientKey}`} texto={props.raiz.body} menciones={props.raiz.menciones} nombres={props.nombres} yo={props.yo} mio={false} /> : props.raiz.media ? 'Archivo' : ''}
+            ) : props.raiz.media ? (
+              // A photo or a file is what the chat shows, with its caption (José 13/11: the voucher's thread read «Archivo»).
+              <ConversacionContext.Provider value={threadContext}><MessageContent mensaje={props.raiz} mio={false} /></ConversacionContext.Provider>
+            ) : props.raiz.body ? <TextoDelMensaje clave={`raiz-${props.raiz.clientKey}`} texto={props.raiz.body} menciones={props.raiz.menciones} nombres={props.nombres} yo={props.yo} mio={false} /> : ''}
           </div>
         </div>
         <div className="my-3 flex items-center gap-3 text-[12px] text-on-surface-variant">

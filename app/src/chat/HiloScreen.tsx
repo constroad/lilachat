@@ -23,6 +23,7 @@ import { useColores } from '../ui/tema';
 import { colorDeAutor } from './burbuja';
 import { TextoConHora } from './TextoConHora';
 import { TarjetaDelChat } from './TarjetaDelChat';
+import { MessageMedia } from './MessageMedia';
 import { TextoConEnlaces } from './TextoConEnlaces';
 import { VistaPreviaDeEnlace } from './VistaPreviaDeEnlace';
 import type { ChatMessage, PendingMessage } from './useChat';
@@ -399,6 +400,19 @@ export function HiloScreen(props: {
 /** A reminder, poll, event or checklist opens its thread as its card (Wilson, 30/10: it read as plain text). */
 const isCardRoot = (root: ChatMessage, jwt: string) => Boolean(root.ref && !root.deletedAt && jwt);
 
+/** What the root says (José 13/11: a voucher's thread read «Archivo»): its card, its photo or file with the caption, or its text. */
+function ThreadRootBody(props: { root: ChatMessage; jwt: string; me: string; names: ReadonlyMap<string, string>; textClass: string }) {
+  const { root } = props;
+  if (isCardRoot(root, props.jwt)) return <TarjetaDelChat item={root} mia={false} jwt={props.jwt} yo={props.me} everyName={props.names} />;
+  if (root.deletedAt) return <Text className={props.textClass}>Se eliminó este mensaje</Text>;
+  return (
+    <>
+      {root.media ? <MessageMedia item={root} mine={false} flat /> : null}
+      {root.body ? <Text className={props.textClass}><TextoConEnlaces texto={root.body} /></Text> : null}
+    </>
+  );
+}
+
 function FlatThreadRoot(props: { root: ChatMessage; name: string; photo?: string; badge: string | null; count: number; myUserId: string; names: ReadonlyMap<string, string>; jwt: string }) {
   const { root } = props;
   return (
@@ -415,9 +429,7 @@ function FlatThreadRoot(props: { root: ChatMessage; name: string; photo?: string
             ) : null}
             <Text className="ml-auto text-[12px] text-on-surface-variant">{formatClock(root.at)}</Text>
           </View>
-          {isCardRoot(root, props.jwt) ? <TarjetaDelChat item={root} mia={false} jwt={props.jwt} yo={props.myUserId} everyName={props.names} /> : (
-            <Text className="mt-1 text-[15px] leading-[22px] text-on-surface">{root.deletedAt ? 'Se eliminó este mensaje' : root.body ? <TextoConEnlaces texto={root.body} /> : root.media ? 'Archivo' : ''}</Text>
-          )}
+          <ThreadRootBody root={root} jwt={props.jwt} me={props.myUserId} names={props.names} textClass="mt-1 text-[15px] leading-[22px] text-on-surface" />
         </View>
       </View>
       <View className="flex-row items-center gap-3 px-3 pt-3">
@@ -438,9 +450,7 @@ function ThreadHeader(props: { root: ChatMessage; name: string; photo?: string; 
             <Text className="text-[14px] font-semibold text-on-surface">{props.name}</Text>
             <Text className="text-[11px] text-on-surface-variant">{formatClock(props.root.at)}</Text>
           </View>
-          {isCardRoot(props.root, props.jwt) ? <TarjetaDelChat item={props.root} mia={false} jwt={props.jwt} yo={props.me} everyName={props.names} /> : (
-            <Text className="mt-0.5 text-[15px] text-on-surface">{props.root.deletedAt ? 'Se eliminó este mensaje' : props.root.body ? <TextoConEnlaces texto={props.root.body} /> : props.root.media ? 'Archivo' : ''}</Text>
-          )}
+          <ThreadRootBody root={props.root} jwt={props.jwt} me={props.me} names={props.names} textClass="mt-0.5 text-[15px] text-on-surface" />
         </View>
       </View>
       <View className="flex-row items-center gap-3">

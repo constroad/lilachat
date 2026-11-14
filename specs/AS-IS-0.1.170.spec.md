@@ -745,7 +745,9 @@ Lo que el E2E destapó, de Lilachat (web y APK, sin tocar el contrato):
   (`whitespace-nowrap`, `flex-auto`) y bajan de fila si no caben. APK: `flex-wrap`, `grow`, `numberOfLines={1}`.
 - **La raíz del hilo con foto.** El hilo de un comprobante decía «Archivo» donde el chat mostraba la foto. La raíz
   usa lo mismo que la burbuja (`MessageContent` en la web; `MessageMedia` en la APK): foto o archivo con su pie.
-  En la APK la foto de la raíz (y las de las respuestas) todavía no abre el visor: pendiente.
+  En la APK la foto de la raíz abre el visor desde el 14/11 (`useThreadPhotoViewer`: el mismo `VisorDelChat`, con
+  guardar y compartir; eliminar va por el «Eliminar para todos» del hilo). Las respuestas con foto dentro del hilo
+  todavía se dibujan solo como texto en la APK: pendiente.
 
 De agentes (sha 4453271, tras el reporte del E2E): una tarjeta con la misma operación y monto sale «Ya registrado»
 sin «Aprobar» (solo «Revisar gasto» y «Descartar»); el aviso «apruébalo igual» queda para el pago parecido por monto

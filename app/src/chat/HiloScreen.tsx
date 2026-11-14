@@ -24,6 +24,7 @@ import { colorDeAutor } from './burbuja';
 import { TextoConHora } from './TextoConHora';
 import { TarjetaDelChat } from './TarjetaDelChat';
 import { MessageMedia } from './MessageMedia';
+import { useThreadPhotoViewer } from './useThreadPhotoViewer';
 import { TextoConEnlaces } from './TextoConEnlaces';
 import { VistaPreviaDeEnlace } from './VistaPreviaDeEnlace';
 import type { ChatMessage, PendingMessage } from './useChat';
@@ -94,6 +95,7 @@ export function HiloScreen(props: {
   runLine?: AccionesDeTarjeta['runLine'];
 }) {
   const tarjetas = useMemo(() => ({ runLine: props.runLine }), [props.runLine]);
+  const photoViewer = useThreadPhotoViewer({ root: props.raiz, me: props.yo, isGroup: props.esGrupo, names: props.nombres, chatName: props.chatName, onDelete: props.onDelete });
   const colores = useColores();
   const margenes = useMargenes();
   // El teclado tapa el margen de la barra de navegación: la barra de escribir sube eso menos (20/10:
@@ -245,9 +247,9 @@ export function HiloScreen(props: {
             }}
             onScrollToIndexFailed={(fallo) => setTimeout(() => lista.current?.scrollToOffset({ offset: fallo.averageItemLength * fallo.index, animated: false }), 100)}
             ListHeaderComponent={flat ? (
-              <FlatThreadRoot root={props.raiz} name={props.nombres.get(String(props.raiz.senderId)) ?? nombreDe(String(props.raiz.senderId))} photo={props.fotos.get(String(props.raiz.senderId))} badge={badgeOf(String(props.raiz.senderId))} count={props.respuestas.length} myUserId={props.yo} names={props.nombres} jwt={props.jwt} />
+              <FlatThreadRoot root={props.raiz} name={props.nombres.get(String(props.raiz.senderId)) ?? nombreDe(String(props.raiz.senderId))} photo={props.fotos.get(String(props.raiz.senderId))} badge={badgeOf(String(props.raiz.senderId))} count={props.respuestas.length} myUserId={props.yo} names={props.nombres} jwt={props.jwt} onOpenPhoto={photoViewer.open} />
             ) : (
-              <ThreadHeader root={props.raiz} name={nombreDe(String(props.raiz.senderId))} photo={props.fotos.get(String(props.raiz.senderId))} count={props.respuestas.length} jwt={props.jwt} me={props.yo} names={props.nombres} />
+              <ThreadHeader root={props.raiz} name={nombreDe(String(props.raiz.senderId))} photo={props.fotos.get(String(props.raiz.senderId))} count={props.respuestas.length} jwt={props.jwt} me={props.yo} names={props.nombres} onOpenPhoto={photoViewer.open} />
             )}
             renderItem={({ item, index }) => {
               const mia = esPendiente(item) || String(item.senderId) === props.yo;
@@ -388,6 +390,7 @@ export function HiloScreen(props: {
           onClose={() => setPicking(false)}
         />
       ) : null}
+      {photoViewer.viewer}
     </Modal>
     </AccionesDeTarjetaContext.Provider>
   );
@@ -401,19 +404,19 @@ export function HiloScreen(props: {
 const isCardRoot = (root: ChatMessage, jwt: string) => Boolean(root.ref && !root.deletedAt && jwt);
 
 /** What the root says (José 13/11: a voucher's thread read «Archivo»): its card, its photo or file with the caption, or its text. */
-function ThreadRootBody(props: { root: ChatMessage; jwt: string; me: string; names: ReadonlyMap<string, string>; textClass: string }) {
+function ThreadRootBody(props: { root: ChatMessage; jwt: string; me: string; names: ReadonlyMap<string, string>; textClass: string; onOpenPhoto?: (seq: number) => void }) {
   const { root } = props;
   if (isCardRoot(root, props.jwt)) return <TarjetaDelChat item={root} mia={false} jwt={props.jwt} yo={props.me} everyName={props.names} />;
   if (root.deletedAt) return <Text className={props.textClass}>Se eliminó este mensaje</Text>;
   return (
     <>
-      {root.media ? <MessageMedia item={root} mine={false} flat /> : null}
+      {root.media ? <MessageMedia item={root} mine={false} flat onOpen={props.onOpenPhoto} /> : null}
       {root.body ? <Text className={props.textClass}><TextoConEnlaces texto={root.body} /></Text> : null}
     </>
   );
 }
 
-function FlatThreadRoot(props: { root: ChatMessage; name: string; photo?: string; badge: string | null; count: number; myUserId: string; names: ReadonlyMap<string, string>; jwt: string }) {
+function FlatThreadRoot(props: { root: ChatMessage; name: string; photo?: string; badge: string | null; count: number; myUserId: string; names: ReadonlyMap<string, string>; jwt: string; onOpenPhoto?: (seq: number) => void }) {
   const { root } = props;
   return (
     <View className="-mx-3 mb-1">
@@ -429,7 +432,7 @@ function FlatThreadRoot(props: { root: ChatMessage; name: string; photo?: string
             ) : null}
             <Text className="ml-auto text-[12px] text-on-surface-variant">{formatClock(root.at)}</Text>
           </View>
-          <ThreadRootBody root={root} jwt={props.jwt} me={props.myUserId} names={props.names} textClass="mt-1 text-[15px] leading-[22px] text-on-surface" />
+          <ThreadRootBody root={root} jwt={props.jwt} me={props.myUserId} names={props.names} textClass="mt-1 text-[15px] leading-[22px] text-on-surface" onOpenPhoto={props.onOpenPhoto} />
         </View>
       </View>
       <View className="flex-row items-center gap-3 px-3 pt-3">
@@ -440,7 +443,7 @@ function FlatThreadRoot(props: { root: ChatMessage; name: string; photo?: string
   );
 }
 
-function ThreadHeader(props: { root: ChatMessage; name: string; photo?: string; count: number; jwt: string; me: string; names: ReadonlyMap<string, string> }) {
+function ThreadHeader(props: { root: ChatMessage; name: string; photo?: string; count: number; jwt: string; me: string; names: ReadonlyMap<string, string>; onOpenPhoto?: (seq: number) => void }) {
   return (
     <View className="mb-1 gap-2">
       <View testID="raiz-del-hilo" className="flex-row gap-3 rounded-xl border border-outline/10 bg-surface p-3">
@@ -450,7 +453,7 @@ function ThreadHeader(props: { root: ChatMessage; name: string; photo?: string; 
             <Text className="text-[14px] font-semibold text-on-surface">{props.name}</Text>
             <Text className="text-[11px] text-on-surface-variant">{formatClock(props.root.at)}</Text>
           </View>
-          <ThreadRootBody root={props.root} jwt={props.jwt} me={props.me} names={props.names} textClass="mt-0.5 text-[15px] text-on-surface" />
+          <ThreadRootBody root={props.root} jwt={props.jwt} me={props.me} names={props.names} textClass="mt-0.5 text-[15px] text-on-surface" onOpenPhoto={props.onOpenPhoto} />
         </View>
       </View>
       <View className="flex-row items-center gap-3">

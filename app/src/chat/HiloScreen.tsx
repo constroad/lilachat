@@ -21,6 +21,7 @@ import { Avatar } from '../ui/Avatar';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import { colorDeAutor } from './burbuja';
+import { ThreadMediaReply } from './ThreadMediaReply';
 import { TextoConHora } from './TextoConHora';
 import { TarjetaDelChat } from './TarjetaDelChat';
 import { MessageMedia } from './MessageMedia';
@@ -32,7 +33,7 @@ import type { RespuestaDeReaccion } from './useCambiosDeMensajes';
 import { BarraDeReacciones } from './reacciones/BarraDeReacciones';
 import { PastillaDeReacciones } from './reacciones/PastillaDeReacciones';
 import { useReaccionesEnPantalla } from './reacciones/useReaccionesEnPantalla';
-import { replyRowOf } from './threadReply';
+import { isThreadMediaReply, replyRowOf } from './threadReply';
 
 /** Side of a sticker reply in the thread (dp). */
 const STICKER_IN_THREAD = 120;
@@ -95,7 +96,7 @@ export function HiloScreen(props: {
   runLine?: AccionesDeTarjeta['runLine'];
 }) {
   const tarjetas = useMemo(() => ({ runLine: props.runLine }), [props.runLine]);
-  const photoViewer = useThreadPhotoViewer({ root: props.raiz, me: props.yo, isGroup: props.esGrupo, names: props.nombres, chatName: props.chatName, onDelete: props.onDelete });
+  const photoViewer = useThreadPhotoViewer({ root: props.raiz, replies: props.respuestas, me: props.yo, isGroup: props.esGrupo, names: props.nombres, chatName: props.chatName, onDelete: props.onDelete });
   const colores = useColores();
   const margenes = useMargenes();
   // El teclado tapa el margen de la barra de navegación: la barra de escribir sube eso menos (20/10:
@@ -275,6 +276,7 @@ export function HiloScreen(props: {
                       authorPhoto={props.fotos.get(senderId)}
                       badge={badgeOf(senderId)}
                       onSelect={toggleBar}
+                      onOpenMedia={photoViewer.open}
                     />
                     {confirmada?.reacciones?.length && !confirmada.deletedAt ? (
                       <PastillaDeReacciones id={`hilo-${confirmada.seq}`} reacciones={confirmada.reacciones} yo={props.yo} mia={mia} conAvatar={false} indent={FLAT_INDENT} seq={confirmada.seq} onTocar={reacciones.verReacciones} />
@@ -282,11 +284,25 @@ export function HiloScreen(props: {
                   </View>
                 );
               }
+              const mediaReply = isThreadMediaReply(item) ? (
+                <ThreadMediaReply
+                  message={item}
+                  mine={mia}
+                  author={nombreDe(String(item.senderId))}
+                  withAuthor={props.esGrupo}
+                  me={props.yo}
+                  names={props.nombres}
+                  delivery={resolveDeliveryState({ seq: item.seq, otherReadSeq: props.leidoHasta, otherDeliveredSeq: props.entregadoHasta })}
+                  onLongPress={puedeReaccionar({ seq: item.seq, deletedAt: item.deletedAt, kind: item.kind }) ? () => setBarraEn((was) => (was === item.seq ? null : item.seq)) : undefined}
+                  onOpenPhoto={photoViewer.open}
+                />
+              ) : null;
               return (
                 <View className={confirmada && highlighted === confirmada.seq ? 'rounded-lg bg-primary/15' : undefined}>
                   {confirmada && barraEn === confirmada.seq ? (
                     <BarraDeReacciones seq={confirmada.seq} mia={mia} conAvatar={false} miEmoji={miReaccion(confirmada.reacciones, props.yo)} onElegir={reacciones.elegir} onMas={reacciones.masEmojis} onEditar={canEdit(confirmada) ? startEditing : undefined} onDelete={canDelete(confirmada) ? confirmDelete : undefined} />
                   ) : null}
+                  {mediaReply ?? (
                   <BurbujaDelHilo
                     mensaje={item}
                     mia={mia}
@@ -298,6 +314,7 @@ export function HiloScreen(props: {
                     entrega={resolveDeliveryState({ seq: confirmada ? confirmada.seq : null, otherReadSeq: props.leidoHasta, otherDeliveredSeq: props.entregadoHasta })}
                     onLongPress={confirmada && puedeReaccionar({ seq: confirmada.seq, deletedAt: confirmada.deletedAt, kind: confirmada.kind }) ? () => setBarraEn((antes) => (antes === confirmada.seq ? null : confirmada.seq)) : undefined}
                   />
+                  )}
                   {confirmada?.reacciones?.length && !confirmada.deletedAt ? (
                     <PastillaDeReacciones id={`hilo-${confirmada.seq}`} reacciones={confirmada.reacciones} yo={props.yo} mia={mia} conAvatar={false} seq={confirmada.seq} onTocar={reacciones.verReacciones} />
                   ) : null}

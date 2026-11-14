@@ -1,4 +1,5 @@
 import { tamanoDeBurbuja } from '@lilachat/shared';
+import { miniaturaDe } from './filasDelChat';
 import type { ChatMessage, PendingMessage } from './useChat';
 
 /** A row of the conversation: confirmed by the server, or still on its way. */
@@ -44,3 +45,9 @@ export const sharedLocationOf = (row: Row): ChatMessage['location'] => (!isPendi
 
 /** A shared contact (pending 9), the same way. */
 export const sharedContactOf = (row: Row): ChatMessage['contact'] => (!isPending(row) && row.kind === 'contact' && !row.deletedAt ? row.contact : undefined);
+
+/** A photo or video seen in the bubble (not a file card, not deleted): the hour goes ON the picture. */
+export function isVisiblePhoto(row: Row): boolean {
+  if (isPending(row)) return Boolean(row.mediaUri) && !isFileMime(row.mediaMime);
+  return Boolean(row.media && miniaturaDe(row.media)) && !isFileMime(row.media?.mime) && !row.deletedAt;
+}

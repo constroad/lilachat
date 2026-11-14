@@ -815,3 +815,30 @@ José corrigió el diseño: el selector de espacios **no** lleva «Ver incógnit
   volver a Test. Retoques de la web tras el E2E: la lista se desplaza a la vista al abrirse (en el panel de Ajustes
   quedaba bajo el pliegue) y «Entrar» ya no toca el borde derecho.
 
+## 13/11 noche (7): tarjetas con dibujo, ubicación de cada foto y la OTA del visor
+
+- **Visor: confirmar antes de borrar para todos** (bae1016b). Probado en el APK con la OTA
+  `813932b0` (git c68811c, bundle 11,6 MB, 726 assets; smoke 3 aperturas en frío, heap 21 MB):
+  el tacho abre «¿Eliminar para todos?» y la foto QA de Test se borró por ese camino.
+- **`x-cards`** (c68811c1): una elección de 2 a 6 opciones, todas con `x-thumb`, se dibuja
+  como tarjetas de un toque y, debajo, la figura de la elegida (`x-photos[0]`). Es opcional
+  para que el formulario de consumos no cambie. Lo usa `cubicar_volquete` de Inframaq
+  (diseño pla-02). Probado por tests de contrato y de componente; sin E2E en vivo hasta que
+  José apruebe las herramientas de cubicar en agentes.
+- **`photos` en `form.submitted`** (90f833ac): cada foto de un formulario guarda el punto de
+  la cámara y la hora; la app los recibe aparte de `values`, cruzados por la URL. Agentes
+  ya los pasa a `agregar_foto_de_informe` (`at`, `lat`, `lng`, `precisionM`); Portal los
+  proyecta a la calle del mapa de obra para el croquis. Una foto de galería va solo con
+  la fecha (José 07/11). Pendiente: la prueba en vivo con una foto de CTL-IMP en Test.
+- **Stitch**: con cinco generaciones a la vez, cinco llamadas se colgaron 30 min. El
+  generador ahora corre de a una, anota lo cortado en `.stitch-work/lost.txt` y no lo repite;
+  José aprobó regenerar esas cinco una sola vez.
+- **Test #administracion**: `/cotizacion` de Portal encendido solo ahí, para admins (OK de
+  José, a pedido de agentes).
+
+- **Cubicar en el ⚡, E2E en Test (23:14)**: `cubicar_volquete` encendido en el ⚡ de Test (admins).
+  Formulario con QA-001, tarjetas Cuadrado/Cóncavo, a5 y b2 solo con Cóncavo, resumen en vivo
+  17,92 m³; guardado «31 cm desde arriba». La tarjeta `flota.cubicaje` llegó a #planta y se ve
+  en el APK con «Ver certificado» (hoja CUB-2026-0001). La web en una pestaña OCULTA no pinta
+  los mensajes nuevos ni carga imágenes: no es un defecto, se verifica en el APK o con la
+  pestaña visible. Inframaq borró la unidad y el cubicaje de prueba.

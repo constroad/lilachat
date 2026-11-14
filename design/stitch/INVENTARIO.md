@@ -336,3 +336,15 @@ del GPS, del reloj y de la sesión va precargado y lo calculado nunca se pide.
 | `rc-01-recepcion-hub` | Recepción: calles del mapa con su estado, progreso y firmas | en generación |
 | `rc-02-calle` | Calle: conforme u observada, tareas del servicio y observaciones con foto | en generación |
 | `rc-03-firma` | Firma de la supervisión y cierre | en generación |
+
+### Visita técnica desde el chat (14/11/2026, Portal PRIMERA-VISITA §9)
+
+Los diseños los generó la sesión de Portal en este proyecto. Ids en `Portal/design/stitch/registro.jsonl`.
+José, 14/11: la primera versión se construyó SIN abrir estas capturas y no se parecía. Toda pantalla de
+abajo se audita contra su captura antes de publicarla.
+
+| Slug | Qué es | Dispositivos | Uso |
+| --- | --- | --- | --- |
+| lv01-visita-chat | La tarjeta de la visita en el canal de informes: kicker con el código y la etapa, prospecto y dirección, mapa con los puntos numerados y «GPS activo ±m», cifras (entrevista n de m, puntos, fotos), Marcar punto (primaria), Entrevista, Foto suelta, Terminar, y «Falta: …» con la pastilla PENDIENTE (`screens/d830679c9ffb4c72b4890930633d8321`) | móvil | `web/src/spaces/visits/VisitCardWeb.tsx`, `app/src/spaces/visits/VisitCard.tsx` |
+| lv02-visita-punto | Marcar un punto: kicker, «GPS ACTIVO», la foto con hora y ±m y «Repetir», calle, el mapa con los puntos y el nuevo con su distancia y «Mover», «¿Qué es?» en chips con ícono de 3 por fila con «1 elegido», «Guardar punto N» (`screens/d9220bf6a443460d9fb162a5e3335bca`) | móvil | `web/src/spaces/visits/MarkPointWeb.tsx`, `app/src/spaces/visits/MarkPointSheet.tsx` |
+| lv03-visita-entrevista | Entrevista: kicker con el prospecto, código, «n de m» y barra de avance, GPS y contacto, una tarjeta por pregunta con número, tema y «RESPONDIDA», opciones como chips grandes con check, «Siguiente: n sin responder» (`screens/32a018203f8d4829bed09e35af2f7ca2`) | móvil | `web/src/spaces/visits/VisitInterviewWeb.tsx`, `app/src/spaces/visits/VisitInterview.tsx` |

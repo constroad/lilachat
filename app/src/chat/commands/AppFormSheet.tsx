@@ -24,7 +24,7 @@ import { useConditionsAutofill, type ConditionsLookup } from './useConditionsAut
 import { useAppFormState } from './useAppFormState';
 import { useFieldAutofill } from './useFieldAutofill';
 import { GpsReadingField, WorkStreetField } from './WorkPlaceFields';
-import { isRichChoice, MultiField, RichChoiceField } from './RichChoiceFields';
+import { isRichChoice, MultiField, PictureChoiceField, RichChoiceField } from './RichChoiceFields';
 
 const SHEET_PADDING = 16;
 /** A sheet on a tablet or a turned phone stays the width of a phone. */
@@ -323,10 +323,18 @@ function placeSlot(field: FormField, context: SlotContext) {
   return null;
 }
 
+type ValueProps = { value: unknown; error?: string; onChange: (value: unknown) => void };
+
+/** A choice by its look: picture cards (`x-cards`), the rich list with thumbnails, or the plain one. */
+function choiceFieldOf(field: Extract<FormField, { kind: 'choice' }>, rest: ValueProps, half?: boolean) {
+  if (field.cards) return <PictureChoiceField field={field} {...rest} />;
+  return isRichChoice(field) ? <RichChoiceField field={field} {...rest} /> : <ChoiceField field={field} {...rest} compact={half} />;
+}
+
 function Field(props: { field: Exclude<FormField, { kind: 'list' }>; value: unknown; error?: string; onChange: (value: unknown) => void; upload: PhotoUpload; width: number; half?: boolean; opensCamera?: boolean; onCameraDismissed?: () => void }) {
   const { field, upload, width, half, opensCamera, onCameraDismissed, ...rest } = props;
   switch (field.kind) {
-    case 'choice': return isRichChoice(field) ? <RichChoiceField field={field} {...rest} /> : <ChoiceField field={field} {...rest} compact={half} />;
+    case 'choice': return choiceFieldOf(field, rest, half);
     case 'multi': return <MultiField field={field} {...rest} />;
     case 'check': return <CheckField field={field} {...rest} />;
     case 'date': return <DateField field={field} {...rest} compact={half} />;

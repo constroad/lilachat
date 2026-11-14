@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FORMS_LEVEL, formFields, formLevelOf, initialValues, validateFormSpec, validateFormValues, type AppForm, type FormSchemaProperty } from './appForms.js';
+import { FORMS_LEVEL, formFields, formLevelOf, initialValues, validateFormSpec, validateFormValues, type AppForm, type FormField, type FormSchemaProperty } from './appForms.js';
 import { choiceOptions, draftValues, keptAfterRefresh, optionsForRow, previewReplyOf, summaryHeadline, rowTitleOf } from './appFormOptions.js';
 
 /**
@@ -221,5 +221,43 @@ describe('summaryHeadline, the folded summary', () => {
   it('says one warning in singular, and nothing extra when all is fine', () => {
     expect(summaryHeadline([{ type: 'text', text: 'x', tone: 'warn' }])).toBe('Resumen · 1 aviso');
     expect(summaryHeadline([{ type: 'text', text: 'Todo bien', tone: 'ok' }])).toBe('Resumen');
+  });
+});
+
+describe('picture cards (x-cards, José 13/11: the dump body shape, design pla-02)', () => {
+  const FIGURES = 'https://portal.constroad.com/img/cubicar';
+  const shape = (value: string, title: string): Record<string, unknown> => ({ const: value, title, 'x-thumb': `${FIGURES}/volquete-${value}.png`, 'x-photos': [`${FIGURES}/volquete-${value}.png`] });
+  const shapes = [shape('cuadrado', 'Cuadrado'), shape('concavo', 'Cóncavo')];
+  const choiceOf = (property: FormSchemaProperty) => formFields(form({ forma: property }))[0] as Extract<FormField, { kind: 'choice' }>;
+
+  it('two shapes with their drawings and x-cards are picture cards, each with its figure', () => {
+    // Arrange
+    const property: FormSchemaProperty = { type: 'string', title: 'Forma de la tolva', 'x-cards': true, oneOf: shapes };
+    // Act
+    const field = choiceOf(property);
+    // Assert
+    expect(field).toMatchObject({ kind: 'choice', label: 'Forma de la tolva', cards: true });
+    expect(field.options.map((option) => option.photos?.[0])).toEqual([`${FIGURES}/volquete-cuadrado.png`, `${FIGURES}/volquete-concavo.png`]);
+  });
+  it('without x-cards, options with thumbnails keep the rich list (the fuel consumption form keeps its look)', () => {
+    expect(choiceOf({ type: 'string', oneOf: shapes }).cards).toBeUndefined();
+  });
+  it('an option without its drawing, a single option or seven options fall back to the list', () => {
+    // Arrange
+    const seven = Array.from({ length: 7 }, (_, index) => shape(`f${index}`, `Forma ${index}`));
+    // Act
+    const missing = choiceOf({ type: 'string', 'x-cards': true, oneOf: [shapes[0]!, { const: 'otro', title: 'Otro' }] });
+    const single = choiceOf({ type: 'string', 'x-cards': true, oneOf: [shapes[0]!] });
+    const tooMany = choiceOf({ type: 'string', 'x-cards': true, oneOf: seven });
+    // Assert
+    expect([missing.cards, single.cards, tooMany.cards]).toEqual([undefined, undefined, undefined]);
+  });
+  it('a drawing that is not https does not count, and x-cards other than true is ignored', () => {
+    const insecure = { ...shape('concavo', 'Cóncavo'), 'x-thumb': 'http://portal/volquete.png' };
+    expect(choiceOf({ type: 'string', 'x-cards': true, oneOf: [shapes[0]!, insecure] }).cards).toBeUndefined();
+    expect(choiceOf({ type: 'string', 'x-cards': 'true' as unknown as boolean, oneOf: shapes }).cards).toBeUndefined();
+  });
+  it('keeps the default as the starting answer, as any choice', () => {
+    expect(choiceOf({ type: 'string', 'x-cards': true, default: 'concavo', oneOf: shapes })).toMatchObject({ cards: true, initial: 'concavo' });
   });
 });

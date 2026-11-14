@@ -145,3 +145,51 @@ function RichChoiceSheet(props: { field: Extract<FormField, { kind: 'choice' }>;
     </Sheet>
   );
 }
+
+/** A picture card: the drawing on top and the label under it; the picked one in the primary tone (design pla-02). */
+function PictureCard(props: { option: ChoiceOption; on: boolean; name: string; onPick: () => void }) {
+  const { option, on } = props;
+  return (
+    <Pressable testID={`opcion-${props.name}-${option.value}`} accessibilityRole="radio" accessibilityState={{ selected: on, disabled: Boolean(option.disabled) }} onPress={props.onPick} className={`min-h-[112px] flex-1 items-center justify-center gap-2 rounded-xl border px-2 py-3 ${on ? 'border-primary bg-primary/[0.06]' : 'border-outline/25 bg-background'} ${option.disabled ? 'opacity-50' : ''}`}>
+      <Image source={{ uri: option.thumb }} style={{ width: '100%', height: 56 }} contentFit="contain" recyclingKey={option.value} />
+      <Text className={`text-center text-[16px] font-semibold ${on ? 'text-primary' : 'text-on-surface'}`}>{option.label}</Text>
+      {option.sub ? <Text className="text-center text-[13px] text-on-surface-variant">{option.sub}</Text> : null}
+    </Pressable>
+  );
+}
+
+/** The cards two per row; an odd last one keeps half the width. */
+const pairsOf = (options: readonly ChoiceOption[]): ChoiceOption[][] => options.reduce<ChoiceOption[][]>((rows, option, index) => (index % 2 === 0 ? [...rows, [option]] : [...rows.slice(0, -1), [...rows[rows.length - 1]!, option]]), []);
+
+/**
+ * A few options with their drawing (`x-cards`, José 13/11, design pla-02: the
+ * dump body's shape): cards picked with one tap, and the picked one's figure
+ * big below them; a tap on the figure opens it in the viewer. The web's
+ * `PictureChoiceField` is its twin.
+ */
+export function PictureChoiceField({ field, value, error, onChange }: FieldProps<'choice'>) {
+  const viewer = useFileViewer();
+  const current = field.options.find((option) => option.value === value);
+  const figures = (current?.photos ?? []).map((url, index) => ({ url, name: `${current?.label ?? field.label} · figura ${index + 1}` }));
+  return (
+    <View>
+      <Label field={field} />
+      <View accessibilityRole="radiogroup" accessibilityLabel={field.label} testID={`tarjetas-${field.name}`} className="gap-2">
+        {pairsOf(field.options).map((row) => (
+          <View key={row[0]!.value} className="flex-row gap-2">
+            {row.map((option) => <PictureCard key={option.value} option={option} on={option.value === current?.value} name={field.name} onPick={() => !option.disabled && onChange(option.value)} />)}
+            {row.length === 1 ? <View className="flex-1" /> : null}
+          </View>
+        ))}
+      </View>
+      {figures[0] ? (
+        <Pressable testID={`figura-${field.name}`} accessibilityRole="imagebutton" accessibilityLabel={`Ver la figura de ${current?.label ?? field.label}`} onPress={() => viewer.open(figures[0]!, figures)} className="mt-2 overflow-hidden rounded-xl border border-outline/15 bg-background p-2">
+          <Image source={{ uri: figures[0].url }} style={{ width: '100%', height: 200 }} contentFit="contain" />
+        </Pressable>
+      ) : null}
+      {field.help ? <Text className="mt-1 text-[13px] text-on-surface-variant">{field.help}</Text> : null}
+      <ErrorLine text={error} />
+      {viewer.viewer}
+    </View>
+  );
+}

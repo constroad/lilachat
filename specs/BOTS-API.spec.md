@@ -661,6 +661,16 @@ Wilson. Agentes resuelve `x-options` del producto a lo que Lilachat dibuja. Dise
   la rechaza: «Esa opción ya no se puede elegir.».
 - Sin extras, un `choice` sigue saliendo como antes (`enum` + `x-labels`).
 
+**Tarjetas con dibujo** (13/11, cubicar en el ⚡, diseño `pla-02`): `"x-cards": true` en la
+propiedad de un `choice` con 2 a 6 opciones, todas con `x-thumb` https, dibuja tarjetas de
+dos por fila con el dibujo arriba y el título abajo; se eligen con un toque. Debajo sale en
+grande `x-photos[0]` de la elegida (la figura con las cotas A1…A5); al tocarla se abre en el
+visor. Sin `x-cards`, o si una opción no trae `x-thumb`, o con 1 o más de 6 opciones, se
+dibuja la lista con miniaturas de siempre (el consumo de combustible no cambia). No sube
+`forms`: un Lilachat anterior ignora la clave y dibuja la lista. Lo decide `fieldOf` en
+`shared/src/appForms.ts` (`cards: true`), con test en `appFormOptions.test.ts`; web y APK
+lo dibujan con `PictureChoiceField`.
+
 **Varias opciones**: `type: array` con `items.oneOf` (o `items.enum`) es un multi-select
 de filas con casilla. `minItems` es el mínimo («Elige al menos una.»); el máximo, todas.
 

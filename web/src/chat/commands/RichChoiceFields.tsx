@@ -125,3 +125,44 @@ export function RichChoiceField({ field, value, error, onChange }: FieldProps<'c
     </div>
   );
 }
+
+/** A picture card: the drawing on top and the label under it; the picked one in the primary tone (design pla-02). */
+function PictureCard(props: { option: ChoiceOption; on: boolean; name: string; onPick: () => void }) {
+  const { option, on } = props;
+  return (
+    <button type="button" role="radio" aria-checked={on} aria-disabled={option.disabled || undefined} data-testid={`opcion-${props.name}-${option.value}`} onClick={props.onPick} className={`flex min-h-[112px] flex-col items-center justify-center gap-2 rounded-xl border px-2 py-3 text-center transition-colors ${on ? 'border-primary bg-primary/[0.06] text-primary' : 'border-outline/25 bg-background hover:bg-surface'} ${option.disabled ? 'opacity-50' : ''}`}>
+      <img src={option.thumb} alt="" loading="lazy" className="h-14 w-full object-contain" />
+      <span className="text-[15px] font-semibold">{option.label}</span>
+      {option.sub ? <span className="text-[12px] text-on-surface-variant">{option.sub}</span> : null}
+    </button>
+  );
+}
+
+/**
+ * A few options with their drawing (`x-cards`, José 13/11, design pla-02: the
+ * dump body's shape): cards picked with one tap, and the picked one's figure
+ * big below them; a tap on the figure opens it in the viewer.
+ */
+export function PictureChoiceField({ field, value, error, onChange }: FieldProps<'choice'>) {
+  const viewer = usePortalFileViewer();
+  const current = field.options.find((option) => option.value === value);
+  const figures = (current?.photos ?? []).map((url, index) => ({ url, name: `${current?.label ?? field.label} · figura ${index + 1}` }));
+  return (
+    <div>
+      <Label field={field} />
+      <div role="radiogroup" aria-label={field.label} data-testid={`tarjetas-${field.name}`} className="grid grid-cols-2 gap-2">
+        {field.options.map((option) => (
+          <PictureCard key={option.value} option={option} on={option.value === current?.value} name={field.name} onPick={() => !option.disabled && onChange(option.value)} />
+        ))}
+      </div>
+      {figures[0] ? (
+        <button type="button" aria-label={`Ver la figura de ${current?.label ?? field.label}`} data-testid={`figura-${field.name}`} onClick={() => viewer.open(figures[0]!, figures)} className="mt-2 block w-full overflow-hidden rounded-xl border border-outline/15 bg-background p-2">
+          <img src={figures[0].url} alt={figures[0].name} className="mx-auto max-h-56 w-full object-contain" />
+        </button>
+      ) : null}
+      {field.help ? <p className="mt-1 text-[12px] text-on-surface-variant">{field.help}</p> : null}
+      <FieldError>{error}</FieldError>
+      {viewer.viewer}
+    </div>
+  );
+}

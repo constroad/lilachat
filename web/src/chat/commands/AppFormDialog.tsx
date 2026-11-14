@@ -9,7 +9,7 @@ import { FoldedSection } from './FoldedSection';
 import { FormContextCard, FormHeader } from './FormHeader';
 import { ListField } from './ListField';
 import { FormSummary } from './FormSummary';
-import { isRichChoice, MultiField, RichChoiceField } from './RichChoiceFields';
+import { isRichChoice, MultiField, PictureChoiceField, RichChoiceField } from './RichChoiceFields';
 import { PhotoListField } from './PhotoListField';
 import { LiveSelfie, type LiveSelfieHandle } from './LiveSelfie';
 import { SignerCard, SignerPicker, SigningChips } from './SignerPicker';
@@ -219,10 +219,18 @@ function placeSlot(field: FormField, context: SlotContext) {
   return null;
 }
 
+type ValueProps = { value: unknown; error?: string; onChange: (value: unknown) => void };
+
+/** A choice by its look: picture cards (`x-cards`), the rich list with thumbnails, or the plain one. */
+function choiceFieldOf(field: Extract<FormField, { kind: 'choice' }>, rest: ValueProps, half?: boolean) {
+  if (field.cards) return <PictureChoiceField field={field} {...rest} />;
+  return isRichChoice(field) ? <RichChoiceField field={field} {...rest} /> : <ChoiceField field={field} {...rest} compact={half} />;
+}
+
 function Field(props: { field: Exclude<FormField, { kind: 'list' }>; value: unknown; error?: string; onChange: (value: unknown) => void; upload: Upload; half?: boolean }) {
   const { field, upload, half, ...rest } = props;
   switch (field.kind) {
-    case 'choice': return isRichChoice(field) ? <RichChoiceField field={field} {...rest} /> : <ChoiceField field={field} {...rest} compact={half} />;
+    case 'choice': return choiceFieldOf(field, rest, half);
     case 'multi': return <MultiField field={field} {...rest} />;
     case 'text': return <TextField field={field} {...rest} />;
     case 'check': return <CheckField field={field} {...rest} />;

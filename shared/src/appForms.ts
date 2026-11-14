@@ -56,6 +56,8 @@ export type FormSchemaProperty = {
   /** Changing this field asks the app for the form again with the draft (the period changes the orders). */
   'x-refresh'?: boolean;
   /** Agentes 13/11: the header fields side by side share (`x-section`), folded by `x-collapsed`; a list's partida weights (`x-split`). */ 'x-section'?: string; 'x-collapsed'?: boolean; 'x-split'?: unknown;
+  /** José 13/11 (design pla-02, the dump body's shape): the options as picture cards; 2 to 6 options, all with `x-thumb`. */
+  'x-cards'?: boolean;
 };
 /** How much of a row a field takes: half beside another, or all of it. */
 export type FieldWidth = 'half' | 'full';
@@ -64,7 +66,7 @@ export type AppForm = { id: string; title: string; submitLabel?: string; /** The
 
 type Base = { name: string; label: string; help?: string; required: boolean; /** `x-input: shift | weather | place-street | temperature | clock`: the phone fills it when empty. */ condition?: 'shift' | 'weather' | 'street' | 'temperature' | 'clock'; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number | true; /** `x-refresh`: changing it asks the app for the form again. */ refresh?: true; /** Other fields show by its answer: the form's step, alone in its row (José 13/11). */ step?: true; /** `x-section`: the header it sits under, folded or not (agentes 13/11). */ section?: FieldSection };
 export type FormField =
-  | (Base & { kind: 'choice'; options: ChoiceOption[]; segmented: boolean; /** A few short options in two columns (José 12/11: two controls per line, not a list to open). */ columns?: 2; /** A long list (the company's people, agentes 24/10): a field that opens a sheet with a search. */ searchable: boolean; /** `x-avatar: initials`: each option with its initials. */ initials?: true })
+  | (Base & { kind: 'choice'; options: ChoiceOption[]; segmented: boolean; /** A few short options in two columns (José 12/11: two controls per line, not a list to open). */ columns?: 2; /** A long list (the company's people, agentes 24/10): a field that opens a sheet with a search. */ searchable: boolean; /** `x-avatar: initials`: each option with its initials. */ initials?: true; /** `x-cards`: picture cards picked with one tap; the picked one's first photo shows big below. */ cards?: true })
   | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true; /** `x-input: place`: a text with the button that writes where the device is. */ place?: true; /** `x-input: work-street`: a street of the service's work map, picked (Portal's CON-CAP, 12/11). */ street?: true; /** `x-input: work-station`: the station on that street, computed from the reading and editable. */ station?: true })
   | (Base & { kind: 'number'; unit?: string; min?: number; max?: number; /** The limit itself is out: «Mayor que 0». */ minExclusive?: true; maxExclusive?: true; integer: boolean; /** `x-input: gps`: written by the device's reading, never typed (Portal's CON-CAP point). */ gps?: GpsRole })
   | (Base & { kind: 'date'; /** `format: date | time | date-time`: a picker for the day, the hour or both (José, 24/10). */ mode: DateMode })
@@ -246,10 +248,7 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
   if (input === 'location') return { ...base, kind: 'location' };
   if (property.type === 'boolean') return { ...base, kind: 'check', ...(property.default === true ? { initial: true as const } : {}) };
   const options = choiceOptions(property);
-  if (options) {
-    const initial = options.some((option) => option.value === String(property.default)) ? { initial: String(property.default) } : {};
-    return { ...base, ...initial, kind: 'choice', options, ...choiceLayout(options), ...(property['x-avatar'] === 'initials' ? { initials: true as const } : {}) };
-  }
+  if (options) return choiceField(base, property, options);
   if (property.type === 'number' || property.type === 'integer') {
     const given = numberOf(property.default);
     const initial = given === undefined ? {} : { initial: given };
@@ -277,6 +276,20 @@ function textInputOf(input: string | undefined): { place?: true; street?: true; 
   if (input === 'place') return { place: true };
   if (input === 'work-street') return { street: true };
   return input === 'work-station' ? { station: true } : {};
+}
+
+/** Picture cards fit in two columns, up to three rows. */
+const CARD_OPTIONS = { min: 2, max: 6 };
+
+/** Cards only when the app asks for them and every option brings its drawing: else the list, as before. */
+const drawsCards = (property: FormSchemaProperty, options: readonly ChoiceOption[]): boolean =>
+  property['x-cards'] === true && options.length >= CARD_OPTIONS.min && options.length <= CARD_OPTIONS.max && options.every((option) => Boolean(option.thumb));
+
+/** A choice: its starting answer, how it is laid out, initials for people and picture cards when asked. */
+function choiceField(base: Base, property: FormSchemaProperty, options: ChoiceOption[]): FormField {
+  const initial = options.some((option) => option.value === String(property.default)) ? { initial: String(property.default) } : {};
+  const initials = property['x-avatar'] === 'initials' ? { initials: true as const } : {};
+  return { ...base, ...initial, kind: 'choice', options, ...choiceLayout(options), ...initials, ...(drawsCards(property, options) ? { cards: true as const } : {}) };
 }
 
 /** How a choice is drawn: side by side while it fits, a dropdown for records, long labels and long lists, else a list of rows. */

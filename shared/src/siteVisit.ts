@@ -7,10 +7,11 @@ import { validateFormSpec, type AppForm, type FormSchema } from './appForms.js';
  * figures, the points, the interview and what is still missing to finish. PURE.
  */
 
-/** Off until José turns on «Visitas técnicas desde Lilachat» in Portal and the live E2E passes. */
-export const SITE_VISITS_OPEN_HERE = false;
-/** The notice topic whose channel is the visits' door (agentes declares it). */
-export const VISITS_TOPIC = 'visitas';
+/**
+ * The visit is an item of the app (José 14/11: «desde Lilachat yo indico a qué miembros»): the space admin
+ * turns it on in «Comandos» and picks the 1:1, the channels and who. Not a command: never offered in the ⚡ or «/».
+ */
+export const SITE_VISIT_SHORTCUT = 'visita_tecnica';
 /** Portal: the place is approximate past 15 m. */
 export const VISIT_APPROXIMATE_M = 15;
 export const VISIT_POINT_NOTE_MAX = 200;

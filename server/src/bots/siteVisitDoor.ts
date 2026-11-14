@@ -1,19 +1,21 @@
 import mongoose, { Types, type Model } from 'mongoose';
-import { formLevelOf, openVisitRowsOf, pointProblem, VISITS_TOPIC, visitDocumentOf, visitSectionForm, type AppForm, type CommandOutcome, type FormSchema, type OpenVisitRow, type VisitDocument, type VisitPointDraft } from '@lilachat/shared';
+import { availableTo, canManageMembers, formLevelOf, itemSettingOf, openVisitRowsOf, pointProblem, SITE_VISIT_SHORTCUT, visitDocumentOf, visitSectionForm, type AppForm, type CommandOutcome, type FormSchema, type OpenVisitRow, type VisitDocument, type VisitPointDraft } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { OUTDATED_FORM_MESSAGE, type CommandError } from './botCommands.js';
 import { callBotWebhook, recordLastDelivery } from './botEvents.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botModels.js';
-import { topicRoutesOf } from './botTopics.js';
+import { isClientChat } from './botClients.js';
+import { itemPlaceOf } from './botCommands.js';
+import { WorkspaceMemberModel } from '../workspaceModels.js';
 
 /**
  * A technical visit from the phone (José 13/11; contract with agentes 14/11, `BOTS-API.spec.md` c-visitas).
- * The door is the channel chosen for the `visitas` topic of the app that declares it, or the 1:1 with that
- * app: a visit has no client nor service, so the clients' door does not apply. The document is kept per
- * person and visit for the section forms, as a field report's draft is.
+ * The door is the app's `visita_tecnica` item (José 14/11): the space admin turns it on in «Comandos» and
+ * picks the 1:1, the channels and who, as with any command. No company switch in Portal. The document is
+ * kept per person and visit for the section forms, as a field report's draft is.
  */
-export type VisitPlace = 'topic_channel' | 'direct';
+export type VisitPlace = 'channel' | 'direct';
 type Door = { installation: { _id: Types.ObjectId; workspaceId: Types.ObjectId; signingSecret: string; appId: Types.ObjectId }; app: { _id: Types.ObjectId; name: string; webhookUrl: string }; place: VisitPlace; chatId: Types.ObjectId; chatKind: string };
 
 const ASK_TIMEOUT_MS = 8_000;
@@ -47,25 +49,32 @@ const notFound = (): CommandError => fail(404, 'not_found', 'Las visitas técnic
 const record = (value: unknown): Record<string, unknown> => (value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {});
 const visitIdOf = (value: unknown): string | null => (typeof value === 'string' && VISIT_ID.test(value) ? value : null);
 
-/** Where this chat stands for visits: the `visitas` topic's channel or the 1:1 with the app; else no door. */
-async function placeOf(chat: { _id: Types.ObjectId; kind: string; members: { userId: Types.ObjectId }[] }, installation: Door['installation'] & { botUserId: Types.ObjectId }): Promise<VisitPlace | null> {
-  if (chat.kind === 'direct') return chat.members.some((member) => String(member.userId) === String(installation.botUserId)) ? 'direct' : null;
-  const { topics } = await topicRoutesOf(installation);
-  return topics.find((topic) => topic.key === VISITS_TOPIC)?.channel?.id === String(chat._id) ? 'topic_channel' : null;
+type DoorInstallation = Door['installation'] & { botUserId: Types.ObjectId; itemSettings?: Parameters<typeof itemSettingOf>[0]; itemsV2?: boolean };
+type DoorChat = NonNullable<Parameters<typeof itemPlaceOf>[0]>;
+
+/** Whether the admin's setting of the `visita_tecnica` item lets this person in at this chat. */
+function placeOf(chat: DoorChat, installation: DoorInstallation, person: { userId: string; spaceAdmin: boolean }, client: boolean): VisitPlace | null {
+  const setting = itemSettingOf(installation.itemSettings, 'shortcut', SITE_VISIT_SHORTCUT, !installation.itemsV2);
+  const place = itemPlaceOf(chat, installation, client);
+  if (place === 'space' || !availableTo('shortcut', SITE_VISIT_SHORTCUT, setting, place, person)) return null;
+  return place === 'direct' ? 'direct' : 'channel';
 }
 
-/** The door: a member of this chat, in a space whose installed app declares the `visitas` topic. */
+/** The door: an active member of this chat, where an installed app's `visita_tecnica` item is on for them. */
 export async function visitDoorOf(workspaceId: string, chatId: unknown, userId: Types.ObjectId): Promise<Door | null> {
   if (!Types.ObjectId.isValid(workspaceId) || typeof chatId !== 'string' || !Types.ObjectId.isValid(chatId)) return null;
-  const [chat, apps] = await Promise.all([
-    ChatModel.findOne({ _id: chatId, 'members.userId': userId }).select('_id kind members.userId').lean(),
-    BotAppModel.find({ 'noticeTopics.key': VISITS_TOPIC }).select('_id name webhookUrl').lean(),
+  const [chat, member, apps, client] = await Promise.all([
+    ChatModel.findOne({ _id: chatId, workspaceId, 'members.userId': userId }).select('_id kind members.userId').lean<DoorChat | null>(),
+    WorkspaceMemberModel.findOne({ workspaceId, userId, status: 'active' }).select('role').lean(),
+    BotAppModel.find({ 'shortcuts.key': SITE_VISIT_SHORTCUT }).select('_id name webhookUrl').lean(),
+    isClientChat(chatId),
   ]);
-  if (!chat || !apps.length) return null;
-  const installations = await BotInstallationModel.find({ workspaceId: new Types.ObjectId(workspaceId), appId: { $in: apps.map((app) => app._id) }, revokedAt: { $exists: false } }).select('_id workspaceId signingSecret appId botUserId').lean();
+  if (!chat || !member || !apps.length) return null;
+  const person = { userId: String(userId), spaceAdmin: canManageMembers(member.role) };
+  const installations = await BotInstallationModel.find({ workspaceId: new Types.ObjectId(workspaceId), appId: { $in: apps.map((app) => app._id) }, revokedAt: { $exists: false } }).select('_id workspaceId signingSecret appId botUserId itemSettings itemsV2').lean<DoorInstallation[]>();
   for (const installation of installations) {
     const app = apps.find((one) => String(one._id) === String(installation.appId));
-    const place = app?.webhookUrl ? await placeOf(chat, installation) : null;
+    const place = app?.webhookUrl ? placeOf(chat, installation, person, client) : null;
     if (app?.webhookUrl && place) return { installation, app: { _id: app._id, name: app.name, webhookUrl: app.webhookUrl }, place, chatId: chat._id, chatKind: chat.kind };
   }
   return null;

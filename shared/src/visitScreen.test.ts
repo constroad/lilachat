@@ -73,16 +73,10 @@ describe('the visit screen\'s state', () => {
 });
 
 describe('the door', () => {
-  it('asks nothing while visits are off here', () => {
-    const ask = vi.fn(async () => ({ ok: true as const, data: { open: true } }));
-    const stop = watchVisitDoor(ask, () => undefined, false);
-    stop();
-    expect(ask).not.toHaveBeenCalled();
-  });
-  it('on, it tells whether the chat is a door; a late answer after leaving is dropped', async () => {
+  it('it tells whether the chat is a door; a late answer after leaving is dropped', async () => {
     const seen: boolean[] = [];
-    watchVisitDoor(async () => ({ ok: true as const, data: { open: true } }), (open) => seen.push(open), true);
-    const stop = watchVisitDoor(async () => ({ ok: true as const, data: { open: true } }), (open) => seen.push(open), true);
+    watchVisitDoor(async () => ({ ok: true as const, data: { open: true } }), (open) => seen.push(open));
+    const stop = watchVisitDoor(async () => ({ ok: true as const, data: { open: true } }), (open) => seen.push(open));
     stop();
     await Promise.resolve();
     await Promise.resolve();

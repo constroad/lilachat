@@ -1,4 +1,4 @@
-import { SITE_VISITS_OPEN_HERE, type VisitPointDraft } from './siteVisit.js';
+import type { VisitPointDraft } from './siteVisit.js';
 import { addVisitPhoto, createdVisitIdOf, finishVisit, markVisitPoint, visitDraftResultOf, visitPdf, visitPointRequest, type VisitDraftResult, type VisitFlowDeps, type VisitSource } from './visitFlow.js';
 
 /**
@@ -74,9 +74,8 @@ export function createVisitScreen<F>(deps: VisitScreenDeps<F>, startId: string |
 }
 export type VisitScreen<F> = ReturnType<typeof createVisitScreen<F>>;
 
-/** Whether a chat is a visits door, asked once and only while visits are on here; a late answer after leaving is dropped. */
-export function watchVisitDoor(ask: () => Promise<{ ok: true; data: { open: boolean } } | { ok: false }>, onAnswer: (open: boolean) => void, on: boolean = SITE_VISITS_OPEN_HERE): () => void {
-  if (!on) return () => undefined;
+/** Whether a chat is a visits door (the space admin's «Comandos» decides), asked once; a late answer after leaving is dropped. */
+export function watchVisitDoor(ask: () => Promise<{ ok: true; data: { open: boolean } } | { ok: false }>, onAnswer: (open: boolean) => void): () => void {
   let alive = true;
   void ask().then((answer) => alive && onAnswer(answer.ok && answer.data.open)).catch(() => undefined);
   return () => {

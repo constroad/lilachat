@@ -164,7 +164,7 @@ function Body({ visit, onMark, onPdf }: { visit: Visit; onMark: () => void; onPd
 
 /**
  * The technical visit (José 13/11; designs lv01–lv03), in place of the chat it was opened from. Each
- * section is Portal's form; a point opens the camera first. Behind `SITE_VISITS_OPEN_HERE`.
+ * section is Portal's form; a point opens the camera first. Shown where the space admin turned the visit on.
  */
 export function VisitScreen(props: Props) {
   const margins = useMargenes();

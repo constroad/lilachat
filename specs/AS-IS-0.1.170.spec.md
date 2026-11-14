@@ -926,5 +926,12 @@ José corrigió el diseño: el selector de espacios **no** lleva «Ver incógnit
 - **Sin probar en vivo:** agentes desplegó fb5bb54, pero el interruptor de Portal sigue apagado en Test. El E2E
   (crear la visita, marcar un punto con su foto, la entrevista, terminar y el PDF) se corre cuando José lo
   encienda.
+- **La puerta es del admin del espacio (José 14/11):** «desde lilachat yo indico a qué miembros». La visita es el
+  ítem `shortcut:visita_tecnica` de la app: se enciende en Detalle de la app → Comandos, con 1:1, canales y quién.
+  Sin tocar, apagada. `visitDoorOf` usa `itemSettingOf` + `availableTo` (la misma regla de los comandos) y ya no
+  mira el tópico `visitas`. `commandGroupsOf` no la ofrece en el ⚡ ni en «/». `place` pasa a `'channel' | 'direct'`.
+  Se quitó `SITE_VISITS_OPEN_HERE`: el cliente pregunta la puerta y el server decide. Portal quita su interruptor
+  por empresa (aviso a su sesión); agentes declara el shortcut. Tests: `siteVisitDoor.test.ts` 11 (sin tocar,
+  «quién» por personas, no ofrecida en el ⚡).
 - **Respuesta con tarjeta y enlace (agentes 14/11):** si la tarjeta trae `link`, el texto de respaldo con la URL
   ya no se muestra dos veces (`answerTextShown`, APK y web).

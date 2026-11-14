@@ -77,7 +77,7 @@ export type BotCommandRun = {
   /** The client's service the door checked (`findAskedService`): goes beside `values` so agentes can hold the border between clients. */
   service?: { clientId: string; serviceId: string };
   /** A technical visit's write (14/11): the door's chat and place go beside `values` so agentes holds it again. */
-  visit?: { channelId: string; place: 'topic_channel' | 'direct' };
+  visit?: { channelId: string; place: 'channel' | 'direct' };
   expiresAt: Date;
   createdAt: Date;
 };

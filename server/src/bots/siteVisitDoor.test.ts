@@ -12,6 +12,7 @@ import { WorkspaceMemberModel, WorkspaceModel } from '../workspaceModels.js';
 import { signSession } from '../sessions.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botModels.js';
 import { VisitDraftModel } from './siteVisitDoor.js';
+import { itemKey, SITE_VISIT_SHORTCUT } from '@lilachat/shared';
 
 /** A technical visit from the phone (José 13/11; contract with agentes 14/11, BOTS-API c-visitas). */
 let mongo: MongoMemoryServer;
@@ -64,12 +65,12 @@ beforeEach(async () => {
   spaceId = (await WorkspaceModel.create({ name: 'Test', ownerId: ana, joinCode: 'TEST-7K3P' }))._id;
   await WorkspaceMemberModel.create({ workspaceId: spaceId, userId: ana, phone: '51922222222', role: 'owner', status: 'active' });
   const botUser = (await UserModel.create({ phone: 'bot-portal', name: 'Portal' }))._id as Types.ObjectId;
-  const appDoc = await BotAppModel.create({ clientId: 'lca_portal', clientSecretHash: 'x', name: 'Portal', redirectUris: ['https://agentes.example.com/cb'], webhookUrl: hookUrl, noticeTopics: [{ key: 'visitas', name: 'Visitas técnicas', noDefault: true }] });
+  const appDoc = await BotAppModel.create({ clientId: 'lca_portal', clientSecretHash: 'x', name: 'Portal', redirectUris: ['https://agentes.example.com/cb'], webhookUrl: hookUrl, shortcuts: [{ key: SITE_VISIT_SHORTCUT, name: 'Visita técnica' }] });
   const channelOf = async (name: string) => (await ChatModel.create({ kind: 'group', name, workspaceId: spaceId, channel: { visibility: 'public' }, members: [{ userId: ana, role: 'admin' }, { userId: botUser, role: 'member' }] }))._id as Types.ObjectId;
   general = await channelOf('general');
   visitsChannel = await channelOf('visitas-tecnicas');
   direct = (await ChatModel.create({ kind: 'direct', workspaceId: spaceId, members: [{ userId: ana, role: 'member' }, { userId: botUser, role: 'member' }] }))._id as Types.ObjectId;
-  await BotInstallationModel.create({ appId: appDoc._id, workspaceId: spaceId, botUserId: botUser, tokenHash: 'h1', signingSecret: 'secret', installedBy: ana, topicChannels: { visitas: String(visitsChannel) } });
+  await BotInstallationModel.create({ appId: appDoc._id, workspaceId: spaceId, botUserId: botUser, tokenHash: 'h1', signingSecret: 'secret', installedBy: ana, itemsV2: true, itemSettings: { [itemKey('shortcut', SITE_VISIT_SHORTCUT)]: { channels: [String(visitsChannel)], direct: true, who: { kind: 'everyone' } } } });
 });
 
 describe('the visit\'s door', () => {
@@ -77,7 +78,7 @@ describe('the visit\'s door', () => {
     // Act
     const answered = await draftOf({ chat_id: String(visitsChannel), visit_id: VISIT }).expect(200);
     // Assert
-    expect(received[0]).toMatchObject({ type: 'visit.draft.requested', data: { visita_id: VISIT, channel_id: String(visitsChannel), channel: { id: String(visitsChannel), kind: 'group' }, place: 'topic_channel', user: { id: String(ana), name: 'Ana' } } });
+    expect(received[0]).toMatchObject({ type: 'visit.draft.requested', data: { visita_id: VISIT, channel_id: String(visitsChannel), channel: { id: String(visitsChannel), kind: 'group' }, place: 'channel', user: { id: String(ana), name: 'Ana' } } });
     expect(answered.body.document).toMatchObject({ id: VISIT, code: 'VIS-2026-0003', figures: { points: 1 } });
   });
   it('from the 1:1 with the app the place is «direct»; a new visit brings the open ones', async () => {
@@ -99,7 +100,26 @@ describe('the visit\'s door', () => {
     await draftOf({ chat_id: String(general) }).expect(404);
     expect(received).toHaveLength(0);
   });
-  it('Portal\'s switch off: its own text reaches the person', async () => {
+  it('the space admin decides: untouched it is off everywhere, and «who» leaves out the rest', async () => {
+    // Arrange
+    const bea = (await UserModel.create({ phone: '51933333333', name: 'Bea' }))._id as Types.ObjectId;
+    await WorkspaceMemberModel.create({ workspaceId: spaceId, userId: bea, phone: '51933333333', role: 'member', status: 'active' });
+    await ChatModel.updateOne({ _id: visitsChannel }, { $push: { members: { userId: bea, role: 'member' } } });
+    const doorFor = (userId: Types.ObjectId) => request(app).get(`/api/workspaces/${spaceId}/visits/door`).query({ chat_id: String(visitsChannel) }).set(auth(userId)).expect(200);
+    // Act + Assert: only Ana is chosen
+    await BotInstallationModel.updateOne({}, { $set: { [`itemSettings.${itemKey('shortcut', SITE_VISIT_SHORTCUT)}.who`]: { kind: 'people', userIds: [String(ana)] } } });
+    expect((await doorFor(bea)).body).toEqual({ open: false });
+    // Untouched: off in every channel
+    await BotInstallationModel.updateOne({}, { $set: { itemSettings: {} } });
+    expect((await doorFor(ana)).body).toEqual({ open: false });
+    await draftOf({ chat_id: String(visitsChannel) }).expect(404);
+    expect(received).toHaveLength(0);
+  });
+  it('a door, not a command: the ⚡ and «/» do not offer it', async () => {
+    const offered = await request(app).get(`/api/workspaces/${spaceId}/commands`).query({ chat: String(visitsChannel) }).set(auth(ana)).expect(200);
+    expect(JSON.stringify(offered.body)).not.toContain(SITE_VISIT_SHORTCUT);
+  });
+  it('Portal\'s refusal: its own text reaches the person', async () => {
     answers['visit.draft.requested'] = { status: 200, body: { error: 'visitas_apagadas', message: 'Las visitas técnicas desde Lilachat están apagadas: se encienden en Empresa › Lila.' } };
     const answered = await draftOf({ chat_id: String(visitsChannel) }).expect(200);
     expect(answered.body).toEqual({ error: 'visitas_apagadas', message: 'Las visitas técnicas desde Lilachat están apagadas: se encienden en Empresa › Lila.' });
@@ -116,7 +136,7 @@ describe('a visit\'s writes', () => {
     // Assert
     expect(opened.body.response.form).toMatchObject({ id: 'marcar_punto_de_visita', title: 'Punto 2' });
     const submitted = received.find((event) => event.type === 'form.submitted')!;
-    expect(submitted.data).toMatchObject({ form_id: 'marcar_punto_de_visita', channel_id: String(visitsChannel), place: 'topic_channel', values: { visitaId: VISIT, entradaId: ENTRY, tipo: 'BACHE', lat: -12.0217, lng: -76.8817, precisionM: 6, fuente: 'apk' } });
+    expect(submitted.data).toMatchObject({ form_id: 'marcar_punto_de_visita', channel_id: String(visitsChannel), place: 'channel', values: { visitaId: VISIT, entradaId: ENTRY, tipo: 'BACHE', lat: -12.0217, lng: -76.8817, precisionM: 6, fuente: 'apk' } });
   });
   it('a point without GPS, without type or without its key is refused before reaching agentes', async () => {
     await draftOf({ chat_id: String(visitsChannel), visit_id: VISIT }).expect(200);

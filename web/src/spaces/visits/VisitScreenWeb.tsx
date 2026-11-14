@@ -143,7 +143,7 @@ function Body({ visit, onMark, onPdf }: { visit: Visit; onMark: () => void; onPd
 
 /**
  * The technical visit on the web (José 13/11; designs lv01–lv03), over the chat it was opened from:
- * the same flow as the APK. Behind `SITE_VISITS_OPEN_HERE`.
+ * the same flow as the APK. Shown where the space admin turned the visit on.
  */
 export function VisitScreenWeb(props: Props) {
   const visit = useVisit(props.place, props.visitId ?? null);

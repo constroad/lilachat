@@ -245,6 +245,13 @@ El responsable se busca por teléfono entre los miembros activos del espacio. Si
 no está: `400 { "error": "assignee_not_member", "phone": "51…" }`. Una tarea
 con responsable solo la marca esa persona o el bot (regla de la §86).
 
+### `DELETE /api/bots/messages/:id`
+
+El bot baja su propio mensaje como «Eliminar para todos» (Portal 14/11: al borrar una visita, su tarjeta se va).
+Queda la lápida «Se eliminó este mensaje», sale de los fijados, su hilo se recuenta y cada miembro recibe
+`msg.deleted`. `204` si se borró. `404 message_not_found` si no existe, no es de este bot o ya se borró.
+`409 not_deleted` si el chat no lo deja (por ejemplo, el bot ya no está en el canal).
+
 ## c) Entrada: eventos firmados hacia agentes
 
 Lilachat hace `POST webhook_url` con:

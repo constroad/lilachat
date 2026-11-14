@@ -1,10 +1,10 @@
 import { Types } from 'mongoose';
 import { botCardSummary, botFilesSummary, type BotCard, type BotClientRef, type BotPost, type GalleryItem } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Chat, type Message } from '../chatModels.js';
-import { chatMemberIds, sendMessage } from '../chatService.js';
+import { chatMemberIds, deleteMessage, sendMessage } from '../chatService.js';
 import { createChecklistInChat } from '../checklistService.js';
 import { HiloInvalidoError } from '../hilos.js';
-import { notifyThread, publicarMensaje } from '../reparto.js';
+import { notifyDeleted, notifyThread, publicarMensaje } from '../reparto.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { BotInstallationModel, type BotInstallation } from './botModels.js';
 import { channelOfPostedTopic } from './botTopics.js';
@@ -148,6 +148,22 @@ export async function updateBotMessage(installation: Installation, messageId: st
   await MessageModel.updateOne({ _id: message._id }, { $set: fields });
   notify(await chatMemberIds(message.chatId), { chatId: String(message.chatId), seq: message.seq, ...fields });
   return { message: posted(message) };
+}
+
+/**
+ * The bot takes down its own message, as «Eliminar para todos» does (Portal 14/11: a deleted visit takes its card
+ * with it): the tombstone, off the pinned bar, its thread recounted, and every member told.
+ */
+export async function deleteBotMessage(installation: Installation, messageId: string): Promise<{ deleted: true } | BotApiError> {
+  if (!Types.ObjectId.isValid(messageId)) return fail(404, 'message_not_found', 'Ese mensaje no existe.');
+  const message = await MessageModel.findOne({ _id: messageId, senderId: installation.botUserId, deletedAt: { $exists: false } }).select('chatId seq').lean<Message | null>();
+  if (!message) return fail(404, 'message_not_found', 'Ese mensaje no existe o no es de este bot.');
+  const chatId = String(message.chatId);
+  const deleted = await deleteMessage({ chatId, seq: message.seq, userId: installation.botUserId });
+  if (!deleted.ok) return fail(409, 'not_deleted', deleted.motivo);
+  const thread = deleted.hilo && deleted.message.hiloDe ? { rootSeq: deleted.message.hiloDe, summary: deleted.hilo } : undefined;
+  notifyDeleted(chatId, message.seq, await chatMemberIds(message.chatId), thread);
+  return { deleted: true };
 }
 
 /** A visit card of this bot (lv01): its edit may carry the five buttons, like its POST. */

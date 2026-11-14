@@ -9,7 +9,7 @@ import { deleteOwnedApp, developerFrom, listOwnedApps, rotateAppSecret, upsertAp
 import { availabilityOf, setAvailability, spacesRunBy, type AppRef } from './botAvailability.js';
 import { commandsOfApp, commandsToWire, registerCommands, respondToCommand } from './botCommands.js';
 import { installationByToken, revokeInstallation } from './botInstall.js';
-import { isVisitMessage, postBotMessage, updateBotMessage } from './botMessages.js';
+import { deleteBotMessage, isVisitMessage, postBotMessage, updateBotMessage } from './botMessages.js';
 import { upsertClientChannel } from './botClients.js';
 import { addClientTasks, clientTasksOf } from './botClientTasks.js';
 import { setTopicChannels, setTopicOffered, topicRoutesOf } from './botTopics.js';
@@ -128,6 +128,11 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
     const outcome = await updateBotMessage(req.bot!, String(req.params.id), { ...(text ? { text } : {}), ...(card?.ok ? { card: card.card } : {}), ...(files?.ok ? { files: files.files } : {}), ...(clientRef?.visitId ? { clientRef } : {}) }, notifyEdited);
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.json(outcome);
+  }));
+  router.delete('/messages/:id', asyncRoute(async (req, res) => {
+    const outcome = await deleteBotMessage(req.bot!, String(req.params.id));
+    if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+    res.status(204).end();
   }));
   router.get('/messages/:id/files', asyncRoute(async (req, res) => {
     const files = await filesHeardBy(req.bot!, String(req.params.id));

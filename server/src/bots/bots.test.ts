@@ -228,6 +228,22 @@ describe('the bot publishes (§b) and reads (§d)', () => {
     expect(saved!.card!.actions).toHaveLength(5);
   });
 
+  it('the bot takes down its own card like «Eliminar para todos»; someone else\'s message, or one already gone, is 404 (Portal 14/11: a deleted visit)', async () => {
+    // Arrange
+    const { token } = await install();
+    const sent = await request(app).post('/api/bots/messages').set(asBot(token)).send({ channel_id: String(channel), kind: 'visita.created', refs: { visit_id: '65f0000000000000000000a3' }, card: { title: 'Visita técnica' }, idempotency_key: 'd1' }).expect(201);
+    const someone = await MessageModel.create({ chatId: channel, seq: 900, senderId: new Types.ObjectId(), clientKey: 'k-otro', kind: 'text', body: 'Hola', at: new Date() });
+    // Act
+    await request(app).delete(`/api/bots/messages/${sent.body.message.id}`).set(asBot(token)).expect(204);
+    // Assert
+    const gone = await MessageModel.findById(sent.body.message.id).lean<Message>();
+    expect(gone!.deletedAt).toBeInstanceOf(Date);
+    expect(gone!.card).toBeUndefined();
+    await request(app).delete(`/api/bots/messages/${sent.body.message.id}`).set(asBot(token)).expect(404);
+    await request(app).delete(`/api/bots/messages/${someone._id}`).set(asBot(token)).expect(404);
+    expect((await MessageModel.findById(someone._id).lean<Message>())!.deletedAt).toBeUndefined();
+  });
+
   it('photos and videos as an album; PATCH replaces the whole set (José via agentes 09/11)', async () => {
     const { token } = await install();
     const photo = (name: string) => ({ url: `https://lila.constroad.com/files/${name}.jpg`, mime: 'image/jpeg' });

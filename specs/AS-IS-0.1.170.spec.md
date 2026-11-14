@@ -746,12 +746,33 @@ Lo que el E2E destapó, de Lilachat (web y APK, sin tocar el contrato):
 - **La raíz del hilo con foto.** El hilo de un comprobante decía «Archivo» donde el chat mostraba la foto. La raíz
   usa lo mismo que la burbuja (`MessageContent` en la web; `MessageMedia` en la APK): foto o archivo con su pie.
   En la APK la foto de la raíz abre el visor desde el 14/11 (`useThreadPhotoViewer`: el mismo `VisorDelChat`, con
-  guardar y compartir; eliminar va por el «Eliminar para todos» del hilo). Las respuestas con foto dentro del hilo
-  todavía se dibujan solo como texto en la APK: pendiente.
+  guardar y compartir; eliminar va por el «Eliminar para todos» del hilo). Las respuestas con foto, video, nota de
+  voz o archivo dentro del hilo se dibujan como en el chat desde el 13/11 noche (6), abajo.
 
 De agentes (sha 4453271, tras el reporte del E2E): una tarjeta con la misma operación y monto sale «Ya registrado»
 sin «Aprobar» (solo «Revisar gasto» y «Descartar»); el aviso «apruébalo igual» queda para el pago parecido por monto
 y fecha. En un recibo sin otro número, la serie-número es la operación.
+
+## 13/11 noche (6): fotos en las respuestas del hilo (APK) y el mapa con ruta
+
+- **Respuesta con foto en un hilo (APK).** Se dibujaba como texto. `ThreadMediaReply` pone el mismo
+  `MessageMedia` del chat en la burbuja del hilo, con su pie y la hora sobre la foto (o en su renglón para
+  voz y archivos). El sticker, la checklist y el texto siguen en la burbuja de siempre
+  (`isThreadMediaReply` en `threadReply.ts`, con tests). El visor del hilo pasa por la raíz y todas las
+  respuestas con foto (`threadPhotoMessages`), y la fila plana del hilo también lo abre.
+- **Bloque `map` con ruta (Portal 13/11, visitas `lv01`).** `points` hasta 31, en orden, con su etiqueta;
+  la línea punteada en el acento y teselas que encuadran todos los puntos (`routeTilesFor`, con tests).
+  `lat`/`lng` toman el primer punto: una APK sin el OTA dibuja ese lugar. Contrato en
+  `BOTS-API.spec.md` c-unvicies. Web `RouteMapWeb`, APK `RouteMap`.
+- **Sin verificar en pantalla todavía:** la ruta con una tarjeta real (la primera la manda agentes cuando
+  Portal emita los avisos de visitas) y la respuesta con foto en la APK después del OTA.
+
+### Limpieza QA del 13/11 (OK de José)
+
+- Portal, empresa TEST: borrados por la ruta de la app los 4 gastos de prueba B001-000777 a 000780
+  (S/ 660). En Test #flujo-caja: las 6 fotos de voucher de hoy, «Eliminar para todos», con un mensaje
+  que explica la limpieza. Agentes redibujó sus 5 tarjetas como «Borrado · era una prueba».
+- Pendiente de Portal: su tarjeta «Caja del 13 de noviembre» no se refresca al borrar un movimiento.
 
 ### Verificado de nuevo con el bundle publicado (14/11, web `index-DvCHasKo` y APK OTA e2e0680)
 

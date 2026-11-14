@@ -1,5 +1,7 @@
 import { cutAtWord } from './textCut.js';
-import { splitErrorOf } from './appFormSplit.js';
+import { splitErrorOf, splitFieldOf, type SplitHint } from './appFormSplit.js';
+import { isBlankAnswer, sectionOf, type FieldSection } from './appFormSections.js';
+import { submitsOf, type FormSubmit } from './appFormSubmits.js';
 import { normalizeFormDate, startingMoment, type DateMode } from './formDates.js';
 import { choiceOptions, previewToolOf, refusalOf, type ChoiceOption } from './appFormOptions.js';
 /**
@@ -53,13 +55,14 @@ export type FormSchemaProperty = {
   'x-row-title'?: string;
   /** Changing this field asks the app for the form again with the draft (the period changes the orders). */
   'x-refresh'?: boolean;
+  /** Agentes 13/11: the header fields side by side share (`x-section`), folded by `x-collapsed`; a list's partida weights (`x-split`). */ 'x-section'?: string; 'x-collapsed'?: boolean; 'x-split'?: unknown;
 };
 /** How much of a row a field takes: half beside another, or all of it. */
 export type FieldWidth = 'half' | 'full';
-export type FormSchema = { type?: string; description?: string; properties?: Record<string, FormSchemaProperty>; required?: string[]; /** The read tool that sums up the draft above «Enviar». */ 'x-preview'?: { tool?: string }; /** A checklist (CTL-PIS, 06/11): one button answers every choice with its first option. */ 'x-check-all'?: boolean };
-export type AppForm = { id: string; title: string; submitLabel?: string; /** The schema's `description`: a line under the title. */ intro?: string; schema: FormSchema; /** `x-preview`'s tool: the summary above «Enviar». */ preview?: string; /** `x-check-all`: the «Marcar todo» button. */ checkAll?: true };
+export type FormSchema = { type?: string; description?: string; properties?: Record<string, FormSchemaProperty>; required?: string[]; /** The read tool that sums up the draft above «Enviar». */ 'x-preview'?: { tool?: string }; /** A checklist (CTL-PIS, 06/11): one button answers every choice with its first option. */ 'x-check-all'?: boolean; /** The form's buttons (agentes 13/11), here or beside `submit_label`. */ 'x-submits'?: unknown };
+export type AppForm = { id: string; title: string; submitLabel?: string; /** The schema's `description`: a line under the title. */ intro?: string; schema: FormSchema; /** `x-preview`'s tool: the summary above «Enviar». */ preview?: string; /** `x-check-all`: the «Marcar todo» button. */ checkAll?: true; /** `x-submits`: the first is the big button, the rest sit under it; the pressed one travels as `values._accion`. */ submits?: FormSubmit[] };
 
-type Base = { name: string; label: string; help?: string; required: boolean; /** `x-input: shift | weather | place-street | temperature | clock`: the phone fills it when empty. */ condition?: 'shift' | 'weather' | 'street' | 'temperature' | 'clock'; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number | true; /** `x-refresh`: changing it asks the app for the form again. */ refresh?: true; /** Other fields show by its answer: the form's step, alone in its row (José 13/11). */ step?: true };
+type Base = { name: string; label: string; help?: string; required: boolean; /** `x-input: shift | weather | place-street | temperature | clock`: the phone fills it when empty. */ condition?: 'shift' | 'weather' | 'street' | 'temperature' | 'clock'; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number | true; /** `x-refresh`: changing it asks the app for the form again. */ refresh?: true; /** Other fields show by its answer: the form's step, alone in its row (José 13/11). */ step?: true; /** `x-section`: the header it sits under, folded or not (agentes 13/11). */ section?: FieldSection };
 export type FormField =
   | (Base & { kind: 'choice'; options: ChoiceOption[]; segmented: boolean; /** A few short options in two columns (José 12/11: two controls per line, not a list to open). */ columns?: 2; /** A long list (the company's people, agentes 24/10): a field that opens a sheet with a search. */ searchable: boolean; /** `x-avatar: initials`: each option with its initials. */ initials?: true })
   | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true; /** `x-input: place`: a text with the button that writes where the device is. */ place?: true; /** `x-input: work-street`: a street of the service's work map, picked (Portal's CON-CAP, 12/11). */ street?: true; /** `x-input: work-station`: the station on that street, computed from the reading and editable. */ station?: true })
@@ -88,6 +91,7 @@ export type FormField =
       rowTitle?: string;
       /** The rows are keyed by this choice: one per option ticked, its short fields beside it (agentes 12/11: the expense's partidas). */
       pickBy?: string;
+      /** `x-split`: the weight of each partida, to split by them when the form's mode asks for it (agentes 13/11). */ split?: SplitHint;
     });
 /** A field inside a list's item. */
 export type ItemField = Exclude<FormField, { kind: 'list' } | { kind: 'location' } | { kind: 'multi' }>;
@@ -179,7 +183,7 @@ function listField(base: Base, property: FormSchemaProperty): FormField | string
   const addLabel = line(property['x-add-label'], FORM_LIMITS.label) || 'Agregar fila';
   const pick = pickKeyOf(fields);
   const picked = pick ? { pickBy: pick.name, max: Math.min(max, pick.options.length), min: Math.min(min, pick.options.length) } : {};
-  return { ...base, required: min > 0, kind: 'list', fields, min, max, addLabel, layout: fitsInRow(fields) ? 'row' : 'card', ...(initialItems ? { initialItems } : {}), ...picked };
+  return { ...base, required: min > 0, kind: 'list', fields, min, max, addLabel, layout: fitsInRow(fields) ? 'row' : 'card', ...(initialItems ? { initialItems } : {}), ...picked, ...splitFieldOf(property['x-split']) };
 }
 
 /** The rows' only choice, when beside it there are at most two short typed fields: the list is then a set of checks. */
@@ -232,7 +236,7 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
   if (input !== undefined && !INPUTS.includes(input)) return `El campo «${name}» pide x-input «${input}», que Lilachat no sabe dibujar.`;
   const visibleIf = visibleIfOf(property['x-visible-if']);
   const width = property['x-width'] === 'half' || property['x-width'] === 'full' ? property['x-width'] : undefined;
-  const base: Base = { name, label: line(property.title, FORM_LIMITS.label) || labelOf(name), ...(property.description ? { help: line(property.description, FORM_LIMITS.help) } : {}), required, ...(visibleIf ? { visibleIf } : {}), ...(width ? { width } : {}), ...(property['x-refresh'] === true ? { refresh: true as const } : {}), ...(input && CONDITION_INPUTS[input] ? { condition: CONDITION_INPUTS[input] } : {}) };
+  const base: Base = { name, label: line(property.title, FORM_LIMITS.label) || labelOf(name), ...(property.description ? { help: line(property.description, FORM_LIMITS.help) } : {}), required, ...(visibleIf ? { visibleIf } : {}), ...(width ? { width } : {}), ...(property['x-refresh'] === true ? { refresh: true as const } : {}), ...(input && CONDITION_INPUTS[input] ? { condition: CONDITION_INPUTS[input] } : {}), ...sectionOf(property) };
   if (input === 'photo') return photoField(base, property);
   const gps = input === 'gps' ? gpsRoleOf(name) : null;
   if (input === 'gps' && (!gps || (property.type !== 'number' && property.type !== 'integer'))) return `El campo «${name}» pide x-input «gps», que Lilachat no sabe dibujar ahí.`;
@@ -392,7 +396,8 @@ export function validateFormSpec(raw: unknown): { ok: true; form: AppForm } | { 
   const submitLabel = cutAtWord(line(body.submit_label, FORM_LIMITS.text), FORM_LIMITS.submitLabel);
   const preview = previewToolOf(schema);
   const checkAll = schema['x-check-all'] === true;
-  const form: AppForm = { id, title, ...(submitLabel ? { submitLabel } : {}), ...(intro ? { intro } : {}), schema: { type: 'object', properties, required, ...(preview ? { 'x-preview': { tool: preview } } : {}), ...(checkAll ? { 'x-check-all': true } : {}) }, ...(preview ? { preview } : {}), ...(checkAll ? { checkAll: true as const } : {}) };
+  const submits = submitsOf(schema['x-submits'] ?? body['x-submits']);
+  const form: AppForm = { id, title, ...(submitLabel || submits[0] ? { submitLabel: submitLabel || submits[0]!.label } : {}), ...(intro ? { intro } : {}), schema: { type: 'object', properties, required, ...(preview ? { 'x-preview': { tool: preview } } : {}), ...(checkAll ? { 'x-check-all': true } : {}) }, ...(preview ? { preview } : {}), ...(checkAll ? { checkAll: true as const } : {}), ...(submits.length ? { submits } : {}) };
   for (const [name, property] of Object.entries(properties)) {
     const field = fieldOf(name, record(property) as FormSchemaProperty, false);
     if (typeof field === 'string') return { ok: false, message: field };
@@ -404,7 +409,6 @@ const isGeoPoint = (value: unknown): value is GeoPoint => {
   const point = record(value);
   return typeof point.lat === 'number' && typeof point.lng === 'number' && typeof point.precision === 'number' && Math.abs(point.lat) <= 90 && Math.abs(point.lng) <= 180 && point.precision >= 0;
 };
-const isEmpty = (value: unknown) => value === undefined || value === null || (typeof value === 'string' && value.trim() === '') || (Array.isArray(value) && value.length === 0);
 
 /** One value: the clean value, or the message for the person (neutral Spanish, under the field). */
 type Checked = { value: unknown } | { error: string };
@@ -510,11 +514,11 @@ function staleLocation(fields: readonly FormField[], input: FormValues, values: 
 }
 
 /** What the person sent: only the form's fields, cleaned, or a message per field. With `requireFresh` (the server), a signing's location must be of now. */
-export function validateFormValues(fields: readonly FormField[], raw: unknown, options: { requireFresh?: boolean } = {}): { ok: true; values: FormValues } | { ok: false; errors: Record<string, string> } {
+export function validateFormValues(fields: readonly FormField[], raw: unknown, options: { requireFresh?: boolean; /** A draft saves what is filled: nothing required, the split need not add up (agentes 13/11). */ draft?: boolean } = {}): { ok: true; values: FormValues } | { ok: false; errors: Record<string, string> } {
   const input = record(raw);
-  const { values, errors } = checkFields(fields, input);
+  const { values, errors } = checkFields(fields, input, undefined, options.draft);
   if (options.requireFresh) Object.assign(errors, staleLocation(fields, input, values));
-  if (!errors[splitListOf(fields)]) Object.assign(errors, splitErrorOf(fields, values));
+  if (!options.draft && !errors[splitListOf(fields)]) Object.assign(errors, splitErrorOf(fields, values));
   return Object.keys(errors).length ? { ok: false, errors } : { ok: true, values };
 }
 
@@ -522,17 +526,17 @@ export function validateFormValues(fields: readonly FormField[], raw: unknown, o
 const splitListOf = (fields: readonly FormField[]) => fields.find((field) => field.kind === 'list' && field.pickBy)?.name ?? '';
 
 /** The shown fields of a form or of one item: a field hidden by the other answers is neither required nor sent. */
-function checkFields(fields: readonly FormField[], input: FormValues, row?: FormValues): { values: FormValues; errors: Record<string, string> } {
+function checkFields(fields: readonly FormField[], input: FormValues, row?: FormValues, draft = false): { values: FormValues; errors: Record<string, string> } {
   const values: FormValues = {};
   const errors: Record<string, string> = {};
   for (const field of visibleFields(fields, input)) {
     const value = input[field.name];
-    if (isEmpty(value)) {
-      if (field.required) errors[field.name] = missingOf(field);
+    if (isBlankAnswer(value)) {
+      if (field.required && !draft) errors[field.name] = missingOf(field);
       continue;
     }
     if (field.kind === 'list') {
-      const list = checkList(field, value);
+      const list = checkList(field, value, draft);
       if ('errors' in list) Object.assign(errors, list.errors);
       else values[field.name] = list.value;
       continue;
@@ -545,13 +549,13 @@ function checkFields(fields: readonly FormField[], input: FormValues, row?: Form
 }
 
 /** Each item checked like a small form; its errors go under `list[i].field`, the count's under the list. */
-function checkList(field: Extract<FormField, { kind: 'list' }>, value: unknown): { value: FormValues[] } | { errors: Record<string, string> } {
+function checkList(field: Extract<FormField, { kind: 'list' }>, value: unknown, draft: boolean): { value: FormValues[] } | { errors: Record<string, string> } {
   const items = Array.isArray(value) ? value.map(record) : [];
-  if (items.length < field.min) return { errors: { [field.name]: field.min === 1 ? MISSING.list : `Agrega al menos ${field.min}.` } };
+  if (items.length < field.min && !draft) return { errors: { [field.name]: field.min === 1 ? MISSING.list : `Agrega al menos ${field.min}.` } };
   if (items.length > field.max) return { errors: { [field.name]: `Hasta ${field.max}.` } };
   const errors: Record<string, string> = {};
   const clean = items.map((item, index) => {
-    const checked = checkFields(field.fields, item, item);
+    const checked = checkFields(field.fields, item, item, draft);
     for (const [name, message] of Object.entries(checked.errors)) errors[itemPath(field.name, index, name)] = message;
     return checked.values;
   });

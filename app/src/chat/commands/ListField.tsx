@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Check, CircleAlert, CircleCheck, Plus, Trash2 } from 'lucide-react-native';
-import { formRows, itemPath, newItem, optionsForRow, rowAmounts, rowTitleOf, sharePercent, splitLineOf, splitRows, togglePick, typedAfterEdit, visibleFields, type ChoiceOption, type FormField, type FormValues, type ItemField, type ListSplit } from '@lilachat/shared';
+import { formRows, itemPath, newItem, optionsForRow, rowAmounts, rowTitleOf, sharePercent, splitBalanced, splitLineOf, splitRows, togglePick, typedAfterEdit, visibleFields, type ChoiceOption, type FormField, type FormValues, type ItemField, type ListSplit } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { ErrorLine, Label } from './AppFormFields';
 
@@ -210,7 +210,7 @@ function usePickSplit(params: { field: ListOfItems; items: FormValues[]; onChang
   const { field, items, onChange, split } = params;
   const key = field.pickBy!;
   const [typed, setTyped] = useState<ReadonlySet<string>>(new Set());
-  const settle = (rows: FormValues[], kept: ReadonlySet<string>) => (split ? splitRows(rows, split.plan, key, split.total, kept) : rows);
+  const settle = (rows: FormValues[], kept: ReadonlySet<string>) => (split ? splitRows(rows, split.plan, key, split.total, kept, split.weights) : rows);
   const toggle = (option: string) => onChange(settle(togglePick(field, items, option), typed), field.name);
   const setCell = (index: number, name: string) => (cell: unknown) => {
     const rows = items.map((item, at) => (at === index ? { ...item, [name]: cell } : item));
@@ -222,16 +222,30 @@ function usePickSplit(params: { field: ListOfItems; items: FormValues[]; onChang
     setTyped(new Set());
     onChange(settle(items, new Set()), field.name);
   };
-  // The total changed (typed, or read from the voucher): the untyped rows follow it.
-  const latest = useRef({ items, settle, typed, onChange });
-  latest.current = { items, settle, typed, onChange };
+  // The total changed (typed, or read from the voucher): the untyped rows follow it. The rows the app sent that already add up stay as they came.
+  const latest = useRef({ items, settle, typed, onChange, split });
+  latest.current = { items, settle, typed, onChange, split };
   const total = split?.total ?? 0;
+  const opening = useRef(true);
   useEffect(() => {
     const now = latest.current;
-    if (!now.items.length) return;
+    const first = opening.current;
+    opening.current = false;
+    if (!now.items.length || (first && now.split && splitBalanced(now.split.total, now.items, now.split.plan))) return;
     const next = now.settle(now.items, now.typed);
     if (JSON.stringify(next) !== JSON.stringify(now.items)) now.onChange(next, field.name);
   }, [total, field.name]);
+  // The way of sharing changed («A mano» → «Según partida»): what was typed is let go and the rows follow it.
+  const mode = split?.mode;
+  const modeSeen = useRef(mode);
+  useEffect(() => {
+    if (modeSeen.current === mode) return;
+    modeSeen.current = mode;
+    const now = latest.current;
+    setTyped(new Set());
+    const next = now.items.length ? now.settle(now.items, new Set()) : now.items;
+    if (JSON.stringify(next) !== JSON.stringify(now.items)) now.onChange(next, field.name);
+  }, [mode, field.name]);
   return { toggle, setCell, even, typed };
 }
 
@@ -258,7 +272,7 @@ function SplitLine(props: { field: string; split: ListSplit; items: FormValues[]
       </View>
       {props.onEven ? (
         <Pressable testID={`partes-iguales-${props.field}`} onPress={props.onEven} className="min-h-[44px] justify-center rounded-full border border-outline/25 px-3.5">
-          <Text className="text-[13px] font-semibold text-on-surface">Partes iguales</Text>
+          <Text className="text-[13px] font-semibold text-on-surface">{split.weights ? 'Según partida' : 'Partes iguales'}</Text>
         </Pressable>
       ) : null}
     </View>

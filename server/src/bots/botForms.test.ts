@@ -573,3 +573,79 @@ describe('a form that refreshes and sums up before sending', () => {
     await request(app).post(`/api/chats/${channel}/commands/${commandId}/preview`).set(asJose).send({ values: {} }).expect(404);
   });
 });
+
+/** The buttons of a form (agentes 13/11): «Registrar gasto» and «Guardar borrador» in the single «Revisar gasto». */
+describe('a form with buttons: the app hears which one was pressed', () => {
+  const expenseForm = {
+    id: 'revisar_gasto',
+    title: 'Revisar gasto',
+    submit_label: 'Registrar gasto',
+    schema: {
+      type: 'object',
+      'x-submits': [{ id: 'registrar', label: 'Registrar gasto' }, { id: 'borrador', label: 'Guardar borrador' }],
+      properties: {
+        monto: { type: 'number', title: 'Monto', 'x-unit': 'S/' },
+        nota: { type: 'string', title: 'Nota', maxLength: 20 },
+      },
+      required: ['monto'],
+    },
+  };
+  const open = async (form: Record<string, unknown> = expenseForm) => {
+    answer = json({ response_type: 'form', form });
+    return (await request(app).post(`/api/chats/${channel}/commands`).set(asAna).send({ app_id: await appId(), command: 'asistencia', text: '', forms: 3 }).expect(200)).body.commandId as string;
+  };
+  const heard = () => received.find((event) => event.type === 'form.submitted')!.data.values as Record<string, unknown>;
+
+  it('«registrar» travels as `_accion`, and the required amount is still asked', async () => {
+    // Arrange
+    const commandId = await open();
+    received.length = 0;
+    // Act
+    const missing = await submit(commandId, { nota: 'x', _accion: 'registrar' }).expect(422);
+    answer = json({ text: 'Registrado' });
+    await submit(commandId, { monto: 120, _accion: 'registrar' }).expect(200);
+    // Assert
+    expect(missing.body.errors).toEqual({ monto: 'Escribe un número.' });
+    expect(heard()).toEqual({ monto: 120, _accion: 'registrar' });
+  });
+
+  it('«borrador» saves what is filled: the amount may be missing', async () => {
+    // Arrange
+    const commandId = await open();
+    answer = json({ text: 'Borrador guardado' });
+    received.length = 0;
+    // Act
+    await submit(commandId, { nota: 'compra', _accion: 'borrador' }).expect(200);
+    // Assert
+    expect(heard()).toEqual({ nota: 'compra', _accion: 'borrador' });
+  });
+
+  it('a draft still checks what it carries: a note too long is refused', async () => {
+    const commandId = await open();
+    const refused = await submit(commandId, { nota: 'x'.repeat(30), _accion: 'borrador' }).expect(422);
+    expect(Object.keys(refused.body.errors)).toEqual(['nota']);
+  });
+
+  it('a button nobody declared, or none at all, is the first one: the strict one', async () => {
+    // Arrange
+    const commandId = await open();
+    answer = json({ text: 'Registrado' });
+    received.length = 0;
+    // Act
+    await submit(commandId, { nota: 'x', _accion: 'hackeado' }).expect(422);
+    await submit(commandId, { monto: 5 }).expect(200);
+    // Assert
+    expect(heard()).toEqual({ monto: 5, _accion: 'registrar' });
+  });
+
+  it('a form without buttons never passes `_accion` on', async () => {
+    // Arrange
+    const commandId = await open({ ...expenseForm, schema: { ...expenseForm.schema, 'x-submits': undefined } });
+    answer = json({ text: 'Listo' });
+    received.length = 0;
+    // Act
+    await submit(commandId, { monto: 7, _accion: 'borrador' }).expect(200);
+    // Assert
+    expect(heard()).toEqual({ monto: 7 });
+  });
+});

@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from 'react';
 import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { CheckCheck, Clock, X } from 'lucide-react-native';
-import { cameraFirstFieldOf, CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, formRows, isSplitForm, liveSelfieFieldOf, numberedStepsOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
+import { cameraFirstFieldOf, CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, formFields, formRows, groupedBySection, isSplitForm, liveSelfieFieldOf, numberedStepsOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmit, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { Modal } from '../../ui/Modal';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
 import { CheckField, ChoiceField, FormStyleContext, LocationField, PhotoField, TypedField, type PhotoUpload } from './AppFormFields';
+import { FoldedSection } from './FoldedSection';
 import { FormContextCard, FormSheetHeader } from './FormHeader';
 import { DateField } from './DateField';
 import { FormSummary } from './FormSummary';
@@ -35,6 +36,10 @@ const LIVE_PHOTO_KICKER = '2 · Tu foto y tu ubicación';
 const LIVE_FOOTER = 'Al tocar se toma la foto con la hora y el lugar, y se envía.';
 /** Room above a field the sheet scrolls to, so its title shows too. */
 const REVEAL_MARGIN = 12;
+/** The side padding a folded section adds around its fields (`px-4`). */
+const SECTION_PADDING = 16;
+/** Where the fields inside a header write their offsets: relative to the header, so the sheet must not read them. */
+const INSIDE_SECTION = { current: {} as Record<string, number> };
 /** Between the two fields of a row. */
 const ROW_GAP = 12;
 /** Built once: Hermes builds a new formatter for every date string with options. */
@@ -136,21 +141,40 @@ export function AppFormSheet(props: SheetProps) {
             {form.checkAll ? <CheckAllButton onPress={() => state.fill(checkAllValues(fields, state.values))} /> : null}
             {signer && step === 'who' ? <SignerPicker field={signer} onPick={state.set(signer.name)} /> : null}
             {signer && step === 'sign' ? <SignerCard field={signer} value={state.values[signer.name]} error={slot.errors[signer.name]} onChange={() => state.set(signer.name)('')} /> : null}
-            {/* Two short fields share a row (José, 28/10: a field per row made the forms a sheet). */}
-            {formRows(shown).map((row) =>
-              row.length === 2 ? (
-                <View key={row[0]!.name} onLayout={(event) => row.forEach((field) => (positions.current[field.name] = event.nativeEvent.layout.y))} className="flex-row items-start" style={{ gap: ROW_GAP }}>
-                  {row.map((field) => <FieldSlot key={field.name} field={field} half context={slot} />)}
-                </View>
+            {/* The fields under a header fold (agentes 13/11); the rest are drawn as they come. */}
+            {groupedBySection(shown).map((block) =>
+              block.kind === 'section' ? (
+                <FoldedSection key={`${block.label}-${block.fields[0]!.name}`} label={block.label} collapsed={block.collapsed} fields={block.fields} values={state.values} errors={slot.errors} designed={designed} onPosition={(y) => block.fields.forEach((field) => (positions.current[field.name] = y))}>
+                  {/* Inside a header the fields' own offsets are the header's: the header's one is what the sheet scrolls to. */}
+                  <FieldRows fields={block.fields} context={{ ...slot, positions: INSIDE_SECTION, width: slot.width - SECTION_PADDING * 2 }} />
+                </FoldedSection>
               ) : (
-                <FieldSlot key={row[0]!.name} field={row[0]!} half={false} context={slot} />
+                <FieldRows key={block.fields[0]!.name} fields={block.fields} context={slot} />
               )
             )}
           </ScrollView>
-          {step === 'sign' ? <SheetFooter summary={formLive.summary.blocks} message={state.message} busy={state.sending || waiting} refreshing={formLive.refreshing} label={label} note={evidence ? (live ? LIVE_FOOTER : evidence) : ''} onSend={() => void state.send()} /> : null}
+          {step === 'sign' ? <SheetFooter summary={formLive.summary.blocks} message={state.message} busy={state.sending || waiting} refreshing={formLive.refreshing} label={label} others={form.submits?.slice(1) ?? []} note={evidence ? (live ? LIVE_FOOTER : evidence) : ''} onSend={(action) => void state.send(action ?? form.submits?.[0])} /> : null}
         </View>
       </KeyboardAvoidingView>
     </Modal>
+  );
+}
+
+/** Two short fields share a row (José, 28/10: a field per row made the forms a sheet). */
+function FieldRows(props: { fields: readonly FormField[]; context: SlotContext }) {
+  const { context } = props;
+  return (
+    <>
+      {formRows(props.fields).map((row) =>
+        row.length === 2 ? (
+          <View key={row[0]!.name} onLayout={(event) => row.forEach((field) => (context.positions.current[field.name] = event.nativeEvent.layout.y))} className="flex-row items-start" style={{ gap: ROW_GAP }}>
+            {row.map((field) => <FieldSlot key={field.name} field={field} half context={context} />)}
+          </View>
+        ) : (
+          <FieldSlot key={row[0]!.name} field={row[0]!} half={false} context={context} />
+        )
+      )}
+    </>
   );
 }
 
@@ -208,7 +232,7 @@ function FormIntro(props: { answer: EphemeralAnswer; clock: boolean; personName?
 }
 
 /** By the button, never at the end of the scroll: a refusal there looked like a dead button (E2E 24/10). */
-function SheetFooter(props: { summary: PreviewReply['blocks']; message: string; busy: boolean; refreshing: boolean; label: string; note: string; onSend: () => void }) {
+function SheetFooter(props: { summary: PreviewReply['blocks']; message: string; busy: boolean; refreshing: boolean; label: string; /** The buttons after the first (agentes 13/11: «Guardar borrador»). */ others: readonly FormSubmit[]; note: string; onSend: (action?: FormSubmit) => void }) {
   const colors = useColores();
   return (
     <View className="px-4">
@@ -216,10 +240,15 @@ function SheetFooter(props: { summary: PreviewReply['blocks']; message: string; 
       {props.refreshing ? <Text testID="formulario-actualizando" accessibilityLiveRegion="polite" className="pb-2 pt-1 text-center text-[14px] text-on-surface-variant">Actualizando las opciones…</Text> : null}
       {props.summary.length ? <FormSummary blocks={props.summary} /> : null}
       {props.message ? <Text testID="formulario-error" accessibilityRole="alert" className="mb-2 pt-2 text-[14px] text-error">{props.message}</Text> : null}
-      <Pressable testID="btn-enviar-formulario" disabled={props.busy} onPress={props.onSend} className={`h-[72px] flex-row items-center justify-center gap-2 rounded-2xl bg-primary ${props.busy ? 'opacity-60' : ''}`}>
+      <Pressable testID="btn-enviar-formulario" disabled={props.busy} onPress={() => props.onSend()} className={`h-[72px] flex-row items-center justify-center gap-2 rounded-2xl bg-primary ${props.busy ? 'opacity-60' : ''}`}>
         {props.busy ? <ActivityIndicator color={colors['on-primary']} /> : null}
         <Text className="text-[18px] font-bold text-on-primary">{props.label}</Text>
       </Pressable>
+      {props.others.map((other) => (
+        <Pressable key={other.id} testID={`btn-enviar-formulario-${other.id}`} accessibilityRole="button" disabled={props.busy} onPress={() => props.onSend(other)} className={`mt-1 min-h-[48px] items-center justify-center rounded-xl ${props.busy ? 'opacity-50' : ''}`}>
+          <Text className="text-[15px] font-semibold text-primary">{other.label}</Text>
+        </Pressable>
+      ))}
       {props.note ? <Text className="mt-2 text-center text-[13px] text-on-surface-variant">{props.note}</Text> : null}
     </View>
   );

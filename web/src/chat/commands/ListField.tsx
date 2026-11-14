@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Check, CircleAlert, CircleCheck, Plus, Trash2 } from 'lucide-react';
-import { formRows, itemPath, newItem, optionsForRow, rowAmounts, rowTitleOf, sharePercent, splitLineOf, splitRows, togglePick, typedAfterEdit, visibleFields, type ChoiceOption, type FormField, type FormValues, type ItemField, type ListSplit } from '@lilachat/shared';
+import { formRows, itemPath, newItem, optionsForRow, rowAmounts, rowTitleOf, sharePercent, splitBalanced, splitLineOf, splitRows, togglePick, typedAfterEdit, visibleFields, type ChoiceOption, type FormField, type FormValues, type ItemField, type ListSplit } from '@lilachat/shared';
 import { FieldError } from '../../ui/Overlay';
 import { Label } from './AppFormFields';
 
@@ -202,7 +202,7 @@ function PickChip(props: { name: string; option: ChoiceOption; on: boolean; onTo
 const BANNER_TONE = { ok: 'border-en-linea/30 bg-en-linea/10 text-en-linea', warn: 'border-warning/30 bg-warning/10 text-warning', error: 'border-error/30 bg-error/5 text-error', neutral: 'border-outline/20 bg-background text-on-surface-variant' } as const;
 
 /** «Asignado S/ 500.00 de S/ 500.00 · 100 % cuadrado», or what is missing or over (design gst-02). */
-function SplitBanner(props: { name: string; split: ListSplit; items: FormValues[]; /** Starts over in equal shares; none with a single row. */ onEven?: () => void }) {
+function SplitBanner(props: { name: string; split: ListSplit; items: FormValues[]; /** Starts over in the form's way of sharing (equal, or by weight); none with a single row. */ onEven?: () => void }) {
   const line = splitLineOf(props.split.total, props.items, props.split.plan, props.split.unit);
   const Icon = line.tone === 'ok' ? CircleCheck : CircleAlert;
   return (
@@ -212,7 +212,7 @@ function SplitBanner(props: { name: string; split: ListSplit; items: FormValues[
         {line.text}
         {line.tone === 'ok' ? <span data-testid={`cuadrado-${props.name}`} className="rounded border border-en-linea/40 bg-en-linea/10 px-1.5 text-[10px] font-bold uppercase tracking-wider">100 % cuadrado</span> : null}
       </p>
-      {props.onEven ? <button type="button" data-testid={`partes-iguales-${props.name}`} onClick={props.onEven} className="min-h-8 rounded-full border border-current/30 px-3 text-xs font-semibold hover:bg-background/60">Partes iguales</button> : null}
+      {props.onEven ? <button type="button" data-testid={`partes-iguales-${props.name}`} onClick={props.onEven} className="min-h-8 rounded-full border border-current/30 px-3 text-xs font-semibold hover:bg-background/60">{props.split.weights ? 'Según partida' : 'Partes iguales'}</button> : null}
     </div>
   );
 }
@@ -221,16 +221,31 @@ function SplitBanner(props: { name: string; split: ListSplit; items: FormValues[
 function useSplitPick(field: ListOfItems, items: FormValues[], onChange: Props['onChange'], split?: ListSplit) {
   const [typed, setTyped] = useState<ReadonlySet<string>>(new Set());
   const key = field.pickBy!;
-  const settle = (rows: FormValues[], kept: ReadonlySet<string>) => (split ? splitRows(rows, split.plan, key, split.total, kept) : rows);
-  const current = useRef({ items, settle, typed, onChange });
-  current.current = { items, settle, typed, onChange };
+  const settle = (rows: FormValues[], kept: ReadonlySet<string>) => (split ? splitRows(rows, split.plan, key, split.total, kept, split.weights) : rows);
+  const current = useRef({ items, settle, typed, onChange, split });
+  current.current = { items, settle, typed, onChange, split };
   const total = split?.total ?? 0;
-  // The total changed (typed, or read from the voucher): the untyped rows follow it.
+  const opened = useRef(true);
+  // The total changed (typed, or read from the voucher): the untyped rows follow it. The rows the app sent that already add up stay as they came.
   useEffect(() => {
-    const { items: rows, settle: apply, typed: kept, onChange: emit } = current.current;
+    const { items: rows, settle: apply, typed: kept, onChange: emit, split: now } = current.current;
+    const first = opened.current;
+    opened.current = false;
+    if (first && now && splitBalanced(now.total, rows, now.plan)) return;
     const next = rows.length ? apply(rows, kept) : rows;
     if (JSON.stringify(next) !== JSON.stringify(rows)) emit(next, field.name);
   }, [total, field.name]);
+  // The way of sharing changed («A mano» → «Según partida»): what was typed is let go and the rows follow it.
+  const mode = split?.mode;
+  const modeSeen = useRef(mode);
+  useEffect(() => {
+    if (modeSeen.current === mode) return;
+    modeSeen.current = mode;
+    const { items: rows, settle: apply, onChange: emit } = current.current;
+    setTyped(new Set());
+    const next = rows.length ? apply(rows, new Set()) : rows;
+    if (JSON.stringify(next) !== JSON.stringify(rows)) emit(next, field.name);
+  }, [mode, field.name]);
   return {
     typed,
     toggle: (option: string) => onChange(settle(togglePick(field, items, option), typed), field.name),

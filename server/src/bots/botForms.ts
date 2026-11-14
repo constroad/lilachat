@@ -1,5 +1,5 @@
 import mongoose, { Types, type Model } from 'mongoose';
-import { FORM_PHOTO_MAX_BYTES, formFields, isAckBody, photoHourLines, photoStampLines, timemarkOf, validateFormReply, validateFormValues, type CommandOutcome, type CommandScope, type FormField, type FormValues, type GeoPoint } from '@lilachat/shared';
+import { ACTION_KEY, FORM_PHOTO_MAX_BYTES, formFields, isAckBody, isDraftSubmit, photoHourLines, photoStampLines, submitChosen, timemarkOf, validateFormReply, validateFormValues, type CommandOutcome, type CommandScope, type FormField, type FormValues, type GeoPoint } from '@lilachat/shared';
 import { ChatModel, MessageModel } from '../chatModels.js';
 import { readMediaBytes, type UploadOutcome } from '../mediaClient.js';
 import { defaultMediaUploader } from '../localMediaUploader.js';
@@ -199,8 +199,10 @@ export async function submitForm(userId: Types.ObjectId, scope: CommandScope, co
   const fields = formFields(run.form!);
   const input = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
   const values = await withSignedPhotos(run._id, fields, input);
+  // The button pressed (agentes 13/11): only one the form declared; none or another is the first, the strict one. A draft saves what is filled.
+  const action = submitChosen(run.form!.submits, input[ACTION_KEY]);
   // A signing takes the place of NOW (José, 24/10): a reading the phone kept is refused.
-  const checked = validateFormValues(fields, values, { requireFresh: true });
+  const checked = validateFormValues(fields, values, { requireFresh: true, draft: isDraftSubmit(action) });
   if (!checked.ok) return { status: 422, errors: checked.errors };
   const party = await formParty(run, commandId);
   if ('error' in party) return party;
@@ -209,7 +211,7 @@ export async function submitForm(userId: Types.ObjectId, scope: CommandScope, co
   const late = expectLateAnswer(commandId);
   try {
     // A field report's section (05/11): the server's context rides with the answers, and the checked service beside them.
-    const values = { ...(checked.values as FormValues), ...(run.context ?? {}) };
+    const values = { ...(checked.values as FormValues), ...(run.context ?? {}), ...(action ? { [ACTION_KEY]: action.id } : {}) };
     const service = run.service ? { client_id: run.service.clientId, service_id: run.service.serviceId } : {};
     const reply = await callBotWebhook({ ...installation, webhookUrl: app.webhookUrl }, 'form.submitted', { form_id: run.form!.id, command_id: commandId, values, ...service, channel: chat ? channelOf(chat) : null, user }, commandAnswerTimeout());
     const outcome = await answerOf(reply, { installation, run, chat, base });

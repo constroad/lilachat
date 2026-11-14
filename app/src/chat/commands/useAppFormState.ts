@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Keyboard } from 'react-native';
-import { firstErrorField, initialValues, keptAfterRefresh, validateFormValues, visibleFields, type FormField, type FormSubmitOutcome, type FormValues } from '@lilachat/shared';
+import { ACTION_KEY, firstErrorField, initialValues, isDraftSubmit, keptAfterRefresh, validateFormValues, visibleFields, type FormField, type FormSubmit, type FormSubmitOutcome, type FormValues } from '@lilachat/shared';
 
 type Errors = Record<string, string>;
 /** The part of a signing the send needs: the stand-ins that pass validation, and the real photo and place. */
@@ -54,8 +54,9 @@ export function useAppFormState({ fields, refused, signing, onSubmit, reveal }: 
     setValues((before) => ({ ...before, [name]: items }));
     setErrors(({ [name]: _list, [changed]: _cell, ...rest }) => rest);
   };
-  const send = async () => {
-    const checked = validateFormValues(fields, signing.placeholders(values));
+  /** `action`: the button pressed (agentes 13/11); a draft saves what is filled, and the app hears which one it was. */
+  const send = async (action?: FormSubmit) => {
+    const checked = validateFormValues(fields, signing.placeholders(values), { draft: isDraftSubmit(action) });
     if (!checked.ok) return showErrors(checked.errors);
     setSending(true);
     setMessage('');
@@ -66,7 +67,7 @@ export function useAppFormState({ fields, refused, signing, onSubmit, reveal }: 
       setSending(false);
       return showErrors(prepared.errors);
     }
-    const outcome = await onSubmit(prepared.values);
+    const outcome = await onSubmit(action ? { ...prepared.values, [ACTION_KEY]: action.id } : prepared.values);
     setSending(false);
     if (!outcome.done) {
       showErrors(outcome.errors);

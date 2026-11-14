@@ -688,3 +688,37 @@ Lo que Lilachat no puede resolver solo y se pidió a Portal / agentes:
 
 Sin verificar todavía: el formulario real en el hilo (web y APK) con un servicio de varias partidas,
 y la lista de ocho o más partidas en el celular.
+
+## 13/11 noche (3): un solo formulario «Revisar gasto» (contrato con agentes)
+
+José: «¿por qué dos modales, uno de completar y otro de corregir datos? ¿no es doble trabajo?».
+agentes los une en un formulario y Lilachat dibuja lo que el esquema pide. Tres piezas, todas
+opcionales: un Lilachat que no las conoce muestra los campos sin plegar, un solo botón (`submit_label`)
+y reparte en partes iguales. No sube `FORMS_LEVEL`.
+
+- **Secciones plegables** (`x-section`, `x-collapsed` por campo; `shared/src/appFormSections.ts`). Los campos
+  vecinos con el mismo encabezado van juntos («Corregir datos ∨»), cerrados si todos piden `x-collapsed`.
+  Nada obligatorio se esconde: empieza abierta si un campo requerido de adentro está vacío (el comprobante
+  no dio el monto) y se abre sola cuando un error cae adentro (envío o respuesta de la app). Después manda la
+  persona. Web `FoldedSection.tsx`, APK `FoldedSection.tsx`; en la APK el scroll al error va a la sección.
+- **Botones** (`x-submits: [{id, label, draft?}]`, en el esquema o junto a `submit_label`; máximo 3;
+  `shared/src/appFormSubmits.ts`). El primero es el grande; los demás, texto bajo él. El id que se tocó viaja
+  como `values._accion` (`ACTION_KEY`). El servidor (`submitForm`) solo pasa un id que el formulario declaró;
+  uno desconocido, o ninguno, es el primero (el estricto). Un borrador (`borrador` por nombre, o `draft: true`)
+  guarda lo llenado: no exige los requeridos ni que el reparto cuadre, pero un texto demasiado largo sigue
+  siendo error (`validateFormValues(..., { draft })`). Sin `x-submits` el app nunca recibe `_accion`.
+  `submit_label` falta → lo toma del primer botón.
+- **Reparto por pesos** (`x-split: {weights, modeField, weightedValue}` en la lista de partidas;
+  `appFormSplit.ts`). Cuando el campo `reparto` vale `weightedValue` («Según partida») las filas se reparten
+  por el peso de cada partida; un peso 0 o ausente es 0.00 y todos en 0, partes iguales. La regla del
+  centavo es la de Portal (y la que agentes recalcula): cada fila redondeada y **la última con peso toma lo
+  que queda** (100 entre 3: 33.33 / 33.33 / 33.34; antes, los centavos iban a las primeras). Cambiar el modo
+  suelta lo escrito a mano y reparte de nuevo. Las filas que la app manda con montos que ya suman el total
+  se respetan al abrir (su tarjeta manda por el centavo). El botón del aviso dice «Según partida» o «Partes
+  iguales» según el modo.
+
+Valores de agentes: `reparto` = «Una partida» (`partidaId`), «Partes iguales», «Según partida», «A mano» (las
+tres últimas con `partidas` = filas `{partidaId, monto}`). `x-preview: reparto_de_gasto` se sigue usando.
+
+Sin verificar todavía: el formulario real en el hilo con la sección plegada (web y APK), el scroll al error
+dentro de la sección en la APK, y un borrador de punta a punta contra agentes.

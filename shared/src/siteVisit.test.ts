@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { markedPointOf, nextPointNumber, openVisitRowsOf, pointLine, pointProblem, visitDocumentOf, visitIdOfKey, visitNextStep, visitSectionForm, visitUploadOf, visitCardActionOf } from './siteVisit.js';
+import { markedPointOf, nextPointNumber, openVisitRowsOf, pointLine, pointProblem, visitDocumentOf, visitIdOfKey, visitNextStep, visitSectionForm, visitUploadOf, visitCardActionOf, isSiteVisitShortcut } from './siteVisit.js';
 import { NEW_VISIT, VISIT_WITH_ID } from './siteVisit.fixture.js';
 
 /** The technical visit on the phone (José 13/11, Portal PRIMERA-VISITA §9; designs lv01–lv03). */
@@ -110,5 +110,21 @@ describe('the buttons of the visit card lv01 (agentes 14/11)', () => {
     expect(visitCardActionOf('aprobar')).toBeNull();
     expect(visitCardActionOf('visita_otra')).toBeNull();
     expect(visitCardActionOf('toString')).toBeNull();
+  });
+});
+
+describe('isSiteVisitShortcut', () => {
+  const row = (over: Partial<{ kind: 'shortcut' | 'command'; key: string }> = {}) => ({ kind: 'shortcut' as const, appId: 'a1', appName: 'Portal', key: 'visita_tecnica', name: 'Visita técnica', ...over });
+
+  it('is the ⚡ row «Visita técnica», which opens the visit screen on the phone', () => {
+    expect(isSiteVisitShortcut(row())).toBe(true);
+  });
+
+  it('is not another shortcut of the app', () => {
+    expect(isSiteVisitShortcut(row({ key: 'cubicar' }))).toBe(false);
+  });
+
+  it('is not a command that happens to share the key', () => {
+    expect(isSiteVisitShortcut(row({ kind: 'command' }))).toBe(false);
   });
 });

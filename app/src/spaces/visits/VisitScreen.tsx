@@ -14,6 +14,9 @@ import { useVisit } from './useVisit';
 import type { VisitPlaceRef } from './visitsApi';
 
 /** `startAction`: the visit card's button that opened it (lv01); it runs once the visit is read. */
+/** Above the chat's header (zIndex 2) and list (1): with no layer the screen drew under them (APK 14/11). */
+const VISIT_SCREEN_LAYER = 10;
+
 type Props = { place: VisitPlaceRef; visitId?: string | null; startAction?: VisitCardAction; onClose: () => void };
 type Visit = ReturnType<typeof useVisit>;
 
@@ -213,7 +216,7 @@ export function VisitScreen(props: Props) {
   useStartAction(props.startAction, visit, { mark: () => setMarking(true), pdf: () => void pdf() });
   const openForm = visit.answers.openForm;
   return (
-    <View testID="visita-pantalla" className="absolute inset-0 bg-background" style={{ paddingTop: margins.cabecera }}>
+    <View testID="visita-pantalla" className="absolute inset-0 bg-background" style={{ paddingTop: margins.cabecera, zIndex: VISIT_SCREEN_LAYER, elevation: VISIT_SCREEN_LAYER }}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: margins.pie + 24 }}>
         <Header document={document} onBack={onClose} />
         <EphemeralAnswers answers={visit.answers.answers} onDismiss={visit.answers.dismiss} onOpenForm={visit.answers.showForm} chatId={props.place.chatId} jwt={props.place.jwt} embedded />

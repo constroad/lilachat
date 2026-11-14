@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable } from 'react-native';
 import { Zap } from 'lucide-react-native';
-import { commandToWrite } from '@lilachat/shared';
+import { commandToWrite, isSiteVisitShortcut } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { QuickActionsSheet } from './QuickActionsSheet';
 import type { ChatCommands } from './useChatCommands';
@@ -12,7 +12,8 @@ import type { ChatCommands } from './useChatCommands';
  * things and took the field's room). It only shows when this chat has one. A
  * command that needs its text goes to the field; the rest run from here.
  */
-export function ChatQuickActions(props: { commands: ChatCommands; onWriteCommand: (text: string) => void }) {
+/** `onStartVisit`: «Visita técnica» opens the visit's screen here (José 14/11), never the app's shortcut. */
+export function ChatQuickActions(props: { commands: ChatCommands; onWriteCommand: (text: string) => void; onStartVisit?: () => void }) {
   const colors = useColores();
   const [open, setOpen] = useState(false);
   const { actions, appAnswers } = props.commands;
@@ -36,7 +37,8 @@ export function ChatQuickActions(props: { commands: ChatCommands; onWriteCommand
         onPick={(row) => {
           setOpen(false);
           const line = commandToWrite(row);
-          if (line) props.onWriteCommand(line);
+          if (props.onStartVisit && isSiteVisitShortcut(row)) props.onStartVisit();
+          else if (line) props.onWriteCommand(line);
           else void appAnswers.runAction(row);
         }}
         onClose={() => setOpen(false)}

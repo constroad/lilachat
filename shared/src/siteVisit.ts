@@ -1,4 +1,5 @@
 import { validateFormSpec, type AppForm, type FormSchema } from './appForms.js';
+import type { ShortcutRow } from './appActions.js';
 
 /**
  * A technical visit from the phone (José 13/11, Portal `specs/modules/PRIMERA-VISITA.spec.md` §9;
@@ -12,6 +13,11 @@ import { validateFormSpec, type AppForm, type FormSchema } from './appForms.js';
  * turns it on in «Comandos» and picks the 1:1, the channels and who. Not a command: never offered in the ⚡ or «/».
  */
 export const SITE_VISIT_SHORTCUT = 'visita_tecnica';
+
+/** The ⚡ or «+» row «Visita técnica»: the chat opens the visit itself (screen on the phone, «Datos» on the web). */
+export function isSiteVisitShortcut(row: Pick<ShortcutRow, 'kind' | 'key'>): boolean {
+  return row.kind === 'shortcut' && row.key === SITE_VISIT_SHORTCUT;
+}
 /** The phone's visit screens follow lv01–lv04 (the card in the chat); until then the door answers closed. */
 export const SITE_VISIT_SCREENS_READY: boolean = false;
 /** Portal: the place is approximate past 15 m. */

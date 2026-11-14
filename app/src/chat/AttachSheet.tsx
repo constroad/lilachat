@@ -208,7 +208,8 @@ export function AttachSheet(props: {
         </>
       ) : (
         // José 13/11: without shrinking, the list grew past the sheet and «Fotos recientes» sat under Android's buttons.
-        <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingBottom: (selected.length ? SEND_BUTTON_ROOM : 8) + margins.pie }}>
+        // José 14/11: no `margins.pie` here; `Sheet` already leaves it, and twice was the empty band at the bottom.
+        <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ paddingBottom: selected.length ? SEND_BUTTON_ROOM : 8 }}>
           {/* José 13/11: first, so a phone's buttons never cover it (it sat at the bottom, under Samsung's three buttons). */}
           <View className="pt-1" style={{ marginHorizontal: SHEET_PADDING }}>
             <Kicker>Fotos recientes</Kicker>

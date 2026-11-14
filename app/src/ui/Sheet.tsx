@@ -6,6 +6,7 @@ import Animated, { Easing, FadeOut, runOnJS, SlideOutDown, useAnimatedStyle, use
 import { Modal } from './Modal';
 import { useMargenes } from './useMargenes';
 import { backdropOpacity, clampDrag, shouldDismiss } from './overlay/sheetGesture';
+import { SHEET_FRAME } from './overlay/sheetFrame';
 import { beginInteraction, endInteractionAfterPaint } from '../diagnostico/frameMonitor';
 
 /**
@@ -99,7 +100,7 @@ function SheetBody(props: SheetProps) {
   const card = (
     <Animated.View
       exiting={SlideOutDown.duration(SLIDE_MS)}
-      style={[cardStyle, { paddingBottom: margins.pie + bottomRoom, ...(maxHeight ? { maxHeight } : {}), ...(fixedHeight ? { height: fixedHeight } : {}) }]}
+      style={[cardStyle, styles.card, { paddingBottom: margins.pie + bottomRoom, ...(maxHeight ? { maxHeight } : {}), ...(fixedHeight ? { height: fixedHeight } : {}) }]}
       className={`rounded-t-3xl ${tone === 'surface' ? 'bg-surface' : 'bg-background'} ${props.className ?? ''}`}
       onLayout={(event) => {
         height.value = event.nativeEvent.layout.height;
@@ -128,12 +129,10 @@ function SheetBody(props: SheetProps) {
           {draggable}
         </KeyboardAvoidingView>
       ) : (
-        // José 13/11: anchored to the bottom edge, so a sheet whose content grows after opening (the
-        // clip loading the gallery, «Info» loading its people) grows UP, not under Android's buttons.
-        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-          <View style={styles.anchored} pointerEvents="box-none">
-            {draggable}
-          </View>
+        // José 13/11: on the bottom edge, so content that arrives late grows the sheet UP. José 14/11: in a
+        // frame as tall as the window, or a card's `max-h-[70%]` left an empty band under it (`SHEET_FRAME`).
+        <View style={SHEET_FRAME} pointerEvents="box-none">
+          {draggable}
         </View>
       )}
     </>
@@ -143,5 +142,6 @@ function SheetBody(props: SheetProps) {
 const styles = StyleSheet.create({
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: '#000000' },
   bottom: { flex: 1, justifyContent: 'flex-end' },
-  anchored: { position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '100%' },
+  /** Taller than the window, it shrinks (its list scrolls) instead of leaving through the top. */
+  card: { flexShrink: 1 },
 });

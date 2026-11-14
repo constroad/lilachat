@@ -151,7 +151,10 @@ describe('a visit\'s writes', () => {
     answers['visit.draft.requested'] = { status: 200, body: NEW_VISIT };
     await draftOf({ chat_id: String(visitsChannel) }).expect(200);
     const start = await openOf({ chat_id: String(visitsChannel), kind: 'section', section: 'datos', lat: -12.1, lng: -77, precision_m: 8 }).expect(200);
-    expect((await BotCommandRunModel.findById(start.body.commandId).lean())?.context).toEqual({ seccion: 'datos', lat: -12.1, lng: -77, precisionM: 8 });
+    // Portal's guardar_visita requires an entry key on every section: one per opened form, so a resend does not duplicate.
+    const context = (await BotCommandRunModel.findById(start.body.commandId).lean())?.context;
+    expect(context).toEqual({ seccion: 'datos', lat: -12.1, lng: -77, precisionM: 8, entradaId: expect.stringMatching(/^[0-9a-f-]{36}$/) });
+    expect((await BotCommandRunModel.findById(interview.body.commandId).lean())?.context).toMatchObject({ visitaId: VISIT, seccion: 'entrevista', entradaId: expect.stringMatching(/^[0-9a-f-]{36}$/) });
   });
   it('finishing and the PDF are forms with nothing to fill; outside the door nothing opens', async () => {
     const finish = await openOf({ chat_id: String(visitsChannel), kind: 'finish', visit_id: VISIT }).expect(200);

@@ -933,5 +933,9 @@ José corrigió el diseño: el selector de espacios **no** lleva «Ver incógnit
   Se quitó `SITE_VISITS_OPEN_HERE`: el cliente pregunta la puerta y el server decide. Portal quita su interruptor
   por empresa (aviso a su sesión); agentes declara el shortcut. Tests: `siteVisitDoor.test.ts` 11 (sin tocar,
   «quién» por personas, no ofrecida en el ⚡).
+- **E2E en vivo (14/11, web, Test):** la franja salió en el 1:1 con Portal y «Crear visita» abrió los datos. Al
+  guardar, agentes devolvió 422 `{entradaId: 'Falta.'}`: `guardar_visita` exige `entradaId` en CADA sección. Ahora
+  el server pone un UUID por formulario abierto (reenviar el mismo formulario no duplica). Test en `siteVisitDoor`.
+  Un error de un campo que el formulario no muestra no se ve en pantalla: el diálogo queda quieto.
 - **Respuesta con tarjeta y enlace (agentes 14/11):** si la tarjeta trae `link`, el texto de respaldo con la URL
   ya no se muestra dos veces (`answerTextShown`, APK y web).

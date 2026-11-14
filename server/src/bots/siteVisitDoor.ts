@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import mongoose, { Types, type Model } from 'mongoose';
 import { availableTo, canManageMembers, formLevelOf, itemSettingOf, openVisitRowsOf, pointProblem, SITE_VISIT_SHORTCUT, visitDocumentOf, visitSectionForm, type AppForm, type CommandOutcome, type FormSchema, type OpenVisitRow, type VisitDocument, type VisitPointDraft } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
@@ -131,7 +132,8 @@ async function sectionOpened(workspaceId: string, userId: Types.ObjectId, body: 
   const document = await keptDocument(workspaceId, userId, visitId);
   const form = document ? visitSectionForm(document, section) : null;
   if (!form) return fail(409, 'draft_not_open', 'Abre la visita de nuevo para seguir.');
-  return { form, context: { ...(visitId ? { visitaId: visitId } : placeOfInput(body)), seccion: section } };
+  // Portal's guardar_visita requires an entry key on every save: one per opened form, so resending it never duplicates.
+  return { form, context: { ...(visitId ? { visitaId: visitId } : placeOfInput(body)), seccion: section, entradaId: randomUUID() } };
 }
 
 /** The point as the phone sent it, before Portal's checks. */

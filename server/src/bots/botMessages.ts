@@ -150,6 +150,12 @@ export async function updateBotMessage(installation: Installation, messageId: st
   return { message: posted(message) };
 }
 
+/** A visit card of this bot (lv01): its edit may carry the five buttons, like its POST. */
+export async function isVisitMessage(installation: Installation, messageId: string): Promise<boolean> {
+  if (!Types.ObjectId.isValid(messageId)) return false;
+  return Boolean(await MessageModel.exists({ _id: messageId, senderId: installation.botUserId, 'clientRef.visitId': { $exists: true } }));
+}
+
 /** What a bot's edit leaves on its message: the new text, card or album, and «Editado» only for a new text. */
 function editedFields(message: Pick<Message, 'body' | 'card' | 'files'>, change: { text?: string; card?: BotCard; files?: GalleryItem[] }) {
   const card = change.card ?? message.card;

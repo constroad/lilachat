@@ -201,6 +201,20 @@ describe('the bot publishes (§b) and reads (§d)', () => {
     expect(closed!.card!.actions).toBeUndefined();
   });
 
+  it('a visit card (lv01) carries five buttons on POST and on its PATCH; any other card, three (agentes 14/11)', async () => {
+    // Arrange
+    const { token } = await install();
+    const five = ['visita_marcar_punto', 'visita_entrevista', 'visita_foto', 'visita_terminar', 'visita_croquis'].map((id) => ({ id, label: id.slice(7, 30), value: '' }));
+    const visit = { kind: 'visita.created', refs: { visit_id: '65f0000000000000000000a1' } };
+    // Act
+    const sent = await request(app).post('/api/bots/messages').set(asBot(token)).send({ channel_id: String(channel), ...visit, card: { title: 'Visita técnica', actions: five }, idempotency_key: 'v1' }).expect(201);
+    const plain = await request(app).post('/api/bots/messages').set(asBot(token)).send({ channel_id: String(channel), card: { title: 'Otra' }, idempotency_key: 'v2' }).expect(201);
+    // Assert
+    await request(app).patch(`/api/bots/messages/${sent.body.message.id}`).set(asBot(token)).send({ card: { title: 'Visita técnica · 1 punto', actions: five } }).expect(200);
+    expect((await MessageModel.findById(sent.body.message.id).lean<Message>())!.card!.actions).toHaveLength(5);
+    await request(app).patch(`/api/bots/messages/${plain.body.message.id}`).set(asBot(token)).send({ card: { title: 'Otra', actions: five } }).expect(400);
+  });
+
   it('photos and videos as an album; PATCH replaces the whole set (José via agentes 09/11)', async () => {
     const { token } = await install();
     const photo = (name: string) => ({ url: `https://lila.constroad.com/files/${name}.jpg`, mime: 'image/jpeg' });

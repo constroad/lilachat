@@ -1,5 +1,5 @@
 import express, { Router, type NextFunction, type Request, type Response } from 'express';
-import { toInternationalPhone, validateAppManifest, validateBotCard, validateBotCommands, validateBotFiles, validateBotPost } from '@lilachat/shared';
+import { toInternationalPhone, validateAppManifest, validateBotCard, validateBotCommands, validateBotFiles, validateBotPost, validateVisitCard } from '@lilachat/shared';
 import { ChatModel, type Chat } from '../chatModels.js';
 import { crearLimiteDeIntentos } from '../limiteDeIntentos.js';
 import { UserModel } from '../models.js';
@@ -9,7 +9,7 @@ import { deleteOwnedApp, developerFrom, listOwnedApps, rotateAppSecret, upsertAp
 import { availabilityOf, setAvailability, spacesRunBy, type AppRef } from './botAvailability.js';
 import { commandsOfApp, commandsToWire, registerCommands, respondToCommand } from './botCommands.js';
 import { installationByToken, revokeInstallation } from './botInstall.js';
-import { postBotMessage, updateBotMessage } from './botMessages.js';
+import { isVisitMessage, postBotMessage, updateBotMessage } from './botMessages.js';
 import { upsertClientChannel } from './botClients.js';
 import { addClientTasks, clientTasksOf } from './botClientTasks.js';
 import { setTopicChannels, setTopicOffered, topicRoutesOf } from './botTopics.js';
@@ -112,7 +112,7 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
   }));
   router.patch('/messages/:id', asyncRoute(async (req, res) => {
     const body = (req.body ?? {}) as Record<string, unknown>;
-    const card = body.card === undefined ? undefined : validateBotCard(body.card);
+    const card = body.card === undefined ? undefined : (await isVisitMessage(req.bot!, String(req.params.id))) ? validateVisitCard(body.card) : validateBotCard(body.card);
     if (card && !card.ok) return void res.status(400).json({ error: 'invalid_request', message: card.message });
     const files = body.files === undefined ? undefined : validateBotFiles(body.files);
     if (files && !files.ok) return void res.status(400).json({ error: 'invalid_request', message: files.message });

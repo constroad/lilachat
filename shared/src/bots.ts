@@ -191,15 +191,16 @@ function validateTarget(body: Record<string, unknown>): { ok: true; target: BotT
   return phone ? { ok: true, target: { userPhone: phone } } : refuse('user lleva { id } o { phone } con un celular de Perú.');
 }
 
-/** A visit card (with `refs.visit_id`) carries the five buttons of lv01; any other card, three. */
-function validatePostCard(body: Record<string, unknown>): ReturnType<typeof validateBotCard> {
-  const raw = record(body.card);
-  if (body.kind === undefined || !clientRefOf(body)?.visitId) return validateBotCard(raw);
-  const actions = validateActions(raw.actions, BOT_LIMITS.visitActions);
+/** A visit card carries the five buttons of lv01 (agentes 14/11): POST with `refs.visit_id`, or the PATCH of one. */
+export function validateVisitCard(raw: unknown): ReturnType<typeof validateBotCard> {
+  const card = record(raw);
+  const actions = validateActions(card.actions, BOT_LIMITS.visitActions);
   if (!actions.ok) return actions;
-  const card = validateBotCard({ ...raw, actions: [] });
-  return card.ok && actions.actions.length ? { ok: true, card: { ...card.card, actions: actions.actions } } : card;
+  const kept = validateBotCard({ ...card, actions: [] });
+  return kept.ok && actions.actions.length ? { ok: true, card: { ...kept.card, actions: actions.actions } } : kept;
 }
+
+const validatePostCard = (body: Record<string, unknown>): ReturnType<typeof validateBotCard> => (body.kind !== undefined && clientRefOf(body)?.visitId ? validateVisitCard(body.card) : validateBotCard(body.card));
 
 export function validateBotPost(raw: unknown): { ok: true; post: BotPost } | BotPostError {
   const body = record(raw);

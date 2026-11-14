@@ -222,6 +222,8 @@ export function ConversacionConAcciones(
   const groupCall = chat.kind === 'group' && !chat.encrypted && chat.memberIds.includes(yo);
   return (
     <ConversacionContext.Provider value={contexto}>
+      {/* The visit card's buttons (lv01) open in the chat and in its threads. */}
+      <VisitActionContext.Provider value={visitCard.open}>
       <Conversation
         {...props}
         onCardCommand={shareCardCommand}
@@ -296,7 +298,6 @@ export function ConversacionConAcciones(
       />
       {hilos.raiz ? (
         <PanelBoundary label="el hilo" onClose={hilos.cerrar}>
-        <VisitActionContext.Provider value={visitCard.open}>
         <CardCommandContext.Provider value={cardCommand}>
         <PanelDeHilo
           chat={chat}
@@ -317,7 +318,6 @@ export function ConversacionConAcciones(
           onCerrar={hilos.cerrar}
         />
         </CardCommandContext.Provider>
-        </VisitActionContext.Provider>
         </PanelBoundary>
       ) : null}
       {infoAbierta ? (
@@ -382,6 +382,7 @@ export function ConversacionConAcciones(
       {pdfAbierto?.media?.url ? <PdfViewer jwt={props.jwt} chatId={chat.id} seq={pdfAbierto.seq} fileName={pdfAbierto.media.fileName ?? 'Documento PDF'} downloadUrl={pdfAbierto.media.url} onClose={() => setPdfAbierto(null)} /> : null}
       {chat.encrypted ? null : <BirthdayCardWeb chatId={chat.id} chatName={chat.name ?? ''} isGroup={chat.kind === 'group'} me={yo} messages={mensajes ?? []} names={nombres} photos={photos} onReact={(emoji) => void sync.enviarTexto(chat.id, emoji)} onGreet={insertIntoComposer} />}
       {acciones.viendoInfo ? <DialogoInfo chatId={chat.id} mensaje={acciones.viendoInfo} jwt={props.jwt} onCerrar={acciones.cerrarInfo} /> : null}
+      </VisitActionContext.Provider>
     </ConversacionContext.Provider>
   );
 }

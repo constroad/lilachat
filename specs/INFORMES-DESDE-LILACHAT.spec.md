@@ -1523,3 +1523,57 @@ Se recorrió Control de pista en el APK (`lilafotos-qa`), en el servicio QA-CTLP
   cambiar. Solo llena los campos que esa sección tiene.
 - **Sin probar todavía**: la cámara web en un celular real (el E2E corre en Chrome de escritorio, donde
   sigue el selector), la grabación en un teléfono real y cuánto tarda el sellado de 3 min en la mini.
+
+## 20. Estudio de IAA antes de migrarlo (José 14/11: «100 % código real, luego Stitch, luego migrar»)
+
+Leído en Portal `origin/main` y Lilachat `e5010f1f` (14/11). Lo que sigue tiene su cita en el código.
+
+**Portal hoy (página pública del servicio).**
+- `/public/{slug}/services/{id}` → «Nuevo informe» (tipo, fecha, responsable) → hub por secciones bajo 1024 px
+  (`ReportWorkspaceShadcn`) o lienzo desde 1024 px.
+- El hub tiene cuatro tarjetas: Zonas de adicional (requerida), Registro fotográfico por zona (requerida),
+  Textos (opcional) y Firmas (opcional).
+- Publicar: los avisos no bloquean y el estado pasa a `completed`. Hay vista previa y PDF por lila.
+- **Zona**: `ubicacion`, `descripcion`, `area` (m², 2 decimales), `volumen` (m³, 3 decimales) y `observaciones`.
+  Si alguien escribe el total, la zona queda `manual` y aparece «Usar lo medido».
+- **Medida**: un polígono sobre la foto, con lados de wincha, diagonales y «A escuadra». Solo suma lo medido
+  (José 30/09) y el total escrito a mano manda (17/10). Las fotos se suman por zona.
+- **Fotos**: la cámara pone el sello; desde la galería solo queda el EXIF; no hay video. Cada foto se asigna a una
+  zona y queda «Avisar al grupo» apagado. Para completar la tarjeta basta una foto en el informe.
+- **PDF**: «INFORME DE AREA ADICIONAL», secciones en romanos, cuadro con «TOTAL ADICIONAL» y tres firmas.
+
+**Herramientas para Lilachat.**
+- `informe_area_adicional` (lectura).
+- `registrar_area_adicional` con `crear`, `editar` y `quitar`:
+  - campos: `areaM2`, `metodo` (`medidas-iphone` o `a-mano`), `largoM`, `anchoM`, `espesorCm`, GPS, `ubicacion` y
+    `descripcion`;
+  - límites: lado de 0,1 a 500 m, área de 0,05 a 5 000 m², espesor de 1 a 50 cm;
+  - fotos con boleto de 30 min, sin sello.
+- No cubren: publicar (responde `unsupported` en IAA), `observaciones`, textos, firmas, medir sobre la foto ni
+  asignar una foto suelta.
+
+**Lilachat hoy.**
+- `AREAS_OPEN_HERE = true` (12/11). Hay motor (`additionalArea.ts`, `areaMeasure.ts`), server (`areaForms.ts`)
+  y web (`AreasWeb`, `AreaMeasureWeb` con la guía de Medición del iPhone).
+- El APK es `webOnly` y abre Portal.
+- Posible falla, sin verificar: `draftToContinue` no mira `webOnly`.
+
+**Falta, por cuánto bloquea al ingeniero.**
+1. La pantalla en el APK.
+2. Publicar, vista previa y PDF: el contrato de Portal no lo admite.
+3. Editar un área.
+4. Fotos después de guardar (el boleto vence), quitar una o asignarla.
+5. `observaciones`.
+6. Textos, firmas, proyecto y responsable.
+7. Cola sin red.
+8. Sello.
+9. Medir sobre la foto: quedó fuera por la opción B.
+
+**Para decidir con José antes de Stitch.**
+- ¿Lilachat replica el polígono sobre la foto de Portal, o sigue con la opción B (largo × ancho o área total)?
+- ¿Se publica desde Lilachat? Hace falta en Portal.
+- ¿Va `observaciones` por zona?
+
+Datos de ejemplo para Stitch, sacados de los tests: `IAA-003`, «2 áreas · 17,30 m²», «4,80 m² · 0,240 m³ ·
+3,20 × 1,50 m», «Jr. Moquegua cdra 3», «GPS ±6 m». Stitch no debe inventar AR, polígonos, otros métodos ni
+estados fuera de borrador y publicado.

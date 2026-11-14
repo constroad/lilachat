@@ -1382,3 +1382,27 @@ Pendiente: la auditoría `design/stitch/auditorias/gst-01-tarjetas.md` y las rut
 INVENTARIO, cuando llegue el texto nuevo (sin él la comparación sale casi toda «falta»).
 `gst-02-completar` (el formulario) no se generó: Stitch cortó por tiempo el 13/11 y el id
 no volvió; no se regenera a ciegas (stitch-design §4-bis).
+
+## c-visitas. Visita técnica desde el teléfono (contrato con agentes, 14/11)
+
+Portal construyó la visita (`PRIMERA-VISITA.spec.md` §9). Agentes aceptó este contrato el 14/11.
+
+- **Puerta**: solo el canal elegido para el tema `visitas` de la instalación Portal, o el 1:1 con la app. Lilachat
+  manda `channel_id` y `place: 'topic_channel' | 'direct'` fuera de `values`. Agentes lo comprueba otra vez: si no
+  es así, responde 403 `not_visits_channel`.
+- **Lectura**: el evento `visit.draft.requested` `{visita_id?, channel_id, place, user}` llama a `visita_tecnica`
+  como la persona. Responde `{document, visitas}` sin id y `{document}` con id. Un error de Portal llega como
+  `{error, message}`, por ejemplo `visitas_apagadas` mientras el interruptor de Portal está apagado.
+- **Escrituras**: `form.submitted` con `form_id` = `guardar_visita`, `marcar_punto_de_visita`,
+  `subir_foto_de_visita`, `terminar_visita` o `pdf_de_visita`. Agentes las manda como «direct» y sin candado de
+  servicio. La respuesta trae `data`:
+  - el punto: `{puntoId, n, upload}`;
+  - la foto: `{upload}`;
+  - terminar con faltantes: `{missing}`;
+  - el PDF: `{status, url}`.
+- **Fotos**: van del teléfono a Portal con el ticket `site-visit-upload`, que dura 30 min y admite
+  `clientUploadId`. El ticket no se guarda.
+- **Tarjeta**: `visita.created`, `visita.updated` y `visita.closed`, con clave `<integración>:visita:<visitId>` y sin
+  botones. Lilachat lee el id de la clave (`visitIdOfKey`) y la abre.
+- Motor puro: `shared/src/siteVisit.ts`, con test sobre las respuestas reales de Portal. Todo queda detrás de
+  `SITE_VISITS_OPEN_HERE = false` hasta que José encienda «Visitas técnicas desde Lilachat» en Portal y pase el E2E.

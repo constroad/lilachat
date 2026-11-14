@@ -1394,6 +1394,11 @@ Portal construyó la visita (`PRIMERA-VISITA.spec.md` §9). Agentes aceptó este
   El tópico `visitas` ya no decide nada y Portal no tiene interruptor por empresa. Lilachat manda `channel_id` y
   `place: 'channel' | 'direct'` fuera de `values` (agentes acepta `topic_channel` un tiempo como sinónimo). Agentes
   comprueba que `direct` sea un 1:1 y `channel` no, y que `channel_id` = `channel.id`.
+- **Tarjeta lv01 (14/11, cambió):** agentes la publica en el tema `informes` (con default: llega al canal por
+  defecto hasta que el admin elija otro), con `kind: 'visita.created|updated|closed'` y `refs: { visit_id }`
+  (24 hex; Lilachat lo guarda como `clientRef.visitId` y lo emite con el mensaje vivo). Los botones con id
+  `visita_marcar_punto`, `visita_entrevista`, `visita_foto`, `visita_terminar` y `visita_pdf` los intercepta
+  Lilachat y abre sus pantallas (lv02, lv03, cámara, terminar); nunca llegan como `card.action`.
 - **Lectura**: el evento `visit.draft.requested` `{visita_id?, channel_id, channel: {id, kind}, place, user}` llama a `visita_tecnica`
   como la persona. Responde `{document, visitas}` sin id y `{document}` con id. Un error de Portal llega como
   `{error, message}`, y su texto es lo que lee la persona.

@@ -137,3 +137,18 @@ describe('a card link that is a file (José 13/11: «Ver PDF» must open the vie
     expect(page.ok && page.card.link).toEqual({ label: 'Abrir', url: 'https://x.com' });
   });
 });
+
+describe('a technical visit card in the reports topic (agentes 14/11)', () => {
+  it('keeps the visit id the card points to, so the chat draws it as lv01', () => {
+    // Arrange
+    const raw = { topic: 'informes', idempotency_key: 'k1', kind: 'visita.updated', refs: { visit_id: '65f0000000000000000000a1' }, card: { title: 'Visita técnica' } };
+    // Act
+    const checked = validateBotPost(raw);
+    // Assert
+    expect(checked.ok && checked.post.clientRef).toEqual({ kind: 'visita.updated', visitId: '65f0000000000000000000a1' });
+  });
+  it('an id that is not a visit is left out, never refused', () => {
+    const checked = validateBotPost({ topic: 'informes', idempotency_key: 'k1', kind: 'visita.created', refs: { visit_id: '../x' }, card: { title: 'Visita técnica' } });
+    expect(checked.ok && checked.post.clientRef).toEqual({ kind: 'visita.created' });
+  });
+});

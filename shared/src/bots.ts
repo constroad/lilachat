@@ -46,7 +46,8 @@ const TASK_KEY_MAX = 60;
 /** `client` (pending 21, §157): the channel of that client, created by `PUT /api/bots/clients/:id`. */
 export type BotTarget = { channelId: string } | { topic: string } | { userPhone: string } | { userId: string } | { client: string };
 /** What a message to a client is about, so the «Servicios» tab can show it under its service. */
-export type BotClientRef = { kind: string; serviceId?: string; recordId?: string };
+/** `visitId`: a technical visit's card (agentes 14/11), drawn as lv01 and opened by its id. */
+export type BotClientRef = { kind: string; serviceId?: string; recordId?: string; visitId?: string };
 export type BotPost = { target: BotTarget; text?: string; card?: BotCard; /** Photos and videos drawn as a person's album (José via agentes 09/11). */ files?: GalleryItem[]; checklist?: BotChecklist; threadOf?: number; clientRef?: BotClientRef; idempotencyKey: string };
 export type BotPostError = { ok: false; error: 'invalid_request'; message: string };
 
@@ -165,13 +166,15 @@ export function validateBotChecklist(raw: unknown): { ok: true; checklist: BotCh
 
 export const CLIENT_ID = /^[A-Za-z0-9_-]{1,64}$/;
 const CLIENT_KIND = /^[a-z_]{1,32}\.[a-z_]{1,32}$/;
+const VISIT_REF = /^[a-f0-9]{24}$/i;
 
 function clientRefOf(body: Record<string, unknown>): BotClientRef | null {
   if (typeof body.kind !== 'string' || !CLIENT_KIND.test(body.kind)) return null;
   const refs = record(body.refs);
   const serviceId = typeof refs.service_id === 'string' && CLIENT_ID.test(refs.service_id) ? refs.service_id : undefined;
   const recordId = typeof refs.record_id === 'string' && CLIENT_ID.test(refs.record_id) ? refs.record_id : undefined;
-  return { kind: body.kind, ...(serviceId ? { serviceId } : {}), ...(recordId ? { recordId } : {}) };
+  const visitId = typeof refs.visit_id === 'string' && VISIT_REF.test(refs.visit_id) ? refs.visit_id : undefined;
+  return { kind: body.kind, ...(serviceId ? { serviceId } : {}), ...(recordId ? { recordId } : {}), ...(visitId ? { visitId } : {}) };
 }
 
 function validateTarget(body: Record<string, unknown>): { ok: true; target: BotTarget } | BotPostError {

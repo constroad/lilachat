@@ -133,7 +133,7 @@ export interface Message {
   /** José 13/11: a copy of another chat's message, shown «Reenviado» like WhatsApp. */
   forwarded?: boolean;
   /** A message an app posted to a client's channel (pending 21, §157): what it is about. */
-  clientRef?: { kind: string; serviceId?: string; recordId?: string };
+  clientRef?: { kind: string; serviceId?: string; recordId?: string; visitId?: string };
   /**
    * El sobre cifrado, en los chats secretos. Cuando está, `body` NO está: son
    * excluyentes, y guardar los dos anularía el cifrado en la práctica.
@@ -318,7 +318,7 @@ const messageSchema = new Schema<Message>(
     files: { type: Schema.Types.Mixed, default: undefined },
     sharedBy: { userId: Schema.Types.ObjectId, name: String, command: String },
     forwarded: { type: Boolean },
-    clientRef: { type: new Schema({ kind: String, serviceId: String, recordId: String }, { _id: false }), default: undefined },
+    clientRef: { type: new Schema({ kind: String, serviceId: String, recordId: String, visitId: String }, { _id: false }), default: undefined },
     envelope: {
       v: { type: Number },
       nonce: { type: String },

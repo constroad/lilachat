@@ -89,9 +89,11 @@ async function publishText(installation: Installation, chatId: Types.ObjectId, p
   });
   if (post.clientRef && !result.duplicate) await MessageModel.updateOne({ _id: result.message._id }, { $set: { clientRef: post.clientRef } });
   if (result.duplicate) return result.message;
-  const members = await publicarMensaje(result.message, result.members);
+  // The live message carries its ref too: a visit card (lv01) is drawn by it from the first delivery.
+  const message = post.clientRef ? { ...result.message, clientRef: post.clientRef } : result.message;
+  const members = await publicarMensaje(message, result.members);
   if (result.hilo && post.threadOf) notifyThread(String(chatId), post.threadOf, result.hilo, members);
-  return result.message;
+  return message;
 }
 
 async function publishChecklist(installation: Installation, chatId: Types.ObjectId, post: BotPost, assignees: Map<string, Types.ObjectId>): Promise<Message | null> {

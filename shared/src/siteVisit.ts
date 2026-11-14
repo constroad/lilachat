@@ -14,6 +14,14 @@ import type { ShortcutRow } from './appActions.js';
  */
 export const SITE_VISIT_SHORTCUT = 'visita_tecnica';
 
+/** A visit copies the company's active questions when it is created (Portal 14/11): with none, there is no interview. */
+export const NO_INTERVIEW = 'Esta empresa no tiene preguntas de entrevista.';
+
+/** What «Entrevista» says on a visit without questions, instead of opening an empty form; null when it has some. */
+export function visitInterviewNotice(document: VisitDocument): string | null {
+  return document.figures.questions > 0 ? null : NO_INTERVIEW;
+}
+
 /** The ⚡ or «+» row «Visita técnica»: the chat opens the visit itself (screen on the phone, «Datos» on the web). */
 export function isSiteVisitShortcut(row: Pick<ShortcutRow, 'kind' | 'key'>): boolean {
   return row.kind === 'shortcut' && row.key === SITE_VISIT_SHORTCUT;

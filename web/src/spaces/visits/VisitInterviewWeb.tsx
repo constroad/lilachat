@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { ArrowDown, ArrowLeft, Check, ListChecks } from 'lucide-react';
-import { interviewOf, type InterviewOption, type InterviewQuestion, type VisitDocument } from '@lilachat/shared';
+import { interviewOf, NO_INTERVIEW, type InterviewOption, type InterviewQuestion, type VisitDocument } from '@lilachat/shared';
 
 type Props = { document: VisitDocument; busy: boolean; onAnswer: (values: Record<string, string>) => void; onClose: () => void };
 
@@ -99,7 +99,7 @@ export function VisitInterviewWeb(props: Props) {
       <Context document={props.document} />
       <div ref={list} className="flex-1 overflow-y-auto">
         <div className="mx-auto flex max-w-[720px] flex-col gap-4 p-4">
-          {interview ? interview.questions.map((question) => <QuestionCard key={question.key} question={question} busy={props.busy} onChoose={(value) => props.onAnswer({ [question.key]: value })} />) : <p className="py-10 text-center text-[14px] text-on-surface-variant">Esta empresa no tiene preguntas de entrevista.</p>}
+          {interview ? interview.questions.map((question) => <QuestionCard key={question.key} question={question} busy={props.busy} onChoose={(value) => props.onAnswer({ [question.key]: value })} />) : <p className="py-10 text-center text-[14px] text-on-surface-variant">{NO_INTERVIEW}</p>}
         </div>
       </div>
       {left > 0 ? (

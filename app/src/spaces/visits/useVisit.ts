@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import * as Crypto from 'expo-crypto';
-import { createVisitScreen, noticeOf, type VisitSectionId } from '@lilachat/shared';
+import { createVisitScreen, noticeOf, visitInterviewNotice, type VisitSectionId } from '@lilachat/shared';
 import { submitAppForm } from '../../chat/commands/commandsApi';
 import { useAnsweredSince } from '../../chat/commands/useAnsweredSince';
 import { useAppAnswers } from '../../chat/commands/useAppAnswers';
@@ -30,6 +30,9 @@ export function useVisit(ref: VisitPlaceRef, startId: string | null) {
   }, [answers.answers, screen]);
   useAnsweredSince(answers.answers, () => void screen.reload());
   const openSection = async (section: VisitSectionId) => {
+    // A visit created without questions has no interview: say so, never «Abre la visita de nuevo» (APK 14/11).
+    const empty = section === 'entrevista' && state.draft?.ok ? visitInterviewNotice(state.draft.document) : null;
+    if (empty) return answers.say('Entrevista', empty);
     const place = section === 'datos' && !state.visitId ? await devicePlaceNow() : null;
     const where = place?.lat !== undefined && place.lng !== undefined ? { lat: place.lat, lng: place.lng } : {};
     await answers.track({ appName: 'Portal', command: '', action: section === 'entrevista' ? 'Entrevista' : 'Visita técnica' }, () => openVisitForm(ref, { kind: 'section', section, ...(state.visitId ? { visit_id: state.visitId } : {}), ...where }));

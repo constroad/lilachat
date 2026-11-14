@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { markedPointOf, nextPointNumber, openVisitRowsOf, pointLine, pointProblem, visitDocumentOf, visitIdOfKey, visitNextStep, visitSectionForm, visitUploadOf, visitCardActionOf, isSiteVisitShortcut } from './siteVisit.js';
+import { markedPointOf, nextPointNumber, openVisitRowsOf, pointLine, pointProblem, visitDocumentOf, visitIdOfKey, visitNextStep, visitSectionForm, visitUploadOf, visitCardActionOf, isSiteVisitShortcut, visitInterviewNotice } from './siteVisit.js';
 import { NEW_VISIT, VISIT_WITH_ID } from './siteVisit.fixture.js';
 
 /** The technical visit on the phone (José 13/11, Portal PRIMERA-VISITA §9; designs lv01–lv03). */
@@ -126,5 +126,15 @@ describe('isSiteVisitShortcut', () => {
 
   it('is not a command that happens to share the key', () => {
     expect(isSiteVisitShortcut(row({ kind: 'command' }))).toBe(false);
+  });
+});
+
+describe('visitInterviewNotice', () => {
+  it('says the company has no questions when the visit was created without any', () => {
+    expect(visitInterviewNotice(withFigures({ preguntas: 0, respondidas: 0 }))).toBe('Esta empresa no tiene preguntas de entrevista.');
+  });
+
+  it('says nothing when the visit has questions to answer', () => {
+    expect(visitInterviewNotice(withFigures({ preguntas: 5, respondidas: 2 }))).toBeNull();
   });
 });

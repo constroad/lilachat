@@ -1,4 +1,5 @@
 import { useState, type ComponentProps, type ReactNode } from 'react';
+import { Alert } from 'react-native';
 import { abrirConOtraApp, compartirFoto, guardarEnGaleria } from './guardarYCompartir';
 import { VisorDeImagen } from './VisorDeImagen';
 import { saveGifSticker } from './stickers/useStickers';
@@ -11,6 +12,17 @@ type Foto = NonNullable<ComponentProps<typeof VisorDeImagen>['foto']>;
  * eliminar y abrir con otra app (salió de `ChatScreen`). El resultado se DICE
  * dentro del visor: una descarga que no avisa deja sin saber si reintentar.
  */
+/**
+ * The viewer's trash deletes for everyone, with no way back: it asks first (José 13/11, the thread's
+ * test photo went with one tap). The long press of the chat already asked; the viewer did not.
+ */
+function confirmDeleteForEveryone(run: () => Promise<void>): void {
+  Alert.alert('¿Eliminar para todos?', 'La foto desaparece del chat para todos.', [
+    { text: 'Cancelar', style: 'cancel' },
+    { text: 'Eliminar para todos', style: 'destructive', onPress: () => void run() },
+  ]);
+}
+
 export function VisorDelChat(props: {
   fotos: Foto[];
   viendoSeq: number | null;
@@ -53,11 +65,11 @@ export function VisorDelChat(props: {
         setTimeout(() => setAvisoVisor(''), 3000);
       }
     }}
-    onEliminar={async (f) => {
+    onEliminar={(f) => confirmDeleteForEveryone(async () => {
       props.onCambiar(null);
       const r = await props.onEliminar(f.seq);
       if (!r.ok) props.onError(r.motivo ?? 'No se pudo eliminar.');
-    }}
+    })}
     onMakeSticker={gifSticker ? async (f) => {
       setAvisoVisor('Convirtiendo en sticker…');
       setAvisoVisor(await saveGifSticker(gifSticker.jwt, { chatId: gifSticker.chatId, seq: f.seq }));

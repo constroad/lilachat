@@ -970,3 +970,34 @@ José corrigió el diseño: el selector de espacios **no** lleva «Ver incógnit
   - **Falta:** el APK (intercepción, lv03 en RN, lv02 al día) y el embed del editor 2.0 en escritorio (Portal).
 - **Respuesta con tarjeta y enlace (agentes 14/11):** si la tarjeta trae `link`, el texto de respaldo con la URL
   ya no se muestra dos veces (`answerTextShown`, APK y web).
+
+## 14/11 mañana: la visita de punta a punta (web + APK)
+
+- **Tarjeta lv01 en la web, auditada** (`lv01-visita-chat.md`, dos revisiones independientes). Hasta 5 botones
+  en una tarjeta de visita (`BOT_LIMITS.visitActions`, `validateVisitCard`), en POST y en PATCH. Un PATCH puede
+  traer `kind` + `refs`: una tarjeta vieja gana su `clientRef.visitId` y se avisa en `msg.edited` (web y APK lo
+  guardan). El contexto de los botones envuelve todo el chat, no solo el hilo.
+- **Foto suelta con lugar:** `visitPhotoFields` manda `lat`, `lng`, `precisionM` (solo con ubicación) y `takenAt`
+  en el multipart; Portal los guarda (43a1f701) y agentes dibuja la «F» en el mapa de la tarjeta.
+- **Visita terminada** («Por cotizar», «Cotizada», «Ganada», «Perdida»): la tarjeta solo trae «Ver PDF» y
+  «Abrir croquis», sin «Falta».
+- **APK (OTA 58ebbef):**
+  - Los botones de la tarjeta abren `VisitScreen` en esa acción (`useVisitFromCard`, `startAction`).
+  - `VisitScreen` va con `zIndex`/`elevation` 10: sin eso se dibujaba DEBAJO de la cabecera (zIndex 2) y de la
+    lista (1). uiautomator la veía y la captura no.
+  - El ⚡ «Visita técnica» abre la pantalla de visita nueva (`isSiteVisitShortcut` de shared, también en la web).
+    Antes corría el atajo de Portal, que solo contestaba «se abre en su pantalla de Lilachat».
+- **E2E (14/11):**
+  - Web, VIS-2026-0073: lv01, lv02, lv03 (5 de 5, con la pregunta de m²), foto suelta (201, geo en Portal),
+    Terminar, Ver PDF (visor con la F1).
+  - APK en el emulador, VIS-2026-0075: ⚡ → Crear visita, la tarjeta en #general, Marcar punto (lv02) con foto,
+    Foto suelta desde la tarjeta, Terminar, tarjeta terminada con la «F», Ver PDF en el visor.
+  - Limpieza: Portal borró las visitas; las tarjetas QA se quitaron con «Eliminar para todos».
+- **Falta:**
+  - «Abrir croquis»: espera el embed de Portal (`/embed/site-visit/<id>?vista=croquis`) y que José reapruebe
+    la herramienta de agentes `abrir_visita_en_editor`.
+  - La tarjeta del APK sigue con el diseño viejo: falta lv01 en RN, con su auditoría sobre capturas del emulador.
+  - VIS-0075 salió con la entrevista vacía («0 de 0»). Se le preguntó a Portal; con 0 preguntas, «Entrevista»
+    responde «Abre la visita de nuevo para seguir», que no explica nada.
+  - Al borrar una visita en Portal, su tarjeta queda en el chat. Portal propone un aviso `visita.deleted` con
+    agentes.

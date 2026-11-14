@@ -112,6 +112,7 @@ export * from './activity.js';
 export * from './bots.js';
 export * from './profile.js';
 export * from './adminUsers.js';
+export * from './adminSpaces.js';
 export * from './callMedia.js';
 export * from './callReactions.js';
 export * from './chatQueue.js';

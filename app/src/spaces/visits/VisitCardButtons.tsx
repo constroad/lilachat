@@ -27,7 +27,7 @@ export function VisitCardButtons(props: { actions: CardAction[]; sent: SentActio
   const colors = useColores();
   const { actions, sent } = props;
   return (
-    <View testID="tarjeta-acciones-grilla" className="flex-row flex-wrap justify-between gap-y-2 border-t border-outline/10 px-3.5 py-3">
+    <View testID="tarjeta-acciones-grilla" className="flex-row flex-wrap justify-between gap-y-2 px-3.5 pb-3 pt-1">
       {actions.map((action, index) => {
         const visit = visitCardActionOf(action.id);
         const Icon = visit ? VISIT_ICON[visit].icon : null;

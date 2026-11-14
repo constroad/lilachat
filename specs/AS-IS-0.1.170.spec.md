@@ -1022,3 +1022,23 @@ José corrigió el diseño: el selector de espacios **no** lleva «Ver incógnit
 - **El bot borra su propio mensaje:** `DELETE /api/bots/messages/:id` y `DELETE /api/bots/messages?idempotency_key=`
   (`deleteBotMessage`): 204, 404 `message_not_found`, 409 `not_deleted`. Avisa a web y APK como un borrado
   normal. Contrato en `specs/BOTS-API.spec.md`. Es lo que usará agentes para el aviso `visita.deleted`.
+
+### Hojas sin hueco abajo y «Compartir en» que carga los chats (José 14/11, APK)
+
+- **Hueco enorme bajo toda hoja inferior.** Desde `dd315a40` la tarjeta iba
+  en un marco anclado solo con `bottom: 0`, cuyo alto es el del contenido. Un
+  `max-h-[70%]` de la tarjeta se resolvía contra ese alto en la segunda pasada
+  de Yoga: la tarjeta medía el 70 % de sí misma y el 30 % quedaba vacío debajo
+  (le pasaba a «Info del mensaje» y a toda hoja con alto en %). Ahora el marco
+  ocupa la ventana con la tarjeta al pie (`SHEET_FRAME`, `flex-end`): sigue
+  creciendo hacia arriba y el % es de la ventana. La tarjeta se achica si no
+  cabe. El clip ya no suma `margins.pie` a su lista: `Sheet` ya lo deja.
+  Test: `app/src/ui/overlay/sheetFrame.test.ts`.
+- **«Compartir en» solo mostraba «Tú».** La lista personal se leía una vez al
+  abrir (`chatsEnMemoria()` dentro de un `useMemo` sin suscripción). Abierta
+  desde el menú de Android con la app muerta, todavía no estaba en memoria y
+  nadie la volvía a leer. Ahora `useKnownChats` se suscribe a la memoria, la
+  carga del disco o del server si falta (`leerChatsGuardados` avisa a los
+  suscriptores) y devuelve `loading`: filas esqueleto (`reenviar-cargando`)
+  mientras llegan. Test: `app/src/chat/reenviar/knownChatsView.test.ts`.
+- **Sin verificar en el teléfono todavía:** falta la OTA y el E2E en el APK.

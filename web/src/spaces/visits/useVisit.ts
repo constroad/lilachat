@@ -24,8 +24,12 @@ export function useVisit(ref: VisitPlaceRef, startId: string | null) {
   }, [ref, startId]);
   const state = useSyncExternalStore(screen.subscribe, screen.snapshot, screen.snapshot);
   const answers = useAppAnswers({ jwt: ref.jwt, scope: useMemo(() => ({ chatId: ref.chatId }), [ref.chatId]) });
-  useEffect(() => void screen.reload(), [screen]);
-  useEffect(() => answers.answers.forEach((answer) => screen.adopt(answer.response?.data)), [answers.answers, screen]);
+  useEffect(() => {
+    void screen.reload();
+  }, [screen]);
+  useEffect(() => {
+    answers.answers.forEach((answer) => screen.adopt(answer.response?.data));
+  }, [answers.answers, screen]);
   useAnsweredSince(answers.answers, () => void screen.reload());
   /** A new visit starts where the browser is; the rest of its sections open with what Portal saved. */
   const openSection = async (section: VisitSectionId) => {

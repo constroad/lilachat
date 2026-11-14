@@ -4,7 +4,7 @@ import type { FormSubmitReply } from './appActions.js';
 import { NEW_VISIT, VISIT_WITH_ID } from './siteVisit.fixture.js';
 import { openVisitRowsOf, visitDocumentOf } from './siteVisit.js';
 import { isPortalUploadTicket } from './driveUpload.js';
-import { addVisitPhoto, finishVisit, markVisitPoint, visitDraftResultOf, visitPdf, visitPhotoFields, visitPointRequest, createdVisitIdOf, saveVisitAnswers, type VisitFlowDeps } from './visitFlow.js';
+import { addVisitPhoto, finishVisit, markVisitPoint, visitDraftResultOf, visitPdf, visitPhotoFields, visitPointRequest, createdVisitIdOf, saveVisitAnswers, visitCroquis, type VisitFlowDeps } from './visitFlow.js';
 
 const VISIT = '65f0000000000000000000a1';
 const POINT = '0b6f1a4e-2c3d-4e5f-8a9b-1c2d3e4f5a6b';
@@ -112,6 +112,20 @@ describe('one more photo, finishing and the PDF', () => {
   it('the PDF opens by its address; while it is made the person reads so', async () => {
     expect(await visitPdf(depsOf(answered({ status: 'ready', url: 'https://www.constroad.com/x.pdf' })), VISIT)).toEqual({ ok: true, url: 'https://www.constroad.com/x.pdf' });
     expect(await visitPdf(depsOf(answered({ status: 'generating' })), VISIT)).toEqual({ ok: false, message: 'El PDF se está generando. Vuelve a tocar en un momento.' });
+  });
+  it('«Abrir croquis» asks agentes for the croquis and reads Portal\'s link to it (agentes 5ea69d0)', async () => {
+    // Arrange
+    const link = { url: `https://www.constroad.com/embed/site-visit/${VISIT}?vista=croquis#t=abc.DEF`, expiresAt: '2026-11-15T02:00:00.000Z' };
+    const deps = depsOf(answered(link, 'El editor de la visita está listo.'));
+    // Act
+    const opened = await visitCroquis(deps, VISIT, ['https://www.constroad.com']);
+    // Assert
+    expect(deps.open).toHaveBeenCalledWith({ kind: 'croquis', visit_id: VISIT, vista: 'croquis' });
+    expect(opened).toEqual({ ok: true, link });
+  });
+  it('a croquis link from another host or path is refused and the person reads why', async () => {
+    const deps = depsOf(answered({ url: 'https://evil.example/embed/site-visit/x?vista=croquis#t=abc', expiresAt: '2026-11-15T02:00:00.000Z' }, 'El editor de la visita está listo.'));
+    expect(await visitCroquis(deps, VISIT, ['https://www.constroad.com'])).toEqual({ ok: false, message: 'No se pudo abrir el croquis.' });
   });
 });
 

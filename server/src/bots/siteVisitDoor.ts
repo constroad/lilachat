@@ -168,6 +168,14 @@ async function pointOpened(workspaceId: string, userId: Types.ObjectId, body: Re
   return { form: noFields('marcar_punto_de_visita', `Punto ${document.points.length + 1}`, 'Guardar punto'), context: { visitaId: visitId, entradaId: body.entry_id, tipo: draft.type, lat: draft.lat, lng: draft.lng, ...(precisionM !== undefined ? { precisionM } : {}), ...(note ? { nota: note } : {}), ...measure, fuente: source } };
 }
 
+const EDITOR_VIEWS = ['croquis', 'hoja'];
+/** «Abrir croquis» (agentes 5ea69d0): Portal's `abrir_visita_en_editor` answers the editor's link; the croquis unless the sheet is asked. */
+function croquisOpened(visitId: string, view: unknown): Opened | CommandError {
+  const vista = view === undefined ? 'croquis' : view;
+  if (typeof vista !== 'string' || !EDITOR_VIEWS.includes(vista)) return fail(400, 'invalid_request', 'Esa vista de la visita no existe.');
+  return { form: noFields('abrir_visita_en_editor', 'Croquis de la visita', 'Abrir'), context: { visitaId: visitId, vista } };
+}
+
 function simpleOpened(kind: unknown, visitId: string, body: Record<string, unknown>): Opened | CommandError {
   if (kind === 'photo') {
     const pointId = typeof body.point_id === 'string' && ENTRY_ID.test(body.point_id) ? body.point_id : null;
@@ -175,6 +183,7 @@ function simpleOpened(kind: unknown, visitId: string, body: Record<string, unkno
   }
   if (kind === 'finish') return { form: noFields('terminar_visita', 'Terminar visita', 'Terminar'), context: { visitaId: visitId } };
   if (kind === 'pdf') return { form: noFields('pdf_de_visita', 'PDF de la visita', 'Ver PDF'), context: { visitaId: visitId } };
+  if (kind === 'croquis') return croquisOpened(visitId, body.vista);
   return fail(400, 'invalid_request', 'Falta qué parte de la visita abrir.');
 }
 

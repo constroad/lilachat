@@ -2,6 +2,7 @@ import type { CommandNotice, CommandOutcome, CommandResponse } from './botComman
 import type { FormSubmitReply } from './appActions.js';
 import { formRunAnswer, uploadFailure } from './driveUpload.js';
 import { markedPointOf, visitUploadOf, type OpenVisitRow, type VisitDocument, type VisitPointDraft, type VisitUpload } from './siteVisit.js';
+import { embedLinkOf, type EmbedLink } from './portalEmbed.js';
 
 /**
  * What the visit's screens do through Lilachat's server (contract c-visitas, 14/11), the same on the
@@ -18,7 +19,8 @@ export type VisitFormRequest =
   | { kind: 'point'; visit_id: string; entry_id: string; type: string; lat: number; lng: number; precision_m?: number; note?: string; measure?: number; unit?: string; source: VisitSource }
   | { kind: 'photo'; visit_id: string; point_id?: string }
   | { kind: 'finish'; visit_id: string }
-  | { kind: 'pdf'; visit_id: string };
+  | { kind: 'pdf'; visit_id: string }
+  | { kind: 'croquis'; visit_id: string; vista: 'croquis' | 'hoja' };
 
 export type VisitPointRequest = Extract<VisitFormRequest, { kind: 'point' }>;
 export type VisitDraftResult = { ok: true; document: VisitDocument; visits: OpenVisitRow[] } | { ok: false; message: string };
@@ -29,6 +31,7 @@ export const VISIT_PHOTO_FAILED = 'No se pudo subir la foto. Revisa tu señal y 
 const POINT_FAILED = 'No se pudo guardar el punto.';
 const FINISH_FAILED = 'No se pudo terminar la visita.';
 const PDF_FAILED = 'No se pudo pedir el PDF.';
+const CROQUIS_FAILED = 'No se pudo abrir el croquis.';
 const PDF_MAKING = 'El PDF se está generando. Vuelve a tocar en un momento.';
 const EXPIRED = 410;
 const VISIT_ID = /^[a-f0-9]{24}$/i;
@@ -155,4 +158,15 @@ export async function visitPdf<F>(deps: VisitFlowDeps<F>, visitId: string): Prom
   const { url, status } = record(answer.response.data);
   if (typeof url === 'string' && /^https:\/\//.test(url)) return { ok: true, url };
   return { ok: false, message: status === 'generating' || status === 'pending' ? PDF_MAKING : answer.response.text ?? PDF_FAILED };
+}
+
+/**
+ * «Abrir croquis»: agentes runs Portal's `abrir_visita_en_editor` (5ea69d0) and answers its link, 12 h. Only a link
+ * to Portal's visit embed is opened; it is never stored or written to a message (it opens the visit to whoever has it).
+ */
+export async function visitCroquis<F>(deps: VisitFlowDeps<F>, visitId: string, origins: readonly string[]): Promise<{ ok: true; link: EmbedLink } | { ok: false; message: string }> {
+  const answer = await answerOf(deps, { kind: 'croquis', visit_id: visitId, vista: 'croquis' }, CROQUIS_FAILED);
+  if ('message' in answer) return { ok: false, message: answer.message };
+  const link = embedLinkOf(answer.response.data, origins, 'site-visit');
+  return link ? { ok: true, link } : { ok: false, message: CROQUIS_FAILED };
 }

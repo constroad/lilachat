@@ -173,6 +173,14 @@ describe('a visit\'s writes', () => {
     expect(finish.body.response.form).toMatchObject({ id: 'terminar_visita', schema: { properties: {} } });
     await openOf({ chat_id: String(general), kind: 'finish', visit_id: VISIT }).expect(404);
   });
+  it('«Abrir croquis» opens Portal\'s editor tool with the visit and the view; any other view is refused (agentes 5ea69d0)', async () => {
+    const croquis = await openOf({ chat_id: String(visitsChannel), kind: 'croquis', visit_id: VISIT, vista: 'croquis' }).expect(200);
+    expect(croquis.body.response.form).toMatchObject({ id: 'abrir_visita_en_editor', schema: { properties: {} } });
+    expect((await BotCommandRunModel.findById(croquis.body.commandId).lean())?.context).toEqual({ visitaId: VISIT, vista: 'croquis' });
+    const sheet = await openOf({ chat_id: String(visitsChannel), kind: 'croquis', visit_id: VISIT }).expect(200);
+    expect((await BotCommandRunModel.findById(sheet.body.commandId).lean())?.context).toEqual({ visitaId: VISIT, vista: 'croquis' });
+    await openOf({ chat_id: String(visitsChannel), kind: 'croquis', visit_id: VISIT, vista: 'admin' }).expect(400);
+  });
 });
 
 describe('the visit card lv01 on an app from before its screens', () => {

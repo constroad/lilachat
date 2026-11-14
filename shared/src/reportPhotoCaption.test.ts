@@ -44,3 +44,23 @@ describe('the description a unit photo suggests', () => {
     expect(captionOf(document, 'u1', 'foto-temperatura')).toBe('Llegó con lona');
   });
 });
+
+describe('the description a fresado tramo photo suggests (E2E 14/11: it said «llegada a descarga»)', () => {
+  const fresado = fieldDocumentOf({
+    id: '6aed0a1b2c3d4e5f60718294', type: 'FRE-PAV', title: 'Fresado de pavimento', status: 'draft',
+    forms: { fotos: photosForm },
+    sections: [{
+      id: 'tramos', kind: 'repeat', title: 'Tramos fresados', required: true, state: 'partial', summary: [], itemTitle: 'Tramo', addLabel: 'Agregar tramo', min: 1,
+      template: [{ id: 'fotos-durante', title: 'Fotos · durante', required: false, form: 'fotos', tool: 'agregar_foto_de_parte', photoKind: 'DURANTE' }],
+      items: [{ id: 't1', title: 'T-01 · QA Av Prueba 0–40 m', summary: [], results: [], sections: [] }],
+    }],
+    publish: { label: 'Publicar informe', missing: [], warnings: [] },
+  })!;
+
+  it('names the moment and the tramo, with no arrival order: a tramo does not arrive at a paver', () => {
+    // Act
+    const caption = reportFormAnswer(fresado, { sectionId: 'tramos', itemId: 't1', key: 'fotos-durante' })?.response?.form?.schema.properties.descripcion?.default;
+    // Assert
+    expect(caption).toBe('Durante · T-01 · QA Av Prueba 0–40 m');
+  });
+});

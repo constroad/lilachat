@@ -306,6 +306,15 @@ function arrivalOrderOf(section: RepeatSection, itemId: string, ingresoKey: stri
   return rank >= 0 ? rank + 1 : arrived.length + 1;
 }
 
+/** Only a control de pista has units arriving at the paver; a fresado tramo is named by its moment and itself (E2E 14/11). */
+const UNIT_REPORT_TYPE = 'CTL-PIS';
+const lastPart = (title: string): string => title.split(UNIT_TITLE_SEPARATOR).pop()!.trim();
+
+function unitCaptionOf(section: RepeatSection, item: RepeatItem, entryTitle: string): string {
+  const ingresoKey = section.template.find((one) => one.photoKind === 'ingreso')?.id;
+  return `${stageOf(entryTitle)} · llegada n.º ${arrivalOrderOf(section, item.id, ingresoKey)} a descarga · ${lastPart(item.title)}`;
+}
+
 /**
  * José 12/11: a unit photo's description says its stage, the unit's order of arrival at the paver
  * and its plate («Ingreso · llegada n.º 2 a descarga · F2K-908»). Only when nothing is written.
@@ -317,9 +326,7 @@ function withUnitCaption(form: AppForm, document: FieldDocument, path: SectionPa
   const entry = section.template.find((one) => one.id === path.key);
   const item = section.items.find((one) => one.id === path.itemId);
   if (!entry?.photoKind || !item) return form;
-  const plate = item.title.split(UNIT_TITLE_SEPARATOR).pop()!.trim();
-  const ingresoKey = section.template.find((one) => one.photoKind === 'ingreso')?.id;
-  const text = `${stageOf(entry.title)} · llegada n.º ${arrivalOrderOf(section, item.id, ingresoKey)} a descarga · ${plate}`;
+  const text = document.type === UNIT_REPORT_TYPE ? unitCaptionOf(section, item, entry.title) : `${stageOf(lastPart(entry.title))} · ${item.title}`;
   return { ...form, schema: { ...form.schema, properties: { ...form.schema.properties, [CAPTION_FIELD]: { ...caption, default: text } } } };
 }
 

@@ -870,3 +870,12 @@ José corrigió el diseño: el selector de espacios **no** lleva «Ver incógnit
 - Turno, clima y calle salen de los `x-input` que ya existían (`shift`, `weather`, `work-street`).
 - Tests: `server/src/bots/clientReports.test.ts` (4 nuevos, rojos sin el cambio).
 - E2E en vivo en Test: pendiente al escribir esto.
+- **E2E en vivo en Test (14/11, APK con OTA 3a842f1)**, servicio «QA-CTLPIS — borrar»: selector → FRE-PAV →
+  responsable → «Datos de la jornada» guardada → tramo T-01 (0–40 m × 3,5 m = 140 m², Portal lo calcula)
+  → foto «durante» con la cámara (GPS ±5 m, sello) → «Foto agregada.» por `agregar_foto_de_parte`.
+- **Falla encontrada y arreglada**: la descripción sugerida de la foto decía «llegada n.º 1 a descarga»,
+  la frase de CTL-PIS. Ahora solo CTL-PIS numera llegadas; un tramo dice «Durante · T-01 · calle 0–40 m»
+  (`reportSaves.ts`, test en `reportPhotoCaption.test.ts`).
+- **Para Portal**: un documento nuevo (`id: null`) marca «Datos de la jornada» como LISTA con los valores
+  por defecto, y las demás secciones salen apagadas sin decir por qué hasta guardarla.
+- **Sin verificar**: el clima no se llenó solo. El emulador no tenía GPS al abrir la sección.

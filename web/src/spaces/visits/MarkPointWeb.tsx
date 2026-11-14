@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Camera, CheckCircle2, RotateCcw, X } from 'lucide-react';
 import { pointProblem, VISIT_MEASURE_UNITS, VISIT_POINT_TYPES, type VisitDocument, type VisitPointDraft } from '@lilachat/shared';
-import { shootOrPick } from '../../chat/camera/cameraRequests';
+import type { PickerHandle } from '../../chat/camera/cameraRequests';
 import { stampOfFile } from '../../chat/camera/shotStamp';
+import { EvidenceInput } from '../clients/ServiceDriveWeb';
 import { prepared, type DriveFile } from '../clients/useDriveUpload';
 
 type Place = { lat: number; lng: number; precisionM?: number };
@@ -21,7 +22,7 @@ function readPlace(): Promise<Place | null> {
 
 /** The camera first (Lilachat's on a phone, the picker on a computer), the GPS read beside it (lv02). */
 function useShotAndPlace() {
-  const input = useRef<HTMLInputElement>(null);
+  const input = useRef<PickerHandle>(null);
   const [shot, setShot] = useState<Shot | null>(null);
   const [place, setPlace] = useState<Place | null>(null);
   const take = (file: File) => {
@@ -29,7 +30,7 @@ function useShotAndPlace() {
     if (point) setPlace({ lat: point.lat, lng: point.lng, precisionM: Math.round(point.precision) });
     void prepared(file).then(({ source }) => setShot({ file: source, preview: URL.createObjectURL(file) }));
   };
-  const open = () => shootOrPick({ title: 'Foto del punto' }, {}, () => input.current?.click(), take);
+  const open = () => input.current?.click();
   useEffect(() => {
     open();
     void readPlace().then((found) => found && setPlace((known) => known ?? found));
@@ -37,7 +38,8 @@ function useShotAndPlace() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => () => void (shot && URL.revokeObjectURL(shot.preview)), [shot]);
-  const picker = <input ref={input} type="file" accept="image/*" capture="environment" hidden onChange={(event) => { const file = event.target.files?.[0]; if (file) take(file); event.target.value = ''; }} />;
+  // The door of every photo (camera gate): Lilachat's camera with its stamp on a phone, a file on a computer.
+  const picker = <EvidenceInput ref={input} testId="punto-archivo" kind="photo" title="Foto del punto" onFile={(file) => file && take(file)} />;
   return { shot, place, open, picker };
 }
 

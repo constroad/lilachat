@@ -178,7 +178,7 @@ describe('a visit\'s writes', () => {
 describe('the visit card lv01 on an app from before its screens', () => {
   it('a «visita_*» tap is refused with «Actualiza Lilachat» and never reaches agentes', async () => {
     // Arrange
-    const card = { title: 'Condominio Los Álamos', fields: [], actions: [{ id: 'visita_entrevista', label: 'Entrevista', style: 'secondary', value: VISIT }] };
+    const card = { title: 'Condominio Los Álamos', fields: [], actions: [{ id: 'visita_entrevista', label: 'Entrevista', style: 'secondary' as const, value: VISIT }] };
     await MessageModel.create({ chatId: general, seq: 1, senderId: ana, clientKey: 'k-visita', kind: 'text', body: 'Visita', card, at: new Date() });
     // Act
     const tapped = await request(app).post(`/api/chats/${general}/card-actions`).set(auth(ana)).send({ seq: 1, action_id: 'visita_entrevista' }).expect(409);

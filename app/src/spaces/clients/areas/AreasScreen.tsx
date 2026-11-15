@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Scan, Trash2 } from 'lucide-react-native';
-import { areaCardLines, areaRemoveAsk, areaTotalsLine, isRemovableArea, type AdditionalArea, type AreaDocument, type SpaceClientService } from '@lilachat/shared';
+import { areaCardLines, areaRemoveAsk, areaReportDay, areaTotalsLine, isRemovableArea, type AdditionalArea, type AreaDocument, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { BottomAction, ObservationHeader } from '../observations/ObservationParts';
 import { useBackTo, type ObservationTarget } from '../observations/useObservations';
@@ -25,24 +25,50 @@ export function AreasScreen(props: Props) {
   }
   return (
     <View className="flex-1 bg-background">
-      <ObservationHeader kicker={report?.code ?? 'Informe de área adicional'} title="Área adicional" caption={props.service.name} onBack={close} />
+      <ObservationHeader kicker={report?.code ?? 'Informe de área adicional'} title="Área adicional" onBack={close} />
       <ScrollView testID="areas-pantalla" keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 24 }}>
         {draft === null ? <View className="h-40 rounded-2xl bg-surface" /> : null}
         {draft && !draft.ok ? <Text testID="areas-fallo" className="rounded-2xl border border-outline/15 bg-surface p-4 text-[15px] text-on-surface">{draft.message}</Text> : null}
-        {report ? <ReportBody report={report} remove={remove} /> : null}
+        {report ? <ReportBody report={report} service={props.service.name} remove={remove} /> : null}
       </ScrollView>
       <BottomAction testID="medir-area" label="Medir área" icon={<Scan size={22} color="white" />} busy={!report} onPress={() => setMeasuring(true)} />
     </View>
   );
 }
 
-function ReportBody({ report, remove }: { report: AreaDocument; remove: ReturnType<typeof useAreaRemove> }) {
+function ReportBody({ report, service, remove }: { report: AreaDocument; service: string; remove: ReturnType<typeof useAreaRemove> }) {
   return (
     <>
+      <ReportHeading report={report} service={service} />
       <Totals report={report} />
       <Text className="mt-1 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{`Zonas medidas · ${report.areas.length}`}</Text>
       {report.areas.length ? report.areas.map((area, index) => <ZoneCard key={area.id} area={area} number={index + 1} remove={remove} />) : <Text testID="areas-vacio" className="py-4 text-center text-[14px] text-on-surface-variant">Todavía no hay zonas. Toca «Medir área».</Text>}
     </>
+  );
+}
+
+const SourceTag = ({ label }: { label: string }) => <Text className="rounded-md border border-outline/30 px-1.5 py-0.5 text-[10px] font-bold uppercase text-on-surface-variant">{label}</Text>;
+
+/** Design la-01: the report's code, the service and the day, each with where it comes from. */
+function ReportHeading({ report, service }: { report: AreaDocument; service: string }) {
+  const day = areaReportDay(report.date);
+  return (
+    <View testID="areas-encabezado" className="gap-2 rounded-2xl border border-outline/15 bg-surface p-4">
+      <View className="flex-row items-center justify-between gap-2">
+        <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">Informe de área adicional</Text>
+        {report.code ? <Text className="rounded-md bg-primary/10 px-2 py-0.5 font-mono text-[12px] font-bold text-primary">{report.code}</Text> : null}
+      </View>
+      <View className="flex-row items-start gap-2">
+        <Text className="flex-1 text-[17px] font-bold text-on-surface">{service}</Text>
+        <SourceTag label="Del servicio" />
+      </View>
+      {day ? (
+        <View className="flex-row items-center gap-2 border-t border-outline/10 pt-2">
+          <Text className="flex-1 text-[15px] text-on-surface-variant">{day}</Text>
+          <SourceTag label="Del reloj" />
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -54,10 +80,16 @@ function Totals({ report }: { report: AreaDocument }) {
     </View>
   );
   return (
-    <View testID="areas-total" accessibilityLabel={areaTotalsLine({ count: report.areas.length, totals: report.totals })} className="flex-row gap-3 rounded-2xl border border-outline/15 bg-surface p-4">
-      {figure('Área', decimals(report.totals.areaM2, 2), 'm²')}
-      {figure('Volumen', decimals(report.totals.volumeM3, 3), 'm³')}
-      {figure('Zonas', String(report.areas.length))}
+    <View testID="areas-total" accessibilityLabel={areaTotalsLine({ count: report.areas.length, totals: report.totals })} className="gap-3 rounded-2xl border border-outline/15 bg-surface p-4">
+      <View className="flex-row items-center justify-between">
+        <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">Métricas totales</Text>
+        <Text className="rounded-md border border-primary/40 bg-primary/15 px-2 py-0.5 text-[11px] font-bold uppercase text-primary">Calculado</Text>
+      </View>
+      <View className="flex-row gap-3">
+        {figure('Área', decimals(report.totals.areaM2, 2), 'm²')}
+        {figure('Volumen', decimals(report.totals.volumeM3, 3), 'm³')}
+        {figure('Zonas', String(report.areas.length))}
+      </View>
     </View>
   );
 }

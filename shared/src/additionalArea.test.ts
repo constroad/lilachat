@@ -1,6 +1,6 @@
 import { FORMS_LEVEL } from './appForms.js';
 import { describe, expect, it } from 'vitest';
-import { AREA_TYPE, areaAnswerOf, areaRemoveAsk, areaRemoveRequest, isRemovableArea, areaCardLines, areaCreateRequest, areaDocumentOf, areaPlaceValues, areaTotalsLine, areaWriteStore, MEASURE_IN_APK, measureInApkLinks } from './additionalArea.js';
+import { AREA_TYPE, areaAnswerOf, areaReportDay, areaRemoveAsk, areaRemoveRequest, isRemovableArea, areaCardLines, areaCreateRequest, areaDocumentOf, areaPlaceValues, areaTotalsLine, areaWriteStore, MEASURE_IN_APK, measureInApkLinks } from './additionalArea.js';
 import { ENLACE_DE_DESCARGA } from './invitacion.js';
 
 /** Portal's `informe_area_adicional` as agentes passes it (Portal 12/11, proposed contract). */
@@ -153,5 +153,18 @@ describe('the banner that sends the measuring to the APK', () => {
     expect(iphone.open).toBeNull();
     expect(iphone.install).toBeNull();
     expect(MEASURE_IN_APK).toEqual({ kicker: 'Medición', title: 'Se mide en el APK', why: 'Con la cámara (AR) y un lado medido con wincha hay menos error que midiendo sobre una foto.', open: 'Abrir en el APK', install: '¿No tienes el APK? Instalar Lilachat', iphone: 'Mide desde un teléfono Android con el APK de Lilachat.' });
+  });
+});
+
+describe('areaReportDay', () => {
+  it('reads Portal\'s date-only day as it is, never a day before (la-01 header)', () => {
+    expect(areaReportDay('2026-11-15')).toBe('domingo 15 de noviembre de 2026');
+    expect(areaReportDay('2026-01-01')).toBe('jueves 1 de enero de 2026');
+  });
+
+  it('without a valid day says nothing', () => {
+    expect(areaReportDay(undefined)).toBeNull();
+    expect(areaReportDay('15/11/2026')).toBeNull();
+    expect(areaReportDay('2026-02-30')).toBeNull();
   });
 });

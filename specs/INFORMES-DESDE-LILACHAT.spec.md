@@ -1083,9 +1083,14 @@ espacio Test, con «QA-CTLPIS — borrar»:
 > `photoUploadOf` lo lee. Antes la zona se guardaba y la foto decía «No llegó el
 > permiso para subir el archivo» (E2E 15/11, TES-IAA en obra la molina, Test).
 > El teclado de la wincha se desplaza solo hasta que «Listo» queda a la vista, y
-> la cámara dice «Foto de la zona». **Sin verificar todavía:** la subida de la
-> foto con el arreglo (667484e). Falta el OTA, que necesita el emulador, y el
-> emulador no arranca con el disco lleno. Falta la AR (la-02/la-03, módulo nativo de ARCore, va en un APK), editar
+> la cámara dice «Foto de la zona». **Verificado 15/11 (E2E APK, Test):** la
+> zona 4 de TES-IAA se guardó con su foto en Portal (1 foto con miniatura). Hizo
+> falta también el lado de Agentes (37b5f04): pasaba el ticket por
+> `driveUploadOf`, que exige `maxSeconds`, y descartaba el del área. Ahora un
+> ticket solo de fotos viaja en `data.upload`, como el de la visita.
+> la-01 suma el encabezado del diseño: código, servicio («Del servicio»), día
+> («Del reloj», `areaReportDay`, leído en UTC porque es date-only) y «Métricas
+> totales · Calculado». Falta la AR (la-02/la-03, módulo nativo de ARCore, va en un APK), editar
 > una zona guardada (la-06), sin cámara (la-07) y revisar y enviar (la-08).
 
 

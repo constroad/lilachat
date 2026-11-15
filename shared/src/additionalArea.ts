@@ -188,3 +188,16 @@ const AREA_WRITE: WriteKind<AreaAnswer> = { failed: AREA_WRITE_FAILED, answerOf:
 
 /** One screen's write of an area: the area, then its photos (the Medición capture marked). */
 export const areaWriteStore = () => formFilesWriteStore(AREA_WRITE, areaPlaceValues, AREA_WRITE_FAILED);
+
+const DAY_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
+const LONG_DAY = new Intl.DateTimeFormat('es-PE', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+/** The report's day for la-01's header: Portal's date-only `fecha` read in UTC, so it never shows the day before. */
+export function areaReportDay(date: string | undefined): string | null {
+  const match = date ? DAY_ONLY.exec(date) : null;
+  if (!match) return null;
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+  const instant = new Date(Date.UTC(year, month - 1, day));
+  if (instant.getUTCMonth() !== month - 1 || instant.getUTCDate() !== day) return null;
+  return LONG_DAY.format(instant).replace(/,/g, '');
+}

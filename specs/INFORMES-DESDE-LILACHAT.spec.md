@@ -1191,6 +1191,15 @@ espacio Test, con «QA-CTLPIS — borrar»:
 >     pintada (ear clipping en pantalla) con su área (Newell) en el centro.
 >     «Listo» confirma y toma la foto con todo eso encima. «Deshacer» la reabre.
 >     Con la zona cerrada no se marcan más esquinas (`closed`).
+>   - Auditoría independiente, arreglada antes del APK:
+>     - La foto que va al cliente lleva solo el número de cada lado, sin metros
+>       ni área. Esos son los del AR crudo, y una wincha escrita después cambia
+>       lo facturado.
+>     - Una esquina cuyo promedio cae a menos de 15 cm de la 1.ª cierra la zona.
+>       Una zona cerrada no se recorta otra vez al tomar la foto.
+>     - Doble toque en «Listo» y salir a mitad de la lectura.
+>     - Los puntos del piso recorren solo las celdas a 4 m de la cámara.
+>     - La caché de etiquetas incluye el color de la marca.
 > - **Método `ar` («AR» en el PDF), pendiente:** Portal lo tiene (6d1a71f6), pero
 >   todavía no está en producción. Cuando llegue:
 >   - una zona sin ningún lado con wincha manda `ar`, y una con wincha manda

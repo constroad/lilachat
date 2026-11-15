@@ -1,5 +1,5 @@
 import mongoose, { Types, type Model } from 'mongoose';
-import { ACTION_KEY, FORM_PHOTO_MAX_BYTES, formFields, isAckBody, isDraftSubmit, photoHourLines, photoStampLines, submitChosen, timemarkOf, validateFormReply, validateFormValues, type CommandOutcome, type CommandScope, type FormField, type FormValues, type GeoPoint } from '@lilachat/shared';
+import { ACTION_KEY, FORM_PHOTO_MAX_BYTES, formFields, isAckBody, isDraftSubmit, photoHourLines, photoStampLines, submitChosen, timemarkOf, trueImageMime, validateFormReply, validateFormValues, type CommandOutcome, type CommandScope, type FormField, type FormValues, type GeoPoint } from '@lilachat/shared';
 import { ChatModel, MessageModel } from '../chatModels.js';
 import { readMediaBytes, type UploadOutcome } from '../mediaClient.js';
 import { defaultMediaUploader } from '../localMediaUploader.js';
@@ -65,7 +65,8 @@ export async function readSignedFile(token: string): Promise<{ bytes: Buffer; mi
     ? await FormFileModel.findById(signed.id).select('url mime').lean()
     : (await MessageModel.findOne({ _id: signed.id, deletedAt: { $exists: false } }).select('media').lean())?.media;
   const bytes = file?.url ? await read(file.url) : null;
-  return file && bytes ? { bytes, mime: file.mime ?? 'application/octet-stream' } : { status: 404 };
+  // Served with the type of its bytes: files stored before 14/11 can carry a wrong image label.
+  return file && bytes ? { bytes, mime: trueImageMime(file.mime ?? 'application/octet-stream', bytes) } : { status: 404 };
 }
 
 /** The asker's open form, or why not: in its chat, or in the space when it came from the ⚡. */

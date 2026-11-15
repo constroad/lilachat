@@ -62,6 +62,37 @@ export function headerMayHaveAlpha(header: Uint8Array): boolean {
   return chunk === 'VP8L' || (chunk === 'VP8X' && ((header[WEBP_FLAGS_AT] ?? 0) & WEBP_ALPHA_FLAG) !== 0);
 }
 
+const JPEG_SIGNATURE = [0xff, 0xd8, 0xff];
+const FTYP_AT = 4;
+const BRAND_AT = 8;
+const HEIC_BRANDS = new Set(['heic', 'heix', 'heim', 'heis']);
+const HEIF_BRANDS = new Set(['mif1', 'msf1']);
+const startsWith = (header: Uint8Array, signature: readonly number[]) => header.length >= signature.length && signature.every((byte, index) => header[index] === byte);
+
+/**
+ * The real type of an image from its first bytes, or null when they are not a
+ * known image. A phone can declare a PNG screenshot as JPEG (14/11: three
+ * vouchers in #flujo-caja), and a reader that trusts the label refuses it.
+ */
+export function imageMimeOf(header: Uint8Array): string | null {
+  if (startsWith(header, [...PNG_SIGNATURE, 0x0d, 0x0a, 0x1a, 0x0a])) return 'image/png';
+  if (startsWith(header, JPEG_SIGNATURE)) return 'image/jpeg';
+  if (asText(header, 0, 4) === 'GIF8') return 'image/gif';
+  if (asText(header, 0, 4) === 'RIFF' && asText(header, 8, 4) === 'WEBP') return 'image/webp';
+  if (asText(header, FTYP_AT, 4) !== 'ftyp') return null;
+  const brand = asText(header, BRAND_AT, 4);
+  if (HEIC_BRANDS.has(brand)) return 'image/heic';
+  return HEIF_BRANDS.has(brand) ? 'image/heif' : null;
+}
+
+const UNLABELED = new Set(['', 'application/octet-stream']);
+
+/** The label an image is stored and served with: its bytes win over a wrong or missing image label; documents and videos keep theirs. */
+export function trueImageMime(declared: string, header: Uint8Array): string {
+  if (!declared.startsWith('image/') && !UNLABELED.has(declared)) return declared;
+  return imageMimeOf(header) ?? declared;
+}
+
 /** JPEG, unless the source is a PNG with real transparency: that stays PNG and only changes size. */
 export function photoOutputType(file: { mimeType: string; name?: string }, hasTransparency: boolean): PhotoOutputType {
   return isPng(file) && hasTransparency ? 'image/png' : 'image/jpeg';

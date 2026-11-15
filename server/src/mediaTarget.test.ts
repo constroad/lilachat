@@ -73,3 +73,12 @@ describe('a GIF with a target', () => {
     expect([inThread?.hiloDe, inThread?.enElChat]).toEqual([1, true]);
   });
 });
+
+describe('the type a photo is stored with (14/11: a PNG voucher labeled JPEG was refused by the reader)', () => {
+  it('a PNG sent as image/jpeg is stored as image/png', async () => {
+    await request(app).post('/api/media').set(asAna).field('chatId', String(chat)).field('clientKey', 'k-mislabeled')
+      .attach('file', PNG, { filename: 'voucher.jpg', contentType: 'image/jpeg' }).expect(201);
+    const sent = await MessageModel.findOne({ chatId: chat, kind: 'image' }).lean();
+    expect(sent?.media?.mime).toBe('image/png');
+  });
+});

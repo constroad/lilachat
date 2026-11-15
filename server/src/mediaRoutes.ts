@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { MAX_BYTES_BY_KIND, dimensionValida, validateMedia, isAlbumId, messageTargetOf, sealedMediaSize, type MediaKind } from '@lilachat/shared';
+import { MAX_BYTES_BY_KIND, dimensionValida, validateMedia, isAlbumId, messageTargetOf, sealedMediaSize, trueImageMime, type MediaKind } from '@lilachat/shared';
 import { Types } from 'mongoose';
 import { ChatModel } from './chatModels.js';
 import { parseSealedUpload, sealedSizeProblem } from './sealedUpload.js';
@@ -98,7 +98,8 @@ export function buildMediaRouter(uploader: MediaUploader = defaultMediaUploader(
       if (problem) return res.status(problem.status).json({ message: problem.message });
       // The chat camera's stamp (José 12/11): burned here, once, while it is compressed.
       const stamped = sealed ? null : await stampedUpload(file, validation.kind, req.body, chatId);
-      const content = stamped ?? { bytes: file.buffer, mimeType: file.mimetype, fileName: file.originalname };
+      // The bytes say what an image is: a phone labeled a PNG voucher as JPEG and the reader refused it (14/11).
+      const content = stamped ?? { bytes: file.buffer, mimeType: trueImageMime(file.mimetype, file.buffer), fileName: file.originalname };
       const uploaded = await uploader.upload({
         chatId,
         fileName: sealed ? SEALED_NAME : content.fileName,

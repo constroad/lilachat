@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PHOTO_SIZING, createSerialRunner, fitWithin, headerMayHaveAlpha, jpegNameOf, photoOutputType, photoQualities, photoSides, photoSizingLog, shouldShrinkPhoto, shrinkWithLadder } from './photoSizing.js';
+import { PHOTO_SIZING, createSerialRunner, fitWithin, headerMayHaveAlpha, imageMimeOf, trueImageMime, jpegNameOf, photoOutputType, photoQualities, photoSides, photoSizingLog, shouldShrinkPhoto, shrinkWithLadder } from './photoSizing.js';
 
 const MB = 1024 * 1024;
 
@@ -185,5 +185,52 @@ describe('transparency from the first bytes (the app cannot read pixels: «may h
     expect(headerMayHaveAlpha(webp('VP8 '))).toBe(false);
     expect(headerMayHaveAlpha(Uint8Array.from([0xff, 0xd8, 0xff, 0xe0]))).toBe(false);
     expect(headerMayHaveAlpha(new Uint8Array())).toBe(false);
+  });
+});
+
+describe('the real type of an image from its first bytes (14/11: a PNG voucher declared as JPEG made the model refuse it)', () => {
+  const bytes = (...values: number[]) => Uint8Array.from(values);
+  const ascii = (text: string) => Array.from(text, (char) => char.charCodeAt(0));
+
+  it('reads PNG, JPEG, GIF and WebP from their signatures', () => {
+    expect(imageMimeOf(bytes(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a))).toBe('image/png');
+    expect(imageMimeOf(bytes(0xff, 0xd8, 0xff, 0xe0))).toBe('image/jpeg');
+    expect(imageMimeOf(bytes(...ascii('GIF89a')))).toBe('image/gif');
+    expect(imageMimeOf(bytes(...ascii('RIFF'), 0, 0, 0, 0, ...ascii('WEBP')))).toBe('image/webp');
+  });
+
+  it('reads HEIC and HEIF from the ftyp brand', () => {
+    expect(imageMimeOf(bytes(0, 0, 0, 0x18, ...ascii('ftypheic')))).toBe('image/heic');
+    expect(imageMimeOf(bytes(0, 0, 0, 0x18, ...ascii('ftypmif1')))).toBe('image/heif');
+  });
+
+  it('says nothing for what is not a known image: the declared type stays', () => {
+    expect(imageMimeOf(bytes(...ascii('%PDF-1.7')))).toBeNull();
+    expect(imageMimeOf(bytes(0, 0, 0, 0x18, ...ascii('ftypmp42')))).toBeNull();
+    expect(imageMimeOf(bytes(0x89, 0x50))).toBeNull();
+    expect(imageMimeOf(new Uint8Array())).toBeNull();
+  });
+});
+
+describe('the type a stored image is labeled with', () => {
+  const png = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const pdf = Uint8Array.from(Array.from('%PDF-1.7', (char) => char.charCodeAt(0)));
+
+  it('an image declared with the wrong image type takes the type of its bytes', () => {
+    expect(trueImageMime('image/jpeg', png)).toBe('image/png');
+  });
+
+  it('an unlabeled image takes the type of its bytes', () => {
+    expect(trueImageMime('application/octet-stream', png)).toBe('image/png');
+    expect(trueImageMime('', png)).toBe('image/png');
+  });
+
+  it('a document or a video keeps its label even if its bytes look like an image', () => {
+    expect(trueImageMime('application/pdf', png)).toBe('application/pdf');
+    expect(trueImageMime('video/mp4', png)).toBe('video/mp4');
+  });
+
+  it('bytes that are not a known image keep the label', () => {
+    expect(trueImageMime('image/jpeg', pdf)).toBe('image/jpeg');
   });
 });

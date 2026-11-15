@@ -1112,6 +1112,12 @@ e-33. Contrato cerrado con agentes el 24/10:
   "private", is_member } ] }`.
 - `GET /api/bots/members` → `{ members: [ { id, name, phone, role: "owner" |
   "admin" | "member" | "guest", title?, area? } ] }`. Solo los activos.
+- **El tipo de una imagen sale de sus bytes** (14/11). Tres vouchers de CONSTROAD #flujo-caja eran
+  capturas PNG que el teléfono declaró `image/jpeg`. La API de Claude respondió 400 y agentes
+  contestó «No pude leer el voucher». Ahora el server guarda el tipo real al subir (`mediaRoutes`)
+  y sirve la dirección firmada con el tipo real (`readSignedFile`), con `trueImageMime` de
+  `@lilachat/shared`. El `mime` de la lista de archivos de un mensaje viejo puede seguir con la
+  etiqueta mal puesta. Agentes, por su lado, también lee el tipo desde los bytes (020e347).
 - `GET /api/bots/messages/:id/files` → `{ files: [ { url, mime, name, size? } ] }` (04/11). Las
   direcciones de un mensaje, recién firmadas: valen otros 15 minutos, en el orden de
   `message.files`. Sirve para una aprobación que llega después de que venció la de

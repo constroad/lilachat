@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Check, Delete } from 'lucide-react-native';
 import type { TapeKey } from '@lilachat/shared';
@@ -6,10 +7,18 @@ import { useColores } from '../../../ui/tema';
 const ROWS: TapeKey[][] = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['.', '0', 'borrar']];
 
 /** Design la-05: the tape's own keypad, 56 px keys (gloves, sun), and «Listo». */
-export function TapeKeypad(props: { title: string; typed: string; unit: 'm' | 'cm'; onKey: (key: TapeKey) => void; onDone: () => void }) {
+export function TapeKeypad(props: { title: string; typed: string; unit: 'm' | 'cm'; onKey: (key: TapeKey) => void; onDone: () => void; onShown?: (node: View) => void }) {
   const colors = useColores();
+  const box = useRef<View>(null);
+  const shown = useRef(false);
+  /** After its first layout, once, so the keypad has its height when it is measured. */
+  const reveal = () => {
+    if (shown.current || !box.current) return;
+    shown.current = true;
+    props.onShown?.(box.current);
+  };
   return (
-    <View testID="teclado-wincha" className="gap-2 rounded-2xl border border-primary/40 bg-surface p-3">
+    <View ref={box} onLayout={reveal} testID="teclado-wincha" className="gap-2 rounded-2xl border border-primary/40 bg-surface p-3">
       <Text className="text-[15px] font-bold text-primary">{props.title}</Text>
       <View className="flex-row items-baseline justify-between rounded-xl border-[1.5px] border-primary px-4 py-3">
         <Text className="text-[14px] text-on-surface-variant">{props.unit === 'm' ? 'Valor wincha:' : 'Lectura:'}</Text>

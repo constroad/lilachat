@@ -162,8 +162,8 @@ export type CapturedEvidence = { file: EvidenceFile<DriveFile>; preview: Evidenc
  * One photo or one video of an observation (José 11/11, designs `ob-02` and `ob-03`) from the new
  * camera with its stamp (José 12/11); a video stops at 30 s. Null when the person closes it.
  */
-export async function captureEvidence(kind: 'photo' | 'video'): Promise<CapturedEvidence | { message: string } | null> {
-  const shot = await openCamera({ title: kind === 'video' ? 'Video de la observación' : 'Foto de la observación', video: { maxSeconds: OBSERVATION_VIDEO_SECONDS, first: kind === 'video' } });
+export async function captureEvidence(kind: 'photo' | 'video', title?: string): Promise<CapturedEvidence | { message: string } | null> {
+  const shot = await openCamera({ title: title ?? (kind === 'video' ? 'Video de la observación' : 'Foto de la observación'), video: { maxSeconds: OBSERVATION_VIDEO_SECONDS, first: kind === 'video' } });
   if (shot === 'denied') return { message: CAMERA_DENIED };
   if (!shot) return null;
   const ready = await preparedShot(shot);

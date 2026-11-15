@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import * as Crypto from 'expo-crypto';
 import { Camera, CheckCircle2, Plus, Undo2, X } from 'lucide-react-native';
@@ -24,7 +24,7 @@ function useShot() {
   const take = useCallback(async () => {
     setMessage(null);
     void freshPoint().then(setPoint);
-    const taken = await captureEvidence('photo');
+    const taken = await captureEvidence('photo', 'Foto de la zona');
     if (taken && 'message' in taken) setMessage(taken.message);
     else if (taken) setShot(taken);
   }, []);
@@ -63,10 +63,11 @@ export function PhotoMeasureScreen(props: { to: ObservationTarget; report: AreaD
   const shot = useShot();
   const measure = useMeasure();
   const write = useAreaWrite(props.to);
+  const reveal = useReveal();
   const save = async () => {
     if (!measure.result || !shot.shot) return;
     const point = shot.point ? { lat: shot.point.lat, lng: shot.point.lng, precision: shot.point.precision } : null;
-    const request = areaCreateRequest(props.report, entryId, photoAreaFigures(measure.result), point, 'foto-medida', 'apk');
+    const request = areaCreateRequest(props.report, entryId, photoAreaFigures(measure.result), point, 'a-mano', 'apk');
     const reportId = await write.save(request, { place: '', note }, [shot.shot]);
     if (reportId) props.onSaved(reportId);
   };
@@ -74,16 +75,18 @@ export function PhotoMeasureScreen(props: { to: ObservationTarget; report: AreaD
   return (
     <View className="flex-1 bg-background">
       <ObservationHeader kicker={`${props.report?.code ?? 'IAA'} · Zona ${props.zone}`} title="Medir con foto + wincha" onBack={props.onBack} />
-      <ScrollView testID="medir-foto-pantalla" keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 24 }}>
+      <ScrollView ref={reveal.scroll} onLayout={reveal.onLayout} testID="medir-foto-pantalla" keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 24 }}>
+        <View ref={reveal.content} collapsable={false} className="gap-3">
         <PhotoCard shot={shot} measure={measure} color={colors.primary} />
-        {measure.points.length >= 3 ? <SidesCard measure={measure} /> : null}
-        <ThicknessCard measure={measure} color={colors.primary} />
+        {measure.points.length >= 3 ? <SidesCard measure={measure} onShown={reveal.show} /> : null}
+        <ThicknessCard measure={measure} color={colors.primary} onShown={reveal.show} />
         {measure.result ? <ResultCard result={measure.result} /> : null}
         <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
           <SectionTitle title="Descripción" side="Opcional" />
           <TextInput testID="area-descripcion" value={note} onChangeText={setNote} placeholder="Bacheo localizado" placeholderTextColor={colors['on-surface-variant']} className="min-h-[48px] rounded-xl border border-outline/20 px-3 text-[15px] text-on-surface" />
         </View>
         {write.line ? <Text testID="area-escritura" className="text-center text-[13px] text-on-surface-variant">{write.line}</Text> : null}
+        </View>
       </ScrollView>
       <BottomAction testID="guardar-zona" label="Guardar zona" icon={<CheckCircle2 size={22} color={colors['on-primary']} />} busy={write.busy} note={pending ?? (props.report?.code ? `Se sumará al informe ${props.report.code}` : null)} onPress={() => (pending ? undefined : void save())} />
     </View>
@@ -91,6 +94,21 @@ export function PhotoMeasureScreen(props: { to: ObservationTarget; report: AreaD
 }
 
 type Measure = ReturnType<typeof useMeasure>;
+const REVEAL_MARGIN = 16;
+
+/** The tape's keypad opens below the fold: the list scrolls until «Listo» shows. */
+function useReveal() {
+  const scroll = useRef<ScrollView>(null);
+  const content = useRef<View>(null);
+  const viewport = useRef(0);
+  const show = useCallback((node: View) => {
+    if (!content.current) return;
+    node.measureLayout(content.current, (_x, y, _width, height) => {
+      scroll.current?.scrollTo({ y: Math.max(0, y + height - viewport.current + REVEAL_MARGIN), animated: true });
+    }, () => undefined);
+  }, []);
+  return { scroll, content, show, onLayout: (event: { nativeEvent: { layout: { height: number } } }) => { viewport.current = event.nativeEvent.layout.height; } };
+}
 
 function PhotoCard(props: { shot: ReturnType<typeof useShot>; measure: Measure; color: string }) {
   const { shot, measure } = props;
@@ -110,14 +128,14 @@ function PhotoCard(props: { shot: ReturnType<typeof useShot>; measure: Measure; 
   );
 }
 
-function SidesCard({ measure }: { measure: Measure }) {
+function SidesCard({ measure, onShown }: { measure: Measure; onShown: (node: View) => void }) {
   const editing = measure.editing?.kind === 'side' ? measure.editing.index : null;
   return (
     <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
       <SectionTitle title="Lados · largo con wincha" />
       {measure.points.map((_, index) => {
         const side = measure.result?.sides[index];
-        if (editing === index) return <TapeKeypad key={index} title={`Lado ${index + 1}`} unit="m" typed={measure.typed} onKey={measure.key} onDone={measure.done} />;
+        if (editing === index) return <TapeKeypad key={index} title={`Lado ${index + 1}`} unit="m" typed={measure.typed} onKey={measure.key} onDone={measure.done} onShown={onShown} />;
         return (
           <Pressable key={index} testID={`lado-${index + 1}`} onPress={() => measure.open({ kind: 'side', index })} className="min-h-[56px] flex-row items-center gap-3 border-b border-outline/10">
             <View className="h-8 w-8 items-center justify-center rounded-full border border-outline/30"><Text className="text-[13px] font-bold text-on-surface">{index + 1}</Text></View>
@@ -131,7 +149,7 @@ function SidesCard({ measure }: { measure: Measure }) {
   );
 }
 
-function ThicknessCard({ measure, color }: { measure: Measure; color: string }) {
+function ThicknessCard({ measure, color, onShown }: { measure: Measure; color: string; onShown: (node: View) => void }) {
   return (
     <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
       <SectionTitle title="Espesor · lecturas en cm" />
@@ -144,7 +162,7 @@ function ThicknessCard({ measure, color }: { measure: Measure; color: string }) 
         ))}
         <Pressable testID="agregar-lectura" onPress={() => measure.open({ kind: 'reading' })} className="h-11 flex-row items-center gap-1 rounded-xl border border-primary/40 px-3"><Plus size={16} color={color} /><Text className="text-[14px] font-semibold text-primary">Lectura</Text></Pressable>
       </View>
-      {measure.editing?.kind === 'reading' ? <TapeKeypad title="Lectura de espesor" unit="cm" typed={measure.typed} onKey={measure.key} onDone={measure.done} /> : null}
+      {measure.editing?.kind === 'reading' ? <TapeKeypad title="Lectura de espesor" unit="cm" typed={measure.typed} onKey={measure.key} onDone={measure.done} onShown={onShown} /> : null}
       {measure.result?.thicknessCm !== null && measure.result?.thicknessCm !== undefined ? <Text className="text-[14px] text-on-surface">{`Promedio: ${decimals(measure.result.thicknessCm, 1)} cm (${measure.readings.length} ${measure.readings.length === 1 ? 'lectura' : 'lecturas'})`}</Text> : null}
     </View>
   );

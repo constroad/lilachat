@@ -20,6 +20,10 @@ import javax.microedition.khronos.opengles.GL10
 
 /** Farther than this the floor is too uncertain to bill from: «Acércate». */
 private const val MAX_HIT_METERS = 6f
+// The ray must point at least ~8° below the horizon to land on the floor's height: grazing it, a pixel is meters.
+private const val MIN_RAY_DOWN = 0.14f
+private const val RETICLE_M = 0.09f
+private const val RETICLE_SEGMENTS = 28
 private const val NEAR_PLANE = 0.05f
 private const val FAR_PLANE = 100f
 private const val SNAPSHOT_EVERY_MS = 50L
@@ -62,7 +66,8 @@ fun compact(vararg pairs: Pair<String, Any?>): Map<String, Any> = pairs.mapNotNu
 private class Corner(val anchor: Anchor, val floorY: Float)
 
 /** Where the floor is under the screen's center, if there is floor there. */
-private data class Aim(val pose: Pose, val distance: Float, val hit: com.google.ar.core.HitResult, val floorY: Float)
+/** Where the reticle lands: on the plane ARCore drew (`plane`), or on that floor's height beyond it (null). */
+private data class Aim(val pose: Pose, val distance: Float, val plane: Plane?, val floorY: Float)
 
 /**
  * The measure itself, on the GL thread: the camera behind, the floor under the
@@ -159,7 +164,7 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
     val tracking = camera.trackingState == TrackingState.TRACKING
     if (!tracking && corners.isNotEmpty()) stable = false
     if (corners.any { it.anchor.trackingState == TrackingState.STOPPED }) stable = false
-    aim = if (tracking) aimOf(frame, camera) else null
+    aim = if (tracking) aimOf(frame, camera, session) else null
     smoothed = aim?.let { smooth(it.pose) }
     keepSteady(aim?.pose)
     closing = isClosing()
@@ -234,7 +239,21 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
     if (live != null) trace.lines(listOf(points.last() to live), LINE_DP * density * 0.75f, floatArrayOf(1f, 1f, 1f, 0.9f), size, DASH_DP * density)
     trace.dots(points, DOT_DP * density, floatArrayOf(1f, 1f, 1f, 1f), size)
     trace.dots(points, (DOT_DP - 2.5f) * density, accent, size)
+    if (!shooting && !closed) drawReticle(viewProjection, size)
     labels.draw(if (shooting) shotLabelsOf(points, size) else labelsOf(points, ring || closing, live, target, size), size)
+  }
+
+  /** The reticle lies on the floor like the reference app's disc; it fills when it snaps to the first corner. */
+  private fun drawReticle(viewProjection: FloatArray, size: Pair<Int, Int>) {
+    val center = smoothed ?: return
+    if (aim == null) return
+    val ring = (0 until RETICLE_SEGMENTS).map { step ->
+      val angle = 2.0 * Math.PI * step / RETICLE_SEGMENTS
+      clipOf(viewProjection, center[0] + RETICLE_M * kotlin.math.cos(angle).toFloat(), center[1], center[2] + RETICLE_M * kotlin.math.sin(angle).toFloat())
+    }
+    trace.fill(ring, floatArrayOf(accent[0], accent[1], accent[2], if (closing) 0.55f else 0.22f), size)
+    trace.lines(ring.zipWithNext() + (ring.last() to ring.first()), 2.5f * density, floatArrayOf(1f, 1f, 1f, 0.95f), size)
+    trace.dots(listOf(clipOf(viewProjection, center[0], center[1], center[2])), 3f * density, floatArrayOf(1f, 1f, 1f, 1f), size)
   }
 
   /** «1 · 1,90 m» on each side, the growing side's meters, and the area of a closed zone. */
@@ -333,15 +352,53 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
 
   fun requestGeometry() { geometryDirty = true }
 
-  /** The first upward floor hit under the screen's center, inside the plane and near enough. */
-  private fun aimOf(frame: Frame, camera: Camera): Aim? {
+  /** The first upward floor hit under the screen's center; past the patch ARCore drew, the same floor's height. */
+  private fun aimOf(frame: Frame, camera: Camera, session: Session): Aim? {
     val hit = frame.hitTest(width / 2f, height / 2f).firstOrNull { result ->
       val plane = result.trackable as? Plane ?: return@firstOrNull false
       plane.type == Plane.Type.HORIZONTAL_UPWARD_FACING && plane.isPoseInPolygon(result.hitPose) && plane.subsumedBy == null
-    } ?: return null
-    val pose = hit.hitPose
-    val floorY = (hit.trackable as Plane).centerPose.ty()
-    return Aim(pose, distanceBetween(camera.pose, pose), hit, floorY)
+    } ?: return extendedAim(camera, session)
+    val plane = hit.trackable as Plane
+    return Aim(hit.hitPose, distanceBetween(camera.pose, hit.hitPose), plane, plane.centerPose.ty())
+  }
+
+  /**
+   * José 15/11, his reference app: once the floor is known, the reticle lands anywhere on it, not
+   * only on the patch ARCore drew (a shiny tile floor gives a small patch: «Apunta al piso»). It is
+   * the hit test's own math (the center ray against a level plane) without the patch's outline;
+   * the floor's height is the first corner's, or the biggest floor found.
+   */
+  private fun extendedAim(camera: Camera, session: Session): Aim? {
+    val floorY = corners.firstOrNull()?.floorY ?: biggestFloor(session)?.centerPose?.ty() ?: return null
+    val ray = centerRayOf(camera) ?: return null
+    val (origin, direction) = ray
+    if (direction[1] > -MIN_RAY_DOWN) return null
+    val t = (floorY - origin[1]) / direction[1]
+    if (t <= 0f) return null
+    val pose = Pose.makeTranslation(origin[0] + direction[0] * t, floorY, origin[2] + direction[2] * t)
+    return Aim(pose, distanceBetween(camera.pose, pose), null, floorY)
+  }
+
+  private fun biggestFloor(session: Session): Plane? = session.getAllTrackables(Plane::class.java)
+    .filter { it.type == Plane.Type.HORIZONTAL_UPWARD_FACING && it.trackingState == TrackingState.TRACKING && it.subsumedBy == null }
+    .maxByOrNull { it.extentX * it.extentZ }
+
+  /** The ray through the screen's center, unprojected from the camera's own matrices (as the hit test does). */
+  private fun centerRayOf(camera: Camera): Pair<FloatArray, FloatArray>? {
+    val inverse = FloatArray(MATRIX)
+    if (!Matrix.invertM(inverse, 0, viewProjectionOf(camera), 0)) return null
+    val near = unproject(inverse, -1f)
+    val far = unproject(inverse, 1f)
+    val direction = FloatArray(3) { far[it] - near[it] }
+    val norm = kotlin.math.sqrt(direction[0] * direction[0] + direction[1] * direction[1] + direction[2] * direction[2])
+    if (norm == 0f) return null
+    return near to FloatArray(3) { direction[it] / norm }
+  }
+
+  private fun unproject(inverse: FloatArray, depth: Float): FloatArray {
+    val world = FloatArray(4)
+    Matrix.multiplyMV(world, 0, inverse, 0, floatArrayOf(0f, 0f, depth, 1f), 0)
+    return FloatArray(3) { world[it] / world[3] }
   }
 
   private fun runCommands(pending: List<Command>, tracking: Boolean, session: Session) {
@@ -387,17 +444,18 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
       target == null -> promise.reject("no-floor", "Apunta al piso: no hay piso reconocido en el centro.", null)
       target.distance > MAX_HIT_METERS -> promise.reject("far", "Acércate: la esquina está a más de 6 m.", null)
       closing || nearFirst(target.pose.tx(), target.pose.tz()) -> promise.reject("closing", "Toca para cerrar la zona.", null)
-      else -> placeCorner(promise, target)
+      else -> placeCorner(promise, target, session)
     }
   }
 
   /** The corner goes where the steady hits average; if that lands on the first corner, it is the close. */
-  private fun placeCorner(promise: Promise, target: Aim) {
+  private fun placeCorner(promise: Promise, target: Aim, session: Session) {
     val mean = steadyMean()?.takeIf { steady.size >= MIN_CORNERS }
     when {
       mean != null && nearFirst(mean[0], mean[2]) -> promise.reject("closing", "Toca para cerrar la zona.", null)
       else -> {
-        val anchor = if (mean != null) target.hit.trackable.createAnchor(Pose.makeTranslation(mean[0], mean[1], mean[2])) else target.hit.createAnchor()
+        val pose = if (mean != null) Pose.makeTranslation(mean[0], mean[1], mean[2]) else target.pose
+        val anchor = target.plane?.createAnchor(pose) ?: session.createAnchor(pose)
         corners.add(Corner(anchor, target.floorY))
         promise.resolve(corners.size)
       }

@@ -131,7 +131,7 @@ describe('removing an area', () => {
 
 /** José 15/11: «que diga se mide en el APK para reducir margen de error»; the phone PWA no longer measures. */
 describe('the banner that sends the measuring to the APK', () => {
-  it('on Android it opens the APK and falls back to LilaStore; on an iPhone only the install link, since there is no APK', () => {
+  it('on Android it opens the APK and falls back to LilaStore; an iPhone gets no link, since it cannot install an APK', () => {
     // Arrange / Act
     const android = measureInApkLinks(false);
     const iphone = measureInApkLinks(true);
@@ -139,7 +139,7 @@ describe('the banner that sends the measuring to the APK', () => {
     expect(android.open).toBe(`intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.lilachat.app;S.browser_fallback_url=${encodeURIComponent(ENLACE_DE_DESCARGA)};end`);
     expect(android.install).toBe(ENLACE_DE_DESCARGA);
     expect(iphone.open).toBeNull();
-    expect(iphone.install).toBe(ENLACE_DE_DESCARGA);
+    expect(iphone.install).toBeNull();
     expect(MEASURE_IN_APK).toEqual({ kicker: 'Medición', title: 'Se mide en el APK', why: 'Con la cámara (AR) y un lado medido con wincha hay menos error que midiendo sobre una foto.', open: 'Abrir en el APK', install: '¿No tienes el APK? Instalar Lilachat', iphone: 'Mide desde un teléfono Android con el APK de Lilachat.' });
   });
 });

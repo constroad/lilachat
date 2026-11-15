@@ -90,7 +90,7 @@ describe('AreasWeb', () => {
 
     expect(await screen.findByTestId('medir-en-apk')).toHaveTextContent('Mide desde un teléfono Android con el APK de Lilachat.');
     expect(screen.queryByTestId('medir-en-apk-abrir')).toBeNull();
-    expect(screen.getByTestId('medir-en-apk-instalar')).toBeTruthy();
+    expect(screen.queryByTestId('medir-en-apk-instalar')).toBeNull();
   });
 
   it('says why when Portal does not answer, and asks again', async () => {

@@ -1061,7 +1061,7 @@ espacio Test, con «QA-CTLPIS — borrar»:
 > abre la app en su inicio, porque el APK no tiene un enlace propio al servicio,
 > y si no está instalado va a LilaStore (`measureInApkLinks`). En un iPhone no
 > hay APK que abrir: dice «Mide desde un teléfono Android con el APK de
-> Lilachat» y deja el enlace de instalación. Se borró `AreaMeasureWeb`. Los
+> Lilachat» y no ofrece instalar: un iPhone no instala un APK. Se borró `AreaMeasureWeb`. Los
 > motores de escritura (`areaCreateRequest`, `areaWriteStore`) quedan para el
 > APK (la-01…la-10). Lo de abajo es el registro de la opción B.
 

@@ -33,9 +33,9 @@ export const MEASURE_IN_APK = {
 
 const APK_PACKAGE = 'com.lilachat.app';
 
-/** Android opens the APK (LilaStore if it is missing); an iPhone has no APK, so only the install link. */
-export function measureInApkLinks(iphone: boolean): { open: string | null; install: string } {
-  if (iphone) return { open: null, install: ENLACE_DE_DESCARGA };
+/** Android opens the APK (LilaStore if it is missing); an iPhone can neither open nor install an APK. */
+export function measureInApkLinks(iphone: boolean): { open: string | null; install: string | null } {
+  if (iphone) return { open: null, install: null };
   const fallback = encodeURIComponent(ENLACE_DE_DESCARGA);
   return { open: `intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${APK_PACKAGE};S.browser_fallback_url=${fallback};end`, install: ENLACE_DE_DESCARGA };
 }

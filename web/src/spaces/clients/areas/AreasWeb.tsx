@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { ChevronLeft, ExternalLink, Ruler, ScanLine, Trash2 } from 'lucide-react';
+import { ChevronLeft, ExternalLink, Ruler, Smartphone, Trash2 } from 'lucide-react';
 import { AREA_REMOVE_FAILED, AREA_REMOVED, AREA_TYPE, areaCardLines, areaRemoveAsk, areaRemoveRequest, areaTotalsLine, isRemovableArea, MEASURE_IN_APK, measureInApkLinks, readAreaDraft, reportTypeLabel, runStreetDelete, sendMapTool, STREET_DELETE_ASKING, STREET_DELETE_IDLE, type AdditionalArea, type AreaPhoto, type SpaceClientService, type StreetDeleteState, type WorkProgressResult } from '@lilachat/shared';
 import { isIos } from '../../../pwa/iosInstall';
 import { observationWriteDeps } from '../useDriveUpload';
@@ -14,18 +14,19 @@ import type { ServiceAskTarget } from '../useServiceAsk';
  */
 type Props = { target: ServiceAskTarget; chatId: string; service: SpaceClientService; reportId?: string; portalUrl?: string; iphone?: boolean; onClose: (changed: boolean) => void };
 
-/** Design la-11: kicker, title, why, «Abrir en el APK» and the install link; an iPhone has no APK to open. */
+/** Design la-11: kicker, title, why, «Abrir en el APK» and the install link; an iPhone gets neither, only the line to use an Android phone. */
 function MeasureInApk({ iphone }: { iphone: boolean }) {
   const links = measureInApkLinks(iphone);
   return (
-    <section data-testid="medir-en-apk" className="rounded-xl border border-outline/20 border-t-[3px] border-t-primary bg-surface p-4">
-      <span aria-hidden className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary"><ScanLine size={20} /></span>
+    <section data-testid="medir-en-apk" className="relative overflow-hidden rounded-xl border border-outline/20 bg-surface p-5">
+      <span aria-hidden className="absolute inset-x-0 top-0 h-[3px] bg-primary" />
+      <span aria-hidden className="grid h-10 w-10 place-items-center rounded-lg border border-primary/20 bg-primary/10 text-primary"><Smartphone size={20} /></span>
       <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{MEASURE_IN_APK.kicker}</p>
-      <h3 className="text-[22px] font-extrabold leading-tight">{MEASURE_IN_APK.title}</h3>
-      <p className="mt-2 text-sm text-on-surface-variant">{MEASURE_IN_APK.why}</p>
-      {iphone ? <p className="mt-2 text-sm font-semibold">{MEASURE_IN_APK.iphone}</p> : null}
-      {links.open ? <a data-testid="medir-en-apk-abrir" href={links.open} className="mt-4 flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-primary text-base font-bold text-on-primary">{MEASURE_IN_APK.open} <ExternalLink size={16} /></a> : null}
-      <a data-testid="medir-en-apk-instalar" href={links.install} target="_blank" rel="noreferrer" className="mt-3 flex min-h-[44px] items-center justify-center text-center text-sm font-semibold text-primary">{MEASURE_IN_APK.install}</a>
+      <h3 className="mt-1 text-[22px] font-extrabold leading-tight">{MEASURE_IN_APK.title}</h3>
+      <p className="mt-2 text-sm leading-relaxed text-on-surface-variant">{MEASURE_IN_APK.why}</p>
+      {iphone ? <p className="mt-2 text-sm font-semibold leading-relaxed">{MEASURE_IN_APK.iphone}</p> : null}
+      {links.open ? <a data-testid="medir-en-apk-abrir" href={links.open} className="mt-5 flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-primary text-base font-bold text-on-primary">{MEASURE_IN_APK.open} <ExternalLink size={16} /></a> : null}
+      {links.install ? <a data-testid="medir-en-apk-instalar" href={links.install} target="_blank" rel="noreferrer" className="mt-3 flex min-h-[44px] items-center justify-center text-center text-sm font-semibold text-primary">{MEASURE_IN_APK.install}</a> : null}
     </section>
   );
 }

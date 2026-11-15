@@ -257,6 +257,11 @@ guarda ids; encuentra la tarjeta por su clave, p. ej. `visita:<visitId>`). Solo 
 respuestas; un segundo DELETE da `404` con `error: 'message_not_found'`. Sin la clave, `400`. El cliente muestra la
 lápida «Se eliminó este mensaje», igual que un borrado de una persona.
 
+**Borrar libera la clave (15/11).** Después de un DELETE, por id o por clave, un `POST` con esa misma clave crea
+una tarjeta NUEVA (`201`), en el canal que diga su `topic`, y desde ahí la clave encuentra la nueva. Así agentes
+mueve una tarjeta de canal sin cambiar su clave (`cotizacion:<id>`), y cada actualización de Portal la sigue
+encontrando. La lápida queda con una clave propia. Un borrado anterior al 15/11 no la liberó.
+
 ## c) Entrada: eventos firmados hacia agentes
 
 Lilachat hace `POST webhook_url` con:

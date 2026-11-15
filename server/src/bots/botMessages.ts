@@ -158,14 +158,26 @@ export async function deleteBotMessage(installation: Installation, which: { id: 
   if ('id' in which && !Types.ObjectId.isValid(which.id)) return fail(404, 'message_not_found', 'Ese mensaje no existe.');
   // Agentes keeps no ids: the key it posted with finds the message (agentes 14/11).
   const match = 'id' in which ? { _id: which.id } : { clientKey: `bot:${installation._id}:${which.idempotencyKey}` };
-  const message = await MessageModel.findOne({ ...match, senderId: installation.botUserId, deletedAt: { $exists: false } }).select('chatId seq').lean<Message | null>();
+  const message = await MessageModel.findOne({ ...match, senderId: installation.botUserId, deletedAt: { $exists: false } }).select('chatId seq clientKey').lean<Message | null>();
   if (!message) return fail(404, 'message_not_found', 'Ese mensaje no existe o no es de este bot.');
   const chatId = String(message.chatId);
   const deleted = await deleteMessage({ chatId, seq: message.seq, userId: installation.botUserId });
   if (!deleted.ok) return fail(409, 'not_deleted', deleted.motivo);
+  await releaseKey(installation, message);
   const thread = deleted.hilo && deleted.message.hiloDe ? { rootSeq: deleted.message.hiloDe, summary: deleted.hilo } : undefined;
   notifyDeleted(chatId, message.seq, await chatMemberIds(message.chatId), thread);
   return { deleted: true };
+}
+
+/**
+ * A deleted message frees its idempotency key (agentes 15/11: a quote's card moved to another channel keeps
+ * `cotizacion:<id>`, and every later update finds the new card): the tombstone keeps a key of its own.
+ */
+async function releaseKey(installation: Installation, message: Pick<Message, '_id' | 'clientKey'>): Promise<void> {
+  await Promise.all([
+    BotInstallationModel.updateOne({ _id: installation._id }, { $pull: { recentKeys: { messageId: String(message._id) } } }),
+    MessageModel.updateOne({ _id: message._id }, { $set: { clientKey: `${message.clientKey}:deleted:${message._id}` } }),
+  ]);
 }
 
 /** A visit card of this bot (lv01): its edit may carry the five buttons, like its POST. */

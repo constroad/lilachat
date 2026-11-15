@@ -257,6 +257,23 @@ describe('the bot publishes (§b) and reads (§d)', () => {
     await request(app).delete('/api/bots/messages').set(asBot(token)).expect(400);
   });
 
+  it('a deleted card frees its key: the next post with it is a new card, and the key then finds the new one (agentes 15/11: moving quotes)', async () => {
+    // Arrange
+    const { token } = await install();
+    const key = 'cotizacion:65f0000000000000000000b1';
+    const old = await request(app).post('/api/bots/messages').set(asBot(token)).send({ channel_id: String(channel), card: { title: 'Cotización COT - 0000265' }, idempotency_key: key }).expect(201);
+    await request(app).delete(`/api/bots/messages/${old.body.message.id}`).set(asBot(token)).expect(204);
+    // Act
+    const fresh = await request(app).post('/api/bots/messages').set(asBot(token)).send({ channel_id: String(channel), card: { title: 'Cotización COT - 0000265' }, idempotency_key: key }).expect(201);
+    const repeated = await request(app).post('/api/bots/messages').set(asBot(token)).send({ channel_id: String(channel), card: { title: 'Cotización COT - 0000265' }, idempotency_key: key }).expect(200);
+    // Assert
+    expect(fresh.body.message.id).not.toBe(old.body.message.id);
+    expect(repeated.body.message.id).toBe(fresh.body.message.id);
+    await request(app).delete('/api/bots/messages').query({ idempotency_key: key }).set(asBot(token)).expect(204);
+    expect((await MessageModel.findById(fresh.body.message.id).lean<Message>())!.deletedAt).toBeInstanceOf(Date);
+    expect((await MessageModel.findById(old.body.message.id).lean<Message>())!.deletedAt).toBeInstanceOf(Date);
+  });
+
   it('photos and videos as an album; PATCH replaces the whole set (José via agentes 09/11)', async () => {
     const { token } = await install();
     const photo = (name: string) => ({ url: `https://lila.constroad.com/files/${name}.jpg`, mime: 'image/jpeg' });

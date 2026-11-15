@@ -17,6 +17,17 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.186',
+    // Company spaces: the IAA's AR after the second test on a phone.
+    audience: 'spaces',
+    items: [
+      'La zona medida con AR se guarda sin wincha; si mides un lado, la wincha manda.',
+      'La foto que toma el AR se ve grande en la tarjeta de la zona, con el contorno.',
+      'El espesor se escribe con el teclado del teléfono, sin el teclado grande.',
+      'Cada esquina se fija con varias lecturas del AR: la medida sale más estable.',
+    ],
+  },
+  {
     version: '0.1.185',
     // Company spaces: the IAA's AR measure reworked after the first test on a phone.
     audience: 'spaces',

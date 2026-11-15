@@ -88,9 +88,10 @@ describe('embedErrorLine', () => {
 
 describe('creating a report in the editor (José 12/11: «en la web, el editor; formularios solo en la APK y la PWA móvil»)', () => {
   it('on a wide window the five editor types are created in Portal\'s editor; the rest keep their way', () => {
-    for (const type of ['CTL-PIS', 'CTL-IMP', 'REG-OBS', 'LEV-OBS', 'CON-CAP']) expect(createsInEmbed(EMBED_MIN_WIDTH_PX, type)).toBe(true);
+    for (const type of ['CTL-PIS', 'CTL-IMP', 'REG-OBS', 'LEV-OBS', 'CON-CAP', 'IAA', 'FRE-PAV', 'RCP-CAM']) expect(createsInEmbed(EMBED_MIN_WIDTH_PX, type)).toBe(true);
     expect(createsInEmbed(EMBED_MIN_WIDTH_PX - 1, 'CTL-IMP')).toBe(false);
-    expect(createsInEmbed(1440, 'IAA')).toBe(false);
+    expect(createsInEmbed(EMBED_MIN_WIDTH_PX - 1, 'IAA')).toBe(false);
+    expect(createsInEmbed(1440, 'SOL-IMP')).toBe(false);
     expect(createsInEmbed(1440, 'VAL-SRV')).toBe(false);
   });
 

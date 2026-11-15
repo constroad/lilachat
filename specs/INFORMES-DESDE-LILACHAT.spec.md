@@ -1152,7 +1152,7 @@ teléfono y en el APK sigue el formulario de este spec.
 
 | Pieza | Valor |
 | --- | --- |
-| Marca por informe | `editor: 'v2'` en `client.service.requested`. Hoy: CTL-PIS, CTL-IMP, REG-OBS, LEV-OBS y CON-CAP. VAL-SRV y LIQ-SRV entran después, sin cambios acá |
+| Marca por informe | `editor: 'v2'` en `client.service.requested`. Hoy: CTL-PIS, CTL-IMP, REG-OBS, LEV-OBS, CON-CAP y, desde el F4 de Portal (15/11), IAA, FRE-PAV y RCP-CAM. VAL-SRV y LIQ-SRV entran después, sin cambios acá |
 | Pedido del enlace | `GET …/services/:serviceId/reports/:reportId/embed` → evento `client.report.embed.requested` {client_id, service_id, report_id, user} → herramienta `abrir_editor_de_informe` (agentes 9ec3e8c) |
 | Respuesta | `{url, expires_at}`; url = `https://www.constroad.com/embed/report/<id>#t=<token>`. Token por miembro y por pedido, 12 h, en el fragmento (no llega a logs ni Referer) |
 | Rol | Lo firma agentes (`space_role`, de la lista de miembros); el evento no lo lleva |
@@ -1166,7 +1166,8 @@ teléfono y en el APK sigue el formulario de este spec.
   ventana con el marco. Abre así aunque sea un borrador.
 - **En la web ancha no hay formularios** (José 12/11: «en la web, el editor;
   formularios solo en la APK y la PWA en modo móvil»). «Crear informe» de
-  CTL-PIS, CTL-IMP, REG-OBS, LEV-OBS y CON-CAP nace en el editor: `POST
+  CTL-PIS, CTL-IMP, REG-OBS, LEV-OBS, CON-CAP, IAA, FRE-PAV y RCP-CAM (los tres
+  últimos desde el F4 de Portal, a689d86a, 15/11) nace en el editor: `POST
   …/reports/embed` {type, responsible?} → el mismo evento sin `report_id` →
   `crear_informe_en_editor` de Portal, que reusa solo el borrador de esa
   persona, de ese tipo y de HOY. Un enlace vencido pide ese informe por su id,

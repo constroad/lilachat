@@ -104,9 +104,9 @@ export const reportEmbedPath = (spaceId: string, clientId: string, serviceId: st
 
 /**
  * The types Portal's editor creates (José 12/11: the web shows the editor; forms only on the APK and the
- * phone-width PWA). The same five Portal marks `editor: 'v2'` on its rows.
+ * phone-width PWA). The types Portal marks `editor: 'v2'` on its rows; IAA, FRE-PAV and RCP-CAM since its F4 (15/11).
  */
-export const EMBED_CREATE_TYPES: readonly string[] = ['CTL-PIS', 'CTL-IMP', 'REG-OBS', 'LEV-OBS', 'CON-CAP'];
+export const EMBED_CREATE_TYPES: readonly string[] = ['CTL-PIS', 'CTL-IMP', 'REG-OBS', 'LEV-OBS', 'CON-CAP', 'IAA', 'FRE-PAV', 'RCP-CAM'];
 /** On a wide window a new report of these types is born in Portal's editor, never in Lilachat's form. */
 export const createsInEmbed = (windowWidth: number, type: string): boolean => windowWidth >= EMBED_MIN_WIDTH_PX && EMBED_CREATE_TYPES.includes(type);
 

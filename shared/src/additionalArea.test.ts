@@ -98,6 +98,18 @@ describe('areaAnswerOf and the store', () => {
     expect(areaAnswerOf({ responseType: 'ephemeral', data: { informeId: 'r9' } } as never)).toBeNull();
   });
 
+  it('takes Portal\'s photo-only ticket from the structured answer (no maxSeconds: no video goes on it)', () => {
+    const portalTicket = { url: 'https://portal.constroad.com/api/public/additional-area-upload/tok', method: 'POST', fields: {}, fileField: 'file', expiresAt: '2030-01-01T00:00:00.000Z', maxBytes: 50_000_000, mimeTypes: ['image/jpeg', 'image/png', 'image/webp'] };
+    const answer = areaAnswerOf({ responseType: 'ephemeral', data: { informeId: 'r9', areaId: 'a7', codigo: 'IAA-004', upload: portalTicket } } as never);
+    expect(answer?.upload).toMatchObject({ url: portalTicket.url, fileField: 'file', mimeTypes: portalTicket.mimeTypes });
+  });
+
+  it('a structured ticket that also takes videos without a limit, or points elsewhere, is no ticket', () => {
+    const base = { url: 'https://portal.constroad.com/api/public/additional-area-upload/tok', method: 'POST', fields: {}, fileField: 'file', expiresAt: '2030-01-01T00:00:00.000Z', maxBytes: 1000 };
+    expect(areaAnswerOf({ responseType: 'ephemeral', data: { informeId: 'r9', areaId: 'a7', upload: { ...base, mimeTypes: ['video/mp4'] } } } as never)?.upload).toBeNull();
+    expect(areaAnswerOf({ responseType: 'ephemeral', data: { informeId: 'r9', areaId: 'a7', upload: { ...base, url: 'https://evil.example.com/x', mimeTypes: ['image/jpeg'] } } } as never)?.upload).toBeNull();
+  });
+
   it('without a place to send it from, the store says so and writes nothing', async () => {
     const store = areaWriteStore();
     expect(await store.run(null, { place: '', note: '' }, [], 'guardada')).toBeNull();

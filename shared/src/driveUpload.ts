@@ -90,6 +90,19 @@ export function driveUploadOf(raw: unknown): DriveUpload | null {
   return { url, method: 'POST', fields, fileField, expiresAt, maxBytes, maxSeconds, mimeTypes: types };
 }
 
+/** Any positive number: a photo-only ticket refuses every video by its type before the length matters. */
+const PHOTO_ONLY_SECONDS = 1;
+
+/**
+ * Portal's photo-only ticket as its structured answer carries it (`data.upload`,
+ * the additional area's 15/11): it has no `maxSeconds` because no video goes on it.
+ */
+export function photoUploadOf(raw: unknown): DriveUpload | null {
+  const input = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const ticket = driveUploadOf({ maxSeconds: PHOTO_ONLY_SECONDS, ...input });
+  return ticket && ticket.mimeTypes.every((one) => one.startsWith('image/')) ? ticket : null;
+}
+
 export const driveUploadRequest = (): DriveUploadRequest => ({ kind: 'drive_upload', forms: FORMS_LEVEL });
 
 /** Portal's upload tickets (the visit's since 14/11): the only addresses Lilachat's server forwards a stamped shot to (José 12/11). */

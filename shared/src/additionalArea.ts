@@ -1,6 +1,6 @@
 import { FORMS_LEVEL } from './appForms.js';
 import type { CommandResponse } from './botCommands.js';
-import type { DriveUpload } from './driveUpload.js';
+import { photoUploadOf, type DriveUpload } from './driveUpload.js';
 import { formFilesWriteStore, type WriteKind } from './formFilesWrite.js';
 import { AREA_METHOD_LABELS, type AreaDraftPoint, type AreaFigures, type AreaMethod } from './areaMeasure.js';
 import type { ObservationSource } from './observationWrite.js';
@@ -170,7 +170,7 @@ export type AreaAnswer = { reportId: string; areaId: string; code?: string; uplo
 export function areaAnswerOf(response: CommandResponse): AreaAnswer | null {
   const data = response.data ?? {};
   const [reportId, areaId, code] = [trimmed(data.informeId), trimmed(data.areaId), trimmed(data.codigo)];
-  return reportId && areaId ? { reportId, areaId, ...kept('code', code), upload: response.upload ?? null } : null;
+  return reportId && areaId ? { reportId, areaId, ...kept('code', code), upload: response.upload ?? photoUploadOf(data.upload) } : null;
 }
 
 export const AREA_WRITE_FAILED = 'No se pudo guardar el área. Revisa tu señal y vuelve a intentarlo.';

@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { AppState, Linking, Pressable, Text, View } from 'react-native';
+import { AppState, Pressable, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { AlertTriangle, CameraOff, Plus, RotateCcw, Spline, Undo2, X } from 'lucide-react-native';
+import { AlertTriangle, Plus, RotateCcw, Spline, Undo2, X } from 'lucide-react-native';
 import { arAimLine, type ArPoint } from '@lilachat/shared';
 import { ArMeasureView, type ArFrame, type ArMeasureHandle } from '../../../../modules/ar-measure/src';
 import { useColores } from '../../../ui/tema';
 import { ArOverlay } from './ArOverlay';
+import { ArUnavailable } from './ArUnavailable';
 
 export type ArMeasured = { points: ArPoint[]; stable: boolean };
-type Props = { kicker: string; zone: number; onBack: () => void; onMeasured: (measured: ArMeasured) => void; onPhotoInstead: () => void };
+type Props = { kicker: string; zone: number; reportCode: string | null; onBack: () => void; onMeasured: (measured: ArMeasured) => void; onPhotoInstead: () => void };
 type Gate = 'asking' | 'granted' | 'denied';
 
 const MIN_CORNERS = 3;
@@ -66,7 +67,7 @@ export function ArMeasureScreen(props: Props) {
   const corners = useCorners(handle, props.onMeasured);
   const NativeView = ArMeasureView;
   const blocked = gate === 'denied' ? 'no-permission' : !NativeView ? 'unsupported' : frame && ['unsupported', 'declined', 'no-permission', 'error'].includes(frame.state) ? frame.state : null;
-  if (blocked) return <ArUnavailable state={blocked} onBack={props.onBack} onPhotoInstead={props.onPhotoInstead} />;
+  if (blocked) return <ArUnavailable state={blocked} kicker={props.kicker} zone={props.zone} reportCode={props.reportCode} onBack={props.onBack} onPhotoInstead={props.onPhotoInstead} />;
   return (
     <View testID="medir-ar-pantalla" className="flex-1 bg-black" onLayout={(event) => setSize(event.nativeEvent.layout)}>
       {gate === 'granted' && NativeView ? <NativeView ref={handle} style={{ flex: 1 }} onArFrame={(event) => setFrame(event.nativeEvent)} /> : null}
@@ -128,29 +129,5 @@ function ArButton(props: { testID: string; label: string; disabled: boolean; onP
       <View className="h-14 w-14 items-center justify-center rounded-full bg-white/15">{props.icon}</View>
       <Text className="text-[13px] text-white">{props.label}</Text>
     </Pressable>
-  );
-}
-
-const UNAVAILABLE: Record<string, { title: string; body: string }> = {
-  'no-permission': { title: 'Lilachat necesita la cámara para medir', body: 'Activa el permiso de cámara en los ajustes del teléfono y vuelve aquí.' },
-  declined: { title: 'Falta instalar Google Play Services para AR', body: 'Instálalo desde Play Store para medir con AR, o mide ahora con una foto desde arriba y la wincha.' },
-  error: { title: 'El AR no pudo arrancar', body: 'Mide la zona con una foto desde arriba y la wincha.' },
-};
-const unavailableCopy = (state: string) => UNAVAILABLE[state] ?? { title: 'Este teléfono no tiene AR', body: 'Mide la zona con una foto desde arriba y la wincha.' };
-
-/** Design la-07: no camera permission, or a phone without AR: the photo and the tape still measure. */
-function ArUnavailable(props: { state: string; onBack: () => void; onPhotoInstead: () => void }) {
-  const colors = useColores();
-  const permission = props.state === 'no-permission';
-  const { title, body } = unavailableCopy(props.state);
-  return (
-    <View testID="ar-no-disponible" className="flex-1 justify-center gap-4 bg-background p-6">
-      <View className="h-16 w-16 items-center justify-center rounded-full bg-surface-variant"><CameraOff size={30} color={colors['on-surface-variant']} /></View>
-      <Text className="text-[22px] font-bold text-on-surface">{title}</Text>
-      <Text className="text-[15px] text-on-surface-variant">{body}</Text>
-      {permission ? <Pressable testID="abrir-ajustes" onPress={() => void Linking.openSettings()} className="h-14 items-center justify-center rounded-2xl border border-primary/40"><Text className="text-[16px] font-bold text-primary">Abrir ajustes</Text></Pressable> : null}
-      <Pressable testID="medir-con-foto" onPress={props.onPhotoInstead} className="h-14 items-center justify-center rounded-2xl bg-primary"><Text className="text-[16px] font-bold text-on-primary">Medir con foto + wincha</Text></Pressable>
-      <Pressable onPress={props.onBack} className="h-11 items-center justify-center"><Text className="text-[15px] text-on-surface-variant">Volver</Text></Pressable>
-    </View>
   );
 }

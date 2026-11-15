@@ -30,7 +30,7 @@ export function AreasScreen(props: Props) {
   const saved = (reportId: string) => { setChanged(true); toList(); reload(reportId); };
   const startMeasure = async () => setMode({ kind: (await arAvailability()) === 'unsupported' ? 'photo' : 'ar' });
   if (mode.kind === 'photo') return <PhotoMeasureScreen to={props.to} report={report} zone={zone} onBack={toList} onSaved={saved} />;
-  if (mode.kind === 'ar') return <ArMeasureScreen kicker={report?.code ?? 'IAA'} zone={zone} onBack={toList} onPhotoInstead={() => setMode({ kind: 'photo' })} onMeasured={(measured) => setMode({ kind: 'ar-zone', measured })} />;
+  if (mode.kind === 'ar') return <ArMeasureScreen kicker={report?.code ?? 'IAA'} reportCode={report?.code ?? null} zone={zone} onBack={toList} onPhotoInstead={() => setMode({ kind: 'photo' })} onMeasured={(measured) => setMode({ kind: 'ar-zone', measured })} />;
   if (mode.kind === 'ar-zone') return <ArZoneScreen to={props.to} report={report} zone={zone} measured={mode.measured} onBack={toList} onRemeasure={() => setMode({ kind: 'ar' })} onSaved={saved} />;
   return (
     <View className="flex-1 bg-background">

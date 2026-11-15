@@ -38,7 +38,7 @@ export const opensInApp = (option: ReportTypeOption): boolean => option.opensHer
 /** The types of Portal's public page (`isFieldReport`), the ones filled here on top. */
 export const REPORT_TYPE_OPTIONS: readonly ReportTypeOption[] = [
   { code: 'CTL-IMP', label: 'Control de imprimación', caption: 'Tasa de riego por tramo, con bandejas y fotos', opensHere: true },
-  { code: 'IAA', label: 'Área adicional', caption: 'Zonas medidas en obra con foto y wincha', opensHere: AREAS_OPEN_HERE },
+  { code: 'IAA', label: 'Área adicional', caption: 'Zonas medidas en obra, siempre con la wincha', opensHere: AREAS_OPEN_HERE },
   { code: 'CTL-PIS', label: 'Control de pista', caption: 'Llegada, temperaturas, escantillón y 4 fotos por volquete', opensHere: true },
   { code: 'CON-CAP', label: 'Conformación de capa', caption: 'Densidad por punto, con GPS y calle solos', opensHere: true },
   { code: 'RCP-CAM', label: 'Recepción de campo', caption: 'Conformidad por calle, con fotos y firma de supervisión', opensHere: true },

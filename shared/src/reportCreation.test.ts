@@ -34,7 +34,7 @@ describe('the types a report can be', () => {
     // IAA since Portal's tools (12/11); since 15/11 it is measured on the APK (photo + tape), the phone PWA only shows it.
     expect(REPORT_TYPE_OPTIONS.filter((option) => option.opensHere).map((option) => option.code)).toEqual(['CTL-IMP', 'IAA', 'CTL-PIS', 'CON-CAP', 'RCP-CAM', 'REG-OBS', 'LEV-OBS', 'FRE-PAV']);
     expect(REPORT_TYPE_OPTIONS.filter((option) => opensInApp(option)).map((option) => option.code)).toEqual(['CTL-IMP', 'IAA', 'CTL-PIS', 'CON-CAP', 'RCP-CAM', 'REG-OBS', 'LEV-OBS', 'FRE-PAV']);
-    expect(REPORT_TYPE_OPTIONS.find((option) => option.code === 'IAA')?.caption).toBe('Zonas medidas en obra con foto y wincha');
+    expect(REPORT_TYPE_OPTIONS.find((option) => option.code === 'IAA')?.caption).toBe('Zonas medidas en obra, siempre con la wincha');
     expect(REPORT_TYPE_OPTIONS.slice(0, 3).map((option) => option.code)).toEqual(['CTL-IMP', 'IAA', 'CTL-PIS']);
     REPORT_TYPE_OPTIONS.forEach((option) => expect(isFieldReport({ typeLabel: option.label })).toBe(true));
   });

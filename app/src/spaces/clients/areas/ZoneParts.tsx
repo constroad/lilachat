@@ -64,7 +64,7 @@ export function ThicknessCard(props: ThicknessProps) {
   return (
     <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
       {/* José 15/11: the zone is m² by default; the thickness is only for m³. */}
-      <SectionTitle title="Espesor · lecturas en cm" side={count ? `${count} ${count === 1 ? 'punto' : 'puntos'}` : 'Opcional · solo para m³'} />
+      <SectionTitle title="Espesor · lecturas en cm" side={count ? undefined : 'Opcional · solo para m³'} />
       <View className="flex-row flex-wrap gap-2">
         {props.readings.map((reading, index) => (
           <Pressable key={`${reading}-${index}`} testID={`lectura-${index}`} onPress={() => props.onRemove(index)} accessibilityLabel={`Quitar ${reading} cm`} className="h-11 flex-row items-center gap-1.5 rounded-lg border border-outline/20 px-3">
@@ -110,12 +110,16 @@ export function useReadings(start: readonly number[] = []) {
 }
 
 /** «Resultado»: the area and the volume, and how they were measured. */
-export function ResultCard({ line, method }: { line: string; method: string }) {
+export function ResultCard({ line, method, hint }: { line: string; method: string; hint?: string }) {
   return (
     <View testID="resultado-zona" className="gap-1 rounded-2xl border border-outline/15 border-t-[3px] border-t-primary bg-surface p-4">
-      <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">Resultado</Text>
+      <View className="flex-row items-center justify-between">
+        <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">Resultado</Text>
+        <Text className="rounded-md border border-primary/40 bg-primary/15 px-2 py-0.5 text-[11px] font-bold uppercase text-primary">Calculado</Text>
+      </View>
       <Text className="text-[28px] font-extrabold text-on-surface" style={{ fontVariant: ['tabular-nums'] }}>{line}</Text>
       <Text className="self-start rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-bold uppercase text-primary">{method}</Text>
+      {hint ? <Text className="text-[13px] text-on-surface-variant">{hint}</Text> : null}
     </View>
   );
 }

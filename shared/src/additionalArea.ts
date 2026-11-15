@@ -204,6 +204,14 @@ export function areaEditRequest(report: Pick<AreaDocument, 'id' | 'type'> | null
 export const AREA_EDITED = 'Zona corregida.';
 export const AREA_EDIT_FAILED = 'No se pudo guardar la zona. Revisa tu señal y vuelve a intentarlo.';
 
+/** la-06's confirmation, in place: «¿Borrar la zona 1?» and what the report's total becomes without it. */
+export function zoneRemoveAsk(number: number, totals: AreaTotals, area: Pick<AdditionalArea, 'areaM2' | 'volumeM3'>): { title: string; hint: string } {
+  const areaM2 = Math.max(0, totals.areaM2 - area.areaM2);
+  const volumeM3 = Math.max(0, totals.volumeM3 - (area.volumeM3 ?? 0));
+  const volume = volumeM3 > 0.0005 ? ` · ${decimals(volumeM3, 3)} m³` : '';
+  return { title: `¿Borrar la zona ${number}?`, hint: `Se quita del informe. El total queda en ${decimals(areaM2, 2)} m²${volume}.` };
+}
+
 export const areaRemoveAsk = (item?: string): { title: string; hint: string } => ({ title: item ? `¿Quitar el área ${item}?` : '¿Quitar esta área?', hint: 'Sale del cuadro y sus fotos van a la papelera de Portal.' });
 /** Portal only lets the field remove what the field measured: an area measured on its photos is the office's. */
 export const isRemovableArea = (area: Pick<AdditionalArea, 'method'>): boolean => area.method !== null && AREA_FIELD_METHODS.includes(area.method);

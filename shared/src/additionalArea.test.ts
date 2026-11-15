@@ -1,6 +1,6 @@
 import { FORMS_LEVEL } from './appForms.js';
 import { describe, expect, it } from 'vitest';
-import { AREA_TYPE, areaAnswerOf, areaEditRequest, areaReportDay, areaRemoveAsk, areaRemoveRequest, isRemovableArea, areaCardLines, areaCreateRequest, areaDocumentOf, areaPlaceValues, areaTotalsLine, areaWriteStore, zonePlaceLine, MEASURE_IN_APK, measureInApkLinks } from './additionalArea.js';
+import { AREA_TYPE, areaAnswerOf, areaEditRequest, zoneRemoveAsk, areaReportDay, areaRemoveAsk, areaRemoveRequest, isRemovableArea, areaCardLines, areaCreateRequest, areaDocumentOf, areaPlaceValues, areaTotalsLine, areaWriteStore, zonePlaceLine, MEASURE_IN_APK, measureInApkLinks } from './additionalArea.js';
 import { ENLACE_DE_DESCARGA } from './invitacion.js';
 
 /** Portal's `informe_area_adicional` as agentes passes it (Portal 12/11, proposed contract). */
@@ -209,5 +209,19 @@ describe('areaEditRequest (design la-06: correct a zone measured in the field)',
   it('the office\'s areas (measured on their photos) and unknown methods are not edited from the field', () => {
     expect(areaEditRequest(report, { ...zone, method: 'foto-medida' }, null)).toBeNull();
     expect(areaEditRequest(report, { ...zone, method: null }, null)).toBeNull();
+  });
+});
+
+describe('zoneRemoveAsk (la-06: «¿Borrar la zona 1?» and what the total becomes)', () => {
+  it('says the zone and the total without it', () => {
+    expect(zoneRemoveAsk(1, { areaM2: 18.42, volumeM3: 0.954 }, { areaM2: 4.81, volumeM3: 0.25 })).toEqual({ title: '¿Borrar la zona 1?', hint: 'Se quita del informe. El total queda en 13,61 m² · 0,704 m³.' });
+  });
+
+  it('without volume, the total in m² alone', () => {
+    expect(zoneRemoveAsk(2, { areaM2: 0.53, volumeM3: 0 }, { areaM2: 0.53 }).hint).toBe('Se quita del informe. El total queda en 0,00 m².');
+  });
+
+  it('never a negative total from rounding', () => {
+    expect(zoneRemoveAsk(1, { areaM2: 1.2, volumeM3: 0.01 }, { areaM2: 1.21, volumeM3: 0.02 }).hint).toBe('Se quita del informe. El total queda en 0,00 m².');
   });
 });

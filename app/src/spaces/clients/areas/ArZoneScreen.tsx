@@ -73,20 +73,20 @@ export function ArZoneScreen(props: Props) {
   };
   return (
     <View className="flex-1 bg-background">
-      <ObservationHeader kicker={`${props.report?.code ?? 'IAA'} · Zona ${props.zone} · Medido con AR`} title={placeText.value || `Zona ${props.zone}`} onBack={props.onBack} />
+      <ObservationHeader kicker={`${props.report?.code ?? 'IAA'} · Zona ${props.zone}`} title={placeText.value || `Zona ${props.zone}`} onBack={props.onBack} />
       <ScrollView ref={reveal.scroll} onLayout={reveal.onLayout} testID="zona-ar-pantalla" keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
         <View ref={reveal.content} collapsable={false} className="gap-3">
+          <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
+            <SectionTitle title="Descripción" side="Opcional" />
+            <TextInput testID="area-descripcion" value={note} onChangeText={setNote} placeholder="Bacheo localizado" placeholderTextColor={colors['on-surface-variant']} className="min-h-[48px] rounded-xl border border-outline/20 px-3 text-[15px] text-on-surface" />
+          </View>
+          <PlaceCard value={placeText.value} asking={props.place.asking} fromGps={Boolean(props.place.place) && !placeText.typed} onChange={placeText.set} />
           <ArPlanCard points={props.measured.points} sides={result.sides} editing={tape.editing?.kind === 'side' ? tape.editing.index : null} photo={shot.shot?.preview.uri ?? null} onRetake={() => void shot.take()} />
           <SidesCard tape={tape} onShown={reveal.show} />
           <ThicknessCard readings={tape.readings} thicknessCm={result.thicknessCm} editing={tape.editing?.kind === 'reading'} typed={tape.typed} onAdd={() => tape.open({ kind: 'reading' })} onRemove={(index) => tape.setReadings((current) => current.filter((_, at) => at !== index))} onType={tape.type} onDone={tape.done} error={tape.readingError} />
           {result.areaM2 !== null ? <ResultCard line={arAreaFigures(result).line} method={AREA_METHOD_LABELS[arMethodOf(result)]} /> : null}
           {result.problems.length ? <ProblemsCard problems={result.problems} /> : null}
           {shot.message ? <Text className="text-[13px] text-error">{shot.message}</Text> : null}
-          <PlaceCard value={placeText.value} asking={props.place.asking} fromGps={Boolean(props.place.place) && !placeText.typed} onChange={placeText.set} />
-          <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
-            <SectionTitle title="Descripción" side="Opcional" />
-            <TextInput testID="area-descripcion" value={note} onChangeText={setNote} placeholder="Bacheo localizado" placeholderTextColor={colors['on-surface-variant']} className="min-h-[48px] rounded-xl border border-outline/20 px-3 text-[15px] text-on-surface" />
-          </View>
           <Pressable testID="volver-a-medir" onPress={props.onRemeasure} className="h-12 flex-row items-center justify-center gap-2"><RotateCcw size={18} color={colors.primary} /><Text className="text-[15px] font-semibold text-primary">Volver a medir con AR</Text></Pressable>
           {write.line ? <Text testID="area-escritura" className="text-center text-[13px] text-on-surface-variant">{write.line}</Text> : null}
         </View>

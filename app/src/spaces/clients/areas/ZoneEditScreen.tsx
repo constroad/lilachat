@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { CheckCircle2, Trash2 } from 'lucide-react-native';
-import { AREA_METHOD_LABELS, areaEditRequest, areaRemoveAsk, type AdditionalArea, type AreaDocument } from '@lilachat/shared';
+import { CheckCircle2, Trash2, X } from 'lucide-react-native';
+import { AREA_METHOD_LABELS, areaEditRequest, zoneRemoveAsk, type AdditionalArea, type AreaDocument } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { BottomAction, ObservationHeader, SectionTitle } from '../observations/ObservationParts';
 import type { ObservationTarget } from '../observations/useObservations';
@@ -10,91 +10,129 @@ import { useAreaEdit } from './useAreas';
 import { decimals, ResultCard, ThicknessCard, useReadings } from './ZoneParts';
 
 type RemoveResult = { ok: boolean; message: string };
-type Props = { to: ObservationTarget; report: AreaDocument; area: AdditionalArea; number: number; onRemove: (areaId: string) => Promise<RemoveResult>; onBack: () => void; onSaved: () => void };
+type Props = { to: ObservationTarget; report: AreaDocument; area: AdditionalArea; number: number; onRemove: (areaId: string) => Promise<RemoveResult>; onBusy: (busy: boolean) => void; onBack: () => void; onSaved: () => void };
 
-/** «4,81 m² · 0,250 m³» with the thickness being typed, or the area alone (m² by default, José 15/11). */
+/** «4,81 m² · 0,250 m³» with a thickness, or the area alone (m² by default, José 15/11). */
 const resultLine = (areaM2: number, thicknessCm: number | null) => (thicknessCm === null ? `${decimals(areaM2, 2)} m²` : `${decimals(areaM2, 2)} m² · ${decimals((areaM2 * thicknessCm) / 100, 3)} m³`);
+/** Portal keeps a text sent blank (audit 15/11): emptying one changes nothing, and the screen says so. */
+const KEEPS_TEXT = 'En blanco se queda el texto guardado.';
+
+/** One write at a time, between «Guardar cambios» and «Sí, borrar», and none twice (audit 15/11). */
+function useOneWrite(onBusy: (busy: boolean) => void) {
+  const running = useRef(false);
+  const [busy, setBusy] = useState(false);
+  const run = async <T,>(write: () => Promise<T>): Promise<T | null> => {
+    if (running.current) return null;
+    running.current = true;
+    setBusy(true);
+    onBusy(true);
+    try {
+      return await write();
+    } finally {
+      running.current = false;
+      setBusy(false);
+      onBusy(false);
+    }
+  };
+  return { busy, run };
+}
+
+/** The saved thickness stays until a new reading replaces it or it is taken off (its readings are not kept). */
+function useZoneThickness(saved: number | undefined) {
+  const readings = useReadings();
+  const [keepsSaved, setKeepsSaved] = useState(saved !== undefined);
+  const kept = keepsSaved && saved !== undefined ? saved : null;
+  return { readings, thicknessCm: readings.thicknessCm ?? kept, saved: readings.readings.length ? null : kept, dropSaved: () => setKeepsSaved(false) };
+}
 
 /**
- * Design la-06 (José 15/11: «¿cómo edito o borro?»): a saved zone's photo, its description and
- * place, the thickness readings (only for m³), the result, «Borrar zona» with its confirmation in
- * place and «Guardar cambios». The area itself is the measure's: a wrong one is measured again.
+ * Design la-06 (José 15/11: «¿cómo edito o borro?»): a saved zone's description and place, its
+ * photo, the thickness (only for m³), the result, «Borrar zona» with its confirmation in place
+ * and «Guardar cambios». The area is the measure's: a wrong one is measured again.
  */
 export function ZoneEditScreen(props: Props) {
   const colors = useColores();
   const { area } = props;
   const [note, setNote] = useState(area.description ?? '');
   const [place, setPlace] = useState(area.place ?? '');
-  const readings = useReadings(area.thicknessCm !== undefined ? [area.thicknessCm] : []);
+  const thickness = useZoneThickness(area.thicknessCm);
   const edit = useAreaEdit(props.to);
-  const [busy, setBusy] = useState(false);
+  const write = useOneWrite(props.onBusy);
+  const [confirming, setConfirming] = useState(false);
   const [line, setLine] = useState<string | null>(null);
-  const request = areaEditRequest(props.report, area, readings.thicknessCm);
+  const request = areaEditRequest(props.report, area, thickness.thicknessCm);
   const photo = area.photos[0];
   const save = async () => {
-    if (!request || busy || readings.editing) return;
-    setBusy(true);
-    const result = await edit(request, { place, note });
-    setBusy(false);
-    if (result.ok) props.onSaved();
-    else setLine(result.message);
+    if (!request || thickness.readings.editing) return;
+    const result = await write.run(() => edit(request, { place, note }));
+    if (result?.ok) props.onSaved();
+    else if (result) setLine(result.message);
   };
   return (
     <View className="flex-1 bg-background">
-      <ObservationHeader kicker={`Editar · ${props.report.code ?? 'IAA'} · Zona ${props.number}`} title={place || `Zona ${props.number}`} onBack={props.onBack} />
+      <ObservationHeader kicker={`Editar · ${props.report.code ?? 'IAA'} · Zona ${props.number}`} title={place || `Zona ${props.number}`} onBack={() => (write.busy ? undefined : props.onBack())} />
       <ScrollView testID="zona-editar-pantalla" keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 24 }}>
-        <TextCard title="Descripción" testID="zona-editar-descripcion" value={note} placeholder="Bacheo localizado" onChange={setNote} />
+        <TextCard title="Descripción" testID="zona-editar-descripcion" value={note} saved={area.description} placeholder="Bacheo localizado" onChange={setNote} />
+        <TextCard title="Lugar" testID="zona-editar-lugar" value={place} saved={area.place} placeholder="Calle y número" onChange={setPlace} />
         {photo ? <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3"><SectionTitle title="Foto de la zona" /><WholePhoto uri={photo.url} testID="zona-editar-foto" /></View> : null}
-        <TextCard title="Lugar" testID="zona-editar-lugar" value={place} placeholder="Calle y número" onChange={setPlace} />
-        <ThicknessCard readings={readings.readings} thicknessCm={readings.thicknessCm} editing={readings.editing} typed={readings.typed} onAdd={readings.add} onRemove={readings.remove} onType={readings.type} onDone={readings.done} error={readings.error} />
-        <ResultCard line={resultLine(area.areaM2, readings.thicknessCm)} method={area.method ? AREA_METHOD_LABELS[area.method] : '—'} />
+        {thickness.saved !== null ? <SavedThickness value={thickness.saved} onDrop={thickness.dropSaved} /> : null}
+        <ThicknessCard readings={thickness.readings.readings} thicknessCm={thickness.readings.thicknessCm} editing={thickness.readings.editing} typed={thickness.readings.typed} onAdd={thickness.readings.add} onRemove={thickness.readings.remove} onType={thickness.readings.type} onDone={thickness.readings.done} error={thickness.readings.error} />
+        <ResultCard line={resultLine(area.areaM2, thickness.thicknessCm)} method={area.method ? AREA_METHOD_LABELS[area.method] : '—'} hint="Se recalcula al cambiar el espesor" />
         {!request ? <Text testID="zona-no-editable" className="text-[13px] text-on-surface-variant">{area.method === 'foto-medida' ? 'Esta zona se midió en la oficina: se corrige en el Portal.' : 'No se sabe cómo se midió esta zona: se corrige en el Portal.'}</Text> : null}
-        {request ? <RemoveZone area={area} number={props.number} onRemove={props.onRemove} color={colors.error} /> : null}
+        {request ? <RemoveZone ask={zoneRemoveAsk(props.number, props.report.totals, area)} busy={write.busy} confirming={confirming} setConfirming={setConfirming} color={colors.error} onConfirm={() => write.run(() => props.onRemove(area.id))} /> : null}
         {line ? <Text testID="zona-editar-error" className="text-center text-[13px] font-semibold text-error">{line}</Text> : null}
       </ScrollView>
-      {readings.editing || !request ? null : <BottomAction testID="guardar-cambios-zona" label="Guardar cambios" icon={<CheckCircle2 size={22} color={colors['on-primary']} />} busy={busy} onPress={() => void save()} />}
+      {thickness.readings.editing || confirming || !request ? null : <BottomAction testID="guardar-cambios-zona" label="Guardar cambios" icon={<CheckCircle2 size={22} color={colors['on-primary']} />} busy={write.busy} onPress={() => void save()} />}
     </View>
   );
 }
 
-function TextCard(props: { title: string; testID: string; value: string; placeholder: string; onChange: (text: string) => void }) {
+function TextCard(props: { title: string; testID: string; value: string; saved?: string; placeholder: string; onChange: (text: string) => void }) {
   const colors = useColores();
+  const emptied = Boolean(props.saved) && !props.value.trim();
   return (
     <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
       <SectionTitle title={props.title} />
-      <TextInput testID={props.testID} value={props.value} onChangeText={props.onChange} placeholder={props.placeholder} placeholderTextColor={colors['on-surface-variant']} className="min-h-[48px] rounded-xl border border-outline/20 px-3 text-[15px] text-on-surface" />
+      <TextInput testID={props.testID} value={props.value} onChangeText={props.onChange} placeholder={props.saved ?? props.placeholder} placeholderTextColor={colors['on-surface-variant']} className="min-h-[48px] rounded-xl border border-outline/20 px-3 text-[15px] text-on-surface" />
+      {emptied ? <Text className="text-[12px] text-on-surface-variant">{KEEPS_TEXT}</Text> : null}
+    </View>
+  );
+}
+
+/** The thickness saved with the zone: kept until a new reading replaces it, or taken off for m² only. */
+function SavedThickness({ value, onDrop }: { value: number; onDrop: () => void }) {
+  const colors = useColores();
+  return (
+    <View testID="espesor-guardado" className="flex-row items-center justify-between gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
+      <Text className="flex-1 text-[14px] text-on-surface">{`Espesor guardado · ${decimals(value, 1)} cm`}</Text>
+      <Pressable testID="quitar-espesor-guardado" onPress={onDrop} accessibilityLabel="Quitar el espesor guardado" className="h-11 flex-row items-center gap-1 px-2"><X size={16} color={colors.primary} /><Text className="text-[13px] font-semibold text-primary">Quitar</Text></Pressable>
     </View>
   );
 }
 
 /** la-06: «Borrar zona» in a maroon outline, and its confirmation in place, never a dialog. */
-function RemoveZone(props: { area: AdditionalArea; number: number; onRemove: (areaId: string) => Promise<RemoveResult>; color: string }) {
-  const [asking, setAsking] = useState(false);
-  const [busy, setBusy] = useState(false);
+function RemoveZone(props: { ask: { title: string; hint: string }; busy: boolean; confirming: boolean; setConfirming: (value: boolean) => void; color: string; onConfirm: () => Promise<RemoveResult | null> }) {
   const [error, setError] = useState<string | null>(null);
-  const ask = areaRemoveAsk(props.area.item ?? String(props.number));
-  if (!asking) {
+  if (!props.confirming) {
     return (
-      <Pressable testID="borrar-zona" onPress={() => setAsking(true)} className="min-h-[52px] flex-row items-center justify-center gap-2 rounded-2xl border border-error/50">
+      <Pressable testID="borrar-zona" onPress={() => props.setConfirming(true)} className="min-h-[52px] flex-row items-center justify-center gap-2 rounded-2xl border border-error/50">
         <Trash2 size={18} color={props.color} />
         <Text className="text-[15px] font-semibold text-error">Borrar zona</Text>
       </Pressable>
     );
   }
   const confirm = async () => {
-    setBusy(true);
-    const result = await props.onRemove(props.area.id);
-    setBusy(false);
-    if (!result.ok) setError(result.message);
+    const result = await props.onConfirm();
+    if (result && !result.ok) setError(result.message);
   };
   return (
     <View testID="borrar-zona-confirmar" className="gap-2 rounded-2xl border border-error/30 bg-error/5 p-4">
-      <Text className="text-[16px] font-bold text-error">{ask.title}</Text>
-      <Text className="text-[13px] text-on-surface-variant">{ask.hint}</Text>
+      <Text className="text-[16px] font-bold text-error">{props.ask.title}</Text>
+      <Text className="text-[13px] text-on-surface-variant">{props.ask.hint}</Text>
       {error ? <Text className="text-[13px] font-semibold text-error">{error}</Text> : null}
       <View className="flex-row gap-2">
-        <Pressable onPress={() => setAsking(false)} disabled={busy} className="h-12 flex-1 items-center justify-center rounded-xl border border-outline/20 bg-surface"><Text className="text-[14px] font-semibold text-on-surface">Cancelar</Text></Pressable>
-        <Pressable testID="borrar-zona-si" onPress={() => void confirm()} disabled={busy} className="h-12 flex-1 items-center justify-center rounded-xl bg-error"><Text className="text-[14px] font-bold text-background">{busy ? 'Borrando…' : 'Sí, borrar'}</Text></Pressable>
+        <Pressable onPress={() => props.setConfirming(false)} disabled={props.busy} className="h-12 flex-1 items-center justify-center rounded-xl border border-outline/20 bg-surface"><Text className="text-[14px] font-semibold text-on-surface">Cancelar</Text></Pressable>
+        <Pressable testID="borrar-zona-si" onPress={() => void confirm()} disabled={props.busy} className="h-12 flex-1 items-center justify-center rounded-xl bg-error"><Text className="text-[14px] font-bold text-background">{props.busy ? 'Borrando…' : 'Sí, borrar'}</Text></Pressable>
       </View>
     </View>
   );

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronRight, FileText, Scan } from 'lucide-react-native';
 import { areaCardLines, areaReportDay, areaTotalsLine, closedRing, PREVIEW_ASKING, PREVIEW_LABEL, type AdditionalArea, type AreaDocument, type ChannelLinks, type SpaceClientService } from '@lilachat/shared';
@@ -34,7 +34,12 @@ export function AreasScreen(props: Props) {
   const pdf = useReportPdf(props.to.target, props.to.serviceId, () => undefined);
   const close = () => props.onClose(changed);
   const toList = () => setMode({ kind: 'list' });
-  useBackTo(mode.kind === 'list' ? close : toList);
+  // While a zone's edit or delete runs, back waits for it: a failure must stay in view (audit 15/11).
+  const [zoneBusy, setZoneBusy] = useState(false);
+  useBackTo(mode.kind === 'list' ? close : zoneBusy ? () => undefined : toList);
+  // A zone gone after a reload (deleted elsewhere) goes back to the list instead of eating a back press.
+  const gone = mode.kind === 'zone' && report !== null && !report.areas.some((area) => area.id === mode.areaId);
+  useEffect(() => { if (gone) setMode({ kind: 'list' }); }, [gone]);
   const zone = (report?.areas.length ?? 0) + 1;
   const saved = (reportId: string) => { setChanged(true); toList(); reload(reportId); };
   // The GPS and the street are read when the report opens: ready before the first corner (José 15/11).
@@ -53,13 +58,14 @@ export function AreasScreen(props: Props) {
     setMode({ kind: 'ar-zone', measured: { ...reading, points: closedRing(reading.points) }, evidence });
   };
   const startMeasure = async () => {
+    pdf.stop();
     setRound((before) => before + 1);
     setMode({ kind: (await arAvailability()) === 'unsupported' ? 'photo' : 'ar' });
   };
   if (mode.kind === 'photo') return <PhotoMeasureScreen to={props.to} report={report} zone={zone} place={place} onBack={toList} onSaved={saved} />;
   if (mode.kind === 'ar') return <ArMeasureScreen kicker={report?.code ?? 'IAA'} reportCode={report?.code ?? null} zone={zone} place={place} onBack={toList} onPhotoInstead={() => setMode({ kind: 'photo' })} onMeasured={(reading) => void measured(reading)} />;
   const editing = mode.kind === 'zone' ? report?.areas.findIndex((area) => area.id === mode.areaId) ?? -1 : -1;
-  if (mode.kind === 'zone' && report && editing >= 0) return <ZoneEditScreen to={props.to} report={report} area={report.areas[editing]!} number={editing + 1} onRemove={remove} onBack={toList} onSaved={() => saved(report.id)} />;
+  if (mode.kind === 'zone' && report && editing >= 0) return <ZoneEditScreen to={props.to} report={report} area={report.areas[editing]!} number={editing + 1} onRemove={remove} onBusy={setZoneBusy} onBack={toList} onSaved={() => saved(report.id)} />;
   if (mode.kind === 'ar-zone') return <ArZoneScreen to={props.to} report={report} zone={zone} measured={mode.measured} evidence={mode.evidence} place={place} onBack={toList} onRemeasure={() => setMode({ kind: 'ar' })} onSaved={saved} />;
   return (
     <View className="flex-1 bg-background">
@@ -67,9 +73,9 @@ export function AreasScreen(props: Props) {
       <ScrollView testID="areas-pantalla" keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 24 }}>
         {draft === null ? <View className="h-40 rounded-2xl bg-surface" /> : null}
         {draft && !draft.ok ? <Text testID="areas-fallo" className="rounded-2xl border border-outline/15 bg-surface p-4 text-[15px] text-on-surface">{draft.message}</Text> : null}
-        {report ? <ReportBody report={report} service={props.service.name} onOpen={(areaId) => setMode({ kind: 'zone', areaId })} /> : null}
-        {pdf.message ? <Text testID="areas-pdf-error" className="text-center text-[13px] font-semibold text-error">{pdf.message}</Text> : null}
+        {report ? <ReportBody report={report} service={props.service.name} onOpen={(areaId) => { pdf.stop(); setMode({ kind: 'zone', areaId }); }} /> : null}
       </ScrollView>
+      {pdf.message ? <Text testID="areas-pdf-error" className="bg-surface px-4 pt-2 text-center text-[13px] font-semibold text-error">{pdf.message}</Text> : null}
       <AreasFooter canPdf={Boolean(report?.id && report.areas.length)} asking={pdf.asking} busy={!report} onPdf={() => report && void pdf.ask(report.id, `${report.code ?? 'IAA'}.pdf`, true)} onMeasure={() => void startMeasure()} />
     </View>
   );

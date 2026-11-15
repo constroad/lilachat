@@ -1293,6 +1293,10 @@ espacio Test, con «QA-CTLPIS — borrar»:
 >     foto. Con el teléfono quieto coinciden; para que sea exacto, `readCorners`
 >     tiene que devolver las esquinas de ESE cuadro (nativo, próximo APK).
 >   - Si Portal corrige el área de una zona AR, la foto conserva el área vieja.
+>   - Publicado: commit 7cd45e4, OTA 9234236d (15/11). E2E en el emulador
+>     (zona de José en TES-IAA, sin guardar): «Resultado» muestra el chip
+>     Área; con una lectura de 5 cm, Área y Volumen (0,027 m³). El sello con
+>     los metros se probó en el server (píxeles) y en una foto de muestra.
 > - **Sin verificar todavía:** la cámara AR y la medida contra una wincha real,
 >   en el teléfono de José (el emulador ARM no corre ARCore). Tampoco que los
 >   rótulos caigan sobre el lado en una foto real: el cuadro de las esquinas es

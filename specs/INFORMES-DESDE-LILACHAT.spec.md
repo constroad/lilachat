@@ -1117,8 +1117,17 @@ espacio Test, con «QA-CTLPIS — borrar»:
 >   Lecturas de espesor fuera de 1–50 cm se rechazan en las dos pantallas.
 >   Un segundo toque en «Guardar zona» antes de verse ocupado no escribe dos
 >   veces (guarda en `formFilesWrite`).
-> - **Sin verificar todavía:** la medida contra una wincha real en el teléfono
->   de José (el emulador solo prueba el flujo con su escena virtual).
+> - **El AR no corre en el emulador de esta Mac** (E2E 15/11): Google Play
+>   Services for AR 1.57 de teléfono (arm64) instala, pero `libarcore_c.so` muere
+>   con SIGILL al crear la sesión (la CPU virtual no tiene esa instrucción) y se
+>   lleva la app. La versión para emulador solo existe para x86. En el emulador
+>   se prueba sin el servicio: «Medir área» → la-07 («El AR no pudo arrancar»)
+>   → foto + wincha. la-02/la-03 con cámara solo se prueban en un teléfono.
+> - la-07 rehecha según su diseño (802b425d): cabecera «IAA · Zona N · Medir
+>   área», UNA tarjeta de estado (cámara: «Pendiente» + «Abrir ajustes»; sin AR:
+>   «Foto + wincha» + los 3 pasos) y «Medir con foto + wincha» fijo abajo.
+> - **Sin verificar todavía:** la cámara AR y la medida contra una wincha real,
+>   en el teléfono de José.
 
 
 José: «vamos con la opción B, pero desde Lilachat instrúyelo qué aplicación

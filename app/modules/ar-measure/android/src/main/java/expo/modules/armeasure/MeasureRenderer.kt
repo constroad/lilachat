@@ -30,6 +30,8 @@ private const val LINE_DP = 4f
 private const val DOT_DP = 7f
 private const val DASH_DP = 9f
 private const val MIN_CORNERS = 3
+/** The floor to see before the first corner: the engine's `AR_SCAN_AREA_M2`. */
+private const val SCAN_AREA_M2 = 1.0
 private const val MATRIX = 16
 
 /** A request from JS, answered on the GL thread with ARCore's own frame. */
@@ -137,9 +139,28 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
     smoothed = aim?.let { smooth(it.pose) }
     closing = isClosing()
     val viewProjection = viewProjectionOf(camera)
-    drawTrace(viewProjection, shooting = commands.any { it is Command.Read })
-    runCommands(tracking)
+    // One list per frame: the shot and its answer see the same requests (audit 15/11).
+    val pending = generateSequence { commands.poll() }.toList()
+    val shooting = pending.any { it is Command.Read }
+    if (shooting) dropCornerOnFirst()
+    drawTrace(viewProjection, shooting)
+    runCommands(pending, tracking, session)
+    closing = isClosing()
     snapshot(camera, tracking, viewProjection, session)
+  }
+
+  /** A last corner marked on the first one is the close, not a side: out before the shot and the reading. */
+  private fun dropCornerOnFirst() {
+    if (corners.size <= MIN_CORNERS) return
+    val first = corners.first().anchor.pose
+    val last = corners.last().anchor.pose
+    if (kotlin.math.hypot(last.tx() - first.tx(), last.tz() - first.tz()) < SNAP_METERS) corners.removeAt(corners.size - 1).anchor.detach()
+  }
+
+  /** Near the first corner by the smoothed aim OR the raw hit: a tap while moving must not add a sliver (audit 15/11). */
+  private fun nearFirst(x: Float, z: Float): Boolean {
+    val first = corners.firstOrNull()?.anchor?.pose ?: return false
+    return corners.size >= MIN_CORNERS && kotlin.math.hypot(x - first.tx(), z - first.tz()) < SNAP_METERS
   }
 
   /** The reticle's point, eased toward each new hit; a jump of a meter or more is taken whole. */
@@ -152,8 +173,7 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
 
   private fun isClosing(): Boolean {
     val target = smoothed ?: return false
-    val first = corners.firstOrNull()?.anchor?.pose ?: return false
-    return corners.size >= MIN_CORNERS && kotlin.math.hypot(target[0] - first.tx(), target[2] - first.tz()) < SNAP_METERS
+    return nearFirst(target[0], target[2])
   }
 
   /** The sides, the corners and, while measuring, the dashed side growing to the reticle; the shot closes the ring. */
@@ -190,11 +210,10 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
     return Aim(pose, distanceBetween(camera.pose, pose), hit, floorY)
   }
 
-  private fun runCommands(tracking: Boolean) {
-    while (true) {
-      val command = commands.poll() ?: return
+  private fun runCommands(pending: List<Command>, tracking: Boolean, session: Session) {
+    for (command in pending) {
       when (command) {
-        is Command.AddCorner -> addCorner(command.promise, tracking)
+        is Command.AddCorner -> addCorner(command.promise, tracking, session)
         is Command.Undo -> {
           corners.removeLastOrNull()?.anchor?.detach()
           if (corners.isEmpty()) stable = true
@@ -211,13 +230,14 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
     }
   }
 
-  private fun addCorner(promise: Promise, tracking: Boolean) {
+  private fun addCorner(promise: Promise, tracking: Boolean, session: Session) {
     val target = aim
     when {
       !tracking -> promise.reject("not-tracking", "Mueve el teléfono despacio hasta que el AR reconozca el piso.", null)
+      corners.isEmpty() && floorArea(session) < SCAN_AREA_M2 -> promise.reject("scanning", "Sigue escaneando el piso antes de marcar la primera esquina.", null)
       target == null -> promise.reject("no-floor", "Apunta al piso: no hay piso reconocido en el centro.", null)
       target.distance > MAX_HIT_METERS -> promise.reject("far", "Acércate: la esquina está a más de 6 m.", null)
-      closing -> promise.reject("closing", "Toca para cerrar la zona.", null)
+      closing || nearFirst(target.pose.tx(), target.pose.tz()) -> promise.reject("closing", "Toca para cerrar la zona.", null)
       else -> {
         corners.add(Corner(target.hit.createAnchor(), target.floorY))
         promise.resolve(corners.size)
@@ -239,7 +259,7 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
     val target = aim
     val reticle = smoothed
     val last = corners.lastOrNull()?.anchor?.pose
-    val toward = if (closing) corners.first().anchor.pose.let { floatArrayOf(it.tx(), it.ty(), it.tz()) } else reticle
+    val toward = if (closing) corners.firstOrNull()?.anchor?.pose?.let { floatArrayOf(it.tx(), it.ty(), it.tz()) } else reticle
     onSnapshot(compact(
       "floorM2" to floorArea(session),
       "closing" to closing,

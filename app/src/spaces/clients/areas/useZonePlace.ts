@@ -9,16 +9,20 @@ export type ZonePlace = { point: GeoPoint | null; place: string | null; asking: 
 
 /**
  * Where the zone is, from the GPS (José 15/11: «la zona o tramo no lo toma de mi GPS»):
- * read once when the report opens, so it is ready before the first corner. The
+ * read when each measure starts, so it is ready before the zone closes. The
  * work map's street with its station wins; else the street of the address.
  */
-export function useZonePlace(to: ObservationTarget, links: ChannelLinks | undefined): ZonePlace {
+export function useZonePlace(to: ObservationTarget, links: ChannelLinks | undefined, zone: number): ZonePlace {
   const streets = useWorkStreets(to.target.jwt, links, to.target.clientId, to.serviceId, true);
   const [point, setPoint] = useState<GeoPoint | null>(null);
   const [street, setStreet] = useState<string | null>(null);
   const [asking, setAsking] = useState(true);
+  // Read again for each zone: the engineer walks between them (audit 15/11: zone 2 took zone 1's station).
   useEffect(() => {
     let open = true;
+    setAsking(true);
+    setPoint(null);
+    setStreet(null);
     void (async () => {
       const reading = await freshPoint().catch(() => null);
       if (!open) return;
@@ -33,7 +37,7 @@ export function useZonePlace(to: ObservationTarget, links: ChannelLinks | undefi
     return () => {
       open = false;
     };
-  }, [to.target.jwt]);
+  }, [to.target.jwt, zone]);
   const near = point && streets ? nearestStreet(streets, point) : null;
   return { point, place: zonePlaceLine(near, street), asking: asking || (Boolean(point) && streets === null) };
 }

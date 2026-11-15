@@ -80,7 +80,7 @@ export function ArZoneScreen(props: Props) {
           {result.areaM2 !== null && !result.problems.includes('no-tape') ? <ResultCard line={arAreaFigures(result).line} method="AR + wincha" /> : null}
           {result.problems.length ? <ProblemsCard lines={result.problems.map(arProblemLine)} /> : null}
           <ShotCard shot={shot} fromAr={Boolean(props.evidence)} color={colors.primary} />
-          <PlaceCard value={placeText.value} asking={props.place.asking} fromGps={Boolean(props.place.place)} onChange={placeText.set} />
+          <PlaceCard value={placeText.value} asking={props.place.asking} fromGps={Boolean(props.place.place) && !placeText.typed} onChange={placeText.set} />
           <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
             <SectionTitle title="Descripción" side="Opcional" />
             <TextInput testID="area-descripcion" value={note} onChangeText={setNote} placeholder="Bacheo localizado" placeholderTextColor={colors['on-surface-variant']} className="min-h-[48px] rounded-xl border border-outline/20 px-3 text-[15px] text-on-surface" />

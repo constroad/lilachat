@@ -53,7 +53,8 @@ export function PhotoMeasureScreen(props: { to: ObservationTarget; report: AreaD
   const pending = measure.editing ? 'Toca «Listo» para dejar anotada la medida.' : !shot.shot ? 'Toma la foto de la zona desde arriba.' : measure.points.length < 3 ? 'Toca las esquinas sobre la foto.' : !measure.result ? 'Mide un lado con la wincha.' : null;
   const save = async () => {
     if (pending || !measure.result || !shot.shot) return;
-    const gps = props.place.point ?? shot.point;
+    // The fix taken with the photo is this zone's; the measure's own read comes second (audit 15/11).
+    const gps = shot.point ?? props.place.point;
     const point = gps ? { lat: gps.lat, lng: gps.lng, precision: gps.precision } : null;
     const request = areaCreateRequest(props.report, entryId, photoAreaFigures(measure.result), point, 'a-mano', 'apk');
     const reportId = await write.save(request, { place: placeText.value.trim(), note }, [shot.shot]);
@@ -67,7 +68,7 @@ export function PhotoMeasureScreen(props: { to: ObservationTarget; report: AreaD
         <PhotoCard shot={shot} measure={measure} color={colors.primary} />
         {measure.points.length >= 3 ? <SidesCard measure={measure} onShown={reveal.show} /> : null}
         <ThicknessCard readings={measure.readings} thicknessCm={measure.result?.thicknessCm ?? null} editing={measure.editing?.kind === 'reading'} typed={measure.typed} onAdd={() => measure.open({ kind: 'reading' })} onRemove={(index) => measure.setReadings((current) => current.filter((_, at) => at !== index))} onKey={measure.key} onDone={measure.done} onShown={reveal.show} error={measure.readingError} />
-        <PlaceCard value={placeText.value} asking={props.place.asking} fromGps={Boolean(props.place.place)} onChange={placeText.set} />
+        <PlaceCard value={placeText.value} asking={props.place.asking} fromGps={Boolean(props.place.place) && !placeText.typed} onChange={placeText.set} />
         {measure.result ? <ResultCard line={photoAreaFigures(measure.result).line} method="Foto + wincha" /> : null}
         <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
           <SectionTitle title="Descripción" side="Opcional" />

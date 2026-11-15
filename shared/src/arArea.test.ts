@@ -237,6 +237,11 @@ describe('closedRing (José 15/11: a 5th corner on the 1st closed the zone by ha
     expect(closedRing([...square, { x: 0.03, y: 0, z: 0.02 }])).toEqual(square);
   });
 
+  it('uses the same 15 cm on the floor as the native snap: a corner tapped 12 cm off the first still closes', () => {
+    expect(closedRing([...square, { x: 0.12, y: 0.05, z: 0 }])).toEqual(square);
+    expect(closedRing([...square, { x: 0.16, y: 0, z: 0 }])).toHaveLength(5);
+  });
+
   it('keeps every corner when the last one is a real corner', () => {
     expect(closedRing(square)).toEqual(square);
     expect(closedRing([...square, { x: -0.5, y: 0, z: 0.5 }])).toHaveLength(5);

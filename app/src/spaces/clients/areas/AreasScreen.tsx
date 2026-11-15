@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Scan, Trash2 } from 'lucide-react-native';
 import { areaCardLines, areaRemoveAsk, areaReportDay, areaTotalsLine, closedRing, isRemovableArea, type AdditionalArea, type AreaDocument, type ChannelLinks, type SpaceClientService } from '@lilachat/shared';
@@ -14,6 +14,7 @@ import { useZonePlace } from './useZonePlace';
 import { arShotEvidence, type CapturedEvidence } from '../useDriveUpload';
 import { getCurrentSpaceId, useSpaceLogo } from '../../currentSpace';
 import { useCameraLogo } from '../../../chat/camara/cameraLogoPref';
+import { freshPoint } from '../../../chat/location/freshPoint';
 
 type Props = { to: ObservationTarget; service: SpaceClientService; reportId?: string; links?: ChannelLinks; onClose: (changed: boolean) => void };
 
@@ -33,15 +34,24 @@ export function AreasScreen(props: Props) {
   const zone = (report?.areas.length ?? 0) + 1;
   const saved = (reportId: string) => { setChanged(true); toList(); reload(reportId); };
   // The GPS and the street are read when the report opens: ready before the first corner (José 15/11).
-  const place = useZonePlace(props.to, props.links);
+  const [round, setRound] = useState(0);
+  const place = useZonePlace(props.to, props.links, round);
+  const modeNow = useRef(mode.kind);
+  modeNow.current = mode.kind;
   const logoOn = useCameraLogo();
   const spaceLogo = useSpaceLogo(getCurrentSpaceId());
   const stampsLogo = logoOn && Boolean(spaceLogo);
   const measured = async (reading: ArMeasured) => {
-    const evidence = reading.photo ? await arShotEvidence(reading.photo, place.point, stampsLogo).catch(() => null) : null;
+    const point = place.point ?? (await freshPoint().catch(() => null));
+    const evidence = reading.photo ? await arShotEvidence(reading.photo, point, stampsLogo).catch(() => null) : null;
+    // «Salir» while the photo was being prepared: the zone is not opened behind the person's back.
+    if (modeNow.current !== 'ar') return;
     setMode({ kind: 'ar-zone', measured: { ...reading, points: closedRing(reading.points) }, evidence });
   };
-  const startMeasure = async () => setMode({ kind: (await arAvailability()) === 'unsupported' ? 'photo' : 'ar' });
+  const startMeasure = async () => {
+    setRound((before) => before + 1);
+    setMode({ kind: (await arAvailability()) === 'unsupported' ? 'photo' : 'ar' });
+  };
   if (mode.kind === 'photo') return <PhotoMeasureScreen to={props.to} report={report} zone={zone} place={place} onBack={toList} onSaved={saved} />;
   if (mode.kind === 'ar') return <ArMeasureScreen kicker={report?.code ?? 'IAA'} reportCode={report?.code ?? null} zone={zone} place={place} onBack={toList} onPhotoInstead={() => setMode({ kind: 'photo' })} onMeasured={(reading) => void measured(reading)} />;
   if (mode.kind === 'ar-zone') return <ArZoneScreen to={props.to} report={report} zone={zone} measured={mode.measured} evidence={mode.evidence} place={place} onBack={toList} onRemeasure={() => setMode({ kind: 'ar' })} onSaved={saved} />;

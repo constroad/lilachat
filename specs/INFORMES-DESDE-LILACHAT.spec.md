@@ -1126,8 +1126,48 @@ espacio Test, con «QA-CTLPIS — borrar»:
 > - la-07 rehecha según su diseño (802b425d): cabecera «IAA · Zona N · Medir
 >   área», UNA tarjeta de estado (cámara: «Pendiente» + «Abrir ajustes»; sin AR:
 >   «Foto + wincha» + los 3 pasos) y «Medir con foto + wincha» fijo abajo.
+> - **Prueba de José en su teléfono (0.1.184, 15/11):** la medida salió bien
+>   (2 cm de error contra la wincha), pero la experiencia no. Pidió: escanear
+>   el piso primero, tocar la pantalla en vez de un botón abajo, ver los metros
+>   en vivo, un trazo estable, que detecte el cierre (su 5.ª esquina sobre la
+>   1.ª dio un lado de 0,04 m y bloqueó guardar), que no pida otra foto después
+>   de marcar (y el preview no se veía), y que la calle o tramo salga del GPS.
+> - **AR v2 (0.1.185):**
+>   - Escaneo: 1 m² de piso antes de la 1.ª esquina (`AR_SCAN_AREA_M2`),
+>     con barra. Nativo y JS rechazan marcar antes (`scanning`).
+>   - Un toque en cualquier parte de la cámara marca bajo la retícula; el botón
+>     de 72 px queda para guantes.
+>   - El trazo (lados, línea punteada a la retícula y puntos) se dibuja en GL
+>     sobre la imagen de la cámara, cada cuadro (`TraceOverlay.kt`). JS solo
+>     escribe números, metros por lado (`sides`) y el lado en vivo (`live`), a
+>     20 Hz. La retícula se suaviza (35 % por cuadro).
+>   - Cierre: con 3 o más esquinas, apuntar a menos de 15 cm en planta de la 1.ª
+>     (con la retícula suavizada O el impacto crudo) hace que el toque cierre
+>     (`closing`). `closedRing` y el nativo quitan una última esquina a menos de
+>     15 cm de la 1.ª (`AR_SNAP_M`), también antes de la foto.
+>   - La foto de la zona es el cuadro del AR con el contorno cerrado
+>     (`glReadPixels`, 1600 px, JPEG 85, `FrameShot.kt`). Sale sellada como una
+>     foto de la cámara (`arShotEvidence`): el server quema hora y lugar. La
+>     cámara solo se abre si ese cuadro no pudo leerse.
+>   - Lugar «Del GPS», editable (`useZonePlace`, `zonePlaceLine`): la calle
+>     del mapa de obra con su progresiva (`nearestStreet`, 40 m) o la calle de
+>     la dirección (`/api/field-conditions`). Se lee de nuevo en cada zona.
+>     Foto + wincha también.
+> - **Auditoría independiente de la v2, arreglada antes del APK:**
+>   - Bloqueante: «Reiniciar» con la retícula en la 1.ª esquina tumbaba el hilo
+>     GL (`corners.first()` sobre la lista vacía).
+>   - Una esquina tocada a 12 cm de la 1.ª mientras uno se movía quedaba como
+>     triángulo facturado.
+>   - El escaneo no impedía marcar.
+>   - El GPS se leía una sola vez por informe: la zona 2 tomaba la progresiva de
+>     la zona 1.
+>   - El test de profundidad tapaba el centro de los puntos.
+>   - Carrera entre la foto y el cierre.
+>   - Doble cierre.
+>   - Líneas punteadas sin tope con una esquina detrás de la cámara.
+>   - Archivos que se acumulaban en el caché.
 > - **Sin verificar todavía:** la cámara AR y la medida contra una wincha real,
->   en el teléfono de José.
+>   en el teléfono de José (el emulador ARM no corre ARCore).
 
 
 José: «vamos con la opción B, pero desde Lilachat instrúyelo qué aplicación

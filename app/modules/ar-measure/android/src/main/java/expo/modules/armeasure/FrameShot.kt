@@ -12,6 +12,7 @@ import java.nio.ByteOrder
 private const val LONG_SIDE_PX = 1600
 private const val JPEG_QUALITY = 85
 private const val RGBA = 4
+private const val KEEP_MS = 24L * 60 * 60 * 1000
 
 /**
  * The zone's photo is the AR's own frame with the trace on it (José 15/11:
@@ -28,6 +29,8 @@ object FrameShot {
     val turn = BitmapMatrix().apply { postScale(scale, -scale) }
     val photo = Bitmap.createBitmap(raw, 0, 0, width, height, turn, true)
     raw.recycle()
+    // The shots of earlier zones already went to the report: the cache keeps only today's.
+    folder.listFiles { old -> old.name.startsWith("zona-ar-") && System.currentTimeMillis() - old.lastModified() > KEEP_MS }?.forEach { it.delete() }
     val file = File(folder, "zona-ar-${System.currentTimeMillis()}.jpg")
     FileOutputStream(file).use { photo.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, it) }
     photo.recycle()

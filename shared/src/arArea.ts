@@ -197,6 +197,9 @@ export function arPlanOf(points: readonly ArPoint[], box: Box, margin: number): 
 export const AR_MAX_AIM_M = 6;
 
 /** la-02's guide line: what to do next, by what the AR sees under the center. */
+/** The native close snaps within this, on the floor's plane: the same rule drops a corner marked on the first. */
+export const AR_SNAP_M = 0.15;
+
 /** One square meter of floor seen before the first corner: less and the first anchors drift (José 15/11). */
 export const AR_SCAN_AREA_M2 = 1;
 export const arScanProgress = (floorM2: number | undefined): number => Math.min(1, Math.max(0, (floorM2 ?? 0) / AR_SCAN_AREA_M2));
@@ -222,7 +225,8 @@ export const arLiveLabel = (meters: number | null | undefined): string | null =>
  */
 export function closedRing(points: readonly ArPoint[]): ArPoint[] {
   const last = points[points.length - 1];
-  if (points.length <= MIN_CORNERS || !last || distance(last, points[0]!) >= NEAR_SIDE_M) return [...points];
+  const first = points[0];
+  if (points.length <= MIN_CORNERS || !last || !first || Math.hypot(last.x - first.x, last.z - first.z) >= AR_SNAP_M) return [...points];
   return points.slice(0, -1);
 }
 

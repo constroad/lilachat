@@ -38,8 +38,15 @@ function useCameraGate(): Gate {
 function useCorners(handle: React.RefObject<ArMeasureHandle | null>, onMeasured: (measured: ArMeasured) => void) {
   const [count, setCount] = useState(0);
   const [failure, setFailure] = useState<string | null>(null);
+  // Once a close starts, a second tap or «Cerrar» must not read (and photograph) the zone again (audit 15/11).
+  const closed = useRef(false);
+  const finish = (measured: ArMeasured) => {
+    if (closed.current) return;
+    closed.current = true;
+    onMeasured(measured);
+  };
   const run = async (step: (view: ArMeasureHandle) => Promise<void>) => {
-    if (!handle.current) return;
+    if (!handle.current || closed.current) return;
     setFailure(null);
     try {
       await step(handle.current);
@@ -47,14 +54,14 @@ function useCorners(handle: React.RefObject<ArMeasureHandle | null>, onMeasured:
       setFailure(error instanceof Error ? error.message : 'No se pudo marcar la esquina.');
     }
   };
-  const close = () => run(async (view) => onMeasured(await view.readCorners()));
+  const close = () => run(async (view) => finish(await view.readCorners()));
   // A tap on the first corner closes the zone (José 15/11: a 5th corner there blocked the save).
   const mark = () => run(async (view) => {
     try {
       setCount(await view.addCorner());
     } catch (error) {
       if ((error as { code?: string }).code !== 'closing') throw error;
-      onMeasured(await view.readCorners());
+      finish(await view.readCorners());
     }
   });
   return {
@@ -84,7 +91,7 @@ export function ArMeasureScreen(props: Props) {
   return (
     <View testID="medir-ar-pantalla" className="flex-1 bg-black" onLayout={(event) => setSize(event.nativeEvent.layout)}>
       {gate === 'granted' && NativeView ? <NativeView ref={handle} accent={colors.primary} style={{ flex: 1 }} onArFrame={(event) => setFrame(event.nativeEvent)} /> : null}
-      <Pressable testID="ar-tocar" accessibilityLabel={frame?.closing ? 'Cerrar la zona' : 'Marcar esquina'} onPress={() => void corners.mark()} style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 }} />
+      <Pressable testID="ar-tocar" accessibilityLabel={frame?.closing ? 'Cerrar la zona' : 'Marcar esquina'} onPress={() => { if (corners.count || arScanProgress(frame?.floorM2) >= 1) void corners.mark(); }} style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 }} />
       <ArOverlay frame={frame} size={size} />
       {frame?.state === 'tracking' && !corners.count && arScanProgress(frame.floorM2) < 1 ? <ScanCard progress={arScanProgress(frame.floorM2)} /> : null}
       <ArTopBar kicker={props.kicker} zone={props.zone} place={props.place} frame={frame} onBack={props.onBack} />

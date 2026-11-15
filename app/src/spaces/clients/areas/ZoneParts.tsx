@@ -91,7 +91,7 @@ export function ResultCard({ line, method }: { line: string; method: string }) {
 /** The zone's place as the GPS found it, editable; what the person types wins over a late answer. */
 export function usePlaceText(found: string | null) {
   const [typed, setTyped] = useState<string | null>(null);
-  return { value: typed ?? found ?? '', set: setTyped };
+  return { value: typed ?? found ?? '', set: setTyped, typed: typed !== null };
 }
 
 /** «Lugar · Del GPS» (la-02's top bar, la-03's card): the street and station, or the address. */

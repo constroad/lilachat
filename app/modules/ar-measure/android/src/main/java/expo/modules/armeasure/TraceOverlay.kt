@@ -19,6 +19,7 @@ private const val CIRCLE_STEPS = 20
 private const val COMPONENTS = 2
 /** Points this close to the camera plane are cut there: behind it they would wrap across the screen. */
 private const val NEAR_W = 0.01f
+private const val MAX_DASHES = 160
 
 /** A world point already multiplied by the view-projection: x, y and w of clip space. */
 class Clip(val x: Float, val y: Float, val w: Float) {
@@ -72,6 +73,9 @@ class TraceOverlay {
     vertices.forEach { buffer.put(it) }
     buffer.flip()
     GLES20.glUseProgram(program)
+    // The camera quad turns the depth test on: the trace sits on top of everything, always (audit 15/11).
+    GLES20.glDisable(GLES20.GL_DEPTH_TEST)
+    GLES20.glDepthMask(false)
     GLES20.glEnable(GLES20.GL_BLEND)
     GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
     GLES20.glUniform4fv(color, 1, rgba, 0)
@@ -80,6 +84,8 @@ class TraceOverlay {
     GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, vertices.size / COMPONENTS)
     GLES20.glDisableVertexAttribArray(position)
     GLES20.glDisable(GLES20.GL_BLEND)
+    GLES20.glDepthMask(true)
+    GLES20.glEnable(GLES20.GL_DEPTH_TEST)
   }
 
   private fun clipped(from: Clip, to: Clip): Pair<Clip, Clip>? {
@@ -106,9 +112,11 @@ class TraceOverlay {
   private fun dashes(a: FloatArray, b: FloatArray, dashPx: Float): List<Pair<FloatArray, FloatArray>> {
     val length = kotlin.math.hypot(b[0] - a[0], b[1] - a[1])
     if (length < 1f) return emptyList()
+    // A corner behind the camera is cut far off the screen: a few dashes reach the edge, thousands would stall the frame.
+    val reach = minOf(length, MAX_DASHES * dashPx * 2f)
     val pieces = ArrayList<Pair<FloatArray, FloatArray>>()
     var at = 0f
-    while (at < length) {
+    while (at < reach) {
       val end = minOf(at + dashPx, length)
       pieces.add(lerp(a, b, at / length) to lerp(a, b, end / length))
       at += dashPx * 2f

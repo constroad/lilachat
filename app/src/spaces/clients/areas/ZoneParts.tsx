@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Check, MapPin, Plus, X } from 'lucide-react-native';
 import { useColores } from '../../../ui/tema';
-import { isThicknessReading, readingTyped, tapeMeters, thicknessAverage, THICKNESS_OUT_OF_RANGE } from '@lilachat/shared';
+import { isThicknessReading, readingTyped, tapeMeters, thicknessAverage, THICKNESS_OUT_OF_RANGE, type SummaryChip } from '@lilachat/shared';
 import { SectionTitle } from '../observations/ObservationParts';
 import { freshPoint } from '../../../chat/location/freshPoint';
 import { captureEvidence, type CapturedEvidence } from '../useDriveUpload';
@@ -110,7 +110,7 @@ export function useReadings(start: readonly number[] = []) {
 }
 
 /** «Resultado»: the area and the volume, and how they were measured. */
-export function ResultCard({ line, method, hint }: { line: string; method: string; hint?: string }) {
+export function ResultCard({ line, method, hint, chips = [] }: { line: string; method: string; hint?: string; chips?: readonly SummaryChip[] }) {
   return (
     <View testID="resultado-zona" className="gap-1 rounded-2xl border border-outline/15 border-t-[3px] border-t-primary bg-surface p-4">
       <View className="flex-row items-center justify-between">
@@ -118,8 +118,23 @@ export function ResultCard({ line, method, hint }: { line: string; method: strin
         <Text className="rounded-md border border-primary/40 bg-primary/15 px-2 py-0.5 text-[11px] font-bold uppercase text-primary">Calculado</Text>
       </View>
       <Text className="text-[28px] font-extrabold text-on-surface" style={{ fontVariant: ['tabular-nums'] }}>{line}</Text>
+      {chips.length ? <SummaryChips chips={chips} /> : null}
       <Text className="self-start rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-bold uppercase text-primary">{method}</Text>
       {hint ? <Text className="text-[13px] text-on-surface-variant">{hint}</Text> : null}
+    </View>
+  );
+}
+
+/** José 15/11 («chips de resumen de m², m³, perímetro»): each figure of the zone in its own chip. */
+function SummaryChips({ chips }: { chips: readonly SummaryChip[] }) {
+  return (
+    <View testID="resumen-zona" className="flex-row flex-wrap gap-2 py-1">
+      {chips.map((chip) => (
+        <View key={chip.label} className="rounded-xl border border-outline/20 bg-surface-variant px-3 py-1.5">
+          <Text className="text-[10px] font-bold uppercase tracking-[1px] text-on-surface-variant">{chip.label}</Text>
+          <Text className="text-[15px] font-bold text-on-surface" style={{ fontVariant: ['tabular-nums'] }}>{chip.value}</Text>
+        </View>
+      ))}
     </View>
   );
 }

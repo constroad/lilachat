@@ -2,7 +2,7 @@ import { useState } from 'react';
 import * as Crypto from 'expo-crypto';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { documentTypeOf, DRIVE_DOCUMENT_MIME_TYPES, DRIVE_UPLOAD_DONE, DRIVE_VIDEO_SECONDS, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, OBSERVATION_VIDEO_SECONDS, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type EvidenceFile, type ManualPhotoUpload, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps, type AreaCreateRequest, type AreaEditRequest, type AreaRemoveRequest, stampFieldsOf, type GeoPoint, type TimemarkStampAsked } from '@lilachat/shared';
+import { documentTypeOf, DRIVE_DOCUMENT_MIME_TYPES, DRIVE_UPLOAD_DONE, DRIVE_VIDEO_SECONDS, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, OBSERVATION_VIDEO_SECONDS, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type EvidenceFile, type ManualPhotoUpload, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps, type AreaCreateRequest, type AreaEditRequest, type AreaRemoveRequest, stampFieldsOf, type GeoPoint, type ShotLabel, type TimemarkStampAsked } from '@lilachat/shared';
 import * as FileSystem from 'expo-file-system/legacy';
 import { submitAppForm } from '../../chat/commands/commandsApi';
 import { openCamera, type CapturedShot } from '../../chat/camara/cameraRequests';
@@ -179,6 +179,13 @@ export async function arShotEvidence(uri: string, point: GeoPoint | null, logo: 
   const takenAt = new Date().toISOString();
   const ready = await preparedShot({ uri, mime: 'image/jpeg', stamp: { timemark: true, point, logo, takenAt } });
   return { file: { key: Crypto.randomUUID(), ...ready }, preview: { uri: ready.source.uri, mime: ready.facts.mime } };
+}
+
+/** The AR shot with each side's meters for the server to burn (José 15/11); another photo goes as it is. */
+export function withShotLabels(evidence: CapturedEvidence, labels: readonly ShotLabel[]): CapturedEvidence {
+  const stamp = evidence.file.source.stamp;
+  if (!stamp || !labels.length) return evidence;
+  return { ...evidence, file: { ...evidence.file, source: { ...evidence.file.source, stamp: { ...stamp, labels } } } };
 }
 
 /** An observation's write from this phone: the run of the client's app, its answer, and each file straight to Portal. */

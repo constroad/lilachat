@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import * as Crypto from 'expo-crypto';
 import { AlertTriangle, CheckCircle2, RotateCcw } from 'lucide-react-native';
-import { AREA_METHOD_LABELS, areaCreateRequest, arAreaFigures, arMethodOf, arAreaOf, arProblemLine, isArWarning, isThicknessReading, readingTyped, tapeKey, tapeMeters, THICKNESS_OUT_OF_RANGE, type ArProblem, type ArSide, type AreaDocument, type TapeKey } from '@lilachat/shared';
+import { AREA_METHOD_LABELS, areaCreateRequest, arAreaFigures, arPerimeterM, arShotAreaLabel, arShotLabels, arSummaryChips, arMethodOf, arAreaOf, arProblemLine, isArWarning, isThicknessReading, readingTyped, tapeKey, tapeMeters, THICKNESS_OUT_OF_RANGE, type ArProblem, type ArSide, type AreaDocument, type TapeKey } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { BottomAction, ObservationHeader, SectionTitle } from '../observations/ObservationParts';
 import type { ObservationTarget } from '../observations/useObservations';
@@ -12,7 +12,7 @@ import { TapeKeypad } from './TapeKeypad';
 import { useAreaWrite } from './useAreas';
 import { decimals, PlaceCard, ResultCard, ThicknessCard, usePlaceText, useReveal, useZoneShot } from './ZoneParts';
 import type { ZonePlace } from './useZonePlace';
-import type { CapturedEvidence } from '../useDriveUpload';
+import { withShotLabels, type CapturedEvidence } from '../useDriveUpload';
 
 type Editing = { kind: 'side'; index: number } | { kind: 'reading' } | null;
 type Props = { to: ObservationTarget; report: AreaDocument | null; zone: number; measured: ArMeasured; evidence: CapturedEvidence | null; place: ZonePlace; onRemeasure: () => void; onBack: () => void; onSaved: (reportId: string) => void };
@@ -63,12 +63,17 @@ export function ArZoneScreen(props: Props) {
   const { result } = tape;
   // Only a real fault stops the save: no tape and a corner off the floor only warn (José 15/11).
   const fault = result.problems.find((problem) => !isArWarning(problem));
+  // The meters go on the AR's own frame only: a photo retaken with the camera has no corners (José 15/11).
+  const frameShot = shot.shot && shot.shot === props.evidence ? props.measured.shot : undefined;
+  const areaLabel = frameShot ? arShotAreaLabel(frameShot.corners, frameShot, result.areaM2) : null;
+  const labels = frameShot ? [...arShotLabels(frameShot.corners, frameShot, result.sides), ...(areaLabel ? [areaLabel] : [])] : [];
+  const chips = result.areaM2 !== null ? arSummaryChips({ areaM2: result.areaM2, volumeM3: result.volumeM3, perimeterM: arPerimeterM(result.sides), sides: result.sides.length }) : [];
   const blocker = !shot.shot ? 'Toma la foto de la zona.' : fault ? arProblemLine(fault) : null;
   const save = async () => {
     if (tape.editing || blocker || !result.canSave || !shot.shot) return;
     const gps = props.place.point ?? shot.point;
     const point = gps ? { lat: gps.lat, lng: gps.lng, precision: gps.precision } : null;
-    const reportId = await write.save(areaCreateRequest(props.report, entryId, arAreaFigures(result), point, arMethodOf(result), 'apk'), { place: placeText.value.trim(), note }, [shot.shot]);
+    const reportId = await write.save(areaCreateRequest(props.report, entryId, arAreaFigures(result), point, arMethodOf(result), 'apk'), { place: placeText.value.trim(), note }, [withShotLabels(shot.shot, labels)]);
     if (reportId) props.onSaved(reportId);
   };
   return (
@@ -81,10 +86,10 @@ export function ArZoneScreen(props: Props) {
             <TextInput testID="area-descripcion" value={note} onChangeText={setNote} placeholder="Bacheo localizado" placeholderTextColor={colors['on-surface-variant']} className="min-h-[48px] rounded-xl border border-outline/20 px-3 text-[15px] text-on-surface" />
           </View>
           <PlaceCard value={placeText.value} asking={props.place.asking} fromGps={Boolean(props.place.place) && !placeText.typed} onChange={placeText.set} />
-          <ArPlanCard points={props.measured.points} sides={result.sides} editing={tape.editing?.kind === 'side' ? tape.editing.index : null} photo={shot.shot?.preview.uri ?? null} onRetake={() => void shot.take()} />
+          <ArPlanCard points={props.measured.points} sides={result.sides} editing={tape.editing?.kind === 'side' ? tape.editing.index : null} photo={shot.shot?.preview.uri ?? null} labels={labels} onRetake={() => void shot.take()} />
           <SidesCard tape={tape} onShown={reveal.show} />
           <ThicknessCard readings={tape.readings} thicknessCm={result.thicknessCm} editing={tape.editing?.kind === 'reading'} typed={tape.typed} onAdd={() => tape.open({ kind: 'reading' })} onRemove={(index) => tape.setReadings((current) => current.filter((_, at) => at !== index))} onType={tape.type} onDone={tape.done} error={tape.readingError} />
-          {result.areaM2 !== null ? <ResultCard line={arAreaFigures(result).line} method={AREA_METHOD_LABELS[arMethodOf(result)]} /> : null}
+          {result.areaM2 !== null ? <ResultCard line={arAreaFigures(result).line} method={AREA_METHOD_LABELS[arMethodOf(result)]} chips={chips} /> : null}
           {result.problems.length ? <ProblemsCard problems={result.problems} /> : null}
           {shot.message ? <Text className="text-[13px] text-error">{shot.message}</Text> : null}
           <Pressable testID="volver-a-medir" onPress={props.onRemeasure} className="h-12 flex-row items-center justify-center gap-2"><RotateCcw size={18} color={colors.primary} /><Text className="text-[15px] font-semibold text-primary">Volver a medir con AR</Text></Pressable>

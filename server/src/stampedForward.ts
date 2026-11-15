@@ -53,7 +53,7 @@ export async function forwardStamped(input: ForwardInput, fetcher: ForwardFetch 
   if (!kind) return refuse(415, 'Solo se sellan fotos y videos.');
   const original: ChatFile = { bytes: file.buffer, mimeType: file.mimetype, fileName: file.originalname };
   const asked = stampAskedOf(body);
-  const content = (asked?.timemark ? await stampedChatMedia(original, kind, asked, chatId) : null) ?? original;
+  const content = (asked?.timemark ? await stampedChatMedia(original, kind, asked, chatId, asked.timemark?.labels ?? []) : null) ?? original;
   const form = new FormData();
   Object.entries(fields).forEach(([name, value]) => form.append(name, value));
   if (typeof body.clientUploadId === 'string') form.append('clientUploadId', body.clientUploadId.slice(0, 64));

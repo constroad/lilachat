@@ -51,6 +51,21 @@ describe('forwardStamped', () => {
     expect(data[((info.height - 2) * info.width + info.width - 4) * info.channels]!).toBeLessThan(200);
   });
 
+  it('an AR zone\'s photo carries each side\'s meters burned where the phone placed them (José 15/11)', async () => {
+    // Arrange
+    const sent: FormData[] = [];
+    const fetcher: ForwardFetch = async (_url, form) => (sent.push(form), { status: 201, json: { ok: true } });
+    const labels = JSON.stringify([{ x: 0.5, y: 0.3, text: '1 · 0,80 m' }]);
+    // Act
+    await forwardStamped({ userId: ana, body: bodyOf({ labels }), file: { buffer: await white(), mimetype: 'image/jpeg', originalname: 'zona.jpg' } }, fetcher);
+    // Assert: dark at the label's middle (480×320 → 240, 96), white above it.
+    const file = sent[0]!.get('file') as File;
+    const { data, info } = await sharp(Buffer.from(await file.arrayBuffer())).raw().toBuffer({ resolveWithObject: true });
+    const at = (x: number, y: number) => data[(y * info.width + x) * info.channels]!;
+    expect(at(205, 96)).toBeLessThan(90);
+    expect(at(240, 40)).toBeGreaterThan(240);
+  });
+
   it('refuses anything but a Portal upload ticket, and a chat the person is not in', async () => {
     // Arrange
     const fetcher: ForwardFetch = async () => ({ status: 201, json: {} });

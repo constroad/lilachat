@@ -272,3 +272,78 @@ export function visibleRuns<T extends { visible: boolean }>(points: readonly T[]
   }
   return runs.filter((run) => run.length >= 2);
 }
+
+/** A side's meters burned on the zone's photo, at its middle, as fractions (0..1) of the frame. */
+export type ShotLabel = { x: number; y: number; text: string };
+export type ShotCorner = { x: number; y: number; visible: boolean };
+export type SummaryChip = { label: string; value: string };
+
+const MAX_SHOT_LABELS = 32;
+const SHOT_TEXT = /^[\p{L}\p{N} ·,.²³]{1,24}$/u;
+const isFraction = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
+
+/**
+ * José 15/11 («no se muestra el metraje»): like his reference app, each side's FINAL meters
+ * (tape-scaled) at the middle of its two corners. A side with a corner off the frame says nothing;
+ * a ring that does not match the sides says nothing at all.
+ */
+export function arShotLabels(corners: readonly ShotCorner[] | undefined, frame: Box, sides: readonly ArSide[]): ShotLabel[] {
+  if (!corners || corners.length !== sides.length || corners.length < MIN_CORNERS || frame.width <= 0 || frame.height <= 0) return [];
+  return sides.flatMap((side, index) => {
+    const from = corners[index]!;
+    const to = next(corners, index);
+    if (!from.visible || !to.visible) return [];
+    const x = rounded((from.x + to.x) / 2 / frame.width, 4);
+    const y = rounded((from.y + to.y) / 2 / frame.height, 4);
+    return isFraction(x) && isFraction(y) ? [{ x, y, text: `${index + 1} · ${decimalLabel(side.meters, 2)} m` }] : [];
+  });
+}
+
+/** The labels as one form field (absent when there are none). */
+export const shotLabelsField = (labels: readonly ShotLabel[]): string | undefined => (labels.length ? JSON.stringify(labels.slice(0, MAX_SHOT_LABELS)) : undefined);
+
+/** Back from the form: only sane labels (fractions, short plain text), at most 32. */
+export function shotLabelsOf(field: unknown): ShotLabel[] {
+  if (typeof field !== 'string') return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(field);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  const sane = (label: unknown): label is ShotLabel => {
+    const candidate = label as Partial<ShotLabel> | null;
+    return Boolean(candidate) && isFraction(candidate?.x) && isFraction(candidate?.y) && typeof candidate?.text === 'string' && SHOT_TEXT.test(candidate.text);
+  };
+  return parsed.every(sane) ? parsed.slice(0, MAX_SHOT_LABELS).map(({ x, y, text }: ShotLabel) => ({ x, y, text })) : [];
+}
+
+export const arPerimeterM = (sides: readonly Pick<ArSide, 'meters'>[]): number => sides.reduce((sum, side) => sum + side.meters, 0);
+
+/** The zone's summary chips: area always, volume only with a thickness, perimeter and sides when known. */
+export function arSummaryChips(summary: { areaM2: number; volumeM3: number | null; perimeterM: number | null; sides: number | null }): SummaryChip[] {
+  return [
+    { label: 'Área', value: `${decimalLabel(summary.areaM2, 2)} m²` },
+    ...(summary.volumeM3 !== null ? [{ label: 'Volumen', value: `${decimalLabel(summary.volumeM3, 3)} m³` }] : []),
+    ...(summary.perimeterM ? [{ label: 'Perímetro', value: `${decimalLabel(summary.perimeterM, 2)} m` }] : []),
+    ...(summary.sides ? [{ label: 'Lados', value: String(summary.sides) }] : []),
+  ];
+}
+
+/** The AR screen's live chips: the meters traced while drawing, the area once closed. */
+export function arLiveChips(frame: { sides?: readonly number[]; live?: number | null; closed?: boolean; areaM2?: number | null }): SummaryChip[] {
+  const sides = frame.sides ?? [];
+  if (!sides.length) return [];
+  if (frame.closed && frame.areaM2) return [{ label: 'Área AR', value: `${decimalLabel(frame.areaM2, 2)} m²` }, { label: 'Lados', value: String(sides.length + 1) }];
+  const traced = sides.reduce((sum, side) => sum + side, 0) + (frame.live ?? 0);
+  return [{ label: 'Trazado', value: `${decimalLabel(traced, 2)} m` }, { label: 'Esquinas', value: String(sides.length + 1) }];
+}
+
+/** The billed area in the middle of the zone's corners; only with every corner on the frame. */
+export function arShotAreaLabel(corners: readonly ShotCorner[] | undefined, frame: Box, areaM2: number | null): ShotLabel | null {
+  if (!corners || corners.length < MIN_CORNERS || areaM2 === null || frame.width <= 0 || frame.height <= 0 || !corners.every((corner) => corner.visible)) return null;
+  const x = rounded(corners.reduce((sum, corner) => sum + corner.x, 0) / corners.length / frame.width, 4);
+  const y = rounded(corners.reduce((sum, corner) => sum + corner.y, 0) / corners.length / frame.height, 4);
+  return isFraction(x) && isFraction(y) ? { x, y, text: `${decimalLabel(areaM2, 2)} m²` } : null;
+}

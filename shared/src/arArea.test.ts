@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arAimLine, arAreaFigures, arAreaOf, arMethodOf, arLiveLabel, arPlanOf, arProblemLine, arScanProgress, closedRing, isArWarning, visibleRuns, type ArPoint } from './arArea.js';
+import { arAimLine, arAreaFigures, arAreaOf, arMethodOf, arPerimeterM, arShotLabels, arSummaryChips, arLiveChips, arShotAreaLabel, shotLabelsField, shotLabelsOf, arLiveLabel, arPlanOf, arProblemLine, arScanProgress, closedRing, isArWarning, visibleRuns, type ArPoint } from './arArea.js';
 
 /** A flat 2 m × 1,5 m rectangle on the floor (ARCore: y is up, meters). */
 const rectangle: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }, { x: 2, y: 0, z: 1.5 }, { x: 0, y: 0, z: 1.5 }];
@@ -291,5 +291,69 @@ describe('the scan and the aim (José 15/11: scan first, tap the screen, close o
   it('writes the live length in meters with a comma', () => {
     expect(arLiveLabel(1.384)).toBe('1,38 m');
     expect(arLiveLabel(null)).toBeNull();
+  });
+});
+
+describe('the photo\'s meters (José 15/11: «no se muestra el metraje», like his reference app)', () => {
+  const side = (index: number, meters: number) => ({ index, arMeters: meters, meters, source: 'escala' as const, flag: 'ok' as const });
+  const corners = [{ x: 100, y: 100, visible: true }, { x: 300, y: 100, visible: true }, { x: 300, y: 500, visible: true }, { x: 100, y: 500, visible: true }];
+
+  it('each side\'s final meters at its middle, as fractions of the frame', () => {
+    expect(arShotLabels(corners, { width: 400, height: 1000 }, [side(0, 0.8), side(1, 0.85), side(2, 0.67), side(3, 0.62)])).toEqual([
+      { x: 0.5, y: 0.1, text: '1 · 0,80 m' }, { x: 0.75, y: 0.3, text: '2 · 0,85 m' }, { x: 0.5, y: 0.5, text: '3 · 0,67 m' }, { x: 0.25, y: 0.3, text: '4 · 0,62 m' },
+    ]);
+  });
+
+  it('a side whose corner was off the frame, or a ring that does not match the sides, writes nothing', () => {
+    expect(arShotLabels([...corners.slice(0, 3), { x: 0, y: 0, visible: false }], { width: 400, height: 1000 }, [side(0, 1), side(1, 1), side(2, 1), side(3, 1)]).map((label) => label.text)).toEqual(['1 · 1,00 m', '2 · 1,00 m']);
+    expect(arShotLabels(corners.slice(0, 3), { width: 400, height: 1000 }, [side(0, 1), side(1, 1), side(2, 1), side(3, 1)])).toEqual([]);
+    expect(arShotLabels(undefined, { width: 400, height: 1000 }, [side(0, 1)])).toEqual([]);
+    expect(arShotLabels(corners, { width: 0, height: 0 }, [side(0, 1), side(1, 1), side(2, 1), side(3, 1)])).toEqual([]);
+  });
+
+  it('travels as one form field and comes back only when it is sane', () => {
+    const labels = [{ x: 0.5, y: 0.1, text: '1 · 0,80 m' }];
+    expect(shotLabelsOf(shotLabelsField(labels))).toEqual(labels);
+    expect(shotLabelsOf('[{"x":2,"y":0.1,"text":"1 · 0,80 m"}]')).toEqual([]);
+    expect(shotLabelsOf('[{"x":0.5,"y":0.1,"text":"<script>"}]')).toEqual([]);
+    expect(shotLabelsOf('nope')).toEqual([]);
+    expect(shotLabelsOf(JSON.stringify(Array.from({ length: 40 }, () => labels[0])))).toHaveLength(32);
+    expect(shotLabelsField([])).toBeUndefined();
+  });
+
+  it('the perimeter is the sum of the final sides', () => {
+    expect(arPerimeterM([side(0, 0.8), side(1, 0.85), side(2, 0.67), side(3, 0.62)])).toBeCloseTo(2.94, 5);
+  });
+
+  it('the summary chips: area, volume only with a thickness, perimeter and sides when known', () => {
+    expect(arSummaryChips({ areaM2: 0.53, volumeM3: null, perimeterM: 2.94, sides: 4 })).toEqual([
+      { label: 'Área', value: '0,53 m²' }, { label: 'Perímetro', value: '2,94 m' }, { label: 'Lados', value: '4' },
+    ]);
+    expect(arSummaryChips({ areaM2: 0.53, volumeM3: 0.027, perimeterM: null, sides: null })).toEqual([
+      { label: 'Área', value: '0,53 m²' }, { label: 'Volumen', value: '0,027 m³' },
+    ]);
+    expect(arSummaryChips({ areaM2: 0.05, volumeM3: 0, perimeterM: null, sides: null })).toContainEqual({ label: 'Volumen', value: '0,000 m³' });
+  });
+});
+
+describe('the AR\'s live chips (José 15/11: «chips de resumen», like his reference app)', () => {
+  it('while drawing: the traced meters, the side being drawn included', () => {
+    expect(arLiveChips({ sides: [0.8, 0.85], live: 0.5 })).toEqual([{ label: 'Trazado', value: '2,15 m' }, { label: 'Esquinas', value: '3' }]);
+  });
+
+  it('closed: the AR\'s area (before any tape); with fewer than two corners: nothing', () => {
+    expect(arLiveChips({ sides: [0.8, 0.85, 0.67], live: 0.62, closed: true, areaM2: 0.534 })).toEqual([{ label: 'Área AR', value: '0,53 m²' }, { label: 'Lados', value: '4' }]);
+    expect(arLiveChips({ sides: [], live: null })).toEqual([]);
+    expect(arLiveChips({ live: 1.2 })).toEqual([]);
+  });
+});
+
+describe('the photo\'s area (like the reference app, in the middle of the zone)', () => {
+  const corners = [{ x: 100, y: 100, visible: true }, { x: 300, y: 100, visible: true }, { x: 300, y: 500, visible: true }, { x: 100, y: 500, visible: true }];
+
+  it('the billed area at the corners\' middle, only with every corner on the frame', () => {
+    expect(arShotAreaLabel(corners, { width: 400, height: 1000 }, 0.534)).toEqual({ x: 0.5, y: 0.3, text: '0,53 m²' });
+    expect(arShotAreaLabel([...corners.slice(0, 3), { x: 0, y: 0, visible: false }], { width: 400, height: 1000 }, 0.534)).toBeNull();
+    expect(arShotAreaLabel(corners, { width: 400, height: 1000 }, null)).toBeNull();
   });
 });

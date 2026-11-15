@@ -51,6 +51,16 @@ const send = (file: Buffer, name: string, type: string, fields: Record<string, s
 };
 
 describe('the chat camera\'s stamp', () => {
+  it('burns no meters: only an IAA zone\'s photo carries them (audit 15/11)', async () => {
+    // Arrange
+    const white = await sharp({ create: { width: 480, height: 320, channels: 3, background: '#ffffff' } }).jpeg().toBuffer();
+    // Act
+    await send(white, 'foto.jpg', 'image/jpeg', { ...stampFields, logo: '0', labels: JSON.stringify([{ x: 0.5, y: 0.3, text: '120,00 m²' }]) }).expect(201);
+    // Assert
+    const { data, info } = await sharp(stored[0]!.bytes).raw().toBuffer({ resolveWithObject: true });
+    expect(data[(96 * info.width + 205) * info.channels]!).toBeGreaterThan(240);
+  });
+
   it('a photo comes out stamped at the bottom, the top untouched, as a JPEG', async () => {
     // Arrange
     const white = await sharp({ create: { width: 480, height: 320, channels: 3, background: '#ffffff' } }).jpeg().toBuffer();

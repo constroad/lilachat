@@ -104,3 +104,11 @@ describe('the Timemark stamp of a queued report photo', () => {
     expect(fields).toEqual({ stamp: 'timemark', logo: '0', takenAt: '2026-11-12T12:42:00.000Z' });
   });
 });
+
+describe('the AR photo\'s meters travel with its stamp (José 15/11)', () => {
+  it('the labels go as one field; none, no field', () => {
+    const labels = [{ x: 0.5, y: 0.1, text: '1 · 0,80 m' }];
+    expect(stampFieldsOf({ timemark: true, point: null, logo: false, labels })).toEqual({ stamp: 'timemark', logo: '0', labels: JSON.stringify(labels) });
+    expect(stampFieldsOf({ timemark: true, point: null, logo: false, labels: [] })).toEqual({ stamp: 'timemark', logo: '0' });
+  });
+});

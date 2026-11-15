@@ -1,5 +1,5 @@
 import mongoose, { Types, type Model } from 'mongoose';
-import { ACTION_KEY, FORM_PHOTO_MAX_BYTES, formFields, isAckBody, isDraftSubmit, photoHourLines, photoStampLines, submitChosen, timemarkOf, trueImageMime, validateFormReply, validateFormValues, type CommandOutcome, type CommandScope, type FormField, type FormValues, type GeoPoint } from '@lilachat/shared';
+import { ACTION_KEY, FORM_PHOTO_MAX_BYTES, formFields, isAckBody, isDraftSubmit, photoHourLines, photoStampLines, submitChosen, timemarkOf, trueImageMime, validateFormReply, validateFormValues, type CommandOutcome, type CommandScope, type FormField, type FormValues, type GeoPoint, type ShotLabel } from '@lilachat/shared';
 import { ChatModel, MessageModel } from '../chatModels.js';
 import { readMediaBytes, type UploadOutcome } from '../mediaClient.js';
 import { defaultMediaUploader } from '../localMediaUploader.js';
@@ -81,7 +81,7 @@ export async function openRun(userId: Types.ObjectId, scope: CommandScope, comma
 }
 
 /** A signing brings the place the form has; a camera photo only asks for the hour (José 06/11: tank and materials). */
-export type PhotoStampAsked = { location?: GeoPoint; hourOnly?: true; /** A photo of the gallery: its own date, not the upload's. */ takenAt?: Date; /** The report camera's Timemark-like stamp (José 12/11), with the space's logo when asked. */ timemark?: { logo: boolean } };
+export type PhotoStampAsked = { location?: GeoPoint; hourOnly?: true; /** A photo of the gallery: its own date, not the upload's. */ takenAt?: Date; /** The report camera's Timemark-like stamp (José 12/11), with the space's logo when asked. */ timemark?: { logo: boolean; /** An AR zone's photo: each side's meters (José 15/11). */ labels?: ShotLabel[] } };
 
 async function stampLinesOf({ location, hourOnly, takenAt }: PhotoStampAsked): Promise<readonly string[]> {
   const at = takenAt ?? new Date();
@@ -99,7 +99,7 @@ const spaceOfRun = (run: { workspaceId?: Types.ObjectId | null; chatId?: Types.O
 async function burnTimemark(bytes: Buffer, stamp: PhotoStampAsked, spaceOf: SpaceOfRun) {
   const place = stamp.location ? await placeNameOf(stamp.location) : null;
   const logo = stamp.timemark?.logo ? await spaceStampLogo(await spaceOf()) : null;
-  return stampTimemark(bytes, timemarkOf({ at: stamp.takenAt ?? new Date(), point: stamp.location ?? null, place }), logo);
+  return stampTimemark(bytes, timemarkOf({ at: stamp.takenAt ?? new Date(), point: stamp.location ?? null, place }), logo, stamp.timemark?.labels ?? []);
 }
 
 /** The server burns ITS hour into the photo (pending 94); a photo it cannot read goes as it came. */

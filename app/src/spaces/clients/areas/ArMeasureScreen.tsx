@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AppState, Pressable, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { AlertTriangle, Check, Plus, RotateCcw, Spline, Undo2, X } from 'lucide-react-native';
-import { arAimLine, arScanProgress, type ArPoint } from '@lilachat/shared';
+import { arAimLine, arLiveChips, arScanProgress, type ArPoint, type ShotCorner } from '@lilachat/shared';
 import { ArMeasureView, type ArFrame, type ArMeasureHandle } from '../../../../modules/ar-measure/src';
 import { useColores } from '../../../ui/tema';
 import { ArOverlay } from './ArOverlay';
@@ -10,7 +10,8 @@ import { ArUnavailable } from './ArUnavailable';
 import type { ZonePlace } from './useZonePlace';
 
 /** The corners, whether tracking held, and the AR's frame with the trace (`file://`) when it could be read. */
-export type ArMeasured = { points: ArPoint[]; stable: boolean; photo?: string };
+export type ArMeasured = { points: ArPoint[]; stable: boolean; photo?: string; /** Where each corner sat on that frame: each side's meters go on the photo (José 15/11). */ shot?: ShotFrame };
+export type ShotFrame = { corners: ShotCorner[]; width: number; height: number };
 type Props = { kicker: string; zone: number; reportCode: string | null; place: ZonePlace; onBack: () => void; onMeasured: (measured: ArMeasured) => void; onPhotoInstead: () => void };
 type Gate = 'asking' | 'granted' | 'denied';
 
@@ -35,7 +36,10 @@ function useCameraGate(): Gate {
 }
 
 /** The view's requests with their line when they fail («Apunta al piso», «Acércate»…). */
-function useCorners(handle: React.RefObject<ArMeasureHandle | null>, onMeasured: (measured: ArMeasured) => void) {
+/** The corners on the last frame seen when «Listo» read the shot (the frames come a few times a second). */
+const shotFrameOf = (frame: ArFrame | null): ShotFrame | undefined => (frame?.width && frame.height && frame.corners.length ? { corners: frame.corners, width: frame.width, height: frame.height } : undefined);
+
+function useCorners(handle: React.RefObject<ArMeasureHandle | null>, lastFrame: React.RefObject<ArFrame | null>, onMeasured: (measured: ArMeasured) => void) {
   const [count, setCount] = useState(0);
   const [failure, setFailure] = useState<string | null>(null);
   // Once a close starts, a second tap or «Cerrar» must not read (and photograph) the zone again (audit 15/11).
@@ -64,7 +68,9 @@ function useCorners(handle: React.RefObject<ArMeasureHandle | null>, onMeasured:
     if (reading.current) return;
     reading.current = true;
     try {
-      finish(await view.readCorners());
+      const read = await view.readCorners();
+      const shot = shotFrameOf(lastFrame.current);
+      finish(shot ? { ...read, shot } : read);
     } finally {
       reading.current = false;
     }
@@ -98,19 +104,32 @@ export function ArMeasureScreen(props: Props) {
   const [frame, setFrame] = useState<ArFrame | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const colors = useColores();
-  const corners = useCorners(handle, props.onMeasured);
+  const lastFrame = useRef<ArFrame | null>(null);
+  const corners = useCorners(handle, lastFrame, props.onMeasured);
   const NativeView = ArMeasureView;
   const blocked = gate === 'denied' ? 'no-permission' : !NativeView ? 'unsupported' : frame && ['unsupported', 'declined', 'no-permission', 'error'].includes(frame.state) ? frame.state : null;
   if (blocked) return <ArUnavailable state={blocked} kicker={props.kicker} zone={props.zone} reportCode={props.reportCode} onBack={props.onBack} onPhotoInstead={props.onPhotoInstead} />;
   return (
     <View testID="medir-ar-pantalla" className="flex-1 bg-black" onLayout={(event) => setSize(event.nativeEvent.layout)}>
-      {gate === 'granted' && NativeView ? <NativeView ref={handle} accent={colors.primary} style={{ flex: 1 }} onArFrame={(event) => setFrame(event.nativeEvent)} /> : null}
+      {gate === 'granted' && NativeView ? <NativeView ref={handle} accent={colors.primary} style={{ flex: 1 }} onArFrame={(event) => { lastFrame.current = event.nativeEvent; setFrame(event.nativeEvent); }} /> : null}
       <Pressable testID="ar-tocar" accessibilityLabel={frame?.closing ? 'Cerrar la zona' : 'Marcar esquina'} onPress={() => { if (!frame?.closed && (corners.count || arScanProgress(frame?.floorM2) >= 1)) void corners.mark(); }} style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 }} />
       <ArOverlay frame={frame} size={size} />
       {frame?.state === 'tracking' && !corners.count && arScanProgress(frame.floorM2) < 1 ? <ScanCard progress={arScanProgress(frame.floorM2)} /> : null}
       <ArTopBar kicker={props.kicker} zone={props.zone} place={props.place} frame={frame} onBack={props.onBack} />
+      {frame ? <LiveChips frame={frame} /> : null}
       {frame && !frame.stable && corners.count ? <TrackingLost onRestart={corners.restart} /> : null}
       <ArBottomBar frame={frame} count={corners.count} failure={corners.failure} onUndo={corners.undo} onMark={corners.mark} onClose={corners.close} onConfirm={corners.confirm} />
+    </View>
+  );
+}
+
+/** José 15/11 («chips de resumen»): the meters traced while drawing, the area once closed. */
+function LiveChips({ frame }: { frame: ArFrame }) {
+  const chips = arLiveChips(frame);
+  if (!chips.length) return null;
+  return (
+    <View pointerEvents="none" testID="ar-chips" className="absolute inset-x-3 top-[88px] flex-row justify-center gap-2">
+      {chips.map((chip) => <Text key={chip.label} className="rounded-full border border-white/20 bg-black/70 px-3 py-1.5 text-[13px] font-bold text-white" style={{ fontVariant: ['tabular-nums'] }}>{`${chip.label} · ${chip.value}`}</Text>)}
     </View>
   );
 }

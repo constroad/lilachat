@@ -1,6 +1,6 @@
 import { FORMS_LEVEL } from './appForms.js';
 import { describe, expect, it } from 'vitest';
-import { AREA_TYPE, areaAnswerOf, areaEditRequest, zoneRemoveAsk, areaReportDay, areaRemoveAsk, areaRemoveRequest, isRemovableArea, areaCardLines, areaCreateRequest, areaDocumentOf, areaPlaceValues, areaTotalsLine, areaWriteStore, zonePlaceLine, MEASURE_IN_APK, measureInApkLinks } from './additionalArea.js';
+import { AREA_TYPE, areaAnswerOf, areaEditRequest, zoneRemoveAsk, zoneChipsOf, areaReportDay, areaRemoveAsk, areaRemoveRequest, isRemovableArea, areaCardLines, areaCreateRequest, areaDocumentOf, areaPlaceValues, areaTotalsLine, areaWriteStore, zonePlaceLine, MEASURE_IN_APK, measureInApkLinks } from './additionalArea.js';
 import { ENLACE_DE_DESCARGA } from './invitacion.js';
 
 /** Portal's `informe_area_adicional` as agentes passes it (Portal 12/11, proposed contract). */
@@ -223,5 +223,19 @@ describe('zoneRemoveAsk (la-06: «¿Borrar la zona 1?» and what the total becom
 
   it('never a negative total from rounding', () => {
     expect(zoneRemoveAsk(1, { areaM2: 1.2, volumeM3: 0.01 }, { areaM2: 1.21, volumeM3: 0.02 }).hint).toBe('Se quita del informe. El total queda en 0,00 m².');
+  });
+});
+
+describe('a saved zone\'s chips (José 15/11: m², m³, perímetro)', () => {
+  const zone = { id: 'z1', areaM2: 4.8, method: 'medidas-iphone' as const, lat: null, lng: null, photos: [] };
+
+  it('two sides measured: their rectangle\'s perimeter and four sides', () => {
+    expect(zoneChipsOf({ ...zone, lengthM: 3.2, widthM: 1.5 }, 5)).toEqual([
+      { label: 'Área', value: '4,80 m²' }, { label: 'Volumen', value: '0,240 m³' }, { label: 'Perímetro', value: '9,40 m' }, { label: 'Lados', value: '4' },
+    ]);
+  });
+
+  it('only the area (an AR zone keeps no sides in Portal): the area alone, volume with a thickness', () => {
+    expect(zoneChipsOf({ ...zone, areaM2: 0.53, method: 'ar' }, null)).toEqual([{ label: 'Área', value: '0,53 m²' }]);
   });
 });

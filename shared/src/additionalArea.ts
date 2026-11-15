@@ -7,6 +7,7 @@ import type { ObservationSource } from './observationWrite.js';
 import { ENLACE_DE_DESCARGA } from './invitacion.js';
 import type { NearStreet } from './fieldAutofill.js';
 import { stationLabel } from './workMap.js';
+import { arSummaryChips, type SummaryChip } from './arArea.js';
 
 /**
  * The additional-area report (IAA) filled from the client's channel (José
@@ -242,4 +243,13 @@ export function zonePlaceLine(near: NearStreet | null, street: string | null): s
   if (near) return `${near.name} ${stationLabel(near.measureM)}`;
   const written = street?.trim();
   return written ? written : null;
+}
+
+/**
+ * A saved zone's chips (José 15/11). Portal keeps the two sides of a measured rectangle, so its
+ * perimeter is known; an AR zone keeps only its area, so it shows the area (and the volume).
+ */
+export function zoneChipsOf(area: AdditionalArea, thicknessCm: number | null): SummaryChip[] {
+  const rectangle = area.lengthM && area.widthM ? { perimeterM: 2 * (area.lengthM + area.widthM), sides: 4 } : { perimeterM: null, sides: null };
+  return arSummaryChips({ areaM2: area.areaM2, volumeM3: thicknessCm === null ? null : (area.areaM2 * thicknessCm) / 100, ...rectangle });
 }

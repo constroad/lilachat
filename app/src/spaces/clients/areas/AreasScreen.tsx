@@ -55,7 +55,10 @@ export function AreasScreen(props: Props) {
     const evidence = reading.photo ? await arShotEvidence(reading.photo, point, stampsLogo).catch(() => null) : null;
     // «Salir» while the photo was being prepared: the zone is not opened behind the person's back.
     if (modeNow.current !== 'ar') return;
-    setMode({ kind: 'ar-zone', measured: { ...reading, points: closedRing(reading.points) }, evidence });
+    const points = closedRing(reading.points);
+    // The ring drops a last corner set on the first: the shot's corners drop it too.
+    const shot = reading.shot && reading.shot.corners.length === reading.points.length ? { ...reading.shot, corners: reading.shot.corners.slice(0, points.length) } : undefined;
+    setMode({ kind: 'ar-zone', measured: { ...reading, points, shot }, evidence });
   };
   const startMeasure = async () => {
     pdf.stop();

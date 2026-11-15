@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import sharp from 'sharp';
 import { stampPhoto, stampTimemark } from './photoStamp.js';
 import { portalStampsIt } from './botForms.js';
+import { stampAskedOf } from './stampAsked.js';
 
 /** Pending 94: the selfie of a form carries the date, the hour and the place in its pixels. */
 describe('stampPhoto', () => {
@@ -88,6 +89,27 @@ describe('stampTimemark', () => {
       expect(without.at(...middle)).toBeGreaterThan(240);
       expect(withLogo.at(30, 24 + 48)).toBeGreaterThan(240);
     }
+  });
+});
+
+/** José 15/11 («no se muestra el metraje»): each side's meters burned at its middle, like his reference app. */
+describe('the AR photo\'s meters', () => {
+  const stamp = { hour: '07:42', date: '15/11/2026', weekday: 'domingo', address: null, coords: null };
+  const whiteOf = (width: number, height: number) => sharp({ create: { width, height, channels: 3, background: '#ffffff' } }).jpeg().toBuffer();
+
+  it('a dark pill with the meters at each label\'s place, nothing where there is none', async () => {
+    // Act
+    const stamped = await stampTimemark(await whiteOf(600, 800), stamp, null, [{ x: 0.5, y: 0.3, text: '1 · 0,80 m' }]);
+    // Assert
+    const { data, info } = await sharp(stamped.bytes).raw().toBuffer({ resolveWithObject: true });
+    const at = (x: number, y: number) => data[(y * info.width + x) * info.channels]!;
+    expect(at(260, 240)).toBeLessThan(90);
+    expect(at(300, 120)).toBeGreaterThan(240);
+  });
+
+  it('the upload\'s labels reach the stamp only when they are sane', () => {
+    expect(stampAskedOf({ stamp: 'timemark', logo: '0', labels: '[{"x":0.5,"y":0.3,"text":"1 · 0,80 m"}]' })).toMatchObject({ timemark: { logo: false, labels: [{ x: 0.5, y: 0.3, text: '1 · 0,80 m' }] } });
+    expect(stampAskedOf({ stamp: 'timemark', logo: '0', labels: '[{"x":9,"y":0.3,"text":"x"}]' })).toEqual({ timemark: { logo: false } });
   });
 });
 

@@ -1,3 +1,4 @@
+import type { ShotLabel } from './arArea.js';
 import { answerOfOutcome, type CommandGroup, type CommandOutcome, type EphemeralAnswer } from './botCommands.js';
 import type { AppForm, FormField, FormValues, GeoPoint } from './appForms.js';
 import { liveSelfieFieldOf } from './appForms.js';
@@ -204,7 +205,7 @@ export const HOUR_STAMP = 'hour';
 /** A photo of the gallery: only its date, never a place (José 07/11). */
 export type GalleryStamp = { takenAt: string };
 /** The report camera's Timemark-like stamp (José 12/11): the server burns the hour, the date, the place of the reading and, with its chip on, the space's logo. */
-export type TimemarkStampAsked = { timemark: true; point: GeoPoint | null; logo: boolean; /** A report photo the queue sends later carries the hour it was taken. */ takenAt?: string };
+export type TimemarkStampAsked = { timemark: true; point: GeoPoint | null; logo: boolean; /** A report photo the queue sends later carries the hour it was taken. */ takenAt?: string; /** An AR zone's photo: each side's meters at its middle (José 15/11). */ labels?: readonly ShotLabel[] };
 export type FormPhotoStamp = GeoPoint | typeof HOUR_STAMP | GalleryStamp | TimemarkStampAsked;
 
 /**

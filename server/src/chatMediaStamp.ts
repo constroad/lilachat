@@ -1,5 +1,5 @@
 import type { Types } from 'mongoose';
-import { timemarkOf } from '@lilachat/shared';
+import { timemarkOf, type ShotLabel } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
 import { placeNameOf } from './placeName.js';
 import { stampTimemark } from './bots/photoStamp.js';
@@ -18,7 +18,7 @@ const baseName = (fileName: string) => fileName.replace(/\.\w+$/, '');
  * chip was on. It is burned once, in the pass that compresses it; the phone sent it whole.
  * Null when it cannot be burned: the caller sends the file as it came.
  */
-export async function stampedChatMedia(file: ChatFile, kind: 'image' | 'video', asked: PhotoStampAsked, chatId: string): Promise<ChatFile | null> {
+export async function stampedChatMedia(file: ChatFile, kind: 'image' | 'video', asked: PhotoStampAsked, chatId: string, labels: readonly ShotLabel[] = []): Promise<ChatFile | null> {
   const place = asked.location ? await placeNameOf(asked.location) : null;
   const workspaceId = asked.timemark?.logo ? ((await ChatModel.findById(chatId).select('workspaceId').lean())?.workspaceId as Types.ObjectId | undefined) : undefined;
   const logo = await spaceStampLogo(workspaceId);
@@ -28,7 +28,7 @@ export async function stampedChatMedia(file: ChatFile, kind: 'image' | 'video', 
       const video = await stampVideo(file.bytes, stamp, logo);
       return video ? { bytes: video, mimeType: MP4, fileName: `${baseName(file.fileName)}.mp4` } : null;
     }
-    const photo = await stampTimemark(file.bytes, stamp, logo);
+    const photo = await stampTimemark(file.bytes, stamp, logo, labels);
     return { bytes: photo.bytes, mimeType: photo.mimeType, fileName: `${baseName(file.fileName)}.jpg` };
   } catch (error) {
     console.warn('[media] sin sello:', error instanceof Error ? error.message.slice(0, 200) : error);

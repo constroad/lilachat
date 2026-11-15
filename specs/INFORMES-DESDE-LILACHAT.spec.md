@@ -1264,8 +1264,39 @@ espacio Test, con «QA-CTLPIS — borrar»:
 >   - El server acepta `ar` y `ar-app` solo con `source: 'apk'`.
 >   - El esquema de `registrar_area_adicional` cambió: hasta que José la
 >     reapruebe en Agentes, guardar un área da 502.
+> - **Metros en la foto y chips de resumen (José 15/11 noche: «no se muestra el
+>   metraje… y chips de resumen de m², m³, perímetro»), solo JS y server (OTA):**
+>   - Al tocar «Listo», la app guarda dónde estaba cada esquina en el último
+>     cuadro del AR (`ArMeasured.shot`, fracciones del cuadro).
+>   - `arShotLabels` pone en el medio de cada lado «N · x,xx m» con la medida
+>     FINAL (la wincha gana). `arShotAreaLabel` pone el área cobrada al centro,
+>     solo si todas las esquinas se veían. Un lado con una esquina fuera del
+>     cuadro no lleva rótulo.
+>   - La foto de la pantalla los muestra encima (`PhotoLabels`). El server los
+>     quema al sellar (`labels` en el formulario, validados por `shotLabelsOf`:
+>     fracciones 0..1, texto corto, como máximo 32). La pastilla tapa el número
+>     que dibujó el AR en ese mismo punto.
+>   - Una foto vuelta a tomar con la cámara no lleva metros: no tiene esquinas.
+>   - Chips: Área, Volumen (solo con espesor), Perímetro y Lados en «Resultado»
+>     (`arSummaryChips`). Al editar una zona guardada: el área y el volumen; el
+>     perímetro solo si Portal guardó largo y ancho (`zoneChipsOf`). Una zona AR
+>     ya guardada no tiene lados en Portal: sus chips son solo el área.
+>   - En el AR, arriba: «Trazado» y «Esquinas» mientras se dibuja, y el área
+>     con los lados al cerrar (`arLiveChips`).
+>   - Las zonas ya guardadas no ganan metros en su foto: la foto ya está sellada.
+>   - Auditoría independiente (15/11): ningún rótulo ni chip muestra una cifra
+>     distinta de la cobrada. Arreglado: la cámara del chat ya no quema
+>     rótulos (solo el reenvío de la foto del IAA); el chip de volumen sale
+>     también en 0,000; el chip del AR dice «Área AR» (antes de la wincha); los
+>     rótulos de la vista previa no se salen de la foto.
+>   - Deuda: las esquinas salen del último cuadro que llegó a JS, no del de la
+>     foto. Con el teléfono quieto coinciden; para que sea exacto, `readCorners`
+>     tiene que devolver las esquinas de ESE cuadro (nativo, próximo APK).
+>   - Si Portal corrige el área de una zona AR, la foto conserva el área vieja.
 > - **Sin verificar todavía:** la cámara AR y la medida contra una wincha real,
->   en el teléfono de José (el emulador ARM no corre ARCore).
+>   en el teléfono de José (el emulador ARM no corre ARCore). Tampoco que los
+>   rótulos caigan sobre el lado en una foto real: el cuadro de las esquinas es
+>   el último que llegó antes de la foto (llegan varias veces por segundo).
 
 
 José: «vamos con la opción B, pero desde Lilachat instrúyelo qué aplicación

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Keyboard, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { CheckCircle2, Trash2, X } from 'lucide-react-native';
-import { AREA_METHOD_LABELS, areaEditRequest, zoneRemoveAsk, type AdditionalArea, type AreaDocument } from '@lilachat/shared';
+import { AREA_METHOD_LABELS, areaEditRequest, zoneChipsOf, zoneRemoveAsk, type AdditionalArea, type AreaDocument } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { BottomAction, ObservationHeader, SectionTitle } from '../observations/ObservationParts';
 import type { ObservationTarget } from '../observations/useObservations';
@@ -94,7 +94,7 @@ export function ZoneEditScreen(props: Props) {
         <View onLayout={(event) => { reveal.at.current = event.nativeEvent.layout.y; }}>
         <ThicknessCard readings={thickness.readings.readings} thicknessCm={thickness.readings.thicknessCm} editing={thickness.readings.editing} typed={thickness.readings.typed} onAdd={thickness.readings.add} onRemove={thickness.readings.remove} onType={thickness.readings.type} onDone={thickness.readings.done} error={thickness.readings.error} />
         </View>
-        <ResultCard line={resultLine(area.areaM2, thickness.thicknessCm)} method={area.method ? AREA_METHOD_LABELS[area.method] : '—'} hint="Se recalcula al cambiar el espesor" />
+        <ResultCard line={resultLine(area.areaM2, thickness.thicknessCm)} method={area.method ? AREA_METHOD_LABELS[area.method] : '—'} hint="Se recalcula al cambiar el espesor" chips={zoneChipsOf(area, thickness.thicknessCm)} />
         {!request ? <Text testID="zona-no-editable" className="text-[13px] text-on-surface-variant">{area.method === 'foto-medida' ? 'Esta zona se midió en la oficina: se corrige en el Portal.' : 'No se sabe cómo se midió esta zona: se corrige en el Portal.'}</Text> : null}
         {request ? <RemoveZone ask={zoneRemoveAsk(props.number, props.report.totals, area)} busy={write.busy} confirming={confirming} setConfirming={setConfirming} color={colors.error} onConfirm={() => write.run(() => props.onRemove(area.id))} /> : null}
         {line ? <Text testID="zona-editar-error" className="text-center text-[13px] font-semibold text-error">{line}</Text> : null}

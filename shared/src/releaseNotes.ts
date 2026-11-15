@@ -17,6 +17,17 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.184',
+    // Company spaces: the IAA zone measured with the camera's AR and the tape.
+    audience: 'spaces',
+    items: [
+      'En el informe de áreas adicionales puedes medir la zona con la cámara (AR) marcando sus esquinas en el piso.',
+      'Al menos un lado se confirma con la wincha: si el AR y la wincha no coinciden, manda la wincha.',
+      'Si la diferencia pasa del 15 %, la zona no se guarda hasta revisar ese lado.',
+      'Las lecturas de espesor van entre 1 y 50 cm.',
+    ],
+  },
+  {
     version: '0.1.183',
     // Everyone: a video call shrinks to a small window, the camera's .6x, photos waiting in the composer.
     audience: 'all',

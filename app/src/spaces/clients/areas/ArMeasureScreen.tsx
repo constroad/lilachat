@@ -69,7 +69,8 @@ function useCorners(handle: React.RefObject<ArMeasureHandle | null>, lastFrame: 
     reading.current = true;
     try {
       const read = await view.readCorners();
-      const shot = shotFrameOf(lastFrame.current);
+      // The photo's own frame (APK ≥ 0.1.188); an older APK falls back to the last frame seen.
+      const shot = read.shot ?? shotFrameOf(lastFrame.current);
       finish(shot ? { ...read, shot } : read);
     } finally {
       reading.current = false;

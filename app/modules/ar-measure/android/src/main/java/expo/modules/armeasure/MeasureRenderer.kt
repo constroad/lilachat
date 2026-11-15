@@ -175,7 +175,7 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
     if (shooting && !closed) dropCornerOnFirst()
     if (frames++ % FLOOR_DOT_EVERY == 0) floorDots = floorDotsOf(session, camera.pose)
     drawTrace(viewProjection, shooting)
-    runCommands(pending, tracking, session)
+    runCommands(pending, tracking, session, viewProjection)
     closing = isClosing()
     snapshot(camera, tracking, viewProjection, session)
   }
@@ -401,7 +401,7 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
     return FloatArray(3) { world[it] / world[3] }
   }
 
-  private fun runCommands(pending: List<Command>, tracking: Boolean, session: Session) {
+  private fun runCommands(pending: List<Command>, tracking: Boolean, session: Session, viewProjection: FloatArray) {
     for (command in pending) {
       when (command) {
         is Command.AddCorner -> addCorner(command.promise, tracking, session)
@@ -423,7 +423,7 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
           closed = false
           command.promise.resolve(corners.size)
         }
-        is Command.Read -> command.promise.resolve(reading(FrameShot.save(width, height, shotFolder)))
+        is Command.Read -> command.promise.resolve(reading(FrameShot.save(width, height, shotFolder), viewProjection))
         is Command.Clear -> {
           corners.forEach { it.anchor.detach() }
           corners.clear()
@@ -462,9 +462,14 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
     }
   }
 
-  /** The corners in meters (ARCore's world, y up) and whether they can be trusted. */
-  private fun reading(photo: File?): Map<String, Any> = compact(
+  /**
+   * The corners in meters (ARCore's world, y up) and whether they can be trusted; with the photo,
+   * where each corner sits on THAT frame (same matrix as the trace drawn on it), so each side's
+   * meters land on its side (José 15/11: «las esquinas exactas de la foto»).
+   */
+  private fun reading(photo: File?, viewProjection: FloatArray): Map<String, Any> = compact(
     "photo" to photo?.let { "file://${it.absolutePath}" },
+    "shot" to photo?.let { mapOf("corners" to corners.map { corner -> projected(viewProjection, corner.anchor.pose) }, "width" to width, "height" to height) },
     "points" to corners.map { corner -> corner.anchor.pose.let { mapOf("x" to it.tx().toDouble(), "y" to it.ty().toDouble(), "z" to it.tz().toDouble(), "floorY" to corner.floorY.toDouble()) } },
     "stable" to (stable && corners.all { it.anchor.trackingState == TrackingState.TRACKING })
   )

@@ -1289,9 +1289,10 @@ espacio Test, con «QA-CTLPIS — borrar»:
 >     rótulos (solo el reenvío de la foto del IAA); el chip de volumen sale
 >     también en 0,000; el chip del AR dice «Área AR» (antes de la wincha); los
 >     rótulos de la vista previa no se salen de la foto.
->   - Deuda: las esquinas salen del último cuadro que llegó a JS, no del de la
->     foto. Con el teléfono quieto coinciden; para que sea exacto, `readCorners`
->     tiene que devolver las esquinas de ESE cuadro (nativo, próximo APK).
+>   - Desde 0.1.188 (189), José 15/11 («saca el APK con las esquinas exactas
+>     de la foto»): `readCorners` devuelve `shot` con cada esquina proyectada
+>     con la matriz del MISMO cuadro de la foto (el del trazo). La OTA vieja
+>     usaba el último cuadro que llegó a JS; queda solo como respaldo.
 >   - Si Portal corrige el área de una zona AR, la foto conserva el área vieja.
 >   - Publicado: commit 7cd45e4, OTA 9234236d (15/11). E2E en el emulador
 >     (zona de José en TES-IAA, sin guardar): «Resultado» muestra el chip

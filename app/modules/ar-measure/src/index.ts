@@ -13,7 +13,7 @@ export type ArState = 'tracking' | 'searching' | 'installing' | 'declined' | 'un
  */
 export type ArFrame = { state: ArState; reason?: string | null; floor: boolean; distance?: number | null; aim?: ScreenPoint | null; corners: ScreenPoint[]; stable: boolean; width?: number; height?: number; floorM2?: number; closing?: boolean; closed?: boolean; areaM2?: number; live?: number | null; sides?: number[] };
 /** The corners in meters and, when it could be read, the AR's frame with the trace (`file://`). */
-export type ArReading = { points: ArPoint[]; stable: boolean; photo?: string };
+export type ArReading = { points: ArPoint[]; stable: boolean; photo?: string; /** Each corner on the photo's own frame, in its pixels. */ shot?: { corners: ScreenPoint[]; width: number; height: number } };
 export type ArAvailability = 'ready' | 'install' | 'unsupported' | 'unknown';
 
 /** The view's requests; each rejects with a code (`no-floor`, `far`, `not-tracking`, `closing`, `paused`) and a line for the person. */

@@ -248,7 +248,7 @@ function ComposerField({
     <div className="border-t border-outline/15 bg-surface px-4 py-3">
       {avisoDeMencion}
       {contexto ? <FranjaDeContexto contexto={contexto} onCancelar={cancelarContexto} /> : null}
-      {commands ? <EphemeralAnswers answers={commands.answers} onDismiss={commands.dismiss} onShare={commands.share} onOpenForm={commands.appAnswers.showForm} chatId={commands.chatId} jwt={commands.jwt} /> : null}
+      {commands ? <EphemeralAnswers answers={commands.answers} onDismiss={commands.dismiss} onShare={commands.share} onOpenForm={commands.appAnswers.showForm} onRunAnswerLine={(commandId, line) => void commands.runAnswerLine(commandId, line)} chatId={commands.chatId} jwt={commands.jwt} /> : null}
       {commands?.appAnswers.openForm ? (
         <AppFormDialog
           key={formKeyOf(commands.appAnswers.openForm)}

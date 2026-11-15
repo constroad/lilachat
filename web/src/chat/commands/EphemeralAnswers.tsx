@@ -4,9 +4,10 @@ import { answerTextShown, canCloseAll, ephemeralLabel, ephemeralSummary, openAns
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { BotCardView } from '../BotCardView';
+import { CardCommandContext } from '../botBlocks/cardCommand';
 import { LinkedText } from '../LinkedText';
 
-type Props = { answers: readonly EphemeralAnswer[]; onDismiss: (commandId: string) => void; onShare?: (commandId: string) => Promise<string | null>; onOpenForm?: (commandId: string) => void; chatId: string; jwt: string };
+type Props = { answers: readonly EphemeralAnswer[]; onDismiss: (commandId: string) => void; onShare?: (commandId: string) => Promise<string | null>; onOpenForm?: (commandId: string) => void; /** A row of an answer runs as that app's row (José 15/11). */ onRunAnswerLine?: (commandId: string, line: string) => void; chatId: string; jwt: string };
 
 /**
  * What an app answered only to me (§c-bis), like Slack's «Only visible to
@@ -84,7 +85,13 @@ function AnswerBody(props: Props & { answer: EphemeralAnswer }) {
       {answerTextShown(answer.response) ? <p className="whitespace-pre-wrap break-words text-[14px] text-on-surface"><LinkedText text={answer.response?.text ?? ''} own={false} /></p> : null}
       {answer.response?.card ? (
         <div className="mt-2">
-          <BotCardView card={{ ...answer.response.card, actions: [] }} chatId={props.chatId} seq={0} jwt={props.jwt} />
+          {props.onRunAnswerLine ? (
+            <CardCommandContext.Provider value={(line) => props.onRunAnswerLine!(answer.commandId, line)}>
+              <BotCardView card={{ ...answer.response.card, actions: [] }} chatId={props.chatId} seq={0} jwt={props.jwt} />
+            </CardCommandContext.Provider>
+          ) : (
+            <BotCardView card={{ ...answer.response.card, actions: [] }} chatId={props.chatId} seq={0} jwt={props.jwt} />
+          )}
         </div>
       ) : null}
       {/* shareable:false (R160): a debt or a salary is only for whoever asked. */}

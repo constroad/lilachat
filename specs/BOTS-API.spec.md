@@ -1006,7 +1006,11 @@ José: «si toco un distrito no muestra el detalle». Cada fila acepta `command`
   lugar al publicarla. El menú no cambia. **Quién** sigue valiendo: sin permiso sale «No tienes permiso para usar /clima aquí».
 - Solo corre la línea exacta que está en esa tarjeta, y solo si la app que la publicó sigue instalada y tiene ese comando.
   Otra línea da 404 `row_not_found`.
-- En una respuesta «Solo tú ves esto» no hay mensaje guardado: corre como escribirla.
+- En una respuesta «Solo tú ves esto» corre por `POST /api/chats/:chatId/commands/:commandId/line` con `{ line, forms }`
+  (15/11). El server la compara con la respuesta que guardó de ESA corrida y de esa persona, y corre como fila de la app:
+  aunque el comando esté apagado en ese canal. **Quién** sigue valiendo. Otra línea, otra persona o una corrida sin respuesta
+  dan 404 `row_not_found`. Antes corría como escribirla: en #admin, «Ver PDF» respondió «Hay 2 cotizaciones…» y tocar una
+  dijo «/cotizacion no es un comando de este chat».
 - Dentro de «Ver detalle», la hoja se cierra antes de correr: la respuesta sale sobre la barra.
 - La fila no responde donde la respuesta no se vería: chat secreto o canal donde esa persona no escribe.
   Tampoco en las respuestas del ⚡ del espacio, que no tienen un chat donde correr.

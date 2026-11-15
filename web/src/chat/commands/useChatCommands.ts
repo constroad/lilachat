@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { channelButtonRows, commandOf, matchCommands, parseSlashInput, quickActionRows, slashQuery, unknownCommandMessage, type CardContext, type CommandGroup, type ShortcutRow, type ShortcutValues } from '@lilachat/shared';
 import { currentSocket } from '../../useSocket';
-import { runCardCommand, runCommand, shareCommandAnswer, spaceCommands } from './commandsApi';
+import { runAnswerCommand, runCardCommand, runCommand, shareCommandAnswer, spaceCommands } from './commandsApi';
 import { useAppAnswers } from './useAppAnswers';
 import { runVisitShortcut } from '../../spaces/visits/visitShortcut';
 import { useSocketTurn } from '../../socketTurn';
@@ -119,6 +119,17 @@ export function useChatCommands(params: { jwt?: string; chatId: string; workspac
     [runIfCommand, jwt, chatId, track]
   );
 
+  /** A row of an answer only I saw (José 15/11): it runs as that app's row, not as if I typed it, so a command off here still answers. */
+  const runAnswerLine = useCallback(
+    async (commandId: string, line: string): Promise<boolean> => {
+      const parsed = parseSlashInput(line);
+      if (!jwt || !parsed) return false;
+      const source = appAnswers.answers.find((answer) => answer.commandId === commandId);
+      return track({ appName: source?.appName ?? 'La app', command: parsed.command, ...(source?.avatarUrl ? { avatarUrl: source.avatarUrl } : {}) }, () => runAnswerCommand(jwt, chatId, { commandId, line }));
+    },
+    [jwt, chatId, track, appAnswers.answers]
+  );
+
   // A manifest or the commands changed (23/10): the list already read is stale; read again if it was in use.
   const socketTurn = useSocketTurn();
   useEffect(() => {
@@ -152,7 +163,7 @@ export function useChatCommands(params: { jwt?: string; chatId: string; workspac
   const buttons = useMemo(() => channelButtonRows(groups), [groups]);
   // «Visita técnica» opens the visit's «Datos» (José 14/11); every other row is the app's.
   const runRow = (row: ShortcutRow, values?: ShortcutValues) => runVisitShortcut(row, jwt && workspaceId ? { jwt, spaceId: workspaceId, chatId } : null, track) ?? appAnswers.runAction(row, values);
-  return { runRow, enabled, suggestions, activeCommand: flat[Math.min(active, flat.length - 1)] ?? null, onType, onKey, runIfCommand, runCardLine, answers: appAnswers.answers, dismiss: appAnswers.dismiss, appAnswers, actions, buttons, loadActions: load, share: params.shareable ? share : undefined, jwt: jwt ?? '', chatId };
+  return { runRow, enabled, suggestions, activeCommand: flat[Math.min(active, flat.length - 1)] ?? null, onType, onKey, runIfCommand, runCardLine, runAnswerLine, answers: appAnswers.answers, dismiss: appAnswers.dismiss, appAnswers, actions, buttons, loadActions: load, share: params.shareable ? share : undefined, jwt: jwt ?? '', chatId };
 }
 
 /** A channel or the chat with an app also asks for its actions on open, for its ⚡ (R31/10); a person's chat asks nothing. */

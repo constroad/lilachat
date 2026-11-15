@@ -313,3 +313,40 @@ describe('a row of a card the app posted here', () => {
     await request(app).post('/api/chats/nada/card-commands').set(asJose).send({ seq: 7, line }).expect(404);
   });
 });
+
+/** José 15/11, #admin: «Ver PDF» answered «Hay 2 cotizaciones…» and tapping one said «/cotizacion no es un comando de este chat». */
+describe('a row of an answer only the asker saw', () => {
+  const line = '/clima 5/11/2026 en Ate';
+  const card: BotCard = { title: 'Clima', fields: [], blocks: [{ type: 'rows', rows: [{ label: 'Ate', value: '24°', tone: 'neutral', command: line }] }] };
+  const answered = async (extra: Record<string, unknown> = {}) => {
+    const { _id } = (await BotInstallationModel.findOne({ appId }).lean())!;
+    return String((await BotCommandRunModel.create({ installationId: _id, chatId: planta, workspaceId: spaceId, userId: jose, command: 'clima', responses: 1, answer: { card }, expiresAt: new Date(Date.now() + 60_000), ...extra }))._id);
+  };
+  const tap = (as: Who, runId: string, body: object = { line }) => request(app).post(`/api/chats/${planta}/commands/${runId}/line`).set(as).send(body);
+
+  it('runs with the command off here, like a row of a card the app posted', async () => {
+    // Arrange
+    const runId = await answered();
+    // Act
+    const answer = await tap(asJose, runId).expect(200);
+    // Assert
+    expect(answer.body).toMatchObject({ outcome: 'ephemeral' });
+    expect(JSON.parse(heard[0]!).data).toMatchObject({ command: 'clima', text: '5/11/2026 en Ate' });
+    expect(await offered(asJose, `?chat=${planta}`)).toEqual([]);
+  });
+
+  it('who may use the command still counts', async () => {
+    const runId = await answered({ userId: ana });
+    expect((await tap(asAna, runId).expect(403)).body.error).toBe('not_allowed_here');
+  });
+
+  it('a line that is not on that answer, someone else’s answer or a run without one run nothing', async () => {
+    const runId = await answered();
+    expect((await tap(asJose, runId, { line: '/clima hoy' }).expect(404)).body.message).toBe('Esa fila ya no está en la respuesta.');
+    await tap(asAna, runId).expect(404);
+    await tap(asJose, await answered({ answer: undefined })).expect(404);
+    await request(app).post(`/api/chats/${planta}/commands/nada/line`).set(asJose).send({ line }).expect(404);
+    await tap(asJose, runId, { line: 42 }).expect(404);
+    expect(heard).toEqual([]);
+  });
+});

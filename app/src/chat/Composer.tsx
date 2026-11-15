@@ -421,7 +421,7 @@ export const Composer = memo(function Composer(props: {
           }}
         />
       ) : null}
-      {props.commands ? <EphemeralAnswers answers={props.commands.answers} hidden={props.commands.suggestions.length > 0} onDismiss={props.commands.dismiss} onShare={props.commands.share} onOpenForm={props.commands.appAnswers.showForm} onRunLine={props.commands.runCardLine} chatId={props.chatId} jwt={props.jwt ?? ''} /> : null}
+      {props.commands ? <EphemeralAnswers answers={props.commands.answers} hidden={props.commands.suggestions.length > 0} onDismiss={props.commands.dismiss} onShare={props.commands.share} onOpenForm={props.commands.appAnswers.showForm} onRunLine={props.commands.runCardLine} onRunAnswerLine={(commandId, line) => void props.commands!.runAnswerLine(commandId, line)} chatId={props.chatId} jwt={props.jwt ?? ''} /> : null}
       {props.commands?.appAnswers.openForm ? (
         <AppFormSheet key={formKeyOf(props.commands.appAnswers.openForm)} answer={props.commands.appAnswers.openForm} personName={props.myName} where={props.where} onSubmit={(values) => props.commands!.appAnswers.submitForm(props.commands!.appAnswers.openForm!, values)} onUpload={(photo, stamp) => props.commands!.appAnswers.uploadPhoto(props.commands!.appAnswers.openForm!.commandId, photo, stamp)} onPlace={(point) => props.commands!.appAnswers.placeOf(props.commands!.appAnswers.openForm!.commandId, point)} onRefresh={(draft) => props.commands!.appAnswers.refreshForm(props.commands!.appAnswers.openForm!, draft)} onPreview={(draft) => props.commands!.appAnswers.previewForm(props.commands!.appAnswers.openForm!, draft)} onClose={() => props.commands!.appAnswers.dismiss(props.commands!.appAnswers.openForm!.commandId)} />
       ) : null}

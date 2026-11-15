@@ -7,7 +7,7 @@ import { UserModel } from '../models.js';
 import { crearLimiteDeIntentos } from '../limiteDeIntentos.js';
 import { asyncRoute, requireSession } from '../requireSession.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
-import { commandGroupsOf, invokeCardCommand, invokeCommand, invokeShortcut, shareCommandAnswer } from './botCommands.js';
+import { commandGroupsOf, invokeAnswerCommand, invokeCardCommand, invokeCommand, invokeShortcut, shareCommandAnswer } from './botCommands.js';
 import { openChannelServiceLink } from './clientReports.js';
 import { pointOf, stampAskedOf } from './stampAsked.js';
 import { FORM_PHOTO_MAX_BYTES, formPlace, readSignedFile, storeFormPhoto, submitForm, type PhotoStampAsked } from './botForms.js';
@@ -85,6 +85,14 @@ export function buildBotUserRouter(): Router {
     const userId = req.session!.userId;
     if (!commandTries.permitir(String(userId))) return void res.status(429).set('Retry-After', '60').json({ message: 'Más de 20 comandos por minuto. Espera un momento.' });
     const outcome = await invokeCardCommand(userId, req.params.chatId!, { seq: req.body?.seq, line: req.body?.line, forms: req.body?.forms });
+    if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+    res.json(outcome);
+  }));
+  // A row of an answer only I saw (José 15/11): it runs like a card's row, even with the command off here.
+  router.post(['/chats/:chatId/commands/:commandId/line', '/workspaces/:id/commands/:commandId/line'], requireSession, asyncRoute(async (req, res) => {
+    const userId = req.session!.userId;
+    if (!commandTries.permitir(String(userId))) return void res.status(429).set('Retry-After', '60').json({ message: 'Más de 20 comandos por minuto. Espera un momento.' });
+    const outcome = await invokeAnswerCommand(userId, scopeOf(req), req.params.commandId!, { line: req.body?.line, forms: req.body?.forms });
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.json(outcome);
   }));

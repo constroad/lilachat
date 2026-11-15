@@ -20,6 +20,7 @@ const stubCommands = (overrides: Partial<ChatCommands> = {}): ChatCommands => ({
   onKey: vi.fn(() => false),
   runIfCommand: vi.fn(async () => 'not-command' as const),
   runCardLine: vi.fn(async () => true),
+  runAnswerLine: vi.fn(async () => true),
   answers: [],
   dismiss: vi.fn(),
   appAnswers: { answers: [], placeOf: vi.fn(async () => null), track: vi.fn(), runAction: vi.fn(), uploadPhoto: vi.fn(), submitForm: vi.fn(), refreshForm: vi.fn(), previewForm: vi.fn(), dismiss: vi.fn(), removeAnswer: vi.fn(), say: vi.fn(), openForm: null, showForm: vi.fn() },
@@ -91,6 +92,18 @@ describe('EphemeralAnswers', () => {
     expect(screen.getByTestId('efimera-plegar-c1')).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByTestId('efimera-plegar-c3')).toHaveAttribute('aria-expanded', 'false');
     expect(onDismiss.mock.calls.map(([id]) => id)).toEqual(['c1', 'c2', 'c3']);
+  });
+
+  it('a row of an answer runs as that answer\'s row, not as a typed command (José 15/11, #admin)', () => {
+    // Arrange
+    const line = '/cotizacion COT-0000265';
+    const listed: EphemeralAnswer = { commandId: 'c4', appName: 'Portal', command: 'cotizacion', state: 'answered', response: { responseType: 'ephemeral', text: 'Hay 2 cotizaciones', card: { title: 'Cotizaciones', fields: [], blocks: [{ type: 'rows', rows: [{ label: 'COT-0000265', value: 'Borrador', tone: 'neutral', command: line }] }] } } };
+    const onRunAnswerLine = vi.fn();
+    render(<EphemeralAnswers answers={[listed]} onDismiss={() => undefined} onRunAnswerLine={onRunAnswerLine} chatId="c1" jwt="jwt" />);
+    // Act
+    fireEvent.click(screen.getByText('COT-0000265').closest('button')!);
+    // Assert
+    expect(onRunAnswerLine).toHaveBeenCalledWith('c4', line);
   });
 
   it('a single answer has no «Cerrar todas»', () => {

@@ -255,6 +255,26 @@ export async function invokeCardCommand(userId: Types.ObjectId, chatId: string, 
 }
 
 /**
+ * A row of an answer only the asker saw (José 15/11, #admin: a quote list
+ * answered privately, and tapping a quote said the command was not of this
+ * chat): it runs as the app's own row, like a stored card's, against the
+ * answer the server kept, never against what the phone says.
+ */
+export async function invokeAnswerCommand(userId: Types.ObjectId, scope: CommandScope, commandId: string, input: { line: unknown; forms?: unknown }): Promise<CommandOutcome | CommandError> {
+  const gone = () => fail(404, 'row_not_found', 'Esa fila ya no está en la respuesta.');
+  const line = typeof input.line === 'string' ? input.line : '';
+  const parsed = parseSlashInput(line);
+  const where = 'chatId' in scope ? { chatId: scope.chatId } : { workspaceId: scope.workspaceId };
+  if (!isId(commandId) || !isId(Object.values(where)[0]) || !parsed) return gone();
+  const run = await BotCommandRunModel.findOne({ _id: commandId, userId, ...where }).select('installationId answer').lean();
+  const card = run?.answer?.card as Parameters<typeof cardCommandsOf>[0] | undefined;
+  if (!run || !card || !cardCommandsOf(card).includes(line)) return gone();
+  const installation = await BotInstallationModel.findOne({ _id: run.installationId, revokedAt: { $exists: false } }).select('appId').lean();
+  if (!installation) return gone();
+  return invokeApp(userId, scope, String(installation.appId), { kind: 'command', ...parsed, fromCard: true }, formsLevelOf(input.forms));
+}
+
+/**
  * An action of the «+»: the app hears `shortcut.invoked` and answers like a command, usually with its form.
  * `values`: what the place it was tapped from already knows (agentes 31/10: the link of a client or an order).
  */

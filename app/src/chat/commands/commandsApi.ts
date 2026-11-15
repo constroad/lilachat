@@ -15,6 +15,10 @@ export const spaceCommands = (jwt: string, spaceId: string, place: CommandsPlace
 export const runCommand = (jwt: string, chatId: string, input: { appId: string; command: string; text: string }) =>
   jsonCall<CommandOutcome>(`${BASE_URL}/api/chats/${chatId}/commands`, jwt, { method: 'POST', body: JSON.stringify({ app_id: input.appId, command: input.command, text: input.text, forms: FORMS_LEVEL }) });
 
+/** A row of an answer only I saw (José 15/11): the server checks the line against the answer it kept. */
+export const runAnswerCommand = (jwt: string, chatId: string, input: { commandId: string; line: string }) =>
+  jsonCall<CommandOutcome>(`${BASE_URL}/api/chats/${chatId}/commands/${input.commandId}/line`, jwt, { method: 'POST', body: JSON.stringify({ line: input.line, forms: FORMS_LEVEL }) });
+
 /** A row of a stored card: the server finds its app and checks the line is on the card. */
 export const runCardCommand = (jwt: string, chatId: string, input: { seq: number; line: string }) =>
   jsonCall<CommandOutcome>(`${BASE_URL}/api/chats/${chatId}/card-commands`, jwt, { method: 'POST', body: JSON.stringify({ seq: input.seq, line: input.line, forms: FORMS_LEVEL }) });

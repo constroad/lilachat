@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppState, Pressable, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { AlertTriangle, Plus, RotateCcw, Spline, Undo2, X } from 'lucide-react-native';
+import { AlertTriangle, Check, Plus, RotateCcw, Spline, Undo2, X } from 'lucide-react-native';
 import { arAimLine, arScanProgress, type ArPoint } from '@lilachat/shared';
 import { ArMeasureView, type ArFrame, type ArMeasureHandle } from '../../../../modules/ar-measure/src';
 import { useColores } from '../../../ui/tema';
@@ -54,18 +54,20 @@ function useCorners(handle: React.RefObject<ArMeasureHandle | null>, onMeasured:
       setFailure(error instanceof Error ? error.message : 'No se pudo marcar la esquina.');
     }
   };
-  const close = () => run(async (view) => finish(await view.readCorners()));
+  // Like José's reference app: the zone closes in the AR (filled, with its area) and «Listo» confirms it.
+  const close = () => run(async (view) => { await view.closeZone(); });
+  const confirm = () => run(async (view) => finish(await view.readCorners()));
   // A tap on the first corner closes the zone (José 15/11: a 5th corner there blocked the save).
   const mark = () => run(async (view) => {
     try {
       setCount(await view.addCorner());
     } catch (error) {
       if ((error as { code?: string }).code !== 'closing') throw error;
-      finish(await view.readCorners());
+      await view.closeZone();
     }
   });
   return {
-    count, failure, close, mark,
+    count, failure, close, confirm, mark,
     undo: () => run(async (view) => setCount(await view.undoCorner())),
     restart: () => run(async (view) => setCount(await view.clearCorners())),
   };
@@ -91,12 +93,12 @@ export function ArMeasureScreen(props: Props) {
   return (
     <View testID="medir-ar-pantalla" className="flex-1 bg-black" onLayout={(event) => setSize(event.nativeEvent.layout)}>
       {gate === 'granted' && NativeView ? <NativeView ref={handle} accent={colors.primary} style={{ flex: 1 }} onArFrame={(event) => setFrame(event.nativeEvent)} /> : null}
-      <Pressable testID="ar-tocar" accessibilityLabel={frame?.closing ? 'Cerrar la zona' : 'Marcar esquina'} onPress={() => { if (corners.count || arScanProgress(frame?.floorM2) >= 1) void corners.mark(); }} style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 }} />
+      <Pressable testID="ar-tocar" accessibilityLabel={frame?.closing ? 'Cerrar la zona' : 'Marcar esquina'} onPress={() => { if (!frame?.closed && (corners.count || arScanProgress(frame?.floorM2) >= 1)) void corners.mark(); }} style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 }} />
       <ArOverlay frame={frame} size={size} />
       {frame?.state === 'tracking' && !corners.count && arScanProgress(frame.floorM2) < 1 ? <ScanCard progress={arScanProgress(frame.floorM2)} /> : null}
       <ArTopBar kicker={props.kicker} zone={props.zone} place={props.place} frame={frame} onBack={props.onBack} />
       {frame && !frame.stable && corners.count ? <TrackingLost onRestart={corners.restart} /> : null}
-      <ArBottomBar frame={frame} count={corners.count} failure={corners.failure} onUndo={corners.undo} onMark={corners.mark} onClose={corners.close} />
+      <ArBottomBar frame={frame} count={corners.count} failure={corners.failure} onUndo={corners.undo} onMark={corners.mark} onClose={corners.close} onConfirm={corners.confirm} />
     </View>
   );
 }
@@ -128,7 +130,7 @@ function ArTopBar(props: { kicker: string; zone: number; place: ZonePlace; frame
   );
 }
 
-function ArBottomBar(props: { frame: ArFrame | null; count: number; failure: string | null; onUndo: () => void; onMark: () => void; onClose: () => void }) {
+function ArBottomBar(props: { frame: ArFrame | null; count: number; failure: string | null; onUndo: () => void; onMark: () => void; onClose: () => void; onConfirm: () => void }) {
   const colors = useColores();
   const line = props.failure ?? (props.frame ? arAimLine(props.frame, props.count) : 'Abriendo la cámara…');
   const canClose = props.count >= MIN_CORNERS;
@@ -137,11 +139,18 @@ function ArBottomBar(props: { frame: ArFrame | null; count: number; failure: str
       <Text testID="guia-ar" className="self-center rounded-full bg-black/70 px-4 py-2 text-[15px] font-semibold text-white">{line}</Text>
       <View className="flex-row items-center justify-between rounded-3xl border border-white/10 bg-black/60 px-4 py-3">
         <ArButton testID="deshacer-esquina-ar" label="Deshacer" disabled={!props.count} onPress={props.onUndo} icon={<Undo2 size={22} color="white" />} />
-        <View className="items-center gap-1">
-          <Pressable testID="marcar-esquina" onPress={props.onMark} accessibilityLabel="Marcar esquina" className="h-[72px] w-[72px] items-center justify-center rounded-full bg-primary"><Plus size={34} color={colors['on-primary']} /></Pressable>
-          <Text className="text-[13px] font-semibold text-white">{`Marcar esquina · ${props.count}`}</Text>
-        </View>
-        <ArButton testID="cerrar-poligono" label="Cerrar" disabled={!canClose} onPress={props.onClose} icon={<Spline size={22} color="white" />} />
+        {props.frame?.closed ? (
+          <View className="items-center gap-1">
+            <Pressable testID="ar-listo" onPress={props.onConfirm} accessibilityLabel="Listo" className="h-[72px] w-[72px] items-center justify-center rounded-full bg-primary"><Check size={34} color={colors['on-primary']} /></Pressable>
+            <Text className="text-[13px] font-semibold text-white">Listo</Text>
+          </View>
+        ) : (
+          <View className="items-center gap-1">
+            <Pressable testID="marcar-esquina" onPress={props.onMark} accessibilityLabel="Marcar esquina" className="h-[72px] w-[72px] items-center justify-center rounded-full bg-primary"><Plus size={34} color={colors['on-primary']} /></Pressable>
+            <Text className="text-[13px] font-semibold text-white">{`Marcar esquina · ${props.count}`}</Text>
+          </View>
+        )}
+        <ArButton testID="cerrar-poligono" label="Cerrar" disabled={!canClose || Boolean(props.frame?.closed)} onPress={props.onClose} icon={<Spline size={22} color="white" />} />
       </View>
     </View>
   );

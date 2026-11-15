@@ -11,7 +11,7 @@ export type ArState = 'tracking' | 'searching' | 'installing' | 'declined' | 'un
  * floor under the center, each corner on the screen, the length of each side
  * and of the side being drawn, and whether the aim snapped to the first corner.
  */
-export type ArFrame = { state: ArState; reason?: string | null; floor: boolean; distance?: number | null; aim?: ScreenPoint | null; corners: ScreenPoint[]; stable: boolean; width?: number; height?: number; floorM2?: number; closing?: boolean; live?: number | null; sides?: number[] };
+export type ArFrame = { state: ArState; reason?: string | null; floor: boolean; distance?: number | null; aim?: ScreenPoint | null; corners: ScreenPoint[]; stable: boolean; width?: number; height?: number; floorM2?: number; closing?: boolean; closed?: boolean; areaM2?: number; live?: number | null; sides?: number[] };
 /** The corners in meters and, when it could be read, the AR's frame with the trace (`file://`). */
 export type ArReading = { points: ArPoint[]; stable: boolean; photo?: string };
 export type ArAvailability = 'ready' | 'install' | 'unsupported' | 'unknown';
@@ -22,6 +22,9 @@ export type ArMeasureHandle = {
   undoCorner(): Promise<number>;
   readCorners(): Promise<ArReading>;
   clearCorners(): Promise<number>;
+  /** Closes the zone in the AR, filled with its area (m²); «Deshacer» (`undoCorner`) opens it again. */
+  closeZone(): Promise<number>;
+  reopenZone(): Promise<number>;
 };
 
 type NativeProps = ViewProps & { ref?: Ref<ArMeasureHandle>; accent?: string; onArFrame?: (event: { nativeEvent: ArFrame }) => void };

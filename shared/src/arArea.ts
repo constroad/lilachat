@@ -213,10 +213,11 @@ export const AR_SNAP_M = 0.15;
 export const AR_SCAN_AREA_M2 = 1;
 export const arScanProgress = (floorM2: number | undefined): number => Math.min(1, Math.max(0, (floorM2 ?? 0) / AR_SCAN_AREA_M2));
 
-export type ArAimFrame = { state: string; floor: boolean; distance?: number | null; floorM2?: number; closing?: boolean };
+export type ArAimFrame = { state: string; floor: boolean; distance?: number | null; floorM2?: number; closing?: boolean; closed?: boolean };
 
 /** The guide under the reticle (la-02): scan, then tap the screen; on the first corner, close. */
 export function arAimLine(frame: ArAimFrame, corners: number): string {
+  if (frame.closed) return 'Zona cerrada: revisa el contorno y toca «Listo», o «Deshacer» para corregir.';
   if (frame.state !== 'tracking') return 'Mueve el teléfono despacio, apuntando al piso.';
   if (!corners && arScanProgress(frame.floorM2) < 1) return 'Mueve el teléfono despacio sobre el piso para escanearlo.';
   if (!frame.floor) return 'Apunta al piso hasta que el círculo se llene.';

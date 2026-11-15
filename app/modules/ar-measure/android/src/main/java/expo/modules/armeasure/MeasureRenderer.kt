@@ -13,6 +13,7 @@ import com.google.ar.core.TrackingState
 import com.google.ar.core.exceptions.CameraNotAvailableException
 import expo.modules.kotlin.Promise
 import java.io.File
+import java.util.Locale
 import java.util.concurrent.ConcurrentLinkedQueue
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -35,6 +36,12 @@ private const val STEADY_HITS = 10
 private const val STEADY_METERS = 0.04f
 /** The floor to see before the first corner: the engine's `AR_SCAN_AREA_M2`. */
 private const val SCAN_AREA_M2 = 1.0
+/** The scan's dotted floor: a dot every 25 cm, up to 4 m away, at most 500, recomputed every 15 frames. */
+private const val FLOOR_DOT_STEP = 0.25f
+private const val FLOOR_DOT_REACH = 4f
+private const val FLOOR_DOT_MAX = 500
+private const val FLOOR_DOT_EVERY = 15
+private val PERU = Locale.forLanguageTag("es-PE")
 private const val MATRIX = 16
 
 /** A request from JS, answered on the GL thread with ARCore's own frame. */
@@ -43,6 +50,9 @@ sealed class Command(val promise: Promise) {
   class Undo(promise: Promise) : Command(promise)
   class Read(promise: Promise) : Command(promise)
   class Clear(promise: Promise) : Command(promise)
+  /** Closes the zone in the AR itself, filled with its area; the person then confirms with «Listo». */
+  class Close(promise: Promise) : Command(promise)
+  class Reopen(promise: Promise) : Command(promise)
 }
 
 /** Expo's events take no nulls: an absent value is left out. */
@@ -63,8 +73,17 @@ private data class Aim(val pose: Pose, val distance: Float, val hit: com.google.
 class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFolder: File, private val density: Float, private val onSnapshot: (Map<String, Any>) -> Unit) : GLSurfaceView.Renderer {
   private val background = BackgroundQuad()
   private val trace = TraceOverlay()
+  private val labels = LabelOverlay(density)
   /** The app's accent (its theme's primary), as GL's red, green, blue and alpha. */
   @Volatile var accent = floatArrayOf(0.42f, 0.22f, 0.83f, 1f)
+  private var closed = false
+  private var floorDots: List<FloatArray> = emptyList()
+  private var frames = 0
+
+  fun setAccentColor(color: Int) {
+    accent = floatArrayOf(android.graphics.Color.red(color) / 255f, android.graphics.Color.green(color) / 255f, android.graphics.Color.blue(color) / 255f, 1f)
+    labels.accent = color
+  }
   private var smoothed: FloatArray? = null
   private val steady = ArrayDeque<FloatArray>()
   private var closing = false
@@ -105,6 +124,7 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
     GLES20.glClearColor(0f, 0f, 0f, 1f)
     background.create()
     trace.create()
+    labels.create()
     textureBound = null
   }
 
@@ -148,6 +168,7 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
     val pending = generateSequence { commands.poll() }.toList()
     val shooting = pending.any { it is Command.Read }
     if (shooting) dropCornerOnFirst()
+    if (frames++ % FLOOR_DOT_EVERY == 0) floorDots = floorDotsOf(session, camera.pose)
     drawTrace(viewProjection, shooting)
     runCommands(pending, tracking, session)
     closing = isClosing()
@@ -189,23 +210,96 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
   }
 
   private fun isClosing(): Boolean {
+    if (closed) return false
     val target = smoothed ?: return false
     return nearFirst(target[0], target[2])
   }
 
-  /** The sides, the corners and, while measuring, the dashed side growing to the reticle; the shot closes the ring. */
+  /**
+   * Like José's reference app: the floor ARCore found shows dotted while measuring; each side
+   * carries its meters on the line; the side growing to the reticle shows its meters live; a
+   * closed zone is filled with its area in the middle. All drawn in the camera's own frame.
+   */
   private fun drawTrace(viewProjection: FloatArray, shooting: Boolean) {
     val size = width to height
+    val ring = closed || shooting
+    if (!ring) trace.squares(floorDots.map { clipOf(viewProjection, it[0], it[1], it[2]) }, 1.6f * density, floatArrayOf(1f, 1f, 1f, 0.45f), size)
     val points = corners.map { clipOf(viewProjection, it.anchor.pose.tx(), it.anchor.pose.ty(), it.anchor.pose.tz()) }
+    if (ring && points.size >= MIN_CORNERS) trace.fill(points, floatArrayOf(accent[0], accent[1], accent[2], 0.28f), size)
     val sides = points.zipWithNext().toMutableList()
-    if ((shooting || closing) && points.size >= MIN_CORNERS) sides.add(points.last() to points.first())
+    if ((ring || closing) && points.size >= MIN_CORNERS) sides.add(points.last() to points.first())
     trace.lines(sides, LINE_DP * density, accent, size)
     val target = smoothed
-    if (!shooting && !closing && target != null && points.isNotEmpty()) {
-      trace.lines(listOf(points.last() to clipOf(viewProjection, target[0], target[1], target[2])), LINE_DP * density * 0.75f, floatArrayOf(1f, 1f, 1f, 0.9f), size, DASH_DP * density)
-    }
+    val live = if (!ring && !closing && target != null && points.isNotEmpty()) clipOf(viewProjection, target[0], target[1], target[2]) else null
+    if (live != null) trace.lines(listOf(points.last() to live), LINE_DP * density * 0.75f, floatArrayOf(1f, 1f, 1f, 0.9f), size, DASH_DP * density)
     trace.dots(points, DOT_DP * density, floatArrayOf(1f, 1f, 1f, 1f), size)
     trace.dots(points, (DOT_DP - 2.5f) * density, accent, size)
+    labels.draw(labelsOf(points, ring || closing, live, target, size), size)
+  }
+
+  /** «1 · 1,90 m» on each side, the growing side's meters, and the area of a closed zone. */
+  private fun labelsOf(points: List<Clip>, ring: Boolean, live: Clip?, target: FloatArray?, size: Pair<Int, Int>): List<Label> {
+    val out = ArrayList<Label>()
+    val count = if (ring && corners.size >= MIN_CORNERS) corners.size else corners.size - 1
+    for (index in 0 until count) {
+      val next = (index + 1) % corners.size
+      val middle = middleOf(points[index], points[next], size) ?: continue
+      out.add(Label("${index + 1} · ${meters(distanceBetween(corners[index].anchor.pose, corners[next].anchor.pose))}", middle[0], middle[1]))
+    }
+    val last = corners.lastOrNull()?.anchor?.pose
+    if (live != null && last != null && target != null) {
+      middleOf(points.last(), live, size)?.let { out.add(Label(meters(length(floatArrayOf(last.tx(), last.ty(), last.tz()), target)), it[0], it[1], strong = true)) }
+    }
+    if (closed && corners.size >= MIN_CORNERS) {
+      val screen = points.mapNotNull { trace.screenOf(it, size) }
+      if (screen.size == points.size) out.add(Label("${"%.2f".format(PERU, areaOf())} m²", screen.map { it[0] }.average().toFloat(), screen.map { it[1] }.average().toFloat(), strong = true))
+    }
+    return out
+  }
+
+  private fun middleOf(a: Clip, b: Clip, size: Pair<Int, Int>): FloatArray? {
+    val from = trace.screenOf(a, size) ?: return null
+    val to = trace.screenOf(b, size) ?: return null
+    return floatArrayOf((from[0] + to[0]) / 2f, (from[1] + to[1]) / 2f)
+  }
+
+  private fun meters(value: Float) = "${"%.2f".format(PERU, value)} m"
+
+  /** The zone's area on its own plane (Newell): the same formula the engine bills with. */
+  private fun areaOf(): Double {
+    var nx = 0.0
+    var ny = 0.0
+    var nz = 0.0
+    corners.forEachIndexed { index, corner ->
+      val a = corner.anchor.pose
+      val b = corners[(index + 1) % corners.size].anchor.pose
+      nx += (a.ty() - b.ty()) * (a.tz() + b.tz()).toDouble()
+      ny += (a.tz() - b.tz()) * (a.tx() + b.tx()).toDouble()
+      nz += (a.tx() - b.tx()) * (a.ty() + b.ty()).toDouble()
+    }
+    return kotlin.math.sqrt(nx * nx + ny * ny + nz * nz) / 2.0
+  }
+
+  /** Dots on the tracked floor near the camera, so the person sees what ARCore already knows. */
+  private fun floorDotsOf(session: Session, camera: Pose): List<FloatArray> {
+    if (closed) return emptyList()
+    val dots = ArrayList<FloatArray>()
+    for (plane in session.getAllTrackables(Plane::class.java)) {
+      if (plane.type != Plane.Type.HORIZONTAL_UPWARD_FACING || plane.trackingState != TrackingState.TRACKING || plane.subsumedBy != null) continue
+      val center = plane.centerPose
+      var x = -plane.extentX / 2f
+      while (x <= plane.extentX / 2f && dots.size < FLOOR_DOT_MAX) {
+        var z = -plane.extentZ / 2f
+        while (z <= plane.extentZ / 2f && dots.size < FLOOR_DOT_MAX) {
+          val world = center.transformPoint(floatArrayOf(x, 0f, z))
+          val pose = Pose.makeTranslation(world[0], world[1], world[2])
+          if (kotlin.math.hypot(world[0] - camera.tx(), world[2] - camera.tz()) < FLOOR_DOT_REACH && plane.isPoseInPolygon(pose)) dots.add(world)
+          z += FLOOR_DOT_STEP
+        }
+        x += FLOOR_DOT_STEP
+      }
+    }
+    return dots
   }
 
   private fun clipOf(viewProjection: FloatArray, x: Float, y: Float, z: Float): Clip {
@@ -232,14 +326,28 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
       when (command) {
         is Command.AddCorner -> addCorner(command.promise, tracking, session)
         is Command.Undo -> {
-          corners.removeLastOrNull()?.anchor?.detach()
+          // «Deshacer» on a closed zone opens it again; otherwise it takes the last corner off.
+          if (closed) closed = false else corners.removeLastOrNull()?.anchor?.detach()
           if (corners.isEmpty()) stable = true
+          command.promise.resolve(corners.size)
+        }
+        is Command.Close -> {
+          if (corners.size < MIN_CORNERS) command.promise.reject("few-corners", "Marca al menos tres esquinas.", null)
+          else {
+            dropCornerOnFirst()
+            closed = true
+            command.promise.resolve(areaOf())
+          }
+        }
+        is Command.Reopen -> {
+          closed = false
           command.promise.resolve(corners.size)
         }
         is Command.Read -> command.promise.resolve(reading(FrameShot.save(width, height, shotFolder)))
         is Command.Clear -> {
           corners.forEach { it.anchor.detach() }
           corners.clear()
+          closed = false
           stable = true
           command.promise.resolve(0)
         }
@@ -250,6 +358,7 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
   private fun addCorner(promise: Promise, tracking: Boolean, session: Session) {
     val target = aim
     when {
+      closed -> promise.reject("closed", "La zona ya está cerrada: toca «Listo» o deshaz para corregir.", null)
       !tracking -> promise.reject("not-tracking", "Mueve el teléfono despacio hasta que el AR reconozca el piso.", null)
       corners.isEmpty() && floorArea(session) < SCAN_AREA_M2 -> promise.reject("scanning", "Sigue escaneando el piso antes de marcar la primera esquina.", null)
       target == null -> promise.reject("no-floor", "Apunta al piso: no hay piso reconocido en el centro.", null)
@@ -282,6 +391,8 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
     onSnapshot(compact(
       "floorM2" to floorArea(session),
       "closing" to closing,
+      "closed" to closed,
+      "areaM2" to if (closed) areaOf() else null,
       "live" to if (last != null && toward != null) length(floatArrayOf(last.tx(), last.ty(), last.tz()), toward).toDouble() else null,
       "sides" to corners.zipWithNext { a, b -> distanceBetween(a.anchor.pose, b.anchor.pose).toDouble() },
       "state" to if (tracking) "tracking" else "searching",

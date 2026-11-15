@@ -66,6 +66,55 @@ class TraceOverlay {
     draw(vertices, rgba)
   }
 
+  /** Small squares on the floor ARCore found (the scan's dotted floor). */
+  fun squares(points: List<Clip>, halfPx: Float, rgba: FloatArray, size: Pair<Int, Int>) {
+    val vertices = ArrayList<Float>(points.size * 12)
+    for (point in points) {
+      if (!point.inFront) continue
+      val c = pixels(point, size)
+      val corners = listOf(floatArrayOf(c[0] - halfPx, c[1] - halfPx), floatArrayOf(c[0] + halfPx, c[1] - halfPx), floatArrayOf(c[0] - halfPx, c[1] + halfPx), floatArrayOf(c[0] + halfPx, c[1] + halfPx))
+      listOf(0, 1, 2, 2, 1, 3).forEach { index -> ndc(vertices, corners[index], size) }
+    }
+    draw(vertices, rgba)
+  }
+
+  /** The closed zone, filled: ear clipping on the screen (a floor polygon stays simple when projected). */
+  fun fill(points: List<Clip>, rgba: FloatArray, size: Pair<Int, Int>) {
+    if (points.size < 3 || points.any { !it.inFront }) return
+    val ring = points.map { pixels(it, size) }
+    val vertices = ArrayList<Float>()
+    earClip(ring).forEach { index -> ndc(vertices, ring[index], size) }
+    draw(vertices, rgba)
+  }
+
+  private fun earClip(ring: List<FloatArray>): List<Int> {
+    val signed = ring.indices.sumOf { i -> val a = ring[i]; val b = ring[(i + 1) % ring.size]; (a[0] * b[1] - b[0] * a[1]).toDouble() }
+    val left = ring.indices.toMutableList().let { if (signed < 0) it.asReversed().toMutableList() else it }
+    val out = ArrayList<Int>()
+    var guard = left.size * left.size
+    while (left.size > 3 && guard-- > 0) {
+      val ear = left.indices.firstOrNull { isEar(ring, left, it) } ?: break
+      out.addAll(listOf(left[(ear + left.size - 1) % left.size], left[ear], left[(ear + 1) % left.size]))
+      left.removeAt(ear)
+    }
+    if (left.size == 3) out.addAll(left)
+    return out
+  }
+
+  private fun isEar(ring: List<FloatArray>, left: List<Int>, at: Int): Boolean {
+    val a = ring[left[(at + left.size - 1) % left.size]]
+    val b = ring[left[at]]
+    val c = ring[left[(at + 1) % left.size]]
+    if (cross(a, b, c) <= 0f) return false
+    return left.none { index -> val p = ring[index]; p !== a && p !== b && p !== c && inside(p, a, b, c) }
+  }
+
+  private fun cross(a: FloatArray, b: FloatArray, c: FloatArray) = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+  private fun inside(p: FloatArray, a: FloatArray, b: FloatArray, c: FloatArray) = cross(a, b, p) >= 0f && cross(b, c, p) >= 0f && cross(c, a, p) >= 0f
+
+  /** A clip point on the screen in pixels, y up; null behind the camera. */
+  fun screenOf(point: Clip, size: Pair<Int, Int>): FloatArray? = if (point.inFront) pixels(point, size) else null
+
   private fun draw(vertices: List<Float>, rgba: FloatArray) {
     if (vertices.isEmpty()) return
     if (buffer.capacity() < vertices.size) buffer = allocate(vertices.size * 2)

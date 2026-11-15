@@ -271,6 +271,10 @@ describe('the scan and the aim (José 15/11: scan first, tap the screen, close o
     expect(arAimLine({ state: 'tracking', floor: true, distance: 2, floorM2: 1.2 }, 3)).toBe('Toca para marcar la esquina 4, o apunta a la 1 para cerrar');
   });
 
+  it('with the zone closed in the AR, asks to confirm or undo (José 15/11: like his reference app)', () => {
+    expect(arAimLine({ state: 'tracking', floor: false, closed: true }, 4)).toBe('Zona cerrada: revisa el contorno y toca «Listo», o «Deshacer» para corregir.');
+  });
+
   it('says it closes when the aim snapped to the first corner', () => {
     expect(arAimLine({ state: 'tracking', floor: true, distance: 2, floorM2: 2, closing: true }, 4)).toBe('Toca para cerrar la zona');
   });

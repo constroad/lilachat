@@ -40,7 +40,7 @@ class ArMeasureView(context: Context, appContext: AppContext) : ExpoView(context
   /** The theme's primary as `#rrggbb`; a value that does not parse keeps the last one. */
   fun setAccent(hex: String) {
     val color = runCatching { android.graphics.Color.parseColor(hex) }.getOrNull() ?: return
-    renderer.accent = floatArrayOf(android.graphics.Color.red(color) / 255f, android.graphics.Color.green(color) / 255f, android.graphics.Color.blue(color) / 255f, 1f)
+    renderer.setAccentColor(color)
   }
   private val surface = GLSurfaceView(context).apply {
     preserveEGLContextOnPause = true

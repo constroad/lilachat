@@ -46,6 +46,8 @@ class ArMeasureModule : Module() {
       AsyncFunction("undoCorner") { view: ArMeasureView, promise: Promise -> view.renderer.post(Command.Undo(promise)) }
       AsyncFunction("readCorners") { view: ArMeasureView, promise: Promise -> view.renderer.post(Command.Read(promise)) }
       AsyncFunction("clearCorners") { view: ArMeasureView, promise: Promise -> view.renderer.post(Command.Clear(promise)) }
+      AsyncFunction("closeZone") { view: ArMeasureView, promise: Promise -> view.renderer.post(Command.Close(promise)) }
+      AsyncFunction("reopenZone") { view: ArMeasureView, promise: Promise -> view.renderer.post(Command.Reopen(promise)) }
     }
   }
 }

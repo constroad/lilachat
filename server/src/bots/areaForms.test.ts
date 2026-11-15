@@ -29,6 +29,12 @@ describe('additional area forms (Portal 12/11, proposed contract)', () => {
     expect(ready.context).toEqual({ servicioId: SERVICE, kind: 'crear', entradaId: ENTRY, areaM2: 17.6, metodo: 'a-mano', fuente: 'apk' });
   });
 
+  it('the APK\'s AR with the tape goes as ar-app, area alone (José 15/11)', () => {
+    const ready = areaFormPrepared(SERVICE, areaFormInputOf({ kind: 'area_create', entry_id: ENTRY, area_m2: 4.81, thickness_cm: 5.2, method: 'ar-app', source: 'apk' })!);
+
+    expect(ready.context).toMatchObject({ kind: 'crear', areaM2: 4.81, espesorCm: 5.2, metodo: 'ar-app', fuente: 'apk' });
+  });
+
   it.each([
     ['an entry that is not a uuid', { entry_id: 'abc' }],
     ['an area under 0,05 m²', { area_m2: 0.04, length_m: undefined, width_m: undefined }],
@@ -37,7 +43,6 @@ describe('additional area forms (Portal 12/11, proposed contract)', () => {
     ['a side over 500 m', { length_m: 600 }],
     ['an area that is not its sides', { area_m2: 9 }],
     ['a thickness over 50 cm', { thickness_cm: 60 }],
-    ['the AR method, not built yet', { method: 'ar-app' }],
     ['Portal\'s own photo method', { method: 'foto-medida' }],
     ['half a place', { lng: undefined }],
     ['an unknown source', { source: 'desktop' }],

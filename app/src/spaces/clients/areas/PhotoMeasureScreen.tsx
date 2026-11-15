@@ -1,36 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import * as Crypto from 'expo-crypto';
-import { Camera, CheckCircle2, Plus, Undo2, X } from 'lucide-react-native';
+import { Camera, CheckCircle2, Undo2 } from 'lucide-react-native';
 import { areaCreateRequest, photoAreaFigures, photoAreaOf, tapeKey, tapeMeters, type AreaDocument, type PhotoPoint, type TapeKey } from '@lilachat/shared';
-import { freshPoint } from '../../../chat/location/freshPoint';
 import { useColores } from '../../../ui/tema';
 import { BottomAction, ObservationHeader, SectionTitle } from '../observations/ObservationParts';
-import { captureEvidence, type CapturedEvidence } from '../useDriveUpload';
 import type { ObservationTarget } from '../observations/useObservations';
 import { PhotoCorners } from './PhotoCorners';
 import { TapeKeypad } from './TapeKeypad';
+import { decimals, ResultCard, ThicknessCard, useReveal, useZoneShot } from './ZoneParts';
 import { useAreaWrite } from './useAreas';
 
 type Editing = { kind: 'side'; index: number } | { kind: 'reading' } | null;
-type GpsPoint = Awaited<ReturnType<typeof freshPoint>>;
-const decimals = (value: number, digits: number) => value.toFixed(digits).replace('.', ',');
-
-/** The photo and the GPS, read together when the screen opens (§5-ter rule 2: the camera first). */
-function useShot() {
-  const [shot, setShot] = useState<CapturedEvidence | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [point, setPoint] = useState<GpsPoint>(null);
-  const take = useCallback(async () => {
-    setMessage(null);
-    void freshPoint().then(setPoint);
-    const taken = await captureEvidence('photo', 'Foto de la zona');
-    if (taken && 'message' in taken) setMessage(taken.message);
-    else if (taken) setShot(taken);
-  }, []);
-  useEffect(() => { void take(); }, [take]);
-  return { shot, message, point, take };
-}
 
 /** What the zone is measured with: the corners on the photo, the sides with the tape and the thickness readings. */
 function useMeasure() {
@@ -60,7 +41,7 @@ export function PhotoMeasureScreen(props: { to: ObservationTarget; report: AreaD
   const colors = useColores();
   const [entryId] = useState(() => Crypto.randomUUID());
   const [note, setNote] = useState('');
-  const shot = useShot();
+  const shot = useZoneShot();
   const measure = useMeasure();
   const write = useAreaWrite(props.to);
   const reveal = useReveal();
@@ -79,8 +60,8 @@ export function PhotoMeasureScreen(props: { to: ObservationTarget; report: AreaD
         <View ref={reveal.content} collapsable={false} className="gap-3">
         <PhotoCard shot={shot} measure={measure} color={colors.primary} />
         {measure.points.length >= 3 ? <SidesCard measure={measure} onShown={reveal.show} /> : null}
-        <ThicknessCard measure={measure} color={colors.primary} onShown={reveal.show} />
-        {measure.result ? <ResultCard result={measure.result} /> : null}
+        <ThicknessCard readings={measure.readings} thicknessCm={measure.result?.thicknessCm ?? null} editing={measure.editing?.kind === 'reading'} typed={measure.typed} onAdd={() => measure.open({ kind: 'reading' })} onRemove={(index) => measure.setReadings((current) => current.filter((_, at) => at !== index))} onKey={measure.key} onDone={measure.done} onShown={reveal.show} />
+        {measure.result ? <ResultCard line={photoAreaFigures(measure.result).line} method="Foto + wincha" /> : null}
         <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
           <SectionTitle title="Descripción" side="Opcional" />
           <TextInput testID="area-descripcion" value={note} onChangeText={setNote} placeholder="Bacheo localizado" placeholderTextColor={colors['on-surface-variant']} className="min-h-[48px] rounded-xl border border-outline/20 px-3 text-[15px] text-on-surface" />
@@ -94,23 +75,7 @@ export function PhotoMeasureScreen(props: { to: ObservationTarget; report: AreaD
 }
 
 type Measure = ReturnType<typeof useMeasure>;
-const REVEAL_MARGIN = 16;
-
-/** The tape's keypad opens below the fold: the list scrolls until «Listo» shows. */
-function useReveal() {
-  const scroll = useRef<ScrollView>(null);
-  const content = useRef<View>(null);
-  const viewport = useRef(0);
-  const show = useCallback((node: View) => {
-    if (!content.current) return;
-    node.measureLayout(content.current, (_x, y, _width, height) => {
-      scroll.current?.scrollTo({ y: Math.max(0, y + height - viewport.current + REVEAL_MARGIN), animated: true });
-    }, () => undefined);
-  }, []);
-  return { scroll, content, show, onLayout: (event: { nativeEvent: { layout: { height: number } } }) => { viewport.current = event.nativeEvent.layout.height; } };
-}
-
-function PhotoCard(props: { shot: ReturnType<typeof useShot>; measure: Measure; color: string }) {
+function PhotoCard(props: { shot: ReturnType<typeof useZoneShot>; measure: Measure; color: string }) {
   const { shot, measure } = props;
   return (
     <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
@@ -145,36 +110,6 @@ function SidesCard({ measure, onShown }: { measure: Measure; onShown: (node: Vie
           </Pressable>
         );
       })}
-    </View>
-  );
-}
-
-function ThicknessCard({ measure, color, onShown }: { measure: Measure; color: string; onShown: (node: View) => void }) {
-  return (
-    <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
-      <SectionTitle title="Espesor · lecturas en cm" />
-      <View className="flex-row flex-wrap gap-2">
-        {measure.readings.map((reading, index) => (
-          <Pressable key={`${reading}-${index}`} testID={`lectura-${index}`} onPress={() => measure.setReadings((current) => current.filter((_, at) => at !== index))} accessibilityLabel={`Quitar ${reading} cm`} className="h-11 flex-row items-center gap-1.5 rounded-xl border border-outline/20 px-3">
-            <Text className="text-[15px] font-bold text-on-surface">{decimals(reading, 1)}<Text className="text-[12px] font-normal text-on-surface-variant"> cm</Text></Text>
-            <X size={14} color={color} />
-          </Pressable>
-        ))}
-        <Pressable testID="agregar-lectura" onPress={() => measure.open({ kind: 'reading' })} className="h-11 flex-row items-center gap-1 rounded-xl border border-primary/40 px-3"><Plus size={16} color={color} /><Text className="text-[14px] font-semibold text-primary">Lectura</Text></Pressable>
-      </View>
-      {measure.editing?.kind === 'reading' ? <TapeKeypad title="Lectura de espesor" unit="cm" typed={measure.typed} onKey={measure.key} onDone={measure.done} onShown={onShown} /> : null}
-      {measure.result?.thicknessCm !== null && measure.result?.thicknessCm !== undefined ? <Text className="text-[14px] text-on-surface">{`Promedio: ${decimals(measure.result.thicknessCm, 1)} cm (${measure.readings.length} ${measure.readings.length === 1 ? 'lectura' : 'lecturas'})`}</Text> : null}
-    </View>
-  );
-}
-
-function ResultCard({ result }: { result: NonNullable<Measure['result']> }) {
-  const figures = photoAreaFigures(result);
-  return (
-    <View testID="resultado-zona" className="gap-1 rounded-2xl border border-outline/15 border-t-[3px] border-t-primary bg-surface p-4">
-      <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">Resultado</Text>
-      <Text className="text-[28px] font-extrabold text-on-surface" style={{ fontVariant: ['tabular-nums'] }}>{figures.line}</Text>
-      <Text className="self-start rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-bold uppercase text-primary">Foto + wincha</Text>
     </View>
   );
 }

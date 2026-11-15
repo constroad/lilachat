@@ -2,7 +2,7 @@ import { FORMS_LEVEL } from './appForms.js';
 import type { CommandResponse } from './botCommands.js';
 import { photoUploadOf, type DriveUpload } from './driveUpload.js';
 import { formFilesWriteStore, type WriteKind } from './formFilesWrite.js';
-import { AREA_METHOD_LABELS, type AreaDraftPoint, type AreaFigures, type AreaMethod } from './areaMeasure.js';
+import { AREA_FIELD_METHODS, AREA_METHOD_LABELS, type AreaDraftPoint, type AreaFigures, type AreaMethod } from './areaMeasure.js';
 import type { ObservationSource } from './observationWrite.js';
 import { ENLACE_DE_DESCARGA } from './invitacion.js';
 
@@ -182,8 +182,7 @@ export const AREA_REMOVED = 'Área quitada.';
 export const AREA_REMOVE_FAILED = 'No se pudo quitar el área. Revisa tu señal y vuelve a intentarlo.';
 export const areaRemoveAsk = (item?: string): { title: string; hint: string } => ({ title: item ? `¿Quitar el área ${item}?` : '¿Quitar esta área?', hint: 'Sale del cuadro y sus fotos van a la papelera de Portal.' });
 /** Portal only lets the field remove what the field measured: an area measured on its photos is the office's. */
-const FIELD_METHODS: readonly AreaMethod[] = ['medidas-iphone', 'a-mano'];
-export const isRemovableArea = (area: Pick<AdditionalArea, 'method'>): boolean => area.method !== null && FIELD_METHODS.includes(area.method);
+export const isRemovableArea = (area: Pick<AdditionalArea, 'method'>): boolean => area.method !== null && AREA_FIELD_METHODS.includes(area.method);
 const AREA_WRITE: WriteKind<AreaAnswer> = { failed: AREA_WRITE_FAILED, answerOf: areaAnswerOf, who: 'El área' };
 
 /** One screen's write of an area: the area, then its photos (the Medición capture marked). */

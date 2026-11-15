@@ -1,4 +1,4 @@
-import { AREAS_OPEN_HERE, type AppForm, type AreaMethod, type FormSchema } from '@lilachat/shared';
+import { AREA_FIELD_METHODS, AREAS_OPEN_HERE, type AppForm, type AreaMethod, type FormSchema } from '@lilachat/shared';
 
 /**
  * An additional area measured from the client's channel (José 12/11, option B;
@@ -20,7 +20,6 @@ const THICKNESS_CM = { min: 1, max: 50 };
 /** The phone may round the area once more than its sides: a cent of slack. */
 const PRODUCT_SLACK_M2 = 0.01;
 /** What the field sends today: AR is for later, «Medida en foto» is Portal's own. */
-const FIELD_METHODS: readonly AreaMethod[] = ['medidas-iphone', 'a-mano'];
 
 export type AreaCreateInput = {
   kind: 'area_create'; entryId: string; lengthM: number | null; widthM: number | null; areaM2: number; thicknessCm: number | null;
@@ -74,7 +73,7 @@ export function areaFormInputOf(raw: Record<string, unknown>): AreaFormInput | n
 function areaCreateInputOf(raw: Record<string, unknown>): AreaCreateInput | null {
   const entryId = typeof raw.entry_id === 'string' && UUID.test(raw.entry_id) ? raw.entry_id : '';
   const areaM2 = inRange(raw.area_m2, AREA_M2);
-  const method = FIELD_METHODS.find((one) => one === raw.method);
+  const method = AREA_FIELD_METHODS.find((one) => one === raw.method);
   if (!entryId || areaM2 === null || !method || (raw.source !== 'apk' && raw.source !== 'web')) return null;
   const sides = sidesOf(raw, areaM2);
   const place = placeOf(raw);

@@ -136,6 +136,7 @@ describe('removing an area', () => {
     const base = { id: 'a1', areaM2: 4.8, lat: null, lng: null, photos: [] };
     expect(isRemovableArea({ ...base, method: 'medidas-iphone' })).toBe(true);
     expect(isRemovableArea({ ...base, method: 'a-mano' })).toBe(true);
+    expect(isRemovableArea({ ...base, method: 'ar-app' })).toBe(true);
     expect(isRemovableArea({ ...base, method: 'foto-medida' })).toBe(false);
     expect(isRemovableArea({ ...base, method: null })).toBe(false);
   });

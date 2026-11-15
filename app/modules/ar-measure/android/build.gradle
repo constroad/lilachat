@@ -1,0 +1,30 @@
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+apply plugin: 'maven-publish'
+
+group = 'expo.modules.armeasure'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.armeasure"
+  compileSdk 36
+  defaultConfig { minSdk 24 }
+  kotlinOptions { jvmTarget = "17" }
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+  }
+}
+
+repositories {
+  mavenCentral()
+  google()
+}
+
+dependencies {
+  implementation project(':expo-modules-core')
+  // IAA measured with AR (José 15/11, designs la-02/la-03): Google's ARCore,
+  // free; the phone gets «Google Play Services for AR» from the Play Store.
+  implementation 'com.google.ar:core:1.57.0'
+  implementation "org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}"
+}

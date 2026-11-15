@@ -5,24 +5,33 @@ import { areaCardLines, areaRemoveAsk, areaReportDay, areaTotalsLine, isRemovabl
 import { useColores } from '../../../ui/tema';
 import { BottomAction, ObservationHeader } from '../observations/ObservationParts';
 import { useBackTo, type ObservationTarget } from '../observations/useObservations';
+import { arAvailability } from '../../../../modules/ar-measure/src';
+import { ArMeasureScreen, type ArMeasured } from './ArMeasureScreen';
+import { ArZoneScreen } from './ArZoneScreen';
 import { PhotoMeasureScreen } from './PhotoMeasureScreen';
 import { useAreaRemove, useAreaReport } from './useAreas';
 
 type Props = { to: ObservationTarget; service: SpaceClientService; reportId?: string; onClose: (changed: boolean) => void };
 
 const decimals = (value: number, digits: number) => value.toFixed(digits).replace('.', ',');
+/** Where «Medir área» goes: the AR (la-02 → la-03) when the phone has it, else the photo with the tape (la-05). */
+type Mode = { kind: 'list' } | { kind: 'ar' } | { kind: 'ar-zone'; measured: ArMeasured } | { kind: 'photo' };
 
 /** Design la-01: the report, its totals (Área · Volumen · Zonas), each zone and «Medir área» (72 px). */
 export function AreasScreen(props: Props) {
   const { draft, report, reload } = useAreaReport(props.to, props.reportId ?? null);
-  const [measuring, setMeasuring] = useState(false);
+  const [mode, setMode] = useState<Mode>({ kind: 'list' });
   const [changed, setChanged] = useState(false);
   const remove = useAreaRemove(props.to, () => { setChanged(true); reload(report?.id); });
   const close = () => props.onClose(changed);
-  useBackTo(measuring ? () => setMeasuring(false) : close);
-  if (measuring) {
-    return <PhotoMeasureScreen to={props.to} report={report} zone={(report?.areas.length ?? 0) + 1} onBack={() => setMeasuring(false)} onSaved={(reportId) => { setChanged(true); setMeasuring(false); reload(reportId); }} />;
-  }
+  const toList = () => setMode({ kind: 'list' });
+  useBackTo(mode.kind === 'list' ? close : toList);
+  const zone = (report?.areas.length ?? 0) + 1;
+  const saved = (reportId: string) => { setChanged(true); toList(); reload(reportId); };
+  const startMeasure = async () => setMode({ kind: (await arAvailability()) === 'unsupported' ? 'photo' : 'ar' });
+  if (mode.kind === 'photo') return <PhotoMeasureScreen to={props.to} report={report} zone={zone} onBack={toList} onSaved={saved} />;
+  if (mode.kind === 'ar') return <ArMeasureScreen kicker={report?.code ?? 'IAA'} zone={zone} onBack={toList} onPhotoInstead={() => setMode({ kind: 'photo' })} onMeasured={(measured) => setMode({ kind: 'ar-zone', measured })} />;
+  if (mode.kind === 'ar-zone') return <ArZoneScreen to={props.to} report={report} zone={zone} measured={mode.measured} onBack={toList} onRemeasure={() => setMode({ kind: 'ar' })} onSaved={saved} />;
   return (
     <View className="flex-1 bg-background">
       <ObservationHeader kicker={report?.code ?? 'Informe de área adicional'} title="Área adicional" onBack={close} />
@@ -31,7 +40,7 @@ export function AreasScreen(props: Props) {
         {draft && !draft.ok ? <Text testID="areas-fallo" className="rounded-2xl border border-outline/15 bg-surface p-4 text-[15px] text-on-surface">{draft.message}</Text> : null}
         {report ? <ReportBody report={report} service={props.service.name} remove={remove} /> : null}
       </ScrollView>
-      <BottomAction testID="medir-area" label="Medir área" icon={<Scan size={22} color="white" />} busy={!report} onPress={() => setMeasuring(true)} />
+      <BottomAction testID="medir-area" label="Medir área" icon={<Scan size={22} color="white" />} busy={!report} onPress={() => void startMeasure()} />
     </View>
   );
 }

@@ -1,0 +1,8 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- AR is OPTIONAL: Lilachat installs on phones without ARCore, and those
+       measure the zone with the photo and the tape (la-05/la-07). -->
+  <uses-feature android:name="android.hardware.camera.ar" android:required="false" />
+  <application>
+    <meta-data android:name="com.google.ar.core" android:value="optional" />
+  </application>
+</manifest>

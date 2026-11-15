@@ -1072,9 +1072,20 @@ espacio Test, con «QA-CTLPIS — borrar»:
 > lado se mide con el teclado propio de la wincha (56 px), y un lado medido fija
 > la escala de los demás (`photoAreaOf`: escala = promedio de los lados medidos,
 > área por shoelace). El espesor se carga por lecturas (chips, promedio entre 1 y
-> 50 cm). Va a Portal como área sola (`area_m2` + `thickness_cm`, método
-> `foto-medida`, «Foto + wincha»), nunca largo × ancho, porque un polígono no lo
-> es. Falta la AR (la-02/la-03, módulo nativo de ARCore, va en un APK), editar
+> 50 cm). Va a Portal como área sola (`area_m2` + `thickness_cm`), nunca largo ×
+> ancho, porque un polígono no lo es. **Método `a-mano`** («con wincha» para
+> Portal): `foto-medida` es de Portal y lo rechaza desde un teléfono, y un método
+> nuevo (`foto-wincha`) cambiaría el esquema de `registrar_area_adicional`, lo que
+> anula su aprobación en Agentes hasta que José la reaprueba. Si José lo quiere
+> distinto en el PDF, es ese cambio más su reaprobación.
+> **El ticket de las fotos viene en `data.upload`** (el contenido estructurado de
+> Portal, como la visita técnica) y sin `maxSeconds`, porque solo lleva fotos:
+> `photoUploadOf` lo lee. Antes la zona se guardaba y la foto decía «No llegó el
+> permiso para subir el archivo» (E2E 15/11, TES-IAA en obra la molina, Test).
+> El teclado de la wincha se desplaza solo hasta que «Listo» queda a la vista, y
+> la cámara dice «Foto de la zona». **Sin verificar todavía:** la subida de la
+> foto con el arreglo (667484e). Falta el OTA, que necesita el emulador, y el
+> emulador no arranca con el disco lleno. Falta la AR (la-02/la-03, módulo nativo de ARCore, va en un APK), editar
 > una zona guardada (la-06), sin cámara (la-07) y revisar y enviar (la-08).
 
 

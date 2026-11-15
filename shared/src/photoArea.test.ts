@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { photoAreaFigures, photoAreaOf, photoPointOf, photoSideLabel, screenPointOf, tapeKey, tapeMeters, thicknessAverage, type PhotoPoint } from './photoArea.js';
+import { isThicknessReading, photoAreaFigures, photoAreaOf, photoPointOf, photoSideLabel, screenPointOf, tapeKey, tapeMeters, thicknessAverage, type PhotoPoint } from './photoArea.js';
 
 /**
  * Design la-05 (APK, no AR): the zone's photo from above, its corners touched,
@@ -93,5 +93,12 @@ describe('photoPointOf', () => {
 
   it('and back: a photo point is drawn where it was touched', () => {
     expect(screenPointOf({ x: 2000, y: 1500 }, { width: 400, height: 400 }, { width: 4000, height: 3000 })).toEqual({ x: 200, y: 200 });
+  });
+});
+
+describe('isThicknessReading', () => {
+  it('only 1 to 50 cm counts', () => {
+    expect([1, 5.2, 50].map(isThicknessReading)).toEqual([true, true, true]);
+    expect([0.5, 50.1, 500, Number.NaN].map(isThicknessReading)).toEqual([false, false, false, false]);
   });
 });

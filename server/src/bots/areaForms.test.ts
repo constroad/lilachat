@@ -29,6 +29,10 @@ describe('additional area forms (Portal 12/11, proposed contract)', () => {
     expect(ready.context).toEqual({ servicioId: SERVICE, kind: 'crear', entradaId: ENTRY, areaM2: 17.6, metodo: 'a-mano', fuente: 'apk' });
   });
 
+  it('an AR figure from the web is refused: only the APK measures with ARCore', () => {
+    expect(areaFormInputOf({ kind: 'area_create', entry_id: ENTRY, area_m2: 4.81, method: 'ar-app', source: 'web' })).toBeNull();
+  });
+
   it('the APK\'s AR with the tape goes as ar-app, area alone (José 15/11)', () => {
     const ready = areaFormPrepared(SERVICE, areaFormInputOf({ kind: 'area_create', entry_id: ENTRY, area_m2: 4.81, thickness_cm: 5.2, method: 'ar-app', source: 'apk' })!);
 

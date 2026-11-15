@@ -19,7 +19,6 @@ const AREA_M2 = { min: 0.05, max: 5000 };
 const THICKNESS_CM = { min: 1, max: 50 };
 /** The phone may round the area once more than its sides: a cent of slack. */
 const PRODUCT_SLACK_M2 = 0.01;
-/** What the field sends today: AR is for later, «Medida en foto» is Portal's own. */
 
 export type AreaCreateInput = {
   kind: 'area_create'; entryId: string; lengthM: number | null; widthM: number | null; areaM2: number; thicknessCm: number | null;
@@ -75,6 +74,8 @@ function areaCreateInputOf(raw: Record<string, unknown>): AreaCreateInput | null
   const areaM2 = inRange(raw.area_m2, AREA_M2);
   const method = AREA_FIELD_METHODS.find((one) => one === raw.method);
   if (!entryId || areaM2 === null || !method || (raw.source !== 'apk' && raw.source !== 'web')) return null;
+  // ARCore lives only in the APK: an AR figure from the web was typed, never measured (audit 15/11).
+  if (method === 'ar-app' && raw.source !== 'apk') return null;
   const sides = sidesOf(raw, areaM2);
   const place = placeOf(raw);
   const thicknessCm = raw.thickness_cm === undefined ? null : inRange(raw.thickness_cm, THICKNESS_CM);

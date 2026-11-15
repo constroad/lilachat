@@ -3,6 +3,7 @@ package expo.modules.armeasure
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.hardware.display.DisplayManager
 import android.opengl.GLSurfaceView
 import android.view.Surface
 import android.view.ViewGroup
@@ -12,6 +13,7 @@ import com.google.ar.core.Config
 import com.google.ar.core.Session
 import com.google.ar.core.exceptions.UnavailableDeviceNotCompatibleException
 import com.google.ar.core.exceptions.UnavailableException
+import com.google.ar.core.exceptions.UnavailableUserDeclinedInstallationException
 import expo.modules.kotlin.AppContext
 import expo.modules.kotlin.viewevent.EventDispatcher
 import expo.modules.kotlin.views.ExpoView
@@ -42,6 +44,17 @@ class ArMeasureView(context: Context, appContext: AppContext) : ExpoView(context
     renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
   }
 
+  /** The phone turned (90° or 180°): the camera image and the corners follow it. */
+  private val rotation = object : DisplayManager.DisplayListener {
+    override fun onDisplayAdded(displayId: Int) = Unit
+    override fun onDisplayRemoved(displayId: Int) = Unit
+    override fun onDisplayChanged(displayId: Int) {
+      renderer.displayRotation = display?.rotation ?: Surface.ROTATION_0
+      renderer.requestGeometry()
+    }
+  }
+  private val displays get() = context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+
   init {
     addView(surface, ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
   }
@@ -49,11 +62,13 @@ class ArMeasureView(context: Context, appContext: AppContext) : ExpoView(context
   override fun onAttachedToWindow() {
     super.onAttachedToWindow()
     live.add(this)
+    displays.registerDisplayListener(rotation, null)
     resumeAr()
   }
 
   override fun onDetachedFromWindow() {
     live.remove(this)
+    displays.unregisterDisplayListener(rotation)
     pauseAr()
     session?.close()
     session = null
@@ -101,6 +116,8 @@ class ArMeasureView(context: Context, appContext: AppContext) : ExpoView(context
         })
         session = created
       }
+    } catch (error: UnavailableUserDeclinedInstallationException) {
+      null.also { say("declined") }
     } catch (error: UnavailableDeviceNotCompatibleException) {
       null.also { say("unsupported") }
     } catch (error: UnavailableException) {
@@ -111,7 +128,7 @@ class ArMeasureView(context: Context, appContext: AppContext) : ExpoView(context
   }
 
   private fun say(state: String, reason: String? = null) {
-    post { onArFrame(mapOf("state" to state, "reason" to reason, "floor" to false, "corners" to emptyList<Any>(), "stable" to true)) }
+    post { onArFrame(compact("state" to state, "reason" to reason, "floor" to false, "corners" to emptyList<Any>(), "stable" to true)) }
   }
 
   companion object {

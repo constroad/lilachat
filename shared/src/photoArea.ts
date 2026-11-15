@@ -41,6 +41,10 @@ function scaleOf(points: readonly PhotoPoint[], measured: Readonly<Record<number
   return ratios.length ? ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length : null;
 }
 
+/** A thickness reading that counts: between 1 and 50 cm. One outside is refused when typed, never dropped silently (audit 15/11). */
+export const isThicknessReading = (value: number): boolean => Number.isFinite(value) && value >= THICKNESS_CM.min && value <= THICKNESS_CM.max;
+export const THICKNESS_OUT_OF_RANGE = 'La lectura de espesor va entre 1 y 50 cm.';
+
 /** The mean thickness of the readings between 1 and 50 cm, to one decimal. */
 export function thicknessAverage(readingsCm: readonly number[]): number | null {
   const valid = readingsCm.filter((reading) => reading >= THICKNESS_CM.min && reading <= THICKNESS_CM.max);

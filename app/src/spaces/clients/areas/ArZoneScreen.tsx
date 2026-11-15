@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import * as Crypto from 'expo-crypto';
 import { AlertTriangle, Camera, CheckCircle2, RotateCcw } from 'lucide-react-native';
-import { areaCreateRequest, arAreaFigures, arAreaOf, arProblemLine, tapeKey, tapeMeters, type ArSide, type AreaDocument, type TapeKey } from '@lilachat/shared';
+import { areaCreateRequest, arAreaFigures, arAreaOf, arProblemLine, isThicknessReading, tapeKey, tapeMeters, THICKNESS_OUT_OF_RANGE, type ArSide, type AreaDocument, type TapeKey } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { BottomAction, ObservationHeader, SectionTitle } from '../observations/ObservationParts';
 import type { ObservationTarget } from '../observations/useObservations';
@@ -21,15 +21,18 @@ function useTape(measured: ArMeasured) {
   const [readings, setReadings] = useState<number[]>([]);
   const [editing, setEditing] = useState<Editing>(null);
   const [typed, setTyped] = useState('');
+  const [readingError, setReadingError] = useState<string | null>(null);
   const result = useMemo(() => arAreaOf({ points: measured.points, tapes, readingsCm: readings, stable: measured.stable }), [measured, tapes, readings]);
   const open = (next: Editing) => { setEditing(next); setTyped(next?.kind === 'side' && tapes[next.index] ? String(tapes[next.index]) : ''); };
   const done = () => {
     const value = tapeMeters(typed);
+    if (editing?.kind === 'reading' && value !== null && !isThicknessReading(value)) return setReadingError(THICKNESS_OUT_OF_RANGE);
     if (editing?.kind === 'side') setTapes((current) => withTape(current, editing.index, value));
     if (editing?.kind === 'reading' && value !== null) setReadings((current) => [...current, value]);
+    setReadingError(null);
     setEditing(null);
   };
-  return { result, readings, setReadings, editing, typed, open, done, key: (pressed: TapeKey) => setTyped((current) => tapeKey(current, pressed)) };
+  return { result, readings, setReadings, editing, typed, readingError, open, done, key: (pressed: TapeKey) => setTyped((current) => tapeKey(current, pressed)) };
 }
 
 /** An empty «Listo» takes the tape off that side: the AR length goes back. */
@@ -55,9 +58,9 @@ export function ArZoneScreen(props: Props) {
   const write = useAreaWrite(props.to);
   const reveal = useReveal();
   const { result } = tape;
-  const blocker = !shot.shot ? 'Toma la foto de la zona.' : result.problems[0] ? arProblemLine(result.problems[0]) : null;
+  const blocker = tape.editing ? 'Toca «Listo» para dejar anotada la medida.' : !shot.shot ? 'Toma la foto de la zona.' : result.problems[0] ? arProblemLine(result.problems[0]) : null;
   const save = async () => {
-    if (!result.canSave || !shot.shot) return;
+    if (blocker || !result.canSave || !shot.shot) return;
     const point = shot.point ? { lat: shot.point.lat, lng: shot.point.lng, precision: shot.point.precision } : null;
     const reportId = await write.save(areaCreateRequest(props.report, entryId, arAreaFigures(result), point, 'ar-app', 'apk'), { place: '', note }, [shot.shot]);
     if (reportId) props.onSaved(reportId);
@@ -69,8 +72,8 @@ export function ArZoneScreen(props: Props) {
         <View ref={reveal.content} collapsable={false} className="gap-3">
           <ArPlanCard points={props.measured.points} sides={result.sides} editing={tape.editing?.kind === 'side' ? tape.editing.index : null} />
           <SidesCard tape={tape} onShown={reveal.show} />
-          <ThicknessCard readings={tape.readings} thicknessCm={result.thicknessCm} editing={tape.editing?.kind === 'reading'} typed={tape.typed} onAdd={() => tape.open({ kind: 'reading' })} onRemove={(index) => tape.setReadings((current) => current.filter((_, at) => at !== index))} onKey={tape.key} onDone={tape.done} onShown={reveal.show} />
-          {result.areaM2 !== null ? <ResultCard line={arAreaFigures(result).line} method="AR + wincha" /> : null}
+          <ThicknessCard readings={tape.readings} thicknessCm={result.thicknessCm} editing={tape.editing?.kind === 'reading'} typed={tape.typed} onAdd={() => tape.open({ kind: 'reading' })} onRemove={(index) => tape.setReadings((current) => current.filter((_, at) => at !== index))} onKey={tape.key} onDone={tape.done} onShown={reveal.show} error={tape.readingError} />
+          {result.areaM2 !== null && !result.problems.includes('no-tape') ? <ResultCard line={arAreaFigures(result).line} method="AR + wincha" /> : null}
           {result.problems.length ? <ProblemsCard lines={result.problems.map(arProblemLine)} /> : null}
           <ShotCard shot={shot} color={colors.primary} />
           <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">

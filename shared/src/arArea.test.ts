@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arAimLine, arAreaFigures, arAreaOf, arPlanOf, arProblemLine, type ArPoint } from './arArea.js';
+import { arAimLine, arAreaFigures, arAreaOf, arPlanOf, arProblemLine, visibleRuns, type ArPoint } from './arArea.js';
 
 /** A flat 2 m × 1,5 m rectangle on the floor (ARCore: y is up, meters). */
 const rectangle: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }, { x: 2, y: 0, z: 1.5 }, { x: 0, y: 0, z: 1.5 }];
@@ -83,6 +83,19 @@ describe('arAreaOf: the tape against the AR (José 15/11: 3 % warns, 15 % blocks
     expect(result.canSave).toBe(false);
   });
 
+  it('the scale weighs each taped side by its length: a short side cannot swing the whole zone', () => {
+    const square: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 5, y: 0, z: 0 }, { x: 5, y: 0, z: 0.5 }, { x: 0, y: 0, z: 0.5 }];
+    const result = arAreaOf({ ...base, points: square, tapes: { 0: 5, 1: 0.55 } });
+    expect(result.areaM2).toBe(Math.round(2.5 * (5.55 / 5.5) ** 2 * 100) / 100);
+  });
+
+  it('two taped sides that disagree with each other by more than 15 % do not save', () => {
+    const square: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 5, y: 0, z: 0 }, { x: 5, y: 0, z: 5 }, { x: 0, y: 0, z: 5 }];
+    const result = arAreaOf({ ...base, points: square, tapes: { 0: 5.7, 1: 4.4 } });
+    expect(result.problems).toContain('tape-mismatch');
+    expect(result.canSave).toBe(false);
+  });
+
   it('two taped sides: the scale is their mean, each keeps its own tape', () => {
     const result = arAreaOf({ ...base, tapes: { 0: 2.08, 1: 1.56 } });
 
@@ -122,6 +135,18 @@ describe('arAreaOf: what never saves', () => {
     expect(arAreaOf({ ...base, points: twice, tapes: { 1: 1.97 } }).problems).toContain('short-side');
   });
 
+  it('a corner on a non-neighbor side, or a spike that comes back, never saves', () => {
+    const onSide: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 5, y: 0, z: 0 }, { x: 5, y: 0, z: 5 }, { x: 2.5, y: 0, z: 0.02 }];
+    const spike: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 4, y: 0, z: 0 }, { x: 4, y: 0, z: 3 }, { x: 6, y: 0, z: 3.05 }, { x: 4.2, y: 0, z: 3 }, { x: 0, y: 0, z: 3 }];
+    expect(arAreaOf({ ...base, points: onSide, tapes: { 0: 5 } }).problems).toContain('degenerate');
+    expect(arAreaOf({ ...base, points: spike, tapes: { 0: 4 } }).problems).toContain('degenerate');
+  });
+
+  it('a corner that landed on another level (a curb top, a car roof), even in a triangle', () => {
+    const triangle: ArPoint[] = [{ x: 0, y: 0, z: 0, floorY: 0 }, { x: 4, y: 0, z: 0, floorY: 0 }, { x: 0, y: 0.16, z: 4, floorY: 0.16 }];
+    expect(arAreaOf({ ...base, points: triangle, tapes: { 0: 4 } }).problems).toContain('off-plane');
+  });
+
   it('a corner off the floor (on a wall, a curb, a car)', () => {
     const lifted = rectangle.map((point, index) => (index === 2 ? { ...point, y: 0.25 } : point));
     expect(arAreaOf({ ...base, points: lifted, tapes: { 0: 2 } }).problems).toContain('off-plane');
@@ -153,7 +178,7 @@ describe('arAreaFigures and the lines', () => {
   });
 
   it('every problem has a line for the person', () => {
-    for (const problem of ['few-corners', 'short-side', 'crossed', 'off-plane', 'tracking-lost', 'too-small', 'too-large', 'no-tape', 'tape-mismatch'] as const) {
+    for (const problem of ['few-corners', 'short-side', 'crossed', 'degenerate', 'off-plane', 'tracking-lost', 'too-small', 'too-large', 'no-tape', 'tape-mismatch'] as const) {
       expect(arProblemLine(problem).length).toBeGreaterThan(10);
     }
   });
@@ -186,5 +211,23 @@ describe('arAimLine: what la-02 tells the person', () => {
     expect(arAimLine({ state: 'tracking', floor: true, distance: 7.5 }, 1)).toMatch(/Acércate/);
     expect(arAimLine({ state: 'tracking', floor: true, distance: 2 }, 0)).toBe('Apunta a la esquina 1');
     expect(arAimLine({ state: 'tracking', floor: true, distance: 2 }, 3)).toBe('Apunta a la esquina 4 o toca «Cerrar»');
+  });
+});
+
+describe('visibleRuns', () => {
+  const at = (x: number, visible = true) => ({ x, y: 0, visible });
+
+  it('draws every side when all the corners are on screen', () => {
+    expect(visibleRuns([at(1), at(2), at(3)])).toEqual([[at(1), at(2), at(3)]]);
+  });
+
+  it('splits the sides at a corner behind the camera and drops a lone corner', () => {
+    expect(visibleRuns([at(1), at(2), at(0, false), at(4), at(5, false), at(6)])).toEqual([[at(1), at(2)]]);
+    expect(visibleRuns([at(1), at(0, false), at(3), at(4)])).toEqual([[at(3), at(4)]]);
+  });
+
+  it('draws nothing with fewer than two visible corners', () => {
+    expect(visibleRuns([])).toEqual([]);
+    expect(visibleRuns([at(1), at(0, false)])).toEqual([]);
   });
 });

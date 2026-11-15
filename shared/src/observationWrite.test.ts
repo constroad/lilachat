@@ -126,6 +126,17 @@ describe('observationWriteStore', () => {
     expect(store.get().busy).toBe(false);
   });
 
+  it('a second tap while the first write runs sends nothing (one record, not two)', async () => {
+    const { fake } = deps([answered(PORTAL), answered(PORTAL)], [201, 201]);
+    const store = observationWriteStore();
+
+    const [first, second] = await Promise.all([store.run(fake, 'x', [photo], 'registrada'), store.run(fake, 'x', [photo], 'registrada')]);
+
+    expect(first).toBe('r1');
+    expect(second).toBeNull();
+    expect(fake.open).toHaveBeenCalledTimes(1);
+  });
+
   it('without a GPS fix nothing is sent, and a file that failed keeps the screen open', async () => {
     const store = observationWriteStore();
     expect(await store.run(null, 'x', [photo], 'registrada')).toBeNull();

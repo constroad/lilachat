@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Linking, Pressable, Text, View } from 'react-native';
+import { AppState, Linking, Pressable, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { CameraOff, Plus, Spline, Undo2, X } from 'lucide-react-native';
+import { AlertTriangle, CameraOff, Plus, RotateCcw, Spline, Undo2, X } from 'lucide-react-native';
 import { arAimLine, type ArPoint } from '@lilachat/shared';
 import { ArMeasureView, type ArFrame, type ArMeasureHandle } from '../../../../modules/ar-measure/src';
 import { useColores } from '../../../ui/tema';
@@ -13,13 +13,20 @@ type Gate = 'asking' | 'granted' | 'denied';
 
 const MIN_CORNERS = 3;
 
-/** The camera permission before the AR opens: without it ARCore cannot start (la-07, state 1). */
+/**
+ * The camera permission before the AR opens: without it ARCore cannot start
+ * (la-07, state 1). Coming back from the phone's settings reads it again.
+ */
 function useCameraGate(): Gate {
   const [gate, setGate] = useState<Gate>('asking');
   useEffect(() => {
     let alive = true;
-    void ImagePicker.requestCameraPermissionsAsync().then((answer) => { if (alive) setGate(answer.granted ? 'granted' : 'denied'); });
-    return () => { alive = false; };
+    const answer = (granted: boolean) => { if (alive) setGate(granted ? 'granted' : 'denied'); };
+    void ImagePicker.requestCameraPermissionsAsync().then((permission) => answer(permission.granted));
+    const back = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void ImagePicker.getCameraPermissionsAsync().then((permission) => answer(permission.granted));
+    });
+    return () => { alive = false; back.remove(); };
   }, []);
   return gate;
 }
@@ -41,6 +48,7 @@ function useCorners(handle: React.RefObject<ArMeasureHandle | null>, onMeasured:
     count, failure,
     mark: () => run(async (view) => setCount(await view.addCorner())),
     undo: () => run(async (view) => setCount(await view.undoCorner())),
+    restart: () => run(async (view) => setCount(await view.clearCorners())),
     close: () => run(async (view) => onMeasured(await view.readCorners())),
   };
 }
@@ -57,13 +65,14 @@ export function ArMeasureScreen(props: Props) {
   const [size, setSize] = useState({ width: 0, height: 0 });
   const corners = useCorners(handle, props.onMeasured);
   const NativeView = ArMeasureView;
-  const blocked = gate === 'denied' ? 'no-permission' : !NativeView ? 'unsupported' : frame && ['unsupported', 'no-permission', 'error'].includes(frame.state) ? frame.state : null;
+  const blocked = gate === 'denied' ? 'no-permission' : !NativeView ? 'unsupported' : frame && ['unsupported', 'declined', 'no-permission', 'error'].includes(frame.state) ? frame.state : null;
   if (blocked) return <ArUnavailable state={blocked} onBack={props.onBack} onPhotoInstead={props.onPhotoInstead} />;
   return (
     <View testID="medir-ar-pantalla" className="flex-1 bg-black" onLayout={(event) => setSize(event.nativeEvent.layout)}>
       {gate === 'granted' && NativeView ? <NativeView ref={handle} style={{ flex: 1 }} onArFrame={(event) => setFrame(event.nativeEvent)} /> : null}
       <ArOverlay frame={frame} size={size} />
       <ArTopBar kicker={props.kicker} zone={props.zone} frame={frame} onBack={props.onBack} />
+      {frame && !frame.stable && corners.count ? <TrackingLost onRestart={corners.restart} /> : null}
       <ArBottomBar frame={frame} count={corners.count} failure={corners.failure} onUndo={corners.undo} onMark={corners.mark} onClose={corners.close} />
     </View>
   );
@@ -103,6 +112,16 @@ function ArBottomBar(props: { frame: ArFrame | null; count: number; failure: str
   );
 }
 
+/** A lost track moves the anchors: the corners marked before it no longer measure, so the zone starts over. */
+function TrackingLost({ onRestart }: { onRestart: () => void }) {
+  return (
+    <View testID="ar-seguimiento-perdido" className="absolute inset-x-3 top-24 gap-3 rounded-2xl border border-error/40 bg-black/80 p-3">
+      <View className="flex-row items-center gap-2"><AlertTriangle size={18} color="white" /><Text className="flex-1 text-[15px] font-semibold text-white">El AR perdió el piso y las esquinas pudieron moverse.</Text></View>
+      <Pressable testID="reiniciar-ar" onPress={onRestart} className="h-12 flex-row items-center justify-center gap-2 rounded-xl bg-white"><RotateCcw size={18} color="black" /><Text className="text-[15px] font-bold text-black">Reiniciar la zona</Text></Pressable>
+    </View>
+  );
+}
+
 function ArButton(props: { testID: string; label: string; disabled: boolean; onPress: () => void; icon: React.ReactNode }) {
   return (
     <Pressable testID={props.testID} onPress={props.onPress} disabled={props.disabled} accessibilityLabel={props.label} className={`items-center gap-1 ${props.disabled ? 'opacity-40' : ''}`}>
@@ -112,12 +131,18 @@ function ArButton(props: { testID: string; label: string; disabled: boolean; onP
   );
 }
 
+const UNAVAILABLE: Record<string, { title: string; body: string }> = {
+  'no-permission': { title: 'Lilachat necesita la cámara para medir', body: 'Activa el permiso de cámara en los ajustes del teléfono y vuelve aquí.' },
+  declined: { title: 'Falta instalar Google Play Services para AR', body: 'Instálalo desde Play Store para medir con AR, o mide ahora con una foto desde arriba y la wincha.' },
+  error: { title: 'El AR no pudo arrancar', body: 'Mide la zona con una foto desde arriba y la wincha.' },
+};
+const unavailableCopy = (state: string) => UNAVAILABLE[state] ?? { title: 'Este teléfono no tiene AR', body: 'Mide la zona con una foto desde arriba y la wincha.' };
+
 /** Design la-07: no camera permission, or a phone without AR: the photo and the tape still measure. */
 function ArUnavailable(props: { state: string; onBack: () => void; onPhotoInstead: () => void }) {
   const colors = useColores();
   const permission = props.state === 'no-permission';
-  const title = permission ? 'Lilachat necesita la cámara para medir' : props.state === 'error' ? 'El AR no pudo arrancar' : 'Este teléfono no tiene AR';
-  const body = permission ? 'Activa el permiso de cámara en los ajustes del teléfono y vuelve aquí.' : 'Mide la zona con una foto desde arriba y la wincha.';
+  const { title, body } = unavailableCopy(props.state);
   return (
     <View testID="ar-no-disponible" className="flex-1 justify-center gap-4 bg-background p-6">
       <View className="h-16 w-16 items-center justify-center rounded-full bg-surface-variant"><CameraOff size={30} color={colors['on-surface-variant']} /></View>

@@ -5,7 +5,7 @@ import type { ArPoint } from '@lilachat/shared';
 
 /** A point on the view, in its own pixels; `visible` is false behind the camera or off the screen. */
 export type ScreenPoint = { x: number; y: number; visible: boolean };
-export type ArState = 'tracking' | 'searching' | 'installing' | 'unsupported' | 'no-permission' | 'error';
+export type ArState = 'tracking' | 'searching' | 'installing' | 'declined' | 'unsupported' | 'no-permission' | 'error';
 /** What the AR sees, ten times a second (la-02): the floor under the center and each corner on the screen. */
 export type ArFrame = { state: ArState; reason?: string | null; floor: boolean; distance?: number | null; aim?: ScreenPoint | null; corners: ScreenPoint[]; stable: boolean; width?: number; height?: number };
 export type ArReading = { points: ArPoint[]; stable: boolean };

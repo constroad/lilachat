@@ -31,8 +31,14 @@ sealed class Command(val promise: Promise) {
   class Clear(promise: Promise) : Command(promise)
 }
 
+/** Expo's events take no nulls: an absent value is left out. */
+fun compact(vararg pairs: Pair<String, Any?>): Map<String, Any> = pairs.mapNotNull { (key, value) -> value?.let { key to it } }.toMap()
+
+/** A corner: ARCore's anchor and the height of the floor plane it landed on (a curb top is another level). */
+private class Corner(val anchor: Anchor, val floorY: Float)
+
 /** Where the floor is under the screen's center, if there is floor there. */
-private data class Aim(val pose: Pose, val distance: Float, val hit: com.google.ar.core.HitResult)
+private data class Aim(val pose: Pose, val distance: Float, val hit: com.google.ar.core.HitResult, val floorY: Float)
 
 /**
  * The measure itself, on the GL thread: the camera behind, the floor under the
@@ -40,15 +46,15 @@ private data class Aim(val pose: Pose, val distance: Float, val hit: com.google.
  * and, ten times a second, a snapshot for JS: where each corner shows on the
  * screen and whether tracking ever slipped after the first corner.
  */
-class MeasureRenderer(private val sessionOf: () -> Session?, private val onSnapshot: (Map<String, Any?>) -> Unit) : GLSurfaceView.Renderer {
+class MeasureRenderer(private val sessionOf: () -> Session?, private val onSnapshot: (Map<String, Any>) -> Unit) : GLSurfaceView.Renderer {
   private val background = BackgroundQuad()
   private val commands = ConcurrentLinkedQueue<Command>()
-  private val corners = mutableListOf<Anchor>()
+  private val corners = mutableListOf<Corner>()
   private var textureBound: Session? = null
   private var width = 1
   private var height = 1
   @Volatile var displayRotation = 0
-  private var geometryDirty = true
+  @Volatile private var geometryDirty = true
   private var stable = true
   private var lastSnapshot = 0L
   private var aim: Aim? = null
@@ -62,6 +68,8 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val onSnaps
       return
     }
     commands.add(command)
+    // A pause between the check and the add would leave this request waiting until the next resume.
+    if (!accepting) failPending("paused")
   }
 
   /** The session paused or closed: nothing pending may hang the screen. */
@@ -98,12 +106,18 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val onSnaps
       session.setDisplayGeometry(displayRotation, width, height)
       geometryDirty = false
     }
-    val frame = try { session.update() } catch (error: CameraNotAvailableException) { return emitState("error", "camera") }
+    val frame = try {
+      session.update()
+    } catch (error: CameraNotAvailableException) {
+      return emitState("error", "camera")
+    } catch (error: Exception) {
+      return emitState("error", error.javaClass.simpleName)
+    }
     background.draw(frame)
     val camera = frame.camera
     val tracking = camera.trackingState == TrackingState.TRACKING
     if (!tracking && corners.isNotEmpty()) stable = false
-    if (corners.any { it.trackingState == TrackingState.STOPPED }) stable = false
+    if (corners.any { it.anchor.trackingState == TrackingState.STOPPED }) stable = false
     aim = if (tracking) aimOf(frame, camera) else null
     runCommands(tracking)
     snapshot(camera, tracking)
@@ -118,8 +132,8 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val onSnaps
       plane.type == Plane.Type.HORIZONTAL_UPWARD_FACING && plane.isPoseInPolygon(result.hitPose) && plane.subsumedBy == null
     } ?: return null
     val pose = hit.hitPose
-    val distance = distanceBetween(camera.pose, pose)
-    return Aim(pose, distance, hit)
+    val floorY = (hit.trackable as Plane).centerPose.ty()
+    return Aim(pose, distanceBetween(camera.pose, pose), hit, floorY)
   }
 
   private fun runCommands(tracking: Boolean) {
@@ -128,13 +142,13 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val onSnaps
       when (command) {
         is Command.AddCorner -> addCorner(command.promise, tracking)
         is Command.Undo -> {
-          corners.removeLastOrNull()?.detach()
+          corners.removeLastOrNull()?.anchor?.detach()
           if (corners.isEmpty()) stable = true
           command.promise.resolve(corners.size)
         }
         is Command.Read -> command.promise.resolve(reading())
         is Command.Clear -> {
-          corners.forEach { it.detach() }
+          corners.forEach { it.anchor.detach() }
           corners.clear()
           stable = true
           command.promise.resolve(0)
@@ -150,16 +164,16 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val onSnaps
       target == null -> promise.reject("no-floor", "Apunta al piso: no hay piso reconocido en el centro.", null)
       target.distance > MAX_HIT_METERS -> promise.reject("far", "Acércate: la esquina está a más de 6 m.", null)
       else -> {
-        corners.add(target.hit.createAnchor())
+        corners.add(Corner(target.hit.createAnchor(), target.floorY))
         promise.resolve(corners.size)
       }
     }
   }
 
   /** The corners in meters (ARCore's world, y up) and whether they can be trusted. */
-  private fun reading(): Map<String, Any?> = mapOf(
-    "points" to corners.map { anchor -> anchor.pose.let { mapOf("x" to it.tx().toDouble(), "y" to it.ty().toDouble(), "z" to it.tz().toDouble()) } },
-    "stable" to (stable && corners.all { it.trackingState == TrackingState.TRACKING })
+  private fun reading(): Map<String, Any> = mapOf(
+    "points" to corners.map { corner -> corner.anchor.pose.let { mapOf("x" to it.tx().toDouble(), "y" to it.ty().toDouble(), "z" to it.tz().toDouble(), "floorY" to corner.floorY.toDouble()) } },
+    "stable" to (stable && corners.all { it.anchor.trackingState == TrackingState.TRACKING })
   )
 
   private fun snapshot(camera: Camera, tracking: Boolean) {
@@ -168,12 +182,12 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val onSnaps
     lastSnapshot = now
     val viewProjection = viewProjectionOf(camera)
     val target = aim
-    onSnapshot(mapOf(
+    onSnapshot(compact(
       "state" to if (tracking) "tracking" else "searching",
       "reason" to if (tracking) null else camera.trackingFailureReason.name.lowercase(),
       "floor" to (target != null),
       "distance" to target?.distance?.toDouble(),
-      "corners" to corners.map { anchor -> projected(viewProjection, anchor.pose) },
+      "corners" to corners.map { corner -> projected(viewProjection, corner.anchor.pose) },
       "aim" to target?.let { projected(viewProjection, it.pose) },
       "stable" to stable,
       "width" to width,
@@ -182,7 +196,7 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val onSnaps
   }
 
   private fun emitState(state: String, reason: String) =
-    onSnapshot(mapOf("state" to state, "reason" to reason, "floor" to false, "corners" to emptyList<Any>(), "stable" to stable, "width" to width, "height" to height))
+    onSnapshot(compact("state" to state, "reason" to reason, "floor" to false, "corners" to emptyList<Any>(), "stable" to stable, "width" to width, "height" to height))
 
   private fun viewProjectionOf(camera: Camera): FloatArray {
     val projection = FloatArray(MATRIX)

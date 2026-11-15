@@ -47,7 +47,7 @@ export function useReveal() {
 
 type ThicknessProps = {
   readings: readonly number[]; thicknessCm: number | null; editing: boolean; typed: string;
-  onAdd: () => void; onRemove: (index: number) => void; onKey: (key: TapeKey) => void; onDone: () => void; onShown: (node: View) => void;
+  onAdd: () => void; onRemove: (index: number) => void; onKey: (key: TapeKey) => void; onDone: () => void; onShown: (node: View) => void; error?: string | null;
 };
 
 /** «Espesor · lecturas en cm»: each reading a chip that comes off with a touch, and their mean. */
@@ -66,6 +66,7 @@ export function ThicknessCard(props: ThicknessProps) {
         ))}
         <Pressable testID="agregar-lectura" onPress={props.onAdd} className="h-11 flex-row items-center gap-1 rounded-xl border border-primary/40 px-3"><Plus size={16} color={colors.primary} /><Text className="text-[14px] font-semibold text-primary">Lectura</Text></Pressable>
       </View>
+      {props.error ? <Text testID="lectura-fuera-de-rango" className="text-[13px] font-semibold text-error">{props.error}</Text> : null}
       {props.editing ? <TapeKeypad title="Lectura de espesor" unit="cm" typed={props.typed} onKey={props.onKey} onDone={props.onDone} onShown={props.onShown} /> : null}
       {props.thicknessCm !== null ? <Text className="text-[14px] text-on-surface">{`Promedio: ${decimals(props.thicknessCm, 1)} cm (${count} ${count === 1 ? 'lectura' : 'lecturas'})`}</Text> : null}
     </View>

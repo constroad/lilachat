@@ -92,6 +92,8 @@ export function formFilesWriteStore<A extends WriteAnswer, I>(kind: WriteKind<A>
       set({ busy: false, line: missing });
       return null;
     }
+    // A second tap before the button shows busy would write the record twice (audit 15/11).
+    if (state.busy) return null;
     set({ busy: true, line: null });
     const result = await writeWithFiles({ ...deps, progress: (sent, total) => set({ busy: true, line: `Subiendo ${sent} de ${total}…` }) }, valuesOf(input), files, kind);
     const outcome = writtenOutcome(result, done, kind.who);

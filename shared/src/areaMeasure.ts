@@ -27,7 +27,7 @@ export type AreaMethod = 'medidas-iphone' | 'a-mano' | 'ar-app' | 'foto-medida';
 /** What a phone may send, edit or remove: `ar-app` since José 15/11 (AR + tape); `foto-medida` stays Portal's. */
 export const AREA_FIELD_METHODS: readonly AreaMethod[] = ['medidas-iphone', 'a-mano', 'ar-app'];
 export const AREA_METHOD_LABELS: Record<AreaMethod, string> = { 'medidas-iphone': 'Medidas (iPhone)', 'a-mano': 'A mano', 'ar-app': 'AR + wincha', 'foto-medida': 'Foto + wincha' };
-/** AR in the APK is for later (Portal 12/11): an iPhone uses Medición, the rest types it. */
+/** Without ARCore: an iPhone uses Medición, the rest types it (the APK with AR sends `ar-app` itself). */
 export const measureMethodFor = (iphone: boolean): AreaMethod => (iphone ? 'medidas-iphone' : 'a-mano');
 
 /** Portal's `OBSERVATION_APPROXIMATE_FROM_M`: past this, a place is approximate. */

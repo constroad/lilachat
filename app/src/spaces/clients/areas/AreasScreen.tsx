@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Scan, Trash2 } from 'lucide-react-native';
-import { areaCardLines, areaRemoveAsk, areaReportDay, areaTotalsLine, isRemovableArea, type AdditionalArea, type AreaDocument, type SpaceClientService } from '@lilachat/shared';
+import { areaCardLines, areaRemoveAsk, areaReportDay, areaTotalsLine, closedRing, isRemovableArea, type AdditionalArea, type AreaDocument, type ChannelLinks, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { BottomAction, ObservationHeader } from '../observations/ObservationParts';
 import { useBackTo, type ObservationTarget } from '../observations/useObservations';
@@ -10,12 +10,16 @@ import { ArMeasureScreen, type ArMeasured } from './ArMeasureScreen';
 import { ArZoneScreen } from './ArZoneScreen';
 import { PhotoMeasureScreen } from './PhotoMeasureScreen';
 import { useAreaRemove, useAreaReport } from './useAreas';
+import { useZonePlace } from './useZonePlace';
+import { arShotEvidence, type CapturedEvidence } from '../useDriveUpload';
+import { getCurrentSpaceId, useSpaceLogo } from '../../currentSpace';
+import { useCameraLogo } from '../../../chat/camara/cameraLogoPref';
 
-type Props = { to: ObservationTarget; service: SpaceClientService; reportId?: string; onClose: (changed: boolean) => void };
+type Props = { to: ObservationTarget; service: SpaceClientService; reportId?: string; links?: ChannelLinks; onClose: (changed: boolean) => void };
 
 const decimals = (value: number, digits: number) => value.toFixed(digits).replace('.', ',');
 /** Where «Medir área» goes: the AR (la-02 → la-03) when the phone has it, else the photo with the tape (la-05). */
-type Mode = { kind: 'list' } | { kind: 'ar' } | { kind: 'ar-zone'; measured: ArMeasured } | { kind: 'photo' };
+type Mode = { kind: 'list' } | { kind: 'ar' } | { kind: 'ar-zone'; measured: ArMeasured; evidence: CapturedEvidence | null } | { kind: 'photo' };
 
 /** Design la-01: the report, its totals (Área · Volumen · Zonas), each zone and «Medir área» (72 px). */
 export function AreasScreen(props: Props) {
@@ -28,10 +32,19 @@ export function AreasScreen(props: Props) {
   useBackTo(mode.kind === 'list' ? close : toList);
   const zone = (report?.areas.length ?? 0) + 1;
   const saved = (reportId: string) => { setChanged(true); toList(); reload(reportId); };
+  // The GPS and the street are read when the report opens: ready before the first corner (José 15/11).
+  const place = useZonePlace(props.to, props.links);
+  const logoOn = useCameraLogo();
+  const spaceLogo = useSpaceLogo(getCurrentSpaceId());
+  const stampsLogo = logoOn && Boolean(spaceLogo);
+  const measured = async (reading: ArMeasured) => {
+    const evidence = reading.photo ? await arShotEvidence(reading.photo, place.point, stampsLogo).catch(() => null) : null;
+    setMode({ kind: 'ar-zone', measured: { ...reading, points: closedRing(reading.points) }, evidence });
+  };
   const startMeasure = async () => setMode({ kind: (await arAvailability()) === 'unsupported' ? 'photo' : 'ar' });
-  if (mode.kind === 'photo') return <PhotoMeasureScreen to={props.to} report={report} zone={zone} onBack={toList} onSaved={saved} />;
-  if (mode.kind === 'ar') return <ArMeasureScreen kicker={report?.code ?? 'IAA'} reportCode={report?.code ?? null} zone={zone} onBack={toList} onPhotoInstead={() => setMode({ kind: 'photo' })} onMeasured={(measured) => setMode({ kind: 'ar-zone', measured })} />;
-  if (mode.kind === 'ar-zone') return <ArZoneScreen to={props.to} report={report} zone={zone} measured={mode.measured} onBack={toList} onRemeasure={() => setMode({ kind: 'ar' })} onSaved={saved} />;
+  if (mode.kind === 'photo') return <PhotoMeasureScreen to={props.to} report={report} zone={zone} place={place} onBack={toList} onSaved={saved} />;
+  if (mode.kind === 'ar') return <ArMeasureScreen kicker={report?.code ?? 'IAA'} reportCode={report?.code ?? null} zone={zone} place={place} onBack={toList} onPhotoInstead={() => setMode({ kind: 'photo' })} onMeasured={(reading) => void measured(reading)} />;
+  if (mode.kind === 'ar-zone') return <ArZoneScreen to={props.to} report={report} zone={zone} measured={mode.measured} evidence={mode.evidence} place={place} onBack={toList} onRemeasure={() => setMode({ kind: 'ar' })} onSaved={saved} />;
   return (
     <View className="flex-1 bg-background">
       <ObservationHeader kicker={report?.code ?? 'Informe de área adicional'} title="Área adicional" onBack={close} />

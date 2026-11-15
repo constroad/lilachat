@@ -26,8 +26,8 @@ private const val GLES_VERSION = 2
 
 /**
  * The AR measure on the screen (la-02): ARCore's session, its camera behind
- * and the renderer that finds the floor and keeps the corners. Lilachat's JS
- * draws the corners, the lines and the buttons on top.
+ * and the renderer that finds the floor, keeps the corners and draws the trace
+ * on the camera image. Lilachat's JS draws the labels and the buttons on top.
  */
 class ArMeasureView(context: Context, appContext: AppContext) : ExpoView(context, appContext) {
   override val shouldUseAndroidLayout = true
@@ -35,7 +35,13 @@ class ArMeasureView(context: Context, appContext: AppContext) : ExpoView(context
   private var session: Session? = null
   private var installRequested = false
   private var running = false
-  val renderer = MeasureRenderer({ session }) { snapshot -> post { onArFrame(snapshot) } }
+  val renderer = MeasureRenderer({ session }, context.cacheDir, context.resources.displayMetrics.density) { snapshot -> post { onArFrame(snapshot) } }
+
+  /** The theme's primary as `#rrggbb`; a value that does not parse keeps the last one. */
+  fun setAccent(hex: String) {
+    val color = runCatching { android.graphics.Color.parseColor(hex) }.getOrNull() ?: return
+    renderer.accent = floatArrayOf(android.graphics.Color.red(color) / 255f, android.graphics.Color.green(color) / 255f, android.graphics.Color.blue(color) / 255f, 1f)
+  }
   private val surface = GLSurfaceView(context).apply {
     preserveEGLContextOnPause = true
     setEGLContextClientVersion(GLES_VERSION)

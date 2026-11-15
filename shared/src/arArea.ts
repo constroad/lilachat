@@ -197,11 +197,33 @@ export function arPlanOf(points: readonly ArPoint[], box: Box, margin: number): 
 export const AR_MAX_AIM_M = 6;
 
 /** la-02's guide line: what to do next, by what the AR sees under the center. */
-export function arAimLine(frame: { state: string; floor: boolean; distance?: number | null }, corners: number): string {
+/** One square meter of floor seen before the first corner: less and the first anchors drift (José 15/11). */
+export const AR_SCAN_AREA_M2 = 1;
+export const arScanProgress = (floorM2: number | undefined): number => Math.min(1, Math.max(0, (floorM2 ?? 0) / AR_SCAN_AREA_M2));
+
+export type ArAimFrame = { state: string; floor: boolean; distance?: number | null; floorM2?: number; closing?: boolean };
+
+/** The guide under the reticle (la-02): scan, then tap the screen; on the first corner, close. */
+export function arAimLine(frame: ArAimFrame, corners: number): string {
   if (frame.state !== 'tracking') return 'Mueve el teléfono despacio, apuntando al piso.';
+  if (!corners && arScanProgress(frame.floorM2) < 1) return 'Mueve el teléfono despacio sobre el piso para escanearlo.';
   if (!frame.floor) return 'Apunta al piso hasta que el círculo se llene.';
   if ((frame.distance ?? 0) > AR_MAX_AIM_M) return 'Acércate: la esquina está a más de 6 m.';
-  return corners >= MIN_CORNERS ? `Apunta a la esquina ${corners + 1} o toca «Cerrar»` : `Apunta a la esquina ${corners + 1}`;
+  if (frame.closing) return 'Toca para cerrar la zona';
+  return corners >= MIN_CORNERS ? `Toca para marcar la esquina ${corners + 1}, o apunta a la 1 para cerrar` : `Toca la pantalla para marcar la esquina ${corners + 1}`;
+}
+
+/** The side being drawn, as it grows while the phone moves. */
+export const arLiveLabel = (meters: number | null | undefined): string | null => (meters == null || !Number.isFinite(meters) ? null : `${decimalLabel(meters, 2)} m`);
+
+/**
+ * A last corner marked on the first one closes the zone, it is not a side
+ * (José 15/11: a 5th corner 4 cm from the 1st blocked the save).
+ */
+export function closedRing(points: readonly ArPoint[]): ArPoint[] {
+  const last = points[points.length - 1];
+  if (points.length <= MIN_CORNERS || !last || distance(last, points[0]!) >= NEAR_SIDE_M) return [...points];
+  return points.slice(0, -1);
 }
 
 const PROBLEM_LINES: Record<ArProblem, string> = {

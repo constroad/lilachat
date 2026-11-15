@@ -5,6 +5,8 @@ import { formFilesWriteStore, type WriteKind } from './formFilesWrite.js';
 import { AREA_FIELD_METHODS, AREA_METHOD_LABELS, type AreaDraftPoint, type AreaFigures, type AreaMethod } from './areaMeasure.js';
 import type { ObservationSource } from './observationWrite.js';
 import { ENLACE_DE_DESCARGA } from './invitacion.js';
+import type { NearStreet } from './fieldAutofill.js';
+import { stationLabel } from './workMap.js';
 
 /**
  * The additional-area report (IAA) filled from the client's channel (José
@@ -199,4 +201,15 @@ export function areaReportDay(date: string | undefined): string | null {
   const instant = new Date(Date.UTC(year, month - 1, day));
   if (instant.getUTCMonth() !== month - 1 || instant.getUTCDate() !== day) return null;
   return LONG_DAY.format(instant).replace(/,/g, '');
+}
+
+/**
+ * Where a zone is (José 15/11: «la zona o tramo lo debe sacar de mi GPS»): the
+ * work-map street the engineer stands on with its station, else the street of
+ * the address under the GPS.
+ */
+export function zonePlaceLine(near: NearStreet | null, street: string | null): string | null {
+  if (near) return `${near.name} ${stationLabel(near.measureM)}`;
+  const written = street?.trim();
+  return written ? written : null;
 }

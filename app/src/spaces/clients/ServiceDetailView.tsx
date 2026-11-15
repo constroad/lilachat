@@ -281,7 +281,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   }, [askAgain]);
   // José 11/11: the registry and the lifting of observations have their own screens (designs ob-01…ob-03).
   if (report && isObservationType(report.type)) return <ObservationsScreen target={props.target} chatId={props.chatId} serviceId={props.service.id} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} portalUrl={portalUrl} onClose={closeReport} />;
-  if (report?.type === AREA_TYPE) return <AreasScreen to={{ target: props.target, chatId: props.chatId, serviceId: props.service.id }} service={props.service} {...(report.reportId ? { reportId: report.reportId } : {})} onClose={closeReport} />;
+  if (report?.type === AREA_TYPE) return <AreasScreen to={{ target: props.target, chatId: props.chatId, serviceId: props.service.id }} service={props.service} links={props.links} {...(report.reportId ? { reportId: report.reportId } : {})} onClose={closeReport} />;
   if (report) return <ReportDocumentScreen target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={portalUrl} links={props.links} onClose={closeReport} />;
   return (
     <View className="flex-1">

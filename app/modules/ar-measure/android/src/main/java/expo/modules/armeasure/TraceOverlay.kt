@@ -1,0 +1,142 @@
+package expo.modules.armeasure
+
+import android.opengl.GLES20
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
+import java.nio.FloatBuffer
+
+private const val VERTEX = """
+attribute vec2 aPos;
+void main() { gl_Position = vec4(aPos, 0.0, 1.0); }
+"""
+private const val FRAGMENT = """
+precision mediump float;
+uniform vec4 uColor;
+void main() { gl_FragColor = uColor; }
+"""
+private const val FLOAT_BYTES = 4
+private const val CIRCLE_STEPS = 20
+private const val COMPONENTS = 2
+/** Points this close to the camera plane are cut there: behind it they would wrap across the screen. */
+private const val NEAR_W = 0.01f
+
+/** A world point already multiplied by the view-projection: x, y and w of clip space. */
+class Clip(val x: Float, val y: Float, val w: Float) {
+  val inFront get() = w > NEAR_W
+}
+
+/**
+ * The trace drawn on the camera image itself, every frame (José 15/11: the
+ * lines drawn from JS ten times a second swam behind the camera). Thick lines
+ * and dots in the screen's pixels, glued to the floor because they are
+ * projected in the same frame the camera image comes from.
+ */
+class TraceOverlay {
+  private var program = 0
+  private var position = 0
+  private var color = 0
+  private var buffer: FloatBuffer = allocate(1024)
+
+  fun create() {
+    program = GLES20.glCreateProgram()
+    GLES20.glAttachShader(program, shader(GLES20.GL_VERTEX_SHADER, VERTEX))
+    GLES20.glAttachShader(program, shader(GLES20.GL_FRAGMENT_SHADER, FRAGMENT))
+    GLES20.glLinkProgram(program)
+    position = GLES20.glGetAttribLocation(program, "aPos")
+    color = GLES20.glGetUniformLocation(program, "uColor")
+  }
+
+  /** Each segment as a band `widthPx` wide; a segment half behind the camera is cut at its plane. */
+  fun lines(segments: List<Pair<Clip, Clip>>, widthPx: Float, rgba: FloatArray, size: Pair<Int, Int>, dashPx: Float = 0f) {
+    val vertices = ArrayList<Float>()
+    for ((from, to) in segments) {
+      val cut = clipped(from, to) ?: continue
+      val start = pixels(cut.first, size)
+      val end = pixels(cut.second, size)
+      if (dashPx > 0f) dashes(start, end, dashPx).forEach { (a, b) -> band(vertices, a, b, widthPx, size) } else band(vertices, start, end, widthPx, size)
+    }
+    draw(vertices, rgba)
+  }
+
+  /** Round dots of `radiusPx` on the points in front of the camera. */
+  fun dots(points: List<Clip>, radiusPx: Float, rgba: FloatArray, size: Pair<Int, Int>) {
+    val vertices = ArrayList<Float>()
+    points.filter { it.inFront }.forEach { circle(vertices, pixels(it, size), radiusPx, size) }
+    draw(vertices, rgba)
+  }
+
+  private fun draw(vertices: List<Float>, rgba: FloatArray) {
+    if (vertices.isEmpty()) return
+    if (buffer.capacity() < vertices.size) buffer = allocate(vertices.size * 2)
+    buffer.clear()
+    vertices.forEach { buffer.put(it) }
+    buffer.flip()
+    GLES20.glUseProgram(program)
+    GLES20.glEnable(GLES20.GL_BLEND)
+    GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
+    GLES20.glUniform4fv(color, 1, rgba, 0)
+    GLES20.glEnableVertexAttribArray(position)
+    GLES20.glVertexAttribPointer(position, COMPONENTS, GLES20.GL_FLOAT, false, 0, buffer)
+    GLES20.glDrawArrays(GLES20.GL_TRIANGLES, 0, vertices.size / COMPONENTS)
+    GLES20.glDisableVertexAttribArray(position)
+    GLES20.glDisable(GLES20.GL_BLEND)
+  }
+
+  private fun clipped(from: Clip, to: Clip): Pair<Clip, Clip>? {
+    if (from.inFront && to.inFront) return from to to
+    if (!from.inFront && !to.inFront) return null
+    val t = (NEAR_W - from.w) / (to.w - from.w)
+    val cut = Clip(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t, NEAR_W)
+    return if (from.inFront) from to cut else cut to to
+  }
+
+  private fun pixels(point: Clip, size: Pair<Int, Int>) = floatArrayOf((point.x / point.w + 1f) / 2f * size.first, (point.y / point.w + 1f) / 2f * size.second)
+
+  private fun band(out: MutableList<Float>, a: FloatArray, b: FloatArray, widthPx: Float, size: Pair<Int, Int>) {
+    val dx = b[0] - a[0]
+    val dy = b[1] - a[1]
+    val length = kotlin.math.hypot(dx, dy)
+    if (length < 1f) return
+    val nx = -dy / length * widthPx / 2f
+    val ny = dx / length * widthPx / 2f
+    val corners = listOf(floatArrayOf(a[0] + nx, a[1] + ny), floatArrayOf(a[0] - nx, a[1] - ny), floatArrayOf(b[0] + nx, b[1] + ny), floatArrayOf(b[0] - nx, b[1] - ny))
+    listOf(0, 1, 2, 2, 1, 3).forEach { index -> ndc(out, corners[index], size) }
+  }
+
+  private fun dashes(a: FloatArray, b: FloatArray, dashPx: Float): List<Pair<FloatArray, FloatArray>> {
+    val length = kotlin.math.hypot(b[0] - a[0], b[1] - a[1])
+    if (length < 1f) return emptyList()
+    val pieces = ArrayList<Pair<FloatArray, FloatArray>>()
+    var at = 0f
+    while (at < length) {
+      val end = minOf(at + dashPx, length)
+      pieces.add(lerp(a, b, at / length) to lerp(a, b, end / length))
+      at += dashPx * 2f
+    }
+    return pieces
+  }
+
+  private fun lerp(a: FloatArray, b: FloatArray, t: Float) = floatArrayOf(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t)
+
+  private fun circle(out: MutableList<Float>, center: FloatArray, radius: Float, size: Pair<Int, Int>) {
+    for (step in 0 until CIRCLE_STEPS) {
+      val from = step * 2.0 * Math.PI / CIRCLE_STEPS
+      val to = (step + 1) * 2.0 * Math.PI / CIRCLE_STEPS
+      ndc(out, center, size)
+      ndc(out, floatArrayOf(center[0] + radius * kotlin.math.cos(from).toFloat(), center[1] + radius * kotlin.math.sin(from).toFloat()), size)
+      ndc(out, floatArrayOf(center[0] + radius * kotlin.math.cos(to).toFloat(), center[1] + radius * kotlin.math.sin(to).toFloat()), size)
+    }
+  }
+
+  private fun ndc(out: MutableList<Float>, pixel: FloatArray, size: Pair<Int, Int>) {
+    out.add(pixel[0] / size.first * 2f - 1f)
+    out.add(pixel[1] / size.second * 2f - 1f)
+  }
+
+  private fun shader(type: Int, source: String): Int = GLES20.glCreateShader(type).also {
+    GLES20.glShaderSource(it, source)
+    GLES20.glCompileShader(it)
+  }
+
+  private fun allocate(floats: Int): FloatBuffer = ByteBuffer.allocateDirect(floats * FLOAT_BYTES).order(ByteOrder.nativeOrder()).asFloatBuffer()
+}

@@ -8,7 +8,8 @@ import { BottomAction, ObservationHeader, SectionTitle } from '../observations/O
 import type { ObservationTarget } from '../observations/useObservations';
 import { PhotoCorners } from './PhotoCorners';
 import { TapeKeypad } from './TapeKeypad';
-import { decimals, ResultCard, ThicknessCard, useReveal, useZoneShot } from './ZoneParts';
+import { decimals, PlaceCard, ResultCard, ThicknessCard, usePlaceText, useReveal, useZoneShot } from './ZoneParts';
+import type { ZonePlace } from './useZonePlace';
 import { useAreaWrite } from './useAreas';
 
 type Editing = { kind: 'side'; index: number } | { kind: 'reading' } | null;
@@ -40,20 +41,22 @@ function useMeasure() {
  * touched, the sides fixed with the tape on its own keypad, the thickness
  * readings and «Guardar zona». One measured side gives the scale.
  */
-export function PhotoMeasureScreen(props: { to: ObservationTarget; report: AreaDocument | null; zone: number; onBack: () => void; onSaved: (reportId: string) => void }) {
+export function PhotoMeasureScreen(props: { to: ObservationTarget; report: AreaDocument | null; zone: number; place: ZonePlace; onBack: () => void; onSaved: (reportId: string) => void }) {
   const colors = useColores();
   const [entryId] = useState(() => Crypto.randomUUID());
   const [note, setNote] = useState('');
   const shot = useZoneShot();
+  const placeText = usePlaceText(props.place.place);
   const measure = useMeasure();
   const write = useAreaWrite(props.to);
   const reveal = useReveal();
   const pending = measure.editing ? 'Toca «Listo» para dejar anotada la medida.' : !shot.shot ? 'Toma la foto de la zona desde arriba.' : measure.points.length < 3 ? 'Toca las esquinas sobre la foto.' : !measure.result ? 'Mide un lado con la wincha.' : null;
   const save = async () => {
     if (pending || !measure.result || !shot.shot) return;
-    const point = shot.point ? { lat: shot.point.lat, lng: shot.point.lng, precision: shot.point.precision } : null;
+    const gps = props.place.point ?? shot.point;
+    const point = gps ? { lat: gps.lat, lng: gps.lng, precision: gps.precision } : null;
     const request = areaCreateRequest(props.report, entryId, photoAreaFigures(measure.result), point, 'a-mano', 'apk');
-    const reportId = await write.save(request, { place: '', note }, [shot.shot]);
+    const reportId = await write.save(request, { place: placeText.value.trim(), note }, [shot.shot]);
     if (reportId) props.onSaved(reportId);
   };
   return (
@@ -64,6 +67,7 @@ export function PhotoMeasureScreen(props: { to: ObservationTarget; report: AreaD
         <PhotoCard shot={shot} measure={measure} color={colors.primary} />
         {measure.points.length >= 3 ? <SidesCard measure={measure} onShown={reveal.show} /> : null}
         <ThicknessCard readings={measure.readings} thicknessCm={measure.result?.thicknessCm ?? null} editing={measure.editing?.kind === 'reading'} typed={measure.typed} onAdd={() => measure.open({ kind: 'reading' })} onRemove={(index) => measure.setReadings((current) => current.filter((_, at) => at !== index))} onKey={measure.key} onDone={measure.done} onShown={reveal.show} error={measure.readingError} />
+        <PlaceCard value={placeText.value} asking={props.place.asking} fromGps={Boolean(props.place.place)} onChange={placeText.set} />
         {measure.result ? <ResultCard line={photoAreaFigures(measure.result).line} method="Foto + wincha" /> : null}
         <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
           <SectionTitle title="Descripción" side="Opcional" />

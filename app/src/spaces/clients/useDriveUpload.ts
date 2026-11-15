@@ -2,7 +2,7 @@ import { useState } from 'react';
 import * as Crypto from 'expo-crypto';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { documentTypeOf, DRIVE_DOCUMENT_MIME_TYPES, DRIVE_UPLOAD_DONE, DRIVE_VIDEO_SECONDS, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, OBSERVATION_VIDEO_SECONDS, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type EvidenceFile, type ManualPhotoUpload, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps, type AreaCreateRequest, type AreaRemoveRequest, stampFieldsOf, type TimemarkStampAsked } from '@lilachat/shared';
+import { documentTypeOf, DRIVE_DOCUMENT_MIME_TYPES, DRIVE_UPLOAD_DONE, DRIVE_VIDEO_SECONDS, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, OBSERVATION_VIDEO_SECONDS, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type EvidenceFile, type ManualPhotoUpload, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps, type AreaCreateRequest, type AreaRemoveRequest, stampFieldsOf, type GeoPoint, type TimemarkStampAsked } from '@lilachat/shared';
 import * as FileSystem from 'expo-file-system/legacy';
 import { submitAppForm } from '../../chat/commands/commandsApi';
 import { openCamera, type CapturedShot } from '../../chat/camara/cameraRequests';
@@ -169,6 +169,16 @@ export async function captureEvidence(kind: 'photo' | 'video', title?: string): 
   const ready = await preparedShot(shot);
   const preview = { uri: ready.source.uri, mime: ready.facts.mime, ...(ready.facts.seconds ? { seconds: ready.facts.seconds } : {}) };
   return { file: { key: Crypto.randomUUID(), ...ready }, preview };
+}
+
+/**
+ * The AR's own frame with the trace as the zone's photo (José 15/11): no second camera after
+ * marking. It goes stamped like a camera shot, so the server burns the same hour and place.
+ */
+export async function arShotEvidence(uri: string, point: GeoPoint | null, logo: boolean): Promise<CapturedEvidence> {
+  const takenAt = new Date().toISOString();
+  const ready = await preparedShot({ uri, mime: 'image/jpeg', stamp: { timemark: true, point, logo, takenAt } });
+  return { file: { key: Crypto.randomUUID(), ...ready }, preview: { uri: ready.source.uri, mime: ready.facts.mime } };
 }
 
 /** An observation's write from this phone: the run of the client's app, its answer, and each file straight to Portal. */

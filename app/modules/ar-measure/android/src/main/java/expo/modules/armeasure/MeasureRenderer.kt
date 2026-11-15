@@ -12,6 +12,7 @@ import com.google.ar.core.Session
 import com.google.ar.core.TrackingState
 import com.google.ar.core.exceptions.CameraNotAvailableException
 import expo.modules.kotlin.Promise
+import java.io.File
 import java.util.concurrent.ConcurrentLinkedQueue
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -20,7 +21,15 @@ import javax.microedition.khronos.opengles.GL10
 private const val MAX_HIT_METERS = 6f
 private const val NEAR_PLANE = 0.05f
 private const val FAR_PLANE = 100f
-private const val SNAPSHOT_EVERY_MS = 100L
+private const val SNAPSHOT_EVERY_MS = 50L
+/** The aim this close to the first corner snaps to it: the next tap closes the zone (José 15/11). */
+private const val SNAP_METERS = 0.15f
+/** How much of each new floor hit the aim takes: the reticle stops shaking without lagging. */
+private const val AIM_SMOOTHING = 0.35f
+private const val LINE_DP = 4f
+private const val DOT_DP = 7f
+private const val DASH_DP = 9f
+private const val MIN_CORNERS = 3
 private const val MATRIX = 16
 
 /** A request from JS, answered on the GL thread with ARCore's own frame. */
@@ -46,8 +55,13 @@ private data class Aim(val pose: Pose, val distance: Float, val hit: com.google.
  * and, ten times a second, a snapshot for JS: where each corner shows on the
  * screen and whether tracking ever slipped after the first corner.
  */
-class MeasureRenderer(private val sessionOf: () -> Session?, private val onSnapshot: (Map<String, Any>) -> Unit) : GLSurfaceView.Renderer {
+class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFolder: File, private val density: Float, private val onSnapshot: (Map<String, Any>) -> Unit) : GLSurfaceView.Renderer {
   private val background = BackgroundQuad()
+  private val trace = TraceOverlay()
+  /** The app's accent (its theme's primary), as GL's red, green, blue and alpha. */
+  @Volatile var accent = floatArrayOf(0.42f, 0.22f, 0.83f, 1f)
+  private var smoothed: FloatArray? = null
+  private var closing = false
   private val commands = ConcurrentLinkedQueue<Command>()
   private val corners = mutableListOf<Corner>()
   private var textureBound: Session? = null
@@ -84,6 +98,7 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val onSnaps
   override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
     GLES20.glClearColor(0f, 0f, 0f, 1f)
     background.create()
+    trace.create()
     textureBound = null
   }
 
@@ -119,8 +134,47 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val onSnaps
     if (!tracking && corners.isNotEmpty()) stable = false
     if (corners.any { it.anchor.trackingState == TrackingState.STOPPED }) stable = false
     aim = if (tracking) aimOf(frame, camera) else null
+    smoothed = aim?.let { smooth(it.pose) }
+    closing = isClosing()
+    val viewProjection = viewProjectionOf(camera)
+    drawTrace(viewProjection, shooting = commands.any { it is Command.Read })
     runCommands(tracking)
-    snapshot(camera, tracking)
+    snapshot(camera, tracking, viewProjection, session)
+  }
+
+  /** The reticle's point, eased toward each new hit; a jump of a meter or more is taken whole. */
+  private fun smooth(pose: Pose): FloatArray {
+    val hit = floatArrayOf(pose.tx(), pose.ty(), pose.tz())
+    val before = smoothed ?: return hit
+    if (length(before, hit) > 1f) return hit
+    return FloatArray(3) { before[it] + (hit[it] - before[it]) * AIM_SMOOTHING }
+  }
+
+  private fun isClosing(): Boolean {
+    val target = smoothed ?: return false
+    val first = corners.firstOrNull()?.anchor?.pose ?: return false
+    return corners.size >= MIN_CORNERS && kotlin.math.hypot(target[0] - first.tx(), target[2] - first.tz()) < SNAP_METERS
+  }
+
+  /** The sides, the corners and, while measuring, the dashed side growing to the reticle; the shot closes the ring. */
+  private fun drawTrace(viewProjection: FloatArray, shooting: Boolean) {
+    val size = width to height
+    val points = corners.map { clipOf(viewProjection, it.anchor.pose.tx(), it.anchor.pose.ty(), it.anchor.pose.tz()) }
+    val sides = points.zipWithNext().toMutableList()
+    if ((shooting || closing) && points.size >= MIN_CORNERS) sides.add(points.last() to points.first())
+    trace.lines(sides, LINE_DP * density, accent, size)
+    val target = smoothed
+    if (!shooting && !closing && target != null && points.isNotEmpty()) {
+      trace.lines(listOf(points.last() to clipOf(viewProjection, target[0], target[1], target[2])), LINE_DP * density * 0.75f, floatArrayOf(1f, 1f, 1f, 0.9f), size, DASH_DP * density)
+    }
+    trace.dots(points, DOT_DP * density, floatArrayOf(1f, 1f, 1f, 1f), size)
+    trace.dots(points, (DOT_DP - 2.5f) * density, accent, size)
+  }
+
+  private fun clipOf(viewProjection: FloatArray, x: Float, y: Float, z: Float): Clip {
+    val clip = FloatArray(4)
+    Matrix.multiplyMV(clip, 0, viewProjection, 0, floatArrayOf(x, y, z, 1f), 0)
+    return Clip(clip[0], clip[1], clip[3])
   }
 
   fun requestGeometry() { geometryDirty = true }
@@ -146,7 +200,7 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val onSnaps
           if (corners.isEmpty()) stable = true
           command.promise.resolve(corners.size)
         }
-        is Command.Read -> command.promise.resolve(reading())
+        is Command.Read -> command.promise.resolve(reading(FrameShot.save(width, height, shotFolder)))
         is Command.Clear -> {
           corners.forEach { it.anchor.detach() }
           corners.clear()
@@ -163,6 +217,7 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val onSnaps
       !tracking -> promise.reject("not-tracking", "Mueve el teléfono despacio hasta que el AR reconozca el piso.", null)
       target == null -> promise.reject("no-floor", "Apunta al piso: no hay piso reconocido en el centro.", null)
       target.distance > MAX_HIT_METERS -> promise.reject("far", "Acércate: la esquina está a más de 6 m.", null)
+      closing -> promise.reject("closing", "Toca para cerrar la zona.", null)
       else -> {
         corners.add(Corner(target.hit.createAnchor(), target.floorY))
         promise.resolve(corners.size)
@@ -171,18 +226,25 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val onSnaps
   }
 
   /** The corners in meters (ARCore's world, y up) and whether they can be trusted. */
-  private fun reading(): Map<String, Any> = mapOf(
+  private fun reading(photo: File?): Map<String, Any> = compact(
+    "photo" to photo?.let { "file://${it.absolutePath}" },
     "points" to corners.map { corner -> corner.anchor.pose.let { mapOf("x" to it.tx().toDouble(), "y" to it.ty().toDouble(), "z" to it.tz().toDouble(), "floorY" to corner.floorY.toDouble()) } },
     "stable" to (stable && corners.all { it.anchor.trackingState == TrackingState.TRACKING })
   )
 
-  private fun snapshot(camera: Camera, tracking: Boolean) {
+  private fun snapshot(camera: Camera, tracking: Boolean, viewProjection: FloatArray, session: Session) {
     val now = System.currentTimeMillis()
     if (now - lastSnapshot < SNAPSHOT_EVERY_MS) return
     lastSnapshot = now
-    val viewProjection = viewProjectionOf(camera)
     val target = aim
+    val reticle = smoothed
+    val last = corners.lastOrNull()?.anchor?.pose
+    val toward = if (closing) corners.first().anchor.pose.let { floatArrayOf(it.tx(), it.ty(), it.tz()) } else reticle
     onSnapshot(compact(
+      "floorM2" to floorArea(session),
+      "closing" to closing,
+      "live" to if (last != null && toward != null) length(floatArrayOf(last.tx(), last.ty(), last.tz()), toward).toDouble() else null,
+      "sides" to corners.zipWithNext { a, b -> distanceBetween(a.anchor.pose, b.anchor.pose).toDouble() },
       "state" to if (tracking) "tracking" else "searching",
       "reason" to if (tracking) null else camera.trackingFailureReason.name.lowercase(),
       "floor" to (target != null),
@@ -217,6 +279,13 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val onSnaps
     val y = (1f - clip[1] / clip[3]) / 2f * height
     return mapOf("x" to x.toDouble(), "y" to y.toDouble(), "visible" to (x in 0f..width.toFloat() && y in 0f..height.toFloat()))
   }
+
+  /** The floor ARCore has seen so far, for the scan before the first corner. */
+  private fun floorArea(session: Session): Double = session.getAllTrackables(Plane::class.java)
+    .filter { it.type == Plane.Type.HORIZONTAL_UPWARD_FACING && it.trackingState == TrackingState.TRACKING && it.subsumedBy == null }
+    .sumOf { (it.extentX * it.extentZ).toDouble() }
+
+  private fun length(a: FloatArray, b: FloatArray): Float = kotlin.math.sqrt((b[0] - a[0]) * (b[0] - a[0]) + (b[1] - a[1]) * (b[1] - a[1]) + (b[2] - a[2]) * (b[2] - a[2]))
 
   private fun distanceBetween(from: Pose, to: Pose): Float {
     val dx = to.tx() - from.tx()

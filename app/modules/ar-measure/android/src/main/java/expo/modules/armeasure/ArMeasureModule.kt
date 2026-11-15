@@ -41,6 +41,7 @@ class ArMeasureModule : Module() {
 
     View(ArMeasureView::class) {
       Events("onArFrame")
+      Prop("accent") { view: ArMeasureView, hex: String -> view.setAccent(hex) }
       AsyncFunction("addCorner") { view: ArMeasureView, promise: Promise -> view.renderer.post(Command.AddCorner(promise)) }
       AsyncFunction("undoCorner") { view: ArMeasureView, promise: Promise -> view.renderer.post(Command.Undo(promise)) }
       AsyncFunction("readCorners") { view: ArMeasureView, promise: Promise -> view.renderer.post(Command.Read(promise)) }

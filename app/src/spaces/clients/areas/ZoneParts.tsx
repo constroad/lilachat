@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { Plus, X } from 'lucide-react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { MapPin, Plus, X } from 'lucide-react-native';
 import type { TapeKey } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { SectionTitle } from '../observations/ObservationParts';
@@ -14,9 +14,13 @@ type GpsPoint = Awaited<ReturnType<typeof freshPoint>>;
 export const decimals = (value: number, digits: number) => value.toFixed(digits).replace('.', ',');
 const REVEAL_MARGIN = 16;
 
-/** The photo and the GPS, read together when the screen opens (§5-ter rule 2: the camera first). */
-export function useZoneShot() {
-  const [shot, setShot] = useState<CapturedEvidence | null>(null);
+/**
+ * The photo and the GPS, read together when the screen opens (§5-ter rule 2: the camera first).
+ * With the AR's own frame (`start`) the camera does not open: the zone was already marked.
+ */
+export function useZoneShot(start: CapturedEvidence | null = null) {
+  const [shot, setShot] = useState<CapturedEvidence | null>(start);
+  const [opensCamera] = useState(!start);
   const [message, setMessage] = useState<string | null>(null);
   const [point, setPoint] = useState<GpsPoint>(null);
   const take = useCallback(async () => {
@@ -26,7 +30,7 @@ export function useZoneShot() {
     if (taken && 'message' in taken) setMessage(taken.message);
     else if (taken) setShot(taken);
   }, []);
-  useEffect(() => { void take(); }, [take]);
+  useEffect(() => { if (opensCamera) void take(); }, [opensCamera, take]);
   return { shot, message, point, take };
 }
 
@@ -80,6 +84,26 @@ export function ResultCard({ line, method }: { line: string; method: string }) {
       <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">Resultado</Text>
       <Text className="text-[28px] font-extrabold text-on-surface" style={{ fontVariant: ['tabular-nums'] }}>{line}</Text>
       <Text className="self-start rounded-md bg-primary/10 px-2 py-0.5 text-[11px] font-bold uppercase text-primary">{method}</Text>
+    </View>
+  );
+}
+
+/** The zone's place as the GPS found it, editable; what the person types wins over a late answer. */
+export function usePlaceText(found: string | null) {
+  const [typed, setTyped] = useState<string | null>(null);
+  return { value: typed ?? found ?? '', set: setTyped };
+}
+
+/** «Lugar · Del GPS» (la-02's top bar, la-03's card): the street and station, or the address. */
+export function PlaceCard(props: { value: string; asking: boolean; fromGps: boolean; onChange: (text: string) => void }) {
+  const colors = useColores();
+  return (
+    <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
+      <SectionTitle title="Lugar" side={props.asking ? 'Buscando…' : props.fromGps ? 'Del GPS' : 'Escríbelo'} />
+      <View className="flex-row items-center gap-2 rounded-xl border border-outline/20 px-3">
+        <MapPin size={18} color={colors.primary} />
+        <TextInput testID="area-lugar" value={props.value} onChangeText={props.onChange} placeholder="Calle y progresiva" placeholderTextColor={colors['on-surface-variant']} className="min-h-[48px] flex-1 text-[15px] text-on-surface" />
+      </View>
     </View>
   );
 }

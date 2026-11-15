@@ -1,6 +1,6 @@
 import { FORMS_LEVEL } from './appForms.js';
 import { describe, expect, it } from 'vitest';
-import { AREA_TYPE, areaAnswerOf, areaReportDay, areaRemoveAsk, areaRemoveRequest, isRemovableArea, areaCardLines, areaCreateRequest, areaDocumentOf, areaPlaceValues, areaTotalsLine, areaWriteStore, MEASURE_IN_APK, measureInApkLinks } from './additionalArea.js';
+import { AREA_TYPE, areaAnswerOf, areaReportDay, areaRemoveAsk, areaRemoveRequest, isRemovableArea, areaCardLines, areaCreateRequest, areaDocumentOf, areaPlaceValues, areaTotalsLine, areaWriteStore, zonePlaceLine, MEASURE_IN_APK, measureInApkLinks } from './additionalArea.js';
 import { ENLACE_DE_DESCARGA } from './invitacion.js';
 
 /** Portal's `informe_area_adicional` as agentes passes it (Portal 12/11, proposed contract). */
@@ -167,5 +167,17 @@ describe('areaReportDay', () => {
     expect(areaReportDay(undefined)).toBeNull();
     expect(areaReportDay('15/11/2026')).toBeNull();
     expect(areaReportDay('2026-02-30')).toBeNull();
+  });
+});
+
+describe('zonePlaceLine (José 15/11: the zone takes its street from the GPS)', () => {
+  it('names the work-map street and its station when the engineer stands on one', () => {
+    expect(zonePlaceLine({ id: 's1', name: 'Av. El Sol', distanceM: 6, measureM: 120.4 }, 'Calle 5')).toBe('Av. El Sol 0+120');
+  });
+
+  it('falls back to the street of the address, and to nothing', () => {
+    expect(zonePlaceLine(null, 'Jr. Moquegua 310')).toBe('Jr. Moquegua 310');
+    expect(zonePlaceLine(null, '  ')).toBeNull();
+    expect(zonePlaceLine(null, null)).toBeNull();
   });
 });

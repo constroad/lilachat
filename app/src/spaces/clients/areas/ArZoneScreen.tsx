@@ -10,10 +10,12 @@ import type { ArMeasured } from './ArMeasureScreen';
 import { ArPlanCard } from './ArPlanCard';
 import { TapeKeypad } from './TapeKeypad';
 import { useAreaWrite } from './useAreas';
-import { decimals, ResultCard, ThicknessCard, useReveal, useZoneShot } from './ZoneParts';
+import { decimals, PlaceCard, ResultCard, ThicknessCard, usePlaceText, useReveal, useZoneShot } from './ZoneParts';
+import type { ZonePlace } from './useZonePlace';
+import type { CapturedEvidence } from '../useDriveUpload';
 
 type Editing = { kind: 'side'; index: number } | { kind: 'reading' } | null;
-type Props = { to: ObservationTarget; report: AreaDocument | null; zone: number; measured: ArMeasured; onRemeasure: () => void; onBack: () => void; onSaved: (reportId: string) => void };
+type Props = { to: ObservationTarget; report: AreaDocument | null; zone: number; measured: ArMeasured; evidence: CapturedEvidence | null; place: ZonePlace; onRemeasure: () => void; onBack: () => void; onSaved: (reportId: string) => void };
 
 /** The tape on each side and the thickness readings; the engine turns them and the AR's corners into the figures. */
 function useTape(measured: ArMeasured) {
@@ -53,7 +55,8 @@ export function ArZoneScreen(props: Props) {
   const colors = useColores();
   const [entryId] = useState(() => Crypto.randomUUID());
   const [note, setNote] = useState('');
-  const shot = useZoneShot();
+  const shot = useZoneShot(props.evidence);
+  const placeText = usePlaceText(props.place.place);
   const tape = useTape(props.measured);
   const write = useAreaWrite(props.to);
   const reveal = useReveal();
@@ -61,8 +64,9 @@ export function ArZoneScreen(props: Props) {
   const blocker = tape.editing ? 'Toca «Listo» para dejar anotada la medida.' : !shot.shot ? 'Toma la foto de la zona.' : result.problems[0] ? arProblemLine(result.problems[0]) : null;
   const save = async () => {
     if (blocker || !result.canSave || !shot.shot) return;
-    const point = shot.point ? { lat: shot.point.lat, lng: shot.point.lng, precision: shot.point.precision } : null;
-    const reportId = await write.save(areaCreateRequest(props.report, entryId, arAreaFigures(result), point, 'ar-app', 'apk'), { place: '', note }, [shot.shot]);
+    const gps = props.place.point ?? shot.point;
+    const point = gps ? { lat: gps.lat, lng: gps.lng, precision: gps.precision } : null;
+    const reportId = await write.save(areaCreateRequest(props.report, entryId, arAreaFigures(result), point, 'ar-app', 'apk'), { place: placeText.value.trim(), note }, [shot.shot]);
     if (reportId) props.onSaved(reportId);
   };
   return (
@@ -75,7 +79,8 @@ export function ArZoneScreen(props: Props) {
           <ThicknessCard readings={tape.readings} thicknessCm={result.thicknessCm} editing={tape.editing?.kind === 'reading'} typed={tape.typed} onAdd={() => tape.open({ kind: 'reading' })} onRemove={(index) => tape.setReadings((current) => current.filter((_, at) => at !== index))} onKey={tape.key} onDone={tape.done} onShown={reveal.show} error={tape.readingError} />
           {result.areaM2 !== null && !result.problems.includes('no-tape') ? <ResultCard line={arAreaFigures(result).line} method="AR + wincha" /> : null}
           {result.problems.length ? <ProblemsCard lines={result.problems.map(arProblemLine)} /> : null}
-          <ShotCard shot={shot} color={colors.primary} />
+          <ShotCard shot={shot} fromAr={Boolean(props.evidence)} color={colors.primary} />
+          <PlaceCard value={placeText.value} asking={props.place.asking} fromGps={Boolean(props.place.place)} onChange={placeText.set} />
           <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
             <SectionTitle title="Descripción" side="Opcional" />
             <TextInput testID="area-descripcion" value={note} onChangeText={setNote} placeholder="Bacheo localizado" placeholderTextColor={colors['on-surface-variant']} className="min-h-[48px] rounded-xl border border-outline/20 px-3 text-[15px] text-on-surface" />
@@ -140,13 +145,14 @@ function ProblemsCard({ lines }: { lines: string[] }) {
   );
 }
 
-function ShotCard({ shot, color }: { shot: ReturnType<typeof useZoneShot>; color: string }) {
+/** The AR's own frame with the trace (José 15/11); the camera only if that frame could not be read. */
+function ShotCard({ shot, fromAr, color }: { shot: ReturnType<typeof useZoneShot>; fromAr: boolean; color: string }) {
   return (
     <View className="flex-row items-center gap-3 rounded-2xl border border-outline/15 bg-surface p-3">
-      {shot.shot ? <Image source={{ uri: shot.shot.preview.uri }} style={{ width: 64, height: 64, borderRadius: 10 }} /> : <View className="h-16 w-16 items-center justify-center rounded-xl bg-surface-variant"><Camera size={22} color={color} /></View>}
+      {shot.shot ? <Image testID="foto-zona-ar-miniatura" source={{ uri: shot.shot.preview.uri }} style={{ width: 96, height: 96, borderRadius: 10 }} /> : <View className="h-16 w-16 items-center justify-center rounded-xl bg-surface-variant"><Camera size={22} color={color} /></View>}
       <View className="flex-1">
         <Text className="text-[15px] font-semibold text-on-surface">Foto de la zona</Text>
-        {shot.message ? <Text className="text-[13px] text-error">{shot.message}</Text> : <Text className="text-[13px] text-on-surface-variant">{shot.shot ? 'Va con la zona al informe.' : 'Falta la foto.'}</Text>}
+        {shot.message ? <Text className="text-[13px] text-error">{shot.message}</Text> : <Text className="text-[13px] text-on-surface-variant">{!shot.shot ? 'Falta la foto.' : fromAr ? 'Tomada por el AR con el contorno marcado. Va al informe.' : 'Va con la zona al informe.'}</Text>}
       </View>
       <Pressable testID="foto-zona-ar" onPress={() => void shot.take()} className="h-11 justify-center px-2"><Text className="text-[14px] font-semibold text-primary">{shot.shot ? 'Repetir' : 'Tomar'}</Text></Pressable>
     </View>

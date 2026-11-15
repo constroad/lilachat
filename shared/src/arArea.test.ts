@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arAimLine, arAreaFigures, arAreaOf, arPlanOf, arProblemLine, visibleRuns, type ArPoint } from './arArea.js';
+import { arAimLine, arAreaFigures, arAreaOf, arLiveLabel, arPlanOf, arProblemLine, arScanProgress, closedRing, visibleRuns, type ArPoint } from './arArea.js';
 
 /** A flat 2 m × 1,5 m rectangle on the floor (ARCore: y is up, meters). */
 const rectangle: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }, { x: 2, y: 0, z: 1.5 }, { x: 0, y: 0, z: 1.5 }];
@@ -207,10 +207,8 @@ describe('arPlanOf: the plan from above (la-03)', () => {
 describe('arAimLine: what la-02 tells the person', () => {
   it('guides by what the AR sees, in order', () => {
     expect(arAimLine({ state: 'searching', floor: false }, 0)).toMatch(/Mueve el teléfono/);
-    expect(arAimLine({ state: 'tracking', floor: false }, 0)).toMatch(/Apunta al piso/);
+    expect(arAimLine({ state: 'tracking', floor: false, floorM2: 2 }, 0)).toMatch(/Apunta al piso/);
     expect(arAimLine({ state: 'tracking', floor: true, distance: 7.5 }, 1)).toMatch(/Acércate/);
-    expect(arAimLine({ state: 'tracking', floor: true, distance: 2 }, 0)).toBe('Apunta a la esquina 1');
-    expect(arAimLine({ state: 'tracking', floor: true, distance: 2 }, 3)).toBe('Apunta a la esquina 4 o toca «Cerrar»');
   });
 });
 
@@ -229,5 +227,47 @@ describe('visibleRuns', () => {
   it('draws nothing with fewer than two visible corners', () => {
     expect(visibleRuns([])).toEqual([]);
     expect(visibleRuns([at(1), at(0, false)])).toEqual([]);
+  });
+});
+
+describe('closedRing (José 15/11: a 5th corner on the 1st closed the zone by hand)', () => {
+  const square: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }, { x: 2, y: 0, z: 1 }, { x: 0, y: 0, z: 1 }];
+
+  it('drops a last corner marked on top of the first: it closes, it is not a side', () => {
+    expect(closedRing([...square, { x: 0.03, y: 0, z: 0.02 }])).toEqual(square);
+  });
+
+  it('keeps every corner when the last one is a real corner', () => {
+    expect(closedRing(square)).toEqual(square);
+    expect(closedRing([...square, { x: -0.5, y: 0, z: 0.5 }])).toHaveLength(5);
+  });
+
+  it('never drops below three corners', () => {
+    const triangle = square.slice(0, 3);
+    expect(closedRing([...triangle.slice(0, 2), { x: 0.02, y: 0, z: 0 }])).toHaveLength(3);
+  });
+});
+
+describe('the scan and the aim (José 15/11: scan first, tap the screen, close on the first corner)', () => {
+  it('fills the scan up to one square meter of floor', () => {
+    expect(arScanProgress(undefined)).toBe(0);
+    expect(arScanProgress(0.25)).toBe(0.25);
+    expect(arScanProgress(4)).toBe(1);
+    expect(arScanProgress(-1)).toBe(0);
+  });
+
+  it('asks to scan before the first corner, then to tap the screen', () => {
+    expect(arAimLine({ state: 'tracking', floor: true, distance: 2, floorM2: 0.3 }, 0)).toBe('Mueve el teléfono despacio sobre el piso para escanearlo.');
+    expect(arAimLine({ state: 'tracking', floor: true, distance: 2, floorM2: 1.2 }, 0)).toBe('Toca la pantalla para marcar la esquina 1');
+    expect(arAimLine({ state: 'tracking', floor: true, distance: 2, floorM2: 1.2 }, 3)).toBe('Toca para marcar la esquina 4, o apunta a la 1 para cerrar');
+  });
+
+  it('says it closes when the aim snapped to the first corner', () => {
+    expect(arAimLine({ state: 'tracking', floor: true, distance: 2, floorM2: 2, closing: true }, 4)).toBe('Toca para cerrar la zona');
+  });
+
+  it('writes the live length in meters with a comma', () => {
+    expect(arLiveLabel(1.384)).toBe('1,38 m');
+    expect(arLiveLabel(null)).toBeNull();
   });
 });

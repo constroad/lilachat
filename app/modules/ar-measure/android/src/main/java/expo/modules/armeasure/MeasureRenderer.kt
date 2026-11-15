@@ -30,6 +30,9 @@ private const val LINE_DP = 4f
 private const val DOT_DP = 7f
 private const val DASH_DP = 9f
 private const val MIN_CORNERS = 3
+/** The corner is the mean of the last steady hits under the reticle, not one frame's (José 15/11: 1,90 against 1,99). */
+private const val STEADY_HITS = 10
+private const val STEADY_METERS = 0.04f
 /** The floor to see before the first corner: the engine's `AR_SCAN_AREA_M2`. */
 private const val SCAN_AREA_M2 = 1.0
 private const val MATRIX = 16
@@ -63,6 +66,7 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
   /** The app's accent (its theme's primary), as GL's red, green, blue and alpha. */
   @Volatile var accent = floatArrayOf(0.42f, 0.22f, 0.83f, 1f)
   private var smoothed: FloatArray? = null
+  private val steady = ArrayDeque<FloatArray>()
   private var closing = false
   private val commands = ConcurrentLinkedQueue<Command>()
   private val corners = mutableListOf<Corner>()
@@ -137,6 +141,7 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
     if (corners.any { it.anchor.trackingState == TrackingState.STOPPED }) stable = false
     aim = if (tracking) aimOf(frame, camera) else null
     smoothed = aim?.let { smooth(it.pose) }
+    keepSteady(aim?.pose)
     closing = isClosing()
     val viewProjection = viewProjectionOf(camera)
     // One list per frame: the shot and its answer see the same requests (audit 15/11).
@@ -148,6 +153,18 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
     closing = isClosing()
     snapshot(camera, tracking, viewProjection, session)
   }
+
+  /** The hits of a still phone: a jump past 4 cm (the aim moved) starts the run again. */
+  private fun keepSteady(pose: Pose?) {
+    if (pose == null) return steady.clear()
+    val hit = floatArrayOf(pose.tx(), pose.ty(), pose.tz())
+    val mean = steadyMean()
+    if (mean != null && length(mean, hit) > STEADY_METERS) steady.clear()
+    steady.addLast(hit)
+    while (steady.size > STEADY_HITS) steady.removeFirst()
+  }
+
+  private fun steadyMean(): FloatArray? = if (steady.isEmpty()) null else FloatArray(3) { axis -> steady.sumOf { it[axis].toDouble() }.toFloat() / steady.size }
 
   /** A last corner marked on the first one is the close, not a side: out before the shot and the reading. */
   private fun dropCornerOnFirst() {
@@ -239,7 +256,9 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
       target.distance > MAX_HIT_METERS -> promise.reject("far", "Acércate: la esquina está a más de 6 m.", null)
       closing || nearFirst(target.pose.tx(), target.pose.tz()) -> promise.reject("closing", "Toca para cerrar la zona.", null)
       else -> {
-        corners.add(Corner(target.hit.createAnchor(), target.floorY))
+        val mean = steadyMean()
+        val anchor = if (mean != null && steady.size >= MIN_CORNERS) target.hit.trackable.createAnchor(Pose.makeTranslation(mean[0], mean[1], mean[2])) else target.hit.createAnchor()
+        corners.add(Corner(anchor, target.floorY))
         promise.resolve(corners.size)
       }
     }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isThicknessReading, photoAreaFigures, photoAreaOf, photoPointOf, photoSideLabel, screenPointOf, tapeKey, tapeMeters, thicknessAverage, type PhotoPoint } from './photoArea.js';
+import { isThicknessReading, photoAreaFigures, photoAreaOf, photoPointOf, photoSideLabel, readingTyped, screenPointOf, tapeKey, tapeMeters, thicknessAverage, type PhotoPoint } from './photoArea.js';
 
 /**
  * Design la-05 (APK, no AR): the zone's photo from above, its corners touched,
@@ -100,5 +100,14 @@ describe('isThicknessReading', () => {
   it('only 1 to 50 cm counts', () => {
     expect([1, 5.2, 50].map(isThicknessReading)).toEqual([true, true, true]);
     expect([0.5, 50.1, 500, Number.NaN].map(isThicknessReading)).toEqual([false, false, false, false]);
+  });
+});
+
+describe('readingTyped (the phone keyboard writes the thickness; José 15/11: no big keypad for it)', () => {
+  it('takes a comma as the decimal point and drops anything else', () => {
+    expect(readingTyped('1,5')).toBe('1.5');
+    expect(readingTyped('5 cm')).toBe('5');
+    expect(readingTyped('1.2.3')).toBe('1.23');
+    expect(readingTyped('')).toBe('');
   });
 });

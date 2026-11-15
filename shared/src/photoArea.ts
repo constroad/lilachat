@@ -91,6 +91,13 @@ export function tapeKey(current: string, key: TapeKey): string {
 }
 
 /** The typed length in meters; null while it is not a positive number. */
+/** A thickness typed on the phone's keyboard: a comma is the decimal point, one point at most, only digits. */
+export function readingTyped(text: string): string {
+  const cleaned = text.replace(/,/g, '.').replace(/[^0-9.]/g, '');
+  const point = cleaned.indexOf('.');
+  return point < 0 ? cleaned : cleaned.slice(0, point + 1) + cleaned.slice(point + 1).replace(/\./g, '');
+}
+
 export function tapeMeters(typed: string): number | null {
   const value = Number(typed);
   return typed !== '' && !typed.endsWith('.') && Number.isFinite(value) && value > 0 ? value : null;

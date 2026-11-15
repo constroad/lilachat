@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arAimLine, arAreaFigures, arAreaOf, arLiveLabel, arPlanOf, arProblemLine, arScanProgress, closedRing, visibleRuns, type ArPoint } from './arArea.js';
+import { arAimLine, arAreaFigures, arAreaOf, arLiveLabel, arPlanOf, arProblemLine, arScanProgress, closedRing, isArWarning, visibleRuns, type ArPoint } from './arArea.js';
 
 /** A flat 2 m × 1,5 m rectangle on the floor (ARCore: y is up, meters). */
 const rectangle: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }, { x: 2, y: 0, z: 1.5 }, { x: 0, y: 0, z: 1.5 }];
@@ -103,12 +103,13 @@ describe('arAreaOf: the tape against the AR (José 15/11: 3 % warns, 15 % blocks
     expect(result.areaM2).toBe(3.24);
   });
 
-  it('without a taped side it shows the AR figure but does not save', () => {
+  it('without a taped side it saves the AR figure and only warns (José 15/11: «en plena obra no se va a estar validando»)', () => {
     const result = arAreaOf(base);
 
     expect(result.areaM2).toBe(3);
     expect(result.problems).toEqual(['no-tape']);
-    expect(result.canSave).toBe(false);
+    expect(isArWarning('no-tape')).toBe(true);
+    expect(result.canSave).toBe(true);
   });
 
   it('a tape on a side that does not exist is ignored', () => {
@@ -116,7 +117,7 @@ describe('arAreaOf: the tape against the AR (José 15/11: 3 % warns, 15 % blocks
   });
 });
 
-describe('arAreaOf: what never saves', () => {
+describe('arAreaOf: what never saves (and what only warns)', () => {
   it('fewer than three corners', () => {
     const result = arAreaOf({ ...base, points: rectangle.slice(0, 2), tapes: { 0: 2 } });
 
@@ -147,9 +148,12 @@ describe('arAreaOf: what never saves', () => {
     expect(arAreaOf({ ...base, points: triangle, tapes: { 0: 4 } }).problems).toContain('off-plane');
   });
 
-  it('a corner off the floor (on a wall, a curb, a car)', () => {
+  it('a corner off the floor (on a wall, a curb, a car) warns but saves; with a real fault it still does not', () => {
     const lifted = rectangle.map((point, index) => (index === 2 ? { ...point, y: 0.25 } : point));
-    expect(arAreaOf({ ...base, points: lifted, tapes: { 0: 2 } }).problems).toContain('off-plane');
+    const result = arAreaOf({ ...base, points: lifted, tapes: { 0: 2 } });
+    expect(result.problems).toContain('off-plane');
+    expect(result.canSave).toBe(true);
+    expect(arAreaOf({ ...base, points: lifted, tapes: { 0: 2 }, stable: false }).canSave).toBe(false);
   });
 
   it('the AR lost its place while measuring: the corners may have moved', () => {

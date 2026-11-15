@@ -1,12 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { MapPin, Plus, X } from 'lucide-react-native';
-import type { TapeKey } from '@lilachat/shared';
+import { Check, MapPin, Plus, X } from 'lucide-react-native';
 import { useColores } from '../../../ui/tema';
 import { SectionTitle } from '../observations/ObservationParts';
 import { freshPoint } from '../../../chat/location/freshPoint';
 import { captureEvidence, type CapturedEvidence } from '../useDriveUpload';
-import { TapeKeypad } from './TapeKeypad';
 
 type GpsPoint = Awaited<ReturnType<typeof freshPoint>>;
 
@@ -51,28 +49,39 @@ export function useReveal() {
 
 type ThicknessProps = {
   readings: readonly number[]; thicknessCm: number | null; editing: boolean; typed: string;
-  onAdd: () => void; onRemove: (index: number) => void; onKey: (key: TapeKey) => void; onDone: () => void; onShown: (node: View) => void; error?: string | null;
+  onAdd: () => void; onRemove: (index: number) => void; onType: (text: string) => void; onDone: () => void; error?: string | null;
 };
 
-/** «Espesor · lecturas en cm»: each reading a chip that comes off with a touch, and their mean. */
+/**
+ * «Espesor · lecturas en cm» (design la-03): each reading a chip that comes off with a touch,
+ * «+ Lectura» opens a small field with the phone's own number keyboard (José 15/11: the big
+ * keypad here was not the design), and their mean.
+ */
 export function ThicknessCard(props: ThicknessProps) {
   const colors = useColores();
   const count = props.readings.length;
   return (
     <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
-      <SectionTitle title="Espesor · lecturas en cm" />
+      <SectionTitle title="Espesor · lecturas en cm" side={count ? `${count} ${count === 1 ? 'punto' : 'puntos'}` : undefined} />
       <View className="flex-row flex-wrap gap-2">
         {props.readings.map((reading, index) => (
-          <Pressable key={`${reading}-${index}`} testID={`lectura-${index}`} onPress={() => props.onRemove(index)} accessibilityLabel={`Quitar ${reading} cm`} className="h-11 flex-row items-center gap-1.5 rounded-xl border border-outline/20 px-3">
+          <Pressable key={`${reading}-${index}`} testID={`lectura-${index}`} onPress={() => props.onRemove(index)} accessibilityLabel={`Quitar ${reading} cm`} className="h-11 flex-row items-center gap-1.5 rounded-lg border border-outline/20 px-3">
             <Text className="text-[15px] font-bold text-on-surface">{decimals(reading, 1)}<Text className="text-[12px] font-normal text-on-surface-variant"> cm</Text></Text>
             <X size={14} color={colors.primary} />
           </Pressable>
         ))}
-        <Pressable testID="agregar-lectura" onPress={props.onAdd} className="h-11 flex-row items-center gap-1 rounded-xl border border-primary/40 px-3"><Plus size={16} color={colors.primary} /><Text className="text-[14px] font-semibold text-primary">Lectura</Text></Pressable>
+        {props.editing ? (
+          <View className="h-11 flex-row items-center gap-1 rounded-lg border-[1.5px] border-primary pl-3">
+            <TextInput testID="lectura-campo" autoFocus value={props.typed} onChangeText={props.onType} onSubmitEditing={props.onDone} keyboardType="decimal-pad" returnKeyType="done" placeholder="0,0" placeholderTextColor={colors['on-surface-variant']} className="w-16 text-[15px] font-bold text-on-surface" />
+            <Text className="text-[12px] text-on-surface-variant">cm</Text>
+            <Pressable testID="lectura-agregar" onPress={props.onDone} accessibilityLabel="Agregar lectura" className="h-11 w-11 items-center justify-center"><Check size={18} color={colors.primary} /></Pressable>
+          </View>
+        ) : (
+          <Pressable testID="agregar-lectura" onPress={props.onAdd} className="h-11 flex-row items-center gap-1 rounded-lg border border-dashed border-primary/60 px-3"><Plus size={16} color={colors.primary} /><Text className="text-[14px] font-semibold text-primary">Lectura</Text></Pressable>
+        )}
       </View>
       {props.error ? <Text testID="lectura-fuera-de-rango" className="text-[13px] font-semibold text-error">{props.error}</Text> : null}
-      {props.editing ? <TapeKeypad title="Lectura de espesor" unit="cm" typed={props.typed} onKey={props.onKey} onDone={props.onDone} onShown={props.onShown} /> : null}
-      {props.thicknessCm !== null ? <Text className="text-[14px] text-on-surface">{`Promedio: ${decimals(props.thicknessCm, 1)} cm (${count} ${count === 1 ? 'lectura' : 'lecturas'})`}</Text> : null}
+      {props.thicknessCm !== null ? <Text className="text-[14px] font-semibold text-on-surface">{`Promedio ${decimals(props.thicknessCm, 1)} cm · ${count} ${count === 1 ? 'lectura' : 'lecturas'}`}</Text> : null}
     </View>
   );
 }

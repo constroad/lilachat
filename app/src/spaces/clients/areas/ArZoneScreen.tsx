@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import * as Crypto from 'expo-crypto';
-import { AlertTriangle, Camera, CheckCircle2, RotateCcw } from 'lucide-react-native';
-import { areaCreateRequest, arAreaFigures, arAreaOf, arProblemLine, isThicknessReading, tapeKey, tapeMeters, THICKNESS_OUT_OF_RANGE, type ArSide, type AreaDocument, type TapeKey } from '@lilachat/shared';
+import { AlertTriangle, CheckCircle2, RotateCcw } from 'lucide-react-native';
+import { areaCreateRequest, arAreaFigures, arAreaOf, arProblemLine, isArWarning, isThicknessReading, readingTyped, tapeKey, tapeMeters, THICKNESS_OUT_OF_RANGE, type ArProblem, type ArSide, type AreaDocument, type TapeKey } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { BottomAction, ObservationHeader, SectionTitle } from '../observations/ObservationParts';
 import type { ObservationTarget } from '../observations/useObservations';
@@ -34,7 +34,7 @@ function useTape(measured: ArMeasured) {
     setReadingError(null);
     setEditing(null);
   };
-  return { result, readings, setReadings, editing, typed, readingError, open, done, key: (pressed: TapeKey) => setTyped((current) => tapeKey(current, pressed)) };
+  return { result, readings, setReadings, editing, typed, readingError, open, done, key: (pressed: TapeKey) => setTyped((current) => tapeKey(current, pressed)), type: (text: string) => setTyped(readingTyped(text)) };
 }
 
 /** An empty «Listo» takes the tape off that side: the AR length goes back. */
@@ -61,9 +61,11 @@ export function ArZoneScreen(props: Props) {
   const write = useAreaWrite(props.to);
   const reveal = useReveal();
   const { result } = tape;
-  const blocker = tape.editing ? 'Toca «Listo» para dejar anotada la medida.' : !shot.shot ? 'Toma la foto de la zona.' : result.problems[0] ? arProblemLine(result.problems[0]) : null;
+  // Only a real fault stops the save: no tape and a corner off the floor only warn (José 15/11).
+  const fault = result.problems.find((problem) => !isArWarning(problem));
+  const blocker = !shot.shot ? 'Toma la foto de la zona.' : fault ? arProblemLine(fault) : null;
   const save = async () => {
-    if (blocker || !result.canSave || !shot.shot) return;
+    if (tape.editing || blocker || !result.canSave || !shot.shot) return;
     const gps = props.place.point ?? shot.point;
     const point = gps ? { lat: gps.lat, lng: gps.lng, precision: gps.precision } : null;
     const reportId = await write.save(areaCreateRequest(props.report, entryId, arAreaFigures(result), point, 'ar-app', 'apk'), { place: placeText.value.trim(), note }, [shot.shot]);
@@ -74,12 +76,12 @@ export function ArZoneScreen(props: Props) {
       <ObservationHeader kicker={`${props.report?.code ?? 'IAA'} · Zona ${props.zone}`} title="Medido con AR" onBack={props.onBack} />
       <ScrollView ref={reveal.scroll} onLayout={reveal.onLayout} testID="zona-ar-pantalla" keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
         <View ref={reveal.content} collapsable={false} className="gap-3">
-          <ArPlanCard points={props.measured.points} sides={result.sides} editing={tape.editing?.kind === 'side' ? tape.editing.index : null} />
+          <ArPlanCard points={props.measured.points} sides={result.sides} editing={tape.editing?.kind === 'side' ? tape.editing.index : null} photo={shot.shot?.preview.uri ?? null} onRetake={() => void shot.take()} />
           <SidesCard tape={tape} onShown={reveal.show} />
-          <ThicknessCard readings={tape.readings} thicknessCm={result.thicknessCm} editing={tape.editing?.kind === 'reading'} typed={tape.typed} onAdd={() => tape.open({ kind: 'reading' })} onRemove={(index) => tape.setReadings((current) => current.filter((_, at) => at !== index))} onKey={tape.key} onDone={tape.done} onShown={reveal.show} error={tape.readingError} />
-          {result.areaM2 !== null && !result.problems.includes('no-tape') ? <ResultCard line={arAreaFigures(result).line} method="AR + wincha" /> : null}
-          {result.problems.length ? <ProblemsCard lines={result.problems.map(arProblemLine)} /> : null}
-          <ShotCard shot={shot} fromAr={Boolean(props.evidence)} color={colors.primary} />
+          <ThicknessCard readings={tape.readings} thicknessCm={result.thicknessCm} editing={tape.editing?.kind === 'reading'} typed={tape.typed} onAdd={() => tape.open({ kind: 'reading' })} onRemove={(index) => tape.setReadings((current) => current.filter((_, at) => at !== index))} onType={tape.type} onDone={tape.done} error={tape.readingError} />
+          {result.areaM2 !== null ? <ResultCard line={arAreaFigures(result).line} method={result.sides.some((side) => side.source === 'wincha') ? 'AR + wincha' : 'Solo AR'} /> : null}
+          {result.problems.length ? <ProblemsCard problems={result.problems} /> : null}
+          {shot.message ? <Text className="text-[13px] text-error">{shot.message}</Text> : null}
           <PlaceCard value={placeText.value} asking={props.place.asking} fromGps={Boolean(props.place.place) && !placeText.typed} onChange={placeText.set} />
           <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
             <SectionTitle title="Descripción" side="Opcional" />
@@ -89,7 +91,8 @@ export function ArZoneScreen(props: Props) {
           {write.line ? <Text testID="area-escritura" className="text-center text-[13px] text-on-surface-variant">{write.line}</Text> : null}
         </View>
       </ScrollView>
-      <BottomAction testID="guardar-zona" label="Guardar zona" icon={<CheckCircle2 size={22} color={colors['on-primary']} />} busy={write.busy} note={blocker ?? (props.report?.code ? `Se sumará al informe ${props.report.code}` : null)} onPress={() => (blocker ? undefined : void save())} />
+      {/* While a measure is typed, its own «Listo» is the only button (José 15/11: two big buttons at once). */}
+      {tape.editing ? null : <BottomAction testID="guardar-zona" label="Guardar zona" icon={<CheckCircle2 size={22} color={colors['on-primary']} />} busy={write.busy} note={blocker ?? (props.report?.code ? `Se sumará al informe ${props.report.code}` : null)} onPress={() => (blocker ? undefined : void save())} />}
     </View>
   );
 }
@@ -103,7 +106,7 @@ function SidesCard({ tape, onShown }: { tape: Tape; onShown: (node: View) => voi
     <View className="gap-1 rounded-2xl border border-outline/15 bg-surface p-3">
       <SectionTitle title="Lados · toca uno para poner la wincha" />
       {tape.result.sides.map((side) => (editing === side.index
-        ? <View key={side.index} className="gap-2"><SideWarning side={side} /><Text className="text-[13px] text-on-surface-variant">{`Lectura previa: AR ${decimals(side.arMeters, 2)} m`}</Text><TapeKeypad title={`Lado ${side.index + 1}`} unit="m" typed={tape.typed} onKey={tape.key} onDone={tape.done} onShown={onShown} /></View>
+        ? <View key={side.index} className="gap-2"><SideWarning side={side} /><TapeKeypad title={`Lado ${side.index + 1} en edición`} unit="m" before={`AR ${decimals(side.arMeters, 2)} m`} typed={tape.typed} onKey={tape.key} onDone={tape.done} onShown={onShown} /></View>
         : <SideRow key={side.index} side={side} onPress={() => tape.open({ kind: 'side', index: side.index })} />))}
     </View>
   );
@@ -137,24 +140,14 @@ function SideWarning({ side }: { side: ArSide }) {
   );
 }
 
-function ProblemsCard({ lines }: { lines: string[] }) {
+/** A fault in red stops the save; a warning in amber only asks to look (José 15/11). */
+function ProblemsCard({ problems }: { problems: readonly ArProblem[] }) {
+  const faults = problems.filter((problem) => !isArWarning(problem));
+  const warnings = problems.filter(isArWarning);
   return (
-    <View testID="problemas-ar" className="gap-1 rounded-2xl border border-error/30 bg-error/5 p-3">
-      {lines.map((line) => <Text key={line} className="text-[14px] text-on-surface">{`• ${line}`}</Text>)}
-    </View>
-  );
-}
-
-/** The AR's own frame with the trace (José 15/11); the camera only if that frame could not be read. */
-function ShotCard({ shot, fromAr, color }: { shot: ReturnType<typeof useZoneShot>; fromAr: boolean; color: string }) {
-  return (
-    <View className="flex-row items-center gap-3 rounded-2xl border border-outline/15 bg-surface p-3">
-      {shot.shot ? <Image testID="foto-zona-ar-miniatura" source={{ uri: shot.shot.preview.uri }} style={{ width: 96, height: 96, borderRadius: 10 }} /> : <View className="h-16 w-16 items-center justify-center rounded-xl bg-surface-variant"><Camera size={22} color={color} /></View>}
-      <View className="flex-1">
-        <Text className="text-[15px] font-semibold text-on-surface">Foto de la zona</Text>
-        {shot.message ? <Text className="text-[13px] text-error">{shot.message}</Text> : <Text className="text-[13px] text-on-surface-variant">{!shot.shot ? 'Falta la foto.' : fromAr ? 'Tomada por el AR con el contorno marcado. Va al informe.' : 'Va con la zona al informe.'}</Text>}
-      </View>
-      <Pressable testID="foto-zona-ar" onPress={() => void shot.take()} className="h-11 justify-center px-2"><Text className="text-[14px] font-semibold text-primary">{shot.shot ? 'Repetir' : 'Tomar'}</Text></Pressable>
+    <View className="gap-2">
+      {faults.length ? <View testID="problemas-ar" className="gap-1 rounded-2xl border border-error/30 bg-error/5 p-3">{faults.map((problem) => <Text key={problem} className="text-[14px] text-on-surface">{`• ${arProblemLine(problem)}`}</Text>)}</View> : null}
+      {warnings.length ? <View testID="avisos-ar" className="gap-1 rounded-2xl border border-warning/40 bg-warning/10 p-3">{warnings.map((problem) => <Text key={problem} className="text-[14px] text-on-surface">{`• ${arProblemLine(problem)}`}</Text>)}</View> : null}
     </View>
   );
 }

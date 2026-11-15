@@ -14,6 +14,15 @@ export type ArSideFlag = 'ok' | 'warn' | 'block';
 export type ArSide = { index: number; arMeters: number; meters: number; source: SideSource; flag: ArSideFlag; centimeters?: true };
 export type ArProblem = 'few-corners' | 'short-side' | 'crossed' | 'degenerate' | 'off-plane' | 'tracking-lost' | 'too-small' | 'too-large' | 'no-tape' | 'tape-mismatch';
 export type ArArea = { sides: ArSide[]; areaM2: number | null; thicknessCm: number | null; volumeM3: number | null; readings: number; problems: ArProblem[]; canSave: boolean };
+
+/**
+ * What only warns (José 15/11, after testing on his phone: nobody tapes every
+ * zone in the street, so the tape must not block): the AR's figure saves without
+ * a tape, and a corner that looks off the floor is shown, not refused. Portal
+ * marks every `ar-app` area to verify.
+ */
+const WARNINGS: ReadonlySet<ArProblem> = new Set<ArProblem>(['no-tape', 'off-plane']);
+export const isArWarning = (problem: ArProblem): boolean => WARNINGS.has(problem);
 export type ArInput = { points: readonly ArPoint[]; tapes: Readonly<Record<number, number>>; readingsCm: readonly number[]; stable: boolean };
 
 const MIN_CORNERS = 3;
@@ -166,7 +175,7 @@ export function arAreaOf(input: ArInput): ArArea {
   if (disagree || taped.some((side) => side.flag === 'block')) problems.push('tape-mismatch');
   const thicknessCm = thicknessAverage(readingsCm);
   const volumeM3 = thicknessCm === null ? null : rounded((areaM2 * thicknessCm) / CENTI, 3);
-  return { sides, areaM2, thicknessCm, volumeM3, readings: readingsCm.length, problems, canSave: problems.length === 0 };
+  return { sides, areaM2, thicknessCm, volumeM3, readings: readingsCm.length, problems, canSave: problems.every(isArWarning) };
 }
 
 /** What Portal stores: the area alone (a polygon is not length × width), with the thickness when there is one. */
@@ -235,11 +244,11 @@ const PROBLEM_LINES: Record<ArProblem, string> = {
   'short-side': 'Dos esquinas están casi en el mismo punto: deshaz la última.',
   crossed: 'Los lados se cruzan: marca las esquinas en orden, dando la vuelta a la zona.',
   degenerate: 'Una esquina quedó sobre otro lado o hace un pico: deshazla y márcala de nuevo.',
-  'off-plane': 'Una esquina no está en el piso (pared, sardinel o un auto): deshazla y márcala en el piso.',
+  'off-plane': 'Una esquina parece fuera del piso (pared, sardinel o un auto): revisa la foto antes de guardar.',
   'tracking-lost': 'El AR perdió la referencia mientras medías: vuelve a marcar las esquinas.',
   'too-small': 'La zona mide menos de 0,05 m²: revisa las esquinas.',
   'too-large': 'La zona mide más de 5 000 m²: revisa las esquinas o la wincha.',
-  'no-tape': 'Mide al menos un lado con la wincha: fija la escala de todos.',
+  'no-tape': 'Sin wincha: el área sale solo del AR. Si mides un lado, la wincha manda.',
   'tape-mismatch': 'La wincha difiere más de 15 % del AR (o dos winchas no coinciden entre sí): revisa los lados o si escribiste centímetros.',
 };
 

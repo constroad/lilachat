@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import * as Crypto from 'expo-crypto';
 import { Camera, CheckCircle2, Undo2 } from 'lucide-react-native';
-import { areaCreateRequest, isThicknessReading, photoAreaFigures, photoAreaOf, tapeKey, tapeMeters, THICKNESS_OUT_OF_RANGE, type AreaDocument, type PhotoPoint, type TapeKey } from '@lilachat/shared';
+import { areaCreateRequest, isThicknessReading, photoAreaFigures, photoAreaOf, tapeKey, tapeMeters, THICKNESS_OUT_OF_RANGE, type AreaDocument, type PhotoPoint, type TapeKey, readingTyped } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { BottomAction, ObservationHeader, SectionTitle } from '../observations/ObservationParts';
 import type { ObservationTarget } from '../observations/useObservations';
@@ -33,7 +33,7 @@ function useMeasure() {
     setEditing(null);
   };
   const undo = () => { setPoints((current) => current.slice(0, -1)); setMeasured((current) => Object.fromEntries(Object.entries(current).filter(([key]) => Number(key) < points.length - 2))); };
-  return { points, setPoints, measured, readings, setReadings, editing, typed, readingError, result, open, done, undo, key: (pressed: TapeKey) => setTyped((current) => tapeKey(current, pressed)), reset: () => { setPoints([]); setMeasured({}); } };
+  return { points, setPoints, measured, readings, setReadings, editing, typed, readingError, result, open, done, undo, key: (pressed: TapeKey) => setTyped((current) => tapeKey(current, pressed)), type: (text: string) => setTyped(readingTyped(text)), reset: () => { setPoints([]); setMeasured({}); } };
 }
 
 /**
@@ -50,9 +50,9 @@ export function PhotoMeasureScreen(props: { to: ObservationTarget; report: AreaD
   const measure = useMeasure();
   const write = useAreaWrite(props.to);
   const reveal = useReveal();
-  const pending = measure.editing ? 'Toca «Listo» para dejar anotada la medida.' : !shot.shot ? 'Toma la foto de la zona desde arriba.' : measure.points.length < 3 ? 'Toca las esquinas sobre la foto.' : !measure.result ? 'Mide un lado con la wincha.' : null;
+  const pending = !shot.shot ? 'Toma la foto de la zona desde arriba.' : measure.points.length < 3 ? 'Toca las esquinas sobre la foto.' : !measure.result ? 'Mide un lado con la wincha.' : null;
   const save = async () => {
-    if (pending || !measure.result || !shot.shot) return;
+    if (measure.editing || pending || !measure.result || !shot.shot) return;
     // The fix taken with the photo is this zone's; the measure's own read comes second (audit 15/11).
     const gps = shot.point ?? props.place.point;
     const point = gps ? { lat: gps.lat, lng: gps.lng, precision: gps.precision } : null;
@@ -67,7 +67,7 @@ export function PhotoMeasureScreen(props: { to: ObservationTarget; report: AreaD
         <View ref={reveal.content} collapsable={false} className="gap-3">
         <PhotoCard shot={shot} measure={measure} color={colors.primary} />
         {measure.points.length >= 3 ? <SidesCard measure={measure} onShown={reveal.show} /> : null}
-        <ThicknessCard readings={measure.readings} thicknessCm={measure.result?.thicknessCm ?? null} editing={measure.editing?.kind === 'reading'} typed={measure.typed} onAdd={() => measure.open({ kind: 'reading' })} onRemove={(index) => measure.setReadings((current) => current.filter((_, at) => at !== index))} onKey={measure.key} onDone={measure.done} onShown={reveal.show} error={measure.readingError} />
+        <ThicknessCard readings={measure.readings} thicknessCm={measure.result?.thicknessCm ?? null} editing={measure.editing?.kind === 'reading'} typed={measure.typed} onAdd={() => measure.open({ kind: 'reading' })} onRemove={(index) => measure.setReadings((current) => current.filter((_, at) => at !== index))} onType={measure.type} onDone={measure.done} error={measure.readingError} />
         <PlaceCard value={placeText.value} asking={props.place.asking} fromGps={Boolean(props.place.place) && !placeText.typed} onChange={placeText.set} />
         {measure.result ? <ResultCard line={photoAreaFigures(measure.result).line} method="Foto + wincha" /> : null}
         <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
@@ -77,7 +77,7 @@ export function PhotoMeasureScreen(props: { to: ObservationTarget; report: AreaD
         {write.line ? <Text testID="area-escritura" className="text-center text-[13px] text-on-surface-variant">{write.line}</Text> : null}
         </View>
       </ScrollView>
-      <BottomAction testID="guardar-zona" label="Guardar zona" icon={<CheckCircle2 size={22} color={colors['on-primary']} />} busy={write.busy} note={pending ?? (props.report?.code ? `Se sumará al informe ${props.report.code}` : null)} onPress={() => (pending ? undefined : void save())} />
+      {measure.editing ? null : <BottomAction testID="guardar-zona" label="Guardar zona" icon={<CheckCircle2 size={22} color={colors['on-primary']} />} busy={write.busy} note={pending ?? (props.report?.code ? `Se sumará al informe ${props.report.code}` : null)} onPress={() => (pending ? undefined : void save())} />}
     </View>
   );
 }

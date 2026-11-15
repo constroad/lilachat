@@ -4,6 +4,7 @@ import type { DriveUpload } from './driveUpload.js';
 import { formFilesWriteStore, type WriteKind } from './formFilesWrite.js';
 import { AREA_METHOD_LABELS, type AreaDraftPoint, type AreaFigures, type AreaMethod } from './areaMeasure.js';
 import type { ObservationSource } from './observationWrite.js';
+import { ENLACE_DE_DESCARGA } from './invitacion.js';
 
 /**
  * The additional-area report (IAA) filled from the client's channel (José
@@ -16,6 +17,28 @@ import type { ObservationSource } from './observationWrite.js';
 export const AREA_TYPE = 'IAA';
 /** Off until Portal publishes its tools (after the Lilachat embed, the order José approved 12/11). */
 export const AREAS_OPEN_HERE = true;
+
+/**
+ * The phone PWA no longer measures (José 15/11, to cut the margin of error; design la-11): a banner sends
+ * the measuring to the APK, and the sheet is still read and edited here.
+ */
+export const MEASURE_IN_APK = {
+  kicker: 'Medición',
+  title: 'Se mide en el APK',
+  why: 'Con la cámara (AR) y un lado medido con wincha hay menos error que midiendo sobre una foto.',
+  open: 'Abrir en el APK',
+  install: '¿No tienes el APK? Instalar Lilachat',
+  iphone: 'Mide desde un teléfono Android con el APK de Lilachat.',
+} as const;
+
+const APK_PACKAGE = 'com.lilachat.app';
+
+/** Android opens the APK (LilaStore if it is missing); an iPhone has no APK, so only the install link. */
+export function measureInApkLinks(iphone: boolean): { open: string | null; install: string } {
+  if (iphone) return { open: null, install: ENLACE_DE_DESCARGA };
+  const fallback = encodeURIComponent(ENLACE_DE_DESCARGA);
+  return { open: `intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=${APK_PACKAGE};S.browser_fallback_url=${fallback};end`, install: ENLACE_DE_DESCARGA };
+}
 
 export type AreaPhoto = { url: string; thumbUrl?: string; mime: string; capture?: true };
 export type AdditionalArea = {

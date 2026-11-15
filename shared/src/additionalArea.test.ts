@@ -1,6 +1,7 @@
 import { FORMS_LEVEL } from './appForms.js';
 import { describe, expect, it } from 'vitest';
-import { AREA_TYPE, areaAnswerOf, areaRemoveAsk, areaRemoveRequest, isRemovableArea, areaCardLines, areaCreateRequest, areaDocumentOf, areaPlaceValues, areaTotalsLine, areaWriteStore } from './additionalArea.js';
+import { AREA_TYPE, areaAnswerOf, areaRemoveAsk, areaRemoveRequest, isRemovableArea, areaCardLines, areaCreateRequest, areaDocumentOf, areaPlaceValues, areaTotalsLine, areaWriteStore, MEASURE_IN_APK, measureInApkLinks } from './additionalArea.js';
+import { ENLACE_DE_DESCARGA } from './invitacion.js';
 
 /** Portal's `informe_area_adicional` as agentes passes it (Portal 12/11, proposed contract). */
 const portalArea = {
@@ -125,5 +126,20 @@ describe('removing an area', () => {
     expect(isRemovableArea({ ...base, method: 'a-mano' })).toBe(true);
     expect(isRemovableArea({ ...base, method: 'foto-medida' })).toBe(false);
     expect(isRemovableArea({ ...base, method: null })).toBe(false);
+  });
+});
+
+/** José 15/11: «que diga se mide en el APK para reducir margen de error»; the phone PWA no longer measures. */
+describe('the banner that sends the measuring to the APK', () => {
+  it('on Android it opens the APK and falls back to LilaStore; on an iPhone only the install link, since there is no APK', () => {
+    // Arrange / Act
+    const android = measureInApkLinks(false);
+    const iphone = measureInApkLinks(true);
+    // Assert
+    expect(android.open).toBe(`intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.lilachat.app;S.browser_fallback_url=${encodeURIComponent(ENLACE_DE_DESCARGA)};end`);
+    expect(android.install).toBe(ENLACE_DE_DESCARGA);
+    expect(iphone.open).toBeNull();
+    expect(iphone.install).toBe(ENLACE_DE_DESCARGA);
+    expect(MEASURE_IN_APK).toEqual({ kicker: 'Medición', title: 'Se mide en el APK', why: 'Con la cámara (AR) y un lado medido con wincha hay menos error que midiendo sobre una foto.', open: 'Abrir en el APK', install: '¿No tienes el APK? Instalar Lilachat', iphone: 'Mide desde un teléfono Android con el APK de Lilachat.' });
   });
 });

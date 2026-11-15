@@ -1050,7 +1050,21 @@ espacio Test, con «QA-CTLPIS — borrar»:
 - **Limpieza:** se le pidió a Portal por el camino de la app (OBS-001/002 y
   los borradores REG-OBS/LEV-OBS del 11/11).
 
-## 14. Área adicional en iPhone: opción B (IAA, José 12/11)
+## 14. Área adicional en iPhone: opción B (IAA, José 12/11) — RETIRADA el 15/11
+
+> **15/11: la PWA del teléfono ya no mide.** José: «que diga se mide en el APK
+> para reducir margen de error. pídele a stitch que te genere un banner elegante
+> y premium». `AreasWeb` muestra arriba el banner del diseño `la-11-pwa-mide-en-apk`
+> (kicker «Medición», «Se mide en el APK», el porqué, «Abrir en el APK» y «¿No
+> tienes el APK? Instalar Lilachat»), y debajo la hoja: total, áreas y fotos, que
+> se ven y se pueden quitar. «Abrir en el APK» es un `intent:` de Android que
+> abre la app en su inicio, porque el APK no tiene un enlace propio al servicio,
+> y si no está instalado va a LilaStore (`measureInApkLinks`). En un iPhone no
+> hay APK que abrir: dice «Mide desde un teléfono Android con el APK de
+> Lilachat» y deja el enlace de instalación. Se borró `AreaMeasureWeb`. Los
+> motores de escritura (`areaCreateRequest`, `areaWriteStore`) quedan para el
+> APK (la-01…la-10). Lo de abajo es el registro de la opción B.
+
 
 José: «vamos con la opción B, pero desde Lilachat instrúyelo qué aplicación
 abrir desde el iPhone, paso a paso qué debe hacer, cómo calcular y cómo volver

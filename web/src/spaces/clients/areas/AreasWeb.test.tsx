@@ -1,14 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { areaDraftKey, type SpaceClientService } from '@lilachat/shared';
+import type { SpaceClientService } from '@lilachat/shared';
 import { AreasWeb } from './AreasWeb';
 
 /**
- * The additional-area report from the client's channel (José 12/11, option B),
- * against Portal's agreed contract: `informe_area_adicional` reads it,
- * `registrar_area_adicional` writes each area, and the Medición picture goes
- * after with `captura: true`.
+ * The additional-area report from the client's channel, against Portal's agreed
+ * contract: `informe_area_adicional` reads it. Since José 15/11 the phone PWA
+ * no longer measures: a banner sends that to the APK (design la-11).
  */
 const service = { id: 'sv1', name: 'Av. Los Incas' } as SpaceClientService;
 const target = { jwt: 't', spaceId: 'w1', clientId: 'c1' };
@@ -66,48 +65,32 @@ describe('AreasWeb', () => {
     expect(loose.querySelectorAll('img')).toHaveLength(1);
   });
 
-  it('with no areas yet, says so and offers the first one', async () => {
+  it('with no areas yet, says so; measuring is not offered here (José 15/11)', async () => {
     portal([], []);
-    render(<AreasWeb target={target} chatId="ch1" service={service} iphone onClose={vi.fn()} />);
+    render(<AreasWeb target={target} chatId="ch1" service={service} iphone={false} onClose={vi.fn()} />);
 
     expect(await screen.findByTestId('areas-vacio')).toHaveTextContent('Todavía no hay áreas');
-    expect(screen.getByTestId('nueva-area-boton')).toBeEnabled();
+    expect(screen.queryByTestId('nueva-area-boton')).toBeNull();
   });
 
-  it('an iPhone measures, saves with Medidas, and its picture goes marked as the capture', async () => {
-    const { calls, files } = portal([], [area('7', 4.8)]);
-    vi.stubGlobal('navigator', { ...navigator, geolocation: { getCurrentPosition: (ok: PositionCallback) => ok({ coords: { latitude: -12.05, longitude: -77.03, accuracy: 6.4 } } as GeolocationPosition) } });
-    render(<AreasWeb target={target} chatId="ch1" service={service} iphone onClose={vi.fn()} />);
+  it('on Android the banner sends the measuring to the APK, with LilaStore when it is missing (design la-11)', async () => {
+    portal([area('7', 4.8)], []);
+    render(<AreasWeb target={target} chatId="ch1" service={service} iphone={false} onClose={vi.fn()} />);
 
-    await userEvent.click(await screen.findByTestId('nueva-area-boton'));
-    expect(screen.getByTestId('guia-medicion')).toBeTruthy();
-    await userEvent.type(screen.getByTestId('area-largo'), '3,2');
-    await userEvent.type(screen.getByTestId('area-ancho'), '1,5');
-    await userEvent.upload(screen.getByTestId('area-foto-entrada'), photo());
-    await screen.findByTestId('area-foto-0');
-    await waitFor(() => expect(screen.getByTestId('guardar-area')).toBeEnabled());
-    await userEvent.click(screen.getByTestId('guardar-area'));
-
-    await waitFor(() => expect(files).toHaveLength(1));
-    const opened = calls.find((call) => call.includes('/reports/forms'))!;
-    expect(opened).toContain('"kind":"area_create"');
-    expect(opened).toContain('"method":"medidas-iphone"');
-    expect(opened).toContain('"area_m2":4.8');
-    expect(opened).toContain('"precision_m":6');
-    expect(opened).toContain('"source":"web"');
-    expect(files[0]!.get('captura')).toBe('true');
-    expect(files[0]!.get('t')).toBe('x');
-    expect(await screen.findByTestId('area-7')).toBeTruthy();
-    expect(screen.queryByTestId('nueva-area')).toBeNull();
-    expect(localStorage.getItem(areaDraftKey('sv1'))).toBeNull();
+    const banner = await screen.findByTestId('medir-en-apk');
+    expect(banner).toHaveTextContent('MediciónSe mide en el APKCon la cámara (AR) y un lado medido con wincha hay menos error que midiendo sobre una foto.');
+    expect(screen.getByTestId('medir-en-apk-abrir')).toHaveAttribute('href', expect.stringMatching(/^intent:#Intent;.*package=com\.lilachat\.app;/));
+    expect(screen.getByTestId('medir-en-apk-instalar')).toHaveAttribute('href', 'https://lilastore.constroad.com/app/lilachat');
+    expect(screen.getByTestId('area-7')).toBeTruthy();
   });
 
-  it('coming back from Medición, a half-filled area opens by itself', async () => {
+  it('on an iPhone there is no APK to open: it says to measure from an Android phone', async () => {
     portal([], []);
-    localStorage.setItem(areaDraftKey('sv1'), JSON.stringify({ entryId: '7f6c1d2e-1111-4a2b-9c3d-123456789abc', mode: 'sides', length: '3,2', width: '', area: '', thickness: '', place: '', note: '', point: null, savedAt: Date.now() }));
     render(<AreasWeb target={target} chatId="ch1" service={service} iphone onClose={vi.fn()} />);
 
-    expect(await screen.findByTestId('area-largo')).toHaveValue('3,2');
+    expect(await screen.findByTestId('medir-en-apk')).toHaveTextContent('Mide desde un teléfono Android con el APK de Lilachat.');
+    expect(screen.queryByTestId('medir-en-apk-abrir')).toBeNull();
+    expect(screen.getByTestId('medir-en-apk-instalar')).toBeTruthy();
   });
 
   it('says why when Portal does not answer, and asks again', async () => {

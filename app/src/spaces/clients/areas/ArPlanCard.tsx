@@ -6,7 +6,9 @@ import { useColores } from '../../../ui/tema';
 import { decimals } from './ZoneParts';
 
 const PLAN_HEIGHT = 200;
-const PHOTO_HEIGHT = 260;
+/** The AR frame is as tall as the phone: shown whole (José 15/11: «solo una parte cortada»), up to this height. */
+const PHOTO_MAX_HEIGHT = 460;
+const PORTRAIT_RATIO = 9 / 19.5;
 const MARGIN = 34;
 
 type View3 = 'photo' | 'plan';
@@ -26,8 +28,18 @@ export function ArPlanCard(props: Props) {
         <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{view === 'photo' ? 'Foto de la zona' : 'Plano desde arriba'}</Text>
         {props.photo ? <Switch value={view} onChange={setShown} /> : <Pressable testID="foto-zona-ar" onPress={props.onRetake} className="h-9 justify-center px-2"><Text className="text-[14px] font-semibold text-primary">Tomar foto</Text></Pressable>}
       </View>
-      {view === 'photo' && props.photo ? <Image testID="foto-zona-ar-vista" source={{ uri: props.photo }} style={{ height: PHOTO_HEIGHT, borderRadius: 12 }} resizeMode="cover" /> : <Plan {...props} />}
+      {view === 'photo' && props.photo ? <WholePhoto uri={props.photo} /> : <Plan {...props} />}
       <Text className="text-[12px] text-on-surface-variant">{props.photo ? 'Del AR, con el contorno marcado. Va al informe con la zona.' : 'Falta la foto de la zona.'}</Text>
+    </View>
+  );
+}
+
+/** A photo at its own proportions, whole, on a dark band when it is taller than the card allows. */
+export function WholePhoto({ uri, testID = 'foto-zona-ar-vista' }: { uri: string; testID?: string }) {
+  const [ratio, setRatio] = useState(PORTRAIT_RATIO);
+  return (
+    <View className="items-center overflow-hidden rounded-xl bg-black">
+      <Image testID={testID} source={{ uri }} onLoad={(event) => { const { width, height } = event.nativeEvent.source; if (width > 0 && height > 0) setRatio(width / height); }} style={{ width: '100%', aspectRatio: ratio, maxHeight: PHOTO_MAX_HEIGHT }} resizeMode="contain" />
     </View>
   );
 }

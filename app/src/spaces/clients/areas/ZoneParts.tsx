@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Check, MapPin, Plus, X } from 'lucide-react-native';
 import { useColores } from '../../../ui/tema';
+import { isThicknessReading, readingTyped, tapeMeters, thicknessAverage, THICKNESS_OUT_OF_RANGE } from '@lilachat/shared';
 import { SectionTitle } from '../observations/ObservationParts';
 import { freshPoint } from '../../../chat/location/freshPoint';
 import { captureEvidence, type CapturedEvidence } from '../useDriveUpload';
@@ -85,6 +86,27 @@ export function ThicknessCard(props: ThicknessProps) {
       {props.thicknessCm !== null ? <Text className="text-[14px] font-semibold text-on-surface">{`Promedio ${decimals(props.thicknessCm, 1)} cm · ${count} ${count === 1 ? 'lectura' : 'lecturas'}`}</Text> : null}
     </View>
   );
+}
+
+/** The thickness readings alone (la-06 edits only them): typed, checked against Portal's range, averaged. */
+export function useReadings(start: readonly number[] = []) {
+  const [readings, setReadings] = useState<number[]>([...start]);
+  const [editing, setEditing] = useState(false);
+  const [typed, setTyped] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const done = () => {
+    const value = tapeMeters(typed);
+    if (value !== null && !isThicknessReading(value)) return setError(THICKNESS_OUT_OF_RANGE);
+    if (value !== null) setReadings((current) => [...current, value]);
+    setError(null);
+    setEditing(false);
+  };
+  return {
+    readings, editing, typed, error, done, thicknessCm: thicknessAverage(readings),
+    add: () => { setTyped(''); setEditing(true); },
+    remove: (index: number) => setReadings((current) => current.filter((_, at) => at !== index)),
+    type: (text: string) => setTyped(readingTyped(text)),
+  };
 }
 
 /** «Resultado»: the area and the volume, and how they were measured. */

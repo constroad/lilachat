@@ -73,7 +73,7 @@ export function ArZoneScreen(props: Props) {
   };
   return (
     <View className="flex-1 bg-background">
-      <ObservationHeader kicker={`${props.report?.code ?? 'IAA'} · Zona ${props.zone}`} title="Medido con AR" onBack={props.onBack} />
+      <ObservationHeader kicker={`${props.report?.code ?? 'IAA'} · Zona ${props.zone} · Medido con AR`} title={placeText.value || `Zona ${props.zone}`} onBack={props.onBack} />
       <ScrollView ref={reveal.scroll} onLayout={reveal.onLayout} testID="zona-ar-pantalla" keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, paddingBottom: 24 }}>
         <View ref={reveal.content} collapsable={false} className="gap-3">
           <ArPlanCard points={props.measured.points} sides={result.sides} editing={tape.editing?.kind === 'side' ? tape.editing.index : null} photo={shot.shot?.preview.uri ?? null} onRetake={() => void shot.take()} />

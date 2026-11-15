@@ -20,7 +20,7 @@ import { fieldDocumentOf, type DocumentSection, type DocumentStatus, type FieldD
 import { clientServicePath } from './serviceAsk.js';
 import { isObservationType, OBSERVATIONS_OPEN_HERE, observationDocumentOf, type ObservationDocument } from './observations.js';
 import type { ObservationLiftRequest, ObservationRegisterRequest } from './observationWrite.js';
-import { AREA_TYPE, AREAS_OPEN_HERE, areaDocumentOf, type AreaCreateRequest, type AreaDocument, type AreaRemoveRequest } from './additionalArea.js';
+import { AREA_TYPE, AREAS_OPEN_HERE, areaDocumentOf, type AreaCreateRequest, type AreaDocument, type AreaEditRequest, type AreaRemoveRequest } from './additionalArea.js';
 import { locationMapLink } from './sharedLocation.js';
 import type { DetailTone } from './serviceDetail.js';
 
@@ -110,7 +110,7 @@ export const placeFieldValue = ({ lat, lng }: DevicePlace): string | null => (la
 export type SectionFormRequest = { kind: 'section'; type: string; section_id: string; item_id: string | null; key: string; report_id?: string; forms: number; /** The save's own key: Portal tells a photo sent twice from a second one. */ client_key?: string; /** The photo carries Lilachat's stamp: Portal neither stamps nor re-encodes it. */ sello_lilachat?: true } & Partial<DevicePlace>;
 export type PublishFormRequest = { kind: 'publish'; report_id: string; forms: number };
 export type RemovePhotoRequest = { kind: 'remove_photo'; report_id: string; photo_id: string; forms: number };
-export type ReportFormRequest = SectionFormRequest | PublishFormRequest | RemovePhotoRequest | DriveUploadRequest | WorkProgressRequest | WorkStreetRequest | WorkStreetDeleteRequest | ServiceLinkRequest | WorkScopeRequest | WorkScopeDeleteRequest | WorkStageRequest | WorkTagRequest | WorkRestoreRequest | WorkDeletedRequest | WorkManualProgressRequest | WorkProgressLinkRequest | WorkImportRequest | WorkProgressPdfRequest | WorkMapInReportRequest | PhotoPhaseRequest | LayerEditRequest | LayerDeleteRequest | WorkPendingRequest | WorkResolveRequest | ObservationRegisterRequest | ObservationLiftRequest | AreaCreateRequest | AreaRemoveRequest;
+export type ReportFormRequest = SectionFormRequest | PublishFormRequest | RemovePhotoRequest | DriveUploadRequest | WorkProgressRequest | WorkStreetRequest | WorkStreetDeleteRequest | ServiceLinkRequest | WorkScopeRequest | WorkScopeDeleteRequest | WorkStageRequest | WorkTagRequest | WorkRestoreRequest | WorkDeletedRequest | WorkManualProgressRequest | WorkProgressLinkRequest | WorkImportRequest | WorkProgressPdfRequest | WorkMapInReportRequest | PhotoPhaseRequest | LayerEditRequest | LayerDeleteRequest | WorkPendingRequest | WorkResolveRequest | ObservationRegisterRequest | ObservationLiftRequest | AreaCreateRequest | AreaEditRequest | AreaRemoveRequest;
 
 /** What `POST …/reports/forms` takes to open a section: its path, the report once it exists, and what this app can draw. */
 export function sectionFormRequest(document: FieldDocument, path: SectionPath, place?: DevicePlace | null, clientKey?: string, sealed?: boolean): SectionFormRequest {

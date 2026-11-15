@@ -30,9 +30,9 @@ export function ObservationHeader(props: { kicker: string; title: string; captio
 
 export function SectionTitle(props: { title: string; side?: string; sideTone?: 'primary' | 'error' }) {
   return (
-    <View className="flex-row items-center justify-between">
-      <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{props.title}</Text>
-      {props.side ? <Text className={`text-[11px] font-bold uppercase tracking-[1.5px] ${props.sideTone === 'error' ? 'text-error' : 'text-primary'}`}>{props.side}</Text> : null}
+    <View className="flex-row items-start justify-between gap-3">
+      <Text className="min-w-0 flex-1 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{props.title}</Text>
+      {props.side ? <Text className={`max-w-[45%] shrink text-right text-[11px] font-bold uppercase tracking-[1.5px] ${props.sideTone === 'error' ? 'text-error' : 'text-primary'}`}>{props.side}</Text> : null}
     </View>
   );
 }

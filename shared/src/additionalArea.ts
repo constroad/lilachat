@@ -182,6 +182,28 @@ export type AreaRemoveRequest = { kind: 'area_remove'; area_id: string; forms: n
 export const areaRemoveRequest = (areaId: string): AreaRemoveRequest => ({ kind: 'area_remove', area_id: areaId, forms: FORMS_LEVEL });
 export const AREA_REMOVED = 'Área quitada.';
 export const AREA_REMOVE_FAILED = 'No se pudo quitar el área. Revisa tu señal y vuelve a intentarlo.';
+/**
+ * «Guardar cambios» on a zone (design la-06, Portal's `editar`). Portal rewrites the whole
+ * measure, GPS included, so the zone's own figures go again with the new thickness; the
+ * office's areas (measured on their photos) are not edited from the field.
+ */
+export type AreaEditRequest = {
+  kind: 'area_edit'; area_id: string; length_m?: number; width_m?: number; area_m2: number; thickness_cm?: number;
+  method: AreaMethod; lat?: number; lng?: number; precision_m?: number; source: ObservationSource; report_id?: string; forms: number;
+};
+export function areaEditRequest(report: Pick<AreaDocument, 'id' | 'type'> | null, area: AdditionalArea, thicknessCm: number | null): AreaEditRequest | null {
+  if (!isRemovableArea(area) || !area.method) return null;
+  const located = area.lat !== null && area.lng !== null;
+  return {
+    kind: 'area_edit', area_id: area.id,
+    ...kept('length_m', area.lengthM), ...kept('width_m', area.widthM), area_m2: area.areaM2, ...kept('thickness_cm', thicknessCm ?? undefined),
+    method: area.method, ...(located ? { lat: area.lat!, lng: area.lng!, ...kept('precision_m', area.precisionM) } : {}),
+    source: 'apk', ...(report?.id && report.type === AREA_TYPE ? { report_id: report.id } : {}), forms: FORMS_LEVEL,
+  };
+}
+export const AREA_EDITED = 'Zona corregida.';
+export const AREA_EDIT_FAILED = 'No se pudo guardar la zona. Revisa tu señal y vuelve a intentarlo.';
+
 export const areaRemoveAsk = (item?: string): { title: string; hint: string } => ({ title: item ? `¿Quitar el área ${item}?` : '¿Quitar esta área?', hint: 'Sale del cuadro y sus fotos van a la papelera de Portal.' });
 /** Portal only lets the field remove what the field measured: an area measured on its photos is the office's. */
 export const isRemovableArea = (area: Pick<AdditionalArea, 'method'>): boolean => area.method !== null && AREA_FIELD_METHODS.includes(area.method);

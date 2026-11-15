@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
-import { AREA_REMOVE_FAILED, AREA_REMOVED, AREA_TYPE, areaRemoveRequest, areaWriteStore, readAreaDraft, sendMapTool, type AreaCreateRequest, type AreaDocument, type AreaDraftResult } from '@lilachat/shared';
+import { AREA_EDIT_FAILED, AREA_EDITED, AREA_REMOVE_FAILED, AREA_REMOVED, AREA_TYPE, areaPlaceValues, areaRemoveRequest, type AreaEditRequest, areaWriteStore, readAreaDraft, sendMapTool, type AreaCreateRequest, type AreaDocument, type AreaDraftResult } from '@lilachat/shared';
 import { askReportDraft } from '../reports/reportsApi';
 import { observationWriteDeps, type CapturedEvidence } from '../useDriveUpload';
 import type { ObservationTarget } from '../observations/useObservations';
@@ -46,4 +46,10 @@ export function useAreaRemove(to: ObservationTarget, onDone: () => void) {
     if (result.ok) onDone();
     return result;
   }, [to, onDone]);
+}
+
+/** «Guardar cambios» (la-06): Portal's `editar` with the zone's whole measure and the two texts (blank keeps Portal's). */
+export function useAreaEdit(to: ObservationTarget) {
+  return useCallback((request: AreaEditRequest, texts: { place: string; note: string }) =>
+    sendMapTool(observationWriteDeps(to, request), areaPlaceValues(texts), { sent: AREA_EDITED, failed: AREA_EDIT_FAILED }), [to]);
 }

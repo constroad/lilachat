@@ -33,6 +33,21 @@ describe('additional area forms (Portal 12/11, proposed contract)', () => {
     expect(areaFormInputOf({ kind: 'area_create', entry_id: ENTRY, area_m2: 4.81, method: 'ar-app', source: 'web' })).toBeNull();
   });
 
+  it('an edit (la-06) goes as Portal\'s editar with the whole measure again', () => {
+    const ready = areaFormPrepared(SERVICE, areaFormInputOf({ kind: 'area_edit', area_id: 'z-1', area_m2: 0.53, thickness_cm: 5, method: 'ar', lat: -12.01, lng: -76.9, precision_m: 6, source: 'apk', report_id: 'r1' })!);
+
+    expect(ready.form).toMatchObject({ title: 'Editar zona', submitLabel: 'Guardar cambios' });
+    expect(ready.context).toEqual({ servicioId: SERVICE, kind: 'editar', areaId: 'z-1', areaM2: 0.53, espesorCm: 5, metodo: 'ar', lat: -12.01, lng: -76.9, precisionM: 6, fuente: 'apk', informeId: 'r1' });
+  });
+
+  it.each([
+    ['without the area', { area_id: '' }],
+    ['an area out of Portal\'s range', { area_m2: 0.01 }],
+    ['an AR area edited from the web', { source: 'web' }],
+  ])('an edit %s is refused', (_label, change) => {
+    expect(areaFormInputOf({ kind: 'area_edit', area_id: 'z-1', area_m2: 0.53, method: 'ar', source: 'apk', ...change })).toBeNull();
+  });
+
   it('the AR with no tape (ar, «AR» in the PDF) is refused from the web too', () => {
     expect(areaFormInputOf({ kind: 'area_create', entry_id: ENTRY, area_m2: 4.81, method: 'ar', source: 'web' })).toBeNull();
   });

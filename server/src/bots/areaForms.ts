@@ -26,7 +26,9 @@ export type AreaCreateInput = {
 };
 /** «Quitar área»: Portal's `quitar` with only the area; its photos go to Portal's trash. */
 export type AreaRemoveInput = { kind: 'area_remove'; areaId: string };
-export type AreaFormInput = AreaCreateInput | AreaRemoveInput;
+/** «Guardar cambios» (la-06): Portal's `editar` rewrites the whole measure, so it comes whole again. */
+export type AreaEditInput = Omit<AreaCreateInput, 'kind' | 'entryId'> & { kind: 'area_edit'; areaId: string };
+export type AreaFormInput = AreaCreateInput | AreaRemoveInput | AreaEditInput;
 export type AreaFormContext = Record<string, string | number>;
 
 const FORM: FormSchema = {
@@ -43,7 +45,7 @@ const idOf = (raw: unknown): string => (typeof raw === 'string' && raw.trim().le
 const NOTHING_TO_FILL: FormSchema = { type: 'object', properties: {} };
 
 /** Off until Portal publishes its tools (`AREAS_OPEN_HERE`): the kind does not exist meanwhile. */
-export const isAreaFormKind = (kind: unknown): kind is AreaFormInput['kind'] => AREAS_OPEN_HERE && (kind === 'area_create' || kind === 'area_remove');
+export const isAreaFormKind = (kind: unknown): kind is AreaFormInput['kind'] => AREAS_OPEN_HERE && (kind === 'area_create' || kind === 'area_remove' || kind === 'area_edit');
 
 /** Both sides or none; with both, the area is their product. */
 function sidesOf(raw: Record<string, unknown>, areaM2: number): { lengthM: number | null; widthM: number | null } | null {
@@ -66,14 +68,23 @@ export function areaFormInputOf(raw: Record<string, unknown>): AreaFormInput | n
     const areaId = idOf(raw.area_id);
     return areaId ? { kind: 'area_remove', areaId } : null;
   }
-  return areaCreateInputOf(raw);
+  if (raw.kind === 'area_edit') {
+    const areaId = idOf(raw.area_id);
+    const measure = areaMeasureOf(raw);
+    return areaId && measure ? { ...measure, kind: 'area_edit', areaId } : null;
+  }
+  const entryId = typeof raw.entry_id === 'string' && UUID.test(raw.entry_id) ? raw.entry_id : '';
+  const measure = areaMeasureOf(raw);
+  return entryId && measure ? { ...measure, kind: 'area_create', entryId } : null;
 }
 
-function areaCreateInputOf(raw: Record<string, unknown>): AreaCreateInput | null {
-  const entryId = typeof raw.entry_id === 'string' && UUID.test(raw.entry_id) ? raw.entry_id : '';
+type AreaMeasureInput = Omit<AreaCreateInput, 'kind' | 'entryId'>;
+
+/** The figures, the method, the GPS and where it was taken: the same checks for a new zone and an edit. */
+function areaMeasureOf(raw: Record<string, unknown>): AreaMeasureInput | null {
   const areaM2 = inRange(raw.area_m2, AREA_M2);
   const method = AREA_FIELD_METHODS.find((one) => one === raw.method);
-  if (!entryId || areaM2 === null || !method || (raw.source !== 'apk' && raw.source !== 'web')) return null;
+  if (areaM2 === null || !method || (raw.source !== 'apk' && raw.source !== 'web')) return null;
   // ARCore lives only in the APK: an AR figure from the web was typed, never measured (audit 15/11).
   if ((method === 'ar-app' || method === 'ar') && raw.source !== 'apk') return null;
   const sides = sidesOf(raw, areaM2);
@@ -81,7 +92,7 @@ function areaCreateInputOf(raw: Record<string, unknown>): AreaCreateInput | null
   const thicknessCm = raw.thickness_cm === undefined ? null : inRange(raw.thickness_cm, THICKNESS_CM);
   if (!sides || !place || (raw.thickness_cm !== undefined && thicknessCm === null)) return null;
   const precisionM = inRange(raw.precision_m, { min: 0, max: PRECISION_MAX_M });
-  return { kind: 'area_create', entryId, ...sides, areaM2, thicknessCm, method, ...place, precisionM: place.lat === null ? null : precisionM, source: raw.source, reportId: idOf(raw.report_id) || null };
+  return { ...sides, areaM2, thicknessCm, method, ...place, precisionM: place.lat === null ? null : precisionM, source: raw.source, reportId: idOf(raw.report_id) || null };
 }
 
 const some = (key: string, value: number | string | null): AreaFormContext => (value === null ? {} : { [key]: value });
@@ -90,13 +101,13 @@ export function areaFormPrepared(serviceId: string, input: AreaFormInput): { for
   if (input.kind === 'area_remove') {
     return { form: { id: REGISTER_AREA_TOOL, title: 'Quitar área', submitLabel: 'Quitar', schema: NOTHING_TO_FILL }, context: { servicioId: serviceId, kind: 'quitar', areaId: input.areaId } };
   }
-  return {
-    form: { id: REGISTER_AREA_TOOL, title: 'Nueva área', submitLabel: 'Guardar área', schema: FORM },
-    context: {
-      servicioId: serviceId, kind: 'crear', entradaId: input.entryId,
-      ...some('largoM', input.lengthM), ...some('anchoM', input.widthM), areaM2: input.areaM2, ...some('espesorCm', input.thicknessCm),
-      metodo: input.method, ...some('lat', input.lat), ...some('lng', input.lng), ...some('precisionM', input.precisionM),
-      fuente: input.source, ...some('informeId', input.reportId),
-    },
+  const measure = {
+    ...some('largoM', input.lengthM), ...some('anchoM', input.widthM), areaM2: input.areaM2, ...some('espesorCm', input.thicknessCm),
+    metodo: input.method, ...some('lat', input.lat), ...some('lng', input.lng), ...some('precisionM', input.precisionM),
+    fuente: input.source, ...some('informeId', input.reportId),
   };
+  if (input.kind === 'area_edit') {
+    return { form: { id: REGISTER_AREA_TOOL, title: 'Editar zona', submitLabel: 'Guardar cambios', schema: FORM }, context: { servicioId: serviceId, kind: 'editar', areaId: input.areaId, ...measure } };
+  }
+  return { form: { id: REGISTER_AREA_TOOL, title: 'Nueva área', submitLabel: 'Guardar área', schema: FORM }, context: { servicioId: serviceId, kind: 'crear', entradaId: input.entryId, ...measure } };
 }

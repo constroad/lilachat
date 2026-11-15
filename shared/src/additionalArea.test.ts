@@ -1,6 +1,6 @@
 import { FORMS_LEVEL } from './appForms.js';
 import { describe, expect, it } from 'vitest';
-import { AREA_TYPE, areaAnswerOf, areaReportDay, areaRemoveAsk, areaRemoveRequest, isRemovableArea, areaCardLines, areaCreateRequest, areaDocumentOf, areaPlaceValues, areaTotalsLine, areaWriteStore, zonePlaceLine, MEASURE_IN_APK, measureInApkLinks } from './additionalArea.js';
+import { AREA_TYPE, areaAnswerOf, areaEditRequest, areaReportDay, areaRemoveAsk, areaRemoveRequest, isRemovableArea, areaCardLines, areaCreateRequest, areaDocumentOf, areaPlaceValues, areaTotalsLine, areaWriteStore, zonePlaceLine, MEASURE_IN_APK, measureInApkLinks } from './additionalArea.js';
 import { ENLACE_DE_DESCARGA } from './invitacion.js';
 
 /** Portal's `informe_area_adicional` as agentes passes it (Portal 12/11, proposed contract). */
@@ -179,5 +179,35 @@ describe('zonePlaceLine (José 15/11: the zone takes its street from the GPS)', 
     expect(zonePlaceLine(null, 'Jr. Moquegua 310')).toBe('Jr. Moquegua 310');
     expect(zonePlaceLine(null, '  ')).toBeNull();
     expect(zonePlaceLine(null, null)).toBeNull();
+  });
+});
+
+describe('areaEditRequest (design la-06: correct a zone measured in the field)', () => {
+  const report = { id: 'r-1', type: AREA_TYPE } as const;
+  const zone = { id: 'z-1', areaM2: 0.53, method: 'ar' as const, lat: -12.01, lng: -76.9, precisionM: 6, photos: [] };
+
+  it('keeps the area, the method and the GPS: Portal rewrites the whole measure on an edit', () => {
+    expect(areaEditRequest(report, zone, 5.2)).toEqual({
+      kind: 'area_edit', area_id: 'z-1', area_m2: 0.53, thickness_cm: 5.2, method: 'ar', lat: -12.01, lng: -76.9, precision_m: 6, source: 'apk', report_id: 'r-1', forms: FORMS_LEVEL,
+    });
+  });
+
+  it('without a thickness the zone stays in m² only', () => {
+    expect(areaEditRequest(report, { ...zone, thicknessCm: 4 }, null)).not.toHaveProperty('thickness_cm');
+  });
+
+  it('a zone measured by hand keeps its two sides', () => {
+    expect(areaEditRequest(report, { ...zone, method: 'a-mano', lengthM: 2, widthM: 1.5, areaM2: 3 }, null)).toMatchObject({ length_m: 2, width_m: 1.5, area_m2: 3 });
+  });
+
+  it('a zone with no GPS sends none', () => {
+    const edit = areaEditRequest(report, { ...zone, lat: null, lng: null, precisionM: undefined }, null);
+    expect(edit).not.toHaveProperty('lat');
+    expect(edit).not.toHaveProperty('precision_m');
+  });
+
+  it('the office\'s areas (measured on their photos) and unknown methods are not edited from the field', () => {
+    expect(areaEditRequest(report, { ...zone, method: 'foto-medida' }, null)).toBeNull();
+    expect(areaEditRequest(report, { ...zone, method: null }, null)).toBeNull();
   });
 });

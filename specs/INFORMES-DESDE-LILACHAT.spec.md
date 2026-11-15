@@ -1237,6 +1237,26 @@ espacio Test, con «QA-CTLPIS — borrar»:
 >   - la-01: el rótulo «Métricas totales» lo inventó Stitch y pasó a «Total».
 >     Sin espesor, el volumen sale «—» en vez de «0,000 m³».
 >   - la-03: el lugar es el título; el código y la zona van arriba.
+>   - **E2E en el emulador (OTA b6d9905, TEST, la zona de José):**
+>     - La lista muestra «Total», «—» sin espesor, la pastilla AR (con agentes
+>       ff9de68) y «Ver PDF», que abre en el navegador la vista previa de
+>       Portal.
+>     - La zona muestra la foto entera y «Calculado».
+>     - Un espesor de 5 cm, guardado con `editar`, dio «Área corregida» y
+>       «5,0 cm · 0,027 m³» en la lista y en el total.
+>     - La confirmación de borrar se abrió y se canceló. No se borró la zona de
+>       José.
+>   - **Defectos que encontró el E2E:**
+>     - `area_edit` caía en «Publicar»: la cadena de tipos de `clientReports.ts`
+>       no lo tenía. Ahora todos los tipos salen de una sola lista
+>       (`AREA_FORM_KINDS`), con su test.
+>     - El teclado tapaba el campo de la lectura.
+>     - La nota del espesor se partía en dos líneas.
+>     - Los botones de la confirmación de borrar quedaban medio cortados.
+>     - **Pendiente, en Portal:** quitar el espesor vacía `volumen` pero deja
+>       `espesor` en la fila. La zona de José quedó con 5 cm y sin m³. Se le
+>       avisó a Portal. Cuando lo arregle, se repite el guardado sin espesor
+>       para que la zona vuelva a como la midió José.
 > - **Método `ar` («AR» en el PDF), desde 0.1.187:** Portal 6d1a71f6, en
 >   producción el 15/11 a las 14:35.
 >   - Una zona sin ningún lado con wincha manda `ar`; con wincha, `ar-app`

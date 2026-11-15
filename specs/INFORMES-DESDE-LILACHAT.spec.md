@@ -1200,6 +1200,20 @@ espacio Test, con «QA-CTLPIS — borrar»:
 >     - Doble toque en «Listo» y salir a mitad de la lectura.
 >     - Los puntos del piso recorren solo las celdas a 4 m de la cámara.
 >     - La caché de etiquetas incluye el color de la marca.
+>   - **Prueba de José con la 0.1.186 en piso de porcelanato, con video de
+>     ARPlan:** marcó una esquina y después todo era «Apunta al piso».
+>     - Causa: solo valían los impactos dentro del pedazo que ARCore dibujó
+>       (`isPoseInPolygon`), y un piso brillante da un pedazo chico.
+>     - ARPlan apoya la retícula en cualquier parte del piso conocido. La
+>       0.1.187 hace lo mismo: fuera del pedazo, el rayo del centro se cruza
+>       con la altura del piso (la de la 1.ª esquina, o el piso más grande). Es
+>       la misma cuenta del hit test, sin el contorno.
+>     - No vale con el rayo a menos de ~8° del horizonte, ni a más de 6 m. Esa
+>       esquina es un ancla del mundo.
+>     - La retícula es un disco en GL apoyado en el piso, que se pinta al
+>       cerrar. El círculo plano solo se ve, punteado, mientras no hay piso.
+>   - Publicada el 15/11; la descarga entrega `lilachat-0.1.187-188.apk`. Smoke
+>     en el emulador: 3 aperturas limpias. El AR no se pudo probar ahí (ARM).
 > - **Método `ar` («AR» en el PDF), desde 0.1.187:** Portal 6d1a71f6, en
 >   producción el 15/11 a las 14:35.
 >   - Una zona sin ningún lado con wincha manda `ar`; con wincha, `ar-app`

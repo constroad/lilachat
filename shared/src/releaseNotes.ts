@@ -17,6 +17,17 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.185',
+    // Company spaces: the IAA's AR measure reworked after the first test on a phone.
+    audience: 'spaces',
+    items: [
+      'Medir con AR primero escanea el piso; luego tocas la pantalla para marcar cada esquina.',
+      'El lado que vas trazando muestra sus metros en vivo y el contorno queda fijo en el piso.',
+      'Al apuntar a la primera esquina, el toque cierra la zona y la foto sale sola del AR.',
+      'La calle y la progresiva de la zona salen de tu GPS.',
+    ],
+  },
+  {
     version: '0.1.184',
     // Company spaces: the IAA zone measured with the camera's AR and the tape.
     audience: 'spaces',

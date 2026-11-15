@@ -1166,6 +1166,39 @@ espacio Test, con «QA-CTLPIS — borrar»:
 >   - Doble cierre.
 >   - Líneas punteadas sin tope con una esquina detrás de la cámara.
 >   - Archivos que se acumulaban en el caché.
+> - **0.1.186 (segunda prueba de José, 15/11 tarde):**
+>   - **La wincha es opcional.** José: «en plena obra, en la calle, no se va a
+>     estar validando». Sin lados medidos con wincha, la zona se guarda con el
+>     área del AR y un aviso ámbar. Si hay un lado medido, siguen el aviso del
+>     3 % y el bloqueo del 15 %. La esquina fuera del piso también solo avisa.
+>     El motor separa fallas y avisos (`isArWarning`; `canSave` deja pasar solo
+>     avisos).
+>   - La foto del AR se ve grande en la tarjeta (Foto / Plano).
+>   - Teclado de wincha rehecho (teclas de 48 px y «Lectura previa»). El espesor
+>     es opcional y solo sirve para m³: por defecto la zona va en m².
+>   - Cada esquina es el promedio de hasta 10 lecturas estables a menos de 4 cm.
+>     En la prueba, un lado de 1,99 m salió 1,90 m.
+> - **0.1.187: como la app de referencia de José (ARPlan 3D).** José: «¿acaso no
+>   sabes cómo funciona ARPlan 3D?». Se tomó de esa app:
+>   - El piso que ARCore reconoció se ve con puntos: uno cada 25 cm, hasta 4 m,
+>     renovados cada 15 cuadros.
+>   - Cada lado lleva «N · x,xx m» sobre su línea. El lado que crece hacia la
+>     retícula lleva sus metros en vivo, en una pastilla del color de la marca.
+>     Se dibujan en GL con texturas de texto (`LabelOverlay.kt`, caché de 48), y
+>     así no flotan detrás de la cámara. La capa de JS quedó solo con la
+>     retícula.
+>   - Cerrar (tocar la 1.ª esquina o «Cerrar») no sale del AR. La zona queda
+>     pintada (ear clipping en pantalla) con su área (Newell) en el centro.
+>     «Listo» confirma y toma la foto con todo eso encima. «Deshacer» la reabre.
+>     Con la zona cerrada no se marcan más esquinas (`closed`).
+> - **Método `ar` («AR» en el PDF), pendiente:** Portal lo tiene (6d1a71f6), pero
+>   todavía no está en producción. Cuando llegue:
+>   - una zona sin ningún lado con wincha manda `ar`, y una con wincha manda
+>     `ar-app`;
+>   - el server acepta `ar` solo con `source: 'apk'`;
+>   - José reaprueba `registrar_area_adicional`.
+>
+>   Hasta entonces, una zona sin wincha sale «AR + wincha» en el PDF.
 > - **Sin verificar todavía:** la cámara AR y la medida contra una wincha real,
 >   en el teléfono de José (el emulador ARM no corre ARCore).
 

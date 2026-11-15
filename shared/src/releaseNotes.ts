@@ -17,6 +17,16 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.187',
+    // Company spaces: the IAA's AR traced like José's reference app.
+    audience: 'spaces',
+    items: [
+      'El AR muestra con puntos el piso que ya reconoció.',
+      'Cada lado lleva sus metros sobre la línea, y el lado que trazas crece en vivo.',
+      'Al cerrar la zona queda pintada con su área en el centro; toca «Listo» para confirmar.',
+    ],
+  },
+  {
     version: '0.1.186',
     // Company spaces: the IAA's AR after the second test on a phone.
     audience: 'spaces',

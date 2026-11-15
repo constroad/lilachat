@@ -1214,6 +1214,29 @@ espacio Test, con «QA-CTLPIS — borrar»:
 >       cerrar. El círculo plano solo se ve, punteado, mientras no hay piso.
 >   - Publicada el 15/11; la descarga entrega `lilachat-0.1.187-188.apk`. Smoke
 >     en el emulador: 3 aperturas limpias. El AR no se pudo probar ahí (ARM).
+> - **Prueba de José con la 0.1.187 (15/11 tarde): zona de 0,53 m² sin wincha,
+>   guardada en TEST.** Lo que reportó y lo que se encontró:
+>   - «La UI rota»: el título de espesor se montaba con su nota. Se arregló en
+>     `SectionTitle`, compartido: ahora el texto de la derecha se parte.
+>   - La foto se veía recortada (cover a 260 px). Ahora se ve entera, en su
+>     proporción, hasta 460 px (`WholePhoto`).
+>   - «¿Cómo edito o borro?»: la-06 no estaba hecha. Ahora tocar una zona la
+>     abre, y se pueden corregir la descripción, el lugar y el espesor.
+>     - Guarda con el `editar` de Portal (`area_edit` en el server). Portal
+>       reescribe la medida entera, así que se reenvían el área, los lados, el
+>       método y el GPS de la zona.
+>     - El área de una zona AR no se edita: después de guardar no quedan las
+>       esquinas. Si está mal, se mide otra vez.
+>     - «Borrar zona» pide la confirmación en el mismo lugar y usa `quitar`.
+>   - «No hay opción de ver el PDF»: «Ver PDF» ahora está junto a «Medir área».
+>     Es la vista previa del borrador, igual que en los otros informes.
+>   - Su zona salía sin método ni «Quitar». Causa: agentes filtra `metodo` con
+>     una lista vieja sin `ar` (`core/notices/area-document.ts:31`). Portal
+>     guarda y devuelve `ar` (comprobado con la fila real). Lo arregla la sesión
+>     de agentes.
+>   - la-01: el rótulo «Métricas totales» lo inventó Stitch y pasó a «Total».
+>     Sin espesor, el volumen sale «—» en vez de «0,000 m³».
+>   - la-03: el lugar es el título; el código y la zona van arriba.
 > - **Método `ar` («AR» en el PDF), desde 0.1.187:** Portal 6d1a71f6, en
 >   producción el 15/11 a las 14:35.
 >   - Una zona sin ningún lado con wincha manda `ar`; con wincha, `ar-app`

@@ -1064,6 +1064,18 @@ espacio Test, con «QA-CTLPIS — borrar»:
 > Lilachat» y no ofrece instalar: un iPhone no instala un APK. Se borró `AreaMeasureWeb`. Los
 > motores de escritura (`areaCreateRequest`, `areaWriteStore`) quedan para el
 > APK (la-01…la-10). Lo de abajo es el registro de la opción B.
+>
+> **APK, 15/11: la-01 y la-05 (foto + wincha, sin AR).** «Crear informe → Área
+> adicional» abre `AreasScreen`: totales (área, volumen, zonas), cada zona con su
+> método y «Quitar», y «Medir área» (72 px). Medir abre la cámara con el GPS al
+> mismo tiempo, se tocan las esquinas sobre la foto (hasta 8, «Deshacer»), cada
+> lado se mide con el teclado propio de la wincha (56 px), y un lado medido fija
+> la escala de los demás (`photoAreaOf`: escala = promedio de los lados medidos,
+> área por shoelace). El espesor se carga por lecturas (chips, promedio entre 1 y
+> 50 cm). Va a Portal como área sola (`area_m2` + `thickness_cm`, método
+> `foto-medida`, «Foto + wincha»), nunca largo × ancho, porque un polígono no lo
+> es. Falta la AR (la-02/la-03, módulo nativo de ARCore, va en un APK), editar
+> una zona guardada (la-06), sin cámara (la-07) y revisar y enviar (la-08).
 
 
 José: «vamos con la opción B, pero desde Lilachat instrúyelo qué aplicación

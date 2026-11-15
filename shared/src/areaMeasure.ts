@@ -24,7 +24,7 @@ export const IPHONE_MEASURE_STEPS: readonly MeasureStep[] = [
 
 /** How an area was measured (Portal's `metodo`); `verificar` is Portal's office mark. */
 export type AreaMethod = 'medidas-iphone' | 'a-mano' | 'ar-app' | 'foto-medida';
-export const AREA_METHOD_LABELS: Record<AreaMethod, string> = { 'medidas-iphone': 'Medidas (iPhone)', 'a-mano': 'A mano', 'ar-app': 'AR (app)', 'foto-medida': 'Medida en foto' };
+export const AREA_METHOD_LABELS: Record<AreaMethod, string> = { 'medidas-iphone': 'Medidas (iPhone)', 'a-mano': 'A mano', 'ar-app': 'AR (app)', 'foto-medida': 'Foto + wincha' };
 /** AR in the APK is for later (Portal 12/11): an iPhone uses Medición, the rest types it. */
 export const measureMethodFor = (iphone: boolean): AreaMethod => (iphone ? 'medidas-iphone' : 'a-mano');
 

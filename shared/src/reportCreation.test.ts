@@ -31,9 +31,10 @@ describe('the types a report can be', () => {
   it('offers the eight types of the public page, and CTL-IMP, CTL-PIS and CON-CAP open here', () => {
     expect(REPORT_TYPE_OPTIONS).toHaveLength(9);
     // CON-CAP in the field since 12/11 (Portal 8bc64e18): GPS, street and station fill themselves.
-    // IAA since Portal's tools (12/11), on the web only: the iPhone's Medición; the APK has no screen for it.
+    // IAA since Portal's tools (12/11); since 15/11 it is measured on the APK (photo + tape), the phone PWA only shows it.
     expect(REPORT_TYPE_OPTIONS.filter((option) => option.opensHere).map((option) => option.code)).toEqual(['CTL-IMP', 'IAA', 'CTL-PIS', 'CON-CAP', 'RCP-CAM', 'REG-OBS', 'LEV-OBS', 'FRE-PAV']);
-    expect(REPORT_TYPE_OPTIONS.filter((option) => opensInApp(option)).map((option) => option.code)).toEqual(['CTL-IMP', 'CTL-PIS', 'CON-CAP', 'RCP-CAM', 'REG-OBS', 'LEV-OBS', 'FRE-PAV']);
+    expect(REPORT_TYPE_OPTIONS.filter((option) => opensInApp(option)).map((option) => option.code)).toEqual(['CTL-IMP', 'IAA', 'CTL-PIS', 'CON-CAP', 'RCP-CAM', 'REG-OBS', 'LEV-OBS', 'FRE-PAV']);
+    expect(REPORT_TYPE_OPTIONS.find((option) => option.code === 'IAA')?.caption).toBe('Zonas medidas en obra con foto y wincha');
     expect(REPORT_TYPE_OPTIONS.slice(0, 3).map((option) => option.code)).toEqual(['CTL-IMP', 'IAA', 'CTL-PIS']);
     REPORT_TYPE_OPTIONS.forEach((option) => expect(isFieldReport({ typeLabel: option.label })).toBe(true));
   });

@@ -30,15 +30,15 @@ import type { DetailTone } from './serviceDetail.js';
  * asks the server and what the cards say. The APK and the web draw from
  * here. PURE.
  */
-export type ReportTypeOption = { code: string; label: string; caption: string; /** Created here; the rest open Portal's public page. */ opensHere: boolean; /** Only the web has its screen (IAA: the iPhone's Medición). */ webOnly?: true };
+export type ReportTypeOption = { code: string; label: string; caption: string; /** Created here; the rest open Portal's public page. */ opensHere: boolean };
 
-/** What the APK fills itself; a web-only type opens Portal from the APK. */
-export const opensInApp = (option: ReportTypeOption): boolean => option.opensHere && !option.webOnly;
+/** What the APK fills itself (IAA too since 15/11: photo + tape); the rest open Portal from the APK. */
+export const opensInApp = (option: ReportTypeOption): boolean => option.opensHere;
 
 /** The types of Portal's public page (`isFieldReport`), the ones filled here on top. */
 export const REPORT_TYPE_OPTIONS: readonly ReportTypeOption[] = [
   { code: 'CTL-IMP', label: 'Control de imprimación', caption: 'Tasa de riego por tramo, con bandejas y fotos', opensHere: true },
-  { code: 'IAA', label: 'Área adicional', caption: AREAS_OPEN_HERE ? 'Largo y ancho medidos en obra, con su foto' : 'Zonas medidas sobre la foto', opensHere: AREAS_OPEN_HERE, webOnly: true },
+  { code: 'IAA', label: 'Área adicional', caption: 'Zonas medidas en obra con foto y wincha', opensHere: AREAS_OPEN_HERE },
   { code: 'CTL-PIS', label: 'Control de pista', caption: 'Llegada, temperaturas, escantillón y 4 fotos por volquete', opensHere: true },
   { code: 'CON-CAP', label: 'Conformación de capa', caption: 'Densidad por punto, con GPS y calle solos', opensHere: true },
   { code: 'RCP-CAM', label: 'Recepción de campo', caption: 'Conformidad por calle, con fotos y firma de supervisión', opensHere: true },

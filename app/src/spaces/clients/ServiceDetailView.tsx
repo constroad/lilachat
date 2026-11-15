@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronLeft, ChevronRight, ExternalLink, FilePlus, FileText } from 'lucide-react-native';
-import { draftToContinue, isObservationType, CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, orphanDispatchesOf, portalMapTabUrl, reportGroups, type ChannelLinks, type DetailRow, type DetailTabKey, type ServiceTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { AREA_TYPE, draftToContinue, isObservationType, CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, orphanDispatchesOf, portalMapTabUrl, reportGroups, type ChannelLinks, type DetailRow, type DetailTabKey, type ServiceTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
 import { RecordSheet } from './RecordSheet';
@@ -18,6 +18,7 @@ import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
 import { CreateReportSheet } from './reports/CreateReportSheet';
 import { ReportDocumentScreen } from './reports/ReportDocumentScreen';
 import { ObservationsScreen } from './observations/ObservationsScreen';
+import { AreasScreen } from './areas/AreasScreen';
 
 /** How much of the previous tab stays visible when one scrolls into view. */
 const TAB_SCROLL_MARGIN = 24;
@@ -280,6 +281,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   }, [askAgain]);
   // José 11/11: the registry and the lifting of observations have their own screens (designs ob-01…ob-03).
   if (report && isObservationType(report.type)) return <ObservationsScreen target={props.target} chatId={props.chatId} serviceId={props.service.id} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} portalUrl={portalUrl} onClose={closeReport} />;
+  if (report?.type === AREA_TYPE) return <AreasScreen to={{ target: props.target, chatId: props.chatId, serviceId: props.service.id }} service={props.service} {...(report.reportId ? { reportId: report.reportId } : {})} onClose={closeReport} />;
   if (report) return <ReportDocumentScreen target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={portalUrl} links={props.links} onClose={closeReport} />;
   return (
     <View className="flex-1">

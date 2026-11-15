@@ -23,10 +23,11 @@ export const IPHONE_MEASURE_STEPS: readonly MeasureStep[] = [
 ];
 
 /** How an area was measured (Portal's `metodo`); `verificar` is Portal's office mark. */
-export type AreaMethod = 'medidas-iphone' | 'a-mano' | 'ar-app' | 'foto-medida';
+export type AreaMethod = 'medidas-iphone' | 'a-mano' | 'ar-app' | 'ar' | 'foto-medida';
 /** What a phone may send, edit or remove: `ar-app` since José 15/11 (AR + tape); `foto-medida` stays Portal's. */
-export const AREA_FIELD_METHODS: readonly AreaMethod[] = ['medidas-iphone', 'a-mano', 'ar-app'];
-export const AREA_METHOD_LABELS: Record<AreaMethod, string> = { 'medidas-iphone': 'Medidas (iPhone)', 'a-mano': 'A mano', 'ar-app': 'AR + wincha', 'foto-medida': 'Foto + wincha' };
+// `ar` is the APK's AR with no taped side (Portal 6d1a71f6, «AR» in the PDF); `ar-app` has a tape.
+export const AREA_FIELD_METHODS: readonly AreaMethod[] = ['medidas-iphone', 'a-mano', 'ar-app', 'ar'];
+export const AREA_METHOD_LABELS: Record<AreaMethod, string> = { 'medidas-iphone': 'Medidas (iPhone)', 'a-mano': 'A mano', 'ar-app': 'AR + wincha', ar: 'AR', 'foto-medida': 'Foto + wincha' };
 /** Without ARCore: an iPhone uses Medición, the rest types it (the APK with AR sends `ar-app` itself). */
 export const measureMethodFor = (iphone: boolean): AreaMethod => (iphone ? 'medidas-iphone' : 'a-mano');
 

@@ -1200,14 +1200,13 @@ espacio Test, con «QA-CTLPIS — borrar»:
 >     - Doble toque en «Listo» y salir a mitad de la lectura.
 >     - Los puntos del piso recorren solo las celdas a 4 m de la cámara.
 >     - La caché de etiquetas incluye el color de la marca.
-> - **Método `ar` («AR» en el PDF), pendiente:** Portal lo tiene (6d1a71f6), pero
->   todavía no está en producción. Cuando llegue:
->   - una zona sin ningún lado con wincha manda `ar`, y una con wincha manda
->     `ar-app`;
->   - el server acepta `ar` solo con `source: 'apk'`;
->   - José reaprueba `registrar_area_adicional`.
->
->   Hasta entonces, una zona sin wincha sale «AR + wincha» en el PDF.
+> - **Método `ar` («AR» en el PDF), desde 0.1.187:** Portal 6d1a71f6, en
+>   producción el 15/11 a las 14:35.
+>   - Una zona sin ningún lado con wincha manda `ar`; con wincha, `ar-app`
+>     (`arMethodOf`). Una wincha que bloquea igual cuenta como «con wincha».
+>   - El server acepta `ar` y `ar-app` solo con `source: 'apk'`.
+>   - El esquema de `registrar_area_adicional` cambió: hasta que José la
+>     reapruebe en Agentes, guardar un área da 502.
 > - **Sin verificar todavía:** la cámara AR y la medida contra una wincha real,
 >   en el teléfono de José (el emulador ARM no corre ARCore).
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arAimLine, arAreaFigures, arAreaOf, arLiveLabel, arPlanOf, arProblemLine, arScanProgress, closedRing, isArWarning, visibleRuns, type ArPoint } from './arArea.js';
+import { arAimLine, arAreaFigures, arAreaOf, arMethodOf, arLiveLabel, arPlanOf, arProblemLine, arScanProgress, closedRing, isArWarning, visibleRuns, type ArPoint } from './arArea.js';
 
 /** A flat 2 m × 1,5 m rectangle on the floor (ARCore: y is up, meters). */
 const rectangle: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }, { x: 2, y: 0, z: 1.5 }, { x: 0, y: 0, z: 1.5 }];
@@ -179,6 +179,15 @@ describe('arAreaFigures and the lines', () => {
   it('what Portal gets: the area alone and the thickness', () => {
     const figures = arAreaFigures(arAreaOf({ ...base, tapes: { 0: 2 }, readingsCm: [5] }));
     expect(figures).toMatchObject({ areaM2: 3, thicknessCm: 5, volumeM3: 0.15, line: '3,00 m² · 0,150 m³' });
+  });
+
+  it('a zone with no taped side goes as «AR»; one with a tape, as «AR + wincha» (José 15/11)', () => {
+    expect(arMethodOf(arAreaOf({ ...base, tapes: {}, readingsCm: [] }))).toBe('ar');
+    expect(arMethodOf(arAreaOf({ ...base, tapes: { 0: 2 }, readingsCm: [] }))).toBe('ar-app');
+  });
+
+  it('a tape that blocks still says the zone was taped', () => {
+    expect(arMethodOf(arAreaOf({ ...base, tapes: { 0: 9 }, readingsCm: [] }))).toBe('ar-app');
   });
 
   it('every problem has a line for the person', () => {

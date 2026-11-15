@@ -33,6 +33,16 @@ describe('additional area forms (Portal 12/11, proposed contract)', () => {
     expect(areaFormInputOf({ kind: 'area_create', entry_id: ENTRY, area_m2: 4.81, method: 'ar-app', source: 'web' })).toBeNull();
   });
 
+  it('the AR with no tape (ar, «AR» in the PDF) is refused from the web too', () => {
+    expect(areaFormInputOf({ kind: 'area_create', entry_id: ENTRY, area_m2: 4.81, method: 'ar', source: 'web' })).toBeNull();
+  });
+
+  it('the APK\'s AR with no tape goes as ar (José 15/11: the PDF says «AR»)', () => {
+    const ready = areaFormPrepared(SERVICE, areaFormInputOf({ kind: 'area_create', entry_id: ENTRY, area_m2: 4.81, method: 'ar', source: 'apk' })!);
+
+    expect(ready.context).toMatchObject({ kind: 'crear', areaM2: 4.81, metodo: 'ar', fuente: 'apk' });
+  });
+
   it('the APK\'s AR with the tape goes as ar-app, area alone (José 15/11)', () => {
     const ready = areaFormPrepared(SERVICE, areaFormInputOf({ kind: 'area_create', entry_id: ENTRY, area_m2: 4.81, thickness_cm: 5.2, method: 'ar-app', source: 'apk' })!);
 

@@ -56,7 +56,7 @@ type Raw = Record<string, unknown>;
 const AREAS_MAX = 300;
 /** Portal's real reports have an area with 85 photos (agentes 3006ed9 lets 100 through). */
 const PHOTOS_MAX = 100;
-const METHODS: readonly AreaMethod[] = ['medidas-iphone', 'a-mano', 'ar-app', 'foto-medida'];
+const METHODS: readonly AreaMethod[] = ['medidas-iphone', 'a-mano', 'ar-app', 'ar', 'foto-medida'];
 const record = (value: unknown): Raw => (value && typeof value === 'object' && !Array.isArray(value) ? (value as Raw) : {});
 const trimmed = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 const numeric = (value: unknown): number | undefined => (typeof value === 'number' && Number.isFinite(value) ? value : undefined);

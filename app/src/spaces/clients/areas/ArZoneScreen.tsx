@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import * as Crypto from 'expo-crypto';
 import { AlertTriangle, CheckCircle2, RotateCcw } from 'lucide-react-native';
-import { areaCreateRequest, arAreaFigures, arAreaOf, arProblemLine, isArWarning, isThicknessReading, readingTyped, tapeKey, tapeMeters, THICKNESS_OUT_OF_RANGE, type ArProblem, type ArSide, type AreaDocument, type TapeKey } from '@lilachat/shared';
+import { AREA_METHOD_LABELS, areaCreateRequest, arAreaFigures, arMethodOf, arAreaOf, arProblemLine, isArWarning, isThicknessReading, readingTyped, tapeKey, tapeMeters, THICKNESS_OUT_OF_RANGE, type ArProblem, type ArSide, type AreaDocument, type TapeKey } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { BottomAction, ObservationHeader, SectionTitle } from '../observations/ObservationParts';
 import type { ObservationTarget } from '../observations/useObservations';
@@ -68,7 +68,7 @@ export function ArZoneScreen(props: Props) {
     if (tape.editing || blocker || !result.canSave || !shot.shot) return;
     const gps = props.place.point ?? shot.point;
     const point = gps ? { lat: gps.lat, lng: gps.lng, precision: gps.precision } : null;
-    const reportId = await write.save(areaCreateRequest(props.report, entryId, arAreaFigures(result), point, 'ar-app', 'apk'), { place: placeText.value.trim(), note }, [shot.shot]);
+    const reportId = await write.save(areaCreateRequest(props.report, entryId, arAreaFigures(result), point, arMethodOf(result), 'apk'), { place: placeText.value.trim(), note }, [shot.shot]);
     if (reportId) props.onSaved(reportId);
   };
   return (
@@ -79,7 +79,7 @@ export function ArZoneScreen(props: Props) {
           <ArPlanCard points={props.measured.points} sides={result.sides} editing={tape.editing?.kind === 'side' ? tape.editing.index : null} photo={shot.shot?.preview.uri ?? null} onRetake={() => void shot.take()} />
           <SidesCard tape={tape} onShown={reveal.show} />
           <ThicknessCard readings={tape.readings} thicknessCm={result.thicknessCm} editing={tape.editing?.kind === 'reading'} typed={tape.typed} onAdd={() => tape.open({ kind: 'reading' })} onRemove={(index) => tape.setReadings((current) => current.filter((_, at) => at !== index))} onType={tape.type} onDone={tape.done} error={tape.readingError} />
-          {result.areaM2 !== null ? <ResultCard line={arAreaFigures(result).line} method={result.sides.some((side) => side.source === 'wincha') ? 'AR + wincha' : 'Solo AR'} /> : null}
+          {result.areaM2 !== null ? <ResultCard line={arAreaFigures(result).line} method={AREA_METHOD_LABELS[arMethodOf(result)]} /> : null}
           {result.problems.length ? <ProblemsCard problems={result.problems} /> : null}
           {shot.message ? <Text className="text-[13px] text-error">{shot.message}</Text> : null}
           <PlaceCard value={placeText.value} asking={props.place.asking} fromGps={Boolean(props.place.place) && !placeText.typed} onChange={placeText.set} />

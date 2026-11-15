@@ -24,6 +24,7 @@ export const RELEASE_NOTES: readonly ReleaseNote[] = [
       'El AR muestra con puntos el piso que ya reconoció.',
       'Cada lado lleva sus metros sobre la línea, y el lado que trazas crece en vivo.',
       'Al cerrar la zona queda pintada con su área en el centro; toca «Listo» para confirmar.',
+      'Una zona sin wincha sale como «AR» en el informe; con un lado medido, «AR + wincha».',
     ],
   },
   {

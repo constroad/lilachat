@@ -75,7 +75,7 @@ function areaCreateInputOf(raw: Record<string, unknown>): AreaCreateInput | null
   const method = AREA_FIELD_METHODS.find((one) => one === raw.method);
   if (!entryId || areaM2 === null || !method || (raw.source !== 'apk' && raw.source !== 'web')) return null;
   // ARCore lives only in the APK: an AR figure from the web was typed, never measured (audit 15/11).
-  if (method === 'ar-app' && raw.source !== 'apk') return null;
+  if ((method === 'ar-app' || method === 'ar') && raw.source !== 'apk') return null;
   const sides = sidesOf(raw, areaM2);
   const place = placeOf(raw);
   const thicknessCm = raw.thickness_cm === undefined ? null : inRange(raw.thickness_cm, THICKNESS_CM);

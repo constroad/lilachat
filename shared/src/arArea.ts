@@ -1,4 +1,4 @@
-import type { AreaFigures } from './areaMeasure.js';
+import type { AreaFigures, AreaMethod } from './areaMeasure.js';
 import { thicknessAverage, type SideSource } from './photoArea.js';
 
 /**
@@ -179,6 +179,11 @@ export function arAreaOf(input: ArInput): ArArea {
 }
 
 /** What Portal stores: the area alone (a polygon is not length × width), with the thickness when there is one. */
+/** «AR» when no side was taped, «AR + wincha» when one was (José 15/11: the PDF must not claim a tape). */
+export function arMethodOf(result: ArArea): Extract<AreaMethod, 'ar' | 'ar-app'> {
+  return result.sides.some((side) => side.source === 'wincha') ? 'ar-app' : 'ar';
+}
+
 export function arAreaFigures(result: ArArea): AreaFigures {
   const areaM2 = result.areaM2 ?? 0;
   const volume = result.thicknessCm === null || result.volumeM3 === null ? {} : { thicknessCm: result.thicknessCm, volumeM3: result.volumeM3 };

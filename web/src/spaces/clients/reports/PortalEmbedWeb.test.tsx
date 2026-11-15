@@ -51,13 +51,14 @@ describe('PortalEmbedWeb', () => {
     const onClose = vi.fn();
     render(<PortalEmbedWeb target={target} serviceId="sv1" serviceName="Av. Los Incas" report={report} onClose={onClose} />);
     await waitFor(() => expect(frame().src).toContain('#t=a1'));
-    const post = vi.spyOn(frame().contentWindow!, 'postMessage');
 
     fromPortal({ type: 'portal-embed:closed', version: 1 }, 'https://evil.example.com');
     fromPortal({ type: 'portal-embed:closed', version: 1 }, PORTAL, window);
     expect(onClose).not.toHaveBeenCalled();
+    // The spy goes on the frame's window as it is when «ready» arrives: jsdom may swap it after the src (flaky 15/11).
+    const post = vi.spyOn(frame().contentWindow!, 'postMessage');
     fromPortal({ type: 'portal-embed:ready', version: 1 });
-    expect(post).toHaveBeenCalledWith({ type: 'portal-embed:theme', version: 1, mode: 'dark' }, PORTAL);
+    await waitFor(() => expect(post).toHaveBeenCalledWith({ type: 'portal-embed:theme', version: 1, mode: 'dark' }, PORTAL));
   });
 
   it('once Portal is ready only its bar shows (José 12/11); Escape asks Portal to close, and after a save its «closed» says something changed', async () => {

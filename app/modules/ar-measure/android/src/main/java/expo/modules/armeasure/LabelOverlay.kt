@@ -101,7 +101,7 @@ class LabelOverlay(private val density: Float) {
   }
 
   /** A rounded pill: dark with white text, or the accent for the side being drawn and the area. */
-  private fun textureOf(text: String, strong: Boolean): Texture = textures.getOrPut("$strong|$text") {
+  private fun textureOf(text: String, strong: Boolean): Texture = textures.getOrPut("$strong|$accent|$text") {
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
       textSize = TEXT_SP * density * (if (strong) 1.15f else 1f)
       typeface = Typeface.DEFAULT_BOLD

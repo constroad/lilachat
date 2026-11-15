@@ -167,7 +167,7 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
     // One list per frame: the shot and its answer see the same requests (audit 15/11).
     val pending = generateSequence { commands.poll() }.toList()
     val shooting = pending.any { it is Command.Read }
-    if (shooting) dropCornerOnFirst()
+    if (shooting && !closed) dropCornerOnFirst()
     if (frames++ % FLOOR_DOT_EVERY == 0) floorDots = floorDotsOf(session, camera.pose)
     drawTrace(viewProjection, shooting)
     runCommands(pending, tracking, session)
@@ -234,7 +234,7 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
     if (live != null) trace.lines(listOf(points.last() to live), LINE_DP * density * 0.75f, floatArrayOf(1f, 1f, 1f, 0.9f), size, DASH_DP * density)
     trace.dots(points, DOT_DP * density, floatArrayOf(1f, 1f, 1f, 1f), size)
     trace.dots(points, (DOT_DP - 2.5f) * density, accent, size)
-    labels.draw(labelsOf(points, ring || closing, live, target, size), size)
+    labels.draw(if (shooting) shotLabelsOf(points, size) else labelsOf(points, ring || closing, live, target, size), size)
   }
 
   /** «1 · 1,90 m» on each side, the growing side's meters, and the area of a closed zone. */
@@ -255,6 +255,17 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
       if (screen.size == points.size) out.add(Label("${"%.2f".format(PERU, areaOf())} m²", screen.map { it[0] }.average().toFloat(), screen.map { it[1] }.average().toFloat(), strong = true))
     }
     return out
+  }
+
+  /**
+   * The photo that goes to the client carries only each side's number: the meters and the
+   * area there are the AR's own, and a tape typed afterwards changes what is billed (audit 15/11).
+   */
+  private fun shotLabelsOf(points: List<Clip>, size: Pair<Int, Int>): List<Label> {
+    if (corners.size < MIN_CORNERS) return emptyList()
+    return corners.indices.mapNotNull { index ->
+      middleOf(points[index], points[(index + 1) % corners.size], size)?.let { Label("${index + 1}", it[0], it[1]) }
+    }
   }
 
   private fun middleOf(a: Clip, b: Clip, size: Pair<Int, Int>): FloatArray? {
@@ -287,10 +298,14 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
     for (plane in session.getAllTrackables(Plane::class.java)) {
       if (plane.type != Plane.Type.HORIZONTAL_UPWARD_FACING || plane.trackingState != TrackingState.TRACKING || plane.subsumedBy != null) continue
       val center = plane.centerPose
-      var x = -plane.extentX / 2f
-      while (x <= plane.extentX / 2f && dots.size < FLOOR_DOT_MAX) {
-        var z = -plane.extentZ / 2f
-        while (z <= plane.extentZ / 2f && dots.size < FLOOR_DOT_MAX) {
+      // The camera in the plane's own axes: only the cells within reach are walked (audit 15/11: a parking lot is ~14,000 cells).
+      val local = center.inverse().transformPoint(floatArrayOf(camera.tx(), camera.ty(), camera.tz()))
+      val xs = gridOf(plane.extentX, local[0])
+      val zs = gridOf(plane.extentZ, local[2])
+      var x = xs.first
+      while (x <= xs.second && dots.size < FLOOR_DOT_MAX) {
+        var z = zs.first
+        while (z <= zs.second && dots.size < FLOOR_DOT_MAX) {
           val world = center.transformPoint(floatArrayOf(x, 0f, z))
           val pose = Pose.makeTranslation(world[0], world[1], world[2])
           if (kotlin.math.hypot(world[0] - camera.tx(), world[2] - camera.tz()) < FLOOR_DOT_REACH && plane.isPoseInPolygon(pose)) dots.add(world)
@@ -300,6 +315,14 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
       }
     }
     return dots
+  }
+
+  /** The grid's first and last cell along one axis of the plane, kept on the plane's own grid. */
+  private fun gridOf(extent: Float, camera: Float): Pair<Float, Float> {
+    val start = -extent / 2f
+    val low = maxOf(start, camera - FLOOR_DOT_REACH)
+    val first = start + kotlin.math.ceil((low - start) / FLOOR_DOT_STEP) * FLOOR_DOT_STEP
+    return first to minOf(extent / 2f, camera + FLOOR_DOT_REACH)
   }
 
   private fun clipOf(viewProjection: FloatArray, x: Float, y: Float, z: Float): Clip {
@@ -364,9 +387,17 @@ class MeasureRenderer(private val sessionOf: () -> Session?, private val shotFol
       target == null -> promise.reject("no-floor", "Apunta al piso: no hay piso reconocido en el centro.", null)
       target.distance > MAX_HIT_METERS -> promise.reject("far", "Acércate: la esquina está a más de 6 m.", null)
       closing || nearFirst(target.pose.tx(), target.pose.tz()) -> promise.reject("closing", "Toca para cerrar la zona.", null)
+      else -> placeCorner(promise, target)
+    }
+  }
+
+  /** The corner goes where the steady hits average; if that lands on the first corner, it is the close. */
+  private fun placeCorner(promise: Promise, target: Aim) {
+    val mean = steadyMean()?.takeIf { steady.size >= MIN_CORNERS }
+    when {
+      mean != null && nearFirst(mean[0], mean[2]) -> promise.reject("closing", "Toca para cerrar la zona.", null)
       else -> {
-        val mean = steadyMean()
-        val anchor = if (mean != null && steady.size >= MIN_CORNERS) target.hit.trackable.createAnchor(Pose.makeTranslation(mean[0], mean[1], mean[2])) else target.hit.createAnchor()
+        val anchor = if (mean != null) target.hit.trackable.createAnchor(Pose.makeTranslation(mean[0], mean[1], mean[2])) else target.hit.createAnchor()
         corners.add(Corner(anchor, target.floorY))
         promise.resolve(corners.size)
       }

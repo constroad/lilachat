@@ -40,8 +40,12 @@ function useCorners(handle: React.RefObject<ArMeasureHandle | null>, onMeasured:
   const [failure, setFailure] = useState<string | null>(null);
   // Once a close starts, a second tap or «Cerrar» must not read (and photograph) the zone again (audit 15/11).
   const closed = useRef(false);
+  // «Listo» tapped twice in one frame queued two shots; leaving mid-read still saved the zone (audit 15/11).
+  const reading = useRef(false);
+  const mounted = useRef(true);
+  useEffect(() => () => { mounted.current = false; }, []);
   const finish = (measured: ArMeasured) => {
-    if (closed.current) return;
+    if (closed.current || !mounted.current) return;
     closed.current = true;
     onMeasured(measured);
   };
@@ -56,7 +60,15 @@ function useCorners(handle: React.RefObject<ArMeasureHandle | null>, onMeasured:
   };
   // Like José's reference app: the zone closes in the AR (filled, with its area) and «Listo» confirms it.
   const close = () => run(async (view) => { await view.closeZone(); });
-  const confirm = () => run(async (view) => finish(await view.readCorners()));
+  const confirm = () => run(async (view) => {
+    if (reading.current) return;
+    reading.current = true;
+    try {
+      finish(await view.readCorners());
+    } finally {
+      reading.current = false;
+    }
+  });
   // A tap on the first corner closes the zone (José 15/11: a 5th corner there blocked the save).
   const mark = () => run(async (view) => {
     try {

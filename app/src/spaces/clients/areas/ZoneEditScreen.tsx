@@ -75,6 +75,8 @@ export function ZoneEditScreen(props: Props) {
   const request = areaEditRequest(props.report, area, thickness.thicknessCm);
   const photo = area.photos[0];
   const reveal = useRevealOnKeyboard(thickness.readings.editing);
+  // The delete's confirmation opens at the bottom: its two buttons scroll into view (E2E 15/11: half hidden).
+  useEffect(() => { if (confirming) setTimeout(() => reveal.scroll.current?.scrollToEnd({ animated: true }), 50); }, [confirming, reveal.scroll]);
   const save = async () => {
     if (!request || thickness.readings.editing) return;
     const result = await write.run(() => edit(request, { place, note }));

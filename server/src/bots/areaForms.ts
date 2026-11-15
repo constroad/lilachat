@@ -45,7 +45,9 @@ const idOf = (raw: unknown): string => (typeof raw === 'string' && raw.trim().le
 const NOTHING_TO_FILL: FormSchema = { type: 'object', properties: {} };
 
 /** Off until Portal publishes its tools (`AREAS_OPEN_HERE`): the kind does not exist meanwhile. */
-export const isAreaFormKind = (kind: unknown): kind is AreaFormInput['kind'] => AREAS_OPEN_HERE && (kind === 'area_create' || kind === 'area_remove' || kind === 'area_edit');
+/** Every area kind, in ONE place: the route forgot `area_edit` once and sent it to «Publicar» (José's test, 15/11). */
+export const AREA_FORM_KINDS = ['area_create', 'area_remove', 'area_edit'] as const satisfies ReadonlyArray<AreaFormInput['kind']>;
+export const isAreaFormKind = (kind: unknown): kind is AreaFormInput['kind'] => AREAS_OPEN_HERE && (AREA_FORM_KINDS as readonly unknown[]).includes(kind);
 
 /** Both sides or none; with both, the area is their product. */
 function sidesOf(raw: Record<string, unknown>, areaM2: number): { lengthM: number | null; widthM: number | null } | null {

@@ -64,7 +64,7 @@ export function ThicknessCard(props: ThicknessProps) {
   return (
     <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3">
       {/* José 15/11: the zone is m² by default; the thickness is only for m³. */}
-      <SectionTitle title="Espesor · lecturas en cm" side={count ? undefined : 'Opcional · solo para m³'} />
+      <SectionTitle title="Espesor · lecturas en cm" side={count ? undefined : 'Opcional · para m³'} />
       <View className="flex-row flex-wrap gap-2">
         {props.readings.map((reading, index) => (
           <Pressable key={`${reading}-${index}`} testID={`lectura-${index}`} onPress={() => props.onRemove(index)} accessibilityLabel={`Quitar ${reading} cm`} className="h-11 flex-row items-center gap-1.5 rounded-lg border border-outline/20 px-3">

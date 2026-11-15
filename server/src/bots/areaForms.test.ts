@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@lilachat/shared', async (original) => ({ ...(await original<typeof import('@lilachat/shared')>()), AREAS_OPEN_HERE: true }));
 
-const { areaFormInputOf, areaFormPrepared, isAreaFormKind } = await import('./areaForms.js');
+const { AREA_FORM_KINDS, areaFormInputOf, areaFormPrepared, isAreaFormKind } = await import('./areaForms.js');
 
 const ENTRY = '3f2a9c1e-8b7d-4c6e-9a5b-1d2e3f4a5b6c';
 const SERVICE = '6aed0a1b2c3d4e5f60718293';
@@ -31,6 +31,12 @@ describe('additional area forms (Portal 12/11, proposed contract)', () => {
 
   it('an AR figure from the web is refused: only the APK measures with ARCore', () => {
     expect(areaFormInputOf({ kind: 'area_create', entry_id: ENTRY, area_m2: 4.81, method: 'ar-app', source: 'web' })).toBeNull();
+  });
+
+  it('every area kind is one the route opens (area_edit fell to «Publicar» on 15/11)', () => {
+    expect([...AREA_FORM_KINDS].sort()).toEqual(['area_create', 'area_edit', 'area_remove']);
+    for (const kind of AREA_FORM_KINDS) expect(isAreaFormKind(kind)).toBe(true);
+    expect(isAreaFormKind('publish')).toBe(false);
   });
 
   it('an edit (la-06) goes as Portal\'s editar with the whole measure again', () => {

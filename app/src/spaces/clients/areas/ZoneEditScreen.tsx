@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Keyboard, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { CheckCircle2, Trash2, X } from 'lucide-react-native';
 import { AREA_METHOD_LABELS, areaEditRequest, zoneRemoveAsk, type AdditionalArea, type AreaDocument } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
@@ -45,6 +45,18 @@ function useZoneThickness(saved: number | undefined) {
   return { readings, thicknessCm: readings.thicknessCm ?? kept, saved: readings.readings.length ? null : kept, dropSaved: () => setKeepsSaved(false) };
 }
 
+/** While a reading is typed, its card scrolls above the keyboard (the E2E of 15/11: the field sat under it). */
+function useRevealOnKeyboard(editing: boolean) {
+  const scroll = useRef<ScrollView>(null);
+  const at = useRef(0);
+  useEffect(() => {
+    if (!editing) return undefined;
+    const shown = Keyboard.addListener('keyboardDidShow', () => scroll.current?.scrollTo({ y: Math.max(0, at.current - 12), animated: true }));
+    return () => shown.remove();
+  }, [editing]);
+  return { scroll, at };
+}
+
 /**
  * Design la-06 (José 15/11: «¿cómo edito o borro?»): a saved zone's description and place, its
  * photo, the thickness (only for m³), the result, «Borrar zona» with its confirmation in place
@@ -62,6 +74,7 @@ export function ZoneEditScreen(props: Props) {
   const [line, setLine] = useState<string | null>(null);
   const request = areaEditRequest(props.report, area, thickness.thicknessCm);
   const photo = area.photos[0];
+  const reveal = useRevealOnKeyboard(thickness.readings.editing);
   const save = async () => {
     if (!request || thickness.readings.editing) return;
     const result = await write.run(() => edit(request, { place, note }));
@@ -71,12 +84,14 @@ export function ZoneEditScreen(props: Props) {
   return (
     <View className="flex-1 bg-background">
       <ObservationHeader kicker={`Editar · ${props.report.code ?? 'IAA'} · Zona ${props.number}`} title={place || `Zona ${props.number}`} onBack={() => (write.busy ? undefined : props.onBack())} />
-      <ScrollView testID="zona-editar-pantalla" keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 24 }}>
+      <ScrollView ref={reveal.scroll} testID="zona-editar-pantalla" keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 24 }}>
         <TextCard title="Descripción" testID="zona-editar-descripcion" value={note} saved={area.description} placeholder="Bacheo localizado" onChange={setNote} />
         <TextCard title="Lugar" testID="zona-editar-lugar" value={place} saved={area.place} placeholder="Calle y número" onChange={setPlace} />
         {photo ? <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3"><SectionTitle title="Foto de la zona" /><WholePhoto uri={photo.url} testID="zona-editar-foto" /></View> : null}
         {thickness.saved !== null ? <SavedThickness value={thickness.saved} onDrop={thickness.dropSaved} /> : null}
+        <View onLayout={(event) => { reveal.at.current = event.nativeEvent.layout.y; }}>
         <ThicknessCard readings={thickness.readings.readings} thicknessCm={thickness.readings.thicknessCm} editing={thickness.readings.editing} typed={thickness.readings.typed} onAdd={thickness.readings.add} onRemove={thickness.readings.remove} onType={thickness.readings.type} onDone={thickness.readings.done} error={thickness.readings.error} />
+        </View>
         <ResultCard line={resultLine(area.areaM2, thickness.thicknessCm)} method={area.method ? AREA_METHOD_LABELS[area.method] : '—'} hint="Se recalcula al cambiar el espesor" />
         {!request ? <Text testID="zona-no-editable" className="text-[13px] text-on-surface-variant">{area.method === 'foto-medida' ? 'Esta zona se midió en la oficina: se corrige en el Portal.' : 'No se sabe cómo se midió esta zona: se corrige en el Portal.'}</Text> : null}
         {request ? <RemoveZone ask={zoneRemoveAsk(props.number, props.report.totals, area)} busy={write.busy} confirming={confirming} setConfirming={setConfirming} color={colors.error} onConfirm={() => write.run(() => props.onRemove(area.id))} /> : null}

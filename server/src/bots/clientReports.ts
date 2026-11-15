@@ -10,7 +10,7 @@ import { photoPhaseInputOf, photoPhasePrepared, type PhotoPhaseContext, type Pho
 import { workStreetDeleteInputOf, workStreetDeletePrepared, workStreetInputOf, workStreetPrepared, type StreetContext, type WorkStreetDeleteInput, type WorkStreetInput } from './workStreetForm.js';
 import { workManualProgressInputOf, workManualProgressPrepared, type WorkManualProgressInput } from './workManualProgressForm.js';
 import { isObservationFormKind, observationFormInputOf, observationFormPrepared, type ObservationFormInput } from './observationForms.js';
-import { areaFormInputOf, areaFormPrepared, isAreaFormKind, type AreaFormInput } from './areaForms.js';
+import { AREA_FORM_KINDS, areaFormInputOf, areaFormPrepared, isAreaFormKind, type AreaFormInput } from './areaForms.js';
 import { isWorkMapFormInput, isWorkMapFormKind, workMapFormInputOf, workMapFormPrepared, type WorkMapFormContext, type WorkMapFormInput } from './workMapForms.js';
 
 /**
@@ -205,6 +205,8 @@ async function sectionPrepared(workspaceId: string, serviceId: string, userId: T
   return 'error' in built ? built : { form, context: { ...built.context, ...channelValuesOf(draft.document, input.path) } };
 }
 
+const isAreaInput = (input: OpenInput): input is Extract<OpenInput, AreaFormInput> => (AREA_FORM_KINDS as readonly string[]).includes(input.kind);
+
 function prepared(workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId, input: OpenInput): Promise<Prepared | CommandError> | Prepared {
   if (input.kind === 'section') return sectionPrepared(workspaceId, serviceId, userId, input);
   if (input.kind === 'work_progress') return workProgressPrepared(workspaceId, clientId, serviceId, userId, input);
@@ -214,7 +216,7 @@ function prepared(workspaceId: string, clientId: string, serviceId: string, user
   if (input.kind === 'photo_phase') return photoPhasePrepared(serviceId, input);
   if (isWorkMapFormInput(input)) return workMapFormPrepared(serviceId, input);
   if (input.kind === 'observation_register' || input.kind === 'observation_lift') return observationFormPrepared(serviceId, input);
-  if (input.kind === 'area_create' || input.kind === 'area_remove') return areaFormPrepared(serviceId, input);
+  if (isAreaInput(input)) return areaFormPrepared(serviceId, input);
   if (input.kind === 'service_link') return { form: { id: SERVICE_LINK_ACTION, title: 'Enlace del servicio', submitLabel: 'Crear enlace', schema: SERVICE_LINK_FORM }, context: { servicioId: serviceId } };
   if (input.kind === 'drive_upload') return { form: { id: DRIVE_UPLOAD_TOOL, title: 'Subir al Drive', submitLabel: 'Subir', schema: NOTHING_TO_FILL }, context: { servicioId: serviceId } };
   if (input.kind === 'remove_photo') return { form: { id: REMOVE_PHOTO_TOOL, title: 'Quitar foto', submitLabel: 'Quitar', schema: NOTHING_TO_FILL }, context: { servicioId: serviceId, informeId: input.reportId, fotoId: input.photoId } };

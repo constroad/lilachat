@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronRight, FileText, Scan } from 'lucide-react-native';
 import { areaCardLines, areaReportDay, areaTotalsLine, closedRing, PREVIEW_ASKING, PREVIEW_LABEL, type AdditionalArea, type AreaDocument, type ChannelLinks, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
@@ -30,8 +30,8 @@ export function AreasScreen(props: Props) {
   const [mode, setMode] = useState<Mode>({ kind: 'list' });
   const [changed, setChanged] = useState(false);
   const remove = useAreaRemove(props.to, () => { setChanged(true); setMode({ kind: 'list' }); reload(report?.id); });
-  // A draft's PDF is Portal's signed preview, opened in the browser (the same «Ver PDF» as the other reports).
-  const pdf = useReportPdf(props.to.target, props.to.serviceId, () => undefined);
+  // A draft shows Portal's signed preview; a report published in Portal, its PDF. Both open in the browser.
+  const pdf = useReportPdf(props.to.target, props.to.serviceId, (file) => void Linking.openURL(file.url));
   const close = () => props.onClose(changed);
   const toList = () => setMode({ kind: 'list' });
   // While a zone's edit or delete runs, back waits for it: a failure must stay in view (audit 15/11).
@@ -76,7 +76,7 @@ export function AreasScreen(props: Props) {
         {report ? <ReportBody report={report} service={props.service.name} onOpen={(areaId) => { pdf.stop(); setMode({ kind: 'zone', areaId }); }} /> : null}
       </ScrollView>
       {pdf.message ? <Text testID="areas-pdf-error" className="bg-surface px-4 pt-2 text-center text-[13px] font-semibold text-error">{pdf.message}</Text> : null}
-      <AreasFooter canPdf={Boolean(report?.id && report.areas.length)} asking={pdf.asking} busy={!report} onPdf={() => report && void pdf.ask(report.id, `${report.code ?? 'IAA'}.pdf`, true)} onMeasure={() => void startMeasure()} />
+      <AreasFooter canPdf={Boolean(report?.id && report.areas.length)} asking={pdf.asking} busy={!report} onPdf={() => report && void pdf.ask(report.id, `${report.code ?? 'IAA'}.pdf`, report.status !== 'published')} onMeasure={() => void startMeasure()} />
     </View>
   );
 }

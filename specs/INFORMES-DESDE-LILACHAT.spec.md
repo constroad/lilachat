@@ -1090,8 +1090,35 @@ espacio Test, con «QA-CTLPIS — borrar»:
 > ticket solo de fotos viaja en `data.upload`, como el de la visita.
 > la-01 suma el encabezado del diseño: código, servicio («Del servicio»), día
 > («Del reloj», `areaReportDay`, leído en UTC porque es date-only) y «Métricas
-> totales · Calculado». Falta la AR (la-02/la-03, módulo nativo de ARCore, va en un APK), editar
-> una zona guardada (la-06), sin cámara (la-07) y revisar y enviar (la-08).
+> totales · Calculado». Falta editar una zona guardada (la-06) y revisar y enviar (la-08).
+>
+> **APK 0.1.184, 15/11: AR + wincha (la-02, la-03, la-07).** José eligió el
+> método «AR + wincha» (`ar-app`, Portal 216670ad; lo reaprobó en Agentes el
+> 15/11) y la regla: **al menos un lado con wincha; más de 3 % entre wincha y AR
+> avisa («manda la wincha»), más de 15 % no guarda**.
+> - Nativo: módulo local `app/modules/ar-measure` (ARCore 1.57, opcional en el
+>   manifiesto: un teléfono sin AR instala igual). Hit test sobre plano
+>   horizontal al centro, hasta 6 m; cada esquina es un *anchor* con el nivel
+>   del piso de su plano; foto a JS cada 100 ms. `availability()` decide en
+>   «Medir área»: sin AR va directo a foto + wincha.
+> - Motor puro `shared/src/arArea.ts`: área con la normal de Newell (una calle
+>   en pendiente da su área real), escala = Σwincha/ΣAR ponderada por largo.
+>   Bloquean: menos de 3 esquinas, lado < 10 cm, lados cruzados, esquina sobre
+>   otro lado o pico < 10° (`degenerate`), esquinas fuera del plano (> 3 cm) o en
+>   pisos distintos (> 8 cm), seguimiento perdido, área fuera de 0,05–5000 m²,
+>   sin wincha, wincha > 15 % del AR o winchas que no coinciden entre sí
+>   (> 15 %). Entre ×50 y ×150 avisa «¿Escribiste centímetros?».
+> - la-02: si el AR pierde el piso con esquinas marcadas, sale «Reiniciar la
+>   zona» (los anchors pudieron moverse). Los lados se dibujan solo entre
+>   esquinas a la vista. la-07: sin permiso (se relee al volver de Ajustes), sin
+>   AR, instalación de Play Services para AR rechazada, o error: todos ofrecen
+>   «Medir con foto + wincha».
+> - Server: `ar-app` solo con `source: 'apk'` (la web no mide con ARCore).
+>   Lecturas de espesor fuera de 1–50 cm se rechazan en las dos pantallas.
+>   Un segundo toque en «Guardar zona» antes de verse ocupado no escribe dos
+>   veces (guarda en `formFilesWrite`).
+> - **Sin verificar todavía:** la medida contra una wincha real en el teléfono
+>   de José (el emulador solo prueba el flujo con su escena virtual).
 
 
 José: «vamos con la opción B, pero desde Lilachat instrúyelo qué aplicación
@@ -1121,8 +1148,8 @@ prueba de José → E2E en TEST → lienzo REG/LEV → embed de Lilachat web, y 
   y el boleto. Cada archivo va con `clientUploadId`, y la captura de Medición
   lleva `captura: true`. Portal guarda cada área `manual: true`: si no, sus
   fotos la recalculan a 0.
-- `metodo`: iPhone `medidas-iphone`; Android y computadora `a-mano`. `ar-app`
-  queda reservado (AR nativo, más adelante) y `foto-medida` es de Portal.
+- `metodo`: iPhone `medidas-iphone`; Android y computadora `a-mano`; el APK con
+  ARCore `ar-app` («AR + wincha», desde el 15/11). `foto-medida` es de Portal.
   `verificar` y `aproximada` los calcula Portal: se leen, nunca se mandan, y en
   campo no se muestra «Verifica esta área».
 - Límites (los de Portal, de sus 68 áreas reales): largo y ancho de 0,1 a

@@ -3,6 +3,7 @@ import { Types } from 'mongoose';
 import { chatMemberIds, markDelivered } from './chatService.js';
 import { resolveJwtSecret } from './sessions.js';
 import { broadcastReceipt, type ReceiptFrame } from './readPrivacy.js';
+import { registro } from './registro.js';
 
 /**
  * El doble check sin abrir la app (FL8.2).
@@ -27,14 +28,28 @@ export function firmarEntrega(params: { chatId: string; userId: string; seq: num
   });
 }
 
-export function verificarEntrega(token: string): { chatId: string; userId: string; seq: number } | null {
+type Entrega = { chatId: string; userId: string; seq: number; sentAt?: number };
+const MS_PER_S = 1000;
+
+export function verifyDelivery(token: string): Entrega | null {
   try {
-    const claims = jwt.verify(token, secreto(), { audience: AUDIENCIA }) as { c?: unknown; u?: unknown; s?: unknown };
+    const claims = jwt.verify(token, secreto(), { audience: AUDIENCIA }) as { c?: unknown; u?: unknown; s?: unknown; iat?: unknown };
     if (typeof claims.c !== 'string' || typeof claims.u !== 'string' || typeof claims.s !== 'number') return null;
-    return { chatId: claims.c, userId: claims.u, seq: claims.s };
+    // The token is signed when the push goes out: its `iat` is the sending time.
+    return { chatId: claims.c, userId: claims.u, seq: claims.s, ...(typeof claims.iat === 'number' ? { sentAt: claims.iat * MS_PER_S } : {}) };
   } catch {
     return null;
   }
+}
+
+/**
+ * lila-2 16/11: José's photos in #planta never showed and nothing said whether
+ * the phone even acknowledged them. One line per ack, with the delay since sending.
+ */
+export function deliveryAckLine(entrega: Entrega, now: number): string {
+  const head = `[push] aviso acusado chat=${entrega.chatId} seq=${entrega.seq} user=${entrega.userId}`;
+  if (entrega.sentAt === undefined) return `${head} sin hora de envío`;
+  return `${head} a ${((now - entrega.sentAt) / MS_PER_S).toFixed(1)} s del envío`;
 }
 
 /** Cómo se reparte el acuse por el socket; lo cablea `socket.ts`. */
@@ -49,8 +64,9 @@ export function configurarEntrega(emitir: (userId: string, frame: object) => voi
  * usa `$max`: un push viejo que llega tarde no baja el acuse.
  */
 export async function confirmarEntregaDesdeAviso(token: string): Promise<boolean> {
-  const entrega = verificarEntrega(token);
+  const entrega = verifyDelivery(token);
   if (!entrega || !Types.ObjectId.isValid(entrega.chatId) || !Types.ObjectId.isValid(entrega.userId)) return false;
+  registro.info(deliveryAckLine(entrega, Date.now()));
   try {
     await markDelivered({ chatId: entrega.chatId, userId: new Types.ObjectId(entrega.userId), seq: entrega.seq });
   } catch {

@@ -16091,9 +16091,39 @@ emulador hay una sola cuenta.
 
 - Que el toque de un aviso nativo abra el mensaje o el hilo exacto, no el último
   del chat.
-- Dibujar el aviso antes del POST de entrega.
+- ~~Dibujar el aviso antes del POST de entrega.~~ Hecho en 0.1.189 (abajo).
 - Apagar el aviso con la app cerrada cuando se leyó en otro lado.
 - Llevar el texto del mensaje en el toque.
+
+### El aviso nativo se dibuja antes que la red (José 16/11, APK 0.1.189)
+
+**Síntoma:** dos fotos de Darío en #planta (seq 772 y 773, 16:25 y 16:45) no
+dieron aviso. José se enteró al abrir la app. A las 17:06 los avisos de otras
+fotos sí llegaron.
+
+**Evidencia (lila-2, base y logs de la mini):**
+- José era destinatario: nivel «todo», sin silencio ni horario.
+- Sus dos teléfonos tienen token y `mensaje-nativo`.
+- FCM aceptó todo: 66 aceptados y 0 con error en la hora de las 16:25.
+
+**Causa:** `AvisoDeMensaje.recibir` hacía hasta cuatro llamadas de red antes de
+`notify`, en el hilo del servicio de FCM: el POST de entrega, la miniatura y las
+fotos del autor y del chat. Cada una podía tardar hasta 8 s. Android le da a
+ese hilo unos 10–20 s. Con datos lentos, el proceso moría antes de dibujar.
+Solo pasa con mensajes con foto y red lenta, por eso no siempre.
+
+**Arreglo:**
+- El aviso de texto se dibuja primero, sin red.
+- Después va el acuse de entrega.
+- Después las imágenes, con un tope de 8 s desde que llegó el push. El aviso se
+  vuelve a dibujar con el mismo id y `setOnlyAlertOnce`, así que no suena dos
+  veces. Si el chat se abrió, el aviso se quitó o llegó otro mensaje del chat,
+  no se vuelve a dibujar.
+- El server registra cada acuse: `[push] aviso acusado chat=… seq=… user=… a N s
+  del envío`. Con eso se sabe si el teléfono recibió un push y cuánto tardó.
+
+**Sin verificar:** que el aviso salga con datos lentos en el teléfono de José.
+En el emulador no se simula bien una red lenta.
 
 **Teclado en el hilo:** no se reprodujo en el emulador (desde Hilos, desde el
 chip y con texto largo). Se pidió a José una captura y el camino exacto.

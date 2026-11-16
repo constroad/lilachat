@@ -7,7 +7,7 @@ import { buildApp } from './app.js';
 import { ChatModel, ReceiptModel } from './chatModels.js';
 import { UserModel } from './models.js';
 import { verifySession } from './sessions.js';
-import { configurarEntrega, confirmarEntregaDesdeAviso, firmarEntrega, verificarEntrega } from './entregaPorAviso.js';
+import { configurarEntrega, confirmarEntregaDesdeAviso, deliveryAckLine, firmarEntrega, verifyDelivery } from './entregaPorAviso.js';
 
 /**
  * El teléfono confirma la entrega desde el servicio de push, con la app
@@ -43,9 +43,9 @@ describe('token de entrega', () => {
   it('ida y vuelta, y no sirve como sesión', () => {
     const token = firmarEntrega({ chatId, userId: String(wilson), seq: 5 });
 
-    expect(verificarEntrega(token)).toEqual({ chatId, userId: String(wilson), seq: 5 });
+    expect(verifyDelivery(token)).toMatchObject({ chatId, userId: String(wilson), seq: 5 });
     expect(verifySession(token)).toBeNull();
-    expect(verificarEntrega('basura')).toBeNull();
+    expect(verifyDelivery('basura')).toBeNull();
   });
 });
 
@@ -82,5 +82,23 @@ describe('POST /api/push/entregado', () => {
 
     await request(app).post('/api/push/entregado').send({ token: firmarEntrega({ chatId, userId: String(wilson), seq: 5 }) }).expect(204);
     await request(app).post('/api/push/entregado').send({ token: 'x' }).expect(400);
+  });
+});
+
+/** lila-2 16/11: nothing told whether the phone's ack came back, nor how late. One line per ack. */
+describe('deliveryAckLine', () => {
+  it('names the chat, seq and person, and how long after sending the phone acknowledged', () => {
+    const line = deliveryAckLine({ chatId: 'c1', userId: 'u1', seq: 772, sentAt: 1_000 }, 13_500);
+    expect(line).toBe('[push] aviso acusado chat=c1 seq=772 user=u1 a 12.5 s del envío');
+  });
+
+  it('a token without its sending time still logs, saying so', () => {
+    expect(deliveryAckLine({ chatId: 'c1', userId: 'u1', seq: 1 }, 5_000)).toBe('[push] aviso acusado chat=c1 seq=1 user=u1 sin hora de envío');
+  });
+
+  it('the verified token carries when it was signed', () => {
+    const before = Date.now() - 1_000;
+    const entrega = verifyDelivery(firmarEntrega({ chatId: 'c1', userId: 'u1', seq: 3 }));
+    expect(entrega?.sentAt).toBeGreaterThanOrEqual(before);
   });
 });

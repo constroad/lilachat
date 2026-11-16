@@ -7,7 +7,7 @@ import { DeviceModel, UserModel } from '../src/models.js';
 import { __resetPresence, markOnline } from '../src/presence.js';
 import { buildPushText, type PushDeDatos, type PushMessage } from '../src/pushSender.js';
 import { CAPACIDAD_MENSAJE_NATIVO } from '@lilachat/shared';
-import { verificarEntrega } from '../src/entregaPorAviso.js';
+import { verifyDelivery } from '../src/entregaPorAviso.js';
 import { avisarReaccion, notifyOffline, notifyTasksDone, setPushSender } from '../src/pushService.js';
 
 let mongo: MongoMemoryServer;
@@ -180,7 +180,7 @@ describe('notifyOffline — doble check sin abrir la app (FL8.2)', () => {
     expect(datos).toHaveLength(1);
     expect(datos[0]).toMatchObject({ tokens: ['tok-maria'] });
     expect(datos[0]!.data).toMatchObject({ tipo: 'mensaje', chatId: String(chatId), seq: '1', autor: 'José', chat: '', cuerpo: 'hola', silencioso: '0' });
-    expect(verificarEntrega(String(datos[0]!.data.entrega))).toEqual({ chatId: String(chatId), userId: String(maria), seq: 1 });
+    expect(verifyDelivery(String(datos[0]!.data.entrega))).toMatchObject({ chatId: String(chatId), userId: String(maria), seq: 1 });
   });
 
   /**

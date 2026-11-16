@@ -95,6 +95,8 @@ object AvisoDeMensaje {
   private const val ARCHIVO = "avisos-de-mensajes"
   /** Cuántos mensajes muestra el aviso de un chat, como WhatsApp. */
   private const val MAXIMO_DE_LINEAS = 7
+  /** How long the images may take after the push arrived; past it the notice keeps its text only. */
+  private const val MEDIA_BUDGET_MS = 8_000L
 
   fun idDe(chatId: String): Int = 0x2B00 xor chatId.hashCode()
 
@@ -123,51 +125,90 @@ object AvisoDeMensaje {
   }
 
   /**
-   * Corre en el hilo de trabajo del servicio de FCM, así que el HTTP va directo.
-   * Primero se acusa (es lo que pone el doble check); dibujar es lo segundo.
+   * Runs on the FCM service's worker thread, which Android gives some 10–20 s.
+   * José 16/11: two photos in #planta never showed. The notice waited for four
+   * network calls (delivery POST, thumbnail, author and chat photos, up to 8 s
+   * each) and, on slow data, the process died before `notify`. Now the text
+   * notice goes first, without network; then the delivery ack; then, within a
+   * budget, the images, re-drawn on the SAME notice without sounding again.
    */
   fun recibir(contexto: Context, mensaje: MensajeRecibido, appAdelante: Boolean) {
-    mensaje.entrega?.let { token ->
-      Preferencias.servidor(contexto)?.let { servidor ->
-        try {
-          Http.postearToken("${servidor.trimEnd('/')}/api/push/entregado", token)
-        } catch (_: Exception) {
-          // Sin red no llega el acuse: la app lo manda al sincronizar.
-        }
-      }
-    }
-    // Con la app adelante el mensaje lo muestra la app (llegó por el socket).
-    if (mensaje.silencioso || appAdelante) return
-    mostrar(contexto, mensaje)
+    val started = System.currentTimeMillis()
+    // With the app in front the app shows the message (it came by the socket).
+    val drawn = if (mensaje.silencioso || appAdelante) null else drawText(contexto, mensaje)
+    mensaje.entrega?.let { token -> acknowledge(contexto, token) }
+    if (drawn != null && hasMedia(drawn.mensaje)) drawWithMedia(contexto, drawn, started)
   }
 
-  private fun mostrar(contexto: Context, recibido: MensajeRecibido) {
+  private data class Drawn(val mensaje: MensajeRecibido, val lineas: List<Linea>)
+
+  private fun acknowledge(contexto: Context, token: String) {
+    val servidor = Preferencias.servidor(contexto) ?: return
+    try {
+      Http.postearToken("${servidor.trimEnd('/')}/api/push/entregado", token)
+    } catch (_: Exception) {
+      // Without network the ack does not arrive: the app sends it when it syncs.
+    }
+  }
+
+  private fun hasMedia(mensaje: MensajeRecibido) = mensaje.image.isNotBlank() || mensaje.photo.isNotBlank() || mensaje.chatPhoto.isNotBlank()
+
+  /** The notice with its text only: no network, so it always shows. */
+  private fun drawText(contexto: Context, recibido: MensajeRecibido): Drawn? {
     crearCanal(contexto)
-    // El nombre de la agenda gana, como en la app (FL11).
+    // The contact's name wins, as in the app (FL11).
     val mensaje = recibido.copy(autor = Agenda.nombre(contexto, recibido.telefono) ?: recibido.autor)
-    val lineas = sumarLinea(contexto, mensaje) ?: return
+    val lineas = sumarLinea(contexto, mensaje) ?: return null
+    post(contexto, mensaje, lineas, Media.NONE, alertOnce = false)
+    return Drawn(mensaje, lineas)
+  }
+
+  /** The same notice again with the thumbnail and the photos, silent; whatever is not in by the budget stays out. */
+  private fun drawWithMedia(contexto: Context, drawn: Drawn, started: Long) {
+    val inTime = { System.currentTimeMillis() - started < MEDIA_BUDGET_MS }
+    val icons = HashMap<String, IconCompat?>()
+    val iconOf = { url: String -> if (url.isBlank() || !inTime()) null else icons.getOrPut(url) { NoticeThumbnail.load(url)?.let { IconCompat.createWithBitmap(NoticeThumbnail.circle(it)) } } }
+    val thumbnail = drawn.mensaje.image.takeIf { it.isNotBlank() && inTime() }?.let { NoticeThumbnail.load(it) }
+    val imageUri = thumbnail?.let { NoticeThumbnail.share(contexto, it, "${drawn.mensaje.chatId}-${drawn.mensaje.seq}") }
+    val media = Media(imageUri, iconOf)
+    // Pre-load what fits, so the re-draw itself does no network past the budget.
+    drawn.lineas.forEach { iconOf(it.photo) }
+    iconOf(drawn.mensaje.chatPhoto.ifBlank { drawn.mensaje.photo })
+    if (stillShowing(contexto, drawn)) post(contexto, drawn.mensaje, drawn.lineas, media, alertOnce = true)
+  }
+
+  /** Not if the chat was opened or the notice swiped meanwhile, nor over a newer message's notice. */
+  private fun stillShowing(contexto: Context, drawn: Drawn): Boolean {
+    val manager = contexto.getSystemService(NotificationManager::class.java) ?: return false
+    if (manager.activeNotifications.none { it.id == idDe(drawn.mensaje.chatId) }) return false
+    val stored = leerLineas(contexto.getSharedPreferences(ARCHIVO, Context.MODE_PRIVATE).getString(drawn.mensaje.chatId, null))
+    return stored.lastOrNull()?.seq == drawn.mensaje.seq
+  }
+
+  private class Media(val imageUri: android.net.Uri?, val iconOf: (String) -> IconCompat?) {
+    companion object {
+      val NONE = Media(null) { null }
+    }
+  }
+
+  private fun post(contexto: Context, mensaje: MensajeRecibido, lineas: List<Linea>, media: Media, alertOnce: Boolean) {
     val yo = Person.Builder().setName("Tú").build()
     val estilo = NotificationCompat.MessagingStyle(yo)
     if (mensaje.chat.isNotBlank()) {
       estilo.conversationTitle = mensaje.chat
       estilo.isGroupConversation = true
     }
-    // The sticker, photo, GIF or wink inside the newest message, like WhatsApp (pending 57); without it the notice still goes.
-    val thumbnail = mensaje.image.takeIf { it.isNotBlank() }?.let { NoticeThumbnail.load(it) }
-    val imageUri = thumbnail?.let { NoticeThumbnail.share(contexto, it, "${mensaje.chatId}-${mensaje.seq}") }
-    // Pending 68: each line with its author's photo, and the chat as a conversation with its photo (the app icon rides on it).
-    val icons = HashMap<String, IconCompat?>()
-    val iconOf = { url: String -> if (url.isBlank()) null else icons.getOrPut(url) { NoticeThumbnail.load(url)?.let { IconCompat.createWithBitmap(NoticeThumbnail.circle(it)) } } }
+    // Pending 57/68: the image inside the newest message, and each line with its author's photo.
     lineas.forEachIndexed { index, linea ->
-      val author = Person.Builder().setName(linea.autor).apply { iconOf(linea.photo)?.let { setIcon(it) } }.build()
+      val author = Person.Builder().setName(linea.autor).apply { media.iconOf(linea.photo)?.let { setIcon(it) } }.build()
       val message = NotificationCompat.MessagingStyle.Message(linea.cuerpo, linea.at, author)
-      if (index == lineas.lastIndex && imageUri != null) message.setData("image/png", imageUri)
+      if (index == lineas.lastIndex && media.imageUri != null) message.setData("image/png", media.imageUri)
       estilo.addMessage(message)
     }
     val aviso = NotificationCompat.Builder(contexto, CANAL)
       .setSmallIcon(AvisoDeLlamada.iconoChico(contexto))
       .apply { AvisoDeLlamada.brandColor(contexto)?.let { setColor(it) } }
-      .apply { publishConversation(contexto, mensaje, iconOf(mensaje.chatPhoto.ifBlank { mensaje.photo }))?.let { setShortcutId(it) } }
+      .apply { publishConversation(contexto, mensaje, media.iconOf(mensaje.chatPhoto.ifBlank { mensaje.photo }))?.let { setShortcutId(it) } }
       .setContentTitle(mensaje.chat.ifBlank { mensaje.autor })
       .setContentText(mensaje.cuerpo)
       .setStyle(estilo)
@@ -175,6 +216,7 @@ object AvisoDeMensaje {
       .setPriority(NotificationCompat.PRIORITY_HIGH)
       .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
       .setAutoCancel(true)
+      .setOnlyAlertOnce(alertOnce)
       .setNumber(lineas.size)
       .setContentIntent(abrirChat(contexto, mensaje.chatId, destinoDe(mensaje)))
       .setGroup(GROUP)

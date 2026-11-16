@@ -99,12 +99,28 @@ describe('the AR photo\'s meters', () => {
 
   it('a dark pill with the meters at each label\'s place, nothing where there is none', async () => {
     // Act
-    const stamped = await stampTimemark(await whiteOf(600, 800), stamp, null, [{ x: 0.5, y: 0.3, text: '1 · 0,80 m' }]);
+    const stamped = await stampTimemark(await whiteOf(600, 800), stamp, null, { labels: [{ x: 0.5, y: 0.3, text: '1 · 0,80 m' }] });
     // Assert
     const { data, info } = await sharp(stamped.bytes).raw().toBuffer({ resolveWithObject: true });
     const at = (x: number, y: number) => data[(y * info.width + x) * info.channels]!;
     expect(at(260, 240)).toBeLessThan(90);
     expect(at(300, 120)).toBeGreaterThan(240);
+  });
+
+  it('the figures go in a dark panel at the top right, not inside the zone (José 15/11)', async () => {
+    // Act
+    const stamped = await stampTimemark(await whiteOf(600, 800), stamp, null, { panel: ['Área 2,27 m²', 'Perímetro 7,65 m'] });
+    // Assert: dark at the top right corner's panel, white at the top left and the middle.
+    const { data, info } = await sharp(stamped.bytes).raw().toBuffer({ resolveWithObject: true });
+    const at = (x: number, y: number) => data[(y * info.width + x) * info.channels]!;
+    expect(at(600 - 30, 30)).toBeLessThan(90);
+    expect(at(20, 30)).toBeGreaterThan(240);
+    expect(at(300, 400)).toBeGreaterThan(240);
+  });
+
+  it('the upload\'s panel reaches the stamp only when it is sane', () => {
+    expect(stampAskedOf({ stamp: 'timemark', logo: '0', panel: '["Área 2,27 m²"]' })).toMatchObject({ timemark: { panel: ['Área 2,27 m²'] } });
+    expect(stampAskedOf({ stamp: 'timemark', logo: '0', panel: '["<b>"]' })).toEqual({ timemark: { logo: false } });
   });
 
   it('the upload\'s labels reach the stamp only when they are sane', () => {

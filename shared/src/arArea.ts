@@ -340,10 +340,28 @@ export function arLiveChips(frame: { sides?: readonly number[]; live?: number | 
   return [{ label: 'Trazado', value: `${decimalLabel(traced, 2)} m` }, { label: 'Esquinas', value: String(sides.length + 1) }];
 }
 
-/** The billed area in the middle of the zone's corners; only with every corner on the frame. */
-export function arShotAreaLabel(corners: readonly ShotCorner[] | undefined, frame: Box, areaM2: number | null): ShotLabel | null {
-  if (!corners || corners.length < MIN_CORNERS || areaM2 === null || frame.width <= 0 || frame.height <= 0 || !corners.every((corner) => corner.visible)) return null;
-  const x = rounded(corners.reduce((sum, corner) => sum + corner.x, 0) / corners.length / frame.width, 4);
-  const y = rounded(corners.reduce((sum, corner) => sum + corner.y, 0) / corners.length / frame.height, 4);
-  return isFraction(x) && isFraction(y) ? { x, y, text: `${decimalLabel(areaM2, 2)} m²` } : null;
+const MAX_PANEL_LINES = 4;
+
+/**
+ * The zone's figures in a corner of the photo, like José's reference app (15/11: «no dentro de la
+ * figura»): the billed area and the perimeter. Not the volume: the thickness can be edited after
+ * the photo is burned, and the photo would then contradict the billed m³ (audit 15/11).
+ */
+export function arShotPanel(summary: { areaM2: number; perimeterM: number | null }): string[] {
+  return arSummaryChips({ ...summary, volumeM3: null, sides: null }).map((chip) => `${chip.label} ${chip.value}`);
+}
+
+export const shotPanelField = (lines: readonly string[]): string | undefined => (lines.length ? JSON.stringify(lines.slice(0, MAX_PANEL_LINES)) : undefined);
+
+/** Back from the form: at most 4 short plain lines, or nothing. */
+export function shotPanelOf(field: unknown): string[] {
+  if (typeof field !== 'string') return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(field);
+  } catch {
+    return [];
+  }
+  const sane = Array.isArray(parsed) && parsed.length <= MAX_PANEL_LINES && parsed.every((line) => typeof line === 'string' && SHOT_TEXT.test(line));
+  return sane ? (parsed as string[]) : [];
 }

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useOverlayLevel } from '../../../ui/Modal';
+import { coveredAbove } from '../../../ui/overlays';
 import { readFieldConditions } from '../../../chat/commands/commandsApi';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { AlertTriangle, ChevronLeft, ExternalLink, FileText } from 'lucide-react-native';
@@ -133,13 +135,16 @@ function useReportScreen(props: Props) {
   const { changed } = document;
   // Inside the tramos, back goes to the hub; in the hub, back closes and the detail asks again if something was saved.
   const back = useCallback(() => (itemsOf ? setItemsOf(null) : onClose(changed)), [itemsOf, onClose, changed]);
+  const level = useOverlayLevel();
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      // The preview or the PDF viewer above closes first (audit 15/11).
+      if (coveredAbove(level)) return false;
       back();
       return true;
     });
     return () => subscription.remove();
-  }, [back]);
+  }, [back, level]);
   return { document, ...reportViewOf(document.draft, itemsOf), forms, publishing, setPublishing, setItemsOf, back };
 }
 
@@ -179,6 +184,7 @@ export function ReportDocumentScreen(props: Props) {
       </ScrollView>
       {report && (!items || (items.kind === 'repeat' && isUnitsRepeat(items))) ? <ReportFooter report={report} blocker={publishFooterLine(report, blockers)} asking={pdf.asking} onPublish={() => screen.setPublishing(true)} onPdf={() => void pdf.ask(report.id ?? '', `${report.title} · PDF`)} onPreview={() => void pdf.ask(report.id ?? '', `${report.title} · vista previa`, true)} onDone={() => props.onClose(true)} /> : null}
       {files.viewer}
+      {pdf.viewer}
       {report ? <PublishSheet document={report} blockers={blockers} visible={screen.publishing} onClose={() => screen.setPublishing(false)} onPublish={publish} onOpen={(path) => { screen.setPublishing(false); actions.openSection(path); }} /> : null}
       {document.form ? <AppFormSheet key={formKeyOf(document.form)} cameraFirst workStreets={streets} onConditions={conditionsOf} answer={document.form} onSubmit={actions.submit} onUpload={actions.upload} onClose={actions.closeForm} /> : null}
       {forms.answers.openForm ? (

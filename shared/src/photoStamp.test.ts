@@ -110,5 +110,6 @@ describe('the AR photo\'s meters travel with its stamp (José 15/11)', () => {
     const labels = [{ x: 0.5, y: 0.1, text: '1 · 0,80 m' }];
     expect(stampFieldsOf({ timemark: true, point: null, logo: false, labels })).toEqual({ stamp: 'timemark', logo: '0', labels: JSON.stringify(labels) });
     expect(stampFieldsOf({ timemark: true, point: null, logo: false, labels: [] })).toEqual({ stamp: 'timemark', logo: '0' });
+    expect(stampFieldsOf({ timemark: true, point: null, logo: false, panel: ['Área 2,27 m²'] })).toEqual({ stamp: 'timemark', logo: '0', panel: '["Área 2,27 m²"]' });
   });
 });

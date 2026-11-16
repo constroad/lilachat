@@ -1,4 +1,4 @@
-import { HOUR_STAMP, TIMEMARK_STAMP, shotLabelsOf, takenAtFrom, type GeoPoint } from '@lilachat/shared';
+import { HOUR_STAMP, TIMEMARK_STAMP, shotLabelsOf, shotPanelOf, takenAtFrom, type GeoPoint } from '@lilachat/shared';
 import type { PhotoStampAsked } from './botForms.js';
 
 /** A reading of the phone's GPS sent as form fields; anything off the map is no reading. */
@@ -13,7 +13,8 @@ function timemarkAsked(fields: Record<string, unknown>): PhotoStampAsked {
   const takenAt = takenAtFrom(fields.takenAt, new Date());
   const location = pointOf(fields);
   const labels = shotLabelsOf(fields.labels);
-  return { timemark: { logo: fields.logo === '1', ...(labels.length ? { labels } : {}) }, ...(location ? { location } : {}), ...(takenAt ? { takenAt } : {}) };
+  const panel = shotPanelOf(fields.panel);
+  return { timemark: { logo: fields.logo === '1', ...(labels.length ? { labels } : {}), ...(panel.length ? { panel } : {}) }, ...(location ? { location } : {}), ...(takenAt ? { takenAt } : {}) };
 }
 
 /** What an upload asks the server to burn into a photo or a video (pending 94; forms and the chat's camera). */

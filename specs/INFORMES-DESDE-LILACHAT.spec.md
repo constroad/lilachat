@@ -1269,9 +1269,15 @@ espacio Test, con «QA-CTLPIS — borrar»:
 >   - Al tocar «Listo», la app guarda dónde estaba cada esquina en el último
 >     cuadro del AR (`ArMeasured.shot`, fracciones del cuadro).
 >   - `arShotLabels` pone en el medio de cada lado «N · x,xx m» con la medida
->     FINAL (la wincha gana). `arShotAreaLabel` pone el área cobrada al centro,
->     solo si todas las esquinas se veían. Un lado con una esquina fuera del
->     cuadro no lleva rótulo.
+>     FINAL (la wincha gana). Un lado con una esquina fuera del cuadro no lleva
+>     rótulo.
+>   - José 15/11 (prueba con 0.1.188): «el chip del área… no debe aparecer
+>     dentro de la figura»; su app de referencia lo pone en una esquina. Desde
+>     entonces el área y el perímetro van en un panel arriba a la derecha
+>     (`arShotPanel`, campo `panel`), bajo el logo si lo hay. El área al
+>     centro se quitó. El volumen NO va en la foto: el espesor se puede editar
+>     después y la foto quedaría contradiciendo los m³ cobrados (auditoría
+>     15/11); el volumen está en los chips y en la tabla del PDF.
 >   - La foto de la pantalla los muestra encima (`PhotoLabels`). El server los
 >     quema al sellar (`labels` en el formulario, validados por `shotLabelsOf`:
 >     fracciones 0..1, texto corto, como máximo 32). La pastilla tapa el número
@@ -1294,6 +1300,17 @@ espacio Test, con «QA-CTLPIS — borrar»:
 >     con la matriz del MISMO cuadro de la foto (el del trazo). La OTA vieja
 >     usaba el último cuadro que llegó a JS; queda solo como respaldo.
 >   - Si Portal corrige el área de una zona AR, la foto conserva el área vieja.
+>   - «Ver PDF» (José 15/11, todos los informes): un borrador no tiene PDF,
+>     solo la página firmada del Portal; en Chrome se veía solo su lado
+>     izquierdo y sin zoom. Ahora se abre dentro de Lilachat
+>     (`ReportPreviewScreen`): la hoja se ajusta al ancho de la pantalla y se
+>     puede hacer zoom; «Abrir en el navegador» queda como salida. Un informe
+>     publicado abre su PDF en el visor PDF de la app (antes el IAA lo mandaba
+>     al navegador). El botón dice «Preparando…» mientras espera.
+>   - Auditoría de este lote: el atrás de Android lo toma primero la vista
+>     previa o el visor (`coveredAbove`), la hoja se ajusta al ancho medido del
+>     WebView (en tablet es un panel) y se reajusta al girar, un enlace vencido
+>     lo dice, y salir de la pantalla cierra la vista previa.
 >   - Publicado: commit 7cd45e4, OTA 9234236d (15/11). E2E en el emulador
 >     (zona de José en TES-IAA, sin guardar): «Resultado» muestra el chip
 >     Área; con una lectura de 5 cm, Área y Volumen (0,027 m³). El sello con

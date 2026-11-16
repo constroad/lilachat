@@ -1,6 +1,6 @@
 import { HOUR_STAMP, type FormPhotoStamp, type GalleryStamp } from './appActions.js';
 import type { GeoPoint } from './appForms.js';
-import { shotLabelsField } from './arArea.js';
+import { shotLabelsField, shotPanelField } from './arArea.js';
 
 /**
  * What a form's photo asks the server to burn into it (José 06/11: the tank and the materials carry
@@ -54,11 +54,16 @@ const labelsFieldOf = (labels: Parameters<typeof shotLabelsField>[0] | undefined
   return field ? { labels: field } : {};
 };
 
+const panelFieldOf = (panel: readonly string[] | undefined): Record<string, string> => {
+  const field = panel ? shotPanelField(panel) : undefined;
+  return field ? { panel: field } : {};
+};
+
 /** The fields of the upload that ask for the stamp. */
 export function stampFieldsOf(stamp: FormPhotoStamp | undefined): Record<string, string> {
   if (!stamp) return {};
   if (stamp === HOUR_STAMP) return { stamp: HOUR_STAMP };
-  if ('timemark' in stamp) return { stamp: TIMEMARK_STAMP, logo: stamp.logo ? '1' : '0', ...(stamp.point ? pointFields(stamp.point) : {}), ...(stamp.takenAt ? { takenAt: stamp.takenAt } : {}), ...labelsFieldOf(stamp.labels) };
+  if ('timemark' in stamp) return { stamp: TIMEMARK_STAMP, logo: stamp.logo ? '1' : '0', ...(stamp.point ? pointFields(stamp.point) : {}), ...(stamp.takenAt ? { takenAt: stamp.takenAt } : {}), ...labelsFieldOf(stamp.labels), ...panelFieldOf(stamp.panel) };
   if ('takenAt' in stamp) return { stamp: 'taken', takenAt: stamp.takenAt };
   return { stamp: '1', ...pointFields(stamp) };
 }

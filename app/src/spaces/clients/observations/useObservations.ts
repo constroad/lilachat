@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { useOverlayLevel } from '../../../ui/Modal';
+import { coveredAbove } from '../../../ui/overlays';
 import { BackHandler } from 'react-native';
 import { observationWriteStore, readObservationDraft, type ObservationDocument, type ObservationDraftResult, type ObservationLiftRequest, type ObservationRegisterRequest, type WorkMapPoint } from '@lilachat/shared';
 import { freshPoint } from '../../../chat/location/freshPoint';
@@ -94,11 +96,14 @@ export function useObservationWrite(to: ObservationTarget, onDone: (reportId: st
 
 /** Android's back closes the screen on top, as its arrow does. */
 export function useBackTo(back: () => void) {
+  const level = useOverlayLevel();
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      // A viewer or preview open above this screen closes first (audit 15/11: re-subscribing put this one on top).
+      if (coveredAbove(level)) return false;
       back();
       return true;
     });
     return () => subscription.remove();
-  }, [back]);
+  }, [back, level]);
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronRight, FileText, Scan } from 'lucide-react-native';
 import { areaCardLines, areaReportDay, areaTotalsLine, closedRing, PREVIEW_ASKING, PREVIEW_LABEL, type AdditionalArea, type AreaDocument, type ChannelLinks, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
@@ -13,6 +13,7 @@ import { ArZoneScreen } from './ArZoneScreen';
 import { PhotoMeasureScreen } from './PhotoMeasureScreen';
 import { useAreaRemove, useAreaReport } from './useAreas';
 import { useZonePlace } from './useZonePlace';
+import { useFileViewer } from '../useFileViewer';
 import { arShotEvidence, type CapturedEvidence } from '../useDriveUpload';
 import { getCurrentSpaceId, useSpaceLogo } from '../../currentSpace';
 import { useCameraLogo } from '../../../chat/camara/cameraLogoPref';
@@ -31,7 +32,9 @@ export function AreasScreen(props: Props) {
   const [changed, setChanged] = useState(false);
   const remove = useAreaRemove(props.to, () => { setChanged(true); setMode({ kind: 'list' }); reload(report?.id); });
   // A draft shows Portal's signed preview; a report published in Portal, its PDF. Both open in the browser.
-  const pdf = useReportPdf(props.to.target, props.to.serviceId, (file) => void Linking.openURL(file.url));
+  // A published report's PDF opens in Lilachat's PDF viewer; a draft's preview, in its own screen (José 15/11).
+  const files = useFileViewer();
+  const pdf = useReportPdf(props.to.target, props.to.serviceId, files.open);
   const close = () => props.onClose(changed);
   const toList = () => setMode({ kind: 'list' });
   // While a zone's edit or delete runs, back waits for it: a failure must stay in view (audit 15/11).
@@ -80,6 +83,8 @@ export function AreasScreen(props: Props) {
       </ScrollView>
       {pdf.message ? <Text testID="areas-pdf-error" className="bg-surface px-4 pt-2 text-center text-[13px] font-semibold text-error">{pdf.message}</Text> : null}
       <AreasFooter canPdf={Boolean(report?.id && report.areas.length)} asking={pdf.asking} busy={!report} onPdf={() => report && void pdf.ask(report.id, `${report.code ?? 'IAA'}.pdf`, report.status !== 'published')} onMeasure={() => void startMeasure()} />
+      {files.viewer}
+      {pdf.viewer}
     </View>
   );
 }

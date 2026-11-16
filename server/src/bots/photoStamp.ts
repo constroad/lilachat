@@ -53,7 +53,21 @@ function labelPillsSvg(width: number, height: number, labels: readonly ShotLabel
   }).join('');
 }
 
-export function timemarkSvg(width: number, height: number, stamp: Timemark, logo: StampLogo, labels: readonly ShotLabel[] = []): Buffer {
+/** An AR zone's marks (José 15/11): each side's meters on the photo and the figures in a corner. */
+export type ShotMarks = { labels?: readonly ShotLabel[]; panel?: readonly string[] };
+
+/** The figures at the top right, under the logo when there is one, like José's reference app. */
+function panelSvg(width: number, top: number, lines: readonly string[], size: number, margin: number): string {
+  if (!lines.length) return '';
+  const pad = Math.round(size * 0.7);
+  const row = Math.round(size * 1.45);
+  const wide = Math.round(Math.max(...lines.map((line) => line.length)) * size * 0.6 + pad * 2);
+  const x = Math.max(0, width - margin - wide);
+  const rows = lines.map((line, index) => `<text x="${x + pad}" y="${Math.round(top + pad + size * 0.85 + index * row)}" font-family="Helvetica, Arial, sans-serif" font-size="${size}" font-weight="${index === 0 ? 700 : 600}" fill="#ffffff">${escapeXml(line)}</text>`);
+  return `<rect x="${x}" y="${top}" width="${wide}" height="${pad * 2 + row * (lines.length - 1) + size}" rx="${Math.round(size * 0.6)}" fill="#111111" fill-opacity="0.8"/>${rows.join('')}`;
+}
+
+export function timemarkSvg(width: number, height: number, stamp: Timemark, logo: StampLogo, marks: ShotMarks = {}): Buffer {
   const look = timemarkLayoutOf(width, height);
   const lines = [stamp.address, stamp.coords].filter((line): line is string => Boolean(line));
   const left = look.margin;
@@ -71,7 +85,8 @@ export function timemarkSvg(width: number, height: number, stamp: Timemark, logo
     text(barX + look.bar * 3, hourBase - look.hourSize * 0.4, look.lineSize, 700, stamp.date),
     text(barX + look.bar * 3, hourBase - look.hourSize * 0.02, look.lineSize, 500, stamp.weekday, 0.85),
     ...lines.map((line, index) => text(left, hourBase + look.lineSize * 1.35 * (index + 1), index === 0 ? look.lineSize : look.smallSize, index === 0 ? 600 : 500, line, index === 0 ? 1 : 0.85)),
-    labelPillsSvg(width, height, labels, look.lineSize),
+    panelSvg(width, logo ? box.y + box.size + Math.round(look.margin / 2) : look.margin, marks.panel ?? [], look.lineSize, look.margin),
+    labelPillsSvg(width, height, marks.labels ?? [], look.lineSize),
     logo ? `<image x="${box.x}" y="${box.y}" width="${box.size}" height="${box.size}" href="${logo.dataUri}" preserveAspectRatio="xMidYMid slice" clip-path="url(#logo)"/>` : '',
   ];
   return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}">${parts.join('')}</svg>`);
@@ -82,8 +97,8 @@ export function timemarkSvg(width: number, height: number, stamp: Timemark, logo
  * live, with the logo when its chip was on. Upright first (EXIF), so a photo taken sideways gets
  * it at the bottom left of the sideways frame. Throws on a file that is not an image.
  */
-export async function stampTimemark(bytes: Buffer, stamp: Timemark, logo: StampLogo, labels: readonly ShotLabel[] = []): Promise<ShrunkPhoto> {
-  const overlay = ({ width, height }: { width: number; height: number }) => [{ input: timemarkSvg(width, height, stamp, logo, labels), top: 0, left: 0 }];
+export async function stampTimemark(bytes: Buffer, stamp: Timemark, logo: StampLogo, marks: ShotMarks = {}): Promise<ShrunkPhoto> {
+  const overlay = ({ width, height }: { width: number; height: number }) => [{ input: timemarkSvg(width, height, stamp, logo, marks), top: 0, left: 0 }];
   const stamped = await shrinkPhotoBuffer({ bytes, mimeType: 'image/jpeg', fileName: 'foto.jpg' }, { force: true, overlay });
   if (!stamped) throw new Error('No se pudo leer la foto para sellarla.');
   return stamped;

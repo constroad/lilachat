@@ -182,10 +182,10 @@ export async function arShotEvidence(uri: string, point: GeoPoint | null, logo: 
 }
 
 /** The AR shot with each side's meters for the server to burn (José 15/11); another photo goes as it is. */
-export function withShotLabels(evidence: CapturedEvidence, labels: readonly ShotLabel[]): CapturedEvidence {
+export function withShotLabels(evidence: CapturedEvidence, labels: readonly ShotLabel[], panel: readonly string[] = []): CapturedEvidence {
   const stamp = evidence.file.source.stamp;
-  if (!stamp || !labels.length) return evidence;
-  return { ...evidence, file: { ...evidence.file, source: { ...evidence.file.source, stamp: { ...stamp, labels } } } };
+  if (!stamp || (!labels.length && !panel.length)) return evidence;
+  return { ...evidence, file: { ...evidence.file, source: { ...evidence.file.source, stamp: { ...stamp, labels, panel } } } };
 }
 
 /** An observation's write from this phone: the run of the client's app, its answer, and each file straight to Portal. */

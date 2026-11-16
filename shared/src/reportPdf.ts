@@ -43,7 +43,8 @@ export const reportPdfPath = (spaceId: string, clientId: string, serviceId: stri
 
 /** «Ver PDF» of a draft (José 07/11): Portal's preview, the same sheets marked as a draft, without publishing. */
 export const PREVIEW_LABEL = 'Ver PDF';
-export const PREVIEW_ASKING = 'Armando la vista previa…';
+/** Short: it replaces «Ver PDF» inside a small button (José 15/11: the long text went out of it). */
+export const PREVIEW_ASKING = 'Preparando…';
 
 /** Asks until Portal has it or it fails; `null` once `current` says the person closed the sheet. */
 export async function askReportPdfUntilDone(ask: () => Promise<ReportPdfBody | null>, current: () => boolean, pause: (ms: number) => Promise<void>): Promise<Exclude<ReportPdfStep, { kind: 'wait' }> | null> {

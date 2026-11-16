@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arAimLine, arAreaFigures, arAreaOf, arMethodOf, arPerimeterM, arShotLabels, arSummaryChips, arLiveChips, arShotAreaLabel, shotLabelsField, shotLabelsOf, arLiveLabel, arPlanOf, arProblemLine, arScanProgress, closedRing, isArWarning, visibleRuns, type ArPoint } from './arArea.js';
+import { arAimLine, arAreaFigures, arAreaOf, arMethodOf, arPerimeterM, arShotLabels, arSummaryChips, arLiveChips, arShotPanel, shotPanelField, shotPanelOf, shotLabelsField, shotLabelsOf, arLiveLabel, arPlanOf, arProblemLine, arScanProgress, closedRing, isArWarning, visibleRuns, type ArPoint } from './arArea.js';
 
 /** A flat 2 m × 1,5 m rectangle on the floor (ARCore: y is up, meters). */
 const rectangle: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }, { x: 2, y: 0, z: 1.5 }, { x: 0, y: 0, z: 1.5 }];
@@ -348,12 +348,18 @@ describe('the AR\'s live chips (José 15/11: «chips de resumen», like his refe
   });
 });
 
-describe('the photo\'s area (like the reference app, in the middle of the zone)', () => {
-  const corners = [{ x: 100, y: 100, visible: true }, { x: 300, y: 100, visible: true }, { x: 300, y: 500, visible: true }, { x: 100, y: 500, visible: true }];
+describe('the photo\'s summary in a corner (José 15/11: «no dentro de la figura», like his reference app)', () => {
+  it('area and perimeter, one line each; never the volume, which an edit can change after the photo', () => {
+    expect(arShotPanel({ areaM2: 2.27, perimeterM: 7.65 })).toEqual(['Área 2,27 m²', 'Perímetro 7,65 m']);
+    expect(arShotPanel({ areaM2: 2.27, perimeterM: null })).toEqual(['Área 2,27 m²']);
+  });
 
-  it('the billed area at the corners\' middle, only with every corner on the frame', () => {
-    expect(arShotAreaLabel(corners, { width: 400, height: 1000 }, 0.534)).toEqual({ x: 0.5, y: 0.3, text: '0,53 m²' });
-    expect(arShotAreaLabel([...corners.slice(0, 3), { x: 0, y: 0, visible: false }], { width: 400, height: 1000 }, 0.534)).toBeNull();
-    expect(arShotAreaLabel(corners, { width: 400, height: 1000 }, null)).toBeNull();
+  it('travels as one field and comes back only when sane', () => {
+    const panel = ['Área 2,27 m²', 'Perímetro 7,65 m'];
+    expect(shotPanelOf(shotPanelField(panel))).toEqual(panel);
+    expect(shotPanelOf('["<b>"]')).toEqual([]);
+    expect(shotPanelOf(JSON.stringify(['a', 'b', 'c', 'd', 'e']))).toEqual([]);
+    expect(shotPanelOf(42)).toEqual([]);
+    expect(shotPanelField([])).toBeUndefined();
   });
 });

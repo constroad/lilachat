@@ -81,7 +81,7 @@ export async function openRun(userId: Types.ObjectId, scope: CommandScope, comma
 }
 
 /** A signing brings the place the form has; a camera photo only asks for the hour (José 06/11: tank and materials). */
-export type PhotoStampAsked = { location?: GeoPoint; hourOnly?: true; /** A photo of the gallery: its own date, not the upload's. */ takenAt?: Date; /** The report camera's Timemark-like stamp (José 12/11), with the space's logo when asked. */ timemark?: { logo: boolean; /** An AR zone's photo: each side's meters (José 15/11). */ labels?: ShotLabel[] } };
+export type PhotoStampAsked = { location?: GeoPoint; hourOnly?: true; /** A photo of the gallery: its own date, not the upload's. */ takenAt?: Date; /** The report camera's Timemark-like stamp (José 12/11), with the space's logo when asked. */ timemark?: { logo: boolean; /** An AR zone's photo: each side's meters (José 15/11). */ labels?: ShotLabel[]; panel?: string[] } };
 
 async function stampLinesOf({ location, hourOnly, takenAt }: PhotoStampAsked): Promise<readonly string[]> {
   const at = takenAt ?? new Date();
@@ -99,7 +99,7 @@ const spaceOfRun = (run: { workspaceId?: Types.ObjectId | null; chatId?: Types.O
 async function burnTimemark(bytes: Buffer, stamp: PhotoStampAsked, spaceOf: SpaceOfRun) {
   const place = stamp.location ? await placeNameOf(stamp.location) : null;
   const logo = stamp.timemark?.logo ? await spaceStampLogo(await spaceOf()) : null;
-  return stampTimemark(bytes, timemarkOf({ at: stamp.takenAt ?? new Date(), point: stamp.location ?? null, place }), logo, stamp.timemark?.labels ?? []);
+  return stampTimemark(bytes, timemarkOf({ at: stamp.takenAt ?? new Date(), point: stamp.location ?? null, place }), logo);
 }
 
 /** The server burns ITS hour into the photo (pending 94); a photo it cannot read goes as it came. */

@@ -93,6 +93,47 @@ describe('PortalEmbedWeb', () => {
     expect(onClose).toHaveBeenCalledWith(false);
   });
 
+  it('«Editar croquis» opens the work map over the editor, and closing it tells Portal to redraw the croquis (José 16/11)', async () => {
+    portal([{ embed: linkOf('a1') }]);
+    const workMap = (done: () => void) => <button type="button" data-testid="mapa-de-prueba" onClick={done}>Listo</button>;
+    render(<PortalEmbedWeb target={target} serviceId="sv1" serviceName="Av. Los Incas" report={report} onClose={vi.fn()} workMap={workMap} />);
+    await waitFor(() => expect(frame().src).toContain('#t=a1'));
+    const post = vi.spyOn(frame().contentWindow!, 'postMessage');
+    fromPortal({ type: 'portal-embed:ready', version: 1 });
+
+    fromPortal({ type: 'portal-embed:edit-croquis', version: 1 });
+    await userEvent.click(screen.getByTestId('mapa-de-prueba'));
+
+    expect(screen.queryByTestId('mapa-de-prueba')).toBeNull();
+    expect(frame().src).toContain('#t=a1');
+    expect(post).toHaveBeenCalledWith({ type: 'portal-embed:croquis-changed', version: 1 }, PORTAL);
+  });
+
+  it('with the map open, Escape closes the map, not the editor', async () => {
+    portal([{ embed: linkOf('a1') }]);
+    const onClose = vi.fn();
+    const workMap = (done: () => void) => <button type="button" data-testid="mapa-de-prueba" onClick={done}>Listo</button>;
+    render(<PortalEmbedWeb target={target} serviceId="sv1" serviceName="Av. Los Incas" report={report} onClose={onClose} workMap={workMap} />);
+    await waitFor(() => expect(frame().src).toContain('#t=a1'));
+    fromPortal({ type: 'portal-embed:ready', version: 1 });
+    fromPortal({ type: 'portal-embed:edit-croquis', version: 1 });
+
+    await userEvent.keyboard('{Escape}');
+
+    expect(screen.queryByTestId('mapa-de-prueba')).toBeNull();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('without a map to open, the ask is ignored', async () => {
+    portal([{ embed: linkOf('a1') }]);
+    render(<PortalEmbedWeb target={target} serviceId="sv1" serviceName="Av. Los Incas" report={report} onClose={vi.fn()} />);
+    await waitFor(() => expect(frame().src).toContain('#t=a1'));
+
+    fromPortal({ type: 'portal-embed:edit-croquis', version: 1 });
+
+    expect(screen.queryByTestId('editor-portal-mapa')).toBeNull();
+  });
+
   it('before Portal is ready its own bar has Volver, which closes at once; so does Escape', async () => {
     portal([{ embed: linkOf('a1') }]);
     const onClose = vi.fn();

@@ -191,6 +191,15 @@ function ServiceCrumbs(props: { service: string; onBack: () => void; onToChat?: 
   );
 }
 
+/** Over the editor's «Editar croquis», the map's way back to the report (José 16/11). */
+function BackToReport(props: { onBack: () => void }) {
+  return (
+    <button type="button" data-testid="mapa-volver-al-informe" onClick={props.onBack} className="inline-flex min-h-[44px] items-center gap-1 text-sm font-semibold text-primary">
+      <ChevronLeft size={16} /> Volver al informe
+    </button>
+  );
+}
+
 /**
  * A client's service as an expediente (José 30/10: there was no way to see a
  * service's reports, orders and dispatches; design f-04): its head, then
@@ -239,6 +248,9 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
     if (changed) askAgain();
   }, [askAgain]);
   const mapOpen = tab === 'map' && Boolean(props.links) && Boolean(answer?.ok);
+  // «Editar croquis» in Portal's editor draws this same map over it; closing it redraws the croquis.
+  const channelLinks = props.links;
+  const croquisMap = answer?.ok && channelLinks ? (done: () => void) => <MapWorkspace admin={props.seesMoney} crumbs={<BackToReport onBack={done} />} detail={answer.value} service={props.service} tabs={[]} onTab={() => undefined} links={doorMapLinks(channelLinks, props.target, props.chatId, props.service.id)} target={props.target} chatId={props.chatId} /> : undefined;
   const { onMapOpen } = props;
   useEffect(() => {
     onMapOpen?.(mapOpen);
@@ -260,7 +272,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
       {answer === null ? <div data-testid="detalle-cargando" className="h-48 animate-pulse rounded-xl bg-surface" /> : null}
       {answer?.ok ? <DetailTabs onContinueReport={setReport} onOpenEmbed={setFramed} detail={answer.value} target={props.target} service={props.service} chatId={props.chatId} seesDrive={Boolean(props.seesDrive)} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} tab={tab} onTab={pickTab} startOrderId={tab === 'orders' ? startOrderId : undefined} /> : null}
       {picker ? <CreateReportDialog portalUrl={portalUrl} people={props.people ?? []} inEditor={(code) => createsInEmbed(window.innerWidth, code)} onPick={(code, responsible) => { setPicker(false); pickNew(code, responsible); }} onClose={() => setPicker(false)} /> : null}
-      {framed ? <PortalEmbedWeb target={props.target} serviceId={props.service.id} serviceName={props.service.name} report={framed} onClose={closeFramed} /> : null}
+      {framed ? <PortalEmbedWeb target={props.target} serviceId={props.service.id} serviceName={props.service.name} report={framed} onClose={closeFramed} {...(croquisMap ? { workMap: croquisMap } : {})} /> : null}
       {answer && !answer.ok ? (
         <div data-testid="detalle-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm">
           <p className="mb-2 font-semibold">{answer.message}</p>

@@ -23,8 +23,13 @@ const TOKEN = /^#t=[A-Za-z0-9._~-]{1,4096}$/;
 export type EmbedLink = { url: string; expiresAt: string };
 export type EmbedEvent =
   | { type: 'ready' } | { type: 'dirty'; dirty: boolean } | { type: 'saved'; reportId: string; savedAt: string } | { type: 'saved'; visitId: string; savedAt: string }
-  | { type: 'published'; reportId: string; pdfUrl?: string } | { type: 'closed' } | { type: 'error'; code: string };
-export type EmbedCommand = { type: `${typeof PREFIX}close-request`; version: typeof EMBED_VERSION } | { type: `${typeof PREFIX}theme`; version: typeof EMBED_VERSION; mode: 'light' | 'dark' };
+  | { type: 'published'; reportId: string; pdfUrl?: string } | { type: 'closed' } | { type: 'error'; code: string }
+  /** «Editar croquis»: open the service's work map over the editor (José 16/11). */
+  | { type: 'edit-croquis' };
+export type EmbedCommand =
+  | { type: `${typeof PREFIX}close-request`; version: typeof EMBED_VERSION }
+  | { type: `${typeof PREFIX}theme`; version: typeof EMBED_VERSION; mode: 'light' | 'dark' }
+  | { type: `${typeof PREFIX}croquis-changed`; version: typeof EMBED_VERSION };
 
 type Raw = Record<string, unknown>;
 const record = (value: unknown): Raw | null => (value && typeof value === 'object' && !Array.isArray(value) ? (value as Raw) : null);
@@ -60,7 +65,7 @@ function savedEvent(reportId: string | null, visitId: string | null, savedAt: st
 }
 
 function eventBody(kind: string, message: Raw): EmbedEvent | null {
-  if (kind === 'ready' || kind === 'closed') return { type: kind };
+  if (kind === 'ready' || kind === 'closed' || kind === 'edit-croquis') return { type: kind };
   if (kind === 'dirty') return typeof message.dirty === 'boolean' ? { type: 'dirty', dirty: message.dirty } : null;
   const reportId = text(message.reportId);
   if (kind === 'saved') return savedEvent(reportId, text(message.visitId), text(message.savedAt));
@@ -82,6 +87,8 @@ export function embedEventOf(data: unknown): EmbedEvent | null {
 
 export const embedCloseRequest = (): EmbedCommand => ({ type: `${PREFIX}close-request`, version: EMBED_VERSION });
 export const embedTheme = (mode: 'light' | 'dark'): EmbedCommand => ({ type: `${PREFIX}theme`, version: EMBED_VERSION, mode });
+/** The work map was closed: Portal reads the sheet's croquis again. */
+export const embedCroquisChanged = (): EmbedCommand => ({ type: `${PREFIX}croquis-changed`, version: EMBED_VERSION });
 
 /** A report Portal edits in its canvas, on a window wide enough for it. */
 export const opensEmbed = (windowWidth: number, report: { editor?: 'v2' }): boolean => windowWidth >= EMBED_MIN_WIDTH_PX && report.editor === 'v2';

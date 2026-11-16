@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, ExternalLink } from 'lucide-react';
-import { EMBED_FAILED, PORTAL_EMBED_ORIGINS, embedCloseRequest, embedErrorLine, embedEventOf, embedLinkOf, embedReportIdOf, embedTheme, reportEmbedCreatePath, reportEmbedPath, type EmbedBody, type EmbedCommand, type EmbedCreateRequest, type EmbedLink } from '@lilachat/shared';
+import { EMBED_FAILED, PORTAL_EMBED_ORIGINS, embedCloseRequest, embedCroquisChanged, embedErrorLine, embedEventOf, embedLinkOf, embedReportIdOf, embedTheme, reportEmbedCreatePath, reportEmbedPath, type EmbedBody, type EmbedCommand, type EmbedCreateRequest, type EmbedLink } from '@lilachat/shared';
 import { api } from '../../../api';
 import type { ServiceAskTarget } from '../useServiceAsk';
 
@@ -15,7 +15,9 @@ import type { ServiceAskTarget } from '../useServiceAsk';
  */
 /** An existing report (its id), or a new one of a type (José 12/11: on the wide web reports are born in the editor). */
 type EmbedReport = { id?: string; title: string; url?: string; create?: EmbedCreateRequest };
-type Props = { target: ServiceAskTarget; serviceId: string; serviceName: string; report: EmbedReport; onClose: (changed: boolean) => void };
+/** The service's work map, drawn over the editor for «Editar croquis» (José 16/11); `done` goes back to the report. */
+export type WorkMapLayer = (done: () => void) => ReactNode;
+type Props = { target: ServiceAskTarget; serviceId: string; serviceName: string; report: EmbedReport; onClose: (changed: boolean) => void; workMap?: WorkMapLayer };
 export type LinkState = { kind: 'asking' } | { kind: 'ready'; link: EmbedLink } | { kind: 'failed'; message: string };
 
 /** The dev web frames the local Portal too; the built one, production only (its CSP frames nothing else). */
@@ -53,7 +55,7 @@ function useEmbedLink(target: ServiceAskTarget, serviceId: string, report: Embed
 const modeNow = (): 'light' | 'dark' => (document.documentElement.classList.contains('dark') ? 'dark' : 'light');
 
 /** Portal's messages, only from its origin and its frame; the theme follows Lilachat's while open. */
-function useEmbedTalk(frame: React.RefObject<HTMLIFrameElement | null>, link: EmbedLink | null, onClose: (changed: boolean) => void, onExpired: () => void) {
+function useEmbedTalk(frame: React.RefObject<HTMLIFrameElement | null>, link: EmbedLink | null, onClose: (changed: boolean) => void, onExpired: () => void, onEditCroquis?: () => void) {
   const origin = link ? new URL(link.url).origin : null;
   const [ready, setReady] = useState(false);
   const [dirty, setDirty] = useState(false);
@@ -63,8 +65,8 @@ function useEmbedTalk(frame: React.RefObject<HTMLIFrameElement | null>, link: Em
   // After «closed» the same save may still post its dirty or saved (Portal aa4cf2d9): nothing counts any more.
   const closed = useRef(false);
   // The latest callbacks, so a parent's re-render does not reset the frame's state.
-  const handlers = useRef({ onClose, onExpired });
-  handlers.current = { onClose, onExpired };
+  const handlers = useRef({ onClose, onExpired, onEditCroquis });
+  handlers.current = { onClose, onExpired, onEditCroquis };
   const post = useCallback((command: EmbedCommand) => { if (origin) frame.current?.contentWindow?.postMessage(command, origin); }, [frame, origin]);
   useEffect(() => {
     setReady(false);
@@ -86,6 +88,7 @@ function useEmbedTalk(frame: React.RefObject<HTMLIFrameElement | null>, link: Em
         closed.current = true;
         handlers.current.onClose(changed.current);
       }
+      else if (message?.type === 'edit-croquis') handlers.current.onEditCroquis?.();
       else if (message?.type === 'error') (message.code === 'expired' ? handlers.current.onExpired() : setError(embedErrorLine(message.code)));
     };
     window.addEventListener('message', onMessage);
@@ -149,7 +152,7 @@ function Failure({ message, url, onRetry }: { message: string; url?: string; onR
 /** A report in Portal's editor: its link asked by the service, then the shared frame. */
 export function PortalEmbedWeb(props: Props) {
   const { state, again } = useEmbedLink(props.target, props.serviceId, props.report);
-  return <PortalEmbedFrame state={state} again={again} kicker={props.serviceName} title={props.report.title} {...(props.report.url ? { fallbackUrl: props.report.url } : {})} onClose={props.onClose} />;
+  return <PortalEmbedFrame state={state} again={again} kicker={props.serviceName} title={props.report.title} {...(props.report.url ? { fallbackUrl: props.report.url } : {})} onClose={props.onClose} {...(props.workMap ? { workMap: props.workMap } : {})} />;
 }
 
 /** Lilachat's own bar, only while Portal's is not there (not ready, failed, or stuck saving). */
@@ -169,7 +172,7 @@ function EmbedBar(props: { kicker: string; title: string; onBack: () => void; on
 type EmbedTalk = ReturnType<typeof useEmbedTalk>;
 
 /** Closing asks Portal first (it saves and posts `closed`); a frame not ready, failed or stuck is left at once. */
-function useEmbedClose(talk: EmbedTalk, stuck: boolean, onClose: (changed: boolean) => void) {
+function useEmbedClose(talk: EmbedTalk, stuck: boolean, onClose: (changed: boolean) => void, onEscape?: () => void) {
   const [closing, setClosing] = useState(false);
   const leave = useCallback(() => onClose(talk.changed.current), [onClose, talk.changed]);
   const requestClose = useCallback(() => {
@@ -182,7 +185,7 @@ function useEmbedClose(talk: EmbedTalk, stuck: boolean, onClose: (changed: boole
     const timer = setTimeout(() => onClose(talk.changed.current), CLOSE_WAIT_MS);
     return () => clearTimeout(timer);
   }, [closing, talk.dirty, talk.changed, onClose]);
-  useLeaveGuards(talk.dirty, requestClose);
+  useLeaveGuards(talk.dirty, onEscape ?? requestClose);
   return { leave, requestClose };
 }
 
@@ -199,22 +202,30 @@ function EmbedBody(props: { failure: string | null; link: EmbedLink | null; read
   );
 }
 
-type FrameProps = { state: LinkState; again: () => void; kicker: string; title: string; fallbackUrl?: string; onClose: (changed: boolean) => void };
+type FrameProps = { state: LinkState; again: () => void; kicker: string; title: string; fallbackUrl?: string; onClose: (changed: boolean) => void; workMap?: WorkMapLayer };
 
 /** Portal's editor over the whole window, whatever it edits (a report, a visit's croquis): one bar, Portal's. */
 export function PortalEmbedFrame(props: FrameProps) {
   const { state, again } = props;
   const frame = useRef<HTMLIFrameElement>(null);
   const link = state.kind === 'ready' ? state.link : null;
-  const talk = useEmbedTalk(frame, link, props.onClose, again);
+  // The map goes over the frame, which stays alive underneath: nothing written in the editor is lost.
+  const [mapOpen, setMapOpen] = useState(false);
+  const talk = useEmbedTalk(frame, link, props.onClose, again, props.workMap ? () => setMapOpen(true) : undefined);
+  const { post } = talk;
+  const closeMap = useCallback(() => {
+    setMapOpen(false);
+    post(embedCroquisChanged());
+  }, [post]);
   const stuck = useUnsavedTooLong(talk.dirty, talk.savedAt);
-  const { leave, requestClose } = useEmbedClose(talk, stuck, props.onClose);
+  const { leave, requestClose } = useEmbedClose(talk, stuck, props.onClose, mapOpen ? closeMap : undefined);
   const failure = state.kind === 'failed' ? state.message : talk.error;
   const ownBar = !talk.ready || Boolean(failure) || stuck;
   return createPortal(
     <div data-testid="editor-portal" role="dialog" aria-label={`Editor de ${props.title}`} className="fixed inset-0 z-50 flex flex-col bg-background text-on-surface">
       {ownBar ? <EmbedBar kicker={props.kicker} title={props.title} onBack={requestClose} {...(stuck && !failure ? { onLeave: leave } : {})} /> : null}
       <EmbedBody failure={failure} link={link} ready={talk.ready} frame={frame} title={props.title} {...(props.fallbackUrl ? { fallbackUrl: props.fallbackUrl } : {})} onRetry={again} />
+      {mapOpen && props.workMap ? <div data-testid="editor-portal-mapa" className="absolute inset-0 z-10 flex flex-col bg-background">{props.workMap(closeMap)}</div> : null}
     </div>,
     document.body
   );

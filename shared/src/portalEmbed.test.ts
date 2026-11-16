@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EMBED_MIN_WIDTH_PX, PORTAL_EMBED_ORIGINS, createsInEmbed, embedCloseRequest, embedCreateRequest, nativeEmbedCommand, nativeEmbedEventOf, embedErrorLine, embedEventOf, embedLinkOf, embedReportIdOf, embedTheme, opensEmbed, reportEmbedCreatePath } from './portalEmbed.js';
+import { EMBED_MIN_WIDTH_PX, PORTAL_EMBED_ORIGINS, createsInEmbed, embedCloseRequest, embedCroquisChanged, embedCreateRequest, nativeEmbedCommand, nativeEmbedEventOf, embedErrorLine, embedEventOf, embedLinkOf, embedReportIdOf, embedTheme, opensEmbed, reportEmbedCreatePath } from './portalEmbed.js';
 
 /** Portal's editor 2.0 framed in Lilachat web (Portal 11/11: `/embed/report/<id>#t=<token>`, messages v1). */
 const prod = [PORTAL_EMBED_ORIGINS.production];
@@ -66,6 +66,16 @@ describe('what Lilachat sends', () => {
   it('close-request and theme, each with version 1', () => {
     expect(embedCloseRequest()).toEqual({ type: 'portal-embed:close-request', version: 1 });
     expect(embedTheme('dark')).toEqual({ type: 'portal-embed:theme', version: 1, mode: 'dark' });
+  });
+});
+
+describe('«Editar croquis» opens Lilachat\'s work map (José 16/11, Portal 911918d0)', () => {
+  it('reads Portal\'s ask for the map', () => {
+    expect(embedEventOf({ type: 'portal-embed:edit-croquis', version: 1 })).toEqual({ type: 'edit-croquis' });
+  });
+
+  it('tells Portal the map changed, so the sheet reads its croquis again', () => {
+    expect(embedCroquisChanged()).toEqual({ type: 'portal-embed:croquis-changed', version: 1 });
   });
 });
 

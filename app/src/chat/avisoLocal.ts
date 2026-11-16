@@ -3,6 +3,7 @@ import { armarAviso, CANAL_MENSAJES } from '@lilachat/shared';
 import { reportarError } from '../ui/reportarError';
 import { llamadaNativa } from '../../modules/llamada-entrante/src';
 import { cuerpoDelAviso, idDeAvisoDeChat, sumarLineaAlAviso, tituloDelAviso } from './avisosPorChat';
+import { presentedOfChat } from './readElsewhere';
 
 /** Lo que ya muestra el aviso de cada chat: el nuevo lo reemplaza y lo suma (FL11). */
 const porChat = new Map<string, { lineas: string[]; cuantos: number }>();
@@ -108,6 +109,21 @@ export async function avisarMensaje(params: {
     });
   } catch (error) {
     reportarError('avisarMensaje', error);
+  }
+}
+
+/**
+ * Every notice of a chat: the native one (push, FL8.2), the local one (socket) and the common FCM
+ * ones still on screen. On opening the chat, and when it was read on another device (José 16/11).
+ */
+export async function clearChatNotices(chatId: string): Promise<void> {
+  llamadaNativa.limpiarChat(chatId);
+  olvidarAvisoDelChat(chatId);
+  try {
+    const shown = await Notifications.getPresentedNotificationsAsync();
+    await Promise.all(presentedOfChat(shown, chatId).map((identifier) => Notifications.dismissNotificationAsync(identifier)));
+  } catch (error) {
+    reportarError('clearChatNotices', error);
   }
 }
 

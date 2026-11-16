@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react-native';
 import type { Credential } from '../auth/credentialStore';
 import { listChats, type ChatSummary } from '../api/client';
 import { connectSocket } from '../chat/socketClient';
+import { listenForNoticeSync } from '../chat/noticeSync';
 import { avisarMensaje, prepararAvisos } from '../chat/avisoLocal';
 import { usePushRegistration } from '../chat/pushRegistration';
 import { iniciarServicio } from '../../modules/servicio-socket/src';
@@ -328,6 +329,7 @@ export function TabsShell({
     // My receipt (read here or on the web) lowers this copy too: it only went up, and the spaces badge kept a «1» (José, 23/10).
     const onReceipt = (receipt: AcuseEnVivo) => setChats((before) => aplicarAcuseALista(before, receipt, credential.userId, new Map()));
     socket.on('msg.new', onNew);
+    const stopNoticeSync = listenForNoticeSync(socket, credential.userId);
     socket.on('msg.deleted', onCardChange);
     socket.on('ref.changed', onCardChange);
     // Back from the background the receipts of the paused socket are lost: read again, as the list does.
@@ -341,6 +343,7 @@ export function TabsShell({
       socket.off('receipt', onReceipt);
       socket.off('connect', onReconnect);
       socket.off('msg.new', onNew);
+      stopNoticeSync();
       socket.off('msg.deleted', onCardChange);
       socket.off('ref.changed', onCardChange);
     };

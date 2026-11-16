@@ -85,11 +85,15 @@ export async function notifyOffline(params: {
 
   // Un token, un envío (FL11): el teléfono con el aviso nativo no recibe además el común.
   const reparto = repartirPorToken(dispositivos, dibujaElMensaje);
-  // El teléfono nativo lo recibe SIEMPRE: con la app adelante solo acusa la
-  // entrega y no dibuja nada. El común (web, teléfono viejo) solo a quien no
-  // tiene un socket vivo: si lo tiene, ya le llegó en vivo.
+  // The native phone ALWAYS gets it: with the app in front it only acknowledges
+  // delivery and draws nothing.
+  // A phone on the common path gets it too (José 16/11: no notices with the app
+  // and the web open): being online is per PERSON, so an open web tab, or the
+  // app asleep with its socket hanging, silenced the phone. With the app in
+  // front the notice does not pop up (`configureNotificationHandler`) and opening
+  // the chat clears it. Only the browser tab is skipped while a socket is alive.
   const nativos = reparto.nativos;
-  const comunes = reparto.comunes.filter((d) => !silenciados.has(String(d.userId)) && !isOnline(String(d.userId)));
+  const comunes = reparto.comunes.filter((d) => !silenciados.has(String(d.userId)) && (d.platform !== 'web' || !isOnline(String(d.userId))));
   // Where tapping the notice lands (agentes 25/10/2026): the chat's space and, for a reply, its thread. Empty = none.
   const workspaceId = chat?.workspaceId ? String(chat.workspaceId) : '';
   const hiloDe = params.message.hiloDe !== undefined && params.message.hiloDe !== null ? String(params.message.hiloDe) : '';

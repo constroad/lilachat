@@ -90,7 +90,8 @@ describe('notifyOffline', () => {
   });
 
   /** Empujarle una notificación a quien está mirando el chat es ruido. */
-  it('NO notifica a quien tiene socket vivo', async () => {
+  it('a web browser of someone with a live socket gets nothing (they are looking at it)', async () => {
+    await DeviceModel.updateOne({ deviceId: 'd-maria' }, { $set: { platform: 'web' } });
     markOnline(String(maria));
 
     await notifyOffline({ message: message(), members: members(), senderId: String(jose) });
@@ -104,7 +105,8 @@ describe('notifyOffline', () => {
    * teléfono quedaba mudo. El teléfono nativo lo recibe SIEMPRE: con la app
    * adelante solo acusa la entrega y no dibuja nada.
    */
-  it('al teléfono nativo le llega aunque la persona tenga un socket vivo; el común, no', async () => {
+  it('the native phone gets it even with a live socket; the web browser does not', async () => {
+    await DeviceModel.updateOne({ deviceId: 'd-maria' }, { $set: { platform: 'web' } });
     await DeviceModel.create({ deviceId: 'd-maria-tel', userId: maria, platform: 'android', pushToken: 'tok-maria-tel', capacidades: [CAPACIDAD_MENSAJE_NATIVO] });
     markOnline(String(maria));
 

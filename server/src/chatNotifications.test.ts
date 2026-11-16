@@ -77,8 +77,13 @@ describe('who hears a group message', () => {
 
   it('@aquí only reaches those online (the rest is quiet if they muted)', async () => {
     markOnline(String(ana));
-    // Ana is online: the common push skips her (she got it live); Beto is offline and «nada».
-    expect(await pushFor('@aquí alguien', [{ userId: MENTION_HERE, desde: 0, largo: 5 }])).toEqual(['tok-carla']);
+    // Ana is online and mentioned: her phone rings (José 16/11: being online is per person, not per phone). Beto is «nada».
+    expect(await pushFor('@aquí alguien', [{ userId: MENTION_HERE, desde: 0, largo: 5 }])).toEqual(['tok-ana', 'tok-carla']);
+  });
+
+  it('the phone rings even with the person\'s web open (José 16/11: «no me llegan las notificaciones»)', async () => {
+    markOnline(String(carla));
+    expect(await pushFor('¿Llegó el volquete?', [])).toEqual(['tok-carla']);
   });
 
   it('a person mentioned by name with «solo menciones» rings', async () => {

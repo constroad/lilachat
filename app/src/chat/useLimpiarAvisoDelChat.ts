@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { AppState } from 'react-native';
-import { llamadaNativa } from '../../modules/llamada-entrante/src';
-import { olvidarAvisoDelChat } from './avisoLocal';
+import { clearChatNotices } from './avisoLocal';
 
 /**
  * Con el chat abierto, su aviso nativo sobra (FL8.2): se va al abrirlo y al
@@ -10,14 +9,11 @@ import { olvidarAvisoDelChat } from './avisoLocal';
  */
 export function useLimpiarAvisoDelChat(chatId: string): void {
   useEffect(() => {
-    // El aviso nativo (push) y el local (socket) del chat, los dos (FL11).
-    const limpiar = () => {
-      llamadaNativa.limpiarChat(chatId);
-      olvidarAvisoDelChat(chatId);
-    };
-    limpiar();
+    // The native notice (push), the local one (socket) and the common ones of the chat (FL11).
+    const clear = () => void clearChatNotices(chatId);
+    clear();
     const suscripcion = AppState.addEventListener('change', (estado) => {
-      if (estado === 'active') limpiar();
+      if (estado === 'active') clear();
     });
     return () => suscripcion.remove();
   }, [chatId]);

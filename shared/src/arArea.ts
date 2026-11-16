@@ -1,5 +1,6 @@
 import type { AreaFigures, AreaMethod } from './areaMeasure.js';
 import { thicknessAverage, type SideSource } from './photoArea.js';
+import { adjustedZone, diameterM, newellNormal, planeCornersOf, type PlanePoint, type TapedLength } from './zoneAdjust.js';
 
 /**
  * A zone measured with the APK's AR (designs la-02/la-03; José 15/11: «AR +
@@ -12,8 +13,11 @@ import { thicknessAverage, type SideSource } from './photoArea.js';
 export type ArPoint = { x: number; y: number; z: number; floorY?: number };
 export type ArSideFlag = 'ok' | 'warn' | 'block';
 export type ArSide = { index: number; arMeters: number; meters: number; source: SideSource; flag: ArSideFlag; centimeters?: true };
-export type ArProblem = 'few-corners' | 'short-side' | 'crossed' | 'degenerate' | 'off-plane' | 'tracking-lost' | 'too-small' | 'too-large' | 'no-tape' | 'tape-mismatch';
-export type ArArea = { sides: ArSide[]; areaM2: number | null; thicknessCm: number | null; volumeM3: number | null; readings: number; problems: ArProblem[]; canSave: boolean };
+/** A diagonal measured with the tape between two corners that are not neighbors (it fixes a quad's shape). */
+export type ArDiagonal = { from: number; to: number; arMeters: number; meters: number; flag: ArSideFlag; centimeters?: true };
+export type ArProblem = 'few-corners' | 'short-side' | 'crossed' | 'degenerate' | 'off-plane' | 'tracking-lost' | 'too-small' | 'too-large' | 'no-tape' | 'tape-mismatch' | 'tape-bends' | 'tape-contradicts' | 'tape-short';
+/** `plane`: the AR corners laid flat on their own plane (meters), what a later edit recomputes from. */
+export type ArArea = { sides: ArSide[]; diagonals: ArDiagonal[]; plane: PlanePoint[]; areaM2: number | null; thicknessCm: number | null; volumeM3: number | null; readings: number; problems: ArProblem[]; canSave: boolean };
 
 /**
  * What only warns (José 15/11, after testing on his phone: nobody tapes every
@@ -21,9 +25,9 @@ export type ArArea = { sides: ArSide[]; areaM2: number | null; thicknessCm: numb
  * a tape, and a corner that looks off the floor is shown, not refused. Portal
  * marks every `ar-app` area to verify.
  */
-const WARNINGS: ReadonlySet<ArProblem> = new Set<ArProblem>(['no-tape', 'off-plane']);
+const WARNINGS: ReadonlySet<ArProblem> = new Set<ArProblem>(['no-tape', 'off-plane', 'tape-bends', 'tape-short']);
 export const isArWarning = (problem: ArProblem): boolean => WARNINGS.has(problem);
-export type ArInput = { points: readonly ArPoint[]; tapes: Readonly<Record<number, number>>; readingsCm: readonly number[]; stable: boolean };
+export type ArInput = { points: readonly ArPoint[]; tapes: Readonly<Record<number, number>>; diagonals?: readonly TapedLength[]; readingsCm: readonly number[]; stable: boolean };
 
 const MIN_CORNERS = 3;
 const SIDE_MIN_M = 0.1;
@@ -36,6 +40,19 @@ const NEAR_SIDE_M = 0.1;
 const SHARP_DEGREES = 10;
 const AREA_LIMITS_M2 = { min: 0.05, max: 5000 };
 const GAP = { warn: 0.03, block: 0.15 };
+/**
+ * How far the tapes may move an AR corner (after the scale): ARCore errs 5 to 10 cm per corner
+ * and drifts with distance, so the limit grows with the zone's span (audit 16/11: a 36 m zone
+ * taped exactly was blocked). Past the warning, the tapes and the AR disagree (measure a
+ * diagonal); past the block, a tape is wrong.
+ */
+const SHIFT = { warn: { fixedM: 0.1, perMeter: 0.005 }, block: { fixedM: 0.25, perMeter: 0.025 } };
+/** A tape that ends farther than 3 σ from its value: the tapes cannot close a zone together. */
+const TAPE_CLOSURE_SIGMAS = 3;
+/** One short tape sets the scale of the whole zone: under a quarter of the perimeter, say so. */
+const SHORT_TAPE_SHARE = 0.25;
+/** A fan triangle flatter than this (height over base) turns millimeters of tape into area: not offered. */
+const FLAT_TRIANGLE = 0.04;
 /** A tape about 100 times the AR is the right length typed in centimeters. */
 const CENTIMETER_RATIO = { min: 50, max: 150 };
 const CENTI = 100;
@@ -47,14 +64,6 @@ const decimalLabel = (value: number, decimals: number) => value.toFixed(decimals
 const distance = (from: Vector, to: Vector) => Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z);
 const isFinitePoint = (point: ArPoint) => [point.x, point.y, point.z].every(Number.isFinite);
 const next = <T>(items: readonly T[], index: number): T => items[(index + 1) % items.length]!;
-
-/** Newell's normal: twice the polygon's vector area, for any plane and either winding. */
-function newellNormal(points: readonly ArPoint[]): Vector {
-  return points.reduce((sum, point, index) => {
-    const after = next(points, index);
-    return { x: sum.x + (point.y - after.y) * (point.z + after.z), y: sum.y + (point.z - after.z) * (point.x + after.x), z: sum.z + (point.x - after.x) * (point.y + after.y) };
-  }, { x: 0, y: 0, z: 0 });
-}
 
 /** How far the farthest corner is from the polygon's own plane. */
 function offPlane(points: readonly ArPoint[], normal: Vector): number {
@@ -123,23 +132,85 @@ function isCrossed(flat: readonly Flat[]): boolean {
   return nonNeighbors(flat.length).some(([first, second]) => segmentsCross(flat[first]!, next(flat, first), flat[second]!, next(flat, second)));
 }
 
-/** Each taped side against its AR length; the scale is the mean of the sides that do not block. */
+type TapeCheck = { ratio: number; flag: ArSideFlag; centimeters: boolean };
+
+/** A tape against the AR's own length: 3 % warns, 15 % blocks, ~100× is centimeters typed as meters. */
+function tapeCheck(meters: number, arMeters: number): TapeCheck {
+  const ratio = meters / arMeters;
+  const gap = Math.abs(ratio - 1);
+  const flag: ArSideFlag = gap > GAP.block ? 'block' : gap > GAP.warn ? 'warn' : 'ok';
+  return { ratio, flag, centimeters: ratio >= CENTIMETER_RATIO.min && ratio <= CENTIMETER_RATIO.max };
+}
+
+/** Each taped side against its AR length; the scale (for the untaped sides' starting point) is their mean. */
 function tapedSides(arMeters: readonly number[], tapes: Readonly<Record<number, number>>) {
   const taped = Object.entries(tapes)
     .map(([key, meters]) => ({ index: Number(key), meters }))
     .filter(({ index, meters }) => Number.isInteger(index) && index >= 0 && index < arMeters.length && Number.isFinite(meters) && meters > 0 && arMeters[index]! > 0)
-    .map(({ index, meters }) => {
-      const ratio = meters / arMeters[index]!;
-      const gap = Math.abs(ratio - 1);
-      const flag: ArSideFlag = gap > GAP.block ? 'block' : gap > GAP.warn ? 'warn' : 'ok';
-      return { index, meters, ratio, flag, centimeters: ratio >= CENTIMETER_RATIO.min && ratio <= CENTIMETER_RATIO.max };
-    });
+    .map(({ index, meters }) => ({ index, meters, ...tapeCheck(meters, arMeters[index]!) }));
   const counted = taped.filter((side) => side.flag !== 'block');
   // Weighted by length (audit 15/11): ARCore errs in centimeters, so a short side must not swing the zone.
   const scale = counted.length ? counted.reduce((sum, side) => sum + side.meters, 0) / counted.reduce((sum, side) => sum + arMeters[side.index]!, 0) : 1;
-  const ratios = counted.map((side) => side.ratio);
-  const disagree = ratios.length > 1 && Math.max(...ratios) / Math.min(...ratios) - 1 > GAP.block;
-  return { taped, scale, disagree };
+  return { taped, scale, ratios: counted.map((side) => side.ratio) };
+}
+
+const planeGap = (plane: readonly PlanePoint[], from: number, to: number) => Math.hypot(plane[to]!.x - plane[from]!.x, plane[to]!.y - plane[from]!.y);
+
+/** Diagonals between two real corners that are not neighbors, checked against the AR's own diagonal. */
+function checkedDiagonals(plane: readonly PlanePoint[], diagonals: readonly TapedLength[]): ArDiagonal[] {
+  const count = plane.length;
+  const neighbors = (from: number, to: number) => Math.abs(from - to) === 1 || Math.abs(from - to) === count - 1;
+  return diagonals
+    .filter(({ from, to, meters }) => [from, to].every((corner) => Number.isInteger(corner) && corner >= 0 && corner < count) && from !== to && !neighbors(from, to) && Number.isFinite(meters) && meters > 0)
+    .map(({ from, to, meters }) => {
+      const arMeters = planeGap(plane, from, to);
+      const check = tapeCheck(meters, arMeters);
+      return { from, to, arMeters, meters, flag: check.flag, ...(check.centimeters ? { centimeters: true as const } : {}) };
+    });
+}
+
+export type ZoneSolution = { sides: ArSide[]; diagonals: ArDiagonal[]; areaM2: number; problems: ArProblem[] };
+
+type TapeTally = { locked: number; mismatch: boolean; shortShare: boolean };
+
+function tapeProblems(tally: TapeTally, zone: ReturnType<typeof adjustedZone>): ArProblem[] {
+  if (tally.mismatch) return ['tape-mismatch'];
+  if (!tally.locked) return ['no-tape'];
+  const span = diameterM(zone.corners);
+  const limit = (bound: { fixedM: number; perMeter: number }) => bound.fixedM + bound.perMeter * span;
+  if (!zone.converged || zone.crossed || zone.tapeGapSigmas > TAPE_CLOSURE_SIGMAS || zone.shiftM > limit(SHIFT.block)) return ['tape-contradicts'];
+  const problems: ArProblem[] = zone.shiftM > limit(SHIFT.warn) ? ['tape-bends'] : [];
+  return tally.shortShare ? [...problems, 'tape-short'] : problems;
+}
+
+/** Two tapes (sides or diagonals) whose ratios to the AR differ by more than 15 %: one is wrong. */
+const tapesDisagree = (ratios: readonly number[]) => ratios.length > 1 && Math.max(...ratios) / Math.min(...ratios) - 1 > GAP.block;
+
+/**
+ * The zone from its flat AR corners and its tapes (José 16/11): every taped side and diagonal is
+ * held, and the AR corners move as little as they can (`zoneAdjust`). The measure and a later
+ * edit share it.
+ */
+export function zoneSolutionOf(input: { plane: readonly PlanePoint[]; arMeters: readonly number[]; tapes: Readonly<Record<number, number>>; diagonals: readonly TapedLength[] }): ZoneSolution {
+  const { plane, arMeters } = input;
+  const count = plane.length;
+  const { taped, scale, ratios } = tapedSides(arMeters, input.tapes);
+  const diagonals = checkedDiagonals(plane, input.diagonals);
+  const locked: TapedLength[] = [
+    ...taped.filter((side) => side.flag !== 'block').map((side) => ({ from: side.index, to: (side.index + 1) % count, meters: side.meters })),
+    ...diagonals.filter((diagonal) => diagonal.flag !== 'block').map(({ from, to, meters }) => ({ from, to, meters })),
+  ];
+  const zone = adjustedZone(plane.map((corner) => ({ x: corner.x * scale, y: corner.y * scale })), locked);
+  const sides = arMeters.map((meters, index): ArSide => {
+    const tape = taped.find((side) => side.index === index);
+    if (!tape) return { index, arMeters: meters, meters: rounded(planeGap(zone.corners, index, (index + 1) % count), 2), source: 'escala', flag: 'ok' };
+    return { index, arMeters: meters, meters: tape.meters, source: 'wincha', flag: tape.flag, ...(tape.centimeters ? { centimeters: true as const } : {}) };
+  });
+  const diagonalRatios = diagonals.filter((diagonal) => diagonal.flag !== 'block').map((diagonal) => diagonal.meters / diagonal.arMeters);
+  const mismatch = tapesDisagree([...ratios, ...diagonalRatios]) || taped.some((side) => side.flag === 'block') || diagonals.some((diagonal) => diagonal.flag === 'block');
+  const tapedMeters = taped.filter((side) => side.flag !== 'block').reduce((sum, side) => sum + arMeters[side.index]!, 0);
+  const shortShare = diagonals.length === 0 && tapedMeters < SHORT_TAPE_SHARE * arMeters.reduce((sum, meters) => sum + meters, 0);
+  return { sides, diagonals, areaM2: rounded(zone.areaM2, 2), problems: tapeProblems({ locked: taped.length + diagonals.length, mismatch, shortShare }, zone) };
 }
 
 function shapeProblems(points: readonly ArPoint[], normal: Vector, arMeters: readonly number[], stable: boolean): ArProblem[] {
@@ -153,7 +224,7 @@ function shapeProblems(points: readonly ArPoint[], normal: Vector, arMeters: rea
   return problems;
 }
 
-const failed = (problems: ArProblem[], readings: number): ArArea => ({ sides: [], areaM2: null, thicknessCm: null, volumeM3: null, readings, problems, canSave: false });
+const failed = (problems: ArProblem[], readings: number): ArArea => ({ sides: [], diagonals: [], plane: [], areaM2: null, thicknessCm: null, volumeM3: null, readings, problems, canSave: false });
 
 export function arAreaOf(input: ArInput): ArArea {
   const { points, readingsCm } = input;
@@ -161,27 +232,52 @@ export function arAreaOf(input: ArInput): ArArea {
   if (!points.every(isFinitePoint)) return failed(['tracking-lost'], readingsCm.length);
   const normal = newellNormal(points);
   const arMeters = points.map((point, index) => distance(point, next(points, index)));
-  const { taped, scale, disagree } = tapedSides(arMeters, input.tapes);
-  const sides = arMeters.map((meters, index): ArSide => {
-    const tape = taped.find((side) => side.index === index);
-    if (!tape) return { index, arMeters: meters, meters: rounded(meters * scale, 2), source: 'escala', flag: 'ok' };
-    return { index, arMeters: meters, meters: tape.meters, source: 'wincha', flag: tape.flag, ...(tape.centimeters ? { centimeters: true as const } : {}) };
-  });
-  const areaM2 = rounded((Math.hypot(normal.x, normal.y, normal.z) / 2) * scale * scale, 2);
+  const plane = planeCornersOf(points);
+  const solution = zoneSolutionOf({ plane, arMeters, tapes: input.tapes, diagonals: input.diagonals ?? [] });
+  const { sides, diagonals, areaM2 } = solution;
   const problems = shapeProblems(points, normal, arMeters, input.stable);
   if (areaM2 < AREA_LIMITS_M2.min) problems.push('too-small');
   if (areaM2 > AREA_LIMITS_M2.max) problems.push('too-large');
-  if (!taped.length) problems.push('no-tape');
-  if (disagree || taped.some((side) => side.flag === 'block')) problems.push('tape-mismatch');
+  problems.push(...solution.problems);
   const thicknessCm = thicknessAverage(readingsCm);
   const volumeM3 = thicknessCm === null ? null : rounded((areaM2 * thicknessCm) / CENTI, 3);
-  return { sides, areaM2, thicknessCm, volumeM3, readings: readingsCm.length, problems, canSave: problems.every(isArWarning) };
+  return { sides, diagonals, plane, areaM2, thicknessCm, volumeM3, readings: readingsCm.length, problems, canSave: problems.every(isArWarning) };
+}
+
+/** Corner `to`'s neighbors lie almost on the diagonal A–`to`: its triangle is too flat to fix anything. */
+function flatFan(plane: readonly PlanePoint[], to: number): boolean {
+  const [a, b] = [plane[0]!, plane[to]!];
+  const base = planeGap(plane, 0, to);
+  const height = (apex: PlanePoint) => Math.abs((b.x - a.x) * (apex.y - a.y) - (b.y - a.y) * (apex.x - a.x)) / base;
+  return !(base > 0) || [plane[to - 1]!, plane[(to + 1) % plane.length]!].some((apex) => height(apex) / base < FLAT_TRIANGLE);
+}
+
+/** A…Z, then a number: the plan names its corners so a diagonal can be named («A–C»). */
+export const arCornerName = (index: number): string => (index >= 0 && index < 26 ? String.fromCharCode(65 + index) : String(index + 1));
+
+export type ArDiagonalRow = { from: number; to: number; label: string; arMeters: number; meters: number; taped: boolean; flag: ArSideFlag; centimeters?: true };
+
+/**
+ * The diagonals offered to tape: a fan from corner A (n − 3 of them). With every side taped they make
+ * the zone rigid, so its area comes from the tapes alone. Each row says its AR length and its tape.
+ */
+export function arDiagonalRows(result: Pick<ArArea, 'plane' | 'diagonals'>): ArDiagonalRow[] {
+  const count = result.plane.length;
+  if (count < 4) return [];
+  return Array.from({ length: count - 3 }, (_, offset) => offset + 2).filter((to) => !flatFan(result.plane, to)).map((to) => {
+    const from = 0;
+    const taped = result.diagonals.find((diagonal) => Math.min(diagonal.from, diagonal.to) === from && Math.max(diagonal.from, diagonal.to) === to);
+    const arMeters = planeGap(result.plane, from, to);
+    const label = `Diagonal ${arCornerName(from)}–${arCornerName(to)}`;
+    if (!taped) return { from, to, label, arMeters, meters: rounded(arMeters, 2), taped: false, flag: 'ok' as const };
+    return { from, to, label, arMeters, meters: taped.meters, taped: true, flag: taped.flag, ...(taped.centimeters ? { centimeters: true as const } : {}) };
+  });
 }
 
 /** What Portal stores: the area alone (a polygon is not length × width), with the thickness when there is one. */
 /** «AR» when no side was taped, «AR + wincha» when one was (José 15/11: the PDF must not claim a tape). */
-export function arMethodOf(result: ArArea): Extract<AreaMethod, 'ar' | 'ar-app'> {
-  return result.sides.some((side) => side.source === 'wincha') ? 'ar-app' : 'ar';
+export function arMethodOf(result: Pick<ArArea, 'sides' | 'diagonals'>): Extract<AreaMethod, 'ar' | 'ar-app'> {
+  return result.sides.some((side) => side.source === 'wincha') || result.diagonals.length > 0 ? 'ar-app' : 'ar';
 }
 
 export function arAreaFigures(result: ArArea): AreaFigures {
@@ -256,6 +352,9 @@ const PROBLEM_LINES: Record<ArProblem, string> = {
   'too-large': 'La zona mide más de 5 000 m²: revisa las esquinas o la wincha.',
   'no-tape': 'Sin wincha: el área sale solo del AR. Si mides un lado, la wincha manda.',
   'tape-mismatch': 'La wincha difiere más de 15 % del AR (o dos winchas no coinciden entre sí): revisa los lados o si escribiste centímetros.',
+  'tape-bends': 'Las winchas mueven una esquina más de lo que se equivoca el AR: revisa las medidas o mide una diagonal.',
+  'tape-contradicts': 'Las winchas y el AR no cuadran: una esquina se movería demasiado o la zona se doblaría. Revisa cada medida.',
+  'tape-short': 'Mediste solo un tramo corto: la escala de toda la zona sale de él. Mide también el lado más largo.',
 };
 
 export const arProblemLine = (problem: ArProblem): string => PROBLEM_LINES[problem];

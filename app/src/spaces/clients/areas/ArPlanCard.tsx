@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Image, Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
-import Svg, { Circle, Polygon, Text as SvgText } from 'react-native-svg';
-import { arPlanOf, type ArPoint, type ArSide, type ShotLabel } from '@lilachat/shared';
+import Svg, { Circle, Line, Polygon, Text as SvgText } from 'react-native-svg';
+import { arCornerName, arPlanOf, type ArDiagonalRow, type ArPoint, type ArSide, type ShotLabel } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { decimals } from './ZoneParts';
 
@@ -18,7 +18,7 @@ const LABEL_BOX = { width: 132, height: 28 };
 const PANEL_INSET = 8;
 
 type View3 = 'photo' | 'plan';
-type Props = { points: readonly ArPoint[]; sides: readonly ArSide[]; editing: number | null; photo: string | null; labels?: readonly ShotLabel[]; panel?: readonly string[]; onRetake: () => void };
+type Props = { points: readonly ArPoint[]; sides: readonly ArSide[]; diagonals?: readonly Pick<ArDiagonalRow, 'from' | 'to'>[]; editing: number | null; photo: string | null; labels?: readonly ShotLabel[]; panel?: readonly string[]; onRetake: () => void };
 
 /**
  * Design la-03's first card. José 15/11: «¿por qué no se ve la foto en el preview?»: the AR's
@@ -90,7 +90,7 @@ function Switch({ value, onChange }: { value: View3; onChange: (next: View3) => 
   );
 }
 
-function Plan({ points, sides, editing }: Props) {
+function Plan({ points, sides, diagonals = [], editing }: Props) {
   const colors = useColores();
   const [width, setWidth] = useState(0);
   const plan = width ? arPlanOf(points, { width, height: PLAN_HEIGHT }, MARGIN) : [];
@@ -105,7 +105,9 @@ function Plan({ points, sides, editing }: Props) {
             const color = side.index === editing || side.flag === 'block' ? colors.error : colors.primary;
             return <SvgText key={`s${side.index}`} x={(from.x + to.x) / 2} y={(from.y + to.y) / 2 - 6} fontSize={12} fontWeight="bold" fill={color} textAnchor="middle">{`${side.index + 1} · ${decimals(side.meters, 2)} m`}</SvgText>;
           })}
+          {diagonals.map(({ from, to }) => <Line key={`d${to}`} x1={plan[from]!.x} y1={plan[from]!.y} x2={plan[to]!.x} y2={plan[to]!.y} stroke={colors.primary} strokeWidth={2} strokeDasharray="6 4" />)}
           {plan.map((point, index) => <Circle key={`p${index}`} cx={point.x} cy={point.y} r={5} fill={colors.primary} />)}
+          {plan.length >= 4 ? plan.map((point, index) => <SvgText key={`n${index}`} x={point.x + 8} y={point.y + 14} fontSize={11} fontWeight="bold" fill={colors['on-surface-variant']}>{arCornerName(index)}</SvgText>) : null}
         </Svg>
       ) : null}
     </View>

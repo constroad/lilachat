@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arAimLine, arAreaFigures, arAreaOf, arMethodOf, arPerimeterM, arShotLabels, arSummaryChips, arLiveChips, arShotPanel, shotPanelField, shotPanelOf, shotLabelsField, shotLabelsOf, arLiveLabel, arPlanOf, arProblemLine, arScanProgress, closedRing, isArWarning, visibleRuns, type ArPoint } from './arArea.js';
+import { arCornerName, arDiagonalRows, arAimLine, arAreaFigures, arAreaOf, arMethodOf, arPerimeterM, arShotLabels, arSummaryChips, arLiveChips, arShotPanel, shotPanelField, shotPanelOf, shotLabelsField, shotLabelsOf, arLiveLabel, arPlanOf, arProblemLine, arScanProgress, closedRing, isArWarning, visibleRuns, type ArPoint } from './arArea.js';
 
 /** A flat 2 m × 1,5 m rectangle on the floor (ARCore: y is up, meters). */
 const rectangle: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }, { x: 2, y: 0, z: 1.5 }, { x: 0, y: 0, z: 1.5 }];
@@ -83,10 +83,92 @@ describe('arAreaOf: the tape against the AR (José 15/11: 3 % warns, 15 % blocks
     expect(result.canSave).toBe(false);
   });
 
-  it('the scale weighs each taped side by its length: a short side cannot swing the whole zone', () => {
-    const square: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 5, y: 0, z: 0 }, { x: 5, y: 0, z: 0.5 }, { x: 0, y: 0, z: 0.5 }];
-    const result = arAreaOf({ ...base, points: square, tapes: { 0: 5, 1: 0.55 } });
-    expect(result.areaM2).toBe(Math.round(2.5 * (5.55 / 5.5) ** 2 * 100) / 100);
+  it('each taped side keeps its tape (José 16/11); the corners no tape touched stay where the AR put them', () => {
+    const strip: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 5, y: 0, z: 0 }, { x: 5, y: 0, z: 0.5 }, { x: 0, y: 0, z: 0.5 }];
+    const result = arAreaOf({ ...base, points: strip, tapes: { 0: 5, 1: 0.55 } });
+
+    expect(result.sides.map((side) => [side.meters, side.source])).toEqual([[5, 'wincha'], [0.55, 'wincha'], [5.01, 'escala'], [0.5, 'escala']]);
+    expect(result.areaM2).toBeGreaterThan(2.6);
+    expect(result.areaM2).toBeLessThan(2.65);
+    expect(result.problems).toEqual([]);
+  });
+
+  it('two tapes on opposite sides do not stretch the untaped ones (audit 16/11)', () => {
+    const quad: ArPoint[] = [[2.41, -0.5], [0.5, 3.04], [-2.4, 0.41], [-0.75, -2.94]].map(([x, z]) => ({ x: x!, y: 0, z: z! }));
+    const result = arAreaOf({ ...base, points: quad, tapes: { 0: 4.012, 2: 3.842 } });
+
+    expect(result.areaM2! / 14.95).toBeGreaterThan(0.97);
+    expect(result.areaM2! / 14.95).toBeLessThan(1.03);
+  });
+
+  it('a square whose sides and diagonal disagree with the AR does not save; a diagonal typed wrong is flagged (audit 16/11)', () => {
+    const square: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 3, y: 0, z: 0 }, { x: 3, y: 0, z: 3 }, { x: 0, y: 0, z: 3 }];
+    const sides = { 0: 2.6, 1: 2.6, 2: 2.6, 3: 2.6 };
+    const typo = { 0: 3, 1: 3, 2: 3, 3: 3 };
+
+    expect(arAreaOf({ ...base, points: square, tapes: sides, diagonals: [{ from: 0, to: 2, meters: 4.84 }] }).canSave).toBe(false);
+    expect(arAreaOf({ ...base, points: square, tapes: typo, diagonals: [{ from: 0, to: 2, meters: 4.84 }] }).problems).toEqual(['tape-bends']);
+  });
+
+  it('a large zone taped exactly saves: the AR drifts with distance (audit 16/11: a 36 m zone was blocked)', () => {
+    const quad: ArPoint[] = [[17.912, -2.397], [-2.641, 13.141], [-17.888, -0.866], [-0.246, -13.41]].map(([x, z]) => ({ x: x!, y: 0, z: z! }));
+    const result = arAreaOf({ ...base, points: quad, tapes: { 0: 25.835, 1: 20.786, 2: 21.612, 3: 21.261 }, diagonals: [{ from: 0, to: 2, meters: 35.939 }] });
+
+    expect(result.canSave).toBe(true);
+    expect(result.areaM2! / 474.21).toBeCloseTo(1, 2);
+  });
+
+  it('one short tape scales the whole zone: it saves but asks for the longest side', () => {
+    const block: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 6, y: 0, z: 0 }, { x: 6, y: 0, z: 5 }, { x: 0.5, y: 0, z: 5 }, { x: 0, y: 0, z: 4.5 }];
+    const result = arAreaOf({ ...base, points: block, tapes: { 3: 0.72 } });
+
+    expect(result.problems).toEqual(['tape-short']);
+    expect(result.canSave).toBe(true);
+  });
+
+  it('a diagonal along a straight edge is not offered: a millimeter of tape would move the area', () => {
+    const notched: ArPoint[] = [[0, 0], [3, -0.02], [6, 0], [6, 2], [0, 2]].map(([x, z]) => ({ x: x!, y: 0, z: z! }));
+    expect(arDiagonalRows(arAreaOf({ ...base, points: notched })).map((row) => row.label)).toEqual(['Diagonal A–D']);
+  });
+
+  it('a taped triangle is exact: Heron, not the AR (José 15/11: 2,66 · 1,71 · 3,28)', () => {
+    const triangle: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 2.6, y: 0, z: 0 }, { x: 2.68, y: 0, z: 1.75 }];
+    const result = arAreaOf({ ...base, points: triangle, tapes: { 0: 2.66, 1: 1.71, 2: 3.28 } });
+
+    expect(result.areaM2).toBe(2.27);
+    expect(result.problems).toEqual([]);
+  });
+
+  it('a taped diagonal fixes a quad whose four sides were taped', () => {
+    const skewed: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 3, y: 0, z: 0 }, { x: 3.05, y: 0, z: 2.95 }, { x: 0.05, y: 0, z: 3.05 }];
+    const result = arAreaOf({ ...base, points: skewed, tapes: { 0: 3, 1: 3, 2: 3, 3: 3 }, diagonals: [{ from: 0, to: 2, meters: Math.hypot(3, 3) }] });
+
+    expect(result.areaM2).toBe(9);
+    expect(result.diagonals).toEqual([expect.objectContaining({ from: 0, to: 2, flag: 'ok' })]);
+    expect(result.problems).toEqual([]);
+  });
+
+  it('four taped sides the AR angles cannot hold: it saves but asks for a diagonal', () => {
+    const square: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 3, y: 0, z: 0 }, { x: 3, y: 0, z: 3 }, { x: 0, y: 0, z: 3 }];
+    const result = arAreaOf({ ...base, points: square, tapes: { 0: 3, 1: 3.3, 2: 3, 3: 2.9 } });
+
+    expect(result.problems).toEqual(['tape-bends']);
+    expect(isArWarning('tape-bends')).toBe(true);
+    expect(result.canSave).toBe(true);
+  });
+
+  it('tapes that cannot close any zone (1 + 0,95 is shorter than 2) do not save', () => {
+    const triangle: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, { x: 1.9, y: 0, z: 0.4 }];
+    const result = arAreaOf({ ...base, points: triangle, tapes: { 0: 1, 1: 0.95, 2: 2 } });
+
+    expect(result.problems).toContain('tape-contradicts');
+    expect(result.canSave).toBe(false);
+  });
+
+  it('keeps the AR corners laid on their plane, to correct the zone later', () => {
+    const result = arAreaOf({ ...base, tapes: { 0: 2 } });
+
+    expect(result.plane.map(({ x, y }) => [Math.round(x * 1000) / 1000, Math.abs(Math.round(y * 1000) / 1000)])).toEqual([[0, 0], [2, 0], [2, 1.5], [0, 1.5]]);
   });
 
   it('two taped sides that disagree with each other by more than 15 % do not save', () => {
@@ -191,7 +273,7 @@ describe('arAreaFigures and the lines', () => {
   });
 
   it('every problem has a line for the person', () => {
-    for (const problem of ['few-corners', 'short-side', 'crossed', 'degenerate', 'off-plane', 'tracking-lost', 'too-small', 'too-large', 'no-tape', 'tape-mismatch'] as const) {
+    for (const problem of ['few-corners', 'short-side', 'crossed', 'degenerate', 'off-plane', 'tracking-lost', 'too-small', 'too-large', 'no-tape', 'tape-mismatch', 'tape-bends', 'tape-contradicts', 'tape-short'] as const) {
       expect(arProblemLine(problem).length).toBeGreaterThan(10);
     }
   });
@@ -361,5 +443,33 @@ describe('the photo\'s summary in a corner (José 15/11: «no dentro de la figur
     expect(shotPanelOf(JSON.stringify(['a', 'b', 'c', 'd', 'e']))).toEqual([]);
     expect(shotPanelOf(42)).toEqual([]);
     expect(shotPanelField([])).toBeUndefined();
+  });
+});
+
+describe('the diagonals to tape (José 16/11: complex shapes in the street)', () => {
+  it('names the corners A, B, C… and offers a fan of diagonals from A', () => {
+    const pentagon: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 4, y: 0, z: 0 }, { x: 5, y: 0, z: 3 }, { x: 2, y: 0, z: 5 }, { x: -1, y: 0, z: 3 }];
+    const rows = arDiagonalRows(arAreaOf({ ...base, points: pentagon, tapes: { 0: 4 }, diagonals: [{ from: 3, to: 0, meters: 5.39 }] }));
+
+    expect(arCornerName(0)).toBe('A');
+    expect(arCornerName(26)).toBe('27');
+    expect(rows.map((row) => [row.label, row.taped])).toEqual([['Diagonal A–C', false], ['Diagonal A–D', true]]);
+    expect(rows[0]!.meters).toBe(Math.round(Math.hypot(5, 3) * 100) / 100);
+    expect(rows[1]).toMatchObject({ meters: 5.39, flag: 'ok' });
+  });
+
+  it('a zone with only its diagonal taped still went through the tape: «AR + wincha»', () => {
+    expect(arMethodOf(arAreaOf({ ...base, diagonals: [{ from: 0, to: 2, meters: 2.5 }] }))).toBe('ar-app');
+  });
+
+  it('a triangle has no diagonal to offer', () => {
+    const triangle: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }, { x: 0, y: 0, z: 2 }];
+    expect(arDiagonalRows(arAreaOf({ ...base, points: triangle, tapes: {} }))).toEqual([]);
+  });
+
+  it('a diagonal between neighbors, or off the zone, is ignored', () => {
+    const result = arAreaOf({ ...base, diagonals: [{ from: 0, to: 1, meters: 2 }, { from: 0, to: 9, meters: 2 }, { from: 3, to: 0, meters: 1.5 }] });
+    expect(result.diagonals).toEqual([]);
+    expect(result.problems).toEqual(['no-tape']);
   });
 });

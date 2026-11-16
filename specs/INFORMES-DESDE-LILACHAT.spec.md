@@ -1320,6 +1320,64 @@ espacio Test, con «QA-CTLPIS — borrar»:
 >     (zona de José en TES-IAA, sin guardar): «Resultado» muestra el chip
 >     Área; con una lectura de 5 cm, Área y Volumen (0,027 m³). El sello con
 >     los metros se probó en el server (píxeles) y en una foto de muestra.
+> - **Lados con candado (José 16/11).** José midió con wincha y encontró 5 a 10 cm
+>   de diferencia. Pidió corregir la medida y recalcular, y preguntó qué pasa con
+>   formas complejas. Lo que se investigó: ARPlan 3D es cerrada y no publica su
+>   método. magicplan bloquea una pared corregida (a mano o con láser Bluetooth) y
+>   recalcula el plano alrededor. En Android sin LiDAR los blogs hablan de 5 a 10 cm
+>   de error, y un estudio midió 4,8 cm de deriva en ARCore.
+>   - Motor `shared/src/zoneAdjust.ts`: mínimos cuadrados con el error real del
+>     AR. Las incógnitas son las esquinas verdaderas y una escala. Cada esquina
+>     del AR × escala se observa con σ 5 cm, y cada wincha (lado o diagonal) con
+>     σ 2 mm + 0,05 %. Las esquinas se mueven lo mínimo que piden las winchas. El
+>     paso de Gauss-Newton se parte a la mitad si no baja el costo.
+>   - Primer modelo descartado (auditoría independiente del 16/11): los ángulos
+>     del AR iban fijos (σ 0,25°). Dos winchas en lados opuestos estiraban los
+>     lados sin wincha hasta 22 % sin avisar. En 19 414 zonas simuladas, el error
+>     medio del área quedaba peor que con la escala sola (1,06 % contra 0,86 %).
+>     Además guardaba un polígono cruzado, y una diagonal sobre un borde recto
+>     convertía 1 mm de wincha en 3 % de área.
+>   - Winchas que concuerdan entre sí solo cambian la escala. Una zona rígida
+>     (triángulo con sus 3 lados, cuadrilátero con 4 lados y una diagonal) sale de
+>     sus winchas: el triángulo de José (2,66 · 1,71 · 3,28) da 2,27 m², igual
+>     que Herón.
+>   - Avisos nuevos:
+>     - `tape-bends` (avisa): una esquina se mueve más de 10 cm + 0,5 % del
+>       ancho de la zona. Se pide revisar las medidas o medir una diagonal.
+>     - `tape-contradicts` (no guarda):
+>       - una esquina se mueve más de 25 cm + 2,5 % del ancho de la zona;
+>       - la zona resuelta se cruza o se da vuelta;
+>       - una wincha queda a más de 3 σ de su medida;
+>       - o no hay solución (1 + 0,95 < 2).
+>     - `tape-short` (avisa): la única wincha cubre menos de un cuarto del
+>       perímetro, y la escala de toda la zona sale de ella.
+>     - Las diagonales también cuentan para «dos winchas no coinciden» (15 %).
+>   - Segunda auditoría (16/11, unas 20 000 zonas por caso), error medio del
+>     área, nuevo contra solo escala:
+>     - zonas de 2 a 5 m: 0,84 % contra 0,86 %;
+>     - con diagonal: 0,64 % contra 0,86 %;
+>     - con esquinas a ±10 cm: 1,29 % contra 1,73 %.
+>     Lo que tenía el primer límite fijo de 25 cm y 1 cm: una zona de 36 m
+>     medida exacta se bloqueaba. Ahora el límite crece con la zona.
+>   - Diagonales en «Lados»: abanico desde la esquina A (A–C, A–D…). No se
+>     ofrece la de un triángulo casi plano (altura < 4 % de la base). El plano
+>     nombra las esquinas y dibuja punteada la diagonal medida. Una zona con solo
+>     la diagonal medida también va como «AR + wincha».
+>   - Corregir después de guardar: la zona manda `geometria`
+>     (`shared/src/zoneGeometry.ts`, v1 estricta: `esquinas`, `lados`
+>     {arM, winchaM?}, `diagonales` {desde, hasta, winchaM}). El server la
+>     rehace solo con las claves de Portal y la rechaza si la zona no se midió
+>     con el AR.
+>     - Portal: 2d1252ca (todavía no en prod). Se le pidió sumar `diagonales` y
+>       `reemplazarCaptura=true` en el boleto, que manda a la papelera la foto
+>       con los metros viejos.
+>     - Agentes: 823101b, ya en prod. El lector deja pasar `geometria` como
+>       string.
+>     - `ZONE_GEOMETRY_TO_PORTAL` queda en false hasta que Portal esté en prod y
+>       José reapruebe `registrar_area_adicional`, porque cambió su entrada.
+>       Mientras tanto Portal rechazaría la clave y la zona no se guardaría.
+>   - Sin verificar: la pantalla de diagonales en un teléfono (el emulador ARM
+>     no corre ARCore y la app no tiene tests de render).
 > - **Sin verificar todavía:** la cámara AR y la medida contra una wincha real,
 >   en el teléfono de José (el emulador ARM no corre ARCore). Tampoco que los
 >   rótulos caigan sobre el lado en una foto real: el cuadro de las esquinas es

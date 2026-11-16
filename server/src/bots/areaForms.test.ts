@@ -1,3 +1,5 @@
+import { ZONE_GEOMETRY_TO_PORTAL } from '@lilachat/shared';
+import type { AreaCreateInput } from './areaForms.js';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@lilachat/shared', async (original) => ({ ...(await original<typeof import('@lilachat/shared')>()), AREAS_OPEN_HERE: true }));
@@ -105,3 +107,24 @@ describe('removing an area', () => {
     expect(areaFormInputOf({ kind: 'area_remove', area_id: 'x'.repeat(65) })).toBeNull();
   });
 });
+
+describe('the AR geometry (José 16/11: correct a side after saving)', () => {
+  const geometry = JSON.stringify({ v: 1, esquinas: [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 1.5 }, { x: 0, y: 1.5 }], lados: [{ arM: 2, winchaM: 2.05 }, { arM: 1.5 }, { arM: 2 }, { arM: 1.5 }], extra: 'x' });
+  const zone = { kind: 'area_create', entry_id: ENTRY, area_m2: 3.15, method: 'ar-app', source: 'apk' };
+
+  it('comes back with Portal\'s keys only', () => {
+    const input = areaFormInputOf({ ...zone, geometry }) as AreaCreateInput;
+    expect(Object.keys(JSON.parse(input.geometry!)).sort()).toEqual(['esquinas', 'lados', 'v']);
+  });
+
+  it('a broken geometry, or one on a zone not measured with the AR, is a 400', () => {
+    expect(areaFormInputOf({ ...zone, geometry: '{"v":2}' })).toBeNull();
+    expect(areaFormInputOf({ ...zone, method: 'a-mano', source: 'apk', geometry })).toBeNull();
+  });
+
+  it('does not reach Portal while the switch is off (Portal refuses unknown keys)', () => {
+    const ready = areaFormPrepared(SERVICE, areaFormInputOf({ ...zone, geometry })!);
+    expect('geometria' in ready.context).toBe(ZONE_GEOMETRY_TO_PORTAL);
+  });
+});
+

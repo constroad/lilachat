@@ -1,4 +1,4 @@
-import { AREA_FIELD_METHODS, AREAS_OPEN_HERE, type AppForm, type AreaMethod, type FormSchema } from '@lilachat/shared';
+import { AREA_FIELD_METHODS, AREAS_OPEN_HERE, ZONE_GEOMETRY_TO_PORTAL, zoneGeometryOf, zoneGeometryString, type AppForm, type AreaMethod, type FormSchema } from '@lilachat/shared';
 
 /**
  * An additional area measured from the client's channel (José 12/11, option B;
@@ -23,6 +23,8 @@ const PRODUCT_SLACK_M2 = 0.01;
 export type AreaCreateInput = {
   kind: 'area_create'; entryId: string; lengthM: number | null; widthM: number | null; areaM2: number; thicknessCm: number | null;
   method: AreaMethod; lat: number | null; lng: number | null; precisionM: number | null; source: 'apk' | 'web'; reportId: string | null;
+  /** Portal's `geometria` (strict v1), rebuilt from what the phone sent; only for an AR zone. */
+  geometry: string | null;
 };
 /** «Quitar área»: Portal's `quitar` with only the area; its photos go to Portal's trash. */
 export type AreaRemoveInput = { kind: 'area_remove'; areaId: string };
@@ -64,6 +66,14 @@ function placeOf(raw: Record<string, unknown>): { lat: number | null; lng: numbe
   return lat === null || lng === null ? null : { lat, lng };
 }
 
+/** An AR zone's corners and tapes, re-serialized with Portal's keys only; `undefined` = refused. */
+function geometryOf(raw: Record<string, unknown>, method: AreaMethod): string | null | undefined {
+  if (raw.geometry === undefined) return null;
+  if (method !== 'ar' && method !== 'ar-app') return undefined;
+  const geometry = zoneGeometryOf(raw.geometry);
+  return (geometry && zoneGeometryString(geometry)) || undefined;
+}
+
 /** What the phone asked; anything off Portal's limits is a 400 before the door. */
 export function areaFormInputOf(raw: Record<string, unknown>): AreaFormInput | null {
   if (raw.kind === 'area_remove') {
@@ -94,7 +104,9 @@ function areaMeasureOf(raw: Record<string, unknown>): AreaMeasureInput | null {
   const thicknessCm = raw.thickness_cm === undefined ? null : inRange(raw.thickness_cm, THICKNESS_CM);
   if (!sides || !place || (raw.thickness_cm !== undefined && thicknessCm === null)) return null;
   const precisionM = inRange(raw.precision_m, { min: 0, max: PRECISION_MAX_M });
-  return { ...sides, areaM2, thicknessCm, method, ...place, precisionM: place.lat === null ? null : precisionM, source: raw.source, reportId: idOf(raw.report_id) || null };
+  const geometry = geometryOf(raw, method);
+  if (geometry === undefined) return null;
+  return { ...sides, areaM2, thicknessCm, method, ...place, precisionM: place.lat === null ? null : precisionM, source: raw.source, reportId: idOf(raw.report_id) || null, geometry };
 }
 
 const some = (key: string, value: number | string | null): AreaFormContext => (value === null ? {} : { [key]: value });
@@ -107,6 +119,8 @@ export function areaFormPrepared(serviceId: string, input: AreaFormInput): { for
     ...some('largoM', input.lengthM), ...some('anchoM', input.widthM), areaM2: input.areaM2, ...some('espesorCm', input.thicknessCm),
     metodo: input.method, ...some('lat', input.lat), ...some('lng', input.lng), ...some('precisionM', input.precisionM),
     fuente: input.source, ...some('informeId', input.reportId),
+    // Off until Portal stores it and José re-approves the tool: an unknown key would refuse the zone.
+    ...(ZONE_GEOMETRY_TO_PORTAL ? some('geometria', input.geometry) : {}),
   };
   if (input.kind === 'area_edit') {
     return { form: { id: REGISTER_AREA_TOOL, title: 'Editar zona', submitLabel: 'Guardar cambios', schema: FORM }, context: { servicioId: serviceId, kind: 'editar', areaId: input.areaId, ...measure } };

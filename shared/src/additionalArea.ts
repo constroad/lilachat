@@ -2,7 +2,7 @@ import { FORMS_LEVEL } from './appForms.js';
 import type { CommandResponse } from './botCommands.js';
 import { photoUploadOf, type DriveUpload } from './driveUpload.js';
 import { formFilesWriteStore, type WriteKind } from './formFilesWrite.js';
-import { zoneGeometryOf, type ZoneCorrection, type ZoneGeometry } from './zoneGeometry.js';
+import { zoneGeometryOf, zoneGeometryString, type ZoneCorrection, type ZoneGeometry } from './zoneGeometry.js';
 import { AREA_FIELD_METHODS, AREA_METHOD_LABELS, type AreaDraftPoint, type AreaFigures, type AreaMethod } from './areaMeasure.js';
 import type { ObservationSource } from './observationWrite.js';
 import { ENLACE_DE_DESCARGA } from './invitacion.js';
@@ -92,9 +92,26 @@ function figuresOf(raw: Raw): Omit<AdditionalArea, 'id' | 'areaM2' | 'method' | 
   };
 }
 
+/**
+ * Portal's `geometria` string, or this module's own parsed output (the server parses the report
+ * and the phone reads it again: E2E 16/11, the phone dropped it). Both go through Portal's format.
+ */
 function geometryOf(raw: unknown): Pick<AdditionalArea, 'geometry'> {
-  const geometry = raw === undefined || raw === null ? null : zoneGeometryOf(raw);
+  if (raw === undefined || raw === null) return {};
+  const own = record(raw);
+  const asPortal = Array.isArray(own.corners) && Array.isArray(own.sides) && Array.isArray(own.diagonals) ? ownGeometryString(own) : raw;
+  const geometry = asPortal === undefined ? null : zoneGeometryOf(asPortal);
   return geometry ? { geometry } : {};
+}
+
+/** Back to Portal's keys, only from well-formed pieces (anything else is refused by `zoneGeometryOf`). */
+function ownGeometryString(own: Raw): string | undefined {
+  const pieces = (value: unknown) => (value as unknown[]).map(record);
+  return zoneGeometryString({
+    corners: pieces(own.corners).map((corner) => ({ x: corner.x as number, y: corner.y as number })),
+    sides: pieces(own.sides).map((side) => ({ arMeters: side.arMeters as number, ...(side.tapeMeters === undefined ? {} : { tapeMeters: side.tapeMeters as number }) })),
+    diagonals: pieces(own.diagonals).map((diagonal) => ({ from: diagonal.from as number, to: diagonal.to as number, meters: diagonal.meters as number })),
+  });
 }
 
 function areaOf(raw: unknown): AdditionalArea | null {

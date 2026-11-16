@@ -249,3 +249,19 @@ describe('areaEditRequest with a corrected AR zone (José 16/11)', () => {
     expect(request).not.toHaveProperty('length_m');
   });
 });
+
+describe('the geometry survives the server and the phone (E2E 16/11: the server parsed it, the phone dropped it)', () => {
+  it('reading its own output keeps the geometry', () => {
+    const geometria = JSON.stringify({ v: 1, esquinas: [{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 1.5 }, { x: 0, y: 1.5 }], lados: [{ arM: 2, winchaM: 2.05 }, { arM: 1.5 }, { arM: 2 }, { arM: 1.5 }], diagonales: [{ desde: 0, hasta: 2, winchaM: 2.5 }] });
+    const fromPortal = areaDocumentOf({ id: 'r1', areas: [{ id: 'a1', areaM2: 3, metodo: 'ar-app', geometria, fotos: [] }] })!;
+    const onThePhone = areaDocumentOf(JSON.parse(JSON.stringify(fromPortal)))!;
+
+    expect(fromPortal.areas[0]!.geometry?.corners).toHaveLength(4);
+    expect(onThePhone.areas[0]!.geometry).toEqual(fromPortal.areas[0]!.geometry);
+  });
+
+  it('a broken own geometry is dropped, never thrown', () => {
+    const broken = areaDocumentOf({ id: 'r1', areas: [{ id: 'a1', areaM2: 3, method: 'ar', geometry: { corners: 'x', sides: null }, photos: [] }] })!;
+    expect(broken.areas[0]!.geometry).toBeUndefined();
+  });
+});

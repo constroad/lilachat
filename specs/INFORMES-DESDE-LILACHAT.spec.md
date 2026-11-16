@@ -1377,9 +1377,17 @@ espacio Test, con «QA-CTLPIS — borrar»:
 >       `reemplazarCaptura`. `ZONE_GEOMETRY_TO_PORTAL` está encendido. Hasta que
 >       José reapruebe `registrar_area_adicional` en agentes, guardar, editar o
 >       quitar una zona da 502, porque cambió la entrada de la herramienta.
->     - `correctedZone` recalcula una zona guardada con sus winchas nuevas,
->       usando el mismo motor que la medición. La pantalla de edición todavía no
->       lo usa.
+>     - Pantalla «Editar zona»: si la zona guardó su geometría, muestra sus lados
+>       y diagonales, y cada uno se toca para poner la wincha.
+>       - `zoneCorrectionOf` recalcula con el mismo motor que la medición.
+>       - «Guardar cambios» manda el área nueva, «AR + wincha» y la geometría.
+>       - Un error rojo no deja guardar, igual que al medir.
+>     - La foto conserva los metros del AR porque están quemados en ella. La
+>       pantalla lo dice. Lo propuso Lilachat el 16/11 y José aún no lo confirma.
+>       La otra opción es quitar la foto al corregir. `reemplazarCaptura` queda
+>       en Portal para cuando haya una foto nueva.
+>     - Zonas guardadas antes del 16/11: no tienen geometría y se editan como
+>       antes (solo el espesor y los textos).
 >     - Publicado: 679e484 y OTA 3dc7eb8f (motor y diagonales).
 >   - Sin verificar: la pantalla de diagonales en un teléfono (el emulador ARM
 >     no corre ARCore y la app no tiene tests de render).

@@ -25,9 +25,9 @@ function chipRowLayout(placement: { mia: boolean; conAvatar: boolean; centered?:
 }
 
 /**
- * Debajo de la raíz de un hilo (E3, 20/10; diseño `e3-app-chip-hilo`): los
- * últimos que respondieron, «4 respuestas · última 10:42», un punto si hay
- * nuevas y la flecha. Tocarlo abre el hilo.
+ * Under a thread's root (E3, 20/10): who answered last, the reply count with
+ * the time of the last one, and the arrow. With unread replies it gets a border and a «Nuevo» pill
+ * (José 16/11: the purple dot did not stand out). Tapping it opens the thread. Design `e3-app-chip-hilo`.
  */
 export const ChipDeHilo = memo(function ChipDeHilo(props: {
   seq: number;
@@ -57,13 +57,13 @@ export const ChipDeHilo = memo(function ChipDeHilo(props: {
       <Pressable
         testID={`chip-hilo-${props.seq}`}
         accessibilityRole="button"
-        accessibilityLabel={`${texto}. Abrir el hilo`}
+        accessibilityLabel={`${texto}${props.nuevas ? '. Hay respuestas sin leer' : ''}. Abrir el hilo`}
         onPress={() => props.onAbrir(props.seq)}
-        className={
+        className={`${
           flat
-            ? 'min-h-[36px] max-w-full flex-shrink flex-row items-center gap-2 rounded-lg border border-outline/15 bg-surface px-2'
-            : 'min-h-[48px] max-w-[80%] flex-row items-center gap-2.5 rounded-b-2xl border border-t-0 border-outline/15 bg-surface px-3.5'
-        }
+            ? 'min-h-[36px] max-w-full flex-shrink flex-row items-center gap-2 rounded-lg border px-2'
+            : 'min-h-[48px] max-w-[80%] flex-row items-center gap-2.5 rounded-b-2xl border border-t-0 px-3.5'
+        } ${props.nuevas ? 'border-primary/50 bg-primary/[0.08]' : 'border-outline/15 bg-surface'}`}
         // As wide as its bubble, so the edges meet; the same 80 % limit as the bubble.
         style={bubbleWidth && !flat && !props.centered ? { minWidth: bubbleWidth } : undefined}
       >
@@ -74,9 +74,13 @@ export const ChipDeHilo = memo(function ChipDeHilo(props: {
             </View>
           ))}
         </View>
-        <Text className={`${flat ? 'text-[14px]' : 'text-[15px]'} font-bold text-primary`} numberOfLines={1}>{cantidad}</Text>
+        <Text className={`${flat ? 'text-[14px]' : 'text-[15px]'} font-bold ${props.nuevas ? 'text-primary' : 'text-on-surface-variant'}`} numberOfLines={1}>{cantidad}</Text>
         {resto.length > 0 ? <Text className={`flex-shrink ${flat ? 'text-[12px]' : 'text-[13px]'} text-on-surface-variant`} numberOfLines={1}>· {resto.join(' · ')}</Text> : null}
-        {props.nuevas ? <View testID={`hilo-nuevas-${props.seq}`} className="h-2.5 w-2.5 rounded-full bg-primary" /> : null}
+        {props.nuevas ? (
+          <View testID={`hilo-nuevas-${props.seq}`} className="rounded-full bg-primary px-2 py-0.5">
+            <Text className="text-[11px] font-bold text-on-primary">Nuevo</Text>
+          </View>
+        ) : null}
         <ChevronRight size={flat ? 16 : 18} color={colores['on-surface-variant']} />
       </Pressable>
     </View>

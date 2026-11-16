@@ -37,17 +37,30 @@ export function useHilosWeb(params: { chatId: string; jwt: string; base: BaseLoc
   const { chatId, jwt, base, yo, mensajes } = params;
   const [abierto, setAbierto] = useState<number | null>(null);
   const [remotas, setRemotas] = useState<ChatMessage[]>([]);
-  const [, setVersion] = useState(0);
+  // This chat's read marks as state: a thread read redraws its chip (José 16/11: the dot never went out).
+  const [seenOfChat, setSeenOfChat] = useState(() => leerVistos()[chatId] ?? {});
+  const markSeen = useCallback(
+    (root: number, upTo: number) => {
+      if (guardarVisto(chatId, root, upTo)) setSeenOfChat(leerVistos()[chatId] ?? {});
+    },
+    [chatId]
+  );
   useEffect(() => {
     setAbierto(null);
+    setSeenOfChat(leerVistos()[chatId] ?? {});
   }, [chatId]);
 
   useEffect(() => {
     if (!base || !jwt) return;
-    void api<{ hilos: { raiz: number; hilo: NonNullable<ChatMessage['hilo']> }[] }>(`/chats/${chatId}/hilos`, { jwt }).then((r) => {
-      if (r.ok) r.data.hilos.forEach(({ raiz, hilo }) => void aplicarResumenDeHilo(base, { chatId, raiz, hilo }));
+    void api<{ hilos: { raiz: number; hilo: NonNullable<ChatMessage['hilo']>; visto?: number }[] }>(`/chats/${chatId}/hilos`, { jwt }).then((r) => {
+      if (!r.ok) return;
+      for (const { raiz, hilo, visto } of r.data.hilos) {
+        void aplicarResumenDeHilo(base, { chatId, raiz, hilo });
+        // Read on another device (the phone) is read here too.
+        if (visto) markSeen(raiz, visto);
+      }
     });
-  }, [chatId, jwt, base]);
+  }, [chatId, jwt, base, markSeen]);
 
   useEffect(() => {
     setRemotas([]);
@@ -68,15 +81,18 @@ export function useHilosWeb(params: { chatId: string; jwt: string; base: BaseLoc
 
   const ultima = respuestas.filter((uno) => !uno.estado).at(-1)?.seq;
   useEffect(() => {
-    if (abierto !== null && ultima && guardarVisto(chatId, abierto, ultima)) setVersion((v) => v + 1);
-  }, [abierto, ultima, chatId]);
+    if (abierto === null || !ultima) return;
+    markSeen(abierto, ultima);
+    // A reply that arrives with the thread open is read on every device.
+    void api(`/chats/${chatId}/hilos/${abierto}/visto`, { method: 'POST', jwt, body: { seq: ultima } });
+  }, [abierto, ultima, chatId, jwt, markSeen]);
 
   const hiloConNuevas = useCallback(
     (seq: number) => {
       const raiz = mensajes?.find((uno) => uno.seq === seq);
-      return raiz?.hilo ? hayRespuestasNuevas(raiz.hilo, leerVistos()[chatId]?.[String(seq)], yo) : false;
+      return raiz?.hilo ? hayRespuestasNuevas(raiz.hilo, seenOfChat[String(seq)], yo) : false;
     },
-    [mensajes, chatId, yo]
+    [mensajes, seenOfChat, yo]
   );
 
   return {

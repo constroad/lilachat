@@ -16064,6 +16064,21 @@ sé dónde respondieron en un hilo, no es como Slack».
   (`ThreadRepliesBanner`; motor `threadsWithNewReplies` en shared, con test).
   Diseño propio: Stitch no tiene esta pantalla.
 
+**El chip del hilo (José 16/11, segunda vuelta: «el punto morado no indica
+nada, no cambia de color»):**
+
+- Causa: el callback `hiloConNuevas` dependía solo de `[chatId, yo]` en el APK
+  y de `[mensajes, chatId, yo]` en la web. Leer un hilo no lo cambiaba, así que
+  las celdas memoizadas no se redibujaban y el punto quedaba como estaba hasta
+  el próximo mensaje. Además el punto era del mismo morado que el contador.
+- Arreglo: el APK lee una instantánea por chat (`seenThreadsOf`, referencia
+  nueva solo cuando se marca un hilo; test `hilosVistos.test.ts`). La web guarda
+  las marcas del chat en estado, aplica `visto` de `GET /hilos` (leído en el
+  teléfono = leído en la web) y hace `POST /visto` con el hilo abierto.
+- Chip: leído = contador gris y borde tenue; sin leer = borde y fondo de marca,
+  contador de marca y pastilla «Nuevo» (`text-on-primary`). El lector de
+  pantalla dice «Hay respuestas sin leer».
+
 **Verificado:** contrato HTTP de la marca por hilo (`threadReads.test.ts`).
 Presencia y web contra teléfono (`chatNotifications.test.ts`,
 `pushService.test.ts`). En el emulador con la OTA, el chat abre sin errores y

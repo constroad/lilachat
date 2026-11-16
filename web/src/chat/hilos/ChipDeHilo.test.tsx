@@ -12,9 +12,17 @@ describe('ChipDeHilo', () => {
     render(<ChipDeHilo seq={7} hilo={{ respuestas: 4, ultimaEn: '2026-10-20T15:42:00.000Z', autores: ['b', 'c'] }} nombres={nombres} nuevas onAbrir={onAbrir} />);
 
     expect(screen.getByText(/^4 respuestas · última /)).toBeInTheDocument();
-    expect(screen.getByTestId('hilo-nuevas-7')).toBeInTheDocument();
+    expect(screen.getByTestId('hilo-nuevas-7')).toHaveTextContent('Nuevo');
+    expect(screen.getByTestId('chip-hilo-7')).toHaveAccessibleName(/sin leer/);
     await userEvent.click(screen.getByTestId('chip-hilo-7'));
     expect(onAbrir).toHaveBeenCalledWith(7);
+  });
+
+  it('a thread already read has no «Nuevo» and does not say unread (José 16/11: the dot never changed)', () => {
+    render(<ChipDeHilo seq={7} hilo={{ respuestas: 4, autores: ['b', 'c'] }} nombres={nombres} nuevas={false} onAbrir={() => undefined} />);
+
+    expect(screen.queryByTestId('hilo-nuevas-7')).toBeNull();
+    expect(screen.getByTestId('chip-hilo-7')).not.toHaveAccessibleName(/sin leer/);
   });
 
   it('shows the faces of who replied when they have a photo (backlog 18)', () => {

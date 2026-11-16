@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { hayRespuestasNuevas, respuestasDelHilo, visibleEnElChat, type ResumenDeHiloEnCliente } from '@lilachat/shared';
 import { threadsWithNewReplies } from '@lilachat/shared';
 import { hiloCompleto, markThreadSeen } from '../api/client';
-import { marcarHiloVisto, suscribirHilosVistos, threadSummariesOf, vistoHasta } from './hilosVistos';
+import { marcarHiloVisto, seenThreadsOf, suscribirHilosVistos, threadSummariesOf, vistoHasta } from './hilosVistos';
 import type { ChatMessage, PendingMessage } from './useChat';
 
 /**
@@ -36,7 +36,9 @@ export function useHilosEnElChat(params: {
 
   const delChat = useMemo(() => messages.filter(visibleEnElChat), [messages]);
   const pendientesDelChat = useMemo(() => pending.filter(visibleEnElChat), [pending]);
-  const hiloConNuevas = useCallback((seq: number, hilo: ResumenDeHiloEnCliente) => hayRespuestasNuevas(hilo, vistoHasta(chatId, seq), yo), [chatId, yo]);
+  // A new snapshot when a thread is read, so the chat redraws its dots (José 16/11: the dot never went out).
+  const seenOfChat = seenThreadsOf(chatId);
+  const threadHasNew = useCallback((seq: number, thread: ResumenDeHiloEnCliente) => hayRespuestasNuevas(thread, seenOfChat[String(seq)], yo), [seenOfChat, yo]);
 
   // Al abrir, lo que el server tiene del hilo (puede haber respuestas que este teléfono nunca bajó).
   useEffect(() => {
@@ -74,7 +76,7 @@ export function useHilosEnElChat(params: {
   return {
     delChat,
     pendientesDelChat,
-    hiloConNuevas,
+    hiloConNuevas: threadHasNew,
     withNewReplies,
     abierto,
     abrir: useCallback((seq: number) => {

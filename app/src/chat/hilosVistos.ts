@@ -24,6 +24,13 @@ export function vistoHasta(chatId: string, raiz: number): number | undefined {
   return vistos?.[chatId]?.[String(raiz)];
 }
 
+const NOTHING_SEEN: Readonly<Record<string, number>> = Object.freeze({});
+
+/** What this chat has seen, as one snapshot that changes only when a thread is read: the chat redraws its dots on it. */
+export function seenThreadsOf(chatId: string): Readonly<Record<string, number>> {
+  return vistos?.[chatId] ?? NOTHING_SEEN;
+}
+
 /** Al abrir el hilo: visto hasta su última respuesta (nunca retrocede). */
 export async function marcarHiloVisto(chatId: string, raiz: number, hasta: number): Promise<void> {
   const todos = await cargar();

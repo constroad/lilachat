@@ -229,6 +229,8 @@ export interface Receipt {
   /** José 13/11: WHEN each cursor advanced (the last few), so «Info» says the time, like WhatsApp. */
   readLog?: ReceiptMark[];
   deliveredLog?: ReceiptMark[];
+  /** José 16/11: how far this person read each thread, root seq → reply seq (`threadReads.ts`). */
+  threadSeq?: Map<string, number> | Record<string, number>;
 }
 
 export type ReceiptMark = { seq: number; at: Date };
@@ -395,6 +397,7 @@ const receiptSchema = new Schema<Receipt>(
     readSeq: { type: Number, default: 0 },
     readLog: { type: [{ seq: Number, at: Date, _id: false }], default: undefined },
     deliveredLog: { type: [{ seq: Number, at: Date, _id: false }], default: undefined },
+    threadSeq: { type: Map, of: Number, default: undefined },
   },
   { timestamps: true }
 );

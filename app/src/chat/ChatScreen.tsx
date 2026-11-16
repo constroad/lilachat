@@ -18,6 +18,7 @@ import { CrearDesdeElChat, type QueSeCrea } from './CrearDesdeElChat';
 import { AccionesDeTarjetaContext } from './accionesDeTarjeta';
 import type { AgendaReminder } from '../agenda/agendaApi';
 import { CatchUpBanner } from './CatchUpBanner';
+import { ThreadRepliesBanner } from './ThreadRepliesBanner';
 import { cuantosParaPonerAlDia } from './ponerAlDia';
 import { SecretChatBanner } from '../crypto/SecretChatBanner';
 import { useSecretChat } from '../crypto/useSecretChat';
@@ -475,6 +476,9 @@ export function ChatScreen({
         <SecretChatBanner session={secreto} />
       ) : (
         <CatchUpBanner chatId={chatId} credential={credential} unread={paraPonerAlDia} leido={leyoHastaElFinal} />
+      )}
+      {encrypted || hilos.abierto !== null ? null : (
+        <ThreadRepliesBanner threads={hilos.withNewReplies} rootText={(root) => messages.find((one) => one.seq === root)?.body} nameOf={(id) => nombresDeReacciones.get(id)} onOpen={hilos.abrir} />
       )}
 
       <AccionesDeTarjetaContext.Provider value={accionesDeTarjeta}>

@@ -1,6 +1,7 @@
 import { useEffect, type Dispatch, type SetStateAction } from 'react';
 import { aplicarResumenDeHilo, type ResumenDeHiloEnCliente } from '@lilachat/shared';
 import { hilosDelChat } from '../api/client';
+import { marcarHiloVisto, rememberThreadSummary } from './hilosVistos';
 import { guardarMensajes } from './mensajesGuardados';
 import { getSocket } from './socketClient';
 import type { ChatMessage } from './useChat';
@@ -17,19 +18,26 @@ export function useResumenesDeHilos(params: { chatId: string; token: string; set
     const socket = getSocket();
     if (!socket) return;
     let vivo = true;
-    const poner = (raiz: number, hilo: ResumenDeHiloEnCliente) =>
+    const applySummary = (raiz: number, hilo: ResumenDeHiloEnCliente) => {
+      rememberThreadSummary(chatId, raiz, hilo);
       setMessages((actuales) => {
         const nuevos = aplicarResumenDeHilo(actuales, raiz, hilo);
         const raizNueva = nuevos.find((mensaje) => mensaje.seq === raiz);
         if (nuevos !== actuales && raizNueva) void guardarMensajes(chatId, [raizNueva]);
         return nuevos;
       });
+    };
     const onHilo = (frame: { chatId?: string; raiz?: number; hilo?: ResumenDeHiloEnCliente }) => {
-      if (vivo && frame.chatId === chatId && typeof frame.raiz === 'number' && frame.hilo) poner(frame.raiz, frame.hilo);
+      if (vivo && frame.chatId === chatId && typeof frame.raiz === 'number' && frame.hilo) applySummary(frame.raiz, frame.hilo);
     };
     const alConectar = () =>
       void hilosDelChat(token, chatId).then((respuesta) => {
-        if (respuesta.ok && vivo) respuesta.data.hilos.forEach(({ raiz, hilo }) => poner(raiz, hilo));
+        if (!respuesta.ok || !vivo) return;
+        respuesta.data.hilos.forEach(({ raiz, hilo, visto }) => {
+          // Read on another device: the dot goes off here too.
+          if (visto) void marcarHiloVisto(chatId, raiz, visto);
+          applySummary(raiz, hilo);
+        });
       });
     socket.on('msg.hilo', onHilo);
     socket.on('connect', alConectar);

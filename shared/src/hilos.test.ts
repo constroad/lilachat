@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aplicarResumenDeHilo, hayRespuestasNuevas, canOpenThread, respuestasDelHilo, textoDelChipDeHilo, visibleEnElChat, replyOpensThread, threadQuoteLine, THREAD_QUOTE_MAX } from './hilos.js';
+import { aplicarResumenDeHilo, hayRespuestasNuevas, canOpenThread, respuestasDelHilo, textoDelChipDeHilo, visibleEnElChat, replyOpensThread, threadQuoteLine, THREAD_QUOTE_MAX, threadsWithNewReplies, newRepliesLine } from './hilos.js';
 
 /** E3 (20/10): hilos. */
 describe('visibleEnElChat', () => {
@@ -122,5 +122,23 @@ describe('threadQuoteLine', () => {
     expect(line).not.toContain('\n');
     expect(line.length).toBeLessThanOrEqual(THREAD_QUOTE_MAX + 'Respondió en el hilo de Ana: '.length + 1);
     expect(line.endsWith('…')).toBe(true);
+  });
+});
+
+describe('threadsWithNewReplies: where they replied (José 16/11)', () => {
+  const thread = (root: number, ultimaSeq: number, autores: string[]) => ({ root, summary: { respuestas: 1, ultimaSeq, autores } });
+
+  it('only the unseen ones not last written by me, newest reply first', () => {
+    const threads = [thread(1, 5, ['ana']), thread(2, 9, ['ana']), thread(3, 7, ['ana', 'me']), thread(4, 6, ['ana'])];
+    const seen: Record<number, number> = { 4: 6 };
+
+    expect(threadsWithNewReplies(threads, (root) => seen[root], 'me').map((one) => one.root)).toEqual([2, 1]);
+  });
+
+  it('says who replied when it is one thread, and how many when more', () => {
+    expect(newRepliesLine([thread(1, 5, ['ana'])], (id) => (id === 'ana' ? 'Ana' : undefined))).toBe('Ana respondió en un hilo');
+    expect(newRepliesLine([thread(1, 5, ['x'])], () => undefined)).toBe('Respuesta nueva en un hilo');
+    expect(newRepliesLine([thread(1, 5, ['ana']), thread(2, 6, ['ana'])], () => 'Ana')).toBe('Respuestas nuevas en 2 hilos');
+    expect(newRepliesLine([], () => 'Ana')).toBe('');
   });
 });

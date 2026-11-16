@@ -5,6 +5,7 @@ import { ChatModel, MessageModel, ReceiptModel, type Message } from './chatModel
 import { chatVisible, infoDeChats, personasPorId } from './contextoDeChats.js';
 import { allActiveIn } from './workspaceChats.js';
 import { asyncRoute, requireSession } from './requireSession.js';
+import { threadCursorsOf, threadHasNewReplies, threadReadUpTo } from './threadReads.js';
 
 /** How many rows a tab brings: the recent activity, not an archive. */
 const ACTIVITY_LIMIT = 50;
@@ -12,7 +13,7 @@ const ACTIVITY_LIMIT = 50;
 const REACTED_SCAN = 200;
 const FIELDS = 'chatId seq senderId body menciones at hilo reacciones';
 
-type Scope = { me: Types.ObjectId; chatIds: Types.ObjectId[]; readSeq: Map<string, number> };
+type Scope = { me: Types.ObjectId; chatIds: Types.ObjectId[]; readSeq: Map<string, number>; threadSeq: Map<string, Map<number, number>> };
 
 // Each filter repeats its partial index's condition (`chatModels.ts`, 22/10): the planner only uses a partial index when the query implies it.
 const mentionsFilter = (scope: Scope): QueryFilter<Message> => ({ chatId: { $in: scope.chatIds }, menciones: { $exists: true }, senderId: { $ne: scope.me }, 'menciones.userId': { $in: [String(scope.me), MENTION_ALL, MENTION_HERE] }, deletedAt: { $exists: false } });
@@ -21,14 +22,20 @@ const reactionsFilter = (scope: Scope): QueryFilter<Message> => ({ chatId: { $in
 
 const read = (scope: Scope, message: Pick<Message, 'chatId'>) => scope.readSeq.get(String(message.chatId)) ?? 0;
 const mentionUnread = (scope: Scope, message: Message) => message.seq > read(scope, message);
-/** A thread is new for me while its last reply is after what I read and was not mine. */
-const threadUnread = (scope: Scope, message: Message) => (message.hilo?.ultimaSeq ?? 0) > read(scope, message) && message.hilo?.autores?.at(-1) !== String(scope.me);
+/** A thread has its own cursor (José 16/11): reading the chat does not read its threads. */
+const threadUnread = (scope: Scope, message: Message) =>
+  !!message.hilo && threadHasNewReplies(message.hilo, threadReadUpTo(message.hilo, scope.threadSeq.get(String(message.chatId))?.get(message.seq), read(scope, message)), String(scope.me));
 
 async function scopeOf(me: Types.ObjectId, workspaceId: Types.ObjectId | undefined): Promise<Scope> {
   const chats = await ChatModel.find({ 'members.userId': me, encrypted: { $ne: true }, workspaceId: workspaceId ?? { $exists: false } }).select('_id').lean();
   const chatIds = chats.map((chat) => chat._id);
-  const receipts = await ReceiptModel.find({ userId: me, chatId: { $in: chatIds } }).select('chatId readSeq').lean();
-  return { me, chatIds, readSeq: new Map(receipts.map((receipt) => [String(receipt.chatId), receipt.readSeq])) };
+  const receipts = await ReceiptModel.find({ userId: me, chatId: { $in: chatIds } }).select('chatId readSeq threadSeq').lean();
+  return {
+    me,
+    chatIds,
+    readSeq: new Map(receipts.map((receipt) => [String(receipt.chatId), receipt.readSeq])),
+    threadSeq: new Map(receipts.map((receipt) => [String(receipt.chatId), threadCursorsOf(receipt.threadSeq)])),
+  };
 }
 
 /** The mentions and threads are read once: the tab's rows and the chips' counts come from the same answer. */

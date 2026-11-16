@@ -511,7 +511,10 @@ export const reenviarMensajeA = (token: string, haciaChatId: string, origen: { d
 
 /** E3: el resumen de cada raíz del chat (el chip al día tras estar desconectado). */
 export const hilosDelChat = (token: string, chatId: string) =>
-  get<{ hilos: { raiz: number; hilo: ResumenDeHiloEnCliente }[] }>(`/api/chats/${chatId}/hilos`, token);
+  get<{ hilos: { raiz: number; hilo: ResumenDeHiloEnCliente; visto?: number }[] }>(`/api/chats/${chatId}/hilos`, token);
+
+/** Seen up to `seq` in a thread, on the server too (José 16/11): every device and the «Hilos» tab agree. */
+export const markThreadSeen = (token: string, chatId: string, root: number, seq: number) => authed<Record<string, never>>('POST', `/api/chats/${chatId}/hilos/${root}/visto`, token, { seq });
 
 /** E3: un hilo entero, al abrirlo (trae lo que el teléfono no tenía guardado). */
 export const hiloCompleto = (token: string, chatId: string, raiz: number) =>

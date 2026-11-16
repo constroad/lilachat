@@ -1,6 +1,7 @@
 import { Types } from 'mongoose';
 import { actsAsMessage } from '@lilachat/shared';
-import { ChatModel, MessageModel, type Message, type ResumenDeHilo } from './chatModels.js';
+import { ChatModel, MessageModel, ReceiptModel, type Message, type ResumenDeHilo } from './chatModels.js';
+import { threadCursorsOf, threadReadUpTo } from './threadReads.js';
 
 /** Cuántas respuestas trae de una vez el hilo abierto. */
 const MAXIMO_DE_RESPUESTAS = 500;
@@ -61,7 +62,7 @@ export async function descontarRespuesta(chatId: Types.ObjectId, raiz: number): 
 }
 
 /** El chat de un miembro, o `null` si no lo es. */
-async function chatDelMiembro(chatId: string, userId: Types.ObjectId): Promise<Types.ObjectId | null> {
+export async function chatOfMember(chatId: string, userId: Types.ObjectId): Promise<Types.ObjectId | null> {
   if (!Types.ObjectId.isValid(chatId)) return null;
   const id = new Types.ObjectId(chatId);
   return (await ChatModel.exists({ _id: id, 'members.userId': userId })) ? id : null;
@@ -69,15 +70,20 @@ async function chatDelMiembro(chatId: string, userId: Types.ObjectId): Promise<T
 
 /** El resumen de cada raíz con respuestas: el chip al día aunque el teléfono estuviera desconectado. */
 export async function resumenesDelChat(chatId: string, userId: Types.ObjectId): Promise<{ raiz: number; hilo: ResumenDeHilo }[] | null> {
-  const id = await chatDelMiembro(chatId, userId);
+  const id = await chatOfMember(chatId, userId);
   if (!id) return null;
-  const raices = await MessageModel.find({ chatId: id, 'hilo.respuestas': { $gt: 0 } }).select('seq hilo').lean<{ seq: number; hilo: ResumenDeHilo }[]>();
-  return raices.map((raiz) => ({ raiz: raiz.seq, hilo: raiz.hilo }));
+  const [raices, receipt] = await Promise.all([
+    MessageModel.find({ chatId: id, 'hilo.respuestas': { $gt: 0 } }).select('seq hilo').lean<{ seq: number; hilo: ResumenDeHilo }[]>(),
+    ReceiptModel.findOne({ chatId: id, userId }).select('readSeq threadSeq').lean(),
+  ]);
+  const cursors = threadCursorsOf(receipt?.threadSeq);
+  // `visto`: where I read each thread, so the «nuevas» dot agrees on every device (José 16/11).
+  return raices.map((raiz) => ({ raiz: raiz.seq, hilo: raiz.hilo, visto: threadReadUpTo(raiz.hilo, cursors.get(raiz.seq), receipt?.readSeq ?? 0) }));
 }
 
 /** La raíz y sus respuestas, en orden. `null` si no soy miembro o la raíz no existe. */
 export async function hiloCompleto(chatId: string, raiz: number, userId: Types.ObjectId): Promise<{ raiz: Message; respuestas: Message[] } | null> {
-  const id = await chatDelMiembro(chatId, userId);
+  const id = await chatOfMember(chatId, userId);
   if (!id || !Number.isInteger(raiz)) return null;
   const [mensajeRaiz, respuestas] = await Promise.all([
     MessageModel.findOne({ chatId: id, seq: raiz }).lean<Message | null>(),

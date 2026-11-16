@@ -1,9 +1,10 @@
+import type { ResumenDeHiloEnCliente, ThreadSummaryOfRoot } from '@lilachat/shared';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /**
- * Hasta qué respuesta vi cada hilo (E3, 20/10), por chat y en este teléfono:
- * el chip marca «nuevas» si la última respuesta es posterior. No es un dato
- * del server: leer un hilo en la web no lo apaga acá (como los borradores).
+ * Up to which reply I saw each thread (E3, 20/10), per chat: the chip shows
+ * new replies when the last one is later. Since 16/11 the server keeps it too
+ * (`visto` in `GET /hilos`), so a thread read on the web is read here.
  */
 const CLAVE = 'lilachat-hilos-vistos';
 let vistos: Record<string, Record<string, number>> | null = null;
@@ -33,6 +34,20 @@ export async function marcarHiloVisto(chatId: string, raiz: number, hasta: numbe
   await AsyncStorage.setItem(CLAVE, JSON.stringify(todos)).catch(() => undefined);
 }
 
+/** The thread summaries of each chat, all of them (the root may be older than the loaded messages). */
+const summaries = new Map<string, Map<number, ResumenDeHiloEnCliente>>();
+
+export function rememberThreadSummary(chatId: string, root: number, summary: ResumenDeHiloEnCliente): void {
+  const ofChat = summaries.get(chatId) ?? new Map<number, ResumenDeHiloEnCliente>();
+  ofChat.set(root, summary);
+  summaries.set(chatId, ofChat);
+  oyentes.forEach((oyente) => oyente());
+}
+
+export function threadSummariesOf(chatId: string): ThreadSummaryOfRoot[] {
+  return [...(summaries.get(chatId)?.entries() ?? [])].map(([root, summary]) => ({ root, summary }));
+}
+
 export function suscribirHilosVistos(oyente: () => void): () => void {
   oyentes.add(oyente);
   void cargar().then(oyente);
@@ -42,5 +57,6 @@ export function suscribirHilosVistos(oyente: () => void): () => void {
 /** Al cerrar sesión: lo visto es de quien se fue. */
 export async function olvidarHilosVistos(): Promise<void> {
   vistos = {};
+  summaries.clear();
   await AsyncStorage.removeItem(CLAVE).catch(() => undefined);
 }

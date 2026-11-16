@@ -78,3 +78,23 @@ export function threadQuoteLine(original: { author?: string | null; preview?: st
   const short = preview.length > THREAD_QUOTE_MAX ? `${preview.slice(0, THREAD_QUOTE_MAX).trimEnd()}…` : preview;
   return `${whose}: ${short}`;
 }
+
+export type ThreadSummaryOfRoot = { root: number; summary: ResumenDeHiloEnCliente };
+
+/**
+ * The threads of a chat with replies I have not seen, newest reply first
+ * (José 16/11: «abro la app y no sé dónde respondieron»). The chat shows them
+ * in a band that opens the thread, like Slack.
+ */
+export function threadsWithNewReplies(threads: readonly ThreadSummaryOfRoot[], seenUpTo: (root: number) => number | undefined, me: string): ThreadSummaryOfRoot[] {
+  return threads.filter((thread) => hayRespuestasNuevas(thread.summary, seenUpTo(thread.root), me)).sort((a, b) => (b.summary.ultimaSeq ?? 0) - (a.summary.ultimaSeq ?? 0));
+}
+
+/** The band's line: «Ana respondió en un hilo» or «Respuestas nuevas en 3 hilos». */
+export function newRepliesLine(threads: readonly ThreadSummaryOfRoot[], nameOf: (userId: string) => string | undefined): string {
+  if (threads.length === 0) return '';
+  if (threads.length > 1) return `Respuestas nuevas en ${threads.length} hilos`;
+  const lastAuthor = threads[0]!.summary.autores?.at(-1);
+  const name = lastAuthor ? nameOf(lastAuthor) : undefined;
+  return name ? `${name} respondió en un hilo` : 'Respuesta nueva en un hilo';
+}

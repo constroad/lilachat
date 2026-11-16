@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { hayRespuestasNuevas, respuestasDelHilo, visibleEnElChat, type ResumenDeHiloEnCliente } from '@lilachat/shared';
-import { hiloCompleto } from '../api/client';
-import { marcarHiloVisto, suscribirHilosVistos, vistoHasta } from './hilosVistos';
+import { threadsWithNewReplies } from '@lilachat/shared';
+import { hiloCompleto, markThreadSeen } from '../api/client';
+import { marcarHiloVisto, suscribirHilosVistos, threadSummariesOf, vistoHasta } from './hilosVistos';
 import type { ChatMessage, PendingMessage } from './useChat';
 
 /**
@@ -63,13 +64,18 @@ export function useHilosEnElChat(params: {
   // Lo que se ve, queda visto (el punto de «nuevas» se apaga).
   const ultima = respuestas[respuestas.length - 1]?.seq;
   useEffect(() => {
-    if (abierto !== null && ultima) void marcarHiloVisto(chatId, abierto, ultima);
-  }, [abierto, ultima, chatId]);
+    if (abierto === null || !ultima) return;
+    void marcarHiloVisto(chatId, abierto, ultima);
+    void markThreadSeen(jwt, chatId, abierto, ultima);
+  }, [abierto, ultima, chatId, jwt]);
+  // The threads with replies I have not seen, for the band over the chat (José 16/11).
+  const withNewReplies = threadsWithNewReplies(threadSummariesOf(chatId), (root) => vistoHasta(chatId, root), yo);
 
   return {
     delChat,
     pendientesDelChat,
     hiloConNuevas,
+    withNewReplies,
     abierto,
     abrir: useCallback((seq: number) => {
       setTyping(false);

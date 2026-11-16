@@ -1629,6 +1629,23 @@ imposibles sin aviso (22,2 g/cm³ dio 986,7 %) y la hoja que se desplaza sola al
 guardar: pendientes en Portal. Cerrar sin escribir manda `dirty` y un `saved`:
 avisado a Portal por si suma una versión vacía al historial.
 
+### El editor que no abre: aviso y «Reintentar» (José 16/11)
+
+José, en Constroad: «Área adicional, los demás informes no cargan». Reproducido en su Chrome con
+IAA en VENTANILLA-SECTOR 280. El pedido del enlace respondió bien (200) y Portal contesta la página
+en 0,4 s, pero **Chrome retuvo la carga del marco 60 s** antes de enviarla (`requestStart` 60 011 ms
+sobre una conexión h2 ya abierta). La segunda apertura tardó 4 s. Mientras tanto se veía solo un
+recuadro gris, sin texto: se leía como «no carga».
+
+- Mientras Portal no avisa `ready`: «Abriendo el editor del Portal…».
+- Pasados 15 s: «El editor está tardando en abrir» con «Reintentar», que pide el enlace de nuevo
+  (el mismo informe, nunca otro) y recarga el marco.
+- Tests en `PortalEmbedWeb.test.tsx`.
+
+Lo que NO era: la visita técnica no aparece en Constroad porque su acción está **APAGADA** en
+Portal → Comandos (todo nace apagado desde el 28/10). La enciende un admin del espacio. Los informes
+de campo no viven en el «+»: están en Servicios → el servicio → Informes → «Crear informe».
+
 ### «Enviar al grupo» solo para admins (José 12/11)
 
 José: «lo de enviar por whatsapp solo admins en lilachat». La casilla

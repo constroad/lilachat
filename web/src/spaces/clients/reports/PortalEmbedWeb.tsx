@@ -28,6 +28,8 @@ export const FRAMED_ORIGINS: readonly string[] = import.meta.env.DEV ? [PORTAL_E
 const CLOSE_WAIT_MS = 3000;
 /** E2E 12/11: Portal's save hung on «Guardando…» and its «Cerrar editor» never posted `closed`; past this, Lilachat's bar offers a way out. */
 const UNSAVED_TOO_LONG_MS = 45_000;
+/** José 16/11: a stalled connection left a blank box for a minute. Past this, the wait is said and can be retried. */
+const SLOW_TO_OPEN_MS = 15_000;
 
 function useEmbedLink(target: ServiceAskTarget, serviceId: string, report: EmbedReport) {
   const { jwt, spaceId, clientId } = target;
@@ -189,15 +191,41 @@ function useEmbedClose(talk: EmbedTalk, stuck: boolean, onClose: (changed: boole
   return { leave, requestClose };
 }
 
-/** The frame itself, its failure, and a skeleton until Portal says it is ready. */
+/** True once the editor has been opening longer than SLOW_TO_OPEN_MS; a new link starts the count again. */
+function useSlowToOpen(opening: boolean, linkUrl: string | undefined): boolean {
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    setSlow(false);
+    if (!opening) return;
+    const timer = setTimeout(() => setSlow(true), SLOW_TO_OPEN_MS);
+    return () => clearTimeout(timer);
+  }, [opening, linkUrl]);
+  return slow;
+}
+
+function OpeningNotice({ slow, onRetry }: { slow: boolean; onRetry: () => void }) {
+  if (!slow) return <p data-testid="editor-portal-abriendo" role="status" className="pointer-events-none absolute inset-x-0 top-1/2 text-center text-sm text-on-surface/70">Abriendo el editor del Portal…</p>;
+  return (
+    <div data-testid="editor-portal-lento" role="status" className="absolute inset-x-4 top-1/2 mx-auto max-w-md -translate-y-1/2 rounded-xl border border-outline/20 bg-surface p-5 text-center">
+      <p className="font-semibold">El editor está tardando en abrir.</p>
+      <p className="mt-1 text-sm text-on-surface/70">Puede ser la conexión. Vuelve a intentarlo.</p>
+      <button type="button" data-testid="editor-portal-reintentar" onClick={onRetry} className="mt-4 h-11 rounded-lg border border-primary/30 bg-primary/10 px-4 text-sm font-semibold text-primary">Reintentar</button>
+    </div>
+  );
+}
+
+/** The frame itself, its failure, and a skeleton with what is happening until Portal says it is ready. */
 function EmbedBody(props: { failure: string | null; link: EmbedLink | null; ready: boolean; frame: React.RefObject<HTMLIFrameElement>; title: string; fallbackUrl?: string; onRetry: () => void }) {
   const [loaded, setLoaded] = useState(false);
   const { failure, link } = props;
+  const opening = !failure && !props.ready;
+  const slow = useSlowToOpen(opening, link?.url);
   return (
     <div className="relative flex flex-1">
       {failure ? <Failure message={failure} {...(props.fallbackUrl ? { url: props.fallbackUrl } : {})} onRetry={props.onRetry} /> : null}
       {link && !failure ? <iframe ref={props.frame} key={link.url} data-testid="editor-portal-marco" src={link.url} title={`Editor de ${props.title}`} onLoad={() => setLoaded(true)} className="h-full w-full flex-1 border-0" /> : null}
-      {!failure && (!link || !loaded) && !props.ready ? <div className="pointer-events-none absolute inset-4 animate-pulse rounded-xl bg-surface" /> : null}
+      {opening && (!link || !loaded) ? <div className="pointer-events-none absolute inset-4 animate-pulse rounded-xl bg-surface" /> : null}
+      {opening ? <OpeningNotice slow={slow} onRetry={props.onRetry} /> : null}
     </div>
   );
 }

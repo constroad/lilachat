@@ -157,6 +157,37 @@ describe('PortalEmbedWeb', () => {
     expect(onClose).toHaveBeenCalledWith(false);
   });
 
+  it('while Portal opens it says so, and after 15 s without Portal a slow notice offers Reintentar, which asks the link again (José 16/11: a blank box for a minute read as «no carga»)', async () => {
+    const asked = portal([{ embed: linkOf('a1') }, { embed: linkOf('b2') }]);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    render(<PortalEmbedWeb target={target} serviceId="sv1" serviceName="Av. Los Incas" report={report} onClose={vi.fn()} />);
+    await waitFor(() => expect(frame().src).toContain('#t=a1'));
+    expect(screen.getByTestId('editor-portal-abriendo')).toHaveTextContent('Abriendo el editor del Portal');
+
+    act(() => { vi.advanceTimersByTime(14_000); });
+    expect(screen.queryByTestId('editor-portal-lento')).toBeNull();
+    act(() => { vi.advanceTimersByTime(1_000); });
+    expect(screen.getByTestId('editor-portal-lento')).toHaveTextContent('El editor está tardando en abrir');
+    vi.useRealTimers();
+    fireEvent.click(screen.getByTestId('editor-portal-reintentar'));
+
+    await waitFor(() => expect(frame().src).toContain('#t=b2'));
+    expect(asked).toHaveLength(2);
+    expect(screen.queryByTestId('editor-portal-lento')).toBeNull();
+  });
+
+  it('once Portal is ready neither the opening line nor the slow notice shows', async () => {
+    portal([{ embed: linkOf('a1') }]);
+    render(<PortalEmbedWeb target={target} serviceId="sv1" serviceName="Av. Los Incas" report={report} onClose={vi.fn()} />);
+    await waitFor(() => expect(frame().src).toContain('#t=a1'));
+    vi.useFakeTimers();
+    fromPortal({ type: 'portal-embed:ready', version: 1 });
+
+    act(() => { vi.advanceTimersByTime(60_000); });
+    expect(screen.queryByTestId('editor-portal-abriendo')).toBeNull();
+    expect(screen.queryByTestId('editor-portal-lento')).toBeNull();
+  });
+
   it('a save that hangs does not trap the person (E2E 12/11: «Guardando…» for a minute, no «closed»): after 45 s unsaved Lilachat\'s bar comes back with «Salir igual»', async () => {
     portal([{ embed: linkOf('a1') }]);
     const onClose = vi.fn();

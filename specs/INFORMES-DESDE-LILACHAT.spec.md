@@ -1388,6 +1388,21 @@ espacio Test, con «QA-CTLPIS — borrar»:
 >       en Portal para cuando haya una foto nueva.
 >     - Zonas guardadas antes del 16/11: no tienen geometría y se editan como
 >       antes (solo el espesor y los textos).
+>     - Agentes 7916351 (16/11 07:31 de Lima, aprobado por José):
+>       `registrar_area_adicional.geometria` es la única excepción al tope de
+>       200 caracteres por valor, hasta 4096. La tarjeta muestra «contorno AR: N
+>       esquinas, M medidas con wincha». Antes de este cambio, guardar o
+>       corregir una zona con geometría respondía «Más de 200 caracteres…».
+>     - E2E (16/11, emulador, OTA 5a18adca, TES-IAA, zona de prueba de agentes):
+>       - «Editar zona» lista los 4 lados y la diagonal A–C.
+>       - Wincha de 1,55 m en el lado 2: el área pasa de 3,00 a 3,09 m², con
+>         «AR + wincha».
+>       - «Guardar cambios» responde «Área corregida».
+>       - Al reabrir, el lado 2 vuelve de Portal con 1,55 m.
+>       - La zona se borró con «Borrar zona»; TES-IAA volvió a su única zona.
+>       - Lo que la prueba destapó: el teléfono perdía la geometría que el server
+>         ya había leído (corregido en 1f6c382). La primera prueba la había
+>         atendido la release vieja del server.
 >     - Publicado: 679e484 y OTA 3dc7eb8f (motor y diagonales).
 >   - Sin verificar: la pantalla de diagonales en un teléfono (el emulador ARM
 >     no corre ARCore y la app no tiene tests de render).

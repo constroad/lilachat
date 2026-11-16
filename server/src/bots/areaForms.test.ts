@@ -122,7 +122,7 @@ describe('the AR geometry (José 16/11: correct a side after saving)', () => {
     expect(areaFormInputOf({ ...zone, method: 'a-mano', source: 'apk', geometry })).toBeNull();
   });
 
-  it('does not reach Portal while the switch is off (Portal refuses unknown keys)', () => {
+  it('reaches Portal as `geometria` only while the switch is on', () => {
     const ready = areaFormPrepared(SERVICE, areaFormInputOf({ ...zone, geometry })!);
     expect('geometria' in ready.context).toBe(ZONE_GEOMETRY_TO_PORTAL);
   });

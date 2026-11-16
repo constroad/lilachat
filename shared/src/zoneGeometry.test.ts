@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { arAreaOf, zoneSolutionOf, type ArPoint } from './arArea.js';
-import { zoneGeometryField, zoneGeometryOf, zoneGeometryOfArea, zoneGeometryInput, zoneGeometryString } from './zoneGeometry.js';
+import { correctedZone, savedTapesOf, zoneGeometryField, zoneGeometryOf, zoneGeometryOfArea, zoneGeometryInput, zoneGeometryString } from './zoneGeometry.js';
 
 const rectangle: ArPoint[] = [{ x: 0, y: 0, z: 0 }, { x: 2, y: 0, z: 0 }, { x: 2, y: 0, z: 1.5 }, { x: 0, y: 0, z: 1.5 }];
 const measured = arAreaOf({ points: rectangle, tapes: { 0: 2.05 }, diagonals: [{ from: 0, to: 2, meters: 2.5 }], readingsCm: [], stable: true });
@@ -69,5 +69,31 @@ describe('zoneGeometryString: Portal v1 is strict', () => {
     const many = arAreaOf({ points: ring, tapes: Object.fromEntries(ring.map((_, index) => [index, 9.87])), readingsCm: [], stable: true });
     const geometry = { ...zoneGeometryOfArea(many)!, diagonals: Array.from({ length: 29 }, (_, offset) => ({ from: 0, to: offset + 2, meters: 123.456 })) };
     expect(zoneGeometryString(geometry)).toBeDefined();
+  });
+});
+
+describe('correctedZone: a side corrected after saving (José 16/11)', () => {
+  const saved = zoneGeometryOf(zoneGeometryField(arAreaOf({ points: rectangle, tapes: {}, readingsCm: [], stable: true })))!;
+
+  it('a new tape on a saved zone recomputes it with the same engine as the measure', () => {
+    const corrected = correctedZone(saved, { 0: 2.1 }, {});
+    const measuredAgain = arAreaOf({ points: rectangle, tapes: { 0: 2.1 }, readingsCm: [], stable: true });
+
+    expect(corrected.solution.areaM2).toBe(measuredAgain.areaM2);
+    expect(corrected.geometry.sides[0]).toEqual({ arMeters: 2, tapeMeters: 2.1 });
+  });
+
+  it('taking a tape off goes back to the AR, and the diagonals ride along', () => {
+    const taped = correctedZone(saved, { 0: 2.1 }, { 2: 2.5 });
+    const untaped = correctedZone(taped.geometry, {}, {});
+
+    expect(taped.geometry.diagonals).toEqual([{ from: 0, to: 2, meters: 2.5 }]);
+    expect(untaped.solution.areaM2).toBe(3);
+    expect(untaped.solution.problems).toEqual(['no-tape']);
+  });
+
+  it('starts from the tapes the zone was saved with', () => {
+    const withTape = zoneGeometryOf(zoneGeometryField(measured))!;
+    expect(savedTapesOf(withTape)).toEqual({ tapes: { 0: 2.05 }, diagonals: { 2: 2.5 } });
   });
 });

@@ -1,4 +1,4 @@
-import type { ArArea } from './arArea.js';
+import { zoneSolutionOf, type ArArea, type ZoneSolution } from './arArea.js';
 import type { PlanePoint, TapedLength } from './zoneAdjust.js';
 
 /**
@@ -10,11 +10,11 @@ import type { PlanePoint, TapedLength } from './zoneAdjust.js';
 export type ZoneGeometry = { corners: PlanePoint[]; sides: { arMeters: number; tapeMeters?: number }[]; diagonals: TapedLength[] };
 
 /**
- * Portal stores `geometria` from commit 2d1252ca (16/11, strict v1). Off until it is in production
- * and José re-approves `registrar_area_adicional` (its input changed): before that, Portal refuses
- * an unknown key and the zone would not save. The server drops the field while this is false.
+ * Portal stores `geometria` since 30792e53 (in production 16/11 11:27Z, strict v1 with
+ * `diagonales`). Its tool `registrar_area_adicional` changed input, so it answers 502 until José
+ * re-approves it in agentes; that is Portal's side, this switch only sends the field.
  */
-export const ZONE_GEOMETRY_TO_PORTAL = false;
+export const ZONE_GEOMETRY_TO_PORTAL = true;
 
 const VERSION = 1;
 const CORNERS = { min: 3, max: 32 };
@@ -102,4 +102,28 @@ export function zoneGeometryOf(raw: unknown): ZoneGeometry | null {
 export function zoneGeometryInput(geometry: ZoneGeometry): { plane: PlanePoint[]; arMeters: number[]; tapes: Record<number, number>; diagonals: TapedLength[] } {
   const tapes = Object.fromEntries(geometry.sides.flatMap((side, index) => (side.tapeMeters === undefined ? [] : [[index, side.tapeMeters]])));
   return { plane: geometry.corners, arMeters: geometry.sides.map((side) => side.arMeters), tapes, diagonals: geometry.diagonals };
+}
+
+/** The tapes a saved zone carries, as the edit screen holds them (diagonals from corner A, by `to`). */
+export function savedTapesOf(geometry: ZoneGeometry): { tapes: Record<number, number>; diagonals: Record<number, number> } {
+  const { tapes } = zoneGeometryInput(geometry);
+  const diagonals = Object.fromEntries(geometry.diagonals.filter((diagonal) => diagonal.from === 0).map((diagonal) => [diagonal.to, diagonal.meters]));
+  return { tapes, diagonals };
+}
+
+/**
+ * A saved zone with its tapes as now typed (sides by index, diagonals from corner A by `to`):
+ * the same engine as the measure (`zoneSolutionOf`), and the geometry to save back to Portal.
+ */
+export function correctedZone(geometry: ZoneGeometry, tapes: Readonly<Record<number, number>>, diagonals: Readonly<Record<number, number>>): { solution: ZoneSolution; geometry: ZoneGeometry } {
+  const typed = Object.entries(diagonals).map(([to, meters]) => ({ from: 0, to: Number(to), meters }));
+  const solution = zoneSolutionOf({ plane: geometry.corners, arMeters: geometry.sides.map((side) => side.arMeters), tapes, diagonals: typed });
+  return {
+    solution,
+    geometry: {
+      corners: geometry.corners,
+      sides: solution.sides.map((side) => ({ arMeters: geometry.sides[side.index]!.arMeters, ...(side.source === 'wincha' ? { tapeMeters: side.meters } : {}) })),
+      diagonals: solution.diagonals.map(({ from, to, meters }) => ({ from, to, meters })),
+    },
+  };
 }

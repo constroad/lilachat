@@ -1373,9 +1373,14 @@ espacio Test, con «QA-CTLPIS — borrar»:
 >       con los metros viejos.
 >     - Agentes: 823101b, ya en prod. El lector deja pasar `geometria` como
 >       string.
->     - `ZONE_GEOMETRY_TO_PORTAL` queda en false hasta que Portal esté en prod y
->       José reapruebe `registrar_area_adicional`, porque cambió su entrada.
->       Mientras tanto Portal rechazaría la clave y la zona no se guardaría.
+>     - Portal en prod desde el 16/11 a las 11:27Z (30792e53), con `diagonales` y
+>       `reemplazarCaptura`. `ZONE_GEOMETRY_TO_PORTAL` está encendido. Hasta que
+>       José reapruebe `registrar_area_adicional` en agentes, guardar, editar o
+>       quitar una zona da 502, porque cambió la entrada de la herramienta.
+>     - `correctedZone` recalcula una zona guardada con sus winchas nuevas,
+>       usando el mismo motor que la medición. La pantalla de edición todavía no
+>       lo usa.
+>     - Publicado: 679e484 y OTA 3dc7eb8f (motor y diagonales).
 >   - Sin verificar: la pantalla de diagonales en un teléfono (el emulador ARM
 >     no corre ARCore y la app no tiene tests de render).
 > - **Sin verificar todavía:** la cámara AR y la medida contra una wincha real,

@@ -1311,6 +1311,11 @@ espacio Test, con «QA-CTLPIS — borrar»:
 >     previa o el visor (`coveredAbove`), la hoja se ajusta al ancho medido del
 >     WebView (en tablet es un panel) y se reajusta al girar, un enlace vencido
 >     lo dice, y salir de la pantalla cierra la vista previa.
+>   - Publicado: 3428234 + línea base del APK 189 (146d49d), OTA ed2b68d7.
+>     E2E en el emulador (borrador CON-CAP de Test): «Ver PDF» abre la vista
+>     previa dentro de la app con la hoja entera al ancho; atrás la cierra y
+>     deja el informe abierto. Sin probar: el pellizco de zoom (adb no hace dos
+>     dedos) y la foto con el panel en un teléfono real.
 >   - Publicado: commit 7cd45e4, OTA 9234236d (15/11). E2E en el emulador
 >     (zona de José en TES-IAA, sin guardar): «Resultado» muestra el chip
 >     Área; con una lectura de 5 cm, Área y Volumen (0,027 m³). El sello con

@@ -239,3 +239,13 @@ describe('a saved zone\'s chips (José 15/11: m², m³, perímetro)', () => {
     expect(zoneChipsOf({ ...zone, areaM2: 0.53, method: 'ar' }, null)).toEqual([{ label: 'Área', value: '0,53 m²' }]);
   });
 });
+
+describe('areaEditRequest with a corrected AR zone (José 16/11)', () => {
+  it('sends the new area, the method and the geometry, never a length × width', () => {
+    const area = { id: 'a1', areaM2: 3, lengthM: 2, widthM: 1.5, method: 'ar' as const, lat: null, lng: null, photos: [] };
+    const request = areaEditRequest(null, area, null, { areaM2: 3.15, method: 'ar-app', geometry: '{"v":1}' })!;
+
+    expect(request).toMatchObject({ kind: 'area_edit', area_m2: 3.15, method: 'ar-app', geometry: '{"v":1}' });
+    expect(request).not.toHaveProperty('length_m');
+  });
+});

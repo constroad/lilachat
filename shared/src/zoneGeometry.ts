@@ -1,4 +1,5 @@
-import { zoneSolutionOf, type ArArea, type ZoneSolution } from './arArea.js';
+import { arMethodOf, isArWarning, zoneSolutionOf, type ArArea, type ZoneSolution } from './arArea.js';
+import type { AreaMethod } from './areaMeasure.js';
 import type { PlanePoint, TapedLength } from './zoneAdjust.js';
 
 /**
@@ -126,4 +127,19 @@ export function correctedZone(geometry: ZoneGeometry, tapes: Readonly<Record<num
       diagonals: solution.diagonals.map(({ from, to, meters }) => ({ from, to, meters })),
     },
   };
+}
+
+export type ZoneCorrection = { areaM2: number; method: Extract<AreaMethod, 'ar' | 'ar-app'>; geometry: string };
+const AREA_LIMITS_M2 = { min: 0.05, max: 5000 };
+
+/**
+ * A saved zone recomputed with its tapes as now typed, and what Portal's `editar` takes: the new
+ * area, the method (a tape makes it «AR + wincha») and the geometry. Null when the engine finds a
+ * fault (the same faults that stop the measure) or the geometry would not fit.
+ */
+export function zoneCorrectionOf(saved: ZoneGeometry, tapes: Readonly<Record<number, number>>, diagonals: Readonly<Record<number, number>>): { solution: ZoneSolution; correction: ZoneCorrection | null } {
+  const { solution, geometry } = correctedZone(saved, tapes, diagonals);
+  const field = zoneGeometryString(geometry);
+  const sound = solution.problems.every(isArWarning) && solution.areaM2 >= AREA_LIMITS_M2.min && solution.areaM2 <= AREA_LIMITS_M2.max;
+  return { solution, correction: sound && field ? { areaM2: solution.areaM2, method: arMethodOf(solution), geometry: field } : null };
 }

@@ -1,13 +1,14 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Keyboard, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { CheckCircle2, Trash2, X } from 'lucide-react-native';
-import { AREA_METHOD_LABELS, areaEditRequest, zoneChipsOf, zoneRemoveAsk, type AdditionalArea, type AreaDocument } from '@lilachat/shared';
+import { AREA_METHOD_LABELS, arDiagonalRows, areaEditRequest, isArWarning, savedTapesOf, zoneChipsOf, zoneCorrectionOf, zoneRemoveAsk, type AdditionalArea, type AreaDocument, type ZoneGeometry } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { BottomAction, ObservationHeader, SectionTitle } from '../observations/ObservationParts';
 import type { ObservationTarget } from '../observations/useObservations';
 import { WholePhoto } from './ArPlanCard';
 import { useAreaEdit } from './useAreas';
 import { decimals, ResultCard, ThicknessCard, useReadings } from './ZoneParts';
+import { ProblemsCard, SidesCard, useSideTapes } from './ZoneSides';
 
 type RemoveResult = { ok: boolean; message: string };
 type Props = { to: ObservationTarget; report: AreaDocument; area: AdditionalArea; number: number; onRemove: (areaId: string) => Promise<RemoveResult>; onBusy: (busy: boolean) => void; onBack: () => void; onSaved: () => void };
@@ -45,6 +46,24 @@ function useZoneThickness(saved: number | undefined) {
   return { readings, thicknessCm: readings.thicknessCm ?? kept, saved: readings.readings.length ? null : kept, dropSaved: () => setKeepsSaved(false) };
 }
 
+const NO_GEOMETRY: ZoneGeometry = { corners: [], sides: [], diagonals: [] };
+/** A corrected side cannot be redrawn on the photo (its meters are burned in): the screen says so. */
+const PHOTO_KEEPS_AR = 'La foto conserva las medidas del AR; el informe usa las corregidas.';
+
+/**
+ * José 16/11: a zone measured with the AR keeps its corners and tapes (Portal's `geometria`), so a
+ * side is corrected with the tape after saving and the zone recomputed by the measure's own engine.
+ */
+function useZoneCorrection(area: AdditionalArea) {
+  const geometry = area.geometry ?? NO_GEOMETRY;
+  const [saved] = useState(() => savedTapesOf(geometry));
+  const tape = useSideTapes(saved);
+  const fix = useMemo(() => (area.geometry ? zoneCorrectionOf(area.geometry, tape.tapes, tape.diagonals) : null), [area.geometry, tape.tapes, tape.diagonals]);
+  const changed = JSON.stringify({ tapes: tape.tapes, diagonals: tape.diagonals }) !== JSON.stringify(saved);
+  const fault = changed ? fix?.solution.problems.find((problem) => !isArWarning(problem)) ?? null : null;
+  return { geometry, tape, fix, changed, fault, correction: changed ? fix?.correction ?? undefined : undefined };
+}
+
 /** While a reading is typed, its card scrolls above the keyboard (the E2E of 15/11: the field sat under it). */
 function useRevealOnKeyboard(editing: boolean) {
   const scroll = useRef<ScrollView>(null);
@@ -72,13 +91,16 @@ export function ZoneEditScreen(props: Props) {
   const write = useOneWrite(props.onBusy);
   const [confirming, setConfirming] = useState(false);
   const [line, setLine] = useState<string | null>(null);
-  const request = areaEditRequest(props.report, area, thickness.thicknessCm);
+  const zone = useZoneCorrection(area);
+  const request = areaEditRequest(props.report, area, thickness.thicknessCm, zone.correction);
+  const areaM2 = zone.correction?.areaM2 ?? area.areaM2;
+  const typing = thickness.readings.editing || zone.tape.editing !== null;
   const photo = area.photos[0];
   const reveal = useRevealOnKeyboard(thickness.readings.editing);
   // The delete's confirmation opens at the bottom: its two buttons scroll into view (E2E 15/11: half hidden).
   useEffect(() => { if (confirming) setTimeout(() => reveal.scroll.current?.scrollToEnd({ animated: true }), 50); }, [confirming, reveal.scroll]);
   const save = async () => {
-    if (!request || thickness.readings.editing) return;
+    if (!request || typing || zone.fault) return;
     const result = await write.run(() => edit(request, { place, note }));
     if (result?.ok) props.onSaved();
     else if (result) setLine(result.message);
@@ -89,17 +111,19 @@ export function ZoneEditScreen(props: Props) {
       <ScrollView ref={reveal.scroll} testID="zona-editar-pantalla" keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: 24 }}>
         <TextCard title="Descripción" testID="zona-editar-descripcion" value={note} saved={area.description} placeholder="Bacheo localizado" onChange={setNote} />
         <TextCard title="Lugar" testID="zona-editar-lugar" value={place} saved={area.place} placeholder="Calle y número" onChange={setPlace} />
-        {photo ? <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3"><SectionTitle title="Foto de la zona" /><WholePhoto uri={photo.url} testID="zona-editar-foto" /></View> : null}
+        {photo ? <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3"><SectionTitle title="Foto de la zona" /><WholePhoto uri={photo.url} testID="zona-editar-foto" />{zone.changed ? <Text testID="foto-medidas-ar" className="text-[12px] text-on-surface-variant">{PHOTO_KEEPS_AR}</Text> : null}</View> : null}
+        {zone.fix ? <SidesCard sides={zone.fix.solution.sides} rows={arDiagonalRows({ plane: zone.geometry.corners, diagonals: zone.fix.solution.diagonals })} tape={zone.tape} onShown={() => undefined} /> : null}
+        {zone.fix && zone.changed && zone.fix.solution.problems.length ? <ProblemsCard problems={zone.fix.solution.problems} /> : null}
         {thickness.saved !== null ? <SavedThickness value={thickness.saved} onDrop={thickness.dropSaved} /> : null}
         <View onLayout={(event) => { reveal.at.current = event.nativeEvent.layout.y; }}>
         <ThicknessCard readings={thickness.readings.readings} thicknessCm={thickness.readings.thicknessCm} editing={thickness.readings.editing} typed={thickness.readings.typed} onAdd={thickness.readings.add} onRemove={thickness.readings.remove} onType={thickness.readings.type} onDone={thickness.readings.done} error={thickness.readings.error} />
         </View>
-        <ResultCard line={resultLine(area.areaM2, thickness.thicknessCm)} method={area.method ? AREA_METHOD_LABELS[area.method] : '—'} hint="Se recalcula al cambiar el espesor" chips={zoneChipsOf(area, thickness.thicknessCm)} />
+        <ResultCard line={resultLine(areaM2, thickness.thicknessCm)} method={AREA_METHOD_LABELS[zone.correction?.method ?? area.method ?? 'ar'] ?? '—'} hint={zone.fix ? 'Se recalcula al cambiar una wincha o el espesor' : 'Se recalcula al cambiar el espesor'} chips={zoneChipsOf({ ...area, areaM2 }, thickness.thicknessCm)} />
         {!request ? <Text testID="zona-no-editable" className="text-[13px] text-on-surface-variant">{area.method === 'foto-medida' ? 'Esta zona se midió en la oficina: se corrige en el Portal.' : 'No se sabe cómo se midió esta zona: se corrige en el Portal.'}</Text> : null}
         {request ? <RemoveZone ask={zoneRemoveAsk(props.number, props.report.totals, area)} busy={write.busy} confirming={confirming} setConfirming={setConfirming} color={colors.error} onConfirm={() => write.run(() => props.onRemove(area.id))} /> : null}
         {line ? <Text testID="zona-editar-error" className="text-center text-[13px] font-semibold text-error">{line}</Text> : null}
       </ScrollView>
-      {thickness.readings.editing || confirming || !request ? null : <BottomAction testID="guardar-cambios-zona" label="Guardar cambios" icon={<CheckCircle2 size={22} color={colors['on-primary']} />} busy={write.busy} onPress={() => void save()} />}
+      {typing || confirming || !request ? null : <BottomAction testID="guardar-cambios-zona" label="Guardar cambios" icon={<CheckCircle2 size={22} color={colors['on-primary']} />} busy={write.busy} note={zone.fault ? 'Corrige las winchas antes de guardar.' : null} onPress={() => void save()} />}
     </View>
   );
 }

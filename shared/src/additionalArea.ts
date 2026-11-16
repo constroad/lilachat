@@ -2,7 +2,7 @@ import { FORMS_LEVEL } from './appForms.js';
 import type { CommandResponse } from './botCommands.js';
 import { photoUploadOf, type DriveUpload } from './driveUpload.js';
 import { formFilesWriteStore, type WriteKind } from './formFilesWrite.js';
-import { zoneGeometryOf, type ZoneGeometry } from './zoneGeometry.js';
+import { zoneGeometryOf, type ZoneCorrection, type ZoneGeometry } from './zoneGeometry.js';
 import { AREA_FIELD_METHODS, AREA_METHOD_LABELS, type AreaDraftPoint, type AreaFigures, type AreaMethod } from './areaMeasure.js';
 import type { ObservationSource } from './observationWrite.js';
 import { ENLACE_DE_DESCARGA } from './invitacion.js';
@@ -205,13 +205,16 @@ export type AreaEditRequest = {
   method: AreaMethod; lat?: number; lng?: number; precision_m?: number; source: ObservationSource; report_id?: string; forms: number;
   geometry?: string;
 };
-export function areaEditRequest(report: Pick<AreaDocument, 'id' | 'type'> | null, area: AdditionalArea, thicknessCm: number | null): AreaEditRequest | null {
+/** A side corrected with the tape after saving (José 16/11): a polygon has no length × width. */
+export function areaEditRequest(report: Pick<AreaDocument, 'id' | 'type'> | null, area: AdditionalArea, thicknessCm: number | null, correction?: ZoneCorrection): AreaEditRequest | null {
   if (!isRemovableArea(area) || !area.method) return null;
   const located = area.lat !== null && area.lng !== null;
+  const figures = correction
+    ? { area_m2: correction.areaM2, method: correction.method, geometry: correction.geometry }
+    : { ...kept('length_m', area.lengthM), ...kept('width_m', area.widthM), area_m2: area.areaM2, method: area.method };
   return {
-    kind: 'area_edit', area_id: area.id,
-    ...kept('length_m', area.lengthM), ...kept('width_m', area.widthM), area_m2: area.areaM2, ...kept('thickness_cm', thicknessCm ?? undefined),
-    method: area.method, ...(located ? { lat: area.lat!, lng: area.lng!, ...kept('precision_m', area.precisionM) } : {}),
+    kind: 'area_edit', area_id: area.id, ...figures, ...kept('thickness_cm', thicknessCm ?? undefined),
+    ...(located ? { lat: area.lat!, lng: area.lng!, ...kept('precision_m', area.precisionM) } : {}),
     source: 'apk', ...(report?.id && report.type === AREA_TYPE ? { report_id: report.id } : {}), forms: FORMS_LEVEL,
   };
 }

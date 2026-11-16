@@ -1537,6 +1537,14 @@ teléfono y en el APK sigue el formulario de este spec.
   su «Cerrar editor» guarda y manda `closed`. La barra de Lilachat (Volver,
   servicio, informe) solo aparece mientras Portal no está listo, si falla o
   si sus cambios siguen sin guardarse a los 45 s.
+- «Editar croquis» (José 16/11: en el editor compartido el croquis no se veía
+  ni se editaba). Portal manda `portal-embed:edit-croquis` (Portal 911918d0) y
+  la web dibuja el mapa de obra del servicio encima del editor, que sigue vivo
+  debajo: nada de lo escrito se pierde. «Volver al informe» o Escape lo cierra
+  y manda `portal-embed:croquis-changed`, y Portal vuelve a dibujar el croquis.
+  Es el mismo mapa de la pestaña Mapa (`MapWorkspace`), así que cualquier
+  miembro lo edita. Sin enlaces del canal no hay mapa y el pedido se ignora.
+  Vale para IAA, FRE-PAV, RCP-CAM y observaciones.
 - Salida de emergencia (E2E 12/11, CON-CAP: «Guardando…» más de un minuto,
   sin `saved` ni `closed`, y Escape con el foco en el marco no llega a
   Lilachat): con `dirty` 45 s seguidos sin un `saved`, vuelve la barra de

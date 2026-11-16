@@ -71,7 +71,8 @@ export async function notifyOffline(params: {
   const mentioned = mentionedUserIds(params.message.menciones, candidatos, isOnline);
   const silenciados = new Set([...levels].filter(([userId, level]) => !ringsFor(level, mentioned.has(userId))).map(([userId]) => userId));
 
-  const autor = sender_?.name ?? sender_?.phone ?? 'Alguien';
+  // A Dali prospect's words (§c-prospectos) carry their own name: the bot only delivered them.
+  const autor = params.message.prospect?.name ?? sender_?.name ?? sender_?.phone ?? 'Alguien';
   const nombreDelGrupo = chat?.kind === 'group' ? chat.name : undefined;
   const text = buildPushText({
     senderName: autor,

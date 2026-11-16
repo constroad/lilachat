@@ -6,7 +6,7 @@ import { AlertCircle, BellRing, CalendarDays, Check, CheckCheck, ChevronRight, C
 import { Overlay } from '../ui/Overlay';
 import { RecordatorioEnElChat } from './tarjetas/RecordatorioEnElChat';
 import { colorDeAutor, esAvisoDestacado, type DeliveryState, formatClock, primerEnlace, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
-import { isAnimatedImage, isHiddenNotice, sharedByLine, threadQuoteLine } from '@lilachat/shared';
+import { contactBadge, isAnimatedImage, isHiddenNotice, sharedByLine, threadQuoteLine } from '@lilachat/shared';
 import { GifInBubble } from './gifs/GifInBubble';
 import { TarjetaDeEnlace } from './TarjetaDeEnlace';
 import { NotaDeVoz } from './NotaDeVoz';
@@ -78,7 +78,7 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
           <StickerMessage
             message={mensaje}
             url={mensaje.media.url}
-            author={props.conAutor ? <AuthorName senderId={mensaje.senderId} clientKey={mensaje.clientKey} /> : null}
+            author={props.conAutor ? <AuthorName senderId={mensaje.senderId} clientKey={mensaje.clientKey} prospectName={mensaje.prospect?.name} /> : null}
             quote={mensaje.hiloDe !== undefined && mensaje.enElChat ? <ThreadQuote root={mensaje.hiloDe} mine={false} /> : mensaje.replyToSeq ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={false} /> : null}
           />
         ) : (
@@ -87,7 +87,7 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
             mio ? 'bg-primary text-on-primary' : 'border border-outline/15 bg-surface text-on-surface'
           } ${mensaje.estado === 'fallido' ? 'opacity-70' : ''}`}
         >
-          {props.conAutor ? <AuthorName senderId={mensaje.senderId} clientKey={mensaje.clientKey} /> : null}
+          {props.conAutor ? <AuthorName senderId={mensaje.senderId} clientKey={mensaje.clientKey} prospectName={mensaje.prospect?.name} /> : null}
           {/* Borrado: solo la lápida, sin la cita (como WhatsApp). */}
           {mensaje.hiloDe !== undefined && mensaje.enElChat && !mensaje.deletedAt ? <ThreadQuote root={mensaje.hiloDe} mine={mio} /> : null}
           {mensaje.replyToSeq && !mensaje.deletedAt ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={mio} /> : null}
@@ -120,10 +120,12 @@ function FlatMessage(props: Props) {
   const { mensaje, agrupado } = props;
   const { nombres, photos, yo, badgeOf, isAppOf, onViewPerson } = useConversacion();
   const mine = mensaje.senderId === yo;
-  const openCard = !mine && onViewPerson ? () => onViewPerson(mensaje.senderId) : undefined;
-  const name = nombres.get(mensaje.senderId) ?? (mine ? 'Tú' : 'Alguien');
+  // A Dali prospect (16/11) is not the bot that delivered their words: their name, the WhatsApp pill, no card to open.
+  const prospect = mensaje.prospect;
+  const openCard = !mine && !prospect && onViewPerson ? () => onViewPerson(mensaje.senderId) : undefined;
+  const name = prospect?.name ?? nombres.get(mensaje.senderId) ?? (mine ? 'Tú' : 'Alguien');
   // «Tú» next to «Tú» says nothing: the pill only when it adds something.
-  const fullBadge = badgeOf?.(mensaje.senderId) ?? null;
+  const fullBadge = prospect ? null : (badgeOf?.(mensaje.senderId) ?? null);
   const badge = fullBadge === name ? null : fullBadge;
   return (
     <div data-testid={`mensaje-${mensaje.clientKey}`} className={`group relative flex items-start gap-3 rounded-lg px-1 hover:bg-background/60 ${agrupado ? 'mt-0.5' : 'mt-3'}`}>
@@ -131,7 +133,7 @@ function FlatMessage(props: Props) {
         <span className="w-9 shrink-0 pt-1 text-right text-[10px] text-on-surface-variant opacity-0 group-hover:opacity-100">{formatClock(mensaje.at)}</span>
       ) : (
         <AuthorTap onTap={openCard} testId={`avatar-${mensaje.clientKey}`} label={`Ver a ${name}`} bare>
-          <Avatar name={name} foto={photos?.get(mensaje.senderId)} size={36} bot={isAppOf?.(mensaje.senderId)} />
+          <Avatar name={name} foto={prospect ? undefined : photos?.get(mensaje.senderId)} size={36} bot={!prospect && isAppOf?.(mensaje.senderId)} />
         </AuthorTap>
       )}
       <div className="min-w-0 flex-1">
@@ -139,6 +141,7 @@ function FlatMessage(props: Props) {
           <p className="flex flex-wrap items-baseline gap-x-2">
             <AuthorTap onTap={openCard} testId={`autor-${mensaje.clientKey}`} label={`Ver a ${name}`} className={`truncate text-[15px] font-bold ${mine ? 'text-primary' : ''}`}>{name}</AuthorTap>
             {badge ? <span className={`rounded-md px-1.5 py-px text-[11px] font-semibold ${mine ? 'bg-primary/10 text-primary' : 'bg-background text-on-surface-variant'}`}>{badge}</span> : null}
+            {prospect ? <span data-testid={`prospecto-${mensaje.clientKey}`} className="rounded-md bg-en-linea/10 px-1.5 py-px text-[11px] font-semibold text-en-linea">{contactBadge}</span> : null}
             <MessageFooter mensaje={mensaje} mio={mine} chat={props.chat} inline />
           </p>
         )}
@@ -180,10 +183,10 @@ function WinkFromContext({ seq, wink, mine, senderId, at, menu }: { seq: number;
   return <WinkLine seq={seq} wink={wink} mine={mine} author={nombres.get(senderId)} at={at} onReturn={onReturnWink} menu={menu} />;
 }
 
-function AuthorName({ senderId, clientKey }: { senderId: string; clientKey: string }) {
+function AuthorName({ senderId, clientKey, prospectName }: { senderId: string; clientKey: string; /** A Dali prospect's words. */ prospectName?: string }) {
   const { nombres, onViewPerson, yo } = useConversacion();
-  const name = nombres.get(senderId) ?? 'Alguien';
-  const openCard = senderId !== yo && onViewPerson ? () => onViewPerson(senderId) : undefined;
+  const name = prospectName ?? nombres.get(senderId) ?? 'Alguien';
+  const openCard = senderId !== yo && !prospectName && onViewPerson ? () => onViewPerson(senderId) : undefined;
   return (
     <p className={`mb-0.5 truncate text-[13px] font-semibold ${COLOR_DE_AUTOR[colorDeAutor(senderId)]}`}>
       <AuthorTap onTap={openCard} testId={`autor-${clientKey}`} label={`Ver a ${name}`}>{name}</AuthorTap>

@@ -25,6 +25,7 @@ import { nombreLimpio } from './archivoDescargado';
 import { anchoDeBurbujaConFoto, miniaturaDe, pendingStickerItem, type Citado } from './filasDelChat';
 import {
   formatClock,
+  authorKeyOf,
   groupsWithPrevious,
   type DeliveryState,
 } from '@lilachat/shared';
@@ -200,9 +201,9 @@ function FilaDeMensaje({
   const senderId = isPending(item) ? myUserId : item.senderId;
 
   const grouped = groupsWithPrevious({
-    senderId,
+    senderId: isPending(item) ? senderId : authorKeyOf(item),
     at,
-    previousSenderId: previous ? (isPending(previous) ? myUserId : previous.senderId) : undefined,
+    previousSenderId: previous ? (isPending(previous) ? myUserId : authorKeyOf(previous)) : undefined,
     previousAt: previous ? (isPending(previous) ? previous.queuedAt : previous.at) : undefined,
     isCard: hasBotCard(item),
     previousIsCard: previous ? hasBotCard(previous) : false,
@@ -210,9 +211,9 @@ function FilaDeMensaje({
   // Solo el ÚLTIMO del bloque lleva la cola, como en el diseño.
   const nextGrouped = next
     ? groupsWithPrevious({
-        senderId: isPending(next) ? myUserId : next.senderId,
+        senderId: isPending(next) ? myUserId : authorKeyOf(next),
         at: isPending(next) ? next.queuedAt : next.at,
-        previousSenderId: senderId,
+        previousSenderId: isPending(item) ? senderId : authorKeyOf(item),
         previousAt: at,
         isCard: hasBotCard(next),
         previousIsCard: hasBotCard(item),

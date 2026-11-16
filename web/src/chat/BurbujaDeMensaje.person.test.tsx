@@ -66,3 +66,21 @@ describe('opening a card from a message', () => {
     expect(screen.queryByTestId('avatar-k7')).toBeNull();
   });
 });
+
+/** Dali (§c-prospectos, 16/11): the prospect's words carry their own name, not the bot's that delivered them. */
+describe('a Dali prospect\'s message', () => {
+  const prospect = { name: 'Carlos', phone: '51949123824', adTitle: 'Asfalto en caliente' };
+
+  it('in the Slack format shows the prospect with the WhatsApp pill, and opens no card', () => {
+    const onViewPerson = draw({ message: message({ senderId: 'ana', prospect }), flat: true });
+    expect(screen.getByTestId('autor-k7')).toHaveTextContent('Carlos');
+    expect(screen.getByTestId('prospecto-k7')).toHaveTextContent('WhatsApp');
+    expect(screen.getByTestId('autor-k7').tagName).not.toBe('BUTTON');
+    expect(onViewPerson).not.toHaveBeenCalled();
+  });
+
+  it('in the bubble format the name is the prospect\'s too', () => {
+    draw({ message: message({ senderId: 'ana', prospect }), flat: false });
+    expect(screen.getByTestId('autor-k7')).toHaveTextContent('Carlos');
+  });
+});

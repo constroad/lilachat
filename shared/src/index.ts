@@ -110,6 +110,7 @@ export * from './mediaLibrary.js';
 export * from './workspaceMembers.js';
 export * from './activity.js';
 export * from './bots.js';
+export * from './prospects.js';
 export * from './profile.js';
 export * from './adminUsers.js';
 export * from './adminSpaces.js';

@@ -1544,3 +1544,19 @@ por ahí». Los anuncios de Constroad salen el 17/11. Decisiones (José, por age
 | --- | --- | --- |
 | 1 | PUT, sección «PROSPECTOS», `as_contact` con texto y fotos, push, `prospect_id` en `message.created`, número completo | 17/11 |
 | 2 | Pastilla de pausa y `prospect.handback`, audios, checks de entregado, reparto por vendedor | después |
+
+### Hecho (16/11, fase 1)
+
+- `shared/src/prospects.ts` (validación, nombre del canal, `authorKeyOf`, `prospectAuthorView`) y el scope
+  `prospects:write` en `APP_SCOPES`. `validateBotPost` acepta `prospect` y `as_contact`.
+- Server: `server/src/bots/botProspects.ts` (colección `prospectchannels`, el chat lleva `prospectId`),
+  `PUT /api/bots/prospects/:id`, el destino en `botMessages.ts` (el mensaje guarda `prospect: { name, phone,
+  sentAt?, adTitle? }`), `channel.prospect_id` en `message.created` y el push con el nombre del prospecto.
+- Web y APK: la fila (plana y burbuja) muestra el nombre del prospecto con la pastilla «WhatsApp», sin la
+  foto del bot ni su tarjeta; el prospecto y Dali no se agrupan aunque los publique el mismo bot.
+- El canal sale en «CANALES» del espacio Dali; la sección «PROSPECTOS» propia queda para la fase 2.
+- Tests: `shared/src/prospects.test.ts`, `shared/src/bots.test.ts`, `server/src/bots/botProspects.test.ts`,
+  `web/src/chat/BurbujaDeMensaje.person.test.tsx`, `web/src/chat/filasDeLaConversacion.test.ts`.
+- **Sin verificar de punta a punta**: hace falta la app Dali instalada en un espacio con `prospects:write`
+  (la crea agentes con su manifiesto). Tocar el avatar del prospecto en la burbuja del APK abre el perfil
+  del bot.

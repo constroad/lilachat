@@ -41,6 +41,8 @@ export type ServerMessage = {
   clientRef?: { kind?: string; visitId?: string };
   /** A bot's photos and videos, drawn as an album (José via agentes 09/11). */
   files?: GalleryItem[];
+  /** A Dali prospect wrote it on WhatsApp (§c-prospectos, 16/11): their name, not the bot's that delivered it. */
+  prospect?: { name: string; phone: string; sentAt?: string; adTitle?: string };
   /** An app's answer sent to the channel by who asked: «José usó /clima» on top. */
   sharedBy?: { name: string; command: string };
   /** José 13/11: a copy forwarded from another chat. */

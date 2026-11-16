@@ -6,6 +6,7 @@ import { BLOCK_LIMITS, commandLineOf, upToWord, validateBotBlocks, validateBotFi
 export { validateBotFiles };
 import type { BotCommand } from './botCommands.js';
 import type { AppCategory } from './botManifest.js';
+import { PROSPECT_ID } from './prospects.js';
 
 /**
  * What a bot (Lila, through agentes) sends to `POST /api/bots/messages`
@@ -44,11 +45,11 @@ export type BotChecklist = { title: string; othersCanMark: boolean; items: { tex
 const TASK_KEY_MAX = 60;
 /** `topic` (R160): the channel the space's admin picked for that topic of the app. */
 /** `client` (pending 21, §157): the channel of that client, created by `PUT /api/bots/clients/:id`. */
-export type BotTarget = { channelId: string } | { topic: string } | { userPhone: string } | { userId: string } | { client: string };
+export type BotTarget = { channelId: string } | { topic: string } | { userPhone: string } | { userId: string } | { client: string } | { prospect: string };
 /** What a message to a client is about, so the «Servicios» tab can show it under its service. */
 /** `visitId`: a technical visit's card (agentes 14/11), drawn as lv01 and opened by its id. */
 export type BotClientRef = { kind: string; serviceId?: string; recordId?: string; visitId?: string };
-export type BotPost = { target: BotTarget; text?: string; card?: BotCard; /** Photos and videos drawn as a person's album (José via agentes 09/11). */ files?: GalleryItem[]; checklist?: BotChecklist; threadOf?: number; clientRef?: BotClientRef; idempotencyKey: string };
+export type BotPost = { target: BotTarget; text?: string; card?: BotCard; /** Photos and videos drawn as a person's album (José via agentes 09/11). */ files?: GalleryItem[]; checklist?: BotChecklist; threadOf?: number; clientRef?: BotClientRef; /** The prospect wrote it (Dali, §c-prospectos): only to a prospect, never a card. */ asContact?: { sentAt?: string }; idempotencyKey: string };
 export type BotPostError = { ok: false; error: 'invalid_request'; message: string };
 
 export const BOT_LIMITS = { text: 4000, idempotencyKey: 120, fields: 12, actions: 3, /** lv01: Marcar punto, Entrevista, Foto suelta, Terminar and the croquis (agentes 14/11). */ visitActions: 5, actionValue: 2000, kicker: 60, title: 120, subtitle: 120, footer: 120, status: 24, label: 40, value: 120, linkLabel: 40, actionLabel: 24, actionId: 40, url: 500 };
@@ -178,13 +179,26 @@ export function clientRefOf(body: Record<string, unknown>): BotClientRef | null 
   return { kind: body.kind, ...(serviceId ? { serviceId } : {}), ...(recordId ? { recordId } : {}), ...(visitId ? { visitId } : {}) };
 }
 
+/** `as_contact`: the prospect's own words, carried by the bot (Dali, §c-prospectos). */
+function asContactOf(body: Record<string, unknown>, target: BotTarget): { ok: true; asContact?: { sentAt?: string } } | BotPostError {
+  if (body.as_contact === undefined) return { ok: true };
+  if (body.as_contact !== true) return refuse('as_contact va como true, o no va.');
+  if (!('prospect' in target)) return refuse('as_contact solo vale con el destino prospect.');
+  if (body.card !== undefined || body.checklist !== undefined) return refuse('Un mensaje del prospecto lleva text o files, nunca card ni checklist.');
+  if (body.sent_at === undefined) return { ok: true, asContact: {} };
+  if (typeof body.sent_at !== 'string' || Number.isNaN(Date.parse(body.sent_at))) return refuse('sent_at va como fecha ISO.');
+  return { ok: true, asContact: { sentAt: body.sent_at } };
+}
+
 function validateTarget(body: Record<string, unknown>): { ok: true; target: BotTarget } | BotPostError {
   const channelId = typeof body.channel_id === 'string' && body.channel_id ? body.channel_id : undefined;
   const topic = body.topic === undefined ? undefined : String(body.topic);
   const user = body.user === undefined ? undefined : record(body.user);
   const client = body.client === undefined ? undefined : String(body.client);
-  if ([channelId, topic, user, client].filter((one) => one !== undefined).length !== 1) return refuse('Indica un destino: channel_id, topic, user o client, uno solo.');
+  const prospect = body.prospect === undefined ? undefined : String(body.prospect);
+  if ([channelId, topic, user, client, prospect].filter((one) => one !== undefined).length !== 1) return refuse('Indica un destino: channel_id, topic, user, client o prospect, uno solo.');
   if (channelId) return { ok: true, target: { channelId } };
+  if (prospect !== undefined) return PROSPECT_ID.test(prospect) ? { ok: true, target: { prospect } } : refuse('prospect es el id del prospecto (letras, números, :, _ o -, hasta 120).');
   if (client !== undefined) return CLIENT_ID.test(client) ? { ok: true, target: { client } } : refuse('client es el id del cliente (letras, números, _ o -, hasta 64).');
   if (topic !== undefined) return TOPIC_KEY.test(topic) ? { ok: true, target: { topic } } : refuse('topic va en minúsculas (a-z, 0-9, _ o -), como en el manifiesto.');
   if (typeof user!.id === 'string' && user!.id) return { ok: true, target: { userId: user!.id } };
@@ -211,7 +225,9 @@ export function validateBotPost(raw: unknown): { ok: true; post: BotPost } | Bot
   if (!idempotencyKey || idempotencyKey.length > BOT_LIMITS.idempotencyKey) return refuse(`idempotency_key es obligatorio, hasta ${BOT_LIMITS.idempotencyKey}.`);
   const text = typeof body.text === 'string' ? body.text.trim() : '';
   if (text.length > BOT_LIMITS.text) return refuse(`El texto es demasiado largo (máximo ${BOT_LIMITS.text}).`);
-  const post: BotPost = { target: target.target, ...(text ? { text } : {}), idempotencyKey };
+  const contact = asContactOf(body, target.target);
+  if (!contact.ok) return contact;
+  const post: BotPost = { target: target.target, ...(text ? { text } : {}), idempotencyKey, ...(contact.asContact ? { asContact: contact.asContact } : {}) };
   if (body.card !== undefined) {
     const card = validatePostCard(body);
     if (!card.ok) return refuse(card.message);

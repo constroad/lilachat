@@ -11,6 +11,7 @@ import { commandsOfApp, commandsToWire, registerCommands, respondToCommand } fro
 import { installationByToken, revokeInstallation } from './botInstall.js';
 import { deleteBotMessage, isVisitMessage, postBotMessage, updateBotMessage } from './botMessages.js';
 import { upsertClientChannel } from './botClients.js';
+import { upsertProspectChannel } from './botProspects.js';
 import { addClientTasks, clientTasksOf } from './botClientTasks.js';
 import { setTopicChannels, setTopicOffered, topicRoutesOf } from './botTopics.js';
 import { channelFilesHeardBy, filesHeardBy } from './botTriggers.js';
@@ -145,6 +146,11 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
     const files = await filesHeardBy(req.bot!, String(req.params.id));
     if (!files) return void res.status(404).json({ error: 'message_not_found', message: 'Ese mensaje no existe o esta app no lo escuchó.' });
     res.json({ files });
+  }));
+  router.put('/prospects/:prospectId', asyncRoute(async (req, res) => {
+    const outcome = await upsertProspectChannel(req.bot!, String(req.params.prospectId), req.body);
+    if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+    res.status(outcome.status).json({ prospect: outcome.prospect });
   }));
   router.put('/clients/:clientId', asyncRoute(async (req, res) => {
     const outcome = await upsertClientChannel(req.bot!, String(req.params.clientId), req.body);

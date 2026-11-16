@@ -43,6 +43,8 @@ export const APP_SCOPES = {
   'users:read.email': 'Ver el correo de quien la usa, si lo verificó en Lilachat',
   // Like Slack's channels:history (pending 87): without it the app hears only its 1:1 and what names it.
   'channels:history': 'Leer los mensajes de los canales y grupos donde está, aunque no la mencionen',
+  // Dali (BOTS-API §c-prospectos, 16/11): a channel per prospect of a paid ad, with the number to call.
+  'prospects:write': 'Crear un canal por cada prospecto que escribe por WhatsApp, con su nombre y su número',
 } as const;
 export type AppScope = keyof typeof APP_SCOPES;
 const isScope = (value: unknown): value is AppScope => typeof value === 'string' && value in APP_SCOPES;

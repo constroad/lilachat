@@ -4,7 +4,7 @@ import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { CircleAlert } from 'lucide-react-native';
 import { ForwardedLabel } from './ForwardedLabel';
-import { TEXTO_ELIMINADO, formatClock, groupsWithPrevious, primerEnlace, sharedByLine, type DeliveryState } from '@lilachat/shared';
+import { TEXTO_ELIMINADO, authorKeyOf, formatClock, groupsWithPrevious, primerEnlace, sharedByLine, type DeliveryState } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { useColores } from '../ui/tema';
 import { useChatFont } from '../ui/chatFont';
@@ -80,7 +80,7 @@ function FlatRow(props: {
   const { item, previous } = props;
   const mine = isPending(item) || item.senderId === props.myUserId;
   const senderId = isPending(item) ? props.myUserId : item.senderId;
-  const grouped = Boolean(previous) && groupsWithPrevious({ senderId, at: atOf(item), previousSenderId: previous && (isPending(previous) ? props.myUserId : previous.senderId), previousAt: previous && atOf(previous), isCard: hasBotCard(item), previousIsCard: previous ? hasBotCard(previous) : false });
+  const grouped = Boolean(previous) && groupsWithPrevious({ senderId: isPending(item) ? senderId : authorKeyOf(item), at: atOf(item), previousSenderId: previous && (isPending(previous) ? props.myUserId : authorKeyOf(previous)), previousAt: previous && atOf(previous), isCard: hasBotCard(item), previousIsCard: previous ? hasBotCard(previous) : false });
   const id = isPending(item) ? item.clientKey : String(item.seq);
   const failed = isPending(item) ? item.fallo : undefined;
   const deleted = !isPending(item) && Boolean(item.deletedAt);

@@ -9,6 +9,7 @@ import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { BotInstallationModel, type BotInstallation } from './botModels.js';
 import { channelOfPostedTopic } from './botTopics.js';
 import { chatOfClient } from './botClients.js';
+import { chatOfProspect } from './botProspects.js';
 
 /**
  * What a bot publishes (`specs/BOTS-API.spec.md` §b): to a channel or group of
@@ -54,6 +55,10 @@ async function chatOfChannel(installation: Installation, channelId: string): Pro
 
 async function resolveChat(installation: Installation, target: BotPost['target']): Promise<Types.ObjectId | BotApiError> {
   if ('channelId' in target) return chatOfChannel(installation, target.channelId);
+  if ('prospect' in target) {
+    const found = await chatOfProspect(installation, target.prospect);
+    return 'chatId' in found ? found.chatId : found;
+  }
   if ('client' in target) return chatOfClient(installation, target.client);
   if ('topic' in target) {
     const channelId = await channelOfPostedTopic(installation, target.topic);
@@ -74,7 +79,16 @@ export async function assigneesOf(installation: Pick<Installation, 'workspaceId'
   return byPhone;
 }
 
+/** `as_contact` (Dali, §c-prospectos): the prospect is the author shown, with the hour they wrote on WhatsApp. */
+async function prospectAuthorOf(installation: Installation, post: BotPost): Promise<Message['prospect'] | undefined> {
+  if (!post.asContact || !('prospect' in post.target)) return undefined;
+  const found = await chatOfProspect(installation, post.target.prospect);
+  if (!('author' in found)) return undefined;
+  return { ...found.author, ...(post.asContact.sentAt ? { sentAt: post.asContact.sentAt } : {}) };
+}
+
 async function publishText(installation: Installation, chatId: Types.ObjectId, post: BotPost, sharedBy?: Message['sharedBy']): Promise<Message> {
+  const prospect = await prospectAuthorOf(installation, post);
   const result = await sendMessage({
     chatId: String(chatId),
     senderId: installation.botUserId,
@@ -87,10 +101,11 @@ async function publishText(installation: Installation, chatId: Types.ObjectId, p
     ...(sharedBy ? { sharedBy } : {}),
     ...(post.threadOf ? { hiloDe: post.threadOf } : {}),
   });
-  if (post.clientRef && !result.duplicate) await MessageModel.updateOne({ _id: result.message._id }, { $set: { clientRef: post.clientRef } });
+  const extra = { ...(post.clientRef ? { clientRef: post.clientRef } : {}), ...(prospect ? { prospect } : {}) };
+  if (Object.keys(extra).length && !result.duplicate) await MessageModel.updateOne({ _id: result.message._id }, { $set: extra });
   if (result.duplicate) return result.message;
-  // The live message carries its ref too: a visit card (lv01) is drawn by it from the first delivery.
-  const message = post.clientRef ? { ...result.message, clientRef: post.clientRef } : result.message;
+  // The live message carries its ref and its prospect too: a visit card (lv01) or a prospect's words are drawn from the first delivery.
+  const message = { ...result.message, ...extra };
   const members = await publicarMensaje(message, result.members);
   if (result.hilo && post.threadOf) notifyThread(String(chatId), post.threadOf, result.hilo, members);
   return message;

@@ -54,6 +54,17 @@ describe('filasDeLaConversacion', () => {
     ]);
   });
 
+  it('a Dali prospect and the bot that delivers them are two authors; the prospect groups with themself (16/11)', () => {
+    const prospect = { name: 'Carlos', phone: '51949123824' };
+    const rows = filasDeLaConversacion([
+      { ...m(1, 'dali', '2026-11-17T14:00:00.000Z'), prospect },
+      { ...m(2, 'dali', '2026-11-17T14:00:20.000Z'), prospect },
+      m(3, 'dali', '2026-11-17T14:00:40.000Z'),
+    ]);
+
+    expect(rows.map((row) => row.agrupado)).toEqual([false, true, false]);
+  });
+
   it('lista vacía, sin filas', () => {
     expect(filasDeLaConversacion([])).toEqual([]);
   });

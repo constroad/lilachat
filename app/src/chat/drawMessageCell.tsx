@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactElement } from 'react';
-import { canOpenThread, isAnimatedImage, memberBadge, miReaccion, puedeReaccionar, type MemberPill } from '@lilachat/shared';
+import { canOpenThread, isAnimatedImage, memberBadge, miReaccion, prospectAuthorView, puedeReaccionar, type MemberPill } from '@lilachat/shared';
 import { DivisorNoLeidos } from './useDivisorNoLeidos';
 import { DaySeparator, isPending, MessageRow, type Row } from './MessageRow';
 import { ChipDeHilo } from './ChipDeHilo';
@@ -117,6 +117,8 @@ function drawPair(cell: MessageCell, pair: readonly [ChatMessage, ChatMessage], 
 function drawFlatRow(cell: MessageCell, chat: CellDrawContext, placement: Placement): ReactElement {
   const { row } = cell;
   const { senderId } = placement;
+  // A Dali prospect (16/11): their name and the WhatsApp pill, not the bot that delivered their words.
+  const prospect = isPending(row) ? null : prospectAuthorView(row);
   return (
     <FlatMessageRow
       item={row}
@@ -127,10 +129,10 @@ function drawFlatRow(cell: MessageCell, chat: CellDrawContext, placement: Placem
       names={chat.names}
       everyName={chat.names}
       delivery={cell.delivery}
-      authorName={chat.names.get(senderId)}
-      authorPhoto={chat.photos.get(senderId)}
-      badge={memberBadge({ ...chat.roles.get(senderId), isMe: cell.mine })}
-      authorIsApp={chat.roles.get(senderId)?.role === 'app'}
+      authorName={prospect?.name ?? chat.names.get(senderId)}
+      authorPhoto={prospect ? undefined : chat.photos.get(senderId)}
+      badge={prospect ? prospect.badge : memberBadge({ ...chat.roles.get(senderId), isMe: cell.mine })}
+      authorIsApp={!prospect && chat.roles.get(senderId)?.role === 'app'}
       quoted={cell.quoted}
       selected={!isPending(row) && isChosen(row.seq, chat)}
       selecting={chat.selecting}
@@ -149,6 +151,7 @@ function drawFlatRow(cell: MessageCell, chat: CellDrawContext, placement: Placem
 function drawBubble(cell: MessageCell, chat: CellDrawContext): ReactElement {
   const { row } = cell;
   const author = isPending(row) ? undefined : String(row.senderId);
+  const prospect = isPending(row) ? null : prospectAuthorView(row);
   return (
     <MessageRow
       item={row}
@@ -161,8 +164,8 @@ function drawBubble(cell: MessageCell, chat: CellDrawContext): ReactElement {
       everyName={chat.names}
       entrega={cell.delivery}
       esGrupo={chat.isGroup}
-      nombreAutor={author === undefined ? undefined : chat.names.get(author)}
-      fotoAutor={author === undefined ? undefined : chat.photos.get(author)}
+      nombreAutor={prospect?.name ?? (author === undefined ? undefined : chat.names.get(author))}
+      fotoAutor={author === undefined || prospect ? undefined : chat.photos.get(author)}
       onGreet={cell.greets ? chat.onGreet : undefined}
       onVerImagen={chat.onOpenMedia}
       onSeleccionar={chat.onSelect}

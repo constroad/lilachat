@@ -167,3 +167,27 @@ describe('a technical visit card in the reports topic (agentes 14/11)', () => {
     expect(validateBotPost({ topic: 'informes', idempotency_key: 'k1', kind: 'visita.updated', refs: { visit_id: '65f0000000000000000000a1' }, card: { title: 'T', actions: six } })).toMatchObject({ ok: false, message: 'La tarjeta lleva hasta 5 acciones.' });
   });
 });
+
+describe('validateBotPost to a Dali prospect (§c-prospectos)', () => {
+  it('posts to a prospect by id, as Dali by default', () => {
+    expect(validateBotPost({ prospect: 'dali:constroad:9f2c', text: 'Hola, soy Dali', idempotency_key: 'd1' })).toEqual({ ok: true, post: { target: { prospect: 'dali:constroad:9f2c' }, text: 'Hola, soy Dali', idempotencyKey: 'd1' } });
+  });
+
+  it('as_contact is the prospect writing, with the hour they sent it', () => {
+    const sentAt = '2026-11-17T14:02:00.000Z';
+    expect(validateBotPost({ prospect: 'dali:constroad:9f2c', as_contact: true, sent_at: sentAt, text: 'Cuánto cuesta?', idempotency_key: 'wamid.1' })).toEqual({ ok: true, post: { target: { prospect: 'dali:constroad:9f2c' }, text: 'Cuánto cuesta?', idempotencyKey: 'wamid.1', asContact: { sentAt } } });
+  });
+
+  it.each([
+    [{ channel_id: 'c1', as_contact: true, text: 'x', idempotency_key: 'k' }, 'prospect'],
+    [{ prospect: 'p1', as_contact: true, card: { title: 'x' }, idempotency_key: 'k' }, 'card'],
+    [{ prospect: 'p1', as_contact: 'yes', text: 'x', idempotency_key: 'k' }, 'as_contact'],
+    [{ prospect: 'p1', as_contact: true, sent_at: 'ayer', text: 'x', idempotency_key: 'k' }, 'sent_at'],
+    [{ prospect: 'bad id', text: 'x', idempotency_key: 'k' }, 'prospect'],
+    [{ prospect: 'p1', client: 'c1', text: 'x', idempotency_key: 'k' }, 'destino'],
+  ])('refuses %j naming %s', (raw, word) => {
+    const result = validateBotPost(raw);
+    expect(result.ok).toBe(false);
+    expect(result.ok ? '' : result.message).toContain(word);
+  });
+});

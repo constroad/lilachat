@@ -140,6 +140,34 @@ describe('the bots fake', () => {
     expect(((await call('/__fake/messages')).body.messages as unknown[]).slice(-2)).toMatchObject([{ kind: 'order.created', refs: { record_id: 'ped-1' } }, { kind: 'order.dispatched', thread_of: card.seq }]);
   });
 
+  it('Dali prospects like the server: PUT creates the channel, the contact writes as_contact, Dali answers, sent_at kept', async () => {
+    const { token } = await install();
+    const asBot = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+    const id = 'dali:constroad:9f2c41';
+    const putProspect = (body: unknown, prospectId = id) => call(`/api/bots/prospects/${encodeURIComponent(prospectId)}`, { method: 'PUT', headers: asBot, body: JSON.stringify(body) });
+    const bot = (body: unknown) => call('/api/bots/messages', { method: 'POST', headers: asBot, body: JSON.stringify(body) });
+    const now = new Date().toISOString();
+    expect((await bot({ prospect: id, as_contact: true, text: 'Hola', idempotency_key: 'wa-0' })).body.error).toBe('prospect_not_found');
+    expect((await putProspect({ phone: '51949123824', last_activity_at: now }, 'bad id!')).status).toBe(400);
+    expect((await putProspect({ phone: '12', last_activity_at: now })).body.error).toBe('invalid_request');
+    expect((await putProspect({ phone: '51949123824', last_activity_at: now, attended_by: 'robot' })).body.error).toBe('invalid_request');
+    expect((await putProspect({ phone: '51949123824', last_activity_at: now, source: { kind: 'ctwa', ad_url: 'http://x' } })).body.error).toBe('invalid_request');
+
+    const created = await putProspect({ phone: '+51 949 123 824', last_activity_at: now, source: { kind: 'ctwa', ad_id: '1203', ad_title: 'Asfalto en caliente' } });
+    expect(created).toMatchObject({ status: 201, body: { prospect: { id, attended_by: 'dali', channel: { name: 'Prospecto · +51 949 123 824' } } } });
+    expect(await putProspect({ name: 'Carlos', phone: '51949123824', last_activity_at: now, attended_by: 'human' })).toMatchObject({ status: 200, body: { prospect: { attended_by: 'human', channel: { name: 'Carlos' } } } });
+
+    const heard = await bot({ prospect: id, as_contact: true, text: 'Cuánto cuesta el m³?', sent_at: now, idempotency_key: 'wamid.1' });
+    expect(heard.status).toBe(201);
+    expect((await bot({ prospect: id, as_contact: true, text: 'otra vez', idempotency_key: 'wamid.1' })).status).toBe(200);
+    expect((await bot({ prospect: id, as_contact: true, card: { title: 'x' }, idempotency_key: 'wamid.2' })).body.error).toBe('invalid_request');
+    expect((await bot({ channel_id: 'ch_general', as_contact: true, text: 'x', idempotency_key: 'wamid.3' })).body.error).toBe('invalid_request');
+    expect((await bot({ prospect: id, text: 'Hola, soy Dali', idempotency_key: 'dali-1' })).status).toBe(201);
+    const channelId = (created.body.prospect as { channel: { id: string } }).channel.id;
+    expect(((await call('/__fake/messages')).body.messages as unknown[]).slice(-2)).toMatchObject([{ chat_id: channelId, as_contact: true, sent_at: now }, { chat_id: channelId, text: 'Hola, soy Dali' }]);
+    expect((await call('/__fake/prospects')).body.prospects).toMatchObject([{ id, channel: { id: channelId, name: 'Carlos' }, state: { phone: '51949123824', attended_by: 'human' } }]);
+  });
+
   it('revoking kills the token', async () => {
     const { token } = await install();
     expect((await call('/api/oauth/revoke', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })).status).toBe(200);

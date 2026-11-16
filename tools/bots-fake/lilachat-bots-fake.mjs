@@ -36,6 +36,8 @@ const CLIENT_ID = /^[A-Za-z0-9_-]{1,64}$/;
 const CLIENT_KIND = /^[a-z_]{1,32}\.[a-z_]{1,32}$/;
 const CLIENT_SERVICE_STATUSES = ['pending', 'in_progress', 'completed', 'rejected'];
 const CLIENT_LIVE_DAYS = 60;
+const PROSPECT_ID = /^[A-Za-z0-9][A-Za-z0-9:_-]{0,119}$/;
+const PROSPECT_ATTENDED = ['dali', 'human'];
 const DAY_MS = 86_400_000;
 
 const DEFAULT_CHANNELS = [
@@ -110,7 +112,7 @@ export function createFake(options = {}) {
   const fileKey = randomBytes(32);
   let state;
   const reset = () => {
-    state = { codes: new Map(), installation: null, messages: [], deliveries: [], minute: { start: Date.now(), used: 0 }, seq: 0, joined: new Set(config.channels.filter((c) => c.visibility === 'public').map((c) => c.id)), commands: [], runs: new Map(), commandResponses: [], apps: new Map(), installedClientId: null, topicChannels: {}, files: new Map(), clients: new Map() };
+    state = { codes: new Map(), installation: null, messages: [], deliveries: [], minute: { start: Date.now(), used: 0 }, seq: 0, joined: new Set(config.channels.filter((c) => c.visibility === 'public').map((c) => c.id)), commands: [], runs: new Map(), commandResponses: [], apps: new Map(), installedClientId: null, topicChannels: {}, files: new Map(), clients: new Map(), prospects: new Map() };
   };
   reset();
 
@@ -162,7 +164,11 @@ export function createFake(options = {}) {
     const topic = body.topic === undefined ? null : String(body.topic);
     const user = body.user && typeof body.user === 'object' ? body.user : null;
     const client = body.client === undefined ? null : String(body.client);
-    if ([channelId, topic, user, client].filter((one) => one !== null).length !== 1) return [400, { error: 'invalid_request', message: 'Indica un destino: channel_id, topic, user o client, uno solo.' }];
+    const prospect = body.prospect === undefined ? null : String(body.prospect);
+    if ([channelId, topic, user, client, prospect].filter((one) => one !== null).length !== 1) return [400, { error: 'invalid_request', message: 'Indica un destino: channel_id, topic, user, client o prospect, uno solo.' }];
+    const contactProblem = asContactProblem(body, prospect);
+    if (contactProblem) return [400, { error: 'invalid_request', message: contactProblem }];
+    if (prospect !== null && !state.prospects.has(prospect)) return [404, { error: 'prospect_not_found', message: `Ese prospecto no tiene canal: manda primero PUT /api/bots/prospects/${prospect}.` }];
     if (client !== null) {
       if (!CLIENT_ID.test(client)) return [400, { error: 'invalid_request', message: 'client es el id del cliente (letras, números, _ o -, hasta 64).' }];
       if (!state.clients.has(client)) return [404, { error: 'client_not_found', message: `Ese cliente no tiene canal: manda primero PUT /api/bots/clients/${client} con su estado.` }];
@@ -190,7 +196,8 @@ export function createFake(options = {}) {
       if (!config.members.some((member) => member.phone === phone)) return [400, { error: 'assignee_not_member', message: `El responsable ${item.assignee_phone} no es miembro activo del espacio.`, phone: phone || String(item.assignee_phone) }];
     }
     let chatId;
-    if (client !== null) chatId = state.clients.get(client).channel.id;
+    if (prospect !== null) chatId = state.prospects.get(prospect).channel.id;
+    else if (client !== null) chatId = state.clients.get(client).channel.id;
     else if (channelId) {
       const channel = config.channels.find((one) => one.id === channelId);
       if (!channel) return [404, { error: 'channel_not_found', message: 'Ese canal no existe en el espacio.' }];
@@ -202,9 +209,49 @@ export function createFake(options = {}) {
       chatId = `dm_${member.id}`;
     }
     state.seq += 1;
-    const message = { id: `msg_${randomBytes(6).toString('hex')}`, chat_id: chatId, seq: state.seq, idempotency_key: key, text: body.text, card: body.card, checklist: body.checklist, thread_of: body.thread_of, ...(body.kind ? { kind: body.kind, refs: body.refs ?? {} } : {}), at: new Date().toISOString() };
+    const message = { id: `msg_${randomBytes(6).toString('hex')}`, chat_id: chatId, seq: state.seq, idempotency_key: key, text: body.text, card: body.card, checklist: body.checklist, thread_of: body.thread_of, ...(body.kind ? { kind: body.kind, refs: body.refs ?? {} } : {}), ...(body.as_contact === true ? { as_contact: true, ...(body.sent_at ? { sent_at: body.sent_at } : {}) } : {}), at: new Date().toISOString() };
     state.messages.push(message);
     return [201, { message: { id: message.id, chat_id: message.chat_id, seq: message.seq } }];
+  }
+
+  // Dali prospects (§c-prospectos): `as_contact` is the prospect writing, only to a prospect, never a card.
+  function asContactProblem(body, prospect) {
+    if (body.as_contact === undefined) return null;
+    if (body.as_contact !== true) return 'as_contact va como true, o no va.';
+    if (prospect === null) return 'as_contact solo vale con el destino prospect.';
+    if (body.card || body.checklist) return 'Un mensaje del prospecto lleva text o files, nunca card ni checklist.';
+    if (body.sent_at !== undefined && (typeof body.sent_at !== 'string' || Number.isNaN(Date.parse(body.sent_at)))) return 'sent_at va como fecha ISO.';
+    return null;
+  }
+  const prospectPhone = (value) => String(value ?? '').replace(/[^0-9]/g, '');
+  const shownPhone = (digits) => (digits.length === 11 && digits.startsWith('51') ? `+51 ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}` : `+${digits}`);
+  function prospectProblem(body) {
+    const phone = prospectPhone(body.phone);
+    if (phone.length < 8 || phone.length > 15) return 'phone lleva de 8 a 15 dígitos.';
+    if (body.name !== undefined && (typeof body.name !== 'string' || body.name.trim().length > 60)) return 'name va como texto, hasta 60.';
+    if (body.attended_by !== undefined && !PROSPECT_ATTENDED.includes(body.attended_by)) return 'attended_by va como dali o human.';
+    if (typeof body.last_activity_at !== 'string' || Number.isNaN(Date.parse(body.last_activity_at))) return 'last_activity_at va como fecha ISO.';
+    return body.source === undefined ? null : sourceProblem(body.source);
+  }
+  function sourceProblem(source) {
+    if (!source || source.kind !== 'ctwa') return 'source.kind hoy solo es ctwa.';
+    if (source.ad_url !== undefined && !/^https:\/\/\S{1,492}$/.test(String(source.ad_url))) return 'source.ad_url va con https, hasta 500.';
+    if (source.ad_title !== undefined && String(source.ad_title).length > 120) return 'source.ad_title va hasta 120.';
+    if (source.ad_id !== undefined && String(source.ad_id).length > 64) return 'source.ad_id va hasta 64.';
+    return null;
+  }
+  function putProspect(prospectId, body) {
+    if (!PROSPECT_ID.test(prospectId)) return [400, { error: 'invalid_request', message: 'El id del prospecto lleva letras, números, :, _ o -, hasta 120.' }];
+    const problem = prospectProblem(body);
+    if (problem) return [400, { error: 'invalid_request', message: problem }];
+    const phone = prospectPhone(body.phone);
+    const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : `Prospecto · ${shownPhone(phone)}`;
+    const known = state.prospects.get(prospectId);
+    const channel = known?.channel ?? { id: `prospect_${state.prospects.size + 1}`, name };
+    channel.name = name;
+    const attendedBy = body.attended_by ?? known?.state.attended_by ?? 'dali';
+    state.prospects.set(prospectId, { channel, state: { ...body, phone, attended_by: attendedBy } });
+    return [known ? 200 : 201, { prospect: { id: prospectId, channel, attended_by: attendedBy } }];
   }
 
   // A channel per client (pending 21, §157): live with any movement (last_activity_at) in the last 60 days.
@@ -476,6 +523,7 @@ export function createFake(options = {}) {
       return id ? [202, { delivery_id: id }] : [409, { error: 'not_installed', message: 'Instala la app primero.' }];
     }
     if (req.method === 'GET' && path === '/__fake/messages') return [200, { messages: state.messages }];
+    if (req.method === 'GET' && path === '/__fake/prospects') return [200, { prospects: [...state.prospects.entries()].map(([id, one]) => ({ id, channel: one.channel, state: one.state })) }];
     if (req.method === 'GET' && path === '/__fake/clients') return [200, { clients: [...state.clients.entries()].map(([id, one]) => ({ id, channel: one.channel, state: one.state })) }];
     if (req.method === 'POST' && path === '/__fake/command') return invokeCommand(await readBody(req));
     if (req.method === 'GET' && path === '/__fake/command-responses') return [200, { responses: state.commandResponses }];
@@ -492,6 +540,8 @@ export function createFake(options = {}) {
     if (req.method === 'GET' && path === '/api/bots/members') return [200, { members: config.members }];
     if (req.method === 'GET' && path === '/api/bots/commands') return [200, { commands: state.commands }];
     if (req.method === 'PUT' && path === '/api/bots/commands') return registerCommands(await readBody(req));
+    const prospectPath = path.match(/^\/api\/bots\/prospects\/([^/]+)$/);
+    if (req.method === 'PUT' && prospectPath) return putProspect(decodeURIComponent(prospectPath[1]), await readBody(req));
     const clientPath = path.match(/^\/api\/bots\/clients\/([^/]+)$/);
     if (req.method === 'PUT' && clientPath) return putClient(decodeURIComponent(clientPath[1]), await readBody(req));
     if (req.method === 'GET' && path === '/api/bots/topics') return [200, topicsToWire()];

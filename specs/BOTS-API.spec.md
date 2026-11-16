@@ -1453,3 +1453,94 @@ Portal construyó la visita (`PRIMERA-VISITA.spec.md` §9). Agentes aceptó este
   botones. Lilachat lee el id de la clave (`visitIdOfKey`) y la abre.
 - Motor puro: `shared/src/siteVisit.ts`, con test sobre las respuestas reales de Portal. Ya no hay
   interruptor en el cliente: la puerta del server es la única llave.
+
+## c-prospectos. Prospectos de Dali (José vía agentes, 16/11)
+
+José, 16/11: «que en lilachat web o apk aparezca un nuevo espacio llamado dali con su logo donde vea
+solamente los mensajes de los prospectos de clientes que vienen de la publicidad para también atenderlos
+por ahí». Los anuncios de Constroad salen el 17/11. Decisiones (José, por agentes, 16/11):
+
+- **Un espacio aparte por empresa**, «Dali · Constroad»: Dali es multi-negocio.
+- **Un canal por prospecto**, en la sección «PROSPECTOS» (no un hilo: un hilo no tiene no leídos ni
+  push propios). Lo ven **todos los miembros activos** del espacio, con el **número completo** para
+  poder llamar. En los logs el número va enmascarado.
+- Solo entran los chats 1:1 que nacen de un anuncio click-to-WhatsApp: el filtro lo hace agentes.
+
+### Alta
+
+1. José crea el espacio «Dali · Constroad» en Lilachat («Unirme o crear un espacio») e invita a sus
+   vendedores.
+2. Integraciones → «Para instalar» → Dali → pantalla de consentimiento (el `install_url` de agentes),
+   igual que Portal o Inframaq. Agentes puede limitar Dali a los espacios Dali con §0-ter.
+3. El manifiesto de Dali pide `scopes: ["prospects:write", "channels:history"]`. El admin lee
+   «Crear un canal por cada prospecto que escribe por WhatsApp, con su nombre y su número» y «Leer los
+   mensajes de los canales y grupos donde está» (§c-novendecies). Sin `prospects:write` aceptado, las
+   rutas de prospectos dan `403 missing_scope`.
+
+### `PUT /api/bots/prospects/:prospectId`
+
+- `prospectId`: `^[A-Za-z0-9][A-Za-z0-9:_-]{0,119}$` (admite `dali:<companyId>:<hash>`). Otro da 400.
+- Cuerpo:
+
+  ```json
+  { "name": "Carlos",                       // opcional, hasta 60; solo para mostrar
+    "phone": "51949123824",                 // obligatorio, 8 a 15 dígitos (con o sin +)
+    "source": { "kind": "ctwa", "ad_id": "1203…", "ad_title": "Asfalto en caliente", "ad_url": "https://fb.me/…" },
+    "last_activity_at": "2026-11-17T14:02:00.000Z",
+    "attended_by": "dali" }                 // dali | human; por defecto dali
+  ```
+
+  `source` es opcional; `kind` hoy solo `ctwa`; `ad_id` hasta 64, `ad_title` hasta 120, `ad_url` https
+  hasta 500.
+- La primera vez crea el canal PRIVADO con el bot y **todos los miembros activos** del espacio, y
+  responde **201**. Después actualiza y responde **200**; un miembro que entró al espacio después se
+  suma con el siguiente PUT, como los admins en el canal del cliente.
+- Nombre del canal: `name`, o «Prospecto · +51 949 123 824» sin nombre.
+- Respuesta: `{ "prospect": { "id", "channel": { "id", "name" }, "attended_by" } }`.
+- `attended_by: "human"` muestra en la cabecera del canal «Dali en pausa · tú atiendes» (fase 2; ver
+  «Pausa»).
+- Vivo = `last_activity_at` en los últimos 60 días; si no, va a «Archivados», como los clientes.
+
+### Mensajes
+
+- `POST /api/bots/messages` acepta el destino `"prospect": "<prospectId>"` (en lugar de `channel_id`,
+  `user` o `client`). Un prospecto sin PUT da `404 prospect_not_found`.
+- **`"as_contact": true`**: el mensaje es del PROSPECTO, no de Dali. Se dibuja a la izquierda con su
+  nombre (o su número) y la pastilla «WhatsApp»; el primero muestra «Vino del anuncio: <ad_title>».
+  Solo vale con `prospect`; con otro destino da `400 invalid_request`. Lleva `text`, `files` (fotos y
+  videos, §c-duovicies) o los dos; nunca `card`.
+- `sent_at` (ISO, opcional): la hora en que el prospecto lo mandó; se muestra esa hora. El orden del
+  canal sigue siendo el de llegada.
+- `idempotency_key` = el id del mensaje de WhatsApp: el mismo id no publica dos veces.
+- Sin `as_contact` es un mensaje de Dali, con su avatar (respuestas, tarjeta «DALI · COTIZACIÓN» con
+  PATCH, tarjeta de falla en `thread_of`). Todo lo de siempre vale.
+- **Push**: cada mensaje `as_contact` avisa a los miembros del canal (título: el nombre o el número;
+  cuerpo: el texto o «Foto»). El del canal recién creado dice «Prospecto nuevo · <ad_title>».
+
+### Responder desde Lilachat
+
+- Con `channels:history`, cada mensaje de una persona en el canal llega como `message.created`, con
+  **`channel.prospect_id`** para no tener que mapear. Los `as_contact` no vuelven a la app (son del bot).
+- Envío por WhatsApp fallido: tarjeta en `thread_of` del mensaje humano, p. ej. «No llegó por WhatsApp ·
+  pasaron más de 24 h» con la acción «Reintentar» (`button.click`). El envío bien hecho no publica
+  nada (los checks de entregado son fase 2).
+
+### Pausa
+
+- **Fase 1 (17/11)**: Dali publica una tarjeta «Dali en pausa · tú atiendes» con la acción «Devolver a
+  Dali»; llega como `button.click`.
+- **Fase 2**: la pastilla en la cabecera sale de `attended_by` y su botón manda el evento nuevo
+  `prospect.handback` `{ prospect_id, user: { id, name, phone } }`.
+
+### Fake
+
+`tools/bots-fake`: `PUT /api/bots/prospects/:id` con las mismas reglas, el destino `prospect` y
+`as_contact` en `POST /api/bots/messages`, y `GET /__fake/prospects`. `POST /__fake/emit` con
+`message.created` y `channel.prospect_id` hace de vendedor.
+
+### Fases
+
+| Fase | Qué | Cuándo |
+| --- | --- | --- |
+| 1 | PUT, sección «PROSPECTOS», `as_contact` con texto y fotos, push, `prospect_id` en `message.created`, número completo | 17/11 |
+| 2 | Pastilla de pausa y `prospect.handback`, audios, checks de entregado, reparto por vendedor | después |

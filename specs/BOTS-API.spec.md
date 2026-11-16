@@ -1560,3 +1560,60 @@ por ahí». Los anuncios de Constroad salen el 17/11. Decisiones (José, por age
 - **Sin verificar de punta a punta**: hace falta la app Dali instalada en un espacio con `prospects:write`
   (la crea agentes con su manifiesto). Tocar el avatar del prospecto en la burbuja del APK abre el perfil
   del bot.
+
+### Fase 2: análisis y diseño (José 16/11, pendiente de su aprobación)
+
+José pidió un panel por origen (FB, IG, TikTok…), saber quién compra, a quién seguir y quién solo pregunta,
+y que Dali haga más inteligente el trabajo de los vendedores. Datos de agentes (16/11, código desplegado y
+base de producción):
+
+- **Transporte**: Baileys 7, un dispositivo vinculado al 949. No es la Cloud API: no hay `referral` ni
+  ventana de 24 h ni plantillas. El riesgo es otro: WhatsApp puede banear un número que manda seguimientos en
+  frío. Por eso un seguimiento lo aprueba un vendedor y sale espaciado.
+- **Origen**: el primer mensaje de un anuncio trae `externalAdReply` (`sourceType:'ad'`, `sourceId`, `title`,
+  `sourceUrl`, `ctwaClid`) y `conversionSource` (`FB_Ads`, `ctwa_ad`). Facebook contra Instagram NO está
+  confirmado (pista: el host de `sourceUrl`); agentes lo confirma con el primer clic real. Hasta entonces el
+  origen es «Meta». TikTok, web y orgánico: un enlace wa.me por canal con texto precargado y un código
+  («Hola, vengo de TikTok [TT1]»), que Dali reconoce por reglas. Hoy Dali solo abre conversación si viene de
+  un anuncio (`intake:'ads'`): lo demás necesita `intake:'all'` o una regla. agentes empezó a guardar
+  `ctwaClid` y `conversionSource` el 16/11.
+- **Extracción**: Haiku 5.5 devuelve en cada turno los campos de la config del negocio (Constroad: servicio*,
+  proyecto, mezcla, cantidad*, lugar*, entrega, fecha*, nombre*) y un resumen. Los precios y cantidades los
+  calcula el código desde el catálogo (IGV 18 %); el modelo nunca pone precios.
+- **Modelos**: hoy solo Haiku 5.5, con el system prompt cacheado y salida con esquema. Qwen NO existe en
+  agentes (era el modelo local de lila-app). Tras 3 fallas del modelo, la conversación pasa a un humano.
+  Costo por conversación: sin medir hasta las primeras reales (`llm_uso`).
+- **Qué sale al cliente** (agentes `7103d51`, `teamMessageOf`): solo lo escrito en el canal mismo
+  (`message.created` sin `thread_of`). Una respuesta en un hilo, o un mensaje con `message.internal === true`,
+  se queda en el equipo. `message.edited`/`deleted` no se reenvían.
+- **Pausa**: la respuesta de un vendedor desde Lilachat pausa a Dali sin límite; un mensaje escrito desde el
+  teléfono del 949 la pausa 30 min; `dali.devolver` (button.click) se la devuelve.
+- **Cierre con Portal**: Portal no busca clientes por teléfono. El «ganado» sale de una cotización creada desde
+  el prospecto (`crear_cotizacion`) y enlazada por id, nunca de cruzar teléfonos.
+- **Meta**: no hay dataset, píxel, token ni lectura de gasto. La Conversions API (con `ctwaClid`) y el costo
+  por anuncio (`ads_read`) necesitan accesos del Business Manager de José.
+
+**Recomendación (diseño `dl-*`, `design/stitch/INVENTARIO.md`):**
+
+1. Una conversación por prospecto (el canal de la fase 1), mostrada en una BANDEJA «Prospectos» y no entre los
+   canales ni como mensaje directo. Un directo es entre dos personas: el prospecto no es usuario y, si el
+   vendedor falta, nadie lo ve. Todos ven todo (decisión de José); cada vendedor trabaja «Míos»; un prospecto
+   sin asignar avisa al equipo y, cuando alguien lo toma, avisa solo a esa persona. Los cerrados salen de la
+   bandeja.
+2. El canal es el espejo de WhatsApp; los hilos y las notas internas son del equipo. El compositor del canal
+   dice «Se envía al cliente por WhatsApp».
+3. Puntaje 0–100 y nivel (caliente ≥ 70, tibio 40–69, frío < 40), etapa e intención calculados por CÓDIGO con
+   reglas sobre los campos extraídos, con sus razones a la vista. Caliente: un vendedor en menos de 15 min.
+   Frío: lo atiende Dali y no ocupa al equipo.
+4. «Seguimientos de hoy»: Dali redacta, el vendedor aprueba con un toque, con tope diario y espaciado.
+5. «Ganado» y «perdido» con motivo; el ganado sale de la cotización de Portal enlazada.
+6. Panel: cifras, por origen, por anuncio, embudo, intención, vendedores y motivos de pérdida. El costo por
+   prospecto y por venta solo con `ads_read`.
+7. Lote nocturno (repuntuar, resúmenes) con la Batch API de Anthropic antes que montar Qwen.
+8. Lo que más ayuda a vender: avisarle a Meta qué prospecto calificó y cuál compró (Conversions API con
+   `ctwaClid`), para que el anuncio busque compradores y no curiosos.
+
+**Contrato propuesto** (se escribe cuando José apruebe; agentes de acuerdo el 16/11): el PUT suma `stage`,
+`intent`, `score`, `score_reasons`, `fields: [{ key, label, value }]` (no fijo de asfalto: Dali es
+multinegocio), `kind` (empresa/persona) opcional, `summary`, `next_follow_up_at` y `follow_up_draft` (nunca
+se envía sin aprobación). La nota interna viaja como `message.internal: true`.

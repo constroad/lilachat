@@ -16024,3 +16024,61 @@ dibujadas sobre su HTML). Tokens nuevos en `shared/src/tokens.ts`, claro y oscur
 abierta es una tarjeta blanca con sombra corta; la cabecera del chat pasó de
 `bg-primary/5` (se veía transparente) a superficie blanca con borde y sombra. La APK no
 tiene riel en el teléfono: queda igual.
+
+## Avisos de mensajes y respuestas en hilos (José 16/11)
+
+Pedido: «con la app y la web abiertas no me llegan los avisos»; «llega el aviso
+cuando ya leí»; «abro el aviso y el mensaje no está cargado»; «abro la app y no
+sé dónde respondieron en un hilo, no es como Slack».
+
+**Causas encontradas (con evidencia en el código):**
+
+1. `notifyOffline` filtraba los dispositivos comunes por presencia **por
+   persona**: con la web abierta, `isOnline` daba verdadero y el teléfono sin
+   la capacidad `mensaje-nativo` quedaba mudo.
+2. Nadie apagaba el aviso de un mensaje leído en otro lado: el acuse propio
+   llegaba por socket y no tocaba la bandeja de avisos.
+3. El teléfono solo guardaba los mensajes del chat abierto; al tocar el aviso
+   esperaba al server.
+4. Las respuestas de un hilo no se ven en el chat, pero «Hilos» las daba por
+   leídas con la marca de lectura **del chat**: abrir el chat las tragaba.
+
+**Arreglos (server f2bc61a5 → 870a9c2f y f2a0a543; OTA 836b6427):**
+
+- Server: solo un navegador web de quien tiene socket vivo se salta el aviso; el
+  teléfono suena igual.
+- App: mi acuse de lectura desde otro dispositivo limpia los avisos de ese chat
+  en el teléfono, si la app está viva (`noticeSync.ts`, `clearChatNotices`).
+- App: todo mensaje que llega por socket se guarda en el teléfono, esté abierto
+  su chat o no, como Telegram.
+- Hilos: cada hilo tiene su propia marca, en el recibo de la persona
+  (`Receipt.threadSeq`, raíz → seq; sin colección ni índice nuevos). Abrir el
+  hilo (GET) la mueve, así que la web y los APK viejos también marcan. `POST
+  /api/chats/:id/hilos/:raiz/visto` marca lo visto en vivo. «Hilos» y su
+  contador usan esa marca. Los hilos respondidos antes del 16/11 12:00 UTC
+  (`THREAD_READ_SINCE`) siguen con la regla vieja.
+- `GET /hilos` devuelve `visto` por raíz: el punto de «nuevas» se apaga en el
+  teléfono si se leyó en la web.
+- Banda sobre el chat, «Ana respondió en un hilo · Ver»: abre el hilo más
+  reciente sin ver, aunque su raíz sea anterior a lo cargado
+  (`ThreadRepliesBanner`; motor `threadsWithNewReplies` en shared, con test).
+  Diseño propio: Stitch no tiene esta pantalla.
+
+**Verificado:** contrato HTTP de la marca por hilo (`threadReads.test.ts`).
+Presencia y web contra teléfono (`chatNotifications.test.ts`,
+`pushService.test.ts`). En el emulador con la OTA, el chat abre sin errores y
+sin banda falsa.
+
+**Sin verificar:** la banda con una respuesta real de otra persona. En el
+emulador hay una sola cuenta.
+
+**Requiere APK (no OTA):**
+
+- Que el toque de un aviso nativo abra el mensaje o el hilo exacto, no el último
+  del chat.
+- Dibujar el aviso antes del POST de entrega.
+- Apagar el aviso con la app cerrada cuando se leyó en otro lado.
+- Llevar el texto del mensaje en el toque.
+
+**Teclado en el hilo:** no se reprodujo en el emulador (desde Hilos, desde el
+chip y con texto largo). Se pidió a José una captura y el camino exacto.

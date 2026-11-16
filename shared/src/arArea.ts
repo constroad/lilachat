@@ -389,13 +389,54 @@ const isFraction = (value: unknown): value is number => typeof value === 'number
 export function arShotLabels(corners: readonly ShotCorner[] | undefined, frame: Box, sides: readonly ArSide[]): ShotLabel[] {
   if (!corners || corners.length !== sides.length || corners.length < MIN_CORNERS || frame.width <= 0 || frame.height <= 0) return [];
   return sides.flatMap((side, index) => {
-    const from = corners[index]!;
-    const to = next(corners, index);
-    if (!from.visible || !to.visible) return [];
-    const x = rounded((from.x + to.x) / 2 / frame.width, 4);
-    const y = rounded((from.y + to.y) / 2 / frame.height, 4);
+    const at = shotLabelPoint(corners[index]!, next(corners, index), frame);
+    if (!at) return [];
+    const x = rounded(at.x / frame.width, 4);
+    const y = rounded(at.y / frame.height, 4);
     return isFraction(x) && isFraction(y) ? [{ x, y, text: `${index + 1} · ${decimalLabel(side.meters, 2)} m` }] : [];
   });
+}
+
+type FramePoint = { x: number; y: number };
+
+/** The native side sends a corner behind the camera as (0, 0) and not visible: it has no place on the photo. */
+const behindCamera = (corner: ShotCorner) => !corner.visible && corner.x === 0 && corner.y === 0;
+const insideFrame = (point: FramePoint, frame: Box): FramePoint => ({ x: Math.min(Math.max(point.x, 0), frame.width), y: Math.min(Math.max(point.y, 0), frame.height) });
+const middleOf = (a: FramePoint, b: FramePoint): FramePoint => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+
+/**
+ * Where a side's meters go (José 16/11: five corners, only three measures on the photo). A corner off
+ * the frame still has its place, so the label sits in the middle of the part of the side that shows;
+ * a side wholly off the photo goes to the edge nearest to it; a corner behind the camera leaves the
+ * label at the corner that shows. Never nothing while one end can be drawn.
+ */
+function shotLabelPoint(from: ShotCorner, to: ShotCorner, frame: Box): FramePoint | null {
+  const fromBehind = behindCamera(from);
+  const toBehind = behindCamera(to);
+  if (fromBehind && toBehind) return null;
+  if (fromBehind || toBehind) return insideFrame(fromBehind ? to : from, frame);
+  const shown = clippedToFrame(from, to, frame);
+  return insideFrame(shown ? middleOf(shown[0], shown[1]) : middleOf(from, to), frame);
+}
+
+/** The part of the segment inside the frame (Liang–Barsky), or null when none of it is. */
+function clippedToFrame(from: FramePoint, to: FramePoint, frame: Box): [FramePoint, FramePoint] | null {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const edges: [number, number][] = [[-dx, from.x], [dx, frame.width - from.x], [-dy, from.y], [dy, frame.height - from.y]];
+  let enter = 0;
+  let leave = 1;
+  for (const [step, room] of edges) {
+    if (step === 0) {
+      if (room < 0) return null;
+      continue;
+    }
+    const t = room / step;
+    if (step < 0) enter = Math.max(enter, t);
+    else leave = Math.min(leave, t);
+  }
+  if (enter > leave) return null;
+  return [{ x: from.x + enter * dx, y: from.y + enter * dy }, { x: from.x + leave * dx, y: from.y + leave * dy }];
 }
 
 /** The labels as one form field (absent when there are none). */

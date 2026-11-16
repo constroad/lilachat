@@ -386,8 +386,36 @@ describe('the photo\'s meters (José 15/11: «no se muestra el metraje», like h
     ]);
   });
 
-  it('a side whose corner was off the frame, or a ring that does not match the sides, writes nothing', () => {
-    expect(arShotLabels([...corners.slice(0, 3), { x: 0, y: 0, visible: false }], { width: 400, height: 1000 }, [side(0, 1), side(1, 1), side(2, 1), side(3, 1)]).map((label) => label.text)).toEqual(['1 · 1,00 m', '2 · 1,00 m']);
+  it('José 16/11, five corners with one off the photo: every side keeps its meters, on the part of it that shows', () => {
+    // Corner 3 (between sides 2 and 3) fell to the right of the frame, as in his living-room test.
+    const five = [{ x: 100, y: 400, visible: true }, { x: 300, y: 400, visible: true }, { x: 500, y: 500, visible: false }, { x: 250, y: 600, visible: true }, { x: 50, y: 550, visible: true }];
+    const labels = arShotLabels(five, { width: 400, height: 1000 }, [side(0, 2.32), side(1, 1.5), side(2, 1.2), side(3, 0.93), side(4, 1.42)]);
+
+    expect(labels.map((label) => label.text)).toEqual(['1 · 2,32 m', '2 · 1,50 m', '3 · 1,20 m', '4 · 0,93 m', '5 · 1,42 m']);
+    // Side 2 runs from (300,400) out to (500,500): its visible part ends at x=400, so its middle is at x=350.
+    expect(labels[1]).toMatchObject({ x: 0.875, y: 0.425 });
+    // Side 3 comes back from (500,500) to (250,600): it enters the frame at x=400; the middle of what shows is x=325.
+    expect(labels[2]).toMatchObject({ x: 0.8125, y: 0.57 });
+    expect(labels.every((label) => label.x >= 0 && label.x <= 1 && label.y >= 0 && label.y <= 1)).toBe(true);
+  });
+
+  it('a side wholly off the photo still writes its meters, at the edge nearest to it', () => {
+    const outside = [{ x: 100, y: 100, visible: true }, { x: 300, y: 100, visible: true }, { x: 600, y: 300, visible: false }, { x: 700, y: 600, visible: false }, { x: 100, y: 500, visible: true }];
+    const labels = arShotLabels(outside, { width: 400, height: 1000 }, [side(0, 1), side(1, 1), side(2, 1), side(3, 1), side(4, 1)]);
+
+    expect(labels.map((label) => label.text)).toHaveLength(5);
+    expect(labels[2]).toMatchObject({ x: 1, y: 0.45 });
+  });
+
+  it('a corner behind the camera has no place on the photo: its sides go at the corner that shows', () => {
+    const behind = arShotLabels([...corners.slice(0, 3), { x: 0, y: 0, visible: false }], { width: 400, height: 1000 }, [side(0, 1), side(1, 1), side(2, 1), side(3, 1)]);
+
+    expect(behind.map((label) => label.text)).toEqual(['1 · 1,00 m', '2 · 1,00 m', '3 · 1,00 m', '4 · 1,00 m']);
+    expect(behind[2]).toMatchObject({ x: 0.75, y: 0.5 });
+    expect(behind[3]).toMatchObject({ x: 0.25, y: 0.1 });
+  });
+
+  it('a ring that does not match the sides writes nothing', () => {
     expect(arShotLabels(corners.slice(0, 3), { width: 400, height: 1000 }, [side(0, 1), side(1, 1), side(2, 1), side(3, 1)])).toEqual([]);
     expect(arShotLabels(undefined, { width: 400, height: 1000 }, [side(0, 1)])).toEqual([]);
     expect(arShotLabels(corners, { width: 0, height: 0 }, [side(0, 1), side(1, 1), side(2, 1), side(3, 1)])).toEqual([]);

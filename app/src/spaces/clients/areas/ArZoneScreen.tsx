@@ -62,8 +62,9 @@ export function ArZoneScreen(props: Props) {
           </View>
           <PlaceCard value={placeText.value} asking={props.place.asking} fromGps={Boolean(props.place.place) && !placeText.typed} onChange={placeText.set} />
           <ArPlanCard points={props.measured.points} sides={result.sides} diagonals={arDiagonalRows(result).filter((row) => row.taped || (tape.editing?.kind === 'diagonal' && tape.editing.to === row.to))} editing={tape.editing?.kind === 'side' ? tape.editing.index : null} photo={shot.shot?.preview.uri ?? null} labels={labels} panel={panel} onRetake={() => void shot.take()} />
-          <SidesCard sides={result.sides} rows={arDiagonalRows(result)} tape={tape} onShown={reveal.show} />
+          {/* José 16/11: the thickness for the m³ right under the photo, not after every side. */}
           <ThicknessCard readings={thickness.readings} thicknessCm={result.thicknessCm} editing={thickness.editing} typed={thickness.typed} onAdd={thickness.add} onRemove={thickness.remove} onType={thickness.type} onDone={thickness.done} error={thickness.error} />
+          <SidesCard sides={result.sides} rows={arDiagonalRows(result)} tape={tape} onShown={reveal.show} />
           {result.areaM2 !== null ? <ResultCard line={arAreaFigures(result).line} method={AREA_METHOD_LABELS[arMethodOf(result)]} chips={chips} /> : null}
           {result.problems.length ? <ProblemsCard problems={result.problems} /> : null}
           {shot.message ? <Text className="text-[13px] text-error">{shot.message}</Text> : null}

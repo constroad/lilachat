@@ -112,12 +112,13 @@ export function ZoneEditScreen(props: Props) {
         <TextCard title="Descripción" testID="zona-editar-descripcion" value={note} saved={area.description} placeholder="Bacheo localizado" onChange={setNote} />
         <TextCard title="Lugar" testID="zona-editar-lugar" value={place} saved={area.place} placeholder="Calle y número" onChange={setPlace} />
         {photo ? <View className="gap-2 rounded-2xl border border-outline/15 bg-surface p-3"><SectionTitle title="Foto de la zona" /><WholePhoto uri={photo.url} testID="zona-editar-foto" />{zone.changed ? <Text testID="foto-medidas-ar" className="text-[12px] text-on-surface-variant">{PHOTO_KEEPS_AR}</Text> : null}</View> : null}
-        {zone.fix ? <SidesCard sides={zone.fix.solution.sides} rows={arDiagonalRows({ plane: zone.geometry.corners, diagonals: zone.fix.solution.diagonals })} tape={zone.tape} onShown={() => undefined} /> : null}
-        {zone.fix && zone.changed && zone.fix.solution.problems.length ? <ProblemsCard problems={zone.fix.solution.problems} /> : null}
+        {/* José 16/11: «no sé dónde colocar el espesor»: right under the photo, not after every side. */}
         {thickness.saved !== null ? <SavedThickness value={thickness.saved} onDrop={thickness.dropSaved} /> : null}
         <View onLayout={(event) => { reveal.at.current = event.nativeEvent.layout.y; }}>
         <ThicknessCard readings={thickness.readings.readings} thicknessCm={thickness.readings.thicknessCm} editing={thickness.readings.editing} typed={thickness.readings.typed} onAdd={thickness.readings.add} onRemove={thickness.readings.remove} onType={thickness.readings.type} onDone={thickness.readings.done} error={thickness.readings.error} />
         </View>
+        {zone.fix ? <SidesCard sides={zone.fix.solution.sides} rows={arDiagonalRows({ plane: zone.geometry.corners, diagonals: zone.fix.solution.diagonals })} tape={zone.tape} onShown={() => undefined} /> : null}
+        {zone.fix && zone.changed && zone.fix.solution.problems.length ? <ProblemsCard problems={zone.fix.solution.problems} /> : null}
         <ResultCard line={resultLine(areaM2, thickness.thicknessCm)} method={AREA_METHOD_LABELS[zone.correction?.method ?? area.method ?? 'ar'] ?? '—'} hint={zone.fix ? 'Se recalcula al cambiar una wincha o el espesor' : 'Se recalcula al cambiar el espesor'} chips={zoneChipsOf({ ...area, areaM2 }, thickness.thicknessCm)} />
         {!request ? <Text testID="zona-no-editable" className="text-[13px] text-on-surface-variant">{area.method === 'foto-medida' ? 'Esta zona se midió en la oficina: se corrige en el Portal.' : 'No se sabe cómo se midió esta zona: se corrige en el Portal.'}</Text> : null}
         {request ? <RemoveZone ask={zoneRemoveAsk(props.number, props.report.totals, area)} busy={write.busy} confirming={confirming} setConfirming={setConfirming} color={colors.error} onConfirm={() => write.run(() => props.onRemove(area.id))} /> : null}

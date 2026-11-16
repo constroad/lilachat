@@ -1269,8 +1269,17 @@ espacio Test, con «QA-CTLPIS — borrar»:
 >   - Al tocar «Listo», la app guarda dónde estaba cada esquina en el último
 >     cuadro del AR (`ArMeasured.shot`, fracciones del cuadro).
 >   - `arShotLabels` pone en el medio de cada lado «N · x,xx m» con la medida
->     FINAL (la wincha gana). Un lado con una esquina fuera del cuadro no lleva
->     rótulo.
+>     FINAL (la wincha gana).
+>   - José 16/11 (prueba en su sala, 5 esquinas): «en el preview ni siquiera se
+>     ven las 5 medidas». Una esquina había caído fuera de la foto y sus dos
+>     lados quedaban sin rótulo. Desde entonces todo lado lleva su medida: en
+>     el medio de la parte que se ve (recorte Liang–Barsky), en el borde más
+>     cercano si el lado entero quedó fuera, y en la esquina visible si la otra
+>     quedó detrás de la cámara (el nativo la manda como (0, 0) no visible).
+>   - José 16/11: «no sé dónde colocar el espesor para calcular el m³». La
+>     tarjeta estaba debajo de todos los lados. Ahora va justo bajo la foto, en
+>     la medición y al editar, con el título «Espesor para el m³ · en cm» y el
+>     botón «+ Espesor».
 >   - José 15/11 (prueba con 0.1.188): «el chip del área… no debe aparecer
 >     dentro de la figura»; su app de referencia lo pone en una esquina. Desde
 >     entonces el área y el perímetro van en un panel arriba a la derecha

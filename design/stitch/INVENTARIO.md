@@ -436,7 +436,7 @@ José, sobre el prototipo: «es un poco confuso… embudo, panel y revisión deb
 - Celular: las 4 pestañas en una fila bajo la cabecera. La conversación, la ficha, el hilo y «Lo que Dali sabe» van a pantalla completa con ←, y las acciones van como hojas.
 - Los montos de las pantallas v3 salen del catálogo real: 450 m² de 2" = 22.86 m³ × S/ 750.00, que da S/ 20,231.10 con IGV.
 - `build.sh` usa la versión más nueva de cada pantalla (`-v5` > `-v4` > `-v3` > `-v2` > la original). En escritorio, la conversación es la misma pantalla de la Bandeja.
-- Los pedidos que vencieron, se cortaron o dieron error y pueden existir en Stitch sin id: `dl-08-embudo` móvil (v1 a v4), `dl-04-panel-v3` móvil, `dl-12-lo-que-sabe-v3` escritorio y `dl-06-resultado-ganado` escritorio. Se rehicieron con otro slug.
+- Los pedidos que vencieron, se cortaron o dieron error y pueden existir en Stitch sin id: `dl-08-embudo` móvil (v1 a v4), `dl-04-panel-v3` móvil, `dl-12-lo-que-sabe-v3` escritorio, `dl-06-resultado-ganado` escritorio, `dl-04-panel-v4` móvil y `dl-07-resultado-perdido` escritorio. Se rehicieron con otro slug. Sumando los de la introducción, son 11 pedidos sin id en total.
 - Prototipo v3: https://claude.ai/artifact/9WabPLTPXzNED898vH5L7K (versión 2).
 
 | Archivo | Pantalla | Estado |

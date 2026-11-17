@@ -1672,9 +1672,61 @@ PNL-FOT, CONT-SRV y DOS-OBR.
 | APK y PWA angosta | Como antes: solo los tipos públicos. El APK no tiene el editor de informes; una hoja de bloques abre su ficha con el PDF y «Abrir en el Portal» (`apkReportTypes.test.ts`). El APK no cambió: no hay OTA |
 | Miembro sin montos | Como antes: `FIELD_REPORT_LABELS` no cambió, así que ninguna hoja de bloques le llega en la lista |
 
-**Sin verificar todavía:** el E2E en el Chrome de José. Crear una hoja de bloques da 502 hasta que
-José vuelva a aprobar `crear_informe_en_editor` en Agentes (Portal cambió su esquema). Abrir una
-existente no depende de esa aprobación, pero tampoco se probó.
+**E2E (16/11, 20:36–20:45 hora de Lima, producción, Chrome de José, espacio Test).** José reaprobó
+`crear_informe_en_editor` en Agentes. Servicio «QA-CTLPIS — borrar» de Consorcio Vial del Pacífico,
+como admin (ve montos):
+
+| Paso | Resultado |
+| --- | --- |
+| «Crear informe» a 2000 px | Los nueve debajo de los tipos públicos, con los nombres de Portal |
+| Crear CAL-PROT (`6afbaf78…75df`) | `POST …/reports/embed` 200 en 1,3 s; `ready` a 3,2 s |
+| Escribir una fila | Método, resultado 98.5 y especificación «min 95» → «Cumple»; `dirty` → `saved` con el id |
+| Crear MET-RES (`6afbb073…7a01`) | 200 en 1,2 s; `ready` a 4,9 s; partida 01: 120.5 × S/ 35 = S/ 4,217.50, guardada |
+| Cerrar editor | `closed` a 0,3 s; la lista suma «Protocolo de Control de Calidad» y «Cuadro Resumen de Metrado», «Creado por J zamora» |
+| Reabrir CAL-PROT | `ready` a 0,8 s; la fila sigue y el historial tiene una versión |
+| Abrir un INF-ACT hecho en Portal (`ccf14e12…089c`) | `ready` a 0,83 s; cerrar sin cambios manda solo `closed` (ya no suma una versión vacía) |
+| Chat del canal | Ninguna creación publicó tarjeta |
+
+Sin verificar: el miembro sin montos. En Test no hay sesión de un miembro que no sea admin, así
+que queda cubierto solo por las pruebas (`CreateReportDialog.test.tsx` y el 404 de
+`clientFiles.test.ts`).
+
+Limpieza: la sesión de Portal borró CAL-PROT y MET-RES por el camino de la app (DELETE 200 cada
+uno; quedan 0 informes y 0 versiones). En Lilachat el servicio vuelve a «Informes · 2» y el canal
+no tiene tarjetas de esos dos. El INF-ACT abierto no se tocó.
+
+Para el próximo E2E del editor: el Chrome de José tiene Lilachat al 80 % de zoom
+(`devicePixelRatio` 1,6 en su pantalla). No usar `setViewportSize`: emula un `devicePixelRatio` de
+0,8, la captura sale a 0,8 × los px CSS y cada clic por coordenadas cae corrido. Sin emulación,
+la captura muestra la página 1:1 en px CSS. El teclado sintético no entra a las celdas de la hoja
+(un marco dentro del marco de Portal); los campos del panel derecho sí. Escribir sin un campo enfocado no es inocuo:
+los espacios desplazan el lienzo y el clic siguiente cae en otro bloque. Una vez el editor pasó a
+«Vista previa». Portal no tiene atajos de una tecla, y con clics no se reproduce sin la emulación.
+Queda como efecto de la prueba, no como defecto.
+
+El primer `ready` en una pestaña nueva volvió a tardar unos 60 s, dos veces de dos. Es el mismo
+síntoma que José vio en Constroad (sección anterior). Medido dentro del marco (Navigation Timing,
+16/11 01:56:57 UTC): `requestStart` a 60 009 ms, sobre una conexión h2 ya abierta (`connectStart`
+= `fetchStart`). Portal respondió en 292 ms, y ningún recurso del editor pasó de 1 s. Es decir,
+Chrome tuvo el pedido de la página en cola 60 s. Una tercera apertura (02:01 UTC) separó las
+causas:
+- No es la conexión: un pedido a www.constroad.com hecho desde la página de Lilachat durante la
+  espera volvió en 289 ms.
+- No es la caché: Lilachat monta el marco una sola vez por enlace (`key={link.url}`).
+- Queda el service worker de Portal. Hay uno activo con alcance «/» y navigation preload, pero
+  la navegación no lo usó (`workerStart` 0) y el marco quedó sin controlar. Chrome esperó 60 s y
+  recién ahí salió a la red.
+**Arreglado por Portal (ec9a18f0, 16/11).** `public/sw.js` registra `/embed/*` como ruta solo de
+red (`event.addRoutes`), así que el navegador no arranca el worker para el marco. Verificado
+02:31 UTC, en una pestaña nueva: `ready` a 1,07 s (antes ~61 s). Dentro del marco, `requestStart`
+10 ms y `workerStart` 0. Antes del arreglo, la propia home de Portal también tardaba 90 s en ese
+Chrome (`requestStart` 90 005 ms): el worker viejo no respondía en ninguna navegación. Con el
+worker nuevo, la home carga en 0,45 s. El aviso con «Reintentar» a los 15 s sigue como red de
+seguridad.
+
+Hallazgos que Portal arregló en 360ebfc1 (pendiente de deploy): los contadores de CAL-PROT solo
+contaban ensayos con nombre (ahora cuenta una fila con nombre o con resultado), y el panel «Agregar
+fotos» apretaba el texto a una palabra por línea (`DriveAttachmentInput`).
 
 ### «Enviar al grupo» solo para admins (José 12/11)
 

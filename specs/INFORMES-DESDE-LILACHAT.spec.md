@@ -1521,7 +1521,7 @@ teléfono y en el APK sigue el formulario de este spec.
 
 | Pieza | Valor |
 | --- | --- |
-| Marca por informe | `editor: 'v2'` en `client.service.requested`. Hoy: CTL-PIS, CTL-IMP, REG-OBS, LEV-OBS, CON-CAP y, desde el F4 de Portal (15/11), IAA, FRE-PAV y RCP-CAM. VAL-SRV y LIQ-SRV entran después, sin cambios acá |
+| Marca por informe | `editor: 'v2'` en `client.service.requested`. Hoy: CTL-PIS, CTL-IMP, REG-OBS, LEV-OBS, CON-CAP y, desde el F4 de Portal (15/11), IAA, FRE-PAV y RCP-CAM. Desde el 16/11, las nueve hojas de bloques (ver «Las hojas de bloques de Portal en la web»). VAL-SRV y LIQ-SRV entran después, sin cambios acá |
 | Pedido del enlace | `GET …/services/:serviceId/reports/:reportId/embed` → evento `client.report.embed.requested` {client_id, service_id, report_id, user} → herramienta `abrir_editor_de_informe` (agentes 9ec3e8c) |
 | Respuesta | `{url, expires_at}`; url = `https://www.constroad.com/embed/report/<id>#t=<token>`. Token por miembro y por pedido, 12 h, en el fragmento (no llega a logs ni Referer) |
 | Rol | Lo firma agentes (`space_role`, de la lista de miembros); el evento no lo lleva |
@@ -1654,6 +1654,27 @@ recuadro gris, sin texto: se leía como «no carga».
 Lo que NO era: la visita técnica no aparece en Constroad porque su acción está **APAGADA** en
 Portal → Comandos (todo nace apagado desde el 28/10). La enciende un admin del espacio. Los informes
 de campo no viven en el «+»: están en Servicios → el servicio → Informes → «Crear informe».
+
+### Las hojas de bloques de Portal en la web (José 16/11)
+
+José: «en lilachat apk solo debería poder crear los mismos que antes estaban en public/{slug}/services
+de portal, sin embargo en la web de lilachat sí debería poder abrir el editor v2». Portal 82f9a231
+sumó a su editor nueve hojas de bloques: ACT-CNF, REC-EXC, MET-RES, CAL-PROT, TOP-CMP, INF-ACT,
+PNL-FOT, CONT-SRV y DOS-OBR.
+
+| Pieza | Cómo queda |
+| --- | --- |
+| Crear | En la web ancha (≥ 1024 px), «Crear informe» suma las nueve debajo de los tipos públicos y nacen en el editor (`EMBED_CREATE_TYPES`, `EDITOR_REPORT_TYPE_OPTIONS`). Preguntan el responsable, como el resto |
+| Quién | Solo quien ve montos, es decir, un admin del espacio (`pickerReportTypes`, `offersReportType`). ACT-CNF, REC-EXC, MET-RES, CONT-SRV y DOS-OBR llevan montos (`money`). CAL-PROT, TOP-CMP, INF-ACT y PNL-FOT no, pero quien no ve montos tampoco las lista en el servicio (`isFieldReport`), y José no amplió esa regla |
+| Server | `POST …/reports/embed` de una hoja de bloques pide `need: 'money'` (`needsMoneyToCreate`): un miembro recibe 404, como `/billing`, y no sale evento |
+| Abrir | Sin cambios: una fila con `editor: 'v2'` abre el editor en la web ancha. Portal marca las de montos solo para quien ve la cobranza |
+| Nombres | Los de la lista de Portal (`reportTypeLabel` de su `clientNotices`): «Acta de conformidad», «Informe Tecnico Reclamo Excedente», «Cuadro Resumen de Metrado», «Protocolo de Control de Calidad», «Protocolo topográfico completo», «Actividades realizadas», «Panel fotográfico de obra», «Contrato de servicio» y «Dossier de obra» |
+| APK y PWA angosta | Como antes: solo los tipos públicos. El APK no tiene el editor de informes; una hoja de bloques abre su ficha con el PDF y «Abrir en el Portal» (`apkReportTypes.test.ts`). El APK no cambió: no hay OTA |
+| Miembro sin montos | Como antes: `FIELD_REPORT_LABELS` no cambió, así que ninguna hoja de bloques le llega en la lista |
+
+**Sin verificar todavía:** el E2E en el Chrome de José. Crear una hoja de bloques da 502 hasta que
+José vuelva a aprobar `crear_informe_en_editor` en Agentes (Portal cambió su esquema). Abrir una
+existente no depende de esa aprobación, pero tampoco se probó.
 
 ### «Enviar al grupo» solo para admins (José 12/11)
 

@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { canManageMembers, canSeeDrive, canSeeTab, CLIENT_ID, EMBED_CREATE_TYPES, EMBED_FAILED, embedLinkOf, RESPONSIBLE_MAX, isFieldReport, clientAccountOf, PORTAL_EMBED_ORIGINS, REPORT_PDF_FAILED, reportPdfOf, serviceDetailOf, serviceFilesOf, type ClientAccount, type EmbedLink, type MyClientAccess, type RestrictableTab, type ReportPdf, type ServiceDetail, type ServiceFiles, type ServiceOrder } from '@lilachat/shared';
+import { canManageMembers, canSeeDrive, canSeeTab, CLIENT_ID, EMBED_CREATE_TYPES, EMBED_FAILED, embedLinkOf, RESPONSIBLE_MAX, isFieldReport, needsMoneyToCreate, clientAccountOf, PORTAL_EMBED_ORIGINS, REPORT_PDF_FAILED, reportPdfOf, serviceDetailOf, serviceFilesOf, type ClientAccount, type EmbedLink, type MyClientAccess, type RestrictableTab, type ReportPdf, type ServiceDetail, type ServiceFiles, type ServiceOrder } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
 import { UserModel } from '../models.js';
 import { actorIn } from '../workspaces.js';
@@ -133,6 +133,8 @@ export function clientReportEmbed(workspaceId: string, clientId: string, service
 
 export type BadRequest = { status: 400; error: string; message: string };
 const badCreate = (): BadRequest => ({ status: 400, error: 'invalid_embed_create', message: 'Ese informe no se crea en el editor.' });
+/** José 07/11, money only for admins: Portal's block sheets (16/11) are created only by whoever sees money; anyone else gets the 404 of `/billing`. */
+const REPORT_EMBED_WITH_MONEY: ServiceAsk<EmbedLink> = { ...REPORT_EMBED, need: 'money' };
 
 /**
  * A new report born in Portal's editor (José 12/11: no forms on the wide web; Portal's `crear_informe_en_editor`):
@@ -143,7 +145,8 @@ export function clientReportEmbedNew(workspaceId: string, clientId: string, serv
   const responsible = typeof input.responsible === 'string' ? input.responsible.trim() : '';
   const typeOk = typeof input.type === 'string' && EMBED_CREATE_TYPES.includes(input.type);
   if (!typeOk || responsible.length > RESPONSIBLE_MAX || (input.responsible !== undefined && typeof input.responsible !== 'string')) return Promise.resolve(badCreate());
-  return askAboutService(REPORT_EMBED, workspaceId, clientId, serviceId, userId, { type: input.type as string, ...(responsible ? { responsible } : {}) });
+  const type = input.type as string;
+  return askAboutService(needsMoneyToCreate(type) ? REPORT_EMBED_WITH_MONEY : REPORT_EMBED, workspaceId, clientId, serviceId, userId, { type, ...(responsible ? { responsible } : {}) });
 }
 
 /** The Drive of a client's service (pending 121, agentes c27e939). */

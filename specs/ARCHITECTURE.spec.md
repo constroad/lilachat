@@ -15422,6 +15422,7 @@ anterior sobre Cotizaciones y Cobranza dentro del detalle del servicio.
 | Pestaña Cuenta y `/billing` | `need: 'money'` | `clientFiles.ts`, 404 |
 | Factura, precio, crédito y pagos de un pedido | se quitan | `withoutMoney` y Portal `orderBillingOf` |
 | Todo informe fuera de la página pública de Portal | la fila no llega | `isFieldReport`, lista de permitidos por etiqueta; Portal por tipo |
+| Crear una hoja de bloques en el editor de la web (16/11) | no se ofrece; el server da 404 | `pickerReportTypes` y `needsMoneyToCreate` (`need: 'money'`); Portal `no_billing` |
 | Pago o cotización en la tarjeta del servicio | no llega | `isMoneyRecord` en `clientRecords` |
 | Drive del Portal | todos los miembros del canal (José 07/11) | `canSeeDrive`; agentes y Portal deciden el resto |
 | Tarjetas de pago en el chat | no se publican | agentes `6feb8c1` |

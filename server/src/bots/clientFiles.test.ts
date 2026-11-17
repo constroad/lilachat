@@ -298,4 +298,27 @@ describe('a new report born in Portal\'s editor (José 12/11: no forms on the wi
     expect((await createIn(outsider, { type: 'CTL-IMP' })).status).toBe(404);
     expect(received).toHaveLength(0);
   });
+
+  it('José 16/11: a space admin creates Portal\'s block sheets in the editor, with sees_billing', async () => {
+    // Arrange
+    answer = { status: 200, body: { ...link, informeId: '6af0000000000000000000a1' } };
+    // Act
+    const money = await createIn(jose, { type: 'MET-RES', responsible: 'José' });
+    const plain = await createIn(jose, { type: 'PNL-FOT' });
+    // Assert
+    expect([money.status, plain.status]).toEqual([200, 200]);
+    expect(money.body).toEqual({ embed: { url: link.url, expiresAt: link.expires_at } });
+    expect(received.map((event) => event.data?.type)).toEqual(['MET-RES', 'PNL-FOT']);
+    expect(received[0]?.data).toEqual({ client_id: 'cli-cvs', service_id: 'srv-318', type: 'MET-RES', responsible: 'José', user: { id: String(jose), name: 'José', phone: '51902049935', sees_billing: true } });
+  });
+
+  it('a member without money never creates a block sheet, money or not: 404 and no event (José 07/11: «todo lo que es plata solo admins»)', async () => {
+    // Arrange
+    answer = { status: 200, body: { ...link, informeId: '6af0000000000000000000a1' } };
+    // Act
+    const statuses = [(await createIn(ana, { type: 'MET-RES' })).status, (await createIn(ana, { type: 'CONT-SRV' })).status, (await createIn(ana, { type: 'PNL-FOT' })).status];
+    // Assert
+    expect(statuses).toEqual([404, 404, 404]);
+    expect(received).toHaveLength(0);
+  });
 });

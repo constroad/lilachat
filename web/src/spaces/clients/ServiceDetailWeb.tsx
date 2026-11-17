@@ -271,7 +271,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
       <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} admin={Boolean(props.admin)} />
       {answer === null ? <div data-testid="detalle-cargando" className="h-48 animate-pulse rounded-xl bg-surface" /> : null}
       {answer?.ok ? <DetailTabs onContinueReport={setReport} onOpenEmbed={setFramed} detail={answer.value} target={props.target} service={props.service} chatId={props.chatId} seesDrive={Boolean(props.seesDrive)} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} tab={tab} onTab={pickTab} startOrderId={tab === 'orders' ? startOrderId : undefined} /> : null}
-      {picker ? <CreateReportDialog portalUrl={portalUrl} people={props.people ?? []} inEditor={(code) => createsInEmbed(window.innerWidth, code)} onPick={(code, responsible) => { setPicker(false); pickNew(code, responsible); }} onClose={() => setPicker(false)} /> : null}
+      {picker ? <CreateReportDialog portalUrl={portalUrl} people={props.people ?? []} seesMoney={props.seesMoney} inEditor={(code) => createsInEmbed(window.innerWidth, code)} onPick={(code, responsible) => { setPicker(false); pickNew(code, responsible); }} onClose={() => setPicker(false)} /> : null}
       {framed ? <PortalEmbedWeb target={props.target} serviceId={props.service.id} serviceName={props.service.name} report={framed} onClose={closeFramed} {...(croquisMap ? { workMap: croquisMap } : {})} /> : null}
       {answer && !answer.ok ? (
         <div data-testid="detalle-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm">

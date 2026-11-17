@@ -108,6 +108,40 @@ describe('ServiceDetailWeb', () => {
     expect(JSON.parse(String(created[1].body))).toEqual({ type: 'CTL-IMP', responsible: 'Rosa Vega' });
   });
 
+  it('José 16/11: on the wide web an admin creates Portal\'s block sheet in its editor', async () => {
+    // Arrange
+    const link = { url: 'https://www.constroad.com/embed/report/6af0000000000000000000a2#t=n2', expiresAt: '2026-11-17T08:00:00.000Z' };
+    const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith('/reports/embed') ? { embed: link } : { detail }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('innerWidth', 1280);
+    render(<ServiceDetailWeb people={['Rosa Vega']} target={target} chatId="chat-1" service={service} seesMoney onBack={() => undefined} />);
+    fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
+    // Act
+    fireEvent.click(screen.getByTestId('crear-informe'));
+    fireEvent.click(screen.getByTestId('tipo-informe-PNL-FOT'));
+    fireEvent.click(screen.getByTestId('responsable-opcion-Rosa Vega'));
+    fireEvent.click(screen.getByTestId('responsable-confirmar'));
+    // Assert
+    expect(await screen.findByTestId('editor-portal-marco')).toHaveAttribute('src', link.url);
+    const created = fetchMock.mock.calls.find((call) => String((call as unknown as [string])[0]).endsWith('/reports/embed')) as unknown as [string, RequestInit];
+    expect(JSON.parse(String(created[1].body))).toEqual({ type: 'PNL-FOT', responsible: 'Rosa Vega' });
+  });
+
+  it('José 16/11: on the wide web a member without money is offered none of Portal\'s block sheets (José 07/11: «todo lo que es plata solo admins»)', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', reply({ detail }));
+    vi.stubGlobal('innerWidth', 1280);
+    render(<ServiceDetailWeb people={['Rosa Vega']} target={target} chatId="chat-1" service={service} seesMoney={false} onBack={() => undefined} />);
+    fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
+    // Act
+    fireEvent.click(screen.getByTestId('crear-informe'));
+    // Assert
+    const types = within(screen.getByTestId('crear-informe-tipos')).getAllByTestId(/^tipo-informe-/);
+    expect(types).toHaveLength(9);
+    expect(screen.queryByTestId('tipo-informe-MET-RES')).toBeNull();
+    expect(screen.queryByTestId('tipo-informe-PNL-FOT')).toBeNull();
+  });
+
   it('José 05/11: «Crear informe» for everyone with the services; the picker offers the nine types (REG-OBS since 11/11), the ones not here open Portal, and on a phone-width web CTL-IMP opens the form', async () => {
     // Arrange
     vi.stubGlobal('innerWidth', 800);

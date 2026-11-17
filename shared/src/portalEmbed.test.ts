@@ -105,6 +105,18 @@ describe('creating a report in the editor (José 12/11: «en la web, el editor; 
     expect(createsInEmbed(1440, 'VAL-SRV')).toBe(false);
   });
 
+  it('José 16/11: the wide web also creates Portal\'s nine block sheets in its editor; a narrower window never does', () => {
+    // Arrange
+    const blockSheets = ['ACT-CNF', 'REC-EXC', 'MET-RES', 'CAL-PROT', 'TOP-CMP', 'INF-ACT', 'PNL-FOT', 'CONT-SRV', 'DOS-OBR'];
+    // Act
+    const wide = blockSheets.filter((type) => createsInEmbed(EMBED_MIN_WIDTH_PX, type));
+    const narrow = blockSheets.filter((type) => createsInEmbed(EMBED_MIN_WIDTH_PX - 1, type));
+    // Assert
+    expect(wide).toEqual(blockSheets);
+    expect(narrow).toEqual([]);
+    expect(createsInEmbed(1440, 'LIQ-SRV')).toBe(false);
+  });
+
   it('the new report\'s id comes from its link, so an expired link asks for that report and never creates another', () => {
     expect(embedReportIdOf('https://www.constroad.com/embed/report/6aee7f1a4dac30603af48028#t=abc')).toBe('6aee7f1a4dac30603af48028');
     expect(embedReportIdOf('https://www.constroad.com/admin/report/r1')).toBeNull();

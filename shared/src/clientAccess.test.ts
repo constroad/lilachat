@@ -142,7 +142,8 @@ describe('what carries money beyond the tabs', () => {
 
 describe('isFieldReport: the reports of a member without money', () => {
   const PUBLIC_PAGE = ['Control de pista', 'Conformación de capa', 'Control de imprimación', 'Área adicional', 'Recepción de campo', 'Levantamiento de observaciones', 'Fresado de pavimento', 'Solicitud de imprimación'];
-  const HIDDEN = ['Valorización de servicios', 'Liquidación final del servicio', 'Contrato de servicio', 'Aprobación de adicional', 'Acta de conformidad', 'Cuadro Resumen de Metrado', 'Informe Tecnico Reclamo Excedente', 'Dossier de obra', 'Producción de planta', 'Panel fotográfico de obra', 'Informe de obra'];
+  // José 16/11: Portal's block sheets open in the web's editor, yet a member without money still never lists one.
+  const HIDDEN = ['Valorización de servicios', 'Liquidación final del servicio', 'Contrato de servicio', 'Aprobación de adicional', 'Acta de conformidad', 'Cuadro Resumen de Metrado', 'Informe Tecnico Reclamo Excedente', 'Dossier de obra', 'Producción de planta', 'Panel fotográfico de obra', 'Informe de obra', 'Protocolo de Control de Calidad', 'Protocolo topográfico completo', 'Actividades realizadas'];
 
   it.each(PUBLIC_PAGE)('shows «%s», as Portal\'s public services page does', (typeLabel) => {
     expect(isFieldReport({ typeLabel })).toBe(true);

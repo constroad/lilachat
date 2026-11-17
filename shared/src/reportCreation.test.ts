@@ -3,7 +3,8 @@ import { FORMS_LEVEL } from './appForms';
 import { isFieldReport } from './clientAccess';
 import { fieldDocumentOf } from './fieldDocument';
 import { locationMapLink } from './sharedLocation';
-import { draftToContinue, opensInApp, itemsLine, removePhotoRequest, pageLine, placeFieldValue, progressLine, progressPercent, publishFormRequest, readObservationDraft, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, openPublishForm, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, staleAnswerIds, STATUS_BADGE, type TrackStart } from './reportCreation';
+import { EMBED_CREATE_TYPES } from './portalEmbed';
+import { draftToContinue, EDITOR_REPORT_TYPE_OPTIONS, needsMoneyToCreate, offersReportType, opensInApp, itemsLine, pickerReportTypes, removePhotoRequest, pageLine, placeFieldValue, progressLine, progressPercent, publishFormRequest, readObservationDraft, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, openPublishForm, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, staleAnswerIds, STATUS_BADGE, type ReportTypeOption, type TrackStart } from './reportCreation';
 
 /** A CTL-IMP as Portal answers it, with one tramo whose photos go through their own tool. */
 const form = (title: string) => ({ type: 'object', properties: { campo: { type: 'string', title } } });
@@ -37,6 +38,86 @@ describe('the types a report can be', () => {
     expect(REPORT_TYPE_OPTIONS.find((option) => option.code === 'IAA')?.caption).toBe('Zonas medidas en obra, siempre con la wincha');
     expect(REPORT_TYPE_OPTIONS.slice(0, 3).map((option) => option.code)).toEqual(['CTL-IMP', 'IAA', 'CTL-PIS']);
     REPORT_TYPE_OPTIONS.forEach((option) => expect(isFieldReport({ typeLabel: option.label })).toBe(true));
+  });
+});
+
+/** José 16/11: the APK creates only the public page's types; the wide web also creates Portal's block sheets in its editor. */
+describe('Portal\'s block sheets in the web\'s picker (José 16/11)', () => {
+  const PUBLIC = ['CTL-IMP', 'IAA', 'CTL-PIS', 'CON-CAP', 'RCP-CAM', 'REG-OBS', 'LEV-OBS', 'FRE-PAV', 'SOL-IMP'];
+  /** As Portal's service list names them (`reportTypeLabel` of its clientNotices, 82f9a231). */
+  const PORTAL_LABELS: Record<string, string> = {
+    'ACT-CNF': 'Acta de conformidad',
+    'REC-EXC': 'Informe Tecnico Reclamo Excedente',
+    'MET-RES': 'Cuadro Resumen de Metrado',
+    'CAL-PROT': 'Protocolo de Control de Calidad',
+    'TOP-CMP': 'Protocolo topográfico completo',
+    'INF-ACT': 'Actividades realizadas',
+    'PNL-FOT': 'Panel fotográfico de obra',
+    'CONT-SRV': 'Contrato de servicio',
+    'DOS-OBR': 'Dossier de obra',
+  };
+  const BLOCK_SHEETS = Object.keys(PORTAL_LABELS);
+  const codes = (options: readonly ReportTypeOption[]) => options.map((option) => option.code);
+
+  it('names each one as Portal\'s service list does, so the picker and the row agree', () => {
+    // Act
+    const labels = Object.fromEntries(EDITOR_REPORT_TYPE_OPTIONS.map((option) => [option.code, option.label]));
+    // Assert
+    expect(labels).toEqual(PORTAL_LABELS);
+    expect(BLOCK_SHEETS.map(reportTypeLabel)).toEqual(Object.values(PORTAL_LABELS));
+  });
+
+  it('marks the five that carry amounts, as Portal\'s MONEY_REPORT_TYPES; no public type is money', () => {
+    // Act
+    const money = codes(EDITOR_REPORT_TYPE_OPTIONS.filter((option) => option.money));
+    // Assert
+    expect(money).toEqual(['ACT-CNF', 'REC-EXC', 'MET-RES', 'CONT-SRV', 'DOS-OBR']);
+    expect(REPORT_TYPE_OPTIONS.filter((option) => option.money)).toEqual([]);
+  });
+
+  it('each is born in Portal\'s editor, never in a form here, and the public list (the APK\'s) has none', () => {
+    // Act
+    const inEditorOnly = EDITOR_REPORT_TYPE_OPTIONS.filter((option) => EMBED_CREATE_TYPES.includes(option.code) && !opensInApp(option));
+    // Assert
+    expect(codes(inEditorOnly)).toEqual(BLOCK_SHEETS);
+    expect(codes(REPORT_TYPE_OPTIONS)).toEqual(PUBLIC);
+  });
+
+  it('whoever sees money gets them after the public types, where the editor opens', () => {
+    // Act
+    const offered = pickerReportTypes(true, () => true);
+    // Assert
+    expect(codes(offered)).toEqual([...PUBLIC, ...BLOCK_SHEETS]);
+  });
+
+  it('a member without money gets none, money or not (José 07/11: «todo lo que es plata solo admins»)', () => {
+    // Act
+    const offered = pickerReportTypes(false, () => true);
+    // Assert
+    expect(codes(offered)).toEqual(PUBLIC);
+  });
+
+  it('where the editor does not open (the APK, the phone-width web) nobody gets one, not even with money', () => {
+    // Act
+    const offered = pickerReportTypes(true, () => false);
+    // Assert
+    expect(codes(offered)).toEqual(PUBLIC);
+  });
+
+  it('a money mark hides a type even under a public label: that lock does not hang on the list of labels', () => {
+    // Arrange
+    const marked: ReportTypeOption = { code: 'X-MONEY', label: 'Control de pista', caption: 'x', opensHere: false, money: true };
+    // Act
+    const offered = [offersReportType(marked, false), offersReportType(marked, true)];
+    // Assert
+    expect(offered).toEqual([false, true]);
+  });
+
+  it('the server asks for money to create a block sheet, never a public type; an unknown type fails closed', () => {
+    // Act
+    const needMoney = [...PUBLIC, ...BLOCK_SHEETS, 'VAL-SRV'].filter(needsMoneyToCreate);
+    // Assert
+    expect(needMoney).toEqual([...BLOCK_SHEETS, 'VAL-SRV']);
   });
 });
 

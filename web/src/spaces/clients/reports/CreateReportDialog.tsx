@@ -1,10 +1,14 @@
 import { useState } from 'react';
-import { ChevronRight, ClipboardCheck, Droplets, FileSignature, Hammer, Layers, ScanSearch, Square, Truck, UserCheck, type LucideIcon } from 'lucide-react';
-import { asksResponsible, REPORT_TYPE_OPTIONS, RESPONSIBLE_MAX, reportTypeLabel, type ReportTypeOption } from '@lilachat/shared';
+import { BadgeCheck, Calculator, ChevronRight, ClipboardCheck, Compass, Droplets, FileSignature, FileWarning, FlaskConical, FolderOpen, Hammer, Handshake, Images, Layers, ListChecks, ScanSearch, Square, Truck, UserCheck, type LucideIcon } from 'lucide-react';
+import { asksResponsible, pickerReportTypes, RESPONSIBLE_MAX, reportTypeLabel, type ReportTypeOption } from '@lilachat/shared';
 import { loadPerfil } from '../../../api';
 import { Overlay } from '../../../ui/Overlay';
 
-const ICONS: Record<string, LucideIcon> = { 'CTL-IMP': Droplets, IAA: Square, 'CTL-PIS': Truck, 'CON-CAP': Layers, 'RCP-CAM': UserCheck, 'REG-OBS': ScanSearch, 'LEV-OBS': ClipboardCheck, 'FRE-PAV': Hammer, 'SOL-IMP': FileSignature };
+const ICONS: Record<string, LucideIcon> = {
+  'CTL-IMP': Droplets, IAA: Square, 'CTL-PIS': Truck, 'CON-CAP': Layers, 'RCP-CAM': UserCheck, 'REG-OBS': ScanSearch, 'LEV-OBS': ClipboardCheck, 'FRE-PAV': Hammer, 'SOL-IMP': FileSignature,
+  // Portal's block sheets (José 16/11), only on the wide web.
+  'ACT-CNF': BadgeCheck, 'REC-EXC': FileWarning, 'MET-RES': Calculator, 'CAL-PROT': FlaskConical, 'TOP-CMP': Compass, 'INF-ACT': ListChecks, 'PNL-FOT': Images, 'CONT-SRV': Handshake, 'DOS-OBR': FolderOpen,
+};
 const ROW = 'flex min-h-[64px] w-full items-center gap-3 rounded-xl border bg-surface px-3 py-2.5 text-left';
 
 function TypeIcon({ code }: { code: string }) {
@@ -55,19 +59,23 @@ function ResponsibleStep(props: { code: string; people: readonly string[]; onCon
 }
 
 /**
- * «Crear informe» (design j-01): the eight types of Portal's public page.
+ * «Crear informe» (design j-01): the types of Portal's public page.
  * Only the ones Lilachat fills open here; the rest open the service in Portal
  * until their turn comes (spec INFORMES-DESDE-LILACHAT §5).
  */
-/** `inEditor`: on the wide web the types Portal's editor creates are picked here too (José 12/11), and born there. */
-export function CreateReportDialog(props: { portalUrl?: string; people?: readonly string[]; inEditor?: (code: string) => boolean; onPick: (code: string, responsible: string) => void; onClose: () => void }) {
+/**
+ * `inEditor`: on the wide web the types Portal's editor creates are picked here too (José 12/11), and born there; so are
+ * its block sheets (José 16/11), only for whoever sees money (`seesMoney`; without it, none).
+ */
+export function CreateReportDialog(props: { portalUrl?: string; people?: readonly string[]; seesMoney?: boolean; inEditor?: (code: string) => boolean; onPick: (code: string, responsible: string) => void; onClose: () => void }) {
   const [code, setCode] = useState<string | null>(null);
   if (code) return <Overlay title="Nuevo informe" onClose={props.onClose}><ResponsibleStep code={code} people={props.people ?? []} onConfirm={(name) => props.onPick(code, name)} onBack={() => setCode(null)} /></Overlay>;
+  const options = pickerReportTypes(props.seesMoney ?? false, props.inEditor ?? (() => false));
   return (
     <Overlay title="¿Qué informe vas a hacer?" onClose={props.onClose}>
       <div data-testid="crear-informe-tipos" className="flex flex-col gap-2">
         <p className="-mt-1 mb-1 text-sm text-on-surface-variant">Se guarda como borrador mientras lo llenas</p>
-        {REPORT_TYPE_OPTIONS.map((option) =>
+        {options.map((option) =>
           option.opensHere || props.inEditor?.(option.code) ? (
             <button key={option.code} type="button" data-testid={`tipo-informe-${option.code}`} onClick={() => (asksResponsible(option.code) ? setCode(option.code) : props.onPick(option.code, ''))} className={`${ROW} border-primary/40 hover:bg-primary/5`}>
               <TypeIcon code={option.code} />

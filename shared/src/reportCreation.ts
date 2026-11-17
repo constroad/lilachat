@@ -23,6 +23,7 @@ import type { ObservationLiftRequest, ObservationRegisterRequest } from './obser
 import { AREA_TYPE, AREAS_OPEN_HERE, areaDocumentOf, type AreaCreateRequest, type AreaDocument, type AreaEditRequest, type AreaRemoveRequest } from './additionalArea.js';
 import { locationMapLink } from './sharedLocation.js';
 import type { DetailTone } from './serviceDetail.js';
+import { isFieldReport } from './clientAccess.js';
 
 /**
  * Creating a field report from the client's channel (José 05/11/2026, spec
@@ -30,7 +31,7 @@ import type { DetailTone } from './serviceDetail.js';
  * asks the server and what the cards say. The APK and the web draw from
  * here. PURE.
  */
-export type ReportTypeOption = { code: string; label: string; caption: string; /** Created here; the rest open Portal's public page. */ opensHere: boolean };
+export type ReportTypeOption = { code: string; label: string; caption: string; /** Created here; the rest open Portal's public page. */ opensHere: boolean; /** It carries amounts (Portal's `MONEY_REPORT_TYPES`): offered only to whoever sees money. */ money?: true };
 
 /** What the APK fills itself (IAA too since 15/11: photo + tape); the rest open Portal from the APK. */
 export const opensInApp = (option: ReportTypeOption): boolean => option.opensHere;
@@ -47,6 +48,43 @@ export const REPORT_TYPE_OPTIONS: readonly ReportTypeOption[] = [
   { code: 'FRE-PAV', label: 'Fresado de pavimento', caption: 'Tramos fresados con progresivas, profundidad y fotos', opensHere: true },
   { code: 'SOL-IMP', label: 'Solicitud de imprimación', caption: 'Pedido previo al riego, con firma', opensHere: false },
 ];
+
+/**
+ * Portal's block sheets (José 16/11, Portal 82f9a231): the APK keeps creating only the public page's types; the wide web
+ * also creates these, always in Portal's editor (`EMBED_CREATE_TYPES`). Never in the APK's picker nor in a form here.
+ * Each label is the one Portal's service list sends (`reportTypeLabel` of its `clientNotices`).
+ */
+export const EDITOR_REPORT_TYPE_OPTIONS: readonly ReportTypeOption[] = [
+  { code: 'ACT-CNF', label: 'Acta de conformidad', caption: 'La conformidad del cliente con lo ejecutado', opensHere: false, money: true },
+  { code: 'REC-EXC', label: 'Informe Tecnico Reclamo Excedente', caption: 'Sustento técnico de un reclamo por excedente', opensHere: false, money: true },
+  { code: 'MET-RES', label: 'Cuadro Resumen de Metrado', caption: 'Resumen de los metrados del servicio', opensHere: false, money: true },
+  { code: 'CAL-PROT', label: 'Protocolo de Control de Calidad', caption: 'Ensayos y controles de calidad de la obra', opensHere: false },
+  { code: 'TOP-CMP', label: 'Protocolo topográfico completo', caption: 'Control topográfico completo de la obra', opensHere: false },
+  { code: 'INF-ACT', label: 'Actividades realizadas', caption: 'Las actividades del periodo, con sus fotos', opensHere: false },
+  { code: 'PNL-FOT', label: 'Panel fotográfico de obra', caption: 'Las fotos de la obra del periodo', opensHere: false },
+  { code: 'CONT-SRV', label: 'Contrato de servicio', caption: 'El contrato del servicio con el cliente', opensHere: false, money: true },
+  { code: 'DOS-OBR', label: 'Dossier de obra', caption: 'Los entregables de la obra en un solo documento', opensHere: false, money: true },
+];
+
+const ALL_REPORT_TYPE_OPTIONS: readonly ReportTypeOption[] = [...REPORT_TYPE_OPTIONS, ...EDITOR_REPORT_TYPE_OPTIONS];
+const optionOf = (code: string): ReportTypeOption | undefined => ALL_REPORT_TYPE_OPTIONS.find((option) => option.code === code);
+
+/**
+ * Whether a type is offered to someone (José 07/11: money only for admins). A money type only to whoever sees money; any
+ * other only to whoever lists it in the service, which without money is Portal's public page (`isFieldReport`, as the
+ * server's `withoutMoney` filters the reports).
+ */
+export const offersReportType = (option: ReportTypeOption, seesMoney: boolean): boolean => seesMoney || (!option.money && isFieldReport({ typeLabel: option.label }));
+
+/** The web's picker: the public page's types and, where Portal's editor opens (`inEditor`), its block sheets; each only if offered. */
+export const pickerReportTypes = (seesMoney: boolean, inEditor: (code: string) => boolean): ReportTypeOption[] =>
+  [...REPORT_TYPE_OPTIONS, ...EDITOR_REPORT_TYPE_OPTIONS.filter((option) => inEditor(option.code))].filter((option) => offersReportType(option, seesMoney));
+
+/** The server's lock on creating: a type the picker never offers without money needs money; an unknown one too (it fails closed). */
+export const needsMoneyToCreate = (code: string): boolean => {
+  const option = optionOf(code);
+  return !option || !offersReportType(option, false);
+};
 
 const DRAFT_LABEL = 'borrador';
 
@@ -66,7 +104,7 @@ const PERCENT = 100;
 /** Observations and areas have no responsible in Portal's contract: the picker goes straight to the report (§5-ter rule 1). */
 export const asksResponsible = (code: string): boolean => !isObservationType(code) && code !== AREA_TYPE;
 
-export const reportTypeLabel = (code: string): string => REPORT_TYPE_OPTIONS.find((option) => option.code === code)?.label ?? code;
+export const reportTypeLabel = (code: string): string => optionOf(code)?.label ?? code;
 export const DRAFT_FAILED = 'No se pudo abrir el informe';
 
 export const reportDraftPath = (spaceId: string, clientId: string, serviceId: string): string => `${clientServicePath(spaceId, clientId, serviceId)}/reports/draft`;

@@ -15,6 +15,7 @@ import { ProspectChannelModel } from './botProspects.js';
 import { forgetBots } from './botRegistry.js';
 import { sha256 } from './botSecrets.js';
 import { botsHearMessage } from './botTriggers.js';
+import { configureProspectsAnnounce } from './prospectAnnounce.js';
 
 /** Dali phase 2 (BOTS-API «Fase 2: contrato», 16/11): agentes' view in the PUT, the seller's decisions in Lilachat. */
 let mongo: MongoMemoryServer;
@@ -22,6 +23,7 @@ let hook: Server;
 let hookUrl = '';
 let received: { type?: string; data?: Record<string, unknown> }[] = [];
 let answers: Record<string, { status: number; body: unknown }> = {};
+let announced: { userIds: string[]; workspaceId: string }[] = [];
 const app = buildApp({});
 const TOKEN = 'lcb_test_dali_0123456789';
 const PROSPECT = 'dali:constroad:9f2c41';
@@ -79,6 +81,8 @@ afterAll(async () => {
 beforeEach(async () => {
   forgetBots();
   received = [];
+  announced = [];
+  configureProspectsAnnounce((userIds, workspaceId) => announced.push({ userIds: [...userIds].sort(), workspaceId }));
   answers = {};
   await Promise.all([UserModel, ChatModel, MessageModel, WorkspaceModel, WorkspaceMemberModel, BotAppModel, BotInstallationModel, BotDeliveryModel, ProspectChannelModel, ReminderModel].map((model) => (model as unknown as mongoose.Model<unknown>).deleteMany({})));
   [jose, ana, hidden, outsider, botUser] = (await UserModel.create([{ phone: '51902049935', name: 'José' }, { phone: '51987654321', name: 'Ana Ríos' }, { phone: '51933333333', name: 'Oculto' }, { phone: '51911111111', name: 'Otro' }, { phone: 'bot-dali', name: 'Dali' }])).map((user) => user._id) as [Types.ObjectId, Types.ObjectId, Types.ObjectId, Types.ObjectId, Types.ObjectId];
@@ -106,6 +110,25 @@ describe('PUT /api/bots/prospects/:id (phase 2)', () => {
     const kept = await putProspect({ ...base, name: 'Carmen V.', score: 140, summary: 'Quiere cotización' }).expect(200);
     expect(kept.body.ignored).toEqual([{ field: 'score', message: expect.stringContaining('score') }]);
     expect(await ProspectChannelModel.findOne({ prospectId: PROSPECT }).lean()).toMatchObject({ name: 'Carmen V.', score: 40, summary: 'Quiere cotización' });
+  });
+});
+
+describe('a Dali space', () => {
+  it('comes marked in my spaces list, so the clients draw its tabs; a space without Dali does not', async () => {
+    const other = (await WorkspaceModel.create({ name: 'Test', ownerId: jose, joinCode: 'TEST-7K3P' }))._id;
+    await WorkspaceMemberModel.create({ workspaceId: other, userId: jose, phone: '51902049935', role: 'owner', status: 'active' });
+    const { body } = await request(app).get('/api/workspaces').set(asUser(jose)).expect(200);
+    const byId = new Map((body.workspaces as { id: string; prospects?: boolean }[]).map((space) => [space.id, space]));
+    expect(byId.get(String(spaceId))?.prospects).toBe(true);
+    expect(byId.get(String(other))?.prospects).toBeUndefined();
+  });
+
+  it('marks each prospect channel in the space chat list, so the inbox lists it apart from the team chats', async () => {
+    await putProspect(base).expect(201);
+    const { body } = await request(app).get(`/api/chats?workspace=${spaceId}`).set(asUser(jose)).expect(200);
+    const chats = body.chats as { name?: string; prospect?: boolean }[];
+    expect(chats.find((chat) => chat.name === 'Carmen Villanueva')?.prospect).toBe(true);
+    expect(chats.find((chat) => chat.name === 'general')?.prospect).toBeUndefined();
   });
 });
 
@@ -189,6 +212,25 @@ describe('the space members desk', () => {
     expect(stored?.firstDaliReplyAt).toBeInstanceOf(Date);
     expect(String(stored?.firstTeamReply?.userId)).toBe(String(ana));
     expect(stored?.lastTeamReplyAt).toBeInstanceOf(Date);
+  });
+
+  it('tells the members\' inbox to read again when agentes, a seller or the first answer change a prospect', async () => {
+    const members = [String(jose), String(ana), String(hidden)].sort();
+    const wait = async (count: number) => {
+      for (let tries = 0; tries < 40 && announced.length < count; tries += 1) await new Promise((resolve) => setTimeout(resolve, 25));
+      return announced.length;
+    };
+    expect(await wait(1)).toBeGreaterThanOrEqual(1);
+    expect(announced[0]).toEqual({ userIds: members, workspaceId: String(spaceId) });
+    announced = [];
+    await desk(ana).change({ version: 0, assignee: 'me' }).expect(200);
+    expect(await wait(1)).toBe(1);
+    announced = [];
+    const chatId = (await ProspectChannelModel.findOne({ prospectId: PROSPECT }).lean())!.chatId;
+    const reply = await MessageModel.create({ chatId, seq: 98, senderId: ana, clientKey: 'web-reply-2', kind: 'text', body: 'Te llamo', at: new Date() });
+    const chat = await ChatModel.findById(chatId).lean();
+    await botsHearMessage(reply.toObject() as Message, chat!.members.map((member) => String(member.userId)));
+    expect(await wait(1)).toBe(1);
   });
 });
 

@@ -6,6 +6,7 @@ import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { sendBotEvent, type BotEventType } from './botEvents.js';
 import { BotInstallationModel } from './botModels.js';
 import { ProspectChannelModel, type ProspectChannel } from './botProspects.js';
+import { announceProspects } from './prospectAnnounce.js';
 
 /**
  * What the members of a Dali space do with its prospects (BOTS-API «Fase 2: contrato», dl-01 to dl-11): read them
@@ -200,8 +201,9 @@ async function syncReminder(before: ProspectChannel, after: ProspectChannel, rem
 
 const personWire = (member: Member) => ({ id: String(member.userId), name: member.name, ...(member.phone ? { phone: member.phone } : {}) });
 
-/** Tells agentes; a prospect whose app was removed has nobody to tell. */
+/** Tells the members' inbox and agentes; a prospect whose app was removed has no agentes to tell. */
 async function tellAgentes(doc: ProspectChannel, type: BotEventType, data: Record<string, unknown>, member: Member): Promise<void> {
+  announceProspects(doc.workspaceId);
   const installation = await BotInstallationModel.findOne({ workspaceId: doc.workspaceId, appId: doc.appId, revokedAt: { $exists: false } }).select('_id workspaceId').lean();
   if (!installation) return;
   await sendBotEvent(installation, type, { prospect_id: doc.prospectId, ...data, user: personWire(member), at: new Date().toISOString(), version: doc.version });

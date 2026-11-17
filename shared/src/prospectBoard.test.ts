@@ -60,6 +60,11 @@ describe('overdueOf', () => {
     expect(overdueOf(prospect({ score: 86, lastContactAt: minutesAgo(10) }), now)).toBeNull();
   });
 
+  it('counts a quote sent after the last message as the team\'s answer: then it waits on the client, not on us', () => {
+    const quoted = prospect({ score: 78, stage: 'quoted', lastContactAt: minutesAgo(5 * 24 * 60), quote: { code: 'COT-1', sentAt: minutesAgo(4 * 24 * 60) } });
+    expect(overdueOf(quoted, now)).toEqual({ kind: 'quote_unanswered', since: minutesAgo(4 * 24 * 60) });
+  });
+
   it('never flags a closed prospect', () => {
     expect(overdueOf(prospect({ stage: 'to_quote', readyAt: minutesAgo(50 * 60), result: { outcome: 'won', at: minutesAgo(1) } }), now)).toBeNull();
   });
@@ -113,6 +118,16 @@ describe('inboxOf', () => {
       { key: 'venta_mezcla', name: 'Venta de mezcla', count: 2 },
       { key: 'base', name: 'Base', count: 1 },
     ]);
+  });
+
+  it('folds the plain questions Dali answers alone into «Solo consultas», out of the team\'s way', () => {
+    const asked = prospect({ score: 12, intent: 'information' });
+    const taken = prospect({ score: 30, intent: 'information', assignee: { id: ME, name: 'José' } });
+    const inbox = inboxOf([...board, asked, taken], { me: ME, view: 'all' }, now);
+    expect(inbox.consults.map((item) => item.id)).toEqual([asked.id]);
+    expect(inbox.sections.flatMap((section) => section.items).map((item) => item.id)).not.toContain(asked.id);
+    expect(inbox.sections.flatMap((section) => section.items).map((item) => item.id)).toContain(taken.id);
+    expect(inbox.counts.all).toBe(5);
   });
 });
 

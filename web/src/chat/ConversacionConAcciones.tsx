@@ -1,7 +1,7 @@
 import { ContactNoteBannerWeb } from '../routines/ContactNoteBannerWeb';
 import type { MessageTarget, NotificationLevel, WinkId } from '@lilachat/shared';
 import { alreadyGreeted, newAlbumId, peopleNamesOf } from '@lilachat/shared';
-import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ComponentProps, type ReactNode } from 'react';
 import { PanelDeInfo } from './info/PanelDeInfo';
 import type { ChatAction } from './menuDelChat';
 import { BLOCKED_BY_ME_COMPOSER, fijadosVigentes, memberMay, memberPermissionDenied, puedeFijarEnElChat } from '@lilachat/shared';
@@ -83,6 +83,10 @@ export function ConversacionConAcciones(
     irA?: { seq: number; vez: number } | null;
     /** A 1:1 opened from a person's card (José, 25/10); a space's 1:1 comes with its summary. */
     onOpenChat?: (chatId: string, known?: ChatSummary) => void;
+    /** A Dali prospect's channel (BOTS-API fase 2): who attends it, «Devolver a Dali», the result, the ficha. */
+    prospectStrip?: ReactNode;
+    /** Over the composer of the main conversation (a thread stays in the team): «Se envía al cliente por WhatsApp». */
+    composerHint?: ReactNode;
   }
 ) {
   const { chat, yo, sync, onAviso } = props;
@@ -248,7 +252,7 @@ export function ConversacionConAcciones(
         mencionables={mencionables}
         people={people}
         onOutsideMentions={outsideMentions.notify}
-        avisoDeMencion={<OutsideMentionNotice outside={outsideMentions} />}
+        avisoDeMencion={<>{props.composerHint}<OutsideMentionNotice outside={outsideMentions} /></>}
         jwtParaEnlaces={chat.encrypted ? undefined : props.jwt}
         onElegirArchivos={(files) => setStaged((current) => stageFiles(current, files))}
         staged={staged.length ? { files: staged, onRemove: (index) => setStaged((current) => current.filter((_, at) => at !== index)), onPreview: () => setArchivos({ files: staged, target: replyTarget() }), onSend: (caption) => subir(staged, caption, false) } : undefined}
@@ -267,6 +271,7 @@ export function ConversacionConAcciones(
         }}
         franja={
           <>
+          {props.prospectStrip}
           {visitDoor.strip}
           {chat.kind === 'direct' ? <ContactNoteBannerWeb chatId={chat.id} jwt={props.jwt} note={detalle?.routines?.contactNote} /> : null}
           <FranjaDeFijados

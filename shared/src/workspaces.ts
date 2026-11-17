@@ -104,6 +104,8 @@ export type ClientWorkspace = {
   admins?: { userId: string; name?: string; phone: string }[];
   /** Hidden here, so I only read (José 13/11): not in the switcher, entered from Ajustes → Superadmin. */
   incognito?: boolean;
+  /** A Dali space (an app with `prospects:write`): the clients draw Bandeja · Embudo · Panel · Revisión. */
+  prospects?: boolean;
 };
 
 /**

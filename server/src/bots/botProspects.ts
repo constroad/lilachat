@@ -5,6 +5,7 @@ import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { noticeChannelJoined } from '../workspaceNotices.js';
 import type { BotInstallation } from './botModels.js';
 import { botOfUser } from './botRegistry.js';
+import { announceProspects } from './prospectAnnounce.js';
 
 /**
  * Dali's prospects (BOTS-API §c-prospectos, José via agentes 16/11): one PRIVATE channel per person who
@@ -138,6 +139,7 @@ export async function upsertProspectChannel(installation: Installation, prospect
     await ProspectChannelModel.updateOne({ _id: existing._id }, updateOf(valid.state, insight.patch));
     await ChatModel.updateOne({ _id: existing.chatId }, { $set: { name } });
     await addMissingMembers(installation, existing.chatId);
+    announceProspects(installation.workspaceId);
     return { status: 200, prospect: toWire({ ...existing, ...valid.state }, name), ...ignored };
   }
   const { chatId, members } = await createProspectChat(installation, prospectId, name);
@@ -150,6 +152,7 @@ export async function upsertProspectChannel(installation: Installation, prospect
     return upsertProspectChannel(installation, prospectId, raw);
   }
   members.forEach((userId) => noticeChannelJoined(userId, chatId));
+  announceProspects(installation.workspaceId);
   return { status: 201, prospect: toWire({ prospectId, chatId, attendedBy: valid.state.attendedBy }, name), ...ignored };
 }
 
@@ -179,5 +182,7 @@ export async function noteTeamReply(message: { chatId: Types.ObjectId | string; 
   const chatId = new Types.ObjectId(String(message.chatId));
   const at = message.at ?? new Date();
   await ProspectChannelModel.updateOne({ chatId }, { $max: { lastTeamReplyAt: at } });
-  await ProspectChannelModel.updateOne({ chatId, firstTeamReply: { $exists: false } }, { $set: { firstTeamReply: { at, userId: new Types.ObjectId(String(message.senderId)) } } });
+  // The first answer moves the prospect out of «Atender ahora»: the inbox hears it. Later ones only touch the hour.
+  const first = await ProspectChannelModel.findOneAndUpdate({ chatId, firstTeamReply: { $exists: false } }, { $set: { firstTeamReply: { at, userId: new Types.ObjectId(String(message.senderId)) } } }, { projection: { workspaceId: 1 } }).lean();
+  if (first) announceProspects(first.workspaceId);
 }

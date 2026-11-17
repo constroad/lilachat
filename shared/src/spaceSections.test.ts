@@ -45,6 +45,13 @@ describe('spaceInitials', () => {
     expect(spaceInitials('Obra Miraflores')).toBe('OM');
     expect(spaceInitials('  ')).toBe('?');
   });
+
+  it('skips a separator between words: «Dali · Constroad» is DC, not D·', () => {
+    expect(spaceInitials('Dali · Constroad')).toBe('DC');
+    expect(spaceInitials('Obra – Miraflores Norte')).toBe('OM');
+    expect(spaceInitials('+51 902 049 935')).toBe('+9');
+    expect(spaceInitials(' · ')).toBe('?');
+  });
 });
 
 describe('spaceInviteMessage', () => {

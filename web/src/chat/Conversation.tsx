@@ -40,6 +40,12 @@ import type { ChatSummary, MensajeEnPantalla } from './types';
  * Los mensajes salen de la base local (W1): `null` es que todavía se está
  * leyendo el disco, no la red.
  */
+/**
+ * The header pieces a chat brings itself (a Dali prospect, dl-02): its avatar, the line under the name and its own
+ * actions, which take the place of a Lilachat call (calling a prospect is the phone's dialer).
+ */
+export type OwnHeader = { avatar: ReactNode; subtitle: ReactNode; actions: ReactNode };
+
 export function Conversation(props: {
   chat: ChatSummary;
   mensajes: MensajeEnPantalla[] | null;
@@ -71,6 +77,8 @@ export function Conversation(props: {
   callExtras?: ReactNode;
   /** A group's call going on: who is in it and «Unirse» (pending 56). */
   callStrip?: ReactNode;
+  /** A chat that draws its own header pieces: a Dali prospect (dl-02). */
+  ownHeader?: OwnHeader;
   showBack: boolean;
   hayAnteriores: boolean;
   onCargarAnteriores: () => void;
@@ -195,7 +203,7 @@ export function Conversation(props: {
       {serviceFull ? null : props.app ? (
         <AppConversationHeader app={props.app} tab={appTab} onTab={setAppTab} showBack={props.showBack} onBack={props.onBack} />
       ) : (
-        <CabeceraDeLaConversacion chat={chat} isClient={Boolean(client)} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} lastSeen={lastSeen} status={otherStatus} onCall={props.onCall} callExtras={props.callExtras} />
+        <CabeceraDeLaConversacion chat={chat} isClient={Boolean(client)} own={props.ownHeader} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} lastSeen={lastSeen} status={otherStatus} onCall={props.onCall} callExtras={props.callExtras} />
       )}
       {props.callStrip}
       {isClientChannel && client && !serviceFull ? <ChannelTabs tabs={tabs} tab={shownTab} onTab={setChannelTab} counter={workPlan.summary?.total ? `${workPlan.summary.done}/${workPlan.summary.total}` : null} services={client.services.length} overdue={Boolean(workPlan.summary?.overdue)} /> : null}
@@ -300,50 +308,80 @@ export function Conversation(props: {
   );
 }
 
-function CabeceraDeLaConversacion(props: { chat: ChatSummary; /** A client's channel (design f-03): the building and «Cliente · N miembros», not «#». */ isClient?: boolean; typingName: string | null; showBack: boolean; onBack: () => void; onAbrirInfo?: () => void; /** The other's «últ. vez» in a 1:1, like the app. */ lastSeen?: string; /** «Ausente» or «Ocupado» (pending 15). */ status?: PresenceStatus; onCall?: (video: boolean) => void; callExtras?: ReactNode }) {
+/** The line under a chat's name: who is typing, or what the chat is. */
+function statusLineOf(props: { chat: ChatSummary; typingName: string | null; isClient?: boolean; lastSeen?: string; status?: PresenceStatus }): string | null {
   const { chat, typingName } = props;
-  // A channel of a space reads as Slack's: «#planta-web».
-  const title = chat.channel && !props.isClient ? `#${chat.name ?? ''}` : (chat.name ?? chat.phone ?? 'Conversación');
+  if (typingName) return chat.kind === 'group' ? `${typingName} está escribiendo…` : 'Escribiendo…';
+  if (chat.kind === 'notas') return 'Solo tú lo ves';
+  if (props.isClient) return clientHeaderSubtitle(chat.memberIds.length);
+  if (chat.kind === 'group') return memberCountLabel(chat.memberIds.length) || ' ';
+  if (chat.online) return presenceLine({ online: true, status: props.status });
+  return props.lastSeen ? formatUltimaVez(props.lastSeen) : ' ';
+}
+
+type HeaderProps = { chat: ChatSummary; /** A client's channel (design f-03): the building and «Cliente · N miembros», not «#». */ isClient?: boolean; /** Its own avatar, line and actions, and no «#» either. */ own?: OwnHeader; typingName: string | null; showBack: boolean; onBack: () => void; onAbrirInfo?: () => void; /** The other's «últ. vez» in a 1:1, like the app. */ lastSeen?: string; /** «Ausente» or «Ocupado» (pending 15). */ status?: PresenceStatus; onCall?: (video: boolean) => void; callExtras?: ReactNode };
+
+/** A channel of a space reads as Slack's («#planta-web»); a client's channel or a chat with its own header, without «#». */
+function headerTitleOf(chat: ChatSummary, plain: boolean): string {
+  if (chat.channel && !plain) return `#${chat.name ?? ''}`;
+  return chat.name ?? chat.phone ?? 'Conversación';
+}
+
+function CabeceraDeLaConversacion(props: HeaderProps) {
+  const { chat, typingName } = props;
+  const title = headerTitleOf(chat, Boolean(props.isClient || props.own));
+  // A phone header with its own actions (a prospect: call and ficha) gives the name the room of a tighter spacing.
+  const tight = Boolean(props.own) && props.showBack;
   return (
-    <header className="relative z-10 flex items-center gap-3 border-b border-outline/15 bg-surface px-4 py-3 shadow-sm">
+    <header className={`relative z-10 flex items-center border-b border-outline/15 bg-surface py-3 shadow-sm ${tight ? 'gap-2 px-2' : 'gap-3 px-4'}`}>
       {props.showBack ? (
         <button type="button" data-testid="btn-volver" aria-label="Volver" onClick={props.onBack} className="grid h-11 w-11 place-items-center rounded-full text-on-surface-variant hover:bg-surface">
           <ArrowLeft size={20} />
         </button>
       ) : null}
       {/* Nombre y foto abren «Info.» (W3b), como en WhatsApp Web. */}
-      <button type="button" data-testid="btn-info-del-chat" aria-label={`Info. de ${title}`} onClick={props.onAbrirInfo} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left">
-      {props.isClient ? (
-        <span data-testid="cabecera-cliente" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-outline/15 bg-surface"><Building2 size={20} className="text-on-surface-variant" /></span>
-      ) : (
-        <Avatar name={title} kind={chat.kind} online={chat.online} foto={chat.avatarUrl} />
-      )}
-      <div className="min-w-0 flex-1">
-        <h2 className="truncate text-base font-bold">{title}</h2>
-        {/* La línea de estado no desaparece cuando nadie escribe: si el alto
-            cambiara, la cabecera saltaría con cada tecla del otro. */}
-        <p data-testid="estado-chat" className={`truncate text-[13px] ${typingName ? 'text-primary' : 'text-on-surface-variant'}`}>
-          {typingName ? (chat.kind === 'group' ? `${typingName} está escribiendo…` : 'Escribiendo…') : chat.kind === 'notas' ? 'Solo tú lo ves' : props.isClient ? clientHeaderSubtitle(chat.memberIds.length) : chat.kind === 'group' ? (memberCountLabel(chat.memberIds.length) || ' ') : chat.online ? presenceLine({ online: true, status: props.status }) : props.lastSeen ? formatUltimaVez(props.lastSeen) : ' '}
-        </p>
-      </div>
-      </button>
-      {props.onCall ? (
-        <div className="flex items-center gap-1 text-on-surface-variant">
-          <button type="button" data-testid="btn-videollamada" aria-label="Videollamada" title="Videollamada" onClick={() => props.onCall?.(true)} className="grid h-11 w-11 place-items-center rounded-full hover:bg-surface">
-            <Video size={18} />
-          </button>
-          <button type="button" data-testid="btn-llamada" aria-label="Llamada" title="Llamada" onClick={() => props.onCall?.(false)} className="grid h-11 w-11 place-items-center rounded-full hover:bg-surface">
-            <Phone size={18} />
-          </button>
-          {props.callExtras}
+      <button type="button" data-testid="btn-info-del-chat" aria-label={`Info. de ${title}`} onClick={props.onAbrirInfo} className={`flex min-w-0 flex-1 items-center rounded-lg text-left ${tight ? 'gap-2.5' : 'gap-3'}`}>
+        <HeaderAvatar {...props} title={title} />
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-base font-bold">{title}</h2>
+          <HeaderLine {...props} />
         </div>
-      ) : null}
+      </button>
+      {props.own ? <div className="flex shrink-0 items-center gap-1.5">{props.own.actions}</div> : <CallButtons onCall={props.onCall} callExtras={props.callExtras} />}
       <div className="hidden items-center gap-1 text-on-surface-variant/40 sm:flex">
         <span className="grid h-9 w-9 place-items-center" title="Buscar (próximamente)">
           <Search size={18} />
         </span>
       </div>
     </header>
+  );
+}
+
+function HeaderAvatar(props: HeaderProps & { title: string }) {
+  if (props.own) return <>{props.own.avatar}</>;
+  if (props.isClient) return <span data-testid="cabecera-cliente" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-outline/15 bg-surface"><Building2 size={20} className="text-on-surface-variant" /></span>;
+  return <Avatar name={props.title} kind={props.chat.kind} online={props.chat.online} foto={props.chat.avatarUrl} />;
+}
+
+/** The line under the name never disappears when nobody types: if its height changed, the header would jump with each key. */
+function HeaderLine(props: HeaderProps) {
+  if (props.own && !props.typingName) return <div data-testid="estado-chat" className="flex min-w-0 items-center gap-1.5 text-[13px] text-on-surface-variant">{props.own.subtitle}</div>;
+  return <p data-testid="estado-chat" className={`truncate text-[13px] ${props.typingName ? 'text-primary' : 'text-on-surface-variant'}`}>{statusLineOf(props)}</p>;
+}
+
+/** A 1:1 with a person: voice or video call (José, 21/10), with «Programar llamada» behind the arrow. */
+function CallButtons({ onCall, callExtras }: { onCall?: (video: boolean) => void; callExtras?: ReactNode }) {
+  if (!onCall) return null;
+  return (
+    <div className="flex items-center gap-1 text-on-surface-variant">
+      <button type="button" data-testid="btn-videollamada" aria-label="Videollamada" title="Videollamada" onClick={() => onCall(true)} className="grid h-11 w-11 place-items-center rounded-full hover:bg-surface">
+        <Video size={18} />
+      </button>
+      <button type="button" data-testid="btn-llamada" aria-label="Llamada" title="Llamada" onClick={() => onCall(false)} className="grid h-11 w-11 place-items-center rounded-full hover:bg-surface">
+        <Phone size={18} />
+      </button>
+      {callExtras}
+    </div>
   );
 }
 

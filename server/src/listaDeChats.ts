@@ -71,6 +71,8 @@ export type ChatSummary = {
   sharedFrom?: { workspaceId: string; name: string; logoUrl?: string };
   /** Nudges and winks switched on by an admin of the group (José, 21/10). */
   funAllowed?: boolean;
+  /** A Dali prospect's channel (BOTS-API fase 2): the space lists it in its inbox, not with the team's chats. */
+  prospect?: true;
   memberPermissions?: MemberPermissions;
   birthdaysOn?: boolean;
   /** Silenciado por MÍ: la lista lo marca y no me llega push de acá. */
@@ -216,6 +218,7 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
       ...(chat.channel ? { channel: { visibility: chat.channel.visibility, ...(chat.channel.shared ? { shared: true } : {}) } } : {}),
       ...(chat.workspaceId && sharedOwners.has(String(chat.workspaceId)) ? { sharedFrom: sharedOwners.get(String(chat.workspaceId)) } : {}),
       ...(chat.funAllowed ? { funAllowed: true } : {}),
+      ...(chat.prospectId ? { prospect: true as const } : {}),
       // Pending 8: only when an admin changed them, so the composer knows who may write.
       ...(chat.memberPermissions ? { memberPermissions: memberPermissionsOf(chat.memberPermissions) } : {}),
       ...(chat.birthdaysOn ? { birthdaysOn: true } : {}),

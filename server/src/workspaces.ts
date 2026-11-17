@@ -6,6 +6,7 @@ import {
   makeJoinCode,
   normalizeJoinCode,
   normalizePeruPhone,
+  PROSPECTS_SCOPE,
   statusAfterJoin,
   type JoinPolicy,
   type WorkspaceMemberStatus,
@@ -20,6 +21,7 @@ import { membershipExtras } from './workspaceInfo.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { noticeMembersChanged, noticeSpacesChanged } from './workspaceNotices.js';
 import { ensureGeneralChannel, welcomeToGeneral } from './workspaceGeneral.js';
+import { BotInstallationModel } from './bots/botModels.js';
 
 /** A refusal with its HTTP status; the routes turn it into the response. */
 export class WorkspaceError extends Error {
@@ -130,14 +132,20 @@ async function listSpaces(userId: Types.ObjectId, keep: (member: MembershipRow) 
   const found = await WorkspaceMemberModel.find({ userId, status: { $in: ['active', 'pending', 'deactivated'] } }).select('workspaceId role status addedBy hidden').lean<MembershipRow[]>();
   const memberships = found.filter(keep);
   const ids = memberships.map((m) => m.workspaceId);
-  const [workspaces, counts, unread, extras] = await Promise.all([WorkspaceModel.find({ _id: { $in: ids }, deletedAt: { $exists: false } }).lean<Workspace[]>(), activeMembersOf(ids), unreadChatsOf(userId, ids), membershipExtras(userId, memberships)]);
+  const [workspaces, counts, unread, extras, dali] = await Promise.all([WorkspaceModel.find({ _id: { $in: ids }, deletedAt: { $exists: false } }).lean<Workspace[]>(), activeMembersOf(ids), unreadChatsOf(userId, ids), membershipExtras(userId, memberships), daliSpacesAmong(ids)]);
   const byId = new Map(workspaces.map((w) => [String(w._id), w]));
   return memberships.flatMap((m) => {
     const workspace = byId.get(String(m.workspaceId));
     const key = String(m.workspaceId);
     // A hidden member is not counted, not even by himself (José 13/11, `hiddenMembers.ts`).
-    return workspace ? [{ ...toClientWorkspace(workspace, m), members: counts.get(key) ?? 0, unreadChats: m.status === 'active' ? (unread.get(key) ?? 0) : 0, ...extras.get(key) }] : [];
+    return workspace ? [{ ...toClientWorkspace(workspace, m), members: counts.get(key) ?? 0, unreadChats: m.status === 'active' ? (unread.get(key) ?? 0) : 0, ...extras.get(key), ...(dali.has(key) ? { prospects: true } : {}) }] : [];
   });
+}
+
+/** The Dali spaces (an app with `prospects:write` installed): their clients draw Bandeja · Embudo · Panel · Revisión. One query for all. */
+async function daliSpacesAmong(workspaceIds: Types.ObjectId[]): Promise<Set<string>> {
+  const found = await BotInstallationModel.find({ workspaceId: { $in: workspaceIds }, grantedScopes: PROSPECTS_SCOPE, revokedAt: { $exists: false } }).select('workspaceId').lean();
+  return new Set(found.map((one) => String(one.workspaceId)));
 }
 
 /** «48 miembros» on the space switcher (design `e1-06`): the active ones, in one aggregation for all my spaces. */

@@ -55,7 +55,8 @@ function sharedSections<T extends SpaceChat>(chats: readonly T[]): SpaceSection<
 
 /** The square logo of a space without its own picture: the initials of its first two words, or its first two letters. */
 export function spaceInitials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
+  // A «word» without a letter or a digit is a separator («Dali · Constroad»): it has no initial.
+  const words = name.trim().split(/\s+/).filter((word) => /[\p{L}\p{N}]/u.test(word));
   if (words.length === 0) return '?';
   const letters = words.length > 1 ? `${words[0]![0]}${words[1]![0]}` : words[0]!.slice(0, 2);
   return letters.toUpperCase();

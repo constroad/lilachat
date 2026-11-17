@@ -1866,5 +1866,66 @@ nuevos. Con `dali.knowledge.requested` y `dali.faq.add` espera la respuesta 8 s 
 **Tests**: `shared/src/prospect{Insight,Seller,Board,Panel}.test.ts`, `shared/src/daliKnowledge.test.ts`,
 `server/src/bots/prospectDesk.test.ts` y `server/src/bots/fake.test.ts`.
 
-**Sin verificar todavía**: las pantallas (web y APK) y el E2E en Test. Hace falta una app con `prospects:write` en
-Test, y los eventos de agentes en producción.
+**Sin verificar todavía**: las pantallas del APK y el E2E en Test con agentes de verdad. Hace falta una app con
+`prospects:write` en Test, y los eventos de agentes en producción. Las de la web: ver la sección siguiente.
+
+### Hecho (17/11, fase 2: pantallas de la web)
+
+Prototipo v3 (`dl-01` a `dl-13`), con cada captura abierta al escribir su pantalla. Todo en `web/src/spaces/dali/`.
+
+**Un espacio de Dali** (`ClientWorkspace.prospects`) cambia la lista y la conversación por `DaliSpace`: una cabecera
+y UNA barra para todo el espacio, **Bandeja · Embudo · Panel · Revisión** (José 16/11, «pierdo los tabs»), y «Lo que
+Dali sabe» como botón de la cabecera. La pestaña elegida sobrevive a ir a una conversación y volver.
+
+| Archivo | Qué es |
+| --- | --- |
+| `DaliSpace.tsx` | Cabecera, barra y panel lateral. En la computadora la Bandeja es maestro-detalle: lista de 380 px, conversación y, desde 1280 px, la ficha en una tercera columna. En el teléfono cada cosa va a pantalla completa con ← |
+| `DaliInbox.tsx` + `ProspectRow.tsx` | Bandeja (dl-01 v3): Míos · Sin asignar · Todos, filtro por servicio (José 16/11), «Seguimientos de hoy», las tres secciones, «Solo consultas» plegada y «Chats del equipo» plegados al pie (#general y los directos no se pierden). En el teléfono, «N este mes · Dali contesta primero y te pasa los listos» |
+| `ProspectChat.tsx` | La conversación de un prospecto (dl-02), leída UNA vez por su chat: la cabecera (iniciales, teléfono y origen, «Llamar» con el marcador del teléfono, «Ficha» y «Marcar resultado» en la computadora) y la franja (quién atiende, Dali en pausa, «Tomar», «Devolver a Dali»). Sobre el compositor, «Se envía al cliente por WhatsApp» |
+| `ProspectSheet.tsx` + `prospectSheetBlocks.tsx` | La ficha (dl-03): contacto, origen, calificación con razones, lo que entendió Dali, cotización (monto solo admins), etapa, quién atiende (Tomar · Reasignar · Dejarlo sin asignar · Devolver a Dali), próxima acción y resultado |
+| `NextActionDialog.tsx` | Próxima acción (dl-09): sugerencia de Dali, qué, cuándo (hora de Lima), recordatorio y la secuencia |
+| `ResultDialog.tsx` | Resultado (dl-06, dl-07): ganado o perdido con motivo; «Otro» pide una línea |
+| `FollowUpsSheet.tsx` | Seguimientos de hoy (dl-05): atrasados y para hoy, el borrador de Dali con Enviar · Editar · llamar · Agendar |
+| `DaliFunnel.tsx` | Embudo (dl-08): cuatro cifras, tablero de columnas (baldosas 2×N en el teléfono) y «Sin próxima acción · Agendar» |
+| `DaliPanel.tsx` | Panel (dl-04): cifras, por origen, por anuncio, intención, vendedores y por qué se pierden. En el teléfono las tablas van con las columnas que caben |
+| `DaliReview.tsx` + `TeachDaliDialog.tsx` | Revisión de la semana (dl-10) y «Enseñarle a Dali» (dl-11) |
+| `DaliKnowledgeSheet.tsx` | Lo que Dali sabe (dl-12), solo lectura y agrupado POR SERVICIO (José 16/11); se edita en el panel de Dali |
+| `useProspects.ts`, `sellerDesk.ts`, `prospectEcho.ts`, `prospectsApi.ts` | Lectura, cambios del vendedor (409 → «Alguien lo cambió antes que tú…» y relee) y el eco dentro de la página |
+
+**Sin polling.** El server avisa `workspace.prospects.changed { workspaceId }` a los miembros activos cuando agentes
+hace el PUT, cuando un vendedor cambia algo y con la primera respuesta del equipo. La web relee con 2 s de margen y
+al reconectar. Un cambio propio se ve al instante en la franja, la ficha y la bandeja (`prospectEcho`). Las etiquetas
+de tiempo («hace 6 min») avanzan con un render por minuto, sin pedir nada.
+
+**Otros cambios del lote**:
+- `GET /api/chats?workspace=` marca `prospect: true` en el canal de cada prospecto: la bandeja separa los chats del
+  equipo y la conversación sabe que es de un prospecto.
+- La cabecera de la conversación acepta piezas propias (`ownHeader`): un prospecto va sin «#» y sin la llamada de
+  Lilachat (llamar a un prospecto es el marcador del teléfono).
+- Compartido: `isOnlyConsult`, `agoOf` («hace 5 horas» y no «300 min»), `arrivedThisMonth`, y una cotización enviada
+  cuenta como respuesta del equipo (Luis no quedaba «sin respuesta» con la cotización en la mano).
+- `spaceInitials` salta los separadores: «Dali · Constroad» da **DC**, no «D·». Vale para la web y el APK.
+- Un prospecto sin nombre muestra un teléfono en su círculo, no «·».
+
+**Lo que Stitch dibujó y no va**: «EXPEDIENTE DEL PROSPECTO · Ficha comercial», el ⋮ de la ficha, «/ 100 puntos»,
+«EN LÍNEA», «4 miembros», «Ate · en zona» (la zona es texto libre), «SOLICITUD», «Sin registrar», «Ayer 18/11», los
+kickers de las cifras del panel, «Exportar», los costos de Meta (no hay `ads_read`), «Asignación automática», «Venta
+confirmada» / «Sin cierre comercial», «Prioridad alta», «Publicar en #ventas», las casillas «Revisado», cualquier
+mención a WhatsApp Business y el botón «WhatsApp» de la ficha (la conversación se escribe en el canal).
+
+**Diferencias con la captura, a propósito**: la línea de la empresa bajo el nombre lleva el servicio (no hay campo de
+empresa); «Seguimientos de hoy» no aparece si no hay ninguno; en un renglón angosto la pastilla del origen cede antes
+que la de la etapa; la ficha en columna no repite «Marcar resultado» (ya está en la cabecera).
+
+**E2E (17/11)**: server local con base en memoria y un stub de agentes en el puerto del webhook (nada en producción),
+la web en `localhost:4004`. Escritorio (1440 y 1100) y teléfono (375 y 390), oscuro y claro: bandeja, vistas,
+filtro, conversación con cabecera y franja, ficha en columna y a pantalla completa, Tomar, Reasignar (el stub recibió
+`prospect.updated` con Rosa Quispe), Devolver a Dali (`prospect.handback`), próxima acción, resultado y Reabrir,
+seguimiento editado y enviado (`prospect.follow_up.approved` con el texto editado), Embudo → ficha → Abrir
+conversación, Panel, Revisión, Lo que Dali sabe y Enseñarle a Dali (`dali.faq.add` con la clave de idempotencia).
+Tests: `web/src/spaces/dali/{DaliInbox,ProspectChat,DaliPanel}.test.tsx`.
+
+**Sin verificar**: «Lo que Dali sabe» cuando agentes no responde (502), la tarjeta de la revisión que Dali publica
+el domingo, y todo el APK. **Producción**: la base corre con `autoIndex: false`, así que los índices de
+`prospectchannels` (`{ workspaceId, lastActivityAt }` y `{ chatId }`) no se crean solos. Crearlos es una escritura en
+producción: lo decide José.

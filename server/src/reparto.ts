@@ -197,6 +197,11 @@ export function emitAppsChanged(userIds: readonly string[], workspaceId: string)
   for (const userId of userIds) ioVivo?.to(userRoom(userId)).emit('workspace.apps.changed', { workspaceId });
 }
 
+/** A Dali prospect changed (agentes, a seller, the first answer): the space's inbox reads its prospects again. */
+export function emitProspectsChanged(userIds: readonly string[], workspaceId: string): void {
+  for (const userId of userIds) ioVivo?.to(userRoom(userId)).emit('workspace.prospects.changed', { workspaceId });
+}
+
 /** Se vinculó o se cerró una web: el teléfono relee su lista. */
 export function avisarCambioDeVinculos(userId: string): void {
   ioVivo?.to(userRoom(userId)).emit('vinculos.changed', {});

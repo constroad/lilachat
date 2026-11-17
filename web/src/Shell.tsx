@@ -46,6 +46,8 @@ import { MobileNav } from './rail/MobileNav';
 import { activeMobileTab, type MobileTab } from './rail/mobileTabs';
 import { MediaDialog } from './media/MediaDialog';
 import { SpaceChatList } from './spaces/SpaceChatList';
+import { DaliSpace } from './spaces/dali/DaliSpace';
+import { ProspectChat, WhatsAppHint, type ProspectChatParts } from './spaces/dali/ProspectChat';
 import { useSuperadmin } from './admin/adminApi';
 import { CallProvider } from './calls/CallProvider';
 import { CallsHistory } from './calls/CallsDialog';
@@ -271,6 +273,51 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
     void sync.cargarChats();
   };
 
+  // A Dali prospect's chat reads its prospect once: it feeds the header (dl-02) and the strip over the messages.
+  const conversationOf = (prospectParts?: ProspectChatParts) => selected ? (
+    <ConversacionConAcciones
+      chat={selected}
+      mensajes={mensajes}
+      yo={yo}
+      jwt={credential.jwt}
+      base={base}
+      sync={sync}
+      chats={chatsParaReenviar}
+      onAviso={setAviso}
+      onRecargarChats={() => void sync.cargarChats()}
+      onOpenChat={(chatId, known) => (known ? espacios.openChat(known) : abrirChat(chatId))}
+      prospectStrip={prospectParts?.strip}
+      ownHeader={prospectParts?.ownHeader}
+      composerHint={selected.prospect ? <WhatsAppHint /> : undefined}
+      onAccionDeChat={(chat, accion) => void accionesSobreChats.aplicar(chat, accion)}
+      onChannelDeleted={(chat) => void accionesSobreChats.removeFromList(chat).then(espacios.reloadChats)}
+      onLevel={(chat, level) => void accionesSobreChats.setLevel(chat, level)}
+      typingName={selected.typingName ?? null} app={selected.appId ? espacios.apps.directory?.apps.find((one) => one.appId === selected.appId) : undefined} spaceName={espacios.current?.name} spaceApps={espacios.apps}
+      onBack={() => abrirChat(null)}
+      showBack={panel === 'conversation'}
+      hayAnteriores={historial.hayAnteriores}
+      onCargarAnteriores={cargarAnteriores}
+      onReintentar={(clave) => void sync.reintentar(clave)}
+      onDescartar={(clave) => void sync.descartar(clave)}
+      onLeido={(seq) => sync.marcarLeido(selected.id, seq)}
+      irA={irA?.chatId === selected.id ? irA : null}
+      onCreateEvent={() => setCreando({ tipo: 'evento', chat: { id: selected.id, name: selected.name } })}
+      onCreatePoll={() => setCreando({ tipo: 'encuesta', chat: { id: selected.id, name: selected.name } })}
+      onCreateChecklist={selected.encrypted ? undefined : () => setCreando({ tipo: 'checklist', chatId: selected.id })}
+      onCreateReminder={() => setCreando({ tipo: 'recordatorio', chat: { id: selected.id, name: selected.propio ? 'Tú' : selected.name, kind: selected.kind } })}
+      onEditReminder={(recordatorio) => setCreando({ tipo: 'recordatorio', chat: { id: selected.id, name: selected.name, kind: selected.kind }, editando: recordatorio })}
+    />
+  ) : null;
+  const conversation = selected?.prospect && espacios.current ? (
+    <ProspectChat jwt={credential.jwt} spaceId={espacios.current.id} chatId={selected.id} chatName={selected.name} me={credential.userId} phone={panel === 'conversation'} onNotice={setAviso}>{conversationOf}</ProspectChat>
+  ) : conversationOf();
+  // A Dali space (BOTS-API fase 2): its inbox, funnel, panel and review take the list and the conversation's place.
+  const dali = espacios.current?.prospects ? espacios.current : null;
+  const daliDesk = dali !== null && panel === 'both';
+  const daliSpace = (phone: boolean) => dali ? (
+    <DaliSpace jwt={credential.jwt} space={dali} yo={yo} chats={spaceChatsShown} selectedChatId={selectedId} onOpenChat={abrirChat} onChatAction={(chat, accion) => void accionesSobreChats.aplicar(chat, accion).then(espacios.reloadChats)} conversation={phone ? undefined : conversation} phone={phone} width={width} onSwitch={espacios.openSwitcher} onWorkspace={espacios.openWorkspace} elsewhere={elsewhere} onNotice={setAviso} />
+  ) : null;
+
   return (
     <CallProvider jwt={credential.jwt} me={credential.userId} connected={socket.connected} nameOf={callerOf} photoOf={(chatId) => [...chats, ...(spaceChatsShown ?? [])].find((chat) => chat.id === chatId)?.avatarUrl} chatNameOf={(chatId) => [...chats, ...(spaceChatsShown ?? [])].find((chat) => chat.id === chatId)?.name ?? undefined}>
     <div className="relative flex h-full">
@@ -296,11 +343,11 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
           onAddSpace={espacios.openSwitcher}
         />
       ) : null}
-      {panel === 'conversation' ? null : panel === 'both' && listLayout.collapsed ? (
+      {daliDesk ? daliSpace(false) : panel === 'conversation' ? null : panel === 'both' && listLayout.collapsed ? (
         <ChatRail chats={espacios.current ? (spaceChatsShown ?? []) : chats} selectedChatId={selectedId} onSelect={(chat) => abrirChat(chat.id)} onExpand={() => listLayout.setCollapsed(false)} />
       ) : (
         <ListColumn phone={panel === 'list'} nav={panel === 'list' ? <MobileNav inSpace={Boolean(espacios.current)} active={activeMobileTab({ settingsOpen: aviso === 'ajustes', overlay: creando?.tipo === 'agenda' ? (creando.pestana ?? 'agenda') : espacios.overlay })} counts={{ mentions: espacios.activity?.mentions ?? 0 }} onPick={pickMobileTab} /> : null}>
-        {espacios.current ? (
+        {dali ? daliSpace(true) : espacios.current ? (
           <SpaceChatList
             space={espacios.current}
             chats={spaceChatsShown}
@@ -347,37 +394,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
         </ListColumn>
       )}
 
-      {panel === 'list' ? null : selected ? (
-        <ConversacionConAcciones
-          chat={selected}
-          mensajes={mensajes}
-          yo={yo}
-          jwt={credential.jwt}
-          base={base}
-          sync={sync}
-          chats={chatsParaReenviar}
-          onAviso={setAviso}
-          onRecargarChats={() => void sync.cargarChats()}
-          onOpenChat={(chatId, known) => (known ? espacios.openChat(known) : abrirChat(chatId))}
-          onAccionDeChat={(chat, accion) => void accionesSobreChats.aplicar(chat, accion)}
-          onChannelDeleted={(chat) => void accionesSobreChats.removeFromList(chat).then(espacios.reloadChats)}
-          onLevel={(chat, level) => void accionesSobreChats.setLevel(chat, level)}
-          typingName={selected.typingName ?? null} app={selected.appId ? espacios.apps.directory?.apps.find((one) => one.appId === selected.appId) : undefined} spaceName={espacios.current?.name} spaceApps={espacios.apps}
-          onBack={() => abrirChat(null)}
-          showBack={panel === 'conversation'}
-          hayAnteriores={historial.hayAnteriores}
-          onCargarAnteriores={cargarAnteriores}
-          onReintentar={(clave) => void sync.reintentar(clave)}
-          onDescartar={(clave) => void sync.descartar(clave)}
-          onLeido={(seq) => sync.marcarLeido(selected.id, seq)}
-          irA={irA?.chatId === selected.id ? irA : null}
-          onCreateEvent={() => setCreando({ tipo: 'evento', chat: { id: selected.id, name: selected.name } })}
-          onCreatePoll={() => setCreando({ tipo: 'encuesta', chat: { id: selected.id, name: selected.name } })}
-          onCreateChecklist={selected.encrypted ? undefined : () => setCreando({ tipo: 'checklist', chatId: selected.id })}
-          onCreateReminder={() => setCreando({ tipo: 'recordatorio', chat: { id: selected.id, name: selected.propio ? 'Tú' : selected.name, kind: selected.kind } })}
-          onEditReminder={(recordatorio) => setCreando({ tipo: 'recordatorio', chat: { id: selected.id, name: selected.name, kind: selected.kind }, editando: recordatorio })}
-        />
-      ) : (
+      {daliDesk || panel === 'list' ? null : conversation ?? (
         <EmptyState name={credential.name} onNewChat={() => setCreando({ tipo: 'chat', kind: 'direct' })} onAgenda={() => setCreando({ tipo: 'agenda' })} />
       )}
 

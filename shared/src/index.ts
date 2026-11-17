@@ -116,6 +116,8 @@ export * from './prospectSeller.js';
 export * from './prospectBoard.js';
 export * from './prospectPanel.js';
 export * from './daliKnowledge.js';
+export * from './prospectPlan.js';
+export * from './prospectReview.js';
 export * from './profile.js';
 export * from './adminUsers.js';
 export * from './adminSpaces.js';

@@ -9,8 +9,9 @@ const TITLE = 'flex min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left out
 const BADGE_MAX = 99;
 
 /** `elsewhere`: chats with something new in another space, which a phone has no rail to show. */
-function TitleBody(props: { space: ClientWorkspace; pending: number; elsewhere: number }) {
+function TitleBody(props: { space: ClientWorkspace; pending: number; elsewhere: number; subtitle?: string }) {
   const { space, pending, elsewhere } = props;
+  const subtitle = props.subtitle ?? spaceSubtitle(space, { membersFirst: true });
   return (
     <>
       <SpaceLogo space={space} size={36} />
@@ -21,7 +22,7 @@ function TitleBody(props: { space: ClientWorkspace; pending: number; elsewhere: 
           {pending > 0 ? <span data-testid="aviso-solicitudes" aria-label={`${pending} solicitudes`} className="h-2 w-2 shrink-0 rounded-full bg-primary" /> : null}
           {elsewhere > 0 ? <span data-testid="badge-otros-espacios" aria-label={`${elsewhere} ${elsewhere === 1 ? 'chat' : 'chats'} con algo nuevo en otro espacio`} className="ml-0.5 grid h-5 min-w-[20px] shrink-0 place-items-center rounded-full bg-primary px-1 text-[11px] font-bold text-on-primary">{elsewhere > BADGE_MAX ? `${BADGE_MAX}+` : elsewhere}</span> : null}
         </span>
-        <span className="block truncate text-[12px] text-on-surface-variant">{spaceSubtitle(space, { membersFirst: true })}</span>
+        {subtitle ? <span className="block truncate text-[12px] text-on-surface-variant">{subtitle}</span> : null}
       </span>
     </>
   );
@@ -34,17 +35,17 @@ function TitleBody(props: { space: ClientWorkspace; pending: number; elsewhere: 
  * and switching space. Waiting requests keep a dot on the title. On a phone
  * the title goes straight to the switcher, like the APK (José 06/11).
  */
-export function SpaceTitleMenu(props: { space: ClientWorkspace; onOpen: (link: WorkspaceLink) => void; onSwitch: () => void; phone?: boolean; elsewhere?: number }) {
+export function SpaceTitleMenu(props: { space: ClientWorkspace; onOpen: (link: WorkspaceLink) => void; onSwitch: () => void; phone?: boolean; elsewhere?: number; /** A Dali space says what it is (dl-01 v3); empty, no line. */ subtitle?: string }) {
   const { space } = props;
   const admin = canManageMembers(space.role);
   const pending = admin ? space.pendingRequests ?? 0 : 0;
   if (props.phone) {
-    return <button type="button" data-testid="titulo-espacio" aria-label="Cambiar de espacio" onClick={props.onSwitch} className={TITLE}><TitleBody space={space} pending={pending} elsewhere={props.elsewhere ?? 0} /></button>;
+    return <button type="button" data-testid="titulo-espacio" aria-label="Cambiar de espacio" onClick={props.onSwitch} className={TITLE}><TitleBody space={space} pending={pending} elsewhere={props.elsewhere ?? 0} subtitle={props.subtitle} /></button>;
   }
   return (
     <DropdownMenu.Root>
       <DropdownMenu.Trigger asChild>
-        <button type="button" data-testid="titulo-espacio" aria-label={`Menú de ${space.name}`} className={TITLE}><TitleBody space={space} pending={pending} elsewhere={0} /></button>
+        <button type="button" data-testid="titulo-espacio" aria-label={`Menú de ${space.name}`} className={TITLE}><TitleBody space={space} pending={pending} elsewhere={0} subtitle={props.subtitle} /></button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
         <DropdownMenu.Content align="start" sideOffset={6} onCloseAutoFocus={(event) => event.preventDefault()} className="z-40 min-w-[260px] rounded-xl border border-outline/15 bg-surface p-1 shadow-lg">

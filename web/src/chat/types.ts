@@ -58,6 +58,8 @@ export type ChatSummary = {
   avatarUrl?: string;
   /** Nudges and winks switched on by an admin of the group (José, 21/10). */
   funAllowed?: boolean;
+  /** A Dali prospect's channel: the space lists it in its inbox (BOTS-API fase 2). */
+  prospect?: true;
   /** Birthdays on in this chat (pending 17). */
   birthdaysOn?: boolean;
   muted?: boolean;

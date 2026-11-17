@@ -110,7 +110,11 @@ function quoteUnanswered(prospect: ProspectView, now: Date): Overdue | null {
   return sentAt && now.getTime() - time(sentAt) > QUOTE_UNANSWERED_MS ? { kind: 'quote_unanswered', since: sentAt } : null;
 }
 
-const teamAnswered = (prospect: ProspectView): boolean => time(prospect.lastTeamReplyAt) >= time(prospect.lastContactAt);
+/** A person answered after the client's last message, or a quote went out after it: then it waits on the client. */
+const teamAnswered = (prospect: ProspectView): boolean => {
+  const answered = Math.max(time(prospect.lastTeamReplyAt) || 0, time(prospect.quote?.sentAt) || 0);
+  return answered > 0 && answered >= time(prospect.lastContactAt);
+};
 
 function hotUnanswered(prospect: ProspectView, now: Date): Overdue | null {
   if (levelOf(prospect.score) !== 'hot' || !prospect.lastContactAt || teamAnswered(prospect)) return null;
@@ -138,6 +142,9 @@ export function inboxSectionOf(prospect: ProspectView, now: Date): InboxSection 
   return 'dali';
 }
 
+/** «Solo consultas» (dl-01): a plain question Dali answers alone, nobody took and nothing is late on. */
+const isOnlyConsult = (prospect: ProspectView, now: Date): boolean => prospect.intent === 'information' && !prospect.assignee && inboxSectionOf(prospect, now) === 'dali';
+
 const byRecent = (a: ProspectView, b: ProspectView) => time(b.lastActivityAt) - time(a.lastActivityAt);
 const byScore = (a: ProspectView, b: ProspectView) => (b.score ?? -1) - (a.score ?? -1) || byRecent(a, b);
 const byNextAction = (a: ProspectView, b: ProspectView) => (time(a.nextAction?.at) || Infinity) - (time(b.nextAction?.at) || Infinity) || byRecent(a, b);
@@ -163,8 +170,10 @@ export function inboxOf(prospects: readonly ProspectView[], params: { me: string
   const ofService = params.service ? open.filter((prospect) => prospect.service?.key === params.service) : open;
   const counts = { mine: ofService.filter((one) => inView(one, 'mine', params.me)).length, unassigned: ofService.filter((one) => !one.assignee).length, all: ofService.length };
   const shown = ofService.filter((prospect) => inView(prospect, params.view, params.me));
-  const sections = INBOX_SECTIONS.map((key) => ({ key, label: INBOX_SECTION_LABEL[key], items: shown.filter((one) => inboxSectionOf(one, now) === key).sort(SECTION_ORDER[key]) }));
-  return { counts, sections: sections.filter((section) => section.items.length > 0), services: servicesOf(open) };
+  const consults = shown.filter((one) => isOnlyConsult(one, now)).sort(byRecent);
+  const working = shown.filter((one) => !isOnlyConsult(one, now));
+  const sections = INBOX_SECTIONS.map((key) => ({ key, label: INBOX_SECTION_LABEL[key], items: working.filter((one) => inboxSectionOf(one, now) === key).sort(SECTION_ORDER[key]) }));
+  return { counts, sections: sections.filter((section) => section.items.length > 0), consults, services: servicesOf(open) };
 }
 
 /** The last instant of today in Lima. */

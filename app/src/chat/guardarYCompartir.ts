@@ -11,7 +11,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import * as Sharing from 'expo-sharing';
 import * as IntentLauncher from 'expo-intent-launcher';
-import { nombreDeArchivo } from './archivoDescargado';
+import { nombreDeArchivo, openableMime } from './archivoDescargado';
 
 /**
  * Guardar una foto en la galería y compartirla. Los efectos, aparte del motor.
@@ -47,11 +47,11 @@ async function bajarACache(params: {
     }
     const { status, uri } = await FileSystem.downloadAsync(params.url, destino);
     if (status < 200 || status >= 300) {
-      return { ok: false, motivo: 'No pudimos descargar la foto.' };
+      return { ok: false, motivo: 'No pudimos descargar el archivo.' };
     }
     return { ok: true, uri };
   } catch {
-    return { ok: false, motivo: 'Sin conexión para descargar la foto.' };
+    return { ok: false, motivo: 'Sin conexión para descargar el archivo.' };
   }
 }
 
@@ -139,6 +139,8 @@ export async function abrirConOtraApp(params: {
   const bajado = await bajarACache(params);
   if (!bajado.ok) return bajado;
 
+  // José 17/11: a KML came as `application/octet-stream` and no app took it; its extension says what it is.
+  const type = openableMime(params.mime, params.nombre ?? '');
   try {
     const contentUri = await FileSystem.getContentUriAsync(bajado.uri);
     await IntentLauncher.startActivityAsync('android.intent.action.VIEW', {
@@ -146,12 +148,16 @@ export async function abrirConOtraApp(params: {
       // FLAG_GRANT_READ_URI_PERMISSION: sin esto la otra app recibe la URI y no
       // tiene permiso para leerla.
       flags: 1,
-      type: params.mime,
+      type,
     });
     return { ok: true };
   } catch {
-    // Ninguna app instalada sabe abrir esto. No es un fallo nuestro y se dice
-    // como lo que es, con la salida al lado.
-    return { ok: false, motivo: 'No hay ninguna app para abrir este archivo. Prueba compartirlo.' };
+    // No installed app opens it: the share sheet still lets the person keep it (Drive, Files) or send it.
+    try {
+      await Sharing.shareAsync(bajado.uri, type === '*/*' ? {} : { mimeType: type });
+      return { ok: true };
+    } catch {
+      return { ok: false, motivo: 'No hay ninguna app para abrir este archivo.' };
+    }
   }
 }

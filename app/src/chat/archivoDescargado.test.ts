@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extensionDe, nombreDeArchivo, nombreLimpio } from './archivoDescargado';
+import { extensionDe, nombreDeArchivo, nombreLimpio, openableMime } from './archivoDescargado';
 
 describe('extensionDe', () => {
   it('mapea los tipos que manejamos', () => {
@@ -124,5 +124,23 @@ describe('nombreDeArchivo — seguro para la ruta', () => {
     expect(nombreDeArchivo({ cuando, seq: 6, mime: 'application/pdf', original: '   ' })).toBe(
       'Lilachat-2026-08-30-1943-6.pdf'
     );
+  });
+});
+
+/** José 17/11: a KML sent from Lilachat arrived as `application/octet-stream`, and no app opened it. */
+describe('openableMime', () => {
+  it('a generic type takes the type of its extension', () => {
+    expect(openableMime('application/octet-stream', 'METRADOS 161126.kml')).toBe('application/vnd.google-earth.kml+xml');
+    expect(openableMime('', 'Planilla%20(1).XLSX')).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    expect(openableMime(undefined, 'plano.dwg')).toBe('image/vnd.dwg');
+  });
+
+  it('a specific type stays as it came', () => {
+    expect(openableMime('application/pdf', 'informe.kml')).toBe('application/pdf');
+  });
+
+  it('an unknown extension falls back to any app that takes files', () => {
+    expect(openableMime('application/octet-stream', 'datos.xyz')).toBe('*/*');
+    expect(openableMime(undefined, 'sin-extension')).toBe('*/*');
   });
 });

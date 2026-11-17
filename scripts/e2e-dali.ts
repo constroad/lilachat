@@ -43,6 +43,9 @@ const DAY = 24 * HOUR;
 const BOOT_TRIES = 120;
 const BOOT_PAUSE_MS = 500;
 const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
+/** José 17/11: a KML in a chat, served as the real one came (`application/octet-stream`), to open or download. */
+const KML_PATH = '/media/qa/metrados-161126.kml';
+const KML = '<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><Placemark><name>Parche 1</name><Point><coordinates>-77.03,-12.05,0</coordinates></Point></Placemark></Document></kml>';
 
 /** What agentes answers to «Lo que Dali sabe»: Constroad's services, catalog, FAQ, zone and hours. */
 const knowledge = {
@@ -100,6 +103,13 @@ function startHook() {
       // The browser of the E2E reads its QA session here, so the values never travel through a chat.
       if (req.method === 'GET' && req.url === '/session') {
         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }).end(session);
+        return;
+      }
+      // Our media as the real server serves it: `?download=<name>` makes it a download of that name.
+      const asked = new URL(req.url ?? '/', 'http://stub');
+      if (req.method === 'GET' && asked.pathname === KML_PATH) {
+        const name = asked.searchParams.get('download');
+        res.writeHead(200, { 'Content-Type': 'application/octet-stream', ...(name ? { 'Content-Disposition': `attachment; filename="${name}"` } : {}) }).end(KML);
         return;
       }
       if (req.url?.startsWith('/auth/')) {
@@ -209,13 +219,21 @@ async function sellerDecisions(ids: Seeded) {
   }
 }
 
+/** The KML lands in Paola Ríos's chat as a message of José; CHAT_PUBLIC_URL makes its link reach this stub from the emulator. */
+async function fileInChat(ids: Seeded) {
+  const { sendMessage } = await import('../server/src/chatService.js');
+  const channel = (await ProspectChannelModel.findOne({ prospectId: P(8) }).lean()) as { chatId: unknown } | null;
+  if (!channel) throw new Error('Paola Ríos has no channel');
+  await sendMessage({ chatId: String(channel.chatId), senderId: ids.jose._id, clientKey: 'qa-kml', media: { mediaId: 'qa-kml', url: KML_PATH, mime: 'application/octet-stream', fileName: 'METRADOS 161126.kml' } });
+}
+
 async function main() {
   process.env.JWT_SECRET = JWT_SECRET;
   mkdirSync(OUT_DIR, { recursive: true });
   const mongo = await startTestMongo();
   const uri = mongo.getUri('lilachat_e2e_dali');
   startHook();
-  const server = spawn('npx', ['tsx', 'src/index.ts'], { cwd: SERVER_DIR, env: { ...process.env, MONGO_URL: uri, JWT_SECRET, PORT: '4003', NODE_ENV: 'development', CONSTROAD_AUTH_URL: `http://127.0.0.1:${HOOK_PORT}/auth`, CONSTROAD_AUTH_KEY: 'qa-local' }, stdio: ['ignore', 'inherit', 'inherit'] });
+  const server = spawn('npx', ['tsx', 'src/index.ts'], { cwd: SERVER_DIR, env: { ...process.env, MONGO_URL: uri, JWT_SECRET, PORT: '4003', NODE_ENV: 'development', CONSTROAD_AUTH_URL: `http://127.0.0.1:${HOOK_PORT}/auth`, CONSTROAD_AUTH_KEY: 'qa-local', CHAT_PUBLIC_URL: `http://10.0.2.2:${HOOK_PORT}` }, stdio: ['ignore', 'inherit', 'inherit'] });
   const stop = async () => {
     server.kill('SIGTERM');
     await mongoose.disconnect().catch(() => undefined);
@@ -229,6 +247,7 @@ async function main() {
   const ids = await seedSpace();
   await putProspects();
   await sellerDecisions(ids);
+  await fileInChat(ids);
   session = JSON.stringify({ perfil: { userId: String(ids.jose._id), phone: `51${QA_PHONE}`, name: 'José QA', deviceId: ids.deviceId }, credential: { deviceId: ids.deviceId, deviceSecret: ids.secret }, spaceId: String(ids.space._id) });
   writeFileSync(path.join(OUT_DIR, 'session.json'), session);
   console.log(`[e2e-dali] listo: datos sembrados; sesión y eventos en ${OUT_DIR}`);

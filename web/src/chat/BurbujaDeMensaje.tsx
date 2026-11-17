@@ -2,11 +2,11 @@ import { BotFilesAlbum } from './BotFilesAlbum';
 import { LineaDeLlamada } from './LineaDeLlamada';
 import { memo, useContext, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertCircle, BellRing, CalendarDays, Check, CheckCheck, ChevronRight, Clock, CornerDownRight, FileText, Forward, Lock, Play } from 'lucide-react';
+import { AlertCircle, BellRing, CalendarDays, Check, CheckCheck, ChevronRight, Clock, CornerDownRight, Download, FileText, Forward, Lock, Play } from 'lucide-react';
 import { Overlay } from '../ui/Overlay';
 import { RecordatorioEnElChat } from './tarjetas/RecordatorioEnElChat';
 import { colorDeAutor, esAvisoDestacado, type DeliveryState, formatClock, primerEnlace, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
-import { contactBadge, isAnimatedImage, isHiddenNotice, sharedByLine, threadQuoteLine } from '@lilachat/shared';
+import { contactBadge, downloadUrlOf, isAnimatedImage, isHiddenNotice, readableFileName, sharedByLine, threadQuoteLine } from '@lilachat/shared';
 import { GifInBubble } from './gifs/GifInBubble';
 import { TarjetaDeEnlace } from './TarjetaDeEnlace';
 import { NotaDeVoz } from './NotaDeVoz';
@@ -307,8 +307,9 @@ function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; m
           <FileText size={18} /> <span className="truncate">{media.fileName ?? 'Documento PDF'}</span>
         </button>
       ) : media?.url ? (
-        <a href={media.url} target="_blank" rel="noreferrer" className="mb-1 flex items-center gap-2 underline-offset-2 hover:underline">
-          <FileText size={18} /> <span className="truncate">{media.fileName ?? 'Archivo'}</span>
+        // José 17/11: a KML opened as text in another tab. `download` keeps it a download with its own name; a file on another host still opens in a new tab.
+        <a data-testid={`archivo-${mensaje.clientKey}`} href={downloadUrlOf(media.url, media.fileName)} download={readableFileName(media.fileName)} target="_blank" rel="noreferrer" className="mb-1 flex items-center gap-2 underline-offset-2 hover:underline">
+          <FileText size={18} /> <span className="truncate">{readableFileName(media.fileName)}</span> <Download size={16} className="shrink-0 opacity-70" />
         </a>
       ) : null}
       {vista ? <TarjetaDeEnlace vista={vista} mio={mio} /> : null}

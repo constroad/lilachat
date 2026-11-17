@@ -98,3 +98,33 @@ export function nombreDeArchivo(params: {
   // guardar la segunda encima de la primera es perder una sin avisar.
   return `Lilachat-${fecha}-${hora}-${params.seq}.${extensionDe(params.mime)}`;
 }
+
+/** What Android opens each extension with, for a file that came with no type of its own. */
+const TYPE_BY_EXTENSION: Record<string, string> = {
+  kml: 'application/vnd.google-earth.kml+xml',
+  kmz: 'application/vnd.google-earth.kmz',
+  pdf: 'application/pdf',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  xls: 'application/vnd.ms-excel',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  doc: 'application/msword',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  csv: 'text/csv',
+  txt: 'text/plain',
+  zip: 'application/zip',
+  rar: 'application/vnd.rar',
+  dwg: 'image/vnd.dwg',
+  dxf: 'image/vnd.dxf',
+};
+const GENERIC_TYPES = new Set(['', 'application/octet-stream', 'binary/octet-stream']);
+
+/**
+ * The type a file is opened with (José 17/11: a KML came as `application/octet-stream` and no app took it).
+ * A generic type takes its extension's; an unknown one offers every app that takes files.
+ */
+export function openableMime(mime: string | undefined, fileName: string): string {
+  const given = (mime ?? '').toLowerCase();
+  if (!GENERIC_TYPES.has(given)) return given;
+  const extension = nombreLimpio(fileName).split('.').pop()?.toLowerCase() ?? '';
+  return (fileName.includes('.') && TYPE_BY_EXTENSION[extension]) || '*/*';
+}

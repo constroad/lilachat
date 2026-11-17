@@ -44,7 +44,7 @@ export function FileCard(props: { seq: number; media: NonNullable<ChatMessage['m
             {media.fileName ? nombreLimpio(media.fileName) : 'Archivo'}
           </Text>
           <Text className={`text-[11px] ${mia ? 'text-on-burbuja-propia-suave' : 'text-on-surface-variant'}`}>
-            {media.sizeBytes ? formatBytes(media.sizeBytes) : 'Toca para abrirlo'}
+            {media.sizeBytes ? formatBytes(media.sizeBytes) : 'Toca para abrir o descargar'}
           </Text>
         </View>
       </View>

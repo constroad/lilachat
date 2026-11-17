@@ -23,7 +23,7 @@ import { cuantosParaPonerAlDia } from './ponerAlDia';
 import { SecretChatBanner } from '../crypto/SecretChatBanner';
 import { useSecretChat } from '../crypto/useSecretChat';
 import { previewDeMensaje } from './MessageRow';
-import { abrirConOtraApp } from './guardarYCompartir';
+import { offerFileActions } from './fileActions';
 import { Composer, type ComposerHandle } from './Composer';
 import { useChatCommandsWithActions } from './commands/useChatCommands';
 import { ChatDetailScreen } from './ChatDetailScreen';
@@ -310,25 +310,16 @@ export function ChatScreen({
   const mensajesRef = useRef(messages);
   mensajesRef.current = messages;
   /**
-   * Tocar una foto, un video o un archivo. Lo que tiene miniatura va al visor;
-   * un documento SIN miniatura (Word, Excel, zip, mp3: lila solo la genera
-   * para PDF) no estaba en el visor y el toque no hacía nada (FL8). Ahora se
-   * abre directo con la app del teléfono que sepa hacerlo.
+   * Tapping a photo, a video or a file. What has a thumbnail goes to the viewer; a document WITHOUT one (Word,
+   * Excel, zip: lila only makes it for a PDF) did nothing on a tap (FL8). A file offers «Abrir» with an app of the
+   * phone or «Descargar» to Downloads (José 17/11).
    */
   const alVerImagen = useCallback((seq: number) => {
     if (openPdf(seq)) return;
     if (chatPhotosRef.current.some((foto) => foto.seq === seq)) return setViendoSeq(seq);
     const mensaje = mensajesRef.current.find((m) => m.seq === seq);
     if (!mensaje?.media?.url) return;
-    void abrirConOtraApp({
-      url: mensaje.media.url,
-      cuando: new Date(mensaje.at),
-      mime: mensaje.media.mime,
-      seq,
-      nombre: mensaje.media.fileName,
-    }).then((r) => {
-      if (!r.ok) setMediaError(r.motivo);
-    });
+    offerFileActions({ url: mensaje.media.url, cuando: new Date(mensaje.at), mime: mensaje.media.mime, seq, nombre: mensaje.media.fileName }, setMediaError);
   }, [openPdf]);
   const { alResponder } = respuesta;
   const alFallido = useMensajeFallido(archivosEnCola);

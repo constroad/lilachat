@@ -1,6 +1,8 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Alert } from 'react-native';
+import { offerFileActions } from './fileActions';
 import { fotosDelChat } from './filasDelChat';
+import { isFileMime } from './rowKinds';
 import { threadPhotoMessages } from './threadReply';
 import type { ChatMessage, PendingMessage } from './useChat';
 import { VisorDelChat } from './VisorDelChat';
@@ -28,5 +30,13 @@ export function useThreadPhotoViewer(params: {
     return { ok: true };
   };
   const viewer = <VisorDelChat fotos={photos} viendoSeq={viewingSeq} onCambiar={setViewingSeq} onEliminar={remove} onError={(text) => Alert.alert('Foto', text)} />;
-  return { open: setViewingSeq, viewer };
+  // A file in a thread (José 17/11) is not a photo: it offers «Abrir» or «Descargar», as in the chat.
+  const open = (seq: number) => {
+    const file = [root, ...replies].find((message): message is ChatMessage => Boolean(message && 'seq' in message && message.seq === seq && !('pending' in message && message.pending)));
+    if (file?.media?.url && isFileMime(file.media.mime) && !photos.some((photo) => photo.seq === seq)) {
+      return offerFileActions({ url: file.media.url, cuando: new Date(file.at), mime: file.media.mime, seq, nombre: file.media.fileName }, (reason) => Alert.alert('Archivo', reason));
+    }
+    setViewingSeq(seq);
+  };
+  return { open, viewer };
 }

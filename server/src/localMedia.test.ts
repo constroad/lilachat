@@ -77,6 +77,18 @@ describe('own media storage (pending 82)', () => {
     await request(appWith(disk)).get(`/media/apps/lilachat/${CHAT}/no-existe.png`).expect(404);
   });
 
+  it('?download=<name> hands the file as a download with the name it was sent with (José 17/11: a KML)', async () => {
+    // Arrange
+    const outcome = await buildLocalUploader({ disk: () => disk, fallback }).upload({ chatId: CHAT, fileName: 'f.png', mimeType: 'image/png', kind: 'image', bytes: await png() });
+    if (!outcome.ok) throw new Error('upload failed');
+    // Act
+    const named = await request(appWith(disk)).get(`${outcome.media.url}?download=${encodeURIComponent('METRADOS 161126.kml')}`).expect(200);
+    const plain = await request(appWith(disk)).get(outcome.media.url).expect(200);
+    // Assert
+    expect(named.headers['content-disposition']).toBe('attachment; filename="METRADOS 161126.kml"');
+    expect(plain.headers['content-disposition']).toBeUndefined();
+  });
+
   it('without the disk a read answers 503 with Retry-After, never 404: the photo comes back by itself', async () => {
     await rm(path.join(root, MEDIA_MARKER));
     const answer = await request(appWith(disk)).get(`/media/apps/lilachat/${CHAT}/x.png`).expect(503);

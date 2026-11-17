@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { Router } from 'express';
+import { readableFileName } from '@lilachat/shared';
 import type { Disco } from './disco.js';
 import { safeRelative } from './mediaDisk.js';
 
@@ -25,6 +26,9 @@ export function buildMediaServeRouter(disk: () => Disco | null): Router {
       res.setHeader('Retry-After', state === 'ausente' ? RETRY_AFTER_ABSENT_S : RETRY_AFTER_HUNG_S);
       return void res.status(503).json({ motivo: state === 'ausente' ? 'disco_ausente' : 'disco_colgado' });
     }
+    // `?download=<name>` (José 17/11): a download with the name it was sent with, not the stored one, for the
+    // APK's «Descargar» (the phone's own downloader) and the web's link.
+    if (typeof req.query.download === 'string' && req.query.download) res.attachment(readableFileName(req.query.download));
     res.sendFile(path.join(current.raiz, relative), { acceptRanges: true, maxAge: YEAR_S * 1000, immutable: true, dotfiles: 'deny' }, (error) => {
       if (error && !res.headersSent) res.status(404).end();
     });

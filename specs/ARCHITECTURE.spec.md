@@ -16128,3 +16128,21 @@ En el emulador no se simula bien una red lenta.
 
 **Teclado en el hilo:** no se reprodujo en el emulador (desde Hilos, desde el
 chip y con texto largo). Se pidió a José una captura y el camino exacto.
+
+## Descargar un archivo del chat (José 17/11, un KML)
+
+José mandó «METRADOS 161126.kml» a un chat y no pudo bajarlo ni en el APK ni en la web. En la base el archivo
+llegó con `application/octet-stream`.
+
+- **APK.** Tocar la tarjeta abría el archivo con otra app usando ese tipo genérico, ninguna lo aceptaba y solo
+  salía un error. Ahora el toque ofrece «Abrir» o «Descargar» (`fileActions.ts`), en el chat y en un hilo.
+  - «Abrir» deduce el tipo de la extensión (`openableMime`: kml, kmz, xlsx, docx, dwg…). Si ninguna app lo abre,
+    sale la hoja para compartir (Drive, Gmail, Quick Share) en vez del error.
+  - «Descargar» abre el enlace de descarga con el descargador del teléfono, que lo deja en Descargas con su nombre
+    y su aviso. Android no deja a una app escribir directo en Descargas: el selector de carpetas dice «Can't use
+    this folder» (E2E 17/11), por eso no se usa.
+- **Web.** El enlace abría el KML como texto en otra pestaña. Ahora lleva `download` con el nombre original.
+- **Server.** `GET /media/…?download=<nombre>` responde `Content-Disposition: attachment` con ese nombre
+  (`downloadUrlOf` y `readableFileName` en shared). Un archivo viejo en lila (`/files/`) se abre como antes.
+- E2E: `app/.maestro/chat-file.yaml` con el arnés `scripts/e2e-dali.ts`, que siembra el KML en el chat de Paola
+  Ríos y lo sirve como el server real. El archivo quedó en `/sdcard/Download/METRADOS 161126.kml`.

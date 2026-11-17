@@ -1927,8 +1927,12 @@ Tests: `web/src/spaces/dali/{DaliInbox,ProspectChat,DaliPanel}.test.tsx`.
 
 **Sin verificar**: «Lo que Dali sabe» cuando agentes no responde (502) y la tarjeta de la revisión que Dali publica
 el domingo. El APK: ver la sección siguiente. **Producción**: la base corre con `autoIndex: false`, así que los
-índices de `prospectchannels` (`{ workspaceId, lastActivityAt }` y `{ chatId }`) no se crean solos. Crearlos es una
-escritura en producción: lo decide José.
+índices de `prospectchannels` no se crean solos. Se crearon el 17/11 con el OK de José, con
+`npx tsx --env-file=.env scripts/bot-indexes.ts --apply`: faltaban los tres (el único
+`{ workspaceId, appId, prospectId }`, `{ workspaceId, lastActivityAt }` y `{ chatId }`) y la colección estaba vacía.
+El espacio «Dali» lleva como logo el avatar de la app Dali (`https://agentes.constroad.com/apps/dali/avatar.png`,
+URL absoluta que `toAbsoluteMediaUrl` deja tal cual), puesto el 17/11 a pedido de José hasta que tenga otro logo.
+Se cambia desde el espacio («Cambiar logo»), que lo sube a los medios propios.
 
 ### Hecho (17/11, fase 2: pantallas del APK)
 

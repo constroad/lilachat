@@ -35,11 +35,13 @@ export function ProspectRow(props: { prospect: ProspectView; unread?: number; se
         </p>
       ) : null}
       <div className="mt-2 flex items-center gap-2">
-        {/* The pills give way (Stitch dl-01 note: they never wrap); who attends never does. */}
-        <span className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
-          <OriginPill prospect={prospect} shrink="first" />
-          <ScorePill score={prospect.score} />
+        {/* One line of whole pills (José 17/11 saw «DIRE…» and «FALTA INFORMACI…»): when they do not fit, the origin
+            goes. Laid out right to left in reverse order, the origin is the LAST one placed, so it is the one that
+            wraps to a second line, which this one-pill-high box hides. Who attends never gives way. */}
+        <span data-testid="pastillas-prospecto" className="flex h-6 min-w-0 flex-1 flex-row-reverse flex-wrap justify-end gap-x-1 gap-y-2 overflow-hidden">
           <StagePill prospect={prospect} />
+          <ScorePill score={prospect.score} />
+          <OriginPill prospect={prospect} />
         </span>
         <WhoAttends prospect={prospect} now={now} />
       </div>

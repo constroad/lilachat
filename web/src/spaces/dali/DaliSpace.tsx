@@ -112,24 +112,51 @@ export function DaliSpace(props: Props) {
   );
 }
 
-function DaliHeader(props: Props & { tab: DaliTab; onTab: (tab: DaliTab) => void; onKnowledge: () => void }) {
+type HeaderProps = Pick<Props, 'space' | 'phone' | 'onSwitch' | 'onWorkspace' | 'elsewhere'> & { tab: DaliTab; onTab: (tab: DaliTab) => void; onKnowledge: () => void };
+
+/**
+ * On a computer ONE row: the title, the tabs and «Lo que Dali sabe» (José 17/11: the title on one row and the tabs on
+ * another left an empty band across the top, «un hueco feo»; the v3 capture had it too). On a phone the tabs go under
+ * the title, across the whole width.
+ */
+export function DaliHeader(props: HeaderProps) {
+  const title = <SpaceTitleMenu space={props.space} onOpen={props.onWorkspace} onSwitch={props.onSwitch} phone={props.phone} elsewhere={props.elsewhere} subtitle={props.phone ? '' : 'Prospectos de WhatsApp · Dali contesta primero'} />;
+  const knowledge = (
+    <button type="button" data-testid="lo-que-dali-sabe" aria-label="Lo que Dali sabe" onClick={props.onKnowledge} className="ml-auto inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-outline/30 px-3 text-[13px] font-semibold hover:bg-background">
+      <BookOpen size={18} />
+      {props.phone ? null : 'Lo que Dali sabe'}
+    </button>
+  );
+  if (props.phone) {
+    return (
+      <header className="shrink-0 border-b border-outline/15 bg-surface">
+        <div data-testid="fila-cabecera-dali" className="flex items-center gap-3 px-4 pt-3">{title}{knowledge}</div>
+        <DaliTabs value={props.tab} onChange={props.onTab} phone />
+      </header>
+    );
+  }
   return (
     <header className="shrink-0 border-b border-outline/15 bg-surface">
-      <div className="flex items-center gap-3 px-4 pt-3">
-        <SpaceTitleMenu space={props.space} onOpen={props.onWorkspace} onSwitch={props.onSwitch} phone={props.phone} elsewhere={props.elsewhere} subtitle={props.phone ? '' : 'Prospectos de WhatsApp · Dali contesta primero'} />
-        <button type="button" data-testid="lo-que-dali-sabe" aria-label="Lo que Dali sabe" onClick={props.onKnowledge} className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-outline/30 px-3 text-[13px] font-semibold hover:bg-background">
-          <BookOpen size={18} />
-          {props.phone ? null : 'Lo que Dali sabe'}
-        </button>
+      <div data-testid="fila-cabecera-dali" className="flex h-16 items-center gap-5 px-4">
+        <div className="min-w-0 max-w-[360px] shrink">{title}</div>
+        <span aria-hidden className="h-8 w-px shrink-0 bg-outline/20" />
+        <DaliTabs value={props.tab} onChange={props.onTab} />
+        {knowledge}
       </div>
-      <nav role="tablist" aria-label="Secciones de Dali" className="mt-2 flex px-2">
-        {TABS.map((tab) => (
-          <button key={tab.key} type="button" role="tab" data-testid={`pestana-${tab.key}`} aria-selected={props.tab === tab.key} onClick={() => props.onTab(tab.key)} className={`h-11 min-w-0 flex-1 border-b-2 px-3 text-[14px] font-semibold sm:flex-none ${props.tab === tab.key ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
-            {tab.label}
-          </button>
-        ))}
-      </nav>
     </header>
+  );
+}
+
+/** Bandeja · Embudo · Panel · Revisión: the open one underlined in the accent, on the header's bottom edge. */
+function DaliTabs({ value, onChange, phone }: { value: DaliTab; onChange: (tab: DaliTab) => void; phone?: boolean }) {
+  return (
+    <nav role="tablist" aria-label="Secciones de Dali" className={phone ? 'mt-2 flex px-2' : 'flex h-full shrink-0 items-stretch'}>
+      {TABS.map((tab) => (
+        <button key={tab.key} type="button" role="tab" data-testid={`pestana-${tab.key}`} aria-selected={value === tab.key} onClick={() => onChange(tab.key)} className={`${phone ? 'h-11 min-w-0 flex-1' : 'h-full'} border-b-2 px-3 text-[14px] font-semibold ${value === tab.key ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
+          {tab.label}
+        </button>
+      ))}
+    </nav>
   );
 }
 

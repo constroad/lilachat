@@ -1483,7 +1483,8 @@ por ahí». Los anuncios de Constroad salen el 17/11. Decisiones (José, por age
 - Cuerpo:
 
   ```json
-  { "name": "Carlos",                       // opcional, hasta 60; solo para mostrar
+  { "name": "Carlos",                       // opcional, hasta 60 (más largo = 400); solo para mostrar. agentes manda el que
+                                            // dio el cliente o, si no lo dio, su nombre de perfil de WhatsApp (17/11)
     "phone": "51949123824",                 // obligatorio, 8 a 15 dígitos (con o sin +)
     "source": { "kind": "ctwa", "ad_id": "1203…", "ad_title": "Asfalto en caliente", "ad_url": "https://fb.me/…" },
     "last_activity_at": "2026-11-17T14:02:00.000Z",
@@ -1588,6 +1589,8 @@ base de producción):
   se queda en el equipo. `message.edited`/`deleted` no se reenvían.
 - **Pausa**: la respuesta de un vendedor desde Lilachat pausa a Dali sin límite; un mensaje escrito desde el
   teléfono del 949 la pausa 30 min; `dali.devolver` (button.click) se la devuelve.
+- **Lo que ve el cliente** (agentes, 17/11): el mensaje de un vendedor en el canal le llega tal cual desde el 949, sin
+  su nombre ni prefijo: para el cliente es «ConstRoad». Una respuesta en un hilo no sale por WhatsApp ni pausa a Dali.
 - **Cierre con Portal**: Portal no busca clientes por teléfono. El «ganado» sale de una cotización creada desde
   el prospecto (`crear_cotizacion`) y enlazada por id, nunca de cruzar teléfonos.
 - **Meta**: no hay dataset, píxel, token ni lectura de gasto. La Conversions API (con `ctwaClid`) y el costo
@@ -1914,8 +1917,10 @@ confirmada» / «Sin cierre comercial», «Prioridad alta», «Publicar en #vent
 mención a WhatsApp Business y el botón «WhatsApp» de la ficha (la conversación se escribe en el canal).
 
 **Diferencias con la captura, a propósito**: la línea de la empresa bajo el nombre lleva el servicio (no hay campo de
-empresa); «Seguimientos de hoy» no aparece si no hay ninguno; en un renglón angosto la pastilla del origen cede antes
-que la de la etapa; la ficha en columna no repite «Marcar resultado» (ya está en la cabecera).
+empresa); «Seguimientos de hoy» no aparece si no hay ninguno; las pastillas de una fila nunca se cortan: si no caben,
+la del origen se oculta entera (José 17/11 vio «DIRE…» y «FALTA INFORMACI…»); la ficha en columna no repite «Marcar
+resultado» (ya está en la cabecera). En la computadora la cabecera es UNA fila: título, pestañas y «Lo que Dali sabe»
+(José 17/11: con las pestañas en otra fila quedaba una franja vacía arriba; la captura v3 también la tenía).
 
 **E2E (17/11)**: server local con base en memoria y un stub de agentes en el puerto del webhook (nada en producción),
 la web en `localhost:4004`. Escritorio (1440 y 1100) y teléfono (375 y 390), oscuro y claro: bandeja, vistas,

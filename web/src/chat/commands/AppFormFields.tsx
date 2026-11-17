@@ -160,6 +160,9 @@ export function TextField({ field, value, error, onChange }: FieldProps<'text'>)
           {...(field.digits ? { inputMode: 'numeric' as const, autoComplete: 'one-time-code' } : {})}
           // A PIN (Portal's employee PIN, agentes 24/10): hidden, the number pad, never remembered by the browser.
           {...(field.secret ? { type: 'password', inputMode: 'numeric' as const, autoComplete: 'off' } : {})}
+          // An address (Portal 17/11, emails): the email keyboard, never capitalized nor corrected. A text input,
+          // not `type="email"`, which trims what is typed and breaks a list of addresses with commas.
+          {...(field.email ? { inputMode: 'email' as const, autoComplete: 'email', autoCapitalize: 'off', autoCorrect: 'off', spellCheck: false } : {})}
           onChange={(event) => onChange(event.target.value)}
           className={field.digits ? `${inputClass} text-center text-2xl font-bold tracking-[0.5em] tabular-nums` : inputClass}
         />

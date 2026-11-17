@@ -390,3 +390,45 @@ describe('a number that comes back as text (a refused form on the web keeps what
   });
 });
 
+
+/** Portal 17/11, sending a quote by email from Lilachat: «Para» is an address and «Mensaje» is a letter. */
+describe('an email form', () => {
+  const form = (properties: Record<string, FormSchemaProperty>): AppForm => ({ id: 'enviar_cotizacion_por_correo', title: 'Enviar cotización por correo', schema: { type: 'object', properties } });
+
+  it('an address is one line with the email keyboard, however long its limit', () => {
+    // Arrange
+    const schema = form({ para: { type: 'string', title: 'Para', format: 'email', maxLength: 500, default: 'compras@cliente.pe' } });
+    // Act
+    const [para] = formFields(schema);
+    // Assert
+    expect(para).toMatchObject({ kind: 'text', multiline: false, email: true, maxLength: 500, initial: 'compras@cliente.pe' });
+  });
+
+  it('several addresses with commas: `x-keyboard: email` is the email keyboard, and Lilachat never checks the format', () => {
+    // Arrange
+    const schema = form({ para: { type: 'string', title: 'Para', 'x-keyboard': 'email', maxLength: 500 } });
+    const fields = formFields(schema);
+    // Act
+    const checked = validateFormValues(fields, { para: 'compras@cliente.pe, gerencia@cliente.pe' });
+    // Assert
+    expect(fields[0]).toMatchObject({ kind: 'text', multiline: false, email: true });
+    expect(checked).toEqual({ ok: true, values: { para: 'compras@cliente.pe, gerencia@cliente.pe' } });
+  });
+
+  it('the suggested message keeps its paragraphs', () => {
+    // Arrange
+    const letter = 'Estimado cliente:\r\n\r\nAdjunto la cotización COT-2026-0102.   \n\n\n\nSaludos,\nConstroad  ';
+    // Act
+    const [mensaje] = formFields(form({ mensaje: { type: 'string', title: 'Mensaje', 'x-input': 'textarea', maxLength: 2000, default: letter } }));
+    // Assert
+    expect(mensaje).toMatchObject({ multiline: true, initial: 'Estimado cliente:\n\nAdjunto la cotización COT-2026-0102.\n\nSaludos,\nConstroad' });
+  });
+
+  it('a one-line text still gets its default on one line', () => {
+    // Act
+    const [asunto] = formFields(form({ asunto: { type: 'string', title: 'Asunto', default: 'Cotización\nCOT-2026-0102' } }));
+    // Assert
+    expect(asunto).toMatchObject({ multiline: false, initial: 'Cotización COT-2026-0102' });
+    expect(asunto).not.toHaveProperty('email');
+  });
+});

@@ -1,4 +1,4 @@
-import { cutAtWord } from './textCut.js';
+import { cutAtWord, paragraphsOf } from './textCut.js';
 import { splitErrorOf, splitFieldOf, type SplitHint } from './appFormSplit.js';
 import { isBlankAnswer, sectionOf, type FieldSection } from './appFormSections.js';
 import { submitsOf, type FormSubmit } from './appFormSubmits.js';
@@ -39,6 +39,7 @@ export type FormSchemaProperty = {
   /** `true`: a file with no stamp, like a transfer's screenshot; `false`: only the camera. By default the gallery is there, stamped (José 06/11). */
   'x-gallery'?: boolean;
   'x-input'?: string;
+  /** `email`: the email keyboard on one line; a list «a@b.pe, c@d.pe» too. No JSON Schema validator reads it, unlike `format`. */ 'x-keyboard'?: string;
   'x-unit'?: string;
   'x-labels'?: Record<string, string>;
   /** The standard way to name options: `[{ "const": "<id>", "title": "Tanque 1" }]`, same as `enum` + `x-labels`. */
@@ -67,7 +68,7 @@ export type AppForm = { id: string; title: string; submitLabel?: string; /** The
 type Base = { name: string; label: string; help?: string; required: boolean; /** `x-input: shift | weather | place-street | temperature | clock`: the phone fills it when empty. */ condition?: 'shift' | 'weather' | 'street' | 'temperature' | 'clock'; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number | true; /** `x-refresh`: changing it asks the app for the form again. */ refresh?: true; /** Other fields show by its answer: the form's step, alone in its row (José 13/11). */ step?: true; /** `x-section`: the header it sits under, folded or not (agentes 13/11). */ section?: FieldSection };
 export type FormField =
   | (Base & { kind: 'choice'; options: ChoiceOption[]; segmented: boolean; /** A few short options in two columns (José 12/11: two controls per line, not a list to open). */ columns?: 2; /** A long list (the company's people, agentes 24/10): a field that opens a sheet with a search. */ searchable: boolean; /** `x-avatar: initials`: each option with its initials. */ initials?: true; /** `x-cards`: picture cards picked with one tap; the picked one's first photo shows big below. */ cards?: true })
-  | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true; /** `x-input: place`: a text with the button that writes where the device is. */ place?: true; /** `x-input: work-street`: a street of the service's work map, picked (Portal's CON-CAP, 12/11). */ street?: true; /** `x-input: work-station`: the station on that street, computed from the reading and editable. */ station?: true })
+  | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true; /** `x-input: place`: a text with the button that writes where the device is. */ place?: true; /** `x-input: work-street`: a street of the service's work map, picked (Portal's CON-CAP, 12/11). */ street?: true; /** `x-input: work-station`: the station on that street, computed from the reading and editable. */ station?: true; /** `x-keyboard: email` (a list with commas too) or `format: email`: one line with the email keyboard (Portal 17/11). */ email?: true })
   | (Base & { kind: 'number'; unit?: string; min?: number; max?: number; /** The limit itself is out: «Mayor que 0». */ minExclusive?: true; maxExclusive?: true; integer: boolean; /** `x-input: gps`: written by the device's reading, never typed (Portal's CON-CAP point). */ gps?: GpsRole })
   | (Base & { kind: 'date'; /** `format: date | time | date-time`: a picker for the day, the hour or both (José, 24/10). */ mode: DateMode })
   | (Base & { kind: 'photo'; /** A list (`type: array`) where each photo can be removed and taken again; otherwise one photo. */ multiple: boolean; max: number; min: number; /** Also from the gallery, unless the form asks for the camera alone. */ gallery?: boolean; /** `x-gallery: true`: its files go with no stamp. */ plainGallery?: true })
@@ -265,18 +266,17 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
     if (input === 'pin') return { ...base, kind: 'text', multiline: false, maxLength: Math.min(typeof property.maxLength === 'number' ? property.maxLength : FORM_LIMITS.pin, FORM_LIMITS.pin), secret: true };
     const maxLength = typeof property.maxLength === 'number' ? Math.min(property.maxLength, FORM_LIMITS.text) : undefined;
     const digits = codeDigitsOf(input, property, maxLength);
-    const initial = typeof property.default === 'string' && property.default.trim() ? { initial: line(property.default, maxLength ?? FORM_LIMITS.text) } : {};
-    return { ...base, ...initial, kind: 'text', multiline: !digits && (input === 'textarea' || (maxLength ?? 0) > MULTILINE_FROM || FREE_WRITING.test(name)), ...(maxLength ? { maxLength } : {}), ...(digits ? { digits } : {}), ...textInputOf(input) };
+    const email = property.format === 'email' || property['x-keyboard'] === 'email';
+    const multiline = !digits && !email && (input === 'textarea' || (maxLength ?? 0) > MULTILINE_FROM || FREE_WRITING.test(name));
+    const initial = typeof property.default === 'string' && property.default.trim() ? { initial: (multiline ? paragraphsOf : line)(property.default, maxLength ?? FORM_LIMITS.text) } : {};
+    return { ...base, ...initial, kind: 'text', multiline, ...(maxLength ? { maxLength } : {}), ...(digits ? { digits } : {}), ...textInputOf(input), ...(email ? { email: true as const } : {}) };
   }
   return `El campo «${name}» es de un tipo que Lilachat no sabe dibujar.`;
 }
 
+const TEXT_INPUTS: Record<string, { place?: true; street?: true; station?: true }> = { place: { place: true }, 'work-street': { street: true }, 'work-station': { station: true } };
 /** What a text's `x-input` adds: the place button, or a street or station of the work map. */
-function textInputOf(input: string | undefined): { place?: true; street?: true; station?: true } {
-  if (input === 'place') return { place: true };
-  if (input === 'work-street') return { street: true };
-  return input === 'work-station' ? { station: true } : {};
-}
+const textInputOf = (input: string | undefined): { place?: true; street?: true; station?: true } => TEXT_INPUTS[input ?? ''] ?? {};
 
 /** Picture cards fit in two columns, up to three rows. */
 const CARD_OPTIONS = { min: 2, max: 6 };

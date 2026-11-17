@@ -380,9 +380,17 @@ de un canal) y e-30 (el ⚡ del espacio).
 "submit_label"?, "schema" } }`. `schema` es un JSON Schema de objeto: `enum`
 (con `x-labels`) es una opción, hasta 4 lado a lado; `x-input: photo` una
 foto; `x-input: location` la ubicación `{ lat, lng, precision }`; `x-unit` la
-unidad de un número; `maxLength > 120` o `x-input: textarea` varias líneas;
-`format: date | time | date-time` un selector (nunca un campo de texto): el
-día, la hora o ambos. Hasta 20 campos.
+unidad de un número; `maxLength > 200`, `x-input: textarea` o un nombre de
+escritura libre (observaciones, comentario) varias líneas, y su `default`
+conserva los saltos de línea (17/11: el mensaje sugerido de un correo llegaba
+en un solo párrafo); `x-keyboard: email` una o varias direcciones separadas
+por comas: una línea con el teclado de correo, sin mayúscula ni corrector,
+aunque su `maxLength` pase de 200 (Portal 17/11, «Para» y «CC»). Ningún
+validador de JSON Schema lee `x-keyboard`, y un Lilachat viejo lo ignora y
+muestra texto. `format: email` se dibuja igual, pero es UNA dirección: un
+validador con formatos rechaza una lista. Lilachat no revisa el formato de la
+dirección. `format: date | time | date-time` un selector (nunca un campo de
+texto): el día, la hora o ambos. Hasta 20 campos.
 - La foto sube a Lilachat al elegirla. La app recibe una URL firmada
   `https://lilachat.constroad.com/api/bots/files/<payload>.<firma>`, válida 15
   minutos (después 410).

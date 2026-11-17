@@ -141,6 +141,8 @@ export function TypedField({ field, value, error, onChange }: FieldProps<'text' 
   const code = field.kind === 'text' ? field.digits : undefined;
   /** A PIN (Portal's employee PIN, agentes 24/10): hidden while typed, the number pad, never autofilled. */
   const secret = field.kind === 'text' && field.secret === true;
+  /** An address (Portal 17/11, emails): the email keyboard, never capitalized nor corrected. */
+  const email = field.kind === 'text' && field.email === true;
   const text = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
   return (
     <View>
@@ -152,10 +154,11 @@ export function TypedField({ field, value, error, onChange }: FieldProps<'text' 
           onChangeText={(next) => onChange(next === '' ? undefined : next)}
           multiline={multiline}
           maxLength={code ? code : field.kind === 'text' ? field.maxLength : undefined}
-          keyboardType={code || secret || (field.kind === 'number' && field.integer) ? 'number-pad' : field.kind === 'number' ? 'decimal-pad' : 'default'}
+          keyboardType={code || secret || (field.kind === 'number' && field.integer) ? 'number-pad' : field.kind === 'number' ? 'decimal-pad' : email ? 'email-address' : 'default'}
           secureTextEntry={secret}
-          textContentType={code ? 'oneTimeCode' : undefined}
-          autoComplete={code ? 'sms-otp' : secret ? 'off' : undefined}
+          textContentType={code ? 'oneTimeCode' : email ? 'emailAddress' : undefined}
+          autoComplete={code ? 'sms-otp' : secret ? 'off' : email ? 'email' : undefined}
+          {...(email ? { autoCapitalize: 'none' as const, autoCorrect: false } : {})}
           className={`min-h-[48px] flex-1 rounded-xl border border-outline/25 bg-background px-3 text-on-surface ${code ? 'text-center text-[28px] font-bold' : 'text-[16px]'} ${multiline ? 'py-2' : ''}`}
           style={multiline ? { minHeight: 88, textAlignVertical: 'top' } : code ? { letterSpacing: CODE_LETTER_SPACING, fontVariant: ['tabular-nums'] } : undefined}
         />

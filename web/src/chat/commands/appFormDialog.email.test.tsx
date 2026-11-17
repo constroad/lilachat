@@ -24,9 +24,9 @@ const emailAnswer = (picked: string, code: string): EphemeralAnswer => ({
         required: ['cotizacion', 'para', 'asunto'],
         properties: {
           cotizacion: { ...quote, default: picked },
-          para: { type: 'string', title: 'Para', default: 'compras@cliente.pe' },
+          para: { type: 'string', title: 'Para', 'x-keyboard': 'email', maxLength: 500, default: 'compras@cliente.pe' },
           asunto: { type: 'string', title: 'Asunto', default: `Cotización ${code}` },
-          mensaje: { type: 'string', title: 'Mensaje', 'x-input': 'textarea', default: `Adjunto la cotización ${code}.` },
+          mensaje: { type: 'string', title: 'Mensaje', 'x-input': 'textarea', maxLength: 2000, default: `Estimado cliente:\n\nAdjunto la cotización ${code}.` },
         },
       },
     },
@@ -50,7 +50,7 @@ describe('a refreshed email form', () => {
     refresh();
     // Assert
     expect(valueOf('asunto')).toBe('Cotización COT-2026-0102');
-    expect(valueOf('mensaje')).toBe('Adjunto la cotización COT-2026-0102.');
+    expect(valueOf('mensaje')).toBe('Estimado cliente:\n\nAdjunto la cotización COT-2026-0102.');
     expect(valueOf('para')).toBe('compras@cliente.pe');
   });
 
@@ -63,5 +63,25 @@ describe('a refreshed email form', () => {
     // Assert
     expect(valueOf('mensaje')).toBe('Hola Juan, va la cotización que pediste.');
     expect(valueOf('asunto')).toBe('Cotización COT-2026-0102');
+  });
+});
+
+describe('the email form\'s fields', () => {
+  it('«Para» is one line with the email keyboard, never capitalized nor corrected', () => {
+    // Act
+    draw();
+    // Assert
+    const recipient = screen.getByTestId('campo-para');
+    expect(recipient.tagName).toBe('INPUT');
+    expect(recipient.getAttribute('inputmode')).toBe('email');
+    expect(recipient.getAttribute('autocapitalize')).toBe('off');
+    expect(recipient.getAttribute('spellcheck')).toBe('false');
+  });
+
+  it('the suggested message opens with its paragraphs', () => {
+    // Act
+    draw();
+    // Assert
+    expect(valueOf('mensaje')).toBe('Estimado cliente:\n\nAdjunto la cotización COT-2026-0101.');
   });
 });

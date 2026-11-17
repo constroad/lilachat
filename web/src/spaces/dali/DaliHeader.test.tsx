@@ -3,7 +3,13 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import type { ClientWorkspace } from '@lilachat/shared';
 import { DaliHeader } from './DaliSpace';
 
-afterEach(cleanup);
+const update = vi.hoisted(() => ({ available: false }));
+vi.mock('../../ui/webUpdate', () => ({ useWebUpdate: () => ({ available: update.available, updating: false, update: vi.fn() }) }));
+
+afterEach(() => {
+  cleanup();
+  update.available = false;
+});
 
 const SPACE: ClientWorkspace = { id: 'w-dali', name: 'Dali', joinPolicy: 'approval', role: 'owner', status: 'active', members: 3, unreadChats: 0, prospects: true };
 
@@ -34,5 +40,19 @@ describe('DaliHeader', () => {
     expect(screen.getByTestId('pestana-inbox').getAttribute('aria-selected')).toBe('true');
     fireEvent.click(screen.getByTestId('pestana-funnel'));
     expect(onTab).toHaveBeenCalledWith('funnel');
+  });
+
+  it('says there is a new version, as the chat list does (José 17/11: Dali had no «Recargar»)', () => {
+    // Arrange
+    update.available = true;
+    // Act
+    renderHeader(false);
+    // Assert
+    expect(screen.getByTestId('banda-version-nueva').textContent).toContain('Hay una versión nueva');
+  });
+
+  it('shows nothing extra when there is no new version', () => {
+    renderHeader(true);
+    expect(screen.queryByTestId('banda-version-nueva')).toBeNull();
   });
 });

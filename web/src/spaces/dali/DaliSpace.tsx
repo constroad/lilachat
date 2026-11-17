@@ -4,6 +4,7 @@ import { BookOpen, MessagesSquare } from 'lucide-react';
 import type { ClientWorkspace, ProspectView } from '@lilachat/shared';
 import type { ChatAction } from '../../chat/menuDelChat';
 import type { ChatSummary } from '../../chat/types';
+import { NewVersionBand } from '../../ui/NewVersionBand';
 import { SpaceTitleMenu, type WorkspaceLink } from '../SpaceTitleMenu';
 import { DaliFunnel } from './DaliFunnel';
 import { DaliInbox } from './DaliInbox';
@@ -127,11 +128,14 @@ export function DaliHeader(props: HeaderProps) {
       {props.phone ? null : 'Lo que Dali sabe'}
     </button>
   );
+  // José 17/11: the space replaces the chat list, and with it the list's «Hay una versión nueva».
+  const versionBand = <div className="pt-2 empty:hidden"><NewVersionBand /></div>;
   if (props.phone) {
     return (
       <header className="shrink-0 border-b border-outline/15 bg-surface">
         <div data-testid="fila-cabecera-dali" className="flex items-center gap-3 px-4 pt-3">{title}{knowledge}</div>
         <DaliTabs value={props.tab} onChange={props.onTab} phone />
+        {versionBand}
       </header>
     );
   }
@@ -143,6 +147,7 @@ export function DaliHeader(props: HeaderProps) {
         <DaliTabs value={props.tab} onChange={props.onTab} />
         {knowledge}
       </div>
+      {versionBand}
     </header>
   );
 }

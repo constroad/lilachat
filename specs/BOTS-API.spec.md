@@ -1617,3 +1617,91 @@ base de producción):
 `intent`, `score`, `score_reasons`, `fields: [{ key, label, value }]` (no fijo de asfalto: Dali es
 multinegocio), `kind` (empresa/persona) opcional, `summary`, `next_follow_up_at` y `follow_up_draft` (nunca
 se envía sin aprobación). La nota interna viaja como `message.internal: true`.
+
+**Segundo pedido de José (16/11)**: «de los 10 interesados, ¿a cuántos no les envié la cotización y a cuántos les
+falta información?», recordatorios, hilos y lo demás de Lilachat para vender, cómo lo hacen las empresas grandes y
+cómo aprender de las fallas. Diseños `dl-08` a `dl-11` (prototipo navegable de toda la fase 2:
+https://claude.ai/artifact/9WabPLTPXzNED898vH5L7K; capturas y lo inventado por Stitch en `design/stitch/INVENTARIO.md`):
+
+- **Embudo por lo que falta hacer** (`dl-08`). Etapas: Falta información (Dali todavía pregunta) → Por cotizar (ya
+  tiene los obligatorios) → Visita → Cotización enviada → Negociación → Ganado o Perdido. Arriba van cuatro cifras:
+  falta información, por cotizar, cotización sin respuesta y sin próxima acción. Una tarjeta cambia de columna sola,
+  cuando Dali completa los obligatorios o cuando Portal registra la cotización enlazada. Nadie la arrastra.
+- **Vencido** (en Pipedrive, «rotting»): por cotizar hace más de 24 h, cotización sin respuesta hace más de 3 días, o un
+  caliente sin respuesta de una persona en 15 min. Son constantes del código, no datos de la base.
+- **Ningún prospecto sin próxima acción** (`dl-09`): qué hacer (llamar, WhatsApp, visita o cotización), cuándo y a
+  quién avisar. Usa los recordatorios de Lilachat (Agenda). Dali sugiere la próxima con su motivo. La secuencia:
+  día 0 cotización, día 2 WhatsApp, día 4 llamada, día 7 último mensaje y día 10 se cierra como «No respondió». Cada
+  mensaje lo aprueba un vendedor: el 949 es Baileys, y los mensajes en frío en masa arriesgan el número.
+- **Hilo del equipo** (`dl-11`): una mención para aprobar un descuento, un checklist para cerrar y un recordatorio
+  desde una tarea. Nada del hilo sale por WhatsApp (agentes `7103d51`).
+- **Revisión de la semana** (`dl-10`). Muestra:
+  - ganados, y perdidos con su motivo y una ACCIÓN por motivo;
+  - respuestas tardías y cotizaciones sin seguimiento;
+  - lo que Dali no supo responder, con «Enseñarle a Dali»;
+  - conversaciones para revisar;
+  - acuerdos con responsable y fecha.
+  Dali la arma el domingo y el equipo la ve el lunes a las 9:00 (evento recurrente).
+- **Lo que hacen los equipos grandes**, y dónde quedó cada práctica:
+  - próxima acción obligatoria y tratos vencidos (Pipedrive);
+  - responder en la primera hora: según HBR (2011), califica casi 7 veces más que una hora después;
+  - puntaje por reglas, con sus razones (HubSpot, Salesforce);
+  - secuencias de seguimiento con un cierre explícito;
+  - motivo de pérdida obligatorio y revisión semanal de ganados y perdidos;
+  - revisar conversaciones para entrenar al equipo (Gong);
+  - avisarle a Meta quién compró (Conversions API).
+
+**Tercer pedido de José (16/11)**: «¿la configuración de Dali (qué vendemos, precios, categorías) no se debe hacer
+en Lilachat? ¿nada se podría ver en solo lectura?». Datos de agentes (16/11, `dali_configs` en producción):
+
+- **Dónde vive.** En agentes, en la base `dali_configs`, una por empresa:
+  - catálogo `{name, aliases, unit, price|null, description}`, `currency` y `pricesIncludeTax`;
+  - `sayPrices` (Constroad: false; Dali no dice precios, solo los usa para el total de la tarjeta) y `promiseDates`;
+  - `fields`, `faq`, `offers`, `doesNotOffer` y `notes`;
+  - `business.zone` y `business.hours`, que son texto libre para el modelo;
+  - `pauseMinutes`, `intake` y `testNumbers`.
+  En el código quedan el prompt base, el ritmo, el IGV de 18 %, las 3 fallas y el modelo. Dali relee la config en cada
+  turno, así que un cambio se aplica sin deploy.
+- **Sin pantalla.** La config se cargó con `scripts/dali-config.ts`. agentes está mudando el panel web de Dali (el
+  diseño de `dali.constroad.com`) para editar el negocio, el catálogo, las FAQ, los campos, el interruptor y el QR.
+  Mientras dure la mudanza va en `agentes.constroad.com/dali/`. Las rutas no están verificadas desplegadas.
+- **Constroad hoy:**
+  - 9 ítems sin categorías, en soles sin IGV, **copiados una vez del catálogo de productos de Portal**: si Portal
+    cambia un precio, Dali no se entera;
+  - una sola FAQ («¿Dónde está la planta?»);
+  - zona «Lima y alrededores (planta en Cajamarquilla, Lurigancho)», que no decide si Huaral entra;
+  - ningún mínimo por producto.
+- **Recomendación: una fuente por dato.**
+  - Precios y categorías: Portal. Dali los lee con `catalogo_de_productos` (ya aprobada), con caché corto; agentes
+    guarda solo alias y descripciones para el modelo. Un negocio sin Portal sigue con su catálogo en agentes.
+  - Comportamiento de Dali (campos, FAQ, zona, horario, reglas): agentes, porque Dali sirve a negocios sin Portal.
+  - Lilachat no es fuente de nada: es la superficie. «Lo que Dali sabe» (`dl-12`) en solo lectura, con «Editar en el
+    panel de Dali». Los precios solo los ven los admins (regla de plata de José).
+  - Una sola escritura desde Lilachat: «Enseñarle a Dali» (`dl-13`). Es un `form.submitted` con estas reglas:
+    - solo AGREGA una FAQ, de la empresa de la instalación;
+    - queda con autor, hora y auditoría;
+    - es idempotente por la clave del formulario;
+    - se corrige o se borra en el panel.
+    Lo demás espera el API versionado de agentes (`dali_config_versions`).
+  - Para la revisión, Dali marca en su salida `unanswered` (la pregunta que no pudo responder con la config) y le dice
+    al cliente que lo consulta con un asesor. agentes lo junta por semana, sin datos del cliente.
+  - Costo según agentes: la lectura, medio día; la escritura con versión e historial, 1–2 días más la UI de Lilachat.
+
+**Contrato propuesto, segunda parte** (también al aprobar):
+- `stage` toma `missing_info | to_quote | visit | quoted | negotiation | won | lost`.
+- El PUT suma:
+  - `missing: [key]`, los obligatorios que faltan;
+  - `ready_at`, cuándo se completaron;
+  - `next_action: { kind: 'call' | 'whatsapp' | 'visit' | 'quote', at, assignee_id }`, que reemplaza a
+    `next_follow_up_at`;
+  - `quote: { code, amount, sent_at }`, de la cotización de Portal enlazada.
+- La revisión semanal llega como tarjeta de Dali (bloques `metric`, `rows`, `chips`), y los acuerdos son un checklist de
+  Lilachat.
+
+**Decide José**:
+- aprobar la fase 2 con estos diseños;
+- reparto manual o por turnos;
+- que Dali lea los precios de Portal;
+- zona por distritos y mínimos por producto como datos;
+- accesos de Meta (Conversions API y `ads_read`);
+- códigos de TikTok y web, con `intake: 'all'`.

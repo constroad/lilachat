@@ -1687,6 +1687,19 @@ en Lilachat? ¿nada se podría ver en solo lectura?». Datos de agentes (16/11, 
     al cliente que lo consulta con un asesor. agentes lo junta por semana, sin datos del cliente.
   - Costo según agentes: la lectura, medio día; la escritura con versión e historial, 1–2 días más la UI de Lilachat.
 
+**Navegación del espacio (José 16/11, sobre el prototipo: «pierdo los tabs»)**:
+- Una sola barra de pestañas en TODO el espacio: Bandeja · Embudo · Panel · Revisión. La cabecera es idéntica en todas y solo
+  cambia la pestaña activa.
+- «Lo que Dali sabe» va como botón de la cabecera, no como pestaña. Así entran 4 en el celular sin «Más».
+- En escritorio:
+  - la Bandeja es maestro-detalle (lista, conversación y ficha);
+  - desde Embudo, Panel o Revisión, la ficha, la próxima acción, el hilo, los seguimientos y «Lo que Dali sabe» abren un
+    panel lateral DEBAJO de la barra;
+  - el resultado y «Enseñarle a Dali» abren un diálogo, también debajo de la barra.
+- En el celular, la conversación, la ficha, el hilo y «Lo que Dali sabe» van a pantalla completa con ←, y las acciones van
+  como hojas.
+- Prototipo v3 (versión 2 del mismo enlace). Diseños con `-v3` a `-v5` en `design/stitch/INVENTARIO.md`.
+
 **Contrato propuesto, segunda parte** (también al aprobar):
 - `stage` toma `missing_info | to_quote | visit | quoted | negotiation | won | lost`.
 - El PUT suma:

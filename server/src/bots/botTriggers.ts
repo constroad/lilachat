@@ -1,4 +1,5 @@
 import { Types } from 'mongoose';
+import { noteTeamReply } from './botProspects.js';
 import { toInternationalPhone } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Chat, type Message } from '../chatModels.js';
 import { UserModel } from '../models.js';
@@ -130,6 +131,7 @@ export async function botsHearMessage(message: Message, memberIds: readonly stri
   if (!message.body && files.length === 0) return false;
   const hearing = await hearingOf(message, memberIds);
   if (!hearing) return false;
+  if (hearing.chat.prospectId) await noteTeamReply(message).catch((error: unknown) => console.error('[prospectos] no se pudo anotar la respuesta:', error instanceof Error ? error.message : error));
   let heard = false;
   for (const { bot, name } of hearing.bots) {
     const named = mentionsBot(message, bot, name);

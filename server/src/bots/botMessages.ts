@@ -9,7 +9,7 @@ import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { BotInstallationModel, type BotInstallation } from './botModels.js';
 import { channelOfPostedTopic } from './botTopics.js';
 import { chatOfClient } from './botClients.js';
-import { chatOfProspect } from './botProspects.js';
+import { chatOfProspect, noteDaliPost } from './botProspects.js';
 
 /**
  * What a bot publishes (`specs/BOTS-API.spec.md` §b): to a channel or group of
@@ -104,6 +104,7 @@ async function publishText(installation: Installation, chatId: Types.ObjectId, p
   const extra = { ...(post.clientRef ? { clientRef: post.clientRef } : {}), ...(prospect ? { prospect } : {}) };
   if (Object.keys(extra).length && !result.duplicate) await MessageModel.updateOne({ _id: result.message._id }, { $set: extra });
   if (result.duplicate) return result.message;
+  if ('prospect' in post.target) noteDaliPost(chatId, { ...(post.asContact ? { asContact: post.asContact } : {}), ...(post.threadOf ? { threadOf: post.threadOf } : {}) });
   // The live message carries its ref and its prospect too: a visit card (lv01) or a prospect's words are drawn from the first delivery.
   const message = { ...result.message, ...extra };
   const members = await publicarMensaje(message, result.members);

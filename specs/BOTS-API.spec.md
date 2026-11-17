@@ -1753,6 +1753,8 @@ decisiones de negocio siguen abiertas. Mientras tanto, el reparto es libre: cada
 
 - `unanswered[].question` es el texto del cliente, recortado a 200 y con los números de 7 o más dígitos enmascarados
   (ni teléfonos ni DNI viajan a la revisión).
+- Un campo mal formado no da 400: queda como estaba y vuelve en `ignored: [{ field, message }]` (lo de la fase 1
+  sigue dando 400, como siempre).
 
 - `service.key`: `^[a-z][a-z0-9_-]{0,39}$`; `name` hasta 60. Hoy son los servicios de Dali con su categoría (venta de
   mezcla, asfaltos líquidos y emulsiones, colocación, transporte, imprimación, base, fresado, alquiler de equipos,
@@ -1790,13 +1792,16 @@ decisiones de negocio siguen abiertas. Mientras tanto, el reparto es libre: cada
 **Lo que Dali sabe** (`dl-12`): `dali.knowledge.requested` `{ user }`, síncrono, 8 s. Responde:
 
 ```json
-{ "services": [{ "key", "name", "questions": ["…"], "price_policy": { "visible": false, "basis": "puesto en planta (Cajamarquilla), sin transporte, más IGV" } }],
+{ "services": [{ "key", "name", "questions": [{ "key", "label", "required", "common" }], "price_policy": { "visible": false, "basis": "puesto en planta (Cajamarquilla), sin transporte, más IGV" } }],
   "catalog": [{ "service_key", "name", "unit", "price" }],
   "faqs": [{ "id", "question", "answer" }],
   "zone": "…", "hours": "…", "edit_url": "https://agentes.constroad.com/dali/servicios" }
 ```
 
-Lilachat agrupa el catálogo por servicio y quita `price` y `price_policy` si quien mira no es admin.
+Lilachat agrupa el catálogo por servicio y quita `price` y `price_policy` si quien mira no es admin. Cada pregunta va
+como `{ key, label, required, common }` (agentes `8a3a856` y `272c0c4`). Las `common` (en Constroad: lugar, fecha y
+nombre) vienen repetidas en cada servicio: Lilachat las muestra UNA vez, «para todos los servicios», sin repetir la
+`key` (`questionsOf`). Un texto suelto también se lee.
 
 **Enseñarle a Dali** (`dl-13`): `dali.faq.add` `{ question, answer, user, idempotency_key }`, síncrono. Responde
 `{ "faq": { "id" } }`. Solo agrega; corregir o borrar se hace en el panel de agentes. Lo usan las preguntas sin
@@ -1805,3 +1810,61 @@ respuesta de la revisión.
 **Revisión de la semana** (`dl-10`): Dali la publica en el #general del espacio como tarjeta (bloques `metric`, `rows`,
 `chips`) con `idempotency_key` `review:<AAAA-Www>`. La pestaña Revisión muestra la última. Los acuerdos van como
 checklist de Lilachat.
+
+### Hecho (16/11, fase 2: servidor, fake y motores)
+
+**Compartido** (motores puros, con tests):
+- `shared/src/prospectInsight.ts`: el PUT de la fase 2 (`validateProspectInsight`). Lo que no viene queda; `null` borra.
+  `follow_up_draft.text` va hasta 1000 (el borrador del contrato no ponía tope). Lilachat vuelve a enmascarar los
+  números de 7 o más dígitos de `unanswered[].question`.
+- `shared/src/prospectSeller.ts`: lo que decide el vendedor (`validateSellerChange`), con las etiquetas de los motivos
+  y de las próximas acciones.
+- `shared/src/prospectBoard.ts`: bandeja (`inboxOf`: «Atender ahora», «En seguimiento», «Dali conversando»), vencidos
+  (`overdueOf`), «Seguimientos de hoy» (`followUpsOf`, el día de Lima) y embudo (`funnelOf`, con sus cuatro cifras).
+- `shared/src/prospectPanel.ts`: el panel (`panelOf`). Cuenta la cohorte de los prospectos que NACIERON en el
+  periodo, así los porcentajes cuadran. No calcula el costo por prospecto: no hay `ads_read`.
+- `shared/src/daliKnowledge.ts`: lo que Dali sabe (`knowledgeViewOf`, que quita los precios a quien no es admin),
+  el catálogo por servicio (`catalogByService`) y la validación de «Enseñarle a Dali».
+
+**Servidor**:
+- `PUT /api/bots/prospects/:id` guarda la fase 2 en `prospectchannels`. Un campo de la fase 2 mal formado **no
+  frena el PUT**: el canal del prospecto (fase 1) importa más que sus detalles. Ese campo queda como estaba, el resto
+  se guarda y la respuesta lo dice en `ignored: [{ field, message }]`. El server lo anota en su log.
+- La hora del prospecto, de Dali y de una persona sale de los mensajes del canal: `firstContactAt` y `lastContactAt`
+  (`as_contact`), `firstDaliReplyAt` y `firstTeamReply` / `lastTeamReplyAt`. Una respuesta en un hilo no cuenta:
+  no sale por WhatsApp.
+- Rutas de los miembros del espacio (sesión), en `server/src/bots/prospectRoutes.ts`:
+
+  | Ruta | Qué hace |
+  | --- | --- |
+  | `GET /api/workspaces/:id/prospects?since=ISO` | Los abiertos y los nacidos o cerrados desde `since` (31 días por defecto, 400 como máximo). Trae `admin`, `enabled` y `me` |
+  | `GET /api/workspaces/:id/prospects/:prospectId` y `…/by-chat/:chatId` | Uno |
+  | `PATCH /api/workspaces/:id/prospects/:prospectId` | `{ version, assignee?, next_action?, result? }` → `prospect.updated` |
+  | `POST …/:prospectId/follow-up` | `{ version, text }` → `prospect.follow_up.approved` |
+  | `POST …/:prospectId/handback` | `{ version }` → `prospect.handback` |
+  | `GET /api/workspaces/:id/dali/knowledge` | `dali.knowledge.requested`, 8 s; 502 si Dali no responde |
+  | `POST /api/workspaces/:id/dali/faqs` | `{ question, answer, idempotency_key }` → `dali.faq.add`, 8 s |
+  | `GET /api/workspaces/:id/dali/review` | La última tarjeta `review:*` de Dali en el #general, o `null` |
+
+- `version` lo trae cada cambio del vendedor. Si otro cambió antes, responde **409 `stale`** con el prospecto como
+  quedó: dos vendedores que toman el mismo prospecto a la vez nunca ganan los dos.
+- La próxima acción crea un recordatorio PERSONAL en la Agenda de quien la hace (`prospectRef`). Al sonar, abre el
+  canal del prospecto. Moverla lo mueve; quitarla, o marcar un resultado, lo apaga.
+- Un resultado borra la próxima acción. `result: null` reabre el prospecto.
+- Aprobar un seguimiento **gasta el borrador**: Lilachat lo borra y agentes manda el siguiente con otro PUT. Con
+  resultado da 409 `closed`; sin borrador, 409 `no_draft`.
+- «Devolver a Dali» pone `attended_by: dali` enseguida; agentes lo confirma con su próximo PUT.
+- Un miembro oculto (incógnito) lee pero no decide: 403 `incognito`.
+- «Enseñarle a Dali» lo puede hacer cualquier miembro activo; agentes guarda el autor y la hora. Si José prefiere
+  solo admins, es una línea.
+- La plata (`quote.amount`, `currency`, los precios del catálogo y la política de precios) solo les llega a los
+  admins del espacio.
+
+**Fake** (`tools/bots-fake`): acepta los campos de la fase 2 con las mismas reglas. `/__fake/emit` manda los eventos
+nuevos. Con `dali.knowledge.requested` y `dali.faq.add` espera la respuesta 8 s y la devuelve como `{ answer }`.
+
+**Tests**: `shared/src/prospect{Insight,Seller,Board,Panel}.test.ts`, `shared/src/daliKnowledge.test.ts`,
+`server/src/bots/prospectDesk.test.ts` y `server/src/bots/fake.test.ts`.
+
+**Sin verificar todavía**: las pantallas (web y APK) y el E2E en Test. Hace falta una app con `prospects:write` en
+Test, y los eventos de agentes en producción.

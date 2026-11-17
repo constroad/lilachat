@@ -168,6 +168,32 @@ describe('the bots fake', () => {
     expect((await call('/__fake/prospects')).body.prospects).toMatchObject([{ id, channel: { id: channelId, name: 'Carlos' }, state: { phone: '51949123824', attended_by: 'human' } }]);
   });
 
+  it('Dali phase 2 like the server: what Dali knows merges (null clears), bad fields are 400, and Dali is asked on the spot', async () => {
+    const { token } = await install();
+    const asBot = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+    const id = 'dali:constroad:9f2c41';
+    const putProspect = (body: unknown) => call(`/api/bots/prospects/${encodeURIComponent(id)}`, { method: 'PUT', headers: asBot, body: JSON.stringify(body) });
+    const now = new Date().toISOString();
+    const base = { name: 'Carmen', phone: '51949123824', last_activity_at: now };
+    expect((await putProspect({ ...base, stage: 'to_quote', score: 86, service: { key: 'venta_mezcla', name: 'Venta de mezcla' }, follow_up_draft: { text: 'Hola Carmen' } })).status).toBe(201);
+    expect((await putProspect({ ...base, summary: 'Asfaltado de 450 m²', follow_up_draft: null })).status).toBe(200);
+    const stored = ((await call('/__fake/prospects')).body.prospects as { state: Record<string, unknown> }[])[0]!.state;
+    expect(stored).toMatchObject({ stage: 'to_quote', score: 86, service: { key: 'venta_mezcla' }, summary: 'Asfaltado de 450 m²' });
+    expect(stored.follow_up_draft).toBeUndefined();
+    for (const wrong of [{ score: 140 }, { stage: 'closed' }, { service: { key: 'Venta Mezcla', name: 'x' } }, { fields: [{ key: 'a', label: 'A', value: '1' }, { key: 'a', label: 'A', value: '2' }] }, { quote: { code: 'COT-1', currency: 'soles' } }]) {
+      const kept = await putProspect({ ...base, ...wrong });
+      expect(kept.status).toBe(200);
+      expect(kept.body.ignored).toEqual([{ field: Object.keys(wrong)[0], message: expect.any(String) }]);
+    }
+    expect(((await call('/__fake/prospects')).body.prospects as { state: Record<string, unknown> }[])[0]!.state).toMatchObject({ stage: 'to_quote', score: 86 });
+
+    answer = (type) => (type === 'dali.knowledge.requested' ? { services: [], catalog: [], faqs: [] } : type === 'dali.faq.add' ? { faq: { id: 'faq-9' } } : null);
+    const knowledge = await call('/__fake/emit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'dali.knowledge.requested', data: { user: { id: 'u1', name: 'Ana' } } }) });
+    expect(knowledge.body).toEqual({ answer: { services: [], catalog: [], faqs: [] } });
+    const taught = await call('/__fake/emit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'dali.faq.add', data: { question: '¿Huaral?', answer: 'Sí', idempotency_key: 'teach-0123456789' } }) });
+    expect(taught.body).toEqual({ answer: { faq: { id: 'faq-9' } } });
+  });
+
   it('revoking kills the token', async () => {
     const { token } = await install();
     expect((await call('/api/oauth/revoke', { method: 'POST', headers: { Authorization: `Bearer ${token}` } })).status).toBe(200);

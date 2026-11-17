@@ -182,7 +182,7 @@ export async function runReminderTick(now: Date = new Date()): Promise<{ events:
       chat: chat?.kind === 'group' ? (chat.name ?? 'Grupo') : undefined,
       reminderId: String(reminder._id),
       // A call-back reminder is personal and opens the chat of that call (backlog 23).
-      data: { chatId: String(reminder.chatId ?? reminder.callBack?.chatId ?? ''), seq: 0 },
+      data: { chatId: String(reminder.chatId ?? reminder.callBack?.chatId ?? reminder.prospectRef?.chatId ?? ''), seq: 0 },
     });
     // El de un chat también queda escrito en el chat (José, 20/10).
     if (chat) await avisarSinTumbar({ chatId: String(chat._id), quien: reminder.userId, evento: 'recordatorio-suena', valor: reminder.title, ref: { tipo: 'recordatorio', id: String(reminder._id) } });
@@ -230,7 +230,7 @@ async function runAdvancePass(now: Date): Promise<number> {
       note: [reminder.taskRef ? taskAdvanceNote(ring) : advanceNote(ring), reminder.note].filter(Boolean).join(' · '),
       chat: chat?.kind === 'group' ? (chat.name ?? 'Grupo') : undefined,
       reminderId: String(reminder._id),
-      data: { chatId: String(reminder.chatId ?? reminder.callBack?.chatId ?? reminder.taskRef?.chatId ?? ''), seq: 0 },
+      data: { chatId: String(reminder.chatId ?? reminder.callBack?.chatId ?? reminder.taskRef?.chatId ?? reminder.prospectRef?.chatId ?? ''), seq: 0 },
     });
     rung += 1;
   }

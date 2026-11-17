@@ -27,6 +27,12 @@
  * channel (`client_<id>`) and answers live/archived_since; POST
  * /api/bots/messages takes `client` (with thread_of, kind and refs). GET
  * /__fake/clients lists them.
+ *
+ * Dali phase 2 (BOTS-API «Fase 2: contrato»): the prospect's PUT takes stage, service, intent, score,
+ * score_reasons, fields, missing, ready_at, kind, summary, follow_up_draft, quote and unanswered with the
+ * server's rules (absent = unchanged, null = cleared; a wrong one stays as it was and comes back in `ignored`). `/__fake/emit` sends `prospect.updated`,
+ * `prospect.follow_up.approved` and `prospect.handback` like any event, and waits 8 s for the answer of
+ * `dali.knowledge.requested` and `dali.faq.add`: `{ answer }`, or `{ outcome }` when there was none.
  */
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
@@ -38,6 +44,14 @@ const CLIENT_SERVICE_STATUSES = ['pending', 'in_progress', 'completed', 'rejecte
 const CLIENT_LIVE_DAYS = 60;
 const PROSPECT_ID = /^[A-Za-z0-9][A-Za-z0-9:_-]{0,119}$/;
 const PROSPECT_ATTENDED = ['dali', 'human'];
+const PROSPECT_STAGES = ['missing_info', 'to_quote', 'visit', 'quoted', 'negotiation', 'won', 'lost'];
+const PROSPECT_INTENTS = ['purchase', 'quote', 'information', 'other'];
+const PROSPECT_KINDS = ['company', 'person'];
+const SERVICE_KEY = /^[a-z][a-z0-9_-]{0,39}$/;
+const FIELD_KEY = /^[a-z][a-z0-9_]{0,39}$/;
+/** `dali.knowledge.requested` and `dali.faq.add` (phase 2) wait for agentes' answer like the server: 8 s. */
+const DALI_ASK_TIMEOUT_MS = 8_000;
+const DALI_SYNC_EVENTS = ['dali.knowledge.requested', 'dali.faq.add'];
 const DAY_MS = 86_400_000;
 
 const DEFAULT_CHANNELS = [
@@ -240,18 +254,58 @@ export function createFake(options = {}) {
     if (source.ad_id !== undefined && String(source.ad_id).length > 64) return 'source.ad_id va hasta 64.';
     return null;
   }
+  // Dali phase 2 (BOTS-API «Fase 2: contrato»): the same rules as the server's validateProspectInsight.
+  const isIso = (value) => typeof value === 'string' && !Number.isNaN(Date.parse(value));
+  const textUpTo = (value, max) => typeof value === 'string' && value.trim().length > 0 && value.trim().length <= max;
+  const fieldOk = (field) => Boolean(field) && FIELD_KEY.test(field.key ?? '') && textUpTo(field.label, 40) && (typeof field.value === 'number' || (typeof field.value === 'string' && field.value.trim().length <= 200));
+  const quoteOk = (quote) => Boolean(quote) && textUpTo(quote.code, 40) && (quote.amount == null || (typeof quote.amount === 'number' && quote.amount >= 0)) && (quote.currency == null || /^[A-Z]{3}$/.test(quote.currency)) && (quote.sent_at == null || isIso(quote.sent_at)) && (quote.url == null || /^https:\/\/\S{1,492}$/.test(quote.url));
+  const INSIGHT_RULES = {
+    stage: (value) => PROSPECT_STAGES.includes(value) || `stage va como ${PROSPECT_STAGES.join(', ')}.`,
+    service: (value) => (Boolean(value) && SERVICE_KEY.test(value.key ?? '') && textUpTo(value.name, 60)) || 'service va como { key en minúsculas, name hasta 60 }.',
+    intent: (value) => PROSPECT_INTENTS.includes(value) || `intent va como ${PROSPECT_INTENTS.join(', ')}.`,
+    score: (value) => (typeof value === 'number' && value >= 0 && value <= 100) || 'score va como número de 0 a 100.',
+    score_reasons: (value) => (Array.isArray(value) && value.length <= 6 && value.every((reason) => textUpTo(reason, 80))) || 'score_reasons va como lista de hasta 6 textos de hasta 80.',
+    fields: (value) => (Array.isArray(value) && value.length <= 20 && value.every(fieldOk) && new Set(value.map((field) => field.key)).size === value.length) || 'fields va como lista de hasta 20 { key, label hasta 40, value hasta 200 }, sin claves repetidas.',
+    missing: (value) => (Array.isArray(value) && value.length <= 20 && value.every((key) => typeof key === 'string' && FIELD_KEY.test(key))) || 'missing va como lista de hasta 20 claves de fields.',
+    ready_at: (value) => isIso(value) || 'ready_at va como fecha ISO.',
+    kind: (value) => PROSPECT_KINDS.includes(value) || 'kind va como company o person.',
+    summary: (value) => textUpTo(value, 280) || 'summary va como texto, hasta 280.',
+    follow_up_draft: (value) => (Boolean(value) && textUpTo(value.text, 1000) && (value.for_at == null || isIso(value.for_at))) || 'follow_up_draft va como { text hasta 1000, for_at ISO }.',
+    quote: (value) => quoteOk(value) || 'quote va como { code hasta 40, amount de 0 en adelante, currency de 3 letras, sent_at ISO, url https }.',
+    unanswered: (value) => (Array.isArray(value) && value.length <= 10 && value.every((one) => Boolean(one) && textUpTo(one.question, 200) && isIso(one.at))) || 'unanswered va como lista de hasta 10 { question hasta 200, at ISO }.',
+  };
+  /** A wrong phase 2 field never blocks the PUT: it stays as it was and comes back in `ignored`. */
+  function insightProblems(body) {
+    return Object.entries(INSIGHT_RULES).flatMap(([field, rule]) => {
+      if (body[field] === undefined || body[field] === null) return [];
+      const verdict = rule(body[field]);
+      return verdict === true ? [] : [{ field, message: verdict }];
+    });
+  }
+  /** Phase 2 fields that do not come (or come wrong) stay; `null` clears them. */
+  function mergedInsight(previous, body, ignored) {
+    const wrong = new Set(ignored.map((one) => one.field));
+    const merged = Object.fromEntries(Object.entries(previous ?? {}).filter(([key]) => key in INSIGHT_RULES));
+    for (const key of Object.keys(INSIGHT_RULES)) {
+      if (body[key] === null) delete merged[key];
+      else if (body[key] !== undefined && !wrong.has(key)) merged[key] = body[key];
+    }
+    return merged;
+  }
   function putProspect(prospectId, body) {
     if (!PROSPECT_ID.test(prospectId)) return [400, { error: 'invalid_request', message: 'El id del prospecto lleva letras, números, :, _ o -, hasta 120.' }];
     const problem = prospectProblem(body);
     if (problem) return [400, { error: 'invalid_request', message: problem }];
+    const ignored = insightProblems(body);
     const phone = prospectPhone(body.phone);
     const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : `Prospecto · ${shownPhone(phone)}`;
     const known = state.prospects.get(prospectId);
     const channel = known?.channel ?? { id: `prospect_${state.prospects.size + 1}`, name };
     channel.name = name;
     const attendedBy = body.attended_by ?? known?.state.attended_by ?? 'dali';
-    state.prospects.set(prospectId, { channel, state: { ...body, phone, attended_by: attendedBy } });
-    return [known ? 200 : 201, { prospect: { id: prospectId, channel, attended_by: attendedBy } }];
+    const phase1 = Object.fromEntries(Object.entries(body).filter(([key]) => !(key in INSIGHT_RULES)));
+    state.prospects.set(prospectId, { channel, state: { ...phase1, phone, attended_by: attendedBy, ...mergedInsight(known?.state, body, ignored) } });
+    return [known ? 200 : 201, { prospect: { id: prospectId, channel, attended_by: attendedBy }, ...(ignored.length ? { ignored } : {}) }];
   }
 
   // A channel per client (pending 21, §157): live with any movement (last_activity_at) in the last 60 days.
@@ -386,13 +440,13 @@ export function createFake(options = {}) {
   };
 
   /** One signed event whose answer is read from the body within 3 s, as the server does with commands. */
-  async function callForAnswer(type, data) {
+  async function callForAnswer(type, data, timeoutMs = ANSWER_TIMEOUT_MS) {
     const installation = state.installation;
     const id = randomUUID();
     const raw = JSON.stringify({ event_id: id, type, installation_id: installation.id, space_id: installation.spaceId, created_at: new Date().toISOString(), data });
     const timestamp = Date.now();
     try {
-      const response = await fetch(config.webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Lilachat-Event': type, 'X-Lilachat-Delivery': id, 'X-Lilachat-Installation': installation.id, 'X-Lilachat-Timestamp': String(timestamp), 'X-Lilachat-Signature': sign(installation.signingSecret, timestamp, raw) }, body: raw, signal: AbortSignal.timeout(ANSWER_TIMEOUT_MS) });
+      const response = await fetch(config.webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Lilachat-Event': type, 'X-Lilachat-Delivery': id, 'X-Lilachat-Installation': installation.id, 'X-Lilachat-Timestamp': String(timestamp), 'X-Lilachat-Signature': sign(installation.signingSecret, timestamp, raw) }, body: raw, signal: AbortSignal.timeout(timeoutMs) });
       const text = await response.text();
       if (!response.ok) return { outcome: 'failed' };
       if (!text.trim()) return { outcome: 'pending' };
@@ -515,6 +569,11 @@ export function createFake(options = {}) {
     if (req.method === 'POST' && path === '/__fake/reset') return reset(), [200, { ok: true }];
     if (req.method === 'POST' && path === '/__fake/emit') {
       const body = await readBody(req);
+      if (DALI_SYNC_EVENTS.includes(body.type)) {
+        if (!state.installation) return [409, { error: 'not_installed', message: 'Instala la app primero.' }];
+        const reply = await callForAnswer(body.type, body.data ?? {}, DALI_ASK_TIMEOUT_MS);
+        return [200, reply.answer === undefined ? { outcome: reply.outcome } : { answer: reply.answer }];
+      }
       if (body.type === 'shortcut.invoked' || body.type === 'form.submitted') {
         if (!state.installation) return [409, { error: 'not_installed', message: 'Instala la app primero.' }];
         return body.type === 'shortcut.invoked' ? invokeShortcut(body.data ?? {}) : submitForm(body.data ?? {}, `http://${req.headers.host}`);

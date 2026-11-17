@@ -150,7 +150,7 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
   router.put('/prospects/:prospectId', asyncRoute(async (req, res) => {
     const outcome = await upsertProspectChannel(req.bot!, String(req.params.prospectId), req.body);
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
-    res.status(outcome.status).json({ prospect: outcome.prospect });
+    res.status(outcome.status).json({ prospect: outcome.prospect, ...(outcome.ignored ? { ignored: outcome.ignored } : {}) });
   }));
   router.put('/clients/:clientId', asyncRoute(async (req, res) => {
     const outcome = await upsertClientChannel(req.bot!, String(req.params.clientId), req.body);

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Calendar, Check, FileText, MapPin, MessageSquare, Phone, type LucideIcon } from 'lucide-react';
-import { NEXT_ACTION_KINDS, NEXT_ACTION_LABEL, followUpSequenceOf, nextActionWhenOf, prospectNameOf, suggestNextAction, whenOptions, type NextActionKind, type ProspectView } from '@lilachat/shared';
+import { NEXT_ACTION_KINDS, NEXT_ACTION_LABEL, NEXT_ACTION_NOTE_LIMIT, followUpSequenceOf, nextActionWhenOf, prospectNameOf, suggestNextAction, whenOptions, type NextActionKind, type ProspectView } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { Kicker, TextButton } from './daliParts';
 import { sendChange, type ChangeOutcome } from './sellerDesk';
@@ -78,7 +78,7 @@ export function NextActionDialog(props: Props) {
           </span>
           <input data-testid="recordatorio-proxima" type="checkbox" checked={remind} onChange={(event) => setRemind(event.target.checked)} className="h-5 w-5 accent-[rgb(var(--c-primary))]" />
         </label>
-        <textarea data-testid="nota-proxima" value={note} maxLength={200} onChange={(event) => setNote(event.target.value)} placeholder="Nota para ti (opcional)" rows={2} className="w-full resize-none rounded-xl border border-outline/30 bg-surface px-3 py-2 text-sm" />
+        <textarea data-testid="nota-proxima" value={note} maxLength={NEXT_ACTION_NOTE_LIMIT} onChange={(event) => setNote(event.target.value)} placeholder="Nota para ti (opcional)" rows={2} className="w-full resize-none rounded-xl border border-outline/30 bg-surface px-3 py-2 text-sm" />
         {steps ? <Sequence steps={steps} /> : null}
       </div>
     </Overlay>

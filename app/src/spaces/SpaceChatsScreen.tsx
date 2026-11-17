@@ -1,8 +1,7 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { BackHandler, Pressable, RefreshControl, ScrollView, Text, TextInput, View } from 'react-native';
 import { Archive, AtSign, ChevronDown, ChevronRight, Hash, Inbox, Link2, Lock, MessagesSquare, Plus, Search, UserPlus } from 'lucide-react-native';
-import { anyChatUnread, aplicarMensajeALista, canManageMembers, clientChatIds, formatChatTimestamp, marcarLeido, nombreDeContacto, spaceListReady, spaceSections, splitArchived, splitClients, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
-import type { MensajeEnVivo as LiveMessage } from '@lilachat/shared';
+import { anyChatUnread, canManageMembers, clientChatIds, formatChatTimestamp, nombreDeContacto, spaceListReady, spaceSections, splitArchived, splitClients, type ActivityType, type ClientWorkspace, type SpaceSectionKey } from '@lilachat/shared';
 import type { ChatSummary } from '../api/client';
 import { BarraDeSeleccionDeChats } from '../chat/BarraDeSeleccionDeChats';
 import { FilaDeChat, PendingMarker } from '../chat/FilaDeChat';
@@ -10,12 +9,11 @@ import { ReadAllRow } from '../chat/ReadAllRow';
 import { useAccionesDeSeleccion } from '../chat/useAccionesDeSeleccion';
 import { useChatSelection } from '../chat/useChatSelection';
 import { openChatNow } from '../chat/openChatNow';
-import { getSocket } from '../chat/socketClient';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { useAlVolver } from '../ui/useAlVolver';
 import { useColores } from '../ui/tema';
-import { fetchSpaceChats, isSpaceChat, rememberMyRead, spaceChatsCache, useCached } from './spaceCache';
-import { chatsEnMemoria } from '../chat/chatsGuardados';
+import { fetchSpaceChats, spaceChatsCache, useCached } from './spaceCache';
+import { useSpaceChatsLive } from './useSpaceChatsLive';
 import { AppsSection } from './apps/AppsSection';
 import type { SpaceApps } from './apps/useSpaceApps';
 import { useSpaceClients } from './clients/useSpaceClients';
@@ -26,11 +24,7 @@ import { askMuteDuration } from '../chat/askMuteDuration';
 import { useRenderCost } from '../diagnostico/frameMonitor';
 import { useDisposicion } from '../ui/useDisposicion';
 
-/** Several messages in a row reload the list once. */
-const RELOAD_DELAY_MS = 600;
 const NO_ACTIVITY = { mentions: 0, threads: 0 };
-/** A chat of the personal list: its events are not this space's. */
-const isInMyChatList = (chatId: string) => Boolean(chatsEnMemoria()?.some((chat) => chat.id === chatId));
 
 /**
  * The chats of a company space by sections, like Slack (E1/E2; design
@@ -48,7 +42,6 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
   const [refreshing, setRefreshing] = useState(false);
   const [query, setQuery] = useState('');
   const [folded, setFolded] = useState<ReadonlySet<SpaceSectionKey>>(new Set());
-  const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // The space's list (and its chips) paints at once from what was seen and refreshes behind (22/10).
   const key = `${space.id}:chats`;
   // Covered by an open chat (not beside it, on a tablet): its messages show here on return (plan 1, F4).
@@ -69,52 +62,7 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
     if (chats) onChats?.(chats);
   }, [chats, onChats]);
   useAlVolver(props.active, () => refresh());
-  /**
-   * Socket events applied in place (22/10): a message in one of these chats
-   * changes its row, reading one lowers its count; only an unknown chat, a
-   * changed one or a possible mention or thread asks the server, once per burst.
-   * Before, ANY message, also of personal chats, reloaded the list and the chips.
-   */
-  useEffect(() => {
-    const socket = getSocket();
-    const reloadSoon = () => {
-      if (reloadTimer.current) clearTimeout(reloadTimer.current);
-      reloadTimer.current = setTimeout(() => void load(), RELOAD_DELAY_MS);
-    };
-    const inList = (chatId?: string) => Boolean(chatId && spaceChatsCache.get(key).value?.chats.some((chat) => chat.id === chatId));
-    const patchChats = (change: (current: ChatSummary[]) => ChatSummary[] | null) =>
-      spaceChatsCache.patch(key, (current) => {
-        const next = change(current.chats);
-        return next && next !== current.chats ? { ...current, chats: next } : current;
-      });
-    const onMessage = (message: LiveMessage) => {
-      if (!inList(message.chatId)) {
-        // A new chat of this space (not a personal one, not another space's) is asked for.
-        if (!isSpaceChat(message.chatId) && !isInMyChatList(message.chatId)) reloadSoon();
-        return;
-      }
-      patchChats((current) => aplicarMensajeALista(current, message, myUserId, openChatNow()));
-      if (message.hiloDe !== undefined || message.body?.includes('@')) reloadSoon();
-    };
-    const onChanged = (frame: { chatId?: string }) => {
-      if (!frame.chatId || inList(frame.chatId) || !isInMyChatList(frame.chatId)) reloadSoon();
-    };
-    // I read one of these chats (here or on another device): its count goes down.
-    const onReceipt = (frame: { chatId?: string; userId?: string; readSeq?: number }) => {
-      if (frame.userId !== myUserId || !frame.chatId) return;
-      rememberMyRead(frame.chatId, frame.readSeq);
-      if (inList(frame.chatId)) patchChats((current) => marcarLeido(current, frame.chatId!));
-    };
-    socket?.on('msg.new', onMessage);
-    socket?.on('chat.changed', onChanged);
-    socket?.on('receipt', onReceipt);
-    return () => {
-      socket?.off('msg.new', onMessage);
-      socket?.off('chat.changed', onChanged);
-      socket?.off('receipt', onReceipt);
-      if (reloadTimer.current) clearTimeout(reloadTimer.current);
-    };
-  }, [key, load, myUserId]);
+  useSpaceChatsLive(key, myUserId, load);
 
   // Holding a group or a 1:1 selects it, like the personal list: archive, pin, mute, read, leave.
   const selection = useChatSelection(chats);

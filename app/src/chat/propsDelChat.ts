@@ -40,5 +40,7 @@ export type PropsDelChat = {
   workspaceId?: string;
   /** A 1:1 with an app (design e-26): the head is the app's. */
   appId?: string;
+  /** A Dali prospect's channel (BOTS-API fase 2, dl-02): its own header, the strip and the ficha. */
+  prospect?: true;
   onBack: () => void;
 };

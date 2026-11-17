@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { ArrowLeft, Building2, CalendarClock, ChevronDown, Link, Lock, MoreVertical, NotebookPen, Phone, Video } from 'lucide-react-native';
 import { CALL_MENU, GROUP_CALL_MENU } from './chatHeaderMenu';
@@ -17,6 +17,11 @@ const CHAT_MENU_RIGHT = 8;
 const CALL_ICONS = { voice: Phone, video: Video, schedule: CalendarClock, link: Link } as const;
 const CALL_OPTIONS = CALL_MENU.map((option) => ({ ...option, Icon: CALL_ICONS[option.id] }));
 const GROUP_CALL_OPTIONS = GROUP_CALL_MENU.map((option) => ({ ...option, Icon: CALL_ICONS[option.id] }));
+/** A presence line may shrink this much before it is cut (FL13d). */
+const MIN_LINE_SCALE = 0.85;
+
+/** A Dali prospect's conversation (dl-02): its circle, «phone · origin» and «Llamar · Ficha» (`useProspectDoor`). */
+export type ProspectHeader = { avatar: ReactNode; subtitle: ReactNode; actions: ReactNode };
 
 /**
  * La cabecera del chat (salió de `ChatScreen`, que pasaba de 900 líneas): la
@@ -48,13 +53,15 @@ export function EncabezadoDelChat(props: {
   app?: { appId: string; spaceId?: string; jwt: string };
   /** A client's channel (pending 21, design f-03): the building and its name without «#». */
   cliente?: boolean;
+  /** A Dali prospect's channel (dl-02): its pieces replace the avatar, the line, the calls and the ⋮; no «#» either. */
+  prospectHeader?: ProspectHeader;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
   const [openMenu, setOpenMenu] = useState<'calls' | 'chat' | null>(null);
   const directoryApp = useAppOfChat(props.app ?? { jwt: '' });
   const { foto: fotoVisible } = props;
-  const shownName = props.cliente ? props.nombre.replace(/^# /, '') : props.nombre;
+  const shownName = props.cliente || props.prospectHeader ? props.nombre.replace(/^# /, '') : props.nombre;
   if (directoryApp) return <AppChatHeader app={directoryApp} spaceId={props.app?.spaceId} jwt={props.app?.jwt} connected={props.conectado} menu={props.menu} onBack={props.onVolver} />;
   // Como el diseño: FLECHA (no la palabra «Atrás»), avatar del chat junto al
   // nombre, y el menú al final.
@@ -73,12 +80,14 @@ export function EncabezadoDelChat(props: {
         onPress={props.onAbrirDetalle}
         className="min-w-0 flex-1 flex-row items-center gap-2"
       >
+      {props.prospectHeader ? props.prospectHeader.avatar : (
       <Avatar
         nombre={shownName}
         foto={fotoVisible}
         tamano={AVATAR_DE_CABECERA}
         icono={props.borrador ? <NotebookPen size={20} color={colores.primary} /> : props.cliente ? <Building2 size={20} color={colores['on-surface-variant']} /> : undefined}
       />
+      )}
       <View className="min-w-0 flex-1">
         <View className="flex-row items-center gap-1.5">
           {/* El candado va PEGADO al nombre y no en una banda aparte: es una
@@ -89,28 +98,11 @@ export function EncabezadoDelChat(props: {
             {shownName}
           </Text>
         </View>
-        {/* El estado de conexión se DICE: un mensaje que no sale sin
-            explicación es lo que hace desconfiar de una app de mensajería. */}
-        {!props.conectado ? (
-          // One line, like WhatsApp (José, 21/10): what does not go out yet keeps its clock in the bubble.
-          <Text className="text-xs text-on-surface-variant" testID="estado-conexion" numberOfLines={1}>
-            Conectando…
-          </Text>
-        ) : props.subtitulo ? (
-          <Text
-            testID="estado-presencia"
-            className={`text-xs ${props.otroEscribe ? 'text-primary' : 'text-on-surface-variant'}`}
-            numberOfLines={1}
-            // Con video, llamada y menú el espacio es poco: antes de cortar la
-            // «últ. vez» achica la letra un poco (FL13d). A group's line is short now (a few names or a count) and never shrinks.
-            adjustsFontSizeToFit={!props.grupo}
-            minimumFontScale={0.85}
-          >
-            {props.subtitulo}
-          </Text>
-        ) : null}
+        <HeaderSubtitle connected={props.conectado} line={props.subtitulo} typing={props.otroEscribe} group={props.grupo} own={props.prospectHeader?.subtitle} />
       </View>
       </Pressable>
+      {props.prospectHeader ? props.prospectHeader.actions : (
+      <>
       {/* Calls like WhatsApp (José, 21/10): the camera with its arrow opens voice or video; in a group, the group call (pending 56). */}
       {props.puedeLlamar ? (
         <Pressable testID="btn-llamadas" accessibilityLabel="Llamar" onPress={() => setOpenMenu('calls')} className="h-11 flex-row items-center justify-center gap-0.5 px-1.5">
@@ -130,8 +122,41 @@ export function EncabezadoDelChat(props: {
       >
         <MoreVertical size={20} color={colores["on-surface-variant"]} />
       </Pressable>
+      </>
+      )}
       <HeaderDropdown testID="menu-llamadas" visible={openMenu === 'calls'} options={props.grupo ? GROUP_CALL_OPTIONS : CALL_OPTIONS} right={CALL_MENU_RIGHT} onSelect={(id) => (id === 'schedule' ? props.onProgramarLlamada?.() : id === 'link' ? props.onEnlaceDeLlamada?.() : props.onLlamar(id === 'video'))} onClose={() => setOpenMenu(null)} />
       <HeaderDropdown testID="menu-del-chat" visible={openMenu === 'chat'} options={props.menu.options} right={CHAT_MENU_RIGHT} onSelect={props.menu.select} onClose={() => setOpenMenu(null)} />
     </View>
+  );
+}
+
+/**
+ * The line under the name. The connection state is SAID first: a message that does not go out without an
+ * explanation is what makes people distrust a messaging app. Then a prospect's own line (unless someone types),
+ * or the presence.
+ */
+function HeaderSubtitle(props: { connected: boolean; line: string; typing: boolean; group?: boolean; own?: ReactNode }) {
+  if (!props.connected) {
+    // One line, like WhatsApp (José, 21/10): what does not go out yet keeps its clock in the bubble.
+    return (
+      <Text className="text-xs text-on-surface-variant" testID="estado-conexion" numberOfLines={1}>
+        Conectando…
+      </Text>
+    );
+  }
+  if (props.own && !props.typing) return <View testID="estado-prospecto" className="flex-row items-center gap-1.5">{props.own}</View>;
+  if (!props.line) return null;
+  return (
+    <Text
+      testID="estado-presencia"
+      className={`text-xs ${props.typing ? 'text-primary' : 'text-on-surface-variant'}`}
+      numberOfLines={1}
+      // With video, call and menu the room is short: before cutting «últ. vez» the text shrinks a little (FL13d).
+      // A group's line is short now (a few names or a count) and never shrinks.
+      adjustsFontSizeToFit={!props.group}
+      minimumFontScale={MIN_LINE_SCALE}
+    >
+      {props.line}
+    </Text>
   );
 }

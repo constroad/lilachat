@@ -223,6 +223,8 @@ export type ChatSummary = {
   workspaceId?: string;
   /** A 1:1 with an app's bot (design e-23): it goes to «Apps», not to the direct messages. */
   appId?: string;
+  /** A Dali prospect's channel (BOTS-API fase 2): the Dali inbox lists it, not the team's chats. */
+  prospect?: true;
   channel?: { visibility: 'public' | 'private'; /** José 11/11: shared with other spaces. */ shared?: boolean };
   /** José 11/11: a channel of another space shared into this one; it lists under that space's name. */
   sharedFrom?: { workspaceId: string; name: string; logoUrl?: string };

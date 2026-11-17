@@ -30,6 +30,7 @@ import { ChatDetailScreen } from './ChatDetailScreen';
 import { useChat } from './useChat';
 import { GroupCallStrip, useLlamadas } from '../calls/ProveedorDeLlamadas';
 import { useVisitDoor } from '../spaces/visits/useVisitDoor';
+import { useProspectDoor } from '../spaces/dali/useProspectDoor';
 import { useArchivosDelChat } from './useArchivosDelChat';
 import { useLimpiarAvisoDelChat } from './useLimpiarAvisoDelChat';
 import { SeleccionDeMensaje } from './SeleccionDeMensaje';
@@ -101,7 +102,7 @@ export function ChatScreen({
   irASeq, openThread, highlightReply, requestedAt,
   encrypted,
   otherUserId,
-  esBorrador = false, workspaceId, appId,
+  esBorrador = false, workspaceId, appId, prospect,
   onBack,
 }: PropsDelChat) {
   useRenderCost('chat');
@@ -228,6 +229,7 @@ export function ChatScreen({
   const channelWork = useChannelWork({ enabled: Boolean(workspaceId && esGrupoChat && !appId && !encrypted), jwt: credential.jwt, chatId, channelName: nombreVisible, yo: credential.userId, names: nombresDelGrupo, apps: grupo.appIds, spaceId: workspaceId, onOpenRecord: (seq) => saltarA(seq, 'Ese registro está más arriba: sube para cargarlo.'), actions: commands.buttons, runAction: commands.appAnswers.runAction });
   // José 13/11: the technical visit, from its channel or the 1:1 with the app (off until he turns it on).
   const visitDoor = useVisitDoor({ jwt: credential.jwt, spaceId: workspaceId, chatId });
+  const prospectDoor = useProspectDoor({ jwt: credential.jwt, spaceId: workspaceId, chatId, me: credential.userId, name: nombreVisible, enabled: Boolean(prospect) }); // A Dali prospect's channel (dl-02).
   const accionesDeTarjeta = useMemo(() => ({ editarRecordatorio: puedeEditarRecordatorios ? (recordatorio: AgendaReminder) => setCreando({ recordatorio }) : undefined, callBack: callBack.actions, runLine, openOrderCard: channelWork.openOrderCard, openVisit: visitDoor.openVisit }), [puedeEditarRecordatorios, callBack.actions, runLine, channelWork.openOrderCard, visitDoor.openVisit]);
   const subtitulo = useChatSubtitle({ fueraDelGrupo, esBorrador, esGrupo: esGrupoChat, workspaceId, escriben: [...escribiendo], otroEnLinea, otroEstado: otherStatus, ultimaVez, nombres: nombresDelGrupo, totalMembers: grupo.members.length, yo: credential.userId });
   const fotoVisible = infoPropia.avatarUrl ?? chatAvatarUrl;
@@ -436,11 +438,11 @@ export function ChatScreen({
           onAbrirDetalle={() => setVerDetalle(true)}
           onLlamar={(conVideo) => (esGrupoChat ? callGroup(chatId, nombreVisible, conVideo) : llamar(chatId, chatName, conVideo))}
           onProgramarLlamada={() => setCreando('scheduled-call')} onEnlaceDeLlamada={() => offerCallLink({ jwt: credential.jwt, chatId, chatName: nombreVisible })}
-          menu={headerMenu}
+          menu={headerMenu} prospectHeader={prospectDoor.header}
         />
       )}
 
-      {fijar.franja}{esGrupoChat ? <GroupCallStrip chatId={chatId} chatName={nombreVisible} me={credential.userId} /> : null}{channelWork.tabs}{visitDoor.strip}<ContactNoteBanner chatId={chatId} jwt={credential.jwt} note={grupo.contactNote} />
+      {prospectDoor.strip}{fijar.franja}{esGrupoChat ? <GroupCallStrip chatId={chatId} chatName={nombreVisible} me={credential.userId} /> : null}{channelWork.tabs}{visitDoor.strip}<ContactNoteBanner chatId={chatId} jwt={credential.jwt} note={grupo.contactNote} />
       </View>
       <ChatKeyboardArea style={{ flex: 1, zIndex: 1 }}>
       {fijar.hoja}{channelWork.panel}
@@ -458,13 +460,11 @@ export function ChatScreen({
         onProgramar={programados.programar}
         onCerrar={programados.cerrar}
       />
-
       {programados.aviso ? (
         <View className="mx-4 mb-1 rounded-lg bg-primary/[0.10] px-3 py-2" testID="aviso-programado">
           <Text className="text-[12px] text-primary">🗓️ Programado. {programados.aviso}.</Text>
         </View>
       ) : null}
-
       {falloCifrado ? (
         <Text className="px-4 pb-1 text-sm text-error" testID="error-cifrado">
           No se pudo cifrar el mensaje. No se envió.
@@ -506,7 +506,7 @@ export function ChatScreen({
       <ProgramadosDelChat pendientes={programados.pendientes} onCancelar={programados.cancelar} />
       {esBorrador ? null : <ChatQueue jwt={credential.jwt} chatId={chatId} onOpen={(seq) => saltarA(seq, 'Esa tarjeta está más arriba: sube para cargarla.')} />}
 
-      {/* La barra de escribir: su composición (la píldora con emoji, clip y cámara; UN botón afuera) se explica en `Composer`. */}{channelWork.note}
+      {/* La barra de escribir: su composición (la píldora con emoji, clip y cámara; UN botón afuera) se explica en `Composer`. */}{channelWork.note}{prospectDoor.composerNote}
       {fueraDelGrupo || grupo.sendLock(credential.userId) ? (
         <ComposerLocked bottomInset={margenes.pie} text={fueraDelGrupo ? null : grupo.sendLock(credential.userId)} />
       ) : (
@@ -606,7 +606,7 @@ export function ChatScreen({
       />
       ) : null}
     </ChatKeyboardArea>
-    {visitDoor.screen}
+    {visitDoor.screen}{prospectDoor.screen}
     </View></OverlayHost></SpaceEmojisProvider>
   );
 }

@@ -6,10 +6,10 @@ import { Text } from 'react-native';
  * configuración del chat. `sangrado` es para las pantallas cuyo contenido no
  * trae su propio margen lateral.
  */
-export function Rotulo({ children, sangrado = false }: { children: string; sangrado?: boolean }) {
+export function Rotulo({ children, sangrado = false, tono = 'normal' }: { children: string; sangrado?: boolean; /** `error`: a section of overdue things («ATRASADOS», Dali dl-05). */ tono?: 'normal' | 'error' }) {
   return (
     <Text
-      className={`mb-2 mt-6 ${sangrado ? 'px-4' : ''} text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant`}
+      className={`mb-2 mt-6 ${sangrado ? 'px-4' : ''} text-[11px] font-semibold uppercase tracking-wide ${tono === 'error' ? 'text-error' : 'text-on-surface-variant'}`}
     >
       {children}
     </Text>

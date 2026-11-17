@@ -1888,7 +1888,7 @@ Dali sabe» como botón de la cabecera. La pestaña elegida sobrevive a ir a una
 | `FollowUpsSheet.tsx` | Seguimientos de hoy (dl-05): atrasados y para hoy, el borrador de Dali con Enviar · Editar · llamar · Agendar |
 | `DaliFunnel.tsx` | Embudo (dl-08): cuatro cifras, tablero de columnas (baldosas 2×N en el teléfono) y «Sin próxima acción · Agendar» |
 | `DaliPanel.tsx` | Panel (dl-04): cifras, por origen, por anuncio, intención, vendedores y por qué se pierden. En el teléfono las tablas van con las columnas que caben |
-| `DaliReview.tsx` + `TeachDaliDialog.tsx` | Revisión de la semana (dl-10) y «Enseñarle a Dali» (dl-11) |
+| `DaliReview.tsx` + `TeachDaliDialog.tsx` | Revisión de la semana (dl-10) y «Enseñarle a Dali» (dl-13) |
 | `DaliKnowledgeSheet.tsx` | Lo que Dali sabe (dl-12), solo lectura y agrupado POR SERVICIO (José 16/11); se edita en el panel de Dali |
 | `useProspects.ts`, `sellerDesk.ts`, `prospectEcho.ts`, `prospectsApi.ts` | Lectura, cambios del vendedor (409 → «Alguien lo cambió antes que tú…» y relee) y el eco dentro de la página |
 
@@ -1925,7 +1925,60 @@ seguimiento editado y enviado (`prospect.follow_up.approved` con el texto editad
 conversación, Panel, Revisión, Lo que Dali sabe y Enseñarle a Dali (`dali.faq.add` con la clave de idempotencia).
 Tests: `web/src/spaces/dali/{DaliInbox,ProspectChat,DaliPanel}.test.tsx`.
 
-**Sin verificar**: «Lo que Dali sabe» cuando agentes no responde (502), la tarjeta de la revisión que Dali publica
-el domingo, y todo el APK. **Producción**: la base corre con `autoIndex: false`, así que los índices de
-`prospectchannels` (`{ workspaceId, lastActivityAt }` y `{ chatId }`) no se crean solos. Crearlos es una escritura en
-producción: lo decide José.
+**Sin verificar**: «Lo que Dali sabe» cuando agentes no responde (502) y la tarjeta de la revisión que Dali publica
+el domingo. El APK: ver la sección siguiente. **Producción**: la base corre con `autoIndex: false`, así que los
+índices de `prospectchannels` (`{ workspaceId, lastActivityAt }` y `{ chatId }`) no se crean solos. Crearlos es una
+escritura en producción: lo decide José.
+
+### Hecho (17/11, fase 2: pantallas del APK)
+
+Prototipo v3 (`dl-01` a `dl-13`) en el APK, con cada captura abierta al escribir su pantalla. Todo en
+`app/src/spaces/dali/`. Lo que decide cada pantalla salió de la web a `shared/`, con sus tests, y la web y el APK
+leen lo mismo: `prospectInboxRows` (filas y secciones de la bandeja), `prospectFollowUpCards` (seguimientos),
+`prospectFunnelView` (embudo), `prospectFigures` (cifras del panel), `prospectSheet` (franja, ficha, formularios y
+límites de las notas, tomados del validador del server), `daliTeach` (Enseñarle a Dali) y `prospectChange` (el 409 →
+«Alguien lo cambió antes que tú…»).
+
+**Un espacio de Dali** conserva la cabecera y la barra de abajo del shell: la pestaña Chats pasa a ser UNA barra,
+**Bandeja · Embudo · Panel · Revisión**, y «Lo que Dali sabe» es el libro de la cabecera. La pestaña elegida
+sobrevive a abrir una conversación y volver. Teléfono girado y tablet: la bandeja a la izquierda y la conversación al
+lado (los dos paneles del APK).
+
+| Archivo | Qué es |
+| --- | --- |
+| `DaliSpace.tsx` | La barra del espacio, las pestañas y las pantallas completas con ← (ficha, seguimientos, lo que Dali sabe). Si la primera lectura falla, Embudo, Panel y Revisión dicen «No se pudieron cargar» con «Reintentar» |
+| `DaliInbox.tsx` + `ProspectRow.tsx` | Bandeja (dl-01 v3): Míos · Sin asignar · Todos, filtro por servicio, «Seguimientos de hoy», las tres secciones, «Solo consultas» y «Chats del equipo» plegados al pie |
+| `useProspectDoor.tsx` | La conversación de un prospecto (dl-02): cabecera (círculo, «teléfono · origen», Llamar con el marcador y Ficha), franja (quién atiende, Dali en pausa, Tomar, Devolver a Dali) y «Se envía al cliente por WhatsApp» sobre el compositor. `EncabezadoDelChat` recibe esas piezas (`prospectHeader`) |
+| `ProspectSheetScreen.tsx` + `prospectSheetBlocks.tsx` | La ficha (dl-03) a pantalla completa, con Tomar · Reasignar · Dejarlo sin asignar · Devolver a Dali; en el teléfono «Marcar resultado» vive acá |
+| `NextActionSheet.tsx` · `ResultSheet.tsx` | Próxima acción (dl-09) y resultado (dl-06, dl-07) en hojas de abajo |
+| `FollowUpsScreen.tsx` | Seguimientos de hoy (dl-05): atrasados en rojo y para hoy, el borrador de Dali con Enviar · Editar · llamar · Agendar |
+| `DaliFunnel.tsx` · `DaliPanel.tsx` | Embudo (dl-08) y Panel (dl-04) |
+| `DaliReview.tsx` + `TeachDaliSheet.tsx` | Revisión de la semana (dl-10) y «Enseñarle a Dali» (dl-13) |
+| `DaliKnowledgeScreen.tsx` | Lo que Dali sabe (dl-12), solo lectura y por servicio; «Editar ↗» abre el panel de Dali |
+| `useProspects.ts`, `sellerDesk.ts`, `prospectEcho.ts`, `prospectsApi.ts`, `daliParts.tsx` | Lectura, cambios del vendedor, el eco dentro de la app y las piezas comunes (pastillas, esqueleto, vacío, botones) |
+
+**Sin polling**, como la web: el APK escucha `workspace.prospects.changed` en el socket de la sesión y relee. Los
+chats del espacio usan el mismo caché y los mismos eventos que la lista de un espacio común (`useSpaceChatsLive`,
+compartido con `SpaceChatsScreen`). Las etiquetas «hace 6 min» avanzan con un render por minuto, solo con el espacio
+en pantalla.
+
+**Diferencias con la captura y con la web, a propósito**: el segmentado es el de la app (tonal); los círculos son el
+`Avatar` de la app; el contador de «Enseñarle a Dali» va contra 1000, el límite del server (la captura dice 500). En un renglón angosto
+(la conversación al lado de la lista en una tablet, menos de 150 dp) la pastilla del origen se va y queda el número
+entero: «+51 …» no dice nada.
+
+**Pendiente de diseño, igual en web y APK**: el embudo en el teléfono repite lo mismo dos veces (las cuatro cifras
+y las baldosas por etapa dicen «3 Falta información» y «2 Por cotizar»). Las baldosas de dl-08 v5 lo resuelven; va en
+un lote aparte para las dos plataformas.
+
+**E2E (17/11)**: `scripts/e2e-dali.ts` levanta el server con base en memoria y un stub de agentes y de
+constroad-auth en el puerto del webhook (nada en producción); el APK entra por su pantalla real de código. El flujo
+`app/.maestro/dali.yaml` (103 pasos, en verde) recorre: ingreso, bandeja (Míos, Todos, Solo consultas, chats del
+equipo), conversación con cabecera y franja, ficha, resultado perdido por precio y Reabrir, próxima acción, Embudo,
+Panel, Revisión, Lo que Dali sabe, Enseñarle a Dali, enviar un borrador de seguimiento, Tomar y Reasignar a Rosa. El
+stub recibió cada escritura: `prospect.updated` (resultado, reabrir, próxima acción, tomar, reasignar),
+`dali.knowledge.requested`, `dali.faq.add` y `prospect.follow_up.approved`. Además, a mano: teléfono girado y tablet
+(1600×2560 a 320 dpi) en dos paneles, con las capturas miradas una por una.
+
+**Sin verificar en el APK**: el teléfono real de José y agentes de verdad en Test (hace falta la app Dali con
+`prospects:write` en un espacio de Test).

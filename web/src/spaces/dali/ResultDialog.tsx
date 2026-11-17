@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import { Check, X } from 'lucide-react';
-import { LOSS_REASONS, LOSS_REASON_LABEL, moneyOf, prospectNameOf, shownProspectPhone, type LossReason, type ProspectOutcome, type ProspectView } from '@lilachat/shared';
+import { LOSS_REASONS, LOSS_REASON_LABEL, RESULT_NOTE_LIMIT, moneyOf, prospectNameOf, shownProspectPhone, type LossReason, type ProspectOutcome, type ProspectView } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { Kicker } from './daliParts';
 import { sendChange, type ChangeOutcome } from './sellerDesk';
-
-const NOTE_MAX = 500;
 
 type Props = { jwt: string; spaceId: string; prospect: ProspectView; onDone: (outcome: ChangeOutcome) => void; onClose: () => void };
 
@@ -69,7 +67,7 @@ export function ResultDialog(props: Props) {
         {outcome ? (
           <section className="space-y-2">
             <Kicker>{outcome === 'lost' && reason === 'other' ? '¿Qué pasó?' : '¿Algo más? (opcional)'}</Kicker>
-            <textarea data-testid="nota-resultado" value={note} maxLength={NOTE_MAX} rows={2} onChange={(event) => setNote(event.target.value)} placeholder="Un detalle para el equipo" className="w-full resize-none rounded-xl border border-outline/30 bg-surface px-3 py-2 text-sm" />
+            <textarea data-testid="nota-resultado" value={note} maxLength={RESULT_NOTE_LIMIT} rows={2} onChange={(event) => setNote(event.target.value)} placeholder="Un detalle para el equipo" className="w-full resize-none rounded-xl border border-outline/30 bg-surface px-3 py-2 text-sm" />
           </section>
         ) : null}
       </div>

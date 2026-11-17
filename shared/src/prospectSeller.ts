@@ -30,8 +30,8 @@ export type SellerResult = { outcome: ProspectOutcome; reason?: LossReason; note
 export type SellerChange = { version: number; assignee?: SellerAssignee; nextAction?: SellerNextAction | null; result?: SellerResult | null };
 
 const OBJECT_ID = /^[a-f0-9]{24}$/i;
-const NEXT_ACTION_NOTE_MAX = 200;
-const RESULT_NOTE_MAX = 280;
+export const NEXT_ACTION_NOTE_MAX = 200;
+export const RESULT_NOTE_MAX = 280;
 
 type Refusal = { ok: false; message: string };
 type Read<T> = { ok: true; value: T } | Refusal;

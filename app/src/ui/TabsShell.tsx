@@ -11,6 +11,7 @@ import { usePushRegistration } from '../chat/pushRegistration';
 import { iniciarServicio } from '../../modules/servicio-socket/src';
 import { ChatListScreen } from '../chat/ChatListScreen';
 import { CoverableSpaceChats } from '../spaces/SpaceChatsScreen';
+import { CoverableDaliSpace, DaliKnowledgeButton } from '../spaces/dali/DaliSpace';
 import { findSpaceChat } from '../spaces/spacesApi';
 import { refreshPendingInChats } from '../chat/pendingInChats';
 import { isSpaceChat } from '../spaces/spaceCache';
@@ -370,6 +371,7 @@ export function TabsShell({
       <AppHeader tab={tab} chatsTitle={espacios.title}>
         {tab === 'chats' ? (
           <>
+            {espacios.current?.prospects ? <DaliKnowledgeButton spaceId={espacios.current.id} /> : null}
             {/* La cámara apagada que había acá se fue (FL3): un botón que no
                 hace nada enseña que la app no responde. La cámara vive en la
                 píldora de cada chat. */}
@@ -436,7 +438,9 @@ export function TabsShell({
           {/* José, 14/11: the people invited by email never wrote their birthday. */}
           <BirthdayReminderBanner credential={credential} />
           <ErrorBoundary pantalla="lista">
-          {espacios.current ? (
+          {espacios.current?.prospects ? (
+            <CoverableDaliSpace key={espacios.current.id} covered={listCovered({ chatOpen: chatAbierto !== null, focused: enFoco, twoPanes: dosPaneles })} space={espacios.current} jwt={credential.jwt} myUserId={credential.userId} active={tab === 'chats'} openChatId={chatAbierto} onOpenChat={onOpenChat} />
+          ) : espacios.current ? (
             <CoverableSpaceChats key={espacios.current.id} covered={listCovered({ chatOpen: chatAbierto !== null, focused: enFoco, twoPanes: dosPaneles })} space={espacios.current} jwt={credential.jwt} myUserId={credential.userId} active={tab === 'chats'} openChatId={chatAbierto} onOpenChat={onOpenChat} onChannels={espacios.openChannels} onInvite={espacios.openInvite} {...espacios.listProps} />
           ) : (
           <ChatListScreen

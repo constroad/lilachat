@@ -1,0 +1,285 @@
+# The Dali space on the APK (BOTS-API fase 2, prototype v3, dl-01..dl-13), end to end.
+#
+# Before: `npx tsx scripts/e2e-dali.ts` running (from lilachat/), Metro up, the debug build installed and the
+# emulator with EXPO_PUBLIC_API_URL=http://10.0.2.2:4003. The harness lives in memory and the flow changes its data
+# (a result, a next action, a follow-up sent, a prospect taken and reassigned): every run needs a fresh harness.
+#
+#   maestro --device "$ANDROID_SERIAL" test app/.maestro/dali.yaml
+#
+# Each seller's write must then be in `<tmp>/lilachat-e2e-dali/events.json` (the stub of agentes' webhook).
+appId: com.lilachat.app
+---
+# Sign in through the real code screen: the harness stands in for constroad-auth (QA code 424242).
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: "btn-entrar-telefono"
+    timeout: 60000
+- tapOn:
+    id: "btn-entrar-telefono"
+- tapOn:
+    id: "input-telefono"
+- inputText: "900000099"
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: "Verificar Número"
+    timeout: 20000
+- inputText: "424242"
+- extendedWaitUntil:
+    visible: "Dali · Constroad QA"
+    timeout: 20000
+- tapOn: "Abrir"
+- extendedWaitUntil:
+    visible:
+      id: "espacio-dali"
+    timeout: 20000
+# The dev build's warnings toast can cover the bottom bar.
+- runFlow:
+    when:
+      visible: "Open debugger to view warnings."
+    commands:
+      - tapOn:
+          point: "96%,92%"
+- waitForAnimationToEnd:
+    timeout: 6000
+- takeScreenshot: a1-bandeja-mios
+
+# dl-01 Bandeja: Todos, its sections, «Solo consultas» and the team's chats folded at the foot.
+- tapOn:
+    id: "vista-bandeja-all"
+- assertVisible: "Ricardo Huamán"
+- takeScreenshot: b1-bandeja-todos
+- scrollUntilVisible:
+    element:
+      id: "solo-consultas"
+    timeout: 15000
+    visibilityPercentage: 40
+    centerElement: true
+- tapOn:
+    id: "solo-consultas"
+- waitForAnimationToEnd:
+    timeout: 3000
+- takeScreenshot: b2-solo-consultas
+- scrollUntilVisible:
+    element:
+      id: "chats-del-equipo"
+    timeout: 15000
+    visibilityPercentage: 40
+    centerElement: true
+- tapOn:
+    id: "chats-del-equipo"
+- waitForAnimationToEnd:
+    timeout: 3000
+- scroll
+- takeScreenshot: b3-chats-del-equipo
+
+# dl-02 Conversation: header (phone · origin, Llamar, Ficha) and the strip of who attends it.
+- scrollUntilVisible:
+    element: "Paola Ríos"
+    direction: UP
+    timeout: 15000
+    visibilityPercentage: 40
+    centerElement: true
+- tapOn: "Paola Ríos"
+- extendedWaitUntil:
+    visible:
+      id: "franja-prospecto"
+    timeout: 15000
+- assertVisible:
+    id: "franja-devolver-a-dali"
+- assertVisible:
+    id: "aviso-whatsapp"
+- takeScreenshot: c1-conversacion
+
+# dl-03 Ficha, dl-07 result (lost for price, then reopened) and dl-09 next action (visit tomorrow).
+- tapOn:
+    id: "cabecera-ficha"
+- extendedWaitUntil:
+    visible:
+      id: "ficha-prospecto"
+    timeout: 10000
+- takeScreenshot: d1-ficha
+- tapOn:
+    id: "marcar-resultado"
+- extendedWaitUntil:
+    visible:
+      id: "hoja-resultado"
+    timeout: 8000
+- tapOn:
+    id: "resultado-lost"
+- tapOn:
+    id: "motivo-price"
+- tapOn:
+    id: "guardar-resultado"
+- extendedWaitUntil:
+    visible:
+      id: "reabrir-prospecto"
+    timeout: 10000
+- takeScreenshot: e1-ficha-perdido
+- tapOn:
+    id: "reabrir-prospecto"
+- extendedWaitUntil:
+    visible:
+      id: "marcar-resultado"
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: "agendar-proxima"
+    timeout: 10000
+    visibilityPercentage: 40
+    centerElement: true
+- tapOn:
+    id: "agendar-proxima"
+- extendedWaitUntil:
+    visible:
+      id: "hoja-proxima-accion"
+    timeout: 8000
+- tapOn:
+    id: "accion-visit"
+- tapOn:
+    id: "cuando-tomorrow"
+- tapOn:
+    id: "guardar-proxima-accion"
+- extendedWaitUntil:
+    notVisible:
+      id: "hoja-proxima-accion"
+    timeout: 10000
+- takeScreenshot: f1-ficha-con-proxima
+
+# dl-08 Embudo, dl-04 Panel, dl-10 Revisión and dl-12 «Lo que Dali sabe».
+- tapOn:
+    id: "cerrar-ficha"
+- waitForAnimationToEnd:
+    timeout: 3000
+- pressKey: Back
+- extendedWaitUntil:
+    visible:
+      id: "espacio-dali"
+    timeout: 10000
+- tapOn:
+    id: "pestana-funnel"
+- extendedWaitUntil:
+    visible:
+      id: "embudo-dali"
+    timeout: 10000
+- takeScreenshot: g1-embudo
+- tapOn:
+    id: "pestana-panel"
+- extendedWaitUntil:
+    visible:
+      id: "panel-dali"
+    timeout: 10000
+- takeScreenshot: h1-panel
+- tapOn:
+    id: "pestana-review"
+- extendedWaitUntil:
+    visible:
+      id: "revision-dali"
+    timeout: 10000
+- takeScreenshot: i1-revision
+- tapOn:
+    id: "lo-que-dali-sabe"
+- extendedWaitUntil:
+    visible:
+      id: "lo-que-sabe"
+    timeout: 10000
+- assertVisible: "Mezcla asfáltica en caliente MAC-2"
+- takeScreenshot: j1-lo-que-sabe
+- tapOn:
+    id: "cerrar-lo-que-sabe"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# dl-13 Teach Dali an unanswered question from the review.
+- scrollUntilVisible:
+    element:
+      id: "revision-ensenar"
+    timeout: 15000
+    visibilityPercentage: 40
+    centerElement: true
+- tapOn:
+    id: "revision-ensenar"
+- extendedWaitUntil:
+    visible:
+      id: "hoja-ensenar-dali"
+    timeout: 8000
+- tapOn:
+    id: "respuesta-dali"
+- inputText: "No, por ahora solo atendemos Lima y alrededores."
+- tapOn:
+    id: "ensenar-a-dali"
+- extendedWaitUntil:
+    notVisible:
+      id: "hoja-ensenar-dali"
+    timeout: 10000
+
+# dl-05 Today's follow-ups: send Dali's draft.
+- tapOn:
+    id: "pestana-inbox"
+- extendedWaitUntil:
+    visible:
+      id: "seguimientos-de-hoy"
+    timeout: 10000
+- tapOn:
+    id: "seguimientos-de-hoy"
+- extendedWaitUntil:
+    visible:
+      id: "seguimientos-hoy"
+    timeout: 8000
+- takeScreenshot: l1-seguimientos
+- tapOn:
+    id: "enviar-borrador"
+    index: 0
+- waitForAnimationToEnd:
+    timeout: 4000
+- takeScreenshot: l2-borrador-enviado
+- tapOn:
+    id: "cerrar-seguimientos"
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# dl-02 «Tomar» an unassigned prospect, then reassign it to Rosa from its ficha (dl-03).
+- tapOn:
+    id: "vista-bandeja-all"
+- scrollUntilVisible:
+    element: "Ricardo Huamán"
+    direction: DOWN
+    timeout: 15000
+    visibilityPercentage: 40
+    centerElement: true
+- tapOn: "Ricardo Huamán"
+- extendedWaitUntil:
+    visible:
+      id: "franja-tomar"
+    timeout: 15000
+- tapOn:
+    id: "franja-tomar"
+- extendedWaitUntil:
+    notVisible:
+      id: "franja-tomar"
+    timeout: 10000
+- tapOn:
+    id: "cabecera-ficha"
+- extendedWaitUntil:
+    visible:
+      id: "ficha-prospecto"
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: "reasignar-prospecto"
+    timeout: 10000
+    visibilityPercentage: 40
+    centerElement: true
+- tapOn:
+    id: "reasignar-prospecto"
+- extendedWaitUntil:
+    visible:
+      id: "hoja-reasignar"
+    timeout: 8000
+- tapOn: "Rosa Quispe"
+- extendedWaitUntil:
+    notVisible:
+      id: "hoja-reasignar"
+    timeout: 10000
+- takeScreenshot: m1-reasignado

@@ -1561,7 +1561,7 @@ por ahí». Los anuncios de Constroad salen el 17/11. Decisiones (José, por age
   (la crea agentes con su manifiesto). Tocar el avatar del prospecto en la burbuja del APK abre el perfil
   del bot.
 
-### Fase 2: análisis y diseño (José 16/11, pendiente de su aprobación)
+### Fase 2: análisis y diseño (José 16/11; aprobado para implementar el mismo día, vía agentes)
 
 José pidió un panel por origen (FB, IG, TikTok…), saber quién compra, a quién seguir y quién solo pregunta,
 y que Dali haga más inteligente el trabajo de los vendedores. Datos de agentes (16/11, código desplegado y
@@ -1718,3 +1718,90 @@ en Lilachat? ¿nada se podría ver en solo lectura?». Datos de agentes (16/11, 
 - zona por distritos y mínimos por producto como datos;
 - accesos de Meta (Conversions API y `ads_read`);
 - códigos de TikTok y web, con `intake: 'all'`.
+
+### Fase 2: contrato (16/11)
+
+José, por agentes: «que ya comience a implementar las pantallas que diseñó sobre la bandeja de prospectos». Las 6
+decisiones de negocio siguen abiertas. Mientras tanto, el reparto es libre: cada uno toma el prospecto que quiere.
+
+**Quién es dueño de qué.**
+
+| Dato | Lo escribe | Por dónde |
+| --- | --- | --- |
+| Lo que Dali sabe del prospecto: etapa, servicio, puntaje, campos, resumen, borrador de seguimiento, cotización, preguntas sin respuesta | agentes | `PUT /api/bots/prospects/:id` |
+| Lo que decide el vendedor: quién lo atiende, próxima acción, resultado | Lilachat | la pantalla; avisa con `prospect.updated` |
+| Aprobar un seguimiento que redactó Dali | Lilachat | `prospect.follow_up.approved`; agentes lo envía |
+| Lo que Dali sabe del negocio, y enseñarle una respuesta | agentes | `dali.knowledge.requested` y `dali.faq.add`, síncronos |
+
+**El PUT suma** (todo opcional; lo que no viene queda como estaba y `null` lo borra):
+
+```json
+{ "stage": "to_quote",            // missing_info | to_quote | visit | quoted | negotiation | won | lost
+  "service": { "key": "venta_mezcla", "name": "Venta de mezcla" },
+  "intent": "quote",              // purchase | quote | information | other
+  "score": 82,                    // 0 a 100, lo calcula el código de agentes
+  "score_reasons": ["Pidió precio y cantidad", "Obra en Lima"],   // hasta 6, de hasta 80
+  "fields": [{ "key": "cantidad", "label": "Cantidad", "value": "450 m²" }],   // hasta 20
+  "missing": ["fecha"],           // claves de fields obligatorias que faltan, hasta 20
+  "ready_at": "2026-11-16T15:10:00.000Z",   // cuándo quedó lista para cotizar
+  "kind": "company",              // company | person
+  "summary": "Asfaltado de 450 m² en Ate; quiere cotización esta semana",   // hasta 280
+  "follow_up_draft": { "text": "Hola Carmen…", "for_at": "2026-11-18T14:00:00.000Z" },   // nunca se envía sin aprobación
+  "quote": { "code": "COT-2026-0318", "amount": 20231.10, "currency": "PEN", "sent_at": "…", "url": "https://…" },
+  "unanswered": [{ "question": "¿Hacen bacheo en Huaral?", "at": "…" }] }   // hasta 10, las últimas
+```
+
+- `unanswered[].question` es el texto del cliente, recortado a 200 y con los números de 7 o más dígitos enmascarados
+  (ni teléfonos ni DNI viajan a la revisión).
+
+- `service.key`: `^[a-z][a-z0-9_-]{0,39}$`; `name` hasta 60. Hoy son los servicios de Dali con su categoría (venta de
+  mezcla, asfaltos líquidos y emulsiones, colocación, transporte, imprimación, base, fresado, alquiler de equipos,
+  alquiler de planta para provincia). La bandeja y el embudo filtran por servicio.
+- `fields[].key`: `^[a-z][a-z0-9_]{0,39}$`; `label` hasta 40; `value` hasta 200. No hay campos fijos: Dali es
+  multinegocio.
+- `quote.amount` es plata: Lilachat solo se la muestra a los admins del espacio.
+- Etapa que se ve: el resultado que marcó un vendedor gana sobre `stage`. Si el vendedor lo reabre, vuelve el `stage` de
+  agentes.
+
+**Lo que decide el vendedor**. Cada cambio llega a agentes como `prospect.updated`:
+
+```json
+{ "prospect_id": "dali:…", "assignee": { "id", "name" } | null,
+  "next_action": { "kind": "call", "at": "…", "assignee_id": "…", "note": "…" } | null,   // call | whatsapp | visit | quote
+  "result": { "outcome": "lost", "reason": "price", "note": "…", "at": "…" } | null,       // won | lost
+  "user": { "id", "name", "phone" },
+  "at": "2026-11-17T15:02:11.000Z",   // cuándo cambió en Lilachat
+  "version": 7 }                       // crece en cada cambio del prospecto
+```
+
+- agentes descarta un evento con `version` menor que la última que vio (un reintento que llegó tarde). Deduplica por
+  el `id` del evento, como siempre. `prospect.follow_up.approved` y `prospect.handback` también llevan `at` y
+  `version`.
+
+- Motivos de pérdida: `price`, `timing`, `zone`, `competitor`, `no_answer`, `not_a_buyer`, `other` (con `note`).
+- Con `result`, Dali deja de hacer seguimiento. La próxima acción crea un recordatorio de Lilachat para quien la
+  tiene.
+- `prospect.follow_up.approved` `{ prospect_id, text, user, at, version }`: el vendedor aprobó (o editó) el borrador.
+  agentes lo envía por WhatsApp y lo publica en el canal como siempre, solo si no hay `result`, el cliente no pidió que
+  no le escriban, el texto no está vacío y el canal lo permite. Si no sale, publica «No llegó por WhatsApp» en el hilo
+  del prospecto, como con las respuestas del equipo.
+- `prospect.handback` `{ prospect_id, user }`: el vendedor devuelve el prospecto a Dali (pastilla de pausa).
+
+**Lo que Dali sabe** (`dl-12`): `dali.knowledge.requested` `{ user }`, síncrono, 8 s. Responde:
+
+```json
+{ "services": [{ "key", "name", "questions": ["…"], "price_policy": { "visible": false, "basis": "puesto en planta (Cajamarquilla), sin transporte, más IGV" } }],
+  "catalog": [{ "service_key", "name", "unit", "price" }],
+  "faqs": [{ "id", "question", "answer" }],
+  "zone": "…", "hours": "…", "edit_url": "https://agentes.constroad.com/dali/servicios" }
+```
+
+Lilachat agrupa el catálogo por servicio y quita `price` y `price_policy` si quien mira no es admin.
+
+**Enseñarle a Dali** (`dl-13`): `dali.faq.add` `{ question, answer, user, idempotency_key }`, síncrono. Responde
+`{ "faq": { "id" } }`. Solo agrega; corregir o borrar se hace en el panel de agentes. Lo usan las preguntas sin
+respuesta de la revisión.
+
+**Revisión de la semana** (`dl-10`): Dali la publica en el #general del espacio como tarjeta (bloques `metric`, `rows`,
+`chips`) con `idempotency_key` `review:<AAAA-Www>`. La pestaña Revisión muestra la última. Los acuerdos van como
+checklist de Lilachat.

@@ -24,12 +24,16 @@ export function useAppFormState({ fields, refused, signing, onSubmit, reveal }: 
   // What the app prefilled (agentes, 23/10: the verified phone) and today's date (José, 24/10); read once, so «now» is one instant.
   const prefilled = useMemo(() => initialValues(fields), [fields]);
   const [values, setValues] = useState<FormValues>(prefilled);
-  // The app sent the form again (a new period, or its late answer): what is still offered stays picked.
+  // The app sent the form again (a new period, or its late answer): what the person typed or picked stays while it
+  // is still offered; what they left as the form offered it takes the new default (Portal 17/11: the quote's email).
   const shownFields = useRef(fields);
+  const shownPrefilled = useRef(prefilled);
   useEffect(() => {
     if (shownFields.current === fields) return;
     shownFields.current = fields;
-    setValues((before) => ({ ...prefilled, ...keptAfterRefresh(fields, before) }));
+    const offered = shownPrefilled.current;
+    shownPrefilled.current = prefilled;
+    setValues((before) => ({ ...prefilled, ...keptAfterRefresh(fields, before, offered) }));
   }, [fields, prefilled]);
   const [errors, setErrors] = useState<Errors>(() => refused ?? {});
   const [message, setMessage] = useState('');

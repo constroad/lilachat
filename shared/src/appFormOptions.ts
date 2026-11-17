@@ -117,15 +117,26 @@ function fixedRowsKept(field: Extract<FormField, { kind: 'list' }>, items: FormV
 }
 
 /**
- * The draft after the app sent the form again for a new period (`x-refresh`):
- * whatever is still offered stays picked, the rest is dropped.
+ * The draft after the app sent the form again (`x-refresh`): what the person
+ * typed or picked stays while it is still offered; a field left blank, or as
+ * the form offered it (`offered`, its prefilled values), takes the app's new
+ * default (Portal 17/11: the email of the quote just picked). Lists merge row
+ * by row, as before.
  */
-export function keptAfterRefresh(fields: readonly FormField[], values: FormValues): FormValues {
+export function keptAfterRefresh(fields: readonly FormField[], values: FormValues, offered: FormValues = {}): FormValues {
   return Object.fromEntries(fields.flatMap((field) => {
-    if (!(field.name in values)) return [];
+    if (!(field.name in values) || takesNewDefault(field, values[field.name], offered[field.name])) return [];
     const kept = keptValue(field, values[field.name]);
     return kept === undefined ? [] : [[field.name, kept]];
   }));
+}
+
+const isBlank = (value: unknown): boolean => value == null || (typeof value === 'string' && !value.trim()) || (Array.isArray(value) && value.length === 0);
+
+/** Only a value the person did not make gives way, and only to a default the new form brings. */
+function takesNewDefault(field: FormField, value: unknown, offered: unknown): boolean {
+  if (field.kind === 'list' || field.initial === undefined) return false;
+  return isBlank(value) || JSON.stringify(value) === JSON.stringify(offered);
 }
 
 /** What a draft carries to the app: no photos (ids that mean nothing yet) and no place (read only at sending). */

@@ -761,6 +761,15 @@ tarda, llega por `/respond` con el mismo `command_id`. En los dos casos reemplaz
 formulario abierto y conserva lo elegido que siga existiendo. Las filas fijas siguen a las
 nuevas filas, cada una con lo elegido en la fila del mismo título.
 
+**Los `default` nuevos del refresco** (17/11, correos de Portal: al elegir la cotización, su
+`x-prefill` trae `para`, `asunto` y `mensaje`). Lo que la persona escribió o eligió se queda
+si sigue existiendo. Un campo vacío, o que sigue como el formulario lo ofreció, toma el
+`default` nuevo. Antes lo anterior pisaba al `default` nuevo: al pasar de la cotización A a
+la B quedaban el asunto y el mensaje de A. Sin `default` nuevo, el valor se queda como antes;
+las listas no cambian de regla. `keptAfterRefresh(fields, values, offered)` en shared;
+`useAppFormState` de web y app guarda lo que ofreció el formulario anterior. Agentes vuelve a
+resolver `x-options` y `x-prefill` con los `values` del refresco.
+
 **Resumen** (`"x-preview": { "tool": "revisar_consumo" }` en la raíz del esquema): 600 ms
 después de cada cambio, Lilachat manda `form.preview.requested` firmado con
 `{command_id, form_id, values, channel, user}` y espera 3 s.

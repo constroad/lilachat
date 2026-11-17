@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FORMS_LEVEL, formFields, formLevelOf, initialValues, validateFormSpec, validateFormValues, type AppForm, type FormField, type FormSchemaProperty } from './appForms.js';
+import { FORMS_LEVEL, formFields, formLevelOf, initialValues, validateFormSpec, validateFormValues, type AppForm, type FormField, type FormSchemaProperty, type FormValues } from './appForms.js';
 import { choiceOptions, draftValues, keptAfterRefresh, optionsForRow, previewReplyOf, summaryHeadline, rowTitleOf } from './appFormOptions.js';
 
 /**
@@ -206,6 +206,66 @@ describe('a form that grows when its owner is picked (agentes bcf4966: Inframaq 
     const typed = { duenoId: 'acme', materialId: 'gone', fletero: 'ABC-123', m3: 12 };
     const grown = formFields(form({ duenoId: owner, materialId: material, fletero: plate, m3: cubes }));
     expect(keptAfterRefresh(grown, typed)).toEqual({ duenoId: 'acme', fletero: 'ABC-123', m3: 12 });
+  });
+});
+
+/**
+ * Portal 17/11, emails from Lilachat: picking a quote asks the app for the form again, and its
+ * `x-prefill` brings that quote's recipient, subject and message as the new `default`s.
+ */
+describe('the app\'s new defaults after a refresh', () => {
+  const quote: FormSchemaProperty = { type: 'string', title: 'Cotización', oneOf: [{ const: 'q1', title: 'COT-2026-0101' }, { const: 'q2', title: 'COT-2026-0102' }], 'x-refresh': true };
+  const emailForm = (subject: string, message: string) => formFields(form({ cotizacion: quote, para: { type: 'string', title: 'Para', default: 'compras@cliente.pe' }, asunto: { type: 'string', title: 'Asunto', default: subject }, mensaje: { type: 'string', title: 'Mensaje', 'x-input': 'textarea', default: message } }));
+  const shown = { cotizacion: 'q1', para: 'compras@cliente.pe', asunto: 'Cotización COT-2026-0101', mensaje: 'Adjunto la cotización COT-2026-0101.' };
+  const refreshed = (before: FormValues) => {
+    const fields = emailForm('Cotización COT-2026-0102', 'Adjunto la cotización COT-2026-0102.');
+    return { ...initialValues(fields), ...keptAfterRefresh(fields, before, shown) };
+  };
+
+  it('a field left as the form offered it takes the new default (switching quote A to B)', () => {
+    // Arrange
+    const before = { ...shown, cotizacion: 'q2' };
+    // Act
+    const values = refreshed(before);
+    // Assert
+    expect(values).toEqual({ cotizacion: 'q2', para: 'compras@cliente.pe', asunto: 'Cotización COT-2026-0102', mensaje: 'Adjunto la cotización COT-2026-0102.' });
+  });
+
+  it('what the person typed stays over the new default', () => {
+    // Arrange
+    const before = { ...shown, cotizacion: 'q2', mensaje: 'Hola Juan, va la cotización que pediste.' };
+    // Act
+    const values = refreshed(before);
+    // Assert
+    expect(values.mensaje).toBe('Hola Juan, va la cotización que pediste.');
+    expect(values.asunto).toBe('Cotización COT-2026-0102');
+  });
+
+  it('a blank field takes the new default, even if the person cleared it', () => {
+    // Arrange
+    const before = { cotizacion: 'q2', para: '', asunto: '   ' };
+    // Act
+    const values = keptAfterRefresh(emailForm('Cotización COT-2026-0102', 'Adjunto.'), before, {});
+    // Assert
+    expect(values).toEqual({ cotizacion: 'q2' });
+  });
+
+  it('without a new default an untouched value stays, as before 17/11', () => {
+    // Arrange
+    const fields = formFields(form({ cotizacion: quote, nota: { type: 'string', title: 'Nota' } }));
+    // Act
+    const values = keptAfterRefresh(fields, { cotizacion: 'q1', nota: 'Urgente' }, { cotizacion: 'q1', nota: 'Urgente' });
+    // Assert
+    expect(values).toEqual({ cotizacion: 'q1', nota: 'Urgente' });
+  });
+
+  it('a pick that was the offered default follows the new default too', () => {
+    // Arrange: the app now suggests the second quote.
+    const fields = formFields(form({ cotizacion: { ...quote, default: 'q2' } }));
+    // Act
+    const values = { ...initialValues(fields), ...keptAfterRefresh(fields, { cotizacion: 'q1' }, { cotizacion: 'q1' }) };
+    // Assert
+    expect(values).toEqual({ cotizacion: 'q2' });
   });
 });
 

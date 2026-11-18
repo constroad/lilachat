@@ -19,7 +19,7 @@ Fecha: 2026-11-18 09:40 (código web en 34d6f0bb y ee48b291)
 | Cabecera | lupa, ⋮ y avatar | sin los tres | diferencia justificada: cabecera compartida de toda conversación (web/src/chat/Conversation.tsx); el menú del chat vive en el detalle (web/src/chat/info/LinkSortingRow.tsx) |
 | Separador de día | línea con «HOY» | pastilla «Hoy» | diferencia justificada: separador de toda conversación (shared/src/chatDisplay.ts:49) |
 | Compositor | emoji, «Pega un enlace…», clip, cámara | «+», «Escribe un mensaje…», emoji, micrófono | diferencia justificada: compositor compartido de todos los chats (web/src/chat/Composer.tsx) |
-| Autor | una línea entera | una línea con «…» | diferencia justificada: la burbuja mide 322 px y no 358 (fila siguiente); Stitch también la deja en una línea |
+| Autor | una línea entera | una línea con «…» | diferencia justificada: la burbuja mide 322 px y no 358 (fila «Burbuja · ancho»); va en una línea con `truncate` como en Stitch (web/src/chat/links/StoredLinkInBubble.tsx) |
 | Burbuja · ancho | 358 px | 322 px | diferencia justificada: a su lado van apiladas las acciones al pasar el mouse (reaccionar, hilo, ⋮) de todo mensaje, 32 px + 4 de gap (web/src/chat/BurbujaDeMensaje.tsx) |
 | Burbuja · radio | 16 px | 24 px | diferencia justificada: radio de toda burbuja (`rounded-xl` = `radius.xl` 24 en shared/src/tokens.ts; web/src/chat/BurbujaDeMensaje.tsx:90) |
 | Burbuja · padding | 10 px | 8 px / 12 px | diferencia justificada: padding de toda burbuja (`px-3 py-2`, web/src/chat/BurbujaDeMensaje.tsx:90) |

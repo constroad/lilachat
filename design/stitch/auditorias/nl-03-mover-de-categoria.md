@@ -12,7 +12,7 @@ Fecha: 2026-11-18 09:40 (código web en 3d7db1b2)
 | Kicker «MOVER A» + título | sí | igual | igual |
 | Mini tarjeta del enlace | miniatura, autor, pastilla y 2 líneas | igual | igual |
 | «La eligió Lila al guardarlo. Tú decides.» | sí | igual | igual |
-| Opciones con radio, nombre y conteo; la actual con borde de acento y «CATEGORÍA ACTUAL» | sí | igual | igual |
+| Opciones con botón de opción, nombre y conteo; la actual marcada en el acento con «CATEGORÍA ACTUAL» | sí | igual | igual |
 | «Nueva categoría» | sí | igual | igual: design/stitch/INVENTARIO.md, fila nl-03, la lista |
 | Botón «Mover» a todo el ancho | sólido | tenue con la actual elegida | igual: es el estado deshabilitado, no la composición |
 | Tirador, X con relleno, sin separador | sí | sin tirador, X sin relleno, separador bajo el título | diferencia justificada: primitiva de hoja de toda la web (web/src/ui/Overlay.tsx) |

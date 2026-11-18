@@ -26,11 +26,11 @@ Fecha: 2026-11-18 09:40 (código web en 34d6f0bb y ee48b291)
 | Móvil · cabecera | lupa, ⋮ y avatar | sin los tres | diferencia justificada: el avatar «no va» (INVENTARIO.md, fila nl-01 móvil); cabecera compartida (web/src/chat/Conversation.tsx) y la búsqueda es el buscador de la vista |
 | Móvil · «Ver las N →» | en cada sección | no se ve | diferencia justificada: aparece con más de 3 enlaces y las secciones de QA tienen 2 (`SECTION_PREVIEW = 3`, web/src/chat/links/categoryViewModel.ts:9 y CategoryLayouts.tsx:158) |
 | Móvil · ⋮ en cada fila | no tiene | tiene | diferencia justificada: «Mover», «Abrir» y «Copiar enlace»; copiar solo está ahí (specs/as-is/chat-notas.md §2, Tarjetas) |
-| Móvil · autor | una línea | una línea con «…» (el ⋮ le quita ancho) | diferencia justificada: mismo ⋮ de la fila anterior; Stitch también lo deja en una línea |
+| Móvil · autor | una línea | una línea con «…» (el ⋮ le quita ancho) | diferencia justificada: el ⋮ de la fila anterior (specs/as-is/chat-notas.md §2); el autor va en una línea con \`truncate\` como en Stitch (web/src/chat/links/LinkNoteCards.tsx:114) |
 | Móvil · «+» sobre la última fila | no tapa | tapa a mitad del scroll; al final no | diferencia justificada: la lista deja 96 px abajo (`pb-24`, web/src/chat/links/LinksByCategory.tsx:62) |
 | Móvil · pastilla de plataforma | fondo oscuro | fondo tenue | diferencia justificada: la misma pastilla que nl-02, una sola (web/src/chat/links/linkCardParts.tsx:41) |
 | Escritorio · tarjeta · radio | 12 px | 12 px | igual |
-| Escritorio · tarjeta · borde | 1.5 px | 1 px | diferencia justificada: el borde de la casa es 1 px (`border border-outline/…` en 202 archivos de web/src; 1.5 px en 13) |
+| Escritorio · tarjeta · borde | 1.5 px | 1 px | diferencia justificada: el borde de la casa es 1 px (`border border-outline/15` en web/src/chat/links/LinkNoteCards.tsx:58, como en 202 archivos de web/src) |
 | Escritorio · tarjeta · padding | 12 px | 12 px | igual |
 | Escritorio · grilla · gap | 20 px | 20 px | igual |
 | Escritorio · miniatura · alto | 180 px | 176 px | diferencia justificada: escala de Tailwind `h-44` (web/src/chat/links/LinkNoteCards.tsx:63) |
@@ -43,18 +43,18 @@ Fecha: 2026-11-18 09:40 (código web en 34d6f0bb y ee48b291)
 | Escritorio · fila activa · borde | 1 px | 0 px | diferencia justificada: la activa se marca con fondo y riel, sin borde (web/src/chat/links/CategoryLayouts.tsx:27) |
 | Móvil · buscador · alto | 50 px | 54 px | diferencia justificada: borde de 1 px de la casa arriba y abajo y la línea de ayuda a 16 px (CategoryLayouts.tsx) |
 | Móvil · buscador · radio | 12 px | 12 px | igual |
-| Móvil · buscador · borde | 0 px | 1 px | diferencia justificada: borde de la casa de 1 px (202 archivos de web/src) |
+| Móvil · buscador · borde | 0 px | 1 px | diferencia justificada: borde de la casa de 1 px (web/src/chat/links/CategoryLayouts.tsx:18) |
 | Móvil · chip · alto | 36 px | 36 px | igual |
 | Móvil · chip · radio | 12 px | 12 px | igual |
 | Móvil · chip · padding | 16 px | 16 px | igual |
 | Móvil · chip · tamaño de texto | 14 px | 14 px | igual |
-| Móvil · chip · borde | 0 px | 1 px | diferencia justificada: borde de la casa de 1 px (202 archivos de web/src) |
+| Móvil · chip · borde | 0 px | 1 px | diferencia justificada: borde de la casa de 1 px (web/src/chat/links/CategoryLayouts.tsx:144) |
 | Móvil · tarjeta de fila · alto | 107 px | 118 px | diferencia justificada: dos líneas de descripción a 20 px de interlínea (`leading-5`, web/src/chat/links/LinkNoteCards.tsx:115) |
 | Móvil · tarjeta de fila · radio | 12 px | 12 px | igual |
 | Móvil · tarjeta de fila · padding | 16 px | 16 px | igual |
 | Móvil · miniatura · alto | 75 px | 75 px | igual |
 | Móvil · miniatura · radio | 8 px | 8 px | igual |
-| Móvil · segmentado · alto | 44 px | 46 px | diferencia justificada: borde de la casa de 1 px arriba y abajo (202 archivos de web/src) |
+| Móvil · segmentado · alto | 44 px | 46 px | diferencia justificada: borde de la casa de 1 px arriba y abajo (web/src/chat/links/NotesViewSwitch.tsx:17) |
 | Móvil · segmentado · radio | 12 px | 12 px | igual |
 | Móvil · segmento · alto | 36 px | 36 px | igual |
 | Móvil · segmento · radio | 8 px | 8 px | igual |

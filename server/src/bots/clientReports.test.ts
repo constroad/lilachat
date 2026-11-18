@@ -525,6 +525,43 @@ describe('marking a photo «antes» or «después» (José 08/11, Portal 2ef2717
   });
 });
 
+describe('a solicitud de imprimación (Portal 638e666f, José 18/11): its own tool, with the type to be born', () => {
+  const general = { type: 'object', properties: { entidad: { type: 'string', title: 'Entidad solicitante' } } };
+  const zona = { type: 'object', properties: { zona: { type: 'string', title: 'Zona / calle' }, largo: { type: 'number', title: 'Largo', 'x-unit': 'm' } } };
+  const request = {
+    ...document, id: null, type: 'SOL-IMP', title: 'Solicitud de imprimación', forms: { general, zona, fotos: photosForm },
+    sections: [
+      { id: 'general', title: 'Datos generales', required: true, state: 'empty', summary: [], results: [], form: 'general', tool: 'guardar_seccion_de_acta', values: {} },
+      {
+        id: 'zonas', kind: 'repeat', title: 'Zonas solicitadas', required: true, state: 'empty', summary: [], itemTitle: 'Zona', addLabel: 'Agregar zona', min: 1,
+        template: [{ id: 'zona', title: 'Zona', required: true, form: 'zona', tool: 'guardar_seccion_de_acta' }, { id: 'fotos', title: 'Fotos', required: false, form: 'fotos', tool: 'agregar_foto_de_informe' }],
+        items: [{ id: 'z1', title: 'Zona 01', summary: [], sections: [] }],
+      },
+    ],
+  };
+
+  it('its general section goes to guardar_seccion_de_acta with the type, so the first save creates the report', async () => {
+    // Arrange
+    answers['client.report.draft.requested'] = { status: 200, body: request };
+    await draftOf(ana, { type: 'SOL-IMP' }).expect(200);
+    // Act
+    const opened = await openOf(ana, { kind: 'section', type: 'SOL-IMP', section_id: 'general', item_id: null, key: 'general' }).expect(200);
+    // Assert
+    expect(opened.body.response.form).toMatchObject({ id: 'guardar_seccion_de_acta' });
+    expect((await BotCommandRunModel.findById(opened.body.commandId).lean())?.context).toEqual({ servicioId: 'srv-318', tipo: 'SOL-IMP', seccion: 'general' });
+  });
+
+  it('a saved zone goes again with its id as tramoId and with the report', async () => {
+    // Arrange
+    answers['client.report.draft.requested'] = { status: 200, body: { ...request, id: '6aed0a1b2c3d4e5f60718295' } };
+    await draftOf(ana, { type: 'SOL-IMP' }).expect(200);
+    // Act
+    const opened = await openOf(ana, { kind: 'section', type: 'SOL-IMP', section_id: 'zonas', item_id: 'z1', key: 'zona' }).expect(200);
+    // Assert
+    expect((await BotCommandRunModel.findById(opened.body.commandId).lean())?.context).toEqual({ servicioId: 'srv-318', tipo: 'SOL-IMP', seccion: 'zona', informeId: '6aed0a1b2c3d4e5f60718295', tramoId: 'z1' });
+  });
+});
+
 describe('a fresado and a recepción de campo (Portal 1af15e55, José 13/11): their own tools, the row as tramoId', () => {
   const generalFresado = { type: 'object', properties: { turno: { type: 'string', title: 'Turno', 'x-input': 'shift', oneOf: [{ const: 'DIURNO', title: 'Diurno' }, { const: 'NOCTURNO', title: 'Nocturno' }] } } };
   const tramoForm = { type: 'object', properties: { calleFresadoId: { type: 'string', title: 'Calle', 'x-input': 'work-street' }, progresivaInicio: { type: 'number', title: 'Inicio', 'x-unit': 'm' } } };

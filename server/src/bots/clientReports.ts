@@ -44,6 +44,8 @@ const EXTRA_PHOTO_TOOL = 'agregar_foto_adicional';
  * size cap. They take the section and the row, never `tipo`; their photo tool takes the tramo's moment.
  */
 const SITE_PART_SAVE_TOOLS: readonly string[] = ['guardar_seccion_de_fresado', 'guardar_seccion_de_recepcion'];
+/** The client's papers (SOL-IMP, APR-ADI) save through their own tool, which also takes the type: its first save creates the report. */
+const TYPED_SAVE_TOOLS: readonly string[] = [SECTION_TOOL, 'guardar_seccion_de_acta'];
 const PART_PHOTO_TOOL = 'agregar_foto_de_parte';
 const STAMPED_PHOTO_TOOLS: readonly string[] = [KINDED_PHOTO_TOOL, EXTRA_PHOTO_TOOL, PART_PHOTO_TOOL];
 /** Portal's `subir_al_drive`: its answer is the ticket the phone sends the file with. */
@@ -179,7 +181,7 @@ type PhotoTerms = { reportId: string | null; tramoId: string | null; /** Portal'
 function contextFor(form: AppForm, serviceId: string, input: Extract<OpenInput, { kind: 'section' }>, terms: PhotoTerms): { context: Record<string, string | number | boolean> } | CommandError {
   const { reportId, tramoId, photoKind } = terms;
   const row = { ...(reportId ? { informeId: reportId } : {}), ...(tramoId ? { tramoId } : {}) };
-  if (form.id === SECTION_TOOL) return { context: { servicioId: serviceId, tipo: input.type, seccion: terms.sectionForm, ...row } };
+  if (TYPED_SAVE_TOOLS.includes(form.id)) return { context: { servicioId: serviceId, tipo: input.type, seccion: terms.sectionForm, ...row } };
   if (SITE_PART_SAVE_TOOLS.includes(form.id)) return { context: { servicioId: serviceId, seccion: terms.sectionForm, ...row } };
   if (!reportId || !tramoId || !input.place) return fail(400, 'invalid_request', 'Una foto necesita el informe, el tramo y la hora de la captura.');
   const { lat, lng, at } = input.place;

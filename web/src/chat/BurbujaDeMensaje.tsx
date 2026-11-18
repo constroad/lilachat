@@ -1,3 +1,4 @@
+import { PdfCardWeb } from './PdfCardWeb';
 import { BotFilesAlbum } from './BotFilesAlbum';
 import { LineaDeLlamada } from './LineaDeLlamada';
 import { memo, useContext, useState, type ReactNode } from 'react';
@@ -6,7 +7,7 @@ import { AlertCircle, BellRing, CalendarDays, Check, CheckCheck, ChevronRight, C
 import { Overlay } from '../ui/Overlay';
 import { RecordatorioEnElChat } from './tarjetas/RecordatorioEnElChat';
 import { colorDeAutor, esAvisoDestacado, type DeliveryState, formatClock, primerEnlace, resolveDeliveryState, textoDeAviso } from '@lilachat/shared';
-import { contactBadge, downloadUrlOf, isAnimatedImage, isHiddenNotice, readableFileName, sharedByLine, threadQuoteLine } from '@lilachat/shared';
+import { contactBadge, downloadUrlOf, isAnimatedImage, isHiddenNotice, isPdfMedia, readableFileName, sharedByLine, threadQuoteLine } from '@lilachat/shared';
 import { GifInBubble } from './gifs/GifInBubble';
 import { TarjetaDeEnlace } from './TarjetaDeEnlace';
 import { NotaDeVoz } from './NotaDeVoz';
@@ -273,7 +274,8 @@ function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; m
   if (media?.url && media.mime?.startsWith('audio/')) {
     return <NotaDeVoz id={`${chat.id}:${mensaje.seq}`} chatId={chat.id} authorName={mio ? 'Tú' : (nombres.get(mensaje.senderId) ?? chat.name ?? 'Nota de voz')} url={media.url} durationMs={media.durationMs} onda={media.onda} mio={mio} />;
   }
-  const esImagen = Boolean(media?.url && (media.mime?.startsWith('image/') || media.mime?.startsWith('video/') || media.thumbUrl));
+  const pdf = Boolean(media && isPdfMedia(media));
+  const esImagen = Boolean(media?.url && !pdf && (media.mime?.startsWith('image/') || media.mime?.startsWith('video/') || media.thumbUrl));
   // A video lila could not make a thumbnail for (QA 22/10): a dark frame under the play, opening the viewer like the rest.
   const thumblessVideo = Boolean(media?.url && !media.thumbUrl && media.mime?.startsWith('video/'));
   return (
@@ -302,10 +304,8 @@ function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; m
             <span className="absolute inset-0 mb-1 grid place-items-center"><span className="grid h-12 w-12 place-items-center rounded-full bg-black/50 text-white"><Play size={22} fill="currentColor" /></span></span>
           ) : null}
         </button>
-      ) : media?.url && media.mime === 'application/pdf' && onVerPdf && !mensaje.estado ? (
-        <button type="button" data-testid={`pdf-${mensaje.clientKey}`} onClick={() => onVerPdf(mensaje)} className="mb-1 flex items-center gap-2 text-left underline-offset-2 hover:underline">
-          <FileText size={18} /> <span className="truncate">{media.fileName ?? 'Documento PDF'}</span>
-        </button>
+      ) : media?.url && pdf ? (
+        <PdfCardWeb media={{ ...media, url: media.url }} testId={`pdf-${mensaje.clientKey}`} {...(onVerPdf && !mensaje.estado ? { onOpen: () => onVerPdf(mensaje) } : {})} />
       ) : media?.url ? (
         // José 17/11: a KML opened as text in another tab. `download` keeps it a download with its own name; a file on another host still opens in a new tab.
         <a data-testid={`archivo-${mensaje.clientKey}`} href={downloadUrlOf(media.url, media.fileName)} download={readableFileName(media.fileName)} target="_blank" rel="noreferrer" className="mb-1 flex items-center gap-2 underline-offset-2 hover:underline">

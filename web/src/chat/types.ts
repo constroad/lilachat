@@ -125,6 +125,8 @@ export type ChatMessage = {
     mime?: string;
     fileName?: string;
     sizeBytes?: number;
+    /** A PDF's pages (José 17/11). */
+    pages?: number;
     durationMs?: number;
     width?: number;
     height?: number;

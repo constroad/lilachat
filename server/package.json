@@ -16,11 +16,13 @@
   },
   "dependencies": {
     "@lilachat/shared": "*",
+    "@napi-rs/canvas": "0.1.74",
     "express": "^4.21.2",
     "form-data": "^4.0.6",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.9.3",
     "multer": "^2.2.0",
+    "pdfjs-dist": "5.3.31",
     "sharp": "0.35.5",
     "socket.io": "^4.8.3",
     "structured-headers": "^2.1.1",

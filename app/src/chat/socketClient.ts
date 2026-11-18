@@ -63,6 +63,8 @@ export type ServerMessage = {
     /** El nombre original y el tamaño: un documento ES su nombre. */
     fileName?: string;
     sizeBytes?: number;
+    /** A PDF's pages (José 17/11). */
+    pages?: number;
     /** La forma de una foto o un video (FL9); sin ella, el cuadrado de 220. */
     width?: number;
     height?: number;

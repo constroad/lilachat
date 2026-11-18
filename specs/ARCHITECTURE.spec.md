@@ -16146,3 +16146,33 @@ llegó con `application/octet-stream`.
   (`downloadUrlOf` y `readableFileName` en shared). Un archivo viejo en lila (`/files/`) se abre como antes.
 - E2E: `app/.maestro/chat-file.yaml` con el arnés `scripts/e2e-dali.ts`, que siembra el KML en el chat de Paola
   Ríos y lo sirve como el server real. El archivo quedó en `/sdcard/Download/METRADOS 161126.kml`.
+
+## La primera página de un PDF en el chat (José 17/11, una cotización)
+
+José mandó «Cotizacion-103.pdf» a #administracion y en Lilachat salía solo el nombre; WhatsApp muestra la primera
+página. Con el disco propio (pendiente 82) los PDF se guardaban sin miniatura: lila la hacía, nuestro uploader no.
+
+- **Server** (`server/src/pdfThumbnail.ts`): al subir un archivo PDF (por tipo o por nombre, también los de Dali por
+  `POST /api/bots/files`), pdf.js (`pdfjs-dist` 5.3.31, Apache 2.0) lo lee y `@napi-rs/canvas` (MIT) dibuja la página 1
+  a 480 px; sharp la guarda en JPEG en `thumbs/`. Nada del sistema: la mini no necesita poppler. Tope de 15 s y de
+  40 MB; un PDF dañado o con contraseña solo queda sin imagen. El mensaje guarda `media.thumbUrl` y `media.pages`.
+  Medido: 2,2 s la primera vez (carga de módulos) con un CTL-IMP de 4 páginas, con sus fuentes.
+- **Web** (`PdfCardWeb.tsx`): la página arriba y «3 páginas · 255 KB · PDF» debajo del nombre; abre el visor del chat
+  o descarga con su nombre. Un PDF con miniatura ya no se toma por foto (`isPdfMedia`).
+- **APK** (`TarjetaDeArchivo.tsx`): ya dibujaba `thumbUrl`; ahora la recorta desde arriba y dice las páginas.
+- **Lo que no cambia**: los PDF que ya estaban en el chat siguen sin miniatura hasta que alguien decida generarlas
+  (escritura en la base de producción: la decide José).
+- **Zoom con dos dedos en el visor del APK** (`pdf/PdfViewerScreen.tsx`, `pdfLayout.ts`): mientras los dedos se mueven
+  solo escala la vista (sin pedir páginas); al soltar salta al paso más cercano (100, 125, 150, 200, 250, 300 %) y
+  deja bajo los dedos el mismo punto de la página. Los botones siguen igual. Al AGRANDAR, el desplazamiento lateral se
+  aplica de nuevo cuando el contenido ya creció (`onContentSizeChange`): en el primer cuadro Android lo dejaba en 0 y
+  la vista saltaba al borde izquierdo (visto en el emulador).
+- **«:hug» en un hilo** (APK `HiloScreen.tsx`, web `hilos/PanelDeHilo.tsx`): el mismo `useEmojiShortcode` del
+  compositor del chat.
+- **E2E** (`app/.maestro/chat-pdf.yaml` con `scripts/e2e-dali.ts`, que sube un PDF inventado de 4 páginas): tarjeta
+  con la página y «4 páginas · 3.3 KB · PDF», visor «1 / 4». Maestro no hace pellizcos: se mandaron con
+  `adb root` + `sendevent` al `/dev/input/event1` del emulador (`ABS_MT_SLOT`, presión y pausas de 30 ms; sin presión
+  Android no los toma): 100 → 300 % centrado y 300 → 100 %, y el scroll vertical sigue. `adb root` reinicia adbd y
+  Maestro pierde su driver: se abre el visor sin root y se pasa a root solo para el gesto. «:hug» no se puede probar
+  con el servidor de desarrollo: Metro no resuelve el `import()` diferido de la tabla de nombres en este monorepo
+  (`./shared/src/emojiNamesData`), tampoco en el compositor principal; el bundle de producción la incluye.

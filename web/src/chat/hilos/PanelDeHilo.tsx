@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Check, ClipboardCheck, Paperclip, SendHorizontal, Smile, X } from 'lucide-react';
 import { formatClock } from '@lilachat/shared';
 import type { MencionElegida, MencionEnMensaje } from '@lilachat/shared';
@@ -12,6 +12,8 @@ import { CreateChecklistOverlay } from '../../agenda/CreateChecklistOverlay';
 import type { ChatSummary, MensajeEnPantalla } from '../types';
 import { SugerenciasDeMencion, type Mencionable } from '../SugerenciasDeMencion';
 import { useMencionesDelCampo } from '../useMencionesDelCampo';
+import { EmojiSuggestions } from '../emojiShortcode/EmojiSuggestions';
+import { useEmojiShortcode } from '../emojiShortcode/useEmojiShortcode';
 import { lazyChunk } from '../../ui/lazyChunk';
 import type { TypedCaption } from '../EnviarArchivos';
 
@@ -61,15 +63,30 @@ export function PanelDeHilo(props: {
   const fin = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const menciones = useMencionesDelCampo(props.mencionables);
+  // «:hug» offers the emojis by name, as in the chat composer (José 17/11).
+  const emojis = useEmojiShortcode();
+  /** Where the cursor goes once the completed text is on screen, as in the chat composer (a frame later raced fast typing). */
+  const pendingCaret = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const caret = pendingCaret.current;
+    if (caret === null) return;
+    pendingCaret.current = null;
+    input.current?.focus();
+    input.current?.setSelectionRange(caret, caret);
+  }, [texto]);
+  /** A completed mention or emoji: the text, its draft, and the cursor after what was put. */
+  const writeCompleted = (completed: string, caret: number) => {
+    pendingCaret.current = caret;
+    setTexto(completed);
+    if (!editing) borradores.set(clave, completed);
+  };
   const chooseMention = (uno: Mencionable) => {
     const completado = menciones.elegir(texto, uno);
-    if (!completado) return;
-    setTexto(completado.texto);
-    if (!editing) borradores.set(clave, completado.texto);
-    requestAnimationFrame(() => {
-      input.current?.focus();
-      input.current?.setSelectionRange(completado.cursor, completado.cursor);
-    });
+    if (completado) writeCompleted(completado.texto, completado.cursor);
+  };
+  const pickEmoji = (emoji: string) => {
+    const done = emojis.pick(texto, input.current?.selectionStart ?? texto.length, emoji);
+    if (done) writeCompleted(done.text, done.caret);
   };
   // The bubbles here: «Editar» edits in THIS input, and they do not repeat «Respondió en un hilo».
   const parent = useConversacion();
@@ -229,6 +246,7 @@ export function PanelDeHilo(props: {
           </button>
           <div className="relative min-w-0 flex-1">
           <SugerenciasDeMencion opciones={editing ? [] : menciones.opciones} activa={menciones.activa} onElegir={chooseMention} />
+          <EmojiSuggestions options={emojis.options} active={emojis.active} onPick={pickEmoji} />
           <textarea
             ref={input}
             data-testid="input-hilo"
@@ -237,6 +255,7 @@ export function PanelDeHilo(props: {
             onChange={(evento) => {
               setTexto(evento.target.value);
               menciones.alCambiar(evento.target.value, evento.target.selectionStart ?? evento.target.value.length);
+              emojis.onChange(evento.target.value, evento.target.selectionStart ?? evento.target.value.length);
               // While editing, the draft of a new reply is kept as it was (it comes back after saving).
               if (!editing) borradores.set(clave, evento.target.value);
             }}
@@ -253,6 +272,7 @@ export function PanelDeHilo(props: {
               props.onFiles(pasted, enElChat, texto.trim() ? { text: texto, consume } : undefined);
             }}
             onKeyDown={(evento) => {
+              if (emojis.onKey(evento, pickEmoji)) return;
               if (!editing && menciones.alTeclear(evento, chooseMention)) return;
               if (evento.key === 'Enter' && !evento.shiftKey) {
                 evento.preventDefault();

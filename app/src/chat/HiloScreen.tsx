@@ -12,6 +12,8 @@ import { checklistMembers, deleteBeforeCursor, formatClock, memberBadge, usesFla
 import type { MencionElegida, MencionEnMensaje } from '@lilachat/shared';
 import { useMenciones, type MentionableMember } from './useMenciones';
 import { SugerenciasDeMencion } from './SugerenciasDeMencion';
+import { useEmojiShortcode } from './emojiShortcode/useEmojiShortcode';
+import { EmojiSuggestions } from './emojiShortcode/EmojiSuggestions';
 import { ThreadPicker } from './ThreadPicker';
 import { ChecklistEnElChat } from './ChecklistEnElChat';
 import { CreateChecklistScreen } from '../agenda/CreateChecklistScreen';
@@ -116,6 +118,16 @@ export function HiloScreen(props: {
   const mentions = useMenciones(props.mencionables);
   /** The text the selection handler sees: the state of the render before has not arrived when it fires. */
   const latestText = useRef('');
+  // «:hug» offers the emojis by name, as in the chat composer (José 17/11).
+  const emojis = useEmojiShortcode();
+  /** A completed mention or emoji: the text, its draft, and the cursor after what was put. */
+  const writeCompleted = (completed: string, caret: number) => {
+    latestText.current = completed;
+    setTexto(completed);
+    // While editing, the draft of a new reply is kept as it was (as in `onChangeText`).
+    if (!editing) borradores.set(clave, completed);
+    setTimeout(() => input.current?.setSelection(caret, caret), 0);
+  };
   useEffect(() => {
     mentions.limpiar();
     setTexto(borradores.get(clave) ?? '');
@@ -329,13 +341,13 @@ export function HiloScreen(props: {
           sugerencias={editing ? [] : mentions.sugerencias}
           onElegir={(member) => {
             const completed = mentions.choose(latestText.current, member);
-            if (!completed) return;
-            latestText.current = completed.texto;
-            setTexto(completed.texto);
-            borradores.set(clave, completed.texto);
-            setTimeout(() => input.current?.setSelection(completed.cursor, completed.cursor), 0);
+            if (completed) writeCompleted(completed.texto, completed.cursor);
           }}
         />
+        <EmojiSuggestions options={emojis.options} onPick={(emoji) => {
+          const done = emojis.pick(latestText.current, emoji);
+          if (done) writeCompleted(done.text, done.caret);
+        }} />
         <View className="border-t border-outline/10 bg-surface px-3 pt-2" style={{ paddingBottom: margenes.pie + 4 }}>
           {editing ? (
             <View testID="barra-edicion-hilo" className="mb-1.5 flex-row items-center gap-2 rounded-lg bg-primary/[0.08] px-3 py-1.5">
@@ -354,7 +366,10 @@ export function HiloScreen(props: {
               ref={input}
               testID="input-hilo"
               value={texto}
-              onSelectionChange={(evento) => mentions.alCambiar(latestText.current, evento.nativeEvent.selection.end)}
+              onSelectionChange={(evento) => {
+                mentions.alCambiar(latestText.current, evento.nativeEvent.selection.end);
+                emojis.onChange(latestText.current, evento.nativeEvent.selection.end);
+              }}
               onChangeText={(nuevo) => {
                 latestText.current = nuevo;
                 setTexto(nuevo);

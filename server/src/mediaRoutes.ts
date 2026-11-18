@@ -150,6 +150,7 @@ export function buildMediaRouter(uploader: MediaUploader = defaultMediaUploader(
           // RELATIVAS a propósito: se resuelven al servir (`messageView`).
           thumbUrl: uploaded.media.thumbnailUrl,
           url: uploaded.media.url,
+          pages: uploaded.media.pages,
           mime: content.mimeType,
           // The bubble crops a stamped shot from the bottom, where the stamp is (José 13/11).
           stamped: stamped ? true : undefined,

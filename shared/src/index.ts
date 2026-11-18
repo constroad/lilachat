@@ -264,3 +264,4 @@ export * from './visitScreen.js';
 export * from './visitInterview.js';
 export * from './prospectFieldConfirm.js';
 export * from './prospectFieldGeo.js';
+export * from './pdfCard.js';

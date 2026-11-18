@@ -90,7 +90,7 @@ async function prospectAuthorOf(installation: Installation, post: BotPost): Prom
 
 /** One uploaded file as its own message, like a member's (José 17/11): the caption rides on the first one. */
 type UploadSlot = { upload: BotUpload; index: number };
-const uploadMedia = (upload: BotUpload): Message['media'] => ({ mediaId: upload.storageName, url: upload.url, ...(upload.thumbUrl ? { thumbUrl: upload.thumbUrl } : {}), mime: upload.mime, fileName: upload.name, sizeBytes: upload.size });
+const uploadMedia = (upload: BotUpload): Message['media'] => ({ mediaId: upload.storageName, url: upload.url, ...(upload.thumbUrl ? { thumbUrl: upload.thumbUrl } : {}), mime: upload.mime, fileName: upload.name, sizeBytes: upload.size, ...(upload.pages ? { pages: upload.pages } : {}) });
 
 /** What a text post or one of its uploads carries: an upload is its own message, captioned only the first. */
 function contentOf(post: BotPost, slot?: UploadSlot) {

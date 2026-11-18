@@ -7,6 +7,7 @@ import { buildMediaPath, buildStorageName } from '@lilachat/shared';
 import type { Disco } from './disco.js';
 import { buildLilaUploader, type MediaUploader, type UploadOutcome } from './mediaClient.js';
 import { MEDIA_PREFIX, mediaDisk } from './mediaDisk.js';
+import { pdfThumbnail as pdfFirstPage, type PdfThumbnail } from './pdfThumbnail.js';
 
 const run = promisify(execFile);
 const THUMB_SIDE = 640;
@@ -16,6 +17,8 @@ const VIDEO_THUMB_TIMEOUT_MS = 20_000;
 const THUMBS_FOLDER = 'thumbs';
 
 export type VideoThumbnailMaker = (video: string, thumb: string) => Promise<boolean>;
+export type PdfThumbnailMaker = (pdf: string, thumb: string) => Promise<PdfThumbnail>;
+const isPdf = (mimeType: string, fileName: string): boolean => mimeType === 'application/pdf' || /\.pdf$/i.test(fileName);
 
 /** The first frame with the ffmpeg of the machine (`FFMPEG_BIN` or the one on PATH); false when there is none. */
 const ffmpegThumbnail: VideoThumbnailMaker = async (video, thumb) => {
@@ -45,8 +48,16 @@ const nameWithHash = (storageName: string, hash: string): string => {
  * (before `medios:init` runs on the mini) uploads keep going to lila, so nobody
  * loses a photo during the move.
  */
-export function buildLocalUploader(deps: { disk: () => Disco | null; fallback: MediaUploader; videoThumbnail?: VideoThumbnailMaker; now?: () => Date }): MediaUploader {
+export function buildLocalUploader(deps: { disk: () => Disco | null; fallback: MediaUploader; videoThumbnail?: VideoThumbnailMaker; pdfThumbnail?: PdfThumbnailMaker; now?: () => Date }): MediaUploader {
   const videoThumbnail = deps.videoThumbnail ?? ffmpegThumbnail;
+  const pdfThumbnail = deps.pdfThumbnail ?? pdfFirstPage;
+  /** Its picture, if it has one: a photo, a video's first frame, a PDF's first page (José 17/11) with its page count. */
+  const thumbnailOf = async (params: { kind: string; mimeType: string; fileName: string }, source: string, target: string): Promise<{ made: boolean; pages?: number }> => {
+    if (params.kind === 'image') return { made: await imageThumbnail(source, target) };
+    if (params.kind === 'video') return { made: await videoThumbnail(source, target) };
+    if (params.kind === 'file' && isPdf(params.mimeType, params.fileName)) return pdfThumbnail(source, target);
+    return { made: false };
+  };
   return {
     async upload(params): Promise<UploadOutcome> {
       const disk = deps.disk();
@@ -59,7 +70,8 @@ export function buildLocalUploader(deps: { disk: () => Disco | null; fallback: M
       await mkdir(path.join(disk.raiz, THUMBS_FOLDER), { recursive: true });
       const source = path.join(disk.raiz, relative);
       const target = path.join(disk.raiz, thumbRelative);
-      const made = params.kind === 'image' ? await imageThumbnail(source, target) : params.kind === 'video' ? await videoThumbnail(source, target) : false;
+      const thumbnail = await thumbnailOf(params, source, target);
+      const made = thumbnail.made;
       const url = `${MEDIA_PREFIX}${relative}`;
       return {
         ok: true,
@@ -68,6 +80,7 @@ export function buildLocalUploader(deps: { disk: () => Disco | null; fallback: M
           ...(made ? { thumbnailUrl: `${MEDIA_PREFIX}${thumbRelative}` } : {}),
           thumbnailStatus: made ? 'ready' : 'unsupported',
           ...(params.kind === 'video' ? { streamUrl: url } : {}),
+          ...(thumbnail.pages ? { pages: thumbnail.pages } : {}),
           sizeBytes: received.bytes,
           storageName: name,
         },

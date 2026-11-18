@@ -158,6 +158,8 @@ export interface Message {
     stamped?: boolean;
     /** Sent together with other photos or videos (pending 12): the chat draws one card. */
     album?: string;
+    /** A PDF's pages (José 17/11): the card says «3 páginas · 255 KB · PDF» under its first page. */
+    pages?: number;
     /**
      * El nombre ORIGINAL del archivo y su tamaño.
      *
@@ -355,6 +357,7 @@ const messageSchema = new Schema<Message>(
       animated: Boolean,
       stamped: Boolean,
       album: String,
+      pages: Number,
           fileName: String,
       sizeBytes: Number,
       durationMs: Number,

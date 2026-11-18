@@ -27,6 +27,8 @@ export type UploadedMedia = {
   streamUrl?: string;
   sizeBytes: number;
   storageName: string;
+  /** A PDF's page count, read when its first page is drawn (José 17/11). */
+  pages?: number;
 };
 
 export type UploadOutcome =

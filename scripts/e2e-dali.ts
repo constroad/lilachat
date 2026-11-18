@@ -47,6 +47,27 @@ const BOOT_PAUSE_MS = 500;
 const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
 /** José 17/11: a KML in a chat, served as the real one came (`application/octet-stream`), to open or download. */
 const KML_PATH = '/media/qa/metrados-161126.kml';
+
+/** A made-up report PDF drawn with shapes only (header band, table rows), so it renders without fonts. */
+function syntheticReportPdf(pages: number): Buffer {
+  const rows = Array.from({ length: 14 }, (_, index) => `0.85 0.87 0.9 rg 48 ${600 - index * 32} 499 1 re f`).join(' ');
+  const content = `0.12 0.2 0.45 rg 0 762 595 80 re f 0.95 0.6 0.1 rg 48 700 160 24 re f ${rows} 0.12 0.2 0.45 rg 48 120 200 40 re f`;
+  const objects = ['<< /Type /Catalog /Pages 2 0 R >>', `<< /Type /Pages /Kids [${Array.from({ length: pages }, (_, index) => `${3 + index * 2} 0 R`).join(' ')}] /Count ${pages} >>`];
+  for (let index = 0; index < pages; index += 1) {
+    objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents ${4 + index * 2} 0 R >>`);
+    objects.push(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
+  }
+  let body = '%PDF-1.4\n';
+  const offsets = objects.map((object, index) => {
+    const at = body.length;
+    body += `${index + 1} 0 obj\n${object}\nendobj\n`;
+    return at;
+  });
+  const xref = body.length;
+  body += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.map((at) => `${String(at).padStart(10, '0')} 00000 n \n`).join('')}`;
+  body += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(body, 'latin1');
+}
 const KML = '<?xml version="1.0" encoding="UTF-8"?><kml xmlns="http://www.opengis.net/kml/2.2"><Document><Placemark><name>Parche 1</name><Point><coordinates>-77.03,-12.05,0</coordinates></Point></Placemark></Document></kml>';
 
 /** What agentes answers to «Lo que Dali sabe»: Constroad's services, catalog, FAQ, zone and hours. */
@@ -245,6 +266,13 @@ async function clientDocument() {
   if (response.status !== 201) throw new Error(`POST /bots/files → ${response.status} ${await response.text()}`);
   const { file_id: fileId } = (await response.json()) as { file_id: string };
   await call('/bots/messages', { body: { prospect: P(8), as_contact: true, sent_at: ago(4 * HOUR), text: 'Les paso el metrado del estacionamiento', files: [{ file_id: fileId }], idempotency_key: 'qa-doc-1' }, auth: TOKEN });
+  // José 17/11: a PDF shows its first page in the chat, like WhatsApp (the server draws it on upload).
+  const pdf = new FormData();
+  pdf.append('file', new Blob([syntheticReportPdf(4)], { type: 'application/pdf' }), 'Cotización estacionamiento.pdf');
+  const pdfAnswer = await fetch(`${API}/bots/files`, { method: 'POST', headers: { Authorization: `Bearer ${TOKEN}` }, body: pdf });
+  if (pdfAnswer.status !== 201) throw new Error(`POST /bots/files (pdf) → ${pdfAnswer.status} ${await pdfAnswer.text()}`);
+  const { file_id: pdfId } = (await pdfAnswer.json()) as { file_id: string };
+  await call('/bots/messages', { body: { prospect: P(8), as_contact: true, sent_at: ago(3 * HOUR), files: [{ file_id: pdfId }], idempotency_key: 'qa-doc-2' }, auth: TOKEN });
   const paola = seeds().find((seed) => seed.id === P(8))!;
   // Fase 3: the lot's outline read from the KML, drawn in the ficha; the seller confirms or corrects each one.
   const lot = [{ lat: -12.0496, lng: -77.0306 }, { lat: -12.0496, lng: -77.0294 }, { lat: -12.0505, lng: -77.0294 }, { lat: -12.0505, lng: -77.0306 }];

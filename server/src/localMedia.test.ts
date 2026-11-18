@@ -51,6 +51,15 @@ describe('own media storage (pending 82)', () => {
     expect(fallback.upload).not.toHaveBeenCalled();
   });
 
+  it('a PDF gets its first page as the thumbnail and its page count (José 17/11, like WhatsApp)', async () => {
+    const uploader = buildLocalUploader({ disk: () => disk, fallback, pdfThumbnail: async (_pdf, thumb) => { await writeFile(thumb, 'jpg'); return { made: true, pages: 3 }; } });
+    const outcome = await uploader.upload({ chatId: CHAT, fileName: 'Cotizacion-103.pdf', mimeType: 'application/pdf', kind: 'file', bytes: Buffer.from('%PDF-1.4') });
+    expect(outcome).toMatchObject({ ok: true, media: { thumbnailStatus: 'ready', pages: 3, thumbnailUrl: expect.stringMatching(/^\/media\/thumbs\/[0-9a-f]+\.jpg$/) } });
+    const other = await uploader.upload({ chatId: CHAT, fileName: 'metrado.kml', mimeType: 'application/octet-stream', kind: 'file', bytes: Buffer.from('<kml/>') });
+    expect(other).toMatchObject({ ok: true, media: { thumbnailStatus: 'unsupported' } });
+    if (other.ok) expect(other.media.pages).toBeUndefined();
+  });
+
   it('a video gets its thumbnail when it can, and says «unsupported» when it cannot, without failing', async () => {
     const uploader = buildLocalUploader({ disk: () => disk, fallback, videoThumbnail: async () => false });
     const outcome = await uploader.upload({ chatId: CHAT, fileName: 'v.mp4', mimeType: 'video/mp4', kind: 'video', bytes: Buffer.from('not really a video') });

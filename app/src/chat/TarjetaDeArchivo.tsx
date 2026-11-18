@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { FileText } from 'lucide-react-native';
-import { formatBytes } from '@lilachat/shared';
+import { formatBytes, isPdfMedia, pdfCardLineOf } from '@lilachat/shared';
 import { nombreLimpio } from './archivoDescargado';
 import type { ChatMessage } from './useChat';
 import { useColores } from '../ui/tema';
@@ -31,6 +31,7 @@ export function FileCard(props: { seq: number; media: NonNullable<ChatMessage['m
             source={{ uri: media.thumbUrl }}
             style={{ width: ANCHO_DE_LA_MINIATURA, height: ALTO_DE_LA_MINIATURA }}
             contentFit="cover"
+            contentPosition="top"
             transition={120}
           />
         </View>
@@ -44,7 +45,7 @@ export function FileCard(props: { seq: number; media: NonNullable<ChatMessage['m
             {media.fileName ? nombreLimpio(media.fileName) : 'Archivo'}
           </Text>
           <Text className={`text-[11px] ${mia ? 'text-on-burbuja-propia-suave' : 'text-on-surface-variant'}`}>
-            {media.sizeBytes ? formatBytes(media.sizeBytes) : 'Toca para abrir o descargar'}
+            {isPdfMedia(media) ? pdfCardLineOf(media) : media.sizeBytes ? formatBytes(media.sizeBytes) : 'Toca para abrir o descargar'}
           </Text>
         </View>
       </View>

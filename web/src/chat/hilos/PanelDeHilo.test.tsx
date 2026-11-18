@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ChatSummary, MensajeEnPantalla } from '../types';
 import { ConversacionContext, type ContextoDeLaConversacion } from '../contextoDeLaConversacion';
@@ -192,6 +192,59 @@ describe('PanelDeHilo', () => {
       mountThread({ mencionables: undefined });
       await userEvent.type(screen.getByTestId('input-hilo'), '@');
       expect(screen.queryByRole('listbox')).toBeNull();
+    });
+  });
+
+  /** José 17/11: «en un hilo no puedo escribir :hug para filtrar emojis de abrazo como se hace en el main». */
+  describe('«:hug» in the reply field, as in the chat composer', () => {
+    const mountThread = (id: string) => {
+      Element.prototype.scrollIntoView = vi.fn();
+      const sent = vi.fn();
+      render(
+        <ConversacionContext.Provider value={conversation}>
+          <PanelDeHilo chat={{ ...chat, id } as ChatSummary} raiz={raiz} respuestas={[]} yo="yo" nombres={new Map()} onEnviar={sent} onReintentar={vi.fn()} onDescartar={vi.fn()} onEdit={vi.fn()} onCerrar={vi.fn()} />
+        </ConversacionContext.Provider>
+      );
+      return { sent, field: () => screen.getByTestId('input-hilo') as HTMLTextAreaElement };
+    };
+
+    it('typing «:hug» offers the hug emoji; Enter puts it in place of the word, without sending', async () => {
+      // Arrange
+      const user = userEvent.setup();
+      const { sent, field } = mountThread('emoji-enter');
+      // Act
+      await user.type(field(), 'hola :hug');
+      // Assert
+      expect(await screen.findByTestId('emoji-sugerido-🤗')).toBeInTheDocument();
+      await user.keyboard('{Enter}');
+      expect(field().value).toBe('hola 🤗 ');
+      expect(sent).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('sugerencias-emoji')).toBeNull();
+    });
+
+    it('a click on a suggestion puts it and the reply sends with it; «10:30» offers nothing', async () => {
+      // Arrange
+      const user = userEvent.setup();
+      const { sent, field } = mountThread('emoji-click');
+      // Act
+      await user.type(field(), 'te mando un :abrazo');
+      fireEvent.mouseDown(await screen.findByTestId('emoji-sugerido-🤗'));
+      await user.type(field(), 'a las 10:30');
+      // Assert
+      expect(field().value).toBe('te mando un 🤗 a las 10:30');
+      expect(screen.queryByTestId('sugerencias-emoji')).toBeNull();
+      await user.click(screen.getByTestId('btn-enviar-hilo'));
+      expect(sent).toHaveBeenCalledWith('te mando un 🤗 a las 10:30', false, undefined);
+    });
+
+    it('Escape closes the suggestions and leaves the word as typed', async () => {
+      const user = userEvent.setup();
+      const { field } = mountThread('emoji-escape');
+      await user.type(field(), ':hug');
+      await screen.findByTestId('sugerencias-emoji');
+      await user.keyboard('{Escape}');
+      expect(screen.queryByTestId('sugerencias-emoji')).toBeNull();
+      expect(field().value).toBe(':hug');
     });
   });
 });

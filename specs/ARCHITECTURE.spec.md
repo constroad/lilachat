@@ -16160,8 +16160,11 @@ página. Con el disco propio (pendiente 82) los PDF se guardaban sin miniatura: 
 - **Web** (`PdfCardWeb.tsx`): la página arriba y «3 páginas · 255 KB · PDF» debajo del nombre; abre el visor del chat
   o descarga con su nombre. Un PDF con miniatura ya no se toma por foto (`isPdfMedia`).
 - **APK** (`TarjetaDeArchivo.tsx`): ya dibujaba `thumbUrl`; ahora la recorta desde arriba y dice las páginas.
-- **Lo que no cambia**: los PDF que ya estaban en el chat siguen sin miniatura hasta que alguien decida generarlas
-  (escritura en la base de producción: la decide José).
+- **Los PDF que ya estaban** (José 17/11: «sí, genera las miniaturas»): `npm run pdf:miniaturas -w server` en la
+  máquina que sirve Lilachat (necesita el disco de medios montado). Sin `--apply` solo cuenta; con `--apply` dibuja
+  uno por uno (los de lila los baja por su URL), guarda `thumbs/<sha256>.jpg` y escribe `media.thumbUrl` y
+  `media.pages` (`server/src/pdfThumbnailBackfill.ts`). El que no se puede leer o dibujar queda igual; una segunda
+  corrida solo toma esos.
 - **Zoom con dos dedos en el visor del APK** (`pdf/PdfViewerScreen.tsx`, `pdfLayout.ts`): mientras los dedos se mueven
   solo escala la vista (sin pedir páginas); al soltar salta al paso más cercano (100, 125, 150, 200, 250, 300 %) y
   deja bajo los dedos el mismo punto de la página. Los botones siguen igual. Al AGRANDAR, el desplazamiento lateral se

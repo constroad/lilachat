@@ -10,8 +10,14 @@ import { BotAppModel, BotInstallationModel } from './bots/botModels.js';
  * `llm.task.requested` of the Lila app, answered in the body like a form preview. It is signed with the Lila
  * installation of a space where a member of the chat is active; that space's company carries the usage.
  */
-export type ModelTask = { task: 'link.classify' | 'link.propose'; system: string; input: string; schema: Record<string, unknown> };
-export type ModelAnswer = { ok: true; json: unknown } | { ok: false; reason: 'not_configured' | 'failed' };
+/** The tasks agentes accepts from Lilachat (agentes `core/llm/tasks.ts`). With a schema the answer is JSON; without, text. */
+export type ModelTask = {
+  task: 'link.classify' | 'link.propose' | 'assistant.catch_up' | 'assistant.mention' | 'event.draft';
+  system: string;
+  input: string;
+  schema?: Record<string, unknown>;
+};
+export type ModelAnswer = { ok: true; json: unknown; text: string } | { ok: false; reason: 'not_configured' | 'failed' };
 /** `memberIds`: the chat's members, whose space signs the ask. */
 export type ModelAsker = (memberIds: readonly string[], request: ModelTask) => Promise<ModelAnswer>;
 
@@ -36,10 +42,10 @@ export async function lilaDoorFor(memberIds: readonly string[]): Promise<Door | 
   return installation && app?.webhookUrl ? { _id: installation._id, workspaceId: installation.workspaceId, signingSecret: installation.signingSecret, webhookUrl: app.webhookUrl } : null;
 }
 
-/** agentes answers `{ ok: true, json }` or `{ ok: false, code }`; `off` means it has no model configured. */
+/** agentes answers `{ ok: true, json, text }` or `{ ok: false, code }`; `off` means it has no model configured. */
 export function modelAnswerOf(reply: WebhookReply): ModelAnswer {
-  const body = reply.status === 200 && reply.body && typeof reply.body === 'object' ? (reply.body as { ok?: unknown; json?: unknown; code?: unknown }) : null;
-  if (body?.ok === true) return { ok: true, json: body.json };
+  const body = reply.status === 200 && reply.body && typeof reply.body === 'object' ? (reply.body as { ok?: unknown; json?: unknown; text?: unknown; code?: unknown }) : null;
+  if (body?.ok === true) return { ok: true, json: body.json ?? null, text: typeof body.text === 'string' ? body.text : '' };
   if (body?.ok === false && body.code === 'off') return { ok: false, reason: 'not_configured' };
   return { ok: false, reason: 'failed' };
 }

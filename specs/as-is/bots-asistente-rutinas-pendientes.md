@@ -20,8 +20,11 @@ web), §168 (Automatizaciones). **Fecha de corte: 17/11/2026.**
 ### Server
 
 **Asistente** (`server/src/assistantClient.ts`, `assistantService.ts`, `assistantRoutes.ts`, `assistantReply.ts`).
-- La clave de Anthropic vive solo en el server. Sin la clave, devuelve un fallo que dice qué falta.
-- Modelo fijo en el código: `MODEL = 'claude-opus-5'` (`assistantClient.ts`).
+- Desde el 18/11 Lilachat no guarda claves de modelos ni elige el modelo (José). El resumen, la respuesta a `@lila`
+  y el borrador de evento son tareas que le pide a agentes (`assistant.catch_up`, `assistant.mention`, `event.draft`)
+  por `agentesModel.ts`, firmadas con la instalación de Lila de un espacio de un miembro del chat. Agentes elige
+  el modelo y el tope de tokens (hoy Haiku 5.5). Sin modelo, o sin ese espacio, responde «Lila no tiene un modelo
+  configurado todavía» (503), sin mostrar la configuración del server.
 - `POST /api/assistant/catch-up`: resumen de lo nuevo. Sin nada nuevo no llama al modelo.
 - `POST /api/assistant/event-draft`: arma un borrador de evento (`parseEventDraft` en shared).
 - Freno por usuario: 6 llamadas por minuto, en memoria del proceso.

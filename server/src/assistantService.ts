@@ -57,7 +57,7 @@ async function contextOf(
   chatId: Types.ObjectId,
   userId: Types.ObjectId,
   options: { sinceSeq?: number } = {}
-): Promise<{ chatName: string; messages: ContextMessage[] }> {
+): Promise<{ chatName: string; memberIds: string[]; messages: ContextMessage[] }> {
   const chat = await ChatModel.findOne({ _id: chatId, 'members.userId': userId }).lean();
   if (!chat) throw new NotAMemberError();
   if (chat.encrypted) throw new EncryptedChatError();
@@ -76,6 +76,7 @@ async function contextOf(
 
   return {
     chatName: chat.name ?? 'la conversación',
+    memberIds: chat.members.map((member) => String(member.userId)),
     messages: selectContextMessages(
       rows.map((row) => ({
         seq: row.seq,
@@ -102,7 +103,7 @@ export async function catchUp(params: {
   userId: Types.ObjectId;
   sinceSeq: number;
 }): Promise<AskOutcome & { messageCount?: number }> {
-  const { chatName, messages } = await contextOf(params.chatId, params.userId, {
+  const { chatName, memberIds, messages } = await contextOf(params.chatId, params.userId, {
     sinceSeq: params.sinceSeq,
   });
 
@@ -112,6 +113,8 @@ export async function catchUp(params: {
   }
 
   const outcome = await client.ask({
+    task: 'assistant.catch_up',
+    memberIds,
     system: PERSONA,
     prompt:
       `Estos son los mensajes que ${'no leí'} en «${chatName}». ` +
@@ -129,10 +132,12 @@ export async function answerMention(params: {
   userId: Types.ObjectId;
   request: string;
 }): Promise<AskOutcome> {
-  const { chatName, messages } = await contextOf(params.chatId, params.userId);
+  const { chatName, memberIds, messages } = await contextOf(params.chatId, params.userId);
 
   const pedido = params.request.trim() || '¿En qué me puedes ayudar?';
   return client.ask({
+    task: 'assistant.mention',
+    memberIds,
     system: PERSONA,
     prompt:
       `Estás en «${chatName}». Esto es lo último que se habló:\n\n${transcript(messages)}\n\n` +
@@ -153,16 +158,17 @@ export async function draftEvent(params: {
   text: string;
   now?: Date;
 }): Promise<{ ok: true; draft: EventDraft } | { ok: false; message: string }> {
-  await contextOf(params.chatId, params.userId);
+  const { memberIds } = await contextOf(params.chatId, params.userId);
 
   const ahora = (params.now ?? new Date()).toISOString();
   const outcome = await client.ask({
+    task: 'event.draft',
+    memberIds,
     system:
       'Conviertes una frase en un evento de calendario. Respondes SOLO con un JSON ' +
       '{"title","startsAt","location"}. `startsAt` en ISO 8601 con zona. ' +
       'Si la frase no alcanza para armar un evento, respondes {}.',
     prompt: `Ahora es ${ahora} (zona de Lima, UTC-5). Frase: ${params.text}`,
-    maxTokens: 300,
   });
 
   if (!outcome.ok) return { ok: false, message: outcome.message };

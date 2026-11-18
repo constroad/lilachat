@@ -65,7 +65,11 @@ describe('lilaDoorFor: the Lila app installation that signs a model task', () =>
 
 describe('modelAnswerOf: what agentes answered', () => {
   it('passes the JSON of a done task', () => {
-    expect(modelAnswerOf({ status: 200, body: { ok: true, json: { category: 'IA' }, provider: 'anthropic', model: 'claude-haiku-5-5' } })).toEqual({ ok: true, json: { category: 'IA' } });
+    expect(modelAnswerOf({ status: 200, body: { ok: true, json: { category: 'IA' }, provider: 'anthropic', model: 'claude-haiku-5-5' } })).toEqual({ ok: true, json: { category: 'IA' }, text: '' });
+  });
+
+  it('passes the text of a text task', () => {
+    expect(modelAnswerOf({ status: 200, body: { ok: true, json: null, text: 'Hola', provider: 'anthropic', model: 'm' } })).toEqual({ ok: true, json: null, text: 'Hola' });
   });
 
   it('says not configured when agentes has the model off', () => {

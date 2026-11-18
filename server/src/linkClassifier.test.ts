@@ -62,7 +62,7 @@ describe('buildLinkClassifier: asks agentes for the task, never a provider', () 
 
   it('sends the classify task with its schema to agentes and maps the answer', async () => {
     // Arrange
-    const ask = vi.fn<ModelAsker>(async () => ({ ok: true, json: { category: 'Video, voz e imagen', new: null } }));
+    const ask = vi.fn<ModelAsker>(async () => ({ ok: true, json: { category: 'Video, voz e imagen', new: null }, text: '' }));
     // Act
     const outcome = await buildLinkClassifier(ask).classify(card, categories, members);
     // Assert
@@ -75,7 +75,7 @@ describe('buildLinkClassifier: asks agentes for the task, never a provider', () 
   });
 
   it('proposes categories through the propose task', async () => {
-    const ask = vi.fn<ModelAsker>(async () => ({ ok: true, json: { categories: ['Claude y skills', 'Diseño web y UI'] } }));
+    const ask = vi.fn<ModelAsker>(async () => ({ ok: true, json: { categories: ['Claude y skills', 'Diseño web y UI'] }, text: '' }));
     await expect(buildLinkClassifier(ask).propose([card], members)).resolves.toEqual({ ok: true, names: ['Claude y skills', 'Diseño web y UI'] });
     expect(ask.mock.calls[0]![1].task).toBe('link.propose');
   });
@@ -86,6 +86,6 @@ describe('buildLinkClassifier: asks agentes for the task, never a provider', () 
   });
 
   it('treats a JSON that is not an object as «Sin categoría»', async () => {
-    await expect(buildLinkClassifier(async () => ({ ok: true, json: null })).classify(card, categories, members)).resolves.toEqual({ ok: true, categoryId: null });
+    await expect(buildLinkClassifier(async () => ({ ok: true, json: null, text: '' })).classify(card, categories, members)).resolves.toEqual({ ok: true, categoryId: null });
   });
 });

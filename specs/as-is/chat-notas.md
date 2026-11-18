@@ -143,6 +143,7 @@ Diseño en Stitch `nl-01` a `nl-03` (ver §5). Prototipo navegable en https://cl
   - Necesita `yt-dlp` y `whisper.cpp` (modelo base, ~0.4 GB de RAM, uno a la vez).
   - Hoy ninguno de los dos está instalado.
 - **Las cuentas con restricción de edad** de Instagram no muestran nada sin sesión. Quedan «No se pudo leer».
+- **APK apaisado:** el «+» flotante tapa el final de la primera tarjeta con la vista quieta (E2E 18/11). Se lee al desplazar; mejora posible: un FAB más chico o en la columna de categorías.
 - **La cola vive en memoria:** si el server se reinicia a mitad del encendido, lo pendiente queda sin tarjeta. Apagar y encender el interruptor lo vuelve a correr.
 
 ## 7. Pruebas

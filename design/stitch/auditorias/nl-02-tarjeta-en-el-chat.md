@@ -2,9 +2,10 @@
 
 Stitch: design/stitch/notas/nl-02-tarjeta-en-el-chat-movil.stitch.png (móvil) · Huella: 09212aa82332
 Captura: /private/tmp/claude-501/-Users-josezamora-projects-Portal/21b9fcc4-f3e2-404f-8d05-37dd93bfbcaa/scratchpad/e2e/web-nl02-mobile.png (móvil, web) · Huella: c47a27604f3f
+Captura: /private/tmp/claude-501/-Users-josezamora-projects-Portal/21b9fcc4-f3e2-404f-8d05-37dd93bfbcaa/scratchpad/e2e/apk-nl02-movil-390.png (móvil, APK: captura de 1080 px a 420 dpi reducida a 390 px) · Huella: a2ce5621aaa2
 Banco local: server del worktree en qa.localhost:4013, chat «QA-NOTAS IA links» con 4 enlaces reales y una nota.
-Revisor: subagente independiente (solo vio las dos imágenes).
-Fecha: 2026-11-18 09:40 (código web en 34d6f0bb y ee48b291)
+Revisor: subagente independiente (solo vio las dos imágenes; el APK, dos pasadas).
+Fecha: 2026-11-18 10:02 (web en 34d6f0bb y ee48b291; APK en 81b1a70f, 88072765 y 6a147e4b)
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |
@@ -29,5 +30,19 @@ Fecha: 2026-11-18 09:40 (código web en 34d6f0bb y ee48b291)
 | Miniatura · alto | 96 px | 96 px | igual |
 | Miniatura · radio | 8 px | 8 px | igual |
 | Pastilla de categoría · alto | 28 px | 28 px | igual |
+| APK · control «Chat · Por categoría» | riel tintado, segmento activo blanco, sin íconos | riel blanco con borde, activo lavanda, con íconos | diferencia justificada: primitiva compartida de la app (app/src/ui/Segmentado.tsx, en 15 pantallas) |
+| APK · cabecera | ícono violeta sólido, lupa, ⋮ y avatar | ícono del chat de notas y ⋮ | diferencia justificada: cabecera compartida de la conversación (app/src/chat/ChatScreen.tsx); el avatar «no va» (design/stitch/INVENTARIO.md, fila nl-01 móvil) |
+| APK · burbuja con tarjeta blanca y pastilla de categoría con lápiz | sí | igual | igual |
+| APK · «SOLO PIDE COMENTAR» | bajo el autor, tinte azul | bajo el autor, tinte ocre | diferencia justificada: tono «pendiente» de la casa, \`warning\` (shared/src/tokens.ts:75) |
+| APK · tarjeta ilegible | el error como título, chips en una fila | título y motivo, chips debajo | diferencia justificada: \`cardLinesOf\` arma título y cuerpo igual para todas (app/src/chat/links/linkView.ts) |
+| APK · compositor | «Pega un enlace o escribe una nota» y enviar | «Mensaje» y micrófono | diferencia justificada: compositor compartido (app/src/chat/Composer.tsx) |
+| APK · burbuja · ancho | 358 px | 366 px (dp, fila entera) | diferencia justificada: margen de la lista de 12 dp (\`paddingHorizontal: 12\`, app/src/chat/ListaDeMensajes.tsx:209) |
+| APK · separación entre burbujas | 16 px | 2 px (dp) | diferencia justificada: mensajes seguidos del mismo autor se agrupan (\`grouped ? 'pt-0.5' : 'pt-3'\`, app/src/chat/MessageRow.tsx:253) |
+| APK · tarjeta interior · margen | 10 px | 6 px (dp, \`m-1.5\`) | diferencia justificada: la burbuja no tiene padding y la tarjeta lleva su margen (app/src/chat/links/NoteLinkBubble.tsx) |
+| APK · tarjeta interior · radio | 12 px | 12 px (dp) | igual |
+| APK · miniatura · ancho | 72 px | 72 px (dp) | igual |
+| APK · miniatura · alto | 96 px | 96 px (dp) | igual |
 
 Primera revisión: la burbuja medía 261 px y cortaba la pastilla de plataforma y «Solo pide comentar» (las tres acciones ocultas ocupaban 97 px). Corregido en 3d7db1b2 y 34d6f0bb.
+
+APK: primera pasada (burbuja al 80 %, título y pastilla cortados) corregida en 81b1a70f; segunda (portada de 64 dp) en 6a147e4b.

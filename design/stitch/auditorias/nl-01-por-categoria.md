@@ -4,9 +4,10 @@ Stitch: design/stitch/notas/nl-01-por-categoria-escritorio.stitch.png (escritori
 Stitch: design/stitch/notas/nl-01-por-categoria-movil.stitch.png (móvil) · Huella: f15283f99184
 Captura: /private/tmp/claude-501/-Users-josezamora-projects-Portal/21b9fcc4-f3e2-404f-8d05-37dd93bfbcaa/scratchpad/e2e/web-nl01-desktop.png (escritorio, web) · Huella: 853b4e386542
 Captura: /private/tmp/claude-501/-Users-josezamora-projects-Portal/21b9fcc4-f3e2-404f-8d05-37dd93bfbcaa/scratchpad/e2e/web-nl01-mobile.png (móvil, web) · Huella: f76ae98910c5
+Captura: /private/tmp/claude-501/-Users-josezamora-projects-Portal/21b9fcc4-f3e2-404f-8d05-37dd93bfbcaa/scratchpad/e2e/apk-nl01-movil-390.png (móvil, APK: captura de 1080 px a 420 dpi reducida a 390 px) · Huella: 098a75b793dd
 Banco local: server del worktree en qa.localhost:4013 con Mongo de prueba y un doble del clasificador; chat «QA-NOTAS IA links» con 4 enlaces reales.
-Revisor: subagente independiente (solo vio las dos imágenes de cada dispositivo).
-Fecha: 2026-11-18 09:40 (código web en 34d6f0bb y ee48b291)
+Revisor: subagente independiente (solo vio las dos imágenes de cada dispositivo; el APK, dos pasadas).
+Fecha: 2026-11-18 10:02 (web en 34d6f0bb y ee48b291; APK en 81b1a70f, 88072765 y 6a147e4b)
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |
@@ -58,5 +59,21 @@ Fecha: 2026-11-18 09:40 (código web en 34d6f0bb y ee48b291)
 | Móvil · segmentado · radio | 12 px | 12 px | igual |
 | Móvil · segmento · alto | 36 px | 36 px | igual |
 | Móvil · segmento · radio | 8 px | 8 px | igual |
+| APK · control «Chat · Por categoría» | riel tintado, segmento activo blanco, sin íconos | riel blanco con borde, activo lavanda, con íconos | diferencia justificada: primitiva compartida de la app (app/src/ui/Segmentado.tsx, en 15 pantallas) |
+| APK · cabecera | ícono violeta sólido, lupa, ⋮ y avatar | ícono del chat de notas y ⋮ | diferencia justificada: cabecera compartida de la conversación (app/src/chat/ChatScreen.tsx); el avatar «no va» (design/stitch/INVENTARIO.md, fila nl-01 móvil) |
+| APK · fondo | casi blanco | lavanda de la conversación | diferencia justificada: tokens \`chatBackground\` y \`listBackground\` de la marca (shared/src/tokens.ts) |
+| APK · buscador, chips con scroll y secciones «NOMBRE · N» | sí | igual | igual |
+| APK · ícono de filtros en el buscador | sí | no está | diferencia justificada: design/stitch/INVENTARIO.md, fila nl-01 móvil, «no va» |
+| APK · «Ver las N →» | en cada sección | no se ve | diferencia justificada: aparece con más de 3 enlaces y QA tiene 1 por sección (app/src/chat/links/LinksParts.tsx:109) |
+| APK · «+» sobre la última tarjeta | no tapa | tapa la esquina con la vista quieta | diferencia justificada: botón flotante; la lista deja su alto abajo (\`paddingBottom: FAB_SIZE + FAB_MARGIN * 2\`, app/src/chat/links/LinksByCategory.tsx:106) |
+| APK · tarjeta de fila · alto | 107 px | 106 px (dp) | igual |
+| APK · tarjeta de fila · padding | 16 px | 16 px (dp) | igual |
+| APK · tarjeta de fila · radio | 12 px | 12 px (dp, \`rounded-card\`) | igual |
+| APK · miniatura · alto | 75 px | 75 px (dp) | igual |
+| APK · miniatura · radio | 8 px | 8 px (dp, \`radius.thumb\`) | igual |
+| APK · chip · alto | 36 px | 39 px (dp, 37 en la captura reducida) | diferencia justificada: \`min-h-[40px]\` del chip, área táctil mínima de la casa (\`minTouchTarget\`, shared/src/tokens.ts; app/src/chat/links/LinksParts.tsx:61) |
+| APK · segmentado · alto | 44 px | 53 px (dp) | diferencia justificada: primitiva compartida (app/src/ui/Segmentado.tsx) |
 
 Primera revisión (radios al doble de Stitch) corregida con los tokens `card` 12 y `thumb` 8 (shared/src/tokens.ts). Segunda: el autor largo se salía de la tarjeta de la grilla; corregido en 34d6f0bb.
+
+APK: primera pasada (radios al doble, columna y pastillas cortadas) corregida en d718b4e5 y 81b1a70f; segunda pasada (tarjeta de 88 dp) corregida en 88072765. Apaisada: columna «CATEGORÍAS» al costado; el «+» tapa el final de la primera tarjeta con la vista quieta (pendiente en specs/as-is/chat-notas.md §6).

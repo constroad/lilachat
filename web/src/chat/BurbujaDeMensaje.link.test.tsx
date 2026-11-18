@@ -38,6 +38,8 @@ describe('a link in a notes chat bubble', () => {
     // E2E 18/11: a long author pushed the bubble off screen; the card and its bubble never grow past their column.
     expect(screen.getByTestId('enlace-guardado-5')).toHaveClass('max-w-full');
     expect(screen.getByTestId('enlace-guardado-5').closest('.rounded-xl.px-3')).toHaveClass('max-w-full');
+    // Review 18/11: the link bubble takes the wider column, so its pill and badges fit.
+    expect(screen.getByTestId('enlace-guardado-5').closest('.flex-col')).toHaveClass('max-w-[88%]');
     await waitFor(() => expect(screen.getByTestId('pastilla-categoria')).toHaveTextContent('Video, voz e imagen'));
     expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('vista-previa'), expect.anything());
     expect(screen.queryByText(URL_REEL)).toBeNull();

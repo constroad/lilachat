@@ -37,7 +37,7 @@ function StatusPills({ link, onRetry, retrying }: { link: LinkCard; onRetry: () 
     );
   }
   if (!link.commentBait) return null;
-  return <span className="mt-1.5 inline-block whitespace-nowrap rounded-md bg-warning/15 px-1.5 py-0.5 text-[11px] font-bold uppercase text-on-surface">Solo pide comentar</span>;
+  return <span className="mt-1.5 inline-block max-w-full truncate rounded-md bg-warning/15 px-1.5 py-0.5 text-[11px] font-bold uppercase text-on-surface">Solo pide comentar</span>;
 }
 
 function CategoryPill({ name, onEdit, disabled }: { name: string | null; onEdit: () => void; disabled: boolean }) {

@@ -41,7 +41,7 @@ function MiniCard({ item }: { item: LinkNoteItem }) {
       <LinkThumb link={link} className="aspect-[3/4] w-12" />
       <div className="min-w-0 flex-1">
         <p className="flex min-w-0 items-center gap-1.5 text-[13px] font-bold text-on-surface">
-          <span className="truncate">{authorOf(link)}</span>
+          <span className="line-clamp-2">{authorOf(link)}</span>
           <span aria-hidden className="text-on-surface-variant">·</span>
           <PlatformPill link={link} />
         </p>

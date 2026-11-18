@@ -44,7 +44,7 @@ type Props = {
   ultimoDelGrupo: boolean;
   /** En un grupo, el primero del bloque de otra persona lleva su nombre. */
   conAutor: boolean;
-  chat: Pick<ChatSummary, 'othersReadSeq' | 'othersDeliveredSeq'>;
+  chat: Pick<ChatSummary, 'othersReadSeq' | 'othersDeliveredSeq' | 'kind' | 'linksSorted'>;
   onReintentar: (clientKey: string) => void;
   onDescartar: (clientKey: string) => void;
   /** The Slack format (design `s-01`): a flat row instead of the bubble. */
@@ -72,7 +72,8 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
   if (props.flat) return <FlatMessage {...props} />;
   return (
     <div data-testid={`mensaje-${mensaje.clientKey}`} className={`group flex items-start gap-1 ${agrupado ? 'mt-1' : 'mt-3'} ${mio ? 'flex-row-reverse' : ''}`}>
-      <div className={`flex max-w-[68%] min-w-0 flex-col ${mio ? 'items-end' : 'items-start'}`}>
+      {/* A saved link of a notes chat takes the wider column of design nl-02 (review 18/11: its pill was cut at 68 %). */}
+      <div className={`flex ${storedLinkOf(mensaje, props.chat) ? 'max-w-[88%]' : 'max-w-[68%]'} min-w-0 flex-col ${mio ? 'items-end' : 'items-start'}`}>
         {/* Una encuesta, un evento o un recordatorio: su tarjeta en vez de la burbuja (W3c). */}
         {mensaje.ref && !mensaje.deletedAt ? (
           <TarjetaDelMensaje mensaje={mensaje} mio={mio} conAutor={props.conAutor} />

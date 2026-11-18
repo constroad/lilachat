@@ -55,17 +55,17 @@ function MenuRow(props: { testId: string; icon: ReactNode; label: string; onSele
 export function LinkGridCard({ item, actions }: { item: LinkNoteItem; actions: LinkCardActions }) {
   const { link } = item;
   return (
-    <article data-testid={`enlace-${item.seq}`} className="group relative flex flex-col rounded-card border border-outline/15 bg-surface p-3 shadow-sm transition-colors hover:border-primary motion-reduce:transition-none">
+    <article data-testid={`enlace-${item.seq}`} className="group relative flex min-w-0 flex-col rounded-card border border-outline/15 bg-surface p-3 shadow-sm transition-colors hover:border-primary motion-reduce:transition-none">
       <div className="absolute right-4 top-4 z-10">
         <LinkCardMenu item={item} actions={actions} revealOnHover />
       </div>
-      <button type="button" onClick={() => actions.onOpen(item)} className="flex flex-col text-left">
+      <button type="button" onClick={() => actions.onOpen(item)} className="flex w-full min-w-0 flex-col text-left">
         <LinkThumb link={link} className="h-44 w-full" iconSize={22} />
         <span className="mt-3 flex items-center justify-between gap-2">
           <PlatformPill link={link} />
           <span className="shrink-0 text-[11px] tabular-nums text-on-surface-variant">{dayMonthOf(item.at)}</span>
         </span>
-        <span className="mt-2 truncate text-[14px] font-bold text-on-surface">{authorOf(link)}</span>
+        <span className="mt-2 max-w-full truncate text-[14px] font-bold text-on-surface">{authorOf(link)}</span>
         <span className="mt-1 line-clamp-3 text-[13px] leading-5 text-on-surface-variant">{summaryOf(link)}</span>
       </button>
     </article>

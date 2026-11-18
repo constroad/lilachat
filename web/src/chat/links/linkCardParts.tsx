@@ -39,7 +39,7 @@ export function LinkThumb({ link, className, iconSize = 18 }: { link: LinkCard; 
 
 /** «INSTAGRAM · REEL» on one line, never two (INVENTARIO: Stitch wrapped it). */
 export function PlatformPill({ link }: { link: LinkCard }) {
-  return <span className="inline-block max-w-full truncate whitespace-nowrap rounded-md bg-on-surface-variant/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">{platformLabel(link)}</span>;
+  return <span className="inline-block max-w-full truncate whitespace-nowrap rounded-md bg-on-surface-variant/10 px-1.5 py-0.5 text-[10px] font-bold uppercase text-on-surface-variant">{platformLabel(link)}</span>;
 }
 
 /** «17/11», the day it was saved. */

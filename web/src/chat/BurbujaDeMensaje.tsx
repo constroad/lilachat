@@ -70,10 +70,11 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
   if (mensaje.kind === 'zumbido' && !mensaje.deletedAt) return <NudgeFromContext seq={mensaje.seq} mine={mio} senderId={mensaje.senderId} at={mensaje.at} menu={<MenuDelMensaje mensaje={mensaje} mio={mio} />} />;
   if (mensaje.kind === 'guino' && !mensaje.deletedAt) return <WinkFromContext seq={mensaje.seq} wink={mensaje.wink} mine={mio} senderId={mensaje.senderId} at={mensaje.at} menu={<MenuDelMensaje mensaje={mensaje} mio={mio} />} />;
   if (props.flat) return <FlatMessage {...props} />;
+  const wideLink = storedLinkOf(mensaje, props.chat) !== null;
   return (
     <div data-testid={`mensaje-${mensaje.clientKey}`} className={`group flex items-start gap-1 ${agrupado ? 'mt-1' : 'mt-3'} ${mio ? 'flex-row-reverse' : ''}`}>
-      {/* A saved link of a notes chat takes the wider column of design nl-02 (review 18/11: its pill was cut at 68 %). */}
-      <div className={`flex ${storedLinkOf(mensaje, props.chat) ? 'max-w-[88%]' : 'max-w-[68%]'} min-w-0 flex-col ${mio ? 'items-end' : 'items-start'}`}>
+      {/* A saved link of a notes chat takes the whole row, as in design nl-02 (review 18/11: its pill was cut at 68 %). */}
+      <div className={`flex ${wideLink ? 'flex-1' : 'max-w-[68%]'} min-w-0 flex-col ${mio ? 'items-end' : 'items-start'}`}>
         {/* Una encuesta, un evento o un recordatorio: su tarjeta en vez de la burbuja (W3c). */}
         {mensaje.ref && !mensaje.deletedAt ? (
           <TarjetaDelMensaje mensaje={mensaje} mio={mio} conAutor={props.conAutor} />
@@ -105,9 +106,12 @@ export const BurbujaDeMensaje = memo(function BurbujaDeMensaje(props: Props) {
           <MessageFooter mensaje={mensaje} mio={mio} chat={props.chat} />
         ) : null}
       </div>
-      <BotonDeReaccionar mensaje={mensaje} mio={mio} />
-      <BotonDeHilo mensaje={mensaje} />
-      <MenuDelMensaje mensaje={mensaje} mio={mio} />
+      {/* Beside a wide link bubble the hover actions stack, so on a phone they take one button's width, not three. */}
+      <div className={wideLink ? 'flex shrink-0 flex-col items-center gap-1 self-center' : 'contents'}>
+        <BotonDeReaccionar mensaje={mensaje} mio={mio} />
+        <BotonDeHilo mensaje={mensaje} />
+        <MenuDelMensaje mensaje={mensaje} mio={mio} />
+      </div>
     </div>
   );
 });

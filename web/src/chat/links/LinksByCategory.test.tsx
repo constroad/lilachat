@@ -127,6 +127,11 @@ describe('«Por categoría» on a computer (nl-01 desktop)', () => {
     expect(screen.getByTestId('revision-commentBait')).toHaveTextContent('1');
     expect(screen.getByTestId('revision-unreadable')).toHaveTextContent('1');
     expect(screen.getByTestId('btn-renombrar-categoria')).toBeInTheDocument();
+    // Review 18/11: a long author is cut inside its grid card, never past its border.
+    const card = screen.getByTestId('enlace-1');
+    expect(card).toHaveClass('min-w-0');
+    expect([...card.querySelectorAll('button')].at(-1)).toHaveClass('min-w-0', 'w-full');
+    expect(card.querySelector('span.mt-2.truncate')).toHaveClass('max-w-full');
   });
 
   it('«Más viejos» turns the order around', async () => {

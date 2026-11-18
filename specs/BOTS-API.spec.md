@@ -1753,6 +1753,7 @@ decisiones de negocio siguen abiertas. Mientras tanto, el reparto es libre: cada
 | Aprobar un seguimiento que redactó Dali | Lilachat | `prospect.follow_up.approved`; agentes lo envía |
 | Lo que Dali sabe del negocio, y enseñarle una respuesta | agentes | `dali.knowledge.requested` y `dali.faq.add`, síncronos |
 | Una tarea del modelo (clasificar un enlace, proponer categorías, y el asistente: resumen, `@lila`, borrador de evento; José 18/11) | agentes | `llm.task.requested` `{ task, system, input, schema? }`, síncrono, 10 s, solo la app Lila. Responde `{ ok: true, json, text, provider, model }` o `{ ok: false, code }` (`off`, `budget`, `timeout`…). Agentes elige el modelo (`core/llm/tasks.ts`) |
+| Lo que se habló en el canal, para contestar `/lila <pregunta>` (José 18/11: una sola Lila) | Lilachat | `GET /api/bots/commands/:id/context` → `{ chat: { name }, messages: [{ from, text }] }`. Solo con una corrida viva de `/lila` de una app de agentes, en su chat; 403, 404, 409 o 410 si no |
 
 **El PUT suma** (todo opcional; lo que no viene queda como estaba y `null` lo borra):
 

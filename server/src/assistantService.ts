@@ -53,7 +53,8 @@ const PERSONA =
   'Hablas de la conversación que te muestran y NUNCA inventas datos que no ' +
   'estén ahí: si no aparece, dices que no lo ves en el chat.';
 
-async function contextOf(
+/** The chat's recent messages for Lila; the asker's membership is the permission. Also read by agentes' /lila (`bots/commandContext.ts`). */
+export async function contextOf(
   chatId: Types.ObjectId,
   userId: Types.ObjectId,
   options: { sinceSeq?: number } = {}

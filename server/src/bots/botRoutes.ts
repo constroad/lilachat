@@ -1,4 +1,5 @@
 import express, { Router, type NextFunction, type Request, type Response } from 'express';
+import { commandContextOf } from './commandContext.js';
 import multer from 'multer';
 import { BOT_UPLOAD_MAX_BYTES, toInternationalPhone, validateAppManifest, validateBotCard, validateBotCommands, validateBotFiles, validateBotPost, validateVisitCard, clientRefOf, type BotClientRef } from '@lilachat/shared';
 import { ChatModel, type Chat } from '../chatModels.js';
@@ -235,6 +236,11 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
   mountTopics(router);
   router.post('/commands/:id/respond', asyncRoute(async (req, res) => {
     const outcome = await respondToCommand(req.bot!, String(req.params.id), req.body);
+    if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+    res.json(outcome);
+  }));
+  router.get('/commands/:id/context', asyncRoute(async (req, res) => {
+    const outcome = await commandContextOf(req.bot!, String(req.params.id));
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.json(outcome);
   }));

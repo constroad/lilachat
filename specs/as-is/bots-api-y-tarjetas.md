@@ -73,6 +73,12 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
 - `llm.task.requested` (18/11): una tarea del modelo que Lilachat le pide a agentes por la app Lila
   (`agentesModel.ts`, 10 s). La firma la instalación de Lila de un espacio de un miembro del chat
   (`developerAppClientIds()` de `botApps.ts`). Agentes elige el modelo; Lilachat no guarda claves.
+- `GET /api/bots/commands/:id/context` (18/11, José: una sola Lila): el nombre del chat y sus últimos
+  mensajes (`{ from, text }`, el mismo corte de 40 mensajes y 8000 caracteres del asistente) para que la
+  Lila de agentes conteste `/lila <pregunta>` en un canal. Solo vale una corrida viva de `/lila` (15 min)
+  de una app de agentes (la app Lila o una con `ownerAppId` de ella), en el chat donde se pidió y con la
+  membresía de quien preguntó. 403 `not_a_context_command` para otro comando u otra app, 409 `no_chat`
+  desde el ⚡ y `encrypted_chat` en un chat cifrado (`bots/commandContext.ts`).
 - En la mini, `agentes.constroad.com` se llama por `http://127.0.0.1:3012` y cae a la URL pública
   si nadie escucha (28/10). La lista vive en `botLoopback.ts`.
 - Con `channels:history` la app oye todo el canal. Los archivos llegan en `message.files` con dirección

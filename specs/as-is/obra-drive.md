@@ -1,0 +1,136 @@
+# As-is · Drive del servicio
+
+> Fecha de corte: **17/11/2026**. Fuentes: código de `main`, `git log` desde el 29/10,
+> `specs/ARCHITECTURE.spec.md` (§169, §171, §175 y «Drive del servicio», 06/11 y 13/11) y
+> `design/stitch/INVENTARIO.md`.
+
+## 1. Qué es
+
+La pestaña «Drive» de cada servicio del canal del cliente. Muestra y sube los archivos
+que Portal guarda en el Drive de ese servicio: fotos, videos y documentos.
+
+- José 06/11: «los videos no van en informes nunca». Fotos y videos sueltos entran por
+  el Drive, en la raíz del servicio, sin informe.
+- José 07/11: el Drive es de **todos los miembros del canal** (`canSeeDrive`). La marca
+  vieja `files` se sigue leyendo; ya no hay marca «Drive» en los accesos.
+- Los datos viven en Portal. Lilachat lista, sube y abre en su visor.
+
+## 2. Qué hace hoy
+
+- Cabecera «DRIVE DEL SERVICIO · N archivos», selector Lista / Cuadrícula y **un solo
+  botón «Subir»** (José 13/11: «nunca vi un diseño que tenga varios botones en un drive»).
+- «Subir» ofrece «Tomar foto», «Grabar video», «Desde la galería» y «Documento»
+  (`DRIVE_UPLOAD_OPTIONS`, `shared/src/driveView.ts`). Sin cámara en vivo: galería y documento.
+- Botón de cámara junto a «Subir»: abre la cámara con FOTO / VIDEO, sello y GPS
+  (stitch-design §5-ter: la evidencia abre la cámara al primer toque).
+- Chips Todo · Fotos · Videos · Documentos (`filesOfKind`).
+- Cuadrícula con miniaturas por día de Lima («Hoy · 13 nov», `driveDayGroups`) y
+  carpetas en tarjetas. Columnas por ancho: 2, 3 o 5.
+- Documentos: PDF, Word, Excel y PowerPoint. El tipo sale de la extensión
+  (`documentTypeOf`): Android a veces manda `application/octet-stream`. Etiqueta PDF /
+  XLSX encima de la miniatura.
+- Visor: fotos y videos en el visor del chat; PDF en su visor con «Descargar». Un tipo
+  desconocido abre una pestaña nueva (web).
+- **Antes / después** (08/11): desde el visor se marca una foto como antes o después
+  (`PhotoPhaseBar`, kind `photo_phase` → `marcar_foto_antes_despues`).
+- Enlace al Drive del cliente (carpeta de Portal) en la lista de «Servicios».
+- Importar calles del mapa: el KMZ o KML sale del Drive (ver `obra-mapa.md`).
+
+### Subida
+
+- Foto sin sello (galería): se achica al estándar de Portal y sube directo al boleto de
+  Portal (`service-drive-upload`).
+- Foto o video de la cámara de Lilachat: va a `POST /api/stamped-forward`. El server
+  quema el sello, comprime una vez y reenvía al boleto (`server/src/stampedForward.ts`).
+- Video: tal cual, tope 60 s y 50 MB. Documentos: tope 50 MB.
+- Solo sube lo que el boleto anuncia en `upload.mimeTypes`. Si no: «Ese tipo de archivo
+  no se puede subir al Drive.».
+
+### Web/PWA
+
+- `web/src/spaces/clients/ServiceDriveWeb.tsx`, `DriveParts.tsx` (menú «Subir», «Suelta
+  aquí…» para arrastrar), `PortalFileViewer.tsx`, `useDriveUpload.ts`, `PhotoPhaseBar.tsx`.
+- La vista elegida se recuerda en `localStorage` (`lilachat.drive.vista`).
+- La cámara web (`WebCamera`) aparece en cualquier equipo con cámara.
+
+### APK
+
+- `app/src/spaces/clients/ServiceDrive.tsx`, `DriveGrid.tsx`, `DriveHeader.tsx`,
+  `DriveUploadSheet.tsx` (hoja inferior), `FileThumb.tsx`, `useDriveUpload.ts`,
+  `useFileViewer.tsx`, `PhotoPhaseBar.tsx`.
+- La subida va por `subirPorXhr`: `fetch` no envía un archivo por su `uri`.
+- La vista elegida se recuerda mientras la app está abierta.
+
+### Server
+
+- `GET /api/workspaces/:id/clients/:clientId/services/:serviceId/files` → evento
+  `client.files.requested` (`server/src/bots/clientFiles.ts`).
+- `POST …/reports/forms` con kind `drive_upload` → herramienta `subir_al_drive`
+  (devuelve el boleto) y kind `photo_phase` → `marcar_foto_antes_despues`
+  (`bots/photoPhaseForm.ts`).
+- `POST /api/stamped-forward` (sello y reenvío).
+- CSP: `connect-src` incluye `https://constroad.com` (sin eso el navegador corta la subida).
+
+### Shared
+
+`driveUpload.ts` (`isPortalUploadTicket`, `driveFileRefusal`, `formRunAnswer`),
+`driveView.ts`, `serviceFiles.ts`, `photoPhase.ts`, `fileViewer.ts`, `workFiles.ts`.
+
+### Dependencias
+
+Portal guarda los archivos y emite el boleto (documentos desde 7822bc25). Agentes
+filtraba los tipos del boleto y no dejaba pasar PDF; lo corrigió en a636426 (13/11).
+
+## 3. Diferencias APK vs web
+
+| Tema | Web/PWA | APK |
+| --- | --- | --- |
+| «Subir» | Menú | Hoja inferior |
+| Arrastrar y soltar | Sí | No |
+| Recordar vista | `localStorage` | Solo mientras la app vive |
+| Envío | `fetch` | `subirPorXhr` |
+
+## 4. Historia reciente
+
+- **29/10** Drive del servicio a pedido (`client.files.requested`, f-06).
+- **30/10** Una sola pestaña de archivos, con miniatura y visor.
+- **06/11** Subir fotos y videos. El Drive vive en el servicio; se borró la pestaña
+  «Archivos» del canal (los archivos del canal se ven en Media).
+- **07/11** El Drive es de todos los miembros del canal.
+- **08/11** Marcar una foto como antes o después desde el visor.
+- **12/11** La cámara con sello también para lo que va al Drive (APK y web del celular).
+- **13/11** Documentos; un solo «Subir»; lista y cuadrícula; filtro por tipo; cámara a
+  un toque; sello visible en «Enviar» y en el visor.
+
+## 5. Diseños de Stitch relacionados
+
+| Diseño | Estado | Evidencia |
+| --- | --- | --- |
+| drv-01 lista | Implementado APK y web | `DriveHeader.tsx`, `DriveParts.tsx` |
+| drv-02 cuadrícula | Implementado APK y web | `DriveGrid.tsx`, `driveDayGroups` |
+| drv-03 subir | Implementado; la barra de progreso por archivo es una línea de estado | `DriveUploadSheet.tsx`, `DriveParts.tsx` |
+| f-06 servicio con Drive | Implementado (el inventario dice «falta», está desactualizado) | 5 referencias en código |
+
+Lo que Stitch inventó y no va: descripción de cada carpeta, peso en la tarjeta y
+candado del PDF. Portal no manda esos datos.
+
+## 6. Pendientes y deuda conocida
+
+- **Video grande en campo:** puede tardar minutos y no sigue en segundo plano. Si la app
+  se cierra, la subida falla y se reintenta a mano (según spec, 06/11).
+- **Miembro sin cuenta de Portal:** pedido a Agentes y Portal que respondan
+  `client.files.requested` (07/11). No verificado si se cerró.
+- Las pruebas no ven el `fetch` de Expo: una subida rota en el APK solo la detecta el
+  E2E en el emulador (según spec).
+- Sin conteo en la pestaña: Portal no lo manda.
+
+## 7. Pruebas
+
+- **Shared:** `driveUpload.test.ts`, `driveView.test.ts`, `serviceFiles.test.ts`,
+  `photoPhase.test.ts`, `fileViewer.test.ts`, `workFiles.test.ts`.
+- **Server:** `bots/clientFiles.test.ts`.
+- **Web:** `ServiceDriveWeb.test.tsx`, `PortalFileViewer.test.tsx`.
+- **APK:** sin tests de render del Drive.
+- **Maestro:** `chat-file.yaml` y `chat-pdf.yaml` prueban archivos del chat, no el Drive
+  (no verificado su contenido en detalle). No hay flujo del Drive.
+- **E2E documentado:** APK y web con dos PDF de QA en «QA-PISTA-APK — borrar» (13/11).

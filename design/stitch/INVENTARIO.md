@@ -3,6 +3,8 @@
 Proyecto: **Omni Messaging Platform** (`projects/15540754270713720465`).
 Paleta: «Vivid Pulse» (`assets/78ffeb6efbad4591b2dcc89131e1c5f5`), la de `shared/src/tokens.ts`.
 
+> **Estado vigente (17/11/2026): [`specs/as-is/pendientes-y-stitch.md`](../../specs/as-is/pendientes-y-stitch.md).** La columna de estado de esta tabla quedó vieja en `dl-*`, `f-04…08`, `la-01…07` y «Corregir datos» de `gst-02`: ya están hechos.
+
 Las capturas viven SOLO en la máquina (`design/stitch/`, en `.gitignore` desde el
 17/10/2026; antes estaban versionadas). Se bajan del proyecto con el MCP de Stitch.
 

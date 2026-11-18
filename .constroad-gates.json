@@ -13,8 +13,73 @@
       "web/src/calls/"
     ],
     "keeps": {
-      "app/src/chat/commands/commandsApi.ts": ["shrinkPhotoFile", "stampFieldsOf"],
-      "web/src/chat/commands/commandsApi.ts": ["shrinkPhotoBlob", "stampFieldsOf"]
+      "app/src/chat/commands/commandsApi.ts": [
+        "shrinkPhotoFile",
+        "stampFieldsOf"
+      ],
+      "web/src/chat/commands/commandsApi.ts": [
+        "shrinkPhotoBlob",
+        "stampFieldsOf"
+      ]
+    }
+  },
+  "asIs": {
+    "map": {
+      "app/src/agenda/": "specs/as-is/chat-agenda-encuestas-checklists.md",
+      "app/src/auth/": "specs/as-is/plataforma-ingreso-y-sesiones.md",
+      "app/src/calls/": "specs/as-is/llamadas.md",
+      "app/src/chat/": "specs/as-is/chat-mensajes.md",
+      "app/src/chat/botBlocks/": "specs/as-is/bots-comandos-formularios-y-horarios.md",
+      "app/src/chat/camara/": "specs/as-is/chat-medios-y-archivos.md",
+      "app/src/chat/commands/": "specs/as-is/bots-comandos-formularios-y-horarios.md",
+      "app/src/chat/crop/": "specs/as-is/chat-medios-y-archivos.md",
+      "app/src/chat/emojiPanel/": "specs/as-is/chat-stickers-emojis-guinos.md",
+      "app/src/chat/emojiShortcode/": "specs/as-is/chat-stickers-emojis-guinos.md",
+      "app/src/chat/gifs/": "specs/as-is/chat-stickers-emojis-guinos.md",
+      "app/src/chat/pdf/": "specs/as-is/chat-medios-y-archivos.md",
+      "app/src/chat/stickers/": "specs/as-is/chat-stickers-emojis-guinos.md",
+      "app/src/chat/workPlan/": "specs/as-is/chat-agenda-encuestas-checklists.md",
+      "app/src/contacts/": "specs/as-is/plataforma-perfil-contactos-privacidad.md",
+      "app/src/diagnostico/": "specs/as-is/plataforma-fluidez-y-planes.md",
+      "app/src/media/": "specs/as-is/chat-medios-y-archivos.md",
+      "app/src/respaldo/": "specs/as-is/plataforma-versiones-ota-respaldo.md",
+      "app/src/settings/": "specs/as-is/plataforma-ajustes-tema-disposicion.md",
+      "app/src/spaces/": "specs/as-is/plataforma-espacios-y-canales.md",
+      "app/src/spaces/apps/": "specs/as-is/bots-api-y-tarjetas.md",
+      "app/src/spaces/clients/": "specs/as-is/obra-canal-cliente-y-tutoriales.md",
+      "app/src/spaces/dali/": "specs/as-is/bots-dali-prospectos.md",
+      "app/src/spaces/visits/": "specs/as-is/obra-visita-e-iaa.md",
+      "app/src/updates/": "specs/as-is/plataforma-versiones-ota-respaldo.md",
+      "server/src/bots/": "specs/as-is/bots-api-y-tarjetas.md",
+      "server/src/ota/": "specs/as-is/plataforma-versiones-ota-respaldo.md",
+      "web/src/admin/": "specs/as-is/plataforma-admin.md",
+      "web/src/agenda/": "specs/as-is/chat-agenda-encuestas-checklists.md",
+      "web/src/auth/": "specs/as-is/plataforma-ingreso-y-sesiones.md",
+      "web/src/calls/": "specs/as-is/llamadas.md",
+      "web/src/chat/": "specs/as-is/chat-mensajes.md",
+      "web/src/chat/botBlocks/": "specs/as-is/bots-comandos-formularios-y-horarios.md",
+      "web/src/chat/camera/": "specs/as-is/chat-medios-y-archivos.md",
+      "web/src/chat/commands/": "specs/as-is/bots-comandos-formularios-y-horarios.md",
+      "web/src/chat/emojiShortcode/": "specs/as-is/chat-stickers-emojis-guinos.md",
+      "web/src/chat/gifs/": "specs/as-is/chat-stickers-emojis-guinos.md",
+      "web/src/chat/hilos/": "specs/as-is/chat-hilos.md",
+      "web/src/chat/queue/": "specs/as-is/bots-comandos-formularios-y-horarios.md",
+      "web/src/chat/stickers/": "specs/as-is/chat-stickers-emojis-guinos.md",
+      "web/src/chat/tarjetas/": "specs/as-is/bots-comandos-formularios-y-horarios.md",
+      "web/src/chat/workPlan/": "specs/as-is/chat-agenda-encuestas-checklists.md",
+      "web/src/contacts/": "specs/as-is/plataforma-perfil-contactos-privacidad.md",
+      "web/src/media/": "specs/as-is/chat-medios-y-archivos.md",
+      "web/src/notify/": "specs/as-is/plataforma-avisos-push.md",
+      "web/src/presence/": "specs/as-is/plataforma-perfil-contactos-privacidad.md",
+      "web/src/privacy/": "specs/as-is/plataforma-perfil-contactos-privacidad.md",
+      "web/src/profile/": "specs/as-is/plataforma-perfil-contactos-privacidad.md",
+      "web/src/pwa/": "specs/as-is/plataforma-ajustes-tema-disposicion.md",
+      "web/src/rail/": "specs/as-is/plataforma-ajustes-tema-disposicion.md",
+      "web/src/spaces/": "specs/as-is/plataforma-espacios-y-canales.md",
+      "web/src/spaces/apps/": "specs/as-is/bots-api-y-tarjetas.md",
+      "web/src/spaces/clients/": "specs/as-is/obra-canal-cliente-y-tutoriales.md",
+      "web/src/spaces/dali/": "specs/as-is/bots-dali-prospectos.md",
+      "web/src/spaces/visits/": "specs/as-is/obra-visita-e-iaa.md"
     }
   }
 }

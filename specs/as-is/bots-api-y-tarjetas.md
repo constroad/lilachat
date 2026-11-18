@@ -83,6 +83,7 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
 - `PUT /api/bots/clients/:clientId` crea el canal privado del cliente. Vivo = actividad en 60 días.
 - `POST/GET /api/bots/clients/:clientId/tasks`: tareas de un pedido en la etapa «Ejecución».
 - El detalle del canal del cliente (informes, Drive, cobranza) es de otro as-is.
+- Los informes de campo del canal (`clientReports.ts`) se abren solo para los tipos de `OPEN_REPORT_TYPES`, que desde el 18/11 suman SOL-IMP y APR-ADI. APR-ADI lleva montos: el borrador pide `need: 'money'` y un miembro sin plata recibe 404. El detalle está en `obra-informes.md`.
 
 **Temas de aviso** (`botTopics.ts`): `GET/PUT /api/bots/topics`, `POST /api/bots/topics/offer|withdraw`.
 

@@ -30,7 +30,7 @@ export const LinkRowCard = memo(function LinkRowCard({ item, onOpen, onMore }: {
       }}
       delayLongPress={LONG_PRESS_MS}
       style={{ height: LINK_CARD_HEIGHT }}
-      className="flex-1 flex-row items-center gap-3 rounded-xl bg-surface px-3 shadow-sm active:opacity-80"
+      className="flex-1 flex-row items-center gap-3 rounded-card bg-surface px-3 shadow-sm active:opacity-80"
     >
       <LinkThumb link={link} width={THUMB_WIDTH} />
       <View className="min-w-0 flex-1">

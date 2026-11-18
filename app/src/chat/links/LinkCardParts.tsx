@@ -2,14 +2,14 @@ import { memo, useState } from 'react';
 import { Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { GalleryHorizontal, Link2, LockKeyhole, Play } from 'lucide-react-native';
-import { platformLabel, type LinkCard } from '@lilachat/shared';
+import { platformLabel, vividPulse, type LinkCard } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { placeholderKindOf } from './linkView';
 
 /** The 3:4 of a reel's cover (Stitch nl-01: 56 × 75 dp). */
 export const THUMB_ASPECT = 3 / 4;
 const THUMB_ICON = 22;
-const THUMB_RADIUS = 8;
+const THUMB_RADIUS = vividPulse.radius.thumb;
 
 /**
  * The cover of a saved link: its image, cached on disk and recycled by URL, or
@@ -26,7 +26,7 @@ export const LinkThumb = memo(function LinkThumb({ link, width }: { link: LinkCa
   const kind = placeholderKindOf(link);
   const Icon = kind === 'play' ? Play : kind === 'post' ? GalleryHorizontal : kind === 'locked' ? LockKeyhole : Link2;
   return (
-    <View style={size} className={`items-center justify-center rounded-lg ${kind === 'locked' ? 'bg-on-surface/[0.06]' : 'bg-primary/[0.12]'}`}>
+    <View style={size} className={`items-center justify-center rounded-thumb ${kind === 'locked' ? 'bg-on-surface/[0.06]' : 'bg-primary/[0.12]'}`}>
       <Icon size={THUMB_ICON} color={kind === 'locked' ? colors['on-surface-variant'] : colors.primary} fill={kind === 'play' ? colors.primary : 'transparent'} />
     </View>
   );

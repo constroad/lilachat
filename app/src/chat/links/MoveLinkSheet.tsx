@@ -72,7 +72,7 @@ export function MoveLinkSheet({ item, categories, counts, onClose, onMove, onCre
         testID="mover-enlace"
         disabled={busy || selected === current}
         onPress={() => void move()}
-        className={`mx-4 mt-2 min-h-[56px] flex-row items-center justify-center gap-2 rounded-xl bg-primary ${busy || selected === current ? 'opacity-50' : ''}`}
+        className={`mx-4 mt-2 min-h-[56px] flex-row items-center justify-center gap-2 rounded-card bg-primary ${busy || selected === current ? 'opacity-50' : ''}`}
       >
         <Text className="text-[16px] font-bold text-on-primary">Mover</Text>
         <ArrowRight size={18} color={colors['on-primary']} />
@@ -86,7 +86,7 @@ function MiniCard({ item }: { item: LinkNoteItem }) {
   const note = categoryNoteOf(item.link);
   return (
     <View className="px-4">
-      <View className="flex-row gap-3 rounded-xl border border-outline/15 bg-background p-2.5">
+      <View className="flex-row gap-3 rounded-card border border-outline/15 bg-background p-2.5">
         <LinkThumb link={item.link} width={MINI_THUMB_WIDTH} />
         <View className="min-w-0 flex-1 gap-1">
           <View className="flex-row items-center gap-2">
@@ -116,7 +116,7 @@ function CategoryOption({ id, name, count, current, selected, onPick }: OptionPr
       accessibilityRole="radio"
       accessibilityState={{ selected }}
       onPress={() => onPick(id)}
-      className={`min-h-[56px] flex-row items-center gap-3 rounded-xl border px-4 ${selected ? 'border-2 border-primary bg-primary/[0.06]' : 'border-outline/20 bg-surface'}`}
+      className={`min-h-[56px] flex-row items-center gap-3 rounded-card border px-4 ${selected ? 'border-2 border-primary bg-primary/[0.06]' : 'border-outline/20 bg-surface'}`}
     >
       <View className={`h-5 w-5 items-center justify-center rounded-full border-2 ${selected ? 'border-primary' : 'border-outline/50'}`}>
         {selected ? <View className="h-2.5 w-2.5 rounded-full bg-primary" /> : null}
@@ -146,7 +146,7 @@ function NewCategory({ categories, onCreate, onCreated }: { categories: readonly
   };
   if (name === null) {
     return (
-      <Pressable testID="nueva-categoria" onPress={() => setName('')} className="min-h-[56px] flex-row items-center gap-3 rounded-xl border border-dashed border-outline/40 px-4">
+      <Pressable testID="nueva-categoria" onPress={() => setName('')} className="min-h-[56px] flex-row items-center gap-3 rounded-card border border-dashed border-outline/40 px-4">
         <Plus size={20} color={colors.primary} />
         <Text className="text-[15px] font-semibold text-primary">Nueva categoría</Text>
       </Pressable>
@@ -154,9 +154,9 @@ function NewCategory({ categories, onCreate, onCreated }: { categories: readonly
   }
   return (
     <View className="gap-1">
-      <View className="min-h-[56px] flex-row items-center gap-2 rounded-xl border-2 border-primary bg-surface pl-4 pr-1">
+      <View className="min-h-[56px] flex-row items-center gap-2 rounded-card border-2 border-primary bg-surface pl-4 pr-1">
         <TextInput testID="nombre-nueva-categoria" autoFocus value={name} onChangeText={setName} onSubmitEditing={() => void create()} placeholder="Nombre de la categoría" placeholderTextColor={colors['on-surface-variant']} maxLength={MAX_CATEGORY_NAME} className="min-w-0 flex-1 text-[15px] text-on-surface" />
-        <Pressable testID="crear-categoria" onPress={() => void create()} className="min-h-[48px] justify-center rounded-lg px-4">
+        <Pressable testID="crear-categoria" onPress={() => void create()} className="min-h-[48px] justify-center rounded-thumb px-4">
           <Text className="text-[15px] font-bold text-primary">Crear</Text>
         </Pressable>
       </View>

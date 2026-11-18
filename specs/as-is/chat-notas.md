@@ -97,11 +97,26 @@ Diseño en Stitch `nl-01` a `nl-03` (ver §5). Prototipo navegable en https://cl
   - `chat.links.changed` vuelve a leer la vista.
 - **Interruptor:** «Ordenar enlaces por categoría» en Ajustes del detalle del chat (`info/LinkSortingRow.tsx`).
 
-**APK:** en implementación (18/11). Este as-is se completa con sus archivos al cerrar.
+**APK** (`app/src/chat/links/`, 18/11, sale por OTA: sin cambio nativo)
+- **Segmentado «Chat · Por categoría»** debajo de la cabecera, solo en un chat de notas con `linksSorted`; la vista elegida se recuerda por chat (`notesViewPref.ts`).
+- **Vista «Por categoría»** (`LinksByCategory.tsx`, `LinksParts.tsx`, `linkView.ts`): buscador, chips con conteo en una fila con scroll y secciones «NOMBRE · N».
+  - Apaisada o tablet: columna «CATEGORÍAS» con conteos y «REVISIÓN» al costado de las tarjetas.
+  - El «+» flotante vuelve al chat; la lista deja abajo el alto del botón.
+  - Mantener presionado un chip abre «Renombrar» y «Unir con…» (`CategoryActionsSheet.tsx`).
+- **Tarjetas** (`LinkRowCard.tsx`, `LinkCardParts.tsx`): mantener presionado abre «Mover a» (`MoveLinkSheet.tsx`). `useLinkOpener.tsx` abre el enlace.
+- **En la burbuja** (`NoteLinkBubble.tsx`): la tarjeta guardada, su pastilla de categoría, «Solo pide comentar» y «No se pudo leer» con «Reintentar».
+- **Datos** (`useChatLinks.ts`, `useNotesLinks.tsx`, `linksApi.ts`): una lectura de `GET /links` por chat; `msg.link` y `chat.links.changed` por socket.
+- **Interruptor:** «Ordenar enlaces por categoría» en el menú ⋮ de la conversación (`chatHeaderMenu.ts`).
+- Radios: `rounded-card` (12) en tarjetas, chips, filas y botones; `rounded-thumb` (8) en miniaturas, como Stitch.
 
 ## 3. Diferencias APK vs web
 
-Pendiente de cerrar con la implementación de los clientes (18/11).
+| Qué | APK | Web |
+| --- | --- | --- |
+| Interruptor | menú ⋮ de la conversación | Ajustes del detalle del chat (la cabecera web no tiene ⋮) |
+| Mover un enlace | mantener presionado la tarjeta | ⋮ de la tarjeta; en el teléfono también mantener presionado |
+| Pantalla ancha | apaisada o tablet: columna de categorías | ≥ 1024 px: columna, orden y grilla de 2–3 columnas |
+| Renombrar / unir | mantener presionado el chip | ⋮ de la categoría en la columna |
 
 ## 4. Historia reciente
 
@@ -136,5 +151,8 @@ Pendiente de cerrar con la implementación de los clientes (18/11).
   - `linkSorting.test.ts`: cola, propuesta, tope e ilegible.
   - `linkSortingRoutes.test.ts`: listar, mover, crear, renombrar, unir, reintentar e interruptor.
   - `borradores.test.ts`.
+- **APK:** `links/linkView.test.ts`. Flujo Maestro `app/.maestro/notes-by-category.yaml`.
+  - E2E 18/11 en el emulador: 7 de 7 pasos (interruptor, 4 enlaces con tarjeta, mover, buscar, apaisada).
+  - Sin verificar en el APK: «Reintentar» y renombrar / unir desde el chip.
 - **Web:** `links/linkNotesStore`, `links/NotesViewSwitch`, `links/LinksByCategory`, `links/MoveLinkSheet`,
   `links/StoredLinkInBubble`, `BurbujaDeMensaje.link`, `info/LinkSortingRow` y `applyLinkCard` en `local/mensajesLocales`.

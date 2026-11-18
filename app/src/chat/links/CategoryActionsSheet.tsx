@@ -60,7 +60,7 @@ export function CategoryActionsSheet({ category, categories, onClose, onRename, 
 function MenuRow({ testID, label, Icon, onPress }: { testID: string; label: string; Icon: typeof Pencil; onPress: () => void }) {
   const colors = useColores();
   return (
-    <Pressable testID={testID} onPress={onPress} className="min-h-[56px] flex-row items-center gap-3 rounded-xl border border-outline/20 px-4">
+    <Pressable testID={testID} onPress={onPress} className="min-h-[56px] flex-row items-center gap-3 rounded-card border border-outline/20 px-4">
       <Icon size={20} color={colors.primary} />
       <Text className="text-[15px] font-medium text-on-surface">{label}</Text>
     </Pressable>
@@ -77,8 +77,8 @@ function RenameForm({ category, categories, onSave, onProblem }: { category: Lin
   };
   return (
     <View className="flex-row items-center gap-2 px-4">
-      <TextInput testID="nuevo-nombre-categoria" autoFocus value={name} onChangeText={setName} onSubmitEditing={save} maxLength={MAX_CATEGORY_NAME} placeholderTextColor={colors['on-surface-variant']} className="min-h-[56px] min-w-0 flex-1 rounded-xl border-2 border-primary bg-surface px-4 text-[15px] text-on-surface" />
-      <Pressable testID="guardar-nombre-categoria" onPress={save} className="min-h-[56px] justify-center rounded-xl bg-primary px-5">
+      <TextInput testID="nuevo-nombre-categoria" autoFocus value={name} onChangeText={setName} onSubmitEditing={save} maxLength={MAX_CATEGORY_NAME} placeholderTextColor={colors['on-surface-variant']} className="min-h-[56px] min-w-0 flex-1 rounded-card border-2 border-primary bg-surface px-4 text-[15px] text-on-surface" />
+      <Pressable testID="guardar-nombre-categoria" onPress={save} className="min-h-[56px] justify-center rounded-card bg-primary px-5">
         <Text className="text-[15px] font-bold text-on-primary">Guardar</Text>
       </Pressable>
     </View>
@@ -92,7 +92,7 @@ function MergeTargets({ category, categories, onPick }: { category: LinkCategory
     <ScrollView contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
       <Text className="px-1 pb-1 text-[13px] text-on-surface-variant">{`Sus enlaces pasan a la que elijas y «${category.name}» desaparece.`}</Text>
       {targets.map((target) => (
-        <Pressable key={target.id ?? 'none'} testID={`unir-con-${target.id ?? 'none'}`} onPress={() => onPick(target.id)} className="min-h-[56px] justify-center rounded-xl border border-outline/20 bg-surface px-4">
+        <Pressable key={target.id ?? 'none'} testID={`unir-con-${target.id ?? 'none'}`} onPress={() => onPick(target.id)} className="min-h-[56px] justify-center rounded-card border border-outline/20 bg-surface px-4">
           <Text className="text-[15px] font-medium text-on-surface">{target.name}</Text>
         </Pressable>
       ))}

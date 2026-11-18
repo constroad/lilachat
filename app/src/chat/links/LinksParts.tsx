@@ -19,8 +19,8 @@ const SKELETON_CHIP_WIDTHS = [88, 140, 120];
 export function LinksSearch({ query, onChange }: { query: string; onChange: (text: string) => void }) {
   const colors = useColores();
   return (
-    <View className="min-h-[56px] flex-row items-center gap-3 rounded-xl bg-surface px-2 shadow-sm">
-      <View className="h-9 w-9 items-center justify-center rounded-lg bg-primary/[0.07]">
+    <View className="min-h-[56px] flex-row items-center gap-3 rounded-card bg-surface px-2 shadow-sm">
+      <View className="h-9 w-9 items-center justify-center rounded-thumb bg-primary/[0.07]">
         <Search size={20} color={colors['on-surface-variant']} />
       </View>
       <View className="min-w-0 flex-1 py-1">
@@ -58,7 +58,7 @@ function Chip({ chip, active, onPick, onHold }: ChipProps) {
       onPress={() => onPick(chip.id)}
       onLongPress={onHold ? () => onHold(chip.id) : undefined}
       delayLongPress={CHIP_LONG_PRESS_MS}
-      className={`min-h-[40px] flex-row items-center gap-1.5 rounded-xl px-4 shadow-sm ${active ? 'bg-primary' : 'bg-surface'}`}
+      className={`min-h-[40px] flex-row items-center gap-1.5 rounded-card px-4 shadow-sm ${active ? 'bg-primary' : 'bg-surface'}`}
     >
       <Text className={`text-[14px] ${active ? 'font-bold text-on-primary' : 'font-medium text-on-surface'}`}>{chip.name}</Text>
       <Text className={`text-[12px] ${active ? 'text-on-primary' : tint}`}>{chip.count}</Text>
@@ -90,7 +90,7 @@ export function LinkCategoryColumn({ chips, only, onPick, onHold }: { chips: rea
       onPress={() => onPick(chip.id)}
       onLongPress={isCategory(chip.id) ? () => onHold(chip.id) : undefined}
       delayLongPress={CHIP_LONG_PRESS_MS}
-      className={`min-h-[48px] flex-row items-center justify-between rounded-lg px-3 ${only === chip.id ? 'bg-primary/[0.10]' : ''}`}
+      className={`min-h-[48px] flex-row items-center justify-between rounded-thumb px-3 ${only === chip.id ? 'bg-primary/[0.10]' : ''}`}
     >
       <Text numberOfLines={1} className={`min-w-0 flex-1 text-[15px] ${only === chip.id ? 'font-semibold text-primary' : 'text-on-surface'}`}>{chip.name}</Text>
       <Text className={`text-[13px] ${chip.id === 'unreadable' ? 'text-error' : chip.review ? 'text-warning' : 'text-on-surface-variant'}`}>{chip.count}</Text>
@@ -129,12 +129,12 @@ export function LinkSectionHeader({ row, onShowAll }: { row: Extract<LinkListRow
 export function LinksSkeleton() {
   return (
     <View testID="enlaces-cargando" className="gap-3 px-4 pt-3">
-      <View className="h-[56px] rounded-xl bg-on-surface/[0.06]" />
+      <View className="h-[56px] rounded-card bg-on-surface/[0.06]" />
       <View className="flex-row gap-2">
-        {SKELETON_CHIP_WIDTHS.map((width) => <View key={width} style={{ width }} className="h-10 rounded-xl bg-on-surface/[0.06]" />)}
+        {SKELETON_CHIP_WIDTHS.map((width) => <View key={width} style={{ width }} className="h-10 rounded-card bg-on-surface/[0.06]" />)}
       </View>
       <View className="mt-2 h-3 w-40 rounded bg-on-surface/[0.06]" />
-      {Array.from({ length: SKELETON_CARDS }, (_, index) => <View key={index} style={{ height: LINK_CARD_HEIGHT }} className="rounded-xl bg-on-surface/[0.06]" />)}
+      {Array.from({ length: SKELETON_CARDS }, (_, index) => <View key={index} style={{ height: LINK_CARD_HEIGHT }} className="rounded-card bg-on-surface/[0.06]" />)}
     </View>
   );
 }

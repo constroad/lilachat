@@ -63,7 +63,7 @@ export function LinkAwareBody({ item, jwt, mine, withPreview, meta, children }: 
 function StoredLinkCard({ seq, at, link, notes }: { seq: number; at: string; link: LinkCard; notes: NoteLinksBubble }) {
   const lines = cardLinesOf(link);
   return (
-    <Pressable testID={`tarjeta-enlace-${seq}`} onPress={() => notes.onOpen(link.url)} style={{ width: CARD_WIDTH }} className="m-1.5 mb-0 flex-row gap-3 rounded-xl bg-surface p-2.5">
+    <Pressable testID={`tarjeta-enlace-${seq}`} onPress={() => notes.onOpen(link.url)} style={{ width: CARD_WIDTH }} className="m-1.5 mb-0 flex-row gap-3 rounded-card bg-surface p-2.5">
       <LinkThumb link={link} width={THUMB_WIDTH} />
       <View className="min-w-0 flex-1 gap-1">
         <View className="flex-row items-center justify-between gap-2">

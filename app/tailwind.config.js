@@ -31,6 +31,8 @@ module.exports = {
         lg: `${radius.lg}px`,
         xl: `${radius.xl}px`,
         tail: `${radius.bubbleTail}px`,
+        card: `${radius.card}px`,
+        thumb: `${radius.thumb}px`,
       },
     },
   },

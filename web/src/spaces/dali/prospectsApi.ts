@@ -30,6 +30,10 @@ export const changeProspect = (jwt: string, spaceId: string, prospectId: string,
 export const approveFollowUp = (jwt: string, spaceId: string, prospectId: string, version: number, text: string) =>
   api<ProspectAnswer>(`${prospectPath(spaceId, prospectId)}/follow-up`, { jwt, body: { version, text } });
 
+/** «Confirmar» (no value) or «Corregir» (the right value) of a field Dali read from a document (fase 3). */
+export const confirmProspectField = (jwt: string, spaceId: string, prospectId: string, body: { version: number; key: string; value?: string }) =>
+  api<ProspectAnswer>(`${prospectPath(spaceId, prospectId)}/fields/confirm`, { jwt, body });
+
 export const handBackToDali = (jwt: string, spaceId: string, prospectId: string, version: number) =>
   api<ProspectAnswer>(`${prospectPath(spaceId, prospectId)}/handback`, { jwt, body: { version } });
 

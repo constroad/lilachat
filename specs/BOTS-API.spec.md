@@ -2047,3 +2047,34 @@ nombre del archivo. Ahora leen UTF-8 también.
 (`CHAT_STORAGE_ROOT` con su marca: nada cae en lila), lo publica como de Paola y manda «Cantidad 1 240 m²» leída del
 documento. `app/.maestro/dali-documents.yaml` en verde: el archivo en el chat con el texto de pie, la pastilla «por
 confirmar», la tarjeta «Documentos del cliente» y Abrir · Descargar.
+
+### Hecho (17/11, fase 3: lo leído del documento lo confirma una persona)
+
+José 17/11: «sigue con la fase 3». La lectura (tablas de fotos y PDF con IA, KML a área y puntos, filas de Excel)
+es de agentes. Lilachat pone lo que la persona necesita para decidir. Contrato acordado con agentes el mismo día.
+
+**Confirmar o corregir.** En la ficha, cada dato con `source: "document"` y sin confirmar trae la pastilla «Leído del
+documento · por confirmar» y dos acciones: **Confirmar** (tal cual) y **Corregir** (escribe el valor correcto, hasta
+200 caracteres). Ruta: `POST /api/workspaces/:id/prospects/:prospectId/fields/confirm` con
+`{ version, key, value? }` (miembros que deciden; un oculto da 403). 409 si alguien cambió el prospecto antes; 404
+`field_not_found` si el dato ya no está. El dato queda con `confirmed: true` y `confirmedBy: { id, name, at }`; la
+ficha dice «Confirmado por <nombre>».
+
+**Evento a agentes**: `prospect.field.confirmed` con `{ prospect_id, key, value, corrected, file_id, user, at,
+version }`. agentes lo guarda como dato firme: Dali no vuelve a preguntarlo ni a repetírselo al cliente, y su próximo
+PUT lo manda con `confirmed: true`. Un documento nuevo con el mismo dato llega con otra clave (`<key>_doc2`), nunca
+encima del confirmado.
+
+**El PUT no deshace a una persona** (`keepConfirmedFields`): si un dato llega con `confirmed: false` y una persona ya lo
+confirmó, Lilachat conserva el confirmado. Si agentes lo manda `confirmed: true`, gana lo que manda.
+
+**Dónde está (`geo`)**: un field puede llevar `geo: { points?: [{ lat, lng, label? }], polygon?: [{ lat, lng }] }`
+en WGS84; el polígono va de 3 a 500 vértices (agentes lo simplifica). El `value` sigue siendo el texto («3 200 m²
+según el KML»). Un `geo` mal formado cae solo él: el dato se guarda y `ignored` dice `fields.<key>.geo`. La ficha lo
+dibuja debajo del valor (`FieldGeoMap`: teselas de OpenStreetMap, el lote relleno con el acento y solo los puntos con
+nombre; motor puro `fieldGeoMapOf` en shared, con test).
+
+**E2E (17/11)**: el arnés manda «Cantidad 1 240 m²» y «Área del lote» con su polígono y el punto «Ingreso».
+`app/.maestro/dali-documents.yaml` en verde: Confirmar → «Confirmado por José QA»; el mapa del lote; Corregir a
+«1 280 m²». El stub recibió los dos `prospect.field.confirmed` (`corrected: false` y `true`, con `file_id` y la
+versión nueva).

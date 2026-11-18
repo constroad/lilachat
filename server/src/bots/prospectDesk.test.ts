@@ -284,3 +284,40 @@ describe('the weekly review', () => {
   });
 });
 
+
+/** Fase 3 (José 17/11, contract with agentes): a seller settles what Dali read from a document. */
+describe('a field read from a document', () => {
+  const FILE = 'a'.repeat(24);
+  const LOT = [{ lat: -12.05, lng: -77.03 }, { lat: -12.051, lng: -77.03 }, { lat: -12.051, lng: -77.031 }];
+  const read = { key: 'area', label: 'Área', value: '3 200 m² según el KML', source: 'document', file_id: FILE, geo: { polygon: LOT } };
+  const confirm = (userId: Types.ObjectId, body: Record<string, unknown>) => request(app).post(`/api/workspaces/${spaceId}/prospects/${encodeURIComponent(PROSPECT)}/fields/confirm`).set(asUser(userId)).send(body);
+
+  it('a seller corrects it: the ficha keeps who did it and agentes hears the new value', async () => {
+    await putProspect({ ...base, fields: [read] }).expect(201);
+    const { body } = await confirm(ana, { version: 0, key: 'area', value: '3 150 m²' }).expect(200);
+    expect(body.prospect.fields[0]).toMatchObject({ key: 'area', value: '3 150 m²', confirmed: true, confirmedBy: { id: String(ana), name: 'Ana Ríos' }, geo: { polygon: LOT } });
+    expect(await eventOf('prospect.field.confirmed')).toMatchObject({ prospect_id: PROSPECT, key: 'area', value: '3 150 m²', corrected: true, file_id: FILE, version: 1, user: { id: String(ana) } });
+  });
+
+  it('Dali\'s next PUT does not undo it unless it sends the field confirmed', async () => {
+    await putProspect({ ...base, fields: [read] }).expect(201);
+    await confirm(jose, { version: 0, key: 'area' }).expect(200);
+    await putProspect({ ...base, fields: [read] }).expect(200);
+    expect((await ProspectChannelModel.findOne({ prospectId: PROSPECT }).lean())!.fields![0]).toMatchObject({ value: '3 200 m² según el KML', confirmed: true, confirmedBy: { name: 'José' } });
+    await putProspect({ ...base, fields: [{ ...read, value: '3 210 m²', confirmed: true }] }).expect(200);
+    expect((await ProspectChannelModel.findOne({ prospectId: PROSPECT }).lean())!.fields![0]).toMatchObject({ value: '3 210 m²', confirmed: true });
+  });
+
+  it('refuses a stale version (409), a field that is not there (404) and a hidden member (403)', async () => {
+    await putProspect({ ...base, fields: [read] }).expect(201);
+    expect((await confirm(ana, { version: 5, key: 'area' }).expect(409)).body.error).toBe('stale');
+    expect((await confirm(ana, { version: 0, key: 'lugar' }).expect(404)).body.error).toBe('field_not_found');
+    await confirm(hidden, { version: 0, key: 'area' }).expect(403);
+  });
+
+  it('a bad geo drops only the geo and tells it back', async () => {
+    const answer = await putProspect({ ...base, fields: [{ ...read, geo: { polygon: LOT.slice(0, 2) } }] }).expect(201);
+    expect(answer.body.ignored).toEqual([{ field: 'fields.area.geo', message: expect.stringContaining('polygon') }]);
+    expect((await ProspectChannelModel.findOne({ prospectId: PROSPECT }).lean())!.fields![0]!.geo).toBeUndefined();
+  });
+});

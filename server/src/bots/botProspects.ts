@@ -1,5 +1,5 @@
 import { model, Schema, Types } from 'mongoose';
-import { PROSPECT_ID, PROSPECTS_SCOPE, prospectChannelName, shownProspectPhone, validateProspectInsight, validateProspectState, type IgnoredField, type LossReason, type NextActionKind, type ProspectAuthor, type ProspectInsight, type ProspectOutcome, type ProspectState } from '@lilachat/shared';
+import { keepConfirmedFields, PROSPECT_ID, PROSPECTS_SCOPE, prospectChannelName, shownProspectPhone, validateProspectInsight, validateProspectState, type IgnoredField, type LossReason, type NextActionKind, type ProspectAuthor, type ProspectInsight, type ProspectOutcome, type ProspectState } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { noticeChannelJoined } from '../workspaceNotices.js';
@@ -29,7 +29,9 @@ type ProspectsError = { status: 400 | 403 | 404; error: string; message: string 
 const loose = { _id: false } as const;
 const sourceSchema = new Schema({ kind: String, adId: String, adTitle: String, adUrl: String }, loose);
 const serviceSchema = new Schema({ key: String, name: String }, loose);
-const fieldSchema = new Schema({ key: String, label: String, value: String, source: String, fileId: String, confirmed: Boolean }, loose);
+const confirmerSchema = new Schema({ id: String, name: String, at: String }, loose);
+// geo is validated by the shared reader (points and a polygon of up to 500 vertices); Mixed keeps it as it came.
+const fieldSchema = new Schema({ key: String, label: String, value: String, source: String, fileId: String, confirmed: Boolean, confirmedBy: confirmerSchema, geo: Schema.Types.Mixed }, loose);
 const draftSchema = new Schema({ text: String, forAt: String }, loose);
 const quoteSchema = new Schema({ code: String, amount: Number, currency: String, sentAt: String, url: String }, loose);
 const questionSchema = new Schema({ question: String, at: String }, loose);
@@ -123,6 +125,12 @@ function updateOf(state: ProspectState, insight: { set: ProspectInsight; unset: 
   return { $set: { ...state, ...insight.set }, ...(Object.keys(unset).length ? { $unset: unset } : {}) };
 }
 
+/** A field a seller confirmed in the ficha survives Dali's next PUT (fase 3) unless Dali sends it confirmed. */
+function keptConfirmed(patch: ReturnType<typeof validateProspectInsight>['patch'], existing: ProspectChannel) {
+  if (!patch.set.fields) return patch;
+  return { ...patch, set: { ...patch.set, fields: keepConfirmedFields(patch.set.fields, existing.fields) } };
+}
+
 /** Creates the prospect's channel the first time (201) and keeps its state (200). */
 export async function upsertProspectChannel(installation: Installation, prospectId: string, raw: unknown): Promise<{ status: 200 | 201; prospect: ReturnType<typeof toWire>; ignored?: IgnoredField[] } | ProspectsError> {
   if (!installation.grantedScopes?.includes(PROSPECTS_SCOPE)) return NOT_GRANTED;
@@ -136,7 +144,7 @@ export async function upsertProspectChannel(installation: Installation, prospect
   const key = { workspaceId: installation.workspaceId, appId: installation.appId, prospectId };
   const existing = await ProspectChannelModel.findOne(key).lean<ProspectChannel | null>();
   if (existing) {
-    await ProspectChannelModel.updateOne({ _id: existing._id }, updateOf(valid.state, insight.patch));
+    await ProspectChannelModel.updateOne({ _id: existing._id }, updateOf(valid.state, keptConfirmed(insight.patch, existing)));
     await ChatModel.updateOne({ _id: existing.chatId }, { $set: { name } });
     await addMissingMembers(installation, existing.chatId);
     announceProspects(installation.workspaceId);

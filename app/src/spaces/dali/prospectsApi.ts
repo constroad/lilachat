@@ -20,6 +20,8 @@ export const fetchProspectOfChat = (jwt: string, spaceId: string, chatId: string
 export const fetchProspectDocuments = (jwt: string, spaceId: string, prospectId: string) => jsonCall<{ documents: ProspectDocument[] }>(`${prospectUrl(spaceId, prospectId)}/documents`, jwt);
 export const changeProspect = (jwt: string, spaceId: string, prospectId: string, body: Record<string, unknown>) => jsonCall<ProspectAnswer>(prospectUrl(spaceId, prospectId), jwt, send('PATCH', body));
 export const approveFollowUp = (jwt: string, spaceId: string, prospectId: string, version: number, text: string) => jsonCall<ProspectAnswer>(`${prospectUrl(spaceId, prospectId)}/follow-up`, jwt, send('POST', { version, text }));
+/** «Confirmar» (no value) or «Corregir» (the right value) of a field Dali read from a document (fase 3). */
+export const confirmProspectField = (jwt: string, spaceId: string, prospectId: string, body: { version: number; key: string; value?: string }) => jsonCall<ProspectAnswer>(`${prospectUrl(spaceId, prospectId)}/fields/confirm`, jwt, send('POST', body));
 export const handBackToDali = (jwt: string, spaceId: string, prospectId: string, version: number) => jsonCall<ProspectAnswer>(`${prospectUrl(spaceId, prospectId)}/handback`, jwt, send('POST', { version }));
 export const fetchKnowledge = (jwt: string, spaceId: string) => jsonCall<{ knowledge: DaliKnowledge }>(`${spaceUrl(spaceId)}/dali/knowledge`, jwt);
 export const teachDali = (jwt: string, spaceId: string, body: { question: string; answer: string; idempotency_key: string }) => jsonCall<{ faq: { id: string } }>(`${spaceUrl(spaceId)}/dali/faqs`, jwt, send('POST', body));

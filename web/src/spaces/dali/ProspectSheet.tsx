@@ -8,7 +8,7 @@ import { ClientDocumentsCard } from './ClientDocumentsCard';
 import { NextActionDialog } from './NextActionDialog';
 import { AttendsLine, Card, ContactCard, NextActionCard, OriginCard, QuoteCard, ScoreCard, StageCard, UnderstoodCard } from './prospectSheetBlocks';
 import { ResultDialog } from './ResultDialog';
-import { sendChange, sendHandBack, type ChangeOutcome, type SellerPatch } from './sellerDesk';
+import { sendChange, sendFieldConfirmation, sendHandBack, type ChangeOutcome, type SellerPatch } from './sellerDesk';
 
 export type SheetProps = {
   jwt: string;
@@ -46,6 +46,7 @@ export function ProspectSheet(props: SheetProps) {
   };
   const change = async (patch: SellerPatch) => settle(await sendChange(props.jwt, props.spaceId, prospect, patch));
   const handBack = async () => settle(await sendHandBack(props.jwt, props.spaceId, prospect));
+  const settleField = async (key: string, value?: string) => settle(await sendFieldConfirmation(props.jwt, props.spaceId, prospect, key, value));
 
   return (
     <div data-testid="ficha-prospecto" className="flex h-full min-h-0 flex-col bg-background">
@@ -54,7 +55,7 @@ export function ProspectSheet(props: SheetProps) {
         <ContactCard prospect={prospect} />
         <OriginCard prospect={prospect} />
         <ScoreCard prospect={prospect} />
-        <UnderstoodCard prospect={prospect} />
+        <UnderstoodCard prospect={prospect} onSettle={settleField} />
         <ClientDocumentsCard jwt={props.jwt} spaceId={props.spaceId} prospect={prospect} />
         <QuoteCard prospect={prospect} />
         <StageCard prospect={prospect} />

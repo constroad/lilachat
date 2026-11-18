@@ -246,7 +246,12 @@ async function clientDocument() {
   const { file_id: fileId } = (await response.json()) as { file_id: string };
   await call('/bots/messages', { body: { prospect: P(8), as_contact: true, sent_at: ago(4 * HOUR), text: 'Les paso el metrado del estacionamiento', files: [{ file_id: fileId }], idempotency_key: 'qa-doc-1' }, auth: TOKEN });
   const paola = seeds().find((seed) => seed.id === P(8))!;
-  const fields = [{ key: 'cantidad', label: 'Cantidad', value: '1 240 m²', source: 'document', file_id: fileId }];
+  // Fase 3: the lot's outline read from the KML, drawn in the ficha; the seller confirms or corrects each one.
+  const lot = [{ lat: -12.0496, lng: -77.0306 }, { lat: -12.0496, lng: -77.0294 }, { lat: -12.0505, lng: -77.0294 }, { lat: -12.0505, lng: -77.0306 }];
+  const fields = [
+    { key: 'cantidad', label: 'Cantidad', value: '1 240 m²', source: 'document', file_id: fileId },
+    { key: 'area', label: 'Área del lote', value: '1 300 m² según el KML', source: 'document', file_id: fileId, geo: { polygon: lot, points: [{ lat: -12.05, lng: -77.03, label: 'Ingreso' }] } },
+  ];
   await call(`/bots/prospects/${encodeURIComponent(P(8))}`, { method: 'PUT', body: { ...paola.body, last_activity_at: ago(4 * HOUR), fields }, auth: TOKEN });
 }
 

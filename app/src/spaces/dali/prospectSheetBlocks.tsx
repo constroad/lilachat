@@ -10,7 +10,8 @@ import { ANCHO_MAXIMO_DE_CONTENIDO } from '../../ui/disposicion';
 import { MONO_FONT } from '../../ui/monoFont';
 import { useColores } from '../../ui/tema';
 import { useDisposicion } from '../../ui/useDisposicion';
-import { notify, OriginPill, Pill, ScorePill, SolidButton } from './daliParts';
+import { notify, OriginPill, ScorePill, SolidButton } from './daliParts';
+import { DocumentFieldRow, type SettleField } from './DocumentFieldRow';
 import { sendChange } from './sellerDesk';
 
 /**
@@ -124,7 +125,7 @@ function ScoreReasons({ reasons }: { reasons: string[] }) {
 }
 
 /** What Dali understood, read only: the fields are agentes', a label over its value (dl-03). */
-export function UnderstoodCard({ prospect }: { prospect: ProspectView }) {
+export function UnderstoodCard({ prospect, onSettle }: { prospect: ProspectView; onSettle?: SettleField }) {
   const missing = missingLabelsOf(prospect);
   const fields = prospect.fields ?? [];
   if (!fields.length && !missing.length && !prospect.summary) return null;
@@ -132,13 +133,7 @@ export function UnderstoodCard({ prospect }: { prospect: ProspectView }) {
     <Card testID="ficha-entendio">
       <Kicker>Lo que entendió Dali</Kicker>
       {prospect.summary ? <Text className="mt-2 text-[14px] text-on-surface">{prospect.summary}</Text> : null}
-      {fields.map((field, index) => (
-        <View key={field.key} className={`py-2 ${index > 0 ? 'border-t border-outline/10' : 'mt-1'}`}>
-          <Text className="text-[12px] text-on-surface-variant">{field.label}</Text>
-          <Text className="text-[15px] font-semibold text-on-surface">{field.value}</Text>
-          {field.source === 'document' && !field.confirmed ? <View className="mt-1 flex-row"><Pill tone="warn" testID={`por-confirmar-${field.key}`}>Leído del documento · por confirmar</Pill></View> : null}
-        </View>
-      ))}
+      {fields.map((field, index) => <DocumentFieldRow key={field.key} field={field} first={index === 0} onSettle={onSettle} />)}
       {missing.length ? <Text testID="ficha-falta" className="mt-2 text-[13px] font-medium text-warning">{`Falta: ${missing.join(', ')}`}</Text> : null}
     </Card>
   );

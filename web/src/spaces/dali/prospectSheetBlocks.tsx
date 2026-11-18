@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Check, Phone } from 'lucide-react';
 import { LEVEL_LABEL, LOSS_REASON_LABEL, NEXT_ACTION_LABEL, STAGE_LABEL, levelOf, missingLabelsOf, moneyOf, nextActionWhenOf, originOf, prospectNameOf, shownProspectPhone, shownStageOf, type ProspectStage, type ProspectView } from '@lilachat/shared';
 import { Initials, Kicker, Pill, ProspectAvatar, ScorePill } from './daliParts';
+import { DocumentFieldRow, type SettleField } from './DocumentFieldRow';
 
 /** The blocks of the ficha (dl-03), each one a card; the ficha decides the order and the actions around them. */
 
@@ -65,7 +66,7 @@ export function ScoreCard({ prospect }: { prospect: ProspectView }) {
   );
 }
 
-export function UnderstoodCard({ prospect }: { prospect: ProspectView }) {
+export function UnderstoodCard({ prospect, onSettle }: { prospect: ProspectView; onSettle?: SettleField }) {
   const missing = missingLabelsOf(prospect);
   if (!prospect.fields?.length && !missing.length && !prospect.summary) return null;
   return (
@@ -74,15 +75,7 @@ export function UnderstoodCard({ prospect }: { prospect: ProspectView }) {
       {prospect.summary ? <p className="mt-2 text-sm">{prospect.summary}</p> : null}
       {prospect.fields?.length ? (
         <dl className="mt-2 divide-y divide-outline/10">
-          {prospect.fields.map((field) => (
-            <div key={field.key} className="flex gap-3 py-1.5 text-[13px]">
-              <dt className="w-28 shrink-0 text-on-surface-variant">{field.label}</dt>
-              <dd className="min-w-0 flex-1 text-right font-semibold">
-                {field.value}
-                {field.source === 'document' && !field.confirmed ? <span className="mt-1 flex justify-end"><Pill tone="warn" testId={`por-confirmar-${field.key}`}>Leído del documento · por confirmar</Pill></span> : null}
-              </dd>
-            </div>
-          ))}
+          {prospect.fields.map((field) => <DocumentFieldRow key={field.key} field={field} onSettle={onSettle} />)}
         </dl>
       ) : null}
       {missing.length ? <p data-testid="ficha-falta" className="mt-2 text-[13px] font-medium text-warning">{`Falta: ${missing.join(', ')}`}</p> : null}

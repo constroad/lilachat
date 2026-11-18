@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { canManageMembers, INCOGNITO_COMPOSER, NEXT_ACTION_LABEL, PROSPECTS_SCOPE, prospectNameOf, validateSellerChange, type ProspectDocument, type ProspectView, type SellerChange } from '@lilachat/shared';
+import { canManageMembers, INCOGNITO_COMPOSER, NEXT_ACTION_LABEL, PROSPECTS_SCOPE, prospectNameOf, validateSellerChange, type ProspectDocument, type ProspectField, type ProspectView, type SellerChange, validateFieldConfirmation } from '@lilachat/shared';
 import { MessageModel } from '../chatModels.js';
 import { toAbsoluteMediaUrl } from '../mediaClient.js';
 import { ReminderModel } from '../eventModels.js';
@@ -300,5 +300,23 @@ export async function handBack(workspaceId: string, prospectId: string, userId: 
   const updated = await writeIfCurrent(desk.doc, { $set: { attendedBy: 'dali' } });
   if (!updated) return staleNow(desk.doc, desk.member);
   await tellAgentes(updated, 'prospect.handback', {}, desk.member);
+  return { prospect: viewOf(updated, desk.member.admin) };
+}
+
+/** «Confirmar» / «Corregir» (fase 3): a seller settles what Dali read from a document; agentes keeps it as a firm fact. */
+export async function confirmField(workspaceId: string, prospectId: string, userId: Types.ObjectId, raw: unknown) {
+  const valid = validateFieldConfirmation(raw);
+  if (!valid.ok) return fail(400, 'invalid_request', valid.message);
+  const desk = await deskOf(workspaceId, prospectId, userId);
+  if ('error' in desk) return desk;
+  if ((desk.doc.version ?? 0) !== valid.confirmation.version) return stale(desk.doc, desk.member);
+  const field = desk.doc.fields?.find((one) => one.key === valid.confirmation.key);
+  if (!field) return fail(404, 'field_not_found', 'Ese dato ya no está en la ficha.');
+  const value = valid.confirmation.value ?? field.value;
+  const confirmed: ProspectField = { ...field, value, confirmed: true, confirmedBy: { id: String(desk.member.userId), name: desk.member.name, at: new Date().toISOString() } };
+  const fields = desk.doc.fields!.map((one) => (one.key === field.key ? confirmed : one));
+  const updated = await writeIfCurrent(desk.doc, { $set: { fields } });
+  if (!updated) return staleNow(desk.doc, desk.member);
+  await tellAgentes(updated, 'prospect.field.confirmed', { key: field.key, value, corrected: value !== field.value, ...(field.fileId ? { file_id: field.fileId } : {}) }, desk.member);
   return { prospect: viewOf(updated, desk.member.admin) };
 }

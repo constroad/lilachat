@@ -3,6 +3,7 @@
  * `PUT /api/bots/prospects/:id` as phase 1. Every field is optional: one that does not come stays as it was,
  * and `null` clears it. Read the same way by the server and its fake. PURE.
  */
+import { droppedGeoOf, fieldGeoOf, type FieldGeo } from './prospectFieldGeo.js';
 
 export const PROSPECT_STAGES = ['missing_info', 'to_quote', 'visit', 'quoted', 'negotiation', 'won', 'lost'] as const;
 export type ProspectStage = (typeof PROSPECT_STAGES)[number];
@@ -13,7 +14,9 @@ export type ProspectKind = (typeof PROSPECT_KINDS)[number];
 
 export type ProspectService = { key: string; name: string };
 /** `source: document` (José 17/11): read by Dali from a file the client sent (`fileId`); shown «por confirmar» until `confirmed`. */
-export type ProspectField = { key: string; label: string; value: string; source?: 'document'; fileId?: string; confirmed?: boolean };
+/** `confirmedBy`: a seller confirmed or corrected it in the ficha (fase 3); Dali's next PUT does not undo it. */
+export type ProspectField = { key: string; label: string; value: string; source?: 'document'; fileId?: string; confirmed?: boolean; confirmedBy?: FieldConfirmer; geo?: FieldGeo };
+export type FieldConfirmer = { id: string; name: string; at: string };
 export type ProspectFollowUpDraft = { text: string; forAt?: string };
 /** Portal's quote linked by agentes. `amount` is money: only a space admin ever receives it. */
 export type ProspectQuote = { code: string; amount?: number; currency?: string; sentAt?: string; url?: string };
@@ -48,7 +51,7 @@ const REASONS_MAX = 6;
 const REASON_MAX = 80;
 const FIELDS_MAX = 20;
 const FIELD_LABEL_MAX = 40;
-const FIELD_VALUE_MAX = 200;
+export const FIELD_VALUE_MAX = 200;
 const MISSING_MAX = 20;
 const SUMMARY_MAX = 280;
 /** Not in agentes' first draft of the contract: a WhatsApp follow-up, not a letter. */
@@ -109,9 +112,11 @@ function fieldOf(value: unknown): ProspectField | null {
   const label = textOf(body.label, FIELD_LABEL_MAX);
   const raw = typeof body.value === 'number' && Number.isFinite(body.value) ? String(body.value) : trimmed(body.value);
   if (typeof body.key !== 'string' || !FIELD_KEY.test(body.key) || !label || raw === null || raw.length > FIELD_VALUE_MAX) return null;
-  if (body.source === undefined) return { key: body.key, label, value: raw };
+  const geo = body.geo === undefined ? null : fieldGeoOf(body.geo);
+  const where = geo ? { geo } : {};
+  if (body.source === undefined) return { key: body.key, label, value: raw, ...where };
   if (body.source !== 'document' || typeof body.file_id !== 'string' || !OBJECT_ID.test(body.file_id)) return null;
-  return { key: body.key, label, value: raw, source: 'document', fileId: body.file_id, confirmed: body.confirmed === true };
+  return { key: body.key, label, value: raw, source: 'document', fileId: body.file_id, confirmed: body.confirmed === true, ...where };
 }
 
 function fieldsOf(value: unknown): Read<ProspectField[]> {
@@ -227,5 +232,6 @@ export function validateProspectInsight(raw: unknown): { patch: ProspectInsightP
     if (valid.ok) (patch.set as Record<string, unknown>)[key] = valid.value;
     else ignored.push({ field: wire, message: valid.message });
   }
+  if (patch.set.fields) ignored.push(...droppedGeoOf(body.fields));
   return { patch, ignored };
 }

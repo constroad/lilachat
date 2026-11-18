@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { changeOutcomeOf, type ChangeAnswer, type ChangeOutcome, type ProspectView, type SellerPatch } from '@lilachat/shared';
-import { approveFollowUp, changeProspect, fetchProspectOfChat, handBackToDali } from './prospectsApi';
+import { approveFollowUp, changeProspect, confirmProspectField, fetchProspectOfChat, handBackToDali } from './prospectsApi';
 import { echoProspect, useProspectEcho } from './prospectEcho';
 import { useProspectsPulse } from './useProspects';
 
@@ -16,6 +16,9 @@ function outcomeOf(answer: ChangeAnswer): ChangeOutcome {
 /** Every change goes with the version the seller saw: if someone was first, the server says so and nothing changes. */
 export const sendChange = async (jwt: string, spaceId: string, prospect: ProspectView, patch: SellerPatch): Promise<ChangeOutcome> =>
   outcomeOf(await changeProspect(jwt, spaceId, prospect.id, { version: prospect.version, ...patch }));
+
+export const sendFieldConfirmation = async (jwt: string, spaceId: string, prospect: ProspectView, key: string, value?: string): Promise<ChangeOutcome> =>
+  outcomeOf(await confirmProspectField(jwt, spaceId, prospect.id, { version: prospect.version, key, ...(value === undefined ? {} : { value }) }));
 
 export const sendFollowUp = async (jwt: string, spaceId: string, prospect: ProspectView, text: string): Promise<ChangeOutcome> =>
   outcomeOf(await approveFollowUp(jwt, spaceId, prospect.id, prospect.version, text));

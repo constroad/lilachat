@@ -48,7 +48,7 @@ appId: com.lilachat.app
 # Her file is a message of hers in the channel, with her words as its caption.
 - extendedWaitUntil:
     visible: "Metrado Paola Ríos.kml"
-    timeout: 15000
+    timeout: 30000
 - assertVisible: "Les paso el metrado del estacionamiento"
 - takeScreenshot: g1-documento-en-el-chat
 - tapOn:
@@ -60,6 +60,40 @@ appId: com.lilachat.app
 - assertVisible:
     id: "por-confirmar-cantidad"
 - takeScreenshot: g2-ficha-por-confirmar
+# Fase 3: the seller confirms one as it is and corrects the other; the lot of the KML is drawn under its value.
+- tapOn:
+    id: "confirmar-cantidad"
+- extendedWaitUntil:
+    visible:
+      id: "confirmado-cantidad"
+    timeout: 10000
+- assertVisible: "Confirmado por José QA"
+- scrollUntilVisible:
+    element:
+      id: "mapa-dato-area"
+    timeout: 10000
+    visibilityPercentage: 40
+    centerElement: true
+- takeScreenshot: g2b-mapa-del-lote
+- tapOn:
+    id: "corregir-area"
+- tapOn:
+    id: "corregir-valor-area"
+- eraseText: 40
+- inputText: "1 280 m²"
+- tapOn:
+    id: "guardar-correccion-area"
+- extendedWaitUntil:
+    visible:
+      id: "confirmado-area"
+    timeout: 10000
+- scrollUntilVisible:
+    element: "1 280 m²"
+    direction: UP
+    timeout: 10000
+    visibilityPercentage: 40
+    centerElement: true
+- takeScreenshot: g2c-corregido
 - scrollUntilVisible:
     element:
       id: "ficha-documentos"

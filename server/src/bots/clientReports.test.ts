@@ -117,6 +117,13 @@ describe('the document', () => {
     expect(received[0]?.data).toMatchObject({ type: 'CON-CAP' });
   });
 
+  it('a SOL-IMP opens for any member; an APR-ADI carries amounts and only whoever sees money gets it (José 18/11)', async () => {
+    await draftOf(ana, { type: 'SOL-IMP' }).expect(200);
+    await draftOf(ana, { type: 'APR-ADI' }).expect(404);
+    await draftOf(jose, { type: 'APR-ADI' }).expect(200);
+    expect(received.map((event) => event.data?.type)).toEqual(['SOL-IMP', 'APR-ADI']);
+  });
+
   it('is a 404 outside the channel and a 400 for a type that does not open here', async () => {
     await draftOf(outsider).expect(404);
     await draftOf(ana, { type: 'LIQ-SRV' }).expect(400);

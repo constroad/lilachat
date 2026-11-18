@@ -1,5 +1,5 @@
 import mongoose, { Types, type Model } from 'mongoose';
-import { AREA_TYPE, areaDocumentOf, AREAS_OPEN_HERE, isObservationType, observationDocumentOf, OBSERVATIONS_OPEN_HERE, type AreaDocument, type ObservationDocument } from '@lilachat/shared';
+import { AREA_TYPE, areaDocumentOf, AREAS_OPEN_HERE, isObservationType, needsMoneyToCreate, observationDocumentOf, OBSERVATIONS_OPEN_HERE, type AreaDocument, type ObservationDocument } from '@lilachat/shared';
 import { channelValuesOf, CLIENT_ID, SERVICE_LINK_ACTION, fieldDocumentOf, withoutGroupSend, formLevelOf, photoKindOf, requiresLocation, SECTION_TOOL, sectionAt, sectionFormOf, type AppForm, type CommandOutcome, type FieldDocument, type FormSchema, type SectionPath } from '@lilachat/shared';
 import { OUTDATED_FORM_MESSAGE, type CommandError } from './botCommands.js';
 import { askAboutService, findAskedService, notFound, type AskOutcome, type NotFound, type ServiceAsk } from './clientFiles.js';
@@ -22,8 +22,8 @@ import { isWorkMapFormInput, isWorkMapFormKind, workMapFormInputOf, workMapFormP
  * the answers so agentes holds the border between clients.
  */
 export const PUBLISH_TOOL = 'publicar_informe';
-/** The report types that open from Lilachat today; Portal's `tipo` enum says the same. */
-export const OPEN_REPORT_TYPES = ['CTL-IMP', 'CTL-PIS', 'CON-CAP', 'FRE-PAV', 'RCP-CAM'] as const;
+/** The report types that open from Lilachat today; Portal's `tipo` enum says the same (SOL-IMP and APR-ADI since 18/11, Portal 638e666f). */
+export const OPEN_REPORT_TYPES = ['CTL-IMP', 'CTL-PIS', 'CON-CAP', 'FRE-PAV', 'RCP-CAM', 'SOL-IMP', 'APR-ADI'] as const;
 const DRAFT_FAILED = 'No se pudo abrir el informe';
 const DRAFT_KEPT_S = 24 * 60 * 60;
 const COMMAND_TTL_MS = 15 * 60_000;
@@ -77,6 +77,8 @@ export const ReportDraftModel: Model<ReportDraft> = (mongoose.models.ReportDraft
 /** A member's copy comes without «Enviar al grupo» (José 12/11: WhatsApp only for admins); the kept copy is that one, so its forms lack it too. */
 const DRAFT: ServiceAsk<FieldDocument> = { event: 'client.report.draft.requested', parse: fieldDocumentOf, failed: DRAFT_FAILED, gone: 'Este informe ya no está en el Portal.', label: 'Borrador del informe', need: 'services', scrub: withoutGroupSend };
 /** The same event for an observation report: agentes sends it to `informe_de_observaciones` (275fb32). Nothing is kept: no section form is built from it. */
+/** A type with amounts (APR-ADI) opens only for whoever sees money: a member gets the 404 of `/billing`. */
+const DRAFT_WITH_MONEY: ServiceAsk<FieldDocument> = { ...DRAFT, need: 'money' };
 const OBSERVATIONS: ServiceAsk<ObservationDocument> = { event: DRAFT.event, parse: observationDocumentOf, failed: DRAFT_FAILED, gone: DRAFT.gone, label: 'Informe de observaciones', need: 'services' };
 const opensObservations = (type: unknown): boolean => OBSERVATIONS_OPEN_HERE && isObservationType(type);
 /** The additional-area report (José 12/11): agentes sends IAA to `informe_area_adicional`. Nothing is kept either. */
@@ -96,7 +98,7 @@ export async function clientReportDraft(workspaceId: string, clientId: string, s
   if (!isOpenType(body.type)) return fail(400, 'invalid_request', 'Ese tipo de informe no se crea desde Lilachat.');
   const page = pageOf(body.page);
   if (page === 'invalid') return fail(400, 'invalid_request', 'La página de unidades empieza en 1.');
-  const asked = await askAboutService(DRAFT, workspaceId, clientId, serviceId, userId, { type: body.type, ...(reportId ? { report_id: reportId } : {}), ...(page ? { page } : {}) });
+  const asked = await askAboutService(needsMoneyToCreate(body.type) ? DRAFT_WITH_MONEY : DRAFT, workspaceId, clientId, serviceId, userId, { type: body.type, ...(reportId ? { report_id: reportId } : {}), ...(page ? { page } : {}) });
   if ('ok' in asked && asked.ok) {
     await ReportDraftModel.updateOne({ workspaceId: new Types.ObjectId(workspaceId), userId, serviceId, type: body.type }, { $set: { document: asked.value } }, { upsert: true });
   }

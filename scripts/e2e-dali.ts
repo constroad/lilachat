@@ -29,11 +29,12 @@ import { ProspectChannelModel } from '../server/src/bots/botProspects.js';
 
 const SERVER_DIR = fileURLToPath(new URL('../server', import.meta.url));
 /** The QA session (a device secret of the in-memory database) and the events stay outside the repo. */
-const OUT_DIR = path.join(tmpdir(), 'lilachat-e2e-dali');
+const OUT_DIR = process.env.E2E_OUT_DIR || path.join(tmpdir(), 'lilachat-e2e-dali');
 /** QA's own media disk (with its marker): an upload never falls back to lila. */
 const MEDIA_ROOT = path.join(OUT_DIR, 'media');
 const API = 'http://127.0.0.1:4003/api';
-const HOOK_PORT = 4013;
+/** Overridable so two E2E runs (web and APK) can share the Mac: `E2E_HOOK_PORT=4023 E2E_OUT_DIR=… npx tsx …`. */
+const HOOK_PORT = Number(process.env.E2E_HOOK_PORT) || 4013;
 const JWT_SECRET = randomBytes(24).toString('hex');
 const TOKEN = `lcb_e2e_${randomBytes(12).toString('hex')}`;
 const QA_CODE = '424242';

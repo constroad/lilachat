@@ -1,0 +1,185 @@
+# José 18/11: a notes chat («Borrador») whose links Lila sorts by category. The flow creates the chat, turns on
+# «Ordenar enlaces por categoría» from the ⋮, sends four real links (the server reads the real pages, so it needs
+# internet) and walks the «Chat · Por categoría» views: the cards in the bubbles, the chips, search, the «Mover a»
+# sheet and the landscape layout.
+#
+# Before: the harness running with a classifier for Lila's categories (any Anthropic-compatible double works, the
+# assertions below expect the keyword double of the E2E: voz/video → «Video, voz e imagen» (the Facebook video),
+# comenta/youtube → «Contenido y canales», else «Fuera de tema»):
+#
+#   E2E_HOOK_PORT=4023 E2E_OUT_DIR=<tmp>/lilachat-e2e-notas ANTHROPIC_API_KEY=e2e-double \
+#     ANTHROPIC_BASE_URL=http://127.0.0.1:4014 npx tsx scripts/e2e-dali.ts
+#
+# Metro from app/ with EXPO_PUBLIC_API_URL=http://10.0.2.2:4003 (`adb reverse tcp:8081 tcp:8081`) and the debug
+# build installed. Then, from the directory where the screenshots should land:
+#
+#   maestro --device "$ANDROID_SERIAL" test app/.maestro/notes-by-category.yaml
+#
+# The flow writes data, so each run starts from a fresh harness.
+appId: com.lilachat.app
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: "btn-entrar-telefono"
+    timeout: 180000
+- tapOn:
+    id: "btn-entrar-telefono"
+- tapOn:
+    id: "input-telefono"
+- inputText: "900000099"
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: "Verificar Número"
+    timeout: 20000
+- inputText: "424242"
+- extendedWaitUntil:
+    visible:
+      id: "btn-sin-espacio"
+    timeout: 20000
+- runFlow:
+    when:
+      visible: "Open debugger to view warnings."
+    commands:
+      - tapOn:
+          point: "96%,92%"
+- tapOn:
+    id: "btn-sin-espacio"
+
+# 1. A new «Borrador» (notes chat). Escape closes the keyboard without the BACK that `hideKeyboard` sends.
+- tapOn:
+    id: "btn-nuevo-chat"
+- tapOn:
+    id: "btn-nuevo-borrador"
+- tapOn:
+    id: "input-nombre-grupo"
+- inputText: "QA-NOTAS IA links"
+- pressKey: Escape
+- tapOn:
+    id: "btn-crear-borrador"
+- extendedWaitUntil:
+    visible:
+      id: "input-mensaje"
+    timeout: 20000
+
+# 2. ⋮ → «Ordenar enlaces por categoría» → confirm: the segmented control appears.
+- tapOn:
+    id: "btn-menu-chat"
+- tapOn: "Ordenar enlaces por categoría"
+- tapOn: "Ordenar"
+- extendedWaitUntil:
+    visible:
+      id: "segmento-por-categoria"
+    timeout: 15000
+
+# 3. Four links from the chat view; each gets its card and its category.
+- tapOn:
+    id: "segmento-chat"
+- tapOn:
+    id: "input-mensaje"
+- inputText: "https://www.instagram.com/reel/DfXK5rxuHhk/?igsh=MWx4"
+- tapOn:
+    id: "btn-enviar"
+- tapOn:
+    id: "input-mensaje"
+- inputText: "https://www.facebook.com/share/v/1H4KjuHHA3/"
+- tapOn:
+    id: "btn-enviar"
+- tapOn:
+    id: "input-mensaje"
+- inputText: "https://www.instagram.com/p/DemCjCiEVE3/"
+- tapOn:
+    id: "btn-enviar"
+- tapOn:
+    id: "input-mensaje"
+- inputText: "https://www.instagram.com/p/De9jQMfCh-K/"
+- tapOn:
+    id: "btn-enviar"
+- pressKey: Escape
+- extendedWaitUntil:
+    visible:
+      id: "reintentar-enlace-4"
+    timeout: 60000
+- assertVisible: "NO SE PUDO LEER"
+- extendedWaitUntil:
+    visible: "SOLO PIDE COMENTAR"
+    timeout: 30000
+- extendedWaitUntil:
+    visible: "Contenido y canales"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: "tarjeta-enlace-1"
+    direction: UP
+    timeout: 15000
+    visibilityPercentage: 40
+    centerElement: true
+- assertVisible: "INSTAGRAM · REEL"
+- assertVisible: "FACEBOOK · VIDEO"
+- extendedWaitUntil:
+    visible: "Video, voz e imagen"
+    timeout: 30000
+- takeScreenshot: apk-nl02
+
+# 4. «Por categoría»: chips with counts, sections, search and «Mover a».
+- tapOn:
+    id: "segmento-por-categoria"
+- extendedWaitUntil:
+    visible:
+      id: "chip-enlaces-all"
+      text: "Todas, 4"
+    timeout: 15000
+- assertVisible: "Video, voz e imagen, 1"
+- assertVisible: "CONTENIDO Y CANALES · 1"
+- assertVisible: "VIDEO, VOZ E IMAGEN · 1"
+- takeScreenshot: apk-nl01
+- tapOn:
+    id: "buscar-enlaces"
+- inputText: "elevenlabs"
+- pressKey: Escape
+- extendedWaitUntil:
+    visible:
+      id: "enlace-1"
+    timeout: 10000
+- assertNotVisible:
+    id: "enlace-2"
+- assertNotVisible:
+    id: "enlace-3"
+- tapOn:
+    id: "limpiar-busqueda-enlaces"
+- extendedWaitUntil:
+    visible:
+      id: "enlace-2"
+    timeout: 10000
+- longPressOn:
+    id: "enlace-2"
+- extendedWaitUntil:
+    visible:
+      id: "hoja-mover-enlace"
+    timeout: 10000
+- tapOn:
+    text: "Contenido y canales"
+    childOf:
+      id: "hoja-mover-enlace"
+- takeScreenshot: apk-nl03
+- tapOn:
+    id: "mover-enlace"
+- extendedWaitUntil:
+    visible: "CONTENIDO Y CANALES · 2"
+    timeout: 10000
+- assertNotVisible: "Video, voz e imagen, 1"
+
+# 5. Landscape: the categories column beside the cards; back to portrait.
+- setOrientation: LANDSCAPE_LEFT
+- extendedWaitUntil:
+    visible:
+      id: "vista-por-categoria"
+    timeout: 10000
+- waitForAnimationToEnd
+- takeScreenshot: apk-nl01-landscape
+- setOrientation: PORTRAIT
+- extendedWaitUntil:
+    visible:
+      id: "segmento-por-categoria"
+    timeout: 10000

@@ -36,6 +36,8 @@ export type PropsDelChat = {
   otherUserId?: string | null;
   /** Un chat solo contigo (`notas`, 19/10): ni grupo ni 1:1. */
   esBorrador?: boolean;
+  /** A notes chat whose links are sorted by category (José 18/11): «Chat · Por categoría». */
+  linksSorted?: boolean;
   /** A chat of a company space (E1): its groups and channels always read in the Slack format. */
   workspaceId?: string;
   /** A 1:1 with an app (design e-26): the head is the app's. */

@@ -282,6 +282,8 @@ export type ChatSummary = {
   markedUnread?: boolean;
   /** Mensajes fijados arriba del chat (19/10), el más reciente primero. */
   fijados?: FijadoEnLista[];
+  /** A notes chat whose links are sorted by category (José 18/11): the chat offers «Por categoría». */
+  linksSorted?: true;
 };
 
 /** Un fijado como lo manda la lista: con su vista previa (sin texto en un chat secreto). */

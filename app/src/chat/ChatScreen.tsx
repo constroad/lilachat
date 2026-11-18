@@ -79,6 +79,8 @@ import { useChatWindow } from './useChatWindow';
 import { useClipSharing } from './useClipSharing';
 import { offerCallLink } from './scheduledCall/callLinks';
 import { BirthdayCard } from './birthdays/BirthdayCard';
+import { NoteLinksContext } from './links/NoteLinkBubble';
+import { useNotesLinks } from './links/useNotesLinks';
 
 /** El pie del composer con el teclado abierto (dp). */
 const MARGEN_CON_TECLADO = 8;
@@ -102,7 +104,7 @@ export function ChatScreen({
   irASeq, openThread, highlightReply, requestedAt,
   encrypted,
   otherUserId,
-  esBorrador = false, workspaceId, appId, prospect,
+  esBorrador = false, linksSorted, workspaceId, appId, prospect,
   onBack,
 }: PropsDelChat) {
   useRenderCost('chat');
@@ -271,22 +273,13 @@ export function ChatScreen({
   // A match above the drawn rows opens its window (pending 44): scrolling alone did nothing (E2E, 22/10).
   const busqueda = useBuscarEnChat({ mensajes: visibleForSearch, irA: (seq) => saltarA(seq, 'No se pudo abrir ese mensaje.') });
   const menuKind = esBorrador ? 'notes' : chatName.startsWith('# ') ? 'channel' : esGrupoChat ? 'group' : 'direct';
-  const headerMenu = useChatHeaderMenu({ chatId, jwt: credential.jwt, kind: menuKind, onDetail: (section) => (setDetailSection(section ?? null), setVerDetalle(true)), onSearch: busqueda.abrir, onError: setMediaError });
+  // José 18/11: a notes chat's links by category, behind its own switch.
+  const notesLinks = useNotesLinks({ chatId, jwt: credential.jwt, isNotes: esBorrador, sorted: linksSorted, onWrite: () => requestAnimationFrame(() => composerRef.current?.focus()), onError: setMediaError });
+  const headerMenu = useChatHeaderMenu({ chatId, jwt: credential.jwt, kind: menuKind, onDetail: (section) => (setDetailSection(section ?? null), setVerDetalle(true)), onSearch: busqueda.abrir, onError: setMediaError, linksSorted: notesLinks.enabled, onLinkSorting: notesLinks.toggleSorting });
 
   useAtrasDelChat(
-    {
-      haySeleccion: seleccion.enSeleccion,
-      buscando: busqueda.activo,
-      editando: respuesta.editando !== null,
-      respondiendo: respuesta.respondiendoA !== null,
-    },
-    {
-      soltarSeleccion: seleccion.soltar,
-      cerrarBusqueda: busqueda.cerrar,
-      cancelarEdicion: respuesta.cancelarEdicion,
-      cancelarRespuesta,
-      volver: onBack,
-    }
+    { haySeleccion: seleccion.enSeleccion, buscando: busqueda.activo, editando: respuesta.editando !== null, respondiendo: respuesta.respondiendoA !== null },
+    { soltarSeleccion: seleccion.soltar, cerrarBusqueda: busqueda.cerrar, cancelarEdicion: respuesta.cancelarEdicion, cancelarRespuesta, volver: onBack }
   );
 
   /** Las citas, una vez por cambio de mensajes (antes un `find` por fila y por render). */
@@ -433,7 +426,7 @@ export function ChatScreen({
         />
       )}
 
-      {prospectDoor.strip}{fijar.franja}{esGrupoChat ? <GroupCallStrip chatId={chatId} chatName={nombreVisible} me={credential.userId} /> : null}{channelWork.tabs}{visitDoor.strip}<ContactNoteBanner chatId={chatId} jwt={credential.jwt} note={grupo.contactNote} />
+      {notesLinks.segment}{prospectDoor.strip}{fijar.franja}{esGrupoChat ? <GroupCallStrip chatId={chatId} chatName={nombreVisible} me={credential.userId} /> : null}{channelWork.tabs}{visitDoor.strip}<ContactNoteBanner chatId={chatId} jwt={credential.jwt} note={grupo.contactNote} />
       </View>
       <ChatKeyboardArea style={{ flex: 1, zIndex: 1 }}>
       {fijar.hoja}{channelWork.panel}
@@ -472,7 +465,7 @@ export function ChatScreen({
         <ThreadRepliesBanner threads={hilos.withNewReplies} rootText={(root) => messages.find((one) => one.seq === root)?.body} nameOf={(id) => nombresDeReacciones.get(id)} onOpen={hilos.abrir} />
       )}
 
-      <AccionesDeTarjetaContext.Provider value={accionesDeTarjeta}>
+      <AccionesDeTarjetaContext.Provider value={accionesDeTarjeta}><NoteLinksContext.Provider value={notesLinks.bubble}>
         <ListaDeMensajes
           listaRef={listaRef}
           rows={rows} cells={cells} mensajes={messages}
@@ -485,7 +478,7 @@ export function ChatScreen({
           onLlegoAlFinal={() => setLeyoHastaElFinal(true)}
           sinSubir={sinSubir}
         />
-      </AccionesDeTarjetaContext.Provider>
+      </NoteLinksContext.Provider></AccionesDeTarjetaContext.Provider>
 
       <ChatBottom coveredMargin={sinSubir} composerRef={composerRef} chat={{ jwt: credential.jwt, id: chatId, name: nombreVisible, withStickers: !encrypted, onWink: fun.onWink, onNudge: fun.onNudge }}>
       {mediaError ? (
@@ -596,8 +589,8 @@ export function ChatScreen({
         tarjetas={<ChatInfoCards chatId={chatId} jwt={credential.jwt} yo={credential.userId} encrypted={Boolean(encrypted)} pinned={{ fijados: fijar.fijados, textoDe: fijar.textoDe, onVerTodos: () => { setVerDetalle(false); fijar.verTodos(); } }} nameOf={nombreDe} starredCount={destacados.seqs.size} onGoTo={(seq) => { setVerDetalle(false); alTocarCita(seq); }} />}
       />
       ) : null}
-    </ChatKeyboardArea>
-    {visitDoor.screen}{prospectDoor.screen}
+    {notesLinks.overlay}</ChatKeyboardArea>
+    {visitDoor.screen}{notesLinks.sheets}{prospectDoor.screen}
     </View></OverlayHost></SpaceEmojisProvider>
   );
 }

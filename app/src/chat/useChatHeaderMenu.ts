@@ -15,8 +15,8 @@ export type ChatHeaderMenu = { options: ReturnType<typeof chatMenuOptions>; sele
  * asked when the menu opens (the detail says it), not on every chat opened:
  * muting is «nada» and turning it back on is «todo», the detail's levels.
  */
-export function useChatHeaderMenu(params: { chatId: string; jwt: string; kind: ChatMenuKind; onDetail: (section?: DetailSection) => void; onSearch: () => void; onError: (text: string) => void }): ChatHeaderMenu {
-  const { chatId, jwt, kind, onDetail, onSearch, onError } = params;
+export function useChatHeaderMenu(params: { chatId: string; jwt: string; kind: ChatMenuKind; onDetail: (section?: DetailSection) => void; onSearch: () => void; onError: (text: string) => void; linksSorted?: boolean; onLinkSorting?: () => void }): ChatHeaderMenu {
+  const { chatId, jwt, kind, onDetail, onSearch, onError, linksSorted, onLinkSorting } = params;
   const [muted, setMuted] = useState(false);
   const refresh = useCallback(() => {
     void fetch(`${BASE_URL}/api/chats/${chatId}/detail`, { headers: { Authorization: `Bearer ${jwt}` } })
@@ -34,11 +34,12 @@ export function useChatHeaderMenu(params: { chatId: string; jwt: string; kind: C
   }, [chatId, jwt, onError]);
   const select = useCallback((id: ChatMenuId) => {
     if (id === 'search') onSearch();
+    else if (id === 'link-sorting') onLinkSorting?.();
     // R31/10: muting asks for how long, like WhatsApp.
     else if (id === 'mute') askMuteDuration((muteFor) => setNotices(true, muteFor));
     else if (id === 'unmute') setNotices(false);
     else onDetail(id === 'info' ? undefined : id);
-  }, [onDetail, onSearch, setNotices]);
-  const options = useMemo(() => chatMenuOptions({ kind, muted }), [kind, muted]);
+  }, [onDetail, onSearch, setNotices, onLinkSorting]);
+  const options = useMemo(() => chatMenuOptions({ kind, muted, linksSorted }), [kind, muted, linksSorted]);
   return { options, select, refresh };
 }

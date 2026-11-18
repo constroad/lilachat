@@ -51,6 +51,8 @@ export type ComposerHandle = {
   replyingTo: () => number | undefined;
   /** A sticker answered it: the reply strip closes. */
   replyDone: () => void;
+  /** The keyboard up on the field: the «+» of a notes chat's «Por categoría» (José 18/11). */
+  focus: () => void;
 };
 
 /**
@@ -231,6 +233,7 @@ export const Composer = memo(function Composer(props: {
       backspace: () => typeFromPanel.current.back(),
       replyingTo: () => latestReply.current.seq,
       replyDone: () => latestReply.current.cancel(),
+      focus: () => inputRef.current?.focus(),
     }),
     []
   );

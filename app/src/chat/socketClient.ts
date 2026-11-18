@@ -1,5 +1,5 @@
 import type { LiveLocation } from '@lilachat/shared';
-import type { BotCard, GalleryItem } from '@lilachat/shared';
+import type { BotCard, GalleryItem, LinkCard } from '@lilachat/shared';
 import type { MencionEnMensaje, MessageRef, ResumenDeHiloEnCliente, Reaccion } from '@lilachat/shared';
 import { avisarTarjeta, refrescarTodas } from '@lilachat/shared';
 import { io, type Socket } from 'socket.io-client';
@@ -47,6 +47,8 @@ export type ServerMessage = {
   sharedBy?: { name: string; command: string };
   /** José 13/11: a copy forwarded from another chat. */
   forwarded?: boolean;
+  /** A notes chat's link card, sorted by category (José 18/11): Lila reads it and picks its category. */
+  link?: LinkCard;
   /** El sobre cifrado, en chats secretos (F9). Llega en vez de `body`. */
   envelope?: { v: 1; nonce: string; ciphertext: string };
   /** La encuesta o el evento que publica este mensaje (18/10): se dibuja como tarjeta. */

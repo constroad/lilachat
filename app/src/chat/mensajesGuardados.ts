@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { editedMessageOf, type MessageEdit } from './editedMessage';
+import { editedMessageOf, type LinkChange, type MessageEdit } from './editedMessage';
 import * as Crypto from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import * as SQLite from 'expo-sqlite';
@@ -480,7 +480,7 @@ export function marcarBorradoGuardado(chatId: string, seq: number): Promise<void
 }
 
 /** A message changed on the server: a person's edit, or a bot closing its card (no «editado» then). */
-export function saveEditedMessage(chatId: string, seq: number, change: MessageEdit): Promise<void> {
+export function saveEditedMessage(chatId: string, seq: number, change: MessageEdit | LinkChange): Promise<void> {
   return reescribirGuardado(chatId, seq, (message) => editedMessageOf(message, change));
 }
 

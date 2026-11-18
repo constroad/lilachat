@@ -33,4 +33,13 @@ describe('the call menu of a group (pending 56)', () => {
   it('offers only voice and video: a scheduled call and a link are for a 1:1', () => {
     expect(GROUP_CALL_MENU.map((option) => option.label)).toEqual(['Llamada grupal de voz', 'Videollamada grupal']);
   });
+
+  it('a notes chat offers to sort its links by category, and to stop (José 18/11)', () => {
+    expect(chatMenuOptions({ kind: 'notes', muted: false, linksSorted: false }).at(-1)).toEqual({ id: 'link-sorting', label: 'Ordenar enlaces por categoría' });
+    expect(chatMenuOptions({ kind: 'notes', muted: false, linksSorted: true }).at(-1)).toEqual({ id: 'link-sorting', label: 'Dejar de ordenar enlaces' });
+  });
+
+  it('other chats never offer it', () => {
+    expect(chatMenuOptions({ kind: 'group', muted: false, linksSorted: false }).some((option) => option.id === 'link-sorting')).toBe(false);
+  });
 });

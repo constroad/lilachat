@@ -4,14 +4,15 @@
  * camera with its arrow for the calls. PURE: the screen only draws them.
  */
 export type ChatMenuKind = 'group' | 'channel' | 'direct' | 'notes';
-export type ChatMenuId = 'add-members' | 'info' | 'media' | 'search' | 'mute' | 'unmute';
+export type ChatMenuId = 'add-members' | 'info' | 'media' | 'search' | 'mute' | 'unmute' | 'link-sorting';
 export type ChatMenuOption = { id: ChatMenuId; label: string };
 export type CallMenuId = 'voice' | 'video' | 'schedule' | 'link';
 
 const INFO_LABEL: Record<ChatMenuKind, string> = { group: 'Info del grupo', channel: 'Info del canal', direct: 'Ver contacto', notes: 'Info' };
 const MEDIA_LABEL: Record<ChatMenuKind, string> = { group: 'Medios del grupo', channel: 'Medios del canal', direct: 'Medios, enlaces y docs', notes: 'Medios, enlaces y docs' };
 
-export function chatMenuOptions(params: { kind: ChatMenuKind; muted: boolean }): ChatMenuOption[] {
+/** `linksSorted`: a notes chat's links sorted by category (José 18/11); unknown, the option is not offered. */
+export function chatMenuOptions(params: { kind: ChatMenuKind; muted: boolean; linksSorted?: boolean }): ChatMenuOption[] {
   const { kind } = params;
   const many = kind === 'group' || kind === 'channel';
   return [
@@ -20,6 +21,7 @@ export function chatMenuOptions(params: { kind: ChatMenuKind; muted: boolean }):
     { id: 'media', label: MEDIA_LABEL[kind] },
     { id: 'search', label: 'Buscar' },
     ...(kind === 'notes' ? [] : [params.muted ? { id: 'unmute' as const, label: 'Activar notificaciones' } : { id: 'mute' as const, label: 'Silenciar notificaciones' }]),
+    ...(kind === 'notes' && params.linksSorted !== undefined ? [{ id: 'link-sorting' as const, label: params.linksSorted ? 'Dejar de ordenar enlaces' : 'Ordenar enlaces por categoría' }] : []),
   ];
 }
 

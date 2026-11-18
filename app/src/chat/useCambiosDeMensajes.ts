@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 import { aplicarReaccion, type Reaccion } from '@lilachat/shared';
 import { marcarBorradoGuardado, marcarReaccionesGuardadas, saveEditedMessage } from './mensajesGuardados';
-import { editedMessageOf, type MessageEdit } from './editedMessage';
+import { editedMessageOf, type LinkChange, type MessageEdit } from './editedMessage';
 import { getSocket } from './socketClient';
 import type { ChatMessage } from './useChat';
 
@@ -44,17 +44,25 @@ export function useCambiosDeMensajes(params: { chatId: string; token: string; yo
       setMessages((actuales) => actuales.map((m) => (m.seq === frame.seq ? editedMessageOf(m, frame) : m)));
       void saveEditedMessage(chatId, frame.seq, frame);
     };
+    // A notes chat's link card, read or moved (José 18/11): the bubble shows it at once.
+    const onLink = (frame: LinkChange & { chatId: string; seq: number }) => {
+      if (!vivo || frame.chatId !== chatId || !frame.link) return;
+      setMessages((current) => current.map((m) => (m.seq === frame.seq ? editedMessageOf(m, { link: frame.link }) : m)));
+      void saveEditedMessage(chatId, frame.seq, { link: frame.link });
+    };
     const onReacciones = (frame: { chatId: string; seq: number; reacciones: Reaccion[] }) => {
       if (vivo && frame.chatId === chatId && Array.isArray(frame.reacciones)) ponerReacciones(setMessages, chatId, frame.seq, frame.reacciones);
     };
     socket.on('msg.deleted', onDeleted);
     socket.on('msg.edited', onEdited);
     socket.on('msg.reacciones', onReacciones);
+    socket.on('msg.link', onLink);
     return () => {
       vivo = false;
       socket.off('msg.deleted', onDeleted);
       socket.off('msg.edited', onEdited);
       socket.off('msg.reacciones', onReacciones);
+      socket.off('msg.link', onLink);
     };
   }, [chatId, token, setMessages]);
 

@@ -11,12 +11,11 @@ import { LineaDeLlamada } from './LineaDeLlamada';
 import { CitaDeRespuesta } from './CitaDeRespuesta';
 import { TextoConHora } from './TextoConHora';
 import { MetaDeMensaje } from './MetaDeMensaje';
-import { VistaPreviaDeEnlace } from './VistaPreviaDeEnlace';
+import { LinkAwareBody } from './links/NoteLinkBubble';
 import {
   TEXTO_ELIMINADO,
   esAvisoDestacado,
   nombreDeContacto,
-  primerEnlace,
   sharedByLine,
   textoDeAviso,
 } from '@lilachat/shared';
@@ -371,13 +370,11 @@ function FilaDeMensaje({
           ) : sharedLocation ? (
             <LocationCard location={sharedLocation} mine={mine} live={jwt && !isPending(item) ? { jwt, chatId: item.chatId, seq: item.seq } : undefined} selecting={Boolean(enSeleccion)} onSelect={() => !isPending(item) && onSeleccionar?.(item.seq)} />
           ) : item.body ? (
-            <>
-            {conVistaPrevia && jwt && !isPending(item) && !item.media && primerEnlace(item.body) ? (
-              <VistaPreviaDeEnlace url={primerEnlace(item.body)!} jwt={jwt} mia={mine} />
-            ) : null}
+            // A notes chat with sorted links draws the stored card and its category (José 18/11); elsewhere, the preview.
+            <LinkAwareBody item={item} jwt={jwt} mine={mine} withPreview={conVistaPrevia} meta={meta}>
             {/* Hora y checks DENTRO, alineados a la última línea (como WhatsApp). */}
             <TextoConHora texto={item.body} menciones={isPending(item) ? undefined : item.menciones} nombres={nombres} yo={myUserId} id={isPending(item) ? item.clientKey : `${item.chatId}:${item.seq}`} meta={meta} />
-            </>
+            </LinkAwareBody>
           ) : null}
 
           {/* Lo que no es texto (foto, voz, archivo, borrado) lleva la hora en

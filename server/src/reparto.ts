@@ -3,6 +3,7 @@ import type { Server as SocketServer } from 'socket.io';
 import type { Message } from './chatModels.js';
 import { chatMemberIds, entregarAlConectar, markDelivered, marcarPropioLeido } from './chatService.js';
 import { toClientMessage } from './messageView.js';
+import { queueLinkSorting } from './linkSorting.js';
 import { isOnline } from './presence.js';
 import { notifyOffline } from './pushService.js';
 import { broadcastReceipt } from './readPrivacy.js';
@@ -33,6 +34,11 @@ let ioVivo: SocketServer | null = null;
 /** A message changed outside the socket (a bot replaced its card): the members see it change, without push. */
 export function notifyEdited(members: readonly string[], edited: Record<string, unknown>): void {
   for (const member of members) ioVivo?.to(userRoom(member)).emit('msg.edited', edited);
+}
+
+/** Any event to every member of a chat (a notes chat's link card, its categories). */
+export function emitToMembers(members: readonly string[], event: string, frame: object): void {
+  for (const member of members) ioVivo?.to(userRoom(member)).emit(event, frame);
 }
 
 /** `attachSocket` deja acá el servidor: desde ese momento el reparto emite. */
@@ -131,6 +137,8 @@ export async function avisarMensajeNuevo(
   conocidos?: string[]
 ): Promise<string[]> {
   const members = conocidos ?? (await chatMemberIds(message.chatId));
+  // A link saved in a notes chat sorted by category gets its card and Lila's category (José 18/11).
+  queueLinkSorting(message);
   if (!ioVivo) return members;
 
   const remitente = String((message as { senderId?: unknown }).senderId ?? '');

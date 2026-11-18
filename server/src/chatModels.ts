@@ -1,5 +1,5 @@
 import mongoose, { Schema, type Model, type QueryFilter, type Types } from 'mongoose';
-import type { BotCard, GalleryItem, MessageRef } from '@lilachat/shared';
+import type { BotCard, GalleryItem, LinkCard, MessageRef } from '@lilachat/shared';
 import { HIGHLIGHTED_NOTICE_EVENTS } from '@lilachat/shared';
 
 /**
@@ -101,6 +101,8 @@ export interface Chat {
   birthdayHeadsUps?: Record<string, string>;
   /** Mensajes fijados arriba del chat (19/10): hasta 3, cada uno con su vencimiento. */
   fijados?: { seq: number; por: Types.ObjectId; en: Date; hasta: Date }[];
+  /** A notes chat's saved links sorted by category (José 18/11, `linkSorting.ts`); off unless switched on. */
+  linkSorting?: { enabled: boolean; categories: { _id: Types.ObjectId; name: string; by: 'lila' | 'user' }[] };
 }
 
 /** El resumen de un hilo, guardado en su raíz (E3). */
@@ -224,6 +226,8 @@ export interface Message {
   disappearsAt?: Date;
   /** Es una auto-respuesta de ausente (F11): NO dispara otra (corta los loops). */
   autoReply?: boolean;
+  /** The card of the link of a notes chat sorted by category (José 18/11, `linkSorting.ts`). */
+  link?: LinkCard;
   at: Date;
 }
 
@@ -292,6 +296,10 @@ const chatSchema = new Schema<Chat>(
       type: [{ seq: { type: Number, required: true }, por: { type: Schema.Types.ObjectId, required: true }, en: { type: Date, required: true }, hasta: { type: Date, required: true }, _id: false }],
       default: undefined,
     },
+    linkSorting: {
+      type: { enabled: { type: Boolean, default: false }, categories: [{ name: { type: String, required: true }, by: { type: String, enum: ['lila', 'user'] } }], _id: false },
+      default: undefined,
+    },
   },
   { timestamps: true }
 );
@@ -329,6 +337,13 @@ const messageSchema = new Schema<Message>(
     forwarded: { type: Boolean },
     clientRef: { type: new Schema({ kind: String, serviceId: String, recordId: String, visitId: String }, { _id: false }), default: undefined },
     prospect: { type: new Schema({ name: String, phone: String, sentAt: String, adTitle: String }, { _id: false }), default: undefined },
+    link: {
+      type: new Schema(
+        { url: String, platform: String, format: String, status: String, author: String, text: String, imageUrl: String, commentBait: String, categoryId: String, categoryBy: { type: String, enum: ['lila', 'user'] } },
+        { _id: false }
+      ),
+      default: undefined,
+    },
     envelope: {
       v: { type: Number },
       nonce: { type: String },

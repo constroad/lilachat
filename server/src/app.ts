@@ -1,6 +1,7 @@
 import { buildStampedForwardRouter } from './stampedForward.js';
 import { buildChatExportRouter } from './chatExportRoutes.js';
 import { buildReadAllRouter } from './readAll.js';
+import { buildLinkSortingRouter } from './linkSortingRoutes.js';
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
@@ -180,6 +181,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/chats', buildLocationShareRouter());
   app.use('/api/chats', buildChatExportRouter());
   app.use('/api/chats', buildReadAllRouter());
+  app.use('/api/chats', buildLinkSortingRouter());
   app.use('/api/chats', buildChatRouter(deps.mediaUploader));
   // José 12/11: the new camera's shots bound for a Portal ticket are stamped here first.
   app.use('/api/stamped-forward', buildStampedForwardRouter());

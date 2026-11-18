@@ -10,7 +10,7 @@ const NOMBRES_INTERNOS = /(^localhost$|\.localhost$|\.local$|\.internal$|\.lan$)
 
 const ENTIDADES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
 
-function decodificar(texto: string): string {
+export function decodificar(texto: string): string {
   return texto.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (entera, codigo: string) => {
     const numero = codigo.startsWith('#x') ? parseInt(codigo.slice(2), 16) : codigo.startsWith('#') ? parseInt(codigo.slice(1), 10) : NaN;
     if (!Number.isNaN(numero)) return numero > 0 && numero <= 0x10ffff ? String.fromCodePoint(numero) : entera;
@@ -24,7 +24,7 @@ const limpiar = (texto: string | undefined, maximo: number): string | undefined 
 };
 
 /** Las `<meta>` de la página por `property` o `name`, en minúsculas; gana la primera. */
-function etiquetasMeta(html: string): Map<string, string> {
+export function etiquetasMeta(html: string): Map<string, string> {
   const etiquetas = new Map<string, string>();
   for (const [meta] of html.matchAll(/<meta\b[^>]*>/gi)) {
     const atributos = new Map<string, string>();

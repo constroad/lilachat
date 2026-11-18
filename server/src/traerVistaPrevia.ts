@@ -33,24 +33,24 @@ function dnsSoloPublico(host: string, opciones: { all?: boolean; family?: number
   });
 }
 
-type Respuesta = { estado: number; destino?: string; html?: string };
+type PageAnswer = { estado: number; destino?: string; html?: string };
 /** Qué se pide: la página (HTML) o el oEmbed (JSON). El agente depende del sitio (`agenteParaHost`). */
-type Tipo = 'text/html' | 'application/json';
+type AcceptType = 'text/html' | 'application/json';
 
-/** Un GET, sin seguir redirecciones; trae a lo sumo `MAX_BYTES` del tipo pedido. */
-function pedir(url: URL, tipo: Tipo = 'text/html'): Promise<Respuesta> {
+/** One GET without following redirects; reads at most `MAX_BYTES` of the accepted type (the whole body when asked). */
+function fetchOnce(url: URL, accept: AcceptType = 'text/html', wholeBody = false): Promise<PageAnswer> {
   return new Promise((resolver, rechazar) => {
     const cliente = url.protocol === 'https:' ? https : http;
     const pedido = cliente.get(
       url,
-      { lookup: dnsSoloPublico as never, timeout: PLAZO_MS, headers: { 'User-Agent': agenteParaHost(url.hostname), Accept: tipo, 'Accept-Language': 'es' } },
+      { lookup: dnsSoloPublico as never, timeout: PLAZO_MS, headers: { 'User-Agent': agenteParaHost(url.hostname), Accept: accept, 'Accept-Language': 'es' } },
       (respuesta: IncomingMessage) => {
         const estado = respuesta.statusCode ?? 0;
         if (estado >= 300 && estado < 400) {
           respuesta.resume();
           return resolver({ estado, destino: respuesta.headers.location });
         }
-        if (estado !== 200 || !String(respuesta.headers['content-type'] ?? '').includes(tipo)) {
+        if (estado !== 200 || !String(respuesta.headers['content-type'] ?? '').includes(accept)) {
           respuesta.resume();
           return resolver({ estado });
         }
@@ -59,7 +59,7 @@ function pedir(url: URL, tipo: Tipo = 'text/html'): Promise<Respuesta> {
         respuesta.on('data', (trozo: Buffer) => {
           trozos.push(trozo);
           leidos += trozo.length;
-          if (leidos >= MAX_BYTES || (tipo === 'text/html' && trozo.includes(FIN_DEL_HEAD))) respuesta.destroy();
+          if (leidos >= MAX_BYTES || (accept === 'text/html' && !wholeBody && trozo.includes(FIN_DEL_HEAD))) respuesta.destroy();
         });
         const terminar = () => resolver({ estado, html: Buffer.concat(trozos).subarray(0, MAX_BYTES).toString('utf8') });
         respuesta.on('end', terminar);
@@ -82,7 +82,7 @@ export async function traerVistaPrevia(cruda: string): Promise<VistaPreviaDeEnla
   if (desdeOembed) return desdeOembed;
   let url = urlPublica(cruda);
   for (let salto = 0; url && salto <= MAX_REDIRECCIONES; salto += 1) {
-    const respuesta = await pedir(url);
+    const respuesta = await fetchOnce(url);
     if (respuesta.html !== undefined) {
       const vista = leerMetadatos(respuesta.html, url.toString());
       return vista ? vistaDeMapas({ ...vista, url: cruda }, url.hostname) : null;
@@ -104,9 +104,39 @@ async function traerOembed(cruda: string): Promise<VistaPreviaDeEnlace | null> {
   const destino = endpoint ? urlPublica(endpoint) : null;
   if (!destino) return null;
   try {
-    const respuesta = await pedir(destino, 'application/json');
+    const respuesta = await fetchOnce(destino, 'application/json');
     return respuesta.html ? vistaDeOembed(JSON.parse(respuesta.html), cruda) : null;
   } catch {
     return null;
   }
+}
+
+/**
+ * A public page's HTML, body included (the caption of an Instagram embed lives
+ * in the body), with the same SSRF guard and redirect checks. `null` when it
+ * does not answer, is not HTML or points inside.
+ */
+export async function fetchPublicHtml(raw: string, options: { wholeBody?: boolean } = {}): Promise<string | null> {
+  let url = urlPublica(raw);
+  for (let hop = 0; url && hop <= MAX_REDIRECCIONES; hop += 1) {
+    const answer = await fetchOnce(url, 'text/html', options.wholeBody ?? true).catch(() => null);
+    if (!answer) return null;
+    if (answer.html !== undefined) return answer.html;
+    if (!answer.destino) return null;
+    url = urlPublica(new URL(answer.destino, url).toString());
+  }
+  return null;
+}
+
+/** Where a short link lands (vt.tiktok.com → tiktok.com/@user/video/…), checking every hop; the same link when it does not move. */
+export async function finalUrlOf(raw: string): Promise<string> {
+  let url = urlPublica(raw);
+  let last = raw;
+  for (let hop = 0; url && hop <= MAX_REDIRECCIONES; hop += 1) {
+    last = url.toString();
+    const answer = await fetchOnce(url).catch(() => null);
+    if (!answer?.destino) return last;
+    url = urlPublica(new URL(answer.destino, url).toString());
+  }
+  return last;
 }

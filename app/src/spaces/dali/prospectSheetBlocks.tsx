@@ -10,7 +10,7 @@ import { ANCHO_MAXIMO_DE_CONTENIDO } from '../../ui/disposicion';
 import { MONO_FONT } from '../../ui/monoFont';
 import { useColores } from '../../ui/tema';
 import { useDisposicion } from '../../ui/useDisposicion';
-import { notify, OriginPill, ScorePill, SolidButton } from './daliParts';
+import { notify, OriginPill, Pill, ScorePill, SolidButton } from './daliParts';
 import { sendChange } from './sellerDesk';
 
 /**
@@ -136,6 +136,7 @@ export function UnderstoodCard({ prospect }: { prospect: ProspectView }) {
         <View key={field.key} className={`py-2 ${index > 0 ? 'border-t border-outline/10' : 'mt-1'}`}>
           <Text className="text-[12px] text-on-surface-variant">{field.label}</Text>
           <Text className="text-[15px] font-semibold text-on-surface">{field.value}</Text>
+          {field.source === 'document' && !field.confirmed ? <View className="mt-1 flex-row"><Pill tone="warn" testID={`por-confirmar-${field.key}`}>Leído del documento · por confirmar</Pill></View> : null}
         </View>
       ))}
       {missing.length ? <Text testID="ficha-falta" className="mt-2 text-[13px] font-medium text-warning">{`Falta: ${missing.join(', ')}`}</Text> : null}

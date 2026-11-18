@@ -15,6 +15,7 @@ import {
   prospectStripOf,
   quoteAmountOf,
   quoteSentLabelOf,
+  documentSentLabelOf,
   reassignChoicesOf,
   resultDraftOf,
   resultHeaderLineOf,
@@ -138,6 +139,11 @@ describe('dates in Lima', () => {
 
   it('says the day a quote went out', () => {
     expect(quoteSentLabelOf('2026-11-17T03:00:00.000Z')).toBe('Enviada el 16 de noviembre');
+  });
+
+  it('says when the client sent a document, in Lima time (late at night it is still the day before)', () => {
+    expect(documentSentLabelOf('2026-11-17T14:02:00.000Z')).toBe('Lo envió el 17 de noviembre, 09:02');
+    expect(documentSentLabelOf('2026-11-17T04:30:00.000Z')).toBe('Lo envió el 16 de noviembre, 23:30');
   });
 });
 

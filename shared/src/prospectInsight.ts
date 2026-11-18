@@ -12,7 +12,8 @@ export const PROSPECT_KINDS = ['company', 'person'] as const;
 export type ProspectKind = (typeof PROSPECT_KINDS)[number];
 
 export type ProspectService = { key: string; name: string };
-export type ProspectField = { key: string; label: string; value: string };
+/** `source: document` (José 17/11): read by Dali from a file the client sent (`fileId`); shown «por confirmar» until `confirmed`. */
+export type ProspectField = { key: string; label: string; value: string; source?: 'document'; fileId?: string; confirmed?: boolean };
 export type ProspectFollowUpDraft = { text: string; forAt?: string };
 /** Portal's quote linked by agentes. `amount` is money: only a space admin ever receives it. */
 export type ProspectQuote = { code: string; amount?: number; currency?: string; sentAt?: string; url?: string };
@@ -100,16 +101,21 @@ function reasonsOf(value: unknown): Read<string[]> {
   return reasons.every((reason): reason is string => reason !== null) ? accept(reasons) : refuse(`score_reasons lleva textos de hasta ${REASON_MAX}.`);
 }
 
+/** A file of `POST /api/bots/files`: the field read from it points at it. */
+const OBJECT_ID = /^[0-9a-f]{24}$/;
+
 function fieldOf(value: unknown): ProspectField | null {
   const body = record(value);
   const label = textOf(body.label, FIELD_LABEL_MAX);
   const raw = typeof body.value === 'number' && Number.isFinite(body.value) ? String(body.value) : trimmed(body.value);
   if (typeof body.key !== 'string' || !FIELD_KEY.test(body.key) || !label || raw === null || raw.length > FIELD_VALUE_MAX) return null;
-  return { key: body.key, label, value: raw };
+  if (body.source === undefined) return { key: body.key, label, value: raw };
+  if (body.source !== 'document' || typeof body.file_id !== 'string' || !OBJECT_ID.test(body.file_id)) return null;
+  return { key: body.key, label, value: raw, source: 'document', fileId: body.file_id, confirmed: body.confirmed === true };
 }
 
 function fieldsOf(value: unknown): Read<ProspectField[]> {
-  const shape = `fields va como lista de hasta ${FIELDS_MAX} { key en minúsculas, label hasta ${FIELD_LABEL_MAX}, value hasta ${FIELD_VALUE_MAX} }, sin claves repetidas.`;
+  const shape = `fields va como lista de hasta ${FIELDS_MAX} { key en minúsculas, label hasta ${FIELD_LABEL_MAX}, value hasta ${FIELD_VALUE_MAX}, y si se leyó de un documento source: "document" con su file_id }, sin claves repetidas.`;
   if (!Array.isArray(value) || value.length > FIELDS_MAX) return refuse(shape);
   const fields = value.map(fieldOf);
   const valid = fields.every((field): field is ProspectField => field !== null);

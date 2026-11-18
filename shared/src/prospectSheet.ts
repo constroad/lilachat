@@ -91,6 +91,12 @@ export function arrivalLabelOf(prospect: Pick<ProspectView, 'firstContactAt' | '
 /** «Enviada el 16 de noviembre» (Lima). */
 export const quoteSentLabelOf = (sentAt: string): string => `Enviada el ${dayOf(limaClock(sentAt))}`;
 
+/** «Lo envió el 17 de noviembre, 09:02» (Lima): under each of the client's documents in the ficha. */
+export function documentSentLabelOf(at: string): string {
+  const clock = limaClock(at);
+  return `Lo envió el ${dayOf(clock)}, ${pad(clock.getUTCHours())}:${pad(clock.getUTCMinutes())}`;
+}
+
 /** The origin block's line: the ad that brought it, or a message written straight to the company. */
 export const originLineOf = (prospect: Pick<ProspectView, 'source'>): string => (prospect.source?.adTitle ? `Anuncio · ${prospect.source.adTitle}` : 'Escribió directo por WhatsApp');
 

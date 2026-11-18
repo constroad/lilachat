@@ -1,4 +1,4 @@
-import type { BotCard, DaliKnowledge, ProspectView } from '@lilachat/shared';
+import type { BotCard, DaliKnowledge, ProspectDocument, ProspectView } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
 
@@ -16,6 +16,8 @@ const send = (method: 'POST' | 'PATCH', body: Record<string, unknown>) => ({ met
 
 export const fetchProspects = (jwt: string, spaceId: string, since: string) => jsonCall<ProspectList>(`${spaceUrl(spaceId)}/prospects?since=${encodeURIComponent(since)}`, jwt);
 export const fetchProspectOfChat = (jwt: string, spaceId: string, chatId: string) => jsonCall<ProspectAnswer>(`${spaceUrl(spaceId)}/prospects/by-chat/${encodeURIComponent(chatId)}`, jwt);
+/** What the client sent in their channel (a KML, a photo, a PDF with metrados), newest first. */
+export const fetchProspectDocuments = (jwt: string, spaceId: string, prospectId: string) => jsonCall<{ documents: ProspectDocument[] }>(`${prospectUrl(spaceId, prospectId)}/documents`, jwt);
 export const changeProspect = (jwt: string, spaceId: string, prospectId: string, body: Record<string, unknown>) => jsonCall<ProspectAnswer>(prospectUrl(spaceId, prospectId), jwt, send('PATCH', body));
 export const approveFollowUp = (jwt: string, spaceId: string, prospectId: string, version: number, text: string) => jsonCall<ProspectAnswer>(`${prospectUrl(spaceId, prospectId)}/follow-up`, jwt, send('POST', { version, text }));
 export const handBackToDali = (jwt: string, spaceId: string, prospectId: string, version: number) => jsonCall<ProspectAnswer>(`${prospectUrl(spaceId, prospectId)}/handback`, jwt, send('POST', { version }));

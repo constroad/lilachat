@@ -1,4 +1,5 @@
 import { Types } from 'mongoose';
+import { uploadsOf, type BotUpload } from './botUploads.js';
 import { botCardSummary, botFilesSummary, type BotCard, type BotClientRef, type BotPost, type GalleryItem } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Chat, type Message } from '../chatModels.js';
 import { chatMemberIds, deleteMessage, sendMessage } from '../chatService.js';
@@ -87,21 +88,33 @@ async function prospectAuthorOf(installation: Installation, post: BotPost): Prom
   return { ...found.author, ...(post.asContact.sentAt ? { sentAt: post.asContact.sentAt } : {}) };
 }
 
-async function publishText(installation: Installation, chatId: Types.ObjectId, post: BotPost, sharedBy?: Message['sharedBy']): Promise<Message> {
+/** One uploaded file as its own message, like a member's (José 17/11): the caption rides on the first one. */
+type UploadSlot = { upload: BotUpload; index: number };
+const uploadMedia = (upload: BotUpload): Message['media'] => ({ mediaId: upload.storageName, url: upload.url, ...(upload.thumbUrl ? { thumbUrl: upload.thumbUrl } : {}), mime: upload.mime, fileName: upload.name, sizeBytes: upload.size });
+
+/** What a text post or one of its uploads carries: an upload is its own message, captioned only the first. */
+function contentOf(post: BotPost, slot?: UploadSlot) {
+  if (slot) return { kind: slot.upload.kind, media: uploadMedia(slot.upload), body: slot.index === 0 ? post.text : undefined };
+  return { kind: 'text' as const, body: post.text ?? (post.card ? botCardSummary(post.card) : botFilesSummary(post.files ?? [])) };
+}
+
+/** What Lilachat keeps on a bot's message beside what sendMessage stores: its ref and the prospect who wrote it. */
+const extraOf = (post: BotPost, prospect: Message['prospect']) => ({ ...(post.clientRef ? { clientRef: post.clientRef } : {}), ...(prospect ? { prospect } : {}) });
+
+async function publishText(installation: Installation, chatId: Types.ObjectId, post: BotPost, sharedBy?: Message['sharedBy'], slot?: UploadSlot): Promise<Message> {
   const prospect = await prospectAuthorOf(installation, post);
   const result = await sendMessage({
     chatId: String(chatId),
     senderId: installation.botUserId,
     skipMemberPermissions: true,
-    clientKey: `bot:${installation._id}:${post.idempotencyKey}`,
-    kind: 'text',
-    body: post.text ?? (post.card ? botCardSummary(post.card) : botFilesSummary(post.files ?? [])),
+    clientKey: `bot:${installation._id}:${post.idempotencyKey}${slot ? `:${slot.index}` : ''}`,
+    ...contentOf(post, slot),
     ...(post.card ? { card: post.card } : {}),
     ...(post.files ? { files: post.files } : {}),
     ...(sharedBy ? { sharedBy } : {}),
     ...(post.threadOf ? { hiloDe: post.threadOf } : {}),
   });
-  const extra = { ...(post.clientRef ? { clientRef: post.clientRef } : {}), ...(prospect ? { prospect } : {}) };
+  const extra = extraOf(post, prospect);
   if (Object.keys(extra).length && !result.duplicate) await MessageModel.updateOne({ _id: result.message._id }, { $set: extra });
   if (result.duplicate) return result.message;
   if ('prospect' in post.target) noteDaliPost(chatId, { ...(post.asContact ? { asContact: post.asContact } : {}), ...(post.threadOf ? { threadOf: post.threadOf } : {}) });
@@ -131,7 +144,10 @@ async function publishChecklist(installation: Installation, chatId: Types.Object
 async function publishAll(installation: Installation, chatId: Types.ObjectId, post: BotPost, assignees: Map<string, Types.ObjectId>, sharedBy?: Message['sharedBy']): Promise<Message | BotApiError | null> {
   try {
     let last: Message | null = null;
-    if (post.text || post.card || post.files) last = await publishText(installation, chatId, post, sharedBy);
+    const uploads = post.uploads ? await uploadsOf(installation._id, post.uploads) : null;
+    if (post.uploads && !uploads) return fail(404, 'file_not_found', 'Un file_id no es de esta app. Súbelo con POST /api/bots/files.');
+    for (const [index, upload] of (uploads ?? []).entries()) last = await publishText(installation, chatId, post, sharedBy, { upload, index });
+    if (!uploads && (post.text || post.card || post.files)) last = await publishText(installation, chatId, post, sharedBy);
     if (post.checklist) last = (await publishChecklist(installation, chatId, post, assignees)) ?? last;
     return last;
   } catch (error) {

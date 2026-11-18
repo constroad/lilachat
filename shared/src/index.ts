@@ -233,6 +233,7 @@ export * from './muteDuration.js';
 export * from './disappearing.js';
 export * from './chatExport.js';
 export * from './fileNames.js';
+export * from './botUploads.js';
 export * from './workMapBrush.js';
 export * from './workMapStations.js';
 export * from './workMapPhotos.js';

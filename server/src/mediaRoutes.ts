@@ -52,6 +52,8 @@ async function chatProblem(chatId: string, userId: Types.ObjectId, sealed: boole
 
 const upload = multer({
   storage: multer.memoryStorage(),
+  // busboy reads a filename as latin1 unless told: «Ríos» was kept as «RÃos» (E2E 17/11).
+  defParamCharset: 'utf8',
   // A sealed video is a little bigger than the plain one (one tag per chunk).
   limits: { fileSize: sealedMediaSize(Math.max(...Object.values(MAX_BYTES_BY_KIND))) },
 });

@@ -82,6 +82,8 @@ describe('validateProspectInsight', () => {
     [{ fields: [{ key: 'cantidad', label: 'Cantidad', value: 'x'.repeat(201) }] }, 'fields'],
     [{ fields: [{ key: 'cantidad', label: 'Cantidad', value: '1' }, { key: 'cantidad', label: 'Cantidad', value: '2' }] }, 'fields'],
     [{ fields: Array.from({ length: 21 }, (_, index) => ({ key: `f${index}`, label: 'F', value: '1' })) }, 'fields'],
+    [{ fields: [{ key: 'area', label: 'Área', value: '1250 m²', source: 'photo' }] }, 'fields'],
+    [{ fields: [{ key: 'area', label: 'Área', value: '1250 m²', source: 'document', file_id: 'f1' }] }, 'fields'],
     [{ missing: ['Fecha'] }, 'missing'],
     [{ ready_at: 'ayer' }, 'ready_at'],
     [{ kind: 'team' }, 'kind'],
@@ -111,5 +113,28 @@ describe('maskLongNumbers', () => {
     ['Cuesta S/ 20,231.10', 'Cuesta S/ 20,231.10'],
   ])('%s → %s', (text, masked) => {
     expect(maskLongNumbers(text)).toBe(masked);
+  });
+});
+
+/** José 17/11: what Dali reads from a client's document is shown «por confirmar», never as a firm fact. */
+describe('a field read from the client\'s document', () => {
+  const FILE = '6ade7935c6013f4b0dbc8f86';
+
+  it('keeps where it came from and starts unconfirmed', () => {
+    // Act
+    const valid = validateProspectInsight({ fields: [{ key: 'area', label: 'Área', value: '1250 m²', source: 'document', file_id: FILE }] });
+    // Assert
+    expect(valid).toEqual({ patch: { set: { fields: [{ key: 'area', label: 'Área', value: '1250 m²', source: 'document', fileId: FILE, confirmed: false }] }, unset: [] }, ignored: [] });
+  });
+
+  it('the client confirmed it: it stays marked as read from the document, confirmed', () => {
+    const valid = validateProspectInsight({ fields: [{ key: 'area', label: 'Área', value: '1250 m²', source: 'document', file_id: FILE, confirmed: true }] });
+    expect(valid).toMatchObject({ patch: { set: { fields: [{ source: 'document', fileId: FILE, confirmed: true }] } } });
+  });
+
+  it('a field the client wrote stays as before, with nothing extra', () => {
+    const valid = validateProspectInsight({ fields: [{ key: 'lugar', label: 'Lugar', value: 'Ate' }] });
+    expect(valid).toMatchObject({ patch: { set: { fields: [{ key: 'lugar', label: 'Lugar', value: 'Ate' }] } } });
+    expect(Object.keys((valid as { patch: { set: { fields: object[] } } }).patch.set.fields[0]!)).toEqual(['key', 'label', 'value']);
   });
 });

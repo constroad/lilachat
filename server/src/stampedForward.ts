@@ -61,7 +61,7 @@ export async function forwardStamped(input: ForwardInput, fetcher: ForwardFetch 
   return fetcher(body.target, form);
 }
 
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_BYTES_BY_KIND.video } });
+const upload = multer({ storage: multer.memoryStorage(), defParamCharset: 'utf8', limits: { fileSize: MAX_BYTES_BY_KIND.video } });
 
 /** `POST /api/stamped-forward`: the phone's one upload of a stamped shot bound for Portal. */
 export function buildStampedForwardRouter(): Router {

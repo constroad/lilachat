@@ -82,3 +82,11 @@ describe('the type a photo is stored with (14/11: a PNG voucher labeled JPEG was
     expect(sent?.media?.mime).toBe('image/png');
   });
 });
+
+describe('the name a member file keeps (E2E 17/11: «Ríos» arrived as «RÃos»)', () => {
+  it('an accented name is kept as the member wrote it', async () => {
+    await request(app).post('/api/media').set(asAna).field('chatId', String(chat)).field('clientKey', 'k-accent')
+      .attach('file', Buffer.from('<kml/>'), { filename: 'Metrado Ríos.kml', contentType: 'application/octet-stream' }).expect(201);
+    expect((await MessageModel.findOne({ chatId: chat, clientKey: 'k-accent' }).lean())?.media?.fileName).toBe('Metrado Ríos.kml');
+  });
+});

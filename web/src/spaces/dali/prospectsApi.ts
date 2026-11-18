@@ -1,4 +1,4 @@
-import type { BotCard, DaliKnowledge, ProspectView } from '@lilachat/shared';
+import type { BotCard, DaliKnowledge, ProspectDocument, ProspectView } from '@lilachat/shared';
 import { api } from '../../api';
 
 /**
@@ -18,6 +18,10 @@ export const fetchProspects = (jwt: string, spaceId: string, since: string, sign
 /** The prospect of a channel: the strip over its conversation and its ficha, also for one older than the list. */
 export const fetchProspectOfChat = (jwt: string, spaceId: string, chatId: string, signal?: AbortSignal) =>
   api<ProspectAnswer>(`${spacePath(spaceId)}/prospects/by-chat/${encodeURIComponent(chatId)}`, { jwt, signal });
+
+/** What the client sent in their channel (a KML, a photo, a PDF with metrados), newest first. */
+export const fetchProspectDocuments = (jwt: string, spaceId: string, prospectId: string, signal?: AbortSignal) =>
+  api<{ documents: ProspectDocument[] }>(`${prospectPath(spaceId, prospectId)}/documents`, { jwt, signal });
 
 /** Take it, plan the next action, mark the result: always with the `version` the seller saw (409 if someone was first). */
 export const changeProspect = (jwt: string, spaceId: string, prospectId: string, body: Record<string, unknown>) =>

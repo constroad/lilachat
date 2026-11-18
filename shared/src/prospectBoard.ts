@@ -43,6 +43,9 @@ export type ProspectView = {
   createdAt: string;
 };
 
+/** A file the client sent in their channel (José 17/11: a KML, a photo or a PDF with metrados). `seq` opens it in the chat. */
+export type ProspectDocument = { seq: number; kind: 'image' | 'video' | 'file'; name: string; mime: string; url: string; at: string };
+
 export type ProspectLevel = 'hot' | 'warm' | 'cold';
 export type Overdue = { kind: 'to_quote_late' | 'quote_unanswered' | 'hot_unanswered'; since: string };
 export type InboxSection = 'now' | 'following' | 'dali';

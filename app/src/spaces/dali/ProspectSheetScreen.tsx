@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { MessageSquare, RotateCcw, UserX } from 'lucide-react-native';
 import { prospectNameOf, reassignChoicesOf, type ChangeOutcome, type ProspectView, type SellerPatch } from '@lilachat/shared';
+import { ClientDocumentsCard } from './ClientDocumentsCard';
 import { Avatar } from '../../ui/Avatar';
 import { PantallaEnModal } from '../../ui/PantallaEnModal';
 import { Sheet } from '../../ui/Sheet';
@@ -80,7 +81,7 @@ export function ProspectSheetScreen(props: Props) {
   return (
     <>
       <PantallaEnModal visible={props.visible && prospect !== null} titulo={prospect ? prospectNameOf(prospect) : ''} onCerrar={props.onClose} testIDCerrar="cerrar-ficha" footer={footer}>
-        {prospect ? <SheetBody prospect={prospect} now={props.now} onTake={() => change({ assignee: 'me' })} onReassign={() => setDialog('reassign')} onHandBack={handBack} onPlan={() => setDialog('next')} /> : null}
+        {prospect ? <SheetBody prospect={prospect} jwt={jwt} spaceId={spaceId} now={props.now} onTake={() => change({ assignee: 'me' })} onReassign={() => setDialog('reassign')} onHandBack={handBack} onPlan={() => setDialog('next')} /> : null}
       </PantallaEnModal>
       <ReassignSheet visible={dialog === 'reassign'} jwt={jwt} spaceId={spaceId} me={props.me} prospect={prospect} onPick={reassign} onClose={close} />
       <NextActionSheet visible={dialog === 'next'} jwt={jwt} spaceId={spaceId} prospect={prospect} now={props.now} onDone={settle} onClose={close} />
@@ -89,9 +90,9 @@ export function ProspectSheetScreen(props: Props) {
   );
 }
 
-type BodyProps = { prospect: ProspectView; now: Date; onTake: () => void; onReassign: () => void; onHandBack: () => void; onPlan: () => void };
+type BodyProps = { prospect: ProspectView; jwt: string; spaceId: string; now: Date; onTake: () => void; onReassign: () => void; onHandBack: () => void; onPlan: () => void };
 
-function SheetBody({ prospect, now, ...actions }: BodyProps) {
+function SheetBody({ prospect, jwt, spaceId, now, ...actions }: BodyProps) {
   const centered = useCenteredContent();
   return (
     <View testID="ficha-prospecto" style={centered} className="gap-3">
@@ -99,6 +100,7 @@ function SheetBody({ prospect, now, ...actions }: BodyProps) {
       <OriginCard prospect={prospect} />
       <ScoreCard prospect={prospect} />
       <UnderstoodCard prospect={prospect} />
+      <ClientDocumentsCard jwt={jwt} spaceId={spaceId} prospect={prospect} />
       {prospect.quote ? <QuoteCard quote={prospect.quote} kicker="Cotización" testID="ficha-cotizacion" amountTestID="monto-cotizacion" /> : null}
       <StageCard prospect={prospect} />
       <AttendsCard prospect={prospect} onTake={actions.onTake} onReassign={actions.onReassign} onHandBack={actions.onHandBack} />

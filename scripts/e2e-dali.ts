@@ -30,6 +30,8 @@ import { ProspectChannelModel } from '../server/src/bots/botProspects.js';
 const SERVER_DIR = fileURLToPath(new URL('../server', import.meta.url));
 /** The QA session (a device secret of the in-memory database) and the events stay outside the repo. */
 const OUT_DIR = path.join(tmpdir(), 'lilachat-e2e-dali');
+/** QA's own media disk (with its marker): an upload never falls back to lila. */
+const MEDIA_ROOT = path.join(OUT_DIR, 'media');
 const API = 'http://127.0.0.1:4003/api';
 const HOOK_PORT = 4013;
 const JWT_SECRET = randomBytes(24).toString('hex');
@@ -110,6 +112,14 @@ function startHook() {
       if (req.method === 'GET' && asked.pathname === KML_PATH) {
         const name = asked.searchParams.get('download');
         res.writeHead(200, { 'Content-Type': 'application/octet-stream', ...(name ? { 'Content-Disposition': `attachment; filename="${name}"` } : {}) }).end(KML);
+        return;
+      }
+      // Everything else under /media/ is the server's own disk (the client's uploaded documents).
+      if (req.method === 'GET' && asked.pathname.startsWith('/media/')) {
+        void fetch(`http://127.0.0.1:4003${req.url}`).then(async (upstream) => {
+          res.writeHead(upstream.status, Object.fromEntries(['content-type', 'content-disposition'].flatMap((name) => (upstream.headers.get(name) ? [[name, upstream.headers.get(name)!]] : []))));
+          res.end(Buffer.from(await upstream.arrayBuffer()));
+        }, () => res.writeHead(502).end());
         return;
       }
       if (req.url?.startsWith('/auth/')) {
@@ -227,13 +237,27 @@ async function fileInChat(ids: Seeded) {
   await sendMessage({ chatId: String(channel.chatId), senderId: ids.jose._id, clientKey: 'qa-kml', media: { mediaId: 'qa-kml', url: KML_PATH, mime: 'application/octet-stream', fileName: 'METRADOS 161126.kml' } });
 }
 
+/** Paola Ríos sends her metrado (José 17/11): agentes uploads it and posts it as hers, and Dali reads the area from it. */
+async function clientDocument() {
+  const form = new FormData();
+  form.append('file', new Blob([KML], { type: 'application/octet-stream' }), 'Metrado Paola Ríos.kml');
+  const response = await fetch(`${API}/bots/files`, { method: 'POST', headers: { Authorization: `Bearer ${TOKEN}` }, body: form });
+  if (response.status !== 201) throw new Error(`POST /bots/files → ${response.status} ${await response.text()}`);
+  const { file_id: fileId } = (await response.json()) as { file_id: string };
+  await call('/bots/messages', { body: { prospect: P(8), as_contact: true, sent_at: ago(4 * HOUR), text: 'Les paso el metrado del estacionamiento', files: [{ file_id: fileId }], idempotency_key: 'qa-doc-1' }, auth: TOKEN });
+  const paola = seeds().find((seed) => seed.id === P(8))!;
+  const fields = [{ key: 'cantidad', label: 'Cantidad', value: '1 240 m²', source: 'document', file_id: fileId }];
+  await call(`/bots/prospects/${encodeURIComponent(P(8))}`, { method: 'PUT', body: { ...paola.body, last_activity_at: ago(4 * HOUR), fields }, auth: TOKEN });
+}
+
 async function main() {
   process.env.JWT_SECRET = JWT_SECRET;
-  mkdirSync(OUT_DIR, { recursive: true });
+  mkdirSync(MEDIA_ROOT, { recursive: true });
+  writeFileSync(path.join(MEDIA_ROOT, '.lilachat-medios'), 'qa');
   const mongo = await startTestMongo();
   const uri = mongo.getUri('lilachat_e2e_dali');
   startHook();
-  const server = spawn('npx', ['tsx', 'src/index.ts'], { cwd: SERVER_DIR, env: { ...process.env, MONGO_URL: uri, JWT_SECRET, PORT: '4003', NODE_ENV: 'development', CONSTROAD_AUTH_URL: `http://127.0.0.1:${HOOK_PORT}/auth`, CONSTROAD_AUTH_KEY: 'qa-local', CHAT_PUBLIC_URL: `http://10.0.2.2:${HOOK_PORT}` }, stdio: ['ignore', 'inherit', 'inherit'] });
+  const server = spawn('npx', ['tsx', 'src/index.ts'], { cwd: SERVER_DIR, env: { ...process.env, MONGO_URL: uri, JWT_SECRET, PORT: '4003', NODE_ENV: 'development', CONSTROAD_AUTH_URL: `http://127.0.0.1:${HOOK_PORT}/auth`, CONSTROAD_AUTH_KEY: 'qa-local', CHAT_PUBLIC_URL: `http://10.0.2.2:${HOOK_PORT}`, CHAT_STORAGE_ROOT: MEDIA_ROOT }, stdio: ['ignore', 'inherit', 'inherit'] });
   const stop = async () => {
     server.kill('SIGTERM');
     await mongoose.disconnect().catch(() => undefined);
@@ -248,6 +272,7 @@ async function main() {
   await putProspects();
   await sellerDecisions(ids);
   await fileInChat(ids);
+  await clientDocument();
   session = JSON.stringify({ perfil: { userId: String(ids.jose._id), phone: `51${QA_PHONE}`, name: 'José QA', deviceId: ids.deviceId }, credential: { deviceId: ids.deviceId, deviceSecret: ids.secret }, spaceId: String(ids.space._id) });
   writeFileSync(path.join(OUT_DIR, 'session.json'), session);
   console.log(`[e2e-dali] listo: datos sembrados; sesión y eventos en ${OUT_DIR}`);

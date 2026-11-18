@@ -4,6 +4,7 @@ import { ArrowLeft, ChevronDown, MessageSquare, RotateCcw, X } from 'lucide-reac
 import { prospectNameOf, type ClientWorkspaceMember, type ProspectView } from '@lilachat/shared';
 import { spaceMembers } from '../spacesApi';
 import { Kicker, OutlineButton, SolidButton, TextButton } from './daliParts';
+import { ClientDocumentsCard } from './ClientDocumentsCard';
 import { NextActionDialog } from './NextActionDialog';
 import { AttendsLine, Card, ContactCard, NextActionCard, OriginCard, QuoteCard, ScoreCard, StageCard, UnderstoodCard } from './prospectSheetBlocks';
 import { ResultDialog } from './ResultDialog';
@@ -54,6 +55,7 @@ export function ProspectSheet(props: SheetProps) {
         <OriginCard prospect={prospect} />
         <ScoreCard prospect={prospect} />
         <UnderstoodCard prospect={prospect} />
+        <ClientDocumentsCard jwt={props.jwt} spaceId={props.spaceId} prospect={prospect} />
         <QuoteCard prospect={prospect} />
         <StageCard prospect={prospect} />
         <Card testId="ficha-atiende">

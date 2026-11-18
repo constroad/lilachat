@@ -77,7 +77,10 @@ export function UnderstoodCard({ prospect }: { prospect: ProspectView }) {
           {prospect.fields.map((field) => (
             <div key={field.key} className="flex gap-3 py-1.5 text-[13px]">
               <dt className="w-28 shrink-0 text-on-surface-variant">{field.label}</dt>
-              <dd className="min-w-0 flex-1 text-right font-semibold">{field.value}</dd>
+              <dd className="min-w-0 flex-1 text-right font-semibold">
+                {field.value}
+                {field.source === 'document' && !field.confirmed ? <span className="mt-1 flex justify-end"><Pill tone="warn" testId={`por-confirmar-${field.key}`}>Leído del documento · por confirmar</Pill></span> : null}
+              </dd>
             </div>
           ))}
         </dl>

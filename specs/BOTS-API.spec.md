@@ -2008,3 +2008,42 @@ stub recibió cada escritura: `prospect.updated` (resultado, reabrir, próxima a
 
 **Sin verificar en el APK**: el teléfono real de José y agentes de verdad en Test (hace falta la app Dali con
 `prospects:write` en un espacio de Test).
+
+### Hecho (17/11, fase 2b: documentos del cliente)
+
+José 17/11: «¿qué pasa si un prospecto me manda un KML, una imagen o un PDF con metrados?». Contrato aceptado por
+agentes el mismo día.
+
+**`POST /api/bots/files`** (token del bot, multipart, campo `file`) guarda el archivo en nuestro media y responde
+`201 { file_id, url, mime, name, size }`. Tope 16 MB (`413 file_too_large`). Tipos: pdf, kml, kmz, xlsx, docx, dwg,
+jpg, png, webp y mp4; un `application/octet-stream` se acepta por la extensión. Lo demás es `415 unsupported_type`.
+Sin archivo, `400`. El `file_id` no vence: un reintento lo reusa. El nombre se lee en UTF-8 (`defParamCharset`):
+con el default de busboy «Ríos» llegaba como «RÃos».
+
+**`POST /api/bots/messages`** acepta `files: [{ file_id }]` (hasta 10). Cada archivo es su propio mensaje, como el de
+un miembro: foto y video normales, documento como tarjeta de archivo; el `text` va de pie del primero. Con
+`as_contact` el autor es el prospecto. Un `file_id` de otra app es `404 file_not_found` y no se publica nada. El
+mismo `idempotency_key` no duplica (cada archivo lleva `:<índice>` en su clave).
+
+**Campos leídos del documento**: un ítem de `fields` puede llevar `source: "document"`, `file_id` y `confirmed`
+(default `false`). La ficha muestra la pastilla «Leído del documento · por confirmar» hasta que agentes mande
+`confirmed: true`. Un ítem con otro `source` o un `file_id` mal formado va a `ignored`.
+
+**`GET /api/workspaces/:id/prospects/:prospectId/documents`** (miembros del espacio): los archivos que mandó el
+prospecto en su canal (solo los `as_contact`, no los del equipo), del más nuevo al más viejo, hasta 20:
+`{ documents: [{ seq, kind, name, mime, url, at }] }`. `at` es la hora en que el cliente lo mandó (`sent_at`), no la
+de la subida. Usa el índice `{ chatId, kind, at }`. Es ruta aparte porque la ficha de escritorio sale de la lista y
+perdería los documentos tras cada cambio del vendedor.
+
+**Ficha (web y APK)**: «Documentos del cliente» debajo de «Lo que entendió Dali» (`ClientDocumentsCard.tsx` en
+cada plataforma). Web: el enlace descarga con su nombre (`?download=`). APK: Abrir · Descargar, igual que en el chat.
+Se relee cuando el prospecto vuelve a escribir (`lastActivityAt`), nunca con un temporizador. Sin documentos, la
+tarjeta no aparece.
+
+**Arreglo de paso**: las subidas de miembros (`/api/media`, reenvío sellado) tenían el mismo defecto de tildes en el
+nombre del archivo. Ahora leen UTF-8 también.
+
+**E2E (17/11)**: el arnés sube «Metrado Paola Ríos.kml» por `POST /api/bots/files` a un disco de QA propio
+(`CHAT_STORAGE_ROOT` con su marca: nada cae en lila), lo publica como de Paola y manda «Cantidad 1 240 m²» leída del
+documento. `app/.maestro/dali-documents.yaml` en verde: el archivo en el chat con el texto de pie, la pastilla «por
+confirmar», la tarjeta «Documentos del cliente» y Abrir · Descargar.

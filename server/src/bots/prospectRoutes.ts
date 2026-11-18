@@ -1,7 +1,7 @@
 import { Router, type Response } from 'express';
 import { asyncRoute, requireSession } from '../requireSession.js';
 import { daliKnowledge, latestReview, teachDali } from './daliDoor.js';
-import { approveFollowUp, changeProspect, handBack, listProspects, oneProspect } from './prospectDesk.js';
+import { approveFollowUp, changeProspect, handBack, listProspects, oneProspect, prospectDocuments } from './prospectDesk.js';
 
 /**
  * The doors of a Dali space for its members (BOTS-API «Fase 2: contrato»): the prospects, what a seller decides about
@@ -25,6 +25,7 @@ export function buildProspectRouter(): Router {
   router.get('/workspaces/:id/prospects', requireSession, asyncRoute(async (req, res) => send(res, await listProspects(req.params.id!, me(req), req.query))));
   router.get('/workspaces/:id/prospects/by-chat/:chatId', requireSession, asyncRoute(async (req, res) => send(res, await oneProspect(req.params.id!, me(req), { chatId: String(req.params.chatId) }))));
   router.get('/workspaces/:id/prospects/:prospectId', requireSession, asyncRoute(async (req, res) => send(res, await oneProspect(req.params.id!, me(req), { prospectId: prospectOf(req.params) }))));
+  router.get('/workspaces/:id/prospects/:prospectId/documents', requireSession, asyncRoute(async (req, res) => send(res, await prospectDocuments(req.params.id!, me(req), prospectOf(req.params)))));
   router.patch('/workspaces/:id/prospects/:prospectId', requireSession, asyncRoute(async (req, res) => send(res, await changeProspect(req.params.id!, prospectOf(req.params), me(req), req.body))));
   router.post('/workspaces/:id/prospects/:prospectId/follow-up', requireSession, asyncRoute(async (req, res) => send(res, await approveFollowUp(req.params.id!, prospectOf(req.params), me(req), req.body))));
   router.post('/workspaces/:id/prospects/:prospectId/handback', requireSession, asyncRoute(async (req, res) => send(res, await handBack(req.params.id!, prospectOf(req.params), me(req), req.body))));

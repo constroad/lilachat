@@ -1,0 +1,78 @@
+# The client's documents in the ficha (José 17/11: «si un prospecto me manda un kml, una imagen o un pdf con metrados»).
+#
+# Before: `npx tsx scripts/e2e-dali.ts` running (agentes' upload of «Metrado Paola Ríos.kml» through
+# POST /api/bots/files, posted as Paola's, and «Cantidad» read from it), Metro with
+# EXPO_PUBLIC_API_URL=http://10.0.2.2:4003 and the debug build installed.
+#
+#   maestro --device "$ANDROID_SERIAL" test app/.maestro/dali-documents.yaml
+appId: com.lilachat.app
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible:
+      id: "btn-entrar-telefono"
+    timeout: 60000
+- tapOn:
+    id: "btn-entrar-telefono"
+- tapOn:
+    id: "input-telefono"
+- inputText: "900000099"
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: "Verificar Número"
+    timeout: 20000
+- inputText: "424242"
+- extendedWaitUntil:
+    visible: "Dali · Constroad QA"
+    timeout: 20000
+- tapOn: "Abrir"
+- extendedWaitUntil:
+    visible:
+      id: "espacio-dali"
+    timeout: 20000
+- runFlow:
+    when:
+      visible: "Open debugger to view warnings."
+    commands:
+      - tapOn:
+          point: "96%,92%"
+- tapOn:
+    id: "vista-bandeja-all"
+- scrollUntilVisible:
+    element: "Paola Ríos"
+    timeout: 15000
+    visibilityPercentage: 40
+    centerElement: true
+- tapOn: "Paola Ríos"
+# Her file is a message of hers in the channel, with her words as its caption.
+- extendedWaitUntil:
+    visible: "Metrado Paola Ríos.kml"
+    timeout: 15000
+- assertVisible: "Les paso el metrado del estacionamiento"
+- takeScreenshot: g1-documento-en-el-chat
+- tapOn:
+    id: "cabecera-ficha"
+- extendedWaitUntil:
+    visible:
+      id: "ficha-prospecto"
+    timeout: 10000
+- assertVisible:
+    id: "por-confirmar-cantidad"
+- takeScreenshot: g2-ficha-por-confirmar
+- scrollUntilVisible:
+    element:
+      id: "ficha-documentos"
+    timeout: 10000
+    visibilityPercentage: 40
+    centerElement: true
+- assertVisible: "Documentos del cliente"
+- assertVisible: "Metrado Paola Ríos.kml"
+- takeScreenshot: g3-documentos-del-cliente
+- tapOn: "Metrado Paola Ríos.kml"
+- extendedWaitUntil:
+    visible: "Descargar"
+    timeout: 5000
+- assertVisible: "Abrir"
+- takeScreenshot: g4-abrir-o-descargar
+- tapOn: "Cancelar"

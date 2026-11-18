@@ -1,5 +1,6 @@
 import express, { Router, type NextFunction, type Request, type Response } from 'express';
-import { toInternationalPhone, validateAppManifest, validateBotCard, validateBotCommands, validateBotFiles, validateBotPost, validateVisitCard, clientRefOf, type BotClientRef } from '@lilachat/shared';
+import multer from 'multer';
+import { BOT_UPLOAD_MAX_BYTES, toInternationalPhone, validateAppManifest, validateBotCard, validateBotCommands, validateBotFiles, validateBotPost, validateVisitCard, clientRefOf, type BotClientRef } from '@lilachat/shared';
 import { ChatModel, type Chat } from '../chatModels.js';
 import { crearLimiteDeIntentos } from '../limiteDeIntentos.js';
 import { UserModel } from '../models.js';
@@ -10,6 +11,9 @@ import { availabilityOf, setAvailability, spacesRunBy, type AppRef } from './bot
 import { commandsOfApp, commandsToWire, registerCommands, respondToCommand } from './botCommands.js';
 import { installationByToken, revokeInstallation } from './botInstall.js';
 import { deleteBotMessage, isVisitMessage, postBotMessage, updateBotMessage } from './botMessages.js';
+import { storeBotUpload, uploadAnswerOf } from './botUploads.js';
+import { defaultMediaUploader } from '../localMediaUploader.js';
+import type { MediaUploader } from '../mediaClient.js';
 import { upsertClientChannel } from './botClients.js';
 import { upsertProspectChannel } from './botProspects.js';
 import { addClientTasks, clientTasksOf } from './botClientTasks.js';
@@ -98,7 +102,73 @@ function sendDeleted(res: Response, outcome: { deleted: true } | { status: numbe
   res.status(204).end();
 }
 
-export function buildBotRouter(notifyEdited: (members: string[], edited: Record<string, unknown>) => void): Router {
+// utf8: busboy reads a filename as latin1 by default, and «Ríos» arrived as «RÃos» (E2E 17/11).
+const botFile = multer({ storage: multer.memoryStorage(), defParamCharset: 'utf8', limits: { fileSize: BOT_UPLOAD_MAX_BYTES } }).single('file');
+
+/** `POST /api/bots/files` (José 17/11): a prospect's photo or document, kept in our media for a later post. */
+function receiveFile(req: Request, res: Response, next: NextFunction): void {
+  botFile(req, res, (error: unknown) => {
+    if (!error) return next();
+    const tooBig = (error as { code?: string }).code === 'LIMIT_FILE_SIZE';
+    res.status(tooBig ? 413 : 400).json({ error: tooBig ? 'file_too_large' : 'invalid_request', message: tooBig ? 'El archivo pasa de 16 MB.' : 'Manda el archivo en el campo «file» (multipart).' });
+  });
+}
+
+const storeFile = (uploader: MediaUploader) => async (req: Request, res: Response): Promise<void> => {
+  if (!req.file) return void res.status(400).json({ error: 'invalid_request', message: 'Manda el archivo en el campo «file» (multipart).' });
+  const stored = await storeBotUpload(req.bot!._id, req.file, uploader);
+  if (!stored.ok) return void res.status(stored.status).json({ error: stored.error, message: stored.message });
+  res.status(201).json(uploadAnswerOf(stored.upload));
+};
+
+/** `PATCH /api/bots/messages/:id`: a bot replaces the text, the card or the files of ITS message. */
+type EditAsked = { ok: true; change: Parameters<typeof updateBotMessage>[2] } | { ok: false; message: string };
+
+/** What a bot asks to change in its message, or why it cannot. */
+async function editAskedOf(req: Request): Promise<EditAsked> {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const clientRef = body.kind === undefined ? null : clientRefOf(body);
+  const card = body.card === undefined ? undefined : await editedCardOf(req.bot!, String(req.params.id), body.card, clientRef);
+  if (card && !card.ok) return { ok: false, message: card.message };
+  const files = body.files === undefined ? undefined : validateBotFiles(body.files);
+  if (files && !files.ok) return { ok: false, message: files.message };
+  const text = trimmedTextOf(body.text);
+  if (!text && !card && !files) return { ok: false, message: 'Manda text, card o files.' };
+  return { ok: true, change: { ...(text ? { text } : {}), ...cardAndFilesOf(card, files), ...(clientRef?.visitId ? { clientRef } : {}) } };
+}
+
+const trimmedTextOf = (raw: unknown): string | undefined => (typeof raw === 'string' && raw.trim() ? raw.trim() : undefined);
+
+const cardAndFilesOf = (card: Awaited<ReturnType<typeof editedCardOf>> | undefined, files: ReturnType<typeof validateBotFiles> | undefined) =>
+  ({ ...(card?.ok ? { card: card.card } : {}), ...(files?.ok ? { files: files.files } : {}) });
+
+const editMessage = (notifyEdited: (members: string[], edited: Record<string, unknown>) => void) => async (req: Request, res: Response): Promise<void> => {
+  const asked = await editAskedOf(req);
+  if (!asked.ok) return void res.status(400).json({ error: 'invalid_request', message: asked.message });
+  const outcome = await updateBotMessage(req.bot!, String(req.params.id), asked.change, notifyEdited);
+  if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+  res.json(outcome);
+};
+
+/** Notice topics (§c-quater): read where each lands; a partial map moves some (agentes' one-time migration and its «here» command). */
+function mountTopics(router: Router): void {
+  const topicsToWire = (routes: Awaited<ReturnType<typeof topicRoutesOf>>) => routes.topics.map((topic) => ({ key: topic.key, name: topic.name, channel: topic.channel }));
+  router.get('/topics', asyncRoute(async (req, res) => res.json({ topics: topicsToWire(await topicRoutesOf(req.bot!)) })));
+  router.put('/topics', asyncRoute(async (req, res) => {
+    const outcome = await setTopicChannels(req.bot!, req.body, { kind: 'app' });
+    if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+    res.json({ topics: topicsToWire(outcome) });
+  }));
+  for (const [path, offered] of [['/topics/offer', true], ['/topics/withdraw', false]] as const) {
+    router.post(path, asyncRoute(async (req, res) => {
+      const outcome = await setTopicOffered(req.bot!, req.body, offered);
+      if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+      res.json({ topics: topicsToWire(outcome) });
+    }));
+  }
+}
+
+export function buildBotRouter(notifyEdited: (members: string[], edited: Record<string, unknown>) => void, uploader: MediaUploader = defaultMediaUploader()): Router {
   const router = Router();
   const messageTries = crearLimiteDeIntentos({ maximo: MESSAGES_PER_MINUTE, ventanaMs: ONE_MINUTE_MS });
   router.use(asyncRoute(requireBot));
@@ -115,6 +185,7 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
     res.json(heard);
   }));
   router.get('/members', asyncRoute(async (req, res) => res.json({ members: await membersOf(req.bot!) })));
+  router.post('/files', receiveFile, asyncRoute(storeFile(uploader)));
   router.post('/messages', asyncRoute(async (req, res) => {
     if (!messageTries.permitir(String(req.bot!._id))) return void res.status(429).set('Retry-After', '60').json({ error: 'rate_limited', message: 'Más de 60 mensajes por minuto.' });
     const valid = validateBotPost(req.body);
@@ -123,19 +194,7 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message, ...(outcome.phone ? { phone: outcome.phone } : {}) });
     res.status(outcome.status).json({ message: outcome.message });
   }));
-  router.patch('/messages/:id', asyncRoute(async (req, res) => {
-    const body = (req.body ?? {}) as Record<string, unknown>;
-    const clientRef = body.kind === undefined ? null : clientRefOf(body);
-    const card = body.card === undefined ? undefined : await editedCardOf(req.bot!, String(req.params.id), body.card, clientRef);
-    if (card && !card.ok) return void res.status(400).json({ error: 'invalid_request', message: card.message });
-    const files = body.files === undefined ? undefined : validateBotFiles(body.files);
-    if (files && !files.ok) return void res.status(400).json({ error: 'invalid_request', message: files.message });
-    const text = typeof body.text === 'string' && body.text.trim() ? body.text.trim() : undefined;
-    if (!text && !card && !files) return void res.status(400).json({ error: 'invalid_request', message: 'Manda text, card o files.' });
-    const outcome = await updateBotMessage(req.bot!, String(req.params.id), { ...(text ? { text } : {}), ...(card?.ok ? { card: card.card } : {}), ...(files?.ok ? { files: files.files } : {}), ...(clientRef?.visitId ? { clientRef } : {}) }, notifyEdited);
-    if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
-    res.json(outcome);
-  }));
+  router.patch('/messages/:id', asyncRoute(editMessage(notifyEdited)));
   router.delete('/messages/:id', asyncRoute(async (req, res) => sendDeleted(res, await deleteBotMessage(req.bot!, { id: String(req.params.id) }))));
   router.delete('/messages', asyncRoute(async (req, res) => {
     const key = typeof req.query.idempotency_key === 'string' ? req.query.idempotency_key.trim() : '';
@@ -173,21 +232,7 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
     if (!valid.ok) return void res.status(400).json({ error: 'invalid_request', message: valid.message });
     res.json({ commands: commandsToWire(await registerCommands(req.bot!, valid.commands)) });
   }));
-  // Notice topics (§c-quater): read where each lands; a partial map moves some (agentes' one-time migration and its «here» command).
-  const topicsToWire = (routes: Awaited<ReturnType<typeof topicRoutesOf>>) => routes.topics.map((topic) => ({ key: topic.key, name: topic.name, channel: topic.channel }));
-  router.get('/topics', asyncRoute(async (req, res) => res.json({ topics: topicsToWire(await topicRoutesOf(req.bot!)) })));
-  router.put('/topics', asyncRoute(async (req, res) => {
-    const outcome = await setTopicChannels(req.bot!, req.body, { kind: 'app' });
-    if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
-    res.json({ topics: topicsToWire(outcome) });
-  }));
-  for (const [path, offered] of [['/topics/offer', true], ['/topics/withdraw', false]] as const) {
-    router.post(path, asyncRoute(async (req, res) => {
-      const outcome = await setTopicOffered(req.bot!, req.body, offered);
-      if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
-      res.json({ topics: topicsToWire(outcome) });
-    }));
-  }
+  mountTopics(router);
   router.post('/commands/:id/respond', asyncRoute(async (req, res) => {
     const outcome = await respondToCommand(req.bot!, String(req.params.id), req.body);
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });

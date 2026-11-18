@@ -161,7 +161,7 @@ export function buildApp(deps: AppDeps = {}): Express {
   app.use('/api/bots/apps', buildBotAppsRouter());
   app.use('/api/bots/spaces', buildBotSpacesRouter());
   app.use('/api/bots/files', buildBotFilesRouter());
-  app.use('/api/bots', buildBotRouter(notifyEdited));
+  app.use('/api/bots', buildBotRouter(notifyEdited, deps.mediaUploader));
   app.use('/api', buildBotUserRouter());
   app.use('/api', buildProspectRouter());
   app.use('/api', buildScheduleRouter());

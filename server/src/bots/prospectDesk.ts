@@ -1,5 +1,7 @@
 import { Types } from 'mongoose';
-import { canManageMembers, INCOGNITO_COMPOSER, NEXT_ACTION_LABEL, PROSPECTS_SCOPE, prospectNameOf, validateSellerChange, type ProspectView, type SellerChange } from '@lilachat/shared';
+import { canManageMembers, INCOGNITO_COMPOSER, NEXT_ACTION_LABEL, PROSPECTS_SCOPE, prospectNameOf, validateSellerChange, type ProspectDocument, type ProspectView, type SellerChange } from '@lilachat/shared';
+import { MessageModel } from '../chatModels.js';
+import { toAbsoluteMediaUrl } from '../mediaClient.js';
 import { ReminderModel } from '../eventModels.js';
 import { UserModel } from '../models.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
@@ -116,6 +118,32 @@ export async function oneProspect(workspaceId: string, userId: Types.ObjectId, w
   if ('chatId' in where && !Types.ObjectId.isValid(where.chatId)) return NOT_FOUND;
   const doc = await ProspectChannelModel.findOne({ workspaceId: new Types.ObjectId(workspaceId), ...where }).lean<ProspectChannel | null>();
   return doc ? { prospect: viewOf(doc, member.admin) } : NOT_FOUND;
+}
+
+const DOCUMENTS_SHOWN = 20;
+const DOCUMENT_KINDS = ['image', 'video', 'file'] as const;
+type DocumentMessage = { seq: number; kind: ProspectDocument['kind']; at: Date; prospect?: { sentAt?: string }; media?: { url: string; mime?: string; fileName?: string } };
+
+/** The ficha's «Documentos del cliente» (`GET …/prospects/:id/documents`): the files the prospect sent, not the team's. */
+export async function prospectDocuments(workspaceId: string, userId: Types.ObjectId, prospectId: string) {
+  const member = await memberOf(workspaceId, userId);
+  if (!member) return NOT_MEMBER;
+  const doc = await ProspectChannelModel.findOne({ workspaceId: new Types.ObjectId(workspaceId), prospectId }).select('chatId').lean<Pick<ProspectChannel, 'chatId'> | null>();
+  return doc ? { documents: await documentsOf(doc.chatId) } : NOT_FOUND;
+}
+
+async function documentsOf(chatId: Types.ObjectId): Promise<ProspectDocument[]> {
+  const sent = await MessageModel.find({ chatId, kind: { $in: DOCUMENT_KINDS }, prospect: { $exists: true }, deletedAt: { $exists: false } })
+    .select('seq kind at prospect.sentAt media.url media.mime media.fileName').sort({ at: -1 }).limit(DOCUMENTS_SHOWN).lean<DocumentMessage[]>();
+  return sent.filter((message) => message.media?.url).map((message) => ({
+    seq: message.seq,
+    kind: message.kind,
+    name: message.media!.fileName ?? message.kind,
+    mime: message.media!.mime ?? 'application/octet-stream',
+    url: toAbsoluteMediaUrl(message.media!.url),
+    // When the client sent it on WhatsApp, not when agentes relayed it.
+    at: message.prospect?.sentAt ?? message.at.toISOString(),
+  }));
 }
 
 /** The member who decides and the prospect, or why not: hidden members only read. */

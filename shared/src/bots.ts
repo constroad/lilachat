@@ -1,4 +1,5 @@
 import { cutAtWord } from './textCut.js';
+import { uploadIdsOf } from './botUploads.js';
 import { normalizePeruPhone } from './phone.js';
 import { TOPIC_KEY } from './noticeTopics.js';
 import { validateChecklist } from './checklists.js';
@@ -49,7 +50,7 @@ export type BotTarget = { channelId: string } | { topic: string } | { userPhone:
 /** What a message to a client is about, so the «Servicios» tab can show it under its service. */
 /** `visitId`: a technical visit's card (agentes 14/11), drawn as lv01 and opened by its id. */
 export type BotClientRef = { kind: string; serviceId?: string; recordId?: string; visitId?: string };
-export type BotPost = { target: BotTarget; text?: string; card?: BotCard; /** Photos and videos drawn as a person's album (José via agentes 09/11). */ files?: GalleryItem[]; checklist?: BotChecklist; threadOf?: number; clientRef?: BotClientRef; /** The prospect wrote it (Dali, §c-prospectos): only to a prospect, never a card. */ asContact?: { sentAt?: string }; idempotencyKey: string };
+export type BotPost = { target: BotTarget; text?: string; card?: BotCard; /** Photos and videos drawn as a person's album (José via agentes 09/11). */ files?: GalleryItem[]; /** Files of `POST /api/bots/files` (José 17/11): each one its own message, a document as a file card. */ uploads?: string[]; checklist?: BotChecklist; threadOf?: number; clientRef?: BotClientRef; /** The prospect wrote it (Dali, §c-prospectos): only to a prospect, never a card. */ asContact?: { sentAt?: string }; idempotencyKey: string };
 export type BotPostError = { ok: false; error: 'invalid_request'; message: string };
 
 export const BOT_LIMITS = { text: 4000, idempotencyKey: 120, fields: 12, actions: 3, /** lv01: Marcar punto, Entrevista, Foto suelta, Terminar and the croquis (agentes 14/11). */ visitActions: 5, actionValue: 2000, kicker: 60, title: 120, subtitle: 120, footer: 120, status: 24, label: 40, value: 120, linkLabel: 40, actionLabel: 24, actionId: 40, url: 500 };
@@ -233,7 +234,10 @@ export function validateBotPost(raw: unknown): { ok: true; post: BotPost } | Bot
     if (!card.ok) return refuse(card.message);
     post.card = card.card;
   }
-  if (body.files !== undefined) {
+  const uploads = uploadIdsOf(body.files);
+  if (uploads && !uploads.ok) return refuse(uploads.message);
+  if (uploads) post.uploads = uploads.ids;
+  else if (body.files !== undefined) {
     const files = validateBotFiles(body.files);
     if (!files.ok) return refuse(files.message);
     post.files = files.files;
@@ -249,7 +253,7 @@ export function validateBotPost(raw: unknown): { ok: true; post: BotPost } | Bot
     if (!clientRef) return refuse('kind va como «order.created» (minúsculas, con un punto) y refs como { service_id?, record_id? }.');
     post.clientRef = clientRef;
   }
-  if (!post.text && !post.card && !post.files && !post.checklist) return refuse('Manda un texto, una tarjeta, archivos o un checklist.');
+  if (!post.text && !post.card && !post.files && !post.uploads && !post.checklist) return refuse('Manda un texto, una tarjeta, archivos o un checklist.');
   return { ok: true, post };
 }
 

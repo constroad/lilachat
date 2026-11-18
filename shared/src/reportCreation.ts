@@ -36,7 +36,11 @@ export type ReportTypeOption = { code: string; label: string; caption: string; /
 /** What the APK fills itself (IAA too since 15/11: photo + tape); the rest open Portal from the APK. */
 export const opensInApp = (option: ReportTypeOption): boolean => option.opensHere;
 
-/** The types of Portal's public page (`isFieldReport`), the ones filled here on top. */
+/**
+ * The types of Portal's public page (`isFieldReport`), all filled here since 18/11 (José: the old public page's reports
+ * in the APK and the phone PWA; Portal ce8591df gave SOL-IMP and APR-ADI their tools). APR-ADI carries amounts: only
+ * whoever sees money gets it (`offersReportType`).
+ */
 export const REPORT_TYPE_OPTIONS: readonly ReportTypeOption[] = [
   { code: 'CTL-IMP', label: 'Control de imprimación', caption: 'Tasa de riego por tramo, con bandejas y fotos', opensHere: true },
   { code: 'IAA', label: 'Área adicional', caption: 'Zonas medidas en obra, siempre con la wincha', opensHere: AREAS_OPEN_HERE },
@@ -46,7 +50,8 @@ export const REPORT_TYPE_OPTIONS: readonly ReportTypeOption[] = [
   { code: 'REG-OBS', label: 'Registro de observaciones', caption: 'Lo encontrado en obra, con foto, video y ubicación', opensHere: OBSERVATIONS_OPEN_HERE },
   { code: 'LEV-OBS', label: 'Levantamiento de observaciones', caption: 'Correcciones validadas en campo', opensHere: OBSERVATIONS_OPEN_HERE },
   { code: 'FRE-PAV', label: 'Fresado de pavimento', caption: 'Tramos fresados con progresivas, profundidad y fotos', opensHere: true },
-  { code: 'SOL-IMP', label: 'Solicitud de imprimación', caption: 'Pedido previo al riego, con firma', opensHere: false },
+  { code: 'SOL-IMP', label: 'Solicitud de imprimación', caption: 'Pedido previo al riego, con firma', opensHere: true },
+  { code: 'APR-ADI', label: 'Aprobación de adicional', caption: 'La aprobación del cliente para un trabajo adicional', opensHere: true, money: true },
 ];
 
 /**
@@ -65,7 +70,6 @@ export const EDITOR_REPORT_TYPE_OPTIONS: readonly ReportTypeOption[] = [
   { code: 'CONT-SRV', label: 'Contrato de servicio', caption: 'El contrato del servicio con el cliente', opensHere: false, money: true },
   { code: 'DOS-OBR', label: 'Dossier de obra', caption: 'Los entregables de la obra en un solo documento', opensHere: false, money: true },
   // Portal 17/11 (José: «sumarlos al embed»); without billing Portal answers `no_billing` before creating.
-  { code: 'APR-ADI', label: 'Aprobación de adicional', caption: 'La aprobación del cliente para un trabajo adicional', opensHere: false, money: true },
   { code: 'VAL-SRV', label: 'Valorización de servicios', caption: 'Lo ejecutado en el periodo, valorizado', opensHere: false, money: true },
   { code: 'LIQ-SRV', label: 'Liquidación final del servicio', caption: 'El cierre de cuentas del servicio', opensHere: false, money: true },
 ];
@@ -83,6 +87,9 @@ export const offersReportType = (option: ReportTypeOption, seesMoney: boolean): 
 /** The web's picker: the public page's types and, where Portal's editor opens (`inEditor`), its block sheets; each only if offered. */
 export const pickerReportTypes = (seesMoney: boolean, inEditor: (code: string) => boolean): ReportTypeOption[] =>
   [...REPORT_TYPE_OPTIONS, ...EDITOR_REPORT_TYPE_OPTIONS.filter((option) => inEditor(option.code))].filter((option) => offersReportType(option, seesMoney));
+
+/** The channel's own picker (the APK, the phone-width web): the public page's types, the approval only with money. */
+export const fieldPickerReportTypes = (seesMoney: boolean): ReportTypeOption[] => REPORT_TYPE_OPTIONS.filter((option) => offersReportType(option, seesMoney));
 
 /** The server's lock on creating: a type the picker never offers without money needs money; an unknown one too (it fails closed). */
 export const needsMoneyToCreate = (code: string): boolean => {

@@ -2066,3 +2066,16 @@ Leído en Portal `origin/main` y Lilachat `e5010f1f` (14/11). Lo que sigue tiene
 Datos de ejemplo para Stitch, sacados de los tests: `IAA-003`, «2 áreas · 17,30 m²», «4,80 m² · 0,240 m³ ·
 3,20 × 1,50 m», «Jr. Moquegua cdra 3», «GPS ±6 m». Stitch no debe inventar AR, polígonos, otros métodos ni
 estados fuera de borrador y publicado.
+
+## 21. SOL-IMP y APR-ADI en el canal (José 18/11)
+
+José pidió que el APK y la PWA móvil creen todos los informes de la página pública de Portal.
+SOL-IMP y APR-ADI eran los únicos que solo abrían Portal.
+
+- Los dos pasan a `opensHere` en `REPORT_TYPE_OPTIONS`. Se llenan con el mismo motor de documento
+  de campo: Portal manda las secciones y cada una nombra su herramienta, `guardar_seccion_de_acta`.
+- APR-ADI lleva montos: el picker del canal (`fieldPickerReportTypes`) lo ofrece solo con plata, el
+  server de Lilachat lo exige al crear (`needsMoneyToCreate`) y Portal lo niega sin cobranza.
+- En la web ancha APR-ADI sigue naciendo en el editor 2.0 (`EMBED_CREATE_TYPES`).
+- Las fotos van solo a las zonas de SOL-IMP. APR-ADI no lleva fotos.
+- Portal: `specs/SERVICES.as-is.md` §5b-bis. agentes: `23159fa`.

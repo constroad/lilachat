@@ -142,7 +142,7 @@ describe('ServiceDetailWeb', () => {
     expect(screen.queryByTestId('tipo-informe-PNL-FOT')).toBeNull();
   });
 
-  it('José 05/11: «Crear informe» for everyone with the services; the picker offers the nine types (REG-OBS since 11/11), the ones not here open Portal, and on a phone-width web CTL-IMP opens the form', async () => {
+  it('José 05/11: «Crear informe» for everyone with the services; the picker offers the nine types without money, all open here since 18/11, and on a phone-width web CTL-IMP opens the form', async () => {
     // Arrange
     vi.stubGlobal('innerWidth', 800);
     const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify(url.endsWith('/reports/draft') ? { error: 'report_draft_failed', message: 'No se pudo abrir el informe' } : { detail }), { status: 200 }));
@@ -155,8 +155,10 @@ describe('ServiceDetailWeb', () => {
     // Assert
     const types = within(screen.getByTestId('crear-informe-tipos')).getAllByTestId(/^tipo-informe-/);
     expect(types).toHaveLength(9);
-    expect(screen.getByTestId('tipo-informe-SOL-IMP')).toHaveAttribute('href', 'https://portal.constroad.com/s/318');
-    expect(screen.getByTestId('tipo-informe-SOL-IMP')).toHaveTextContent('En Portal');
+    // SOL-IMP opens here since 18/11 (Portal ce8591df); APR-ADI carries amounts and is not offered without money.
+    expect(screen.getByTestId('tipo-informe-SOL-IMP')).not.toHaveAttribute('href');
+    expect(screen.getByTestId('tipo-informe-SOL-IMP')).not.toHaveTextContent('En Portal');
+    expect(screen.queryByTestId('tipo-informe-APR-ADI')).toBeNull();
     // FRE-PAV and RCP-CAM open here since Portal's tools (José 13/11).
     expect(screen.getByTestId('tipo-informe-FRE-PAV')).not.toHaveAttribute('href');
     // IAA opens here since Portal's tools (12/11): the iPhone's Medición.

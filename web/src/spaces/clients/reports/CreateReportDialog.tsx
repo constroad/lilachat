@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { BadgeCheck, Calculator, ChevronRight, ClipboardCheck, Compass, Droplets, FileSignature, FileWarning, FlaskConical, FolderOpen, Hammer, Handshake, Images, Layers, ListChecks, ScanSearch, Square, Truck, UserCheck, type LucideIcon } from 'lucide-react';
+import { BadgeCheck, Calculator, ChevronRight, ClipboardCheck, Compass, Droplets, FileSignature, FileWarning, FlaskConical, FolderOpen, Hammer, Handshake, Images, Layers, ListChecks, ScanSearch, Square, Stamp, Truck, UserCheck, type LucideIcon } from 'lucide-react';
 import { asksResponsible, pickerReportTypes, RESPONSIBLE_MAX, reportTypeLabel, type ReportTypeOption } from '@lilachat/shared';
 import { loadPerfil } from '../../../api';
 import { Overlay } from '../../../ui/Overlay';
 
 const ICONS: Record<string, LucideIcon> = {
-  'CTL-IMP': Droplets, IAA: Square, 'CTL-PIS': Truck, 'CON-CAP': Layers, 'RCP-CAM': UserCheck, 'REG-OBS': ScanSearch, 'LEV-OBS': ClipboardCheck, 'FRE-PAV': Hammer, 'SOL-IMP': FileSignature,
+  'CTL-IMP': Droplets, IAA: Square, 'CTL-PIS': Truck, 'CON-CAP': Layers, 'RCP-CAM': UserCheck, 'REG-OBS': ScanSearch, 'LEV-OBS': ClipboardCheck, 'FRE-PAV': Hammer, 'SOL-IMP': FileSignature, 'APR-ADI': Stamp,
   // Portal's block sheets (José 16/11), only on the wide web.
   'ACT-CNF': BadgeCheck, 'REC-EXC': FileWarning, 'MET-RES': Calculator, 'CAL-PROT': FlaskConical, 'TOP-CMP': Compass, 'INF-ACT': ListChecks, 'PNL-FOT': Images, 'CONT-SRV': Handshake, 'DOS-OBR': FolderOpen,
 };

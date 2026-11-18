@@ -34,27 +34,25 @@ del 30/10 al 05/11. Hay que corregirlo.
    (Portal publica 99). Agentes lo subió a 160 (`152ad08`); José reaprobó solo `crear_informe_en_editor`
    (las otras dos no cambiaron de huella). Falta el E2E en Test: abrir un informe, crear VAL y LIQ,
    sincronizar LIQ, y que un miembro sin plata no vea ninguno. Limpiar por el camino de la app.
-2c. **Crear los informes de la página pública de Portal en el canal de cliente (José 18/11, vía
-   Editor 2.0)**: el APK y la PWA móvil (menos de 1024 px) deben ofrecer los 10 tipos con `isPublic`
-   de Portal (`fieldReportTypes.ts`, `publicFieldReportTypes()`): CTL-PIS, CON-CAP, CTL-IMP, IAA,
-   RCP-CAM, REG-OBS, LEV-OBS, FRE-PAV, SOL-IMP y APR-ADI. Con las reglas de `CreateReportSheet.tsx` y
-   `handleCreate` de `src/pages/public/services/[id].tsx`: responsable obligatorio; CTL-PIS con un
-   pedido (`orderIds`); CTL-IMP con líquido y datos generales del servicio; FRE-PAV siembra tramos y
-   plano y refresca el del mismo día; REG-OBS nace de las observaciones del mapa. POST a
-   `serviceManagementReport` con `type`, `date` y `responsible`. IAA se mide solo en el APK.
-   Visto sin auditar: `REPORT_TYPE_OPTIONS` del APK tiene 9 (falta APR-ADI, que hoy es `money` en el
-   editor). Auditado el 18/11 (código, sin E2E). La web de menos de 1024 px usa el mismo flujo
-   que el APK (`createsInEmbed` falso). CTL-PIS, CON-CAP y CTL-IMP: bien (Portal exige pedido, capa
-   o líquido y siembra los datos generales). Todo lo que falta es de Portal:
-   - SOL-IMP y APR-ADI no tienen herramienta: `TOOL_TYPES` de `portalFieldReportTools.ts` solo
-     tiene CTL-IMP y CTL-PIS. Hoy en el teléfono dicen «En Portal».
-   - FRE-PAV nace sin tramos ni plano (`millingSeedOf`) y duplica el del día si es de otro.
-   - REG-OBS solo nace al registrar una observación nueva.
-   - El responsable de IAA, REG-OBS, LEV-OBS y RCP-CAM sale del usuario de la sesión. Es la regla
-     de campo; RCP-CAM lo guarda en `recibidoPor` (dato en disputa, no se toca).
-   Propuesta a José una sesión de Portal con ese brief (18/11). Cuando mande el sha: sumar
-   APR-ADI al picker del APK solo para quien ve la plata, pasar SOL-IMP y APR-ADI a `opensHere`
-   y hacer el E2E en APK y web de 390 px.
+2c. **Crear los informes de la página pública de Portal en el canal de cliente (José 18/11)**: el APK
+   y la PWA móvil (menos de 1024 px, `createsInEmbed` falso) ofrecen los tipos con `isPublic` de
+   Portal. Hecho en código el 18/11, sin E2E:
+   - **Lilachat:** SOL-IMP y APR-ADI con `opensHere` (`REPORT_TYPE_OPTIONS`). APR-ADI es `money`: el
+     picker del canal (`fieldPickerReportTypes`, APK y web) lo da solo a quien ve la plata; salió de
+     `EDITOR_REPORT_TYPE_OPTIONS` (en la web ancha sigue naciendo en el editor por `EMBED_CREATE_TYPES`).
+   - **Portal** (rama `feat/field-docs-lilachat`, `ce8591dfb` y `9e57da788`): `informe_de_campo`
+     lee SOL-IMP y APR-ADI; los guarda `guardar_seccion_de_acta` (herramienta propia: la compartida
+     pasaba de 8 KB). APR-ADI sin cobranza no se lee, crea, guarda ni publica. FRE-PAV nace con los
+     tramos del mapa (`buildFresadoSeed`) y es uno por día: crear refresca el del día de quien sea.
+     Sin plano: lo dibuja solo el navegador.
+   - **agentes** `23159fa`: `guardar_seccion_de_acta` en `FIELD_REPORT_WRITES`.
+   - **Falta:** desplegar Portal, que José apruebe `guardar_seccion_de_acta` y reapruebe
+     `informe_de_campo` (cambió su enum: hasta reaprobarla, los informes de campo no abren), publicar
+     Lilachat (server, web y OTA) y el E2E en APK y web de 390 px con limpieza QA.
+   - **REG-OBS sin empezar:** solo nace al registrar una observación nueva. Crearlo con las
+     observaciones que ya están en el mapa pide una escritura nueva (herramienta en Portal, agentes y
+     botón en Lilachat). Decisión de José.
+   - El responsable de IAA, REG-OBS, LEV-OBS y RCP-CAM sale del usuario de la sesión (regla de campo).
 2b. **265** Las llamadas siguen la regla vieja del push. `server/src/pushService.ts:258`
    (`avisarLlamada`) calla el teléfono si hay cualquier socket vivo. Hay que igualarla a la de
    los mensajes (`:97`, que solo salta el navegador web). Hallazgo nuevo: no está en ningún spec.

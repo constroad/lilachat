@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { ChevronRight, ClipboardCheck, Droplets, FileSignature, Hammer, Layers, ScanSearch, Square, Truck, UserCheck, type LucideIcon } from 'lucide-react-native';
-import { asksResponsible, opensInApp, REPORT_TYPE_OPTIONS, reportTypeLabel, type ReportTypeOption } from '@lilachat/shared';
+import { ChevronRight, ClipboardCheck, Droplets, FileSignature, Hammer, Layers, ScanSearch, Square, Stamp, Truck, UserCheck, type LucideIcon } from 'lucide-react-native';
+import { asksResponsible, fieldPickerReportTypes, opensInApp, reportTypeLabel, type ReportTypeOption } from '@lilachat/shared';
 import { loadCredential } from '../../../auth/credentialStore';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
 
-const ICONS: Record<string, LucideIcon> = { 'CTL-IMP': Droplets, IAA: Square, 'CTL-PIS': Truck, 'CON-CAP': Layers, 'RCP-CAM': UserCheck, 'REG-OBS': ScanSearch, 'LEV-OBS': ClipboardCheck, 'FRE-PAV': Hammer, 'SOL-IMP': FileSignature };
+const ICONS: Record<string, LucideIcon> = { 'CTL-IMP': Droplets, IAA: Square, 'CTL-PIS': Truck, 'CON-CAP': Layers, 'RCP-CAM': UserCheck, 'REG-OBS': ScanSearch, 'LEV-OBS': ClipboardCheck, 'FRE-PAV': Hammer, 'SOL-IMP': FileSignature, 'APR-ADI': Stamp };
 
 function TypeRow({ option, portalUrl, onPick }: { option: ReportTypeOption; portalUrl?: string; onPick: (code: string) => void }) {
   const colors = useColores();
@@ -56,11 +56,10 @@ function ResponsibleStep(props: { code: string; name: string; people: readonly s
 }
 
 /**
- * «Crear informe» (design j-01): the eight types of Portal's public page.
- * Only the ones Lilachat fills open here; the rest open the service in Portal
- * until their turn comes (spec INFORMES-DESDE-LILACHAT §5).
+ * «Crear informe» (design j-01): the types of Portal's public page, all filled here since 18/11. The approval of an
+ * addition carries amounts: only whoever sees money gets it (`seesMoney`).
  */
-export function CreateReportSheet(props: { visible: boolean; portalUrl?: string; people?: readonly string[]; onPick: (code: string, responsible: string) => void; onClose: () => void }) {
+export function CreateReportSheet(props: { visible: boolean; portalUrl?: string; seesMoney?: boolean; people?: readonly string[]; onPick: (code: string, responsible: string) => void; onClose: () => void }) {
   const [code, setCode] = useState<string | null>(null);
   const [name, setName] = useState('');
   useEffect(() => {
@@ -82,7 +81,7 @@ export function CreateReportSheet(props: { visible: boolean; portalUrl?: string;
       <Text className="mb-3 mt-1 text-[14px] text-on-surface-variant">Se guarda como borrador mientras lo llenas</Text>
       {/* Eight rows do not fit a phone under the sheet's cap: they scroll, so the last ones and «Cancelar» stay above the system bar (José, 06/11). */}
       <ScrollView keyboardShouldPersistTaps="handled" testID="tipos-de-informe" style={{ flexShrink: 1 }} contentContainerStyle={{ gap: 8, paddingBottom: 4 }} showsVerticalScrollIndicator={false}>
-        {REPORT_TYPE_OPTIONS.map((option) => <TypeRow key={option.code} option={option} portalUrl={props.portalUrl} onPick={(picked) => (asksResponsible(picked) ? setCode(picked) : props.onPick(picked, ''))} />)}
+        {fieldPickerReportTypes(Boolean(props.seesMoney)).map((option) => <TypeRow key={option.code} option={option} portalUrl={props.portalUrl} onPick={(picked) => (asksResponsible(picked) ? setCode(picked) : props.onPick(picked, ''))} />)}
         <Pressable testID="cancelar-crear-informe" onPress={props.onClose} className="mt-1 min-h-[52px] items-center justify-center rounded-2xl border border-outline/20 bg-surface">
           <Text className="text-[16px] font-semibold text-on-surface">Cancelar</Text>
         </Pressable>

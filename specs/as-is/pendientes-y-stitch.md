@@ -34,6 +34,16 @@ del 30/10 al 05/11. Hay que corregirlo.
    (Portal publica 99). Agentes lo subió a 160 (`152ad08`); José reaprobó solo `crear_informe_en_editor`
    (las otras dos no cambiaron de huella). Falta el E2E en Test: abrir un informe, crear VAL y LIQ,
    sincronizar LIQ, y que un miembro sin plata no vea ninguno. Limpiar por el camino de la app.
+2c. **Crear los informes de la página pública de Portal en el canal de cliente (José 18/11, vía
+   Editor 2.0)**: el APK y la PWA móvil (menos de 1024 px) deben ofrecer los 10 tipos con `isPublic`
+   de Portal (`fieldReportTypes.ts`, `publicFieldReportTypes()`): CTL-PIS, CON-CAP, CTL-IMP, IAA,
+   RCP-CAM, REG-OBS, LEV-OBS, FRE-PAV, SOL-IMP y APR-ADI. Con las reglas de `CreateReportSheet.tsx` y
+   `handleCreate` de `src/pages/public/services/[id].tsx`: responsable obligatorio; CTL-PIS con un
+   pedido (`orderIds`); CTL-IMP con líquido y datos generales del servicio; FRE-PAV siembra tramos y
+   plano y refresca el del mismo día; REG-OBS nace de las observaciones del mapa. POST a
+   `serviceManagementReport` con `type`, `date` y `responsible`. IAA se mide solo en el APK.
+   Visto sin auditar: `REPORT_TYPE_OPTIONS` del APK tiene 9 (falta APR-ADI, que hoy es `money` en el
+   editor). Sin empezar: auditar web móvil y APK contra esas reglas y reparar solo lo que falte.
 2b. **265** Las llamadas siguen la regla vieja del push. `server/src/pushService.ts:258`
    (`avisarLlamada`) calla el teléfono si hay cualquier socket vivo. Hay que igualarla a la de
    los mensajes (`:97`, que solo salta el navegador web). Hallazgo nuevo: no está en ningún spec.

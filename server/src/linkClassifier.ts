@@ -1,27 +1,25 @@
 import { MAX_CATEGORY_NAME, platformLabel, type LinkCard, type LinkCategory } from '@lilachat/shared';
+import type { ModelAsker } from './agentesModel.js';
 
 /**
- * Lila picks the category of a link saved in a notes chat (José, 18/11): one
- * call to Claude Haiku 5.5 with the card and the chat's categories. She only
- * proposes a NEW category when nothing fits; the person can move it after.
- * Runs on Lilachat's server (José's decision, 18/11); the key never leaves it.
- * Same raw-HTTP style as `assistantClient.ts`, the server has no SDK.
+ * Lila picks the category of a link saved in a notes chat (José, 18/11): one model task with the card and the
+ * chat's categories. She only proposes a NEW category when nothing fits; the person can move it after.
+ * The model is agentes' choice (José, 18/11: no product holds a model key): this module asks for the task through
+ * `agentesModel.ts` and never names a provider.
  */
-const API_BASE = process.env.ANTHROPIC_BASE_URL || 'https://api.anthropic.com';
-const API_VERSION = '2023-06-01';
-const MODEL = 'claude-haiku-5-5';
-const TIMEOUT_MS = 20_000;
-/** Room for the adaptive thinking plus a one-line JSON. */
-const MAX_TOKENS = 1024;
 const MAX_PROPOSED = 9;
 const MAX_TEXT_IN_PROMPT = 1200;
+const NULLABLE_NAME = { anyOf: [{ type: 'string' }, { type: 'null' }] };
+const CLASSIFY_SCHEMA = { type: 'object', properties: { category: NULLABLE_NAME, new: NULLABLE_NAME }, required: ['category', 'new'], additionalProperties: false };
+const PROPOSE_SCHEMA = { type: 'object', properties: { categories: { type: 'array', items: { type: 'string' } } }, required: ['categories'], additionalProperties: false };
 
 export type ClassifyOutcome = { ok: true; categoryId: string | null; newCategory?: string } | { ok: false; reason: 'not_configured' | 'failed' };
 export type ProposeOutcome = { ok: true; names: string[] } | { ok: false; reason: 'not_configured' | 'failed' };
 
+/** `memberIds`: the chat's members; their space signs the ask to agentes. */
 export interface LinkClassifier {
-  classify(card: LinkCard, categories: readonly LinkCategory[]): Promise<ClassifyOutcome>;
-  propose(cards: readonly LinkCard[]): Promise<ProposeOutcome>;
+  classify(card: LinkCard, categories: readonly LinkCategory[], memberIds: readonly string[]): Promise<ClassifyOutcome>;
+  propose(cards: readonly LinkCard[], memberIds: readonly string[]): Promise<ProposeOutcome>;
 }
 
 /** Fixed text first, so repeated calls share the same prefix. */
@@ -89,39 +87,20 @@ export function parseProposedCategories(text: string): string[] {
   return names.slice(0, MAX_PROPOSED);
 }
 
-async function askHaiku(system: string, user: string): Promise<{ ok: true; text: string } | { ok: false; reason: 'not_configured' | 'failed' }> {
-  const key = process.env.ANTHROPIC_API_KEY || '';
-  if (!key) return { ok: false, reason: 'not_configured' };
-  try {
-    const response = await fetch(`${API_BASE}/v1/messages`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': API_VERSION },
-      body: JSON.stringify({ model: MODEL, max_tokens: MAX_TOKENS, output_config: { effort: 'low' }, system, messages: [{ role: 'user', content: user }] }),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-    if (!response.ok) {
-      console.error(`[links] Anthropic ${response.status}: ${(await response.text().catch(() => '')).slice(0, 200)}`);
-      return { ok: false, reason: 'failed' };
-    }
-    const data = (await response.json()) as { content?: { type: string; text?: string }[] };
-    return { ok: true, text: (data.content ?? []).filter((block) => block.type === 'text').map((block) => block.text ?? '').join('') };
-  } catch (error) {
-    console.error('[links] no answer from the classifier:', (error as Error)?.message ?? error);
-    return { ok: false, reason: 'failed' };
-  }
-}
+/** Loaded on the first ask: `agentesModel` reaches the bots, which reach the link sorting that builds this. */
+const askAgentes: ModelAsker = async (memberIds, request) => (await import('./agentesModel.js')).askAgentesModel(memberIds, request);
 
-export function buildLinkClassifier(): LinkClassifier {
+export function buildLinkClassifier(ask: ModelAsker = askAgentes): LinkClassifier {
   return {
-    async classify(card, categories) {
+    async classify(card, categories, memberIds) {
       const prompt = classifierPrompt(card, categories);
-      const answer = await askHaiku(prompt.system, prompt.user);
-      return answer.ok ? { ok: true, ...parseClassifierAnswer(answer.text, categories) } : answer;
+      const answer = await ask(memberIds, { task: 'link.classify', system: prompt.system, input: prompt.user, schema: CLASSIFY_SCHEMA });
+      return answer.ok ? { ok: true, ...parseClassifierAnswer(JSON.stringify(answer.json ?? null), categories) } : answer;
     },
-    async propose(cards) {
+    async propose(cards, memberIds) {
       const list = cards.map((card, index) => `${index + 1}.\n${describeCard(card)}`).join('\n\n');
-      const answer = await askHaiku(PROPOSE_SYSTEM, `Enlaces:\n${list}`);
-      return answer.ok ? { ok: true, names: parseProposedCategories(answer.text) } : answer;
+      const answer = await ask(memberIds, { task: 'link.propose', system: PROPOSE_SYSTEM, input: `Enlaces:\n${list}`, schema: PROPOSE_SCHEMA });
+      return answer.ok ? { ok: true, names: parseProposedCategories(JSON.stringify(answer.json ?? null)) } : answer;
     },
   };
 }

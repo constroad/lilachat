@@ -1,0 +1,55 @@
+import { Types } from 'mongoose';
+import { WorkspaceMemberModel } from './workspaceModels.js';
+import { developerAppClientIds } from './bots/botApps.js';
+import { callBotWebhook, recordLastDelivery, type WebhookReply } from './bots/botEvents.js';
+import { BotAppModel, BotInstallationModel } from './bots/botModels.js';
+
+/**
+ * Lilachat asks agentes for a model task (José, 18/11): it holds no model key and names no provider; agentes picks
+ * the model per task (agentes `core/llm/tasks.ts`). The ask travels as the signed webhook event
+ * `llm.task.requested` of the Lila app, answered in the body like a form preview. It is signed with the Lila
+ * installation of a space where a member of the chat is active; that space's company carries the usage.
+ */
+export type ModelTask = { task: 'link.classify' | 'link.propose'; system: string; input: string; schema: Record<string, unknown> };
+export type ModelAnswer = { ok: true; json: unknown } | { ok: false; reason: 'not_configured' | 'failed' };
+/** `memberIds`: the chat's members, whose space signs the ask. */
+export type ModelAsker = (memberIds: readonly string[], request: ModelTask) => Promise<ModelAnswer>;
+
+/** agentes cuts a read at 7 s; a deploy restart gets the one retry of `callBotWebhook` inside this. */
+const ASK_TIMEOUT_MS = 10_000;
+
+type Door = { _id: Types.ObjectId; workspaceId: Types.ObjectId; signingSecret: string; webhookUrl: string };
+
+/** The Lila app's live installation in a space where one of these people is an active member. */
+export async function lilaDoorFor(memberIds: readonly string[]): Promise<Door | null> {
+  const ids = memberIds.filter((id) => Types.ObjectId.isValid(id)).map((id) => new Types.ObjectId(id));
+  if (ids.length === 0) return null;
+  const [spaces, apps] = await Promise.all([
+    WorkspaceMemberModel.distinct('workspaceId', { userId: { $in: ids }, status: 'active' }),
+    BotAppModel.find({ clientId: { $in: developerAppClientIds() } }).select('_id webhookUrl').lean(),
+  ]);
+  if (spaces.length === 0 || apps.length === 0) return null;
+  const installation = await BotInstallationModel.findOne({ appId: { $in: apps.map((app) => app._id) }, workspaceId: { $in: spaces }, revokedAt: { $exists: false } })
+    .select('_id workspaceId signingSecret appId')
+    .lean();
+  const app = installation ? apps.find((one) => String(one._id) === String(installation.appId)) : undefined;
+  return installation && app?.webhookUrl ? { _id: installation._id, workspaceId: installation.workspaceId, signingSecret: installation.signingSecret, webhookUrl: app.webhookUrl } : null;
+}
+
+/** agentes answers `{ ok: true, json }` or `{ ok: false, code }`; `off` means it has no model configured. */
+export function modelAnswerOf(reply: WebhookReply): ModelAnswer {
+  const body = reply.status === 200 && reply.body && typeof reply.body === 'object' ? (reply.body as { ok?: unknown; json?: unknown; code?: unknown }) : null;
+  if (body?.ok === true) return { ok: true, json: body.json };
+  if (body?.ok === false && body.code === 'off') return { ok: false, reason: 'not_configured' };
+  return { ok: false, reason: 'failed' };
+}
+
+export const askAgentesModel: ModelAsker = async (memberIds, request) => {
+  const door = await lilaDoorFor(memberIds);
+  if (!door) return { ok: false, reason: 'not_configured' };
+  const reply = await callBotWebhook(door, 'llm.task.requested', request, ASK_TIMEOUT_MS);
+  recordLastDelivery(door._id, reply.error ? { ok: false, error: reply.error } : { ok: true });
+  const answer = modelAnswerOf(reply);
+  if (!answer.ok && answer.reason === 'failed') console.error(`[model] agentes did not answer ${request.task}: ${reply.error ?? `HTTP ${reply.status}`}`);
+  return answer;
+};

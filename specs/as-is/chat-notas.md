@@ -32,7 +32,7 @@ Diseño en Stitch `nl-01` a `nl-03` (ver §5). Prototipo navegable en https://cl
 
 **Decisiones de José (18/11):**
 1. Lila elige la categoría y la persona la corrige. Lila solo propone una categoría nueva cuando ninguna encaja.
-2. La clasificación corre en el server de Lilachat con Claude Haiku 5.5, no en agentes.
+2. ~~La clasificación corre en el server de Lilachat con Claude Haiku 5.5.~~ Cambió el mismo 18/11: el modelo lo pide Lilachat a **agentes**, que elige el proveedor por dentro. Ningún producto guarda claves de modelos (José).
 3. Whisper va después y solo para los videos sin texto. Hoy se usa el texto del post, el autor y la miniatura.
 4. El interruptor es por chat y viene apagado.
 
@@ -50,11 +50,13 @@ Diseño en Stitch `nl-01` a `nl-03` (ver §5). Prototipo navegable en https://cl
   - **Otra web:** sus etiquetas `og:`.
 - **El enlace guardado va limpio:** sin `igsh`, `utm_*`, `si`, `fbclid`, `mibextid` ni `_t`/`_r` (`shared/src/linkNotes.ts › cleanLinkUrl`).
 - **«Solo pide comentar»:** el post dice «Comenta NICHO…» y casi nada más (`commentBaitOf`).
-- **La categoría** (`linkClassifier.ts`):
-  - Una llamada a `claude-haiku-5-5` con esfuerzo `low` y unos US$ 0.0002 por enlace.
+- **La categoría** (`linkClassifier.ts` → `agentesModel.ts`):
+  - Lilachat pide la tarea `link.classify` (o `link.propose` al encender) a agentes con el evento firmado `llm.task.requested` de la app Lila, contestado en el cuerpo (10 s).
+  - Lo firma la instalación de Lila de un espacio donde un miembro del chat está activo; el consumo va a esa empresa. Sin ese espacio, «Sin categoría».
+  - Agentes elige el modelo (hoy Haiku 5.5, unos US$ 0.0002 por enlace). Lilachat no nombra proveedor ni guarda clave.
   - La respuesta se valida como la de un cliente hostil: solo un nombre de la lista o uno nuevo corto.
   - Topes: 12 categorías por chat y 300 clasificaciones por chat al día.
-  - Sin `ANTHROPIC_API_KEY`, la tarjeta se guarda igual «Sin categoría».
+  - Si agentes contesta `off` (sin modelo) o falla, la tarjeta se guarda igual «Sin categoría».
   - Un enlace ilegible no se clasifica.
 - **Al encender:** se leen los enlaces que ya están en el chat. Si el chat no tiene categorías, Lila las propone (de 5 a 9) o se usan las que llegan en `seed`. Después se ubica cada enlace.
 - **Lo que mueve una persona** queda `categoryBy: 'user'`, y Lila no lo vuelve a tocar.
@@ -151,7 +153,8 @@ Diseño en Stitch `nl-01` a `nl-03` (ver §5). Prototipo navegable en https://cl
 - **Shared:** `linkNotes.test.ts` (limpiar, plataforma, «comenta X», vista por categoría).
 - **Server:**
   - `linkReader.test.ts`: embed de Instagram, título de Facebook, oEmbed e ilegible.
-  - `linkClassifier.test.ts`: prompt, respuesta hostil, sin clave y error.
+  - `linkClassifier.test.ts`: prompt, respuesta hostil, la tarea a agentes sin proveedor, `off` y error.
+  - `agentesModel.test.ts`: la instalación de Lila que firma y la respuesta de agentes.
   - `linkSorting.test.ts`: cola, propuesta, tope e ilegible.
   - `linkSortingRoutes.test.ts`: listar, mover, crear, renombrar, unir, reintentar e interruptor.
   - `borradores.test.ts`.

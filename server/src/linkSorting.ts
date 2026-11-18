@@ -104,7 +104,7 @@ type Placement = Pick<LinkCard, 'categoryId' | 'categoryBy'>;
 async function placeLink(chat: SortingChat, card: LinkCard, previous: LinkCard | undefined): Promise<Placement> {
   if (previous?.categoryBy === 'user') return { categoryId: previous.categoryId ?? null, categoryBy: 'user' };
   if (card.status !== 'ready' || !underDailyCap(String(chat._id))) return { categoryId: null };
-  const answer = await deps.classifier.classify(card, categoriesOf(chat));
+  const answer = await deps.classifier.classify(card, categoriesOf(chat), membersOf(chat));
   if (!answer.ok) return { categoryId: null };
   if (answer.categoryId) return { categoryId: answer.categoryId, categoryBy: 'lila' };
   const created = answer.newCategory ? await addLilaCategory(String(chat._id), answer.newCategory) : null;
@@ -157,7 +157,7 @@ async function backfill(chatId: string): Promise<void> {
 async function proposeCategories(chat: SortingChat, cards: LinkCard[]): Promise<SortingChat | null> {
   const ready = cards.filter((card) => card.status === 'ready');
   if (ready.length === 0) return chat;
-  const answer = await deps.classifier.propose(ready);
+  const answer = await deps.classifier.propose(ready, membersOf(chat));
   if (!answer.ok || answer.names.length === 0) return chat;
   const categories = answer.names.slice(0, MAX_LINK_CATEGORIES).map((name) => ({ name, by: 'lila' as const }));
   await ChatModel.updateOne({ _id: chat._id }, { $set: { 'linkSorting.categories': categories } });

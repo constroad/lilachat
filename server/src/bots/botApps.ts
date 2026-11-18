@@ -29,6 +29,11 @@ export function configureDevelopers(clientIds: readonly string[]): void {
   developerClientIds = clientIds;
 }
 
+/** The developer apps' client ids: agentes' Lila app, the one that also answers model tasks (`agentesModel.ts`). */
+export function developerAppClientIds(): readonly string[] {
+  return developerClientIds;
+}
+
 /** `Authorization: Basic base64(client_id:client_secret)` of a developer app. */
 export async function developerFrom(header: string | undefined): Promise<BotApp | AppsError> {
   const encoded = header?.startsWith('Basic ') ? header.slice(6) : '';

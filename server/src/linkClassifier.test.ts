@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import type { ModelAsker } from './agentesModel.js';
 import { buildLinkClassifier, classifierPrompt, parseClassifierAnswer, parseProposedCategories } from './linkClassifier.js';
 
 const categories = [
@@ -56,33 +57,35 @@ describe('parseProposedCategories', () => {
   });
 });
 
-describe('buildLinkClassifier', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-    vi.unstubAllEnvs();
+describe('buildLinkClassifier: asks agentes for the task, never a provider', () => {
+  const members = ['u1'];
+
+  it('sends the classify task with its schema to agentes and maps the answer', async () => {
+    // Arrange
+    const ask = vi.fn<ModelAsker>(async () => ({ ok: true, json: { category: 'Video, voz e imagen', new: null } }));
+    // Act
+    const outcome = await buildLinkClassifier(ask).classify(card, categories, members);
+    // Assert
+    expect(outcome).toEqual({ ok: true, categoryId: 'c2' });
+    const [askedFor, request] = ask.mock.calls[0]!;
+    expect(askedFor).toEqual(members);
+    expect(request).toMatchObject({ task: 'link.classify', system: classifierPrompt(card, categories).system });
+    expect(request.schema).toMatchObject({ required: ['category', 'new'] });
+    expect(JSON.stringify(request)).not.toMatch(/claude|haiku|anthropic/i);
   });
 
-  it('says it is not configured without a key, and does not call anyone', async () => {
-    vi.stubEnv('ANTHROPIC_API_KEY', '');
-    const fetchSpy = vi.fn();
-    vi.stubGlobal('fetch', fetchSpy);
-    await expect(buildLinkClassifier().classify(card, categories)).resolves.toEqual({ ok: false, reason: 'not_configured' });
-    expect(fetchSpy).not.toHaveBeenCalled();
+  it('proposes categories through the propose task', async () => {
+    const ask = vi.fn<ModelAsker>(async () => ({ ok: true, json: { categories: ['Claude y skills', 'Diseño web y UI'] } }));
+    await expect(buildLinkClassifier(ask).propose([card], members)).resolves.toEqual({ ok: true, names: ['Claude y skills', 'Diseño web y UI'] });
+    expect(ask.mock.calls[0]![1].task).toBe('link.propose');
   });
 
-  it('asks Haiku 5.5 at low effort and reads its answer', async () => {
-    vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
-    const fetchSpy = vi.fn(async () => new Response(JSON.stringify({ content: [{ type: 'text', text: '{"category":"Video, voz e imagen"}' }] }), { status: 200 }));
-    vi.stubGlobal('fetch', fetchSpy);
-    await expect(buildLinkClassifier().classify(card, categories)).resolves.toEqual({ ok: true, categoryId: 'c2' });
-    const body = JSON.parse(String((fetchSpy.mock.calls[0] as unknown as [string, RequestInit])[1].body));
-    expect(body.model).toBe('claude-haiku-5-5');
-    expect(body.output_config).toEqual({ effort: 'low' });
+  it('passes «not configured» and failures through instead of guessing', async () => {
+    await expect(buildLinkClassifier(async () => ({ ok: false, reason: 'not_configured' })).classify(card, categories, members)).resolves.toEqual({ ok: false, reason: 'not_configured' });
+    await expect(buildLinkClassifier(async () => ({ ok: false, reason: 'failed' })).propose([card], members)).resolves.toEqual({ ok: false, reason: 'failed' });
   });
 
-  it('reports a refused call instead of guessing', async () => {
-    vi.stubEnv('ANTHROPIC_API_KEY', 'test-key');
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('overloaded', { status: 529 })));
-    await expect(buildLinkClassifier().classify(card, categories)).resolves.toEqual({ ok: false, reason: 'failed' });
+  it('treats a JSON that is not an object as «Sin categoría»', async () => {
+    await expect(buildLinkClassifier(async () => ({ ok: true, json: null })).classify(card, categories, members)).resolves.toEqual({ ok: true, categoryId: null });
   });
 });

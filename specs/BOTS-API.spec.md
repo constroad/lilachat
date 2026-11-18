@@ -1752,6 +1752,7 @@ decisiones de negocio siguen abiertas. Mientras tanto, el reparto es libre: cada
 | Lo que decide el vendedor: quién lo atiende, próxima acción, resultado | Lilachat | la pantalla; avisa con `prospect.updated` |
 | Aprobar un seguimiento que redactó Dali | Lilachat | `prospect.follow_up.approved`; agentes lo envía |
 | Lo que Dali sabe del negocio, y enseñarle una respuesta | agentes | `dali.knowledge.requested` y `dali.faq.add`, síncronos |
+| Una tarea del modelo (clasificar un enlace, proponer categorías; José 18/11) | agentes | `llm.task.requested` `{ task, system, input, schema }`, síncrono, 10 s, solo la app Lila. Responde `{ ok: true, json, provider, model }` o `{ ok: false, code }` (`off`, `budget`, `timeout`…). Agentes elige el modelo (`core/llm/tasks.ts`) |
 
 **El PUT suma** (todo opcional; lo que no viene queda como estaba y `null` lo borra):
 

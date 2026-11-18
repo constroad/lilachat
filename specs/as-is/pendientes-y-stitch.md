@@ -43,7 +43,18 @@ del 30/10 al 05/11. Hay que corregirlo.
    plano y refresca el del mismo día; REG-OBS nace de las observaciones del mapa. POST a
    `serviceManagementReport` con `type`, `date` y `responsible`. IAA se mide solo en el APK.
    Visto sin auditar: `REPORT_TYPE_OPTIONS` del APK tiene 9 (falta APR-ADI, que hoy es `money` en el
-   editor). Sin empezar: auditar web móvil y APK contra esas reglas y reparar solo lo que falte.
+   editor). Auditado el 18/11 (código, sin E2E). La web de menos de 1024 px usa el mismo flujo
+   que el APK (`createsInEmbed` falso). CTL-PIS, CON-CAP y CTL-IMP: bien (Portal exige pedido, capa
+   o líquido y siembra los datos generales). Todo lo que falta es de Portal:
+   - SOL-IMP y APR-ADI no tienen herramienta: `TOOL_TYPES` de `portalFieldReportTools.ts` solo
+     tiene CTL-IMP y CTL-PIS. Hoy en el teléfono dicen «En Portal».
+   - FRE-PAV nace sin tramos ni plano (`millingSeedOf`) y duplica el del día si es de otro.
+   - REG-OBS solo nace al registrar una observación nueva.
+   - El responsable de IAA, REG-OBS, LEV-OBS y RCP-CAM sale del usuario de la sesión. Es la regla
+     de campo; RCP-CAM lo guarda en `recibidoPor` (dato en disputa, no se toca).
+   Propuesta a José una sesión de Portal con ese brief (18/11). Cuando mande el sha: sumar
+   APR-ADI al picker del APK solo para quien ve la plata, pasar SOL-IMP y APR-ADI a `opensHere`
+   y hacer el E2E en APK y web de 390 px.
 2b. **265** Las llamadas siguen la regla vieja del push. `server/src/pushService.ts:258`
    (`avisarLlamada`) calla el teléfono si hay cualquier socket vivo. Hay que igualarla a la de
    los mensajes (`:97`, que solo salta el navegador web). Hallazgo nuevo: no está en ningún spec.

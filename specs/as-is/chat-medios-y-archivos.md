@@ -59,6 +59,7 @@ Los archivos viven en el disco propio de Lilachat (pendiente 82); los viejos sig
   - «Descargar» usa el descargador del teléfono; queda en Descargas con su nombre (`archivoDescargado.ts`).
 - Visor de PDF en la app (pendiente 7): `pdf/PdfViewerScreen.tsx`, `PdfPageView.tsx`, `usePdfDocument.ts`, `usePdfViewer.tsx`, `pdfSource.ts`.
 - Zoom con dos dedos en el visor (17/11): `pdf/pdfLayout.ts`. Al soltar salta a 100, 125, 150, 200, 250 o 300 %.
+- Doble toque en el visor (18/11): de 100 % pasa a 200 % sobre el punto tocado; desde cualquier otro zoom vuelve a 100 % (`zoomAfterDoubleTap`).
 - Un enlace de una tarjeta a un PDF, foto o video abre el visor de Lilachat (14/11).
 
 **Del chat y del teléfono**
@@ -120,7 +121,7 @@ Los archivos viven en el disco propio de Lilachat (pendiente 82); los viejos sig
 | Función | APK | Web |
 | --- | --- | --- |
 | Recortar y girar antes de enviar | Sí (`crop/`) | No |
-| Zoom con dos dedos en el PDF | Sí (`pdfLayout.ts`) | Visor del navegador |
+| Zoom con dos dedos y doble toque en el PDF | Sí (`pdfLayout.ts`) | Visor del navegador |
 | Abrir/Descargar con otra app | Sí (`fileActions.ts`) | Descarga con nombre |
 | Medios de chats secretos | Cifrados de punta a punta | No abre chats secretos |
 | Cámara con sello | Sí, cámara única | Sí en el navegador del celular (12/11) |
@@ -150,6 +151,7 @@ Los archivos viven en el disco propio de Lilachat (pendiente 82); los viejos sig
 - **14/11:** el tipo de imagen sale de los bytes. Una tarjeta con enlace a PDF, foto o video abre el visor.
 - **17/11:** José no pudo bajar «METRADOS 161126.kml»: «Abrir» o «Descargar» en el APK, nombre propio en la web.
 - **17/11:** José mandó «Cotizacion-103.pdf» y solo salía el nombre: primera página en el chat, relleno de los viejos y zoom con dos dedos.
+- **18/11:** José tocó dos veces el PDF y no hizo zoom. Doble toque: 200 % sobre el punto, y otra vez a 100 %. Las mejoras del visor del 17/11 no le llegaban porque no se había publicado la OTA; salió el 18/11.
 
 ## 5. Diseños de Stitch relacionados
 
@@ -196,4 +198,4 @@ El sello va abajo a la izquierda aunque `cam-01` y `cam-03` lo dejen a media alt
   `media/MiniVideoPlayer`, `media/miniPlayer`, `media/media`, `storage/StorageChoice`.
 - **Maestro:**
   - `app/.maestro/chat-file.yaml`: el KML se descarga y queda en `/sdcard/Download/METRADOS 161126.kml` (arnés `scripts/e2e-dali.ts`).
-  - `app/.maestro/chat-pdf.yaml`: tarjeta con la página y «4 páginas · 3.3 KB · PDF», visor «1 / 4». El pellizco se mandó aparte con `adb root` + `sendevent`.
+  - `app/.maestro/chat-pdf.yaml`: tarjeta con la página y «4 páginas · 3.3 KB · PDF», visor «1 / 4», doble toque a «200 %» y de vuelta a «100 %» (verde el 18/11). El pellizco se mandó aparte con `adb root` + `sendevent`.

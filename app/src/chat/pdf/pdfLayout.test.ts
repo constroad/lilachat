@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { listOffsetAfterZoom, nextZoom, pinchScaleBounds, sidewaysCenterAfterZoom, pageAtOffset, pageCounterLabel, pageDisplayHeight, pageDisplayWidth, pageOffsets, pageRenderWidth, PDF_PAGE_GAP, zoomAfterPinch, zoomLabel } from './pdfLayout';
+import { listOffsetAfterZoom, nextZoom, pinchScaleBounds, sidewaysCenterAfterZoom, pageAtOffset, pageCounterLabel, pageDisplayHeight, pageDisplayWidth, pageOffsets, pageRenderWidth, PDF_PAGE_GAP, zoomAfterDoubleTap, zoomAfterPinch, zoomLabel } from './pdfLayout';
 
 const A4 = { width: 595, height: 842 };
 const LANDSCAPE = { width: 842, height: 595 };
@@ -131,5 +131,18 @@ describe('pdfLayout', () => {
     expect(listOffsetAfterZoom({ before: [], after: [], scrollY: 50, anchorY: 100, ratio: 2 })).toBe(0);
     expect(listOffsetAfterZoom({ before, after, scrollY: 50, anchorY: 100, ratio: Number.NaN })).toBe(0);
     expect(listOffsetAfterZoom({ before, after, scrollY: 50, anchorY: 100, ratio: 0 })).toBe(0);
+  });
+
+  it('a double tap at 100 % zooms to 200 %, and from any other zoom goes back to 100 % (José 18/11)', () => {
+    // Act / Assert
+    expect(zoomAfterDoubleTap(1)).toBe(2);
+    expect(zoomAfterDoubleTap(1.25)).toBe(1);
+    expect(zoomAfterDoubleTap(3)).toBe(1);
+  });
+
+  it('a double tap with a broken zoom starts from 100 %', () => {
+    // Act / Assert
+    expect(zoomAfterDoubleTap(Number.NaN)).toBe(2);
+    expect(zoomAfterDoubleTap(0)).toBe(2);
   });
 });

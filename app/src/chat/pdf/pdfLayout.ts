@@ -78,6 +78,13 @@ export function zoomAfterPinch(zoom: number, scale: number): number {
   return nearest;
 }
 
+/** The zoom a double tap lands on: in to 200 % from 100 %, back to 100 % from any other (José 18/11). */
+const DOUBLE_TAP_ZOOM = 2;
+export function zoomAfterDoubleTap(zoom: number): number {
+  const base = Number.isFinite(zoom) && zoom > 0 ? zoom : MIN_ZOOM;
+  return base > MIN_ZOOM ? MIN_ZOOM : DOUBLE_TAP_ZOOM;
+}
+
 /** How far the live pinch preview may scale from a zoom without passing the first or last step. */
 export function pinchScaleBounds(zoom: number): { min: number; max: number } {
   const base = Number.isFinite(zoom) && zoom > 0 ? zoom : MIN_ZOOM;

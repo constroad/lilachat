@@ -7,7 +7,7 @@ import { Modal } from '../../ui/Modal';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
 import { abrirConOtraApp } from '../guardarYCompartir';
-import { listOffsetAfterZoom, nextZoom, pageAtOffset, pinchScaleBounds, sidewaysCenterAfterZoom, pageCounterLabel, pageDisplayHeight, pageDisplayWidth, pageOffsets, pageRenderWidth, PDF_PAGE_GAP, PDF_SIDE_MARGIN, PDF_ZOOM_STEPS, zoomAfterPinch, zoomLabel } from './pdfLayout';
+import { listOffsetAfterZoom, nextZoom, pageAtOffset, pinchScaleBounds, sidewaysCenterAfterZoom, pageCounterLabel, pageDisplayHeight, pageDisplayWidth, pageOffsets, pageRenderWidth, PDF_PAGE_GAP, PDF_SIDE_MARGIN, PDF_ZOOM_STEPS, zoomAfterDoubleTap, zoomAfterPinch, zoomLabel } from './pdfLayout';
 import { PDF_FAILURE_TEXT, type ChatPdf } from './pdfSource';
 import { PdfPageView } from './PdfPageView';
 import { usePdfDocument } from './usePdfDocument';
@@ -16,14 +16,16 @@ import { usePdfDocument } from './usePdfDocument';
 const WINDOW_SIZE = 5;
 /** A pinch that does not land on another step eases back to the size it had, in ms. */
 const PINCH_SETTLE_MS = 160;
+/** The longest pause between the two taps of a double tap, in ms. */
+const DOUBLE_TAP_DELAY_MS = 250;
 
 /** Where the fingers were, from the top-left of the pages' area. */
 type ZoomAnchor = { x: number; y: number };
 
 /**
  * The PDF viewer inside the chat (pending 7, design `visor-archivos`): the
- * pages one under the other, zoom by steps (buttons or a two-finger pinch,
- * José 17/11), the «3 / 14» pill to move by page,
+ * pages one under the other, zoom by steps (buttons, a two-finger pinch,
+ * José 17/11, or a double tap, José 18/11), the «3 / 14» pill to move by page,
  * and the chat's other PDFs at the foot. «Abrir con otra app» stays as the
  * way out (a PDF with a password, or a reader that does more).
  */
@@ -49,7 +51,7 @@ export function PdfViewerScreen(props: { pdf: ChatPdf | null; others: readonly C
   const offsets = useMemo(() => pageOffsets(pages, width), [pages, width]);
   const indexes = useMemo(() => pages.map((_, index) => index), [pages]);
 
-  const pinch = usePdfPinch({ zoom, width: screen.width, height: listHeight, onPinchEnd: (scale, anchor) => applyZoom(zoomAfterPinch(zoom, scale), anchor) });
+  const pinch = usePdfPinch({ zoom, width: screen.width, height: listHeight, onPinchEnd: (scale, anchor) => applyZoom(zoomAfterPinch(zoom, scale), anchor), onDoubleTap: (anchor) => applyZoom(zoomAfterDoubleTap(zoom), anchor) });
 
   const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     listY.current = event.nativeEvent.contentOffset.y;
@@ -131,7 +133,7 @@ export function PdfViewerScreen(props: { pdf: ChatPdf | null; others: readonly C
 
           {document.status === 'ready' && document.pages.length > 0 ? (
             <View className="flex-1" onLayout={(event) => setListHeight(event.nativeEvent.layout.height)}>
-              <GestureDetector gesture={pinch.pinch}>
+              <GestureDetector gesture={pinch.outer}>
                 <View collapsable={false} className="flex-1 overflow-hidden">
                   <Animated.View style={[{ flex: 1 }, pinch.previewStyle]}>
                     <GestureDetector gesture={pinch.sideways}>
@@ -255,7 +257,7 @@ export function PdfViewerScreen(props: { pdf: ChatPdf | null; others: readonly C
  * release the screen lands on the nearest zoom step. It runs together with
  * both scrolls, so a scroll already under way never swallows it.
  */
-function usePdfPinch(params: { zoom: number; width: number; height: number; onPinchEnd: (scale: number, anchor: ZoomAnchor) => void }) {
+function usePdfPinch(params: { zoom: number; width: number; height: number; onPinchEnd: (scale: number, anchor: ZoomAnchor) => void; onDoubleTap: (anchor: ZoomAnchor) => void }) {
   const { zoom, width, height } = params;
   const scale = useSharedValue(1);
   const focalX = useSharedValue(0);
@@ -264,6 +266,8 @@ function usePdfPinch(params: { zoom: number; width: number; height: number; onPi
   const maxScale = useSharedValue(1);
   const latestEnd = useRef(params.onPinchEnd);
   latestEnd.current = params.onPinchEnd;
+  const latestDoubleTap = useRef(params.onDoubleTap);
+  latestDoubleTap.current = params.onDoubleTap;
   useEffect(() => {
     const bounds = pinchScaleBounds(zoom);
     minScale.value = bounds.min;
@@ -271,6 +275,7 @@ function usePdfPinch(params: { zoom: number; width: number; height: number; onPi
   }, [zoom, minScale, maxScale]);
   // Only numbers cross to JS: a JS function passed as an argument of `runOnJS` does not arrive.
   const finish = useCallback((pinchScale: number, x: number, y: number) => latestEnd.current(pinchScale, { x, y }), []);
+  const finishDoubleTap = useCallback((x: number, y: number) => latestDoubleTap.current({ x, y }), []);
   const gestures = useMemo(() => {
     const sideways = Gesture.Native();
     const list = Gesture.Native().simultaneousWithExternalGesture(sideways);
@@ -287,8 +292,16 @@ function usePdfPinch(params: { zoom: number; width: number; height: number; onPi
         if (success) runOnJS(finish)(scale.value, focalX.value, focalY.value);
         else scale.value = withTiming(1, { duration: PINCH_SETTLE_MS });
       });
-    return { pinch, sideways, list };
-  }, [finish, scale, focalX, focalY, minScale, maxScale]);
+    // Its spot is in the same frame as the pinch's fingers: both live on the outer detector.
+    const doubleTap = Gesture.Tap()
+      .numberOfTaps(2)
+      .maxDelay(DOUBLE_TAP_DELAY_MS)
+      .simultaneousWithExternalGesture(sideways, list)
+      .onEnd((event, success) => {
+        if (success) runOnJS(finishDoubleTap)(event.x, event.y);
+      });
+    return { outer: Gesture.Simultaneous(pinch, doubleTap), sideways, list };
+  }, [finish, finishDoubleTap, scale, focalX, focalY, minScale, maxScale]);
   // Scaled around the fingers: RN scales around the middle, the shift moves that origin.
   const previewStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: (focalX.value - width / 2) * (1 - scale.value) }, { translateY: (focalY.value - height / 2) * (1 - scale.value) }, { scale: scale.value }],

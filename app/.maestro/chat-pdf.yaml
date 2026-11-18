@@ -69,3 +69,21 @@ appId: com.lilachat.app
     visible: "1 / 4"
     timeout: 20000
 - takeScreenshot: p4-visor
+
+# Double tap (José 18/11): in to 200 % and, a second one, back to 100 %.
+- doubleTapOn:
+    id: "pdf-paginas"
+- extendedWaitUntil:
+    visible:
+      id: "pdf-zoom"
+      text: "200 %"
+    timeout: 5000
+- takeScreenshot: p5-doble-toque-200
+- doubleTapOn:
+    id: "pdf-paginas"
+- extendedWaitUntil:
+    visible:
+      id: "pdf-zoom"
+      text: "100 %"
+    timeout: 5000
+- assertVisible: "1 / 4"

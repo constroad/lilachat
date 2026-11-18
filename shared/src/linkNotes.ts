@@ -146,7 +146,9 @@ export function buildCategoryView(items: readonly LinkNoteItem[], categories: re
   const nameOf = new Map(categories.map((category) => [category.id, category.name]));
   const needle = fold(options.query.trim());
   const matches = (one: LinkNoteItem) => !needle || fold([one.link.author, one.link.text, one.link.url, nameOf.get(bucketOf(one))].filter(Boolean).join(' ')).includes(needle);
-  const newestFirst = (list: LinkNoteItem[]) => [...list].sort((a, b) => b.at.localeCompare(a.at) || b.seq - a.seq);
+  // `at` is an ISO timestamp: plain string order is date order, without a collator per call (Hermes).
+  const byNewest = (a: LinkNoteItem, b: LinkNoteItem) => (a.at < b.at ? 1 : a.at > b.at ? -1 : b.seq - a.seq);
+  const newestFirst = (list: LinkNoteItem[]) => [...list].sort(byNewest);
   const found = items.filter(matches);
 
   const review = { commentBait: items.filter((one) => one.link.commentBait).length, unreadable: items.filter((one) => one.link.status === 'unreadable').length };

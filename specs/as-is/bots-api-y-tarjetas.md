@@ -70,6 +70,9 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
 - Síncronos (se espera la respuesta): `command.invoked`, `shortcut.invoked`, `form.submitted`,
   `form.preview.requested`, `link.status`, `link.revoke`, `dali.knowledge.requested`, `dali.faq.add`,
   `visit.draft.requested` y los `client.*.requested` del canal del cliente.
+- `llm.task.requested` (18/11): una tarea del modelo que Lilachat le pide a agentes por la app Lila
+  (`agentesModel.ts`, 10 s). La firma la instalación de Lila de un espacio de un miembro del chat
+  (`developerAppClientIds()` de `botApps.ts`). Agentes elige el modelo; Lilachat no guarda claves.
 - En la mini, `agentes.constroad.com` se llama por `http://127.0.0.1:3012` y cae a la URL pública
   si nadie escucha (28/10). La lista vive en `botLoopback.ts`.
 - Con `channels:history` la app oye todo el canal. Los archivos llegan en `message.files` con dirección

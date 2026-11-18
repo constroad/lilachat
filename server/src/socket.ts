@@ -161,9 +161,13 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
 
       // Una llamada que sigue sonando en uno de mis chats (FL8): conecté
       // tarde —abrí la app desde el push «Llamada de…»— y todavía se contesta.
+      // `call.ringing` always goes, empty too: a phone still ringing for a call the
+      // server no longer has (a restart, a lost «colgó») ends it (José 17/11).
+      const ringingChatIds: string[] = [];
       if (hayOfertasPendientes()) {
         const misChats = await ChatModel.find({ 'members.userId': userId }).select('_id').lean();
         for (const oferta of ofertasVigentes(misChats.map((chat) => String(chat._id)), me)) {
+          ringingChatIds.push(String((oferta as { chatId: string }).chatId));
           socket.emit('call.offer', oferta);
           // Y sus candidatos, DESPUÉS de la oferta (FL11): sin ellos el audio
           // no cruzaba y la llamada quedaba en «Conectando…».
@@ -172,6 +176,7 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
           }
         }
       }
+      socket.emit('call.ringing', { chatIds: ringingChatIds });
     })();
 
     socket.on('disconnect', () => {

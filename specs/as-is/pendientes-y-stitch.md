@@ -25,7 +25,10 @@ del 30/10 al 05/11. Hay que corregirlo.
 ### Lo que puedo hacer yo (Lilachat)
 
 1. **254** Que la cuenta creada por correo agregue o cambie su teléfono con código. No empezó.
-2. **265** Las llamadas siguen la regla vieja del push. `server/src/pushService.ts:258`
+2. **Llamada colgada (José 17/11)**: Wilson quedó en llamada tras el «no contestó» de José, y la
+   rellamada dio «está en otra llamada». Arreglado en código el 17/11 (`llamadas.md` §2). Falta
+   probarlo entre dos teléfonos y publicar server, web y OTA.
+2b. **265** Las llamadas siguen la regla vieja del push. `server/src/pushService.ts:258`
    (`avisarLlamada`) calla el teléfono si hay cualquier socket vivo. Hay que igualarla a la de
    los mensajes (`:97`, que solo salta el navegador web). Hallazgo nuevo: no está en ningún spec.
 3. **199** Los 3 renders de `ChatScreen` por envío. Quedó pausado hasta medir con la Mac libre.
@@ -47,7 +50,7 @@ del 30/10 al 05/11. Hay que corregirlo.
 16. **322** Embudo de Dali en el teléfono: hoy repite cifras. Van las baldosas de `dl-08 v5`.
 17. `gst-01`: falta la auditoría contra la captura. `sc-04`: falta la página central de
     la invitación. `sc-05`: buscar también por teléfono.
-18. **111**: tachar los ítems 75, 85, 87 y 88 del backlog. Lo de Lilachat ya está hecho.
+18. **111**: tachar los ítems 75, 85, 87 y 88 del backlog. agentes confirmó el 17/11 que están hechos.
 
 ### Necesita decisión de José
 
@@ -69,9 +72,12 @@ del 30/10 al 05/11. Hay que corregirlo.
 
 ### Depende de otro sistema
 
-- **agentes**: backlog 75, 85, 87 y 88 (111). Mandar `link.mime` en las tarjetas (311).
-  Sumar `ar` a su lista de `metodo` (309). Instalar la app Dali con `prospects:write` en Test
-  para el E2E (319/322). Las tarjetas de los comandos de la tarea 50.
+- **agentes** (respuesta del 17/11): 309 (`ar` en `metodo`, `ff9de68`), 311 (`link.mime` en los
+  PDF, `cbd14ed`) y 111 ya están hechos. La app Dali en Test (319/322) no está: la instala un admin
+  del espacio (José), y en agentes Dali solo está configurado para Constroad. Las tarjetas de la tarea 50.
+- **Reparto de informes con Portal (editor 2.0, 17/11)**: Lilachat toma 304, 276 y `la-08`/`la-09`.
+  Portal suma VAL-SRV y LIQ-SRV al editor; Lilachat los agrega a `EMBED_CREATE_TYPES` con `money`
+  cuando llegue el sha, junto con APR-ADI y SOL-IMP. 293, 317 y 273 quedan para Portal.
 - **Portal**: puntos 3 y 6 de José del 12/11 (273); «0 de 0» y escantillón (276); que el autollenado
   de CTL-IMP marque `horaInicio`/`temperaturaAmbiente` (293); dibujar los contornos AR en el
   croquis (317); línea de tiempo y filtro de `o-09`; PDF `o-14`/`o-15`; texto de `gst-01`;

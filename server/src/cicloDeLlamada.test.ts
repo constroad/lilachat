@@ -80,6 +80,22 @@ describe('cicloDeLlamada', () => {
     expect(fines).toEqual([{ chatId, from: ana }]);
   });
 
+  it('the ring that expires on the server tells every member by socket (José 17/11: Wilson kept the call)', async () => {
+    ofrecer();
+    reloj += 31_000;
+    await pendiente!();
+
+    const ends = emitidos.filter((e) => e.evento === 'call.end');
+    expect(ends.map((e) => e.a).sort()).toEqual([ana, jose].sort());
+    expect(ends[0]?.frame).toEqual({ chatId, motivo: 'sin-respuesta' });
+  });
+
+  it('a hang-up relayed by the socket does not send a second end', async () => {
+    ofrecer();
+    await alTerminar(chatId);
+    expect(emitidos.filter((e) => e.evento === 'call.end')).toEqual([]);
+  });
+
   it('contestada: apaga los demás teléfonos al contestar y al colgar deja la duración, sin push', async () => {
     ofrecer(true);
     reloj += 4_000;

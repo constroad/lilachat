@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
-import { mediaState, nextCallState, ringDeadline, ringStart, waitBeforeGivingUp, type CallEvent, type CallState, type MediaState } from '@lilachat/shared';
+import { incomingOfferAction, isStaleRing, mediaState, nextCallState, ringDeadline, ringStart, waitBeforeGivingUp, type CallEvent, type CallState, type MediaState } from '@lilachat/shared';
 import { canSwitchCamera, otherFacing, readNoisePreference, writeNoisePreference, type CameraFacing } from '@lilachat/shared';
 import { currentSocket } from '../useSocket';
 import { createCallPeer, errorName, fetchIceServers, mediaErrorText, type CallPeer, type Candidate, type Sdp } from './callPeer';
@@ -141,7 +141,7 @@ export function useWebCall(params: { jwt: string; connected: boolean; nameOf: (o
     return () => window.clearTimeout(timer);
   }, [active, media, giveUp]);
 
-  useIncomingSignals({ connected: params.connected, jwt: params.jwt, stateRef, peerRef, early, isThisCall, apply, setCall, startSession, openPeer, nameOfRef });
+  useIncomingSignals({ connected: params.connected, jwt: params.jwt, stateRef, peerRef, early, isThisCall, callChatId: () => sessionRef.current?.chatId ?? null, release, apply, setCall, startSession, openPeer, nameOfRef });
 
   const call = useCallback(async (chatId: string, peerName: string, video: boolean) => {
     if (stateRef.current && stateRef.current.fase !== 'terminada') return;
@@ -277,6 +277,8 @@ function useIncomingSignals(deps: {
   peerRef: MutableRefObject<CallPeer | null>;
   early: MutableRefObject<Candidate[]>;
   isThisCall: (chatId: string) => boolean;
+  callChatId: () => string | null;
+  release: () => void;
   apply: (event: CallEvent) => void;
   setCall: (next: CallState | null) => void;
   startSession: (next: Session) => void;
@@ -293,11 +295,12 @@ function useIncomingSignals(deps: {
   useEffect(() => {
     if (!socket) return;
     const incoming = async (offer: IncomingOffer) => {
-      const { stateRef, isThisCall, setCall, startSession, openPeer, nameOfRef } = latest.current;
-      if (stateRef.current && stateRef.current.fase !== 'terminada') {
-        if (!isThisCall(offer.chatId)) socket.emit('call.reject', { chatId: offer.chatId, motivo: 'ocupado' });
-        return;
-      }
+      const { stateRef, callChatId, release, setCall, startSession, openPeer, nameOfRef } = latest.current;
+      // José 17/11: a stale ring of the same chat gives way to the new offer instead of «busy».
+      const action = incomingOfferAction({ state: stateRef.current, callChatId: callChatId(), offerChatId: offer.chatId });
+      if (action === 'busy') socket.emit('call.reject', { chatId: offer.chatId, motivo: 'ocupado' });
+      if (action === 'busy' || action === 'ignore') return;
+      if (action === 'replace') release();
       startSession({ chatId: offer.chatId, peerName: nameOfRef.current(offer), videoCall: offer.video === true });
       setCall({ fase: 'sonando', desde: ringStart(offer.quedaMs, Date.now()), entrante: true });
       try {
@@ -338,6 +341,11 @@ function useIncomingSignals(deps: {
     socket.on('call.ice', candidate);
     socket.on('call.end', ended);
     socket.on('call.reject', ended);
+    const ringing = (frame: { chatIds?: string[] }) => {
+      const { stateRef, callChatId, apply } = latest.current;
+      if (isStaleRing({ state: stateRef.current, callChatId: callChatId(), ringingChatIds: frame.chatIds ?? [] })) apply({ tipo: 'colgada', at: Date.now(), porMi: false });
+    };
+    socket.on('call.ringing', ringing);
     return () => {
       socket.off('call.offer', incoming);
       socket.off('call.answer', answered);
@@ -345,6 +353,7 @@ function useIncomingSignals(deps: {
       socket.off('call.ice', candidate);
       socket.off('call.end', ended);
       socket.off('call.reject', ended);
+      socket.off('call.ringing', ringing);
     };
   }, [socket, deps.connected, deps.jwt]);
 }

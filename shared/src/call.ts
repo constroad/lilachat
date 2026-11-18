@@ -169,3 +169,23 @@ export function summarizeEndedCall(estado: CallState): { perdida: boolean; durac
     duracion: formatCallDuration(estado, estado.terminadaEn),
   };
 }
+
+/**
+ * What a phone does with an offer that arrives (José 17/11). The ring lives in the
+ * server's memory: a restart or a lost «colgó» can leave a phone ringing for a call
+ * nobody else has. Calling again in that chat must ring, not answer «busy».
+ */
+export type OfferAction = 'ring' | 'busy' | 'replace' | 'ignore';
+
+export function incomingOfferAction(params: { state: CallState | null; callChatId: string | null; offerChatId: string }): OfferAction {
+  const { state } = params;
+  if (!state || state.fase === 'terminada') return 'ring';
+  if (params.callChatId !== params.offerChatId) return 'busy';
+  if (state.fase === 'sonando') return 'replace';
+  return state.fase === 'activa' ? 'ignore' : 'busy';
+}
+
+/** On reconnecting, a ring the server no longer has is over: nobody can answer it. */
+export function isStaleRing(params: { state: CallState | null; callChatId: string | null; ringingChatIds: readonly string[] }): boolean {
+  return params.state?.fase === 'sonando' && params.callChatId !== null && !params.ringingChatIds.includes(params.callChatId);
+}

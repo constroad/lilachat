@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, PermissionsAndroid, Platform, Vibration } from 'react-native';
+import { AppState, Vibration } from 'react-native';
 import { setAudioModeAsync } from 'expo-audio';
 import {
   RTCPeerConnection,
@@ -10,7 +10,7 @@ import {
 } from 'react-native-webrtc';
 import type RTCIceCandidateEvent from 'react-native-webrtc/lib/typescript/RTCIceCandidateEvent';
 import type RTCTrackEvent from 'react-native-webrtc/lib/typescript/RTCTrackEvent';
-import { callReactionOf, createAckWatch, nextCallState, reactionKeyOf, reactionNotSeenNotice, ringDeadline, type CallReaction, type CallState, type CameraFacing } from '@lilachat/shared';
+import { callReactionOf, createAckWatch, incomingOfferAction, isStaleRing, nextCallState, reactionKeyOf, reactionNotSeenNotice, ringDeadline, type CallReaction, type CallState, type CameraFacing } from '@lilachat/shared';
 import { switchCameraTrack } from './cameraSwitch';
 import { useNoiseSuppression } from './noiseSuppression';
 import { useScreenShare } from './useScreenShare';
@@ -22,6 +22,7 @@ import { detenerTonoDeLlamando, iniciarTonoDeLlamando } from './tonoDeLlamando';
 import { llamadaNativa, type AccionDeAviso } from '../../modules/llamada-entrante/src';
 import type { CallNoticeTap } from '../../modules/llamada-entrante/src';
 import { reportarError } from '../ui/reportarError';
+import { requestCallPermissions } from './callPermissions';
 
 /** El SDP y los candidatos viajan como objetos planos por el socket. */
 type Sdp = { type: 'offer' | 'answer'; sdp: string };
@@ -41,15 +42,6 @@ export type AutorDeLlamada = { nombre?: string | null; telefono?: string };
  * guarda y se aplica al fijarla, o `addIceCandidate` lo rechaza y se pierde media
  * llamada. STUN + TURN de Cloudflare, con credencial corta del server (`iceServers`).
  */
-async function pedirPermisos(conVideo: boolean): Promise<boolean> {
-  if (Platform.OS !== 'android') return true;
-  const permisos = conVideo
-    ? [PermissionsAndroid.PERMISSIONS.RECORD_AUDIO, PermissionsAndroid.PERMISSIONS.CAMERA]
-    : [PermissionsAndroid.PERMISSIONS.RECORD_AUDIO];
-  const resultado = await PermissionsAndroid.requestMultiple(permisos);
-  return permisos.every((permiso) => resultado[permiso] === PermissionsAndroid.RESULTS.GRANTED);
-}
-
 /** El patrón del timbre: vibra 0,8 s, pausa 1,2 s, repite mientras suena. */
 const TIMBRE = [0, 800, 1200];
 /**
@@ -325,12 +317,11 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       /** Lo que le queda de timbre, si llegó tarde (FL8.1). */
       quedaMs?: number;
     }) => {
-      const actual = stateRef.current;
-      // Si YA hay una llamada, la nueva recibe «ocupado» sin pisar la que está.
-      if (actual && actual.fase !== 'terminada') {
-        socket.emit('call.reject', { chatId: data.chatId, motivo: 'ocupado' });
-        return;
-      }
+      // José 17/11: a stale ring of the same chat gives way to the new offer instead of «busy».
+      const action = incomingOfferAction({ state: stateRef.current, callChatId: chatIdRef.current, offerChatId: data.chatId });
+      if (action === 'busy') socket.emit('call.reject', { chatId: data.chatId, motivo: 'ocupado' });
+      if (action === 'busy' || action === 'ignore') return;
+      if (action === 'replace') limpiar();
       chatIdRef.current = data.chatId;
       setChatId(data.chatId);
       nombreRef.current = nombreDeRef.current(data.chatId, { nombre: data.fromName, telefono: data.fromPhone });
@@ -390,6 +381,10 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       if (esDeEstaLlamada(data.chatId)) aplicar({ tipo: 'answering', at: Date.now() });
     };
 
+    const ringing = (data: { chatIds?: string[] }) => {
+      if (isStaleRing({ state: stateRef.current, callChatId: chatIdRef.current, ringingChatIds: data.chatIds ?? [] })) aplicar({ tipo: 'colgada', at: Date.now(), porMi: false });
+    };
+
     const terminada = (data: { chatId: string; motivo?: string }) => {
       if (!esDeEstaLlamada(data.chatId)) return;
       aplicar(
@@ -399,12 +394,6 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       );
     };
 
-    socket.on('call.offer', entrante);
-    socket.on('call.answer', contestada);
-    socket.on('call.answering', answering);
-    socket.on('call.ice', hielo);
-    socket.on('call.end', terminada);
-    socket.on('call.reject', terminada);
     const onReaction = (data: { chatId: string; reaction?: unknown; key?: unknown }) => {
       const played = esDeEstaLlamada(data.chatId) ? callReactionOf(data.reaction) : null;
       if (!played) return;
@@ -416,25 +405,22 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       const key = esDeEstaLlamada(data.chatId) ? reactionKeyOf(data.key) : null;
       if (key) ackWatch.seen(key);
     };
-    socket.on('call.reaction', onReaction);
-    socket.on('call.reaction.ack', onReactionSeen);
+    const listeners: [string, Parameters<typeof socket.on>[1]][] = [
+      ['call.offer', entrante], ['call.answer', contestada], ['call.answering', answering], ['call.ice', hielo],
+      ['call.end', terminada], ['call.reject', terminada], ['call.ringing', ringing],
+      ['call.reaction', onReaction], ['call.reaction.ack', onReactionSeen],
+    ];
+    for (const [event, listener] of listeners) socket.on(event, listener);
 
     return () => {
-      socket.off('call.reaction', onReaction);
-      socket.off('call.reaction.ack', onReactionSeen);
-      socket.off('call.offer', entrante);
-      socket.off('call.answer', contestada);
-      socket.off('call.answering', answering);
-      socket.off('call.ice', hielo);
-      socket.off('call.end', terminada);
-      socket.off('call.reject', terminada);
+      for (const [event, listener] of listeners) socket.off(event, listener);
     };
-  }, [params.jwt, aplicar, crearPc, drenarCandidatos, ackWatch]);
+  }, [params.jwt, aplicar, crearPc, drenarCandidatos, ackWatch, limpiar]);
 
   const llamar = useCallback(
     async (chatDestino: string, nombre: string, conVideo: boolean) => {
       if (stateRef.current && stateRef.current.fase !== 'terminada') return;
-      if (!(await pedirPermisos(conVideo))) return;
+      if (!(await requestCallPermissions(conVideo))) return;
       chatIdRef.current = chatDestino;
       setChatId(chatDestino);
       nombreRef.current = nombre;
@@ -479,7 +465,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
     if (!pc) return;
     announceAnswering();
     const conVideo = conVideoRef.current;
-    if (!(await pedirPermisos(conVideo))) return;
+    if (!(await requestCallPermissions(conVideo))) return;
     try {
       await agregarMedios(pc, conVideo);
       const respuesta = await pc.createAnswer();

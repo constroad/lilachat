@@ -25,6 +25,15 @@ reparte señales (es un «cartero»); los medios van directo o por TURN.
   conecta en ese tiempo (por ejemplo, al tocar el push) la recibe con sus candidatos ICE
   (hasta 40). Un reinicio del server corta la llamada.
 - Contestar en un dispositivo corta el timbre en los demás (`contestada-en-otro`).
+- **Timbre huérfano (José 17/11).** José llamó a Wilson: le salió «no contestó» y la pantalla
+  de Wilson siguió en llamada; al rellamar, «está en otra llamada». El server se reinició 14 veces
+  ese día y el timbre vive en memoria. Tres arreglos:
+  - Al vencer el timbre en el server, todos los miembros reciben `call.end` con
+    `motivo: 'sin-respuesta'` por socket, no solo el push que apaga la pantalla nativa.
+  - Al conectar, el server manda `call.ringing { chatIds }` (vacío también). Un teléfono que
+    sigue sonando en un chat que no está en la lista la da por terminada (`isStaleRing`).
+  - Una oferta nueva en el chat que todavía suena reemplaza al timbre viejo, en vez de
+    responder «ocupado» (`incomingOfferAction`, motor en `shared/src/call.ts`, APK y web).
 - **APK con la app cerrada:** llamada entrante a pantalla completa con tono y «deslizar
   para contestar» (`DeslizarParaContestar.tsx`, módulo nativo `llamada-entrante`:
   `AvisoDeLlamada.kt`, `LlamadaEnCurso.kt`). Contestar o rechazar con el teléfono
@@ -148,6 +157,8 @@ depende de Portal ni de Inframaq.
 - **11/11** Traza de la llamada para diagnóstico.
 - **13/11** Apagar mi cámara no oculta la del otro.
 - **14/11** APK 0.1.183: PiP y cámara viva de fondo.
+- **17/11** Timbre huérfano: `call.end` al vencer, `call.ringing` al conectar y la oferta
+  nueva del mismo chat reemplaza la vieja. Sin probar entre dos teléfonos.
 
 ## 5. Diseños de Stitch relacionados
 
@@ -168,6 +179,10 @@ depende de Portal ni de Inframaq.
 - El APK no tiene historial de llamadas (verificado en código).
 - Salas y timbres en memoria: un reinicio del server corta toda llamada en curso
   (decisión de diseño).
+- El 17/11 el server se reinició 14 veces. Cada reinicio corta las llamadas en curso. La causa
+  de tantos reinicios no está investigada.
+- Un «ocupado» de un solo dispositivo termina la llamada para todos los del que recibe
+  (`call.reject` → `alTerminar`). Sin cambiar.
 
 ## 7. Pruebas
 

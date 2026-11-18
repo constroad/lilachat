@@ -152,6 +152,27 @@ describe('web call', () => {
     expect(result.current.session?.chatId).toBe('c1');
   });
 
+  /** José 17/11: Wilson's screen kept a dead ring and calling again said «está en otra llamada». */
+  it('a new offer in the chat that still rings replaces the stale ring instead of «busy»', async () => {
+    const { result } = mount();
+    await receive('call.offer', { chatId: 'c4', fromName: 'José', sdp: { type: 'offer', sdp: 'old-offer' } });
+    const stale = FakePeer.last;
+    await receive('call.offer', { chatId: 'c4', fromName: 'José', sdp: { type: 'offer', sdp: 'new-offer' } });
+    expect(sent.some((one) => one.event === 'call.reject')).toBe(false);
+    expect(stale.closed).toBe(true);
+    expect(FakePeer.last.remote).toEqual({ type: 'offer', sdp: 'new-offer' });
+    expect(result.current.state).toMatchObject({ fase: 'sonando', entrante: true });
+  });
+
+  it('on reconnecting, a ring the server no longer has ends; one it still has keeps ringing', async () => {
+    const { result } = mount();
+    await receive('call.offer', { chatId: 'c5', fromName: 'José' });
+    await receive('call.ringing', { chatIds: ['c5'] });
+    expect(result.current.state).toMatchObject({ fase: 'sonando' });
+    await receive('call.ringing', { chatIds: [] });
+    expect(result.current.state).toMatchObject({ fase: 'terminada', motivo: 'colgada', porMi: false });
+  });
+
   it('the other hangs up, or is busy: it ends, and says why', async () => {
     const { result } = mount();
     await act(() => result.current.call('c1', 'Ana', false));

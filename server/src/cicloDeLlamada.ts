@@ -76,7 +76,7 @@ function expireAt(chatId: string, since: number, ms: number): void {
     const deadline = offerDeadline(chatId);
     if (deadline === null) return;
     if (ahora() < deadline) return expireAt(chatId, since, deadline - ahora() + MARGEN_DE_VENCIMIENTO_MS);
-    await alTerminar(chatId);
+    await alTerminar(chatId, { tellSockets: true });
   }, ms);
 }
 
@@ -109,10 +109,17 @@ export async function alContestar(chatId: string): Promise<void> {
   await deps.avisarFin({ chatId, ...miembros }).catch((error) => reportar('apagar los timbres', error));
 }
 
-export async function alTerminar(chatId: string): Promise<void> {
+/**
+ * `tellSockets`: the ring expired on the server, so no phone sent `call.end`. Every
+ * member hears it by socket too (José 17/11: Wilson's screen kept a call nobody had).
+ */
+export async function alTerminar(chatId: string, options: { tellSockets?: boolean } = {}): Promise<void> {
   if (!deps) return;
   const fin = terminarLlamada(chatId, ahora());
   if (!fin) return;
+  if (options.tellSockets) {
+    for (const member of fin.members) deps.emitirA(member, 'call.end', { chatId, motivo: 'sin-respuesta' });
+  }
   await Promise.all([
     deps.avisarFin({ chatId, from: fin.from, members: fin.members }).catch((error) => reportar('apagar los timbres', error)),
     escribirLinea(chatId, fin).catch((error) => reportar('escribir la línea', error)),

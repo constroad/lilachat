@@ -4,6 +4,8 @@ import {
   CALL_TIMEOUT_MS,
   callHoldsScreen,
   formatCallDuration,
+  incomingOfferAction,
+  isStaleRing,
   ringDeadline,
   nextCallState,
   summarizeEndedCall,
@@ -191,5 +193,47 @@ describe('answering', () => {
     const answering = nextCallState(llamando, { tipo: 'answering', at: 25_000 });
 
     expect(nextCallState(answering, { tipo: 'contestada', at: 31_000 })).toMatchObject({ fase: 'activa', conectadaEn: 31_000 });
+  });
+});
+
+/**
+ * José 17/11: called Wilson, got «no contestó» while Wilson's screen kept the call; calling
+ * again said «está en otra llamada». The server restarted 14 times that day and the ring
+ * lives in memory, so a phone can keep a ring nobody else remembers.
+ */
+describe('incomingOfferAction', () => {
+  const dialing: CallState = { fase: 'llamando', desde: 1, entrante: false };
+  const ended: CallState = { fase: 'terminada', desde: 1, entrante: true, conectadaEn: null, terminadaEn: 2, motivo: 'sin-respuesta', porMi: false };
+
+  it('rings when there is no call or the last one ended', () => {
+    expect(incomingOfferAction({ state: null, callChatId: null, offerChatId: 'a' })).toBe('ring');
+    expect(incomingOfferAction({ state: ended, callChatId: 'a', offerChatId: 'a' })).toBe('ring');
+  });
+
+  it('a new offer in the chat that still rings replaces the stale ring instead of «busy»', () => {
+    expect(incomingOfferAction({ state: sonando, callChatId: 'a', offerChatId: 'a' })).toBe('replace');
+  });
+
+  it('another chat while in a call is busy', () => {
+    expect(incomingOfferAction({ state: sonando, callChatId: 'a', offerChatId: 'b' })).toBe('busy');
+    expect(incomingOfferAction({ state: activa, callChatId: 'a', offerChatId: 'b' })).toBe('busy');
+  });
+
+  it('the same chat while talking is ignored; both dialing each other is busy', () => {
+    expect(incomingOfferAction({ state: activa, callChatId: 'a', offerChatId: 'a' })).toBe('ignore');
+    expect(incomingOfferAction({ state: dialing, callChatId: 'a', offerChatId: 'a' })).toBe('busy');
+  });
+});
+
+describe('isStaleRing', () => {
+  it('a ring the server no longer has after reconnecting is stale', () => {
+    expect(isStaleRing({ state: sonando, callChatId: 'a', ringingChatIds: [] })).toBe(true);
+    expect(isStaleRing({ state: sonando, callChatId: 'a', ringingChatIds: ['b'] })).toBe(true);
+  });
+
+  it('a ring the server still has, a call already talking or no call are not', () => {
+    expect(isStaleRing({ state: sonando, callChatId: 'a', ringingChatIds: ['a'] })).toBe(false);
+    expect(isStaleRing({ state: activa, callChatId: 'a', ringingChatIds: [] })).toBe(false);
+    expect(isStaleRing({ state: null, callChatId: null, ringingChatIds: [] })).toBe(false);
   });
 });

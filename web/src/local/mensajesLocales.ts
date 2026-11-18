@@ -1,5 +1,5 @@
 import Dexie from 'dexie';
-import { conciliarPagina, seqsQueSobran, type Cursors, type Reaccion } from '@lilachat/shared';
+import { conciliarPagina, seqsQueSobran, type Cursors, type LinkCard, type Reaccion } from '@lilachat/shared';
 import type { BaseLocal } from './baseLocal';
 import type { ChatMessage, ChatSummary } from '../chat/types';
 
@@ -108,4 +108,9 @@ export async function aplicarResumenDeHilo(base: BaseLocal, { chatId, raiz, hilo
 /** Reacciones (20/10): la lista que manda el server reemplaza la guardada. */
 export async function aplicarReacciones(base: BaseLocal, { chatId, seq, reacciones }: { chatId: string; seq: number; reacciones: Reaccion[] }): Promise<void> {
   await base.mensajes.where('[chatId+seq]').equals([chatId, seq]).modify({ reacciones });
+}
+
+/** `msg.link` (José 18/11): a link's stored card changed (read, moved, retried) and the bubble redraws. */
+export async function applyLinkCard(base: BaseLocal, { chatId, seq, link }: { chatId: string; seq: number; link: LinkCard }): Promise<void> {
+  await base.mensajes.where('[chatId+seq]').equals([chatId, seq]).modify({ link });
 }

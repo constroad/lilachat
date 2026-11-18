@@ -30,6 +30,7 @@ import type { ChatSummary, MensajeEnPantalla } from './types';
 import { Avatar } from '../ui/Avatar';
 import { AlbumGridWeb } from './AlbumGridWeb';
 import { photoBubbleStyle } from './photoBubbleStyle';
+import { bodyIsOnlyLink, storedLinkOf, StoredLinkInBubble } from './links/StoredLinkInBubble';
 
 /** Las clases de color de autor, escritas enteras para que Tailwind las genere. */
 const COLOR_DE_AUTOR = ['', 'text-autor-1', 'text-autor-2', 'text-autor-3', 'text-autor-4', 'text-autor-5', 'text-autor-6'];
@@ -252,8 +253,10 @@ function CitaDelMensaje({ seq, mio }: { seq: number; mio: boolean }) {
 
 function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; mio: boolean; album?: readonly MensajeEnPantalla[] }) {
   const { nombres, yo, jwt, chat, onVerFoto, onVerPdf } = useConversacion();
+  // José 18/11: a notes chat with its links sorted draws the card the server stored, not the generic preview.
+  const stored = storedLinkOf(mensaje, chat);
   // La tarjeta del primer enlace; los chats secretos no la piden.
-  const vista = useVistaPrevia(chat.encrypted || mensaje.media ? null : primerEnlace(mensaje.body), jwt);
+  const vista = useVistaPrevia(chat.encrypted || mensaje.media || stored ? null : primerEnlace(mensaje.body), jwt);
   if (mensaje.deletedAt) return <p className="italic opacity-80">Se eliminó este mensaje</p>;
   if (mensaje.envelope) {
     // Chat secreto: la web todavía no tiene un sobre propio (§54.4).
@@ -312,14 +315,14 @@ function MessageContent({ mensaje, mio, album }: { mensaje: MensajeEnPantalla; m
           <FileText size={18} /> <span className="truncate">{readableFileName(media.fileName)}</span> <Download size={16} className="shrink-0 opacity-70" />
         </a>
       ) : null}
-      {vista ? <TarjetaDeEnlace vista={vista} mio={mio} /> : null}
+      {stored ? <StoredLinkInBubble jwt={jwt} chatId={chat.id} seq={mensaje.seq} at={mensaje.at} link={stored} /> : vista ? <TarjetaDeEnlace vista={vista} mio={mio} /> : null}
       {mensaje.kind === 'contact' && mensaje.contact && !mensaje.deletedAt ? (
         // A shared contact (pending 9): the card; its `body` is only the summary for the list and the search.
         <ContactCardWeb contact={mensaje.contact} mio={mio} jwt={jwt} yo={yo} />
       ) : mensaje.kind === 'location' && mensaje.location && !mensaje.deletedAt ? (
         // A shared location (pending 11): the map card; its `body` is only «Ubicación».
         <LocationCardWeb location={mensaje.location} mio={mio} live={{ jwt, chatId: chat.id, seq: mensaje.seq }} />
-      ) : mensaje.body ? (
+      ) : mensaje.body && !(stored && bodyIsOnlyLink(mensaje.body)) ? (
         <TextoDelMensaje clave={mensaje.clientKey} texto={mensaje.body} menciones={mensaje.menciones} nombres={nombres} yo={yo} mio={mio} />
       ) : null}
     </>

@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it } from 'vitest';
 import { BaseLocal } from './baseLocal';
 import {
+  applyLinkCard,
   aplicarReacciones,
   aplicarResumenDeHilo,
   aplicarBorrado,
@@ -203,5 +204,24 @@ describe('aplicarReacciones', () => {
     expect((await base.mensajes.get(['c', 2]))?.reacciones).toBeUndefined();
     base.close();
     await base.delete();
+  });
+});
+
+describe('applyLinkCard (msg.link, José 18/11)', () => {
+  it('puts the new card on that message only', async () => {
+    // Arrange
+    const local = new BaseLocal(`link-${Math.random()}`);
+    await local.mensajes.bulkPut([
+      { chatId: 'c', seq: 1, senderId: 'a', clientKey: 'k1', kind: 'text', body: 'https://www.instagram.com/reel/abc/', at: 'x' },
+      { chatId: 'c', seq: 2, senderId: 'a', clientKey: 'k2', kind: 'text', body: 'nota', at: 'x' },
+    ]);
+    const link = { url: 'https://www.instagram.com/reel/abc/', platform: 'instagram' as const, format: 'reel' as const, status: 'ready' as const, categoryId: 'c2', categoryBy: 'user' as const };
+    // Act
+    await applyLinkCard(local, { chatId: 'c', seq: 1, link });
+    // Assert
+    expect((await local.mensajes.get(['c', 1]))?.link).toEqual(link);
+    expect((await local.mensajes.get(['c', 2]))?.link).toBeUndefined();
+    local.close();
+    await local.delete();
   });
 });

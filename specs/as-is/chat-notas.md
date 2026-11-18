@@ -76,7 +76,28 @@ Diseño en Stitch `nl-01` a `nl-03` (ver §5). Prototipo navegable en https://cl
   - los filtros de revisión.
 - `platformLabel` arma «INSTAGRAM · REEL».
 
-**Web y APK:** en implementación (18/11). Este as-is se completa con sus archivos al cerrar.
+**Web/PWA** (`web/src/chat/links/`, 18/11)
+- **Segmentado «Chat · Por categoría»** (`NotesViewSwitch.tsx`, `notesView.ts`): solo en un chat de notas con `linksSorted`.
+  - En pantalla ancha (≥ 1024 px) va en la cabecera; más angosta, a todo el ancho debajo.
+  - La vista elegida se recuerda por chat en `localStorage`.
+- **Vista «Por categoría»** (`LinksByCategory.tsx`, `CategoryLayouts.tsx`, `LinksStates.tsx`): reemplaza los mensajes y el compositor.
+  - Ancha: columna de categorías con conteos y «Revisión»; buscador, orden y grilla de 2–3 columnas.
+  - «Renombrar» y «Unir con…» solo en una categoría real (`CategoryDialogs.tsx`).
+  - Angosta: chips en una fila con scroll y secciones con las 3 más nuevas y «Ver las N».
+  - El «+» vuelve al chat y enfoca el compositor.
+  - Esqueleto, vacío y error con «Reintentar».
+- **Tarjetas** (`LinkNoteCards.tsx`, `linkCardParts.tsx`): ⋮ con «Mover de categoría», «Abrir» y «Copiar enlace». En el teléfono, mantener presionado abre «Mover».
+  - Un video soportado se abre en el reproductor del chat (`VideoEmbedOverlay`); lo demás, en otra pestaña.
+- **Hoja «Mover a»** (`MoveLinkSheet.tsx`): conteos, la actual marcada, «Sin categoría» y «Nueva categoría».
+- **En la burbuja** (`StoredLinkInBubble.tsx`, desde `BurbujaDeMensaje.tsx`): la tarjeta guardada en vez de la vista previa genérica.
+  - Abajo, la pastilla de categoría con lápiz. También «Solo pide comentar» y «No se pudo leer» con «Reintentar».
+  - Un cuerpo que es solo el enlace no se repite como texto.
+- **Datos** (`linkNotesStore.ts`, `linkNotesApi.ts`): una sola lectura de `GET /links` por chat, compartida por la vista, las burbujas y la hoja.
+  - `msg.link` actualiza la memoria y la base local (`applyLinkCard` en `local/mensajesLocales.ts`).
+  - `chat.links.changed` vuelve a leer la vista.
+- **Interruptor:** «Ordenar enlaces por categoría» en Ajustes del detalle del chat (`info/LinkSortingRow.tsx`).
+
+**APK:** en implementación (18/11). Este as-is se completa con sus archivos al cerrar.
 
 ## 3. Diferencias APK vs web
 
@@ -115,3 +136,5 @@ Pendiente de cerrar con la implementación de los clientes (18/11).
   - `linkSorting.test.ts`: cola, propuesta, tope e ilegible.
   - `linkSortingRoutes.test.ts`: listar, mover, crear, renombrar, unir, reintentar e interruptor.
   - `borradores.test.ts`.
+- **Web:** `links/linkNotesStore`, `links/NotesViewSwitch`, `links/LinksByCategory`, `links/MoveLinkSheet`,
+  `links/StoredLinkInBubble`, `BurbujaDeMensaje.link`, `info/LinkSortingRow` y `applyLinkCard` en `local/mensajesLocales`.

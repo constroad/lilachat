@@ -1,4 +1,4 @@
-import type { LiveLocation } from '@lilachat/shared';
+import type { LinkCard, LiveLocation } from '@lilachat/shared';
 import type { BotCard, GalleryItem } from '@lilachat/shared';
 import type { MencionEnMensaje, NotificationLevel, OutboxItem, Reaccion, ResumenDeHiloEnCliente, VistaDelFijado } from '@lilachat/shared';
 
@@ -74,6 +74,8 @@ export type ChatSummary = {
   fijados?: FijadoEnLista[];
   online?: boolean;
   typingName?: string | null;
+  /** A notes chat with «Ordenar enlaces por categoría» on (José 18/11): «Chat · Por categoría». */
+  linksSorted?: true;
 };
 
 /** Un fijado como lo manda la lista (`server/src/mensajesFijados.ts`). */
@@ -107,6 +109,8 @@ export type ChatMessage = {
   sharedBy?: { name: string; command: string };
   /** José 13/11: a copy forwarded from another chat. */
   forwarded?: boolean;
+  /** The stored card of a link in a notes chat with links sorted (José 18/11): category, author, text. */
+  link?: LinkCard;
   /** El sobre de un chat secreto: llega EN VEZ de `body`. La web no lo abre. */
   envelope?: { v: number; nonce: string; ciphertext: string };
   ref?: MessageRef;

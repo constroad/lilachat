@@ -6,7 +6,7 @@ import { api } from '../api';
 import { crearUltimaGana } from './ultimaGana';
 import { ignoreClosedBase, type BaseLocal } from '../local/baseLocal';
 import { descartarEnvio, drenarCola, encolarEnvio, reintentarEnvio } from '../local/colaDeEnvio';
-import { aplicarBorrado, aplicarEdicion, aplicarEntrante, aplicarReacciones, aplicarResumenDeHilo, guardarChats, guardarPagina } from '../local/mensajesLocales';
+import { applyLinkCard, aplicarBorrado, aplicarEdicion, aplicarEntrante, aplicarReacciones, aplicarResumenDeHilo, guardarChats, guardarPagina } from '../local/mensajesLocales';
 import type { ChatMessage, ChatSummary } from '../chat/types';
 import { accionPorSocket, enviarPorSocket, pedirSincronizacion, type ResultadoDeAccion } from './envioPorSocket';
 import { sendNudgeBySocket, sendWinkBySocket } from './envioPorSocket';
@@ -19,6 +19,7 @@ import { sincronizar } from './sincronizar';
 import { anotarEnvio } from '../chat/reenviar/frecuenciasDeEnvio';
 import { debeSonarEnLaWeb, sonarMensaje } from '../sonidos/sonidoDeMensaje';
 import { isSpaceChat } from '../spaces/spaceCache';
+import { subscribeMessageLink } from '../chat/links/linkNotesStore';
 
 /** Una página del historial: lo que entra en pantalla y algo más. */
 export const TAMANO_DE_PAGINA = 50;
@@ -111,6 +112,12 @@ export function useSincronizacion({ base, yo, jwt, socket, conectado, manejar401
       onHidden: (dato: { chatId: string; seqs: number[] }) => base && void hideManyLocally(base, dato.chatId, dato.seqs),
     };
   }, [base, yo, recargarPronto]);
+
+  // José 18/11: `msg.link` rewrites the stored card, so the bubble of a notes chat redraws from the local base.
+  useEffect(() => {
+    if (!base) return undefined;
+    return subscribeMessageLink((change) => void applyLinkCard(base, change).catch(ignoreClosedBase));
+  }, [base]);
 
   const acciones = useAccionesDelChat({ base, jwt, yo, socket, drenar, cargarChats });
   const avisarEscribiendo = useAvisoDeEscribiendo(socket);

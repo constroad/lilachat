@@ -29,6 +29,9 @@ import { useClientOfChat, useClientsOfChannelSpace } from '../spaces/clients/use
 import { ArchivedClientBanner, ArchivedComposerNote, ClientServices } from '../spaces/clients/ClientChannelParts';
 import { useClientRecords } from '../spaces/clients/useSpaceClients';
 import type { ChatSummary, MensajeEnPantalla } from './types';
+import { focusComposerSoon, useNotesView, useWideScreen } from './links/notesView';
+import { NotesViewBand, NotesViewSwitch } from './links/NotesViewSwitch';
+import { LinksByCategory } from './links/LinksByCategory';
 
 /**
  * El panel derecho: cabecera, mensajes y composer.
@@ -144,6 +147,13 @@ export function Conversation(props: {
   const [serviceOpen, setServiceOpen] = useState(false);
   const serviceFull = isClientChannel && shownTab === 'services' && serviceOpen;
   const [openTask, setOpenTask] = useState<OpenTask | null>(null);
+  // José 18/11: a notes chat with its links sorted reads as «Chat · Por categoría».
+  const [notesView, setNotesView] = useNotesView(chat);
+  const wide = useWideScreen();
+  const backToWriting = useCallback(() => {
+    setNotesView('chat');
+    focusComposerSoon();
+  }, [setNotesView]);
   const toMessage = (seq: number) => {
     setChannelTab('chat');
     props.onIrA?.(seq);
@@ -203,8 +213,9 @@ export function Conversation(props: {
       {serviceFull ? null : props.app ? (
         <AppConversationHeader app={props.app} tab={appTab} onTab={setAppTab} showBack={props.showBack} onBack={props.onBack} />
       ) : (
-        <CabeceraDeLaConversacion chat={chat} isClient={Boolean(client)} own={props.ownHeader} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} lastSeen={lastSeen} status={otherStatus} onCall={props.onCall} callExtras={props.callExtras} />
+        <CabeceraDeLaConversacion chat={chat} isClient={Boolean(client)} own={props.ownHeader} typingName={props.typingName} showBack={props.showBack} onBack={props.onBack} onAbrirInfo={props.onAbrirInfo} lastSeen={lastSeen} status={otherStatus} onCall={props.onCall} callExtras={props.callExtras} center={wide ? <NotesViewSwitch chat={chat} view={notesView} onView={setNotesView} inHeader /> : null} />
       )}
+      {wide || props.app ? null : <NotesViewBand chat={chat} view={notesView} onView={setNotesView} />}
       {props.callStrip}
       {isClientChannel && client && !serviceFull ? <ChannelTabs tabs={tabs} tab={shownTab} onTab={setChannelTab} counter={workPlan.summary?.total ? `${workPlan.summary.done}/${workPlan.summary.total}` : null} services={client.services.length} overdue={Boolean(workPlan.summary?.overdue)} /> : null}
       {isClientChannel && client && !serviceFull ? <ArchivedClientBanner client={client} /> : null}
@@ -235,6 +246,8 @@ export function Conversation(props: {
             />
           </div>
         </div>
+      ) : notesView === 'categories' && props.jwtParaEnlaces ? (
+        <LinksByCategory jwt={props.jwtParaEnlaces} chatId={chat.id} onCompose={backToWriting} />
       ) : (
       <>
       <BannerWithSession />
@@ -319,7 +332,7 @@ function statusLineOf(props: { chat: ChatSummary; typingName: string | null; isC
   return props.lastSeen ? formatUltimaVez(props.lastSeen) : ' ';
 }
 
-type HeaderProps = { chat: ChatSummary; /** A client's channel (design f-03): the building and «Cliente · N miembros», not «#». */ isClient?: boolean; /** Its own avatar, line and actions, and no «#» either. */ own?: OwnHeader; typingName: string | null; showBack: boolean; onBack: () => void; onAbrirInfo?: () => void; /** The other's «últ. vez» in a 1:1, like the app. */ lastSeen?: string; /** «Ausente» or «Ocupado» (pending 15). */ status?: PresenceStatus; onCall?: (video: boolean) => void; callExtras?: ReactNode };
+type HeaderProps = { chat: ChatSummary; /** A client's channel (design f-03): the building and «Cliente · N miembros», not «#». */ isClient?: boolean; /** Its own avatar, line and actions, and no «#» either. */ own?: OwnHeader; typingName: string | null; showBack: boolean; onBack: () => void; onAbrirInfo?: () => void; /** The other's «últ. vez» in a 1:1, like the app. */ lastSeen?: string; /** «Ausente» or «Ocupado» (pending 15). */ status?: PresenceStatus; onCall?: (video: boolean) => void; callExtras?: ReactNode; /** «Chat · Por categoría» of a notes chat on a computer (nl-01). */ center?: ReactNode };
 
 /** A channel of a space reads as Slack's («#planta-web»); a client's channel or a chat with its own header, without «#». */
 function headerTitleOf(chat: ChatSummary, plain: boolean): string {
@@ -347,6 +360,7 @@ function CabeceraDeLaConversacion(props: HeaderProps) {
           <HeaderLine {...props} />
         </div>
       </button>
+      {props.center}
       {props.own ? <div className="flex shrink-0 items-center gap-1.5">{props.own.actions}</div> : <CallButtons onCall={props.onCall} callExtras={props.callExtras} />}
       <div className="hidden items-center gap-1 text-on-surface-variant/40 sm:flex">
         <span className="grid h-9 w-9 place-items-center" title="Buscar (próximamente)">

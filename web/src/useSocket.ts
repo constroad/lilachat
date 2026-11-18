@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import type { Reaccion } from '@lilachat/shared';
 import { announceChatListsChanged } from './chat/chatLists/chatListsEvents';
+import { receiveLinksChanged, receiveMessageLink } from './chat/links/linkNotesStore';
 import { receivePresence, receivePresenceSnapshot } from './presence/presenceStatus';
 import { announceSocketTurn } from './socketTurn';
 
@@ -189,6 +190,9 @@ export function useSocket(params: {
     socket.on('msg.hilo', (data: { chatId: string; raiz: number; hilo: NonNullable<ChatMessage['hilo']> }) => handlers.current.onHilo?.(data));
     socket.on('msg.reacciones', (data: { chatId: string; seq: number; reacciones: Reaccion[] }) => handlers.current.onReacciones?.(data));
     socket.on('msg.hidden', (data: { chatId: string; seqs: number[] }) => handlers.current.onHidden?.(data));
+    // José 18/11: a notes chat's link card and its categories; the store tells the local base and the open view.
+    socket.on('msg.link', receiveMessageLink);
+    socket.on('chat.links.changed', receiveLinksChanged);
 
     // El snapshot llega al conectar y trae a TODOS los que ya están en línea.
     // Sin él, los puntos verdes solo aparecerían para quien se conecte después

@@ -18,6 +18,7 @@ import { RoutinesRow } from '../../routines/RoutinesRow';
 import { BirthdaysRow } from './BirthdaysRow';
 import { DisappearingRow } from './DisappearingRow';
 import { ExportChatRow } from './ExportChatRow';
+import { LinkSortingRow } from './LinkSortingRow';
 import { ChannelVisibilityRow } from './ChannelVisibilityRow';
 import { DeleteChannelRow, useChannelDeletable } from './DeleteChannelRow';
 import { armarInfo } from './infoDelChat';
@@ -132,6 +133,7 @@ export function PanelDeInfo(props: {
         {tab === 'settings' && chat.kind === 'group' ? <GroupPermissionsRow chatId={chat.id} jwt={props.jwt} permissions={detalle?.memberPermissions} isAdmin={Boolean(detalle?.soyAdmin)} onAviso={props.onAviso} /> : null}
         {tab === 'settings' && chat.kind === 'group' ? <GroupFunRow chatId={chat.id} jwt={props.jwt} allowed={Boolean(chat.funAllowed ?? detalle?.funAllowed)} isAdmin={Boolean(detalle?.soyAdmin)} onAviso={props.onAviso} /> : null}
         {tab === 'settings' && (chat.kind === 'group' || chat.kind === 'direct') && !chat.channel && !detalle?.channel && !detalle?.secreto ? <DisappearingRow chatId={chat.id} jwt={props.jwt} seconds={detalle?.disappearSeconds ?? 0} canChange={chat.kind === 'direct' || memberMay({ permission: 'editInfo', role: detalle?.soyAdmin ? 'admin' : 'member', permissions: detalle?.memberPermissions })} onAviso={props.onAviso} /> : null}
+        {tab === 'settings' && chat.kind === 'notas' && !chat.encrypted ? <LinkSortingRow chatId={chat.id} jwt={props.jwt} on={Boolean(chat.linksSorted)} onNotice={props.onAviso} /> : null}
         {tab === 'settings' && !detalle?.secreto ? <ExportChatRow chatId={chat.id} jwt={props.jwt} onNotice={props.onAviso} /> : null}
         {tab === 'settings' && (chat.kind === 'group' || chat.kind === 'direct') ? <BirthdaysRow chatId={chat.id} jwt={props.jwt} on={Boolean(chat.birthdaysOn ?? detalle?.birthdaysOn)} canChange={chat.kind === 'direct' || Boolean(detalle?.soyAdmin)} isGroup={chat.kind === 'group'} onAviso={props.onAviso} /> : null}
         {choosingLevel ? (

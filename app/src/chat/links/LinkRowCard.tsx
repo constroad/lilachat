@@ -5,8 +5,8 @@ import type { LinkNoteItem } from '@lilachat/shared';
 import { LinkThumb, PlatformPill } from './LinkCardParts';
 import { cardLinesOf, dayMonthOf } from './linkView';
 
-/** The card of the list (Stitch nl-01): 88 dp, the cover 56 dp wide. */
-export const LINK_CARD_HEIGHT = 88;
+/** Stitch nl-01: 16 of padding + the 75 of the 3:4 thumbnail + 16 (review 18/11: it was 88). */
+export const LINK_CARD_HEIGHT = 107;
 const THUMB_WIDTH = 56;
 const LONG_PRESS_MS = 350;
 
@@ -30,7 +30,7 @@ export const LinkRowCard = memo(function LinkRowCard({ item, onOpen, onMore }: {
       }}
       delayLongPress={LONG_PRESS_MS}
       style={{ height: LINK_CARD_HEIGHT }}
-      className="flex-1 flex-row items-center gap-3 rounded-card bg-surface px-3 shadow-sm active:opacity-80"
+      className="flex-1 flex-row items-center gap-3 rounded-card bg-surface px-4 shadow-sm active:opacity-80"
     >
       <LinkThumb link={link} width={THUMB_WIDTH} />
       <View className="min-w-0 flex-1">

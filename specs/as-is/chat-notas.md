@@ -103,7 +103,7 @@ Diseño en Stitch `nl-01` a `nl-03` (ver §5). Prototipo navegable en https://cl
   - Apaisada o tablet: columna «CATEGORÍAS» con conteos y «REVISIÓN» al costado de las tarjetas.
   - El «+» flotante vuelve al chat; la lista deja abajo el alto del botón.
   - Mantener presionado un chip abre «Renombrar» y «Unir con…» (`CategoryActionsSheet.tsx`).
-- **Tarjetas** (`LinkRowCard.tsx`, `LinkCardParts.tsx`): mantener presionado abre «Mover a» (`MoveLinkSheet.tsx`). `useLinkOpener.tsx` abre el enlace.
+- **Tarjetas** (`LinkRowCard.tsx`, `LinkCardParts.tsx`): 107 dp de alto con 16 de padding, como Stitch. Mantener presionado abre «Mover a» (`MoveLinkSheet.tsx`). `useLinkOpener.tsx` abre el enlace.
 - **En la burbuja** (`NoteLinkBubble.tsx`): la tarjeta guardada, su pastilla de categoría, «Solo pide comentar» y «No se pudo leer» con «Reintentar».
   - La burbuja de un enlace toma la fila entera (`BubbleColumn`, en vez del 80 %); la tarjeta mide el ancho de la pantalla menos los márgenes, hasta 460 dp en tablet.
   - La pastilla de plataforma nunca se corta: se acorta el título.

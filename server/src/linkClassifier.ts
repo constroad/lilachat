@@ -74,7 +74,8 @@ export function parseClassifierAnswer(text: string, categories: readonly LinkCat
   };
   const chosen = byName(answer?.category) ?? byName(answer?.new);
   if (chosen) return { categoryId: chosen.id };
-  const fresh = cleanName(answer?.new);
+  // A model that names a category the chat does not have yet is proposing it (E2E 18/11: it got lost).
+  const fresh = cleanName(answer?.new) ?? cleanName(answer?.category);
   return fresh ? { categoryId: null, newCategory: fresh } : { categoryId: null };
 }
 

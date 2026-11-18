@@ -51,7 +51,7 @@ function MiniCard({ item }: { item: LinkNoteItem }) {
   );
 }
 
-function NewCategoryRow(props: { full: boolean; busy: boolean; onCreate: (name: string) => void }) {
+function NewCategoryRow(props: { full: boolean; busy: boolean; onCreate: (name: string) => Promise<boolean> }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   if (props.full) return <p className="px-1 text-[12px] text-on-surface-variant">Llegaste al máximo de {MAX_LINK_CATEGORIES} categorías. Une dos para crear otra.</p>;
@@ -62,11 +62,17 @@ function NewCategoryRow(props: { full: boolean; busy: boolean; onCreate: (name: 
       </button>
     );
   }
-  const submit = () => name.trim() && props.onCreate(name.trim());
+  // E2E 18/11: the name stayed in the field after «Crear», so a second tap made a duplicate.
+  const submit = async () => {
+    const clean = name.trim();
+    if (!clean || !(await props.onCreate(clean))) return;
+    setName('');
+    setOpen(false);
+  };
   return (
     <div className="flex gap-2">
       <input autoFocus data-testid="campo-nueva-categoria" value={name} maxLength={MAX_CATEGORY_NAME} placeholder="Nombre de la categoría" onChange={(event) => setName(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && submit()} className="h-12 min-w-0 flex-1 rounded-xl border border-outline/30 bg-surface px-3 text-[15px] outline-none focus:border-primary" />
-      <button type="button" data-testid="btn-crear-categoria" disabled={!name.trim() || props.busy} onClick={submit} className="h-12 shrink-0 rounded-xl bg-primary/10 px-4 text-sm font-semibold text-primary disabled:opacity-40">
+      <button type="button" data-testid="btn-crear-categoria" disabled={!name.trim() || props.busy} onClick={() => void submit()} className="h-12 shrink-0 rounded-xl bg-primary/10 px-4 text-sm font-semibold text-primary disabled:opacity-40">
         Crear
       </button>
     </div>
@@ -86,10 +92,14 @@ export function MoveLinkSheet({ jwt, chatId, item, notes, onClose }: Props) {
     setBusy(true);
     const response = await createLinkCategory(jwt, chatId, name);
     setBusy(false);
-    if (!response.ok) return setError(response.message);
+    if (!response.ok) {
+      setError(response.message);
+      return false;
+    }
     setError('');
     setCreated((list) => [...list, response.data.category]);
     setSelected(response.data.category.id);
+    return true;
   };
   const move = async () => {
     setBusy(true);
@@ -126,7 +136,7 @@ export function MoveLinkSheet({ jwt, chatId, item, notes, onClose }: Props) {
           <ChoiceRow key={category.id} id={category.id} name={category.name} count={counts.get(category.id) ?? 0} current={current === category.id} selected={selected === category.id} onSelect={() => setSelected(category.id)} />
         ))}
         <ChoiceRow id={NO_CATEGORY} name="Sin categoría" count={counts.get(NO_CATEGORY)} current={current === NO_CATEGORY} selected={selected === NO_CATEGORY} onSelect={() => setSelected(NO_CATEGORY)} />
-        <NewCategoryRow full={categories.length >= MAX_LINK_CATEGORIES} busy={busy} onCreate={(name) => void create(name)} />
+        <NewCategoryRow full={categories.length >= MAX_LINK_CATEGORIES} busy={busy} onCreate={create} />
       </div>
       <FieldError>{error}</FieldError>
     </Overlay>

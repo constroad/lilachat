@@ -66,6 +66,8 @@ describe('«Mover a · ¿En qué categoría va?» (nl-03)', () => {
     // Assert
     await waitFor(() => expect(screen.getByTestId('mover-a-claude')).toHaveAttribute('aria-checked', 'true'));
     expect(screen.getByTestId('btn-mover-enlace')).toBeEnabled();
+    // E2E 18/11: the field closes, so a second tap cannot create a duplicate.
+    expect(screen.queryByTestId('campo-nueva-categoria')).toBeNull();
   });
 
   it('a refusal says why and keeps the sheet open', async () => {
@@ -75,6 +77,7 @@ describe('«Mover a · ¿En qué categoría va?» (nl-03)', () => {
     fireEvent.change(screen.getByTestId('campo-nueva-categoria'), { target: { value: 'Publicidad y ventas' } });
     fireEvent.click(screen.getByTestId('btn-crear-categoria'));
     expect(await screen.findByTestId('error-formulario')).toHaveTextContent('Ya hay una categoría con ese nombre.');
+    expect(screen.getByTestId('campo-nueva-categoria')).toHaveValue('Publicidad y ventas');
   });
 
   it('a link someone moved says so', () => {

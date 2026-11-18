@@ -34,8 +34,11 @@ describe('parseClassifierAnswer', () => {
     expect(parseClassifierAnswer('{"category":null,"new":"publicidad y ventas"}', categories)).toEqual({ categoryId: 'c1' });
   });
 
-  it('treats an invented category or garbage as «Sin categoría»', () => {
-    expect(parseClassifierAnswer('{"category":"Cocina"}', categories)).toEqual({ categoryId: null });
+  it('takes an unknown category name as a proposal, not as nothing', () => {
+    expect(parseClassifierAnswer('{"category":"Cocina","new":null}', categories)).toEqual({ categoryId: null, newCategory: 'Cocina' });
+  });
+
+  it('treats garbage as «Sin categoría»', () => {
     expect(parseClassifierAnswer('no sé', categories)).toEqual({ categoryId: null });
     expect(parseClassifierAnswer('{"category":null,"new":"' + 'x'.repeat(80) + '"}', categories)).toEqual({ categoryId: null });
   });

@@ -63,7 +63,12 @@ export function buildLinkSortingRouter(): Router {
 
   router.post(
     '/:chatId/link-categories/:categoryId/merge',
-    asyncRoute(async (req, res) => answer(res, req.params.chatId!, await mergeCategory(req.params.chatId!, userOf(req), req.params.categoryId!, idOrNull(req.body?.into))))
+    asyncRoute(async (req, res) => {
+      const result = await mergeCategory(req.params.chatId!, userOf(req), req.params.categoryId!, idOrNull(req.body?.into));
+      // The bubbles in «Chat» show each card's category: they hear every moved card, not only the list.
+      if (result.ok) for (const one of result.moved) emitToMembers(result.members, 'msg.link', { chatId: req.params.chatId, seq: one.seq, link: one.link });
+      return answer(res, req.params.chatId!, result);
+    })
   );
 
   router.put(

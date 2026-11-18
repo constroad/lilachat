@@ -64,14 +64,16 @@ export async function renameCategory(chatId: string, userId: Types.ObjectId, cat
   return { ok: true, members: membersOf(chat) };
 }
 
-/** «Unir con…»: its links go to `into` (or to «Sin categoría» with `null`) and the category goes away. */
-export async function mergeCategory(chatId: string, userId: Types.ObjectId, categoryId: string, into: string | null): Promise<OpResult> {
+/** «Unir con…»: its links go to `into` (`null` = «Sin categoría»), the category goes away, and each moved card is returned for the bubbles. */
+export async function mergeCategory(chatId: string, userId: Types.ObjectId, categoryId: string, into: string | null): Promise<OpResult<{ moved: { seq: number; link: LinkCard }[] }>> {
   const chat = await notesChatOf(chatId, userId);
   const ids = chat ? categoriesOf(chat).map((category) => category.id) : [];
   if (!chat || !ids.includes(categoryId) || (into !== null && (!ids.includes(into) || into === categoryId))) return NOT_FOUND;
+  const affected = await MessageModel.find({ chatId: chat._id, 'link.categoryId': categoryId }).select('seq link').lean<Pick<Message, 'seq' | 'link'>[]>();
   await MessageModel.updateMany({ chatId: chat._id, 'link.categoryId': categoryId }, { $set: { 'link.categoryId': into, 'link.categoryBy': 'user' } });
   await ChatModel.updateOne({ _id: chat._id }, { $pull: { 'linkSorting.categories': { _id: new Types.ObjectId(categoryId) } } });
-  return { ok: true, members: membersOf(chat) };
+  const moved = affected.map((message) => ({ seq: message.seq, link: { ...(message.link as LinkCard), categoryId: into, categoryBy: 'user' as const } }));
+  return { ok: true, members: membersOf(chat), moved };
 }
 
 /** «Mover»: the person's choice, which Lila never changes again. */

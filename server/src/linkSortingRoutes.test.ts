@@ -9,6 +9,7 @@ import { UserModel } from './models.js';
 import { ChatModel, MessageModel } from './chatModels.js';
 import { signSession } from './sessions.js';
 import { configureLinkSorting, drainLinkSorting } from './linkSorting.js';
+import { mergeCategory } from './linkCategories.js';
 
 /** José 18/11: the person corrects what Lila sorted (move, create, rename, merge). */
 let mongo: MongoMemoryServer;
@@ -101,6 +102,11 @@ describe('moving and correcting', () => {
     expect((await as(jwt).send('post', `/api/chats/${chatId}/link-categories/${adsId}/merge`, { into: null })).status).toBe(200);
     expect((await MessageModel.findOne({ chatId, seq: 1 }).lean())?.link?.categoryId).toBeNull();
     expect((await ChatModel.findById(chatId).lean())!.linkSorting!.categories).toEqual([]);
+  });
+
+  it('returns every moved card on a merge, so the bubbles change too', async () => {
+    const result = await mergeCategory(chatId, me, videoId, adsId);
+    expect(result).toMatchObject({ ok: true, moved: [{ seq: 1, link: expect.objectContaining({ categoryId: adsId, categoryBy: 'user' }) }] });
   });
 
   it('reads an unreadable link again on «Reintentar»', async () => {

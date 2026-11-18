@@ -97,7 +97,7 @@ Los archivos viven en el disco propio de Lilachat (pendiente 82); los viejos sig
 - Compresión de fotos con la escalera de Portal (28/10): `photoShrink.ts`.
 - Sello de la cámara del chat, quemado una vez al comprimir: `chatMediaStamp.ts` (foto), `videoStamp.ts` (video con ffmpeg, AAC).
 - Primera página del PDF (17/11): `pdfThumbnail.ts` con `pdfjs-dist` y `@napi-rs/canvas`. Tope 15 s y 40 MB. Guarda `media.thumbUrl` y `media.pages`.
-- Relleno de PDF viejos: `pdfThumbnailBackfill.ts`, `npm run pdf:miniaturas -w server` (sin `--apply` solo cuenta).
+- Relleno de PDF viejos: `pdfThumbnailBackfill.ts`. En la mini, desde la RAÍZ de la release: `node_modules/.bin/tsx server/src/pdfBackfillCli.ts` (sin `--apply` solo cuenta). `npm run pdf:miniaturas -w server` falla allí: corre en `server/` y `env.ts` no encuentra el `.env`, que Torre enlaza en la raíz.
 - PDF por Lilachat con chequeo de membresía: `GET /api/chats/:chatId/files/:seq` (`fileViewRoutes.ts`).
 - Medios cifrados de chats secretos: `sealedUpload.ts` (el server solo ve la forma).
 - Biblioteca «Medios»: `GET /api/media/library` (`mediaLibraryRoutes.ts`).
@@ -175,7 +175,8 @@ El sello va abajo a la izquierda aunque `cam-01` y `cam-03` lo dejen a media alt
 - **Web sin recorte ni giro antes de enviar.** Verificado en código (`EnviarArchivos.tsx` no tiene recorte).
 - **PDF en la web sin zoom propio:** depende del visor del navegador. Verificado en código (`PdfViewer.tsx`).
 - **Backlog 67 / F12.3 dice que la media de chats secretos viaja en claro.** El código ya la cifra desde el 29/10 (`sealedUpload.ts`, `secretMedia.ts`). El backlog quedó sin tachar. Verificado en código.
-- **Relleno de miniaturas de PDF viejos:** hay que correr `npm run pdf:miniaturas -w server -- --apply` en la máquina con el disco. No verificado si ya se corrió.
+- **Relleno de miniaturas de PDF viejos:** corrido el 18/11 por lila-2 (release `20261118-000140-18cc63cc`): 48 sin miniatura, 33 dibujadas, 15 no porque piden contraseña (pdf.js no los abre). Quedan solo con el nombre.
+- **El script `pdf:miniaturas` no lee el `.env` en la mini** (cwd `server/`). Arreglarlo o dejar la ruta desde la raíz. Sin hacer.
 - **Respuesta con foto en el hilo del APK tras el OTA:** sin verificar en pantalla. Según spec (13/11).
 - **Sello con una tarjeta real y con datos lentos:** no verificado.
 - **Mini reproductor flotante para YouTube:** no se hace; los términos de YouTube lo prohíben. Según spec (pendiente 6).

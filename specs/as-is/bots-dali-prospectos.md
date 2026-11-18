@@ -149,8 +149,8 @@ Lo que Stitch inventó y no va está listado en la spec (fase 2, pantallas de la
   Hoy el reparto es libre.
 - **Fase 2 del cuadro de fases sin hacer**: audios del prospecto y checks de entregado.
   Verificado en código: `shared/src/botUploads.ts` no acepta audio y no hay marca de entregado.
-- **Sin verificar con agentes de verdad**: hace falta la app Dali con `prospects:write` en un espacio de Test.
-  Según spec. Depende de agentes.
+- **Sin verificar con agentes de verdad**: la app Dali corre en el espacio «Dali» (no en Test, José vía
+  agentes 18/11). El E2E de prospectos se hace ahí. Pendiente.
 - **Sin verificar**: «Lo que Dali sabe» cuando agentes no responde (502) y la tarjeta de la revisión del
   domingo. Según spec.
 - **Embudo en el teléfono** repite «3 Falta información» en cifras y baldosas. Va en un lote aparte

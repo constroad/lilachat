@@ -26,8 +26,14 @@ del 30/10 al 05/11. Hay que corregirlo.
 
 1. **254** Que la cuenta creada por correo agregue o cambie su teléfono con código. No empezó.
 2. **Llamada colgada (José 17/11)**: Wilson quedó en llamada tras el «no contestó» de José, y la
-   rellamada dio «está en otra llamada». Arreglado en código el 17/11 (`llamadas.md` §2). Falta
-   probarlo entre dos teléfonos y publicar server, web y OTA.
+   rellamada dio «está en otra llamada». Arreglado el 17/11 (`llamadas.md` §2): server y web con el
+   push `18cc63cc`, APK con la OTA `51d924d0` del 18/11. Falta probarlo entre dos teléfonos
+   (José y Wilson: cerrar y abrir la app dos veces para que entre la OTA).
+2a. **Editor 2.0 desde la web (18/11)**: SOL-IMP, APR-ADI, VAL-SRV y LIQ-SRV se crean en el editor
+   (`18cc63cc`). En agentes, 3 herramientas de Portal quedaban fuera por el tope `MAX_TOOLS = 96`
+   (Portal publica 99). Agentes lo subió a 160 (`152ad08`); José reaprobó solo `crear_informe_en_editor`
+   (las otras dos no cambiaron de huella). Falta el E2E en Test: abrir un informe, crear VAL y LIQ,
+   sincronizar LIQ, y que un miembro sin plata no vea ninguno. Limpiar por el camino de la app.
 2b. **265** Las llamadas siguen la regla vieja del push. `server/src/pushService.ts:258`
    (`avisarLlamada`) calla el teléfono si hay cualquier socket vivo. Hay que igualarla a la de
    los mensajes (`:97`, que solo salta el navegador web). Hallazgo nuevo: no está en ningún spec.
@@ -73,8 +79,9 @@ del 30/10 al 05/11. Hay que corregirlo.
 ### Depende de otro sistema
 
 - **agentes** (respuesta del 17/11): 309 (`ar` en `metodo`, `ff9de68`), 311 (`link.mime` en los
-  PDF, `cbd14ed`) y 111 ya están hechos. La app Dali en Test (319/322) no está: la instala un admin
-  del espacio (José), y en agentes Dali solo está configurado para Constroad. Las tarjetas de la tarea 50.
+  PDF, `cbd14ed`) y 111 ya están hechos. Dali no va en Test (José, vía agentes 18/11): corre en el espacio «Dali» desde el 17/11; el E2E
+  de prospectos se hace ahí. La lectura de archivos del cliente quedó encendida el 18/11 11:17Z;
+  agentes pasa el `prospect_id` cuando llegue el KML de José. Las tarjetas de la tarea 50.
 - **Reparto de informes con Portal (editor 2.0, 17/11)**: Lilachat toma 304, 276 y `la-08`/`la-09`.
   Portal suma VAL-SRV y LIQ-SRV al editor; Lilachat los agrega a `EMBED_CREATE_TYPES` con `money`
   cuando llegue el sha, junto con APR-ADI y SOL-IMP. 293, 317 y 273 quedan para Portal.
@@ -205,5 +212,5 @@ APK y Web: «sí», «no», «parcial» o «—» (no aplica a ese cliente).
 | 311 | Pedidos de agentes del 15/11 | DEPENDE DE OTRO (agentes) | Visor `3e7f3960` y `link.mime` (BOTS:1382). agentes debe mandar `link.mime`. El contrato del checklist está en BOTS:1247 (06/11): confirmar si es el pedido del 15/11 |
 | 316 | Notificaciones | PARCIAL | `870a9c2f`, `f2a0a543`, `8d6cba40`, APK 0.1.189 `bd80fe37`. Falta un APK nuevo para abrir el mensaje o el hilo exacto; el teclado del hilo no se reprodujo |
 | 317 | Croquis del IAA en el editor compartido | PARCIAL | `04add29d`, `03846536`. Los contornos AR en el croquis son de Portal. Sin E2E; no existe en el APK |
-| 319 | Dali fase 1 | HECHO | `7ffc52c4`, `3dd01eb2`. Sin E2E con la app Dali real en Test (BOTS:1578) |
+| 319 | Dali fase 1 | HECHO | `7ffc52c4`, `3dd01eb2`. Sin E2E con la app Dali real; va en el espacio «Dali», no en Test (18/11) |
 | 322 | Dali fase 2 (y 3) | HECHO | `1ecd5383`, `0053a7c8`, `5978413e`, `36206b42`, `e5d3f680`, índices `82d46300`. Faltan las baldosas de `dl-08 v5` y el E2E con agentes |

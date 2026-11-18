@@ -23,7 +23,8 @@ const LIST_GUTTER = 12;
 const CARD_MARGIN = 6;
 /** On a tablet the card stops growing: a link is a card, not a banner. */
 const MAX_CARD_WIDTH = 460;
-const THUMB_WIDTH = 64;
+/** Stitch nl-02: a 72 × 96 cover (review 18/11: it was 64). */
+const THUMB_WIDTH = 72;
 const PILL_HIT_SLOP = 8;
 
 type Props = {

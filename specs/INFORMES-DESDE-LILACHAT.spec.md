@@ -2079,3 +2079,36 @@ SOL-IMP y APR-ADI eran los únicos que solo abrían Portal.
 - En la web ancha APR-ADI sigue naciendo en el editor 2.0 (`EMBED_CREATE_TYPES`).
 - Las fotos van solo a las zonas de SOL-IMP. APR-ADI no lleva fotos.
 - Portal: `specs/SERVICES.as-is.md` §5b-bis. agentes: `23159fa`.
+
+### 21.1 E2E en producción (18/11, web a 390 px, espacio Test)
+
+Servicio «QA-CTLPIS — borrar», admin José. Portal `3ed216e6c`, Lilachat `9da77c10`.
+
+| Paso | Resultado |
+| --- | --- |
+| «Crear informe» lista los 10 tipos con APR-ADI | OK |
+| SOL-IMP: Datos generales guardado, borrador creado | OK, tras dos arreglos (abajo) |
+| SOL-IMP: zona 20 × 3,5 m | OK: «1 zona · QA zona 1 · 70 m²» |
+| SOL-IMP: declaración con los dos «Sí» exigidos | OK: «Lista» |
+| SOL-IMP: lo que falta para publicar | OK: «Falta la firma de Solicitado por.» |
+| APR-ADI: crear como admin | OK |
+| APR-ADI: 100 m² × S/ 25 | OK: «Monto aprobado: S/ 2,500.00» |
+| Limpieza: DELETE de los dos borradores en Portal admin | OK: el canal queda con los 2 informes previos |
+
+Defectos que encontró el E2E:
+
+- El server rechazaba el tipo: «Ese tipo de informe no se crea desde Lilachat.» Arreglado en
+  `8d0ad3c4` (`OPEN_REPORT_TYPES`).
+- La sección iba como foto: «Una foto necesita el informe, el tramo y la hora de la captura.»
+  Arreglado en `9da77c10` (`TYPED_SAVE_TOOLS`).
+- Material y «reemplaza a» llegaban vacíos en SOL-IMP. Arreglado en Portal `3ed216e6c`.
+- «Agrega el primer zona para empezar.» El texto suponía una palabra masculina. Ahora
+  `emptyItemsHint` nombra el botón: «Toca «Agregar zona» para empezar.»
+
+No se verificó:
+
+- La firma ni la publicación. La firma se dibuja a mano.
+- El PDF. La vista previa abrió fuera de la pestaña de prueba.
+- El APK. La OTA `3e406430` trae el mismo motor y el mismo picker.
+- Un miembro sin plata. Lo cubren los tests del picker y del server.
+- FRE-PAV con los tramos del mapa. Lo cubren los tests de Portal.

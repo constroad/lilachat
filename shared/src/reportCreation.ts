@@ -193,6 +193,16 @@ export function itemsLine(section: RepeatSection): string {
   return `${count} ${count === 1 ? unit : pluralOf(unit)}`;
 }
 
+/**
+ * The line under an empty repeat. It names the add button instead of the row
+ * («el primer zona» read wrong: the row's word may be feminine). None once a
+ * row exists, or when the repeat has nothing to add.
+ */
+export function emptyItemsHint(section: RepeatSection): string | null {
+  if (section.items.length > 0 || section.template.length === 0) return null;
+  return `Toca «${section.addLabel}» para empezar.`;
+}
+
 /** «tramo» → «tramos», «unidad» → «unidades». */
 const pluralOf = (word: string): string => (/[aeiouáéíóú]$/i.test(word) ? `${word}s` : `${word}es`);
 

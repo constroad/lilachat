@@ -37,6 +37,7 @@ Pendientes**.
   videos primero, cubicaje plegado.
 - Informes agrupados por día de Lima, del más nuevo al más viejo; «Creado por …».
 - «Crear informe» en el APK y la web angosta ofrece los tipos de la página pública de Portal y todos se llenan aquí (18/11, `fieldPickerReportTypes`). La aprobación de adicional (APR-ADI) sale solo a quien ve la plata. Detalle por tipo en `obra-informes.md`.
+- Una sección repetida sin filas dice «Sin zonas todavía» y «Toca «Agregar zona» para empezar.» (`emptyItemsHint`): nombra el botón, no la fila, porque la palabra puede ser femenina.
 - Inicio del servicio como día (`started_at`, «Inicio 6 oct»), sin zona horaria.
 - **Enlace del servicio** («Crear enlace», kind `service_link` → `crear_enlace_de_servicio`):
   se abre sin cuenta de Portal (07/11).

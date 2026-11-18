@@ -4,7 +4,7 @@ import { isFieldReport } from './clientAccess';
 import { fieldDocumentOf } from './fieldDocument';
 import { locationMapLink } from './sharedLocation';
 import { EMBED_CREATE_TYPES } from './portalEmbed';
-import { draftToContinue, EDITOR_REPORT_TYPE_OPTIONS, fieldPickerReportTypes, needsMoneyToCreate, offersReportType, opensInApp, itemsLine, pickerReportTypes, removePhotoRequest, pageLine, placeFieldValue, progressLine, progressPercent, publishFormRequest, readObservationDraft, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, openPublishForm, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, staleAnswerIds, STATUS_BADGE, type ReportTypeOption, type TrackStart } from './reportCreation';
+import { draftToContinue, EDITOR_REPORT_TYPE_OPTIONS, fieldPickerReportTypes, needsMoneyToCreate, offersReportType, opensInApp, itemsLine, emptyItemsHint, pickerReportTypes, removePhotoRequest, pageLine, placeFieldValue, progressLine, progressPercent, publishFormRequest, readObservationDraft, readReportDraft, REPORT_TYPE_OPTIONS, reportDraftPath, reportDraftRequest, openPublishForm, reportFormsPath, reportTypeLabel, reportViewOf, sectionBadge, sectionFormRequest, staleAnswerIds, STATUS_BADGE, type ReportTypeOption, type TrackStart } from './reportCreation';
 
 /** A CTL-IMP as Portal answers it, with one tramo whose photos go through their own tool. */
 const form = (title: string) => ({ type: 'object', properties: { campo: { type: 'string', title } } });
@@ -247,6 +247,22 @@ describe('what the cards say', () => {
     expect(itemsLine({ ...tramos(), itemTitle: 'Unidad', items: [] })).toBe('Sin unidades todavía');
     expect(itemsLine({ ...tramos(), itemTitle: 'Unidad', items: [tramos().items[0]!, tramos().items[0]!] })).toBe('2 unidades');
     expect(itemsLine({ ...tramos(), items: [tramos().items[0], tramos().items[0]] })).toBe('2 tramos');
+  });
+});
+
+describe('emptyItemsHint', () => {
+  it('names the add button, so a feminine row is never «el primer zona»', () => {
+    // Arrange
+    const zonas = { ...tramos(), itemTitle: 'Zona', addLabel: 'Agregar zona', items: [] };
+    // Act
+    const hint = emptyItemsHint(zonas);
+    // Assert
+    expect(hint).toBe('Toca «Agregar zona» para empezar.');
+  });
+
+  it('says nothing once there is a row, or when the repeat cannot add one', () => {
+    expect(emptyItemsHint(tramos())).toBeNull();
+    expect(emptyItemsHint({ ...tramos(), items: [], template: [] })).toBeNull();
   });
 });
 

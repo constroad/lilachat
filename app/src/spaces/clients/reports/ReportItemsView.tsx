@@ -1,6 +1,6 @@
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronRight, Clock, Plus } from 'lucide-react-native';
-import { itemsLine, sectionPhotos, sectionRowLine, type FormSection, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath } from '@lilachat/shared';
+import { emptyItemsHint, itemsLine, sectionPhotos, sectionRowLine, type FormSection, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { ResultsStrip, StateDot } from './ReportSections';
 
@@ -57,6 +57,7 @@ export function ReportItemsView({ section, onOpen, onView }: { section: RepeatSe
   const colors = useColores();
   const first = section.template[0];
   const add = () => first && onOpen({ sectionId: section.id, itemId: null, key: first.id });
+  const hint = emptyItemsHint(section);
   return (
     <View testID={`items-${section.id}`} className="gap-3">
       <View className="flex-row items-center justify-between gap-3">
@@ -68,7 +69,7 @@ export function ReportItemsView({ section, onOpen, onView }: { section: RepeatSe
           </Pressable>
         ) : null}
       </View>
-      {section.items.length === 0 ? <Text className="pt-4 text-center text-[14px] text-on-surface-variant">{`Agrega el primer ${section.itemTitle.toLowerCase()} para empezar.`}</Text> : null}
+      {hint ? <Text className="pt-4 text-center text-[14px] text-on-surface-variant">{hint}</Text> : null}
       {section.items.map((item) => <ItemCard key={item.id} item={item} section={section} onOpen={onOpen} onView={onView} />)}
     </View>
   );

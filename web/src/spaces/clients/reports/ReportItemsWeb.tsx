@@ -1,5 +1,5 @@
 import { ChevronRight, Clock, Plus } from 'lucide-react';
-import { itemsLine, sectionPhotos, sectionRowLine, type FormSection, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath } from '@lilachat/shared';
+import { emptyItemsHint, itemsLine, sectionPhotos, sectionRowLine, type FormSection, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath } from '@lilachat/shared';
 import { ResultsStrip, StateDot } from './ReportSectionsWeb';
 
 /** The photos of a tramo with their caption; one still on this device says so with a clock. */
@@ -53,6 +53,7 @@ function ItemCard({ item, section, onOpen, onView }: { item: RepeatItem; section
 export function ReportItemsWeb({ section, onOpen, onView }: { section: RepeatSection; onOpen: (path: SectionPath) => void; onView: (photo: PhotoToView) => void }) {
   const first = section.template[0];
   const add = () => first && onOpen({ sectionId: section.id, itemId: null, key: first.id });
+  const hint = emptyItemsHint(section);
   return (
     <div data-testid={`items-${section.id}`} className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
@@ -63,7 +64,7 @@ export function ReportItemsWeb({ section, onOpen, onView }: { section: RepeatSec
           </button>
         ) : null}
       </div>
-      {section.items.length === 0 ? <p className="pt-4 text-center text-sm text-on-surface-variant">{`Agrega el primer ${section.itemTitle.toLowerCase()} para empezar.`}</p> : null}
+      {hint ? <p className="pt-4 text-center text-sm text-on-surface-variant">{hint}</p> : null}
       {section.items.map((item) => <ItemCard key={item.id} item={item} section={section} onOpen={onOpen} onView={onView} />)}
     </div>
   );

@@ -34,8 +34,8 @@ Fuente: `REPORT_TYPE_OPTIONS` en `shared/src/reportCreation.ts`.
 | REG-OBS | Registro de observaciones | Sí (interruptor encendido desde 11/11) | Pantalla propia, 3 toques |
 | LEV-OBS | Levantamiento de observaciones | Sí | Antes en el visor, después con cámara |
 | IAA | Área adicional | Solo en el APK | Ver `obra-visita-e-iaa.md` |
-| SOL-IMP | Solicitud de imprimación | Sí (desde 18/11, sin E2E) | Zonas con largo, ancho y fotos; declaración y dos firmas. Web ancha: nace en el editor 2.0 |
-| APR-ADI | Aprobación de adicional | Sí (desde 18/11, sin E2E), solo con plata | Sustento, adicional y partidas; sin fotos. Web ancha: nace en el editor 2.0 |
+| SOL-IMP | Solicitud de imprimación | Sí (desde 18/11; E2E web 18/11) | Zonas con largo, ancho y fotos; declaración y dos firmas. Web ancha: nace en el editor 2.0 |
+| APR-ADI | Aprobación de adicional | Sí (desde 18/11; E2E web 18/11), solo con plata | Sustento, adicional y partidas; sin fotos. Web ancha: nace en el editor 2.0 |
 
 **Hojas de bloques del editor 2.0** (16/11, `EDITOR_REPORT_TYPE_OPTIONS`): ACT-CNF,
 REC-EXC, MET-RES, CAL-PROT, TOP-CMP, INF-ACT, PNL-FOT, CONT-SRV y DOS-OBR. Desde el

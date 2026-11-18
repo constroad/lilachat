@@ -70,7 +70,7 @@ export function StoredLinkInBubble({ jwt, chatId, seq, at, link }: Props) {
   return (
     // A fixed width like design nl-02, never wider than the bubble (E2E 18/11: a long author pushed it off screen).
     <div data-testid={`enlace-guardado-${seq}`} className="mb-1 w-80 max-w-full">
-      <div className="flex gap-3 rounded-xl bg-surface p-2.5 text-on-surface">
+      <div className="flex gap-3 rounded-card bg-surface p-2.5 text-on-surface">
         <button type="button" aria-label="Abrir el enlace" onClick={() => player.open(link.url)} className="shrink-0">
           <LinkThumb link={link} className="aspect-[3/4] w-[72px]" />
         </button>

@@ -55,12 +55,12 @@ function MenuRow(props: { testId: string; icon: ReactNode; label: string; onSele
 export function LinkGridCard({ item, actions }: { item: LinkNoteItem; actions: LinkCardActions }) {
   const { link } = item;
   return (
-    <article data-testid={`enlace-${item.seq}`} className="group relative flex flex-col rounded-xl border border-outline/15 bg-surface p-3 shadow-sm transition-colors hover:border-primary motion-reduce:transition-none">
+    <article data-testid={`enlace-${item.seq}`} className="group relative flex flex-col rounded-card border border-outline/15 bg-surface p-3 shadow-sm transition-colors hover:border-primary motion-reduce:transition-none">
       <div className="absolute right-4 top-4 z-10">
         <LinkCardMenu item={item} actions={actions} revealOnHover />
       </div>
       <button type="button" onClick={() => actions.onOpen(item)} className="flex flex-col text-left">
-        <LinkThumb link={link} className="aspect-[3/4] w-full" iconSize={22} />
+        <LinkThumb link={link} className="h-44 w-full" iconSize={22} />
         <span className="mt-3 flex items-center justify-between gap-2">
           <PlatformPill link={link} />
           <span className="shrink-0 text-[11px] tabular-nums text-on-surface-variant">{dayMonthOf(item.at)}</span>
@@ -97,7 +97,7 @@ export function LinkRowCard({ item, actions }: { item: LinkNoteItem; actions: Li
   const { link } = item;
   const press = useLongPress(() => actions.onMove(item));
   return (
-    <article data-testid={`enlace-${item.seq}`} className="flex min-h-[88px] items-start gap-3 rounded-2xl border border-outline/10 bg-surface p-3 shadow-sm">
+    <article data-testid={`enlace-${item.seq}`} className="flex min-h-[88px] items-start gap-3 rounded-card border border-outline/10 bg-surface p-4 shadow-sm">
       <button
         type="button"
         {...press.handlers}

@@ -28,7 +28,7 @@ export function LinkThumb({ link, className, iconSize = 18 }: { link: LinkCard; 
   const [broken, setBroken] = useState(false);
   const image = broken ? undefined : link.imageUrl;
   return (
-    <span data-testid="miniatura-enlace" className={`relative grid shrink-0 place-items-center overflow-hidden rounded-lg ${PLATFORM_TINT[link.platform]} ${className}`}>
+    <span data-testid="miniatura-enlace" className={`relative grid shrink-0 place-items-center overflow-hidden rounded-thumb ${PLATFORM_TINT[link.platform]} ${className}`}>
       {image ? <img src={image} alt="" loading="lazy" referrerPolicy="no-referrer" onError={() => setBroken(true)} className="absolute inset-0 h-full w-full object-cover" /> : null}
       <span className={`relative grid place-items-center rounded-full ${image ? 'h-8 w-8 bg-black/55 text-white' : ''}`}>
         <PlaceholderIcon link={link} size={iconSize} />

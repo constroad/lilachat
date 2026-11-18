@@ -12,11 +12,11 @@ export type SearchProps = { query: string; onQuery: (query: string) => void };
 
 export function SearchField({ query, onQuery, compact }: SearchProps & { compact?: boolean }) {
   return (
-    <label className={`flex min-w-0 flex-1 items-center gap-3 rounded-xl border border-outline/20 bg-surface px-3 shadow-sm focus-within:border-primary ${compact ? 'h-10' : 'min-h-[56px] py-2'}`}>
+    <label className={`flex min-w-0 flex-1 items-center gap-3 rounded-card border border-outline/20 bg-surface px-3 shadow-sm focus-within:border-primary ${compact ? 'h-10' : 'min-h-[48px] py-1.5'}`}>
       <Search size={18} aria-hidden className="shrink-0 text-on-surface-variant" />
       <span className="min-w-0 flex-1">
-        <input type="search" data-testid="buscar-enlaces" value={query} onChange={(event) => onQuery(event.target.value)} placeholder="Buscar en tus enlaces" aria-label="Buscar en tus enlaces" className="w-full bg-transparent text-[14px] text-on-surface outline-none placeholder:text-on-surface-variant" />
-        {compact || query ? null : <span className="block text-[12px] text-on-surface-variant">por autor, descripción o texto del post</span>}
+        <input type="search" data-testid="buscar-enlaces" value={query} onChange={(event) => onQuery(event.target.value)} placeholder="Buscar en tus enlaces" aria-label="Buscar en tus enlaces" className="w-full bg-transparent text-[14px] leading-5 text-on-surface outline-none placeholder:text-on-surface-variant" />
+        {compact || query ? null : <span className="block text-[12px] leading-4 text-on-surface-variant">por autor, descripción o texto del post</span>}
       </span>
     </label>
   );
@@ -24,7 +24,7 @@ export function SearchField({ query, onQuery, compact }: SearchProps & { compact
 
 function RailButton({ chip, active, onPick }: { chip: CategoryChip; active: boolean; onPick: () => void }) {
   return (
-    <button type="button" data-testid={`categoria-${chip.id}`} aria-current={active ? 'true' : undefined} onClick={onPick} className={`relative flex min-h-[36px] w-full items-center justify-between gap-2 rounded-lg px-3 text-left text-[13px] ${active ? 'bg-primary/10 font-bold text-primary' : 'font-medium text-on-surface hover:bg-background'}`}>
+    <button type="button" data-testid={`categoria-${chip.id}`} aria-current={active ? 'true' : undefined} onClick={onPick} className={`relative flex min-h-[36px] w-full items-center justify-between gap-2 rounded-thumb px-3 text-left text-[13px] ${active ? 'bg-primary/10 font-bold text-primary' : 'font-medium text-on-surface hover:bg-background'}`}>
       {active ? <span aria-hidden className="absolute bottom-1 left-0 top-1 w-[3px] rounded-r-full bg-primary" /> : null}
       <span className="truncate">{chip.name}</span>
       <span className={`shrink-0 text-[12px] tabular-nums ${active ? 'font-bold' : 'text-on-surface-variant'}`}>{chip.count}</span>
@@ -36,7 +36,7 @@ function ReviewButton(props: { id: CategoryFilter; label: string; count: number;
   if (!props.count) return null;
   const pill = props.tone === 'warning' ? 'border-warning/40 bg-warning/10 text-warning' : 'border-error/30 bg-error/10 text-error';
   return (
-    <button type="button" data-testid={`revision-${props.id}`} aria-current={props.active ? 'true' : undefined} onClick={props.onPick} className={`flex min-h-[32px] w-full items-center justify-between gap-2 rounded-lg px-2.5 text-left text-[12px] font-medium ${props.active ? 'bg-primary/10 text-primary' : 'text-on-surface hover:bg-background'}`}>
+    <button type="button" data-testid={`revision-${props.id}`} aria-current={props.active ? 'true' : undefined} onClick={props.onPick} className={`flex min-h-[32px] w-full items-center justify-between gap-2 rounded-thumb px-2.5 text-left text-[12px] font-medium ${props.active ? 'bg-primary/10 text-primary' : 'text-on-surface hover:bg-background'}`}>
       <span className="truncate">{props.label}</span>
       <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${pill}`}>{props.count}</span>
     </button>
@@ -141,7 +141,7 @@ export function CategoryChips({ view, only, onOnly }: { view: CategoryView; only
       {[...view.chips, ...review].map((chip) => {
         const active = only === chip.id;
         return (
-          <button key={chip.id} type="button" role="tab" aria-selected={active} data-testid={`chip-${chip.id}`} onClick={() => onOnly(chip.id)} className={`flex h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border px-4 text-[14px] ${active ? 'border-primary bg-primary font-bold text-on-primary' : 'border-outline/15 bg-surface font-medium text-on-surface'}`}>
+          <button key={chip.id} type="button" role="tab" aria-selected={active} data-testid={`chip-${chip.id}`} onClick={() => onOnly(chip.id)} className={`flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-card border px-4 text-[14px] ${active ? 'border-primary bg-primary font-bold text-on-primary' : 'border-outline/15 bg-surface font-medium text-on-surface'}`}>
             {chip.name}
             <span className={`tabular-nums ${active ? 'opacity-90' : 'text-on-surface-variant'}`}>{chip.count}</span>
           </button>

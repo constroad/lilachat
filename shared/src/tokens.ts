@@ -175,6 +175,10 @@ export const vividPulse = {
     md: 12,
     lg: 16,
     xl: 24,
+    /** Link views' surfaces: cards, chips, search field, segmented control, sheet rows and buttons (design nl-01..03, 18/11). */
+    card: 12,
+    /** Thumbnails, the active segment and the desktop category rows (design nl-01..03, 18/11). */
+    thumb: 8,
     /** Esquina-cola de la burbuja de chat: apunta al emisor. */
     bubbleTail: 4,
     full: 9999,

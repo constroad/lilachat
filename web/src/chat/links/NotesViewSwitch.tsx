@@ -14,7 +14,7 @@ const OPTIONS: { view: NotesView; label: string; icon: LucideIcon }[] = [
 export function NotesViewSwitch(props: { chat: Pick<ChatSummary, 'kind' | 'linksSorted'>; view: NotesView; onView: (view: NotesView) => void; inHeader?: boolean }) {
   if (!showsLinkSorting(props.chat)) return null;
   return (
-    <div role="tablist" aria-label="Vista del chat" data-testid="vista-de-notas" className={`flex rounded-xl border border-outline/15 bg-primary/10 p-1 ${props.inHeader ? 'w-[300px] shrink-0' : 'w-full'}`}>
+    <div role="tablist" aria-label="Vista del chat" data-testid="vista-de-notas" className={`flex rounded-card border border-outline/15 bg-primary/10 p-1 ${props.inHeader ? 'w-[300px] shrink-0' : 'w-full'}`}>
       {OPTIONS.map((option) => {
         const active = props.view === option.view;
         const Icon = option.icon;
@@ -26,7 +26,7 @@ export function NotesViewSwitch(props: { chat: Pick<ChatSummary, 'kind' | 'links
             aria-selected={active}
             data-testid={`vista-notas-${option.view}`}
             onClick={() => props.onView(option.view)}
-            className={`flex min-h-[36px] flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3 text-sm transition-colors motion-reduce:transition-none ${active ? 'bg-surface font-semibold text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
+            className={`flex min-h-[36px] flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-thumb px-3 text-sm transition-colors motion-reduce:transition-none ${active ? 'bg-surface font-semibold text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
           >
             <Icon size={16} aria-hidden />
             {option.label}

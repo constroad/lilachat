@@ -1,7 +1,7 @@
 import { ArrowRight, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { buildCategoryView, MAX_CATEGORY_NAME, MAX_LINK_CATEGORIES, type LinkCategory, type LinkNoteItem } from '@lilachat/shared';
-import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
+import { FieldError, Overlay } from '../../ui/Overlay';
 import { createLinkCategory, moveLinkToCategory, type LinkNotes } from './linkNotesApi';
 import { loadLinkNotes, receiveMessageLink } from './linkNotesStore';
 import { authorOf, LinkThumb, PlatformPill, summaryOf } from './linkCardParts';
@@ -22,7 +22,7 @@ function ChoiceRow(props: { id: string; name: string; count?: number; current: b
       aria-checked={props.selected}
       data-testid={`mover-a-${props.id}`}
       onClick={props.onSelect}
-      className={`relative flex min-h-[56px] w-full items-center gap-3 rounded-xl border px-4 text-left transition-colors motion-reduce:transition-none ${props.selected ? 'border-primary bg-primary/5' : 'border-outline/20 hover:bg-background'}`}
+      className={`relative flex min-h-[56px] w-full items-center gap-3 rounded-card border px-4 text-left transition-colors motion-reduce:transition-none ${props.selected ? 'border-primary bg-primary/5' : 'border-outline/20 hover:bg-background'}`}
     >
       <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${props.selected ? 'border-primary' : 'border-outline/40'}`}>{props.selected ? <span className="h-2.5 w-2.5 rounded-full bg-primary" /> : null}</span>
       <span className="min-w-0 flex-1">
@@ -37,7 +37,7 @@ function ChoiceRow(props: { id: string; name: string; count?: number; current: b
 function MiniCard({ item }: { item: LinkNoteItem }) {
   const { link } = item;
   return (
-    <div className="flex gap-3 rounded-xl border border-outline/15 bg-background p-3">
+    <div className="flex gap-3 rounded-card border border-outline/15 bg-background p-3">
       <LinkThumb link={link} className="aspect-[3/4] w-12" />
       <div className="min-w-0 flex-1">
         <p className="flex min-w-0 items-center gap-1.5 text-[13px] font-bold text-on-surface">
@@ -57,7 +57,7 @@ function NewCategoryRow(props: { full: boolean; busy: boolean; onCreate: (name: 
   if (props.full) return <p className="px-1 text-[12px] text-on-surface-variant">Llegaste al máximo de {MAX_LINK_CATEGORIES} categorías. Une dos para crear otra.</p>;
   if (!open) {
     return (
-      <button type="button" data-testid="btn-nueva-categoria" onClick={() => setOpen(true)} className="flex min-h-[56px] w-full items-center gap-3 rounded-xl border border-dashed border-outline/40 px-4 text-left text-[15px] font-semibold text-primary hover:bg-primary/5">
+      <button type="button" data-testid="btn-nueva-categoria" onClick={() => setOpen(true)} className="flex min-h-[56px] w-full items-center gap-3 rounded-card border border-dashed border-outline/40 px-4 text-left text-[15px] font-semibold text-primary hover:bg-primary/5">
         <Plus size={18} aria-hidden /> Nueva categoría
       </button>
     );
@@ -71,8 +71,8 @@ function NewCategoryRow(props: { full: boolean; busy: boolean; onCreate: (name: 
   };
   return (
     <div className="flex gap-2">
-      <input autoFocus data-testid="campo-nueva-categoria" value={name} maxLength={MAX_CATEGORY_NAME} placeholder="Nombre de la categoría" onChange={(event) => setName(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && submit()} className="h-12 min-w-0 flex-1 rounded-xl border border-outline/30 bg-surface px-3 text-[15px] outline-none focus:border-primary" />
-      <button type="button" data-testid="btn-crear-categoria" disabled={!name.trim() || props.busy} onClick={() => void submit()} className="h-12 shrink-0 rounded-xl bg-primary/10 px-4 text-sm font-semibold text-primary disabled:opacity-40">
+      <input autoFocus data-testid="campo-nueva-categoria" value={name} maxLength={MAX_CATEGORY_NAME} placeholder="Nombre de la categoría" onChange={(event) => setName(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && submit()} className="h-12 min-w-0 flex-1 rounded-card border border-outline/30 bg-surface px-3 text-[15px] outline-none focus:border-primary" />
+      <button type="button" data-testid="btn-crear-categoria" disabled={!name.trim() || props.busy} onClick={() => void submit()} className="h-12 shrink-0 rounded-card bg-primary/10 px-4 text-sm font-semibold text-primary disabled:opacity-40">
         Crear
       </button>
     </div>
@@ -118,9 +118,10 @@ export function MoveLinkSheet({ jwt, chatId, item, notes, onClose }: Props) {
     </div>
   );
   const footer = (
-    <PrimaryButton testId="btn-mover-enlace" disabled={busy || selected === current} onClick={() => void move()}>
+    // 56 px tall like design nl-03, taller than the shared PrimaryButton.
+    <button type="button" data-testid="btn-mover-enlace" disabled={busy || selected === current} onClick={() => void move()} className="grid h-14 w-full place-items-center rounded-card bg-primary text-sm font-semibold text-on-primary transition-opacity disabled:opacity-40">
       <span className="flex items-center gap-2">Mover <ArrowRight size={18} aria-hidden /></span>
-    </PrimaryButton>
+    </button>
   );
   return (
     <Overlay title="Mover de categoría" header={header} footer={footer} onClose={onClose}>

@@ -66,7 +66,7 @@ export default {
         secondary: { DEFAULT: color('secondary'), brand: color('secondary-brand') },
         ...Object.fromEntries(Object.keys(PALETTE).filter((name) => !name.startsWith('primary') && !name.startsWith('secondary')).map((name) => [name, color(name)])),
       },
-      borderRadius: { lg: `${radius.lg}px`, xl: `${radius.xl}px` },
+      borderRadius: { lg: `${radius.lg}px`, xl: `${radius.xl}px`, card: `${radius.card}px`, thumb: `${radius.thumb}px` },
       fontFamily: { sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'] },
       // La barra del QR (W5): se vacía hasta el próximo token.
       keyframes: { vaciar: { from: { transform: 'scaleX(1)' }, to: { transform: 'scaleX(0)' } } },

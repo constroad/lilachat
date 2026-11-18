@@ -26,7 +26,7 @@ export function RenameCategoryDialog({ jwt, chatId, category, onClose }: Target)
   return (
     <Overlay title="Renombrar categoría" onClose={onClose} footer={<PrimaryButton testId="btn-guardar-nombre-categoria" disabled={busy || unchanged} onClick={() => void save()}>Guardar</PrimaryButton>}>
       <label className="block text-[13px] font-semibold text-on-surface-variant" htmlFor="nombre-categoria">Nombre</label>
-      <input id="nombre-categoria" data-testid="campo-nombre-categoria" autoFocus value={name} maxLength={MAX_CATEGORY_NAME} onChange={(event) => setName(event.target.value)} className="mt-1 h-12 w-full rounded-xl border border-outline/30 bg-surface px-3 text-[15px] outline-none focus:border-primary" />
+      <input id="nombre-categoria" data-testid="campo-nombre-categoria" autoFocus value={name} maxLength={MAX_CATEGORY_NAME} onChange={(event) => setName(event.target.value)} className="mt-1 h-12 w-full rounded-card border border-outline/30 bg-surface px-3 text-[15px] outline-none focus:border-primary" />
       <FieldError>{error}</FieldError>
     </Overlay>
   );
@@ -57,7 +57,7 @@ export function MergeCategoryDialog({ jwt, chatId, category, categories, count, 
       </p>
       <div role="radiogroup" aria-label="Unir con" className="mt-3 space-y-2">
         {choices.map((choice) => (
-          <button key={choice.id} type="button" role="radio" aria-checked={into === choice.id} data-testid={`unir-con-${choice.id}`} onClick={() => setInto(choice.id)} className={`flex min-h-[48px] w-full items-center rounded-xl border px-4 text-left text-[15px] ${into === choice.id ? 'border-primary bg-primary/5 font-bold text-primary' : 'border-outline/20 hover:bg-background'}`}>
+          <button key={choice.id} type="button" role="radio" aria-checked={into === choice.id} data-testid={`unir-con-${choice.id}`} onClick={() => setInto(choice.id)} className={`flex min-h-[48px] w-full items-center rounded-card border px-4 text-left text-[15px] ${into === choice.id ? 'border-primary bg-primary/5 font-bold text-primary' : 'border-outline/20 hover:bg-background'}`}>
             {choice.name}
           </button>
         ))}

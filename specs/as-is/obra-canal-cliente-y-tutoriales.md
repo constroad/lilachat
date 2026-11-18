@@ -36,6 +36,7 @@ Pendientes**.
 - Pedidos con su obra («20 m³ · 6 oct · OBRA GRAU»), despachos dentro del pedido, fotos y
   videos primero, cubicaje plegado.
 - Informes agrupados por día de Lima, del más nuevo al más viejo; «Creado por …».
+- «Crear informe» en el APK y la web angosta ofrece los tipos de la página pública de Portal y todos se llenan aquí (18/11, `fieldPickerReportTypes`). La aprobación de adicional (APR-ADI) sale solo a quien ve la plata. Detalle por tipo en `obra-informes.md`.
 - Inicio del servicio como día (`started_at`, «Inicio 6 oct»), sin zona horaria.
 - **Enlace del servicio** («Crear enlace», kind `service_link` → `crear_enlace_de_servicio`):
   se abre sin cuenta de Portal (07/11).
@@ -138,6 +139,7 @@ Pendientes**.
   de un servicio se abre sin cuenta de Portal; el Drive es de todos.
 - **11/11** Observaciones desde el canal, detrás de un interruptor.
 - **12/11** Un canal recargado en el teléfono conserva sus pestañas.
+- **18/11** SOL-IMP y APR-ADI se crean desde el canal (antes decían «En Portal»); APR-ADI solo con plata.
 - **16/11** Hojas de bloques del editor 2.0 solo para quien ve montos.
 
 ## 5. Diseños de Stitch relacionados

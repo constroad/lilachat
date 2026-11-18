@@ -71,6 +71,6 @@ describe('CreateReportDialog and Portal\'s block sheets', () => {
     const rows = blockRows();
     // Assert
     expect(rows.filter(Boolean)).toEqual([]);
-    expect(screen.getAllByTestId(/^tipo-informe-/)).toHaveLength(9);
+    expect(screen.getAllByTestId(/^tipo-informe-/)).toHaveLength(10); // the public page's nine plus the approval, filled here with money since 18/11
   });
 });

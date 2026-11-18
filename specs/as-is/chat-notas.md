@@ -105,6 +105,9 @@ Diseño en Stitch `nl-01` a `nl-03` (ver §5). Prototipo navegable en https://cl
   - Mantener presionado un chip abre «Renombrar» y «Unir con…» (`CategoryActionsSheet.tsx`).
 - **Tarjetas** (`LinkRowCard.tsx`, `LinkCardParts.tsx`): mantener presionado abre «Mover a» (`MoveLinkSheet.tsx`). `useLinkOpener.tsx` abre el enlace.
 - **En la burbuja** (`NoteLinkBubble.tsx`): la tarjeta guardada, su pastilla de categoría, «Solo pide comentar» y «No se pudo leer» con «Reintentar».
+  - La burbuja de un enlace toma la fila entera (`BubbleColumn`, en vez del 80 %); la tarjeta mide el ancho de la pantalla menos los márgenes, hasta 460 dp en tablet.
+  - La pastilla de plataforma nunca se corta: se acorta el título.
+- **Hoja «Mover a»:** la fila elegida lleva el riel de acento de 3 dp, como Stitch.
 - **Datos** (`useChatLinks.ts`, `useNotesLinks.tsx`, `linksApi.ts`): una lectura de `GET /links` por chat; `msg.link` y `chat.links.changed` por socket.
 - **Interruptor:** «Ordenar enlaces por categoría» en el menú ⋮ de la conversación (`chatHeaderMenu.ts`).
 - Radios: `rounded-card` (12) en tarjetas, chips, filas y botones; `rounded-thumb` (8) en miniaturas, como Stitch.

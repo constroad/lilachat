@@ -116,8 +116,10 @@ function CategoryOption({ id, name, count, current, selected, onPick }: OptionPr
       accessibilityRole="radio"
       accessibilityState={{ selected }}
       onPress={() => onPick(id)}
-      className={`min-h-[56px] flex-row items-center gap-3 rounded-card border px-4 ${selected ? 'border-2 border-primary bg-primary/[0.06]' : 'border-outline/20 bg-surface'}`}
+      className={`min-h-[56px] flex-row items-center gap-3 overflow-hidden rounded-card border px-4 ${selected ? 'border-2 border-primary bg-primary/[0.06]' : 'border-outline/20 bg-surface'}`}
     >
+      {/* The accent rail of the chosen row, as in design nl-03. */}
+      {selected ? <View testID={`riel-${id}`} className="absolute bottom-0 left-0 top-0 w-[3px] bg-primary" /> : null}
       <View className={`h-5 w-5 items-center justify-center rounded-full border-2 ${selected ? 'border-primary' : 'border-outline/50'}`}>
         {selected ? <View className="h-2.5 w-2.5 rounded-full bg-primary" /> : null}
       </View>

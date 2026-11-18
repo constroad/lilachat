@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, type ComponentProps, type ReactNode } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { Folder, FolderX, Pencil, RotateCw } from 'lucide-react-native';
 import { primerEnlace, type LinkCard } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
@@ -18,7 +18,11 @@ export type NoteLinksBubble = {
 };
 export const NoteLinksContext = createContext<NoteLinksBubble | null>(null);
 
-const CARD_WIDTH = 280;
+/** The chat list's side gutter (`ListaDeMensajes` contentContainerStyle) and the card's own margin (`m-1.5`). */
+const LIST_GUTTER = 12;
+const CARD_MARGIN = 6;
+/** On a tablet the card stops growing: a link is a card, not a banner. */
+const MAX_CARD_WIDTH = 460;
 const THUMB_WIDTH = 64;
 const PILL_HIT_SLOP = 8;
 
@@ -38,6 +42,18 @@ type Props = {
  * a link draws its stored card and its category, and a bare shared URL is not
  * repeated under it; elsewhere, the usual preview fetched by URL.
  */
+/** A stored link of a notes chat takes the whole row, as in design nl-02 (review 18/11: at 80 % its title and pill were cut). */
+function useIsWideNoteLink(item: Row): boolean {
+  const notes = useContext(NoteLinksContext);
+  return Boolean(notes && !isPending(item) && !item.media && item.link);
+}
+
+/** The column that holds a bubble: up to 80 % of the row, or all of it for a stored link. */
+export function BubbleColumn({ item, mine, children }: { item: Row; mine: boolean; children: ReactNode }) {
+  const wide = useIsWideNoteLink(item);
+  return <View className={`${wide ? 'max-w-full' : 'max-w-[80%]'} ${mine ? 'items-end' : 'items-start'}`}>{children}</View>;
+}
+
 export function LinkAwareBody({ item, jwt, mine, withPreview, meta, children }: Props) {
   const notes = useContext(NoteLinksContext);
   const link = isPending(item) || item.media ? undefined : item.link;
@@ -62,8 +78,10 @@ export function LinkAwareBody({ item, jwt, mine, withPreview, meta, children }: 
 
 function StoredLinkCard({ seq, at, link, notes }: { seq: number; at: string; link: LinkCard; notes: NoteLinksBubble }) {
   const lines = cardLinesOf(link);
+  const { width: windowWidth } = useWindowDimensions();
+  const cardWidth = Math.min(windowWidth - LIST_GUTTER * 2 - CARD_MARGIN * 2, MAX_CARD_WIDTH);
   return (
-    <Pressable testID={`tarjeta-enlace-${seq}`} onPress={() => notes.onOpen(link.url)} style={{ width: CARD_WIDTH }} className="m-1.5 mb-0 flex-row gap-3 rounded-card bg-surface p-2.5">
+    <Pressable testID={`tarjeta-enlace-${seq}`} onPress={() => notes.onOpen(link.url)} style={{ width: cardWidth }} className="m-1.5 mb-0 flex-row gap-3 rounded-card bg-surface p-2.5">
       <LinkThumb link={link} width={THUMB_WIDTH} />
       <View className="min-w-0 flex-1 gap-1">
         <View className="flex-row items-center justify-between gap-2">

@@ -11,7 +11,7 @@ import { LineaDeLlamada } from './LineaDeLlamada';
 import { CitaDeRespuesta } from './CitaDeRespuesta';
 import { TextoConHora } from './TextoConHora';
 import { MetaDeMensaje } from './MetaDeMensaje';
-import { LinkAwareBody } from './links/NoteLinkBubble';
+import { BubbleColumn, LinkAwareBody } from './links/NoteLinkBubble';
 import {
   TEXTO_ELIMINADO,
   esAvisoDestacado,
@@ -267,7 +267,7 @@ function FilaDeMensaje({
         )
       ) : null}
 
-      <View className={`max-w-[80%] ${mine ? 'items-end' : 'items-start'}`}>
+      <BubbleColumn item={item} mine={mine}>
         {/* La pulsación LARGA selecciona, como en WhatsApp. Un toque corto no
             hace nada acá: se reserva para abrir la foto. */}
         <Pressable
@@ -400,7 +400,7 @@ function FilaDeMensaje({
             <Text className="text-[11px] text-error">No se envió · Toca para reintentar</Text>
           </Pressable>
         ) : null}
-      </View>
+      </BubbleColumn>
     </View>
     </DeslizarParaResponder>
   );

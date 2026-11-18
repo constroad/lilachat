@@ -32,10 +32,10 @@ export const LinkThumb = memo(function LinkThumb({ link, width }: { link: LinkCa
   );
 });
 
-/** «INSTAGRAM · REEL», on one line always (the INVENTARIO says Stitch broke it in two). */
+/** «INSTAGRAM · REEL», on one line always and never cut: the title beside it is what shrinks (review 18/11). */
 export function PlatformPill({ link, tone = 'dark' }: { link: LinkCard; tone?: 'dark' | 'soft' }) {
   return (
-    <View className={`shrink rounded-md px-1.5 py-0.5 ${tone === 'dark' ? 'bg-on-surface' : 'bg-primary/[0.12]'}`}>
+    <View className={`shrink-0 rounded-md px-1.5 py-0.5 ${tone === 'dark' ? 'bg-on-surface' : 'bg-primary/[0.12]'}`}>
       <Text numberOfLines={1} className={`text-[10px] font-bold tracking-wider ${tone === 'dark' ? 'text-surface' : 'text-on-surface-variant'}`}>
         {platformLabel(link)}
       </Text>

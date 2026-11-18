@@ -101,20 +101,24 @@ describe('creating a report in the editor (José 12/11: «en la web, el editor; 
     for (const type of ['CTL-PIS', 'CTL-IMP', 'REG-OBS', 'LEV-OBS', 'CON-CAP', 'IAA', 'FRE-PAV', 'RCP-CAM']) expect(createsInEmbed(EMBED_MIN_WIDTH_PX, type)).toBe(true);
     expect(createsInEmbed(EMBED_MIN_WIDTH_PX - 1, 'CTL-IMP')).toBe(false);
     expect(createsInEmbed(EMBED_MIN_WIDTH_PX - 1, 'IAA')).toBe(false);
-    expect(createsInEmbed(1440, 'SOL-IMP')).toBe(false);
-    expect(createsInEmbed(1440, 'VAL-SRV')).toBe(false);
+    expect(createsInEmbed(1440, 'XYZ-NEW')).toBe(false);
+  });
+
+  it('Portal 17/11: SOL-IMP, APR-ADI, VAL-SRV and LIQ-SRV are born in the editor on a wide window too', () => {
+    const added = ['SOL-IMP', 'APR-ADI', 'VAL-SRV', 'LIQ-SRV'];
+    expect(added.filter((type) => createsInEmbed(1440, type))).toEqual(added);
+    expect(added.filter((type) => createsInEmbed(EMBED_MIN_WIDTH_PX - 1, type))).toEqual([]);
   });
 
   it('José 16/11: the wide web also creates Portal\'s nine block sheets in its editor; a narrower window never does', () => {
     // Arrange
-    const blockSheets = ['ACT-CNF', 'REC-EXC', 'MET-RES', 'CAL-PROT', 'TOP-CMP', 'INF-ACT', 'PNL-FOT', 'CONT-SRV', 'DOS-OBR'];
+    const blockSheets = ['ACT-CNF', 'REC-EXC', 'MET-RES', 'CAL-PROT', 'TOP-CMP', 'INF-ACT', 'PNL-FOT', 'CONT-SRV', 'DOS-OBR', 'APR-ADI', 'VAL-SRV', 'LIQ-SRV'];
     // Act
     const wide = blockSheets.filter((type) => createsInEmbed(EMBED_MIN_WIDTH_PX, type));
     const narrow = blockSheets.filter((type) => createsInEmbed(EMBED_MIN_WIDTH_PX - 1, type));
     // Assert
     expect(wide).toEqual(blockSheets);
     expect(narrow).toEqual([]);
-    expect(createsInEmbed(1440, 'LIQ-SRV')).toBe(false);
   });
 
   it('the new report\'s id comes from its link, so an expired link asks for that report and never creates another', () => {

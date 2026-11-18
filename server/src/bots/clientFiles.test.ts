@@ -288,7 +288,7 @@ describe('a new report born in Portal\'s editor (José 12/11: no forms on the wi
   });
 
   it('a type the editor does not create, or a bad body, is a 400 and no event', async () => {
-    expect((await createIn(jose, { type: 'VAL-SRV' })).status).toBe(400);
+    expect((await createIn(jose, { type: 'XYZ-NEW' })).status).toBe(400);
     expect((await createIn(jose, { type: 'CTL-IMP', responsible: 'x'.repeat(81) })).status).toBe(400);
     expect((await createIn(jose, {})).status).toBe(400);
     expect(received).toHaveLength(0);

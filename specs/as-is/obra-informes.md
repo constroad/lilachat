@@ -34,11 +34,13 @@ Fuente: `REPORT_TYPE_OPTIONS` en `shared/src/reportCreation.ts`.
 | REG-OBS | Registro de observaciones | Sí (interruptor encendido desde 11/11) | Pantalla propia, 3 toques |
 | LEV-OBS | Levantamiento de observaciones | Sí | Antes en el visor, después con cámara |
 | IAA | Área adicional | Solo en el APK | Ver `obra-visita-e-iaa.md` |
-| SOL-IMP | Solicitud de imprimación | No | Abre Portal («En Portal») |
+| SOL-IMP | Solicitud de imprimación | No | APK y web angosta: abre Portal («En Portal»). Web ancha: nace en el editor 2.0 (17/11) |
 
 **Hojas de bloques del editor 2.0** (16/11, `EDITOR_REPORT_TYPE_OPTIONS`): ACT-CNF,
-REC-EXC, MET-RES, CAL-PROT, TOP-CMP, INF-ACT, PNL-FOT, CONT-SRV y DOS-OBR. Solo se
-crean en la web ancha y solo quien ve montos (admin del espacio).
+REC-EXC, MET-RES, CAL-PROT, TOP-CMP, INF-ACT, PNL-FOT, CONT-SRV y DOS-OBR. Desde el
+17/11 también APR-ADI, VAL-SRV y LIQ-SRV, los tres con montos (José: «sumarlos al
+embed»; sin cobranza, Portal responde `no_billing`). Solo se crean en la web ancha y solo
+quien ve montos (admin del espacio).
 
 ### Flujo de un informe (formulario por secciones)
 
@@ -93,7 +95,7 @@ El server la quita del documento de un miembro (`withoutGroupSend`).
 - **Editor 2.0 de Portal embebido** (`PortalEmbedWeb.tsx`, desde 11/11). En la web
   ancha (≥ 1024 px, `EMBED_MIN_WIDTH_PX`) un informe con `editor: 'v2'` abre el lienzo
   de Portal en un `iframe`. Crear en el editor: `EMBED_CREATE_TYPES` (los 8 tipos de
-  campo más las 9 hojas de bloques).
+  campo, SOL-IMP y las 12 hojas de bloques).
   - Enlace: `https://www.constroad.com/embed/report/<id>#t=<token>`; token por
     miembro, 12 h, en el fragmento.
   - Mensajes v1: `portal-embed:ready`, `:dirty`, `:saved`, `:published`, `:closed`,

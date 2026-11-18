@@ -55,6 +55,10 @@ describe('Portal\'s block sheets in the web\'s picker (José 16/11)', () => {
     'PNL-FOT': 'Panel fotográfico de obra',
     'CONT-SRV': 'Contrato de servicio',
     'DOS-OBR': 'Dossier de obra',
+    // Portal 17/11 (José: «sumarlos al embed»): approval of an addition, valuation and liquidation.
+    'APR-ADI': 'Aprobación de adicional',
+    'VAL-SRV': 'Valorización de servicios',
+    'LIQ-SRV': 'Liquidación final del servicio',
   };
   const BLOCK_SHEETS = Object.keys(PORTAL_LABELS);
   const codes = (options: readonly ReportTypeOption[]) => options.map((option) => option.code);
@@ -71,7 +75,7 @@ describe('Portal\'s block sheets in the web\'s picker (José 16/11)', () => {
     // Act
     const money = codes(EDITOR_REPORT_TYPE_OPTIONS.filter((option) => option.money));
     // Assert
-    expect(money).toEqual(['ACT-CNF', 'REC-EXC', 'MET-RES', 'CONT-SRV', 'DOS-OBR']);
+    expect(money).toEqual(['ACT-CNF', 'REC-EXC', 'MET-RES', 'CONT-SRV', 'DOS-OBR', 'APR-ADI', 'VAL-SRV', 'LIQ-SRV']);
     expect(REPORT_TYPE_OPTIONS.filter((option) => option.money)).toEqual([]);
   });
 
@@ -115,9 +119,9 @@ describe('Portal\'s block sheets in the web\'s picker (José 16/11)', () => {
 
   it('the server asks for money to create a block sheet, never a public type; an unknown type fails closed', () => {
     // Act
-    const needMoney = [...PUBLIC, ...BLOCK_SHEETS, 'VAL-SRV'].filter(needsMoneyToCreate);
+    const needMoney = [...PUBLIC, ...BLOCK_SHEETS, 'XYZ-NEW'].filter(needsMoneyToCreate);
     // Assert
-    expect(needMoney).toEqual([...BLOCK_SHEETS, 'VAL-SRV']);
+    expect(needMoney).toEqual([...BLOCK_SHEETS, 'XYZ-NEW']);
   });
 });
 

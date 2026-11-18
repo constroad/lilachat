@@ -1521,7 +1521,7 @@ teléfono y en el APK sigue el formulario de este spec.
 
 | Pieza | Valor |
 | --- | --- |
-| Marca por informe | `editor: 'v2'` en `client.service.requested`. Hoy: CTL-PIS, CTL-IMP, REG-OBS, LEV-OBS, CON-CAP y, desde el F4 de Portal (15/11), IAA, FRE-PAV y RCP-CAM. Desde el 16/11, las nueve hojas de bloques (ver «Las hojas de bloques de Portal en la web»). VAL-SRV y LIQ-SRV entran después, sin cambios acá |
+| Marca por informe | `editor: 'v2'` en `client.service.requested`. Hoy: CTL-PIS, CTL-IMP, REG-OBS, LEV-OBS, CON-CAP y, desde el F4 de Portal (15/11), IAA, FRE-PAV y RCP-CAM. Desde el 16/11, las nueve hojas de bloques (ver «Las hojas de bloques de Portal en la web»). Desde el 17/11, SOL-IMP, APR-ADI, VAL-SRV y LIQ-SRV (ver «Cuatro tipos más en el editor») |
 | Pedido del enlace | `GET …/services/:serviceId/reports/:reportId/embed` → evento `client.report.embed.requested` {client_id, service_id, report_id, user} → herramienta `abrir_editor_de_informe` (agentes 9ec3e8c) |
 | Respuesta | `{url, expires_at}`; url = `https://www.constroad.com/embed/report/<id>#t=<token>`. Token por miembro y por pedido, 12 h, en el fragmento (no llega a logs ni Referer) |
 | Rol | Lo firma agentes (`space_role`, de la lista de miembros); el evento no lo lleva |
@@ -1654,6 +1654,27 @@ recuadro gris, sin texto: se leía como «no carga».
 Lo que NO era: la visita técnica no aparece en Constroad porque su acción está **APAGADA** en
 Portal → Comandos (todo nace apagado desde el 28/10). La enciende un admin del espacio. Los informes
 de campo no viven en el «+»: están en Servicios → el servicio → Informes → «Crear informe».
+
+### Cuatro tipos más en el editor (Portal 17/11)
+
+José decidió «sumarlos al embed» para VAL-SRV y LIQ-SRV. Portal (editor 2.0) pidió sumar también
+SOL-IMP y APR-ADI en el mismo cambio. `crear_informe_en_editor` acepta SOL-IMP y APR-ADI desde el
+15/11; VAL-SRV y LIQ-SRV entran con Portal `46a70328` y piden que José reapruebe la herramienta en Agentes.
+
+| Tipo | Nombre de Portal | Montos | Fotos del embed |
+| --- | --- | --- | --- |
+| SOL-IMP | «Solicitud de imprimación» | No (tipo público) | Van al `panelFotografico` |
+| APR-ADI | «Aprobación de adicional» | Sí | No recibe |
+| VAL-SRV | «Valorización de servicios» | Sí | No recibe |
+| LIQ-SRV | «Liquidación final del servicio» | Sí | No recibe |
+
+- Lilachat: los cuatro en `EMBED_CREATE_TYPES`; APR-ADI, VAL-SRV y LIQ-SRV en
+  `EDITOR_REPORT_TYPE_OPTIONS` con `money`. El server pide montos al crearlos (`needsMoneyToCreate`).
+- SOL-IMP sigue siendo público: en el APK y la web angosta abre Portal, como antes.
+- Sin cobranza, Portal responde `no_billing` antes de crear. «Sincronizar con el servicio» de la
+  liquidación corre dentro del marco (ruta por token de Portal).
+- E2E pendiente, después del deploy de Portal y la reaprobación: en Test, un admin crea VAL y LIQ y
+  sincroniza la LIQ; un miembro no ve ninguno de los dos.
 
 ### Las hojas de bloques de Portal en la web (José 16/11)
 

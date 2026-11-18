@@ -37,7 +37,7 @@ describe('the APK creates only the public page\'s types (José 16/11)', () => {
     // Act
     const offered = REPORT_TYPE_OPTIONS.map((option) => option.code);
     // Assert
-    expect(blockSheets).toHaveLength(9);
+    expect(blockSheets).toHaveLength(12);
     expect(offered.filter((code) => blockSheets.includes(code))).toEqual([]);
     expect(offered).toEqual(['CTL-IMP', 'IAA', 'CTL-PIS', 'CON-CAP', 'RCP-CAM', 'REG-OBS', 'LEV-OBS', 'FRE-PAV', 'SOL-IMP']);
   });

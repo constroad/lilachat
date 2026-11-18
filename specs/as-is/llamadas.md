@@ -179,8 +179,8 @@ depende de Portal ni de Inframaq.
 - El APK no tiene historial de llamadas (verificado en código).
 - Salas y timbres en memoria: un reinicio del server corta toda llamada en curso
   (decisión de diseño).
-- El 17/11 el server se reinició 14 veces. Cada reinicio corta las llamadas en curso. La causa
-  de tantos reinicios no está investigada.
+- El 17/11 el server se reinició 14 veces, todas por deploy (lila-2 leyó `deploy.log`; ninguna
+  caída). Fue un push por commit. Cada deploy corta las llamadas en curso: los push van por lote.
 - Un «ocupado» de un solo dispositivo termina la llamada para todos los del que recibe
   (`call.reject` → `alTerminar`). Sin cambiar.
 

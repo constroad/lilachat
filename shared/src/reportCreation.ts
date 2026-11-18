@@ -64,6 +64,10 @@ export const EDITOR_REPORT_TYPE_OPTIONS: readonly ReportTypeOption[] = [
   { code: 'PNL-FOT', label: 'Panel fotográfico de obra', caption: 'Las fotos de la obra del periodo', opensHere: false },
   { code: 'CONT-SRV', label: 'Contrato de servicio', caption: 'El contrato del servicio con el cliente', opensHere: false, money: true },
   { code: 'DOS-OBR', label: 'Dossier de obra', caption: 'Los entregables de la obra en un solo documento', opensHere: false, money: true },
+  // Portal 17/11 (José: «sumarlos al embed»); without billing Portal answers `no_billing` before creating.
+  { code: 'APR-ADI', label: 'Aprobación de adicional', caption: 'La aprobación del cliente para un trabajo adicional', opensHere: false, money: true },
+  { code: 'VAL-SRV', label: 'Valorización de servicios', caption: 'Lo ejecutado en el periodo, valorizado', opensHere: false, money: true },
+  { code: 'LIQ-SRV', label: 'Liquidación final del servicio', caption: 'El cierre de cuentas del servicio', opensHere: false, money: true },
 ];
 
 const ALL_REPORT_TYPE_OPTIONS: readonly ReportTypeOption[] = [...REPORT_TYPE_OPTIONS, ...EDITOR_REPORT_TYPE_OPTIONS];

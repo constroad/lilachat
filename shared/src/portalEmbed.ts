@@ -114,7 +114,7 @@ export const reportEmbedPath = (spaceId: string, clientId: string, serviceId: st
  * phone-width PWA). The types Portal marks `editor: 'v2'` on its rows; IAA, FRE-PAV and RCP-CAM since its F4 (15/11).
  * Since 16/11 (Portal 82f9a231) its nine block sheets too, which only the web creates: the APK never opens the editor.
  */
-export const EMBED_CREATE_TYPES: readonly string[] = ['CTL-PIS', 'CTL-IMP', 'REG-OBS', 'LEV-OBS', 'CON-CAP', 'IAA', 'FRE-PAV', 'RCP-CAM', 'ACT-CNF', 'REC-EXC', 'MET-RES', 'CAL-PROT', 'TOP-CMP', 'INF-ACT', 'PNL-FOT', 'CONT-SRV', 'DOS-OBR'];
+export const EMBED_CREATE_TYPES: readonly string[] = ['CTL-PIS', 'CTL-IMP', 'REG-OBS', 'LEV-OBS', 'CON-CAP', 'IAA', 'FRE-PAV', 'RCP-CAM', 'ACT-CNF', 'REC-EXC', 'MET-RES', 'CAL-PROT', 'TOP-CMP', 'INF-ACT', 'PNL-FOT', 'CONT-SRV', 'DOS-OBR', 'SOL-IMP', 'APR-ADI', 'VAL-SRV', 'LIQ-SRV'];
 /** On a wide window a new report of these types is born in Portal's editor, never in Lilachat's form. */
 export const createsInEmbed = (windowWidth: number, type: string): boolean => windowWidth >= EMBED_MIN_WIDTH_PX && EMBED_CREATE_TYPES.includes(type);
 

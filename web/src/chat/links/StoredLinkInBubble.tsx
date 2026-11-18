@@ -36,8 +36,12 @@ function StatusPills({ link, onRetry, retrying }: { link: LinkCard; onRetry: () 
       </span>
     );
   }
-  if (!link.commentBait) return null;
-  return <span className="mt-1.5 inline-block max-w-full truncate rounded-md bg-warning/15 px-1.5 py-0.5 text-[11px] font-bold uppercase text-on-surface">Solo pide comentar</span>;
+  return null;
+}
+
+/** Under the author and before the description, as in design nl-02. */
+function CommentBaitBadge() {
+  return <span data-testid="solo-pide-comentar" className="my-1 inline-block max-w-full truncate rounded-md bg-warning/15 px-1.5 py-0.5 text-[11px] font-bold uppercase text-on-surface">Solo pide comentar</span>;
 }
 
 function CategoryPill({ name, onEdit, disabled }: { name: string | null; onEdit: () => void; disabled: boolean }) {
@@ -81,6 +85,7 @@ export function StoredLinkInBubble({ jwt, chatId, seq, at, link }: Props) {
           </span>
           <button type="button" onClick={() => player.open(link.url)} className="mt-1 block w-full text-left">
             <span className={`block text-[14px] font-bold ${unreadable ? 'line-clamp-2' : 'truncate'}`}>{unreadable ? summaryOf(link) : authorOf(link)}</span>
+            {!unreadable && link.commentBait ? <CommentBaitBadge /> : null}
             {unreadable ? null : <span className={`line-clamp-2 text-[13px] leading-5 ${link.commentBait ? 'text-on-surface-variant' : 'text-on-surface/80'}`}>{summaryOf(link)}</span>}
           </button>
           <StatusPills link={link} retrying={retrying} onRetry={() => void retry()} />

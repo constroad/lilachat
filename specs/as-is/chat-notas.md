@@ -90,7 +90,7 @@ Diseño en Stitch `nl-01` a `nl-03` (ver §5). Prototipo navegable en https://cl
   - Un video soportado se abre en el reproductor del chat (`VideoEmbedOverlay`); lo demás, en otra pestaña.
 - **Hoja «Mover a»** (`MoveLinkSheet.tsx`): conteos, la actual marcada, «Sin categoría» y «Nueva categoría».
 - **En la burbuja** (`StoredLinkInBubble.tsx`, desde `BurbujaDeMensaje.tsx`): la tarjeta guardada en vez de la vista previa genérica.
-  - Abajo, la pastilla de categoría con lápiz. También «Solo pide comentar» y «No se pudo leer» con «Reintentar».
+  - Abajo, la pastilla de categoría con lápiz. «Solo pide comentar» va bajo el autor, antes de la descripción; «No se pudo leer» con «Reintentar», debajo del texto.
   - Un cuerpo que es solo el enlace no se repite como texto.
 - **Datos** (`linkNotesStore.ts`, `linkNotesApi.ts`): una sola lectura de `GET /links` por chat, compartida por la vista, las burbujas y la hoja.
   - `msg.link` actualiza la memoria y la base local (`applyLinkCard` en `local/mensajesLocales.ts`).

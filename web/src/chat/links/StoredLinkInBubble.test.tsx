@@ -44,6 +44,9 @@ describe('the stored link in a notes chat bubble (nl-02)', () => {
   it('a post that only asks to comment says so', () => {
     renderBubble(link({ commentBait: 'NICHO', text: 'Comenta NICHO' }));
     expect(screen.getByTestId('enlace-guardado-3')).toHaveTextContent('Solo pide comentar');
+    // Design nl-02: the badge sits under the author, before the description.
+    const badge = screen.getByTestId('solo-pide-comentar');
+    expect(badge.compareDocumentPosition(screen.getByText(/comentar NICHO/)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByTestId('enlace-guardado-3')).toHaveTextContent('El post no trae contenido: solo pide comentar NICHO');
   });
 

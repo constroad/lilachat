@@ -82,7 +82,7 @@ la búsqueda y las tarjetas de enlace. Hilos, medios, agenda y stickers tienen s
 - Atajos «:hug»: `emojiShortcode/useEmojiShortcode.ts`.
 - Menciones: `useMencionesDelCampo.ts`, `useMentionCandidatesWeb.ts`, `SugerenciasDeMencion.tsx`, `OutsideMentionNotice.tsx`.
 - Enlace al escribir: `VistaPreviaAlEscribir.tsx`, `useVistaPrevia.ts`; en la burbuja `TarjetaDeEnlace.tsx`.
-- En un chat de notas con «Ordenar enlaces por categoría» encendido, la burbuja de un enlace muestra la tarjeta que guardó el server (`links/StoredLinkInBubble.tsx`) y su columna toma toda la fila, con las acciones al pasar el mouse (reaccionar, hilo, ⋮) apiladas en una sola columna a su lado; el resto de las burbujas mide hasta el 68 %. Detalle en `chat-notas.md`.
+- En un chat de notas con «Ordenar enlaces por categoría» encendido, la burbuja de un enlace muestra la tarjeta que guardó el server (`links/StoredLinkInBubble.tsx`) y su columna toma toda la fila, con las acciones al pasar el mouse (reaccionar, hilo, ⋮) apiladas en una sola columna a su lado; el resto de las burbujas mide hasta el 68 %. «Solo pide comentar» va bajo el autor de la tarjeta. Detalle en `chat-notas.md`.
 - Menú del mensaje (flecha al pasar el mouse): `MenuDelMensaje.tsx`; diálogos `DialogosDelMensaje.tsx` (eliminar, info).
 - Acciones: `useAccionesSobreMensajes.ts`, copiar `copiarTexto.ts`.
 - Fijar: `FranjaDeFijados.tsx`, `DialogoFijar.tsx`, `useFijarEnLaWeb.ts`, `fijados/ListaDeFijados.tsx`.

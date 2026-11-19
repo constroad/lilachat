@@ -23,6 +23,7 @@ import { llamadaNativa, type AccionDeAviso } from '../../modules/llamada-entrant
 import type { CallNoticeTap } from '../../modules/llamada-entrante/src';
 import { reportarError } from '../ui/reportarError';
 import { requestCallPermissions } from './callPermissions';
+import { useIceRestart } from './useIceRestart';
 
 /** El SDP y los candidatos viajan como objetos planos por el socket. */
 type Sdp = { type: 'offer' | 'answer'; sdp: string };
@@ -146,27 +147,22 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
     setMedios('conectando');
   }, [ackWatch]);
 
+  // José 19/11: a lost path (phone locked, another app) restarts ICE instead of hanging up.
+  const { emitCandidate, onIce: onIceForRestart, gaveUp } = useIceRestart({ pcRef, chatIdRef, stateRef, jwt: params.jwt, medios });
+
   /** El audio no pasa: se corta y se avisa al otro, en vez de un reloj mudo. */
   const rendirse = useCallback(() => {
+    gaveUp();
     getSocket()?.emit('call.end', { chatId: chatIdRef.current, motivo: 'desconectada' });
     aplicar({ tipo: 'desconectada', at: Date.now() });
-  }, [aplicar]);
+  }, [aplicar, gaveUp]);
 
   const crearPc = useCallback((iceServers: ServidorIce[]): RTCPeerConnection => {
     const pc = new RTCPeerConnection({ iceServers });
     pc.onicecandidate = (evento: RTCIceCandidateEvent<'icecandidate'>) => {
       const candidato = evento.candidate;
-      if (candidato) {
-        // Objeto plano, no la instancia: socket.io serializa solo lo enumerable.
-        getSocket()?.emit('call.ice', {
-          chatId: chatIdRef.current,
-          candidate: {
-            candidate: candidato.candidate,
-            sdpMid: candidato.sdpMid,
-            sdpMLineIndex: candidato.sdpMLineIndex,
-          },
-        });
-      }
+      // A plain object, not the instance: socket.io serializes only what is enumerable.
+      if (candidato) emitCandidate({ candidate: candidato.candidate, sdpMid: candidato.sdpMid ?? null, sdpMLineIndex: candidato.sdpMLineIndex ?? null });
     };
     pc.ontrack = (evento: RTCTrackEvent<'track'>) => {
       const stream = evento.streams[0];
@@ -177,12 +173,13 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       const nuevo = estadoDeMedios(pc.iceConnectionState, yaConecto.current);
       if (nuevo === 'conectada') yaConecto.current = true;
       setMedios(nuevo);
-      // ICE `failed` no se recupera solo.
+      onIceForRestart(pc.iceConnectionState, yaConecto.current);
+      // Failed before ever connecting has no path to restart (after connecting it reads «reconectando»).
       if (nuevo === 'fallo') rendirse();
     };
     pcRef.current = pc;
     return pc;
-  }, [rendirse]);
+  }, [rendirse, emitCandidate, onIceForRestart]);
 
   const agregarMedios = useCallback(
     async (pc: RTCPeerConnection, conVideo: boolean): Promise<void> => {

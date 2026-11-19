@@ -5,7 +5,7 @@ import mongoose from 'mongoose';
 import { io as createClient, type Socket as ClientSocket } from 'socket.io-client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app.js';
-import { ChatModel } from '../src/chatModels.js';
+import { ChatModel, MessageModel } from '../src/chatModels.js';
 import { __reiniciarLlamadas } from '../src/llamadas.js';
 import { UserModel } from '../src/models.js';
 import { signSession } from '../src/sessions.js';
@@ -95,5 +95,34 @@ describe('llamada contestada desde la notificación', () => {
     await new Promise((listo) => setTimeout(listo, 500));
 
     expect(recibidos).toEqual(['oferta', 'host-1', 'host-2']);
+  });
+
+  /**
+   * José 19/11: locking the phone cut the call. The caller restarts ICE over the same
+   * signaling; the server relays it to the other member and nothing else: no ring,
+   * no answer bookkeeping and no «call ended» line in the chat.
+   */
+  it('an ICE restart and its answer are relayed and never end the call', async () => {
+    const [ana, jose] = await UserModel.create([{ phone: '900000085', name: 'Ana' }, { phone: '900000086', name: 'José' }]);
+    const chat = await ChatModel.create({ kind: 'direct', members: [{ userId: ana._id }, { userId: jose._id }], lastSeq: 0 });
+    const chatId = String(chat._id);
+    const toJose: string[] = [];
+    const toAna: string[] = [];
+    const deJose = await conectar(String(jose._id), (evento) => toJose.push(evento));
+    const deAna = await conectar(String(ana._id), (evento) => toAna.push(evento));
+    deAna.emit('call.offer', { chatId, video: false, sdp: { type: 'offer', sdp: 'v=0' } });
+    await new Promise((listo) => setTimeout(listo, 200));
+    deJose.emit('call.answer', { chatId, sdp: { type: 'answer', sdp: 'v=0' } });
+    await new Promise((listo) => setTimeout(listo, 200));
+
+    deAna.emit('call.restart', { chatId, sdp: { type: 'offer', sdp: 'v=0 restart' } });
+    deJose.emit('call.restart.answer', { chatId, sdp: { type: 'answer', sdp: 'v=0 restart' } });
+    deJose.emit('call.restart', { chatId });
+    await new Promise((listo) => setTimeout(listo, 400));
+
+    expect(toJose.filter((evento) => evento.startsWith('call.restart'))).toEqual(['call.restart']);
+    expect(toAna.filter((evento) => evento.startsWith('call.restart'))).toEqual(['call.restart.answer', 'call.restart']);
+    expect([...toJose, ...toAna]).not.toContain('call.end');
+    expect(await MessageModel.countDocuments({ chatId: chat._id })).toBe(0);
   });
 });

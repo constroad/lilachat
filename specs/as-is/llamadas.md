@@ -1,6 +1,6 @@
 # As-is · Llamadas (1:1, grupales, video, enlaces e historial)
 
-> Fecha de corte: **17/11/2026**. Fuentes: código de `main`, `git log` desde el 06/10,
+> Fecha de corte: **19/11/2026**. Fuentes: código de `main`, `git log` desde el 06/10,
 > `specs/ARCHITECTURE.spec.md` (§62, §95, §106, §109, §148, §153, §154, §159),
 > `specs/AS-IS-0.1.170.spec.md` (13/11 noche, APK 0.1.183) y `design/stitch/INVENTARIO.md`.
 
@@ -42,6 +42,35 @@ reparte señales (es un «cartero»); los medios van directo o por TURN.
     también. Solo una oferta distinta, sin contestar, reemplaza al timbre.
   - Un timbre que se está contestando nunca es «huérfano» (`isStaleRing`).
   - Los candidatos en cola dejan de aplicarse si el peer se cerró, y eso no se reporta como error.
+- **Bloquear el teléfono o cambiar de app ya no corta la llamada (José 19/11).** «Cuando la
+  pantalla se bloquea o cambio de app se corta la llamada; no he colgado». Ya había pasado.
+  - **Causa (código):** una llamada contestada no tenía cómo recuperarse. Al perder el camino
+    de red, ICE pasaba a `failed` y la app colgaba al instante (`call.end` «desconectada»);
+    con `disconnected`, a los 30 s. Nadie reiniciaba ICE (cero `restartIce`/`iceRestart` en
+    APK, web y shared). Bloquear o salir de la app puede cambiar o dormir la red del
+    teléfono: el 22/10 ese mismo teléfono cortó la descarga del APK al bloquearse.
+  - **Descartado con el código:** el socket no se pausa en llamada (`pausaDelSocket`); el
+    server no termina una 1:1 cuando un socket se cae; la OTA no recarga en llamada; el
+    servicio «Llamada en curso» (`microphone`) existe desde el 18/10.
+  - **Arreglo:** con la llamada ya conectada, `failed` se lee «Reconectando…», no «fallo».
+    Quien llamó reinicia ICE con una oferta nueva (`call.restart` con `restartId`). El otro
+    contesta (`call.restart.answer`) o, si detecta el corte él, le pide el reinicio
+    (`call.restart` sin SDP). Solo ofrece quien llamó: nunca dos ofertas a la vez. Al volver
+    el socket con la llamada reconectando, el reinicio se manda de nuevo. Una respuesta vieja
+    no se aplica (`answersCurrentRestart`). Los candidatos esperan a que salga su oferta o su
+    respuesta. Tope para rendirse al reconectar: 60 s (`RECONNECT_WAIT_MS`); sin haber
+    conectado nunca, 30 s como antes.
+  - Motor puro `shared/src/callRecovery.ts`; APK `app/src/calls/useIceRestart.ts`. El server
+    solo reenvía (`callSignalStep` → `relay`): un reinicio nunca suena, contesta ni termina.
+  - **Diagnóstico:** `llamada-reconectada` (ms perdido y reinicios) y
+    `llamada-perdida-sin-red` (se rindió) quedan en el diagnóstico de LilaStore.
+  - **Nativo, para el próximo APK (rama local `feat/call-cpu-wake-lock`, fuera de `main`):**
+    el servicio «Llamada en curso» toma un `PARTIAL_WAKE_LOCK` (tope 4 h) mientras dura la
+    llamada. Hoy solo lo tiene el servicio de conexión, y solo con «Conexión permanente». No
+    va a `main` todavía: con `runtimeVersion: fingerprint`, tocar el módulo nativo cambia la
+    huella y la OTA del reinicio de ICE no llegaría a los teléfonos con 0.1.189.
+  - **Web:** todavía no reinicia ni contesta reinicios. Con la web del otro lado, la llamada
+    espera 60 s en «Reconectando…» y se corta como antes.
 - **APK con la app cerrada:** llamada entrante a pantalla completa con tono y «deslizar
   para contestar» (`DeslizarParaContestar.tsx`, módulo nativo `llamada-entrante`:
   `AvisoDeLlamada.kt`, `LlamadaEnCurso.kt`). Contestar o rechazar con el teléfono
@@ -110,7 +139,7 @@ reparte señales (es un «cartero»); los medios van directo o por TURN.
 - **APK** (`app/src/calls/`): `ProveedorDeLlamadas.tsx` (llamadas de la sesión),
   `useCall.ts`, `CallScreen.tsx`, `CallControls.tsx`, `CallReactions.tsx`,
   `PipCallView.tsx`, `llamadaNativa.ts`, `estadoDeMedios.ts`, `noiseSuppression.ts`,
-  `tonoDeLlamando.ts`, `iceServers.ts`, `useCallScreenHold.ts`; grupales en
+  `tonoDeLlamando.ts`, `iceServers.ts`, `useCallScreenHold.ts`, `useIceRestart.ts`; grupales en
   `app/src/calls/group/` (`useGroupCall.ts`, `GroupCallScreen.tsx`, `useGroupReactions.ts`,
   `groupCallView.ts`). Módulo nativo `app/modules/llamada-entrante`.
 - **Web** (`web/src/calls/`): `CallProvider.tsx`, `useWebCall.ts`, `callPeer.ts`,
@@ -119,12 +148,13 @@ reparte señales (es un «cartero»); los medios van directo o por TURN.
   grupales en `web/src/calls/group/` (`useWebGroupCall.ts`, `GroupCallOverlay.tsx`).
   `web/src/socketTurn.ts`.
 - **Server:** `socket.ts` (relevo `call.offer`, `call.answering`, `call.answer`,
-  `call.ice`, `call.end`, `call.reject`, `call.reaction`), `llamadas.ts`,
+  `call.ice`, `call.end`, `call.reject`, `call.restart`, `call.restart.answer`, `call.reaction`), `llamadas.ts`,
   `cicloDeLlamada.ts`, `callRoutes.ts` (`POST /api/calls/rechazar`,
   `POST /api/calls/answering`, `GET /api/calls/history`, `GET /api/calls/ice`),
   `callHistory.ts`, `callLinks.ts`, `groupCalls.ts`, `groupCallSocket.ts`,
   `turnCredentials.ts`.
-- **Shared:** `call.ts`, `callMedia.ts` (motor de medios común desde 22/10), `callAudio.ts`,
+- **Shared:** `call.ts`, `callMedia.ts` (motor de medios común desde 22/10),
+  `callRecovery.ts` (reinicio de ICE, 19/11), `callAudio.ts`,
   `callReactions.ts`, `callHistory.ts`, `groupCall.ts`, `registroDeLlamada.ts`,
   `scheduledCall.ts`.
 
@@ -168,6 +198,9 @@ depende de Portal ni de Inframaq.
 - **17/11** Timbre huérfano: `call.end` al vencer, `call.ringing` al conectar y la oferta
   nueva del mismo chat reemplaza la vieja. Sin probar entre dos teléfonos.
 - **19/11** La oferta repetida al reconectar ya no reemplaza el timbre ni corta al contestar.
+- **19/11** Bloquear o cambiar de app ya no corta: reinicio de ICE en el APK (OTA), relevo en
+  el server; `PARTIAL_WAKE_LOCK` del servicio de llamada en una rama para el APK siguiente. Sin probar
+  entre dos teléfonos.
 
 ## 5. Diseños de Stitch relacionados
 
@@ -182,7 +215,13 @@ depende de Portal ni de Inframaq.
 - **Sin probar:** audio y video reales entre dos teléfonos en una grupal; la E2E usó
   `scripts/demo-group-call.ts`, que solo firma señales (según spec §159).
 - **Sin confirmar en un teléfono real:** que la videollamada ya no se corte al cambiar de
-  app con el PiP y el servicio de cámara (según as-is 0.1.170).
+  app con el PiP y el servicio de cámara (según as-is 0.1.170), y el reinicio de ICE del
+  19/11 entre dos teléfonos (bloquear, cambiar de app, pasar de wifi a datos).
+- La web no reinicia ICE (19/11): pendiente para la paridad.
+- Grupales: el server saca a quien pierde el socket (`dropSocket`) y no hay reinicio de ICE.
+- `Puente.emitir` deja el toque entregado 40 s en `pendiente` y el proveedor lo vuelve a leer
+  en cada render (el objeto de `useNoiseSuppression` cambia en cada uno). Un «Colgar» tocado
+  podría aplicarse a una llamada nueva del mismo chat en esos 40 s. Sin cambiar.
 - **Fuera de alcance (deuda, según spec §159):** programar y enlace en grupos, pasar a
   video a mitad de la llamada, más de 4 personas (pide un SFU), «Agregar persona» a una 1:1.
 - El APK no tiene historial de llamadas (verificado en código).
@@ -195,11 +234,12 @@ depende de Portal ni de Inframaq.
 
 ## 7. Pruebas
 
-- **Shared:** `call.test.ts`, `callMedia.test.ts`, `callAudio.test.ts`,
+- **Shared:** `call.test.ts`, `callMedia.test.ts`, `callRecovery.test.ts`, `callAudio.test.ts`,
   `callReactions.test.ts`, `callHistory.test.ts`, `groupCall.test.ts`,
   `registroDeLlamada.test.ts`, `scheduledCall.test.ts`.
 - **Server:** `llamadas.test.ts`, `cicloDeLlamada.test.ts`, `groupCalls.test.ts`,
-  `turnCredentials.test.ts`.
+  `turnCredentials.test.ts`; de socket, `test/llamadaDesdeElAviso.test.ts` (el reinicio se
+  reenvía y no deja línea de «terminada»).
 - **APK:** `calls/iceServers.test.ts`, `cameraSwitch.test.ts`, `callBarLayout.test.ts`,
   `estadoDeMedios.test.ts`, `screenShare.test.ts`, `llamadaNativa.test.ts`, `pip.test.ts`,
   `group/groupCallView.test.ts`.

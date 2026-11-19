@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CALL_TIMEOUT_MS, type CallState } from './call.js';
-import { CONNECT_WAIT_MS, callCaption, callerName, canSwitchCamera, mediaState, mirrorsSelfView, otherFacing, ringStart, waitBeforeGivingUp } from './callMedia.js';
+import { CONNECT_WAIT_MS, RECONNECT_WAIT_MS, callCaption, callerName, canSwitchCamera, mediaState, mirrorsSelfView, otherFacing, ringStart, waitBeforeGivingUp } from './callMedia.js';
 import { cameraSwitchAllowed, isBenignCameraSwitchError } from './callMedia.js';
 
 /**
@@ -19,9 +19,12 @@ describe('mediaState', () => {
     expect(mediaState('completed', true)).toBe('conectada');
   });
 
-  it('cut after having connected: reconnecting; failed is failed', () => {
+  it('cut after having connected: reconnecting, failed too (an ICE restart brings it back, José 19/11)', () => {
     expect(mediaState('disconnected', true)).toBe('reconectando');
-    expect(mediaState('failed', true)).toBe('fallo');
+    expect(mediaState('failed', true)).toBe('reconectando');
+  });
+
+  it('failed before ever connecting is failed: there is no path to restart', () => {
     expect(mediaState('failed', false)).toBe('fallo');
   });
 
@@ -34,9 +37,13 @@ describe('mediaState', () => {
 describe('waitBeforeGivingUp', () => {
   it('connecting or reconnecting has a limit; connected or failed, none', () => {
     expect(waitBeforeGivingUp('conectando')).toBe(CONNECT_WAIT_MS);
-    expect(waitBeforeGivingUp('reconectando')).toBe(CONNECT_WAIT_MS);
+    expect(waitBeforeGivingUp('reconectando')).toBe(RECONNECT_WAIT_MS);
     expect(waitBeforeGivingUp('conectada')).toBeNull();
     expect(waitBeforeGivingUp('fallo')).toBeNull();
+  });
+
+  it('a call that was talking waits longer than one that never connected: the restart needs the network back', () => {
+    expect(RECONNECT_WAIT_MS).toBeGreaterThan(CONNECT_WAIT_MS);
   });
 });
 

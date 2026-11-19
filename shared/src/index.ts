@@ -129,6 +129,7 @@ export * from './profile.js';
 export * from './adminUsers.js';
 export * from './adminSpaces.js';
 export * from './callMedia.js';
+export * from './callRecovery.js';
 export * from './callReactions.js';
 export * from './chatQueue.js';
 export * from './nowPlaying.js';

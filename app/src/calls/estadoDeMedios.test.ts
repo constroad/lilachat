@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { CallState } from '@lilachat/shared';
+import { RECONNECT_WAIT_MS, type CallState } from '@lilachat/shared';
 import { ESPERA_DE_CONEXION_MS, esperaAntesDeRendirse, estadoDeMedios, leyendaDeLlamada } from './estadoDeMedios';
 
 /**
@@ -27,9 +27,9 @@ describe('estadoDeMedios', () => {
     expect(estadoDeMedios('disconnected', false)).toBe('conectando');
   });
 
-  it('failed es fallo, haya conectado o no', () => {
+  it('failed before connecting is failed; after talking it reconnects (ICE restart, José 19/11)', () => {
     expect(estadoDeMedios('failed', false)).toBe('fallo');
-    expect(estadoDeMedios('failed', true)).toBe('fallo');
+    expect(estadoDeMedios('failed', true)).toBe('reconectando');
   });
 
   it('closed no cambia nada: lo cierra quien cuelga', () => {
@@ -75,7 +75,7 @@ describe('esperaAntesDeRendirse', () => {
   // «Conectando…» 80 s, hasta que se colgó a mano.
   it('conectando o reconectando: hay un tope', () => {
     expect(esperaAntesDeRendirse('conectando')).toBe(ESPERA_DE_CONEXION_MS);
-    expect(esperaAntesDeRendirse('reconectando')).toBe(ESPERA_DE_CONEXION_MS);
+    expect(esperaAntesDeRendirse('reconectando')).toBe(RECONNECT_WAIT_MS);
   });
 
   it('conectada o ya fallida: no hay nada que esperar', () => {

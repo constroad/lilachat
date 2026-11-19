@@ -34,7 +34,7 @@ import { configureChannelNotices, configureMembersNotices, configureWorkspaceNot
 import { maybeAnswerMention } from './assistantReply.js';
 import { verifySession } from './sessions.js';
 import { esDispositivoVinculado } from '@lilachat/shared';
-import { callReactionOf, reactionKeyOf } from '@lilachat/shared';
+import { CALL_RESTART, CALL_RESTART_ANSWER, callReactionOf, callSignalStep, reactionKeyOf } from '@lilachat/shared';
 import { vinculadoVigente } from './dispositivosVinculados.js';
 import { HiloInvalidoError } from './hilos.js';
 import { registerAgendaRelay } from './agendaRelay.js';
@@ -308,18 +308,20 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
           // FL8/FL8.1: la oferta queda «sonando» para quien conecte en ese
           // tiempo, a los desconectados les llega un push, y al terminar queda
           // la línea en el chat (`cicloDeLlamada`).
-          if (evento === 'call.offer') {
+          // An ICE restart (José 19/11) is 'relay': it never rings, answers or ends the call.
+          const step = callSignalStep(evento);
+          if (step === 'ring') {
             alOfrecer({ chatId: payload.chatId, from: String(userId), members, video: payload.video === true, frame });
-          } else if (evento === 'call.answer') {
+          } else if (step === 'answer') {
             // Mis OTROS teléfonos dejan de sonar: contesté en este.
             socket.to(userRoom(String(userId))).emit('call.end', { chatId: payload.chatId, motivo: 'contestada-en-otro' });
             await alContestar(payload.chatId);
-          } else if (evento === 'call.ice') {
+          } else if (step === 'candidate') {
             guardarCandidato(payload.chatId, frame, String(userId));
-          } else if (evento === 'call.answering') {
+          } else if (step === 'answering') {
             // Backlog 114: the ring stops counting while this phone opens its mic; my other phones stop ringing.
             if (onAnswering(payload.chatId, String(userId))) socket.to(userRoom(String(userId))).emit('call.end', { chatId: payload.chatId, motivo: 'contestada-en-otro' });
-          } else {
+          } else if (step === 'end') {
             await alTerminar(payload.chatId);
           }
         } catch {
@@ -328,7 +330,7 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
         }
       }));
 
-    for (const evento of ['call.offer', 'call.answering', 'call.answer', 'call.ice', 'call.end', 'call.reject']) {
+    for (const evento of ['call.offer', 'call.answering', 'call.answer', 'call.ice', 'call.end', 'call.reject', CALL_RESTART, CALL_RESTART_ANSWER]) {
       reenviarSeñal(evento);
     }
     // A wink or a sticker during a call (pending 98): relayed to the other members, never stored; only catalog ids pass.

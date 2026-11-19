@@ -12,7 +12,8 @@ export type MediaState = 'conectando' | 'conectada' | 'reconectando' | 'fallo';
 
 export function mediaState(ice: string, connectedBefore: boolean): MediaState {
   if (ice === 'connected' || ice === 'completed') return 'conectada';
-  if (ice === 'failed') return 'fallo';
+  // José 19/11: once it talked, `failed` is a lost path that an ICE restart brings back (`callRecovery.ts`).
+  if (ice === 'failed') return connectedBefore ? 'reconectando' : 'fallo';
   // `closed` comes from whoever hangs up; it is not news from the network.
   if (ice === 'closed') return connectedBefore ? 'conectada' : 'conectando';
   return connectedBefore ? 'reconectando' : 'conectando';
@@ -24,9 +25,15 @@ export function mediaState(ice: string, connectedBefore: boolean): MediaState {
  * none it stays «connecting» forever (80 s in an E2E until hung up by hand).
  */
 export const CONNECT_WAIT_MS = 30_000;
+/**
+ * A call that was talking and lost its path (the phone locked, changed app or network)
+ * waits longer: the restart needs the network and the socket back first (José 19/11).
+ */
+export const RECONNECT_WAIT_MS = 60_000;
 
 export function waitBeforeGivingUp(media: MediaState): number | null {
-  return media === 'conectando' || media === 'reconectando' ? CONNECT_WAIT_MS : null;
+  if (media === 'conectando') return CONNECT_WAIT_MS;
+  return media === 'reconectando' ? RECONNECT_WAIT_MS : null;
 }
 
 /** The line under the name on the call screen. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canDeleteSpace, confirmsSpaceName, countdownLabel, invitedByLine, owesItsName, accountOwesItsName, spacesToOpen, canChangeRole, canDeactivate, canManageMembers, joinCodePrefix, makeJoinCode, normalizeChannelName, normalizeJoinCode, statusAfterJoin, withoutClosedIncognito, workspacesOf } from './workspaces.js';
+import { emailInviteLine, canDeleteSpace, confirmsSpaceName, countdownLabel, invitedByLine, owesItsName, accountOwesItsName, spacesToOpen, canChangeRole, canDeactivate, canManageMembers, joinCodePrefix, makeJoinCode, normalizeChannelName, normalizeJoinCode, statusAfterJoin, withoutClosedIncognito, workspacesOf } from './workspaces.js';
 
 /** E1 (José, 20/10): personal account plus company spaces; join with a code or be added by phone. */
 describe('join code', () => {
@@ -169,5 +169,23 @@ describe('withoutClosedIncognito', () => {
   it('returns the very same list when there is nothing to drop', () => {
     const list = [normal, hidden];
     expect(withoutClosedIncognito(list, 'globofast')).toBe(list);
+  });
+});
+
+/** José 19/11 (Globofast): the invitees of a week ago could not get in; the list says when each was invited. */
+describe('emailInviteLine', () => {
+  const now = new Date('2026-11-19T12:00:00-05:00');
+
+  it('says the day it was sent, in Lima', () => {
+    expect(emailInviteLine('2026-11-12T15:30:00.000Z', now)).toBe('Invitado por correo el 12 nov');
+  });
+
+  it('today reads «hoy»', () => {
+    expect(emailInviteLine('2026-11-19T14:00:00.000Z', now)).toBe('Invitado por correo hoy');
+  });
+
+  it('without a date it says only how', () => {
+    expect(emailInviteLine(undefined, now)).toBe('Invitado por correo');
+    expect(emailInviteLine('no-date', now)).toBe('Invitado por correo');
   });
 });

@@ -54,7 +54,7 @@ export function EmailSignIn(props: { onVerified: (credential: Credential, email:
     setBusy(false);
     if (!result.ok) {
       setCode('');
-      return setError(result.status === 503 ? 'No pudimos verificar el código. Inténtalo de nuevo.' : 'El código no es correcto o ya venció.');
+      return setError(result.status === 503 ? 'No pudimos verificar el código. Inténtalo de nuevo.' : 'El código no es correcto o ya venció. Toca «Reenviar el código» y te llega otro.');
     }
     props.onVerified({ jwt: result.data.jwt, userId: result.data.user.id, phone: result.data.user.phone, name: result.data.user.name ?? undefined, deviceId: deviceId() }, email);
   };

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { ArrowLeft, MoreVertical, Search, UserPlus, X } from 'lucide-react-native';
-import { changeForAction, filterMembers, formatPhoneDisplay, memberActions, type ClientWorkspace, type ClientWorkspaceMember, type MemberAction } from '@lilachat/shared';
+import { changeForAction, emailInviteLine, filterMembers, formatPhoneDisplay, memberActions, type ClientWorkspace, type ClientWorkspaceMember, type MemberAction } from '@lilachat/shared';
 import { Modal } from '../ui/Modal';
 import { Segmentado } from '../ui/Segmentado';
 import { useColores } from '../ui/tema';
@@ -11,7 +11,7 @@ import { SpaceLogo } from './SpaceSwitcherSheet';
 import { MemberAvatar, memberLine, memberName, OnlinePill, RolePill } from './memberUi';
 import { MemberActionsSheet } from './MemberActionsSheet';
 import { RequestCard } from './RequestCard';
-import { changeMember, rejectRequest, revokeSpaceInvite, spaceMembers } from './spacesApi';
+import { changeMember, inviteToSpaceByEmail, rejectRequest, revokeSpaceInvite, spaceMembers } from './spacesApi';
 import { dataOf, memberListsCache, useCached } from './spaceCache';
 
 export type MembersTab = 'active' | 'pending' | 'invited' | 'deactivated';
@@ -34,6 +34,7 @@ export function MembersScreen(props: { space: ClientWorkspace; jwt: string; myUs
   const [acting, setActing] = useState<ClientWorkspaceMember | null>(null);
   const [busy, setBusy] = useState(false);
   const [actionError, setError] = useState('');
+  const [resent, setResent] = useState('');
   // The four lists paint at once from what was seen and refresh behind (22/10).
   const cached = useCached(memberListsCache, `${space.id}:member-lists`, async (): Promise<Lists> => {
     // One request for the four lists (22/10), split here by status.
@@ -50,6 +51,17 @@ export function MembersScreen(props: { space: ClientWorkspace; jwt: string; myUs
     if (!response.ok) return setError(response.message ?? 'No se pudo guardar.');
     setError('');
     props.onChanged();
+    cached.refresh();
+  };
+  // José 19/11: an invitation of a week ago is resent from the list, without typing the email again.
+  const resend = async (email: string) => {
+    setBusy(true);
+    const response = await inviteToSpaceByEmail(jwt, space.id, email);
+    setBusy(false);
+    if (!response.ok) return setError(response.message ?? 'No se pudo reenviar.');
+    if (response.data.emailSent === false) return setError(response.data.emailError ?? 'El correo no salió. Prueba de nuevo.');
+    setError('');
+    setResent(email);
     cached.refresh();
   };
   const runAction = (member: ClientWorkspaceMember, action: MemberAction) => {
@@ -100,6 +112,7 @@ export function MembersScreen(props: { space: ClientWorkspace; jwt: string; myUs
             </View>
           )}
           {error ? <Text testID="error-miembros" className="mt-3 text-[13px] text-error">{error}</Text> : null}
+          {resent && tab === 'invited' ? <Text testID="invitacion-reenviada" className="mt-2 text-[13px] text-primary">{`Le reenviamos la invitación a ${resent}.`}</Text> : null}
           {lists === null && !error ? [0, 1, 2].map((index) => <View key={index} className="mt-3 h-20 rounded-2xl bg-surface-variant" />) : null}
           {lists !== null && shown.length === 0 ? <Text className="mt-6 text-center text-[14px] text-on-surface-variant">{tab === 'pending' ? 'No hay solicitudes por aprobar.' : tab === 'deactivated' ? 'Nadie está desactivado.' : tab === 'invited' ? 'No hay invitaciones esperando.' : 'Nadie coincide con la búsqueda.'}</Text> : null}
           {tab === 'pending'
@@ -125,12 +138,17 @@ export function MembersScreen(props: { space: ClientWorkspace; jwt: string; myUs
                     <View className="min-w-0 flex-1">
                       <Text numberOfLines={1} className="text-[16px] font-bold text-on-surface">{memberName(member)}{member.userId === props.myUserId ? ' (Tú)' : ''}</Text>
                       {memberLine(member) ? <Text numberOfLines={1} className="text-[13px] text-on-surface-variant">{memberLine(member)}</Text> : null}
-                      <Text className="font-mono text-[13px] text-on-surface">{byEmail ? 'Invitado por correo' : formatPhoneDisplay(member.phone)}</Text>
+                      {byEmail ? <Text className="text-[13px] text-on-surface-variant">{emailInviteLine(member.requestedAt)}</Text> : <Text className="font-mono text-[13px] text-on-surface">{formatPhoneDisplay(member.phone)}</Text>}
                     </View>
                     <View className="items-end gap-1.5">
                       <RolePill role={member.role} />
                       {isOnline ? <OnlinePill /> : null}
                     </View>
+                    {byEmail ? (
+                      <Pressable testID={`reenviar-${member.email}`} disabled={busy} onPress={() => void resend(member.email ?? '')} accessibilityLabel={`Reenviar la invitación a ${member.email}`} className="h-10 justify-center rounded-lg border border-primary/30 px-3">
+                        <Text className="text-[13px] font-semibold text-primary">Reenviar</Text>
+                      </Pressable>
+                    ) : null}
                     {byEmail ? (
                       <Pressable testID={`retirar-${member.email}`} onPress={() => void after(revokeSpaceInvite(jwt, space.id, member.id))} accessibilityLabel={`Retirar la invitación de ${member.email}`} className="h-11 w-11 items-center justify-center">
                         <X size={20} color={colors['on-surface-variant']} />

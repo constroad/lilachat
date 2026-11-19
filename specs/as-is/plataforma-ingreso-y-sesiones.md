@@ -134,6 +134,8 @@ y `specs/ARCHITECTURE.spec.md` §5, §5.1, §5.2 y §6.4.
   `lilachat.constroad.com`. Antes el botón llevaba a `chat.constroad.com`.
 - **14/11** · i-04 pide el cumpleaños a la cuenta nueva por correo.
 
+- **19/11** · Correo: un código vencido dice «Toca «Reenviar el código» y te llega otro» (invitados de Globofast).
+
 ## 5. Diseños de Stitch
 
 | Diseño | Estado | Evidencia |

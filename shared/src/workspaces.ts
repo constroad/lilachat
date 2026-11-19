@@ -168,3 +168,17 @@ export type WorkspacePreview = { id: string; name: string; rubro?: string; logoU
 
 /** A channel of a space as exploring lists it (design `e2-15-explorar-canales`). */
 export type ClientChannel = { id: string; name: string; descripcion?: string; visibility: ChannelVisibility; members: number; joined: boolean };
+
+const LIMA_OFFSET_MS = -5 * 60 * 60 * 1000;
+const MONTHS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
+
+/** «Invitado por correo el 12 nov» (José 19/11): the admin sees how old an invitation is before resending it. */
+export function emailInviteLine(sentAt: string | undefined, now: Date = new Date()): string {
+  const sent = sentAt ? new Date(sentAt) : null;
+  if (!sent || Number.isNaN(sent.getTime())) return 'Invitado por correo';
+  const inLima = (date: Date) => new Date(date.getTime() + LIMA_OFFSET_MS);
+  const day = inLima(sent);
+  const today = inLima(now);
+  if (day.toISOString().slice(0, 10) === today.toISOString().slice(0, 10)) return 'Invitado por correo hoy';
+  return `Invitado por correo el ${day.getUTCDate()} ${MONTHS[day.getUTCMonth()]}`;
+}

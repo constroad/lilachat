@@ -32,6 +32,11 @@ contenido de los canales de cliente (cobranza, Drive, informes), Dali y el mapa 
   `POST /:id/invites` y `DELETE /:id/invites/:inviteId`. El server manda el correo por
   constroad-auth (`authClient.sendInvitation`, desde el 12/11). Responde `emailSent` y
   `emailError`. Tope de constroad-auth: 5 por hora y destino.
+- **Reenviar desde «Invitados» (José 19/11, Globofast).** Cada correo invitado dice cuándo se
+  invitó («Invitado por correo el 12 nov», `emailInviteLine` en shared) y tiene «Reenviar» junto a
+  retirar, en web y APK. Reenviar es el mismo `POST /:id/invites` con el correo: manda otro correo
+  con el cargo guardado en la invitación. La invitación de Lilachat no vence. El código de 6 dígitos
+  que pide la persona al entrar sí vence (constroad-auth); al fallar dice «Toca Reenviar el código».
 - **Lógica** (`server/src/workspaces.ts`): crear, código, unirse, listar, `addByPhone`,
   `updateMember`, `rejectRequest`, `leaveWorkspace`, `claimPhoneInvites`,
   `incognitoWorkspaces`.
@@ -139,6 +144,7 @@ Las reglas de permisos son las mismas: vienen de `shared` y el server las aplica
   Invitación por correo enviada por el server. Un `/c/<chat>` de otro espacio abre en él.
 - **13/11** · Incógnito solo lee. «Ver incógnitos» pasa a Ajustes › Superadmin.
 - **17/11** · La ficha de miembro web ya no se desborda a 390 px.
+- **19/11** · «Invitados» muestra la fecha de cada invitación por correo y permite «Reenviar».
 
 ## 5. Diseños de Stitch
 

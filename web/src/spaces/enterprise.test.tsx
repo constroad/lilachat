@@ -100,6 +100,17 @@ describe('MembersDialog (e1-10, e1-11)', () => {
     await userEvent.click(screen.getByTestId('retirar-luis@empresa.pe'));
     await waitFor(() => expect(calls.some((call) => call.method === 'DELETE' && call.url.includes('/invites/inv1'))).toBe(true));
   });
+
+  /** José 19/11 (Globofast): the invitees of a week ago could not get in; the admin resends from the list. */
+  it('an email invitation says when it was sent and «Reenviar» sends it again without typing it', async () => {
+    answer('status=all', { members: [...people, { id: 'inv1', email: 'luis@empresa.pe', role: 'member', status: 'invited', requestedAt: '2026-11-12T15:30:00.000Z' }] });
+    answer('/invites', { id: 'inv1', email: 'luis@empresa.pe', status: 'invited', emailSent: true }, 201, 'POST');
+    render(<MembersDialog space={space()} jwt="t" myUserId="u-me" online={new Set()} initialTab="invited" onInvite={() => undefined} onChanged={() => undefined} onClose={() => undefined} />);
+    expect(await screen.findByTestId('fila-miembro-luis@empresa.pe')).toHaveTextContent('Invitado por correo el 12 nov');
+    await userEvent.click(screen.getByTestId('reenviar-luis@empresa.pe'));
+    await waitFor(() => expect(calls.find((call) => call.method === 'POST' && call.url.endsWith('/invites'))?.body).toEqual({ email: 'luis@empresa.pe' }));
+    expect(await screen.findByTestId('invitacion-reenviada')).toHaveTextContent('Le reenviamos la invitación a luis@empresa.pe.');
+  });
 });
 
 describe('SpaceSettingsDialog (e1-12)', () => {

@@ -78,7 +78,9 @@ export async function inviteByEmail(workspaceId: string, actorId: Types.ObjectId
     { $set: fields, $setOnInsert: { addedBy: actorId } },
     { upsert: true, returnDocument: 'after' }
   ).lean();
-  return { id: String(invite!._id), email, status: 'invited' as const, ...(await mailInvitation(send, actor.workspaceId, actor, email, fields)) };
+  // A resend from «Invitados» brings only the email: the role saved with the invitation still goes (José 19/11).
+  const saved = fieldsOf(invite ?? {});
+  return { id: String(invite!._id), email, status: 'invited' as const, ...(await mailInvitation(send, actor.workspaceId, actor, email, { ...saved, ...fields })) };
 }
 
 /** The «Invitados» list shows the emails waiting too, next to the phones. */

@@ -188,6 +188,19 @@ describe('inviting by email (José, 22/10: one account per person)', () => {
     expect(codeService.sendInvitation).toHaveBeenCalledWith({ to: 'luis@empresa.pe', spaceName: 'CONSTROAD', inviterName: 'José Zamora', role: 'Supervisor' });
   });
 
+  /** José 19/11: «Reenviar» from «Invitados» sends only the email; the role saved with the invitation still goes. */
+  it('resending from the list keeps the role the invitation was saved with', async () => {
+    // Arrange
+    const space = await createSpace();
+    await invite(space.id, { email: 'luis@empresa.pe', title: 'Supervisor' }).expect(201);
+    vi.mocked(codeService.sendInvitation).mockClear();
+    // Act
+    const resent = (await invite(space.id, { email: 'luis@empresa.pe' }).expect(201)).body;
+    // Assert
+    expect(resent).toMatchObject({ status: 'invited', emailSent: true });
+    expect(codeService.sendInvitation).toHaveBeenCalledWith({ to: 'luis@empresa.pe', spaceName: 'CONSTROAD', inviterName: 'José Zamora', role: 'Supervisor' });
+  });
+
   it('a refused email keeps the invitation and says why; inviting again sends it again', async () => {
     // Arrange
     const space = await createSpace();

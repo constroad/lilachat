@@ -52,6 +52,13 @@ Pendientes**.
   lados del rectángulo, área del polígono, largo de la flecha) y los 3 dibujos más cercanos
   («a 35 m de Parche 12», «a 1,2 km de …»), sin botón de medir; y las listas del panel.
   Una observación de tramo (sin `point`) se clava a la mitad de su tramo, sobre su calle.
+  Los dibujos se ven como en el croquis de Portal (`MAP_MARK_TYPES`, mismos colores en hex):
+  un elemento es una ficha blanca de 32 px con aro de 2,5 px del color de su tipo y un punto de
+  ese color al centro; su etiqueta (tinta oscura, halo blanco) va debajo desde el zoom 16. Las
+  áreas y flechas, en el color de su tipo. Diferencias con Portal: el punto reemplaza al ícono
+  del tipo (MapLibre no tiene esos íconos) y la etiqueta no lleva borde de color. Los dibujos de
+  Portal no tienen fotos (`work_map_marks`: forma, tipo, nota, autor, origen): la tarjeta no
+  muestra ninguna.
 - **Web** (`web/src/spaces/clients/workMap/MapCardPopup.tsx`, `MapCardView.tsx`,
   `WorkMapItems.tsx`): las observaciones son pines (rojo pendiente, verde levantada).
   Pasar el mouse por un dibujo u observación abre su tarjeta (Popup de MapLibre); un clic la
@@ -174,6 +181,7 @@ Pendientes**.
 - **16/11** Hojas de bloques del editor 2.0 solo para quien ve montos.
 - **19/11** · «Mapa de la obra» dibuja los dibujos de Portal (gibas, buzones, bocacalles…: `workMapMarks` del detalle, `shared/src/workMapMarks.ts`), en web y APK. Con dibujos y sin calles ya no dice «Todavía no hay calles»: muestra el mapa encuadrado en ellos (José, El Almirante · parches Jr. Conchucos: 33 dibujos en Portal). Un dibujo «Otro» con nota se llama por su nota, como en Portal (`markName`).
 - **19/11** · Observaciones de Portal (`workObservations`) en el mapa, y la tarjeta de cada dibujo con su tamaño y las distancias a los más cercanos, calculadas de las coordenadas (`shared/src/workMapCards.ts`). Web: tarjeta al pasar el mouse o al hacer clic, y listas «Dibujos» y «Observaciones» en el panel. APK: tarjeta al tocar en el mapa completo y las mismas listas bajo el panel. Botón «Editar croquis» (editor de croquis del servicio de Portal) en web y APK.
+- **19/11** · Los dibujos del mapa toman los colores del croquis de Portal (antes, todos puntos naranjas): ficha blanca con aro y punto del color de su tipo, etiqueta desde el zoom 16 (`shared/src/workMapMarks.ts` › `markColor`, `MARK_CHIP_PAINT`, `MARK_GLYPH_PAINT`), en web y APK.
 
 ## 5. Diseños de Stitch relacionados
 

@@ -3,7 +3,7 @@ import maplibregl from 'maplibre-gl/dist/maplibre-gl-csp';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-csp-worker?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { addObservationLayer, useMapCardPopup, useObservationData } from './MapCardPopup';
-import { type MapPick, type ViewableFile, type WorkMapObservation, MARK_DOT_PAINT, MARK_FILL_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark, NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
+import { type MapPick, type ViewableFile, type WorkMapObservation, MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark, NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -21,12 +21,13 @@ const FIT = { padding: 56, maxZoom: 17, duration: 0 };
 const LINE_ROUND = { 'line-cap': 'round', 'line-join': 'round' } as const;
 const NO_PINS: DischargePin[] = [];
 
-/** Portal's drawings (gibas, manholes…) under the streets' lines, like Portal (José 19/11). */
+/** Portal's drawings (gibas, manholes…) under the streets' lines, in Portal's croquis colors: chip, its dot, tag (José 19/11). */
 function addMarkLayers(map: maplibregl.Map) {
   map.addSource(MARKS, { type: 'geojson', data: mapMarkCollection([]) });
-  map.addLayer({ id: `${MARKS}-fill`, type: 'fill', source: MARKS, filter: ['==', ['geometry-type'], 'Polygon'], paint: MARK_FILL_PAINT });
-  map.addLayer({ id: `${MARKS}-line`, type: 'line', source: MARKS, filter: ['!=', ['geometry-type'], 'Point'], layout: LINE_ROUND, paint: MARK_LINE_PAINT });
-  map.addLayer({ id: `${MARKS}-dot`, type: 'circle', source: MARKS, filter: ['==', ['geometry-type'], 'Point'], paint: MARK_DOT_PAINT });
+  map.addLayer({ id: `${MARKS}-fill`, type: 'fill', source: MARKS, filter: ['==', ['geometry-type'], 'Polygon'], paint: MARK_FILL_PAINT as maplibregl.FillLayerSpecification['paint'] });
+  map.addLayer({ id: `${MARKS}-line`, type: 'line', source: MARKS, filter: ['!=', ['geometry-type'], 'Point'], layout: LINE_ROUND, paint: MARK_LINE_PAINT as maplibregl.LineLayerSpecification['paint'] });
+  map.addLayer({ id: `${MARKS}-dot`, type: 'circle', source: MARKS, filter: ['==', ['geometry-type'], 'Point'], paint: MARK_CHIP_PAINT as maplibregl.CircleLayerSpecification['paint'] });
+  map.addLayer({ id: `${MARKS}-glyph`, type: 'circle', source: MARKS, filter: ['==', ['geometry-type'], 'Point'], paint: MARK_GLYPH_PAINT as maplibregl.CircleLayerSpecification['paint'] });
   map.addLayer({ id: `${MARKS}-text`, type: 'symbol', source: MARKS, layout: MARK_TEXT_LAYOUT as maplibregl.SymbolLayerSpecification['layout'], paint: MARK_TEXT_PAINT });
 }
 

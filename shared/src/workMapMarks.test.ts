@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapMarkCollection, mapMarksBounds, markName, workMapMarksOf } from './workMapMarks.js';
+import { MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_TEXT_LAYOUT, mapMarkCollection, mapMarksBounds, markColor, markName, workMapMarksOf } from './workMapMarks.js';
 import { workMapOf, workMapView } from './workMap.js';
 
 /** José 19/11 (El Almirante, parches Jr. Conchucos): Portal's map showed 33 drawings; Lilachat said «Todavía no hay calles». */
@@ -75,5 +75,46 @@ describe('markName', () => {
     expect(markName({ type: 'otro', note: 'Parche frente al colegio de la avenida principal' })).toBe('Parche frente al colegio de la…');
     expect(markName({ type: 'otro' })).toBe('Otro');
     expect(markName({ type: 'giba', note: 'frente al colegio' })).toBe('Giba');
+  });
+});
+
+/** José 19/11: Lilachat drew every drawing as an orange dot; Portal's croquis, a white chip ringed in its type's color. */
+describe("the drawings look like Portal's croquis", () => {
+  it("each type wears Portal's color (MAP_MARK_TYPES), an unknown one the color of «Otro»", () => {
+    expect(markColor('giba')).toBe('#db7706');
+    expect(markColor('buzon')).toBe('#205fc5');
+    expect(markColor('cono')).toBe('#dc2618');
+    expect(markColor('otro')).toBe('#5d636f');
+    expect(markColor('ventana')).toBe('#5d636f');
+  });
+
+  it('every feature carries its type color for the paint to read', () => {
+    // Arrange
+    const marks = workMapMarksOf([
+      { id: 'a', type: 'arbol', shape: { kind: 'symbol', at: { lat: -12.05, lng: -77.03 } } },
+      { id: 'b', type: 'otro', note: 'Parche 1', shape: { kind: 'symbol', at: { lat: -12.06, lng: -77.04 } } },
+    ]);
+    // Act
+    const collection = mapMarkCollection(marks);
+    // Assert
+    expect(collection.features.map((feature) => feature.properties.color)).toEqual(['#1c7d3f', '#5d636f']);
+  });
+
+  it('an element is a white chip ringed and dotted in its color; an area is filled in its color', () => {
+    expect(MARK_CHIP_PAINT).toMatchObject({ 'circle-color': '#ffffff', 'circle-stroke-color': ['get', 'color'], 'circle-stroke-width': 2.5 });
+    expect(MARK_GLYPH_PAINT).toMatchObject({ 'circle-color': ['get', 'color'] });
+    expect(MARK_FILL_PAINT).toMatchObject({ 'fill-color': ['get', 'color'] });
+  });
+
+  it("an element's tag shows from zoom 16, like Portal; an area's label always", () => {
+    // Arrange
+    const field = MARK_TEXT_LAYOUT['text-field'] as unknown[];
+    // Act
+    const [operator, , below, minZoom, above] = field;
+    // Assert
+    expect(operator).toBe('step');
+    expect(minZoom).toBe(16);
+    expect(below).toEqual(['case', ['==', ['geometry-type'], 'Point'], '', ['get', 'label']]);
+    expect(above).toEqual(['get', 'label']);
   });
 });

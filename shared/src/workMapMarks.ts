@@ -12,12 +12,27 @@ export type WorkMapMarkShape =
   | { kind: 'symbol'; at: MarkPoint };
 export type WorkMapMark = { id: string; type: string; note?: string; shape: WorkMapMarkShape };
 
-const MARK_LABELS: Record<string, string> = {
-  giba: 'Giba', buzon: 'Buzón', sumidero: 'Sumidero', poste: 'Poste', arbol: 'Árbol',
-  bocacalle: 'Bocacalle', sardinel: 'Sardinel', tapa: 'Tapa', cono: 'Cono', otro: 'Otro',
+/**
+ * Portal's `MAP_MARK_TYPES` (`src/constants/mapMarks.ts`): label and categorical color, never the brand. Portal
+ * writes them as `hsl(...)`; here the same color in hex, because MapLibre paints plain colors on the web and the phone.
+ */
+const MARK_TYPES: Record<string, { label: string; color: string }> = {
+  giba: { label: 'Giba', color: '#db7706' }, // hsl(32, 95%, 44%)
+  buzon: { label: 'Buzón', color: '#205fc5' }, // hsl(217, 72%, 45%)
+  sumidero: { label: 'Sumidero', color: '#138496' }, // hsl(188, 78%, 33%)
+  poste: { label: 'Poste', color: '#6e3dc2' }, // hsl(262, 52%, 50%)
+  arbol: { label: 'Árbol', color: '#1c7d3f' }, // hsl(142, 64%, 30%)
+  bocacalle: { label: 'Bocacalle', color: '#ab2b89' }, // hsl(316, 60%, 42%)
+  sardinel: { label: 'Sardinel', color: '#724f31' }, // hsl(28, 40%, 32%)
+  tapa: { label: 'Tapa', color: '#5b7722' }, // hsl(80, 55%, 30%)
+  cono: { label: 'Cono', color: '#dc2618' }, // hsl(4, 80%, 48%)
+  otro: { label: 'Otro', color: '#5d636f' }, // hsl(220, 9%, 40%)
 };
-/** MapLibre paints with plain colors: a CSS variable does not reach its canvas. */
-export const WORK_MAP_MARK_COLOR = '#f59e0b';
+const typeOf = (type: string) => MARK_TYPES[type] ?? MARK_TYPES.otro!;
+/** Portal's `MAP_MARK_TAG_INK`, hsl(220, 13%, 18%): the tags' text on the light map. */
+const MARK_TAG_INK = '#282c34';
+/** Portal's `MAP_MARK_TAG_MIN_ZOOM`: zoomed out, the elements keep their chip and drop their tag. */
+const MARK_TAG_MIN_ZOOM = 16;
 const MAX_MARKS = 300;
 const MAX_POLYGON_POINTS = 200;
 const CIRCLE_STEPS = 32;
@@ -85,7 +100,9 @@ function markOf(raw: unknown): WorkMapMark | null {
 export const workMapMarksOf = (raw: unknown): WorkMapMark[] =>
   (Array.isArray(raw) ? raw.slice(0, MAX_MARKS).map(markOf).filter((mark): mark is WorkMapMark => mark !== null) : []);
 
-export const markLabel = (type: string): string => MARK_LABELS[type] ?? MARK_LABELS.otro!;
+export const markLabel = (type: string): string => typeOf(type).label;
+/** The type's color on the map, like Portal's croquis; an unknown type takes «Otro»'s. */
+export const markColor = (type: string): string => typeOf(type).color;
 
 /** Portal's `MAP_MARK_LIMITS.labelMaxChars`. */
 const LABEL_MAX = 32;
@@ -119,7 +136,7 @@ function geometryOf(shape: WorkMapMarkShape): MarkGeometry {
 /** The drawings as MapLibre reads them: areas as polygons, the arrow as a line, an element as a point. */
 export const mapMarkCollection = (marks: readonly WorkMapMark[]) => ({
   type: 'FeatureCollection' as const,
-  features: marks.map((mark) => ({ type: 'Feature' as const, id: mark.id, geometry: geometryOf(mark.shape), properties: { id: mark.id, label: markName(mark), note: mark.note ?? '' } })),
+  features: marks.map((mark) => ({ type: 'Feature' as const, id: mark.id, geometry: geometryOf(mark.shape), properties: { id: mark.id, label: markName(mark), note: mark.note ?? '', color: markColor(mark.type) } })),
 });
 
 function pointsOf(shape: WorkMapMarkShape): MarkPoint[] {
@@ -137,10 +154,23 @@ export function mapMarksBounds(marks: readonly WorkMapMark[]): [[number, number]
   return [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]];
 }
 
-/** Paint of the drawings: a translucent area with its outline, the arrow and the element dot, and the label. */
-export const MARK_FILL_PAINT = { 'fill-color': WORK_MAP_MARK_COLOR, 'fill-opacity': 0.25 };
-export const MARK_LINE_PAINT = { 'line-color': WORK_MAP_MARK_COLOR, 'line-width': 2.5 };
-export const MARK_DOT_PAINT = { 'circle-radius': 6, 'circle-color': WORK_MAP_MARK_COLOR, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 };
+const IS_POINT = ['==', ['geometry-type'], 'Point'];
+/**
+ * Paint of the drawings, as Portal's croquis (`mapMarkMarkers`, `useMapMarksLayer`): an area filled and outlined in its
+ * type's color; an element, a white 32 px chip ringed 2.5 px in its color with a dot of that color where Portal draws
+ * the type's glyph (MapLibre has no sprite for it); its tag, dark on white, under the chip from zoom 16.
+ */
+export const MARK_FILL_PAINT = { 'fill-color': ['get', 'color'], 'fill-opacity': 0.2 };
+export const MARK_LINE_PAINT = { 'line-color': ['get', 'color'], 'line-width': 3 };
+export const MARK_CHIP_PAINT = { 'circle-radius': 13.5, 'circle-color': '#ffffff', 'circle-stroke-color': ['get', 'color'], 'circle-stroke-width': 2.5 };
+export const MARK_GLYPH_PAINT = { 'circle-radius': 3.5, 'circle-color': ['get', 'color'] };
 /** The basemap's glyphs only have its own fonts (like the stations' labels). */
-export const MARK_TEXT_LAYOUT = { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Bold'], 'text-size': 11, 'text-offset': [0, 1.2], 'text-anchor': 'top', 'text-allow-overlap': false };
-export const MARK_TEXT_PAINT = { 'text-color': '#78350f', 'text-halo-color': '#ffffff', 'text-halo-width': 1.5 };
+export const MARK_TEXT_LAYOUT = {
+  'text-field': ['step', ['zoom'], ['case', IS_POINT, '', ['get', 'label']], MARK_TAG_MIN_ZOOM, ['get', 'label']],
+  'text-font': ['Noto Sans Bold'],
+  'text-size': 10,
+  'text-offset': ['case', IS_POINT, ['literal', [0, 2]], ['literal', [0, 0]]],
+  'text-anchor': ['case', IS_POINT, 'top', 'center'],
+  'text-allow-overlap': false,
+};
+export const MARK_TEXT_PAINT = { 'text-color': MARK_TAG_INK, 'text-halo-color': '#ffffff', 'text-halo-width': 2 };

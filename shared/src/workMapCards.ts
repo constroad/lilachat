@@ -1,3 +1,4 @@
+import { compareNames } from './compareText.js';
 import type { ViewableFile } from './fileViewer.js';
 import { distanceMeters } from './liveLocation.js';
 import { OBSERVATION_COLORS, registeredLine, STATUS_PILLS } from './observations.js';
@@ -175,7 +176,7 @@ export function markGroupsOf(marks: readonly WorkMapMark[]): MarkGroup[] {
     group.count += 1;
     groups.set(mark.type, group);
   });
-  return [...groups.values()].sort((left, right) => right.count - left.count || left.label.localeCompare(right.label, 'es'));
+  return [...groups.values()].sort((left, right) => right.count - left.count || compareNames(left.label, right.label));
 }
 
 export type ObservationRow = { id: string; text: string; status: MapCardStatus; photos: string; placed: boolean };

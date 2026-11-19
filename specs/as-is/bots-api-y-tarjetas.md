@@ -176,6 +176,7 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
 - **16/11** Destino `prospect` y `as_contact` (ver as-is de Dali).
 - **17/11** `POST /api/bots/files` y `files: [{ file_id }]`. Nombres en UTF-8 también en las subidas de miembros.
 - **18/11** Una foto de formulario o de informe con sello Timemark acepta `place`: es la dirección del geocodificador del teléfono. El server la limpia y la quema (`placeOfShot`). Sin ella, la busca en Nominatim.
+- **19/11** El mapa de la obra pide `service_croquis` (`workMapForms`): el server abre la tool de Portal `abrir_croquis_de_servicio` con `{ servicioId }` y devuelve el enlace del croquis embebido. Solo lee: no escribe nada en Lilachat.
 
 ## 5. Diseños de Stitch relacionados
 

@@ -211,3 +211,6 @@ para las pantallas `e-*`).
 
 **E2E registrado:** 12/11 en producción, invitación por correo a direcciones QA en el
 espacio Test, luego retiradas (INGRESO §9).
+19/11, web en producción, espacio Test: invitación a `qa-invitados-lilachat@yopmail.com` →
+«Invitados» dice «Invitado por correo hoy» → «Reenviar» responde «Le reenviamos la invitación
+a …» → retirada, «Invitados 0». El APK (OTA `933bc6f1`) quedó cubierto por tsc y lint, sin E2E.

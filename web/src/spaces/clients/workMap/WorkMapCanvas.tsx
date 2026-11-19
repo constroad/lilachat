@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import maplibregl from 'maplibre-gl/dist/maplibre-gl-csp';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-csp-worker?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { PLACE_ZOOM, type MapFrame, STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark, NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
+import { MARK_DOT_PAINT, MARK_FILL_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark, NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -13,12 +13,24 @@ const DONE = 'work-map-done';
 const STRETCH = 'work-map-stretch';
 const STATIONS = 'work-map-stations';
 const BARE = 'work-map-bare';
+const MARKS = 'work-map-marks';
+const NO_MARKS: WorkMapMark[] = [];
 const NO_STATIONS: StationMark[] = [];
 const FIT = { padding: 56, maxZoom: 17, duration: 0 };
 const LINE_ROUND = { 'line-cap': 'round', 'line-join': 'round' } as const;
 const NO_PINS: DischargePin[] = [];
 
+/** Portal's drawings (gibas, manholes…) under the streets' lines, like Portal (José 19/11). */
+function addMarkLayers(map: maplibregl.Map) {
+  map.addSource(MARKS, { type: 'geojson', data: mapMarkCollection([]) });
+  map.addLayer({ id: `${MARKS}-fill`, type: 'fill', source: MARKS, filter: ['==', ['geometry-type'], 'Polygon'], paint: MARK_FILL_PAINT });
+  map.addLayer({ id: `${MARKS}-line`, type: 'line', source: MARKS, filter: ['!=', ['geometry-type'], 'Point'], layout: LINE_ROUND, paint: MARK_LINE_PAINT });
+  map.addLayer({ id: `${MARKS}-dot`, type: 'circle', source: MARKS, filter: ['==', ['geometry-type'], 'Point'], paint: MARK_DOT_PAINT });
+  map.addLayer({ id: `${MARKS}-text`, type: 'symbol', source: MARKS, layout: MARK_TEXT_LAYOUT as maplibregl.SymbolLayerSpecification['layout'], paint: MARK_TEXT_PAINT });
+}
+
 function addWorkLayers(map: maplibregl.Map) {
+  addMarkLayers(map);
   map.addSource(BARE, { type: 'geojson', data: workMapCollection([]) });
   map.addLayer({ id: BARE, type: 'line', source: BARE, layout: LINE_ROUND, paint: { 'line-color': ['get', 'color'], 'line-width': 4 } });
   map.addSource(PLANNED, { type: 'geojson', data: workMapCollection([]) });
@@ -149,7 +161,7 @@ function roadsAt(map: maplibregl.Map, event: maplibregl.MapMouseEvent): TapFeatu
 
 /** The streets of the work over a literal map (José 06/11). Lazy: its library weighs more than the chat. */
 /** `onTap`: drawing a street (design o-02), each tap is a bend; the map also offers «ubicarme» when there is nothing to frame. */
-export default function WorkMapCanvas(props: { view: WorkMapView; expanded: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void; /** Draggable ends of a picked street (José 08/11). */ handles?: StreetHandle[]; onHandleDrop?: HandleDrop; /** A tap on a pin (the «Fotos» layer, José 08/11). */ onPin?: (id: string) => void; /** A place found by the search: the map flies there (José 08/11). */ focus?: WorkMapPoint | null; /** A street just picked whole: the map shows both of its ends. */ frame?: MapFrame | null }) {
+export default function WorkMapCanvas(props: { view: WorkMapView; expanded: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void; /** Draggable ends of a picked street (José 08/11). */ handles?: StreetHandle[]; onHandleDrop?: HandleDrop; /** A tap on a pin (the «Fotos» layer, José 08/11). */ onPin?: (id: string) => void; /** A place found by the search: the map flies there (José 08/11). */ focus?: WorkMapPoint | null; /** A street just picked whole: the map shows both of its ends. */ frame?: MapFrame | null; /** Portal's drawings (José 19/11). */ marks?: readonly WorkMapMark[] }) {
   const { view, expanded } = props;
   const holder = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -207,6 +219,9 @@ export default function WorkMapCanvas(props: { view: WorkMapView; expanded: bool
   useEffect(() => {
     if (ready) (map.current?.getSource(BARE) as maplibregl.GeoJSONSource | undefined)?.setData(workMapCollection(props.bare ?? []));
   }, [ready, props.bare]);
+  useEffect(() => {
+    if (ready) (map.current?.getSource(MARKS) as maplibregl.GeoJSONSource | undefined)?.setData(mapMarkCollection(props.marks ?? NO_MARKS));
+  }, [ready, props.marks]);
   useEffect(() => {
     if (ready) (map.current?.getSource(STATIONS) as maplibregl.GeoJSONSource | undefined)?.setData(stationMarkCollection(props.stations ?? NO_STATIONS));
   }, [ready, props.stations]);

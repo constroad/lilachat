@@ -208,7 +208,7 @@ export function WorkMapBoard(props: BoardProps) {
       <div className={wide ? 'flex min-h-0 flex-1' : 'flex flex-col'}>
         <div className={`relative overflow-hidden bg-surface-variant ${wide ? 'min-w-0 flex-1' : 'h-[58vh] min-h-[320px] shrink-0'}`}>
           <Suspense fallback={<div data-testid="mapa-cargando-lienzo" className="absolute inset-0 animate-pulse bg-surface-variant" />}>
-            <WorkMapCanvas view={view} expanded={expanded} stations={stations} bare={bare} pins={photoLayer.shown ? photoLayer.pins : unitPins} onPin={photoLayer.shown ? photoLayer.openPin : undefined} stretches={brushing.brush ? brushLines : stretches} onTap={brushing.brush ? (place) => void brushing.tap(place) : undefined} />
+            <WorkMapCanvas view={view} expanded={expanded} stations={stations} bare={bare} marks={props.map.marks} pins={photoLayer.shown ? photoLayer.pins : unitPins} onPin={photoLayer.shown ? photoLayer.openPin : undefined} stretches={brushing.brush ? brushLines : stretches} onTap={brushing.brush ? (place) => void brushing.tap(place) : undefined} />
           </Suspense>
           {photoLayer.available && !brushing.brush ? <PhotoToggle shown={photoLayer.shown} count={photoLayer.count} onToggle={photoLayer.toggle} /> : null}
           {wide && !brushing.brush ? <MapFilters map={map} view={view} filter={filter} onFilter={setFilter} floating waiting={pendingItems.length} /> : null}

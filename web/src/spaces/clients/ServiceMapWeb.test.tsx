@@ -13,8 +13,8 @@ const pineStreet = vi.hoisted(() => (named: boolean) => ({ properties: { class: 
 /** A tap on the fake map goes 100 m further east each time, as when a street is drawn (o-02). */
 const taps = vi.hoisted(() => ({ count: 0 }));
 vi.mock('./workMap/WorkMapCanvas', () => ({
-  default: (props: { view: WorkMapView; expanded: boolean; pins?: Array<{ id: string }>; stretches?: unknown[]; onTap?: (point: { lat: number; lng: number }, roads: unknown) => void; onPin?: (id: string) => void }) => (
-    <div data-testid="mapa-lienzo" data-done={props.view.done.length} data-expanded={props.expanded} data-pins={props.pins?.length ?? 0} data-stretches={props.stretches?.length ?? 0}>
+  default: (props: { view: WorkMapView; expanded: boolean; pins?: Array<{ id: string }>; stretches?: unknown[]; marks?: unknown[]; onTap?: (point: { lat: number; lng: number }, roads: unknown) => void; onPin?: (id: string) => void }) => (
+    <div data-testid="mapa-lienzo" data-done={props.view.done.length} data-expanded={props.expanded} data-pins={props.pins?.length ?? 0} data-stretches={props.stretches?.length ?? 0} data-marks={props.marks?.length ?? 0}>
       {props.onPin ? props.pins?.map((pin) => <button key={pin.id} type="button" data-testid={`lienzo-pin-${pin.id}`} onClick={() => props.onPin?.(pin.id)} />) : null}
       {props.onTap ? <button type="button" data-testid="mapa-tocar" onClick={() => { const point = { lat: -12, lng: -77 + (taps.count++ * 100) / 108_766 }; props.onTap?.(point, { underFinger: [pineStreet(false)], nearby: [pineStreet(true)], tap: point }); }} /> : null}
     </div>
@@ -285,6 +285,18 @@ describe('ServiceMapWeb', () => {
     expect(card).toHaveTextContent('Dibuja las calles');
     expect(screen.getByTestId('mapa-dibujar-portal')).toHaveAttribute('href', drawUrl);
     expect(screen.queryByTestId('mapa-vacio')).not.toBeInTheDocument();
+  });
+
+  /** José 19/11 (El Almirante): Portal showed 33 drawings and Lilachat «Todavía no hay calles». */
+  it('a service with drawings and no streets shows the map with them, not how to start', async () => {
+    // Arrange
+    const marks = [{ id: 'm1', type: 'giba', shape: { kind: 'symbol', at: { lat: -12.05, lng: -77.03 } } }];
+    askServer.mockResolvedValue({ ok: true, data: { map: { streets: [], scopes: [], progress: [], works: [], stages: [], marks } } });
+    // Act
+    showMap();
+    // Assert
+    expect(await screen.findByTestId('mapa-lienzo')).toHaveAttribute('data-marks', '1');
+    expect(screen.queryByTestId('mapa-primera-calle')).not.toBeInTheDocument();
   });
 
   it('a service without streets can start from a KMZ or KML (audit 08/11)', async () => {

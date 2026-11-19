@@ -1,0 +1,69 @@
+import { describe, expect, it } from 'vitest';
+import { mapMarkCollection, mapMarksBounds, workMapMarksOf } from './workMapMarks.js';
+import { workMapOf, workMapView } from './workMap.js';
+
+/** José 19/11 (El Almirante, parches Jr. Conchucos): Portal's map showed 33 drawings; Lilachat said «Todavía no hay calles». */
+describe('workMapMarksOf', () => {
+  it('reads every kind Portal draws and leaves a broken one out', () => {
+    // Arrange
+    const raw = [
+      { id: 'a', type: 'giba', shape: { kind: 'circle', center: { lat: -12.05, lng: -77.03 }, radiusM: 4 } },
+      { id: 'b', type: 'buzon', note: 'Tapa rota', shape: { kind: 'symbol', at: { lat: -12.06, lng: -77.04 } } },
+      { id: 'c', type: 'otro', shape: { kind: 'rect', corners: [{ lat: -12.05, lng: -77.03 }, { lat: -12.051, lng: -77.031 }] } },
+      { id: 'd', type: 'sardinel', shape: { kind: 'arrow', from: { lat: -12.05, lng: -77.03 }, to: { lat: -12.052, lng: -77.03 } } },
+      { id: 'e', type: 'bocacalle', shape: { kind: 'polygon', points: [{ lat: -12.05, lng: -77.03 }, { lat: -12.05, lng: -77.031 }, { lat: -12.051, lng: -77.031 }] } },
+      { id: 'f', type: 'giba', shape: { kind: 'circle', center: { lat: 'x', lng: -77 }, radiusM: 4 } },
+      { id: 'g', type: 'giba', hidden: true, shape: { kind: 'symbol', at: { lat: -12.05, lng: -77.03 } } },
+    ];
+    // Act
+    const marks = workMapMarksOf(raw);
+    // Assert
+    expect(marks.map((mark) => mark.id)).toEqual(['a', 'b', 'c', 'd', 'e']);
+    expect(marks[1]).toMatchObject({ type: 'buzon', note: 'Tapa rota' });
+  });
+
+  it('nothing, or not a list, is no drawings', () => {
+    expect(workMapMarksOf(undefined)).toEqual([]);
+    expect(workMapMarksOf({ id: 'a' })).toEqual([]);
+  });
+});
+
+describe('mapMarkCollection', () => {
+  it('areas as polygons, the arrow as a line, a dropped element as a point, each with its label', () => {
+    // Arrange
+    const marks = workMapMarksOf([
+      { id: 'a', type: 'giba', shape: { kind: 'circle', center: { lat: -12.05, lng: -77.03 }, radiusM: 4 } },
+      { id: 'b', type: 'buzon', shape: { kind: 'symbol', at: { lat: -12.06, lng: -77.04 } } },
+      { id: 'd', type: 'sardinel', shape: { kind: 'arrow', from: { lat: -12.05, lng: -77.03 }, to: { lat: -12.052, lng: -77.03 } } },
+    ]);
+    // Act
+    const collection = mapMarkCollection(marks);
+    // Assert
+    expect(collection.features.map((feature) => feature.geometry.type)).toEqual(['Polygon', 'Point', 'LineString']);
+    expect(collection.features.map((feature) => feature.properties.label)).toEqual(['Giba', 'Buzón', 'Sardinel']);
+    const ring = (collection.features[0]!.geometry as { coordinates: number[][][] }).coordinates[0]!;
+    expect(ring[0]).toEqual(ring.at(-1));
+  });
+
+  it('the bounds hold every drawing; none without drawings', () => {
+    const marks = workMapMarksOf([{ id: 'b', type: 'poste', shape: { kind: 'symbol', at: { lat: -12.06, lng: -77.04 } } }, { id: 'c', type: 'poste', shape: { kind: 'symbol', at: { lat: -12.05, lng: -77.03 } } }]);
+    expect(mapMarksBounds(marks)).toEqual([[-77.04, -12.06], [-77.03, -12.05]]);
+    expect(mapMarksBounds([])).toBeNull();
+  });
+});
+
+describe('a service with drawings and no streets', () => {
+  it('is a map (not «Todavía no hay calles») framed on its drawings', () => {
+    // Arrange
+    const detail = { workStreets: null, workMapMarks: [{ id: 'a', type: 'giba', shape: { kind: 'symbol', at: { lat: -12.05, lng: -77.03 } } }] };
+    // Act
+    const map = workMapOf(detail);
+    // Assert
+    expect(map).toMatchObject({ streets: [], marks: [{ id: 'a' }] });
+    expect(workMapView(map!).bounds).toEqual([[-77.03, -12.05], [-77.03, -12.05]]);
+  });
+
+  it('neither streets nor drawings is still no map', () => {
+    expect(workMapOf({ workStreets: null, workMapMarks: [] })).toBeNull();
+  });
+});

@@ -180,6 +180,7 @@ export * from './serviceMap.js';
 export * from './workMap.js';
 export * from './workMapStyle.js';
 export * from './workMapDischarges.js';
+export * from './workMapMarks.js';
 export * from './workMapExport.js';
 export * from './workMapPanel.js';
 export * from './workMapProgress.js';

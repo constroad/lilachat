@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { ChevronRight, Maximize2, Share2, TrendingUp, X } from 'lucide-react-native';
-import { bareLinesOf, visibleStationMarks, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, withPendingLines, showsUnitPins, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StationMark, type StretchRange, type UnitDischarge, type MapPhoto, type ManualProgressDraft, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { type WorkMapMark, bareLinesOf, visibleStationMarks, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, withPendingLines, showsUnitPins, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StationMark, type StretchRange, type UnitDischarge, type MapPhoto, type ManualProgressDraft, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
@@ -26,13 +26,13 @@ import { PendingProgressCard } from './PendingProgress';
 
 type PhotoLayer = ReturnType<typeof usePhotoLayer>;
 
-function FullMap(props: { view: WorkMapView; open: boolean; onClose: () => void; pins: DischargePin[]; stretches: WorkMapLine[]; stations: StationMark[]; bare: WorkMapLine[]; photos: PhotoLayer }) {
+function FullMap(props: { view: WorkMapView; open: boolean; onClose: () => void; pins: DischargePin[]; stretches: WorkMapLine[]; stations: StationMark[]; bare: WorkMapLine[]; photos: PhotoLayer; marks?: readonly WorkMapMark[] }) {
   const colors = useColores();
   const margins = useMargenes();
   return (
     <Modal visible={props.open} animationType="slide" onRequestClose={props.onClose}>
       <View className="flex-1 bg-background">
-        {props.open ? <WorkMapSurface view={props.view} moves controlsInset={margins.pie} stations={props.stations} bare={props.bare} pins={props.photos.shown ? props.photos.pins : props.pins} onPin={props.photos.shown ? props.photos.openPin : undefined} stretches={props.stretches} /> : null}
+        {props.open ? <WorkMapSurface view={props.view} moves controlsInset={margins.pie} stations={props.stations} bare={props.bare} marks={props.marks} pins={props.photos.shown ? props.photos.pins : props.pins} onPin={props.photos.shown ? props.photos.openPin : undefined} stretches={props.stretches} /> : null}
         {props.photos.available ? <PhotoToggle shown={props.photos.shown} count={props.photos.count} onToggle={() => props.photos.setShown(!props.photos.shown)} style={{ bottom: margins.pie + 24 }} /> : null}
         <Pressable testID="mapa-cerrar-completo" accessibilityLabel="Cerrar el mapa" onPress={props.onClose} className="absolute right-3 h-12 w-12 items-center justify-center rounded-full bg-surface" style={{ top: margins.cabecera + 8 }}>
           <X size={22} color={colors['on-surface']} />
@@ -151,7 +151,7 @@ export function WorkMapBoard(props: BoardProps) {
       {props.notice ? <Text testID="mapa-aviso" accessibilityRole="alert" className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-[14px] font-semibold text-on-surface">{props.notice}</Text> : null}
       <View className="-mx-4 overflow-hidden bg-surface-variant" style={{ height }}>
         <View pointerEvents="none" className="absolute inset-0">
-          {wide ? null : <WorkMapSurface view={view} moves={false} stations={stations} bare={bare} pins={photos.shown ? photos.pins : unitPins} stretches={stretches} />}
+          {wide ? null : <WorkMapSurface view={view} moves={false} stations={stations} bare={bare} marks={map.marks} pins={photos.shown ? photos.pins : unitPins} stretches={stretches} />}
         </View>
         {/* The small map does not take taps: «Fotos» opens the full one, where a marker opens its photos. */}
         {photos.available ? <PhotoToggle shown={photos.shown} count={photos.count} onToggle={() => { photos.setShown(true); setWide(true); }} style={{ bottom: 16 }} /> : null}
@@ -160,7 +160,7 @@ export function WorkMapBoard(props: BoardProps) {
         </Pressable>
       </View>
       <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} deleteStreet={props.deleteStreet} onOpenStreet={(id) => openStreet(id)} />
-      <FullMap view={view} open={wide} onClose={() => setWide(false)} pins={unitPins} stretches={stretches} stations={stations} bare={bare} photos={photos} />
+      <FullMap view={view} open={wide} onClose={() => setWide(false)} pins={unitPins} stretches={stretches} stations={stations} bare={bare} photos={photos} marks={map.marks} />
       {props.editMap ? <DeletedWork open={seeingDeleted} map={map} send={props.editMap} onClose={() => setSeeingDeleted(false)} /> : null}
       <StreetScopes map={map} streetId={streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} startRecording={recordingStart} recordDraft={recordDraft} onClose={() => openStreet(null)} />
       <StreetPick target={choosing} onPick={(id) => openStreet(id, true)} onClose={() => setChoosing(null)} />

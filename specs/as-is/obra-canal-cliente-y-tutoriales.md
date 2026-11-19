@@ -64,8 +64,8 @@ Pendientes**.
   `MARK_CARD_PHOTOS_MAX` = 6 miniaturas que abren el visor. Sin fotos, la línea va igual y no hay
   fila de fotos. Un pin de observación justo sobre un dibujo no lo tapa: pasar el mouse o tocar
   ahí abre la tarjeta del dibujo (`mapPickOnMap`); desde la lista «Observaciones» la observación
-  abre su propia tarjeta. Portal solo manda las observaciones visibles al cliente (las suyas y las
-  internas levantadas y compartidas): las internas abiertas todavía no llegan.
+  abre su propia tarjeta. Portal manda todas las observaciones del servicio, internas incluidas
+  (José 19/11: las fotos que sube al mapa de obra en Portal se ven aquí), menos las de otro cliente.
 - **Web** (`web/src/spaces/clients/workMap/MapCardPopup.tsx`, `MapCardView.tsx`,
   `WorkMapItems.tsx`): las observaciones son pines (rojo pendiente, verde levantada).
   Pasar el mouse por un dibujo u observación abre su tarjeta (Popup de MapLibre); un clic la

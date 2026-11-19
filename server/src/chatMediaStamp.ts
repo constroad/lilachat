@@ -1,7 +1,7 @@
 import type { Types } from 'mongoose';
 import { timemarkOf } from '@lilachat/shared';
 import { ChatModel } from './chatModels.js';
-import { placeNameOf } from './placeName.js';
+import { placeOfShot } from './bots/stampAsked.js';
 import { stampTimemark, type ShotMarks } from './bots/photoStamp.js';
 import { spaceStampLogo } from './bots/spaceStampLogo.js';
 import type { PhotoStampAsked } from './bots/botForms.js';
@@ -19,7 +19,7 @@ const baseName = (fileName: string) => fileName.replace(/\.\w+$/, '');
  * Null when it cannot be burned: the caller sends the file as it came.
  */
 export async function stampedChatMedia(file: ChatFile, kind: 'image' | 'video', asked: PhotoStampAsked, chatId: string, marks: ShotMarks = {}): Promise<ChatFile | null> {
-  const place = asked.location ? await placeNameOf(asked.location) : null;
+  const place = await placeOfShot(asked);
   const workspaceId = asked.timemark?.logo ? ((await ChatModel.findById(chatId).select('workspaceId').lean())?.workspaceId as Types.ObjectId | undefined) : undefined;
   const logo = await spaceStampLogo(workspaceId);
   const stamp = timemarkOf({ at: asked.takenAt ?? new Date(), point: asked.location ?? null, place });

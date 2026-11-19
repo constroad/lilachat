@@ -46,6 +46,7 @@ describe('stampFieldsOf', () => {
   it('the report camera asks for its Timemark-like stamp, with the reading and whether the logo goes (José 12/11)', () => {
     expect(stampFieldsOf({ timemark: true, point, logo: true })).toEqual({ stamp: 'timemark', logo: '1', lat: '-12.0464', lng: '-77.0428', precision: '8' });
     expect(stampFieldsOf({ timemark: true, point: null, logo: false })).toEqual({ stamp: 'timemark', logo: '0' });
+    expect(stampFieldsOf({ timemark: true, point: null, logo: false, place: 'Avenida Central Mz.126 - Lt.80, Lurigancho-Chosica 15461' })).toEqual({ stamp: 'timemark', logo: '0', place: 'Avenida Central Mz.126 - Lt.80, Lurigancho-Chosica 15461' });
   });
 });
 

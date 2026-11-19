@@ -151,6 +151,8 @@ describe('ReportDocumentWeb', () => {
     const list = screen.getByTestId('unidades-unidades');
     expect(screen.queryByTestId('agregar-item')).toBeNull();
     expect(screen.getByTestId('resumen-unidades')).toHaveTextContent('1 de 3 terminadas · 45 m³');
+    // José 18/11: the person learns the unit closes with its empty-truck photo.
+    expect(screen.getByTestId('cierre-unidades')).toHaveTextContent('La foto de unidad vacía cierra la unidad');
     expect(screen.getByTestId('resultados-unidades')).toHaveTextContent('Carros');
     expect(list).toHaveTextContent('Por llegar · toca el que llegó');
     expect(list).toHaveTextContent('En pista');

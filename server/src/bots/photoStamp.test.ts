@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import sharp from 'sharp';
 import { stampPhoto, stampTimemark } from './photoStamp.js';
 import { portalStampsIt } from './botForms.js';
-import { stampAskedOf } from './stampAsked.js';
+import { placeOfShot, stampAskedOf } from './stampAsked.js';
 
 /** Pending 94: the selfie of a form carries the date, the hour and the place in its pixels. */
 describe('stampPhoto', () => {
@@ -126,6 +126,29 @@ describe('the AR photo\'s meters', () => {
   it('the upload\'s labels reach the stamp only when they are sane', () => {
     expect(stampAskedOf({ stamp: 'timemark', logo: '0', labels: '[{"x":0.5,"y":0.3,"text":"1 · 0,80 m"}]' })).toMatchObject({ timemark: { logo: false, labels: [{ x: 0.5, y: 0.3, text: '1 · 0,80 m' }] } });
     expect(stampAskedOf({ stamp: 'timemark', logo: '0', labels: '[{"x":9,"y":0.3,"text":"x"}]' })).toEqual({ timemark: { logo: false } });
+  });
+});
+
+describe('the place a shot burns', () => {
+  it('the phone geocoder\'s address reaches the stamp, cleaned', () => {
+    expect(stampAskedOf({ stamp: 'timemark', logo: '0', place: '  Avenida Central Mz.126 - Lt.80,\n Lurigancho-Chosica 15461 ' })).toEqual({ timemark: { logo: false }, place: 'Avenida Central Mz.126 - Lt.80, Lurigancho-Chosica 15461' });
+    expect(stampAskedOf({ stamp: 'timemark', logo: '0', place: '   ' })).toEqual({ timemark: { logo: false } });
+  });
+
+  it('the phone\'s address wins; without it the server looks the reading up', async () => {
+    // Arrange
+    const asked: string[] = [];
+    const lookup = async (point: { lat: number }) => { asked.push(String(point.lat)); return 'Lurigancho, Lima'; };
+    const location = { lat: -11.98, lng: -76.9, precision: 8 };
+    // Act
+    const fromPhone = await placeOfShot({ location, place: 'Avenida Central 80, Lurigancho-Chosica 15461' }, lookup);
+    const looked = await placeOfShot({ location }, lookup);
+    const none = await placeOfShot({}, lookup);
+    // Assert
+    expect(fromPhone).toBe('Avenida Central 80, Lurigancho-Chosica 15461');
+    expect(looked).toBe('Lurigancho, Lima');
+    expect(none).toBeNull();
+    expect(asked).toEqual(['-11.98']);
   });
 });
 

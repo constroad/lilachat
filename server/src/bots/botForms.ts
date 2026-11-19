@@ -12,6 +12,7 @@ import { shrinkPhotoBuffer } from '../photoShrink.js';
 import { stampPhoto, stampTimemark } from './photoStamp.js';
 import { spaceStampLogo } from './spaceStampLogo.js';
 import { placeNameOf } from '../placeName.js';
+import { placeOfShot } from './stampAsked.js';
 import { signedFormFileUrl, verifyFileToken } from './botFiles.js';
 import { photosAmong, placeOfStamp, signPhotoValues, type PhotoPlace, type PhotoSigner } from './formPhotoPlaces.js';
 
@@ -81,7 +82,7 @@ export async function openRun(userId: Types.ObjectId, scope: CommandScope, comma
 }
 
 /** A signing brings the place the form has; a camera photo only asks for the hour (José 06/11: tank and materials). */
-export type PhotoStampAsked = { location?: GeoPoint; hourOnly?: true; /** A photo of the gallery: its own date, not the upload's. */ takenAt?: Date; /** The report camera's Timemark-like stamp (José 12/11), with the space's logo when asked. */ timemark?: { logo: boolean; /** An AR zone's photo: each side's meters (José 15/11). */ labels?: ShotLabel[]; panel?: string[] } };
+export type PhotoStampAsked = { location?: GeoPoint; hourOnly?: true; /** A photo of the gallery: its own date, not the upload's. */ takenAt?: Date; /** The phone geocoder's address for a camera shot (José 18/11). */ place?: string; /** The report camera's Timemark-like stamp (José 12/11), with the space's logo when asked. */ timemark?: { logo: boolean; /** An AR zone's photo: each side's meters (José 15/11). */ labels?: ShotLabel[]; panel?: string[] } };
 
 async function stampLinesOf({ location, hourOnly, takenAt }: PhotoStampAsked): Promise<readonly string[]> {
   const at = takenAt ?? new Date();
@@ -97,7 +98,7 @@ const spaceOfRun = (run: { workspaceId?: Types.ObjectId | null; chatId?: Types.O
 
 /** The camera's stamp with the server's hour: what the camera showed live, the logo only when its chip was on. */
 async function burnTimemark(bytes: Buffer, stamp: PhotoStampAsked, spaceOf: SpaceOfRun) {
-  const place = stamp.location ? await placeNameOf(stamp.location) : null;
+  const place = await placeOfShot(stamp);
   const logo = stamp.timemark?.logo ? await spaceStampLogo(await spaceOf()) : null;
   return stampTimemark(bytes, timemarkOf({ at: stamp.takenAt ?? new Date(), point: stamp.location ?? null, place }), logo);
 }

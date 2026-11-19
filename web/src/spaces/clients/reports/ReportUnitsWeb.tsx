@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Camera, CheckCircle2, Plus, ChevronDown, ChevronRight, ChevronUp, Clock, Container, Ruler, Thermometer, Truck } from 'lucide-react';
-import { ADD_EXTRA_PHOTO, ARRIVED_LABEL, arrivalKeyOf, extraPhotosOf, extraPhotosTitle, dataRowLine, dataSectionOf, pageLine, photoSlotsOf, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
+import { UNITS_CLOSE_HINT, ADD_EXTRA_PHOTO, ARRIVED_LABEL, arrivalKeyOf, extraPhotosOf, extraPhotosTitle, dataRowLine, dataSectionOf, pageLine, photoSlotsOf, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
 import { Pill, ResultsStrip, StateDot } from './ReportSectionsWeb';
 
 /** Design j-05 (José 06/11): for the operator on the pista. Big plate, big slots, one click per action. */
@@ -162,6 +162,7 @@ export function ReportUnitsWeb({ section, onOpen, onView }: { section: RepeatSec
     <div data-testid={`unidades-${section.id}`} className="flex flex-col gap-4">
       {section.summary.length ? <p data-testid="resumen-unidades" className="text-[15px] font-bold">{section.summary.join(' · ')}</p> : null}
       {head ? <p data-testid="conteo-unidades" className="text-sm text-on-surface-variant">{head}</p> : null}
+      {section.items.length ? <p data-testid="cierre-unidades" className="text-sm text-on-surface-variant">{UNITS_CLOSE_HINT}</p> : null}
       {section.items.length === 0 ? <p className="pt-4 text-center text-sm text-on-surface-variant">{NO_UNITS}</p> : null}
       {strip ? (
         <Group title={UNIT_GROUP_TITLES.waiting} count={groups.waiting.length}>

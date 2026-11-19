@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { Camera, CheckCircle2, Plus, ChevronDown, ChevronRight, ChevronUp, Clock, Container, Ruler, Thermometer, Truck } from 'lucide-react-native';
-import { ADD_EXTRA_PHOTO, ARRIVED_LABEL, arrivalKeyOf, extraPhotosOf, extraPhotosTitle, dataRowLine, dataSectionOf, pageLine, photoSlotsOf, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
+import { UNITS_CLOSE_HINT, ADD_EXTRA_PHOTO, ARRIVED_LABEL, arrivalKeyOf, extraPhotosOf, extraPhotosTitle, dataRowLine, dataSectionOf, pageLine, photoSlotsOf, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { Pill, ResultsStrip, StateDot } from './ReportSections';
 
@@ -177,6 +177,7 @@ export function ReportUnitsView({ section, onOpen, onView }: { section: RepeatSe
     <View testID={`unidades-${section.id}`} className="gap-4">
       {section.summary.length ? <Text testID="resumen-unidades" className="text-[15px] font-bold text-on-surface">{section.summary.join(' · ')}</Text> : null}
       {head ? <Text testID="conteo-unidades" className="text-[14px] text-on-surface-variant">{head}</Text> : null}
+      {section.items.length ? <Text testID="cierre-unidades" className="text-[13px] text-on-surface-variant">{UNITS_CLOSE_HINT}</Text> : null}
       {section.items.length === 0 ? <Text className="pt-4 text-center text-[14px] text-on-surface-variant">{NO_UNITS}</Text> : null}
       {strip ? (
         <Group title={UNIT_GROUP_TITLES.waiting} count={groups.waiting.length}>

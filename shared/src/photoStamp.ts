@@ -63,7 +63,7 @@ const panelFieldOf = (panel: readonly string[] | undefined): Record<string, stri
 export function stampFieldsOf(stamp: FormPhotoStamp | undefined): Record<string, string> {
   if (!stamp) return {};
   if (stamp === HOUR_STAMP) return { stamp: HOUR_STAMP };
-  if ('timemark' in stamp) return { stamp: TIMEMARK_STAMP, logo: stamp.logo ? '1' : '0', ...(stamp.point ? pointFields(stamp.point) : {}), ...(stamp.takenAt ? { takenAt: stamp.takenAt } : {}), ...labelsFieldOf(stamp.labels), ...panelFieldOf(stamp.panel) };
+  if ('timemark' in stamp) return { stamp: TIMEMARK_STAMP, logo: stamp.logo ? '1' : '0', ...(stamp.point ? pointFields(stamp.point) : {}), ...(stamp.takenAt ? { takenAt: stamp.takenAt } : {}), ...labelsFieldOf(stamp.labels), ...panelFieldOf(stamp.panel), ...(stamp.place ? { place: stamp.place } : {}) };
   if ('takenAt' in stamp) return { stamp: 'taken', takenAt: stamp.takenAt };
   return { stamp: '1', ...pointFields(stamp) };
 }

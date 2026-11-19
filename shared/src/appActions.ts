@@ -205,7 +205,7 @@ export const HOUR_STAMP = 'hour';
 /** A photo of the gallery: only its date, never a place (José 07/11). */
 export type GalleryStamp = { takenAt: string };
 /** The report camera's Timemark-like stamp (José 12/11): the server burns the hour, the date, the place of the reading and, with its chip on, the space's logo. */
-export type TimemarkStampAsked = { timemark: true; point: GeoPoint | null; logo: boolean; /** A report photo the queue sends later carries the hour it was taken. */ takenAt?: string; /** An AR zone's photo: each side's meters at its middle (José 15/11). */ labels?: readonly ShotLabel[]; /** …and its figures in a corner. */ panel?: readonly string[] };
+export type TimemarkStampAsked = { timemark: true; point: GeoPoint | null; logo: boolean; /** A report photo the queue sends later carries the hour it was taken. */ takenAt?: string; /** An AR zone's photo: each side's meters at its middle (José 15/11). */ labels?: readonly ShotLabel[]; /** …and its figures in a corner. */ panel?: readonly string[]; /** The phone geocoder's address (José 18/11); without it the server looks it up. */ place?: string };
 export type FormPhotoStamp = GeoPoint | typeof HOUR_STAMP | GalleryStamp | TimemarkStampAsked;
 
 /**

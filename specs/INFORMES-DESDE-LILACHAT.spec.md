@@ -2112,3 +2112,24 @@ No se verificó:
 - El APK. La OTA `3e406430` trae el mismo motor y el mismo picker.
 - Un miembro sin plata. Lo cubren los tests del picker y del server.
 - FRE-PAV con los tramos del mapa. Lo cubren los tests de Portal.
+
+## 22. Control de pista: la unidad se cierra con su foto de unidad vacía (José 18/11)
+
+Lo pidió un supervisor en obra. Varios carros llegan antes de que empiece la colocación, y él
+toma la llegada y la tolva de cada uno para ganar tiempo. Antes cada foto salía al grupo del
+cliente apenas se subía, y llegaban en desorden. Además, el número de colocación se fijaba con
+la primera foto de cada carro.
+
+- **La foto de unidad vacía va última.** Antes era la penúltima. Su título dice «Unidad vacía ·
+  cierra la unidad».
+- **Cerrar le da a la unidad su número de colocación**, en el orden en que se cierran. En la
+  tarjeta se ve «Colocación N° X» junto a la placa.
+- **Las fotos marcadas para el grupo esperan** y salen juntas y en orden cuando la unidad se
+  cierra: una sola llamada a lila, que las manda una por una. Una foto de una unidad ya cerrada
+  sale sola.
+- Sobre la lista de unidades, una línea lo explica (`UNITS_CLOSE_HINT`).
+- Todo lo decide Portal (`INFORMES-CAMPO-CREACION.as-is.md` §11.1-bis). Lilachat no cambió su
+  contrato, y las herramientas no se reaprueban.
+- **«Ver PDF» de un borrador** (punto 3 de José): ya estaba arreglado desde el 15/11
+  (`3428234a`). Dice «Preparando…» en una sola línea, y la vista previa abre dentro de
+  Lilachat con zoom.

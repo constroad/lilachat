@@ -1,4 +1,5 @@
-import { HOUR_STAMP, TIMEMARK_STAMP, shotLabelsOf, shotPanelOf, takenAtFrom, type GeoPoint } from '@lilachat/shared';
+import { cleanPlace, HOUR_STAMP, TIMEMARK_STAMP, shotLabelsOf, shotPanelOf, takenAtFrom, type GeoPoint } from '@lilachat/shared';
+import { placeNameOf } from '../placeName.js';
 import type { PhotoStampAsked } from './botForms.js';
 
 /** A reading of the phone's GPS sent as form fields; anything off the map is no reading. */
@@ -14,7 +15,17 @@ function timemarkAsked(fields: Record<string, unknown>): PhotoStampAsked {
   const location = pointOf(fields);
   const labels = shotLabelsOf(fields.labels);
   const panel = shotPanelOf(fields.panel);
-  return { timemark: { logo: fields.logo === '1', ...(labels.length ? { labels } : {}), ...(panel.length ? { panel } : {}) }, ...(location ? { location } : {}), ...(takenAt ? { takenAt } : {}) };
+  const place = cleanPlace(fields.place);
+  return { timemark: { logo: fields.logo === '1', ...(labels.length ? { labels } : {}), ...(panel.length ? { panel } : {}) }, ...(location ? { location } : {}), ...(takenAt ? { takenAt } : {}), ...(place ? { place } : {}) };
+}
+
+/**
+ * The address a camera shot burns: the one the phone's geocoder sent (José 18/11, street-level like
+ * Timemark) or, without it, the server's lookup of the reading.
+ */
+export async function placeOfShot(stamp: Pick<PhotoStampAsked, 'location' | 'place'>, lookup: (point: GeoPoint) => Promise<string | null> = placeNameOf): Promise<string | null> {
+  if (stamp.place) return stamp.place;
+  return stamp.location ? lookup(stamp.location) : null;
 }
 
 /** What an upload asks the server to burn into a photo or a video (pending 94; forms and the chat's camera). */

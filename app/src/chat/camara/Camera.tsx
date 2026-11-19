@@ -179,7 +179,7 @@ function useStampLook() {
 }
 type StampLook = ReturnType<typeof useStampLook>;
 
-const stampAt = (point: GeoPoint | null, logo: boolean, takenAt: string, place: string | null): TimemarkStampAsked => ({ timemark: true, point, logo, takenAt, ...(place ? { place } : {}) });
+const stampAt = (point: GeoPoint | null, logo: boolean, takenAt: string): TimemarkStampAsked => ({ timemark: true, point, logo, takenAt });
 
 /** The photo, the video, or a recent one picked from the strip; and the shutter's blink. */
 function useCapture(camera: RefObject<CameraView | null>, sound: boolean, maxSeconds: number | undefined, look: StampLook) {
@@ -187,7 +187,7 @@ function useCapture(camera: RefObject<CameraView | null>, sound: boolean, maxSec
   const [shooting, setShooting] = useState(false);
   const [taken, setTaken] = useState<TakenMedia | null>(null);
   const video = useVideoRecording(camera, sound, maxSeconds);
-  const frozen = (takenAt: string) => ({ stamp: stampAt(look.live.point, Boolean(look.logoUrl), takenAt, look.live.devicePlace), seen: { stamp: look.live.stamp, logoUrl: look.logoUrl } });
+  const frozen = (takenAt: string) => ({ stamp: stampAt(look.live.point, Boolean(look.logoUrl), takenAt), seen: { stamp: look.live.stamp, logoUrl: look.logoUrl } });
   const shoot = async () => {
     if (shooting || !camera.current) return;
     setShooting(true);

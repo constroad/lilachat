@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import * as Location from 'expo-location';
-import { devicePlaceOf, timemarkOf, type GeoPoint, type Timemark } from '@lilachat/shared';
+import { devicePlaceOf, timemarkOf, type GeoPoint, type ShotPoint, type Timemark } from '@lilachat/shared';
 import { freshPoint } from '../location/freshPoint';
 import { loadCredential } from '../../auth/credentialStore';
 import { readFieldConditions } from '../commands/commandsApi';
@@ -30,14 +30,13 @@ async function serverPlaceAt(reading: GeoPoint): Promise<string | null> {
 /**
  * What the camera's stamp says while it aims (José 12/11, Timemark): the hour now, the reading
  * and the street under it. The reading and the street are asked once when the camera opens.
- * The phone's own geocoder goes first and its address travels with the photo (José 18/11); the
- * server burns its own hour and that same place.
+ * The phone's own geocoder goes first and the reading carries its address to the photo (José 18/11);
+ * the server burns its own hour and that same place.
  */
-export function useLiveStamp(): { stamp: Timemark; point: GeoPoint | null; devicePlace: string | null } {
+export function useLiveStamp(): { stamp: Timemark; point: ShotPoint | null } {
   const [now, setNow] = useState(() => new Date());
-  const [point, setPoint] = useState<GeoPoint | null>(null);
+  const [point, setPoint] = useState<ShotPoint | null>(null);
   const [place, setPlace] = useState<string | null>(null);
-  const [devicePlace, setDevicePlace] = useState<string | null>(null);
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), TICK_MS);
     return () => clearInterval(timer);
@@ -50,7 +49,8 @@ export function useLiveStamp(): { stamp: Timemark; point: GeoPoint | null; devic
       const read = { lat: reading.lat, lng: reading.lng, precision: reading.precision };
       setPoint(read);
       const fromPhone = await devicePlaceAt(read);
-      if (open && fromPhone) setDevicePlace(fromPhone);
+      // The reading carries the phone's address: the shot sends it, the server burns it.
+      if (open && fromPhone) setPoint({ ...read, place: fromPhone });
       const shown = fromPhone ?? (await serverPlaceAt(reading).catch(() => null));
       if (open && shown) setPlace(shown);
     })();
@@ -58,5 +58,5 @@ export function useLiveStamp(): { stamp: Timemark; point: GeoPoint | null; devic
       open = false;
     };
   }, []);
-  return { stamp: timemarkOf({ at: now, point, place }), point, devicePlace };
+  return { stamp: timemarkOf({ at: now, point, place }), point };
 }

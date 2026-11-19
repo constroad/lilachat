@@ -59,11 +59,13 @@ const panelFieldOf = (panel: readonly string[] | undefined): Record<string, stri
   return field ? { panel: field } : {};
 };
 
+const placeFieldOf = (place: string | undefined): Record<string, string> => (place ? { place } : {});
+
 /** The fields of the upload that ask for the stamp. */
 export function stampFieldsOf(stamp: FormPhotoStamp | undefined): Record<string, string> {
   if (!stamp) return {};
   if (stamp === HOUR_STAMP) return { stamp: HOUR_STAMP };
-  if ('timemark' in stamp) return { stamp: TIMEMARK_STAMP, logo: stamp.logo ? '1' : '0', ...(stamp.point ? pointFields(stamp.point) : {}), ...(stamp.takenAt ? { takenAt: stamp.takenAt } : {}), ...labelsFieldOf(stamp.labels), ...panelFieldOf(stamp.panel), ...(stamp.place ? { place: stamp.place } : {}) };
+  if ('timemark' in stamp) return { stamp: TIMEMARK_STAMP, logo: stamp.logo ? '1' : '0', ...(stamp.point ? pointFields(stamp.point) : {}), ...(stamp.takenAt ? { takenAt: stamp.takenAt } : {}), ...labelsFieldOf(stamp.labels), ...panelFieldOf(stamp.panel), ...placeFieldOf(stamp.place ?? stamp.point?.place) };
   if ('takenAt' in stamp) return { stamp: 'taken', takenAt: stamp.takenAt };
   return { stamp: '1', ...pointFields(stamp) };
 }

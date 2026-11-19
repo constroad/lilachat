@@ -2160,3 +2160,7 @@ Eso lo mira José.
   del botón de la página pública, y trae solo lo que falta.
 - Lilachat lo lee en `sectionFormOf` y muestra el botón en el formulario de la sección.
 - El botón llena solo lo vacío. Lo que el técnico ya midió se queda. Luego se guarda normal.
+- Agentes también filtra el documento: desde `15e4071` deja pasar `example` (19/11).
+- **E2E 19/11, 07:40, web a 390 px, espacio Test, «QA-CTLPIS — borrar»:** en Tramo 1 · Bandejas
+  aparece el botón; llena las 9 casillas vacías (1560/1720/0,178…); «Guardar» deja la sección
+  «Lista» con «Tasa de bandejas 1,05 lt/m² · Dentro de rango».

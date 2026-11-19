@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapMarkCollection, mapMarksBounds, workMapMarksOf } from './workMapMarks.js';
+import { mapMarkCollection, mapMarksBounds, markName, workMapMarksOf } from './workMapMarks.js';
 import { workMapOf, workMapView } from './workMap.js';
 
 /** José 19/11 (El Almirante, parches Jr. Conchucos): Portal's map showed 33 drawings; Lilachat said «Todavía no hay calles». */
@@ -65,5 +65,15 @@ describe('a service with drawings and no streets', () => {
 
   it('neither streets nor drawings is still no map', () => {
     expect(workMapOf({ workStreets: null, workMapMarks: [] })).toBeNull();
+  });
+});
+
+/** José 19/11: the 33 points of El Almirante all read «Otro»; Portal names them by their note. */
+describe('markName', () => {
+  it('an «Otro» with a note goes by its note, cut to fit; any other by its type', () => {
+    expect(markName({ type: 'otro', note: 'Parche 12' })).toBe('Parche 12');
+    expect(markName({ type: 'otro', note: 'Parche frente al colegio de la avenida principal' })).toBe('Parche frente al colegio de la…');
+    expect(markName({ type: 'otro' })).toBe('Otro');
+    expect(markName({ type: 'giba', note: 'frente al colegio' })).toBe('Giba');
   });
 });

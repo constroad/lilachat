@@ -87,6 +87,12 @@ export const workMapMarksOf = (raw: unknown): WorkMapMark[] =>
 
 export const markLabel = (type: string): string => MARK_LABELS[type] ?? MARK_LABELS.otro!;
 
+/** Portal's `MAP_MARK_LIMITS.labelMaxChars`. */
+const LABEL_MAX = 32;
+const fitLabel = (text: string) => (text.length <= LABEL_MAX ? text : `${text.slice(0, LABEL_MAX - 1).trimEnd()}…`);
+/** Like Portal (`elementNameOf`): an «Otro» with a note goes by its note («Parche 1»…), any other by its type. */
+export const markName = (mark: Pick<WorkMapMark, 'type' | 'note'>): string => (mark.type === 'otro' && mark.note ? fitLabel(mark.note) : markLabel(mark.type));
+
 const lngLat = (point: MarkPoint): [number, number] => [point.lng, point.lat];
 const closed = (ring: Array<[number, number]>) => [...ring, ring[0]!];
 
@@ -113,7 +119,7 @@ function geometryOf(shape: WorkMapMarkShape): MarkGeometry {
 /** The drawings as MapLibre reads them: areas as polygons, the arrow as a line, an element as a point. */
 export const mapMarkCollection = (marks: readonly WorkMapMark[]) => ({
   type: 'FeatureCollection' as const,
-  features: marks.map((mark) => ({ type: 'Feature' as const, id: mark.id, geometry: geometryOf(mark.shape), properties: { id: mark.id, label: markLabel(mark.type), note: mark.note ?? '' } })),
+  features: marks.map((mark) => ({ type: 'Feature' as const, id: mark.id, geometry: geometryOf(mark.shape), properties: { id: mark.id, label: markName(mark), note: mark.note ?? '' } })),
 });
 
 function pointsOf(shape: WorkMapMarkShape): MarkPoint[] {

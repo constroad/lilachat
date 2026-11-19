@@ -66,4 +66,16 @@ describe('a service with observations only', () => {
     // Assert
     expect(map?.observations?.map((one) => one.id)).toEqual(['o1']);
   });
+
+  it('a stretch observation is pinned at the middle of its stretch, on its street', () => {
+    // Arrange: Av. Uno runs east along -12; 1° of longitude there is ~108 766 m.
+    const street = { _id: 's1', name: 'Av. Uno', geometry: [{ lat: -12, lng: -77 }, { lat: -12, lng: -76.99 }] };
+    const detail = { workStreets: { streets: [street] }, workObservations: [{ _id: 'o1', text: 'Fisura', status: 'open', streetId: 's1', fromM: 100, toM: 300 }, { _id: 'o2', text: 'Otra calle', status: 'open', streetId: 'nope', fromM: 10 }] };
+    // Act
+    const [onStreet, lost] = workMapOf(detail)!.observations!;
+    // Assert
+    expect(onStreet!.point!.lat).toBeCloseTo(-12, 6);
+    expect((onStreet!.point!.lng + 77) * 108_766).toBeCloseTo(200, 0);
+    expect(lost!.point).toBeUndefined();
+  });
 });

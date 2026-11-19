@@ -172,19 +172,33 @@ function worksFrom(rawTags: unknown, rawPartidas: unknown, scopes: WorkMapScope[
   })];
 }
 
+/** Where on its street a stretch observation stands: the middle of its stretch (Portal sends no point for it). */
+function pointOnStreet(observation: WorkMapObservation, streets: WorkMapStreet[]): WorkMapPoint | undefined {
+  const line = streets.find((street) => street.id === observation.streetId)?.line ?? [];
+  if (observation.point || observation.fromM === undefined || line.length < 2) return observation.point;
+  const atM = (observation.fromM + (observation.toM ?? observation.fromM)) / 2;
+  return atM > 0 ? sliceLine(line, 0, atM).at(-1) ?? line[0] : line[0];
+}
+
+const placedOnStreets = (observations: WorkMapObservation[], streets: WorkMapStreet[]): WorkMapObservation[] =>
+  observations.map((observation) => {
+    const point = pointOnStreet(observation, streets);
+    return point ? { ...observation, point } : observation;
+  });
+
 /** Drawings and observations travel beside the streets, each one only when there is any. */
-function layersFrom(detail: Fields): Pick<WorkMap, 'marks' | 'observations'> {
+function layersFrom(detail: Fields, streets: WorkMapStreet[]): Pick<WorkMap, 'marks' | 'observations'> {
   const marks = workMapMarksOf(detail.workMapMarks);
-  const observations = workMapObservationsOf(detail.workObservations);
+  const observations = placedOnStreets(workMapObservationsOf(detail.workObservations), streets);
   return { ...(marks.length ? { marks } : {}), ...(observations.length ? { observations } : {}) };
 }
 
 /** What the map draws out of Portal's service detail; null when the service has no streets, drawings nor observations. */
 export function workMapOf(detail: unknown): WorkMap | null {
   if (!isFields(detail)) return null;
-  const layers = layersFrom(detail);
   const raw = isFields(detail.workStreets) ? detail.workStreets : {};
   const streets = streetsFrom(raw.streets);
+  const layers = layersFrom(detail, streets);
   if (!streets.length) return layers.marks || layers.observations ? { streets: [], scopes: [], progress: [], works: [], stages: [], ...layers } : null;
   const scopes = scopesFrom(raw.scopes, streets);
   const stages = [...listOf(raw.stages)].sort(byOrder).map((stage) => ({ id: textOf(stage._id), name: textOf(stage.name) }));

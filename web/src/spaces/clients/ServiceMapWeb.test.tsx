@@ -13,8 +13,8 @@ const pineStreet = vi.hoisted(() => (named: boolean) => ({ properties: { class: 
 /** A tap on the fake map goes 100 m further east each time, as when a street is drawn (o-02). */
 const taps = vi.hoisted(() => ({ count: 0 }));
 vi.mock('./workMap/WorkMapCanvas', () => ({
-  default: (props: { view: WorkMapView; expanded: boolean; pins?: Array<{ id: string }>; stretches?: unknown[]; marks?: unknown[]; onTap?: (point: { lat: number; lng: number }, roads: unknown) => void; onPin?: (id: string) => void }) => (
-    <div data-testid="mapa-lienzo" data-done={props.view.done.length} data-expanded={props.expanded} data-pins={props.pins?.length ?? 0} data-stretches={props.stretches?.length ?? 0} data-marks={props.marks?.length ?? 0}>
+  default: (props: { view: WorkMapView; expanded: boolean; pins?: Array<{ id: string }>; stretches?: unknown[]; marks?: unknown[]; observations?: unknown[]; selected?: { kind: string; id: string } | null; focus?: { lat: number; lng: number } | null; onTap?: (point: { lat: number; lng: number }, roads: unknown) => void; onPin?: (id: string) => void }) => (
+    <div data-testid="mapa-lienzo" data-done={props.view.done.length} data-expanded={props.expanded} data-pins={props.pins?.length ?? 0} data-stretches={props.stretches?.length ?? 0} data-marks={props.marks?.length ?? 0} data-observations={props.observations?.length ?? 0} data-selected={props.selected ? `${props.selected.kind}:${props.selected.id}` : ''} data-focus={props.focus ? `${props.focus.lat},${props.focus.lng}` : ''}>
       {props.onPin ? props.pins?.map((pin) => <button key={pin.id} type="button" data-testid={`lienzo-pin-${pin.id}`} onClick={() => props.onPin?.(pin.id)} />) : null}
       {props.onTap ? <button type="button" data-testid="mapa-tocar" onClick={() => { const point = { lat: -12, lng: -77 + (taps.count++ * 100) / 108_766 }; props.onTap?.(point, { underFinger: [pineStreet(false)], nearby: [pineStreet(true)], tap: point }); }} /> : null}
     </div>
@@ -297,6 +297,25 @@ describe('ServiceMapWeb', () => {
     // Assert
     expect(await screen.findByTestId('mapa-lienzo')).toHaveAttribute('data-marks', '1');
     expect(screen.queryByTestId('mapa-primera-calle')).not.toBeInTheDocument();
+  });
+
+  /** José 19/11: a list of the drawings and observations beside the map; a tap flies there and opens its card. */
+  it('lists the drawings by type and the observations, and a tap flies the map to one', async () => {
+    // Arrange
+    const marks = [{ id: 'm1', type: 'otro', note: 'Parche 12', shape: { kind: 'symbol', at: { lat: -12.05, lng: -77.03 } } }, { id: 'm2', type: 'giba', shape: { kind: 'symbol', at: { lat: -12.051, lng: -77.03 } } }];
+    const observations = [{ id: 'o1', text: 'Fisura', status: 'open', photos: [], point: { lat: -12.06, lng: -77.04 } }, { id: 'o2', text: 'Sin lugar', status: 'resolved', photos: [] }];
+    askServer.mockResolvedValue({ ok: true, data: { map: { streets: [], scopes: [], progress: [], works: [], stages: [], marks, observations } } });
+    showMap();
+    // Act
+    fireEvent.click(await screen.findByTestId('mapa-dibujo-m1'));
+    // Assert
+    const canvas = screen.getByTestId('mapa-lienzo');
+    expect(canvas).toHaveAttribute('data-observations', '2');
+    expect(canvas).toHaveAttribute('data-selected', 'mark:m1');
+    expect(canvas).toHaveAttribute('data-focus', '-12.05,-77.03');
+    expect(within(screen.getByTestId('mapa-observaciones')).getAllByRole('button').map((row) => row.textContent)).toEqual([expect.stringContaining('Fisura'), expect.stringContaining('Sin lugar')]);
+    fireEvent.click(screen.getByTestId('mapa-observacion-o2'));
+    expect(screen.getByTestId('tarjeta-observation-o2')).toHaveTextContent('Levantada');
   });
 
   it('a service without streets can start from a KMZ or KML (audit 08/11)', async () => {

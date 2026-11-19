@@ -10,6 +10,7 @@ import { channelOf, personOf } from './botTriggers.js';
 import { configureLateAnswers, settleLateAnswer } from './lateAnswers.js';
 import { deliverScheduledAnswer } from './botScheduleDelivery.js';
 import { isClientChat, placeConfirmedValues } from './botClients.js';
+import { joinChannelEnabledByAdmin } from './commandChannelJoin.js';
 
 /**
  * Slash commands (`specs/BOTS-API.spec.md` §c-bis), like Slack: the app
@@ -210,6 +211,8 @@ async function invokeApp(userId: Types.ObjectId, scope: CommandScope, appId: unk
   // A failed run stays a week: its `failure` is how a «no pudo responder» gets explained (23/10).
   void BotCommandRunModel.deleteMany({ $or: [{ expiresAt: { $lt: new Date() }, failure: { $exists: false } }, { expiresAt: { $lt: new Date(Date.now() - FAILED_RUN_KEPT_MS) } }] }).catch((error: unknown) => console.error('[bots] no se pudieron purgar comandos vencidos:', error instanceof Error ? error.message : error));
   const { chat } = place;
+  // A private channel the admin named for this command lets the app in, so an in_channel answer lands there (18/11).
+  if (chat && trigger.kind === 'command' && !trigger.fromCard) await joinChannelEnabledByAdmin(installation, chat._id, setting);
   const placeValues = trigger.kind === 'shortcut' ? trigger.values : undefined;
   const placeConfirmed = placeValues && chat ? await placeConfirmedValues(place.workspaceId, chat._id, placeValues) : [];
   const [run, user] = await Promise.all([BotCommandRunModel.create({ installationId: installation._id, ...(chat ? { chatId: chat._id } : {}), workspaceId: place.workspaceId, userId, command: name, formsLevel, trigger: trigger.kind, ...(trigger.kind === 'command' && trigger.text ? { text: trigger.text } : {}), ...(placeValues ? { placeValues, placeConfirmed } : {}), expiresAt: new Date(Date.now() + COMMAND_TTL_MS) }), personOf(userId, installation.grantedScopes)]);

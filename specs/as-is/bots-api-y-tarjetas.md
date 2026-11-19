@@ -79,6 +79,10 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
   de una app de agentes (la app Lila o una con `ownerAppId` de ella), en el chat donde se pidió y con la
   membresía de quien preguntó. 403 `not_a_context_command` para otro comando u otra app, 409 `no_chat`
   desde el ⚡ y `encrypted_chat` en un chat cifrado (`bots/commandContext.ts`).
+- Canal privado nombrado para un comando (18/11): si el admin puso un canal privado en la lista «Canales donde
+  funciona» de un comando, el primer uso del comando ahí mete a la app en el canal, para que su respuesta
+  `in_channel` llegue al canal y no solo a quien preguntó. «Todos» no nombra canales privados, y una app que un
+  admin sacó del canal no vuelve (`bots/commandChannelJoin.ts`, llamado desde `invokeApp`).
 - En la mini, `agentes.constroad.com` se llama por `http://127.0.0.1:3012` y cae a la URL pública
   si nadie escucha (28/10). La lista vive en `botLoopback.ts`.
 - Con `channels:history` la app oye todo el canal. Los archivos llegan en `message.files` con dirección

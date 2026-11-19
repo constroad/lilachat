@@ -177,15 +177,26 @@ export function summarizeEndedCall(estado: CallState): { perdida: boolean; durac
  */
 export type OfferAction = 'ring' | 'busy' | 'replace' | 'ignore';
 
-export function incomingOfferAction(params: { state: CallState | null; callChatId: string | null; offerChatId: string }): OfferAction {
+export function incomingOfferAction(params: { state: CallState | null; callChatId: string | null; offerChatId: string; sameOffer?: boolean }): OfferAction {
   const { state } = params;
   if (!state || state.fase === 'terminada') return 'ring';
   if (params.callChatId !== params.offerChatId) return 'busy';
-  if (state.fase === 'sonando') return 'replace';
+  if (state.fase === 'sonando') return ringGivesWay(state, params.sameOffer === true) ? 'replace' : 'ignore';
   return state.fase === 'activa' ? 'ignore' : 'busy';
 }
 
-/** On reconnecting, a ring the server no longer has is over: nobody can answer it. */
+/**
+ * José 19/11 (Araceli): on reconnecting the server sends the ring's offer again. The same
+ * offer, or any offer while «Contestar» is in course, must not tear down the ring: that
+ * closed the peer mid-answer and the call died at once. Only a NEW offer replaces it.
+ */
+function ringGivesWay(state: Extract<CallState, { fase: 'sonando' }>, sameOffer: boolean): boolean {
+  return !sameOffer && state.answeringAt === undefined;
+}
+
+/** On reconnecting, a ring the server no longer has is over: nobody can answer it. One being answered is not. */
 export function isStaleRing(params: { state: CallState | null; callChatId: string | null; ringingChatIds: readonly string[] }): boolean {
-  return params.state?.fase === 'sonando' && params.callChatId !== null && !params.ringingChatIds.includes(params.callChatId);
+  const { state } = params;
+  if (state?.fase !== 'sonando' || state.answeringAt !== undefined) return false;
+  return params.callChatId !== null && !params.ringingChatIds.includes(params.callChatId);
 }

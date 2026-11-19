@@ -287,6 +287,8 @@ function useIncomingSignals(deps: {
 }) {
   const latest = useRef(deps);
   latest.current = deps;
+  /** The SDP of the offer that rings: the server resends it on reconnecting (José 19/11). */
+  const offerSdp = useRef<string | null>(null);
   // Read on every render: if the session's socket is replaced (a new token, the
   // server cut it) the listeners move to the new one even when `connected` was
   // true before and after. The provider is a child of the shell, so its effect
@@ -297,10 +299,12 @@ function useIncomingSignals(deps: {
     const incoming = async (offer: IncomingOffer) => {
       const { stateRef, callChatId, release, setCall, startSession, openPeer, nameOfRef } = latest.current;
       // José 17/11: a stale ring of the same chat gives way to the new offer instead of «busy».
-      const action = incomingOfferAction({ state: stateRef.current, callChatId: callChatId(), offerChatId: offer.chatId });
+      const sameOffer = Boolean(offer.sdp?.sdp) && offer.sdp?.sdp === offerSdp.current;
+      const action = incomingOfferAction({ state: stateRef.current, callChatId: callChatId(), offerChatId: offer.chatId, sameOffer });
       if (action === 'busy') socket.emit('call.reject', { chatId: offer.chatId, motivo: 'ocupado' });
       if (action === 'busy' || action === 'ignore') return;
       if (action === 'replace') release();
+      offerSdp.current = offer.sdp?.sdp ?? null;
       startSession({ chatId: offer.chatId, peerName: nameOfRef.current(offer), videoCall: offer.video === true });
       setCall({ fase: 'sonando', desde: ringStart(offer.quedaMs, Date.now()), entrante: true });
       try {

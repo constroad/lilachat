@@ -214,6 +214,16 @@ describe('incomingOfferAction', () => {
     expect(incomingOfferAction({ state: sonando, callChatId: 'a', offerChatId: 'a' })).toBe('replace');
   });
 
+  it('the same offer again (the server resends it on reconnecting) keeps the ring (José 19/11, Araceli)', () => {
+    expect(incomingOfferAction({ state: sonando, callChatId: 'a', offerChatId: 'a', sameOffer: true })).toBe('ignore');
+  });
+
+  it('any offer while «Contestar» is in course is ignored: the answer is not torn down', () => {
+    const answering: CallState = { ...sonando, answeringAt: 1500 };
+    expect(incomingOfferAction({ state: answering, callChatId: 'a', offerChatId: 'a' })).toBe('ignore');
+    expect(incomingOfferAction({ state: answering, callChatId: 'a', offerChatId: 'a', sameOffer: true })).toBe('ignore');
+  });
+
   it('another chat while in a call is busy', () => {
     expect(incomingOfferAction({ state: sonando, callChatId: 'a', offerChatId: 'b' })).toBe('busy');
     expect(incomingOfferAction({ state: activa, callChatId: 'a', offerChatId: 'b' })).toBe('busy');
@@ -229,6 +239,10 @@ describe('isStaleRing', () => {
   it('a ring the server no longer has after reconnecting is stale', () => {
     expect(isStaleRing({ state: sonando, callChatId: 'a', ringingChatIds: [] })).toBe(true);
     expect(isStaleRing({ state: sonando, callChatId: 'a', ringingChatIds: ['b'] })).toBe(true);
+  });
+
+  it('a ring being answered is not stale even if the server already took it (José 19/11)', () => {
+    expect(isStaleRing({ state: { ...sonando, answeringAt: 1500 }, callChatId: 'a', ringingChatIds: [] })).toBe(false);
   });
 
   it('a ring the server still has, a call already talking or no call are not', () => {

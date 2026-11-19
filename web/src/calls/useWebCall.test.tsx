@@ -164,6 +164,18 @@ describe('web call', () => {
     expect(result.current.state).toMatchObject({ fase: 'sonando', entrante: true });
   });
 
+  /** José 19/11 (Araceli): the server resends the ring's offer on reconnecting; that tore the call down. */
+  it('the same offer again keeps the ring and its peer', async () => {
+    const { result } = mount();
+    await receive('call.offer', { chatId: 'c6', fromName: 'José', sdp: { type: 'offer', sdp: 'one-offer' } });
+    const ringing = FakePeer.last;
+    await receive('call.offer', { chatId: 'c6', fromName: 'José', sdp: { type: 'offer', sdp: 'one-offer' } });
+    expect(sent.some((one) => one.event === 'call.reject')).toBe(false);
+    expect(ringing.closed).toBe(false);
+    expect(FakePeer.last).toBe(ringing);
+    expect(result.current.state).toMatchObject({ fase: 'sonando', entrante: true });
+  });
+
   it('on reconnecting, a ring the server no longer has ends; one it still has keeps ringing', async () => {
     const { result } = mount();
     await receive('call.offer', { chatId: 'c5', fromName: 'José' });

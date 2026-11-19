@@ -108,6 +108,8 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
   /** Candidatos llegados antes de fijar la descripción remota. */
   const buffer = useRef<Candidato[]>([]);
   const remotoListo = useRef(false);
+  /** The SDP of the offer this phone rings for: the server resends it on reconnecting (José 19/11). */
+  const offerSdpRef = useRef<string | null>(null);
 
   useEffect(() => {
     stateRef.current = state;
@@ -139,6 +141,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
     ackWatch.stop();
     buffer.current = [];
     remotoListo.current = false;
+    offerSdpRef.current = null;
     yaConecto.current = false;
     setMedios('conectando');
   }, [ackWatch]);
@@ -194,14 +197,17 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
   /** Marca la descripción remota como lista y aplica lo que estaba en cola. */
   const drenarCandidatos = useCallback(async (pc: RTCPeerConnection): Promise<void> => {
     remotoListo.current = true;
-    for (const candidato of buffer.current) {
+    const queued = buffer.current;
+    buffer.current = [];
+    for (const candidato of queued) {
+      // The call ended (or gave way) mid-drain: the rest go nowhere, and that is no error.
+      if (pcRef.current !== pc || pc.signalingState === 'closed') return;
       try {
         await pc.addIceCandidate(new RTCIceCandidate(candidato));
       } catch (error) {
-        reportarError('call.ice.buffer', error);
+        if (pcRef.current === pc) reportarError('call.ice.buffer', error);
       }
     }
-    buffer.current = [];
   }, []);
 
   /** Corta sola si nadie contesta: «llamando…» eterno no le sirve a nadie. */
@@ -318,10 +324,12 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
       quedaMs?: number;
     }) => {
       // José 17/11: a stale ring of the same chat gives way to the new offer instead of «busy».
-      const action = incomingOfferAction({ state: stateRef.current, callChatId: chatIdRef.current, offerChatId: data.chatId });
+      const sameOffer = Boolean(data.sdp?.sdp) && data.sdp?.sdp === offerSdpRef.current;
+      const action = incomingOfferAction({ state: stateRef.current, callChatId: chatIdRef.current, offerChatId: data.chatId, sameOffer });
       if (action === 'busy') socket.emit('call.reject', { chatId: data.chatId, motivo: 'ocupado' });
       if (action === 'busy' || action === 'ignore') return;
       if (action === 'replace') limpiar();
+      offerSdpRef.current = data.sdp?.sdp ?? null;
       chatIdRef.current = data.chatId;
       setChatId(data.chatId);
       nombreRef.current = nombreDeRef.current(data.chatId, { nombre: data.fromName, telefono: data.fromPhone });
@@ -369,7 +377,7 @@ export function useCall(params: { jwt: string; nombreDe: (chatId: string, autor?
         try {
           await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
         } catch (error) {
-          reportarError('call.ice', error);
+          if (pcRef.current === pc && pc.signalingState !== 'closed') reportarError('call.ice', error);
         }
       } else {
         buffer.current.push(data.candidate);

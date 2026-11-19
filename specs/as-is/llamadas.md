@@ -34,6 +34,14 @@ reparte señales (es un «cartero»); los medios van directo o por TURN.
     sigue sonando en un chat que no está en la lista la da por terminada (`isStaleRing`).
   - Una oferta nueva en el chat que todavía suena reemplaza al timbre viejo, en vez de
     responder «ocupado» (`incomingOfferAction`, motor en `shared/src/call.ts`, APK y web).
+- **La misma oferta otra vez no tumba la llamada (José 19/11, videollamada a Araceli).** Al
+  reconectar, el server vuelve a mandar la oferta del timbre. El arreglo del 17/11 la tomaba como
+  oferta nueva: cerraba el peer a mitad de «Contestar» y la llamada moría al instante (Telegram:
+  `call.ice.buffer`, «Peer Connection is closed»). Ahora:
+  - La misma oferta (mismo SDP) se ignora. Cualquier oferta mientras se contesta (`answeringAt`)
+    también. Solo una oferta distinta, sin contestar, reemplaza al timbre.
+  - Un timbre que se está contestando nunca es «huérfano» (`isStaleRing`).
+  - Los candidatos en cola dejan de aplicarse si el peer se cerró, y eso no se reporta como error.
 - **APK con la app cerrada:** llamada entrante a pantalla completa con tono y «deslizar
   para contestar» (`DeslizarParaContestar.tsx`, módulo nativo `llamada-entrante`:
   `AvisoDeLlamada.kt`, `LlamadaEnCurso.kt`). Contestar o rechazar con el teléfono
@@ -159,6 +167,7 @@ depende de Portal ni de Inframaq.
 - **14/11** APK 0.1.183: PiP y cámara viva de fondo.
 - **17/11** Timbre huérfano: `call.end` al vencer, `call.ringing` al conectar y la oferta
   nueva del mismo chat reemplaza la vieja. Sin probar entre dos teléfonos.
+- **19/11** La oferta repetida al reconectar ya no reemplaza el timbre ni corta al contestar.
 
 ## 5. Diseños de Stitch relacionados
 

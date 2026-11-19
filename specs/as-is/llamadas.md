@@ -72,6 +72,12 @@ reparte señales (es un «cartero»); los medios van directo o por TURN.
     llamada. Hoy solo lo tiene el servicio de conexión, y solo con «Conexión permanente». No
     va a `main` todavía: con `runtimeVersion: fingerprint`, tocar el módulo nativo cambia la
     huella y la OTA del reinicio de ICE no llegaría a los teléfonos con 0.1.189.
+- **Cada toque de la notificación se aplica una sola vez (19/11).** `Puente.emitir` guarda el
+  toque 40 s como pendiente Y lo entrega en vivo. El proveedor volvía a leer ese pendiente en
+  cada render (su efecto dependía de `aplicarAviso`, que cambia en cada uno): un «Colgar» de
+  una llamada podía colgar la siguiente del mismo chat dentro de esos 40 s. Ahora
+  `createNoticeTapInbox` (`app/src/calls/noticeTaps.ts`) lee el pendiente solo en el arranque
+  en frío, y un toque entregado en vivo consume su copia pendiente. Solo JS: va por OTA.
 - **APK con la app cerrada:** llamada entrante a pantalla completa con tono y «deslizar
   para contestar» (`DeslizarParaContestar.tsx`, módulo nativo `llamada-entrante`:
   `AvisoDeLlamada.kt`, `LlamadaEnCurso.kt`). Contestar o rechazar con el teléfono
@@ -219,9 +225,6 @@ depende de Portal ni de Inframaq.
   app con el PiP y el servicio de cámara (según as-is 0.1.170), y el reinicio de ICE del
   19/11 entre dos teléfonos (bloquear, cambiar de app, pasar de wifi a datos).
 - Grupales: el server saca a quien pierde el socket (`dropSocket`) y no hay reinicio de ICE.
-- `Puente.emitir` deja el toque entregado 40 s en `pendiente` y el proveedor lo vuelve a leer
-  en cada render (el objeto de `useNoiseSuppression` cambia en cada uno). Un «Colgar» tocado
-  podría aplicarse a una llamada nueva del mismo chat en esos 40 s. Sin cambiar.
 - **Fuera de alcance (deuda, según spec §159):** programar y enlace en grupos, pasar a
   video a mitad de la llamada, más de 4 personas (pide un SFU), «Agregar persona» a una 1:1.
 - El APK no tiene historial de llamadas (verificado en código).
@@ -242,7 +245,7 @@ depende de Portal ni de Inframaq.
   `turnCredentials.test.ts`; de socket, `test/llamadaDesdeElAviso.test.ts` (el reinicio se
   reenvía y no deja línea de «terminada»).
 - **APK:** `calls/iceServers.test.ts`, `cameraSwitch.test.ts`, `callBarLayout.test.ts`,
-  `estadoDeMedios.test.ts`, `screenShare.test.ts`, `llamadaNativa.test.ts`, `pip.test.ts`,
+  `estadoDeMedios.test.ts`, `screenShare.test.ts`, `llamadaNativa.test.ts`, `noticeTaps.test.ts`, `pip.test.ts`,
   `group/groupCallView.test.ts`.
 - **Web:** `CallOverlay.test.tsx`, `CallReactions.test.tsx`, `CallsDialog.test.tsx`,
   `useWebCall.test.tsx` (con el reinicio de ICE como quien llama y como quien contesta),

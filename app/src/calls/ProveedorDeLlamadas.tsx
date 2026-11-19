@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { callHoldsScreen, nombreDeContacto } from '@lilachat/shared';
 import { chatsEnMemoria } from '../chat/chatsGuardados';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
@@ -11,6 +11,7 @@ import type { EstadoDeMedios } from './estadoDeMedios';
 import type { CallState } from '@lilachat/shared';
 import { useCall, type AutorDeLlamada } from './useCall';
 import { useCallScreenHold } from './useCallScreenHold';
+import { createNoticeTapInbox } from './noticeTaps';
 import { llamadaNativa } from '../../modules/llamada-entrante/src';
 import { BASE_URL } from '../api/client';
 import { groupCallBanner, type GroupCallRoom } from '@lilachat/shared';
@@ -61,13 +62,18 @@ export function ProveedorDeLlamadas({ jwt, me, children, onOpenChat }: { jwt: st
   // FL8.1: la notificación nativa de llamada. La URL del server queda guardada
   // para rechazar con la app cerrada; lo tocado antes de abrir (arranque en
   // frío) se lee una vez, y lo que se toque después llega por el evento.
+  // José 19/11: each tap applies ONCE. This effect used to run on every render
+  // (`aplicarAviso` changes with each one) and re-read the native pending tap.
+  const [taps] = useState(() => createNoticeTapInbox(llamadaNativa.accionPendiente));
+  const applyTapRef = useRef(aplicarAviso);
+  applyTapRef.current = aplicarAviso;
   useEffect(() => {
     llamadaNativa.configurar(BASE_URL);
-    const inicial = llamadaNativa.accionPendiente();
-    if (inicial) aplicarAviso(inicial);
-    const suscripcion = llamadaNativa.alTocar(aplicarAviso);
+    const inicial = taps.coldStart();
+    if (inicial) applyTapRef.current(inicial);
+    const suscripcion = llamadaNativa.alTocar((tap) => applyTapRef.current(taps.delivered(tap)));
     return () => suscripcion.remove();
-  }, [aplicarAviso]);
+  }, [taps]);
 
   // Una llamada que terminó SIN que se tocara colgar —perdida, o el otro
   // cortó— quedaba en «Llamada terminada» para siempre. Se cierra sola.

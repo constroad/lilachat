@@ -1,6 +1,6 @@
 import { useMemo, useRef, type RefObject } from 'react';
-import { CheckCheck, Clock } from 'lucide-react';
-import { CHECK_ALL_LABEL, checkAllValues, chipsFor, groupedBySection, splitFor, evidenceLine, filledRemarks, formFields, formRows, isDesignedForm, isWideForm, liveSelfieFieldOf, numberedStepsOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmit, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
+import { CheckCheck, Clock, Sparkles } from 'lucide-react';
+import { CHECK_ALL_LABEL, checkAllValues, EXAMPLE_LABEL, exampleValues, chipsFor, groupedBySection, splitFor, evidenceLine, filledRemarks, formFields, formRows, isDesignedForm, isWideForm, liveSelfieFieldOf, numberedStepsOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmit, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
@@ -80,6 +80,11 @@ export function AppFormDialog(props: DialogProps) {
       <div ref={body} data-testid={`formulario-${form.id}`} className="space-y-4">
         {designed && props.answer.context ? <FormContextCard context={props.answer.context} /> : null}
         <FormIntro answer={props.answer} clock={Boolean(evidence) && !selfieField} personName={props.personName} app={!designed} />
+        {form.example ? (
+          <button type="button" data-testid="datos-de-ejemplo" onClick={() => state.fill(exampleValues(fields, state.values, form.example ?? {}))} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 text-[14px] font-semibold text-primary hover:bg-primary/15">
+            <Sparkles size={18} /> {EXAMPLE_LABEL}
+          </button>
+        ) : null}
         {form.checkAll ? (
           <button type="button" data-testid="marcar-todo" onClick={() => state.fill(checkAllValues(fields, state.values))} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 text-[14px] font-semibold text-primary hover:bg-primary/15">
             <CheckCheck size={18} /> {CHECK_ALL_LABEL}

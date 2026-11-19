@@ -19,7 +19,7 @@ export type ResultTone = (typeof RESULT_TONES)[number];
 export type SectionResult = { label: string; value: string; tone: ResultTone };
 /** What a photo section asks of the device (CTL-PIS, José 06/11): the `tipoFoto` it sends, and no photo without the GPS fix. */
 export type PhotoMarks = { photoKind?: string; requireLocation?: true };
-export type FormSection = PhotoMarks & { kind: 'form'; id: string; title: string; required: boolean; enabled: boolean; state: SectionState; summary: string[]; results: SectionResult[]; form: string; /** The tool that fills it instead of its form: the photos go one by one through `agregar_foto_de_informe`. */ tool?: string; values: FormValues; /** The `clientKey` of a save Portal has not confirmed yet. */ pending?: string };
+export type FormSection = PhotoMarks & { kind: 'form'; id: string; title: string; required: boolean; enabled: boolean; state: SectionState; summary: string[]; results: SectionResult[]; form: string; /** The tool that fills it instead of its form: the photos go one by one through `agregar_foto_de_informe`. */ tool?: string; values: FormValues; /** Portal's example for the empty fields (José 19/11). */ example?: FormValues; /** The `clientKey` of a save Portal has not confirmed yet. */ pending?: string };
 export type SectionTemplate = PhotoMarks & { id: string; title: string; required: boolean; form: string; tool?: string };
 /** The window of items on screen when Portal pages them (50 units of a control de pista). */
 export type ItemsPage = { current: number; total: number };
@@ -79,7 +79,14 @@ function formSectionOf(raw: Raw, forms: Record<string, FormSchema>, template?: S
     enabled: raw.enabled !== false,
     state: oneOf(raw.state, SECTION_STATES, 'empty'),
     summary: lines(raw.summary), results: resultsOf(raw.results), values: record(raw.values),
+    ...exampleOf(raw.example),
   };
+}
+
+/** Portal's example for what the section has empty (José 19/11, «Completar datos de ejemplo»), plain values only. */
+function exampleOf(raw: unknown): { example?: FormValues } {
+  const example = plainValuesOf(raw);
+  return example ? { example } : {};
 }
 
 function templateOf(raw: unknown, forms: Record<string, FormSchema>): SectionTemplate[] | null {
@@ -128,7 +135,7 @@ const NEXT_VALUE_MAX = 200;
 const NEXT_VALUES_MAX = 20;
 
 /** Plain values only: a text Portal could not know the size of, or an object, never reaches a form. */
-function nextValuesOf(raw: unknown): FormValues | undefined {
+function plainValuesOf(raw: unknown): FormValues | undefined {
   const entries = Object.entries(record(raw)).slice(0, NEXT_VALUES_MAX).filter(([, value]) => typeof value === 'number' || typeof value === 'boolean' || (typeof value === 'string' && value.length <= NEXT_VALUE_MAX));
   return entries.length ? Object.fromEntries(entries) : undefined;
 }
@@ -148,7 +155,7 @@ function repeatOf(raw: Raw, forms: Record<string, FormSchema>): RepeatSection | 
   }
   const min = typeof repeat.min === 'number' && repeat.min > 0 ? Math.floor(repeat.min) : 0;
   const page = pageOf(repeat.page);
-  const nextValues = nextValuesOf(repeat.nextValues);
+  const nextValues = plainValuesOf(repeat.nextValues);
   return {
     kind: 'repeat', id, title, template, items, min, canAdd: canAddOf(repeat), ...(page ? { page } : {}), ...(nextValues ? { nextValues } : {}),
     required: raw.required === true, enabled: raw.enabled !== false,
@@ -187,7 +194,7 @@ export function fieldDocumentOf(body: unknown): FieldDocument | null {
   return { id, type, title, status, forms, sections, publish: { label: text(publish.label, LIMITS.title) || 'Publicar informe', missing: lines(publish.missing), warnings: lines(publish.warnings) } };
 }
 
-type Found = PhotoMarks & { title: string; form: string; tool?: string; values: FormValues };
+type Found = PhotoMarks & { title: string; form: string; tool?: string; values: FormValues; example?: FormValues };
 
 const marksOf = ({ photoKind, requireLocation }: PhotoMarks): PhotoMarks => ({ ...(photoKind ? { photoKind } : {}), ...(requireLocation ? { requireLocation } : {}) });
 
@@ -202,7 +209,7 @@ export function sectionAt(document: FieldDocument, path: SectionPath): Found | n
   if (path.itemId === null) return { title: itemFormTitle(section.itemTitle, entry.title), form: entry.form, ...tool, values: valuesForForm(section.nextValues, document.forms[entry.form]) };
   const item = section.items.find((one) => one.id === path.itemId);
   const saved = item?.sections.find((one) => one.id === path.key);
-  return item && saved ? { title: itemFormTitle(item.title, entry.title), form: entry.form, ...tool, values: saved.values } : null;
+  return item && saved ? { title: itemFormTitle(item.title, entry.title), form: entry.form, ...tool, values: saved.values, ...(saved.example ? { example: saved.example } : {}) } : null;
 }
 
 /** The values Portal sent for a new item that this section's form has a field for. */
@@ -237,7 +244,8 @@ export function sectionFormOf(document: FieldDocument, path: SectionPath): AppFo
   const required = schema.required?.filter((name) => !KNOWN_BY_CHANNEL.includes(name));
   // Audit 12/11: «Enviar» on a part of a draft read as sending the report; it only keeps that part.
   const submitLabel = asked.some(([, property]) => property['x-input'] === 'photo') ? 'Guardar foto' : 'Guardar';
-  return { id: found.tool ?? SECTION_TOOL, title: found.title, submitLabel, schema: { ...schema, properties, ...(required ? { required } : {}) }, ...(schema['x-check-all'] ? { checkAll: true as const } : {}) };
+  const example = found.example ? valuesForForm(found.example, { type: 'object', properties }) : {};
+  return { id: found.tool ?? SECTION_TOOL, title: found.title, submitLabel, schema: { ...schema, properties, ...(required ? { required } : {}) }, ...(schema['x-check-all'] ? { checkAll: true as const } : {}), ...(Object.keys(example).length ? { example } : {}) };
 }
 
 /** Portal's own value of what the form does not ask: it rides with the answers, because Portal blanks a field a saved section leaves out. */

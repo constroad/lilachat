@@ -81,6 +81,9 @@ Pregunta a la app por `link.status` y `link.revoke`. Lilachat no guarda nada.
 - `appSchedules.ts`: `scheduleLine`, `lastRunProblem`, `validateScheduleInput`, `repeatOfDays`.
 - `appForms.ts` (607 líneas) más `appFormRows`, `appFormSplit`, `appFormOptions`, `appFormLive`,
   `appFormSections`, `appFormSteps`, `appFormSubmits`, `appFormKnown`, `appFormLists`, `appFormPicks`.
+- Datos de ejemplo: un formulario con `example` (lo manda Portal en las secciones del CTL-IMP)
+  muestra «Completar datos de ejemplo» (`datos-de-ejemplo`) en web y APK. `exampleValues` llena
+  solo los campos vacíos: número, texto o una opción que exista. Lo medido no se toca.
 - `ephemeralStack.ts`: la pila de «Solo tú ves esto» como chips (c-01).
 - `photoSizing.ts`: la regla única de compresión de fotos (la de Portal).
 

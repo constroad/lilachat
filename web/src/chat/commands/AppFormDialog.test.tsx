@@ -57,6 +57,27 @@ const draw = (onSubmit = vi.fn(async (): Promise<FormSubmitOutcome> => ({ done: 
 const yesNo = (title: string) => ({ type: 'string', title, oneOf: [{ const: 'si', title: 'Cumple' }, { const: 'no', title: 'No cumple' }] });
 const checklist: EphemeralAnswer = { ...answer, action: 'Checklist', response: { responseType: 'form', form: { id: 'guardar_seccion_de_informe', title: 'Checklist', checkAll: true, schema: { type: 'object', 'x-check-all': true, properties: { riego: yesNo('Riego de liga'), junta: yesNo('Juntas') }, required: ['riego', 'junta'] } } } };
 
+/** A CTL-IMP tramo's trays with Portal's example (José 19/11). */
+const trays: EphemeralAnswer = { ...answer, action: 'Bandejas', response: { responseType: 'form', form: { id: 'guardar_seccion_de_informe', title: 'Tramo 1 · Bandejas', example: { pesoSin1: 100, pesoCon1: 1030 }, schema: { type: 'object', properties: { pesoSin1: { type: 'number', title: 'Peso sin asfalto 1', default: 101 }, pesoCon1: { type: 'number', title: 'Peso con asfalto 1' } } } } } };
+
+describe('«Completar datos de ejemplo» (José 19/11, like Portal\'s public page)', () => {
+  it('fills only the empty fields and keeps what was measured; «Guardar» sends both', async () => {
+    // Arrange
+    const onSubmit = vi.fn(async (): Promise<FormSubmitOutcome> => ({ done: true, answer: null }));
+    render(<AppFormDialog answer={trays} onSubmit={onSubmit} onUpload={vi.fn(async () => ({ ok: true as const, fileId: 'f1' }))} onClose={() => undefined} />);
+    // Act
+    fireEvent.click(screen.getByTestId('datos-de-ejemplo'));
+    fireEvent.click(screen.getByTestId('btn-enviar-formulario'));
+    // Assert
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith({ pesoSin1: 101, pesoCon1: 1030 }));
+  });
+
+  it('a form without an example has no button', () => {
+    draw();
+    expect(screen.queryByTestId('datos-de-ejemplo')).toBeNull();
+  });
+});
+
 describe('«Marcar todo» (x-check-all, the checklist of a control de pista)', () => {
   it('one click answers every choice with its first option, and «Enviar» sends them', async () => {
     const onSubmit = vi.fn(async (): Promise<FormSubmitOutcome> => ({ done: true, answer: null }));

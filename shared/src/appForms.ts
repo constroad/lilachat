@@ -63,7 +63,7 @@ export type FormSchemaProperty = {
 /** How much of a row a field takes: half beside another, or all of it. */
 export type FieldWidth = 'half' | 'full';
 export type FormSchema = { type?: string; description?: string; properties?: Record<string, FormSchemaProperty>; required?: string[]; /** The read tool that sums up the draft above «Enviar». */ 'x-preview'?: { tool?: string }; /** A checklist (CTL-PIS, 06/11): one button answers every choice with its first option. */ 'x-check-all'?: boolean; /** The form's buttons (agentes 13/11), here or beside `submit_label`. */ 'x-submits'?: unknown };
-export type AppForm = { id: string; title: string; submitLabel?: string; /** The schema's `description`: a line under the title. */ intro?: string; schema: FormSchema; /** `x-preview`'s tool: the summary above «Enviar». */ preview?: string; /** `x-check-all`: the «Marcar todo» button. */ checkAll?: true; /** `x-submits`: the first is the big button, the rest sit under it; the pressed one travels as `values._accion`. */ submits?: FormSubmit[] };
+export type AppForm = { id: string; title: string; submitLabel?: string; /** The schema's `description`: a line under the title. */ intro?: string; schema: FormSchema; /** `x-preview`'s tool: the summary above «Enviar». */ preview?: string; /** `x-check-all`: the «Marcar todo» button. */ checkAll?: true; /** «Completar datos de ejemplo» (José 19/11): what fills the empty fields. */ example?: FormValues; /** `x-submits`: the first is the big button, the rest sit under it; the pressed one travels as `values._accion`. */ submits?: FormSubmit[] };
 
 type Base = { name: string; label: string; help?: string; required: boolean; /** `x-input: shift | weather | place-street | temperature | clock`: the phone fills it when empty. */ condition?: 'shift' | 'weather' | 'street' | 'temperature' | 'clock'; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number | true; /** `x-refresh`: changing it asks the app for the form again. */ refresh?: true; /** Other fields show by its answer: the form's step, alone in its row (José 13/11). */ step?: true; /** `x-section`: the header it sits under, folded or not (agentes 13/11). */ section?: FieldSection };
 export type FormField =
@@ -595,6 +595,30 @@ export function matchSpan(label: string, query: string): { start: number; end: n
 }
 
 export const CHECK_ALL_LABEL = 'Marcar todo';
+export const EXAMPLE_LABEL = 'Completar datos de ejemplo';
+
+const isEmptyValue = (value: unknown): boolean => value === undefined || value === null || value === '';
+
+/** One example value as the field takes it, or nothing when the field cannot take it. */
+function exampleOfField(field: FormField, value: unknown): unknown {
+  if (field.kind === 'number') return numberOf(value);
+  if (field.kind === 'choice') return field.options.some((option) => option.value === String(value)) ? String(value) : undefined;
+  if (field.kind === 'text') return typeof value === 'string' || typeof value === 'number' ? String(value) : undefined;
+  return undefined;
+}
+
+/**
+ * «Completar datos de ejemplo» (José 19/11, like Portal's public page): the example fills ONLY the
+ * empty fields, each as its own kind; what the person measured stays. Nothing is saved until «Guardar».
+ */
+export function exampleValues(fields: readonly FormField[], values: FormValues, example: FormValues): FormValues {
+  const filled = fields.flatMap((field) => {
+    if (!isEmptyValue(values[field.name]) || !(field.name in example)) return [];
+    const value = exampleOfField(field, example[field.name]);
+    return value === undefined ? [] : [[field.name, value] as const];
+  });
+  return { ...values, ...Object.fromEntries(filled) };
+}
 
 /** «Marcar todo» (`x-check-all`): every choice takes its first option that can be picked, the affirmative one by contract; the rest stays. */
 export function checkAllValues(fields: readonly FormField[], values: FormValues): FormValues {

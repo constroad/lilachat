@@ -156,6 +156,14 @@ describe('sectionFormOf', () => {
     expect(itemFormTitle('Tramo 1', 'Ubicación')).toBe('Tramo 1 · Ubicación');
   });
 
+  it('a section with Portal\'s example opens with it, only for what the form asks and with plain values (José 19/11)', () => {
+    const items = [{ ...body.sections[1].items[0], sections: [body.sections[1].items[0].sections[0], { id: 'bandejas', state: 'partial', values: { pesoSin1: 101 }, example: { pesoCon1: 1030, area1: 1, extra: 3, raro: { x: 1 } } }, body.sections[1].items[0].sections[2]] }];
+    const document = fieldDocumentOf({ ...body, sections: [body.sections[0], { ...body.sections[1], items }, body.sections[2]] })!;
+
+    expect(sectionFormOf(document, { sectionId: 'tramos', itemId: 't1', key: 'bandejas' })?.example).toEqual({ pesoCon1: 1030, area1: 1 });
+    expect(sectionFormOf(document, { sectionId: 'tramos', itemId: 't1', key: 'ubicacion' })).not.toHaveProperty('example');
+  });
+
   it('a new tramo opens its first section empty', () => {
     const form = sectionFormOf(parsed(), { sectionId: 'tramos', itemId: null, key: 'ubicacion' })!;
 

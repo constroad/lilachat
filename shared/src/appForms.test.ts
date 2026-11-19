@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type AppForm, type FormSchemaProperty, FRESH_LOCATION_MS, checkAllValues, filterChoiceOptions, formFields, initialValues, liveSelfieFieldOf, matchSpan, validateFormSpec, validateFormValues, visibleFields, type FormField } from './appForms.js';
+import { type AppForm, type FormSchemaProperty, FRESH_LOCATION_MS, checkAllValues, exampleValues, filterChoiceOptions, formFields, initialValues, liveSelfieFieldOf, matchSpan, validateFormSpec, validateFormValues, visibleFields, type FormField } from './appForms.js';
 
 /** Inframaq's real `registrar_marca` (agentes, 23/10), as the app sends it. */
 const attendanceForm = {
@@ -432,3 +432,20 @@ describe('an email form', () => {
     expect(asunto).not.toHaveProperty('email');
   });
 });
+
+describe('exampleValues (José 19/11: «Completar datos de ejemplo» like Portal\'s public page)', () => {
+  const schema = { type: 'object', properties: { pesoSin1: { type: 'number', title: 'Peso sin 1' }, pesoCon1: { type: 'number', title: 'Peso con 1' }, camion: { type: 'string', title: 'Camión' }, ligante: { type: 'string', title: 'Ligante', oneOf: [{ const: 'MC-30', title: 'MC-30' }] }, nota: { type: 'string', title: 'Nota' } } } as const;
+  const fields = () => formFields({ id: 'f', title: 'F', schema } as unknown as AppForm);
+
+  it('fills only what is empty, as the field\'s own kind; what was measured stays', () => {
+    // Act
+    const filled = exampleValues(fields(), { pesoSin1: 101, pesoCon1: '' }, { pesoSin1: 100, pesoCon1: '1030', camion: 7, ligante: 'MC-30' });
+    // Assert
+    expect(filled).toEqual({ pesoSin1: 101, pesoCon1: 1030, camion: '7', ligante: 'MC-30' });
+  });
+
+  it('skips what the form does not ask, a choice it cannot take, and a number that is not one', () => {
+    expect(exampleValues(fields(), {}, { otro: 1, ligante: 'RC-250', pesoSin1: 'abc', nota: { x: 1 } })).toEqual({});
+  });
+});
+

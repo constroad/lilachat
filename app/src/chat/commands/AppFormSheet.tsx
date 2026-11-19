@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject, type RefObject } from 'react';
 import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
-import { CheckCheck, Clock, X } from 'lucide-react-native';
-import { cameraFirstFieldOf, CHECK_ALL_LABEL, checkAllValues, chipsFor, evidenceLine, filledRemarks, formFields, formRows, groupedBySection, isDesignedForm, liveSelfieFieldOf, numberedStepsOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmit, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
+import { CheckCheck, Clock, Sparkles, X } from 'lucide-react-native';
+import { cameraFirstFieldOf, CHECK_ALL_LABEL, checkAllValues, EXAMPLE_LABEL, exampleValues, chipsFor, evidenceLine, filledRemarks, formFields, formRows, groupedBySection, isDesignedForm, liveSelfieFieldOf, numberedStepsOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmit, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { Modal } from '../../ui/Modal';
@@ -138,6 +138,7 @@ export function AppFormSheet(props: SheetProps) {
           <ScrollView ref={scroll} keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }} contentContainerStyle={{ padding: SHEET_PADDING, gap: 14 }}>
             {designed && props.answer.context ? <FormContextCard context={props.answer.context} /> : null}
             <FormIntro answer={props.answer} clock={Boolean(evidence) && !live} personName={props.personName} />
+            {form.example ? <ExampleButton onPress={() => state.fill(exampleValues(fields, state.values, form.example ?? {}))} /> : null}
             {form.checkAll ? <CheckAllButton onPress={() => state.fill(checkAllValues(fields, state.values))} /> : null}
             {signer && step === 'who' ? <SignerPicker field={signer} onPick={state.set(signer.name)} /> : null}
             {signer && step === 'sign' ? <SignerCard field={signer} value={state.values[signer.name]} error={slot.errors[signer.name]} onChange={() => state.set(signer.name)('')} /> : null}
@@ -179,6 +180,17 @@ function FieldRows(props: { fields: readonly FormField[]; context: SlotContext }
 }
 
 /** «Marcar todo» (`x-check-all`, the checklist of a control de pista): one tap answers every choice with its first option. */
+/** «Completar datos de ejemplo» (José 19/11): fills only the empty fields; nothing is saved until «Guardar». */
+function ExampleButton({ onPress }: { onPress: () => void }) {
+  const colors = useColores();
+  return (
+    <Pressable testID="datos-de-ejemplo" onPress={onPress} className="min-h-[48px] flex-row items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10">
+      <Sparkles size={18} color={colors.primary} />
+      <Text className="text-[15px] font-semibold text-primary">{EXAMPLE_LABEL}</Text>
+    </Pressable>
+  );
+}
+
 function CheckAllButton({ onPress }: { onPress: () => void }) {
   const colors = useColores();
   return (

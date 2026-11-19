@@ -2152,3 +2152,11 @@ probó el respaldo: las fotos salen una por una, en orden.
 Defecto encontrado: la tarjeta de la unidad no mostraba «Colocación N° X». Ahora lo muestra.
 No se verificó: lo que llegó al grupo de errores de WhatsApp, porque las fotos de Test van ahí.
 Eso lo mira José.
+
+## 23. CTL-IMP: «Completar datos de ejemplo», como en la página pública de Portal (José 19/11)
+
+- Portal manda `example` en cada sección del tramo (material, bandejas, camión, temperaturas)
+  mientras el informe es borrador. Sale de `fillEmptyImprimacionExampleValues`, el mismo motor
+  del botón de la página pública, y trae solo lo que falta.
+- Lilachat lo lee en `sectionFormOf` y muestra el botón en el formulario de la sección.
+- El botón llena solo lo vacío. Lo que el técnico ya midió se queda. Luego se guarda normal.

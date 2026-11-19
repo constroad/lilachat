@@ -2,6 +2,7 @@ import { colorForPartida, kmLabel, lengthOfLine, mergeIntervals, projectToLine, 
 import { dayMonthOf } from './appDirectory.js';
 import type { ServiceMapResult } from './serviceMap.js';
 import { mapMarksBounds, workMapMarksOf, type WorkMapMark } from './workMapMarks.js';
+import { observationsBounds, workMapObservationsOf, type WorkMapObservation } from './workMapObservations.js';
 
 /**
  * The work map of a service (José 06/11: «el mapa literal de la obra»). Portal owns the streets,
@@ -17,8 +18,8 @@ export type WorkMapProgress = { streetId: string; workId: string; fromM: number;
 /** `partida`: a contracted item, not a tag of the map; the progress names it `partidaId`. */
 export type WorkMapWork = { id: string; name: string; color: string; partida?: true };
 export type WorkMapStage = { id: string; name: string };
-/** `marks`: Portal's drawings (gibas, manholes…), shown even before there are streets (José 19/11). */
-export type WorkMap = { streets: WorkMapStreet[]; scopes: WorkMapScope[]; progress: WorkMapProgress[]; works: WorkMapWork[]; stages: WorkMapStage[]; marks?: WorkMapMark[] };
+/** `marks` and `observations`: Portal's drawings (gibas, manholes…) and what was seen on the work, shown even before there are streets (José 19/11). */
+export type WorkMap = { streets: WorkMapStreet[]; scopes: WorkMapScope[]; progress: WorkMapProgress[]; works: WorkMapWork[]; stages: WorkMapStage[]; marks?: WorkMapMark[]; observations?: WorkMapObservation[] };
 
 export type WorkMapFilter = { stageId?: string; workId?: string; untilDay?: string };
 /** A done line also says its stations, so an export can name the stretch. */
@@ -171,17 +172,23 @@ function worksFrom(rawTags: unknown, rawPartidas: unknown, scopes: WorkMapScope[
   })];
 }
 
-/** What the map draws out of Portal's service detail; null when the service has neither streets nor drawings. */
+/** Drawings and observations travel beside the streets, each one only when there is any. */
+function layersFrom(detail: Fields): Pick<WorkMap, 'marks' | 'observations'> {
+  const marks = workMapMarksOf(detail.workMapMarks);
+  const observations = workMapObservationsOf(detail.workObservations);
+  return { ...(marks.length ? { marks } : {}), ...(observations.length ? { observations } : {}) };
+}
+
+/** What the map draws out of Portal's service detail; null when the service has no streets, drawings nor observations. */
 export function workMapOf(detail: unknown): WorkMap | null {
   if (!isFields(detail)) return null;
-  const marks = workMapMarksOf(detail.workMapMarks);
-  const withMarks = marks.length ? { marks } : {};
+  const layers = layersFrom(detail);
   const raw = isFields(detail.workStreets) ? detail.workStreets : {};
   const streets = streetsFrom(raw.streets);
-  if (!streets.length) return marks.length ? { streets: [], scopes: [], progress: [], works: [], stages: [], marks } : null;
+  if (!streets.length) return layers.marks || layers.observations ? { streets: [], scopes: [], progress: [], works: [], stages: [], ...layers } : null;
   const scopes = scopesFrom(raw.scopes, streets);
   const stages = [...listOf(raw.stages)].sort(byOrder).map((stage) => ({ id: textOf(stage._id), name: textOf(stage.name) }));
-  return { streets, scopes, progress: progressFrom(raw.progress), works: worksFrom(raw.tags, detail.partidas, scopes), stages, ...withMarks };
+  return { streets, scopes, progress: progressFrom(raw.progress), works: worksFrom(raw.tags, detail.partidas, scopes), stages, ...layers };
 }
 
 type WorkedStretch = { scope: WorkMapScope; workId: string; doneIntervals: Interval[]; totalM: number; doneM: number };
@@ -243,6 +250,13 @@ function doneLines(map: WorkMap, stretches: WorkedStretch[]): WorkMapLine[] {
   }).filter((line) => line.coordinates.length >= 2);
 }
 
+type Bounds = NonNullable<WorkMapView['bounds']>;
+const joinBounds = (left: Bounds | null, right: Bounds | null): Bounds | null =>
+  (left && right ? [[Math.min(left[0][0], right[0][0]), Math.min(left[0][1], right[0][1])], [Math.max(left[1][0], right[1][0]), Math.max(left[1][1], right[1][1])]] : left ?? right);
+
+/** No street to frame: the drawings and the observations together. */
+const layersBounds = (map: WorkMap): Bounds | null => joinBounds(mapMarksBounds(map.marks ?? []), observationsBounds(map.observations ?? []));
+
 function boundsOf(streets: WorkMapStreet[]): WorkMapView['bounds'] {
   const points = streets.flatMap((street) => street.line);
   if (!points.length) return null;
@@ -276,7 +290,7 @@ export function workMapView(map: WorkMap, filter: WorkMapFilter = {}): WorkMapVi
     streets: streets.map((street) => streetRow(street, stretches.filter((stretch) => stretch.scope.streetId === street.id), map.works)),
     planned: plannedLines(map, scopes, narrowed),
     done: doneLines(map, stretches),
-    bounds: boundsOf(streets.length ? streets : map.streets) ?? mapMarksBounds(map.marks ?? []),
+    bounds: boundsOf(streets.length ? streets : map.streets) ?? layersBounds(map),
   };
 }
 

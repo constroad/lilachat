@@ -45,6 +45,12 @@ Pendientes**.
 - **Etapas del servicio** solo para admins del espacio (07/11, `ServiceStages`).
 - «Reporte de servicio» del cliente: página de Portal; Lilachat abre la sección del mapa
   con `?section=map` (`serviceMapPage`, `shared/src/serviceMap.ts`).
+- **Mapa de la obra: dibujos y observaciones** (19/11). Lee `workMapMarks` y `workObservations`
+  del detalle de Portal (`shared/src/workMapMarks.ts`, `workMapObservations.ts`: lista blanca,
+  solo fotos https, tope 200). Con dibujos u observaciones y sin calles igual hay mapa.
+  `workMapCards.ts` arma la tarjeta de cada uno: nombre, tipo, nota, tamaño (Ø del círculo,
+  lados del rectángulo, área del polígono, largo de la flecha) y los 3 dibujos más cercanos
+  («a 35 m de Parche 12», «a 1,2 km de …»), sin botón de medir; y las listas del panel.
 
 ### Cuenta, cobranza y valorización (solo quien ve montos)
 
@@ -144,6 +150,7 @@ Pendientes**.
 - **18/11** SOL-IMP y APR-ADI se crean desde el canal (antes decían «En Portal»); APR-ADI solo con plata.
 - **16/11** Hojas de bloques del editor 2.0 solo para quien ve montos.
 - **19/11** · «Mapa de la obra» dibuja los dibujos de Portal (gibas, buzones, bocacalles…: `workMapMarks` del detalle, `shared/src/workMapMarks.ts`), en web y APK. Con dibujos y sin calles ya no dice «Todavía no hay calles»: muestra el mapa encuadrado en ellos (José, El Almirante · parches Jr. Conchucos: 33 dibujos en Portal). Un dibujo «Otro» con nota se llama por su nota, como en Portal (`markName`).
+- **19/11** · Observaciones de Portal (`workObservations`) en el mapa, y la tarjeta de cada dibujo con su tamaño y las distancias a los más cercanos, calculadas de las coordenadas (`shared/src/workMapCards.ts`).
 
 ## 5. Diseños de Stitch relacionados
 

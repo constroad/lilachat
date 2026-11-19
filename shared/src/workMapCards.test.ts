@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { distanceLabel, mapPickAnchor, markCard, markGroupsOf, markSizeLabel, nearestMarks, observationCard, observationMapCollection, observationRowsOf } from './workMapCards.js';
+import { distanceLabel, MARK_CARD_PHOTOS_MAX, mapCardOf, mapPickAnchor, mapPickOnMap, markCard, observationsAtMark, markGroupsOf, markSizeLabel, nearestMarks, observationCard, observationMapCollection, observationRowsOf } from './workMapCards.js';
 import { workMapMarksOf, type WorkMapMark } from './workMapMarks.js';
 import { workMapObservationsOf } from './workMapObservations.js';
 
@@ -143,5 +143,100 @@ describe('on the map', () => {
     expect(mapPickAnchor({ kind: 'observation', id: 'o1' }, marks, observations)).toEqual(east(0));
     expect(mapPickAnchor({ kind: 'observation', id: 'o2' }, marks, observations)).toBeNull();
     expect(mapPickAnchor({ kind: 'mark', id: 'nope' }, marks, observations)).toBeNull();
+  });
+});
+
+/** José 19/11: the patches' photos are uploaded to the observations at the same GPS as the drawings. */
+const photo = (name: string) => ({ url: `https://lila.example/${name}.jpg`, stage: 'after' });
+
+describe('observationsAtMark', () => {
+  it('takes the observations within the radius, the nearest first, and ignores the ones without place or farther', () => {
+    // Arrange
+    const [mark] = workMapMarksOf([symbol('m', 0, 'otro', 'Parche 3')]);
+    const observations = workMapObservationsOf([
+      { _id: 'far', text: 'Lejos', status: 'open', point: east(10) },
+      { _id: 'two', text: 'A dos metros', status: 'open', point: east(2) },
+      { _id: 'none', text: 'Sin lugar', status: 'open' },
+      { _id: 'zero', text: 'Encima', status: 'open', point: east(0) },
+    ]);
+    // Act
+    const found = observationsAtMark(mark!, observations);
+    // Assert
+    expect(found.map((one) => one.id)).toEqual(['zero', 'two']);
+  });
+
+  it('nothing at the same point: the drawing card stays as it was', () => {
+    // Arrange
+    const marks = workMapMarksOf([symbol('m', 0, 'otro', 'Parche 3')]);
+    const observations = workMapObservationsOf([{ _id: 'far', text: 'Lejos', status: 'open', point: east(10), photos: [photo('a')] }]);
+    // Act
+    const card = markCard(marks[0]!, marks, observations);
+    // Assert
+    expect(observationsAtMark(marks[0]!, observations)).toEqual([]);
+    expect(card).toMatchObject({ observations: [], photos: [] });
+  });
+});
+
+describe('markCard with the observations at its point', () => {
+  it('adds each observation as «text · state» and its photos, the nearest first', () => {
+    // Arrange
+    const marks = workMapMarksOf([symbol('m', 0, 'otro', 'Parche 3')]);
+    const observations = workMapObservationsOf([
+      { _id: 'near', text: 'Bache o falla · Parche 3b', status: 'resolved', point: east(1.5), photos: [photo('b')] },
+      { _id: 'same', text: 'Bache o falla · Parche 3', status: 'open', point: east(0), photos: [photo('a')] },
+    ]);
+    // Act
+    const card = markCard(marks[0]!, marks, observations);
+    // Assert
+    expect(card.observations).toEqual(['Bache o falla · Parche 3 · Pendiente', 'Bache o falla · Parche 3b · Levantada']);
+    expect(card.photos.map((one) => one.url)).toEqual(['https://lila.example/a.jpg', 'https://lila.example/b.jpg']);
+    expect(card.photos[0]!.name).toBe('Después · Bache o falla · Parche 3');
+  });
+
+  it('caps the thumbnails', () => {
+    // Arrange
+    const marks = workMapMarksOf([symbol('m', 0)]);
+    const many = Array.from({ length: MARK_CARD_PHOTOS_MAX + 3 }, (_, index) => photo(`p${index}`));
+    const observations = workMapObservationsOf([{ _id: 'o', text: 'Bache', status: 'open', point: east(0), photos: many }]);
+    // Act
+    const card = markCard(marks[0]!, marks, observations);
+    // Assert
+    expect(card.photos).toHaveLength(MARK_CARD_PHOTOS_MAX);
+  });
+
+  it('an observation without photos gives its line and no photo row', () => {
+    // Arrange
+    const marks = workMapMarksOf([symbol('m', 0)]);
+    const observations = workMapObservationsOf([{ _id: 'o', text: 'Bache o falla', status: 'open', point: east(0) }]);
+    // Act
+    const card = markCard(marks[0]!, marks, observations);
+    // Assert
+    expect(card.observations).toEqual(['Bache o falla · Pendiente']);
+    expect(card.photos).toEqual([]);
+  });
+});
+
+/** An observation pin right under a drawing must not hide the drawing's card (José 19/11). */
+describe('mapPickOnMap', () => {
+  const marks = workMapMarksOf([symbol('m', 0, 'otro', 'Parche 3'), symbol('other', 40)]);
+  const observations = workMapObservationsOf([
+    { _id: 'under', text: 'Bache', status: 'open', point: east(0.5) },
+    { _id: 'alone', text: 'Fisura', status: 'open', point: east(20) },
+    { _id: 'none', text: 'Sin lugar', status: 'open' },
+  ]);
+
+  it('a pin on a drawing opens the drawing, which carries its photos', () => {
+    expect(mapPickOnMap({ kind: 'observation', id: 'under' }, marks, observations)).toEqual({ kind: 'mark', id: 'm' });
+  });
+
+  it('a pin alone, a pin without place and a drawing stay what they are', () => {
+    expect(mapPickOnMap({ kind: 'observation', id: 'alone' }, marks, observations)).toEqual({ kind: 'observation', id: 'alone' });
+    expect(mapPickOnMap({ kind: 'observation', id: 'none' }, marks, observations)).toEqual({ kind: 'observation', id: 'none' });
+    expect(mapPickOnMap({ kind: 'mark', id: 'other' }, marks, observations)).toEqual({ kind: 'mark', id: 'other' });
+  });
+
+  it('the card of the picked drawing is the merged one', () => {
+    const pick = mapPickOnMap({ kind: 'observation', id: 'under' }, marks, observations);
+    expect(mapCardOf(pick, marks, observations)?.observations).toEqual(['Bache · Pendiente']);
   });
 });

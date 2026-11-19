@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { ChevronRight, Maximize2, Share2, TrendingUp, X } from 'lucide-react-native';
-import { mapCardOf, mapPickAnchor, type MapPick, type WorkMapPoint, bareLinesOf, visibleStationMarks, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, withPendingLines, showsUnitPins, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StationMark, type StretchRange, type UnitDischarge, type MapPhoto, type ManualProgressDraft, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { mapCardOf, mapPickAnchor, mapPickOnMap, type MapPick, type WorkMapPoint, bareLinesOf, visibleStationMarks, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, withPendingLines, showsUnitPins, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StationMark, type StretchRange, type UnitDischarge, type MapPhoto, type ManualProgressDraft, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
@@ -53,9 +53,11 @@ function useMapPick(map: WorkMap, openFull: () => void) {
     openFull();
   };
   const close = () => setSelected(null);
+  // A pin right under a drawing opens the drawing's card, which carries the pin's photos (José 19/11).
+  const pickOnMap = (pick: MapPick) => setSelected(mapPickOnMap(pick, marks, observations));
   const inline = card && !placed ? <View className="mt-4"><MapCardView card={card} onClose={close} onPhoto={(photo, all) => files.open(photo, all)} /></View> : null;
   const items = marks.length || observations.length ? <View>{inline}<WorkMapItems map={map} onPick={pickFromList} /></View> : null;
-  return { selected, setSelected, card: placed ? card : null, close, startAt, clearStart: () => setStartAt(null), items, files };
+  return { selected, setSelected, pickOnMap, card: placed ? card : null, close, startAt, clearStart: () => setStartAt(null), items, files };
 }
 
 type MapPicks = ReturnType<typeof useMapPick>;
@@ -67,7 +69,7 @@ function FullMap(props: { view: WorkMapView; open: boolean; onClose: () => void;
   return (
     <Modal visible={props.open} animationType="slide" onRequestClose={props.onClose}>
       <View className="flex-1 bg-background">
-        {props.open ? <WorkMapSurface view={props.view} moves controlsInset={margins.pie} stations={props.stations} bare={props.bare} marks={props.map.marks} observations={props.map.observations} onPick={picks.setSelected} startAt={picks.startAt} pins={props.photos.shown ? props.photos.pins : props.pins} onPin={props.photos.shown ? props.photos.openPin : undefined} stretches={props.stretches} /> : null}
+        {props.open ? <WorkMapSurface view={props.view} moves controlsInset={margins.pie} stations={props.stations} bare={props.bare} marks={props.map.marks} observations={props.map.observations} onPick={picks.pickOnMap} startAt={picks.startAt} pins={props.photos.shown ? props.photos.pins : props.pins} onPin={props.photos.shown ? props.photos.openPin : undefined} stretches={props.stretches} /> : null}
         {picks.card ? (
           <View className="absolute inset-x-3 items-center" style={{ bottom: margins.pie + 72 }}>
             <View style={{ width: '100%', maxWidth: CARD_MAX_WIDTH }}>

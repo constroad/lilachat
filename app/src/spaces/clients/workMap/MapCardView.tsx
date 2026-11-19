@@ -30,7 +30,8 @@ function Thumbnails(props: { photos: ViewableFile[]; onPhoto?: (photo: ViewableF
 
 /**
  * The small card of a drawing or an observation over the full map (José 19/11): name, type,
- * note, size and the nearest drawings; an observation adds its state, dates and photos.
+ * note, size and the nearest drawings; an observation adds its state, dates and photos. A drawing
+ * adds the observations at its same point with their photos (José 19/11: the patches' photos).
  */
 export function MapCardView(props: { card: MapCard; onClose: () => void; onPhoto?: (photo: ViewableFile, all: ViewableFile[]) => void }) {
   const { card } = props;
@@ -53,6 +54,11 @@ export function MapCardView(props: { card: MapCard; onClose: () => void; onPhoto
       {card.near.length ? (
         <View testID="tarjeta-cerca" className="mt-2 gap-0.5 border-t border-outline/15 pt-2">
           {card.near.map((line) => <Text key={line} className="text-[13px] text-on-surface-variant">{line}</Text>)}
+        </View>
+      ) : null}
+      {card.observations.length ? (
+        <View testID="tarjeta-observaciones" className="mt-2 gap-0.5 border-t border-outline/15 pt-2">
+          {card.observations.map((line) => <Text key={line} className="text-[13px] font-semibold text-on-surface">{line}</Text>)}
         </View>
       ) : null}
       {card.photos.length ? <Thumbnails photos={card.photos} onPhoto={props.onPhoto} /> : null}

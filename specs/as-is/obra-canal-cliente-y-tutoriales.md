@@ -57,8 +57,15 @@ Pendientes**.
   ese color al centro; su etiqueta (tinta oscura, halo blanco) va debajo desde el zoom 16. Las
   áreas y flechas, en el color de su tipo. Diferencias con Portal: el punto reemplaza al ícono
   del tipo (MapLibre no tiene esos íconos) y la etiqueta no lleva borde de color. Los dibujos de
-  Portal no tienen fotos (`work_map_marks`: forma, tipo, nota, autor, origen): la tarjeta no
-  muestra ninguna.
+  Portal no tienen fotos (`work_map_marks`: forma, tipo, nota, autor, origen); en Portal las
+  fotos (antes/después) se suben a las OBSERVACIONES. Por eso la tarjeta de un dibujo suma las
+  observaciones en su mismo punto (`observationsAtMark`: a ≤ `SAME_POINT_RADIUS_M` = 3 m de su
+  centro, la más cercana primero): una línea «texto · estado» por cada una y sus fotos, hasta
+  `MARK_CARD_PHOTOS_MAX` = 6 miniaturas que abren el visor. Sin fotos, la línea va igual y no hay
+  fila de fotos. Un pin de observación justo sobre un dibujo no lo tapa: pasar el mouse o tocar
+  ahí abre la tarjeta del dibujo (`mapPickOnMap`); desde la lista «Observaciones» la observación
+  abre su propia tarjeta. Portal solo manda las observaciones visibles al cliente (las suyas y las
+  internas levantadas y compartidas): las internas abiertas todavía no llegan.
 - **Web** (`web/src/spaces/clients/workMap/MapCardPopup.tsx`, `MapCardView.tsx`,
   `WorkMapItems.tsx`): las observaciones son pines (rojo pendiente, verde levantada).
   Pasar el mouse por un dibujo u observación abre su tarjeta (Popup de MapLibre); un clic la
@@ -181,6 +188,7 @@ Pendientes**.
 - **16/11** Hojas de bloques del editor 2.0 solo para quien ve montos.
 - **19/11** · «Mapa de la obra» dibuja los dibujos de Portal (gibas, buzones, bocacalles…: `workMapMarks` del detalle, `shared/src/workMapMarks.ts`), en web y APK. Con dibujos y sin calles ya no dice «Todavía no hay calles»: muestra el mapa encuadrado en ellos (José, El Almirante · parches Jr. Conchucos: 33 dibujos en Portal). Un dibujo «Otro» con nota se llama por su nota, como en Portal (`markName`).
 - **19/11** · Observaciones de Portal (`workObservations`) en el mapa, y la tarjeta de cada dibujo con su tamaño y las distancias a los más cercanos, calculadas de las coordenadas (`shared/src/workMapCards.ts`). Web: tarjeta al pasar el mouse o al hacer clic, y listas «Dibujos» y «Observaciones» en el panel. APK: tarjeta al tocar en el mapa completo y las mismas listas bajo el panel. Botón «Editar croquis» (editor de croquis del servicio de Portal) en web y APK.
+- **19/11** · La tarjeta de un dibujo muestra las fotos de la observación en su mismo punto (≤ 3 m), con su línea «texto · estado»; un pin sobre un dibujo abre la tarjeta del dibujo (web y APK, `shared/src/workMapCards.ts` › `observationsAtMark`, `mapPickOnMap`). José, El Almirante · parches Jr. Conchucos: 30 observaciones «Bache o falla · Parche N» en los mismos puntos que los dibujos.
 - **19/11** · Los dibujos del mapa toman los colores del croquis de Portal (antes, todos puntos naranjas): ficha blanca con aro y punto del color de su tipo, etiqueta desde el zoom 16 (`shared/src/workMapMarks.ts` › `markColor`, `MARK_CHIP_PAINT`, `MARK_GLYPH_PAINT`), en web y APK.
 
 ## 5. Diseños de Stitch relacionados

@@ -45,7 +45,7 @@ describe('WorkMapItems', () => {
 });
 
 describe('MapCardView', () => {
-  const card: MapCard = { id: 'o1', kind: 'observation', title: 'Tapa hundida', status: { label: 'Levantada', tone: 'ok' }, note: 'Nivelada', dates: ['Registrada 10/11 · 10:00'], near: ['a 20 m de Buzón'], photos: [{ url: 'https://lila.example/a.jpg', name: 'Antes · Tapa hundida', mime: 'image/jpeg' }] };
+  const card: MapCard = { id: 'o1', kind: 'observation', title: 'Tapa hundida', status: { label: 'Levantada', tone: 'ok' }, note: 'Nivelada', dates: ['Registrada 10/11 · 10:00'], near: ['a 20 m de Buzón'], observations: [], photos: [{ url: 'https://lila.example/a.jpg', name: 'Antes · Tapa hundida', mime: 'image/jpeg' }] };
 
   it('shows what it is, its state, dates, what is near, and a thumbnail opens the photo', () => {
     // Arrange
@@ -62,6 +62,26 @@ describe('MapCardView', () => {
     expect(screen.getByTestId('tarjeta-cerca')).toHaveTextContent('a 20 m de Buzón');
     expect(onPhoto).toHaveBeenCalledWith(card.photos[0], card.photos);
     expect(onClose).toHaveBeenCalled();
+  });
+
+  /** José 19/11: a patch's drawing shows the photos of the observation at its same point. */
+  it('a drawing card lists its observations and their thumbnails open the viewer', () => {
+    // Arrange
+    const onPhoto = vi.fn();
+    const photos = [{ url: 'https://lila.example/p3.jpg', name: 'Después · Bache o falla · Parche 3', mime: 'image/jpeg' }];
+    const drawing: MapCard = { id: 'm3', kind: 'mark', title: 'Parche 3', type: 'Otro', dates: [], near: [], observations: ['Bache o falla · Parche 3 · Pendiente'], photos };
+    render(<MapCardView card={drawing} onPhoto={onPhoto} />);
+    // Act
+    fireEvent.click(screen.getByTestId('tarjeta-foto-0'));
+    // Assert
+    expect(screen.getByTestId('tarjeta-observaciones')).toHaveTextContent('Bache o falla · Parche 3 · Pendiente');
+    expect(onPhoto).toHaveBeenCalledWith(photos[0], photos);
+  });
+
+  it('a drawing whose observation has no photos shows the line and no photo row', () => {
+    render(<MapCardView card={{ ...card, kind: 'mark', status: undefined, observations: ['Bache o falla · Pendiente'], photos: [] }} />);
+    expect(screen.getByTestId('tarjeta-observaciones')).toHaveTextContent('Bache o falla · Pendiente');
+    expect(screen.queryByTestId('tarjeta-foto-0')).not.toBeInTheDocument();
   });
 
   it('a hover card has no close button', () => {

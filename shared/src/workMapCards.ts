@@ -23,6 +23,8 @@ export type MapCard = {
   status?: MapCardStatus;
   dates: string[];
   near: string[];
+  /** A drawing's observations at its same point: «Bache o falla · Pendiente». */
+  observations: string[];
   photos: ViewableFile[];
 };
 
@@ -33,6 +35,13 @@ const SAME_SPOT_M = 1;
 const METERS_PER_DEGREE = 111_195;
 const PHOTO_NAME_MAX = 60;
 const STAGE_NAMES = { before: 'Antes', after: 'Después' } as const;
+/**
+ * An observation this close to a drawing is about it (José 19/11: the technical visit's points and
+ * the patches' drawings share the same GPS, so the distance is ~0).
+ */
+export const SAME_POINT_RADIUS_M = 3;
+/** The thumbnails a drawing's card shows of its observations. */
+export const MARK_CARD_PHOTOS_MAX = 6;
 
 const comma = (value: number, decimals: number) => value.toFixed(decimals).replace('.', ',');
 const grouped = (value: number) => String(Math.round(value)).replace(/\B(?=(\d{3})+$)/g, ' ');
@@ -100,8 +109,33 @@ function nearPoint(point: MarkPoint, marks: readonly WorkMapMark[], skipId?: str
 /** The nearest drawings to one, closest first: «a 35 m de Parche 12». */
 export const nearestMarks = (mark: WorkMapMark, marks: readonly WorkMapMark[]): NearMark[] => nearPoint(markCenter(mark.shape), marks, mark.id);
 
-export function markCard(mark: WorkMapMark, marks: readonly WorkMapMark[]): MapCard {
+export const observationStatus = (observation: Pick<WorkMapObservation, 'status'>): MapCardStatus => STATUS_PILLS[observation.status === 'resolved' ? 'lifted' : 'open'];
+export const observationColor = (observation: Pick<WorkMapObservation, 'status'>): string => OBSERVATION_COLORS[observation.status === 'resolved' ? 'lifted' : 'open'];
+
+const photoName = (photo: WorkMapObservationPhoto, text: string) => `${photo.stage ? STAGE_NAMES[photo.stage] : 'Foto'} · ${text}`.slice(0, PHOTO_NAME_MAX);
+
+/** The observation's photos as every viewer opens them. */
+export const observationPhotos = (observation: Pick<WorkMapObservation, 'photos' | 'text'>): ViewableFile[] =>
+  observation.photos.map((photo) => ({ url: photo.url, ...(photo.thumbnailUrl ? { thumbUrl: photo.thumbnailUrl } : {}), mime: 'image/jpeg', name: photoName(photo, observation.text) }));
+
+type PlacedObservation = WorkMapObservation & { point: MarkPoint };
+
+/** The observations at a drawing's point, the nearest first: the patch's photos live there in Portal. */
+export function observationsAtMark(mark: WorkMapMark, observations: readonly WorkMapObservation[]): WorkMapObservation[] {
+  const center = markCenter(mark.shape);
+  return observations
+    .filter((one): one is PlacedObservation => Boolean(one.point))
+    .map((one) => ({ one, meters: distanceMeters(center, one.point) }))
+    .filter((near) => near.meters <= SAME_POINT_RADIUS_M)
+    .sort((left, right) => left.meters - right.meters)
+    .map((near) => near.one);
+}
+
+const observationLine = (observation: WorkMapObservation): string => `${observation.text} · ${observationStatus(observation).label}`;
+
+export function markCard(mark: WorkMapMark, marks: readonly WorkMapMark[], observations: readonly WorkMapObservation[] = []): MapCard {
   const title = markName(mark);
+  const atPoint = observationsAtMark(mark, observations);
   const type = markLabel(mark.type);
   const size = markSizeLabel(mark.shape);
   return {
@@ -113,18 +147,10 @@ export function markCard(mark: WorkMapMark, marks: readonly WorkMapMark[]): MapC
     ...(size ? { size } : {}),
     dates: [],
     near: nearestMarks(mark, marks).map((near) => near.line),
-    photos: [],
+    observations: atPoint.map(observationLine),
+    photos: atPoint.flatMap(observationPhotos).slice(0, MARK_CARD_PHOTOS_MAX),
   };
 }
-
-export const observationStatus = (observation: Pick<WorkMapObservation, 'status'>): MapCardStatus => STATUS_PILLS[observation.status === 'resolved' ? 'lifted' : 'open'];
-export const observationColor = (observation: Pick<WorkMapObservation, 'status'>): string => OBSERVATION_COLORS[observation.status === 'resolved' ? 'lifted' : 'open'];
-
-const photoName = (photo: WorkMapObservationPhoto, text: string) => `${photo.stage ? STAGE_NAMES[photo.stage] : 'Foto'} · ${text}`.slice(0, PHOTO_NAME_MAX);
-
-/** The observation's photos as every viewer opens them. */
-export const observationPhotos = (observation: Pick<WorkMapObservation, 'photos' | 'text'>): ViewableFile[] =>
-  observation.photos.map((photo) => ({ url: photo.url, ...(photo.thumbnailUrl ? { thumbUrl: photo.thumbnailUrl } : {}), mime: 'image/jpeg', name: photoName(photo, observation.text) }));
 
 function observationDates(observation: WorkMapObservation): string[] {
   const created = observation.createdAt ? [registeredLine({ at: observation.createdAt })] : [];
@@ -141,6 +167,7 @@ export function observationCard(observation: WorkMapObservation, marks: readonly
     ...(observation.resolutionNote ? { note: observation.resolutionNote } : {}),
     dates: observationDates(observation),
     near: observation.point ? nearPoint(observation.point, marks).map((near) => near.line) : [],
+    observations: [],
     photos: observationPhotos(observation),
   };
 }
@@ -149,10 +176,22 @@ export function observationCard(observation: WorkMapObservation, marks: readonly
 export function mapCardOf(pick: MapPick, marks: readonly WorkMapMark[], observations: readonly WorkMapObservation[]): MapCard | null {
   if (pick.kind === 'mark') {
     const mark = marks.find((one) => one.id === pick.id);
-    return mark ? markCard(mark, marks) : null;
+    return mark ? markCard(mark, marks, observations) : null;
   }
   const observation = observations.find((one) => one.id === pick.id);
   return observation ? observationCard(observation, marks) : null;
+}
+
+/**
+ * What a hover or a tap on the map opens: an observation pin right under a drawing opens the
+ * drawing, whose card carries that observation and its photos. A list keeps the observation's own.
+ */
+export function mapPickOnMap(pick: MapPick, marks: readonly WorkMapMark[], observations: readonly WorkMapObservation[]): MapPick {
+  if (pick.kind === 'mark') return pick;
+  const point = observations.find((one) => one.id === pick.id)?.point;
+  if (!point) return pick;
+  const nearest = nearPoint(point, marks)[0];
+  return nearest && nearest.meters <= SAME_POINT_RADIUS_M ? { kind: 'mark', id: nearest.mark.id } : pick;
 }
 
 /** Where the card stands and the map flies: the drawing's centre or the observation's point. */

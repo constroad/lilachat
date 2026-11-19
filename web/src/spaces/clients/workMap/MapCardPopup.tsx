@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactPortal } from 'react';
 import { createPortal } from 'react-dom';
 import maplibregl from 'maplibre-gl/dist/maplibre-gl-csp';
-import { mapCardOf, mapPickAnchor, OBSERVATION_PIN_PAINT, observationMapCollection, type MapPick, type ViewableFile, type WorkMapMark, type WorkMapObservation } from '@lilachat/shared';
+import { mapCardOf, mapPickAnchor, mapPickOnMap, OBSERVATION_PIN_PAINT, observationMapCollection, type MapPick, type ViewableFile, type WorkMapMark, type WorkMapObservation } from '@lilachat/shared';
 import { MapCardView } from './MapCardView';
 
 export const OBSERVATIONS = 'work-map-observations';
@@ -31,7 +31,7 @@ const pickOf = (feature: maplibregl.MapGeoJSONFeature | undefined): MapPick | nu
 };
 const samePick = (left: MapPick | null, right: MapPick | null) => left?.kind === right?.kind && left?.id === right?.id;
 
-type PickHandlers = { onSelect: { current: ((pick: MapPick | null) => void) | undefined }; drawing: { current: unknown } };
+type PickHandlers = { onSelect: { current: ((pick: MapPick | null) => void) | undefined }; drawing: { current: unknown }; onMap: { current: (pick: MapPick) => MapPick } };
 
 /** Hover shows the card; a click keeps it; a click on bare map lets it go. Drawing a street, taps stay the editor's. */
 function usePickEvents(map: maplibregl.Map | null, ready: boolean, handlers: PickHandlers) {
@@ -39,15 +39,16 @@ function usePickEvents(map: maplibregl.Map | null, ready: boolean, handlers: Pic
   useEffect(() => {
     if (!ready || !map) return undefined;
     const move = (event: maplibregl.MapLayerMouseEvent) => {
-      const pick = pickOf(event.features?.[0]);
+      const found = pickOf(event.features?.[0]);
+      const pick = found && handlers.onMap.current(found);
       map.getCanvas().style.cursor = 'pointer';
       setHovered((before) => (samePick(before, pick) ? before : pick));
     };
     const leave = () => { map.getCanvas().style.cursor = ''; setHovered(null); };
     const click = (event: maplibregl.MapMouseEvent) => {
       if (handlers.drawing.current) return;
-      const pick = pickOf(map.queryRenderedFeatures(event.point, { layers: PICK_LAYERS.filter((id) => map.getLayer(id)) })[0]);
-      handlers.onSelect.current?.(pick);
+      const found = pickOf(map.queryRenderedFeatures(event.point, { layers: PICK_LAYERS.filter((id) => map.getLayer(id)) })[0]);
+      handlers.onSelect.current?.(found && handlers.onMap.current(found));
     };
     PICK_LAYERS.forEach((id) => { map.on('mousemove', id, move); map.on('mouseleave', id, leave); });
     map.on('click', click);
@@ -70,12 +71,15 @@ export function useMapCardPopup(map: maplibregl.Map | null, ready: boolean, prop
   onSelect.current = props.onSelect;
   const drawing = useRef<unknown>(props.drawing);
   drawing.current = props.drawing;
-  const handlers = useMemo(() => ({ onSelect, drawing }), []);
+  const observations = props.observations ?? NO_OBSERVATIONS;
+  // A pin right under a drawing opens the drawing's card, which carries the pin's photos (José 19/11).
+  const onMap = useRef((pick: MapPick) => mapPickOnMap(pick, props.marks, observations));
+  onMap.current = (pick: MapPick) => mapPickOnMap(pick, props.marks, observations);
+  const handlers = useMemo(() => ({ onSelect, drawing, onMap }), []);
   const hovered = usePickEvents(map, ready, handlers);
   const [host] = useState(() => document.createElement('div'));
   const popup = useRef<maplibregl.Popup | null>(null);
   const shown = props.selected ?? hovered;
-  const observations = props.observations ?? NO_OBSERVATIONS;
   const card = useMemo(() => (shown ? mapCardOf(shown, props.marks, observations) : null), [shown, props.marks, observations]);
   const anchor = useMemo(() => (shown ? mapPickAnchor(shown, props.marks, observations) : null), [shown, props.marks, observations]);
   const sticky = Boolean(props.selected);

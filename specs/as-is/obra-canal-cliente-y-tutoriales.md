@@ -59,6 +59,12 @@ Pendientes**.
   en el visor de Portal. El panel suma «Dibujos» (por tipo, con conteo) y «Observaciones»
   (pendientes primero, con su estado y fotos); tocar una vuela el mapa ahí y abre la tarjeta.
   Sin calles, «Avance de la obra» dice solo «Todavía no hay calles con tramos.».
+- **APK** (`app/src/spaces/clients/workMap/MapCardView.tsx`, `WorkMapItems.tsx`): el mapa
+  chico no toma toques; en el mapa completo tocar un dibujo u observación abre su tarjeta
+  sobre el mapa (ancho máx. 440, sirve apaisado y en tablet), con «Cerrar» y miniaturas que
+  abren el visor de archivos. Bajo el panel van «Dibujos» y «Observaciones»; tocar una abre
+  el mapa completo centrado en ella con su tarjeta. Una observación sin lugar muestra la
+  tarjeta en el panel.
 
 ### Cuenta, cobranza y valorización (solo quien ve montos)
 
@@ -158,7 +164,7 @@ Pendientes**.
 - **18/11** SOL-IMP y APR-ADI se crean desde el canal (antes decían «En Portal»); APR-ADI solo con plata.
 - **16/11** Hojas de bloques del editor 2.0 solo para quien ve montos.
 - **19/11** · «Mapa de la obra» dibuja los dibujos de Portal (gibas, buzones, bocacalles…: `workMapMarks` del detalle, `shared/src/workMapMarks.ts`), en web y APK. Con dibujos y sin calles ya no dice «Todavía no hay calles»: muestra el mapa encuadrado en ellos (José, El Almirante · parches Jr. Conchucos: 33 dibujos en Portal). Un dibujo «Otro» con nota se llama por su nota, como en Portal (`markName`).
-- **19/11** · Observaciones de Portal (`workObservations`) en el mapa, y la tarjeta de cada dibujo con su tamaño y las distancias a los más cercanos, calculadas de las coordenadas (`shared/src/workMapCards.ts`). Web: tarjeta al pasar el mouse o al hacer clic, y listas «Dibujos» y «Observaciones» en el panel.
+- **19/11** · Observaciones de Portal (`workObservations`) en el mapa, y la tarjeta de cada dibujo con su tamaño y las distancias a los más cercanos, calculadas de las coordenadas (`shared/src/workMapCards.ts`). Web: tarjeta al pasar el mouse o al hacer clic, y listas «Dibujos» y «Observaciones» en el panel. APK: tarjeta al tocar en el mapa completo y las mismas listas bajo el panel.
 
 ## 5. Diseños de Stitch relacionados
 

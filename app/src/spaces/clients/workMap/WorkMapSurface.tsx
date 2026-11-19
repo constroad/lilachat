@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Images, Layer, Map as MapSurface, ViewAnnotation, type CameraRef, type MapRef, type StyleSpecification } from '@maplibre/maplibre-react-native';
 import { MapControls } from './MapControls';
-import { MARK_DOT_PAINT, MARK_FILL_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, dischargePinCollection, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView , STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark } from '@lilachat/shared';
+import { OBSERVATION_PIN_PAINT, observationMapCollection, type MapPick, type WorkMapObservation, MARK_DOT_PAINT, MARK_FILL_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, dischargePinCollection, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView , STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark } from '@lilachat/shared';
 
 const LINE_ENDS = { 'line-cap': 'round', 'line-join': 'round' } as const;
 const EDGE = { top: 48, right: 48, bottom: 48, left: 48 };
@@ -12,6 +12,14 @@ const NO_STATIONS: StationMark[] = [];
 const NO_PINS: DischargePin[] = [];
 const NO_LINES: WorkMapLine[] = [];
 const NO_MARKS: WorkMapMark[] = [];
+const NO_OBSERVATIONS: WorkMapObservation[] = [];
+
+type PressEvent = { nativeEvent: { features: Array<{ properties?: Record<string, unknown> | null }> } };
+/** A press on a layer of drawings or observations names what was pressed. */
+const pickPress = (kind: MapPick['kind'], onPick?: (pick: MapPick) => void) => (onPick ? (event: PressEvent) => {
+  const id = event.nativeEvent.features[0]?.properties?.id;
+  if (typeof id === 'string') onPick({ kind, id });
+} : undefined);
 /** Close enough to tell one side of the street from the other while drawing (o-02). */
 const DRAW_ZOOM = 17;
 
@@ -61,7 +69,7 @@ const iconPinCollection = (pins: DischargePin[]) => {
 };
 
 /** `onTap` draws a street (o-02): each tap is a bend. `near` frames where the phone is when there is nothing drawn yet. */
-export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void; near?: WorkMapPoint | null; /** Draggable ends of a picked street (José 08/11). */ handles?: StreetHandle[]; onHandleDrop?: (handle: StreetEnd, point: WorkMapPoint) => void; /** A tap on a pin (the «Fotos» layer, José 08/11). */ onPin?: (id: string) => void; /** A place found by the search: the map flies there (José 08/11). */ focus?: WorkMapPoint | null; /** A street just picked whole: the map shows both of its ends. */ frame?: MapFrame | null; /** Room for the system bar under a full-screen map. */ controlsInset?: number; /** Portal's drawings (José 19/11). */ marks?: readonly WorkMapMark[] }) {
+export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void; near?: WorkMapPoint | null; /** Draggable ends of a picked street (José 08/11). */ handles?: StreetHandle[]; onHandleDrop?: (handle: StreetEnd, point: WorkMapPoint) => void; /** A tap on a pin (the «Fotos» layer, José 08/11). */ onPin?: (id: string) => void; /** A place found by the search: the map flies there (José 08/11). */ focus?: WorkMapPoint | null; /** A street just picked whole: the map shows both of its ends. */ frame?: MapFrame | null; /** Room for the system bar under a full-screen map. */ controlsInset?: number; /** Portal's drawings (José 19/11). */ marks?: readonly WorkMapMark[]; /** Portal's observations, as pins (José 19/11). */ observations?: readonly WorkMapObservation[]; /** A tap on a drawing or an observation: its card. */ onPick?: (pick: MapPick) => void; /** Where the map opens when a list item opened it. */ startAt?: WorkMapPoint | null }) {
   const { view, moves } = props;
   const map = useRef<MapRef>(null);
   const camera = useRef<CameraRef>(null);
@@ -80,9 +88,9 @@ export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?
   return (
     <View style={{ flex: 1 }}>
     <MapSurface ref={map} testID="mapa-lienzo" style={{ flex: 1 }} mapStyle={WORK_MAP_STYLE as unknown as StyleSpecification} androidView="texture" logo={false} compass={false} dragPan={moves} touchZoom={moves} doubleTapZoom={moves} doubleTapHoldZoom={moves} touchRotate={false} touchPitch={false} onPress={props.onTap ? (event) => void press(event.nativeEvent.lngLat as [number, number], event.nativeEvent.point as [number, number]) : undefined}>
-      {corners ? <Camera ref={camera} bounds={[...corners[0], ...corners[1]]} padding={EDGE} duration={0} /> : props.near ? <Camera ref={camera} center={[props.near.lng, props.near.lat]} zoom={DRAW_ZOOM} duration={0} /> : <Camera ref={camera} />}
+      {props.startAt ? <Camera ref={camera} center={[props.startAt.lng, props.startAt.lat]} zoom={PLACE_ZOOM} duration={0} /> : corners ? <Camera ref={camera} bounds={[...corners[0], ...corners[1]]} padding={EDGE} duration={0} /> : props.near ? <Camera ref={camera} center={[props.near.lng, props.near.lat]} zoom={DRAW_ZOOM} duration={0} /> : <Camera ref={camera} />}
       {/* Portal's drawings (gibas, manholes…) under the streets' lines, like Portal (José 19/11). */}
-      <GeoJSONSource id="work-map-marks" data={mapMarkCollection(props.marks ?? NO_MARKS)}>
+      <GeoJSONSource id="work-map-marks" data={mapMarkCollection(props.marks ?? NO_MARKS)} onPress={pickPress('mark', props.onPick)}>
         <Layer id="work-map-marks-fill" type="fill" filter={['==', ['geometry-type'], 'Polygon']} paint={MARK_FILL_PAINT} />
         <Layer id="work-map-marks-line" type="line" filter={['!=', ['geometry-type'], 'Point']} layout={LINE_ENDS} paint={MARK_LINE_PAINT} />
         <Layer id="work-map-marks-dot" type="circle" filter={['==', ['geometry-type'], 'Point']} paint={MARK_DOT_PAINT} />
@@ -104,6 +112,9 @@ export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?
       <GeoJSONSource id="work-map-stations" data={stationMarkCollection(props.stations ?? NO_STATIONS)}>
         <Layer id="work-map-station-dot" type="circle" paint={STATION_DOT_PAINT} />
         <Layer id="work-map-station-text" type="symbol" layout={STATION_TEXT_LAYOUT as never} paint={STATION_TEXT_PAINT} />
+      </GeoJSONSource>
+      <GeoJSONSource id="work-map-observations" data={observationMapCollection(props.observations ?? NO_OBSERVATIONS)} onPress={pickPress('observation', props.onPick)}>
+        <Layer id="work-map-observation-pin" type="circle" paint={OBSERVATION_PIN_PAINT as never} />
       </GeoJSONSource>
       <GeoJSONSource id="work-map-pins" data={dischargePinCollection(props.pins ?? NO_PINS)} onPress={props.onPin ? (event) => { const id = event.nativeEvent.features[0]?.properties?.id; if (typeof id === 'string') props.onPin?.(id); } : undefined}>
         {/* The day's color as a ring when the work has several days (José 09/11). */}

@@ -3,6 +3,7 @@ import { incomingOfferAction, isStaleRing, mediaState, nextCallState, ringDeadli
 import { canSwitchCamera, otherFacing, readNoisePreference, writeNoisePreference, type CameraFacing } from '@lilachat/shared';
 import { currentSocket } from '../useSocket';
 import { createCallPeer, errorName, fetchIceServers, mediaErrorText, type CallPeer, type Candidate, type Sdp } from './callPeer';
+import { useWebIceRestart } from './useWebIceRestart';
 
 /** An offer as the server relays it: it adds who calls and what is left of the ring (`socket.ts`). */
 export type IncomingOffer = { chatId: string; video?: boolean; sdp?: Sdp; fromName?: string | null; fromPhone?: string; quedaMs?: number };
@@ -96,30 +97,36 @@ export function useWebCall(params: { jwt: string; connected: boolean; nameOf: (o
     setMedia('conectando');
   }, []);
 
+  // José 19/11: a lost path (the phone locked, another app) restarts ICE instead of hanging up.
+  const { onIce: onIceForRestart, emitCandidate, gaveUp } = useWebIceRestart({ peerRef, chatId: () => sessionRef.current?.chatId ?? null, stateRef, media, connected: params.connected });
+
   /** The audio does not flow: hang up and tell the other, instead of a mute clock. */
   const giveUp = useCallback(() => {
+    gaveUp();
     if (sessionRef.current) emit('call.end', { chatId: sessionRef.current.chatId, motivo: 'desconectada' });
     apply({ tipo: 'desconectada', at: Date.now() });
-  }, [apply]);
+  }, [apply, gaveUp]);
 
   const openPeer = useCallback(async (): Promise<CallPeer> => {
     const iceServers = await fetchIceServers(jwtRef.current);
     const peer: CallPeer = createCallPeer({
       iceServers,
-      onCandidate: (candidate) => sessionRef.current && emit('call.ice', { chatId: sessionRef.current.chatId, candidate }),
+      onCandidate: (candidate) => sessionRef.current && emitCandidate(candidate),
       onRemoteStream: setRemoteStream,
       onIceState: (ice) => {
         if (peerRef.current !== peer) return;
         const next = mediaState(ice, connectedOnce.current);
         if (next === 'conectada') connectedOnce.current = true;
         setMedia(next);
+        onIceForRestart(ice, connectedOnce.current);
+        // Failed before ever connecting has no path to restart (after connecting it reads «reconectando»).
         if (next === 'fallo') giveUp();
       },
     });
     peerRef.current = peer;
     for (const candidate of early.current.splice(0)) await peer.addCandidate(candidate);
     return peer;
-  }, [giveUp]);
+  }, [giveUp, emitCandidate, onIceForRestart]);
 
   // It hangs up alone if nobody answers; an endless «Llamando…» helps nobody. «Answering» moves the deadline (backlog 114).
   useEffect(() => {

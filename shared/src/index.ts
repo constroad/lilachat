@@ -130,6 +130,7 @@ export * from './adminUsers.js';
 export * from './adminSpaces.js';
 export * from './callMedia.js';
 export * from './callRecovery.js';
+export * from './iceRestarter.js';
 export * from './callReactions.js';
 export * from './chatQueue.js';
 export * from './nowPlaying.js';

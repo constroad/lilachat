@@ -17,6 +17,8 @@ class FakePeer {
   static last: FakePeer;
   static senders: unknown[] = [];
   iceConnectionState = 'new';
+  signalingState = 'stable';
+  offerOptions: unknown[] = [];
   remote: unknown = null;
   local: unknown = null;
   applied: unknown[] = [];
@@ -30,11 +32,14 @@ class FakePeer {
   }
   async setRemoteDescription(description: unknown) {
     this.remote = description;
+    this.signalingState = (description as { type?: string }).type === 'offer' ? 'have-remote-offer' : 'stable';
   }
   async setLocalDescription(description: unknown) {
     this.local = description;
+    this.signalingState = (description as { type?: string }).type === 'offer' ? 'have-local-offer' : 'stable';
   }
-  async createOffer() {
+  async createOffer(options?: unknown) {
+    this.offerOptions.push(options);
     return { type: 'offer', sdp: 'offer-sdp' };
   }
   async createAnswer() {
@@ -369,3 +374,85 @@ describe('noise filter and screen sharing (pending 3, Stitch c-03)', () => {
     expect(warn).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * José 19/11: locking the phone or switching apps cut the call. The web runs the same ICE
+ * restart as the APK (`shared/iceRestarter.ts`), so APK↔web calls recover both ways.
+ */
+describe('web call: a lost path restarts ICE instead of hanging up', () => {
+  const restarts = () => sent.filter((one) => one.event === 'call.restart');
+  const settle = () => act(async () => void (await new Promise((resolve) => setTimeout(resolve, 0))));
+
+  async function talkingAsCaller() {
+    const hook = mount();
+    await act(() => hook.result.current.call('c1', 'Ana', false));
+    await receive('call.answer', { chatId: 'c1', sdp: { type: 'answer', sdp: 'their-answer' } });
+    act(() => FakePeer.last.ice('connected'));
+    return hook;
+  }
+
+  async function talkingAsCallee() {
+    const hook = mount();
+    await receive('call.offer', { chatId: 'c2', video: false, fromName: 'Beto', sdp: { type: 'offer', sdp: 'their-offer' } });
+    await act(() => hook.result.current.answer());
+    act(() => FakePeer.last.ice('connected'));
+    return hook;
+  }
+
+  it('the web caller sends a restart offer, keeps the call in «Reconectando…» and never hangs up', async () => {
+    const { result } = await talkingAsCaller();
+    act(() => FakePeer.last.ice('failed'));
+    await settle();
+
+    expect(lastSent('call.restart')).toEqual({ chatId: 'c1', restartId: 1, sdp: { type: 'offer', sdp: 'offer-sdp' } });
+    expect(FakePeer.last.offerOptions.at(-1)).toEqual({ iceRestart: true });
+    expect(result.current.media).toBe('reconectando');
+    expect(result.current.state?.fase).toBe('activa');
+    expect(sent.some((one) => one.event === 'call.end')).toBe(false);
+
+    await receive('call.restart.answer', { chatId: 'c1', restartId: 1, sdp: { type: 'answer', sdp: 'restart-answer' } });
+    act(() => FakePeer.last.ice('connected'));
+    expect(FakePeer.last.remote).toEqual({ type: 'answer', sdp: 'restart-answer' });
+    expect(result.current.media).toBe('conectada');
+  });
+
+  it('a late answer to an older restart is not applied', async () => {
+    await talkingAsCaller();
+    act(() => FakePeer.last.ice('disconnected'));
+    act(() => FakePeer.last.ice('failed'));
+    await settle();
+    expect(restarts().map((one) => one.frame.restartId)).toEqual([1, 2]);
+
+    await receive('call.restart.answer', { chatId: 'c1', restartId: 1, sdp: { type: 'answer', sdp: 'late' } });
+    expect(FakePeer.last.remote).toEqual({ type: 'answer', sdp: 'their-answer' });
+    await receive('call.restart.answer', { chatId: 'c1', restartId: 2, sdp: { type: 'answer', sdp: 'current' } });
+    expect(FakePeer.last.remote).toEqual({ type: 'answer', sdp: 'current' });
+  });
+
+  it('the socket coming back while reconnecting sends the restart again', async () => {
+    await talkingAsCaller();
+    act(() => FakePeer.last.ice('disconnected'));
+    await settle();
+    await receive('connect', {});
+    await settle();
+
+    expect(restarts()).toHaveLength(2);
+  });
+
+  it('the web that answered asks the APK caller to restart, then answers its restart offer', async () => {
+    await talkingAsCallee();
+    act(() => FakePeer.last.ice('disconnected'));
+    expect(lastSent('call.restart')).toEqual({ chatId: 'c2' });
+
+    await receive('call.restart', { chatId: 'c2', restartId: 3, sdp: { type: 'offer', sdp: 'apk-restart' } });
+    expect(FakePeer.last.remote).toEqual({ type: 'offer', sdp: 'apk-restart' });
+    expect(lastSent('call.restart.answer')).toEqual({ chatId: 'c2', restartId: 3, sdp: { type: 'answer', sdp: 'answer-sdp' } });
+  });
+
+  it('a restart of another chat changes nothing', async () => {
+    await talkingAsCallee();
+    await receive('call.restart', { chatId: 'other', restartId: 1, sdp: { type: 'offer', sdp: 'x' } });
+    expect(sent.some((one) => one.event === 'call.restart.answer')).toBe(false);
+  });
+});
+

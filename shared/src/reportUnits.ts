@@ -150,8 +150,12 @@ function photoArrivalOf(item: RepeatItem, now: string): string | undefined {
 /** José 07/11: «primero tomar la foto de ingreso». «Llegó» opens the first photo; the data comes after. */
 export const arrivalKeyOf = (item: RepeatItem): string | undefined => photoSlotsOf(item)[0]?.section.id ?? dataSectionOf(item)?.id;
 
-/** What the summary of a unit says beside its plate, without the «Terminó» line the pill already shows. */
-export const unitLineOf = (item: RepeatItem): string => item.summary.filter((one) => !FINISHED_LINE.test(one)).join(TITLE_SEPARATOR);
+/** What the summary of a unit says beside its plate, without the «Terminó» line the pill shows nor the placement the card shows. */
+/** «Colocación N° 2» as Portal writes it once the empty truck closed the unit (José 18/11). */
+const PLACEMENT_LINE = /^Colocaci[óo]n N° \d+/;
+export const placementOf = (item: Pick<RepeatItem, 'summary'>): string | null => item.summary.find((one) => PLACEMENT_LINE.test(one)) ?? null;
+
+export const unitLineOf = (item: RepeatItem): string => item.summary.filter((one) => !FINISHED_LINE.test(one) && !PLACEMENT_LINE.test(one)).join(TITLE_SEPARATOR);
 
 const UNIT_NUMBER = /^Unidad (\d+)\b/;
 const PHOTO_OF = /falta foto de ([a-záéíóúñ]+)/i;

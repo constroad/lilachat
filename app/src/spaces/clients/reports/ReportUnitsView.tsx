@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { Camera, CheckCircle2, Plus, ChevronDown, ChevronRight, ChevronUp, Clock, Container, Ruler, Thermometer, Truck } from 'lucide-react-native';
-import { UNITS_CLOSE_HINT, ADD_EXTRA_PHOTO, ARRIVED_LABEL, arrivalKeyOf, extraPhotosOf, extraPhotosTitle, dataRowLine, dataSectionOf, pageLine, photoSlotsOf, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
+import { placementOf, UNITS_CLOSE_HINT, ADD_EXTRA_PHOTO, ARRIVED_LABEL, arrivalKeyOf, extraPhotosOf, extraPhotosTitle, dataRowLine, dataSectionOf, pageLine, photoSlotsOf, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { Pill, ResultsStrip, StateDot } from './ReportSections';
 
@@ -96,6 +96,7 @@ function ArrivedCard({ item, section, onOpen, onView }: { item: RepeatItem; sect
         <View className="min-w-0 flex-1">
           {kicker ? <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{kicker}</Text> : null}
           <Text className="text-[28px] font-bold text-on-surface" style={{ fontFamily: PLATE_FONT }} numberOfLines={1}>{plate}</Text>
+          {placementOf(item) ? <Text testID={`colocacion-${item.id}`} className="text-[14px] font-bold text-primary">{placementOf(item)}</Text> : null}
         </View>
         <Pill badge={unitBadgeOf(item)} testID={`estado-${item.id}`} />
       </View>

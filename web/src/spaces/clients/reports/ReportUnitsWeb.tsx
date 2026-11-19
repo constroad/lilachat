@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Camera, CheckCircle2, Plus, ChevronDown, ChevronRight, ChevronUp, Clock, Container, Ruler, Thermometer, Truck } from 'lucide-react';
-import { UNITS_CLOSE_HINT, ADD_EXTRA_PHOTO, ARRIVED_LABEL, arrivalKeyOf, extraPhotosOf, extraPhotosTitle, dataRowLine, dataSectionOf, pageLine, photoSlotsOf, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
+import { placementOf, UNITS_CLOSE_HINT, ADD_EXTRA_PHOTO, ARRIVED_LABEL, arrivalKeyOf, extraPhotosOf, extraPhotosTitle, dataRowLine, dataSectionOf, pageLine, photoSlotsOf, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
 import { Pill, ResultsStrip, StateDot } from './ReportSectionsWeb';
 
 /** Design j-05 (José 06/11): for the operator on the pista. Big plate, big slots, one click per action. */
@@ -84,6 +84,7 @@ function ArrivedCard({ item, section, onOpen, onView }: { item: RepeatItem; sect
         <div className="min-w-0 flex-1">
           {kicker ? <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{kicker}</p> : null}
           <p className="truncate font-mono text-[28px] font-bold leading-tight">{plate}</p>
+          {placementOf(item) ? <p data-testid={`colocacion-${item.id}`} className="text-sm font-bold text-primary">{placementOf(item)}</p> : null}
         </div>
         <Pill badge={unitBadgeOf(item)} testId={`estado-${item.id}`} />
       </div>

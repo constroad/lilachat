@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { fieldDocumentOf, type FieldDocument, type RepeatItem, type RepeatSection } from './fieldDocument';
 import { reportFormAnswer } from './reportSaves';
-import { waitingLayoutOf, ARRIVED_LABEL, arrivalHourOf, arrivalKeyOf, extraPhotosOf, EXTRA_PHOTOS_MAX, dataSectionOf, isUnitsRepeat, photoSlotsOf, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf } from './reportUnits';
+import { waitingLayoutOf, ARRIVED_LABEL, arrivalHourOf, arrivalKeyOf, extraPhotosOf, EXTRA_PHOTOS_MAX, dataSectionOf, isUnitsRepeat, photoSlotsOf, placementOf, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf } from './reportUnits';
 
 /** The units of a control de pista as Portal lists them (06/11): rows by arrival, then the dispatches not here yet. */
 const form = (name: string) => ({ type: 'object', properties: { [name]: { type: 'string', title: name } } });
@@ -88,6 +88,16 @@ describe('the units of a control de pista', () => {
     expect(unitBadgeOf(itemOf('d3'))).toEqual({ label: 'Por llegar', tone: 'neutral' });
     expect(unitBadgeOf({ ...itemOf('d1'), summary: [] })).toEqual({ label: 'Terminó', tone: 'ok' });
     expect(unitLineOf(itemOf('d1'))).toBe('Guía G1 · 15 m³');
+  });
+
+  it('a closed unit says its placement apart from its line (José 18/11)', () => {
+    // Arrange
+    const closed = { ...itemOf('d1'), summary: ['Colocación N° 2', 'Terminó 09:12', 'Guía G1 · 15 m³'] };
+    // Act + Assert
+    expect(placementOf(closed)).toBe('Colocación N° 2');
+    expect(unitLineOf(closed)).toBe('Guía G1 · 15 m³');
+    expect(unitBadgeOf(closed)).toEqual({ label: 'Terminó 09:12', tone: 'ok' });
+    expect(placementOf(itemOf('d2'))).toBeNull();
   });
 
   it('one slot per photo kind in the template\'s order, with its last photo; the data section is the one without a tool', () => {

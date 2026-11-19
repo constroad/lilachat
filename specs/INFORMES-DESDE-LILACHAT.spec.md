@@ -2133,3 +2133,22 @@ la primera foto de cada carro.
 - **«Ver PDF» de un borrador** (punto 3 de José): ya estaba arreglado desde el 15/11
   (`3428234a`). Dice «Preparando…» en una sola línea, y la vista previa abre dentro de
   Lilachat con zoom.
+- La tarjeta de la unidad muestra «Colocación N° X» bajo la placa (`placementOf`). La línea de la
+  tarjeta ya no repite ese número.
+
+### 22.1 E2E en producción (18/11, web a 390 px, espacio Test, «QA-CTLPIS — borrar»)
+
+Portal `6c883308`, Lilachat `cf2e3db`. lila-app todavía no tenía `/images`, así que el envío
+probó el respaldo: las fotos salen una por una, en orden.
+
+| Paso | Resultado |
+| --- | --- |
+| Orden de las fotos | Ingreso, Temperatura, Escantillón, «Unidad vacía · cierra la unidad» |
+| Unidad 2: llegada marcada para el grupo | «Saldrá al grupo con las demás de la unidad cuando tomes la foto de unidad vacía.» |
+| Unidad 1: temperatura marcada | Igual: espera |
+| Se cierra primero la Unidad 2 | «Unidad cerrada: colocación N° 1. Se enviaron 2 fotos al grupo.» |
+| Se cierra después la Unidad 1 | «Unidad cerrada: colocación N° 2. Se enviaron 2 fotos al grupo.» |
+
+Defecto encontrado: la tarjeta de la unidad no mostraba «Colocación N° X». Ahora lo muestra.
+No se verificó: lo que llegó al grupo de errores de WhatsApp, porque las fotos de Test van ahí.
+Eso lo mira José.

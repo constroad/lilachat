@@ -183,3 +183,15 @@ describe('pending progress, through the door (Portal a9b1c3ba; José 09/11)', ()
     expect(workMapFormInputOf({ kind: 'work_resolve', progress_id: 'p1', decision: 'aprobar', note: 'x'.repeat(2000) })).toBeNull();
   });
 });
+
+/** José 19/11: «Editar croquis» opens Portal's croquis editor of the service. */
+describe('the service croquis, through the door', () => {
+  it('asks Portal\'s abrir_croquis_de_servicio with only the service', () => {
+    // Act
+    const prepared = workMapFormPrepared(SERVICE, workMapFormInputOf({ kind: 'service_croquis' })!);
+    // Assert
+    expect(isWorkMapFormKind('service_croquis')).toBe(true);
+    expect(prepared.form.id).toBe('abrir_croquis_de_servicio');
+    expect(prepared.context).toEqual({ servicioId: SERVICE });
+  });
+});

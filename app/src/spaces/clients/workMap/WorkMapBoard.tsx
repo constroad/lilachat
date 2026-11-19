@@ -26,6 +26,7 @@ import { PendingProgressCard } from './PendingProgress';
 import { MapCardView } from './MapCardView';
 import { WorkMapItems } from './WorkMapItems';
 import { useFileViewer } from '../useFileViewer';
+import { ServiceCroquisButton } from './ServiceCroquis';
 
 type PhotoLayer = ReturnType<typeof usePhotoLayer>;
 const NO_MARKS: NonNullable<WorkMap['marks']> = [];
@@ -99,7 +100,7 @@ function useDischarges(map: WorkMap, discharges: UnitDischarge[], day: string, d
   return { suggestion, ranges, pins, stretches, onRange: (streetId: string, range: StretchRange) => setRanges((before) => ({ ...before, [streetId]: range })) };
 }
 
-type BoardProps = { map: WorkMap; pageUrl: string; height: number; title: string; serviceId: string; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; /** Field photos with their place: the «Fotos» layer (José 08/11). */ mapPhotos?: MapPhoto[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» and «Restaurar» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<PhotoAsset>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<TraceFile>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport; /** What the last save answered, over the map. */ notice?: string | null };
+type BoardProps = { map: WorkMap; pageUrl: string; height: number; title: string; serviceId: string; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; /** Field photos with their place: the «Fotos» layer (José 08/11). */ mapPhotos?: MapPhoto[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» and «Restaurar» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<PhotoAsset>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<TraceFile>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport; /** What the last save answered, over the map. */ notice?: string | null; /** Reads the map again (after «Editar croquis»). */ reload?: () => void };
 
 /** «¿En qué calle?» when «Registrar avance» could go to several streets. */
 function StreetPick(props: { target: ProgressTarget | null; onPick: (streetId: string) => void; onClose: () => void }) {
@@ -190,6 +191,7 @@ export function WorkMapBoard(props: BoardProps) {
           <Text className="text-[16px] font-semibold text-on-primary">Registrar avance</Text>
         </Pressable>
       ) : null}
+      {props.editMap ? <ServiceCroquisButton send={props.editMap} title={props.title} onDone={() => props.reload?.()} /> : null}
       <WorkMapFilters map={map} view={view} filter={filter} onFilter={setFilter} waiting={pendingItems.length} />
       <MapDayChips options={mapDays.options} day={mapDays.day} onDay={mapDays.setDay} />
       {props.notice ? <Text testID="mapa-aviso" accessibilityRole="alert" className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-[14px] font-semibold text-on-surface">{props.notice}</Text> : null}

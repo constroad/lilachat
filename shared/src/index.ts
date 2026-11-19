@@ -183,6 +183,7 @@ export * from './workMapDischarges.js';
 export * from './workMapMarks.js';
 export * from './workMapObservations.js';
 export * from './workMapCards.js';
+export * from './serviceCroquis.js';
 export * from './workMapExport.js';
 export * from './workMapPanel.js';
 export * from './workMapProgress.js';

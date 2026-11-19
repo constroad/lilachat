@@ -9,6 +9,7 @@ import { WorkMapFirst } from './workMap/WorkMapFirst';
 import { EMPTY_WORK_MAP } from '@lilachat/shared';
 import { ImportTrace } from './workMap/ImportTrace';
 import { WorkStreetEditor } from './workMap/WorkStreetEditor';
+import { ServiceCroquisButton } from './workMap/ServiceCroquis';
 import { placeAsker, type StreetSend } from './workMap/workProgressSender';
 import type { StreetDeleteSend } from './workMap/StreetDelete';
 
@@ -37,6 +38,18 @@ function Frame(props: { head?: ReactNode; tabs?: ReactNode; children: ReactNode 
 
 type MapProps = { jwt: string; links: ChannelLinks; target: { kind: 'service'; clientId: string; serviceId: string }; title: string; head?: ReactNode; tabs?: ReactNode; badge?: ReactNode; /** Where the streets are drawn today (Portal's «Mapa» tab). */ drawUrl?: string | null; discharges?: UnitDischarge[]; /** Field photos with their place (José 08/11). */ mapPhotos?: MapPhoto[]; /** The service's place (Portal da5382a5). */ start?: { lat: number; lng: number }; send?: ProgressSend; /** «Guardar calle» (o-02): everyone draws (José 07/11). */ drawStreet?: StreetSend; /** «Borrar calle»: anyone, an admin restores (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<File>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<File>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport };
 
+const CROQUIS_FIRST = 'flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-primary/30 text-[15px] font-semibold text-primary';
+
+/** Without streets nor drawings: import a trace, or draw the first croquis in Portal's editor (José 19/11). */
+function TraceAndCroquis(props: { send: MapEditSend; upload?: TraceUpload<File>; title: string; onDone: () => void }) {
+  return (
+    <div className="space-y-2">
+      {props.upload ? <ImportTrace send={props.send} upload={props.upload} /> : null}
+      <ServiceCroquisButton send={props.send} title={props.title} onDone={props.onDone} className={CROQUIS_FIRST} />
+    </div>
+  );
+}
+
 export function ServiceMapWeb(props: MapProps) {
   const { state, retry, refresh } = useWorkMap(props.jwt, props.links, props.target);
   const [drawing, setDrawing] = useState(false);
@@ -61,6 +74,6 @@ export function ServiceMapWeb(props: MapProps) {
   if (drawing && props.drawStreet) return <WorkStreetEditor title={props.title} map={state.map} send={props.drawStreet} findPlace={placeAsker(props.jwt)} start={props.start} onClose={() => setDrawing(false)} onSaved={(message) => { setNotice(message); setDrawing(false); void retry(); }} />;
   // Photos or units with a place and no street yet: the map still shows where they are (Portal via José 09/11).
   const media = Boolean(props.mapPhotos?.length || props.discharges?.length);
-  if (!state.map && !media) return <Frame head={props.head} tabs={props.tabs}><WorkMapFirst drawUrl={props.drawUrl ?? null} onDraw={onDraw} trace={editMap && props.uploadTrace ? <ImportTrace send={editMap} upload={props.uploadTrace} /> : null} /></Frame>;
-  return <WorkMapBoard map={state.map ?? EMPTY_WORK_MAP} pageUrl={pageOf(state.url)} title={props.title} serviceId={props.target.serviceId} head={props.head} tabs={props.tabs} badge={props.badge} discharges={props.discharges} mapPhotos={props.mapPhotos} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} editMap={editMap} admin={props.admin} uploadPhoto={props.uploadPhoto} uploadTrace={props.uploadTrace} mapInReport={props.mapInReport} notice={notice} />;
+  if (!state.map && !media) return <Frame head={props.head} tabs={props.tabs}><WorkMapFirst drawUrl={props.drawUrl ?? null} onDraw={onDraw} trace={editMap ? <TraceAndCroquis send={editMap} upload={props.uploadTrace} title={props.title} onDone={() => void refresh()} /> : null} /></Frame>;
+  return <WorkMapBoard map={state.map ?? EMPTY_WORK_MAP} pageUrl={pageOf(state.url)} title={props.title} serviceId={props.target.serviceId} head={props.head} tabs={props.tabs} badge={props.badge} discharges={props.discharges} mapPhotos={props.mapPhotos} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} editMap={editMap} admin={props.admin} uploadPhoto={props.uploadPhoto} uploadTrace={props.uploadTrace} mapInReport={props.mapInReport} notice={notice} reload={() => void refresh()} />;
 }

@@ -19,6 +19,7 @@ import { MapMoreMenu } from './MapMoreMenu';
 import { usePortalFileViewer } from '../PortalFileViewer';
 import { WorkMapItems } from './WorkMapItems';
 import { MapCardView } from './MapCardView';
+import { ServiceCroquisButton } from './ServiceCroquis';
 
 const WorkMapCanvas = lazyChunk(() => import('./WorkMapCanvas'));
 
@@ -86,7 +87,7 @@ function useDischarges(map: WorkMap, discharges: UnitDischarge[], day: string, d
   return { suggestion, ranges, onRange, pins, stretches };
 }
 
-type BoardProps = { map: WorkMap; pageUrl: string; title: string; serviceId: string; /** Crumbs and title (o-01). */ head?: ReactNode; /** The service's tabs: beside the actions on a wide board, on their own row on a narrow one. */ tabs?: ReactNode; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; /** Field photos with their place: the «Fotos» layer (José 08/11). */ mapPhotos?: MapPhoto[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» and «Restaurar» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<File>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<File>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport; /** What the last save answered, over the map. */ notice?: string | null };
+type BoardProps = { map: WorkMap; pageUrl: string; title: string; serviceId: string; /** Crumbs and title (o-01). */ head?: ReactNode; /** The service's tabs: beside the actions on a wide board, on their own row on a narrow one. */ tabs?: ReactNode; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; /** Field photos with their place: the «Fotos» layer (José 08/11). */ mapPhotos?: MapPhoto[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» and «Restaurar» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<File>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<File>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport; /** What the last save answered, over the map. */ notice?: string | null; /** Reads the map again (after «Editar croquis»). */ reload?: () => void };
 
 /** «¿En qué calle?» when «Registrar avance» could go to several streets. */
 function StreetPick(props: { streets: Array<{ id: string; name: string }>; onPick: (streetId: string) => void; onClose: () => void }) {
@@ -106,7 +107,7 @@ function StreetPick(props: { streets: Array<{ id: string; name: string }>; onPic
   );
 }
 
-type ActionProps = { pageUrl: string; expanded: boolean; wide: boolean; onToggle: () => void; onExport: () => void; onShare: () => void; onRecord?: () => void; onDraw?: () => void; onDeleted?: () => void; onLayers?: (kind: LayersKind) => void };
+type ActionProps = { pageUrl: string; expanded: boolean; wide: boolean; onToggle: () => void; onExport: () => void; onShare: () => void; onRecord?: () => void; onDraw?: () => void; onDeleted?: () => void; onLayers?: (kind: LayersKind) => void; /** «Editar croquis» (José 19/11). */ croquis?: ReactNode };
 
 /** «Registrar avance», «Compartir» and «Más» (o-01; José 09/11: the rest was piled up beside them). */
 function Actions(props: ActionProps) {
@@ -122,6 +123,7 @@ function Actions(props: ActionProps) {
         {props.expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />} <span className="sr-only">{props.expanded ? 'Salir de pantalla completa' : 'Pantalla completa'}</span>
       </button>
       <MapMoreMenu pageUrl={props.pageUrl} onPick={pick} draws={Boolean(props.onDraw)} edits={Boolean(props.onLayers)} admin={Boolean(props.onDeleted)} className={ACTION} />
+      {props.croquis}
       <button type="button" data-testid="mapa-compartir" onClick={props.onShare} className={ACTION}><Share2 size={16} /> {props.wide ? 'Compartir avance' : 'Compartir'}</button>
       {props.onRecord ? <button type="button" data-testid="mapa-registrar-avance" onClick={props.onRecord} className={`${ACTION} ${props.wide ? '' : 'ml-auto'} border-primary bg-primary text-on-primary hover:bg-primary/90`}><TrendingUp size={16} /> {props.wide ? 'Registrar avance' : 'Registrar'}</button> : null}
     </div>
@@ -225,7 +227,7 @@ export function WorkMapBoard(props: BoardProps) {
       <header className={`${MAP_HEAD_BAR} relative z-20 flex-wrap`}>
         {/* Narrow, the title takes its own row: beside the actions it broke into four lines (José 09/11). */}
         <div className={`min-w-0 ${wide ? 'flex-1' : 'basis-full'}`}>{props.head}{wide ? props.tabs : null}</div>
-        <Actions pageUrl={pageUrl} expanded={expanded} wide={wide} onToggle={expanded ? close : open} onExport={() => toggleSide('export')} onShare={() => toggleSide('share')} onRecord={props.editMap && target.kind !== 'none' ? () => { setSide(null); record(); } : undefined} onDraw={props.onDraw} onDeleted={props.admin && props.editMap ? () => setSeeingDeleted((shown) => !shown) : undefined} onLayers={props.editMap ? (kind) => { setSide(null); brushing.setBrush(null); setLayers((shown) => (shown === kind ? null : kind)); } : undefined} />
+        <Actions croquis={props.editMap ? <ServiceCroquisButton send={props.editMap} title={props.title} onDone={() => props.reload?.()} className={ACTION} label={wide ? undefined : 'Croquis'} /> : null} pageUrl={pageUrl} expanded={expanded} wide={wide} onToggle={expanded ? close : open} onExport={() => toggleSide('export')} onShare={() => toggleSide('share')} onRecord={props.editMap && target.kind !== 'none' ? () => { setSide(null); record(); } : undefined} onDraw={props.onDraw} onDeleted={props.admin && props.editMap ? () => setSeeingDeleted((shown) => !shown) : undefined} onLayers={props.editMap ? (kind) => { setSide(null); brushing.setBrush(null); setLayers((shown) => (shown === kind ? null : kind)); } : undefined} />
         {wide ? null : <div className="-mt-2 min-w-0 basis-full">{props.tabs}</div>}
       </header>
       {wide ? null : <MapFilters map={map} view={view} filter={filter} onFilter={setFilter} floating={false} waiting={pendingItems.length} />}

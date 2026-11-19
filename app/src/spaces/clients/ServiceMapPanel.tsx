@@ -10,6 +10,7 @@ import type { ProgressSend } from './workMap/WorkMapDischarges';
 import { WorkMapFirst } from './workMap/WorkMapFirst';
 import { EMPTY_WORK_MAP } from '@lilachat/shared';
 import { ImportTrace } from './workMap/ImportTrace';
+import { ServiceCroquisButton } from './workMap/ServiceCroquis';
 import { WorkStreetEditor } from './workMap/WorkStreetEditor';
 import type { StreetDeleteSend } from './workMap/StreetDelete';
 import { placeAsker, type StreetSend } from './workMap/workProgressSender';
@@ -81,6 +82,6 @@ export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; targe
   const editor = props.drawStreet ? <WorkStreetEditor open={drawing} title={props.title} map={state.map} send={props.drawStreet} findPlace={placeAsker(props.jwt)} start={props.start} onClose={() => setDrawing(false)} onSaved={(message) => { setNotice(message); setDrawing(false); void ask(); }} /> : null;
   // Photos or units with a place and no street yet: the map still shows where they are (Portal via José 09/11).
   const media = Boolean(props.mapPhotos?.length || props.discharges?.length);
-  if (!state.map && !media) return <>{editor}<WorkMapFirst drawUrl={props.drawUrl ?? null} onDraw={onDraw} trace={editMap && props.uploadTrace ? <ImportTrace send={editMap} upload={props.uploadTrace} /> : null} /></>;
-  return <>{editor}<WorkMapBoard map={state.map ?? EMPTY_WORK_MAP} pageUrl={pageOf(state.url)} height={height} title={props.title} serviceId={props.target.serviceId} badge={props.badge} discharges={props.discharges} mapPhotos={props.mapPhotos} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} editMap={editMap} admin={props.admin} uploadPhoto={props.uploadPhoto} uploadTrace={props.uploadTrace} mapInReport={props.mapInReport} notice={notice} /></>;
+  if (!state.map && !media) return <>{editor}<WorkMapFirst drawUrl={props.drawUrl ?? null} onDraw={onDraw} trace={editMap ? <View className="gap-2">{props.uploadTrace ? <ImportTrace send={editMap} upload={props.uploadTrace} /> : null}<ServiceCroquisButton send={editMap} title={props.title} onDone={() => void ask(true)} /></View> : null} /></>;
+  return <>{editor}<WorkMapBoard map={state.map ?? EMPTY_WORK_MAP} pageUrl={pageOf(state.url)} height={height} title={props.title} serviceId={props.target.serviceId} badge={props.badge} discharges={props.discharges} mapPhotos={props.mapPhotos} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} editMap={editMap} admin={props.admin} uploadPhoto={props.uploadPhoto} uploadTrace={props.uploadTrace} mapInReport={props.mapInReport} notice={notice} reload={() => void ask(true)} /></>;
 }

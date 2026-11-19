@@ -16,13 +16,15 @@ const EMBED_PATH = /^\/embed\/report\/[A-Za-z0-9_-]{1,64}$/;
 /** A visit's sheet or its croquis (Portal 14/11, `?vista=croquis`). */
 const VISIT_EMBED_PATH = /^\/embed\/site-visit\/[A-Za-z0-9_-]{1,64}$/;
 const VISIT_VIEWS = ['', '?vista=croquis'];
-/** What Portal's editor shows: a report (editor 2.0) or a technical visit. */
-export type EmbedKind = 'report' | 'site-visit';
+/** A service's croquis: the drawings of its work map (Portal 19/11, `abrir_croquis_de_servicio`). */
+const SERVICE_CROQUIS_EMBED_PATH = /^\/embed\/service-croquis\/[0-9a-f]{24}$/;
+/** What Portal's editor shows: a report (editor 2.0), a technical visit or a service's croquis. */
+export type EmbedKind = 'report' | 'site-visit' | 'service-croquis';
 const TOKEN = /^#t=[A-Za-z0-9._~-]{1,4096}$/;
 
 export type EmbedLink = { url: string; expiresAt: string };
 export type EmbedEvent =
-  | { type: 'ready' } | { type: 'dirty'; dirty: boolean } | { type: 'saved'; reportId: string; savedAt: string } | { type: 'saved'; visitId: string; savedAt: string }
+  | { type: 'ready' } | { type: 'dirty'; dirty: boolean } | { type: 'saved'; reportId: string; savedAt: string } | { type: 'saved'; visitId: string; savedAt: string } | { type: 'saved'; serviceId: string; savedAt: string }
   | { type: 'published'; reportId: string; pdfUrl?: string } | { type: 'closed' } | { type: 'error'; code: string }
   /** «Editar croquis»: open the service's work map over the editor (José 16/11). */
   | { type: 'edit-croquis' };
@@ -44,7 +46,10 @@ function parsedUrl(value: unknown): URL | null {
 }
 
 /** Portal's answer `{url, expires_at}` (or this module's own `expiresAt`), only from an origin the caller frames, on the embed path, with its token. */
-const pathFits = (url: URL, kind: EmbedKind): boolean => (kind === 'report' ? EMBED_PATH.test(url.pathname) && !url.search : VISIT_EMBED_PATH.test(url.pathname) && VISIT_VIEWS.includes(url.search));
+function pathFits(url: URL, kind: EmbedKind): boolean {
+  if (kind === 'site-visit') return VISIT_EMBED_PATH.test(url.pathname) && VISIT_VIEWS.includes(url.search);
+  return (kind === 'report' ? EMBED_PATH : SERVICE_CROQUIS_EMBED_PATH).test(url.pathname) && !url.search;
+}
 
 export function embedLinkOf(raw: unknown, origins: readonly string[], kind: EmbedKind = 'report'): EmbedLink | null {
   const answer = record(raw);
@@ -57,18 +62,21 @@ export function embedLinkOf(raw: unknown, origins: readonly string[], kind: Embe
 
 const https = (value: unknown): string | undefined => (typeof value === 'string' && value.startsWith('https://') ? value : undefined);
 
-/** «saved» names the report it saved, or the visit (Portal 14/11). */
-function savedEvent(reportId: string | null, visitId: string | null, savedAt: string | null): EmbedEvent | null {
+type SavedIds = { reportId: string | null; visitId: string | null; serviceId: string | null };
+
+/** «saved» names the report it saved, the visit (Portal 14/11) or the service of the croquis (19/11). */
+function savedEvent(ids: SavedIds, savedAt: string | null): EmbedEvent | null {
   if (!savedAt) return null;
-  if (reportId) return { type: 'saved', reportId, savedAt };
-  return visitId ? { type: 'saved', visitId, savedAt } : null;
+  if (ids.reportId) return { type: 'saved', reportId: ids.reportId, savedAt };
+  if (ids.visitId) return { type: 'saved', visitId: ids.visitId, savedAt };
+  return ids.serviceId ? { type: 'saved', serviceId: ids.serviceId, savedAt } : null;
 }
 
 function eventBody(kind: string, message: Raw): EmbedEvent | null {
   if (kind === 'ready' || kind === 'closed' || kind === 'edit-croquis') return { type: kind };
   if (kind === 'dirty') return typeof message.dirty === 'boolean' ? { type: 'dirty', dirty: message.dirty } : null;
   const reportId = text(message.reportId);
-  if (kind === 'saved') return savedEvent(reportId, text(message.visitId), text(message.savedAt));
+  if (kind === 'saved') return savedEvent({ reportId, visitId: text(message.visitId), serviceId: text(message.serviceId) }, text(message.savedAt));
   if (kind === 'published') {
     const pdfUrl = https(message.pdfUrl);
     return reportId ? { type: 'published', reportId, ...(pdfUrl ? { pdfUrl } : {}) } : null;

@@ -65,6 +65,15 @@ Pendientes**.
   abren el visor de archivos. Bajo el panel van «Dibujos» y «Observaciones»; tocar una abre
   el mapa completo centrado en ella con su tarjeta. Una observación sin lugar muestra la
   tarjeta en el panel.
+- **«Editar croquis»** (19/11, web y APK, todo miembro con el mapa): abre el editor de croquis
+  del servicio de Portal (`/embed/service-croquis/<id>#t=…`, lista blanca en
+  `shared/src/portalEmbed.ts`) en el mismo marco que el croquis de una visita (iframe en web,
+  WebView en el APK). El enlace lo da `abrir_croquis_de_servicio` de agentes por la puerta del
+  mapa (`kind: 'service_croquis'`, `server/src/bots/workMapForms.ts`; `shared/src/serviceCroquis.ts`),
+  12 h, nunca se guarda ni va a un mensaje. Al cerrarse el editor se vuelve a leer el mapa.
+  Si agentes responde sin enlace (herramienta aún no aprobada) dice «El editor de croquis
+  todavía no está habilitado.»; sin red, «No se pudo abrir el editor de croquis. Prueba de nuevo.».
+  También sale en «Todavía no hay calles», bajo «Importar».
 
 ### Cuenta, cobranza y valorización (solo quien ve montos)
 
@@ -164,7 +173,7 @@ Pendientes**.
 - **18/11** SOL-IMP y APR-ADI se crean desde el canal (antes decían «En Portal»); APR-ADI solo con plata.
 - **16/11** Hojas de bloques del editor 2.0 solo para quien ve montos.
 - **19/11** · «Mapa de la obra» dibuja los dibujos de Portal (gibas, buzones, bocacalles…: `workMapMarks` del detalle, `shared/src/workMapMarks.ts`), en web y APK. Con dibujos y sin calles ya no dice «Todavía no hay calles»: muestra el mapa encuadrado en ellos (José, El Almirante · parches Jr. Conchucos: 33 dibujos en Portal). Un dibujo «Otro» con nota se llama por su nota, como en Portal (`markName`).
-- **19/11** · Observaciones de Portal (`workObservations`) en el mapa, y la tarjeta de cada dibujo con su tamaño y las distancias a los más cercanos, calculadas de las coordenadas (`shared/src/workMapCards.ts`). Web: tarjeta al pasar el mouse o al hacer clic, y listas «Dibujos» y «Observaciones» en el panel. APK: tarjeta al tocar en el mapa completo y las mismas listas bajo el panel.
+- **19/11** · Observaciones de Portal (`workObservations`) en el mapa, y la tarjeta de cada dibujo con su tamaño y las distancias a los más cercanos, calculadas de las coordenadas (`shared/src/workMapCards.ts`). Web: tarjeta al pasar el mouse o al hacer clic, y listas «Dibujos» y «Observaciones» en el panel. APK: tarjeta al tocar en el mapa completo y las mismas listas bajo el panel. Botón «Editar croquis» (editor de croquis del servicio de Portal) en web y APK.
 
 ## 5. Diseños de Stitch relacionados
 

@@ -144,10 +144,10 @@ export function SpaceChatList(props: Props) {
         ) : null}
         {props.jwt ? <ShareInvitesCard jwt={props.jwt} space={space} onAnswered={props.onRetry} /> : null}
         {ready && (chats?.length || query)
-          ? sections.map((section) => section.key === 'apps' ? (
+          ? sections.map((section, index) => section.key === 'apps' ? (
               props.apps ? <AppsSection key="apps" chats={section.chats} apps={props.apps} folded={folded.has('apps')} onToggle={() => toggle('apps')} selectedChatId={props.selectedChatId} onOpenChat={props.onOpenChat} /> : null
             ) : (
-              <section key={section.key} data-testid={`seccion-${section.key}`} className="pt-1">
+              <section key={section.key} data-testid={`seccion-${section.key}`} className={section.space ? sharedBlockClass(!sections[index + 1]?.space) : 'pt-1'}>
                 <div className="flex items-center pr-2">
                   <button type="button" data-testid={`plegar-${section.key}`} aria-expanded={!folded.has(section.key)} onClick={() => toggle(section.key)} className="flex h-10 flex-1 items-center gap-1.5 px-4 text-left">
                     {folded.has(section.key) ? <ChevronRight size={14} className="text-on-surface-variant" /> : <ChevronDown size={14} className="text-on-surface-variant" />}
@@ -162,7 +162,7 @@ export function SpaceChatList(props: Props) {
                   ? null
                   : section.chats.map((chat) =>
                       section.key === 'channels' || section.space ? (
-                        <ChannelRow key={chat.id} chat={chat} open={chat.id === props.selectedChatId} onOpen={() => props.onOpenChat(chat)} />
+                        <ChannelRow key={chat.id} chat={chat} nested={Boolean(section.space)} open={chat.id === props.selectedChatId} onOpen={() => props.onOpenChat(chat)} />
                       ) : (
                         <ChatRow key={chat.id} chat={chat} yo={props.yo} seleccionado={chat.id === props.selectedChatId} onSelect={() => props.onOpenChat(chat)} onAccion={props.onAccion} />
                       )
@@ -222,16 +222,27 @@ function ActivityChip(props: { testId: string; Icon: LucideIcon; label: string; 
 const NEW_IN_SECTION: Record<'channels' | 'directs' | 'apps', string> = { channels: 'Agregar canal', directs: 'Nuevo mensaje directo', apps: 'Agregar apps' };
 const newInSection = (key: SpaceSectionKey): string => (key === 'channels' || key === 'directs' || key === 'apps' ? NEW_IN_SECTION[key] : '');
 
-/** A channel as a short row (design `s-03`): «# name», bold with something new, and its count or time. */
-function ChannelRow(props: { chat: ChatSummary; open: boolean; onOpen: () => void }) {
+/**
+ * The block of one owner space's channels (José 19/11, like Slack's «External
+ * connections»): a thin full-width line above each block, and one more under
+ * the last, so the group never mixes with the own channels. No tinted card.
+ */
+const sharedBlockClass = (last: boolean): string => `mt-1 border-t border-outline/15 py-1 ${last ? 'mb-1 border-b' : ''}`;
+
+/**
+ * A channel as a short row (design `s-03`): «# name», bold with something new, and its count or time.
+ * `nested`: inside a shared block, indented under its header and without the link mark the header already shows.
+ */
+function ChannelRow(props: { chat: ChatSummary; open: boolean; onOpen: () => void; nested?: boolean }) {
   const { chat } = props;
   const unread = chat.unread > 0;
   const Icon = chat.channel?.visibility === 'private' ? Lock : Hash;
+  const linked = !props.nested && (chat.channel?.shared || chat.sharedFrom);
   return (
-    <button type="button" data-testid={`canal-fila-${chat.id}`} aria-current={props.open} onClick={props.onOpen} className={`flex h-10 w-full items-center gap-2.5 px-4 text-left ${props.open ? 'bg-surface shadow-sm dark:bg-primary/10 dark:shadow-none text-primary' : 'hover:bg-background'}`}>
+    <button type="button" data-testid={`canal-fila-${chat.id}`} aria-current={props.open} onClick={props.onOpen} className={`flex h-10 w-full items-center gap-2.5 text-left ${props.nested ? 'pl-8 pr-4' : 'px-4'} ${props.open ? 'bg-surface shadow-sm dark:bg-primary/10 dark:shadow-none text-primary' : 'hover:bg-background'}`}>
       <Icon size={16} className={unread || props.open ? 'text-primary' : 'text-on-surface-variant'} />
       <span className={`min-w-0 flex-1 truncate text-sm ${unread ? 'font-bold' : ''}`}>{chat.name}</span>
-      {chat.channel?.shared || chat.sharedFrom ? <Link2 size={13} aria-label="Compartido con otros espacios" className="shrink-0 text-on-surface-variant" /> : null}
+      {linked ? <Link2 size={13} aria-label="Compartido con otros espacios" className="shrink-0 text-on-surface-variant" /> : null}
       <PendingMarker chatId={chat.id} />
       {unread ? (
         <span className="grid h-5 min-w-[20px] place-items-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-on-primary">{chat.unread}</span>

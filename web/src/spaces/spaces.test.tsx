@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ClientWorkspace } from '@lilachat/shared';
 import type { ChatSummary } from '../chat/types';
@@ -157,6 +157,38 @@ describe('SpaceChatList', () => {
     await userEvent.click(screen.getByTestId('plegar-channels'));
     await userEvent.click(screen.getByTestId('canal-fila-c1'));
     expect(onOpenChat).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }));
+  });
+
+  /** José 19/11, like Slack's «External connections»: each owner space is its own block between dividers, its channels indented under it. */
+  it('the channels shared from another space live in their own block, apart from the own channels', async () => {
+    // Arrange
+    const inframaq = { workspaceId: 'im', name: 'Inframaq' };
+    const chats = [
+      chat('c1', { name: 'planta-propia', channel: { visibility: 'public', shared: true } }),
+      chat('s1', { name: 'administracion', channel: { visibility: 'public', shared: true }, sharedFrom: inframaq }),
+      chat('s2', { name: 'sistemas', channel: { visibility: 'public' }, sharedFrom: inframaq }),
+      chat('t1', { name: 'ventas', channel: { visibility: 'public' }, sharedFrom: { workspaceId: 'cr', name: 'Constroad' } }),
+    ];
+    // Act
+    render(list(chats));
+    // Assert
+    const block = await screen.findByTestId('seccion-shared:im');
+    expect(screen.getByTestId('plegar-shared:im')).toHaveTextContent(/Inframaq.*2/);
+    expect(block).toContainElement(screen.getByTestId('canal-fila-s1'));
+    expect(block).toContainElement(screen.getByTestId('canal-fila-s2'));
+    expect(screen.getByTestId('seccion-channels')).not.toContainElement(screen.getByTestId('canal-fila-s1'));
+    // By owner name: Constroad, then Inframaq; one line between blocks, and the last one closes the group.
+    expect(screen.getByTestId('seccion-shared:cr')).toHaveClass('border-t');
+    expect(screen.getByTestId('seccion-shared:cr')).not.toHaveClass('border-b');
+    expect(block).toHaveClass('border-t', 'border-b');
+    expect(screen.getByTestId('canal-fila-s1')).toHaveClass('pl-8');
+    expect(screen.getByTestId('canal-fila-c1')).not.toHaveClass('pl-8');
+    // The block already says it is shared: its rows drop the link mark, the own shared channel keeps it.
+    expect(within(block).queryByLabelText('Compartido con otros espacios')).toBeNull();
+    expect(within(screen.getByTestId('seccion-channels')).getByLabelText('Compartido con otros espacios')).toBeInTheDocument();
+    await userEvent.click(screen.getByTestId('plegar-shared:im'));
+    expect(screen.queryByTestId('canal-fila-s1')).toBeNull();
+    expect(screen.getByTestId('seccion-shared:im')).toHaveClass('border-t');
   });
 
   it('a client channel never shows in «Canales» while its client is on the way, so nothing jumps (José 04/11)', async () => {

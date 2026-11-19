@@ -50,6 +50,14 @@ contenido de los canales de cliente (cobranza, Drive, informes), Dali y el mapa 
   como Slack Connect. Solo un admin comparte; no se comparten #general ni los canales
   de cliente. Si quien comparte también es admin del otro espacio, queda activo; si no,
   espera a un admin. El espacio que recibe puede dejar de verlo.
+  En la lista del espacio que recibe, cada espacio dueño es su propio bloque, como
+  «External connections» de Slack (José 19/11): una línea fina de ancho completo
+  arriba de cada bloque y otra bajo el último (`border-outline/15`, sin tarjeta ni
+  color), cabecera con logo, NOMBRE, 🔗 apagado, cantidad y flecha de plegar, y sus
+  canales con 16 px más de sangría (`ChannelRow nested`). Las filas del bloque ya no
+  llevan 🔗: lo dice la cabecera. Un canal propio compartido hacia afuera lo conserva.
+  Web `SpaceChatList.tsx`; APK `SpaceChatsScreen.tsx` (la línea de abajo la pone la
+  sección siguiente, que ya tiene la suya).
 - **Salir o ser desactivado** (`workspaceChats.ts`, `reachedElsewhere`): la persona
   sigue en los canales que el espacio comparte con otro donde sigue activa (12/11).
 - **Miembro oculto** (`hiddenMembers.ts`, 12/11): `hidden: true` en su
@@ -145,6 +153,7 @@ Las reglas de permisos son las mismas: vienen de `shared` y el server las aplica
 - **13/11** · Incógnito solo lee. «Ver incógnitos» pasa a Ajustes › Superadmin.
 - **17/11** · La ficha de miembro web ya no se desborda a 390 px.
 - **19/11** · «Invitados» muestra la fecha de cada invitación por correo y permite «Reenviar».
+- **19/11** · Los canales compartidos de otro espacio forman su bloque entre divisores, con sangría y sin 🔗 por fila (web y APK; José eligió el divisor estilo Slack sobre la tarjeta de color).
 - **19/11** · El superadmin comparte un canal también con los espacios donde está incógnito (`shareTargets` + `GET /admin/incognito`, web y APK; José: «sistemas» de Inframaq con Globofast). El server ya lo aceptaba.
 
 ## 5. Diseños de Stitch

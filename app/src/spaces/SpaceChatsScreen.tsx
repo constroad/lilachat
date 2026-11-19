@@ -164,9 +164,10 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
         ? sections.map((section) => section.key === 'apps' ? (
             appsSection(section.chats)
           ) : (
-            <View key={section.key} testID={`seccion-${section.key}`} className="border-t border-outline/10 pt-1">
+            // José 19/11, like Slack's «External connections»: a shared block keeps its full-width line above, the next section's line closes it, and its channels sit indented under the owner.
+            <View key={section.key} testID={`seccion-${section.key}`} className={`border-t pt-1 ${section.space ? 'border-outline/15 pb-1' : 'border-outline/10'}`}>
               <Pressable testID={`plegar-${section.key}`} onPress={() => toggle(section.key)} className="min-h-[44px] flex-row items-center px-4">
-                {section.space ? <SharedSectionTitle space={section.space} /> : <Text className="flex-1 text-[12px] font-bold uppercase tracking-widest text-on-surface-variant">{section.title}</Text>}
+                {section.space ? <SharedSectionTitle space={section.space} count={section.chats.length} /> : <Text className="flex-1 text-[12px] font-bold uppercase tracking-widest text-on-surface-variant">{section.title}</Text>}
                 {/* A space creates channels, not groups (pending 109, José 28/10): only direct messages have a «+» here. */}
                 {section.key === 'directs' ? (
                   <Pressable testID="nuevo-directs" onPress={props.onNewDirect} accessibilityLabel="Nuevo mensaje directo" hitSlop={8} className="mr-2 h-9 w-9 items-center justify-center">
@@ -179,7 +180,7 @@ export function SpaceChatsScreen(props: { space: ClientWorkspace; jwt: string; m
                 ? null
                 : section.chats.map((chat) =>
                     section.key === 'channels' || section.space ? (
-                      <ChannelRow key={chat.id} chat={chat} open={chat.id === props.openChatId} onOpen={() => props.onOpenChat(chat)} />
+                      <ChannelRow key={chat.id} chat={chat} nested={Boolean(section.space)} open={chat.id === props.openChatId} onOpen={() => props.onOpenChat(chat)} />
                     ) : (
                       <FilaDeChat key={chat.id} chat={chat} titulo={title(chat)} miUserId={props.myUserId} marcado={selection.selected.has(chat.id)} enLinea={false} escribiendo={false} onTocar={tapRow} onMantener={selection.toggle} open={chat.id === props.openChatId} />
                     )
@@ -216,17 +217,21 @@ export const CoverableSpaceChats = memo(
   (_previous, next) => next.covered
 );
 
-/** A channel as a short row (design `s-03`): «# name», bold with something new, and its time, count or dot. */
-function ChannelRow(props: { chat: ChatSummary; open: boolean; onOpen: () => void }) {
+/**
+ * A channel as a short row (design `s-03`): «# name», bold with something new, and its time, count or dot.
+ * `nested`: inside a shared block, indented under its header and without the link mark the header already shows.
+ */
+function ChannelRow(props: { chat: ChatSummary; open: boolean; onOpen: () => void; nested?: boolean }) {
   const colors = useColores();
   const { chat } = props;
   const unread = chat.unread > 0;
   const Icon = chat.channel?.visibility === 'private' ? Lock : Hash;
+  const linked = !props.nested && (chat.channel?.shared || chat.sharedFrom);
   return (
-    <Pressable testID={`canal-fila-${chat.id}`} onPress={props.onOpen} android_ripple={{ color: colors.outline }} className={`min-h-[48px] flex-row items-center gap-3 px-4 ${props.open ? 'bg-surface' : ''}`}>
+    <Pressable testID={`canal-fila-${chat.id}`} onPress={props.onOpen} android_ripple={{ color: colors.outline }} className={`min-h-[48px] flex-row items-center gap-3 ${props.nested ? 'pl-8 pr-4' : 'px-4'} ${props.open ? 'bg-surface' : ''}`}>
       <Icon size={18} color={unread ? colors.primary : colors['on-surface-variant']} />
       <Text numberOfLines={1} className={`flex-1 text-[16px] ${unread ? 'font-bold text-on-surface' : 'text-on-surface'}`}>{chat.name}</Text>
-      {chat.channel?.shared || chat.sharedFrom ? <Link2 size={14} color={colors['on-surface-variant']} accessibilityLabel="Compartido con otros espacios" /> : null}
+      {linked ? <Link2 size={14} color={colors['on-surface-variant']} accessibilityLabel="Compartido con otros espacios" /> : null}
       <PendingMarker chatId={chat.id} />
       {unread ? (
         <View className="h-6 min-w-[24px] items-center justify-center rounded-full bg-primary px-1.5"><Text className="text-[12px] font-bold text-on-primary">{chat.unread}</Text></View>

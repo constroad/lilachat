@@ -14,14 +14,15 @@ import { answerShareInvite, channelShares, endChannelShare, incognitoSpaces, sha
  * `shared/sharedChannels.ts`; this only draws them.
  */
 
-/** The header of a section of channels from another space: its logo, its name and the link mark. */
-export function SharedSectionTitle(props: { space: { name: string; logoUrl?: string } }) {
+/** The header of a section of channels from another space: its logo, its name, the link mark and how many (José 19/11). */
+export function SharedSectionTitle(props: { space: { name: string; logoUrl?: string }; count: number }) {
   const colors = useColores();
   return (
-    <View className="flex-1 flex-row items-center gap-2">
+    <View className="flex-1 flex-row items-center gap-2 pr-2">
       <SpaceLogo space={props.space} size={20} />
       <Text numberOfLines={1} className="shrink text-[12px] font-bold uppercase tracking-widest text-on-surface-variant">{props.space.name}</Text>
       <Link2 size={13} color={colors['on-surface-variant']} accessibilityLabel="Compartidos" />
+      <Text className="ml-auto text-[12px] text-on-surface-variant">{props.count}</Text>
     </View>
   );
 }

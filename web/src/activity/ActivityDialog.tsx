@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowRight, CornerUpLeft, MessagesSquare } from 'lucide-react';
 import { ACTIVITY_TABS, activityDaySections, formatChatTimestamp, formatPhoneDisplay, textoDelChipDeHilo, type ActivityItem, type ActivityType } from '@lilachat/shared';
 import { Avatar } from '../ui/Avatar';
 import { FieldError, Overlay } from '../ui/Overlay';
 import { TextoDelMensaje } from '../chat/TextoDelMensaje';
-import { activityCache, fetchActivity, useCached } from '../spaces/spaceCache';
+import { activityCache, fetchActivity, useCached, syncActivityChips } from '../spaces/spaceCache';
 
 const EMPTY: Record<ActivityType, string> = { mentions: 'Nadie te mencionó todavía.', threads: 'Todavía no estás en ningún hilo.', reactions: 'Todavía nadie reaccionó a tus mensajes.' };
 const NO_NAMES: ReadonlyMap<string, string> = new Map();
@@ -28,6 +28,10 @@ export function ActivityDialog(props: { spaceId: string; spaceName: string; jwt:
   const unread = page.value?.unread ?? { mentions: 0, threads: 0 };
   const error = items ? '' : (page.error ?? '');
   const counts: Partial<Record<ActivityType, number>> = { mentions: unread.mentions, threads: unread.threads };
+  const fresh = page.value?.unread;
+  useEffect(() => {
+    if (fresh) syncActivityChips(props.spaceId, fresh);
+  }, [fresh, props.spaceId]);
 
   return (
     <Overlay title={`Menciones y actividad · ${props.spaceName}`} onClose={props.onClose} wide>

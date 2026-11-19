@@ -44,6 +44,21 @@ export const memberListsCache = cacheOf<MemberLists>();
 export const activityCache = cacheOf<ActivityPage>();
 export const channelsCache = cacheOf<ClientChannel[]>();
 export const spaceChatsCache = cacheOf<SpaceChatsPage>();
+
+/**
+ * José 19/11: the «Hilos» chip said 1 while «Menciones y actividad» showed every thread read.
+ * The chip lives in this cache and reading a thread never touched it: the dialog's fresh counts
+ * now replace it, and reading a thread asks the space's list again (`ACTIVITY_READ_EVENT`).
+ */
+export function syncActivityChips(spaceId: string, unread: SpaceChatsPage['activity']): void {
+  spaceChatsCache.patch(`${spaceId}:chats`, (current) => (current.activity.mentions === unread.mentions && current.activity.threads === unread.threads ? current : { ...current, activity: unread }));
+}
+
+export const ACTIVITY_READ_EVENT = 'lilachat:activity-read';
+/** A thread was read here: the space on screen asks its chips again. */
+export function announceActivityRead(): void {
+  window.dispatchEvent(new Event(ACTIVITY_READ_EVENT));
+}
 const ALL: SessionCache<unknown>[] = [membersCache, memberListsCache, activityCache, channelsCache, spaceChatsCache] as SessionCache<unknown>[];
 
 /**

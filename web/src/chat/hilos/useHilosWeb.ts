@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { hayRespuestasNuevas, respuestasDelHilo, visibleEnElChat } from '@lilachat/shared';
 import { api } from '../../api';
 import { aplicarResumenDeHilo } from '../../local/mensajesLocales';
+import { announceActivityRead } from '../../spaces/spaceCache';
 import type { BaseLocal } from '../../local/baseLocal';
 import type { ChatMessage, MensajeEnPantalla } from '../types';
 
@@ -66,7 +67,11 @@ export function useHilosWeb(params: { chatId: string; jwt: string; base: BaseLoc
     setRemotas([]);
     if (abierto === null || !jwt) return;
     let vivo = true;
-    void api<{ respuestas: ChatMessage[] }>(`/chats/${chatId}/hilos/${abierto}`, { jwt }).then((r) => vivo && r.ok && setRemotas(r.data.respuestas));
+    void api<{ respuestas: ChatMessage[] }>(`/chats/${chatId}/hilos/${abierto}`, { jwt }).then((r) => {
+      // Opening the thread read it on the server: the space's «Hilos» chip asks again.
+      if (r.ok) announceActivityRead();
+      if (vivo && r.ok) setRemotas(r.data.respuestas);
+    });
     return () => void (vivo = false);
   }, [abierto, chatId, jwt]);
 
@@ -84,7 +89,7 @@ export function useHilosWeb(params: { chatId: string; jwt: string; base: BaseLoc
     if (abierto === null || !ultima) return;
     markSeen(abierto, ultima);
     // A reply that arrives with the thread open is read on every device.
-    void api(`/chats/${chatId}/hilos/${abierto}/visto`, { method: 'POST', jwt, body: { seq: ultima } });
+    void api(`/chats/${chatId}/hilos/${abierto}/visto`, { method: 'POST', jwt, body: { seq: ultima } }).then((r) => r.ok && announceActivityRead());
   }, [abierto, ultima, chatId, jwt, markSeen]);
 
   const hiloConNuevas = useCallback(

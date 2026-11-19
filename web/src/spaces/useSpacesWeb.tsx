@@ -5,7 +5,7 @@ import type { ChatMessage, ChatSummary } from '../chat/types';
 import { forgetMySpaces, keepLiveUnread, setCurrentSpaceId, useCurrentSpaceId, useMySpaces } from './currentSpace';
 import { chatOfChannel, createSpaceChat, spaceActivity, spaceChats } from './spacesApi';
 import { markSpacesSeen, readSeenSpaces } from './seenSpaces';
-import { chatChangedElsewhere, fetchSpaceChats, forgetAllSpaces, forgetSpace, isSpaceChat, membersChanged, prefetchSpace, rememberMyRead, setSpaceCacheDisk, spaceChatsCache, useCached } from './spaceCache';
+import { ACTIVITY_READ_EVENT, chatChangedElsewhere, fetchSpaceChats, forgetAllSpaces, forgetSpace, isSpaceChat, membersChanged, prefetchSpace, rememberMyRead, setSpaceCacheDisk, spaceChatsCache, useCached } from './spaceCache';
 import type { BaseLocal } from '../local/baseLocal';
 import { memberName } from './memberWeb';
 import { openedChat } from './openedChat';
@@ -131,6 +131,11 @@ export function useSpacesWeb(params: { jwt: string; myUserId: string; /** The se
   const loadChats = page.refresh;
 
   const reloadChatsSoon = useDebounced(() => loadChats(), RELOAD_DELAY_MS);
+  // A thread read here (opened, or a reply seen while open) changes the «Hilos» chip (José 19/11).
+  useEffect(() => {
+    window.addEventListener(ACTIVITY_READ_EVENT, reloadChatsSoon);
+    return () => window.removeEventListener(ACTIVITY_READ_EVENT, reloadChatsSoon);
+  }, [reloadChatsSoon]);
   const reloadRailSoon = useDebounced(() => void reload(), RAIL_RELOAD_DELAY_MS);
   /**
    * A socket event of a chat outside the personal list (22/10: applied in place,

@@ -105,7 +105,7 @@ No hay hilos de hilos, de avisos, de lo borrado ni en chats secretos.
 - **13/11:** la raíz muestra la foto y abre el visor. Las respuestas con foto, voz o archivo se dibujan como en el chat (APK).
 - **16/11:** cada hilo tiene su marca de lectura. Banda «respondió en un hilo». El chip cambia de color al leer. José: «el punto morado no indica nada».
 - **17/11:** «:hug» en el hilo (APK y web).
-- **19/11** · Web: el chip «Hilos» ya no queda en 1 con todo leído. «Menciones y actividad» copia sus conteos al chip (`syncActivityChips`), y abrir un hilo o ver una respuesta pide la lista del espacio otra vez (`ACTIVITY_READ_EVENT`).
+- **19/11** · Web: el chip «Hilos» ya no queda en 1 con todo leído. «Menciones y actividad» copia sus conteos al chip (`syncActivityChips`), y abrir un hilo o ver una respuesta pide la lista del espacio otra vez (`ACTIVITY_READ_EVENT`). La causa de fondo estaba en el server: el conteo del chip (`activityCounts`) no traía `seq` y no encontraba el cursor propio del hilo; ahora sí, y cuenta igual que el diálogo.
 
 ## 5. Diseños de Stitch relacionados
 

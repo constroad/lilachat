@@ -59,7 +59,8 @@ export async function activityCounts(me: Types.ObjectId, workspaceId: Types.Obje
   const scope = await scopeOf(me, workspaceId);
   const [mentioned, inThreads] = await Promise.all([
     MessageModel.find(mentionsFilter(scope)).select('chatId seq').sort({ at: -1 }).limit(ACTIVITY_LIMIT).lean<Message[]>(),
-    MessageModel.find(threadsFilter(scope)).select('chatId hilo').sort({ 'hilo.ultimaEn': -1 }).limit(ACTIVITY_LIMIT).lean<Message[]>(),
+    // `seq` finds the thread's own cursor: without it a thread read in its panel counted as unread (José 19/11).
+    MessageModel.find(threadsFilter(scope)).select('chatId seq hilo').sort({ 'hilo.ultimaEn': -1 }).limit(ACTIVITY_LIMIT).lean<Message[]>(),
   ]);
   return { mentions: mentioned.filter((message) => mentionUnread(scope, message)).length, threads: inThreads.filter((message) => threadUnread(scope, message)).length };
 }

@@ -8,6 +8,7 @@ import { UserModel } from './models.js';
 import { ChatModel, MessageModel, ReceiptModel, type Message } from './chatModels.js';
 import { WorkspaceMemberModel, WorkspaceModel } from './workspaceModels.js';
 import { signSession } from './sessions.js';
+import { activityCounts } from './activityRoutes.js';
 
 /** «Menciones y actividad» (design e-19): mentions of me, the threads I am in and reactions to my messages, in a space or personal. */
 let mongo: MongoMemoryServer;
@@ -76,6 +77,18 @@ describe('GET /api/activity', () => {
 
   it('only the counts, for the chips of the list', async () => {
     expect(await activity(`counts=1&workspace=${spaceId}`)).toEqual({ items: [], unread: { mentions: 1, threads: 1 } });
+  });
+
+  /** José 19/11: the list's chip said «Hilos 1» while the dialog showed every thread read. */
+  it('a thread read by its own cursor counts as read for the chip too, like in the dialog', async () => {
+    // Arrange: «Mi pregunta» is seq 4; its replies end at 9; I read them in the thread, not the chat.
+    await ReceiptModel.updateOne({ chatId: channel, userId: me }, { $set: { 'threadSeq.4': 9 } });
+    // Act
+    const chip = await activityCounts(me, spaceId);
+    const dialog = (await activity(`type=threads&workspace=${spaceId}`)).unread;
+    // Assert
+    expect(chip.threads).toBe(0);
+    expect(dialog.threads).toBe(0);
   });
 
   it('a space I am not in gives nothing', async () => {

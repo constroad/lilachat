@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Link2, Link2Off } from 'lucide-react';
-import { canManageMembers, memberCountLabel, shareCardFor, shareInvitesStore, type ChannelShare, type ClientWorkspace } from '@lilachat/shared';
+import { canManageMembers, memberCountLabel, shareCardFor, shareTargets, shareInvitesStore, type ChannelShare, type ClientWorkspace } from '@lilachat/shared';
 import { Overlay, PrimaryButton } from '../ui/Overlay';
 import { SpaceLogo } from './SpaceLogo';
 import { useCurrentSpaceId } from './currentSpace';
-import { answerShareInvite, channelShares, endChannelShare, shareChannel, shareInvites } from './spacesApi';
+import { answerShareInvite, channelShares, endChannelShare, incognitoSpaces, shareChannel, shareInvites } from './spacesApi';
 
 /**
  * Channels shared between spaces on the web (José 11/11, like Slack Connect;
@@ -67,10 +67,13 @@ export function ShareChannelDialog(props: { jwt: string; ownerSpaceId: string; c
   const [shares, setShares] = useState<ChannelShare[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // José 19/11: the superadmin also shares with the spaces he is in incognito (403 for anyone else).
+  const [incognito, setIncognito] = useState<ClientWorkspace[]>([]);
   useEffect(() => {
     void channelShares(props.jwt, props.ownerSpaceId, props.chatId).then((response) => setShares(response.ok ? response.data.shares : []));
+    void incognitoSpaces(props.jwt).then((response) => setIncognito(response.ok ? (response.data.workspaces ?? []) : []));
   }, [props.jwt, props.ownerSpaceId, props.chatId]);
-  const others = props.spaces.filter((space) => space.id !== props.ownerSpaceId && space.status === 'active');
+  const others = shareTargets({ ownerSpaceId: props.ownerSpaceId, mine: props.spaces, incognito });
   const owner = props.spaces.find((space) => space.id === props.ownerSpaceId);
   const act = async (spaceId: string, run: () => Promise<{ ok: boolean; message?: string }>) => {
     setBusy(spaceId);

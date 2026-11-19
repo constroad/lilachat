@@ -145,6 +145,7 @@ Las reglas de permisos son las mismas: vienen de `shared` y el server las aplica
 - **13/11** · Incógnito solo lee. «Ver incógnitos» pasa a Ajustes › Superadmin.
 - **17/11** · La ficha de miembro web ya no se desborda a 390 px.
 - **19/11** · «Invitados» muestra la fecha de cada invitación por correo y permite «Reenviar».
+- **19/11** · El superadmin comparte un canal también con los espacios donde está incógnito (`shareTargets` + `GET /admin/incognito`, web y APK; José: «sistemas» de Inframaq con Globofast). El server ya lo aceptaba.
 
 ## 5. Diseños de Stitch
 

@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Link2, Link2Off } from 'lucide-react-native';
-import { memberCountLabel, shareCardFor, shareInvitesStore, type ChannelShare, type ClientWorkspace } from '@lilachat/shared';
+import { memberCountLabel, shareCardFor, shareInvitesStore, shareTargets, type ChannelShare, type ClientWorkspace } from '@lilachat/shared';
 import { useColores } from '../ui/tema';
 import { Sheet } from '../ui/Sheet';
 import { useCurrentSpaceId, useMySpaces } from './currentSpace';
 import { SpaceLogo } from './SpaceSwitcherSheet';
-import { answerShareInvite, channelShares, endChannelShare, shareChannel, shareInvites } from './spacesApi';
+import { answerShareInvite, channelShares, endChannelShare, incognitoSpaces, shareChannel, shareInvites } from './spacesApi';
 
 /**
  * Channels shared between spaces on the phone (José 11/11, like Slack Connect;
@@ -102,9 +102,12 @@ function ShareChannelSheet(props: { jwt: string; chatId: string; channelName: st
     const response = await channelShares(props.jwt, props.owner.id, props.chatId);
     setShares(response.ok ? response.data.shares : []);
   }, [props.jwt, props.owner.id, props.chatId]);
+  // José 19/11: the superadmin also shares with the spaces he is in incognito (403 for anyone else).
+  const [incognito, setIncognito] = useState<ClientWorkspace[]>([]);
   useEffect(() => {
     void refresh();
-  }, [refresh]);
+    void incognitoSpaces(props.jwt).then((response) => setIncognito(response.ok ? (response.data.workspaces ?? []) : []));
+  }, [refresh, props.jwt]);
   const act = async (spaceId: string, run: () => Promise<{ ok: boolean; message?: string }>) => {
     setBusy(spaceId);
     setError('');
@@ -113,7 +116,7 @@ function ShareChannelSheet(props: { jwt: string; chatId: string; channelName: st
     await refresh();
     setBusy(null);
   };
-  const others = props.spaces.filter((space) => space.id !== props.owner.id && space.status === 'active');
+  const others = shareTargets({ ownerSpaceId: props.owner.id, mine: props.spaces, incognito });
   return (
     <Sheet visible onClose={props.onClose} testID="hoja-compartir-canal" className="px-4 pb-2 pt-1" maxHeight="85%">
       <Text className="text-[11px] font-bold uppercase tracking-widest text-primary">{`Canal de ${props.owner.name}`}</Text>

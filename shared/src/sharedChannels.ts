@@ -124,3 +124,16 @@ export function otherSpaceName(member: { spaceRole?: string; space?: { name: str
   return !member.spaceRole && member.space ? member.space.name : null;
 }
 
+
+/**
+ * The spaces a channel can be shared with: my other active spaces and, for the superadmin, the
+ * ones he is in incognito (José 19/11: «sistemas» of Inframaq with Globofast). Once each.
+ */
+export function shareTargets<Space extends { id: string; status: string }>(params: { ownerSpaceId: string; mine: readonly Space[]; incognito: readonly Space[] }): Space[] {
+  const seen = new Set<string>([params.ownerSpaceId]);
+  return [...params.mine, ...params.incognito].filter((space) => {
+    if (space.status !== 'active' || seen.has(space.id)) return false;
+    seen.add(space.id);
+    return true;
+  });
+}

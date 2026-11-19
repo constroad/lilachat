@@ -49,6 +49,17 @@ describe('ShareChannelRow', () => {
     await waitFor(() => expect(calls.some((call) => call.method === 'POST' && call.url.includes('/workspaces/im/channels/c1/shares') && call.body?.includes('"gl"'))).toBe(true));
   });
 
+  /** José 19/11: «sistemas» of Inframaq with Globofast, where the superadmin is only incognito. */
+  it('the superadmin also sees the spaces he is in incognito and shares with one', async () => {
+    const calls = answer({ '/shares': { shares: [] }, '/admin/incognito': { workspaces: [space('gf', 'Globofast Incógnito', 'admin')] } });
+    render(<ShareChannelRow jwt="t" chatId="c1" channelName="sistemas" ownerSpaceId="im" spaces={spaces} isGeneral={false} />);
+
+    await userEvent.click(screen.getByTestId('compartir-canal'));
+    await userEvent.click(await screen.findByTestId('compartir-gf'));
+
+    await waitFor(() => expect(calls.some((call) => call.method === 'POST' && call.url.includes('/workspaces/im/channels/c1/shares') && call.body?.includes('"gf"'))).toBe(true));
+  });
+
   it('counts one member in singular', async () => {
     answer({ '/shares': { shares: [] } });
     render(<ShareChannelRow jwt="t" chatId="c1" channelName="administracion" ownerSpaceId="im" spaces={[...spaces, { ...space('t2', 'Test 2', 'owner'), members: 1 }]} isGeneral={false} />);

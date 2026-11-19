@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { chatDetailPath, channelPeopleAsContacts, otherSpaceName, memberSpacePill, shareCardFor, shareInvitesStore, shareRefusal, shareStatusFor, spacesWithAccess, type ShareInvite } from './sharedChannels.js';
+import { shareTargets, chatDetailPath, channelPeopleAsContacts, otherSpaceName, memberSpacePill, shareCardFor, shareInvitesStore, shareRefusal, shareStatusFor, spacesWithAccess, type ShareInvite } from './sharedChannels.js';
 import { spaceSections } from './spaceSections.js';
 
 /** José 11/11 (via Portal): a channel of one space shared with others, like Slack Connect. */
@@ -156,3 +156,17 @@ describe('otherSpaceName', () => {
   });
 });
 
+
+/** José 19/11: the superadmin shares a channel with a space he is in only incognito (Globofast). */
+describe('shareTargets', () => {
+  const space = (id: string, status: 'active' | 'pending' = 'active') => ({ id, name: id, status });
+
+  it('my other active spaces plus the incognito ones, once each, never the owner', () => {
+    const targets = shareTargets({ ownerSpaceId: 'inframaq', mine: [space('inframaq'), space('constroad'), space('test', 'pending')], incognito: [space('globofast'), space('constroad')] });
+    expect(targets.map((one) => one.id)).toEqual(['constroad', 'globofast']);
+  });
+
+  it('without incognito spaces (anyone but the superadmin) it is just my other active spaces', () => {
+    expect(shareTargets({ ownerSpaceId: 'a', mine: [space('a'), space('b')], incognito: [] }).map((one) => one.id)).toEqual(['b']);
+  });
+});

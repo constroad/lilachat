@@ -70,6 +70,13 @@ ingeniero de campo desde el celular y lo mira el cliente desde una computadora.
 - La leyenda plegable «Leyenda» y el selector de etapa sobre el mapa se quitaron (los reemplaza el
   panel). Sobre el mapa quedan el corte «Hasta hoy» y el selector de trabajo, que sí cambia las cifras
   y la exportación («Sale lo que ves»). La capa Fotos pasó del botón sobre el mapa al panel.
+- **«Fotos» por tipo de informe** (José 19/11, la regla de Portal f080f7c6a): bajo el interruptor de «Fotos»,
+  una sub-capa por tipo de informe (Control de pista, Control de imprimación, Área adicional, Fresado,
+  Registro y Levantamiento de observaciones…) con su interruptor y su cuenta; la de más fotos primero y
+  «Otras fotos de campo» (fotos sin informe) al final. Con «Fotos» apagado no se ve ninguna. Una sub-capa
+  apagada sale antes de armar los pines (`shared/src/reportPhotoLayers.ts`: `reportPhotoLayersOf`,
+  `photosOfShownReports`, `reportPhotoLayerRows`; nombres de `reportTypeLabel`). Web y APK: `MapPhotos.tsx`
+  (`usePhotoLayer`) y `MapLayersPanel.tsx`. Las descargas de unidades no cambian.
 - **«Editar croquis» visible en todos los dispositivos:** en la barra del servicio (web ancha) o en la
   barra propia del mapa (web angosta), con su texto completo.
 
@@ -204,6 +211,7 @@ Motores puros, con test, usados por web y APK:
 - **16/11** «Editar croquis» del editor 2.0 abre el mapa sobre el editor (web).
 - **19/11** El encuadre inicial suma dibujos y observaciones de Portal a las calles y tiene un tamaño mínimo
   (web y APK, mismo motor `workMapView`). Antes, con calles, los dibujos fuera de ellas no entraban.
+- **19/11** «Fotos» se separa en sub-capas por tipo de informe, como Portal (`reportPhotoLayers.ts`).
 
 ## 5. Diseños de Stitch relacionados
 

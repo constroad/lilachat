@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { isLayerOn, layerRowsOf, NO_HIDDEN_LAYERS, toggleLayer, workMapStageFilter, type MapLayerGroup, type MapLayers, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { isLayerOn, layerRowsOf, NO_HIDDEN_LAYERS, toggleLayer, workMapStageFilter, type MapLayerGroup, type MapLayers, type ReportPhotoLayerRow, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Interruptor } from '../../../ui/Interruptor';
 import { KICKER } from './WorkMapPanel';
 
@@ -42,7 +42,32 @@ function StageChips(props: { map: WorkMap; filter: WorkMapFilter; onFilter: (fil
   );
 }
 
-type PanelProps = { map: WorkMap; view: WorkMapView; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; layers: MapLayers; onToggle: (group: MapLayerGroup, key: string) => void; photos?: { count: number; shown: boolean; onToggle: () => void } };
+/** «Fotos» and its sub-layers, one per report type (José 19/11). */
+type PhotoLayersProps = { count: number; shown: boolean; onToggle: () => void; reports: readonly ReportPhotoLayerRow[]; onToggleReport: (type: string) => void };
+type PanelProps = { map: WorkMap; view: WorkMapView; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; layers: MapLayers; onToggle: (group: MapLayerGroup, key: string) => void; photos?: PhotoLayersProps };
+
+/**
+ * «Fotos» with a sub-row per report type (José 19/11, as Portal): each its switch and count. The
+ * sub-rows hang from «Fotos»: with «Fotos» off no photo shows, whatever its own switch says.
+ */
+function PhotoLayers({ photos }: { photos: PhotoLayersProps }) {
+  return (
+    <Section title={`Fotos · ${photos.count}`}>
+      <View className={ROW}>
+        <Text className="min-w-0 flex-1 text-[15px] font-semibold text-on-surface">Fotos de obra ubicadas</Text>
+        <Interruptor testID="capa-fotos" value={photos.shown} onValueChange={photos.onToggle} />
+      </View>
+      <View testID="capa-fotos-informes" className={`ml-3 border-l-2 border-outline/15 pl-3 ${photos.shown ? '' : 'opacity-50'}`}>
+        {photos.reports.map((report) => (
+          <View key={report.type} className={ROW}>
+            <Text numberOfLines={1} className="min-w-0 flex-1 text-[15px] text-on-surface">{`${report.label} (${report.count})`}</Text>
+            <Interruptor testID={`capa-fotos-${report.type}`} value={report.shown} onValueChange={() => photos.onToggleReport(report.type)} />
+          </View>
+        ))}
+      </View>
+    </Section>
+  );
+}
 
 /**
  * «Capas y leyenda» (José 19/11, design cc-04 mobile, the sheet over the map): the works (partidas)
@@ -92,14 +117,7 @@ export function MapLayersPanel(props: PanelProps) {
           ))}
         </Section>
       ) : null}
-      {props.photos && props.photos.count > 0 ? (
-        <Section title={`Fotos · ${props.photos.count}`}>
-          <View className={ROW}>
-            <Text className="min-w-0 flex-1 text-[15px] font-semibold text-on-surface">Fotos de obra ubicadas</Text>
-            <Interruptor testID="capa-fotos" value={props.photos.shown} onValueChange={props.photos.onToggle} />
-          </View>
-        </Section>
-      ) : null}
+      {props.photos && props.photos.count > 0 ? <PhotoLayers photos={props.photos} /> : null}
     </View>
   );
 }

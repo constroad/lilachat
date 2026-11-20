@@ -250,6 +250,7 @@ export * from './botUploads.js';
 export * from './workMapBrush.js';
 export * from './workMapStations.js';
 export * from './workMapPhotos.js';
+export * from './reportPhotoLayers.js';
 export * from './workMapDays.js';
 export * from './messageTarget.js';
 export * from './placeSearch.js';

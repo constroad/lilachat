@@ -173,7 +173,7 @@ export function WorkMapBoard(props: BoardProps) {
   const picks = useMapPick(map, () => setWide(true));
   const mapLayers = useMapLayers();
   const drawn = useMemo(() => ({ view: viewWithLayers(view, mapLayers.layers), marks: visibleMarks(map.marks ?? NO_MARKS, mapLayers.layers), observations: visibleObservations(map.observations ?? NO_OBSERVATIONS, mapLayers.layers) }), [view, map, mapLayers.layers]);
-  const layersNode = mapLayers.open ? <MapLayersPanel map={map} view={view} filter={filter} onFilter={setFilter} layers={mapLayers.layers} onToggle={mapLayers.toggle} photos={photos.available ? { count: photos.count, shown: photos.shown, onToggle: () => photos.setShown(!photos.shown) } : undefined} /> : null;
+  const layersNode = mapLayers.open ? <MapLayersPanel map={map} view={view} filter={filter} onFilter={setFilter} layers={mapLayers.layers} onToggle={mapLayers.toggle} photos={photos.available ? { count: photos.count, shown: photos.shown, onToggle: () => photos.setShown(!photos.shown), reports: photos.reports, onToggleReport: photos.toggleReport } : undefined} /> : null;
   const closeFull = () => { setWide(false); picks.clearStart(); picks.close(); };
   const discharges = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null;
   const primeCoat = props.editMap && props.mapPhotos?.length ? <PrimeCoatSuggestions map={map} photos={props.mapPhotos} onRecord={(id, draft) => openStreet(id, true, draft)} /> : null;

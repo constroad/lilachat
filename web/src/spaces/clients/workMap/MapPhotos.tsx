@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Camera } from 'lucide-react';
-import { photoLayerFiles, photoPinsOfDay, photoSpotsOf, type MapPhoto, type WorkMap } from '@lilachat/shared';
+import { photoLayerFiles, photoPinsOfDay, photoSpotsOf, photosOfShownReports, reportPhotoLayerRows, toggleReportLayer, type MapPhoto, type WorkMap } from '@lilachat/shared';
 import { usePortalFileViewer } from '../PortalFileViewer';
 
 const NO_PHOTOS: MapPhoto[] = [];
+const NO_HIDDEN_REPORTS: ReadonlySet<string> = new Set();
 
 /**
  * The «Fotos» layer (José 08/11): every field photo lands on its street and chainage; a marker per
@@ -11,14 +12,19 @@ const NO_PHOTOS: MapPhoto[] = [];
  */
 export function usePhotoLayer(map: WorkMap, photos: MapPhoto[] = NO_PHOTOS, days: string[] = []) {
   const [shown, setShown] = useState(false);
-  const spots = useMemo(() => photoSpotsOf(map, photos), [map, photos]);
+  // José 19/11: one sub-layer per report type; a hidden one leaves before the pins are built.
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(NO_HIDDEN_REPORTS);
+  const reports = useMemo(() => reportPhotoLayerRows(photos, hidden), [photos, hidden]);
+  const kept = useMemo(() => photosOfShownReports(photos, hidden), [photos, hidden]);
+  const spots = useMemo(() => photoSpotsOf(map, kept), [map, kept]);
   const pins = useMemo(() => photoPinsOfDay(spots, days), [spots, days]);
   const viewer = usePortalFileViewer();
   const openPin = (pinId: string) => {
     const opened = photoLayerFiles(spots, pinId);
     if (opened) viewer.open(opened.first, opened.all);
   };
-  return { available: photos.length > 0, shown, toggle: () => setShown((before) => !before), pins, openPin, viewer: viewer.viewer, count: photos.length };
+  const toggleReport = (type: string) => setHidden((before) => toggleReportLayer(before, type));
+  return { available: photos.length > 0, shown, toggle: () => setShown((before) => !before), pins, openPin, viewer: viewer.viewer, count: photos.length, reports, toggleReport };
 }
 
 /** The button over the map: «Fotos · 12», pressed while the layer shows. */

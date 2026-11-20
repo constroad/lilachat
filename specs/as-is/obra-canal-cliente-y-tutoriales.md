@@ -59,10 +59,12 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
   nombre y debajo «CLIENTE · 40 %» (`serviceSlimLine`), enlace y «⋯»; sin chip de estado ni barra. Sin migas (se quitó
   `ServiceCrumbs`). BACK de Android vuelve a Servicios.
 - **Una sola barra subrayada** (`serviceTabs`): Pedidos N · Informes N · Mapa · Drive; el número
-  va aparte (`ServiceTabItem.count`). Las acciones de cada sección van a la derecha de la barra:
-  «Crear informe» en Informes; Pegar, cámara y Subir en Drive; Capas, Editar croquis, Más,
-  Compartir y Registrar en Mapa. Web: `ServiceShellWeb.tsx` (`SectionActions` dibuja en esa barra
-  con un portal).
+  va aparte (`ServiceTabItem.count`). La barra en sí nunca lleva botones de una sección (auditoría
+  20/11: «Crear informe» y Pegar/cámara/Subir la empujaban a una segunda fila en computadora):
+  «Crear informe» va en la barra propia de Informes, Pegar/cámara/Subir en la de Drive (ambas en
+  el contenido, bajo la barra de pestañas); Capas, Editar croquis, Más, Compartir y Registrar
+  flotan sobre el lienzo del Mapa. Web: `ServiceShellWeb.tsx` sigue exportando `SectionActions`
+  (sin uso hoy) para una acción futura que de verdad quepa en esa fila.
 - Pedidos como tarjetas (ped-v2, José 20/11, `shared/src/serviceOrderCards.ts`). Cabecera:
   producto (o «Pedido» si Portal no lo manda) · cantidad · día, la obra debajo y el estado
   (`OrderCard.heading`, `site`). Sin código de pedido: Portal no lo manda en el detalle.

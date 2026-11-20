@@ -16,10 +16,10 @@ const Chip = ({ row, large }: { row: DetailRow; large?: boolean }) => <span clas
 /** José 30/10: the row opens its sheet inside Lilachat; the file opens in Lilachat's viewer, not in Portal. */
 function RowView({ row, icon, onOpen, onOpenFile }: { row: DetailRow; icon?: boolean; onOpen: (id: string) => void; onOpenFile: OpenSheetFile }) {
   return (
-    <li data-testid={`fila-${row.id}`} className={`flex min-h-[64px] flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5 ${icon ? 'md:min-h-[76px]' : ''}`}>
+    <li data-testid={`fila-${row.id}`} className="flex min-h-[64px] flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5">
       {icon ? <span aria-hidden className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><FileText size={18} /></span> : null}
       <button type="button" onClick={() => onOpen(row.id)} className="min-w-0 flex-1 text-left">
-        <p className={`line-clamp-2 font-semibold hover:underline ${icon ? 'text-sm md:text-base' : 'text-sm'}`}>{row.title}</p>
+        <p className="line-clamp-2 text-sm font-semibold hover:underline">{row.title}</p>
         {row.line ? <p className="truncate text-[12px] text-on-surface-variant">{row.line}</p> : null}
       </button>
       {/* On a phone the state and the file go under the title, so the title is not cut. */}

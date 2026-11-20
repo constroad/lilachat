@@ -34,7 +34,8 @@ export function SectionActions(props: { children: ReactNode }) {
 }
 
 export const SHELL_ACTION = 'flex h-10 shrink-0 items-center gap-2 rounded-xl border border-outline/20 bg-surface px-3 text-[13px] font-semibold text-on-surface hover:bg-background';
-export const SHELL_PRIMARY = 'flex h-10 shrink-0 items-center gap-2 rounded-xl bg-primary px-4 text-[13px] font-bold text-on-primary hover:bg-primary/90 disabled:opacity-60';
+/** 36 px (cc-03 pixel diff 20/11): «Crear informe», the one caller. */
+export const SHELL_PRIMARY = 'flex h-9 shrink-0 items-center gap-2 rounded-xl bg-primary px-4 text-[13px] font-bold text-on-primary hover:bg-primary/90 disabled:opacity-60';
 
 const StatusChip = ({ service }: { service: SpaceClientService }) => (
   <span className={`shrink-0 rounded-md border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${STATUS_TONE[service.status]}`}>{CLIENT_SERVICE_STATUS_LABELS[service.status]}</span>

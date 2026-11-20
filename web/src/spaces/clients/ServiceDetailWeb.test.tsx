@@ -36,14 +36,15 @@ describe('an open service takes the whole conversation (José 06/11: «ocupe tod
     expect(screen.queryByTestId('ruta-servicio')).toBeNull();
   });
 
-  it('a section\'s action sits at the right of the tab bar: «Crear informe» on Informes only', async () => {
+  it('«Crear informe» sits in Informes\' own toolbar, not the shared tab bar (audit 20/11: it pushed the header to a second row)', async () => {
     // Arrange
     vi.stubGlobal('fetch', vi.fn(async (url: string) => askedFor(url)));
     render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney={false} onBack={() => undefined} />);
     // Act
     fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
     // Assert
-    expect(within(screen.getByTestId('acciones-seccion')).getByTestId('crear-informe')).toBeInTheDocument();
+    expect(screen.queryByTestId('crear-informe')).not.toBeNull();
+    expect(within(screen.getByTestId('acciones-seccion')).queryByTestId('crear-informe')).toBeNull();
     fireEvent.click(screen.getByTestId('pestana-detalle-orders'));
     expect(screen.queryByTestId('crear-informe')).toBeNull();
   });

@@ -5,7 +5,7 @@ import { usePortalFileViewer } from './PortalFileViewer';
 import { RecordSheetWeb } from './RecordSheetWeb';
 import { ServiceDriveWeb } from './ServiceDriveWeb';
 import { ServiceListWeb } from './ServiceListsWeb';
-import { SectionActions, SHELL_PRIMARY, ServiceShellWeb, useCompactShell } from './ServiceShellWeb';
+import { SHELL_PRIMARY, ServiceShellWeb, useCompactShell } from './ServiceShellWeb';
 import { MapWorkspace } from './workMap/MapWorkspace';
 import { doorMapLinks, serviceLinkSender } from './workMap/workProgressSender';
 import { ServiceLinkSheetWeb } from './ServiceLinkSheetWeb';
@@ -24,7 +24,11 @@ type OpenSheet = { tab: DetailTabKey; id: string };
 const orderLinkAction = (links: ChannelLinks | undefined, top: OpenSheet | undefined, target: ServiceAskTarget) =>
   links?.can('order') && top?.tab === 'orders' ? { label: 'Crear enlace del pedido', onPress: () => links.open({ kind: 'order', clientId: target.clientId, orderId: top.id }) } : undefined;
 
-/** «Crear informe» at the right of the tab bar (design cc-03), for everyone with the services (José 05/11). */
+/**
+ * «Crear informe» at the right of Informes' own toolbar (design cc-03), for everyone with the
+ * services (José 05/11). Not in the shared tab bar: crammed there with the other tabs it pushed
+ * the service header to a second row on a computer (audit 20/11).
+ */
 const CreateReportButton = ({ onPress }: { onPress: () => void }) => (
   <button type="button" data-testid="crear-informe" onClick={onPress} className={SHELL_PRIMARY}><FilePlus size={16} /> Crear informe</button>
 );
@@ -64,7 +68,7 @@ function ServiceLists(props: ListProps) {
   };
   return (
     <>
-      {tab === 'reports' ? <SectionActions><CreateReportButton onPress={props.onCreateReport} /></SectionActions> : null}
+      {tab === 'reports' ? <div className="flex justify-end"><CreateReportButton onPress={props.onCreateReport} /></div> : null}
       {props.admin ? <ServiceStagesWeb detail={detail} /> : null}
       {tab === 'reports' && props.seesMoney ? <ReportAction target={props.target} serviceId={props.serviceId} onAnswered={props.onReported} /> : null}
       <ServiceListWeb detail={detail} tab={tab} onOpen={openRow} onOpenDispatch={(id) => setOpened([{ tab: 'dispatches', id }])} onOpenFile={viewer.open} />

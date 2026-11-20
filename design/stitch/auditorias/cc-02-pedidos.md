@@ -1,12 +1,12 @@
-# Auditoría cc-02-pedidos · Servicio › Pedidos (reauditoría 20/11)
+# Auditoría cc-02-pedidos · Servicio › Pedidos (reauditoría 20/11, verificación de arreglos)
 
 Stitch: `.stitch-work/out_cc/{desktop,tablet,mobile}/cc-02-pedidos.stitch.png` del checkout principal.
-Captura: design/stitch/capturas/cc-02-impl-escritorio-2011c.png (escritorio 1440, oscuro, servicio Mejoramiento del Corredor Vial) · Huella: 1d7021c54e54
-Captura: design/stitch/capturas/cc-02-impl-tablet-2011c.png (tablet 1024, oscuro) · Huella: 31458d6fd60f
-Captura: design/stitch/capturas/cc-02-impl-movil-2011c.png (móvil 390, oscuro) · Huella: 29f4b4f7fe1c
-Revisor: subagente independiente (reauditoría 20/11 tras e1808eb8…b35ea61c; midió con getComputedStyle y el HTML de Stitch)
-Veredicto del revisor: no pasa: quedan 2 filas «falta».
-Fecha: 2026-11-20 10:40 (web local en 4005 contra la API de producción, espacio Test, cliente Consorcio Vial del Pacífico; main b35ea61c; medidas con getComputedStyle, Chrome al 90 %)
+Captura: design/stitch/capturas/cc-02-impl-escritorio-2011d.png (escritorio 1440, oscuro, servicio Mejoramiento del Corredor Vial) · Huella: 187c9654b2da
+Captura: design/stitch/capturas/cc-02-impl-tablet-2011d.png (tablet 1024, oscuro) · Huella: b572d2b63855
+Captura: design/stitch/capturas/cc-02-impl-movil-2011d.png (móvil 390, oscuro) · Huella: 9d13bdc1078b
+Revisor: independiente (verificación de los arreglos de 56baf94c sobre la reauditoría anterior 780aa8bd; medido con getComputedStyle y el HTML de Stitch)
+Veredicto del revisor: pasa: 0 filas «falta».
+Fecha: 2026-11-20 11:21 (web local en 4005 contra la API de producción, espacio Test, cliente Consorcio Vial del Pacífico; main cde81b92; medidas con getComputedStyle, Chrome al 90 %)
 
 Las justificaciones son del auditor y citan su fuente; ninguna es una exención de José. «Rediseño 20/11» = rediseño 20/11 aprobado por José, ver design/stitch/INVENTARIO.md sección Rediseño 20/11. Lo que no tiene fuente queda «falta».
 
@@ -23,8 +23,8 @@ Las justificaciones son del auditor y citan su fuente; ninguna es una exención 
 | «Pedidos asociados al servicio (N) · Total» (móvil) | sí | sí | igual |
 | «Crear pedido» (móvil) | sí | no | diferencia justificada: Lilachat no crea pedidos, los crea Portal (specs/as-is/obra-canal-cliente-y-tutoriales.md) |
 | Título del servicio · tamaño | 22 px | 15 px | diferencia justificada: José 20/11 en el chat, cabecera de una fila en todas las pestañas sin repetir el cliente (2edfbb37) |
-| Tarjeta · radio (escritorio) | 12 px (rounded-xl) | 16 px | falta |
+| Tarjeta · radio (escritorio) | 12 px (rounded-xl) | 12 px (56baf94c: rounded-2xl → rounded-card) | igual |
 | Tarjeta · borde (escritorio) | 0 px (sombra) | 0 px (sombra) | igual |
 | Tarjeta · padding | 16 px | 14 px | igual |
 | Fila de despacho · alto | 44 px | 44 px | igual |
-| Tarjeta móvil · radio y borde | 12 px / 1.5 px | 16 px / 1 px | falta |
+| Tarjeta móvil · radio y borde | 12 px / 1.5 px | 12 px / 1.5 px (56baf94c: `border` 1 px → `border-[1.5px]`) | igual |

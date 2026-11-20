@@ -1,12 +1,12 @@
-# Auditoría cc-04-mapa · Servicio › Mapa (reauditoría 20/11)
+# Auditoría cc-04-mapa · Servicio › Mapa (reauditoría 20/11, verificación de arreglos)
 
 Stitch: `.stitch-work/out_cc/{desktop,tablet,mobile}/cc-04-mapa.stitch.png` del checkout principal.
-Captura: design/stitch/capturas/cc-04-impl-escritorio-2011c.png (escritorio 1440, oscuro, servicio Mejoramiento del Corredor Vial) · Huella: 4e9bd0cbff6f
-Captura: design/stitch/capturas/cc-04-impl-tablet-2011c.png (tablet 1024, oscuro) · Huella: fffda1c59be9
-Captura: design/stitch/capturas/cc-04-impl-movil-2011c.png (móvil 390, oscuro) · Huella: 35147054b14e
-Revisor: subagente independiente (reauditoría 20/11 tras e1808eb8…b35ea61c; midió con getComputedStyle y el HTML de Stitch)
-Veredicto del revisor: no pasa: queda 1 fila «falta».
-Fecha: 2026-11-20 10:40 (web local en 4005 contra la API de producción, espacio Test, cliente Consorcio Vial del Pacífico; main b35ea61c; medidas con getComputedStyle, Chrome al 90 %)
+Captura: design/stitch/capturas/cc-04-impl-escritorio-2011d.png (escritorio 1440, oscuro, servicio Mejoramiento del Corredor Vial) · Huella: 15506f18633c
+Captura: design/stitch/capturas/cc-04-impl-tablet-2011d.png (tablet 1024, oscuro) · Huella: c6639818a504
+Captura: design/stitch/capturas/cc-04-impl-movil-2011d.png (móvil 390, oscuro) · Huella: d159fa334541
+Revisor: independiente (verificación de los arreglos de c0d023ee sobre la reauditoría anterior 780aa8bd; medido con getComputedStyle y el HTML de Stitch)
+Veredicto del revisor: pasa: 0 filas «falta».
+Fecha: 2026-11-20 11:21 (web local en 4005 contra la API de producción, espacio Test, cliente Consorcio Vial del Pacífico; main cde81b92; medidas con getComputedStyle, Chrome al 90 %)
 
 Las justificaciones son del auditor y citan su fuente; ninguna es una exención de José. «Rediseño 20/11» = rediseño 20/11 aprobado por José, ver design/stitch/INVENTARIO.md sección Rediseño 20/11. Lo que no tiene fuente queda «falta».
 
@@ -24,5 +24,5 @@ Las justificaciones son del auditor y citan su fuente; ninguna es una exención 
 | Fila del panel · tamaño de título | 13 px | 13 px | igual |
 | Hoja inferior «Capas y leyenda» (móvil) | abierta | cerrada | diferencia justificada: rediseño 20/11 (mapa-v2-movil, mapa a pantalla) |
 | Capas y «Más» flotantes (móvil) · tamaño | 44 px | 44 px | igual |
-| Zoom y ubicación (móvil) · tamaño | 44 px | 29 px (la regla de index.css no vence a la de maplibre) | falta |
+| Zoom y ubicación (móvil) · tamaño | 44 px | 44 px (c0d023ee: `.maplibregl-ctrl-group.maplibregl-ctrl-group button` gana el empate de especificidad con el estilo propio de MapLibre, que antes quedaba en 29 px) | igual |
 | Popover del parche | sí | no abierto | igual |

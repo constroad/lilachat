@@ -10,20 +10,21 @@ const KICKER = 'font-mono text-[11px] font-bold uppercase tracking-[0.16em] text
 const CARD = 'overflow-hidden rounded-2xl border border-outline/15 bg-surface';
 /** Design cc-02 on a computer: the order's card floats on a shadow, no border. */
 const ORDER_CARD = `${CARD} md:border-0 md:shadow-sm`;
-const Chip = ({ row }: { row: DetailRow }) => <span className={`shrink-0 rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${DETAIL_TONE[row.status.tone]}`}>{row.status.label}</span>;
+const Chip = ({ row, large }: { row: DetailRow; large?: boolean }) => <span className={`shrink-0 rounded-md border font-bold ${large ? 'px-2.5 py-1 text-[11px]' : 'px-2 py-0.5 text-[10px]'} uppercase tracking-wide ${DETAIL_TONE[row.status.tone]}`}>{row.status.label}</span>;
 
 /** José 30/10: the row opens its sheet inside Lilachat; the file opens in Lilachat's viewer, not in Portal. */
 function RowView({ row, icon, onOpen, onOpenFile }: { row: DetailRow; icon?: boolean; onOpen: (id: string) => void; onOpenFile: OpenSheetFile }) {
   return (
-    <li data-testid={`fila-${row.id}`} className="flex min-h-[64px] flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5">
-      {icon ? <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><FileText size={18} /></span> : null}
+    <li data-testid={`fila-${row.id}`} className={`flex min-h-[64px] flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5 ${icon ? 'md:min-h-[76px]' : ''}`}>
+      {icon ? <span aria-hidden className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><FileText size={18} /></span> : null}
       <button type="button" onClick={() => onOpen(row.id)} className="min-w-0 flex-1 text-left">
-        <p className="line-clamp-2 text-sm font-semibold hover:underline">{row.title}</p>
+        <p className={`line-clamp-2 font-semibold hover:underline ${icon ? 'text-sm md:text-base' : 'text-sm'}`}>{row.title}</p>
         {row.line ? <p className="truncate text-[12px] text-on-surface-variant">{row.line}</p> : null}
       </button>
       {/* On a phone the state and the file go under the title, so the title is not cut. */}
-      <span className={`flex shrink-0 items-center gap-3 max-sm:basis-full max-sm:justify-end ${icon ? 'max-sm:pl-[52px]' : ''}`}>
-        <Chip row={row} />
+      {/* Without a file the state fits beside the title (design cc-03 mobile: a 64 px row). */}
+      <span className={`flex shrink-0 items-center gap-3 ${row.file ? `max-sm:basis-full max-sm:justify-end ${icon ? 'max-sm:pl-[50px]' : ''}` : ''}`}>
+        <Chip row={row} large={icon} />
         {row.file ? (
           <button type="button" onClick={() => row.file && onOpenFile({ url: row.file.url, name: `${row.title} · ${row.file.label}` })} data-testid={`archivo-${row.id}`} className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-outline/20 px-2.5 text-[12px] font-semibold text-on-surface hover:bg-background"><FileText size={14} /> {row.file.label}</button>
         ) : null}
@@ -39,7 +40,7 @@ function ReportDays({ detail, onOpen, onOpenFile }: { detail: ServiceDetail; onO
       {reportGroups(detail).map((group) => (
         <section key={group.title} data-testid={`dia-informes-${group.title}`}>
           <p className={`mb-2 flex justify-between px-1 ${KICKER}`}>{group.title}<span className="normal-case tracking-normal">{group.rows.length === 1 ? '1 informe' : `${group.rows.length} informes`}</span></p>
-          <ul className={`divide-y divide-outline/10 ${CARD}`}>{group.rows.map((row) => <RowView key={row.id} row={row} icon onOpen={onOpen} onOpenFile={onOpenFile} />)}</ul>
+          <ul className="divide-y divide-outline/10 overflow-hidden rounded-card border border-outline/15 bg-surface">{group.rows.map((row) => <RowView key={row.id} row={row} icon onOpen={onOpen} onOpenFile={onOpenFile} />)}</ul>
         </section>
       ))}
     </div>

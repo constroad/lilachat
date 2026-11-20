@@ -296,6 +296,9 @@ en la cabecera del Drive y las acciones del mapa en su barra, justo bajo la barr
 - **20/11** · José («sigo viendo duplicado el nombre del cliente»): la cabecera de una fila del mapa en TODAS
   las pestañas del servicio, en web ancha y tablet del APK: «‹ Servicios», nombre en una línea, estado, «Avance N %…»,
   pestañas, enlace y «⋯»; sin repetir el cliente. Reemplaza las filas de cabecera de cc-01…cc-05.
+- **20/11** · cc-03/cc-05: las secciones del servicio usan todo el ancho del panel (antes, columna de 1024 px).
+  Fila de informe de 76 px en escritorio, ícono de 38 px, título de 16 px, estado de 11 px, tarjeta del día de 12 px;
+  sin archivo, el estado queda junto al título en el móvil.
 - **19/11** · Los dibujos del mapa toman los colores del croquis de Portal (antes, todos puntos naranjas): ficha blanca con aro y punto del color de su tipo, etiqueta desde el zoom 16 (`shared/src/workMapMarks.ts` › `markColor`, `MARK_CHIP_PAINT`, `MARK_GLYPH_PAINT`), en web y APK.
 
 ## 5. Diseños de Stitch relacionados

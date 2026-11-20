@@ -98,7 +98,10 @@ html .EmojiPickerReact.EmojiPickerReact {
 .rail-scroll { scrollbar-width: none; }
 .rail-scroll::-webkit-scrollbar { display: none; }
 
-/* The map's zoom and «my location» buttons are a finger's size on a phone (design cc-04: 44 px). */
+/* The map's zoom and «my location» buttons are a finger's size on a phone (design cc-04: 44 px).
+   Same specificity as MapLibre's own rule (.maplibregl-ctrl-group button), which loads later
+   (WorkMapCanvas imports maplibre-gl.css on mount) and was winning the tie at 29 px. The doubled
+   class, like the emoji picker above, outweighs it without `!important`. */
 @media (max-width: 767px) {
-  .maplibregl-ctrl-group button { width: 44px; height: 44px; }
+  .maplibregl-ctrl-group.maplibregl-ctrl-group button { width: 44px; height: 44px; }
 }

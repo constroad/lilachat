@@ -1,5 +1,5 @@
 import { compareNames } from './compareText.js';
-import { HOT_SCORE, lacksNextAction, overdueOf, prospectNameOf, shownStageOf, type ProspectView } from './prospectBoard.js';
+import { HOT_SCORE, isSalesProspect, lacksNextAction, overdueOf, prospectNameOf, shownStageOf, type ProspectView } from './prospectBoard.js';
 import { periodStartOf } from './prospectPlan.js';
 import { LOSS_REASON_LABEL, LOSS_REASONS, type LossReason } from './prospectSeller.js';
 
@@ -101,7 +101,8 @@ function wonOf(won: readonly ProspectView[]) {
 }
 
 /** The review of the last whole week. */
-export function weekReviewOf(prospects: readonly ProspectView[], now: Date) {
+export function weekReviewOf(allProspects: readonly ProspectView[], now: Date) {
+  const prospects = allProspects.filter(isSalesProspect);
   const week = reviewWeekOf(now);
   const inWeek = (iso: string | undefined) => time(iso) >= time(week.from) && time(iso) < time(week.to);
   const closedIn = (outcome: 'won' | 'lost') => prospects.filter((one) => one.result?.outcome === outcome && inWeek(one.result.at));

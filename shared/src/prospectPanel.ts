@@ -1,5 +1,5 @@
 import { compareNames } from './compareText.js';
-import { INTENT_LABEL, originOf, shownStageOf, type ProspectView } from './prospectBoard.js';
+import { INTENT_LABEL, isSalesProspect, originOf, shownStageOf, type ProspectView } from './prospectBoard.js';
 import { PROSPECT_INTENTS, type ProspectStage } from './prospectInsight.js';
 import { LOSS_REASON_LABEL, LOSS_REASONS } from './prospectSeller.js';
 
@@ -104,7 +104,7 @@ function lossReasonsOf(prospects: readonly ProspectView[]) {
 export function panelOf(prospects: readonly ProspectView[], period: { from: string; to?: string }) {
   const from = time(period.from);
   const to = period.to ? time(period.to) : Infinity;
-  const born = prospects.filter((one) => time(one.createdAt) >= from && time(one.createdAt) < to);
+  const born = prospects.filter(isSalesProspect).filter((one) => time(one.createdAt) >= from && time(one.createdAt) < to);
   return {
     totals: {
       prospects: born.length,

@@ -74,4 +74,9 @@ describe('panelOf', () => {
     expect(empty.totals).toEqual({ prospects: 0, qualified: 0, quoted: 0, won: 0, lost: 0, amountWon: [] });
     expect(empty.firstResponse).toEqual({ daliSeconds: null, sellerMinutes: null });
   });
+
+  it('José 20/11: a direct chat agentes marked `listing: \'chat\'` never counts as a prospect born in the period', () => {
+    const chat = prospect({ listing: 'chat', intent: 'purchase', stage: 'won', result: { outcome: 'won', at: at(14) } });
+    expect(panelOf([chat], { from }).totals.prospects).toBe(0);
+  });
 });

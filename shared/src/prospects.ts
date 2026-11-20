@@ -19,7 +19,7 @@ const PERU_MOBILE_LENGTH = 11;
 
 export type ProspectAttendedBy = 'dali' | 'human';
 export type ProspectSource = { kind: 'ctwa'; adId?: string; adTitle?: string; adUrl?: string };
-export type ProspectState = { name?: string; phone: string; lastActivityAt: string; attendedBy: ProspectAttendedBy; source?: ProspectSource };
+export type ProspectState = { name?: string; phone: string; lastActivityAt: string; attendedBy: ProspectAttendedBy; source?: ProspectSource; listing?: 'prospect' | 'chat' };
 /** A message the prospect wrote, carried by the bot: who, and when they sent it on WhatsApp. */
 export type ProspectAuthor = { name: string; phone: string; sentAt?: string; adTitle?: string };
 
@@ -61,11 +61,18 @@ export function validateProspectState(raw: unknown): { ok: true; state: Prospect
   if (phone.length < PHONE_DIGITS.min || phone.length > PHONE_DIGITS.max) return refuse(`phone lleva de ${PHONE_DIGITS.min} a ${PHONE_DIGITS.max} dígitos.`);
   if (!isIsoDate(body.last_activity_at)) return refuse('last_activity_at va como fecha ISO.');
   if (body.attended_by !== undefined && body.attended_by !== 'dali' && body.attended_by !== 'human') return refuse('attended_by va como dali o human.');
+  if (body.listing !== undefined && body.listing !== 'prospect' && body.listing !== 'chat') return refuse('listing va como prospect o chat.');
   const name = nameOf(body.name);
   if (!name.ok) return name;
   const source = body.source === undefined ? null : sourceOf(body.source);
   if (source && !source.ok) return source;
-  const state: ProspectState = { ...(name.name ? { name: name.name } : {}), phone, lastActivityAt: body.last_activity_at, attendedBy: (body.attended_by as ProspectAttendedBy | undefined) ?? 'dali' };
+  const state: ProspectState = {
+    ...(name.name ? { name: name.name } : {}),
+    phone,
+    lastActivityAt: body.last_activity_at,
+    attendedBy: (body.attended_by as ProspectAttendedBy | undefined) ?? 'dali',
+    ...(body.listing !== undefined ? { listing: body.listing as 'prospect' | 'chat' } : {}),
+  };
   return { ok: true, state: source ? { ...state, source: source.source } : state };
 }
 

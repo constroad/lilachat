@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { funnelOf, followUpsOf, inboxOf, inboxSectionOf, lacksNextAction, levelOf, missingLabelsOf, originOf, overdueOf, shownStageOf, type ProspectView } from './prospectBoard.js';
+import { funnelOf, followUpsOf, inboxOf, inboxSectionOf, isSalesProspect, lacksNextAction, levelOf, missingLabelsOf, originOf, overdueOf, shownStageOf, type ProspectView } from './prospectBoard.js';
 
 /** Dali's inbox and funnel (dl-01, dl-08, BOTS-API «Fase 2: contrato»): every rule is code, never data. */
 const now = new Date('2026-11-17T15:00:00.000Z'); // 10:00 in Lima
@@ -129,6 +129,21 @@ describe('inboxOf', () => {
     expect(inbox.sections.flatMap((section) => section.items).map((item) => item.id)).toContain(taken.id);
     expect(inbox.counts.all).toBe(5);
   });
+
+  it('José 20/11: a direct chat agentes marked `listing: \'chat\'` never counts as a prospect', () => {
+    const chat = prospect({ score: 95, listing: 'chat' });
+    const inbox = inboxOf([...board, chat], { me: ME, view: 'all' }, now);
+    expect(inbox.counts.all).toBe(3);
+    expect(inbox.sections.flatMap((section) => section.items).map((item) => item.id)).not.toContain(chat.id);
+  });
+});
+
+describe('isSalesProspect', () => {
+  it('is true without a listing (today\'s prospects) and false only for a direct chat', () => {
+    expect(isSalesProspect({})).toBe(true);
+    expect(isSalesProspect({ listing: 'prospect' })).toBe(true);
+    expect(isSalesProspect({ listing: 'chat' })).toBe(false);
+  });
 });
 
 describe('followUpsOf', () => {
@@ -141,6 +156,11 @@ describe('followUpsOf', () => {
     const followUps = followUpsOf([late, later, tomorrow, rosas, drafted], ME, now);
     expect(followUps.items.map((item) => item.prospect.id)).toEqual([late.id, drafted.id, later.id]);
     expect(followUps.overdue).toBe(1);
+  });
+
+  it('a direct chat never shows up as a follow-up', () => {
+    const chat = prospect({ listing: 'chat', nextAction: { kind: 'call', at: minutesAgo(90), assigneeId: ME } });
+    expect(followUpsOf([chat], ME, now).items).toEqual([]);
   });
 });
 
@@ -170,6 +190,15 @@ describe('funnelOf', () => {
       quoteUnanswered: { count: 1, late: [{ name: 'Luis', since: minutesAgo(4 * 24 * 60) }] },
       withoutNextAction: ['Patricia', 'Víctor'],
     });
+  });
+
+  it('a direct chat never joins a column or a figure', () => {
+    const since = minutesAgo(7 * 24 * 60);
+    const chat = prospect({ stage: 'missing_info', listing: 'chat', name: 'Chateando' });
+    const funnel = funnelOf([chat], { since }, now);
+    expect(funnel.columns.flatMap((column) => column.items)).toEqual([]);
+    expect(funnel.figures.missingInfo).toBe(0);
+    expect(funnel.open).toBe(0);
   });
 });
 

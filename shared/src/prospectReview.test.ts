@@ -69,4 +69,9 @@ describe('weekReviewOf', () => {
       ['+51 912', 'dropped'],
     ]);
   });
+
+  it('José 20/11: a direct chat agentes marked `listing: \'chat\'` never joins the weekly review', () => {
+    const chat = prospect({ listing: 'chat', result: { outcome: 'won', at: at(13), by: ROSA }, quote: { code: 'COT-9', amount: 500, currency: 'PEN' } });
+    expect(weekReviewOf([...board, chat], now).won).toEqual(review.won);
+  });
 });

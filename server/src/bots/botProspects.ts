@@ -50,6 +50,8 @@ const prospectSchema = new Schema<ProspectChannel>(
     lastActivityAt: { type: String, required: true },
     attendedBy: { type: String, enum: ['dali', 'human'], default: 'dali' },
     source: { type: sourceSchema, default: undefined },
+    // A direct 1:1 agentes marked as not a lead (José 20/11): absent reads as 'prospect' everywhere.
+    listing: { type: String, enum: ['prospect', 'chat'] },
     // What Dali knows (agentes, PUT).
     stage: { type: String },
     service: { type: serviceSchema, default: undefined },

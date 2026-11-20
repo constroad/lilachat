@@ -41,6 +41,8 @@ export type ProspectView = {
   firstTeamReply?: { at: string; userId: string };
   lastTeamReplyAt?: string;
   createdAt: string;
+  /** A direct 1:1, not a sales prospect (José 20/11): agentes sets it when it is not really a lead. Defaults to a prospect. */
+  listing?: 'prospect' | 'chat';
 };
 
 /** A file the client sent in their channel (José 17/11: a KML, a photo or a PDF with metrados). `seq` opens it in the chat. */
@@ -81,6 +83,8 @@ const FOLLOWED_STAGES: readonly ProspectStage[] = ['visit', 'quoted', 'negotiati
 
 const time = (iso: string | undefined): number => (iso ? Date.parse(iso) : Number.NaN);
 const isOpen = (prospect: ProspectView): boolean => !prospect.result;
+/** A direct 1:1 agentes marked `listing: 'chat'` is not a lead: the inbox, funnel, panel and review never count it. */
+export const isSalesProspect = (prospect: Pick<ProspectView, 'listing'>): boolean => prospect.listing !== 'chat';
 export const prospectNameOf = (prospect: Pick<ProspectView, 'name' | 'phone'>): string => prospect.name ?? shownProspectPhone(prospect.phone);
 
 /** The stage on screen: the result a seller marked wins over agentes' stage; reopening brings agentes' back. */
@@ -169,7 +173,7 @@ function servicesOf(prospects: readonly ProspectView[]): { key: string; name: st
 
 /** The inbox (dl-01): open prospects only, by section, with the counts of the three views. */
 export function inboxOf(prospects: readonly ProspectView[], params: { me: string; view: InboxView; service?: string }, now: Date) {
-  const open = prospects.filter(isOpen);
+  const open = prospects.filter(isSalesProspect).filter(isOpen);
   const ofService = params.service ? open.filter((prospect) => prospect.service?.key === params.service) : open;
   const counts = { mine: ofService.filter((one) => inView(one, 'mine', params.me)).length, unassigned: ofService.filter((one) => !one.assignee).length, all: ofService.length };
   const shown = ofService.filter((prospect) => inView(prospect, params.view, params.me));
@@ -191,7 +195,7 @@ export type FollowUpItem = { prospect: ProspectView; kind: 'action' | 'draft'; a
 export function followUpsOf(prospects: readonly ProspectView[], me: string, now: Date): { items: FollowUpItem[]; overdue: number } {
   const until = endOfLimaDay(now);
   const items: FollowUpItem[] = [];
-  for (const prospect of prospects.filter(isOpen)) {
+  for (const prospect of prospects.filter(isSalesProspect).filter(isOpen)) {
     const action = prospect.nextAction;
     if (action && action.assigneeId === me && time(action.at) <= until) items.push({ prospect, kind: 'action', at: action.at });
     const draft = prospect.followUpDraft;
@@ -207,7 +211,8 @@ const lateEntry = (prospect: ProspectView, since: string) => ({ name: prospectNa
 /** The funnel (dl-08): open prospects and the ones closed since the period started, by stage, with its four figures. */
 export function funnelOf(prospects: readonly ProspectView[], params: { since: string; service?: string }, now: Date) {
   const since = time(params.since);
-  const inPeriod = prospects.filter((prospect) => isOpen(prospect) || time(prospect.result?.at) >= since);
+  const sales = prospects.filter(isSalesProspect);
+  const inPeriod = sales.filter((prospect) => isOpen(prospect) || time(prospect.result?.at) >= since);
   const shown = params.service ? inPeriod.filter((prospect) => prospect.service?.key === params.service) : inPeriod;
   const open = shown.filter(isOpen);
   const columns = PROSPECT_STAGES.map((stage) => ({ stage, label: STAGE_LABEL[stage], items: shown.filter((one) => shownStageOf(one) === stage).sort(byRecent) }));

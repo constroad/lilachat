@@ -48,7 +48,7 @@ const quoteFor = (quote: ProspectChannel['quote'], admin: boolean) => {
   return rest;
 };
 
-const INSIGHT_KEYS = ['name', 'source', 'stage', 'service', 'intent', 'score', 'scoreReasons', 'fields', 'missing', 'readyAt', 'kind', 'summary', 'followUpDraft', 'unanswered'] as const;
+const INSIGHT_KEYS = ['name', 'source', 'listing', 'stage', 'service', 'intent', 'score', 'scoreReasons', 'fields', 'missing', 'readyAt', 'kind', 'summary', 'followUpDraft', 'unanswered'] as const;
 
 /** The keys of `source` that hold a value. */
 function pickDefined<T extends object, K extends keyof T>(source: T, keys: readonly K[]): Partial<Pick<T, K>> {

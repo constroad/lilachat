@@ -51,12 +51,12 @@ export function ExampleBannerWeb(props: Props) {
     <section data-testid="aviso-datos-ejemplo" className="rounded-2xl border border-primary/30 bg-primary/10 p-3">
       <div className="flex items-center gap-2">
         <span aria-hidden className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary"><Sparkles size={18} /></span>
-        <span className="min-w-0 shrink truncate text-[14px] font-semibold">{EXAMPLE_BANNER_ASK}</span>
-        <button type="button" data-testid="completar-datos-ejemplo" disabled={Boolean(progress)} onClick={() => void fill()} className="ml-auto inline-flex min-h-11 min-w-0 items-center justify-center rounded-xl border border-primary/40 bg-primary/15 px-3 text-[13px] font-semibold text-primary hover:bg-primary/20 disabled:opacity-60">
-          <span className="truncate">{EXAMPLE_BANNER_ACTION}</span>
-        </button>
+        <span className="min-w-0 flex-1 text-[14px] font-semibold">{EXAMPLE_BANNER_ASK}</span>
         <button type="button" data-testid="ocultar-datos-ejemplo" aria-label={EXAMPLE_BANNER_CLOSE} disabled={Boolean(progress)} onClick={close} className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-on-surface-variant hover:bg-on-surface/5 disabled:opacity-60"><X size={18} /></button>
       </div>
+      <button type="button" data-testid="completar-datos-ejemplo" disabled={Boolean(progress)} onClick={() => void fill()} className="mt-2 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-primary/40 bg-primary/15 px-3 text-center text-[13px] font-semibold text-primary hover:bg-primary/20 disabled:opacity-60">
+        {EXAMPLE_BANNER_ACTION}
+      </button>
       {line ? <p role="status" data-testid="aviso-datos-ejemplo-estado" className={`mt-2 text-[13px] ${outcome?.failed ? 'text-error' : 'text-on-surface-variant'}`}>{line}</p> : null}
     </section>
   );

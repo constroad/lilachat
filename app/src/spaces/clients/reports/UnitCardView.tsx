@@ -30,7 +30,7 @@ function PhotoSlot({ item, slot, next, onOpen, onView }: { item: RepeatItem; slo
         {slot.photo?.pending ? <View testID={`foto-pendiente-${slot.photo.id}`} className="absolute left-1 top-1 h-5 w-5 items-center justify-center rounded-full bg-black/60"><Clock size={12} color="white" /></View> : null}
         {measure ? <View className="absolute bottom-1 left-1 right-1 rounded-md bg-surface/90 px-1"><Text testID={`medida-${item.id}-${slot.section.id}`} className="text-center text-[11px] font-bold text-on-surface" style={{ fontFamily: PLATE_FONT }}>{measure}</Text></View> : null}
       </View>
-      <Text className={`mt-1 text-[11px] ${next ? 'font-bold text-primary' : 'text-on-surface-variant'}`} numberOfLines={1}>{slotLabel(slot.section.title)}</Text>
+      <Text className={`mt-1 text-center text-[11px] ${next ? 'font-bold text-primary' : 'text-on-surface-variant'}`} numberOfLines={2}>{slotLabel(slot.section.title)}</Text>
     </Pressable>
   );
 }
@@ -42,20 +42,23 @@ function ExtraStrip({ item, section, onOpen, onView }: { item: RepeatItem; secti
   if (!extras) return null;
   const path = { sectionId: section.id, itemId: item.id, key: extras.section.id };
   return (
-    <ScrollView testID={`adicionales-${item.id}`} horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} className="rounded-xl border border-outline/10 bg-background" contentContainerStyle={{ gap: 8, padding: 6, alignItems: 'center' }}>
-      <Text className="text-[11px] font-bold uppercase tracking-[1.2px] text-on-surface-variant">{extraPhotosTitle(extras.photos.length)}</Text>
-      {extras.photos.map((one) => (
-        <Pressable key={one.id || one.url} onPress={() => onView({ section: extras.section, url: one.url, path })} accessibilityLabel={[one.caption, one.hour].filter(Boolean).join(' · ') || extras.section.title}>
-          <Image source={{ uri: one.thumbUrl }} style={{ width: EXTRA_THUMB, height: EXTRA_THUMB, borderRadius: 8 }} />
-        </Pressable>
-      ))}
+    <View testID={`adicionales-${item.id}`} className="flex-row items-center gap-2 rounded-xl border border-outline/10 bg-background p-1.5">
+      <ScrollView horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} className="flex-1" contentContainerStyle={{ gap: 8, alignItems: 'center' }}>
+        <Text className="text-[11px] font-bold uppercase tracking-[1.2px] text-on-surface-variant">{extraPhotosTitle(extras.photos.length)}</Text>
+        {extras.photos.map((one) => (
+          <Pressable key={one.id || one.url} onPress={() => onView({ section: extras.section, url: one.url, path })} accessibilityLabel={[one.caption, one.hour].filter(Boolean).join(' · ') || extras.section.title}>
+            <Image source={{ uri: one.thumbUrl }} style={{ width: EXTRA_THUMB, height: EXTRA_THUMB, borderRadius: 8 }} />
+          </Pressable>
+        ))}
+      </ScrollView>
+      {/* Out of the scroll: «+ Agregar foto» is never cut at the right edge (E2E 20/11). */}
       {extras.full ? null : (
         <Pressable testID={`agregar-adicional-${item.id}`} onPress={() => onOpen(path)} className="h-9 flex-row items-center gap-1 rounded-lg border border-primary/30 px-2">
           <Plus size={14} color={colors.primary} />
           <Text className="text-[13px] font-bold text-primary">{ADD_EXTRA_PHOTO}</Text>
         </Pressable>
       )}
-    </ScrollView>
+    </View>
   );
 }
 

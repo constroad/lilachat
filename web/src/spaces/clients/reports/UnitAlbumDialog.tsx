@@ -35,7 +35,7 @@ function AlbumTile({ photo, index, checked, broken, onToggle, onBroken, onView }
           </button>
         )}
       </div>
-      <p className="truncate text-[12px] font-semibold">{photo.label}{photo.hour ? <span className="font-mono font-normal text-on-surface-variant"> · {photo.hour}</span> : null}</p>
+      <p className="line-clamp-2 break-words text-[12px] font-semibold leading-tight">{photo.label}{photo.hour ? <span className="font-mono font-normal text-on-surface-variant"> · {photo.hour}</span> : null}</p>
     </li>
   );
 }

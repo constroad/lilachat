@@ -38,7 +38,7 @@ function QueueRow({ unit, section, selected, onOpen, onSelect, onNext, drag }: R
       <Position unit={unit} />
       <button type="button" data-testid={`elegir-${unit.item.id}`} disabled={away} onClick={() => onSelect(unit.item.id)} className="min-w-0 flex-1 text-left">
         <span className="block truncate font-mono text-[15px] font-bold">{unit.plate}</span>
-        <span className="block truncate text-xs text-on-surface-variant">{unit.line}</span>
+        <span className="block break-words text-xs leading-snug text-on-surface-variant">{unit.line}</span>
       </button>
       {away ? <ArrivedButton unit={unit} section={section} onOpen={onOpen} /> : <Pill badge={QUEUE_BADGES[unit.status]} testId={`estado-cola-${unit.item.id}`} />}
       {onNext ? (

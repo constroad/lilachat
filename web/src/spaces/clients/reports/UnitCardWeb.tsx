@@ -23,7 +23,7 @@ function PhotoSlot({ item, slot, next, onOpen, onView }: { item: RepeatItem; slo
         {slot.photo?.pending ? <span data-testid={`foto-pendiente-${slot.photo.id}`} className="absolute left-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-black/60 text-white"><Clock size={12} /></span> : null}
         {measure ? <span data-testid={`medida-${item.id}-${slot.section.id}`} className="absolute inset-x-1 bottom-1 rounded-md bg-surface/90 px-1 text-center font-mono text-[11px] font-bold text-on-surface">{measure}</span> : null}
       </span>
-      <span className={`mt-1 max-w-full truncate text-[11px] ${slot.done ? 'text-on-surface-variant' : next ? 'font-bold text-primary' : 'text-on-surface-variant'}`}>{slotLabel(slot.section.title)}</span>
+      <span className={`mt-1 line-clamp-2 max-w-full break-words text-center text-[11px] leading-tight ${slot.done ? 'text-on-surface-variant' : next ? 'font-bold text-primary' : 'text-on-surface-variant'}`}>{slotLabel(slot.section.title)}</span>
     </button>
   );
 }
@@ -34,8 +34,8 @@ function ExtraStrip({ item, section, onOpen, onView }: { item: RepeatItem; secti
   if (!extras) return null;
   const path = { sectionId: section.id, itemId: item.id, key: extras.section.id };
   return (
-    <div data-testid={`adicionales-${item.id}`} className="flex items-center gap-2 overflow-x-auto rounded-xl border border-outline/10 bg-background px-2 py-1.5">
-      <p className="shrink-0 text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">{extraPhotosTitle(extras.photos.length)}</p>
+    <div data-testid={`adicionales-${item.id}`} className="flex flex-wrap items-center gap-2 rounded-xl border border-outline/10 bg-background px-2 py-1.5">
+      <p className="min-w-0 text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">{extraPhotosTitle(extras.photos.length)}</p>
       {extras.photos.map((one) => (
         <button key={one.id || one.url} type="button" onClick={() => onView({ section: extras.section, url: one.url, path })} aria-label={[one.caption, one.hour].filter(Boolean).join(' · ') || extras.section.title} className="shrink-0">
           <img src={one.thumbUrl} alt="" className="h-10 w-10 rounded-lg object-cover" />

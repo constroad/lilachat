@@ -27,7 +27,7 @@ function QueueRow({ unit, section, selected, last, onOpen, onSelect, onNext }: R
       </View>
       <Pressable testID={`elegir-${unit.item.id}`} disabled={away} onPress={() => onSelect(unit.item.id)} className="min-w-0 flex-1">
         <Text className="text-[15px] font-bold text-on-surface" style={{ fontFamily: PLATE_FONT }} numberOfLines={1}>{unit.plate}</Text>
-        <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>{unit.line}</Text>
+        <Text className="text-[12px] text-on-surface-variant" numberOfLines={2}>{unit.line}</Text>
       </Pressable>
       {arrival ? (
         <Pressable testID={`llego-${unit.item.id}`} onPress={() => onOpen({ sectionId: section.id, itemId: unit.item.id, key: arrival })} accessibilityLabel={`${ARRIVED_LABEL} ${unit.plate}`} className="h-9 flex-row items-center gap-1.5 rounded-lg bg-primary px-3">

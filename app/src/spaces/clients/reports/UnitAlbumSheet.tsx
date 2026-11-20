@@ -57,7 +57,7 @@ function AlbumTile({ photo, index, size, checked, broken, onToggle, onBroken, on
           <ZoomIn size={16} color={colors['on-surface']} />
         </Pressable>
       )}
-      <Text className="mt-1 text-[12px] font-semibold text-on-surface" numberOfLines={1}>{photo.label}{photo.hour ? ` · ${photo.hour}` : ''}</Text>
+      <Text className="mt-1 text-[12px] font-semibold text-on-surface" numberOfLines={2}>{photo.label}{photo.hour ? ` · ${photo.hour}` : ''}</Text>
     </View>
   );
 }

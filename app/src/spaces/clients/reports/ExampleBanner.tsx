@@ -37,14 +37,14 @@ export function ExampleBanner(props: Props) {
         <View className="h-9 w-9 items-center justify-center rounded-lg bg-primary/15">
           <Sparkles size={18} color={colors.primary} />
         </View>
-        <Text numberOfLines={1} className="flex-shrink text-[14px] font-semibold text-on-surface">{EXAMPLE_BANNER_ASK}</Text>
-        <Pressable testID="completar-datos-ejemplo" disabled={busy} onPress={() => void fill()} className={`ml-auto min-h-[44px] flex-shrink items-center justify-center rounded-xl border border-primary/40 bg-primary/15 px-3 ${busy ? 'opacity-60' : ''}`}>
-          <Text numberOfLines={1} className="text-[13px] font-semibold text-primary">{EXAMPLE_BANNER_ACTION}</Text>
-        </Pressable>
+        <Text className="flex-1 text-[14px] font-semibold text-on-surface">{EXAMPLE_BANNER_ASK}</Text>
         <Pressable testID="ocultar-datos-ejemplo" accessibilityLabel={EXAMPLE_BANNER_CLOSE} disabled={busy} onPress={() => dismissedStore.set(withExampleDismissed(dismissed, keys))} className="h-11 w-11 items-center justify-center rounded-full">
           <X size={18} color={colors['on-surface-variant']} />
         </Pressable>
       </View>
+      <Pressable testID="completar-datos-ejemplo" disabled={busy} onPress={() => void fill()} className={`mt-2 min-h-[44px] w-full items-center justify-center rounded-xl border border-primary/40 bg-primary/15 px-3 ${busy ? 'opacity-60' : ''}`}>
+        <Text className="text-center text-[13px] font-semibold text-primary">{EXAMPLE_BANNER_ACTION}</Text>
+      </Pressable>
       {line ? <Text accessibilityLiveRegion="polite" testID="aviso-datos-ejemplo-estado" className={`mt-2 text-[13px] ${outcome?.failed ? 'text-error' : 'text-on-surface-variant'}`}>{line}</Text> : null}
     </View>
   );

@@ -9,6 +9,8 @@ import { PLATE_FONT, UnitCardView, type Open } from './UnitCardView';
 const NO_UNITS = 'Todavía no salió ningún volquete de planta.';
 /** From this width (a tablet) the queue goes left and the unit right, as design pv2-04. */
 const SIDE_BY_SIDE_FROM = 900;
+/** The queue column (audit 20/11): wide enough for «Salió 07:25 · 15 m³» on one line. */
+const QUEUE_WIDTH = 320;
 
 type Props = UnitsQueueViewProps;
 
@@ -96,12 +98,12 @@ export function ReportUnitsView({ section, onOpen, onView, onAlbum, order, onReo
   const head = [queueCountsLine(queue), queueVolumeLine(queue), pageLine(section)].filter(Boolean).join(' · ');
   const wide = width >= SIDE_BY_SIDE_FROM;
   const card = selected ? (
-    <View className="gap-2" style={wide ? { flex: 7 } : undefined}>
+    <View className="gap-2" style={wide ? { flex: 1 } : undefined}>
       <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{selected.status === 'unloading' ? UNLOADING_TITLE : SELECTED_TITLE}</Text>
       <UnitCardView unit={selected} section={section} onOpen={onOpen} onView={onView} onAlbum={onAlbum} />
     </View>
   ) : null;
-  const list = queue.length ? <View style={wide ? { flex: 5 } : undefined}><QueueList queue={queue} section={section} selectedId={selected?.item.id ?? null} onOpen={onOpen} onSelect={onSelect} onReorder={onReorder} /></View> : null;
+  const list = queue.length ? <View style={wide ? { width: QUEUE_WIDTH } : undefined}><QueueList queue={queue} section={section} selectedId={selected?.item.id ?? null} onOpen={onOpen} onSelect={onSelect} onReorder={onReorder} /></View> : null;
   return (
     <View testID={`unidades-${section.id}`} className="gap-3">
       {section.summary.length ? <Text testID="resumen-unidades" className="text-[15px] font-bold text-on-surface">{section.summary.join(' · ')}</Text> : null}

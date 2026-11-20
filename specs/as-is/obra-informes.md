@@ -62,7 +62,8 @@ quien ve montos (admin del espacio).
 10. **Cola de descarga** (CTL-PIS, José 20/11, diseños pv2-01…pv2-04): la unidad que descarga en la tarjeta y la cola que
    ordena la persona («Siguiente ↑»; en la web también arrastrando). El orden lo guarda el server de Lilachat
    (`UnloadOrder`). «Terminar unidad» se bloquea si la anterior no tiene la foto de unidad vacía. La temperatura
-   y el escantillón se escriben bajo la vista previa de su foto. Detalle en spec §25.
+   y el escantillón se escriben bajo la vista previa de su foto. En tablet/escritorio la cola va a la izquierda
+   con ancho fijo de 320 px y la unidad ocupa el resto. Detalle en spec §25.
 
 ### Bandejas del CTL-IMP: basta una (José 19/11)
 

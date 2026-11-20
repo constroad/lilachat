@@ -106,7 +106,8 @@ export function ReportUnitsWeb({ section, onOpen, onView, onAlbum, order, onReor
       {head ? <p data-testid="conteo-unidades" className="text-sm text-on-surface-variant">{head}</p> : null}
       {section.items.length ? <p data-testid="cierre-unidades" className="text-[13px] text-on-surface-variant">{UNITS_CLOSE_HINT}</p> : null}
       {section.items.length === 0 ? <p className="pt-4 text-center text-sm text-on-surface-variant">{NO_UNITS}</p> : null}
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start">
+      {/* Queue 320 px (audit 20/11): «Salió 07:25 · 15 m³» fits on one line. */}
+      <div className="grid gap-3 lg:grid-cols-[320px_minmax(0,1fr)] lg:items-start">
         {selected ? (
           <div className="flex flex-col gap-2 lg:order-2">
             <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{selected.status === 'unloading' ? UNLOADING_TITLE : SELECTED_TITLE}</h3>

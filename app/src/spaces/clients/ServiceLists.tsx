@@ -1,6 +1,6 @@
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 import { Clock, FileText, Ruler, Truck } from 'lucide-react-native';
-import { detailEmptyText, detailRows, dispatchThumbSlotsFor, dispatchThumbs, orderCardsOf, orphanDispatchesOf, reportGroups, type DetailRow, type DetailTabKey, type OrderCard, type ServiceDetail, type ViewableFile } from '@lilachat/shared';
+import { detailEmptyText, detailRows, dispatchThumbSlotsFor, dispatchThumbs, orderCardsOf, orphanDispatchesOf, reportGroups, type DetailRow, type DetailTabKey, type OrderCard, type OrderProgress, type OrderSummary, type ServiceDetail, type ViewableFile } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { FileThumb } from './FileThumb';
 import { DETAIL_TONE } from './tones';
@@ -77,53 +77,84 @@ function DispatchThumbs({ dispatch, onOpenFile }: { dispatch: OrderCard['dispatc
   );
 }
 
-/** A dispatch inside its order: the truck, its quantity and hour, its thumbs (design cc-02). */
-function DispatchLine({ dispatch, onOpen, onOpenFile }: { dispatch: OrderCard['dispatches'][number]; onOpen: (id: string) => void; onOpenFile: OpenFile }) {
+/**
+ * A dispatch as a thin row (José 20/11, ped-v2): hour over m³, plate, its thumbs. Tapping the row
+ * opens its sheet, which has every photo and video in a grid («no veo los archivos al tocar un despacho»).
+ */
+function DispatchRow({ dispatch, onOpen, onOpenFile }: { dispatch: OrderCard['dispatches'][number]; onOpen: (id: string) => void; onOpenFile: OpenFile }) {
   const colors = useColores();
   return (
-    <View testID={`despacho-${dispatch.id}`} className="min-h-[56px] flex-row items-center gap-2 rounded-xl border border-outline/10 bg-background px-3 py-2">
-      <Pressable onPress={() => onOpen(dispatch.id)} className="min-w-0 flex-1 flex-row items-center gap-2">
-        <Truck size={17} color={colors.primary} />
-        <View className="min-w-0 flex-1">
-          <Text className="font-mono text-[13px] font-bold text-on-surface">{dispatch.title}</Text>
-          {dispatch.line ? <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>{dispatch.line}</Text> : null}
+    <Pressable testID={`despacho-${dispatch.id}`} accessibilityLabel={`Abrir despacho ${dispatch.title}`} onPress={() => onOpen(dispatch.id)} className="min-h-[56px] flex-row items-center gap-3 border-t border-outline/10 px-4 py-2">
+      <View className="w-[52px]">
+        <Text className="font-mono text-[13px] font-bold text-on-surface">{dispatch.hour ?? '—'}</Text>
+        {dispatch.quantity ? <Text className="text-[12px] text-on-surface-variant">{dispatch.quantity}</Text> : null}
+      </View>
+      <View className="min-w-0 flex-1 flex-row items-center gap-2">
+        <Truck size={17} color={colors['on-surface-variant']} />
+        <Text className="min-w-0 flex-1 font-mono text-[13px] font-bold text-on-surface" numberOfLines={1}>{dispatch.title}</Text>
+      </View>
+      {dispatch.media.length ? <View className="flex-row gap-1.5"><DispatchThumbs dispatch={dispatch} onOpenFile={onOpenFile} /></View> : null}
+    </Pressable>
+  );
+}
+
+/** «5 despachos · 60 / 75 m³ · 18 medios» and the bar of the m³ sent (ped-v2). */
+function OrderSummaryView({ id, summary, progress }: { id: string; summary: OrderSummary; progress?: OrderProgress }) {
+  const percent = progress?.percent;
+  return (
+    <View testID={`resumen-${id}`} className="mt-3 border-t border-outline/10 pt-3">
+      <View className="flex-row flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <Text className="text-[13px] font-semibold text-on-surface">{summary.dispatches}</Text>
+        {summary.sent ? <Text className="font-mono text-[13px] font-semibold text-on-surface">{summary.sent}</Text> : null}
+        {summary.media ? <Text className="text-[13px] font-semibold text-primary">{summary.media}</Text> : null}
+      </View>
+      {percent !== undefined ? (
+        <View accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: 100, now: percent }} className="mt-2 h-1.5 overflow-hidden rounded-full bg-background">
+          <View className="h-full rounded-full bg-en-linea" style={{ width: `${percent}%` }} />
         </View>
-      </Pressable>
-      {dispatch.media.length ? <DispatchThumbs dispatch={dispatch} onOpenFile={onOpenFile} /> : null}
+      ) : null}
     </View>
   );
 }
 
-/** One order as a card with its dispatches inside (José 01/11, design cc-02); its head opens its sheet. */
+/** One order as a card (José 01/11; ped-v2 20/11): its head opens its sheet, its dispatches go by hour. */
 function OrderCardView({ card, onOpen, onOpenDispatch, onOpenFile }: { card: OrderCard; onOpen: (id: string) => void; onOpenDispatch: (id: string) => void; onOpenFile: OpenFile }) {
   const colors = useColores();
-  const { order } = card;
+  const { order, heading } = card;
   return (
-    <View testID={`fila-${order.id}`} className={`${CARD} p-4`}>
-      <Pressable onPress={() => onOpen(order.id)} className="flex-row items-start gap-3">
-        <View className="min-w-0 flex-1">
-          <Text className="text-[15px] font-bold text-on-surface">{order.title}</Text>
-          {order.line ? <Text className="text-[13px] text-on-surface-variant">{order.line}</Text> : null}
-        </View>
-        <Chip row={order} />
-      </Pressable>
+    <View testID={`fila-${order.id}`} className={CARD}>
+      <View className="p-4">
+        <Pressable onPress={() => onOpen(order.id)} className="flex-row items-start gap-3">
+          <View className="min-w-0 flex-1">
+            <Text className="text-[15px] font-bold text-on-surface">{heading.title}{heading.detail ? <Text className="font-semibold text-on-surface-variant">{` · ${heading.detail}`}</Text> : null}</Text>
+            {card.site ? <Text className="text-[13px] text-on-surface-variant" numberOfLines={1}>{card.site}</Text> : null}
+          </View>
+          <Chip row={order} />
+        </Pressable>
+        {card.summary ? (
+          <OrderSummaryView id={order.id} summary={card.summary} progress={card.progress} />
+        ) : (
+          <View className="mt-3 flex-row items-center gap-2 rounded-xl bg-background px-3 py-3">
+            <Clock size={15} color={colors['on-surface-variant']} />
+            <Text className="text-[13px] text-on-surface-variant">Sin despachos todavía</Text>
+          </View>
+        )}
+      </View>
       {card.dispatches.length ? (
-        <View className="mt-3 gap-2">
-          <Text className={KICKER}>{`Despachos · ${card.dispatches.length}`}</Text>
-          {card.dispatches.map((one) => <DispatchLine key={one.id} dispatch={one} onOpen={onOpenDispatch} onOpenFile={onOpenFile} />)}
+        <>
+          <View className="flex-row justify-between border-t border-outline/10 px-4 pb-1 pt-3">
+            <Text className={KICKER}>{`Despachos · ${card.dispatches.length}`}</Text>
+            <Text className="text-[12px] text-on-surface-variant">Por hora</Text>
+          </View>
+          {card.dispatches.map((one) => <DispatchRow key={one.id} dispatch={one} onOpen={onOpenDispatch} onOpenFile={onOpenFile} />)}
           {card.dispatches.some((one) => one.cubicage) ? (
-            <Pressable onPress={() => onOpen(order.id)} className="min-h-[40px] flex-row items-center gap-1.5">
+            <Pressable onPress={() => onOpen(order.id)} className="min-h-[40px] flex-row items-center gap-1.5 border-t border-outline/10 px-4">
               <Ruler size={15} color={colors.primary} />
               <Text className="text-[13px] font-semibold text-primary">Cubicaje</Text>
             </Pressable>
           ) : null}
-        </View>
-      ) : (
-        <View className="mt-3 flex-row items-center gap-2 rounded-xl bg-background px-3 py-3">
-          <Clock size={15} color={colors['on-surface-variant']} />
-          <Text className="text-[13px] text-on-surface-variant">Sin despachos todavía</Text>
-        </View>
-      )}
+        </>
+      ) : null}
     </View>
   );
 }

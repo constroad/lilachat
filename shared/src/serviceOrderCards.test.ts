@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DISPATCH_THUMB_SLOTS, dispatchThumbSlotsFor, dispatchThumbs, orderCardsOf } from './serviceOrderCards.js';
+import { DISPATCH_THUMB_SLOTS, dispatchThumbSlotsFor, dispatchThumbs, orderCardsOf, orderProgressOf } from './serviceOrderCards.js';
 import type { ServiceDetail } from './serviceDetail.js';
 
 const ok = { label: 'Despachado', tone: 'ok' as const };
@@ -64,5 +64,74 @@ describe('dispatchThumbSlotsFor (the APK reads its window width)', () => {
     expect(dispatchThumbSlotsFor(390)).toBe(DISPATCH_THUMB_SLOTS.compact);
     expect(dispatchThumbSlotsFor(767)).toBe(DISPATCH_THUMB_SLOTS.compact);
     expect(dispatchThumbSlotsFor(768)).toBe(DISPATCH_THUMB_SLOTS.wide);
+  });
+});
+
+describe('the order card as ped-v2 draws it (José 20/11: «¿te parece ordenado?»)', () => {
+  const at = (hour: string) => `2026-11-20T${hour}:00Z`;
+  const timed = {
+    ...detail,
+    dispatches: [
+      { id: 'late', orderId: 'o1', plate: 'LATE-1', quantity: 4, unit: 'm³', at: at('15:10'), status: ok },
+      { id: 'none', orderId: 'o1', plate: 'NONE-1', status: ok },
+      { id: 'early', orderId: 'o1', plate: 'EARLY-1', quantity: 5.5, unit: 'm³', at: at('12:05'), status: ok, pictures: [picture('x'), picture('y')] },
+    ],
+  } satisfies ServiceDetail;
+
+  it('orders the dispatches by hour, those without one last, with the hour and m³ apart', () => {
+    // Act
+    const [first] = orderCardsOf(timed);
+    // Assert
+    expect(first?.dispatches.map((one) => one.id)).toEqual(['early', 'late', 'none']);
+    expect(first?.dispatches[0]).toMatchObject({ hour: '07:05', quantity: '5.5 m³', title: 'EARLY-1' });
+    expect(first?.dispatches[2]?.hour).toBeUndefined();
+  });
+
+  it('heads the card with the product and «qty · day», the site apart, and no invented code', () => {
+    // Act
+    const [first, second] = orderCardsOf(timed);
+    // Assert
+    expect(first?.heading).toEqual({ title: 'Mezcla asfáltica en caliente', detail: '12 m³ · 18 nov' });
+    expect(first?.site).toBe('JR CONCHUCOS');
+    expect(second?.site).toBeUndefined();
+  });
+
+  it('without a product the head reads «Pedido · day»', () => {
+    // Act
+    const [first] = orderCardsOf({ ...timed, orders: [{ id: 'o1', date: '2026-11-20', status: ok }] });
+    // Assert
+    expect(first?.heading).toEqual({ title: 'Pedido', detail: '20 nov' });
+  });
+
+  it('sums «N despachos · X / Y m³ · N medios» with the progress of its m³', () => {
+    // Act
+    const [first, second] = orderCardsOf(timed);
+    // Assert
+    expect(first?.summary).toEqual({ dispatches: '3 despachos', sent: '9.5 / 12 m³', media: '2 medios' });
+    expect(first?.progress).toEqual({ delivered: 9.5, ordered: 12, percent: 79 });
+    expect(second?.summary).toBeUndefined();
+    expect(second?.progress).toBeUndefined();
+  });
+});
+
+describe('orderProgressOf (dispatched m³ against the order\'s)', () => {
+  const order = { id: 'o', quantity: 10, unit: 'm³', status: ok };
+  const sent = (quantity?: number, unit?: string) => ({ id: `${quantity}`, status: ok, quantity, unit });
+
+  it('counts only the dispatches in the order\'s unit (or without one)', () => {
+    expect(orderProgressOf(order, [sent(4, 'm³'), sent(3), sent(100, 'gal')])).toEqual({ delivered: 7, ordered: 10, percent: 70 });
+  });
+  it('caps the bar at 100 % when more was sent than ordered', () => {
+    expect(orderProgressOf(order, [sent(12, 'm³')])?.percent).toBe(100);
+  });
+  it('an order without a quantity has what was sent and no percent', () => {
+    expect(orderProgressOf({ ...order, quantity: undefined }, [sent(4, 'm³')])).toEqual({ delivered: 4 });
+  });
+  it('nothing to sum (no dispatch carries a quantity) is no progress at all', () => {
+    expect(orderProgressOf(order, [sent()])).toBeUndefined();
+    expect(orderProgressOf(order, [])).toBeUndefined();
+  });
+  it('a float sum from Portal reads with two decimals at most', () => {
+    expect(orderProgressOf(order, [sent(0.1, 'm³'), sent(0.2, 'm³')])?.delivered).toBe(0.3);
   });
 });

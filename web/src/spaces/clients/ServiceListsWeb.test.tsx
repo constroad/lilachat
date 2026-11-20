@@ -53,4 +53,53 @@ describe('a dispatch row shows what fits and opens ALL its media (José 20/11)',
     expect(thumb.querySelector('img')?.getAttribute('src')).toBe(video.thumbUrl);
     expect(thumb.querySelector('.lucide-play')).not.toBeNull();
   });
+
+  it('a thumb opens the viewer, not the dispatch sheet', () => {
+    // Arrange
+    const onOpenDispatch = vi.fn();
+    render(<ServiceListWeb detail={detailWith([photo(1)])} tab="orders" onOpen={() => undefined} onOpenDispatch={onOpenDispatch} onOpenFile={vi.fn()} />);
+    // Act
+    fireEvent.click(screen.getByTestId('despacho-foto-0'));
+    // Assert
+    expect(onOpenDispatch).not.toHaveBeenCalled();
+  });
+});
+
+/** José 20/11 (ped-v2): «¿te parece ordenado?» and «no veo los archivos al tocar un despacho». */
+describe('ped-v2: the order card with its summary and the dispatches by hour', () => {
+  const sent = (id: string, hourUtc: string, pictures: object[] = []) => ({ id, orderId: 'o1', plate: `P-${id}`, quantity: 3, unit: 'm³', at: `2026-11-18T${hourUtc}:00Z`, status: ok, pictures });
+  const timed: ServiceDetail = {
+    ...detailWith([]),
+    dispatches: [sent('late', '15:00', [photo(1)]), sent('early', '12:30')] as ServiceDetail['dispatches'],
+  };
+
+  it('tapping anywhere on a dispatch row opens its sheet (where its media grid lives)', () => {
+    // Arrange
+    const onOpenDispatch = vi.fn();
+    render(<ServiceListWeb detail={timed} tab="orders" onOpen={() => undefined} onOpenDispatch={onOpenDispatch} onOpenFile={vi.fn()} />);
+    // Act
+    fireEvent.click(screen.getByTestId('despacho-early'));
+    // Assert
+    expect(onOpenDispatch).toHaveBeenCalledWith('early');
+  });
+
+  it('lists the dispatches by hour and sums them against the order with a progress bar', () => {
+    // Arrange / Act
+    render(<ServiceListWeb detail={timed} tab="orders" onOpen={() => undefined} onOpenDispatch={() => undefined} onOpenFile={vi.fn()} />);
+    // Assert
+    expect(screen.getAllByTestId(/^despacho-(early|late)$/).map((row) => row.dataset.testid)).toEqual(['despacho-early', 'despacho-late']);
+    expect(screen.getByTestId('resumen-o1')).toHaveTextContent('2 despachos');
+    expect(screen.getByTestId('resumen-o1')).toHaveTextContent('6 / 12 m³');
+    expect(screen.getByTestId('resumen-o1')).toHaveTextContent('1 medio');
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '50');
+  });
+
+  it('an order without dispatches says so, with no summary nor bar', () => {
+    // Arrange / Act
+    render(<ServiceListWeb detail={{ ...timed, dispatches: [] }} tab="orders" onOpen={() => undefined} onOpenDispatch={() => undefined} onOpenFile={vi.fn()} />);
+    // Assert
+    expect(screen.getByTestId('fila-o1')).toHaveTextContent('Sin despachos todavía');
+    expect(screen.queryByTestId('resumen-o1')).toBeNull();
+    expect(screen.queryByRole('progressbar')).toBeNull();
+  });
 });

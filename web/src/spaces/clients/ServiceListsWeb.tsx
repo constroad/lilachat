@@ -10,16 +10,19 @@ const Chip = ({ row }: { row: DetailRow }) => <span className={`shrink-0 rounded
 /** José 30/10: the row opens its sheet inside Lilachat; the file opens in Lilachat's viewer, not in Portal. */
 function RowView({ row, icon, onOpen, onOpenFile }: { row: DetailRow; icon?: boolean; onOpen: (id: string) => void; onOpenFile: OpenSheetFile }) {
   return (
-    <li data-testid={`fila-${row.id}`} className="flex min-h-[64px] items-center gap-3 px-4 py-2.5">
+    <li data-testid={`fila-${row.id}`} className="flex min-h-[64px] flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-2.5">
       {icon ? <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-primary/10 text-primary"><FileText size={18} /></span> : null}
       <button type="button" onClick={() => onOpen(row.id)} className="min-w-0 flex-1 text-left">
-        <p className="truncate text-sm font-semibold hover:underline">{row.title}</p>
+        <p className="line-clamp-2 text-sm font-semibold hover:underline">{row.title}</p>
         {row.line ? <p className="truncate text-[12px] text-on-surface-variant">{row.line}</p> : null}
       </button>
-      <Chip row={row} />
-      {row.file ? (
-        <button type="button" onClick={() => row.file && onOpenFile({ url: row.file.url, name: `${row.title} · ${row.file.label}` })} data-testid={`archivo-${row.id}`} className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-outline/20 px-2.5 text-[12px] font-semibold text-on-surface hover:bg-background"><FileText size={14} /> {row.file.label}</button>
-      ) : null}
+      {/* On a phone the state and the file go under the title, so the title is not cut. */}
+      <span className={`flex shrink-0 items-center gap-3 max-sm:basis-full max-sm:justify-end ${icon ? 'max-sm:pl-[52px]' : ''}`}>
+        <Chip row={row} />
+        {row.file ? (
+          <button type="button" onClick={() => row.file && onOpenFile({ url: row.file.url, name: `${row.title} · ${row.file.label}` })} data-testid={`archivo-${row.id}`} className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-outline/20 px-2.5 text-[12px] font-semibold text-on-surface hover:bg-background"><FileText size={14} /> {row.file.label}</button>
+        ) : null}
+      </span>
     </li>
   );
 }

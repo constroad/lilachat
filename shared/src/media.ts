@@ -24,6 +24,15 @@ export const MAX_BYTES_BY_KIND: Record<MediaKind, number> = {
   file: 90 * 1024 * 1024,
 };
 
+/**
+ * Upload timeout ceiling (web, app, and the server→lila hop): one shared
+ * number instead of three copies. José 20/11: a ~50 MB video showed neither
+ * progress nor an error because web had no ceiling at all (hung forever),
+ * and the app/server one, 120 s, was too short for a large file on a slow
+ * network.
+ */
+export const UPLOAD_TIMEOUT_MS = 300_000;
+
 export function resolveMediaKind(mimeType: string): MediaKind {
   const mime = String(mimeType ?? '').toLowerCase();
   if (mime.startsWith('image/')) return 'image';

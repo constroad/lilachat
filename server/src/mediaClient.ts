@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { buildMediaPath, buildStorageName, type MediaKind } from '@lilachat/shared';
+import { buildMediaPath, buildStorageName, UPLOAD_TIMEOUT_MS, type MediaKind } from '@lilachat/shared';
 import { MEDIA_PREFIX, ownMediaBase, readOwnMedia } from './mediaDisk.js';
 
 /**
@@ -17,7 +17,6 @@ import { MEDIA_PREFIX, ownMediaBase, readOwnMedia } from './mediaDisk.js';
  */
 
 const COMPANY_ID = 'constroad';
-const UPLOAD_TIMEOUT_MS = 120_000;
 
 export type UploadedMedia = {
   /** Ruta relativa servida por lila: `/files/companies/…`. */

@@ -157,6 +157,7 @@ Los archivos viven en el disco propio de Lilachat (pendiente 82); los viejos sig
 - **17/11:** José no pudo bajar «METRADOS 161126.kml»: «Abrir» o «Descargar» en el APK, nombre propio en la web.
 - **17/11:** José mandó «Cotizacion-103.pdf» y solo salía el nombre: primera página en el chat, relleno de los viejos y zoom con dos dedos.
 - **18/11:** José tocó dos veces el PDF y no hizo zoom. Doble toque: 200 % sobre el punto, y otra vez a 100 %. Las mejoras del visor del 17/11 no le llegaban porque no se había publicado la OTA; salió el 18/11.
+- **20/11:** un video de ~50 MB se subía sin avisar nada —ni barra ni error—. La web no tenía ningún techo de tiempo en su `XMLHttpRequest`: una subida colgada se quedaba esperando para siempre. El techo de la app y del salto server→lila, 120 s, también se quedaba corto para un archivo grande en una red lenta. Ahora los tres comparten `UPLOAD_TIMEOUT_MS` (`shared/src/media.ts`, 300 s): una subida colgada avisa «La subida tardó demasiado» y se puede reintentar.
 
 ## 5. Diseños de Stitch relacionados
 

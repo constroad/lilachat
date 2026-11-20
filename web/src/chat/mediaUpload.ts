@@ -1,4 +1,4 @@
-import { messageTargetFields, stampFieldsOf, validateMedia } from '@lilachat/shared';
+import { messageTargetFields, stampFieldsOf, UPLOAD_TIMEOUT_MS, validateMedia } from '@lilachat/shared';
 import { stampOfFile } from './camera/shotStamp';
 import type { DatosDeSubida, ResultadoDeSubida } from './colaDeArchivos';
 import type { ChatMessage } from './types';
@@ -21,11 +21,15 @@ export function subirArchivo(datos: DatosDeSubida & { jwt: string; mime: string 
   return new Promise((resolver) => {
     const pedido = new XMLHttpRequest();
     pedido.open('POST', '/api/media');
+    pedido.timeout = UPLOAD_TIMEOUT_MS;
     pedido.setRequestHeader('Authorization', `Bearer ${datos.jwt}`);
     pedido.upload.onprogress = (evento) => evento.lengthComputable && datos.onProgreso(evento.loaded / evento.total);
     pedido.onload = () => resolver(leerRespuesta(pedido.status, pedido.responseText));
     // Sin red NO se dice «rechazado»: son cosas distintas.
     pedido.onerror = () => resolver({ ok: false, message: 'Sin conexión. Revisa tu internet.', reintentable: true });
+    // José 20/11: without this, a large video on a slow network sat there
+    // showing neither a progress bar nor an error, because nothing cut the wait.
+    pedido.ontimeout = () => resolver({ ok: false, message: 'La subida tardó demasiado. Inténtalo de nuevo.', reintentable: true });
     pedido.send(cuerpoDe(datos));
   });
 }

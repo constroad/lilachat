@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { UPLOAD_TIMEOUT_MS } from '@lilachat/shared';
 import { leerRespuesta, subirArchivo } from './mediaUpload';
 
 describe('leerRespuesta', () => {
@@ -26,8 +27,10 @@ function xhrFalso(enviados: FormData[], cabeceras: Record<string, string>) {
     upload = { onprogress: null as null | ((evento: { lengthComputable: boolean; loaded: number; total: number }) => void) };
     status = 0;
     responseText = '';
+    timeout = 0;
     onload: null | (() => void) = null;
     onerror: null | (() => void) = null;
+    ontimeout: null | (() => void) = null;
     open() {}
     setRequestHeader(nombre: string, valor: string) {
       cabeceras[nombre] = valor;
@@ -38,6 +41,28 @@ function xhrFalso(enviados: FormData[], cabeceras: Record<string, string>) {
       this.status = 201;
       this.responseText = '{}';
       this.onload?.();
+    }
+  };
+}
+
+/** A fake XHR that never answers — only its `ontimeout` ever fires, like a stalled upload. */
+function xhrQueCuelga(enviados: FormData[], instancias: { timeout: number }[]) {
+  return class {
+    upload = { onprogress: null as null | ((evento: { lengthComputable: boolean; loaded: number; total: number }) => void) };
+    status = 0;
+    responseText = '';
+    timeout = 0;
+    onload: null | (() => void) = null;
+    onerror: null | (() => void) = null;
+    ontimeout: null | (() => void) = null;
+    constructor() {
+      instancias.push(this);
+    }
+    open() {}
+    setRequestHeader() {}
+    send(cuerpo: FormData) {
+      enviados.push(cuerpo);
+      this.ontimeout?.();
     }
   };
 }
@@ -73,6 +98,25 @@ describe('subirArchivo', () => {
     expect(datos.get('onda')).toBe('10,50,90');
     expect(cabeceras.Authorization).toBe('Bearer j');
     expect(progreso).toEqual([0.5]);
+  });
+
+  it('José 20/11: un video que se cuelga avisa en vez de quedarse sin decir nada', async () => {
+    const enviados: FormData[] = [];
+    const instancias: { timeout: number }[] = [];
+    vi.stubGlobal('XMLHttpRequest', xhrQueCuelga(enviados, instancias));
+
+    const result = await subirArchivo({
+      jwt: 'j',
+      mime: 'video/mp4',
+      chatId: 'c1',
+      clientKey: 'k',
+      archivo: new File(['abc'], 'video.mp4', { type: 'video/mp4' }),
+      nombre: 'video.mp4',
+      onProgreso: () => undefined,
+    });
+
+    expect(result).toEqual({ ok: false, message: 'La subida tardó demasiado. Inténtalo de nuevo.', reintentable: true });
+    expect(instancias[0]!.timeout).toBe(UPLOAD_TIMEOUT_MS);
   });
 
   it('un archivo vacío no sale: lo corta la misma validación del server', async () => {

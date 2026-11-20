@@ -1,5 +1,5 @@
 import { messageTargetFields, type MessageTarget } from '@lilachat/shared';
-import { resolveMediaKind, stampFieldsOf, validateMedia, type Envelope, type TimemarkStampAsked } from '@lilachat/shared';
+import { resolveMediaKind, stampFieldsOf, UPLOAD_TIMEOUT_MS, validateMedia, type Envelope, type TimemarkStampAsked } from '@lilachat/shared';
 import { subirPorXhr } from './subidaXhr';
 import { mensajeSubido } from './mensajeSubido';
 import type { ServerMessage } from './socketClient';
@@ -17,7 +17,6 @@ import type { ServerMessage } from './socketClient';
  * vive en el disco del sistema.
  */
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'https://lilachat.constroad.com';
-const UPLOAD_TIMEOUT_MS = 120_000;
 
 /** A secret chat's photo or video ready to go up (pending 67): the encrypted copy and the sealed text with its key. */
 export type SealedUpload = { uri: string; sizeBytes: number; envelope: Envelope; kind: 'image' | 'video' | 'audio' | 'file' };

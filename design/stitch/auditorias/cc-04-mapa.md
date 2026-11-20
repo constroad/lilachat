@@ -1,31 +1,27 @@
-# Auditoría cc-04-mapa · Servicio › Mapa
+# Auditoría cc-04-mapa · Servicio › Mapa (reauditoría 20/11)
 
-Stitch: `.stitch-work/out_cc/{desktop,tablet,mobile}/cc-04-mapa.stitch.png` del checkout principal (escritorio, tablet, móvil). Ids en INVENTARIO § «Canal de cliente y servicio, rediseño».
-Código: `web/src/spaces/clients/workMap/WorkMapBoard.tsx`, `MapLayersPanel.tsx`, `WorkMapPanel.tsx`, `app/src/spaces/clients/workMap/WorkMapBoard.tsx`, `MapLayersPanel.tsx`.
-Captura: design/stitch/capturas/cc-04-impl-escritorio.jpg (escritorio, web local con la API de producción, tema oscuro)
-Captura: design/stitch/capturas/cc-04-impl-tablet.jpg (tablet, web local con la API de producción, tema oscuro)
-Captura: design/stitch/capturas/cc-04-impl-movil.jpg (móvil, web local con la API de producción, tema oscuro)
-Revisor: subagente independiente (solo vio las imágenes de Stitch y de la implementación; 19/11).
-Veredicto del revisor: pasa con observaciones: partidas con color e interruptor verificadas (al apagar la carpeta aparece la imprimación); en tablet con la lista abierta el panel va detrás de «Capas»; «Hasta hoy», «Trabajo» y los chips de fecha son de la pantalla actual.
-Fecha: 2026-11-20 01:30 (E2E del lote 2 en web a 1440 y 390 px; main f217270b)
+Stitch: `.stitch-work/out_cc/{desktop,tablet,mobile}/cc-04-mapa.stitch.png` del checkout principal.
+Captura: design/stitch/capturas/cc-04-impl-escritorio-2011b.png (escritorio 1440, oscuro, servicio Mejoramiento del Corredor Vial) · Huella: 30c0d9ba0871
+Captura: design/stitch/capturas/cc-04-impl-tablet-2011b.png (tablet 1024, oscuro) · Huella: def06d022976
+Captura: design/stitch/capturas/cc-04-impl-movil-2011b.png (móvil 390, oscuro) · Huella: 49931c0b679d
+Revisor: subagente independiente (solo vio las imágenes de Stitch, su HTML y las capturas; 20/11)
+Veredicto del revisor: no pasa. La tablet no la abrió el revisor.
+Fecha: 2026-11-20 10:01 (web local en 4005 contra la API de producción, espacio Test, cliente Consorcio Vial del Pacífico; main 02f38ddf)
+
+Las justificaciones son del auditor y citan su fuente; ninguna es una exención de José. «Rediseño 20/11» = rediseño 20/11 aprobado por José, ver design/stitch/INVENTARIO.md sección Rediseño 20/11. Lo que no tiene fuente queda «falta».
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |
-| Acciones | Capas · Editar croquis · Compartir avance · Más, a la derecha de la barra | pantalla completa · Capas · Editar croquis · Más · Compartir avance · Registrar avance | diferencia justificada: «Registrar avance» y pantalla completa son de la pantalla actual (as-is obra-mapa §2, memoria «Rediseño conserva lo de la pantalla actual») |
-| Editar croquis en móvil | botón sobre el mapa | APK: pastilla con texto sobre el mapa; web angosta: en la barra propia del mapa con su texto | igual |
-| Corte | «Hasta hoy (19 nov)» flotando | «Hasta hoy» flotando + selector de trabajo | diferencia justificada: el selector de trabajo cambia cifras y exportación (as-is obra-mapa «Sale lo que ves») |
-| Panel | «CAPAS Y LEYENDA · Control de visualización» arriba, avance abajo | «Capas y leyenda» arriba, avance y calles abajo | igual |
-| Partidas | color, nombre, %, interruptor | igual (`layerRowsOf`) | igual |
-| Etapas | chips Todas · Etapa 1… | igual (`capas-etapa-*`) | igual |
-| Dibujos | «Áreas · 33 (Parches 1 al 33)» con interruptor | por tipo con su número e interruptor | igual |
-| Observaciones / Fotos (tablet) | Pendientes (24) · Levantadas (6) · Fotos | igual, con los números reales | igual |
-| Fotos por tipo de informe | una sola fila «Fotos» | «Fotos» con una sub-fila por tipo de informe (interruptor y cuenta) y «Otras fotos de campo» al final | diferencia justificada: José 19/11 (vía Portal f080f7c6a), mismas sub-capas que el mapa de Portal |
-| Chip «JR CONCHUCOS» y «Filtrar tramo» | sí | no van | diferencia justificada: INVENTARIO § cc, Stitch no tiene esa función en la app |
-| Tarjeta de un dibujo | área, nota, fotos antes/corte, Cerrar | la tarjeta existente (`MapCardView`) | igual |
-| Partidas y colores reales | tres partidas inventadas | las del mapa de Portal | diferencia justificada: INVENTARIO § cc (PROPUESTA) |
-| Encuadre inicial | el tramo de la obra entero a la vista | calles, dibujos y observaciones del servicio juntos, con un tamaño mínimo (`workMapView` › `frameOf`) | igual (José 19/11, E2E OBRA GRAU) |
-
-
-## Revisión tras el lote de José (20/11, revisor independiente)
-
-Pasa con observaciones en Servicios (escritorio y móvil), Mapa, hoja del Drive y Pendientes. Cifras, «N etapas» y último movimiento salen «—» u ocultos hasta que se desplieguen Portal y Agentes (ramas `feat/service-counts-lilachat`). Diferencias justificadas: «Drive del cliente», el kicker «SERVICIO 01 · VIAL», la escala y la brújula del mapa, «Requeridos para faena» y «Agregar nueva tarea» los dibujó Stitch sin pedido ni dato; «Enlace del servicio», chips de días, «Trabajo» y «Registrar avance» son de la pantalla actual (memoria «Rediseño conserva lo de la pantalla actual»). Pendiente menor: «Compartir» en la hoja del Drive solo aparece donde el navegador lo soporta.
+| Cabecera de una fila y pestañas compactas | tres filas | una fila | diferencia justificada: rediseño 20/11 (mapa-v2-movil, mapa-v2-escritorio) |
+| Acciones flotando sobre el mapa, «Compartir avance» en «Más» | en la barra | flotando | diferencia justificada: rediseño 20/11 (mapa-v2-escritorio) |
+| «Hasta hoy» arriba a la izquierda | centro, con fecha | izquierda, sin fecha | diferencia justificada: rediseño 20/11 (mapa-v2-movil) |
+| Zoom abajo a la derecha, sin barra de escala | arriba izquierda, escala | abajo derecha | diferencia justificada: escala inventada por Stitch, auditoría anterior (revisión del lote de José 20/11) |
+| Panel: partidas, chips de etapa y «Dibujos» | sí | no en la captura | falta |
+| Panel: tarjetas de calle | no | sí | falta |
+| Panel: «Avance de la obra» | abajo, grande | arriba, pequeño | falta |
+| Panel · ancho | 350 px | 360 px | igual |
+| Fila del panel · radio | 10 px | 14 px | falta |
+| Fila del panel · tamaño de título | 13 px | 13 px | igual |
+| Hoja inferior «Capas y leyenda» (móvil) | abierta | cerrada | diferencia justificada: rediseño 20/11 (mapa-v2-movil, mapa a pantalla) |
+| Botones flotantes (móvil) · tamaño | 44 px | 36 px | falta |
+| Popover del parche | sí | no abierto | igual |

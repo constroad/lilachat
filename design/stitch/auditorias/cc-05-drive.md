@@ -1,30 +1,27 @@
-# Auditoría cc-05-drive · Servicio › Drive (reauditoría estricta)
+# Auditoría cc-05-drive · Servicio › Drive (reauditoría 20/11)
 
 Stitch: `.stitch-work/out_cc/{desktop,tablet,mobile}/cc-05-drive.stitch.png` del checkout principal.
-Captura: design/stitch/capturas/cc-05-impl-escritorio-2011.jpg (escritorio 1440 px, claro, 18 archivos)
-Captura: design/stitch/capturas/cc-05-impl-tablet-2011.jpg (tablet 768 px, claro)
-Captura: design/stitch/capturas/cc-05-impl-movil-2011.jpg (móvil 390 px, claro)
-Revisor: subagente independiente estricto (solo vio las imágenes; estados igual o falta, sin justificar; 20/11).
-Veredicto del revisor: no pasa en la primera ronda; corregido después lo que tenía dato (conteos y chevron, d7d69f1b, posterior a las capturas).
-Fecha: 2026-11-20 11:15 (web local contra la API de producción, espacio Test, servicio QA-PISTA-APK; main d7d69f1b)
+Captura: design/stitch/capturas/cc-05-impl-escritorio-2011b.png (escritorio 1440, oscuro, servicio QA-PISTA-APK) · Huella: 33c5c3b503db
+Captura: design/stitch/capturas/cc-05-impl-tablet-2011b.png (tablet 1024, oscuro) · Huella: 9cc441057f10
+Captura: design/stitch/capturas/cc-05-impl-movil-2011b.png (móvil 390, oscuro) · Huella: a5ee2efd02e6
+Revisor: subagente independiente (solo vio las imágenes de Stitch, su HTML y las capturas; 20/11)
+Veredicto del revisor: no pasa. La tablet no la abrió el revisor.
+Fecha: 2026-11-20 10:01 (web local en 4005 contra la API de producción, espacio Test, cliente Consorcio Vial del Pacífico; main 02f38ddf)
 
-Las justificaciones de abajo son mías y dicen el motivo real; ninguna es una exención de José. Lo que José
-pidió cambiar el 20/11 (orden, fotos del despacho, espacio) va en el rediseño «Rediseño 20/11» de INVENTARIO,
-que espera su aprobación.
+Las justificaciones son del auditor y citan su fuente; ninguna es una exención de José. «Rediseño 20/11» = rediseño 20/11 aprobado por José, ver design/stitch/INVENTARIO.md sección Rediseño 20/11. Lo que no tiene fuente queda «falta».
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |
-| Pegar · cámara · Subir, franja de pegar, buscador | sí | igual | igual |
-| Chips Todo · Fotos · Videos · Documentos y lista/cuadrícula | con conteo | con conteo (`driveKindCounts`, d7d69f1b) | igual |
-| Carpetas en tarjetas con conteo de archivos | sí | igual | igual |
-| «CARPETAS · 4» y chevron en cada carpeta | sí | igual (`driveFoldersLabel` y chevron, d7d69f1b) | igual |
-| Encabezado de día con cantidad | «HOY · 19 NOV · 4 ARCHIVOS» | «HOY · 20 NOV» y «N archivos» a la derecha (d7d69f1b) | igual |
-| «LOTE #…» en el encabezado del día | sí | no | diferencia justificada: Portal no tiene lotes en el Drive; Stitch lo inventó |
-| Mosaico: etiqueta de tipo, miniatura, nombre, «hoy 08:30 · 2.1 MB», ⋮ | sí | igual | igual |
-| Duración del video sobre la miniatura | «0:38» | no | diferencia justificada: Portal no manda la duración del video |
-| Peso sobre la miniatura y referencia a la derecha (tablet) | sí | el peso va bajo el nombre | diferencia justificada: un solo lugar para el peso en todos los tamaños |
-| Conteo en la pestaña «Drive 58» | sí | «Drive» sin número | diferencia justificada: el conteo se conoce recién al abrir el Drive; Portal no lo manda con el servicio |
-| ⌘K en el buscador y «Nueva carpeta» (tablet) | sí | no | diferencia justificada: Portal no crea carpetas desde Lilachat; ⌘K no existe en la app |
-| Botón «Llamar» con texto en la cabecera del canal | sí | ícono de llamada | diferencia justificada: la cabecera del canal es otra pieza, fuera de esta pantalla |
-| Menú del archivo, hoja inferior y aviso «Enlace copiado» | sí | sin datos en estas capturas; probados en la auditoría anterior (cc-05-impl-movil-menu.jpg) | igual |
-| «Mover a carpeta» | sí | no | diferencia justificada: Portal no tiene herramienta para mover archivos |
+| Pegar · cámara · Subir, zona de pegar, buscador, chips y vista | sí | igual | igual |
+| Tarjeta de archivo: etiqueta, miniatura, pie | sí | igual | igual |
+| Tarjeta de archivo · radio | 12 px | 12 px | igual |
+| Pie de tarjeta · alto | 40 px | 40 px | igual |
+| Cabecera de una fila en el teléfono | estado y barra | sin ellos | diferencia justificada: rediseño 20/11 (cabecera de una fila) |
+| Ancho del contenido (escritorio) | todo el panel | columna de 920 px | falta |
+| Tarjeta de archivo · ancho | 200 px | 176 px | falta |
+| Nombre de archivo · tamaño | 14 px | 12 px | falta |
+| Carpetas: 4 por fila, sin chevron | sí | 3 por fila, con chevron | falta |
+| Tarjeta de carpeta · radio | 12 px | 14 px | falta |
+| Carpetas en el móvil | carrusel | cuadrícula de 2 | falta |
+| Cámara en la fila de pestañas (móvil) | sí | fila aparte | falta |
+| Menú del archivo | hoja inferior | no abierto (solo lectura) | igual |

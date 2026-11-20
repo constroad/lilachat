@@ -1,21 +1,25 @@
-# Auditoría lv02 · Marcar un punto
+# Auditoría lv02 · Marcar un punto (reauditoría 20/11)
 
 Stitch: `screens/d9220bf6a443460d9fb162a5e3335bca` (design/stitch/lv02-visita-punto.png).
-Captura: design/stitch/impl/lv02-web-movil.jpg (móvil)
-Banco local con el documento real de Portal (`siteVisit.fixture.ts`): 1 punto, sin foto ni GPS.
-Revisor: subagente independiente (solo vio las dos imágenes). Las faltas que marcó se arreglaron y se recapturó.
-Fecha: 2026-11-14 06:06
+Captura: design/stitch/capturas/lv02-impl-movil-2011b.png (móvil 390, banco local web/.harness/visit.html?s=lv02 con siteVisit.fixture) · Huella: 4eb2bff6e20f
+Revisor: subagente independiente (solo vio las imágenes de Stitch, su HTML y las capturas; 20/11)
+Veredicto del revisor: no pasa.
+Fecha: 2026-11-20 10:01 (web local en 4005 contra la API de producción, espacio Test, cliente Consorcio Vial del Pacífico; main 02f38ddf)
+
+Las justificaciones son del auditor y citan su fuente; ninguna es una exención de José. «Rediseño 20/11» = rediseño 20/11 aprobado por José, ver design/stitch/INVENTARIO.md sección Rediseño 20/11. Lo que no tiene fuente queda «falta».
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |
-| Cerrar, kicker y título | X, kicker, «Marcar un punto» | igual, kicker con el código de la visita | igual |
-| Pastilla derecha | «GPS ACTIVO» verde | «GPS activo» verde con fix; «Buscando GPS» gris sin fix | igual |
-| Foto | foto real | vacía hasta tomarla | diferencia justificada: el banco no toma fotos |
-| Chip de hora y GPS | mira + «09:58 · GPS ±4 m» | mira + «GPS ±N m» o «Buscando GPS…» | igual |
-| Botón sobre la foto | «Repetir» | «Tomar foto», y «Repetir» con foto | igual |
-| Calle sobre la foto | «Calle Los Álamos · Miraflores» | no está | diferencia justificada: Portal no manda la calle del punto |
-| Mapa | puntos numerados, guardados en gris, el nuevo con halo | igual (mosaicos de OSM) | igual |
-| Línea «calle · a 38 m del portón · Mover» | sí | no está | diferencia justificada: Portal no manda la calle, y Lila no puede mover un punto (solo Portal edita) |
-| Clasificación de campo · ¿Qué es? | sí, con «1 elegido» | igual | igual |
-| Chips | 3 por fila, radio chico, ícono propio por tipo | igual | igual |
-| Guardar punto N | acento, check, 64 dp | igual, 72 px (regla de campo) | diferencia justificada: botón principal de campo a 72 px |
+| Cerrar, kicker, título, «GPS ACTIVO» | sí | igual | igual |
+| Título · tamaño | 17 px | 17 px | igual |
+| Foto y «Repetir» | foto y «Repetir» | vacío y «Tomar foto» | diferencia justificada: web/.harness/visit.tsx no toma fotos; con foto sale «Repetir» (MarkPointWeb.tsx) |
+| Hora en el chip de GPS | «09:58 · GPS ±4 m» | «GPS ±169 m» | falta |
+| Calle sobre la foto y línea «a 38 m · Mover» | sí | no | falta |
+| Mapa | croquis | OpenStreetMap | igual |
+| Croquis · radio | 10 px | 12 px | igual |
+| «1 elegido» | sí | no (nada elegido en el banco) | igual |
+| Chips de tipo · radio | 12 px | 12 px | igual |
+| Chip de tipo · alto | 52 px | 50 px | igual |
+| Fila «Medida» con unidades | no | sí | falta |
+| Guardar punto N · alto | 62 px | 64 px | igual |
+| Guardar punto N · radio | 12 px | 14 px | igual |

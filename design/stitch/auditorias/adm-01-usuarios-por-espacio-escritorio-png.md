@@ -1,48 +1,30 @@
-# Auditoría adm-01 · Usuarios por espacio, con la vista «Denuncias» (19/11)
+# Auditoría adm-01 · Usuarios por espacio (reauditoría 20/11)
 
-Reauditoría pedida por el gate `stitch-fidelity` porque `web/src/admin/AdminUsersScreen.tsx` cambió: el segmentado
-suma «Denuncias» (cola de denuncias, Google Play, José 19/11). Auditoría anterior y sus justificaciones:
-`design/stitch/auditorias/adm-01-usuarios-por-espacio.md`.
+Stitch: `screens/ae2e01e71109468a8fbc92a2b63393b3` (design/stitch/adm-01-usuarios-por-espacio-escritorio.png) y `screens/c510471dda784b1b861a3b95596f4df7` (design/stitch/adm-01-usuarios-por-espacio-movil.png).
+Captura: design/stitch/capturas/adm-01-impl-escritorio-2011b.png (escritorio 1440, primer viewport) · Huella: 8f570a283465
+Captura: design/stitch/capturas/adm-01-impl-movil-2011b.png (móvil 390, primer viewport) · Huella: dab20be0d771
+Revisor: subagente independiente (solo vio las imágenes de Stitch, su HTML y las capturas; 20/11)
+Veredicto del revisor: no pasa.
+Fecha: 2026-11-20 10:01 (web local en 4005 contra la API de producción, espacio Test, cliente Consorcio Vial del Pacífico; main 02f38ddf)
 
-Stitch: `screens/ae2e01e71109468a8fbc92a2b63393b3` (escritorio, design/stitch/adm-01-usuarios-por-espacio-escritorio.png)
-y `screens/c510471dda784b1b861a3b95596f4df7` (móvil, design/stitch/adm-01-usuarios-por-espacio-movil.png).
-Captura: design/stitch/capturas/adm-01-impl-escritorio-1911.jpg (escritorio, 1440 px, tema oscuro, web local con la API de producción)
-Captura: design/stitch/capturas/adm-01-impl-movil-1911.jpg (móvil, 390 px, tema oscuro)
-Revisor: subagente independiente (solo vio las cuatro imágenes; no leyó código).
-Fecha: 2026-11-19 20:35
-
-Veredicto del revisor: pasa con observaciones. El tema oscuro y los logos reales de los espacios son datos y tema, no forma.
-
-## Escritorio
+Las justificaciones son del auditor y citan su fuente; ninguna es una exención de José. «Rediseño 20/11» = rediseño 20/11 aprobado por José, ver design/stitch/INVENTARIO.md sección Rediseño 20/11. Lo que no tiene fuente queda «falta».
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |
-| Cabecera | flecha en círculo, «Volver a los chats», logo en cuadro violeta, pastilla SUPERADMIN, avatar JZ | flecha, «Volver a los chats», logo de la app; sin pastilla ni avatar | diferencia justificada: pastilla y avatar inventados por Stitch (INVENTARIO); el logo es el de la app |
-| Kicker y título | «SUPERADMIN», «Usuarios de Lilachat», subtítulo | igual, mismo texto | igual |
-| Segmentado | Por espacio · Todas las personas | Por espacio · Todas las personas · Denuncias | diferencia justificada: «Denuncias» es la cola que exige Google Play (José 19/11); misma pieza, una opción más |
-| Franja de cifras | 4 celdas con divisores | igual | igual |
-| Buscador | lupa, placeholder, atajo ⌘K | lupa y placeholder, sin ⌘K | diferencia justificada: ⌘K inventado por Stitch (INVENTARIO) |
-| Columna ESPACIOS | tarjeta, «Todos los espacios» activo con borde, espacios con iniciales, «Sin espacio» punteado, nota | igual, con el logo real de cada espacio | diferencia justificada: reuse de `SpaceLogo`; el mockup no tenía logos |
-| Tarjeta de espacio | avatar, nombre, «N miembros · N activos hoy» en mono, «Contraer» | igual | igual |
-| Tabla de personas | 7 columnas, chips, pastillas de rol, check de correo | igual; filas más altas cuando el nombre parte en dos líneas | diferencia justificada: nombres reales más largos que los del mockup |
-| Tipografía y espaciados | jerarquía y monoespaciadas | igual, algo más compacta | igual |
-| Acento | violeta | lila del tema oscuro | diferencia justificada: tokens de la app en tema oscuro |
-
-## Móvil
-
-| Elemento | Stitch | Implementación | Estado |
-| --- | --- | --- | --- |
-| Cabecera | flecha, logo en cuadro, pastilla SUPERADMIN | flecha y logo de la app | diferencia justificada: pastilla inventada por Stitch |
-| Subtítulo | corto | el de escritorio, en dos líneas | diferencia justificada: un solo texto para los dos tamaños (auditoría anterior) |
-| Segmentado | no aparece | a lo ancho, con «Denuncias»; «Todas las personas» parte en dos líneas | diferencia justificada: sin él las otras vistas no se alcanzan en el teléfono; «Denuncias» por Google Play |
-| Cifras | 2×2 | 2×2; «NUEVAS ESTA SEMANA» en dos líneas | diferencia justificada: la etiqueta real es más larga a 390 px |
-| Buscador | lupa, placeholder | igual | igual |
-| Chips de espacios | fila con scroll, «Todos N» lleno | igual, con logos | igual |
-| Tarjeta de espacio | avatar, nombre, conteos, chevron | igual | igual |
-| Persona como tarjeta | iniciales, chip «También en» al pie | foto o círculo, chip bajo el teléfono, «Correo ·» con etiqueta | diferencia justificada: chip debajo del nombre pedido por José (auditoría anterior); datos con etiqueta |
-| Acento | violeta | lila del tema oscuro | diferencia justificada: tema oscuro |
-
-## Sin verificar en estas capturas
-
-Pie «Ver los N de…», estado contraído, «Sin espacio», paginación y vacío: sin cambios de código desde la auditoría anterior.
-La vista «Denuncias» en sí no tiene diseño de Stitch (PLAY-STORE.spec §5); se verifica en el E2E después del deploy.
+| Pastilla SUPERADMIN y avatar en la cabecera | sí | no | diferencia justificada: inventados por Stitch, INVENTARIO fila adm-01 |
+| Atajo ⌘K del buscador | sí | no | diferencia justificada: inventado por Stitch, INVENTARIO fila adm-01 |
+| Segmentado con «Denuncias» | 2 opciones | 3 opciones | diferencia justificada: José 19/11, cola de denuncias de Google Play (PLAY-STORE.spec §5) |
+| Logos de espacio en vez de iniciales | iniciales | logo | diferencia justificada: auditorías/adm-01-usuarios-por-espacio.md (reuse de SpaceLogo) |
+| «También en» bajo el nombre | junto al nombre | debajo | diferencia justificada: INVENTARIO fila adm-01 («en código va debajo») |
+| Título · tamaño (escritorio) | 30 px | 28 px | falta |
+| Tarjeta · radio | 12 px | 16 px | falta |
+| Tarjeta · borde | 1 px | 1 px | igual |
+| Tarjeta · padding | 24 px | 22 px | igual |
+| Fila de tabla · alto | 78 px | 80 px | igual |
+| «Contraer» · alto | 36 px | 40 px | falta |
+| Segmentado en el móvil | no | sí | diferencia justificada: José 19/11, «Denuncias» por Google Play (PLAY-STORE.spec §5) |
+| Título · tamaño (móvil) | 26 px | 22 px | falta |
+| Buscador móvil · alto | 47 px | 44 px | igual |
+| Chip de espacio · alto | 32 px | 40 px | falta |
+| Cabecera de espacio · alto | 55 px | 64 px | falta |
+| Detalles de la persona en 2 columnas con etiqueta | líneas corridas | grilla | falta |

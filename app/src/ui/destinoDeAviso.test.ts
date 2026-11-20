@@ -66,6 +66,16 @@ describe('noticeDestination', () => {
   it('el tipo agenda ignora el resto aunque venga con hilo y espacio', () => {
     expect(noticeDestination({ tipo: 'agenda', chatId: CHAT_ID, seq: '4', hiloDe: '2', workspaceId: SPACE_ID })).toEqual({ tipo: 'agenda' });
   });
+
+  it('un prospecto o un chat directo de Dali trae a qué pestaña abrir (José 20/11, vía agentes)', () => {
+    expect(noticeDestination({ chatId: CHAT_ID, workspaceId: SPACE_ID, daliTab: 'inbox' })).toEqual({ tipo: 'chat', chatId: CHAT_ID, workspaceId: SPACE_ID, daliTab: 'inbox' });
+    expect(noticeDestination({ chatId: CHAT_ID, workspaceId: SPACE_ID, daliTab: 'chats' })).toEqual({ tipo: 'chat', chatId: CHAT_ID, workspaceId: SPACE_ID, daliTab: 'chats' });
+  });
+
+  it('una pestaña de Dali desconocida o vacía (aviso sin ese dato) se descarta', () => {
+    expect(noticeDestination({ chatId: CHAT_ID, daliTab: 'otra' })).toEqual({ tipo: 'chat', chatId: CHAT_ID });
+    expect(noticeDestination({ chatId: CHAT_ID, daliTab: '' })).toEqual({ tipo: 'chat', chatId: CHAT_ID });
+  });
 });
 
 const spaceChat = { id: CHAT_ID, kind: 'group', workspaceId: SPACE_ID } as ChatSummary;
@@ -113,5 +123,15 @@ describe('planOpening', () => {
   it('sin destino o con destino de agenda no abre ningún chat', () => {
     expect(planOpening(null, directChat)).toEqual({ action: 'none' });
     expect(planOpening({ tipo: 'agenda' }, directChat)).toEqual({ action: 'none' });
+  });
+
+  it('un prospecto o un chat directo de Dali lleva su pestaña al plan (José 20/11, vía agentes)', () => {
+    const destination = noticeDestination({ chatId: CHAT_ID, workspaceId: SPACE_ID, daliTab: 'chats' });
+    expect(planOpening(destination, spaceChat)).toEqual({ action: 'open', chat: spaceChat, space: SPACE_ID, daliTab: 'chats' });
+  });
+
+  it('sin pestaña de Dali (aviso ajeno o de un build viejo) el plan no la lleva', () => {
+    const destination = noticeDestination({ chatId: CHAT_ID, workspaceId: SPACE_ID });
+    expect(planOpening(destination, spaceChat)).toEqual({ action: 'open', chat: spaceChat, space: SPACE_ID });
   });
 });

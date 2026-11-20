@@ -61,6 +61,29 @@ function useKnowledgeKnock(spaceId: string, open: () => void): void {
 }
 
 /**
+ * Which tab a notice tap opens, for a space already mounted (José 20/11, via agentes): same pattern as «Lo que
+ * Dali sabe» above. `setDaliTab` also updates `lastTab`, so a space not yet mounted opens on it too.
+ */
+const tabKnocks = new Set<(spaceId: string, tab: DaliTab) => void>();
+
+export function setDaliTab(spaceId: string, tab: DaliTab): void {
+  lastTab.set(spaceId, tab);
+  tabKnocks.forEach((knock) => knock(spaceId, tab));
+}
+
+function useTabKnock(spaceId: string, onTab: (tab: DaliTab) => void): void {
+  useEffect(() => {
+    const knock = (target: string, tab: DaliTab) => {
+      if (target === spaceId) onTab(tab);
+    };
+    tabKnocks.add(knock);
+    return () => {
+      tabKnocks.delete(knock);
+    };
+  }, [spaceId, onTab]);
+}
+
+/**
  * The space's chats (each prospect's unread, and the team's own chats shown in the Chats tab): the same cache
  * and live events as the space's list, which a Dali space shows instead.
  */
@@ -82,6 +105,8 @@ function useSpaceChats(jwt: string, spaceId: string, myUserId: string, active: b
  * tab becomes ONE tab bar — Bandeja · Chats · Embudo · Panel · Revisión. A prospect's row opens its conversation
  * (dl-02); the ficha, the follow-ups and what Dali knows open full screen with ←. Chats (José 20/11, via Agentes):
  * direct 1:1s — the team's own chats plus a prospect agentes marked `listing: 'chat'` (not a sales lead).
+ * `setDaliTab` (exported, used by `useAbrirDesdeAviso.ts`): a notice tap puts the right tab up BEFORE this
+ * component is even mounted, the same pattern as `DaliKnowledgeButton`'s knock above.
  */
 export function DaliSpace(props: Props) {
   const { space, jwt } = props;
@@ -97,6 +122,7 @@ export function DaliSpace(props: Props) {
     lastTab.set(space.id, next);
     setTabState(next);
   };
+  useTabKnock(space.id, useCallback((next) => setTabState(next), []));
   const me = prospects.list?.me ?? props.myUserId;
   const list = prospects.list;
   const directChats = useMemo(() => {

@@ -9,6 +9,7 @@ import { buildPushText, type PushDeDatos, type PushMessage } from '../src/pushSe
 import { CAPACIDAD_MENSAJE_NATIVO } from '@lilachat/shared';
 import { verifyDelivery } from '../src/entregaPorAviso.js';
 import { avisarReaccion, notifyOffline, notifyTasksDone, setPushSender } from '../src/pushService.js';
+import { ProspectChannelModel } from '../src/bots/botProspects.js';
 
 let mongo: MongoMemoryServer;
 let jose: Types.ObjectId;
@@ -382,5 +383,36 @@ describe('the notice says where its message lives (space and thread)', () => {
   it('a reaction in a personal chat carries an empty space', async () => {
     await avisarReaccion({ chatId: String(chatId), seq: 4, autor: String(maria), quien: String(jose), emoji: '👍' });
     expect(sent[0]?.data).toMatchObject({ workspaceId: '' });
+  });
+});
+
+/**
+ * Which Dali tab a tapped notice opens (José 20/11, via agentes): a sales prospect goes to Bandeja, a direct
+ * 1:1 (`listing: 'chat'`) goes to Chats. Empty outside a Dali prospect channel.
+ */
+describe('the notice says which Dali tab to open', () => {
+  const asProspectChat = (prospectId: string, listing?: 'prospect' | 'chat') =>
+    Promise.all([
+      ChatModel.updateOne({ _id: chatId }, { $set: { prospectId } }),
+      ProspectChannelModel.create({ workspaceId: new Types.ObjectId(), appId: new Types.ObjectId(), prospectId, chatId, phone: '51900000002', lastActivityAt: new Date().toISOString(), ...(listing ? { listing } : {}) }),
+    ]);
+
+  it('a plain chat (no prospect) carries an empty tab', async () => {
+    await notifyOffline({ message: message(), members: members(), senderId: String(jose) });
+    expect(sent[0]?.data).toMatchObject({ daliTab: '' });
+  });
+
+  it('a sales prospect (no listing, or listing «prospect») opens Bandeja', async () => {
+    await asProspectChat('p-1');
+    await notifyOffline({ message: message(), members: members(), senderId: String(jose) });
+    expect(sent[0]?.data).toMatchObject({ daliTab: 'inbox' });
+  });
+
+  it('a direct chat (`listing: \'chat\'`) opens Chats, in the common push and in the data-only one', async () => {
+    await DeviceModel.create({ deviceId: 'd-maria-tel', userId: maria, platform: 'android', pushToken: 'tok-maria-tel', capacidades: [CAPACIDAD_MENSAJE_NATIVO] });
+    await asProspectChat('p-2', 'chat');
+    await notifyOffline({ message: message(), members: members(), senderId: String(jose) });
+    expect(sent[0]?.data).toMatchObject({ daliTab: 'chats' });
+    expect(datos[0]?.data).toMatchObject({ daliTab: 'chats' });
   });
 });

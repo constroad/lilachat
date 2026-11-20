@@ -142,6 +142,14 @@ Diseños: `dl-01` a `dl-13` en `design/stitch/INVENTARIO.md` (prototipo v3).
   `DaliChats.tsx` muestra los chats directos (los del equipo y los `listing: 'chat'`). La Bandeja deja de
   plegar «Chats del equipo»: se promovió a su propia pestaña. Probado con `vitest run` en las 4 cuentas
   (shared/web/app/server) y E2E real en el Chrome de José, espacio «Dali» de Constroad.
+- **20/11** El aviso de un mensaje lleva a qué pestaña de Dali abrir (`pushService.ts`'s `daliTabOf`,
+  `data.daliTab`): `'inbox'` para un prospecto de venta, `'chats'` para un chat directo. En el APK,
+  `destinoDeAviso.ts` lo valida y `DaliSpace.tsx` expone `setDaliTab` (mismo patrón que el golpe de «Lo que
+  Dali sabe») para que el espacio abra en la pestaña correcta aunque ya esté montado. **Pendiente de una
+  build nativa**: el camino del aviso que dibuja Android NATIVO (`CAPACIDAD_MENSAJE_NATIVO`, el que tiene
+  casi todo APK) reconstruye el destino en Kotlin (`AvisoDeMensaje.kt`/`DestinoDeAviso`), que no conoce
+  `daliTab` — hace falta tocar ese Kotlin y una build+publicación de APK nueva (no sale por OTA). Hoy
+  funciona en el camino común de Expo (dispositivos sin esa capacidad); documentado para no re-investigarlo.
 
 ## 5. Diseños de Stitch relacionados
 
@@ -165,6 +173,9 @@ Lo que Stitch inventó y no va está listado en la spec (fase 2, pantallas de la
 
 ## 6. Pendientes y deuda conocida
 
+- **`daliTab` no llega por el aviso nativo** (20/11): el teléfono con `CAPACIDAD_MENSAJE_NATIVO` dibuja el
+  aviso en Kotlin y reconstruye su destino ahí (`AvisoDeMensaje.kt`), sin pasar por `destinoDeAviso.ts`.
+  Agregar `daliTab` ahí (y el extra que lo lleva al re-abrir la app) necesita una build nativa, no una OTA.
 - **Seis decisiones de negocio abiertas** (spec «Decide José»): aprobar la fase 2, reparto manual o por
   turnos, precios desde Portal, zona y mínimos como datos, accesos de Meta, códigos de TikTok y web.
   Hoy el reparto es libre.

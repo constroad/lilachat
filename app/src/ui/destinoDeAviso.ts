@@ -13,8 +13,12 @@ import type { ChatSummary } from '../api/client';
  * (the chat opens, with no jump).
  */
 export type NoticeDestination =
-  | { tipo: 'chat'; chatId: string; seq?: number; hiloDe?: number; workspaceId?: string }
+  | { tipo: 'chat'; chatId: string; seq?: number; hiloDe?: number; workspaceId?: string; daliTab?: DaliTab }
   | { tipo: 'agenda' };
+
+/** Which tab of a Dali space the chat opens on (José 20/11, via agentes): empty outside a prospect channel. */
+export type DaliTab = 'inbox' | 'chats';
+const DALI_TABS: readonly DaliTab[] = ['inbox', 'chats'];
 
 const MONGO_ID = /^[a-f0-9]{24}$/;
 const POSITIVE_INTEGER = /^\d+$/;
@@ -27,7 +31,7 @@ function positiveInteger(value: unknown): number | undefined {
 
 export function noticeDestination(data: unknown): NoticeDestination | null {
   if (!data || typeof data !== 'object') return null;
-  const { chatId, tipo, seq, hiloDe, workspaceId } = data as Record<string, unknown>;
+  const { chatId, tipo, seq, hiloDe, workspaceId, daliTab } = data as Record<string, unknown>;
   if (tipo === 'agenda') return { tipo: 'agenda' };
   if (typeof chatId !== 'string' || !MONGO_ID.test(chatId)) return null;
   const messageSeq = positiveInteger(seq);
@@ -38,6 +42,7 @@ export function noticeDestination(data: unknown): NoticeDestination | null {
     ...(messageSeq !== undefined ? { seq: messageSeq } : {}),
     ...(rootSeq !== undefined ? { hiloDe: rootSeq } : {}),
     ...(typeof workspaceId === 'string' && MONGO_ID.test(workspaceId) ? { workspaceId } : {}),
+    ...(typeof daliTab === 'string' && DALI_TABS.includes(daliTab as DaliTab) ? { daliTab: daliTab as DaliTab } : {}),
   };
 }
 
@@ -59,6 +64,8 @@ export type OpeningPlan =
       chat: ChatSummary;
       /** The space shown BEFORE navigating: the chat's own, or `null` for Personal. */
       space: string | null;
+      /** Which Dali tab to switch to first, when the chat's space has one (José 20/11, via agentes). */
+      daliTab?: DaliTab;
     } & EntryPoint);
 
 /**
@@ -68,12 +75,13 @@ export type OpeningPlan =
  */
 export function planOpening(destination: NoticeDestination | null, chat: ChatSummary | null): OpeningPlan {
   if (!destination || destination.tipo !== 'chat' || !chat) return { action: 'none' };
-  const { seq, hiloDe, workspaceId } = destination;
+  const { seq, hiloDe, workspaceId, daliTab } = destination;
   const irASeq = hiloDe ?? seq;
   return {
     action: 'open',
     chat,
     space: workspaceId ?? null,
+    ...(daliTab !== undefined ? { daliTab } : {}),
     ...(irASeq !== undefined ? { irASeq } : {}),
     ...(hiloDe !== undefined ? { openThread: hiloDe } : {}),
     ...(hiloDe !== undefined && seq !== undefined ? { highlightReply: seq } : {}),

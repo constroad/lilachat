@@ -8,6 +8,7 @@ import { inicioDelProceso, registrarPerf } from '../diagnostico/diagnostico';
 import { llamadaNativa } from '../../modules/llamada-entrante/src';
 import { subscribeOpenChatRequests } from './openChatRequest';
 import { setCurrentSpaceId } from '../spaces/currentSpace';
+import { setDaliTab } from '../spaces/dali/DaliSpace';
 
 /**
  * Tocar una notificación abre lo que avisa (FL8; auditoría 17/10/2026: el
@@ -48,6 +49,8 @@ export function useAbrirDesdeAviso(params: {
         open: (plan) => {
           // Before navigating: otherwise the list of the wrong space paints for a moment and «back» lands on it.
           setCurrentSpaceId(plan.space);
+          // A prospect vs. a direct chat (José 20/11, via agentes): which Dali tab the space opens on.
+          if (plan.space && plan.daliTab) setDaliTab(plan.space, plan.daliTab);
           // All three keys, always: a `setParams` that left them out would keep the previous tap's thread.
           return abrirChatRef.current(plan.chat, { irASeq: plan.irASeq, openThread: plan.openThread, highlightReply: plan.highlightReply });
         },

@@ -1,3 +1,5 @@
+import type { Types } from 'mongoose';
+import { ProspectChannelModel } from './bots/botProspects.js';
 import { interesadosEnElHilo } from './hilos.js';
 import { repartirPorToken } from './repartoDePush.js';
 import { viewingSpacesOf } from './sharedChannels.js';
@@ -40,6 +42,18 @@ async function soloInteresadosDelHilo(message: Message, candidatos: string[]): P
   return candidatos.filter((candidato) => interesados.has(candidato));
 }
 
+/** Which tab of a Dali space a chat's notice should open (José 20/11, via agentes): a sales lead goes to
+ * Bandeja, a direct 1:1 (no prospect, or one agentes marked `listing: 'chat'`) goes to Chats. */
+type DaliTab = 'inbox' | 'chats';
+
+/** `undefined` outside a Dali prospect channel: that chat has no tab to pick, Dali or not. Looked up by
+ * `chatId` (unique and indexed), never by `prospectId` alone — agentes' id repeats across workspaces. */
+async function daliTabOf(chat: { _id: Types.ObjectId; prospectId?: string } | null): Promise<DaliTab | undefined> {
+  if (!chat?.prospectId) return undefined;
+  const prospect = await ProspectChannelModel.findOne({ chatId: chat._id }).select('listing').lean();
+  return prospect?.listing === 'chat' ? 'chats' : 'inbox';
+}
+
 export async function notifyOffline(params: {
   message: Message;
   members: string[];
@@ -62,7 +76,7 @@ export async function notifyOffline(params: {
       .select('pushToken platform userId capacidades')
       .lean(),
     UserModel.findById(params.senderId).select('name phone avatarUrl').lean(),
-    ChatModel.findById(params.message.chatId).select('kind name encrypted avatarUrl workspaceId channel').lean(),
+    ChatModel.findById(params.message.chatId).select('kind name encrypted avatarUrl workspaceId channel prospectId').lean(),
     previewHiddenFor(candidatos),
   ]);
   if (dispositivos.length === 0) return;
@@ -98,7 +112,8 @@ export async function notifyOffline(params: {
   // Where tapping the notice lands (agentes 25/10/2026): the chat's space and, for a reply, its thread. Empty = none.
   const workspaceId = chat?.workspaceId ? String(chat.workspaceId) : '';
   const hiloDe = params.message.hiloDe !== undefined && params.message.hiloDe !== null ? String(params.message.hiloDe) : '';
-  const data = { chatId: String(params.message.chatId), seq: params.message.seq, workspaceId, hiloDe };
+  const daliTab = await daliTabOf(chat);
+  const data = { chatId: String(params.message.chatId), seq: params.message.seq, workspaceId, hiloDe, daliTab: daliTab ?? '' };
   // DOS transportes para el mismo aviso: el teléfono por FCM y la pestaña del
   // navegador por Web Push. Son dispositivos distintos del mismo dueño, así que
   // los dos tienen que sonar (F6).
@@ -114,7 +129,7 @@ export async function notifyOffline(params: {
     return [
       ...sendCommon(splitPushTargets(comunes.filter((d) => inSpace(d) && !veiled(d))), { ...text, data: spaceData }),
       ...sendCommon(splitPushTargets(comunes.filter((d) => inSpace(d) && veiled(d))), { ...withoutPreview(text), data: spaceData }),
-      ...mensajeSoloDatos({ message: params.message, nativos: nativos.filter(inSpace), silenciados, hidden, workspaceId: space, hiloDe, autor, telefono: sender_?.phone ?? '', chat: nombreDelGrupo ?? '', secreto: chat?.encrypted === true, text, photo: sender_?.avatarUrl, chatPhoto: chat?.kind === 'group' ? chat.avatarUrl : undefined }),
+      ...mensajeSoloDatos({ message: params.message, nativos: nativos.filter(inSpace), silenciados, hidden, workspaceId: space, hiloDe, daliTab, autor, telefono: sender_?.phone ?? '', chat: nombreDelGrupo ?? '', secreto: chat?.encrypted === true, text, photo: sender_?.avatarUrl, chatPhoto: chat?.kind === 'group' ? chat.avatarUrl : undefined }),
     ];
   };
 
@@ -163,6 +178,8 @@ function mensajeSoloDatos(params: {
   /** Where tapping the notice lands: the chat's space and the thread, as text; empty when none. */
   workspaceId: string;
   hiloDe: string;
+  /** Which Dali tab to open the chat on (José 20/11): empty outside a Dali prospect channel. */
+  daliTab: DaliTab | undefined;
   autor: string;
   /** El teléfono de quien escribe: el aviso nativo busca con él el nombre en la agenda (FL11). */
   telefono: string;
@@ -193,6 +210,7 @@ function mensajeSoloDatos(params: {
         seq: String(params.message.seq),
         workspaceId: params.workspaceId,
         hiloDe: params.hiloDe,
+        daliTab: params.daliTab ?? '',
         autor: params.autor,
         telefono: params.telefono,
         chat: params.chat,

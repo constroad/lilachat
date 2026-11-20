@@ -18,7 +18,7 @@ const AD_URL = /^https:\/\/\S{1,492}$/;
 const PERU_MOBILE_LENGTH = 11;
 
 export type ProspectAttendedBy = 'dali' | 'human';
-export type ProspectSource = { kind: 'ctwa'; adId?: string; adTitle?: string; adUrl?: string };
+export type ProspectSource = { kind: 'ctwa'; adId?: string; adTitle?: string; adUrl?: string; platform?: 'instagram' | 'facebook' };
 export type ProspectState = { name?: string; phone: string; lastActivityAt: string; attendedBy: ProspectAttendedBy; source?: ProspectSource; listing?: 'prospect' | 'chat' };
 /** A message the prospect wrote, carried by the bot: who, and when they sent it on WhatsApp. */
 export type ProspectAuthor = { name: string; phone: string; sentAt?: string; adTitle?: string };
@@ -44,6 +44,10 @@ function sourceOf(raw: unknown): { ok: true; source: ProspectSource } | Refusal 
   if (body.ad_url !== undefined) {
     if (!AD_URL.test(String(body.ad_url))) return refuse('source.ad_url va con https, hasta 500.');
     source.adUrl = String(body.ad_url);
+  }
+  if (body.platform !== undefined) {
+    if (body.platform !== 'instagram' && body.platform !== 'facebook') return refuse('source.platform va como instagram o facebook.');
+    source.platform = body.platform;
   }
   return { ok: true, source };
 }

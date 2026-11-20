@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Check, Phone } from 'lucide-react';
-import { LEVEL_LABEL, LOSS_REASON_LABEL, NEXT_ACTION_LABEL, STAGE_LABEL, levelOf, missingLabelsOf, moneyOf, nextActionWhenOf, originOf, prospectNameOf, shownProspectPhone, shownStageOf, type ProspectStage, type ProspectView } from '@lilachat/shared';
+import { LEVEL_LABEL, LOSS_REASON_LABEL, NEXT_ACTION_LABEL, STAGE_LABEL, levelOf, missingLabelsOf, moneyOf, nextActionWhenOf, originLineOf, originOf, prospectNameOf, shownProspectPhone, shownStageOf, type ProspectStage, type ProspectView } from '@lilachat/shared';
 import { Initials, Kicker, Pill, ProspectAvatar, ScorePill } from './daliParts';
 import { DocumentFieldRow, type SettleField } from './DocumentFieldRow';
 
@@ -41,7 +41,7 @@ export function OriginCard({ prospect }: { prospect: ProspectView }) {
     <Card testId="ficha-origen">
       <Kicker>Origen</Kicker>
       <div className="mt-2"><Pill>{originOf(prospect).label}</Pill></div>
-      {prospect.source?.adTitle ? <p className="mt-2 text-sm font-semibold">{`Anuncio · ${prospect.source.adTitle}`}</p> : <p className="mt-2 text-sm font-semibold">Escribió directo por WhatsApp</p>}
+      <p className="mt-2 text-sm font-semibold">{originLineOf(prospect)}</p>
       <p className="text-[13px] text-on-surface-variant">{`Llegó el ${ARRIVAL.format(new Date(arrived))}`}</p>
     </Card>
   );

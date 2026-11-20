@@ -97,8 +97,17 @@ export function documentSentLabelOf(at: string): string {
   return `Lo envió el ${dayOf(clock)}, ${pad(clock.getUTCHours())}:${pad(clock.getUTCMinutes())}`;
 }
 
+/** A boosted-post ad's title sometimes arrives as a bare host (José 20/11, via agentes: «api.whatsapp.com»,
+ * not a real headline) — the post's own URL says more. No dot, a space, or an `@` reads as a real title. */
+const USELESS_AD_TITLE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
+
 /** The origin block's line: the ad that brought it, or a message written straight to the company. */
-export const originLineOf = (prospect: Pick<ProspectView, 'source'>): string => (prospect.source?.adTitle ? `Anuncio · ${prospect.source.adTitle}` : 'Escribió directo por WhatsApp');
+export function originLineOf(prospect: Pick<ProspectView, 'source'>): string {
+  const source = prospect.source;
+  if (!source?.adTitle) return 'Escribió directo por WhatsApp';
+  const shown = USELESS_AD_TITLE.test(source.adTitle) && source.adUrl ? source.adUrl : source.adTitle;
+  return `Anuncio · ${shown}`;
+}
 
 /** Under the name in the result form: the service (there is no company field) and the phone. */
 export const resultHeaderLineOf = (prospect: Pick<ProspectView, 'service' | 'phone'>): string => [prospect.service?.name, shownProspectPhone(prospect.phone)].filter(Boolean).join(' · ');

@@ -36,9 +36,14 @@ describe('levelOf', () => {
 });
 
 describe('originOf', () => {
-  it('names a click-to-WhatsApp ad «Meta» until Facebook and Instagram can be told apart', () => {
+  it('names a click-to-WhatsApp ad «Meta» when agentes has not said which platform', () => {
     expect(originOf(prospect({ source: { kind: 'ctwa', adTitle: 'Asfalto' } }))).toEqual({ key: 'meta', label: 'Meta' });
     expect(originOf(prospect())).toEqual({ key: 'direct', label: 'Directo' });
+  });
+
+  it('José 20/11: names the platform once agentes sends it, keeping «meta» as the key', () => {
+    expect(originOf(prospect({ source: { kind: 'ctwa', platform: 'instagram' } }))).toEqual({ key: 'meta', label: 'Instagram' });
+    expect(originOf(prospect({ source: { kind: 'ctwa', platform: 'facebook' } }))).toEqual({ key: 'meta', label: 'Facebook' });
   });
 });
 

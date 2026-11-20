@@ -22,6 +22,7 @@ Diseños: `dl-01` a `dl-13` en `design/stitch/INVENTARIO.md` (prototipo v3).
 - `PUT /api/bots/prospects/:prospectId`: la primera vez crea el canal (201). Después actualiza (200).
   - Fase 1: `name`, `phone`, `source` (`ctwa`, anuncio), `last_activity_at`, `attended_by`,
     `listing` (`'prospect'` | `'chat'`, 20/11: ausente no cambia lo guardado, como el resto de fase 2).
+    `source.platform` (`'instagram'` | `'facebook'`, 20/11, opcional): la plataforma del anuncio.
   - Fase 2: `stage`, `service`, `intent`, `score`, `score_reasons`, `fields`, `missing`, `ready_at`, `kind`,
     `summary`, `follow_up_draft`, `quote`, `unanswered`.
   - Un campo de fase 2 mal formado no frena el PUT: vuelve en `ignored: [{ field, message }]`.
@@ -152,6 +153,13 @@ Diseños: `dl-01` a `dl-13` en `design/stitch/INVENTARIO.md` (prototipo v3).
   casi todo APK) reconstruye el destino en Kotlin (`AvisoDeMensaje.kt`/`DestinoDeAviso`), que no conoce
   `daliTab` — hace falta tocar ese Kotlin y una build+publicación de APK nueva (no sale por OTA). Hoy
   funciona en el camino común de Expo (dispositivos sin esa capacidad); documentado para no re-investigarlo.
+- **20/11** Pedido chico vía agentes: `source.platform: 'instagram' | 'facebook'` opcional en el PUT
+  (`shared/src/prospects.ts`, `sourceSchema` en `botProspects.ts`). `originOf` (`prospectBoard.ts`) nombra
+  la plataforma en la pastilla de ORIGEN (ficha y fila de la bandeja) en vez de la genérica «Meta»; la
+  `key` sigue siendo `'meta'` para no partir el agrupado por origen del Panel. Además, `originLineOf`
+  (`prospectSheet.ts`) deja de mostrar el título del anuncio cuando es solo un host (`api.whatsapp.com`,
+  un anuncio de post impulsado) y muestra `ad_url` en su lugar; la web dejó de duplicar esa lógica inline
+  y llama a `originLineOf` como ya hacía el APK.
 
 ## 5. Diseños de Stitch relacionados
 
@@ -207,9 +215,9 @@ Lo que Stitch inventó y no va está listado en la spec (fase 2, pantallas de la
 
 - Server: `server/src/bots/botProspects.test.ts` (6), `prospectDesk.test.ts` (21), `botUploads.test.ts` (6),
   `fake.test.ts` (10).
-- Shared: `prospects.test.ts` (10), `prospectInsight.test.ts` (9), `prospectSeller.test.ts` (6),
-  `prospectBoard.test.ts` (21, +4 de `isSalesProspect`/20·11), `prospectPanel.test.ts` (6),
-  `prospectSheet.test.ts` (33), `prospectChange.test.ts` (4), `prospectFieldConfirm.test.ts` (4),
+- Shared: `prospects.test.ts` (22, +2 de `source.platform`/20·11), `prospectInsight.test.ts` (9), `prospectSeller.test.ts` (6),
+  `prospectBoard.test.ts` (27, +4 de `isSalesProspect` y +1 de `platform`/20·11), `prospectPanel.test.ts` (6),
+  `prospectSheet.test.ts` (43, +1 de `originLineOf`/20·11), `prospectChange.test.ts` (4), `prospectFieldConfirm.test.ts` (4),
   `prospectFieldGeo.test.ts` (6), `prospectFigures.test.ts` (17), `prospectFollowUpCards.test.ts` (14),
   `prospectFunnelView.test.ts` (12), `prospectInboxRows.test.ts` (20), `prospectPlan.test.ts` (11),
   `prospectReview.test.ts` (7), `daliKnowledge.test.ts` (8), `daliTeach.test.ts` (9).

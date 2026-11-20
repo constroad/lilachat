@@ -27,7 +27,7 @@ type Installation = Pick<BotInstallation, '_id' | 'appId' | 'workspaceId' | 'bot
 type ProspectsError = { status: 400 | 403 | 404; error: string; message: string };
 
 const loose = { _id: false } as const;
-const sourceSchema = new Schema({ kind: String, adId: String, adTitle: String, adUrl: String }, loose);
+const sourceSchema = new Schema({ kind: String, adId: String, adTitle: String, adUrl: String, platform: { type: String, enum: ['instagram', 'facebook'] } }, loose);
 const serviceSchema = new Schema({ key: String, name: String }, loose);
 const confirmerSchema = new Schema({ id: String, name: String, at: String }, loose);
 // geo is validated by the shared reader (points and a polygon of up to 500 vertices); Mixed keeps it as it came.

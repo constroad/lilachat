@@ -15,6 +15,11 @@ describe('validateProspectState', () => {
     expect(valid).toEqual({ ok: true, state: { name: 'Carlos', phone: '51949123824', lastActivityAt: now, attendedBy: 'human', source: { kind: 'ctwa', adId: '1203', adTitle: 'Asfalto en caliente', adUrl: 'https://fb.me/x' } } });
   });
 
+  it('José 20/11: keeps the platform the ad ran on, when agentes sends it', () => {
+    const valid = validateProspectState({ phone: '51949123824', last_activity_at: now, source: { kind: 'ctwa', platform: 'instagram' } });
+    expect(valid).toEqual({ ok: true, state: { phone: '51949123824', lastActivityAt: now, attendedBy: 'dali', source: { kind: 'ctwa', platform: 'instagram' } } });
+  });
+
   it.each([
     [{ phone: '12', last_activity_at: now }, 'phone'],
     [{ phone: '5194912382412345678', last_activity_at: now }, 'phone'],
@@ -26,6 +31,7 @@ describe('validateProspectState', () => {
     [{ phone: '51949123824', last_activity_at: now, source: { kind: 'ctwa', ad_url: 'http://fb.me/x' } }, 'ad_url'],
     [{ phone: '51949123824', last_activity_at: now, source: { kind: 'ctwa', ad_title: 'x'.repeat(121) } }, 'ad_title'],
     [{ phone: '51949123824', last_activity_at: now, source: { kind: 'ctwa', ad_id: 'x'.repeat(65) } }, 'ad_id'],
+    [{ phone: '51949123824', last_activity_at: now, source: { kind: 'ctwa', platform: 'tiktok' } }, 'platform'],
   ])('refuses %j naming %s', (raw, field) => {
     const valid = validateProspectState(raw);
     expect(valid.ok).toBe(false);

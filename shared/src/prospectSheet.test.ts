@@ -153,6 +153,12 @@ describe('lines of the ficha and the forms', () => {
     expect(originLineOf(carmen())).toBe('Escribió directo por WhatsApp');
   });
 
+  it('José 20/11: a boosted post\'s title that is just a host shows its URL instead', () => {
+    expect(originLineOf(carmen({ source: { kind: 'ctwa', adTitle: 'api.whatsapp.com', adUrl: 'https://www.instagram.com/p/abc123/' } }))).toBe('Anuncio · https://www.instagram.com/p/abc123/');
+    expect(originLineOf(carmen({ source: { kind: 'ctwa', adTitle: 'api.whatsapp.com' } }))).toBe('Anuncio · api.whatsapp.com');
+    expect(originLineOf(carmen({ source: { kind: 'ctwa', adTitle: 'Asfalto 20% off', adUrl: 'https://www.instagram.com/p/abc123/' } }))).toBe('Anuncio · Asfalto 20% off');
+  });
+
   it('the result\'s header: the service and the phone, or only the phone', () => {
     expect(resultHeaderLineOf(carmen({ service: { key: 'pavimentacion', name: 'Pavimentación de estacionamiento' } }))).toBe('Pavimentación de estacionamiento · +51 949 123 824');
     expect(resultHeaderLineOf(carmen())).toBe('+51 949 123 824');

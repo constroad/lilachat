@@ -96,9 +96,12 @@ export function levelOf(score: number | undefined): ProspectLevel | null {
   return score >= WARM_SCORE ? 'warm' : 'cold';
 }
 
-/** Facebook and Instagram are not told apart yet (agentes confirms with the first real click): a paid ad is «Meta». */
+const PLATFORM_LABEL: Record<NonNullable<ProspectSource['platform']>, string> = { instagram: 'Instagram', facebook: 'Facebook' };
+
+/** `key` stays «meta» for every paid ad (the panel buckets by it, José 20/11: platform doesn't split its costs);
+ * the label names Instagram or Facebook once agentes sends it, else the generic «Meta». */
 export const originOf = (prospect: Pick<ProspectView, 'source'>): { key: 'meta' | 'direct'; label: string } =>
-  prospect.source?.kind === 'ctwa' ? { key: 'meta', label: 'Meta' } : { key: 'direct', label: 'Directo' };
+  prospect.source?.kind === 'ctwa' ? { key: 'meta', label: prospect.source.platform ? PLATFORM_LABEL[prospect.source.platform] : 'Meta' } : { key: 'direct', label: 'Directo' };
 
 function toQuoteLate(prospect: ProspectView, now: Date): Overdue | null {
   const late = shownStageOf(prospect) === 'to_quote' && now.getTime() - time(prospect.readyAt) > TO_QUOTE_LATE_MS;

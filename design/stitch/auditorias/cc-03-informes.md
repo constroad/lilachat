@@ -5,9 +5,12 @@ Código: `web/src/spaces/clients/ServiceDetailWeb.tsx`, `ServiceListsWeb.tsx`, `
 Captura: design/stitch/capturas/cc-03-impl-escritorio.jpg (escritorio, web local con la API de producción, tema oscuro)
 Captura: design/stitch/capturas/cc-03-impl-tablet.jpg (tablet, web local con la API de producción, tema oscuro; con datos de OBRA GRAU)
 Captura: design/stitch/capturas/cc-03-impl-movil.jpg (móvil, web local con la API de producción, tema oscuro; con datos de OBRA GRAU)
-Revisor: subagente independiente (solo vio las imágenes de Stitch y de la implementación; 19/11).
-Veredicto del revisor: pasa con observaciones: servicio sin informes en la captura; la lista por día se ve con datos en OBRA GRAU.
-Fecha: 2026-11-20 01:30 (E2E del lote 2 en web a 1440 y 390 px; main f217270b)
+Captura: design/stitch/capturas/cc-03-impl-escritorio-1911b.jpg (escritorio 1440 px, tema oscuro; reauditoría tras «Terminar unidad»)
+Captura: design/stitch/capturas/cc-03-impl-tablet-1911b.jpg (tablet 768 px, tema oscuro)
+Captura: design/stitch/capturas/cc-03-impl-movil-1911b.jpg (móvil 390 px, tema oscuro)
+Revisor: subagente independiente (solo vio las imágenes de Stitch y de la implementación; 19/11, dos rondas).
+Veredicto del revisor: pasa con observaciones (escritorio pasa; tablet con observaciones: el servicio de la captura solo tiene borradores, sin PDF ni tarjetas de resumen). La reauditoría cubre que `ServiceDetailWeb`/`ServiceDetailView` solo pasan `admin` al informe para «Terminar unidad»: la lista no cambió.
+Fecha: 2026-11-20 04:00 (reauditoría en la web local contra la API de producción, espacio Test; main 3830d60d)
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |

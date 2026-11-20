@@ -5,12 +5,12 @@ Código: los mismos de `imp-01-tramo-oscuro.md`; el tema claro sale de los token
 Captura: design/stitch/capturas/imp-02-impl-movil-claro.jpg (móvil 390 px, tema claro, web local con la API de producción)
 Revisor: subagente independiente (solo vio las imágenes de Stitch y de la implementación; 19/11).
 Veredicto del revisor: pasa con observaciones (los mismos puntos que imp-01).
-Fecha: 2026-11-20 04:00 (E2E en la web local contra la API de producción, espacio Test; main 3830d60d)
+Fecha: 2026-11-20 04:07 (E2E en la web local contra la API de producción, espacio Test; main 3830d60d)
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |
 | Cabecera | «CONTROL DE IMPRIMACIÓN · TRAMO 2», «JR CONCHUCOS», «BORRADOR» | la cabecera del formulario de siempre | diferencia justificada: el formulario abre una sección a la vez (ver imp-01) |
-| «Obteniendo ubicación…» | tarjeta blanca con borde, indicador, pin; «Desde 0+120 (fin del Tramo 1)» debajo | tarjeta con borde (`bg-background`), indicador y pin; sin la línea «Desde…» | igual la tarjeta; la línea, diferencia pendiente (ver imp-01) |
+| «Obteniendo ubicación…» | tarjeta blanca con borde, indicador, pin; «Desde 0+120 (fin del Tramo 1)» debajo | tarjeta con borde (`bg-background`), indicador y pin; sin la línea «Desde…» | diferencia justificada: la línea, como en imp-01 |
 | Bloque «UBICACIÓN DEL TRAMO» con «MC-30» | tarjeta con rótulo y chip del ligante | campos sin tarjeta propia; el título de la sección dice «Ubicación» | diferencia justificada: la foto es su propia sección |
 | Progresivas | de a dos, 44 px | de a dos, 44 px | igual |
 | Carril | chips; «Derecho» lleno en acento con ✓, los otros con borde | igual (`bg-primary` / `border-outline/25`) | igual |

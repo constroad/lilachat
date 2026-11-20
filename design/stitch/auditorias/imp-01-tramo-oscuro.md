@@ -6,7 +6,7 @@ Captura: design/stitch/capturas/imp-01-impl-movil-oscuro.jpg (móvil 390 px, tem
 Captura: design/stitch/capturas/imp-01-impl-movil-ubicacion.jpg (móvil 390 px, tema oscuro: Ubicación)
 Revisor: subagente independiente (solo vio las imágenes de Stitch y de la implementación; 19/11).
 Veredicto del revisor: pasa con observaciones. La hoja de Bandejas es fiel; a Ubicación le faltan la tarjeta de GPS, el candado y MC-30 (ver tabla).
-Fecha: 2026-11-20 04:00 (E2E en la web local contra la API de producción, espacio Test; main 3830d60d)
+Fecha: 2026-11-20 04:07 (E2E en la web local contra la API de producción, espacio Test; main 3830d60d)
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |

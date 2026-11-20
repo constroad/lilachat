@@ -10,7 +10,7 @@ Captura: design/stitch/capturas/cc-03-impl-tablet-1911b.jpg (tablet 768 px, tema
 Captura: design/stitch/capturas/cc-03-impl-movil-1911b.jpg (móvil 390 px, tema oscuro)
 Revisor: subagente independiente (solo vio las imágenes de Stitch y de la implementación; 19/11, dos rondas).
 Veredicto del revisor: pasa con observaciones (escritorio pasa; tablet con observaciones: el servicio de la captura solo tiene borradores, sin PDF ni tarjetas de resumen). La reauditoría cubre que `ServiceDetailWeb`/`ServiceDetailView` solo pasan `admin` al informe para «Terminar unidad»: la lista no cambió.
-Fecha: 2026-11-20 04:00 (reauditoría en la web local contra la API de producción, espacio Test; main 3830d60d)
+Fecha: 2026-11-20 04:07 (reauditoría en la web local contra la API de producción, espacio Test; main 3830d60d)
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |

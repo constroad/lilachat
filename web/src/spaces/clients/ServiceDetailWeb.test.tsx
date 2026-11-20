@@ -380,6 +380,19 @@ describe('ServiceDetailWeb', () => {
     expect(screen.queryByTestId('cabecera-servicio-mapa')).toBeNull();
   });
 
+  it('audit 20/11 (ped-v2-movil): on a phone every tab gets the one-row head «CLIENTE · 62 %», Pedidos included', async () => {
+    // Arrange
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: true, media: query, addEventListener: vi.fn(), removeEventListener: vi.fn() }));
+    vi.stubGlobal('fetch', reply({ detail }));
+    // Act
+    render(<ServiceDetailWeb target={target} chatId="chat-1" clientName="CONSORCIO EL ALMIRANTE" service={service} seesMoney onBack={() => undefined} />);
+    // Assert
+    const head = await screen.findByTestId('cabecera-servicio-mapa');
+    expect(head).toHaveTextContent('Pavimentación Av. Los Álamos');
+    expect(within(head).getByTestId('servicio-linea')).toHaveTextContent('CONSORCIO EL ALMIRANTE · 62 %');
+    expect(screen.getByTestId('pestana-detalle-orders')).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('«Generar informe de servicio» runs informe_de_servicio from the space with the service: Portal refuses it in a group (01/11)', async () => {
     // Arrange
     const groups = [{ appId: 'p1', appName: 'Portal', commands: [], shortcuts: [{ key: 'informe_de_servicio', name: 'Informe de servicio' }] }];

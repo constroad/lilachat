@@ -84,8 +84,8 @@ ingeniero de campo desde el celular y lo mira el cliente desde una computadora.
 José 20/11: espacio perdido arriba, el cliente repetido, los días debían flotar sobre el mapa,
 «Compartir avance» dentro de «Más» y los botones desordenados en la web.
 
-- **Cabecera de una fila solo en la pestaña Mapa** (las demás pestañas no cambian, cc-02…cc-05).
-  Teléfono (APK y web angosta): ←, nombre y debajo «CLIENTE · 40 %» (`serviceSlimLine`), enlace y ⋮;
+- **Cabecera de una fila en la pestaña Mapa.** En el teléfono (APK y web angosta) es la de todas las
+  pestañas desde el 20/11 (ped-v2): ←, nombre y debajo «CLIENTE · 40 %» (`serviceSlimLine`), enlace y ⋮;
   pestañas más bajas. Web ancha y tablet: «‹ Servicios», nombre, estado, línea y pestañas en la misma
   fila; el cliente no se repite (ya lo nombra el canal). Web: `ServiceShellWeb` con `flush`;
   APK: `ServiceShell` con `slim`.

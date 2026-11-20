@@ -70,30 +70,6 @@ function WideHead(props: HeadProps) {
   );
 }
 
-/** A phone (cc-02 mobile): back arrow, client and name; link and «⋯»; under it the state, the line and the bar. */
-function CompactHead(props: HeadProps) {
-  const colors = useColores();
-  const line = serviceHeadLine(props.service);
-  return (
-    <View className="px-3 pt-2">
-      <View className="flex-row items-center gap-2">
-        <Pressable testID="volver-a-servicios" accessibilityLabel="Volver a Servicios" onPress={props.onBack} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20"><ArrowLeft size={19} color={colors['on-surface']} /></Pressable>
-        <View className="min-w-0 flex-1">
-          {props.clientName ? <Text className={KICKER} numberOfLines={1}>{props.clientName}</Text> : null}
-          <Text testID="servicio-nombre" className="text-[16px] font-extrabold text-on-surface" numberOfLines={1}>{props.service.name}</Text>
-        </View>
-        {props.onShare ? <Pressable testID="enlace-servicio" accessibilityLabel="Enlace del servicio" onPress={props.onShare} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20"><Link2 size={18} color={colors['on-surface']} /></Pressable> : null}
-        <MoreButton portalUrl={props.portalUrl} />
-      </View>
-      <View className="mt-2 flex-row items-center gap-2 px-1">
-        <StatusChip service={props.service} />
-        {line ? <Text testID="servicio-linea" className="min-w-0 flex-1 text-[13px] text-on-surface-variant" numberOfLines={1}>{line}</Text> : null}
-      </View>
-      <View className="px-1"><Progress value={props.service.progress} /></View>
-    </View>
-  );
-}
-
 const LinkButton = (props: { onShare?: () => void }) => {
   const colors = useColores();
   if (!props.onShare) return null;
@@ -163,8 +139,9 @@ export function ServiceShell(props: ServiceShellProps) {
   return (
     <View testID="detalle-servicio" className="flex-1 bg-background">
       <View testID="cabecera-servicio" className="z-20 border-b border-outline/15 bg-surface">
-        {props.slim ? <SlimHead {...props} /> : props.compact ? <CompactHead {...props} /> : <WideHead {...props} />}
-        <TabBar tabs={props.tabs} tab={props.tab} onTab={props.onTab} actions={props.actions} dense={props.slim} />
+        {/* Phone: one row in every tab (audit 20/11, ped-v2-movil); wide screens keep cc-02 except on the map. */}
+        {props.slim || props.compact ? <SlimHead {...props} /> : <WideHead {...props} />}
+        <TabBar tabs={props.tabs} tab={props.tab} onTab={props.onTab} actions={props.actions} dense={props.slim || props.compact} />
       </View>
       {props.children}
     </View>

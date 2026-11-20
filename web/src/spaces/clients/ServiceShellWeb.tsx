@@ -115,37 +115,12 @@ function WideHead(props: HeadProps) {
   );
 }
 
-/** Phone (cc-02 mobile): the service takes the screen with its back arrow; state, line and bar under the name. */
-function CompactHead(props: HeadProps) {
-  const line = serviceHeadLine(props.service);
-  return (
-    <>
-      <div className="flex items-center gap-2 px-3 py-2">
-        <button type="button" data-testid="volver-a-servicios" aria-label="Volver a Servicios" onClick={props.onBack} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-outline/20 text-on-surface"><ArrowLeft size={18} /></button>
-        <div className="min-w-0 flex-1">
-          {props.clientName ? <p className={`truncate ${KICKER}`}>{props.clientName}</p> : null}
-          <h2 data-testid="servicio-nombre" className="truncate text-[16px] font-extrabold text-on-surface">{props.service.name}</h2>
-        </div>
-        {props.onShare ? <button type="button" data-testid="enlace-servicio" aria-label="Enlace del servicio" onClick={props.onShare} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-outline/20 text-on-surface"><Link2 size={17} /></button> : null}
-        <MoreMenu portalUrl={props.portalUrl} />
-      </div>
-      <div className="px-4 pb-2">
-        <div className="flex min-w-0 items-center gap-2 text-[13px] text-on-surface-variant">
-          <StatusChip service={props.service} />
-          <span data-testid="servicio-linea" className="min-w-0 truncate">{line}</span>
-        </div>
-        <Progress value={props.service.progress} className="mt-2 w-full" />
-      </div>
-    </>
-  );
-}
-
 const LinkButton = (props: { onShare?: () => void; small?: boolean }) => (props.onShare
   ? <button type="button" data-testid="enlace-servicio" aria-label="Enlace del servicio" title="Enlace del servicio" onClick={props.onShare} className={`grid ${props.small ? 'h-10 w-10' : 'h-11 w-11'} shrink-0 place-items-center rounded-xl border border-outline/20 text-on-surface hover:bg-background`}><Link2 size={17} /></button>
   : null);
 
 /**
- * The map's head on a phone (José 20/11, design mapa-v2): ONE row, the name with the client and
+ * The service's head on a phone, in every tab (José 20/11, designs mapa-v2 and ped-v2): ONE row, the name with the client and
  * the progress under it, link and «⋯»; the map takes the rest. No state chip, no bar: the
  * panel's «Avance de la obra» has them.
  */
@@ -193,12 +168,13 @@ export type ServiceShellProps = HeadProps & { compact: boolean; tabs: ServiceTab
 /** The head and the tab bar: the map's one-row head when the section draws edge to edge (design mapa-v2). */
 function ShellHead(props: ServiceShellProps & { onSlot: (slot: HTMLElement | null) => void }) {
   const bar = (dense: boolean) => <TabBar tabs={props.tabs} tab={props.tab} onTab={props.onTab} onSlot={props.onSlot} compact={props.compact} dense={dense} />;
-  if (props.flush && props.compact) return <><SlimCompactHead {...props} />{bar(true)}</>;
+  // Phone: one row in every tab (audit 20/11, ped-v2-movil), not only on the map.
+  if (props.compact) return <><SlimCompactHead {...props} />{bar(true)}</>;
   if (props.flush) return <SlimWideHead {...props} tabBar={bar(true)} />;
   return (
     <>
-      {props.compact ? <CompactHead {...props} /> : <WideHead {...props} />}
-      <div className={props.compact ? '' : 'mt-2'}>{bar(false)}</div>
+      <WideHead {...props} />
+      <div className="mt-2">{bar(false)}</div>
     </>
   );
 }

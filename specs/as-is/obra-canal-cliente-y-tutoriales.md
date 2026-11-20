@@ -55,7 +55,8 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
 - **Cabecera única** en las 4 secciones (cc-02): en tablet y computadora «‹ Servicios», el
   kicker «SERVICIO · CLIENTE», el nombre con su estado, la línea «Avance N % · Etapa: … · 6 etapas · Inicio
   12 nov» (`serviceHeadLine`; las etapas del mapa, `stagesTotal`) y su barra; a la derecha «Enlace del servicio» y «⋯» (Abrir en el
-  Portal). En el celular, flecha atrás, cliente, nombre, enlace y «⋯». Sin migas (se quitó
+  Portal). En el celular, en TODAS las pestañas, una sola fila (auditoría 20/11, ped-v2): flecha atrás,
+  nombre y debajo «CLIENTE · 40 %» (`serviceSlimLine`), enlace y «⋯»; sin chip de estado ni barra. Sin migas (se quitó
   `ServiceCrumbs`). BACK de Android vuelve a Servicios.
 - **Una sola barra subrayada** (`serviceTabs`): Pedidos N · Informes N · Mapa · Drive; el número
   va aparte (`ServiceTabItem.count`). Las acciones de cada sección van a la derecha de la barra:

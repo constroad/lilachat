@@ -11,11 +11,11 @@ Las justificaciones son del auditor y citan su fuente; ninguna es una exención 
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |
-| Pastilla SUPERADMIN y avatar en la cabecera | sí | no | diferencia justificada: inventados por Stitch, INVENTARIO fila adm-01 |
-| Atajo ⌘K del buscador | sí | no | diferencia justificada: inventado por Stitch, INVENTARIO fila adm-01 |
+| Pastilla SUPERADMIN y avatar en la cabecera | sí | no | diferencia justificada: inventados por Stitch, design/stitch/INVENTARIO.md fila adm-01 |
+| Atajo ⌘K del buscador | sí | no | diferencia justificada: inventado por Stitch, design/stitch/INVENTARIO.md fila adm-01 |
 | Segmentado con «Denuncias» | 2 opciones | 3 opciones | diferencia justificada: José 19/11, cola de denuncias de Google Play (PLAY-STORE.spec §5) |
 | Logos de espacio en vez de iniciales | iniciales | logo | diferencia justificada: auditorías/adm-01-usuarios-por-espacio.md (reuse de SpaceLogo) |
-| «También en» bajo el nombre | junto al nombre | debajo | diferencia justificada: INVENTARIO fila adm-01 («en código va debajo») |
+| «También en» bajo el nombre | junto al nombre | debajo | diferencia justificada: design/stitch/INVENTARIO.md fila adm-01 («en código va debajo») |
 | Título · tamaño (escritorio) | 30 px | 28 px | falta |
 | Tarjeta · radio | 12 px | 16 px | falta |
 | Tarjeta · borde | 1 px | 1 px | igual |

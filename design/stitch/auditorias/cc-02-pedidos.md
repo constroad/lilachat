@@ -14,8 +14,8 @@ Las justificaciones son del auditor y citan su fuente; ninguna es una exención 
 | --- | --- | --- | --- |
 | Cabecera de una fila en el teléfono («CLIENTE · %») | estado, avance, etapas e inicio | solo «Cliente · 0 %» | diferencia justificada: rediseño 20/11 (ped-v2-movil, cabecera de una fila) |
 | Banda «Servicio activo» | sí | no | diferencia justificada: rediseño 20/11 |
-| Conteo en «Drive 58» | sí | sin número | diferencia justificada: Portal no manda el conteo, auditoría mapa-v2-movil |
-| Agrupado por etapas y no por código «PED-…» | tarjeta por PED | «Etapas · 1 de 5» | diferencia justificada: memoria «el rediseño conserva lo de la pantalla actual»; código no llega de Portal (auditoría ped-v2-movil) |
+| Conteo en «Drive 58» | sí | sin número | diferencia justificada: Portal no manda el conteo, design/stitch/auditorias/mapa-v2-movil.md |
+| Agrupado por etapas y no por código «PED-…» | tarjeta por PED | «Etapas · 1 de 5» | diferencia justificada: memoria de José redesign-keeps-current-screen-features.md; código no llega de Portal (design/stitch/auditorias/ped-v2-movil.md) |
 | Filas de despacho con medios | tres botones | filas por hora con miniaturas | diferencia justificada: rediseño 20/11 (ped-v2-movil) |
 | Barra de avance del pedido | no | sí | diferencia justificada: rediseño 20/11 (ped-v2-movil, barra de avance) |
 | «Cubicaje», «Ver pedido», «Asignado a…» | sí | no | falta |

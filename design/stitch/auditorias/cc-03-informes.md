@@ -13,8 +13,8 @@ Las justificaciones son del auditor y citan su fuente; ninguna es una exención 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |
 | Cabecera de una fila en el teléfono | estado y barra «0/6» | título y «Cliente · %» | diferencia justificada: rediseño 20/11 (cabecera de una fila) |
-| Tarjetas de resumen y «Total emitidos» | sí | no | diferencia justificada: inventadas por Stitch sin dato, INVENTARIO § cc (revisión 19/11) |
-| Bloque «Etapas» y «Generar informe de servicio» | no | sí | diferencia justificada: memoria «el rediseño conserva lo de la pantalla actual» |
+| Tarjetas de resumen y «Total emitidos» | sí | no | diferencia justificada: inventadas por Stitch sin dato, design/stitch/INVENTARIO.md § cc (revisión 19/11) |
+| Bloque «Etapas» y «Generar informe de servicio» | no | sí | diferencia justificada: memoria de José redesign-keeps-current-screen-features.md |
 | Botón PDF por fila | sí | no en borradores | falta |
 | Grupo por día | filas en una tarjeta | una tarjeta por informe | falta |
 | Ancho del contenido (escritorio) | todo el panel | columna de 920 px | falta |

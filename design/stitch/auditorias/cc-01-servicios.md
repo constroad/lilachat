@@ -15,13 +15,13 @@ Las justificaciones son del auditor y citan su fuente; ninguna es una exención 
 | Pestañas del canal y lista con buscador y segmentado | sí | igual | igual |
 | «Drive del cliente» en la cabecera | sí | no | diferencia justificada: inventado por Stitch, auditoría anterior (revisión del lote de José 20/11) |
 | Segmento activo | blanco | píldora con acento | falta |
-| «Enlace del servicio» en cada tarjeta | no | sí | diferencia justificada: José 31/10 (as-is canal §2), memoria «el rediseño conserva lo de la pantalla actual» |
+| «Enlace del servicio» en cada tarjeta | no | sí | diferencia justificada: José 31/10 (as-is canal §2), memoria de José redesign-keeps-current-screen-features.md |
 | Tarjeta · radio | 12 px | 12 px | igual |
 | Tarjeta · borde | 0 px (sombra) | 1 px | falta |
 | Tarjeta · padding | 16 px | 16 px | igual |
 | Tarjeta · alto | 115 px | 110 px | igual |
 | Título «Servicios» · tamaño | 36 px | 22 px | falta |
-| Kicker «SERVICIO 01 · VIAL» (móvil) | sí | no | diferencia justificada: inventado por Stitch, INVENTARIO § cc |
+| Kicker «SERVICIO 01 · VIAL» (móvil) | sí | no | diferencia justificada: inventado por Stitch, design/stitch/INVENTARIO.md § cc |
 | Título y «Enlace del cliente» en el móvil | no | sí | falta |
 | Buscador y segmentado en el móvil | dos controles | un bloque | falta |
 | Tarjeta móvil · borde | 1.5 px | 1 px | falta |

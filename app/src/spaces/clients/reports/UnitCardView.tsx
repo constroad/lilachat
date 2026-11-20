@@ -43,17 +43,23 @@ function ExtraStrip({ item, section, onOpen, onView }: { item: RepeatItem; secti
   const path = { sectionId: section.id, itemId: item.id, key: extras.section.id };
   return (
     <View testID={`adicionales-${item.id}`} className="flex-row items-center gap-2 rounded-xl border border-outline/10 bg-background p-1.5">
-      <ScrollView horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} className="flex-1" contentContainerStyle={{ gap: 8, alignItems: 'center' }}>
-        <Text className="text-[11px] font-bold uppercase tracking-[1.2px] text-on-surface-variant">{extraPhotosTitle(extras.photos.length)}</Text>
-        {extras.photos.map((one) => (
-          <Pressable key={one.id || one.url} onPress={() => onView({ section: extras.section, url: one.url, path })} accessibilityLabel={[one.caption, one.hour].filter(Boolean).join(' · ') || extras.section.title}>
-            <Image source={{ uri: one.thumbUrl }} style={{ width: EXTRA_THUMB, height: EXTRA_THUMB, borderRadius: 8 }} />
-          </Pressable>
-        ))}
-      </ScrollView>
-      {/* Out of the scroll: «+ Agregar foto» is never cut at the right edge (E2E 20/11). */}
+      {/* The wrapping View resolves the width BEFORE the ScrollView: a ScrollView sized by its own
+          content (not this flex-row's leftover space) is what pushed the 2nd thumb under the button
+          below (E2E 20/11, «Agregar foto» tapando la segunda foto con OPCIONAL (2)). */}
+      <View className="min-w-0 flex-1">
+        <ScrollView horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, alignItems: 'center' }}>
+          <Text className="text-[11px] font-bold uppercase tracking-[1.2px] text-on-surface-variant">{extraPhotosTitle(extras.photos.length)}</Text>
+          {extras.photos.map((one) => (
+            <Pressable key={one.id || one.url} onPress={() => onView({ section: extras.section, url: one.url, path })} accessibilityLabel={[one.caption, one.hour].filter(Boolean).join(' · ') || extras.section.title}>
+              <Image source={{ uri: one.thumbUrl }} style={{ width: EXTRA_THUMB, height: EXTRA_THUMB, borderRadius: 8 }} />
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+      {/* Out of the scroll: «+ Agregar foto» is never cut at the right edge (E2E 20/11), and shrink-0
+          so it always keeps its own space next to the strip, never behind it. */}
       {extras.full ? null : (
-        <Pressable testID={`agregar-adicional-${item.id}`} onPress={() => onOpen(path)} className="h-9 flex-row items-center gap-1 rounded-lg border border-primary/30 px-2">
+        <Pressable testID={`agregar-adicional-${item.id}`} onPress={() => onOpen(path)} className="h-9 shrink-0 flex-row items-center gap-1 rounded-lg border border-primary/30 px-2">
           <Plus size={14} color={colors.primary} />
           <Text className="text-[13px] font-bold text-primary">{ADD_EXTRA_PHOTO}</Text>
         </Pressable>

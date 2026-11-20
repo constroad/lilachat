@@ -1,4 +1,4 @@
-import type { FormSchema, FormSchemaProperty } from './appForms.js';
+import type { FieldWidth, FormSchema, FormSchemaProperty } from './appForms.js';
 
 /**
  * Report forms drawn compact (José 19/11 on the CTL-IMP: «botones grandes, diseños feos»; design
@@ -7,12 +7,17 @@ import type { FormSchema, FormSchemaProperty } from './appForms.js';
  */
 export const LANE_CHIPS: readonly string[] = ['Derecho', 'Izquierdo', 'Ambos'];
 
-type CompactHint = { /** Form key → the fields it draws first, in this order. */ order: Record<string, readonly string[]>; /** Form key → text field → its chips. */ chips: Record<string, Record<string, readonly string[]>> };
+type CompactHint = {
+  /** Form key → the fields it draws first, in this order. */ order: Record<string, readonly string[]>;
+  /** Form key → text field → its chips. */ chips: Record<string, Record<string, readonly string[]>>;
+  /** Form key → field → its width, so the design's pairs hold whatever reaches Lilachat. */ widths: Record<string, Record<string, FieldWidth>>;
+};
 
 const COMPACT_REPORTS: Readonly<Record<string, CompactHint>> = {
   'CTL-IMP': {
     order: { ubicacion: ['tramo', 'progresivaDesde', 'progresivaHasta', 'carril', 'horaInicio', 'horaFinal'] },
     chips: { ubicacion: { carril: LANE_CHIPS } },
+    widths: { ubicacion: { tramo: 'full', progresivaDesde: 'half', progresivaHasta: 'half' } },
   },
 };
 
@@ -24,17 +29,38 @@ function ordered(properties: Record<string, FormSchemaProperty>, order: readonly
   return Object.fromEntries(Object.entries(properties).sort(([a], [b]) => rank(a) - rank(b)));
 }
 
-/** The section's schema with the compact hints of its report; any other comes back as it is. */
-export function compactSectionSchema(reportType: string, formKey: string, schema: FormSchema): FormSchema {
+type FormHints = { order?: readonly string[]; chips?: Record<string, readonly string[]>; widths?: Record<string, FieldWidth> };
+
+/** What the report's hint says about one of its forms. */
+function hintsOf(reportType: string, formKey: string): FormHints {
   const hint = isCompactReport(reportType) ? COMPACT_REPORTS[reportType] : undefined;
-  const order = hint && Object.hasOwn(hint.order, formKey) ? hint.order[formKey] : undefined;
-  const chips = hint && Object.hasOwn(hint.chips, formKey) ? hint.chips[formKey] : undefined;
-  if (!order && !chips) return schema;
-  const properties = ordered(schema.properties ?? {}, order ?? []);
-  for (const [name, options] of Object.entries(chips ?? {})) {
+  if (!hint) return {};
+  const pick = <T>(byForm: Record<string, T>): T | undefined => (Object.hasOwn(byForm, formKey) ? byForm[formKey] : undefined);
+  return { order: pick(hint.order), chips: pick(hint.chips), widths: pick(hint.widths) };
+}
+
+/** The chips go on text fields only: what is saved stays the same string. */
+function withChips(properties: Record<string, FormSchemaProperty>, chips: Record<string, readonly string[]>): void {
+  for (const [name, options] of Object.entries(chips)) {
     const property = properties[name];
     if (property?.type === 'string') properties[name] = { ...property, 'x-chips': [...options] };
   }
+}
+
+function withWidths(properties: Record<string, FormSchemaProperty>, widths: Record<string, FieldWidth>): void {
+  for (const [name, width] of Object.entries(widths)) {
+    const property = properties[name];
+    if (property) properties[name] = { ...property, 'x-width': width };
+  }
+}
+
+/** The section's schema with the compact hints of its report; any other comes back as it is. */
+export function compactSectionSchema(reportType: string, formKey: string, schema: FormSchema): FormSchema {
+  const { order, chips, widths } = hintsOf(reportType, formKey);
+  if (!order && !chips && !widths) return schema;
+  const properties = ordered(schema.properties ?? {}, order ?? []);
+  withChips(properties, chips ?? {});
+  withWidths(properties, widths ?? {});
   return { ...schema, properties };
 }
 

@@ -44,7 +44,7 @@ describe('sampleRowsOf: the state of each tray row (design imp-01)', () => {
 
 describe('sampleColumnsOf and sampleTagOf', () => {
   it('the columns are the field titles after «Bandeja N ·», with their unit', () => {
-    expect(sampleColumnsOf(fields())).toEqual([{ label: 'Peso vacío', unit: 'g' }, { label: 'Con asfalto', unit: 'g' }, { label: 'Área', unit: 'm²' }]);
+    expect(sampleColumnsOf(fields())).toEqual([{ label: 'Peso vacío', short: 'Vacía', unit: 'g' }, { label: 'Con asfalto', short: 'Con asf.', unit: 'g' }, { label: 'Área', unit: 'm²' }]);
   });
 
   it('a title without separator drops its trailing number', () => {

@@ -53,7 +53,7 @@ export function SampleRowsView(props: { fields: readonly FormField[]; values: Fo
       <Text className="text-right text-[12px] text-on-surface-variant">{SAMPLES_NOTE}</Text>
       <View className="flex-row items-center px-2" style={{ gap: ROW_GAP }} importantForAccessibility="no-hide-descendants">
         <Text className="text-[10px] font-bold uppercase tracking-[1px] text-on-surface-variant" style={{ width: TAG_WIDTH }}>N.º</Text>
-        {columns.map((column) => <Text key={column.label} numberOfLines={1} className="min-w-0 flex-1 text-center text-[10px] font-bold uppercase tracking-[1px] text-on-surface-variant">{`${column.label}${column.unit ? ` (${column.unit})` : ''}`}</Text>)}
+        {columns.map((column) => <Text key={column.label} numberOfLines={1} className="min-w-0 flex-1 text-center text-[10px] font-bold uppercase tracking-[1px] text-on-surface-variant">{`${column.short ?? column.label}${column.unit ? ` (${column.unit})` : ''}`}</Text>)}
         <Text className="text-center text-[10px] font-bold uppercase tracking-[1px] text-on-surface-variant" style={{ width: stateWidth }}>{table ? 'Estado' : ''}</Text>
       </View>
       {rows.map((row) => <SampleRowView key={row.index} row={row} values={props.values} errors={props.errors} set={props.set} stateWidth={stateWidth} table={table} />)}

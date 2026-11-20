@@ -27,6 +27,14 @@ describe('compactSectionSchema (design imp-01, José 19/11)', () => {
     expect(schema.required).toEqual(['tramo']);
   });
 
+  it('the progresivas share a row and the tramo takes its own, as in imp-01 (Portal\'s x-width does not reach Lilachat)', () => {
+    const bare: FormSchema = { type: 'object', properties: { tramo: { type: 'string', title: 'Tramo', maxLength: 200 }, progresivaDesde: { type: 'string', title: 'Progresiva de', maxLength: 500 }, progresivaHasta: { type: 'string', title: 'Progresiva al', maxLength: 500 } } };
+    const properties = compactSectionSchema('CTL-IMP', 'ubicacion', bare).properties ?? {};
+    expect(properties.tramo?.['x-width']).toBe('full');
+    expect(properties.progresivaDesde?.['x-width']).toBe('half');
+    expect(properties.progresivaHasta?.['x-width']).toBe('half');
+  });
+
   it('the lane stays a text: what it saves is the same string Portal reads', () => {
     const lane = formFields({ id: 'f', title: 'Ubicación', schema: compactSectionSchema('CTL-IMP', 'ubicacion', placeSchema) }).find((field) => field.name === 'carril');
     expect(lane).toMatchObject({ kind: 'text', chips: ['Derecho', 'Izquierdo', 'Ambos'] });

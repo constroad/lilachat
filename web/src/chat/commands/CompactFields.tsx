@@ -47,7 +47,7 @@ export function SampleRowsWeb(props: { fields: readonly FormField[]; values: For
       <p className="text-right text-[12px] text-on-surface-variant">{SAMPLES_NOTE}</p>
       <div aria-hidden className={`${GRID} px-2 text-[10.5px] font-bold uppercase tracking-wider text-on-surface-variant`}>
         <span>N.º</span>
-        {columns.map((column) => <span key={column.label} className="truncate text-center">{column.label}{column.unit ? ` (${column.unit})` : ''}</span>)}
+        {columns.map((column) => <span key={column.label} className="truncate text-center"><span className={column.short ? 'max-sm:hidden' : undefined}>{column.label}</span>{column.short ? <span className="sm:hidden">{column.short}</span> : null}{column.unit ? ` (${column.unit})` : ''}</span>)}
         <span className="text-center"><span className="hidden sm:inline">Estado</span></span>
       </div>
       {rows.map((row) => <SampleRowWeb key={row.index} row={row} values={props.values} errors={props.errors} set={props.set} />)}
@@ -78,7 +78,7 @@ function SampleInput(props: { field: Extract<FormField, { kind: 'number' }>; val
   return (
     <label className={`flex h-11 min-w-0 items-center rounded-lg border bg-background px-2 focus-within:border-primary ${props.invalid ? 'border-error' : 'border-outline/25'}`}>
       <span className="sr-only">{field.label}</span>
-      <input data-testid={`campo-${field.name}`} type="number" inputMode={field.integer ? 'numeric' : 'decimal'} min={field.min} max={field.max} step={field.integer ? 1 : 'any'} placeholder="—" aria-invalid={props.invalid} value={typeof props.value === 'number' || typeof props.value === 'string' ? props.value : ''} onWheel={(event) => event.currentTarget.blur()} onChange={(event) => props.onChange(event.target.value === '' ? undefined : event.target.value)} className="w-full min-w-0 bg-transparent text-right text-[15px] tabular-nums outline-none placeholder:text-center placeholder:text-on-surface-variant" />
+      <input data-testid={`campo-${field.name}`} aria-label={field.label} type="number" inputMode={field.integer ? 'numeric' : 'decimal'} min={field.min} max={field.max} step={field.integer ? 1 : 'any'} placeholder="—" aria-invalid={props.invalid} value={typeof props.value === 'number' || typeof props.value === 'string' ? props.value : ''} onWheel={(event) => event.currentTarget.blur()} onChange={(event) => props.onChange(event.target.value === '' ? undefined : event.target.value)} className="w-full min-w-0 bg-transparent text-right text-[15px] tabular-nums outline-none placeholder:text-center placeholder:text-on-surface-variant" />
       {field.unit ? <span className="ml-1 hidden shrink-0 text-[12px] text-on-surface-variant min-[400px]:inline">{field.unit}</span> : null}
     </label>
   );

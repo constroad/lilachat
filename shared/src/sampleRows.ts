@@ -8,7 +8,10 @@ import { isBlankAnswer } from './appFormSections.js';
  */
 export type SampleRowState = 'complete' | 'partial' | 'owed' | 'optional';
 export type SampleRow<F extends FormField = FormField> = { index: number; fields: F[]; state: SampleRowState };
-export type SampleColumn = { label: string; unit?: string };
+export type SampleColumn = { label: string; /** What a phone's narrow column shows (design imp-01: «VACÍA (G)», «CON ASF. (G)»). */ short?: string; unit?: string };
+
+/** The headers too long for a phone's column, as the design writes them. */
+const SHORT_COLUMN_LABELS: Readonly<Record<string, string>> = { 'Peso vacío': 'Vacía', 'Con asfalto': 'Con asf.' };
 
 export const SAMPLES_NOTE = 'Basta una completa';
 export const PARTIAL_SAMPLE_LINE = 'Completa esta bandeja o déjala vacía';
@@ -42,7 +45,8 @@ export function sampleColumnsOf(fields: readonly FormField[]): SampleColumn[] {
   return (first?.fields ?? []).map((field) => {
     const cut = field.label.lastIndexOf(TITLE_SEPARATOR);
     const label = capitalized(cut >= 0 ? field.label.slice(cut + TITLE_SEPARATOR.length).trim() : field.label.replace(TRAILING_INDEX, ''));
-    return { label, ...(field.kind === 'number' && field.unit ? { unit: field.unit } : {}) };
+    const short = Object.hasOwn(SHORT_COLUMN_LABELS, label) ? SHORT_COLUMN_LABELS[label] : undefined;
+    return { label, ...(short ? { short } : {}), ...(field.kind === 'number' && field.unit ? { unit: field.unit } : {}) };
   });
 }
 

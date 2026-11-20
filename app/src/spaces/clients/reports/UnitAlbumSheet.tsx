@@ -65,7 +65,7 @@ function AlbumReview({ item, onSend, onSent, onClose, onView }: Omit<Props, 'ite
   return (
     <>
       <Text className="text-[20px] font-bold text-on-surface">{albumReviewTitle(item)}</Text>
-      <ScrollView testID="album-revision" className="mt-3" contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', gap: GAP }}>
+      <ScrollView testID="album-revision" keyboardShouldPersistTaps="handled" className="mt-3" contentContainerStyle={{ flexDirection: 'row', flexWrap: 'wrap', gap: GAP }}>
         {album.map((photo, index) => (
           <AlbumTile key={photo.url} photo={photo} index={index} size={size} checked={selected.includes(photo.url)} broken={marks.broken.has(photo.url)} onToggle={() => setMarks((now) => toggleAlbumPhoto(now, photo.url))} onBroken={() => setMarks((now) => markAlbumPhotoBroken(now, photo.url))} onView={() => onView(item, photo.url)} />
         ))}

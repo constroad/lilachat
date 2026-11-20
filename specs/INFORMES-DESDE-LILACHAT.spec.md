@@ -2223,3 +2223,63 @@ de colocación (§22).
   - Tests de shared, server y web, y `tsc` del APK.
   - Sin E2E: la Mac compartida no permitía levantar servidores ni emulador, y Portal no había
     publicado la herramienta.
+
+## 25. Control de pista: cola de descarga que ordena José, el dato en la foto y «Terminar unidad» a la vista (José 20/11)
+
+Diseños pv2-01…pv2-04 (INVENTARIO «Rediseño 20/11»), aprobados por José el 20/11: «sí hazlo».
+Auditorías en `design/stitch/auditorias/pv2-0N-*.md` (captura y revisor pendientes).
+
+- **La cola de descarga** (`shared/src/unloadQueue.ts`, `unloadQueueOf`). Primero las unidades cerradas, en
+  el orden de colocación de Portal. Luego las abiertas, en el orden que puso la persona. Al final las que no
+  llegaron. La primera abierta es la que descarga.
+- **Estados:** «Enviada» (`albumSentAt`), «Terminada» (tiene la foto de unidad vacía), «Descargando»,
+  «En cola» y «En camino» (salió de planta o sigue en planta; su fila tiene «Llegó»).
+- **Reordenar:**
+  - «Siguiente ↑» pone la unidad justo detrás de la que descarga.
+  - En la primera de la cola, pasa delante de la que descarga. Así el APK cambia la que descarga sin arrastrar.
+  - En la web también se arrastra con el asa.
+  - Una unidad que llega y no está en el orden va al final.
+- **Dónde vive el orden:**
+  - En el server de Lilachat, colección `UnloadOrder` (`server/src/bots/unloadOrder.ts`).
+  - La clave es espacio + servicio + informe. Se borra sola a los 30 días.
+  - `PUT …/services/:serviceId/reports/:reportId/unload-order` con `{ order: string[] }`.
+  - La puerta es la del borrador (`need: 'services'`): cualquier miembro del canal. Fuera del canal, 404.
+    Ids que no son ids o más de 200, 400.
+  - El borrador de un CTL-PIS sale con `unloadOrder` (`withUnloadOrder`). Así todos los teléfonos ven el mismo.
+  - El teléfono lo muestra al instante y lo manda. Si no llega, vuelve atrás con «No se pudo guardar el orden…».
+- **Por qué no en Portal:**
+  - Portal no tiene ese campo en la fila de la unidad. `guardar_seccion_de_informe` rechaza un campo
+    que no conoce.
+  - Agregarlo cambia el inputSchema de la herramienta (`FLAT_FIELDS`), y José tendría que reaprobarla.
+  - El número de colocación sigue siendo de Portal (orden de cierre, §22). Como una unidad solo se
+    termina detrás de la anterior, los dos órdenes coinciden.
+- **No se termina una unidad si la anterior no salió** (`finishBlockOf`). Si la unidad de delante en la cola
+  sigue abierta (sin foto de unidad vacía), la revisión de «Terminar unidad» muestra en rojo «Primero termina
+  la Unidad N · PLACA: todavía no tiene la foto de unidad vacía.». Debajo va «Ir a PLACA», y el envío queda
+  apagado. «Ir a» cierra la revisión y deja esa unidad en la tarjeta. Una unidad cerrada que reenvía sus fotos
+  no se bloquea.
+- **El dato en la foto** (`shared/src/unitMeasure.ts`):
+  - Las fotos de temperatura y de escantillón traen su dato justo bajo la vista previa: «Temperatura (°C)»
+    y «Escantillón (cm)». Es numérico, con el teclado decimal y con lo que la unidad ya tenía.
+  - `agregar_foto_de_informe` no recibe datos. Por eso, al guardar, la foto va sin el dato.
+  - El dato va como guardado de la sección `unidad` (`guardar_seccion_de_informe`), con todos los valores
+    que la unidad ya tenía (Portal vacía lo que un guardado omite). Si faltaba, suma la hora de llegada.
+  - Ninguna herramienta cambia.
+- **La tarjeta de la unidad** (web `UnitCardWeb`, APK `UnitCardView`):
+  - Unidad, placa, estado, «Llegó 08:02 · 15 m³» y las 4 fotos con su dato («148 °C»). La que toca va
+    punteada.
+  - Debajo, las adicionales y los otros datos.
+  - Al pie, «Tomar escantillón» (la siguiente foto) y «Terminar unidad», de 40 px.
+- **Diseño:**
+  - Móvil: la tarjeta («Descargando ahora» o «Unidad seleccionada») y debajo la cola. Las terminadas van
+    plegadas.
+  - Desde 1024 px en la web y desde 900 dp en el APK: la cola a la izquierda y la unidad a la derecha (pv2-04).
+  - Tocar una fila la pone en la tarjeta.
+- **«Ver PDF»** del borrador tiene ancho fijo (web `w-36`, APK `w-36`) y nunca se desborda.
+- **Lo inventado por Stitch no se implementó:** «Asfalto en tolva», «En progreso», «TOCA», «En ruta»,
+  la tolerancia, el chip del pedido, la regla dibujada, «Junta longitudinal fría», «(4 obligatorias)»,
+  «OBRA CONCHUCOS», «4G Faena», «EN DESCARGA» repetido, «Especificación», «Termómetro en masa» y «tolva limpia».
+- **Verificado (20/11):**
+  - Tests de shared, server, web y app, `tsc` del APK y `quick_check.py`.
+  - Sin E2E ni capturas: esta sesión no levanta servidores, emulador ni navegador. Los hace la sesión
+    principal.

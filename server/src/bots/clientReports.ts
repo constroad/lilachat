@@ -12,6 +12,7 @@ import { workStreetDeleteInputOf, workStreetDeletePrepared, workStreetInputOf, w
 import { workManualProgressInputOf, workManualProgressPrepared, type WorkManualProgressInput } from './workManualProgressForm.js';
 import { isObservationFormKind, observationFormInputOf, observationFormPrepared, type ObservationFormInput } from './observationForms.js';
 import { AREA_FORM_KINDS, areaFormInputOf, areaFormPrepared, isAreaFormKind, type AreaFormInput } from './areaForms.js';
+import { withUnloadOrder } from './unloadOrder.js';
 import { isWorkMapFormInput, isWorkMapFormKind, workMapFormInputOf, workMapFormPrepared, type WorkMapFormContext, type WorkMapFormInput } from './workMapForms.js';
 
 /**
@@ -102,10 +103,10 @@ export async function clientReportDraft(workspaceId: string, clientId: string, s
   const page = pageOf(body.page);
   if (page === 'invalid') return fail(400, 'invalid_request', 'La página de unidades empieza en 1.');
   const asked = await askAboutService(needsMoneyToCreate(body.type) ? DRAFT_WITH_MONEY : DRAFT, workspaceId, clientId, serviceId, userId, { type: body.type, ...(reportId ? { report_id: reportId } : {}), ...(page ? { page } : {}) });
-  if ('ok' in asked && asked.ok) {
-    await ReportDraftModel.updateOne({ workspaceId: new Types.ObjectId(workspaceId), userId, serviceId, type: body.type }, { $set: { document: asked.value } }, { upsert: true });
-  }
-  return asked;
+  if (!('ok' in asked) || !asked.ok) return asked;
+  await ReportDraftModel.updateOne({ workspaceId: new Types.ObjectId(workspaceId), userId, serviceId, type: body.type }, { $set: { document: asked.value } }, { upsert: true });
+  // José 20/11: a control de pista comes with the unloading order the channel set (`unloadOrder.ts`).
+  return { ok: true, value: await withUnloadOrder(workspaceId, serviceId, asked.value) };
 }
 
 /** A window of units (50 a page, agentes maps it to `pagina` from the second on): an integer from 1, nothing, or a refusal. */

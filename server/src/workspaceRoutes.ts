@@ -30,6 +30,7 @@ import { addCustomEmoji, listCustomEmojis, removeCustomEmoji } from './customEmo
 import { clientRecords, listClients } from './bots/botClients.js';
 import { clientAccount, clientReportEmbed, clientReportEmbedNew, clientReportPdf, clientServiceBilling, clientServiceDetail, clientServiceFiles } from './bots/clientFiles.js';
 import { clientReportDraft, openReportForm } from './bots/clientReports.js';
+import { saveUnloadOrder } from './bots/unloadOrder.js';
 import { openVisitForm, siteVisitDraft, visitDoorOf } from './bots/siteVisitDoor.js';
 import { liftRestrictionsOfAdmin, listBillingViewers, listClientAccess, setBillingViewer, setClientAccess } from './bots/clientBillingViewers.js';
 
@@ -154,6 +155,12 @@ export function buildWorkspaceRouter(uploader: MediaUploader = defaultMediaUploa
     const outcome = await openReportForm(req.params.id!, req.params.clientId!, req.params.serviceId!, me(req), req.body);
     if ('error' in outcome) return res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.json(outcome);
+  }));
+  // José 20/11: the unloading order of a control de pista, kept here and shared by every device of the channel.
+  router.put('/:id/clients/:clientId/services/:serviceId/reports/:reportId/unload-order', handled(async (req, res) => {
+    const saved = await saveUnloadOrder(req.params.id!, req.params.clientId!, req.params.serviceId!, req.params.reportId!, me(req), req.body);
+    if ('error' in saved) return res.status(saved.status).json({ error: saved.error, message: saved.message });
+    res.json(saved);
   }));
   // José 13/11 (contract with agentes 14/11): a technical visit from its channel or the 1:1 with the app. The document…
   // Whether this chat is a visits door (the `visitas` topic's channel or the 1:1 with the app): no call to agentes.

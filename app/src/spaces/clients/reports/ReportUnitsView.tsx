@@ -1,226 +1,114 @@
-import { useState, type ReactNode } from 'react';
-import { Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
-import { Camera, CheckCircle2, Plus, ChevronDown, ChevronRight, ChevronUp, Clock, Container, Ruler, Send, Thermometer, Truck } from 'lucide-react-native';
-import { placementOf, UNITS_CLOSE_HINT, ADD_EXTRA_PHOTO, ARRIVED_LABEL, arrivalKeyOf, extraPhotosOf, extraPhotosTitle, dataRowLine, dataSectionOf, pageLine, photoSlotsOf, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitAlbumCta, unitStateOf, unitTitleOf, waitingLayoutOf, ALBUM_CTA, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
+import { useState, type ReactElement } from 'react';
+import { Pressable, Text, View, useWindowDimensions } from 'react-native';
+import { ArrowUp, ChevronDown, ChevronUp, Truck } from 'lucide-react-native';
+import { ARRIVED_LABEL, arrivalKeyOf, canMoveNext, FINISHED_TITLE, isClosedStatus, MOVE_NEXT_LABEL, moveNext, openOrderOf, pageLine, QUEUE_BADGES, QUEUE_HINT, QUEUE_TITLE, queueCountsLine, queueVolumeLine, selectedUnitOf, SELECTED_TITLE, UNITS_CLOSE_HINT, UNLOADING_TITLE, unloadQueueOf, type QueuedUnit, type UnitsQueueViewProps, type RepeatSection } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
-import { Pill, ResultsStrip, StateDot } from './ReportSections';
+import { Pill, ResultsStrip } from './ReportSections';
+import { PLATE_FONT, UnitCardView, type Open } from './UnitCardView';
 
-/** Design j-05 (José 06/11): for the operator on the pista, with gloves and in a hurry. Big plate, big slots, one tap per action. */
-const SLOT = 72;
-const PLATE_FONT = Platform.select({ ios: 'Menlo', default: 'monospace' });
-const ICONS = { ingreso: Truck, temperatura: Thermometer, escantillon: Ruler, vacia: Container } as const;
-const iconOf = (kind?: string) => (kind && kind in ICONS ? ICONS[kind as keyof typeof ICONS] : Camera);
 const NO_UNITS = 'Todavía no salió ningún volquete de planta.';
-const slotLabel = (title: string): string => title.replace(/^foto de\s+/i, '');
+/** From this width (a tablet) the queue goes left and the unit right, as design pv2-04. */
+const SIDE_BY_SIDE_FROM = 900;
 
-type Open = (path: SectionPath) => void;
-type ViewPhoto = (photo: PhotoToView) => void;
-/** «Terminar unidad» (José 19/11): anyone reviews the unit's photos before they go to the group, draft or published. Missing: nobody sends from here. */
-type Album = { admin: boolean; onAlbum?: (item: RepeatItem) => void };
+type Props = UnitsQueueViewProps;
 
-/** The unit's button to the client's group, compact under its photos; with the note of when they went, once they did. */
-function AlbumAction({ item, album }: { item: RepeatItem; album: Album }) {
+type RowProps = { unit: QueuedUnit; section: RepeatSection; selected: boolean; last: boolean; onOpen: Open; onSelect: (itemId: string) => void; onNext?: () => void };
+
+/** One unit in line: its number, plate and line, its status or «Llegó», and «Siguiente ↑». */
+function QueueRow({ unit, section, selected, last, onOpen, onSelect, onNext }: RowProps) {
   const colors = useColores();
-  const cta = unitAlbumCta(item);
-  if (!cta || !album.onAlbum) return null;
-  const finishing = cta.label === ALBUM_CTA.finish;
+  const away = unit.status === 'onTheWay';
+  const arrival = away ? arrivalKeyOf(unit.item) : undefined;
+  const unloading = unit.status === 'unloading';
   return (
-    <View className="mt-3 flex-row flex-wrap items-center justify-end gap-2 border-t border-outline/10 pt-2">
-      {cta.sentNote ? <Text testID={`album-enviado-${item.id}`} className="mr-auto text-[12px] text-on-surface-variant">{cta.sentNote}</Text> : null}
-      <Pressable testID={`terminar-${item.id}`} onPress={() => album.onAlbum?.(item)} className={`min-h-[40px] flex-row items-center gap-1.5 rounded-xl px-3 ${finishing ? 'bg-primary' : 'border border-primary/30 bg-primary/10'}`}>
-        <Send size={16} color={finishing ? colors['on-primary'] : colors.primary} />
-        <Text className={`text-[14px] font-bold ${finishing ? 'text-on-primary' : 'text-primary'}`}>{cta.label}</Text>
+    <View testID={`cola-${unit.item.id}`} className={`flex-row items-center gap-2 px-3 py-2 ${last ? '' : 'border-b border-outline/10'} ${selected ? 'bg-primary/10' : ''} ${away ? 'opacity-70' : ''}`}>
+      <View className={`h-7 w-7 items-center justify-center rounded-full ${unloading ? 'bg-primary' : 'border border-outline/25'}`}>
+        <Text className={`text-[13px] font-bold ${unloading ? 'text-on-primary' : 'text-on-surface-variant'}`}>{unit.position}</Text>
+      </View>
+      <Pressable testID={`elegir-${unit.item.id}`} disabled={away} onPress={() => onSelect(unit.item.id)} className="min-w-0 flex-1">
+        <Text className="text-[15px] font-bold text-on-surface" style={{ fontFamily: PLATE_FONT }} numberOfLines={1}>{unit.plate}</Text>
+        <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>{unit.line}</Text>
       </Pressable>
-    </View>
-  );
-}
-
-/** One photo of the unit: its thumbnail with a check, or a dashed camera to take it with one tap. */
-function PhotoSlot({ slot, itemId, onOpen, onView }: { slot: UnitSlot; itemId: string; onOpen: () => void; onView: (url: string) => void }) {
-  const colors = useColores();
-  const Icon = iconOf(slot.section.photoKind);
-  return (
-    <Pressable testID={`foto-${itemId}-${slot.section.id}`} onPress={() => (slot.photo ? onView(slot.photo.url) : onOpen())} accessibilityLabel={slot.section.title} className="items-center" style={{ width: SLOT }}>
-      {/* The key remounts the tile: on Android, dropping the dashed border from a live clipped view left its photo and check undrawn until the screen was reopened (E2E 06/11). */}
-      <View key={slot.done ? 'taken' : 'missing'} className={`items-center justify-center overflow-hidden rounded-2xl ${slot.done ? 'bg-primary/10' : 'border-2 border-dashed border-primary/50 bg-surface-variant'}`} style={{ width: SLOT, height: SLOT }}>
-        {slot.photo ? <Image source={{ uri: slot.photo.thumbUrl }} style={{ width: SLOT, height: SLOT }} /> : <Icon size={28} color={colors.primary} />}
-        {slot.done ? <View className="absolute right-1 top-1 rounded-full bg-surface"><CheckCircle2 size={18} color={colors.primary} /></View> : null}
-        {slot.photo?.pending ? <View testID={`foto-pendiente-${slot.photo.id}`} className="absolute left-1 top-1 h-5 w-5 items-center justify-center rounded-full bg-black/60"><Clock size={12} color="white" /></View> : null}
-      </View>
-      <Text className={`mt-1 text-[11px] ${slot.done ? 'text-on-surface-variant' : 'font-bold text-primary'}`} numberOfLines={1}>{slotLabel(slot.section.title)}</Text>
-    </Pressable>
-  );
-}
-
-/** A volquete on its way, in one row: any of them can be next, because the order of arrival depends on nothing. «Llegó» opens its ingreso photo; the data comes after (José 07/11). */
-function WaitingRow({ item, section, last, onOpen }: { item: RepeatItem; section: RepeatSection; last: boolean; onOpen: Open }) {
-  const colors = useColores();
-  const arrival = arrivalKeyOf(item);
-  const { kicker, plate } = unitTitleOf(item);
-  return (
-    <View testID={`unidad-${item.id}`} className={`flex-row items-center gap-3 px-3 py-2 ${last ? '' : 'border-b border-outline/10'}`}>
-      <View className="min-w-0 flex-1">
-        {kicker ? <Text testID={`orden-${item.id}`} className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{kicker}</Text> : null}
-        <Text className="text-[21px] font-bold text-on-surface" style={{ fontFamily: PLATE_FONT }} numberOfLines={1}>{plate}</Text>
-        {unitLineOf(item) ? <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>{unitLineOf(item)}</Text> : null}
-      </View>
       {arrival ? (
-        <Pressable testID={`llego-${item.id}`} onPress={() => onOpen({ sectionId: section.id, itemId: item.id, key: arrival })} accessibilityLabel={`${ARRIVED_LABEL} ${plate}`} className="min-h-[52px] min-w-[96px] flex-row items-center justify-center gap-1.5 rounded-xl bg-primary px-3">
-          <Truck size={18} color={colors['on-primary']} />
-          <Text className="text-[14px] font-bold uppercase text-on-primary">{ARRIVED_LABEL}</Text>
+        <Pressable testID={`llego-${unit.item.id}`} onPress={() => onOpen({ sectionId: section.id, itemId: unit.item.id, key: arrival })} accessibilityLabel={`${ARRIVED_LABEL} ${unit.plate}`} className="h-9 flex-row items-center gap-1.5 rounded-lg bg-primary px-3">
+          <Truck size={16} color={colors['on-primary']} />
+          <Text className="text-[13px] font-bold text-on-primary">{ARRIVED_LABEL}</Text>
+        </Pressable>
+      ) : away ? null : <Pill badge={QUEUE_BADGES[unit.status]} testID={`estado-cola-${unit.item.id}`} />}
+      {onNext ? (
+        <Pressable testID={`siguiente-${unit.item.id}`} onPress={onNext} accessibilityLabel={`${MOVE_NEXT_LABEL}: ${unit.plate}`} className="h-9 flex-row items-center gap-1 rounded-lg border border-outline/25 px-2">
+          <Text className="text-[13px] font-semibold text-on-surface">{MOVE_NEXT_LABEL}</Text>
+          <ArrowUp size={14} color={colors['on-surface']} />
         </Pressable>
       ) : null}
     </View>
   );
 }
 
-const EXTRA_THUMB = 56;
-
-/** Design j-07b (José 07/11): the unit's optional photos under the fixed ones. A thumbnail opens the viewer, where a draft's photo can be removed. */
-function ExtraStrip({ item, section, onOpen, onView }: { item: RepeatItem; section: RepeatSection; onOpen: Open; onView: ViewPhoto }) {
-  const colors = useColores();
-  const extras = extraPhotosOf(item);
-  if (!extras) return null;
-  const path = { sectionId: section.id, itemId: item.id, key: extras.section.id };
-  return (
-    <View testID={`adicionales-${item.id}`} className="mt-3 border-t border-outline/10 pt-2">
-      <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{extraPhotosTitle(extras.photos.length)}</Text>
-      <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} className="mt-2" contentContainerStyle={{ gap: 8 }}>
-        {extras.photos.map((one) => (
-          <Pressable key={one.id || one.url} onPress={() => onView({ section: extras.section, url: one.url, path })} accessibilityLabel={[one.caption, one.hour].filter(Boolean).join(' · ') || extras.section.title} className="items-center" style={{ width: EXTRA_THUMB }}>
-            <Image source={{ uri: one.thumbUrl }} style={{ width: EXTRA_THUMB, height: EXTRA_THUMB, borderRadius: 12 }} />
-            <Text className="mt-0.5 text-[10px] text-on-surface-variant" style={{ fontFamily: PLATE_FONT }}>{one.hour}</Text>
-          </Pressable>
-        ))}
-        {extras.full ? null : (
-          <Pressable testID={`agregar-adicional-${item.id}`} onPress={() => onOpen(path)} className="flex-row items-center gap-1.5 rounded-xl border-2 border-dashed border-primary/40 px-3" style={{ height: EXTRA_THUMB }}>
-            <Plus size={16} color={colors.primary} />
-            <Text className="text-[14px] font-bold text-primary">{ADD_EXTRA_PHOTO}</Text>
-          </Pressable>
-        )}
-      </ScrollView>
-    </View>
-  );
-}
-
-/** A unit on site: number and plate, its pill, the four photo slots and the line of its data. */
-function ArrivedCard({ item, section, onOpen, onView, album }: { item: RepeatItem; section: RepeatSection; onOpen: Open; onView: ViewPhoto; album: Album }) {
-  const colors = useColores();
-  const { kicker, plate } = unitTitleOf(item);
-  const data = dataSectionOf(item);
-  const working = unitStateOf(item) === 'working';
-  return (
-    <View testID={`unidad-${item.id}`} className={`rounded-2xl border bg-surface p-4 ${working ? 'border-primary/40' : 'border-outline/15'}`}>
-      <View className="flex-row items-start justify-between gap-3">
-        <View className="min-w-0 flex-1">
-          {kicker ? <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{kicker}</Text> : null}
-          <Text className="text-[28px] font-bold text-on-surface" style={{ fontFamily: PLATE_FONT }} numberOfLines={1}>{plate}</Text>
-          {placementOf(item) ? <Text testID={`colocacion-${item.id}`} className="text-[14px] font-bold text-primary">{placementOf(item)}</Text> : null}
-        </View>
-        <Pill badge={unitBadgeOf(item)} testID={`estado-${item.id}`} />
-      </View>
-      <View className="mt-3 flex-row justify-between">
-        {photoSlotsOf(item).map((slot) => {
-          const path = { sectionId: section.id, itemId: item.id, key: slot.section.id };
-          return <PhotoSlot key={slot.section.id} slot={slot} itemId={item.id} onOpen={() => onOpen(path)} onView={(url) => onView({ section: slot.section, url, path })} />;
-        })}
-      </View>
-      {data ? (
-        <Pressable testID={`datos-${item.id}`} onPress={() => onOpen({ sectionId: section.id, itemId: item.id, key: data.id })} className="mt-3 min-h-[44px] flex-row items-center gap-2 border-t border-outline/10 pt-2">
-          <StateDot state={data.state} small />
-          <Text className="flex-1 text-[14px] font-semibold text-on-surface" numberOfLines={1}>{dataRowLine(data)}</Text>
-          <ChevronRight size={16} color={colors.primary} />
-        </Pressable>
-      ) : null}
-      <ExtraStrip item={item} section={section} onOpen={onOpen} onView={onView} />
-      <AlbumAction item={item} album={album} />
-    </View>
-  );
-}
-
-/** One plate to tap: «Llegó» in the strip on top, the same as the row's button. */
-function ArrivalChip({ item, section, onOpen }: { item: RepeatItem; section: RepeatSection; onOpen: Open }) {
-  const colors = useColores();
-  const arrival = arrivalKeyOf(item);
-  const { plate } = unitTitleOf(item);
-  if (!arrival) return null;
-  return (
-    <Pressable testID={`llego-${item.id}`} onPress={() => onOpen({ sectionId: section.id, itemId: item.id, key: arrival })} accessibilityLabel={`${ARRIVED_LABEL} ${plate}`} className="min-h-[52px] flex-row items-center gap-2 rounded-xl bg-primary px-4">
-      <Truck size={18} color={colors['on-primary']} />
-      <Text className="text-[15px] font-bold text-on-primary" style={{ fontFamily: PLATE_FONT }}>{plate}</Text>
-    </Pressable>
-  );
-}
-
-function Group({ title, count, children }: { title: string; count: number; children: ReactNode }) {
-  return (
-    <View className="gap-3">
-      <View className="flex-row items-center justify-between gap-3">
-        <Text className="flex-1 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{title}</Text>
-        <Text className="text-[12px] font-bold text-primary">{count}</Text>
-      </View>
-      {children}
-    </View>
-  );
-}
-
-/** The finished ones fold away: they no longer need the person, and twelve of them would bury the rest. */
-function FinishedGroup({ items, section, onOpen, onView, album }: { items: RepeatItem[]; section: RepeatSection; onOpen: Open; onView: ViewPhoto; album: Album }) {
+/** The closed units fold away: they no longer need the person. */
+function FinishedRows({ units, render }: { units: QueuedUnit[]; render: (unit: QueuedUnit, last: boolean) => ReactElement }) {
   const colors = useColores();
   const [open, setOpen] = useState(false);
   const Chevron = open ? ChevronUp : ChevronDown;
+  if (!units.length) return null;
   return (
-    <View className="gap-3">
-      <Pressable testID="ver-terminadas" onPress={() => setOpen(!open)} accessibilityState={{ expanded: open }} className="min-h-[44px] flex-row items-center gap-3">
-        <Text className="flex-1 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{UNIT_GROUP_TITLES.finished}</Text>
-        <Text className="text-[12px] font-bold text-primary">{items.length}</Text>
-        <Chevron size={18} color={colors.primary} />
+    <View className="border-t border-outline/10">
+      <Pressable testID="ver-terminadas" onPress={() => setOpen(!open)} accessibilityState={{ expanded: open }} className="h-11 flex-row items-center gap-2 px-3">
+        <Text className="flex-1 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{FINISHED_TITLE}</Text>
+        <Text className="text-[12px] font-bold text-primary">{units.length}</Text>
+        <Chevron size={16} color={colors.primary} />
       </Pressable>
-      {open ? items.map((item) => <ArrivedCard key={item.id} item={item} section={section} onOpen={onOpen} onView={onView} album={album} />) : null}
+      {open ? units.map((unit, index) => render(unit, index === units.length - 1)) : null}
+    </View>
+  );
+}
+
+/** The queue (pv2-01 below the card, pv2-04 left): the open units to reorder, the ones on their way, the closed ones folded. */
+function QueueList({ queue, section, selectedId, onOpen, onSelect, onReorder }: { queue: QueuedUnit[]; section: RepeatSection; selectedId: string | null; onOpen: Open; onSelect: (itemId: string) => void; onReorder?: (order: string[]) => void }) {
+  const order = openOrderOf(queue);
+  const rowOf = (unit: QueuedUnit, last: boolean) => {
+    const onNext = onReorder && canMoveNext(unit) ? () => onReorder(moveNext(order, unit.item.id)) : undefined;
+    return <QueueRow key={unit.item.id} unit={unit} section={section} selected={unit.item.id === selectedId} last={last} onOpen={onOpen} onSelect={onSelect} onNext={onNext} />;
+  };
+  const inLine = queue.filter((unit) => !isClosedStatus(unit.status));
+  return (
+    <View testID="cola-descarga" className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">
+      <View className="flex-row items-baseline justify-between gap-2 px-3 pb-1 pt-3">
+        <Text className="flex-1 text-[11px] font-bold uppercase tracking-[1.5px] text-primary" numberOfLines={1}>{QUEUE_TITLE}</Text>
+        <Text className="text-[12px] text-on-surface-variant">{QUEUE_HINT}</Text>
+      </View>
+      {inLine.map((unit, index) => rowOf(unit, index === inLine.length - 1))}
+      <FinishedRows units={queue.filter((unit) => isClosedStatus(unit.status))} render={rowOf} />
     </View>
   );
 }
 
 /**
- * The units of a control de pista (design j-05, reordered after the test with
- * twelve volquetes, José 06/11): first the ones on site, which are the work at
- * hand; then the ones on their way, as rows that fit one screen and force no
- * order; the ones still at the plant as a line; the finished ones folded.
- * Nobody adds a unit; Portal lists the order's dispatches.
+ * The units of a control de pista as an unloading queue (José 20/11, designs pv2-01…pv2-04):
+ * the unit on the card with its photos and «Terminar unidad», and the queue the person orders in
+ * the field. On a tablet the queue goes left and the unit right. Nobody adds a unit; Portal lists
+ * the order's dispatches.
  */
-export function ReportUnitsView({ section, onOpen, onView, admin = false, onAlbum }: { section: RepeatSection; onOpen: Open; onView: ViewPhoto } & Partial<Album>) {
-  const album: Album = { admin, ...(onAlbum ? { onAlbum } : {}) };
-  const groups = unitGroupsOf(section);
-  const head = [unitCountsLine(groups), pageLine(section)].filter(Boolean).join(' · ');
-  const strip = waitingLayoutOf(groups) === 'strip';
-  const reachable = groups.atPlant.filter((item) => dataSectionOf(item));
-  const plantOnly = groups.atPlant.filter((item) => !dataSectionOf(item));
+export function ReportUnitsView({ section, onOpen, onView, onAlbum, order, onReorder, selectedId, onSelect }: Props) {
+  const { width } = useWindowDimensions();
+  const queue = unloadQueueOf(section, order);
+  const selected = selectedUnitOf(queue, selectedId);
+  const head = [queueCountsLine(queue), queueVolumeLine(queue), pageLine(section)].filter(Boolean).join(' · ');
+  const wide = width >= SIDE_BY_SIDE_FROM;
+  const card = selected ? (
+    <View className="gap-2" style={wide ? { flex: 7 } : undefined}>
+      <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{selected.status === 'unloading' ? UNLOADING_TITLE : SELECTED_TITLE}</Text>
+      <UnitCardView unit={selected} section={section} onOpen={onOpen} onView={onView} onAlbum={onAlbum} />
+    </View>
+  ) : null;
+  const list = queue.length ? <View style={wide ? { flex: 5 } : undefined}><QueueList queue={queue} section={section} selectedId={selected?.item.id ?? null} onOpen={onOpen} onSelect={onSelect} onReorder={onReorder} /></View> : null;
   return (
-    <View testID={`unidades-${section.id}`} className="gap-4">
+    <View testID={`unidades-${section.id}`} className="gap-3">
       {section.summary.length ? <Text testID="resumen-unidades" className="text-[15px] font-bold text-on-surface">{section.summary.join(' · ')}</Text> : null}
       {head ? <Text testID="conteo-unidades" className="text-[14px] text-on-surface-variant">{head}</Text> : null}
       {section.items.length ? <Text testID="cierre-unidades" className="text-[13px] text-on-surface-variant">{UNITS_CLOSE_HINT}</Text> : null}
       {section.items.length === 0 ? <Text className="pt-4 text-center text-[14px] text-on-surface-variant">{NO_UNITS}</Text> : null}
-      {strip ? (
-        <Group title={UNIT_GROUP_TITLES.waiting} count={groups.waiting.length}>
-          <ScrollView keyboardShouldPersistTaps="handled" horizontal testID="unidades-por-llegar" showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-            {groups.waiting.map((item) => <ArrivalChip key={item.id} item={item} section={section} onOpen={onOpen} />)}
-          </ScrollView>
-        </Group>
-      ) : null}
-      {groups.onSite.length ? <Group title={UNIT_GROUP_TITLES.onSite} count={groups.onSite.length}>{groups.onSite.map((item) => <ArrivedCard key={item.id} item={item} section={section} onOpen={onOpen} onView={onView} album={album} />)}</Group> : null}
-      {groups.waiting.length && !strip ? (
-        <Group title={UNIT_GROUP_TITLES.waiting} count={groups.waiting.length}>
-          <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">{groups.waiting.map((item, index) => <WaitingRow key={item.id} item={item} section={section} last={index === groups.waiting.length - 1} onOpen={onOpen} />)}</View>
-        </Group>
-      ) : null}
-      {groups.atPlant.length ? (
-        <Group title={UNIT_GROUP_TITLES.atPlant} count={groups.atPlant.length}>
-          {reachable.length ? <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">{reachable.map((item, index) => <WaitingRow key={item.id} item={item} section={section} last={index === reachable.length - 1} onOpen={onOpen} />)}</View> : null}
-          {plantOnly.length ? <Text testID="unidades-en-planta" className="text-[14px] text-on-surface-variant" style={{ fontFamily: PLATE_FONT }}>{plantOnly.map((item) => unitTitleOf(item).plate).join(' · ')}</Text> : null}
-        </Group>
-      ) : null}
-      {groups.finished.length ? <FinishedGroup items={groups.finished} section={section} onOpen={onOpen} onView={onView} album={album} /> : null}
+      {wide ? <View className="flex-row items-start gap-3">{list}{card}</View> : <>{card}{list}</>}
       <ResultsStrip results={section.results} testID="resultados-unidades" />
     </View>
   );

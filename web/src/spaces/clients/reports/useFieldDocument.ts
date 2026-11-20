@@ -3,6 +3,7 @@ import { createReportScreen, type ReportRef } from '@lilachat/shared';
 import { loadPerfil } from '../../../api';
 import { devicePlaceNow } from './devicePlace';
 import { dropReportPhoto, keepReportPhoto, reportQueue, useReportQueueStart } from './reportQueueStore';
+import { saveUnloadOrder } from './reportsApi';
 
 /**
  * The report's page in the browser (`shared/reportScreen`): the document with
@@ -12,8 +13,8 @@ import { dropReportPhoto, keepReportPhoto, reportQueue, useReportQueueStart } fr
 export function useFieldDocument(jwt: string, { spaceId, clientId, chatId, serviceId, type, reportId, responsible }: ReportRef & { reportId?: string; responsible?: string }) {
   useReportQueueStart(jwt, loadPerfil()?.userId ?? null);
   const actions = useMemo(
-    () => createReportScreen<File>({ queue: reportQueue, keepPhoto: keepReportPhoto, dropPhoto: dropReportPhoto, placeNow: devicePlaceNow, personName: () => responsible ?? loadPerfil()?.name, newKey: () => crypto.randomUUID(), now: () => new Date().toISOString() }, { spaceId, clientId, chatId, serviceId, type }, reportId),
-    [spaceId, clientId, chatId, serviceId, type, reportId, responsible]
+    () => createReportScreen<File>({ queue: reportQueue, keepPhoto: keepReportPhoto, dropPhoto: dropReportPhoto, placeNow: devicePlaceNow, personName: () => responsible ?? loadPerfil()?.name, newKey: () => crypto.randomUUID(), now: () => new Date().toISOString(), saveUnloadOrder: (id, order) => saveUnloadOrder({ jwt, spaceId, clientId }, serviceId, id, order) }, { spaceId, clientId, chatId, serviceId, type }, reportId),
+    [jwt, spaceId, clientId, chatId, serviceId, type, reportId, responsible]
   );
   const state = useSyncExternalStore(actions.subscribe, actions.snapshot);
   useEffect(() => {

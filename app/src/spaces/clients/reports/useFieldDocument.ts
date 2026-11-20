@@ -5,6 +5,13 @@ import { loadCredential } from '../../../auth/credentialStore';
 import { alConectar } from '../../../chat/socketClient';
 import { devicePlaceNow } from './devicePlace';
 import { dropReportPhoto, keepReportPhoto, reportQueue } from './reportQueueStore';
+import { saveUnloadOrder } from './reportsApi';
+
+/** The order goes with the keychain's token, read at the call and never kept. */
+async function withJwt(call: (jwt: string) => Promise<boolean>): Promise<boolean> {
+  const credential = await loadCredential();
+  return credential ? call(credential.jwt) : false;
+}
 
 /**
  * The report's screen on the phone (`shared/reportScreen`): the document with
@@ -19,7 +26,7 @@ export function useFieldDocument({ spaceId, clientId, chatId, serviceId, type, r
     });
   }, []);
   const actions = useMemo(
-    () => createReportScreen({ queue: reportQueue, keepPhoto: keepReportPhoto, dropPhoto: dropReportPhoto, placeNow: devicePlaceNow, personName: () => responsible ?? personName.current, newKey: Crypto.randomUUID, now: () => new Date().toISOString() }, { spaceId, clientId, chatId, serviceId, type }, reportId),
+    () => createReportScreen({ queue: reportQueue, keepPhoto: keepReportPhoto, dropPhoto: dropReportPhoto, placeNow: devicePlaceNow, personName: () => responsible ?? personName.current, newKey: Crypto.randomUUID, now: () => new Date().toISOString(), saveUnloadOrder: (id, order) => withJwt((jwt) => saveUnloadOrder({ jwt, spaceId, clientId }, serviceId, id, order)) }, { spaceId, clientId, chatId, serviceId, type }, reportId),
     [spaceId, clientId, chatId, serviceId, type, reportId, responsible]
   );
   const state = useSyncExternalStore(actions.subscribe, actions.snapshot);

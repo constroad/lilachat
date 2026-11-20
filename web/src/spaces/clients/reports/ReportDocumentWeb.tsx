@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { readFieldConditions } from '../../../chat/commands/commandsApi';
 import { AlertTriangle, ChevronLeft, ExternalLink, FileText } from 'lucide-react';
-import { formKeyOf, isUnitsRepeat, PREVIEW_LABEL, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, albumViewOf, unitAlbumOf, type RepeatItem, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService, type ChannelLinks, wantsWorkStreets, type GeoPoint } from '@lilachat/shared';
+import { formKeyOf, isUnitsRepeat, PREVIEW_LABEL, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, albumViewOf, finishBlockOf, unitAlbumOf, unloadQueueOf, type RepeatItem, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService, type ChannelLinks, wantsWorkStreets, type GeoPoint } from '@lilachat/shared';
 import { loadPerfil } from '../../../api';
 import { AppFormDialog } from '../../../chat/commands/AppFormDialog';
 import { EphemeralAnswers } from '../../../chat/commands/EphemeralAnswers';
@@ -81,12 +81,12 @@ function ReportFooter({ report, blocker, pdf, onPublish, onDone }: { report: Fie
   return (
     <footer className="sticky bottom-0 flex flex-col gap-2 border-t border-outline/10 bg-background pt-3">
       {blocker ? <p data-testid="falta-informe" className="inline-flex items-center justify-center gap-2 text-[13px] font-semibold text-on-surface-variant"><AlertTriangle size={15} className="text-primary" /> {blocker}</p> : null}
-      {/* José 07/11: «Ver PDF» beside «Publicar», on one line; a draft's preview publishes nothing. */}
+      {/* José 07/11: «Ver PDF» beside «Publicar», on one line; José 20/11: a fixed width, so it never overflows. */}
       <div className="flex gap-2">
         {pdf.readyUrl
-          ? <a href={pdf.readyUrl} target="_blank" rel="noreferrer" data-testid="abrir-vista-previa" className="inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-primary/30 bg-primary/10 px-2 text-sm font-semibold text-primary"><FileText size={16} className="shrink-0" /><span className="truncate">Abrir vista previa</span></a>
-          : <button type="button" data-testid="ver-vista-previa" disabled={pdf.asking || !report.id} onClick={() => void pdf.ask(report.id ?? '', true)} className="inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-primary/30 bg-primary/10 px-2 text-sm font-semibold text-primary disabled:opacity-60"><PdfLabel asking={pdf.asking} label={PREVIEW_LABEL} /></button>}
-        <button type="button" data-testid="abrir-publicar" onClick={onPublish} className="h-12 flex-[2] rounded-xl bg-primary text-base font-bold text-on-primary">{report.publish.label}</button>
+          ? <a href={pdf.readyUrl} target="_blank" rel="noreferrer" data-testid="abrir-vista-previa" className="inline-flex h-11 w-36 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-primary/30 bg-primary/10 px-2 text-sm font-semibold text-primary"><FileText size={16} className="shrink-0" /><span className="truncate">Abrir vista previa</span></a>
+          : <button type="button" data-testid="ver-vista-previa" disabled={pdf.asking || !report.id} onClick={() => void pdf.ask(report.id ?? '', true)} className="inline-flex h-11 w-36 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-primary/30 bg-primary/10 px-2 text-sm font-semibold text-primary disabled:opacity-60"><PdfLabel asking={pdf.asking} label={PREVIEW_LABEL} /></button>}
+        <button type="button" data-testid="abrir-publicar" onClick={onPublish} className="h-11 min-w-0 flex-1 truncate rounded-xl bg-primary px-3 text-base font-bold text-on-primary">{report.publish.label}</button>
       </div>
       {pdf.message ? <p className="text-center text-[13px] text-error">{pdf.message}</p> : null}
     </footer>
@@ -94,10 +94,10 @@ function ReportFooter({ report, blocker, pdf, onPublish, onDone }: { report: Fie
 }
 
 /** What the page shows under the header: the loading block, the failure, the tramos or the hub. */
-function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems, onRetry, onView, admin, onAlbum }: { admin: boolean; onAlbum: (item: RepeatItem) => void; onRetry: () => void; onView: (photo: PhotoToView) => void; draft: ReportDraftResult | null; report: FieldDocument | null; items: DocumentSection | undefined; portalUrl?: string; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
+function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems, onRetry, onView, admin, onAlbum, queue }: { admin: boolean; onAlbum: (item: RepeatItem) => void; queue: UnitsQueue; onRetry: () => void; onView: (photo: PhotoToView) => void; draft: ReportDraftResult | null; report: FieldDocument | null; items: DocumentSection | undefined; portalUrl?: string; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
   if (draft === null) return <div data-testid="informe-cargando" className="h-40 animate-pulse rounded-xl bg-surface" />;
   if (!draft.ok || !report) return <DraftFailure message={draft.ok ? 'No se pudo abrir el informe' : draft.message} portalUrl={portalUrl} onRetry={onRetry} />;
-  if (items?.kind === 'repeat') return isUnitsRepeat(items) ? <ReportUnitsWeb section={items} onOpen={onOpen} onView={onView} admin={admin} onAlbum={onAlbum} /> : <ReportItemsWeb section={items} onOpen={onOpen} onView={onView} />;
+  if (items?.kind === 'repeat') return isUnitsRepeat(items) ? <ReportUnitsWeb section={items} onOpen={onOpen} onView={onView} admin={admin} onAlbum={onAlbum} order={report.unloadOrder} onReorder={report.status === 'published' || !report.id ? undefined : queue.reorder} selectedId={queue.selectedId} onSelect={queue.select} /> : <ReportItemsWeb section={items} onOpen={onOpen} onView={onView} />;
   return (
     <>
       <ProgressCard report={report} />
@@ -123,6 +123,14 @@ function useReportPage(props: Props) {
   return { document, ...view, forms, publish, publishing, setPublishing, setItemsOf, back };
 }
 
+/** José 20/11: the unit on the card and the unloading order; a failed save says so in the notice. */
+type UnitsQueue = { selectedId: string | null; select: (itemId: string) => void; reorder: (order: string[]) => void };
+function useUnitsQueue(setOrder: (order: string[]) => Promise<{ ok: true } | { ok: false; message: string }>, tell: (message: string) => void): UnitsQueue {
+  const [selectedId, select] = useState<string | null>(null);
+  const reorder = (order: string[]) => void setOrder(order).then((saved) => (saved.ok ? undefined : tell(saved.message)));
+  return { selectedId, select, reorder };
+}
+
 /** The unit under review, read from the newest document; and Portal's words once its photos went. */
 function useUnitAlbum(items: DocumentSection | undefined) {
   const [itemId, setItemId] = useState<string | null>(null);
@@ -137,6 +145,7 @@ function useUnitAlbum(items: DocumentSection | undefined) {
       setItemId(null);
       setNotice(message);
     },
+    tell: setNotice,
   };
 }
 
@@ -157,6 +166,12 @@ export function ReportDocumentWeb(props: Props) {
   const streets = useWorkStreets(props.target.jwt, props.links, props.target.clientId, props.service.id, wantsWorkStreets(document.form?.response?.form));
   const conditionsOf = useCallback((point: GeoPoint) => readFieldConditions(props.target.jwt, point), [props.target.jwt]);
   const album = useUnitAlbum(items);
+  const queue = useUnitsQueue(actions.setUnloadOrder, album.tell);
+  const block = album.item && items?.kind === 'repeat' ? finishBlockOf(unloadQueueOf(items, report?.unloadOrder), album.item.id) : null;
+  const goTo = (itemId: string) => {
+    album.close();
+    queue.select(itemId);
+  };
   const viewAlbumPhoto = (item: RepeatItem, url: string) => {
     const view = albumViewOf(unitAlbumOf(item), url);
     if (view) files.open(view.file, view.siblings);
@@ -166,13 +181,13 @@ export function ReportDocumentWeb(props: Props) {
     if (view) files.open(view.file, view.siblings, { label: TAKE_ANOTHER_PHOTO, onPress: () => actions.openSection(path) }, photoRemovalOf(report, section, actions.removePhoto));
   };
   return (
-    <div data-testid="informe-documento" className="mx-auto flex max-w-3xl flex-col gap-3">
+    <div data-testid="informe-documento" className={`mx-auto flex w-full flex-col gap-3 ${items?.kind === 'repeat' && isUnitsRepeat(items) ? 'max-w-6xl' : 'max-w-3xl'}`}>
       <ReportHeader kicker={items ? `${kicker} · ${items.title}` : kicker} title={props.service.name} report={report} onBack={page.back} />
       <QueueCard saves={saves} offline={offline} onFix={(save) => actions.openSection(save.path)} onDiscard={(save) => void actions.discard(save.clientKey)} />
       <EphemeralAnswers answers={forms.answers.answers} onDismiss={forms.answers.dismiss} onOpenForm={forms.answers.showForm} chatId={props.chatId} jwt={props.target.jwt} />
       {report && !items ? <ExampleBannerWeb report={report} serviceId={props.service.id} type={props.type} onFill={actions.fillExamples} /> : null}
-      <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={page.setItemsOf} onRetry={actions.refresh} onView={viewPhoto} admin={Boolean(props.admin)} onAlbum={album.open} />
-      {album.item ? <UnitAlbumDialog key={album.item.id} item={album.item} onSend={(urls) => actions.sendUnitAlbum(album.item!.id, urls)} onSent={album.sent} onClose={album.close} onView={(url) => viewAlbumPhoto(album.item!, url)} /> : null}
+      <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={page.setItemsOf} onRetry={actions.refresh} onView={viewPhoto} admin={Boolean(props.admin)} onAlbum={album.open} queue={queue} />
+      {album.item ? <UnitAlbumDialog key={album.item.id} item={album.item} onSend={(urls) => actions.sendUnitAlbum(album.item!.id, urls)} onSent={album.sent} onClose={album.close} onView={(url) => viewAlbumPhoto(album.item!, url)} block={block} onGo={goTo} /> : null}
       {/* Over the review, the viewer goes to the end of the body like the Overlay, or it could sit under it. */}
       {album.item ? createPortal(files.viewer, window.document.body) : files.viewer}
       <FloatingNotice text={album.notice} done testId="aviso-album" />

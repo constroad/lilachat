@@ -29,7 +29,7 @@ export type RepeatItem = { id: string; title: string; summary: string[]; results
 export type RepeatSection = { kind: 'repeat'; id: string; title: string; required: boolean; enabled: boolean; state: SectionState; summary: string[]; /** Over all the items (Portal's Carros, Volumen, Terminadas). */ results: SectionResult[]; itemTitle: string; addLabel: string; /** False when the items come from elsewhere (the dispatches of an order): no «Agregar». */ canAdd: boolean; page?: ItemsPage; min: number; template: SectionTemplate[]; items: RepeatItem[]; /** What a new item opens with (Portal d85a6e57: the end of the last tramo). */ nextValues?: FormValues };
 export type DocumentSection = FormSection | RepeatSection;
 /** `id` is null until the first section is saved: Portal creates nothing on a read. */
-export type FieldDocument = { id: string | null; type: string; title: string; status: DocumentStatus; forms: Record<string, FormSchema>; sections: DocumentSection[]; publish: { label: string; missing: string[]; /** Shown without blocking «Publicar» (dispatches of the order with no row yet). */ warnings: string[] } };
+export type FieldDocument = { id: string | null; type: string; title: string; status: DocumentStatus; forms: Record<string, FormSchema>; sections: DocumentSection[]; publish: { label: string; missing: string[]; /** Shown without blocking «Publicar» (dispatches of the order with no row yet). */ warnings: string[] }; /** CTL-PIS: the open units in the order the person set (José 20/11), kept by Lilachat's server. */ unloadOrder?: string[] };
 /** Where a section lives: a top-level one has `key` = `sectionId`; inside a repeat, `itemId` null means a new item. */
 export type SectionPath = { sectionId: string; itemId: string | null; key: string };
 
@@ -201,7 +201,23 @@ export function fieldDocumentOf(body: unknown): FieldDocument | null {
   const sections = forms ? sectionsOf(raw.sections, forms) : null;
   if (!forms || !sections) return null;
   const publish = record(raw.publish);
-  return { id, type, title, status, forms, sections, publish: { label: text(publish.label, LIMITS.title) || 'Publicar informe', missing: lines(publish.missing), warnings: lines(publish.warnings) } };
+  const unloadOrder = unloadOrderOf(raw.unloadOrder);
+  return { id, type, title, status, forms, sections, publish: { label: text(publish.label, LIMITS.title) || 'Publicar informe', missing: lines(publish.missing), warnings: lines(publish.warnings) }, ...(unloadOrder ? { unloadOrder } : {}) };
+}
+
+/** The most units a queue keeps: a report's page holds 50. */
+export const UNLOAD_ORDER_MAX = 200;
+const UNIT_ID = /^[\w-]{1,64}$/;
+
+/** The unloading order as the server keeps it: ids, each once; null when it is not a list of them. */
+export function unloadOrderOf(raw: unknown): string[] | null {
+  if (!Array.isArray(raw) || raw.length > UNLOAD_ORDER_MAX) return null;
+  const ids: string[] = [];
+  for (const one of raw) {
+    if (typeof one !== 'string' || !UNIT_ID.test(one)) return null;
+    if (!ids.includes(one)) ids.push(one);
+  }
+  return ids;
 }
 
 type Found = PhotoMarks & { title: string; form: string; tool?: string; values: FormValues; example?: FormValues };

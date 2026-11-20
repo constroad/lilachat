@@ -12,6 +12,7 @@ import { signSession } from '../sessions.js';
 import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botModels.js';
 import { ClientChannelModel } from './botClients.js';
 import { ReportDraftModel } from './clientReports.js';
+import { UnloadOrderModel } from './unloadOrder.js';
 
 /** A field report filled from the channel (José 05/11, spec INFORMES-DESDE-LILACHAT §4.2): the document, then each section as a form. */
 let mongo: MongoMemoryServer;
@@ -70,7 +71,7 @@ afterAll(async () => {
 beforeEach(async () => {
   received = [];
   answers = { 'client.report.draft.requested': { status: 200, body: document }, 'form.submitted': { status: 200, body: { response_type: 'ephemeral', text: 'Guardado.' } } };
-  await Promise.all([UserModel, ChatModel, WorkspaceModel, WorkspaceMemberModel, BotAppModel, BotInstallationModel, BotCommandRunModel, ClientChannelModel, ReportDraftModel].map((model) => (model as unknown as mongoose.Model<unknown>).deleteMany({})));
+  await Promise.all([UserModel, ChatModel, WorkspaceModel, WorkspaceMemberModel, BotAppModel, BotInstallationModel, BotCommandRunModel, ClientChannelModel, ReportDraftModel, UnloadOrderModel].map((model) => (model as unknown as mongoose.Model<unknown>).deleteMany({})));
   [jose, ana, outsider] = (await UserModel.create([{ phone: '51902049935', name: 'José' }, { phone: '51922222222', name: 'Ana' }, { phone: '51911111111', name: 'Otro' }])).map((user) => user._id) as [Types.ObjectId, Types.ObjectId, Types.ObjectId];
   spaceId = (await WorkspaceModel.create({ name: 'Test', ownerId: jose, joinCode: 'TEST-7K3P' }))._id;
   await WorkspaceMemberModel.create([{ workspaceId: spaceId, userId: jose, phone: '51902049935', role: 'owner', status: 'active' }, { workspaceId: spaceId, userId: ana, phone: '51922222222', role: 'member', status: 'active' }, { workspaceId: spaceId, userId: outsider, phone: '51911111111', role: 'member', status: 'active' }]);
@@ -432,6 +433,38 @@ describe('a control de pista (06/11): units from the dispatches, photos with the
     await openOf(ana, { kind: 'section', type: 'CTL-PIS', section_id: 'unidades', item_id: 'd1', key: 'foto-ingreso', at }).expect(400);
 
     expect(received).toHaveLength(before);
+  });
+
+  describe('the unloading order (José 20/11)', () => {
+    const orderOf = (who: Types.ObjectId, order: unknown, reportId = pista.id) => request(app).put(`${base()}/${reportId}/unload-order`).set(auth(who)).send({ order });
+
+    it('any member of the channel sets it, and every document of the report brings it back', async () => {
+      // Arrange
+      answers['client.report.draft.requested'] = { status: 200, body: pista };
+      // Act
+      const saved = await orderOf(ana, ['d2', 'd1', 'd2']).expect(200);
+      const read = await draftOf(jose, { type: 'CTL-PIS' }).expect(200);
+      // Assert
+      expect(saved.body).toEqual({ order: ['d2', 'd1'] });
+      expect(read.body.document.unloadOrder).toEqual(['d2', 'd1']);
+      expect(received.at(-1)?.data).not.toHaveProperty('unloadOrder');
+    });
+
+    it('a report with no order, or of another type, comes as Portal sent it', async () => {
+      answers['client.report.draft.requested'] = { status: 200, body: pista };
+      expect((await draftOf(ana, { type: 'CTL-PIS' }).expect(200)).body.document).not.toHaveProperty('unloadOrder');
+      await orderOf(ana, ['d1']).expect(200);
+      answers['client.report.draft.requested'] = { status: 200, body: { ...document, id: pista.id } };
+      expect((await draftOf(ana).expect(200)).body.document).not.toHaveProperty('unloadOrder');
+    });
+
+    it('is a 404 outside the channel and a 400 for an order off the contract', async () => {
+      await orderOf(outsider, ['d1']).expect(404);
+      await orderOf(ana, 'd1').expect(400);
+      await orderOf(ana, ['d 1']).expect(400);
+      await orderOf(ana, ['d1'], 'no-es-un-id!').expect(400);
+      expect(await UnloadOrderModel.countDocuments({})).toBe(0);
+    });
   });
 });
 

@@ -4,6 +4,7 @@ import { docOf, fakePortal, fakeVault, general, newTramo, NOW, ref, type Tramo }
 import type { DevicePlace } from './reportCreation';
 import { createReportScreen, NO_GPS_PHOTO, PHOTO_PLACE_WAIT_MS, REFRESH_RETRIES, REFRESH_RETRY_MS, type ReportScreenState } from './reportScreen';
 import type { FieldDocument, FormSection, RepeatSection, SectionPath } from './fieldDocument';
+import { ORDER_SAVE_FAILED } from './unloadQueue';
 
 type Source = { uri: string };
 
@@ -621,6 +622,49 @@ describe('a report photo with the Lilachat stamp', () => {
     // Assert
     expect(seen.opens.at(-1)).not.toHaveProperty('sello_lilachat');
     expect(seen.uploads).toEqual([undefined]);
+    test.stop();
+  });
+});
+
+describe('the unloading order of a control de pista (José 20/11)', () => {
+  function orderedScreen(saveUnloadOrder: (reportId: string, order: readonly string[]) => Promise<boolean>, id: string | null = 'r1') {
+    const portal = fakePortal({ id, tramos: [{ id: 't1', photos: 0 }] });
+    const queue = createReportQueue({ wire: portal.wire, vault: fakeVault().vault, gapMs: 0 });
+    const screen = createReportScreen<Source>({ queue, keepPhoto: async () => ({ ref: 'k', mime: 'image/jpeg', preview: '' }), dropPhoto: async () => undefined, placeNow: async () => ({ at: NOW }), personName: () => null, newKey: () => 'k1', now: () => NOW, saveUnloadOrder }, ref);
+    const stop = screen.subscribe(() => undefined);
+    return { queue, screen, stop };
+  }
+
+  it('shows the new order at once and sends it with the report', async () => {
+    // Arrange
+    const sent: string[] = [];
+    const test = orderedScreen(async (reportId, order) => (sent.push(`${reportId}:${order.join(',')}`), true));
+    await settled(test);
+    // Act
+    const saving = test.screen.setUnloadOrder(['d2', 'd1']);
+    // Assert
+    expect(documentOf(test.screen.snapshot()).unloadOrder).toEqual(['d2', 'd1']);
+    expect(await saving).toEqual({ ok: true });
+    expect(sent).toEqual(['r1:d2,d1']);
+    test.stop();
+  });
+
+  it('goes back to the old order when the server did not keep it', async () => {
+    // Arrange
+    const test = orderedScreen(async () => { throw new Error('offline'); });
+    await settled(test);
+    // Act
+    const outcome = await test.screen.setUnloadOrder(['d2', 'd1']);
+    // Assert
+    expect(outcome).toEqual({ ok: false, message: ORDER_SAVE_FAILED });
+    expect(documentOf(test.screen.snapshot()).unloadOrder).toBeUndefined();
+    test.stop();
+  });
+
+  it('a report not created yet keeps no order', async () => {
+    const test = orderedScreen(async () => true, null);
+    await settled(test);
+    expect(await test.screen.setUnloadOrder(['d1'])).toEqual({ ok: false, message: ORDER_SAVE_FAILED });
     test.stop();
   });
 });

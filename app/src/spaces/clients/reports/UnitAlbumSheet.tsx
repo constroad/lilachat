@@ -1,11 +1,30 @@
 import { useMemo, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
-import { CheckCircle2, Circle, ImageOff, ZoomIn } from 'lucide-react-native';
-import { ALBUM_BROKEN_PHOTO, ALBUM_CANCEL, ALBUM_CLOSES_UNIT, ALBUM_SENDING, albumClosesUnit, albumCountLine, albumReviewTitle, albumSelection, albumSendLabel, freshAlbumMarks, markAlbumPhotoBroken, toggleAlbumPhoto, unitAlbumOf, type AlbumPhoto, type AlbumSend, type RepeatItem } from '@lilachat/shared';
+import { AlertTriangle, ArrowRight, CheckCircle2, Circle, ImageOff, ZoomIn } from 'lucide-react-native';
+import { ALBUM_BROKEN_PHOTO, ALBUM_CANCEL, ALBUM_CLOSES_UNIT, ALBUM_SENDING, albumClosesUnit, albumCountLine, albumReviewTitle, albumSelection, albumSendLabel, freshAlbumMarks, markAlbumPhotoBroken, toggleAlbumPhoto, unitAlbumOf, type AlbumPhoto, type AlbumSend, type FinishBlock, type RepeatItem } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { Sheet } from '../../../ui/Sheet';
 
-type Props = { item: RepeatItem | null; onSend: (item: RepeatItem, urls: string[]) => Promise<AlbumSend>; /** Portal's text, for the notice once it went. */ onSent: (message: string) => void; onClose: () => void; onView: (item: RepeatItem, url: string) => void };
+type Props = { item: RepeatItem | null; onSend: (item: RepeatItem, urls: string[]) => Promise<AlbumSend>; /** Portal's text, for the notice once it went. */ onSent: (message: string) => void; onClose: () => void; onView: (item: RepeatItem, url: string) => void; /** José 20/11: the unit before it in line has not left; nothing is sent. */ block?: FinishBlock | null; onGo?: (itemId: string) => void };
+
+/** «Primero termina la Unidad 1 · F2K-908…» with «Ir a F2K-908» (design pv2-03). */
+function BlockNotice({ block, onGo }: { block: FinishBlock; onGo?: (itemId: string) => void }) {
+  const colors = useColores();
+  return (
+    <View testID="album-bloqueo" accessibilityRole="alert" className="mt-3 gap-2 rounded-xl border border-error/40 bg-error/10 p-3">
+      <View className="flex-row gap-2">
+        <AlertTriangle size={16} color={colors.error} />
+        <Text className="flex-1 text-[13px] text-error">{block.text}</Text>
+      </View>
+      {onGo ? (
+        <Pressable testID="album-ir-anterior" onPress={() => onGo(block.itemId)} className="h-9 flex-row items-center gap-1 self-end rounded-lg border border-error/40 px-3">
+          <Text className="text-[13px] font-semibold text-error">{block.goLabel}</Text>
+          <ArrowRight size={14} color={colors.error} />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
 
 /** Thumbnails per row: three on a phone, more on a tablet, so they never grow huge. */
 const TABLET_FROM = 600;
@@ -44,7 +63,7 @@ function AlbumTile({ photo, index, size, checked, broken, onToggle, onBroken, on
 }
 
 /** The review of one unit; it mounts fresh for each unit, so every photo starts checked. */
-function AlbumReview({ item, onSend, onSent, onClose, onView }: Omit<Props, 'item'> & { item: RepeatItem }) {
+function AlbumReview({ item, onSend, onSent, onClose, onView, block, onGo }: Omit<Props, 'item'> & { item: RepeatItem }) {
   const { width } = useWindowDimensions();
   const album = useMemo(() => unitAlbumOf(item), [item]);
   const [marks, setMarks] = useState(freshAlbumMarks);
@@ -61,7 +80,7 @@ function AlbumReview({ item, onSend, onSent, onClose, onView }: Omit<Props, 'ite
     if (sent.ok) onSent(sent.message);
     else setError(sent.message);
   };
-  const off = selected.length === 0 || sending;
+  const off = selected.length === 0 || sending || Boolean(block);
   return (
     <>
       <Text className="text-[20px] font-bold text-on-surface">{albumReviewTitle(item)}</Text>
@@ -72,11 +91,12 @@ function AlbumReview({ item, onSend, onSent, onClose, onView }: Omit<Props, 'ite
       </ScrollView>
       <Text testID="album-conteo" className="mt-3 text-center text-[14px] font-semibold text-on-surface">{albumCountLine(selected.length)}</Text>
       {albumClosesUnit(item) ? <Text testID="album-cierra" className="mt-1 text-center text-[13px] text-on-surface-variant">{ALBUM_CLOSES_UNIT}</Text> : null}
+      {block ? <BlockNotice block={block} onGo={onGo} /> : null}
       {error ? <Text testID="album-error" accessibilityRole="alert" className="mt-1 text-center text-[13px] text-error">{error}</Text> : null}
-      <Pressable testID="album-enviar" disabled={off} onPress={() => void send()} className={`mt-3 min-h-[52px] items-center justify-center rounded-2xl bg-primary ${off ? 'opacity-40' : ''}`}>
+      <Pressable testID="album-enviar" disabled={off} onPress={() => void send()} className={`mt-3 min-h-[48px] items-center justify-center rounded-xl bg-primary ${off ? 'opacity-40' : ''}`}>
         <Text className="text-[16px] font-bold text-on-primary">{sending ? ALBUM_SENDING : albumSendLabel(selected.length)}</Text>
       </Pressable>
-      <Pressable testID="album-cancelar" onPress={onClose} className="mt-2 min-h-[48px] items-center justify-center rounded-2xl border border-outline/20 bg-surface">
+      <Pressable testID="album-cancelar" onPress={onClose} className="mt-2 min-h-[44px] items-center justify-center rounded-xl border border-outline/20 bg-surface">
         <Text className="text-[16px] font-semibold text-on-surface">{ALBUM_CANCEL}</Text>
       </Pressable>
     </>

@@ -50,6 +50,7 @@ function serverWith(draft: object, answer: { status: number; body: object } = { 
     calls.push({ url, body });
     if (url.endsWith('/reports/draft')) return new Response(JSON.stringify(draft), { status: 200 });
     if (url.endsWith('/reports/forms')) return new Response(JSON.stringify(formOutcome), { status: 200 });
+    if (url.endsWith('/unload-order')) return new Response(JSON.stringify(body), { status: 200 });
     if (url.endsWith('/commands/c1/form')) return new Response(JSON.stringify(answer.body), { status: answer.status });
     if (url.endsWith('/pdf?preview=1')) return new Response(JSON.stringify({ pdf: { status: 'ready', pdfUrl: 'https://portal.example.com/vista/rep' } }), { status: 200 });
     return new Response(JSON.stringify({ message: 'no' }), { status: 404 });
@@ -132,7 +133,7 @@ describe('ReportDocumentWeb', () => {
     expect(onClose).toHaveBeenCalledWith(false);
   });
 
-  it('a control de pista (design j-05): the volquetes that left the plant with «Llegó», the ones on site with their four photos, and «Publicar» with what is missing and the warning', async () => {
+  it('a control de pista (designs pv2-01/pv2-04): the unit unloading on the card with its four photos, the queue with «Llegó», and «Publicar» with what is missing and the warning', async () => {
     const photoEntry = (kind: string) => ({ id: `foto-${kind}`, title: `Foto de ${kind}`, required: true, form: 'fotos', tool: 'agregar_foto_de_informe', photoKind: kind, requireLocation: true });
     const units = {
       id: 'unidades', kind: 'repeat', results: [{ label: 'Carros', value: '4', tone: 'neutral' }], title: 'Unidades', required: true, state: 'partial', summary: ['1 de 3 terminadas · 45 m³'], itemTitle: 'Unidad', addLabel: '', min: 1,
@@ -154,15 +155,16 @@ describe('ReportDocumentWeb', () => {
     // José 18/11: the person learns the unit closes with its empty-truck photo.
     expect(screen.getByTestId('cierre-unidades')).toHaveTextContent('La foto de unidad vacía cierra la unidad');
     expect(screen.getByTestId('resultados-unidades')).toHaveTextContent('Carros');
-    expect(list).toHaveTextContent('Por llegar · toca el que llegó');
-    expect(list).toHaveTextContent('En pista');
-    expect(screen.getByTestId('conteo-unidades')).toHaveTextContent('1 en pista · 1 por llegar · 1 terminó');
-    expect(within(screen.getByTestId('unidad-d3')).getByTestId('llego-d3')).toHaveTextContent('Llegó');
-    // A finished unit folds away: it no longer needs the person.
-    expect(screen.queryByTestId('estado-d1')).toBeNull();
+    expect(list).toHaveTextContent('Cola de descarga · orden en campo');
+    expect(list).toHaveTextContent('Descargando ahora');
+    expect(screen.getByTestId('conteo-unidades')).toHaveTextContent('3 unid. · 1 terminada · 1 descargando · 1 en camino · 15 / 45 m³');
+    expect(within(screen.getByTestId('cola-d3')).getByTestId('llego-d3')).toHaveTextContent('Llegó');
+    // A closed unit folds away: it no longer needs the person.
+    expect(screen.queryByTestId('cola-d1')).toBeNull();
     fireEvent.click(screen.getByTestId('ver-terminadas'));
-    expect(screen.getByTestId('estado-d1')).toHaveTextContent('Terminó 09:12');
-    expect(screen.getByTestId('estado-d2')).toHaveTextContent('En pista');
+    expect(screen.getByTestId('cola-d1')).toHaveTextContent('Terminó 09:12');
+    expect(screen.getByTestId('estado-cola-d1')).toHaveTextContent('Terminada');
+    expect(screen.getByTestId('estado-d2')).toHaveTextContent('Descargando');
     expect(within(screen.getByTestId('unidad-d2')).getAllByRole('button', { name: /^Foto de/ })).toHaveLength(4);
     expect(screen.getByTestId('datos-d2')).toHaveTextContent('Llegada 07:30 · 148°');
     expect(screen.getByTestId('falta-informe')).toHaveTextContent('Falta la foto de vacía en QAP-102 · 2 volquetes por llegar');
@@ -175,7 +177,7 @@ describe('ReportDocumentWeb', () => {
     expect(formCalls(calls)).toEqual([]);
   });
 
-  it('with several units on site the plates go on top, and a truck the plant has not marked can arrive (José 06/11)', async () => {
+  it('several units on site wait in line, and a truck the plant has not marked can arrive (José 06/11)', async () => {
     // Arrange
     const working = (id: string) => ({ id, title: `Unidad 1 · ${id}`, summary: [], results: [], sections: [{ id: 'datos', state: 'done', summary: ['Llegada 07:30'], values: {} }] });
     const notHere = (id: string, summary: string[]) => ({ id, title: id, summary, results: [], sections: [{ id: 'datos', state: 'empty', summary: [], values: {} }] });
@@ -184,7 +186,8 @@ describe('ReportDocumentWeb', () => {
     openReport();
     fireEvent.click(await screen.findByTestId('seccion-unidades'));
     // Assert
-    expect(within(screen.getByTestId('unidades-por-llegar')).getByTestId('llego-QAP-3')).toBeInTheDocument();
+    expect(within(screen.getByTestId('cola-descarga')).getByTestId('llego-QAP-3')).toBeInTheDocument();
+    expect(screen.getByTestId('estado-cola-QAP-2')).toHaveTextContent('En cola');
     fireEvent.click(screen.getByTestId('llego-QAP-4'));
     expect(await screen.findByTestId('formulario-agregar_foto_de_informe')).toBeInTheDocument();
   });
@@ -220,6 +223,62 @@ describe('ReportDocumentWeb', () => {
     fireEvent.click(within(strip).getByRole('button', { name: 'Junta · 08:02' }));
     expect(await screen.findByRole('button', { name: 'Tomar otra' })).toBeInTheDocument();
     expect(screen.queryByTestId('formulario-agregar_foto_adicional')).toBeNull();
+  });
+
+  describe('the unloading queue (José 20/11, designs pv2-01…pv2-04)', () => {
+    const photoEntry = (kind: string) => ({ id: `foto-${kind}`, title: `Foto de ${kind}`, required: true, form: 'fotos', tool: 'agregar_foto_de_informe', photoKind: kind });
+    const arrived = (id: string, plate: string, hour: string) => ({ id, title: `Unidad ${id.slice(1)} · ${plate}`, summary: ['Salió 07:00 · 15 m³'], results: [], sections: [{ id: 'datos', state: 'partial', summary: [], values: {} }, { id: 'foto-ingreso', state: 'done', values: { fotos: [{ id: `${id}-i`, url: `https://lila.example.com/f/${id}.jpg`, hora: hour }] } }, ...['temperatura', 'escantillon', 'vacia'].map((kind) => ({ id: `foto-${kind}`, state: 'empty', values: { fotos: [] } }))] });
+    const unidad = { type: 'object', properties: { horaLlegada: { type: 'string', title: 'Hora de llegada' }, tempLlegada: { type: 'number', title: 'Temperatura de llegada' }, escantillonCm: { type: 'number', title: 'Escantillón' } } };
+    const units = { id: 'unidades', kind: 'repeat', title: 'Unidades', required: true, state: 'partial', summary: [], results: [], itemTitle: 'Unidad', addLabel: '', min: 0, canAdd: false, template: [{ id: 'datos', title: 'Datos', required: true, form: 'unidad' }, ...['ingreso', 'temperatura', 'escantillon', 'vacia'].map(photoEntry)], items: [arrived('u1', 'AAA-111', '08:00'), arrived('u2', 'BBB-222', '08:05'), arrived('u3', 'CCC-333', '08:10')] };
+    const pista = (unloadOrder?: string[]) => ({ document: { ...document, type: 'CTL-PIS', title: 'Control de pista', forms: { ...document.forms, unidad }, sections: [document.sections[0], units], ...(unloadOrder ? { unloadOrder } : {}) } });
+    const rowIds = () => screen.getAllByTestId(/^cola-u/).map((row) => row.getAttribute('data-testid'));
+
+    it('the first to arrive unloads; «Siguiente» moves one ahead and the order goes to the server', async () => {
+      // Arrange
+      const calls = serverWith(pista());
+      openReport();
+      fireEvent.click(await screen.findByTestId('seccion-unidades'));
+      expect(rowIds()).toEqual(['cola-u1', 'cola-u2', 'cola-u3']);
+      expect(screen.getByTestId('estado-u1')).toHaveTextContent('Descargando');
+      expect(screen.queryByTestId('siguiente-u1')).toBeNull();
+      // Act
+      fireEvent.click(screen.getByTestId('siguiente-u3'));
+      // Assert
+      expect(rowIds()).toEqual(['cola-u1', 'cola-u3', 'cola-u2']);
+      await waitFor(() => expect(calls.find((call) => call.url.endsWith(`/reports/${document.id}/unload-order`))?.body).toEqual({ order: ['u1', 'u3', 'u2'] }));
+    });
+
+    it('opens in the order the channel set', async () => {
+      serverWith(pista(['u2', 'u1']));
+      openReport();
+      fireEvent.click(await screen.findByTestId('seccion-unidades'));
+      expect(rowIds()).toEqual(['cola-u2', 'cola-u1', 'cola-u3']);
+      expect(screen.getByTestId('estado-u2')).toHaveTextContent('Descargando');
+    });
+
+    it('a unit is not finished while the one before it has not left: the review says so and «Ir a» goes there', async () => {
+      // Arrange
+      serverWith(pista());
+      openReport();
+      fireEvent.click(await screen.findByTestId('seccion-unidades'));
+      fireEvent.click(screen.getByTestId('elegir-u2'));
+      // Act
+      fireEvent.click(screen.getByTestId('terminar-u2'));
+      // Assert
+      expect(await screen.findByTestId('album-bloqueo')).toHaveTextContent('Primero termina la Unidad 1 · AAA-111: todavía no tiene la foto de unidad vacía.');
+      expect(screen.getByTestId('album-enviar')).toBeDisabled();
+      fireEvent.click(screen.getByTestId('album-ir-anterior'));
+      expect(screen.queryByTestId('album-revision')).toBeNull();
+      expect(screen.getByTestId('unidad-u1')).toBeInTheDocument();
+    });
+
+    it('the temperature is typed on its photo, right under it (design pv2-02)', async () => {
+      serverWith(pista());
+      openReport();
+      fireEvent.click(await screen.findByTestId('seccion-unidades'));
+      fireEvent.click(screen.getByTestId('foto-u1-foto-temperatura'));
+      expect(await screen.findByTestId('formulario-agregar_foto_de_informe')).toHaveTextContent('Temperatura (°C)');
+    });
   });
 
   describe('«Terminar unidad» (José 19/11)', () => {

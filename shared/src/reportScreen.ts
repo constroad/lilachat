@@ -1,4 +1,6 @@
 import { arrivalHourOf, clockHourOf } from './reportUnits.js';
+import { splitPhotoMeasure, withPhotoMeasure } from './unitMeasure.js';
+import { ORDER_SAVE_FAILED } from './unloadQueue.js';
 import type { FormPhotoStamp, FormSubmitOutcome, TimemarkStampAsked } from './appActions.js';
 import type { FormValues } from './appForms.js';
 import type { EphemeralAnswer } from './botCommands.js';
@@ -27,6 +29,8 @@ export type ReportScreenDeps<P> = {
   personName(): string | null | undefined;
   newKey(): string;
   now(): string;
+  /** CTL-PIS (José 20/11): the unloading order to Lilachat's server, shared by every device; false when it did not reach it. */
+  saveUnloadOrder?(reportId: string, order: readonly string[]): Promise<boolean>;
 };
 export type ReportScreenState = {
   draft: ReportDraftResult | null;
@@ -186,7 +190,7 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
       const { document, saves } = reportNow();
       const refused = saves.find((one) => one.refusal && !one.photo && samePath(one.path, path));
       const context = { errors: refused?.refusal?.errors, ...contextOf(document, path) };
-      const answer = document ? reportFormAnswer(document, path, context) : null;
+      const answer = document ? withPhotoMeasure(reportFormAnswer(document, path, context), document, path) : null;
       openForm = answer ? { path, answer } : null;
       reading = null;
       aiming = answer && photoFieldOf(answer) ? readPlace() : null;
@@ -256,8 +260,11 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
         held.place = null;
         return { done: false, errors: {}, message: NO_GPS_PHOTO };
       }
+      const split = splitPhotoMeasure(document, opened.path, values, (dataPath) => arrivalHourOf(document, dataPath, deps.now()) ?? clockHourOf(deps.now()));
       try {
-        await deps.queue.add(saveOf(document, opened.path, values, field && held && place ? { field, kept: held.kept, place, stamp: held.stamp } : null));
+        await deps.queue.add(saveOf(document, opened.path, split.photoValues, field && held && place ? { field, kept: held.kept, place, stamp: held.stamp } : null));
+        // José 20/11: the measure typed on the photo is the unit's data, saved right after it.
+        if (split.data) await deps.queue.add(saveOf(document, split.data.path, split.data.values, null));
       } catch {
         return { done: false, errors: {}, message: NOT_KEPT };
       }
@@ -271,12 +278,20 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
   };
 }
 
+const sameOrder = (left: readonly string[], right: readonly string[]): boolean => left.length === right.length && left.every((one, index) => one === right[index]);
+
 /** `startId`: the draft a row asked to continue; without it Portal decides which one opens. */
 export function createReportScreen<P>(deps: ReportScreenDeps<P>, ref: ReportRef, startId?: string) {
   const listeners = new Set<() => void>();
   let stopListening: (() => void) | null = null;
+  /** The order the person just set, shown until the document brings it back (or the save failed). */
+  let localOrder: string[] | null = null;
   const tell = () => {
-    state = { ...feed.view(), form: forms.current(), place: forms.placeReading() };
+    const view = feed.view();
+    const document = view.draft?.ok ? view.draft.document : null;
+    if (localOrder && document && sameOrder(document.unloadOrder ?? [], localOrder)) localOrder = null;
+    const draft = localOrder && document ? { ok: true as const, document: { ...document, unloadOrder: localOrder } } : view.draft;
+    state = { ...view, draft, form: forms.current(), place: forms.placeReading() };
     listeners.forEach((listener) => listener());
   };
   const feed = createDocumentFeed(deps.queue, ref, tell, startId);
@@ -317,6 +332,21 @@ export function createReportScreen<P>(deps: ReportScreenDeps<P>, ref: ReportRef,
       const removal = await deps.queue.removePhoto(ref, reportId, photoId);
       if (removal.ok) feed.reload();
       return removal;
+    },
+    /** «Siguiente ↑» or a drag (José 20/11): the new order shows at once and goes to the server; it goes back if the server did not keep it. */
+    async setUnloadOrder(order: readonly string[]): Promise<{ ok: true } | { ok: false; message: string }> {
+      const reportId = reportNow().document?.id;
+      if (!reportId || !deps.saveUnloadOrder) return { ok: false, message: ORDER_SAVE_FAILED };
+      localOrder = [...order];
+      tell();
+      const kept = await deps.saveUnloadOrder(reportId, order).catch(() => false);
+      if (!kept) {
+        localOrder = null;
+        tell();
+        return { ok: false, message: ORDER_SAVE_FAILED };
+      }
+      feed.reload();
+      return { ok: true };
     },
     /** «Terminar unidad»: the reviewed photos to the client's group; the document comes back with the unit closed. */
     async sendUnitAlbum(tramoId: string, urls: readonly string[]): Promise<AlbumSend> {

@@ -1,209 +1,120 @@
-import { useState, type ReactNode } from 'react';
-import { Camera, CheckCircle2, Plus, ChevronDown, ChevronRight, ChevronUp, Clock, Container, Ruler, Send, Thermometer, Truck } from 'lucide-react';
-import { placementOf, UNITS_CLOSE_HINT, ADD_EXTRA_PHOTO, ARRIVED_LABEL, arrivalKeyOf, extraPhotosOf, extraPhotosTitle, dataRowLine, dataSectionOf, pageLine, photoSlotsOf, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitAlbumCta, unitStateOf, unitTitleOf, waitingLayoutOf, ALBUM_CTA, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
-import { Pill, ResultsStrip, StateDot } from './ReportSectionsWeb';
+import { useState, type DragEvent, type ReactElement } from 'react';
+import { ArrowUp, ChevronDown, ChevronUp, GripVertical, Truck } from 'lucide-react';
+import { ARRIVED_LABEL, arrivalKeyOf, canMoveNext, FINISHED_TITLE, isClosedStatus, isOpenStatus, MOVE_NEXT_LABEL, moveNext, moveUnit, openOrderOf, pageLine, QUEUE_BADGES, QUEUE_HINT, QUEUE_TITLE, queueCountsLine, queueVolumeLine, selectedUnitOf, SELECTED_TITLE, UNITS_CLOSE_HINT, UNLOADING_TITLE, unloadQueueOf, type QueuedUnit, type UnitsQueueViewProps, type RepeatSection } from '@lilachat/shared';
+import { Pill, ResultsStrip } from './ReportSectionsWeb';
+import { UnitCardWeb, type Open } from './UnitCardWeb';
 
-/** Design j-05 (José 06/11): for the operator on the pista. Big plate, big slots, one click per action. */
-const ICONS = { ingreso: Truck, temperatura: Thermometer, escantillon: Ruler, vacia: Container } as const;
-const iconOf = (kind?: string) => (kind && kind in ICONS ? ICONS[kind as keyof typeof ICONS] : Camera);
 const NO_UNITS = 'Todavía no salió ningún volquete de planta.';
-const slotLabel = (title: string): string => title.replace(/^foto de\s+/i, '');
+const DRAG_TYPE = 'text/plain';
 
-type Open = (path: SectionPath) => void;
-type ViewPhoto = (photo: PhotoToView) => void;
-/** «Terminar unidad» (José 19/11): anyone reviews the unit's photos before they go to the group, draft or published. Missing: nobody sends from here. */
-type Album = { admin: boolean; onAlbum?: (item: RepeatItem) => void };
+type Props = UnitsQueueViewProps;
 
-/** The unit's button to the client's group, compact under its photos; with the note of when they went, once they did. */
-function AlbumAction({ item, album }: { item: RepeatItem; album: Album }) {
-  const cta = unitAlbumCta(item);
-  if (!cta || !album.onAlbum) return null;
-  const finishing = cta.label === ALBUM_CTA.finish;
-  return (
-    <div className="mt-3 flex flex-wrap items-center justify-end gap-2 border-t border-outline/10 pt-2">
-      {cta.sentNote ? <p data-testid={`album-enviado-${item.id}`} className="mr-auto text-xs text-on-surface-variant">{cta.sentNote}</p> : null}
-      <button type="button" data-testid={`terminar-${item.id}`} onClick={() => album.onAlbum?.(item)} className={`inline-flex h-10 items-center gap-1.5 rounded-xl px-3 text-sm font-bold ${finishing ? 'bg-primary text-on-primary' : 'border border-primary/30 bg-primary/10 text-primary'}`}>
-        <Send size={16} /> {cta.label}
-      </button>
-    </div>
-  );
+type RowProps = { unit: QueuedUnit; section: RepeatSection; selected: boolean; onOpen: Open; onSelect: (itemId: string) => void; onNext?: () => void; drag?: { onStart: () => void; onDrop: () => void } };
+
+/** The number in line: filled for the one unloading. */
+function Position({ unit }: { unit: QueuedUnit }) {
+  const unloading = unit.status === 'unloading';
+  return <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[13px] font-bold ${unloading ? 'bg-primary text-on-primary' : 'border border-outline/25 text-on-surface-variant'}`}>{unit.position}</span>;
 }
 
-/** One photo of the unit: its thumbnail with a check, or a dashed camera to take it with one click. */
-function PhotoSlot({ slot, itemId, onOpen, onView }: { slot: UnitSlot; itemId: string; onOpen: () => void; onView: (url: string) => void }) {
-  const Icon = iconOf(slot.section.photoKind);
+/** «Llegó» on a truck not here yet: it opens the ingreso photo (José 07/11). */
+function ArrivedButton({ unit, section, onOpen }: { unit: QueuedUnit; section: RepeatSection; onOpen: Open }) {
+  const arrival = arrivalKeyOf(unit.item);
+  if (!arrival) return null;
   return (
-    <button type="button" data-testid={`foto-${itemId}-${slot.section.id}`} onClick={() => (slot.photo ? onView(slot.photo.url) : onOpen())} aria-label={slot.section.title} className="flex w-[72px] flex-col items-center">
-      <span className={`relative grid h-[72px] w-[72px] place-items-center overflow-hidden rounded-2xl ${slot.done ? 'bg-primary/10' : 'border-2 border-dashed border-primary/50 bg-surface-variant'}`}>
-        {slot.photo ? <img src={slot.photo.thumbUrl} alt="" className="h-full w-full object-cover" /> : <Icon size={28} className="text-primary" />}
-        {slot.done ? <CheckCircle2 size={18} className="absolute right-1 top-1 rounded-full bg-surface text-primary" /> : null}
-        {slot.photo?.pending ? <span data-testid={`foto-pendiente-${slot.photo.id}`} className="absolute left-1 top-1 grid h-5 w-5 place-items-center rounded-full bg-black/60 text-white"><Clock size={12} /></span> : null}
-      </span>
-      <span className={`mt-1 truncate text-[11px] ${slot.done ? 'text-on-surface-variant' : 'font-bold text-primary'}`}>{slotLabel(slot.section.title)}</span>
+    <button type="button" data-testid={`llego-${unit.item.id}`} onClick={() => onOpen({ sectionId: section.id, itemId: unit.item.id, key: arrival })} aria-label={`${ARRIVED_LABEL} ${unit.plate}`} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 text-[13px] font-bold text-on-primary">
+      <Truck size={16} /> {ARRIVED_LABEL}
     </button>
   );
 }
 
-/** Design j-07b (José 07/11): the unit's optional photos under the fixed ones. A thumbnail opens the viewer, where a draft's photo can be removed. */
-function ExtraStrip({ item, section, onOpen, onView }: { item: RepeatItem; section: RepeatSection; onOpen: Open; onView: ViewPhoto }) {
-  const extras = extraPhotosOf(item);
-  if (!extras) return null;
-  const path = { sectionId: section.id, itemId: item.id, key: extras.section.id };
+/** One unit in line: the handle to drag it, its number, plate and line, its status and «Siguiente ↑». */
+function QueueRow({ unit, section, selected, onOpen, onSelect, onNext, drag }: RowProps) {
+  const away = unit.status === 'onTheWay';
+  const dragProps = drag ? { draggable: true, onDragStart: (event: DragEvent) => { event.dataTransfer.setData(DRAG_TYPE, unit.item.id); drag.onStart(); }, onDragOver: (event: DragEvent) => event.preventDefault(), onDrop: (event: DragEvent) => { event.preventDefault(); drag.onDrop(); } } : {};
   return (
-    <div data-testid={`adicionales-${item.id}`} className="mt-3 border-t border-outline/10 pt-2">
-      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{extraPhotosTitle(extras.photos.length)}</p>
-      <div className="mt-2 flex gap-2 overflow-x-auto">
-        {extras.photos.map((one) => (
-          <button key={one.id || one.url} type="button" onClick={() => onView({ section: extras.section, url: one.url, path })} aria-label={[one.caption, one.hour].filter(Boolean).join(' · ') || extras.section.title} className="flex w-[56px] shrink-0 flex-col items-center">
-            <img src={one.thumbUrl} alt="" className="h-[56px] w-[56px] rounded-xl object-cover" />
-            <span className="mt-0.5 font-mono text-[10px] text-on-surface-variant">{one.hour}</span>
-          </button>
-        ))}
-        {extras.full ? null : (
-          <button type="button" data-testid={`agregar-adicional-${item.id}`} onClick={() => onOpen(path)} className="flex h-[56px] shrink-0 items-center gap-1.5 rounded-xl border-2 border-dashed border-primary/40 px-3 text-sm font-bold text-primary">
-            <Plus size={16} /> {ADD_EXTRA_PHOTO}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/** A volquete on its way, in one row: any of them can be next, because the order of arrival depends on nothing. «Llegó» opens its ingreso photo; the data comes after (José 07/11). */
-function WaitingRow({ item, section, onOpen }: { item: RepeatItem; section: RepeatSection; onOpen: Open }) {
-  const arrival = arrivalKeyOf(item);
-  const { kicker, plate } = unitTitleOf(item);
-  return (
-    <li data-testid={`unidad-${item.id}`} className="flex items-center gap-3 border-b border-outline/10 px-3 py-2 last:border-b-0">
-      <div className="min-w-0 flex-1">
-        {kicker ? <p data-testid={`orden-${item.id}`} className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{kicker}</p> : null}
-        <p className="truncate font-mono text-[21px] font-bold leading-tight">{plate}</p>
-        {unitLineOf(item) ? <p className="truncate text-xs text-on-surface-variant">{unitLineOf(item)}</p> : null}
-      </div>
-      {arrival ? (
-        <button type="button" data-testid={`llego-${item.id}`} onClick={() => onOpen({ sectionId: section.id, itemId: item.id, key: arrival })} aria-label={`${ARRIVED_LABEL} ${plate}`} className="flex min-h-[52px] min-w-[96px] items-center justify-center gap-1.5 rounded-xl bg-primary px-3 text-on-primary">
-          <Truck size={18} />
-          <span className="text-[14px] font-bold uppercase">{ARRIVED_LABEL}</span>
+    <li data-testid={`cola-${unit.item.id}`} {...dragProps} className={`flex items-center gap-2 border-b border-outline/10 px-2 py-2 last:border-b-0 ${selected ? 'bg-primary/10' : ''} ${away ? 'opacity-70' : ''}`}>
+      {drag ? <GripVertical size={18} aria-hidden className="shrink-0 cursor-grab text-on-surface-variant" /> : <span className="w-[18px] shrink-0" />}
+      <Position unit={unit} />
+      <button type="button" data-testid={`elegir-${unit.item.id}`} disabled={away} onClick={() => onSelect(unit.item.id)} className="min-w-0 flex-1 text-left">
+        <span className="block truncate font-mono text-[15px] font-bold">{unit.plate}</span>
+        <span className="block truncate text-xs text-on-surface-variant">{unit.line}</span>
+      </button>
+      {away ? <ArrivedButton unit={unit} section={section} onOpen={onOpen} /> : <Pill badge={QUEUE_BADGES[unit.status]} testId={`estado-cola-${unit.item.id}`} />}
+      {onNext ? (
+        <button type="button" data-testid={`siguiente-${unit.item.id}`} onClick={onNext} aria-label={`${MOVE_NEXT_LABEL}: ${unit.plate}`} className="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-outline/25 px-2 text-[13px] font-semibold">
+          {MOVE_NEXT_LABEL} <ArrowUp size={14} />
         </button>
       ) : null}
     </li>
   );
 }
 
-/** A unit on site: number and plate, its pill, the four photo slots and the line of its data. */
-function ArrivedCard({ item, section, onOpen, onView, album }: { item: RepeatItem; section: RepeatSection; onOpen: Open; onView: ViewPhoto; album: Album }) {
-  const { kicker, plate } = unitTitleOf(item);
-  const data = dataSectionOf(item);
-  const working = unitStateOf(item) === 'working';
-  return (
-    <article data-testid={`unidad-${item.id}`} className={`rounded-xl border bg-surface p-4 ${working ? 'border-primary/40' : 'border-outline/15'}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          {kicker ? <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{kicker}</p> : null}
-          <p className="truncate font-mono text-[28px] font-bold leading-tight">{plate}</p>
-          {placementOf(item) ? <p data-testid={`colocacion-${item.id}`} className="text-sm font-bold text-primary">{placementOf(item)}</p> : null}
-        </div>
-        <Pill badge={unitBadgeOf(item)} testId={`estado-${item.id}`} />
-      </div>
-      <div className="mt-3 flex flex-wrap justify-between gap-2">
-        {photoSlotsOf(item).map((slot) => {
-          const path = { sectionId: section.id, itemId: item.id, key: slot.section.id };
-          return <PhotoSlot key={slot.section.id} slot={slot} itemId={item.id} onOpen={() => onOpen(path)} onView={(url) => onView({ section: slot.section, url, path })} />;
-        })}
-      </div>
-      {data ? (
-        <button type="button" data-testid={`datos-${item.id}`} onClick={() => onOpen({ sectionId: section.id, itemId: item.id, key: data.id })} className="mt-3 flex min-h-[44px] w-full items-center gap-2 border-t border-outline/10 pt-2 text-left hover:bg-background/60">
-          <StateDot state={data.state} small />
-          <span className="flex-1 truncate text-sm font-semibold">{dataRowLine(data)}</span>
-          <ChevronRight size={16} className="shrink-0 text-on-surface-variant" />
-        </button>
-      ) : null}
-      <ExtraStrip item={item} section={section} onOpen={onOpen} onView={onView} />
-      <AlbumAction item={item} album={album} />
-    </article>
-  );
-}
-
-/** One plate to click: «Llegó» in the strip on top, the same as the row's button. */
-function ArrivalChip({ item, section, onOpen }: { item: RepeatItem; section: RepeatSection; onOpen: Open }) {
-  const arrival = arrivalKeyOf(item);
-  const { plate } = unitTitleOf(item);
-  if (!arrival) return null;
-  return (
-    <button type="button" data-testid={`llego-${item.id}`} onClick={() => onOpen({ sectionId: section.id, itemId: item.id, key: arrival })} aria-label={`${ARRIVED_LABEL} ${plate}`} className="inline-flex min-h-[52px] shrink-0 items-center gap-2 rounded-xl bg-primary px-4 font-mono text-[15px] font-bold text-on-primary">
-      <Truck size={18} /> {plate}
-    </button>
-  );
-}
-
-function Group({ title, count, children }: { title: string; count: number; children: ReactNode }) {
-  return (
-    <section className="flex flex-col gap-3">
-      <header className="flex items-center justify-between gap-3">
-        <h3 className="flex-1 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{title}</h3>
-        <span className="text-[12px] font-bold text-primary">{count}</span>
-      </header>
-      {children}
-    </section>
-  );
-}
-
-/** The finished ones fold away: they no longer need the person, and twelve of them would bury the rest. */
-function FinishedGroup({ items, section, onOpen, onView, album }: { items: RepeatItem[]; section: RepeatSection; onOpen: Open; onView: ViewPhoto; album: Album }) {
+/** The closed units fold away: they no longer need the person. */
+function FinishedRows({ units, render }: { units: QueuedUnit[]; render: (unit: QueuedUnit) => ReactElement }) {
   const [open, setOpen] = useState(false);
   const Chevron = open ? ChevronUp : ChevronDown;
+  if (!units.length) return null;
   return (
-    <section className="flex flex-col gap-3">
-      <button type="button" data-testid="ver-terminadas" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-h-[44px] items-center gap-3 text-left">
-        <span className="flex-1 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{UNIT_GROUP_TITLES.finished}</span>
-        <span className="text-[12px] font-bold text-primary">{items.length}</span>
-        <Chevron size={18} className="text-primary" />
+    <div className="border-t border-outline/10">
+      <button type="button" data-testid="ver-terminadas" onClick={() => setOpen(!open)} aria-expanded={open} className="flex h-10 w-full items-center gap-2 px-3 text-left">
+        <span className="flex-1 text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{FINISHED_TITLE}</span>
+        <span className="text-[12px] font-bold text-primary">{units.length}</span>
+        <Chevron size={16} className="text-primary" />
       </button>
-      {open ? items.map((item) => <ArrivedCard key={item.id} item={item} section={section} onOpen={onOpen} onView={onView} album={album} />) : null}
+      {open ? <ul>{units.map(render)}</ul> : null}
+    </div>
+  );
+}
+
+/** The queue (pv2-01/pv2-04 left): the open units to reorder, the ones on their way, the closed ones folded. */
+function QueueList({ queue, section, selectedId, onOpen, onSelect, onReorder }: { queue: QueuedUnit[]; section: RepeatSection; selectedId: string | null; onOpen: Open; onSelect: (itemId: string) => void; onReorder?: (order: string[]) => void }) {
+  const [dragged, setDragged] = useState<string | null>(null);
+  const order = openOrderOf(queue);
+  const reorder = (next: string[]) => onReorder?.(next);
+  const rowOf = (unit: QueuedUnit) => {
+    const open = isOpenStatus(unit.status) && onReorder;
+    const drag = open ? { onStart: () => setDragged(unit.item.id), onDrop: () => dragged && dragged !== unit.item.id && reorder(moveUnit(order, dragged, order.indexOf(unit.item.id))) } : undefined;
+    const onNext = onReorder && canMoveNext(unit) ? () => reorder(moveNext(order, unit.item.id)) : undefined;
+    return <QueueRow key={unit.item.id} unit={unit} section={section} selected={unit.item.id === selectedId} onOpen={onOpen} onSelect={onSelect} onNext={onNext} drag={drag} />;
+  };
+  return (
+    <section data-testid="cola-descarga" className="overflow-hidden rounded-xl border border-outline/15 bg-surface">
+      <header className="flex items-baseline justify-between gap-2 px-3 pb-1 pt-3">
+        <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{QUEUE_TITLE}</h3>
+        <span className="text-xs text-on-surface-variant">{QUEUE_HINT}</span>
+      </header>
+      <ul>{queue.filter((unit) => !isClosedStatus(unit.status)).map(rowOf)}</ul>
+      <FinishedRows units={queue.filter((unit) => isClosedStatus(unit.status))} render={rowOf} />
     </section>
   );
 }
 
 /**
- * The units of a control de pista (design j-05, reordered after the test with
- * twelve volquetes, José 06/11): first the ones on site, which are the work at
- * hand; then the ones on their way, as rows that force no order; the ones still
- * at the plant as a line; the finished ones folded. Nobody adds a unit; Portal
+ * The units of a control de pista as an unloading queue (José 20/11, designs pv2-01…pv2-04):
+ * the unit on the card with its photos and «Terminar unidad», and the queue the person orders
+ * in the field. From 1024 px the queue goes left and the unit right. Nobody adds a unit; Portal
  * lists the order's dispatches.
  */
-export function ReportUnitsWeb({ section, onOpen, onView, admin = false, onAlbum }: { section: RepeatSection; onOpen: Open; onView: ViewPhoto } & Partial<Album>) {
-  const album: Album = { admin, ...(onAlbum ? { onAlbum } : {}) };
-  const groups = unitGroupsOf(section);
-  const head = [unitCountsLine(groups), pageLine(section)].filter(Boolean).join(' · ');
-  const strip = waitingLayoutOf(groups) === 'strip';
-  const reachable = groups.atPlant.filter((item) => dataSectionOf(item));
-  const plantOnly = groups.atPlant.filter((item) => !dataSectionOf(item));
+export function ReportUnitsWeb({ section, onOpen, onView, onAlbum, order, onReorder, selectedId, onSelect }: Props) {
+  const queue = unloadQueueOf(section, order);
+  const selected = selectedUnitOf(queue, selectedId);
+  const head = [queueCountsLine(queue), queueVolumeLine(queue), pageLine(section)].filter(Boolean).join(' · ');
   return (
-    <div data-testid={`unidades-${section.id}`} className="flex flex-col gap-4">
+    <div data-testid={`unidades-${section.id}`} className="flex flex-col gap-3">
       {section.summary.length ? <p data-testid="resumen-unidades" className="text-[15px] font-bold">{section.summary.join(' · ')}</p> : null}
       {head ? <p data-testid="conteo-unidades" className="text-sm text-on-surface-variant">{head}</p> : null}
-      {section.items.length ? <p data-testid="cierre-unidades" className="text-sm text-on-surface-variant">{UNITS_CLOSE_HINT}</p> : null}
+      {section.items.length ? <p data-testid="cierre-unidades" className="text-[13px] text-on-surface-variant">{UNITS_CLOSE_HINT}</p> : null}
       {section.items.length === 0 ? <p className="pt-4 text-center text-sm text-on-surface-variant">{NO_UNITS}</p> : null}
-      {strip ? (
-        <Group title={UNIT_GROUP_TITLES.waiting} count={groups.waiting.length}>
-          <div data-testid="unidades-por-llegar" className="flex gap-2 overflow-x-auto pb-1">
-            {groups.waiting.map((item) => <ArrivalChip key={item.id} item={item} section={section} onOpen={onOpen} />)}
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start">
+        {selected ? (
+          <div className="flex flex-col gap-2 lg:order-2">
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{selected.status === 'unloading' ? UNLOADING_TITLE : SELECTED_TITLE}</h3>
+            <UnitCardWeb unit={selected} section={section} onOpen={onOpen} onView={onView} onAlbum={onAlbum} />
           </div>
-        </Group>
-      ) : null}
-      {groups.onSite.length ? <Group title={UNIT_GROUP_TITLES.onSite} count={groups.onSite.length}>{groups.onSite.map((item) => <ArrivedCard key={item.id} item={item} section={section} onOpen={onOpen} onView={onView} album={album} />)}</Group> : null}
-      {groups.waiting.length && !strip ? (
-        <Group title={UNIT_GROUP_TITLES.waiting} count={groups.waiting.length}>
-          <ul className="overflow-hidden rounded-xl border border-outline/15 bg-surface">{groups.waiting.map((item) => <WaitingRow key={item.id} item={item} section={section} onOpen={onOpen} />)}</ul>
-        </Group>
-      ) : null}
-      {groups.atPlant.length ? (
-        <Group title={UNIT_GROUP_TITLES.atPlant} count={groups.atPlant.length}>
-          {reachable.length ? <ul className="overflow-hidden rounded-xl border border-outline/15 bg-surface">{reachable.map((item) => <WaitingRow key={item.id} item={item} section={section} onOpen={onOpen} />)}</ul> : null}
-          {plantOnly.length ? <p data-testid="unidades-en-planta" className="font-mono text-sm text-on-surface-variant">{plantOnly.map((item) => unitTitleOf(item).plate).join(' · ')}</p> : null}
-        </Group>
-      ) : null}
-      {groups.finished.length ? <FinishedGroup items={groups.finished} section={section} onOpen={onOpen} onView={onView} album={album} /> : null}
+        ) : null}
+        {queue.length ? <div className="lg:order-1"><QueueList queue={queue} section={section} selectedId={selected?.item.id ?? null} onOpen={onOpen} onSelect={onSelect} onReorder={onReorder} /></div> : null}
+      </div>
       <ResultsStrip results={section.results} testId="resultados-unidades" />
     </div>
   );

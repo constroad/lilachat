@@ -59,6 +59,10 @@ quien ve montos (admin del espacio).
 8. **Quitar una foto** ya enviada de un borrador (`remove_photo` → `quitar_foto_de_informe`).
 9. **Terminar unidad** (CTL-PIS, todos los miembros, borrador o publicado; José 19/11 noche): revisión de las fotos y envío al grupo
    (`unit_album` → `enviar_fotos_de_unidad`). Detalle en spec INFORMES-DESDE-LILACHAT §24.
+10. **Cola de descarga** (CTL-PIS, José 20/11, diseños pv2-01…pv2-04): la unidad que descarga en la tarjeta y la cola que
+   ordena la persona («Siguiente ↑»; en la web también arrastrando). El orden lo guarda el server de Lilachat
+   (`UnloadOrder`). «Terminar unidad» se bloquea si la anterior no tiene la foto de unidad vacía. La temperatura
+   y el escantillón se escriben bajo la vista previa de su foto. Detalle en spec §25.
 
 ### Bandejas del CTL-IMP: basta una (José 19/11)
 
@@ -245,6 +249,8 @@ Portal ya no las manda al subir la foto de unidad vacía. La puerta del server p
 - **19/11** CTL-IMP: basta una bandeja completa; una a medias se valida entera
   (`formSamples.ts`). Indicador «Obteniendo ubicación…» y su error al leer el GPS de una foto.
   Rediseño compacto del formulario (`imp-*`): aprobado por José e implementado en web y APK.
+- **20/11** CTL-PIS: cola de descarga ordenable y compartida (`unloadOrder.ts`), bloqueo de «Terminar unidad»
+  si la anterior no salió, el dato bajo la foto y «Ver PDF» de ancho fijo (spec §25).
 - **19/11** CTL-PIS: «Terminar unidad» (solo admins). Revisión de las fotos con casillas,
   miniatura rota fuera sola, envío por `enviar_fotos_de_unidad` (spec §24).
 - **16/11** Hojas de bloques en la web ancha. «Reintentar» del editor. Portal arregló
@@ -259,7 +265,8 @@ Portal ya no las manda al subir la foto de unidad vacía. La puerta del server p
 | j-02 hub | Implementado | `ReportDocumentScreen.tsx`, `ReportDocumentWeb.tsx` |
 | j-03 tramos | Implementado | `ReportItemsView.tsx`, `ReportItemsWeb.tsx` |
 | j-04 publicar | Implementado | `PublishSheet.tsx`, `PublishDialog.tsx` |
-| j-05/j-06 unidades de pista | Implementado | `ReportUnitsView.tsx`, `ReportUnitsWeb.tsx`, `shared/src/reportUnits.ts` |
+| j-05/j-06 unidades de pista | Reemplazado por pv2 (20/11) | `shared/src/reportUnits.ts` |
+| pv2-01…pv2-04 cola de descarga | Implementado 20/11, captura pendiente | `ReportUnitsWeb.tsx`, `UnitCardWeb.tsx`, `ReportUnitsView.tsx`, `UnitCardView.tsx`, `shared/src/unloadQueue.ts`, `shared/src/unitMeasure.ts` |
 | j-07b fotos adicionales | Implementado | 3 referencias en código |
 | cam-01…cam-06 cámara | Implementado APK y web | `FormCamera.tsx`, `CamaraDelChat.tsx`, `WebCamera.tsx` |
 | ob-01, ob-02, ob-03 observaciones | Implementado | `observations/*` (APK), `ObservationsWeb.tsx` |

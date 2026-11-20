@@ -4,7 +4,7 @@ import { coveredAbove } from '../../../ui/overlays';
 import { readFieldConditions } from '../../../chat/commands/commandsApi';
 import { BackHandler, Linking, Pressable, ScrollView, Text, ToastAndroid, View } from 'react-native';
 import { AlertTriangle, ChevronLeft, ExternalLink } from 'lucide-react-native';
-import { wantsWorkStreets, type ChannelLinks, formKeyOf, isUnitsRepeat, PREVIEW_LABEL, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, albumViewOf, unitAlbumOf, type RepeatItem, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService, type GeoPoint } from '@lilachat/shared';
+import { wantsWorkStreets, type ChannelLinks, formKeyOf, isUnitsRepeat, PREVIEW_LABEL, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, albumViewOf, finishBlockOf, unitAlbumOf, unloadQueueOf, type RepeatItem, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService, type GeoPoint } from '@lilachat/shared';
 import { AppFormSheet } from '../../../chat/commands/AppFormSheet';
 import { useWorkStreets } from './useWorkStreets';
 import { EphemeralAnswers } from '../../../chat/commands/EphemeralAnswers';
@@ -100,12 +100,12 @@ function ReportFooter({ report, blocker, asking, onPublish, onPdf, onPreview, on
           <Text className="text-[13px] font-semibold text-on-surface-variant">{blocker}</Text>
         </View>
       ) : null}
-      {/* José 07/11: «Ver PDF» beside «Publicar», on one line; a draft's preview publishes nothing. */}
+      {/* José 07/11: «Ver PDF» beside «Publicar», on one line; José 20/11: a fixed width, so it never overflows. */}
       <View className="flex-row gap-2">
-        <Pressable testID="ver-vista-previa" onPress={onPreview} disabled={asking || !report.id} className={`min-h-[56px] flex-1 flex-row items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-2 ${asking ? 'opacity-60' : ''}`}>
+        <Pressable testID="ver-vista-previa" onPress={onPreview} disabled={asking || !report.id} className={`min-h-[52px] w-36 flex-row items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-2 ${asking ? 'opacity-60' : ''}`}>
           <PdfLabel asking={asking} label={PREVIEW_LABEL} tone="primary" textClassName="text-[15px] font-semibold text-primary" />
         </Pressable>
-        <Pressable testID="abrir-publicar" onPress={onPublish} className="min-h-[56px] flex-[2] items-center justify-center rounded-2xl bg-primary">
+        <Pressable testID="abrir-publicar" onPress={onPublish} className="min-h-[52px] flex-1 items-center justify-center rounded-2xl bg-primary px-3">
           <Text className="text-[16px] font-bold text-on-primary" numberOfLines={1}>{report.publish.label}</Text>
         </Pressable>
       </View>
@@ -114,16 +114,24 @@ function ReportFooter({ report, blocker, asking, onPublish, onPdf, onPreview, on
 }
 
 /** What the screen shows under the header: the loading block, the failure, the tramos or the hub. */
-function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems, onRetry, onView, admin, onAlbum }: { admin: boolean; onAlbum: (item: RepeatItem) => void; onRetry: () => void; onView: (photo: PhotoToView) => void; draft: ReportDraftResult | null; report: FieldDocument | null; items: DocumentSection | undefined; portalUrl?: string; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
+function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems, onRetry, onView, admin, onAlbum, queue }: { admin: boolean; onAlbum: (item: RepeatItem) => void; queue: UnitsQueue; onRetry: () => void; onView: (photo: PhotoToView) => void; draft: ReportDraftResult | null; report: FieldDocument | null; items: DocumentSection | undefined; portalUrl?: string; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
   if (draft === null) return <View testID="informe-cargando" className="h-40 rounded-2xl bg-surface-variant" />;
   if (!draft.ok || !report) return <DraftFailure message={draft.ok ? 'No se pudo abrir el informe' : draft.message} portalUrl={portalUrl} onRetry={onRetry} />;
-  if (items?.kind === 'repeat') return isUnitsRepeat(items) ? <ReportUnitsView section={items} onOpen={onOpen} onView={onView} admin={admin} onAlbum={onAlbum} /> : <ReportItemsView section={items} onOpen={onOpen} onView={onView} />;
+  if (items?.kind === 'repeat') return isUnitsRepeat(items) ? <ReportUnitsView section={items} onOpen={onOpen} onView={onView} admin={admin} onAlbum={onAlbum} order={report.unloadOrder} onReorder={report.status === 'published' || !report.id ? undefined : queue.reorder} selectedId={queue.selectedId} onSelect={queue.select} /> : <ReportItemsView section={items} onOpen={onOpen} onView={onView} />;
   return (
     <>
       <ProgressCard document={report} />
       <HubCards report={report} onOpen={onOpen} onOpenItems={onOpenItems} />
     </>
   );
+}
+
+/** José 20/11: the unit on the card and the unloading order; a failed save says so in a toast. */
+type UnitsQueue = { selectedId: string | null; select: (itemId: string) => void; reorder: (order: string[]) => void };
+function useUnitsQueue(setOrder: (order: string[]) => Promise<{ ok: true } | { ok: false; message: string }>): UnitsQueue {
+  const [selectedId, select] = useState<string | null>(null);
+  const reorder = (order: string[]) => void setOrder(order).then((saved) => (saved.ok ? undefined : ToastAndroid.show(saved.message, ToastAndroid.LONG)));
+  return { selectedId, select, reorder };
 }
 
 /** The state of the screen: the document, the open tramos list, «Publicar» and Android's back. */
@@ -173,6 +181,12 @@ export function ReportDocumentScreen(props: Props) {
   // The unit under review is read from the newest document: a reload while it is open keeps it current.
   const [albumId, setAlbumId] = useState<string | null>(null);
   const albumItem = albumId && items?.kind === 'repeat' ? items.items.find((one) => one.id === albumId) ?? null : null;
+  const queue = useUnitsQueue(actions.setUnloadOrder);
+  const block = albumItem && items?.kind === 'repeat' ? finishBlockOf(unloadQueueOf(items, report?.unloadOrder), albumItem.id) : null;
+  const goTo = (itemId: string) => {
+    setAlbumId(null);
+    queue.select(itemId);
+  };
   const viewAlbumPhoto = (item: RepeatItem, url: string) => {
     const view = albumViewOf(unitAlbumOf(item), url);
     if (view) files.open(view.file, view.siblings);
@@ -191,11 +205,11 @@ export function ReportDocumentScreen(props: Props) {
         <ReportHeader kicker={items ? `${kicker} · ${items.title}` : kicker} title={props.service.name} report={report} onBack={screen.back} />
         <QueueCard saves={saves} offline={offline} onFix={(save) => actions.openSection(save.path)} onDiscard={(save) => void actions.discard(save.clientKey)} />
         <EphemeralAnswers answers={forms.answers.answers} onDismiss={forms.answers.dismiss} onOpenForm={forms.answers.showForm} chatId={props.chatId} jwt={props.target.jwt} embedded />
-        <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={screen.setItemsOf} onRetry={actions.refresh} onView={viewPhoto} admin={Boolean(props.admin)} onAlbum={(item) => setAlbumId(item.id)} />
+        <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={screen.setItemsOf} onRetry={actions.refresh} onView={viewPhoto} admin={Boolean(props.admin)} onAlbum={(item) => setAlbumId(item.id)} queue={queue} />
         {notice ? <Text className="text-center text-[13px] text-error">{notice}</Text> : null}
       </ScrollView>
       {report && (!items || (items.kind === 'repeat' && isUnitsRepeat(items))) ? <ReportFooter report={report} blocker={publishFooterLine(report, blockers)} asking={pdf.asking} onPublish={() => screen.setPublishing(true)} onPdf={() => void pdf.ask(report.id ?? '', `${report.title} · PDF`)} onPreview={() => void pdf.ask(report.id ?? '', `${report.title} · vista previa`, true)} onDone={() => props.onClose(true)} /> : null}
-      <UnitAlbumSheet item={albumItem} onSend={(item, urls) => actions.sendUnitAlbum(item.id, urls)} onSent={albumSent} onClose={() => setAlbumId(null)} onView={viewAlbumPhoto} />
+      <UnitAlbumSheet item={albumItem} onSend={(item, urls) => actions.sendUnitAlbum(item.id, urls)} onSent={albumSent} onClose={() => setAlbumId(null)} onView={viewAlbumPhoto} block={block} onGo={goTo} />
       {files.viewer}
       {pdf.viewer}
       {report ? <PublishSheet document={report} blockers={blockers} visible={screen.publishing} onClose={() => screen.setPublishing(false)} onPublish={publish} onOpen={(path) => { screen.setPublishing(false); actions.openSection(path); }} /> : null}

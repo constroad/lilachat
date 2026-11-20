@@ -1,4 +1,4 @@
-import { reportDraftPath, reportDraftRequest, reportFormsPath, sharedInFlight, type CommandOutcome, type ReportDraftBody, type ReportFormRequest } from '@lilachat/shared';
+import { reportDraftPath, reportDraftRequest, reportFormsPath, reportUnloadOrderPath, sharedInFlight, type CommandOutcome, type ReportDraftBody, type ReportFormRequest } from '@lilachat/shared';
 import { BASE_URL } from '../../../api/client';
 import { jsonCall } from '../../../api/jsonCall';
 import type { ServiceAskTarget } from '../useServiceAsk';
@@ -16,3 +16,7 @@ export const askReportDraft = sharedInFlight(
 /** One of the report's forms (a section, a photo, «Publicar») opened as a run of the client's app. */
 export const openReportForm = (target: ServiceAskTarget, serviceId: string, request: ReportFormRequest) =>
   jsonCall<CommandOutcome>(`${BASE_URL}/api${reportFormsPath(target.spaceId, target.clientId, serviceId)}`, target.jwt, { method: 'POST', body: JSON.stringify(request) });
+
+/** CTL-PIS (José 20/11): the unloading order to the server, shared by every device of the channel. */
+export const saveUnloadOrder = async (target: ServiceAskTarget, serviceId: string, reportId: string, order: readonly string[]): Promise<boolean> =>
+  (await jsonCall<{ order: string[] }>(`${BASE_URL}/api${reportUnloadOrderPath(target.spaceId, target.clientId, serviceId, reportId)}`, target.jwt, { method: 'PUT', body: JSON.stringify({ order }) })).ok;

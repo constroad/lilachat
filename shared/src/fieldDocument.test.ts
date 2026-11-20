@@ -329,3 +329,17 @@ describe('a new tramo opens where the last one ended', () => {
     expect(saved?.schema.properties?.progresivaDesde?.default).toBeUndefined();
   });
 });
+
+describe('the unloading order of a control de pista (José 20/11)', () => {
+  const body = (unloadOrder: unknown) => ({ id: 'r1', type: 'CTL-PIS', title: 'Control de pista', status: 'draft', forms: { general: { type: 'object', properties: { fecha: { type: 'string', title: 'Fecha' } } } }, sections: [{ id: 'general', kind: 'form', title: 'Datos', required: true, state: 'empty', summary: [], results: [], form: 'general', values: {} }], publish: { label: 'Publicar', missing: [] }, unloadOrder });
+
+  it('keeps the ids the server sent, each once', () => {
+    expect(fieldDocumentOf(body(['d2', 'd1', 'd2']))?.unloadOrder).toEqual(['d2', 'd1']);
+  });
+
+  it('drops an order that is not a list of ids, and keeps the document', () => {
+    expect(fieldDocumentOf(body('d1'))?.unloadOrder).toBeUndefined();
+    expect(fieldDocumentOf(body(['d1', 'no ids']))).not.toHaveProperty('unloadOrder');
+    expect(fieldDocumentOf(body(undefined))).not.toHaveProperty('unloadOrder');
+  });
+});

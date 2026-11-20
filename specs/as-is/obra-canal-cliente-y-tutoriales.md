@@ -81,6 +81,15 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
   - Las fotos van a la herramienta de Portal `enviar_fotos_de_unidad`.
   - El botón dice «Enviar fotos al grupo» en una unidad cerrada y «Reenviar fotos» una vez enviadas.
   - Detalle en spec INFORMES-DESDE-LILACHAT §24.
+- **Cola de descarga** del control de pista (20/11, diseños pv2-01…pv2-04, spec §25).
+  - Arriba va la unidad que descarga, en su tarjeta: 4 fotos con su dato, «Tomar …» y «Terminar unidad» de 40 px.
+  - Debajo va la cola que ordena la persona: «Siguiente ↑» en web y APK; en la web también se arrastra.
+  - Estados: Enviada, Terminada, Descargando, En cola y En camino (con «Llegó»).
+  - Desde 1024 px (web) o 900 dp (APK), la cola va a la izquierda y la unidad a la derecha.
+  - El orden lo guarda el server de Lilachat y todos los teléfonos ven el mismo.
+  - Si la unidad anterior no tiene la foto de unidad vacía, la revisión se bloquea con «Ir a PLACA».
+  - Temperatura y escantillón se escriben bajo la vista previa de su foto.
+  - «Ver PDF» tiene ancho fijo.
 - Una sección repetida sin filas dice «Sin zonas todavía» y «Toca «Agregar zona» para empezar.» (`emptyItemsHint`): nombra el botón, no la fila, porque la palabra puede ser femenina.
 - Inicio del servicio como día (`started_at`, «Inicio 6 oct»), sin zona horaria.
 - **Enlace del servicio** («Crear enlace», kind `service_link` → `crear_enlace_de_servicio`):

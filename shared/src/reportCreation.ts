@@ -121,6 +121,8 @@ export const DRAFT_FAILED = 'No se pudo abrir el informe';
 
 export const reportDraftPath = (spaceId: string, clientId: string, serviceId: string): string => `${clientServicePath(spaceId, clientId, serviceId)}/reports/draft`;
 export const reportFormsPath = (spaceId: string, clientId: string, serviceId: string): string => `${clientServicePath(spaceId, clientId, serviceId)}/reports/forms`;
+/** CTL-PIS (José 20/11): `PUT { order }`, the unloading order the channel shares. */
+export const reportUnloadOrderPath = (spaceId: string, clientId: string, serviceId: string, reportId: string): string => `${clientServicePath(spaceId, clientId, serviceId)}/reports/${reportId}/unload-order`;
 
 export type ReportDraftRequest = { type: string; report_id?: string; /** A window of items past the first (50 units a page): the first goes without it. */ page?: number };
 /** Without the id Portal answers the person's own draft of that type, so a lost id is never a second report. */

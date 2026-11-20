@@ -99,7 +99,7 @@ export function ServiceCard(props: { service: SpaceClientService; canOpen: boole
   const facts = serviceCardFacts(service, new Date());
   const summary = compact ? <CompactSummary service={service} facts={facts} /> : <WideSummary service={service} facts={facts} />;
   return (
-    <article data-testid={`servicio-${service.id}`} className={`rounded-2xl border-[1.5px] border-l-4 border-outline/15 bg-surface p-4 shadow-sm hover:shadow-md md:border-y-0 md:border-r-0 ${ACCENT[service.status]}`}>
+    <article data-testid={`servicio-${service.id}`} className={`rounded-card border-[1.5px] border-l-4 border-outline/15 bg-surface p-4 shadow-sm hover:shadow-md md:border-y-0 md:border-r-0 ${ACCENT[service.status]}`}>
       {props.canOpen ? (
         <button type="button" data-testid={`abrir-servicio-${service.id}`} onClick={props.onOpen} className="block w-full text-left">{summary}</button>
       ) : (

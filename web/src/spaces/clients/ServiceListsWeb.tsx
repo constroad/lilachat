@@ -1,5 +1,6 @@
+import type { MouseEvent } from 'react';
 import { Clock, FileText, Ruler, Truck } from 'lucide-react';
-import { DISPATCH_THUMB_SLOTS, detailEmptyText, detailRows, dispatchThumbs, orderCardsOf, orphanDispatchesOf, reportGroups, type DetailRow, type DetailTabKey, type OrderCard, type ServiceDetail } from '@lilachat/shared';
+import { DISPATCH_THUMB_SLOTS, detailEmptyText, detailRows, dispatchThumbs, orderCardsOf, orphanDispatchesOf, reportGroups, type DetailRow, type DetailTabKey, type OrderCard, type OrderProgress, type OrderSummary, type ServiceDetail, type SheetMedia } from '@lilachat/shared';
 import type { OpenSheetFile } from './RecordSheetWeb';
 import { FileThumb } from './PortalFileViewer';
 import { useCompactShell } from './ServiceShellWeb';
@@ -54,15 +55,17 @@ function DispatchThumbs({ dispatch, onOpenFile }: { dispatch: OrderCard['dispatc
   const { media } = dispatch;
   const { shown, more } = dispatchThumbs(media, compact ? DISPATCH_THUMB_SLOTS.compact : DISPATCH_THUMB_SLOTS.wide);
   const firstHidden = media[shown.length];
+  // The row opens the dispatch's sheet: a thumb opens the viewer instead.
+  const open = (event: MouseEvent, file: SheetMedia) => { event.stopPropagation(); onOpenFile(file, media); };
   return (
     <span className="flex shrink-0 gap-1.5">
       {shown.map((one, index) => (
-        <button key={one.url} type="button" data-testid={`despacho-foto-${index}`} aria-label={`Ver ${one.name}`} onClick={() => onOpenFile(one, media)} className="overflow-hidden rounded-lg">
+        <button key={one.url} type="button" data-testid={`despacho-foto-${index}`} aria-label={`Ver ${one.name}`} onClick={(event) => open(event, one)} className="overflow-hidden rounded-lg">
           <FileThumb file={one} size={THUMB_PX} />
         </button>
       ))}
       {more && firstHidden ? (
-        <button type="button" data-testid={`despacho-mas-${dispatch.id}`} aria-label={`Ver ${more} más`} onClick={() => onOpenFile(firstHidden, media)} className="grid shrink-0 place-items-center rounded-lg bg-primary/10 text-[13px] font-bold text-primary" style={{ width: THUMB_PX, height: THUMB_PX }}>
+        <button type="button" data-testid={`despacho-mas-${dispatch.id}`} aria-label={`Ver ${more} más`} onClick={(event) => open(event, firstHidden)} className="grid shrink-0 place-items-center rounded-lg bg-primary/10 text-[13px] font-bold text-primary" style={{ width: THUMB_PX, height: THUMB_PX }}>
           {`+${more}`}
         </button>
       ) : null}
@@ -70,44 +73,83 @@ function DispatchThumbs({ dispatch, onOpenFile }: { dispatch: OrderCard['dispatc
   );
 }
 
-/** A dispatch inside its order: the truck, its quantity and hour, its thumbs (design cc-02). */
-function DispatchLine({ dispatch, onOpen, onOpenFile }: { dispatch: OrderCard['dispatches'][number]; onOpen: (id: string) => void; onOpenFile: OpenSheetFile }) {
+/** Hora · Unidad · Volumen · Fotos y videos on a wide window (ped-v2-escritorio-lista); a phone stacks hour and m³. */
+const ROW_GRID = 'grid grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-3 sm:grid-cols-[72px_150px_96px_minmax(0,1fr)]';
+
+function DispatchHeader() {
   return (
-    <li data-testid={`despacho-${dispatch.id}`} className="flex min-h-[56px] items-center gap-3 rounded-xl border border-outline/10 bg-background/60 px-3 py-2">
-      <button type="button" onClick={() => onOpen(dispatch.id)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
-        <Truck size={17} className="shrink-0 text-primary" />
-        {/* On a phone the plate and its line stack, so neither breaks nor gets cut. */}
-        <span className="flex min-w-0 flex-col sm:flex-row sm:items-center sm:gap-2">
-          <span className="whitespace-nowrap font-mono text-[13px] font-bold text-on-surface">{dispatch.title}</span>
-          {dispatch.line ? <span className="truncate text-[12px] text-on-surface-variant sm:text-[13px]"><span className="max-sm:hidden">· </span>{dispatch.line}</span> : null}
-        </span>
-      </button>
-      {dispatch.media.length ? <DispatchThumbs dispatch={dispatch} onOpenFile={onOpenFile} /> : null}
+    <li aria-hidden className={`${ROW_GRID} bg-surface-variant/40 px-4 py-2 max-sm:hidden ${KICKER}`}>
+      <span>Hora</span><span>Unidad</span><span>Volumen</span><span>Fotos y videos</span>
     </li>
   );
 }
 
-/** One order as a card with its dispatches inside (José 01/11, design cc-02); its head opens its sheet. */
-function OrderCardView({ card, onOpen, onOpenDispatch, onOpenFile }: { card: OrderCard; onOpen: (id: string) => void; onOpenDispatch: (id: string) => void; onOpenFile: OpenSheetFile }) {
-  const { order } = card;
+/**
+ * A dispatch as a thin row (José 20/11, ped-v2): hour and m³, plate, its thumbs. Tapping the row
+ * opens its sheet, which has every photo and video in a grid («no veo los archivos al tocar un despacho»).
+ */
+function DispatchRow({ dispatch, onOpen, onOpenFile }: { dispatch: OrderCard['dispatches'][number]; onOpen: (id: string) => void; onOpenFile: OpenSheetFile }) {
   return (
-    <article data-testid={`fila-${order.id}`} className={`${CARD} p-4`}>
-      <div className="flex items-start gap-3">
-        <button type="button" onClick={() => onOpen(order.id)} className="min-w-0 flex-1 text-left">
-          <p className="text-[15px] font-bold text-on-surface hover:underline">{order.title}</p>
-          {order.line ? <p className="text-[13px] text-on-surface-variant">{order.line}</p> : null}
-        </button>
-        <Chip row={order} />
+    <li data-testid={`despacho-${dispatch.id}`} onClick={() => onOpen(dispatch.id)} className={`${ROW_GRID} min-h-[56px] cursor-pointer px-4 py-2 hover:bg-background/60`}>
+      <span className="flex flex-col sm:contents">
+        <span className="font-mono text-[13px] font-bold text-on-surface">{dispatch.hour ?? '—'}</span>
+        <span className="text-[12px] text-on-surface-variant sm:hidden">{dispatch.quantity}</span>
+      </span>
+      {/* The button is for the keyboard: its click bubbles to the row, which opens the sheet once. */}
+      <button type="button" aria-label={`Abrir despacho ${dispatch.title}`} className="flex min-w-0 items-center gap-2 text-left">
+        <Truck size={17} className="shrink-0 text-on-surface-variant sm:hidden" />
+        <span className="truncate font-mono text-[13px] font-bold text-on-surface sm:rounded-md sm:bg-surface-variant/60 sm:px-2 sm:py-0.5">{dispatch.title}</span>
+      </button>
+      <span className="text-[13px] font-semibold text-on-surface max-sm:hidden">{dispatch.quantity ?? '—'}</span>
+      {dispatch.media.length ? <DispatchThumbs dispatch={dispatch} onOpenFile={onOpenFile} /> : <span className="text-[12px] italic text-on-surface-variant max-sm:hidden">Sin fotos</span>}
+    </li>
+  );
+}
+
+/** «5 despachos · 60 / 75 m³ · 18 medios» and the bar of the m³ sent (ped-v2). */
+function OrderSummaryView({ id, summary, progress }: { id: string; summary: OrderSummary; progress?: OrderProgress }) {
+  const percent = progress?.percent;
+  return (
+    <div data-testid={`resumen-${id}`} className="mt-3 border-t border-outline/10 pt-3">
+      <p className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[13px] font-semibold text-on-surface">
+        <span>{summary.dispatches}</span>
+        {summary.sent ? <span className="font-mono">{summary.sent}</span> : null}
+        {summary.media ? <span className="text-primary">{summary.media}</span> : null}
+      </p>
+      {percent !== undefined ? (
+        <span role="progressbar" aria-label="Avance del pedido" aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100} className="mt-2 block h-1.5 overflow-hidden rounded-full bg-surface-variant">
+          <span className="block h-full rounded-full bg-en-linea" style={{ width: `${percent}%` }} />
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/** One order as a card (José 01/11; ped-v2 20/11): its head opens its sheet, its dispatches go by hour. */
+function OrderCardView({ card, onOpen, onOpenDispatch, onOpenFile }: { card: OrderCard; onOpen: (id: string) => void; onOpenDispatch: (id: string) => void; onOpenFile: OpenSheetFile }) {
+  const { order, heading } = card;
+  return (
+    <article data-testid={`fila-${order.id}`} className={CARD}>
+      <div className="p-4">
+        <div className="flex items-start gap-3">
+          <button type="button" onClick={() => onOpen(order.id)} className="min-w-0 flex-1 text-left">
+            <p className="text-[15px] font-bold text-on-surface"><span className="hover:underline">{heading.title}</span>{heading.detail ? <span className="font-semibold text-on-surface-variant">{` · ${heading.detail}`}</span> : null}</p>
+            {card.site ? <p className="truncate text-[13px] text-on-surface-variant">{card.site}</p> : null}
+          </button>
+          <Chip row={order} />
+        </div>
+        {card.summary ? <OrderSummaryView id={order.id} summary={card.summary} progress={card.progress} /> : <p className="mt-3 flex items-center gap-2 rounded-xl bg-background/60 px-3 py-3 text-[13px] text-on-surface-variant"><Clock size={15} /> Sin despachos todavía</p>}
       </div>
       {card.dispatches.length ? (
         <>
-          <p className={`mt-3 ${KICKER}`}>{`Despachos · ${card.dispatches.length}`}</p>
-          <ul className="mt-2 flex flex-col gap-2">{card.dispatches.map((one) => <DispatchLine key={one.id} dispatch={one} onOpen={onOpenDispatch} onOpenFile={onOpenFile} />)}</ul>
-          {card.dispatches.some((one) => one.cubicage) ? <button type="button" onClick={() => onOpen(order.id)} className="mt-2 inline-flex h-9 items-center gap-1.5 text-[13px] font-semibold text-primary"><Ruler size={15} /> Cubicaje</button> : null}
+          <p className={`flex justify-between border-t border-outline/10 px-4 pt-3 sm:hidden ${KICKER}`}>{`Despachos · ${card.dispatches.length}`}<span className="normal-case tracking-normal">Por hora</span></p>
+          <ul className="divide-y divide-outline/10 sm:border-t sm:border-outline/10">
+            <DispatchHeader />
+            {card.dispatches.map((one) => <DispatchRow key={one.id} dispatch={one} onOpen={onOpenDispatch} onOpenFile={onOpenFile} />)}
+          </ul>
+          {card.dispatches.some((one) => one.cubicage) ? <button type="button" onClick={() => onOpen(order.id)} className="mx-4 mb-2 inline-flex h-9 items-center gap-1.5 text-[13px] font-semibold text-primary"><Ruler size={15} /> Cubicaje</button> : null}
         </>
-      ) : (
-        <p className="mt-3 flex items-center gap-2 rounded-xl bg-background/60 px-3 py-3 text-[13px] text-on-surface-variant"><Clock size={15} /> Sin despachos todavía</p>
-      )}
+      ) : null}
     </article>
   );
 }

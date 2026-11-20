@@ -62,9 +62,19 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
   «Crear informe» en Informes; Pegar, cámara y Subir en Drive; Capas, Editar croquis, Más,
   Compartir y Registrar en Mapa. Web: `ServiceShellWeb.tsx` (`SectionActions` dibuja en esa barra
   con un portal).
-- Pedidos como tarjetas (cc-02, `shared/src/serviceOrderCards.ts`): producto, cantidad, día y obra;
-  «DESPACHOS · N» con placa, m³, hora y sus miniaturas; «Sin despachos todavía»; «Cubicaje»
-  abre la ficha del pedido. Un despacho abre su ficha.
+- Pedidos como tarjetas (ped-v2, José 20/11, `shared/src/serviceOrderCards.ts`). Cabecera:
+  producto (o «Pedido» si Portal no lo manda) · cantidad · día, la obra debajo y el estado
+  (`OrderCard.heading`, `site`). Sin código de pedido: Portal no lo manda en el detalle.
+- Resumen del pedido (`OrderCard.summary`): «N despachos · X / Y m³ · N medios» y una barra.
+  La barra suma los m³ de los despachos en la unidad del pedido o sin unidad (`orderProgressOf`);
+  sale solo si el pedido trae cantidad, con tope en 100 %. Sin despachos: «Sin despachos todavía».
+- Despachos en filas finas ordenadas por hora; sin hora van al final (`byHour`). Celular: hora
+  sobre m³ | camión y placa | miniaturas. Desde 640 px, tabla Hora · Unidad · Volumen · Fotos y
+  videos; sin medios dice «Sin fotos». Tocar la fila abre la ficha del despacho con la grilla de
+  fotos y videos (`RecordSheet`); tocar una miniatura abre el visor, no la ficha. «Cubicaje» abre
+  la ficha del pedido.
+- Sin acción «Foto» en el despacho: Lilachat no tiene camino para subir fotos a un despacho.
+- El bloque «Etapas · N de 5» sigue arriba (solo admins): siempre trae las líneas de cada etapa.
 - **Miniaturas del despacho** (José 20/11). Caben 3 en el celular (< 768 px) y 5 en tablet y
   computadora (`DISPATCH_THUMB_SLOTS`, `dispatchThumbSlotsFor`). Con más, el último lugar es «+K»
   (`dispatchThumbs`). Un video muestra su cuadro con el botón de play, o el ícono de video sin cuadro
@@ -267,6 +277,8 @@ en la cabecera del Drive y las acciones del mapa en su barra, justo bajo la barr
   cc-05 en el celular y «Enlace copiado» flotante.
 - **20/11** · Despachos con todas sus fotos y videos en el visor, «+K» y miniaturas en el APK;
   «Preparando…» en los botones de PDF; «Enlace del servicio» crea el enlace en su hoja, sin ir al chat.
+- **20/11** · Pedidos como ped-v2 (aprobado por José): resumen con barra de m³, despachos por hora en
+  filas finas (tabla en escritorio) y la fila abre la ficha del despacho con sus medios.
 - **19/11** · Los dibujos del mapa toman los colores del croquis de Portal (antes, todos puntos naranjas): ficha blanca con aro y punto del color de su tipo, etiqueta desde el zoom 16 (`shared/src/workMapMarks.ts` › `markColor`, `MARK_CHIP_PAINT`, `MARK_GLYPH_PAINT`), en web y APK.
 
 ## 5. Diseños de Stitch relacionados
@@ -282,7 +294,9 @@ en la cabecera del Drive y las acciones del mapa en su barra, justo bajo la barr
 | f-07 canal que nace con la cotización | **Descartado** por José (29/10) | — |
 | f-08 cuenta del cliente | Implementado | `ClientAccountPanel.tsx`, `ClientAccountWeb.tsx` |
 | cc-01 servicios | Implementado: fila con columnas (tablet/computadora) y tarjeta con cifras (celular) | `ServiceCardWeb.tsx`, `ServiceCard.tsx` |
-| cc-02 pedidos | Implementado | `ServiceShellWeb.tsx`, `ServiceListsWeb.tsx`, `ServiceDetailView.tsx` |
+| cc-02 pedidos | Reemplazado por ped-v2 (20/11) | `ServiceShellWeb.tsx`, `ServiceListsWeb.tsx`, `ServiceDetailView.tsx` |
+| ped-v2-movil / ped-v2-escritorio-lista | Implementado sin código de pedido (Portal no lo manda) ni «Foto» (sin camino de subida) | `ServiceListsWeb.tsx`, `ServiceLists.tsx`, `serviceOrderCards.ts` |
+| ped-v2-escritorio (visor) | Reusa el visor de 755c4767 | `PortalFileViewer.tsx` |
 | cc-03 informes | Implementado sin la franja de cifras de abajo (inventada) | `ServiceListsWeb.tsx` |
 | cc-04 mapa | Implementado; capas en `workMap/MapLayersPanel.tsx` | ver `obra-mapa.md` |
 | cc-05 drive | Implementado sin «Mover a carpeta» (Portal no tiene la herramienta) | ver `obra-drive.md` |

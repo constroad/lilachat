@@ -198,6 +198,22 @@ describe('a service\'s start date (José 31/10: «la lista de servicios no muest
   });
 });
 
+describe('a service\'s counts and last movement (José 19/11, design cc-01)', () => {
+  it('what agentes sends reaches the list in camelCase; an invalid one is dropped and a missing one has no key', async () => {
+    // Arrange
+    const token = await installApp();
+    const facts = { ordersCount: 2, reportsCount: 3, stagesTotal: 6, lastActivity: { at: '2026-11-19T14:40:00Z', text: 'Observación Parche 12' }, owner_phone: '999' };
+    await putClient(token, state(daysAgo(1), [service('in_progress', facts), { ...service('pending', { ordersCount: -1, lastActivity: { at: 'ayer', text: 'x' } }), id: 'srv-2' }])).expect(201);
+    // Act
+    const list = await listClients(asJose).expect(200);
+    // Assert
+    const [full, invalid] = list.body.clients[0].services;
+    expect(full).toMatchObject({ ordersCount: 2, reportsCount: 3, stagesTotal: 6, lastActivity: { at: '2026-11-19T14:40:00.000Z', text: 'Observación Parche 12' } });
+    expect(full).not.toHaveProperty('owner_phone');
+    for (const key of ['ordersCount', 'reportsCount', 'stagesTotal', 'lastActivity']) expect(invalid).not.toHaveProperty(key);
+  });
+});
+
 describe('client channels stay out of the app\'s channel pickers (José, 30/10)', () => {
   it('«Canales donde funciona», «En qué canales está» and «¿Dónde llega cada aviso?» do not list them', async () => {
     // Arrange

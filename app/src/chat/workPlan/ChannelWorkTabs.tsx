@@ -105,6 +105,7 @@ type ChannelLayout = { compact: boolean; holdsPending: boolean; counts: { pendin
 function ChannelPanels(props: { fullScreen: boolean; layout: ChannelLayout; onServiceOpen: (open: boolean) => void; shown: Tab; focusSeq: number | null; clearFocus: () => void; client: SpaceClient; records: ReturnType<typeof useClientRecords>; plan: ReturnType<typeof useWorkPlan>; stages: WorkStage[]; target: ServiceAskTarget | null; people: ReadonlyMap<string, string>; params: ChannelWorkParams; nameOf: (userId: string) => string; toMessage: (seq: number) => void; openTask: OpenTask | null; setOpenTask: (task: OpenTask | null) => void; links: ChannelLinks }) {
   const { shown, client, plan, stages, target, params, nameOf, toMessage, setOpenTask } = props;
   const members = checklistMembers(props.people, params.yo);
+  const rowAccess = { admin: Boolean(client.access?.admin), yo: params.yo, jwt: params.jwt, chatId: params.chatId, onChanged: () => void plan.reload() };
   // José 06/11: «Publicar informe» went under the three Android buttons; every panel ends above them.
   const insets = useSafeAreaInsets();
   const cover = { ...COVER, paddingBottom: insets.bottom, paddingTop: props.fullScreen ? insets.top : 0 };
@@ -119,11 +120,11 @@ function ChannelPanels(props: { fullScreen: boolean; layout: ChannelLayout; onSe
       {shown === 'checklist' ? (
         <View className="bg-background" style={cover}>
           {props.layout.holdsPending ? (
-            <ChecklistSegments counts={props.layout.counts} pending={<PendingPanel stages={stages} nameOf={nameOf} onOpen={setOpenTask} />} plan={<WorkPlanPanel plan={plan} jwt={params.jwt} yo={params.yo} nameOf={nameOf} members={members} onStartFailed={(message) => ToastAndroid.show(message, ToastAndroid.SHORT)} onOpenTask={setOpenTask} />} />
+            <ChecklistSegments counts={props.layout.counts} pending={<PendingPanel stages={stages} nameOf={nameOf} access={rowAccess} onOpen={setOpenTask} />} plan={<WorkPlanPanel plan={plan} jwt={params.jwt} yo={params.yo} nameOf={nameOf} members={members} onStartFailed={(message) => ToastAndroid.show(message, ToastAndroid.SHORT)} onOpenTask={setOpenTask} />} />
           ) : <WorkPlanPanel plan={plan} jwt={params.jwt} yo={params.yo} nameOf={nameOf} members={members} onStartFailed={(message) => ToastAndroid.show(message, ToastAndroid.SHORT)} onOpenTask={setOpenTask} />}
         </View>
       ) : null}
-      {shown === 'pending' ? <View className="bg-background" style={cover}><PendingPanel stages={stages} nameOf={nameOf} onOpen={setOpenTask} /></View> : null}
+      {shown === 'pending' ? <View className="bg-background" style={cover}><PendingPanel stages={stages} nameOf={nameOf} access={rowAccess} onOpen={setOpenTask} /></View> : null}
       <TaskDetailSheet open={props.openTask} admin={Boolean(client.access?.admin)} stages={stages} channelName={params.channelName} jwt={params.jwt} chatId={params.chatId} yo={params.yo} nameOf={nameOf} members={members} onChanged={() => void plan.reload()} onOpenMessage={toMessage} onClose={() => setOpenTask(null)} />
     </>
   );

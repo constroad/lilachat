@@ -271,11 +271,35 @@ const joinBounds = (left: Bounds | null, right: Bounds | null): Bounds | null =>
 /** No street to frame: the drawings and the observations together. */
 const layersBounds = (map: WorkMap): Bounds | null => joinBounds(mapMarksBounds(map.marks ?? []), observationsBounds(map.observations ?? []));
 
-function boundsOf(streets: WorkMapStreet[]): WorkMapView['bounds'] {
+function boundsOf(streets: WorkMapStreet[]): Bounds | null {
   const points = streets.flatMap((street) => street.line);
   if (!points.length) return null;
   const [lngs, lats] = [points.map((point) => point.lng), points.map((point) => point.lat)];
   return [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]];
+}
+
+/** The least a frame spans, in degrees (~110 m): a lone drawing or a short stretch is not framed at full zoom. */
+export const WORK_MAP_MIN_FRAME_DEG = 0.001;
+
+function withMinimumSpan(bounds: Bounds | null): Bounds | null {
+  if (!bounds) return null;
+  const pad = (low: number, high: number): [number, number] => {
+    const missing = WORK_MAP_MIN_FRAME_DEG - (high - low);
+    return missing > 0 ? [low - missing / 2, high + missing / 2] : [low, high];
+  };
+  const [west, east] = pad(bounds[0][0], bounds[1][0]);
+  const [south, north] = pad(bounds[0][1], bounds[1][1]);
+  return [[west, south], [east, north]];
+}
+
+/**
+ * The first frame of the map (José 19/11, OBRA GRAU: the stretch was out of sight until zooming
+ * out): every street of the service together with Portal's drawings and observations. A stage or
+ * work chosen frames only its streets.
+ */
+function frameOf(map: WorkMap, streets: WorkMapStreet[], narrowed: boolean): Bounds | null {
+  const shown = narrowed && streets.length ? boundsOf(streets) : joinBounds(boundsOf(map.streets), layersBounds(map));
+  return withMinimumSpan(shown);
 }
 
 /** Days are written `YYYY-MM-DD`, so they compare as text and no time zone moves them. */
@@ -304,7 +328,7 @@ export function workMapView(map: WorkMap, filter: WorkMapFilter = {}): WorkMapVi
     streets: streets.map((street) => streetRow(street, stretches.filter((stretch) => stretch.scope.streetId === street.id), map.works)),
     planned: plannedLines(map, scopes, narrowed),
     done: doneLines(map, stretches),
-    bounds: boundsOf(streets.length ? streets : map.streets) ?? layersBounds(map),
+    bounds: frameOf(map, streets, narrowed),
   };
 }
 

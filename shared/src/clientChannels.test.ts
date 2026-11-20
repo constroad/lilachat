@@ -70,6 +70,17 @@ describe('validateClientState', () => {
     expect(plain.ok && 'driveUrl' in plain.state).toBe(false);
   });
 
+  it('a service carries its counts and last movement when Portal sends them (José 19/11, design cc-01), and drops an invalid one', () => {
+    // Arrange
+    const facts = { ordersCount: 2, reportsCount: 3, stagesTotal: 6, lastActivity: { at: '2026-11-19T14:40:00Z', text: 'Observación Parche 12' } };
+    // Act
+    const valid = validateClientState({ ...wire, services: [{ ...wire.services[0], ...facts }] });
+    const invalid = validateClientState({ ...wire, services: [{ ...wire.services[0], ordersCount: -3, lastActivity: { at: 'ayer', text: 'x' } }] });
+    // Assert
+    expect(valid.ok && valid.state.services[0]).toMatchObject({ ordersCount: 2, reportsCount: 3, stagesTotal: 6, lastActivity: { at: '2026-11-19T14:40:00.000Z', text: 'Observación Parche 12' } });
+    expect(invalid.ok && invalid.state.services[0]).toEqual({ id: '64f1c2', name: 'Base granular km 12', status: 'in_progress', stage: 'in_progress', stageLabel: 'En ejecución', progress: 40, url: 'https://portal.constroad.com/x' });
+  });
+
   it('a client without orders yet sends last_order_at null', () => {
     const valid = validateClientState({ ...wire, last_order_at: null, orders_total: 0, services: [] });
     expect(valid.ok && valid.state.lastOrderAt).toBeNull();

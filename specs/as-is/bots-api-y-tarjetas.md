@@ -94,6 +94,11 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
 
 **Canal por cliente y sus tareas** (`botClients.ts`, `botClientTasks.ts`).
 - `PUT /api/bots/clients/:clientId` crea el canal privado del cliente. Vivo = actividad en 60 días.
+- Cada servicio del PUT puede traer, en camelCase aunque el resto vaya en snake_case, `ordersCount`,
+  `reportsCount`, `stagesTotal` y `lastActivity: { at, text }` (José 19/11, diseño cc-01). Lista blanca
+  (`shared/src/serviceFacts.ts` › `serviceFactsFromWire`): enteros ≥ 0, fecha válida y texto recortado a 80;
+  lo inválido se descarta sin rechazar el PUT. Se guardan y salen igual en `GET /api/workspaces/:id/clients`.
+  `stagesTotal` son las etapas del MAPA de obra; `reportsCount`, solo informes públicos sin plata.
 - `POST/GET /api/bots/clients/:clientId/tasks`: tareas de un pedido en la etapa «Ejecución».
 - El detalle del canal del cliente (informes, Drive, cobranza) es de otro as-is.
 - Los informes de campo del canal (`clientReports.ts`) se abren solo para los tipos de `OPEN_REPORT_TYPES`, que desde el 18/11 suman SOL-IMP y APR-ADI. APR-ADI lleva montos: el borrador pide `need: 'money'` y un miembro sin plata recibe 404. El detalle está en `obra-informes.md`. Sus secciones se guardan con `guardar_seccion_de_acta`, que va con el tipo como `guardar_seccion_de_informe` (`TYPED_SAVE_TOOLS`): el primer guardado crea el informe.

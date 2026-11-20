@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
 import { FileText, Link as LinkIcon, Play, Search } from 'lucide-react';
-import { formatBytes, formatChatTimestamp, MEDIA_LIBRARY_TABS, MEDIA_SEARCH_DELAY_MS, mediaEmptyText, mediaMonthSections, mediaSearchTerm, splitMediaSection, type MediaLibraryItem, type MediaLibraryType } from '@lilachat/shared';
+import { driveNoticeDone, formatBytes, formatChatTimestamp, MEDIA_LIBRARY_TABS, MEDIA_OPEN_IN_CHAT, mediaItemAsFile, MEDIA_SEARCH_DELAY_MS, mediaEmptyText, mediaMonthSections, mediaSearchTerm, splitMediaSection, type MediaLibraryItem, type MediaLibraryType } from '@lilachat/shared';
 import { FieldError, Overlay } from '../ui/Overlay';
 import { mediaLibrary } from '../spaces/spacesApi';
+import { FloatingNotice, useFloatingNotice } from '../ui/FloatingNotice';
+import { DriveFileMenu } from '../spaces/clients/DriveFileMenu';
 
 const itemKey = (item: MediaLibraryItem) => `${item.chatId}-${item.seq}`;
+
+/** The same «⋮» as a Drive file (José 19/11, design cc-05): a sheet on a phone, a menu on a computer. */
+function ItemMenu(props: { item: MediaLibraryItem; chatName: string; onOpen: () => void; onNotice: (text: string) => void; className?: string }) {
+  const file = mediaItemAsFile(props.item, props.chatName);
+  if (!file) return null;
+  return <span className={props.className}><DriveFileMenu file={file} openLabel={MEDIA_OPEN_IN_CHAT} onOpen={props.onOpen} onNotice={props.onNotice} /></span>;
+}
 
 /** The search as typed, sent to the server only after a pause. */
 function useSettled(value: string, delayMs: number): string {
@@ -30,6 +39,7 @@ export function MediaDialog(props: { jwt: string; spaceId: string | null; spaceN
   const [items, setItems] = useState<MediaLibraryItem[] | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useFloatingNotice();
 
   const load = useCallback(async (before?: string) => {
     const response = await mediaLibrary(props.jwt, { type, spaceId: props.spaceId, before, q: term });
@@ -65,25 +75,32 @@ export function MediaDialog(props: { jwt: string; spaceId: string | null; spaceN
             {tiles.length ? (
               <div className="grid grid-cols-3 gap-0.5 sm:grid-cols-5">
                 {tiles.map((item) => (
-                  <button key={itemKey(item)} type="button" data-testid={`medio-${itemKey(item)}`} aria-label={`${item.kind === 'image' ? 'Foto' : 'Video'} de ${props.chatName(item)}`} onClick={() => props.onOpen(item)} className="relative aspect-square overflow-hidden bg-background">
-                    <img src={item.media?.thumbUrl ?? item.media?.url} alt="" loading="lazy" className="h-full w-full object-cover" />
-                    {item.kind === 'video' ? <span className="absolute inset-0 grid place-items-center"><span className="grid h-9 w-9 place-items-center rounded-full bg-black/50 text-white"><Play size={16} /></span></span> : null}
-                  </button>
+                  <div key={itemKey(item)} className="relative">
+                    <button type="button" data-testid={`medio-${itemKey(item)}`} aria-label={`${item.kind === 'image' ? 'Foto' : 'Video'} de ${props.chatName(item)}`} onClick={() => props.onOpen(item)} className="relative block aspect-square w-full overflow-hidden bg-background">
+                      <img src={item.media?.thumbUrl ?? item.media?.url} alt="" loading="lazy" className="h-full w-full object-cover" />
+                      {item.kind === 'video' ? <span className="absolute inset-0 grid place-items-center"><span className="grid h-9 w-9 place-items-center rounded-full bg-black/50 text-white"><Play size={16} /></span></span> : null}
+                    </button>
+                    <ItemMenu item={item} chatName={props.chatName(item)} onOpen={() => props.onOpen(item)} onNotice={setNotice} className="absolute right-1 top-1 rounded-lg bg-surface/90" />
+                  </div>
                 ))}
               </div>
             ) : null}
             {rows.map((item) => (
-              <button key={itemKey(item)} type="button" data-testid={`medio-${itemKey(item)}`} onClick={() => props.onOpen(item)} className="flex min-h-[56px] w-full items-center gap-3 border-b border-outline/10 text-left hover:bg-background">
+              <div key={itemKey(item)} className="flex items-center border-b border-outline/10">
+              <button type="button" data-testid={`medio-${itemKey(item)}`} onClick={() => props.onOpen(item)} className="flex min-h-[56px] min-w-0 flex-1 items-center gap-3 text-left hover:bg-background">
                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">{item.kind === 'file' ? <FileText size={18} /> : <LinkIcon size={18} />}</span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-semibold">{item.kind === 'file' ? (item.media?.fileName ?? 'Documento') : item.link}</span>
                   <span className="block truncate text-[12px] text-on-surface-variant">{[props.chatName(item), item.kind === 'file' && item.media?.sizeBytes ? formatBytes(item.media.sizeBytes) : null, formatChatTimestamp(item.at)].filter(Boolean).join(' · ')}</span>
                 </span>
               </button>
+              <ItemMenu item={item} chatName={props.chatName(item)} onOpen={() => props.onOpen(item)} onNotice={setNotice} />
+              </div>
             ))}
           </section>
         );
       })}
+      <FloatingNotice text={notice} done={driveNoticeDone(notice)} />
       {hasMore && items?.length ? <button type="button" data-testid="medios-mas" onClick={() => void load(items.at(-1)!.at)} className="mt-4 h-11 w-full rounded-xl border border-outline/20 text-sm font-semibold text-primary hover:bg-background">Ver más</button> : null}
     </Overlay>
   );

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { AlertCircle, Archive, ChevronRight, ExternalLink, FolderOpen, Link2, Search } from 'lucide-react';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, pendingPreview, serviceAccessOf, serviceSegmentsOf, orderFocusOf, dayOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService, type WorkStage } from '@lilachat/shared';
+import { AlertCircle, Archive, ChevronRight, FolderOpen, Link2, Search } from 'lucide-react';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, filterServices, pendingPreview, serviceAccessOf, serviceSegmentsOf, orderFocusOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService, type WorkStage } from '@lilachat/shared';
 import { ServiceDetailWeb } from './ServiceDetailWeb';
-import { STATUS_TONE } from './tones';
+import { ServiceCard } from './ServiceCardWeb';
 import type { ServiceAskTarget } from './useServiceAsk';
 
 /** The parts of a client's channel (design f-03): the archived banner, the note over the composer and «Servicios». */
@@ -38,50 +38,6 @@ function ServiceFilters(props: { query: string; onQuery: (query: string) => void
         ))}
       </div>
     </div>
-  );
-}
-
-const ACCENT: Record<SpaceClientService['status'], string> = { pending: 'border-l-warning', in_progress: 'border-l-primary', completed: 'border-l-en-linea', rejected: 'border-l-error' };
-
-/** Design cc-01: a card per service with its accent by state, the state, the progress and its start. */
-function ServiceSummary({ service }: { service: SpaceClientService }) {
-  return (
-    <>
-      <span className="flex items-start gap-3">
-        <span className="min-w-0 flex-1 text-[15px] font-bold text-on-surface">{service.name}</span>
-        <span className={`shrink-0 rounded-md border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${STATUS_TONE[service.status]}`}>{service.stage_label || CLIENT_SERVICE_STATUS_LABELS[service.status]}</span>
-      </span>
-      {service.progress !== undefined ? (
-        <span className="mt-3 flex items-center gap-3">
-          <span className="text-[12px] text-on-surface-variant">Avance</span>
-          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-variant"><span className="block h-full rounded-full bg-primary" style={{ width: `${service.progress}%` }} /></span>
-          <span className="text-[13px] font-bold tabular-nums text-on-surface">{`${service.progress} %`}</span>
-        </span>
-      ) : null}
-      {/* José 31/10: «la lista de servicios no muestra la fecha». */}
-      {service.started_at ? <span data-testid={`inicio-servicio-${service.id}`} className="mt-2 block text-[12px] text-on-surface-variant">{`Inicio ${dayOf(service.started_at)}`}</span> : null}
-    </>
-  );
-}
-
-/** The card opens the service; without the space (no way to ask), its Portal link. «Enlace del servicio» stays on it (José 31/10). */
-function ServiceCard(props: { service: SpaceClientService; canOpen: boolean; onOpen: () => void; onShare?: () => void }) {
-  const { service } = props;
-  return (
-    <article data-testid={`servicio-${service.id}`} className={`rounded-2xl border border-l-4 border-outline/15 bg-surface p-4 hover:shadow-md ${ACCENT[service.status]}`}>
-      {props.canOpen ? (
-        <button type="button" data-testid={`abrir-servicio-${service.id}`} onClick={props.onOpen} className="block w-full text-left">
-          <ServiceSummary service={service} />
-          <span className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-primary">Pedidos, informes, mapa y Drive <ChevronRight size={14} /></span>
-        </button>
-      ) : (
-        <div>
-          <ServiceSummary service={service} />
-          {service.url ? <a href={service.url} target="_blank" rel="noreferrer" data-testid={`abrir-servicio-${service.id}`} className="mt-3 inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary"><ExternalLink size={14} /> Ver en el Portal</a> : null}
-        </div>
-      )}
-      {props.onShare ? <button type="button" data-testid={`enlace-servicio-${service.id}`} onClick={props.onShare} className="mt-3 inline-flex h-8 items-center gap-1.5 rounded-lg border border-outline/20 px-3 text-[12px] font-semibold text-primary hover:bg-background"><Link2 size={14} /> Enlace del servicio</button> : null}
-    </article>
   );
 }
 

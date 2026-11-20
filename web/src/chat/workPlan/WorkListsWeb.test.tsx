@@ -20,7 +20,7 @@ afterEach(() => vi.unstubAllGlobals());
 describe('the job tabs of a client channel on the web', () => {
   it('«Pendientes» lists the overdue task first and opens it', () => {
     const onOpen = vi.fn();
-    withContext(<PendingWeb stages={stages} onOpen={onOpen} />);
+    withContext(<PendingWeb stages={stages} admin={false} onOpen={onOpen} onChanged={vi.fn()} />);
 
     expect(screen.getByTestId('pendiente-0')).toHaveTextContent('Control de densidad');
     fireEvent.click(screen.getByTestId('pendiente-0'));

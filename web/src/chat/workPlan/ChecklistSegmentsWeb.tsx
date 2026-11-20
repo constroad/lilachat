@@ -9,7 +9,7 @@ const SEGMENTS: ChecklistSegment[] = ['pending', 'plan'];
  * «Checklist» on a phone (José 19/11, design cc-06): «Pendientes · Plan» in one segmented control,
  * the open tasks first. «Pendientes» stops being a tab of its own there.
  */
-export function ChecklistSegmentsWeb(props: { plan: WorkPlanWebState; onOpenTask: (task: OpenTask) => void }) {
+export function ChecklistSegmentsWeb(props: { plan: WorkPlanWebState; /** Who runs the plan (cc-06: the rows' box and camera). */ admin: boolean; onOpenTask: (task: OpenTask) => void; onChanged: () => void }) {
   const [segment, setSegment] = useState<ChecklistSegment>('pending');
   const open = pendingTasks(props.plan.stages ?? [], new Date()).length;
   const summary = props.plan.summary;
@@ -24,7 +24,7 @@ export function ChecklistSegmentsWeb(props: { plan: WorkPlanWebState; onOpenTask
           </button>
         ))}
       </div>
-      {segment === 'pending' ? <PendingWeb stages={props.plan.stages ?? []} onOpen={props.onOpenTask} /> : <WorkPlanWeb plan={props.plan} onOpenTask={props.onOpenTask} />}
+      {segment === 'pending' ? <PendingWeb stages={props.plan.stages ?? []} admin={props.admin} onOpen={props.onOpenTask} onChanged={props.onChanged} /> : <WorkPlanWeb plan={props.plan} onOpenTask={props.onOpenTask} />}
     </div>
   );
 }

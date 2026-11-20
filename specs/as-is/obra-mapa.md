@@ -58,6 +58,7 @@ ingeniero de campo desde el celular y lo mira el cliente desde una computadora.
 | Borrar calle | — | Para todos, con su pregunta (motor compartido `workStreetDelete.ts`) |
 | Borrados y Restaurar | — | Solo admins |
 | Servicio sin calles | o-10 | Abre igual sobre fotos y unidades (`EMPTY_WORK_MAP`); si no hay nada, invita a dibujar |
+| Encuadre inicial | — | Todas las calles del servicio JUNTO con los dibujos y las observaciones de Portal (José 19/11, OBRA GRAU: el tramo quedaba fuera hasta alejar el zoom). Con una etapa o un trabajo elegidos, solo sus calles. Nunca menos de `WORK_MAP_MIN_FRAME_DEG` (~110 m): un punto solo no abre al zoom máximo (`shared/src/workMap.ts` › `frameOf`) |
 
 ### Capas y leyenda (José 19/11, diseño cc-04)
 
@@ -201,6 +202,8 @@ Motores puros, con test, usados por web y APK:
 - **12/11** Buscar trae solo Perú, cierra el teclado; los botones del mapa no tapan la
   cabecera (`overflow-hidden`). La foto del avance usa la cámara nueva con sello.
 - **16/11** «Editar croquis» del editor 2.0 abre el mapa sobre el editor (web).
+- **19/11** El encuadre inicial suma dibujos y observaciones de Portal a las calles y tiene un tamaño mínimo
+  (web y APK, mismo motor `workMapView`). Antes, con calles, los dibujos fuera de ellas no entraban.
 
 ## 5. Diseños de Stitch relacionados
 

@@ -33,3 +33,9 @@ export async function detachEvidenceWeb(params: { jwt: string; checklistId: stri
   const removed = await api<{ ok: boolean }>(`/agenda/checklists/${params.checklistId}/items/${params.itemId}/evidence/${params.seq}`, { jwt: params.jwt, method: 'DELETE' });
   return removed.ok ? null : (removed.message ?? 'No se pudo quitar el archivo.');
 }
+
+/** Ticks or reopens a task (the plan's own route: the server checks who may). */
+export async function toggleTaskWeb(params: { jwt: string; checklistId: string; itemId: string }): Promise<string | null> {
+  const toggled = await api<{ ok: boolean }>(`/agenda/checklists/${params.checklistId}/items/${params.itemId}/toggle`, { jwt: params.jwt, body: {} });
+  return toggled.ok ? null : (toggled.message ?? 'No se pudo marcar la tarea.');
+}

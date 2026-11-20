@@ -66,6 +66,8 @@ Los archivos viven en el disco propio de Lilachat (pendiente 82); los viejos sig
 **Del chat y del teléfono**
 - «Compartido en el chat» con pestañas Media · Docs · Links: `CompartidoEnElChat.tsx`.
 - «Medios» de todos mis chats por mes, con «Todo» y búsqueda: `app/src/media/MediaScreen.tsx` (diseño `busqueda-archivos`).
+  Toque largo en una foto, video o documento: la misma hoja que un archivo del Drive (`DriveFileSheet`, José 19/11,
+  diseño cc-05) con «Ver en el chat», Copiar enlace, Copiar archivo, Compartir y Descargar (`mediaItemAsFile`).
 - Almacenamiento por chat: `app/src/settings/storage/StorageScreen.tsx`, `StorageFilesScreen.tsx`, `localBuckets.ts`.
 - Chats secretos: fotos, videos, documentos y notas de voz cifrados de punta a punta (29/10): `secretMedia.ts`, `secretMediaFiles.ts`, `app/src/crypto/sealedFiles.ts`.
 
@@ -86,6 +88,8 @@ Los archivos viven en el disco propio de Lilachat (pendiente 82); los viejos sig
 - La nota de voz sigue sonando en otro chat, con su barra arriba de la lista (22/10).
 - Videos: `VideoEmbedOverlay.tsx` (YouTube y otros), mini reproductor `web/src/media/MiniVideoPlayer.tsx`, `miniPlayer.ts`.
 - «Medios»: `web/src/media/MediaDialog.tsx`. Archivos del chat en la info: `info/ArchivosDelChat.tsx`.
+  Cada foto, video o documento lleva el «⋮» del Drive (`DriveFileMenu`): hoja inferior en el celular, menú flotante
+  en la computadora (José 19/11). «Enlace copiado» sale como aviso flotante con check (`ui/FloatingNotice.tsx`).
 - Almacenamiento del navegador: `web/src/storage/StorageChoice.tsx`.
 
 ### Server (`server/src/`)

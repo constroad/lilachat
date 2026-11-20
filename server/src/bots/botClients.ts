@@ -1,5 +1,5 @@
 import { model, Schema, Types } from 'mongoose';
-import { archivedAgeGroup, archivedSince, canManageMembers, CLIENT_ID, isClientChannelLive, isMoneyRecord, validateClientState, type ClientService, type ClientState, type MemberAccess } from '@lilachat/shared';
+import { archivedAgeGroup, archivedSince, canManageMembers, CLIENT_ID, isClientChannelLive, isMoneyRecord, serviceFactsFromWire, validateClientState, type ClientService, type ClientState, type MemberAccess } from '@lilachat/shared';
 import { ChatModel, MessageModel } from '../chatModels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { noticeChannelJoined } from '../workspaceNotices.js';
@@ -31,7 +31,7 @@ type Installation = Pick<BotInstallation, '_id' | 'appId' | 'workspaceId' | 'bot
 type ClientsError = { status: 400 | 404; error: string; message: string };
 
 const restrictedSchema = new Schema<RestrictedMember>({ userId: { type: Schema.Types.ObjectId, required: true }, tabs: { type: [String], default: [] }, stages: { type: [String], default: [] } }, { _id: false });
-const serviceSchema = new Schema<ClientService>({ id: String, name: String, status: String, stage: String, stageLabel: String, progress: Number, url: String, closedAt: String, startedAt: String }, { _id: false });
+const serviceSchema = new Schema<ClientService>({ id: String, name: String, status: String, stage: String, stageLabel: String, progress: Number, url: String, closedAt: String, startedAt: String, ordersCount: Number, reportsCount: Number, stagesTotal: Number, lastActivity: { type: new Schema({ at: String, text: String }, { _id: false }), default: undefined } }, { _id: false });
 const clientChannelSchema = new Schema<ClientChannel>(
   {
     workspaceId: { type: Schema.Types.ObjectId, required: true },
@@ -132,6 +132,20 @@ export async function chatOfClient(installation: Installation, clientId: string)
   return found?.chatId ?? fail(404, 'client_not_found', `Ese cliente no tiene canal: manda primero PUT /api/bots/clients/${clientId} con su estado.`);
 }
 
+/** One service as the list sends it; the counts and last movement only when Portal sent them (José 19/11, design cc-01). */
+function serviceToWire(one: ClientService) {
+  return {
+    id: one.id,
+    name: one.name,
+    status: one.status,
+    stage_label: one.stageLabel,
+    ...(one.progress !== undefined ? { progress: one.progress } : {}),
+    ...(one.url ? { url: one.url } : {}),
+    ...(one.startedAt ? { started_at: one.startedAt } : {}),
+    ...serviceFactsFromWire(one),
+  };
+}
+
 /** The space's clients whose private channel this member is in (designs f-01/f-02): live first, then by last movement. */
 export async function listClients(workspaceId: string, userId: Types.ObjectId, now = new Date()) {
   const actor = await actorIn(workspaceId, userId);
@@ -149,7 +163,7 @@ export async function listClients(workspaceId: string, userId: Types.ObjectId, n
     last_order_at: doc.lastOrderAt,
     orders_total: doc.ordersTotal,
     archived_group: archivedAgeGroup(doc.lastActivityAt, now),
-    services: doc.services.map((one) => ({ id: one.id, name: one.name, status: one.status, stage_label: one.stageLabel, ...(one.progress !== undefined ? { progress: one.progress } : {}), ...(one.url ? { url: one.url } : {}), ...(one.startedAt ? { started_at: one.startedAt } : {}) })),
+    services: doc.services.map(serviceToWire),
     // José 30/10 night: which tabs and stages I see, and whether I see money.
     access: accessOf(doc, userId, isAdmin),
   }));

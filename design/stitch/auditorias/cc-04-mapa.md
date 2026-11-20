@@ -21,3 +21,4 @@ Fecha: 2026-11-19 21:10 (lectura de código; ramas 988a209a y 9d074e71)
 | Chip «JR CONCHUCOS» y «Filtrar tramo» | sí | no van | diferencia justificada: INVENTARIO § cc, Stitch no tiene esa función en la app |
 | Tarjeta de un dibujo | área, nota, fotos antes/corte, Cerrar | la tarjeta existente (`MapCardView`) | igual |
 | Partidas y colores reales | tres partidas inventadas | las del mapa de Portal | diferencia justificada: INVENTARIO § cc (PROPUESTA) |
+| Encuadre inicial | el tramo de la obra entero a la vista | calles, dibujos y observaciones del servicio juntos, con un tamaño mínimo (`workMapView` › `frameOf`) | igual (José 19/11, E2E OBRA GRAU) |

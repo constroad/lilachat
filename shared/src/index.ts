@@ -233,6 +233,7 @@ export * from './serviceDetail.js';
 export * from './serviceBilling.js';
 export * from './serviceDetailSheet.js';
 export * from './serviceShell.js';
+export * from './serviceFacts.js';
 export * from './serviceOrderCards.js';
 export * from './clientAccount.js';
 export * from './clientAccess.js';

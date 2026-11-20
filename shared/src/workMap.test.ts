@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lineLengthM, loadWorkMap, reloadWorkMap, metersLabel, percentLabel, projectOntoLine, sliceLine, stationLabel, WORK_MAP_FAILED, workMapCollection, workMapCutDays, workMapCutLabel, workMapHeadline, workMapOf, workMapRequest, workMapStageFilter, workMapView, workMapWorkFilter, type WorkMap } from './workMap.js';
+import { lineLengthM, loadWorkMap, reloadWorkMap, metersLabel, percentLabel, projectOntoLine, sliceLine, stationLabel, WORK_MAP_FAILED, workMapCollection, workMapCutDays, workMapCutLabel, workMapHeadline, workMapOf, workMapRequest, workMapStageFilter, workMapView, workMapWorkFilter, WORK_MAP_MIN_FRAME_DEG, type WorkMap } from './workMap.js';
 
 const lineOf = (points: Array<[number, number]>) => points.map(([lat, lng]) => ({ lat, lng }));
 const LONG_STREET = lineOf([[-12, -77], [-12, -76.99]]);
@@ -126,6 +126,35 @@ describe('workMapView', () => {
 
   it('frames all the streets of the view', () => {
     expect(workMapView(parsed()).bounds).toEqual([[-77, -12.01], [-76.99, -12]]);
+  });
+
+  it('the first frame holds the drawings and observations beyond the streets (José 19/11, OBRA GRAU)', () => {
+    // Arrange: a stretch drawn in Portal's croquis and an observation, both off the streets.
+    const map: WorkMap = { ...parsed(), marks: [{ id: 'm1', type: 'otro', shape: { kind: 'arrow', from: { lat: -12.03, lng: -77.02 }, to: { lat: -12.02, lng: -77.01 } } }], observations: [{ id: 'o1', text: 'Bache', status: 'open', point: { lat: -11.99, lng: -76.98 }, photos: [] }] } as WorkMap;
+    // Act
+    const view = workMapView(map);
+    // Assert
+    expect(view.bounds).toEqual([[-77.02, -12.03], [-76.98, -11.99]]);
+  });
+
+  it('a chosen stage frames only its streets', () => {
+    const view = workMapView({ ...parsed(), marks: [{ id: 'm1', type: 'otro', shape: { kind: 'symbol', at: { lat: -12.5, lng: -77.5 } } }] } as WorkMap, { stageId: 'e1' });
+    // Av. Los Olivos runs along one latitude: its height is padded to the minimum span.
+    const [[west, south], [east, north]] = view.bounds!;
+    expect([west, east]).toEqual([-77, -76.99]);
+    expect(south).toBeCloseTo(-12 - WORK_MAP_MIN_FRAME_DEG / 2, 9);
+    expect(north).toBeCloseTo(-12 + WORK_MAP_MIN_FRAME_DEG / 2, 9);
+  });
+
+  it('a lone point is framed with a minimum span, not at full zoom', () => {
+    // Arrange
+    const map = { ...parsed(), streets: [], scopes: [], progress: [], marks: [{ id: 'm1', type: 'giba', shape: { kind: 'symbol', at: { lat: -12.05, lng: -77.03 } } }] } as WorkMap;
+    // Act
+    const [[west, south], [east, north]] = workMapView(map).bounds!;
+    // Assert
+    expect(east - west).toBeCloseTo(WORK_MAP_MIN_FRAME_DEG, 9);
+    expect(north - south).toBeCloseTo(WORK_MAP_MIN_FRAME_DEG, 9);
+    expect((west + east) / 2).toBeCloseTo(-77.03, 9);
   });
 
   it('a progress record outside the stretch is cut to it', () => {

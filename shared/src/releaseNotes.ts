@@ -17,6 +17,17 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.190',
+    // Company spaces: compact CTL-IMP, «Terminar unidad», the client channel redesign and Play's account tools.
+    audience: 'spaces',
+    items: [
+      'Control de pista: «Terminar unidad» muestra las fotos de la unidad, eliges cuáles van y se envían al grupo del cliente.',
+      'Control de imprimación más compacto: progresivas y horas de a dos, y basta una bandeja completa.',
+      'El canal del cliente tiene nuevo diseño: servicios con sus cifras, Drive con hoja de opciones y Pendientes con casilla y cámara.',
+      'Ajustes: puedes borrar tu cuenta y denunciar o bloquear a una persona desde su perfil.',
+    ],
+  },
+  {
     version: '0.1.187',
     // Company spaces: the IAA's AR traced like José's reference app.
     audience: 'spaces',

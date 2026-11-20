@@ -97,6 +97,8 @@ Las carga José en Torre; el server las lee solo al arrancar.
 - **06/11** · Un server que reinicia ya no pide una marcha atrás falsa.
 - **13/11–16/11** · Siete APKs seguidos (0.1.183 a 0.1.189), por la videollamada, la
   medición AR y el aviso de push.
+- **19/11** · 0.1.190 sale como APK, no por OTA: los textos de permisos de Google Play
+  cambiaron lo nativo de `app.json`. Lleva «Terminar unidad», el CTL-IMP compacto y el canal nuevo.
 
 ## 5. Diseños de Stitch
 

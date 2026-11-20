@@ -2,11 +2,11 @@
 
 Stitch: `.stitch-work/out_cc/{desktop,tablet,mobile}/cc-02-pedidos.stitch.png` del checkout principal (escritorio, tablet, móvil). Ids en INVENTARIO § «Canal de cliente y servicio, rediseño».
 Código: `web/src/spaces/clients/ServiceShellWeb.tsx`, `ServiceListsWeb.tsx`, `app/src/spaces/clients/ServiceShell.tsx`, `ServiceLists.tsx`.
-Captura de la implementación: **pendiente** (sin navegador, dev server ni emulador en esta tarea: Mac compartida). Esta lectura es
-de código contra cada captura de Stitch, abierta en la sesión del 19/11. Falta capturar a 1440 / 1024 / 390 px (web) y en teléfono y
-tablet (APK) y que un subagente independiente compare imagen contra imagen, con medidas en px.
-Revisor: pendiente (no aprobado).
-Fecha: 2026-11-19 21:10 (lectura de código; ramas 988a209a y 9d074e71)
+Captura: design/stitch/capturas/cc-02-impl-escritorio.jpg (escritorio, web local con la API de producción, tema oscuro)
+Captura: design/stitch/capturas/cc-02-impl-movil.jpg (móvil, web local con la API de producción, tema oscuro)
+Revisor: subagente independiente (solo vio las imágenes de Stitch y de la implementación; 19/11).
+Veredicto del revisor: pasa con observaciones: sin código PED, «Volquete», total ni progreso de m³ (Portal no los manda); «Crear pedido» es invento de Stitch; «Etapas · X de N» es de la pantalla actual.
+Fecha: 2026-11-19 23:55 (E2E en web a 1440, 1024 y 390 px; main d9aa2e91)
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |

@@ -520,6 +520,8 @@ La regla de bandejas y el indicador de ubicación ya están en el código (`shar
 
 ## Canal de cliente y servicio — implementación (19/11)
 
+Prototipo: https://claude.ai/artifact/8DrCJNUXB31GqcPMPhafu9 (el mismo de la sección de diseño).
+
 Los diseños `cc-0*` (sección «Canal de cliente y servicio, rediseño», hoy sin commitear en el checkout principal) quedaron
 implementados en web y APK. Auditorías en `design/stitch/auditorias/cc-0*.md`: lectura de código contra cada captura; faltan las
 capturas de la implementación y el revisor independiente (sin navegador ni emulador en la tarea).

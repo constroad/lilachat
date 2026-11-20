@@ -16,9 +16,9 @@ export function ChecklistSegmentsWeb(props: { plan: WorkPlanWebState; onOpenTask
   const counts: Record<ChecklistSegment, string> = { pending: String(open), plan: summary?.total ? `${summary.done}/${summary.total}` : '' };
   return (
     <div data-testid="checklist-segmentos" className="flex min-h-0 flex-1 flex-col bg-background">
-      <div role="tablist" aria-label="Checklist" className="mx-4 mt-3 flex shrink-0 rounded-xl border border-outline/15 bg-surface-variant/50 p-1">
+      <div role="tablist" aria-label="Checklist" className="mx-4 mt-3 flex shrink-0 rounded-xl border border-outline/15 bg-background p-1">
         {SEGMENTS.map((key) => (
-          <button key={key} type="button" role="tab" aria-selected={segment === key} data-testid={`checklist-segmento-${key}`} onClick={() => setSegment(key)} className={`flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg text-[14px] font-semibold ${segment === key ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant'}`}>
+          <button key={key} type="button" role="tab" aria-selected={segment === key} data-testid={`checklist-segmento-${key}`} onClick={() => setSegment(key)} className={`flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg text-[14px] font-semibold ${segment === key ? 'bg-primary/15 text-primary shadow-sm ring-1 ring-primary/30' : 'text-on-surface-variant'}`}>
             {CHECKLIST_SEGMENT_LABELS[key]}
             {counts[key] ? <span className="font-mono text-[12px] tabular-nums">{counts[key]}</span> : null}
           </button>

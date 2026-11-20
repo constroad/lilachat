@@ -34,7 +34,7 @@ function ServiceFilters(props: { query: string; onQuery: (query: string) => void
       {/* Design cc-01: a segmented control, «Rechazados» only when there is one. */}
       <div role="group" aria-label="Filtrar por estado" className="flex rounded-xl bg-background p-1">
         {serviceSegmentsOf(props.counts).map((one) => (
-          <button key={one.key} type="button" data-testid={`filtro-servicio-${one.key}`} aria-pressed={props.filter === one.key} onClick={() => props.onFilter(one.key)} className={`h-8 flex-1 whitespace-nowrap rounded-lg px-2 text-[13px] font-semibold md:flex-none md:px-3 ${props.filter === one.key ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>{one.label} <span className="tabular-nums">{one.count}</span></button>
+          <button key={one.key} type="button" data-testid={`filtro-servicio-${one.key}`} aria-pressed={props.filter === one.key} onClick={() => props.onFilter(one.key)} className={`h-8 flex-1 whitespace-nowrap rounded-lg px-2 text-[13px] font-semibold md:flex-none md:px-3 ${props.filter === one.key ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>{one.label} <span className="tabular-nums">{one.count}</span></button>
         ))}
       </div>
     </div>

@@ -97,7 +97,8 @@ function SlimCompactHead(props: HeadProps) {
     <div data-testid="cabecera-servicio-mapa" className="flex items-center gap-2 px-3 py-1.5">
       <button type="button" data-testid="volver-a-servicios" aria-label="Volver a Servicios" onClick={props.onBack} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-on-surface hover:bg-background"><ArrowLeft size={18} /></button>
       <div className="min-w-0 flex-1">
-        <h2 data-testid="servicio-nombre" className="truncate text-[15px] font-extrabold text-on-surface">{props.service.name}</h2>
+        {/* José 20/11 «otra vez el nombre de la obra en una sola línea»: 2 líneas, no 1. */}
+        <h2 data-testid="servicio-nombre" className="line-clamp-2 text-[15px] font-extrabold leading-tight text-on-surface">{props.service.name}</h2>
         {line ? <p data-testid="servicio-linea" className="truncate text-[12px] text-on-surface-variant">{line}</p> : null}
       </div>
       <LinkButton onShare={props.onShare} small />
@@ -117,7 +118,8 @@ function SlimWideHead(props: HeadProps & { tabBar: ReactNode }) {
     <div data-testid="cabecera-servicio-mapa" className="flex min-w-0 items-center gap-3 px-4 md:px-6">
       <button type="button" data-testid="volver-a-servicios" onClick={props.onBack} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg pr-2 text-[13px] font-semibold text-primary hover:bg-primary/5"><ChevronLeft size={16} /> Servicios</button>
       <div className="flex min-w-0 shrink items-center gap-2 border-l border-outline/20 pl-3">
-        <h2 data-testid="servicio-nombre" title={props.service.name} className="min-w-0 max-w-[320px] truncate text-[15px] font-extrabold text-on-surface">{props.service.name}</h2>
+        {/* José 20/11 «otra vez el nombre de la obra en una sola línea»: 2 líneas, no 1. */}
+        <h2 data-testid="servicio-nombre" title={props.service.name} className="min-w-0 max-w-[320px] line-clamp-2 text-[15px] font-extrabold leading-tight text-on-surface">{props.service.name}</h2>
         <StatusChip service={props.service} />
         {line ? <span data-testid="servicio-linea" className="hidden whitespace-nowrap text-[12px] text-on-surface-variant lg:inline">{line}</span> : null}
       </div>

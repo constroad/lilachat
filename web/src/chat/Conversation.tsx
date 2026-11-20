@@ -10,7 +10,7 @@ import type { AgendaReminder, DirectoryApp, MencionElegida, MencionEnMensaje, Wi
 import { channelLinksOf, chatHasActionPlace, clientHeaderSubtitle, formatUltimaVez, presenceLine, type PresenceStatus, memberCountLabel } from '@lilachat/shared';
 import { Composer, type ContextoDelComposer } from './Composer';
 import type { ComponentProps } from 'react';
-import { CardCommandContext, OrderCardContext, type CardCommand } from './botBlocks/cardCommand';
+import { CardCommandContext, OpenServiceContext, OrderCardContext, type CardCommand } from './botBlocks/cardCommand';
 import { useChatCommandsWithActions } from './commands/useChatCommands';
 import { AppCommandsBar, AppConversationHeader, type AppConversationTab } from '../spaces/apps/AppConversation';
 import { AppDetail } from '../spaces/apps/AppDetail';
@@ -136,6 +136,13 @@ export function Conversation(props: {
     setFocusSeq(seq);
     setChannelTab('services');
   }, []);
+  // A card's `open: { route: 'service' }` (agentes, 20/11): same jump, by service id instead of a message.
+  const [focusServiceId, setFocusServiceId] = useState<string | null>(null);
+  const clearServiceFocus = useCallback(() => setFocusServiceId(null), []);
+  const openService = useCallback((serviceId: string) => {
+    setFocusServiceId(serviceId);
+    setChannelTab('services');
+  }, []);
   // Pending 21 (design f-03): a client's channel adds «Servicios» and, archived, its banner.
   const client = useClientOfChat(chat.id);
   useClientsOfChannelSpace(props.jwtParaEnlaces, chat.workspaceId, isChannel && !client);
@@ -192,6 +199,7 @@ export function Conversation(props: {
   return (
     <CardCommandContext.Provider value={cardCommand}>
     <OrderCardContext.Provider value={isClientChannel && tabs.includes('services') ? openOrderCard : null}>
+    <OpenServiceContext.Provider value={isClientChannel && tabs.includes('services') ? openService : null}>
     <section
       data-testid="panel-conversacion"
       className="relative flex h-full min-w-0 flex-1 flex-col"
@@ -233,7 +241,7 @@ export function Conversation(props: {
       ) : isClientChannel && client && shownTab === 'account' && props.jwtParaEnlaces && chat.workspaceId ? (
         <ClientAccountWeb target={{ jwt: props.jwtParaEnlaces, spaceId: chat.workspaceId, clientId: client.id }} services={client.services} />
       ) : isClientChannel && client && shownTab === 'services' ? (
-        <ClientServicesPanel people={props.people ?? []} client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} links={links} focusSeq={focusSeq} onFocused={clearFocus} onServiceOpen={setServiceOpen} pending={compact && hasStages ? { stages: workPlan.stages ?? [], label: holdsPending ? 'Ver en Checklist' : 'Ver pendientes', onOpen: () => setChannelTab(holdsPending ? 'checklist' : 'pending') } : undefined} />
+        <ClientServicesPanel people={props.people ?? []} client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} links={links} focusSeq={focusSeq} onFocused={clearFocus} focusServiceId={focusServiceId} onServiceFocused={clearServiceFocus} onServiceOpen={setServiceOpen} pending={compact && hasStages ? { stages: workPlan.stages ?? [], label: holdsPending ? 'Ver en Checklist' : 'Ver pendientes', onOpen: () => setChannelTab(holdsPending ? 'checklist' : 'pending') } : undefined} />
       ) : props.app && appTab === 'info' ? (
         <div data-testid="informacion-app" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-8">
           <div className="mx-auto max-w-3xl">
@@ -322,6 +330,7 @@ export function Conversation(props: {
       </>
       )}
     </section>
+    </OpenServiceContext.Provider>
     </OrderCardContext.Provider>
     </CardCommandContext.Provider>
   );
@@ -362,7 +371,8 @@ function CabeceraDeLaConversacion(props: HeaderProps) {
       <button type="button" data-testid="btn-info-del-chat" aria-label={`Info. de ${title}`} onClick={props.onAbrirInfo} className={`flex min-w-0 flex-1 items-center rounded-lg text-left ${tight ? 'gap-2.5' : 'gap-3'}`}>
         <HeaderAvatar {...props} title={title} />
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-base font-bold">{title}</h2>
+          {/* José 20/11 «otra vez el nombre de la obra en una sola línea»: 2 líneas, no 1. */}
+          <h2 className="line-clamp-2 text-base font-bold leading-tight">{title}</h2>
           <HeaderLine {...props} />
         </div>
       </button>
@@ -422,13 +432,13 @@ function BannerWithSession() {
 }
 
 /** «Servicios» asks for its records only while it is open. */
-function ClientServicesPanel(props: { people: readonly string[]; client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; links: ChannelLinks; focusSeq: number | null; onFocused: () => void; onServiceOpen: (open: boolean) => void; pending?: ChannelPending }) {
+function ClientServicesPanel(props: { people: readonly string[]; client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; links: ChannelLinks; focusSeq: number | null; onFocused: () => void; focusServiceId: string | null; onServiceFocused: () => void; onServiceOpen: (open: boolean) => void; pending?: ChannelPending }) {
   const records = useClientRecords(props.jwt, props.spaceId, props.client.id);
   // One target per channel: the screens under it ask Portal again when it changes, not at every message.
   const { jwt, spaceId } = props;
   const clientId = props.client.id;
   const target = useMemo(() => (jwt && spaceId ? { jwt, spaceId, clientId } : null), [jwt, spaceId, clientId]);
-  return <ClientServices people={props.people} client={props.client} records={records} focusSeq={props.focusSeq} onFocused={props.onFocused} target={target} links={props.links} onServiceOpen={props.onServiceOpen} pending={props.pending} />;
+  return <ClientServices people={props.people} client={props.client} records={records} focusSeq={props.focusSeq} onFocused={props.onFocused} focusServiceId={props.focusServiceId} onServiceFocused={props.onServiceFocused} target={target} links={props.links} onServiceOpen={props.onServiceOpen} pending={props.pending} />;
 }
 
 /**

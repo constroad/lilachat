@@ -56,7 +56,8 @@ function SlimHead(props: HeadProps & { compact: boolean }) {
         : <Pressable testID="volver-a-servicios" onPress={props.onBack} className="min-h-[44px] flex-row items-center gap-1 pr-2"><ChevronLeft size={16} color={colors.primary} /><Text className="text-[14px] font-semibold text-primary">Servicios</Text></Pressable>}
       <View className="min-w-0 flex-1">
         <View className="flex-row items-center gap-2">
-          <Text testID="servicio-nombre" className="shrink text-[15px] font-extrabold text-on-surface" numberOfLines={1}>{props.service.name}</Text>
+          {/* José 20/11 «otra vez el nombre de la obra en una sola línea»: 2 líneas, no 1. */}
+          <Text testID="servicio-nombre" className="shrink text-[15px] font-extrabold text-on-surface" numberOfLines={2}>{props.service.name}</Text>
           {props.compact ? null : <StatusChip service={props.service} />}
         </View>
         {line ? <Text testID="servicio-linea" className="text-[12px] text-on-surface-variant" numberOfLines={1}>{line}</Text> : null}

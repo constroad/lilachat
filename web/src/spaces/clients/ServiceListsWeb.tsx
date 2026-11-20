@@ -1,6 +1,6 @@
 import type { MouseEvent } from 'react';
-import { Clock, FileText, Ruler, Truck } from 'lucide-react';
-import { DISPATCH_THUMB_SLOTS, detailEmptyText, detailRows, dispatchThumbs, orderCardsOf, orphanDispatchesOf, reportGroups, type DetailRow, type DetailTabKey, type OrderCard, type OrderProgress, type OrderSummary, type ServiceDetail, type SheetMedia } from '@lilachat/shared';
+import { ChevronRight, Clock, FileText, Ruler, Truck } from 'lucide-react';
+import { DISPATCH_THUMB_SLOTS, detailEmptyText, detailRows, dispatchThumbs, orderCardsOf, orphanDispatchesOf, ordersTotalOf, reportGroups, type DetailRow, type DetailTabKey, type OrderCard, type OrderProgress, type OrderSummary, type ServiceDetail, type SheetMedia } from '@lilachat/shared';
 import type { OpenSheetFile } from './RecordSheetWeb';
 import { FileThumb } from './PortalFileViewer';
 import { useCompactShell } from './ServiceShellWeb';
@@ -8,6 +8,8 @@ import { DETAIL_TONE } from './tones';
 
 const KICKER = 'font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-on-surface-variant';
 const CARD = 'overflow-hidden rounded-2xl border border-outline/15 bg-surface';
+/** Design cc-02 on a computer: the order's card floats on a shadow, no border. */
+const ORDER_CARD = `${CARD} md:border-0 md:shadow-sm`;
 const Chip = ({ row }: { row: DetailRow }) => <span className={`shrink-0 rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${DETAIL_TONE[row.status.tone]}`}>{row.status.label}</span>;
 
 /** José 30/10: the row opens its sheet inside Lilachat; the file opens in Lilachat's viewer, not in Portal. */
@@ -90,7 +92,7 @@ function DispatchHeader() {
  */
 function DispatchRow({ dispatch, onOpen, onOpenFile }: { dispatch: OrderCard['dispatches'][number]; onOpen: (id: string) => void; onOpenFile: OpenSheetFile }) {
   return (
-    <li data-testid={`despacho-${dispatch.id}`} onClick={() => onOpen(dispatch.id)} className={`${ROW_GRID} min-h-[56px] cursor-pointer px-4 py-2 hover:bg-background/60`}>
+    <li data-testid={`despacho-${dispatch.id}`} onClick={() => onOpen(dispatch.id)} className={`${ROW_GRID} min-h-[56px] cursor-pointer px-4 py-2 hover:bg-background/60 sm:min-h-[44px] sm:py-1.5`}>
       <span className="flex flex-col sm:contents">
         <span className="font-mono text-[13px] font-bold text-on-surface">{dispatch.hour ?? '—'}</span>
         <span className="text-[12px] text-on-surface-variant sm:hidden">{dispatch.quantity}</span>
@@ -129,7 +131,7 @@ function OrderSummaryView({ id, summary, progress }: { id: string; summary: Orde
 function OrderCardView({ card, onOpen, onOpenDispatch, onOpenFile }: { card: OrderCard; onOpen: (id: string) => void; onOpenDispatch: (id: string) => void; onOpenFile: OpenSheetFile }) {
   const { order, heading } = card;
   return (
-    <article data-testid={`fila-${order.id}`} className={CARD}>
+    <article data-testid={`fila-${order.id}`} className={ORDER_CARD}>
       <div className="p-4">
         <div className="flex items-start gap-3">
           <button type="button" onClick={() => onOpen(order.id)} className="min-w-0 flex-1 text-left">
@@ -147,10 +149,25 @@ function OrderCardView({ card, onOpen, onOpenDispatch, onOpenFile }: { card: Ord
             <DispatchHeader />
             {card.dispatches.map((one) => <DispatchRow key={one.id} dispatch={one} onOpen={onOpenDispatch} onOpenFile={onOpenFile} />)}
           </ul>
-          {card.dispatches.some((one) => one.cubicage) ? <button type="button" onClick={() => onOpen(order.id)} className="mx-4 mb-2 inline-flex h-9 items-center gap-1.5 text-[13px] font-semibold text-primary"><Ruler size={15} /> Cubicaje</button> : null}
         </>
       ) : null}
+      <div className="flex items-center gap-4 border-t border-outline/10 px-4">
+        {card.dispatches.some((one) => one.cubicage) ? <button type="button" onClick={() => onOpen(order.id)} className="inline-flex h-9 items-center gap-1.5 text-[13px] font-semibold text-primary"><Ruler size={15} /> Cubicaje</button> : null}
+        <button type="button" data-testid={`ver-pedido-${order.id}`} onClick={() => onOpen(order.id)} className="ml-auto inline-flex h-9 items-center gap-0.5 text-[13px] font-semibold text-primary">Ver pedido <ChevronRight size={15} /></button>
+      </div>
     </article>
+  );
+}
+
+/** Design cc-02 on a phone: «Pedidos asociados al servicio (N)» and what was ordered, per unit. */
+function OrdersTotalView({ detail }: { detail: ServiceDetail }) {
+  const totals = ordersTotalOf(detail.orders);
+  if (!totals) return null;
+  return (
+    <div data-testid="pedidos-total" className="flex flex-wrap items-baseline justify-between gap-x-3 md:hidden">
+      <p className={KICKER}>{`Pedidos asociados al servicio (${totals.count})`}</p>
+      {totals.total ? <p className="text-[12px] text-on-surface-variant">Total: <span className="font-semibold text-on-surface">{totals.total}</span></p> : null}
+    </div>
   );
 }
 
@@ -172,6 +189,7 @@ export function ServiceListWeb({ detail, tab, onOpen, onOpenDispatch, onOpenFile
   if (tab === 'reports') return <ReportDays detail={detail} onOpen={onOpen} onOpenFile={onOpenFile} />;
   return (
     <>
+      <OrdersTotalView detail={detail} />
       {orderCardsOf(detail).map((card) => <OrderCardView key={card.order.id} card={card} onOpen={onOpen} onOpenDispatch={onOpenDispatch} onOpenFile={onOpenFile} />)}
       <OrphanDispatches detail={detail} onOpen={onOpenDispatch} onOpenFile={onOpenFile} />
     </>

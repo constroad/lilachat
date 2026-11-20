@@ -78,3 +78,20 @@ export function dispatchThumbs(media: readonly SheetMedia[], slots: number): Dis
 
 /** The slots for a window `widthPx` wide: a phone's row is narrower than a tablet's (`SHELL_WIDE_MIN_PX`). */
 export const dispatchThumbSlotsFor = (widthPx: number): number => (widthPx < SHELL_WIDE_MIN_PX ? DISPATCH_THUMB_SLOTS.compact : DISPATCH_THUMB_SLOTS.wide);
+
+/** «Pedidos asociados (N) · Total: 12 m³ + 300 gal» (design cc-02 mobile): what was ordered, per unit. */
+export type OrdersTotal = { count: number; total?: string };
+
+export function ordersTotalOf(orders: readonly Pick<ServiceOrder, 'quantity' | 'unit'>[]): OrdersTotal | undefined {
+  if (!orders.length) return undefined;
+  const byUnit = new Map<string, { unit?: string; sum: number }>();
+  for (const order of orders) {
+    if (order.quantity === undefined) continue;
+    const key = order.unit?.trim().toLowerCase() ?? '';
+    const entry = byUnit.get(key) ?? { unit: order.unit?.trim() || undefined, sum: 0 };
+    entry.sum += order.quantity;
+    byUnit.set(key, entry);
+  }
+  const total = [...byUnit.values()].map((entry) => amount(Number(entry.sum.toFixed(SUM_DECIMALS)), entry.unit)).join(' + ');
+  return { count: orders.length, ...(total ? { total } : {}) };
+}

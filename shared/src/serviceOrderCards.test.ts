@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DISPATCH_THUMB_SLOTS, dispatchThumbSlotsFor, dispatchThumbs, orderCardsOf, orderProgressOf } from './serviceOrderCards.js';
+import { DISPATCH_THUMB_SLOTS, dispatchThumbSlotsFor, dispatchThumbs, orderCardsOf, orderProgressOf, ordersTotalOf } from './serviceOrderCards.js';
 import type { ServiceDetail } from './serviceDetail.js';
 
 const ok = { label: 'Despachado', tone: 'ok' as const };
@@ -133,5 +133,24 @@ describe('orderProgressOf (dispatched m³ against the order\'s)', () => {
   });
   it('a float sum from Portal reads with two decimals at most', () => {
     expect(orderProgressOf(order, [sent(0.1, 'm³'), sent(0.2, 'm³')])?.delivered).toBe(0.3);
+  });
+});
+
+describe('ordersTotalOf (design cc-02 mobile: «Pedidos asociados · Total»)', () => {
+  it('sums the ordered quantity per unit, in the order they first appear', () => {
+    const total = ordersTotalOf([{ quantity: 8, unit: 'm³' }, { quantity: 300, unit: 'gal' }, { quantity: 4, unit: 'M³ ' }]);
+    expect(total).toEqual({ count: 3, total: '12 m³ + 300 gal' });
+  });
+
+  it('leaves the total out when no order has a quantity', () => {
+    expect(ordersTotalOf([{ unit: 'm³' }, {}])).toEqual({ count: 2 });
+  });
+
+  it('counts a quantity without a unit apart from the ones with a unit', () => {
+    expect(ordersTotalOf([{ quantity: 2 }, { quantity: 5, unit: 'm³' }])).toEqual({ count: 2, total: '2 + 5 m³' });
+  });
+
+  it('gives nothing for a service without orders', () => {
+    expect(ordersTotalOf([])).toBeUndefined();
   });
 });

@@ -97,7 +97,7 @@ function WideHead(props: HeadProps) {
           {props.clientName ? <p className={`min-w-0 truncate border-l border-outline/20 pl-2 ${KICKER}`}>{`Servicio · ${props.clientName}`}</p> : null}
         </div>
         <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          <h2 data-testid="servicio-nombre" className="min-w-0 text-xl font-extrabold tracking-tight text-on-surface">{props.service.name}</h2>
+          <h2 data-testid="servicio-nombre" className="min-w-0 text-[22px] font-extrabold leading-tight tracking-tight text-on-surface">{props.service.name}</h2>
           <StatusChip service={props.service} />
         </div>
         {line || props.service.progress !== undefined ? (

@@ -2,9 +2,9 @@
 
 Stitch: `.stitch-work/out_v2/desktop/ped-v2-escritorio-lista.stitch.png` del checkout principal (id `928abd296fd944e5ba52c79f525d1b44`).
 Stitch: `.stitch-work/out_v2/desktop/ped-v2-escritorio.stitch.png` (visor del despacho, id `a40af6aabc5447d283531b5e9c42c8fa`).
-Captura: TODO
-Revisor: pendiente
-Fecha: 2026-11-20 (implementación web `ServiceListsWeb.tsx`)
+Captura: design/stitch/capturas/ped-v2-escritorio-lista.png (escritorio 1440, claro) · Huella: 920baf3ff382
+Revisor: subagente independiente
+Fecha: 2026-11-20 09:40
 
 Las justificaciones de abajo son mías y dicen el motivo real; ninguna es una exención de José.
 
@@ -17,7 +17,7 @@ Las justificaciones de abajo son mías y dicen el motivo real; ninguna es una ex
 | Barra de avance | sí | igual (`orderProgressOf`) | igual |
 | Tabla Hora · Unidad · Volumen · Fotos y videos | sí | igual desde 640 px | igual |
 | Placa en chip | sí | igual | igual |
-| Miniaturas | íconos con «SLUMP», «152 °C», «TOLVA» | las fotos y videos reales (`FileThumb`) y «+K» | diferencia justificada: Stitch inventó íconos y leyendas que Portal no manda |
+| Miniaturas | íconos con «SLUMP», «152 °C», «TOLVA» | las fotos y videos reales (`FileThumb`) y «+K» | diferencia justificada: no verificable en la captura; los despachos QA no tienen fotos («Sin fotos»). El revisor trabaja en solo lectura sobre la cuenta real (instrucción de la revisión 20/11) |
 | Fila resaltada (08:05) | sí | resaltado al pasar el mouse | diferencia justificada: no hay un despacho «actual» en los datos |
 | «Sin fotos aún» | sí | «Sin fotos» | igual |
 | Tocar la fila | — | abre la ficha del despacho con la grilla de medios | igual (pedido de José 20/11) |

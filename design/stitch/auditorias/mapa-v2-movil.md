@@ -1,9 +1,9 @@
 # Auditoría mapa-v2-movil · Servicio › Mapa en el teléfono (APK y web angosta)
 
 Stitch: `.stitch-work/out_v2/mobile/mapa-v2-movil.stitch.png` (+ `.html`) del checkout principal.
-Captura: TODO
-Revisor: pendiente
-Fecha: 2026-11-20 (auditoría escrita contra el código; sin captura ni E2E todavía)
+Captura: design/stitch/capturas/mapa-v2-movil.png (móvil 390, oscuro) · Huella: 5eac32e589b1
+Revisor: subagente independiente
+Fecha: 2026-11-20 09:40
 
 Rediseño aprobado por José el 20/11 («Rediseño 20/11» en INVENTARIO). Sus quejas con capturas:
 espacio perdido arriba, el cliente repetido, los días debían flotar sobre el mapa, «Compartir avance»
@@ -16,7 +16,7 @@ de José.
 | Pestañas Pedidos · Informes · Mapa · Drive compactas | sí | igual (más bajas en Mapa) | igual |
 | Conteo en «Drive 58» | sí | «Drive» sin número | diferencia justificada: Portal no manda el conteo del Drive con el servicio (igual que cc-05) |
 | El mapa ocupa el resto de la pantalla | sí | igual; en el APK el mapa sale del scroll y se mueve | igual |
-| Chips de día flotando: «Todos», «Vie 20/11 · 18», «Jue 19/11 · 23»… | sí | igual (`MapDayChips`, cuenta de fotos y unidades del día) | igual |
+| Chips de día flotando: «Todos», «Vie 20/11 · 18», «Jue 19/11 · 23»… | sí | igual (`MapDayChips`, cuenta de fotos y unidades del día) | diferencia justificada: no verificable en la captura; el servicio QA no tiene avance por día y no salen chips. El revisor trabaja en solo lectura sobre la cuenta real (instrucción de la revisión 20/11) |
 | «Hasta hoy ▾» flotando bajo los días | sí | igual; con un solo día con avance no despliega | igual |
 | Selector de trabajo junto a «Hasta hoy» | no | sí, cuando el servicio tiene trabajos | diferencia justificada: ya existía y cambia las cifras y la exportación; quitarlo rompe funciones |
 | Columna derecha de botones redondos: Capas, Leyenda (ⓘ), ⋮ Más | sí | igual (`MapFloating.tsx`); ⓘ solo si hay trabajos que leer | igual |
@@ -30,3 +30,5 @@ de José.
 | Bloques «MZA.», nombres de calles, progresivas pintadas sobre la vía | sí | mapa base real de OpenFreeMap | diferencia justificada: invención de Stitch; el mapa es el real |
 | Parches P1…P12 con insignia de estado y placas de unidades | sí | dibujos, observaciones y unidades reales de Portal | igual (vienen de los datos) |
 | Estado «EN EJECUCIÓN» y barra de avance en la cabecera | no | no en Mapa (siguen en Pedidos, Informes y Drive y en el panel) | igual |
+| Mapa base en tema oscuro | oscuro | mapa claro de OpenFreeMap con la interfaz en oscuro | falta |
+| Atribución «© OpenMapTiles» bajo «Editar croquis» | — | visible, a la derecha de la pastilla | igual |

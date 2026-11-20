@@ -2,9 +2,9 @@
 
 Stitch: `.stitch-work/out_v2/mobile/imp-04-firmas.stitch.png` (+ `.html`) del checkout principal. Aprobado por José 20/11.
 Código: `shared/src/compactReportForms.ts` (`SIGNER_HINTS`, `compactSubmitLabelOf`), `shared/src/roleCards.ts`, `shared/src/fieldDocument.ts` (`sectionFormOf`), `web/src/chat/commands/CompactFields.tsx` (`RoleCardsWeb`), `web/src/chat/commands/AppFormDialog.tsx`, `app/src/chat/commands/CompactFields.tsx` (`RoleCardsView`), `app/src/chat/commands/AppFormSheet.tsx`.
-Captura: TODO
-Revisor: pendiente
-Fecha: 2026-11-20 (sin E2E: tests de shared y de render web)
+Captura: design/stitch/capturas/imp-04-firmas.png (móvil 390, oscuro) · Huella: 3370b50dc5d0
+Revisor: subagente independiente
+Fecha: 2026-11-20 09:40
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |

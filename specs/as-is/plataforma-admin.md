@@ -108,6 +108,8 @@ Fuentes: código, `git log`, `specs/INGRESO-POR-ESPACIO.spec.md` §10,
   la tabla: cortes de columnas, logo con respaldo, vacío sin búsqueda.
 - **19/11** · «Denuncias» en `/admin`: la cola, la evidencia y resolver o descartar
   (Google Play). Sin diseño de Stitch: sigue las piezas de adm-01.
+- **20/11** · adm-01 contra Stitch: título 26 px en el móvil, tarjeta de 12 px,
+  «Contraer» de 36 px, chips de 32 px, cabecera más baja y detalles en líneas corridas.
 
 ## 5. Diseños de Stitch
 

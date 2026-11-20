@@ -28,7 +28,7 @@ import type { AdminLoad } from './useAdminLoad';
  * 50 per page. Desktop-first; below `md` each person is a card.
  */
 const MEMBER_COLUMNS = 'md:grid md:grid-cols-[minmax(0,2.4fr)_minmax(0,0.9fr)_minmax(0,1.7fr)_minmax(0,1.1fr)_minmax(0,1.5fr)_minmax(0,1.3fr)_minmax(0,1fr)] md:items-center md:gap-3';
-const CARD = 'md:overflow-hidden md:rounded-xl md:border md:border-outline/15 md:bg-surface';
+const CARD = 'md:overflow-hidden md:rounded-card md:border md:border-outline/15 md:bg-surface';
 const NOBODY_ACTIVE = 'Este espacio no tiene miembros activos.';
 const PILL = 'rounded-md border px-1.5 text-[10px] font-bold uppercase leading-5';
 
@@ -69,7 +69,7 @@ function SpacesContent(props: ContentProps) {
   // The groups failing also leaves the filter and the totals empty: «Reintentar» either way.
   const failed = [props.overview, load].find((candidate) => candidate?.status === 'error');
   if (failed?.status === 'error') return <section className="rounded-xl border border-outline/15 bg-surface"><ErrorNote message={failed.message} onRetry={props.onRetry} /></section>;
-  if (!load || load.status === 'loading') return <section className={`${CARD} max-md:rounded-xl max-md:border max-md:border-outline/15 max-md:bg-surface`}><SkeletonRows /></section>;
+  if (!load || load.status === 'loading') return <section className={`${CARD} max-md:rounded-card max-md:border max-md:border-outline/15 max-md:bg-surface`}><SkeletonRows /></section>;
   if (props.space && props.members?.status === 'ready') return <SelectedSpace page={props.members.data} space={props.space} searched={props.searched} onPage={props.onPage} />;
   return props.overview.status === 'ready' ? <Groups overview={props.overview.data} collapsed={props.collapsed} onToggle={props.onToggle} onSpace={props.onSpace} onPage={props.onPage} /> : null;
 }
@@ -113,7 +113,7 @@ function SpaceFilter({ overview, space, onSpace }: { overview: AdminSpacesOvervi
       </aside>
       <nav aria-label="Espacios" className="-mx-4 mt-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:hidden">
         {options.map((option) => (
-          <button key={option.testid} type="button" data-testid={`admin-filtro-${option.testid}`} aria-pressed={option.id === space} onClick={() => onSpace(option.id)} className={`flex h-11 shrink-0 items-center gap-2 rounded-lg border px-3 text-sm font-semibold ${option.id === space ? 'border-primary bg-primary text-on-primary' : 'border-outline/20 bg-surface'}`}>
+          <button key={option.testid} type="button" data-testid={`admin-filtro-${option.testid}`} aria-pressed={option.id === space} onClick={() => onSpace(option.id)} className={`flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-semibold ${option.id === space ? 'border-primary bg-primary text-on-primary' : 'border-outline/20 bg-surface'}`}>
             {option.id === null ? null : <OptionIcon option={option} size={20} />}
             <span className="max-w-[10rem] truncate">{option.id === null ? 'Todos' : option.name}</span>
             <span className={`tabular-nums ${option.id === space ? '' : 'font-normal text-on-surface-variant'}`}>{option.count}</span>
@@ -174,14 +174,14 @@ function SelectedSpace({ page, space, searched, onPage }: { page: AdminSpaceMemb
 function SpaceCard({ space, open = true, onToggle, children }: { space: AdminSpaceSummary; open?: boolean; onToggle?: () => void; children: ReactNode }) {
   return (
     <section data-testid={`admin-espacio-${space.id}`} className={CARD}>
-      <header className={`flex items-center gap-3 border-outline/15 bg-surface px-4 py-3 max-md:rounded-xl max-md:border md:px-6 ${open ? 'md:border-b' : ''}`}>
-        <SpaceLogo space={{ name: space.name, logoUrl: space.logoUrl ?? undefined }} size={44} />
+      <header className={`flex items-center gap-3 border-outline/15 bg-surface px-4 py-2 max-md:rounded-card max-md:border md:px-6 ${open ? 'md:border-b' : ''}`}>
+        <SpaceLogo space={{ name: space.name, logoUrl: space.logoUrl ?? undefined }} size={40} />
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-lg font-bold">{space.name}</h2>
           <p className="text-[13px] text-on-surface-variant md:font-mono md:text-[12px]">{adminSpaceLine(space)}</p>
         </div>
         {onToggle ? (
-          <button type="button" aria-expanded={open} aria-label={open ? 'Contraer' : 'Expandir'} onClick={onToggle} className="flex h-11 shrink-0 items-center gap-1 rounded-lg px-3 text-sm font-semibold text-on-surface-variant md:border md:border-outline/20">
+          <button type="button" aria-expanded={open} aria-label={open ? 'Contraer' : 'Expandir'} onClick={onToggle} className="flex h-9 shrink-0 items-center gap-1 rounded-lg px-3 text-sm font-semibold text-on-surface-variant md:border md:border-outline/20">
             <span className="max-md:hidden">{open ? 'Contraer' : 'Expandir'}</span>
             {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
@@ -248,16 +248,16 @@ function AlsoIn({ member }: { member: AdminSpaceMember }) {
 /** A row of the table from `md`; below, a card: person and role, then the email and two facts per line. */
 function MemberRow({ member }: { member: AdminSpaceMember }) {
   return (
-    <li data-testid={`admin-miembro-${member.id}`} className={`grid grid-cols-2 gap-x-3 gap-y-1 bg-surface px-4 py-3 max-md:rounded-xl max-md:border max-md:border-outline/15 max-md:p-4 md:px-6 ${MEMBER_COLUMNS}`}>
-      <div className="col-span-2 max-md:mb-2 max-md:border-b max-md:border-outline/10 max-md:pb-3 md:col-span-1">
+    <li data-testid={`admin-miembro-${member.id}`} className={`flex flex-wrap gap-x-1.5 gap-y-1 bg-surface px-4 py-3 max-md:rounded-card max-md:border max-md:border-outline/15 max-md:p-4 md:px-6 ${MEMBER_COLUMNS}`}>
+      <div className="basis-full max-md:mb-1 max-md:border-b max-md:border-outline/10 max-md:pb-3 md:col-span-1">
         <PersonCell user={member} under={<AlsoIn member={member} />} aside={<span className="md:hidden"><RoleAndHidden member={member} /></span>} />
       </div>
       <div className="hidden md:block"><RoleAndHidden member={member} /></div>
-      <Cell label="Correo" className="col-span-2 md:col-span-1"><EmailValue user={member} /></Cell>
-      <Cell label="Se unió">{adminJoinedLabel(member.joinedAt)}</Cell>
-      <Cell label="Última vez">{adminLastSeenLabel(member.lastSeenAt)}</Cell>
-      <Cell label="Dispositivos">{adminDevicesLabel(member.devices)}</Cell>
-      <Cell label="Lo invitó">{member.invitedBy ?? <Dash />}</Cell>
+      <Cell label="Correo" className="basis-full max-md:text-[12px] md:basis-auto"><EmailValue user={member} /></Cell>
+      <Cell label="Se unió" className="max-md:text-[12px]">{adminJoinedLabel(member.joinedAt)}</Cell>
+      <Cell label="Última vez" className="max-md:text-[12px]">{adminLastSeenLabel(member.lastSeenAt)}</Cell>
+      <Cell label="Dispositivos" className="max-md:text-[12px]">{adminDevicesLabel(member.devices)}</Cell>
+      <Cell label="Lo invitó" className="max-md:text-[12px]">{member.invitedBy ?? <Dash />}</Cell>
     </li>
   );
 }

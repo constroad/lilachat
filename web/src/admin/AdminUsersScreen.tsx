@@ -79,7 +79,7 @@ export function AdminUsersScreen({ jwt }: { jwt: string }) {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Superadmin</p>
-          <h1 className="mt-1 text-2xl font-bold md:text-3xl">{query.view === 'reports' ? 'Denuncias' : 'Usuarios de Lilachat'}</h1>
+          <h1 className="mt-1 text-[26px] font-extrabold leading-tight tracking-tight md:text-3xl">{query.view === 'reports' ? 'Denuncias' : 'Usuarios de Lilachat'}</h1>
           <p className="mt-1 text-sm text-on-surface-variant">{query.view === 'reports' ? 'Lo que denunciaron las personas. Abuso infantil primero.' : 'Quién está, en qué espacio y desde cuándo. Sin chats ni mensajes.'}</p>
         </div>
         <ViewToggle view={query.view} onView={(view) => setQuery((current) => ({ ...current, view, space: null, page: 1 }))} />

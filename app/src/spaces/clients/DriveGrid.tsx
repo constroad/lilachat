@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ChevronRight, FileSpreadsheet, FileText, Folder, Play } from 'lucide-react-native';
-import { driveDayGroups, driveKindOf, type ServiceFile } from '@lilachat/shared';
+import { driveDayGroups, driveFileLine, driveKindOf, type ServiceFile } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 
 const GAP = 10;
@@ -18,14 +18,14 @@ function useColumns() {
   return { columns, tile: width ? (width - GAP * (columns - 1)) / columns : 0, onLayout: (event: { nativeEvent: { layout: { width: number } } }) => setWidth(event.nativeEvent.layout.width) };
 }
 
-function Tile(props: { file: ServiceFile; size: number; onOpen: (file: ServiceFile) => void }) {
+function Tile(props: { file: ServiceFile; size: number; onOpen: (file: ServiceFile) => void; onMenu?: (file: ServiceFile) => void }) {
   const colors = useColores();
   const kind = driveKindOf(props.file.mime);
   const preview = kind === 'photo' ? (props.file.thumbUrl ?? props.file.url) : props.file.thumbUrl;
   const sheet = /sheet|excel/.test(props.file.mime);
   const Icon = sheet ? FileSpreadsheet : FileText;
   return (
-    <Pressable testID="archivo-drive" onPress={() => props.onOpen(props.file)} style={{ width: props.size }} className="overflow-hidden rounded-xl border border-outline/15 bg-surface">
+    <Pressable testID="archivo-drive" onPress={() => props.onOpen(props.file)} onLongPress={props.onMenu ? () => props.onMenu?.(props.file) : undefined} style={{ width: props.size }} className="overflow-hidden rounded-xl border border-outline/15 bg-surface">
       {preview ? (
         <View style={{ width: props.size, height: props.size }} className="bg-background">
           <Image recyclingKey={preview} source={{ uri: preview }} style={{ width: props.size, height: props.size }} contentFit="cover" />
@@ -39,12 +39,13 @@ function Tile(props: { file: ServiceFile; size: number; onOpen: (file: ServiceFi
         </View>
       )}
       <Text className="px-2 pt-1.5 text-[13px] font-semibold text-on-surface" numberOfLines={1}>{props.file.name}</Text>
+      <Text className="px-2 pb-1.5 text-[11px] text-on-surface-variant" numberOfLines={1}>{driveFileLine(props.file)}</Text>
     </Pressable>
   );
 }
 
 /** Design drv-02: the files as tiles, by day in Lima («Hoy · 13 nov»). */
-export function DriveGrid(props: { files: readonly ServiceFile[]; onOpen: (file: ServiceFile) => void }) {
+export function DriveGrid(props: { files: readonly ServiceFile[]; onOpen: (file: ServiceFile) => void; /** A long press opens the file's sheet (design cc-05). */ onMenu?: (file: ServiceFile) => void }) {
   const grid = useColumns();
   const groups = driveDayGroups(props.files, new Date());
   return (
@@ -53,7 +54,7 @@ export function DriveGrid(props: { files: readonly ServiceFile[]; onOpen: (file:
         <View key={group.key} className="gap-2">
           <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-primary">{group.label}</Text>
           <View className="flex-row flex-wrap" style={{ gap: GAP }}>
-            {group.files.map((file) => <Tile key={file.url} file={file} size={grid.tile} onOpen={props.onOpen} />)}
+            {group.files.map((file) => <Tile key={file.url} file={file} size={grid.tile} onOpen={props.onOpen} onMenu={props.onMenu} />)}
           </View>
         </View>
       )) : null}

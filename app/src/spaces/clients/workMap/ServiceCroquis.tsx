@@ -94,14 +94,14 @@ function ServiceCroquisScreen(props: { send: MapEditSend; title: string; onClose
 }
 
 /** «Editar croquis» for every member of the channel: the button and, once pressed, the editor. */
-export function ServiceCroquisButton(props: { send: MapEditSend; title: string; onDone: () => void }) {
+export function ServiceCroquisButton(props: { send: MapEditSend; title: string; onDone: () => void; /** Over the map (José 19/11: he did not see it under the other buttons, design cc-04). */ pill?: boolean }) {
   const colors = useColores();
   const [open, setOpen] = useState(false);
   const { onDone } = props;
   const close = useCallback(() => { setOpen(false); onDone(); }, [onDone]);
   return (
     <>
-      <Pressable testID="mapa-editar-croquis" onPress={() => setOpen(true)} className="min-h-[48px] flex-row items-center justify-center gap-2 rounded-xl border border-primary/30 bg-surface">
+      <Pressable testID="mapa-editar-croquis" onPress={() => setOpen(true)} className={props.pill ? 'h-11 flex-row items-center gap-2 rounded-full border border-primary/40 bg-surface px-4' : 'min-h-[48px] flex-row items-center justify-center gap-2 rounded-xl border border-primary/30 bg-surface'} style={props.pill ? { elevation: 4 } : undefined}>
         <PenLine size={18} color={colors.primary} />
         <Text className="text-[15px] font-semibold text-primary">{SERVICE_CROQUIS_LABEL}</Text>
       </Pressable>

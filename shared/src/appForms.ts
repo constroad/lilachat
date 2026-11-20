@@ -1,6 +1,7 @@
 import { cutAtWord, paragraphsOf } from './textCut.js';
 import { splitErrorOf, splitFieldOf, type SplitHint } from './appFormSplit.js';
 import { isBlankAnswer, sectionOf, type FieldSection } from './appFormSections.js';
+import { sampleOf, withSampleRule } from './formSamples.js';
 import { submitsOf, type FormSubmit } from './appFormSubmits.js';
 import { normalizeFormDate, startingMoment, type DateMode } from './formDates.js';
 import { choiceOptions, previewToolOf, refusalOf, type ChoiceOption } from './appFormOptions.js';
@@ -59,13 +60,14 @@ export type FormSchemaProperty = {
   /** Agentes 13/11: the header fields side by side share (`x-section`), folded by `x-collapsed`; a list's partida weights (`x-split`). */ 'x-section'?: string; 'x-collapsed'?: boolean; 'x-split'?: unknown;
   /** José 13/11 (design pla-02, the dump body's shape): the options as picture cards; 2 to 6 options, all with `x-thumb`. */
   'x-cards'?: boolean;
+  /** A numbered sample (CTL-IMP's trays): one complete is enough (`formSamples.ts`). */ 'x-sample'?: number;
 };
 /** How much of a row a field takes: half beside another, or all of it. */
 export type FieldWidth = 'half' | 'full';
 export type FormSchema = { type?: string; description?: string; properties?: Record<string, FormSchemaProperty>; required?: string[]; /** The read tool that sums up the draft above «Enviar». */ 'x-preview'?: { tool?: string }; /** A checklist (CTL-PIS, 06/11): one button answers every choice with its first option. */ 'x-check-all'?: boolean; /** The form's buttons (agentes 13/11), here or beside `submit_label`. */ 'x-submits'?: unknown };
 export type AppForm = { id: string; title: string; submitLabel?: string; /** The schema's `description`: a line under the title. */ intro?: string; schema: FormSchema; /** `x-preview`'s tool: the summary above «Enviar». */ preview?: string; /** `x-check-all`: the «Marcar todo» button. */ checkAll?: true; /** «Completar datos de ejemplo» (José 19/11): what fills the empty fields. */ example?: FormValues; /** `x-submits`: the first is the big button, the rest sit under it; the pressed one travels as `values._accion`. */ submits?: FormSubmit[] };
 
-type Base = { name: string; label: string; help?: string; required: boolean; /** `x-input: shift | weather | place-street | temperature | clock`: the phone fills it when empty. */ condition?: 'shift' | 'weather' | 'street' | 'temperature' | 'clock'; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number | true; /** `x-refresh`: changing it asks the app for the form again. */ refresh?: true; /** Other fields show by its answer: the form's step, alone in its row (José 13/11). */ step?: true; /** `x-section`: the header it sits under, folded or not (agentes 13/11). */ section?: FieldSection };
+type Base = { name: string; label: string; help?: string; required: boolean; /** `x-input: shift | weather | place-street | temperature | clock`: the phone fills it when empty. */ condition?: 'shift' | 'weather' | 'street' | 'temperature' | 'clock'; /** The app's `x-width`. */ width?: FieldWidth; /** Shown only when these fields have one of these answers. */ visibleIf?: Record<string, string[]>; /** The schema's `default`, the field's starting value. */ initial?: string | number | true; /** `x-refresh`: changing it asks the app for the form again. */ refresh?: true; /** Other fields show by its answer: the form's step, alone in its row (José 13/11). */ step?: true; /** `x-section`: the header it sits under, folded or not (agentes 13/11). */ section?: FieldSection; /** `x-sample`: its sample's index (`formSamples.ts`). */ sample?: number };
 export type FormField =
   | (Base & { kind: 'choice'; options: ChoiceOption[]; segmented: boolean; /** A few short options in two columns (José 12/11: two controls per line, not a list to open). */ columns?: 2; /** A long list (the company's people, agentes 24/10): a field that opens a sheet with a search. */ searchable: boolean; /** `x-avatar: initials`: each option with its initials. */ initials?: true; /** `x-cards`: picture cards picked with one tap; the picked one's first photo shows big below. */ cards?: true })
   | (Base & { kind: 'text'; multiline: boolean; maxLength?: number; /** A one-time code of this many digits (connecting an account). */ digits?: number; /** `x-input: pin`: digits typed hidden, never prefilled nor kept (Portal's employee PIN). */ secret?: true; /** `x-input: place`: a text with the button that writes where the device is. */ place?: true; /** `x-input: work-street`: a street of the service's work map, picked (Portal's CON-CAP, 12/11). */ street?: true; /** `x-input: work-station`: the station on that street, computed from the reading and editable. */ station?: true; /** `x-keyboard: email` (a list with commas too) or `format: email`: one line with the email keyboard (Portal 17/11). */ email?: true })
@@ -239,7 +241,7 @@ function fieldOf(name: string, property: FormSchemaProperty, required: boolean):
   if (input !== undefined && !INPUTS.includes(input)) return `El campo «${name}» pide x-input «${input}», que Lilachat no sabe dibujar.`;
   const visibleIf = visibleIfOf(property['x-visible-if']);
   const width = property['x-width'] === 'half' || property['x-width'] === 'full' ? property['x-width'] : undefined;
-  const base: Base = { name, label: line(property.title, FORM_LIMITS.label) || labelOf(name), ...(property.description ? { help: line(property.description, FORM_LIMITS.help) } : {}), required, ...(visibleIf ? { visibleIf } : {}), ...(width ? { width } : {}), ...(property['x-refresh'] === true ? { refresh: true as const } : {}), ...(input && CONDITION_INPUTS[input] ? { condition: CONDITION_INPUTS[input] } : {}), ...sectionOf(property) };
+  const base: Base = { name, label: line(property.title, FORM_LIMITS.label) || labelOf(name), ...(property.description ? { help: line(property.description, FORM_LIMITS.help) } : {}), required, ...(visibleIf ? { visibleIf } : {}), ...(width ? { width } : {}), ...(property['x-refresh'] === true ? { refresh: true as const } : {}), ...(input && CONDITION_INPUTS[input] ? { condition: CONDITION_INPUTS[input] } : {}), ...sectionOf(property), ...sampleOf(property) };
   if (input === 'photo') return photoField(base, property);
   const gps = input === 'gps' ? gpsRoleOf(name) : null;
   if (input === 'gps' && (!gps || (property.type !== 'number' && property.type !== 'integer'))) return `El campo «${name}» pide x-input «gps», que Lilachat no sabe dibujar ahí.`;
@@ -529,7 +531,9 @@ function staleLocation(fields: readonly FormField[], input: FormValues, values: 
 /** What the person sent: only the form's fields, cleaned, or a message per field. With `requireFresh` (the server), a signing's location must be of now. */
 export function validateFormValues(fields: readonly FormField[], raw: unknown, options: { requireFresh?: boolean; /** A draft saves what is filled: nothing required, the split need not add up (agentes 13/11). */ draft?: boolean } = {}): { ok: true; values: FormValues } | { ok: false; errors: Record<string, string> } {
   const input = record(raw);
-  const { values, errors } = checkFields(fields, input, undefined, options.draft);
+  const checked = checkFields(fields, input, undefined, options.draft);
+  const { values } = checked;
+  const errors = options.draft ? checked.errors : withSampleRule(fields, input, checked.errors, missingOf);
   if (options.requireFresh) Object.assign(errors, staleLocation(fields, input, values));
   if (!options.draft && !errors[splitListOf(fields)]) Object.assign(errors, splitErrorOf(fields, values));
   return Object.keys(errors).length ? { ok: false, errors } : { ok: true, values };

@@ -1,3 +1,4 @@
+import { isSampledForm, sampledSchema } from './formSamples.js';
 import { validateFormSpec, type AppForm, type FormSchema, type FormSchemaProperty, type FormValues } from './appForms.js';
 
 /**
@@ -237,8 +238,10 @@ const withDefault = (property: FormSchemaProperty, value: unknown): FormSchemaPr
 /** The section as the form the engine draws: `guardar_seccion_de_informe` (or the section's own tool) with the saved values as defaults. */
 export function sectionFormOf(document: FieldDocument, path: SectionPath): AppForm | null {
   const found = sectionAt(document, path);
-  const schema = found ? document.forms[found.form] : undefined;
-  if (!found || !schema) return null;
+  const portalSchema = found ? document.forms[found.form] : undefined;
+  if (!found || !portalSchema) return null;
+  // José 19/11: one complete tray is enough in a CTL-IMP (`formSamples.ts`).
+  const schema = isSampledForm(document.type, found.form) ? sampledSchema(portalSchema) : portalSchema;
   const asked = Object.entries(schema.properties ?? {}).filter(([name]) => !KNOWN_BY_CHANNEL.includes(name));
   const properties = Object.fromEntries(asked.map(([name, property]) => [name, withDefault(property, found.values[name])]));
   const required = schema.required?.filter((name) => !KNOWN_BY_CHANNEL.includes(name));

@@ -141,6 +141,10 @@ Pregunta a la app por `link.status` y `link.revoke`. Lilachat no guarda nada.
 - **15/11** La fila de una respuesta que solo vi yo corre como fila de la app.
 - **17/11** Campo de correo (`x-keyboard: email`), mensaje sugerido con párrafos, y el refresco deja
   pasar los `default` nuevos donde la persona no tocó.
+- **19/11** Muestras numeradas (`x-sample`, `shared/src/formSamples.ts`): una completa basta y una
+  empezada se valida entera; hoy solo las bandejas del CTL-IMP (ver `obra-informes.md`). La hoja y
+  el diálogo del formulario reciben una línea sobre los campos (`status`): ahí va «Obteniendo
+  ubicación…» de la foto de un informe.
 
 ## 5. Diseños de Stitch relacionados
 

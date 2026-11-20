@@ -21,19 +21,31 @@ describe('an open service takes the whole conversation (José 06/11: «ocupe tod
   const driveReply = { files: [{ name: 'densidades.pdf', mime: 'application/pdf', url: 'https://x/d', folder: 'Informes' }], drive_url: null };
   const askedFor = (url: string) => new Response(JSON.stringify(url.endsWith('/files') ? driveReply : { detail }), { status: 200 });
 
-  it('the breadcrumb goes back to the chat or to the services', async () => {
+  it('one head for the four sections: «Servicios» goes back, the name, its state and line (José 19/11, design cc-02)', async () => {
     // Arrange
     vi.stubGlobal('fetch', vi.fn(async (url: string) => askedFor(url)));
-    const onToChat = vi.fn();
     const onBack = vi.fn();
-    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={onBack} onToChat={onToChat} />);
+    render(<ServiceDetailWeb target={target} chatId="chat-1" clientName="CONSORCIO EL ALMIRANTE" service={service} seesMoney onBack={onBack} />);
     // Act
-    fireEvent.click(await screen.findByTestId('volver-al-chat'));
-    fireEvent.click(screen.getByTestId('volver-a-servicios'));
+    fireEvent.click(await screen.findByTestId('volver-a-servicios'));
     // Assert
-    expect(onToChat).toHaveBeenCalledTimes(1);
     expect(onBack).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('ruta-servicio')).toHaveTextContent('Pavimentación Av. Los Álamos');
+    expect(screen.getByTestId('cabecera-servicio')).toHaveTextContent('Servicio · CONSORCIO EL ALMIRANTE');
+    expect(screen.getByTestId('servicio-nombre')).toHaveTextContent('Pavimentación Av. Los Álamos');
+    expect(screen.getByTestId('servicio-linea')).toHaveTextContent('Avance 62 % · Etapa: Ejecución');
+    expect(screen.queryByTestId('ruta-servicio')).toBeNull();
+  });
+
+  it('a section\'s action sits at the right of the tab bar: «Crear informe» on Informes only', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => askedFor(url)));
+    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney={false} onBack={() => undefined} />);
+    // Act
+    fireEvent.click(await screen.findByTestId('pestana-detalle-reports'));
+    // Assert
+    expect(within(screen.getByTestId('acciones-seccion')).getByTestId('crear-informe')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('pestana-detalle-orders'));
+    expect(screen.queryByTestId('crear-informe')).toBeNull();
   });
 
   it('the Drive is one more tab: its folders open and come back without leaving the service', async () => {
@@ -187,13 +199,14 @@ describe('ServiceDetailWeb', () => {
     expect(screen.getByTestId('fila-o1')).toHaveTextContent('120 m³ · 22 oct');
     expect(screen.getByTestId('fila-o1')).toHaveTextContent('Entregado');
     expect(screen.getByTestId('detalle-servicio')).toHaveTextContent('Etapa: Ejecución');
-    expect(screen.getByTestId('pestana-detalle-orders')).toHaveTextContent('Pedidos · 148');
+    expect(screen.getByTestId('pestana-detalle-orders')).toHaveTextContent('Pedidos148');
     // José 30/10: progress comes from Portal, stage by stage; 30/10 night: folded in the progress card.
     expect(screen.getByTestId('etapas-servicio')).toHaveTextContent(/Etapas · \d+ de \d+/);
     expect(screen.queryByTestId('etapa-orders-done')).toBeNull();
     fireEvent.click(screen.getByTestId('etapas-toggle'));
     expect(screen.getByTestId('etapa-orders-done')).toHaveTextContent('Pedidos');
     expect(screen.getByText('Mostrando 1 de 148 · el resto está en el Portal')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('servicio-mas'));
     expect(screen.getByTestId('abrir-servicio-portal')).toHaveAttribute('href', 'https://portal.constroad.com/s/318');
     expect(String((fetchMock.mock.calls[0] as unknown as [string])[0])).toContain('/api/workspaces/s1/clients/cli-cvs/services/srv-318/detail');
   });
@@ -330,7 +343,7 @@ describe('ServiceDetailWeb', () => {
     expect(await screen.findByTestId('mapa-dibujar-portal')).toHaveAttribute('href', `${adminPage}?tab=mapa`);
   });
 
-  it('the map takes the whole conversation with the tabs in its bar, and «Pedidos» brings the list back (design o-01, José 07/11)', async () => {
+  it('the map goes under the same head and bar, and «Pedidos» brings the list back (design o-01, José 07/11)', async () => {
     // Arrange
     vi.stubGlobal('fetch', reply({ detail: { ...detail, service: { ...detail.service, hasMap: true } } }));
     const map = vi.fn(async () => ({ ok: true as const, url: 'https://constroad.com/public/mapa' }));
@@ -343,7 +356,7 @@ describe('ServiceDetailWeb', () => {
     // Assert
     await screen.findByTestId('mapa-primera-calle');
     expect(onMapOpen).toHaveBeenLastCalledWith(true);
-    expect(screen.getByTestId('ruta-servicio')).toBeInTheDocument();
+    expect(screen.getByTestId('cabecera-servicio')).toBeInTheDocument();
     expect(screen.getByTestId('pestana-detalle-map')).toHaveAttribute('aria-selected', 'true');
     fireEvent.click(screen.getByTestId('pestana-detalle-orders'));
     expect(onMapOpen).toHaveBeenLastCalledWith(false);

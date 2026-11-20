@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
-import { ChevronRight, Maximize2, Share2, TrendingUp, X } from 'lucide-react-native';
-import { mapCardOf, mapPickAnchor, mapPickOnMap, type MapPick, type WorkMapPoint, bareLinesOf, visibleStationMarks, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, withPendingLines, showsUnitPins, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StationMark, type StretchRange, type UnitDischarge, type MapPhoto, type ManualProgressDraft, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
+import { ChevronRight, Layers, Maximize2, Share2, TrendingUp, X } from 'lucide-react-native';
+import { viewWithLayers, visibleMarks, visibleObservations, type WorkMapMark, type WorkMapObservation, mapCardOf, mapPickAnchor, mapPickOnMap, type MapPick, type WorkMapPoint, bareLinesOf, visibleStationMarks, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, withPendingLines, showsUnitPins, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StationMark, type StretchRange, type UnitDischarge, type MapPhoto, type ManualProgressDraft, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { Sheet } from '../../../ui/Sheet';
 import { useColores } from '../../../ui/tema';
@@ -19,7 +19,8 @@ import { StreetScopes } from './StreetScopes';
 import { DeletedWork } from './DeletedWork';
 import { WorkMapSurface } from './WorkMapSurface';
 import { BrushMap, WorkLayersSheet, type LayersKind } from './WorkLayers';
-import { PhotoToggle, usePhotoLayer } from './MapPhotos';
+import { usePhotoLayer } from './MapPhotos';
+import { MapLayersPanel, useMapLayers } from './MapLayersPanel';
 import { MapDayChips, useMapDays } from './MapDays';
 import { PrimeCoatSuggestions } from './PrimeCoat';
 import { PendingProgressCard } from './PendingProgress';
@@ -62,14 +63,14 @@ function useMapPick(map: WorkMap, openFull: () => void) {
 
 type MapPicks = ReturnType<typeof useMapPick>;
 
-function FullMap(props: { view: WorkMapView; open: boolean; onClose: () => void; pins: DischargePin[]; stretches: WorkMapLine[]; stations: StationMark[]; bare: WorkMapLine[]; photos: PhotoLayer; map: WorkMap; picks: MapPicks }) {
+function FullMap(props: { view: WorkMapView; open: boolean; onClose: () => void; pins: DischargePin[]; stretches: WorkMapLine[]; stations: StationMark[]; bare: WorkMapLine[]; photos: PhotoLayer; marks: readonly WorkMapMark[]; observations: readonly WorkMapObservation[]; picks: MapPicks }) {
   const colors = useColores();
   const margins = useMargenes();
   const { picks } = props;
   return (
     <Modal visible={props.open} animationType="slide" onRequestClose={props.onClose}>
       <View className="flex-1 bg-background">
-        {props.open ? <WorkMapSurface view={props.view} moves controlsInset={margins.pie} stations={props.stations} bare={props.bare} marks={props.map.marks} observations={props.map.observations} onPick={picks.pickOnMap} startAt={picks.startAt} pins={props.photos.shown ? props.photos.pins : props.pins} onPin={props.photos.shown ? props.photos.openPin : undefined} stretches={props.stretches} /> : null}
+        {props.open ? <WorkMapSurface view={props.view} moves controlsInset={margins.pie} stations={props.stations} bare={props.bare} marks={props.marks} observations={props.observations} onPick={picks.pickOnMap} startAt={picks.startAt} pins={props.photos.shown ? props.photos.pins : props.pins} onPin={props.photos.shown ? props.photos.openPin : undefined} stretches={props.stretches} /> : null}
         {picks.card ? (
           <View className="absolute inset-x-3 items-center" style={{ bottom: margins.pie + 72 }}>
             <View style={{ width: '100%', maxWidth: CARD_MAX_WIDTH }}>
@@ -77,7 +78,6 @@ function FullMap(props: { view: WorkMapView; open: boolean; onClose: () => void;
             </View>
           </View>
         ) : null}
-        {props.photos.available ? <PhotoToggle shown={props.photos.shown} count={props.photos.count} onToggle={() => props.photos.setShown(!props.photos.shown)} style={{ bottom: margins.pie + 24 }} /> : null}
         <Pressable testID="mapa-cerrar-completo" accessibilityLabel="Cerrar el mapa" onPress={props.onClose} className="absolute right-3 h-12 w-12 items-center justify-center rounded-full bg-surface" style={{ top: margins.cabecera + 8 }}>
           <X size={22} color={colors['on-surface']} />
         </Pressable>
@@ -171,6 +171,9 @@ export function WorkMapBoard(props: BoardProps) {
   const [pendingItems, setPendingItems] = useState<PendingProgress[]>([]);
   const stretches = useMemo(() => withPendingLines(map, units ? pista.stretches : [], pendingItems), [map, units, pista.stretches, pendingItems]);
   const picks = useMapPick(map, () => setWide(true));
+  const mapLayers = useMapLayers();
+  const drawn = useMemo(() => ({ view: viewWithLayers(view, mapLayers.layers), marks: visibleMarks(map.marks ?? NO_MARKS, mapLayers.layers), observations: visibleObservations(map.observations ?? NO_OBSERVATIONS, mapLayers.layers) }), [view, map, mapLayers.layers]);
+  const layersNode = mapLayers.open ? <MapLayersPanel map={map} view={view} filter={filter} onFilter={setFilter} layers={mapLayers.layers} onToggle={mapLayers.toggle} photos={photos.available ? { count: photos.count, shown: photos.shown, onToggle: () => photos.setShown(!photos.shown) } : undefined} /> : null;
   const closeFull = () => { setWide(false); picks.clearStart(); picks.close(); };
   const discharges = pista.suggestion.units.length ? <WorkMapDischarges map={map} serviceId={props.serviceId} suggestion={pista.suggestion} send={props.send} ranges={pista.ranges} onRange={pista.onRange} /> : null;
   const primeCoat = props.editMap && props.mapPhotos?.length ? <PrimeCoatSuggestions map={map} photos={props.mapPhotos} onRecord={(id, draft) => openStreet(id, true, draft)} /> : null;
@@ -193,23 +196,27 @@ export function WorkMapBoard(props: BoardProps) {
           <Text className="text-[16px] font-semibold text-on-primary">Registrar avance</Text>
         </Pressable>
       ) : null}
-      {props.editMap ? <ServiceCroquisButton send={props.editMap} title={props.title} onDone={() => props.reload?.()} /> : null}
       <WorkMapFilters map={map} view={view} filter={filter} onFilter={setFilter} waiting={pendingItems.length} />
       <MapDayChips options={mapDays.options} day={mapDays.day} onDay={mapDays.setDay} />
       {props.notice ? <Text testID="mapa-aviso" accessibilityRole="alert" className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-[14px] font-semibold text-on-surface">{props.notice}</Text> : null}
       {wide ? null : picks.files.viewer}
       <View className="-mx-4 overflow-hidden bg-surface-variant" style={{ height }}>
         <View pointerEvents="none" className="absolute inset-0">
-          {wide ? null : <WorkMapSurface view={view} moves={false} stations={stations} bare={bare} marks={map.marks} pins={photos.shown ? photos.pins : unitPins} stretches={stretches} />}
+          {wide ? null : <WorkMapSurface view={drawn.view} moves={false} stations={stations} bare={bare} marks={drawn.marks} observations={drawn.observations} pins={photos.shown ? photos.pins : unitPins} stretches={stretches} />}
         </View>
-        {/* The small map does not take taps: «Fotos» opens the full one, where a marker opens its photos. */}
-        {photos.available ? <PhotoToggle shown={photos.shown} count={photos.count} onToggle={() => { photos.setShown(true); setWide(true); }} style={{ bottom: 16 }} /> : null}
-        <Pressable testID="mapa-pantalla-completa" accessibilityLabel="Ver mapa completo" onPress={() => setWide(true)} className="absolute right-3 top-3 h-11 w-11 items-center justify-center rounded-xl border border-outline/15 bg-surface">
-          <Maximize2 size={18} color={colors['on-surface']} />
-        </Pressable>
+        {/* José 19/11 (design cc-04 mobile): «Editar croquis» on the map, where it is seen; «Capas» beside the full map. */}
+        {props.editMap ? <View className="absolute left-3 top-3"><ServiceCroquisButton send={props.editMap} title={props.title} onDone={() => props.reload?.()} pill /></View> : null}
+        <View className="absolute right-3 top-3 gap-2">
+          <Pressable testID="mapa-pantalla-completa" accessibilityLabel="Ver mapa completo" onPress={() => setWide(true)} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/15 bg-surface">
+            <Maximize2 size={18} color={colors['on-surface']} />
+          </Pressable>
+          <Pressable testID="mapa-capas-abrir" accessibilityLabel="Capas y leyenda" accessibilityState={{ selected: mapLayers.open }} onPress={() => mapLayers.setOpen((shown) => !shown)} className={`h-11 w-11 items-center justify-center rounded-xl border ${mapLayers.open ? 'border-primary/40 bg-primary/10' : 'border-outline/15 bg-surface'}`}>
+            <Layers size={18} color={mapLayers.open ? colors.primary : colors['on-surface']} />
+          </Pressable>
+        </View>
       </View>
-      <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} items={picks.items} deleteStreet={props.deleteStreet} onOpenStreet={(id) => openStreet(id)} />
-      <FullMap view={view} open={wide} onClose={closeFull} pins={unitPins} stretches={stretches} stations={stations} bare={bare} photos={photos} map={map} picks={picks} />
+      <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} items={picks.items} layers={layersNode} deleteStreet={props.deleteStreet} onOpenStreet={(id) => openStreet(id)} />
+      <FullMap view={drawn.view} open={wide} onClose={closeFull} pins={unitPins} stretches={stretches} stations={stations} bare={bare} photos={photos} marks={drawn.marks} observations={drawn.observations} picks={picks} />
       {props.editMap ? <DeletedWork open={seeingDeleted} map={map} send={props.editMap} onClose={() => setSeeingDeleted(false)} /> : null}
       <StreetScopes map={map} streetId={streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} startRecording={recordingStart} recordDraft={recordDraft} onClose={() => openStreet(null)} />
       <StreetPick target={choosing} onPick={(id) => openStreet(id, true)} onClose={() => setChoosing(null)} />

@@ -27,14 +27,40 @@ Pendientes**.
 | Checklist | Solo admins (`access.admin`) |
 | Pendientes | Todos, cuando el canal tiene etapas |
 
+**Una sola gramática (José 19/11, diseños cc-01…cc-06, `shared/src/serviceShell.ts`).** Desde 768 px
+(`SHELL_WIDE_MIN_PX`, tablet y computadora) las pestañas del canal se quedan al abrir un servicio. En
+el celular el servicio ocupa la pantalla con su flecha atrás (`serviceTakesScreen`). En el celular,
+quien tiene Checklist y Pendientes ve una sola pestaña «Checklist» con el segmentado «Pendientes ·
+Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist conserva su pestaña
+«Pendientes». Quién ve cada pestaña no cambia (`channelTabs`).
+
+### Servicios (cc-01)
+
+- Cabecera «SERVICIOS DEL CLIENTE / Servicios» con «Enlace del cliente» y «Drive del cliente».
+- Buscador y segmentado «Abiertos · Completados · Todos» con su número; «Rechazados» solo si hay uno
+  (`serviceSegmentsOf`).
+- Una tarjeta por servicio con borde de color por estado, estado, avance, inicio y «Enlace del servicio».
+- En el celular, arriba, el bloque «Pendientes · N» con las 3 primeras tareas abiertas y «Ver en
+  Checklist» (o «Ver pendientes» para quien no tiene Checklist) (`pendingPreview`).
+- No están las cifras «pedidos · informes · último movimiento» por servicio del diseño: Portal no las
+  manda en la lista (`SpaceClientService`). Pedido a Portal/Agentes.
+
 ### Un servicio
 
-- Al abrirlo **ocupa todo** (APK `useChannelWork.fullScreen`; web `serviceFull`), con la
-  ruta `ServiceCrumbs`: Chat › Servicios › obra. BACK de Android vuelve a Servicios.
-- Pestañas (`serviceTabs`): **Pedidos · Informes · Mapa · Drive**. Mapa sale siempre;
-  Drive para todo miembro del canal.
-- Pedidos con su obra («20 m³ · 6 oct · OBRA GRAU»), despachos dentro del pedido, fotos y
-  videos primero, cubicaje plegado.
+- **Cabecera única** en las 4 secciones (cc-02): en tablet y computadora «‹ Servicios», el
+  kicker «SERVICIO · CLIENTE», el nombre con su estado, la línea «Avance N % · Etapa: … · Inicio
+  12 nov» (`serviceHeadLine`) y su barra; a la derecha «Enlace del servicio» y «⋯» (Abrir en el
+  Portal). En el celular, flecha atrás, cliente, nombre, enlace y «⋯». Sin migas (se quitó
+  `ServiceCrumbs`). BACK de Android vuelve a Servicios.
+- **Una sola barra subrayada** (`serviceTabs`): Pedidos N · Informes N · Mapa · Drive; el número
+  va aparte (`ServiceTabItem.count`). Las acciones de cada sección van a la derecha de la barra:
+  «Crear informe» en Informes; Pegar, cámara y Subir en Drive; Capas, Editar croquis, Más,
+  Compartir y Registrar en Mapa. Web: `ServiceShellWeb.tsx` (`SectionActions` dibuja en esa barra
+  con un portal).
+- Pedidos como tarjetas (cc-02, `shared/src/serviceOrderCards.ts`): producto, cantidad, día y obra;
+  «DESPACHOS · N» con placa, m³, hora y sus 3 primeras fotos; «Sin despachos todavía»; «Cubicaje»
+  abre la ficha del pedido. Un despacho abre su ficha.
+- Informes por día en tarjetas con ícono, «Creado por», estado y «PDF».
 - Informes agrupados por día de Lima, del más nuevo al más viejo; «Creado por …».
 - «Crear informe» en el APK y la web angosta ofrece los tipos de la página pública de Portal y todos se llenan aquí (18/11, `fieldPickerReportTypes`). La aprobación de adicional (APR-ADI) sale solo a quien ve la plata. Detalle por tipo en `obra-informes.md`.
 - En el control de pista, una línea sobre las unidades dice que la foto de unidad vacía cierra la unidad, le da su número de colocación y manda juntas al grupo las fotos marcadas (`UNITS_CLOSE_HINT`, 18/11). La tarjeta de una unidad cerrada dice «Colocación N° X» bajo la placa (`placementOf`).
@@ -120,7 +146,8 @@ Pendientes**.
 
 ### Web/PWA
 
-`web/src/spaces/clients/`: `ClientsSection.tsx`, `ServiceDetailWeb.tsx`,
+`web/src/spaces/clients/`: `ClientsSection.tsx`, `ServiceShellWeb.tsx` (cabecera, barra, `SectionActions`,
+`useCompactShell`), `ServiceListsWeb.tsx` (tarjetas de pedidos e informes), `ServiceDetailWeb.tsx`,
 `ClientAccountWeb.tsx`, `ServiceCollectionWeb.tsx`, `ServiceBillingWeb.tsx`,
 `ServiceStagesWeb.tsx`, `ClientAccessWeb.tsx`, `ClientPickerWeb.tsx`, `ArchivedClients.tsx`,
 `RecordSheetWeb.tsx`, `SpaceActionButtonWeb.tsx`, `ClientChannelParts.tsx`,
@@ -128,11 +155,19 @@ Pendientes**.
 
 ### APK
 
-`app/src/spaces/clients/`: `ClientsSection.tsx`, `ServiceDetailView.tsx`,
+`app/src/spaces/clients/`: `ClientsSection.tsx`, `ServiceShell.tsx` (cabecera y barra), `ServiceLists.tsx`
+(tarjetas de pedidos e informes), `ServiceDetailView.tsx`,
 `ClientAccountPanel.tsx`, `ServiceCollectionView.tsx`, `ServiceBilling.tsx`,
 `ServiceStages.tsx`, `ClientAccess.tsx`, `ClientPicker.tsx`, `ArchivedClientsScreen.tsx`,
 `RecordSheet.tsx`, `SpaceActionButton.tsx`, `ClientChannelParts.tsx`, `useSpaceClients.ts`,
 `useServiceAsk.ts`, `useSpaceAction.ts`, `useReportPdf.ts`.
+
+APK y la gramática de 19/11: el teléfono (ancho < 768 dp o alto < 500 dp, `serviceTakesScreen`, así un
+teléfono apaisado sigue igual) abre el servicio a pantalla completa con flecha; la tablet deja la cabecera
+del chat y las pestañas del canal arriba (`ChannelWorkTabs.tsx`, `useWindowDimensions`). «Crear informe» va a
+la derecha de la barra. **Diferencia con la web:** RN no tiene portales, así que Pegar, cámara y Subir siguen
+en la cabecera del Drive y las acciones del mapa en su barra, justo bajo la barra de pestañas. Checklist con
+«Pendientes · Plan» en el teléfono: `chat/workPlan/ChecklistSegments.tsx`.
 
 ### Server
 
@@ -164,8 +199,9 @@ Pendientes**.
 
 | Tema | Web/PWA | APK |
 | --- | --- | --- |
-| Servicio a pantalla completa | Quita cabecera, pestañas, banner y compositor | Oculta la cabecera con `display: none` |
-| Volver | Ruta de migas | Ruta de migas y BACK de Android |
+| Servicio a pantalla completa | Solo bajo 768 px; arriba, pestañas del canal visibles | Solo en teléfono (< 768 dp) |
+| Volver | «‹ Servicios» o flecha | «‹ Servicios» o flecha, y BACK de Android |
+| Acciones de sección | En la barra (portal) | Ver § APK |
 | Informes en la web ancha | Editor 2.0 de Portal | Formulario propio |
 
 ## 4. Historia reciente
@@ -189,6 +225,10 @@ Pendientes**.
 - **19/11** · «Mapa de la obra» dibuja los dibujos de Portal (gibas, buzones, bocacalles…: `workMapMarks` del detalle, `shared/src/workMapMarks.ts`), en web y APK. Con dibujos y sin calles ya no dice «Todavía no hay calles»: muestra el mapa encuadrado en ellos (José, El Almirante · parches Jr. Conchucos: 33 dibujos en Portal). Un dibujo «Otro» con nota se llama por su nota, como en Portal (`markName`).
 - **19/11** · Observaciones de Portal (`workObservations`) en el mapa, y la tarjeta de cada dibujo con su tamaño y las distancias a los más cercanos, calculadas de las coordenadas (`shared/src/workMapCards.ts`). Web: tarjeta al pasar el mouse o al hacer clic, y listas «Dibujos» y «Observaciones» en el panel. APK: tarjeta al tocar en el mapa completo y las mismas listas bajo el panel. Botón «Editar croquis» (editor de croquis del servicio de Portal) en web y APK.
 - **19/11** · La tarjeta de un dibujo muestra las fotos de la observación en su mismo punto (≤ 3 m), con su línea «texto · estado»; un pin sobre un dibujo abre la tarjeta del dibujo (web y APK, `shared/src/workMapCards.ts` › `observationsAtMark`, `mapPickOnMap`). José, El Almirante · parches Jr. Conchucos: 30 observaciones «Bache o falla · Parche N» en los mismos puntos que los dibujos.
+- **19/11** · **Una sola gramática del canal y del servicio** (diseños cc-01…cc-06): pestañas del canal fijas
+  en tablet y computadora, cabecera única y una barra Pedidos · Informes · Mapa · Drive con las acciones a la
+  derecha; pedidos como tarjetas con sus despachos; Servicios con segmentado y, en el celular, el bloque de
+  pendientes; Checklist con «Pendientes · Plan» en el celular (`serviceShell.ts`, `serviceOrderCards.ts`).
 - **19/11** · Los dibujos del mapa toman los colores del croquis de Portal (antes, todos puntos naranjas): ficha blanca con aro y punto del color de su tipo, etiqueta desde el zoom 16 (`shared/src/workMapMarks.ts` › `markColor`, `MARK_CHIP_PAINT`, `MARK_GLYPH_PAINT`), en web y APK.
 
 ## 5. Diseños de Stitch relacionados
@@ -203,6 +243,12 @@ Pendientes**.
 | f-06 Drive del servicio | Implementado | ver `obra-drive.md` |
 | f-07 canal que nace con la cotización | **Descartado** por José (29/10) | — |
 | f-08 cuenta del cliente | Implementado | `ClientAccountPanel.tsx`, `ClientAccountWeb.tsx` |
+| cc-01 servicios | Implementado sin las cifras por servicio (Portal no las manda) | `ClientChannelParts.tsx` (web y APK) |
+| cc-02 pedidos | Implementado | `ServiceShellWeb.tsx`, `ServiceListsWeb.tsx`, `ServiceDetailView.tsx` |
+| cc-03 informes | Implementado sin la franja de cifras de abajo (inventada) | `ServiceListsWeb.tsx` |
+| cc-04 mapa | Implementado; capas en `workMap/MapLayersPanel.tsx` | ver `obra-mapa.md` |
+| cc-05 drive | Implementado sin «Mover a carpeta» (Portal no tiene la herramienta) | ver `obra-drive.md` |
+| cc-06 checklist con pendientes | Implementado en el celular | `ChecklistSegmentsWeb.tsx` |
 
 El inventario todavía dice «falta: espera … de agentes» en f-04, f-05, f-06 y f-08:
 está desactualizado.

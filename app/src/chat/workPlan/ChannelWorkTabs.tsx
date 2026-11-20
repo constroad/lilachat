@@ -1,7 +1,7 @@
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { BackHandler, Pressable, ScrollView, Text, ToastAndroid, View } from 'react-native';
-import { CHANNEL_TAB_LABELS, channelLinksOf, channelTabs, checklistMembers, noticeOf, withoutApps, type ChannelLinks, type ChannelTab, type ShortcutRow, type ShortcutValues, type SpaceClient, type WorkStage } from '@lilachat/shared';
+import { BackHandler, Pressable, ScrollView, Text, ToastAndroid, useWindowDimensions, View } from 'react-native';
+import { CHANNEL_TAB_LABELS, channelLinksOf, channelTabsFor, checklistHoldsPending, checklistMembers, noticeOf, pendingTasks, serviceTakesScreen, withoutApps, type ChannelLinks, type ChannelTab, type ShortcutRow, type ShortcutValues, type SpaceClient, type WorkStage } from '@lilachat/shared';
 import { useWorkPlan } from './useWorkPlan';
 import { runShortcut, submitAppForm } from '../commands/commandsApi';
 import { getSocket } from '../socketClient';
@@ -10,6 +10,7 @@ import { PendingPanel } from './WorkListsPanels';
 import { TaskDetailSheet, type OpenTask } from './TaskDetailSheet';
 import { useClientOfChat, useClientRecords } from '../../spaces/clients/useSpaceClients';
 import { ArchivedClientBanner, ArchivedComposerNote, ClientServices } from '../../spaces/clients/ClientChannelParts';
+import { ChecklistSegments } from './ChecklistSegments';
 import { ClientAccountPanel } from '../../spaces/clients/ClientAccountPanel';
 import type { ServiceAskTarget } from '../../spaces/clients/useServiceAsk';
 
@@ -42,6 +43,9 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
   const clientId = client?.id;
   const target = useMemo<ServiceAskTarget | null>(() => (params.spaceId && clientId ? { jwt: params.jwt, spaceId: params.spaceId, clientId } : null), [params.jwt, params.spaceId, clientId]);
   const [openTask, setOpenTask] = useState<OpenTask | null>(null);
+  // José 19/11: a phone gets the service over the whole screen and «Pendientes» inside «Checklist» (designs cc-02, cc-06).
+  const screen = useWindowDimensions();
+  const compact = serviceTakesScreen(screen.width, screen.height);
   // Android's BACK on the checklist goes back to the chat first; the last listener added runs first.
   useEffect(() => {
     if (tab === 'chat') return;
@@ -70,28 +74,35 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
     submit: (commandId, answers) => submitAppForm(params.jwt, { chatId: params.chatId }, commandId, answers),
     notice: (commandId) => noticeOf(getSocket(), commandId),
   }));
-  const allowed = channelTabs(client.access, stages.length > 0);
+  const allowed = channelTabsFor(client.access, stages.length > 0, compact);
+  const holdsPending = checklistHoldsPending(client.access, stages.length > 0, compact);
+  const open = pendingTasks(stages, new Date()).length;
   // A tab the access no longer gives (an admin just restricted me) falls back to the chat.
   const shown = allowed.includes(tab) ? tab : 'chat';
-  const badges: Partial<Record<Tab, string | null>> = { services: client.services.length ? String(client.services.length) : null, checklist: counter };
+  const badges: Partial<Record<Tab, string | null>> = { services: client.services.length ? String(client.services.length) : null, checklist: holdsPending ? (open ? String(open) : null) : counter };
+  const overdueOn: Tab = holdsPending ? 'checklist' : 'pending';
   const tabs = (
     <>
       {/* José 06/11: Chat · Cuenta · Servicios · Checklist · Pendientes; Cuenta only with money. */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-grow-0 border-b border-outline/10 bg-surface" contentContainerStyle={{ paddingHorizontal: 16 }}>
-        {allowed.map((key) => <TabButton key={key} label={CHANNEL_TAB_LABELS[key]} badge={badges[key]} dot={key === 'pending' && Boolean(plan.summary?.overdue)} active={shown === key} onPress={() => setTab(key)} testID={`pestana-canal-${key}`} />)}
+        {allowed.map((key) => <TabButton key={key} label={CHANNEL_TAB_LABELS[key]} badge={badges[key]} dot={key === overdueOn && Boolean(plan.summary?.overdue)} active={shown === key} onPress={() => setTab(key)} testID={`pestana-canal-${key}`} />)}
       </ScrollView>
       <ArchivedClientBanner client={client} />
     </>
   );
-  const fullScreen = shown === 'services' && serviceOpen;
-  const panel = <ChannelPanels fullScreen={fullScreen} onServiceOpen={setServiceOpen} onToChat={() => setTab('chat')} shown={shown} focusSeq={focusSeq} clearFocus={clearFocus} client={client} records={records} plan={plan} stages={stages} target={target} people={people} params={params} nameOf={nameOf} toMessage={toMessage} openTask={openTask} setOpenTask={setOpenTask} links={links} />;
+  const fullScreen = shown === 'services' && serviceOpen && compact;
+  const layout = { compact, holdsPending, counts: { pending: open ? String(open) : '', plan: counter ?? '' }, onPending: () => setTab(holdsPending ? 'checklist' : 'pending') };
+  const panel = <ChannelPanels fullScreen={fullScreen} layout={layout} onServiceOpen={setServiceOpen} shown={shown} focusSeq={focusSeq} clearFocus={clearFocus} client={client} records={records} plan={plan} stages={stages} target={target} people={people} params={params} nameOf={nameOf} toMessage={toMessage} openTask={openTask} setOpenTask={setOpenTask} links={links} />;
   return { tabs, panel, note: <ArchivedComposerNote client={client} />, client, openOrderCard: allowed.includes('services') ? openOrderCard : undefined, fullScreen };
 }
 
 type ChannelWorkParams = Parameters<typeof useChannelWork>[0];
 
 /** The open tab's panel of a client's channel, and the task sheet over it. */
-function ChannelPanels(props: { fullScreen: boolean; onServiceOpen: (open: boolean) => void; onToChat: () => void; shown: Tab; focusSeq: number | null; clearFocus: () => void; client: SpaceClient; records: ReturnType<typeof useClientRecords>; plan: ReturnType<typeof useWorkPlan>; stages: WorkStage[]; target: ServiceAskTarget | null; people: ReadonlyMap<string, string>; params: ChannelWorkParams; nameOf: (userId: string) => string; toMessage: (seq: number) => void; openTask: OpenTask | null; setOpenTask: (task: OpenTask | null) => void; links: ChannelLinks }) {
+/** What the device changes (José 19/11): a phone holds «Pendientes» in «Checklist» and shows them over «Servicios». */
+type ChannelLayout = { compact: boolean; holdsPending: boolean; counts: { pending: string; plan: string }; onPending: () => void };
+
+function ChannelPanels(props: { fullScreen: boolean; layout: ChannelLayout; onServiceOpen: (open: boolean) => void; shown: Tab; focusSeq: number | null; clearFocus: () => void; client: SpaceClient; records: ReturnType<typeof useClientRecords>; plan: ReturnType<typeof useWorkPlan>; stages: WorkStage[]; target: ServiceAskTarget | null; people: ReadonlyMap<string, string>; params: ChannelWorkParams; nameOf: (userId: string) => string; toMessage: (seq: number) => void; openTask: OpenTask | null; setOpenTask: (task: OpenTask | null) => void; links: ChannelLinks }) {
   const { shown, client, plan, stages, target, params, nameOf, toMessage, setOpenTask } = props;
   const members = checklistMembers(props.people, params.yo);
   // José 06/11: «Publicar informe» went under the three Android buttons; every panel ends above them.
@@ -101,13 +112,15 @@ function ChannelPanels(props: { fullScreen: boolean; onServiceOpen: (open: boole
     <>
       {shown === 'services' ? (
         <View className="bg-background" style={cover}>
-          <ClientServices onServiceOpen={props.onServiceOpen} onToChat={props.onToChat} client={client} records={props.records} target={target} members={props.people} me={params.yo} links={props.links} focusSeq={props.focusSeq} onFocused={props.clearFocus} />
+          <ClientServices onServiceOpen={props.onServiceOpen} compact={props.layout.compact} pending={props.layout.compact && stages.length ? { stages, label: props.layout.holdsPending ? 'Ver en Checklist' : 'Ver pendientes', onOpen: props.layout.onPending } : undefined} client={client} records={props.records} target={target} members={props.people} me={params.yo} links={props.links} focusSeq={props.focusSeq} onFocused={props.clearFocus} />
         </View>
       ) : null}
       {shown === 'account' && target ? <View className="bg-background" style={cover}><ClientAccountPanel target={target} services={client.services} /></View> : null}
       {shown === 'checklist' ? (
         <View className="bg-background" style={cover}>
-          <WorkPlanPanel plan={plan} jwt={params.jwt} yo={params.yo} nameOf={nameOf} members={members} onStartFailed={(message) => ToastAndroid.show(message, ToastAndroid.SHORT)} onOpenTask={setOpenTask} />
+          {props.layout.holdsPending ? (
+            <ChecklistSegments counts={props.layout.counts} pending={<PendingPanel stages={stages} nameOf={nameOf} onOpen={setOpenTask} />} plan={<WorkPlanPanel plan={plan} jwt={params.jwt} yo={params.yo} nameOf={nameOf} members={members} onStartFailed={(message) => ToastAndroid.show(message, ToastAndroid.SHORT)} onOpenTask={setOpenTask} />} />
+          ) : <WorkPlanPanel plan={plan} jwt={params.jwt} yo={params.yo} nameOf={nameOf} members={members} onStartFailed={(message) => ToastAndroid.show(message, ToastAndroid.SHORT)} onOpenTask={setOpenTask} />}
         </View>
       ) : null}
       {shown === 'pending' ? <View className="bg-background" style={cover}><PendingPanel stages={stages} nameOf={nameOf} onOpen={setOpenTask} /></View> : null}

@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, ExternalLink, FilePlus, FileText } from 'lucide-react';
-import { AREA_TYPE, createsInEmbed, draftToContinue, embedCreateRequest, opensEmbed, reportTypeLabel, isObservationType, CLIENT_SERVICE_STATUS_LABELS, detailEmptyText, SERVICE_REPORT_ACTION, serviceStageLine, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, orphanDispatchesOf, reportGroups, type DetailRow, type ChannelLinks, type DetailTabKey, type ServiceTabKey, type EmbedCreateRequest, type ServiceDetail, type ServiceReport, type SpaceClientService } from '@lilachat/shared';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { ChevronLeft, FilePlus, FileText } from 'lucide-react';
+import { AREA_TYPE, createsInEmbed, draftToContinue, embedCreateRequest, opensEmbed, reportTypeLabel, isObservationType, SERVICE_REPORT_ACTION, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, type ChannelLinks, type DetailTabKey, type ServiceTabKey, type EmbedCreateRequest, type ServiceAskResult, type ServiceDetail, type ServiceReport, type ServiceTabItem, type SpaceClientService } from '@lilachat/shared';
 import { usePortalFileViewer } from './PortalFileViewer';
-import type { OpenSheetFile } from './RecordSheetWeb';
 import { RecordSheetWeb } from './RecordSheetWeb';
 import { ServiceDriveWeb } from './ServiceDriveWeb';
+import { ServiceListWeb } from './ServiceListsWeb';
+import { SectionActions, SHELL_PRIMARY, ServiceShellWeb, useCompactShell } from './ServiceShellWeb';
 import { MapWorkspace } from './workMap/MapWorkspace';
 import { doorMapLinks } from './workMap/workProgressSender';
 import { ServiceStagesWeb } from './ServiceStagesWeb';
 import { SpaceActionButtonWeb } from './SpaceActionButtonWeb';
-import { DETAIL_TONE, STATUS_TONE } from './tones';
 import { useReportPdf } from './useReportPdf';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
 import { CreateReportDialog } from './reports/CreateReportDialog';
@@ -18,178 +18,66 @@ import { PortalEmbedWeb } from './reports/PortalEmbedWeb';
 import { ObservationsWeb } from './observations/ObservationsWeb';
 import { AreasWeb } from './areas/AreasWeb';
 
-const PortalLink = (props: { url: string; label: string; testId: string }) => (
-  <a href={props.url} target="_blank" rel="noreferrer" data-testid={props.testId} className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary hover:underline">
-    <ExternalLink size={14} /> {props.label}
-  </a>
-);
-
-/** The expediente's head (design f-04): kicker, name, state and stage with its progress. */
-/** The stages read quotes and collection: only a space admin sees them (José 07/11). */
-function ServiceHead({ service, detail, admin = false }: { service: SpaceClientService; detail: ServiceDetail | null; admin?: boolean }) {
-  return (
-    <section className="rounded-xl border border-outline/15 border-t-[3px] border-t-primary bg-surface p-4 md:p-5">
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Servicio</p>
-          <h2 className="mt-1 text-lg font-bold md:text-xl">{service.name}</h2>
-        </div>
-        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{CLIENT_SERVICE_STATUS_LABELS[service.status]}</span>
-      </div>
-      {service.stage_label || service.progress !== undefined ? (
-        <div className="mt-3 border-t border-outline/10 pt-3">
-          <p className="flex justify-between text-sm">
-            <span>{serviceStageLine(service)}</span>
-            {service.progress !== undefined ? <span className="font-bold tabular-nums">{`${service.progress} %`}</span> : null}
-          </p>
-          {service.progress !== undefined ? <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-background"><div className="h-full rounded-full bg-primary" style={{ width: `${service.progress}%` }} /></div> : null}
-        </div>
-      ) : null}
-      {detail && admin ? <ServiceStagesWeb detail={detail} /> : null}
-    </section>
-  );
-}
-
-/** José 30/10: the row opens its sheet inside Lilachat; the file opens in Lilachat's viewer, not in Portal. */
-function RowView({ row, onOpen, onOpenFile }: { row: DetailRow; onOpen: (id: string) => void; onOpenFile: OpenSheetFile }) {
-  return (
-    <li data-testid={`fila-${row.id}`} className="flex min-h-[56px] items-center gap-3 px-4 py-2.5">
-      <button type="button" onClick={() => onOpen(row.id)} className="min-w-0 flex-1 text-left">
-        <p className="truncate text-sm font-semibold hover:underline">{row.title}</p>
-        {row.line ? <p className="truncate text-[12px] text-on-surface-variant">{row.line}</p> : null}
-      </button>
-      {row.file ? (
-        <button type="button" onClick={() => row.file && onOpenFile({ url: row.file.url, name: `${row.title} · ${row.file.label}` })} data-testid={`archivo-${row.id}`} className="inline-flex shrink-0 items-center gap-1 text-[12px] font-semibold text-primary hover:underline"><FileText size={14} /> {row.file.label}</button>
-      ) : null}
-      <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${DETAIL_TONE[row.status.tone]}`}>{row.status.label}</span>
-    </li>
-  );
-}
-
-/** The reports under a header per day, like Portal's list (José 31/10). */
-function ReportDays({ detail, onOpen, onOpenFile }: { detail: ServiceDetail; onOpen: (id: string) => void; onOpenFile: OpenSheetFile }) {
-  return (
-    <>
-      {reportGroups(detail).map((group) => (
-        <li key={group.title} data-testid={`dia-informes-${group.title}`}>
-          <p className="bg-surface-variant/40 px-4 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">{group.title}</p>
-          <ul className="divide-y divide-outline/10">{group.rows.map((row) => <RowView key={row.id} row={row} onOpen={onOpen} onOpenFile={onOpenFile} />)}</ul>
-        </li>
-      ))}
-    </>
-  );
-}
-
 /** An order's sheet makes its link with what Portal's modal asks (José 31/10); other sheets have no button. */
 type OpenSheet = { tab: DetailTabKey; id: string };
 const orderLinkAction = (links: ChannelLinks | undefined, top: OpenSheet | undefined, target: ServiceAskTarget) =>
   links?.can('order') && top?.tab === 'orders' ? { label: 'Crear enlace del pedido', onPress: () => links.open({ kind: 'order', clientId: target.clientId, orderId: top.id }) } : undefined;
 
-/** «Crear informe» above Informes, for everyone with the services (José 05/11): the type picker, design j-01. */
-function CreateReportButton({ onPress }: { onPress: () => void }) {
-  return (
-    <button type="button" data-testid="crear-informe" onClick={onPress} className="flex h-11 w-full items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 text-left text-sm font-semibold text-primary hover:bg-primary/15">
-      <FilePlus size={16} />
-      Crear informe
-    </button>
-  );
-}
+/** «Crear informe» at the right of the tab bar (design cc-03), for everyone with the services (José 05/11). */
+const CreateReportButton = ({ onPress }: { onPress: () => void }) => (
+  <button type="button" data-testid="crear-informe" onClick={onPress} className={SHELL_PRIMARY}><FilePlus size={16} /> Crear informe</button>
+);
 
 /**
- * «Generar informe de servicio» above Informes (José 31/10): the liquidation
- * carries amounts, so only for whoever sees money (José 05/11). It runs from
- * the space (Portal refuses it in a group), and an answered one asks the detail again.
+ * «Generar informe de servicio» above Informes (José 31/10): the liquidation carries amounts, so
+ * only for whoever sees money (José 05/11). It runs from the space; an answered one asks the detail again.
  */
 function ReportAction({ target, serviceId, onAnswered }: { target: ServiceAskTarget; serviceId: string; onAnswered: () => void }) {
   return <SpaceActionButtonWeb jwt={target.jwt} spaceId={target.spaceId} values={serviceValuesOf(serviceId)} onAnswered={onAnswered} actionKey={SERVICE_REPORT_ACTION} label="Generar informe de servicio" testId="generar-informe-servicio" Icon={FileText} />;
 }
 
-/** Dispatches whose order did not come in the 100 Portal sent (José 01/11: they live inside their order). */
-function OrphanDispatches({ detail, onOpen, onOpenFile }: { detail: ServiceDetail; onOpen: (id: string) => void; onOpenFile: OpenSheetFile }) {
-  const rows = orphanDispatchesOf(detail);
-  if (!rows.length) return null;
-  return (
-    <section data-testid="despachos-sin-pedido" className="overflow-hidden rounded-xl border border-outline/15 bg-surface">
-      <p className="bg-surface-variant/40 px-4 py-1.5 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">Despachos de otros pedidos</p>
-      <ul className="divide-y divide-outline/10">{rows.map((row) => <RowView key={row.id} row={row} onOpen={onOpen} onOpenFile={onOpenFile} />)}</ul>
-    </section>
-  );
-}
+type ListProps = { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; links?: ChannelLinks; seesMoney: boolean; admin: boolean; tab: DetailTabKey; startOrderId?: string; onReported: () => void; onCreateReport: () => void; onContinueReport: (draft: { type: string; reportId: string }) => void; onOpenEmbed: (report: ServiceReport) => void };
 
-/** The open tab's body: the reports go by day; the rest, a row each. */
-function TabBody({ detail, tab, onOpen, onOpenFile }: { detail: ServiceDetail; tab: DetailTabKey; onOpen: (id: string) => void; onOpenFile: OpenSheetFile }) {
-  const rows = detailRows(detail, tab);
-  return (
-    <ul className="divide-y divide-outline/10 overflow-hidden rounded-xl border border-outline/15 bg-surface">
-      {!rows.length ? <li className="p-4 text-sm text-on-surface-variant">{detailEmptyText(tab, detail.totals)}</li> : tab === 'reports' ? <ReportDays detail={detail} onOpen={onOpen} onOpenFile={onOpenFile} /> : rows.map((row) => <RowView key={row.id} row={row} onOpen={onOpen} onOpenFile={onOpenFile} />)}
-    </ul>
-  );
-}
-
-function DetailTabs({ detail, target, service, chatId, seesDrive, links, seesMoney, onReported, onCreateReport, onContinueReport, onOpenEmbed, tab, onTab, startOrderId }: { onContinueReport: (draft: { type: string; reportId: string }) => void; onOpenEmbed: (report: ServiceReport) => void; startOrderId?: string; detail: ServiceDetail; target: ServiceAskTarget; service: SpaceClientService; chatId: string; seesDrive: boolean; links?: ChannelLinks; seesMoney: boolean; onReported: () => void; onCreateReport: () => void; tab: ServiceTabKey; onTab: (tab: ServiceTabKey) => void }) {
-  const setTab = onTab;
-  // The map and the Drive draw their own; what follows only reads Portal's lists.
-  const listTab: DetailTabKey = tab === 'drive' || tab === 'map' ? 'orders' : tab;
-  const serviceId = service.id;
+/** Pedidos or Informes: the list, its sheets on top and what Portal has beyond the 100 it sent. */
+function ServiceLists(props: ListProps) {
+  const { detail, tab } = props;
   const viewer = usePortalFileViewer();
   // An order's sheet opens its dispatches on top (José 01/11); closing goes back one.
-  const [opened, setOpened] = useState<OpenSheet[]>(() => openingSheets(detail, startOrderId));
-  const shown = detailRows(detail, listTab).length;
-  const more = moreInPortal(shown, detail.totals[listTab]);
+  const [opened, setOpened] = useState<OpenSheet[]>(() => openingSheets(detail, props.startOrderId));
+  const more = moreInPortal(detailRows(detail, tab).length, detail.totals[tab]);
   const top = opened.at(-1);
   const sheet = top ? detailSheet(detail, top.tab, top.id) : null;
-  const reportPdf = useReportPdf(target, serviceId);
+  const reportPdf = useReportPdf(props.target, props.serviceId);
   const openRow = (id: string) => {
-    // Portal 11/11, José 12/11: on a wide window a report its canvas edits opens there, draft or not; a draft
-    // of an editor type too, even if the mark did not arrive: the wide web never shows the form.
-    const row = listTab === 'reports' ? detail.reports.find((one) => one.id === id) : undefined;
+    // Portal 11/11, José 12/11: on a wide window a report its canvas edits opens there, draft or not.
+    const row = tab === 'reports' ? detail.reports.find((one) => one.id === id) : undefined;
     const draft = row ? draftToContinue(detail, id) : null;
-    if (row && (opensEmbed(window.innerWidth, row) || (draft && createsInEmbed(window.innerWidth, draft.type)))) onOpenEmbed(row);
-    else if (draft) onContinueReport(draft);
-    else setOpened([{ tab: listTab, id }]);
+    if (row && (opensEmbed(window.innerWidth, row) || (draft && createsInEmbed(window.innerWidth, draft.type)))) props.onOpenEmbed(row);
+    else if (draft) props.onContinueReport(draft);
+    else setOpened([{ tab, id }]);
   };
   const openDispatch = (id: string) => setOpened((before) => [...before, { tab: 'dispatches', id }]);
   const close = () => {
     reportPdf.stop();
     setOpened((before) => before.slice(0, -1));
   };
-  const strip = (
-      <div role="tablist" className="flex gap-1 overflow-x-auto rounded-xl border border-outline/15 bg-surface p-1">
-        {serviceTabs(detail, seesDrive, Boolean(links)).map((one) => (
-          <button key={one.key} type="button" role="tab" aria-selected={tab === one.key} data-testid={`pestana-detalle-${one.key}`} onClick={(event) => { setTab(one.key); event.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); }} className={`h-9 shrink-0 rounded-lg px-3 text-sm ${tab === one.key ? 'bg-primary font-semibold text-on-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>{one.label}</button>
-        ))}
-      </div>
-  );
-  if (tab === 'drive') return <>{strip}<ServiceDriveWeb target={target} service={service} chatId={chatId} marks={detail.photoMarks} /></>;
   return (
     <>
-      {strip}
-      {tab === 'reports' ? <CreateReportButton onPress={onCreateReport} /> : null}
-      {tab === 'reports' && seesMoney ? <ReportAction target={target} serviceId={serviceId} onAnswered={onReported} /> : null}
-      <TabBody detail={detail} tab={listTab} onOpen={openRow} onOpenFile={viewer.open} />
-      {tab === 'orders' ? <OrphanDispatches detail={detail} onOpen={openDispatch} onOpenFile={viewer.open} /> : null}
+      {tab === 'reports' ? <SectionActions><CreateReportButton onPress={props.onCreateReport} /></SectionActions> : null}
+      {props.admin ? <ServiceStagesWeb detail={detail} /> : null}
+      {tab === 'reports' && props.seesMoney ? <ReportAction target={props.target} serviceId={props.serviceId} onAnswered={props.onReported} /> : null}
+      <ServiceListWeb detail={detail} tab={tab} onOpen={openRow} onOpenDispatch={(id) => setOpened([{ tab: 'dispatches', id }])} onOpenFile={viewer.open} />
       {viewer.viewer}
-      {sheet ? <RecordSheetWeb sheet={sheet} onClose={close} onOpenFile={viewer.open} pdf={sheet.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, readyUrl: reportPdf.readyUrl, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!) } : undefined} onOpenRelated={openDispatch} action={orderLinkAction(links, top, target)} /> : null}
+      {sheet ? <RecordSheetWeb sheet={sheet} onClose={close} onOpenFile={viewer.open} pdf={sheet.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, readyUrl: reportPdf.readyUrl, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!) } : undefined} onOpenRelated={openDispatch} action={orderLinkAction(props.links, top, props.target)} /> : null}
       {more ? <p className="text-center text-[12px] text-on-surface-variant">{`${more} · el resto está en el Portal`}</p> : null}
-      {detail.service.url ? <PortalLink url={detail.service.url} label="Abrir en el Portal" testId="abrir-servicio-portal" /> : null}
     </>
   );
 }
 
-type ServiceDetailProps = { /** Who can be a report's responsible. */ people?: readonly string[]; target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; /** The map takes the whole conversation (design o-01): the channel drops its padding and scroll. */ onMapOpen?: (open: boolean) => void; /** A space admin: the stages, which read money (José 07/11). */ admin?: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string ; /** Its Drive joins the tabs (José 06/11). */ seesDrive?: boolean; /** A member an admin gave only the Drive. */ driveOnly?: boolean; onToChat?: () => void };
+type ServiceDetailProps = { /** Who can be a report's responsible. */ people?: readonly string[]; target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; /** The client's name, the head's kicker (design cc-02). */ clientName?: string; /** The map takes the whole body: the channel drops its padding and scroll. */ onMapOpen?: (open: boolean) => void; /** A space admin: the stages, which read money (José 07/11). */ admin?: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string; /** Its Drive joins the tabs (José 06/11). */ seesDrive?: boolean; /** A member an admin gave only the Drive. */ driveOnly?: boolean };
 
-/** José 06/11: an open service takes the whole conversation, and this is the way back to the chat. */
-function ServiceCrumbs(props: { service: string; onBack: () => void; onToChat?: () => void }) {
-  return (
-    <nav aria-label="Ruta" data-testid="ruta-servicio" className="flex min-w-0 items-center gap-1.5 text-sm">
-      {props.onToChat ? <button type="button" data-testid="volver-al-chat" onClick={props.onToChat} className="inline-flex shrink-0 items-center gap-1 font-semibold text-primary"><ChevronLeft size={16} /> Chat</button> : null}
-      {props.onToChat ? <ChevronRight size={14} className="shrink-0 text-on-surface-variant" /> : null}
-      <button type="button" data-testid="volver-a-servicios" onClick={props.onBack} className="inline-flex shrink-0 items-center gap-1 font-semibold text-primary">{props.onToChat ? null : <ChevronLeft size={16} />} Servicios</button>
-      <ChevronRight size={14} className="shrink-0 text-on-surface-variant" />
-      <span className="min-w-0 truncate text-on-surface-variant">{props.service}</span>
-    </nav>
-  );
-}
+/** «Enlace del servicio» in the head (José 31/10): only where the channel's app offers it. */
+const shareOf = (props: ServiceDetailProps) => (props.links?.can('service') ? () => props.links?.open({ kind: 'service', clientId: props.target.clientId, serviceId: props.service.id }) : undefined);
 
 /** Over the editor's «Editar croquis», the map's way back to the report (José 16/11). */
 function BackToReport(props: { onBack: () => void }) {
@@ -200,39 +88,52 @@ function BackToReport(props: { onBack: () => void }) {
   );
 }
 
+/** A report, an observation or an area takes the service's place, with the channel's scroll. */
+const Takeover = ({ children }: { children: ReactNode }) => <div className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-6"><div className="mx-auto max-w-3xl">{children}</div></div>;
+
 /**
- * A client's service as an expediente (José 30/10: there was no way to see a
- * service's reports, orders and dispatches; design f-04): its head, then
- * Pedidos · Informes · Drive, each order with its dispatches inside (José
- * 01/11). Asked when it opens.
+ * A client's service (José 30/10, design f-04; José 19/11, designs cc-02…cc-05): the head and
+ * Pedidos · Informes · Mapa · Drive under ONE bar, each order with its dispatches inside. Asked
+ * when it opens.
  */
 export function ServiceDetailWeb(props: ServiceDetailProps) {
-  if (!props.driveOnly) return <ServiceRecordsDetail {...props} />;
+  const compact = useCompactShell();
+  if (!props.driveOnly) return <ServiceRecordsDetail {...props} compact={compact} />;
+  const tabs: ServiceTabItem[] = [{ key: 'drive', label: 'Drive' }];
   return (
-    <div data-testid="detalle-servicio" className="mx-auto flex max-w-3xl flex-col gap-3">
-      <ServiceCrumbs service={props.service.name} onBack={props.onBack} onToChat={props.onToChat} />
-      <ServiceHead service={props.service} detail={null} />
+    <ServiceShellWeb service={props.service} clientName={props.clientName} compact={compact} tabs={tabs} tab="drive" onTab={() => undefined} onBack={props.onBack} onShare={shareOf(props)}>
       <ServiceDriveWeb target={props.target} service={props.service} chatId={props.chatId} />
-    </div>
+    </ServiceShellWeb>
   );
 }
 
-function ServiceRecordsDetail(props: ServiceDetailProps) {
-  // After a report the detail is asked again, keeping the open tab (agentes 31/10).
-  const [round, setRound] = useState(0);
-  const askAgain = useCallback(() => setRound((count) => count + 1), []);
-  const answer = useServiceAsk('detail', props.target, props.service.id, round);
-  // José 05/11: a field report is filled here, not in Portal's public page (spec INFORMES-DESDE-LILACHAT); it takes the detail's place.
+type ReportOpen = { type: string; reportId?: string; responsible?: string };
+type Framed = Pick<ServiceReport, 'title'> & Partial<Pick<ServiceReport, 'id' | 'url'>> & { create?: EmbedCreateRequest };
+
+/** What is filled from here (José 05/11: not in Portal's public page): the report, Portal's editor framed, the picker. */
+function useReportFlows(askAgain: () => void, onClosed: () => void) {
   const [picker, setPicker] = useState(false);
-  const [report, setReport] = useState<{ type: string; reportId?: string; responsible?: string } | null>(null);
-  const [framed, setFramed] = useState<(Pick<ServiceReport, 'title'> & Partial<Pick<ServiceReport, 'id' | 'url'>> & { create?: EmbedCreateRequest }) | null>(null);
+  const [report, setReport] = useState<ReportOpen | null>(null);
+  const [framed, setFramed] = useState<Framed | null>(null);
   // José 12/11: on the wide web a new report is born in Portal's editor; the form is for the APK and the phone.
   const pickNew = (code: string, responsible: string) => (createsInEmbed(window.innerWidth, code) ? setFramed({ title: reportTypeLabel(code), create: embedCreateRequest(code, responsible) }) : setReport({ type: code, responsible }));
   const closeFramed = useCallback((changed: boolean) => {
     setFramed(null);
     if (changed) askAgain();
   }, [askAgain]);
-  // Back from the report, the detail opens on Informes, where it was.
+  const closeReport = useCallback((changed: boolean) => {
+    setReport(null);
+    onClosed();
+    if (changed) askAgain();
+  }, [askAgain, onClosed]);
+  return { picker, setPicker, report, setReport, framed, setFramed, pickNew, closeFramed, closeReport };
+}
+
+function ServiceRecordsDetail(props: ServiceDetailProps & { compact: boolean }) {
+  // After a report the detail is asked again, keeping the open tab (agentes 31/10).
+  const [round, setRound] = useState(0);
+  const askAgain = useCallback(() => setRound((count) => count + 1), []);
+  const answer = useServiceAsk('detail', props.target, props.service.id, round);
   const [tab, setTab] = useState<ServiceTabKey>('orders');
   // The order's card opens its sheet once; coming back from another tab does not open it again.
   const [startOrderId, setStartOrderId] = useState(props.startOrderId);
@@ -240,46 +141,59 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
     setStartOrderId(undefined);
     setTab(next);
   }, []);
+  // Back from the report, the detail opens on Informes, where it was.
+  const flows = useReportFlows(askAgain, useCallback(() => { setStartOrderId(undefined); setTab('reports'); }, []));
   const portalUrl = answer?.ok ? answer.value.service.url : undefined;
-  const closeReport = useCallback((changed: boolean) => {
-    setReport(null);
-    setStartOrderId(undefined);
-    setTab('reports');
-    if (changed) askAgain();
-  }, [askAgain]);
   const mapOpen = tab === 'map' && Boolean(props.links) && Boolean(answer?.ok);
-  // «Editar croquis» in Portal's editor draws this same map over it; closing it redraws the croquis.
-  const channelLinks = props.links;
-  const croquisMap = answer?.ok && channelLinks ? (done: () => void) => <MapWorkspace admin={props.seesMoney} crumbs={<BackToReport onBack={done} />} detail={answer.value} service={props.service} tabs={[]} onTab={() => undefined} links={doorMapLinks(channelLinks, props.target, props.chatId, props.service.id)} target={props.target} chatId={props.chatId} /> : undefined;
   const { onMapOpen } = props;
   useEffect(() => {
     onMapOpen?.(mapOpen);
     return () => onMapOpen?.(false);
   }, [mapOpen, onMapOpen]);
-  if (mapOpen && answer?.ok && props.links) {
-    const crumbs = <ServiceCrumbs service={props.service.name} onBack={props.onBack} onToChat={props.onToChat} />;
-    return <MapWorkspace admin={props.seesMoney} crumbs={crumbs} detail={answer.value} service={props.service} tabs={serviceTabs(answer.value, Boolean(props.seesDrive), true)} onTab={pickTab} links={doorMapLinks(props.links, props.target, props.chatId, props.service.id)} target={props.target} chatId={props.chatId} />;
-  }
-  // José 11/11: the registry and the lifting of observations have their own view (design ob-07b).
-  // José 12/11, option B: the additional area is measured here (Medición on an iPhone); the picker offers it only once Portal's tools are live.
-  if (report?.type === AREA_TYPE) return <AreasWeb target={props.target} chatId={props.chatId} service={props.service} {...(report.reportId ? { reportId: report.reportId } : {})} portalUrl={portalUrl} onClose={closeReport} />;
-  if (report && isObservationType(report.type)) return <ObservationsWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} portalUrl={portalUrl} onClose={closeReport} />;
-  if (report) return <ReportDocumentWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={portalUrl} links={props.links} onClose={closeReport} />;
+  const channelLinks = props.links;
+  // «Editar croquis» in Portal's editor draws this same map over it; closing it redraws the croquis.
+  const croquisMap = answer?.ok && channelLinks ? (done: () => void) => <MapWorkspace admin={props.seesMoney} crumbs={<BackToReport onBack={done} />} detail={answer.value} service={props.service} links={doorMapLinks(channelLinks, props.target, props.chatId, props.service.id)} target={props.target} chatId={props.chatId} /> : undefined;
+  if (flows.report) return <ReportTakeover {...props} report={flows.report} portalUrl={portalUrl} onClose={flows.closeReport} />;
+  const tabs = answer?.ok ? serviceTabs(answer.value, Boolean(props.seesDrive), Boolean(props.links)) : [];
   return (
-    <div data-testid="detalle-servicio" className="mx-auto flex max-w-3xl flex-col gap-3">
-      <ServiceCrumbs service={props.service.name} onBack={props.onBack} onToChat={props.onToChat} />
-      <ServiceHead service={props.service} detail={answer?.ok ? answer.value : null} admin={Boolean(props.admin)} />
-      {answer === null ? <div data-testid="detalle-cargando" className="h-48 animate-pulse rounded-xl bg-surface" /> : null}
-      {answer?.ok ? <DetailTabs onContinueReport={setReport} onOpenEmbed={setFramed} detail={answer.value} target={props.target} service={props.service} chatId={props.chatId} seesDrive={Boolean(props.seesDrive)} links={props.links} seesMoney={props.seesMoney} onReported={askAgain} onCreateReport={() => setPicker(true)} tab={tab} onTab={pickTab} startOrderId={tab === 'orders' ? startOrderId : undefined} /> : null}
-      {picker ? <CreateReportDialog portalUrl={portalUrl} people={props.people ?? []} seesMoney={props.seesMoney} inEditor={(code) => createsInEmbed(window.innerWidth, code)} onPick={(code, responsible) => { setPicker(false); pickNew(code, responsible); }} onClose={() => setPicker(false)} /> : null}
-      {framed ? <PortalEmbedWeb target={props.target} serviceId={props.service.id} serviceName={props.service.name} report={framed} onClose={closeFramed} {...(croquisMap ? { workMap: croquisMap } : {})} /> : null}
-      {answer && !answer.ok ? (
-        <div data-testid="detalle-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm">
-          <p className="mb-2 font-semibold">{answer.message}</p>
-          {answer.portalUrl ? <PortalLink url={answer.portalUrl} label="Abrir el servicio en el Portal" testId="detalle-fallo-portal" /> : null}
-          {answer.offline ? <button type="button" data-testid="crear-informe-sin-senal" onClick={() => setPicker(true)} className="mt-2 h-11 w-full rounded-xl border border-primary/30 bg-primary/10 text-sm font-semibold text-primary">Crear informe</button> : null}
-        </div>
-      ) : null}
+    <ServiceShellWeb service={props.service} clientName={props.clientName} compact={props.compact} tabs={tabs} tab={tab} onTab={pickTab} onBack={props.onBack} onShare={shareOf(props)} portalUrl={portalUrl} flush={mapOpen}>
+      <ServiceBody {...props} answer={answer} tab={tab} mapOpen={mapOpen} startOrderId={startOrderId} askAgain={askAgain} flows={flows} />
+      {flows.picker ? <CreateReportDialog portalUrl={portalUrl} people={props.people ?? []} seesMoney={props.seesMoney} inEditor={(code) => createsInEmbed(window.innerWidth, code)} onPick={(code, responsible) => { flows.setPicker(false); flows.pickNew(code, responsible); }} onClose={() => flows.setPicker(false)} /> : null}
+      {flows.framed ? <PortalEmbedWeb target={props.target} serviceId={props.service.id} serviceName={props.service.name} report={flows.framed} onClose={flows.closeFramed} {...(croquisMap ? { workMap: croquisMap } : {})} /> : null}
+    </ServiceShellWeb>
+  );
+}
+
+/** José 11/11: the registry and the lifting of observations have their own view (design ob-07b); José 12/11: the area too. */
+function ReportTakeover(props: ServiceDetailProps & { report: ReportOpen; portalUrl?: string; onClose: (changed: boolean) => void }) {
+  const { report } = props;
+  const reportId = report.reportId ? { reportId: report.reportId } : {};
+  if (report.type === AREA_TYPE) return <Takeover><AreasWeb target={props.target} chatId={props.chatId} service={props.service} {...reportId} portalUrl={props.portalUrl} onClose={props.onClose} /></Takeover>;
+  if (isObservationType(report.type)) return <Takeover><ObservationsWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...reportId} portalUrl={props.portalUrl} onClose={props.onClose} /></Takeover>;
+  return <Takeover><ReportDocumentWeb target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...reportId} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={props.portalUrl} links={props.links} onClose={props.onClose} /></Takeover>;
+}
+
+type BodyProps = ServiceDetailProps & { answer: ServiceAskResult<ServiceDetail> | null; tab: ServiceTabKey; mapOpen: boolean; startOrderId?: string; askAgain: () => void; flows: ReturnType<typeof useReportFlows> };
+
+/** The open section under the bar: the map edge to edge, the Drive, or Pedidos / Informes. */
+function ServiceBody(props: BodyProps) {
+  const { answer, tab, flows } = props;
+  if (answer === null) return <div data-testid="detalle-cargando" className="h-48 animate-pulse rounded-xl bg-surface" />;
+  if (!answer.ok) return <DetailFailure answer={answer} onCreate={() => flows.setPicker(true)} />;
+  if (props.mapOpen && props.links) return <MapWorkspace admin={props.seesMoney} detail={answer.value} service={props.service} links={doorMapLinks(props.links, props.target, props.chatId, props.service.id)} target={props.target} chatId={props.chatId} />;
+  if (tab === 'drive') return <ServiceDriveWeb target={props.target} service={props.service} chatId={props.chatId} marks={answer.value.photoMarks} />;
+  if (tab !== 'orders' && tab !== 'reports') return null;
+  return <ServiceLists detail={answer.value} target={props.target} serviceId={props.service.id} links={props.links} seesMoney={props.seesMoney} admin={Boolean(props.admin)} tab={tab} startOrderId={tab === 'orders' ? props.startOrderId : undefined} onReported={props.askAgain} onCreateReport={() => flows.setPicker(true)} onContinueReport={flows.setReport} onOpenEmbed={flows.setFramed} />;
+}
+
+type Failed = Extract<ServiceAskResult<ServiceDetail>, { ok: false }>;
+
+function DetailFailure({ answer, onCreate }: { answer: Failed; onCreate: () => void }) {
+  return (
+    <div data-testid="detalle-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm">
+      <p className="mb-2 font-semibold">{answer.message}</p>
+      {answer.portalUrl ? <a href={answer.portalUrl} target="_blank" rel="noreferrer" data-testid="detalle-fallo-portal" className="text-[13px] font-semibold text-primary hover:underline">Abrir el servicio en el Portal</a> : null}
+      {answer.offline ? <button type="button" data-testid="crear-informe-sin-senal" onClick={onCreate} className="mt-2 h-11 w-full rounded-xl border border-primary/30 bg-primary/10 text-sm font-semibold text-primary">Crear informe</button> : null}
     </div>
   );
 }

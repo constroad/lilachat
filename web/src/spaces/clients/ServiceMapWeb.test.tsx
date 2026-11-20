@@ -165,7 +165,7 @@ describe('ServiceMapWeb', () => {
 
   it('a stage narrows the streets', async () => {
     showMap();
-    fireEvent.change(await screen.findByTestId('mapa-etapa'), { target: { value: 'e2' } });
+    fireEvent.click(await screen.findByTestId('capas-etapa-e2'));
     expect(screen.queryByTestId('mapa-calle-s1')).not.toBeInTheDocument();
     expect(screen.getByTestId('mapa-calle-s2')).toBeInTheDocument();
   });
@@ -174,7 +174,7 @@ describe('ServiceMapWeb', () => {
     showMap();
     fireEvent.click(await screen.findByTestId('mapa-trabajo'));
     fireEvent.click(screen.getByTestId('mapa-trabajo-asfalto'));
-    fireEvent.change(screen.getByTestId('mapa-etapa'), { target: { value: 'e2' } });
+    fireEvent.click(screen.getByTestId('capas-etapa-e2'));
     expect(screen.getByTestId('mapa-calle-s2')).toBeInTheDocument();
   });
 
@@ -197,7 +197,7 @@ describe('ServiceMapWeb', () => {
     const clicked = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
     showMap();
     await screen.findByTestId('mapa-lienzo');
-    fireEvent.change(screen.getByTestId('mapa-etapa'), { target: { value: 'e1' } });
+    fireEvent.click(screen.getByTestId('capas-etapa-e1'));
     // Act
     fireEvent.click(screen.getByTestId('mapa-mas'));
     fireEvent.click(screen.getByTestId('mapa-exportar'));
@@ -478,17 +478,17 @@ describe('ServiceMapWeb', () => {
   it('«Fotos» shows a marker per spot of the street, and a marker opens its photos (José 08/11)', async () => {
     const photo = (id: string, meters: number, plate?: string): MapPhoto => ({ id, ...onStreet(meters), at: '2026-11-07T14:00:00.000Z', kind: 'photo', url: `https://lila.test/${id}.jpg`, thumbnailUrl: `https://lila.test/${id}-t.jpg`, reportType: 'CTL-PIS', ...(plate ? { plate } : {}) });
     showMap(undefined, { mapPhotos: [photo('f1', 40, 'QAP-101'), photo('f2', 45), photo('f3', 300)] });
-    fireEvent.click(await screen.findByTestId('mapa-fotos'));
-    expect(screen.getByTestId('mapa-fotos')).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(await screen.findByTestId('capa-fotos'));
+    expect(screen.getByTestId('capa-fotos')).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByTestId('mapa-lienzo').dataset.pins).toBe('2');
     fireEvent.click(screen.getByTestId('lienzo-pin-fotos-s1-43'));
     expect(await screen.findByTestId('visor-fotos')).toBeInTheDocument();
     expect(screen.getByTestId('visor-fotos')).toHaveTextContent('Control de pista · QAP-101 · Av. Los Olivos · 0+043');
   });
 
-  it('without placed photos there is no «Fotos» button', async () => {
+  it('without placed photos there is no «Fotos» switch', async () => {
     showMap();
     await screen.findByTestId('mapa-lienzo');
-    expect(screen.queryByTestId('mapa-fotos')).toBeNull();
+    expect(screen.queryByTestId('capa-fotos')).toBeNull();
   });
 });

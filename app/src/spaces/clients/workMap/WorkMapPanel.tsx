@@ -95,10 +95,11 @@ function GroupTitle(props: { group: StageGroup }) {
  * the streets under their stage, and the day the map is cut at. Admins see the units of the runway
  * control report after the streets (`o-07`; audit 08/11 item 14: it came before them).
  */
-export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; filter: WorkMapFilter; badge?: ReactNode; top?: ReactNode; /** «Dibujos» and «Observaciones» (José 19/11). */ items?: ReactNode; deleteStreet?: StreetDeleteSend; /** «Ver tramos» (o-03). */ onOpenStreet?: (streetId: string) => void }) {
+export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; filter: WorkMapFilter; badge?: ReactNode; top?: ReactNode; /** «Dibujos» and «Observaciones» (José 19/11). */ items?: ReactNode; /** «Capas y leyenda» first in the sheet (design cc-04 mobile). */ layers?: ReactNode; deleteStreet?: StreetDeleteSend; /** «Ver tramos» (o-03). */ onOpenStreet?: (streetId: string) => void }) {
   return (
     <View className="-mx-4 -mt-5 rounded-t-3xl border-t border-outline/15 bg-surface px-4 pb-4 pt-2">
       <View className="mb-3 h-1 w-10 self-center rounded-full bg-outline/30" />
+      {props.layers}
       {props.groups.length || !props.items ? <PanelHead view={props.view} groups={props.groups} badge={props.badge} /> : <BareHead badge={props.badge} />}
       {props.groups.map((group) => (
         <View key={group.id}>

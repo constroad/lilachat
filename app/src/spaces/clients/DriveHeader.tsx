@@ -1,5 +1,5 @@
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import { Camera, LayoutGrid, List, Plus } from 'lucide-react-native';
+import { Camera, ClipboardPaste, LayoutGrid, List, Plus } from 'lucide-react-native';
 import { DRIVE_KINDS, DRIVE_UPLOADING, type DriveKind, type DriveLayout } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 
@@ -10,7 +10,7 @@ const filesLabel = (count: number) => (count === 1 ? '1 archivo' : `${count} arc
  * The camera sits beside it, one tap away (José 13/11; stitch-design 5-ter rule 2: evidence opens
  * the camera at the first touch).
  */
-export function DriveHeader(props: { count: number | null; layout: DriveLayout; onLayout: (layout: DriveLayout) => void; sending: boolean; onUpload: () => void; onCamera: () => void }) {
+export function DriveHeader(props: { count: number | null; layout: DriveLayout; onLayout: (layout: DriveLayout) => void; sending: boolean; onUpload: () => void; onCamera: () => void; /** «Pegar del portapapeles» (José 19/11, design cc-05). */ onPaste: () => void }) {
   const colors = useColores();
   const toggle = (layout: DriveLayout, Icon: typeof List, label: string) => {
     const on = props.layout === layout;
@@ -30,6 +30,9 @@ export function DriveHeader(props: { count: number | null; layout: DriveLayout; 
         {toggle('list', List, 'Ver como lista')}
         {toggle('grid', LayoutGrid, 'Ver como cuadrícula')}
       </View>
+      <Pressable testID="drive-pegar" accessibilityRole="button" accessibilityLabel="Pegar del portapapeles" disabled={props.sending} onPress={props.onPaste} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/20 bg-surface" style={{ opacity: props.sending ? 0.6 : 1 }}>
+        <ClipboardPaste size={20} color={colors['on-surface']} />
+      </Pressable>
       <Pressable testID="drive-camara" accessibilityRole="button" accessibilityLabel="Abrir la cámara" disabled={props.sending} onPress={props.onCamera} className="h-11 w-11 items-center justify-center rounded-xl bg-primary/10" style={{ opacity: props.sending ? 0.6 : 1 }}>
         <Camera size={20} color={colors.primary} />
       </Pressable>

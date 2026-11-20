@@ -107,20 +107,24 @@ function GroupTitle(props: { group: StageGroup }) {
  * the streets under their stage, and the day the map is cut at. Admins see the units of the
  * runway control report on top (`o-07`).
  */
-export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; filter: WorkMapFilter; badge?: ReactNode; top?: ReactNode; /** «Dibujos» and «Observaciones» (José 19/11). */ items?: ReactNode; scrolls: boolean; deleteStreet?: StreetDeleteSend; /** «Ver tramos» (o-03). */ onOpenStreet?: (streetId: string) => void }) {
+export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; filter: WorkMapFilter; badge?: ReactNode; top?: ReactNode; /** «Dibujos» and «Observaciones» (José 19/11). */ items?: ReactNode; /** «Capas y leyenda» first, the progress under it (design cc-04). */ layers?: ReactNode; scrolls: boolean; deleteStreet?: StreetDeleteSend; /** «Ver tramos» (o-03). */ onOpenStreet?: (streetId: string) => void }) {
+  const scroll = props.scrolls ? 'min-h-0 flex-1 overflow-y-auto' : '';
+  const head = props.groups.length || !props.items ? <PanelHead view={props.view} groups={props.groups} badge={props.badge} /> : <BareHead badge={props.badge} />;
+  const body = (
+    <div className={`bg-background px-4 pb-4 md:px-5 ${props.layers ? '' : scroll}`}>
+      {props.top ? <div className="pt-4">{props.top}</div> : null}
+      {props.groups.map((group) => (
+        <section key={group.id}>
+          <GroupTitle group={group} />
+          <ul className="space-y-3">{group.streets.map((street) => <StreetCard key={street.id} street={street} deleteStreet={props.deleteStreet} onOpen={props.onOpenStreet ? () => props.onOpenStreet?.(street.id) : undefined} />)}</ul>
+        </section>
+      ))}
+      {props.items}
+    </div>
+  );
   return (
     <>
-      {props.groups.length || !props.items ? <PanelHead view={props.view} groups={props.groups} badge={props.badge} /> : <BareHead badge={props.badge} />}
-      <div className={`bg-background px-4 pb-4 md:px-5 ${props.scrolls ? 'min-h-0 flex-1 overflow-y-auto' : ''}`}>
-        {props.top ? <div className="pt-4">{props.top}</div> : null}
-        {props.groups.map((group) => (
-          <section key={group.id}>
-            <GroupTitle group={group} />
-            <ul className="space-y-3">{group.streets.map((street) => <StreetCard key={street.id} street={street} deleteStreet={props.deleteStreet} onOpen={props.onOpenStreet ? () => props.onOpenStreet?.(street.id) : undefined} />)}</ul>
-          </section>
-        ))}
-        {props.items}
-      </div>
+      {props.layers ? <div className={scroll}>{props.layers}{head}{body}</div> : <>{head}{body}</>}
       <p data-testid="mapa-corte-pie" className="shrink-0 border-t border-outline/15 bg-surface px-4 py-2.5 text-right font-mono text-[12px] text-on-surface-variant md:px-5">Corte: {workMapCutChip(props.filter)}</p>
     </>
   );

@@ -169,3 +169,6 @@ candado del PDF. Portal no manda esos datos.
 - **Maestro:** `chat-file.yaml` y `chat-pdf.yaml` prueban archivos del chat, no el Drive
   (no verificado su contenido en detalle). No hay flujo del Drive.
 - **E2E documentado:** APK y web con dos PDF de QA en «QA-PISTA-APK — borrar» (13/11).
+
+- **20/11** · cc-05 contra Stitch: Drive a todo el ancho del panel, nombre de archivo de 14 px, carpetas en
+  carrusel en el teléfono y 4 por fila desde tablet, sin chevron y con radio de 12 px.

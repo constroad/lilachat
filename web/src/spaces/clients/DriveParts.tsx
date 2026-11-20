@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react';
-import { Camera, ChevronRight, ClipboardPaste, FileSpreadsheet, FileText, Folder, Image as ImageIcon, LayoutGrid, List, Play, Plus, Video } from 'lucide-react';
+import { Camera, ClipboardPaste, FileSpreadsheet, FileText, Folder, Image as ImageIcon, LayoutGrid, List, Play, Plus, Video } from 'lucide-react';
 import { DRIVE_KINDS, DRIVE_UPLOAD_OPTIONS, DRIVE_UPLOADING, driveDayGroups, driveFilesLabel, driveKindOf, driveTileLine, driveTypeTag, type DriveKind, type DriveLayout, type DriveUploadOption, type ServiceFile } from '@lilachat/shared';
 import { useDismiss } from '../../ui/useDismiss';
 
@@ -116,7 +116,7 @@ function Tile(props: { file: ServiceFile; now: Date; onOpen: (file: ServiceFile)
       <button type="button" data-testid="archivo-drive" onClick={() => props.onOpen(props.file)} className="block w-full overflow-hidden rounded-xl text-left">
         <TilePreview file={props.file} />
         <span className="block py-1.5 pl-3 pr-10">
-          <span className="block truncate text-[13px] font-semibold">{props.file.name}</span>
+          <span className="block truncate text-sm font-semibold">{props.file.name}</span>
           <span className="block truncate text-[11px] text-on-surface-variant">{driveTileLine(props.file, props.now)}</span>
         </span>
       </button>
@@ -142,18 +142,17 @@ export function DriveGridWeb(props: { files: readonly ServiceFile[]; onOpen: (fi
   );
 }
 
-/** The folders as cards (design cc-05): icon tile, name and «41 archivos»; 2, 3 or 4 per row. */
+/** The folders as cards (design cc-05): icon tile, name and «41 archivos»; a carousel on a phone, 4 per row from a tablet. */
 export function FolderCardsWeb(props: { folders: readonly { name: string; count: number }[]; onOpen: (folder: string) => void }) {
   return (
-    <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 lg:grid-cols-4">
+    <div data-testid="drive-carpetas" className="-mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 md:mx-0 md:grid md:grid-cols-4 md:px-0">
       {props.folders.map((one) => (
-        <button key={one.name} type="button" data-testid={`carpeta-${one.name}`} onClick={() => props.onOpen(one.name)} className="flex min-h-[64px] min-w-0 items-center gap-3 rounded-xl border border-outline/15 bg-surface px-3 py-2.5 text-left hover:border-primary/40">
+        <button key={one.name} type="button" data-testid={`carpeta-${one.name}`} onClick={() => props.onOpen(one.name)} className="flex min-h-[64px] w-[160px] shrink-0 snap-start items-center gap-3 rounded-card border border-outline/15 bg-surface px-3 py-2.5 text-left hover:border-primary/40 md:w-auto md:min-w-0">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary"><Folder size={18} /></span>
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-semibold">{one.name}</span>
             <span className="block truncate text-xs text-on-surface-variant">{driveFilesLabel(one.count)}</span>
           </span>
-          <ChevronRight size={16} aria-hidden className="shrink-0 text-on-surface-variant" />
         </button>
       ))}
     </div>

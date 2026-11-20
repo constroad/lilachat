@@ -7,7 +7,7 @@ Captura: design/stitch/capturas/cc-04-impl-tablet.jpg (tablet, web local con la 
 Captura: design/stitch/capturas/cc-04-impl-movil.jpg (móvil, web local con la API de producción, tema oscuro)
 Revisor: subagente independiente (solo vio las imágenes de Stitch y de la implementación; 19/11).
 Veredicto del revisor: pasa con observaciones: partidas con color e interruptor verificadas (al apagar la carpeta aparece la imprimación); en tablet con la lista abierta el panel va detrás de «Capas»; «Hasta hoy», «Trabajo» y los chips de fecha son de la pantalla actual.
-Fecha: 2026-11-19 23:55 (E2E en web a 1440, 1024 y 390 px; main d9aa2e91)
+Fecha: 2026-11-20 00:40 (E2E en web a 1440, 1024 y 390 px; main d9aa2e91)
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |

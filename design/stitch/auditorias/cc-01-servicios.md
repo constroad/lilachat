@@ -7,7 +7,7 @@ Captura: design/stitch/capturas/cc-01-impl-tablet.jpg (tablet, web local con la 
 Captura: design/stitch/capturas/cc-01-impl-movil.jpg (móvil, web local con la API de producción, tema oscuro)
 Revisor: subagente independiente (solo vio las imágenes de Stitch y de la implementación; 19/11).
 Veredicto del revisor: no pasa: la tarjeta no trae pedidos, informes, etapas ni último movimiento (Portal no los mandaba). José 19/11: «Portal manda las cifras»; Portal y Agentes ya los mandan en sus ramas y la tarjeta en columnas va en el lote siguiente.
-Fecha: 2026-11-19 23:55 (E2E en web a 1440, 1024 y 390 px; main d9aa2e91)
+Fecha: 2026-11-20 00:40 (E2E en web a 1440, 1024 y 390 px; main d9aa2e91)
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |

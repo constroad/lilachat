@@ -5,7 +5,7 @@ Código: `web/src/chat/workPlan/ChecklistSegmentsWeb.tsx`, `app/src/chat/workPla
 Captura: design/stitch/capturas/cc-06-impl-movil.jpg (móvil, web local con la API de producción, tema oscuro)
 Revisor: subagente independiente (solo vio las imágenes de Stitch y de la implementación; 19/11).
 Veredicto del revisor: pasa con observaciones: cliente sin pendientes en la captura; segmento activo corregido (d9aa2e91).
-Fecha: 2026-11-19 23:55 (E2E en web a 1440, 1024 y 390 px; main d9aa2e91)
+Fecha: 2026-11-20 00:40 (E2E en web a 1440, 1024 y 390 px; main d9aa2e91)
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |

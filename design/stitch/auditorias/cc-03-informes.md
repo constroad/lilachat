@@ -3,9 +3,11 @@
 Stitch: `.stitch-work/out_cc/{desktop,tablet,mobile}/cc-03-informes.stitch.png` del checkout principal (escritorio, tablet, móvil). Ids en INVENTARIO § «Canal de cliente y servicio, rediseño».
 Código: `web/src/spaces/clients/ServiceDetailWeb.tsx`, `ServiceListsWeb.tsx`, `app/src/spaces/clients/ServiceDetailView.tsx`, `ServiceLists.tsx`.
 Captura: design/stitch/capturas/cc-03-impl-escritorio.jpg (escritorio, web local con la API de producción, tema oscuro)
+Captura: design/stitch/capturas/cc-03-impl-tablet.jpg (tablet, web local con la API de producción, tema oscuro; con datos de OBRA GRAU)
+Captura: design/stitch/capturas/cc-03-impl-movil.jpg (móvil, web local con la API de producción, tema oscuro; con datos de OBRA GRAU)
 Revisor: subagente independiente (solo vio las imágenes de Stitch y de la implementación; 19/11).
 Veredicto del revisor: pasa con observaciones: servicio sin informes en la captura; la lista por día se ve con datos en OBRA GRAU.
-Fecha: 2026-11-19 23:55 (E2E en web a 1440, 1024 y 390 px; main d9aa2e91)
+Fecha: 2026-11-20 00:40 (E2E en web a 1440, 1024 y 390 px; main d9aa2e91)
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |
@@ -16,3 +18,8 @@ Fecha: 2026-11-19 23:55 (E2E en web a 1440, 1024 y 390 px; main d9aa2e91)
 | Franja de cifras al pie (escritorio) | Conformidad técnica, Última actualización, Sincronización Drive | no va | diferencia justificada: INVENTARIO § cc, cifras inventadas sin dato en Portal |
 | Resumen «Total emitidos» (móvil) | tarjeta arriba | no va | diferencia justificada: INVENTARIO § cc, sin dato de aprobados en el detalle |
 | «Generar informe de servicio» | no | sí, solo quien ve montos | diferencia justificada: José 31/10 y 05/11 (as-is canal §2), memoria «Rediseño conserva lo de la pantalla actual» |
+
+
+## Revisión de tablet y móvil (19/11, revisor independiente)
+
+Pasa con observaciones. Diferencias por datos que Portal no manda (código PED, «Volquete», totales y contadores: van con las cifras del lote siguiente), por piezas de la pantalla actual que se conservan («Etapas · X de N», «Generar informe de servicio») y por inventos de Stitch (tarjetas de resumen de Informes, «Total emitidos», «Nueva carpeta», ⌘K). En el teléfono el estado y el PDF del informe bajan bajo el título para que no se corte (6accd568).

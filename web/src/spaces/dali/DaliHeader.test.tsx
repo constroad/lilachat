@@ -32,7 +32,7 @@ describe('DaliHeader', () => {
     renderHeader(true);
     const row = screen.getByTestId('fila-cabecera-dali');
     expect(within(row).queryByRole('tablist')).toBeNull();
-    expect(screen.getAllByRole('tab')).toHaveLength(4);
+    expect(screen.getAllByRole('tab')).toHaveLength(5);
   });
 
   it('a tab says which one is open and changes it', () => {

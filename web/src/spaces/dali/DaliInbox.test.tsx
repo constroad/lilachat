@@ -44,11 +44,11 @@ describe('DaliInbox (dl-01 v3)', () => {
     expect(screen.getByText('Ricardo Huamán')).toBeTruthy();
   });
 
-  it('marks the prospect chats with something unread and folds the team chats apart', () => {
+  it('marks the prospect chats with something unread (the team chats live in the Chats tab)', () => {
     renderInbox();
     fireEvent.click(screen.getByTestId('vista-bandeja-all'));
     expect(screen.getByTestId('sin-leer-prospecto').textContent).toBe('2');
-    expect(screen.getByTestId('chats-del-equipo').textContent).toContain('Chats del equipo · 1');
+    expect(screen.queryByTestId('chats-del-equipo')).toBeNull();
   });
 
   it('keeps the only-asked folded, and a prospect without a name shows a phone, not «·»', () => {

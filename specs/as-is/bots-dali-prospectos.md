@@ -20,7 +20,8 @@ Diseños: `dl-01` a `dl-13` en `design/stitch/INVENTARIO.md` (prototipo v3).
 
 **Lo que escribe agentes** (token del bot, `server/src/bots/botProspects.ts`, `botMessages.ts`).
 - `PUT /api/bots/prospects/:prospectId`: la primera vez crea el canal (201). Después actualiza (200).
-  - Fase 1: `name`, `phone`, `source` (`ctwa`, anuncio), `last_activity_at`, `attended_by`.
+  - Fase 1: `name`, `phone`, `source` (`ctwa`, anuncio), `last_activity_at`, `attended_by`,
+    `listing` (`'prospect'` | `'chat'`, 20/11: ausente no cambia lo guardado, como el resto de fase 2).
   - Fase 2: `stage`, `service`, `intent`, `score`, `score_reasons`, `fields`, `missing`, `ready_at`, `kind`,
     `summary`, `follow_up_draft`, `quote`, `unanswered`.
   - Un campo de fase 2 mal formado no frena el PUT: vuelve en `ignored: [{ field, message }]`.
@@ -61,19 +62,29 @@ Diseños: `dl-01` a `dl-13` en `design/stitch/INVENTARIO.md` (prototipo v3).
 
 - Validación: `prospects.ts` (fase 1, `authorKeyOf`, `prospectAuthorView`), `prospectInsight.ts` (fase 2),
   `prospectSeller.ts` (lo del vendedor), `prospectFieldConfirm.ts`, `prospectFieldGeo.ts` (`fieldGeoMapOf`).
-- Vistas: `prospectBoard.ts` (`inboxOf`, `overdueOf`, `followUpsOf`, `funnelOf`), `prospectInboxRows.ts`,
-  `prospectFollowUpCards.ts`, `prospectFunnelView.ts`, `prospectFigures.ts`, `prospectPanel.ts`,
-  `prospectSheet.ts`, `prospectPlan.ts` (`agoOf`, `arrivedThisMonth`, `isOnlyConsult`), `prospectReview.ts`.
+- Vistas: `prospectBoard.ts` (`inboxOf`, `overdueOf`, `followUpsOf`, `funnelOf`, `isSalesProspect`),
+  `prospectInboxRows.ts`, `prospectFollowUpCards.ts`, `prospectFunnelView.ts`, `prospectFigures.ts`,
+  `prospectPanel.ts`, `prospectSheet.ts`, `prospectPlan.ts` (`agoOf`, `arrivedThisMonth`, `isOnlyConsult`),
+  `prospectReview.ts`.
+- `ProspectView.listing?: 'prospect' | 'chat'` (20/11, pedido vía agentes): ausente o `'prospect'` es una
+  venta; `'chat'` es un 1:1 directo que agentes marcó como tal. `isSalesProspect` filtra `inboxOf`,
+  `funnelOf`, `followUpsOf` (`prospectBoard.ts`), `weekReviewOf` (`prospectReview.ts`) y `panelOf`
+  (`prospectPanel.ts`): un prospecto `listing: 'chat'` nunca cuenta en Bandeja/Embudo/Panel/Revisión.
 - Conflictos: `prospectChange.ts` (409 → «Alguien lo cambió antes que tú…»).
 - Dali: `daliKnowledge.ts` (`knowledgeViewOf` quita precios a quien no es admin, `questionsOf`),
   `daliTeach.ts` (Enseñarle a Dali, hasta 1000 letras).
 
 ### Web/PWA (`web/src/spaces/dali/`)
 
-- `DaliSpace.tsx`: cabecera de una fila con la barra **Bandeja · Embudo · Panel · Revisión** y el botón
-  «Lo que Dali sabe». Bandeja maestro-detalle: lista de 380 px, conversación y ficha desde 1280 px.
+- `DaliSpace.tsx`: cabecera de una fila con la barra **Bandeja · Chats · Embudo · Panel · Revisión** y el
+  botón «Lo que Dali sabe». Bandeja y Chats son maestro-detalle: lista de 380 px, conversación y (solo en
+  Bandeja) ficha desde 1280 px.
 - `DaliInbox.tsx` + `ProspectRow.tsx`: Míos · Sin asignar · Todos, filtro por servicio, «Seguimientos de hoy»,
-  tres secciones (Atender ahora, En seguimiento, Dali conversando), «Solo consultas» y «Chats del equipo».
+  tres secciones (Atender ahora, En seguimiento, Dali conversando) y «Solo consultas».
+- `DaliChats.tsx` (20/11, pedido vía agentes): la pestaña Chats — los chats del equipo y un prospecto que
+  agentes marcó `listing: 'chat'` (no es una venta). `isSalesProspect` (`shared/src/prospectBoard.ts`) es la
+  única fuente de verdad del corte; `DaliSpace.tsx` cruza `chats` del espacio contra `list.prospects` por
+  `chatId` para armar la lista.
 - `ProspectChat.tsx`: cabecera (iniciales, teléfono, origen, Llamar con el marcador, Ficha, Marcar resultado)
   y franja (quién atiende, Dali en pausa, Tomar, Devolver a Dali).
 - `ProspectSheet.tsx` + `prospectSheetBlocks.tsx`: la ficha. `ClientDocumentsCard.tsx`, `DocumentFieldRow.tsx`
@@ -86,10 +97,15 @@ Diseños: `dl-01` a `dl-13` en `design/stitch/INVENTARIO.md` (prototipo v3).
 
 ### APK (`app/src/spaces/dali/`)
 
-- `DaliSpace.tsx`: la pestaña Chats del shell pasa a ser la barra del espacio. «Lo que Dali sabe» es el
-  libro de la cabecera. Teléfono girado y tablet: bandeja a la izquierda y conversación al lado.
+- `DaliSpace.tsx`: la pestaña Chats del shell pasa a ser la barra del espacio —
+  **Bandeja · Chats · Embudo · Panel · Revisión**. «Lo que Dali sabe» es el libro de la cabecera. Teléfono
+  girado y tablet: bandeja a la izquierda y conversación al lado.
 - `DaliInbox.tsx` + `ProspectRow.tsx`, `useProspectDoor.tsx` (la conversación: cabecera, franja y
   «Se envía al cliente por WhatsApp»), `ProspectSheetScreen.tsx` (ficha a pantalla completa).
+- `DaliChats.tsx` (20/11): la pestaña Chats, pantalla completa (sin columnas) — misma fuente que la web
+  (`isSalesProspect`), lista virtualizada con `FilaDeChat`. `DaliInbox.tsx` siempre pasa `teamChats: []`
+  a `inboxRowsOf` (`shared/src/prospectInboxRows.ts`): el pliegue «Chats del equipo» queda vacío y
+  no se dibuja (la función sigue genérica y probada; solo dejó de recibir datos en la Bandeja).
 - `NextActionSheet.tsx`, `ResultSheet.tsx`, `FollowUpsScreen.tsx`, `TeachDaliSheet.tsx`,
   `DaliKnowledgeScreen.tsx`, `DaliFunnel.tsx`, `DaliPanel.tsx`, `DaliReview.tsx`.
 - `ClientDocumentsCard.tsx` (Abrir · Descargar), `DocumentFieldRow.tsx`, `FieldGeoMap.tsx`.
@@ -121,6 +137,11 @@ Diseños: `dl-01` a `dl-13` en `design/stitch/INVENTARIO.md` (prototipo v3).
 - **17/11** Fase 2b (`36206b42`): subidas del bot, archivos como del prospecto, tarjeta de documentos,
   datos por confirmar.
 - **17/11** Fase 3 (`e5d3f680`): el vendedor confirma o corrige lo leído, y el lote del KML en la ficha.
+- **20/11** Pestaña Chats (web y APK), pedido urgente vía agentes: `listing: 'chat'` en el contrato de
+  `PUT prospects`, `isSalesProspect` filtra los 5 motores de la Bandeja/Embudo/Panel/Revisión, y
+  `DaliChats.tsx` muestra los chats directos (los del equipo y los `listing: 'chat'`). La Bandeja deja de
+  plegar «Chats del equipo»: se promovió a su propia pestaña. Probado con `vitest run` en las 4 cuentas
+  (shared/web/app/server) y E2E real en el Chrome de José, espacio «Dali» de Constroad.
 
 ## 5. Diseños de Stitch relacionados
 
@@ -174,13 +195,14 @@ Lo que Stitch inventó y no va está listado en la spec (fase 2, pantallas de la
 - Server: `server/src/bots/botProspects.test.ts` (6), `prospectDesk.test.ts` (21), `botUploads.test.ts` (6),
   `fake.test.ts` (10).
 - Shared: `prospects.test.ts` (10), `prospectInsight.test.ts` (9), `prospectSeller.test.ts` (6),
-  `prospectBoard.test.ts` (17), `prospectPanel.test.ts` (5), `prospectSheet.test.ts` (33),
-  `prospectChange.test.ts` (4), `prospectFieldConfirm.test.ts` (4), `prospectFieldGeo.test.ts` (6),
-  `prospectFigures.test.ts` (17), `prospectFollowUpCards.test.ts` (14), `prospectFunnelView.test.ts` (12),
-  `prospectInboxRows.test.ts` (20), `prospectPlan.test.ts` (11), `prospectReview.test.ts` (6),
-  `daliKnowledge.test.ts` (8), `daliTeach.test.ts` (9).
-- Web: `web/src/spaces/dali/DaliInbox.test.tsx` (7), `ProspectChat.test.tsx` (7), `DaliPanel.test.tsx` (3),
-  `DaliHeader.test.tsx` (5), `ClientDocumentsCard.test.tsx` (3), `DocumentFieldRow.test.tsx` (4).
+  `prospectBoard.test.ts` (21, +4 de `isSalesProspect`/20·11), `prospectPanel.test.ts` (6),
+  `prospectSheet.test.ts` (33), `prospectChange.test.ts` (4), `prospectFieldConfirm.test.ts` (4),
+  `prospectFieldGeo.test.ts` (6), `prospectFigures.test.ts` (17), `prospectFollowUpCards.test.ts` (14),
+  `prospectFunnelView.test.ts` (12), `prospectInboxRows.test.ts` (20), `prospectPlan.test.ts` (11),
+  `prospectReview.test.ts` (7), `daliKnowledge.test.ts` (8), `daliTeach.test.ts` (9).
+- Web: `web/src/spaces/dali/DaliInbox.test.tsx` (7), `DaliChats.test.tsx` (2, 20/11),
+  `ProspectChat.test.tsx` (7), `DaliPanel.test.tsx` (3), `DaliHeader.test.tsx` (5),
+  `ClientDocumentsCard.test.tsx` (3), `DocumentFieldRow.test.tsx` (4).
   También `web/src/chat/BurbujaDeMensaje.person.test.tsx` y `filasDeLaConversacion.test.ts` (según spec).
 - APK: sin tests unitarios en `app/src/spaces/dali/`. La lógica está en `shared/`. Verificado.
 - Arnés: `scripts/e2e-dali.ts`. Mongo en memoria, server real en :4003, stub de agentes y de

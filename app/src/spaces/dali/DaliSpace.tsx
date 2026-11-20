@@ -1,7 +1,7 @@
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { BookOpen } from 'lucide-react-native';
-import type { ClientWorkspace, ProspectView } from '@lilachat/shared';
+import { isSalesProspect, type ClientWorkspace, type ProspectView } from '@lilachat/shared';
 import type { ChatSummary } from '../../api/client';
 import { openChatNow } from '../../chat/openChatNow';
 import { useColores } from '../../ui/tema';
@@ -10,6 +10,7 @@ import { useDisposicion } from '../../ui/useDisposicion';
 import { fetchSpaceChats, spaceChatsCache, useCached } from '../spaceCache';
 import { findSpaceChat } from '../spacesApi';
 import { useSpaceChatsLive } from '../useSpaceChatsLive';
+import { DaliChats } from './DaliChats';
 import { DaliFunnel } from './DaliFunnel';
 import { DaliInbox } from './DaliInbox';
 import { DaliKnowledgeScreen } from './DaliKnowledgeScreen';
@@ -20,9 +21,10 @@ import { FollowUpsScreen } from './FollowUpsScreen';
 import { ProspectSheetScreen } from './ProspectSheetScreen';
 import { useProspects, type Prospects } from './useProspects';
 
-export type DaliTab = 'inbox' | 'funnel' | 'panel' | 'review';
+export type DaliTab = 'inbox' | 'chats' | 'funnel' | 'panel' | 'review';
 const TABS: { key: DaliTab; label: string }[] = [
   { key: 'inbox', label: 'Bandeja' },
+  { key: 'chats', label: 'Chats' },
   { key: 'funnel', label: 'Embudo' },
   { key: 'panel', label: 'Panel' },
   { key: 'review', label: 'Revisión' },
@@ -59,8 +61,8 @@ function useKnowledgeKnock(spaceId: string, open: () => void): void {
 }
 
 /**
- * The space's chats (the unread of each prospect, and the team's own chats folded at the inbox's foot): the same
- * cache and live events as the space's list, which a Dali space shows instead.
+ * The space's chats (each prospect's unread, and the team's own chats shown in the Chats tab): the same cache
+ * and live events as the space's list, which a Dali space shows instead.
  */
 function useSpaceChats(jwt: string, spaceId: string, myUserId: string, active: boolean) {
   const key = `${spaceId}:chats`;
@@ -77,8 +79,9 @@ function useSpaceChats(jwt: string, spaceId: string, myUserId: string, active: b
 
 /**
  * A Dali space on the APK (BOTS-API fase 2, prototype v3): the shell keeps its header and bottom bar, and the Chats
- * tab becomes ONE tab bar — Bandeja · Embudo · Panel · Revisión. A prospect's row opens its conversation (dl-02);
- * the ficha, the follow-ups and what Dali knows open full screen with ←.
+ * tab becomes ONE tab bar — Bandeja · Chats · Embudo · Panel · Revisión. A prospect's row opens its conversation
+ * (dl-02); the ficha, the follow-ups and what Dali knows open full screen with ←. Chats (José 20/11, via Agentes):
+ * direct 1:1s — the team's own chats plus a prospect agentes marked `listing: 'chat'` (not a sales lead).
  */
 export function DaliSpace(props: Props) {
   const { space, jwt } = props;
@@ -96,6 +99,13 @@ export function DaliSpace(props: Props) {
   };
   const me = prospects.list?.me ?? props.myUserId;
   const list = prospects.list;
+  const directChats = useMemo(() => {
+    const prospectOfChat = new Map((list?.prospects ?? []).map((prospect) => [prospect.chatId, prospect]));
+    return (chats ?? []).filter((chat) => {
+      const prospect = prospectOfChat.get(chat.id);
+      return !prospect || !isSalesProspect(prospect);
+    });
+  }, [chats, list]);
   const openConversation = async (prospect: ProspectView) => {
     setOverlay(null);
     const chat = chats?.find((one) => one.id === prospect.chatId) ?? (await findSpaceChat(jwt, space.id, prospect.chatId));
@@ -127,6 +137,8 @@ export function DaliSpace(props: Props) {
           onOpenChat={props.onOpenChat}
           onFollowUps={() => setOverlay({ kind: 'followups' })}
         />
+      ) : tab === 'chats' ? (
+        <DaliChats chats={directChats} myUserId={me} openChatId={props.openChatId} onOpenChat={props.onOpenChat} />
       ) : (
         <BoardTab tab={tab} prospects={prospects} now={now} service={service} onService={setService} onOpenProspect={openSheet} jwt={jwt} spaceId={space.id} onOpenChatId={(chatId) => void findSpaceChat(jwt, space.id, chatId).then((chat) => chat && props.onOpenChat(chat))} />
       )}
@@ -138,7 +150,7 @@ export function DaliSpace(props: Props) {
 }
 
 type BoardProps = {
-  tab: Exclude<DaliTab, 'inbox'>;
+  tab: Exclude<DaliTab, 'inbox' | 'chats'>;
   prospects: Prospects;
   now: Date;
   service?: string;

@@ -18,7 +18,7 @@ type Props = {
   failed: boolean;
   onRetry: () => void;
   onRefresh: () => void;
-  /** The space's chats: the unread of each prospect, and the team's own chats folded at the foot. */
+  /** The space's chats: only used here for each prospect's unread count (the Chats tab shows the rest). */
   chats: ChatSummary[] | null;
   myUserId: string;
   openChatId: string | null;
@@ -62,13 +62,14 @@ const CHAT_SLOT: Record<FoldPlace, string> = {
 };
 /** The inbox has no selection mode: holding a team chat does nothing (the space's own list archives and mutes). */
 const NO_SELECTION = (_chatId: string): void => undefined;
+/** Bandeja never folds team chats any more (promoted to the Chats tab, José 20/11): the fold stays empty. */
+const NO_TEAM_CHATS: readonly ChatSummary[] = [];
 const keyOf = (row: Row): string => row.key;
 
 /**
  * The inbox of a Dali space on the APK (dl-01 v3): how many arrived this month, Míos · Sin asignar · Todos, the
- * service filter (José 16/11), «Seguimientos de hoy», the three sections, «Solo consultas» folded, and the team's own
- * chats folded at the foot (a Dali space is still a space: #general and the direct messages are not lost). One
- * virtualized list: a month can bring 150 prospects.
+ * service filter (José 16/11), «Seguimientos de hoy», the three sections, and «Solo consultas» folded (the team's
+ * own chats live in the Chats tab, promoted there 20/11). One virtualized list: a month can bring 150 prospects.
  */
 export function DaliInbox(props: Props) {
   const colors = useColores();
@@ -78,8 +79,7 @@ export function DaliInbox(props: Props) {
   const prospects = useMemo(() => list?.prospects ?? [], [list]);
   const me = list?.me ?? props.myUserId;
   const { view, inbox } = useMemo(() => shownInboxOf(prospects, { me, chosen, service: props.service }, now), [prospects, me, chosen, props.service, now]);
-  const teamChats = useMemo(() => (props.chats ?? []).filter((chat) => !chat.prospect), [props.chats]);
-  const rows = useMemo(() => inboxRowsOf({ list, failed: props.failed, inbox, teamChats, open }), [list, props.failed, inbox, teamChats, open]);
+  const rows = useMemo(() => inboxRowsOf({ list, failed: props.failed, inbox, teamChats: NO_TEAM_CHATS, open }), [list, props.failed, inbox, open]);
   const onToggle = useCallback((fold: InboxFold) => setOpen((before) => ({ ...before, [fold]: !before[fold] })), []);
   const context = useRowContext(props, me, onToggle);
   const renderRow = useCallback(({ item: row }: ListRenderItemInfo<Row>) => <InboxRowView row={row} context={context} />, [context]);

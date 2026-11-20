@@ -1,7 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { CalendarClock, ChevronDown, ChevronRight, FolderOpen, MessagesSquare } from 'lucide-react';
+import { CalendarClock, ChevronDown, ChevronRight, FolderOpen } from 'lucide-react';
 import { arrivedThisMonth, followUpsOf, inboxOf, type InboxView, type ProspectView } from '@lilachat/shared';
-import { ChatRow } from '../../chat/FilaDeChat';
 import type { ChatAction } from '../../chat/menuDelChat';
 import type { ChatSummary } from '../../chat/types';
 import { EmptyNote, Kicker, Segmented, SkeletonRows, TextButton } from './daliParts';
@@ -12,7 +11,7 @@ type Props = {
   list: ProspectList | null;
   failed: boolean;
   onRetry: () => void;
-  /** The space's chats: the unread of each prospect, and the team's own chats folded at the foot. */
+  /** The space's chats: only used here for each prospect's unread count (the Chats tab shows the rest). */
   chats: ChatSummary[] | null;
   yo: string;
   selectedChatId: string | null;
@@ -28,8 +27,8 @@ type Props = {
 
 /**
  * The inbox of a Dali space (dl-01 v3): on a phone, how many arrived this month (the header has no subtitle there); Míos · Sin asignar · Todos, the service filter (José 16/11), «Seguimientos de
- * hoy», the three sections, «Solo consultas» folded, and the team's own chats folded at the foot (a Dali space is
- * still a space: #general and the direct messages are not lost).
+ * hoy», the three sections, and «Solo consultas» folded (the team's own chats live in the Chats tab, promoted
+ * there 20/11).
  */
 export function DaliInbox(props: Props) {
   const { list, now } = props;
@@ -40,7 +39,6 @@ export function DaliInbox(props: Props) {
   const inbox = useMemo(() => inboxOf(prospects, { me, view, service: props.service }, now), [prospects, me, view, props.service, now]);
   const followUps = useMemo(() => followUpsOf(prospects, me, now), [prospects, me, now]);
   const unreadOf = useMemo(() => new Map((props.chats ?? []).map((chat) => [chat.id, chat.unread])), [props.chats]);
-  const teamChats = useMemo(() => (props.chats ?? []).filter((chat) => !chat.prospect), [props.chats]);
   const row = (prospect: ProspectView) => <ProspectRow key={prospect.id} prospect={prospect} unread={unreadOf.get(prospect.chatId)} selected={prospect.chatId === props.selectedChatId} phone={props.phone} now={now} onOpen={() => props.onOpenProspect(prospect)} />;
 
   return (
@@ -59,7 +57,6 @@ export function DaliInbox(props: Props) {
       <ServiceFilter services={inbox.services} value={props.service} onChange={props.onService} />
       {followUps.items.length > 0 ? <FollowUpsCard count={followUps.items.length} late={followUps.overdue} onOpen={props.onFollowUps} /> : null}
       <InboxBody {...props} inbox={inbox} row={row} />
-      <TeamChats chats={teamChats} yo={props.yo} selectedChatId={props.selectedChatId} onOpenChat={props.onOpenChat} onChatAction={props.onChatAction} />
     </div>
   );
 }
@@ -133,18 +130,5 @@ function Folded(props: { testId: string; icon: ReactNode; title: string; hint?: 
       </button>
       {open ? <div className="space-y-2.5 px-3 pb-3">{props.children}</div> : null}
     </section>
-  );
-}
-
-function TeamChats(props: { chats: ChatSummary[]; yo: string; selectedChatId: string | null; onOpenChat: (chat: ChatSummary) => void; onChatAction: (chat: ChatSummary, action: ChatAction) => void }) {
-  const unread = props.chats.reduce((total, chat) => total + (chat.unread > 0 ? 1 : 0), 0);
-  return (
-    <Folded testId="chats-del-equipo" icon={<MessagesSquare size={20} />} title={`Chats del equipo · ${props.chats.length}`} hint={unread > 0 ? `${unread} con mensajes sin leer` : 'Canales y mensajes directos del espacio'} hidden={props.chats.length === 0}>
-      <div className="-mx-3 overflow-hidden rounded-lg bg-list">
-        {props.chats.map((chat) => (
-          <ChatRow key={chat.id} chat={chat} yo={props.yo} seleccionado={chat.id === props.selectedChatId} onSelect={() => props.onOpenChat(chat)} onAccion={props.onChatAction} />
-        ))}
-      </div>
-    </Folded>
   );
 }

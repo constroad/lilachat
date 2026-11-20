@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { BookOpen, MessagesSquare } from 'lucide-react';
-import type { ClientWorkspace, ProspectView } from '@lilachat/shared';
+import { isSalesProspect, type ClientWorkspace, type ProspectView } from '@lilachat/shared';
 import type { ChatAction } from '../../chat/menuDelChat';
 import type { ChatSummary } from '../../chat/types';
 import { NewVersionBand } from '../../ui/NewVersionBand';
 import { SpaceTitleMenu, type WorkspaceLink } from '../SpaceTitleMenu';
+import { DaliChats } from './DaliChats';
 import { DaliFunnel } from './DaliFunnel';
 import { DaliInbox } from './DaliInbox';
 import { DaliKnowledgeSheet } from './DaliKnowledgeSheet';
@@ -16,9 +17,10 @@ import { FollowUpsSheet } from './FollowUpsSheet';
 import { ProspectSheet, type SheetProps } from './ProspectSheet';
 import { useProspects } from './useProspects';
 
-export type DaliTab = 'inbox' | 'funnel' | 'panel' | 'review';
+export type DaliTab = 'inbox' | 'chats' | 'funnel' | 'panel' | 'review';
 const TABS: { key: DaliTab; label: string }[] = [
   { key: 'inbox', label: 'Bandeja' },
+  { key: 'chats', label: 'Chats' },
   { key: 'funnel', label: 'Embudo' },
   { key: 'panel', label: 'Panel' },
   { key: 'review', label: 'Revisión' },
@@ -61,9 +63,11 @@ function useNow(): Date {
 
 /**
  * A Dali space (BOTS-API fase 2, José 16/11 «pierdo los tabs»): one header and ONE tab bar for the whole space —
- * Bandeja · Embudo · Panel · Revisión —, «Lo que Dali sabe» as a header button. On a computer the inbox is
- * master-detail (list, conversation, ficha) and the other tabs open the ficha, the follow-ups and what Dali knows in a
- * side panel under the bar. On a phone each of those goes full screen with ←.
+ * Bandeja · Chats · Embudo · Panel · Revisión —, «Lo que Dali sabe» as a header button. On a computer Bandeja and
+ * Chats are both master-detail (list, conversation, ficha only for Bandeja) and the other tabs open the ficha, the
+ * follow-ups and what Dali knows in a side panel under the bar. On a phone each of those goes full screen with ←.
+ * Chats (José 20/11, via Agentes): direct 1:1s — the team's own chats plus a prospect agentes marked
+ * `listing: 'chat'` (not a sales lead). `isSalesProspect` is the only source of truth for that split.
  */
 export function DaliSpace(props: Props) {
   const { space, phone } = props;
@@ -80,6 +84,13 @@ export function DaliSpace(props: Props) {
   const me = prospects.list?.me ?? props.yo;
   const list = prospects.list;
   const selectedProspect = useMemo(() => list?.prospects.find((one) => one.chatId === props.selectedChatId) ?? null, [list, props.selectedChatId]);
+  const directChats = useMemo(() => {
+    const prospectOfChat = new Map((list?.prospects ?? []).map((prospect) => [prospect.chatId, prospect]));
+    return (props.chats ?? []).filter((chat) => {
+      const prospect = prospectOfChat.get(chat.id);
+      return !prospect || !isSalesProspect(prospect);
+    });
+  }, [props.chats, list]);
   const openProspectChat = (prospect: ProspectView) => {
     setSide(null);
     if (tab !== 'inbox') setTab('inbox');
@@ -92,8 +103,8 @@ export function DaliSpace(props: Props) {
     <div data-testid="espacio-dali" className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col bg-background">
       <DaliHeader {...props} tab={tab} onTab={setTab} onKnowledge={() => setSide({ kind: 'knowledge' })} />
       <div className="relative flex min-h-0 flex-1">
-        {tab === 'inbox' ? (
-          <InboxTab {...props} prospects={prospects} me={me} now={now} service={service} onService={setService} selectedProspect={selectedProspect} sheetProps={sheetProps} onFollowUps={() => setSide({ kind: 'followups' })} />
+        {tab === 'inbox' || tab === 'chats' ? (
+          <InboxTab {...props} tab={tab} directChats={directChats} prospects={prospects} me={me} now={now} service={service} onService={setService} selectedProspect={selectedProspect} sheetProps={sheetProps} onFollowUps={() => setSide({ kind: 'followups' })} />
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto">
             {tab === 'funnel' ? <DaliFunnel {...shared} phone={phone} /> : null}
@@ -165,30 +176,33 @@ function DaliTabs({ value, onChange, phone }: { value: DaliTab; onChange: (tab: 
   );
 }
 
-function InboxTab(props: Props & { prospects: ReturnType<typeof useProspects>; me: string; now: Date; service?: string; onService: (key: string | undefined) => void; selectedProspect: ProspectView | null; sheetProps: Omit<SheetProps, 'prospect'>; onFollowUps: () => void }) {
-  const inbox = (
-    <DaliInbox
-      list={props.prospects.list}
-      failed={props.prospects.failed}
-      onRetry={props.prospects.reload}
-      chats={props.chats}
-      yo={props.yo}
-      selectedChatId={props.selectedChatId}
-      service={props.service}
-      onService={props.onService}
-      now={props.now}
-      phone={props.phone}
-      onOpenProspect={(prospect) => props.onOpenChat(prospect.chatId)}
-      onOpenChat={(chat) => props.onOpenChat(chat.id)}
-      onChatAction={props.onChatAction}
-      onFollowUps={props.onFollowUps}
-    />
-  );
-  if (props.phone) return <div className="min-h-0 flex-1 overflow-y-auto">{inbox}</div>;
-  const sheetInColumn = props.width >= SHEET_COLUMN_MIN_WIDTH && props.selectedProspect !== null;
+function InboxTab(props: Props & { tab: 'inbox' | 'chats'; directChats: ChatSummary[]; prospects: ReturnType<typeof useProspects>; me: string; now: Date; service?: string; onService: (key: string | undefined) => void; selectedProspect: ProspectView | null; sheetProps: Omit<SheetProps, 'prospect'>; onFollowUps: () => void }) {
+  const aside =
+    props.tab === 'chats' ? (
+      <DaliChats chats={props.directChats} yo={props.yo} selectedChatId={props.selectedChatId} onOpenChat={(chat) => props.onOpenChat(chat.id)} onChatAction={props.onChatAction} />
+    ) : (
+      <DaliInbox
+        list={props.prospects.list}
+        failed={props.prospects.failed}
+        onRetry={props.prospects.reload}
+        chats={props.chats}
+        yo={props.yo}
+        selectedChatId={props.selectedChatId}
+        service={props.service}
+        onService={props.onService}
+        now={props.now}
+        phone={props.phone}
+        onOpenProspect={(prospect) => props.onOpenChat(prospect.chatId)}
+        onOpenChat={(chat) => props.onOpenChat(chat.id)}
+        onChatAction={props.onChatAction}
+        onFollowUps={props.onFollowUps}
+      />
+    );
+  if (props.phone) return <div className="min-h-0 flex-1 overflow-y-auto">{aside}</div>;
+  const sheetInColumn = props.tab === 'inbox' && props.width >= SHEET_COLUMN_MIN_WIDTH && props.selectedProspect !== null;
   return (
     <>
-      <aside className="w-[380px] shrink-0 overflow-y-auto border-r border-outline/15 bg-list">{inbox}</aside>
+      <aside className="w-[380px] shrink-0 overflow-y-auto border-r border-outline/15 bg-list">{aside}</aside>
       <div className="flex min-w-0 flex-1">
         <SheetInColumn.Provider value={sheetInColumn}>{props.conversation ?? <PickOne />}</SheetInColumn.Provider>
       </div>

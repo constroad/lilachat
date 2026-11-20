@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, Text, TextInput, ToastAndroid, View } from 'react-native';
-import { ChevronLeft, ChevronRight, Cloud, ExternalLink, Folder, MoreVertical, Search } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Cloud, ExternalLink, MoreVertical, Search } from 'lucide-react-native';
 import { FileThumb } from './FileThumb';
 import { filesOfKind, photoMarkOf, withPhotoMark, type DriveKind, type DriveLayout, type PhotoMark, driveFileLine, driveUploadingLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService } from '@lilachat/shared';
-import { DriveHeader, DriveKindChips } from './DriveHeader';
+import { DriveHeader, DriveKindChips, DriveLayoutToggle } from './DriveHeader';
 import { DriveGrid, FolderCards } from './DriveGrid';
 import { DriveUploadSheet } from './DriveUploadSheet';
 import { DriveFileSheet } from './DriveFileSheet';
@@ -49,25 +49,14 @@ function FileRow({ file, onOpen, onMenu }: { file: ServiceFile; onOpen: OpenFile
 const Group = ({ children }: { children: React.ReactNode }) => <View className="overflow-hidden rounded-xl border border-outline/15 bg-surface">{children}</View>;
 const Kicker = ({ children }: { children: string }) => <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{children}</Text>;
 
-function FolderRows(props: { files: readonly ServiceFile[]; layout: DriveLayout; onOpen: (folder: string) => void }) {
-  const colors = useColores();
+/** Design cc-05: the folders are cards whatever the files' layout. */
+function FolderRows(props: { files: readonly ServiceFile[]; onOpen: (folder: string) => void }) {
   const folders = driveFolders(props.files);
   if (!folders.length) return null;
   return (
     <>
       <Kicker>Carpetas</Kicker>
-      {props.layout === 'grid' ? <FolderCards folders={folders} onOpen={props.onOpen} /> : (
-        <Group>
-          {folders.map((one) => (
-            <Pressable key={one.name} testID={`carpeta-${one.name}`} onPress={() => props.onOpen(one.name)} className="min-h-[56px] flex-row items-center gap-3 border-b border-outline/10 px-3">
-              <View className="h-9 w-9 items-center justify-center rounded-lg bg-primary/10"><Folder size={18} color={colors.primary} /></View>
-              <Text className="min-w-0 flex-1 text-[15px] font-semibold text-on-surface" numberOfLines={1}>{one.name}</Text>
-              <Text className="text-[14px] font-semibold text-on-surface-variant">{one.count}</Text>
-              <ChevronRight size={16} color={colors['on-surface-variant']} />
-            </Pressable>
-          ))}
-        </Group>
-      )}
+      <FolderCards folders={folders} onOpen={props.onOpen} />
     </>
   );
 }
@@ -96,8 +85,9 @@ function DriveBody(props: BodyProps) {
   const rest = filesInFolder(props.files, null).filter((file) => !recent.includes(file));
   return (
     <>
-      <FolderRows files={props.files} layout={props.layout} onOpen={props.onFolder} />
-      <Kicker>Recientes</Kicker>
+      <FolderRows files={props.files} onOpen={props.onFolder} />
+      {/* The mosaic carries its own day headers (design cc-05); the list keeps «Recientes». */}
+      {props.layout === 'list' ? <Kicker>Recientes</Kicker> : null}
       <FileSet files={[...recent, ...rest]} layout={props.layout} onOpen={props.onOpen} onMenu={props.onMenu} />
     </>
   );
@@ -108,7 +98,7 @@ function DriveSearch(props: { query: string; onQuery: (query: string) => void })
   return (
     <View className="h-11 flex-row items-center gap-2 rounded-xl border border-outline/15 bg-surface px-3">
       <Search size={16} color={colors['on-surface-variant']} />
-      <TextInput testID="buscar-drive" value={props.query} onChangeText={props.onQuery} placeholder="Buscar en el Drive del servicio…" placeholderTextColor={colors['on-surface-variant']} className="flex-1 text-[14px] text-on-surface" />
+      <TextInput testID="buscar-drive" value={props.query} onChangeText={props.onQuery} placeholder="Buscar en el Drive del servicio" placeholderTextColor={colors['on-surface-variant']} className="flex-1 text-[14px] text-on-surface" />
     </View>
   );
 }
@@ -136,7 +126,7 @@ function UploadStatus({ upload }: { upload: ReturnType<typeof useDriveUpload> })
 }
 
 /** The list or the grid stays as it was left while the app is open. */
-let lastLayout: DriveLayout = 'list';
+let lastLayout: DriveLayout = 'grid';
 
 const UPLOADS = {
   photo: (upload: ReturnType<typeof useDriveUpload>) => upload.takePhoto(),
@@ -207,14 +197,19 @@ export function ServiceDrive(props: { target: ServiceAskTarget; service: SpaceCl
   const openFile = (file: ServiceFile) => answer?.ok && viewer.open(viewableOf(file), answer.value.files.map(viewableOf), undefined, undefined, phaseOf);
   return (
     <View testID="drive-servicio" className="gap-3">
-      {folder ? <Breadcrumb folder={folder} onRoot={() => setFolder(null)} /> : null}
-      <DriveHeader count={answer?.ok ? answer.value.files.length : null} layout={layout} onLayout={setLayout} sending={upload.sending} onUpload={() => setChoosing(true)} onCamera={upload.takePhoto} onPaste={upload.pasteImage} />
+      <DriveHeader sending={upload.sending} onUpload={() => setChoosing(true)} onCamera={upload.takePhoto} onPaste={upload.pasteImage} />
       <UploadStatus upload={upload} />
       <DriveUploadSheet visible={choosing} onClose={() => setChoosing(false)} onPick={(option) => UPLOADS[option](upload)} />
       {answer === null ? <View testID="drive-cargando" className="h-40 rounded-2xl bg-surface-variant" /> : null}
       {answer && !answer.ok ? <Text testID="drive-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-[15px] font-semibold text-on-surface">{answer.message}</Text> : null}
       {answer?.ok ? <DriveSearch query={query} onQuery={setQuery} /> : null}
-      {answer?.ok && answer.value.files.length ? <DriveKindChips kind={kind} onKind={setKind} /> : null}
+      {answer?.ok ? (
+        <View className="flex-row items-center gap-2">
+          {answer.value.files.length ? <DriveKindChips kind={kind} onKind={setKind} /> : <View className="flex-1" />}
+          <DriveLayoutToggle layout={layout} onLayout={setLayout} />
+        </View>
+      ) : null}
+      {folder ? <Breadcrumb folder={folder} onRoot={() => setFolder(null)} /> : null}
       {answer?.ok ? <DriveBody files={answer.value.files} query={query} folder={folder} kind={kind} layout={layout} onFolder={setFolder} onOpen={openFile} onMenu={setMenuFile} /> : null}
       <DriveFileSheet file={menuFile} onClose={() => setMenuFile(null)} onOpen={openFile} onNotice={showNotice} />
       {viewer.notice ? <Text className="text-center text-[13px] text-error">{viewer.notice}</Text> : null}

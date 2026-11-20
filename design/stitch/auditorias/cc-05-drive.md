@@ -2,22 +2,26 @@
 
 Stitch: `.stitch-work/out_cc/{desktop,tablet,mobile}/cc-05-drive.stitch.png` del checkout principal (escritorio, tablet, móvil). Ids en INVENTARIO § «Canal de cliente y servicio, rediseño».
 Código: `web/src/spaces/clients/ServiceDriveWeb.tsx`, `DriveParts.tsx`, `DriveFileMenu.tsx`, `useDrivePaste.ts`, `web/src/ui/FloatingNotice.tsx`, `app/src/spaces/clients/ServiceDrive.tsx`, `DriveHeader.tsx`, `DriveFileSheet.tsx`, `drivePaste.ts`, `shared/src/driveFileActions.ts`.
-Captura: design/stitch/capturas/cc-05-impl-escritorio.jpg (escritorio, web local con la API de producción, tema oscuro)
-Captura: design/stitch/capturas/cc-05-impl-movil.jpg (móvil, web local con la API de producción, tema oscuro)
-Captura: design/stitch/capturas/cc-05-impl-movil-menu.jpg (móvil, web local con la API de producción, tema oscuro)
-Captura: design/stitch/capturas/cc-05-impl-tablet.jpg (tablet, web local con la API de producción, tema oscuro; con datos de OBRA GRAU)
-Revisor: subagente independiente (solo vio las imágenes de Stitch y de la implementación; 19/11).
-Veredicto del revisor: pasa con observaciones: en el teléfono el menú es flotante y Stitch dibuja hoja inferior (José 19/11: hoja inferior, lote siguiente); carpetas en lista como el Drive del espacio.
-Fecha: 2026-11-20 01:30 (E2E del lote 2 en web a 1440 y 390 px; main f217270b)
+Captura: TODO escritorio (1440, mosaico por defecto, tras el arreglo del 20/11)
+Captura: TODO tablet (768)
+Captura: TODO móvil (390, mosaico y hoja inferior)
+Revisor: pendiente (José 20/11: «estaba revisando el tab de drive de lilachat no está como lo diseñaste»; la revisión del 19/11 aprobó carpetas en lista y la vista lista por defecto, que no eran el diseño).
+Fecha: 2026-11-20 (arreglo de carpetas, mosaico y cabecera; sin E2E todavía)
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |
 | Acciones | Pegar · cámara · Subir a la derecha de la barra | web: igual; APK: en la cabecera del Drive bajo la barra | diferencia justificada: React Native sin portales (as-is canal § APK) |
 | Franja de pegar | «Pega aquí una imagen o un archivo (Ctrl+V) o arrástralo» | igual en computadora (`md`); en el teléfono no | igual |
-| Buscador | a lo ancho | igual | igual |
-| Chips | Todo · Fotos · Videos · Documentos + lista/cuadrícula | igual | igual |
-| Carpetas | tarjetas con conteo | igual (`FolderCardsWeb`) | igual |
-| Mosaico | etiqueta JPG/PDF, miniatura, nombre, «hoy 08:30 · 2.1 MB», «⋮» | miniatura, etiqueta, nombre, `driveFileLine` (carpeta · peso · día) y «⋮» (APK: toque largo) | igual |
+| Cabecera «Drive del servicio · N archivos» | no existe; el buscador va bajo la franja de pegar | quitada (20/11; antes estaba) | igual |
+| Buscador | a lo ancho, «Buscar en el Drive del servicio» | igual | igual |
+| Chips | Todo · Fotos · Videos · Documentos + lista/cuadrícula a la derecha | igual; el selector pasó de la cabecera a la fila de chips (20/11) | igual |
+| Vista por defecto | mosaico | mosaico (20/11; antes lista); la lista se recuerda solo si se elige | igual |
+| Carpetas | tarjetas en fila: ícono, nombre, «41 archivos»; 4 por fila en escritorio | tarjetas `FolderCardsWeb` / `FolderCards` en lista y en mosaico, «N archivos» (`driveFilesLabel`); 2, 3 o 4 por fila (20/11; antes filas de lista) | igual |
+| Mosaico | por día «HOY · 19 NOV»; etiqueta JPG/MP4/PDF/XLSX/DOCX arriba a la izquierda, miniatura o ícono, nombre, «hoy 08:30 · 2.1 MB», «⋮»; 5 por fila | igual (`driveTypeTag`, `driveTileLine`); sin título «Recientes»; 2, 3 o 5 por fila; APK: «⋮» y toque largo (20/11) | igual |
+| Duración del video («0:38») | sobre la miniatura | no va | diferencia justificada: Portal no manda la duración |
+| Ícono del documento | PDF rojo, XLSX verde, DOCX azul | PDF `error`, hoja de cálculo `en-linea` (APK `secondary`), otros `primary` | igual (tokens, sin hex) |
+| «Drive 58» en la pestaña | sí | no | diferencia justificada: Portal no manda el conteo a la pestaña (as-is obra-drive §6); el Drive se pide al abrirla |
+| Conteos en los chips («Todo 58», móvil) | sí | no | pendiente: se puede contar con la lista ya traída; no entró en este arreglo |
 | Menú del archivo (escritorio) | Abrir, Copiar enlace, Copiar archivo, Descargar, Marcar antes/después, Mover a carpeta | menú flotante con todo menos «Mover a carpeta», y «Compartir» donde el navegador lo tiene | diferencia justificada: Portal no tiene herramienta para mover (as-is obra-drive §2) |
 | Menú del archivo (móvil) | hoja inferior: miniatura, nombre, «Hoy 09:40 · Fotos de obra · 1.8 MB», ✕; Abrir vista previa, Copiar enlace, Copiar archivo, Compartir con el equipo, Marcar como antes / después con su segunda línea, Descargar original | hoja inferior igual en web (`DriveFileSheetWeb`) y APK (`DriveFileSheet`); «Compartir» y «Descargar» sin «con el equipo» ni «original» | diferencia justificada: José 19/11 pidió «Compartir» y «Descargar»; comparte el enlace por la hoja del sistema |
 | Hoja en «Medios» del espacio | — | la misma hoja (web y APK) con «Ver en el chat» | igual (José 19/11: mismo componente) |

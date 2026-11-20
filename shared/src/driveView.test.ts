@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DRIVE_KINDS, DRIVE_UPLOAD_OPTIONS, driveDayGroups, driveKindOf, filesOfKind } from './driveView.js';
+import { DRIVE_KINDS, DRIVE_UPLOAD_OPTIONS, driveDayGroups, driveFilesLabel, driveKindOf, driveTileLine, driveTypeTag, filesOfKind } from './driveView.js';
 import type { ServiceFile } from './serviceFiles.js';
 
 /**
@@ -60,5 +60,44 @@ describe('DRIVE_UPLOAD_OPTIONS', () => {
     expect(DRIVE_UPLOAD_OPTIONS.map((one) => one.title)).toEqual(['Tomar foto', 'Grabar video', 'Desde la galería', 'Documento']);
     expect(DRIVE_UPLOAD_OPTIONS.find((one) => one.id === 'video')!.detail).toBe('Hasta 1 min, con fecha, hora y lugar');
     expect(DRIVE_UPLOAD_OPTIONS.find((one) => one.id === 'document')!.detail).toBe('PDF, Word, Excel o PowerPoint');
+  });
+});
+
+/** José 20/11: the Drive tab as design cc-05 — folder cards «41 archivos», tiles with their type and «hoy 08:30 · 2.1 MB». */
+describe('driveTypeTag', () => {
+  it('reads the extension in capitals: JPG, MP4, PDF, XLSX, DOCX', () => {
+    // Act / Assert
+    expect(['a.jpg', 'b.mp4', 'c.pdf', 'd.xlsx', 'e.docx'].map((name) => driveTypeTag(file(name, 'application/octet-stream')))).toEqual(['JPG', 'MP4', 'PDF', 'XLSX', 'DOCX']);
+  });
+  it('without an extension it falls back to the kind', () => {
+    // Act / Assert
+    expect([file('foto', 'image/png'), file('clip', 'video/mp4'), file('acta', 'application/pdf')].map(driveTypeTag)).toEqual(['FOTO', 'VIDEO', 'DOC']);
+  });
+  it('cuts a long extension to four letters', () => {
+    expect(driveTypeTag(file('plano.dwgxyz', 'application/octet-stream'))).toBe('DWGX');
+  });
+});
+
+describe('driveTileLine', () => {
+  const now = new Date('2026-11-19T17:00:00Z');
+  it('today reads «hoy 08:30 · 2.1 MB»', () => {
+    // Arrange
+    const tile = { ...file('volquete.jpg', 'image/jpeg', '2026-11-19T13:30:00Z'), sizeBytes: 2_202_009 };
+    // Act / Assert
+    expect(driveTileLine(tile, now)).toBe('hoy 08:30 · 2.1 MB');
+  });
+  it('an older day reads «12 nov · 14.2 MB», yesterday with its hour', () => {
+    expect(driveTileLine({ ...file('corte.mp4', 'video/mp4', '2026-11-12T15:00:00Z'), sizeBytes: 14_889_779 }, now)).toBe('12 nov · 14.2 MB');
+    expect(driveTileLine(file('a.jpg', 'image/jpeg', '2026-11-18T15:00:00Z'), now)).toBe('ayer 10:00');
+  });
+  it('leaves out what is missing or broken', () => {
+    expect(driveTileLine({ ...file('a.jpg', 'image/jpeg', 'nunca'), sizeBytes: 524_288 }, now)).toBe('0.5 MB');
+    expect(driveTileLine(file('a.jpg', 'image/jpeg'), now)).toBe('');
+  });
+});
+
+describe('driveFilesLabel', () => {
+  it('one and many', () => {
+    expect([0, 1, 41].map(driveFilesLabel)).toEqual(['0 archivos', '1 archivo', '41 archivos']);
   });
 });

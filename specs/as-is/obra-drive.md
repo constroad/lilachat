@@ -1,6 +1,6 @@
 # As-is · Drive del servicio
 
-> Fecha de corte: **17/11/2026**. Fuentes: código de `main`, `git log` desde el 29/10,
+> Fecha de corte: **20/11/2026**. Fuentes: código de `main`, `git log` desde el 29/10,
 > `specs/ARCHITECTURE.spec.md` (§169, §171, §175 y «Drive del servicio», 06/11 y 13/11) y
 > `design/stitch/INVENTARIO.md`.
 
@@ -17,8 +17,16 @@ que Portal guarda en el Drive de ese servicio: fotos, videos y documentos.
 
 ## 2. Qué hace hoy
 
-- Cabecera «DRIVE DEL SERVICIO · N archivos», selector Lista / Cuadrícula y **un solo
-  botón «Subir»** (José 13/11: «nunca vi un diseño que tenga varios botones en un drive»).
+- **Un solo botón «Subir»** (José 13/11: «nunca vi un diseño que tenga varios botones en un drive»).
+- **20/11 (José: «no está como lo diseñaste», diseño cc-05):** sin la cabecera «DRIVE DEL SERVICIO · N
+  archivos»; el buscador va justo bajo la franja de pegar, y el selector Lista / Cuadrícula a la derecha de
+  los chips. **Mosaico por defecto** (web: `localStorage` solo guarda «lista» si se eligió; APK: arranca en
+  cuadrícula). **Carpetas siempre en tarjetas** (ícono, nombre y «41 archivos», `driveFilesLabel`): 2 por
+  fila en el teléfono, 3 en tablet, 4 en computadora; en lista y en cuadrícula. **Mosaico** por día de Lima
+  («HOY · 19 NOV», sin el título «Recientes»): cada mosaico lleva la etiqueta del tipo arriba a la izquierda
+  (`driveTypeTag`: JPG, MP4, PDF, XLSX, DOCX), la miniatura o el ícono del archivo, el nombre, «hoy 08:30 ·
+  2.1 MB» (`driveTileLine`) y «⋮» (APK: «⋮» o toque largo; en el teléfono abre la hoja inferior). 2, 3 o 5
+  por fila. La lista conserva «Recientes» y la línea «carpeta · peso · día» (`driveFileLine`).
 - **19/11 (diseño cc-05):** «Pegar», la cámara y «Subir» van a la derecha de la barra del servicio
   (web). **Pegar:** Ctrl+V en cualquier parte del Drive sube la imagen o el archivo copiado; el botón
   «Pegar» lee el portapapeles (solo imágenes); la franja «Pega aquí una imagen o un archivo (Ctrl+V) o
@@ -40,7 +48,7 @@ que Portal guarda en el Drive de ese servicio: fotos, videos y documentos.
   (stitch-design §5-ter: la evidencia abre la cámara al primer toque).
 - Chips Todo · Fotos · Videos · Documentos (`filesOfKind`).
 - Cuadrícula con miniaturas por día de Lima («Hoy · 13 nov», `driveDayGroups`) y
-  carpetas en tarjetas. Columnas por ancho: 2, 3 o 5.
+  carpetas en tarjetas. Columnas por ancho: 2, 3 o 5 (carpetas: 2, 3 o 4).
 - Documentos: PDF, Word, Excel y PowerPoint. El tipo sale de la extensión
   (`documentTypeOf`): Android a veces manda `application/octet-stream`. Etiqueta PDF /
   XLSX encima de la miniatura.
@@ -65,7 +73,7 @@ que Portal guarda en el Drive de ese servicio: fotos, videos y documentos.
 
 - `web/src/spaces/clients/ServiceDriveWeb.tsx`, `DriveParts.tsx` (menú «Subir», «Suelta
   aquí…» para arrastrar), `PortalFileViewer.tsx`, `useDriveUpload.ts`, `PhotoPhaseBar.tsx`.
-- La vista elegida se recuerda en `localStorage` (`lilachat.drive.vista`).
+- La vista elegida se recuerda en `localStorage` (`lilachat.drive.vista`); sin dato, mosaico.
 - La cámara web (`WebCamera`) aparece en cualquier equipo con cámara.
 
 ### APK
@@ -82,7 +90,8 @@ que Portal guarda en el Drive de ese servicio: fotos, videos y documentos.
   Copiar enlace, Copiar archivo (foto: se baja a la caché y va al portapapeles como imagen), Compartir (hoja de
   Android con el enlace), «Marcar como antes / después» y Descargar (abre el navegador). El aviso de copiado es el
   toast de Android. La misma hoja sirve a «Medios» (`app/src/media/MediaScreen.tsx`).
-- La vista elegida se recuerda mientras la app está abierta.
+- La vista elegida se recuerda mientras la app está abierta; arranca en mosaico. El selector va junto a
+  los chips; «Pegar», cámara y «Subir» quedan en su fila a la derecha (`DriveHeader`).
 
 ### Server
 
@@ -124,6 +133,8 @@ filtraba los tipos del boleto y no dejaba pasar PDF; lo corrigió en a636426 (13
 - **12/11** La cámara con sello también para lo que va al Drive (APK y web del celular).
 - **13/11** Documentos; un solo «Subir»; lista y cuadrícula; filtro por tipo; cámara a
   un toque; sello visible en «Enviar» y en el visor.
+- **20/11** Pestaña como cc-05: mosaico por defecto con etiqueta de tipo y «hoy 08:30 · 2.1 MB»,
+  carpetas en tarjetas con «N archivos», sin la cabecera «Drive del servicio».
 
 ## 5. Diseños de Stitch relacionados
 

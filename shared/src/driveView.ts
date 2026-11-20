@@ -1,6 +1,7 @@
 import { limaDayKey } from './birthdays.js';
 import { DRIVE_VIDEO_SECONDS } from './driveUpload.js';
 import { instantDayOf } from './serviceDetail.js';
+import { activityWhen } from './serviceFacts.js';
 import type { ServiceFile } from './serviceFiles.js';
 
 /**
@@ -52,3 +53,24 @@ export function driveDayGroups(files: readonly ServiceFile[], now: Date): DriveD
   const rank = (key: string) => (key === NO_DATE ? '' : key);
   return [...groups.values()].sort((a, b) => (rank(a.key) < rank(b.key) ? 1 : rank(a.key) > rank(b.key) ? -1 : 0));
 }
+
+const TAG_MAX = 4;
+const KIND_TAGS: Record<Exclude<DriveKind, 'all'>, string> = { photo: 'FOTO', video: 'VIDEO', document: 'DOC' };
+const BYTES_PER_MB = 1_048_576;
+
+/** The tag on a tile (design cc-05): JPG, MP4, PDF, XLSX, DOCX; without an extension, its kind. */
+export function driveTypeTag(file: Pick<ServiceFile, 'name' | 'mime'>): string {
+  const dot = file.name.lastIndexOf('.');
+  const extension = dot > 0 ? file.name.slice(dot + 1).trim() : '';
+  return extension ? extension.toUpperCase().slice(0, TAG_MAX) : KIND_TAGS[driveKindOf(file.mime)];
+}
+
+/** The line under a tile's name (design cc-05): «hoy 08:30 · 2.1 MB», «12 nov · 14.2 MB», with what exists. */
+export function driveTileLine(file: Pick<ServiceFile, 'modifiedAt' | 'sizeBytes'>, now: Date): string {
+  const when = file.modifiedAt && !Number.isNaN(Date.parse(file.modifiedAt)) ? activityWhen(file.modifiedAt, now) : undefined;
+  const size = file.sizeBytes !== undefined ? `${(file.sizeBytes / BYTES_PER_MB).toFixed(1)} MB` : undefined;
+  return [when && when.charAt(0).toLowerCase() + when.slice(1), size].filter(Boolean).join(' · ');
+}
+
+/** «41 archivos» under a folder card (design cc-05). */
+export const driveFilesLabel = (count: number): string => (count === 1 ? '1 archivo' : `${count} archivos`);

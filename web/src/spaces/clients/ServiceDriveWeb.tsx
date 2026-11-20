@@ -1,11 +1,11 @@
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState, type ReactNode } from 'react';
-import { ChevronLeft, ChevronRight, ClipboardPaste, Cloud, CloudUpload, ExternalLink, Folder, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ClipboardPaste, Cloud, CloudUpload, ExternalLink, Search } from 'lucide-react';
 import { DRIVE_PASTE_HINT, driveNoticeDone, DRIVE_DOCUMENT_ACCEPT, DRIVE_VIDEO_SECONDS, OBSERVATION_VIDEO_SECONDS, filesOfKind, photoMarkOf, withPhotoMark, type DriveKind, type DriveLayout, type DriveUploadOption, type PhotoMark, driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService, type ViewableFile } from '@lilachat/shared';
 import { FileThumb, usePortalFileViewer } from './PortalFileViewer';
 import { cameraEnvironment } from '../../chat/camera/shotStamp';
 import { openWebCamera, shootOrPick, type PickerHandle } from '../../chat/camera/cameraRequests';
 import { useDriveUpload } from './useDriveUpload';
-import { DriveActionsWeb, DriveGridWeb, DriveKindChipsWeb, DriveTopWeb, FolderCardsWeb } from './DriveParts';
+import { DriveActionsWeb, DriveGridWeb, DriveKindChipsWeb, DriveLayoutToggleWeb, FolderCardsWeb } from './DriveParts';
 import { DriveFileMenu } from './DriveFileMenu';
 import { FloatingNotice, useFloatingNotice } from '../../ui/FloatingNotice';
 import { SectionActions } from './ServiceShellWeb';
@@ -39,24 +39,14 @@ function FileRow({ file, onOpen, menu }: { file: ServiceFile; onOpen: OpenFile; 
   );
 }
 
-function FolderRows(props: { files: readonly ServiceFile[]; layout: DriveLayout; onOpen: (folder: string) => void }) {
+/** Design cc-05: the folders are cards in a row whatever the files' layout. */
+function FolderRows(props: { files: readonly ServiceFile[]; onOpen: (folder: string) => void }) {
   const folders = driveFolders(props.files);
   if (!folders.length) return null;
   return (
     <section>
-      <p className={`${KICKER} flex justify-between`}>Carpetas <span className="font-mono normal-case tracking-normal">{folders.length === 1 ? '1 carpeta' : `${folders.length} carpetas`}</span></p>
-      {props.layout === 'grid' ? <FolderCardsWeb folders={folders} onOpen={props.onOpen} /> : (
-        <div className={LIST}>
-          {folders.map((one) => (
-            <button key={one.name} type="button" data-testid={`carpeta-${one.name}`} onClick={() => props.onOpen(one.name)} className="flex min-h-[52px] w-full items-center gap-3 px-3 text-left hover:bg-background">
-              <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary"><Folder size={16} /></span>
-              <span className="min-w-0 flex-1 truncate text-sm font-semibold">{one.name}</span>
-              <span className="text-sm font-semibold tabular-nums text-on-surface-variant">{one.count}</span>
-              <ChevronRight size={15} className="text-on-surface-variant" />
-            </button>
-          ))}
-        </div>
-      )}
+      <p className={`${KICKER} mb-2`}>Carpetas</p>
+      <FolderCardsWeb folders={folders} onOpen={props.onOpen} />
     </section>
   );
 }
@@ -85,9 +75,10 @@ function DriveBody(props: BodyProps) {
   const rest = filesInFolder(props.files, null).filter((file) => !recent.includes(file));
   return (
     <>
-      <FolderRows files={props.files} layout={props.layout} onOpen={props.onFolder} />
+      <FolderRows files={props.files} onOpen={props.onFolder} />
       <section>
-        <p className={`${KICKER} mb-2`}>Recientes</p>
+        {/* The mosaic carries its own day headers (design cc-05); the list keeps «Recientes». */}
+        {props.layout === 'list' ? <p className={`${KICKER} mb-2`}>Recientes</p> : null}
         <FileSet files={[...recent, ...rest]} layout={props.layout} onOpen={props.onOpen} menu={props.menu} />
       </section>
     </>
@@ -105,11 +96,12 @@ function Breadcrumb(props: { folder: string; onRoot: () => void }) {
 }
 
 const LAYOUT_KEY = 'lilachat.drive.vista';
+/** The mosaic by default (design cc-05); the list only when it was chosen. */
 function readLayout(): DriveLayout {
   try {
-    return localStorage.getItem(LAYOUT_KEY) === 'grid' ? 'grid' : 'list';
+    return localStorage.getItem(LAYOUT_KEY) === 'list' ? 'list' : 'grid';
   } catch {
-    return 'list';
+    return 'grid';
   }
 }
 function saveLayout(layout: DriveLayout): void {
@@ -238,17 +230,21 @@ export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: Spac
       {drop.over ? <DropHint /> : <PasteHint />}
       {upload.message ? <p role="status" className={upload.failed ? 'text-sm text-error' : 'text-sm text-on-surface-variant'}>{upload.message}</p> : null}
       <FloatingNotice text={notice} done={driveNoticeDone(notice)} testId="drive-aviso" />
-      <DriveTopWeb count={answer?.ok ? answer.value.files.length : null} layout={layout} onLayout={(next) => (saveLayout(next), setLayout(next))} />
-      {folder ? <Breadcrumb folder={folder} onRoot={() => setFolder(null)} /> : null}
       {answer === null ? <div data-testid="drive-cargando" className="h-32 animate-pulse rounded-xl bg-surface" /> : null}
       {answer && !answer.ok ? <p data-testid="drive-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-sm font-semibold">{answer.message}</p> : null}
       {answer?.ok ? (
-        <label className="flex h-10 items-center gap-2 rounded-xl border border-outline/15 bg-surface px-3">
-          <Search size={15} className="text-on-surface-variant" />
-          <input data-testid="buscar-drive" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar en el Drive del servicio…" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
+        <label className="flex h-11 items-center gap-2 rounded-xl border border-outline/15 bg-surface px-3">
+          <Search size={16} className="text-on-surface-variant" />
+          <input data-testid="buscar-drive" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar en el Drive del servicio" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
         </label>
       ) : null}
-      {answer?.ok && answer.value.files.length ? <DriveKindChipsWeb kind={kind} onKind={setKind} /> : null}
+      {answer?.ok ? (
+        <div className="flex items-center gap-2">
+          {answer.value.files.length ? <DriveKindChipsWeb kind={kind} onKind={setKind} /> : null}
+          <DriveLayoutToggleWeb layout={layout} onLayout={(next) => (saveLayout(next), setLayout(next))} />
+        </div>
+      ) : null}
+      {folder ? <Breadcrumb folder={folder} onRoot={() => setFolder(null)} /> : null}
       {answer?.ok ? <DriveBody files={answer.value.files} query={query} folder={folder} kind={kind} layout={layout} onFolder={setFolder} onOpen={viewerOpen} menu={menu} /> : null}
       {viewer.viewer}
       {driveUrl ? <a href={driveUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary"><ExternalLink size={14} /> {answer?.ok ? 'Abrir en Google Drive' : 'Abrir el servicio en el Portal'}</a> : null}

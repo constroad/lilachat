@@ -38,11 +38,30 @@ describe('ServiceDriveWeb', () => {
     expect(screen.getByText('Abrir el servicio en el Portal').closest('a')?.getAttribute('href')).toBe('https://portal.example.com/s/318');
   });
 
-  it('the file line reads folder · day, and inside a folder the crumb goes back to the Drive', async () => {
+  it('opens as the mosaic of design cc-05: folder cards with «N archivos», day headers, type tag and «día · peso»', async () => {
+    // Arrange
+    localStorage.removeItem('lilachat.drive.vista');
+    vi.stubGlobal('fetch', reply({ files: [{ ...file('t1.jpg', 'Fotos de obra'), modifiedAt: '2026-10-21T15:00:00.000Z', sizeBytes: 2_202_009 }, file('t2.jpg', 'Fotos de obra')], drive_url: null }));
+    // Act
+    render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" />);
+    // Assert
+    expect(await screen.findByTestId('carpeta-Fotos de obra')).toHaveTextContent('2 archivos');
+    expect(screen.getByTestId('drive-cuadricula')).toHaveTextContent('21 oct');
+    expect(screen.getByTestId('drive-vista-cuadricula')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getAllByTestId('drive-etiqueta').map((one) => one.textContent)).toEqual(['JPG', 'JPG']);
+    expect(screen.getAllByTestId('archivo-drive')[0]).toHaveTextContent('21 oct · 2.1 MB');
+    expect(screen.queryByText('Drive del servicio')).toBeNull();
+    expect(screen.queryByText('Recientes')).toBeNull();
+  });
+
+  it('the list reads folder · day and is remembered; inside a folder the crumb goes back to the Drive', async () => {
     // Arrange
     vi.stubGlobal('fetch', reply({ files: [{ ...file('densidades.pdf', 'Informes'), modifiedAt: '2026-10-21T15:00:00.000Z' }], drive_url: null }));
     render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" />);
+    fireEvent.click(await screen.findByTestId('drive-vista-lista'));
+    expect(localStorage.getItem('lilachat.drive.vista')).toBe('list');
     expect((await screen.findAllByTestId('archivo-drive'))[0]).toHaveTextContent('Informes · 21 oct');
+    localStorage.removeItem('lilachat.drive.vista');
     expect(screen.queryByTestId('volver-a-drive')).toBeNull();
     // Act
     fireEvent.click(screen.getByTestId('carpeta-Informes'));

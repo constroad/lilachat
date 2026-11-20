@@ -1,10 +1,10 @@
-import { useState, type ReactNode } from 'react';
+import { useContext, useState, type ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { CalendarDays, Clock } from 'lucide-react-native';
 import { combinarFecha, formatFormDate, parseFormDate, type FormField } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
-import { ErrorLine, Label } from './AppFormFields';
+import { ErrorLine, FormStyleContext, Label } from './AppFormFields';
 
 type DateFieldDefinition = Extract<FormField, { kind: 'date' }>;
 
@@ -50,8 +50,9 @@ export function DateField(props: { field: DateFieldDefinition; value: unknown; e
  * «Día» tile beside «Responsable» looked out of place): same border, height and text size.
  */
 function PickerBox(props: { testID: string; icon: ReactNode; text: string; empty: boolean; onPress: () => void }) {
+  const { compact } = useContext(FormStyleContext);
   return (
-    <Pressable testID={props.testID} accessibilityRole="button" onPress={props.onPress} className="min-h-[48px] flex-1 flex-row items-center gap-2 rounded-xl border border-outline/25 bg-background px-3">
+    <Pressable testID={props.testID} accessibilityRole="button" onPress={props.onPress} className={`${compact ? 'min-h-[44px]' : 'min-h-[48px]'} flex-1 flex-row items-center gap-2 rounded-xl border border-outline/25 bg-background px-3`}>
       {props.icon}
       <Text className={`min-w-0 flex-1 text-[16px] ${props.empty ? 'text-on-surface-variant' : 'text-on-surface'}`} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{props.text}</Text>
     </Pressable>

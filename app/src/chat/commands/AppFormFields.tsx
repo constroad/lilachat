@@ -29,7 +29,7 @@ export function ErrorLine(props: { text?: string }) {
  * How a form that splits an amount is drawn (design gst-02): `designed` for the whole form, and the `step`
  * number of the field that is one. Any other form keeps the plain look, and so does every other field.
  */
-export type FormStyle = { designed: boolean; step?: number };
+export type FormStyle = { designed: boolean; step?: number; /** A compact report section (design imp-01): 44 pt boxes instead of 48. */ compact?: boolean };
 export const FormStyleContext = createContext<FormStyle>({ designed: false });
 
 export function Label(props: { field: FormField }) {
@@ -144,6 +144,7 @@ export function TypedField({ field, value, error, onChange }: FieldProps<'text' 
   /** An address (Portal 17/11, emails): the email keyboard, never capitalized nor corrected. */
   const email = field.kind === 'text' && field.email === true;
   const text = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+  const { compact } = useContext(FormStyleContext);
   return (
     <View>
       <Label field={field} />
@@ -159,7 +160,7 @@ export function TypedField({ field, value, error, onChange }: FieldProps<'text' 
           textContentType={code ? 'oneTimeCode' : email ? 'emailAddress' : undefined}
           autoComplete={code ? 'sms-otp' : secret ? 'off' : email ? 'email' : undefined}
           {...(email ? { autoCapitalize: 'none' as const, autoCorrect: false } : {})}
-          className={`min-h-[48px] flex-1 rounded-xl border border-outline/25 bg-background px-3 text-on-surface ${code ? 'text-center text-[28px] font-bold' : 'text-[16px]'} ${multiline ? 'py-2' : ''}`}
+          className={`${compact ? 'min-h-[44px]' : 'min-h-[48px]'} flex-1 rounded-xl border border-outline/25 bg-background px-3 text-on-surface ${code ? 'text-center text-[28px] font-bold' : 'text-[16px]'} ${multiline ? 'py-2' : ''}`}
           style={multiline ? { minHeight: 88, textAlignVertical: 'top' } : code ? { letterSpacing: CODE_LETTER_SPACING, fontVariant: ['tabular-nums'] } : undefined}
         />
         {field.kind === 'number' && field.unit ? <Text className="text-[15px] font-semibold text-on-surface-variant">{field.unit}</Text> : null}

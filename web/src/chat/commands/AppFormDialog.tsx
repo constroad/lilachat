@@ -6,6 +6,7 @@ import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { CheckField, ChoiceField, DateField, FormStyleContext, LocationField, NumberField, PhotoField, TextField } from './AppFormFields';
 import { FoldedSection } from './FoldedSection';
+import { SampleRowsWeb, TextChipsField } from './CompactFields';
 import { FormContextCard, FormHeader } from './FormHeader';
 import { ListField } from './ListField';
 import { FormSummary } from './FormSummary';
@@ -74,9 +75,13 @@ export function AppFormDialog(props: DialogProps) {
   const steps = numberedStepsOf(fields, shown);
   // The summary's remarks («la lectura de fin va después del inicio») under their fields; the person's own errors win.
   const slot: SlotContext = { fields, values: state.values, errors: { ...filledRemarks(live.summary.errors, fields, state.values), ...state.errors }, selfieField, locationName, selfie, upload: props.onUpload, onPlace: props.onPlace, set: state.set, setList: state.setList, place, workStreets: props.workStreets ?? null, designed, steps };
-  const footer = <FormFooter summary={live.summary.blocks} message={state.message} busy={state.sending || waiting} refreshing={live.refreshing} label={label} others={form.submits?.slice(1) ?? []} note={evidence ? (selfieField ? LIVE_FOOTER : evidence) : ''} onSend={(action) => void state.send(action ?? form.submits?.[0])} />;
+  // A compact report section (design imp-01): the trays as rows, the rest as usual.
+  const compact = form.compact === true;
+  const trays = compact ? shown.filter((field) => field.sample !== undefined) : [];
+  const plain = trays.length ? shown.filter((field) => field.sample === undefined) : shown;
+  const footer = <FormFooter tall={compact} summary={live.summary.blocks} message={state.message} busy={state.sending || waiting} refreshing={live.refreshing} label={label} others={form.submits?.slice(1) ?? []} note={evidence ? (selfieField ? LIVE_FOOTER : evidence) : ''} onSend={(action) => void state.send(action ?? form.submits?.[0])} />;
   return (
-    <Overlay title={form.title} onClose={props.onClose} footer={step === 'sign' ? footer : undefined} wide={isWideForm(fields) || designed} header={designed ? <FormHeader title={form.title} appName={props.answer.appName} avatarUrl={props.answer.avatarUrl} where={props.where} personName={props.personName} /> : undefined}>
+    <Overlay title={form.title} onClose={props.onClose} footer={step === 'sign' ? footer : undefined} wide={isWideForm(fields) || designed || compact} header={designed ? <FormHeader title={form.title} appName={props.answer.appName} avatarUrl={props.answer.avatarUrl} where={props.where} personName={props.personName} /> : undefined}>
       <div ref={body} data-testid={`formulario-${form.id}`} className="space-y-4">
         {designed && props.answer.context ? <FormContextCard context={props.answer.context} /> : null}
         <FormIntro answer={props.answer} clock={Boolean(evidence) && !selfieField} personName={props.personName} app={!designed} />
@@ -94,7 +99,7 @@ export function AppFormDialog(props: DialogProps) {
         {signer && step === 'who' ? <SignerPicker field={signer} onPick={state.set(signer.name)} /> : null}
         {signer && step === 'sign' ? <SignerCard field={signer} value={state.values[signer.name]} error={slot.errors[signer.name]} onChange={() => state.set(signer.name)('')} /> : null}
         {/* The fields under a header fold (agentes 13/11); the rest are drawn as they come. */}
-        {groupedBySection(shown).map((block) =>
+        {groupedBySection(plain).map((block) =>
           block.kind === 'section' ? (
             <FoldedSection key={`${block.label}-${block.fields[0]!.name}`} label={block.label} collapsed={block.collapsed} fields={block.fields} values={state.values} errors={slot.errors} designed={designed}>
               <FieldRows fields={block.fields} context={slot} />
@@ -103,6 +108,7 @@ export function AppFormDialog(props: DialogProps) {
             <FieldRows key={block.fields[0]!.name} fields={block.fields} context={slot} />
           )
         )}
+        {trays.length ? <SampleRowsWeb fields={trays} values={state.values} errors={slot.errors} set={state.set} /> : null}
       </div>
     </Overlay>
   );
@@ -151,14 +157,14 @@ function FormIntro(props: { answer: EphemeralAnswer; clock: boolean; personName?
 }
 
 /** By the button, never at the end of the scroll: a refusal there looked like a dead button (E2E 24/10). */
-function FormFooter(props: { summary: PreviewReply['blocks']; message: string; busy: boolean; refreshing: boolean; label: string; /** The buttons after the first (agentes 13/11: «Guardar borrador»). */ others: readonly FormSubmit[]; note: string; onSend: (action?: FormSubmit) => void }) {
+function FormFooter(props: { /** A compact report section's 52 px button (design imp-01). */ tall?: boolean; summary: PreviewReply['blocks']; message: string; busy: boolean; refreshing: boolean; label: string; /** The buttons after the first (agentes 13/11: «Guardar borrador»). */ others: readonly FormSubmit[]; note: string; onSend: (action?: FormSubmit) => void }) {
   return (
     <div>
       {/* By the button too (Andrea 12/11): at the top it was out of sight while picking the partida. */}
       {props.refreshing ? <p data-testid="formulario-actualizando" role="status" className="mb-2 animate-pulse text-center text-[13px] text-on-surface-variant">Actualizando las opciones…</p> : null}
       {props.summary.length ? <FormSummary blocks={props.summary} /> : null}
       {props.message ? <div data-testid="formulario-error" className="mb-2"><FieldError>{props.message}</FieldError></div> : null}
-      <PrimaryButton testId="btn-enviar-formulario" disabled={props.busy} onClick={() => props.onSend()}>{props.label}</PrimaryButton>
+      <PrimaryButton testId="btn-enviar-formulario" tall={props.tall} disabled={props.busy} onClick={() => props.onSend()}>{props.label}</PrimaryButton>
       {props.others.map((other) => (
         <button key={other.id} type="button" data-testid={`btn-enviar-formulario-${other.id}`} disabled={props.busy} onClick={() => props.onSend(other)} className="mt-1 flex min-h-11 w-full items-center justify-center rounded-xl text-[14px] font-semibold text-primary hover:bg-primary/5 disabled:opacity-50">{other.label}</button>
       ))}
@@ -238,7 +244,7 @@ function Field(props: { field: Exclude<FormField, { kind: 'list' }>; value: unkn
   switch (field.kind) {
     case 'choice': return choiceFieldOf(field, rest, half);
     case 'multi': return <MultiField field={field} {...rest} />;
-    case 'text': return <TextField field={field} {...rest} />;
+    case 'text': return field.chips ? <TextChipsField field={field} {...rest} /> : <TextField field={field} {...rest} />;
     case 'check': return <CheckField field={field} {...rest} />;
     case 'number': return <NumberField field={field} {...rest} />;
     case 'date': return <DateField field={field} {...rest} />;

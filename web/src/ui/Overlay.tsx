@@ -79,11 +79,14 @@ export function PrimaryButton({
   onClick,
   disabled,
   testId,
+  tall,
 }: {
   children: ReactNode;
   onClick: () => void;
   disabled?: boolean;
   testId?: string;
+  /** 52 px and a bolder label: a compact report section's only button (design imp-01). */
+  tall?: boolean;
 }) {
   return (
     <button
@@ -91,7 +94,7 @@ export function PrimaryButton({
       data-testid={testId}
       onClick={onClick}
       disabled={disabled}
-      className="grid h-11 w-full place-items-center rounded-xl bg-primary text-sm font-semibold text-on-primary transition-opacity disabled:opacity-40"
+      className={`grid w-full place-items-center rounded-xl bg-primary text-on-primary transition-opacity disabled:opacity-40 ${tall ? 'h-[52px] text-[16px] font-bold' : 'h-11 text-sm font-semibold'}`}
     >
       {children}
     </button>

@@ -145,6 +145,10 @@ Pregunta a la app por `link.status` y `link.revoke`. Lilachat no guarda nada.
   empezada se valida entera; hoy solo las bandejas del CTL-IMP (ver `obra-informes.md`). La hoja y
   el diálogo del formulario reciben una línea sobre los campos (`status`): ahí va «Obteniendo
   ubicación…» de la foto de un informe.
+- **19/11** Formulario compacto (`AppForm.compact`, diseños imp-*): botón de 52 px, campos de
+  44 px, `x-chips` (un texto elegido con chips) y las muestras numeradas como filas con su
+  estado (`CompactFields.tsx` web y APK, `shared/src/sampleRows.ts`). Hoy solo el CTL-IMP
+  (ver `obra-informes.md`); los demás formularios no cambian.
 
 ## 5. Diseños de Stitch relacionados
 

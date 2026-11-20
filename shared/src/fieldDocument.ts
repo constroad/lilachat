@@ -1,4 +1,5 @@
 import { isSampledForm, sampledSchema } from './formSamples.js';
+import { compactSectionSchema, isCompactReport } from './compactReportForms.js';
 import { validateFormSpec, type AppForm, type FormSchema, type FormSchemaProperty, type FormValues } from './appForms.js';
 
 /**
@@ -241,14 +242,17 @@ export function sectionFormOf(document: FieldDocument, path: SectionPath): AppFo
   const portalSchema = found ? document.forms[found.form] : undefined;
   if (!found || !portalSchema) return null;
   // José 19/11: one complete tray is enough in a CTL-IMP (`formSamples.ts`).
-  const schema = isSampledForm(document.type, found.form) ? sampledSchema(portalSchema) : portalSchema;
+  const sampled = isSampledForm(document.type, found.form) ? sampledSchema(portalSchema) : portalSchema;
+  // José 19/11: the CTL-IMP compact (design imp-01); only how it is drawn changes.
+  const schema = compactSectionSchema(document.type, found.form, sampled);
+  const compact = isCompactReport(document.type) ? { compact: true as const } : {};
   const asked = Object.entries(schema.properties ?? {}).filter(([name]) => !KNOWN_BY_CHANNEL.includes(name));
   const properties = Object.fromEntries(asked.map(([name, property]) => [name, withDefault(property, found.values[name])]));
   const required = schema.required?.filter((name) => !KNOWN_BY_CHANNEL.includes(name));
   // Audit 12/11: «Enviar» on a part of a draft read as sending the report; it only keeps that part.
   const submitLabel = asked.some(([, property]) => property['x-input'] === 'photo') ? 'Guardar foto' : 'Guardar';
   const example = found.example ? valuesForForm(found.example, { type: 'object', properties }) : {};
-  return { id: found.tool ?? SECTION_TOOL, title: found.title, submitLabel, schema: { ...schema, properties, ...(required ? { required } : {}) }, ...(schema['x-check-all'] ? { checkAll: true as const } : {}), ...(Object.keys(example).length ? { example } : {}) };
+  return { id: found.tool ?? SECTION_TOOL, title: found.title, submitLabel, schema: { ...schema, properties, ...(required ? { required } : {}) }, ...(schema['x-check-all'] ? { checkAll: true as const } : {}), ...(Object.keys(example).length ? { example } : {}), ...compact };
 }
 
 /** Portal's own value of what the form does not ask: it rides with the answers, because Portal blanks a field a saved section leaves out. */

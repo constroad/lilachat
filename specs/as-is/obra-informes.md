@@ -86,6 +86,30 @@ el texto: «Obteniendo ubicación…» con su indicador, «Ubicación lista.», 
 «…la foto va solo con la hora.»). Se dibuja sobre los campos: `PlaceStatus.tsx` (APK, en
 `AppFormSheet` › `status`) y `PlaceStatusWeb.tsx` (web, en `AppFormDialog` › `status`).
 «Usar mi ubicación» (`PlaceButton`) ya tenía su «Buscando tu ubicación…».
+Desde el rediseño `imp-*` la línea es una tarjeta con borde, el indicador y un pin.
+
+### CTL-IMP compacto (diseños imp-01/02/03, José 19/11)
+
+José en su teléfono: «botones grandes, diseños feos». Solo cambia cómo se dibuja; lo que se
+guarda y lo que lee Portal no cambian.
+
+- `sectionFormOf` marca `compact` cada sección de un CTL-IMP (`isCompactReport`,
+  `shared/src/compactReportForms.ts`). Botón único de 52 px (web `PrimaryButton tall`, APK
+  `SheetFooter`), campos de 44 px (APK `FormStyleContext.compact`; la web ya los tenía).
+- «Ubicación» del tramo: las progresivas antes del carril (`compactSectionSchema`, orden de
+  pantalla) y el carril en chips «Derecho · Izquierdo · Ambos» (`x-chips`). Guarda el mismo
+  texto; un carril escrito antes sale como un chip más, elegido.
+- «Bandejas»: una fila por bandeja (B1, B2, B3) con vacía, con asfalto y área, y su estado al
+  final (`sampleRowsOf`, `shared/src/sampleRows.ts`): ✓ completa, ⚠ a medias con «Completa esta
+  bandeja o déjala vacía» mientras se escribe, «OPC.» la vacía opcional. «Basta una completa»
+  arriba. Web `SampleRowsWeb`, APK `SampleRowsView`.
+- Tablet: web diálogo ancho y columna «Estado»; APK hoja de hasta 640 pt y tabla con «Estado»
+  desde 560 pt.
+- Sin hacer (diferencias en `design/stitch/auditorias/imp-0*.md`): cabecera con «Tramo 2 · JR
+  CONCHUCOS» y «BORRADOR», «Desde 0+120 (fin del Tramo 1)», «Foto del riego» y la tasa en el
+  formulario, «Guardar tramo» (cada sección se guarda sola: dice «Guardar»), progresivas y
+  carril en una fila en tablet. La tarjeta de ubicación sale en las secciones con foto: la
+  sección «Ubicación» no lee el GPS.
 
 ### Cola sin señal (los dos clientes)
 
@@ -214,7 +238,7 @@ El server la quita del documento de un miembro (`withoutGroupSend`).
   del borrador dentro de la app (APK).
 - **19/11** CTL-IMP: basta una bandeja completa; una a medias se valida entera
   (`formSamples.ts`). Indicador «Obteniendo ubicación…» y su error al leer el GPS de una foto.
-  Rediseño compacto del formulario pedido a Stitch (`imp-*`), espera aprobación de José.
+  Rediseño compacto del formulario (`imp-*`): aprobado por José e implementado en web y APK.
 - **16/11** Hojas de bloques en la web ancha. «Reintentar» del editor. Portal arregló
   el retraso de 60 s de su service worker (ec9a18f0).
 
@@ -223,6 +247,7 @@ El server la quita del documento de un miembro (`withoutGroupSend`).
 | Diseño | Estado | Evidencia |
 | --- | --- | --- |
 | j-01 crear informe | Implementado | `CreateReportSheet.tsx`, `CreateReportDialog.tsx` |
+| imp-01/02/03 CTL-IMP compacto | Implementado (capturas y revisor pendientes) | `CompactFields.tsx` web y APK, `compactReportForms.ts`, `sampleRows.ts`; auditorías `imp-0*.md` |
 | j-02 hub | Implementado | `ReportDocumentScreen.tsx`, `ReportDocumentWeb.tsx` |
 | j-03 tramos | Implementado | `ReportItemsView.tsx`, `ReportItemsWeb.tsx` |
 | j-04 publicar | Implementado | `PublishSheet.tsx`, `PublishDialog.tsx` |

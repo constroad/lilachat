@@ -154,6 +154,8 @@ export * from './botManifest.js';
 export * from './appDirectory.js';
 export * from './appForms.js';
 export * from './formSamples.js';
+export * from './sampleRows.js';
+export * from './compactReportForms.js';
 export * from './fieldAutofill.js';
 export * from './fieldConditions.js';
 export * from './timemarkStamp.js';

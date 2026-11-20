@@ -1,7 +1,6 @@
 import type { RepeatItem, RepeatSection, SectionPath } from './fieldDocument.js';
 import type { PhotoToView } from './reportSaves.js';
 import type { StateBadge } from './reportCreation.js';
-import { sectionPhotos } from './reportSaves.js';
 import { dataSectionOf, photoSlotsOf, unitStateOf, unitTitleOf, type UnitSlot } from './reportUnits.js';
 import { UNIT_MEASURES } from './unitMeasure.js';
 

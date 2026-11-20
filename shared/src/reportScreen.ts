@@ -4,7 +4,8 @@ import type { FormValues } from './appForms.js';
 import type { EphemeralAnswer } from './botCommands.js';
 import { requiresLocation, type FieldDocument, type SectionPath } from './fieldDocument.js';
 import type { DevicePlace, ReportDraftResult } from './reportCreation.js';
-import { PHOTO_REMOVAL_FAILED, type OpenedReport, type PhotoRemoval, type ReportQueue } from './reportQueue.js';
+import { PHOTO_REMOVAL_FAILED, type AlbumSend, type OpenedReport, type PhotoRemoval, type ReportQueue } from './reportQueue.js';
+import { ALBUM_SEND_FAILED } from './unitAlbum.js';
 import { documentWithQueue, reportFormAnswer, reportSaveOf, samePath, savesOf, type QueuedPhoto, type ReportRef, type ReportSave } from './reportSaves.js';
 
 /**
@@ -284,6 +285,14 @@ export function createReportScreen<P>(deps: ReportScreenDeps<P>, ref: ReportRef,
       const removal = await deps.queue.removePhoto(ref, reportId, photoId);
       if (removal.ok) feed.reload();
       return removal;
+    },
+    /** «Terminar unidad»: the reviewed photos to the client's group; the document comes back with the unit closed. */
+    async sendUnitAlbum(tramoId: string, urls: readonly string[]): Promise<AlbumSend> {
+      const reportId = reportNow().document?.id;
+      if (!reportId || urls.length === 0) return { ok: false, message: ALBUM_SEND_FAILED };
+      const sent = await deps.queue.sendUnitAlbum(ref, reportId, tramoId, urls);
+      if (sent.ok) feed.reload();
+      return sent;
     },
   };
 }

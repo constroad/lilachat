@@ -19,7 +19,7 @@ export function useFloatingNotice(): [string, (text: string) => void] {
 export function FloatingNotice(props: { text: string; done?: boolean; testId?: string }) {
   if (!props.text) return null;
   return (
-    <p role="status" data-testid={props.testId ?? 'aviso-flotante'} className="pointer-events-none fixed bottom-24 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 whitespace-nowrap rounded-full bg-on-surface px-4 py-2 text-sm font-semibold text-surface shadow-lg">
+    <p role="status" data-testid={props.testId ?? 'aviso-flotante'} className="pointer-events-none fixed bottom-24 left-1/2 z-50 flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-2 rounded-full text-center bg-on-surface px-4 py-2 text-sm font-semibold text-surface shadow-lg">
       {props.done ? <CheckCircle2 size={16} className="shrink-0 text-en-linea" aria-hidden /> : null}
       {props.text}
     </p>

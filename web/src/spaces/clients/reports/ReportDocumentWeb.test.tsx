@@ -222,6 +222,37 @@ describe('ReportDocumentWeb', () => {
     expect(screen.queryByTestId('formulario-agregar_foto_adicional')).toBeNull();
   });
 
+  describe('«Terminar unidad» (José 19/11)', () => {
+    const photoEntry = { id: 'foto-ingreso', title: 'Foto de ingreso', required: true, form: 'fotos', tool: 'agregar_foto_de_informe', photoKind: 'ingreso' };
+    const taken = { id: 'foto-ingreso', state: 'done', summary: [], values: { fotos: [{ id: 'p1', url: 'https://lila.example.com/f/p1.jpg', hora: '07:31' }] } };
+    const units = { id: 'unidades', kind: 'repeat', title: 'Unidades', required: true, state: 'partial', summary: [], results: [], itemTitle: 'Unidad', addLabel: '', min: 0, canAdd: false, template: [{ id: 'datos', title: 'Datos', required: true, form: 'ubicacion' }, photoEntry], items: [{ id: 'd2', title: 'Unidad 2 · QAP-102', summary: [], results: [], sections: [{ id: 'datos', state: 'done', summary: ['Llegada 07:30'], values: {} }, taken] }] };
+    const pista = { document: { ...document, type: 'CTL-PIS', title: 'Control de pista', sections: [document.sections[0], units] } };
+    const sentText: CommandOutcome = { ...savedOutcome, response: { responseType: 'ephemeral', text: 'Se envió 1 foto al grupo.' } };
+    const openAs = (admin: boolean) => render(<ReportDocumentWeb target={target} chatId="chat-1" service={service} type="CTL-PIS" admin={admin} onClose={() => undefined} />);
+
+    it('an admin reviews the photos, sends them, and sees Portal’s words', async () => {
+      // Arrange
+      const calls = serverWith(pista, { status: 200, body: sentText });
+      openAs(true);
+      fireEvent.click(await screen.findByTestId('seccion-unidades'));
+      // Act
+      fireEvent.click(screen.getByTestId('terminar-d2'));
+      fireEvent.click(await screen.findByTestId('album-enviar'));
+      // Assert
+      expect(await screen.findByTestId('aviso-album')).toHaveTextContent('Se envió 1 foto al grupo.');
+      expect(formCalls(calls)).toContainEqual(expect.objectContaining({ kind: 'unit_album', report_id: document.id, tramo_id: 'd2', fotos: ['https://lila.example.com/f/p1.jpg'] }));
+      expect(screen.queryByTestId('album-revision')).toBeNull();
+    });
+
+    it('a member sees no button to the group', async () => {
+      serverWith(pista);
+      openAs(false);
+      fireEvent.click(await screen.findByTestId('seccion-unidades'));
+      expect(screen.getByTestId('unidad-d2')).toBeInTheDocument();
+      expect(screen.queryByTestId('terminar-d2')).toBeNull();
+    });
+  });
+
   it('«Agregar foto» opens the camera of the extra photos', async () => {
     const extraEntry = { id: 'foto-adicional', title: 'Fotos adicionales', required: false, form: 'fotos', tool: 'agregar_foto_adicional', photoKind: 'adicional' };
     const units = { id: 'unidades', kind: 'repeat', title: 'Unidades', required: true, state: 'partial', summary: [], results: [], itemTitle: 'Unidad', addLabel: '', min: 0, canAdd: false, template: [{ id: 'datos', title: 'Datos', required: true, form: 'ubicacion' }, extraEntry], items: [{ id: 'd2', title: 'Unidad 1 · QAP-102', summary: [], results: [], sections: [{ id: 'datos', state: 'done', summary: ['Llegada 07:30'], values: {} }] }] };

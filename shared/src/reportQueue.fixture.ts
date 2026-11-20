@@ -32,9 +32,12 @@ export const NOW = '2026-11-05T10:00:00.000Z';
 
 /** A Portal that keeps a report: a section creates it, a `ubicacion` without tramo adds one, a photo goes to its tramo. */
 export function fakePortal(start: { id: string | null; tramos: Tramo[]; /** As Portal does: a new report is born with one empty tramo. */ seedsTramo?: boolean; requireLocation?: boolean }) {
-  const state = { ...start, tramos: start.tramos.map((one) => ({ ...one })), offline: false, reads: 0, writes: [] as string[], loseNextAnswer: false, refuse: null as Record<string, string> | null, status: null as number | null, /** Agentes' «too many calls», once: the seconds to wait. */ rateLimitOnce: null as number | null };
+  const state = { ...start, tramos: start.tramos.map((one) => ({ ...one })), offline: false, reads: 0, writes: [] as string[], loseNextAnswer: false, refuse: null as Record<string, string> | null, status: null as number | null, /** Agentes' «too many calls», once: the seconds to wait. */ rateLimitOnce: null as number | null, /** What Portal answers to «Terminar unidad». */ albumText: 'Se enviaron 2 fotos al grupo.' };
   const runs = new Map<string, { item_id: string | null; key: string; report_id?: string; removes?: string }>();
   const removed: string[] = [];
+  /** «Terminar unidad» as Portal heard it: `report:tramo:url,url`. */
+  const albums: string[] = [];
+  const albumRuns = new Set<string>();
   let run = 0;
   const wire: ReportWire = {
     read: async () => {
@@ -45,6 +48,10 @@ export function fakePortal(start: { id: string | null; tramos: Tramo[]; /** As P
     open: async (_ref, request) => {
       if (state.offline) return { ok: false, message: 'Sin conexión.' };
       run += 1;
+      if (request.kind === 'unit_album') {
+        albums.push(`${request.report_id}:${request.tramo_id}:${request.fotos.join(',')}`);
+        albumRuns.add(`run-${run}`);
+      }
       runs.set(`run-${run}`, request.kind === 'section' ? { item_id: request.item_id, key: request.key, ...(request.report_id ? { report_id: request.report_id } : {}) } : { item_id: null, key: request.kind, report_id: request.report_id, ...(request.kind === 'remove_photo' ? { removes: request.photo_id } : {}) });
       return { ok: true, data: { ...saved, commandId: `run-${run}`, outcome: 'form', response: { responseType: 'form', form: { id: 'x', title: 'x', schema: { type: 'object' } } } } };
     },
@@ -59,6 +66,7 @@ export function fakePortal(start: { id: string | null; tramos: Tramo[]; /** As P
         return { ok: false, status: 429, errors: { _: 'Demasiadas llamadas' }, code: 'rate_limited', retryAfterS };
       }
       const open = runs.get(commandId)!;
+      if (albumRuns.has(commandId)) return { ok: true, outcome: { ...saved, response: { responseType: 'ephemeral', text: state.albumText } } };
       if (open.removes) {
         removed.push(`${open.report_id}:${open.removes}`);
         state.tramos[0]!.photos -= 1;
@@ -80,7 +88,7 @@ export function fakePortal(start: { id: string | null; tramos: Tramo[]; /** As P
     },
     notice: async () => null,
   };
-  return { state, wire, removed };
+  return { state, wire, removed, albums };
 }
 
 export function fakeVault(saves: ReportSave[] = []) {

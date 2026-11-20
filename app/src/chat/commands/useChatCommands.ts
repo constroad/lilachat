@@ -85,13 +85,19 @@ export function useChatCommands(params: { jwt: string; chatId: string; workspace
     [runIfCommand, jwt, chatId, appAnswers]
   );
 
-  /** A row of an answer only I saw (José 15/11): it runs as that app's row, not as if I typed it, so a command off here still answers. */
+  /**
+   * A row of an answer only I saw (José 15/11): it runs as that app's row, not as if I typed it, so a
+   * command off here still answers. The new answer lands as its own chip; once it ran, the row's own
+   * panel has nothing left to do (José 20/11: it stayed open after the bot already posted the card).
+   */
   const runAnswerLine = useCallback(
     async (commandId: string, line: string): Promise<boolean> => {
       const parsed = parseSlashInput(line);
       if (!parsed) return false;
       const source = appAnswers.answers.find((answer) => answer.commandId === commandId);
-      return appAnswers.track({ appName: source?.appName ?? 'La app', command: parsed.command, ...(source?.avatarUrl ? { avatarUrl: source.avatarUrl } : {}) }, () => runAnswerCommand(jwt, chatId, { commandId, line }));
+      const ok = await appAnswers.track({ appName: source?.appName ?? 'La app', command: parsed.command, ...(source?.avatarUrl ? { avatarUrl: source.avatarUrl } : {}) }, () => runAnswerCommand(jwt, chatId, { commandId, line }));
+      if (ok) appAnswers.dismiss(commandId);
+      return ok;
     },
     [jwt, chatId, appAnswers]
   );

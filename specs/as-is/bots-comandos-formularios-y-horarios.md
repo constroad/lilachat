@@ -149,6 +149,11 @@ Pregunta a la app por `link.status` y `link.revoke`. Lilachat no guarda nada.
   44 px, `x-chips` (un texto elegido con chips) y las muestras numeradas como filas con su
   estado (`CompactFields.tsx` web y APK, `shared/src/sampleRows.ts`). Hoy solo el CTL-IMP
   (ver `obra-informes.md`); los demás formularios no cambian.
+- **20/11** `runAnswerLine` cierra el panel que lo originó al responder bien (José: «ya se envió la
+  tarjeta, ¿por qué sigue abierto?»): tocar una fila de una respuesta «Solo tú ves esto» crea una
+  respuesta nueva aparte (como siempre) Y ahora además descarta la original (`appAnswers.dismiss`),
+  porque su trabajo ya terminó. Antes quedaban las dos, confundiendo a quien ya vio la tarjeta
+  publicada. Sin cambios si la llamada falla: la original sigue para reintentar.
 
 ## 5. Diseños de Stitch relacionados
 

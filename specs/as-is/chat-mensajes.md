@@ -145,6 +145,10 @@ Lo demás (editar, borrar, reenviar, fijar, destacar, info, reacciones, mencione
 
 ## 4. Historia reciente (16/10 → 19/11)
 
+- **20/11:** José, de nuevo, nombre de obra cortado a una línea en la cabecera
+  del chat (web `Conversation.tsx`, app `EncabezadoDelChat.tsx`): ahora 2
+  líneas (`line-clamp-2`/`numberOfLines={2}`), sin techo de alto en el
+  contenedor que las recorte.
 - **19/11:** en un canal de cliente, `Conversation.tsx` deja la cabecera y las pestañas del canal sobre un servicio abierto desde 768 px; solo en el celular el servicio ocupa todo (diseños cc, ver `obra-canal-cliente-y-tutoriales.md`).
 
 - **16/10:** el historial vive en el teléfono (SQLite y respaldo cifrado). Lo mío queda leído en mis otros equipos.

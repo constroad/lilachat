@@ -49,6 +49,9 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
   Queda la lápida «Se eliminó este mensaje». Desde el 15/11 borrar libera la clave.
 - `files: [{ url, mime }]` de hosts de Constroad = álbum de fotos y videos (09/11).
 - `files: [{ file_id }]` = archivos subidos antes por `POST /api/bots/files` (17/11).
+- `mention_user_ids` (20/11): Lilachat antepone un `@Nombre` real por cada id que sigue siendo miembro del
+  destino, con su mención válida; el que ya no es miembro se descarta en silencio (`mentionedTextOf` en
+  `botMessages.ts`). Agentes solo manda ids, nunca el texto de la mención.
 
 **Subidas del bot** (`botUploads.ts`, `shared/src/botUploads.ts`).
 - `POST /api/bots/files`, multipart, campo `file`, hasta 16 MB.
@@ -182,6 +185,9 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
 - **17/11** `POST /api/bots/files` y `files: [{ file_id }]`. Nombres en UTF-8 también en las subidas de miembros.
 - **18/11** Una foto de formulario o de informe con sello Timemark acepta `place`: es la dirección del geocodificador del teléfono. El server la limpia y la quema (`placeOfShot`). Sin ella, la busca en Nominatim.
 - **19/11** El mapa de la obra pide `service_croquis` (`workMapForms`): el server abre la tool de Portal `abrir_croquis_de_servicio` con `{ servicioId }` y devuelve el enlace del croquis embebido. Solo lee: no escribe nada en Lilachat.
+- **20/11** Una acción de tarjeta puede traer `open: { route: 'service', service_id }`: Lilachat navega sola
+  a su Servicios sin mandar nada al bot (agentes arma el payload por separado). Un `POST /api/bots/messages`
+  puede traer `mention_user_ids` para etiquetar gente en `text` (ver arriba).
 
 ## 5. Diseños de Stitch relacionados
 

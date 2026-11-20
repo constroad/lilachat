@@ -164,6 +164,22 @@ describe('the bot publishes (§b) and reads (§d)', () => {
     expect(await MessageModel.find({ chatId: channel }).lean()).toMatchObject([{ senderId: new Types.ObjectId(botUserId), body: 'Pedido 1024 listo' }]);
   });
 
+  it('mention_user_ids tags a member by name with a real offset (agentes, 20/11)', async () => {
+    const { token } = await install();
+    const sent = await request(app).post('/api/bots/messages').set(asBot(token)).send({ channel_id: String(channel), text: 'Falta crear el pedido en Portal', mention_user_ids: [String(jose)], idempotency_key: 'm1' }).expect(201);
+    const saved = await MessageModel.findById(sent.body.message.id).lean<Message>();
+    expect(saved!.body).toBe('@José Falta crear el pedido en Portal');
+    expect(saved!.menciones).toEqual([{ userId: String(jose), desde: 0, largo: 5 }]);
+  });
+
+  it('mention_user_ids drops someone no longer in the channel, in silence, and still posts', async () => {
+    const { token } = await install();
+    const sent = await request(app).post('/api/bots/messages').set(asBot(token)).send({ channel_id: String(channel), text: 'Falta crear el pedido', mention_user_ids: [String(beto)], idempotency_key: 'm2' }).expect(201);
+    const saved = await MessageModel.findById(sent.body.message.id).lean<Message>();
+    expect(saved!.body).toBe('Falta crear el pedido');
+    expect(saved!.menciones ?? []).toEqual([]);
+  });
+
   it('a 1:1 with a member by phone; someone outside the space is not found', async () => {
     const { token } = await install();
     const sent = await request(app).post('/api/bots/messages').set(asBot(token)).send({ user: { phone: '51987654321' }, text: 'Hola Ana', idempotency_key: 'k2' }).expect(201);

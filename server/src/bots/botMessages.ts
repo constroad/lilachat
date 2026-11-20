@@ -11,6 +11,7 @@ import { BotInstallationModel, type BotInstallation } from './botModels.js';
 import { channelOfPostedTopic } from './botTopics.js';
 import { chatOfClient } from './botClients.js';
 import { chatOfProspect, noteDaliPost } from './botProspects.js';
+import { personOf } from './botTriggers.js';
 
 /**
  * What a bot publishes (`specs/BOTS-API.spec.md` §b): to a channel or group of
@@ -98,17 +99,44 @@ function contentOf(post: BotPost, slot?: UploadSlot) {
   return { kind: 'text' as const, body: post.text ?? (post.card ? botCardSummary(post.card) : botFilesSummary(post.files ?? [])) };
 }
 
+/**
+ * `mentionUserIds` (`specs/BOTS-API.spec.md` §c-duotricies): a `@Name ` per id that is still a member
+ * of the chat, prepended to `post.text` with its real offset. An id no longer in the chat is dropped
+ * in silence, same as a mention a person typed by hand — it never refuses the post.
+ */
+async function mentionedTextOf(post: BotPost, chatId: Types.ObjectId): Promise<{ body?: string; menciones: unknown[] }> {
+  if (!post.mentionUserIds?.length || post.text === undefined) return { body: post.text, menciones: [] };
+  const memberIds = new Set(await chatMemberIds(chatId));
+  const mentioned = post.mentionUserIds.filter((userId) => memberIds.has(userId));
+  if (!mentioned.length) return { body: post.text, menciones: [] };
+  const people = await Promise.all(mentioned.map((userId) => personOf(userId)));
+  let prefix = '';
+  const menciones: { userId: string; desde: number; largo: number }[] = [];
+  for (const [index, userId] of mentioned.entries()) {
+    const name = people[index]!.name;
+    if (!name) continue;
+    const token = `@${name}`;
+    menciones.push({ userId, desde: prefix.length, largo: token.length });
+    prefix += `${token} `;
+  }
+  return { body: menciones.length ? `${prefix}${post.text}` : post.text, menciones };
+}
+
 /** What Lilachat keeps on a bot's message beside what sendMessage stores: its ref and the prospect who wrote it. */
 const extraOf = (post: BotPost, prospect: Message['prospect']) => ({ ...(post.clientRef ? { clientRef: post.clientRef } : {}), ...(prospect ? { prospect } : {}) });
 
 async function publishText(installation: Installation, chatId: Types.ObjectId, post: BotPost, sharedBy?: Message['sharedBy'], slot?: UploadSlot): Promise<Message> {
   const prospect = await prospectAuthorOf(installation, post);
+  // Mentions only dress the main text, never an upload's caption.
+  const mentioned = slot ? undefined : await mentionedTextOf(post, chatId);
   const result = await sendMessage({
     chatId: String(chatId),
     senderId: installation.botUserId,
     skipMemberPermissions: true,
     clientKey: `bot:${installation._id}:${post.idempotencyKey}${slot ? `:${slot.index}` : ''}`,
     ...contentOf(post, slot),
+    ...(mentioned?.body !== undefined ? { body: mentioned.body } : {}),
+    ...(mentioned?.menciones.length ? { menciones: mentioned.menciones } : {}),
     ...(post.card ? { card: post.card } : {}),
     ...(post.files ? { files: post.files } : {}),
     ...(sharedBy ? { sharedBy } : {}),

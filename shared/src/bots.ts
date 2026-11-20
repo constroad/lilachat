@@ -19,7 +19,9 @@ import { PROSPECT_ID } from './prospects.js';
 export type CardTone = 'ok' | 'warn' | 'error' | 'info' | 'neutral';
 export type CardActionStyle = 'primary' | 'secondary' | 'danger';
 /** `command`: the button runs that line for whoever taps it, instead of reaching the bot as `button.click`. */
-export type CardAction = { id: string; label: string; style: CardActionStyle; value: string; command?: string };
+/** `open`: a client-side jump instead of a line or a `button.click` (agentes, 20/11: open the service without leaving Lilachat). The client is the card's own channel, never repeated here. */
+export type CardOpen = { route: 'service'; serviceId: string };
+export type CardAction = { id: string; label: string; style: CardActionStyle; value: string; command?: string; open?: CardOpen };
 /** The bar on top of a card (Stitch a10): the space's brand, or a tone (a corrected one, warn). */
 export type CardAccent = 'brand' | CardTone;
 export type BotCard = {
@@ -50,14 +52,24 @@ export type BotTarget = { channelId: string } | { topic: string } | { userPhone:
 /** What a message to a client is about, so the «Servicios» tab can show it under its service. */
 /** `visitId`: a technical visit's card (agentes 14/11), drawn as lv01 and opened by its id. */
 export type BotClientRef = { kind: string; serviceId?: string; recordId?: string; visitId?: string };
-export type BotPost = { target: BotTarget; text?: string; card?: BotCard; /** Photos and videos drawn as a person's album (José via agentes 09/11). */ files?: GalleryItem[]; /** Files of `POST /api/bots/files` (José 17/11): each one its own message, a document as a file card. */ uploads?: string[]; checklist?: BotChecklist; threadOf?: number; clientRef?: BotClientRef; /** The prospect wrote it (Dali, §c-prospectos): only to a prospect, never a card. */ asContact?: { sentAt?: string }; idempotencyKey: string };
+/** `mentionUserIds` (agentes, 20/11): the bot wants these people tagged in `text`. A name is prepended per valid id by whoever sends the message (the server knows the channel's members); an id no longer in the channel is dropped, never refused. */
+export type BotPost = { target: BotTarget; text?: string; card?: BotCard; /** Photos and videos drawn as a person's album (José via agentes 09/11). */ files?: GalleryItem[]; /** Files of `POST /api/bots/files` (José 17/11): each one its own message, a document as a file card. */ uploads?: string[]; checklist?: BotChecklist; threadOf?: number; clientRef?: BotClientRef; mentionUserIds?: string[]; /** The prospect wrote it (Dali, §c-prospectos): only to a prospect, never a card. */ asContact?: { sentAt?: string }; idempotencyKey: string };
 export type BotPostError = { ok: false; error: 'invalid_request'; message: string };
 
-export const BOT_LIMITS = { text: 4000, idempotencyKey: 120, fields: 12, actions: 3, /** lv01: Marcar punto, Entrevista, Foto suelta, Terminar and the croquis (agentes 14/11). */ visitActions: 5, actionValue: 2000, kicker: 60, title: 120, subtitle: 120, footer: 120, status: 24, label: 40, value: 120, linkLabel: 40, actionLabel: 24, actionId: 40, url: 500 };
+export const BOT_LIMITS = { text: 4000, idempotencyKey: 120, fields: 12, actions: 3, /** lv01: Marcar punto, Entrevista, Foto suelta, Terminar and the croquis (agentes 14/11). */ visitActions: 5, actionValue: 2000, kicker: 60, title: 120, subtitle: 120, footer: 120, status: 24, label: 40, value: 120, linkLabel: 40, actionLabel: 24, actionId: 40, url: 500, mentionUserIds: 10 };
 const ACCENTS: readonly CardAccent[] = ['brand', 'ok', 'warn', 'error', 'info', 'neutral'];
 const TONES: readonly CardTone[] = ['ok', 'warn', 'error', 'info', 'neutral'];
 const STYLES: readonly CardActionStyle[] = ['primary', 'secondary', 'danger'];
 const ACTION_ID = /^[a-z0-9_-]+$/;
+const SERVICE_ID = /^[a-f0-9]{24}$/i;
+
+/** `open: { route: 'service', service_id }` on the wire; anything else is dropped, not refused. */
+function cardOpenOf(raw: unknown): CardOpen | undefined {
+  const open = record(raw);
+  if (open.route !== 'service') return undefined;
+  const serviceId = typeof open.service_id === 'string' ? open.service_id : '';
+  return SERVICE_ID.test(serviceId) ? { route: 'service', serviceId } : undefined;
+}
 
 const line = (value: unknown, max: number): string => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, max) : '');
 const record = (value: unknown): Record<string, unknown> => (value && typeof value === 'object' ? (value as Record<string, unknown>) : {});
@@ -78,7 +90,8 @@ function validateActions(raw: unknown, max: number): { ok: true; actions: CardAc
     if (value.length > BOT_LIMITS.actionValue) return { ok: false, message: `El valor de una acción lleva hasta ${BOT_LIMITS.actionValue} caracteres.` };
     const style = STYLES.includes(action.style as CardActionStyle) ? (action.style as CardActionStyle) : 'secondary';
     const command = commandLineOf(action.command);
-    actions.push({ id, label, style, value, ...(command ? { command } : {}) });
+    const open = cardOpenOf(action.open);
+    actions.push({ id, label, style, value, ...(command ? { command } : {}), ...(open ? { open } : {}) });
   }
   return { ok: true, actions };
 }
@@ -248,6 +261,10 @@ export function validateBotPost(raw: unknown): { ok: true; post: BotPost } | Bot
     post.checklist = checklist.checklist;
   }
   if (Number.isInteger(body.thread_of) && Number(body.thread_of) > 0) post.threadOf = Number(body.thread_of);
+  const mentionUserIds = (Array.isArray(body.mention_user_ids) ? body.mention_user_ids : [])
+    .filter((one): one is string => typeof one === 'string' && one.length > 0 && one.length <= 64)
+    .slice(0, BOT_LIMITS.mentionUserIds);
+  if (mentionUserIds.length) post.mentionUserIds = mentionUserIds;
   if (body.kind !== undefined) {
     const clientRef = clientRefOf(body);
     if (!clientRef) return refuse('kind va como «order.created» (minúsculas, con un punto) y refs como { service_id?, record_id? }.');

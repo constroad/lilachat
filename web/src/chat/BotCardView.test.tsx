@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BotCardView } from './BotCardView';
-import { CardCommandContext, OrderCardContext } from './botBlocks/cardCommand';
+import { CardCommandContext, OpenServiceContext, OrderCardContext } from './botBlocks/cardCommand';
 import { VisitActionContext } from '../spaces/visits/visitActionContext';
 
 afterEach(() => {
@@ -100,6 +100,38 @@ describe('an order\'s card in a client\'s channel', () => {
   it('an answer that is not stored has no message to look up', () => {
     render(<OrderCardContext.Provider value={vi.fn()}><BotCardView card={order} chatId="c1" seq={0} jwt="jwt" /></OrderCardContext.Provider>);
     expect(screen.queryByTestId('tarjeta-ver-pedido')).toBeNull();
+  });
+});
+
+describe('an action that opens a service in-app (agentes, 20/11)', () => {
+  const serviceId = '651f1c2b9a0e1234567890ab';
+  const card = { title: 'Servicio nuevo', fields: [], actions: [{ id: 'open', label: 'Ver en Lilachat', style: 'secondary' as const, value: '', open: { route: 'service' as const, serviceId } }] };
+
+  it('taps the action and opens the service, with no call to the bot', () => {
+    const open = vi.fn();
+    const post = vi.spyOn(globalThis, 'fetch');
+    render(<OpenServiceContext.Provider value={open}><BotCardView card={card} chatId="c1" seq={1} jwt="jwt" /></OpenServiceContext.Provider>);
+    fireEvent.click(screen.getByTestId('accion-tarjeta-open'));
+    expect(open).toHaveBeenCalledWith(serviceId);
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it('outside a client\'s channel (no context) the button does not show', () => {
+    render(<BotCardView card={card} chatId="c1" seq={1} jwt="jwt" />);
+    expect(screen.queryByTestId('accion-tarjeta-open')).toBeNull();
+  });
+});
+
+describe('«Copiar enlace» beside a card\'s link (José 20/11)', () => {
+  const card = { title: 'Enlace del cliente', fields: [], link: { label: 'Abrir el enlace', url: 'https://portal.constroad.com/x', style: 'button' as const } };
+
+  it('copies the link\'s url and flips its label', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    render(<BotCardView card={card} chatId="c1" seq={1} jwt="jwt" />);
+    fireEvent.click(screen.getByTestId('tarjeta-copiar-enlace'));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('https://portal.constroad.com/x'));
+    await waitFor(() => expect(screen.getByTestId('tarjeta-copiar-enlace').getAttribute('title')).toBe('Enlace copiado'));
   });
 });
 

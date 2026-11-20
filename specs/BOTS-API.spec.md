@@ -2080,3 +2080,32 @@ nombre; motor puro `fieldGeoMapOf` en shared, con test).
 `app/.maestro/dali-documents.yaml` en verde: Confirmar → «Confirmado por José QA»; el mapa del lote; Corregir a
 «1 280 m²». El stub recibió los dos `prospect.field.confirmed` (`corrected: false` y `true`, con `file_id` y la
 versión nueva).
+
+## c-duotricies. Abrir un servicio sin salir de Lilachat, y que el bot etiquete a alguien (José vía agentes, 20/11)
+
+**`open` en una acción de tarjeta.** Hasta ahora una acción manda una línea (`command`) o un `button.click` con su
+`value`. Ahora puede en cambio llevar `"open": { "route": "service", "service_id": "<24 hex>" }`: Lilachat no manda
+nada al bot, navega sola a su propio tab Servicios del canal de cliente con ese servicio abierto. El cliente es el
+canal de la tarjeta: no se repite en el payload. Un `route` que no sea `service` o un `service_id` que no sea un id
+real se descarta en silencio (la acción queda sin `open`, no se rechaza la tarjeta ni el resto de sus campos) — así
+una Lilachat vieja, o un payload con un error, nunca tumba el POST. Ejemplo (la tarjeta «Servicio nuevo»):
+
+```json
+{
+  "actions": [
+    { "id": "open_service", "label": "Ver en Lilachat", "value": "", "style": "secondary",
+      "open": { "route": "service", "service_id": "651f1c2b9a0e1234567890ab" } },
+    { "id": "open_portal", "label": "Abrir Portal", "value": "", "style": "secondary" }
+  ]
+}
+```
+
+(El segundo botón sigue usando `link`/`url` o `value` como hoy, para salir a Portal.)
+
+**`mention_user_ids` en `POST /api/bots/messages`.** Un bot puede pedir que se etiquete a gente en su `text`:
+`"mention_user_ids": ["<userId>", …]` (hasta 10). Lilachat antepone un `@Nombre` real por cada id que SIGUE siendo
+miembro del destino, con su mención válida (offset + largo) — igual que una mención escrita a mano. Un id que ya no
+es miembro se descarta en silencio: el mensaje se publica igual, sin esa mención, nunca un `400`. Agentes no arma el
+texto de la mención ni calcula offsets: solo manda los ids; Lilachat resuelve el nombre y el texto final. Pensado
+para el aviso «Falta crear el pedido» de Inframaq, etiquetando a quien reportó la producción (su `author.id` del
+webhook `message.created`).

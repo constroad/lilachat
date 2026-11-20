@@ -114,7 +114,7 @@ const HEAD_BUTTON = 'min-h-[44px] flex-row items-center gap-2 rounded-xl border 
  * Completados · Todos» and a card per service; on a phone the open tasks go first. The service opens
  * under the channel's tabs (tablet) or over the whole screen (phone).
  */
-export function ClientServices(props: { /** The channel hides its chrome while a service is open on a phone. */ onServiceOpen?: (open: boolean) => void; client: SpaceClient; records: ClientRecord[] | null; target: ServiceAskTarget | null; members: ReadonlyMap<string, string>; me: string; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void; pending?: ChannelPending; compact?: boolean }) {
+export function ClientServices(props: { /** The channel hides its chrome while a service is open on a phone. */ onServiceOpen?: (open: boolean) => void; client: SpaceClient; records: ClientRecord[] | null; target: ServiceAskTarget | null; members: ReadonlyMap<string, string>; me: string; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void; /** A card's `open: { route: 'service' }` (agentes, 20/11): the service to open directly, no order lookup. */ focusServiceId?: string | null; onServiceFocused?: () => void; pending?: ChannelPending; compact?: boolean }) {
   const { links } = props;
   const clientId = props.client.id;
   const [opened, setOpened] = useState<SpaceClientService | null>(null);
@@ -122,7 +122,7 @@ export function ClientServices(props: { /** The channel hides its chrome while a
   const [filter, setFilter] = useState<ServiceFilter>('all');
   const close = useCallback(() => setOpened(null), []);
   const [startOrderId, setStartOrderId] = useState<string | undefined>(); // gates-allow: duplicate (React state twin of the web ClientServices; shared has no React, the logic lives in orderFocusOf)
-  const { focusSeq, records, onFocused } = props;
+  const { focusSeq, records, onFocused, focusServiceId, onServiceFocused } = props;
   const clientServices = props.client.services;
   // The records say which order the card was: until they arrive, this waits.
   useEffect(() => {
@@ -131,6 +131,13 @@ export function ClientServices(props: { /** The channel hides its chrome while a
     if (focus) { setStartOrderId(focus.orderId); setOpened(focus.service); } // gates-allow: duplicate (React state twin of the web ClientServices; shared has no React, the logic lives in orderFocusOf)
     onFocused?.();
   }, [focusSeq, records, clientServices, onFocused]);
+  // A direct service id needs no records: it opens as soon as the client's own list has it.
+  useEffect(() => {
+    if (!focusServiceId) return;
+    const service = clientServices.find((one) => one.id === focusServiceId);
+    if (service) setOpened(service);
+    onServiceFocused?.();
+  }, [focusServiceId, clientServices, onServiceFocused]);
   const showsDetail = Boolean(opened && props.target);
   const { onServiceOpen } = props;
   useEffect(() => {

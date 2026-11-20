@@ -6,7 +6,8 @@ const groups: CommandGroup[] = [{ appId: 'a1', appName: 'Inframaq', commands: [{
 let releaseCommands: () => void = () => undefined;
 const spaceCommands = vi.fn(() => new Promise((resolve) => { releaseCommands = () => resolve({ ok: true, data: { groups } }); }));
 const runCommand = vi.fn(async () => ({ ok: true, data: { commandId: 'c1', appId: 'a1', appName: 'Inframaq', outcome: 'posted' } }));
-vi.mock('./commandsApi', () => ({ spaceCommands: (...args: unknown[]) => spaceCommands(...(args as [])), runCommand: (...args: unknown[]) => runCommand(...(args as [])), shareCommandAnswer: vi.fn() }));
+const runAnswerCommand = vi.fn(async () => ({ ok: true, data: { commandId: 'c2', appId: 'a1', appName: 'Lila', outcome: 'ephemeral', response: { responseType: 'ephemeral', text: 'Ya tiene el enlace' } } }));
+vi.mock('./commandsApi', () => ({ spaceCommands: (...args: unknown[]) => spaceCommands(...(args as [])), runCommand: (...args: unknown[]) => runCommand(...(args as [])), runAnswerCommand: (...args: unknown[]) => runAnswerCommand(...(args as [])), shareCommandAnswer: vi.fn() }));
 const { useChatCommands, useChatCommandsWithActions } = await import('./useChatCommands');
 
 describe('useChatCommands (23/10: a fast «/clima» + Enter went to the channel as text)', () => {
@@ -36,6 +37,21 @@ describe('useChatCommands (23/10: a fast «/clima» + Enter went to the channel 
     // A command no app has is not sent as text: it says so (pending 102).
     expect(await result.current.runIfCommand('/otra')).toBe(true);
     expect(await result.current.runIfCommand('hola')).toBe('not-command');
+  });
+
+  it('once a row\'s line answers, the row\'s own panel has nothing left and closes (José 20/11: it stayed open after the card was already posted)', async () => {
+    // Arrange: an existing «/lila» answer with its numbered-options card.
+    const { result } = renderHook(() => useChatCommands({ jwt: 'jwt', chatId: 'ch1', workspaceId: 's1' }));
+    await act(async () => void (await result.current.appAnswers.track({ appName: 'Lila', command: 'lila' }, async () => ({ ok: true, data: { commandId: 'c9', appId: 'a1', appName: 'Lila', outcome: 'ephemeral', response: { responseType: 'ephemeral', text: 'Elige una opción' } } }))));
+    const existing = result.current.appAnswers.answers[0]!;
+    // Act: tapping option 1 inside that card runs it as the app's row.
+    let ok = false;
+    await act(async () => { ok = await result.current.runAnswerLine(existing.commandId, '/lila 1'); });
+    // Assert: the server got the line tied to that answer; the row's own panel is gone, the fresh answer stays.
+    expect(ok).toBe(true);
+    expect(runAnswerCommand).toHaveBeenCalledWith('jwt', 'ch1', { commandId: existing.commandId, line: '/lila 1' });
+    expect(result.current.appAnswers.answers.some((answer) => answer.commandId === existing.commandId)).toBe(false);
+    expect(result.current.appAnswers.answers).toMatchObject([{ commandId: 'c2', state: 'answered' }]);
   });
 });
 

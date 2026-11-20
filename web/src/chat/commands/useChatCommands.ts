@@ -119,15 +119,21 @@ export function useChatCommands(params: { jwt?: string; chatId: string; workspac
     [runIfCommand, jwt, chatId, track]
   );
 
-  /** A row of an answer only I saw (José 15/11): it runs as that app's row, not as if I typed it, so a command off here still answers. */
+  /**
+   * A row of an answer only I saw (José 15/11): it runs as that app's row, not as if I typed it, so a
+   * command off here still answers. The new answer lands as its own chip; once it ran, the row's own
+   * panel has nothing left to do (José 20/11: it stayed open after the bot already posted the card).
+   */
   const runAnswerLine = useCallback(
     async (commandId: string, line: string): Promise<boolean> => {
       const parsed = parseSlashInput(line);
       if (!jwt || !parsed) return false;
       const source = appAnswers.answers.find((answer) => answer.commandId === commandId);
-      return track({ appName: source?.appName ?? 'La app', command: parsed.command, ...(source?.avatarUrl ? { avatarUrl: source.avatarUrl } : {}) }, () => runAnswerCommand(jwt, chatId, { commandId, line }));
+      const ok = await track({ appName: source?.appName ?? 'La app', command: parsed.command, ...(source?.avatarUrl ? { avatarUrl: source.avatarUrl } : {}) }, () => runAnswerCommand(jwt, chatId, { commandId, line }));
+      if (ok) appAnswers.dismiss(commandId);
+      return ok;
     },
-    [jwt, chatId, track, appAnswers.answers]
+    [jwt, chatId, track, appAnswers.answers, appAnswers.dismiss]
   );
 
   // A manifest or the commands changed (23/10): the list already read is stale; read again if it was in use.

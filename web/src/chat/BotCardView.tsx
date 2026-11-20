@@ -1,10 +1,11 @@
 import { useContext, useState, type ReactNode } from 'react';
-import { Camera, ChevronRight, CircleCheck, ExternalLink, FileText, ImagePlus, ListChecks, Map as MapIcon, MapPin, type LucideIcon } from 'lucide-react';
+import { Camera, Check, ChevronRight, CircleCheck, Copy, ExternalLink, FileText, ImagePlus, ListChecks, Map as MapIcon, MapPin, type LucideIcon } from 'lucide-react';
 import { cardActionLayout, cardContextOf, visitBlocksOf, visitCardActionOf, visitKickerParts, formatClock, isOrderCard, viewableLinkOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone, type VisitCardAction } from '@lilachat/shared';
 import { BotBlocksView } from './botBlocks/BotBlocksView';
 import { BotCardDetail } from './botBlocks/BotCardDetail';
-import { CardCommandContext, OrderCardContext, useCardCommand } from './botBlocks/cardCommand';
+import { CardCommandContext, OpenServiceContext, OrderCardContext, useCardCommand } from './botBlocks/cardCommand';
 import { TONE as BLOCK_TONE } from './botBlocks/tones';
+import { copiarTexto } from './copiarTexto';
 import { usePortalFileViewer } from '../spaces/clients/PortalFileViewer';
 import { InVisitCardContext, VisitActionContext } from '../spaces/visits/visitActionContext';
 import { VisitText } from '../spaces/visits/VisitCardBlocks';
@@ -73,6 +74,19 @@ function LinkOut(props: { link: NonNullable<BotCard['link']>; className: string;
   );
 }
 
+/** «Copiar enlace» beside a card's link (José 20/11): the same clipboard the chat uses elsewhere. */
+function CopyLinkButton({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    if (await copiarTexto(url)) { setCopied(true); setTimeout(() => setCopied(false), 2000); }
+  };
+  return (
+    <button type="button" data-testid="tarjeta-copiar-enlace" onClick={() => void copy()} aria-label={copied ? 'Enlace copiado' : 'Copiar enlace'} title={copied ? 'Enlace copiado' : 'Copiar enlace'} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-outline/25 text-on-surface-variant hover:bg-background">
+      {copied ? <Check size={15} /> : <Copy size={15} />}
+    </button>
+  );
+}
+
 /** The link as text, or (Stitch a10) the footer line with the solid button on its right. */
 function CardLink({ card }: { card: BotCard }) {
   const { link, footer } = card;
@@ -81,9 +95,12 @@ function CardLink({ card }: { card: BotCard }) {
       <div data-testid="tarjeta-pie" className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-outline/10 pt-2.5">
         {footer ? <p className="min-w-0 flex-1 break-words text-[12px] text-on-surface-variant">{footer}</p> : <span />}
         {link ? (
-          <LinkOut link={link} className={link.style === 'button' ? 'inline-flex min-h-9 items-center gap-1 rounded-lg bg-primary px-3.5 text-[13px] font-semibold text-on-primary hover:opacity-90' : 'inline-flex items-center gap-1 text-[13px] font-semibold text-primary hover:underline'}>
-            {link.label} {link.style === 'button' ? <ChevronRight size={15} /> : <ExternalLink size={13} />}
-          </LinkOut>
+          <div className="flex items-center gap-2">
+            <LinkOut link={link} className={link.style === 'button' ? 'inline-flex min-h-9 items-center gap-1 rounded-lg bg-primary px-3.5 text-[13px] font-semibold text-on-primary hover:opacity-90' : 'inline-flex items-center gap-1 text-[13px] font-semibold text-primary hover:underline'}>
+              {link.label} {link.style === 'button' ? <ChevronRight size={15} /> : <ExternalLink size={13} />}
+            </LinkOut>
+            <CopyLinkButton url={link.url} />
+          </div>
         ) : null}
       </div>
     );
@@ -91,9 +108,12 @@ function CardLink({ card }: { card: BotCard }) {
   if (footer) return <p data-testid="tarjeta-pie" className="break-words border-t border-outline/10 pt-2.5 text-[12px] text-on-surface-variant">{footer}</p>;
   if (!link) return null;
   return (
-    <LinkOut link={link} className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary hover:underline">
-      {link.label} <ExternalLink size={13} />
-    </LinkOut>
+    <div className="flex items-center justify-between gap-2">
+      <LinkOut link={link} className="inline-flex items-center gap-1 text-[13px] font-semibold text-primary hover:underline">
+        {link.label} <ExternalLink size={13} />
+      </LinkOut>
+      <CopyLinkButton url={link.url} />
+    </div>
   );
 }
 
@@ -180,6 +200,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
   const [detailOpen, setDetailOpen] = useState(false);
   const run = useCardCommand();
   const openOrder = useContext(OrderCardContext);
+  const openService = useContext(OpenServiceContext);
   const runRow = run ? (line: string) => run(line, props.seq, cardContextOf(card) ?? undefined) : null;
   const tap = async (actionId: string) => {
     setSent({ id: actionId, state: 'sending' });
@@ -192,11 +213,12 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
   };
   const openVisit = useContext(VisitActionContext);
   const press = (action: CardAction) => {
+    if (action.open?.route === 'service') return openService?.(action.open.serviceId);
     const visitAction = props.visitId && openVisit ? visitCardActionOf(action.id) : null;
     if (visitAction) return openVisit!(props.visitId!, visitAction);
     return action.command ? runRow?.(action.command) : void tap(action.id);
   };
-  const actions = card.actions?.filter((action) => !action.command || runRow) ?? [];
+  const actions = card.actions?.filter((action) => (!action.command || runRow) && (!action.open || openService)) ?? [];
   return (
     <CardCommandContext.Provider value={runRow}>
     <div data-testid="tarjeta-bot" onClick={(event) => openCardUrl(card.url, event.target)} className={`mb-1 w-[calc(100%-0.5rem)] max-w-sm overflow-hidden border border-outline/15 bg-surface text-on-surface ${props.visitId ? 'rounded-[10px]' : 'rounded-xl'} ${card.url ? 'cursor-pointer' : ''}`}>

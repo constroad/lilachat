@@ -17,6 +17,35 @@ import type { ServiceAskTarget } from '../../spaces/clients/useServiceAsk';
 type Tab = ChannelTab;
 const COVER = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, elevation: 10 } as const;
 
+/** A card's `open: { route: 'service' }` (agentes, 20/11): jumps to «Servicios» by service id, no order lookup. */
+function useServiceFocus(setTab: (tab: Tab) => void) {
+  const [focusServiceId, setFocusServiceId] = useState<string | null>(null);
+  const clearServiceFocus = useCallback(() => setFocusServiceId(null), []);
+  const openService = useCallback((serviceId: string) => {
+    setFocusServiceId(serviceId);
+    setTab('services');
+  }, [setTab]);
+  return { focusServiceId, clearServiceFocus, openService };
+}
+
+/** The tab bar's badges and which one gets the red dot of overdue tasks. */
+function channelBadges(client: SpaceClient, holdsPending: boolean, open: number, counter: string | null): { badges: Partial<Record<Tab, string | null>>; overdueOn: Tab } {
+  const badges: Partial<Record<Tab, string | null>> = { services: client.services.length ? String(client.services.length) : null, checklist: holdsPending ? (open ? String(open) : null) : counter };
+  return { badges, overdueOn: holdsPending ? 'checklist' : 'pending' };
+}
+
+/** Android's BACK on a tab other than the chat goes back to it first; the last listener added runs first. */
+function useChannelTabBack(tab: Tab, setTab: (tab: Tab) => void): void {
+  useEffect(() => {
+    if (tab === 'chat') return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setTab('chat');
+      return true;
+    });
+    return () => subscription.remove();
+  }, [tab, setTab]);
+}
+
 /**
  * «Chat · Checklist» of a channel (pending 21, design e2-17). The tabs go under
  * the header; the checklist covers the conversation in its own area, so the
@@ -26,7 +55,7 @@ const COVER = { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zInd
  * the composer. An open service takes the whole chat, header included (José
  * 06/11), and its Drive lives there; the channel's files are in its media.
  */
-export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: string; channelName: string; yo: string; names: ReadonlyMap<string, string>; apps: ReadonlySet<string>; spaceId?: string; onOpenRecord?: (seq: number) => void; /** The client channel's buttons: a link is made with its action, in the chat (José 31/10). */ actions?: readonly ShortcutRow[]; runAction?: (row: ShortcutRow, values: ShortcutValues) => unknown }): { tabs: ReactNode; panel: ReactNode; note: ReactNode; client: SpaceClient | null; /** An open service: the chat's header steps aside. */ fullScreen: boolean; openOrderCard?: (seq: number) => void } {
+export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: string; channelName: string; yo: string; names: ReadonlyMap<string, string>; apps: ReadonlySet<string>; spaceId?: string; onOpenRecord?: (seq: number) => void; /** The client channel's buttons: a link is made with its action, in the chat (José 31/10). */ actions?: readonly ShortcutRow[]; runAction?: (row: ShortcutRow, values: ShortcutValues) => unknown }): { tabs: ReactNode; panel: ReactNode; note: ReactNode; client: SpaceClient | null; /** An open service: the chat's header steps aside. */ fullScreen: boolean; openOrderCard?: (seq: number) => void; openService?: (serviceId: string) => void } {
   const [tab, setTab] = useState<Tab>('chat');
   const [serviceOpen, setServiceOpen] = useState(false);
   // An order's card sends to «Servicios» with its message; the panel clears it once it opened the order.
@@ -36,6 +65,7 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
     setFocusSeq(seq);
     setTab('services');
   }, []);
+  const { focusServiceId, clearServiceFocus, openService } = useServiceFocus(setTab);
   const client = useClientOfChat(params.chatId);
   const records = useClientRecords(params.jwt, params.spaceId, client?.id, tab === 'services');
   const plan = useWorkPlan(params.jwt, params.chatId, params.enabled && Boolean(client));
@@ -46,17 +76,9 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
   // José 19/11: a phone gets the service over the whole screen and «Pendientes» inside «Checklist» (designs cc-02, cc-06).
   const screen = useWindowDimensions();
   const compact = serviceTakesScreen(screen.width, screen.height);
-  // Android's BACK on the checklist goes back to the chat first; the last listener added runs first.
-  useEffect(() => {
-    if (tab === 'chat') return;
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      setTab('chat');
-      return true;
-    });
-    return () => subscription.remove();
-  }, [tab]);
+  useChannelTabBack(tab, setTab);
   // José 29/10: Checklist and Pendientes belong to a client's channel only; José 06/11: the Checklist, to its admins.
-  if (!params.enabled || !client) return { tabs: null, panel: null, note: null, client: null, openOrderCard: undefined, fullScreen: false };
+  if (!params.enabled || !client) return { tabs: null, panel: null, note: null, client: null, openOrderCard: undefined, openService: undefined, fullScreen: false };
   const counter = plan.summary && plan.summary.total ? `${plan.summary.done}/${plan.summary.total}` : null;
   const stages = plan.stages ?? [];
   const nameOf = (userId: string) => params.names.get(userId) ?? 'Alguien';
@@ -79,8 +101,7 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
   const open = pendingTasks(stages, new Date()).length;
   // A tab the access no longer gives (an admin just restricted me) falls back to the chat.
   const shown = allowed.includes(tab) ? tab : 'chat';
-  const badges: Partial<Record<Tab, string | null>> = { services: client.services.length ? String(client.services.length) : null, checklist: holdsPending ? (open ? String(open) : null) : counter };
-  const overdueOn: Tab = holdsPending ? 'checklist' : 'pending';
+  const { badges, overdueOn } = channelBadges(client, holdsPending, open, counter);
   const tabs = (
     <>
       {/* José 06/11: Chat · Cuenta · Servicios · Checklist · Pendientes; Cuenta only with money. */}
@@ -92,8 +113,8 @@ export function useChannelWork(params: { enabled: boolean; jwt: string; chatId: 
   );
   const fullScreen = shown === 'services' && serviceOpen && compact;
   const layout = { compact, holdsPending, counts: { pending: open ? String(open) : '', plan: counter ?? '' }, onPending: () => setTab(holdsPending ? 'checklist' : 'pending') };
-  const panel = <ChannelPanels fullScreen={fullScreen} layout={layout} onServiceOpen={setServiceOpen} shown={shown} focusSeq={focusSeq} clearFocus={clearFocus} client={client} records={records} plan={plan} stages={stages} target={target} people={people} params={params} nameOf={nameOf} toMessage={toMessage} openTask={openTask} setOpenTask={setOpenTask} links={links} />;
-  return { tabs, panel, note: <ArchivedComposerNote client={client} />, client, openOrderCard: allowed.includes('services') ? openOrderCard : undefined, fullScreen };
+  const panel = <ChannelPanels fullScreen={fullScreen} layout={layout} onServiceOpen={setServiceOpen} shown={shown} focusSeq={focusSeq} clearFocus={clearFocus} focusServiceId={focusServiceId} clearServiceFocus={clearServiceFocus} client={client} records={records} plan={plan} stages={stages} target={target} people={people} params={params} nameOf={nameOf} toMessage={toMessage} openTask={openTask} setOpenTask={setOpenTask} links={links} />;
+  return { tabs, panel, note: <ArchivedComposerNote client={client} />, client, openOrderCard: allowed.includes('services') ? openOrderCard : undefined, openService: allowed.includes('services') ? openService : undefined, fullScreen };
 }
 
 type ChannelWorkParams = Parameters<typeof useChannelWork>[0];
@@ -102,7 +123,7 @@ type ChannelWorkParams = Parameters<typeof useChannelWork>[0];
 /** What the device changes (José 19/11): a phone holds «Pendientes» in «Checklist» and shows them over «Servicios». */
 type ChannelLayout = { compact: boolean; holdsPending: boolean; counts: { pending: string; plan: string }; onPending: () => void };
 
-function ChannelPanels(props: { fullScreen: boolean; layout: ChannelLayout; onServiceOpen: (open: boolean) => void; shown: Tab; focusSeq: number | null; clearFocus: () => void; client: SpaceClient; records: ReturnType<typeof useClientRecords>; plan: ReturnType<typeof useWorkPlan>; stages: WorkStage[]; target: ServiceAskTarget | null; people: ReadonlyMap<string, string>; params: ChannelWorkParams; nameOf: (userId: string) => string; toMessage: (seq: number) => void; openTask: OpenTask | null; setOpenTask: (task: OpenTask | null) => void; links: ChannelLinks }) {
+function ChannelPanels(props: { fullScreen: boolean; layout: ChannelLayout; onServiceOpen: (open: boolean) => void; shown: Tab; focusSeq: number | null; clearFocus: () => void; focusServiceId: string | null; clearServiceFocus: () => void; client: SpaceClient; records: ReturnType<typeof useClientRecords>; plan: ReturnType<typeof useWorkPlan>; stages: WorkStage[]; target: ServiceAskTarget | null; people: ReadonlyMap<string, string>; params: ChannelWorkParams; nameOf: (userId: string) => string; toMessage: (seq: number) => void; openTask: OpenTask | null; setOpenTask: (task: OpenTask | null) => void; links: ChannelLinks }) {
   const { shown, client, plan, stages, target, params, nameOf, toMessage, setOpenTask } = props;
   const members = checklistMembers(props.people, params.yo);
   const rowAccess = { admin: Boolean(client.access?.admin), yo: params.yo, jwt: params.jwt, chatId: params.chatId, onChanged: () => void plan.reload() };
@@ -113,7 +134,7 @@ function ChannelPanels(props: { fullScreen: boolean; layout: ChannelLayout; onSe
     <>
       {shown === 'services' ? (
         <View className="bg-background" style={cover}>
-          <ClientServices onServiceOpen={props.onServiceOpen} compact={props.layout.compact} pending={props.layout.compact && stages.length ? { stages, label: props.layout.holdsPending ? 'Ver en Checklist' : 'Ver pendientes', onOpen: props.layout.onPending } : undefined} client={client} records={props.records} target={target} members={props.people} me={params.yo} links={props.links} focusSeq={props.focusSeq} onFocused={props.clearFocus} />
+          <ClientServices onServiceOpen={props.onServiceOpen} compact={props.layout.compact} pending={props.layout.compact && stages.length ? { stages, label: props.layout.holdsPending ? 'Ver en Checklist' : 'Ver pendientes', onOpen: props.layout.onPending } : undefined} client={client} records={props.records} target={target} members={props.people} me={params.yo} links={props.links} focusSeq={props.focusSeq} onFocused={props.clearFocus} focusServiceId={props.focusServiceId} onServiceFocused={props.clearServiceFocus} />
         </View>
       ) : null}
       {shown === 'account' && target ? <View className="bg-background" style={cover}><ClientAccountPanel target={target} services={client.services} /></View> : null}

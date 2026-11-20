@@ -90,12 +90,12 @@ const HEAD_BUTTON = 'inline-flex h-10 items-center gap-1.5 rounded-xl border bor
  * Completados · Todos», and a card per service; on a phone the open tasks go first. The service
  * opens under the channel's tabs (tablet, computer) or over the whole screen (phone).
  */
-export function ClientServices(props: { /** Who can be a report's responsible. */ people?: readonly string[]; /** The channel hides its chrome while a service is open on a phone. */ onServiceOpen?: (open: boolean) => void; client: SpaceClient; records: ClientRecord[] | null; target: ServiceAskTarget | null; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void; pending?: ChannelPending }) {
+export function ClientServices(props: { /** Who can be a report's responsible. */ people?: readonly string[]; /** The channel hides its chrome while a service is open on a phone. */ onServiceOpen?: (open: boolean) => void; client: SpaceClient; records: ClientRecord[] | null; target: ServiceAskTarget | null; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void; /** A card's `open: { route: 'service' }` (agentes, 20/11): the service to open directly, no order lookup. */ focusServiceId?: string | null; onServiceFocused?: () => void; pending?: ChannelPending }) {
   const [query, setQuery] = useState('');
   const [opened, setOpened] = useState<SpaceClientService | null>(null);
   const [filter, setFilter] = useState<ServiceFilter>('all');
   const [startOrderId, setStartOrderId] = useState<string | undefined>();
-  const { focusSeq, records, onFocused } = props;
+  const { focusSeq, records, onFocused, focusServiceId, onServiceFocused } = props;
   const clientServices = props.client.services;
   // The records say which order the card was: until they arrive, this waits.
   useEffect(() => {
@@ -104,6 +104,13 @@ export function ClientServices(props: { /** Who can be a report's responsible. *
     if (focus) { setStartOrderId(focus.orderId); setOpened(focus.service); }
     onFocused?.();
   }, [focusSeq, records, clientServices, onFocused]);
+  // A direct service id needs no records: it opens as soon as the client's own list has it.
+  useEffect(() => {
+    if (!focusServiceId) return;
+    const service = clientServices.find((one) => one.id === focusServiceId);
+    if (service) setOpened(service);
+    onServiceFocused?.();
+  }, [focusServiceId, clientServices, onServiceFocused]);
   const showsDetail = Boolean(opened && props.target);
   const { onServiceOpen } = props;
   useEffect(() => {

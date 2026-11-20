@@ -43,6 +43,18 @@ describe('bot post', () => {
     expect(result.ok && result.post.threadOf).toBe(42);
   });
 
+  it('mention_user_ids is kept up to its cap; blanks and non-strings are dropped (agentes, 20/11)', () => {
+    const result = validateBotPost({ channel_id: 'c1', text: 'x', mention_user_ids: ['u1', '', 42, 'u2'], idempotency_key: 'k' });
+    expect(result.ok && result.post.mentionUserIds).toEqual(['u1', 'u2']);
+    const capped = validateBotPost({ channel_id: 'c1', text: 'x', mention_user_ids: Array.from({ length: 12 }, (_, i) => `u${i}`), idempotency_key: 'k' });
+    expect(capped.ok && capped.post.mentionUserIds).toHaveLength(10);
+  });
+
+  it('without mention_user_ids, the post carries none', () => {
+    const result = validateBotPost({ channel_id: 'c1', text: 'x', idempotency_key: 'k' });
+    expect(result.ok && result.post.mentionUserIds).toBeUndefined();
+  });
+
   it('a checklist with its people by phone and dates', () => {
     const result = validateBotPost({ channel_id: 'c1', idempotency_key: 'k', checklist: { title: 'Despacho 1024', others_can_mark: false, items: [{ text: 'Cargar tolva', assignee_phone: '51987654321', due_at: '2026-10-22T13:00:00Z' }, { text: 'Pesar' }] } });
     expect(result.ok && result.post.checklist).toEqual({ title: 'Despacho 1024', othersCanMark: false, items: [{ text: 'Cargar tolva', assigneePhone: '987654321', dueAt: '2026-10-22T13:00:00.000Z' }, { text: 'Pesar' }] });
@@ -79,6 +91,20 @@ describe('bot card', () => {
   it('an action without a style is a secondary one', () => {
     const result = validateBotCard({ title: 'T', actions: [{ id: 'ok', label: 'Ok', value: '1' }] });
     expect(result.ok && result.card.actions).toEqual([{ id: 'ok', label: 'Ok', style: 'secondary', value: '1' }]);
+  });
+
+  it('an action may open a service in-app instead of a line or button.click (agentes, 20/11)', () => {
+    const serviceId = '651f1c2b9a0e1234567890ab';
+    const result = validateBotCard({ title: 'T', actions: [{ id: 'open', label: 'Ver en Lilachat', value: '', open: { route: 'service', service_id: serviceId } }] });
+    expect(result.ok && result.card.actions).toEqual([{ id: 'open', label: 'Ver en Lilachat', style: 'secondary', value: '', open: { route: 'service', serviceId } }]);
+  });
+
+  it('an unknown route, or a service id that is not a real id, drops `open` silently', () => {
+    const action = { id: 'open', label: 'Ver', value: '' };
+    const badRoute = validateBotCard({ title: 'T', actions: [{ ...action, open: { route: 'order', service_id: '651f1c2b9a0e1234567890ab' } }] });
+    const badId = validateBotCard({ title: 'T', actions: [{ ...action, open: { route: 'service', service_id: 'not-an-id' } }] });
+    expect(badRoute.ok && badRoute.card.actions?.[0]!.open).toBeUndefined();
+    expect(badId.ok && badId.card.actions?.[0]!.open).toBeUndefined();
   });
 
   it('a link label keeps whole words: «Abrir el chat con Inframaq» was cut to «…con Infram» (E2E 24/10)', () => {

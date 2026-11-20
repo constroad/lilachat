@@ -260,6 +260,11 @@ en la cabecera del Drive y las acciones del mapa en su barra, justo bajo la barr
 
 ## 4. Historia reciente
 
+- **20/11:** José, de nuevo, nombre de obra cortado a una línea en la cabecera
+  del Mapa de obra («cabecera-servicio-mapa», `ServiceShell.tsx` y
+  `ServiceShellWeb.tsx`, las tres variantes compacta/ancha): ahora 2 líneas.
+  La fila sigue siendo UNA sola fila por diseño (mapa-v2); lo que cambia es que
+  el nombre ya no se corta cuando es largo.
 - **28–29/10** Checklist por etapas (expediente). Canales por cliente con Agentes,
   Archivados, sección CLIENTES (f-01…f-03). Drive del servicio a pedido.
 - **30/10** Detalle del servicio a pedido; cobranza, fichas y archivos dentro de
@@ -295,6 +300,12 @@ en la cabecera del Drive y las acciones del mapa en su barra, justo bajo la barr
   buscador y segmentado como dos controles en el móvil, tarjeta con sombra (escritorio) o borde de 1,5 px.
 - **20/11** · cc-02: «Ver pedido ›» en cada pedido, «Pedidos asociados al servicio (N) · Total» en el móvil
   (`ordersTotalOf`, suma por unidad), tarjeta con sombra en escritorio y fila de despacho de 44 px.
+- **20/11** · «Ver en Lilachat» (José, `BOTS-API.spec.md` §c-duotricies): una acción de tarjeta con
+  `open: { route: 'service' }` abre el servicio en «Servicios» sin salir de la app ni avisar al bot —
+  `OpenServiceContext` (web) y `openService` de `accionesDeTarjeta`/`useChannelWork` (APK), análogo a
+  `OrderCardContext`/`openOrderCard` pero por `serviceId` directo (sin esperar los `records`). Pensado
+  para que la tarjeta «Servicio nuevo» del canal de cliente lleve un botón interno además del externo a
+  Portal; agentes (`serviceCard`) todavía no lo envía.
 - **20/11** · José («sigo viendo duplicado el nombre del cliente»): la cabecera de una fila del mapa en TODAS
   las pestañas del servicio, en web ancha y tablet del APK: «‹ Servicios», nombre en una línea, estado, «Avance N %…»,
   pestañas, enlace y «⋯»; sin repetir el cliente. Reemplaza las filas de cabecera de cc-01…cc-05.

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, useWindowDimensions, View } from 'react-native';
-import { ChevronRight, ExternalLink } from 'lucide-react-native';
+import * as Clipboard from 'expo-clipboard';
+import { Check, ChevronRight, Copy, ExternalLink } from 'lucide-react-native';
 import { cardActionLayout, cardContextOf, formatClock, isOrderCard, viewableLinkOf, visitBlocksOf, visitCardActionOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BASE_URL } from '../api/client';
 import { useFileViewer } from '../spaces/clients/useFileViewer';
@@ -81,6 +82,22 @@ function VisitCardHead({ card }: { card: BotCard }) {
 /** lv01 has no clock on the kicker line: a visit card says when it changed beside who changed it. */
 const withUpdateInFooter = (card: BotCard): BotCard => (card.footer && card.updatedAt ? { ...card, footer: `${card.footer} · ${formatClock(card.updatedAt)}` } : card);
 
+/** «Copiar enlace» beside a card's link (José 20/11): the same clipboard the chat uses elsewhere. */
+function CopyLinkButton({ url }: { url: string }) {
+  const colors = useColores();
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    await Clipboard.setStringAsync(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <Pressable testID="tarjeta-copiar-enlace" onPress={() => void copy()} hitSlop={6} className="h-9 w-9 items-center justify-center rounded-lg border border-outline/25">
+      {copied ? <Check size={15} color={colors['on-surface-variant']} /> : <Copy size={15} color={colors['on-surface-variant']} />}
+    </Pressable>
+  );
+}
+
 /** The link as text, or (Stitch a10) the footer line with the solid button on its right. */
 function CardLink({ card }: { card: BotCard }) {
   const colors = useColores();
@@ -95,10 +112,13 @@ function CardLink({ card }: { card: BotCard }) {
       <View testID="tarjeta-pie" className="flex-row flex-wrap items-center justify-between border-t border-outline/10 pt-2.5" style={{ gap: 8 }}>
         {footer ? <Text className="min-w-0 flex-1 text-[12px] text-on-surface-variant">{footer}</Text> : <View />}
         {link ? (
-          <Pressable testID="tarjeta-enlace" accessibilityRole="link" onPress={open} className={solid ? 'min-h-[40px] flex-row items-center gap-1 rounded-lg bg-primary px-3.5' : 'flex-row items-center gap-1'}>
-            <Text className={`text-[13px] font-semibold ${solid ? 'text-on-primary' : 'text-primary'}`}>{link.label}</Text>
-            {solid ? <ChevronRight size={15} color={colors['on-primary']} /> : <ExternalLink size={13} color={colors.primary} />}
-          </Pressable>
+          <View className="flex-row items-center" style={{ gap: 8 }}>
+            <Pressable testID="tarjeta-enlace" accessibilityRole="link" onPress={open} className={solid ? 'min-h-[40px] flex-row items-center gap-1 rounded-lg bg-primary px-3.5' : 'flex-row items-center gap-1'}>
+              <Text className={`text-[13px] font-semibold ${solid ? 'text-on-primary' : 'text-primary'}`}>{link.label}</Text>
+              {solid ? <ChevronRight size={15} color={colors['on-primary']} /> : <ExternalLink size={13} color={colors.primary} />}
+            </Pressable>
+            <CopyLinkButton url={link.url} />
+          </View>
         ) : null}
         {viewer.viewer}
       </View>
@@ -108,10 +128,13 @@ function CardLink({ card }: { card: BotCard }) {
   if (!link) return null;
   return (
     <>
-      <Pressable testID="tarjeta-enlace" onPress={open} hitSlop={6} className="flex-row items-center gap-1 self-start">
-        <Text className="text-[13px] font-semibold text-primary">{link.label}</Text>
-        <ExternalLink size={13} color={colors.primary} />
-      </Pressable>
+      <View className="flex-row items-center justify-between" style={{ gap: 8 }}>
+        <Pressable testID="tarjeta-enlace" onPress={open} hitSlop={6} className="flex-row items-center gap-1 self-start">
+          <Text className="text-[13px] font-semibold text-primary">{link.label}</Text>
+          <ExternalLink size={13} color={colors.primary} />
+        </Pressable>
+        <CopyLinkButton url={link.url} />
+      </View>
       {viewer.viewer}
     </>
   );
@@ -168,7 +191,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
   // The kit (§118.4): the detail opens in a sheet with the data that came with the message.
   const [detailOpen, setDetailOpen] = useState(false);
   const actions = useAccionesDeTarjeta();
-  const { runLine, openOrderCard, openVisit } = actions;
+  const { runLine, openOrderCard, openVisit, openService } = actions;
   const runRow = runLine ? (line: string) => runLine(line, props.seq, cardContextOf(card) ?? undefined) : undefined;
   const tap = async (actionId: string) => {
     setSent({ id: actionId, state: 'sending' });
@@ -181,11 +204,12 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
   };
   // A button with a `command` runs its line and the card stays open: its form can be closed.
   const press = (action: CardAction) => {
+    if (action.open?.route === 'service') return openService?.(action.open.serviceId);
     const visitAction = props.visitId && openVisit ? visitCardActionOf(action.id) : null;
     if (visitAction) return openVisit!(props.visitId!, visitAction);
     return action.command ? runRow?.(action.command) : void tap(action.id);
   };
-  const buttons = card.actions?.filter((action) => !action.command || runRow) ?? [];
+  const buttons = card.actions?.filter((action) => (!action.command || runRow) && (!action.open || openService)) ?? [];
   const width = cardWidthOf(useWindowDimensions().width);
   const visit = Boolean(props.visitId);
   return (

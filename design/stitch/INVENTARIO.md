@@ -499,3 +499,18 @@ La regla de bandejas y el indicador de ubicación ya están en el código (`shar
 | imp-01-tramo-oscuro | móvil (oscuro) | Tramo del CTL-IMP compacto: ubicación cargando, progresivas y horas de a dos, carril en chips, bandejas en filas con una a medias marcada | generado 19/11 · `da27e216cc7d43d69a94ea74193762cf` · espera aprobación de José |
 | imp-02-tramo-claro | móvil (claro) | La misma pantalla en claro | generado 19/11 · `f0001f1500a746e28a615fb3a0047472` · espera aprobación de José |
 | imp-03-tramo-tablet | tablet | Panel de 640 px sobre el informe; bandejas en tabla compacta con estado por fila | generado 19/11 · `6cfb6854b78043ffb71731ae5f887808` · espera aprobación de José |
+
+## Canal de cliente y servicio — implementación (19/11)
+
+Los diseños `cc-0*` (sección «Canal de cliente y servicio, rediseño», hoy sin commitear en el checkout principal) quedaron
+implementados en web y APK. Auditorías en `design/stitch/auditorias/cc-0*.md`: lectura de código contra cada captura; faltan las
+capturas de la implementación y el revisor independiente (sin navegador ni emulador en la tarea).
+
+| Slug | Escritorio | Tablet | Móvil | Uso |
+| --- | --- | --- | --- | --- |
+| cc-01-servicios | sí | sí | sí | `web/src/spaces/clients/ClientChannelParts.tsx`, `app/src/spaces/clients/ClientChannelParts.tsx` |
+| cc-02-pedidos | sí | sí | sí | `web/src/spaces/clients/ServiceShellWeb.tsx`, `web/src/spaces/clients/ServiceListsWeb.tsx`, `app/src/spaces/clients/ServiceShell.tsx`, `app/src/spaces/clients/ServiceLists.tsx` |
+| cc-03-informes | sí | sí | sí | `web/src/spaces/clients/ServiceDetailWeb.tsx`, `app/src/spaces/clients/ServiceDetailView.tsx` |
+| cc-04-mapa | sí | sí | sí | `web/src/spaces/clients/workMap/MapLayersPanel.tsx`, `web/src/spaces/clients/workMap/WorkMapBoard.tsx`, `app/src/spaces/clients/workMap/MapLayersPanel.tsx`, `app/src/spaces/clients/workMap/WorkMapBoard.tsx` |
+| cc-05-drive | sí | sí | sí | `web/src/spaces/clients/ServiceDriveWeb.tsx`, `web/src/spaces/clients/DriveFileMenu.tsx`, `app/src/spaces/clients/ServiceDrive.tsx`, `app/src/spaces/clients/DriveFileSheet.tsx` |
+| cc-06-checklist-pendientes | no | no | sí | `web/src/chat/workPlan/ChecklistSegmentsWeb.tsx`, `app/src/chat/workPlan/ChecklistSegments.tsx` |

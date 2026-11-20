@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { ChevronRight, FileSpreadsheet, FileText, Folder, Play } from 'lucide-react-native';
-import { driveDayGroups, driveKindOf, type ServiceFile } from '@lilachat/shared';
+import { driveDayGroups, driveFileLine, driveKindOf, type ServiceFile } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 
 const GAP = 10;
@@ -39,6 +39,7 @@ function Tile(props: { file: ServiceFile; size: number; onOpen: (file: ServiceFi
         </View>
       )}
       <Text className="px-2 pt-1.5 text-[13px] font-semibold text-on-surface" numberOfLines={1}>{props.file.name}</Text>
+      <Text className="px-2 pb-1.5 text-[11px] text-on-surface-variant" numberOfLines={1}>{driveFileLine(props.file)}</Text>
     </Pressable>
   );
 }

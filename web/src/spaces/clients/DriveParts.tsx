@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { Camera, ChevronRight, ClipboardPaste, FileSpreadsheet, FileText, Folder, Image as ImageIcon, LayoutGrid, List, Play, Plus, Video } from 'lucide-react';
-import { DRIVE_KINDS, DRIVE_UPLOAD_OPTIONS, DRIVE_UPLOADING, driveDayGroups, driveKindOf, type DriveKind, type DriveLayout, type DriveUploadOption, type ServiceFile } from '@lilachat/shared';
+import { DRIVE_KINDS, DRIVE_UPLOAD_OPTIONS, DRIVE_UPLOADING, driveDayGroups, driveFileLine, driveKindOf, type DriveKind, type DriveLayout, type DriveUploadOption, type ServiceFile } from '@lilachat/shared';
 import { useDismiss } from '../../ui/useDismiss';
 
 const KICKER = 'text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant';
@@ -114,7 +114,7 @@ function Tile(props: { file: ServiceFile; onOpen: (file: ServiceFile) => void; m
       )}
     </button>
       <span className="flex items-center gap-1 py-1 pl-2 pr-1">
-        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{props.file.name}</span>
+        <span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-semibold">{props.file.name}</span><span className="block truncate text-[11px] text-on-surface-variant">{driveFileLine(props.file)}</span></span>
         {props.menu?.(props.file)}
       </span>
     </div>

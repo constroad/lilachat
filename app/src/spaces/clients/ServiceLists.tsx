@@ -1,6 +1,6 @@
 import { Pressable, Text, useWindowDimensions, View } from 'react-native';
-import { Clock, FileText, Ruler, Truck } from 'lucide-react-native';
-import { detailEmptyText, detailRows, dispatchThumbSlotsFor, dispatchThumbs, orderCardsOf, orphanDispatchesOf, reportGroups, type DetailRow, type DetailTabKey, type OrderCard, type OrderProgress, type OrderSummary, type ServiceDetail, type ViewableFile } from '@lilachat/shared';
+import { ChevronRight, Clock, FileText, Ruler, Truck } from 'lucide-react-native';
+import { detailEmptyText, detailRows, dispatchThumbSlotsFor, dispatchThumbs, orderCardsOf, ordersTotalOf, orphanDispatchesOf, reportGroups, type DetailRow, type DetailTabKey, type OrderCard, type OrderProgress, type OrderSummary, type ServiceDetail, type ViewableFile } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { FileThumb } from './FileThumb';
 import { DETAIL_TONE } from './tones';
@@ -155,6 +155,22 @@ function OrderCardView({ card, onOpen, onOpenDispatch, onOpenFile }: { card: Ord
           ) : null}
         </>
       ) : null}
+      <Pressable testID={`ver-pedido-${order.id}`} onPress={() => onOpen(order.id)} className="min-h-[40px] flex-row items-center justify-end gap-0.5 border-t border-outline/10 px-4">
+        <Text className="text-[13px] font-semibold text-primary">Ver pedido</Text>
+        <ChevronRight size={15} color={colors.primary} />
+      </Pressable>
+    </View>
+  );
+}
+
+/** Design cc-02 on the app: «Pedidos asociados al servicio (N)» and what was ordered, per unit. */
+function OrdersTotalView({ detail }: { detail: ServiceDetail }) {
+  const totals = ordersTotalOf(detail.orders);
+  if (!totals) return null;
+  return (
+    <View testID="pedidos-total" className="flex-row flex-wrap items-baseline justify-between gap-x-3">
+      <Text className={KICKER}>{`Pedidos asociados al servicio (${totals.count})`}</Text>
+      {totals.total ? <Text className="text-[12px] text-on-surface-variant">Total: <Text className="font-semibold text-on-surface">{totals.total}</Text></Text> : null}
     </View>
   );
 }
@@ -177,6 +193,7 @@ export function ServiceList({ detail, tab, onOpen, onOpenDispatch, onOpenFile }:
   if (tab === 'reports') return <ReportDays detail={detail} onOpen={onOpen} onOpenFile={onOpenFile} />;
   return (
     <>
+      <OrdersTotalView detail={detail} />
       {orderCardsOf(detail).map((card) => <OrderCardView key={card.order.id} card={card} onOpen={onOpen} onOpenDispatch={onOpenDispatch} onOpenFile={onOpenFile} />)}
       <OrphanDispatches detail={detail} onOpen={onOpenDispatch} onOpenFile={onOpenFile} />
     </>

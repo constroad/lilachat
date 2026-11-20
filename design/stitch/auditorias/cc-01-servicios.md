@@ -1,12 +1,12 @@
 # Auditoría cc-01-servicios · Canal › Servicios (reauditoría 20/11)
 
 Stitch: `.stitch-work/out_cc/{desktop,tablet}/cc-01-servicios.stitch.png` y `mobile/cc-01-servicios-v2.stitch.png` del checkout principal.
-Captura: design/stitch/capturas/cc-01-impl-escritorio-2011b.png (escritorio 1440, oscuro) · Huella: 7ce121738f07
-Captura: design/stitch/capturas/cc-01-impl-tablet-2011b.png (tablet 1024, oscuro) · Huella: 6f81659a4d8d
-Captura: design/stitch/capturas/cc-01-impl-movil-2011b.png (móvil 390, oscuro) · Huella: c4ad8a021c5d
-Revisor: subagente independiente (solo vio las imágenes de Stitch, su HTML y las capturas; 20/11)
-Veredicto del revisor: no pasa. La tablet no la abrió el revisor.
-Fecha: 2026-11-20 10:01 (web local en 4005 contra la API de producción, espacio Test, cliente Consorcio Vial del Pacífico; main 02f38ddf)
+Captura: design/stitch/capturas/cc-01-impl-escritorio-2011c.png (escritorio 1440, oscuro) · Huella: dd23b6000b77
+Captura: design/stitch/capturas/cc-01-impl-tablet-2011c.png (tablet 1024, oscuro) · Huella: e96f5c1a153d
+Captura: design/stitch/capturas/cc-01-impl-movil-2011c.png (móvil 390, oscuro) · Huella: 471c0fa44d44
+Revisor: subagente independiente (reauditoría 20/11 tras e1808eb8…b35ea61c; midió con getComputedStyle y el HTML de Stitch)
+Veredicto del revisor: no pasa: quedan 3 filas «falta».
+Fecha: 2026-11-20 10:40 (web local en 4005 contra la API de producción, espacio Test, cliente Consorcio Vial del Pacífico; main b35ea61c; medidas con getComputedStyle, Chrome al 90 %)
 
 Las justificaciones son del auditor y citan su fuente; ninguna es una exención de José. «Rediseño 20/11» = rediseño 20/11 aprobado por José, ver design/stitch/INVENTARIO.md sección Rediseño 20/11. Lo que no tiene fuente queda «falta».
 
@@ -14,15 +14,17 @@ Las justificaciones son del auditor y citan su fuente; ninguna es una exención 
 | --- | --- | --- | --- |
 | Pestañas del canal y lista con buscador y segmentado | sí | igual | igual |
 | «Drive del cliente» en la cabecera | sí | no | diferencia justificada: inventado por Stitch, auditoría anterior (revisión del lote de José 20/11) |
-| Segmento activo | blanco | píldora con acento | falta |
+| Segmento activo | blanco (escritorio), acento lleno (móvil) | superficie con texto de acento (escritorio), acento lleno (móvil) | igual |
 | «Enlace del servicio» en cada tarjeta | no | sí | diferencia justificada: José 31/10 (as-is canal §2), memoria de José redesign-keeps-current-screen-features.md |
-| Tarjeta · radio | 12 px | 12 px | igual |
-| Tarjeta · borde | 0 px (sombra) | 1 px | falta |
+| Tarjeta · radio | 12 px (rounded-xl) | 16 px | falta |
+| Tarjeta · borde | 0 px (sombra) | 0 px arriba y a la derecha, franja de estado de 4 px, sombra | igual |
 | Tarjeta · padding | 16 px | 16 px | igual |
 | Tarjeta · alto | 115 px | 110 px | igual |
-| Título «Servicios» · tamaño | 36 px | 22 px | falta |
+| Título «Servicios» · tamaño | 28 px | 28 px | igual |
 | Kicker «SERVICIO 01 · VIAL» (móvil) | sí | no | diferencia justificada: inventado por Stitch, design/stitch/INVENTARIO.md § cc |
-| Título y «Enlace del cliente» en el móvil | no | sí | falta |
-| Buscador y segmentado en el móvil | dos controles | un bloque | falta |
-| Tarjeta móvil · borde | 1.5 px | 1 px | falta |
+| «Enlace del cliente» en el móvil | no | sí | diferencia justificada: función existente que se conserva, memoria de José redesign-keeps-current-screen-features.md |
+| Título «Servicios» en el móvil | no | sí (28 px) | falta |
+| Buscador y segmentado en el móvil | dos controles con borde de 1.5 px | dos controles con borde de 1.5 px | igual |
+| Tarjeta móvil · borde | 1.5 px | 1.5 px | igual |
+| Tarjeta móvil · radio | 12 px | 16 px | falta |
 | Bloque de pendientes (móvil) | 1 tarea | 3 tareas | igual |

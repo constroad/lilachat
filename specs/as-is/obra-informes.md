@@ -268,6 +268,9 @@ Portal ya no las manda al subir la foto de unidad vacía. La puerta del server p
 - **20/11 (E2E)** «Llegó HH:MM» de la cola sale solo de `horaLlegada` escrita, como la línea
   «falta hora de llegada» de Portal; ya no de la hora de la foto de ingreso. El bloqueo de
   «Terminar unidad» no aplica a la primera de la cola (no tiene anterior).
+  Textos que se cortaban (390/1024 px) pasan a dos líneas: filas de la cola, etiquetas de foto,
+  pies de foto de la revisión; «+ Agregar foto» fuera del scroll; banner de ejemplo con el botón
+  abajo a todo el ancho. En el mapa del teléfono el pie sube para dejar ver la atribución.
 - **19/11** CTL-PIS: «Terminar unidad» (solo admins). Revisión de las fotos con casillas,
   miniatura rota fuera sola, envío por `enviar_fotos_de_unidad` (spec §24).
 - **16/11** Hojas de bloques en la web ancha. «Reintentar» del editor. Portal arregló

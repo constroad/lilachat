@@ -19,7 +19,8 @@ import { signSession } from './sessions.js';
 import { toAbsoluteMediaUrl } from './mediaClient.js';
 import { alertarServidor } from './alertaTelegram.js';
 import { resolverUsuarioDeSesion } from './identidadDeSesion.js';
-import { asyncRoute } from './requireSession.js';
+import { CLOSED_ACCOUNT_MESSAGE, asyncRoute } from './requireSession.js';
+import { cancelAccountDeletion } from './accountDeletion.js';
 import { cookieBorrada, cookieDeDispositivo, leerCookieDeDispositivo, pedidoSeguro } from './cookieDeDispositivo.js';
 import { revocarVinculado, validarVinculado } from './dispositivosVinculados.js';
 import { avisarCambioDeVinculos, desconectarDispositivo } from './socket.js';
@@ -50,6 +51,8 @@ function refuseCode(res: Response, codigo: string) {
 
 /** How every sign-in ends: the device stays with its account and the session opens. */
 async function openSession(req: Request, res: Response, user: User, deviceId: string, deviceSecret?: string) {
+  // Proving the code inside the grace cancels «Borrar mi cuenta» (José 19/11), and the app says so.
+  const accountDeletionCancelled = user.deletionRequestedAt ? await cancelAccountDeletion(user._id) : false;
   await DeviceModel.findOneAndUpdate({ deviceId }, { deviceId, userId: user._id, lastSeenAt: new Date() }, { upsert: true });
   // The web (W0): the secret goes in an HttpOnly cookie, never in the body.
   const esWeb = req.body?.cliente === 'web';
@@ -60,7 +63,14 @@ async function openSession(req: Request, res: Response, user: User, deviceId: st
     ...(esWeb ? {} : { deviceSecret }),
     jwt: signSession({ userId: String(user._id), deviceId, email: user.email ?? user.phone }),
     user: { id: String(user._id), name: user.name ?? null, phone: user.phone, avatarUrl: user.avatarUrl ? toAbsoluteMediaUrl(user.avatarUrl) : null },
+    ...(accountDeletionCancelled ? { accountDeletionCancelled } : {}),
   });
+}
+
+/** A closed account renews nothing: only a code proved again brings it back. */
+function refuseClosedAccount(req: Request, res: Response) {
+  if (req.body?.cliente === 'web') res.setHeader('Set-Cookie', cookieBorrada(pedidoSeguro(req)));
+  return res.status(401).json({ message: CLOSED_ACCOUNT_MESSAGE });
 }
 
 
@@ -78,6 +88,7 @@ async function linkedSession(req: Request, res: Response, deviceId: string, devi
     res.setHeader('Set-Cookie', cookieBorrada(pedidoSeguro(req)));
     return res.status(401).json({ message: 'Esta sesión se cerró desde el teléfono.' });
   }
+  if (user.deletionRequestedAt) return refuseClosedAccount(req, res);
   void DeviceModel.updateOne({ deviceId }, { $set: { lastSeenAt: new Date() } }).catch(() => {});
   res.setHeader('Set-Cookie', cookieDeDispositivo({ deviceId, deviceSecret, segura: pedidoSeguro(req), temporal: linked.temporal }));
   return res.status(200).json(sessionBodyOf(user, deviceId));
@@ -260,6 +271,7 @@ export function buildAuthRouter(authClient: AuthClient): Router {
       console.error(`[auth] sesión válida pero SIN usuario local: via=${via} identidad=${identity} device=${deviceId}`);
       return res.status(401).json({ message: 'Tu acceso ya no está activo.' });
     }
+    if (user.deletionRequestedAt) return refuseClosedAccount(req, res);
     void DeviceModel.updateOne({ deviceId }, { $set: { lastSeenAt: new Date() } }).catch(() => {});
     if (esWeb) res.setHeader('Set-Cookie', cookieDeDispositivo({ deviceId, deviceSecret, segura: pedidoSeguro(req) }));
     // Se devuelve el USUARIO además del jwt: una credencial guardada por una

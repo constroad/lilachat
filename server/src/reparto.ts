@@ -190,6 +190,11 @@ export function desconectarDispositivo(deviceId: string): void {
   ioVivo?.in(deviceRoom(deviceId)).disconnectSockets(true);
 }
 
+/** An account closed by its owner (`accountDeletion.ts`): every socket of that person is cut now. */
+export function disconnectUser(userId: string): void {
+  ioVivo?.in(userRoom(userId)).disconnectSockets(true);
+}
+
 /** Their company spaces changed (a request, approved, added, deactivated): the client reads them again. */
 export function emitSpacesChanged(userIds: readonly string[]): void {
   for (const userId of userIds) ioVivo?.to(userRoom(userId)).emit('workspaces.changed', {});

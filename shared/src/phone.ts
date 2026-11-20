@@ -11,7 +11,7 @@
  */
 export const COUNTRY_PREFIX = '+51';
 
-const INTERNAL_KEY = /^(mail|app):/;
+const INTERNAL_KEY = /^(mail|app|deleted):/;
 
 /**
  * Devuelve el número local de 9 dígitos, o `''` si no es válido.
@@ -43,6 +43,9 @@ export function toInternationalPhone(input: unknown): string {
  * field is required and unique, so it keeps a key, as bots do. It stays inside.
  */
 export const internalPhoneKey = (accountId: string): string => `mail:${accountId}`;
+
+/** The `phone` of an erased account (`accountDeletion.ts`): unique, internal, never a number to dial. */
+export const deletedPhoneKey = (accountId: string): string => `deleted:${accountId}`;
 
 /** False for an internal key: nothing to show, dial or match against the contacts. */
 export const isRealPhone = (phone: unknown): boolean => Boolean(normalizePeruPhone(phone));

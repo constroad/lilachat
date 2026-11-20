@@ -4,11 +4,12 @@ import { countdownLabel, normalizeEmail } from '@lilachat/shared';
 import { api, deviceId, type Credential } from '../api';
 import { Logo } from '../ui/Logo';
 import type { EmailLink } from './emailLink';
+import { rememberIfDeletionCancelled } from '../account/deletionCancelledNotice';
 
 const CODE_LENGTH = 6;
 const RESEND_SECONDS = 60;
 
-type SignedIn = { jwt: string; user: { id: string; name: string | null; phone: string } };
+type SignedIn = { jwt: string; user: { id: string; name: string | null; phone: string }; accountDeletionCancelled?: boolean };
 
 /**
  * «Entra a tu espacio de trabajo» and «Revisa tu correo» (designs `i-01`, `i-02`):
@@ -56,6 +57,7 @@ export function EmailSignIn(props: { onVerified: (credential: Credential, email:
       setCode('');
       return setError(result.status === 503 ? 'No pudimos verificar el código. Inténtalo de nuevo.' : 'El código no es correcto o ya venció. Toca «Reenviar el código» y te llega otro.');
     }
+    rememberIfDeletionCancelled(result.data);
     props.onVerified({ jwt: result.data.jwt, userId: result.data.user.id, phone: result.data.user.phone, name: result.data.user.name ?? undefined, deviceId: deviceId() }, email);
   };
 

@@ -4,6 +4,7 @@ import { createChat } from '../../contacts/contactsApi';
 import { appDirectory, createSpaceChat, openAppChat } from '../../spaces/spacesApi';
 import { requestOpenChat } from '../../ui/openChatRequest';
 import { directChatSummary } from './directChatSummary';
+import { usePersonSafety } from '../../reports/usePersonSafety';
 import { PersonSheet } from './PersonSheet';
 
 const OPEN_FAILED = 'No se pudo abrir el chat.';
@@ -13,8 +14,8 @@ const OPEN_FAILED = 'No se pudo abrir el chat.';
  * and «Enviar mensaje» opens the 1:1 with them, in the space the chat belongs to, or
  * creates it. An app is offered its 1:1 only while it is installed in that space.
  */
-export function usePersonCard(params: { jwt: string; myUserId: string; spaceId?: string }): { show: (person: CardPerson) => void; element: ReactNode } {
-  const { jwt, myUserId, spaceId } = params;
+export function usePersonCard(params: { jwt: string; myUserId: string; spaceId?: string; chatId?: string }): { show: (person: CardPerson) => void; element: ReactNode } {
+  const { jwt, myUserId, spaceId, chatId } = params;
   const [person, setPerson] = useState<CardPerson | null>(null);
   const [installed, setInstalled] = useState<ReadonlyMap<string, string> | undefined>(undefined);
   const [busy, setBusy] = useState(false);
@@ -63,8 +64,16 @@ export function usePersonCard(params: { jwt: string; myUserId: string; spaceId?:
     close();
   }, [action, busy, jwt, close, person, myUserId]);
 
+  // José 19/11: the card reports and blocks the person, with the chat it was opened from.
+  const safety = usePersonSafety({ jwt, person, chatId, onError: setError });
+  const card = person && !safety.reporting ? (
+    <PersonSheet person={person} canWrite={action.kind !== 'none'} checking={asksForApps && installed === undefined} busy={busy} error={error} onWrite={() => void write()} onClose={close} actions={safety.actions} />
+  ) : null;
   const element = person ? (
-    <PersonSheet person={person} canWrite={action.kind !== 'none'} checking={asksForApps && installed === undefined} busy={busy} error={error} onWrite={() => void write()} onClose={close} />
+    <>
+      {card}
+      {safety.sheet}
+    </>
   ) : null;
   return { show, element };
 }

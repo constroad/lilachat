@@ -321,7 +321,7 @@ export function ChatScreen({
   // Una fila, estable mientras no cambien mensajes ni acuses: un mensaje nuevo dibuja SU burbuja (FL2).
   const saludar = useCallback(() => void alEnviar('👋'), [alEnviar]);
   // Someone's photo or name in the chat: their card, with «Enviar mensaje» (José, 25/10/2026).
-  const personCard = usePersonCard({ jwt: credential.jwt, myUserId: credential.userId, spaceId: workspaceId });
+  const personCard = usePersonCard({ jwt: credential.jwt, myUserId: credential.userId, spaceId: workspaceId, chatId });
   const showPerson = useCallback(
     (userId: string) =>
       personCard.show(personOfMember({ member: grupo.members.find((one) => one.id === userId) ?? { id: userId }, displayName: nombresDelGrupo.get(userId), pill: grupo.roles.get(userId), isMe: userId === credential.userId })),
@@ -397,6 +397,8 @@ export function ChatScreen({
           onDesfijar={(seq) => void fijar.desfijar(seq)}
           onAbrirHilo={encrypted ? undefined : hilos.abrir}
           destacados={encrypted ? undefined : destacados}
+          nombreDe={nombreDe}
+          appIds={grupo.appIds}
         />
       ) : busqueda.activo ? (
         <BuscadorDelChat

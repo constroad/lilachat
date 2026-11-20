@@ -4,6 +4,7 @@ import { adminDevicesLabel, adminJoinedLabel, adminLastSeenLabel, adminPanelQuer
 import { Logo } from '../ui/Logo';
 import { getAdminSpaceMembers, getAdminSpaces, getAdminUsers } from './adminApi';
 import { Cell, Dash, EmailValue, EmptyNote, ErrorNote, KICKER, Pager, PersonCell, SkeletonRows, lastPage } from './AdminParts';
+import { AdminReportsView } from './AdminReportsView';
 import { AdminSpacesView } from './AdminSpacesView';
 import { useAdminLoad, type AdminLoad } from './useAdminLoad';
 
@@ -62,7 +63,7 @@ export function AdminUsersScreen({ jwt }: { jwt: string }) {
     return () => window.clearTimeout(timer);
   }, [text, query.q]);
 
-  const visible = query.view === 'people' ? [loads.users] : [loads.groups, ...(query.space ? [loads.members] : [])];
+  const visible = query.view === 'reports' ? [] : query.view === 'people' ? [loads.users] : [loads.groups, ...(query.space ? [loads.members] : [])];
   const forbidden = forbiddenMessage(visible);
   if (forbidden) {
     return (
@@ -78,20 +79,26 @@ export function AdminUsersScreen({ jwt }: { jwt: string }) {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Superadmin</p>
-          <h1 className="mt-1 text-2xl font-bold md:text-3xl">Usuarios de Lilachat</h1>
-          <p className="mt-1 text-sm text-on-surface-variant">Quién está, en qué espacio y desde cuándo. Sin chats ni mensajes.</p>
+          <h1 className="mt-1 text-2xl font-bold md:text-3xl">{query.view === 'reports' ? 'Denuncias' : 'Usuarios de Lilachat'}</h1>
+          <p className="mt-1 text-sm text-on-surface-variant">{query.view === 'reports' ? 'Lo que denunciaron las personas. Abuso infantil primero.' : 'Quién está, en qué espacio y desde cuándo. Sin chats ni mensajes.'}</p>
         </div>
         <ViewToggle view={query.view} onView={(view) => setQuery((current) => ({ ...current, view, space: null, page: 1 }))} />
       </div>
-      <Totals totals={totals} />
-      <label className="mt-6 flex h-12 items-center gap-2 rounded-lg border border-outline/20 bg-surface px-3 focus-within:border-primary">
-        <Search size={16} className="text-on-surface-variant" />
-        <input data-testid="admin-buscar" value={text} onChange={(event) => setText(event.target.value)} placeholder="Buscar por nombre, correo o teléfono" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
-      </label>
-      {query.view === 'people' ? (
-        <PeopleList load={loads.users} onPage={(page) => setQuery((current) => ({ ...current, page }))} onRetry={retry} />
+      {query.view === 'reports' ? (
+        <AdminReportsView jwt={jwt} />
       ) : (
-        <AdminSpacesView overview={loads.groups} members={query.space ? loads.members : null} space={query.space} onSpace={(space) => setQuery((current) => ({ ...current, space, page: 1 }))} onPage={(page) => setQuery((current) => ({ ...current, page }))} onRetry={retry} searched={query.q !== ''} />
+        <>
+          <Totals totals={totals} />
+          <label className="mt-6 flex h-12 items-center gap-2 rounded-lg border border-outline/20 bg-surface px-3 focus-within:border-primary">
+            <Search size={16} className="text-on-surface-variant" />
+            <input data-testid="admin-buscar" value={text} onChange={(event) => setText(event.target.value)} placeholder="Buscar por nombre, correo o teléfono" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
+          </label>
+          {query.view === 'people' ? (
+            <PeopleList load={loads.users} onPage={(page) => setQuery((current) => ({ ...current, page }))} onRetry={retry} />
+          ) : (
+            <AdminSpacesView overview={loads.groups} members={query.space ? loads.members : null} space={query.space} onSpace={(space) => setQuery((current) => ({ ...current, space, page: 1 }))} onPage={(page) => setQuery((current) => ({ ...current, page }))} onRetry={retry} searched={query.q !== ''} />
+          )}
+        </>
       )}
     </Frame>
   );
@@ -101,6 +108,7 @@ function ViewToggle({ view, onView }: { view: AdminPanelView; onView: (view: Adm
   const options: { value: AdminPanelView; label: string; testid: string }[] = [
     { value: 'spaces', label: 'Por espacio', testid: 'admin-vista-espacios' },
     { value: 'people', label: 'Todas las personas', testid: 'admin-vista-personas' },
+    { value: 'reports', label: 'Denuncias', testid: 'admin-vista-denuncias' },
   ];
   return (
     <div role="group" aria-label="Vista" className="flex rounded-lg border border-outline/15 bg-surface p-1 max-sm:w-full">

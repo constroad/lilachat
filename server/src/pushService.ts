@@ -400,3 +400,20 @@ export async function notifyTasksDone(params: { chatId: string; seq: number | un
     console.error('[push] aviso de tareas falló:', error instanceof Error ? error.message : error);
   }
 }
+
+/**
+ * A notice that opens nothing (a report for the moderators, José 19/11): it
+ * rings on every phone and browser of these people, whatever their presence
+ * or chat settings, because nothing in a chat of theirs is behind it.
+ */
+export async function pushPlainNotice(userIds: readonly string[], text: { title: string; body: string }): Promise<void> {
+  if (userIds.length === 0) return;
+  try {
+    const devices = await DeviceModel.find({ userId: { $in: userIds }, pushToken: { $exists: true, $ne: '' } }).select('pushToken platform userId').lean();
+    const targets = splitPushTargets(devices);
+    const data = { chatId: '', seq: 0 };
+    await Promise.all([targets.fcm.length > 0 ? sender.send({ tokens: targets.fcm, ...text, data }) : undefined, sendWebPush(targets.web, { ...text, data })]);
+  } catch (error) {
+    console.error('[push] aviso sin chat falló:', error instanceof Error ? error.message : error);
+  }
+}

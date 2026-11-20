@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { MessageCircle } from 'lucide-react-native';
 import { formatPhoneDisplay, type CardPerson } from '@lilachat/shared';
@@ -11,8 +12,9 @@ const AVATAR_SIZE = 80;
  * A person's card (José, 25/10/2026): their photo and name from a chat, a group or the
  * member list, and «Enviar mensaje» when there is a 1:1 to open. Nothing is offered
  * when there is nobody to write to (yourself, or an app with no 1:1 here).
+ * `actions`: report and block for a person (José 19/11), never for an app.
  */
-export function PersonSheet(props: { person: CardPerson; canWrite: boolean; checking: boolean; busy: boolean; error: string | null; onWrite: () => void; onClose: () => void }) {
+export function PersonSheet(props: { person: CardPerson; canWrite: boolean; checking: boolean; busy: boolean; error: string | null; onWrite: () => void; onClose: () => void; actions?: ReactNode }) {
   const colors = useColores();
   const { person } = props;
   return (
@@ -34,6 +36,7 @@ export function PersonSheet(props: { person: CardPerson; canWrite: boolean; chec
           <Text className="text-[16px] font-semibold text-on-primary">Enviar mensaje</Text>
         </Pressable>
       ) : null}
+      {props.actions}
     </Sheet>
   );
 }

@@ -10,6 +10,7 @@ import { OtpBoxes } from './OtpBoxes';
 import { useCountdown } from './useCountdown';
 import { useHardwareBack } from './useHardwareBack';
 import { useColores } from '../ui/tema';
+import { tellIfDeletionCancelled } from './deletionCancelledNotice';
 
 /**
  * Alta paso 2 (diseño Stitch «Verificación OTP»). El sexto dígito envía solo;
@@ -57,6 +58,7 @@ export function OtpScreen({
       setError(mapVerifyFailure(result.status, result.message));
       return;
     }
+    tellIfDeletionCancelled(result.data);
     const credential = credentialOfSignIn(result.data, deviceId);
     await saveCredential(credential);
     onDone(credential);

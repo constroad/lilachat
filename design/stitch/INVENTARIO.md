@@ -481,3 +481,22 @@ Implementación (18/11). Auditorías en `design/stitch/auditorias/<slug>.md`.
 | nl-01-por-categoria | sí | no | sí | `web/src/chat/links/LinksByCategory.tsx`, `web/src/chat/links/CategoryLayouts.tsx`, `web/src/chat/links/LinkNoteCards.tsx`, `web/src/chat/links/NotesViewSwitch.tsx`, `app/src/chat/links/LinksByCategory.tsx`, `app/src/chat/links/LinksParts.tsx`, `app/src/chat/links/LinkRowCard.tsx` |
 | nl-02-tarjeta-en-el-chat | no | no | sí | `web/src/chat/links/StoredLinkInBubble.tsx`, `app/src/chat/links/NoteLinkBubble.tsx` |
 | nl-03-mover-de-categoria | no | no | sí | `web/src/chat/links/MoveLinkSheet.tsx`, `app/src/chat/links/MoveLinkSheet.tsx` |
+
+## Canal de cliente y servicio, rediseño (José 19/11: «una sola gramática de navegación»)
+
+Proyecto 15540754270713720465. Ids en `design/stitch/registro.jsonl` (slugs `cc-0*`), anotados al responder Stitch. Prompts:
+`.stitch-work/screens_cc.py`, generador `.stitch-work/gen_cc.py` (logs `gen-cc-desktop.log`, `gen-cc-mobile.log`), HTML y capturas en
+`.stitch-work/out_cc/<dispositivo>/`. Prototipo: https://claude.ai/artifact/8DrCJNUXB31GqcPMPhafu9 (`.stitch-work/proto-cc/build.sh` + `links.json`), 19/11, espera aprobación de José.
+Datos reales: CONSORCIO EL ALMIRANTE, «COLOCACION DE PARCHES- JR CONCHUCOS», Pendiente, 0 %, 6 etapas, 33 dibujos, 30 observaciones.
+PROPUESTA, no existen en la app ni en Portal: los otros dos servicios del cliente, pedidos e informes del servicio, las tres partidas
+y sus colores, 24/6 pendientes/levantadas, las cifras «pedidos · informes · último movimiento» por servicio en la lista (Portal no
+las manda), «Pegar» y «Copiar archivo» en el Drive, y Pendientes dentro de Checklist en móvil.
+
+| Slug | Dispositivo | Qué resuelve | Estado |
+| --- | --- | --- | --- |
+| cc-01-servicios | escritorio, tablet, móvil | Canal › Servicios: lista ordenada (estado, avance, pedidos, informes, último movimiento) | generado 19/11 · escritorio `52111354…`, tablet `5d9cd6bb…`, móvil `cc-01-servicios-v2` `b34325fc…` (el primero dio 502) |
+| cc-02-pedidos | escritorio, tablet, móvil | Servicio › Pedidos con la cabecera y pestañas únicas | generado 19/11 · escritorio `771a2722…`, tablet `848491d5…`, móvil `a5102587…` |
+| cc-03-informes | escritorio, tablet, móvil | Servicio › Informes; «Crear informe» en la barra de pestañas | generado 19/11 · escritorio `e1ace249…`, tablet `82883cb9…`, móvil `cc-03-informes-v2` `403eca71…` (el primero dio 502) |
+| cc-04-mapa | escritorio, tablet, móvil | Servicio › Mapa con panel «Capas y leyenda»; móvil a pantalla completa con hoja inferior | generado 19/11 · escritorio `15b8de66…`, tablet `9055ad8e…`, móvil `ac55c824…` |
+| cc-05-drive | escritorio, tablet, móvil | Servicio › Drive igual a «Medios», con «Pegar», menú «Copiar enlace / Copiar archivo» | generado 19/11 · escritorio `adda4ec3…`, tablet `d250043c…`, móvil `90870c25…`. Móvil: Stitch inventó una cabecera «Canal Obras Carreter… · Vías MTC» y una barra de estado encima; ignorar al implementar |
+| cc-06-checklist-pendientes | móvil | Pendientes dentro de Checklist (segmentado «Pendientes · Plan») | generado 19/11 · móvil `ab389f0c…` |

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { normalizePeruPhone } from '@lilachat/shared';
 import { api, deviceId, type Credential } from '../api';
+import { rememberIfDeletionCancelled } from '../account/deletionCancelledNotice';
 
 /**
  * Entrar con el número: teléfono → código. La otra puerta es el QR del
@@ -51,6 +52,7 @@ export function IngresoPorTelefono({ onReady, onUsarQr }: { onReady: (credential
     const result = await api<{
       jwt: string;
       user: { id: string; name: string | null; phone: string };
+      accountDeletionCancelled?: boolean;
     }>('/auth/otp/verify', {
       // `cliente: 'web'` (W0): el secreto del dispositivo vuelve en una cookie
       // HttpOnly, no en el cuerpo.
@@ -66,6 +68,7 @@ export function IngresoPorTelefono({ onReady, onUsarQr }: { onReady: (credential
           : 'El código no es correcto o ya venció.'
       );
     }
+    rememberIfDeletionCancelled(result.data);
     onReady({
       jwt: result.data.jwt,
       userId: result.data.user.id,

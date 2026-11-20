@@ -198,7 +198,7 @@ function SinFilas({ estado, buscando }: { estado: ReturnType<typeof useAgendaPar
     return (
       <Aviso
         titulo="Sin acceso a tus contactos"
-        cuerpo="Lilachat necesita leer tu agenda para mostrarte a quién invitar. Se lee en el teléfono y no se envía a ningún lado. Igual puedes compartir el enlace."
+        cuerpo="Lilachat necesita leer tu agenda para mostrarte a quién invitar. Solo enviamos los números para compararlos; no guardamos tu agenda. Igual puedes compartir el enlace."
       />
     );
   }

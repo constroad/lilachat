@@ -56,6 +56,10 @@ export interface User {
   birthdayVisible?: boolean;
   /** When the email was proved with a code (`profileRoutes.ts`); an unverified one does not count. */
   emailVerifiedAt?: Date;
+  /** «Borrar mi cuenta» (José 19/11, `accountDeletion.ts`): closed since then; a sign-in with the code inside the grace cancels it. */
+  deletionRequestedAt?: Date;
+  /** When the purge erased it: the record stays so its messages still have an author, «Cuenta eliminada». */
+  deletedAt?: Date;
 }
 
 export interface Device {
@@ -102,6 +106,8 @@ const userSchema = new Schema<User>(
     birthday: { day: Number, month: Number, year: Number },
     birthdayVisible: { type: Boolean },
     emailVerifiedAt: { type: Date },
+    deletionRequestedAt: { type: Date },
+    deletedAt: { type: Date },
     app: {
       appId: { type: Schema.Types.ObjectId },
       installationId: { type: Schema.Types.ObjectId },
@@ -139,6 +145,8 @@ userSchema.index({ email: 1 }, { unique: true, sparse: true });
  * `scripts/fix-indexes.ts`; declararlo acá deja la base en memoria igual.
  */
 invitationSchema.index({ email: 1 }, { unique: true, sparse: true });
+/** The daily purge reads only the accounts waiting to be erased. */
+userSchema.index({ deletionRequestedAt: 1 }, { sparse: true });
 
 const deviceSchema = new Schema<Device>(
   {

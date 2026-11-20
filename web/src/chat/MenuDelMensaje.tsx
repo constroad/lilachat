@@ -1,7 +1,8 @@
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { Bookmark, ChevronDown, Copy, CornerUpLeft, Forward, Heart, Info, MessagesSquare, Pencil, Pin, PinOff, Star, StarOff, Sticker, Trash2 } from 'lucide-react';
-import type { ReactNode } from 'react';
-import { accionesDeMensaje, actsAsMessage, puedeEditar } from '@lilachat/shared';
+import { Bookmark, ChevronDown, Copy, CornerUpLeft, Flag, Forward, Heart, Info, MessagesSquare, Pencil, Pin, PinOff, Star, StarOff, Sticker, Trash2 } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { REPORT_ACTION_LABEL, accionesDeMensaje, actsAsMessage, canReportMessage, puedeEditar } from '@lilachat/shared';
+import { ReportDialog } from '../reports/ReportDialog';
 import { useConversacion, type AccionSobreMensaje } from './contextoDeLaConversacion';
 import type { StickerAction } from './contextoDeLaConversacion';
 import type { MensajeEnPantalla } from './types';
@@ -13,8 +14,11 @@ import type { MensajeEnPantalla } from './types';
  * Lo pendiente o fallido no tiene menú: todavía no existe en el server.
  */
 export function MenuDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; mio: boolean }) {
-  const { chat, yo, detalle, isAppOf, onAccion, puedeFijar, fijados, onAbrirHilo, destacados, onStickerAction } = useConversacion();
+  const { chat, yo, jwt, nombres, detalle, isAppOf, onAccion, puedeFijar, fijados, onAbrirHilo, destacados, onStickerAction } = useConversacion();
+  // «Denunciar» (Google Play, José 19/11): someone else's live message, not an app's card.
+  const [reporting, setReporting] = useState(false);
   if (mensaje.estado) return null;
+  const canReport = canReportMessage({ mine: mio, deleted: Boolean(mensaje.deletedAt), kind: mensaje.kind }) && !isAppOf?.(mensaje.senderId);
   const secreto = Boolean(chat.encrypted);
   const acciones = accionesDeMensaje({
     mio,
@@ -56,44 +60,53 @@ export function MenuDelMensaje({ mensaje, mio }: { mensaje: MensajeEnPantalla; m
     </DropdownMenu.Item>
   );
   return (
-    // No modal: uno modal atrapa el foco mientras se cierra y el campo no lo recibe.
-    <DropdownMenu.Root modal={false}>
-      <DropdownMenu.Trigger asChild>
-        <button
-          type="button"
-          data-testid={`menu-${mensaje.clientKey}`}
-          aria-label="Opciones del mensaje"
-          className="grid h-7 w-7 place-items-center rounded-full text-on-surface-variant opacity-0 transition-opacity hover:bg-background focus:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
-        >
-          <ChevronDown size={16} />
-        </button>
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Portal>
-        <DropdownMenu.Content
-          align={mio ? 'end' : 'start'}
-          sideOffset={4}
-          // Al cerrar, Radix devuelve el foco a la flecha: pisaba el foco que
-          // «Responder» y «Editar» ponen en el campo, y lo tecleado (y el
-          // Enter) iba a la flecha, que volvía a abrir el menú (E2E, 19/10).
-          onCloseAutoFocus={(evento) => evento.preventDefault()}
-          className="z-40 min-w-[200px] rounded-xl border border-outline/15 bg-surface p-1 shadow-lg"
-        >
-          {acciones.responder ? item('responder', <CornerUpLeft size={16} />, 'Responder') : null}
-          {acciones.hilo && onAbrirHilo ? item('hilo', <MessagesSquare size={16} />, 'Responder en hilo') : null}
-          {acciones.copiar ? item('copiar', <Copy size={16} />, 'Copiar') : null}
-          {isSticker ? stickerItem('keep', <Bookmark size={16} />, 'Guardar en Mis stickers') : null}
-          {isSticker ? stickerItem('favorite', <Heart size={16} />, 'Agregar a favoritos') : null}
-          {isGif ? stickerItem('gif', <Sticker size={16} />, 'Convertir en sticker animado') : null}
-          {acciones.reenviar ? item('reenviar', <Forward size={16} />, 'Reenviar') : null}
-          {acciones.destacar === 'destacar' && actsAsMessage(mensaje) ? item('destacar', <Star size={16} />, 'Destacar') : null}
-          {acciones.destacar === 'quitar' ? item('quitarDestacado', <StarOff size={16} />, 'Quitar destacado') : null}
-          {acciones.fijar === 'fijar' ? item('fijar', <Pin size={16} />, 'Fijar') : null}
-          {acciones.fijar === 'desfijar' ? item('desfijar', <PinOff size={16} />, 'Desfijar') : null}
-          {acciones.editar ? item('editar', <Pencil size={16} />, 'Editar') : null}
-          {acciones.info ? item('info', <Info size={16} />, 'Info') : null}
-          {acciones.eliminarParaMi ? item('eliminar', <Trash2 size={16} />, 'Eliminar', true) : null}
-        </DropdownMenu.Content>
-      </DropdownMenu.Portal>
-    </DropdownMenu.Root>
+    <>
+      {/* Not modal: a modal one traps the focus while it closes and the field does not get it. */}
+      <DropdownMenu.Root modal={false}>
+        <DropdownMenu.Trigger asChild>
+          <button
+            type="button"
+            data-testid={`menu-${mensaje.clientKey}`}
+            aria-label="Opciones del mensaje"
+            className="grid h-7 w-7 place-items-center rounded-full text-on-surface-variant opacity-0 transition-opacity hover:bg-background focus:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
+          >
+            <ChevronDown size={16} />
+          </button>
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+          <DropdownMenu.Content
+            align={mio ? 'end' : 'start'}
+            sideOffset={4}
+            // On close Radix gives the focus back to the arrow: it took the focus that
+            // reply and edit put in the field, and what was typed (and Enter) went to
+            // the arrow, which opened the menu again (E2E, 19/10).
+            onCloseAutoFocus={(evento) => evento.preventDefault()}
+            className="z-40 min-w-[200px] rounded-xl border border-outline/15 bg-surface p-1 shadow-lg"
+          >
+            {acciones.responder ? item('responder', <CornerUpLeft size={16} />, 'Responder') : null}
+            {acciones.hilo && onAbrirHilo ? item('hilo', <MessagesSquare size={16} />, 'Responder en hilo') : null}
+            {acciones.copiar ? item('copiar', <Copy size={16} />, 'Copiar') : null}
+            {isSticker ? stickerItem('keep', <Bookmark size={16} />, 'Guardar en Mis stickers') : null}
+            {isSticker ? stickerItem('favorite', <Heart size={16} />, 'Agregar a favoritos') : null}
+            {isGif ? stickerItem('gif', <Sticker size={16} />, 'Convertir en sticker animado') : null}
+            {acciones.reenviar ? item('reenviar', <Forward size={16} />, 'Reenviar') : null}
+            {acciones.destacar === 'destacar' && actsAsMessage(mensaje) ? item('destacar', <Star size={16} />, 'Destacar') : null}
+            {acciones.destacar === 'quitar' ? item('quitarDestacado', <StarOff size={16} />, 'Quitar destacado') : null}
+            {acciones.fijar === 'fijar' ? item('fijar', <Pin size={16} />, 'Fijar') : null}
+            {acciones.fijar === 'desfijar' ? item('desfijar', <PinOff size={16} />, 'Desfijar') : null}
+            {acciones.editar ? item('editar', <Pencil size={16} />, 'Editar') : null}
+            {acciones.info ? item('info', <Info size={16} />, 'Info') : null}
+            {canReport ? (
+              <DropdownMenu.Item data-testid="accion-denunciar" onSelect={() => setReporting(true)} className="flex min-h-[40px] cursor-pointer select-none items-center gap-3 rounded-lg px-3 text-sm text-error outline-none data-[highlighted]:bg-background">
+                <Flag size={16} />
+                {REPORT_ACTION_LABEL}
+              </DropdownMenu.Item>
+            ) : null}
+            {acciones.eliminarParaMi ? item('eliminar', <Trash2 size={16} />, 'Eliminar', true) : null}
+          </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+      </DropdownMenu.Root>
+      {reporting ? <ReportDialog jwt={jwt} subject={{ target: 'message', chatId: chat.id, seq: mensaje.seq }} personName={nombres.get(mensaje.senderId) ?? 'esta persona'} onClose={() => setReporting(false)} /> : null}
+    </>
   );
 }

@@ -2,14 +2,15 @@ import { useState, type ReactNode } from 'react';
 import { Alert, Pressable, Text, ToastAndroid, useWindowDimensions, View } from 'react-native';
 import { Modal } from '../ui/Modal';
 import * as Clipboard from 'expo-clipboard';
-import { Copy, CornerUpLeft, EllipsisVertical, Forward, Info, MessagesSquare, Pencil, Pin, PinOff, Star, StarOff, Trash2, X } from 'lucide-react-native';
-import { puedeEditar } from '@lilachat/shared';
+import { Copy, CornerUpLeft, EllipsisVertical, Flag, Forward, Info, MessagesSquare, Pencil, Pin, PinOff, Star, StarOff, Trash2, X } from 'lucide-react-native';
+import { REPORT_ACTION_LABEL, canReportMessage, puedeEditar } from '@lilachat/shared';
 import { accionesDeMensaje, accionesDeVarios, planDeReenvio, textoParaCopiar } from '@lilachat/shared';
 import { ForwardScreen } from './reenviar/ForwardScreen';
 import { useMargenes } from '../ui/useMargenes';
 import { useColores } from '../ui/tema';
 import type { ChatMessage } from './useChat';
 import { InfoDelMensaje } from './InfoDelMensaje';
+import { ReportSheet } from '../reports/ReportSheet';
 import { repartirAcciones, type AccionDeBarra } from './barraDeSeleccion';
 import type { DestacadosDelChat } from './destacados/useDestacadosDelChat';
 
@@ -52,6 +53,9 @@ export function SeleccionDeMensaje(params: {
   onAbrirHilo?: (seq: number) => void;
   /** La estrella personal (20/10): destacar o quitar los elegidos. */
   destacados?: DestacadosDelChat;
+  /** Report someone else's message (Google Play, José 19/11): the author's name and the chat's apps, which are not reported. */
+  nombreDe?: (userId: string) => string;
+  appIds?: ReadonlySet<string>;
 }) {
   const colores = useColores();
   const margenes = useMargenes();
@@ -59,6 +63,7 @@ export function SeleccionDeMensaje(params: {
   const [reenviando, setReenviando] = useState(false);
   const [viendoInfo, setViendoInfo] = useState(false);
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [reporting, setReporting] = useState(false);
   const { mensajes } = params;
   const mensaje = mensajes[0];
   const texto = mensaje?.body?.trim() ?? '';
@@ -91,6 +96,7 @@ export function SeleccionDeMensaje(params: {
   );
   const seqs = mensajes.map((uno) => uno.seq);
   if (!mensaje) return null;
+  const reportable = mensajes.length === 1 && canReportMessage({ mine: mensaje.senderId === params.yo, deleted: Boolean(mensaje.deletedAt), kind: mensaje.kind }) && !params.appIds?.has(mensaje.senderId);
 
   const eliminar = () => {
     const opciones: { text: string; style?: 'destructive' | 'cancel'; onPress?: () => void }[] = [
@@ -129,6 +135,7 @@ export function SeleccionDeMensaje(params: {
     acciones.copiar ? 'copiar' : null,
     acciones.editar ? 'editar' : null,
     acciones.info ? 'info' : null,
+    reportable ? 'denunciar' : null,
   ].filter((accion): accion is AccionDeBarra => accion !== null);
   // Todo en UNA línea (José, 19/10): lo que no entra va a «⋮», y eliminar nunca.
   const { visibles, enMenu } = repartirAcciones(disponibles, width);
@@ -192,6 +199,7 @@ export function SeleccionDeMensaje(params: {
       },
     },
     info: { testID: 'btn-info-mensaje', etiqueta: 'Info', icono: <Info size={20} color={icono} />, onPress: () => setViendoInfo(true) },
+    denunciar: { testID: 'btn-denunciar-mensaje', etiqueta: REPORT_ACTION_LABEL, icono: <Flag size={20} color={colores.error} />, onPress: () => setReporting(true) },
   };
 
   return (
@@ -252,6 +260,17 @@ export function SeleccionDeMensaje(params: {
         jwt={params.jwt}
         onCerrar={() => setViendoInfo(false)}
       />
+      {reporting ? (
+        <ReportSheet
+          jwt={params.jwt}
+          subject={{ target: 'message', chatId: params.chatId, seq: mensaje.seq }}
+          personName={params.nombreDe?.(mensaje.senderId) ?? 'esta persona'}
+          onClose={() => {
+            setReporting(false);
+            params.onCancelar();
+          }}
+        />
+      ) : null}
       <ForwardScreen
         visible={reenviando}
         steps={planDeReenvio(mensajes.map((uno) => ({ ...uno, chatId: params.chatId })), { secret: params.chatSecreto })}

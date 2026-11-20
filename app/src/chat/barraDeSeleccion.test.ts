@@ -39,3 +39,16 @@ describe('con «Responder en hilo» y «Destacar»', () => {
     expect(enMenu).toEqual(['fijar', 'copiar', 'editar', 'info']);
   });
 });
+
+/** Google Play (José 19/11): «Denunciar» goes last; on a phone it waits in «Más», never pushing «Eliminar» out. */
+describe('con «Denunciar»', () => {
+  it('in 360 dp it is the last of «Más»; eliminar stays in sight', () => {
+    // Arrange
+    const actions: AccionDeBarra[] = ['responder', 'hilo', 'destacar', 'reenviar', 'eliminar', 'copiar', 'denunciar'];
+    // Act
+    const { visibles, enMenu } = repartirAcciones(actions, 360);
+    // Assert
+    expect(visibles).toContain('eliminar');
+    expect(enMenu.at(-1)).toBe('denunciar');
+  });
+});

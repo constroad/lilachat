@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { AdminSpaceMembersPage, AdminSpacesOverview, AdminUsersPage } from '@lilachat/shared';
+import type { AdminReportsFilter, AdminReportsPage, AdminSpaceMembersPage, AdminSpacesOverview, AdminUsersPage, ReportOutcome } from '@lilachat/shared';
 import { api } from '../api';
 
 /** The superadmin's users panel (`server/src/adminRoutes.ts`). */
@@ -30,3 +30,9 @@ export function useSuperadmin(jwt: string, asking: boolean): boolean {
   }, [jwt, asking, superadmin]);
   return superadmin === true;
 }
+
+/** The report queue (Google Play, José 19/11): `estado` open or closed, urgent first. */
+export const getAdminReports = (jwt: string, query: { filter: AdminReportsFilter; page: number }, signal?: AbortSignal) =>
+  api<AdminReportsPage>(`/admin/reports?${new URLSearchParams({ estado: query.filter === 'closed' ? 'cerradas' : 'abiertas', page: String(query.page) })}`, { jwt, signal });
+export const closeAdminReport = (jwt: string, reportId: string, body: { outcome: ReportOutcome; note: string }) =>
+  api<{ ok: true }>(`/admin/reports/${encodeURIComponent(reportId)}/close`, { jwt, body });

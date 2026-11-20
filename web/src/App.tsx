@@ -15,6 +15,8 @@ import { MiniVideoPlayer } from './media/MiniVideoPlayer';
 import { useSesion } from './sesion/useSesion';
 import { MuteDialogHost } from './chat/MuteDialog';
 import { ScreenLockGate } from './privacy/ScreenLockGate';
+import { DeleteAccountPage } from './account/DeleteAccountPage';
+import { LegalPage, legalPageHere } from './legal/LegalPage';
 
 /**
  * La puerta: sin sesión, el acceso; con sesión, el shell de dos paneles.
@@ -36,6 +38,11 @@ export function App() {
   }, []);
   // El QR de vincular abierto con la cámara del teléfono (W5): no es una sesión, es una indicación.
   if (window.location.pathname.startsWith('/v/')) return <CodigoParaLaApp />;
+  // «Borrar mi cuenta» for Google Play (José 19/11): it asks for the code, never this browser's session.
+  if (window.location.pathname === '/borrar-cuenta') return <DeleteAccountPage />;
+  // Google Play's public pages (spec PLAY-STORE): readable with or without a session.
+  const legalPage = legalPageHere();
+  if (legalPage) return <LegalPage page={legalPage} />;
   if (!sesion.credential) return <AccessScreens onReady={sesion.entrar} emailLink={emailLink} emailHint={emailHint} />;
   // Waiting for the profile answer: nothing, rather than the chats for an instant and then the form.
   if (profileGate.checking) return null;

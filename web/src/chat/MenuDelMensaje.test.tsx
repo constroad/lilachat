@@ -66,3 +66,24 @@ describe('MenuDelMensaje — GIF a sticker', () => {
     expect(screen.queryByTestId('accion-sticker-gif')).toBeNull();
   });
 });
+
+/** Google Play (José 19/11): «Denunciar» on someone else's message opens the report dialog. */
+describe('MenuDelMensaje — denunciar', () => {
+  it('someone else’s message offers «Denunciar» and opens the dialog for that message', async () => {
+    // Arrange
+    montar({ nombres: new Map([['ana', 'Ana']]) });
+    // Act
+    await abrir();
+    await userEvent.click(await screen.findByTestId('accion-denunciar'));
+    // Assert
+    expect(await screen.findByText('Denunciar este mensaje')).toBeInTheDocument();
+    expect(screen.getByText('Bloquear también a Ana')).toBeInTheDocument();
+  });
+
+  it('an app’s card has no «Denunciar»', async () => {
+    montar({ isAppOf: () => true });
+    await abrir();
+    await screen.findByTestId('accion-responder');
+    expect(screen.queryByTestId('accion-denunciar')).toBeNull();
+  });
+});

@@ -11,6 +11,7 @@ import { credentialOfSignIn, mapVerifyFailure, shouldAutoSubmitOtp } from './mac
 import { OtpBoxes } from './OtpBoxes';
 import { useCountdown } from './useCountdown';
 import { useHardwareBack } from './useHardwareBack';
+import { tellIfDeletionCancelled } from './deletionCancelledNotice';
 
 const RESEND_SECONDS = 60;
 
@@ -33,6 +34,7 @@ export function EmailCodeScreen({ email, onDone, onBack }: { email: string; onDo
     const result = await verifyEmailSignIn({ email, code: candidate, deviceId });
     setVerifying(false);
     if (!result.ok) return setError(mapVerifyFailure(result.status, result.message));
+    tellIfDeletionCancelled(result.data);
     const credential = credentialOfSignIn(result.data, deviceId);
     await saveCredential(credential);
     onDone(credential);

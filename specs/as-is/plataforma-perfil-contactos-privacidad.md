@@ -81,8 +81,82 @@ Fuentes: código, `git log`, `specs/ARCHITECTURE.spec.md` §93, §106, §165, §
   `useAgendaRelay.ts` (pide la agenda al teléfono), `phoneAgenda.ts`, `fullAgenda.ts`,
   `mergeContacts.ts`.
 
+### Páginas públicas de privacidad (19/11, Google Play)
+
+- `/privacidad` (Política de privacidad) y `/seguridad-infantil` (normas CSAE), sin sesión
+  y también con sesión. Web: `web/src/legal/LegalPage.tsx`; textos en `privacyPolicy.ts` y
+  `childSafety.ts`; la ruta la decide `legalPageHere()` en `web/src/App.tsx`.
+- Pie «Privacidad · Seguridad infantil»: `web/src/legal/LegalFooter.tsx` en `AccessScreens`
+  y `app/src/onboarding/LegalLinks.tsx` en `WorkspaceEntryScreen` (abre el navegador).
+  En Ajustes no hay enlace todavía: otro cambio tocaba Ajustes.
+- Los textos salen del código: si cambia lo que se recoge o a quién va, cambian en el
+  mismo commit. Quedan `TODO(José)` (razón social, RUC, dirección, correos, país de los
+  servidores, proveedores de IA). Detalle en `specs/PLAY-STORE.spec.md`.
+- La agenda **sí sale del teléfono**: `POST /api/contacts/match` recibe los números, los
+  compara y no los guarda. Desde el 19/11 lo dicen el permiso de `app/app.json`,
+  `ContactPicker.tsx` e `InviteScreen.tsx` (antes decían «no se envían a ningún lado»).
+
+### Denunciar y bloquear (19/11, Google Play)
+
+- **Server** (`server/src/reports.ts`, `reportModel.ts`, `reportRoutes.ts`): `POST /api/reports`
+  con `target: 'user'` (`userId`, `chatId` opcional) o `target: 'message'` (`chatId`, `seq`; el
+  autor lo pone el server). Motivo, nota opcional (hasta 500; «Otro» la exige) y `alsoBlock`,
+  que reusa `blockUser` en el mismo paso. Pide ser miembro del chat; no se denuncia lo propio,
+  un aviso del sistema ni a uno mismo.
+- **Evidencia:** un mensaje denunciado se copia en la denuncia (texto, ids de adjuntos, autor,
+  chat, fecha). Si luego se borra, la copia queda. En un chat secreto no hay texto: `encrypted`.
+- **Anti-abuso:** la misma denuncia abierta (misma persona, o mismo mensaje) no se duplica (200,
+  `duplicate`); más de 10 en 24 h da 429.
+- **Aviso:** push sin chat (`pushPlainNotice`) al superadmin y a los dueños y admins del espacio
+  del chat, nunca al denunciado ni a quien denunció. Sin espacio, solo el superadmin. El texto
+  dice motivo y espacio, nunca el contenido. Abuso infantil = «Denuncia urgente».
+- **APK:** «Denunciar» en la barra de selección de un mensaje ajeno (`SeleccionDeMensaje.tsx`,
+  queda en «⋮») y «Denunciar» + «Bloquear» en la tarjeta de una persona
+  (`personCard/usePersonCard.tsx` → `app/src/reports/usePersonSafety.tsx`), que abre desde un
+  1:1 y desde un miembro de grupo o canal. Hoja `app/src/reports/ReportSheet.tsx`.
+- **Web:** «Denunciar» en el menú del mensaje (`MenuDelMensaje.tsx`) y en la tarjeta de la
+  persona (`personCard/usePersonCardWeb.tsx` → `web/src/reports/usePersonSafety.tsx`).
+  Diálogo `web/src/reports/ReportDialog.tsx`. La cola del superadmin está en `plataforma-admin.md`.
+- Bloquear desde la tarjeta lee la lista de bloqueados al abrirla (un `GET /api/me/blocked`).
+  Nunca se ofrece para una app.
+
+### Borrar la cuenta (19/11, Google Play)
+
+- **Pedirlo** (`server/src/accountDeletion.ts`, `accountDeletionRoutes.ts`):
+  `GET|POST|DELETE /api/me/account-deletion`. `POST` exige `confirm: 'BORRAR'`. Cierra la
+  cuenta al instante: anota `deletionRequestedAt`, borra sus `Device` (sesiones, tokens de push,
+  webs vinculadas) y corta sus sockets (`disconnectUser`). `requireSession` y el socket la
+  rechazan desde ese momento con un registro en memoria (`closedAccounts.ts`, se carga al
+  arrancar). Pedirlo dos veces conserva la primera fecha.
+- **Se rechaza** (409) si es dueño de un espacio con otros miembros, o su único admin.
+  Dice el espacio: «Pasa el espacio a otra persona o elimínalo antes de borrar tu cuenta».
+  **No existe transferir el dueño**; la salida real hoy es «Eliminar espacio».
+- **Cancelar:** entrar con el código antes de 30 días (`openSession` en `authRoutes.ts`).
+  El ingreso devuelve `accountDeletionCancelled: true` y la app y la web lo dicen.
+  `/auth/session` de una cuenta cerrada da 401: solo el código la recupera.
+- **Purga** (`server/src/accountPurge.ts`, cron diario en `index.ts`): pasados 30 días
+  (`ACCOUNT_DELETION_GRACE_DAYS`) borra sus 1:1 y notas enteros (para los dos), lo saca de
+  grupos, canales y espacios, borra dispositivos, acuses, destacados, ocultos, stickers,
+  recordatorios, respuesta automática, respaldos, mensajes programados, su invitación y sus
+  invitaciones por correo, y lo saca de los bloqueados de otros. Un espacio donde estaba solo
+  se elimina (`deleteWorkspace`); uno que ganó gente en el plazo pasa al admin más antiguo.
+  El usuario queda con `name: 'Cuenta eliminada'`, `phone: deleted:<id>` y `deletedAt`: así
+  cada pantalla que resuelve un autor dice «Cuenta eliminada» sin cambiar los clientes.
+  Idempotente: `deletedAt` se marca al final y un borrado ya hecho no se toca.
+- **APK:** fila «Borrar mi cuenta» al final de Ajustes › Cuenta (`DeleteAccountSetting.tsx`,
+  `api/accountDeletionApi.ts`). Explica, pide escribir BORRAR, y al terminar sale de la
+  sesión con un aviso nativo con la fecha. `onboarding/deletionCancelledNotice.ts` avisa la
+  cancelación.
+- **Web:** fila al final del panel de Ajustes (`web/src/account/DeleteAccountChoice.tsx`). Al
+  terminar sale y abre `/borrar-cuenta` en «Tu cuenta se cerró…». Página pública
+  `/borrar-cuenta` (`DeleteAccountPage.tsx`): explica, entra por correo, teléfono o QR (los
+  mismos componentes de `web/src/auth/`) y confirma con `DeleteAccountConfirm.tsx`.
+
 ### Shared
 
+- `accountDeletion.ts`: plazo (30 días), estado, fecha límite, palabra BORRAR, espacios que
+  bloquean, «Cuenta eliminada» y textos. `phone.ts`: `deletedPhoneKey`.
+- `legalPages.ts`: rutas de las páginas públicas, `legalPageOf`, `legalPageUrl`, pie.
 - `profile.ts`: `validateBirthday`, `profileMissing`, `profileGateNow`,
   `profileGateScreen` (`create` o `complete`), `backupNeedsEmail`,
   `PROFILE_CHECK_LIMIT_MS` (5 s).
@@ -91,6 +165,8 @@ Fuentes: código, `git log`, `specs/ARCHITECTURE.spec.md` §93, §106, §165, §
 - `presenceMode.ts`: modos y la línea bajo el nombre.
 - `blockedContacts.ts`: textos del bloqueo y plazos del bloqueo de la app
   (`APP_LOCK_DELAYS`, por defecto 60 s).
+- `reports.ts`: motivos de denuncia, `validateReportInput`, `canReportMessage`,
+  `canSendReport`, prioridad (`child_abuse` = alta), orden de la cola y textos.
 - `contacts.ts`, `nombreDeContacto.ts`, `sharedContact.ts`, `emparejarAgenda.ts`,
   `agendaRelay.ts`, `phone.ts`.
 
@@ -120,6 +196,12 @@ Fuentes: código, `git log`, `specs/ARCHITECTURE.spec.md` §93, §106, §165, §
 - **09/11** · La puerta abre la pantalla según lo que falta, no por el teléfono guardado.
 - **14/11** · El cumpleaños se pide al crear el usuario por correo, y se recuerda.
   El correo opcional sale a su componente.
+- **19/11** · Páginas públicas `/privacidad` y `/seguridad-infantil` con pie en el ingreso
+  (web y APK). Textos de permisos veraces en `app.json` (Google Play).
+- **19/11** · Denunciar y bloquear desde el mensaje y desde la tarjeta de cualquier persona,
+  también un miembro de grupo (Google Play). La denuncia guarda la copia del mensaje.
+- **19/11** · Borrar la cuenta desde la app, la web y `/borrar-cuenta`: se cierra al instante,
+  se borra a los 30 días y entrar con el código lo cancela (Google Play).
 
 ## 5. Diseños de Stitch
 
@@ -146,13 +228,17 @@ diseñó. **Según spec.**
 - El comentario de `contactRoutes.ts` dice «contacto = alguien de la lista de invitados»;
   hoy el registro está abierto y la lista sale de los 1:1 y de `/match`.
   **Verificado en código** (comentario viejo, la lógica es la nueva).
+- Borrar la cuenta: la foto de perfil y los archivos de respaldo quedan en el disco (se borran
+  sus filas). Los nombres copiados dentro de mensajes viejos (`sharedBy.name`, tarjetas de
+  contacto, avisos del sistema) no se reescriben. No hay transferir el dueño de un espacio.
+  Sin E2E todavía. **Verificado en código.**
 
 ## 7. Pruebas
 
 **Unit (server):** `server/test/perfilRoutes.test.ts`, `server/test/profile.test.ts`,
 `server/test/presence.test.ts`, `presenceMode.test.ts`, `presenciaCarrera.test.ts`,
 `ultimaVez.test.ts`, `birthdays.test.ts`, `contactShare.test.ts`,
-`server/src/contactRoutes.test.ts`, `blockedContacts.test.ts`, `readReceipts.test.ts`,
+`server/src/contactRoutes.test.ts`, `blockedContacts.test.ts`, `server/test/reports.test.ts`, `readReceipts.test.ts`,
 `autoReply.test.ts`.
 
 **Unit (shared):** `profile.test.ts`, `perfil.test.ts`, `birthdayReminder.test.ts`,
@@ -162,7 +248,14 @@ diseñó. **Según spec.**
 **Unit (APK):** `app/src/settings/perfilVisible.test.ts`, `app/src/contacts/*.test.ts`
 (5: relay, estado de agenda, búsqueda, invitar, aplanar).
 
-**Unit (web):** `web/src/profile/*.test.ts*` (3), `web/src/privacy/*.test.ts*` (5),
+**Unit (shared):** `legalPages.test.ts`, `reports.test.ts`.
+
+**Unit (web):** `web/src/legal/LegalPage.test.tsx`, `web/src/reports/ReportDialog.test.tsx`,
+`web/src/chat/personCard/usePersonCardWeb.test.tsx`, `web/src/profile/*.test.ts*` (3), `web/src/privacy/*.test.ts*` (5),
 `web/src/presence/presenceStatus.test.ts`, `web/src/contacts/*.test.ts` (3).
+
+**Borrar la cuenta:** `server/src/accountDeletion.test.ts` (pedir, rechazar, cancelar al
+entrar, purga, idempotencia, traspaso), `shared/src/accountDeletion.test.ts`,
+`web/src/account/*.test.ts*` (3), `app/src/api/accountDeletionApi.test.ts`.
 
 **Maestro:** ninguno.

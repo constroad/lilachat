@@ -101,7 +101,7 @@
       [
         "expo-contacts",
         {
-          "contactsPermission": "Lilachat usa tus contactos para mostrarte a quién invitar. Se leen en el teléfono y no se envían a ningún lado."
+          "contactsPermission": "Lilachat usa tus contactos para mostrarte quién ya está en Lilachat y a quién invitar. Envía los números a su servidor solo para compararlos; no guarda tu agenda."
         }
       ],
       "expo-sharing",
@@ -115,7 +115,8 @@
       [
         "expo-audio",
         {
-          "enableBackgroundRecording": true
+          "enableBackgroundRecording": true,
+          "microphonePermission": "Lilachat usa el micrófono para notas de voz, videos y llamadas."
         }
       ],
       "@config-plugins/react-native-webrtc",
@@ -146,20 +147,21 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Lilachat usa la cámara para leer el código QR con que vinculas tu computadora.",
+          "cameraPermission": "Lilachat usa la cámara para fotos y videos del chat, informes y visitas, videollamadas y el código QR con que vinculas tu computadora.",
+          "microphonePermission": "Lilachat usa el micrófono para grabar videos con sonido y para las videollamadas.",
           "recordAudioAndroid": false
         }
       ],
       [
         "expo-local-authentication",
         {
-          "faceIDPermission": "Lilachat te pide desbloquear el teléfono antes de vincular una computadora."
+          "faceIDPermission": "Lilachat usa Face ID para desbloquear la app, si activas el bloqueo, y antes de vincular una computadora."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Lilachat usa tu ubicación solo cuando eliges compartirla en un chat.",
+          "locationWhenInUsePermission": "Lilachat usa tu ubicación cuando la compartes en un chat (también en tiempo real, hasta que la detengas), para el sello de tus fotos y en informes, visitas y el mapa de obra.",
           "isAndroidBackgroundLocationEnabled": false,
           "isAndroidForegroundServiceEnabled": true
         }

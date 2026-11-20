@@ -209,3 +209,24 @@ describe('users panel, by space (web)', () => {
     expect(window.location.search).toBe('?vista=personas');
   });
 });
+
+/** Google Play (José 19/11): «Denuncias» is a third view of the panel, `?vista=denuncias`. */
+describe('users panel, the reports view (web)', () => {
+  it('the toggle opens the queue and writes it in the address', async () => {
+    // Arrange
+    const urls: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      urls.push(String(input));
+      if (String(input).includes('/admin/reports')) return json(200, { reports: [], total: 0, open: 0, page: 1, pageSize: 30 });
+      return json(200, overview());
+    });
+    render(<AdminUsersScreen jwt="jwt" />);
+    // Act
+    fireEvent.click(await screen.findByTestId('admin-vista-denuncias'));
+    // Assert
+    expect(await screen.findByText('No hay denuncias abiertas.')).toBeTruthy();
+    expect(window.location.search).toBe('?vista=denuncias');
+    expect(screen.queryByTestId('admin-buscar')).toBeNull();
+    await waitFor(() => expect(urls).toContain('/api/admin/reports?estado=abiertas&page=1'));
+  });
+});

@@ -206,7 +206,7 @@ export function ConversacionConAcciones(
   const editReminder = !chat.encrypted && canManage ? props.onEditReminder : undefined;
   const badgeOf = useCallback((senderId: string) => memberBadge({ ...detalle?.pills.get(senderId), isMe: senderId === yo }), [detalle, yo]);
   const isAppOf = useCallback((senderId: string) => detalle?.pills.get(senderId)?.role === 'app', [detalle]);
-  const personCard = usePersonCardWeb({ jwt: props.jwt, myUserId: yo, spaceId: chat.workspaceId, onOpenChat: props.onOpenChat });
+  const personCard = usePersonCardWeb({ jwt: props.jwt, myUserId: yo, spaceId: chat.workspaceId, chatId: chat.id, onOpenChat: props.onOpenChat });
   const showPerson = useCallback((userId: string) => {
     const person = cardPersonOf({ userId, detail: detalle, names: nombres, myUserId: yo });
     if (person) personCard.show(person);

@@ -135,7 +135,7 @@ export function ChatDetailScreen({
   tarjetas?: ReactNode;
 }) {
   const colores = useColores();
-  const personCard = usePersonCard({ jwt: credential.jwt, myUserId: credential.userId, spaceId: workspaceId });
+  const personCard = usePersonCard({ jwt: credential.jwt, myUserId: credential.userId, spaceId: workspaceId, chatId });
   const margenes = useMargenes();
   const [estado, setEstado] = useState<Estado>({ fase: 'cargando' });
   const [level, setLevel] = useState<NotificationLevel>('todo');

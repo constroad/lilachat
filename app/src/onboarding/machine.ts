@@ -5,7 +5,8 @@
 import type { Credential } from '../auth/credentialStore';
 
 /** What the server answers on any sign-in. */
-export type SignedIn = { deviceSecret: string; jwt: string; user: { id: string; name: string | null; phone: string; avatarUrl?: string | null } };
+/** `accountDeletionCancelled`: this sign-in cancelled «Borrar mi cuenta» (José 19/11), and the app says so. */
+export type SignedIn = { deviceSecret: string; jwt: string; user: { id: string; name: string | null; phone: string; avatarUrl?: string | null }; accountDeletionCancelled?: boolean };
 
 export function credentialOfSignIn(signedIn: SignedIn, deviceId: string): Credential {
   const { deviceSecret, jwt, user } = signedIn;

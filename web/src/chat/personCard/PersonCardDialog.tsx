@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Loader2, MessageCircle } from 'lucide-react';
 import { formatPhoneDisplay, type CardPerson } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
@@ -9,8 +10,9 @@ const AVATAR_SIZE = 88;
  * A person's card (José, 25/10/2026): their photo and name from a chat, a group or the
  * member list, and «Enviar mensaje» when there is a 1:1 to open. Nothing is offered
  * when there is nobody to write to (an app with no 1:1 in this space).
+ * `actions`: «Denunciar» and «Bloquear» for a person (José 19/11), never for an app.
  */
-export function PersonCardDialog(props: { person: CardPerson; canWrite: boolean; checking: boolean; busy: boolean; error: string | null; onWrite: () => void; onClose: () => void }) {
+export function PersonCardDialog(props: { person: CardPerson; canWrite: boolean; checking: boolean; busy: boolean; error: string | null; onWrite: () => void; onClose: () => void; actions?: ReactNode }) {
   const { person } = props;
   return (
     <Overlay title={person.isApp ? 'App' : 'Contacto'} onClose={props.onClose}>
@@ -28,6 +30,7 @@ export function PersonCardDialog(props: { person: CardPerson; canWrite: boolean;
             Enviar mensaje
           </button>
         ) : null}
+        {props.actions}
       </div>
     </Overlay>
   );

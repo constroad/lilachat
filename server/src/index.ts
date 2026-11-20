@@ -13,6 +13,8 @@ import { startBirthdayCron } from './birthdays.js';
 import { startBackupCron } from './backupCron.js';
 import { startDisappearCron } from './disappearingMessages.js';
 import { startWorkspacePurgeCron } from './workspacePurge.js';
+import { startAccountPurgeCron } from './accountPurge.js';
+import { loadClosedAccounts } from './closedAccounts.js';
 import { alertarServidor } from './alertaTelegram.js';
 import { sellarConsola } from './registro.js';
 import { lilaStoreMinimum } from './minimumVersion.js';
@@ -105,6 +107,9 @@ export function startServer(): void {
       startBirthdayCron();
       startDisappearCron();
       startWorkspacePurgeCron();
+      // «Borrar mi cuenta»: the closed accounts stay closed after a restart, then the daily purge.
+      void loadClosedAccounts().catch((error) => console.error('[cuentas] no se cargaron las cerradas:', error instanceof Error ? error.message : error));
+      startAccountPurgeCron();
       // The bots' events left pending at the last shutdown get their retry timers back.
       void resumeBotDeliveries().catch((error) => console.error('[bots] no se pudieron retomar los eventos:', error instanceof Error ? error.message : error));
     })

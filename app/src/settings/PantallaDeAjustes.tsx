@@ -29,6 +29,7 @@ import { MediaScreen } from '../media/MediaScreen';
 import { ReadReceiptsSetting } from './ReadReceiptsSetting';
 import { NoticePreviewSetting } from './NoticePreviewSetting';
 import { SuperadminSetting } from './SuperadminSetting';
+import { DeleteAccountSetting } from './DeleteAccountSetting';
 
 /**
  * La pestaña Ajustes (salió de `TabsShell`, que pasaba de 560 líneas). Listas
@@ -184,6 +185,8 @@ export function PantallaDeAjustes(props: {
               )
             }
           />
+          {/* Google Play (José 19/11): closes at once, erased in 30 days; signing in again cancels it. */}
+          <DeleteAccountSetting jwt={credential.jwt} onSignOut={props.onLogout} />
         </GrupoDeAjustes>
       </ScrollView>
     </KeyboardAvoidingView>

@@ -25,15 +25,16 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const SPACES_PER_PASS = 5;
 const PURGE_EVERY_MS = 6 * 60 * 60 * 1000;
 
-type AnyModel = Model<never>;
-const CHAT_SCOPED: AnyModel[] = [MessageModel, ReceiptModel, ChecklistModel, DestacadoModel, EventModel, ReminderModel, PollModel, ScheduledMessageModel, AutoReplyStateModel].map((model) => model as unknown as AnyModel);
+export type AnyModel = Model<never>;
+/** Everything that hangs from a chat: erasing a chat erases these first (also `accountPurge.ts`). */
+export const CHAT_SCOPED: AnyModel[] = [MessageModel, ReceiptModel, ChecklistModel, DestacadoModel, EventModel, ReminderModel, PollModel, ScheduledMessageModel, AutoReplyStateModel].map((model) => model as unknown as AnyModel);
 const SPACE_SCOPED: AnyModel[] = [WorkspaceMemberModel, WorkspaceEmailInviteModel, CustomEmojiModel, OAuthCodeModel, BotCommandRunModel, ClientChannelModel, ReportDraftModel, AppScheduleModel].map((model) => model as unknown as AnyModel);
 
 /**
  * `deleteMany` with a field the schema lacks could match every document if the
  * filter lost it: each delete checks the path exists first.
  */
-function deleteBy(model: AnyModel, field: string, value: unknown) {
+export function deleteBy(model: AnyModel, field: string, value: unknown) {
   if (!model.schema.path(field)) throw new Error(`purge: ${model.modelName} has no ${field}`);
   return model.deleteMany({ [field]: value } as never);
 }

@@ -3,6 +3,7 @@ import { Types } from 'mongoose';
 import { esDispositivoVinculado } from '@lilachat/shared';
 import { verifySession } from './sessions.js';
 import { vinculadoVigente } from './dispositivosVinculados.js';
+import { isAccountClosed } from './closedAccounts.js';
 
 /**
  * El guard de toda ruta que no sea el alta. La identidad sale del JWT firmado
@@ -14,12 +15,19 @@ declare module 'express-serve-static-core' {
   }
 }
 
+export const CLOSED_ACCOUNT_MESSAGE = 'Pediste borrar tu cuenta. Entra con tu código para recuperarla.';
+
 export function requireSession(req: Request, res: Response, next: NextFunction): void {
   const header = String(req.headers.authorization ?? '');
   const token = header.startsWith('Bearer ') ? header.slice(7) : '';
   const claims = token ? verifySession(token) : null;
   if (!claims || !Types.ObjectId.isValid(claims.userId)) {
     res.status(401).json({ message: 'Tu sesión venció. Vuelve a entrar.' });
+    return;
+  }
+  // An account its owner asked to delete is closed at once, not when its JWT expires.
+  if (isAccountClosed(claims.userId)) {
+    res.status(401).json({ message: CLOSED_ACCOUNT_MESSAGE });
     return;
   }
   req.session = {

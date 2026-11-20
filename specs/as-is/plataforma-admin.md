@@ -28,7 +28,13 @@ Fuentes: código, `git log`, `specs/INGRESO-POR-ESPACIO.spec.md` §10,
   - `GET /spaces` y `GET /spaces/:spaceId/members`: vista por espacio
     (`adminSpaces.ts`), 10 espacios por página y 4 miembros de muestra.
   - Lee solo `users`, `devices`, `workspaces`, `workspacemembers` e `invitations`.
-    Nunca chats, mensajes ni contactos.
+    Nunca chats, mensajes ni contactos. **Excepción (19/11):** `/reports` muestra la copia
+    del mensaje que alguien eligió denunciar (Google Play).
+  - `GET /reports?estado=abiertas|cerradas&page=`: la cola de denuncias, 30 por página,
+    abuso infantil primero y lo nuevo arriba, con `open` (cuántas abiertas). Cada fila: motivo,
+    nota, quién denunció a quién, chat, espacio, evidencia y si también lo bloqueó
+    (`adminReports.ts`).
+  - `POST /reports/:reportId/close` con `outcome: 'resolved' | 'dismissed'` y nota opcional.
 - **Incógnito** (`hiddenMembers.ts`, `workspaces.ts`):
   - `hidden: true` en su `WorkspaceMember`, puesto por la base.
   - No sale en directorio, «Miembros y roles», conteos, canales, menciones, «Info»,
@@ -63,6 +69,11 @@ Fuentes: código, `git log`, `specs/INGRESO-POR-ESPACIO.spec.md` §10,
   - Cada persona: rol, correo, se unió, última vez, dispositivos, quién lo invitó,
     «También en». Bajo `md`, una tarjeta por persona.
   - Piezas en `AdminParts.tsx`, datos en `adminApi.ts` y `useAdminLoad.ts`.
+  - Tercera vista «Denuncias» (`?vista=denuncias`, 19/11): `AdminReportsView.tsx`. Filtro
+    Abiertas (con el número) · Cerradas; cada denuncia con «Urgente» si es abuso infantil, la
+    copia del mensaje, y «Resolver» o «Descartar» con nota opcional. Sin buscador ni cifras.
+- **Aviso de denuncia:** el superadmin recibe un push por cada denuncia nueva
+  (`superadminUserIds` en `operators.ts`); los admins del espacio, por las de su espacio.
 
 ### Shared
 
@@ -70,7 +81,9 @@ Fuentes: código, `git log`, `specs/INGRESO-POR-ESPACIO.spec.md` §10,
   rótulos de dispositivos, de alta y de última vez.
 - `shared/src/adminSpaces.ts`: resumen por espacio, `ADMIN_SPACES_PAGE_SIZE` (10),
   `ADMIN_SPACE_PREVIEW` (4), orden de roles, `adminPanelQuery` (lee `vista`, `espacio`,
-  `q`, `page` de la URL).
+  `q`, `page` de la URL; `vista=denuncias` desde el 19/11).
+- `shared/src/reports.ts`: `AdminReport`, `AdminReportsPage`, `ADMIN_REPORTS_PAGE_SIZE` (30),
+  `sortReportQueue`, `adminReportsFilterOf`.
 - `shared/src/workspaces.ts`: `withoutClosedIncognito`.
 
 ## 3. Diferencias APK vs web
@@ -80,6 +93,7 @@ Fuentes: código, `git log`, `specs/INGRESO-POR-ESPACIO.spec.md` §10,
 | Panel de personas y espacios | No existe | `/admin` |
 | «Ver incógnitos» | Ajustes › Superadmin | Ajustes › Superadmin |
 | Respaldo del servidor (operador) | Fila en Ajustes | No hay fila |
+| Cola de denuncias | No existe (solo el aviso) | `/admin?vista=denuncias` |
 
 ## 4. Historia reciente
 
@@ -92,6 +106,8 @@ Fuentes: código, `git log`, `specs/INGRESO-POR-ESPACIO.spec.md` §10,
 - **13/11** · La lista de incógnitos web hace scroll hasta verse.
 - **14/11** · `/admin` agrupa a las personas por espacio (adm-01). Dos revisiones de
   la tabla: cortes de columnas, logo con respaldo, vacío sin búsqueda.
+- **19/11** · «Denuncias» en `/admin`: la cola, la evidencia y resolver o descartar
+  (Google Play). Sin diseño de Stitch: sigue las piezas de adm-01.
 
 ## 5. Diseños de Stitch
 
@@ -115,16 +131,21 @@ espacio», «Expandir», paginación y vacío): la captura era solo del primer p
   **Según auditoría** (`adm-01-usuarios-por-espacio.md`, fila 20).
 - El APK no tiene panel de personas. **Verificado en código** (no hay pantalla que lea
   `/api/admin/users`).
+- La cola de denuncias solo vive en la web; el APK recibe el aviso pero no la abre.
+  Los admins del espacio solo reciben el aviso: no tienen cola. **Verificado en código.**
+- La evidencia guarda ids de adjuntos, no el archivo: si el archivo se purga, solo queda el id.
+  **Verificado en código** (`reports.ts › evidenceOf`).
 
 ## 7. Pruebas
 
 **Unit (server):** `server/test/adminUsers.test.ts`, `server/test/adminSpaces.test.ts`,
+`server/test/reports.test.ts` (cola y cierre),
 `server/src/hiddenMember.test.ts`, el caso del canal compartido en
 `server/src/sharedChannels.test.ts`, `backupRoutes.test.ts` (operador).
 
-**Unit (shared):** `adminUsers.test.ts`, `adminSpaces.test.ts`, `workspaces.test.ts`.
+**Unit (shared):** `adminUsers.test.ts`, `adminSpaces.test.ts`, `reports.test.ts`, `workspaces.test.ts`.
 
-**Unit (web):** `web/src/admin/AdminUsersScreen.test.tsx`,
+**Unit (web):** `web/src/admin/AdminUsersScreen.test.tsx`, `web/src/admin/AdminReportsView.test.tsx`,
 `web/src/spaces/SuperadminSettings.test.tsx`.
 
 **Unit (APK):** ninguno propio de esta área.

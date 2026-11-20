@@ -36,3 +36,22 @@ export function appLockDue(input: { enabled: boolean; delayMs: number; hiddenAt:
   if (input.hiddenAt === null) return false;
   return input.now - input.hiddenAt >= input.delayMs;
 }
+
+/**
+ * Reads the blocked list once and says whether `personId` is in it. Used by the
+ * person card on web and APK. Returns a cancel function for the effect cleanup;
+ * a list that could not be read reports nothing.
+ */
+export function watchBlockedPerson(
+  listBlocked: () => Promise<ReadonlyArray<{ id: string }> | null>,
+  personId: string,
+  onBlocked: (blocked: boolean) => void
+): () => void {
+  let current = true;
+  void listBlocked().then((people) => {
+    if (current && people) onBlocked(people.some((blockedPerson) => blockedPerson.id === personId));
+  });
+  return () => {
+    current = false;
+  };
+}

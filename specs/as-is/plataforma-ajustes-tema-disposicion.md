@@ -27,6 +27,8 @@ Fuentes: código, `git log`, `specs/PLANES-FLUIDEZ-IOS-PWA.spec.md` §3 y
      automática, «Respaldo del servidor» (operador).
   8. Diagnóstico y «Buscar actualizaciones».
   9. Superadmin (solo el creador) e «Invitar a alguien».
+  10. Cuenta: «Cerrar sesión» y, al final, «Borrar mi cuenta» (`DeleteAccountSetting.tsx`,
+      19/11; detalle en `plataforma-perfil-contactos-privacidad.md`).
 - **Filas y controles:** `ui/FilaDeAjuste.tsx`, `ui/Interruptor.tsx`, `ui/Segmentado.tsx`,
   `ui/Rotulo.tsx`, `settings/OwnSwitchSetting.tsx`, `settings/preferencias.ts`,
   `ui/prefStore.ts`.
@@ -55,7 +57,8 @@ Fuentes: código, `git log`, `specs/PLANES-FLUIDEZ-IOS-PWA.spec.md` §3 y
 - **Ajustes** (`PanelDeAjustes` en `web/src/Shell.tsx`): un panel flotante con enlaces
   del espacio (en el teléfono), presencia, Apariencia (Claro · Oscuro · Sistema),
   fuente, grupos como lista, almacenamiento del navegador, privacidad, activar avisos,
-  instalar, Superadmin, cerrar sesión y la versión. Se cierra con clic afuera o Escape.
+  instalar, Superadmin, cerrar sesión, «Borrar mi cuenta» (`account/DeleteAccountChoice.tsx`,
+  19/11) y la versión. Se cierra con clic afuera o Escape.
 - **Tema** (`web/src/ui/tema.ts`, `ThemeToggle.tsx`, `public/tema-inicial.js` para no
   parpadear al cargar). Modo claro «opción A» desde el 12/11: riel en tinta violeta,
   listas en lila claro y cabecera del chat sólida.
@@ -118,6 +121,7 @@ Fuentes: código, `git log`, `specs/PLANES-FLUIDEZ-IOS-PWA.spec.md` §3 y
 - **12/11** · Modo claro «opción A» en la web. Motivo: «muy triste, muy blanco».
 - **13/11** · Las iniciales de Personal usan la tinta del riel en modo claro.
 - **17/11** · La ficha de miembro web ya no se desborda a 390 px.
+- **19/11** · «Borrar mi cuenta» al final de Ajustes en el APK y en la web (Google Play).
 
 ## 5. Diseños de Stitch
 

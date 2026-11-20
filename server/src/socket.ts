@@ -36,6 +36,7 @@ import { verifySession } from './sessions.js';
 import { esDispositivoVinculado } from '@lilachat/shared';
 import { CALL_RESTART, CALL_RESTART_ANSWER, callReactionOf, callSignalStep, reactionKeyOf } from '@lilachat/shared';
 import { vinculadoVigente } from './dispositivosVinculados.js';
+import { isAccountClosed } from './closedAccounts.js';
 import { HiloInvalidoError } from './hilos.js';
 import { registerAgendaRelay } from './agendaRelay.js';
 import { BUILD_HEADER, appBelowMinimum, type MinimumSource } from './minimumVersion.js';
@@ -113,7 +114,7 @@ export function attachSocket(httpServer: HttpServer, options: { minimumBuild?: M
     }
     const token = String(socket.handshake.auth?.token ?? '');
     const claims = token ? verifySession(token) : null;
-    if (!claims) return next(new Error('unauthorized'));
+    if (!claims || isAccountClosed(claims.userId)) return next(new Error('unauthorized'));
     socket.userId = new Types.ObjectId(claims.userId);
     socket.deviceId = claims.deviceId;
     if (!esDispositivoVinculado(claims.deviceId)) return next();

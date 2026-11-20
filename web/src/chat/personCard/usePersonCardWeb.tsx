@@ -5,6 +5,7 @@ import { openedChat } from '../../spaces/openedChat';
 import { appDirectory, createSpaceChat, openAppChat } from '../../spaces/spacesApi';
 import type { ChatSummary } from '../types';
 import { openChatFromAnywhere } from '../rutaDelChat';
+import { usePersonSafety } from '../../reports/usePersonSafety';
 import { PersonCardDialog } from './PersonCardDialog';
 
 const OPEN_FAILED = 'No se pudo abrir el chat.';
@@ -17,8 +18,8 @@ const OPEN_FAILED = 'No se pudo abrir el chat.';
  * `onOpenChat` gets the summary of a space's 1:1: it is not in the lists yet, and the
  * server's answer says neither its space nor its app.
  */
-export function usePersonCardWeb(params: { jwt: string; myUserId: string; spaceId?: string; onOpenChat?: (chatId: string, known?: ChatSummary) => void }): { show: (person: CardPerson) => void; element: ReactNode } {
-  const { jwt, myUserId, spaceId, onOpenChat } = params;
+export function usePersonCardWeb(params: { jwt: string; myUserId: string; spaceId?: string; chatId?: string; onOpenChat?: (chatId: string, known?: ChatSummary) => void }): { show: (person: CardPerson) => void; element: ReactNode } {
+  const { jwt, myUserId, spaceId, chatId, onOpenChat } = params;
   const [person, setPerson] = useState<CardPerson | null>(null);
   const [installed, setInstalled] = useState<ReadonlyMap<string, string> | undefined>(undefined);
   const [busy, setBusy] = useState(false);
@@ -67,8 +68,16 @@ export function usePersonCardWeb(params: { jwt: string; myUserId: string; spaceI
     close();
   }, [action, busy, jwt, close, person, myUserId, onOpenChat]);
 
+  // José 19/11: the card reports and blocks the person, with the chat it was opened from.
+  const safety = usePersonSafety({ jwt, person, chatId, onError: setError });
+  const card = person && !safety.reporting ? (
+    <PersonCardDialog person={person} canWrite={action.kind !== 'none'} checking={asksForApps && installed === undefined} busy={busy} error={error} onWrite={() => void write()} onClose={close} actions={safety.actions} />
+  ) : null;
   const element = person ? (
-    <PersonCardDialog person={person} canWrite={action.kind !== 'none'} checking={asksForApps && installed === undefined} busy={busy} error={error} onWrite={() => void write()} onClose={close} />
+    <>
+      {card}
+      {safety.dialog}
+    </>
   ) : null;
   return { show, element };
 }

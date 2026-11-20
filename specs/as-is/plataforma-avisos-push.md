@@ -45,6 +45,7 @@ Fuentes: código, `git log`, `specs/ARCHITECTURE.spec.md` §35, §45.28–§45.2
     (`respuestaDesdeAviso.ts`).
   - `POST|DELETE /subscribe`: suscripción Web Push.
   - El token FCM se registra en `POST /api/chats/push-token`.
+- **Aviso sin chat** (`pushPlainNotice`, 19/11): FCM y Web Push a unas personas, sin mirar presencia ni nivel del chat, con `chatId` vacío (tocarlo solo abre la app). Lo usan las denuncias (`reports.ts`).
 - **Miniatura y avatares** en el push: foto del grupo o contacto, y del autor (§111, §113).
 
 ### APK

@@ -31,7 +31,7 @@ técnica, el IAA con AR, el Drive de cada servicio, los gastos y las llamadas.
 - [Ingreso y sesiones](as-is/plataforma-ingreso-y-sesiones.md): código por teléfono o correo, ingreso por espacio, QR, dispositivos.
 - [Espacios y canales](as-is/plataforma-espacios-y-canales.md): roles, invitaciones, #general, canales compartidos, borrar espacio.
 - [Administración](as-is/plataforma-admin.md): superadmin, operadores, `/admin`, incógnito.
-- [Perfil, contactos y privacidad](as-is/plataforma-perfil-contactos-privacidad.md).
+- [Perfil, contactos y privacidad](as-is/plataforma-perfil-contactos-privacidad.md): también las páginas públicas `/privacidad` y `/seguridad-infantil`.
 - [Avisos y push](as-is/plataforma-avisos-push.md): FCM, Web Push, aviso nativo, sonidos.
 - [Versiones, OTA y respaldo](as-is/plataforma-versiones-ota-respaldo.md).
 - [Ajustes, tema y disposición](as-is/plataforma-ajustes-tema-disposicion.md): riel, celular, tablet, PWA.
@@ -79,6 +79,9 @@ Los specs largos siguen como historia y detalle: [ARCHITECTURE](ARCHITECTURE.spe
 [MAPA-OBRA](MAPA-OBRA.spec.md), [TUTORIALES-CANAL-CLIENTE](TUTORIALES-CANAL-CLIENTE.spec.md),
 [INGRESO-POR-ESPACIO](INGRESO-POR-ESPACIO.spec.md), [PLANES-FLUIDEZ-IOS-PWA](PLANES-FLUIDEZ-IOS-PWA.spec.md),
 [DEPLOY](DEPLOY.spec.md) y el corte viejo [AS-IS-0.1.170](AS-IS-0.1.170.spec.md).
+
+[PLAY-STORE](PLAY-STORE.spec.md): preparación para Google Play (checklist, formulario de seguridad de los datos,
+permisos de riesgo, ficha). Páginas públicas `/privacidad` y `/seguridad-infantil`.
 
 ## Cómo se mantiene
 

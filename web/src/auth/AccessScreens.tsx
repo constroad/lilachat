@@ -12,6 +12,7 @@ import { IngresoPorTelefono } from './IngresoPorTelefono';
 import { PantallaDeVincular } from './PantallaDeVincular';
 import { IphoneInstallGuide } from '../pwa/IphoneInstallGuide';
 import { iphoneGuideSkipped, needsIosInstall, skipIphoneGuide } from '../pwa/iosInstall';
+import { LegalFooter } from '../legal/LegalFooter';
 
 /**
  * The doors of the web: the phone's QR, like WhatsApp Web (W5), the email and its
@@ -69,6 +70,8 @@ export function AccessScreens({ onReady, emailLink, emailHint }: { onReady: (cre
           </button>
         </>
       ) : null}
+      {/* Google Play: the privacy policy and the child-safety standards, one tap from signing in. Above the phone door's fixed button. */}
+      <LegalFooter className={door === 'phone' || door === 'personal' ? 'pb-16' : ''} />
     </>
   );
 }

@@ -5,6 +5,7 @@ import { requestEmailSignIn } from '../api/client';
 import { Logo } from '../ui/Logo';
 import { useColores } from '../ui/tema';
 import { useMargenes } from '../ui/useMargenes';
+import { LegalLinks } from './LegalLinks';
 import { normalizeEmailInput } from './machine';
 
 /**
@@ -80,6 +81,7 @@ export function WorkspaceEntryScreen(props: { onCodeRequested: (email: string) =
       <Pressable testID="btn-sin-espacio" accessibilityRole="button" onPress={props.onUsePersonal} className="min-h-[44px] items-center justify-center">
         <Text className="text-sm text-on-surface-variant">Usar sin espacio de trabajo</Text>
       </Pressable>
+      <LegalLinks />
     </ScrollView>
   );
 }

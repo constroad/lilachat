@@ -343,8 +343,8 @@ function SeccionInvitar({
           Invitar a Lilachat
         </Text>
         <Text className="text-[13px] leading-5 text-on-surface-variant">
-          Sin acceso a tus contactos no podemos mostrarte a quién falta invitar. Se leen en el
-          teléfono y no se envían a ningún lado.
+          Sin acceso a tus contactos no podemos mostrarte a quién falta invitar. Solo enviamos
+          los números para compararlos; no guardamos tu agenda.
         </Text>
         <Pressable
           testID="btn-compartir-enlace"

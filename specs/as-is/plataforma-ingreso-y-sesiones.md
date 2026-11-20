@@ -21,6 +21,10 @@ y `specs/ARCHITECTURE.spec.md` §5, §5.1, §5.2 y §6.4.
   - `POST /session`: renueva el JWT validando el dispositivo contra constroad-auth.
   - `POST /salir`: cierra la sesión.
   - Las dos puertas terminan en `openSession`.
+  - `openSession` cancela un «Borrar mi cuenta» pendiente y responde
+    `accountDeletionCancelled: true` (19/11). `/session` y la web vinculada de una cuenta
+    cerrada dan 401 «Pediste borrar tu cuenta…»; `requireSession` y el socket la rechazan al
+    instante (`closedAccounts.ts`, en memoria). Detalle en `plataforma-perfil-contactos-privacidad.md`.
 - **constroad-auth** (`server/src/authClient.ts`): el teléfono nunca le habla.
   El server tiene la llave. Pide el código, lo verifica y valida el dispositivo.
 - **Registro abierto:** `REGISTRO_ABIERTO = true` (`authRoutes.ts:41`).
@@ -52,7 +56,8 @@ y `specs/ARCHITECTURE.spec.md` §5, §5.1, §5.2 y §6.4.
 
 - **Flujo de entrada** (`app/src/onboarding/SignInFlow.tsx`, arranca en `entry`):
   1. `WorkspaceEntryScreen` (i-01): correo y «Continuar». Debajo, «Entrar con mi
-     número de teléfono» y «Usar sin espacio de trabajo».
+     número de teléfono» y «Usar sin espacio de trabajo». Al pie, «Privacidad · Seguridad
+     infantil» (`LegalLinks.tsx`, abre las páginas públicas en el navegador; 19/11).
   2. `EmailCodeScreen` / `OtpScreen` (i-02): 6 dígitos (`OtpBoxes`), reenvío con
      cuenta regresiva (`useCountdown`), «Cambiar de correo».
   3. `YourSpacesScreen` (i-03, en `app/src/spaces/`): espacios con «Abrir»,
@@ -81,6 +86,10 @@ y `specs/ARCHITECTURE.spec.md` §5, §5.1, §5.2 y §6.4.
     QR como un solo camino SVG en `caminoDelQr.ts`).
   - Pantalla angosta: el correo y su código (`EmailSignIn.tsx`).
   - Con número: `IngresoPorTelefono.tsx`.
+  - Debajo de cualquier puerta, «Privacidad · Seguridad infantil» (`web/src/legal/LegalFooter.tsx`).
+- **Páginas públicas** `/privacidad` y `/seguridad-infantil` (19/11, Google Play): se abren con o
+  sin sesión, antes de la puerta (`web/src/App.tsx`, `legalPageHere`). Ver
+  `plataforma-perfil-contactos-privacidad.md` y `specs/PLAY-STORE.spec.md`.
 - **Enlace del correo:** `/login/callback?d=<correo>&c=<código>` (`emailLink.ts`).
   Muestra el código y «Entrar aquí»; el código se gasta con ese toque.
   `?d=` sin código abre «Entrar con mi correo» con el correo escrito (`emailHintOf`).
@@ -135,6 +144,9 @@ y `specs/ARCHITECTURE.spec.md` §5, §5.1, §5.2 y §6.4.
 - **14/11** · i-04 pide el cumpleaños a la cuenta nueva por correo.
 
 - **19/11** · Correo: un código vencido dice «Toca «Reenviar el código» y te llega otro» (invitados de Globofast).
+- **19/11** · Pie «Privacidad · Seguridad infantil» en el ingreso (web y APK) y páginas públicas para Google Play.
+- **19/11** · Borrar la cuenta: el ingreso con código dentro de 30 días cancela el borrado, y la
+  página pública `/borrar-cuenta` reusa las tres puertas (correo, teléfono, QR).
 
 ## 5. Diseños de Stitch
 

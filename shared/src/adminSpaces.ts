@@ -37,11 +37,13 @@ export const ADMIN_NO_SPACE = 'none';
 /** The order of a space's members: who runs it first (design: Dueño, Admin, Miembro, Invitado). */
 export const ADMIN_ROLE_ORDER: readonly WorkspaceRole[] = ['owner', 'admin', 'member', 'guest'];
 
-export type AdminPanelView = 'spaces' | 'people';
+/** `reports`: the queue of reports (Google Play, José 19/11). */
+export type AdminPanelView = 'spaces' | 'people' | 'reports';
 export type AdminPanelQuery = { view: AdminPanelView; space: string | null; q: string; page: number };
 
 const SPACE_ID = /^[a-f0-9]{24}$/;
 const PEOPLE_VIEW = 'personas';
+const REPORTS_VIEW = 'denuncias';
 const NO_SPACE_PARAM = 'sin';
 const ALSO_IN_NAMED = 2;
 
@@ -52,7 +54,7 @@ function spaceFromParam(raw: unknown): string | null {
 
 /** The panel's state from the address (`?vista=personas&espacio=…&q=&page=`); anything else falls back. */
 export function adminPanelQuery(raw: { vista?: unknown; espacio?: unknown; q?: unknown; page?: unknown }): AdminPanelQuery {
-  const view: AdminPanelView = raw.vista === PEOPLE_VIEW ? 'people' : 'spaces';
+  const view: AdminPanelView = raw.vista === PEOPLE_VIEW ? 'people' : raw.vista === REPORTS_VIEW ? 'reports' : 'spaces';
   return { view, space: view === 'spaces' ? spaceFromParam(raw.espacio) : null, ...adminUsersQuery(raw) };
 }
 
@@ -60,6 +62,7 @@ export function adminPanelQuery(raw: { vista?: unknown; espacio?: unknown; q?: u
 export function adminPanelSearch(query: AdminPanelQuery): string {
   const params = new URLSearchParams();
   if (query.view === 'people') params.set('vista', PEOPLE_VIEW);
+  if (query.view === 'reports') params.set('vista', REPORTS_VIEW);
   if (query.space) params.set('espacio', query.space === ADMIN_NO_SPACE ? NO_SPACE_PARAM : query.space);
   if (query.q) params.set('q', query.q);
   if (query.page > 1) params.set('page', String(query.page));

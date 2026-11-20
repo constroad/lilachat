@@ -42,3 +42,10 @@ export async function isSuperadmin(userId: Types.ObjectId): Promise<boolean> {
   const phone = await phoneOf(userId);
   return phone !== '' && CREATOR_PHONES.includes(phone);
 }
+
+/** The superadmin's accounts, for the notices only he receives (a new report, José 19/11). */
+export async function superadminUserIds(): Promise<string[]> {
+  const phones = CREATOR_PHONES.flatMap((phone) => [phone, `51${phone}`, `+51${phone}`]);
+  const users = await UserModel.find({ phone: { $in: phones } }).select('_id phone').lean();
+  return users.filter((user) => CREATOR_PHONES.includes(normalizePeruPhone(user.phone))).map((user) => String(user._id));
+}

@@ -132,3 +132,43 @@ describe('the person card of the web', () => {
     expect(screen.queryByTestId('persona-nombre')).toBeNull();
   });
 });
+
+/** Google Play (José 19/11): a person's card, from a 1:1 or a group member, reports and blocks; an app's does not. */
+describe('the person card — report and block', () => {
+  it('a person offers «Denunciar» and «Bloquear»; an app offers neither', async () => {
+    // Arrange
+    stubServer();
+    // Act
+    await open(ana);
+    // Assert
+    expect(await screen.findByTestId('persona-denunciar')).toHaveTextContent('Denunciar');
+    expect(screen.getByTestId('persona-bloquear')).toHaveTextContent('Bloquear a Ana');
+  });
+
+  it('an app has no report nor block', async () => {
+    stubServer();
+    await open(bot, 'w1');
+    expect(screen.queryByTestId('persona-denunciar')).toBeNull();
+    expect(screen.queryByTestId('persona-bloquear')).toBeNull();
+  });
+
+  it('blocking asks first, then it reads «Desbloquear»', async () => {
+    // Arrange
+    const calls = stubServer({ '/api/me/blocked': () => new Response(JSON.stringify({ blocked: [] }), { status: 200 }) });
+    vi.stubGlobal('confirm', vi.fn(() => true));
+    // Act
+    await open(ana);
+    await userEvent.click(await screen.findByTestId('persona-bloquear'));
+    // Assert
+    await waitFor(() => expect(screen.getByTestId('persona-bloquear')).toHaveTextContent('Desbloquear a Ana'));
+    expect(calls).toContainEqual({ url: '/api/me/blocked', method: 'POST', body: { userId: 'u-ana' } });
+  });
+
+  it('«Denunciar» swaps the card for the report dialog of that person', async () => {
+    stubServer();
+    await open(ana);
+    await userEvent.click(await screen.findByTestId('persona-denunciar'));
+    expect(await screen.findByText('Denunciar a Ana')).toBeInTheDocument();
+    expect(screen.queryByTestId('persona-nombre')).toBeNull();
+  });
+});

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { APP_LOCK_DELAYS, DEFAULT_APP_LOCK_DELAY_MS, appLockDelayOf, appLockDue, blockActionLabel } from './blockedContacts.js';
+import { APP_LOCK_DELAYS, DEFAULT_APP_LOCK_DELAY_MS, appLockDelayOf, appLockDue, blockActionLabel, watchBlockedPerson } from './blockedContacts.js';
 
 describe('blocked contacts texts (pending 9)', () => {
   it('the action says what it will do', () => {
@@ -29,5 +29,43 @@ describe('app lock (pending 9)', () => {
 
   it('never left the app: nothing to ask', () => {
     expect(appLockDue({ enabled: true, delayMs: 0, hiddenAt: null, now: 5_000 })).toBe(false);
+  });
+});
+
+describe('watchBlockedPerson', () => {
+  it('reports true when the person is in the blocked list', async () => {
+    // Arrange
+    const seen: boolean[] = [];
+    // Act
+    watchBlockedPerson(async () => [{ id: 'u1' }, { id: 'u2' }], 'u2', (blocked) => seen.push(blocked));
+    await Promise.resolve();
+    await Promise.resolve();
+    // Assert
+    expect(seen).toEqual([true]);
+  });
+
+  it('reports false when the person is not blocked', async () => {
+    const seen: boolean[] = [];
+    watchBlockedPerson(async () => [{ id: 'u1' }], 'u9', (blocked) => seen.push(blocked));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(seen).toEqual([false]);
+  });
+
+  it('stays silent when the list could not be read', async () => {
+    const seen: boolean[] = [];
+    watchBlockedPerson(async () => null, 'u1', (blocked) => seen.push(blocked));
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(seen).toEqual([]);
+  });
+
+  it('stays silent after being cancelled', async () => {
+    const seen: boolean[] = [];
+    const cancel = watchBlockedPerson(async () => [{ id: 'u1' }], 'u1', (blocked) => seen.push(blocked));
+    cancel();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(seen).toEqual([]);
   });
 });

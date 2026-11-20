@@ -42,6 +42,16 @@ describe('adminPanelSearch', () => {
     expect(adminPanelSearch({ view: 'spaces', space: ADMIN_NO_SPACE, q: '', page: 1 })).toBe('?espacio=sin');
   });
 
+  it('the reports queue (José 19/11) is `?vista=denuncias` and round-trips', () => {
+    // Arrange
+    const query = { view: 'reports' as const, space: null, q: '', page: 2 };
+    // Act
+    const search = adminPanelSearch(query);
+    // Assert
+    expect(search).toBe('?vista=denuncias&page=2');
+    expect(adminPanelQuery(Object.fromEntries(new URLSearchParams(search)))).toEqual(query);
+  });
+
   it('round-trips through adminPanelQuery', () => {
     const query = { view: 'spaces' as const, space: SPACE_ID, q: 'José Pérez', page: 4 };
     const params = Object.fromEntries(new URLSearchParams(adminPanelSearch(query)));

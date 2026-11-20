@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { Types } from 'mongoose';
 import { ADMIN_USERS_PAGE_SIZE, adminUsersQuery, type AdminUsersPage } from '@lilachat/shared';
 import { PEOPLE, USER_FIELDS, adminUser, deviceCounts, invitersByPhone, peopleTotals, searchFilter, spaceCounts, type SourceUser } from './adminPeople.js';
+import { adminReportsPage, closeReport } from './adminReports.js';
 import { adminSpaceMembers, adminSpacesOverview } from './adminSpaces.js';
 import { UserModel } from './models.js';
 import { isSuperadmin } from './operators.js';
@@ -12,6 +13,7 @@ import { incognitoWorkspaces } from './workspaces.js';
  * The superadmin's panel (José, 21/10): who is in Lilachat, when they joined
  * and basic information. Never a chat, a message or a contact: the queries
  * read `users`, `devices`, `workspaces`, `workspacemembers` and `invitations` only.
+ * The one exception is `/reports`: the copy of a message that someone chose to report.
  */
 export function buildAdminRouter(): Router {
   const router = Router();
@@ -49,6 +51,13 @@ export function buildAdminRouter(): Router {
     const body = await adminSpaceMembers(String(req.params.spaceId), adminUsersQuery(req.query), Date.now());
     if (!body) return void res.status(404).json({ message: 'Ese espacio no existe o fue eliminado.' });
     res.json(body);
+  }));
+  // Reports (Google Play, José 19/11): the queue, urgent first, and closing one.
+  router.get('/reports', asyncRoute(async (req, res) => void res.json(await adminReportsPage(req.query))));
+  router.post('/reports/:reportId/close', asyncRoute(async (req, res) => {
+    const outcome = await closeReport(new Types.ObjectId(req.session!.userId), String(req.params.reportId), req.body ?? {});
+    if (!outcome.ok) return void res.status(outcome.status).json({ message: outcome.reason });
+    res.json({ ok: true });
   }));
   return router;
 }

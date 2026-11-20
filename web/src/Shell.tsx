@@ -37,6 +37,8 @@ import { TAMANO_DE_PAGINA, useSincronizacion } from './sync/useSincronizacion';
 import { useSocket } from './useSocket';
 import { ChatFontChoice, GroupsAsListChoice, PresenceChoice } from './ui/settingsChoices';
 import { PrivacyChoices } from './privacy/PrivacyChoices';
+import { DeleteAccountChoice } from './account/DeleteAccountChoice';
+import { useDeletionCancelledNotice } from './account/deletionCancelledNotice';
 import { StorageChoice } from './storage/StorageChoice';
 import { WhatsNewDialog } from './ui/WhatsNewDialog';
 import { chatNameWithAgenda } from './contacts/phoneAgenda';
@@ -93,6 +95,7 @@ export function Shell({ credential, refrescoResuelto, logout, manejar401 }: Prop
   const [query, setQuery] = useState('');
   const width = useAnchoDeVentana();
   const [aviso, setAviso] = useState('');
+  useDeletionCancelledNotice(setAviso);
   const [creando, setCreando] = useState<Creando>(null);
   /** Ir a un mensaje de otro chat (un destacado de la lista global, 20/10). */
   const [irA, setIrA] = useState<{ chatId: string; seq: number; vez: number } | null>(null);
@@ -526,6 +529,7 @@ function PanelDeAjustes(props: {
         <LogOut size={16} />
         Cerrar sesión
       </button>
+      <DeleteAccountChoice jwt={jwt} onSignOut={onSalir} />
       <p data-testid="version-web" className="border-t border-outline/10 px-3 pb-1 pt-2 text-[11px] text-on-surface-variant">{webVersionLabel(WEB_BUILD)}</p>
     </div>
   );

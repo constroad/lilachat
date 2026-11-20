@@ -43,6 +43,7 @@ la búsqueda y las tarjetas de enlace. Hilos, medios, agenda y stickers tienen s
 - Selección y barra de acciones: `SeleccionDeMensaje.tsx`, `useSeleccionDeMensajes.ts`, `useAccionesDeSeleccion.ts`.
 - Qué acción aparece lo decide `shared/src/accionesDeMensaje.ts` (también en la web).
 - Acciones: Responder, Responder en hilo, Copiar, Reenviar, Destacar, Fijar/Desfijar, Editar, Info, Eliminar.
+- «Denunciar» (19/11, Google Play): un solo mensaje ajeno, vivo, que no sea aviso ni tarjeta de una app (`canReportMessage` de `shared/src/reports.ts`). Va último en la barra (`barraDeSeleccion.ts`, suele quedar en «⋮») y abre `app/src/reports/ReportSheet.tsx`. Detalle en `plataforma-perfil-contactos-privacidad.md`.
 - Deslizar para responder: `DeslizarParaResponder.tsx`, `gestoDeRespuesta.ts`; cita `CitaDeRespuesta.tsx`.
 - «Responder» abre el teclado con el cursor en la barra (21/10): `useRespuestaYEdicion.ts`.
 - Editar: solo lo propio, solo texto, 15 minutos (`shared/src/editarMensaje.ts`, `editedMessage.ts`).
@@ -84,6 +85,7 @@ la búsqueda y las tarjetas de enlace. Hilos, medios, agenda y stickers tienen s
 - Enlace al escribir: `VistaPreviaAlEscribir.tsx`, `useVistaPrevia.ts`; en la burbuja `TarjetaDeEnlace.tsx`.
 - En un chat de notas con «Ordenar enlaces por categoría» encendido, la burbuja de un enlace muestra la tarjeta que guardó el server (`links/StoredLinkInBubble.tsx`) y su columna toma toda la fila, con las acciones al pasar el mouse (reaccionar, hilo, ⋮) apiladas en una sola columna a su lado; el resto de las burbujas mide hasta el 68 %. «Solo pide comentar» va bajo el autor de la tarjeta. Detalle en `chat-notas.md`.
 - Menú del mensaje (flecha al pasar el mouse): `MenuDelMensaje.tsx`; diálogos `DialogosDelMensaje.tsx` (eliminar, info).
+- «Denunciar» en ese menú (19/11): mismo criterio que el APK; abre `web/src/reports/ReportDialog.tsx` desde el propio menú.
 - Acciones: `useAccionesSobreMensajes.ts`, copiar `copiarTexto.ts`.
 - Fijar: `FranjaDeFijados.tsx`, `DialogoFijar.tsx`, `useFijarEnLaWeb.ts`, `fijados/ListaDeFijados.tsx`.
 - Destacados: `destacados/ListaDeDestacados.tsx`, `useDestacadosWeb.ts`.
@@ -103,6 +105,7 @@ la búsqueda y las tarjetas de enlace. Hilos, medios, agenda y stickers tienen s
 - Socket (`socket.ts`): `msg.send`, `msg.edit`, `msg.delete`, `msg.react`, `read.set`, `deliver.set`, `typing`, `sync.pull`.
 - Envío central: `chatService.ts › sendMessage` (membresía, `seq`, idempotencia por `clientKey`).
 - Rutas en `/api/chats` (`chatRoutes.ts`): `GET /:chatId/messages`, `POST /:chatId/read`, `GET /search`, `POST /:chatId/schedule`, `GET /scheduled`, `DELETE /scheduled/:id`, `GET /:chatId/messages/:seq/info`, `PUT /:chatId/disappearing`, `POST /:chatId/borrar-para-mi`.
+- Denuncias: `POST /api/reports` (`reportRoutes.ts`); con un mensaje guarda su copia como evidencia (`reports.ts`).
 - Otras rutas: `fijadosRoutes.ts` (`POST/DELETE /:chatId/fijados`), `hiddenMessages.ts` (`/:chatId/ocultos`), `reenvioRoutes.ts` (`POST /:chatId/reenviar`), `destacadosRoutes.ts` (`/api/chats/:chatId/destacados`, `/api/destacados`), `chatExportRoutes.ts` (`GET /:chatId/export`), `readAll.ts`.
 - Vista previa de enlaces: `GET /api/enlaces/vista-previa` (`vistaPreviaRoutes.ts`, `vistaPrevia.ts`, `traerVistaPrevia.ts`, `vistaPreviaPorSitio.ts`: YouTube, TikTok, Instagram, Facebook y Google Maps).
 - Programados: `scheduledMessages.ts` (tick con candado `sentAt`).
@@ -199,15 +202,15 @@ La banda «Ana respondió en un hilo · Ver» no tiene diseño de Stitch (decisi
 **Unitarias (shared):** `accionesDeMensaje`, `editarMensaje`, `eliminarMensaje`, `mensajesFijados`, `textoDelFijado`,
 `destacados`, `reenvio`, `menciones`, `mentionCandidates`, `emojiShortcode`, `acuses`, `escribiendo`, `disappearing`,
 `busquedaDeMensajes`, `chatExport`, `enlaces`, `vistaPrevia`, `mensajeLargo`, `messageWindow`, `sync`,
-`conciliarMensajes`, `almacenDeMensajes`, `outbox`, `messageTarget`, `textoDelComposer`, `reacciones` (todos `shared/src/*.test.ts`).
+`conciliarMensajes`, `almacenDeMensajes`, `outbox`, `messageTarget`, `textoDelComposer`, `reacciones`, `reports` (todos `shared/src/*.test.ts`).
 
 **Server:** `editarMensaje`, `hiddenMessages`, `readReceipts`, `acusesDelChat`, `readAll`, `destacados`, `deletePinned`,
 `deleteAppCard`, `reenvio`, `scheduledMessages`, `disappearingMessages`, `typingRelay`, `chatExportRoutes`,
-`vistaPrevia`, `vistaPreviaPorSitio`, `vistaPreviaRoutes`, `chatNotifications` (`server/src/*.test.ts`).
+`vistaPrevia`, `vistaPreviaPorSitio`, `vistaPreviaRoutes`, `chatNotifications` (`server/src/*.test.ts`); denuncias en `server/test/reports.test.ts`.
 
 **APK:** `divisorNoLeidos`, `messageWindowRows`, `messageCells`, `hiddenRows`, `disappearSetting`, `readElsewhere`,
 `borradores`, `burbuja`, `gestoDeRespuesta`, `linkPreviewCache`, `programados`, `rowKindsDeleted`, `editedMessage`,
-`acuseVivo`, `anchorAfterJump`, `scrollSafely`, `paginacion`, `sonarPorMensaje` (`app/src/chat/*.test.ts`).
+`acuseVivo`, `anchorAfterJump`, `scrollSafely`, `paginacion`, `sonarPorMensaje`, `barraDeSeleccion` (`app/src/chat/*.test.ts`).
 
 **Web:** `MenuDelMensaje`, `useAccionesSobreMensajes`, `Composer`, `composerInsert`, `chatDrafts`, `acuseDeLeido`,
 `FranjaDeFijados`, `useFijarEnLaWeb`, `TarjetaDeEnlace`, `SugerenciasDeMencion`, `useMencionesDelCampo`,

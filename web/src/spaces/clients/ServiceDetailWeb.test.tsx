@@ -363,6 +363,23 @@ describe('ServiceDetailWeb', () => {
     expect(screen.queryByTestId('mapa-primera-calle')).not.toBeInTheDocument();
   });
 
+  it('José 20/11 (design mapa-v2): on «Mapa» the service and its tabs fit one row, the client is not repeated', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', reply({ detail: { ...detail, service: { ...detail.service, hasMap: true } } }));
+    const map = vi.fn(async () => ({ ok: true as const, url: 'https://constroad.com/public/mapa' }));
+    render(<ServiceDetailWeb target={target} chatId="chat-1" clientName="CONSORCIO EL ALMIRANTE" service={service} seesMoney onBack={() => undefined} links={{ can: (kind) => kind === 'service', open: vi.fn(), map }} />);
+    // Act
+    fireEvent.click(await screen.findByTestId('pestana-detalle-map'));
+    await screen.findByTestId('mapa-primera-calle');
+    // Assert
+    const head = screen.getByTestId('cabecera-servicio-mapa');
+    expect(within(head).getByTestId('pestana-detalle-map')).toBeInTheDocument();
+    expect(head).toHaveTextContent('Pavimentación Av. Los Álamos');
+    expect(screen.getByTestId('cabecera-servicio')).not.toHaveTextContent('CONSORCIO EL ALMIRANTE');
+    fireEvent.click(screen.getByTestId('pestana-detalle-orders'));
+    expect(screen.queryByTestId('cabecera-servicio-mapa')).toBeNull();
+  });
+
   it('«Generar informe de servicio» runs informe_de_servicio from the space with the service: Portal refuses it in a group (01/11)', async () => {
     // Arrange
     const groups = [{ appId: 'p1', appName: 'Portal', commands: [], shortcuts: [{ key: 'informe_de_servicio', name: 'Informe de servicio' }] }];

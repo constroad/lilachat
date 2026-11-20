@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { Linking, Pressable, Text, View } from 'react-native';
-import { ChevronRight, Layers, Maximize2, Share2, TrendingUp, X } from 'lucide-react-native';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { ChevronRight, TrendingUp, X } from 'lucide-react-native';
 import { viewWithLayers, visibleMarks, visibleObservations, type WorkMapMark, type WorkMapObservation, mapCardOf, mapPickAnchor, mapPickOnMap, type MapPick, type WorkMapPoint, bareLinesOf, visibleStationMarks, progressTargetOf, type Brush, type ProgressTarget, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, unitPinsOfDay, withMediaBounds, withPendingLines, showsUnitPins, type PendingProgress, type MapMoreKey, stretchLinesOf, suggestDischarges, workMapStageGroups, workMapView, type DischargePin, type StationMark, type StretchRange, type UnitDischarge, type MapPhoto, type ManualProgressDraft, type WorkMapLine, type WorkMap, type WorkMapFilter, type WorkMapView } from '@lilachat/shared';
 import { Modal } from '../../../ui/Modal';
 import { Sheet } from '../../../ui/Sheet';
@@ -9,7 +9,8 @@ import { useMargenes } from '../../../ui/useMargenes';
 import { WorkMapDischarges, type ProgressSend } from './WorkMapDischarges';
 import { WorkMapExport } from './WorkMapExport';
 import { ShareProgress } from './ShareProgress';
-import { WorkMapFilters } from './WorkMapFilters';
+import { WorkMapFilters, WorkMapLegend } from './WorkMapFilters';
+import { LayersButton, LegendButton, MAP_SHADOW } from './MapFloating';
 import { MapMoreMenu } from './MapMoreMenu';
 import { WorkMapPanel } from './WorkMapPanel';
 import type { StreetDeleteSend } from './StreetDelete';
@@ -34,6 +35,9 @@ const NO_MARKS: NonNullable<WorkMap['marks']> = [];
 const NO_OBSERVATIONS: NonNullable<WorkMap['observations']> = [];
 /** The card stays readable on a tablet or a phone turned sideways. */
 const CARD_MAX_WIDTH = 440;
+/** The panel's sheet leaves the top of the map, with its days and cut, in sight. */
+const PANEL_MAX_HEIGHT = '75%';
+const PANEL_CONTENT = { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 24 };
 
 /**
  * The card picked on the full map or in the lists (José 19/11): a list item opens the full map
@@ -102,7 +106,7 @@ function useDischarges(map: WorkMap, discharges: UnitDischarge[], day: string, d
   return { suggestion, ranges, pins, stretches, onRange: (streetId: string, range: StretchRange) => setRanges((before) => ({ ...before, [streetId]: range })) };
 }
 
-type BoardProps = { map: WorkMap; pageUrl: string; height: number; title: string; serviceId: string; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; /** Field photos with their place: the «Fotos» layer (José 08/11). */ mapPhotos?: MapPhoto[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» and «Restaurar» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<PhotoAsset>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<TraceFile>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport; /** What the last save answered, over the map. */ notice?: string | null; /** Reads the map again (after «Editar croquis»). */ reload?: () => void };
+type BoardProps = { map: WorkMap; pageUrl: string; title: string; serviceId: string; /** The service's state beside «Avance de la obra». */ badge?: ReactNode; discharges?: UnitDischarge[]; /** Field photos with their place: the «Fotos» layer (José 08/11). */ mapPhotos?: MapPhoto[]; send?: ProgressSend; /** «Nueva calle» (o-02). */ onDraw?: () => void; /** «Borrar calle»: anyone, logical (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» and «Restaurar» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<PhotoAsset>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<TraceFile>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport; /** What the last save answered, over the map. */ notice?: string | null; /** Reads the map again (after «Editar croquis»). */ reload?: () => void };
 
 /** «¿En qué calle?» when «Registrar avance» could go to several streets. */
 function StreetPick(props: { target: ProgressTarget | null; onPick: (streetId: string) => void; onClose: () => void }) {
@@ -122,29 +126,68 @@ function StreetPick(props: { target: ProgressTarget | null; onPick: (streetId: s
   );
 }
 
-/** Title, «Más» and «Compartir» (o-01; José 09/11: the other buttons were piled up here). */
-function TitleRow(props: { onShare: () => void; onMore: (key: MapMoreKey) => void; draws: boolean; edits: boolean; admin: boolean }) {
+/** The panel as a sheet over the map (José 20/11, design mapa-v2): hidden, never unmounted, so what waits approval is still drawn. */
+function PanelOverlay(props: { open: boolean; onClose: () => void; children: ReactNode }) {
   const colors = useColores();
   return (
-    <View className="flex-row items-center gap-2">
-      <Text className="flex-1 text-[20px] font-bold text-on-surface">Mapa de la obra</Text>
-      <MapMoreMenu onPick={props.onMore} draws={props.draws} edits={props.edits} admin={props.admin} />
-      <Pressable testID="mapa-compartir" onPress={props.onShare} className="h-11 flex-row items-center gap-2 rounded-xl bg-primary px-3">
-        <Share2 size={18} color={colors['on-primary']} />
-        <Text className="text-[15px] font-semibold text-on-primary">Compartir</Text>
+    <View testID="mapa-panel" accessibilityElementsHidden={!props.open} className="absolute inset-x-0 bottom-0 overflow-hidden rounded-t-3xl bg-surface" style={{ display: props.open ? 'flex' : 'none', maxHeight: PANEL_MAX_HEIGHT, elevation: 12 }}>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={PANEL_CONTENT}>{props.children}</ScrollView>
+      <Pressable testID="mapa-hoja-cerrar" accessibilityLabel="Cerrar el panel" onPress={props.onClose} className="absolute right-2 top-1 h-11 w-11 items-center justify-center rounded-full">
+        <X size={20} color={colors['on-surface-variant']} />
       </Pressable>
     </View>
   );
 }
 
+type FloatingProps = { map: WorkMap; view: WorkMapView; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void; days: ReturnType<typeof useMapDays>; notice?: string | null; layersOpen: boolean; onLayers: () => void; legendOpen: boolean; onLegend: () => void; onMore: (key: MapMoreKey) => void; draws: boolean; edits: boolean; admin: boolean };
+
+/** The top of the map (design mapa-v2 mobile): the days, «Hasta hoy ▾», and the round buttons on the right. */
+function MapTop(props: FloatingProps) {
+  return (
+    <View pointerEvents="box-none" className="absolute inset-x-0 top-3 gap-2">
+      <MapDayChips options={props.days.options} day={props.days.day} onDay={props.days.setDay} />
+      <View pointerEvents="box-none" className="flex-row items-start gap-2 px-3">
+        <View pointerEvents="box-none" className="min-w-0 flex-1 gap-2">
+          <WorkMapFilters map={props.map} view={props.view} filter={props.filter} onFilter={props.onFilter} />
+          {props.notice ? <Text testID="mapa-aviso" accessibilityRole="alert" className="self-start rounded-xl border border-primary/30 bg-surface px-3 py-2 text-[14px] font-semibold text-on-surface" style={MAP_SHADOW}>{props.notice}</Text> : null}
+        </View>
+        <View pointerEvents="box-none" className="gap-2">
+          <LayersButton open={props.layersOpen} onToggle={props.onLayers} />
+          {props.view.works.length ? <LegendButton open={props.legendOpen} onToggle={props.onLegend} /> : null}
+          <MapMoreMenu onPick={props.onMore} draws={props.draws} edits={props.edits} admin={props.admin} share screen="open" />
+        </View>
+      </View>
+    </View>
+  );
+}
+
+/** The foot of the map: the legend, «Editar croquis» small and «Registrar» (zoom and GPS on the right). */
+function MapFoot(props: { legend: ReactNode; croquis: ReactNode; onRecord?: () => void }) {
+  const colors = useColores();
+  return (
+    <View pointerEvents="box-none" className="absolute bottom-4 left-3 right-20 items-start gap-2">
+      {props.legend}
+      <View pointerEvents="box-none" className="flex-row flex-wrap gap-2">
+        {props.croquis}
+        {props.onRecord ? (
+          <Pressable testID="mapa-registrar-avance" onPress={props.onRecord} className="h-11 flex-row items-center gap-2 rounded-full bg-primary px-4" style={MAP_SHADOW}>
+            <TrendingUp size={18} color={colors['on-primary']} />
+            <Text className="text-[15px] font-semibold text-on-primary">Registrar</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
 /**
- * The map of the work as the design's phone draws it (`o-01-mapa-obra`): title and «Compartir»,
- * stage and day, the works, the map edge to edge, and the panel rising over it like a sheet.
- * «Compartir» opens the export (`o-12`); the corner button opens the map that moves.
+ * The map of the work on the phone (José 20/11, design mapa-v2): the map takes the screen under the
+ * service's head and moves; the days, the cut and the tools float over it. «Capas» opens the panel
+ * (layers, progress, what waits, the lists) as a sheet; «Más» holds «Compartir avance» and the full
+ * screen.
  */
 export function WorkMapBoard(props: BoardProps) {
-  const { map, pageUrl, height } = props;
-  const colors = useColores();
+  const { map, pageUrl } = props;
   const [filter, setFilter] = useState<WorkMapFilter>({});
   const [wide, setWide] = useState(false);
   const [side, setSide] = useState<'export' | 'share' | null>(null);
@@ -155,6 +198,8 @@ export function WorkMapBoard(props: BoardProps) {
   const [choosing, setChoosing] = useState<ProgressTarget | null>(null);
   const [layers, setLayers] = useState<LayersKind | null>(null);
   const [brush, setBrush] = useState<{ brush: Brush; from: LayersKind } | null>(null);
+  const [sheet, setSheet] = useState(false);
+  const [legendOpen, setLegendOpen] = useState(false);
   const target = useMemo(() => progressTargetOf(map), [map]);
   const openStreet = (id: string | null, record = false, draft?: ManualProgressDraft) => { setChoosing(null); setRecordingStart(record); setRecordDraft(draft); setStreetId(id); };
   // No street to frame: the map frames the photos and the units (Portal via José 09/11).
@@ -181,41 +226,36 @@ export function WorkMapBoard(props: BoardProps) {
   const pending = props.editMap ? <PendingProgressCard send={props.editMap} admin={Boolean(props.admin)} reloadKey={map} onList={setPendingItems} /> : null;
   const top = discharges || primeCoat || pending ? <View className="gap-5">{pending}{discharges}{primeCoat}</View> : null;
   const more = (key: MapMoreKey) => {
-    if (key === 'draw') props.onDraw?.();
+    if (key === 'share' || key === 'export') setSide(key);
+    else if (key === 'screen') setWide(true);
+    else if (key === 'draw') props.onDraw?.();
     else if (key === 'stages' || key === 'works') setLayers(key);
-    else if (key === 'export') setSide('export');
     else if (key === 'open') void Linking.openURL(pageUrl);
     else setSeeingDeleted(true);
   };
+  const toggleSheet = () => {
+    const opening = !(sheet && mapLayers.open);
+    setSheet(opening);
+    mapLayers.setOpen(opening);
+  };
+  const record = props.editMap && target.kind !== 'none' ? () => (target.kind === 'street' ? openStreet(target.streetId, true) : setChoosing(target)) : undefined;
+  const croquis = props.editMap ? <ServiceCroquisButton send={props.editMap} title={props.title} onDone={() => props.reload?.()} pill /> : null;
   return (
-    <View testID="mapa-servicio" className="gap-3">
-      <TitleRow onShare={() => setSide('share')} onMore={more} draws={Boolean(props.onDraw)} edits={Boolean(props.editMap)} admin={Boolean(props.admin)} />
-      {props.editMap && target.kind !== 'none' ? (
-        <Pressable testID="mapa-registrar-avance" onPress={() => (target.kind === 'street' ? openStreet(target.streetId, true) : setChoosing(target))} className="min-h-[52px] flex-row items-center justify-center gap-2 rounded-xl bg-primary">
-          <TrendingUp size={18} color={colors['on-primary']} />
-          <Text className="text-[16px] font-semibold text-on-primary">Registrar avance</Text>
-        </Pressable>
-      ) : null}
-      <WorkMapFilters map={map} view={view} filter={filter} onFilter={setFilter} waiting={pendingItems.length} />
-      <MapDayChips options={mapDays.options} day={mapDays.day} onDay={mapDays.setDay} />
-      {props.notice ? <Text testID="mapa-aviso" accessibilityRole="alert" className="rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-[14px] font-semibold text-on-surface">{props.notice}</Text> : null}
+    <View testID="mapa-servicio" className="flex-1">
       {wide ? null : picks.files.viewer}
-      <View className="-mx-4 overflow-hidden bg-surface-variant" style={{ height }}>
-        <View pointerEvents="none" className="absolute inset-0">
-          {wide ? null : <WorkMapSurface view={drawn.view} moves={false} stations={stations} bare={bare} marks={drawn.marks} observations={drawn.observations} pins={photos.shown ? photos.pins : unitPins} stretches={stretches} />}
-        </View>
-        {/* José 19/11 (design cc-04 mobile): «Editar croquis» on the map, where it is seen; «Capas» beside the full map. */}
-        {props.editMap ? <View className="absolute left-3 top-3"><ServiceCroquisButton send={props.editMap} title={props.title} onDone={() => props.reload?.()} pill /></View> : null}
-        <View className="absolute right-3 top-3 gap-2">
-          <Pressable testID="mapa-pantalla-completa" accessibilityLabel="Ver mapa completo" onPress={() => setWide(true)} className="h-11 w-11 items-center justify-center rounded-xl border border-outline/15 bg-surface">
-            <Maximize2 size={18} color={colors['on-surface']} />
-          </Pressable>
-          <Pressable testID="mapa-capas-abrir" accessibilityLabel="Capas y leyenda" accessibilityState={{ selected: mapLayers.open }} onPress={() => mapLayers.setOpen((shown) => !shown)} className={`h-11 w-11 items-center justify-center rounded-xl border ${mapLayers.open ? 'border-primary/40 bg-primary/10' : 'border-outline/15 bg-surface'}`}>
-            <Layers size={18} color={mapLayers.open ? colors.primary : colors['on-surface']} />
-          </Pressable>
-        </View>
+      <View className="flex-1 overflow-hidden bg-surface-variant">
+        {wide ? null : <WorkMapSurface view={drawn.view} moves stations={stations} bare={bare} marks={drawn.marks} observations={drawn.observations} onPick={picks.pickOnMap} pins={photos.shown ? photos.pins : unitPins} onPin={photos.shown ? photos.openPin : undefined} stretches={stretches} />}
+        {picks.card && !wide ? (
+          <View className="absolute inset-x-3 bottom-20 items-center">
+            <View style={{ width: '100%', maxWidth: CARD_MAX_WIDTH }}><MapCardView card={picks.card} onClose={picks.close} onPhoto={(photo, all) => picks.files.open(photo, all)} /></View>
+          </View>
+        ) : null}
+        <MapTop map={map} view={view} filter={filter} onFilter={setFilter} days={mapDays} notice={props.notice} layersOpen={sheet && mapLayers.open} onLayers={toggleSheet} legendOpen={legendOpen} onLegend={() => setLegendOpen(!legendOpen)} onMore={more} draws={Boolean(props.onDraw)} edits={Boolean(props.editMap)} admin={Boolean(props.admin)} />
+        <MapFoot legend={legendOpen ? <WorkMapLegend view={view} waiting={pendingItems.length} /> : null} croquis={croquis} onRecord={record} />
+        <PanelOverlay open={sheet} onClose={() => setSheet(false)}>
+          <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} items={picks.items} layers={layersNode} deleteStreet={props.deleteStreet} onOpenStreet={(id) => openStreet(id)} />
+        </PanelOverlay>
       </View>
-      <WorkMapPanel view={view} groups={groups} filter={filter} badge={props.badge} top={top} items={picks.items} layers={layersNode} deleteStreet={props.deleteStreet} onOpenStreet={(id) => openStreet(id)} />
       <FullMap view={drawn.view} open={wide} onClose={closeFull} pins={unitPins} stretches={stretches} stations={stations} bare={bare} photos={photos} marks={drawn.marks} observations={drawn.observations} picks={picks} />
       {props.editMap ? <DeletedWork open={seeingDeleted} map={map} send={props.editMap} onClose={() => setSeeingDeleted(false)} /> : null}
       <StreetScopes map={map} streetId={streetId} send={props.editMap} uploadPhoto={props.uploadPhoto} startRecording={recordingStart} recordDraft={recordDraft} onClose={() => openStreet(null)} />

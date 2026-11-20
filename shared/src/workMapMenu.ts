@@ -5,16 +5,23 @@ import { percentLabel, type WorkMapFilter, type WorkMapView, type WorkMapWork } 
  * actions: «Registrar avance», «Compartir» and one more; everything else goes under «Más».
  * The works filter is a select and the legend folds. PURE: the APK and the web draw from here.
  */
-export type MapMoreKey = 'draw' | 'stages' | 'works' | 'export' | 'open' | 'deleted';
+export type MapMoreKey = 'share' | 'screen' | 'draw' | 'stages' | 'works' | 'export' | 'open' | 'deleted';
+/** «Pantalla completa» to enter it, or the way out once inside. */
+export type MapScreenItem = 'open' | 'close';
 export type MapMoreItem = { key: MapMoreKey; label: string };
 export type WorkChoice = { id: string; label: string; color: string | null };
 export type MapLegendEntry = { key: string; kind: 'work' | 'todo' | 'waiting'; label: string; color: string | null };
 
 const ALL_WORKS = 'Todos los trabajos';
 
-/** What «Más» offers: drawing and layers to who edits, «Borrados» to an admin who edits. */
-export function mapMoreItems(can: { draws: boolean; edits: boolean; admin: boolean }): MapMoreItem[] {
+/**
+ * What «Más» offers: drawing and layers to who edits, «Borrados» to an admin who edits. José 20/11
+ * (design mapa-v2): «Compartir avance» and «Pantalla completa» moved in here, first.
+ */
+export function mapMoreItems(can: { draws: boolean; edits: boolean; admin: boolean; share?: boolean; screen?: MapScreenItem }): MapMoreItem[] {
   const items: Array<MapMoreItem | false> = [
+    Boolean(can.share) && { key: 'share', label: 'Compartir avance' },
+    Boolean(can.screen) && { key: 'screen', label: can.screen === 'close' ? 'Salir de pantalla completa' : 'Pantalla completa' },
     can.draws && { key: 'draw', label: 'Nueva calle' },
     can.edits && { key: 'stages', label: 'Etapas' },
     can.edits && { key: 'works', label: 'Trabajos' },

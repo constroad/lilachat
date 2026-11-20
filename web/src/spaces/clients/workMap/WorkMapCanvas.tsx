@@ -182,7 +182,8 @@ export default function WorkMapCanvas(props: { view: WorkMapView; expanded: bool
     const bounds = firstBounds.current ?? undefined;
     const created = new maplibregl.Map({ container: holder.current, style: WORK_MAP_STYLE as unknown as maplibregl.StyleSpecification, bounds, fitBoundsOptions: FIT, attributionControl: { compact: true } });
     created.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
-    if (onTap.current) created.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, fitBoundsOptions: { maxZoom: 17 } }), 'bottom-right');
+    // «Mi ubicación» on every map (José 20/11, design mapa-v2): the browser asks only when it is pressed.
+    created.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, fitBoundsOptions: { maxZoom: 17 } }), 'bottom-right');
     created.on('click', (event) => onTap.current?.({ lat: event.lngLat.lat, lng: event.lngLat.lng }, roadsAt(created, event)));
     created.on('load', () => {
       addWorkLayers(created);

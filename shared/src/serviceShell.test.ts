@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { channelTabsFor, checklistHoldsPending, PENDING_PREVIEW_MAX, pendingPreview, SERVICE_SEGMENTS, serviceHeadLine, serviceSegmentsOf, serviceTakesScreen, SHELL_WIDE_MIN_PX } from './serviceShell.js';
+import { channelTabsFor, checklistHoldsPending, PENDING_PREVIEW_MAX, pendingPreview, SERVICE_SEGMENTS, serviceHeadLine, serviceSegmentsOf, serviceSlimLine, serviceTakesScreen, SHELL_WIDE_MIN_PX } from './serviceShell.js';
 import type { WorkStage } from './workStages.js';
 
 const stage = (stageNumber: number, items: Array<{ id: string; text: string; doneBy?: string; assignee?: string }>): WorkStage => ({ _id: `s${stageNumber}`, title: `Etapa ${stageNumber}`, stage: stageNumber, items: items.map((item) => ({ id: item.id, text: item.text, doneBy: item.doneBy ?? null, doneAt: null, assignee: item.assignee ?? null })) });
@@ -46,6 +46,18 @@ describe('serviceHeadLine', () => {
   it('adds the stages when Portal sends them (design cc-02: «Avance 0 % · 6 etapas · Inicio 12 nov»)', () => {
     expect(serviceHeadLine({ status: 'pending', stage_label: 'Pendiente', progress: 0, started_at: '2026-11-12', stagesTotal: 6 })).toBe('Avance 0 % · 6 etapas · Inicio 12 nov');
     expect(serviceHeadLine({ status: 'pending', stage_label: '', stagesTotal: 0 })).toBe('');
+  });
+});
+
+describe('serviceSlimLine', () => {
+  it('the map\'s one-row head (José 20/11): the client and the progress, what exists only', () => {
+    // Arrange
+    const service = { progress: 40 };
+    // Act / Assert
+    expect(serviceSlimLine(service, 'CONSORCIO EL ALMIRANTE')).toBe('CONSORCIO EL ALMIRANTE · 40 %');
+    expect(serviceSlimLine(service)).toBe('40 %');
+    expect(serviceSlimLine({}, 'CONSORCIO')).toBe('CONSORCIO');
+    expect(serviceSlimLine({}, '  ')).toBe('');
   });
 });
 

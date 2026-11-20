@@ -5,7 +5,7 @@ import { workChoiceLabel, workChoicesOf, workMapCutDays, workMapCutLabel, workMa
 import { KICKER } from './WorkMapPanel';
 
 /** A white card over the map (o-01): its border carries the hierarchy, its shadow almost none. */
-const FLOATING = 'rounded-xl border border-outline/15 bg-surface shadow-sm';
+const FLOATING = 'rounded-xl border border-outline/15 bg-surface shadow-md';
 const SELECT = 'h-8 min-w-0 rounded-lg bg-transparent pr-1 text-[13px] font-semibold text-primary outline-none';
 
 type FilterProps = { map: WorkMap; view: WorkMapView; filter: WorkMapFilter; onFilter: (filter: WorkMapFilter) => void };
@@ -68,22 +68,15 @@ function CutSelect(props: FilterProps) {
 }
 
 /**
- * Work and day (o-01): cards floating over the map on a wide screen, a row over it on a narrow one.
- * The stages are chips in «Capas y leyenda» and the legend is that panel (design cc-04).
+ * Work and day (o-01) as cards floating over the map, on a computer and on a phone (José 20/11,
+ * design mapa-v2: «Hasta hoy ▾» over the map). The parent places the row. The stages are chips in
+ * «Capas y leyenda».
  */
-export function MapFilters(props: FilterProps & { floating: boolean }) {
-  if (props.floating) {
-    return (
-      <div className="pointer-events-none absolute inset-x-4 top-4 z-10 flex flex-wrap items-start gap-2 pr-12">
-        <div className={`pointer-events-auto ${FLOATING}`}><CutSelect {...props} /></div>
-        {props.view.works.length ? <div className={`pointer-events-auto max-w-full ${FLOATING}`}><WorkSelect {...props} /></div> : null}
-      </div>
-    );
-  }
+export function MapFilters(props: FilterProps) {
   return (
-    <div className="flex shrink-0 items-center gap-2 border-b border-outline/15 bg-surface px-4 py-2">
-      <div className="shrink-0 rounded-lg border border-outline/20"><CutSelect {...props} /></div>
-      {props.view.works.length ? <div className="min-w-0 flex-1 rounded-lg border border-outline/20"><WorkSelect {...props} /></div> : null}
+    <div className="pointer-events-none flex max-w-full flex-wrap items-start gap-2">
+      <div className={`pointer-events-auto ${FLOATING}`}><CutSelect {...props} /></div>
+      {props.view.works.length ? <div className={`pointer-events-auto min-w-0 max-w-full ${FLOATING}`}><WorkSelect {...props} /></div> : null}
     </div>
   );
 }

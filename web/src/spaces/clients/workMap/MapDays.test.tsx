@@ -22,12 +22,18 @@ describe('the day of the map', () => {
   it('a tap on a chip says which day', () => {
     // Arrange
     const picked: string[] = [];
-    render(<MapDayChips options={[{ key: 'all', label: 'Todos' }, { key: '2026-11-08', label: 'Dom 08/11', color: '#2563eb' }]} day="all" onDay={(day) => picked.push(day)} />);
+    render(<MapDayChips options={[{ key: 'all', label: 'Todos', count: 5 }, { key: '2026-11-08', label: 'Dom 08/11', color: '#2563eb', count: 3 }]} day="all" onDay={(day) => picked.push(day)} />);
     // Act
     fireEvent.click(screen.getByTestId('mapa-dia-2026-11-08'));
     // Assert
     expect(picked).toEqual(['2026-11-08']);
     expect(screen.getByTestId('mapa-dia-all').getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('a day says how many photos and units it holds; «Todos» does not repeat the sum (design mapa-v2)', () => {
+    render(<MapDayChips options={[{ key: 'all', label: 'Todos', count: 5 }, { key: '2026-11-08', label: 'Dom 08/11', color: '#2563eb', count: 3 }]} day="all" onDay={() => undefined} />);
+    expect(screen.getByTestId('mapa-dia-2026-11-08')).toHaveTextContent(/Dom 08\/11\s*· 3/);
+    expect(screen.getByTestId('mapa-dia-all')).toHaveTextContent(/^Todos$/);
   });
 
   it('draws nothing with a single day', () => {

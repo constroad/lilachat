@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, ChevronLeft, ExternalLink, Link2, MoreVertical } from 'lucide-react';
-import { CLIENT_SERVICE_STATUS_LABELS, serviceHeadLine, SHELL_MIN_HEIGHT_PX, SHELL_WIDE_MIN_PX, type ServiceTabItem, type ServiceTabKey, type SpaceClientService } from '@lilachat/shared';
+import { CLIENT_SERVICE_STATUS_LABELS, serviceHeadLine, serviceSlimLine, SHELL_MIN_HEIGHT_PX, SHELL_WIDE_MIN_PX, type ServiceTabItem, type ServiceTabKey, type SpaceClientService } from '@lilachat/shared';
 import { useDismiss } from '../../ui/useDismiss';
 import { STATUS_TONE } from './tones';
 
@@ -63,14 +63,16 @@ function MoreMenu(props: { portalUrl?: string }) {
   );
 }
 
-function TabBar(props: { tabs: ServiceTabItem[]; tab: ServiceTabKey; onTab: (tab: ServiceTabKey) => void; onSlot: (slot: HTMLElement | null) => void; compact: boolean }) {
+type TabBarProps = { tabs: ServiceTabItem[]; tab: ServiceTabKey; onTab: (tab: ServiceTabKey) => void; onSlot: (slot: HTMLElement | null) => void; compact: boolean; /** The map's one-row head (José 20/11): lower tabs. */ dense?: boolean };
+
+function TabBar(props: TabBarProps) {
   return (
-    <div className={`flex flex-wrap items-center gap-x-3 ${props.compact ? 'border-t border-outline/10 px-3' : ''}`}>
+    <div className={`flex min-w-0 flex-wrap items-center gap-x-3 ${props.compact ? 'border-t border-outline/10 px-3' : ''}`}>
       <div role="tablist" className="flex max-w-full shrink-0 gap-5 overflow-x-auto">
         {props.tabs.map((one) => {
           const open = one.key === props.tab;
           return (
-            <button key={one.key} type="button" role="tab" aria-selected={open} data-testid={`pestana-detalle-${one.key}`} onClick={() => props.onTab(one.key)} className={`flex h-11 shrink-0 items-center gap-1.5 border-b-2 text-[14px] ${open ? 'border-primary font-semibold text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
+            <button key={one.key} type="button" role="tab" aria-selected={open} data-testid={`pestana-detalle-${one.key}`} onClick={() => props.onTab(one.key)} className={`flex ${props.dense ? 'h-10' : 'h-11'} shrink-0 items-center gap-1.5 border-b-2 text-[14px] ${open ? 'border-primary font-semibold text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
               {one.label}
               {one.count !== undefined ? <span className={`rounded-full px-1.5 text-[11px] font-bold tabular-nums ${open ? 'bg-primary/10 text-primary' : 'bg-surface-variant text-on-surface-variant'}`}>{one.count}</span> : null}
             </button>
@@ -138,7 +140,68 @@ function CompactHead(props: HeadProps) {
   );
 }
 
-export type ServiceShellProps = HeadProps & { compact: boolean; tabs: ServiceTabItem[]; tab: ServiceTabKey; onTab: (tab: ServiceTabKey) => void; /** The map draws edge to edge: no padding, no scroll of its own. */ flush?: boolean; children: ReactNode };
+const LinkButton = (props: { onShare?: () => void; small?: boolean }) => (props.onShare
+  ? <button type="button" data-testid="enlace-servicio" aria-label="Enlace del servicio" title="Enlace del servicio" onClick={props.onShare} className={`grid ${props.small ? 'h-10 w-10' : 'h-11 w-11'} shrink-0 place-items-center rounded-xl border border-outline/20 text-on-surface hover:bg-background`}><Link2 size={17} /></button>
+  : null);
+
+/**
+ * The map's head on a phone (José 20/11, design mapa-v2): ONE row, the name with the client and
+ * the progress under it, link and «⋯»; the map takes the rest. No state chip, no bar: the
+ * panel's «Avance de la obra» has them.
+ */
+function SlimCompactHead(props: HeadProps) {
+  const line = serviceSlimLine(props.service, props.clientName);
+  return (
+    <div data-testid="cabecera-servicio-mapa" className="flex items-center gap-2 px-3 py-1.5">
+      <button type="button" data-testid="volver-a-servicios" aria-label="Volver a Servicios" onClick={props.onBack} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-on-surface hover:bg-background"><ArrowLeft size={18} /></button>
+      <div className="min-w-0 flex-1">
+        <h2 data-testid="servicio-nombre" className="truncate text-[15px] font-extrabold text-on-surface">{props.service.name}</h2>
+        {line ? <p data-testid="servicio-linea" className="truncate text-[12px] text-on-surface-variant">{line}</p> : null}
+      </div>
+      <LinkButton onShare={props.onShare} small />
+      <MoreMenu portalUrl={props.portalUrl} />
+    </div>
+  );
+}
+
+/**
+ * The map's head on a tablet or computer (José 20/11, design mapa-v2): the service and its tabs in
+ * ONE row, «‹ Servicios», the name, its state and line, the tabs, link and «⋯». The channel above
+ * already names the client: it is not repeated.
+ */
+function SlimWideHead(props: HeadProps & { tabBar: ReactNode }) {
+  const line = serviceHeadLine(props.service);
+  return (
+    <div data-testid="cabecera-servicio-mapa" className="flex min-w-0 items-center gap-3 px-4 md:px-6">
+      <button type="button" data-testid="volver-a-servicios" onClick={props.onBack} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg pr-2 text-[13px] font-semibold text-primary hover:bg-primary/5"><ChevronLeft size={16} /> Servicios</button>
+      <div className="flex min-w-0 shrink items-center gap-2 border-l border-outline/20 pl-3">
+        <h2 data-testid="servicio-nombre" title={props.service.name} className="min-w-0 max-w-[320px] truncate text-[15px] font-extrabold text-on-surface">{props.service.name}</h2>
+        <StatusChip service={props.service} />
+        {line ? <span data-testid="servicio-linea" className="hidden whitespace-nowrap text-[12px] text-on-surface-variant xl:inline">{line}</span> : null}
+      </div>
+      <div className="min-w-0 flex-1">{props.tabBar}</div>
+      <div className="flex shrink-0 items-center gap-2">
+        <LinkButton onShare={props.onShare} small />
+        <MoreMenu portalUrl={props.portalUrl} />
+      </div>
+    </div>
+  );
+}
+
+export type ServiceShellProps = HeadProps & { compact: boolean; tabs: ServiceTabItem[]; tab: ServiceTabKey; onTab: (tab: ServiceTabKey) => void; /** The map draws edge to edge: no padding, no scroll of its own, and the head in one row (José 20/11). */ flush?: boolean; children: ReactNode };
+
+/** The head and the tab bar: the map's one-row head when the section draws edge to edge (design mapa-v2). */
+function ShellHead(props: ServiceShellProps & { onSlot: (slot: HTMLElement | null) => void }) {
+  const bar = (dense: boolean) => <TabBar tabs={props.tabs} tab={props.tab} onTab={props.onTab} onSlot={props.onSlot} compact={props.compact} dense={dense} />;
+  if (props.flush && props.compact) return <><SlimCompactHead {...props} />{bar(true)}</>;
+  if (props.flush) return <SlimWideHead {...props} tabBar={bar(true)} />;
+  return (
+    <>
+      {props.compact ? <CompactHead {...props} /> : <WideHead {...props} />}
+      <div className={props.compact ? '' : 'mt-2'}>{bar(false)}</div>
+    </>
+  );
+}
 
 /**
  * An open service, the same in its four sections (José 19/11, designs cc-02…cc-05): the head and
@@ -149,9 +212,8 @@ export function ServiceShellWeb(props: ServiceShellProps) {
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   return (
     <div data-testid="detalle-servicio" className="flex min-h-0 flex-1 flex-col">
-      <header data-testid="cabecera-servicio" className={`relative z-20 shrink-0 border-b border-outline/15 bg-surface ${props.compact ? '' : 'px-4 pt-4 md:px-6'}`}>
-        {props.compact ? <CompactHead {...props} /> : <WideHead {...props} />}
-        <div className={props.compact ? '' : 'mt-2'}><TabBar tabs={props.tabs} tab={props.tab} onTab={props.onTab} onSlot={setSlot} compact={props.compact} /></div>
+      <header data-testid="cabecera-servicio" className={`relative z-20 shrink-0 border-b border-outline/15 bg-surface ${props.compact || props.flush ? '' : 'px-4 pt-4 md:px-6'}`}>
+        <ShellHead {...props} onSlot={setSlot} />
       </header>
       <ActionsSlot.Provider value={slot}>
         {props.flush ? props.children : (

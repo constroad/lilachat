@@ -49,6 +49,13 @@ export function serviceHeadLine(service: Pick<SpaceClientService, 'status' | 'st
   return parts.filter(Boolean).join(' · ');
 }
 
+/** «CONSORCIO · 40 %»: the line under the name in the map's one-row head (José 20/11, design mapa-v2). */
+export function serviceSlimLine(service: Pick<SpaceClientService, 'progress'>, clientName?: string): string {
+  const client = clientName?.trim() || null;
+  const progress = service.progress !== undefined ? `${service.progress} %` : null;
+  return [client, progress].filter(Boolean).join(' · ');
+}
+
 export const SERVICE_SEGMENTS: readonly ServiceFilter[] = ['open', 'completed', 'rejected', 'all'];
 const SEGMENT_LABELS: Record<ServiceFilter, string> = { open: 'Abiertos', completed: 'Completados', rejected: 'Rechazados', all: 'Todos' };
 

@@ -48,7 +48,7 @@ export const openingSheets = (detail: ServiceDetail, orderId?: string): { tab: '
   orderId && detail.orders.some((order) => order.id === orderId) ? [{ tab: 'orders', id: orderId }] : [];
 
 /** Each photo or video with a name the viewer can show: its own, or «AZJ 910 · foto 2». */
-const mediaOf = (dispatch: ServiceDispatch): SheetMedia[] =>
+export const dispatchMediaOf = (dispatch: ServiceDispatch): SheetMedia[] =>
   (dispatch.pictures ?? []).map((picture, index) => ({ url: picture.url, ...(picture.thumbUrl ? { thumbUrl: picture.thumbUrl } : {}), mime: picture.mime, name: picture.name ?? `${dispatch.plate ?? 'Despacho'} · ${picture.mime.startsWith('video/') ? 'video' : 'foto'} ${index + 1}`, ...(dispatch.at ? { when: dispatch.at } : {}) }));
 
 function cubicageGroup(dispatch: ServiceDispatch): SheetGroup[] {
@@ -63,7 +63,7 @@ function cubicageGroup(dispatch: ServiceDispatch): SheetGroup[] {
 function dispatchSheet(dispatch: ServiceDispatch, detail: ServiceDetail): DetailSheet {
   const order = detail.orders.find((one) => one.id === dispatch.orderId);
   const sheetFacts = facts([['Chofer', dispatch.driver], ['Cantidad', amount(dispatch.quantity, dispatch.unit)], ['Salida', dispatch.at && dayAndTimeOf(dispatch.at)], ['Guía N°', dispatch.guideNumber], ['Pedido', order?.product]]);
-  return { ...base(dispatch.plate ?? 'Despacho', dispatch.status, dispatch.url), facts: sheetFacts, files: dispatch.guideUrl ? [{ url: dispatch.guideUrl, label: 'Guía' }] : [], media: mediaOf(dispatch), groups: cubicageGroup(dispatch) };
+  return { ...base(dispatch.plate ?? 'Despacho', dispatch.status, dispatch.url), facts: sheetFacts, files: dispatch.guideUrl ? [{ url: dispatch.guideUrl, label: 'Guía' }] : [], media: dispatchMediaOf(dispatch), groups: cubicageGroup(dispatch) };
 }
 
 function reportSheet(report: ServiceReport): DetailSheet {

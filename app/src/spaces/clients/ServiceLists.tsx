@@ -1,7 +1,8 @@
-import { Image, Pressable, Text, View } from 'react-native';
-import { Clock, FileText, Image as ImageIcon, Ruler, Truck } from 'lucide-react-native';
-import { detailEmptyText, detailRows, orderCardsOf, orphanDispatchesOf, reportGroups, type DetailRow, type DetailTabKey, type OrderCard, type ServiceDetail, type ViewableFile } from '@lilachat/shared';
+import { Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { Clock, FileText, Ruler, Truck } from 'lucide-react-native';
+import { detailEmptyText, detailRows, dispatchThumbSlotsFor, dispatchThumbs, orderCardsOf, orphanDispatchesOf, reportGroups, type DetailRow, type DetailTabKey, type OrderCard, type ServiceDetail, type ViewableFile } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
+import { FileThumb } from './FileThumb';
 import { DETAIL_TONE } from './tones';
 
 type OpenFile = (file: ViewableFile, siblings?: readonly ViewableFile[]) => void;
@@ -49,10 +50,36 @@ function ReportDays({ detail, onOpen, onOpenFile }: { detail: ServiceDetail; onO
   );
 }
 
-/** A dispatch inside its order: the truck, its quantity and hour, its first pictures (design cc-02). */
+const THUMB_DP = 44;
+
+/**
+ * A dispatch's thumbs (José 20/11: the APK showed none): what fits the window, a «+K» tile for the
+ * rest, and any of them opens the viewer with ALL its photos and videos. Same `FileThumb` as its sheet.
+ */
+function DispatchThumbs({ dispatch, onOpenFile }: { dispatch: OrderCard['dispatches'][number]; onOpenFile: OpenFile }) {
+  const { width } = useWindowDimensions();
+  const { media } = dispatch;
+  const { shown, more } = dispatchThumbs(media, dispatchThumbSlotsFor(width));
+  const firstHidden = media[shown.length];
+  return (
+    <>
+      {shown.map((one, index) => (
+        <Pressable key={one.url} testID={`despacho-foto-${index}`} accessibilityLabel={`Ver ${one.name}`} onPress={() => onOpenFile(one, media)}>
+          <FileThumb file={one} size={THUMB_DP} />
+        </Pressable>
+      ))}
+      {more && firstHidden ? (
+        <Pressable testID={`despacho-mas-${dispatch.id}`} accessibilityLabel={`Ver ${more} más`} onPress={() => onOpenFile(firstHidden, media)} style={{ width: THUMB_DP, height: THUMB_DP }} className="items-center justify-center rounded-lg bg-primary/10">
+          <Text className="text-[13px] font-bold text-primary">{`+${more}`}</Text>
+        </Pressable>
+      ) : null}
+    </>
+  );
+}
+
+/** A dispatch inside its order: the truck, its quantity and hour, its thumbs (design cc-02). */
 function DispatchLine({ dispatch, onOpen, onOpenFile }: { dispatch: OrderCard['dispatches'][number]; onOpen: (id: string) => void; onOpenFile: OpenFile }) {
   const colors = useColores();
-  const all: ViewableFile[] = dispatch.pictures.map((picture) => ({ url: picture.url, name: picture.name ?? dispatch.title, mime: picture.mime, ...(picture.thumbUrl ? { thumbUrl: picture.thumbUrl } : {}) }));
   return (
     <View testID={`despacho-${dispatch.id}`} className="min-h-[56px] flex-row items-center gap-2 rounded-xl border border-outline/10 bg-background px-3 py-2">
       <Pressable onPress={() => onOpen(dispatch.id)} className="min-w-0 flex-1 flex-row items-center gap-2">
@@ -62,11 +89,7 @@ function DispatchLine({ dispatch, onOpen, onOpenFile }: { dispatch: OrderCard['d
           {dispatch.line ? <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>{dispatch.line}</Text> : null}
         </View>
       </Pressable>
-      {all.map((picture) => (
-        <Pressable key={picture.url} accessibilityLabel={`Ver ${picture.name}`} onPress={() => onOpenFile(picture, all)} className="h-11 w-11 items-center justify-center overflow-hidden rounded-lg bg-primary/10">
-          {picture.mime?.startsWith('image/') ? <Image source={{ uri: picture.thumbUrl ?? picture.url }} style={{ width: 44, height: 44 }} /> : <ImageIcon size={16} color={colors.primary} />}
-        </Pressable>
-      ))}
+      {dispatch.media.length ? <DispatchThumbs dispatch={dispatch} onOpenFile={onOpenFile} /> : null}
     </View>
   );
 }

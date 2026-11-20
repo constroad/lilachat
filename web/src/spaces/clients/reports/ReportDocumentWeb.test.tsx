@@ -263,6 +263,21 @@ describe('ReportDocumentWeb', () => {
     expect(await screen.findByTestId('formulario-agregar_foto_adicional')).toBeInTheDocument();
   });
 
+  it('while the PDF is asked, its button says «Preparando…» with a spinner on one line, so the text stays inside (José 20/11)', async () => {
+    // Arrange: Portal is still making it, so the button stays asking.
+    vi.stubGlobal('fetch', vi.fn((url: string) => (String(url).includes('/pdf') ? new Promise<Response>(() => undefined) : Promise.resolve(new Response(JSON.stringify({ document: { ...document, status: 'published' } }), { status: 200 })))));
+    openReport();
+    // Act
+    fireEvent.click(await screen.findByTestId('ver-pdf-informe'));
+    // Assert
+    const button = screen.getByTestId('ver-pdf-informe');
+    expect(button).toHaveTextContent('Preparando…');
+    expect(button).not.toHaveTextContent('Pidiendo');
+    expect(button.querySelector('.animate-spin')).not.toBeNull();
+    expect(button.className).toContain('whitespace-nowrap');
+    expect(within(button).getByText('Preparando…').className).toContain('truncate');
+  });
+
   it('a draft has «Ver PDF» beside «Publicar», and it asks for the preview, which publishes nothing (José 07/11)', async () => {
     // Arrange
     const calls = serverWith({ document: { ...document, id: '6aed0a1b2c3d4e5f60718293' } });

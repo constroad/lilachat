@@ -7,7 +7,8 @@ import { ServiceDriveWeb } from './ServiceDriveWeb';
 import { ServiceListWeb } from './ServiceListsWeb';
 import { SectionActions, SHELL_PRIMARY, ServiceShellWeb, useCompactShell } from './ServiceShellWeb';
 import { MapWorkspace } from './workMap/MapWorkspace';
-import { doorMapLinks } from './workMap/workProgressSender';
+import { doorMapLinks, serviceLinkSender } from './workMap/workProgressSender';
+import { ServiceLinkSheetWeb } from './ServiceLinkSheetWeb';
 import { ServiceStagesWeb } from './ServiceStagesWeb';
 import { SpaceActionButtonWeb } from './SpaceActionButtonWeb';
 import { useReportPdf } from './useReportPdf';
@@ -76,8 +77,16 @@ function ServiceLists(props: ListProps) {
 
 type ServiceDetailProps = { /** Who can be a report's responsible. */ people?: readonly string[]; target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; /** The client's name, the head's kicker (design cc-02). */ clientName?: string; /** The map takes the whole body: the channel drops its padding and scroll. */ onMapOpen?: (open: boolean) => void; /** A space admin: the stages, which read money (José 07/11). */ admin?: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string; /** Its Drive joins the tabs (José 06/11). */ seesDrive?: boolean; /** A member an admin gave only the Drive. */ driveOnly?: boolean };
 
-/** «Enlace del servicio» in the head (José 31/10): only where the channel's app offers it. */
-const shareOf = (props: ServiceDetailProps) => (props.links?.can('service') ? () => props.links?.open({ kind: 'service', clientId: props.target.clientId, serviceId: props.service.id }) : undefined);
+/**
+ * «Enlace del servicio» in the head (José 31/10): only where the channel's app offers it. José 20/11:
+ * it opens its sheet over the service and makes the link there, instead of jumping to the chat.
+ */
+function useServiceLinkSheet(props: ServiceDetailProps) {
+  const [open, setOpen] = useState(false);
+  const onShare = props.links?.can('service') ? () => setOpen(true) : undefined;
+  const sheet = open ? <ServiceLinkSheetWeb serviceName={props.service.name} create={serviceLinkSender(props.target, props.chatId, props.service.id)} onClose={() => setOpen(false)} /> : null;
+  return { onShare, sheet };
+}
 
 /** Over the editor's «Editar croquis», the map's way back to the report (José 16/11). */
 function BackToReport(props: { onBack: () => void }) {
@@ -99,10 +108,17 @@ const Takeover = ({ children }: { children: ReactNode }) => <div className="min-
 export function ServiceDetailWeb(props: ServiceDetailProps) {
   const compact = useCompactShell();
   if (!props.driveOnly) return <ServiceRecordsDetail {...props} compact={compact} />;
+  return <ServiceDriveOnly {...props} compact={compact} />;
+}
+
+/** A member an admin gave only the Drive: its one tab under the same head. */
+function ServiceDriveOnly(props: ServiceDetailProps & { compact: boolean }) {
+  const share = useServiceLinkSheet(props);
   const tabs: ServiceTabItem[] = [{ key: 'drive', label: 'Drive' }];
   return (
-    <ServiceShellWeb service={props.service} clientName={props.clientName} compact={compact} tabs={tabs} tab="drive" onTab={() => undefined} onBack={props.onBack} onShare={shareOf(props)}>
+    <ServiceShellWeb service={props.service} clientName={props.clientName} compact={props.compact} tabs={tabs} tab="drive" onTab={() => undefined} onBack={props.onBack} onShare={share.onShare}>
       <ServiceDriveWeb target={props.target} service={props.service} chatId={props.chatId} />
+      {share.sheet}
     </ServiceShellWeb>
   );
 }
@@ -151,14 +167,16 @@ function ServiceRecordsDetail(props: ServiceDetailProps & { compact: boolean }) 
     return () => onMapOpen?.(false);
   }, [mapOpen, onMapOpen]);
   const channelLinks = props.links;
+  const share = useServiceLinkSheet(props);
   // «Editar croquis» in Portal's editor draws this same map over it; closing it redraws the croquis.
   const croquisMap = answer?.ok && channelLinks ? (done: () => void) => <MapWorkspace admin={props.seesMoney} crumbs={<BackToReport onBack={done} />} detail={answer.value} service={props.service} links={doorMapLinks(channelLinks, props.target, props.chatId, props.service.id)} target={props.target} chatId={props.chatId} /> : undefined;
   if (flows.report) return <ReportTakeover {...props} report={flows.report} portalUrl={portalUrl} onClose={flows.closeReport} />;
   const tabs = answer?.ok ? serviceTabs(answer.value, Boolean(props.seesDrive), Boolean(props.links)) : [];
   return (
-    <ServiceShellWeb service={props.service} clientName={props.clientName} compact={props.compact} tabs={tabs} tab={tab} onTab={pickTab} onBack={props.onBack} onShare={shareOf(props)} portalUrl={portalUrl} flush={mapOpen}>
+    <ServiceShellWeb service={props.service} clientName={props.clientName} compact={props.compact} tabs={tabs} tab={tab} onTab={pickTab} onBack={props.onBack} onShare={share.onShare} portalUrl={portalUrl} flush={mapOpen}>
       <ServiceBody {...props} answer={answer} tab={tab} mapOpen={mapOpen} startOrderId={startOrderId} askAgain={askAgain} flows={flows} />
       {flows.picker ? <CreateReportDialog portalUrl={portalUrl} people={props.people ?? []} seesMoney={props.seesMoney} inEditor={(code) => createsInEmbed(window.innerWidth, code)} onPick={(code, responsible) => { flows.setPicker(false); flows.pickNew(code, responsible); }} onClose={() => flows.setPicker(false)} /> : null}
+      {share.sheet}
       {flows.framed ? <PortalEmbedWeb target={props.target} serviceId={props.service.id} serviceName={props.service.name} report={flows.framed} onClose={flows.closeFramed} {...(croquisMap ? { workMap: croquisMap } : {})} /> : null}
     </ServiceShellWeb>
   );

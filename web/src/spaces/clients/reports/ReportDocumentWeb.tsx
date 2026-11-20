@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { readFieldConditions } from '../../../chat/commands/commandsApi';
 import { AlertTriangle, ChevronLeft, ExternalLink, FileText } from 'lucide-react';
-import { formKeyOf, isUnitsRepeat, PREVIEW_ASKING, PREVIEW_LABEL, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, albumViewOf, unitAlbumOf, type RepeatItem, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService, type ChannelLinks, wantsWorkStreets, type GeoPoint } from '@lilachat/shared';
+import { formKeyOf, isUnitsRepeat, PREVIEW_LABEL, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, albumViewOf, unitAlbumOf, type RepeatItem, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService, type ChannelLinks, wantsWorkStreets, type GeoPoint } from '@lilachat/shared';
 import { loadPerfil } from '../../../api';
 import { AppFormDialog } from '../../../chat/commands/AppFormDialog';
 import { EphemeralAnswers } from '../../../chat/commands/EphemeralAnswers';
@@ -19,6 +19,7 @@ import { useReportForms } from './useReportForms';
 import { useWorkStreets } from './useWorkStreets';
 import { PlaceStatusWeb } from './PlaceStatusWeb';
 import { UnitAlbumDialog } from './UnitAlbumDialog';
+import { PdfLabel } from '../RecordSheetWeb';
 import { FloatingNotice, useFloatingNotice } from '../../../ui/FloatingNotice';
 
 type Props = { /** Who the person named before creating it (José 06/11). */ responsible?: string; target: ServiceAskTarget; chatId: string; service: SpaceClientService; type: string; /** The draft a row asked to continue. */ reportId?: string; portalUrl?: string; /** The channel's links: the work map's streets for a form that picks one. */ links?: ChannelLinks; /** A space admin: «Terminar unidad» sends the unit's photos to the client's group (José 19/11). */ admin?: boolean; onClose: (changed: boolean) => void };
@@ -70,7 +71,7 @@ function ReportFooter({ report, blocker, pdf, onPublish, onDone }: { report: Fie
         <p className="text-center font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Informe publicado</p>
         <p className="text-center text-sm text-on-surface-variant">El PDF se genera y llega al canal del cliente.</p>
         {pdf.readyUrl ? <a href={pdf.readyUrl} target="_blank" rel="noreferrer" data-testid="abrir-pdf-informe" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 text-sm font-semibold text-primary"><FileText size={16} /> Abrir PDF</a> : null}
-        {!pdf.readyUrl ? <button type="button" data-testid="ver-pdf-informe" disabled={pdf.asking} onClick={() => void pdf.ask(report.id ?? '')} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 text-sm font-semibold text-primary disabled:opacity-60"><FileText size={16} /> {pdf.asking ? 'Pidiendo el PDF…' : 'Ver PDF'}</button> : null}
+        {!pdf.readyUrl ? <button type="button" data-testid="ver-pdf-informe" disabled={pdf.asking} onClick={() => void pdf.ask(report.id ?? '')} className="inline-flex h-11 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-primary/30 bg-primary/10 px-3 text-sm font-semibold text-primary disabled:opacity-60"><PdfLabel asking={pdf.asking} label={PREVIEW_LABEL} /></button> : null}
         {pdf.message ? <p className="text-center text-[13px] text-error">{pdf.message}</p> : null}
         <button type="button" data-testid="volver-informe-listo" onClick={onDone} className="h-11 rounded-xl bg-primary text-sm font-bold text-on-primary">Volver al servicio</button>
       </footer>
@@ -82,8 +83,8 @@ function ReportFooter({ report, blocker, pdf, onPublish, onDone }: { report: Fie
       {/* José 07/11: «Ver PDF» beside «Publicar», on one line; a draft's preview publishes nothing. */}
       <div className="flex gap-2">
         {pdf.readyUrl
-          ? <a href={pdf.readyUrl} target="_blank" rel="noreferrer" data-testid="abrir-vista-previa" className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 text-sm font-semibold text-primary"><FileText size={16} /> Abrir vista previa</a>
-          : <button type="button" data-testid="ver-vista-previa" disabled={pdf.asking || !report.id} onClick={() => void pdf.ask(report.id ?? '', true)} className="inline-flex h-12 flex-1 items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 text-sm font-semibold text-primary disabled:opacity-60"><FileText size={16} /> {pdf.asking ? PREVIEW_ASKING : PREVIEW_LABEL}</button>}
+          ? <a href={pdf.readyUrl} target="_blank" rel="noreferrer" data-testid="abrir-vista-previa" className="inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-primary/30 bg-primary/10 px-2 text-sm font-semibold text-primary"><FileText size={16} className="shrink-0" /><span className="truncate">Abrir vista previa</span></a>
+          : <button type="button" data-testid="ver-vista-previa" disabled={pdf.asking || !report.id} onClick={() => void pdf.ask(report.id ?? '', true)} className="inline-flex h-12 min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-primary/30 bg-primary/10 px-2 text-sm font-semibold text-primary disabled:opacity-60"><PdfLabel asking={pdf.asking} label={PREVIEW_LABEL} /></button>}
         <button type="button" data-testid="abrir-publicar" onClick={onPublish} className="h-12 flex-[2] rounded-xl bg-primary text-base font-bold text-on-primary">{report.publish.label}</button>
       </div>
       {pdf.message ? <p className="text-center text-[13px] text-error">{pdf.message}</p> : null}

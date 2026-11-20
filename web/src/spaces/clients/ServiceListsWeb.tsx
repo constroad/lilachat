@@ -1,6 +1,8 @@
-import { Clock, FileText, Image as ImageIcon, Ruler, Truck } from 'lucide-react';
-import { detailEmptyText, detailRows, orderCardsOf, orphanDispatchesOf, reportGroups, type DetailRow, type DetailTabKey, type OrderCard, type ServiceDetail } from '@lilachat/shared';
+import { Clock, FileText, Ruler, Truck } from 'lucide-react';
+import { DISPATCH_THUMB_SLOTS, detailEmptyText, detailRows, dispatchThumbs, orderCardsOf, orphanDispatchesOf, reportGroups, type DetailRow, type DetailTabKey, type OrderCard, type ServiceDetail } from '@lilachat/shared';
 import type { OpenSheetFile } from './RecordSheetWeb';
+import { FileThumb } from './PortalFileViewer';
+import { useCompactShell } from './ServiceShellWeb';
 import { DETAIL_TONE } from './tones';
 
 const KICKER = 'font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-on-surface-variant';
@@ -41,9 +43,35 @@ function ReportDays({ detail, onOpen, onOpenFile }: { detail: ServiceDetail; onO
   );
 }
 
-/** A dispatch inside its order: the truck, its quantity and hour, its first pictures (design cc-02). */
+const THUMB_PX = 40;
+
+/**
+ * A dispatch's thumbs (José 20/11): what fits the row, a «+K» tile for the rest, and any of them
+ * opens the viewer with ALL its photos and videos. A video shows its frame with a play mark.
+ */
+function DispatchThumbs({ dispatch, onOpenFile }: { dispatch: OrderCard['dispatches'][number]; onOpenFile: OpenSheetFile }) {
+  const compact = useCompactShell();
+  const { media } = dispatch;
+  const { shown, more } = dispatchThumbs(media, compact ? DISPATCH_THUMB_SLOTS.compact : DISPATCH_THUMB_SLOTS.wide);
+  const firstHidden = media[shown.length];
+  return (
+    <span className="flex shrink-0 gap-1.5">
+      {shown.map((one, index) => (
+        <button key={one.url} type="button" data-testid={`despacho-foto-${index}`} aria-label={`Ver ${one.name}`} onClick={() => onOpenFile(one, media)} className="overflow-hidden rounded-lg">
+          <FileThumb file={one} size={THUMB_PX} />
+        </button>
+      ))}
+      {more && firstHidden ? (
+        <button type="button" data-testid={`despacho-mas-${dispatch.id}`} aria-label={`Ver ${more} más`} onClick={() => onOpenFile(firstHidden, media)} className="grid shrink-0 place-items-center rounded-lg bg-primary/10 text-[13px] font-bold text-primary" style={{ width: THUMB_PX, height: THUMB_PX }}>
+          {`+${more}`}
+        </button>
+      ) : null}
+    </span>
+  );
+}
+
+/** A dispatch inside its order: the truck, its quantity and hour, its thumbs (design cc-02). */
 function DispatchLine({ dispatch, onOpen, onOpenFile }: { dispatch: OrderCard['dispatches'][number]; onOpen: (id: string) => void; onOpenFile: OpenSheetFile }) {
-  const all = dispatch.pictures.map((picture) => ({ url: picture.url, name: picture.name ?? dispatch.title, mime: picture.mime, ...(picture.thumbUrl ? { thumbUrl: picture.thumbUrl } : {}) }));
   return (
     <li data-testid={`despacho-${dispatch.id}`} className="flex min-h-[56px] items-center gap-3 rounded-xl border border-outline/10 bg-background/60 px-3 py-2">
       <button type="button" onClick={() => onOpen(dispatch.id)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
@@ -54,13 +82,7 @@ function DispatchLine({ dispatch, onOpen, onOpenFile }: { dispatch: OrderCard['d
           {dispatch.line ? <span className="truncate text-[12px] text-on-surface-variant sm:text-[13px]"><span className="max-sm:hidden">· </span>{dispatch.line}</span> : null}
         </span>
       </button>
-      <span className="flex shrink-0 gap-1.5">
-        {all.map((picture) => (
-          <button key={picture.url} type="button" aria-label={`Ver ${picture.name}`} onClick={() => onOpenFile(picture, all)} className="grid h-10 w-10 place-items-center overflow-hidden rounded-lg bg-primary/10 text-primary">
-            {picture.mime.startsWith('image/') ? <img src={picture.thumbUrl ?? picture.url} alt="" loading="lazy" className="h-full w-full object-cover" /> : <ImageIcon size={16} />}
-          </button>
-        ))}
-      </span>
+      {dispatch.media.length ? <DispatchThumbs dispatch={dispatch} onOpenFile={onOpenFile} /> : null}
     </li>
   );
 }

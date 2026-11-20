@@ -47,22 +47,25 @@ export type ServiceMapDeps = {
   notice: (commandId: string) => Promise<{ response: CommandResponse } | null>;
 };
 
-const linkOf = (response: CommandResponse | undefined): ServiceMapResult => {
+const linkOf = (response: CommandResponse | undefined, failed: string): ServiceMapResult => {
   const url = response?.card?.link?.url;
-  return url?.startsWith('https://') ? { ok: true, url } : { ok: false, message: MAP_LINK_FAILED };
+  return url?.startsWith('https://') ? { ok: true, url } : { ok: false, message: failed };
 };
 
-async function linkFrom(outcome: CommandOutcome, notice: ServiceMapDeps['notice']): Promise<ServiceMapResult> {
-  if (outcome.outcome === 'failed') return { ok: false, message: outcome.message ?? MAP_LINK_FAILED };
-  return linkOf(outcome.outcome === 'pending' ? (await notice(outcome.commandId))?.response : outcome.response);
+async function linkFrom(outcome: CommandOutcome, notice: ServiceMapDeps['notice'], failed: string): Promise<ServiceMapResult> {
+  if (outcome.outcome === 'failed') return { ok: false, message: outcome.message ?? failed };
+  return linkOf(outcome.outcome === 'pending' ? (await notice(outcome.commandId))?.response : outcome.response, failed);
 }
 
-/** Runs the link action with its answers already given, without the form the chat would show. */
-export async function serviceMapUrl(deps: ServiceMapDeps): Promise<ServiceMapResult> {
+/** Runs the service's link action with `values` already given, without the form the chat would show; `failed` is what it says otherwise. */
+export async function runServiceLinkAction(deps: ServiceMapDeps, values: FormValues, failed: string): Promise<ServiceMapResult> {
   const opened = await deps.open();
-  if (!opened.ok) return { ok: false, message: MAP_LINK_FAILED };
-  if (opened.data.outcome !== 'form') return linkFrom(opened.data, deps.notice);
-  const reply = await deps.submit(opened.data.commandId, { dias: MAP_LINK_DAYS });
-  if (!reply.ok) return { ok: false, message: reply.errors?._ ?? Object.values(reply.errors ?? {})[0] ?? reply.message ?? MAP_LINK_FAILED };
-  return linkFrom(reply.outcome, deps.notice);
+  if (!opened.ok) return { ok: false, message: failed };
+  if (opened.data.outcome !== 'form') return linkFrom(opened.data, deps.notice, failed);
+  const reply = await deps.submit(opened.data.commandId, values);
+  if (!reply.ok) return { ok: false, message: reply.errors?._ ?? Object.values(reply.errors ?? {})[0] ?? reply.message ?? failed };
+  return linkFrom(reply.outcome, deps.notice, failed);
 }
+
+/** The map's link: the short term, made again on the next visit. */
+export const serviceMapUrl = (deps: ServiceMapDeps): Promise<ServiceMapResult> => runServiceLinkAction(deps, { dias: MAP_LINK_DAYS }, MAP_LINK_FAILED);

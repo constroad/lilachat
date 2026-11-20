@@ -3,13 +3,14 @@ import { useOverlayLevel } from '../../../ui/Modal';
 import { coveredAbove } from '../../../ui/overlays';
 import { readFieldConditions } from '../../../chat/commands/commandsApi';
 import { BackHandler, Linking, Pressable, ScrollView, Text, ToastAndroid, View } from 'react-native';
-import { AlertTriangle, ChevronLeft, ExternalLink, FileText } from 'lucide-react-native';
-import { wantsWorkStreets, type ChannelLinks, formKeyOf, isUnitsRepeat, PREVIEW_ASKING, PREVIEW_LABEL, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, albumViewOf, unitAlbumOf, type RepeatItem, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService, type GeoPoint } from '@lilachat/shared';
+import { AlertTriangle, ChevronLeft, ExternalLink } from 'lucide-react-native';
+import { wantsWorkStreets, type ChannelLinks, formKeyOf, isUnitsRepeat, PREVIEW_LABEL, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, albumViewOf, unitAlbumOf, type RepeatItem, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService, type GeoPoint } from '@lilachat/shared';
 import { AppFormSheet } from '../../../chat/commands/AppFormSheet';
 import { useWorkStreets } from './useWorkStreets';
 import { EphemeralAnswers } from '../../../chat/commands/EphemeralAnswers';
 import { useColores } from '../../../ui/tema';
 import { useFileViewer } from '../useFileViewer';
+import { PdfLabel } from '../RecordSheet';
 import { useReportPdf } from '../useReportPdf';
 import type { ServiceAskTarget } from '../useServiceAsk';
 import { PublishSheet } from './PublishSheet';
@@ -82,9 +83,8 @@ function ReportFooter({ report, blocker, asking, onPublish, onPdf, onPreview, on
       <View testID="informe-publicado" className="gap-2 border-t border-outline/10 px-4 pb-4 pt-3">
         <Text className="text-center text-[11px] font-bold uppercase tracking-[1.5px] text-primary">Informe publicado</Text>
         <Text className="text-center text-[14px] text-on-surface-variant">El PDF se genera y llega al canal del cliente.</Text>
-        <Pressable testID="ver-pdf-informe" onPress={onPdf} disabled={asking} className={`min-h-[52px] flex-row items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 ${asking ? 'opacity-60' : ''}`}>
-          <FileText size={18} color={colors.primary} />
-          <Text className="text-[16px] font-semibold text-primary">{asking ? 'Pidiendo el PDF…' : 'Ver PDF'}</Text>
+        <Pressable testID="ver-pdf-informe" onPress={onPdf} disabled={asking} className={`min-h-[52px] flex-row items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-3 ${asking ? 'opacity-60' : ''}`}>
+          <PdfLabel asking={asking} label={PREVIEW_LABEL} tone="primary" textClassName="text-[16px] font-semibold text-primary" />
         </Pressable>
         <Pressable testID="volver-informe-listo" onPress={onDone} className="min-h-[52px] items-center justify-center rounded-2xl bg-primary">
           <Text className="text-[16px] font-bold text-on-primary">Volver al servicio</Text>
@@ -102,9 +102,8 @@ function ReportFooter({ report, blocker, asking, onPublish, onPdf, onPreview, on
       ) : null}
       {/* José 07/11: «Ver PDF» beside «Publicar», on one line; a draft's preview publishes nothing. */}
       <View className="flex-row gap-2">
-        <Pressable testID="ver-vista-previa" onPress={onPreview} disabled={asking || !report.id} className={`min-h-[56px] flex-1 flex-row items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 ${asking ? 'opacity-60' : ''}`}>
-          <FileText size={18} color={colors.primary} />
-          <Text className="text-[15px] font-semibold text-primary" numberOfLines={1}>{asking ? PREVIEW_ASKING : PREVIEW_LABEL}</Text>
+        <Pressable testID="ver-vista-previa" onPress={onPreview} disabled={asking || !report.id} className={`min-h-[56px] flex-1 flex-row items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 px-2 ${asking ? 'opacity-60' : ''}`}>
+          <PdfLabel asking={asking} label={PREVIEW_LABEL} tone="primary" textClassName="text-[15px] font-semibold text-primary" />
         </Pressable>
         <Pressable testID="abrir-publicar" onPress={onPublish} className="min-h-[56px] flex-[2] items-center justify-center rounded-2xl bg-primary">
           <Text className="text-[16px] font-bold text-on-primary" numberOfLines={1}>{report.publish.label}</Text>

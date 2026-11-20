@@ -7,7 +7,8 @@ import { useCompactShell } from './ServiceShellWeb';
 import { DETAIL_TONE } from './tones';
 
 const KICKER = 'font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-on-surface-variant';
-const CARD = 'overflow-hidden rounded-2xl border border-outline/15 bg-surface';
+/** 12 px radius (design cc-01/cc-02 pixel diff 20/11); the order's card border is 1.5 px on a phone. */
+const CARD = 'overflow-hidden rounded-card border-[1.5px] border-outline/15 bg-surface';
 /** Design cc-02 on a computer: the order's card floats on a shadow, no border. */
 const ORDER_CARD = `${CARD} md:border-0 md:shadow-sm`;
 const Chip = ({ row, large }: { row: DetailRow; large?: boolean }) => <span className={`shrink-0 rounded-md border font-bold ${large ? 'px-2.5 py-1 text-[11px]' : 'px-2 py-0.5 text-[10px]'} uppercase tracking-wide ${DETAIL_TONE[row.status.tone]}`}>{row.status.label}</span>;

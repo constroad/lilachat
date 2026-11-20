@@ -31,7 +31,8 @@ describe('ReportDialog', () => {
     fireEvent.click(screen.getByTestId('denuncia-bloquear'));
     fireEvent.click(screen.getByTestId('denuncia-enviar'));
     // Assert
-    expect(await screen.findByTestId('denuncia-recibida')).toHaveTextContent('Recibimos tu denuncia');
+    await screen.findByTestId('denuncia-recibida');
+    expect(screen.getAllByText('Recibimos tu denuncia')).toHaveLength(1);
     expect(fetchMock).toHaveBeenCalledWith('/api/reports', expect.objectContaining({ method: 'POST', body: JSON.stringify({ ...MESSAGE, reason: 'harassment', note: 'me insulta', alsoBlock: true }) }));
     expect(onBlocked).toHaveBeenCalled();
   });

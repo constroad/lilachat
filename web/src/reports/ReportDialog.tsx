@@ -81,8 +81,7 @@ function ReportSent({ blocked, onClose }: { blocked: boolean; onClose: () => voi
     <Overlay title={REPORT_SENT_TITLE} onClose={onClose} footer={footer}>
       <div data-testid="denuncia-recibida" className="flex flex-col items-center py-4 text-center">
         <CheckCircle2 size={40} className="text-primary" />
-        <p className="mt-3 text-base font-semibold">{REPORT_SENT_TITLE}</p>
-        <p className="mt-1 text-sm text-on-surface-variant">{reportSentBody(blocked)}</p>
+        <p className="mt-3 text-sm text-on-surface-variant">{reportSentBody(blocked)}</p>
       </div>
     </Overlay>
   );

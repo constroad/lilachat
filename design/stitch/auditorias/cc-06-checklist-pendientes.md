@@ -13,7 +13,7 @@ Fecha: 2026-11-20 01:30 (E2E del lote 2 en web a 1440 y 390 px; main f217270b)
 | Segmentado | «Pendientes 3 · Plan 15/15» | igual | igual |
 | Lista de pendientes | tarjetas con borde de acento, casilla, tarea, «Etapa N · persona», cámara | igual (`PendingRowWeb`, `PendingRow`), más la fecha límite; casilla y cámara solo para quien puede marcar (`taskActionsFor`) | igual |
 | Encabezado «PENDIENTES DE ACCIÓN (3) · Requeridos para faena» | sí | «3 pendientes» | diferencia justificada: «Requeridos para faena» lo inventó Stitch; el número es el mismo |
-| Plan de la obra / Servicio asociado | tarjetas resumen | el plan existente en «Plan» | diferencia justificada: design/stitch/INVENTARIO.md § cc (PROPUESTA: un canal no tiene «servicio asociado» único) |
+| Plan de la obra / Servicio asociado | tarjetas resumen | el plan existente en «Plan» | diferencia justificada: INVENTARIO § cc (PROPUESTA: un canal no tiene «servicio asociado» único) |
 | «Agregar nueva tarea o pendiente» | botón al pie | no va | diferencia justificada: crear tareas vive en el plan, solo admins (as-is canal §2) |
 
 

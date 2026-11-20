@@ -481,3 +481,21 @@ Implementación (18/11). Auditorías en `design/stitch/auditorias/<slug>.md`.
 | nl-01-por-categoria | sí | no | sí | `web/src/chat/links/LinksByCategory.tsx`, `web/src/chat/links/CategoryLayouts.tsx`, `web/src/chat/links/LinkNoteCards.tsx`, `web/src/chat/links/NotesViewSwitch.tsx`, `app/src/chat/links/LinksByCategory.tsx`, `app/src/chat/links/LinksParts.tsx`, `app/src/chat/links/LinkRowCard.tsx` |
 | nl-02-tarjeta-en-el-chat | no | no | sí | `web/src/chat/links/StoredLinkInBubble.tsx`, `app/src/chat/links/NoteLinkBubble.tsx` |
 | nl-03-mover-de-categoria | no | no | sí | `web/src/chat/links/MoveLinkSheet.tsx`, `app/src/chat/links/MoveLinkSheet.tsx` |
+
+## Informe CTL-IMP compacto (José 19/11)
+
+José 19/11 en su teléfono: «botones enormes y diseño feo» en el Control de imprimación. Pedido a Stitch el tramo del
+CTL-IMP con controles compactos (campos de 44 px, dos por fila, botón principal único de 52 px), bandejas en filas
+compactas («Basta una completa», una a medias marcada) e indicador «Obteniendo ubicación…». Proyecto 15540754270713720465,
+paleta Vivid Pulse (tokens de `shared/src/tokens.ts`; oscuro con los de `dark`). Prompts: `.stitch-work/screens_imp.py`,
+generador `.stitch-work/gen_imp.py` (en el worktree de la sesión), capturas y HTML en el checkout principal
+`.stitch-work/out_imp/<dispositivo>/`. Ids en `registro.jsonl` (slugs `imp-0*`). **No se implementa todavía: espera
+aprobación de José.** Lo que Stitch inventó y no va: en tablet la columna lateral («Formulario Técnico», «Canal de
+Campo», «Terminal Obra #04»), la barra «CONSTROAD CIVIL SUITE · Sincronizado», «(ensayo de tara)» y la marca «TOCA».
+La regla de bandejas y el indicador de ubicación ya están en el código (`shared/src/formSamples.ts`, `PlaceStatus*`).
+
+| Slug | Dispositivo | Qué resuelve | Estado |
+| --- | --- | --- | --- |
+| imp-01-tramo-oscuro | móvil (oscuro) | Tramo del CTL-IMP compacto: ubicación cargando, progresivas y horas de a dos, carril en chips, bandejas en filas con una a medias marcada | generado 19/11 · `da27e216cc7d43d69a94ea74193762cf` · espera aprobación de José |
+| imp-02-tramo-claro | móvil (claro) | La misma pantalla en claro | generado 19/11 · `f0001f1500a746e28a615fb3a0047472` · espera aprobación de José |
+| imp-03-tramo-tablet | tablet | Panel de 640 px sobre el informe; bandejas en tabla compacta con estado por fila | generado 19/11 · `6cfb6854b78043ffb71731ae5f887808` · espera aprobación de José |

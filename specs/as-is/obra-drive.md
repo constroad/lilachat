@@ -136,6 +136,12 @@ filtraba los tipos del boleto y no dejaba pasar PDF; lo corrigió en a636426 (13
 - **20/11** Pestaña como cc-05: mosaico por defecto con etiqueta de tipo y «hoy 08:30 · 2.1 MB»,
 - **20/11** Chips con su conteo («Todo 18», `driveKindCounts`), «Carpetas · N» (`driveFoldersLabel`), chevron en cada carpeta y «N archivos» en cada día (web y APK).
   carpetas en tarjetas con «N archivos», sin la cabecera «Drive del servicio».
+- **20/11** Navegación real por niveles (José: «no respeta la carpeta como Portal»): entrar a una carpeta
+  con sub-carpetas mostraba TODOS sus archivos aplanados, en vez de solo sus propias sub-carpetas. Arreglado
+  en `shared/src/serviceFiles.ts` — `driveFolders`/`filesInFolder` ahora toman la ruta completa
+  (`readonly string[]`, como hace Portal con `parentId`/`folderId`), no solo el primer segmento. Breadcrumb
+  de varios niveles («‹ Drive › Fotos de obra › Día 1», cada nivel menos el último es un enlace) en
+  `ServiceDriveWeb.tsx` y `ServiceDrive.tsx`; BACK del APK sube un nivel a la vez antes de salir del servicio.
 
 ## 5. Diseños de Stitch relacionados
 

@@ -20,8 +20,19 @@ describe('ServiceDriveWeb', () => {
     expect((await screen.findByTestId('carpeta-Fotos de obra')).textContent).toContain('2');
     expect(String((fetchMock.mock.calls[0] as unknown as [string])[0])).toContain('/api/workspaces/s1/clients/cli-cvs/services/srv-318/files');
     expect(screen.getByText('Abrir en Google Drive').closest('a')?.getAttribute('href')).toBe('https://drive.google.com/drive/folders/x');
+    // Act: entering «Fotos de obra» shows its OWN sub-folders, never the files nested under them (José 20/11).
     fireEvent.click(screen.getByTestId('carpeta-Fotos de obra'));
-    expect(screen.getAllByTestId('archivo-drive').map((one) => one.textContent)).toEqual([expect.stringContaining('t1.jpg'), expect.stringContaining('t2.jpg')]);
+    expect(screen.queryByTestId('archivo-drive')).toBeNull();
+    expect((await screen.findByTestId('carpeta-Día 1')).textContent).toContain('1');
+    expect(screen.getByTestId('carpeta-Día 2').textContent).toContain('1');
+    // Act: only inside the day does its own file show up.
+    fireEvent.click(screen.getByTestId('carpeta-Día 1'));
+    expect(screen.getAllByTestId('archivo-drive').map((one) => one.textContent)).toEqual([expect.stringContaining('t1.jpg')]);
+    // Assert: the breadcrumb names both levels, and the middle one goes back to it.
+    expect(screen.getByText('Fotos de obra')).toBeInTheDocument();
+    expect(screen.getByText('Día 1')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Fotos de obra'));
+    expect((await screen.findByTestId('carpeta-Día 2')).textContent).toContain('1');
   });
 
   it('search finds by name across folders', async () => {

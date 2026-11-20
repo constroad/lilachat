@@ -49,9 +49,9 @@ function FileRow({ file, onOpen, onMenu }: { file: ServiceFile; onOpen: OpenFile
 const Group = ({ children }: { children: React.ReactNode }) => <View className="overflow-hidden rounded-xl border border-outline/15 bg-surface">{children}</View>;
 const Kicker = ({ children }: { children: string }) => <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{children}</Text>;
 
-/** Design cc-05: the folders are cards whatever the files' layout. */
-function FolderRows(props: { files: readonly ServiceFile[]; onOpen: (folder: string) => void }) {
-  const folders = driveFolders(props.files);
+/** Design cc-05: the folders are cards whatever the files' layout. Direct sub-folders of `path` only (José 20/11: a folder with sub-folders was flattening every file under it). */
+function FolderRows(props: { files: readonly ServiceFile[]; path: readonly string[]; onOpen: (folder: string) => void }) {
+  const folders = driveFolders(props.files, props.path);
   if (!folders.length) return null;
   return (
     <>
@@ -67,28 +67,38 @@ function FileSet(props: { files: readonly ServiceFile[]; layout: DriveLayout; on
   return <Group>{props.files.map((file) => <FileRow key={file.url} file={file} onOpen={props.onOpen} onMenu={props.onMenu} />)}</Group>;
 }
 
-type BodyProps = { files: ServiceFile[]; query: string; folder: string | null; kind: DriveKind; layout: DriveLayout; onFolder: (folder: string) => void; onOpen: OpenFile; onMenu?: OpenFile };
+type BodyProps = { files: ServiceFile[]; query: string; folder: readonly string[]; kind: DriveKind; layout: DriveLayout; onFolder: (folder: string) => void; onOpen: OpenFile; onMenu?: OpenFile };
 
-/** The files the search, the folder and the chip leave, or null at the root with «Todo». */
+/** Search or a kind chip narrow across the whole service, folder aside; otherwise `null` shows folders + direct files (root or inside one). */
 function narrowed(props: BodyProps): ServiceFile[] | null {
   if (props.query.trim().length >= SEARCH_MIN) return filesOfKind(searchServiceFiles(props.files, props.query), props.kind);
-  if (props.folder) return filesOfKind(filesInFolder(props.files, props.folder), props.kind);
-  return props.kind === 'all' ? null : filesOfKind(props.files, props.kind);
+  if (props.kind !== 'all') return filesOfKind(props.folder.length ? filesInFolder(props.files, props.folder) : props.files, props.kind);
+  return null;
 }
 
-/** Search results, one folder, one kind, or the root: folders, the newest and the loose files. */
+/**
+ * Search results, one kind, or the current folder: its own sub-folders (José 20/11: entering one no
+ * longer flattens every file nested under it) and its direct files. At the root, «Recientes» mixes in
+ * the service's newest files; inside a folder, just its own files, newest first as they came.
+ */
 function DriveBody(props: BodyProps) {
   const shown = narrowed(props);
   if (!props.files.length) return <Text className="py-6 text-center text-[14px] text-on-surface-variant">Este servicio todavía no tiene archivos.</Text>;
   if (shown) return shown.length ? <FileSet files={shown} layout={props.layout} onOpen={props.onOpen} onMenu={props.onMenu} /> : <Text className="p-4 text-[14px] text-on-surface-variant">{props.query.trim() ? `Nada coincide con «${props.query.trim()}».` : 'No hay archivos de este tipo.'}</Text>;
-  const recent = props.files.slice(0, RECENT);
-  const rest = filesInFolder(props.files, null).filter((file) => !recent.includes(file));
+  const atRoot = props.folder.length === 0;
+  const direct = filesInFolder(props.files, atRoot ? null : props.folder);
+  const recent = atRoot ? props.files.slice(0, RECENT) : [];
+  const files = atRoot ? [...recent, ...direct.filter((file) => !recent.includes(file))] : direct;
   return (
     <>
-      <FolderRows files={props.files} onOpen={props.onFolder} />
-      {/* The mosaic carries its own day headers (design cc-05); the list keeps «Recientes». */}
-      {props.layout === 'list' ? <Kicker>Recientes</Kicker> : null}
-      <FileSet files={[...recent, ...rest]} layout={props.layout} onOpen={props.onOpen} onMenu={props.onMenu} />
+      <FolderRows files={props.files} path={props.folder} onOpen={props.onFolder} />
+      {files.length ? (
+        <>
+          {/* The mosaic carries its own day headers (design cc-05); the list keeps «Recientes» at the root. */}
+          {props.layout === 'list' && atRoot ? <Kicker>Recientes</Kicker> : null}
+          <FileSet files={files} layout={props.layout} onOpen={props.onOpen} onMenu={props.onMenu} />
+        </>
+      ) : null}
     </>
   );
 }
@@ -103,17 +113,28 @@ function DriveSearch(props: { query: string; onQuery: (query: string) => void })
   );
 }
 
-function Breadcrumb(props: { folder: string; onRoot: () => void }) {
+/** Every level tappable but the last, like Portal's own Drive explorer. */
+function Breadcrumb(props: { path: readonly string[]; onNavigate: (depth: number) => void }) {
   const colors = useColores();
   return (
-    <View className="flex-row items-center gap-1.5">
-      <Pressable testID="volver-a-drive" onPress={props.onRoot} className="min-h-[40px] flex-row items-center gap-1">
+    <View className="flex-row flex-wrap items-center gap-1.5">
+      <Pressable testID="volver-a-drive" onPress={() => props.onNavigate(0)} className="min-h-[40px] flex-row items-center gap-1">
         <ChevronLeft size={18} color={colors.primary} />
         <Cloud size={15} color={colors.primary} />
         <Text className="text-[14px] font-semibold text-primary">Drive</Text>
       </Pressable>
-      <ChevronRight size={14} color={colors['on-surface-variant']} />
-      <Text className="min-w-0 flex-shrink text-[14px] text-on-surface" numberOfLines={1}>{props.folder}</Text>
+      {props.path.map((name, index) => (
+        <View key={`${name}-${index}`} className="flex-row items-center gap-1.5">
+          <ChevronRight size={14} color={colors['on-surface-variant']} />
+          {index === props.path.length - 1 ? (
+            <Text className="min-w-0 flex-shrink text-[14px] text-on-surface" numberOfLines={1}>{name}</Text>
+          ) : (
+            <Pressable onPress={() => props.onNavigate(index + 1)}>
+              <Text className="min-w-0 flex-shrink text-[14px] font-semibold text-primary" numberOfLines={1}>{name}</Text>
+            </Pressable>
+          )}
+        </View>
+      ))}
     </View>
   );
 }
@@ -174,7 +195,7 @@ export function ServiceDrive(props: { target: ServiceAskTarget; service: SpaceCl
   // Before the viewer: its bar has to read the marks of THIS render.
   const phaseOf = usePhotoPhases(props, answer?.ok ? answer.value.files : NO_FILES);
   const viewer = useFileViewer();
-  const [folder, setFolder] = useState<string | null>(null);
+  const [folder, setFolder] = useState<readonly string[]>([]);
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState<DriveKind>('all');
   const [layout, setLayoutState] = useState<DriveLayout>(lastLayout);
@@ -187,7 +208,7 @@ export function ServiceDrive(props: { target: ServiceAskTarget; service: SpaceCl
   const { onBack } = props;
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (folder) setFolder(null);
+      if (folder.length) setFolder(folder.slice(0, -1));
       else onBack();
       return true;
     });
@@ -209,8 +230,8 @@ export function ServiceDrive(props: { target: ServiceAskTarget; service: SpaceCl
           <DriveLayoutToggle layout={layout} onLayout={setLayout} />
         </View>
       ) : null}
-      {folder ? <Breadcrumb folder={folder} onRoot={() => setFolder(null)} /> : null}
-      {answer?.ok ? <DriveBody files={answer.value.files} query={query} folder={folder} kind={kind} layout={layout} onFolder={setFolder} onOpen={openFile} onMenu={setMenuFile} /> : null}
+      {folder.length ? <Breadcrumb path={folder} onNavigate={(depth) => setFolder(folder.slice(0, depth))} /> : null}
+      {answer?.ok ? <DriveBody files={answer.value.files} query={query} folder={folder} kind={kind} layout={layout} onFolder={(name) => setFolder((path) => [...path, name])} onOpen={openFile} onMenu={setMenuFile} /> : null}
       <DriveFileSheet file={menuFile} onClose={() => setMenuFile(null)} onOpen={openFile} onNotice={showNotice} />
       {viewer.notice ? <Text className="text-center text-[13px] text-error">{viewer.notice}</Text> : null}
       {viewer.viewer}

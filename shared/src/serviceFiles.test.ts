@@ -36,9 +36,20 @@ describe('folders and search', () => {
     expect(driveFolders(files)).toEqual([{ name: 'Fotos', count: 2 }, { name: 'Informes', count: 1 }]);
   });
 
-  it('inside a folder, its files; without one, the loose files', () => {
-    expect(filesInFolder(files, 'Fotos').map((one) => one.name)).toEqual(['b.jpg', 'c.jpg']);
+  it('its direct files only; without one, the loose files (José 20/11: entering a folder showed every nested file flattened)', () => {
+    expect(filesInFolder(files, ['Informes']).map((one) => one.name)).toEqual(['a.pdf']);
     expect(filesInFolder(files, null).map((one) => one.name)).toEqual(['suelto.pdf']);
+  });
+
+  it('a folder with only sub-folders has no direct files of its own, but lists them, each with its own files', () => {
+    expect(filesInFolder(files, ['Fotos'])).toEqual([]);
+    expect(driveFolders(files, ['Fotos'])).toEqual([{ name: 'Día 1', count: 1 }, { name: 'Día 2', count: 1 }]);
+    expect(filesInFolder(files, ['Fotos', 'Día 1']).map((one) => one.name)).toEqual(['b.jpg']);
+    expect(filesInFolder(files, ['Fotos', 'Día 2']).map((one) => one.name)).toEqual(['c.jpg']);
+  });
+
+  it('a sub-folder one level deeper than it exists lists nothing (no third level here)', () => {
+    expect(driveFolders(files, ['Fotos', 'Día 1'])).toEqual([]);
   });
 
   it('search by name or folder, without accents or case; two letters at least', () => {

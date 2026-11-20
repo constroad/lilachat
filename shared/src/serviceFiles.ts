@@ -43,20 +43,30 @@ export function serviceFilesOf(body: unknown): ServiceFiles | null {
   return { files, driveUrl: isHttps(input.drive_url) ? input.drive_url : null };
 }
 
-const topFolderOf = (file: ServiceFile) => file.folder?.split(FOLDER_SEPARATOR)[0]?.trim() || null;
+/** A file's folder, as the path's own segments (trimmed, empty ones out); `[]` = loose, no folder at all. */
+export const folderPathOf = (file: ServiceFile): string[] => (file.folder ? file.folder.split(FOLDER_SEPARATOR).map((part) => part.trim()).filter(Boolean) : []);
 
-/** «Carpetas principales»: the first level of each path, with how many files hang from it. */
-export function driveFolders(files: readonly ServiceFile[]): { name: string; count: number }[] {
+const startsWith = (path: readonly string[], prefix: readonly string[]): boolean => prefix.every((part, index) => path[index] === part);
+
+/** The sub-folders directly under `parentPath` (`[]` = root), with how many files hang from each, sub-folders of those included. */
+export function driveFolders(files: readonly ServiceFile[], parentPath: readonly string[] = []): { name: string; count: number }[] {
   const counts = new Map<string, number>();
   for (const file of files) {
-    const top = topFolderOf(file);
-    if (top) counts.set(top, (counts.get(top) ?? 0) + 1);
+    const path = folderPathOf(file);
+    if (path.length <= parentPath.length || !startsWith(path, parentPath)) continue;
+    const name = path[parentPath.length]!;
+    counts.set(name, (counts.get(name) ?? 0) + 1);
   }
   return [...counts].map(([name, count]) => ({ name, count })).sort((a, b) => compareNames(a.name, b.name));
 }
 
-/** The files under a top folder (sub-folders included); `null` = the loose ones. */
-export const filesInFolder = (files: readonly ServiceFile[], folder: string | null): ServiceFile[] => files.filter((file) => topFolderOf(file) === folder);
+/** The files right in `path` — never a sub-folder's; `null` = the loose ones with no folder at all. */
+export function filesInFolder(files: readonly ServiceFile[], path: readonly string[] | null): ServiceFile[] {
+  return files.filter((file) => {
+    const filePath = folderPathOf(file);
+    return path === null ? filePath.length === 0 : filePath.length === path.length && startsWith(filePath, path);
+  });
+}
 
 const plain = (value: string) => value.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
 

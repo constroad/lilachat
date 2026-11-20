@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { Image } from 'expo-image';
-import { FileSpreadsheet, FileText, Folder, Image as ImageIcon, MoreVertical, Play } from 'lucide-react-native';
+import { ChevronRight, FileSpreadsheet, FileText, Folder, Image as ImageIcon, MoreVertical, Play } from 'lucide-react-native';
 import { driveDayGroups, driveFilesLabel, driveKindOf, driveTileLine, driveTypeTag, type ServiceFile } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 
@@ -70,7 +70,7 @@ export function DriveGrid(props: { files: readonly ServiceFile[]; onOpen: (file:
     <View testID="drive-cuadricula" onLayout={grid.onLayout} className="gap-4">
       {grid.tile ? groups.map((group) => (
         <View key={group.key} className="gap-2">
-          <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{group.label}</Text>
+          <View className="flex-row justify-between"><Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{group.label}</Text><Text className="text-[12px] text-on-surface-variant">{driveFilesLabel(group.files.length)}</Text></View>
           <View className="flex-row flex-wrap" style={{ gap: GAP }}>
             {group.files.map((file) => <Tile key={file.url} file={file} size={grid.tile} now={now} onOpen={props.onOpen} onMenu={props.onMenu} />)}
           </View>
@@ -93,6 +93,7 @@ export function FolderCards(props: { folders: readonly { name: string; count: nu
             <Text className="text-[14px] font-semibold text-on-surface" numberOfLines={1}>{one.name}</Text>
             <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>{driveFilesLabel(one.count)}</Text>
           </View>
+          <ChevronRight size={16} color={colors['on-surface-variant']} />
         </Pressable>
       )) : null}
     </View>

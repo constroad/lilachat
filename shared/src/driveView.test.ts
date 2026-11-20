@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DRIVE_KINDS, DRIVE_UPLOAD_OPTIONS, driveDayGroups, driveFilesLabel, driveKindOf, driveTileLine, driveTypeTag, filesOfKind } from './driveView.js';
+import { DRIVE_KINDS, DRIVE_UPLOAD_OPTIONS, driveDayGroups, driveFoldersLabel, driveKindCounts, driveFilesLabel, driveKindOf, driveTileLine, driveTypeTag, filesOfKind } from './driveView.js';
 import type { ServiceFile } from './serviceFiles.js';
 
 /**
@@ -99,5 +99,20 @@ describe('driveTileLine', () => {
 describe('driveFilesLabel', () => {
   it('one and many', () => {
     expect([0, 1, 41].map(driveFilesLabel)).toEqual(['0 archivos', '1 archivo', '41 archivos']);
+  });
+});
+
+describe('the counts of the chips and of the folders (design cc-05: «Todo 58», «Carpetas · 4»)', () => {
+  it('counts every file under «Todo» and each one under its kind', () => {
+    expect(driveKindCounts([photo, video, pdf, sheet, photo])).toEqual({ all: 5, photo: 2, video: 1, document: 2 });
+  });
+
+  it('is zero for every kind with no files', () => {
+    expect(driveKindCounts([])).toEqual({ all: 0, photo: 0, video: 0, document: 0 });
+  });
+
+  it('names the folders with how many there are', () => {
+    expect(driveFoldersLabel(4)).toBe('Carpetas · 4');
+    expect(driveFoldersLabel(0)).toBe('Carpetas');
   });
 });

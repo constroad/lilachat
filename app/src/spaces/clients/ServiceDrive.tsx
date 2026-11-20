@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, Text, TextInput, ToastAndroid, View } from 'react-native';
 import { ChevronLeft, ChevronRight, Cloud, ExternalLink, MoreVertical, Search } from 'lucide-react-native';
 import { FileThumb } from './FileThumb';
-import { filesOfKind, photoMarkOf, withPhotoMark, type DriveKind, type DriveLayout, type PhotoMark, driveFileLine, driveUploadingLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService } from '@lilachat/shared';
+import { filesOfKind, photoMarkOf, withPhotoMark, type DriveKind, type DriveLayout, type PhotoMark, driveFileLine, driveUploadingLine, driveFolders, driveFoldersLabel, driveKindCounts, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService } from '@lilachat/shared';
 import { DriveHeader, DriveKindChips, DriveLayoutToggle } from './DriveHeader';
 import { DriveGrid, FolderCards } from './DriveGrid';
 import { DriveUploadSheet } from './DriveUploadSheet';
@@ -55,7 +55,7 @@ function FolderRows(props: { files: readonly ServiceFile[]; onOpen: (folder: str
   if (!folders.length) return null;
   return (
     <>
-      <Kicker>Carpetas</Kicker>
+      <Kicker>{driveFoldersLabel(folders.length)}</Kicker>
       <FolderCards folders={folders} onOpen={props.onOpen} />
     </>
   );
@@ -205,7 +205,7 @@ export function ServiceDrive(props: { target: ServiceAskTarget; service: SpaceCl
       {answer?.ok ? <DriveSearch query={query} onQuery={setQuery} /> : null}
       {answer?.ok ? (
         <View className="flex-row items-center gap-2">
-          {answer.value.files.length ? <DriveKindChips kind={kind} onKind={setKind} /> : <View className="flex-1" />}
+          {answer.value.files.length ? <DriveKindChips kind={kind} onKind={setKind} counts={driveKindCounts(answer.value.files)} /> : <View className="flex-1" />}
           <DriveLayoutToggle layout={layout} onLayout={setLayout} />
         </View>
       ) : null}

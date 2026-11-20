@@ -45,14 +45,14 @@ export function DriveHeader(props: { sending: boolean; onUpload: () => void; onC
 }
 
 /** Todo · Fotos · Videos · Documentos. */
-export function DriveKindChips(props: { kind: DriveKind; onKind: (kind: DriveKind) => void }) {
+export function DriveKindChips(props: { kind: DriveKind; onKind: (kind: DriveKind) => void; counts?: Record<DriveKind, number> }) {
   return (
     <ScrollView className="flex-1" horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 8 }}>
       {DRIVE_KINDS.map((one) => {
         const on = props.kind === one.kind;
         return (
           <Pressable key={one.kind} testID={`drive-tipo-${one.kind}`} accessibilityState={{ selected: on }} onPress={() => props.onKind(one.kind)} className={`h-9 justify-center rounded-full border px-4 ${on ? 'border-primary bg-primary' : 'border-outline/20 bg-surface'}`}>
-            <Text className={`text-[14px] font-semibold ${on ? 'text-on-primary' : 'text-on-surface'}`}>{one.label}</Text>
+            <Text className={`text-[14px] font-semibold ${on ? 'text-on-primary' : 'text-on-surface'}`}>{props.counts ? `${one.label} ${props.counts[one.kind]}` : one.label}</Text>
           </Pressable>
         );
       })}

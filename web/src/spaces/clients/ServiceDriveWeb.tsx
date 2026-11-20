@@ -1,6 +1,6 @@
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, ClipboardPaste, Cloud, CloudUpload, ExternalLink, Search } from 'lucide-react';
-import { DRIVE_PASTE_HINT, driveNoticeDone, DRIVE_DOCUMENT_ACCEPT, DRIVE_VIDEO_SECONDS, OBSERVATION_VIDEO_SECONDS, filesOfKind, photoMarkOf, withPhotoMark, type DriveKind, type DriveLayout, type DriveUploadOption, type PhotoMark, driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService, type ViewableFile } from '@lilachat/shared';
+import { DRIVE_PASTE_HINT, driveNoticeDone, DRIVE_DOCUMENT_ACCEPT, DRIVE_VIDEO_SECONDS, OBSERVATION_VIDEO_SECONDS, filesOfKind, photoMarkOf, withPhotoMark, type DriveKind, type DriveLayout, type DriveUploadOption, type PhotoMark, driveFileLine, driveFolders, driveFoldersLabel, driveKindCounts, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService, type ViewableFile } from '@lilachat/shared';
 import { FileThumb, usePortalFileViewer } from './PortalFileViewer';
 import { cameraEnvironment } from '../../chat/camera/shotStamp';
 import { openWebCamera, shootOrPick, type PickerHandle } from '../../chat/camera/cameraRequests';
@@ -45,7 +45,7 @@ function FolderRows(props: { files: readonly ServiceFile[]; onOpen: (folder: str
   if (!folders.length) return null;
   return (
     <section>
-      <p className={`${KICKER} mb-2`}>Carpetas</p>
+      <p className={`${KICKER} mb-2`}>{driveFoldersLabel(folders.length)}</p>
       <FolderCardsWeb folders={folders} onOpen={props.onOpen} />
     </section>
   );
@@ -240,7 +240,7 @@ export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: Spac
       ) : null}
       {answer?.ok ? (
         <div className="flex items-center gap-2">
-          {answer.value.files.length ? <DriveKindChipsWeb kind={kind} onKind={setKind} /> : null}
+          {answer.value.files.length ? <DriveKindChipsWeb kind={kind} onKind={setKind} counts={driveKindCounts(answer.value.files)} /> : null}
           <DriveLayoutToggleWeb layout={layout} onLayout={(next) => (saveLayout(next), setLayout(next))} />
         </div>
       ) : null}

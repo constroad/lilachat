@@ -134,6 +134,7 @@ filtraba los tipos del boleto y no dejaba pasar PDF; lo corrigió en a636426 (13
 - **13/11** Documentos; un solo «Subir»; lista y cuadrícula; filtro por tipo; cámara a
   un toque; sello visible en «Enviar» y en el visor.
 - **20/11** Pestaña como cc-05: mosaico por defecto con etiqueta de tipo y «hoy 08:30 · 2.1 MB»,
+- **20/11** Chips con su conteo («Todo 18», `driveKindCounts`), «Carpetas · N» (`driveFoldersLabel`), chevron en cada carpeta y «N archivos» en cada día (web y APK).
   carpetas en tarjetas con «N archivos», sin la cabecera «Drive del servicio».
 
 ## 5. Diseños de Stitch relacionados

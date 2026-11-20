@@ -35,6 +35,16 @@ export const DRIVE_UPLOAD_OPTIONS: readonly DriveUploadOption[] = [
 
 export const driveKindOf = (mime: string): Exclude<DriveKind, 'all'> => (mime.startsWith('image/') ? 'photo' : mime.startsWith('video/') ? 'video' : 'document');
 
+/** How many files each chip holds (design cc-05: «Todo 58 · Fotos 45…»). */
+export function driveKindCounts(files: readonly ServiceFile[]): Record<DriveKind, number> {
+  const counts: Record<DriveKind, number> = { all: files.length, photo: 0, video: 0, document: 0 };
+  for (const file of files) counts[driveKindOf(file.mime)] += 1;
+  return counts;
+}
+
+/** «Carpetas · 4» (design cc-05), or just «Carpetas» when there are none. */
+export const driveFoldersLabel = (count: number): string => (count > 0 ? `Carpetas · ${count}` : 'Carpetas');
+
 export const filesOfKind = (files: readonly ServiceFile[], kind: DriveKind): ServiceFile[] => (kind === 'all' ? [...files] : files.filter((file) => driveKindOf(file.mime) === kind));
 
 const dayKeyOf = (file: ServiceFile): string | null => (file.modifiedAt && !Number.isNaN(Date.parse(file.modifiedAt)) ? limaDayKey(new Date(file.modifiedAt)) : null);

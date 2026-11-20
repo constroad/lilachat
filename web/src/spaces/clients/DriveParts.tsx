@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react';
-import { Camera, ClipboardPaste, FileSpreadsheet, FileText, Folder, Image as ImageIcon, LayoutGrid, List, Play, Plus, Video } from 'lucide-react';
+import { Camera, ChevronRight, ClipboardPaste, FileSpreadsheet, FileText, Folder, Image as ImageIcon, LayoutGrid, List, Play, Plus, Video } from 'lucide-react';
 import { DRIVE_KINDS, DRIVE_UPLOAD_OPTIONS, DRIVE_UPLOADING, driveDayGroups, driveFilesLabel, driveKindOf, driveTileLine, driveTypeTag, type DriveKind, type DriveLayout, type DriveUploadOption, type ServiceFile } from '@lilachat/shared';
 import { useDismiss } from '../../ui/useDismiss';
 
@@ -76,11 +76,11 @@ export function DriveLayoutToggleWeb(props: { layout: DriveLayout; onLayout: (la
 }
 
 /** Todo · Fotos · Videos · Documentos. */
-export function DriveKindChipsWeb(props: { kind: DriveKind; onKind: (kind: DriveKind) => void }) {
+export function DriveKindChipsWeb(props: { kind: DriveKind; onKind: (kind: DriveKind) => void; counts?: Record<DriveKind, number> }) {
   return (
     <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto">
       {DRIVE_KINDS.map((one) => (
-        <button key={one.kind} type="button" data-testid={`drive-tipo-${one.kind}`} aria-pressed={props.kind === one.kind} onClick={() => props.onKind(one.kind)} className={`h-8 shrink-0 rounded-full border px-3.5 text-sm font-semibold ${props.kind === one.kind ? 'border-primary bg-primary text-on-primary' : 'border-outline/20 bg-surface'}`}>{one.label}</button>
+        <button key={one.kind} type="button" data-testid={`drive-tipo-${one.kind}`} aria-pressed={props.kind === one.kind} onClick={() => props.onKind(one.kind)} className={`h-8 shrink-0 rounded-full border px-3.5 text-sm font-semibold ${props.kind === one.kind ? 'border-primary bg-primary text-on-primary' : 'border-outline/20 bg-surface'}`}>{one.label}{props.counts ? <span className="ml-1.5 tabular-nums opacity-75">{props.counts[one.kind]}</span> : null}</button>
       ))}
     </div>
   );
@@ -132,7 +132,7 @@ export function DriveGridWeb(props: { files: readonly ServiceFile[]; onOpen: (fi
     <div data-testid="drive-cuadricula" className="flex flex-col gap-4">
       {driveDayGroups(props.files, now).map((group) => (
         <section key={group.key}>
-          <p className={`${KICKER} mb-2`}>{group.label}</p>
+          <p className={`${KICKER} mb-2 flex justify-between`}>{group.label}<span className="normal-case tracking-normal">{driveFilesLabel(group.files.length)}</span></p>
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
             {group.files.map((file) => <Tile key={file.url} file={file} now={now} onOpen={props.onOpen} menu={props.menu} />)}
           </div>
@@ -153,6 +153,7 @@ export function FolderCardsWeb(props: { folders: readonly { name: string; count:
             <span className="block truncate text-sm font-semibold">{one.name}</span>
             <span className="block truncate text-xs text-on-surface-variant">{driveFilesLabel(one.count)}</span>
           </span>
+          <ChevronRight size={16} aria-hidden className="shrink-0 text-on-surface-variant" />
         </button>
       ))}
     </div>

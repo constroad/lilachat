@@ -142,6 +142,8 @@ Diseños: `dl-01` a `dl-13` en `design/stitch/INVENTARIO.md` (prototipo v3).
   `DaliChats.tsx` muestra los chats directos (los del equipo y los `listing: 'chat'`). La Bandeja deja de
   plegar «Chats del equipo»: se promovió a su propia pestaña. Probado con `vitest run` en las 4 cuentas
   (shared/web/app/server) y E2E real en el Chrome de José, espacio «Dali» de Constroad.
+- **20/11** Publicado: push a `main` (`39547a75`, verificado en vivo en `lilachat.constroad.com`) y
+  OTA (`c99dcd51…`, runtime `e058464c`, 726 assets) para que José lo probara el mismo día.
 - **20/11** El aviso de un mensaje lleva a qué pestaña de Dali abrir (`pushService.ts`'s `daliTabOf`,
   `data.daliTab`): `'inbox'` para un prospecto de venta, `'chats'` para un chat directo. En el APK,
   `destinoDeAviso.ts` lo valida y `DaliSpace.tsx` expone `setDaliTab` (mismo patrón que el golpe de «Lo que

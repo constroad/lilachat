@@ -81,7 +81,9 @@ type Queued = { status: ReportStatus; priority: ReportPriority; createdAt: strin
 /** The queue: open before closed, high priority (child abuse) on top, newest first. */
 export function sortReportQueue<T extends Queued>(reports: readonly T[]): T[] {
   const rank = (report: T) => (report.status === 'open' ? 0 : 2) + (report.priority === 'high' ? 0 : 1);
-  return [...reports].sort((a, b) => rank(a) - rank(b) || b.createdAt.localeCompare(a.createdAt));
+  // ISO dates order as plain strings; no Intl.Collator (Hermes builds one per call).
+  const newestFirst = (a: T, b: T) => (a.createdAt === b.createdAt ? 0 : a.createdAt < b.createdAt ? 1 : -1);
+  return [...reports].sort((a, b) => rank(a) - rank(b) || newestFirst(a, b));
 }
 
 /** The push to the superadmin or a space's admins: where and why, never what was written. */

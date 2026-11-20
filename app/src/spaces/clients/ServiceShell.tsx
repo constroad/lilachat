@@ -7,15 +7,10 @@ import { STATUS_TONE } from './tones';
 
 /** How much of the previous tab stays visible when one scrolls into view. */
 const TAB_SCROLL_MARGIN = 24;
-const KICKER = 'text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant';
 
 const StatusChip = ({ service }: { service: SpaceClientService }) => (
   <Text className={`rounded-md border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{CLIENT_SERVICE_STATUS_LABELS[service.status]}</Text>
 );
-
-const Progress = ({ value }: { value?: number }) => (value === undefined ? null : (
-  <View className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-variant"><View className="h-full rounded-full bg-primary" style={{ width: `${value}%` }} /></View>
-));
 
 type HeadProps = { service: SpaceClientService; clientName?: string; onBack: () => void; onShare?: () => void; portalUrl?: string };
 
@@ -36,36 +31,6 @@ function MoreButton(props: { portalUrl?: string }) {
           </Pressable>
         </View>
       ) : null}
-    </View>
-  );
-}
-
-/** A tablet (cc-02 tablet): «‹ Servicios», the kicker, the name with its state, its line and bar; link and «⋯» on the right. */
-function WideHead(props: HeadProps) {
-  const colors = useColores();
-  const line = serviceHeadLine(props.service);
-  return (
-    <View className="flex-row items-start gap-3 px-4 pt-3">
-      <Pressable testID="volver-a-servicios" onPress={props.onBack} className="min-h-[44px] flex-row items-center gap-1 rounded-xl border border-outline/20 px-3">
-        <ChevronLeft size={16} color={colors.primary} />
-        <Text className="text-[14px] font-semibold text-primary">Servicios</Text>
-      </Pressable>
-      <View className="min-w-0 flex-1">
-        {props.clientName ? <Text className={KICKER} numberOfLines={1}>{`Servicio · ${props.clientName}`}</Text> : null}
-        <View className="mt-0.5 flex-row flex-wrap items-center gap-2">
-          <Text testID="servicio-nombre" className="text-[19px] font-extrabold text-on-surface">{props.service.name}</Text>
-          <StatusChip service={props.service} />
-        </View>
-        {line ? <Text testID="servicio-linea" className="mt-1 text-[13px] text-on-surface-variant">{line}</Text> : null}
-        <View className="w-48"><Progress value={props.service.progress} /></View>
-      </View>
-      {props.onShare ? (
-        <Pressable testID="enlace-servicio" onPress={props.onShare} className="min-h-[44px] flex-row items-center gap-1.5 rounded-xl border border-outline/20 bg-surface px-3">
-          <Link2 size={16} color={colors.primary} />
-          <Text className="text-[14px] font-semibold text-on-surface">Enlace del servicio</Text>
-        </Pressable>
-      ) : null}
-      <MoreButton portalUrl={props.portalUrl} />
     </View>
   );
 }
@@ -139,9 +104,9 @@ export function ServiceShell(props: ServiceShellProps) {
   return (
     <View testID="detalle-servicio" className="flex-1 bg-background">
       <View testID="cabecera-servicio" className="z-20 border-b border-outline/15 bg-surface">
-        {/* Phone: one row in every tab (audit 20/11, ped-v2-movil); wide screens keep cc-02 except on the map. */}
-        {props.slim || props.compact ? <SlimHead {...props} /> : <WideHead {...props} />}
-        <TabBar tabs={props.tabs} tab={props.tab} onTab={props.onTab} actions={props.actions} dense={props.slim || props.compact} />
+        {/* One row in every tab, phone and tablet (José 20/11: «sigo viendo duplicado el nombre del cliente»). */}
+        <SlimHead {...props} />
+        <TabBar tabs={props.tabs} tab={props.tab} onTab={props.onTab} actions={props.actions} dense />
       </View>
       {props.children}
     </View>

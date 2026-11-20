@@ -35,15 +35,10 @@ export function SectionActions(props: { children: ReactNode }) {
 
 export const SHELL_ACTION = 'flex h-10 shrink-0 items-center gap-2 rounded-xl border border-outline/20 bg-surface px-3 text-[13px] font-semibold text-on-surface hover:bg-background';
 export const SHELL_PRIMARY = 'flex h-10 shrink-0 items-center gap-2 rounded-xl bg-primary px-4 text-[13px] font-bold text-on-primary hover:bg-primary/90 disabled:opacity-60';
-const KICKER = 'font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-on-surface-variant';
 
 const StatusChip = ({ service }: { service: SpaceClientService }) => (
   <span className={`shrink-0 rounded-md border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${STATUS_TONE[service.status]}`}>{CLIENT_SERVICE_STATUS_LABELS[service.status]}</span>
 );
-
-const Progress = ({ value, className }: { value?: number; className: string }) => (value === undefined ? null : (
-  <span aria-hidden className={`block h-1.5 overflow-hidden rounded-full bg-surface-variant ${className}`}><span className="block h-full rounded-full bg-primary" style={{ width: `${value}%` }} /></span>
-));
 
 /** «⋯» of the head: what the service has outside Lilachat. Without it, no menu. */
 function MoreMenu(props: { portalUrl?: string }) {
@@ -86,35 +81,6 @@ function TabBar(props: TabBarProps) {
 
 type HeadProps = { service: SpaceClientService; clientName?: string; onBack: () => void; onShare?: () => void; portalUrl?: string };
 
-/** Tablet and computer (cc-02 desktop): «‹ Servicios», the kicker, the name with its state, its line and bar; link and «⋯» on the right. */
-function WideHead(props: HeadProps) {
-  const line = serviceHeadLine(props.service);
-  return (
-    <div className="flex items-start gap-3">
-      <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 items-center gap-2">
-          <button type="button" data-testid="volver-a-servicios" onClick={props.onBack} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg pr-2 text-[13px] font-semibold text-primary hover:bg-primary/5"><ChevronLeft size={16} /> Servicios</button>
-          {props.clientName ? <p className={`min-w-0 truncate border-l border-outline/20 pl-2 ${KICKER}`}>{`Servicio · ${props.clientName}`}</p> : null}
-        </div>
-        <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-          <h2 data-testid="servicio-nombre" className="min-w-0 text-[22px] font-extrabold leading-tight tracking-tight text-on-surface">{props.service.name}</h2>
-          <StatusChip service={props.service} />
-        </div>
-        {line || props.service.progress !== undefined ? (
-          <div className="mt-1 flex items-center gap-3 text-[13px] text-on-surface-variant">
-            <span data-testid="servicio-linea" className="whitespace-nowrap">{line}</span>
-            <Progress value={props.service.progress} className="w-40 min-w-16 shrink" />
-          </div>
-        ) : null}
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        {props.onShare ? <button type="button" data-testid="enlace-servicio" onClick={props.onShare} className={SHELL_ACTION}><Link2 size={15} /> Enlace del servicio</button> : null}
-        <MoreMenu portalUrl={props.portalUrl} />
-      </div>
-    </div>
-  );
-}
-
 const LinkButton = (props: { onShare?: () => void; small?: boolean }) => (props.onShare
   ? <button type="button" data-testid="enlace-servicio" aria-label="Enlace del servicio" title="Enlace del servicio" onClick={props.onShare} className={`grid ${props.small ? 'h-10 w-10' : 'h-11 w-11'} shrink-0 place-items-center rounded-xl border border-outline/20 text-on-surface hover:bg-background`}><Link2 size={17} /></button>
   : null);
@@ -152,7 +118,7 @@ function SlimWideHead(props: HeadProps & { tabBar: ReactNode }) {
       <div className="flex min-w-0 shrink items-center gap-2 border-l border-outline/20 pl-3">
         <h2 data-testid="servicio-nombre" title={props.service.name} className="min-w-0 max-w-[320px] truncate text-[15px] font-extrabold text-on-surface">{props.service.name}</h2>
         <StatusChip service={props.service} />
-        {line ? <span data-testid="servicio-linea" className="hidden whitespace-nowrap text-[12px] text-on-surface-variant xl:inline">{line}</span> : null}
+        {line ? <span data-testid="servicio-linea" className="hidden whitespace-nowrap text-[12px] text-on-surface-variant lg:inline">{line}</span> : null}
       </div>
       <div className="min-w-0 flex-1">{props.tabBar}</div>
       <div className="flex shrink-0 items-center gap-2">
@@ -170,13 +136,8 @@ function ShellHead(props: ServiceShellProps & { onSlot: (slot: HTMLElement | nul
   const bar = (dense: boolean) => <TabBar tabs={props.tabs} tab={props.tab} onTab={props.onTab} onSlot={props.onSlot} compact={props.compact} dense={dense} />;
   // Phone: one row in every tab (audit 20/11, ped-v2-movil), not only on the map.
   if (props.compact) return <><SlimCompactHead {...props} />{bar(true)}</>;
-  if (props.flush) return <SlimWideHead {...props} tabBar={bar(true)} />;
-  return (
-    <>
-      <WideHead {...props} />
-      <div className="mt-2">{bar(false)}</div>
-    </>
-  );
+  // José 20/11 («sigo viendo duplicado el nombre del cliente»): the one-row head in every tab, not only the map.
+  return <SlimWideHead {...props} tabBar={bar(true)} />;
 }
 
 /**
@@ -188,7 +149,7 @@ export function ServiceShellWeb(props: ServiceShellProps) {
   const [slot, setSlot] = useState<HTMLElement | null>(null);
   return (
     <div data-testid="detalle-servicio" className="flex min-h-0 flex-1 flex-col">
-      <header data-testid="cabecera-servicio" className={`relative z-20 shrink-0 border-b border-outline/15 bg-surface ${props.compact || props.flush ? '' : 'px-4 pt-4 md:px-6'}`}>
+      <header data-testid="cabecera-servicio" className="relative z-20 shrink-0 border-b border-outline/15 bg-surface">
         <ShellHead {...props} onSlot={setSlot} />
       </header>
       <ActionsSlot.Provider value={slot}>

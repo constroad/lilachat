@@ -21,7 +21,7 @@ describe('an open service takes the whole conversation (José 06/11: «ocupe tod
   const driveReply = { files: [{ name: 'densidades.pdf', mime: 'application/pdf', url: 'https://x/d', folder: 'Informes' }], drive_url: null };
   const askedFor = (url: string) => new Response(JSON.stringify(url.endsWith('/files') ? driveReply : { detail }), { status: 200 });
 
-  it('one head for the four sections: «Servicios» goes back, the name, its state and line (José 19/11, design cc-02)', async () => {
+  it('one head for the four sections: «Servicios» goes back, the name, its state and line (José 19/11; one row, client not repeated: José 20/11)', async () => {
     // Arrange
     vi.stubGlobal('fetch', vi.fn(async (url: string) => askedFor(url)));
     const onBack = vi.fn();
@@ -30,7 +30,7 @@ describe('an open service takes the whole conversation (José 06/11: «ocupe tod
     fireEvent.click(await screen.findByTestId('volver-a-servicios'));
     // Assert
     expect(onBack).toHaveBeenCalledTimes(1);
-    expect(screen.getByTestId('cabecera-servicio')).toHaveTextContent('Servicio · CONSORCIO EL ALMIRANTE');
+    expect(screen.getByTestId('cabecera-servicio')).not.toHaveTextContent('CONSORCIO EL ALMIRANTE');
     expect(screen.getByTestId('servicio-nombre')).toHaveTextContent('Pavimentación Av. Los Álamos');
     expect(screen.getByTestId('servicio-linea')).toHaveTextContent('Avance 62 % · Etapa: Ejecución');
     expect(screen.queryByTestId('ruta-servicio')).toBeNull();
@@ -377,7 +377,23 @@ describe('ServiceDetailWeb', () => {
     expect(head).toHaveTextContent('Pavimentación Av. Los Álamos');
     expect(screen.getByTestId('cabecera-servicio')).not.toHaveTextContent('CONSORCIO EL ALMIRANTE');
     fireEvent.click(screen.getByTestId('pestana-detalle-orders'));
-    expect(screen.queryByTestId('cabecera-servicio-mapa')).toBeNull();
+    expect(screen.getByTestId('cabecera-servicio-mapa')).toBeInTheDocument();
+  });
+
+  it('José 20/11 («sigo viendo duplicado el nombre del cliente»): on a computer Pedidos and Informes get the one-row head too', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', reply({ detail }));
+    render(<ServiceDetailWeb target={target} chatId="chat-1" clientName="CONSORCIO EL ALMIRANTE" service={service} seesMoney onBack={() => undefined} />);
+    // Act
+    const head = await screen.findByTestId('cabecera-servicio-mapa');
+    // Assert
+    expect(within(head).getByTestId('pestana-detalle-orders')).toHaveAttribute('aria-selected', 'true');
+    expect(within(head).getByTestId('servicio-linea')).toHaveTextContent('Avance 62 %');
+    expect(screen.getByTestId('cabecera-servicio')).not.toHaveTextContent('CONSORCIO EL ALMIRANTE');
+    for (const tab of ['reports']) {
+      fireEvent.click(screen.getByTestId(`pestana-detalle-${tab}`));
+      expect(within(screen.getByTestId('cabecera-servicio-mapa')).getByTestId(`pestana-detalle-${tab}`)).toHaveAttribute('aria-selected', 'true');
+    }
   });
 
   it('audit 20/11 (ped-v2-movil): on a phone every tab gets the one-row head «CLIENTE · 62 %», Pedidos included', async () => {

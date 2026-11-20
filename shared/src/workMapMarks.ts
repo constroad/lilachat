@@ -18,6 +18,7 @@ export type WorkMapMark = { id: string; type: string; note?: string; shape: Work
  */
 const MARK_TYPES: Record<string, { label: string; color: string }> = {
   giba: { label: 'Giba', color: '#db7706' }, // hsl(32, 95%, 44%)
+  bache: { label: 'Bache', color: '#aa8b0e' }, // hsl(48, 85%, 36%)
   buzon: { label: 'Buzón', color: '#205fc5' }, // hsl(217, 72%, 45%)
   sumidero: { label: 'Sumidero', color: '#138496' }, // hsl(188, 78%, 33%)
   poste: { label: 'Poste', color: '#6e3dc2' }, // hsl(262, 52%, 50%)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_TEXT_LAYOUT, mapMarkCollection, mapMarksBounds, markColor, markName, workMapMarksOf } from './workMapMarks.js';
+import { MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_TEXT_LAYOUT, mapMarkCollection, mapMarksBounds, markColor, markLabel, markName, workMapMarksOf } from './workMapMarks.js';
 import { workMapOf, workMapView, WORK_MAP_MIN_FRAME_DEG } from './workMap.js';
 
 /** José 19/11 (El Almirante, parches Jr. Conchucos): Portal's map showed 33 drawings; Lilachat said «Todavía no hay calles». */
@@ -87,6 +87,11 @@ describe("the drawings look like Portal's croquis", () => {
     expect(markColor('cono')).toBe('#dc2618');
     expect(markColor('otro')).toBe('#5d636f');
     expect(markColor('ventana')).toBe('#5d636f');
+  });
+
+  it('«Bache» (Portal 19/11, after «Giba») has its own label and color, not «Otro»', () => {
+    expect(markLabel('bache')).toBe('Bache');
+    expect(markColor('bache')).toBe('#aa8b0e');
   });
 
   it('every feature carries its type color for the paint to read', () => {

@@ -40,16 +40,21 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
 - Buscador y segmentado «Abiertos · Completados · Todos» con su número; «Rechazados» solo si hay uno
   (`serviceSegmentsOf`).
 - Una tarjeta por servicio con borde de color por estado, estado, avance, inicio y «Enlace del servicio».
+  Desde 768 px es una fila con columnas: nombre e «Inicio 12 nov · 6 etapas», estado y avance, PEDIDOS,
+  INFORMES y ÚLTIMO MOVIMIENTO («Hoy 09:40 · Observación Parche 12»). En el celular, la tarjeta suma la fila
+  «2 pedidos · 3 informes · Hoy 09:40» y la barra «Último movimiento: … ›» (web `ServiceCardWeb.tsx`, APK
+  `ServiceCard.tsx`; motor `shared/src/serviceFacts.ts` › `serviceCardFacts`).
 - En el celular, arriba, el bloque «Pendientes · N» con las 3 primeras tareas abiertas y «Ver en
   Checklist» (o «Ver pendientes» para quien no tiene Checklist) (`pendingPreview`).
-- No están las cifras «pedidos · informes · último movimiento» por servicio del diseño: Portal no las
-  manda en la lista (`SpaceClientService`). Pedido a Portal/Agentes.
+- Las cifras llegan en `SpaceClientService` (José 19/11): `ordersCount`, `reportsCount`, `stagesTotal` y
+  `lastActivity` (ver `bots-api-y-tarjetas.md`). Un servicio sin datos llega 0/0/0 y muestra 0. Si un Portal
+  viejo no las manda, la columna dice «—» y el celular oculta la fila: nunca se inventa una cifra.
 
 ### Un servicio
 
 - **Cabecera única** en las 4 secciones (cc-02): en tablet y computadora «‹ Servicios», el
-  kicker «SERVICIO · CLIENTE», el nombre con su estado, la línea «Avance N % · Etapa: … · Inicio
-  12 nov» (`serviceHeadLine`) y su barra; a la derecha «Enlace del servicio» y «⋯» (Abrir en el
+  kicker «SERVICIO · CLIENTE», el nombre con su estado, la línea «Avance N % · Etapa: … · 6 etapas · Inicio
+  12 nov» (`serviceHeadLine`; las etapas del mapa, `stagesTotal`) y su barra; a la derecha «Enlace del servicio» y «⋯» (Abrir en el
   Portal). En el celular, flecha atrás, cliente, nombre, enlace y «⋯». Sin migas (se quitó
   `ServiceCrumbs`). BACK de Android vuelve a Servicios.
 - **Una sola barra subrayada** (`serviceTabs`): Pedidos N · Informes N · Mapa · Drive; el número
@@ -135,6 +140,11 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
   (Agentes, `order.created`). Hasta 300 tareas por etapa.
 - Leer es de todos; tocar no. Un no admin solo marca su tarea y sube evidencia
   (`stageScopeFor`, `taskActionsFor`).
+- **Fila de Pendientes (José 19/11, cc-06):** casilla para marcar y botón de cámara para subir evidencia sin abrir
+  el detalle, solo donde `taskActionsFor` deja marcar. La foto va por la misma puerta que el detalle: web
+  `attachEvidenceWeb` (achicada al estándar de Portal; en el celular el selector abre la cámara), APK
+  `attachEvidence` con `source: 'camera'` (la cámara de la app con su sello; el server la achica una vez al
+  quemar el sello). Web `chat/workPlan/WorkListsWeb.tsx` › `PendingRowWeb`, APK `WorkListsPanels.tsx` › `PendingRow`.
 - Recordatorios por tarea (`ChecklistItem.advance`) y el interruptor del espacio
   «Avisar a los responsables de tareas» (`Workspace.taskNotices`, apagado por defecto).
 
@@ -229,6 +239,9 @@ en la cabecera del Drive y las acciones del mapa en su barra, justo bajo la barr
   en tablet y computadora, cabecera única y una barra Pedidos · Informes · Mapa · Drive con las acciones a la
   derecha; pedidos como tarjetas con sus despachos; Servicios con segmentado y, en el celular, el bloque de
   pendientes; Checklist con «Pendientes · Plan» en el celular (`serviceShell.ts`, `serviceOrderCards.ts`).
+- **19/11** · Tarjeta de servicio como cc-01 con pedidos, informes, etapas y último movimiento que manda Portal
+  (`serviceFacts.ts`); Pendientes con casilla y cámara por fila (cc-06); Drive y «Medios» con la hoja inferior de
+  cc-05 en el celular y «Enlace copiado» flotante.
 - **19/11** · Los dibujos del mapa toman los colores del croquis de Portal (antes, todos puntos naranjas): ficha blanca con aro y punto del color de su tipo, etiqueta desde el zoom 16 (`shared/src/workMapMarks.ts` › `markColor`, `MARK_CHIP_PAINT`, `MARK_GLYPH_PAINT`), en web y APK.
 
 ## 5. Diseños de Stitch relacionados
@@ -243,7 +256,7 @@ en la cabecera del Drive y las acciones del mapa en su barra, justo bajo la barr
 | f-06 Drive del servicio | Implementado | ver `obra-drive.md` |
 | f-07 canal que nace con la cotización | **Descartado** por José (29/10) | — |
 | f-08 cuenta del cliente | Implementado | `ClientAccountPanel.tsx`, `ClientAccountWeb.tsx` |
-| cc-01 servicios | Implementado sin las cifras por servicio (Portal no las manda) | `ClientChannelParts.tsx` (web y APK) |
+| cc-01 servicios | Implementado: fila con columnas (tablet/computadora) y tarjeta con cifras (celular) | `ServiceCardWeb.tsx`, `ServiceCard.tsx` |
 | cc-02 pedidos | Implementado | `ServiceShellWeb.tsx`, `ServiceListsWeb.tsx`, `ServiceDetailView.tsx` |
 | cc-03 informes | Implementado sin la franja de cifras de abajo (inventada) | `ServiceListsWeb.tsx` |
 | cc-04 mapa | Implementado; capas en `workMap/MapLayersPanel.tsx` | ver `obra-mapa.md` |

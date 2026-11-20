@@ -42,6 +42,11 @@ describe('serviceHeadLine', () => {
     expect(serviceHeadLine({ status: 'in_progress', stage_label: 'Imprimación', progress: 64, started_at: '2026-10-28' })).toBe('Avance 64 % · Etapa: Imprimación · Inicio 28 oct');
     expect(serviceHeadLine({ status: 'pending', stage_label: '' })).toBe('');
   });
+
+  it('adds the stages when Portal sends them (design cc-02: «Avance 0 % · 6 etapas · Inicio 12 nov»)', () => {
+    expect(serviceHeadLine({ status: 'pending', stage_label: 'Pendiente', progress: 0, started_at: '2026-11-12', stagesTotal: 6 })).toBe('Avance 0 % · 6 etapas · Inicio 12 nov');
+    expect(serviceHeadLine({ status: 'pending', stage_label: '', stagesTotal: 0 })).toBe('');
+  });
 });
 
 describe('serviceSegmentsOf', () => {

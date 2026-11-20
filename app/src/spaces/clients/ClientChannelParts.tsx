@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { AlertCircle, Archive, ChevronRight, ExternalLink, FolderOpen, Link2, Search } from 'lucide-react-native';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, pendingPreview, serviceAccessOf, serviceSegmentsOf, orderFocusOf, dayOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService, type WorkStage } from '@lilachat/shared';
+import { AlertCircle, Archive, ChevronRight, FolderOpen, Link2, Search } from 'lucide-react-native';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, filterServices, pendingPreview, serviceAccessOf, serviceSegmentsOf, orderFocusOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService, type WorkStage } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { ClientAccessRow } from './ClientAccess';
 import { ServiceDetailView } from './ServiceDetailView';
-import { STATUS_TONE } from './tones';
+import { ServiceCard } from './ServiceCard';
 import type { ServiceAskTarget } from './useServiceAsk';
 
 /** The parts of a client's channel (design f-03): the archived banner, the note over the composer and «Servicios». */
@@ -44,46 +44,6 @@ function ServiceFilters(props: { query: string; onQuery: (query: string) => void
           </Pressable>
         ))}
       </View>
-    </View>
-  );
-}
-
-const ACCENT: Record<SpaceClientService['status'], string> = { pending: 'border-l-warning', in_progress: 'border-l-primary', completed: 'border-l-en-linea', rejected: 'border-l-error' };
-
-/** Design cc-01: a card per service with its accent by state; tapping it opens the service, or its Portal link without the space. «Enlace del servicio» stays on it (José 31/10). */
-function ServiceCard(props: { service: SpaceClientService; canOpen: boolean; onOpen: () => void; onShare?: () => void }) {
-  const colors = useColores();
-  const { service } = props;
-  const action = props.canOpen ? props.onOpen : service.url ? () => service.url && void Linking.openURL(service.url) : undefined;
-  return (
-    <View testID={`servicio-${service.id}`} className={`rounded-2xl border border-l-4 border-outline/15 bg-surface p-4 ${ACCENT[service.status]}`}>
-      <Pressable testID={`abrir-servicio-${service.id}`} disabled={!action} onPress={action}>
-        <View className="flex-row items-start gap-3">
-          <Text className="flex-1 text-[15px] font-bold text-on-surface">{service.name}</Text>
-          <Text className={`rounded-md border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{service.stage_label || CLIENT_SERVICE_STATUS_LABELS[service.status]}</Text>
-        </View>
-        {service.progress !== undefined ? (
-          <View className="mt-3 flex-row items-center gap-3">
-            <Text className="text-[12px] text-on-surface-variant">Avance</Text>
-            <View className="h-1.5 flex-1 overflow-hidden rounded-full bg-background"><View className="h-full rounded-full bg-primary" style={{ width: `${service.progress}%` }} /></View>
-            <Text className="text-[13px] font-bold text-on-surface">{`${service.progress} %`}</Text>
-          </View>
-        ) : null}
-        {/* José 31/10: «la lista de servicios no muestra la fecha». */}
-        {service.started_at ? <Text testID={`inicio-servicio-${service.id}`} className="mt-2 text-[12px] text-on-surface-variant">{`Inicio ${dayOf(service.started_at)}`}</Text> : null}
-        {action ? (
-          <View className="mt-3 min-h-[36px] flex-row items-center gap-1.5">
-            <Text className="text-[14px] font-semibold text-primary">{props.canOpen ? 'Pedidos, informes, mapa y Drive' : 'Ver en el Portal'}</Text>
-            {props.canOpen ? <ChevronRight size={16} color={colors.primary} /> : <ExternalLink size={15} color={colors.primary} />}
-          </View>
-        ) : null}
-      </Pressable>
-      {props.onShare ? (
-        <Pressable testID={`enlace-servicio-${service.id}`} onPress={props.onShare} className="mt-2 min-h-[40px] flex-row items-center gap-1.5 self-start rounded-lg border border-outline/20 px-3">
-          <Link2 size={15} color={colors.primary} />
-          <Text className="text-[13px] font-semibold text-primary">Enlace del servicio</Text>
-        </Pressable>
-      ) : null}
     </View>
   );
 }
@@ -161,20 +121,20 @@ export function ClientServices(props: { /** The channel hides its chrome while a
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<ServiceFilter>('all');
   const close = useCallback(() => setOpened(null), []);
-  const [startOrderId, setStartOrderId] = useState<string | undefined>();
+  const [startOrderId, setStartOrderId] = useState<string | undefined>(); // gates-allow: duplicate (React state twin of the web ClientServices; shared has no React, the logic lives in orderFocusOf)
   const { focusSeq, records, onFocused } = props;
   const clientServices = props.client.services;
   // The records say which order the card was: until they arrive, this waits.
   useEffect(() => {
     if (focusSeq === null || focusSeq === undefined || !records) return;
     const focus = orderFocusOf(clientServices, records, focusSeq);
-    if (focus) { setStartOrderId(focus.orderId); setOpened(focus.service); }
+    if (focus) { setStartOrderId(focus.orderId); setOpened(focus.service); } // gates-allow: duplicate (React state twin of the web ClientServices; shared has no React, the logic lives in orderFocusOf)
     onFocused?.();
   }, [focusSeq, records, clientServices, onFocused]);
   const showsDetail = Boolean(opened && props.target);
   const { onServiceOpen } = props;
   useEffect(() => {
-    onServiceOpen?.(showsDetail);
+    onServiceOpen?.(showsDetail); // gates-allow: duplicate (React state twin of the web ClientServices; shared has no React, the logic lives in orderFocusOf)
     return () => onServiceOpen?.(false);
   }, [showsDetail, onServiceOpen]);
   const { services, counts } = filterServices(props.client.services, { query, filter });

@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { CalendarDays, Check, Download, FileText, Plus, RotateCcw, X } from 'lucide-react-native';
 import { advanceSummary, formatClock, taskActionsFor, taskActivity, taskDueState, type ChecklistItem, type TaskEvidence, type WorkStage } from '@lilachat/shared';
-import { agendaPatch, agendaPost } from '../../agenda/agendaApi';
+import { agendaPatch } from '../../agenda/agendaApi';
 import { Sheet } from '../../ui/Sheet';
 import { Avatar } from '../../ui/Avatar';
 import { useColores } from '../../ui/tema';
 import { TaskSheet, type ChecklistMember, type TaskEdit } from '../TaskSheet';
-import { attachEvidence, detachEvidence, type EvidenceSource } from './evidenceUpload';
+import { attachEvidence, detachEvidence, toggleTask, type EvidenceSource } from './evidenceUpload';
 
 export type OpenTask = { stageId: string; itemId: string };
 type Resolved = { stage: WorkStage; item: ChecklistItem };
@@ -57,10 +57,7 @@ export function TaskDetailSheet(props: Props) {
     props.onChanged();
   };
   const upload = (source: EvidenceSource) => resolved && void run('subir', () => attachEvidence({ jwt: props.jwt, chatId: props.chatId, checklistId: resolved.stage._id, itemId: resolved.item.id, taskText: resolved.item.text, source }));
-  const toggle = () => resolved && void run('marcar', async () => {
-    const response = await agendaPost(`/checklists/${resolved.stage._id}/items/${resolved.item.id}/toggle`, props.jwt, {});
-    return response.ok ? null : (response.message ?? 'No se pudo marcar la tarea.');
-  });
+  const toggle = () => resolved && void run('marcar', () => toggleTask({ jwt: props.jwt, checklistId: resolved.stage._id, itemId: resolved.item.id }));
   const save = (edit: TaskEdit) => resolved && void run('guardar', async () => {
     const response = await agendaPatch(`/checklists/${resolved.stage._id}/items/${resolved.item.id}`, props.jwt, edit);
     return response.ok ? null : (response.message ?? 'No se pudo guardar la tarea.');

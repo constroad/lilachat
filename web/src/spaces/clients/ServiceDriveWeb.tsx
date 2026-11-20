@@ -1,12 +1,13 @@
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState, type ReactNode } from 'react';
 import { ChevronLeft, ChevronRight, ClipboardPaste, Cloud, CloudUpload, ExternalLink, Folder, Search } from 'lucide-react';
-import { DRIVE_PASTE_HINT, DRIVE_DOCUMENT_ACCEPT, DRIVE_VIDEO_SECONDS, OBSERVATION_VIDEO_SECONDS, filesOfKind, photoMarkOf, withPhotoMark, type DriveKind, type DriveLayout, type DriveUploadOption, type PhotoMark, driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService, type ViewableFile } from '@lilachat/shared';
+import { DRIVE_PASTE_HINT, driveNoticeDone, DRIVE_DOCUMENT_ACCEPT, DRIVE_VIDEO_SECONDS, OBSERVATION_VIDEO_SECONDS, filesOfKind, photoMarkOf, withPhotoMark, type DriveKind, type DriveLayout, type DriveUploadOption, type PhotoMark, driveFileLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService, type ViewableFile } from '@lilachat/shared';
 import { FileThumb, usePortalFileViewer } from './PortalFileViewer';
 import { cameraEnvironment } from '../../chat/camera/shotStamp';
 import { openWebCamera, shootOrPick, type PickerHandle } from '../../chat/camera/cameraRequests';
 import { useDriveUpload } from './useDriveUpload';
 import { DriveActionsWeb, DriveGridWeb, DriveKindChipsWeb, DriveTopWeb, FolderCardsWeb } from './DriveParts';
 import { DriveFileMenu } from './DriveFileMenu';
+import { FloatingNotice, useFloatingNotice } from '../../ui/FloatingNotice';
 import { SectionActions } from './ServiceShellWeb';
 import { useDrivePaste } from './useDrivePaste';
 import { PhotoPhaseBar } from './PhotoPhaseBar';
@@ -224,7 +225,7 @@ export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: Spac
   const [layout, setLayout] = useState<DriveLayout>(readLayout);
   const uploads = useDriveUploads(upload);
   const drop = useDropZone((file) => void upload.send(file));
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useFloatingNotice();
   const send = useCallback((file: File) => void upload.send(file), [upload]);
   const paste = useDrivePaste(send, setNotice);
   const viewerOpen = (file: ServiceFile) => answer?.ok && viewer.open(viewableOf(file), answer.value.files.map(viewableOf), undefined, undefined, phaseOf);
@@ -232,11 +233,11 @@ export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: Spac
   const driveUrl = answer?.ok ? answer.value.driveUrl : (answer?.portalUrl ?? null);
   return (
     <div data-testid="drive-servicio" className="flex flex-col gap-3" {...drop.handlers}>
-      <SectionActions><DriveActionsWeb options={uploads.options} sending={upload.sending} onPick={uploads.pick} onPaste={() => { setNotice(null); void paste(); }} /></SectionActions>
+      <SectionActions><DriveActionsWeb options={uploads.options} sending={upload.sending} onPick={uploads.pick} onPaste={() => { setNotice(''); void paste(); }} /></SectionActions>
       {uploads.inputs}
       {drop.over ? <DropHint /> : <PasteHint />}
       {upload.message ? <p role="status" className={upload.failed ? 'text-sm text-error' : 'text-sm text-on-surface-variant'}>{upload.message}</p> : null}
-      {notice ? <p role="status" data-testid="drive-aviso" className="text-sm font-semibold text-on-surface">{notice}</p> : null}
+      <FloatingNotice text={notice} done={driveNoticeDone(notice)} testId="drive-aviso" />
       <DriveTopWeb count={answer?.ok ? answer.value.files.length : null} layout={layout} onLayout={(next) => (saveLayout(next), setLayout(next))} />
       {folder ? <Breadcrumb folder={folder} onRoot={() => setFolder(null)} /> : null}
       {answer === null ? <div data-testid="drive-cargando" className="h-32 animate-pulse rounded-xl bg-surface" /> : null}

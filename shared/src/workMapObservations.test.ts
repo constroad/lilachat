@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { workMapObservationsOf } from './workMapObservations.js';
-import { workMapOf, workMapView } from './workMap.js';
+import { workMapOf, workMapView, WORK_MAP_MIN_FRAME_DEG } from './workMap.js';
 
 /** José 19/11: Portal adds `workObservations` to the client detail; the map shows them as pins. */
 describe('workMapObservationsOf', () => {
@@ -55,7 +55,8 @@ describe('a service with observations only', () => {
     const map = workMapOf(detail);
     // Assert
     expect(map).toMatchObject({ streets: [], observations: [{ id: 'o1' }] });
-    expect(workMapView(map!).bounds).toEqual([[-77.03, -12.05], [-77.03, -12.05]]);
+    // A lone point is framed with the minimum span (José 19/11: never at full zoom).
+    expect(workMapView(map!).bounds).toEqual([[-77.03 - WORK_MAP_MIN_FRAME_DEG / 2, -12.05 - WORK_MAP_MIN_FRAME_DEG / 2], [-77.03 + WORK_MAP_MIN_FRAME_DEG / 2, -12.05 + WORK_MAP_MIN_FRAME_DEG / 2]]);
   });
 
   it('streets keep their observations too', () => {

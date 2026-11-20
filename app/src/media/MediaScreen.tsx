@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, ToastAndroid, useWindowDimensions, View } from 'react-native';
 import { Image } from 'expo-image';
 import { FileText, Link as LinkIcon, Play, Search } from 'lucide-react-native';
-import { formatChatTimestamp, formatBytes, MEDIA_LIBRARY_TABS, MEDIA_SEARCH_DELAY_MS, mediaEmptyText, mediaMonthSections, mediaSearchTerm, nombreDeContacto, splitMediaSection, type MediaLibraryItem, type MediaLibraryType } from '@lilachat/shared';
+import { formatChatTimestamp, formatBytes, MEDIA_LIBRARY_TABS, MEDIA_OPEN_IN_CHAT, mediaItemAsFile, MEDIA_SEARCH_DELAY_MS, mediaEmptyText, mediaMonthSections, mediaSearchTerm, nombreDeContacto, splitMediaSection, type MediaLibraryItem, type MediaLibraryType } from '@lilachat/shared';
 import { PantallaEnModal } from '../ui/PantallaEnModal';
 import { useColores } from '../ui/tema';
 import { agendaPorTelefono } from '../contacts/agendaEnMemoria';
 import { mediaLibrary } from '../spaces/spacesApi';
+import { DriveFileSheet } from '../spaces/clients/DriveFileSheet';
+
+/** «Enlace copiado» floats over the screen (José 19/11, design cc-05): the app's toast. */
+const showNotice = (text: string) => ToastAndroid.show(text, ToastAndroid.SHORT);
 
 /** Thumbnails per row, like WhatsApp's media grid. */
 const GRID_COLUMNS = 3;
@@ -38,6 +42,7 @@ export function MediaScreen(props: { visible: boolean; jwt: string; spaceId: str
   const [items, setItems] = useState<MediaLibraryItem[] | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState('');
+  const [menuItem, setMenuItem] = useState<MediaLibraryItem | null>(null);
   const agenda = agendaPorTelefono();
 
   const load = useCallback(async (before?: string) => {
@@ -55,6 +60,8 @@ export function MediaScreen(props: { visible: boolean; jwt: string; spaceId: str
 
   const tile = Math.floor((width - SIDE_PADDING * 2 - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS);
   const chatName = (item: MediaLibraryItem) => item.chat.name ?? (nombreDeContacto({ telefono: item.chat.phone, agenda }) || 'Conversación');
+  // José 19/11: a long press opens the same sheet as a Drive file (design cc-05 mobile).
+  const menuFile = menuItem ? mediaItemAsFile(menuItem, chatName(menuItem)) : null;
 
   return (
     <PantallaEnModal visible={props.visible} titulo={props.spaceName ? `Medios · ${props.spaceName}` : 'Medios'} onCerrar={props.onClose} testIDCerrar="medios-volver">
@@ -83,7 +90,7 @@ export function MediaScreen(props: { visible: boolean; jwt: string; spaceId: str
               {tiles.length ? (
                 <View className="flex-row flex-wrap" style={{ gap: GRID_GAP }}>
                   {tiles.map((item) => (
-                    <Pressable key={`${item.chatId}:${item.seq}`} testID={`medio-${item.seq}`} onPress={() => props.onOpen(item)} accessibilityLabel={`${item.kind === 'image' ? 'Foto' : 'Video'} de ${chatName(item)}`}>
+                    <Pressable key={`${item.chatId}:${item.seq}`} testID={`medio-${item.seq}`} onPress={() => props.onOpen(item)} onLongPress={() => setMenuItem(item)} accessibilityLabel={`${item.kind === 'image' ? 'Foto' : 'Video'} de ${chatName(item)}`}>
                       <Image source={{ uri: item.media?.thumbUrl ?? item.media?.url }} style={{ width: tile, height: tile }} contentFit="cover" recyclingKey={`${item.chatId}:${item.seq}`} />
                       {item.kind === 'video' ? <View className="absolute inset-0 items-center justify-center"><View className="h-9 w-9 items-center justify-center rounded-full bg-black/50"><Play size={18} color="white" /></View></View> : null}
                     </Pressable>
@@ -91,7 +98,7 @@ export function MediaScreen(props: { visible: boolean; jwt: string; spaceId: str
                 </View>
               ) : null}
               {rows.map((item) => (
-                <Pressable key={`${item.chatId}:${item.seq}`} testID={`medio-${item.seq}`} onPress={() => props.onOpen(item)} className="min-h-[60px] flex-row items-center gap-3 border-b border-outline/10">
+                <Pressable key={`${item.chatId}:${item.seq}`} testID={`medio-${item.seq}`} onPress={() => props.onOpen(item)} onLongPress={() => setMenuItem(item)} className="min-h-[60px] flex-row items-center gap-3 border-b border-outline/10">
                   <View className="h-10 w-10 items-center justify-center rounded-xl bg-primary/10">{item.kind === 'file' ? <FileText size={20} color={colors.primary} /> : <LinkIcon size={20} color={colors.primary} />}</View>
                   <View className="min-w-0 flex-1">
                     <Text numberOfLines={1} className="text-[15px] font-semibold text-on-surface">{item.kind === 'file' ? (item.media?.fileName ?? 'Documento') : item.link}</Text>
@@ -108,6 +115,7 @@ export function MediaScreen(props: { visible: boolean; jwt: string; spaceId: str
           </Pressable>
         ) : null}
       </ScrollView>
+      <DriveFileSheet file={menuFile} openLabel={MEDIA_OPEN_IN_CHAT} onClose={() => setMenuItem(null)} onOpen={() => menuItem && props.onOpen(menuItem)} onNotice={showNotice} />
     </PantallaEnModal>
   );
 }

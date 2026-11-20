@@ -1,6 +1,7 @@
 import { CLIENT_LIVE_DAYS, type ArchivedAgeGroup, type ClientServiceStatus } from './clientChannels.js';
 import { memberCountLabel } from './flatLayout.js';
 import type { MyClientAccess } from './clientAccess.js';
+import type { ServiceFacts } from './serviceFacts.js';
 
 /**
  * The client channels of a space as the list shows them (pending 21, §157;
@@ -9,7 +10,7 @@ import type { MyClientAccess } from './clientAccess.js';
  * search, chips and age groups. The server says live or archived; this only
  * joins each client with its chat and filters. PURE.
  */
-export type SpaceClientService = { id: string; name: string; status: ClientServiceStatus; stage_label: string; progress?: number; url?: string; started_at?: string };
+export type SpaceClientService = { id: string; name: string; status: ClientServiceStatus; stage_label: string; progress?: number; url?: string; started_at?: string } & ServiceFacts;
 /** One item of `GET /api/workspaces/:id/clients`. */
 export type SpaceClient = {
   id: string;

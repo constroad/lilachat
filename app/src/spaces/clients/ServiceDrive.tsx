@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { BackHandler, Linking, Pressable, Text, TextInput, View } from 'react-native';
+import { BackHandler, Linking, Pressable, Text, TextInput, ToastAndroid, View } from 'react-native';
 import { ChevronLeft, ChevronRight, Cloud, ExternalLink, Folder, MoreVertical, Search } from 'lucide-react-native';
 import { FileThumb } from './FileThumb';
 import { filesOfKind, photoMarkOf, withPhotoMark, type DriveKind, type DriveLayout, type PhotoMark, driveFileLine, driveUploadingLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService } from '@lilachat/shared';
@@ -16,6 +16,8 @@ import { photoPhaseSender } from './workMap/workProgressSender';
 import { useServiceAsk, type ServiceAskTarget } from './useServiceAsk';
 
 type OpenFile = (file: ServiceFile) => void;
+/** «Enlace copiado» floats over the screen (José 19/11, design cc-05): the app's toast. */
+const showNotice = (text: string) => ToastAndroid.show(text, ToastAndroid.SHORT);
 const viewableOf = (file: ServiceFile): ViewableFile => ({ url: file.url, name: file.name, mime: file.mime, ...(file.thumbUrl ? { thumbUrl: file.thumbUrl } : {}), when: driveFileLine(file) });
 
 const RECENT = 6;
@@ -188,7 +190,6 @@ export function ServiceDrive(props: { target: ServiceAskTarget; service: SpaceCl
   const [layout, setLayoutState] = useState<DriveLayout>(lastLayout);
   const [choosing, setChoosing] = useState(false);
   const [menuFile, setMenuFile] = useState<ServiceFile | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const setLayout = (next: DriveLayout) => {
     lastLayout = next;
     setLayoutState(next);
@@ -209,14 +210,13 @@ export function ServiceDrive(props: { target: ServiceAskTarget; service: SpaceCl
       {folder ? <Breadcrumb folder={folder} onRoot={() => setFolder(null)} /> : null}
       <DriveHeader count={answer?.ok ? answer.value.files.length : null} layout={layout} onLayout={setLayout} sending={upload.sending} onUpload={() => setChoosing(true)} onCamera={upload.takePhoto} onPaste={upload.pasteImage} />
       <UploadStatus upload={upload} />
-      {notice ? <Text testID="drive-copiado" className="text-center text-[13px] text-on-surface">{notice}</Text> : null}
       <DriveUploadSheet visible={choosing} onClose={() => setChoosing(false)} onPick={(option) => UPLOADS[option](upload)} />
       {answer === null ? <View testID="drive-cargando" className="h-40 rounded-2xl bg-surface-variant" /> : null}
       {answer && !answer.ok ? <Text testID="drive-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-[15px] font-semibold text-on-surface">{answer.message}</Text> : null}
       {answer?.ok ? <DriveSearch query={query} onQuery={setQuery} /> : null}
       {answer?.ok && answer.value.files.length ? <DriveKindChips kind={kind} onKind={setKind} /> : null}
       {answer?.ok ? <DriveBody files={answer.value.files} query={query} folder={folder} kind={kind} layout={layout} onFolder={setFolder} onOpen={openFile} onMenu={setMenuFile} /> : null}
-      <DriveFileSheet file={menuFile} onClose={() => setMenuFile(null)} onOpen={openFile} onNotice={setNotice} />
+      <DriveFileSheet file={menuFile} onClose={() => setMenuFile(null)} onOpen={openFile} onNotice={showNotice} />
       {viewer.notice ? <Text className="text-center text-[13px] text-error">{viewer.notice}</Text> : null}
       {viewer.viewer}
       {driveUrl ? (

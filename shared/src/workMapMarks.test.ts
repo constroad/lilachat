@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_TEXT_LAYOUT, mapMarkCollection, mapMarksBounds, markColor, markName, workMapMarksOf } from './workMapMarks.js';
-import { workMapOf, workMapView } from './workMap.js';
+import { workMapOf, workMapView, WORK_MAP_MIN_FRAME_DEG } from './workMap.js';
 
 /** José 19/11 (El Almirante, parches Jr. Conchucos): Portal's map showed 33 drawings; Lilachat said «Todavía no hay calles». */
 describe('workMapMarksOf', () => {
@@ -60,7 +60,8 @@ describe('a service with drawings and no streets', () => {
     const map = workMapOf(detail);
     // Assert
     expect(map).toMatchObject({ streets: [], marks: [{ id: 'a' }] });
-    expect(workMapView(map!).bounds).toEqual([[-77.03, -12.05], [-77.03, -12.05]]);
+    // A lone point is framed with the minimum span (José 19/11: never at full zoom).
+    expect(workMapView(map!).bounds).toEqual([[-77.03 - WORK_MAP_MIN_FRAME_DEG / 2, -12.05 - WORK_MAP_MIN_FRAME_DEG / 2], [-77.03 + WORK_MAP_MIN_FRAME_DEG / 2, -12.05 + WORK_MAP_MIN_FRAME_DEG / 2]]);
   });
 
   it('neither streets nor drawings is still no map', () => {

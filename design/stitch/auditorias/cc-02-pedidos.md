@@ -15,7 +15,7 @@ Fecha: 2026-11-20 00:40 (E2E en web a 1440, 1024 y 390 px; main d9aa2e91)
 | Vuelta | «‹ Servicios» (escritorio/tablet), flecha en recuadro (móvil); sin migas | igual (`volver-a-servicios`) | igual |
 | Kicker | «SERVICIO · CONSORCIO EL ALMIRANTE» | igual; móvil solo el cliente | igual |
 | Nombre y estado | nombre en negrita con chip de estado al lado | igual | igual |
-| Línea | «Avance 0 % · 6 etapas · Inicio 12 nov» + barra | «Avance 0 % · Inicio 12 nov» + barra | diferencia justificada: el número de etapas del mapa no viene en el detalle (`ServiceDetail`); pedido a Portal |
+| Línea | «Avance 0 % · 6 etapas · Inicio 12 nov» + barra | igual: las etapas del mapa llegan en `stagesTotal` del servicio (`serviceHeadLine`) | igual |
 | Acciones de cabecera | «Enlace del servicio» + «⋯» | igual; «⋯» lleva «Abrir en el Portal» | igual |
 | Barra | Pedidos 2 · Informes 3 · Mapa · Drive 58, subrayada | Pedidos 2 · Informes 3 · Mapa · Drive (sin número) | diferencia justificada: as-is obra-drive §6, Portal no manda el conteo del Drive en el detalle |
 | Pedido | tarjeta: código PED-…, producto, cantidad, día, obra, estado | tarjeta: producto, cantidad, día, despachos, obra, estado | diferencia justificada: Portal no tiene número de pedido (comentario de `detailRows`, shared/src/serviceDetail.ts) |

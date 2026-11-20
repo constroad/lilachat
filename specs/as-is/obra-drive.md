@@ -24,10 +24,16 @@ que Portal guarda en el Drive de ese servicio: fotos, videos y documentos.
   «Pegar» lee el portapapeles (solo imágenes); la franja «Pega aquí una imagen o un archivo (Ctrl+V) o
   arrástralo» se ve en computadora (`web/src/spaces/clients/useDrivePaste.ts`). Lo pegado sin nombre se
   llama `pegado-AAAAMMDD-HHMMSS.png` (`shared/src/driveFileActions.ts` › `pastedDriveName`).
-- **Menú «⋮» de cada archivo** (`driveFileActions`, web `DriveFileMenu.tsx`): Abrir, Copiar enlace,
-  Copiar archivo (solo imágenes: el portapapeles del navegador lleva PNG; la web la redibuja a PNG),
-  Descargar y, en una foto con id, «Marcar como antes / después» (abre el visor con su barra). «Mover a
-  carpeta» del diseño no está: Portal no tiene herramienta para mover.
+- **Menú «⋮» de cada archivo** (`driveFileActions`, web `DriveFileMenu.tsx`), en el orden de cc-05 móvil:
+  Abrir vista previa, Copiar enlace, Copiar archivo (solo imágenes: el portapapeles del navegador lleva PNG;
+  la web la redibuja a PNG), Compartir (donde hay hoja de compartir: `navigator.share` en la web, `Share` en
+  el APK), «Marcar como antes / después» con «Vincula esta foto al reporte fotográfico» (solo foto con id;
+  abre el visor con su barra) y Descargar. «Mover a carpeta» del diseño no está: Portal no tiene herramienta.
+- **Celular = hoja inferior** (José 19/11, cc-05 móvil): bajo 768 px (`useCompactShell`) el «⋮» abre una hoja
+  desde abajo con miniatura, nombre, «Hoy 09:40 · carpeta · 1.8 MB» (`driveSheetLine`) y ✕; en la
+  computadora sigue el menú flotante. Es el mismo componente en el Drive del servicio y en «Medios».
+- **«Enlace copiado»** (José 19/11): aviso flotante abajo con check al copiar enlace o archivo
+  (`web/src/ui/FloatingNotice.tsx`, `driveNoticeDone`); en el APK, el toast de Android.
 - «Subir» ofrece «Tomar foto», «Grabar video», «Desde la galería» y «Documento»
   (`DRIVE_UPLOAD_OPTIONS`, `shared/src/driveView.ts`). Sin cámara en vivo: galería y documento.
 - Botón de cámara junto a «Subir»: abre la cámara con FOTO / VIDEO, sello y GPS
@@ -71,9 +77,11 @@ que Portal guarda en el Drive de ese servicio: fotos, videos y documentos.
 - **Pegar del portapapeles** (19/11): botón junto a la cámara; lee la imagen copiada (`expo-clipboard`,
   ya en el APK), la guarda como PNG y sube como foto de galería (`drivePaste.ts`, `useDriveUpload.pasteImage`).
   Sin imagen copiada: «No hay una imagen copiada para pegar.».
-- **Hoja de cada archivo** (19/11, `DriveFileSheet.tsx`): «⋮» en la fila o toque largo en la fila o el
-  mosaico. Abrir, Copiar enlace, Copiar archivo (foto: se baja a la caché y va al portapapeles como imagen),
-  Descargar (abre el navegador) y «Marcar como antes / después».
+- **Hoja de cada archivo** (19/11, `DriveFileSheet.tsx`, diseño cc-05 móvil): «⋮» en la fila o toque largo en
+  la fila o el mosaico. Cabecera con miniatura, nombre, «fecha · carpeta · tamaño» y ✕. Abrir vista previa,
+  Copiar enlace, Copiar archivo (foto: se baja a la caché y va al portapapeles como imagen), Compartir (hoja de
+  Android con el enlace), «Marcar como antes / después» y Descargar (abre el navegador). El aviso de copiado es el
+  toast de Android. La misma hoja sirve a «Medios» (`app/src/media/MediaScreen.tsx`).
 - La vista elegida se recuerda mientras la app está abierta.
 
 ### Server

@@ -19,6 +19,8 @@ Fecha: 2026-11-20 00:40 (E2E en web a 1440, 1024 y 390 px; main d9aa2e91)
 | Etapas | chips Todas · Etapa 1… | igual (`capas-etapa-*`) | igual |
 | Dibujos | «Áreas · 33 (Parches 1 al 33)» con interruptor | por tipo con su número e interruptor | igual |
 | Observaciones / Fotos (tablet) | Pendientes (24) · Levantadas (6) · Fotos | igual, con los números reales | igual |
+| Fotos por tipo de informe | una sola fila «Fotos» | «Fotos» con una sub-fila por tipo de informe (interruptor y cuenta) y «Otras fotos de campo» al final | diferencia justificada: José 19/11 (vía Portal f080f7c6a), mismas sub-capas que el mapa de Portal |
 | Chip «JR CONCHUCOS» y «Filtrar tramo» | sí | no van | diferencia justificada: INVENTARIO § cc, Stitch no tiene esa función en la app |
 | Tarjeta de un dibujo | área, nota, fotos antes/corte, Cerrar | la tarjeta existente (`MapCardView`) | igual |
 | Partidas y colores reales | tres partidas inventadas | las del mapa de Portal | diferencia justificada: INVENTARIO § cc (PROPUESTA) |
+| Encuadre inicial | el tramo de la obra entero a la vista | calles, dibujos y observaciones del servicio juntos, con un tamaño mínimo (`workMapView` › `frameOf`) | igual (José 19/11, E2E OBRA GRAU) |

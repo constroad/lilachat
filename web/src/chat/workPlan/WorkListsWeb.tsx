@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
-import { CalendarDays, Check, CheckCircle2, FileText, Plus, RotateCcw, X } from 'lucide-react';
-import { advanceSummary, checklistMembers, withoutApps, formatClock, pendingTasks, taskActionsFor, taskActivity, taskDueLabel, taskDueState, type ChecklistItem, type TaskEvidence, type WorkStage } from '@lilachat/shared';
+import { CalendarDays, Camera, Check, CheckCircle2, FileText, Plus, RotateCcw, X } from 'lucide-react';
+import { advanceSummary, checklistMembers, withoutApps, formatClock, pendingTasks, taskActionsFor, taskActivity, taskDueLabel, taskDueState, type ChecklistItem, type PendingTask, type TaskEvidence, type WorkStage } from '@lilachat/shared';
 import { api } from '../../api';
 import { useConversacion } from '../contextoDeLaConversacion';
 import { TaskDialog, type TaskEdit } from '../tarjetas/TaskDialog';
-import { attachEvidenceWeb, detachEvidenceWeb } from './evidenceWeb';
+import { attachEvidenceWeb, detachEvidenceWeb, toggleTaskWeb } from './evidenceWeb';
 
 const NO_APPS: ReadonlySet<string> = new Set();
 
@@ -15,9 +15,52 @@ const day = (iso: string) => DAY.format(new Date(iso)).replace(/\./g, '');
 const stamp = (iso: string) => `${day(iso)} · ${formatClock(new Date(iso)).replace(/[  ]/g, ' ')}`;
 const sizeLabel = (bytes: number) => (bytes >= 1_048_576 ? `${(bytes / 1_048_576).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
-/** «Pendientes» of a job's channel on the web (design e2-17): the open tasks of the plan, overdue first. */
-export function PendingWeb(props: { stages: readonly WorkStage[]; onOpen: (task: OpenTask) => void }) {
-  const { nombres } = useConversacion();
+type RowAction = 'mark' | 'photo';
+
+/**
+ * One open task (José 19/11, design cc-06): the box ticks it and the camera adds its evidence
+ * without opening the detail, for whoever may (`taskActionsFor`: a member who is not admin only
+ * their own task). The photo goes through the detail's own door (`attachEvidenceWeb`: shrunk,
+ * sent to the channel and linked to the task).
+ */
+function PendingRowWeb(props: { task: PendingTask; index: number; admin: boolean; now: Date; onOpen: (task: OpenTask) => void; onChanged: () => void }) {
+  const { jwt, yo, chat, nombres } = useConversacion();
+  const [busy, setBusy] = useState<RowAction | null>(null);
+  const [error, setError] = useState('');
+  const picker = useRef<HTMLInputElement>(null);
+  const { task } = props;
+  const { canMark } = taskActionsFor({ admin: props.admin, me: yo, assignee: task.item.assignee });
+  const run = async (action: RowAction, work: () => Promise<string | null>) => {
+    setBusy(action);
+    setError('');
+    const problem = await work();
+    setBusy(null);
+    if (problem) setError(problem);
+    props.onChanged();
+  };
+  const mark = () => void run('mark', () => toggleTaskWeb({ jwt, checklistId: task.stageId, itemId: task.item.id }));
+  const upload = (file: File | undefined) => file && void run('photo', () => attachEvidenceWeb({ jwt, chatId: chat.id, checklistId: task.stageId, itemId: task.item.id, taskText: task.item.text, file }));
+  const id = task.item.id;
+  return (
+    <div className={`rounded-2xl border border-l-4 border-l-primary bg-surface ${task.overdue ? 'border-error/40' : 'border-outline/15'}`}>
+      <div className="flex min-h-[60px] items-center gap-3 px-3 py-2">
+        {canMark ? <button type="button" data-testid={`pendiente-marcar-${id}`} role="checkbox" aria-checked={false} aria-label={`Marcar «${task.item.text}» como hecha`} disabled={busy !== null} onClick={mark} className="grid h-11 w-11 shrink-0 place-items-center disabled:opacity-50"><span className="block h-6 w-6 rounded-md border-2 border-outline/40" /></button> : null}
+        <button type="button" data-testid={`pendiente-${props.index}`} onClick={() => props.onOpen({ stageId: task.stageId, itemId: id })} className={`min-w-0 flex-1 py-1 text-left ${canMark ? '' : 'pl-1'}`}>
+          <span className="block font-semibold">{task.item.text}</span>
+          <span className="block text-[12px] text-on-surface-variant">{`Etapa ${task.stage} · ${task.stageTitle}${task.item.assignee ? ` · ${nombres.get(task.item.assignee) ?? 'Alguien'}` : ''}`}</span>
+        </button>
+        {task.item.dueAt ? <span className={`shrink-0 text-[12px] font-semibold ${task.overdue ? 'text-error' : 'text-on-surface-variant'}`}>{taskDueLabel(task.item.dueAt, props.now)}</span> : null}
+        {canMark ? <button type="button" data-testid={`pendiente-camara-${id}`} aria-label={`Subir evidencia de «${task.item.text}»`} disabled={busy !== null} onClick={() => picker.current?.click()} className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-primary/25 bg-primary/5 text-primary disabled:opacity-50"><Camera size={20} /></button> : null}
+        {canMark ? <input ref={picker} type="file" data-testid={`pendiente-foto-${id}`} className="hidden" accept="image/*" capture="environment" onChange={(event) => { upload(event.target.files?.[0]); event.target.value = ''; }} /> : null}
+      </div>
+      {busy === 'photo' ? <p className="px-4 pb-2 text-[12px] text-on-surface-variant">Subiendo evidencia…</p> : null}
+      {error ? <p role="alert" className="px-4 pb-2 text-[12px] text-error">{error}</p> : null}
+    </div>
+  );
+}
+
+/** «Pendientes» of a job's channel on the web (designs e2-17, cc-06): the open tasks of the plan, overdue first. */
+export function PendingWeb(props: { stages: readonly WorkStage[]; /** Who runs the plan; anyone else ticks only their own task. */ admin: boolean; onOpen: (task: OpenTask) => void; onChanged: () => void }) {
   const now = new Date();
   const pending = pendingTasks(props.stages, now);
   if (!pending.length) {
@@ -33,15 +76,7 @@ export function PendingWeb(props: { stages: readonly WorkStage[]; onOpen: (task:
     <div data-testid="pendientes-de-obra" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-6">
       <div className="mx-auto flex max-w-3xl flex-col gap-2">
         <p className="text-[11px] font-bold uppercase tracking-widest text-primary">{`${pending.length} pendientes`}</p>
-        {pending.map((task, index) => (
-          <button key={`${task.stageId}-${task.item.id}`} type="button" data-testid={`pendiente-${index}`} onClick={() => props.onOpen({ stageId: task.stageId, itemId: task.item.id })} className={`flex min-h-[60px] items-center gap-3 rounded-2xl border bg-surface px-4 py-3 text-left hover:bg-surface-variant/40 ${task.overdue ? 'border-error/40' : 'border-outline/15'}`}>
-            <span className="min-w-0 flex-1">
-              <span className="block font-semibold">{task.item.text}</span>
-              <span className="block text-[12px] text-on-surface-variant">{`Etapa ${task.stage} · ${task.stageTitle}${task.item.assignee ? ` · ${nombres.get(task.item.assignee) ?? 'Alguien'}` : ''}`}</span>
-            </span>
-            {task.item.dueAt ? <span className={`shrink-0 text-[12px] font-semibold ${task.overdue ? 'text-error' : 'text-on-surface-variant'}`}>{taskDueLabel(task.item.dueAt, now)}</span> : null}
-          </button>
-        ))}
+        {pending.map((task, index) => <PendingRowWeb key={`${task.stageId}-${task.item.id}`} task={task} index={index} admin={props.admin} now={now} onOpen={props.onOpen} onChanged={props.onChanged} />)}
       </div>
     </div>
   );
@@ -72,7 +107,7 @@ export function TaskDetailWeb(props: { open: OpenTask; /** Who runs the plan; an
     const response = await api(path, { jwt, ...options });
     return response.ok ? null : (response.message ?? fallback);
   };
-  const toggle = () => void run('marcar', () => call(`/agenda/checklists/${stage._id}/items/${item.id}/toggle`, { body: {} }, 'No se pudo marcar la tarea.'));
+  const toggle = () => void run('marcar', () => toggleTaskWeb({ jwt, checklistId: stage._id, itemId: item.id }));
   const save = (edit: TaskEdit) => void run('guardar', () => call(`/agenda/checklists/${stage._id}/items/${item.id}`, { method: 'PATCH', body: edit }, 'No se pudo guardar la tarea.'));
   const upload = (file: File | undefined) => file && void run('subir', () => attachEvidenceWeb({ jwt, chatId: chat.id, checklistId: stage._id, itemId: item.id, taskText: item.text, file }));
   const remove = (file: TaskEvidence) => window.confirm('¿Quitar este archivo de la tarea? Sigue en el chat.') && void run('quitar', () => detachEvidenceWeb({ jwt, checklistId: stage._id, itemId: item.id, seq: file.seq }));

@@ -37,12 +37,13 @@ export function channelTabsFor(access: MyClientAccess | undefined, hasStages: bo
 export type ChecklistSegment = 'pending' | 'plan';
 export const CHECKLIST_SEGMENT_LABELS: Record<ChecklistSegment, string> = { pending: 'Pendientes', plan: 'Plan' };
 
-/** «Avance 0 % · Etapa: … · Inicio 12 nov»: the service's head line, with what the service has. */
-export function serviceHeadLine(service: Pick<SpaceClientService, 'status' | 'stage_label' | 'progress' | 'started_at'>): string {
+/** «Avance 0 % · Etapa: … · 6 etapas · Inicio 12 nov»: the service's head line, with what the service has. */
+export function serviceHeadLine(service: Pick<SpaceClientService, 'status' | 'stage_label' | 'progress' | 'started_at' | 'stagesTotal'>): string {
   const stage = serviceStageLine(service);
   const parts = [
     service.progress !== undefined ? `Avance ${service.progress} %` : null,
     stage.startsWith('Etapa:') ? stage : null,
+    service.stagesTotal ? `${service.stagesTotal} ${service.stagesTotal === 1 ? 'etapa' : 'etapas'}` : null,
     service.started_at ? `Inicio ${dayOf(service.started_at)}` : null,
   ];
   return parts.filter(Boolean).join(' · ');

@@ -227,9 +227,9 @@ export function Conversation(props: {
       {isClientChannel && client && !serviceFull ? <ArchivedClientBanner client={client} /> : null}
       {openTask && workPlan.stages ? <TaskDetailWeb open={openTask} admin={Boolean(client?.access?.admin)} stages={workPlan.stages} onChanged={() => void workPlan.reload()} onOpenMessage={toMessage} onClose={() => setOpenTask(null)} /> : null}
       {isClientChannel && shownTab === 'pending' ? (
-        <PendingWeb stages={workPlan.stages ?? []} onOpen={setOpenTask} />
+        <PendingWeb stages={workPlan.stages ?? []} admin={Boolean(client?.access?.admin)} onOpen={setOpenTask} onChanged={() => void workPlan.reload()} />
       ) : isClientChannel && shownTab === 'checklist' ? (
-        holdsPending ? <ChecklistSegmentsWeb plan={workPlan} onOpenTask={setOpenTask} /> : <WorkPlanWeb plan={workPlan} onOpenTask={setOpenTask} />
+        holdsPending ? <ChecklistSegmentsWeb plan={workPlan} admin={Boolean(client?.access?.admin)} onOpenTask={setOpenTask} onChanged={() => void workPlan.reload()} /> : <WorkPlanWeb plan={workPlan} onOpenTask={setOpenTask} />
       ) : isClientChannel && client && shownTab === 'account' && props.jwtParaEnlaces && chat.workspaceId ? (
         <ClientAccountWeb target={{ jwt: props.jwtParaEnlaces, spaceId: chat.workspaceId, clientId: client.id }} services={client.services} />
       ) : isClientChannel && client && shownTab === 'services' ? (

@@ -116,7 +116,7 @@ export const documentWithQueue = (document: FieldDocument, queue: readonly Repor
 
 /** A thumbnail tapped: its section, which photo, and where «Tomar otra» goes. */
 export type PhotoToView = { section: FormSection; url: string; path: SectionPath };
-export type SectionPhoto = { id: string; url: string; thumbUrl: string; caption: string; hour: string; pending: boolean };
+export type SectionPhoto = { id: string; url: string; thumbUrl: string; caption: string; hour: string; pending: boolean; /** Portal's `alGrupo`: the photo already went to the client's group (José 19/11); missing when Portal does not say. */ toGroup?: boolean };
 const textOf = (value: unknown): string => (typeof value === 'string' ? value : '');
 
 /** The photos of a section as Portal lists them, and the ones still on the phone. */
@@ -125,7 +125,7 @@ export function sectionPhotos(section: Pick<FormSection, 'values'>): SectionPhot
   if (!Array.isArray(photos)) return [];
   return (photos as Record<string, unknown>[])
     .filter((one) => textOf(one?.url))
-    .map((one) => ({ id: textOf(one.id), url: textOf(one.url), thumbUrl: textOf(one.thumb_url) || textOf(one.url), caption: textOf(one.descripcion), hour: textOf(one.hora), pending: one.pending === true }));
+    .map((one) => ({ id: textOf(one.id), url: textOf(one.url), thumbUrl: textOf(one.thumb_url) || textOf(one.url), caption: textOf(one.descripcion), hour: textOf(one.hora), pending: one.pending === true, ...(typeof one.alGrupo === 'boolean' ? { toGroup: one.alGrupo } : {}) }));
 }
 
 /** What the viewer opens for a tapped photo: a swipe goes through the others of its section. */

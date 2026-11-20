@@ -25,7 +25,7 @@ export type FormSection = PhotoMarks & { kind: 'form'; id: string; title: string
 export type SectionTemplate = PhotoMarks & { id: string; title: string; required: boolean; form: string; tool?: string };
 /** The window of items on screen when Portal pages them (50 units of a control de pista). */
 export type ItemsPage = { current: number; total: number };
-export type RepeatItem = { id: string; title: string; summary: string[]; results: SectionResult[]; sections: FormSection[] };
+export type RepeatItem = { id: string; title: string; summary: string[]; results: SectionResult[]; sections: FormSection[]; /** When Portal sent the unit's album to the client's group (`albumEnviadoAt`, José 19/11); missing until then. */ albumSentAt?: string };
 export type RepeatSection = { kind: 'repeat'; id: string; title: string; required: boolean; enabled: boolean; state: SectionState; summary: string[]; /** Over all the items (Portal's Carros, Volumen, Terminadas). */ results: SectionResult[]; itemTitle: string; addLabel: string; /** False when the items come from elsewhere (the dispatches of an order): no «Agregar». */ canAdd: boolean; page?: ItemsPage; min: number; template: SectionTemplate[]; items: RepeatItem[]; /** What a new item opens with (Portal d85a6e57: the end of the last tramo). */ nextValues?: FormValues };
 export type DocumentSection = FormSection | RepeatSection;
 /** `id` is null until the first section is saved: Portal creates nothing on a read. */
@@ -109,6 +109,13 @@ function templateOf(raw: unknown, forms: Record<string, FormSchema>): SectionTem
 /** «Unidad 1 · » when the plate is not known yet: the separator with nothing beside it goes (audit 12/11). */
 const withoutLooseSeparator = (title: string): string => title.replace(/^\s*·\s*|\s*·\s*$/g, '').trim();
 
+const ISO_MAX = 40;
+/** A date Portal wrote, or nothing: a word that is not one is no date. */
+const isoOf = (value: unknown): string | null => {
+  const at = text(value, ISO_MAX);
+  return at && !Number.isNaN(Date.parse(at)) ? at : null;
+};
+
 /** An item carries only state and values per section; titles and forms come from the template. */
 function itemOf(raw: Raw, template: SectionTemplate[], forms: Record<string, FormSchema>): RepeatItem | null {
   const id = text(raw.id, LIMITS.title);
@@ -120,7 +127,8 @@ function itemOf(raw: Raw, template: SectionTemplate[], forms: Record<string, For
     if (!section) return null;
     sections.push(section);
   }
-  return { id, title: withoutLooseSeparator(text(raw.title, LIMITS.title)) || id, summary: lines(raw.summary), results: resultsOf(raw.results), sections };
+  const albumSentAt = isoOf(raw.albumEnviadoAt);
+  return { id, title: withoutLooseSeparator(text(raw.title, LIMITS.title)) || id, summary: lines(raw.summary), results: resultsOf(raw.results), sections, ...(albumSentAt ? { albumSentAt } : {}) };
 }
 
 /** `{ current, total }` from 1, or nothing: a page off its book is no page. */

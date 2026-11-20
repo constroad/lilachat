@@ -263,6 +263,29 @@ describe('the photo and «Publicar» as forms', () => {
   it('nobody outside the channel takes a photo out', async () => {
     await openOf(outsider, { kind: 'remove_photo', report_id: '6aed0a1b2c3d4e5f60718293', photo_id: '6aed0a1b2c3d4e5f60718294' }).expect(404);
   });
+
+  const album = { kind: 'unit_album', report_id: '6aed0a1b2c3d4e5f60718293', tramo_id: 'd1', fotos: ['https://x/a.jpg', 'https://x/b.jpg'] };
+
+  it('«Terminar unidad» sends the reviewed urls, and Portal’s text comes back (José 19/11)', async () => {
+    // Arrange
+    answers['form.submitted'] = { status: 200, body: { response_type: 'ephemeral', text: 'Se enviaron 2 fotos al grupo.' } };
+    const opened = await openOf(jose, album).expect(200);
+    // Act
+    const sent = await request(app).post(`/api/chats/${chatId}/commands/${opened.body.commandId}/form`).set(auth(jose)).send({ values: {} }).expect(200);
+    // Assert
+    expect(opened.body.response.form).toMatchObject({ id: 'enviar_fotos_de_unidad', schema: { properties: {} } });
+    expect(received.find((event) => event.type === 'form.submitted')?.data).toMatchObject({ form_id: 'enviar_fotos_de_unidad', service_id: 'srv-318', values: { servicioId: 'srv-318', informeId: album.report_id, tramoId: 'd1', fotos: album.fotos } });
+    expect(sent.body.response.text).toBe('Se enviaron 2 fotos al grupo.');
+  });
+
+  it('a member of the channel who is not an admin does not send the album', async () => {
+    await openOf(ana, album).expect(404);
+    expect(await BotCommandRunModel.countDocuments({})).toBe(0);
+  });
+
+  it('an album without urls is refused before the door', async () => {
+    await openOf(jose, { ...album, fotos: [] }).expect(400);
+  });
 });
 
 describe('the progress of the work from the map (design o-07, agentes 07/11)', () => {

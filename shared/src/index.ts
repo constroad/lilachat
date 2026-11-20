@@ -164,6 +164,7 @@ export * from './fieldDocument.js';
 export * from './reportCreation.js';
 export * from './reportSaves.js';
 export * from './reportUnits.js';
+export * from './unitAlbum.js';
 export * from './reportQueue.js';
 export * from './reportScreen.js';
 export * from './appFormOptions.js';

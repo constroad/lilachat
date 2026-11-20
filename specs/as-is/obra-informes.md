@@ -57,6 +57,8 @@ quien ve montos (admin del espacio).
 7. **Ver PDF** de un borrador: vista previa dentro de la app (APK `ReportPreviewScreen`,
    15/11). Publicado: visor PDF de la app.
 8. **Quitar una foto** ya enviada de un borrador (`remove_photo` → `quitar_foto_de_informe`).
+9. **Terminar unidad** (CTL-PIS, solo admins, 19/11): revisión de las fotos y envío al grupo
+   (`unit_album` → `enviar_fotos_de_unidad`). Detalle en spec INFORMES-DESDE-LILACHAT §24.
 
 ### Bandejas del CTL-IMP: basta una (José 19/11)
 
@@ -141,6 +143,10 @@ guarda y lo que lee Portal no cambian.
 La casilla `enviarAlGrupo` de CTL-IMP y CTL-PIS llega solo a un admin del espacio.
 El server la quita del documento de un miembro (`withoutGroupSend`).
 
+En CTL-PIS, desde el 19/11 las fotos de una unidad salen al grupo solo con «Terminar unidad».
+Antes, un admin las revisa (`UnitAlbumDialog.tsx` en la web, `UnitAlbumSheet.tsx` en el APK).
+Portal ya no las manda al subir la foto de unidad vacía. La puerta del server pide `need: 'admin'`.
+
 ### Web/PWA
 
 - Carpeta: `web/src/spaces/clients/reports/` (`CreateReportDialog.tsx`,
@@ -178,20 +184,20 @@ El server la quita del documento de un miembro (`withoutGroupSend`).
   `{ type, report_id? }` → evento `client.report.draft.requested` → `{ document }`.
   Guarda el último documento por persona y servicio 24 h (`ReportDraftModel`).
 - `POST …/reports/forms` abre UNA pieza como `BotCommandRun` (15 min). Kinds:
-  `section`, `publish`, `remove_photo`, `observation_register`, `observation_lift`,
+  `section`, `publish`, `remove_photo`, `unit_album`, `observation_register`, `observation_lift`,
   los de área y los del mapa. Errores: 400 sin `at` en una foto, 409 `draft_not_open`,
   409 `outdated_app`.
 - `GET …/reports/:reportId/pdf` (PDF de Portal).
 - `GET …/reports/:reportId/embed` y `POST …/reports/embed` (crear en el editor). Una
   hoja de bloques pide `need: 'money'` (`needsMoneyToCreate`): un miembro recibe 404.
 - El envío va por `POST /api/chats/:chatId/commands/:commandId/form` (y fotos por `…/files`).
-- Código: `server/src/bots/clientReports.ts`, `observationForms.ts`, `photoStamp.ts`,
+- Código: `server/src/bots/clientReports.ts`, `unitAlbumForm.ts`, `observationForms.ts`, `photoStamp.ts`,
   `formPhotoPlaces.ts`, `stampAsked.ts`.
 
 ### Shared
 
 `fieldDocument.ts`, `reportCreation.ts`, `reportSaves.ts`, `reportQueue.ts`,
-`reportScreen.ts`, `reportUnits.ts`, `reportPdf.ts`, `fieldAutofill.ts`,
+`reportScreen.ts`, `reportUnits.ts`, `unitAlbum.ts`, `reportPdf.ts`, `fieldAutofill.ts`,
 `fieldConditions.ts`, `portalEmbed.ts`, `observations.ts`, `observationWrite.ts`,
 `photoStamp.ts`, `timemarkStamp.ts`, `weatherBlock.ts`, `formSamples.ts`.
 
@@ -200,7 +206,7 @@ El server la quita del documento de un miembro (`withoutGroupSend`).
 - **Portal:** todas las herramientas (`informe_de_campo`, `guardar_seccion_de_informe`,
   `guardar_seccion_de_fresado`, `guardar_seccion_de_recepcion`, `publicar_informe`,
   `agregar_foto_de_informe`, `agregar_foto_adicional`, `agregar_foto_de_parte`,
-  `quitar_foto_de_informe`, `registrar_observacion`, `levantar_observacion`,
+  `quitar_foto_de_informe`, `enviar_fotos_de_unidad`, `registrar_observacion`, `levantar_observacion`,
   `abrir_editor_de_informe`, `crear_informe_en_editor`), las fórmulas, el PDF y el editor 2.0.
 - **Agentes:** enruta los eventos con el `user` firmado. Cada herramienta nueva o
   cambiada la reaprueba José (si no, 502).
@@ -239,6 +245,8 @@ El server la quita del documento de un miembro (`withoutGroupSend`).
 - **19/11** CTL-IMP: basta una bandeja completa; una a medias se valida entera
   (`formSamples.ts`). Indicador «Obteniendo ubicación…» y su error al leer el GPS de una foto.
   Rediseño compacto del formulario (`imp-*`): aprobado por José e implementado en web y APK.
+- **19/11** CTL-PIS: «Terminar unidad» (solo admins). Revisión de las fotos con casillas,
+  miniatura rota fuera sola, envío por `enviar_fotos_de_unidad` (spec §24).
 - **16/11** Hojas de bloques en la web ancha. «Reintentar» del editor. Portal arregló
   el retraso de 60 s de su service worker (ec9a18f0).
 
@@ -281,14 +289,14 @@ El inventario marca j-01…j-06 «pendiente de la mirada de José».
 
 - **Shared:** `formSamples.test.ts`, `reportScreenPlace.test.ts`, `fieldDocument.test.ts`, `reportCreation.test.ts`, `reportSaves.test.ts`,
   `reportQueue.test.ts` (con `reportQueue.fixture.ts`), `reportScreen.test.ts`,
-  `reportUnits.test.ts`, `reportPdf.test.ts`, `reportPhotoCaption.test.ts`,
+  `reportUnits.test.ts`, `unitAlbum.test.ts`, `unitAlbumSend.test.ts`, `reportPdf.test.ts`, `reportPhotoCaption.test.ts`,
   `fieldAutofill.test.ts`, `portalEmbed.test.ts`, `observations.test.ts`,
   `observationWrite.test.ts`, `photoStamp.test.ts`, `timemarkStamp.test.ts`.
-- **Server:** `bots/clientReports.test.ts`, `bots/observationForms.test.ts`,
+- **Server:** `bots/clientReports.test.ts`, `bots/unitAlbumForm.test.ts`, `bots/observationForms.test.ts`,
   `bots/photoStamp.test.ts`, `bots/formPhotoPlaces.test.ts`, `bots/clientFiles.test.ts`,
   `videoStamp.test.ts`, `chatMediaStamp.test.ts`.
 - **Web:** `CreateReportDialog.test.tsx`, `ReportDocumentWeb.test.tsx`,
-  `PublishDialog.test.tsx`, `PortalEmbedWeb.test.tsx`, `ObservationsWeb.test.tsx`, `PlaceStatusWeb.test.tsx`.
+  `PublishDialog.test.tsx`, `UnitAlbumDialog.test.tsx`, `PortalEmbedWeb.test.tsx`, `ObservationsWeb.test.tsx`, `PlaceStatusWeb.test.tsx`.
 - **APK:** `reports/apkReportTypes.test.ts`, `chat/camara/cameraRequests.test.ts`,
   `chat/camara/zoom.test.ts`. Sin tests de render de las pantallas de informe.
 - **Maestro:** no hay flujo de informes en `app/.maestro/` (verificado).

@@ -1,7 +1,8 @@
 import { useCallback, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { readFieldConditions } from '../../../chat/commands/commandsApi';
 import { AlertTriangle, ChevronLeft, ExternalLink, FileText } from 'lucide-react';
-import { formKeyOf, isUnitsRepeat, PREVIEW_ASKING, PREVIEW_LABEL, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService, type ChannelLinks, wantsWorkStreets, type GeoPoint } from '@lilachat/shared';
+import { formKeyOf, isUnitsRepeat, PREVIEW_ASKING, PREVIEW_LABEL, itemsLine, pendingOf, photoViewOf, publishBlockers, publishFooterLine, reportTypeLabel, reportViewOf, sectionBadge, STATUS_BADGE, TAKE_ANOTHER_PHOTO, albumViewOf, unitAlbumOf, type RepeatItem, type PhotoToView, type DocumentSection, type FieldDocument, type ReportDraftResult, type SectionPath, type SpaceClientService, type ChannelLinks, wantsWorkStreets, type GeoPoint } from '@lilachat/shared';
 import { loadPerfil } from '../../../api';
 import { AppFormDialog } from '../../../chat/commands/AppFormDialog';
 import { EphemeralAnswers } from '../../../chat/commands/EphemeralAnswers';
@@ -17,8 +18,10 @@ import { useFieldDocument } from './useFieldDocument';
 import { useReportForms } from './useReportForms';
 import { useWorkStreets } from './useWorkStreets';
 import { PlaceStatusWeb } from './PlaceStatusWeb';
+import { UnitAlbumDialog } from './UnitAlbumDialog';
+import { FloatingNotice, useFloatingNotice } from '../../../ui/FloatingNotice';
 
-type Props = { /** Who the person named before creating it (José 06/11). */ responsible?: string; target: ServiceAskTarget; chatId: string; service: SpaceClientService; type: string; /** The draft a row asked to continue. */ reportId?: string; portalUrl?: string; /** The channel's links: the work map's streets for a form that picks one. */ links?: ChannelLinks; onClose: (changed: boolean) => void };
+type Props = { /** Who the person named before creating it (José 06/11). */ responsible?: string; target: ServiceAskTarget; chatId: string; service: SpaceClientService; type: string; /** The draft a row asked to continue. */ reportId?: string; portalUrl?: string; /** The channel's links: the work map's streets for a form that picks one. */ links?: ChannelLinks; /** A space admin: «Terminar unidad» sends the unit's photos to the client's group (José 19/11). */ admin?: boolean; onClose: (changed: boolean) => void };
 
 /** Kicker, title and state (design j-02 desktop): the type over the service, the pill at the right. */
 function ReportHeader({ kicker, title, report, onBack }: { kicker: string; title: string; report: FieldDocument | null; onBack: () => void }) {
@@ -89,10 +92,10 @@ function ReportFooter({ report, blocker, pdf, onPublish, onDone }: { report: Fie
 }
 
 /** What the page shows under the header: the loading block, the failure, the tramos or the hub. */
-function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems, onRetry, onView }: { onRetry: () => void; onView: (photo: PhotoToView) => void; draft: ReportDraftResult | null; report: FieldDocument | null; items: DocumentSection | undefined; portalUrl?: string; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
+function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems, onRetry, onView, admin, onAlbum }: { admin: boolean; onAlbum: (item: RepeatItem) => void; onRetry: () => void; onView: (photo: PhotoToView) => void; draft: ReportDraftResult | null; report: FieldDocument | null; items: DocumentSection | undefined; portalUrl?: string; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
   if (draft === null) return <div data-testid="informe-cargando" className="h-40 animate-pulse rounded-xl bg-surface" />;
   if (!draft.ok || !report) return <DraftFailure message={draft.ok ? 'No se pudo abrir el informe' : draft.message} portalUrl={portalUrl} onRetry={onRetry} />;
-  if (items?.kind === 'repeat') return isUnitsRepeat(items) ? <ReportUnitsWeb section={items} onOpen={onOpen} onView={onView} /> : <ReportItemsWeb section={items} onOpen={onOpen} onView={onView} />;
+  if (items?.kind === 'repeat') return isUnitsRepeat(items) ? <ReportUnitsWeb section={items} onOpen={onOpen} onView={onView} admin={admin} onAlbum={report.status === 'draft' ? onAlbum : undefined} /> : <ReportItemsWeb section={items} onOpen={onOpen} onView={onView} />;
   return (
     <>
       <ProgressCard report={report} />
@@ -118,6 +121,23 @@ function useReportPage(props: Props) {
   return { document, ...view, forms, publish, publishing, setPublishing, setItemsOf, back };
 }
 
+/** The unit under review, read from the newest document; and Portal's words once its photos went. */
+function useUnitAlbum(items: DocumentSection | undefined) {
+  const [itemId, setItemId] = useState<string | null>(null);
+  const [notice, setNotice] = useFloatingNotice();
+  const item = itemId && items?.kind === 'repeat' ? items.items.find((one) => one.id === itemId) ?? null : null;
+  return {
+    item,
+    notice,
+    open: (unit: RepeatItem) => setItemId(unit.id),
+    close: () => setItemId(null),
+    sent: (message: string) => {
+      setItemId(null);
+      setNotice(message);
+    },
+  };
+}
+
 /**
  * A field report filled from the client's channel (José 05/11, designs
  * j-02…j-04): the sections as cards with their state, the tramos in their
@@ -134,6 +154,11 @@ export function ReportDocumentWeb(props: Props) {
   const files = usePortalFileViewer();
   const streets = useWorkStreets(props.target.jwt, props.links, props.target.clientId, props.service.id, wantsWorkStreets(document.form?.response?.form));
   const conditionsOf = useCallback((point: GeoPoint) => readFieldConditions(props.target.jwt, point), [props.target.jwt]);
+  const album = useUnitAlbum(items);
+  const viewAlbumPhoto = (item: RepeatItem, url: string) => {
+    const view = albumViewOf(unitAlbumOf(item), url);
+    if (view) files.open(view.file, view.siblings);
+  };
   const viewPhoto = ({ section, url, path }: PhotoToView) => {
     const view = photoViewOf(section, url);
     if (view) files.open(view.file, view.siblings, { label: TAKE_ANOTHER_PHOTO, onPress: () => actions.openSection(path) }, photoRemovalOf(report, section, actions.removePhoto));
@@ -143,8 +168,11 @@ export function ReportDocumentWeb(props: Props) {
       <ReportHeader kicker={items ? `${kicker} · ${items.title}` : kicker} title={props.service.name} report={report} onBack={page.back} />
       <QueueCard saves={saves} offline={offline} onFix={(save) => actions.openSection(save.path)} onDiscard={(save) => void actions.discard(save.clientKey)} />
       <EphemeralAnswers answers={forms.answers.answers} onDismiss={forms.answers.dismiss} onOpenForm={forms.answers.showForm} chatId={props.chatId} jwt={props.target.jwt} />
-      <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={page.setItemsOf} onRetry={actions.refresh} onView={viewPhoto} />
-      {files.viewer}
+      <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={page.setItemsOf} onRetry={actions.refresh} onView={viewPhoto} admin={Boolean(props.admin)} onAlbum={album.open} />
+      {album.item ? <UnitAlbumDialog key={album.item.id} item={album.item} onSend={(urls) => actions.sendUnitAlbum(album.item!.id, urls)} onSent={album.sent} onClose={album.close} onView={(url) => viewAlbumPhoto(album.item!, url)} /> : null}
+      {/* Over the review, the viewer goes to the end of the body like the Overlay, or it could sit under it. */}
+      {album.item ? createPortal(files.viewer, window.document.body) : files.viewer}
+      <FloatingNotice text={album.notice} done testId="aviso-album" />
       {report && (!items || (items.kind === 'repeat' && isUnitsRepeat(items))) ? <ReportFooter report={report} blocker={publishFooterLine(report, blockers)} pdf={pdf} onPublish={() => page.setPublishing(true)} onDone={() => props.onClose(true)} /> : null}
       {report && page.publishing ? <PublishDialog report={report} blockers={blockers} onClose={() => page.setPublishing(false)} onPublish={page.publish} onOpen={(path) => { page.setPublishing(false); actions.openSection(path); }} /> : null}
       {document.form ? <AppFormDialog key={formKeyOf(document.form)} answer={document.form} personName={loadPerfil()?.name} workStreets={streets} onConditions={conditionsOf} status={<PlaceStatusWeb reading={document.place} />} onSubmit={actions.submit} onUpload={actions.upload} onClose={actions.closeForm} /> : null}

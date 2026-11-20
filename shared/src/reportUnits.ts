@@ -27,10 +27,10 @@ export type UnitGroups = {
 const FINISHING_PHOTO = 'vacia';
 const TITLE_SEPARATOR = ' · ';
 /**
- * Over the units (José 18/11): the empty truck's photo closes a unit, gives it its placement number
- * and sends its photos to the group together. Several trucks can be photographed in any order before.
+ * Over the units (José 18/11): the empty truck's photo closes a unit and gives it its placement number.
+ * José 19/11: the photos go to the group only with «Terminar unidad», after the person reviews them.
  */
-export const UNITS_CLOSE_HINT = 'La foto de unidad vacía cierra la unidad: le da su número de colocación y manda juntas al grupo las fotos que marcaste.';
+export const UNITS_CLOSE_HINT = 'La foto de unidad vacía cierra la unidad y le da su número de colocación. Las fotos salen al grupo con «Terminar unidad», después de revisarlas.';
 
 /** «Terminó 10:42» as Portal writes it (`\b` does not see a boundary after «ó»). */
 const FINISHED_LINE = /^termin[óo](\s|$)/i;

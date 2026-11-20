@@ -3,7 +3,8 @@ import type { FormValues } from './appForms.js';
 import { WRITE_GIVE_UP_MS, type CommandNotice, type CommandOutcome } from './botCommands.js';
 import type { FieldDocument } from './fieldDocument.js';
 import { retryDelayMs } from './outbox.js';
-import { DRAFT_FAILED, readReportDraft, removePhotoRequest, sectionFormRequest, type RemovePhotoRequest, type ReportDraftBody, type SectionFormRequest } from './reportCreation.js';
+import { DRAFT_FAILED, readReportDraft, removePhotoRequest, sectionFormRequest, unitAlbumRequest, type RemovePhotoRequest, type ReportDraftBody, type SectionFormRequest, type UnitAlbumRequest } from './reportCreation.js';
+import { ALBUM_SEND_FAILED, ALBUM_SENT } from './unitAlbum.js';
 import { blankDocumentOf, isUnreachable, judgeFailure, judgeNotice, judgeReply, landedBefore, newItemOf, nextSave, queueSave, reportKeyOf, reportTypeKeyOf, resolveItem, sentMarkOf, withoutSave, type QueuedPhoto, type ReportRef, type ReportSave, type SaveVerdict, type SentMark } from './reportSaves.js';
 
 /**
@@ -25,7 +26,7 @@ export type ReportVault = {
 };
 export type ReportWire = {
   read(ref: ReportRef, reportId: string | null): Promise<WireResult<ReportDraftBody>>;
-  open(ref: ReportRef, request: SectionFormRequest | RemovePhotoRequest): Promise<WireResult<CommandOutcome>>;
+  open(ref: ReportRef, request: SectionFormRequest | RemovePhotoRequest | UnitAlbumRequest): Promise<WireResult<CommandOutcome>>;
   upload(ref: ReportRef, commandId: string, photo: QueuedPhoto): Promise<FormPhotoUpload>;
   submit(ref: ReportRef, commandId: string, values: FormValues): Promise<FormSubmitReply>;
   /** The late answer of a write, or null past the wait. */
@@ -34,6 +35,8 @@ export type ReportWire = {
 export type QueueState = { saves: ReportSave[]; /** Moves when something reached Portal: the screen asks the document again. */ revision: number; sending: boolean; /** The last pass stopped for lack of signal. */ stalled: boolean };
 /** Never queued: the person waits for Portal's word, and a queue would show the photo gone before it said so. */
 export type PhotoRemoval = { ok: true } | { ok: false; message: string };
+/** «Terminar unidad»: never queued either; the text is Portal's, for the notice (José 19/11). */
+export type AlbumSend = { ok: true; message: string } | { ok: false; message: string };
 export const PHOTO_REMOVAL_FAILED = 'No se pudo quitar la foto. Revisa tu señal y vuelve a intentarlo.';
 export type OpenedReport = { ok: true; document: FieldDocument; offline: boolean } | { ok: false; message: string };
 export type ReportQueue = ReturnType<typeof createReportQueue>;
@@ -160,6 +163,24 @@ async function askRemoval({ wire, pace }: QueueCore, ref: ReportRef, reportId: s
   const { commandId } = opened.data;
   const verdict = judgeReply(await wire.submit(ref, commandId, {}));
   return verdict.kind === 'wait' ? judgeNotice(await wire.notice(commandId)) : verdict;
+}
+
+const albumRefused = (verdict: SaveVerdict): AlbumSend => ({ ok: false, message: verdict.kind === 'refuse' ? verdict.refusal.message : ALBUM_SEND_FAILED });
+const albumSent = (text: string | undefined): AlbumSend => ({ ok: true, message: text?.trim() || ALBUM_SENT });
+
+/** One attempt to send a unit's album: its run, the form sent with nothing to fill, and Portal's words back. */
+async function askAlbum({ wire, pace }: QueueCore, ref: ReportRef, request: UnitAlbumRequest): Promise<AlbumSend> {
+  await pace();
+  const opened = await wire.open(ref, request);
+  if (!opened.ok) return albumRefused(judgeFailure(opened));
+  const { commandId } = opened.data;
+  const reply = await wire.submit(ref, commandId, {});
+  const verdict = judgeReply(reply);
+  if (verdict.kind === 'confirm') return albumSent(reply.ok ? reply.outcome.response?.text : undefined);
+  if (verdict.kind !== 'wait') return albumRefused(verdict);
+  const notice = await wire.notice(commandId);
+  const late = judgeNotice(notice);
+  return late.kind === 'confirm' ? albumSent(notice?.response.text) : albumRefused(late);
 }
 
 const removalOf = (verdict: SaveVerdict): PhotoRemoval => {
@@ -330,6 +351,13 @@ export function createReportQueue({ vault, wire, exclusive = (task) => task(), g
         verdict = await askRemoval(core, ref, reportId, photoId);
       });
       return removalOf(verdict);
+    },
+    async sendUnitAlbum(ref: ReportRef, reportId: string, tramoId: string, urls: readonly string[]): Promise<AlbumSend> {
+      let sent: AlbumSend = { ok: false, message: ALBUM_SEND_FAILED };
+      await exclusive(async () => {
+        sent = await askAlbum(core, ref, unitAlbumRequest(reportId, tramoId, urls));
+      });
+      return sent;
     },
   };
 }

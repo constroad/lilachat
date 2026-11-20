@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Image, Platform, Pressable, ScrollView, Text, View } from 'react-native';
-import { Camera, CheckCircle2, Plus, ChevronDown, ChevronRight, ChevronUp, Clock, Container, Ruler, Thermometer, Truck } from 'lucide-react-native';
-import { placementOf, UNITS_CLOSE_HINT, ADD_EXTRA_PHOTO, ARRIVED_LABEL, arrivalKeyOf, extraPhotosOf, extraPhotosTitle, dataRowLine, dataSectionOf, pageLine, photoSlotsOf, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitStateOf, unitTitleOf, waitingLayoutOf, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
+import { Camera, CheckCircle2, Plus, ChevronDown, ChevronRight, ChevronUp, Clock, Container, Ruler, Send, Thermometer, Truck } from 'lucide-react-native';
+import { placementOf, UNITS_CLOSE_HINT, ADD_EXTRA_PHOTO, ARRIVED_LABEL, arrivalKeyOf, extraPhotosOf, extraPhotosTitle, dataRowLine, dataSectionOf, pageLine, photoSlotsOf, UNIT_GROUP_TITLES, unitBadgeOf, unitCountsLine, unitGroupsOf, unitLineOf, unitAlbumCta, unitStateOf, unitTitleOf, waitingLayoutOf, ALBUM_CTA, type PhotoToView, type RepeatItem, type RepeatSection, type SectionPath, type UnitSlot } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { Pill, ResultsStrip, StateDot } from './ReportSections';
 
@@ -15,6 +15,25 @@ const slotLabel = (title: string): string => title.replace(/^foto de\s+/i, '');
 
 type Open = (path: SectionPath) => void;
 type ViewPhoto = (photo: PhotoToView) => void;
+/** «Terminar unidad» (José 19/11): an admin reviews the unit's photos before they go to the group. Missing: nobody sends from here. */
+type Album = { admin: boolean; onAlbum?: (item: RepeatItem) => void };
+
+/** The unit's button to the client's group, compact under its photos; with the note of when they went, once they did. */
+function AlbumAction({ item, album }: { item: RepeatItem; album: Album }) {
+  const colors = useColores();
+  const cta = unitAlbumCta(item, album.admin);
+  if (!cta || !album.onAlbum) return null;
+  const finishing = cta.label === ALBUM_CTA.finish;
+  return (
+    <View className="mt-3 flex-row flex-wrap items-center justify-end gap-2 border-t border-outline/10 pt-2">
+      {cta.sentNote ? <Text testID={`album-enviado-${item.id}`} className="mr-auto text-[12px] text-on-surface-variant">{cta.sentNote}</Text> : null}
+      <Pressable testID={`terminar-${item.id}`} onPress={() => album.onAlbum?.(item)} className={`min-h-[40px] flex-row items-center gap-1.5 rounded-xl px-3 ${finishing ? 'bg-primary' : 'border border-primary/30 bg-primary/10'}`}>
+        <Send size={16} color={finishing ? colors['on-primary'] : colors.primary} />
+        <Text className={`text-[14px] font-bold ${finishing ? 'text-on-primary' : 'text-primary'}`}>{cta.label}</Text>
+      </Pressable>
+    </View>
+  );
+}
 
 /** One photo of the unit: its thumbnail with a check, or a dashed camera to take it with one tap. */
 function PhotoSlot({ slot, itemId, onOpen, onView }: { slot: UnitSlot; itemId: string; onOpen: () => void; onView: (url: string) => void }) {
@@ -85,7 +104,7 @@ function ExtraStrip({ item, section, onOpen, onView }: { item: RepeatItem; secti
 }
 
 /** A unit on site: number and plate, its pill, the four photo slots and the line of its data. */
-function ArrivedCard({ item, section, onOpen, onView }: { item: RepeatItem; section: RepeatSection; onOpen: Open; onView: ViewPhoto }) {
+function ArrivedCard({ item, section, onOpen, onView, album }: { item: RepeatItem; section: RepeatSection; onOpen: Open; onView: ViewPhoto; album: Album }) {
   const colors = useColores();
   const { kicker, plate } = unitTitleOf(item);
   const data = dataSectionOf(item);
@@ -114,6 +133,7 @@ function ArrivedCard({ item, section, onOpen, onView }: { item: RepeatItem; sect
         </Pressable>
       ) : null}
       <ExtraStrip item={item} section={section} onOpen={onOpen} onView={onView} />
+      <AlbumAction item={item} album={album} />
     </View>
   );
 }
@@ -145,7 +165,7 @@ function Group({ title, count, children }: { title: string; count: number; child
 }
 
 /** The finished ones fold away: they no longer need the person, and twelve of them would bury the rest. */
-function FinishedGroup({ items, section, onOpen, onView }: { items: RepeatItem[]; section: RepeatSection; onOpen: Open; onView: ViewPhoto }) {
+function FinishedGroup({ items, section, onOpen, onView, album }: { items: RepeatItem[]; section: RepeatSection; onOpen: Open; onView: ViewPhoto; album: Album }) {
   const colors = useColores();
   const [open, setOpen] = useState(false);
   const Chevron = open ? ChevronUp : ChevronDown;
@@ -156,7 +176,7 @@ function FinishedGroup({ items, section, onOpen, onView }: { items: RepeatItem[]
         <Text className="text-[12px] font-bold text-primary">{items.length}</Text>
         <Chevron size={18} color={colors.primary} />
       </Pressable>
-      {open ? items.map((item) => <ArrivedCard key={item.id} item={item} section={section} onOpen={onOpen} onView={onView} />) : null}
+      {open ? items.map((item) => <ArrivedCard key={item.id} item={item} section={section} onOpen={onOpen} onView={onView} album={album} />) : null}
     </View>
   );
 }
@@ -168,7 +188,8 @@ function FinishedGroup({ items, section, onOpen, onView }: { items: RepeatItem[]
  * order; the ones still at the plant as a line; the finished ones folded.
  * Nobody adds a unit; Portal lists the order's dispatches.
  */
-export function ReportUnitsView({ section, onOpen, onView }: { section: RepeatSection; onOpen: Open; onView: ViewPhoto }) {
+export function ReportUnitsView({ section, onOpen, onView, admin = false, onAlbum }: { section: RepeatSection; onOpen: Open; onView: ViewPhoto } & Partial<Album>) {
+  const album: Album = { admin, ...(onAlbum ? { onAlbum } : {}) };
   const groups = unitGroupsOf(section);
   const head = [unitCountsLine(groups), pageLine(section)].filter(Boolean).join(' · ');
   const strip = waitingLayoutOf(groups) === 'strip';
@@ -187,7 +208,7 @@ export function ReportUnitsView({ section, onOpen, onView }: { section: RepeatSe
           </ScrollView>
         </Group>
       ) : null}
-      {groups.onSite.length ? <Group title={UNIT_GROUP_TITLES.onSite} count={groups.onSite.length}>{groups.onSite.map((item) => <ArrivedCard key={item.id} item={item} section={section} onOpen={onOpen} onView={onView} />)}</Group> : null}
+      {groups.onSite.length ? <Group title={UNIT_GROUP_TITLES.onSite} count={groups.onSite.length}>{groups.onSite.map((item) => <ArrivedCard key={item.id} item={item} section={section} onOpen={onOpen} onView={onView} album={album} />)}</Group> : null}
       {groups.waiting.length && !strip ? (
         <Group title={UNIT_GROUP_TITLES.waiting} count={groups.waiting.length}>
           <View className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">{groups.waiting.map((item, index) => <WaitingRow key={item.id} item={item} section={section} last={index === groups.waiting.length - 1} onOpen={onOpen} />)}</View>
@@ -199,7 +220,7 @@ export function ReportUnitsView({ section, onOpen, onView }: { section: RepeatSe
           {plantOnly.length ? <Text testID="unidades-en-planta" className="text-[14px] text-on-surface-variant" style={{ fontFamily: PLATE_FONT }}>{plantOnly.map((item) => unitTitleOf(item).plate).join(' · ')}</Text> : null}
         </Group>
       ) : null}
-      {groups.finished.length ? <FinishedGroup items={groups.finished} section={section} onOpen={onOpen} onView={onView} /> : null}
+      {groups.finished.length ? <FinishedGroup items={groups.finished} section={section} onOpen={onOpen} onView={onView} album={album} /> : null}
       <ResultsStrip results={section.results} testID="resultados-unidades" />
     </View>
   );

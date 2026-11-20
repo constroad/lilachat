@@ -2164,3 +2164,62 @@ Eso lo mira José.
 - **E2E 19/11, 07:40, web a 390 px, espacio Test, «QA-CTLPIS — borrar»:** en Tramo 1 · Bandejas
   aparece el botón; llena las 9 casillas vacías (1560/1720/0,178…); «Guardar» deja la sección
   «Lista» con «Tasa de bandejas 1,05 lt/m² · Dentro de rango».
+
+## 24. Control de pista: «Terminar unidad» manda las fotos al grupo, después de revisarlas (José 19/11)
+
+Las fotos de una unidad salen al grupo del cliente **solo** con el botón «Terminar unidad». Antes
+de enviarlas, la persona las ve todas y quita las que no deben salir. Portal deja de mandarlas
+solo al subir la foto de unidad vacía. Esa foto sigue cerrando la unidad y dándole su número
+de colocación (§22).
+
+- **Quién lo ve:** solo un admin del espacio, y solo si la unidad tiene al menos una foto que
+  Portal ya tiene. Una foto que sigue en el teléfono no cuenta. En un informe publicado no sale.
+- **El botón** va al pie de la tarjeta de la unidad, compacto (40 px de alto). Dice:
+  - «Terminar unidad» en una unidad abierta;
+  - «Enviar fotos al grupo» en una cerrada que no se envió;
+  - «Reenviar fotos» si Portal manda `albumEnviadoAt`, con la línea «Enviadas al grupo el 19/11 a
+    las 10:42» (hora de Lima).
+- **La revisión** (web: `Overlay`, en el celular es una hoja inferior; APK: `Sheet`). Título
+  «Revisa las fotos de la Unidad N». Muestra la cuadrícula de fotos en el orden de captura:
+  ingreso, temperatura, escantillón, vacía y luego las adicionales. Todas empiezan marcadas.
+  - Tocar una foto la marca o la desmarca. La lupa abre la foto en grande en el visor de
+    siempre. En el APK también la abre mantenerla apretada.
+  - Una miniatura que no carga se ve rota («No se pudo abrir») y queda fuera sola. No se puede
+    volver a marcar.
+  - Debajo dice «Se enviarán N fotos». Si la unidad está abierta, agrega «La unidad se dará por
+    terminada.». El botón «Enviar N fotos al grupo» se apaga en 0. «Cancelar» cierra sin enviar.
+  - Al enviar se muestra el texto de Portal en el aviso (web: aviso flotante; APK: toast) y se
+    vuelve a pedir el documento. Si Portal lo rechaza, o no hay señal, el error queda en la
+    revisión para intentar otra vez.
+- **Contrato con Portal** (lo construye Portal en paralelo):
+  - Herramienta `enviar_fotos_de_unidad` con `{ informeId, tramoId, fotos: string[] }`. `fotos`
+    son las `url` de la unidad tal como las da el documento. Es solo para admins. Responde un texto
+    en español: cuántas fotos salieron y, si hubo, cuáles se descartaron por rotas. O responde
+    un texto de error.
+  - En el documento, la unidad puede traer `albumEnviadoAt` (ISO) y cada foto `alGrupo`
+    (booleano). Los dos son opcionales. Lilachat los lee como `RepeatItem.albumSentAt` y
+    `SectionPhoto.toGroup`. Sin ellos todo funciona igual.
+- **Lilachat:**
+  - `POST …/reports/forms` acepta `{ kind: 'unit_album', report_id, tramo_id, fotos }`
+    (`server/src/bots/unitAlbumForm.ts`).
+  - Se rechaza con 400 si falta el informe o la unidad, si `fotos` está vacía, si trae más de
+    40, o si alguna no es una dirección http(s).
+  - Las url repetidas se quedan una vez.
+  - La puerta pide `need: 'admin'`: un miembro recibe 404.
+  - Abre la corrida con el formulario vacío. El teléfono lo envía con `{}`, igual que «Quitar foto».
+  - Es una sola llamada a Portal, sin esperas propias.
+- **Código compartido:**
+  - `shared/src/unitAlbum.ts`: `unitAlbumOf`, `unitAlbumCta`, la selección, los textos y
+    `albumViewOf`.
+  - `reportCreation.ts`: `unitAlbumRequest`.
+  - `reportQueue.ts`: `sendUnitAlbum`, que no se encola y devuelve el texto de Portal.
+  - `reportScreen.ts`: `sendUnitAlbum`, que recarga el documento si salió bien.
+- `UNITS_CLOSE_HINT` ahora dice que las fotos salen con «Terminar unidad», después de revisarlas.
+- **Pendiente fuera de Lilachat:**
+  - José tiene que aprobar en agentes la herramienta nueva. Sin eso, la herramienta responde 502.
+  - Hay que confirmar que agentes deja pasar `albumEnviadoAt` y `alGrupo` en el documento,
+    como hizo con `example` (§23).
+- **Verificado (19/11):**
+  - Tests de shared, server y web, y `tsc` del APK.
+  - Sin E2E: la Mac compartida no permitía levantar servidores ni emulador, y Portal no había
+    publicado la herramienta.

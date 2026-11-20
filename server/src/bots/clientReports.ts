@@ -7,6 +7,7 @@ import { BotAppModel, BotCommandRunModel, BotInstallationModel } from './botMode
 import { ClientChannelModel } from './botClients.js';
 import { workProgressInputOf, workProgressPrepared, type WorkProgressInput } from './workProgressForm.js';
 import { photoPhaseInputOf, photoPhasePrepared, type PhotoPhaseContext, type PhotoPhaseInput } from './photoPhaseForm.js';
+import { unitAlbumInputOf, unitAlbumPrepared, type UnitAlbumContext, type UnitAlbumInput } from './unitAlbumForm.js';
 import { workStreetDeleteInputOf, workStreetDeletePrepared, workStreetInputOf, workStreetPrepared, type StreetContext, type WorkStreetDeleteInput, type WorkStreetInput } from './workStreetForm.js';
 import { workManualProgressInputOf, workManualProgressPrepared, type WorkManualProgressInput } from './workManualProgressForm.js';
 import { isObservationFormKind, observationFormInputOf, observationFormPrepared, type ObservationFormInput } from './observationForms.js';
@@ -118,6 +119,7 @@ type OpenInput =
   | { kind: 'section'; type: string; path: SectionPath; reportId: string | null; tramoId: string | null; place: Place | null; /** The save's own key: Portal tells a photo sent twice from a second one. */ clientKey: string | null; /** The photo carries Lilachat's stamp: Portal neither stamps nor re-encodes it (José 12/11). */ sealed: boolean }
   | { kind: 'publish'; reportId: string }
   | { kind: 'remove_photo'; reportId: string; photoId: string }
+  | UnitAlbumInput
   | { kind: 'drive_upload' }
   | { kind: 'service_link' }
   | WorkProgressInput
@@ -159,6 +161,7 @@ function openInputOf(input: unknown): OpenInput | null {
   if (raw.kind === 'work_street') return workStreetInputOf(raw);
   if (raw.kind === 'work_street_delete') return workStreetDeleteInputOf(raw);
   if (raw.kind === 'photo_phase') return photoPhaseInputOf(raw);
+  if (raw.kind === 'unit_album') return unitAlbumInputOf(raw);
   if (isWorkMapFormKind(raw.kind)) return workMapFormInputOf(raw);
   if (isObservationFormKind(raw.kind)) return observationFormInputOf(raw);
   if (isAreaFormKind(raw.kind)) return areaFormInputOf(raw);
@@ -173,7 +176,7 @@ function openInputOf(input: unknown): OpenInput | null {
   return { kind: 'section', type: raw.type, path, reportId: reportId || null, tramoId: tramoId || null, place, clientKey: clientKey || null, sealed: raw.sello_lilachat === true };
 }
 
-type Prepared = { form: AppForm; context: Record<string, string | number | boolean | string[]> | StreetContext | WorkMapFormContext | PhotoPhaseContext };
+type Prepared = { form: AppForm; context: Record<string, string | number | boolean | string[]> | StreetContext | WorkMapFormContext | PhotoPhaseContext | UnitAlbumContext };
 
 type PhotoTerms = { reportId: string | null; tramoId: string | null; /** Portal's `seccion` is the form the person filled, not the template entry (`datos` → `unidad` in CTL-PIS; equal in CTL-IMP). */ sectionForm: string; /** The section's `tipoFoto` (CTL-PIS) and whether it refuses a capture without a fix. */ photoKind?: string; requireLocation: boolean };
 
@@ -218,6 +221,7 @@ function prepared(workspaceId: string, clientId: string, serviceId: string, user
   if (input.kind === 'work_street') return workStreetPrepared(serviceId, input);
   if (input.kind === 'work_street_delete') return workStreetDeletePrepared(serviceId, input);
   if (input.kind === 'photo_phase') return photoPhasePrepared(serviceId, input);
+  if (input.kind === 'unit_album') return unitAlbumPrepared(serviceId, input);
   if (isWorkMapFormInput(input)) return workMapFormPrepared(serviceId, input);
   if (input.kind === 'observation_register' || input.kind === 'observation_lift') return observationFormPrepared(serviceId, input);
   if (isAreaInput(input)) return areaFormPrepared(serviceId, input);
@@ -235,7 +239,8 @@ function prepared(workspaceId: string, clientId: string, serviceId: string, user
 export async function openReportForm(workspaceId: string, clientId: string, serviceId: string, userId: Types.ObjectId, input: unknown): Promise<CommandOutcome | CommandError> {
   const open = openInputOf(input);
   if (!open) return fail(400, 'invalid_request', 'Falta qué parte del informe abrir.');
-  const asked = await findAskedService(workspaceId, clientId, serviceId, userId, 'services');
+  // José 12/11: WhatsApp to the client's group only for admins; a member gets the 404 of any door it may not open.
+  const asked = await findAskedService(workspaceId, clientId, serviceId, userId, open.kind === 'unit_album' ? 'admin' : 'services');
   if (!asked) return notFound();
   const ready = await prepared(workspaceId, clientId, serviceId, userId, open);
   if ('error' in ready) return ready;

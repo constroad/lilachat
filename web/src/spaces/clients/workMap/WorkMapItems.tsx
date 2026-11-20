@@ -14,7 +14,7 @@ function MarkList(props: { map: WorkMap; onPick: (pick: MapPick) => void }) {
       <p className={`${KICKER} px-1 pb-2`}>Dibujos</p>
       <div className="space-y-3">
         {groups.map((group) => (
-          <div key={group.type} className="rounded-xl border-[1.5px] border-outline/15 bg-surface p-2">
+          <div key={group.type} className="rounded-[10px] border-[1.5px] border-outline/15 bg-surface p-2">
             <p className="flex items-center justify-between px-2 pb-1 pt-1 text-[13px] font-bold text-on-surface">{group.label}<span className="font-mono text-[12px] text-on-surface-variant">{group.count}</span></p>
             <ul>
               {group.items.map((item) => (
@@ -42,7 +42,7 @@ function ObservationList(props: { map: WorkMap; onPick: (pick: MapPick) => void 
   return (
     <section data-testid="mapa-observaciones" className="pt-4">
       <p className={`${KICKER} px-1 pb-2`}>Observaciones</p>
-      <ul className="space-y-1 rounded-xl border-[1.5px] border-outline/15 bg-surface p-2">
+      <ul className="space-y-1 rounded-[10px] border-[1.5px] border-outline/15 bg-surface p-2">
         {rows.map((row) => (
           <li key={row.id}>
             <button type="button" data-testid={`mapa-observacion-${row.id}`} onClick={() => props.onPick({ kind: 'observation', id: row.id })} className={ROW}>

@@ -58,7 +58,7 @@ function StreetCard(props: { street: WorkMapStreetRow; deleteStreet?: StreetDele
   const { street } = props;
   const colors = useColores();
   return (
-    <View testID={`mapa-calle-${street.id}`} className="rounded-xl border-[1.5px] border-outline/15 bg-surface p-4">
+    <View testID={`mapa-calle-${street.id}`} className="rounded-[10px] border-[1.5px] border-outline/15 bg-surface p-4">
       <View className="flex-row items-start justify-between gap-2">
         <Text numberOfLines={1} className="min-w-0 flex-1 text-[15px] font-bold text-on-surface">{street.name}</Text>
         <Text className="rounded-md border border-outline/20 px-1.5 py-0.5 font-mono text-[12px] font-semibold text-on-surface">{metersLabel(street.lengthM)}</Text>

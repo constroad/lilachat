@@ -28,7 +28,7 @@ function Figure(props: { view: WorkMapView }) {
 /** Only drawings or observations: the head says so and leaves the panel to the lists (José 19/11). */
 function BareHead(props: { badge?: ReactNode }) {
   return (
-    <div className="shrink-0 border-b border-outline/15 bg-surface p-4 md:p-5">
+    <div className="shrink-0 border-t border-outline/15 bg-surface p-4 md:p-5">
       <div className="flex items-center justify-between gap-2">
         <p className={KICKER}>Avance de la obra</p>
         {props.badge}
@@ -43,7 +43,7 @@ function PanelHead(props: { view: WorkMapView; groups: StageGroup[]; badge?: Rea
   const lengthM = groups.reduce((sum, group) => sum + group.lengthM, 0);
   const named = groups.filter((group) => group.name);
   return (
-    <div className="shrink-0 border-b border-outline/15 bg-surface p-4 md:p-5">
+    <div className="shrink-0 border-t border-outline/15 bg-surface p-4 md:p-5">
       <div className="flex items-center justify-between gap-2">
         <p className={KICKER}>Avance de la obra</p>
         {props.badge}
@@ -68,7 +68,7 @@ function PanelHead(props: { view: WorkMapView; groups: StageGroup[]; badge?: Rea
 function StreetCard(props: { street: WorkMapStreetRow; deleteStreet?: StreetDeleteSend; onOpen?: () => void }) {
   const { street } = props;
   return (
-    <li data-testid={`mapa-calle-${street.id}`} className="rounded-xl border-[1.5px] border-outline/15 bg-surface p-4">
+    <li data-testid={`mapa-calle-${street.id}`} className="rounded-[10px] border-[1.5px] border-outline/15 bg-surface p-4">
       <div className="flex items-start justify-between gap-2">
         <p className="min-w-0 truncate text-[14px] font-bold text-on-surface">{street.name}</p>
         <span className="shrink-0 rounded-md border border-outline/20 px-1.5 py-0.5 font-mono text-[12px] font-semibold tabular-nums text-on-surface">{metersLabel(street.lengthM)}</span>
@@ -124,7 +124,8 @@ export function WorkMapPanel(props: { view: WorkMapView; groups: StageGroup[]; f
   );
   return (
     <>
-      {props.layers ? <div className={scroll}>{props.layers}{head}{body}</div> : <>{head}{body}</>}
+      {/* «Avance de la obra» closes the panel, under the lists (design mapa-v2-escritorio, José 20/11). */}
+      {props.layers ? <div className={scroll}>{props.layers}{body}{head}</div> : <>{body}{head}</>}
       <p data-testid="mapa-corte-pie" className="shrink-0 border-t border-outline/15 bg-surface px-4 py-2.5 text-right font-mono text-[12px] text-on-surface-variant md:px-5">Corte: {workMapCutChip(props.filter)}</p>
     </>
   );

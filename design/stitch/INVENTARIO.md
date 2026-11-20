@@ -507,16 +507,19 @@ CTL-IMP con controles compactos (campos de 44 px, dos por fila, botón principal
 compactas («Basta una completa», una a medias marcada) e indicador «Obteniendo ubicación…». Proyecto 15540754270713720465,
 paleta Vivid Pulse (tokens de `shared/src/tokens.ts`; oscuro con los de `dark`). Prompts: `.stitch-work/screens_imp.py`,
 generador `.stitch-work/gen_imp.py` (en el worktree de la sesión), capturas y HTML en el checkout principal
-`.stitch-work/out_imp/<dispositivo>/`. Ids en `registro.jsonl` (slugs `imp-0*`). **No se implementa todavía: espera
-aprobación de José.** Lo que Stitch inventó y no va: en tablet la columna lateral («Formulario Técnico», «Canal de
+`.stitch-work/out_imp/<dispositivo>/`. Ids en `registro.jsonl` (slugs `imp-0*`). **Aprobado por José 19/11; implementado
+en** web y APK: `shared/src/compactReportForms.ts` (CTL-IMP compacto, carril en chips, orden), `shared/src/sampleRows.ts`
+(estado de cada bandeja), `web/src/chat/commands/CompactFields.tsx` + `AppFormDialog.tsx`,
+`app/src/chat/commands/CompactFields.tsx` + `AppFormSheet.tsx`, y la tarjeta de ubicación en `PlaceStatusWeb.tsx` /
+`PlaceStatus.tsx`. Auditorías en `design/stitch/auditorias/imp-0*.md` (capturas y revisor pendientes). Lo que Stitch inventó y no va: en tablet la columna lateral («Formulario Técnico», «Canal de
 Campo», «Terminal Obra #04»), la barra «CONSTROAD CIVIL SUITE · Sincronizado», «(ensayo de tara)» y la marca «TOCA».
 La regla de bandejas y el indicador de ubicación ya están en el código (`shared/src/formSamples.ts`, `PlaceStatus*`).
 
 | Slug | Dispositivo | Qué resuelve | Estado |
 | --- | --- | --- | --- |
-| imp-01-tramo-oscuro | móvil (oscuro) | Tramo del CTL-IMP compacto: ubicación cargando, progresivas y horas de a dos, carril en chips, bandejas en filas con una a medias marcada | generado 19/11 · `da27e216cc7d43d69a94ea74193762cf` · espera aprobación de José |
-| imp-02-tramo-claro | móvil (claro) | La misma pantalla en claro | generado 19/11 · `f0001f1500a746e28a615fb3a0047472` · espera aprobación de José |
-| imp-03-tramo-tablet | tablet | Panel de 640 px sobre el informe; bandejas en tabla compacta con estado por fila | generado 19/11 · `6cfb6854b78043ffb71731ae5f887808` · espera aprobación de José |
+| imp-01-tramo-oscuro | móvil (oscuro) | Tramo del CTL-IMP compacto: ubicación cargando, progresivas y horas de a dos, carril en chips, bandejas en filas con una a medias marcada | generado 19/11 · `da27e216cc7d43d69a94ea74193762cf` · aprobado por José 19/11 · implementado (web + APK) |
+| imp-02-tramo-claro | móvil (claro) | La misma pantalla en claro | generado 19/11 · `f0001f1500a746e28a615fb3a0047472` · aprobado por José 19/11 · implementado (web + APK) |
+| imp-03-tramo-tablet | tablet | Panel de 640 px sobre el informe; bandejas en tabla compacta con estado por fila | generado 19/11 · `6cfb6854b78043ffb71731ae5f887808` · aprobado por José 19/11 · implementado (web + APK) |
 
 ## Canal de cliente y servicio — implementación (19/11)
 

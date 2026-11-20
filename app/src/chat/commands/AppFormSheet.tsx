@@ -9,6 +9,7 @@ import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
 import { CheckField, ChoiceField, FormStyleContext, LocationField, PhotoField, TypedField, type PhotoUpload } from './AppFormFields';
 import { FoldedSection } from './FoldedSection';
+import { SampleRowsView, TextChipsField } from './CompactFields';
 import { FormContextCard, FormSheetHeader } from './FormHeader';
 import { DateField } from './DateField';
 import { FormSummary } from './FormSummary';
@@ -29,6 +30,8 @@ import { isRichChoice, MultiField, PictureChoiceField, RichChoiceField } from '.
 const SHEET_PADDING = 16;
 /** A sheet on a tablet or a turned phone stays the width of a phone. */
 const SHEET_MAX_WIDTH = 560;
+/** A compact report section on a tablet: the 640 pt panel of design imp-03. */
+const COMPACT_SHEET_MAX_WIDTH = 640;
 const MAX_SCREEN_SHARE = 0.92;
 /** The two steps of a signing, as design e-32 writes them. */
 const LIVE_CHOICE_KICKER = '1 · Qué marcas';
@@ -107,7 +110,9 @@ export function AppFormSheet(props: SheetProps) {
   // Decided once: taking the photo out again must not open the camera again.
   const [cameraField] = useState(() => (props.cameraFirst && !live ? cameraFirstFieldOf(visibleFields(fields, state.values), state.values) : null));
   const formLive = useFormLive({ fields, values: state.values, preview: form.preview, onRefresh: props.onRefresh, onPreview: props.onPreview });
-  const sheetWidth = Math.min(width, SHEET_MAX_WIDTH);
+  // A compact report section (design imp-01/03): 44 pt fields, the trays as rows, a 52 pt button.
+  const compact = form.compact === true;
+  const sheetWidth = Math.min(width, compact ? COMPACT_SHEET_MAX_WIDTH : SHEET_MAX_WIDTH);
   const place = useFieldAutofill({ fields, values: state.values, fill: state.fill, streets: props.workStreets ?? null });
   useConditionsAutofill({ fields, values: state.values, fill: state.fill, ask: props.onConditions });
   // Sent and answered later (consensus 24/10): «Enviando…» until the answer closes it or the errors come back here.
@@ -125,7 +130,9 @@ export function AppFormSheet(props: SheetProps) {
   const designed = isDesignedForm(fields);
   const steps = numberedStepsOf(fields, shown);
   // The summary's remarks under their fields; the person's own errors win.
-  const slot: SlotContext = { place, workStreets: props.workStreets ?? null, cameraField, onCameraDismissed: props.onClose, fields, onPlace: props.onPlace, values: state.values, errors: { ...filledRemarks(formLive.summary.errors, fields, state.values), ...state.errors }, live, locationName, selfie, upload: props.onUpload, set: state.set, setList: state.setList, width: sheetWidth, positions, designed, steps };
+  const trays = compact ? shown.filter((field) => field.sample !== undefined) : [];
+  const plain = trays.length ? shown.filter((field) => field.sample === undefined) : shown;
+  const slot: SlotContext = { compact, place, workStreets: props.workStreets ?? null, cameraField, onCameraDismissed: props.onClose, fields, onPlace: props.onPlace, values: state.values, errors: { ...filledRemarks(formLive.summary.errors, fields, state.values), ...state.errors }, live, locationName, selfie, upload: props.onUpload, set: state.set, setList: state.setList, width: sheetWidth, positions, designed, steps };
   const label = waiting ? 'Enviando…' : state.sending ? signing.phaseLabel : submitLabelOf(form, fields, state.values);
   return (
     <Modal visible transparent animationType="slide" onRequestClose={close}>
@@ -144,7 +151,7 @@ export function AppFormSheet(props: SheetProps) {
             {signer && step === 'who' ? <SignerPicker field={signer} onPick={state.set(signer.name)} /> : null}
             {signer && step === 'sign' ? <SignerCard field={signer} value={state.values[signer.name]} error={slot.errors[signer.name]} onChange={() => state.set(signer.name)('')} /> : null}
             {/* The fields under a header fold (agentes 13/11); the rest are drawn as they come. */}
-            {groupedBySection(shown).map((block) =>
+            {groupedBySection(plain).map((block) =>
               block.kind === 'section' ? (
                 <FoldedSection key={`${block.label}-${block.fields[0]!.name}`} label={block.label} collapsed={block.collapsed} fields={block.fields} values={state.values} errors={slot.errors} designed={designed} onPosition={(y) => block.fields.forEach((field) => (positions.current[field.name] = y))}>
                   {/* Inside a header the fields' own offsets are the header's: the header's one is what the sheet scrolls to. */}
@@ -154,8 +161,9 @@ export function AppFormSheet(props: SheetProps) {
                 <FieldRows key={block.fields[0]!.name} fields={block.fields} context={slot} />
               )
             )}
+            {trays.length ? <SampleRowsView fields={trays} values={state.values} errors={slot.errors} set={state.set} width={sheetWidth - SHEET_PADDING * 2} /> : null}
           </ScrollView>
-          {step === 'sign' ? <SheetFooter summary={formLive.summary.blocks} message={state.message} busy={state.sending || waiting} refreshing={formLive.refreshing} label={label} others={form.submits?.slice(1) ?? []} note={evidence ? (live ? LIVE_FOOTER : evidence) : ''} onSend={(action) => void state.send(action ?? form.submits?.[0])} /> : null}
+          {step === 'sign' ? <SheetFooter tall={!compact} summary={formLive.summary.blocks} message={state.message} busy={state.sending || waiting} refreshing={formLive.refreshing} label={label} others={form.submits?.slice(1) ?? []} note={evidence ? (live ? LIVE_FOOTER : evidence) : ''} onSend={(action) => void state.send(action ?? form.submits?.[0])} /> : null}
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -245,7 +253,7 @@ function FormIntro(props: { answer: EphemeralAnswer; clock: boolean; personName?
 }
 
 /** By the button, never at the end of the scroll: a refusal there looked like a dead button (E2E 24/10). */
-function SheetFooter(props: { summary: PreviewReply['blocks']; message: string; busy: boolean; refreshing: boolean; label: string; /** The buttons after the first (agentes 13/11: «Guardar borrador»). */ others: readonly FormSubmit[]; note: string; onSend: (action?: FormSubmit) => void }) {
+function SheetFooter(props: { /** 72 pt for a signing used standing; 52 pt in a compact report section (design imp-01). */ tall: boolean; summary: PreviewReply['blocks']; message: string; busy: boolean; refreshing: boolean; label: string; /** The buttons after the first (agentes 13/11: «Guardar borrador»). */ others: readonly FormSubmit[]; note: string; onSend: (action?: FormSubmit) => void }) {
   const colors = useColores();
   return (
     <View className="px-4">
@@ -253,9 +261,9 @@ function SheetFooter(props: { summary: PreviewReply['blocks']; message: string; 
       {props.refreshing ? <Text testID="formulario-actualizando" accessibilityLiveRegion="polite" className="pb-2 pt-1 text-center text-[14px] text-on-surface-variant">Actualizando las opciones…</Text> : null}
       {props.summary.length ? <FormSummary blocks={props.summary} /> : null}
       {props.message ? <Text testID="formulario-error" accessibilityRole="alert" className="mb-2 pt-2 text-[14px] text-error">{props.message}</Text> : null}
-      <Pressable testID="btn-enviar-formulario" disabled={props.busy} onPress={() => props.onSend()} className={`h-[72px] flex-row items-center justify-center gap-2 rounded-2xl bg-primary ${props.busy ? 'opacity-60' : ''}`}>
+      <Pressable testID="btn-enviar-formulario" disabled={props.busy} onPress={() => props.onSend()} className={`${props.tall ? 'h-[72px] rounded-2xl' : 'h-[52px] rounded-xl'} flex-row items-center justify-center gap-2 bg-primary ${props.busy ? 'opacity-60' : ''}`}>
         {props.busy ? <ActivityIndicator color={colors['on-primary']} /> : null}
-        <Text className="text-[18px] font-bold text-on-primary">{props.label}</Text>
+        <Text className={`${props.tall ? 'text-[18px]' : 'text-[16px]'} font-bold text-on-primary`}>{props.label}</Text>
       </Pressable>
       {props.others.map((other) => (
         <Pressable key={other.id} testID={`btn-enviar-formulario-${other.id}`} accessibilityRole="button" disabled={props.busy} onPress={() => props.onSend(other)} className={`mt-1 min-h-[48px] items-center justify-center rounded-xl ${props.busy ? 'opacity-50' : ''}`}>
@@ -269,6 +277,8 @@ function SheetFooter(props: { summary: PreviewReply['blocks']; message: string; 
 
 /** What every field of the sheet draws from. */
 type SlotContext = {
+  /** A compact report section (design imp-01): 44 pt fields. */
+  compact: boolean;
   fields: readonly FormField[];
   onPlace?: PlaceLookup;
   cameraField: string | null;
@@ -301,7 +311,7 @@ function FieldSlot(props: { field: FormField; half: boolean; context: SlotContex
     return <LiveSelfie ref={props.context.selfie} testID={`campo-${field.name}`} label={LIVE_PHOTO_KICKER} onPlace={props.context.onPlace} width={width - SHEET_PADDING * 2} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />;
   }
   return (
-    <FormStyleContext.Provider value={{ designed: props.context.designed, step: props.context.steps[field.name] }}>
+    <FormStyleContext.Provider value={{ designed: props.context.designed, step: props.context.steps[field.name], compact: props.context.compact }}>
     {/* In a signing the place shows inside the camera; its field keeps reading behind it. */}
     <View onLayout={half ? undefined : (event) => (props.context.positions.current[field.name] = event.nativeEvent.layout.y)} style={live && field.kind === 'location' ? { display: 'none' } : half ? { flex: 1, minWidth: 0 } : undefined}>
       {chips ? <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{LIVE_CHOICE_KICKER}</Text> : null}
@@ -353,6 +363,7 @@ function Field(props: { field: Exclude<FormField, { kind: 'list' }>; value: unkn
     case 'date': return <DateField field={field} {...rest} compact={half} />;
     case 'location': return <LocationField field={field} {...rest} width={width} />;
     case 'photo': return field.multiple ? <PhotoListField field={field} error={rest.error} onChange={rest.onChange} upload={upload} /> : <PhotoField field={field} {...rest} upload={upload} opensCamera={opensCamera} onCameraDismissed={onCameraDismissed} />;
+    case 'text': return field.chips ? <TextChipsField field={field} {...rest} /> : <TypedField field={field} {...rest} />;
     default: return <TypedField field={field} {...rest} />;
   }
 }

@@ -158,3 +158,16 @@ describe('the viewer from the review', () => {
     expect(albumViewOf(album, 'https://x/otra.jpg')).toBeNull();
   });
 });
+
+/** Audit 20/11 (pv2-03): the extras read «Adicional · Fotos adicionales · llegad…», cut. */
+describe('the label of an extra photo', () => {
+  it('drops the automatic caption (stage, arrival and plate): the unit already says them', () => {
+    const item = unitWith({ adicional: [shot('x1', { descripcion: 'Adicional · Fotos adicionales · llegada n.º 2 a descarga · F2K-908' })] });
+    expect(unitAlbumOf(item).map((one) => one.label)).toEqual(['Adicional']);
+  });
+
+  it('keeps what the person wrote', () => {
+    const item = unitWith({ adicional: [shot('x1', { descripcion: 'Junta con la calzada' })] });
+    expect(unitAlbumOf(item).map((one) => one.label)).toEqual(['Junta con la calzada']);
+  });
+});

@@ -19,23 +19,22 @@ function BlockNotice({ block, onGo }: { block: FinishBlock; onGo?: (itemId: stri
 function AlbumTile({ photo, index, checked, broken, onToggle, onBroken, onView }: { photo: AlbumPhoto; index: number; checked: boolean; broken: boolean; onToggle: () => void; onBroken: () => void; onView: () => void }) {
   const Check = checked ? CheckCircle2 : Circle;
   return (
-    <li className="flex flex-col gap-1">
-      <div className="relative aspect-square overflow-hidden rounded-xl bg-surface-variant">
-        <button type="button" data-testid={`album-foto-${index}`} aria-pressed={checked} aria-label={`${photo.label}${photo.hour ? ` · ${photo.hour}` : ''}`} disabled={broken} onClick={onToggle} className={`block h-full w-full ${checked ? 'ring-2 ring-inset ring-primary' : ''}`}>
-          {broken ? (
-            <span data-testid={`album-rota-${index}`} className="flex h-full w-full flex-col items-center justify-center gap-1 text-on-surface-variant"><ImageOff size={22} /><span className="text-[11px] font-semibold">{ALBUM_BROKEN_PHOTO}</span></span>
-          ) : (
-            <img data-testid={`album-miniatura-${index}`} src={photo.thumbUrl} alt="" onError={onBroken} className={`h-full w-full object-cover ${checked ? '' : 'opacity-50'}`} />
-          )}
-          {broken ? null : <Check size={22} className={`absolute right-1.5 top-1.5 rounded-full bg-surface ${checked ? 'text-primary' : 'text-on-surface-variant'}`} />}
-        </button>
-        {broken ? null : (
-          <button type="button" data-testid={`album-ver-${index}`} aria-label={`Ver ${photo.label} en grande`} onClick={onView} className="absolute bottom-1.5 left-1.5 grid h-9 w-9 place-items-center rounded-full bg-surface/90 text-on-surface shadow-sm">
-            <ZoomIn size={16} />
-          </button>
+    <li className="relative aspect-[4/3] overflow-hidden rounded-xl bg-surface-variant">
+      <button type="button" data-testid={`album-foto-${index}`} aria-pressed={checked} aria-label={`${photo.label}${photo.hour ? ` · ${photo.hour}` : ''}`} disabled={broken} onClick={onToggle} className={`block h-full w-full ${checked ? 'ring-2 ring-inset ring-primary' : ''}`}>
+        {broken ? (
+          <span data-testid={`album-rota-${index}`} className="flex h-full w-full flex-col items-center justify-center gap-1 text-on-surface-variant"><ImageOff size={22} /><span className="text-[11px] font-semibold">{ALBUM_BROKEN_PHOTO}</span></span>
+        ) : (
+          <img data-testid={`album-miniatura-${index}`} src={photo.thumbUrl} alt="" onError={onBroken} className={`h-full w-full object-cover ${checked ? '' : 'opacity-50'}`} />
         )}
-      </div>
-      <p className="line-clamp-2 break-words text-[12px] font-semibold leading-tight">{photo.label}{photo.hour ? <span className="font-mono font-normal text-on-surface-variant"> · {photo.hour}</span> : null}</p>
+        {broken ? null : <Check size={22} className={`absolute right-1.5 top-1.5 rounded-full bg-surface ${checked ? 'text-primary' : 'text-on-surface-variant'}`} />}
+      </button>
+      {/* The photo's data over the photo (design pv2-03): kind and hour, never cut to one line. */}
+      <p data-testid={`album-dato-${index}`} className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/70 to-transparent px-2 pb-4 pr-9 pt-1.5 text-[12px] font-semibold leading-tight text-white break-words">{photo.label}{photo.hour ? <span className="font-mono font-normal text-white/80"> · {photo.hour}</span> : null}</p>
+      {broken ? null : (
+        <button type="button" data-testid={`album-ver-${index}`} aria-label={`Ver ${photo.label} en grande`} onClick={onView} className="absolute bottom-1.5 left-1.5 grid h-9 w-9 place-items-center rounded-full bg-surface/90 text-on-surface shadow-sm">
+          <ZoomIn size={16} />
+        </button>
+      )}
     </li>
   );
 }
@@ -71,7 +70,7 @@ export function UnitAlbumDialog({ item, onSend, onSent, onClose, onView, block, 
   );
   return (
     <Overlay title={albumReviewTitle(item)} onClose={onClose} footer={footer} wide>
-      <ul data-testid="album-revision" className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+      <ul data-testid="album-revision" className="grid grid-cols-2 gap-2">
         {album.map((photo, index) => (
           <AlbumTile key={photo.url} photo={photo} index={index} checked={selected.includes(photo.url)} broken={marks.broken.has(photo.url)} onToggle={() => setMarks((now) => toggleAlbumPhoto(now, photo.url))} onBroken={() => setMarks((now) => markAlbumPhotoBroken(now, photo.url))} onView={() => onView(photo.url)} />
         ))}

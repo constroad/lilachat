@@ -26,12 +26,14 @@ function BlockNotice({ block, onGo }: { block: FinishBlock; onGo?: (itemId: stri
   );
 }
 
-/** Thumbnails per row: three on a phone, more on a tablet, so they never grow huge. */
+/** Thumbnails per row (design pv2-03): two on a phone with the data over the photo, more on a tablet. */
 const TABLET_FROM = 600;
 const WIDE_FROM = 900;
 const SIDE_PADDING = 32;
 const GAP = 8;
-const columnsFor = (width: number): number => (width >= WIDE_FROM ? 6 : width >= TABLET_FROM ? 5 : 3);
+/** 4:3, like the photos the unit takes. */
+const TILE_RATIO = 0.75;
+const columnsFor = (width: number): number => (width >= WIDE_FROM ? 4 : width >= TABLET_FROM ? 3 : 2);
 
 type TileProps = { photo: AlbumPhoto; index: number; size: number; checked: boolean; broken: boolean; onToggle: () => void; onBroken: () => void; onView: () => void };
 
@@ -41,7 +43,7 @@ function AlbumTile({ photo, index, size, checked, broken, onToggle, onBroken, on
   const Check = checked ? CheckCircle2 : Circle;
   return (
     <View style={{ width: size }}>
-      <Pressable testID={`album-foto-${index}`} accessibilityRole="checkbox" accessibilityState={{ checked, disabled: broken }} accessibilityLabel={`${photo.label}${photo.hour ? ` · ${photo.hour}` : ''}`} disabled={broken} onPress={onToggle} onLongPress={onView} className={`overflow-hidden rounded-xl bg-surface-variant ${checked ? 'border-2 border-primary' : 'border-2 border-transparent'}`} style={{ width: size, height: size }}>
+      <Pressable testID={`album-foto-${index}`} accessibilityRole="checkbox" accessibilityState={{ checked, disabled: broken }} accessibilityLabel={`${photo.label}${photo.hour ? ` · ${photo.hour}` : ''}`} disabled={broken} onPress={onToggle} onLongPress={onView} className={`overflow-hidden rounded-xl bg-surface-variant ${checked ? 'border-2 border-primary' : 'border-2 border-transparent'}`} style={{ width: size, height: Math.round(size * TILE_RATIO) }}>
         {broken ? (
           <View testID={`album-rota-${index}`} className="flex-1 items-center justify-center gap-1">
             <ImageOff size={22} color={colors['on-surface-variant']} />
@@ -50,6 +52,9 @@ function AlbumTile({ photo, index, size, checked, broken, onToggle, onBroken, on
         ) : (
           <Image source={{ uri: photo.thumbUrl }} onError={onBroken} style={{ width: '100%', height: '100%', opacity: checked ? 1 : 0.5 }} />
         )}
+        <View testID={`album-dato-${index}`} pointerEvents="none" className="absolute inset-x-0 top-0 bg-black/55 px-2 pb-1.5 pr-9 pt-1.5">
+          <Text className="text-[12px] font-semibold leading-tight text-white">{photo.label}{photo.hour ? <Text className="font-normal text-white/80">{` · ${photo.hour}`}</Text> : null}</Text>
+        </View>
         {broken ? null : <View className="absolute right-1.5 top-1.5 rounded-full bg-surface"><Check size={22} color={checked ? colors.primary : colors['on-surface-variant']} /></View>}
       </Pressable>
       {broken ? null : (
@@ -57,7 +62,6 @@ function AlbumTile({ photo, index, size, checked, broken, onToggle, onBroken, on
           <ZoomIn size={16} color={colors['on-surface']} />
         </Pressable>
       )}
-      <Text className="mt-1 text-[12px] font-semibold text-on-surface" numberOfLines={2}>{photo.label}{photo.hour ? ` · ${photo.hour}` : ''}</Text>
     </View>
   );
 }

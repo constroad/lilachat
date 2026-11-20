@@ -37,6 +37,10 @@ function labelOf(section: FormSection): string {
   return bare ? bare.charAt(0).toUpperCase() + bare.slice(1) : section.title;
 }
 
+/** The caption Portal writes by itself («… · llegada n.º 2 a descarga · F2K-908»): the unit already says it. */
+const AUTO_CAPTION = /llegada n\.º/i;
+const extraLabelOf = (caption: string): string => (!caption || AUTO_CAPTION.test(caption) ? EXTRA_LABEL : caption);
+
 const rankOf = (section: FormSection): number => {
   if (section.photoKind === EXTRA_PHOTO_KIND) return CAPTURE_ORDER.length + 1;
   const at = CAPTURE_ORDER.indexOf(section.photoKind ?? '');
@@ -53,7 +57,7 @@ export function unitAlbumOf(item: RepeatItem): AlbumPhoto[] {
     for (const photo of sectionPhotos(section)) {
       if (photo.pending || seen.has(photo.url)) continue;
       seen.add(photo.url);
-      album.push({ url: photo.url, thumbUrl: photo.thumbUrl, label: extra ? photo.caption || EXTRA_LABEL : labelOf(section), hour: photo.hour });
+      album.push({ url: photo.url, thumbUrl: photo.thumbUrl, label: extra ? extraLabelOf(photo.caption) : labelOf(section), hour: photo.hour });
     }
   }
   return album;

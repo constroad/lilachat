@@ -163,6 +163,8 @@ El server la quita del documento de un miembro (`withoutGroupSend`).
 
 En CTL-PIS, desde el 19/11 las fotos de una unidad salen al grupo solo con «Terminar unidad».
 Antes, un admin las revisa (`UnitAlbumDialog.tsx` en la web, `UnitAlbumSheet.tsx` en el APK).
+La revisión va en 2 columnas en el teléfono (3–4 en tablet), con el dato encima de cada foto
+(tipo · hora). Una adicional con el pie automático («… llegada n.º 2 …») se rotula «Adicional».
 Portal ya no las manda al subir la foto de unidad vacía. La puerta del server pide `need: 'admin'`.
 
 ### Web/PWA

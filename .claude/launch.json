@@ -2,6 +2,18 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "boveda-tunel",
+      "runtimeExecutable": "boveda",
+      "runtimeArgs": ["tunel"],
+      "port": 27017
+    },
+    {
+      "name": "lilachat-server",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:local", "--workspace=server"],
+      "port": 4003
+    },
+    {
       "name": "lilachat-web",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--workspace=web"],

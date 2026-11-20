@@ -28,6 +28,14 @@ npm run build      # compila el server a dist/
 npm run emit-tokens  # regenera shared/tokens.json tras tocar src/tokens.ts
 ```
 
+**Antes de `npm run dev`, el túnel de bóveda tiene que estar arriba**
+(`boveda tunel`, en otra terminal — ver skill `boveda-db`): sin él, `mongo` da
+`ECONNREFUSED 127.0.0.1:27017` y el login se queda en «Servicio arrancando» para
+siempre, sin aviso más claro (José 20/11, perdido probando el batch de ese día).
+El dev web (`web/`, puerto 4004) hace de proxy a este server en el 4003 — **sin
+el server arriba, el login en la web falla igual** aunque `npm run dev` del web
+ande perfecto: los dos procesos son necesarios, no uno u otro.
+
 La app (`app/`, node_modules propio): `npm test` (motores puros) y
 `npx expo run:android --port 8092` — puerto 8092 SIEMPRE: es la tercera app RN
 de la máquina y Metro en 8081 sirve el bundle de otra (lección Timón).
@@ -41,7 +49,7 @@ Las variables se documentan acá y el `.env` real vive en `shared/` de la mini.
 | Variable | Qué es | ¿Default en código? |
 | --- | --- | --- |
 | `PORT` | puerto del server | 4003 (constante) |
-| `MONGO_URL` | Atlas, base `lilachat_db` (URI con credenciales) | — fail-closed |
+| `MONGO_URL` | bóveda, base `lilachat_db` (URI con credenciales; ver skill `boveda-db`) | — fail-closed |
 | `CONSTROAD_AUTH_URL` | constroad-auth | `http://127.0.0.1:4002` |
 | `CONSTROAD_AUTH_KEY` | llave de servicio (la emite Torre) | — fail-closed |
 | `LILA_SERVER_URL` | storage de media | — fail-closed en prod |

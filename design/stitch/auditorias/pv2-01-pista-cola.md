@@ -1,9 +1,9 @@
 # Auditoría pv2-01-pista-cola · Control de pista › cola de descarga (móvil)
 
 Stitch: `.stitch-work/out_v2/mobile/pv2-01-pista-cola.stitch.png` del checkout principal.
-Captura: design/stitch/capturas/pv2-01-pista-cola.png (móvil 390, oscuro) · Huella: 11b0f2451c2e
+Captura: design/stitch/capturas/pv2-01-pista-cola.png (móvil 390, oscuro) · Huella: px)
 Revisor: subagente independiente
-Fecha: 2026-11-20 09:40
+Fecha: 2026-11-20 09:51
 
 Aprobado por José el 20/11 («sí hazlo»). Las justificaciones de abajo son mías y dicen el motivo real;
 ninguna es una exención de José. Lo inventado por Stitch que el prototipo manda ignorar no se implementa.

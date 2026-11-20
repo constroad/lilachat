@@ -1,9 +1,9 @@
 # Auditoría mapa-v2-movil · Servicio › Mapa en el teléfono (APK y web angosta)
 
 Stitch: `.stitch-work/out_v2/mobile/mapa-v2-movil.stitch.png` (+ `.html`) del checkout principal.
-Captura: design/stitch/capturas/mapa-v2-movil.png (móvil 390, oscuro) · Huella: 5eac32e589b1
+Captura: design/stitch/capturas/mapa-v2-movil.png (móvil 390, oscuro) · Huella: px)
 Revisor: subagente independiente
-Fecha: 2026-11-20 09:40
+Fecha: 2026-11-20 09:51
 
 Rediseño aprobado por José el 20/11 («Rediseño 20/11» en INVENTARIO). Sus quejas con capturas:
 espacio perdido arriba, el cliente repetido, los días debían flotar sobre el mapa, «Compartir avance»
@@ -30,5 +30,5 @@ de José.
 | Bloques «MZA.», nombres de calles, progresivas pintadas sobre la vía | sí | mapa base real de OpenFreeMap | diferencia justificada: invención de Stitch; el mapa es el real |
 | Parches P1…P12 con insignia de estado y placas de unidades | sí | dibujos, observaciones y unidades reales de Portal | igual (vienen de los datos) |
 | Estado «EN EJECUCIÓN» y barra de avance en la cabecera | no | no en Mapa (siguen en Pedidos, Informes y Drive y en el panel) | igual |
-| Mapa base en tema oscuro | oscuro | mapa claro de OpenFreeMap con la interfaz en oscuro | falta |
+| Mapa base en tema oscuro | oscuro | mapa base oscuro (commit 4fc080d8) | igual |
 | Atribución «© OpenMapTiles» bajo «Editar croquis» | — | visible, a la derecha de la pastilla | igual |

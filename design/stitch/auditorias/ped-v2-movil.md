@@ -1,9 +1,9 @@
 # Auditoría ped-v2-movil · Servicio › Pedidos en el celular (rediseño 20/11)
 
 Stitch: `.stitch-work/out_v2/mobile/ped-v2-movil.stitch.png` del checkout principal (id `73bd2cad7fc1406a9d1b126c9b1d42e7`).
-Captura: design/stitch/capturas/ped-v2-movil.png (móvil 390, oscuro) · Huella: 99f859802f19
+Captura: design/stitch/capturas/ped-v2-movil.png (móvil 390, oscuro) · Huella: px)
 Revisor: subagente independiente
-Fecha: 2026-11-20 09:40
+Fecha: 2026-11-20 09:51
 
 Las justificaciones de abajo son mías y dicen el motivo real; ninguna es una exención de José.
 
@@ -27,4 +27,4 @@ Las justificaciones de abajo son mías y dicen el motivo real; ninguna es una ex
 | Bloque «Etapas · N de 5» | no | sí, arriba de los pedidos (solo admins) | diferencia justificada: memoria de José «el rediseño conserva lo de la pantalla actual»; siempre tiene contenido |
 | «Cubicaje» | no | sale solo con despachos cubicados | diferencia justificada: memoria de José «el rediseño conserva lo de la pantalla actual» |
 | Conteo en «Drive 58» | sí | «Drive» sin número | diferencia justificada: Portal no manda el conteo del Drive con el servicio |
-| Cabecera | una fila: ←, nombre, «CLIENTE · 40 %», enlace, ⋮ | tres filas: cliente arriba, nombre, y estado + «Avance 50 % · Inicio» + barra | falta |
+| Cabecera | una fila: ←, nombre, «CLIENTE · 40 %», enlace, ⋮ | una fila: ←, nombre, «Consorcio Vial del Pacífico · 50 %», enlace, ⋮ (commit e7640682) | igual |

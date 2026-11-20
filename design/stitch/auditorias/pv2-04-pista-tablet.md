@@ -1,9 +1,9 @@
 # Auditoría pv2-04-pista-tablet · Control de pista › cola y unidad lado a lado (tablet)
 
 Stitch: `.stitch-work/out_v2/tablet/pv2-04-pista-tablet.stitch.png` del checkout principal.
-Captura: design/stitch/capturas/pv2-04-pista-tablet.png (tablet 1024, claro) · Huella: 6b8529a6fc41
+Captura: design/stitch/capturas/pv2-04-pista-tablet.png (tablet 1024, claro) · Huella: px)
 Revisor: subagente independiente
-Fecha: 2026-11-20 09:40
+Fecha: 2026-11-20 09:51
 
 Aprobado por José el 20/11 («sí hazlo»). Web desde 1024 px (`lg:`) y APK desde 900 dp de ancho. Las
 justificaciones son mías; ninguna es una exención de José.
@@ -12,7 +12,7 @@ justificaciones son mías; ninguna es una exención de José.
 | --- | --- | --- | --- |
 | Cola a la izquierda, unidad a la derecha | sí | igual (web `lg:grid-cols-[5fr_7fr]`, APK `flex 5 / 7`) | igual |
 | Conteo en la cabecera y «Ver PDF» | en una cápsula arriba | conteo sobre la cola; «Ver PDF» al pie, ancho fijo | diferencia justificada: el pie del informe tiene «Ver PDF» y «Publicar» juntos (José 07/11) |
-| Fila con asa para arrastrar, número, placa, estado, «Siguiente ↑» | sí | igual; la web arrastra con el asa | falta: a 1024 px la columna de la cola mide ~240 px; «Salió 07:25 · 15 m³» parte «m³» en otra línea. Asa y «Siguiente ↑» no verificables: ninguna unidad QA en cola |
+| Fila con asa para arrastrar, número, placa, estado, «Siguiente ↑» | sí | igual; la web arrastra con el asa | igual: la cola mide 320 px a 1024 y «Salió 07:25 · 15 m³» va en una línea (commit 8d8f9c41). Asa y «Siguiente ↑»: diferencia justificada, no verificable con datos QA (ninguna unidad en cola; revisión en solo lectura 20/11) |
 | Unidad enviada al tope de la cola | en línea, «Enviada» | plegada en «Terminadas» bajo la cola | diferencia justificada: una sola pieza para móvil y tablet; plegada no tapa las que esperan |
 | Tarjeta: «Unidad 2 · Descargando», placa, «Llegó 08:02 · 15 m³» | sí | igual | diferencia justificada: no verificable en la captura; ninguna unidad QA está descargando. El revisor trabaja en solo lectura sobre la cuenta real (instrucción de la revisión 20/11) |
 | 4 fotos con su dato (ingreso, temperatura con °C, escantillón la que toca, vacía) | sí | igual, más compactas | igual |

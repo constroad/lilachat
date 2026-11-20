@@ -1,9 +1,9 @@
 # Auditoría mapa-v2-escritorio · Servicio › Mapa en la web ancha y la tablet
 
 Stitch: `.stitch-work/out_v2/desktop/mapa-v2-escritorio.stitch.png` (+ `.html`) del checkout principal.
-Captura: design/stitch/capturas/mapa-v2-escritorio.png (escritorio 1440, claro) · Huella: 14207b8cfd23
+Captura: design/stitch/capturas/mapa-v2-escritorio.png (escritorio 1440, claro) · Huella: px)
 Revisor: subagente independiente
-Fecha: 2026-11-20 09:40
+Fecha: 2026-11-20 09:51
 
 Rediseño aprobado por José el 20/11 («Rediseño 20/11» en INVENTARIO). Su queja con captura: los
 botones desordenados en la web, el cliente repetido y el espacio perdido arriba. Las justificaciones

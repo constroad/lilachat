@@ -78,7 +78,7 @@ export function DriveLayoutToggleWeb(props: { layout: DriveLayout; onLayout: (la
 /** Todo · Fotos · Videos · Documentos. */
 export function DriveKindChipsWeb(props: { kind: DriveKind; onKind: (kind: DriveKind) => void; counts?: Record<DriveKind, number> }) {
   return (
-    <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto">
+    <div className="flex min-w-0 flex-1 flex-wrap gap-2">
       {DRIVE_KINDS.map((one) => (
         <button key={one.kind} type="button" data-testid={`drive-tipo-${one.kind}`} aria-pressed={props.kind === one.kind} onClick={() => props.onKind(one.kind)} className={`h-8 shrink-0 rounded-full border px-3.5 text-sm font-semibold ${props.kind === one.kind ? 'border-primary bg-primary text-on-primary' : 'border-outline/20 bg-surface'}`}>{one.label}{props.counts ? <span className="ml-1.5 tabular-nums opacity-75">{props.counts[one.kind]}</span> : null}</button>
       ))}
@@ -109,11 +109,11 @@ function TilePreview(props: { file: ServiceFile }) {
   );
 }
 
-/** A tile: the preview opens it; under it the name, «hoy 08:30 · 2.1 MB» and its «⋮» (design cc-05). */
+/** A tile: the preview opens it; under it the name, «hoy 08:30 · 2.1 MB» and its «⋮» (design cc-05: 12 px radius, like the folder card). */
 function Tile(props: { file: ServiceFile; now: Date; onOpen: (file: ServiceFile) => void; menu?: (file: ServiceFile) => ReactNode }) {
   return (
-    <div className="relative rounded-xl border border-outline/15 bg-surface hover:border-primary/40">
-      <button type="button" data-testid="archivo-drive" onClick={() => props.onOpen(props.file)} className="block w-full overflow-hidden rounded-xl text-left">
+    <div className="relative rounded-card border border-outline/15 bg-surface hover:border-primary/40">
+      <button type="button" data-testid="archivo-drive" onClick={() => props.onOpen(props.file)} className="block w-full overflow-hidden rounded-card text-left">
         <TilePreview file={props.file} />
         <span className="block py-1.5 pl-3 pr-10">
           <span className="block truncate text-sm font-semibold">{props.file.name}</span>
@@ -125,7 +125,7 @@ function Tile(props: { file: ServiceFile; now: Date; onOpen: (file: ServiceFile)
   );
 }
 
-/** Design cc-05: the files as a mosaic by day in Lima («HOY · 19 NOV»): 2 per row on a phone, 3 on a tablet, 5 on a computer. */
+/** Design cc-05: the files as a mosaic by day in Lima («HOY · 19 NOV»): 2 per row on a phone, 3 on a tablet, ~200 px tiles on a computer (however many of those fit, not a fixed count). */
 export function DriveGridWeb(props: { files: readonly ServiceFile[]; onOpen: (file: ServiceFile) => void; menu?: (file: ServiceFile) => ReactNode }) {
   const now = new Date();
   return (
@@ -133,7 +133,7 @@ export function DriveGridWeb(props: { files: readonly ServiceFile[]; onOpen: (fi
       {driveDayGroups(props.files, now).map((group) => (
         <section key={group.key}>
           <p className={`${KICKER} mb-2 flex justify-between`}>{group.label}<span className="normal-case tracking-normal">{driveFilesLabel(group.files.length)}</span></p>
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-[repeat(auto-fill,minmax(200px,1fr))]">
             {group.files.map((file) => <Tile key={file.url} file={file} now={now} onOpen={props.onOpen} menu={props.menu} />)}
           </div>
         </section>

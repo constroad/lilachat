@@ -8,7 +8,6 @@ import { useDriveUpload } from './useDriveUpload';
 import { DriveActionsWeb, DriveGridWeb, DriveKindChipsWeb, DriveLayoutToggleWeb, FolderCardsWeb } from './DriveParts';
 import { DriveFileMenu } from './DriveFileMenu';
 import { FloatingNotice, useFloatingNotice } from '../../ui/FloatingNotice';
-import { SectionActions } from './ServiceShellWeb';
 import { useDrivePaste } from './useDrivePaste';
 import { PhotoPhaseBar } from './PhotoPhaseBar';
 import { photoPhaseSender } from './workMap/workProgressSender';
@@ -225,7 +224,8 @@ export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: Spac
   const driveUrl = answer?.ok ? answer.value.driveUrl : (answer?.portalUrl ?? null);
   return (
     <div data-testid="drive-servicio" className="flex flex-col gap-3" {...drop.handlers}>
-      <SectionActions><DriveActionsWeb options={uploads.options} sending={upload.sending} onPick={uploads.pick} onPaste={() => { setNotice(''); void paste(); }} /></SectionActions>
+      {/* Drive's own toolbar (design cc-05): not in the shared tab bar, which it pushed to a second row on a computer (audit 20/11). */}
+      <div className="flex flex-wrap items-center justify-end gap-2"><DriveActionsWeb options={uploads.options} sending={upload.sending} onPick={uploads.pick} onPaste={() => { setNotice(''); void paste(); }} /></div>
       {uploads.inputs}
       {drop.over ? <DropHint /> : <PasteHint />}
       {upload.message ? <p role="status" className={upload.failed ? 'text-sm text-error' : 'text-sm text-on-surface-variant'}>{upload.message}</p> : null}
@@ -239,7 +239,8 @@ export function ServiceDriveWeb(props: { target: ServiceAskTarget; service: Spac
         </label>
       ) : null}
       {answer?.ok ? (
-        <div className="flex items-center gap-2">
+        // Wraps on a phone (design cc-05): a row that only scrolled clipped «Documentos» at the edge (audit 20/11).
+        <div className="flex flex-wrap items-center gap-2">
           {answer.value.files.length ? <DriveKindChipsWeb kind={kind} onKind={setKind} counts={driveKindCounts(answer.value.files)} /> : null}
           <DriveLayoutToggleWeb layout={layout} onLayout={(next) => (saveLayout(next), setLayout(next))} />
         </div>

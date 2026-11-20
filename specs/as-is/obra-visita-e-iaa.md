@@ -26,6 +26,12 @@ Portal, en Detalle de la app → Comandos (1:1, canales y quién). Sin tocar, ap
 **Entradas.**
 - «Visita técnica» en el ⚡ y en el «+» donde el admin la encendió
   (`isSiteVisitShortcut`, shared). Abre «Datos» de una visita nueva con el GPS.
+  En el ⚡ de un chat del APK abre la pantalla de la visita (`onStartVisit`).
+  En el ⚡ del espacio (sin chat), web y APK abren «Datos» de una visita nueva en
+  la misma hoja (`runVisitShortcut`; en el APK desde el 20/11, `app/src/spaces/visits/visitShortcut.ts`).
+  Antes el APK corría el atajo de Portal y solo mostraba «La visita técnica se abre
+  en su pantalla de Lilachat.». La pantalla completa no se abre sin chat: sus fotos
+  con sello pasan por `/api/stamped-forward`, que exige un chat del que la persona es miembro.
 - Los botones de la **tarjeta lv01** del canal de informes (`visita_*`).
 - La franja «Visitas técnicas» en el chat **está oculta**:
   `SITE_VISIT_SCREENS_READY = false` en `shared/src/siteVisit.ts` (verificado en código).
@@ -162,6 +168,7 @@ caracteres (7916351), la única excepción al tope de 200.
   Editar y borrar zona (la-06). «Ver PDF» del IAA publicado.
 - **16/11** Geometría a Portal; lados con candado y diagonales; corregir una zona AR
   guardada con la wincha (E2E en el emulador, OTA 5a18adca).
+- **20/11** El ⚡ del espacio en el APK abre «Datos» de la visita nueva, como la web.
 
 ## 5. Diseños de Stitch relacionados
 

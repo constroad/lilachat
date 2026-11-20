@@ -69,7 +69,7 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
 - Informes agrupados por día de Lima, del más nuevo al más viejo; «Creado por …».
 - «Crear informe» en el APK y la web angosta ofrece los tipos de la página pública de Portal y todos se llenan aquí (18/11, `fieldPickerReportTypes`). La aprobación de adicional (APR-ADI) sale solo a quien ve la plata. Detalle por tipo en `obra-informes.md`.
 - En el control de pista, una línea sobre las unidades dice que la foto de unidad vacía cierra la unidad y le da su número de colocación (`UNITS_CLOSE_HINT`, 18/11). La tarjeta de una unidad cerrada dice «Colocación N° X» bajo la placa (`placementOf`).
-- **«Terminar unidad»** (19/11). Las fotos de una unidad salen al grupo del cliente solo con este botón, que ven solo los admins.
+- **«Terminar unidad»** (19/11). Las fotos de una unidad salen al grupo del cliente solo con este botón, que ve cualquier miembro del canal, en borrador o publicado (José 19/11 noche: «que sea para todos»).
   - Antes de enviar, una revisión (web `UnitAlbumDialog`, APK `UnitAlbumSheet`) muestra todas las fotos marcadas. La persona desmarca las que no van, y una miniatura rota queda fuera sola.
   - Las fotos van a la herramienta de Portal `enviar_fotos_de_unidad`.
   - El botón dice «Enviar fotos al grupo» en una unidad cerrada y «Reenviar fotos» una vez enviadas.
@@ -239,7 +239,7 @@ en la cabecera del Drive y las acciones del mapa en su barra, justo bajo la barr
 - **16/11** Hojas de bloques del editor 2.0 solo para quien ve montos.
 - **19/11** · «Mapa de la obra» dibuja los dibujos de Portal (gibas, buzones, bocacalles…: `workMapMarks` del detalle, `shared/src/workMapMarks.ts`), en web y APK. Con dibujos y sin calles ya no dice «Todavía no hay calles»: muestra el mapa encuadrado en ellos (José, El Almirante · parches Jr. Conchucos: 33 dibujos en Portal). Un dibujo «Otro» con nota se llama por su nota, como en Portal (`markName`).
 - **19/11** · Observaciones de Portal (`workObservations`) en el mapa, y la tarjeta de cada dibujo con su tamaño y las distancias a los más cercanos, calculadas de las coordenadas (`shared/src/workMapCards.ts`). Web: tarjeta al pasar el mouse o al hacer clic, y listas «Dibujos» y «Observaciones» en el panel. APK: tarjeta al tocar en el mapa completo y las mismas listas bajo el panel. Botón «Editar croquis» (editor de croquis del servicio de Portal) en web y APK.
-- **19/11** · «Terminar unidad» en el control de pista. Las fotos de la unidad salen al grupo solo después de revisarlas, y solo un admin las envía (web y APK, `shared/src/unitAlbum.ts`, tool `enviar_fotos_de_unidad`; spec §24).
+- **19/11** · «Terminar unidad» en el control de pista. Las fotos de la unidad salen al grupo solo después de revisarlas; cualquier miembro las envía (web y APK, `shared/src/unitAlbum.ts`, tool `enviar_fotos_de_unidad`; spec §24).
 - **19/11** · La tarjeta de un dibujo muestra las fotos de la observación en su mismo punto (≤ 3 m), con su línea «texto · estado»; un pin sobre un dibujo abre la tarjeta del dibujo (web y APK, `shared/src/workMapCards.ts` › `observationsAtMark`, `mapPickOnMap`). José, El Almirante · parches Jr. Conchucos: 30 observaciones «Bache o falla · Parche N» en los mismos puntos que los dibujos.
 - **19/11** · **Una sola gramática del canal y del servicio** (diseños cc-01…cc-06): pestañas del canal fijas
   en tablet y computadora, cabecera única y una barra Pedidos · Informes · Mapa · Drive con las acciones a la

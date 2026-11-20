@@ -244,12 +244,12 @@ describe('ReportDocumentWeb', () => {
       expect(screen.queryByTestId('album-revision')).toBeNull();
     });
 
-    it('a member sees no button to the group', async () => {
+    it('a member sees the button too (José 19/11: «que sea para todos»)', async () => {
       serverWith(pista);
       openAs(false);
       fireEvent.click(await screen.findByTestId('seccion-unidades'));
       expect(screen.getByTestId('unidad-d2')).toBeInTheDocument();
-      expect(screen.queryByTestId('terminar-d2')).toBeNull();
+      expect(screen.getByTestId('terminar-d2')).toBeInTheDocument();
     });
   });
 

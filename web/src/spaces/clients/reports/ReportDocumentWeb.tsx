@@ -95,7 +95,7 @@ function ReportFooter({ report, blocker, pdf, onPublish, onDone }: { report: Fie
 function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems, onRetry, onView, admin, onAlbum }: { admin: boolean; onAlbum: (item: RepeatItem) => void; onRetry: () => void; onView: (photo: PhotoToView) => void; draft: ReportDraftResult | null; report: FieldDocument | null; items: DocumentSection | undefined; portalUrl?: string; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
   if (draft === null) return <div data-testid="informe-cargando" className="h-40 animate-pulse rounded-xl bg-surface" />;
   if (!draft.ok || !report) return <DraftFailure message={draft.ok ? 'No se pudo abrir el informe' : draft.message} portalUrl={portalUrl} onRetry={onRetry} />;
-  if (items?.kind === 'repeat') return isUnitsRepeat(items) ? <ReportUnitsWeb section={items} onOpen={onOpen} onView={onView} admin={admin} onAlbum={report.status === 'draft' ? onAlbum : undefined} /> : <ReportItemsWeb section={items} onOpen={onOpen} onView={onView} />;
+  if (items?.kind === 'repeat') return isUnitsRepeat(items) ? <ReportUnitsWeb section={items} onOpen={onOpen} onView={onView} admin={admin} onAlbum={onAlbum} /> : <ReportItemsWeb section={items} onOpen={onOpen} onView={onView} />;
   return (
     <>
       <ProgressCard report={report} />

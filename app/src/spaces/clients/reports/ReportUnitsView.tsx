@@ -15,13 +15,13 @@ const slotLabel = (title: string): string => title.replace(/^foto de\s+/i, '');
 
 type Open = (path: SectionPath) => void;
 type ViewPhoto = (photo: PhotoToView) => void;
-/** «Terminar unidad» (José 19/11): an admin reviews the unit's photos before they go to the group. Missing: nobody sends from here. */
+/** «Terminar unidad» (José 19/11): anyone reviews the unit's photos before they go to the group, draft or published. Missing: nobody sends from here. */
 type Album = { admin: boolean; onAlbum?: (item: RepeatItem) => void };
 
 /** The unit's button to the client's group, compact under its photos; with the note of when they went, once they did. */
 function AlbumAction({ item, album }: { item: RepeatItem; album: Album }) {
   const colors = useColores();
-  const cta = unitAlbumCta(item, album.admin);
+  const cta = unitAlbumCta(item);
   if (!cta || !album.onAlbum) return null;
   const finishing = cta.label === ALBUM_CTA.finish;
   return (

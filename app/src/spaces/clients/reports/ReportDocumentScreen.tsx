@@ -118,7 +118,7 @@ function ReportFooter({ report, blocker, asking, onPublish, onPdf, onPreview, on
 function ReportBody({ draft, report, items, portalUrl, onOpen, onOpenItems, onRetry, onView, admin, onAlbum }: { admin: boolean; onAlbum: (item: RepeatItem) => void; onRetry: () => void; onView: (photo: PhotoToView) => void; draft: ReportDraftResult | null; report: FieldDocument | null; items: DocumentSection | undefined; portalUrl?: string; onOpen: (path: SectionPath) => void; onOpenItems: (sectionId: string) => void }) {
   if (draft === null) return <View testID="informe-cargando" className="h-40 rounded-2xl bg-surface-variant" />;
   if (!draft.ok || !report) return <DraftFailure message={draft.ok ? 'No se pudo abrir el informe' : draft.message} portalUrl={portalUrl} onRetry={onRetry} />;
-  if (items?.kind === 'repeat') return isUnitsRepeat(items) ? <ReportUnitsView section={items} onOpen={onOpen} onView={onView} admin={admin} onAlbum={report.status === 'draft' ? onAlbum : undefined} /> : <ReportItemsView section={items} onOpen={onOpen} onView={onView} />;
+  if (items?.kind === 'repeat') return isUnitsRepeat(items) ? <ReportUnitsView section={items} onOpen={onOpen} onView={onView} admin={admin} onAlbum={onAlbum} /> : <ReportItemsView section={items} onOpen={onOpen} onView={onView} />;
   return (
     <>
       <ProgressCard document={report} />

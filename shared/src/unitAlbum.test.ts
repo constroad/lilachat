@@ -51,24 +51,20 @@ describe('the album of a unit (José 19/11)', () => {
 });
 
 describe('the button of a unit', () => {
-  it('is «Terminar unidad» on an open unit for an admin', () => {
-    expect(unitAlbumCta(unitWith({ ingreso: [shot('i')] }), true)).toEqual({ label: ALBUM_CTA.finish });
-  });
-
-  it('is nothing for a member, even with photos', () => {
-    expect(unitAlbumCta(fullUnit(), false)).toBeNull();
+  it('is «Terminar unidad» on an open unit, for anyone (José 19/11: «que sea para todos»)', () => {
+    expect(unitAlbumCta(unitWith({ ingreso: [shot('i')] }))).toEqual({ label: ALBUM_CTA.finish });
   });
 
   it('is nothing for a unit with no photo', () => {
-    expect(unitAlbumCta(unitWith({}), true)).toBeNull();
+    expect(unitAlbumCta(unitWith({}))).toBeNull();
   });
 
   it('shows for a unit with only extras', () => {
-    expect(unitAlbumCta(unitWith({ adicional: [shot('x1')] }), true)?.label).toBe(ALBUM_CTA.finish);
+    expect(unitAlbumCta(unitWith({ adicional: [shot('x1')] }))?.label).toBe(ALBUM_CTA.finish);
   });
 
   it('sends the photos of a closed unit not sent yet', () => {
-    expect(unitAlbumCta(fullUnit(), true)).toEqual({ label: ALBUM_CTA.send });
+    expect(unitAlbumCta(fullUnit())).toEqual({ label: ALBUM_CTA.send });
   });
 
   it('resends once Portal says it went, with when', () => {
@@ -76,11 +72,11 @@ describe('the button of a unit', () => {
     const item = fullUnit({ albumEnviadoAt: '2026-11-19T15:42:00.000Z' });
     // Act and assert
     expect(item.albumSentAt).toBe('2026-11-19T15:42:00.000Z');
-    expect(unitAlbumCta(item, true)).toEqual({ label: ALBUM_CTA.resend, sentNote: 'Enviadas al grupo el 19/11 a las 10:42' });
+    expect(unitAlbumCta(item)).toEqual({ label: ALBUM_CTA.resend, sentNote: 'Enviadas al grupo el 19/11 a las 10:42' });
   });
 
   it('ignores a sent date that is not a date', () => {
-    expect(unitAlbumCta(fullUnit({ albumEnviadoAt: 'ayer' }), true)).toEqual({ label: ALBUM_CTA.send });
+    expect(unitAlbumCta(fullUnit({ albumEnviadoAt: 'ayer' }))).toEqual({ label: ALBUM_CTA.send });
   });
 });
 

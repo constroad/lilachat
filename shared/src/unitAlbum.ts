@@ -68,9 +68,9 @@ export function albumSentNote(iso: string): string {
   return `Enviadas al grupo el ${part('day')}/${part('month')} a las ${part('hour')}:${part('minute')}`;
 }
 
-/** The button of a unit: only admins send to the group (José 12/11), and only a unit with a photo has something to send. */
-export function unitAlbumCta(item: RepeatItem, isAdmin: boolean): AlbumCta | null {
-  if (!isAdmin || unitAlbumOf(item).length === 0) return null;
+/** The button of a unit, for every member (José 19/11: «que sea para todos»); only a unit with a photo has something to send. */
+export function unitAlbumCta(item: RepeatItem): AlbumCta | null {
+  if (unitAlbumOf(item).length === 0) return null;
   if (item.albumSentAt) return { label: ALBUM_CTA.resend, sentNote: albumSentNote(item.albumSentAt) };
   return { label: unitStateOf(item) === 'finished' ? ALBUM_CTA.send : ALBUM_CTA.finish };
 }

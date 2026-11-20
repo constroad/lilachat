@@ -57,7 +57,7 @@ quien ve montos (admin del espacio).
 7. **Ver PDF** de un borrador: vista previa dentro de la app (APK `ReportPreviewScreen`,
    15/11). Publicado: visor PDF de la app.
 8. **Quitar una foto** ya enviada de un borrador (`remove_photo` → `quitar_foto_de_informe`).
-9. **Terminar unidad** (CTL-PIS, solo admins, 19/11): revisión de las fotos y envío al grupo
+9. **Terminar unidad** (CTL-PIS, todos los miembros, borrador o publicado; José 19/11 noche): revisión de las fotos y envío al grupo
    (`unit_album` → `enviar_fotos_de_unidad`). Detalle en spec INFORMES-DESDE-LILACHAT §24.
 
 ### Bandejas del CTL-IMP: basta una (José 19/11)

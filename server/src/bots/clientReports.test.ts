@@ -278,9 +278,13 @@ describe('the photo and «Publicar» as forms', () => {
     expect(sent.body.response.text).toBe('Se enviaron 2 fotos al grupo.');
   });
 
-  it('a member of the channel who is not an admin does not send the album', async () => {
-    await openOf(ana, album).expect(404);
-    expect(await BotCommandRunModel.countDocuments({})).toBe(0);
+  it('a member of the channel who is not an admin sends the album too (José 19/11: «que sea para todos»)', async () => {
+    const opened = await openOf(ana, album).expect(200);
+    expect(opened.body.response.form).toMatchObject({ id: 'enviar_fotos_de_unidad' });
+  });
+
+  it('nobody outside the channel sends the album', async () => {
+    await openOf(outsider, album).expect(404);
   });
 
   it('an album without urls is refused before the door', async () => {

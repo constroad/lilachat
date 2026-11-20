@@ -240,7 +240,7 @@ export async function openReportForm(workspaceId: string, clientId: string, serv
   const open = openInputOf(input);
   if (!open) return fail(400, 'invalid_request', 'Falta qué parte del informe abrir.');
   // José 12/11: WhatsApp to the client's group only for admins; a member gets the 404 of any door it may not open.
-  const asked = await findAskedService(workspaceId, clientId, serviceId, userId, open.kind === 'unit_album' ? 'admin' : 'services');
+  const asked = await findAskedService(workspaceId, clientId, serviceId, userId, 'services');
   if (!asked) return notFound();
   const ready = await prepared(workspaceId, clientId, serviceId, userId, open);
   if ('error' in ready) return ready;

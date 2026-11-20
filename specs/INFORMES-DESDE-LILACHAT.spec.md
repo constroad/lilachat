@@ -2193,7 +2193,7 @@ de colocación (§22).
     revisión para intentar otra vez.
 - **Contrato con Portal** (lo construye Portal en paralelo):
   - Herramienta `enviar_fotos_de_unidad` con `{ informeId, tramoId, fotos: string[] }`. `fotos`
-    son las `url` de la unidad tal como las da el documento. Es solo para admins. Responde un texto
+    son las `url` de la unidad tal como las da el documento. Es para cualquier miembro del canal (José 19/11 noche: «que sea para todos»), en borrador o publicado. Responde un texto
     en español: cuántas fotos salieron y, si hubo, cuáles se descartaron por rotas. O responde
     un texto de error.
   - En el documento, la unidad puede traer `albumEnviadoAt` (ISO) y cada foto `alGrupo`

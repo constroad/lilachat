@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { buildCategoryView, type CategoryFilter, type CategoryView, type LinkNoteItem } from '@lilachat/shared';
 import { MergeCategoryDialog, RenameCategoryDialog } from './CategoryDialogs';
 import { CategoryChips, CategoryRail, NarrowSections, OrderSelect, SearchField, WideHeading, WideSections } from './CategoryLayouts';
@@ -11,7 +11,6 @@ import type { LinkCardActions } from './LinkNoteCards';
 import { LinksEmpty, LinksError, LinksSkeleton } from './LinksStates';
 import { MoveLinkSheet } from './MoveLinkSheet';
 import { useWideScreen } from './notesView';
-import { FloatingNotice, useFloatingNotice } from '../../ui/FloatingNotice';
 
 /**
  * «Por categoría» of a notes chat (design nl-01, José 18/11): the links Lila
@@ -21,6 +20,18 @@ import { FloatingNotice, useFloatingNotice } from '../../ui/FloatingNotice';
 type Props = { jwt: string; chatId: string; onCompose: () => void };
 type Dialog = 'rename' | 'merge' | null;
 type Filters = { query: string; only: CategoryFilter; order: LinkOrder };
+
+const NOTICE_MS = 2000;
+
+function useNotice(): [string, (text: string) => void] {
+  const [notice, setNotice] = useState('');
+  useEffect(() => {
+    if (!notice) return undefined;
+    const timer = setTimeout(() => setNotice(''), NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [notice]);
+  return [notice, setNotice];
+}
 
 function NoMatches({ query }: { query: string }) {
   return <p data-testid="enlaces-sin-resultados" className="mt-10 text-center text-sm text-on-surface-variant">{query.trim() ? `Ningún enlace coincide con «${query.trim()}».` : 'No hay enlaces aquí.'}</p>;
@@ -74,7 +85,7 @@ export function LinksByCategory({ jwt, chatId, onCompose }: Props) {
   const [filters, setAllFilters] = useState<Filters>({ query: '', only: 'all', order: 'newest' });
   const [moving, setMoving] = useState<LinkNoteItem | null>(null);
   const [dialog, setDialog] = useState<Dialog>(null);
-  const [notice, setNotice] = useFloatingNotice();
+  const [notice, setNotice] = useNotice();
   const player = useLinkPlayer();
   const notes = state.notes;
   if (!notes) return state.status === 'error' ? <LinksError message={state.message} onRetry={reload} /> : <LinksSkeleton wide={wide} />;
@@ -90,7 +101,7 @@ export function LinksByCategory({ jwt, chatId, onCompose }: Props) {
       {wide ? <WideLayout view={view} notes={notes} filters={shown} setFilters={setFilters} actions={actions} onDialog={setDialog} /> : <NarrowLayout view={view} filters={shown} setFilters={setFilters} actions={actions} onCompose={onCompose} />}
       {moving ? <MoveLinkSheet jwt={jwt} chatId={chatId} item={moving} notes={notes} onClose={() => setMoving(null)} /> : null}
       <CategoryDialog dialog={dialog} jwt={jwt} chatId={chatId} notes={notes} view={view} only={only} onClose={() => setDialog(null)} onOnly={(next) => setFilters({ only: next })} />
-      <FloatingNotice text={notice} done />
+      {notice ? <p role="status" className="pointer-events-none fixed bottom-24 left-1/2 z-40 -translate-x-1/2 rounded-full bg-on-surface px-4 py-2 text-sm text-surface shadow-lg">{notice}</p> : null}
       {player.overlay}
     </>
   );

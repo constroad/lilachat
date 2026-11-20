@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable } from 'react-native';
 import { Zap } from 'lucide-react-native';
-import { formKeyOf, quickActionRows, type CommandGroup } from '@lilachat/shared';
+import { formKeyOf, quickActionRows, type CommandGroup, type ShortcutRow } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { getSocket } from '../../chat/socketClient';
 import { QuickActionsSheet } from '../../chat/commands/QuickActionsSheet';
@@ -9,6 +9,7 @@ import { AppFormSheet } from '../../chat/commands/AppFormSheet';
 import { EphemeralAnswers } from '../../chat/commands/EphemeralAnswers';
 import { spaceCommands } from '../../chat/commands/commandsApi';
 import { useAppAnswers } from '../../chat/commands/useAppAnswers';
+import { runVisitShortcut } from '../visits/visitShortcut';
 
 /**
  * The space's ⚡ (R160, design e-30; José, 23/10: it belongs to the space,
@@ -62,6 +63,8 @@ export function SpaceQuickActions(props: { jwt: string; spaceId: string; spaceNa
     setOpen(true);
     if (!groups) void load();
   };
+  // «Visita técnica» opens the new visit's «Datos» here, never Portal's shortcut (José 20/11).
+  const run = (row: ShortcutRow) => void (runVisitShortcut(row, { jwt, spaceId }, answers.track) ?? answers.runAction(row));
   return (
     <>
       <Pressable testID="btn-acciones-espacio" accessibilityLabel="Acciones rápidas" onPress={show} className="h-11 w-11 items-center justify-center rounded-full bg-warning/10">
@@ -79,7 +82,7 @@ export function SpaceQuickActions(props: { jwt: string; spaceId: string; spaceNa
         testPrefix="accion-espacio"
         footer="También con / en cualquier canal"
         onRetry={() => void load()}
-        onPick={(row) => void answers.runAction(row)}
+        onPick={run}
         onClose={() => setOpen(false)}
       >
         <EphemeralAnswers answers={answers.answers} onDismiss={answers.dismiss} onOpenForm={answers.showForm} chatId="" jwt={jwt} embedded />

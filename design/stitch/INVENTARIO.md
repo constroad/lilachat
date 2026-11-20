@@ -538,7 +538,7 @@ capturas de la implementación y el revisor independiente (sin navegador ni emul
 | cc-05-drive | sí | sí | sí | `web/src/spaces/clients/ServiceDriveWeb.tsx`, `web/src/spaces/clients/DriveFileMenu.tsx`, `app/src/spaces/clients/ServiceDrive.tsx`, `app/src/spaces/clients/DriveFileSheet.tsx` |
 | cc-06-checklist-pendientes | no | no | sí | `web/src/chat/workPlan/ChecklistSegmentsWeb.tsx`, `app/src/chat/workPlan/ChecklistSegments.tsx` |
 
-## Rediseño 20/11 (pista, firmas, mapa, pedidos) — espera aprobación de José
+## Rediseño 20/11 (pista, firmas, mapa, pedidos) — aprobado por José en el chat el 20/11 («si hazlo»)
 
 José 20/11: control de pista (orden de descarga que decide él, dato en la vista previa de la foto, «Terminar
 unidad» visible, no terminar si la anterior no salió), «Responsables y firmas» y «Completar datos de ejemplo»,
@@ -556,11 +556,11 @@ Prototipo: https://claude.ai/artifact/Q83tJwXB2ixdKbsnTQz5Md
 | pv2-02-pista-unidad-foto-dato | móvil (oscuro) | El dato (cm, °C) en la vista previa de la foto | generado 20/11 · `8bae65f2bf594ab19f90a643237746ce` · aprobado por José 20/11 («sí hazlo») · implementado, falta captura y revisor (`auditorias/pv2-02-pista-unidad-foto-dato.md`) |
 | pv2-03-pista-terminar | móvil (oscuro) | Terminar unidad: revisar fotos, enviar al grupo, bloqueo si la anterior no salió | generado 20/11 · `59f7199ac11448cf9bec8e0fa3bf1d35` · aprobado por José 20/11 («sí hazlo») · implementado, falta captura y revisor (`auditorias/pv2-03-pista-terminar.md`) |
 | pv2-04-pista-tablet | tablet (claro) | Cola a la izquierda y unidad a la derecha | generado 20/11 · `360c7f77ad4c468c8c8f923e4a1b3311` · aprobado por José 20/11 («sí hazlo») · implementado, falta captura y revisor (`auditorias/pv2-04-pista-tablet.md`) |
-| imp-04-firmas | móvil (oscuro) | Responsables y firmas en tres tarjetas | generado 20/11 · `a0c2677d66394263ac613de9193fb2c2` · espera aprobación |
-| imp-05-datos-ejemplo | móvil (oscuro) | «Completar datos de ejemplo» a la vista | generado 20/11 · `c91d9712f1a14134b97b06ebd53c77d3` · espera aprobación |
-| mapa-v2-movil | móvil (oscuro) | Mapa a pantalla, filtros flotantes | generado 20/11 · `98960b9b92184514a82be84cd13ed809` · espera aprobación |
-| mapa-v2-escritorio | escritorio (claro) | Un solo grupo de botones sobre el mapa | generado 20/11 · `180943b1173c41e2b97707fdafd68679` · espera aprobación |
-| ped-v2-movil | móvil (oscuro) | Despachos en filas con sus medios y «+N» | generado 20/11 · `73bd2cad7fc1406a9d1b126c9b1d42e7` · espera aprobación |
-| ped-v2-escritorio-lista | escritorio (claro) | Tabla de despachos | generado 20/11 · `928abd296fd944e5ba52c79f525d1b44` · espera aprobación |
-| ped-v2-escritorio | escritorio (claro) | Visor de medios del despacho | generado 20/11 · `a40af6aabc5447d283531b5e9c42c8fa` · espera aprobación |
-| ped-v2-enlace-movil | móvil (oscuro) | Hoja del enlace del servicio | generado 20/11 · `08d4a75c76d34806bce94c36d5d1c8a3` · espera aprobación |
+| imp-04-firmas | móvil (oscuro) | Responsables y firmas en tres tarjetas | generado 20/11 · `a0c2677d66394263ac613de9193fb2c2` · aprobado 20/11 (chat) |
+| imp-05-datos-ejemplo | móvil (oscuro) | «Completar datos de ejemplo» a la vista | generado 20/11 · `c91d9712f1a14134b97b06ebd53c77d3` · aprobado 20/11 (chat) |
+| mapa-v2-movil | móvil (oscuro) | Mapa a pantalla, filtros flotantes | generado 20/11 · `98960b9b92184514a82be84cd13ed809` · aprobado 20/11 (chat) |
+| mapa-v2-escritorio | escritorio (claro) | Un solo grupo de botones sobre el mapa | generado 20/11 · `180943b1173c41e2b97707fdafd68679` · aprobado 20/11 (chat) |
+| ped-v2-movil | móvil (oscuro) | Despachos en filas con sus medios y «+N» | generado 20/11 · `73bd2cad7fc1406a9d1b126c9b1d42e7` · aprobado 20/11 (chat) |
+| ped-v2-escritorio-lista | escritorio (claro) | Tabla de despachos | generado 20/11 · `928abd296fd944e5ba52c79f525d1b44` · aprobado 20/11 (chat) |
+| ped-v2-escritorio | escritorio (claro) | Visor de medios del despacho | generado 20/11 · `a40af6aabc5447d283531b5e9c42c8fa` · aprobado 20/11 (chat) |
+| ped-v2-enlace-movil | móvil (oscuro) | Hoja del enlace del servicio | generado 20/11 · `08d4a75c76d34806bce94c36d5d1c8a3` · aprobado 20/11 (chat) |

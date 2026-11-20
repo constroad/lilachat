@@ -213,7 +213,7 @@ describe('one «Subir», list or grid, and the chips (José 13/11, designs drv-0
     // Assert
     expect(screen.getByTestId('drive-cuadricula')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('drive-tipo-document'));
-    expect(screen.getAllByTestId('archivo-drive').map((one) => one.textContent)).toEqual([expect.stringContaining('acta.pdf')]);
+    expect(screen.getAllByTestId('archivo-drive').map((one) => one.parentElement?.textContent)).toEqual([expect.stringContaining('acta.pdf')]);
     unmount();
     render(<ServiceDriveWeb target={target} service={service} chatId="chat-1" />);
     expect(await screen.findByTestId('drive-cuadricula')).toBeInTheDocument();

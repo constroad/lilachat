@@ -108,7 +108,7 @@ describe('rows and tabs', () => {
     expect(moreInPortal(3, 3)).toBeNull();
     // An empty list says it itself (01/11: «Mostrando 0 de 1» under «Todavía no hay informes»).
     expect(moreInPortal(0, 1)).toBeNull();
-    expect(detailTabs(serviceDetailOf(body)!).map((tab) => tab.label)).toEqual(['Pedidos · 148', 'Informes · 1']);
+    expect(detailTabs(serviceDetailOf(body)!).map((tab) => `${tab.label} ${tab.count}`)).toEqual(['Pedidos 148', 'Informes 1']);
     // José 05/11: even for whoever sees money, the service has no money tab.
     expect(detailTabs({ ...serviceDetailOf(body)!, quotes: [], totals: { orders: 0, dispatches: 0, reports: 0, quotes: 2 } }).map((tab) => tab.key)).toEqual(['orders', 'reports']);
   });
@@ -132,7 +132,8 @@ describe('the dispatches live inside their order (José 01/11: «por servicio pu
     // Act
     const withDrive = serviceTabs(detail, true);
     // Assert
-    expect(withDrive.map((tab) => tab.label)).toEqual(['Pedidos · 148', 'Informes · 1', 'Drive']);
+    expect(withDrive.map((tab) => tab.label)).toEqual(['Pedidos', 'Informes', 'Drive']);
+    expect(withDrive.map((tab) => tab.count)).toEqual([148, 1, undefined]);
     expect(serviceTabs(detail, false).map((tab) => tab.key)).toEqual(['orders', 'reports']);
   });
 

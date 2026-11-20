@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import { Camera, ChevronRight, FileSpreadsheet, FileText, Folder, Image as ImageIcon, LayoutGrid, List, Play, Plus, Video } from 'lucide-react';
+import { useRef, useState, type ReactNode } from 'react';
+import { Camera, ChevronRight, ClipboardPaste, FileSpreadsheet, FileText, Folder, Image as ImageIcon, LayoutGrid, List, Play, Plus, Video } from 'lucide-react';
 import { DRIVE_KINDS, DRIVE_UPLOAD_OPTIONS, DRIVE_UPLOADING, driveDayGroups, driveKindOf, type DriveKind, type DriveLayout, type DriveUploadOption, type ServiceFile } from '@lilachat/shared';
 import { useDismiss } from '../../ui/useDismiss';
 
@@ -46,9 +46,24 @@ function UploadMenu(props: { options: readonly Option[]; sending: boolean; onPic
   );
 }
 
-/** Design drv-01/02: «DRIVE DEL SERVICIO · 70 archivos», Lista / Cuadrícula and ONE «Subir»; the camera one tap away beside it (José 13/11). */
-export function DriveHeaderWeb(props: { count: number | null; layout: DriveLayout; onLayout: (layout: DriveLayout) => void; options: readonly Option[]; sending: boolean; onPick: (option: Option) => void }) {
+/** The Drive's buttons at the right of the service's tab bar (design cc-05): «Pegar», the camera one tap away (José 13/11) and ONE «Subir». */
+export function DriveActionsWeb(props: { options: readonly Option[]; sending: boolean; onPick: (option: Option) => void; onPaste: () => void }) {
   const camera = props.options.includes('photo');
+  return (
+    <>
+      <button type="button" data-testid="drive-pegar" disabled={props.sending} onClick={props.onPaste} className="flex h-10 items-center gap-1.5 rounded-xl border border-outline/20 bg-surface px-3 text-sm font-semibold text-on-surface hover:bg-background disabled:opacity-60"><ClipboardPaste size={16} /> Pegar</button>
+      {camera ? (
+        <button type="button" data-testid="drive-camara" aria-label="Abrir la cámara" title="Abrir la cámara" disabled={props.sending} onClick={() => props.onPick('photo')} className="grid h-10 w-10 place-items-center rounded-xl border border-outline/20 bg-surface text-on-surface disabled:opacity-60">
+          <Camera size={18} />
+        </button>
+      ) : null}
+      <UploadMenu options={props.options} sending={props.sending} onPick={props.onPick} />
+    </>
+  );
+}
+
+/** Design drv-01/02: «DRIVE DEL SERVICIO · 70 archivos» and Lista / Cuadrícula. */
+export function DriveTopWeb(props: { count: number | null; layout: DriveLayout; onLayout: (layout: DriveLayout) => void }) {
   const toggle = (layout: DriveLayout, Icon: typeof List, label: string) => (
     <button type="button" data-testid={`drive-vista-${layout === 'list' ? 'lista' : 'cuadricula'}`} aria-pressed={props.layout === layout} aria-label={label} title={label} onClick={() => props.onLayout(layout)} className={`grid h-9 w-10 place-items-center rounded-lg ${props.layout === layout ? 'bg-primary/10 text-primary' : 'text-on-surface-variant hover:bg-background'}`}>
       <Icon size={17} />
@@ -56,20 +71,11 @@ export function DriveHeaderWeb(props: { count: number | null; layout: DriveLayou
   );
   return (
     <div className="flex items-center gap-2">
-      <div className="min-w-0 flex-1">
-        <p className={KICKER}>Drive del servicio</p>
-        {props.count !== null ? <p className="text-base font-bold">{filesLabel(props.count)}</p> : null}
-      </div>
+      <p className={`min-w-0 flex-1 ${KICKER}`}>Drive del servicio{props.count !== null ? <span className="ml-2 font-sans text-sm normal-case tracking-normal text-on-surface">{filesLabel(props.count)}</span> : null}</p>
       <div className="flex rounded-xl border border-outline/15 bg-surface p-0.5">
         {toggle('list', List, 'Ver como lista')}
         {toggle('grid', LayoutGrid, 'Ver como cuadrícula')}
       </div>
-      {camera ? (
-        <button type="button" data-testid="drive-camara" aria-label="Abrir la cámara" title="Abrir la cámara" disabled={props.sending} onClick={() => props.onPick('photo')} className="grid h-10 w-10 place-items-center rounded-xl bg-primary/10 text-primary disabled:opacity-60">
-          <Camera size={18} />
-        </button>
-      ) : null}
-      <UploadMenu options={props.options} sending={props.sending} onPick={props.onPick} />
     </div>
   );
 }
@@ -85,13 +91,15 @@ export function DriveKindChipsWeb(props: { kind: DriveKind; onKind: (kind: Drive
   );
 }
 
-function Tile(props: { file: ServiceFile; onOpen: (file: ServiceFile) => void }) {
+/** A tile: the preview opens it; under it the name and its «⋮» (design cc-05). */
+function Tile(props: { file: ServiceFile; onOpen: (file: ServiceFile) => void; menu?: (file: ServiceFile) => ReactNode }) {
   const kind = driveKindOf(props.file.mime);
   const preview = kind === 'photo' ? (props.file.thumbUrl ?? props.file.url) : props.file.thumbUrl;
   const sheet = /sheet|excel/.test(props.file.mime);
   const Icon = sheet ? FileSpreadsheet : FileText;
   return (
-    <button type="button" data-testid="archivo-drive" onClick={() => props.onOpen(props.file)} className="overflow-hidden rounded-xl border border-outline/15 bg-surface text-left hover:border-primary/40">
+    <div className="overflow-hidden rounded-xl border border-outline/15 bg-surface hover:border-primary/40">
+    <button type="button" data-testid="archivo-drive" onClick={() => props.onOpen(props.file)} className="block w-full text-left">
       {preview ? (
         <span className="relative block aspect-square bg-background">
           <img src={preview} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
@@ -104,20 +112,24 @@ function Tile(props: { file: ServiceFile; onOpen: (file: ServiceFile) => void })
           <span className="text-[11px] font-bold">{extensionOf(props.file.name)}</span>
         </span>
       )}
-      <span className="block truncate px-2 py-1.5 text-[13px] font-semibold">{props.file.name}</span>
     </button>
+      <span className="flex items-center gap-1 py-1 pl-2 pr-1">
+        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{props.file.name}</span>
+        {props.menu?.(props.file)}
+      </span>
+    </div>
   );
 }
 
 /** Design drv-02: the files as tiles, by day in Lima («Hoy · 13 nov»). */
-export function DriveGridWeb(props: { files: readonly ServiceFile[]; onOpen: (file: ServiceFile) => void }) {
+export function DriveGridWeb(props: { files: readonly ServiceFile[]; onOpen: (file: ServiceFile) => void; menu?: (file: ServiceFile) => ReactNode }) {
   return (
     <div data-testid="drive-cuadricula" className="flex flex-col gap-3">
       {driveDayGroups(props.files, new Date()).map((group) => (
         <section key={group.key}>
           <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-primary">{group.label}</p>
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
-            {group.files.map((file) => <Tile key={file.url} file={file} onOpen={props.onOpen} />)}
+            {group.files.map((file) => <Tile key={file.url} file={file} onOpen={props.onOpen} menu={props.menu} />)}
           </div>
         </section>
       ))}

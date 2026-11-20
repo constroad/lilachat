@@ -19,6 +19,15 @@ que Portal guarda en el Drive de ese servicio: fotos, videos y documentos.
 
 - Cabecera «DRIVE DEL SERVICIO · N archivos», selector Lista / Cuadrícula y **un solo
   botón «Subir»** (José 13/11: «nunca vi un diseño que tenga varios botones en un drive»).
+- **19/11 (diseño cc-05):** «Pegar», la cámara y «Subir» van a la derecha de la barra del servicio
+  (web). **Pegar:** Ctrl+V en cualquier parte del Drive sube la imagen o el archivo copiado; el botón
+  «Pegar» lee el portapapeles (solo imágenes); la franja «Pega aquí una imagen o un archivo (Ctrl+V) o
+  arrástralo» se ve en computadora (`web/src/spaces/clients/useDrivePaste.ts`). Lo pegado sin nombre se
+  llama `pegado-AAAAMMDD-HHMMSS.png` (`shared/src/driveFileActions.ts` › `pastedDriveName`).
+- **Menú «⋮» de cada archivo** (`driveFileActions`, web `DriveFileMenu.tsx`): Abrir, Copiar enlace,
+  Copiar archivo (solo imágenes: el portapapeles del navegador lleva PNG; la web la redibuja a PNG),
+  Descargar y, en una foto con id, «Marcar como antes / después» (abre el visor con su barra). «Mover a
+  carpeta» del diseño no está: Portal no tiene herramienta para mover.
 - «Subir» ofrece «Tomar foto», «Grabar video», «Desde la galería» y «Documento»
   (`DRIVE_UPLOAD_OPTIONS`, `shared/src/driveView.ts`). Sin cámara en vivo: galería y documento.
 - Botón de cámara junto a «Subir»: abre la cámara con FOTO / VIDEO, sello y GPS

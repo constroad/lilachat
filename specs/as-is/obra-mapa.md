@@ -59,12 +59,26 @@ ingeniero de campo desde el celular y lo mira el cliente desde una computadora.
 | Borrados y Restaurar | — | Solo admins |
 | Servicio sin calles | o-10 | Abre igual sobre fotos y unidades (`EMPTY_WORK_MAP`); si no hay nada, invita a dibujar |
 
+### Capas y leyenda (José 19/11, diseño cc-04)
+
+- El panel abre con «Capas y leyenda» y el avance debajo. Partidas (trabajos del mapa) en su color con
+  su % y un interruptor; etapas como chips «Todas · Etapa 1…» (el mismo filtro de etapa); dibujos por
+  tipo con su número; observaciones «Pendientes» y «Levantadas»; «Fotos». Un interruptor solo oculta
+  lo dibujado: las cifras siguen el filtro (`shared/src/workMapLayers.ts`: `viewWithLayers`,
+  `visibleMarks`, `visibleObservations`, `layerRowsOf`). «Capas» en la barra pliega o abre la sección.
+- La leyenda plegable «Leyenda» y el selector de etapa sobre el mapa se quitaron (los reemplaza el
+  panel). Sobre el mapa quedan el corte «Hasta hoy» y el selector de trabajo, que sí cambia las cifras
+  y la exportación («Sale lo que ves»). La capa Fotos pasó del botón sobre el mapa al panel.
+- **«Editar croquis» visible en todos los dispositivos:** en la barra del servicio (web ancha) o en la
+  barra propia del mapa (web angosta), con su texto completo.
+
 ### Web/PWA
 
-- Carpeta: `web/src/spaces/clients/workMap/` (40 archivos). Entrada:
+- Carpeta: `web/src/spaces/clients/workMap/` (41 archivos, `MapLayersPanel.tsx` nuevo). Entrada:
   `web/src/spaces/clients/ServiceMapWeb.tsx`.
-- `MapWorkspace.tsx`: la pestaña ocupa toda la conversación. El canal quita su
-  relleno y su scroll (`onMapOpen`).
+- `MapWorkspace.tsx`: la sección va bajo la cabecera y la barra del servicio, de borde a borde;
+  sus acciones van a la derecha de la barra (`SectionActions`) y, en pantalla completa o angosta,
+  en una barra propia (`BoardHead`).
 - Ancho o angosto lo decide el tablero con `ResizeObserver`, no la ventana. Con
   880 px o más el panel va a la derecha (380–400 px). Menos: hoja que sube sobre el mapa.
 - Pantalla completa del navegador; si se niega, una capa sobre la página. Escape sale.

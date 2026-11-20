@@ -140,7 +140,9 @@ la búsqueda y las tarjetas de enlace. Hilos, medios, agenda y stickers tienen s
 Lo demás (editar, borrar, reenviar, fijar, destacar, info, reacciones, menciones,
 «:hug», temporales, exportar, acuses) existe en las dos con el mismo motor compartido.
 
-## 4. Historia reciente (16/10 → 17/11)
+## 4. Historia reciente (16/10 → 19/11)
+
+- **19/11:** en un canal de cliente, `Conversation.tsx` deja la cabecera y las pestañas del canal sobre un servicio abierto desde 768 px; solo en el celular el servicio ocupa todo (diseños cc, ver `obra-canal-cliente-y-tutoriales.md`).
 
 - **16/10:** el historial vive en el teléfono (SQLite y respaldo cifrado). Lo mío queda leído en mis otros equipos.
 - **17/10:** editar mensajes (FL9b) y buscar en el chat (FL9c).

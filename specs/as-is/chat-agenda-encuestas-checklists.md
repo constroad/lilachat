@@ -122,6 +122,7 @@ La cola de tarjetas y la línea de Pendientes están en `bots-asistente-rutinas-
 - **29/10:** Checklist, Archivos y Pendientes solo en canales de cliente, con evidencia por tarea.
 - **30/10:** una raíz de hilo que es tarjeta se ve como su tarjeta; cada recordatorio que suena deja una línea de registro.
 - **06/11:** solo admins en Checklist, Pendientes para todos y recordatorios por tarea. Una app suma tareas a la etapa Ejecución.
+- **19/11:** en el celular (< 768 px) «Checklist» lleva el segmentado «Pendientes · Plan» y Pendientes deja de ser pestaña para quien tiene Checklist (diseño cc-06; web `chat/workPlan/ChecklistSegmentsWeb.tsx`, APK `chat/workPlan/ChannelWorkTabs.tsx`; regla en `shared/src/serviceShell.ts`).
 
 ## 5. Diseños de Stitch relacionados
 

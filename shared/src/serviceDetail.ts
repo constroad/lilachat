@@ -345,13 +345,14 @@ export function detailEmptyText(tab: DetailTabKey, totals: DetailTotals): string
  * Cotizaciones and Cobranza live in «Cuenta», by service. No «Despachos» (José
  * 01/11: a service has several orders): each order's sheet lists its own.
  */
-export function detailTabs(detail: ServiceDetail): { key: DetailTabKey; label: string }[] {
-  return (['orders', 'reports'] as const).map((key) => ({ key, label: `${TAB_NAMES[key]} · ${detail.totals[key]}` }));
+export function detailTabs(detail: ServiceDetail): { key: DetailTabKey; label: string; count: number }[] {
+  return (['orders', 'reports'] as const).map((key) => ({ key, label: TAB_NAMES[key], count: detail.totals[key] }));
 }
 
-/** The open service's tabs: the map and the Drive join Pedidos and Informes, with no count because Portal sends none. */
+/** The open service's tabs (design cc-02: «Pedidos 2 · Informes 3 · Mapa · Drive»): the map and the Drive carry no count, Portal sends none in the detail. */
 /** «Mapa» for everyone who can open the service, with streets or not: a service without them is where they are drawn (José 07/11, design o-10). */
-export function serviceTabs(detail: ServiceDetail, seesDrive: boolean, seesMap = false): { key: ServiceTabKey; label: string }[] {
+export type ServiceTabItem = { key: ServiceTabKey; label: string; count?: number };
+export function serviceTabs(detail: ServiceDetail, seesDrive: boolean, seesMap = false): ServiceTabItem[] {
   const map = seesMap ? [{ key: 'map' as const, label: 'Mapa' }] : [];
   const drive = seesDrive ? [{ key: 'drive' as const, label: 'Drive' }] : [];
   return [...detailTabs(detail), ...map, ...drive];

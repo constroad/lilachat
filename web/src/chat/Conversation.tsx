@@ -24,9 +24,11 @@ import { useWorkPlanWeb, WorkPlanWeb } from './workPlan/WorkPlanWeb';
 import { mapDepsOf } from '../spaces/clients/ServiceMapWeb';
 import { PendingWeb, TaskDetailWeb, type OpenTask } from './workPlan/WorkListsWeb';
 import { ClientAccountWeb } from '../spaces/clients/ClientAccountWeb';
-import { CHANNEL_TAB_LABELS, channelTabs, type ChannelLinks, type ChannelTab } from '@lilachat/shared';
+import { CHANNEL_TAB_LABELS, channelTabsFor, checklistHoldsPending, pendingTasks, type ChannelLinks, type ChannelTab, type WorkStage } from '@lilachat/shared';
 import { useClientOfChat, useClientsOfChannelSpace } from '../spaces/clients/useSpaceClients';
-import { ArchivedClientBanner, ArchivedComposerNote, ClientServices } from '../spaces/clients/ClientChannelParts';
+import { ArchivedClientBanner, ArchivedComposerNote, ClientServices, type ChannelPending } from '../spaces/clients/ClientChannelParts';
+import { useCompactShell } from '../spaces/clients/ServiceShellWeb';
+import { ChecklistSegmentsWeb } from './workPlan/ChecklistSegmentsWeb';
 import { useClientRecords } from '../spaces/clients/useSpaceClients';
 import type { ChatSummary, MensajeEnPantalla } from './types';
 import { focusComposerSoon, useNotesView, useWideScreen } from './links/notesView';
@@ -140,12 +142,16 @@ export function Conversation(props: {
   // José 29/10: Checklist and Pendientes belong to a client's channel only.
   const isClientChannel = isChannel && Boolean(client);
   const workPlan = useWorkPlanWeb(props.jwtParaEnlaces ?? '', chat.id, isClientChannel && Boolean(props.jwtParaEnlaces));
-  const tabs = client ? channelTabs(client.access, Boolean(workPlan.stages?.length)) : (['chat'] as ChannelTab[]);
+  // José 19/11 (design cc-06): on a phone «Pendientes» lives inside «Checklist» for whoever has the checklist.
+  const compact = useCompactShell();
+  const hasStages = Boolean(workPlan.stages?.length);
+  const tabs = client ? channelTabsFor(client.access, hasStages, compact) : (['chat'] as ChannelTab[]);
+  const holdsPending = checklistHoldsPending(client?.access, hasStages, compact);
   // A tab the access no longer gives (an admin just restricted me) falls back to the chat.
   const shownTab = tabs.includes(channelTab) ? channelTab : 'chat';
-  // José 06/11: an open service takes the whole conversation; its breadcrumb goes back to the chat.
+  // José 19/11: an open service takes the screen on a phone; on a tablet or computer the channel's tabs stay above it.
   const [serviceOpen, setServiceOpen] = useState(false);
-  const serviceFull = isClientChannel && shownTab === 'services' && serviceOpen;
+  const serviceFull = isClientChannel && shownTab === 'services' && serviceOpen && compact;
   const [openTask, setOpenTask] = useState<OpenTask | null>(null);
   // José 18/11: a notes chat with its links sorted reads as «Chat · Por categoría».
   const [notesView, setNotesView] = useNotesView(chat);
@@ -217,17 +223,17 @@ export function Conversation(props: {
       )}
       {wide || props.app ? null : <NotesViewBand chat={chat} view={notesView} onView={setNotesView} />}
       {props.callStrip}
-      {isClientChannel && client && !serviceFull ? <ChannelTabs tabs={tabs} tab={shownTab} onTab={setChannelTab} counter={workPlan.summary?.total ? `${workPlan.summary.done}/${workPlan.summary.total}` : null} services={client.services.length} overdue={Boolean(workPlan.summary?.overdue)} /> : null}
+      {isClientChannel && client && !serviceFull ? <ChannelTabs tabs={tabs} tab={shownTab} onTab={setChannelTab} counter={checklistBadge(workPlan, holdsPending)} services={client.services.length} overdue={Boolean(workPlan.summary?.overdue)} overdueOn={holdsPending ? 'checklist' : 'pending'} /> : null}
       {isClientChannel && client && !serviceFull ? <ArchivedClientBanner client={client} /> : null}
       {openTask && workPlan.stages ? <TaskDetailWeb open={openTask} admin={Boolean(client?.access?.admin)} stages={workPlan.stages} onChanged={() => void workPlan.reload()} onOpenMessage={toMessage} onClose={() => setOpenTask(null)} /> : null}
       {isClientChannel && shownTab === 'pending' ? (
         <PendingWeb stages={workPlan.stages ?? []} onOpen={setOpenTask} />
       ) : isClientChannel && shownTab === 'checklist' ? (
-        <WorkPlanWeb plan={workPlan} onOpenTask={setOpenTask} />
+        holdsPending ? <ChecklistSegmentsWeb plan={workPlan} onOpenTask={setOpenTask} /> : <WorkPlanWeb plan={workPlan} onOpenTask={setOpenTask} />
       ) : isClientChannel && client && shownTab === 'account' && props.jwtParaEnlaces && chat.workspaceId ? (
         <ClientAccountWeb target={{ jwt: props.jwtParaEnlaces, spaceId: chat.workspaceId, clientId: client.id }} services={client.services} />
       ) : isClientChannel && client && shownTab === 'services' ? (
-        <ClientServicesPanel people={props.people ?? []} client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} links={links} focusSeq={focusSeq} onFocused={clearFocus} onServiceOpen={setServiceOpen} onToChat={() => setChannelTab('chat')} />
+        <ClientServicesPanel people={props.people ?? []} client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} links={links} focusSeq={focusSeq} onFocused={clearFocus} onServiceOpen={setServiceOpen} pending={compact && hasStages ? { stages: workPlan.stages ?? [], label: holdsPending ? 'Ver en Checklist' : 'Ver pendientes', onOpen: () => setChannelTab(holdsPending ? 'checklist' : 'pending') } : undefined} />
       ) : props.app && appTab === 'info' ? (
         <div data-testid="informacion-app" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-8">
           <div className="mx-auto max-w-3xl">
@@ -416,13 +422,13 @@ function BannerWithSession() {
 }
 
 /** «Servicios» asks for its records only while it is open. */
-function ClientServicesPanel(props: { people: readonly string[]; client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; links: ChannelLinks; focusSeq: number | null; onFocused: () => void; onServiceOpen: (open: boolean) => void; onToChat: () => void }) {
+function ClientServicesPanel(props: { people: readonly string[]; client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; links: ChannelLinks; focusSeq: number | null; onFocused: () => void; onServiceOpen: (open: boolean) => void; pending?: ChannelPending }) {
   const records = useClientRecords(props.jwt, props.spaceId, props.client.id);
   // One target per channel: the screens under it ask Portal again when it changes, not at every message.
   const { jwt, spaceId } = props;
   const clientId = props.client.id;
   const target = useMemo(() => (jwt && spaceId ? { jwt, spaceId, clientId } : null), [jwt, spaceId, clientId]);
-  return <ClientServices people={props.people} client={props.client} records={records} focusSeq={props.focusSeq} onFocused={props.onFocused} target={target} links={props.links} onServiceOpen={props.onServiceOpen} onToChat={props.onToChat} />;
+  return <ClientServices people={props.people} client={props.client} records={records} focusSeq={props.focusSeq} onFocused={props.onFocused} target={target} links={props.links} onServiceOpen={props.onServiceOpen} pending={props.pending} />;
 }
 
 /**
@@ -430,7 +436,13 @@ function ClientServicesPanel(props: { people: readonly string[]; client: NonNull
  * Chat · Cuenta · Servicios · Checklist · Pendientes. Cuenta only
  * for whoever sees money; a restricted member only gets the tabs an admin picked.
  */
-function ChannelTabs(props: { tabs: ChannelTab[]; tab: ChannelTab; onTab: (tab: ChannelTab) => void; counter: string | null; services: number; overdue: boolean }) {
+/** The checklist's badge: «done/total», or on a phone the open tasks it holds. */
+const checklistBadge = (plan: { stages: readonly WorkStage[] | null; summary: { done: number; total: number } | null }, holdsPending: boolean): string | null => {
+  if (holdsPending) return String(pendingTasks(plan.stages ?? [], new Date()).length || '') || null;
+  return plan.summary?.total ? `${plan.summary.done}/${plan.summary.total}` : null;
+};
+
+function ChannelTabs(props: { tabs: ChannelTab[]; tab: ChannelTab; onTab: (tab: ChannelTab) => void; counter: string | null; services: number; overdue: boolean; /** Where the red dot of overdue tasks goes. */ overdueOn: ChannelTab }) {
   const badges: Partial<Record<ChannelTab, string | null>> = { services: props.services ? String(props.services) : null, checklist: props.counter };
   return (
     <div role="tablist" className="flex gap-6 overflow-x-auto border-b border-outline/15 bg-surface px-4">
@@ -438,7 +450,7 @@ function ChannelTabs(props: { tabs: ChannelTab[]; tab: ChannelTab; onTab: (tab: 
         <button key={key} type="button" role="tab" aria-selected={props.tab === key} data-testid={`pestana-canal-${key}`} onClick={() => props.onTab(key)} className={`flex min-h-[40px] shrink-0 items-center gap-1.5 border-b-2 text-sm ${props.tab === key ? 'border-primary font-semibold text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
           {CHANNEL_TAB_LABELS[key]}
           {badges[key] ? <span className="rounded-full bg-primary/10 px-1.5 text-[11px] font-bold text-primary">{badges[key]}</span> : null}
-          {key === 'pending' && props.overdue ? <span data-testid="pestana-canal-pending-vencidos" className="h-2 w-2 rounded-full bg-error" /> : null}
+          {key === props.overdueOn && props.overdue ? <span data-testid={`pestana-canal-${key}-vencidos`} className="h-2 w-2 rounded-full bg-error" /> : null}
         </button>
       ))}
     </div>

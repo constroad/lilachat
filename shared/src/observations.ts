@@ -1,5 +1,5 @@
 import type { DocumentStatus } from './fieldDocument.js';
-import { lineLengthM, stationLabel, workMapView, type WorkMapPoint, type WorkMapView } from './workMap.js';
+import { lineLengthM, stationLabel, withMinimumSpan, workMapView, type WorkMapPoint, type WorkMapView } from './workMap.js';
 import { EMPTY_WORK_MAP } from './workMapDays.js';
 import { placeOnStreets } from './workMapPhotos.js';
 import type { ServiceFile } from './serviceFiles.js';
@@ -163,7 +163,7 @@ export function observationWorkMap(map: ObservationMap, observations: readonly O
   const placed = observations.filter(isPlaced);
   if (view.bounds || !placed.length) return view;
   const [lngs, lats] = [placed.map((one) => one.lng), placed.map((one) => one.lat)];
-  return { ...view, bounds: [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]] };
+  return { ...view, bounds: withMinimumSpan([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]]) };
 }
 
 /** «Ubicación aproximada (±40 m)» when Portal marks it; nothing otherwise. */

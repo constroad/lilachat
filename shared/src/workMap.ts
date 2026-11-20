@@ -281,7 +281,10 @@ function boundsOf(streets: WorkMapStreet[]): Bounds | null {
 /** The least a frame spans, in degrees (~110 m): a lone drawing or a short stretch is not framed at full zoom. */
 export const WORK_MAP_MIN_FRAME_DEG = 0.001;
 
-function withMinimumSpan(bounds: Bounds | null): Bounds | null {
+/** A box with no area (a lone point, or two coincident ones) zooms a camera's `fitBounds` past
+ * where tiles are cached (blank/grey APK map until the person zooms out by hand): every bounds
+ * computed from points, not only a street's, goes through this. */
+export function withMinimumSpan(bounds: Bounds | null): Bounds | null {
   if (!bounds) return null;
   const pad = (low: number, high: number): [number, number] => {
     const missing = WORK_MAP_MIN_FRAME_DEG - (high - low);

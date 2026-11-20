@@ -97,6 +97,25 @@ describe('a map with photos and no streets', () => {
     expect(withMediaBounds(framed, [photo('a', morning8)], []).bounds).toEqual([[1, 1], [2, 2]]);
     expect(withMediaBounds(workMapView(EMPTY_WORK_MAP), [], []).bounds).toBeNull();
   });
+
+  /** José 20/11 (E2E APK): a lone photo framed a ZERO-span box; the camera's fitBounds zoomed in
+   * past where tiles are cached, so the map opened blank/grey until the person zoomed out by hand. */
+  it('frames a single photo with a minimum span, never a zero-size box', async () => {
+    const { withMediaBounds, EMPTY_WORK_MAP } = await import('./workMapDays.js');
+    const { workMapView, WORK_MAP_MIN_FRAME_DEG } = await import('./workMap.js');
+    const view = withMediaBounds(workMapView(EMPTY_WORK_MAP), [photo('a', morning8)], []);
+    expect(view.bounds![1][0] - view.bounds![0][0]).toBeGreaterThanOrEqual(WORK_MAP_MIN_FRAME_DEG);
+    expect(view.bounds![1][1] - view.bounds![0][1]).toBeGreaterThanOrEqual(WORK_MAP_MIN_FRAME_DEG);
+  });
+
+  it('frames two units that discharged at the same point with a minimum span too', async () => {
+    const { withMediaBounds, EMPTY_WORK_MAP } = await import('./workMapDays.js');
+    const { workMapView, WORK_MAP_MIN_FRAME_DEG } = await import('./workMap.js');
+    const samePoint = { kind: 'vacia' as const, lat: -12, lng: -77, at: morning8 };
+    const view = withMediaBounds(workMapView(EMPTY_WORK_MAP), [], [{ ...unit('u1', morning8), points: [samePoint] }, { ...unit('u2', morning8), points: [samePoint] }]);
+    expect(view.bounds![1][0] - view.bounds![0][0]).toBeGreaterThanOrEqual(WORK_MAP_MIN_FRAME_DEG);
+    expect(view.bounds![1][1] - view.bounds![0][1]).toBeGreaterThanOrEqual(WORK_MAP_MIN_FRAME_DEG);
+  });
 });
 
 describe('the list of units with no street drawn', () => {

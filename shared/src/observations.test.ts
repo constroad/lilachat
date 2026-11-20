@@ -17,6 +17,7 @@ import {
   registeredLine,
   type Observation,
 } from './observations.js';
+import { WORK_MAP_MIN_FRAME_DEG } from './workMap.js';
 
 /** Portal's answer as agentes passes it (Portal ead85b1a, agentes 275fb32, 11/11/2026). */
 const media = (mime: string, extra: Record<string, unknown> = {}) => ({ url: `https://lila.constroad.com/m/${mime.split('/')[0]}.bin`, mime, ...extra });
@@ -86,8 +87,12 @@ describe('the list', () => {
     expect(pins[0]?.fill).not.toBe(pins[1]?.fill);
   });
 
-  it('frames the observations when the service has no street yet', () => {
-    expect(observationWorkMap({ streets: [] }, observations).bounds).toEqual([[-77.03, -12.05], [-77.03, -12.05]]);
+  it('frames the observations when the service has no street yet, never a zero-size box', () => {
+    // José 20/11 (E2E APK): all three observations coincide, and a zero-span box zoomed the
+    // camera's fitBounds past where tiles are cached — the map opened blank/grey.
+    const view = observationWorkMap({ streets: [] }, observations);
+    expect(view.bounds![0]).toEqual([-77.03 - WORK_MAP_MIN_FRAME_DEG / 2, -12.05 - WORK_MAP_MIN_FRAME_DEG / 2]);
+    expect(view.bounds![1]).toEqual([-77.03 + WORK_MAP_MIN_FRAME_DEG / 2, -12.05 + WORK_MAP_MIN_FRAME_DEG / 2]);
     expect(observationWorkMap({ streets: [] }, []).bounds).toBeNull();
   });
 });

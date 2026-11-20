@@ -1,5 +1,5 @@
 import { ALL_DAYS, dayColorsOf, dayLabel, dischargeDayOf, limaDayOf, mediaDaysOf, unitNumbersOf } from '@constroad/shared/obra';
-import type { WorkMap, WorkMapView } from './workMap.js';
+import { withMinimumSpan, type WorkMap, type WorkMapView } from './workMap.js';
 import { sharedDischargeOf, type UnitDischarge } from './workMapDischarges.js';
 import type { MapPhoto, PhotoSpot } from './workMapPhotos.js';
 import { dischargePinsOf, type DischargePin } from './workMapProgress.js';
@@ -75,5 +75,5 @@ export function withMediaBounds(view: WorkMapView, photos: readonly MapPhoto[], 
   const points = [...photos, ...units.flatMap((one) => one.points)];
   if (!points.length) return view;
   const [lngs, lats] = [points.map((point) => point.lng), points.map((point) => point.lat)];
-  return { ...view, bounds: [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]] };
+  return { ...view, bounds: withMinimumSpan([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]]) };
 }

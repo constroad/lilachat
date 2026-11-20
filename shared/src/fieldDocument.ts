@@ -1,5 +1,5 @@
 import { isSampledForm, sampledSchema } from './formSamples.js';
-import { compactSectionSchema, isCompactReport } from './compactReportForms.js';
+import { compactSectionSchema, compactSubmitLabelOf, isCompactReport } from './compactReportForms.js';
 import { validateFormSpec, type AppForm, type FormSchema, type FormSchemaProperty, type FormValues } from './appForms.js';
 
 /**
@@ -212,7 +212,7 @@ const marksOf = ({ photoKind, requireLocation }: PhotoMarks): PhotoMarks => ({ .
 export function sectionAt(document: FieldDocument, path: SectionPath): Found | null {
   const section = document.sections.find((one) => one.id === path.sectionId);
   if (!section) return null;
-  if (section.kind === 'form') return path.key === section.id ? { title: section.title, form: section.form, ...(section.tool ? { tool: section.tool } : {}), ...marksOf(section), values: section.values } : null;
+  if (section.kind === 'form') return path.key === section.id ? { title: section.title, form: section.form, ...(section.tool ? { tool: section.tool } : {}), ...marksOf(section), values: section.values, ...(section.example ? { example: section.example } : {}) } : null;
   const entry = section.template.find((one) => one.id === path.key);
   if (!entry) return null;
   const tool = { ...(entry.tool ? { tool: entry.tool } : {}), ...marksOf(entry) };
@@ -258,7 +258,7 @@ export function sectionFormOf(document: FieldDocument, path: SectionPath): AppFo
   const properties = Object.fromEntries(asked.map(([name, property]) => [name, withDefault(property, found.values[name])]));
   const required = schema.required?.filter((name) => !KNOWN_BY_CHANNEL.includes(name));
   // Audit 12/11: «Enviar» on a part of a draft read as sending the report; it only keeps that part.
-  const submitLabel = asked.some(([, property]) => property['x-input'] === 'photo') ? 'Guardar foto' : 'Guardar';
+  const submitLabel = asked.some(([, property]) => property['x-input'] === 'photo') ? 'Guardar foto' : compactSubmitLabelOf(document.type, found.form) ?? 'Guardar';
   const example = found.example ? valuesForForm(found.example, { type: 'object', properties }) : {};
   return { id: found.tool ?? SECTION_TOOL, title: found.title, submitLabel, schema: { ...schema, properties, ...(required ? { required } : {}) }, ...(schema['x-check-all'] ? { checkAll: true as const } : {}), ...(Object.keys(example).length ? { example } : {}), ...compact };
 }

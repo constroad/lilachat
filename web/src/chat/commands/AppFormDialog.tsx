@@ -1,12 +1,12 @@
 import { useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import { CheckCheck, Clock, Sparkles } from 'lucide-react';
-import { CHECK_ALL_LABEL, checkAllValues, EXAMPLE_LABEL, exampleValues, chipsFor, groupedBySection, splitFor, evidenceLine, filledRemarks, formFields, formRows, isDesignedForm, isWideForm, liveSelfieFieldOf, numberedStepsOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmit, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
+import { CHECK_ALL_LABEL, checkAllValues, EXAMPLE_LABEL, exampleValues, chipsFor, roleCardsOf, groupedBySection, splitFor, evidenceLine, filledRemarks, formFields, formRows, isDesignedForm, isWideForm, liveSelfieFieldOf, numberedStepsOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmit, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { CheckField, ChoiceField, DateField, FormStyleContext, LocationField, NumberField, PhotoField, TextField } from './AppFormFields';
 import { FoldedSection } from './FoldedSection';
-import { SampleRowsWeb, TextChipsField } from './CompactFields';
+import { RoleCardsWeb, SampleRowsWeb, TextChipsField } from './CompactFields';
 import { FormContextCard, FormHeader } from './FormHeader';
 import { ListField } from './ListField';
 import { FormSummary } from './FormSummary';
@@ -78,7 +78,10 @@ export function AppFormDialog(props: DialogProps) {
   // A compact report section (design imp-01): the trays as rows, the rest as usual.
   const compact = form.compact === true;
   const trays = compact ? shown.filter((field) => field.sample !== undefined) : [];
-  const plain = trays.length ? shown.filter((field) => field.sample === undefined) : shown;
+  const untrayed = trays.length ? shown.filter((field) => field.sample === undefined) : shown;
+  // José 20/11 (design imp-04): a compact section's roles are cards, one open at a time.
+  const roleCards = compact ? roleCardsOf(untrayed, state.values) : [];
+  const plain = roleCards.length ? untrayed.filter((field) => !field.section) : untrayed;
   const footer = <FormFooter tall={compact} summary={live.summary.blocks} message={state.message} busy={state.sending || waiting} refreshing={live.refreshing} label={label} others={form.submits?.slice(1) ?? []} note={evidence ? (selfieField ? LIVE_FOOTER : evidence) : ''} onSend={(action) => void state.send(action ?? form.submits?.[0])} />;
   return (
     <Overlay title={form.title} onClose={props.onClose} footer={step === 'sign' ? footer : undefined} wide={isWideForm(fields) || designed || compact} header={designed ? <FormHeader title={form.title} appName={props.answer.appName} avatarUrl={props.answer.avatarUrl} where={props.where} personName={props.personName} /> : undefined}>
@@ -98,6 +101,7 @@ export function AppFormDialog(props: DialogProps) {
         ) : null}
         {signer && step === 'who' ? <SignerPicker field={signer} onPick={state.set(signer.name)} /> : null}
         {signer && step === 'sign' ? <SignerCard field={signer} value={state.values[signer.name]} error={slot.errors[signer.name]} onChange={() => state.set(signer.name)('')} /> : null}
+        {roleCards.length ? <RoleCardsWeb cards={roleCards} errors={slot.errors} renderFields={(roleFields) => <FieldRows fields={roleFields} context={{ ...slot, quiet: true }} />} /> : null}
         {/* The fields under a header fold (agentes 13/11); the rest are drawn as they come. */}
         {groupedBySection(plain).map((block) =>
           block.kind === 'section' ? (
@@ -190,6 +194,8 @@ type SlotContext = {
   /** A form that splits an amount, and the step number of each of its steps (design gst-02). */
   designed: boolean;
   steps: Record<string, number>;
+  /** The form says «opcional» once (role cards): no «· opcional» per field. */
+  quiet?: boolean;
 };
 
 /** One field; `half` when it shares its row. */
@@ -204,7 +210,7 @@ function FieldSlot(props: { field: FormField; half?: boolean; context: SlotConte
   }
   return (
     // In a signing the place shows inside the camera; its field keeps reading behind it.
-    <FormStyleContext.Provider value={{ designed: props.context.designed, step: props.context.steps[field.name] }}>
+    <FormStyleContext.Provider value={{ designed: props.context.designed, step: props.context.steps[field.name], quiet: props.context.quiet }}>
     <div data-field={field.name} hidden={Boolean(selfieField) && field.kind === 'location'}>
       {chips ? <p className="mb-1.5 text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">{LIVE_CHOICE_KICKER}</p> : null}
       {chips ? (

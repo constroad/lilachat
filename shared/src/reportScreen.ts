@@ -6,7 +6,8 @@ import { requiresLocation, type FieldDocument, type SectionPath } from './fieldD
 import type { DevicePlace, ReportDraftResult } from './reportCreation.js';
 import { PHOTO_REMOVAL_FAILED, type AlbumSend, type OpenedReport, type PhotoRemoval, type ReportQueue } from './reportQueue.js';
 import { ALBUM_SEND_FAILED } from './unitAlbum.js';
-import { documentWithQueue, reportFormAnswer, reportSaveOf, samePath, savesOf, type QueuedPhoto, type ReportRef, type ReportSave } from './reportSaves.js';
+import { documentWithQueue, reportFormAnswer, reportSaveOf, samePath, savesOf, type QueuedPhoto, type ReportFormContext, type ReportRef, type ReportSave } from './reportSaves.js';
+import { exampleFillOf, exampleSectionsOf, type ExampleOutcome, type ExampleProgress } from './reportExamples.js';
 
 /**
  * What the report's screen shows and does, the same on the phone and the web
@@ -169,6 +170,9 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
     return { ...place, at: held.takenAt };
   }
 
+  /** What a section's form opens with: who makes it, a unit's hours. */
+  const contextOf = (document: FieldDocument | null, path: SectionPath): ReportFormContext => ({ personName: deps.personName(), arrivalHour: document ? arrivalHourOf(document, path, deps.now()) : undefined, startHour: clockHourOf(deps.now()) });
+
   function saveOf(document: FieldDocument, path: SectionPath, values: FormValues, shot: Shot | null): ReportSave {
     const save = reportSaveOf({ ref, document, path, values, clientKey: deps.newKey(), now: deps.now() });
     return shot ? { ...save, photo: { field: shot.field, ...shot.kept, ...(shot.stamp ? { stamp: shot.stamp } : {}) }, place: shot.place } : save;
@@ -181,7 +185,7 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
     openSection(path: SectionPath): void {
       const { document, saves } = reportNow();
       const refused = saves.find((one) => one.refusal && !one.photo && samePath(one.path, path));
-      const context = { errors: refused?.refusal?.errors, personName: deps.personName(), arrivalHour: document ? arrivalHourOf(document, path, deps.now()) : undefined, startHour: clockHourOf(deps.now()) };
+      const context = { errors: refused?.refusal?.errors, ...contextOf(document, path) };
       const answer = document ? reportFormAnswer(document, path, context) : null;
       openForm = answer ? { path, answer } : null;
       reading = null;
@@ -209,6 +213,33 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
       photos.set(kept.ref, { kept, place: aiming ?? readPlace(), takenAt, ...(typeof stamp === 'object' && 'timemark' in stamp ? { stamp: { ...stamp, takenAt } } : {}) });
       aiming = null;
       return { ok: true, fileId: kept.ref };
+    },
+    /**
+     * «Completar datos de ejemplo» for every section (José 20/11): one save each, in order, through the
+     * queue like «Guardar»; each reads the document the last one left. A save the device cannot keep stops it.
+     */
+    async fillExamples(onProgress?: (progress: ExampleProgress) => void): Promise<ExampleOutcome> {
+      const start = reportNow().document;
+      const paths = start ? exampleSectionsOf(start) : [];
+      const outcome: ExampleOutcome = { saved: 0, skipped: [] };
+      for (const [index, path] of paths.entries()) {
+        onProgress?.({ done: index, total: paths.length });
+        const document = reportNow().document;
+        const fill = document ? exampleFillOf(document, path, contextOf(document, path)) : null;
+        if (!document || !fill || fill.kind === 'nothing') continue;
+        if (fill.kind === 'missing') {
+          outcome.skipped.push(fill.title);
+          continue;
+        }
+        try {
+          await deps.queue.add(saveOf(document, path, fill.values, null));
+        } catch {
+          return { ...outcome, failed: NOT_KEPT };
+        }
+        outcome.saved += 1;
+      }
+      onProgress?.({ done: paths.length, total: paths.length });
+      return outcome;
     },
     /** The save is queued and the form closes, with signal or without. */
     async submit(values: FormValues): Promise<FormSubmitOutcome> {
@@ -277,6 +308,7 @@ export function createReportScreen<P>(deps: ReportScreenDeps<P>, ref: ReportRef,
     closeForm: forms.closeForm,
     upload: forms.upload,
     submit: forms.submit,
+    fillExamples: forms.fillExamples,
     discard: (clientKey: string): Promise<void> => deps.queue.discard(clientKey),
     /** A sent photo out of the draft: it stays on screen until Portal said yes. */
     async removePhoto(photoId: string): Promise<PhotoRemoval> {

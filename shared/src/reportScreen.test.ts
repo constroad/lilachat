@@ -7,7 +7,7 @@ import type { FieldDocument, FormSection, RepeatSection, SectionPath } from './f
 
 type Source = { uri: string };
 
-function screenWith(start: { id: string | null; tramos: Tramo[]; requireLocation?: boolean }, placeNow: () => Promise<DevicePlace> = async () => ({ lat: -12, lng: -77, at: NOW }), startId?: string) {
+function screenWith(start: { id: string | null; tramos: Tramo[]; requireLocation?: boolean; examples?: boolean }, placeNow: () => Promise<DevicePlace> = async () => ({ lat: -12, lng: -77, at: NOW }), startId?: string) {
   const portal = fakePortal(start);
   const askedIds: (string | null)[] = [];
   const read = portal.wire.read;

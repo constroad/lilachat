@@ -8,6 +8,7 @@ import { AppFormDialog } from '../../../chat/commands/AppFormDialog';
 import { EphemeralAnswers } from '../../../chat/commands/EphemeralAnswers';
 import { useReportPdf } from '../useReportPdf';
 import type { ServiceAskTarget } from '../useServiceAsk';
+import { ExampleBannerWeb } from './ExampleBannerWeb';
 import { PublishDialog } from './PublishDialog';
 import { usePortalFileViewer } from '../PortalFileViewer';
 import { ReportItemsWeb } from './ReportItemsWeb';
@@ -169,6 +170,7 @@ export function ReportDocumentWeb(props: Props) {
       <ReportHeader kicker={items ? `${kicker} · ${items.title}` : kicker} title={props.service.name} report={report} onBack={page.back} />
       <QueueCard saves={saves} offline={offline} onFix={(save) => actions.openSection(save.path)} onDiscard={(save) => void actions.discard(save.clientKey)} />
       <EphemeralAnswers answers={forms.answers.answers} onDismiss={forms.answers.dismiss} onOpenForm={forms.answers.showForm} chatId={props.chatId} jwt={props.target.jwt} />
+      {report && !items ? <ExampleBannerWeb report={report} serviceId={props.service.id} type={props.type} onFill={actions.fillExamples} /> : null}
       <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={page.setItemsOf} onRetry={actions.refresh} onView={viewPhoto} admin={Boolean(props.admin)} onAlbum={album.open} />
       {album.item ? <UnitAlbumDialog key={album.item.id} item={album.item} onSend={(urls) => actions.sendUnitAlbum(album.item!.id, urls)} onSent={album.sent} onClose={album.close} onView={(url) => viewAlbumPhoto(album.item!, url)} /> : null}
       {/* Over the review, the viewer goes to the end of the body like the Overlay, or it could sit under it. */}

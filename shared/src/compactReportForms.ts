@@ -7,10 +7,22 @@ import type { FieldWidth, FormSchema, FormSchemaProperty } from './appForms.js';
  */
 export const LANE_CHIPS: readonly string[] = ['Derecho', 'Izquierdo', 'Ambos'];
 
+/** A role of the signatures section (design imp-04): its fields start with `prefix` («responsableNombre»). */
+export type RoleHint = { prefix: string; label: string };
+
+/** CTL-IMP's «Responsables y firmas» (José 20/11): one card per role, the fields that Portal already names. */
+export const SIGNER_HINTS: readonly RoleHint[] = [
+  { prefix: 'responsable', label: 'Responsable' },
+  { prefix: 'supervisadoPor', label: 'Supervisado por' },
+  { prefix: 'cliente', label: 'Cliente' },
+];
+
 type CompactHint = {
   /** Form key → the fields it draws first, in this order. */ order: Record<string, readonly string[]>;
   /** Form key → text field → its chips. */ chips: Record<string, Record<string, readonly string[]>>;
   /** Form key → field → its width, so the design's pairs hold whatever reaches Lilachat. */ widths: Record<string, Record<string, FieldWidth>>;
+  /** Form key → its roles, each drawn as a card (`x-section` with the role's label). */ roleHints: Record<string, readonly RoleHint[]>;
+  /** Form key → its button, when the design names it another way. */ submitLabels: Record<string, string>;
 };
 
 const COMPACT_REPORTS: Readonly<Record<string, CompactHint>> = {
@@ -18,6 +30,8 @@ const COMPACT_REPORTS: Readonly<Record<string, CompactHint>> = {
     order: { ubicacion: ['tramo', 'progresivaDesde', 'progresivaHasta', 'carril', 'horaInicio', 'horaFinal'] },
     chips: { ubicacion: { carril: LANE_CHIPS } },
     widths: { ubicacion: { tramo: 'full', progresivaDesde: 'half', progresivaHasta: 'half' } },
+    roleHints: { firmas: SIGNER_HINTS },
+    submitLabels: { firmas: 'Listo' },
   },
 };
 
@@ -29,14 +43,32 @@ function ordered(properties: Record<string, FormSchemaProperty>, order: readonly
   return Object.fromEntries(Object.entries(properties).sort(([a], [b]) => rank(a) - rank(b)));
 }
 
-type FormHints = { order?: readonly string[]; chips?: Record<string, readonly string[]>; widths?: Record<string, FieldWidth> };
+type FormHints = { order?: readonly string[]; chips?: Record<string, readonly string[]>; widths?: Record<string, FieldWidth>; roleHints?: readonly RoleHint[] };
 
 /** What the report's hint says about one of its forms. */
 function hintsOf(reportType: string, formKey: string): FormHints {
   const hint = isCompactReport(reportType) ? COMPACT_REPORTS[reportType] : undefined;
   if (!hint) return {};
   const pick = <T>(byForm: Record<string, T>): T | undefined => (Object.hasOwn(byForm, formKey) ? byForm[formKey] : undefined);
-  return { order: pick(hint.order), chips: pick(hint.chips), widths: pick(hint.widths) };
+  return { order: pick(hint.order), chips: pick(hint.chips), widths: pick(hint.widths), roleHints: pick(hint.roleHints) };
+}
+
+/** The design's button for a compact form («Listo» on the signatures); none keeps the section's own. */
+export function compactSubmitLabelOf(reportType: string, formKey: string): string | undefined {
+  const labels = isCompactReport(reportType) ? COMPACT_REPORTS[reportType]!.submitLabels : {};
+  return Object.hasOwn(labels, formKey) ? labels[formKey] : undefined;
+}
+
+/** «responsableNombre» belongs to «responsable»; «responsable» alone or «responsables» do not. */
+const roleOfField = (name: string, hints: readonly RoleHint[]): RoleHint | undefined =>
+  hints.find((role) => name.length > role.prefix.length && name.startsWith(role.prefix) && /[A-Z]/.test(name.charAt(role.prefix.length)));
+
+/** Each role's fields under its card (`x-section`), two per row; the values keep their names. */
+function withRoleSections(properties: Record<string, FormSchemaProperty>, hints: readonly RoleHint[]): void {
+  for (const [name, property] of Object.entries(properties)) {
+    const role = roleOfField(name, hints);
+    if (role) properties[name] = { ...property, 'x-section': role.label, 'x-width': 'half' };
+  }
 }
 
 /** The chips go on text fields only: what is saved stays the same string. */
@@ -56,11 +88,12 @@ function withWidths(properties: Record<string, FormSchemaProperty>, widths: Reco
 
 /** The section's schema with the compact hints of its report; any other comes back as it is. */
 export function compactSectionSchema(reportType: string, formKey: string, schema: FormSchema): FormSchema {
-  const { order, chips, widths } = hintsOf(reportType, formKey);
-  if (!order && !chips && !widths) return schema;
+  const { order, chips, widths, roleHints } = hintsOf(reportType, formKey);
+  if (!order && !chips && !widths && !roleHints) return schema;
   const properties = ordered(schema.properties ?? {}, order ?? []);
   withChips(properties, chips ?? {});
   withWidths(properties, widths ?? {});
+  withRoleSections(properties, roleHints ?? []);
   return { ...schema, properties };
 }
 

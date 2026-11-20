@@ -19,12 +19,12 @@ type FieldProps<K extends FormField['kind']> = { field: Extract<FormField, { kin
  * How a form that splits an amount is drawn (design gst-02): `designed` for the whole form, and the `step`
  * number of the field that is one. Any other form keeps the plain look, and so does every other field.
  */
-export type FormStyle = { designed: boolean; step?: number };
+export type FormStyle = { designed: boolean; step?: number; /** No «· opcional» per field: the form says it once (role cards, José 20/11). */ quiet?: boolean };
 export const FormStyleContext = createContext<FormStyle>({ designed: false });
 
 export function Label(props: { field: FormField }) {
-  const { designed, step } = useContext(FormStyleContext);
-  const optional = props.field.required ? null : <span className="font-normal normal-case tracking-normal text-on-surface-variant"> · opcional</span>;
+  const { designed, step, quiet } = useContext(FormStyleContext);
+  const optional = props.field.required || quiet ? null : <span className="font-normal normal-case tracking-normal text-on-surface-variant"> · opcional</span>;
   if (designed) {
     // The labels of a designed form are small capitals (design gst-02); a step also says its number.
     return (

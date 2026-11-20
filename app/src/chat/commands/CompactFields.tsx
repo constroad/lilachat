@@ -1,6 +1,7 @@
+import { useState, type ReactNode } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
-import { AlertTriangle, Check, CheckCircle2, Info } from 'lucide-react-native';
-import { isBlankAnswer, OPTIONAL_SAMPLE_LABEL, OPTIONAL_SAMPLE_TAG, SAMPLES_NOTE, sampleColumnsOf, sampleRowMessage, sampleRowsOf, sampleTagOf, type FormField, type FormValues, type SampleRow } from '@lilachat/shared';
+import { AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronUp, Info } from 'lucide-react-native';
+import { isBlankAnswer, openRoleOf, OPTIONAL_SAMPLE_LABEL, OPTIONAL_SAMPLE_TAG, roleCardsNote, sectionSlug, SAMPLES_NOTE, sampleColumnsOf, sampleRowMessage, sampleRowsOf, sampleTagOf, type FormField, type FormValues, type RoleCard, type SampleRow } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { ErrorLine, Label } from './AppFormFields';
 
@@ -99,5 +100,51 @@ function SampleInput(props: { field: Extract<FormField, { kind: 'number' }>; val
       <TextInput testID={`campo-${field.name}`} accessibilityLabel={field.label} value={text} placeholder="—" placeholderTextColor={colors['on-surface-variant']} keyboardType={field.integer ? 'number-pad' : 'decimal-pad'} onChangeText={(next) => props.onChange(next === '' ? undefined : next)} className="min-w-0 flex-1 py-0 text-right text-[15px] text-on-surface" style={{ fontVariant: ['tabular-nums'] }} />
       {field.unit ? <Text className="ml-1 text-[11px] text-on-surface-variant">{field.unit}</Text> : null}
     </View>
+  );
+}
+
+/**
+ * «Responsables y firmas» (design imp-04, José 20/11): one card per role, one open at a time; the others fold
+ * into a row with the name. `renderFields` draws the open card's fields as the rest of the sheet does.
+ */
+export function RoleCardsView(props: { cards: readonly RoleCard[]; errors: Record<string, string>; onPosition: (y: number) => void; renderFields: (fields: readonly FormField[]) => ReactNode }) {
+  const colors = useColores();
+  const [picked, setPicked] = useState<string | null | undefined>(undefined);
+  const open = openRoleOf(props.cards, props.errors, picked);
+  return (
+    <View testID="roles-firmas" onLayout={(event) => props.onPosition(event.nativeEvent.layout.y)} style={{ gap: 12 }}>
+      <Text className="text-[13px] text-on-surface-variant">{roleCardsNote(props.cards)}</Text>
+      {props.cards.map((card) =>
+        card.label === open ? (
+          <View key={card.label} testID={`rol-${sectionSlug(card.label)}`} className="rounded-2xl border border-l-4 border-outline/15 border-l-primary bg-surface-variant/40 p-3">
+            <Pressable accessibilityRole="button" accessibilityState={{ expanded: true }} onPress={() => setPicked(null)} className="mb-3 min-h-[44px] flex-row items-center justify-between gap-2">
+              <Text className="text-[12px] font-bold uppercase tracking-[1px] text-primary">{card.label}</Text>
+              <ChevronUp size={18} color={colors['on-surface-variant']} />
+            </Pressable>
+            <View style={{ gap: 14 }}>{props.renderFields(card.fields)}</View>
+          </View>
+        ) : (
+          <FoldedRoleView key={card.label} card={card} onOpen={() => setPicked(card.label)} />
+        )
+      )}
+    </View>
+  );
+}
+
+/** A folded role: its initials, its name and position, or «Sin datos». */
+function FoldedRoleView(props: { card: RoleCard; onOpen: () => void }) {
+  const colors = useColores();
+  const { card } = props;
+  return (
+    <Pressable testID={`rol-${sectionSlug(card.label)}`} accessibilityRole="button" accessibilityState={{ expanded: false }} accessibilityLabel={`${card.label}: ${card.line}`} onPress={props.onOpen} className="min-h-[64px] flex-row items-center gap-3 rounded-2xl border border-outline/15 bg-surface-variant/40 px-3 py-2.5">
+      <View className="h-10 w-10 items-center justify-center rounded-full bg-primary/15">
+        <Text className="text-[14px] font-bold text-primary">{card.initials}</Text>
+      </View>
+      <View className="min-w-0 flex-1">
+        <Text className="text-[11px] font-bold uppercase tracking-[1px] text-on-surface-variant">{card.label}</Text>
+        <Text numberOfLines={1} className={`text-[15px] ${card.filled ? 'text-on-surface' : 'text-on-surface-variant'}`}>{card.line}</Text>
+      </View>
+      <ChevronDown size={18} color={colors['on-surface-variant']} />
+    </Pressable>
   );
 }

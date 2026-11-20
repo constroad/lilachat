@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Camera, CheckCircle2, RotateCcw, X } from 'lucide-react-native';
-import { pointProblem, VISIT_MEASURE_UNITS, VISIT_POINT_TYPES, type VisitDocument, type VisitPointDraft } from '@lilachat/shared';
+import { pointGpsChip, pointProblem, VISIT_MEASURE_UNITS, VISIT_POINT_TYPES, type VisitDocument, type VisitPointDraft } from '@lilachat/shared';
 import { openCamera, type CapturedShot } from '../../chat/camara/cameraRequests';
 import { freshPoint } from '../../chat/location/freshPoint';
 import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
 import type { DriveFile } from '../clients/useDriveUpload';
 
-type Place = { lat: number; lng: number; precisionM?: number };
+/** `at`: when the place was read (ms), for the photo's chip «09:58 · GPS ±4 m». */
+type Place = { lat: number; lng: number; precisionM?: number; at?: number };
 type Props = { document: VisitDocument; n: number; onSave: (point: Omit<VisitPointDraft, 'lat' | 'lng'> & { lat?: number; lng?: number }, photo: DriveFile | null) => void; onClose: () => void };
 
 const CAMERA_TITLE = 'Foto del punto';
@@ -16,7 +17,7 @@ const CAMERA_TITLE = 'Foto del punto';
 /** The shot's own GPS (burned in its stamp), else a fresh reading: never the phone's cached one. */
 function placeOfShot(shot: CapturedShot | null): Place | null {
   const point = shot?.stamp.point;
-  return point ? { lat: point.lat, lng: point.lng, precisionM: Math.round(point.precision) } : null;
+  return point ? { lat: point.lat, lng: point.lng, precisionM: Math.round(point.precision), at: Date.now() } : null;
 }
 
 const fileOf = (shot: CapturedShot): DriveFile => ({ uri: shot.uri, name: `punto-${Date.now()}.${shot.mime.split('/')[1] ?? 'jpg'}`, mime: shot.mime, stamp: shot.stamp });
@@ -36,7 +37,7 @@ function useShotAndPlace() {
   };
   useEffect(() => {
     void take();
-    void freshPoint().then((point) => point && setPlace((known) => known ?? { lat: point.lat, lng: point.lng, precisionM: Math.round(point.precision) }));
+    void freshPoint().then((point) => point && setPlace((known) => known ?? { lat: point.lat, lng: point.lng, precisionM: Math.round(point.precision), at: point.readAt }));
     // Once, when the sheet opens.
      
   }, []);
@@ -45,7 +46,7 @@ function useShotAndPlace() {
 
 function PhotoArea({ shot, place, onTake }: { shot: CapturedShot | null; place: Place | null; onTake: () => void }) {
   const colors = useColores();
-  const gps = place ? `GPS ±${place.precisionM ?? '?'} m` : 'Buscando GPS…';
+  const gps = pointGpsChip(place);
   return (
     <View className="h-56 overflow-hidden bg-surface-variant">
       {shot ? <Image source={{ uri: shot.uri }} className="h-full w-full" resizeMode="cover" /> : null}

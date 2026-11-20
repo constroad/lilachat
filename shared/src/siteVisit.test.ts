@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { markedPointOf, nextPointNumber, openVisitRowsOf, pointLine, pointProblem, visitDocumentOf, visitIdOfKey, visitNextStep, visitSectionForm, visitUploadOf, visitCardActionOf, isSiteVisitShortcut, visitInterviewNotice } from './siteVisit.js';
+import { markedPointOf, nextPointNumber, openVisitRowsOf, pointLine, pointProblem, visitDocumentOf, visitIdOfKey, visitNextStep, visitSectionForm, visitUploadOf, visitCardActionOf, isSiteVisitShortcut, visitInterviewNotice, pointGpsChip } from './siteVisit.js';
 import { NEW_VISIT, VISIT_WITH_ID } from './siteVisit.fixture.js';
 
 /** The technical visit on the phone (José 13/11, Portal PRIMERA-VISITA §9; designs lv01–lv03). */
@@ -136,5 +136,20 @@ describe('visitInterviewNotice', () => {
 
   it('says nothing when the visit has questions to answer', () => {
     expect(visitInterviewNotice(withFigures({ preguntas: 5, respondidas: 2 }))).toBeNull();
+  });
+});
+
+describe('pointGpsChip (design lv02: «09:58 · GPS ±4 m» over the photo)', () => {
+  it('puts the reading\'s hour in Lima before the precision', () => {
+    expect(pointGpsChip({ precisionM: 4, at: Date.parse('2026-11-20T14:58:00Z') })).toBe('09:58 · GPS ±4 m');
+  });
+
+  it('keeps only the precision when the reading has no hour', () => {
+    expect(pointGpsChip({ precisionM: 169 })).toBe('GPS ±169 m');
+  });
+
+  it('says «?» for an unknown precision and waits while there is no reading', () => {
+    expect(pointGpsChip({ at: Date.parse('2026-11-20T14:58:00Z') })).toBe('09:58 · GPS ±? m');
+    expect(pointGpsChip(null)).toBe('Buscando GPS…');
   });
 });

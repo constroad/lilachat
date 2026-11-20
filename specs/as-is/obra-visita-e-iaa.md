@@ -225,3 +225,6 @@ El inventario dice «sin implementar» en todas las la-*: está desactualizado (
 - **Maestro:** no hay flujo de visita ni de IAA (verificado).
 - **E2E documentados:** web VIS-2026-0073, APK VIS-2026-0075/0077/0078 (14/11); IAA en
   el emulador solo por foto + wincha y por «Editar zona» (TES-IAA, 16/11).
+
+- **20/11** · lv02: el chip de la foto del punto dice la hora de la lectura y la precisión, «09:58 · GPS ±4 m»
+  (`pointGpsChip`, hora de Lima), en web y APK.

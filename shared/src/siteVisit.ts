@@ -1,5 +1,5 @@
 import { validateFormSpec, type AppForm, type FormSchema } from './appForms.js';
-import type { ShortcutRow } from './appActions.js';
+import { STAMP_TIME_ZONE, type ShortcutRow } from './appActions.js';
 
 /**
  * A technical visit from the phone (José 13/11, Portal `specs/modules/PRIMERA-VISITA.spec.md` §9;
@@ -303,3 +303,13 @@ const VISIT_CARD_ACTIONS: Readonly<Record<string, VisitCardAction>> = {
   visita_croquis: 'croquis',
 };
 export const visitCardActionOf = (actionId: string): VisitCardAction | null => (Object.hasOwn(VISIT_CARD_ACTIONS, actionId) ? VISIT_CARD_ACTIONS[actionId]! : null);
+
+let gpsClock: Intl.DateTimeFormat | undefined;
+/** «09:58 · GPS ±4 m» over a point's photo (design lv02): when the place was read, in Lima, and how sure. */
+export function pointGpsChip(place: { precisionM?: number; at?: number } | null): string {
+  if (!place) return 'Buscando GPS…';
+  const precision = `GPS ±${place.precisionM ?? '?'} m`;
+  if (place.at === undefined || !Number.isFinite(place.at)) return precision;
+  const hour = (gpsClock ??= new Intl.DateTimeFormat('es-PE', { timeZone: STAMP_TIME_ZONE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })).format(new Date(place.at));
+  return `${hour} · ${precision}`;
+}

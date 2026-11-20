@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Camera, CheckCircle2, Circle, CircleDot, Construction, Grid2x2, LocateFixed, MapPin, RotateCcw, Target, TreePine, TriangleAlert, Unplug, UtilityPole, Waves, X, type LucideIcon } from 'lucide-react';
-import { pointProblem, VISIT_MEASURE_UNITS, VISIT_POINT_TYPES, type VisitDocument, type VisitPointDraft } from '@lilachat/shared';
+import { pointGpsChip, pointProblem, VISIT_MEASURE_UNITS, VISIT_POINT_TYPES, type VisitDocument, type VisitPointDraft } from '@lilachat/shared';
 import type { PickerHandle } from '../../chat/camera/cameraRequests';
 import { stampOfFile } from '../../chat/camera/shotStamp';
 import { RouteMapWeb } from '../../chat/botBlocks/RouteMapWeb';
 import { EvidenceInput } from '../clients/ServiceDriveWeb';
 import { prepared, type DriveFile } from '../clients/useDriveUpload';
 
-type Place = { lat: number; lng: number; precisionM?: number };
+/** `at`: when the place was read (ms), for the photo's chip «09:58 · GPS ±4 m». */
+type Place = { lat: number; lng: number; precisionM?: number; at?: number };
 type Shot = { file: DriveFile; preview: string };
 type Props = { document: VisitDocument; n: number; onSave: (point: Omit<VisitPointDraft, 'lat' | 'lng'> & { lat?: number; lng?: number }, photo: DriveFile | null) => void; onClose: () => void };
 
@@ -17,7 +18,7 @@ const FIX_TIMEOUT_MS = 10_000;
 function readPlace(): Promise<Place | null> {
   return new Promise((resolve) => {
     if (typeof navigator === 'undefined' || !navigator.geolocation) return resolve(null);
-    navigator.geolocation.getCurrentPosition((position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude, precisionM: Math.round(position.coords.accuracy) }), () => resolve(null), { enableHighAccuracy: true, timeout: FIX_TIMEOUT_MS, maximumAge: 0 });
+    navigator.geolocation.getCurrentPosition((position) => resolve({ lat: position.coords.latitude, lng: position.coords.longitude, precisionM: Math.round(position.coords.accuracy), at: position.timestamp }), () => resolve(null), { enableHighAccuracy: true, timeout: FIX_TIMEOUT_MS, maximumAge: 0 });
   });
 }
 
@@ -28,7 +29,7 @@ function useShotAndPlace() {
   const [place, setPlace] = useState<Place | null>(null);
   const take = (file: File) => {
     const point = stampOfFile(file)?.point;
-    if (point) setPlace({ lat: point.lat, lng: point.lng, precisionM: Math.round(point.precision) });
+    if (point) setPlace({ lat: point.lat, lng: point.lng, precisionM: Math.round(point.precision), at: Date.now() });
     void prepared(file).then(({ source }) => setShot({ file: source, preview: URL.createObjectURL(file) }));
   };
   const open = () => input.current?.click();
@@ -114,7 +115,7 @@ export function MarkPointWeb(props: Props) {
       <div className="flex-1 overflow-y-auto">
         <div className="relative h-56 bg-surface-variant">
           {shot ? <img src={shot.preview} alt="Foto del punto" className="h-full w-full object-cover" /> : null}
-          <span data-testid="punto-gps" className="absolute left-3 top-3 flex items-center gap-1.5 rounded-lg bg-black/70 px-2 py-1 font-mono text-[12px] text-white"><LocateFixed size={14} className="text-en-linea" aria-hidden />{place ? `GPS ±${place.precisionM ?? '?'} m` : 'Buscando GPS…'}</span>
+          <span data-testid="punto-gps" className="absolute left-3 top-3 flex items-center gap-1.5 rounded-lg bg-black/70 px-2 py-1 font-mono text-[12px] text-white"><LocateFixed size={14} className="text-en-linea" aria-hidden />{pointGpsChip(place)}</span>
           <button type="button" data-testid="punto-foto" onClick={open} className="absolute right-3 top-3 flex min-h-[40px] items-center gap-1.5 rounded-lg bg-surface px-3 text-[14px] font-semibold text-primary">{shot ? <RotateCcw size={16} /> : <Camera size={16} />}{shot ? 'Repetir' : 'Tomar foto'}</button>
         </div>
         <PointsStrip document={props.document} n={props.n} place={place} />

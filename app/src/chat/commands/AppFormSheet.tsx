@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode, type RefObject } from 'react';
 import { ActivityIndicator, Alert, Keyboard, KeyboardAvoidingView, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { CheckCheck, Clock, Sparkles, X } from 'lucide-react-native';
-import { cameraFirstFieldOf, CHECK_ALL_LABEL, checkAllValues, EXAMPLE_LABEL, exampleValues, chipsFor, evidenceLine, filledRemarks, formFields, formRows, groupedBySection, isDesignedForm, liveSelfieFieldOf, numberedStepsOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmit, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
+import { cameraFirstFieldOf, CHECK_ALL_LABEL, checkAllValues, EXAMPLE_LABEL, exampleValues, chipsFor, roleCardsOf, evidenceLine, filledRemarks, formFields, formRows, groupedBySection, isDesignedForm, liveSelfieFieldOf, numberedStepsOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmit, type FormSubmitOutcome, type FormValues, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
 import { Avatar } from '../../ui/Avatar';
 import { AppLogo } from '../../spaces/apps/AppLogo';
 import { Modal } from '../../ui/Modal';
@@ -9,7 +9,7 @@ import { useColores } from '../../ui/tema';
 import { useMargenes } from '../../ui/useMargenes';
 import { CheckField, ChoiceField, FormStyleContext, LocationField, PhotoField, TypedField, type PhotoUpload } from './AppFormFields';
 import { FoldedSection } from './FoldedSection';
-import { SampleRowsView, TextChipsField } from './CompactFields';
+import { RoleCardsView, SampleRowsView, TextChipsField } from './CompactFields';
 import { FormContextCard, FormSheetHeader } from './FormHeader';
 import { DateField } from './DateField';
 import { FormSummary } from './FormSummary';
@@ -131,7 +131,10 @@ export function AppFormSheet(props: SheetProps) {
   const steps = numberedStepsOf(fields, shown);
   // The summary's remarks under their fields; the person's own errors win.
   const trays = compact ? shown.filter((field) => field.sample !== undefined) : [];
-  const plain = trays.length ? shown.filter((field) => field.sample === undefined) : shown;
+  const untrayed = trays.length ? shown.filter((field) => field.sample === undefined) : shown;
+  // José 20/11 (design imp-04): a compact section's roles are cards, one open at a time.
+  const roleCards = compact ? roleCardsOf(untrayed, state.values) : [];
+  const plain = roleCards.length ? untrayed.filter((field) => !field.section) : untrayed;
   const slot: SlotContext = { compact, place, workStreets: props.workStreets ?? null, cameraField, onCameraDismissed: props.onClose, fields, onPlace: props.onPlace, values: state.values, errors: { ...filledRemarks(formLive.summary.errors, fields, state.values), ...state.errors }, live, locationName, selfie, upload: props.onUpload, set: state.set, setList: state.setList, width: sheetWidth, positions, designed, steps };
   const label = waiting ? 'Enviando…' : state.sending ? signing.phaseLabel : submitLabelOf(form, fields, state.values);
   return (
@@ -150,6 +153,7 @@ export function AppFormSheet(props: SheetProps) {
             {form.checkAll ? <CheckAllButton onPress={() => state.fill(checkAllValues(fields, state.values))} /> : null}
             {signer && step === 'who' ? <SignerPicker field={signer} onPick={state.set(signer.name)} /> : null}
             {signer && step === 'sign' ? <SignerCard field={signer} value={state.values[signer.name]} error={slot.errors[signer.name]} onChange={() => state.set(signer.name)('')} /> : null}
+            {roleCards.length ? <RoleCardsView cards={roleCards} errors={slot.errors} onPosition={(y) => roleCards.forEach((card) => card.fields.forEach((field) => (positions.current[field.name] = y)))} renderFields={(roleFields) => <FieldRows fields={roleFields} context={{ ...slot, quiet: true, positions: INSIDE_SECTION, width: slot.width - SECTION_PADDING * 2 }} />} /> : null}
             {/* The fields under a header fold (agentes 13/11); the rest are drawn as they come. */}
             {groupedBySection(plain).map((block) =>
               block.kind === 'section' ? (
@@ -298,6 +302,8 @@ type SlotContext = {
   /** A form that splits an amount, and the step number of each of its steps (design gst-02). */
   designed: boolean;
   steps: Record<string, number>;
+  /** The form says «opcional» once (role cards): no «· opcional» per field. */
+  quiet?: boolean;
 };
 
 /** One field; in a row of two (`half`) its position is the row's, written by the row. */
@@ -311,7 +317,7 @@ function FieldSlot(props: { field: FormField; half: boolean; context: SlotContex
     return <LiveSelfie ref={props.context.selfie} testID={`campo-${field.name}`} label={LIVE_PHOTO_KICKER} onPlace={props.context.onPlace} width={width - SHEET_PADDING * 2} location={locationName ? ((values[locationName] as GeoPoint | undefined) ?? null) : null} error={errors[field.name] ?? (locationName ? errors[locationName] : undefined)} />;
   }
   return (
-    <FormStyleContext.Provider value={{ designed: props.context.designed, step: props.context.steps[field.name], compact: props.context.compact }}>
+    <FormStyleContext.Provider value={{ designed: props.context.designed, step: props.context.steps[field.name], compact: props.context.compact, quiet: props.context.quiet }}>
     {/* In a signing the place shows inside the camera; its field keeps reading behind it. */}
     <View onLayout={half ? undefined : (event) => (props.context.positions.current[field.name] = event.nativeEvent.layout.y)} style={live && field.kind === 'location' ? { display: 'none' } : half ? { flex: 1, minWidth: 0 } : undefined}>
       {chips ? <Text className="mb-1.5 text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">{LIVE_CHOICE_KICKER}</Text> : null}

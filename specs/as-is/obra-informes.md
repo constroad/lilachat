@@ -113,6 +113,20 @@ guarda y lo que lee Portal no cambian.
   carril en una fila en tablet. La tarjeta de ubicación sale en las secciones con foto: la
   sección «Ubicación» no lee el GPS.
 
+### Firmas y datos de ejemplo (diseños imp-04 e imp-05, José 20/11)
+
+- «Responsables y firmas» del CTL-IMP: una tarjeta por rol (Responsable, Supervisado por,
+  Cliente), una abierta a la vez. `compactSectionSchema` pone `x-section` por prefijo del campo;
+  `roleCardsOf` (`shared/src/roleCards.ts`) arma las tarjetas. Una nota arriba en vez de
+  «· opcional» por campo. Botón «Listo» (`compactSubmitLabelOf`). Se guardan los mismos campos.
+- Sin firma dibujada: Lilachat no la captura en este formulario. Sin pastilla «SIN FIRMA».
+- Aviso «¿Probando? · Completar datos de ejemplo» sobre las secciones de un borrador con algún
+  `example` (`ExampleBannerWeb`, `ExampleBanner`). `fillExamples` guarda una sección tras otra
+  por la cola, solo los campos vacíos (`shared/src/reportExamples.ts`). Una sección con un campo
+  obligatorio sin ejemplo queda «Falta a mano». Cerrarlo se recuerda en el dispositivo.
+- `sectionAt` ahora pasa el `example` de una sección de primer nivel (antes solo el de un tramo).
+- Sin chip «EJEMPLO»: no se sabe qué valores vinieron del ejemplo.
+
 ### Cola sin señal (los dos clientes)
 
 - Todo guardado y toda foto pasan por la cola, con señal o sin ella. «Publicar» exige red.
@@ -255,6 +269,7 @@ Portal ya no las manda al subir la foto de unidad vacía. La puerta del server p
 | Diseño | Estado | Evidencia |
 | --- | --- | --- |
 | j-01 crear informe | Implementado | `CreateReportSheet.tsx`, `CreateReportDialog.tsx` |
+| imp-04 firmas, imp-05 datos de ejemplo | Implementado (capturas y revisor pendientes) | `roleCards.ts`, `reportExamples.ts`, `ExampleBanner*`; auditorías `imp-04/05` |
 | imp-01/02/03 CTL-IMP compacto | Implementado (capturas y revisor pendientes) | `CompactFields.tsx` web y APK, `compactReportForms.ts`, `sampleRows.ts`; auditorías `imp-0*.md` |
 | j-02 hub | Implementado | `ReportDocumentScreen.tsx`, `ReportDocumentWeb.tsx` |
 | j-03 tramos | Implementado | `ReportItemsView.tsx`, `ReportItemsWeb.tsx` |
@@ -287,7 +302,7 @@ El inventario marca j-01…j-06 «pendiente de la mirada de José».
 
 ## 7. Pruebas
 
-- **Shared:** `formSamples.test.ts`, `reportScreenPlace.test.ts`, `fieldDocument.test.ts`, `reportCreation.test.ts`, `reportSaves.test.ts`,
+- **Shared:** `roleCards.test.ts`, `reportExamples.test.ts`, `formSamples.test.ts`, `reportScreenPlace.test.ts`, `fieldDocument.test.ts`, `reportCreation.test.ts`, `reportSaves.test.ts`,
   `reportQueue.test.ts` (con `reportQueue.fixture.ts`), `reportScreen.test.ts`,
   `reportUnits.test.ts`, `unitAlbum.test.ts`, `unitAlbumSend.test.ts`, `reportPdf.test.ts`, `reportPhotoCaption.test.ts`,
   `fieldAutofill.test.ts`, `portalEmbed.test.ts`, `observations.test.ts`,
@@ -296,7 +311,7 @@ El inventario marca j-01…j-06 «pendiente de la mirada de José».
   `bots/photoStamp.test.ts`, `bots/formPhotoPlaces.test.ts`, `bots/clientFiles.test.ts`,
   `videoStamp.test.ts`, `chatMediaStamp.test.ts`.
 - **Web:** `CreateReportDialog.test.tsx`, `ReportDocumentWeb.test.tsx`,
-  `PublishDialog.test.tsx`, `UnitAlbumDialog.test.tsx`, `PortalEmbedWeb.test.tsx`, `ObservationsWeb.test.tsx`, `PlaceStatusWeb.test.tsx`.
+  `PublishDialog.test.tsx`, `ExampleBannerWeb.test.tsx`, `appFormDialog.signers.test.tsx`, `UnitAlbumDialog.test.tsx`, `PortalEmbedWeb.test.tsx`, `ObservationsWeb.test.tsx`, `PlaceStatusWeb.test.tsx`.
 - **APK:** `reports/apkReportTypes.test.ts`, `chat/camara/cameraRequests.test.ts`,
   `chat/camara/zoom.test.ts`. Sin tests de render de las pantallas de informe.
 - **Maestro:** no hay flujo de informes en `app/.maestro/` (verificado).

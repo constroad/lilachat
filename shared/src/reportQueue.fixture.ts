@@ -9,20 +9,21 @@ const leaf = (id: string, values = {}) => ({ id, state: 'empty', values });
 export type Tramo = { id: string; photos: number };
 /** What Portal answers for the report as it stands. */
 /** `requireLocation`: the photos ask for the device's fix, as a CTL-PIS unit does (06/11). */
-const answerOf = (id: string | null, tramos: Tramo[], requireLocation = false) => ({
+/** `examples`: Portal's «datos de ejemplo» on the general section and on each tramo's trays (José 19/11). */
+const answerOf = (id: string | null, tramos: Tramo[], requireLocation = false, examples = false) => ({
   id, type: 'CTL-IMP', title: 'Control de imprimación', status: 'draft',
   forms: { general: { type: 'object', properties: { liquido: { type: 'string', title: 'liquido' }, responsable: { type: 'string', title: 'responsable' } } }, ubicacion: textForm('tramo'), bandejas: textForm('peso'), fotos: { type: 'object', properties: { foto: { type: 'string', title: 'Foto', 'x-input': 'photo' } } } },
   sections: [
-    { id: 'general', title: 'Datos generales', required: true, state: 'done', summary: [], results: [], form: 'general', values: {} },
+    { id: 'general', title: 'Datos generales', required: true, state: 'done', summary: [], results: [], form: 'general', values: {}, ...(examples ? { example: { liquido: 'MC-30' } } : {}) },
     {
       id: 'tramos', kind: 'repeat', results: [], title: 'Tramos', required: true, state: 'partial', summary: [], itemTitle: 'Tramo', addLabel: 'Agregar', min: 1,
       template: [{ id: 'ubicacion', title: 'Ubicación', required: true, form: 'ubicacion' }, { id: 'bandejas', title: 'Bandejas', required: true, form: 'bandejas' }, { id: 'fotos', title: 'Fotos', required: false, form: 'fotos', tool: 'agregar_foto_de_informe', ...(requireLocation ? { photoKind: 'riego', requireLocation: true } : {}) }],
-      items: tramos.map((tramo, index) => ({ id: tramo.id, title: `Tramo ${index + 1}`, summary: [], results: [], sections: [leaf('ubicacion'), leaf('bandejas'), leaf('fotos', { fotos: Array.from({ length: tramo.photos }, (_unused, photo) => ({ id: `f${photo}`, url: `https://x/${photo}.jpg` })) })] })),
+      items: tramos.map((tramo, index) => ({ id: tramo.id, title: `Tramo ${index + 1}`, summary: [], results: [], sections: [leaf('ubicacion'), { ...leaf('bandejas'), ...(examples ? { example: { peso: '12' } } : {}) }, leaf('fotos', { fotos: Array.from({ length: tramo.photos }, (_unused, photo) => ({ id: `f${photo}`, url: `https://x/${photo}.jpg` })) })] })),
     },
   ],
   publish: { label: 'Publicar informe', missing: [] },
 });
-export const docOf = (id: string | null, tramos: Tramo[], requireLocation = false): FieldDocument => fieldDocumentOf(answerOf(id, tramos, requireLocation))!;
+export const docOf = (id: string | null, tramos: Tramo[], requireLocation = false, examples = false): FieldDocument => fieldDocumentOf(answerOf(id, tramos, requireLocation, examples))!;
 
 export const ref: ReportRef = { spaceId: 's1', clientId: 'c1', chatId: 'ch1', serviceId: 'sv1', type: 'CTL-IMP' };
 export const general: SectionPath = { sectionId: 'general', itemId: null, key: 'general' };
@@ -31,7 +32,7 @@ export const saved: CommandOutcome = { commandId: 'run', appId: 'a', appName: 'P
 export const NOW = '2026-11-05T10:00:00.000Z';
 
 /** A Portal that keeps a report: a section creates it, a `ubicacion` without tramo adds one, a photo goes to its tramo. */
-export function fakePortal(start: { id: string | null; tramos: Tramo[]; /** As Portal does: a new report is born with one empty tramo. */ seedsTramo?: boolean; requireLocation?: boolean }) {
+export function fakePortal(start: { id: string | null; tramos: Tramo[]; /** As Portal does: a new report is born with one empty tramo. */ seedsTramo?: boolean; requireLocation?: boolean; examples?: boolean }) {
   const state = { ...start, tramos: start.tramos.map((one) => ({ ...one })), offline: false, reads: 0, writes: [] as string[], loseNextAnswer: false, refuse: null as Record<string, string> | null, status: null as number | null, /** Agentes' «too many calls», once: the seconds to wait. */ rateLimitOnce: null as number | null, /** What Portal answers to «Terminar unidad». */ albumText: 'Se enviaron 2 fotos al grupo.' };
   const runs = new Map<string, { item_id: string | null; key: string; report_id?: string; removes?: string }>();
   const removed: string[] = [];
@@ -43,7 +44,7 @@ export function fakePortal(start: { id: string | null; tramos: Tramo[]; /** As P
     read: async () => {
       if (state.offline) return { ok: false, message: 'Sin conexión.' };
       state.reads += 1;
-      return { ok: true, data: { document: answerOf(state.id, state.tramos, start.requireLocation) } };
+      return { ok: true, data: { document: answerOf(state.id, state.tramos, start.requireLocation, start.examples) } };
     },
     open: async (_ref, request) => {
       if (state.offline) return { ok: false, message: 'Sin conexión.' };

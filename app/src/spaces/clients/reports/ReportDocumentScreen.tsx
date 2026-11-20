@@ -13,6 +13,7 @@ import { useFileViewer } from '../useFileViewer';
 import { PdfLabel } from '../RecordSheet';
 import { useReportPdf } from '../useReportPdf';
 import type { ServiceAskTarget } from '../useServiceAsk';
+import { ExampleBanner } from './ExampleBanner';
 import { PublishSheet } from './PublishSheet';
 import { ReportItemsView } from './ReportItemsView';
 import { photoRemovalOf } from './photoRemoval';
@@ -191,6 +192,7 @@ export function ReportDocumentScreen(props: Props) {
         <ReportHeader kicker={items ? `${kicker} · ${items.title}` : kicker} title={props.service.name} report={report} onBack={screen.back} />
         <QueueCard saves={saves} offline={offline} onFix={(save) => actions.openSection(save.path)} onDiscard={(save) => void actions.discard(save.clientKey)} />
         <EphemeralAnswers answers={forms.answers.answers} onDismiss={forms.answers.dismiss} onOpenForm={forms.answers.showForm} chatId={props.chatId} jwt={props.target.jwt} embedded />
+        {report && !items ? <ExampleBanner report={report} serviceId={props.service.id} type={props.type} onFill={actions.fillExamples} /> : null}
         <ReportBody draft={document.draft} report={report} items={items} portalUrl={props.portalUrl} onOpen={actions.openSection} onOpenItems={screen.setItemsOf} onRetry={actions.refresh} onView={viewPhoto} admin={Boolean(props.admin)} onAlbum={(item) => setAlbumId(item.id)} />
         {notice ? <Text className="text-center text-[13px] text-error">{notice}</Text> : null}
       </ScrollView>

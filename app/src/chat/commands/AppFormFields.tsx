@@ -29,12 +29,12 @@ export function ErrorLine(props: { text?: string }) {
  * How a form that splits an amount is drawn (design gst-02): `designed` for the whole form, and the `step`
  * number of the field that is one. Any other form keeps the plain look, and so does every other field.
  */
-export type FormStyle = { designed: boolean; step?: number; /** A compact report section (design imp-01): 44 pt boxes instead of 48. */ compact?: boolean };
+export type FormStyle = { designed: boolean; step?: number; /** A compact report section (design imp-01): 44 pt boxes instead of 48. */ compact?: boolean; /** No «· opcional» per field: the form says it once (role cards, José 20/11). */ quiet?: boolean };
 export const FormStyleContext = createContext<FormStyle>({ designed: false });
 
 export function Label(props: { field: FormField }) {
-  const { designed, step } = useContext(FormStyleContext);
-  const optional = props.field.required ? '' : <Text className="font-normal normal-case tracking-normal text-on-surface-variant"> · opcional</Text>;
+  const { designed, step, quiet } = useContext(FormStyleContext);
+  const optional = props.field.required || quiet ? '' : <Text className="font-normal normal-case tracking-normal text-on-surface-variant"> · opcional</Text>;
   if (designed) {
     // The labels of a designed form are small capitals (design gst-02); a step also says its number.
     return (

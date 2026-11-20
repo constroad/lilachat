@@ -1,5 +1,6 @@
-import { AlertTriangle, Check, CheckCircle2, Info } from 'lucide-react';
-import { isBlankAnswer, OPTIONAL_SAMPLE_LABEL, OPTIONAL_SAMPLE_TAG, SAMPLES_NOTE, sampleColumnsOf, sampleRowMessage, sampleRowsOf, sampleTagOf, type FormField, type FormValues, type SampleRow } from '@lilachat/shared';
+import { useState, type ReactNode } from 'react';
+import { AlertTriangle, Check, CheckCircle2, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { isBlankAnswer, openRoleOf, OPTIONAL_SAMPLE_LABEL, OPTIONAL_SAMPLE_TAG, roleCardsNote, sectionSlug, SAMPLES_NOTE, sampleColumnsOf, sampleRowMessage, sampleRowsOf, sampleTagOf, type FormField, type FormValues, type RoleCard, type SampleRow } from '@lilachat/shared';
 import { FieldError } from '../../ui/Overlay';
 import { Label } from './AppFormFields';
 
@@ -89,4 +90,46 @@ function SampleState(props: { row: SampleRow; alarm: boolean }) {
   if (props.row.state === 'complete') return <CheckCircle2 size={20} aria-label="Completa" className="justify-self-center text-en-linea" />;
   if (props.row.state === 'optional') return <span title={OPTIONAL_SAMPLE_LABEL} className="justify-self-center text-[10.5px] font-bold uppercase tracking-wider text-on-surface-variant"><span className="sm:hidden">{OPTIONAL_SAMPLE_TAG}</span><span className="hidden sm:inline">{OPTIONAL_SAMPLE_LABEL}</span></span>;
   return <span aria-hidden />;
+}
+
+/**
+ * «Responsables y firmas» (design imp-04, José 20/11): one card per role, one open at a time; the others fold
+ * into a row with the name. `renderFields` draws the open card's fields as the rest of the form does.
+ */
+export function RoleCardsWeb(props: { cards: readonly RoleCard[]; errors: Record<string, string>; renderFields: (fields: readonly FormField[]) => ReactNode }) {
+  const [picked, setPicked] = useState<string | null | undefined>(undefined);
+  const open = openRoleOf(props.cards, props.errors, picked);
+  return (
+    <section data-testid="roles-firmas" className="space-y-3">
+      <p className="text-[13px] text-on-surface-variant">{roleCardsNote(props.cards)}</p>
+      {props.cards.map((card) =>
+        card.label === open ? (
+          <div key={card.label} data-testid={`rol-${sectionSlug(card.label)}`} data-open="true" className="rounded-2xl border border-l-4 border-outline/15 border-l-primary bg-surface p-3">
+            <button type="button" aria-expanded onClick={() => setPicked(null)} className="mb-3 flex min-h-11 w-full items-center justify-between gap-2 text-left">
+              <span className="text-[12px] font-bold uppercase tracking-wider text-primary">{card.label}</span>
+              <ChevronUp size={18} aria-hidden className="shrink-0 text-on-surface-variant" />
+            </button>
+            <div className="space-y-4">{props.renderFields(card.fields)}</div>
+          </div>
+        ) : (
+          <FoldedRoleWeb key={card.label} card={card} onOpen={() => setPicked(card.label)} />
+        )
+      )}
+    </section>
+  );
+}
+
+/** A folded role: its initials, its name and position, or «Sin datos». */
+function FoldedRoleWeb(props: { card: RoleCard; onOpen: () => void }) {
+  const { card } = props;
+  return (
+    <button type="button" data-testid={`rol-${sectionSlug(card.label)}`} aria-expanded={false} onClick={props.onOpen} className="flex min-h-16 w-full items-center gap-3 rounded-2xl border border-outline/15 bg-surface px-3 py-2.5 text-left hover:bg-on-surface/5">
+      <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary/15 text-[14px] font-bold text-primary">{card.initials}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">{card.label}</span>
+        <span className={`block truncate text-[15px] ${card.filled ? 'text-on-surface' : 'text-on-surface-variant'}`}>{card.line}</span>
+      </span>
+      <ChevronDown size={18} aria-hidden className="shrink-0 text-on-surface-variant" />
+    </button>
+  );
 }

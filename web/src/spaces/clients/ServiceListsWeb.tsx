@@ -45,8 +45,11 @@ function DispatchLine({ dispatch, onOpen, onOpenFile }: { dispatch: OrderCard['d
     <li data-testid={`despacho-${dispatch.id}`} className="flex min-h-[56px] items-center gap-3 rounded-xl border border-outline/10 bg-background/60 px-3 py-2">
       <button type="button" onClick={() => onOpen(dispatch.id)} className="flex min-w-0 flex-1 items-center gap-2 text-left">
         <Truck size={17} className="shrink-0 text-primary" />
-        <span className="font-mono text-[13px] font-bold text-on-surface">{dispatch.title}</span>
-        {dispatch.line ? <span className="truncate text-[13px] text-on-surface-variant">{`· ${dispatch.line}`}</span> : null}
+        {/* On a phone the plate and its line stack, so neither breaks nor gets cut. */}
+        <span className="flex min-w-0 flex-col sm:flex-row sm:items-center sm:gap-2">
+          <span className="whitespace-nowrap font-mono text-[13px] font-bold text-on-surface">{dispatch.title}</span>
+          {dispatch.line ? <span className="truncate text-[12px] text-on-surface-variant sm:text-[13px]"><span className="max-sm:hidden">· </span>{dispatch.line}</span> : null}
+        </span>
       </button>
       <span className="flex shrink-0 gap-1.5">
         {all.map((picture) => (

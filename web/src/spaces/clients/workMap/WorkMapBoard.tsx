@@ -120,7 +120,7 @@ function Actions(props: ActionProps) {
     else props.onDeleted?.();
   };
   return (
-    <div className={`flex shrink-0 items-center gap-2 ${props.wide ? 'pb-3' : 'w-full pb-2'}`}>
+    <div className={`flex flex-wrap items-center gap-2 ${props.wide ? 'justify-end pb-3' : 'w-full pb-2'}`}>
       <button type="button" data-testid="mapa-pantalla-completa" title={props.expanded ? 'Salir de pantalla completa' : 'Pantalla completa'} onClick={props.onToggle} className={ACTION}>
         {props.expanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />} <span className="sr-only">{props.expanded ? 'Salir de pantalla completa' : 'Pantalla completa'}</span>
       </button>
@@ -265,7 +265,7 @@ function BoardHead(props: { head?: ReactNode; wide: boolean; expanded: boolean; 
   return (
     <header className={`${MAP_HEAD_BAR} relative z-20 flex-wrap`}>
       {props.head ? <div className={`min-w-0 ${props.wide ? 'flex-1' : 'basis-full'}`}>{props.head}</div> : null}
-      <div className="flex min-w-0 flex-1 justify-end overflow-x-auto">{props.actions}</div>
+      <div className="flex min-w-0 flex-1 justify-end">{props.actions}</div>
     </header>
   );
 }

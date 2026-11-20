@@ -65,8 +65,8 @@ function MoreMenu(props: { portalUrl?: string }) {
 
 function TabBar(props: { tabs: ServiceTabItem[]; tab: ServiceTabKey; onTab: (tab: ServiceTabKey) => void; onSlot: (slot: HTMLElement | null) => void; compact: boolean }) {
   return (
-    <div className={`flex items-center gap-3 ${props.compact ? 'border-t border-outline/10 px-3' : ''}`}>
-      <div role="tablist" className="flex min-w-0 flex-1 gap-5 overflow-x-auto">
+    <div className={`flex flex-wrap items-center gap-x-3 ${props.compact ? 'border-t border-outline/10 px-3' : ''}`}>
+      <div role="tablist" className="flex max-w-full shrink-0 gap-5 overflow-x-auto">
         {props.tabs.map((one) => {
           const open = one.key === props.tab;
           return (
@@ -77,7 +77,7 @@ function TabBar(props: { tabs: ServiceTabItem[]; tab: ServiceTabKey; onTab: (tab
           );
         })}
       </div>
-      <div ref={props.onSlot} data-testid="acciones-seccion" className="flex shrink-0 items-center gap-2 py-1.5" />
+      <div ref={props.onSlot} data-testid="acciones-seccion" className="ml-auto flex min-w-0 items-center justify-end gap-2 py-1.5" />
     </div>
   );
 }
@@ -100,8 +100,8 @@ function WideHead(props: HeadProps) {
         </div>
         {line || props.service.progress !== undefined ? (
           <div className="mt-1 flex items-center gap-3 text-[13px] text-on-surface-variant">
-            <span data-testid="servicio-linea">{line}</span>
-            <Progress value={props.service.progress} className="w-40" />
+            <span data-testid="servicio-linea" className="whitespace-nowrap">{line}</span>
+            <Progress value={props.service.progress} className="w-40 min-w-16 shrink" />
           </div>
         ) : null}
       </div>

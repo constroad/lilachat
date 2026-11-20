@@ -26,15 +26,15 @@ export function ArchivedComposerNote(props: { client: SpaceClient }) {
 
 function ServiceFilters(props: { query: string; onQuery: (query: string) => void; filter: ServiceFilter; onFilter: (filter: ServiceFilter) => void; counts: Record<ServiceFilter, number> }) {
   return (
-    <div className="flex flex-col gap-2 rounded-2xl border border-outline/15 bg-surface p-1.5 md:flex-row md:items-center">
-      <label className="flex h-10 flex-1 items-center gap-2 rounded-xl bg-background px-3">
+    <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:gap-2 md:rounded-2xl md:border md:border-outline/15 md:bg-surface md:p-1.5">
+      <label className="flex h-10 flex-1 items-center gap-2 rounded-xl bg-background px-3 max-md:border-[1.5px] max-md:border-outline/20 max-md:bg-surface">
         <Search size={15} className="text-on-surface-variant" />
         <input data-testid="buscar-servicio" value={props.query} onChange={(event) => props.onQuery(event.target.value)} placeholder="Buscar servicio" aria-label="Buscar servicio" className="min-w-0 flex-1 bg-transparent text-sm outline-none" />
       </label>
       {/* Design cc-01: a segmented control, «Rechazados» only when there is one. */}
-      <div role="group" aria-label="Filtrar por estado" className="flex rounded-xl bg-background p-1">
+      <div role="group" aria-label="Filtrar por estado" className="flex gap-1 rounded-xl bg-background p-1 max-md:border-[1.5px] max-md:border-outline/20 max-md:bg-surface">
         {serviceSegmentsOf(props.counts).map((one) => (
-          <button key={one.key} type="button" data-testid={`filtro-servicio-${one.key}`} aria-pressed={props.filter === one.key} onClick={() => props.onFilter(one.key)} className={`h-8 flex-1 whitespace-nowrap rounded-lg px-2 text-[13px] font-semibold md:flex-none md:px-3 ${props.filter === one.key ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}>{one.label} <span className="tabular-nums">{one.count}</span></button>
+          <button key={one.key} type="button" data-testid={`filtro-servicio-${one.key}`} aria-pressed={props.filter === one.key} onClick={() => props.onFilter(one.key)} className={`h-8 flex-1 whitespace-nowrap rounded-lg px-2 text-[13px] font-semibold md:flex-none md:px-3 ${props.filter === one.key ? 'bg-primary text-on-primary shadow-sm md:bg-surface md:text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}>{one.label} <span className="tabular-nums">{one.count}</span></button>
         ))}
       </div>
     </div>
@@ -72,7 +72,7 @@ function ListHead(props: { client: SpaceClient; links?: ChannelLinks; seesDrive:
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
         <p className="font-mono text-[11px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">Servicios del cliente</p>
-        <h2 className="text-2xl font-extrabold tracking-tight text-primary">Servicios</h2>
+        <h2 className="text-[28px] font-extrabold leading-[34px] tracking-tight text-primary">Servicios</h2>
       </div>
       <div className="flex flex-wrap gap-2">
         {/* José 31/10: the client's link here; an order's in its sheet, a service's in its head. */}

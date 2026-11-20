@@ -101,7 +101,7 @@ export function ServiceCard(props: { service: SpaceClientService; canOpen: boole
   const facts = serviceCardFacts(service, new Date());
   const action = props.canOpen ? props.onOpen : service.url ? () => service.url && void Linking.openURL(service.url) : undefined;
   return (
-    <View testID={`servicio-${service.id}`} className={`rounded-2xl border border-l-4 border-outline/15 bg-surface p-4 ${ACCENT[service.status]}`}>
+    <View testID={`servicio-${service.id}`} className={`rounded-2xl border-[1.5px] border-l-4 border-outline/15 bg-surface p-4 ${ACCENT[service.status]}`}>
       <Pressable testID={`abrir-servicio-${service.id}`} disabled={!action} onPress={action}>
         {serviceTakesScreen(width, height) ? <CompactSummary service={service} facts={facts} /> : <WideSummary service={service} facts={facts} />}
         {action && !props.canOpen ? (

@@ -11,6 +11,10 @@ describe('serviceTakesScreen', () => {
     expect(serviceTakesScreen(SHELL_WIDE_MIN_PX)).toBe(false);
     expect(serviceTakesScreen(1440)).toBe(false);
   });
+  it('a phone turned sideways is wide but short: the service still takes the screen', () => {
+    expect(serviceTakesScreen(844, 390)).toBe(true);
+    expect(serviceTakesScreen(1194, 834)).toBe(false);
+  });
 });
 
 describe('channelTabsFor', () => {

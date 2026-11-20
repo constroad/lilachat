@@ -68,6 +68,12 @@ que Portal guarda en el Drive de ese servicio: fotos, videos y documentos.
   `DriveUploadSheet.tsx` (hoja inferior), `FileThumb.tsx`, `useDriveUpload.ts`,
   `useFileViewer.tsx`, `PhotoPhaseBar.tsx`.
 - La subida va por `subirPorXhr`: `fetch` no envía un archivo por su `uri`.
+- **Pegar del portapapeles** (19/11): botón junto a la cámara; lee la imagen copiada (`expo-clipboard`,
+  ya en el APK), la guarda como PNG y sube como foto de galería (`drivePaste.ts`, `useDriveUpload.pasteImage`).
+  Sin imagen copiada: «No hay una imagen copiada para pegar.».
+- **Hoja de cada archivo** (19/11, `DriveFileSheet.tsx`): «⋮» en la fila o toque largo en la fila o el
+  mosaico. Abrir, Copiar enlace, Copiar archivo (foto: se baja a la caché y va al portapapeles como imagen),
+  Descargar (abre el navegador) y «Marcar como antes / después».
 - La vista elegida se recuerda mientras la app está abierta.
 
 ### Server

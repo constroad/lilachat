@@ -155,11 +155,19 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
 
 ### APK
 
-`app/src/spaces/clients/`: `ClientsSection.tsx`, `ServiceDetailView.tsx`,
+`app/src/spaces/clients/`: `ClientsSection.tsx`, `ServiceShell.tsx` (cabecera y barra), `ServiceLists.tsx`
+(tarjetas de pedidos e informes), `ServiceDetailView.tsx`,
 `ClientAccountPanel.tsx`, `ServiceCollectionView.tsx`, `ServiceBilling.tsx`,
 `ServiceStages.tsx`, `ClientAccess.tsx`, `ClientPicker.tsx`, `ArchivedClientsScreen.tsx`,
 `RecordSheet.tsx`, `SpaceActionButton.tsx`, `ClientChannelParts.tsx`, `useSpaceClients.ts`,
 `useServiceAsk.ts`, `useSpaceAction.ts`, `useReportPdf.ts`.
+
+APK y la gramática de 19/11: el teléfono (ancho < 768 dp o alto < 500 dp, `serviceTakesScreen`, así un
+teléfono apaisado sigue igual) abre el servicio a pantalla completa con flecha; la tablet deja la cabecera
+del chat y las pestañas del canal arriba (`ChannelWorkTabs.tsx`, `useWindowDimensions`). «Crear informe» va a
+la derecha de la barra. **Diferencia con la web:** RN no tiene portales, así que Pegar, cámara y Subir siguen
+en la cabecera del Drive y las acciones del mapa en su barra, justo bajo la barra de pestañas. Checklist con
+«Pendientes · Plan» en el teléfono: `chat/workPlan/ChecklistSegments.tsx`.
 
 ### Server
 

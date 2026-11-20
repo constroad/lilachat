@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, Text, TextInput, View } from 'react-native';
-import { ChevronLeft, ChevronRight, Cloud, ExternalLink, Folder, Search } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Cloud, ExternalLink, Folder, MoreVertical, Search } from 'lucide-react-native';
 import { FileThumb } from './FileThumb';
 import { filesOfKind, photoMarkOf, withPhotoMark, type DriveKind, type DriveLayout, type PhotoMark, driveFileLine, driveUploadingLine, driveFolders, filesInFolder, searchServiceFiles, type ServiceFile, type SpaceClientService } from '@lilachat/shared';
 import { DriveHeader, DriveKindChips } from './DriveHeader';
 import { DriveGrid, FolderCards } from './DriveGrid';
 import { DriveUploadSheet } from './DriveUploadSheet';
+import { DriveFileSheet } from './DriveFileSheet';
 import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
 import { useDriveUpload } from './useDriveUpload';
@@ -25,14 +26,20 @@ const open = (url?: string | null) => {
 };
 
 /** José 30/10 night: with its thumbnail, and it opens in Lilachat's viewer, not in the browser or Portal. */
-function FileRow({ file, onOpen }: { file: ServiceFile; onOpen: OpenFile }) {
+function FileRow({ file, onOpen, onMenu }: { file: ServiceFile; onOpen: OpenFile; onMenu?: OpenFile }) {
+  const colors = useColores();
   return (
-    <Pressable testID="archivo-drive" onPress={() => onOpen(file)} className="min-h-[60px] flex-row items-center gap-3 border-b border-outline/10 px-3 py-2">
+    <Pressable testID="archivo-drive" onPress={() => onOpen(file)} onLongPress={onMenu ? () => onMenu(file) : undefined} className="min-h-[60px] flex-row items-center gap-3 border-b border-outline/10 py-2 pl-3 pr-1">
       <FileThumb file={viewableOf(file)} />
       <View className="min-w-0 flex-1">
         <Text className="text-[14px] text-on-surface" numberOfLines={1}>{file.name}</Text>
         <Text className="text-[12px] text-on-surface-variant" numberOfLines={1}>{driveFileLine(file)}</Text>
       </View>
+      {onMenu ? (
+        <Pressable testID="archivo-drive-mas" accessibilityLabel={`Opciones de ${file.name}`} onPress={() => onMenu(file)} className="h-11 w-11 items-center justify-center">
+          <MoreVertical size={18} color={colors['on-surface-variant']} />
+        </Pressable>
+      ) : null}
     </Pressable>
   );
 }
@@ -64,12 +71,12 @@ function FolderRows(props: { files: readonly ServiceFile[]; layout: DriveLayout;
 }
 
 /** The same files as rows or as tiles by day (designs drv-01, drv-02). */
-function FileSet(props: { files: readonly ServiceFile[]; layout: DriveLayout; onOpen: OpenFile }) {
-  if (props.layout === 'grid') return <DriveGrid files={props.files} onOpen={props.onOpen} />;
-  return <Group>{props.files.map((file) => <FileRow key={file.url} file={file} onOpen={props.onOpen} />)}</Group>;
+function FileSet(props: { files: readonly ServiceFile[]; layout: DriveLayout; onOpen: OpenFile; onMenu?: OpenFile }) {
+  if (props.layout === 'grid') return <DriveGrid files={props.files} onOpen={props.onOpen} onMenu={props.onMenu} />;
+  return <Group>{props.files.map((file) => <FileRow key={file.url} file={file} onOpen={props.onOpen} onMenu={props.onMenu} />)}</Group>;
 }
 
-type BodyProps = { files: ServiceFile[]; query: string; folder: string | null; kind: DriveKind; layout: DriveLayout; onFolder: (folder: string) => void; onOpen: OpenFile };
+type BodyProps = { files: ServiceFile[]; query: string; folder: string | null; kind: DriveKind; layout: DriveLayout; onFolder: (folder: string) => void; onOpen: OpenFile; onMenu?: OpenFile };
 
 /** The files the search, the folder and the chip leave, or null at the root with «Todo». */
 function narrowed(props: BodyProps): ServiceFile[] | null {
@@ -82,14 +89,14 @@ function narrowed(props: BodyProps): ServiceFile[] | null {
 function DriveBody(props: BodyProps) {
   const shown = narrowed(props);
   if (!props.files.length) return <Text className="py-6 text-center text-[14px] text-on-surface-variant">Este servicio todavía no tiene archivos.</Text>;
-  if (shown) return shown.length ? <FileSet files={shown} layout={props.layout} onOpen={props.onOpen} /> : <Text className="p-4 text-[14px] text-on-surface-variant">{props.query.trim() ? `Nada coincide con «${props.query.trim()}».` : 'No hay archivos de este tipo.'}</Text>;
+  if (shown) return shown.length ? <FileSet files={shown} layout={props.layout} onOpen={props.onOpen} onMenu={props.onMenu} /> : <Text className="p-4 text-[14px] text-on-surface-variant">{props.query.trim() ? `Nada coincide con «${props.query.trim()}».` : 'No hay archivos de este tipo.'}</Text>;
   const recent = props.files.slice(0, RECENT);
   const rest = filesInFolder(props.files, null).filter((file) => !recent.includes(file));
   return (
     <>
       <FolderRows files={props.files} layout={props.layout} onOpen={props.onFolder} />
       <Kicker>Recientes</Kicker>
-      <FileSet files={[...recent, ...rest]} layout={props.layout} onOpen={props.onOpen} />
+      <FileSet files={[...recent, ...rest]} layout={props.layout} onOpen={props.onOpen} onMenu={props.onMenu} />
     </>
   );
 }
@@ -180,6 +187,8 @@ export function ServiceDrive(props: { target: ServiceAskTarget; service: SpaceCl
   const [kind, setKind] = useState<DriveKind>('all');
   const [layout, setLayoutState] = useState<DriveLayout>(lastLayout);
   const [choosing, setChoosing] = useState(false);
+  const [menuFile, setMenuFile] = useState<ServiceFile | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const setLayout = (next: DriveLayout) => {
     lastLayout = next;
     setLayoutState(next);
@@ -194,17 +203,20 @@ export function ServiceDrive(props: { target: ServiceAskTarget; service: SpaceCl
     return () => subscription.remove();
   }, [folder, onBack]);
   const driveUrl = answer?.ok ? answer.value.driveUrl : (answer?.portalUrl ?? null);
+  const openFile = (file: ServiceFile) => answer?.ok && viewer.open(viewableOf(file), answer.value.files.map(viewableOf), undefined, undefined, phaseOf);
   return (
     <View testID="drive-servicio" className="gap-3">
       {folder ? <Breadcrumb folder={folder} onRoot={() => setFolder(null)} /> : null}
-      <DriveHeader count={answer?.ok ? answer.value.files.length : null} layout={layout} onLayout={setLayout} sending={upload.sending} onUpload={() => setChoosing(true)} onCamera={upload.takePhoto} />
+      <DriveHeader count={answer?.ok ? answer.value.files.length : null} layout={layout} onLayout={setLayout} sending={upload.sending} onUpload={() => setChoosing(true)} onCamera={upload.takePhoto} onPaste={upload.pasteImage} />
       <UploadStatus upload={upload} />
+      {notice ? <Text testID="drive-copiado" className="text-center text-[13px] text-on-surface">{notice}</Text> : null}
       <DriveUploadSheet visible={choosing} onClose={() => setChoosing(false)} onPick={(option) => UPLOADS[option](upload)} />
       {answer === null ? <View testID="drive-cargando" className="h-40 rounded-2xl bg-surface-variant" /> : null}
       {answer && !answer.ok ? <Text testID="drive-fallo" className="rounded-xl border border-outline/15 bg-surface p-4 text-[15px] font-semibold text-on-surface">{answer.message}</Text> : null}
       {answer?.ok ? <DriveSearch query={query} onQuery={setQuery} /> : null}
       {answer?.ok && answer.value.files.length ? <DriveKindChips kind={kind} onKind={setKind} /> : null}
-      {answer?.ok ? <DriveBody files={answer.value.files} query={query} folder={folder} kind={kind} layout={layout} onFolder={setFolder} onOpen={(file) => viewer.open(viewableOf(file), answer.value.files.map(viewableOf), undefined, undefined, phaseOf)} /> : null}
+      {answer?.ok ? <DriveBody files={answer.value.files} query={query} folder={folder} kind={kind} layout={layout} onFolder={setFolder} onOpen={openFile} onMenu={setMenuFile} /> : null}
+      <DriveFileSheet file={menuFile} onClose={() => setMenuFile(null)} onOpen={openFile} onNotice={setNotice} />
       {viewer.notice ? <Text className="text-center text-[13px] text-error">{viewer.notice}</Text> : null}
       {viewer.viewer}
       {driveUrl ? (

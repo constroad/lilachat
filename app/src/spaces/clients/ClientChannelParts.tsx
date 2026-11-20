@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Archive, ChevronRight, ExternalLink, FolderOpen, Link2, Search } from 'lucide-react-native';
-import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, serviceAccessOf, orderFocusOf, SERVICE_FILTER_LABELS, dayOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService } from '@lilachat/shared';
+import { AlertCircle, Archive, ChevronRight, ExternalLink, FolderOpen, Link2, Search } from 'lucide-react-native';
+import { archivedBanner, ARCHIVED_COMPOSER_NOTE, CLIENT_SERVICE_STATUS_LABELS, filterServices, pendingPreview, serviceAccessOf, serviceSegmentsOf, orderFocusOf, dayOf, type ChannelLinks, type ServiceFilter, type ClientRecord, type SpaceClient, type SpaceClientService, type WorkStage } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { ClientAccessRow } from './ClientAccess';
 import { ServiceDetailView } from './ServiceDetailView';
@@ -36,40 +36,44 @@ function ServiceFilters(props: { query: string; onQuery: (query: string) => void
         <Search size={16} color={colors['on-surface-variant']} />
         <TextInput testID="buscar-servicio" value={props.query} onChangeText={props.onQuery} placeholder="Buscar servicio" placeholderTextColor={colors['on-surface-variant']} className="flex-1 text-[14px] text-on-surface" />
       </View>
-      <ScrollView keyboardShouldPersistTaps="handled" horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-        {(Object.keys(SERVICE_FILTER_LABELS) as ServiceFilter[]).map((key) => (
-          <Pressable key={key} testID={`filtro-servicio-${key}`} onPress={() => props.onFilter(key)} accessibilityState={{ selected: props.filter === key }} className={`min-h-[36px] flex-row items-center gap-1.5 rounded-full border px-3 ${props.filter === key ? 'border-primary bg-primary' : 'border-outline/20 bg-surface'}`}>
-            <Text className={`text-[13px] font-semibold ${props.filter === key ? 'text-on-primary' : 'text-on-surface-variant'}`}>{`${SERVICE_FILTER_LABELS[key]} · ${props.counts[key]}`}</Text>
+      {/* Design cc-01: a segmented control, «Rechazados» only when there is one. */}
+      <View className="flex-row rounded-xl border border-outline/15 bg-surface p-1">
+        {serviceSegmentsOf(props.counts).map((one) => (
+          <Pressable key={one.key} testID={`filtro-servicio-${one.key}`} onPress={() => props.onFilter(one.key)} accessibilityRole="button" accessibilityState={{ selected: props.filter === one.key }} className={`min-h-[40px] flex-1 items-center justify-center rounded-lg ${props.filter === one.key ? 'bg-primary' : ''}`}>
+            <Text numberOfLines={1} className={`text-[13px] font-semibold ${props.filter === one.key ? 'text-on-primary' : 'text-on-surface-variant'}`}>{`${one.label} ${one.count}`}</Text>
           </Pressable>
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
 }
 
-/** Tapping the head opens its expediente; without the space (no way to ask), its Portal link. «Enlace del servicio» makes its link (José 31/10). */
+const ACCENT: Record<SpaceClientService['status'], string> = { pending: 'border-l-warning', in_progress: 'border-l-primary', completed: 'border-l-en-linea', rejected: 'border-l-error' };
+
+/** Design cc-01: a card per service with its accent by state; tapping it opens the service, or its Portal link without the space. «Enlace del servicio» stays on it (José 31/10). */
 function ServiceCard(props: { service: SpaceClientService; canOpen: boolean; onOpen: () => void; onShare?: () => void }) {
   const colors = useColores();
   const { service } = props;
   const action = props.canOpen ? props.onOpen : service.url ? () => service.url && void Linking.openURL(service.url) : undefined;
   return (
-    <View testID={`servicio-${service.id}`} className="rounded-2xl border border-outline/15 bg-surface p-4">
+    <View testID={`servicio-${service.id}`} className={`rounded-2xl border border-l-4 border-outline/15 bg-surface p-4 ${ACCENT[service.status]}`}>
       <Pressable testID={`abrir-servicio-${service.id}`} disabled={!action} onPress={action}>
         <View className="flex-row items-start gap-3">
-          <Text className="flex-1 text-[15px] font-semibold text-on-surface">{service.name}</Text>
-          <Text className={`rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{service.stage_label || CLIENT_SERVICE_STATUS_LABELS[service.status]}</Text>
+          <Text className="flex-1 text-[15px] font-bold text-on-surface">{service.name}</Text>
+          <Text className={`rounded-md border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{service.stage_label || CLIENT_SERVICE_STATUS_LABELS[service.status]}</Text>
         </View>
-        {/* José 31/10: «la lista de servicios no muestra la fecha». */}
-        {service.started_at ? <Text testID={`inicio-servicio-${service.id}`} className="mt-1 text-[12px] text-on-surface-variant">{`Inicio ${dayOf(service.started_at)}`}</Text> : null}
         {service.progress !== undefined ? (
           <View className="mt-3 flex-row items-center gap-3">
+            <Text className="text-[12px] text-on-surface-variant">Avance</Text>
             <View className="h-1.5 flex-1 overflow-hidden rounded-full bg-background"><View className="h-full rounded-full bg-primary" style={{ width: `${service.progress}%` }} /></View>
-            <Text className="text-[12px] font-semibold text-on-surface-variant">{`${service.progress} %`}</Text>
+            <Text className="text-[13px] font-bold text-on-surface">{`${service.progress} %`}</Text>
           </View>
         ) : null}
+        {/* José 31/10: «la lista de servicios no muestra la fecha». */}
+        {service.started_at ? <Text testID={`inicio-servicio-${service.id}`} className="mt-2 text-[12px] text-on-surface-variant">{`Inicio ${dayOf(service.started_at)}`}</Text> : null}
         {action ? (
           <View className="mt-3 min-h-[36px] flex-row items-center gap-1.5">
-            <Text className="text-[14px] font-semibold text-primary">{props.canOpen ? 'Pedidos, despachos e informes' : 'Ver en el Portal'}</Text>
+            <Text className="text-[14px] font-semibold text-primary">{props.canOpen ? 'Pedidos, informes, mapa y Drive' : 'Ver en el Portal'}</Text>
             {props.canOpen ? <ChevronRight size={16} color={colors.primary} /> : <ExternalLink size={15} color={colors.primary} />}
           </View>
         ) : null}
@@ -84,27 +88,73 @@ function ServiceCard(props: { service: SpaceClientService; canOpen: boolean; onO
   );
 }
 
-function ClientDriveLink({ url }: { url: string }) {
+/** The plan's stages and the way to them: only on a phone (design cc-01 mobile). */
+export type ChannelPending = { stages: readonly WorkStage[]; /** «Ver en Checklist», or «Ver pendientes» for whoever has no checklist. */ label: string; onOpen: () => void };
+
+/** Design cc-01 mobile: the open tasks over the list. */
+function PendingBlock(props: { pending: ChannelPending; nameOf: (userId: string) => string }) {
   const colors = useColores();
+  const { tasks, total } = pendingPreview(props.pending.stages, new Date());
+  if (!total) return null;
   return (
-    <Pressable testID="drive-cliente" onPress={() => void Linking.openURL(url)} className="min-h-[60px] flex-row items-center gap-3 rounded-2xl border border-outline/15 bg-surface p-4">
-      <FolderOpen size={22} color={colors.primary} />
-      <View className="min-w-0 flex-1">
-        <Text className="text-[15px] font-semibold text-on-surface">Drive del cliente</Text>
-        <Text className="text-[12px] text-on-surface-variant">Todas sus carpetas en el Portal</Text>
+    <View testID="servicios-pendientes" className="rounded-2xl border border-outline/15 border-t-[3px] border-t-warning bg-surface p-3">
+      <View className="flex-row items-center justify-between pb-2">
+        <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-warning">{`Pendientes · ${total}`}</Text>
+        <Pressable testID="ver-en-checklist" onPress={props.pending.onOpen} className="min-h-[40px] flex-row items-center gap-0.5">
+          <Text className="text-[13px] font-semibold text-primary">{props.pending.label}</Text>
+          <ChevronRight size={14} color={colors.primary} />
+        </Pressable>
       </View>
-      <ExternalLink size={16} color={colors['on-surface-variant']} />
-    </Pressable>
+      {tasks.map((task) => (
+        <View key={`${task.stageId}-${task.item.id}`} className="mt-1.5 flex-row items-start gap-2 rounded-xl border border-warning/25 bg-warning/5 px-3 py-2">
+          <AlertCircle size={16} color={colors.warning} />
+          <View className="min-w-0 flex-1">
+            <Text className="text-[14px] font-semibold text-on-surface">{task.item.text}</Text>
+            <Text className="text-[12px] text-on-surface-variant">{task.item.assignee ? `Etapa ${task.stage} · ${props.nameOf(task.item.assignee)}` : `Etapa ${task.stage}`}</Text>
+          </View>
+        </View>
+      ))}
+    </View>
   );
 }
 
-/**
- * «Servicios»: each service with its state, its progress and its records
- * (informes, quotes, payments) — tapping one goes to its message in the chat.
- * Tapping the service opens its expediente with its Drive (José, 06/11).
- */
-export function ClientServices(props: { /** The channel hides its chrome while a service is open. */ onServiceOpen?: (open: boolean) => void; onToChat?: () => void; client: SpaceClient; records: ClientRecord[] | null; target: ServiceAskTarget | null; members: ReadonlyMap<string, string>; me: string; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void }) {
+function ListHead(props: { client: SpaceClient; links?: ChannelLinks; seesDrive: boolean }) {
   const colors = useColores();
+  const { links } = props;
+  const driveUrl = props.client.drive_url;
+  return (
+    <View className="gap-2">
+      <View>
+        <Text className="text-[11px] font-bold uppercase tracking-[1.5px] text-on-surface-variant">Servicios del cliente</Text>
+        <Text className="text-[22px] font-extrabold text-primary">Servicios</Text>
+      </View>
+      <View className="flex-row flex-wrap gap-2">
+        {/* José 31/10: the client's link here; an order's in its sheet, a service's on its card. */}
+        {links?.can('client') ? (
+          <Pressable testID="enlace-cliente" onPress={() => links.open({ kind: 'client', clientId: props.client.id })} className={HEAD_BUTTON}>
+            <Link2 size={16} color={colors.primary} />
+            <Text className="text-[14px] font-semibold text-on-surface">Enlace del cliente</Text>
+          </Pressable>
+        ) : null}
+        {props.seesDrive && driveUrl ? (
+          <Pressable testID="drive-cliente" onPress={() => void Linking.openURL(driveUrl)} className={HEAD_BUTTON}>
+            <FolderOpen size={16} color={colors.primary} />
+            <Text className="text-[14px] font-semibold text-on-surface">Drive del cliente</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
+const HEAD_BUTTON = 'min-h-[44px] flex-row items-center gap-2 rounded-xl border border-outline/20 bg-surface px-3';
+
+/**
+ * «Servicios» (José 19/11, design cc-01): the client's link and Drive, the search with «Abiertos ·
+ * Completados · Todos» and a card per service; on a phone the open tasks go first. The service opens
+ * under the channel's tabs (tablet) or over the whole screen (phone).
+ */
+export function ClientServices(props: { /** The channel hides its chrome while a service is open on a phone. */ onServiceOpen?: (open: boolean) => void; client: SpaceClient; records: ClientRecord[] | null; target: ServiceAskTarget | null; members: ReadonlyMap<string, string>; me: string; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void; pending?: ChannelPending; compact?: boolean }) {
   const { links } = props;
   const clientId = props.client.id;
   const [opened, setOpened] = useState<SpaceClientService | null>(null);
@@ -129,19 +179,14 @@ export function ClientServices(props: { /** The channel hides its chrome while a
   }, [showsDetail, onServiceOpen]);
   const { services, counts } = filterServices(props.client.services, { query, filter });
   const sees = serviceAccessOf(props.client.access);
-  if (opened && props.target) return <ServiceDetailView people={[...props.members.values()]} target={props.target} chatId={props.client.chat_id} service={opened} seesMoney={Boolean(props.client.access?.money)} admin={Boolean(props.client.access?.admin)} seesDrive={sees.drive} driveOnly={!sees.detail} onToChat={props.onToChat} onBack={close} links={links} startOrderId={startOrderId} />;
+  if (opened && props.target) return <ServiceDetailView people={[...props.members.values()]} target={props.target} chatId={props.client.chat_id} clientName={props.client.name} compact={props.compact ?? true} service={opened} seesMoney={Boolean(props.client.access?.money)} admin={Boolean(props.client.access?.admin)} seesDrive={sees.drive} driveOnly={!sees.detail} onBack={close} links={links} startOrderId={startOrderId} />;
   const total = props.client.services.length;
+  const nameOf = (userId: string) => props.members.get(userId) ?? 'Alguien';
   return (
     <ScrollView keyboardShouldPersistTaps="handled" testID="servicios-cliente" contentContainerStyle={{ padding: 16, gap: 12 }}>
+      {props.pending ? <PendingBlock pending={props.pending} nameOf={nameOf} /> : null}
+      <ListHead client={props.client} links={links} seesDrive={sees.drive} />
       {props.target ? <ClientAccessRow target={props.target} members={props.members} me={props.me} /> : null}
-      {/* José 31/10: the client's link here; an order's in its sheet, a service's on its card. */}
-      {links?.can('client') ? (
-        <Pressable testID="enlace-cliente" onPress={() => links.open({ kind: 'client', clientId })} className="min-h-[44px] flex-row items-center gap-2 self-start rounded-xl border border-primary/30 bg-primary/10 px-3">
-          <Link2 size={16} color={colors.primary} />
-          <Text className="text-[14px] font-semibold text-primary">Enlace del cliente</Text>
-        </Pressable>
-      ) : null}
-      {sees.drive && props.client.drive_url ? <ClientDriveLink url={props.client.drive_url} /> : null}
       {total > 1 ? <ServiceFilters query={query} onQuery={setQuery} filter={filter} onFilter={setFilter} counts={counts} /> : null}
       {total === 0 ? <Text className="pt-10 text-center text-[14px] text-on-surface-variant">Este cliente todavía no tiene servicios.</Text> : null}
       {total > 0 && services.length === 0 ? <Text className="pt-6 text-center text-[14px] text-on-surface-variant">Ningún servicio con ese filtro.</Text> : null}
@@ -151,4 +196,3 @@ export function ClientServices(props: { /** The channel hides its chrome while a
     </ScrollView>
   );
 }
-

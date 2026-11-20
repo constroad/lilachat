@@ -93,7 +93,12 @@ ingeniero de campo desde el celular y lo mira el cliente desde una computadora.
 
 ### APK
 
-- Carpeta: `app/src/spaces/clients/workMap/` (31 archivos). Entrada:
+- **19/11 (cc-04 móvil):** «Capas y leyenda» abre la hoja del mapa (`workMap/MapLayersPanel.tsx`, mismos
+  interruptores y chips de etapa que la web); el botón «Capas» va sobre el mapa, bajo «Ver mapa completo».
+  **«Editar croquis» va sobre el mapa** como pastilla con su texto (José no lo vio bajo «Registrar
+  avance»). La capa Fotos pasó del botón sobre el mapa al interruptor del panel. Los interruptores
+  ocultan también en el mapa completo.
+- Carpeta: `app/src/spaces/clients/workMap/` (32 archivos). Entrada:
   `app/src/spaces/clients/ServiceMapPanel.tsx`.
 - Mapa nativo con `@maplibre/maplibre-react-native`. Es código nativo: llegó con el
   APK 0.1.181 (182). Un OTA no puede sumar módulos nativos.

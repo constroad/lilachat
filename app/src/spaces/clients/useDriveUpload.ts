@@ -2,7 +2,7 @@ import { useState } from 'react';
 import * as Crypto from 'expo-crypto';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { documentTypeOf, DRIVE_DOCUMENT_MIME_TYPES, DRIVE_UPLOAD_DONE, DRIVE_VIDEO_SECONDS, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, OBSERVATION_VIDEO_SECONDS, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type EvidenceFile, type ManualPhotoUpload, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps, type AreaCreateRequest, type AreaEditRequest, type AreaRemoveRequest, stampFieldsOf, type GeoPoint, type ShotLabel, type TimemarkStampAsked } from '@lilachat/shared';
+import { documentTypeOf, DRIVE_DOCUMENT_MIME_TYPES, DRIVE_PASTE_EMPTY, DRIVE_UPLOAD_DONE, DRIVE_VIDEO_SECONDS, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, OBSERVATION_VIDEO_SECONDS, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type EvidenceFile, type ManualPhotoUpload, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps, type AreaCreateRequest, type AreaEditRequest, type AreaRemoveRequest, stampFieldsOf, type GeoPoint, type ShotLabel, type TimemarkStampAsked } from '@lilachat/shared';
 import * as FileSystem from 'expo-file-system/legacy';
 import { submitAppForm } from '../../chat/commands/commandsApi';
 import { openCamera, type CapturedShot } from '../../chat/camara/cameraRequests';
@@ -12,6 +12,7 @@ import { getSocket } from '../../chat/socketClient';
 import { subirPorXhr } from '../../chat/subidaXhr';
 import { openReportForm } from './reports/reportsApi';
 import type { ServiceAskTarget } from './useServiceAsk';
+import { clipboardImage } from './drivePaste';
 
 export type DriveFile = { uri: string; name: string; mime: string; /** A shot of the new camera: our server burns it and forwards it (José 12/11). */ stamp?: TimemarkStampAsked };
 type Sender = { jwt: string; chatId: string };
@@ -116,8 +117,15 @@ export function useDriveUpload(upload: UploadTarget) {
     if (!mime) return setState({ ...IDLE, message: NOT_A_DOCUMENT, failed: true });
     await sendFile(Promise.resolve({ source: { uri: asset.uri, name: asset.name, mime }, facts: { mime, ...(asset.size ? { sizeBytes: asset.size } : {}) } }));
   };
+  // José 19/11 (design cc-05): «Pegar del portapapeles», a copied image goes up like a gallery photo.
+  const fromClipboard = async () => {
+    const image = await clipboardImage().catch((error: Error) => (console.warn('drive: clipboard image', error.name), null));
+    if (!image) return setState({ ...IDLE, message: DRIVE_PASTE_EMPTY, failed: true });
+    await sendFile(shrinkPhotoFile({ uri: image.uri, mimeType: image.mime, fileName: image.name, sizeBytes: 0, width: image.width, height: image.height }).then((photo) => ({ source: { uri: photo.uri, name: photo.fileName, mime: photo.mimeType }, facts: { mime: photo.mimeType, sizeBytes: photo.sizeBytes } })));
+  };
   return {
     ...state,
+    pasteImage: () => void fromClipboard(),
     pickDocument: () => void fromFiles(),
     takePhoto: () => void fromCamera(false),
     recordVideo: () => void fromCamera(true),

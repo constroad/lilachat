@@ -16,7 +16,10 @@ export const SHELL_WIDE_MIN_PX = 768;
 /** How many open tasks «Servicios» shows over the list on a phone (design cc-01 mobile). */
 export const PENDING_PREVIEW_MAX = 3;
 
-export const serviceTakesScreen = (width: number): boolean => width < SHELL_WIDE_MIN_PX;
+/** Under this height (a phone turned sideways) the channel's head and tabs would leave no room for the service. */
+export const SHELL_MIN_HEIGHT_PX = 500;
+
+export const serviceTakesScreen = (width: number, height = Number.POSITIVE_INFINITY): boolean => width < SHELL_WIDE_MIN_PX || height < SHELL_MIN_HEIGHT_PX;
 
 /** On a phone the checklist holds «Pendientes · Plan» (design cc-06) when this person has both tabs. */
 export function checklistHoldsPending(access: MyClientAccess | undefined, hasStages: boolean, compact: boolean): boolean {

@@ -1,11 +1,11 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, ChevronLeft, ExternalLink, Link2, MoreVertical } from 'lucide-react';
-import { CLIENT_SERVICE_STATUS_LABELS, serviceHeadLine, SHELL_WIDE_MIN_PX, type ServiceTabItem, type ServiceTabKey, type SpaceClientService } from '@lilachat/shared';
+import { CLIENT_SERVICE_STATUS_LABELS, serviceHeadLine, SHELL_MIN_HEIGHT_PX, SHELL_WIDE_MIN_PX, type ServiceTabItem, type ServiceTabKey, type SpaceClientService } from '@lilachat/shared';
 import { useDismiss } from '../../ui/useDismiss';
 import { STATUS_TONE } from './tones';
 
-const COMPACT_QUERY = `(max-width: ${SHELL_WIDE_MIN_PX - 1}px)`;
+const COMPACT_QUERY = `(max-width: ${SHELL_WIDE_MIN_PX - 1}px), (max-height: ${SHELL_MIN_HEIGHT_PX - 1}px)`;
 const matchesCompact = () => typeof window.matchMedia === 'function' && window.matchMedia(COMPACT_QUERY).matches;
 
 /** A phone: the open service takes the screen and «Pendientes» lives in «Checklist» (José 19/11). */

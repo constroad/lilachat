@@ -106,6 +106,12 @@ La cola de tarjetas y la línea de Pendientes están en `bots-asistente-rutinas-
 
 ## 4. Historia reciente
 
+- **20/11:** `useChannelWork`/`ChannelWorkTabs.tsx` (app) también devuelve
+  `openService`/`focusServiceId`/`clearServiceFocus`, threaded a
+  `ClientServices` desde `ChannelPanels` — la mitad de carpintería del `open`
+  card-action (agentes), separada del refactor de complejidad que la motivó
+  (`useServiceFocus`, `useChannelTabBack`, `channelBadges` extraídos). Contrato
+  completo en `obra-canal-cliente-y-tutoriales.md`.
 - **17/10:** editar y borrar avisos y eventos, con día y hora exactos (José: «no hay como editar avisos»).
 - **18/10 (FL10, 0.1.89):** encuestas completas, evento con hora de fin e invitar, invitados de afuera.
 - **18/10 (0.1.94):** encuestas y eventos dentro del chat. Arreglo del recordatorio doble.

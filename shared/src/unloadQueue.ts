@@ -65,13 +65,13 @@ export function volumeOf(item: Pick<RepeatItem, 'summary'>): number {
   return found ? Number(found.replace(',', '.')) : 0;
 }
 
-/** When the truck reached the pista: the hour written in its data, or its ingreso photo's. */
+/**
+ * When the truck reached the pista: only the hour written in its data. Portal asks for that field
+ * («falta hora de llegada»), so the card never claims an arrival the report still lacks (E2E 20/11).
+ */
 export function arrivedAtOf(item: RepeatItem): string | null {
   const written = dataSectionOf(item)?.values.horaLlegada;
-  if (typeof written === 'string' && HOUR.test(written)) return written.slice(0, 5);
-  const ingreso = photoSlotsOf(item)[0];
-  const hour = ingreso ? sectionPhotos(ingreso.section)[0]?.hour : undefined;
-  return hour && HOUR.test(hour) ? hour.slice(0, 5) : null;
+  return typeof written === 'string' && HOUR.test(written) ? written.slice(0, 5) : null;
 }
 
 const finishedAtOf = (item: RepeatItem): string | null => item.summary.map((line) => FINISHED_LINE.exec(line)?.[1]).find(Boolean) ?? null;

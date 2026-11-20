@@ -76,7 +76,7 @@ describe('the unloading queue (José 20/11)', () => {
     // Arrange
     const queue = unloadQueueOf(sectionOf(FIELD));
     // Assert
-    expect(queue.map((one) => one.line)).toEqual(['Llegó 07:40 · Terminó 08:05', 'Llegó 08:02 · 15 m³', 'Llegó 08:20 · 15 m³', 'Llegó 08:15 · 15 m³', 'Salió 08:30 · 15 m³']);
+    expect(queue.map((one) => one.line)).toEqual(['Terminó 08:05', 'Llegó 08:02 · 15 m³', '15 m³', '15 m³', 'Salió 08:30 · 15 m³']);
   });
 
   it('says «En planta» for a truck that has not left', () => {
@@ -181,11 +181,11 @@ describe('the card and the header', () => {
     expect(nextSlotOf(closed)).toBeNull();
   });
 
-  it('reads the arrival from the data, else from the ingreso photo', () => {
+  it('reads the arrival only from the data, like Portal\'s missing line', () => {
     const [sent, written, photographed, , away] = sectionOf(FIELD).items as RepeatItem[];
     expect(arrivedAtOf(written!)).toBe('08:02');
-    expect(arrivedAtOf(photographed!)).toBe('08:20');
-    expect(arrivedAtOf(sent!)).toBe('07:40');
+    expect(arrivedAtOf(photographed!)).toBeNull();
+    expect(arrivedAtOf(sent!)).toBeNull();
     expect(arrivedAtOf(away!)).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 # As-is · Mapa de obra (pestaña «Mapa» de un servicio)
 
-> Fecha de corte: **17/11/2026**. Fuentes: código de `main`, `git log` desde el 06/10,
+> Fecha de corte: **17/11/2026** (rediseño `mapa-v2` sumado el 20/11). Fuentes: código de `main`, `git log` desde el 06/10,
 > `specs/MAPA-OBRA.spec.md` (spec vivo, 1 383 líneas) y `design/stitch/INVENTARIO.md`.
 > Lo marcado «no verificado» no se confirmó en el código ni en un E2E.
 
@@ -67,7 +67,7 @@ ingeniero de campo desde el celular y lo mira el cliente desde una computadora.
   tipo con su número; observaciones «Pendientes» y «Levantadas»; «Fotos». Un interruptor solo oculta
   lo dibujado: las cifras siguen el filtro (`shared/src/workMapLayers.ts`: `viewWithLayers`,
   `visibleMarks`, `visibleObservations`, `layerRowsOf`). «Capas» en la barra pliega o abre la sección.
-- La leyenda plegable «Leyenda» y el selector de etapa sobre el mapa se quitaron (los reemplaza el
+- (19/11; la leyenda volvió el 20/11 como ⓘ, ver «Rediseño 20/11».) La leyenda plegable y el selector de etapa sobre el mapa se quitaron (los reemplaza el
   panel). Sobre el mapa quedan el corte «Hasta hoy» y el selector de trabajo, que sí cambia las cifras
   y la exportación («Sale lo que ves»). La capa Fotos pasó del botón sobre el mapa al panel.
 - **«Fotos» por tipo de informe** (José 19/11, la regla de Portal f080f7c6a): bajo el interruptor de «Fotos»,
@@ -77,18 +77,45 @@ ingeniero de campo desde el celular y lo mira el cliente desde una computadora.
   apagada sale antes de armar los pines (`shared/src/reportPhotoLayers.ts`: `reportPhotoLayersOf`,
   `photosOfShownReports`, `reportPhotoLayerRows`; nombres de `reportTypeLabel`). Web y APK: `MapPhotos.tsx`
   (`usePhotoLayer`) y `MapLayersPanel.tsx`. Las descargas de unidades no cambian.
-- **«Editar croquis» visible en todos los dispositivos:** en la barra del servicio (web ancha) o en la
-  barra propia del mapa (web angosta), con su texto completo.
+- **«Editar croquis» visible en todos los dispositivos:** sobre el mapa (ver «Rediseño 20/11»).
+
+### Rediseño 20/11 (diseños `mapa-v2-movil` y `mapa-v2-escritorio`, aprobados por José)
+
+José 20/11: espacio perdido arriba, el cliente repetido, los días debían flotar sobre el mapa,
+«Compartir avance» dentro de «Más» y los botones desordenados en la web.
+
+- **Cabecera de una fila solo en la pestaña Mapa** (las demás pestañas no cambian, cc-02…cc-05).
+  Teléfono (APK y web angosta): ←, nombre y debajo «CLIENTE · 40 %» (`serviceSlimLine`), enlace y ⋮;
+  pestañas más bajas. Web ancha y tablet: «‹ Servicios», nombre, estado, línea y pestañas en la misma
+  fila; el cliente no se repite (ya lo nombra el canal). Web: `ServiceShellWeb` con `flush`;
+  APK: `ServiceShell` con `slim`.
+- **El mapa ocupa el resto y se mueve** (también en el APK: ya no va dentro del scroll del detalle).
+- **Flotando sobre el mapa:** chips de día «Todos · Vie 20/11 · 18 …» con su cuenta de fotos y
+  unidades (`MapDayOption.count`), y «Hasta hoy ▾» con el selector de trabajo al lado.
+- **Teléfono:** columna de botones redondos a la derecha: Capas, Leyenda (ⓘ, si hay trabajos) y ⋮ Más.
+  Abajo a la izquierda «Editar croquis» chico y «Registrar»; zoom y GPS abajo a la derecha. La
+  leyenda (`mapLegendEntries`) aparece al pie con ⓘ.
+- **Web ancha:** un solo grupo segmentado «Capas | Editar croquis | Más» junto a los días;
+  «Registrar avance» al lado. Panel a la derecha como tarjeta; leyenda flotando abajo.
+- **«Más»** (`mapMoreItems`, `share` y `screen`): «Compartir avance» y «Pantalla completa» (o «Salir
+  de pantalla completa») primero; después lo de antes (Nueva calle, Etapas, Trabajos, Exportar, Abrir
+  en Portal, Borrados). Los test ids se conservan (`mapa-compartir`, `mapa-pantalla-completa`).
+- **El panel en el teléfono es una hoja sobre el mapa** que abre «Capas» y cierra su ✕
+  (`mapa-hoja-cerrar`): capas y leyenda, avance, por aprobar, descargas, listas. Se oculta, no se
+  desmonta: lo pendiente de aprobar se sigue pidiendo y dibujando. Exportar, compartir, calle y
+  borrados abren la hoja solos (web) o su propia hoja (APK).
+- El selector de etapa del APK salió de sobre el mapa: está en los chips de «Capas y leyenda».
+- GPS («Mi ubicación») en todo mapa web, no solo al dibujar; el navegador pregunta al tocarlo.
+- Archivos nuevos: `web/.../workMap/MapFloating.tsx` y `app/.../workMap/MapFloating.tsx`.
 
 ### Web/PWA
 
 - Carpeta: `web/src/spaces/clients/workMap/` (41 archivos, `MapLayersPanel.tsx` nuevo). Entrada:
   `web/src/spaces/clients/ServiceMapWeb.tsx`.
 - `MapWorkspace.tsx`: la sección va bajo la cabecera y la barra del servicio, de borde a borde;
-  sus acciones van a la derecha de la barra (`SectionActions`) y, en pantalla completa o angosta,
-  en una barra propia (`BoardHead`).
+  desde el 20/11 sus acciones flotan sobre el mapa (ya no van a la barra del servicio).
 - Ancho o angosto lo decide el tablero con `ResizeObserver`, no la ventana. Con
-  880 px o más el panel va a la derecha (380–400 px). Menos: hoja que sube sobre el mapa.
+  880 px o más el panel va a la derecha (380–400 px). Menos: hoja sobre el mapa que abre «Capas».
 - Pantalla completa del navegador; si se niega, una capa sobre la página. Escape sale.
 - MapLibre con `maplibre-gl-csp` (worker de nuestro origen). Mapa base OpenFreeMap con
   estilo propio en español. El trozo del mapa pesa ~256 KB comprimidos y baja al abrir.
@@ -110,10 +137,12 @@ ingeniero de campo desde el celular y lo mira el cliente desde una computadora.
   `app/src/spaces/clients/ServiceMapPanel.tsx`.
 - Mapa nativo con `@maplibre/maplibre-react-native`. Es código nativo: llegó con el
   APK 0.1.181 (182). Un OTA no puede sumar módulos nativos.
-- Dentro del detalle el mapa no se mueve (no pelea con el scroll). «Ver mapa
-  completo» lo abre a pantalla completa (`WorkMapFirst.tsx`, `WorkMapSurface.tsx`).
+- Desde el 20/11 el mapa del detalle ocupa el resto de la pantalla y se mueve: va fuera del
+  scroll (`ServiceDetailView` lo saca del `ScrollView`). «Más › Pantalla completa» lo abre sin la
+  cabecera (`FullMap`). Antes no se movía y «Ver mapa completo» era un botón propio.
 - Archivos propios del APK: `WorkMapSurface.tsx`, `MapControls.tsx` (+, −, GPS),
-  `CutChips.tsx` (corte en pastillas), `WorkMapFilters.tsx` (etapa y día en chips).
+  `CutChips.tsx` (corte en pastillas), `WorkMapFilters.tsx` («Hasta hoy ▾», trabajo y leyenda),
+  `MapFloating.tsx` (botones redondos).
 - Los marcadores de fotos son capa del mapa, para que el toque funcione (09/11).
 - Buscar cierra el teclado (`Keyboard.dismiss`) al buscar y al elegir (12/11).
 
@@ -177,7 +206,8 @@ Motores puros, con test, usados por web y APK:
 | Tema | Web/PWA | APK |
 | --- | --- | --- |
 | Motor del mapa | MapLibre GL JS (CSP) | MapLibre React Native (nativo) |
-| Pantalla completa | Del navegador o capa propia | Pantalla aparte («Ver mapa completo») |
+| Pantalla completa | Del navegador o capa propia («Más») | Pantalla aparte («Más») |
+| Cabecera en Mapa (20/11) | Una fila; en ancho con las pestañas | Una fila; pestañas debajo |
 | Panel de avance | A la derecha (≥ 880 px) o hoja | Hoja que sube sobre el mapa |
 | Fecha de corte | Selector | Pastillas (`CutChips`) |
 | Zoom y mi GPS | Control de MapLibre | `MapControls` propios |
@@ -212,6 +242,9 @@ Motores puros, con test, usados por web y APK:
 - **19/11** El encuadre inicial suma dibujos y observaciones de Portal a las calles y tiene un tamaño mínimo
   (web y APK, mismo motor `workMapView`). Antes, con calles, los dibujos fuera de ellas no entraban.
 - **19/11** «Fotos» se separa en sub-capas por tipo de informe, como Portal (`reportPhotoLayers.ts`).
+- **20/11** Rediseño aprobado `mapa-v2` (web y APK): cabecera de una fila en Mapa, mapa a pantalla,
+  días y corte flotando, «Compartir avance» y «Pantalla completa» dentro de «Más», panel como hoja
+  en el teléfono. Auditorías: `design/stitch/auditorias/mapa-v2-movil.md` y `mapa-v2-escritorio.md`.
 
 ## 5. Diseños de Stitch relacionados
 

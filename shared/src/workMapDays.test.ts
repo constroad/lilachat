@@ -22,6 +22,15 @@ describe('the days of the map', () => {
     expect(options[0]!.label).toBe('Todos');
   });
 
+  it('each chip says how many photos and units it holds (José 20/11, design mapa-v2: «Vie 20/11 · 18»)', () => {
+    // Arrange
+    const photos = [photo('a', late7), photo('b', morning8), photo('c', morning8)];
+    // Act
+    const options = mapDayOptions(photos, [unit('u1', morning8)]);
+    // Assert
+    expect(options.map((one) => one.count)).toEqual([4, 3, 1]);
+  });
+
   it('a day keeps only its photos and units; «Todos» keeps everything', () => {
     const photos = [photo('a', late7), photo('b', morning8)];
     const units = [unit('u1', late7), unit('u2', morning8)];

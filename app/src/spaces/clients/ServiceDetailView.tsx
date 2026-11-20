@@ -203,14 +203,21 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   if (report?.type === AREA_TYPE) return <AreasScreen to={{ target: props.target, chatId: props.chatId, serviceId: props.service.id }} service={props.service} links={props.links} {...(report.reportId ? { reportId: report.reportId } : {})} onClose={closeReport} />;
   if (report) return <ReportDocumentScreen target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={portalUrl} links={props.links} admin={Boolean(props.admin)} onClose={closeReport} />;
   const tabs = answer?.ok ? serviceTabs(answer.value, Boolean(props.seesDrive), Boolean(props.links)) : [];
+  // José 20/11 (design mapa-v2): the map takes the rest of the screen and moves, outside the scroll.
+  const mapOpen = tab === 'map' && Boolean(props.links) && Boolean(answer?.ok);
+  const body = <ServiceBody {...props} answer={answer} tab={tab} startTab={startTab} onOpenFile={files.open} onReported={askAgain} onCreate={() => setPicker(true)} onContinueReport={setReport} />;
+  const extras = (
+    <>
+      <CreateReportSheet visible={picker} portalUrl={portalUrl} seesMoney={props.seesMoney} people={props.people ?? []} onPick={(code, responsible) => { setPicker(false); setReport({ type: code, responsible }); }} onClose={() => setPicker(false)} />
+      {files.notice ? <Text className="text-center text-[13px] text-error">{files.notice}</Text> : null}
+      {files.viewer}
+    </>
+  );
   return (
-    <ServiceShell service={props.service} clientName={props.clientName} compact={props.compact ?? true} tabs={tabs} tab={tab} onTab={setTab} onBack={props.onBack} onShare={share.onShare} portalUrl={portalUrl} actions={answer?.ok && tab === 'reports' ? <CreateReportButton onPress={() => setPicker(true)} /> : undefined}>
-      <ScrollView testID="detalle-cuerpo" keyboardShouldPersistTaps="handled" contentContainerStyle={BODY}>
-        <ServiceBody {...props} answer={answer} tab={tab} startTab={startTab} onOpenFile={files.open} onReported={askAgain} onCreate={() => setPicker(true)} onContinueReport={setReport} />
-        <CreateReportSheet visible={picker} portalUrl={portalUrl} seesMoney={props.seesMoney} people={props.people ?? []} onPick={(code, responsible) => { setPicker(false); setReport({ type: code, responsible }); }} onClose={() => setPicker(false)} />
-        {files.notice ? <Text className="text-center text-[13px] text-error">{files.notice}</Text> : null}
-        {files.viewer}
-      </ScrollView>
+    <ServiceShell service={props.service} clientName={props.clientName} compact={props.compact ?? true} slim={mapOpen} tabs={tabs} tab={tab} onTab={setTab} onBack={props.onBack} onShare={share.onShare} portalUrl={portalUrl} actions={answer?.ok && tab === 'reports' ? <CreateReportButton onPress={() => setPicker(true)} /> : undefined}>
+      {mapOpen ? <View testID="detalle-cuerpo" className="flex-1">{body}{extras}</View> : (
+        <ScrollView testID="detalle-cuerpo" keyboardShouldPersistTaps="handled" contentContainerStyle={BODY}>{body}{extras}</ScrollView>
+      )}
       {share.sheet}
     </ServiceShell>
   );

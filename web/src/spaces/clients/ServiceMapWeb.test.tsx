@@ -101,10 +101,47 @@ describe('ServiceMapWeb', () => {
 
     // Assert
     expect(screen.getByTestId('mapa-servicio')).toHaveAttribute('data-wide', 'true');
-    expect(screen.getByTestId('mapa-compartir')).toHaveTextContent('Compartir avance');
+    expect(screen.getByTestId('mapa-herramientas')).toHaveTextContent('Capas');
+    expect(screen.getByTestId('mapa-panel')).toHaveAttribute('data-open', 'true');
     act(() => report(600));
     expect(screen.getByTestId('mapa-servicio')).toHaveAttribute('data-wide', 'false');
     vi.unstubAllGlobals();
+  });
+
+  it('José 20/11 (design mapa-v2): «Compartir avance» and «Pantalla completa» live in «Más»', async () => {
+    // Arrange
+    showMap();
+    await screen.findByTestId('mapa-lienzo');
+    // Act
+    fireEvent.click(screen.getByTestId('mapa-mas'));
+    // Assert
+    expect(screen.getAllByRole('menuitem').slice(0, 2).map((item) => item.textContent)).toEqual(['Compartir avance', 'Pantalla completa']);
+    fireEvent.click(screen.getByTestId('mapa-compartir'));
+    expect(screen.getByTestId('mapa-compartir-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('mapa-panel')).toHaveAttribute('data-open', 'true');
+  });
+
+  it('on a phone the map takes the board and «Capas» opens the panel as a sheet over it', async () => {
+    // Arrange
+    showMap();
+    await screen.findByTestId('mapa-lienzo');
+    expect(screen.getByTestId('mapa-panel')).toHaveAttribute('data-open', 'false');
+    // Act
+    fireEvent.click(screen.getByTestId('mapa-capas-abrir'));
+    // Assert
+    expect(screen.getByTestId('mapa-panel')).toHaveAttribute('data-open', 'true');
+    expect(screen.getByTestId('mapa-capas-abrir')).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByTestId('mapa-hoja-cerrar'));
+    expect(screen.getByTestId('mapa-panel')).toHaveAttribute('data-open', 'false');
+  });
+
+  it('on a phone «Leyenda» shows each work at the foot of the map', async () => {
+    showMap();
+    await screen.findByTestId('mapa-lienzo');
+    expect(screen.queryByTestId('mapa-leyenda')).toBeNull();
+    fireEvent.click(screen.getByTestId('mapa-leyenda-abrir'));
+    expect(screen.getByTestId('mapa-leyenda')).toHaveTextContent('Base');
+    expect(screen.getByTestId('mapa-leyenda')).toHaveTextContent('Pendiente de ejecución');
   });
 
   it('shows the progress up to the day chosen and keeps the work picked', async () => {
@@ -180,8 +217,11 @@ describe('ServiceMapWeb', () => {
 
   it('goes full screen and comes back with Escape', async () => {
     showMap();
-    fireEvent.click(await screen.findByTestId('mapa-pantalla-completa'));
+    fireEvent.click(await screen.findByTestId('mapa-mas'));
+    fireEvent.click(screen.getByTestId('mapa-pantalla-completa'));
     expect(screen.getByTestId('mapa-servicio')).toHaveAttribute('data-expanded', 'true');
+    fireEvent.click(screen.getByTestId('mapa-mas'));
+    expect(screen.getByTestId('mapa-pantalla-completa')).toHaveTextContent('Salir de pantalla completa');
     expect(await screen.findByTestId('mapa-lienzo')).toHaveAttribute('data-expanded', 'true');
     act(() => {
       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));

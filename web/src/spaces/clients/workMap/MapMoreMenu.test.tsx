@@ -27,4 +27,16 @@ describe('«Más» over the work map', () => {
     fireEvent.pointerDown(screen.getByTestId('fuera'));
     expect(screen.queryByTestId('mapa-mas-menu')).toBeNull();
   });
+
+  it('José 20/11 (design mapa-v2): «Compartir avance» and «Pantalla completa» first, from a round ⋮', () => {
+    // Arrange
+    const onPick = vi.fn();
+    render(<MapMoreMenu pageUrl="https://portal/x" onPick={onPick} draws={false} edits={false} admin={false} share screen="open" round className="" />);
+    // Act
+    fireEvent.click(screen.getByRole('button', { name: 'Más opciones del mapa' }));
+    // Assert
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Compartir avance', 'Pantalla completa', 'Exportar', 'Abrir en Portal']);
+    fireEvent.click(screen.getByTestId('mapa-pantalla-completa'));
+    expect(onPick).toHaveBeenCalledWith('screen');
+  });
 });

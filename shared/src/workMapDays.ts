@@ -13,7 +13,8 @@ import type { DischargeSuggestion } from './workMapDischarges.js';
  */
 export { ALL_DAYS };
 /** `color`: the day's color on the map, for its chip; «Todos» has none. */
-export type MapDayOption = { key: string; label: string; color?: string };
+/** `count`: the photos and units of that day, «Todos» all of them (José 20/11, design mapa-v2). */
+export type MapDayOption = { key: string; label: string; color?: string; count: number };
 
 const daysOf = (photos: readonly MapPhoto[], units: readonly UnitDischarge[]) => mediaDaysOf(photos, units.map(sharedDischargeOf));
 
@@ -22,7 +23,8 @@ export function mapDayOptions(photos: readonly MapPhoto[], units: readonly UnitD
   const days = daysOf(photos, units);
   if (days.length < 2) return [];
   const colors = dayColorsOf(days);
-  return [{ key: ALL_DAYS, label: 'Todos' }, ...days.map((day) => ({ key: day, label: dayLabel(day), color: colors.get(day) }))];
+  const countOf = (day: string) => { const shown = mediaOfDay([...photos], [...units], day); return shown.photos.length + shown.units.length; };
+  return [{ key: ALL_DAYS, label: 'Todos', count: photos.length + units.length }, ...days.map((day) => ({ key: day, label: dayLabel(day), color: colors.get(day), count: countOf(day) }))];
 }
 
 /** The day of each unit, by its dispatch. */

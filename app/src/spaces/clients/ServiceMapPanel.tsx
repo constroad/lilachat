@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Linking, Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { afterQuietReload, reloadWorkMap, deleteThenReload, editThenReload, loadWorkMap, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, serviceMapPage, type ChannelLinks, type UnitDischarge, type MapPhoto, type WorkMap, type WorkMapState } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
@@ -15,8 +15,8 @@ import { WorkStreetEditor } from './workMap/WorkStreetEditor';
 import type { StreetDeleteSend } from './workMap/StreetDelete';
 import { placeAsker, type StreetSend } from './workMap/workProgressSender';
 
-/** The map of o-01 on a phone: the sheet with the progress rises over its lower edge. */
-const MAP_SCREEN_SHARE = 0.45;
+/** The map's own states (loading, failed, first street) keep the padding of the other sections. */
+const BODY = { padding: 16, gap: 12, paddingBottom: 40 };
 
 type ServiceTarget = { kind: 'service'; clientId: string; serviceId: string };
 
@@ -55,33 +55,36 @@ const PortalLink = (props: { url: string }) => (
   </Pressable>
 );
 
-/** «Mapa» of a service (José 06/11: «el mapa literal de la obra»), drawn with what Portal shows a client. */
+/**
+ * «Mapa» of a service (José 06/11: «el mapa literal de la obra»), drawn with what Portal shows a
+ * client. José 20/11 (design mapa-v2): it takes the rest of the screen under the service's head.
+ */
 export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; target: ServiceTarget; title: string; badge?: ReactNode; /** Where the streets are drawn today (Portal's «Mapa» tab). */ drawUrl?: string | null; discharges?: UnitDischarge[]; /** Field photos with their place (José 08/11). */ mapPhotos?: MapPhoto[]; /** The service's place (Portal da5382a5). */ start?: { lat: number; lng: number }; send?: ProgressSend; /** «Guardar calle» (o-02): everyone draws (José 07/11). */ drawStreet?: StreetSend; /** «Borrar calle»: anyone, an admin restores (José 07/11). */ deleteStreet?: StreetDeleteSend; /** Stretches, stages and works (o-03 to o-05). */ editMap?: MapEditSend; /** A space admin: «Borrados» (José 07/11). */ admin?: boolean; /** Photos of «Registrar avance» (o-06). */ uploadPhoto?: ManualPhotoUpload<PhotoAsset>; /** KMZ or KML for «Importar» (o-12). */ uploadTrace?: TraceUpload<TraceFile>; /** «Incluir en el informe» as Portal has it. */ mapInReport?: ServiceMapInReport }) {
-  const screen = useWindowDimensions();
   const { state, ask } = useServiceMap(props.jwt, props.links, props.target);
   const [drawing, setDrawing] = useState(false);
   /** What the last save answered («Calle guardada…»): the editor closes, so the board says it. */
   const [notice, setNotice] = useState<string | null>(null);
   const onDraw = props.drawStreet ? () => { setNotice(null); setDrawing(true); } : undefined;
-  const height = Math.round(screen.height * MAP_SCREEN_SHARE);
   const pageOf = (url: string) => serviceMapPage(url, props.target.serviceId);
   const deleteStreet = deleteThenReload(props.deleteStreet, () => ask(true));
   const editMap = editThenReload(props.editMap, () => ask(true));
-  if (state.kind === 'loading') return <View testID="mapa-cargando" className="rounded-2xl bg-surface-variant" style={{ height }} />;
+  if (state.kind === 'loading') return <View testID="mapa-cargando" className="flex-1 bg-surface-variant" />;
   if (state.kind === 'failed') {
     return (
-      <View testID="mapa-fallo" className="rounded-2xl border border-outline/15 bg-surface p-4">
-        <Text className="text-[15px] font-semibold text-on-surface">{state.message}</Text>
-        <Pressable testID="mapa-reintentar" onPress={() => void ask()} className="mt-3 min-h-[48px] items-center justify-center rounded-xl border border-primary/30">
-          <Text className="text-[15px] font-semibold text-primary">Reintentar</Text>
-        </Pressable>
-        {state.url ? <PortalLink url={pageOf(state.url)} /> : null}
-      </View>
+      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={BODY}>
+        <View testID="mapa-fallo" className="rounded-2xl border border-outline/15 bg-surface p-4">
+          <Text className="text-[15px] font-semibold text-on-surface">{state.message}</Text>
+          <Pressable testID="mapa-reintentar" onPress={() => void ask()} className="mt-3 min-h-[48px] items-center justify-center rounded-xl border border-primary/30">
+            <Text className="text-[15px] font-semibold text-primary">Reintentar</Text>
+          </Pressable>
+          {state.url ? <PortalLink url={pageOf(state.url)} /> : null}
+        </View>
+      </ScrollView>
     );
   }
   const editor = props.drawStreet ? <WorkStreetEditor open={drawing} title={props.title} map={state.map} send={props.drawStreet} findPlace={placeAsker(props.jwt)} start={props.start} onClose={() => setDrawing(false)} onSaved={(message) => { setNotice(message); setDrawing(false); void ask(); }} /> : null;
   // Photos or units with a place and no street yet: the map still shows where they are (Portal via José 09/11).
   const media = Boolean(props.mapPhotos?.length || props.discharges?.length);
-  if (!state.map && !media) return <>{editor}<WorkMapFirst drawUrl={props.drawUrl ?? null} onDraw={onDraw} trace={editMap ? <View className="gap-2">{props.uploadTrace ? <ImportTrace send={editMap} upload={props.uploadTrace} /> : null}<ServiceCroquisButton send={editMap} title={props.title} onDone={() => void ask(true)} /></View> : null} /></>;
-  return <>{editor}<WorkMapBoard map={state.map ?? EMPTY_WORK_MAP} pageUrl={pageOf(state.url)} height={height} title={props.title} serviceId={props.target.serviceId} badge={props.badge} discharges={props.discharges} mapPhotos={props.mapPhotos} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} editMap={editMap} admin={props.admin} uploadPhoto={props.uploadPhoto} uploadTrace={props.uploadTrace} mapInReport={props.mapInReport} notice={notice} reload={() => void ask(true)} /></>;
+  if (!state.map && !media) return <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={BODY}>{editor}<WorkMapFirst drawUrl={props.drawUrl ?? null} onDraw={onDraw} trace={editMap ? <View className="gap-2">{props.uploadTrace ? <ImportTrace send={editMap} upload={props.uploadTrace} /> : null}<ServiceCroquisButton send={editMap} title={props.title} onDone={() => void ask(true)} /></View> : null} /></ScrollView>;
+  return <>{editor}<WorkMapBoard map={state.map ?? EMPTY_WORK_MAP} pageUrl={pageOf(state.url)} title={props.title} serviceId={props.target.serviceId} badge={props.badge} discharges={props.discharges} mapPhotos={props.mapPhotos} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} editMap={editMap} admin={props.admin} uploadPhoto={props.uploadPhoto} uploadTrace={props.uploadTrace} mapInReport={props.mapInReport} notice={notice} reload={() => void ask(true)} /></>;
 }

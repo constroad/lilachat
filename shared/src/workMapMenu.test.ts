@@ -19,6 +19,22 @@ describe('«Más» on the work map', () => {
   });
 });
 
+describe('«Más» over the map (José 20/11, design mapa-v2)', () => {
+  it('«Compartir avance» and «Pantalla completa» go first when the screen offers them', () => {
+    // Arrange / Act
+    const items = mapMoreItems({ draws: false, edits: false, admin: false, share: true, screen: 'open' });
+    // Assert
+    expect(items.map((item) => item.key)).toEqual(['share', 'screen', 'export', 'open']);
+    expect(items.map((item) => item.label)).toEqual(['Compartir avance', 'Pantalla completa', 'Exportar', 'Abrir en Portal']);
+  });
+
+  it('inside the full screen it offers the way out; without them the list is as before', () => {
+    expect(mapMoreItems({ draws: false, edits: false, admin: false, screen: 'close' }).find((item) => item.key === 'screen')?.label).toBe('Salir de pantalla completa');
+    expect(mapMoreItems({ draws: true, edits: true, admin: true }).map((item) => item.key)).not.toContain('share');
+    expect(mapMoreItems({ draws: true, edits: true, admin: true }).map((item) => item.key)).not.toContain('screen');
+  });
+});
+
 describe('the work select', () => {
   it('«Todos los trabajos» first, then each work with its percent', () => {
     expect(workChoicesOf(view)).toEqual([

@@ -75,9 +75,9 @@ function QueueList({ queue, section, selectedId, onOpen, onSelect, onReorder }: 
   const inLine = queue.filter((unit) => !isClosedStatus(unit.status));
   return (
     <View testID="cola-descarga" className="overflow-hidden rounded-2xl border border-outline/15 bg-surface">
-      <View className="flex-row items-baseline justify-between gap-2 px-3 pb-1 pt-3">
-        <Text className="flex-1 text-[11px] font-bold uppercase tracking-[1.5px] text-primary" numberOfLines={1}>{QUEUE_TITLE}</Text>
-        <Text className="text-[12px] text-on-surface-variant">{QUEUE_HINT}</Text>
+      <View className="flex-row items-start justify-between gap-2 px-3 pb-1 pt-3">
+        <Text className="flex-1 text-[11px] font-bold uppercase tracking-[1.5px] text-primary" numberOfLines={2}>{QUEUE_TITLE}</Text>
+        <Text className="shrink-0 text-[12px] text-on-surface-variant">{QUEUE_HINT}</Text>
       </View>
       {inLine.map((unit, index) => rowOf(unit, index === inLine.length - 1))}
       <FinishedRows units={queue.filter((unit) => isClosedStatus(unit.status))} render={rowOf} />

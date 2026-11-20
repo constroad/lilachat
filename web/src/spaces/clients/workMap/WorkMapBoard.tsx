@@ -145,10 +145,10 @@ function NarrowRail(props: ToolProps & { legend: boolean; legendOpen: boolean; o
   );
 }
 
-/** A phone: «Editar croquis» small and «Registrar» at the foot of the map, the legend over them. */
+/** A phone: «Editar croquis» small and «Registrar» at the foot of the map, the legend over them; raised over the map attribution («© OpenMapTiles», E2E 20/11). */
 function NarrowFoot(props: ToolProps & { legend: ReactNode }) {
   return (
-    <div className="pointer-events-none absolute bottom-3 left-3 right-16 z-10 flex flex-col items-start gap-2">
+    <div className="pointer-events-none absolute bottom-8 left-3 right-16 z-10 flex flex-col items-start gap-2">
       {props.legend}
       <div className="flex flex-wrap gap-2">
         {props.croquis?.(MAP_PILL)}

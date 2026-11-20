@@ -161,11 +161,11 @@ function MapTop(props: FloatingProps) {
   );
 }
 
-/** The foot of the map: the legend, «Editar croquis» small and «Registrar» (zoom and GPS on the right). */
+/** The foot of the map: the legend, «Editar croquis» small and «Registrar» (zoom and GPS on the right), raised over the map attribution (E2E 20/11). */
 function MapFoot(props: { legend: ReactNode; croquis: ReactNode; onRecord?: () => void }) {
   const colors = useColores();
   return (
-    <View pointerEvents="box-none" className="absolute bottom-4 left-3 right-20 items-start gap-2">
+    <View pointerEvents="box-none" className="absolute bottom-8 left-3 right-20 items-start gap-2">
       {props.legend}
       <View pointerEvents="box-none" className="flex-row flex-wrap gap-2">
         {props.croquis}

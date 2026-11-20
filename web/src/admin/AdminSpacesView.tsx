@@ -174,14 +174,14 @@ function SelectedSpace({ page, space, searched, onPage }: { page: AdminSpaceMemb
 function SpaceCard({ space, open = true, onToggle, children }: { space: AdminSpaceSummary; open?: boolean; onToggle?: () => void; children: ReactNode }) {
   return (
     <section data-testid={`admin-espacio-${space.id}`} className={CARD}>
-      <header className={`flex items-center gap-3 border-outline/15 bg-surface px-4 py-2 max-md:rounded-card max-md:border md:px-6 ${open ? 'md:border-b' : ''}`}>
+      <header className={`flex items-center gap-3 border-outline/15 bg-surface px-4 py-1 max-md:rounded-card max-md:border md:px-6 md:py-2 ${open ? 'md:border-b' : ''}`}>
         <SpaceLogo space={{ name: space.name, logoUrl: space.logoUrl ?? undefined }} size={40} />
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-lg font-bold">{space.name}</h2>
           <p className="text-[13px] text-on-surface-variant md:font-mono md:text-[12px]">{adminSpaceLine(space)}</p>
         </div>
         {onToggle ? (
-          <button type="button" aria-expanded={open} aria-label={open ? 'Contraer' : 'Expandir'} onClick={onToggle} className="flex h-9 shrink-0 items-center gap-1 rounded-lg px-3 text-sm font-semibold text-on-surface-variant md:border md:border-outline/20">
+          <button type="button" aria-expanded={open} aria-label={open ? 'Contraer' : 'Expandir'} onClick={onToggle} className="flex h-9 shrink-0 items-center gap-1 rounded-lg px-3 text-sm font-semibold text-on-surface-variant md:h-8 md:border md:border-outline/20">
             <span className="max-md:hidden">{open ? 'Contraer' : 'Expandir'}</span>
             {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>

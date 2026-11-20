@@ -17,6 +17,16 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.191',
+    audience: 'all',
+    items: [
+      'Un video grande que no se subía ahora avisa si no pudo, en vez de quedarse colgado para siempre.',
+      'El nombre de la obra ya no se corta en el chat ni en el mapa: ocupa dos líneas si hace falta.',
+      'El Drive del canal muestra las carpetas como son, sin mezclar los archivos de las de adentro.',
+      'Las tarjetas de un bot llevan «Copiar enlace», y el panel de «/lila» se cierra solo al terminar.',
+    ],
+  },
+  {
     version: '0.1.190',
     // Company spaces: compact CTL-IMP, «Terminar unidad», the client channel redesign and Play's account tools.
     audience: 'spaces',

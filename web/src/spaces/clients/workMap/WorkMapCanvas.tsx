@@ -3,7 +3,8 @@ import maplibregl from 'maplibre-gl/dist/maplibre-gl-csp';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-csp-worker?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { addObservationLayer, useMapCardPopup, useObservationData } from './MapCardPopup';
-import { type MapPick, type ViewableFile, type WorkMapObservation, MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark, NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
+import { useDarkClass } from '../../../ui/useDarkClass';
+import { type MapPick, type ViewableFile, type WorkMapObservation, MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark, NAMED_ROAD_LAYER, ROAD_SOURCE_LAYERS, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, workMapStyleFor, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView } from '@lilachat/shared';
 
 maplibregl.setWorkerUrl(workerUrl);
 
@@ -170,6 +171,8 @@ export default function WorkMapCanvas(props: { view: WorkMapView; expanded: bool
   const map = useRef<maplibregl.Map | null>(null);
   const firstBounds = useRef(view.bounds);
   const [ready, setReady] = useState(false);
+  const dark = useDarkClass();
+  const firstDark = useRef(dark);
   const onTap = useRef(props.onTap);
   onTap.current = props.onTap;
   const onPin = useRef(props.onPin);
@@ -180,7 +183,7 @@ export default function WorkMapCanvas(props: { view: WorkMapView; expanded: bool
   useEffect(() => {
     if (!holder.current) return undefined;
     const bounds = firstBounds.current ?? undefined;
-    const created = new maplibregl.Map({ container: holder.current, style: WORK_MAP_STYLE as unknown as maplibregl.StyleSpecification, bounds, fitBoundsOptions: FIT, attributionControl: { compact: true } });
+    const created = new maplibregl.Map({ container: holder.current, style: workMapStyleFor(firstDark.current) as unknown as maplibregl.StyleSpecification, bounds, fitBoundsOptions: FIT, attributionControl: { compact: true } });
     created.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
     // «Mi ubicación» on every map (José 20/11, design mapa-v2): the browser asks only when it is pressed.
     created.addControl(new maplibregl.GeolocateControl({ positionOptions: { enableHighAccuracy: true }, fitBoundsOptions: { maxZoom: 17 } }), 'bottom-right');
@@ -196,6 +199,15 @@ export default function WorkMapCanvas(props: { view: WorkMapView; expanded: bool
       created.remove();
     };
   }, []);
+
+  // The theme switched while the map is open: same layer ids, so only the base paint changes.
+  useEffect(() => {
+    const current = map.current;
+    if (!current || !ready) return;
+    for (const layer of workMapStyleFor(dark).layers) {
+      for (const [property, value] of Object.entries(layer.paint ?? {})) current.setPaintProperty(layer.id, property, value);
+    }
+  }, [dark, ready]);
 
   useEffect(() => {
     const current = map.current;

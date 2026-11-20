@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ROAD_SOURCE_LAYERS } from './workStreetPick.js';
-import { WORK_MAP_STYLE } from './workMapStyle.js';
+import { LIGHT_MAP_PALETTE, WORK_MAP_DARK_STYLE, WORK_MAP_STYLE, workMapStyleFor } from './workMapStyle.js';
 
 /**
  * José 09/11: «ese mapa no me gusta… se ve feo, no se parece en nada a tus diseños». The base
@@ -35,5 +35,25 @@ describe('the base map of the work map', () => {
     const ids = layers.map((layer) => layer.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(JSON.stringify(layers)).not.toContain('var(--');
+  });
+});
+
+/** Audit 20/11 (mapa-v2-movil): in dark mode the base map stayed light; Stitch draws it dark. */
+describe('the dark base map', () => {
+  it('follows the theme: dark style in dark mode, the light one otherwise', () => {
+    expect(workMapStyleFor(true)).toBe(WORK_MAP_DARK_STYLE);
+    expect(workMapStyleFor(false)).toBe(WORK_MAP_STYLE);
+  });
+
+  it('uses the same free tiles and the same layer ids, so switching only repaints', () => {
+    expect(WORK_MAP_DARK_STYLE.sources).toEqual(WORK_MAP_STYLE.sources);
+    expect(WORK_MAP_DARK_STYLE.layers.map((layer) => layer.id)).toEqual(layers.map((layer) => layer.id));
+  });
+
+  it('paints a dark ground, not the light one', () => {
+    const ground = WORK_MAP_DARK_STYLE.layers.find((layer) => layer.id === 'ground');
+    const color = String(ground?.paint?.['background-color']);
+    expect(color).not.toBe(LIGHT_MAP_PALETTE.ground);
+    expect(Number(/(\d+)%\)$/.exec(color)?.[1])).toBeLessThan(20);
   });
 });

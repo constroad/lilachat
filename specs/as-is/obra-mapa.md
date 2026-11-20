@@ -118,7 +118,10 @@ José 20/11: espacio perdido arriba, el cliente repetido, los días debían flot
   880 px o más el panel va a la derecha (380–400 px). Menos: hoja sobre el mapa que abre «Capas».
 - Pantalla completa del navegador; si se niega, una capa sobre la página. Escape sale.
 - MapLibre con `maplibre-gl-csp` (worker de nuestro origen). Mapa base OpenFreeMap con
-  estilo propio en español. El trozo del mapa pesa ~256 KB comprimidos y baja al abrir.
+  estilo propio en español. En modo oscuro el mapa base es oscuro
+  (auditoría 20/11, mapa-v2): `workMapStyleFor(dark)`, mismas teselas y mismos ids de capa;
+  la web repinta al cambiar el tema (`useDarkClass`), el APK cambia `mapStyle` (`useTema().oscuro`).
+  El trozo del mapa pesa ~256 KB comprimidos y baja al abrir.
 - Archivos propios de la web: `WorkMapCanvas.tsx`, `WorkMapOverlays.tsx`, `CutFields.tsx`,
   `useWorkMap.ts`, `maplibre-csp.d.ts`.
 - **«Editar croquis» en el editor 2.0 de Portal** (16/11): Portal pide el mapa

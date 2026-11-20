@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react';
 import { Text, View } from 'react-native';
 import { Camera, GeoJSONSource, Images, Layer, Map as MapSurface, ViewAnnotation, type CameraRef, type MapRef, type StyleSpecification } from '@maplibre/maplibre-react-native';
 import { MapControls } from './MapControls';
-import { OBSERVATION_PIN_PAINT, observationMapCollection, type MapPick, type WorkMapObservation, MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, dischargePinCollection, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, WORK_MAP_STYLE, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView , STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark } from '@lilachat/shared';
+import { useTema } from '../../../ui/tema';
+import { OBSERVATION_PIN_PAINT, observationMapCollection, type MapPick, type WorkMapObservation, MARK_CHIP_PAINT, MARK_FILL_PAINT, MARK_GLYPH_PAINT, MARK_LINE_PAINT, MARK_TEXT_LAYOUT, MARK_TEXT_PAINT, mapMarkCollection, type WorkMapMark, PLACE_ZOOM, type MapFrame, dischargePinCollection, tapBox, tapTolerancePx, WORK_MAP_PLANNED_COLOR, workMapStyleFor, workMapCollection, type BasemapFeatureLike, type DischargePin, type StreetEnd, type StreetHandle, type TapFeatures, type WorkMapLine, type WorkMapPoint, type WorkMapView , STATION_DOT_PAINT, STATION_TEXT_LAYOUT, STATION_TEXT_PAINT, stationMarkCollection, type StationMark } from '@lilachat/shared';
 
 const LINE_ENDS = { 'line-cap': 'round', 'line-join': 'round' } as const;
 const EDGE = { top: 48, right: 48, bottom: 48, left: 48 };
@@ -72,6 +73,7 @@ const iconPinCollection = (pins: DischargePin[]) => {
 export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?: DischargePin[]; stretches?: WorkMapLine[]; /** «0+100» on the road (audit item 10). */ stations?: StationMark[]; /** The part of a street without a stretch (audit item 15). */ bare?: WorkMapLine[]; onTap?: (point: WorkMapPoint, roads: TapFeatures) => void; near?: WorkMapPoint | null; /** Draggable ends of a picked street (José 08/11). */ handles?: StreetHandle[]; onHandleDrop?: (handle: StreetEnd, point: WorkMapPoint) => void; /** A tap on a pin (the «Fotos» layer, José 08/11). */ onPin?: (id: string) => void; /** A place found by the search: the map flies there (José 08/11). */ focus?: WorkMapPoint | null; /** A street just picked whole: the map shows both of its ends. */ frame?: MapFrame | null; /** Room for the system bar under a full-screen map. */ controlsInset?: number; /** Portal's drawings (José 19/11). */ marks?: readonly WorkMapMark[]; /** Portal's observations, as pins (José 19/11). */ observations?: readonly WorkMapObservation[]; /** A tap on a drawing or an observation: its card. */ onPick?: (pick: MapPick) => void; /** Where the map opens when a list item opened it. */ startAt?: WorkMapPoint | null }) {
   const { view, moves } = props;
   const map = useRef<MapRef>(null);
+  const { oscuro } = useTema();
   const camera = useRef<CameraRef>(null);
   useEffect(() => {
     if (props.focus) camera.current?.flyTo({ center: [props.focus.lng, props.focus.lat], zoom: PLACE_ZOOM, duration: 600 });
@@ -87,7 +89,7 @@ export function WorkMapSurface(props: { view: WorkMapView; moves: boolean; pins?
   const corners = view.bounds;
   return (
     <View style={{ flex: 1 }}>
-    <MapSurface ref={map} testID="mapa-lienzo" style={{ flex: 1 }} mapStyle={WORK_MAP_STYLE as unknown as StyleSpecification} androidView="texture" logo={false} compass={false} dragPan={moves} touchZoom={moves} doubleTapZoom={moves} doubleTapHoldZoom={moves} touchRotate={false} touchPitch={false} onPress={props.onTap ? (event) => void press(event.nativeEvent.lngLat as [number, number], event.nativeEvent.point as [number, number]) : undefined}>
+    <MapSurface ref={map} testID="mapa-lienzo" style={{ flex: 1 }} mapStyle={workMapStyleFor(oscuro) as unknown as StyleSpecification} androidView="texture" logo={false} compass={false} dragPan={moves} touchZoom={moves} doubleTapZoom={moves} doubleTapHoldZoom={moves} touchRotate={false} touchPitch={false} onPress={props.onTap ? (event) => void press(event.nativeEvent.lngLat as [number, number], event.nativeEvent.point as [number, number]) : undefined}>
       {props.startAt ? <Camera ref={camera} center={[props.startAt.lng, props.startAt.lat]} zoom={PLACE_ZOOM} duration={0} /> : corners ? <Camera ref={camera} bounds={[...corners[0], ...corners[1]]} padding={EDGE} duration={0} /> : props.near ? <Camera ref={camera} center={[props.near.lng, props.near.lat]} zoom={DRAW_ZOOM} duration={0} /> : <Camera ref={camera} />}
       {/* Portal's drawings (gibas, manholes…) under the streets' lines, in Portal's croquis colors (José 19/11). */}
       <GeoJSONSource id="work-map-marks" data={mapMarkCollection(props.marks ?? NO_MARKS)} onPress={pickPress('mark', props.onPick)}>

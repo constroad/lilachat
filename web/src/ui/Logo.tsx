@@ -1,16 +1,7 @@
-import { useEffect, useId, useState } from 'react';
+import { useId } from 'react';
+import { useDarkClass } from './useDarkClass';
 import { LOGO } from '@lilachat/shared';
 
-/** Whether <html> has the dark class right now (it changes from the settings or the system). */
-function useDarkClass(): boolean {
-  const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'));
-  useEffect(() => {
-    const observer = new MutationObserver(() => setDark(document.documentElement.classList.contains('dark')));
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-  }, []);
-  return dark;
-}
 
 /**
  * The two Lilachat bubbles (José, 21/10: «la web no tiene el logo de la app»):

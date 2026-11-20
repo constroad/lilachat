@@ -1,4 +1,5 @@
 import { LEGAL_PAGE_PATHS, type LegalDocument } from '@lilachat/shared';
+import { CONTACT_EMAIL } from './privacyPolicy';
 
 /**
  * The child sexual abuse and exploitation (CSAE) standards at
@@ -6,7 +7,8 @@ import { LEGAL_PAGE_PATHS, type LegalDocument } from '@lilachat/shared';
  * (spec PLAY-STORE §1). The in-app path to report («Denunciar» → «Abuso
  * infantil») is the one the report-and-block change adds.
  */
-const CHILD_SAFETY_CONTACT = 'TODO(José): correo del punto de contacto de seguridad infantil';
+/** ConstRoad's contact point for child safety: the same mailbox as privacy (José 19/11/2026). */
+const CHILD_SAFETY_CONTACT = CONTACT_EMAIL;
 
 export const CHILD_SAFETY_STANDARDS: LegalDocument = {
   title: 'Normas de seguridad infantil de Lilachat',

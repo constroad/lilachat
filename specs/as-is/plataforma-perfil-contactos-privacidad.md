@@ -90,8 +90,8 @@ Fuentes: código, `git log`, `specs/ARCHITECTURE.spec.md` §93, §106, §165, §
   y `app/src/onboarding/LegalLinks.tsx` en `WorkspaceEntryScreen` (abre el navegador).
   En Ajustes no hay enlace todavía: otro cambio tocaba Ajustes.
 - Los textos salen del código: si cambia lo que se recoge o a quién va, cambian en el
-  mismo commit. Quedan `TODO(José)` (razón social, RUC, dirección, correos, país de los
-  servidores, proveedores de IA). Detalle en `specs/PLAY-STORE.spec.md`.
+  mismo commit. Responsable: RJZ CONSTRUCTORES S.A.C. (ConstRoad), con los datos de
+  Portal (José 19/11). Detalle en `specs/PLAY-STORE.spec.md`.
 - La agenda **sí sale del teléfono**: `POST /api/contacts/match` recibe los números, los
   compara y no los guarda. Desde el 19/11 lo dicen el permiso de `app/app.json`,
   `ContactPicker.tsx` e `InviteScreen.tsx` (antes decían «no se envían a ningún lado»).

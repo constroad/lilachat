@@ -6,12 +6,14 @@ import { ACCOUNT_DELETION_PATH, LEGAL_PAGE_PATHS, type LegalDocument } from '@li
  * Every line comes from the code as of 19/11/2026, not from a template: what is
  * written here is what the APK, the web and the server do. A change in what the
  * app collects or who receives it changes this text in the same commit.
- * The `TODO(José)` markers are facts the code cannot know (legal name, tax id,
- * contact email, address, servers' country, AI providers).
+ * The controller's facts are ConstRoad's, the same ones Portal prints on its
+ * documents (Portal `src/common/consts.ts` CONSTROAD, José 19/11/2026).
  */
-// TODO(José): legal name, RUC (tax id), address and contact email of the controller.
 const CONTROLLER = 'ConstRoad';
-const CONTACT_EMAIL = 'TODO(José): correo de privacidad';
+const LEGAL_NAME = 'RJZ CONSTRUCTORES S.A.C.';
+const TAX_ID = '20612003905';
+const ADDRESS = 'Av. Mariano Melgar lote 9E, dpto. 301, urb. Mariano Melgar, Ate, Lima, Perú';
+export const CONTACT_EMAIL = 'administracion@constroad.com';
 
 export const PRIVACY_POLICY: LegalDocument = {
   title: 'Política de privacidad de Lilachat',
@@ -21,7 +23,7 @@ export const PRIVACY_POLICY: LegalDocument = {
     {
       title: '1. Responsable',
       paragraphs: [
-        `${CONTROLLER} es responsable de tus datos en Lilachat. Dirección: TODO(José). Contacto: ${CONTACT_EMAIL}.`,
+        `${CONTROLLER} (${LEGAL_NAME}, RUC ${TAX_ID}) es responsable de tus datos en Lilachat. Dirección: ${ADDRESS}. Contacto: ${CONTACT_EMAIL}.`,
       ],
     },
     {
@@ -54,7 +56,7 @@ export const PRIVACY_POLICY: LegalDocument = {
       bullets: [
         'Las personas de tus chats y espacios ven tus mensajes, tu nombre, tu foto y, según tus ajustes, tu estado y tus confirmaciones de lectura.',
         'Servicio de acceso de ConstRoad (auth.constroad.com): envía tu código de ingreso por WhatsApp o por correo.',
-        'Portal y Agentes de ConstRoad: si tu espacio tiene instaladas apps (por ejemplo Lila o Dali), reciben los mensajes, formularios e informes de ese espacio para responder, guardar informes y armar PDF. Lo que escribes a Lila puede procesarse con un proveedor de inteligencia artificial elegido por Agentes (TODO(José): nombrar los proveedores).',
+        'Portal y Agentes de ConstRoad: si tu espacio tiene instaladas apps (por ejemplo Lila o Dali), reciben los mensajes, formularios e informes de ese espacio para responder, guardar informes y armar PDF. Lo que escribes a Lila puede procesarse con un proveedor de inteligencia artificial elegido por Agentes; hoy es Anthropic (Claude), en Estados Unidos.',
         'Google Firebase Cloud Messaging (APK) y el servicio de avisos de tu navegador (web): llevan los avisos. Si dejas encendida la vista previa, el aviso incluye parte del mensaje; puedes apagarla en Ajustes › Privacidad.',
         'Cloudflare: cuando la conexión directa no es posible, la llamada pasa cifrada por su servidor de retransmisión (TURN). Cloudflare no puede ver ni oír la llamada.',
         'Mapas: OpenFreeMap entrega las teselas del mapa y OpenStreetMap (Nominatim) convierte coordenadas en direcciones y busca lugares. En Android, la dirección del sello la calcula primero el propio teléfono.',
@@ -67,7 +69,7 @@ export const PRIVACY_POLICY: LegalDocument = {
     {
       title: '5. Dónde se guardan',
       paragraphs: [
-        'En servidores administrados por ConstRoad: la base de datos y el disco de archivos de Lilachat. TODO(José): país donde están los servidores.',
+        'La base de datos de Lilachat está en MongoDB Atlas, un servicio en la nube. Los archivos (fotos, audios, documentos) están en un servidor de ConstRoad en Lima, Perú.',
         'En tu teléfono, los mensajes se guardan en una base cifrada. En la web, en el almacenamiento de tu navegador.',
       ],
     },

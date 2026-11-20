@@ -10,8 +10,8 @@ Otros cambios agregan aquí las secciones «Borrar la cuenta» y «Denunciar y b
 | Punto | Estado | Evidencia |
 | --- | --- | --- |
 | Target API 36 | **Listo** | `app/node_modules/react-native/gradle/libs.versions.toml`: `targetSdk = "36"`, `compileSdk = "36"`, `minSdk = "24"`. `app/android/app/build.gradle` lee `rootProject.ext.targetSdkVersion`; ni `android/build.gradle`, ni `gradle.properties`, ni `expo-build-properties` lo pisan. Confirmar en la consola el mínimo vigente al publicar. |
-| Política de privacidad | **Listo, con `TODO(José)`** | `https://lilachat.constroad.com/privacidad` (`web/src/legal/privacyPolicy.ts`). Pie en el ingreso web y APK. |
-| Normas CSAE | **Listo, con `TODO(José)`** | `https://lilachat.constroad.com/seguridad-infantil` (`web/src/legal/childSafety.ts`). |
+| Política de privacidad | **Listo** | `https://lilachat.constroad.com/privacidad` (`web/src/legal/privacyPolicy.ts`). Pie en el ingreso web y APK. |
+| Normas CSAE | **Listo** | `https://lilachat.constroad.com/seguridad-infantil` (`web/src/legal/childSafety.ts`). |
 | Borrar la cuenta (en la app y por web) | **Listo en código**, falta E2E (§6) | `/borrar-cuenta`, Ajustes de APK y web, `shared/src/accountDeletion.ts`, `server/src/accountPurge.ts`. La política ya enlaza esa página. |
 | Denunciar y bloquear | **Listo en código**, falta E2E (§5) | `shared/src/reports.ts`, `POST /api/reports`, cola en `/admin?vista=denuncias`. Bloquear reusa `blockedContacts.ts`. |
 | Formulario «Seguridad de los datos» | Borrador listo (§2) | Falta cargarlo en la consola. |
@@ -19,14 +19,14 @@ Otros cambios agregan aquí las secciones «Borrar la cuenta» y «Denunciar y b
 | Textos de permisos (`app.json`) | **Corregido** | Contactos ya no dice «no se envían a ningún lado». Cámara, micrófono, ubicación y Face ID dicen todos sus usos. Mismo arreglo en `ContactPicker.tsx` e `InviteScreen.tsx`. |
 | Ficha de la tienda | Pendiente (§4) | — |
 
-### `TODO(José)` de las páginas
+### Datos del responsable (completados 19/11/2026)
 
-- Razón social completa, RUC y dirección de ConstRoad (`privacyPolicy.ts`, `CONTROLLER`).
-- Correo de privacidad (`CONTACT_EMAIL`).
-- Correo del punto de contacto de seguridad infantil (`childSafety.ts`, `CHILD_SAFETY_CONTACT`).
-  Play lo pide en la declaración CSAE.
-- País donde están los servidores (la mini, la base y el disco).
-- Proveedores de IA que usa Agentes para Lila (la política dice «elegido por Agentes»).
+José 19/11: «datos legales complétalos con los de Constroad». Salen de Portal
+`src/common/consts.ts` (`CONSTROAD`), los mismos que imprimen sus documentos:
+RJZ CONSTRUCTORES S.A.C., RUC 20612003905, Av. Mariano Melgar lote 9E dpto. 301,
+Ate, Lima. Privacidad y seguridad infantil van a `administracion@constroad.com`.
+Base en MongoDB Atlas; archivos en la mini de ConstRoad en Lima. IA de Lila:
+Anthropic (Claude), lo único que Agentes tiene configurado hoy.
 
 ## 2. Borrador del formulario «Seguridad de los datos»
 

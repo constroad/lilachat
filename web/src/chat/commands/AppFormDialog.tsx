@@ -1,4 +1,4 @@
-import { useMemo, useRef, type RefObject } from 'react';
+import { useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import { CheckCheck, Clock, Sparkles } from 'lucide-react';
 import { CHECK_ALL_LABEL, checkAllValues, EXAMPLE_LABEL, exampleValues, chipsFor, groupedBySection, splitFor, evidenceLine, filledRemarks, formFields, formRows, isDesignedForm, isWideForm, liveSelfieFieldOf, numberedStepsOf, signerFieldOf, signingStepOf, submitLabelOf, visibleFields, type EphemeralAnswer, type FormField, type FormSubmit, type FormSubmitOutcome, type FormValues, type FormPhotoStamp, type GeoPoint, type PreviewReply, type WorkMapStreet } from '@lilachat/shared';
 import { FieldError, Overlay, PrimaryButton } from '../../ui/Overlay';
@@ -28,7 +28,7 @@ const LIVE_FOOTER = 'Al tocar se toma la foto con la hora y el lugar, y se enví
 
 type Upload = (file: File, stamp?: FormPhotoStamp) => Promise<{ ok: true; fileId: string } | { ok: false; message: string }>;
 
-type DialogProps = { answer: EphemeralAnswer; personName?: string; /** «#flujo-caja»: the channel it was opened in. */ where?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: Upload; /** The address under a signing's camera. */ onPlace?: PlaceLookup; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply>; /** The service's work-map streets for a `work-street` field; `null` while they load. */ workStreets?: readonly WorkMapStreet[] | null; /** A report's shift, weather and street, filled on opening (José 12/11). */ onConditions?: ConditionsLookup };
+type DialogProps = { answer: EphemeralAnswer; personName?: string; /** «#flujo-caja»: the channel it was opened in. */ where?: string; onSubmit: (values: FormValues) => Promise<FormSubmitOutcome>; onUpload: Upload; /** The address under a signing's camera. */ onPlace?: PlaceLookup; onClose: () => void; /** `x-refresh`: the app sends the form again for the new draft. */ onRefresh?: (draft: FormValues) => Promise<void>; /** `x-preview`: the app's summary of the draft. */ onPreview?: (draft: FormValues) => Promise<PreviewReply>; /** The service's work-map streets for a `work-street` field; `null` while they load. */ workStreets?: readonly WorkMapStreet[] | null; /** A report's shift, weather and street, filled on opening (José 12/11). */ onConditions?: ConditionsLookup; /** A line over the fields: the GPS of a report's photo (José 19/11). */ status?: ReactNode };
 
 /** After a refusal the dialog goes to the first field with an error (E2E 28/10: «Diseño» was out of sight). */
 function revealField(body: HTMLDivElement | null, name: string) {
@@ -80,6 +80,7 @@ export function AppFormDialog(props: DialogProps) {
       <div ref={body} data-testid={`formulario-${form.id}`} className="space-y-4">
         {designed && props.answer.context ? <FormContextCard context={props.answer.context} /> : null}
         <FormIntro answer={props.answer} clock={Boolean(evidence) && !selfieField} personName={props.personName} app={!designed} />
+        {props.status}
         {form.example ? (
           <button type="button" data-testid="datos-de-ejemplo" onClick={() => state.fill(exampleValues(fields, state.values, form.example ?? {}))} className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 text-[14px] font-semibold text-primary hover:bg-primary/15">
             <Sparkles size={18} /> {EXAMPLE_LABEL}

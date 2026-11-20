@@ -26,7 +26,7 @@ Fuente: `REPORT_TYPE_OPTIONS` en `shared/src/reportCreation.ts`.
 
 | Código | Nombre | Se llena en Lilachat | Notas |
 | --- | --- | --- | --- |
-| CTL-IMP | Control de imprimación | Sí | Tramos con bandejas; «Agregar tramo» abre donde terminó el anterior |
+| CTL-IMP | Control de imprimación | Sí | Tramos con bandejas; «Agregar tramo» abre donde terminó el anterior. Basta una bandeja completa (19/11) |
 | CTL-PIS | Control de pista | Sí | Unidades por despacho, 4 fotos con GPS por volquete, hasta 10 fotos adicionales |
 | CON-CAP | Conformación de capa | Sí | GPS, calle y progresiva se llenan solos (`fieldAutofill.ts`) |
 | FRE-PAV | Fresado de pavimento | Sí (desde 13/11) | Tramos con progresivas; fotos ANTES/DURANTE/DESPUES |
@@ -57,6 +57,35 @@ quien ve montos (admin del espacio).
 7. **Ver PDF** de un borrador: vista previa dentro de la app (APK `ReportPreviewScreen`,
    15/11). Publicado: visor PDF de la app.
 8. **Quitar una foto** ya enviada de un borrador (`remove_photo` → `quitar_foto_de_informe`).
+
+### Bandejas del CTL-IMP: basta una (José 19/11)
+
+«Obliga a llenar las 3 bandejas». `sectionFormOf` marca cada bandeja con `x-sample` (solo en
+CTL-IMP › `bandejas`, `SAMPLED_FORMS` en `shared/src/formSamples.ts`) y deja obligatoria solo la
+bandeja 1. `validateFormValues` aplica la regla (`withSampleRule`), igual en APK, web y server:
+
+- Una bandeja completa basta; puede ser la 2 o la 3.
+- Una bandeja empezada se valida entera («Escribe un número.» en lo que le falta).
+- Sin nada escrito se pide la bandeja 1. Un borrador guarda lo que haya.
+- CON-CAP y los demás tipos no cambian: sus puntos numerados siguen todos obligatorios.
+
+**La tasa de riego la calcula Portal**, no Lilachat: `shared/` solo muestra los `results` que
+manda Portal. En Portal el promedio ya ignora las bandejas vacías (`averageNumbers` filtra
+`null`, `src/components/field-reports/forms/imprimacionForm.utils.ts` 166–169 y 262–266): con
+1 bandeja da su tasa. **Pendiente de Portal:** la sección «Bandejas» queda «A medias» y el
+tramo no cuenta como listo con 1 bandeja, porque `imprimacionFields.ts` (35–37) marca las 9
+casillas `required` y `stateOf` (`imprimacionDocument.ts` 75) exige todas; el aviso de
+publicar dice «Falta un tramo con sus 3 bandejas».
+
+### Ubicación mientras se lee el GPS (José 19/11)
+
+Al abrir una sección con foto, el GPS se lee de una vez. `reportScreen` expone `place`
+(`PhotoPlaceReading`: `reading`, `ready`, `failed`, y si la sección la exige) y `placeLineOf`
+el texto: «Obteniendo ubicación…» con su indicador, «Ubicación lista.», o el error (exigida:
+«No se pudo leer tu ubicación. Enciende el GPS y revisa el permiso de ubicación.»; si no:
+«…la foto va solo con la hora.»). Se dibuja sobre los campos: `PlaceStatus.tsx` (APK, en
+`AppFormSheet` › `status`) y `PlaceStatusWeb.tsx` (web, en `AppFormDialog` › `status`).
+«Usar mi ubicación» (`PlaceButton`) ya tenía su «Buscando tu ubicación…».
 
 ### Cola sin señal (los dos clientes)
 
@@ -140,7 +169,7 @@ El server la quita del documento de un miembro (`withoutGroupSend`).
 `fieldDocument.ts`, `reportCreation.ts`, `reportSaves.ts`, `reportQueue.ts`,
 `reportScreen.ts`, `reportUnits.ts`, `reportPdf.ts`, `fieldAutofill.ts`,
 `fieldConditions.ts`, `portalEmbed.ts`, `observations.ts`, `observationWrite.ts`,
-`photoStamp.ts`, `timemarkStamp.ts`, `weatherBlock.ts`.
+`photoStamp.ts`, `timemarkStamp.ts`, `weatherBlock.ts`, `formSamples.ts`.
 
 ### Lo que depende de otros sistemas
 
@@ -183,6 +212,9 @@ El server la quita del documento de un miembro (`withoutGroupSend`).
 - **14/11** La descripción de una foto de fresado nombra su momento y tramo.
 - **15/11** IAA, FRE-PAV y RCP-CAM nacen en el editor en la web ancha. Vista previa
   del borrador dentro de la app (APK).
+- **19/11** CTL-IMP: basta una bandeja completa; una a medias se valida entera
+  (`formSamples.ts`). Indicador «Obteniendo ubicación…» y su error al leer el GPS de una foto.
+  Rediseño compacto del formulario pedido a Stitch (`imp-*`), espera aprobación de José.
 - **16/11** Hojas de bloques en la web ancha. «Reintentar» del editor. Portal arregló
   el retraso de 60 s de su service worker (ec9a18f0).
 
@@ -222,7 +254,7 @@ El inventario marca j-01…j-06 «pendiente de la mirada de José».
 
 ## 7. Pruebas
 
-- **Shared:** `fieldDocument.test.ts`, `reportCreation.test.ts`, `reportSaves.test.ts`,
+- **Shared:** `formSamples.test.ts`, `reportScreenPlace.test.ts`, `fieldDocument.test.ts`, `reportCreation.test.ts`, `reportSaves.test.ts`,
   `reportQueue.test.ts` (con `reportQueue.fixture.ts`), `reportScreen.test.ts`,
   `reportUnits.test.ts`, `reportPdf.test.ts`, `reportPhotoCaption.test.ts`,
   `fieldAutofill.test.ts`, `portalEmbed.test.ts`, `observations.test.ts`,
@@ -231,7 +263,7 @@ El inventario marca j-01…j-06 «pendiente de la mirada de José».
   `bots/photoStamp.test.ts`, `bots/formPhotoPlaces.test.ts`, `bots/clientFiles.test.ts`,
   `videoStamp.test.ts`, `chatMediaStamp.test.ts`.
 - **Web:** `CreateReportDialog.test.tsx`, `ReportDocumentWeb.test.tsx`,
-  `PublishDialog.test.tsx`, `PortalEmbedWeb.test.tsx`, `ObservationsWeb.test.tsx`.
+  `PublishDialog.test.tsx`, `PortalEmbedWeb.test.tsx`, `ObservationsWeb.test.tsx`, `PlaceStatusWeb.test.tsx`.
 - **APK:** `reports/apkReportTypes.test.ts`, `chat/camara/cameraRequests.test.ts`,
   `chat/camara/zoom.test.ts`. Sin tests de render de las pantallas de informe.
 - **Maestro:** no hay flujo de informes en `app/.maestro/` (verificado).

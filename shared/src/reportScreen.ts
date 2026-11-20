@@ -35,7 +35,24 @@ export type ReportScreenState = {
   /** Something reached Portal since the screen opened: the detail behind must ask again. */
   changed: boolean;
   form: EphemeralAnswer | null;
+  /** The GPS read for the open photo section (José 19/11: it showed no loading). */
+  place: PhotoPlaceReading | null;
 };
+/** Where the GPS reading of the open form stands; `required`: without a fix there is no photo. */
+export type PhotoPlaceReading = { state: 'reading' | 'ready' | 'failed'; required: boolean };
+export const PLACE_LINES = {
+  reading: 'Obteniendo ubicación…',
+  ready: 'Ubicación lista.',
+  failedRequired: 'No se pudo leer tu ubicación. Enciende el GPS y revisa el permiso de ubicación.',
+  failedOptional: 'No se pudo leer tu ubicación: la foto va solo con la hora.',
+};
+/** The line the form shows over its fields; `busy` carries the spinner. */
+export function placeLineOf(reading: PhotoPlaceReading | null): { tone: 'busy' | 'ok' | 'error' | 'warn'; text: string } | null {
+  if (!reading) return null;
+  if (reading.state === 'reading') return { tone: 'busy', text: PLACE_LINES.reading };
+  if (reading.state === 'ready') return { tone: 'ok', text: PLACE_LINES.ready };
+  return reading.required ? { tone: 'error', text: PLACE_LINES.failedRequired } : { tone: 'warn', text: PLACE_LINES.failedOptional };
+}
 
 /** A refresh that fails reads again by itself a few times (E2E 06/11). */
 export const REFRESH_RETRIES = 3;
@@ -107,7 +124,7 @@ function createDocumentFeed(queue: ReportQueue, ref: ReportRef, tell: () => void
       changed = true;
       void ask();
     },
-    view(): Omit<ReportScreenState, 'form'> {
+    view(): Omit<ReportScreenState, 'form' | 'place'> {
       const shown = [...held.filter((one) => !mine.some((save) => save.clientKey === one.clientKey)), ...mine];
       const draft: ReportDraftResult | null = opened?.ok ? { ok: true, document: documentWithQueue(opened.document, shown) } : opened;
       const { sending, stalled } = queue.snapshot();
@@ -125,7 +142,22 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
    * José 06/11: waiting for it after the shutter was what held the photo for seconds.
    */
   let aiming: Promise<DevicePlace> | null = null;
-  const readPlace = (): Promise<DevicePlace> => deps.placeNow().catch((): DevicePlace => ({ at: deps.now() }));
+  let reading: PhotoPlaceReading | null = null;
+  /** Each reading shows on screen until it answers; a form closed meanwhile forgets it. */
+  const readPlace = (): Promise<DevicePlace> => {
+    const { document } = reportNow();
+    const required = Boolean(openForm && document && requiresLocation(document, openForm.path));
+    const shown: PhotoPlaceReading = { state: 'reading', required };
+    reading = shown;
+    tell();
+    const place = deps.placeNow().catch((): DevicePlace => ({ at: deps.now() }));
+    void place.then((answered) => {
+      if (reading !== shown) return;
+      reading = { state: hasFix(answered) ? 'ready' : 'failed', required };
+      tell();
+    });
+    return place;
+  };
 
   /** A section that requires the place waits for the phone, which has its own limit; any other, a moment. */
   async function placeOf(held: HeldPhoto, required: boolean): Promise<DevicePlace> {
@@ -143,6 +175,7 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
 
   return {
     current: (): EphemeralAnswer | null => openForm?.answer ?? null,
+    placeReading: (): PhotoPlaceReading | null => reading,
     /** A refused section opens with what Portal said under each field. */
     openSection(path: SectionPath): void {
       const { document, saves } = reportNow();
@@ -150,6 +183,7 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
       const context = { errors: refused?.refusal?.errors, personName: deps.personName(), arrivalHour: document ? arrivalHourOf(document, path, deps.now()) : undefined, startHour: clockHourOf(deps.now()) };
       const answer = document ? reportFormAnswer(document, path, context) : null;
       openForm = answer ? { path, answer } : null;
+      reading = null;
       aiming = answer && photoFieldOf(answer) ? readPlace() : null;
       tell();
     },
@@ -158,6 +192,7 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
       photos.clear();
       openForm = null;
       aiming = null;
+      reading = null;
       tell();
     },
     /** The photo field's upload: it only stays on the device, at once. Where it was taken is settled at «Enviar». */
@@ -197,6 +232,7 @@ function createFormSession<P>(deps: ReportScreenDeps<P>, ref: ReportRef, reportN
       photos.clear();
       openForm = null;
       aiming = null;
+      reading = null;
       tell();
       return { done: true, answer: null };
     },
@@ -208,13 +244,13 @@ export function createReportScreen<P>(deps: ReportScreenDeps<P>, ref: ReportRef,
   const listeners = new Set<() => void>();
   let stopListening: (() => void) | null = null;
   const tell = () => {
-    state = { ...feed.view(), form: forms.current() };
+    state = { ...feed.view(), form: forms.current(), place: forms.placeReading() };
     listeners.forEach((listener) => listener());
   };
   const feed = createDocumentFeed(deps.queue, ref, tell, startId);
   const reportNow = () => ({ document: state.draft?.ok ? state.draft.document : null, saves: feed.saves() });
   const forms = createFormSession(deps, ref, reportNow, tell);
-  let state: ReportScreenState = { ...feed.view(), form: null };
+  let state: ReportScreenState = { ...feed.view(), form: null, place: null };
 
   return {
     snapshot: (): ReportScreenState => state,

@@ -1,20 +1,33 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, ExternalLink, FileText, Link2, Loader2 } from 'lucide-react';
-import type { DetailSheet, SheetFact, SheetGroup, SheetMedia, ViewableFile } from '@lilachat/shared';
+import { PREVIEW_ASKING, type DetailSheet, type SheetFact, type SheetGroup, type SheetMedia, type ViewableFile } from '@lilachat/shared';
 import { FileThumb } from './PortalFileViewer';
 import { Overlay } from '../../ui/Overlay';
 import { DETAIL_TONE } from './tones';
 
 /** A report with no PDF stored: asked to Portal on click (agentes 30/10); ready, its link replaces the button. */
 export type PdfOnDemandWeb = { asking: boolean; message: string | null; readyUrl: string | null; onAsk: () => void };
-const PDF_BUTTON = 'inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-primary px-4 font-semibold text-on-primary';
+const PDF_BUTTON = 'inline-flex h-11 min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-primary px-4 font-semibold text-on-primary';
+
+/**
+ * A PDF button's icon and text (José 20/11: «Pidiendo el PDF…» went out of the button): asking,
+ * a spinner and the short `PREVIEW_ASKING`; the text truncates before it ever overflows.
+ */
+export function PdfLabel({ asking, label }: { asking: boolean; label: string }) {
+  return (
+    <>
+      {asking ? <Loader2 size={16} className="shrink-0 animate-spin" /> : <FileText size={16} className="shrink-0" />}
+      <span className="truncate">{asking ? PREVIEW_ASKING : label}</span>
+    </>
+  );
+}
 
 function AskPdf({ pdf }: { pdf: PdfOnDemandWeb }) {
   if (pdf.readyUrl) return <a href={pdf.readyUrl} target="_blank" rel="noreferrer" data-testid="abrir-pdf-ficha" className={PDF_BUTTON}><FileText size={16} /> Abrir el PDF</a>;
   return (
     <>
       <button type="button" data-testid="pedir-pdf-ficha" disabled={pdf.asking} onClick={pdf.onAsk} className={`${PDF_BUTTON} disabled:opacity-70`}>
-        {pdf.asking ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />} {pdf.asking ? 'Generando el PDF…' : 'Ver el PDF'}
+        <PdfLabel asking={pdf.asking} label="Ver el PDF" />
       </button>
       {pdf.message ? <p data-testid="pdf-ficha-fallo" role="alert" className="text-sm text-error">{pdf.message}</p> : null}
     </>

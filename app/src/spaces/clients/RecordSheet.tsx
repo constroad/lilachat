@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
 import { ChevronDown, ChevronRight, ExternalLink, FileText, Link2 } from 'lucide-react-native';
-import type { DetailRow, DetailSheet, SheetFact, SheetGroup, SheetItem, SheetMedia } from '@lilachat/shared';
+import { PREVIEW_ASKING, type DetailRow, type DetailSheet, type SheetFact, type SheetGroup, type SheetItem, type SheetMedia } from '@lilachat/shared';
 import { FileThumb } from './FileThumb';
 import { PantallaEnModal } from '../../ui/PantallaEnModal';
 import { useColores } from '../../ui/tema';
@@ -67,13 +67,26 @@ function FileButton(props: { title: string; file: { url: string; label: string }
 /** A report with no PDF stored: asked to Portal on tap (agentes 30/10); the first one may take a few waits. */
 export type PdfOnDemand = { asking: boolean; message: string | null; onAsk: () => void };
 
-function AskPdfButton({ pdf }: { pdf: PdfOnDemand }) {
+/**
+ * A PDF button's icon and text (José 20/11: «Pidiendo el PDF…» went out of the button): asking,
+ * a spinner and the short `PREVIEW_ASKING`, always on one line.
+ */
+export function PdfLabel(props: { asking: boolean; label: string; tone: 'primary' | 'on-primary'; textClassName: string }) {
   const colors = useColores();
+  const color = colors[props.tone];
+  return (
+    <>
+      {props.asking ? <ActivityIndicator size="small" color={color} /> : <FileText size={18} color={color} />}
+      <Text className={`flex-shrink ${props.textClassName}`} numberOfLines={1}>{props.asking ? PREVIEW_ASKING : props.label}</Text>
+    </>
+  );
+}
+
+function AskPdfButton({ pdf }: { pdf: PdfOnDemand }) {
   return (
     <>
       <Pressable testID="pedir-pdf-ficha" disabled={pdf.asking} onPress={pdf.onAsk} className={`min-h-[48px] flex-row items-center justify-center gap-2 rounded-xl bg-primary px-4 ${pdf.asking ? 'opacity-70' : ''}`}>
-        {pdf.asking ? <ActivityIndicator size="small" color={colors['on-primary']} /> : <FileText size={18} color={colors['on-primary']} />}
-        <Text className="text-[15px] font-semibold text-on-primary">{pdf.asking ? 'Generando el PDF…' : 'Ver el PDF'}</Text>
+        <PdfLabel asking={pdf.asking} label="Ver el PDF" tone="on-primary" textClassName="text-[15px] font-semibold text-on-primary" />
       </Pressable>
       {pdf.message ? <Text testID="pdf-ficha-fallo" className="text-[14px] text-error">{pdf.message}</Text> : null}
     </>

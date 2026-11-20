@@ -10,7 +10,8 @@ import { ServiceList } from './ServiceLists';
 import { ServiceMapPanel } from './ServiceMapPanel';
 import { ServiceShell } from './ServiceShell';
 import { mapPhotoUploader, mapTraceUploader } from './useDriveUpload';
-import { doorMapLinks, mapEditSender, workProgressSender, workStreetDeleteSender, workStreetSender } from './workMap/workProgressSender';
+import { doorMapLinks, mapEditSender, serviceLinkSender, workProgressSender, workStreetDeleteSender, workStreetSender } from './workMap/workProgressSender';
+import { ServiceLinkSheet } from './ServiceLinkSheet';
 import { ServiceStages } from './ServiceStages';
 import { SpaceActionButton } from './SpaceActionButton';
 import { STATUS_TONE } from './tones';
@@ -90,8 +91,16 @@ function ServiceLists(props: ListProps) {
 
 type ServiceDetailProps = { /** Who can be a report's responsible. */ people?: readonly string[]; target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; /** The client's name, the head's kicker (design cc-02). */ clientName?: string; /** A phone: the back arrow and the compact head (design cc-02 mobile). */ compact?: boolean; /** A space admin: the stages, which read money (José 07/11). */ admin?: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string; /** Its Drive joins the tabs (José 06/11). */ seesDrive?: boolean; /** A member an admin gave only the Drive. */ driveOnly?: boolean };
 
-/** «Enlace del servicio» in the head (José 31/10): only where the channel's app offers it. */
-const shareOf = (props: ServiceDetailProps) => (props.links?.can('service') ? () => props.links?.open({ kind: 'service', clientId: props.target.clientId, serviceId: props.service.id }) : undefined);
+/**
+ * «Enlace del servicio» in the head (José 31/10): only where the channel's app offers it. José 20/11:
+ * it opens its sheet over the service and makes the link there, instead of jumping to the chat.
+ */
+function useServiceLinkSheet(props: ServiceDetailProps) {
+  const [open, setOpen] = useState(false);
+  const onShare = props.links?.can('service') ? () => setOpen(true) : undefined;
+  const sheet = onShare ? <ServiceLinkSheet visible={open} serviceName={props.service.name} create={serviceLinkSender(props.target, props.chatId, props.service.id)} onClose={() => setOpen(false)} /> : null;
+  return { onShare, sheet };
+}
 
 /** Android's BACK goes back to the list; the last listener added runs first. */
 function useBackToList(onBack: () => void) {
@@ -111,12 +120,19 @@ function useBackToList(onBack: () => void) {
  */
 export function ServiceDetailView(props: ServiceDetailProps) {
   if (!props.driveOnly) return <ServiceRecordsDetail {...props} />;
+  return <ServiceDriveOnly {...props} />;
+}
+
+/** A member an admin gave only the Drive: its one tab under the same head. */
+function ServiceDriveOnly(props: ServiceDetailProps) {
+  const share = useServiceLinkSheet(props);
   const tabs: ServiceTabItem[] = [{ key: 'drive', label: 'Drive' }];
   return (
-    <ServiceShell service={props.service} clientName={props.clientName} compact={props.compact ?? true} tabs={tabs} tab="drive" onTab={() => undefined} onBack={props.onBack} onShare={shareOf(props)}>
+    <ServiceShell service={props.service} clientName={props.clientName} compact={props.compact ?? true} tabs={tabs} tab="drive" onTab={() => undefined} onBack={props.onBack} onShare={share.onShare}>
       <ScrollView testID="detalle-cuerpo" keyboardShouldPersistTaps="handled" contentContainerStyle={BODY}>
         <ServiceDrive target={props.target} service={props.service} chatId={props.chatId} onBack={props.onBack} />
       </ScrollView>
+      {share.sheet}
     </ServiceShell>
   );
 }
@@ -167,6 +183,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   const askAgain = useCallback(() => setRound((count) => count + 1), []);
   const answer = useServiceAsk('detail', props.target, props.service.id, round);
   const files = useFileViewer();
+  const share = useServiceLinkSheet(props);
   useBackToList(props.onBack);
   // José 05/11: a field report is filled here, not in Portal's public page; it takes the detail's place.
   const [picker, setPicker] = useState(false);
@@ -187,13 +204,14 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   if (report) return <ReportDocumentScreen target={props.target} chatId={props.chatId} service={props.service} type={report.type} {...(report.reportId ? { reportId: report.reportId } : {})} {...(report.responsible ? { responsible: report.responsible } : {})} portalUrl={portalUrl} links={props.links} admin={Boolean(props.admin)} onClose={closeReport} />;
   const tabs = answer?.ok ? serviceTabs(answer.value, Boolean(props.seesDrive), Boolean(props.links)) : [];
   return (
-    <ServiceShell service={props.service} clientName={props.clientName} compact={props.compact ?? true} tabs={tabs} tab={tab} onTab={setTab} onBack={props.onBack} onShare={shareOf(props)} portalUrl={portalUrl} actions={answer?.ok && tab === 'reports' ? <CreateReportButton onPress={() => setPicker(true)} /> : undefined}>
+    <ServiceShell service={props.service} clientName={props.clientName} compact={props.compact ?? true} tabs={tabs} tab={tab} onTab={setTab} onBack={props.onBack} onShare={share.onShare} portalUrl={portalUrl} actions={answer?.ok && tab === 'reports' ? <CreateReportButton onPress={() => setPicker(true)} /> : undefined}>
       <ScrollView testID="detalle-cuerpo" keyboardShouldPersistTaps="handled" contentContainerStyle={BODY}>
         <ServiceBody {...props} answer={answer} tab={tab} startTab={startTab} onOpenFile={files.open} onReported={askAgain} onCreate={() => setPicker(true)} onContinueReport={setReport} />
         <CreateReportSheet visible={picker} portalUrl={portalUrl} seesMoney={props.seesMoney} people={props.people ?? []} onPick={(code, responsible) => { setPicker(false); setReport({ type: code, responsible }); }} onClose={() => setPicker(false)} />
         {files.notice ? <Text className="text-center text-[13px] text-error">{files.notice}</Text> : null}
         {files.viewer}
       </ScrollView>
+      {share.sheet}
     </ServiceShell>
   );
 }

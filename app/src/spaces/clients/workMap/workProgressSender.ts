@@ -1,4 +1,4 @@
-import { photoPhaseRequest, sendPhotoPhase, type PhotoPhase, type MapEditSend, serviceLinkRequest, serviceMapUrl, type ChannelLinks, noticeOf, saveStreetWithStage, sendWorkProgress, sendWorkScope, sendWorkStreet, type FormValues, type ReportFormRequest, sendWorkStreetDelete, workProgressRequest, workStreetDeleteRequest, workStreetRequest, type StreetDraft, type WorkProgressResult, type PlaceAsk, type PlaceResult, PLACE_SEARCH_FAILED } from '@lilachat/shared';
+import { createServiceLink, type ServiceLinkChoice, type ServiceMapResult, photoPhaseRequest, sendPhotoPhase, type PhotoPhase, type MapEditSend, serviceLinkRequest, serviceMapUrl, type ChannelLinks, noticeOf, saveStreetWithStage, sendWorkProgress, sendWorkScope, sendWorkStreet, type FormValues, type ReportFormRequest, sendWorkStreetDelete, workProgressRequest, workStreetDeleteRequest, workStreetRequest, type StreetDraft, type WorkProgressResult, type PlaceAsk, type PlaceResult, PLACE_SEARCH_FAILED } from '@lilachat/shared';
 import { submitAppForm } from '../../../chat/commands/commandsApi';
 import { jsonCall } from '../../../api/jsonCall';
 import { BASE_URL } from '../../../api/client';
@@ -56,6 +56,14 @@ export const doorMapLinks = (links: ChannelLinks, target: ServiceAskTarget, chat
     notice: (commandId) => noticeOf(getSocket(), commandId),
   }),
 });
+
+/** «Enlace del servicio» made in place through the same door (José 20/11: the chat's shortcut did nothing). */
+export const serviceLinkSender = (target: ServiceAskTarget, chatId: string, serviceId: string) => (choice: ServiceLinkChoice): Promise<ServiceMapResult> =>
+  createServiceLink({
+    open: () => openReportForm(target, serviceId, serviceLinkRequest()),
+    submit: (commandId, values) => submitAppForm(target.jwt, { chatId }, commandId, values),
+    notice: (commandId) => noticeOf(getSocket(), commandId),
+  }, choice);
 
 /** «Busca un lugar o pega el enlace» (José 08/11): the server follows short links and asks OpenStreetMap. */
 export const placeAsker = (jwt: string): PlaceAsk => async (text, near) => {

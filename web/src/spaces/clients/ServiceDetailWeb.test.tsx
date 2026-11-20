@@ -436,10 +436,56 @@ describe('ServiceDetailWeb', () => {
     // Act
     fireEvent.click(screen.getByTestId('pedir-pdf-ficha'));
     // Assert
-    expect(await screen.findByText('Generando el PDF…')).toBeInTheDocument();
+    expect(await screen.findByText('Preparando…')).toBeInTheDocument();
     expect(await screen.findByTestId('abrir-pdf-ficha', {}, { timeout: 3000 })).toHaveAttribute('href', 'https://lila.constroad.com/r9.pdf');
     const portalCalls = fetchMock.mock.calls.map(([url]) => String(url)).filter((url) => !url.includes('/commands?place=space'));
     expect(portalCalls[1]).toContain('/api/workspaces/s1/clients/cli-cvs/services/srv-318/reports/r9/pdf');
     expect(portalCalls).toHaveLength(3);
+  });
+});
+
+describe('«Enlace del servicio» makes the link in place (José 20/11: «solo me lleva al chat y no hace nada»)', () => {
+  const linkUrl = 'https://constroad.com/public/service-report/tok/service/srv-318';
+  const opened = { commandId: 'run-1', appId: 'p', appName: 'Portal', outcome: 'form' };
+  const made = { commandId: 'run-1', appId: 'p', appName: 'Portal', outcome: 'ephemeral', response: { responseType: 'ephemeral', card: { title: 'Enlace del servicio', fields: [], link: { label: 'Abrir', url: linkUrl } } } };
+  const server = () => {
+    const sent: { url: string; body: unknown }[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      const body = init?.body ? JSON.parse(String(init.body)) : null;
+      sent.push({ url: String(url), body });
+      if (String(url).endsWith('/reports/forms')) return new Response(JSON.stringify(opened), { status: 200 });
+      if (String(url).endsWith('/commands/run-1/form')) return new Response(JSON.stringify(made), { status: 200 });
+      return new Response(JSON.stringify({ detail }), { status: 200 });
+    }));
+    return sent;
+  };
+
+  it('opens its sheet over the service, never the chat, and «Crear enlace» shows the link to copy', async () => {
+    // Arrange
+    const sent = server();
+    const links = { can: (kind: string) => kind === 'service', open: vi.fn(), map: vi.fn() };
+    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={() => undefined} links={links} />);
+    // Act
+    fireEvent.click(await screen.findByTestId('enlace-servicio'));
+    fireEvent.click(screen.getByTestId('enlace-servicio-dias-30'));
+    fireEvent.click(screen.getByTestId('enlace-servicio-crear'));
+    // Assert
+    expect(await screen.findByTestId('enlace-servicio-url')).toHaveTextContent(linkUrl);
+    expect(links.open).not.toHaveBeenCalled();
+    expect(sent.find((call) => call.url.endsWith('/reports/forms'))?.body).toEqual({ kind: 'service_link', forms: expect.any(Number) });
+    expect(sent.find((call) => call.url.endsWith('/commands/run-1/form'))?.body).toEqual({ values: { dias: 30, noExpira: false } });
+    expect(screen.getByTestId('enlace-servicio-copiar')).toBeInTheDocument();
+  });
+
+  it('a link Portal refuses says why and the sheet stays open to try again', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => (String(url).endsWith('/reports/forms') ? new Response(JSON.stringify({ message: 'no' }), { status: 500 }) : new Response(JSON.stringify({ detail }), { status: 200 }))));
+    render(<ServiceDetailWeb target={target} chatId="chat-1" service={service} seesMoney onBack={() => undefined} links={{ can: (kind) => kind === 'service', open: vi.fn(), map: vi.fn() }} />);
+    // Act
+    fireEvent.click(await screen.findByTestId('enlace-servicio'));
+    fireEvent.click(screen.getByTestId('enlace-servicio-crear'));
+    // Assert
+    expect(await screen.findByTestId('enlace-servicio-error')).toHaveTextContent('No se pudo crear el enlace del servicio. Prueba de nuevo.');
+    expect(screen.getByTestId('enlace-servicio-crear')).not.toBeDisabled();
   });
 });

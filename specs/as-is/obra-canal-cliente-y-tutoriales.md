@@ -1,6 +1,6 @@
 # As-is · Canal del cliente (servicios, cuenta, cobranza, valorización) y tutoriales
 
-> Fecha de corte: **17/11/2026**. Fuentes: código de `main`, `git log` desde el 21/10,
+> Fecha de corte: **20/11/2026**. Fuentes: código de `main`, `git log` desde el 21/10,
 > `specs/ARCHITECTURE.spec.md` (§155, §157, §160, §169–§181, «La plata… vive en Cuenta»,
 > «Un servicio ocupa todo», 06/11), `specs/TUTORIALES-CANAL-CLIENTE.spec.md` y
 > `design/stitch/INVENTARIO.md` (f-01…f-08).
@@ -63,8 +63,15 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
   Compartir y Registrar en Mapa. Web: `ServiceShellWeb.tsx` (`SectionActions` dibuja en esa barra
   con un portal).
 - Pedidos como tarjetas (cc-02, `shared/src/serviceOrderCards.ts`): producto, cantidad, día y obra;
-  «DESPACHOS · N» con placa, m³, hora y sus 3 primeras fotos; «Sin despachos todavía»; «Cubicaje»
+  «DESPACHOS · N» con placa, m³, hora y sus miniaturas; «Sin despachos todavía»; «Cubicaje»
   abre la ficha del pedido. Un despacho abre su ficha.
+- **Miniaturas del despacho** (José 20/11). Caben 3 en el celular (< 768 px) y 5 en tablet y
+  computadora (`DISPATCH_THUMB_SLOTS`, `dispatchThumbSlotsFor`). Con más, el último lugar es «+K»
+  (`dispatchThumbs`). Un video muestra su cuadro con el botón de play, o el ícono de video sin cuadro
+  (`FileThumb`, el mismo de la ficha). Tocar cualquier miniatura o «+K» abre el visor con TODAS las
+  fotos y videos del despacho (`OrderCardDispatch.media` = `dispatchMediaOf`, sin tope; el parser
+  guarda hasta 20). En el APK las filas ya muestran las miniaturas (antes, `Image` de RN sin
+  `mimeOf`: no salía ninguna).
 - Informes por día en tarjetas con ícono, «Creado por», estado y «PDF».
 - Informes agrupados por día de Lima, del más nuevo al más viejo; «Creado por …».
 - «Crear informe» en el APK y la web angosta ofrece los tipos de la página pública de Portal y todos se llenan aquí (18/11, `fieldPickerReportTypes`). La aprobación de adicional (APR-ADI) sale solo a quien ve la plata. Detalle por tipo en `obra-informes.md`.
@@ -77,7 +84,17 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
 - Una sección repetida sin filas dice «Sin zonas todavía» y «Toca «Agregar zona» para empezar.» (`emptyItemsHint`): nombra el botón, no la fila, porque la palabra puede ser femenina.
 - Inicio del servicio como día (`started_at`, «Inicio 6 oct»), sin zona horaria.
 - **Enlace del servicio** («Crear enlace», kind `service_link` → `crear_enlace_de_servicio`):
-  se abre sin cuenta de Portal (07/11).
+  se abre sin cuenta de Portal (07/11). Desde el 20/11 el botón de la cabecera abre su hoja sobre el
+  servicio, sin ir al chat (José: «solo me lleva al chat y no hace nada»): vigencia 7, 30 o 60 días
+  o «No expira», «Crear enlace», y el enlace con «Copiar» y «Compartir». Va por la puerta del mapa
+  (`serviceLinkSender` → `createServiceLink`, `shared/src/serviceShareLink.ts`), con el formulario ya
+  respondido (`dias`, `noExpira`). Web `ServiceLinkSheetWeb.tsx`, APK `ServiceLinkSheet.tsx`. El
+  botón sigue saliendo solo con `links.can('service')`. La tarjeta del servicio en la lista todavía
+  abre el atajo del chat (`links.open`).
+- **Botones de PDF de un informe** (20/11): mientras Portal lo hace dicen «Preparando…» con spinner,
+  en una línea que se recorta antes de salirse (antes «Pidiendo el PDF…» y «Generando el PDF…» se
+  salían). Web `PdfLabel` (`RecordSheetWeb.tsx`), APK `PdfLabel` (`RecordSheet.tsx`); en la ficha,
+  el informe publicado y la vista previa del borrador.
 - **Etapas del servicio** solo para admins del espacio (07/11, `ServiceStages`).
 - «Reporte de servicio» del cliente: página de Portal; Lilachat abre la sección del mapa
   con `?section=map` (`serviceMapPage`, `shared/src/serviceMap.ts`).
@@ -166,7 +183,7 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
 `ClientAccountWeb.tsx`, `ServiceCollectionWeb.tsx`, `ServiceBillingWeb.tsx`,
 `ServiceStagesWeb.tsx`, `ClientAccessWeb.tsx`, `ClientPickerWeb.tsx`, `ArchivedClients.tsx`,
 `RecordSheetWeb.tsx`, `SpaceActionButtonWeb.tsx`, `ClientChannelParts.tsx`,
-`useSpaceClients.ts`, `useServiceAsk.ts`, `useSpaceAction.ts`, `useReportPdf.ts`.
+`useSpaceClients.ts`, `useServiceAsk.ts`, `useSpaceAction.ts`, `useReportPdf.ts`, `ServiceLinkSheetWeb.tsx`.
 
 ### APK
 
@@ -175,7 +192,7 @@ Plan» (`channelTabsFor`, `checklistHoldsPending`); quien no tiene Checklist con
 `ClientAccountPanel.tsx`, `ServiceCollectionView.tsx`, `ServiceBilling.tsx`,
 `ServiceStages.tsx`, `ClientAccess.tsx`, `ClientPicker.tsx`, `ArchivedClientsScreen.tsx`,
 `RecordSheet.tsx`, `SpaceActionButton.tsx`, `ClientChannelParts.tsx`, `useSpaceClients.ts`,
-`useServiceAsk.ts`, `useSpaceAction.ts`, `useReportPdf.ts`.
+`useServiceAsk.ts`, `useSpaceAction.ts`, `useReportPdf.ts`, `ServiceLinkSheet.tsx`.
 
 APK y la gramática de 19/11: el teléfono (ancho < 768 dp o alto < 500 dp, `serviceTakesScreen`, así un
 teléfono apaisado sigue igual) abre el servicio a pantalla completa con flecha; la tablet deja la cabecera
@@ -248,6 +265,8 @@ en la cabecera del Drive y las acciones del mapa en su barra, justo bajo la barr
 - **19/11** · Tarjeta de servicio como cc-01 con pedidos, informes, etapas y último movimiento que manda Portal
   (`serviceFacts.ts`); Pendientes con casilla y cámara por fila (cc-06); Drive y «Medios» con la hoja inferior de
   cc-05 en el celular y «Enlace copiado» flotante.
+- **20/11** · Despachos con todas sus fotos y videos en el visor, «+K» y miniaturas en el APK;
+  «Preparando…» en los botones de PDF; «Enlace del servicio» crea el enlace en su hoja, sin ir al chat.
 - **19/11** · Los dibujos del mapa toman los colores del croquis de Portal (antes, todos puntos naranjas): ficha blanca con aro y punto del color de su tipo, etiqueta desde el zoom 16 (`shared/src/workMapMarks.ts` › `markColor`, `MARK_CHIP_PAINT`, `MARK_GLYPH_PAINT`), en web y APK.
 
 ## 5. Diseños de Stitch relacionados
@@ -331,7 +350,9 @@ Un Control de imprimación con fotos ubicadas y dos días de avance aprobado (o-
   `spaceClients.test.ts`, `appFormKnown.test.ts`, `tutorialScript.test.ts`.
 - **Server:** `bots/clientAccess.test.ts`, `bots/clientFiles.test.ts`,
   `bots/botClients.test.ts`, `bots/botClientTasks.test.ts`, `checklistRoutes.test.ts`.
-- **Web:** `ServiceDetailWeb.test.tsx`, `ClientAccountWeb.test.tsx`,
+- **Shared (20/11):** `serviceOrderCards.test.ts` (miniaturas y «+K»), `serviceShareLink.test.ts`.
+- **Web:** `ServiceListsWeb.test.tsx` (miniaturas, «+K», visor con todo), `ServiceDetailWeb.test.tsx`
+  (hoja del enlace del servicio), `reports/ReportDocumentWeb.test.tsx` («Preparando…»), `ClientAccountWeb.test.tsx`,
   `ServiceCollectionWeb.test.tsx`, `ClientAccessWeb.test.tsx`, `ClientPickerWeb.test.tsx`,
   `useSpaceClients.test.tsx`, `clients.test.tsx`.
 - **APK:** sin tests de render del canal del cliente.

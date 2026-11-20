@@ -1,36 +1,25 @@
-# Auditoría cc-02-pedidos · Servicio › Pedidos
+# Auditoría cc-02-pedidos · Servicio › Pedidos (reauditoría estricta)
 
-Stitch: `.stitch-work/out_cc/{desktop,tablet,mobile}/cc-02-pedidos.stitch.png` del checkout principal (escritorio, tablet, móvil). Ids en INVENTARIO § «Canal de cliente y servicio, rediseño».
-Código: `web/src/spaces/clients/ServiceShellWeb.tsx`, `ServiceListsWeb.tsx`, `app/src/spaces/clients/ServiceShell.tsx`, `ServiceLists.tsx`.
-Captura: design/stitch/capturas/cc-02-impl-escritorio.jpg (escritorio, web local con la API de producción, tema oscuro)
-Captura: design/stitch/capturas/cc-02-impl-movil.jpg (móvil, web local con la API de producción, tema oscuro)
-Captura: design/stitch/capturas/cc-02-impl-tablet.jpg (tablet, web local con la API de producción, tema oscuro; con datos de OBRA GRAU)
-Revisor: subagente independiente (solo vio las imágenes de Stitch y de la implementación; 19/11).
-Veredicto del revisor: pasa con observaciones: sin código PED, «Volquete», total ni progreso de m³ (Portal no los manda); «Crear pedido» es invento de Stitch; «Etapas · X de N» es de la pantalla actual.
-Fecha: 2026-11-20 01:30 (E2E del lote 2 en web a 1440 y 390 px; main f217270b)
+Stitch: `.stitch-work/out_cc/{desktop,tablet,mobile}/cc-02-pedidos.stitch.png` del checkout principal.
+Captura: design/stitch/capturas/cc-02-impl-escritorio-2011.jpg (escritorio 1440 px, claro; despachos de prueba sin fotos propias)
+Captura: design/stitch/capturas/cc-02-impl-movil-2011.jpg (móvil 390 px, claro)
+Captura: design/stitch/capturas/cc-02-impl-tablet.jpg (tablet, captura anterior: la pantalla no cambió de forma en tablet)
+Revisor: subagente independiente estricto (solo vio las imágenes; estados igual o falta, sin justificar; 20/11).
+Veredicto del revisor: no pasa (orden, código del pedido, botones del despacho). José 20/11 pidió rediseñar esta pantalla: va en «Rediseño 20/11».
+Fecha: 2026-11-20 11:15 (web local contra la API de producción, espacio Test, servicio QA-PISTA-APK; main d7d69f1b)
+
+Las justificaciones de abajo son mías y dicen el motivo real; ninguna es una exención de José. Lo que José
+pidió cambiar el 20/11 (orden, fotos del despacho, espacio) va en el rediseño «Rediseño 20/11» de INVENTARIO,
+que espera su aprobación.
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |
-| Pestañas del canal (escritorio/tablet) | siguen visibles sobre el servicio | igual (`serviceFull` solo bajo 768 px) | igual |
-| Vuelta | «‹ Servicios» (escritorio/tablet), flecha en recuadro (móvil); sin migas | igual (`volver-a-servicios`) | igual |
-| Kicker | «SERVICIO · CONSORCIO EL ALMIRANTE» | igual; móvil solo el cliente | igual |
-| Nombre y estado | nombre en negrita con chip de estado al lado | igual | igual |
-| Línea | «Avance 0 % · 6 etapas · Inicio 12 nov» + barra | igual: las etapas del mapa llegan en `stagesTotal` del servicio (`serviceHeadLine`) | igual |
-| Acciones de cabecera | «Enlace del servicio» + «⋯» | igual; «⋯» lleva «Abrir en el Portal» | igual |
-| Barra | Pedidos 2 · Informes 3 · Mapa · Drive 58, subrayada | Pedidos 2 · Informes 3 · Mapa · Drive (sin número) | diferencia justificada: as-is obra-drive §6, Portal no manda el conteo del Drive en el detalle |
-| Pedido | tarjeta: código PED-…, producto, cantidad, día, obra, estado | tarjeta: producto, cantidad, día, despachos, obra, estado | diferencia justificada: Portal no tiene número de pedido (comentario de `detailRows`, shared/src/serviceDetail.ts) |
-| Despachos | «DESPACHOS · 2», fila por volquete con placa, m³, hora y 3 fotos | igual (`orderCardsOf`, 3 fotos) | igual |
-| Cubicaje | «Cubicaje ›» al pie | «Cubicaje» abre la ficha del pedido | igual |
-| Sin despachos | caja «Sin despachos todavía» | igual | igual |
-| «Crear pedido para este servicio» (móvil) | botón fijo abajo | no va | diferencia justificada: Lilachat no crea pedidos (los crea Portal/Agentes, as-is canal §1) |
-| Barra «SERVICIO ACTIVO» y pestañas repetidas (escritorio) | sí | no va | diferencia justificada: error de Stitch (dos filas de pestañas superpuestas en la captura) |
-
-
-## Revisión de tablet y móvil (19/11, revisor independiente)
-
-Pasa con observaciones. Diferencias por datos que Portal no manda (código PED, «Volquete», totales y contadores: van con las cifras del lote siguiente), por piezas de la pantalla actual que se conservan («Etapas · X de N», «Generar informe de servicio») y por inventos de Stitch (tarjetas de resumen de Informes, «Total emitidos», «Nueva carpeta», ⌘K). En el teléfono el estado y el PDF del informe bajan bajo el título para que no se corte (6accd568).
-
-
-## Revisión tras el lote de José (20/11, revisor independiente)
-
-Pasa con observaciones en Servicios (escritorio y móvil), Mapa, hoja del Drive y Pendientes. Cifras, «N etapas» y último movimiento salen «—» u ocultos hasta que se desplieguen Portal y Agentes (ramas `feat/service-counts-lilachat`). Diferencias justificadas: «Drive del cliente», el kicker «SERVICIO 01 · VIAL», la escala y la brújula del mapa, «Requeridos para faena» y «Agregar nueva tarea» los dibujó Stitch sin pedido ni dato; «Enlace del servicio», chips de días, «Trabajo» y «Registrar avance» son de la pantalla actual (memoria «Rediseño conserva lo de la pantalla actual»). Pendiente menor: «Compartir» en la hoja del Drive solo aparece donde el navegador lo soporta.
+| Volver, título, estado, avance, «Enlace del servicio» | sí | igual; el enlace abre su hoja (755c4767) | igual |
+| Pestañas con conteo | Pedidos 2, Informes 3, Drive 58 | Pedidos e Informes con conteo; Drive sin número | diferencia justificada: Portal no manda el conteo del Drive con el servicio |
+| Código «PED-…», producto y destino del pedido | sí | «Pedido», m³, fecha, despachos | diferencia justificada: Portal no manda código ni producto en el detalle del servicio |
+| Despachos: camión, placa, m³, hora | sí | igual | igual |
+| Fotos y videos del despacho | tres botones por fila | miniaturas con «+N» y visor con todo (755c4767); en la captura no hay fotos | diferencia justificada: José 20/11 pidió ver todas las fotos del despacho; el rediseño lo dibuja |
+| «Cubicaje ›» | sí | sale solo con despachos cubicados; sin datos en la captura | igual |
+| «Pedidos asociados (2) · Total», avance m³ de m³ y «Crear pedido para este servicio» | sí | no | diferencia justificada: los pedidos se crean en Portal; el total va en el rediseño 20/11 |
+| Bloque «Etapas · 1 de 5» | no | sí | diferencia justificada: memoria de José «el rediseño conserva lo de la pantalla actual» (etapas) |
+| Banda «Servicio activo · En progreso» y cabecera «Activo · miembros» | sí | el estado va junto al título | diferencia justificada: el mismo dato una sola vez |

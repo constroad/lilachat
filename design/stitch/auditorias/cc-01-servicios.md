@@ -7,7 +7,7 @@ Captura: design/stitch/capturas/cc-01-impl-tablet.jpg (tablet, web local con la 
 Captura: design/stitch/capturas/cc-01-impl-movil.jpg (móvil, web local con la API de producción, tema oscuro)
 Revisor: subagente independiente (solo vio las imágenes de Stitch y de la implementación; 19/11).
 Veredicto del revisor: no pasa: la tarjeta no trae pedidos, informes, etapas ni último movimiento (Portal no los mandaba). José 19/11: «Portal manda las cifras»; Portal y Agentes ya los mandan en sus ramas y la tarjeta en columnas va en el lote siguiente.
-Fecha: 2026-11-20 00:40 (E2E en web a 1440, 1024 y 390 px; main d9aa2e91)
+Fecha: 2026-11-20 01:30 (E2E del lote 2 en web a 1440 y 390 px; main f217270b)
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |
@@ -22,3 +22,8 @@ Fecha: 2026-11-20 00:40 (E2E en web a 1440, 1024 y 390 px; main d9aa2e91)
 | Bloque de pendientes (móvil) | «PENDIENTES · 3» con borde de alerta, tarea, «Ver en Checklist ›» | igual (`PendingBlock`, 3 tareas, `pendingPreview`) | igual |
 | Enlace del servicio en la tarjeta | no | botón «Enlace del servicio» bajo la tarjeta | diferencia justificada: José 31/10 (as-is canal §2) y memoria «Rediseño conserva lo de la pantalla actual» |
 | Medidas (radio, borde, padding) | tarjeta 16 px de radio, borde 1 px | rounded-2xl (16 px), borde 1 px, p-4 | diferencia justificada: medido por el revisor independiente, igual de forma y algo más compacto en tema oscuro |
+
+
+## Revisión tras el lote de José (20/11, revisor independiente)
+
+Pasa con observaciones en Servicios (escritorio y móvil), Mapa, hoja del Drive y Pendientes. Cifras, «N etapas» y último movimiento salen «—» u ocultos hasta que se desplieguen Portal y Agentes (ramas `feat/service-counts-lilachat`). Diferencias justificadas: «Drive del cliente», el kicker «SERVICIO 01 · VIAL», la escala y la brújula del mapa, «Requeridos para faena» y «Agregar nueva tarea» los dibujó Stitch sin pedido ni dato; «Enlace del servicio», chips de días, «Trabajo» y «Registrar avance» son de la pantalla actual (memoria «Rediseño conserva lo de la pantalla actual»). Pendiente menor: «Compartir» en la hoja del Drive solo aparece donde el navegador lo soporta.

@@ -7,7 +7,7 @@ Captura: design/stitch/capturas/cc-04-impl-tablet.jpg (tablet, web local con la 
 Captura: design/stitch/capturas/cc-04-impl-movil.jpg (móvil, web local con la API de producción, tema oscuro)
 Revisor: subagente independiente (solo vio las imágenes de Stitch y de la implementación; 19/11).
 Veredicto del revisor: pasa con observaciones: partidas con color e interruptor verificadas (al apagar la carpeta aparece la imprimación); en tablet con la lista abierta el panel va detrás de «Capas»; «Hasta hoy», «Trabajo» y los chips de fecha son de la pantalla actual.
-Fecha: 2026-11-20 00:40 (E2E en web a 1440, 1024 y 390 px; main d9aa2e91)
+Fecha: 2026-11-20 01:30 (E2E del lote 2 en web a 1440 y 390 px; main f217270b)
 
 | Elemento | Stitch | Implementación | Estado |
 | --- | --- | --- | --- |
@@ -24,3 +24,8 @@ Fecha: 2026-11-20 00:40 (E2E en web a 1440, 1024 y 390 px; main d9aa2e91)
 | Tarjeta de un dibujo | área, nota, fotos antes/corte, Cerrar | la tarjeta existente (`MapCardView`) | igual |
 | Partidas y colores reales | tres partidas inventadas | las del mapa de Portal | diferencia justificada: INVENTARIO § cc (PROPUESTA) |
 | Encuadre inicial | el tramo de la obra entero a la vista | calles, dibujos y observaciones del servicio juntos, con un tamaño mínimo (`workMapView` › `frameOf`) | igual (José 19/11, E2E OBRA GRAU) |
+
+
+## Revisión tras el lote de José (20/11, revisor independiente)
+
+Pasa con observaciones en Servicios (escritorio y móvil), Mapa, hoja del Drive y Pendientes. Cifras, «N etapas» y último movimiento salen «—» u ocultos hasta que se desplieguen Portal y Agentes (ramas `feat/service-counts-lilachat`). Diferencias justificadas: «Drive del cliente», el kicker «SERVICIO 01 · VIAL», la escala y la brújula del mapa, «Requeridos para faena» y «Agregar nueva tarea» los dibujó Stitch sin pedido ni dato; «Enlace del servicio», chips de días, «Trabajo» y «Registrar avance» son de la pantalla actual (memoria «Rediseño conserva lo de la pantalla actual»). Pendiente menor: «Compartir» en la hoja del Drive solo aparece donde el navegador lo soporta.

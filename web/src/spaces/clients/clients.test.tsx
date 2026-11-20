@@ -124,6 +124,27 @@ describe('a client channel (design f-03)', () => {
     expect(onFocused).toHaveBeenCalledTimes(1);
   });
 
+  it('a service id (agentes, 20/11: «Ver en Lilachat») opens it straight away, with no records lookup', () => {
+    // Arrange
+    const onServiceFocused = vi.fn();
+    const target = { jwt: 'j', spaceId: 'sp', clientId: 'x' };
+    // Act
+    render(<ClientServices client={client('x', { services: [inProgress] })} records={null} target={target} focusServiceId="s1" onServiceFocused={onServiceFocused} />);
+    // Assert
+    expect(screen.getByTestId('detalle-servicio')).toBeInTheDocument();
+    expect(onServiceFocused).toHaveBeenCalledTimes(1);
+  });
+
+  it('an unknown service id stays on the list of services', () => {
+    // Arrange
+    const onServiceFocused = vi.fn();
+    // Act
+    render(<ClientServices client={client('x', { services: [inProgress] })} records={null} target={{ jwt: 'j', spaceId: 'sp', clientId: 'x' }} focusServiceId="no-existe" onServiceFocused={onServiceFocused} />);
+    // Assert
+    expect(screen.queryByTestId('detalle-servicio')).toBeNull();
+    expect(onServiceFocused).toHaveBeenCalledTimes(1);
+  });
+
   it('a card with no order among the records stays on the list of services', () => {
     // Arrange
     const onFocused = vi.fn();

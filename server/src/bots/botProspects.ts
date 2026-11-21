@@ -1,11 +1,11 @@
 import { model, Schema, Types } from 'mongoose';
 import { keepConfirmedFields, PROSPECT_ID, PROSPECTS_SCOPE, prospectChannelName, shownProspectPhone, validateProspectInsight, validateProspectState, type IgnoredField, type LossReason, type NextActionKind, type ProspectAuthor, type ProspectInsight, type ProspectOutcome, type ProspectState } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
-import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { noticeChannelJoined } from '../workspaceNotices.js';
 import type { BotInstallation } from './botModels.js';
 import { botOfUser } from './botRegistry.js';
 import { announceProspects } from './prospectAnnounce.js';
+import { activeMemberIds, addMissingMembers } from './botSpaceMembers.js';
 
 /**
  * Dali's prospects (BOTS-API §c-prospectos, José via agentes 16/11): one PRIVATE channel per person who
@@ -89,22 +89,6 @@ const fail = (status: ProspectsError['status'], error: string, message: string):
 const isDuplicateKey = (error: unknown) => (error as { code?: number })?.code === 11000;
 const NOT_GRANTED = fail(403, 'missing_scope', `La instalación no aceptó ${PROSPECTS_SCOPE}: un admin tiene que tocar «Reinstalar».`);
 const toWire = (doc: Pick<ProspectChannel, 'prospectId' | 'chatId' | 'attendedBy'>, name: string) => ({ id: doc.prospectId, channel: { id: String(doc.chatId), name }, attended_by: doc.attendedBy });
-
-async function activeMemberIds(workspaceId: Types.ObjectId): Promise<Types.ObjectId[]> {
-  const members = await WorkspaceMemberModel.find({ workspaceId, status: 'active' }).select('userId').lean();
-  return members.flatMap((member) => (member.userId ? [member.userId] : []));
-}
-
-/** A member who joined the space after the channel was born enters with the next PUT. */
-async function addMissingMembers(installation: Installation, chatId: Types.ObjectId): Promise<void> {
-  const chat = await ChatModel.findById(chatId).select('members.userId').lean();
-  if (!chat) return;
-  const inside = new Set(chat.members.map((member) => String(member.userId)));
-  const missing = (await activeMemberIds(installation.workspaceId)).filter((userId) => !inside.has(String(userId)));
-  if (!missing.length) return;
-  await ChatModel.updateOne({ _id: chatId }, { $push: { members: { $each: missing.map((userId) => ({ userId, role: 'member' })) } } });
-  missing.forEach((userId) => noticeChannelJoined(userId, chatId));
-}
 
 async function createProspectChat(installation: Installation, prospectId: string, name: string): Promise<{ chatId: Types.ObjectId; members: Types.ObjectId[] }> {
   const members = await activeMemberIds(installation.workspaceId);

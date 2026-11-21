@@ -1,9 +1,9 @@
 import { model, Schema, Types } from 'mongoose';
 import { WHATSAPP_ID } from '@lilachat/shared';
 import { ChatModel } from '../chatModels.js';
-import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { noticeChannelJoined } from '../workspaceNotices.js';
 import type { BotInstallation } from './botModels.js';
+import { activeMemberIds, addMissingMembers } from './botSpaceMembers.js';
 
 /**
  * A WhatsApp group mirrored into Dali's Chats tab (fase 1, agentes 20/11): `PUT /api/bots/whatsapp/:waId`
@@ -40,22 +40,6 @@ const isDuplicateKey = (error: unknown) => (error as { code?: number })?.code ==
 
 function toWire(doc: Pick<WhatsappChannel, 'waId' | 'chatId' | 'title'>) {
   return { whatsapp_id: doc.waId, channel: { id: String(doc.chatId), name: doc.title } };
-}
-
-async function activeMemberIds(workspaceId: Types.ObjectId): Promise<Types.ObjectId[]> {
-  const members = await WorkspaceMemberModel.find({ workspaceId, status: 'active' }).select('userId').lean();
-  return members.flatMap((member) => (member.userId ? [member.userId] : []));
-}
-
-/** A member who joined the space after the channel was born enters with the next PUT. */
-async function addMissingMembers(installation: Installation, chatId: Types.ObjectId): Promise<void> {
-  const chat = await ChatModel.findById(chatId).select('members.userId').lean();
-  if (!chat) return;
-  const inside = new Set(chat.members.map((member) => String(member.userId)));
-  const missing = (await activeMemberIds(installation.workspaceId)).filter((userId) => !inside.has(String(userId)));
-  if (!missing.length) return;
-  await ChatModel.updateOne({ _id: chatId }, { $push: { members: { $each: missing.map((userId) => ({ userId, role: 'member' })) } } });
-  missing.forEach((userId) => noticeChannelJoined(userId, chatId));
 }
 
 async function createWhatsappChat(installation: Installation, waId: string, title: string): Promise<{ chatId: Types.ObjectId; members: Types.ObjectId[] }> {

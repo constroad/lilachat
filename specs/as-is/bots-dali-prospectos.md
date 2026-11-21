@@ -103,7 +103,9 @@ remitentes posibles, así que cada mensaje trae el suyo.
 
 - `DaliSpace.tsx`: cabecera de una fila con la barra **Bandeja · Chats · Embudo · Panel · Revisión** y el
   botón «Lo que Dali sabe». Bandeja y Chats son maestro-detalle: lista de 380 px, conversación y (solo en
-  Bandeja) ficha desde 1280 px.
+  Bandeja) ficha desde 1280 px. Un punto en Bandeja/Chats (20/11, vía agentes: «ninguna marca cuando llegan
+  mensajes nuevos») cuando esa pestaña tiene algo sin leer — `daliTabUnread` (`prospectBoard.ts`), mismo
+  corte que `daliChatSections` pero sumando `chat.unread`; sin nada sin leer, ningún punto (igual en el APK).
 - `DaliInbox.tsx` + `ProspectRow.tsx`: Míos · Sin asignar · Todos, filtro por servicio, «Seguimientos de hoy»,
   tres secciones (Atender ahora, En seguimiento, Dali conversando) y «Solo consultas».
 - `DaliChats.tsx` (20/11, pedido vía agentes): la pestaña Chats — los chats del equipo y un prospecto que
@@ -197,7 +199,13 @@ remitentes posibles, así que cada mensaje trae el suyo.
   no se recupera es el historial de mensajes de WhatsApp llegados mientras la sesión estaba caída (Baileys
   no lo trae). Implementado fase 1 (texto solo): canal, target, autor por mensaje reusando `Message.prospect`,
   `channel.whatsapp_id` en `message.created`, sección «Grupos de WhatsApp» en Chats (web y APK).
-  Sin publicar: local en `main`, sin push ni OTA hasta que José lo pida.
+  Publicado el mismo día (José: «publícalo»): push a `main` (`73e262fb`, server) — sin OTA todavía (fase 1
+  no toca el APK más allá de la UI de Chats, que necesita su propio release para llegar a los teléfonos).
+- **20/11** El punto de no leídos en Bandeja/Chats (agentes, a nombre de José: «ninguna marca cuando llegan
+  mensajes nuevos»). El cálculo del server (`unreadCount`) ya contaba bien los mensajes `as_contact` del
+  bot — un test lo confirmó — así que no era un bug de conteo: faltaba el aviso en la pestaña misma. Se
+  agregó un punto (`daliTabUnread`) en Bandeja y en Chats cuando esa pestaña tiene algo sin leer; sin nada
+  sin leer, ningún punto. `ProspectRow` y `FilaDeChat` ya mostraban el contador POR FILA (sin tocar).
 
 ## 5. Diseños de Stitch relacionados
 
@@ -262,13 +270,14 @@ Lo que Stitch inventó y no va está listado en la spec (fase 2, pantallas de la
 - Shared: `bots.test.ts` (46, +8 de `whatsapp`/`as_contact` por mensaje, fase 1/20·11),
   `prospects.test.ts` (23, +2 de `source.platform`/20·11 y +1 de `authorKeyOf` sin `phone`/20·11),
   `prospectInsight.test.ts` (9), `prospectSeller.test.ts` (6),
-  `prospectBoard.test.ts` (29, +4 de `isSalesProspect`, +1 de `platform` y +2 de `daliChatSections`/20·11), `prospectPanel.test.ts` (6),
+  `prospectBoard.test.ts` (31, +4 de `isSalesProspect`, +1 de `platform`, +2 de `daliChatSections` y +2 de
+  `daliTabUnread`/20·11), `prospectPanel.test.ts` (6),
   `prospectSheet.test.ts` (43, +1 de `originLineOf`/20·11), `prospectChange.test.ts` (4), `prospectFieldConfirm.test.ts` (4),
   `prospectFieldGeo.test.ts` (6), `prospectFigures.test.ts` (17), `prospectFollowUpCards.test.ts` (14),
   `prospectFunnelView.test.ts` (12), `prospectInboxRows.test.ts` (20), `prospectPlan.test.ts` (11),
   `prospectReview.test.ts` (7), `daliKnowledge.test.ts` (8), `daliTeach.test.ts` (9).
 - Web: `web/src/spaces/dali/DaliInbox.test.tsx` (7), `DaliChats.test.tsx` (4, 20/11: +2 de grupos de WhatsApp fase 1),
-  `ProspectChat.test.tsx` (7), `DaliPanel.test.tsx` (3), `DaliHeader.test.tsx` (5),
+  `ProspectChat.test.tsx` (7), `DaliPanel.test.tsx` (3), `DaliHeader.test.tsx` (6, 20/11: +1 del punto de no leídos),
   `ClientDocumentsCard.test.tsx` (3), `DocumentFieldRow.test.tsx` (4).
   También `web/src/chat/BurbujaDeMensaje.person.test.tsx` y `filasDeLaConversacion.test.ts` (según spec).
 - APK: sin tests unitarios en `app/src/spaces/dali/`. La lógica está en `shared/`. Verificado.

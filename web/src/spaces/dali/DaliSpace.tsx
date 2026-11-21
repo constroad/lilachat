@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { BookOpen, MessagesSquare } from 'lucide-react';
-import { daliChatSections, type ClientWorkspace, type ProspectView } from '@lilachat/shared';
+import { daliChatSections, daliTabUnread, type ClientWorkspace, type DaliTabUnread, type ProspectView } from '@lilachat/shared';
 import type { ChatAction } from '../../chat/menuDelChat';
 import type { ChatSummary } from '../../chat/types';
 import { NewVersionBand } from '../../ui/NewVersionBand';
@@ -85,6 +85,7 @@ export function DaliSpace(props: Props) {
   const list = prospects.list;
   const selectedProspect = useMemo(() => list?.prospects.find((one) => one.chatId === props.selectedChatId) ?? null, [list, props.selectedChatId]);
   const chatSections = useMemo(() => daliChatSections(props.chats ?? [], list?.prospects ?? []), [props.chats, list]);
+  const tabUnread = useMemo(() => daliTabUnread(props.chats ?? [], list?.prospects ?? []), [props.chats, list]);
   const openProspectChat = (prospect: ProspectView) => {
     setSide(null);
     if (tab !== 'inbox') setTab('inbox');
@@ -95,7 +96,7 @@ export function DaliSpace(props: Props) {
 
   return (
     <div data-testid="espacio-dali" className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col bg-background">
-      <DaliHeader {...props} tab={tab} onTab={setTab} onKnowledge={() => setSide({ kind: 'knowledge' })} />
+      <DaliHeader {...props} tab={tab} unread={tabUnread} onTab={setTab} onKnowledge={() => setSide({ kind: 'knowledge' })} />
       <div className="relative flex min-h-0 flex-1">
         {tab === 'inbox' || tab === 'chats' ? (
           <InboxTab {...props} tab={tab} directChats={chatSections.directs} whatsappGroups={chatSections.whatsappGroups} prospects={prospects} me={me} now={now} service={service} onService={setService} selectedProspect={selectedProspect} sheetProps={sheetProps} onFollowUps={() => setSide({ kind: 'followups' })} />
@@ -118,7 +119,7 @@ export function DaliSpace(props: Props) {
   );
 }
 
-type HeaderProps = Pick<Props, 'space' | 'phone' | 'onSwitch' | 'onWorkspace' | 'elsewhere'> & { tab: DaliTab; onTab: (tab: DaliTab) => void; onKnowledge: () => void };
+type HeaderProps = Pick<Props, 'space' | 'phone' | 'onSwitch' | 'onWorkspace' | 'elsewhere'> & { tab: DaliTab; unread: DaliTabUnread; onTab: (tab: DaliTab) => void; onKnowledge: () => void };
 
 /**
  * On a computer ONE row: the title, the tabs and «Lo que Dali sabe» (José 17/11: the title on one row and the tabs on
@@ -139,7 +140,7 @@ export function DaliHeader(props: HeaderProps) {
     return (
       <header className="shrink-0 border-b border-outline/15 bg-surface">
         <div data-testid="fila-cabecera-dali" className="flex items-center gap-3 px-4 pt-3">{title}{knowledge}</div>
-        <DaliTabs value={props.tab} onChange={props.onTab} phone />
+        <DaliTabs value={props.tab} unread={props.unread} onChange={props.onTab} phone />
         {versionBand}
       </header>
     );
@@ -149,7 +150,7 @@ export function DaliHeader(props: HeaderProps) {
       <div data-testid="fila-cabecera-dali" className="flex h-16 items-center gap-5 px-4">
         <div className="min-w-0 max-w-[360px] shrink">{title}</div>
         <span aria-hidden className="h-8 w-px shrink-0 bg-outline/20" />
-        <DaliTabs value={props.tab} onChange={props.onTab} />
+        <DaliTabs value={props.tab} unread={props.unread} onChange={props.onTab} />
         {knowledge}
       </div>
       {versionBand}
@@ -157,15 +158,23 @@ export function DaliHeader(props: HeaderProps) {
   );
 }
 
-/** Bandeja · Embudo · Panel · Revisión: the open one underlined in the accent, on the header's bottom edge. */
-function DaliTabs({ value, onChange, phone }: { value: DaliTab; onChange: (tab: DaliTab) => void; phone?: boolean }) {
+const TAB_UNREAD: Partial<Record<DaliTab, keyof DaliTabUnread>> = { inbox: 'inbox', chats: 'chats' };
+
+/** Bandeja · Embudo · Panel · Revisión: the open one underlined in the accent, on the header's bottom edge.
+ *  A dot on Bandeja/Chats (José 20/11, via agentes) when either has something unread. */
+function DaliTabs({ value, unread, onChange, phone }: { value: DaliTab; unread: DaliTabUnread; onChange: (tab: DaliTab) => void; phone?: boolean }) {
   return (
     <nav role="tablist" aria-label="Secciones de Dali" className={phone ? 'mt-2 flex px-2' : 'flex h-full shrink-0 items-stretch'}>
-      {TABS.map((tab) => (
-        <button key={tab.key} type="button" role="tab" data-testid={`pestana-${tab.key}`} aria-selected={value === tab.key} onClick={() => onChange(tab.key)} className={`${phone ? 'h-11 min-w-0 flex-1' : 'h-full'} border-b-2 px-3 text-[14px] font-semibold ${value === tab.key ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
-          {tab.label}
-        </button>
-      ))}
+      {TABS.map((tab) => {
+        const key = TAB_UNREAD[tab.key];
+        const hasUnread = key !== undefined && unread[key] > 0;
+        return (
+          <button key={tab.key} type="button" role="tab" data-testid={`pestana-${tab.key}`} aria-selected={value === tab.key} onClick={() => onChange(tab.key)} className={`relative ${phone ? 'h-11 min-w-0 flex-1' : 'h-full'} border-b-2 px-3 text-[14px] font-semibold ${value === tab.key ? 'border-primary text-primary' : 'border-transparent text-on-surface-variant hover:text-on-surface'}`}>
+            {tab.label}
+            {hasUnread ? <span data-testid={`sin-leer-${tab.key}`} aria-label="Hay mensajes sin leer" className="absolute right-1 top-2 h-2 w-2 rounded-full bg-primary" /> : null}
+          </button>
+        );
+      })}
     </nav>
   );
 }

@@ -110,6 +110,25 @@ export function daliChatSections<T extends DaliChatRef>(chats: readonly T[], pro
   return { directs, whatsappGroups };
 }
 
+export type DaliTabUnread = { inbox: number; chats: number };
+
+/**
+ * A small mark on the Bandeja/Chats tabs (José 20/11, via agentes: «ninguna marca, punto o contador,
+ * cuando llegan mensajes nuevos»): a sales prospect's unread counts for Bandeja, everything else
+ * `daliChatSections` would show in Chats (direct chats, WhatsApp groups) counts for Chats.
+ */
+export function daliTabUnread(chats: readonly (DaliChatRef & { unread: number })[], prospects: readonly Pick<ProspectView, 'chatId' | 'listing'>[]): DaliTabUnread {
+  const prospectOfChat = new Map(prospects.map((prospect) => [prospect.chatId, prospect]));
+  let inbox = 0;
+  let chatsUnread = 0;
+  for (const chat of chats) {
+    const prospect = prospectOfChat.get(chat.id);
+    if (!chat.whatsapp && prospect && isSalesProspect(prospect)) inbox += chat.unread;
+    else chatsUnread += chat.unread;
+  }
+  return { inbox, chats: chatsUnread };
+}
+
 /** The stage on screen: the result a seller marked wins over agentes' stage; reopening brings agentes' back. */
 export const shownStageOf = (prospect: Pick<ProspectView, 'stage' | 'result'>): ProspectStage => prospect.result?.outcome ?? prospect.stage ?? 'missing_info';
 

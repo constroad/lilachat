@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { BookOpen } from 'lucide-react-native';
-import { daliChatSections, type ClientWorkspace, type ProspectView } from '@lilachat/shared';
+import { daliChatSections, daliTabUnread, type ClientWorkspace, type DaliTabUnread, type ProspectView } from '@lilachat/shared';
 import type { ChatSummary } from '../../api/client';
 import { openChatNow } from '../../chat/openChatNow';
 import { useColores } from '../../ui/tema';
@@ -126,6 +126,7 @@ export function DaliSpace(props: Props) {
   const me = prospects.list?.me ?? props.myUserId;
   const list = prospects.list;
   const chatSections = useMemo(() => daliChatSections(chats ?? [], list?.prospects ?? []), [chats, list]);
+  const tabUnread = useMemo(() => daliTabUnread(chats ?? [], list?.prospects ?? []), [chats, list]);
   const openConversation = async (prospect: ProspectView) => {
     setOverlay(null);
     const chat = chats?.find((one) => one.id === prospect.chatId) ?? (await findSpaceChat(jwt, space.id, prospect.chatId));
@@ -137,7 +138,7 @@ export function DaliSpace(props: Props) {
 
   return (
     <View testID="espacio-dali" className="flex-1 bg-background">
-      <DaliTabs value={tab} onChange={setTab} />
+      <DaliTabs value={tab} unread={tabUnread} onChange={setTab} />
       {tab === 'inbox' ? (
         <DaliInbox
           list={list}
@@ -199,12 +200,19 @@ function LoadFailed({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-/** Under the shell's header, the space's own tabs (dl-01 v3): the active one underlined in the accent. */
-function DaliTabs({ value, onChange }: { value: DaliTab; onChange: (tab: DaliTab) => void }) {
+const TAB_UNREAD: Partial<Record<DaliTab, keyof DaliTabUnread>> = { inbox: 'inbox', chats: 'chats' };
+
+/**
+ * Under the shell's header, the space's own tabs (dl-01 v3): the active one underlined in the accent.
+ * A dot on Bandeja/Chats (José 20/11, via agentes) when either has something unread.
+ */
+function DaliTabs({ value, unread, onChange }: { value: DaliTab; unread: DaliTabUnread; onChange: (tab: DaliTab) => void }) {
   return (
     <View accessibilityRole="tablist" className="flex-row border-b border-outline/15 bg-surface">
       {TABS.map((tab) => {
         const active = tab.key === value;
+        const unreadKey = TAB_UNREAD[tab.key];
+        const hasUnread = unreadKey !== undefined && unread[unreadKey] > 0;
         return (
           <Pressable
             key={tab.key}
@@ -212,11 +220,12 @@ function DaliTabs({ value, onChange }: { value: DaliTab; onChange: (tab: DaliTab
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             onPress={() => onChange(tab.key)}
-            className={`min-h-[48px] flex-1 items-center justify-center border-b-2 ${active ? 'border-primary' : 'border-transparent'}`}
+            className={`min-h-[48px] flex-1 flex-row items-center justify-center gap-1.5 border-b-2 ${active ? 'border-primary' : 'border-transparent'}`}
           >
             <Text numberOfLines={1} className={`text-[15px] ${active ? 'font-bold text-primary' : 'font-medium text-on-surface-variant'}`}>
               {tab.label}
             </Text>
+            {hasUnread ? <View testID={`sin-leer-${tab.key}`} accessibilityLabel="Hay mensajes sin leer" className="h-2 w-2 rounded-full bg-primary" /> : null}
           </Pressable>
         );
       })}

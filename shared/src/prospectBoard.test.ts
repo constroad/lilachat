@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { daliChatSections, funnelOf, followUpsOf, inboxOf, inboxSectionOf, isSalesProspect, lacksNextAction, levelOf, missingLabelsOf, originOf, overdueOf, shownStageOf, type ProspectView } from './prospectBoard.js';
+import { daliChatSections, daliTabUnread, funnelOf, followUpsOf, inboxOf, inboxSectionOf, isSalesProspect, lacksNextAction, levelOf, missingLabelsOf, originOf, overdueOf, shownStageOf, type ProspectView } from './prospectBoard.js';
 
 /** Dali's inbox and funnel (dl-01, dl-08, BOTS-API «Fase 2: contrato»): every rule is code, never data. */
 const now = new Date('2026-11-17T15:00:00.000Z'); // 10:00 in Lima
@@ -163,6 +163,26 @@ describe('daliChatSections', () => {
   it('with no chats or no prospects, both sections are empty or plain, never a throw', () => {
     expect(daliChatSections([], [])).toEqual({ directs: [], whatsappGroups: [] });
     expect(daliChatSections([{ id: 'c1' }], [])).toEqual({ directs: [{ id: 'c1' }], whatsappGroups: [] });
+  });
+});
+
+describe('daliTabUnread', () => {
+  const prospect = (chatId: string, listing?: 'prospect' | 'chat') => ({ id: chatId, chatId, listing }) as Pick<ProspectView, 'id' | 'chatId' | 'listing'>;
+
+  it('sums a sales prospect\'s unread into Bandeja, and a direct chat or WhatsApp group\'s into Chats (José 20/11, via agentes: ni la pestaña ni la bandeja marcaban nada)', () => {
+    const chats = [
+      { id: 'c1', unread: 3 }, // a direct chat (no prospect record)
+      { id: 'c2', unread: 2 }, // a sales prospect
+      { id: 'c3', unread: 5, whatsapp: true as const }, // a WhatsApp group
+      { id: 'c4', unread: 1 }, // a prospect marked as a direct chat
+    ];
+    const prospects = [prospect('c2', 'prospect'), prospect('c4', 'chat')];
+    expect(daliTabUnread(chats, prospects)).toEqual({ inbox: 2, chats: 3 + 5 + 1 });
+  });
+
+  it('with nothing unread, both tabs read zero', () => {
+    expect(daliTabUnread([], [])).toEqual({ inbox: 0, chats: 0 });
+    expect(daliTabUnread([{ id: 'c1', unread: 0 }], [])).toEqual({ inbox: 0, chats: 0 });
   });
 });
 

@@ -29,6 +29,7 @@ let jose: Types.ObjectId;
 let ana: Types.ObjectId;
 let spaceId: Types.ObjectId;
 const asJose = asUser(() => jose);
+const asAna = asUser(() => ana);
 
 beforeAll(async () => {
   mongo = await startTestMongo();
@@ -124,6 +125,15 @@ describe('POST /api/bots/messages to a WhatsApp group', () => {
     expect(first).toMatchObject({ body: 'Buenos días', prospect: { name: 'Juan Pérez', phone: '51987654321' } });
     expect(second).toMatchObject({ body: 'Hola a todos', prospect: { name: 'Ana López' } });
     expect(second!.prospect).not.toHaveProperty('phone');
+  });
+
+  it('a message of a WhatsApp group (or a prospect) counts as unread for every other member (José 20/11, via agentes)', async () => {
+    const token = await installApp();
+    await putWhatsapp(token, { title: 'Obra Lomas' }).expect(201);
+    await post(token, { whatsapp: GROUP, as_contact: { name: 'Juan Pérez', phone: '51987654321' }, text: 'Buenos días', idempotency_key: 'wamid.1' }).expect(201);
+    const listed = await request(app).get(`/api/chats?workspace=${spaceId}`).set(asAna).expect(200);
+    const chat = listed.body.chats.find((one: { whatsapp?: true }) => one.whatsapp);
+    expect(chat.unread).toBeGreaterThan(0);
   });
 
   it('without as_contact the message has no author override; a group never sent is 404', async () => {

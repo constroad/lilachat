@@ -13,9 +13,9 @@ afterEach(() => {
 
 const SPACE: ClientWorkspace = { id: 'w-dali', name: 'Dali', joinPolicy: 'approval', role: 'owner', status: 'active', members: 3, unreadChats: 0, prospects: true };
 
-function renderHeader(phone: boolean) {
+function renderHeader(phone: boolean, unread: { inbox: number; chats: number } = { inbox: 0, chats: 0 }) {
   const onTab = vi.fn();
-  render(<DaliHeader space={SPACE} phone={phone} tab="inbox" onTab={onTab} onKnowledge={vi.fn()} onSwitch={vi.fn()} onWorkspace={vi.fn()} />);
+  render(<DaliHeader space={SPACE} phone={phone} tab="inbox" unread={unread} onTab={onTab} onKnowledge={vi.fn()} onSwitch={vi.fn()} onWorkspace={vi.fn()} />);
   return { onTab };
 }
 
@@ -54,5 +54,15 @@ describe('DaliHeader', () => {
   it('shows nothing extra when there is no new version', () => {
     renderHeader(true);
     expect(screen.queryByTestId('banda-version-nueva')).toBeNull();
+  });
+
+  it('marks Bandeja or Chats with a dot when either has something unread (José 20/11, via agentes); without any, neither shows one', () => {
+    renderHeader(false, { inbox: 2, chats: 0 });
+    expect(screen.queryByTestId('sin-leer-inbox')).toBeTruthy();
+    expect(screen.queryByTestId('sin-leer-chats')).toBeNull();
+    cleanup();
+    renderHeader(false, { inbox: 0, chats: 0 });
+    expect(screen.queryByTestId('sin-leer-inbox')).toBeNull();
+    expect(screen.queryByTestId('sin-leer-chats')).toBeNull();
   });
 });

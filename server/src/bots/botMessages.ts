@@ -11,6 +11,7 @@ import { BotInstallationModel, type BotInstallation } from './botModels.js';
 import { channelOfPostedTopic } from './botTopics.js';
 import { chatOfClient } from './botClients.js';
 import { chatOfProspect, noteDaliPost } from './botProspects.js';
+import { chatOfWhatsapp } from './botWhatsapp.js';
 import { personOf } from './botTriggers.js';
 
 /**
@@ -62,6 +63,7 @@ async function resolveChat(installation: Installation, target: BotPost['target']
     return 'chatId' in found ? found.chatId : found;
   }
   if ('client' in target) return chatOfClient(installation, target.client);
+  if ('whatsapp' in target) return chatOfWhatsapp(installation, target.whatsapp);
   if ('topic' in target) {
     const channelId = await channelOfPostedTopic(installation, target.topic);
     return typeof channelId === 'string' ? chatOfChannel(installation, channelId) : channelId;
@@ -81,12 +83,23 @@ export async function assigneesOf(installation: Pick<Installation, 'workspaceId'
   return byPhone;
 }
 
-/** `as_contact` (Dali, §c-prospectos): the prospect is the author shown, with the hour they wrote on WhatsApp. */
-async function prospectAuthorOf(installation: Installation, post: BotPost): Promise<Message['prospect'] | undefined> {
-  if (!post.asContact || !('prospect' in post.target)) return undefined;
-  const found = await chatOfProspect(installation, post.target.prospect);
+/** `as_contact` to a prospect (Dali, §c-prospectos): its identity is fixed, read from the channel. */
+async function prospectAuthorOf(installation: Installation, target: { prospect: string }, asContact: NonNullable<BotPost['asContact']>): Promise<Message['prospect'] | undefined> {
+  const found = await chatOfProspect(installation, target.prospect);
   if (!('author' in found)) return undefined;
-  return { ...found.author, ...(post.asContact.sentAt ? { sentAt: post.asContact.sentAt } : {}) };
+  return { ...found.author, ...(asContact.sentAt ? { sentAt: asContact.sentAt } : {}) };
+}
+
+/**
+ * Who wrote THIS message, for Dali's bots that carry someone else's words: a prospect's identity is fixed
+ * on its channel; a WhatsApp group has many possible senders, so `as_contact` carries it per message
+ * (fase 1, agentes 20/11) — `{ name: string; phone?: string; sentAt?: string }`, no DB lookup needed.
+ */
+async function externalAuthorOf(installation: Installation, post: BotPost): Promise<Message['prospect'] | undefined> {
+  if (!post.asContact) return undefined;
+  if ('prospect' in post.target) return prospectAuthorOf(installation, post.target, post.asContact);
+  if ('whatsapp' in post.target && post.asContact.name) return { name: post.asContact.name, ...(post.asContact.phone ? { phone: post.asContact.phone } : {}), ...(post.asContact.sentAt ? { sentAt: post.asContact.sentAt } : {}) };
+  return undefined;
 }
 
 /** One uploaded file as its own message, like a member's (José 17/11): the caption rides on the first one. */
@@ -126,7 +139,7 @@ async function mentionedTextOf(post: BotPost, chatId: Types.ObjectId): Promise<{
 const extraOf = (post: BotPost, prospect: Message['prospect']) => ({ ...(post.clientRef ? { clientRef: post.clientRef } : {}), ...(prospect ? { prospect } : {}) });
 
 async function publishText(installation: Installation, chatId: Types.ObjectId, post: BotPost, sharedBy?: Message['sharedBy'], slot?: UploadSlot): Promise<Message> {
-  const prospect = await prospectAuthorOf(installation, post);
+  const prospect = await externalAuthorOf(installation, post);
   // Mentions only dress the main text, never an upload's caption.
   const mentioned = slot ? undefined : await mentionedTextOf(post, chatId);
   const result = await sendMessage({

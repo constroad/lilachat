@@ -217,3 +217,32 @@ describe('validateBotPost to a Dali prospect (§c-prospectos)', () => {
     expect(result.ok ? '' : result.message).toContain(word);
   });
 });
+
+describe('validateBotPost a un grupo o chat de WhatsApp (fase 1, agentes 20/11)', () => {
+  it('posts to a WhatsApp group by its jid', () => {
+    expect(validateBotPost({ whatsapp: '120363012345678901@g.us', text: 'Hola grupo', idempotency_key: 'w1' })).toEqual({ ok: true, post: { target: { whatsapp: '120363012345678901@g.us' }, text: 'Hola grupo', idempotencyKey: 'w1' } });
+  });
+
+  it('as_contact lleva el nombre y el teléfono de quien escribió ESE mensaje, no uno fijo del canal', () => {
+    const result = validateBotPost({ whatsapp: '120363012345678901@g.us', as_contact: { name: 'Juan Pérez', phone: '51987654321' }, text: 'Cuánto cuesta?', idempotency_key: 'w2' });
+    expect(result).toEqual({ ok: true, post: { target: { whatsapp: '120363012345678901@g.us' }, text: 'Cuánto cuesta?', idempotencyKey: 'w2', asContact: { name: 'Juan Pérez', phone: '51987654321' } } });
+  });
+
+  it('el teléfono y la hora de as_contact son opcionales; el nombre no', () => {
+    const sentAt = '2026-11-20T10:00:00.000Z';
+    expect(validateBotPost({ whatsapp: '51987654321@s.whatsapp.net', as_contact: { name: 'Ana' }, text: 'x', idempotency_key: 'w3' })).toEqual({ ok: true, post: { target: { whatsapp: '51987654321@s.whatsapp.net' }, text: 'x', idempotencyKey: 'w3', asContact: { name: 'Ana' } } });
+    expect(validateBotPost({ whatsapp: '51987654321@s.whatsapp.net', as_contact: { name: 'Ana', sent_at: sentAt }, text: 'x', idempotency_key: 'w4' })).toEqual({ ok: true, post: { target: { whatsapp: '51987654321@s.whatsapp.net' }, text: 'x', idempotencyKey: 'w4', asContact: { name: 'Ana', sentAt } } });
+  });
+
+  it.each([
+    [{ whatsapp: '120363012345678901@g.us', as_contact: true, text: 'x', idempotency_key: 'k' }, 'name'],
+    [{ whatsapp: '120363012345678901@g.us', as_contact: {}, text: 'x', idempotency_key: 'k' }, 'name'],
+    [{ whatsapp: '120363012345678901@g.us', as_contact: { name: 'Ana', sent_at: 'ayer' }, text: 'x', idempotency_key: 'k' }, 'sent_at'],
+    [{ whatsapp: 'no-es-un-jid', text: 'x', idempotency_key: 'k' }, 'whatsapp'],
+    [{ whatsapp: '120363012345678901@g.us', client: 'c1', text: 'x', idempotency_key: 'k' }, 'destino'],
+  ])('refuses %j naming %s', (raw, word) => {
+    const result = validateBotPost(raw);
+    expect(result.ok).toBe(false);
+    expect(result.ok ? '' : result.message).toContain(word);
+  });
+});

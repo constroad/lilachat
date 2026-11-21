@@ -225,6 +225,8 @@ export type ChatSummary = {
   appId?: string;
   /** A Dali prospect's channel (BOTS-API fase 2): the Dali inbox lists it, not the team's chats. */
   prospect?: true;
+  /** A WhatsApp group mirrored into Dali's Chats tab (fase 1, agentes 20/11): its own section there. */
+  whatsapp?: true;
   channel?: { visibility: 'public' | 'private'; /** José 11/11: shared with other spaces. */ shared?: boolean };
   /** José 11/11: a channel of another space shared into this one; it lists under that space's name. */
   sharedFrom?: { workspaceId: string; name: string; logoUrl?: string };

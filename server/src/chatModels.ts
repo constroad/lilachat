@@ -94,6 +94,8 @@ export interface Chat {
   appsRemoved?: Types.ObjectId[];
   /** A Dali prospect's channel (BOTS-API §c-prospectos): agentes' id, sent back in `message.created`. */
   prospectId?: string;
+  /** A WhatsApp group mirrored into Dali (fase 1, agentes 20/11): its jid, sent back as `whatsapp_id`. */
+  whatsappId?: string;
   /** Birthdays on in this chat (pending 17), and the day each member's was announced. */
   birthdaysOn?: boolean;
   birthdayNotices?: Record<string, string>;
@@ -139,7 +141,7 @@ export interface Message {
   /** A message an app posted to a client's channel (pending 21, §157): what it is about. */
   clientRef?: { kind: string; serviceId?: string; recordId?: string; visitId?: string };
   /** The prospect wrote it on WhatsApp and the bot carried it (Dali, §c-prospectos). */
-  prospect?: { name: string; phone: string; sentAt?: string; adTitle?: string };
+  prospect?: { name: string; phone?: string; sentAt?: string; adTitle?: string };
   /**
    * El sobre cifrado, en los chats secretos. Cuando está, `body` NO está: son
    * excluyentes, y guardar los dos anularía el cifrado en la práctica.
@@ -257,6 +259,7 @@ const chatSchema = new Schema<Chat>(
     memberPermissions: { type: { editInfo: Boolean, sendMessages: Boolean, addMembers: Boolean, pinMessages: Boolean, _id: false }, default: undefined },
     appsRemoved: { type: [Schema.Types.ObjectId], default: undefined },
     prospectId: { type: String },
+    whatsappId: { type: String },
     birthdaysOn: { type: Boolean },
     birthdayNotices: { type: Map, of: String, default: undefined },
     birthdayHeadsUps: { type: Map, of: String, default: undefined },

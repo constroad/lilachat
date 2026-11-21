@@ -87,6 +87,29 @@ const isOpen = (prospect: ProspectView): boolean => !prospect.result;
 export const isSalesProspect = (prospect: Pick<ProspectView, 'listing'>): boolean => prospect.listing !== 'chat';
 export const prospectNameOf = (prospect: Pick<ProspectView, 'name' | 'phone'>): string => prospect.name ?? shownProspectPhone(prospect.phone);
 
+/** A chat of the space's Chats tab, from the app/web's own chat summary (only what this needs to sort it). */
+export type DaliChatRef = { id: string; whatsapp?: true };
+export type DaliChatSections<T extends DaliChatRef> = { directs: T[]; whatsappGroups: T[] };
+
+/**
+ * Dali's Chats tab (José 20/11, via agentes): direct 1:1s (the team's, and a direct prospect
+ * `listing:'chat'`) apart from WhatsApp groups (fase 1) — a sales prospect is in neither.
+ */
+export function daliChatSections<T extends DaliChatRef>(chats: readonly T[], prospects: readonly Pick<ProspectView, 'chatId' | 'listing'>[]): DaliChatSections<T> {
+  const prospectOfChat = new Map(prospects.map((prospect) => [prospect.chatId, prospect]));
+  const directs: T[] = [];
+  const whatsappGroups: T[] = [];
+  for (const chat of chats) {
+    if (chat.whatsapp) {
+      whatsappGroups.push(chat);
+      continue;
+    }
+    const prospect = prospectOfChat.get(chat.id);
+    if (!prospect || !isSalesProspect(prospect)) directs.push(chat);
+  }
+  return { directs, whatsappGroups };
+}
+
 /** The stage on screen: the result a seller marked wins over agentes' stage; reopening brings agentes' back. */
 export const shownStageOf = (prospect: Pick<ProspectView, 'stage' | 'result'>): ProspectStage => prospect.result?.outcome ?? prospect.stage ?? 'missing_info';
 

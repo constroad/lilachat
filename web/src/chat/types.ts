@@ -60,6 +60,8 @@ export type ChatSummary = {
   funAllowed?: boolean;
   /** A Dali prospect's channel: the space lists it in its inbox (BOTS-API fase 2). */
   prospect?: true;
+  /** A WhatsApp group mirrored into Dali's Chats tab (fase 1, agentes 20/11): its own section there. */
+  whatsapp?: true;
   /** Birthdays on in this chat (pending 17). */
   birthdaysOn?: boolean;
   muted?: boolean;

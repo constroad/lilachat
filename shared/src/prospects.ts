@@ -20,8 +20,8 @@ const PERU_MOBILE_LENGTH = 11;
 export type ProspectAttendedBy = 'dali' | 'human';
 export type ProspectSource = { kind: 'ctwa'; adId?: string; adTitle?: string; adUrl?: string; platform?: 'instagram' | 'facebook' };
 export type ProspectState = { name?: string; phone: string; lastActivityAt: string; attendedBy: ProspectAttendedBy; source?: ProspectSource; listing?: 'prospect' | 'chat' };
-/** A message the prospect wrote, carried by the bot: who, and when they sent it on WhatsApp. */
-export type ProspectAuthor = { name: string; phone: string; sentAt?: string; adTitle?: string };
+/** A message the prospect wrote, carried by the bot: who, and when they sent it on WhatsApp. `phone` is absent for a WhatsApp group sender whose number WhatsApp hides (a `@lid` contact, fase 1). */
+export type ProspectAuthor = { name: string; phone?: string; sentAt?: string; adTitle?: string };
 
 type Refusal = { ok: false; message: string };
 const refuse = (message: string): Refusal => ({ ok: false, message });
@@ -89,7 +89,8 @@ export function shownProspectPhone(digits: string): string {
 export const prospectChannelName = (state: Pick<ProspectState, 'name' | 'phone'>): string => state.name ?? `Prospecto · ${shownProspectPhone(state.phone)}`;
 
 /** Who a message is from for grouping and the header: the prospect is not the bot that carried their words. */
-export const authorKeyOf = (message: { senderId: string; prospect?: Pick<ProspectAuthor, 'phone'> }): string => (message.prospect ? `prospect:${message.prospect.phone}` : message.senderId);
+export const authorKeyOf = (message: { senderId: string; prospect?: Pick<ProspectAuthor, 'name' | 'phone'> }): string =>
+  message.prospect ? `prospect:${message.prospect.phone ?? message.prospect.name}` : message.senderId;
 
 /** How a row draws its author when a Dali prospect wrote it: their name and the WhatsApp pill, never the bot's photo. */
 export function prospectAuthorView(message: { prospect?: Pick<ProspectAuthor, 'name'> }): { name: string; badge: string; isApp: false } | null {

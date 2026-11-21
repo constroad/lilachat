@@ -2081,6 +2081,60 @@ nombre; motor puro `fieldGeoMapOf` en shared, con test).
 «1 280 m²». El stub recibió los dos `prospect.field.confirmed` (`corrected: false` y `true`, con `file_id` y la
 versión nueva).
 
+### Hecho (20/11, fase 1: grupos de WhatsApp en la pestaña Chats)
+
+Pedido grande vía agentes, aparte del de prospectos: mostrar grupos reales de WhatsApp (obra, cliente) en la
+pestaña Chats de Dali. Contrapropuesta de Lilachat, aceptada por agentes el mismo día.
+
+**Por qué un canal nuevo y no reusar `prospect`/`client`**: ambos guardan una identidad FIJA en el canal (un
+prospecto, un cliente) porque quien escribe es siempre la misma persona o el mismo número. Un grupo de
+WhatsApp tiene muchos remitentes posibles por mensaje, así que el canal en sí no guarda ningún autor: cada
+POST lleva el suyo.
+
+**`PUT /api/bots/whatsapp/:waId`** (token del bot). `waId` es el jid completo de WhatsApp (`…@g.us` para un
+grupo; fase 1 es solo grupos — `…@s.whatsapp.net` y `…@lid`, el 1:1, quedan validados pero sin uso todavía,
+porque un 1:1 real ya vive como prospecto `listing:'chat'` y agentes no quiere duplicarlo). Body
+`{ title, is_group? }`. La primera vez crea un canal PRIVADO con el bot y **todos los miembros activos del
+espacio** (decisión de José 20/11: visible a todo el espacio, igual que un prospecto, no solo a quien
+participa de ese grupo en WhatsApp). Responde `201 { whatsapp_id, channel: { id, name } }`; después solo
+renombra y agrega a quien se sumó al espacio desde entonces (`200`).
+
+**`POST /api/bots/messages`** con `whatsapp: "<waId>"` como destino (séptima variante de `target`, junto a
+`channel_id`/`topic`/`user`/`client`/`prospect`). `as_contact` aquí es un OBJETO, no `true` como en un
+prospecto: `{ name, phone?, sent_at? }`. `name` es obligatorio (sin él, `400`); `phone` es opcional porque un
+remitente con privacidad de número (`@lid`) puede no traerlo. Sin `as_contact`, el mensaje queda sin autor
+(lo escribe el bot/Dali). Un `whatsapp` sin canal (sin `PUT` previo) es `404 whatsapp_not_found`; de otra app,
+también `404`.
+
+**Dónde queda guardado el autor**: en el MISMO campo `Message.prospect` que ya usa un mensaje `as_contact` de
+un prospecto (`{ name, phone?, sentAt? }` — `phone` pasó a opcional por esto). El renderizado (la pastilla
+«WhatsApp», el nombre, el agrupado de mensajes seguidos por `authorKeyOf`) no distingue el origen y no
+necesitó ningún cambio; `authorKeyOf` cae al `name` cuando no hay `phone`, para no juntar a dos remitentes
+distintos bajo la misma clave.
+
+**`message.created` hacia agentes** lleva `channel.whatsapp_id` cuando el chat es de este tipo (mismo patrón
+que `channel.prospect_id`).
+
+**Dónde aparece**: pestaña Chats de Dali, sección «Grupos de WhatsApp» aparte de «Mensajes directos»
+(`daliChatSections` en `shared/src/prospectBoard.ts`, única fuente para web y APK). Un espacio sin ningún
+grupo de WhatsApp no ve ningún encabezado nuevo: la sección solo aparece cuando hay al menos uno. Nunca
+cuenta en Bandeja/Embudo/Panel/Revisión (no es una fila de `ProspectChannel`, así que ya queda afuera sin
+código adicional, igual que un chat directo).
+
+**Fuera de fase 1, confirmado con agentes para más adelante**: adjuntos (foto/documento/audio ya tienen
+mecanismo, vía `/api/bots/files` → `file_id`; falta un `kind: 'sticker'` para distinguir su render — el
+formato `.webp` ya se acepta) y citar/responder (`reply_to_seq`, reusando `Message.replyToSeq`, que ya
+existe en el schema para el reply propio de Lilachat y nunca se expuso a bots).
+
+**Riesgo de la sesión única de Baileys** (agentes lo marcó, José lo aceptó para fase 1 pero pidió
+mitigación): si la sesión de WhatsApp de agentes se cae, TODOS los grupos de Dali dejan de recibir y mandar a
+la vez, no uno por uno. agentes respondió que ya existe mitigación de su lado: cola en Mongo con reintentos y
+24 h de vigencia, reconexión sola con backoff, y alertas (con dedupe) por Telegram y WhatsApp. Lo único que
+NO se recupera: los mensajes que llegaron a un grupo mientras la sesión estaba caída (Baileys no trae
+historial). No verificado desde este lado — vive en el repo de agentes.
+
+**Sin publicar** (20/11): implementado y probado en `main`, local. Sin push ni OTA hasta que José lo pida.
+
 ## c-duotricies. Abrir un servicio sin salir de Lilachat, y que el bot etiquete a alguien (José vía agentes, 20/11)
 
 **`open` en una acción de tarjeta.** Hasta ahora una acción manda una línea (`command`) o un `button.click` con su

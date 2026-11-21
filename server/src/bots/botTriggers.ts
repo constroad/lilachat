@@ -27,7 +27,13 @@ export async function personOf(userId: Types.ObjectId | string, scopes?: readonl
   return withEmail ? { ...base, email: user?.email && user.emailVerifiedAt ? user.email : null } : base;
 }
 
-export const channelOf = (chat: Pick<Chat, '_id' | 'kind' | 'name' | 'channel' | 'prospectId'>) => ({ id: String(chat._id), kind: chat.channel ? 'channel' : chat.kind, ...(chat.name ? { name: chat.name } : {}), ...(chat.prospectId ? { prospect_id: chat.prospectId } : {}) });
+export const channelOf = (chat: Pick<Chat, '_id' | 'kind' | 'name' | 'channel' | 'prospectId' | 'whatsappId'>) => ({
+  id: String(chat._id),
+  kind: chat.channel ? 'channel' : chat.kind,
+  ...(chat.name ? { name: chat.name } : {}),
+  ...(chat.prospectId ? { prospect_id: chat.prospectId } : {}),
+  ...(chat.whatsappId ? { whatsapp_id: chat.whatsappId } : {}),
+});
 
 /** Picked from the suggestions (`menciones`) or typed as text: «@Lila» names the bot either way. */
 function mentionsBot(message: Pick<Message, 'body' | 'menciones'>, bot: Pick<BotOfUser, 'botUserId'>, botName: string): boolean {
@@ -113,7 +119,7 @@ async function hearingOf(message: Pick<Message, 'chatId' | 'senderId' | 'envelop
   const bots = (await botsAmong(memberIds)).filter((bot) => String(bot.botUserId) !== String(message.senderId));
   if (bots.length === 0) return null;
   const [chat, users] = await Promise.all([
-    ChatModel.findById(message.chatId).select('_id kind name channel prospectId').lean<Chat | null>(),
+    ChatModel.findById(message.chatId).select('_id kind name channel prospectId whatsappId').lean<Chat | null>(),
     UserModel.find({ _id: { $in: bots.map((bot) => bot.botUserId) } }).select('name').lean(),
   ]);
   if (!chat) return null;

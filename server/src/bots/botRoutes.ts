@@ -17,6 +17,7 @@ import { defaultMediaUploader } from '../localMediaUploader.js';
 import type { MediaUploader } from '../mediaClient.js';
 import { upsertClientChannel } from './botClients.js';
 import { upsertProspectChannel } from './botProspects.js';
+import { upsertWhatsappChannel } from './botWhatsapp.js';
 import { addClientTasks, clientTasksOf } from './botClientTasks.js';
 import { setTopicChannels, setTopicOffered, topicRoutesOf } from './botTopics.js';
 import { channelFilesHeardBy, filesHeardBy } from './botTriggers.js';
@@ -216,6 +217,11 @@ export function buildBotRouter(notifyEdited: (members: string[], edited: Record<
     const outcome = await upsertClientChannel(req.bot!, String(req.params.clientId), req.body);
     if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
     res.status(outcome.status).json({ client: outcome.client });
+  }));
+  router.put('/whatsapp/:waId', asyncRoute(async (req, res) => {
+    const outcome = await upsertWhatsappChannel(req.bot!, String(req.params.waId), req.body);
+    if ('error' in outcome) return void res.status(outcome.status).json({ error: outcome.error, message: outcome.message });
+    res.status(outcome.status).json({ whatsapp: outcome.whatsapp });
   }));
   router.post('/clients/:clientId/tasks', asyncRoute(async (req, res) => {
     const outcome = await addClientTasks(req.bot!, String(req.params.clientId), req.body);

@@ -191,6 +191,9 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
 - **20/11** Un invitado de un canal compartido entre espacios (como Slack Connect) ya puede usar los
   comandos de ese canal: detalle completo en `bots-comandos-formularios-y-horarios.md` §4 (20/11,
   `activeMemberOf`).
+- **20/11** Destino `whatsapp` (grupos de WhatsApp en Chats de Dali, fase 1 — ver as-is de Dali): séptima
+  variante de `target`, con `as_contact` como objeto `{ name, phone?, sent_at? }` en vez de `true` (no hay
+  identidad fija en el canal; cada mensaje trae la suya). `message.created` gana `channel.whatsapp_id`.
 
 ## 5. Diseños de Stitch relacionados
 

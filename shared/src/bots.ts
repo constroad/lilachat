@@ -48,12 +48,15 @@ export type BotChecklist = { title: string; othersCanMark: boolean; items: { tex
 const TASK_KEY_MAX = 60;
 /** `topic` (R160): the channel the space's admin picked for that topic of the app. */
 /** `client` (pending 21, §157): the channel of that client, created by `PUT /api/bots/clients/:id`. */
-export type BotTarget = { channelId: string } | { topic: string } | { userPhone: string } | { userId: string } | { client: string } | { prospect: string };
+/** `whatsapp` (fase 1, agentes 20/11): the channel of a WhatsApp group, created by `PUT /api/bots/whatsapp/:waId`. */
+export type BotTarget = { channelId: string } | { topic: string } | { userPhone: string } | { userId: string } | { client: string } | { prospect: string } | { whatsapp: string };
 /** What a message to a client is about, so the «Servicios» tab can show it under its service. */
 /** `visitId`: a technical visit's card (agentes 14/11), drawn as lv01 and opened by its id. */
 export type BotClientRef = { kind: string; serviceId?: string; recordId?: string; visitId?: string };
 /** `mentionUserIds` (agentes, 20/11): the bot wants these people tagged in `text`. A name is prepended per valid id by whoever sends the message (the server knows the channel's members); an id no longer in the channel is dropped, never refused. */
-export type BotPost = { target: BotTarget; text?: string; card?: BotCard; /** Photos and videos drawn as a person's album (José via agentes 09/11). */ files?: GalleryItem[]; /** Files of `POST /api/bots/files` (José 17/11): each one its own message, a document as a file card. */ uploads?: string[]; checklist?: BotChecklist; threadOf?: number; clientRef?: BotClientRef; mentionUserIds?: string[]; /** The prospect wrote it (Dali, §c-prospectos): only to a prospect, never a card. */ asContact?: { sentAt?: string }; idempotencyKey: string };
+/** `asContact` (Dali, §c-prospectos; whatsapp fase 1, agentes 20/11): a prospect has one fixed identity on its channel (`name`/`phone` absent here, read from the channel). A WhatsApp group has many possible senders, so for a `whatsapp` target `name` (and optionally `phone`) rides on EACH post instead. */
+export type BotAsContact = { name?: string; phone?: string; sentAt?: string };
+export type BotPost = { target: BotTarget; text?: string; card?: BotCard; /** Photos and videos drawn as a person's album (José via agentes 09/11). */ files?: GalleryItem[]; /** Files of `POST /api/bots/files` (José 17/11): each one its own message, a document as a file card. */ uploads?: string[]; checklist?: BotChecklist; threadOf?: number; clientRef?: BotClientRef; mentionUserIds?: string[]; asContact?: BotAsContact; idempotencyKey: string };
 export type BotPostError = { ok: false; error: 'invalid_request'; message: string };
 
 export const BOT_LIMITS = { text: 4000, idempotencyKey: 120, fields: 12, actions: 3, /** lv01: Marcar punto, Entrevista, Foto suelta, Terminar and the croquis (agentes 14/11). */ visitActions: 5, actionValue: 2000, kicker: 60, title: 120, subtitle: 120, footer: 120, status: 24, label: 40, value: 120, linkLabel: 40, actionLabel: 24, actionId: 40, url: 500, mentionUserIds: 10 };
@@ -180,6 +183,8 @@ export function validateBotChecklist(raw: unknown): { ok: true; checklist: BotCh
 }
 
 export const CLIENT_ID = /^[A-Za-z0-9_-]{1,64}$/;
+/** A WhatsApp jid: `…@g.us` (group), `…@s.whatsapp.net` or `…@lid` (1:1 — not used yet, fase 1 is groups only). */
+export const WHATSAPP_ID = /^[A-Za-z0-9._:-]{1,100}@(g\.us|s\.whatsapp\.net|lid)$/;
 const CLIENT_KIND = /^[a-z_]{1,32}\.[a-z_]{1,32}$/;
 const VISIT_REF = /^[a-f0-9]{24}$/i;
 
@@ -193,15 +198,33 @@ export function clientRefOf(body: Record<string, unknown>): BotClientRef | null 
   return { kind: body.kind, ...(serviceId ? { serviceId } : {}), ...(recordId ? { recordId } : {}), ...(visitId ? { visitId } : {}) };
 }
 
-/** `as_contact`: the prospect's own words, carried by the bot (Dali, §c-prospectos). */
-function asContactOf(body: Record<string, unknown>, target: BotTarget): { ok: true; asContact?: { sentAt?: string } } | BotPostError {
-  if (body.as_contact === undefined) return { ok: true };
-  if (body.as_contact !== true) return refuse('as_contact va como true, o no va.');
-  if (!('prospect' in target)) return refuse('as_contact solo vale con el destino prospect.');
-  if (body.card !== undefined || body.checklist !== undefined) return refuse('Un mensaje del prospecto lleva text o files, nunca card ni checklist.');
+const WHATSAPP_NAME_MAX = 120;
+const isoDateOk = (value: unknown): value is string => typeof value === 'string' && !Number.isNaN(Date.parse(value));
+
+/** `as_contact` for a prospect (§c-prospectos): its identity is fixed on the channel, only `sent_at` rides here. */
+function prospectAsContactOf(body: Record<string, unknown>): { ok: true; asContact?: BotAsContact } | BotPostError {
+  if (body.as_contact !== true) return refuse('as_contact va como true para un prospecto.');
   if (body.sent_at === undefined) return { ok: true, asContact: {} };
-  if (typeof body.sent_at !== 'string' || Number.isNaN(Date.parse(body.sent_at))) return refuse('sent_at va como fecha ISO.');
+  if (!isoDateOk(body.sent_at)) return refuse('sent_at va como fecha ISO.');
   return { ok: true, asContact: { sentAt: body.sent_at } };
+}
+
+/** `as_contact` for a WhatsApp group (fase 1): no fixed identity on the channel — many senders, so each POST carries its own. */
+function whatsappAsContactOf(body: Record<string, unknown>): { ok: true; asContact?: BotAsContact } | BotPostError {
+  const contact = record(body.as_contact);
+  const name = line(contact.name, WHATSAPP_NAME_MAX);
+  if (!name) return refuse('as_contact de whatsapp lleva { name }, obligatorio.');
+  const phone = typeof contact.phone === 'string' && contact.phone.trim() ? contact.phone.trim() : undefined;
+  if (contact.sent_at !== undefined && !isoDateOk(contact.sent_at)) return refuse('sent_at va como fecha ISO.');
+  return { ok: true, asContact: { name, ...(phone ? { phone } : {}), ...(isoDateOk(contact.sent_at) ? { sentAt: contact.sent_at } : {}) } };
+}
+
+/** `as_contact`: the prospect's own words, carried by the bot (Dali, §c-prospectos), or who wrote a WhatsApp message (fase 1). */
+function asContactOf(body: Record<string, unknown>, target: BotTarget): { ok: true; asContact?: BotAsContact } | BotPostError {
+  if (body.as_contact === undefined) return { ok: true };
+  if (!('prospect' in target) && !('whatsapp' in target)) return refuse('as_contact solo vale con destino prospect o whatsapp.');
+  if (body.card !== undefined || body.checklist !== undefined) return refuse('Un mensaje del contacto lleva text o files, nunca card ni checklist.');
+  return 'prospect' in target ? prospectAsContactOf(body) : whatsappAsContactOf(body);
 }
 
 function validateTarget(body: Record<string, unknown>): { ok: true; target: BotTarget } | BotPostError {
@@ -210,8 +233,10 @@ function validateTarget(body: Record<string, unknown>): { ok: true; target: BotT
   const user = body.user === undefined ? undefined : record(body.user);
   const client = body.client === undefined ? undefined : String(body.client);
   const prospect = body.prospect === undefined ? undefined : String(body.prospect);
-  if ([channelId, topic, user, client, prospect].filter((one) => one !== undefined).length !== 1) return refuse('Indica un destino: channel_id, topic, user, client o prospect, uno solo.');
+  const whatsapp = body.whatsapp === undefined ? undefined : String(body.whatsapp);
+  if ([channelId, topic, user, client, prospect, whatsapp].filter((one) => one !== undefined).length !== 1) return refuse('Indica un destino: channel_id, topic, user, client, prospect o whatsapp, uno solo.');
   if (channelId) return { ok: true, target: { channelId } };
+  if (whatsapp !== undefined) return WHATSAPP_ID.test(whatsapp) ? { ok: true, target: { whatsapp } } : refuse('whatsapp es el jid del chat o grupo de WhatsApp.');
   if (prospect !== undefined) return PROSPECT_ID.test(prospect) ? { ok: true, target: { prospect } } : refuse('prospect es el id del prospecto (letras, números, :, _ o -, hasta 120).');
   if (client !== undefined) return CLIENT_ID.test(client) ? { ok: true, target: { client } } : refuse('client es el id del cliente (letras, números, _ o -, hasta 64).');
   if (topic !== undefined) return TOPIC_KEY.test(topic) ? { ok: true, target: { topic } } : refuse('topic va en minúsculas (a-z, 0-9, _ o -), como en el manifiesto.');

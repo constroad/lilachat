@@ -73,6 +73,8 @@ export type ChatSummary = {
   funAllowed?: boolean;
   /** A Dali prospect's channel (BOTS-API fase 2): the space lists it in its inbox, not with the team's chats. */
   prospect?: true;
+  /** A WhatsApp group mirrored into Dali's Chats tab (fase 1, agentes 20/11): its own section there. */
+  whatsapp?: true;
   /** A notes chat whose links are sorted by category (José 18/11): the chat shows «Chat · Por categoría». */
   linksSorted?: true;
   memberPermissions?: MemberPermissions;
@@ -221,6 +223,7 @@ export async function listChats(userId: Types.ObjectId, workspaceId?: Types.Obje
       ...(chat.workspaceId && sharedOwners.has(String(chat.workspaceId)) ? { sharedFrom: sharedOwners.get(String(chat.workspaceId)) } : {}),
       ...(chat.funAllowed ? { funAllowed: true } : {}),
       ...(chat.prospectId ? { prospect: true as const } : {}),
+      ...(chat.whatsappId ? { whatsapp: true as const } : {}),
       ...(chat.kind === 'notas' && chat.linkSorting?.enabled ? { linksSorted: true as const } : {}),
       // Pending 8: only when an admin changed them, so the composer knows who may write.
       ...(chat.memberPermissions ? { memberPermissions: memberPermissionsOf(chat.memberPermissions) } : {}),

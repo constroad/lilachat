@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { BookOpen } from 'lucide-react-native';
-import { isSalesProspect, type ClientWorkspace, type ProspectView } from '@lilachat/shared';
+import { daliChatSections, type ClientWorkspace, type ProspectView } from '@lilachat/shared';
 import type { ChatSummary } from '../../api/client';
 import { openChatNow } from '../../chat/openChatNow';
 import { useColores } from '../../ui/tema';
@@ -125,13 +125,7 @@ export function DaliSpace(props: Props) {
   useTabKnock(space.id, useCallback((next) => setTabState(next), []));
   const me = prospects.list?.me ?? props.myUserId;
   const list = prospects.list;
-  const directChats = useMemo(() => {
-    const prospectOfChat = new Map((list?.prospects ?? []).map((prospect) => [prospect.chatId, prospect]));
-    return (chats ?? []).filter((chat) => {
-      const prospect = prospectOfChat.get(chat.id);
-      return !prospect || !isSalesProspect(prospect);
-    });
-  }, [chats, list]);
+  const chatSections = useMemo(() => daliChatSections(chats ?? [], list?.prospects ?? []), [chats, list]);
   const openConversation = async (prospect: ProspectView) => {
     setOverlay(null);
     const chat = chats?.find((one) => one.id === prospect.chatId) ?? (await findSpaceChat(jwt, space.id, prospect.chatId));
@@ -164,7 +158,7 @@ export function DaliSpace(props: Props) {
           onFollowUps={() => setOverlay({ kind: 'followups' })}
         />
       ) : tab === 'chats' ? (
-        <DaliChats chats={directChats} myUserId={me} openChatId={props.openChatId} onOpenChat={props.onOpenChat} />
+        <DaliChats directs={chatSections.directs} whatsappGroups={chatSections.whatsappGroups} myUserId={me} openChatId={props.openChatId} onOpenChat={props.onOpenChat} />
       ) : (
         <BoardTab tab={tab} prospects={prospects} now={now} service={service} onService={setService} onOpenProspect={openSheet} jwt={jwt} spaceId={space.id} onOpenChatId={(chatId) => void findSpaceChat(jwt, space.id, chatId).then((chat) => chat && props.onOpenChat(chat))} />
       )}

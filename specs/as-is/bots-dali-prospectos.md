@@ -36,6 +36,27 @@ Diseños: `dl-01` a `dl-13` en `design/stitch/INVENTARIO.md` (prototipo v3).
 - Colección `prospectchannels`. Índices `{workspaceId, appId, prospectId}` (único),
   `{workspaceId, lastActivityAt}` y `{chatId}`. Creados en producción el 17/11 con el OK de José.
 
+**Grupos de WhatsApp en Chats (fase 1, 20/11, pedido vía agentes, `server/src/bots/botWhatsapp.ts`).**
+A diferencia de un prospecto o un cliente, este canal NO guarda una identidad fija: un grupo tiene muchos
+remitentes posibles, así que cada mensaje trae el suyo.
+- `PUT /api/bots/whatsapp/:waId`: `waId` es el jid completo (`…@g.us` para grupos; fase 1 es solo grupos,
+  `…@s.whatsapp.net`/`…@lid` quedan validados pero sin uso). Body `{ title, is_group? }`. La primera vez
+  crea un canal PRIVADO con el bot y **todos los miembros activos del espacio** (José: visible a todo el
+  espacio, igual que un prospecto — no solo quien participa). Después solo renombra y agrega a quien se
+  sumó al espacio desde entonces.
+- Target nuevo en `BotTarget`: `{ whatsapp: waId }` (`shared/src/bots.ts`), para `POST /api/bots/messages`.
+- `as_contact` para `whatsapp` es un objeto `{ name, phone?, sent_at? }` (no `true` como en un prospecto):
+  `name` es obligatorio, `phone` opcional (un `@lid` puede no traerlo). Se guarda en el MISMO campo
+  `Message.prospect` que ya usa un prospecto (ahora con `phone?` opcional) — el renderizado
+  (`prospectAuthorView`, la pastilla, el agrupado por `authorKeyOf`) no distingue el origen y no necesitó
+  cambios; `authorKeyOf` cae a `name` cuando no hay `phone`, para no juntar remitentes distintos.
+- `message.created` hacia agentes lleva `channel.whatsapp_id` (mismo patrón que `prospect_id`: un campo
+  `whatsappId` en `Chat`, seleccionado en `hearingOf`).
+- Colección `whatsappchannels`. Índice `{workspaceId, appId, waId}` (único).
+- **Fuera de fase 1** (confirmado con agentes): adjuntos (foto/doc/audio ya tienen mecanismo vía
+  `/api/bots/files`; falta un `kind: 'sticker'` para distinguir el render) y citar/responder (reusa
+  `Message.replyToSeq`, que ya existe, sin exponer a bots todavía). Fase 2 y 3 respectivamente.
+
 **Lo que hacen los vendedores** (sesión, `server/src/bots/prospectRoutes.ts`, `prospectDesk.ts`).
 
 | Ruta | Qué hace |
@@ -71,6 +92,9 @@ Diseños: `dl-01` a `dl-13` en `design/stitch/INVENTARIO.md` (prototipo v3).
   venta; `'chat'` es un 1:1 directo que agentes marcó como tal. `isSalesProspect` filtra `inboxOf`,
   `funnelOf`, `followUpsOf` (`prospectBoard.ts`), `weekReviewOf` (`prospectReview.ts`) y `panelOf`
   (`prospectPanel.ts`): un prospecto `listing: 'chat'` nunca cuenta en Bandeja/Embudo/Panel/Revisión.
+- `daliChatSections` (`prospectBoard.ts`, 20/11): separa los chats de la pestaña Chats en `directs`
+  (equipo + prospecto `listing:'chat'`) y `whatsappGroups` (`chat.whatsapp === true`). Única fuente de
+  verdad para web y APK; sin WhatsApp en el espacio, `whatsappGroups` sale vacío y no cambia nada visible.
 - Conflictos: `prospectChange.ts` (409 → «Alguien lo cambió antes que tú…»).
 - Dali: `daliKnowledge.ts` (`knowledgeViewOf` quita precios a quien no es admin, `questionsOf`),
   `daliTeach.ts` (Enseñarle a Dali, hasta 1000 letras).
@@ -83,9 +107,10 @@ Diseños: `dl-01` a `dl-13` en `design/stitch/INVENTARIO.md` (prototipo v3).
 - `DaliInbox.tsx` + `ProspectRow.tsx`: Míos · Sin asignar · Todos, filtro por servicio, «Seguimientos de hoy»,
   tres secciones (Atender ahora, En seguimiento, Dali conversando) y «Solo consultas».
 - `DaliChats.tsx` (20/11, pedido vía agentes): la pestaña Chats — los chats del equipo y un prospecto que
-  agentes marcó `listing: 'chat'` (no es una venta). `isSalesProspect` (`shared/src/prospectBoard.ts`) es la
-  única fuente de verdad del corte; `DaliSpace.tsx` cruza `chats` del espacio contra `list.prospects` por
-  `chatId` para armar la lista.
+  agentes marcó `listing: 'chat'` (no es una venta). `daliChatSections` (`shared/src/prospectBoard.ts`) es la
+  única fuente de verdad del corte; `DaliSpace.tsx` le pasa `chats` del espacio y `list.prospects`.
+  Grupos de WhatsApp (fase 1, 20/11): sección propia «Grupos de WhatsApp» bajo «Mensajes directos», que
+  solo aparece cuando el espacio tiene al menos uno (`DaliChats.test.tsx`: sin grupos, ningún encabezado).
 - `ProspectChat.tsx`: cabecera (iniciales, teléfono, origen, Llamar con el marcador, Ficha, Marcar resultado)
   y franja (quién atiende, Dali en pausa, Tomar, Devolver a Dali).
 - `ProspectSheet.tsx` + `prospectSheetBlocks.tsx`: la ficha. `ClientDocumentsCard.tsx`, `DocumentFieldRow.tsx`
@@ -104,7 +129,8 @@ Diseños: `dl-01` a `dl-13` en `design/stitch/INVENTARIO.md` (prototipo v3).
 - `DaliInbox.tsx` + `ProspectRow.tsx`, `useProspectDoor.tsx` (la conversación: cabecera, franja y
   «Se envía al cliente por WhatsApp»), `ProspectSheetScreen.tsx` (ficha a pantalla completa).
 - `DaliChats.tsx` (20/11): la pestaña Chats, pantalla completa (sin columnas) — misma fuente que la web
-  (`isSalesProspect`), lista virtualizada con `FilaDeChat`. `DaliInbox.tsx` siempre pasa `teamChats: []`
+  (`daliChatSections`), `SectionList` con `FilaDeChat` (grupos de WhatsApp en su propia sección, 20/11
+  fase 1, igual criterio que la web). `DaliInbox.tsx` siempre pasa `teamChats: []`
   a `inboxRowsOf` (`shared/src/prospectInboxRows.ts`): el pliegue «Chats del equipo» queda vacío y
   no se dibuja (la función sigue genérica y probada; solo dejó de recibir datos en la Bandeja).
 - `NextActionSheet.tsx`, `ResultSheet.tsx`, `FollowUpsScreen.tsx`, `TeachDaliSheet.tsx`,
@@ -160,6 +186,18 @@ Diseños: `dl-01` a `dl-13` en `design/stitch/INVENTARIO.md` (prototipo v3).
   (`prospectSheet.ts`) deja de mostrar el título del anuncio cuando es solo un host (`api.whatsapp.com`,
   un anuncio de post impulsado) y muestra `ad_url` en su lugar; la web dejó de duplicar esa lógica inline
   y llama a `originLineOf` como ya hacía el APK.
+- **20/11** Grupos de WhatsApp en la pestaña Chats, fase 1 (pedido vía agentes, nuevo pedido grande aparte
+  de lo de arriba). Contrapropuesta de contrato acordada con agentes (canal `PUT /api/bots/whatsapp/:waId`
+  + target `whatsapp` + `as_contact` con remitente por mensaje). Antes de implementar, José confirmó
+  explícitamente los dos riesgos que agentes marcó: (1) visible a TODO el espacio, igual que un prospecto,
+  no solo a quien participa de ese grupo en WhatsApp; (2) la sesión única de Baileys de agentes sigue
+  siendo un cuello de botella para fase 1 (si se cae, ningún grupo de Dali recibe ni manda mientras tanto),
+  pero José le pidió a agentes buscar una mitigación de su lado — agentes respondió que ya existe: cola en
+  Mongo con reintentos y vigencia de 24 h, reconexión sola, y alertas por Telegram/WhatsApp; lo único que
+  no se recupera es el historial de mensajes de WhatsApp llegados mientras la sesión estaba caída (Baileys
+  no lo trae). Implementado fase 1 (texto solo): canal, target, autor por mensaje reusando `Message.prospect`,
+  `channel.whatsapp_id` en `message.created`, sección «Grupos de WhatsApp» en Chats (web y APK).
+  Sin publicar: local en `main`, sin push ni OTA hasta que José lo pida.
 
 ## 5. Diseños de Stitch relacionados
 
@@ -210,18 +248,26 @@ Lo que Stitch inventó y no va está listado en la spec (fase 2, pantallas de la
 - **La lectura del documento** (fotos, PDF, KML, Excel) es de agentes. Depende de agentes.
 - **La tarjeta «No llegó por WhatsApp»** la publica agentes. Depende de agentes.
 - **Logo del espacio**: el avatar de Dali, puesto a mano el 17/11 hasta tener otro. Según spec.
+- **Grupos de WhatsApp fase 2 y 3** (20/11): adjuntos (foto/doc/audio por `/api/bots/files`, falta un
+  `kind: 'sticker'`) y citar/responder (`reply_to_seq`, reusando `Message.replyToSeq` ya existente).
+  Depende de agentes. Sin OTA/push de fase 1 todavía: José decide cuándo.
+- **Mitigación de la sesión única de Baileys**: confirmada por agentes (cola, reconexión, alertas), pero
+  no verificada desde este lado — vive en el repo de agentes. Si en producción un grupo se queda sin
+  mensajes durante una caída, revisar ahí antes de sospechar de Lilachat.
 
 ## 7. Pruebas
 
 - Server: `server/src/bots/botProspects.test.ts` (6), `prospectDesk.test.ts` (21), `botUploads.test.ts` (6),
-  `fake.test.ts` (10).
-- Shared: `prospects.test.ts` (22, +2 de `source.platform`/20·11), `prospectInsight.test.ts` (9), `prospectSeller.test.ts` (6),
-  `prospectBoard.test.ts` (27, +4 de `isSalesProspect` y +1 de `platform`/20·11), `prospectPanel.test.ts` (6),
+  `fake.test.ts` (10), `botWhatsapp.test.ts` (8, 20/11, grupos de WhatsApp fase 1).
+- Shared: `bots.test.ts` (46, +8 de `whatsapp`/`as_contact` por mensaje, fase 1/20·11),
+  `prospects.test.ts` (23, +2 de `source.platform`/20·11 y +1 de `authorKeyOf` sin `phone`/20·11),
+  `prospectInsight.test.ts` (9), `prospectSeller.test.ts` (6),
+  `prospectBoard.test.ts` (29, +4 de `isSalesProspect`, +1 de `platform` y +2 de `daliChatSections`/20·11), `prospectPanel.test.ts` (6),
   `prospectSheet.test.ts` (43, +1 de `originLineOf`/20·11), `prospectChange.test.ts` (4), `prospectFieldConfirm.test.ts` (4),
   `prospectFieldGeo.test.ts` (6), `prospectFigures.test.ts` (17), `prospectFollowUpCards.test.ts` (14),
   `prospectFunnelView.test.ts` (12), `prospectInboxRows.test.ts` (20), `prospectPlan.test.ts` (11),
   `prospectReview.test.ts` (7), `daliKnowledge.test.ts` (8), `daliTeach.test.ts` (9).
-- Web: `web/src/spaces/dali/DaliInbox.test.tsx` (7), `DaliChats.test.tsx` (2, 20/11),
+- Web: `web/src/spaces/dali/DaliInbox.test.tsx` (7), `DaliChats.test.tsx` (4, 20/11: +2 de grupos de WhatsApp fase 1),
   `ProspectChat.test.tsx` (7), `DaliPanel.test.tsx` (3), `DaliHeader.test.tsx` (5),
   `ClientDocumentsCard.test.tsx` (3), `DocumentFieldRow.test.tsx` (4).
   También `web/src/chat/BurbujaDeMensaje.person.test.tsx` y `filasDeLaConversacion.test.ts` (según spec).

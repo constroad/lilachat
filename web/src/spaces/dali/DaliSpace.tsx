@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { BookOpen, MessagesSquare } from 'lucide-react';
-import { isSalesProspect, type ClientWorkspace, type ProspectView } from '@lilachat/shared';
+import { daliChatSections, type ClientWorkspace, type ProspectView } from '@lilachat/shared';
 import type { ChatAction } from '../../chat/menuDelChat';
 import type { ChatSummary } from '../../chat/types';
 import { NewVersionBand } from '../../ui/NewVersionBand';
@@ -84,13 +84,7 @@ export function DaliSpace(props: Props) {
   const me = prospects.list?.me ?? props.yo;
   const list = prospects.list;
   const selectedProspect = useMemo(() => list?.prospects.find((one) => one.chatId === props.selectedChatId) ?? null, [list, props.selectedChatId]);
-  const directChats = useMemo(() => {
-    const prospectOfChat = new Map((list?.prospects ?? []).map((prospect) => [prospect.chatId, prospect]));
-    return (props.chats ?? []).filter((chat) => {
-      const prospect = prospectOfChat.get(chat.id);
-      return !prospect || !isSalesProspect(prospect);
-    });
-  }, [props.chats, list]);
+  const chatSections = useMemo(() => daliChatSections(props.chats ?? [], list?.prospects ?? []), [props.chats, list]);
   const openProspectChat = (prospect: ProspectView) => {
     setSide(null);
     if (tab !== 'inbox') setTab('inbox');
@@ -104,7 +98,7 @@ export function DaliSpace(props: Props) {
       <DaliHeader {...props} tab={tab} onTab={setTab} onKnowledge={() => setSide({ kind: 'knowledge' })} />
       <div className="relative flex min-h-0 flex-1">
         {tab === 'inbox' || tab === 'chats' ? (
-          <InboxTab {...props} tab={tab} directChats={directChats} prospects={prospects} me={me} now={now} service={service} onService={setService} selectedProspect={selectedProspect} sheetProps={sheetProps} onFollowUps={() => setSide({ kind: 'followups' })} />
+          <InboxTab {...props} tab={tab} directChats={chatSections.directs} whatsappGroups={chatSections.whatsappGroups} prospects={prospects} me={me} now={now} service={service} onService={setService} selectedProspect={selectedProspect} sheetProps={sheetProps} onFollowUps={() => setSide({ kind: 'followups' })} />
         ) : (
           <div className="min-h-0 flex-1 overflow-y-auto">
             {tab === 'funnel' ? <DaliFunnel {...shared} phone={phone} /> : null}
@@ -176,10 +170,10 @@ function DaliTabs({ value, onChange, phone }: { value: DaliTab; onChange: (tab: 
   );
 }
 
-function InboxTab(props: Props & { tab: 'inbox' | 'chats'; directChats: ChatSummary[]; prospects: ReturnType<typeof useProspects>; me: string; now: Date; service?: string; onService: (key: string | undefined) => void; selectedProspect: ProspectView | null; sheetProps: Omit<SheetProps, 'prospect'>; onFollowUps: () => void }) {
+function InboxTab(props: Props & { tab: 'inbox' | 'chats'; directChats: ChatSummary[]; whatsappGroups: ChatSummary[]; prospects: ReturnType<typeof useProspects>; me: string; now: Date; service?: string; onService: (key: string | undefined) => void; selectedProspect: ProspectView | null; sheetProps: Omit<SheetProps, 'prospect'>; onFollowUps: () => void }) {
   const aside =
     props.tab === 'chats' ? (
-      <DaliChats chats={props.directChats} yo={props.yo} selectedChatId={props.selectedChatId} onOpenChat={(chat) => props.onOpenChat(chat.id)} onChatAction={props.onChatAction} />
+      <DaliChats directs={props.directChats} whatsappGroups={props.whatsappGroups} yo={props.yo} selectedChatId={props.selectedChatId} onOpenChat={(chat) => props.onOpenChat(chat.id)} onChatAction={props.onChatAction} />
     ) : (
       <DaliInbox
         list={props.prospects.list}

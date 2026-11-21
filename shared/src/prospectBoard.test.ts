@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { funnelOf, followUpsOf, inboxOf, inboxSectionOf, isSalesProspect, lacksNextAction, levelOf, missingLabelsOf, originOf, overdueOf, shownStageOf, type ProspectView } from './prospectBoard.js';
+import { daliChatSections, funnelOf, followUpsOf, inboxOf, inboxSectionOf, isSalesProspect, lacksNextAction, levelOf, missingLabelsOf, originOf, overdueOf, shownStageOf, type ProspectView } from './prospectBoard.js';
 
 /** Dali's inbox and funnel (dl-01, dl-08, BOTS-API «Fase 2: contrato»): every rule is code, never data. */
 const now = new Date('2026-11-17T15:00:00.000Z'); // 10:00 in Lima
@@ -148,6 +148,21 @@ describe('isSalesProspect', () => {
     expect(isSalesProspect({})).toBe(true);
     expect(isSalesProspect({ listing: 'prospect' })).toBe(true);
     expect(isSalesProspect({ listing: 'chat' })).toBe(false);
+  });
+});
+
+describe('daliChatSections', () => {
+  const prospect = (chatId: string, listing?: 'prospect' | 'chat') => ({ id: chatId, chatId, listing }) as Pick<ProspectView, 'id' | 'chatId' | 'listing'>;
+
+  it('splits WhatsApp groups (fase 1) from direct 1:1s (the team\'s and non-lead prospects), leaving sales prospects out of both', () => {
+    const chats = [{ id: 'c1' }, { id: 'c2' }, { id: 'c3', whatsapp: true as const }, { id: 'c4' }];
+    const prospects = [prospect('c2', 'prospect'), prospect('c4', 'chat')];
+    expect(daliChatSections(chats, prospects)).toEqual({ directs: [{ id: 'c1' }, { id: 'c4' }], whatsappGroups: [{ id: 'c3', whatsapp: true }] });
+  });
+
+  it('with no chats or no prospects, both sections are empty or plain, never a throw', () => {
+    expect(daliChatSections([], [])).toEqual({ directs: [], whatsappGroups: [] });
+    expect(daliChatSections([{ id: 'c1' }], [])).toEqual({ directs: [{ id: 'c1' }], whatsappGroups: [] });
   });
 });
 

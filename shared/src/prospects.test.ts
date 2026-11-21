@@ -74,6 +74,11 @@ describe('authorKeyOf', () => {
     expect(authorKeyOf({ senderId: 'bot', prospect: { name: 'Carlos', phone: '51949123824' } })).toBe('prospect:51949123824');
     expect(authorKeyOf({ senderId: 'bot' })).toBe('bot');
   });
+
+  it('a WhatsApp group sender without a phone (fase 1: a @lid contact can hide it) still groups by name, not all under the same key', () => {
+    expect(authorKeyOf({ senderId: 'bot', prospect: { name: 'Carlos' } })).toBe('prospect:Carlos');
+    expect(authorKeyOf({ senderId: 'bot', prospect: { name: 'Ana' } })).toBe('prospect:Ana');
+  });
 });
 
 describe('prospectAuthorView', () => {

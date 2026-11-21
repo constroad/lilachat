@@ -131,6 +131,14 @@ const heardBy = (hearing: Hearing, bot: BotOfUser, named: boolean) => botHears({
 const messageData = (message: Message) => ({ id: String(message._id), seq: message.seq, text: message.body ?? '', ...(message.hiloDe ? { thread_of: message.hiloDe } : {}) });
 const installationOf = (bot: BotOfUser) => ({ _id: bot.installationId, workspaceId: bot.workspaceId });
 
+/** Who `message` replies to (agentes 20/11, «Responder»): its `idempotency_key` comes back only when a bot posted the original. */
+async function replyToOf(message: Pick<Message, 'chatId' | 'replyToSeq'>): Promise<{ id: string; seq: number; idempotency_key?: string } | undefined> {
+  if (!message.replyToSeq) return undefined;
+  const original = await MessageModel.findOne({ chatId: message.chatId, seq: message.replyToSeq }).select('_id seq botIdempotencyKey').lean<Pick<Message, '_id' | 'seq' | 'botIdempotencyKey'> | null>();
+  if (!original) return undefined;
+  return { id: String(original._id), seq: original.seq, ...(original.botIdempotencyKey ? { idempotency_key: original.botIdempotencyKey } : {}) };
+}
+
 /** A message just sent: the bots among the members that hear it (`botHears`), with its file if it has one. */
 export async function botsHearMessage(message: Message, memberIds: readonly string[]): Promise<boolean> {
   const files = filesOf(message);
@@ -138,12 +146,13 @@ export async function botsHearMessage(message: Message, memberIds: readonly stri
   const hearing = await hearingOf(message, memberIds);
   if (!hearing) return false;
   if (hearing.chat.prospectId) await noteTeamReply(message).catch((error: unknown) => console.error('[prospectos] no se pudo anotar la respuesta:', error instanceof Error ? error.message : error));
+  const replyTo = await replyToOf(message);
   let heard = false;
   for (const { bot, name } of hearing.bots) {
     const named = mentionsBot(message, bot, name);
     if (!heardBy(hearing, bot, named)) continue;
     heard = true;
-    const data = { channel: channelOf(hearing.chat), message: { ...messageData(message), mentions_bot: named, ...(files.length ? { files } : {}) }, author: await personOf(message.senderId) };
+    const data = { channel: channelOf(hearing.chat), message: { ...messageData(message), mentions_bot: named, ...(files.length ? { files } : {}), ...(replyTo ? { reply_to: replyTo } : {}) }, author: await personOf(message.senderId) };
     await sendBotEvent(installationOf(bot), 'message.created', data);
   }
   return heard;

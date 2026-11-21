@@ -258,9 +258,15 @@ Lo que Stitch inventó y no va está listado en la spec (fase 2, pantallas de la
 - **La lectura del documento** (fotos, PDF, KML, Excel) es de agentes. Depende de agentes.
 - **La tarjeta «No llegó por WhatsApp»** la publica agentes. Depende de agentes.
 - **Logo del espacio**: el avatar de Dali, puesto a mano el 17/11 hasta tener otro. Según spec.
-- **Grupos de WhatsApp fase 2 y 3** (20/11): adjuntos (foto/doc/audio por `/api/bots/files`, falta un
-  `kind: 'sticker'`) y citar/responder (`reply_to_seq`, reusando `Message.replyToSeq` ya existente).
-  Depende de agentes. Sin OTA/push de fase 1 todavía: José decide cuándo.
+- **Grupos de WhatsApp fase 1**: publicado (`22428f71`). `message.reply_to` también implementado (ver
+  abajo). Pendiente aparte: adjuntos (foto/doc/audio por `/api/bots/files`, falta un `kind: 'sticker'`),
+  y fotos/videos del chat WEB respetando su proporción (pedido José vía agentes, 20/11).
+- **`message.reply_to`** (José vía agentes, 20/11): `botTriggers.ts` expone en `message.created` un
+  `reply_to: { id, seq, idempotency_key? }` cuando el mensaje escuchado tiene `replyToSeq`.
+  `idempotency_key` solo si el mensaje original lo publicó un bot — nuevo campo `Message.botIdempotencyKey`,
+  escrito sin condición en `extraOf()` (`botMessages.ts`) para todo mensaje de `publishText`. Se devuelve
+  tal cual lo mandó agentes al publicar (p.ej. `wa-in:<línea>:<id de WhatsApp>`), sin parsear nada de este
+  lado. Cubierto en `botListening.test.ts`.
 - **Mitigación de la sesión única de Baileys**: confirmada por agentes (cola, reconexión, alertas), pero
   no verificada desde este lado — vive en el repo de agentes. Si en producción un grupo se queda sin
   mensajes durante una caída, revisar ahí antes de sospechar de Lilachat.

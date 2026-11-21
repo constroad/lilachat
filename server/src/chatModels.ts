@@ -142,6 +142,8 @@ export interface Message {
   clientRef?: { kind: string; serviceId?: string; recordId?: string; visitId?: string };
   /** The prospect wrote it on WhatsApp and the bot carried it (Dali, §c-prospectos). */
   prospect?: { name: string; phone?: string; sentAt?: string; adTitle?: string };
+  /** A bot's own `idempotency_key` on the message it posted (agentes 20/11): echoed back in `message.reply_to` when someone replies to it. */
+  botIdempotencyKey?: string;
   /**
    * El sobre cifrado, en los chats secretos. Cuando está, `body` NO está: son
    * excluyentes, y guardar los dos anularía el cifrado en la práctica.
@@ -340,6 +342,7 @@ const messageSchema = new Schema<Message>(
     forwarded: { type: Boolean },
     clientRef: { type: new Schema({ kind: String, serviceId: String, recordId: String, visitId: String }, { _id: false }), default: undefined },
     prospect: { type: new Schema({ name: String, phone: String, sentAt: String, adTitle: String }, { _id: false }), default: undefined },
+    botIdempotencyKey: { type: String },
     link: {
       type: new Schema(
         { url: String, platform: String, format: String, status: String, author: String, text: String, imageUrl: String, commentBait: String, categoryId: String, categoryBy: { type: String, enum: ['lila', 'user'] } },

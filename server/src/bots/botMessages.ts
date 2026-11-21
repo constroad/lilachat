@@ -135,8 +135,8 @@ async function mentionedTextOf(post: BotPost, chatId: Types.ObjectId): Promise<{
   return { body: menciones.length ? `${prefix}${post.text}` : post.text, menciones };
 }
 
-/** What Lilachat keeps on a bot's message beside what sendMessage stores: its ref and the prospect who wrote it. */
-const extraOf = (post: BotPost, prospect: Message['prospect']) => ({ ...(post.clientRef ? { clientRef: post.clientRef } : {}), ...(prospect ? { prospect } : {}) });
+/** What Lilachat keeps on a bot's message beside what sendMessage stores: its ref, the prospect who wrote it, and its own `idempotency_key` (agentes 20/11: echoed back in `message.reply_to` so they can cite the original on WhatsApp). */
+const extraOf = (post: BotPost, prospect: Message['prospect']) => ({ botIdempotencyKey: post.idempotencyKey, ...(post.clientRef ? { clientRef: post.clientRef } : {}), ...(prospect ? { prospect } : {}) });
 
 async function publishText(installation: Installation, chatId: Types.ObjectId, post: BotPost, sharedBy?: Message['sharedBy'], slot?: UploadSlot): Promise<Message> {
   const prospect = await externalAuthorOf(installation, post);

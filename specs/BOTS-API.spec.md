@@ -2123,8 +2123,17 @@ código adicional, igual que un chat directo).
 
 **Fuera de fase 1, confirmado con agentes para más adelante**: adjuntos (foto/documento/audio ya tienen
 mecanismo, vía `/api/bots/files` → `file_id`; falta un `kind: 'sticker'` para distinguir su render — el
-formato `.webp` ya se acepta) y citar/responder (`reply_to_seq`, reusando `Message.replyToSeq`, que ya
-existe en el schema para el reply propio de Lilachat y nunca se expuso a bots).
+formato `.webp` ya se acepta) y fotos/videos del chat web respetando su proporción (pendiente aparte, José
+vía agentes 20/11).
+
+**`message.reply_to` (José vía agentes, 20/11)**: cuando el mensaje que el bot escucha responde a otro
+(`Message.replyToSeq`, el campo del reply propio de Lilachat, ahora expuesto), `message.created` lleva
+`reply_to: { id, seq, idempotency_key? }` — `id`/`seq` del mensaje original, e `idempotency_key` solo si ese
+original lo publicó un bot (`Message.botIdempotencyKey`, nuevo campo que `extraOf` en `botMessages.ts`
+guarda sin condición en cada mensaje publicado por `publishText`). agentes lo usa para citar en WhatsApp: el
+valor es el `idempotency_key` que ellos mismos mandaron al publicar (p.ej. `wa-in:<línea>:<id de WhatsApp>`
+para un grupo, `dali:<id>` para un prospecto) — Lilachat lo guarda y lo devuelve tal cual, sin parsearlo.
+Calculado en `replyToOf()` (`botTriggers.ts`), cubierto en `botListening.test.ts`.
 
 **Riesgo de la sesión única de Baileys** (agentes lo marcó, José lo aceptó para fase 1 pero pidió
 mitigación): si la sesión de WhatsApp de agentes se cae, TODOS los grupos de Dali dejan de recibir y mandar a
@@ -2133,7 +2142,7 @@ la vez, no uno por uno. agentes respondió que ya existe mitigación de su lado:
 NO se recupera: los mensajes que llegaron a un grupo mientras la sesión estaba caída (Baileys no trae
 historial). No verificado desde este lado — vive en el repo de agentes.
 
-**Sin publicar** (20/11): implementado y probado en `main`, local. Sin push ni OTA hasta que José lo pida.
+**Publicado** (20/11): `22428f71` en `main`. `message.reply_to` (arriba) se agregó después, pendiente de push.
 
 ## c-duotricies. Abrir un servicio sin salir de Lilachat, y que el bot etiquete a alguien (José vía agentes, 20/11)
 

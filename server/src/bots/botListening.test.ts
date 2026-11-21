@@ -114,6 +114,29 @@ describe('who hears a message (pending 87a)', () => {
     await settle();
     expect(eventsOf('message.created')[0]).toMatchObject({ message: { seq: 2, thread_of: 1 } });
   });
+
+  it('a reply to a message carries reply_to with its id and seq (agentes 20/11, cita a WhatsApp)', async () => {
+    const members = await installInframaq(['channels:history']);
+    const original = await say(1, 'Buenos días');
+    await botsHearMessage(await say(2, 'Buenos días también', { replyToSeq: 1 }), members);
+    await settle();
+    expect(eventsOf('message.created')[0]).toMatchObject({ message: { seq: 2, reply_to: { id: String(original._id), seq: 1 } } });
+  });
+
+  it('a reply to a bot-posted message echoes its idempotency_key in reply_to; a reply to a person carries none', async () => {
+    const members = await installInframaq(['channels:history']);
+    await say(1, 'Aviso del bot', { botIdempotencyKey: 'wa-in:51987654321:wamid.abc' });
+    await botsHearMessage(await say(2, 'Recibido', { replyToSeq: 1 }), members);
+    await settle();
+    expect(eventsOf('message.created')[0]).toMatchObject({ message: { seq: 2, reply_to: { seq: 1, idempotency_key: 'wa-in:51987654321:wamid.abc' } } });
+
+    received.length = 0;
+    await say(3, 'Todo bien');
+    await botsHearMessage(await say(4, 'Qué bueno', { replyToSeq: 3 }), members);
+    await settle();
+    const event = eventsOf('message.created')[0] as { message: { reply_to?: { idempotency_key?: string } } };
+    expect(event.message.reply_to).not.toHaveProperty('idempotency_key');
+  });
 });
 
 describe('edits and deletions of what the app heard (pending 87b)', () => {

@@ -230,7 +230,7 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
 
 - Server: `server/src/bots/bots.test.ts` (29, punta a punta con webhook HTTP real),
   `botApps.test.ts` (14), `botAvailability.test.ts` (7), `botChannels.test.ts` (5),
-  `botListening.test.ts` (21), `botLoopback.test.ts` (3), `botThreadReply.test.ts` (4),
+  `botListening.test.ts` (23, 20/11: +2 de `message.reply_to`), `botLoopback.test.ts` (3), `botThreadReply.test.ts` (4),
   `botTopics.test.ts` (9), `botUploads.test.ts` (6), `botClients.test.ts` (12),
   `botClientTasks.test.ts` (7), `fake.test.ts` (10), `server/src/deleteAppCard.test.ts` (4).
 - Shared: `bots.test.ts` (28), `botBlocks.test.ts` (49), `botCardDesign.test.ts` (17),

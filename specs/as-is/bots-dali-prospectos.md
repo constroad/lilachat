@@ -206,6 +206,8 @@ remitentes posibles, así que cada mensaje trae el suyo.
   bot — un test lo confirmó — así que no era un bug de conteo: faltaba el aviso en la pestaña misma. Se
   agregó un punto (`daliTabUnread`) en Bandeja y en Chats cuando esa pestaña tiene algo sin leer; sin nada
   sin leer, ningún punto. `ProspectRow` y `FilaDeChat` ya mostraban el contador POR FILA (sin tocar).
+  Publicado (José: «sí, publícala»): push a `main` (`c64c4c5c`) y OTA (`e3c2c1c8…`, runtime `e058464c`,
+  726 assets) — smoke en frío verde (versionCode 192) antes de publicar.
 
 ## 5. Diseños de Stitch relacionados
 

@@ -97,6 +97,11 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
 
 **Canal por cliente y sus tareas** (`botClients.ts`, `botClientTasks.ts`).
 - `PUT /api/bots/clients/:clientId` crea el canal privado del cliente. Vivo = actividad en 60 días.
+- Un admin del espacio promovido después se suma solo al canal de un cliente en el PRÓXIMO PUT de agentes
+  (`addMissingAdmins`, exportada 21/11 para `scripts/promote-client-channel-admins.ts`): José la usa para
+  promover a alguien a admin Y sumarlo de una vez a los canales de cliente que ya existen, sin esperar el
+  próximo PUT. `npx tsx --env-file=.env scripts/promote-client-channel-admins.ts --space=<nombre>
+  --promote=<nombre>[,<nombre>]` (dry-run; `--apply` escribe, `--list` ve los miembros primero).
 - Cada servicio del PUT puede traer, en camelCase aunque el resto vaya en snake_case, `ordersCount`,
   `reportsCount`, `stagesTotal` y `lastActivity: { at, text }` (José 19/11, diseño cc-01). Lista blanca
   (`shared/src/serviceFacts.ts` › `serviceFactsFromWire`): enteros ≥ 0, fecha válida y texto recortado a 80;

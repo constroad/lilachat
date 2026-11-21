@@ -88,12 +88,15 @@ async function createClientChat(installation: Installation, name: string): Promi
   return { chatId: chat._id, admins };
 }
 
-/** An admin promoted after the channel was born joins it with the next PUT. */
-async function addMissingAdmins(installation: Installation, chatId: Types.ObjectId): Promise<void> {
+/**
+ * An admin promoted after the channel was born joins it with the next PUT; also reusable by
+ * `scripts/promote-client-channel-admins.ts` to backfill the channels that already exist (José 21/11).
+ */
+export async function addMissingAdmins(workspaceId: Types.ObjectId, chatId: Types.ObjectId): Promise<void> {
   const chat = await ChatModel.findById(chatId).select('members.userId').lean();
   if (!chat) return;
   const inside = new Set(chat.members.map((member) => String(member.userId)));
-  const missing = (await spaceAdminIds(installation.workspaceId)).filter((userId) => !inside.has(String(userId)));
+  const missing = (await spaceAdminIds(workspaceId)).filter((userId) => !inside.has(String(userId)));
   if (!missing.length) return;
   await ChatModel.updateOne({ _id: chatId }, { $push: { members: { $each: missing.map((userId) => ({ userId, role: 'admin' })) } } });
   missing.forEach((userId) => noticeChannelJoined(userId, chatId));
@@ -109,7 +112,7 @@ export async function upsertClientChannel(installation: Installation, clientId: 
   if (existing) {
     await ClientChannelModel.updateOne({ _id: existing._id }, { $set: valid.state });
     if (existing.name !== valid.state.name) await ChatModel.updateOne({ _id: existing.chatId }, { $set: { name: valid.state.name } });
-    await addMissingAdmins(installation, existing.chatId);
+    await addMissingAdmins(installation.workspaceId, existing.chatId);
     return { status: 200, client: toWire({ ...existing, ...valid.state }, now) };
   }
   const { chatId, admins } = await createClientChat(installation, valid.state.name);

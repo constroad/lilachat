@@ -1,6 +1,7 @@
 import { Types } from 'mongoose';
-import { availableTo, canManageMembers, cardCommandsOf, COMMAND_LIMITS, formLevelOf, isAckBody, itemSettingOf, mayUseItem, parseSlashInput, rowIsForAnyone, withoutKnownFields, shortcutValuesOf, validateCommandResponse, validateFormReply, type AppForm, type ShortcutAudience, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope, type ShortcutValues, worksAt } from '@lilachat/shared';
+import { availableTo, canManageMembers, cardCommandsOf, COMMAND_LIMITS, formLevelOf, isAckBody, itemSettingOf, mayUseItem, parseSlashInput, rowIsForAnyone, withoutKnownFields, shortcutValuesOf, validateCommandResponse, validateFormReply, type AppForm, type ShortcutAudience, type AppItemSetting, type BotCommand, type ItemPlace, type BotPost, type CommandGroup, type CommandNotice, type CommandOutcome, type CommandResponse, type CommandScope, type ShortcutValues, type WorkspaceRole, worksAt } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Chat, type Message } from '../chatModels.js';
+import { spaceIdsWithAccess } from '../sharedChannels.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { callBotWebhook, isRestarting, recordLastDelivery, type WebhookReply } from './botEvents.js';
 import { postBotMessage } from './botMessages.js';
@@ -73,6 +74,17 @@ export function itemPlaceOf(chat: Pick<ChatOfCommand, '_id' | 'kind' | 'members'
 /** On in some place: what a client without a place (before R160) is offered. */
 const onSomewhere = (setting: AppItemSetting): boolean => setting.global || setting.direct || setting.channels !== 'none';
 
+/**
+ * Active in the chat's own space, or (José 11/11, like Slack Connect) in one it is
+ * shared with: a guest from the other space keeps the app's commands here, same as it
+ * can already join the channel and chat in it (`miembrosDelChat.ts`'s `mayJoinSpaceChat`).
+ * Without a chat (the space's ⚡), only that space's own membership counts.
+ */
+async function activeMemberOf(chat: Pick<ChatOfCommand, '_id' | 'workspaceId' | 'channel'> | null, workspaceId: Types.ObjectId, userId: Types.ObjectId): Promise<{ role: WorkspaceRole } | null> {
+  const spaces = chat ? await spaceIdsWithAccess(chat) : [workspaceId];
+  return WorkspaceMemberModel.findOne({ workspaceId: { $in: spaces }, userId, status: 'active' }).select('role').lean();
+}
+
 /** Said when the menu would not have offered it (agentes `COMANDOS-Y-HORARIOS.spec.md` §2.2). */
 const notAllowedHere = (label: string): CommandError => fail(403, 'not_allowed_here', `No tienes permiso para usar ${label} aquí. Pídeselo a un admin del espacio.`);
 
@@ -83,17 +95,18 @@ const notAllowedHere = (label: string): CommandError => fail(403, 'not_allowed_h
  * place (clients before R160), everything. Null if not an active member.
  */
 export async function commandGroupsOf(workspaceId: string, userId: Types.ObjectId, place?: 'space' | { chatId: string }): Promise<CommandGroup[] | null> {
-  const member = isId(workspaceId) ? await WorkspaceMemberModel.findOne({ workspaceId, userId, status: 'active' }).select('role').lean() : null;
-  if (!member) return null;
-  const person = { userId: String(userId), spaceAdmin: canManageMembers(member.role) };
+  if (!isId(workspaceId)) return null;
   const inChat = place && place !== 'space' ? place : null;
   const validChat = inChat && isId(inChat.chatId) ? inChat.chatId : null;
   const [installations, chat, clientChat] = await Promise.all([
     BotInstallationModel.find({ workspaceId, revokedAt: { $exists: false } }).select('appId botUserId itemSettings itemsV2').lean(),
-    validChat ? ChatModel.findOne({ _id: validChat, workspaceId, 'members.userId': userId }).select('_id kind members.userId').lean<Pick<ChatOfCommand, '_id' | 'kind' | 'members'> | null>() : null,
+    validChat ? ChatModel.findOne({ _id: validChat, workspaceId, 'members.userId': userId }).select('_id kind members.userId workspaceId channel').lean<Pick<ChatOfCommand, '_id' | 'kind' | 'members' | 'workspaceId' | 'channel'> | null>() : null,
     validChat ? isClientChat(validChat) : false,
   ]);
   if (inChat && !chat) return [];
+  const member = await activeMemberOf(chat, new Types.ObjectId(workspaceId), userId);
+  if (!member) return null;
+  const person = { userId: String(userId), spaceAdmin: canManageMembers(member.role) };
   const byApp = new Map(installations.map((one) => [String(one.appId), one]));
   const apps = await BotAppModel.find({ _id: { $in: installations.map((one) => one.appId) }, $or: [{ 'commands.0': { $exists: true } }, { 'shortcuts.0': { $exists: true } }] }).select('name avatarUrl commands shortcuts').sort({ name: 1 }).lean();
   return apps
@@ -205,7 +218,7 @@ async function invokeApp(userId: Types.ObjectId, scope: CommandScope, appId: unk
   const audience = trigger.kind === 'shortcut' ? app.shortcuts?.find((entry) => entry.key === name)?.audience : undefined;
   const setting = itemSettingOf(installation.itemSettings, trigger.kind, name, !installation.itemsV2, audience);
   // Checked here, not only in the menu: an old client or a direct call skips the menu (§2.2).
-  const [member, clientChat] = await Promise.all([WorkspaceMemberModel.findOne({ workspaceId: place.workspaceId, userId, status: 'active' }).select('role').lean(), place.chat ? isClientChat(place.chat._id) : false]);
+  const [member, clientChat] = await Promise.all([activeMemberOf(place.chat, place.workspaceId, userId), place.chat ? isClientChat(place.chat._id) : false]);
   const label = trigger.kind === 'command' ? `/${name}` : `«${app.shortcuts?.find((entry) => entry.key === name)?.name ?? name}»`;
   if (!member || !mayRun(trigger, name, setting, itemPlaceOf(place.chat, installation, clientChat), { userId: String(userId), spaceAdmin: canManageMembers(member.role) })) return notAllowedHere(label);
   // A failed run stays a week: its `failure` is how a «no pudo responder» gets explained (23/10).

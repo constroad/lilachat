@@ -11,6 +11,7 @@ import { buildApp } from '../app.js';
 import { UserModel } from '../models.js';
 import { ChatModel, MessageModel } from '../chatModels.js';
 import { WorkspaceMemberModel, WorkspaceModel } from '../workspaceModels.js';
+import { SharedChannelModel } from '../sharedChannelModel.js';
 import { signSession } from '../sessions.js';
 import { BotAppModel, BotCommandRunModel, BotDeliveryModel, BotInstallationModel, OAuthCodeModel } from './botModels.js';
 import { configureCommands } from './botCommands.js';
@@ -82,7 +83,7 @@ beforeEach(async () => {
   notices.length = 0;
   answer = (res) => res.end();
   forgetBots();
-  await Promise.all([UserModel, ChatModel, MessageModel, WorkspaceModel, WorkspaceMemberModel, BotAppModel, BotInstallationModel, OAuthCodeModel, BotDeliveryModel, BotCommandRunModel].map((model) => (model as unknown as mongoose.Model<unknown>).deleteMany({})));
+  await Promise.all([UserModel, ChatModel, MessageModel, WorkspaceModel, WorkspaceMemberModel, SharedChannelModel, BotAppModel, BotInstallationModel, OAuthCodeModel, BotDeliveryModel, BotCommandRunModel].map((model) => (model as unknown as mongoose.Model<unknown>).deleteMany({})));
   [jose, ana] = (await UserModel.create([{ phone: '902049935', name: 'José' }, { phone: '987654321', name: 'Ana' }])).map((user) => user._id) as [Types.ObjectId, Types.ObjectId];
   spaceId = (await WorkspaceModel.create({ name: 'INFRAMAQ', ownerId: jose, joinCode: 'INFR-7K3P' }))._id;
   await WorkspaceMemberModel.create([
@@ -191,6 +192,22 @@ describe('invoking', () => {
     await invoke(channel, { app_id: appId, command: 'clima', text: '' }, asUser(() => outsider)).expect(404);
     const outsideSpace = (await ChatModel.create({ kind: 'direct', members: [{ userId: jose, role: 'member' }, { userId: ana, role: 'member' }], lastSeq: 0 }))._id;
     await invoke(outsideSpace, { app_id: appId, command: 'clima', text: '' }).expect(404);
+  });
+});
+
+describe('a channel shared with another space (José 11/11, like Slack Connect)', () => {
+  it('a guest active only in the other space can still use a command open to everyone there (Nikole, Inframaq #administracion, 20/11)', async () => {
+    const { appId } = await installWithCommands();
+    const guestSpace = (await WorkspaceModel.create({ name: 'Globofast', ownerId: jose, joinCode: 'GLOB-1234' }))._id;
+    const guest = (await UserModel.create({ phone: '911222333', name: 'Nikole' }))._id;
+    await WorkspaceMemberModel.create({ workspaceId: guestSpace, userId: guest, phone: '51911222333', role: 'member', status: 'active' });
+    await SharedChannelModel.create({ chatId: channel, ownerWorkspaceId: spaceId, workspaceId: guestSpace, status: 'active', invitedBy: jose, acceptedBy: jose });
+    await ChatModel.updateOne({ _id: channel }, { $set: { 'channel.shared': true }, $push: { members: { userId: guest, role: 'member' } } });
+    answer = json(200, { text: 'Lurín: 24 °C' });
+    const asGuest = asUser(() => guest);
+    expect((await request(app).get(`/api/workspaces/${spaceId}/commands?chat=${channel}`).set(asGuest).expect(200)).body.groups).toEqual([{ appId, appName: 'Inframaq', commands: [{ command: 'clima', description: 'Clima de hoy en la planta', usageHint: '[distrito]' }], shortcuts: [] }]);
+    const outcome = await invoke(channel, { app_id: appId, command: 'clima', text: '' }, asGuest).expect(200);
+    expect(outcome.body).toMatchObject({ outcome: 'ephemeral', response: { text: 'Lurín: 24 °C' } });
   });
 });
 

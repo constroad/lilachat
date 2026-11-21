@@ -188,6 +188,9 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
 - **20/11** Una acción de tarjeta puede traer `open: { route: 'service', service_id }`: Lilachat navega sola
   a su Servicios sin mandar nada al bot (agentes arma el payload por separado). Un `POST /api/bots/messages`
   puede traer `mention_user_ids` para etiquetar gente en `text` (ver arriba).
+- **20/11** Un invitado de un canal compartido entre espacios (como Slack Connect) ya puede usar los
+  comandos de ese canal: detalle completo en `bots-comandos-formularios-y-horarios.md` §4 (20/11,
+  `activeMemberOf`).
 
 ## 5. Diseños de Stitch relacionados
 

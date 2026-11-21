@@ -154,6 +154,15 @@ Pregunta a la app por `link.status` y `link.revoke`. Lilachat no guarda nada.
   respuesta nueva aparte (como siempre) Y ahora además descarta la original (`appAnswers.dismiss`),
   porque su trabajo ya terminó. Antes quedaban las dos, confundiendo a quien ya vio la tarjeta
   publicada. Sin cambios si la llamada falla: la original sigue para reintentar.
+- **20/11** Un canal compartido con otro espacio (José 11/11, `plataforma-espacios-y-canales.md`)
+  nunca había tocado los comandos: `commandGroupsOf` e `invokeApp` solo comprobaban
+  `WorkspaceMemberModel` del espacio DUEÑO del canal, así que un invitado activo solo en el otro
+  espacio nunca podía usar un comando aunque el admin lo dejara «todos» en ese canal (Nikole,
+  invitada a Inframaq desde Globofast, #administracion). `activeMemberOf` (`botCommands.ts`) ahora
+  comprueba la membresía activa en cualquiera de los espacios con acceso al canal
+  (`spaceIdsWithAccess`, el mismo mecanismo de `miembrosDelChat.ts`), no solo en el dueño. Sin
+  cambio para un canal no compartido ni para el ⚡ del espacio. Test: `botCommands.test.ts`
+  («a channel shared with another space»).
 
 ## 5. Diseños de Stitch relacionados
 
@@ -196,7 +205,7 @@ Pregunta a la app por `link.status` y `link.revoke`. Lilachat no guarda nada.
 
 ## 7. Pruebas
 
-- Server: `botCommands.test.ts` (16), `botForms.test.ts` (36), `botItemAccess.test.ts` (23),
+- Server: `botCommands.test.ts` (17), `botForms.test.ts` (36), `botItemAccess.test.ts` (23),
   `botSchedules.test.ts` (9), `botTopics.test.ts` (9), `botLink.test.ts` (4), `formPhotoPlaces.test.ts` (7),
   `photoStamp.test.ts` (12).
 - Shared: `botCommands.test.ts` (39), `appItems.test.ts` (26), `appSchedules.test.ts` (13),

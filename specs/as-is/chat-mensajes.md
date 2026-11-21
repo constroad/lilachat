@@ -78,6 +78,10 @@ la búsqueda y las tarjetas de enlace. Hilos, medios, agenda y stickers tienen s
 - Conversación: `Conversation.tsx`, `ConversacionConAcciones.tsx`, `contextoDeLaConversacion.tsx`.
 - Lista: `ListaDeMensajes.tsx`, `filasDeLaConversacion.ts`, `useMessageWindow.ts`, `windowOnScreen.ts`.
 - Burbuja: `BurbujaDeMensaje.tsx` (también las líneas de aviso del sistema), `TextoDelMensaje.tsx`, `LinkedText.tsx`.
+- Tarjeta de un bot: `BotCardView.tsx`. Una acción puede traer `open: { route }` en vez de un `button.click`:
+  `'service'` navega al tab Servicios interno; `'quote-embed'` (20/11) abre el editor de Portal embebido
+  (`QuoteEmbedWeb.tsx`, reusa `PortalEmbedFrame`) — solo web, igual que el embed de un informe. Detalle del
+  contrato en `bots-api-y-tarjetas.md`.
 - Base local (local-first): `web/src/local/*`, sincronía `web/src/sync/*`.
 - Compositor: `Composer.tsx`, `composerInsert.ts`, borrador por chat `chatDrafts.ts` (28/10).
 - Atajos «:hug»: `emojiShortcode/useEmojiShortcode.ts`.

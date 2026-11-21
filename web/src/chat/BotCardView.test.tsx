@@ -122,6 +122,31 @@ describe('an action that opens a service in-app (agentes, 20/11)', () => {
   });
 });
 
+describe('a quote\'s card opens Portal\'s editor embedded (José via agentes 20/11)', () => {
+  const quoteId = '651f1c2b9a0e1234567890ab';
+  const card = { title: 'Borrador de cotización', fields: [], actions: [{ id: 'edit', label: 'Editar', style: 'primary' as const, value: '', open: { route: 'quote-embed' as const, quoteId } }] };
+  const link = { url: `https://www.constroad.com/embed/quote/${quoteId}#t=abc.DEF_123-x`, expires_at: '2026-11-20T20:00:00.000Z' };
+
+  it('shows even with no OpenServiceContext (a prospect\'s channel, never a client\'s)', () => {
+    render(<BotCardView card={card} chatId="c1" seq={1} jwt="jwt" workspaceId="w1" />);
+    expect(screen.queryByTestId('accion-tarjeta-edit')).not.toBeNull();
+  });
+
+  it('asks the chat\'s embed link and opens it in Portal\'s frame', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ embed: link }), { status: 200 }));
+    render(<BotCardView card={card} chatId="c1" seq={1} jwt="jwt" workspaceId="w1" />);
+    fireEvent.click(screen.getByTestId('accion-tarjeta-edit'));
+    expect(fetch).toHaveBeenCalledWith('/api/workspaces/w1/prospects/by-chat/c1/quote-embed/651f1c2b9a0e1234567890ab', expect.anything());
+    await waitFor(() => expect(screen.getByTestId('editor-portal-marco').getAttribute('src')).toBe(link.url));
+  });
+
+  it('without a workspace id (the card has none to ask with) the button does nothing', () => {
+    render(<BotCardView card={card} chatId="c1" seq={1} jwt="jwt" />);
+    fireEvent.click(screen.getByTestId('accion-tarjeta-edit'));
+    expect(screen.queryByTestId('editor-portal')).toBeNull();
+  });
+});
+
 describe('«Copiar enlace» beside a card\'s link (José 20/11)', () => {
   const card = { title: 'Enlace del cliente', fields: [], link: { label: 'Abrir el enlace', url: 'https://portal.constroad.com/x', style: 'button' as const } };
 

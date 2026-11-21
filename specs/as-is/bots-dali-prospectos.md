@@ -286,9 +286,9 @@ Lo que Stitch inventó y no va está listado en la spec (fase 2, pantallas de la
 
 ## 7. Pruebas
 
-- Server: `server/src/bots/botProspects.test.ts` (6), `prospectDesk.test.ts` (21), `botUploads.test.ts` (7, 20/11: +1 de la forma del bot),
+- Server: `server/src/bots/botProspects.test.ts` (6), `prospectDesk.test.ts` (25, 20/11: +4 del editor de cotización embebido), `botUploads.test.ts` (7, 20/11: +1 de la forma del bot),
   `fake.test.ts` (10), `botWhatsapp.test.ts` (8, 20/11, grupos de WhatsApp fase 1).
-- Shared: `bots.test.ts` (46, +8 de `whatsapp`/`as_contact` por mensaje, fase 1/20·11),
+- Shared: `bots.test.ts` (47, +8 de `whatsapp`/`as_contact` por mensaje fase 1, +1 de `open: quote-embed`/20·11),
   `prospects.test.ts` (23, +2 de `source.platform`/20·11 y +1 de `authorKeyOf` sin `phone`/20·11),
   `prospectInsight.test.ts` (9), `prospectSeller.test.ts` (6),
   `prospectBoard.test.ts` (31, +4 de `isSalesProspect`, +1 de `platform`, +2 de `daliChatSections` y +2 de

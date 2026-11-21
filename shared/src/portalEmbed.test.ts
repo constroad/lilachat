@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EMBED_MIN_WIDTH_PX, PORTAL_EMBED_ORIGINS, createsInEmbed, embedCloseRequest, embedCroquisChanged, embedCreateRequest, nativeEmbedCommand, nativeEmbedEventOf, embedErrorLine, embedEventOf, embedLinkOf, embedReportIdOf, embedTheme, opensEmbed, reportEmbedCreatePath } from './portalEmbed.js';
+import { EMBED_MIN_WIDTH_PX, PORTAL_EMBED_ORIGINS, createsInEmbed, embedCloseRequest, embedCroquisChanged, embedCreateRequest, nativeEmbedCommand, nativeEmbedEventOf, embedErrorLine, embedEventOf, embedLinkOf, embedReportIdOf, embedTheme, opensEmbed, quoteEmbedPath, reportEmbedCreatePath } from './portalEmbed.js';
 
 /** Portal's editor 2.0 framed in Lilachat web (Portal 11/11: `/embed/report/<id>#t=<token>`, messages v1). */
 const prod = [PORTAL_EMBED_ORIGINS.production];
@@ -155,6 +155,31 @@ describe('the visit\'s croquis in Portal\'s embed (Portal 14/11, main 29a6e408)'
 
   it('reads «saved» with the visit\'s id', () => {
     expect(embedEventOf({ type: 'portal-embed:saved', version: 1, visitId: 'v1', savedAt: '2026-11-14T14:00:00.000Z' })).toEqual({ type: 'saved', visitId: 'v1', savedAt: '2026-11-14T14:00:00.000Z' });
+  });
+});
+
+describe('a Dali quote\'s editor in Portal\'s embed (José via agentes 20/11)', () => {
+  const quote = { url: 'https://www.constroad.com/embed/quote/6af86624b29826f4d5c7e082#t=abc.DEF_123-x', expires_at: '2026-11-20T20:00:00.000Z' };
+
+  it('reads the quote link when the caller asks for a quote', () => {
+    expect(embedLinkOf(quote, prod, 'quote')).toEqual({ url: quote.url, expiresAt: '2026-11-20T20:00:00.000Z' });
+  });
+
+  it('also reads it with `?tipo=simple` or `?tipo=agrupada` before the token', () => {
+    const simple = { ...quote, url: quote.url.replace('#', '?tipo=simple#') };
+    const grouped = { ...quote, url: quote.url.replace('#', '?tipo=agrupada#') };
+    expect(embedLinkOf(simple, prod, 'quote')?.url).toBe(simple.url);
+    expect(embedLinkOf(grouped, prod, 'quote')?.url).toBe(grouped.url);
+  });
+
+  it('refuses a quote link where a report is asked, and an unknown `tipo`', () => {
+    expect(embedLinkOf(quote, prod)).toBeNull();
+    expect(embedLinkOf(link, prod, 'quote')).toBeNull();
+    expect(embedLinkOf({ ...quote, url: quote.url.replace('#', '?tipo=admin#') }, prod, 'quote')).toBeNull();
+  });
+
+  it('its path is by the chat, never a prospect id the web would have to look up first', () => {
+    expect(quoteEmbedPath('w1', 'c 1', 'q1')).toBe('/workspaces/w1/prospects/by-chat/c%201/quote-embed/q1');
   });
 });
 

@@ -99,6 +99,12 @@ describe('bot card', () => {
     expect(result.ok && result.card.actions).toEqual([{ id: 'open', label: 'Ver en Lilachat', style: 'secondary', value: '', open: { route: 'service', serviceId } }]);
   });
 
+  it('an action may open a quote\'s editor embedded in Portal instead (José via agentes 20/11)', () => {
+    const quoteId = '651f1c2b9a0e1234567890ab';
+    const result = validateBotCard({ title: 'T', actions: [{ id: 'edit', label: 'Editar', value: '', open: { route: 'quote-embed', quote_id: quoteId } }] });
+    expect(result.ok && result.card.actions).toEqual([{ id: 'edit', label: 'Editar', style: 'secondary', value: '', open: { route: 'quote-embed', quoteId } }]);
+  });
+
   it('an unknown route, or a service id that is not a real id, drops `open` silently', () => {
     const action = { id: 'open', label: 'Ver', value: '' };
     const badRoute = validateBotCard({ title: 'T', actions: [{ ...action, open: { route: 'order', service_id: '651f1c2b9a0e1234567890ab' } }] });

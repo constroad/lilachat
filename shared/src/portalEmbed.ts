@@ -18,8 +18,11 @@ const VISIT_EMBED_PATH = /^\/embed\/site-visit\/[A-Za-z0-9_-]{1,64}$/;
 const VISIT_VIEWS = ['', '?vista=croquis'];
 /** A service's croquis: the drawings of its work map (Portal 19/11, `abrir_croquis_de_servicio`). */
 const SERVICE_CROQUIS_EMBED_PATH = /^\/embed\/service-croquis\/[0-9a-f]{24}$/;
-/** What Portal's editor shows: a report (editor 2.0), a technical visit or a service's croquis. */
-export type EmbedKind = 'report' | 'site-visit' | 'service-croquis';
+/** A Dali quote's editor (José via agentes 20/11): `?tipo=simple|agrupada` picks the layout, before the token. */
+const QUOTE_EMBED_PATH = /^\/embed\/quote\/[A-Za-z0-9_-]{1,64}$/;
+const QUOTE_VIEWS = ['', '?tipo=simple', '?tipo=agrupada'];
+/** What Portal's editor shows: a report (editor 2.0), a technical visit, a service's croquis, or a Dali quote. */
+export type EmbedKind = 'report' | 'site-visit' | 'service-croquis' | 'quote';
 const TOKEN = /^#t=[A-Za-z0-9._~-]{1,4096}$/;
 
 export type EmbedLink = { url: string; expiresAt: string };
@@ -48,6 +51,7 @@ function parsedUrl(value: unknown): URL | null {
 /** Portal's answer `{url, expires_at}` (or this module's own `expiresAt`), only from an origin the caller frames, on the embed path, with its token. */
 function pathFits(url: URL, kind: EmbedKind): boolean {
   if (kind === 'site-visit') return VISIT_EMBED_PATH.test(url.pathname) && VISIT_VIEWS.includes(url.search);
+  if (kind === 'quote') return QUOTE_EMBED_PATH.test(url.pathname) && QUOTE_VIEWS.includes(url.search);
   return (kind === 'report' ? EMBED_PATH : SERVICE_CROQUIS_EMBED_PATH).test(url.pathname) && !url.search;
 }
 
@@ -116,6 +120,10 @@ export const embedErrorLine = (code: string): string => ERROR_LINES[code] ?? EMB
 export type EmbedBody = { embed?: EmbedLink; message?: string };
 export const reportEmbedPath = (spaceId: string, clientId: string, serviceId: string, reportId: string): string =>
   `/workspaces/${spaceId}/clients/${encodeURIComponent(clientId)}/services/${encodeURIComponent(serviceId)}/reports/${encodeURIComponent(reportId)}/embed`;
+
+/** «Editar» on a Dali quote's card (José via agentes 20/11): by the chat it lives in, never a prospect id the web would have to look up first. */
+export const quoteEmbedPath = (spaceId: string, chatId: string, quoteId: string): string =>
+  `/workspaces/${spaceId}/prospects/by-chat/${encodeURIComponent(chatId)}/quote-embed/${encodeURIComponent(quoteId)}`;
 
 /**
  * The types Portal's editor creates (José 12/11: the web shows the editor; forms only on the APK and the

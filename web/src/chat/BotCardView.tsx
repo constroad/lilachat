@@ -6,6 +6,7 @@ import { BotCardDetail } from './botBlocks/BotCardDetail';
 import { CardCommandContext, OpenServiceContext, OrderCardContext, useCardCommand } from './botBlocks/cardCommand';
 import { TONE as BLOCK_TONE } from './botBlocks/tones';
 import { copiarTexto } from './copiarTexto';
+import { QuoteEmbedWeb } from './QuoteEmbedWeb';
 import { usePortalFileViewer } from '../spaces/clients/PortalFileViewer';
 import { InVisitCardContext, VisitActionContext } from '../spaces/visits/visitActionContext';
 import { VisitText } from '../spaces/visits/VisitCardBlocks';
@@ -192,66 +193,98 @@ function openCardUrl(url: string | undefined, target: EventTarget) {
  * runs its line instead, and the card stays open: its form can be closed.
  */
 /** `visitId`: a technical visit's card (lv01, agentes 14/11): its `visita_*` buttons open Lilachat's screens. */
-export function BotCardView(props: { card: BotCard; chatId: string; seq: number; jwt: string; visitId?: string }) {
-  const { card } = props;
+/** What one tap on a card's row answers (`button.click`), outside the component to keep its own complexity down. */
+function useCardActionTap(chatId: string, jwt: string, seq: number) {
   const [sent, setSent] = useState<SentAction>(null);
   const [error, setError] = useState('');
+  const tap = async (actionId: string) => {
+    setSent({ id: actionId, state: 'sending' });
+    setError('');
+    const response = await fetch(`/api/chats/${chatId}/card-actions`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` }, body: JSON.stringify({ seq, action_id: actionId }) }).catch(() => null);
+    if (response?.ok) return setSent({ id: actionId, state: 'sent' });
+    const data = response ? ((await response.json().catch(() => ({}))) as { message?: string }) : {};
+    setSent(null);
+    setError(data.message ?? 'No se pudo enviar. Revisa tu conexión.');
+  };
+  return { sent, error, tap };
+}
+
+type PressDeps = { openService?: ((serviceId: string) => void) | null; openQuoteEmbed: (quoteId: string) => void; openVisit?: ((visitId: string, action: VisitCardAction) => void) | null; visitId?: string; runRow: ((line: string) => void) | null; tap: (actionId: string) => void };
+
+/** Where a tap on a card's action goes: an internal jump, Portal's editor embedded, a visit's screen, a line, or `button.click`. */
+function pressOf(action: CardAction, deps: PressDeps): void {
+  if (action.open?.route === 'service') return deps.openService?.(action.open.serviceId);
+  if (action.open?.route === 'quote-embed') return deps.openQuoteEmbed(action.open.quoteId);
+  const visitAction = deps.visitId && deps.openVisit ? visitCardActionOf(action.id) : null;
+  if (visitAction) return deps.openVisit!(deps.visitId!, visitAction);
+  return action.command ? deps.runRow?.(action.command) : deps.tap(action.id);
+}
+
+/** The card's own content: fields, blocks, the detail and order buttons, its link line. */
+function CardBody(props: { card: BotCard; seq: number; visitId?: string; openOrder: ((seq: number) => void) | null; onShowDetail: () => void }) {
+  const { card } = props;
+  return (
+    <div className="space-y-2 px-3.5 py-3">
+      <CardHead card={card} visit={Boolean(props.visitId)} />
+      {card.fields.length ? (
+        <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[13px]">
+          {card.fields.map((field) => (
+            <div key={`${field.label}-${field.value}`} className="min-w-0">
+              <dt className="text-[11px] text-on-surface-variant">{field.label}</dt>
+              <dd className="break-words font-semibold">{field.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      {card.blocks ? <InVisitCardContext.Provider value={Boolean(props.visitId)}><BotBlocksView blocks={props.visitId ? visitBlocksOf(card.blocks).body : card.blocks} /></InVisitCardContext.Provider> : null}
+      {card.detail ? (
+        <button type="button" data-testid="tarjeta-ver-detalle" onClick={props.onShowDetail} className="inline-flex min-h-9 items-center gap-1 rounded-full border border-outline/20 px-3 text-[13px] font-semibold hover:bg-background">
+          Ver detalle <ChevronRight size={14} className="text-on-surface-variant" />
+        </button>
+      ) : null}
+      {props.openOrder && props.seq && isOrderCard(card) ? (
+        <button type="button" data-testid="tarjeta-ver-pedido" onClick={() => props.openOrder!(props.seq)} className="inline-flex min-h-9 items-center gap-1 self-start rounded-full border border-outline/20 px-3 text-[13px] font-semibold text-on-surface hover:bg-background">
+          Ver despachos y fotos <ChevronRight size={14} className="text-on-surface-variant" />
+        </button>
+      ) : null}
+      <CardLink card={props.visitId ? withUpdateInFooter(card) : card} />
+    </div>
+  );
+}
+
+/** What hangs under the card: a visit's missing sections, an error, the detail sheet or Portal's quote editor. */
+function CardOverlays(props: { card: BotCard; visitId?: string; error: string; detailOpen: boolean; onCloseDetail: () => void; quoteEmbedId: string | null; onCloseQuoteEmbed: () => void; workspaceId?: string; chatId: string; jwt: string }) {
+  const { card } = props;
+  return (
+    <>
+      {props.visitId && card.blocks ? visitBlocksOf(card.blocks).missing.map((block, index) => <div key={`falta-${index}`} className="px-3.5 pb-3"><VisitText block={block} /></div>) : null}
+      {props.error ? <p role="alert" className="border-t border-outline/10 px-3.5 py-2 text-[12px] text-error">{props.error}</p> : null}
+      {props.detailOpen ? <BotCardDetail card={card} onClose={props.onCloseDetail} /> : null}
+      {props.quoteEmbedId && props.workspaceId ? <QuoteEmbedWeb jwt={props.jwt} spaceId={props.workspaceId} chatId={props.chatId} quoteId={props.quoteEmbedId} onClose={props.onCloseQuoteEmbed} /> : null}
+    </>
+  );
+}
+
+export function BotCardView(props: { card: BotCard; chatId: string; seq: number; jwt: string; visitId?: string; /** `open: { route: 'quote-embed' }` (José via agentes 20/11): which space it asks the link to. */ workspaceId?: string }) {
+  const { card } = props;
+  const { sent, error, tap } = useCardActionTap(props.chatId, props.jwt, props.seq);
+  const [quoteEmbedId, setQuoteEmbedId] = useState<string | null>(null);
   // The kit (§118.4): the detail opens over the window with the data that came with the message.
   const [detailOpen, setDetailOpen] = useState(false);
   const run = useCardCommand();
   const openOrder = useContext(OrderCardContext);
   const openService = useContext(OpenServiceContext);
   const runRow = run ? (line: string) => run(line, props.seq, cardContextOf(card) ?? undefined) : null;
-  const tap = async (actionId: string) => {
-    setSent({ id: actionId, state: 'sending' });
-    setError('');
-    const response = await fetch(`/api/chats/${props.chatId}/card-actions`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.jwt}` }, body: JSON.stringify({ seq: props.seq, action_id: actionId }) }).catch(() => null);
-    if (response?.ok) return setSent({ id: actionId, state: 'sent' });
-    const data = response ? ((await response.json().catch(() => ({}))) as { message?: string }) : {};
-    setSent(null);
-    setError(data.message ?? 'No se pudo enviar. Revisa tu conexión.');
-  };
   const openVisit = useContext(VisitActionContext);
-  const press = (action: CardAction) => {
-    if (action.open?.route === 'service') return openService?.(action.open.serviceId);
-    const visitAction = props.visitId && openVisit ? visitCardActionOf(action.id) : null;
-    if (visitAction) return openVisit!(props.visitId!, visitAction);
-    return action.command ? runRow?.(action.command) : void tap(action.id);
-  };
-  const actions = card.actions?.filter((action) => (!action.command || runRow) && (!action.open || openService)) ?? [];
+  const press = (action: CardAction) => pressOf(action, { openService, openQuoteEmbed: setQuoteEmbedId, openVisit, visitId: props.visitId, runRow, tap: (id) => void tap(id) });
+  const actions = card.actions?.filter((action) => (!action.command || runRow) && (!action.open || action.open.route === 'quote-embed' || openService)) ?? [];
   return (
     <CardCommandContext.Provider value={runRow}>
     <div data-testid="tarjeta-bot" onClick={(event) => openCardUrl(card.url, event.target)} className={`mb-1 w-[calc(100%-0.5rem)] max-w-sm overflow-hidden border border-outline/15 bg-surface text-on-surface ${props.visitId ? 'rounded-[10px]' : 'rounded-xl'} ${card.url ? 'cursor-pointer' : ''}`}>
       {card.accent ? <div data-testid="tarjeta-acento" aria-hidden className={`h-[3px] ${ACCENT_BAR(card.accent)}`} /> : null}
-      <div className="space-y-2 px-3.5 py-3">
-        <CardHead card={card} visit={Boolean(props.visitId)} />
-        {card.fields.length ? (
-          <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[13px]">
-            {card.fields.map((field) => (
-              <div key={`${field.label}-${field.value}`} className="min-w-0">
-                <dt className="text-[11px] text-on-surface-variant">{field.label}</dt>
-                <dd className="break-words font-semibold">{field.value}</dd>
-              </div>
-            ))}
-          </dl>
-        ) : null}
-        {card.blocks ? <InVisitCardContext.Provider value={Boolean(props.visitId)}><BotBlocksView blocks={props.visitId ? visitBlocksOf(card.blocks).body : card.blocks} /></InVisitCardContext.Provider> : null}
-        {card.detail ? (
-          <button type="button" data-testid="tarjeta-ver-detalle" onClick={() => setDetailOpen(true)} className="inline-flex min-h-9 items-center gap-1 rounded-full border border-outline/20 px-3 text-[13px] font-semibold hover:bg-background">
-            Ver detalle <ChevronRight size={14} className="text-on-surface-variant" />
-          </button>
-        ) : null}
-        {openOrder && props.seq && isOrderCard(card) ? (
-          <button type="button" data-testid="tarjeta-ver-pedido" onClick={() => openOrder(props.seq)} className="inline-flex min-h-9 items-center gap-1 self-start rounded-full border border-outline/20 px-3 text-[13px] font-semibold text-on-surface hover:bg-background">
-            Ver despachos y fotos <ChevronRight size={14} className="text-on-surface-variant" />
-          </button>
-        ) : null}
-        <CardLink card={props.visitId ? withUpdateInFooter(card) : card} />
-      </div>
+      <CardBody card={card} seq={props.seq} visitId={props.visitId} openOrder={openOrder} onShowDetail={() => setDetailOpen(true)} />
       {actions.length ? <CardButtons actions={actions} sent={sent} onPress={press} grid={Boolean(props.visitId)} /> : null}
-      {props.visitId && card.blocks ? visitBlocksOf(card.blocks).missing.map((block, index) => <div key={`falta-${index}`} className="px-3.5 pb-3"><VisitText block={block} /></div>) : null}
-      {error ? <p role="alert" className="border-t border-outline/10 px-3.5 py-2 text-[12px] text-error">{error}</p> : null}
-      {detailOpen ? <BotCardDetail card={card} onClose={() => setDetailOpen(false)} /> : null}
+      <CardOverlays card={card} visitId={props.visitId} error={error} detailOpen={detailOpen} onCloseDetail={() => setDetailOpen(false)} quoteEmbedId={quoteEmbedId} onCloseQuoteEmbed={() => setQuoteEmbedId(null)} workspaceId={props.workspaceId} chatId={props.chatId} jwt={props.jwt} />
     </div>
     </CardCommandContext.Provider>
   );

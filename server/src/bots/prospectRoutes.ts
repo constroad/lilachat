@@ -1,6 +1,6 @@
 import { Router, type Response } from 'express';
 import { asyncRoute, requireSession } from '../requireSession.js';
-import { daliKnowledge, latestReview, teachDali } from './daliDoor.js';
+import { daliKnowledge, latestReview, quoteEmbed, teachDali } from './daliDoor.js';
 import { approveFollowUp, changeProspect, handBack, listProspects, oneProspect, prospectDocuments, confirmField } from './prospectDesk.js';
 
 /**
@@ -24,6 +24,7 @@ export function buildProspectRouter(): Router {
   const prospectOf = (params: Record<string, string | undefined>) => String(params.prospectId ?? '');
   router.get('/workspaces/:id/prospects', requireSession, asyncRoute(async (req, res) => send(res, await listProspects(req.params.id!, me(req), req.query))));
   router.get('/workspaces/:id/prospects/by-chat/:chatId', requireSession, asyncRoute(async (req, res) => send(res, await oneProspect(req.params.id!, me(req), { chatId: String(req.params.chatId) }))));
+  router.get('/workspaces/:id/prospects/by-chat/:chatId/quote-embed/:quoteId', requireSession, asyncRoute(async (req, res) => send(res, await quoteEmbed(req.params.id!, req.params.chatId!, req.params.quoteId!, me(req)))));
   router.get('/workspaces/:id/prospects/:prospectId', requireSession, asyncRoute(async (req, res) => send(res, await oneProspect(req.params.id!, me(req), { prospectId: prospectOf(req.params) }))));
   router.get('/workspaces/:id/prospects/:prospectId/documents', requireSession, asyncRoute(async (req, res) => send(res, await prospectDocuments(req.params.id!, me(req), prospectOf(req.params)))));
   router.patch('/workspaces/:id/prospects/:prospectId', requireSession, asyncRoute(async (req, res) => send(res, await changeProspect(req.params.id!, prospectOf(req.params), me(req), req.body))));

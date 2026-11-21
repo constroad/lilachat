@@ -270,6 +270,46 @@ describe('what Dali knows', () => {
   });
 });
 
+/** «Editar» on a quote's card (José via agentes 20/11): Portal's editor framed in Lilachat, like a report's. */
+describe('GET .../prospects/by-chat/:chatId/quote-embed/:quoteId', () => {
+  const QUOTE = '651f1c2b9a0e1234567890ab';
+  const link = { url: `https://www.constroad.com/embed/quote/${QUOTE}#t=abc.DEF_123-x`, expires_at: '2026-11-20T20:00:00.000Z' };
+  const chatIdOf = async () => String((await ProspectChannelModel.findOne({ prospectId: PROSPECT }).lean())!.chatId);
+  const embed = (userId: Types.ObjectId, chatId: string, quoteId = QUOTE) => request(app).get(`/api/workspaces/${spaceId}/prospects/by-chat/${chatId}/quote-embed/${quoteId}`).set(asUser(userId));
+
+  it('asks agentes the link, with the prospect it belongs to', async () => {
+    await putProspect(base).expect(201);
+    answers['quote.embed.requested'] = { status: 200, body: link };
+    const chatId = await chatIdOf();
+    const found = await embed(ana, chatId).expect(200);
+    expect(found.body.embed).toEqual({ url: link.url, expiresAt: link.expires_at });
+    expect(await eventOf('quote.embed.requested')).toMatchObject({ quote_id: QUOTE, prospect_id: PROSPECT, user: { id: String(ana), name: 'Ana Ríos' } });
+  });
+
+  it('a chat with no prospect, or a quote id that is not a real id, is not found', async () => {
+    await putProspect(base).expect(201);
+    const chatId = await chatIdOf();
+    await embed(ana, new Types.ObjectId().toHexString()).expect(404);
+    await embed(ana, chatId, 'not-an-id').expect(404);
+  });
+
+  it('agentes says no to a non-admin, or that the quote is gone', async () => {
+    await putProspect(base).expect(201);
+    const chatId = await chatIdOf();
+    answers['quote.embed.requested'] = { status: 400, body: { code: 'denied' } };
+    expect((await embed(ana, chatId).expect(403)).body.message).toContain('administradores');
+    answers['quote.embed.requested'] = { status: 404, body: { code: 'not-found' } };
+    expect((await embed(ana, chatId).expect(404)).body.message).toContain('cotización');
+  });
+
+  it('says so when agentes does not answer', async () => {
+    await putProspect(base).expect(201);
+    const chatId = await chatIdOf();
+    answers['quote.embed.requested'] = { status: 500, body: { error: 'boom' } };
+    expect((await embed(ana, chatId).expect(502)).body.message).toContain('cotización');
+  });
+});
+
 describe('the weekly review', () => {
   it('shows the latest review card Dali posted in #general, or none yet', async () => {
     const general = await ChatModel.create({ kind: 'group', name: 'general', workspaceId: spaceId, channel: { visibility: 'public' }, members: [{ userId: jose, role: 'admin' }, { userId: ana, role: 'member' }], lastSeq: 0 });

@@ -20,7 +20,8 @@ export type CardTone = 'ok' | 'warn' | 'error' | 'info' | 'neutral';
 export type CardActionStyle = 'primary' | 'secondary' | 'danger';
 /** `command`: the button runs that line for whoever taps it, instead of reaching the bot as `button.click`. */
 /** `open`: a client-side jump instead of a line or a `button.click` (agentes, 20/11: open the service without leaving Lilachat). The client is the card's own channel, never repeated here. */
-export type CardOpen = { route: 'service'; serviceId: string };
+/** `quote-embed` (José via agentes 20/11): opens a quote's editor framed in Portal, like a report's. */
+export type CardOpen = { route: 'service'; serviceId: string } | { route: 'quote-embed'; quoteId: string };
 export type CardAction = { id: string; label: string; style: CardActionStyle; value: string; command?: string; open?: CardOpen };
 /** The bar on top of a card (Stitch a10): the space's brand, or a tone (a corrected one, warn). */
 export type CardAccent = 'brand' | CardTone;
@@ -66,12 +67,18 @@ const STYLES: readonly CardActionStyle[] = ['primary', 'secondary', 'danger'];
 const ACTION_ID = /^[a-z0-9_-]+$/;
 const SERVICE_ID = /^[a-f0-9]{24}$/i;
 
-/** `open: { route: 'service', service_id }` on the wire; anything else is dropped, not refused. */
+/** `open: { route: 'service', service_id }` or `{ route: 'quote-embed', quote_id }` on the wire; anything else is dropped, not refused. */
 function cardOpenOf(raw: unknown): CardOpen | undefined {
   const open = record(raw);
-  if (open.route !== 'service') return undefined;
-  const serviceId = typeof open.service_id === 'string' ? open.service_id : '';
-  return SERVICE_ID.test(serviceId) ? { route: 'service', serviceId } : undefined;
+  if (open.route === 'service') {
+    const serviceId = typeof open.service_id === 'string' ? open.service_id : '';
+    return SERVICE_ID.test(serviceId) ? { route: 'service', serviceId } : undefined;
+  }
+  if (open.route === 'quote-embed') {
+    const quoteId = typeof open.quote_id === 'string' ? open.quote_id : '';
+    return SERVICE_ID.test(quoteId) ? { route: 'quote-embed', quoteId } : undefined;
+  }
+  return undefined;
 }
 
 const line = (value: unknown, max: number): string => (typeof value === 'string' ? value.replace(/\s+/g, ' ').trim().slice(0, max) : '');

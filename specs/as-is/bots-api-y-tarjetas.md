@@ -194,6 +194,17 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
 - **20/11** Destino `whatsapp` (grupos de WhatsApp en Chats de Dali, fase 1 — ver as-is de Dali): séptima
   variante de `target`, con `as_contact` como objeto `{ name, phone?, sent_at? }` en vez de `true` (no hay
   identidad fija en el canal; cada mensaje trae la suya). `message.created` gana `channel.whatsapp_id`.
+- **20/11** `open: { route: 'quote-embed', quote_id }`: «Editar» en la tarjeta de una cotización de Dali
+  abre el editor de Portal embebido DENTRO de Lilachat, igual que un informe (web únicamente, como todo
+  embed de Portal — la APK no muestra este botón). `quote_id` un ObjectId de 24 hex. Al tocarlo, Lilachat
+  pide `GET /workspaces/:id/prospects/by-chat/:chatId/quote-embed/:quoteId` (resuelve el prospecto desde el
+  chat, nunca pide `prospect_id` a la tarjeta), que dispara `quote.embed.requested { quote_id, prospect_id,
+  user }` síncrono al webhook de Dali (mismo mecanismo que `dali.knowledge.requested`, no el de
+  `client.report.embed.requested` que es de un CLIENTE). Respuesta `{ url, expires_at }`,
+  `https://www.constroad.com/embed/quote/<id>[?tipo=simple|agrupada]#t=<token>` — nuevo `EmbedKind: 'quote'`
+  en `portalEmbed.ts`, mismo `PortalEmbedFrame` que un informe. Errores de agentes: 400 `denied` → 403 (solo
+  admins editan), 404 `not-found` → la cotización ya no existe, cualquier otro → 502. No necesita que el
+  `link` normal de la tarjeta desaparezca: pueden ir juntos.
 
 ## 5. Diseños de Stitch relacionados
 
@@ -235,7 +246,7 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
   `botClientTasks.test.ts` (7), `fake.test.ts` (10), `server/src/deleteAppCard.test.ts` (4).
 - Shared: `bots.test.ts` (28), `botBlocks.test.ts` (49), `botCardDesign.test.ts` (17),
   `botManifest.test.ts` (13), `botUploads.test.ts` (6), `appLink.test.ts` (3).
-- Web: `BotCardView.test.tsx` (20), `BotCardDesign.test.tsx` (6), `botBlocks/BotBlocks.test.tsx` (18),
+- Web: `BotCardView.test.tsx` (26, 20/11: +3 del editor de cotización embebido), `BotCardDesign.test.tsx` (6), `botBlocks/BotBlocks.test.tsx` (18),
   `BotFilesAlbum.test.tsx` (3), `dialogoEliminar.appCard.test.tsx` (2), `apps/InstallAppScreen.test.tsx` (5),
   `spaces/apps/apps.test.tsx` (12), `appSettings.test.tsx` (8), `NewPermissionsNotice.test.tsx` (2),
   `pendingAppReturn.test.ts` (4).

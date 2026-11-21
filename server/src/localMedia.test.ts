@@ -49,6 +49,24 @@ describe('own media storage (pending 82)', () => {
     const thumb = await sharp(path.join(root, outcome.media.thumbnailUrl!.replace('/media/', ''))).metadata();
     expect(Math.max(thumb.width!, thumb.height!)).toBe(640);
     expect(fallback.upload).not.toHaveBeenCalled();
+    // The photo's own shape (José via agentes 20/11: a bot's upload has no width/height sent by a
+    // person's client, so the chat bubble cropped every one into a square). 1200×800 stays 3:2.
+    expect(outcome.media.width! / outcome.media.height!).toBeCloseTo(1200 / 800, 2);
+  });
+
+  it('a video also gets its shape, from the thumbnail frame ffmpeg already drew', async () => {
+    const frame = () => sharp({ create: { width: 640, height: 360, channels: 3, background: { r: 10, g: 10, b: 10 } } }).jpeg().toBuffer();
+    const uploader = buildLocalUploader({ disk: () => disk, fallback, videoThumbnail: async (_video, thumb) => { await writeFile(thumb, await frame()); return true; } });
+    const outcome = await uploader.upload({ chatId: CHAT, fileName: 'v.mp4', mimeType: 'video/mp4', kind: 'video', bytes: Buffer.from('not really a video') });
+    expect(outcome).toMatchObject({ ok: true, media: { thumbnailStatus: 'ready', width: 640, height: 360 } });
+  });
+
+  it('without a thumbnail there is no shape to read: no width or height, not a false square', async () => {
+    const uploader = buildLocalUploader({ disk: () => disk, fallback, videoThumbnail: async () => false });
+    const outcome = await uploader.upload({ chatId: CHAT, fileName: 'v.mp4', mimeType: 'video/mp4', kind: 'video', bytes: Buffer.from('not really a video') });
+    if (!outcome.ok) throw new Error('upload failed');
+    expect(outcome.media.width).toBeUndefined();
+    expect(outcome.media.height).toBeUndefined();
   });
 
   it('a PDF gets its first page as the thumbnail and its page count (José 17/11, like WhatsApp)', async () => {

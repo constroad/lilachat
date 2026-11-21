@@ -53,9 +53,22 @@ remitentes posibles, así que cada mensaje trae el suyo.
 - `message.created` hacia agentes lleva `channel.whatsapp_id` (mismo patrón que `prospect_id`: un campo
   `whatsappId` en `Chat`, seleccionado en `hearingOf`).
 - Colección `whatsappchannels`. Índice `{workspaceId, appId, waId}` (único).
-- **Fuera de fase 1** (confirmado con agentes): adjuntos (foto/doc/audio ya tienen mecanismo vía
-  `/api/bots/files`; falta un `kind: 'sticker'` para distinguir el render) y citar/responder (reusa
-  `Message.replyToSeq`, que ya existe, sin exponer a bots todavía). Fase 2 y 3 respectivamente.
+- **`message.reply_to`** (20/11, implementado): ver §c-prospectos arriba y `BOTS-API.spec.md`.
+- **Una foto o video posteado por agentes llega sin `width`/`height`** (20/11, José vía agentes: «no
+  respeta su proporción, se ve estirada/recortada»). Causa real: sin esas dimensiones, `tamanoDeBurbuja`
+  (`shared/src/media.ts`) caía al cuadrado 220×220 de respaldo — TODA foto de bot salía recortada al
+  centro sin importar su forma real. Arreglado leyendo la forma del thumbnail que el uploader YA genera
+  (`shapeOf()` en `server/src/localMediaUploader.ts`, con `sharp`: sin ffprobe, sirve igual para foto y
+  video porque el resize/el primer frame de ffmpeg conservan la proporción) → `BotUpload.width/height`
+  (`botUploads.ts`) → `Message.media.width/height` (`uploadMedia()` en `botMessages.ts`). A partir de ahí
+  usa el MISMO motor que una foto de una persona (`photoBubbleStyle`, `VisorDeFotos`, controles de video):
+  no hubo que tocar la burbuja. Fuera de fase 1 todavía: adjuntos con `kind: 'sticker'` para distinguir su
+  render.
+- **Álbum de fotos consecutivas del mismo remitente real, sin `media.album` compartido** (20/11, José vía
+  agentes: agentes publica cada foto de WhatsApp aparte, nunca como un lote). `albumLayout`
+  (`shared/src/albums.ts`) ahora también agrupa por `authorKeyOf`-equivalente (`prospect.phone ?? name`) +
+  el mismo minuto de `at`, cuando no hay `media.album` explícito — la lógica de persona (selección múltiple
+  en un picker) no cambia.
 
 **Lo que hacen los vendedores** (sesión, `server/src/bots/prospectRoutes.ts`, `prospectDesk.ts`).
 
@@ -273,7 +286,7 @@ Lo que Stitch inventó y no va está listado en la spec (fase 2, pantallas de la
 
 ## 7. Pruebas
 
-- Server: `server/src/bots/botProspects.test.ts` (6), `prospectDesk.test.ts` (21), `botUploads.test.ts` (6),
+- Server: `server/src/bots/botProspects.test.ts` (6), `prospectDesk.test.ts` (21), `botUploads.test.ts` (7, 20/11: +1 de la forma del bot),
   `fake.test.ts` (10), `botWhatsapp.test.ts` (8, 20/11, grupos de WhatsApp fase 1).
 - Shared: `bots.test.ts` (46, +8 de `whatsapp`/`as_contact` por mensaje, fase 1/20·11),
   `prospects.test.ts` (23, +2 de `source.platform`/20·11 y +1 de `authorKeyOf` sin `phone`/20·11),

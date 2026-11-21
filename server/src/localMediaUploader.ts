@@ -35,6 +35,16 @@ async function imageThumbnail(image: string, thumb: string): Promise<boolean> {
   return sharp(image).rotate().resize(THUMB_SIDE, THUMB_SIDE, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: THUMB_QUALITY, mozjpeg: true }).toFile(thumb).then(() => true, () => false);
 }
 
+/**
+ * The original's own aspect ratio, read from the thumbnail frame already drawn (a resize that keeps
+ * proportion, or ffmpeg's first frame): no ffprobe needed, and it works the same for a photo or a video.
+ */
+async function shapeOf(thumb: string): Promise<{ width: number; height: number } | null> {
+  const { default: sharp } = await import('sharp');
+  const { width, height } = await sharp(thumb).metadata().catch(() => ({ width: undefined, height: undefined }));
+  return width && height ? { width, height } : null;
+}
+
 /** `image-<stamp>.png` → `image-<stamp>_<hash16>.png`: our URLs are public, so they must not be guessable. */
 const nameWithHash = (storageName: string, hash: string): string => {
   const dot = storageName.lastIndexOf('.');
@@ -72,6 +82,7 @@ export function buildLocalUploader(deps: { disk: () => Disco | null; fallback: M
       const target = path.join(disk.raiz, thumbRelative);
       const thumbnail = await thumbnailOf(params, source, target);
       const made = thumbnail.made;
+      const shape = made ? await shapeOf(target) : null;
       const url = `${MEDIA_PREFIX}${relative}`;
       return {
         ok: true,
@@ -81,6 +92,7 @@ export function buildLocalUploader(deps: { disk: () => Disco | null; fallback: M
           thumbnailStatus: made ? 'ready' : 'unsupported',
           ...(params.kind === 'video' ? { streamUrl: url } : {}),
           ...(thumbnail.pages ? { pages: thumbnail.pages } : {}),
+          ...(shape ?? {}),
           sizeBytes: received.bytes,
           storageName: name,
         },

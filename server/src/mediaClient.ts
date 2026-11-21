@@ -28,6 +28,9 @@ export type UploadedMedia = {
   storageName: string;
   /** A PDF's page count, read when its first page is drawn (José 17/11). */
   pages?: number;
+  /** The photo's or video's own shape, read from its thumbnail frame (José via agentes 20/11): without it the chat bubble cropped every bot upload into a square. */
+  width?: number;
+  height?: number;
 };
 
 export type UploadOutcome =

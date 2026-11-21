@@ -19,7 +19,7 @@ import { sha256 } from './botSecrets.js';
 /** A prospect's files (José 17/11: «si un prospecto me manda un kml, una imagen o un pdf con metrados»). */
 let mongo: MongoMemoryServer;
 const stored: string[] = [];
-const app = buildApp({ mediaUploader: { async upload(params) { stored.push(params.fileName); return { ok: true, media: { url: `/media/bot/${params.fileName}`, storageName: `st-${params.fileName}`, sizeBytes: params.bytes.length } }; } } });
+const app = buildApp({ mediaUploader: { async upload(params) { stored.push(params.fileName); return { ok: true, media: { url: `/media/bot/${params.fileName}`, storageName: `st-${params.fileName}`, sizeBytes: params.bytes.length, ...(params.kind === 'image' ? { width: 1200, height: 800 } : {}) } }; } } });
 const REDIRECT = 'https://agentes.example.com/canales/lilachat/vuelta';
 const VERIFIER = 'v'.repeat(64);
 const CHALLENGE = createHash('sha256').update(VERIFIER).digest('base64url');
@@ -111,6 +111,15 @@ describe('POST /api/bots/messages with files', () => {
     const asJose = { Authorization: `Bearer ${signSession({ userId: String(jose), deviceId: `d-${jose}`, email: 'x' })}` };
     const ficha = await request(app).get(`/api/workspaces/${spaceId}/prospects/${encodeURIComponent(PROSPECT)}`).set(asJose).expect(200);
     expect(ficha.body.prospect.fields).toEqual([{ key: 'area_m2', label: 'Área', value: '1 240 m²', source: 'document', fileId: kml, confirmed: false }, { key: 'district', label: 'Distrito', value: 'Ate' }]);
+  });
+
+  it('a photo posted apart (José via agentes 20/11: a WhatsApp group, one upload per call) keeps its own shape', async () => {
+    const token = await installApp();
+    await request(app).put(`/api/bots/prospects/${encodeURIComponent(PROSPECT)}`).set(asBot(token)).send({ name: 'Carlos', phone: '51949123824', last_activity_at: new Date().toISOString() }).expect(201);
+    const photo = (await upload(token, Buffer.from('jpg'), 'cuadra.jpg', 'image/jpeg').expect(201)).body.file_id;
+    await post(token, { prospect: PROSPECT, as_contact: true, files: [{ file_id: photo }], idempotency_key: 'wamid.shape' }).expect(201);
+    const message = await MessageModel.findOne({ kind: 'image' }).lean();
+    expect(message?.media).toMatchObject({ width: 1200, height: 800 });
   });
 
   it('a file_id of another app is not found (404) and posts nothing', async () => {

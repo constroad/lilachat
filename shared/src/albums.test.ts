@@ -34,6 +34,43 @@ describe('albumLayout (pending 12)', () => {
   });
 });
 
+describe('a WhatsApp group with no shared media.album (agentes posts each photo apart, José 20/11)', () => {
+  const waPhoto = (seq: number, at: string, prospect: { name: string; phone?: string }, extra: Record<string, unknown> = {}) => photo(seq, undefined, { at, prospect, ...extra });
+
+  it('consecutive photos from the same real sender in the same minute still become one album', () => {
+    const layout = albumLayout([
+      waPhoto(1, '2026-11-20T15:32:10.000Z', { name: 'Juan', phone: '51987654321' }),
+      waPhoto(2, '2026-11-20T15:32:40.000Z', { name: 'Juan', phone: '51987654321' }),
+    ]);
+    expect(layout.get(1)).toEqual({ role: 'head', seqs: [1, 2] });
+    expect(layout.get(2)).toEqual({ role: 'member', head: 1 });
+  });
+
+  it('a different real sender (same bot, different WhatsApp phone) does not share the album', () => {
+    const layout = albumLayout([
+      waPhoto(1, '2026-11-20T15:32:10.000Z', { name: 'Juan', phone: '51987654321' }),
+      waPhoto(2, '2026-11-20T15:32:15.000Z', { name: 'Ana', phone: '51999999999' }),
+    ]);
+    expect(layout.size).toBe(0);
+  });
+
+  it('the same sender but a different minute does not share the album', () => {
+    const layout = albumLayout([
+      waPhoto(1, '2026-11-20T15:32:59.000Z', { name: 'Juan', phone: '51987654321' }),
+      waPhoto(2, '2026-11-20T15:33:01.000Z', { name: 'Juan', phone: '51987654321' }),
+    ]);
+    expect(layout.size).toBe(0);
+  });
+
+  it('a contact with no phone (an @lid WhatsApp id) groups by name instead', () => {
+    const layout = albumLayout([
+      waPhoto(1, '2026-11-20T15:32:10.000Z', { name: 'Juan' }),
+      waPhoto(2, '2026-11-20T15:32:20.000Z', { name: 'Juan' }),
+    ]);
+    expect(layout.get(1)).toEqual({ role: 'head', seqs: [1, 2] });
+  });
+});
+
 describe('album ids', () => {
   it('a new id is valid and two are different', () => {
     const first = newAlbumId(() => 0.5, 1_792_700_000_000);

@@ -4,7 +4,16 @@
  * still its own message with the same `media.album`; the conversation draws
  * them together. PURE.
  */
-type AlbumCandidate = { seq?: number; senderId?: string; kind?: string; deletedAt?: string | null; media?: { album?: string } };
+type AlbumCandidate = {
+  seq?: number;
+  senderId?: string;
+  kind?: string;
+  deletedAt?: string | null;
+  media?: { album?: string };
+  at?: string;
+  /** A WhatsApp group or prospect's real author: agentes posts each photo as its own message, with no shared `media.album`. */
+  prospect?: { name: string; phone?: string };
+};
 
 export type AlbumRole = { role: 'head'; seqs: number[] } | { role: 'member'; head: number };
 
@@ -17,8 +26,18 @@ export function newAlbumId(random: () => number = Math.random, now: number = Dat
   return `al${now.toString(36)}${Math.floor(random() * 36 ** 6).toString(36).padStart(6, '0')}`;
 }
 
-const albumOf = (row: AlbumCandidate): string | null =>
-  !row.deletedAt && typeof row.seq === 'number' && (row.kind === 'image' || row.kind === 'video') && isAlbumId(row.media?.album) ? row.media!.album! : null;
+/**
+ * A WhatsApp group or prospect, agentes posts each photo apart (no shared `media.album`): consecutive ones
+ * from the same real sender within the same minute still read as one album (José via agentes 20/11).
+ */
+const sameMinuteAlbumKey = (row: AlbumCandidate): string | null =>
+  row.prospect && row.at ? `minute:${row.prospect.phone ?? row.prospect.name}:${row.at.slice(0, 16)}` : null;
+
+const albumOf = (row: AlbumCandidate): string | null => {
+  if (row.deletedAt || typeof row.seq !== 'number' || (row.kind !== 'image' && row.kind !== 'video')) return null;
+  if (isAlbumId(row.media?.album)) return row.media!.album!;
+  return sameMinuteAlbumKey(row);
+};
 
 /**
  * The album role of each row, by seq: the first photo of a run draws the card

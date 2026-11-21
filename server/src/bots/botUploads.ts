@@ -7,7 +7,7 @@ import { toAbsoluteMediaUrl, type MediaUploader } from '../mediaClient.js';
  * our media like a member's file; a post names it by `file_id` (`files: [{ file_id }]`). It never expires: a
  * retried post reuses it. Looked up by `_id` and installation, so it needs no index of its own.
  */
-export type BotUpload = { _id: Types.ObjectId; installationId: Types.ObjectId; storageName: string; url: string; thumbUrl?: string; mime: string; name: string; size: number; kind: BotUploadKind; pages?: number; createdAt: Date };
+export type BotUpload = { _id: Types.ObjectId; installationId: Types.ObjectId; storageName: string; url: string; thumbUrl?: string; mime: string; name: string; size: number; kind: BotUploadKind; pages?: number; /** The photo's or video's own shape (José via agentes 20/11): without it the bubble cropped it into a square. */ width?: number; height?: number; createdAt: Date };
 
 const uploadSchema = new Schema<BotUpload>(
   {
@@ -20,6 +20,8 @@ const uploadSchema = new Schema<BotUpload>(
     size: { type: Number, required: true },
     kind: { type: String, required: true },
     pages: Number,
+    width: Number,
+    height: Number,
   },
   { timestamps: { createdAt: true, updatedAt: false } },
 );
@@ -38,7 +40,7 @@ export async function storeBotUpload(installationId: Types.ObjectId, file: Recei
     const retryable = stored.codigo !== 'rechazado';
     return { ok: false, status: retryable ? 503 : 502, error: retryable ? 'storage_unavailable' : 'storage_refused', message: retryable ? 'No se pudo guardar ahora. Inténtalo de nuevo.' : 'El archivo no se pudo guardar.' };
   }
-  const upload = await BotUploadModel.create({ installationId, storageName: stored.media.storageName, url: stored.media.url, ...(stored.media.thumbnailUrl ? { thumbUrl: stored.media.thumbnailUrl } : {}), mime: file.mimetype, name, size: file.size, kind, ...(stored.media.pages ? { pages: stored.media.pages } : {}) });
+  const upload = await BotUploadModel.create({ installationId, storageName: stored.media.storageName, url: stored.media.url, ...(stored.media.thumbnailUrl ? { thumbUrl: stored.media.thumbnailUrl } : {}), mime: file.mimetype, name, size: file.size, kind, ...(stored.media.pages ? { pages: stored.media.pages } : {}), ...(stored.media.width && stored.media.height ? { width: stored.media.width, height: stored.media.height } : {}) });
   return { ok: true, upload: upload.toObject() };
 }
 

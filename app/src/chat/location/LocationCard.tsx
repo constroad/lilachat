@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
 import { ExternalLink, Radio, WifiOff } from 'lucide-react-native';
-import { LIVE_KEEPALIVE_MS, accuracyLabel, liveCaption, liveStaleCaption, liveState, locationMapLink, type LiveLocation } from '@lilachat/shared';
+import { LIVE_KEEPALIVE_MS, accuracyLabel, liveCaption, liveStaleCaption, liveState, locationMapLink, locationWazeLink, type LiveLocation } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import { MapSnippet } from './MapSnippet';
 import { LiveMapScreen } from './LiveMapScreen';
@@ -49,7 +49,8 @@ export function LocationCard(props: Props) {
   const [stopping, setStopping] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
   const open = () => (props.selecting && props.onSelect ? props.onSelect() : void Linking.openURL(locationMapLink(props.location)));
-  // Pending 12: the map itself opens inside the app; «Abrir en el mapa» still hands over to Maps.
+  const openWaze = () => (props.selecting && props.onSelect ? props.onSelect() : void Linking.openURL(locationWazeLink(props.location)));
+  // Pending 12: the map itself opens inside the app; «Abrir en Maps» still hands over to Maps.
   const openMap = () => (props.selecting && props.onSelect ? props.onSelect() : setMapOpen(true));
   const stale = liveStaleCaption(props.location, now, clock);
   const tinted = props.onOwnBubble ?? props.mine;
@@ -69,7 +70,8 @@ export function LocationCard(props: Props) {
         <MapSnippet location={props.location} width={CARD_WIDTH - 8} height={MAP_HEIGHT} testID="mapa-ubicacion" />
       </Pressable>
       <View className="px-3 pt-2">
-        <Text className={`text-[15px] font-semibold ${tinted ? 'text-on-burbuja-propia' : 'text-on-surface'}`}>{caption ? 'Ubicación en tiempo real' : 'Ubicación'}</Text>
+        <Text className={`text-[15px] font-semibold ${tinted ? 'text-on-burbuja-propia' : 'text-on-surface'}`}>{props.location.name || (caption ? 'Ubicación en tiempo real' : 'Ubicación')}</Text>
+        {props.location.address ? <Text className={`text-[13px] ${soft}`}>{props.location.address}</Text> : null}
         {caption ? (
           <View className="flex-row items-center gap-1">
             {liveState(props.location, now) === 'live' ? <Radio size={13} color={tinted ? colors['on-burbuja-propia'] : colors.primary} /> : null}
@@ -85,7 +87,11 @@ export function LocationCard(props: Props) {
         {props.location.accuracy !== undefined ? <Text className={`text-[13px] ${soft}`}>{accuracyLabel(props.location.accuracy)}</Text> : null}
       </View>
       <Pressable testID="btn-abrir-mapa" onPress={open} onLongPress={props.onSelect} delayLongPress={350} className={`mx-3 mt-2 h-10 flex-row items-center justify-center gap-1.5 rounded-xl border ${tinted ? 'border-white/30' : 'border-primary/25 bg-primary/[0.06]'}`}>
-        <Text className={`text-[14px] font-semibold ${tinted ? 'text-on-burbuja-propia' : 'text-primary'}`}>Abrir en el mapa</Text>
+        <Text className={`text-[14px] font-semibold ${tinted ? 'text-on-burbuja-propia' : 'text-primary'}`}>Abrir en Maps</Text>
+        <ExternalLink size={15} color={tinted ? colors['on-burbuja-propia'] : colors.primary} />
+      </Pressable>
+      <Pressable testID="btn-abrir-waze" onPress={openWaze} onLongPress={props.onSelect} delayLongPress={350} className={`mx-3 mt-2 h-10 flex-row items-center justify-center gap-1.5 rounded-xl border ${tinted ? 'border-white/30' : 'border-primary/25 bg-primary/[0.06]'}`}>
+        <Text className={`text-[14px] font-semibold ${tinted ? 'text-on-burbuja-propia' : 'text-primary'}`}>Abrir en Waze</Text>
         <ExternalLink size={15} color={tinted ? colors['on-burbuja-propia'] : colors.primary} />
       </Pressable>
       {canStop ? (

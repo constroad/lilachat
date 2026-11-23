@@ -131,3 +131,32 @@ describe('POST /api/bots/messages with files', () => {
     expect(await MessageModel.countDocuments({ kind: 'file' })).toBe(0);
   });
 });
+
+describe('POST /api/bots/messages with a location or a contact (agentes 23/11: a forwarded WhatsApp location or vCard)', () => {
+  it('posts a location, with its venue name when the forward carried one', async () => {
+    const token = await installApp();
+    await request(app).put(`/api/bots/prospects/${encodeURIComponent(PROSPECT)}`).set(asBot(token)).send({ name: 'Carlos', phone: '51949123824', last_activity_at: new Date().toISOString() }).expect(201);
+    await post(token, { prospect: PROSPECT, as_contact: true, location: { lat: -12.05, lng: -77.04, name: 'Obra Los Incas', address: 'Av. Los Incas 120' }, idempotency_key: 'wamid.loc' }).expect(201);
+    const message = await MessageModel.findOne({ kind: 'location' }).lean();
+    expect(message).toMatchObject({ body: 'Ubicación', location: { lat: -12.05, lng: -77.04, name: 'Obra Los Incas', address: 'Av. Los Incas 120' } });
+  });
+
+  it('posts a contact, matched to a Lilachat user by phone when there is one', async () => {
+    const token = await installApp();
+    // normalizePeruPhone stores/looks up the bare 9-digit local number (contactShareRoutes.ts), not the '51902049935' format jose's own seed uses above.
+    const matchable = (await UserModel.create({ phone: '902049935', name: 'Alguien' }))._id;
+    await request(app).put(`/api/bots/prospects/${encodeURIComponent(PROSPECT)}`).set(asBot(token)).send({ name: 'Carlos', phone: '51949123824', last_activity_at: new Date().toISOString() }).expect(201);
+    await post(token, { prospect: PROSPECT, as_contact: true, contact: { name: 'José', phone: '+51902049935' }, idempotency_key: 'wamid.c1' }).expect(201);
+    const matched = await MessageModel.findOne({ kind: 'contact' }).lean();
+    expect(matched).toMatchObject({ body: 'Contacto: José', contact: { name: 'José', phone: '902049935', userId: matchable } });
+    await post(token, { prospect: PROSPECT, as_contact: true, contact: { name: 'Nadie', phone: '+51900000000' }, idempotency_key: 'wamid.c2' }).expect(201);
+    const unmatched = await MessageModel.findOne({ kind: 'contact', body: 'Contacto: Nadie' }).lean();
+    expect(unmatched?.contact?.userId).toBeUndefined();
+  });
+
+  it('refuses a location off the Earth (400) and posts nothing', async () => {
+    const token = await installApp();
+    expect((await post(token, { prospect: PROSPECT, location: { lat: 200, lng: 0 }, idempotency_key: 'k' }).expect(400)).body.error).toBe('invalid_request');
+    expect(await MessageModel.countDocuments({ kind: 'location' })).toBe(0);
+  });
+});

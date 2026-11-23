@@ -1,10 +1,11 @@
 import { Types } from 'mongoose';
 import { uploadsOf, type BotUpload } from './botUploads.js';
-import { botCardSummary, botFilesSummary, type BotCard, type BotClientRef, type BotPost, type GalleryItem } from '@lilachat/shared';
+import { botCardSummary, botFilesSummary, normalizePeruPhone, SHARED_LOCATION_BODY, sharedContactBody, type BotCard, type BotClientRef, type BotPost, type GalleryItem } from '@lilachat/shared';
 import { ChatModel, MessageModel, type Chat, type Message } from '../chatModels.js';
 import { chatMemberIds, deleteMessage, sendMessage } from '../chatService.js';
 import { createChecklistInChat } from '../checklistService.js';
 import { HiloInvalidoError } from '../hilos.js';
+import { UserModel } from '../models.js';
 import { notifyDeleted, notifyThread, publicarMensaje } from '../reparto.js';
 import { WorkspaceMemberModel } from '../workspaceModels.js';
 import { BotInstallationModel, type BotInstallation } from './botModels.js';
@@ -109,7 +110,16 @@ const uploadMedia = (upload: BotUpload): Message['media'] => ({ mediaId: upload.
 /** What a text post or one of its uploads carries: an upload is its own message, captioned only the first. */
 function contentOf(post: BotPost, slot?: UploadSlot) {
   if (slot) return { kind: slot.upload.kind, media: uploadMedia(slot.upload), body: slot.index === 0 ? post.text : undefined };
+  if (post.location) return { kind: 'location' as const, body: post.text ?? SHARED_LOCATION_BODY };
+  if (post.contact) return { kind: 'contact' as const, body: post.text ?? sharedContactBody(post.contact.name) };
   return { kind: 'text' as const, body: post.text ?? (post.card ? botCardSummary(post.card) : botFilesSummary(post.files ?? [])) };
+}
+
+/** A bot's contact matched to a Lilachat user by phone (agentes 23/11), like a member's own shared contact. */
+async function resolvedContact(contact: NonNullable<BotPost['contact']>): Promise<Message['contact']> {
+  const local = normalizePeruPhone(contact.phone);
+  const user = local ? await UserModel.findOne({ phone: local }).select('_id').lean() : null;
+  return { name: contact.name, phone: contact.phone, ...(user ? { userId: user._id } : {}) };
 }
 
 /**
@@ -142,6 +152,7 @@ async function publishText(installation: Installation, chatId: Types.ObjectId, p
   const prospect = await externalAuthorOf(installation, post);
   // Mentions only dress the main text, never an upload's caption.
   const mentioned = slot ? undefined : await mentionedTextOf(post, chatId);
+  const contact = post.contact && !slot ? await resolvedContact(post.contact) : undefined;
   const result = await sendMessage({
     chatId: String(chatId),
     senderId: installation.botUserId,
@@ -152,6 +163,8 @@ async function publishText(installation: Installation, chatId: Types.ObjectId, p
     ...(mentioned?.menciones.length ? { menciones: mentioned.menciones } : {}),
     ...(post.card ? { card: post.card } : {}),
     ...(post.files ? { files: post.files } : {}),
+    ...(post.location && !slot ? { location: post.location } : {}),
+    ...(contact ? { contact } : {}),
     ...(sharedBy ? { sharedBy } : {}),
     ...(post.threadOf ? { hiloDe: post.threadOf } : {}),
   });
@@ -188,7 +201,7 @@ async function publishAll(installation: Installation, chatId: Types.ObjectId, po
     const uploads = post.uploads ? await uploadsOf(installation._id, post.uploads) : null;
     if (post.uploads && !uploads) return fail(404, 'file_not_found', 'Un file_id no es de esta app. Súbelo con POST /api/bots/files.');
     for (const [index, upload] of (uploads ?? []).entries()) last = await publishText(installation, chatId, post, sharedBy, { upload, index });
-    if (!uploads && (post.text || post.card || post.files)) last = await publishText(installation, chatId, post, sharedBy);
+    if (!uploads && (post.text || post.card || post.files || post.location || post.contact)) last = await publishText(installation, chatId, post, sharedBy);
     if (post.checklist) last = (await publishChecklist(installation, chatId, post, assignees)) ?? last;
     return last;
   } catch (error) {

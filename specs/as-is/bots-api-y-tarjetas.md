@@ -52,6 +52,17 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
 - `mention_user_ids` (20/11): Lilachat antepone un `@Nombre` real por cada id que sigue siendo miembro del
   destino, con su mención válida; el que ya no es miembro se descarta en silencio (`mentionedTextOf` en
   `botMessages.ts`). Agentes solo manda ids, nunca el texto de la mención.
+- `location: { lat, lng, accuracy?, name?, address? }` (23/11, `shared/src/bots.ts`: `validateBotPost`):
+  una ubicación de WhatsApp forwardeada. `lat`/`lng` validados por `cleanSharedLocation` (shared/src/
+  sharedLocation.ts); fuera de rango da `400 invalid_request`. Llega como `kind: 'location'`, reusando la
+  tarjeta `LocationCardWeb`/`LocationCard` que ya existía para ubicaciones entre personas (mapa, «Abrir en
+  Maps» y, desde hoy, «Abrir en Waze» vía `locationWazeLink`). `name`/`address` (venue del forward) se
+  muestran si vienen.
+- `contact: { name, phone }` (23/11, mismo archivo): una vCard de WhatsApp forwardeada. Llega como
+  `kind: 'contact'`. `botMessages.ts`'s `resolvedContact()` busca `UserModel.findOne({ phone:
+  normalizePeruPhone(contact.phone) })` (número local de 9 dígitos, sin '51') para linkear al perfil de
+  Lilachat cuando el contacto ya es un usuario; si no hay match, el contact card queda sin `userId` y
+  sin acciones de perfil, solo el nombre/teléfono.
 
 **Subidas del bot** (`botUploads.ts`, `shared/src/botUploads.ts`).
 - `POST /api/bots/files`, multipart, campo `file`, hasta 16 MB.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { accuracyLabel, cleanSharedLocation, locationMapLink, mapTilesFor, ROUTE_MAX_ZOOM, ROUTE_PADDING_PX, routeTilesFor, SHARED_LOCATION_BODY } from './sharedLocation.js';
+import { accuracyLabel, cleanSharedLocation, locationMapLink, locationWazeLink, mapTilesFor, ROUTE_MAX_ZOOM, ROUTE_PADDING_PX, routeTilesFor, SHARED_LOCATION_BODY } from './sharedLocation.js';
 
 describe('a shared location (pending 11)', () => {
   it('keeps a real point, rounded to about 10 cm, with its accuracy in whole meters', () => {
@@ -25,6 +25,17 @@ describe('a shared location (pending 11)', () => {
 
   it('opens in the map app with a universal link', () => {
     expect(locationMapLink({ lat: -12.046374, lng: -77.042793 })).toBe('https://www.google.com/maps/search/?api=1&query=-12.046374%2C-77.042793');
+  });
+
+  it('opens in Waze too (agentes 23/11)', () => {
+    expect(locationWazeLink({ lat: -12.046374, lng: -77.042793 })).toBe('https://waze.com/ul?ll=-12.046374%2C-77.042793&navigate=yes');
+  });
+
+  it('keeps a name and an address when a forwarded location brings them (agentes 23/11), trimmed and capped', () => {
+    expect(cleanSharedLocation({ lat: 1, lng: 1, name: '  Ferretería El Constructor  ', address: ' Av. Los Incas 120 ' })).toEqual({ ok: true, location: { lat: 1, lng: 1, name: 'Ferretería El Constructor', address: 'Av. Los Incas 120' } });
+    expect(cleanSharedLocation({ lat: 1, lng: 1, name: '' })).toEqual({ ok: true, location: { lat: 1, lng: 1 } });
+    const capped = cleanSharedLocation({ lat: 1, lng: 1, name: 'x'.repeat(90) });
+    expect(capped.ok && capped.location.name?.length).toBe(80);
   });
 
   it('lays the map tiles so the point falls in the middle of the box', () => {

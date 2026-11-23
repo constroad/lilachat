@@ -165,6 +165,10 @@ Lo demás (editar, borrar, reenviar, fijar, destacar, info, reacciones, mencione
 - **21/10:** «Responder» abre el teclado. Formato Slack en canales (diseño `s-01`).
 - **22/10:** abrir un mensaje viejo con su contexto. Lo borrado se lee borrado. «Bajar» dice cuántos sin leer.
 - **23/10:** un enlace de Google Maps muestra el punto (pendiente 80).
+- **23/11:** la tarjeta de ubicación (`LocationCard`/`LocationCardWeb`) gana «Abrir en Waze» junto a
+  «Abrir en Maps» (`locationWazeLink` en `shared/src/sharedLocation.ts`); muestra `name`/`address` cuando
+  vienen. La reusa, sin cambios de UI propios, el bot post de una ubicación forwardeada de WhatsApp
+  (ver `bots-api-y-tarjetas.md`).
 - **25/10:** tocar un aviso abre el espacio, el mensaje y el hilo. Aviso de menciones fuera del canal.
 - **28/10:** saltar a un mensaje lo mantiene en vista. En la web, el campo es de cada chat y guarda su borrador.
 - **30/10:** atajos «:hug», confirmaciones de lectura apagables, temporales (24 h, 7 d, 90 d) y exportar chat (R31/10).

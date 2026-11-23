@@ -5,26 +5,32 @@
  * Live location comes later. PURE: the server validates with this, the app
  * and the web draw it.
  */
-export type SharedLocation = { lat: number; lng: number; accuracy?: number };
+/** `name`/`address` (agentes 23/11): a forwarded WhatsApp location may carry a venue; a live GPS fix never does. */
+export type SharedLocation = { lat: number; lng: number; accuracy?: number; name?: string; address?: string };
 export const SHARED_LOCATION_BODY = 'Ubicación';
 
 const COORDINATE_DECIMALS = 1e6;
 /** Beyond this the fix says nothing useful about where the person is (m). */
 const ACCURACY_MAX_M = 20_000;
+const LOCATION_NAME_MAX = 80;
+const LOCATION_ADDRESS_MAX = 160;
 const TILE = 256;
 /** Meters per pixel at the equator at zoom 0 (Web Mercator, 256 px tiles). */
 const EQUATOR_M_PER_PX = 156_543.03392;
 
 const toNumber = (value: unknown): number => (typeof value === 'number' ? value : typeof value === 'string' && value.trim() ? Number(value) : Number.NaN);
 const round = (value: number) => Math.round(value * COORDINATE_DECIMALS) / COORDINATE_DECIMALS;
+const trimmed = (value: unknown, max: number): string => (typeof value === 'string' ? value.trim().slice(0, max) : '');
 
-export function cleanSharedLocation(raw: { lat?: unknown; lng?: unknown; accuracy?: unknown }): { ok: true; location: SharedLocation } | { ok: false; message: string } {
+export function cleanSharedLocation(raw: { lat?: unknown; lng?: unknown; accuracy?: unknown; name?: unknown; address?: unknown }): { ok: true; location: SharedLocation } | { ok: false; message: string } {
   const lat = toNumber(raw.lat);
   const lng = toNumber(raw.lng);
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return { ok: false, message: 'Esa ubicación no es válida.' };
   const accuracy = toNumber(raw.accuracy);
   const usable = Number.isFinite(accuracy) && accuracy >= 0 && accuracy <= ACCURACY_MAX_M;
-  return { ok: true, location: { lat: round(lat), lng: round(lng), ...(usable ? { accuracy: Math.round(accuracy) } : {}) } };
+  const name = trimmed(raw.name, LOCATION_NAME_MAX);
+  const address = trimmed(raw.address, LOCATION_ADDRESS_MAX);
+  return { ok: true, location: { lat: round(lat), lng: round(lng), ...(usable ? { accuracy: Math.round(accuracy) } : {}), ...(name ? { name } : {}), ...(address ? { address } : {}) } };
 }
 
 /** «Precisión 12 m», «Precisión 1,5 km»; nothing without an accuracy. */
@@ -35,6 +41,8 @@ export function accuracyLabel(accuracy: number | undefined): string {
 
 /** Opens the Maps app on a phone and Google Maps on a computer. */
 export const locationMapLink = (location: SharedLocation): string => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${location.lat},${location.lng}`)}`;
+/** Opens Waze with directions already set (agentes 23/11). */
+export const locationWazeLink = (location: SharedLocation): string => `https://waze.com/ul?ll=${encodeURIComponent(`${location.lat},${location.lng}`)}&navigate=yes`;
 
 export type MapTile = { url: string; left: number; top: number };
 

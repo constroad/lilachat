@@ -3,6 +3,8 @@ import { uploadIdsOf } from './botUploads.js';
 import { normalizePeruPhone } from './phone.js';
 import { TOPIC_KEY } from './noticeTopics.js';
 import { validateChecklist } from './checklists.js';
+import { cleanSharedLocation, type SharedLocation } from './sharedLocation.js';
+import { cleanSharedContact } from './sharedContact.js';
 import { BLOCK_LIMITS, commandLineOf, upToWord, validateBotBlocks, validateBotFiles, type BotBlock, type GalleryItem } from './botBlocks.js';
 export { validateBotFiles };
 import type { BotCommand } from './botCommands.js';
@@ -57,7 +59,9 @@ export type BotClientRef = { kind: string; serviceId?: string; recordId?: string
 /** `mentionUserIds` (agentes, 20/11): the bot wants these people tagged in `text`. A name is prepended per valid id by whoever sends the message (the server knows the channel's members); an id no longer in the channel is dropped, never refused. */
 /** `asContact` (Dali, §c-prospectos; whatsapp fase 1, agentes 20/11): a prospect has one fixed identity on its channel (`name`/`phone` absent here, read from the channel). A WhatsApp group has many possible senders, so for a `whatsapp` target `name` (and optionally `phone`) rides on EACH post instead. */
 export type BotAsContact = { name?: string; phone?: string; sentAt?: string };
-export type BotPost = { target: BotTarget; text?: string; card?: BotCard; /** Photos and videos drawn as a person's album (José via agentes 09/11). */ files?: GalleryItem[]; /** Files of `POST /api/bots/files` (José 17/11): each one its own message, a document as a file card. */ uploads?: string[]; checklist?: BotChecklist; threadOf?: number; clientRef?: BotClientRef; mentionUserIds?: string[]; asContact?: BotAsContact; idempotencyKey: string };
+/** A WhatsApp vCard, forwarded as its own message (agentes 23/11): the server matches `phone` to a Lilachat user. */
+export type BotContact = { name: string; phone: string };
+export type BotPost = { target: BotTarget; text?: string; card?: BotCard; /** Photos and videos drawn as a person's album (José via agentes 09/11). */ files?: GalleryItem[]; /** Files of `POST /api/bots/files` (José 17/11): each one its own message, a document as a file card. */ uploads?: string[]; checklist?: BotChecklist; /** A WhatsApp location, forwarded as its own message (agentes 23/11). */ location?: SharedLocation; contact?: BotContact; threadOf?: number; clientRef?: BotClientRef; mentionUserIds?: string[]; asContact?: BotAsContact; idempotencyKey: string };
 export type BotPostError = { ok: false; error: 'invalid_request'; message: string };
 
 export const BOT_LIMITS = { text: 4000, idempotencyKey: 120, fields: 12, actions: 3, /** lv01: Marcar punto, Entrevista, Foto suelta, Terminar and the croquis (agentes 14/11). */ visitActions: 5, actionValue: 2000, kicker: 60, title: 120, subtitle: 120, footer: 120, status: 24, label: 40, value: 120, linkLabel: 40, actionLabel: 24, actionId: 40, url: 500, mentionUserIds: 10 };
@@ -292,6 +296,18 @@ export function validateBotPost(raw: unknown): { ok: true; post: BotPost } | Bot
     if (!checklist.ok) return checklist;
     post.checklist = checklist.checklist;
   }
+  if (body.location !== undefined) {
+    const raw = record(body.location);
+    const cleaned = cleanSharedLocation({ lat: raw.lat, lng: raw.lng, name: raw.name, address: raw.address });
+    if (!cleaned.ok) return refuse(cleaned.message);
+    post.location = cleaned.location;
+  }
+  if (body.contact !== undefined) {
+    const raw = record(body.contact);
+    const cleaned = cleanSharedContact({ name: raw.name, phone: raw.phone });
+    if (!cleaned.ok) return refuse(cleaned.message);
+    post.contact = { name: cleaned.name, phone: cleaned.phone };
+  }
   if (Number.isInteger(body.thread_of) && Number(body.thread_of) > 0) post.threadOf = Number(body.thread_of);
   const mentionUserIds = (Array.isArray(body.mention_user_ids) ? body.mention_user_ids : [])
     .filter((one): one is string => typeof one === 'string' && one.length > 0 && one.length <= 64)
@@ -302,7 +318,7 @@ export function validateBotPost(raw: unknown): { ok: true; post: BotPost } | Bot
     if (!clientRef) return refuse('kind va como «order.created» (minúsculas, con un punto) y refs como { service_id?, record_id? }.');
     post.clientRef = clientRef;
   }
-  if (!post.text && !post.card && !post.files && !post.uploads && !post.checklist) return refuse('Manda un texto, una tarjeta, archivos o un checklist.');
+  if (!post.text && !post.card && !post.files && !post.uploads && !post.checklist && !post.location && !post.contact) return refuse('Manda un texto, una tarjeta, archivos, una ubicación, un contacto o un checklist.');
   return { ok: true, post };
 }
 

@@ -119,8 +119,8 @@ export interface Message {
   kind: 'text' | 'image' | 'video' | 'audio' | 'file' | 'event' | 'poll' | 'reminder' | 'checklist' | 'system' | 'sticker' | 'zumbido' | 'guino' | 'contact' | 'location';
   /** A shared contact (pending 9): `userId` when that number is on Lilachat. */
   contact?: { name: string; phone: string; userId?: Types.ObjectId };
-  /** A shared location (pending 11): the point and how sure the phone was of it (m). */
-  location?: { lat: number; lng: number; accuracy?: number; liveUntil?: Date; endedAt?: Date; updatedAt?: Date };
+  /** A shared location (pending 11): the point and how sure the phone was of it (m). `name`/`address`: a forwarded WhatsApp location's venue (agentes 23/11); a live GPS fix never has them. */
+  location?: { lat: number; lng: number; accuracy?: number; name?: string; address?: string; liveUntil?: Date; endedAt?: Date; updatedAt?: Date };
   body?: string;
   /** A wink's id from the shared catalog (`WINKS`), with kind `guino`. */
   wink?: string;
@@ -329,7 +329,7 @@ const messageSchema = new Schema<Message>(
     body: { type: String },
     contact: { type: new Schema({ name: { type: String, required: true }, phone: { type: String, required: true }, userId: { type: Schema.Types.ObjectId } }, { _id: false }) },
     // Live location (pending 11): until when it follows the phone, when it was stopped and the last fix.
-    location: { type: new Schema({ lat: { type: Number, required: true }, lng: { type: Number, required: true }, accuracy: { type: Number }, liveUntil: { type: Date }, endedAt: { type: Date }, updatedAt: { type: Date } }, { _id: false }) },
+    location: { type: new Schema({ lat: { type: Number, required: true }, lng: { type: Number, required: true }, accuracy: { type: Number }, name: { type: String }, address: { type: String }, liveUntil: { type: Date }, endedAt: { type: Date }, updatedAt: { type: Date } }, { _id: false }) },
     wink: { type: String },
     ref: {
       type: new Schema({ tipo: { type: String, enum: ['encuesta', 'evento', 'recordatorio', 'checklist'], required: true }, id: { type: String, required: true } }, { _id: false }),

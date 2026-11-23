@@ -159,6 +159,24 @@ describe('a bot message with files', () => {
   });
 });
 
+describe('a bot message with a location or a contact (agentes 23/11: a forwarded WhatsApp location or vCard)', () => {
+  it('posts a location, keeping its name and address when they came along', () => {
+    expect(validateBotPost({ channel_id: 'c1', location: { lat: -12.05, lng: -77.04, name: 'Obra Los Incas', address: 'Av. Los Incas 120' }, idempotency_key: 'k' })).toEqual({ ok: true, post: { target: { channelId: 'c1' }, location: { lat: -12.05, lng: -77.04, name: 'Obra Los Incas', address: 'Av. Los Incas 120' }, idempotencyKey: 'k' } });
+  });
+  it('refuses a location that is not a point on Earth', () => {
+    expect(validateBotPost({ channel_id: 'c1', location: { lat: 200, lng: 0 }, idempotency_key: 'k' })).toMatchObject({ ok: false, message: 'Esa ubicación no es válida.' });
+  });
+  it('posts a contact', () => {
+    expect(validateBotPost({ channel_id: 'c1', contact: { name: 'Juan Pérez', phone: '+51987654321' }, idempotency_key: 'k' })).toEqual({ ok: true, post: { target: { channelId: 'c1' }, contact: { name: 'Juan Pérez', phone: '987654321' }, idempotencyKey: 'k' } });
+  });
+  it('refuses a contact with no name', () => {
+    expect(validateBotPost({ channel_id: 'c1', contact: { phone: '987654321' }, idempotency_key: 'k' })).toMatchObject({ ok: false, message: 'El contacto no tiene nombre.' });
+  });
+  it('a location or a contact is enough on its own: neither needs text, a card or files', () => {
+    expect(validateBotPost({ channel_id: 'c1', idempotency_key: 'k' })).toMatchObject({ ok: false, message: 'Manda un texto, una tarjeta, archivos, una ubicación, un contacto o un checklist.' });
+  });
+});
+
 describe('a card link that is a file (José 13/11: «Ver PDF» must open the viewer)', () => {
   it('keeps the mime of a PDF, a photo or a video, and drops any other', () => {
     // Arrange / Act

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ExternalLink, Radio, WifiOff } from 'lucide-react';
-import { LIVE_KEEPALIVE_MS, accuracyLabel, liveCaption, liveStaleCaption, liveState, locationMapLink, type LiveLocation } from '@lilachat/shared';
+import { LIVE_KEEPALIVE_MS, accuracyLabel, liveCaption, liveStaleCaption, liveState, locationMapLink, locationWazeLink, type LiveLocation } from '@lilachat/shared';
 import { api } from '../api';
 import { LiveMapDialog } from './LiveMapDialog';
 import { TileMapWeb } from './TileMapWeb';
@@ -46,6 +46,8 @@ export function LocationCardWeb({ location, mio, live }: Props) {
     setStopping(false);
   };
   const link = locationMapLink(location);
+  const waze = locationWazeLink(location);
+  const buttonClass = `mt-2 flex h-9 items-center justify-center gap-1.5 rounded-lg border text-[13px] font-semibold ${mio ? 'border-white/30' : 'border-primary/25 bg-primary/[0.06] text-primary'}`;
   return (
     <div data-testid="tarjeta-ubicacion" className="mb-1 w-[260px]">
       {mapOpen ? <LiveMapDialog location={location} now={now} clock={clock} onClose={() => setMapOpen(false)} /> : null}
@@ -53,7 +55,8 @@ export function LocationCardWeb({ location, mio, live }: Props) {
       <button type="button" data-testid="btn-ver-mapa" aria-label="Ver la ubicación en el mapa" onClick={() => setMapOpen(true)} className="block overflow-hidden rounded-lg">
         <TileMapWeb location={location} width={MAP.width} height={MAP.height} />
       </button>
-      <p className="mt-2 text-[14px] font-semibold">{caption ? 'Ubicación en tiempo real' : 'Ubicación'}</p>
+      <p className="mt-2 text-[14px] font-semibold">{location.name || (caption ? 'Ubicación en tiempo real' : 'Ubicación')}</p>
+      {location.address ? <p className="text-[12px] opacity-75">{location.address}</p> : null}
       {caption ? (
         <p className="flex items-center gap-1 text-[12px] opacity-75">
           {isLive ? <Radio size={12} /> : null}
@@ -62,8 +65,11 @@ export function LocationCardWeb({ location, mio, live }: Props) {
       ) : null}
       {stale ? <p data-testid="sin-senal" className="flex items-center gap-1 text-[12px] font-medium text-error"><WifiOff size={12} /> {stale}</p> : null}
       {location.accuracy !== undefined ? <p className="text-[12px] opacity-75">{accuracyLabel(location.accuracy)}</p> : null}
-      <a data-testid="btn-abrir-mapa" href={link} target="_blank" rel="noopener noreferrer" className={`mt-2 flex h-9 items-center justify-center gap-1.5 rounded-lg border text-[13px] font-semibold ${mio ? 'border-white/30' : 'border-primary/25 bg-primary/[0.06] text-primary'}`}>
-        Abrir en el mapa <ExternalLink size={14} />
+      <a data-testid="btn-abrir-mapa" href={link} target="_blank" rel="noopener noreferrer" className={buttonClass}>
+        Abrir en Maps <ExternalLink size={14} />
+      </a>
+      <a data-testid="btn-abrir-waze" href={waze} target="_blank" rel="noopener noreferrer" className={buttonClass}>
+        Abrir en Waze <ExternalLink size={14} />
       </a>
       {mio && live && isLive ? (
         <button type="button" data-testid="btn-dejar-de-compartir" disabled={stopping} onClick={() => void stop()} className="mt-1 h-9 w-full text-[13px] font-semibold disabled:opacity-50">

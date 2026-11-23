@@ -4,16 +4,19 @@
  */
 export const BOT_UPLOAD_MAX_BYTES = 16 * 1024 * 1024;
 export const BOT_UPLOADS_PER_POST = 10;
-export type BotUploadKind = 'image' | 'video' | 'file';
+export type BotUploadKind = 'image' | 'video' | 'audio' | 'file';
 
 const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp']);
 const DOCUMENT_EXTENSIONS = new Set(['pdf', 'kml', 'kmz', 'xlsx', 'xls', 'docx', 'doc', 'dwg', 'dxf', 'csv']);
+/** A WhatsApp voice note (agentes 23/11): ogg/opus, m4a or mp3, however the parameters after `;` read. */
+const AUDIO_TYPES = new Set(['audio/ogg', 'audio/mp4', 'audio/mpeg']);
 const UPLOAD_ID = /^[0-9a-f]{24}$/;
 
 export function botUploadKindOf(mime: string, name: string): BotUploadKind | null {
   const extension = name.includes('.') ? (name.split('.').pop() ?? '').toLowerCase() : '';
   if (mime.startsWith('image/') && IMAGE_EXTENSIONS.has(extension || mime.slice('image/'.length))) return 'image';
   if (mime === 'video/mp4') return 'video';
+  if (AUDIO_TYPES.has(mime.split(';')[0]!.trim())) return 'audio';
   return DOCUMENT_EXTENSIONS.has(extension) ? 'file' : null;
 }
 

@@ -110,6 +110,11 @@ export function daliChatSections<T extends DaliChatRef>(chats: readonly T[], pro
   return { directs, whatsappGroups };
 }
 
+/** The Chats tab, unread first (José 23/11: scrolling to guess which one is unread); stable, so recency keeps ordering within each group. */
+export function unreadFirst<T extends { unread: number }>(chats: readonly T[]): T[] {
+  return [...chats].sort((a, b) => (b.unread > 0 ? 1 : 0) - (a.unread > 0 ? 1 : 0));
+}
+
 export type DaliTabUnread = { inbox: number; chats: number };
 
 /**

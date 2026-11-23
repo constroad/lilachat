@@ -55,7 +55,11 @@ Montaje en `server/src/app.ts` (líneas 160–166): `/api/oauth`, `/api/bots/app
 
 **Subidas del bot** (`botUploads.ts`, `shared/src/botUploads.ts`).
 - `POST /api/bots/files`, multipart, campo `file`, hasta 16 MB.
-- Acepta jpg, png, webp, mp4 y documentos pdf, kml, kmz, xlsx, xls, docx, doc, dwg, dxf y csv.
+- Acepta jpg, png, webp, mp4, audio (ogg/opus, mp4, mpeg — una nota de voz de WhatsApp, 23/11) y documentos
+  pdf, kml, kmz, xlsx, xls, docx, doc, dwg, dxf y csv.
+- Un audio llega al chat como `kind: 'audio'` (igual que una nota de voz propia): web y APK ya dibujan
+  cualquier media con `mime` que empiece en `audio/` como `NotaDeVoz`/reproductor, por mime y no por kind,
+  así que no hizo falta tocar `BurbujaDeMensaje.tsx` ni `MessageMedia.tsx` (app) para esto.
 - El `file_id` no vence. El nombre se lee en UTF-8 («Ríos» ya no llega como «RÃos»).
 
 **Tarjetas** (`shared/src/botBlocks.ts`, `shared/src/bots.ts`).

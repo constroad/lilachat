@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { daliChatSections, daliTabUnread, funnelOf, followUpsOf, inboxOf, inboxSectionOf, isSalesProspect, lacksNextAction, levelOf, missingLabelsOf, originOf, overdueOf, shownStageOf, type ProspectView } from './prospectBoard.js';
+import { daliChatSections, daliTabUnread, funnelOf, followUpsOf, inboxOf, inboxSectionOf, isSalesProspect, lacksNextAction, levelOf, missingLabelsOf, originOf, overdueOf, shownStageOf, unreadFirst, type ProspectView } from './prospectBoard.js';
 
 /** Dali's inbox and funnel (dl-01, dl-08, BOTS-API «Fase 2: contrato»): every rule is code, never data. */
 const now = new Date('2026-11-17T15:00:00.000Z'); // 10:00 in Lima
@@ -163,6 +163,21 @@ describe('daliChatSections', () => {
   it('with no chats or no prospects, both sections are empty or plain, never a throw', () => {
     expect(daliChatSections([], [])).toEqual({ directs: [], whatsappGroups: [] });
     expect(daliChatSections([{ id: 'c1' }], [])).toEqual({ directs: [{ id: 'c1' }], whatsappGroups: [] });
+  });
+});
+
+describe('unreadFirst (José 23/11: scroll para adivinar cuál no leyó)', () => {
+  it('puts every chat with unread messages before the read ones', () => {
+    const chats = [{ id: 'c1', unread: 0 }, { id: 'c2', unread: 3 }, { id: 'c3', unread: 0 }, { id: 'c4', unread: 1 }];
+    expect(unreadFirst(chats).map((chat) => chat.id)).toEqual(['c2', 'c4', 'c1', 'c3']);
+  });
+
+  it('is stable: the recency order already in the list survives within each group', () => {
+    expect(unreadFirst([{ id: 'c1', unread: 0 }, { id: 'c2', unread: 0 }])).toEqual([{ id: 'c1', unread: 0 }, { id: 'c2', unread: 0 }]);
+  });
+
+  it('with nothing unread or an empty list, the order does not change', () => {
+    expect(unreadFirst([])).toEqual([]);
   });
 });
 

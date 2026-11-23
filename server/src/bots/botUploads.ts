@@ -34,7 +34,7 @@ export type ReceivedFile = { buffer: Buffer; mimetype: string; originalname: str
 export async function storeBotUpload(installationId: Types.ObjectId, file: ReceivedFile, uploader: MediaUploader): Promise<{ ok: true; upload: BotUpload } | UploadFailure> {
   const name = readableFileName(file.originalname);
   const kind = botUploadKindOf(file.mimetype, name);
-  if (!kind) return { ok: false, status: 415, error: 'unsupported_type', message: 'Solo fotos, videos mp4 y documentos (pdf, kml, kmz, xlsx, docx, dwg).' };
+  if (!kind) return { ok: false, status: 415, error: 'unsupported_type', message: 'Solo fotos, videos mp4, audio (ogg, m4a, mp3) y documentos (pdf, kml, kmz, xlsx, docx, dwg).' };
   const stored = await uploader.upload({ chatId: `bot-${String(installationId)}`, fileName: name, mimeType: file.mimetype, kind, bytes: file.buffer });
   if (!stored.ok) {
     const retryable = stored.codigo !== 'rechazado';

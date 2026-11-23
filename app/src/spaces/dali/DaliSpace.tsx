@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { BookOpen } from 'lucide-react-native';
-import { daliChatSections, daliTabUnread, type ClientWorkspace, type DaliTabUnread, type ProspectView } from '@lilachat/shared';
+import { daliChatSections, daliTabUnread, unreadFirst, type ClientWorkspace, type DaliTabUnread, type ProspectView } from '@lilachat/shared';
 import type { ChatSummary } from '../../api/client';
 import { openChatNow } from '../../chat/openChatNow';
 import { useColores } from '../../ui/tema';
@@ -125,7 +125,11 @@ export function DaliSpace(props: Props) {
   useTabKnock(space.id, useCallback((next) => setTabState(next), []));
   const me = prospects.list?.me ?? props.myUserId;
   const list = prospects.list;
-  const chatSections = useMemo(() => daliChatSections(chats ?? [], list?.prospects ?? []), [chats, list]);
+  // Unread first on the Chats tab (José 23/11: scrolling to guess which one is unread), never on Bandeja's own order.
+  const chatSections = useMemo(() => {
+    const sections = daliChatSections(chats ?? [], list?.prospects ?? []);
+    return { directs: unreadFirst(sections.directs), whatsappGroups: unreadFirst(sections.whatsappGroups) };
+  }, [chats, list]);
   const tabUnread = useMemo(() => daliTabUnread(chats ?? [], list?.prospects ?? []), [chats, list]);
   const openConversation = async (prospect: ProspectView) => {
     setOverlay(null);

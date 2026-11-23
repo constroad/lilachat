@@ -108,6 +108,10 @@ remitentes posibles, así que cada mensaje trae el suyo.
 - `daliChatSections` (`prospectBoard.ts`, 20/11): separa los chats de la pestaña Chats en `directs`
   (equipo + prospecto `listing:'chat'`) y `whatsappGroups` (`chat.whatsapp === true`). Única fuente de
   verdad para web y APK; sin WhatsApp en el espacio, `whatsappGroups` sale vacío y no cambia nada visible.
+- `unreadFirst` (`prospectBoard.ts`, 23/11, pedido vía agentes: «scroll para adivinar cuál no leyó»): los
+  chats con algo sin leer van primero dentro de cada sección de `daliChatSections` (`DaliSpace.tsx`, web y
+  APK), ordenamiento estable — conserva la recencia que ya traía la lista dentro de cada grupo. Nunca toca
+  el orden de Bandeja, que no pasa por `daliChatSections`.
 - Conflictos: `prospectChange.ts` (409 → «Alguien lo cambió antes que tú…»).
 - Dali: `daliKnowledge.ts` (`knowledgeViewOf` quita precios a quien no es admin, `questionsOf`),
   `daliTeach.ts` (Enseñarle a Dali, hasta 1000 letras).

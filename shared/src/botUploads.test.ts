@@ -13,6 +13,12 @@ describe('botUploadKindOf', () => {
     expect(botUploadKindOf('', 'plano.DWG')).toBe('file');
   });
 
+  it('takes a WhatsApp voice note too (agentes 23/11): ogg/opus, mp4 and mpeg audio', () => {
+    expect(botUploadKindOf('audio/ogg; codecs=opus', 'nota.ogg')).toBe('audio');
+    expect(botUploadKindOf('audio/mp4', 'nota.m4a')).toBe('audio');
+    expect(botUploadKindOf('audio/mpeg', 'nota.mp3')).toBe('audio');
+  });
+
   it('refuses what is not on the list', () => {
     expect(botUploadKindOf('application/x-msdownload', 'virus.exe')).toBeNull();
     expect(botUploadKindOf('application/octet-stream', 'sin-extension')).toBeNull();

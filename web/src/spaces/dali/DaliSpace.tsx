@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { BookOpen, MessagesSquare } from 'lucide-react';
-import { daliChatSections, daliTabUnread, type ClientWorkspace, type DaliTabUnread, type ProspectView } from '@lilachat/shared';
+import { daliChatSections, daliTabUnread, unreadFirst, type ClientWorkspace, type DaliTabUnread, type ProspectView } from '@lilachat/shared';
 import type { ChatAction } from '../../chat/menuDelChat';
 import type { ChatSummary } from '../../chat/types';
 import { NewVersionBand } from '../../ui/NewVersionBand';
@@ -84,7 +84,11 @@ export function DaliSpace(props: Props) {
   const me = prospects.list?.me ?? props.yo;
   const list = prospects.list;
   const selectedProspect = useMemo(() => list?.prospects.find((one) => one.chatId === props.selectedChatId) ?? null, [list, props.selectedChatId]);
-  const chatSections = useMemo(() => daliChatSections(props.chats ?? [], list?.prospects ?? []), [props.chats, list]);
+  // Unread first on the Chats tab (José 23/11: scrolling to guess which one is unread), never on Bandeja's own order.
+  const chatSections = useMemo(() => {
+    const sections = daliChatSections(props.chats ?? [], list?.prospects ?? []);
+    return { directs: unreadFirst(sections.directs), whatsappGroups: unreadFirst(sections.whatsappGroups) };
+  }, [props.chats, list]);
   const tabUnread = useMemo(() => daliTabUnread(props.chats ?? [], list?.prospects ?? []), [props.chats, list]);
   const openProspectChat = (prospect: ProspectView) => {
     setSide(null);

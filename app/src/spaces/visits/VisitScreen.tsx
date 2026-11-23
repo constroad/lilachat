@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { BackHandler, Pressable, ScrollView, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { AlertTriangle, Camera, CheckCircle2, ChevronLeft, ClipboardList, FileText, ImagePlus, MapPin, Plus } from 'lucide-react-native';
-import { DRIVE_VIDEO_SECONDS, formKeyOf, nextPointNumber, pointLine, visitNextStep, type OpenVisitRow, type VisitCardAction, type VisitDocument } from '@lilachat/shared';
+import { DRIVE_VIDEO_SECONDS, formKeyOf, nextPointNumber, pointLine, visitNextStep, visitPhotosLabel, type OpenVisitRow, type VisitCardAction, type VisitDocument } from '@lilachat/shared';
 import { AppFormSheet } from '../../chat/commands/AppFormSheet';
 import { EphemeralAnswers } from '../../chat/commands/EphemeralAnswers';
 import { openCamera } from '../../chat/camara/cameraRequests';
@@ -40,7 +40,7 @@ function Header({ document, onBack }: { document: VisitDocument | null; onBack: 
 }
 
 function Figures({ document }: { document: VisitDocument }) {
-  const { questions, answered, points, photos } = document.figures;
+  const { questions, answered, points } = document.figures;
   const cell = (label: string, value: string, testID: string) => (
     <View className="flex-1 items-center py-2">
       <Text className="text-[11px] font-bold uppercase tracking-[1px] text-on-surface-variant">{label}</Text>
@@ -51,7 +51,7 @@ function Figures({ document }: { document: VisitDocument }) {
     <View className="flex-row divide-x divide-outline/15 rounded-2xl border border-outline/15 bg-surface">
       {cell('Entrevista', `${answered} de ${questions}`, 'visita-entrevista')}
       {cell('Puntos', String(points), 'visita-puntos')}
-      {cell('Fotos', String(photos), 'visita-fotos')}
+      {cell('Fotos', visitPhotosLabel(document.figures), 'visita-fotos')}
     </View>
   );
 }

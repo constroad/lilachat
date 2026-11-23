@@ -65,7 +65,7 @@ export type VisitMedia = { url: string; thumbUrl?: string; mime: string };
 export type VisitPoint = { id: string; n: number; type: string; typeLabel: string; note?: string; measure?: { value: number; unit: string }; lat: number; lng: number; at: string | null; precisionM?: number; approximate?: true; media: VisitMedia[] };
 export type VisitSection = { id: string; title: string; required: boolean; state: VisitSectionState; summary: string[]; form?: string; tool?: string; values: Record<string, string> };
 export type VisitDetails = { prospect: string; contact?: string; phone?: string; place: string; lat?: number; lng?: number; precisionM?: number; approximate?: true; date: string | null; engineer: string };
-export type VisitFigures = { points: number; photos: number; questions: number; answered: number };
+export type VisitFigures = { points: number; photos: number; videos: number; questions: number; answered: number };
 export type VisitMapPoint = { pointId: string; n: number; type: string; lat: number; lng: number };
 export type VisitDocument = {
   id: string | null;
@@ -157,7 +157,12 @@ function detailsOf(raw: unknown): VisitDetails | null {
 
 function figuresOf(raw: unknown, points: number, photos: number): VisitFigures {
   const one = record(raw);
-  return { points: num(one.puntos) ?? points, photos: num(one.fotos) ?? photos, questions: num(one.preguntas) ?? 0, answered: num(one.respondidas) ?? 0 };
+  return { points: num(one.puntos) ?? points, photos: num(one.fotos) ?? photos, videos: num(one.videos) ?? 0, questions: num(one.preguntas) ?? 0, answered: num(one.respondidas) ?? 0 };
+}
+
+/** «3 · 1 video» beside the photos (Portal 23/11): the count of videos only once there is at least one. */
+export function visitPhotosLabel(figures: VisitFigures): string {
+  return figures.videos > 0 ? `${figures.photos} · ${figures.videos} video${figures.videos === 1 ? '' : 's'}` : String(figures.photos);
 }
 
 const formsOf = (raw: unknown): Record<string, FormSchema> =>

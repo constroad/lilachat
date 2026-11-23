@@ -254,3 +254,6 @@ El inventario dice «sin implementar» en todas las la-*: está desactualizado (
   varios POST, `clientUploadId`). Lilachat: `VISIT_MEDIA_TYPE` acepta los cuatro mimes
   de video; web reabre la cámara sola (con su galería y FOTO/VIDEO ya propios); APK
   suma `VisitEvidenceSheet.tsx` (foto/video/galería). Marcar un punto no cambió.
+  `cifras.videos` (Portal, conteo de la visita y sus puntos, omitido en 0) se lee en
+  `VisitFigures.videos` y se muestra junto a «Fotos» como «3 · 1 video»
+  (`visitPhotosLabel`, web y APK).

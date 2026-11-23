@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { AlertTriangle, Camera, CheckCircle2, ChevronLeft, ClipboardList, FileText, ImagePlus, Plus } from 'lucide-react';
-import { formKeyOf, nextPointNumber, pointLine, visitNextStep, type OpenVisitRow, type VisitDocument } from '@lilachat/shared';
+import { formKeyOf, nextPointNumber, pointLine, visitNextStep, visitPhotosLabel, type OpenVisitRow, type VisitDocument } from '@lilachat/shared';
 import { loadPerfil } from '../../api';
 import { AppFormDialog } from '../../chat/commands/AppFormDialog';
 import { EphemeralAnswers } from '../../chat/commands/EphemeralAnswers';
@@ -30,7 +30,7 @@ function Header({ document, onBack }: { document: VisitDocument | null; onBack: 
 }
 
 function Figures({ document }: { document: VisitDocument }) {
-  const { questions, answered, points, photos } = document.figures;
+  const { questions, answered, points } = document.figures;
   const cell = (label: string, value: string, testId: string) => (
     <div className="flex-1 py-2 text-center">
       <p className="text-[11px] font-bold uppercase tracking-[1px] text-on-surface-variant">{label}</p>
@@ -41,7 +41,7 @@ function Figures({ document }: { document: VisitDocument }) {
     <div className="flex divide-x divide-outline/15 rounded-2xl border border-outline/15 bg-surface">
       {cell('Entrevista', `${answered} de ${questions}`, 'visita-entrevista')}
       {cell('Puntos', String(points), 'visita-puntos')}
-      {cell('Fotos', String(photos), 'visita-fotos')}
+      {cell('Fotos', visitPhotosLabel(document.figures), 'visita-fotos')}
     </div>
   );
 }

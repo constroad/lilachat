@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { markedPointOf, nextPointNumber, openVisitRowsOf, pointLine, pointProblem, visitDocumentOf, visitIdOfKey, visitNextStep, visitSectionForm, visitUploadOf, visitCardActionOf, isSiteVisitShortcut, visitInterviewNotice, pointGpsChip } from './siteVisit.js';
+import { markedPointOf, nextPointNumber, openVisitRowsOf, pointLine, pointProblem, visitDocumentOf, visitIdOfKey, visitNextStep, visitPhotosLabel, visitSectionForm, visitUploadOf, visitCardActionOf, isSiteVisitShortcut, visitInterviewNotice, pointGpsChip } from './siteVisit.js';
 import { NEW_VISIT, VISIT_WITH_ID } from './siteVisit.fixture.js';
 
 /** The technical visit on the phone (José 13/11, Portal PRIMERA-VISITA §9; designs lv01–lv03). */
@@ -13,7 +13,7 @@ describe('visitDocumentOf: Portal\'s visit as the screens read it', () => {
     const document = visit();
     // Assert
     expect(document).toMatchObject({ id: '65f0000000000000000000a1', code: 'VIS-2026-0003', stage: 'draft', stageLabel: 'Borrador', finished: false });
-    expect(document.figures).toEqual({ points: 1, photos: 0, questions: 2, answered: 1 });
+    expect(document.figures).toEqual({ points: 1, photos: 0, videos: 0, questions: 2, answered: 1 });
     expect(document.details).toMatchObject({ prospect: 'Condominio Los Álamos', place: 'Av. Los Incas 120, Surco', engineer: 'Rosa Campos', precisionM: 8 });
   });
   it('reads each point with its number, type, measure and place, in order', () => {
@@ -143,6 +143,17 @@ describe('visitInterviewNotice', () => {
 
   it('says nothing when the visit has questions to answer', () => {
     expect(visitInterviewNotice(withFigures({ preguntas: 5, respondidas: 2 }))).toBeNull();
+  });
+});
+
+describe('visitPhotosLabel (Portal 23/11: «videos» counts the visit and its points, omitted at 0)', () => {
+  it('says only the photos while there is no video', () => {
+    expect(visitPhotosLabel(withFigures({ fotos: 3 }).figures)).toBe('3');
+  });
+  it('adds the video count once there is at least one', () => {
+    expect(visitDocumentOf({ ...VISIT_WITH_ID, cifras: { ...VISIT_WITH_ID.cifras, fotos: 3, videos: 1 } })!.figures.videos).toBe(1);
+    expect(visitPhotosLabel({ points: 0, photos: 3, videos: 1, questions: 0, answered: 0 })).toBe('3 · 1 video');
+    expect(visitPhotosLabel({ points: 0, photos: 3, videos: 2, questions: 0, answered: 0 })).toBe('3 · 2 videos');
   });
 });
 

@@ -85,6 +85,7 @@ type PickedEvidence = { uri: string; name: string; mime: string; stamp?: Paramet
 /** Foto, video or a file already in the gallery (Portal 23/11): a fresh ticket for each, one after another. */
 async function pickedEvidence(option: VisitEvidenceOption): Promise<PickedEvidence | null> {
   if (option === 'gallery') {
+    // gates-allow: camara a gallery pick has no live stamp to burn, same as Drive's own gallery (useDriveUpload.ts)
     const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images', 'videos'], quality: 1 });
     const asset = picked.canceled ? null : picked.assets[0];
     if (!asset) return null;

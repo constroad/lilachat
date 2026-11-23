@@ -268,7 +268,8 @@ export function visitSectionForm(document: VisitDocument, sectionId: 'datos' | '
 /** Portal's ticket for a visit's photos (14/11): sent straight to Portal, never through Lilachat; 30 minutes. */
 export type VisitUpload = { url: string; method: 'POST'; fields: Record<string, string>; fileField: string; expiresAt: string; maxBytes: number; mimeTypes: string[] };
 const VISIT_TICKET_PATH = /^https:\/\/([a-z0-9-]+\.)*constroad\.com(:\d+)?\/api\/public\/site-visit-upload\/[^/?#]+$/i;
-const PHOTO_TYPE = /^image\/(jpeg|png|webp)$/;
+/** Portal's ticket of 23/11 also lists video, up to 50 MB, and now takes any number of POSTs until it expires. */
+const VISIT_MEDIA_TYPE = /^(image\/(jpeg|png|webp)|video\/(mp4|quicktime|webm|3gpp))$/;
 
 /** The ticket as the point's answer carries it (`data.upload`); anything off the contract is no ticket. */
 export function visitUploadOf(raw: unknown): VisitUpload | null {
@@ -279,7 +280,7 @@ export function visitUploadOf(raw: unknown): VisitUpload | null {
   const fileField = text(one.fileField);
   const expiresAt = text(one.expiresAt);
   const maxBytes = num(one.maxBytes);
-  const mimeTypes = list(one.mimeTypes).map(text).filter((type) => PHOTO_TYPE.test(type));
+  const mimeTypes = list(one.mimeTypes).map(text).filter((type) => VISIT_MEDIA_TYPE.test(type));
   if (!VISIT_TICKET_PATH.test(url) || one.method !== 'POST' || !fieldsOk || !fileField || Number.isNaN(Date.parse(expiresAt)) || !maxBytes || maxBytes <= 0 || !mimeTypes.length) return null;
   return { url, method: 'POST', fields: fields as Record<string, string>, fileField, expiresAt, maxBytes, mimeTypes };
 }

@@ -97,8 +97,15 @@ describe('the photo ticket a point answers', () => {
     expect(visitUploadOf({ ...ticket, url: 'https://evil.example.com/api/public/site-visit-upload/x' })).toBeNull();
     expect(visitUploadOf({ ...ticket, url: 'https://www.constroad.com/api/public/service-drive-upload/x' })).toBeNull();
     expect(visitUploadOf({ ...ticket, method: 'PUT' })).toBeNull();
-    expect(visitUploadOf({ ...ticket, mimeTypes: ['video/mp4'] })).toBeNull();
     expect(markedPointOf({ n: 4 })).toBeNull();
+  });
+  it('accepts a video of the visit too (Portal\'s widened ticket, 23/11): mp4, quicktime, webm and 3gpp', () => {
+    const videoTicket = { ...ticket, mimeTypes: ['video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp'] };
+    expect(visitUploadOf(videoTicket)).toEqual(videoTicket);
+  });
+  it('drops any mime outside photos and videos, keeping the rest of the list', () => {
+    expect(visitUploadOf({ ...ticket, mimeTypes: ['application/pdf', 'image/jpeg'] })?.mimeTypes).toEqual(['image/jpeg']);
+    expect(visitUploadOf({ ...ticket, mimeTypes: ['application/pdf'] })).toBeNull();
   });
 });
 

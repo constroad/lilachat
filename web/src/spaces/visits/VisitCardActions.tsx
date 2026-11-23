@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { nextPointNumber, type VisitCardAction } from '@lilachat/shared';
+import { DRIVE_VIDEO_SECONDS, nextPointNumber, type VisitCardAction } from '@lilachat/shared';
 import { openWebCamera } from '../../chat/camera/cameraRequests';
 import { devicePlaceNow } from '../clients/reports/devicePlace';
 import { prepared } from '../clients/useDriveUpload';
@@ -24,12 +24,16 @@ function useQuickAction(active: Active, visit: ReturnType<typeof useVisit>, open
     ran.current = true;
     const document = visit.draft.document;
     const runs: Record<string, () => Promise<void>> = {
+      // Several files, one after another (Portal 23/11: one ticket now answers any number of POSTs): the
+      // camera, with its own gallery button and FOTO/VIDEO tabs, reopens itself until the person closes it.
       photo: async () => {
-        const file = await openWebCamera({ title: 'Foto de la visita' });
-        if (!file) return;
-        // Where and when it was taken: Portal draws it as «F» on the card's map (43a1f701).
-        const where = await devicePlaceNow();
-        await visit.screen.addPhoto((await prepared(file)).source, undefined, { lat: where.lat, lng: where.lng, takenAt: where.at });
+        for (;;) {
+          const file = await openWebCamera({ title: 'Foto o video de la visita', video: { maxSeconds: DRIVE_VIDEO_SECONDS } });
+          if (!file) return;
+          // Where and when it was taken: Portal draws it as «F» on the card's map (43a1f701).
+          const where = await devicePlaceNow();
+          await visit.screen.addPhoto((await prepared(file)).source, undefined, { lat: where.lat, lng: where.lng, takenAt: where.at });
+        }
       },
       finish: () => visit.screen.finish(),
       pdf: async () => {

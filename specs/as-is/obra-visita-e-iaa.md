@@ -48,7 +48,15 @@ Si Portal borra la visita, agentes baja la tarjeta (`visita.deleted`,
   chips; medida con unidad; nota; «Guardar punto N» (72 px). Sin GPS no se habilita.
 - Entrevista (lv03): una tarjeta por pregunta, chips con check, «n de m» y barra. Cada
   toque guarda solo esa respuesta (`saveVisitAnswers`). Sin preguntas lo dice (`NO_INTERVIEW`).
-- Foto suelta: con `lat`, `lng`, `precisionM` y `takenAt` (`visitPhotoFields`).
+- Foto suelta: con `lat`, `lng`, `precisionM` y `takenAt` (`visitPhotoFields`). Desde el
+  23/11 (contrato ampliado de Portal) acepta foto o video y varios archivos uno tras
+  otro: cada uno pide su propio ticket (`addVisitPhoto`, «fresh ticket each time»),
+  nunca un ticket compartido entre archivos. Web: la cámara se reabre sola hasta que
+  la persona la cierra (`VisitCardActions.tsx`), con su botón de galería y pestañas
+  FOTO/VIDEO ya propios de `WebCamera`. APK: una hoja «Agregar evidencia» (foto, video
+  o galería, `VisitEvidenceSheet.tsx`) que se queda abierta hasta «Listo». Marcar un
+  punto sigue con una sola foto (sin video ni varios archivos): el punto es un solo
+  dato de campo, no una evidencia abierta.
 - Terminar: dice el primer faltante. El PDF abre con `status: 'ready'`.
 - Abrir croquis: editor de croquis de Portal (`/embed/site-visit/<id>?vista=croquis`,
   token en el `#`, 12 h, nunca se guarda ni se manda en un mensaje).
@@ -61,7 +69,8 @@ y «GPS activo»), `VisitInterviewWeb.tsx`, `VisitCroquisWeb.tsx` (sobre
 
 **APK** (`app/src/spaces/visits/`): `VisitScreen.tsx` (dibujada dentro del chat con
 `zIndex` 10, no en un `Modal`, para que la cámara no quede detrás), `VisitCardBlocks.tsx`,
-`VisitCardButtons.tsx`, `VisitMap.tsx`, `MarkPointSheet.tsx`, `VisitCroquis.tsx`
+`VisitCardButtons.tsx`, `VisitMap.tsx`, `MarkPointSheet.tsx`, `VisitEvidenceSheet.tsx`
+(foto/video/galería de la foto suelta, 23/11), `VisitCroquis.tsx`
 (Modal + WebView con el puente de Portal: `nativeEmbedEventOf`, `close-request` con 3 s
 de espera), `useVisit.ts`, `useVisitDoor.tsx`, `visitsApi.ts`, `visitCardContext.ts`.
 
@@ -75,8 +84,17 @@ de espera), `useVisit.ts`, `useVisitDoor.tsx`, `visitsApi.ts`, `visitCardContext
 - Herramientas de Portal: `guardar_visita`, `marcar_punto_de_visita`,
   `subir_foto_de_visita`, `terminar_visita`, `pdf_de_visita`, `abrir_visita_en_editor`.
 
-**Shared:** `siteVisit.ts` (lee el documento real; 15 tests con `siteVisit.fixture.ts`),
+**Shared:** `siteVisit.ts` (lee el documento real; `siteVisit.fixture.ts`),
 `visitFlow.ts`, `visitScreen.ts`, `visitInterview.ts`, `visitCard.ts`.
+
+**El ticket de Portal (`VisitUpload`, `visitUploadOf` en `siteVisit.ts`), desde 23/11:**
+hasta 50 MB (`maxBytes`), foto o video (`VISIT_MEDIA_TYPE`: jpeg/png/webp y
+mp4/quicktime/webm/3gpp), y el MISMO ticket acepta cualquier número de POST hasta que
+vence (30 min) — ya no uno por archivo. Cada POST lleva su propio `clientUploadId`:
+repetirlo da el mismo `mediaId` (`200`), nunca un duplicado. `lat`, `lng`, `precisionM`
+y `takenAt` van como campos del multipart (`visitPhotoFields`), no en el ticket.
+Lilachat sigue pidiendo un ticket nuevo por archivo (`addVisitPhoto`), aunque el
+contrato ya permitiría reusar uno: no hacía falta cambiar ese diseño para lo pedido.
 
 **Lo que solo hace Portal** (según as-is 0.1.170): lista con filtros y Excel, RUC y
 cliente, «No se concretó», Convertir en cotización, editar puntos, calles y áreas del
@@ -207,6 +225,10 @@ El inventario dice «sin implementar» en todas las la-*: está desactualizado (
   de que vence el boleto.
 - **Visita:** el APK no tiene lv02 al día ni lv03 propia (verificado en código). La
   franja del chat sigue oculta. Un error de un campo que el formulario no muestra no se ve.
+- **Foto suelta con video/varios archivos (23/11):** sin `VisitEvidenceSheet.tsx` en el
+  canal de informes (el ⚡ y la tarjeta lv01 ya la usan); sin test de render en ninguna
+  plataforma (mismo hueco que el resto de `app/src/spaces/visits/`); sin E2E en el
+  Chrome real todavía.
 - **Visita en escritorio** por el editor 2.0 de Portal: no verificado.
 - Aviso global «Tienes un área a medio guardar» si iOS reinicia Lilachat: no hecho
   (según spec §14, opción B ya retirada).
@@ -228,3 +250,7 @@ El inventario dice «sin implementar» en todas las la-*: está desactualizado (
 
 - **20/11** · lv02: el chip de la foto del punto dice la hora de la lectura y la precisión, «09:58 · GPS ±4 m»
   (`pointGpsChip`, hora de Lima), en web y APK.
+- **23/11** · Portal amplió el ticket de la foto suelta (video, 50 MB, un ticket para
+  varios POST, `clientUploadId`). Lilachat: `VISIT_MEDIA_TYPE` acepta los cuatro mimes
+  de video; web reabre la cámara sola (con su galería y FOTO/VIDEO ya propios); APK
+  suma `VisitEvidenceSheet.tsx` (foto/video/galería). Marcar un punto no cambió.

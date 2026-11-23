@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { BackHandler, Pressable, ScrollView, Text, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { AlertTriangle, Camera, CheckCircle2, ChevronLeft, ClipboardList, FileText, ImagePlus, MapPin, Plus } from 'lucide-react-native';
-import { formKeyOf, nextPointNumber, pointLine, visitNextStep, type OpenVisitRow, type VisitCardAction, type VisitDocument } from '@lilachat/shared';
+import { DRIVE_VIDEO_SECONDS, formKeyOf, nextPointNumber, pointLine, visitNextStep, type OpenVisitRow, type VisitCardAction, type VisitDocument } from '@lilachat/shared';
 import { AppFormSheet } from '../../chat/commands/AppFormSheet';
 import { EphemeralAnswers } from '../../chat/commands/EphemeralAnswers';
 import { openCamera } from '../../chat/camara/cameraRequests';
@@ -11,6 +12,7 @@ import { devicePlaceNow } from '../clients/reports/devicePlace';
 import { useFileViewer } from '../clients/useFileViewer';
 import { MarkPointSheet } from './MarkPointSheet';
 import { VisitCroquis } from './VisitCroquis';
+import { VisitEvidenceSheet, type VisitEvidenceOption } from './VisitEvidenceSheet';
 import { useVisit } from './useVisit';
 import type { VisitPlaceRef } from './visitsApi';
 
@@ -64,7 +66,7 @@ function ActionButton({ testID, label, icon, primary, disabled, onPress }: { tes
 }
 
 /** Marcar punto · Entrevista · Foto suelta · Terminar (design lv01); a finished visit only shows its PDF. */
-function Actions({ document, visit, onMark, onPdf }: { document: VisitDocument; visit: Visit; onMark: () => void; onPdf: () => void }) {
+function Actions({ document, visit, onMark, onPdf, onEvidence }: { document: VisitDocument; visit: Visit; onMark: () => void; onPdf: () => void; onEvidence: () => void }) {
   const colors = useColores();
   const busy = Boolean(visit.busy);
   if (document.finished) return <ActionButton testID="visita-pdf" label="Ver PDF" icon={<FileText size={18} color={colors['on-primary']} />} primary disabled={busy} onPress={onPdf} />;
@@ -72,22 +74,38 @@ function Actions({ document, visit, onMark, onPdf }: { document: VisitDocument; 
     <View className="flex-row flex-wrap gap-2">
       <ActionButton testID="visita-marcar-punto" label="Marcar punto" icon={<Camera size={18} color={colors['on-primary']} />} primary disabled={busy} onPress={onMark} />
       <ActionButton testID="visita-abrir-entrevista" label="Entrevista" icon={<ClipboardList size={18} color={colors.primary} />} disabled={busy} onPress={() => void visit.openSection('entrevista')} />
-      <ActionButton testID="visita-foto-suelta" label="Foto suelta" icon={<ImagePlus size={18} color={colors.primary} />} disabled={busy} onPress={() => void loosePhoto(visit)} />
+      <ActionButton testID="visita-foto-suelta" label="Foto suelta" icon={<ImagePlus size={18} color={colors.primary} />} disabled={busy} onPress={onEvidence} />
       <ActionButton testID="visita-terminar" label="Terminar" icon={<CheckCircle2 size={18} color={colors.primary} />} disabled={busy} onPress={() => void visit.screen.finish()} />
     </View>
   );
 }
 
-/** A loose photo with where and when it was taken: Portal draws it as «F» on the card (43a1f701). */
-async function loosePhoto(visit: Visit) {
-  const shot = await openCamera({ title: 'Foto de la visita' });
-  if (!shot || shot === 'denied') return;
+type PickedEvidence = { uri: string; name: string; mime: string; stamp?: Parameters<Visit['screen']['addPhoto']>[0]['stamp'] };
+
+/** Foto, video or a file already in the gallery (Portal 23/11): a fresh ticket for each, one after another. */
+async function pickedEvidence(option: VisitEvidenceOption): Promise<PickedEvidence | null> {
+  if (option === 'gallery') {
+    const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images', 'videos'], quality: 1 });
+    const asset = picked.canceled ? null : picked.assets[0];
+    if (!asset) return null;
+    const mime = asset.mimeType ?? (asset.type === 'video' ? 'video/mp4' : 'image/jpeg');
+    return { uri: asset.uri, name: asset.fileName ?? `visita-${Date.now()}.${mime.split('/')[1]}`, mime };
+  }
+  const shot = await openCamera({ title: option === 'video' ? 'Video de la visita' : 'Foto de la visita', video: { maxSeconds: DRIVE_VIDEO_SECONDS, first: option === 'video' } });
+  if (!shot || shot === 'denied') return null;
+  return { uri: shot.uri, name: `visita-${Date.now()}.${shot.mime.split('/')[1]}`, mime: shot.mime, stamp: shot.stamp };
+}
+
+/** One piece of evidence with where and when it was taken: Portal draws it as «F» on the card (43a1f701). */
+async function addEvidence(visit: Visit, option: VisitEvidenceOption) {
+  const file = await pickedEvidence(option);
+  if (!file) return;
   const where = await devicePlaceNow();
-  void visit.screen.addPhoto({ uri: shot.uri, name: `visita-${Date.now()}.jpg`, mime: shot.mime, stamp: shot.stamp }, undefined, { lat: where.lat, lng: where.lng, takenAt: where.at });
+  await visit.screen.addPhoto(file, undefined, { lat: where.lat, lng: where.lng, takenAt: where.at });
 }
 
 /** The card's button runs once the visit is read: a point opens its sheet, the rest do their step. */
-function useStartAction(action: VisitCardAction | undefined, visit: Visit, run: { mark: () => void; pdf: () => void; croquis: () => void }) {
+function useStartAction(action: VisitCardAction | undefined, visit: Visit, run: { mark: () => void; pdf: () => void; croquis: () => void; evidence: () => void }) {
   const ran = useRef(false);
   const ready = Boolean(visit.draft?.ok && visit.draft.document.id);
   useEffect(() => {
@@ -96,7 +114,7 @@ function useStartAction(action: VisitCardAction | undefined, visit: Visit, run: 
     const steps: Record<VisitCardAction, () => void> = {
       point: run.mark,
       interview: () => void visit.openSection('entrevista'),
-      photo: () => void loosePhoto(visit),
+      photo: run.evidence,
       finish: () => void visit.screen.finish(),
       pdf: run.pdf,
       croquis: run.croquis,
@@ -172,7 +190,7 @@ function OpenVisits({ rows, visit }: { rows: OpenVisitRow[]; visit: Visit }) {
   );
 }
 
-function Body({ visit, onMark, onPdf }: { visit: Visit; onMark: () => void; onPdf: () => void }) {
+function Body({ visit, onMark, onPdf, onEvidence }: { visit: Visit; onMark: () => void; onPdf: () => void; onEvidence: () => void }) {
   const { draft } = visit;
   if (draft === null) return <View testID="visita-cargando" className="h-40 rounded-2xl bg-surface-variant" />;
   if (!draft.ok) return <View testID="visita-fallo" className="rounded-2xl border border-outline/15 bg-surface p-4"><Text className="text-[15px] font-semibold text-on-surface">{draft.message}</Text><Pressable testID="visita-reintentar" onPress={() => void visit.screen.reload()} className="mt-3 min-h-[48px] items-center justify-center rounded-xl border border-primary/30 bg-primary/10"><Text className="text-[15px] font-semibold text-primary">Reintentar</Text></Pressable></View>;
@@ -183,7 +201,7 @@ function Body({ visit, onMark, onPdf }: { visit: Visit; onMark: () => void; onPd
     <>
       {place ? <Text className="text-[13px] text-on-surface-variant" numberOfLines={2}>{place}</Text> : null}
       <Figures document={document} />
-      <Actions document={document} visit={visit} onMark={onMark} onPdf={onPdf} />
+      <Actions document={document} visit={visit} onMark={onMark} onPdf={onPdf} onEvidence={onEvidence} />
       <MissingLine document={document} />
       <PointRows document={document} />
       <SectionRows document={document} visit={visit} />
@@ -201,6 +219,7 @@ export function VisitScreen(props: Props) {
   const files = useFileViewer();
   const [marking, setMarking] = useState(false);
   const [croquis, setCroquis] = useState(false);
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
   const document = visit.draft?.ok ? visit.draft.document : null;
   const { onClose } = props;
   useEffect(() => {
@@ -215,14 +234,14 @@ export function VisitScreen(props: Props) {
     const url = await visit.screen.pdf();
     if (url && document) files.open({ url, name: `${document.code}.pdf`, mime: 'application/pdf' });
   };
-  useStartAction(props.startAction, visit, { mark: () => setMarking(true), pdf: () => void pdf(), croquis: () => setCroquis(true) });
+  useStartAction(props.startAction, visit, { mark: () => setMarking(true), pdf: () => void pdf(), croquis: () => setCroquis(true), evidence: () => setEvidenceOpen(true) });
   const openForm = visit.answers.openForm;
   return (
     <View testID="visita-pantalla" className="absolute inset-0 bg-background" style={{ paddingTop: margins.cabecera, zIndex: VISIT_SCREEN_LAYER, elevation: VISIT_SCREEN_LAYER }}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16, gap: 12, paddingBottom: margins.pie + 24 }}>
         <Header document={document} onBack={onClose} />
         <EphemeralAnswers answers={visit.answers.answers} onDismiss={visit.answers.dismiss} onOpenForm={visit.answers.showForm} chatId={props.place.chatId} jwt={props.place.jwt} embedded />
-        <Body visit={visit} onMark={() => setMarking(true)} onPdf={() => void pdf()} />
+        <Body visit={visit} onMark={() => setMarking(true)} onPdf={() => void pdf()} onEvidence={() => setEvidenceOpen(true)} />
         {visit.busy ? <Text testID="visita-ocupada" className="text-center text-[13px] text-on-surface-variant">{visit.busy}</Text> : null}
         {visit.notice || files.notice ? <Text testID="visita-aviso" className="text-center text-[13px] text-on-surface">{visit.notice || files.notice}</Text> : null}
       </ScrollView>
@@ -230,6 +249,7 @@ export function VisitScreen(props: Props) {
       {openForm ? <AppFormSheet key={formKeyOf(openForm)} answer={openForm} onSubmit={(values) => visit.answers.submitForm(openForm, values)} onUpload={(photo, stamp) => visit.answers.uploadPhoto(openForm.commandId, photo, stamp)} onClose={() => visit.answers.dismiss(openForm.commandId)} /> : null}
       {files.viewer}
       {croquis && document ? <VisitCroquis visit={visit} document={document} onClose={() => setCroquis(false)} /> : null}
+      <VisitEvidenceSheet visible={evidenceOpen} onClose={() => setEvidenceOpen(false)} onPick={(option) => void addEvidence(visit, option)} />
     </View>
   );
 }

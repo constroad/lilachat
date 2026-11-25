@@ -47,15 +47,14 @@ export function FullscreenFileViewer(props: {
           <X size={22} />
         </button>
       </header>
-      <div className="flex min-h-0 flex-1 justify-center px-2 pb-2 sm:px-6 sm:pb-6">
-        <div className="flex h-full w-full max-w-5xl items-center justify-center">{props.children}</div>
-      </div>
+      {/* All the width there is, like WhatsApp (José 25/11): the browser's own viewer centres the pages. */}
+      <div className="flex min-h-0 flex-1 items-center justify-center">{props.children}</div>
     </div>,
     document.body,
   );
 }
 
 /** The document's frame inside the full-screen viewer: all the height there is. */
-export const FULLSCREEN_FRAME_CLASS = 'h-full w-full rounded-md border-0 bg-white';
+export const FULLSCREEN_FRAME_CLASS = 'h-full w-full border-0 bg-white';
 /** A waiting or failure text on the black backdrop. */
 export const FULLSCREEN_NOTE_CLASS = 'px-6 text-center text-sm text-white/80';

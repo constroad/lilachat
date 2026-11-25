@@ -291,3 +291,4 @@ export * from './linkNotes.js';
 export * from './reports.js';
 export * from './legalPages.js';
 export * from './accountDeletion.js';
+export * from './cameraZoom.js';

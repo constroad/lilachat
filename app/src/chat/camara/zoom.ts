@@ -1,33 +1,24 @@
+import type { ZoomRange } from '@lilachat/shared';
+
 /**
- * Zoom of the chat's camera (José 13/11: «no hay opción para hacer .6x 1x 2x»), as a RATIO.
- * expo-camera on Android took `zoom` 0..1 as a share of the maximum and never went under 1x; the
- * patch in `patches/expo-camera+57.0.6.patch` reads a negative value as an absolute ratio, which
- * reaches the wide lens (0.6x) where the phone has one. Phones top out around 8x.
+ * The APK's side of the camera zoom; the chips, slider and pinch math live in `@lilachat/shared`
+ * (`cameraZoom.ts`, shared with the PWA). expo-camera on Android took `zoom` 0..1 as a share of the
+ * maximum and never went under 1x; `patches/expo-camera+57.0.6.patch` reads a negative value as an
+ * absolute ratio (down to the wide lens) and sends the lens's range with `onCameraReady`.
+ * The patch only reaches the APK because `app/package.json` builds expo-camera from source.
  */
-export const MIN_RATIO = 0.6;
-export const MAX_RATIO = 8;
 
-export const ZOOM_CHIPS = [
-  { label: '.6x', ratio: 0.6 },
-  { label: '1x', ratio: 1 },
-  { label: '2x', ratio: 2 },
-] as const;
+/** Until the camera says its range (or an APK without the patched ready event): what 0.1.192 offered. */
+export const FALLBACK_RANGE: ZoomRange = { min: 0.6, max: 8 };
 
-const clamp = (ratio: number) => Math.min(MAX_RATIO, Math.max(MIN_RATIO, ratio));
-
-/** The ratio after a pinch that started at `start` and now has this `scale`. PURE. */
-export function zoomFromPinch(start: number, scale: number): number {
-  return clamp(start * scale);
-}
-
-/** «.6x», «1x», «2.5x»: what the screen says while zooming. PURE. */
-export function zoomLabel(ratio: number): string {
-  const rounded = Math.round(clamp(ratio) * 10) / 10;
-  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
-  return `${text.replace(/^0\./, '.')}x`;
+/** The range the patched ready event carries, or null when it carries none. PURE. */
+export function zoomRangeOf(event: { minZoom?: unknown; maxZoom?: unknown } | undefined): ZoomRange | null {
+  const min = Number(event?.minZoom);
+  const max = Number(event?.maxZoom);
+  return Number.isFinite(min) && Number.isFinite(max) && min > 0 && max >= min ? { min, max } : null;
 }
 
 /** What the patched CameraView takes: the ratio as a negative number. PURE. */
 export function nativeZoomOf(ratio: number): number {
-  return -clamp(ratio);
+  return -ratio;
 }

@@ -3,7 +3,7 @@ import { Check, Image as GalleryIcon, RefreshCw, RotateCcw, X, Zap, ZapOff } fro
 import { precisionLabel, recordingLabel, type GeoPoint, type Timemark } from '@lilachat/shared';
 import { useWebCameraAsk, type WebCameraAsk } from './cameraRequests';
 import { frameOf, useCameraStream, useLensControls, useWebLiveStamp, useWebRecorder, type CameraMode } from './useWebCamera';
-import { activeZoomChip, zoomChipsFor } from './cameraControls';
+import { ZoomColumn, usePinchZoom, useZoomSlider } from './WebZoom';
 import { shotNameOf, withStamp } from './shotStamp';
 import { useCurrentSpaceLogo } from '../../spaces/currentSpace';
 
@@ -48,6 +48,8 @@ export function WebCamera(props: { ask: WebCameraAsk; onDone: (file: File | null
   const live = useWebLiveStamp();
   const recorder = useWebRecorder(camera.stream, props.ask.video?.maxSeconds ?? 0);
   const lens = useLensControls(camera.stream);
+  const zoomSlider = useZoomSlider();
+  const pinch = usePinchZoom(lens, zoomSlider);
   const gallery = useRef<HTMLInputElement>(null);
   useEffect(() => () => void (taken && URL.revokeObjectURL(taken.url)), [taken]);
   const keep = (blob: Blob, takenAt: string, seconds?: number) => setTaken({ blob, url: URL.createObjectURL(blob), takenAt, ...(seconds ? { seconds } : {}) });
@@ -70,9 +72,9 @@ export function WebCamera(props: { ask: WebCameraAsk; onDone: (file: File | null
   const clock = recorder.recording ? recordingLabel(recorder.elapsedMs, props.ask.video?.maxSeconds) : null;
   return (
     <div data-testid="camara-web" role="dialog" aria-label={props.ask.title} className="fixed inset-0 z-[90] flex flex-col bg-black text-white">
-      <ShotOrLive camera={camera} taken={taken} facing={facing} />
+      <ShotOrLive camera={camera} taken={taken} facing={facing} pinch={pinch} />
       <TopBar title={props.ask.title} clock={clock} onClose={() => props.onDone(null)} flash={lens.canTorch && !taken ? { on: lens.torch, toggle: lens.toggleTorch } : null} />
-      {taken || camera.state !== 'live' ? null : <ZoomColumn lens={lens} />}
+      {taken || camera.state !== 'live' ? null : <ZoomColumn lens={lens} slider={zoomSlider} />}
       {taken || recorder.recording || camera.state !== 'live' ? null : <Chips point={live.point} logo={logo} onLogo={() => (saveLogoPref(!logo), setLogo(!logo))} />}
       {logo && spaceLogo && camera.state !== 'denied' ? <img data-testid="sello-logo" src={spaceLogo} alt="" className="pointer-events-none absolute right-4 top-[calc(max(12px,env(safe-area-inset-top))+104px)] h-16 w-16 rounded-xl object-cover" /> : null}
       {camera.state === 'denied' ? <Denied onClose={() => props.onDone(null)} /> : <StampOverlay stamp={live.stamp} lifted={Boolean(props.ask.video) && !taken} />}
@@ -85,10 +87,11 @@ export function WebCamera(props: { ask: WebCameraAsk; onDone: (file: File | null
   );
 }
 
-function ShotOrLive(props: { camera: ReturnType<typeof useCameraStream>; taken: Taken | null; facing: 'environment' | 'user' }) {
+function ShotOrLive(props: { camera: ReturnType<typeof useCameraStream>; taken: Taken | null; facing: 'environment' | 'user'; pinch: ReturnType<typeof usePinchZoom> }) {
   const mirror = props.facing === 'user' ? '-scale-x-100' : '';
   return (
-    <div className="absolute inset-0">
+    // touch-none: two fingers zoom the lens, not the page.
+    <div className="absolute inset-0 touch-none" {...(props.taken ? {} : props.pinch)}>
       <video ref={props.camera.video} autoPlay playsInline muted className={`h-full w-full object-cover ${mirror} ${props.taken ? 'hidden' : ''}`} />
       {props.taken?.blob.type.startsWith('video/') ? <video data-testid="revision-video" src={props.taken.url} autoPlay loop muted playsInline className="absolute inset-0 h-full w-full object-cover" /> : null}
       {props.taken && !props.taken.blob.type.startsWith('video/') ? <img data-testid="revision-foto" src={props.taken.url} alt="" className="absolute inset-0 h-full w-full object-cover" /> : null}
@@ -106,20 +109,6 @@ function TopBar(props: { title: string; clock: string | null; onClose: () => voi
       {props.flash ? (
         <button type="button" data-testid="flash-camara" aria-pressed={props.flash.on} aria-label={props.flash.on ? 'Apagar el flash' : 'Prender el flash'} onClick={props.flash.toggle} className="grid h-11 w-11 place-items-center rounded-full bg-black/45">{props.flash.on ? <Zap size={20} /> : <ZapOff size={20} />}</button>
       ) : <span className="h-11 w-11" />}
-    </div>
-  );
-}
-
-/** Right edge, mid height (as the APK): clear of the stamp at the bottom and the logo at the top. */
-function ZoomColumn(props: { lens: ReturnType<typeof useLensControls> }) {
-  const chips = zoomChipsFor(props.lens.range);
-  if (!chips.length) return null;
-  const active = activeZoomChip(chips, props.lens.zoom);
-  return (
-    <div data-testid="zoom-camara" className="absolute right-4 top-[42%] flex flex-col-reverse items-center gap-2">
-      {chips.map((chip) => (
-        <button key={chip.label} type="button" data-testid={`zoom-${chip.label}`} aria-pressed={chip === active} onClick={() => props.lens.setZoom(chip.ratio)} className={`grid h-10 min-w-10 place-items-center rounded-full px-2 text-[13px] font-bold ${chip === active ? 'bg-black/80 text-warning' : 'bg-black/45 text-white'}`}>{chip.label}</button>
-      ))}
     </div>
   );
 }

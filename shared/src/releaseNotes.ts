@@ -17,6 +17,16 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.193',
+    audience: 'all',
+    items: [
+      'La cámara ofrece el zoom que tiene tu teléfono: .6x, 1x, 2x, 3x, 5x y 10x.',
+      'Mantén presionado un zoom o pellizca la pantalla para ajustar con una barra, hasta el máximo del teléfono.',
+      'La barra de zoom se oculta sola a los 2 segundos.',
+      'En la web del celular también: los mismos zooms, la barra y el pellizco.',
+    ],
+  },
+  {
     version: '0.1.192',
     audience: 'all',
     items: [

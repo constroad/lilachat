@@ -124,7 +124,7 @@ function CameraBody(props: CameraProps & { backRef: { current: (() => void) | nu
       ) : (
         <>
           <CameraChips logoOn={look.logoOn} logoUrl={look.spaceLogo} precision={look.live.point?.precision ?? null} top={margins.cabecera + CHIPS_BELOW} sound={props.soundChip && mode === 'video' && !capture.recording ? { on: sound, onToggle: () => setSound((before) => !before) } : undefined} />
-          <ZoomChips zoom={zoom.zoom} onZoom={zoom.setZoom} right={right + ZOOM_EDGE} />
+          <ZoomChips zoom={zoom} right={right + ZOOM_EDGE} />
           <Controls landscape={landscape} mode={mode} onMode={props.video ? setMode : undefined} recent={shownRecent} recording={capture.recording} shooting={capture.shooting} onPick={capture.pick} onShoot={() => void (mode === 'video' ? capture.record() : capture.shoot())} onFlip={() => setFront((before) => !before)} onGallery={props.onGallery} />
         </>
       )}
@@ -152,7 +152,7 @@ function Viewfinder(props: ViewfinderProps) {
     <>
       {reviewing && props.taken ? <ShotPreview taken={props.taken} /> : (
         <GestureDetector gesture={props.zoom.pinch}>
-          <CameraView ref={props.camera} style={{ flex: 1 }} mode={props.mode} facing={props.front ? 'front' : 'back'} flash={props.flash} mute={!props.sound} videoQuality="720p" videoBitrate={VIDEO_BITRATE} active={!props.taken} zoom={props.zoom.native} />
+          <CameraView ref={props.camera} style={{ flex: 1 }} mode={props.mode} facing={props.front ? 'front' : 'back'} flash={props.flash} mute={!props.sound} videoQuality="720p" videoBitrate={VIDEO_BITRATE} active={!props.taken} zoom={props.zoom.native} onCameraReady={props.zoom.onReady} />
         </GestureDetector>
       )}
       {/* While it captures the preview goes transparent and would show the screen behind it. */}

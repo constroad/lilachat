@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { geoPointOf, timemarkOf, type GeoPoint, type Timemark } from '@lilachat/shared';
+import { clampZoom, geoPointOf, timemarkOf, type GeoPoint, type Timemark } from '@lilachat/shared';
 import { readFieldConditions } from '../commands/commandsApi';
 import { reportSessionJwt } from '../../spaces/clients/reports/reportQueueStore';
 import { recorderTypeOf } from './shotStamp';
@@ -126,7 +126,11 @@ export function useLensControls(stream: MediaStream | null) {
   return {
     range: capabilities.zoom ? { min: capabilities.zoom.min, max: capabilities.zoom.max } : null,
     zoom,
-    setZoom: (ratio: number) => (setZoomState(ratio), void apply({ zoom: ratio })),
+    setZoom: (ratio: number) => {
+      const clamped = capabilities.zoom ? clampZoom(ratio, capabilities.zoom) : ratio;
+      setZoomState(clamped);
+      void apply({ zoom: clamped });
+    },
     canTorch: capabilities.torch === true,
     torch,
     toggleTorch: () => (setTorchState(!torch), void apply({ torch: !torch })),

@@ -29,7 +29,11 @@ Los archivos viven en el disco propio de Lilachat (pendiente 82); los viejos sig
 - Sello en vivo tipo Timemark (hora, fecha, día, dirección, GPS; nunca el nombre): `StampOverlay.tsx`, `useLiveStamp.ts`, `StampedPreview.tsx`.
 - **La dirección del sello (18/11):** en el APK la pide primero el geocodificador del teléfono (`Location.reverseGeocodeAsync`, el mismo que usa Timemark), con un tope de 4 s. `devicePlaceOf` en `shared/src/devicePlace.ts` arma el texto: calle, lote, distrito y código postal, sin el país. Esa dirección viaja con la foto en el campo `place`. El server la limpia (`cleanPlace`, 120 caracteres como máximo) y la quema (`placeOfShot`). Sin ella, el server la busca en Nominatim como antes. La PWA siempre usa Nominatim: el navegador no tiene geocodificador, y OpenStreetMap no tiene muchas calles de los distritos de afuera de Lima. Por ejemplo, para la planta sale «Lurigancho, Lima, Lima Metropolitana» donde Timemark dice «Avenida Central Mz.126 - Lt.80».
 - Logo del espacio por chip (arriba a la derecha): `CameraChips.tsx`, `cameraLogoPref.ts`.
-- Zoom .6x / 1x / 2x y pellizco: `ZoomControls.tsx`, `zoom.ts`. Flash: `flash.ts`.
+- Zoom (25/11, como la cámara de Samsung): chips `.6 · 1 · 2 · 3 · 5 · 10x`, solo los que alcanza el lente;
+  slider vertical logarítmico al mantener presionado un chip o pellizcar, que se oculta a los 2 s.
+  Motor compartido `shared/src/cameraZoom.ts`; APK `ZoomControls.tsx` + `zoom.ts`; web `WebZoom.tsx`.
+  El rango del lente: en el APK lo manda `onCameraReady` ({ minZoom, maxZoom }) del parche; en la web,
+  `MediaTrackCapabilities.zoom` (sin .6x: Chrome solo da la lente principal). Flash: `flash.ts`.
   El zoom manda la razón en negativo; lo entiende el parche `app/patches/expo-camera+57.0.6.patch`.
   Ese parche solo llega al APK con `expo.autolinking.android.buildFromSource: ["expo-camera"]` en
   `app/package.json`: sin eso Gradle usa el AAR precompilado de `local-maven-repo` y lo ignora.

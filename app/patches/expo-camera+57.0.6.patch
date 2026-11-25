@@ -1,8 +1,25 @@
 diff --git a/node_modules/expo-camera/android/src/main/java/expo/modules/camera/ExpoCameraView.kt b/node_modules/expo-camera/android/src/main/java/expo/modules/camera/ExpoCameraView.kt
-index 999a22c..49f5596 100644
+index 999a22c..18608e9 100644
 --- a/node_modules/expo-camera/android/src/main/java/expo/modules/camera/ExpoCameraView.kt
 +++ b/node_modules/expo-camera/android/src/main/java/expo/modules/camera/ExpoCameraView.kt
-@@ -646,8 +646,11 @@ class ExpoCameraView(
+@@ -53,6 +53,7 @@ import expo.modules.camera.analyzers.BarcodeAnalyzer
+ import expo.modules.camera.analyzers.toByteArray
+ import expo.modules.camera.common.BarcodeScannedEvent
+ import expo.modules.camera.common.CameraMountErrorEvent
++import expo.modules.camera.common.CameraReadyEvent
+ import expo.modules.camera.common.PictureSavedEvent
+ import expo.modules.camera.records.BarcodeSettings
+ import expo.modules.camera.records.BarcodeType
+@@ -225,7 +226,7 @@ class ExpoCameraView(
+   private var lastWidth = 0
+   private var lastHeight = 0
+ 
+-  private val onCameraReady by EventDispatcher<Unit>()
++  private val onCameraReady by EventDispatcher<CameraReadyEvent>()
+   private val onMountError by EventDispatcher<CameraMountErrorEvent>()
+   private val onBarcodeScanned by EventDispatcher<BarcodeScannedEvent>(
+     /**
+@@ -646,8 +647,11 @@ class ExpoCameraView(
    }
  
    private fun setCameraZoom(value: Float) {
@@ -16,3 +33,46 @@ index 999a22c..49f5596 100644
      camera?.cameraControl?.setZoomRatio(targetZoomRatio)
    }
  
+@@ -655,7 +659,8 @@ class ExpoCameraView(
+     cameraInfo.cameraState.observe(currentActivity) {
+       when (it.type) {
+         CameraState.Type.OPEN -> {
+-          onCameraReady(Unit)
++          val zoomRange = cameraInfo.zoomState.value
++          onCameraReady(CameraReadyEvent(zoomRange?.minZoomRatio ?: 1f, zoomRange?.maxZoomRatio ?: 1f))
+           setTorchEnabled(enableTorch)
+         }
+ 
+diff --git a/node_modules/expo-camera/android/src/main/java/expo/modules/camera/common/CommonEvents.kt b/node_modules/expo-camera/android/src/main/java/expo/modules/camera/common/CommonEvents.kt
+index f31d513..0da60f2 100644
+--- a/node_modules/expo-camera/android/src/main/java/expo/modules/camera/common/CommonEvents.kt
++++ b/node_modules/expo-camera/android/src/main/java/expo/modules/camera/common/CommonEvents.kt
+@@ -16,6 +16,12 @@ class BarcodeScannedEvent(
+   @Field val extra: Bundle?
+ ) : Record
+ 
++// Lilachat: the lens's zoom range, so the app offers only the chips and slider this phone reaches.
++class CameraReadyEvent(
++  @Field val minZoom: Float,
++  @Field val maxZoom: Float
++) : Record
++
+ @OptimizedRecord
+ class CameraMountErrorEvent(
+   @Field val message: String
+diff --git a/node_modules/expo-camera/build/CameraView.js b/node_modules/expo-camera/build/CameraView.js
+index 78f8198..ef69dc7 100644
+--- a/node_modules/expo-camera/build/CameraView.js
++++ b/node_modules/expo-camera/build/CameraView.js
+@@ -197,8 +197,9 @@ export default class CameraView extends Component {
+     stopRecording() {
+         this._cameraRef.current?.stopRecording();
+     }
+-    _onCameraReady = () => {
+-        this.props.onCameraReady?.();
++    // Lilachat: Android sends the lens's zoom range ({ minZoom, maxZoom }) with the ready event.
++    _onCameraReady = (event) => {
++        this.props.onCameraReady?.(event?.nativeEvent);
+     };
+     _onAvailableLensesChanged = ({ nativeEvent }) => {
+         this.props.onAvailableLensesChanged?.(nativeEvent);

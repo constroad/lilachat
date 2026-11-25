@@ -233,7 +233,7 @@ describe('reportCardTargetOf: the report an «INFORME» card opens (José 25/11)
     // Arrange
     const card = { kicker: 'INFORME' };
     // Act
-    const target = reportCardTargetOf(card, ref);
+    const target = reportCardTargetOf(card, ref, false);
     // Assert
     expect(target).toEqual({ serviceId: 'srv1', reportId: 'rep1' });
   });
@@ -242,8 +242,19 @@ describe('reportCardTargetOf: the report an «INFORME» card opens (José 25/11)
     const photo = { kicker: 'FOTO' };
     const withPdf = { kicker: 'INFORME', link: { label: 'Abrir informe', url: 'https://x' } };
     // Act
-    const results = [reportCardTargetOf(photo, ref), reportCardTargetOf(withPdf, ref), reportCardTargetOf({ kicker: 'INFORME' }, { kind: 'service.record', serviceId: 'srv1' }), reportCardTargetOf({ kicker: 'INFORME' }, { kind: 'order.created', serviceId: 'srv1', recordId: 'r' }), reportCardTargetOf({ kicker: 'INFORME' }, undefined)];
+    const results = [reportCardTargetOf(photo, ref, true), reportCardTargetOf(withPdf, ref, true), reportCardTargetOf({ kicker: 'INFORME' }, { kind: 'service.record', serviceId: 'srv1' }, true), reportCardTargetOf({ kicker: 'INFORME' }, { kind: 'order.created', serviceId: 'srv1', recordId: 'r' }, true), reportCardTargetOf({ kicker: 'INFORME' }, undefined, true)];
     // Assert
     expect(results).toEqual([null, null, null, null, null]);
+  });
+  it('offers a money report (liquidación, valorización) only to whoever sees money (José 25/11)', () => {
+    // Arrange
+    const liquidation = { kicker: 'INFORME', title: 'Liquidación final del servicio · 24 de noviembre' };
+    const valuation = { kicker: 'INFORME', title: 'Valorización de servicios · 24 de noviembre' };
+    // Act
+    const member = [reportCardTargetOf(liquidation, ref, false), reportCardTargetOf(valuation, ref, false)];
+    const admin = reportCardTargetOf(liquidation, ref, true);
+    // Assert
+    expect(member).toEqual([null, null]);
+    expect(admin).toEqual({ serviceId: 'srv1', reportId: 'rep1' });
   });
 });

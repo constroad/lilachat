@@ -10,7 +10,7 @@ import type { AgendaReminder, DirectoryApp, MencionElegida, MencionEnMensaje, Wi
 import { channelLinksOf, chatHasActionPlace, clientHeaderSubtitle, formatUltimaVez, presenceLine, type PresenceStatus, memberCountLabel } from '@lilachat/shared';
 import { Composer, type ContextoDelComposer } from './Composer';
 import type { ComponentProps } from 'react';
-import { CardCommandContext, OpenServiceContext, OrderCardContext, type CardCommand } from './botBlocks/cardCommand';
+import { CardCommandContext, OpenServiceContext, OrderCardContext, SeesMoneyContext, type CardCommand } from './botBlocks/cardCommand';
 import { useChatCommandsWithActions } from './commands/useChatCommands';
 import { AppCommandsBar, AppConversationHeader, type AppConversationTab } from '../spaces/apps/AppConversation';
 import { AppDetail } from '../spaces/apps/AppDetail';
@@ -202,6 +202,7 @@ export function Conversation(props: {
     <CardCommandContext.Provider value={cardCommand}>
     <OrderCardContext.Provider value={isClientChannel && tabs.includes('services') ? openOrderCard : null}>
     <OpenServiceContext.Provider value={isClientChannel && tabs.includes('services') ? openService : null}>
+    <SeesMoneyContext.Provider value={Boolean(client?.access?.money)}>
     <section
       data-testid="panel-conversacion"
       className="relative flex h-full min-w-0 flex-1 flex-col"
@@ -332,6 +333,7 @@ export function Conversation(props: {
       </>
       )}
     </section>
+    </SeesMoneyContext.Provider>
     </OpenServiceContext.Provider>
     </OrderCardContext.Provider>
     </CardCommandContext.Provider>

@@ -1,6 +1,6 @@
 import { CLIENT_LIVE_DAYS, type ArchivedAgeGroup, type ClientServiceStatus } from './clientChannels.js';
 import { memberCountLabel } from './flatLayout.js';
-import type { MyClientAccess } from './clientAccess.js';
+import { isMoneyRecord, type MyClientAccess } from './clientAccess.js';
 import type { ServiceFacts } from './serviceFacts.js';
 
 /**
@@ -191,11 +191,14 @@ const SERVICE_RECORD_KIND = 'service.record';
 /**
  * The report a client channel's «INFORME» card stands for (José 25/11: the card had no button).
  * Agentes sends it as `service.record` with the service and the report ids in `refs`; a report
- * card that already carries its own link (the PDF's) keeps that one.
+ * card that already carries its own link (the PDF's) keeps that one. A money report (a settlement or a
+ * valuation) gets no button for whoever does not see money (José 25/11: money is for admins only);
+ * Portal refuses its PDF, preview and editor to them anyway.
  */
-export function reportCardTargetOf(card: { kicker?: string; link?: unknown }, ref: { kind?: string; serviceId?: string; recordId?: string } | undefined): { serviceId: string; reportId: string } | null {
+export function reportCardTargetOf(card: { kicker?: string; title?: string; link?: unknown }, ref: { kind?: string; serviceId?: string; recordId?: string } | undefined, seesMoney: boolean): { serviceId: string; reportId: string } | null {
   if (!ref || ref.kind !== SERVICE_RECORD_KIND || !ref.serviceId || !ref.recordId || card.link) return null;
   if (card.kicker?.trim().toLowerCase() !== REPORT_CARD_KICKER) return null;
+  if (!seesMoney && isMoneyRecord({ title: card.title ?? '' })) return null;
   return { serviceId: ref.serviceId, reportId: ref.recordId };
 }
 

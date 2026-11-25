@@ -16,7 +16,7 @@ import type { CallBackActions } from './useCallBack';
  * `openVisit`: a visit card's button (lv01) opens Lilachat's visit screen on that action (agentes 14/11).
  * `openService`: an action's `open: { route: 'service' }` (agentes, 20/11) opens that service in «Servicios», no round trip to the bot.
  */
-export type AccionesDeTarjeta = { editarRecordatorio?: (recordatorio: AgendaReminder) => void; callBack?: CallBackActions; runLine?: (line: string, seq?: number, context?: CardContext) => void; openOrderCard?: (seq: number) => void; openVisit?: (visitId: string, action: VisitCardAction) => void; openService?: (serviceId: string, reportId?: string) => void };
+export type AccionesDeTarjeta = { editarRecordatorio?: (recordatorio: AgendaReminder) => void; callBack?: CallBackActions; runLine?: (line: string, seq?: number, context?: CardContext) => void; openOrderCard?: (seq: number) => void; openVisit?: (visitId: string, action: VisitCardAction) => void; openService?: (serviceId: string, reportId?: string) => void; /** I see money in this client's channel: a money report's card opens only then (José 25/11). */ seesMoney?: boolean };
 
 export const AccionesDeTarjetaContext = createContext<AccionesDeTarjeta>({});
 

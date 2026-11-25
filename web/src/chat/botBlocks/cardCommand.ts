@@ -17,3 +17,5 @@ export const OrderCardContext = createContext<((seq: number) => void) | null>(nu
 /** An action's `open: { route: 'service' }` (agentes, 20/11): opens that service in «Servicios», no round trip to the bot. `null` outside a client's channel. */
 /** `reportId`: an «INFORME» card (José 25/11) opens that report on the service's Informes. */
 export const OpenServiceContext = createContext<((serviceId: string, reportId?: string) => void) | null>(null);
+/** Whether I see money in this client's channel (a space admin): a money report's card opens only for them (José 25/11). */
+export const SeesMoneyContext = createContext(false);

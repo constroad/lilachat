@@ -274,7 +274,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
     if (visitAction) return openVisit!(props.visitId!, visitAction);
     return action.command ? runRow?.(action.command) : void tap(action.id);
   };
-  const reportTarget = reportCardTargetOf(card, props.clientRef);
+  const reportTarget = reportCardTargetOf(card, props.clientRef, Boolean(actions.seesMoney));
   const buttons = card.actions?.filter((action) => (!action.command || runRow) && (!action.open || openService)) ?? [];
   const width = cardWidthOf(useWindowDimensions().width);
   const visit = Boolean(props.visitId);

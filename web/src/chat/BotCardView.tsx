@@ -3,7 +3,7 @@ import { Camera, Check, ChevronRight, CircleCheck, Copy, ExternalLink, FileText,
 import { cardActionLayout, cardContextOf, visitBlocksOf, visitCardActionOf, visitKickerParts, formatClock, isOrderCard, reportCardTargetOf, viewableLinkOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone, type VisitCardAction } from '@lilachat/shared';
 import { BotBlocksView } from './botBlocks/BotBlocksView';
 import { BotCardDetail } from './botBlocks/BotCardDetail';
-import { CardCommandContext, OpenServiceContext, OrderCardContext, useCardCommand } from './botBlocks/cardCommand';
+import { CardCommandContext, OpenServiceContext, OrderCardContext, SeesMoneyContext, useCardCommand } from './botBlocks/cardCommand';
 import { TONE as BLOCK_TONE } from './botBlocks/tones';
 import { copiarTexto } from './copiarTexto';
 import { QuoteEmbedWeb } from './QuoteEmbedWeb';
@@ -288,7 +288,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
   const runRow = run ? (line: string) => run(line, props.seq, cardContextOf(card) ?? undefined) : null;
   const openVisit = useContext(VisitActionContext);
   const press = (action: CardAction) => pressOf(action, { openService, openQuoteEmbed: setQuoteEmbedId, openVisit, visitId: props.visitId, runRow, tap: (id) => void tap(id) });
-  const reportTarget = reportCardTargetOf(card, props.clientRef);
+  const reportTarget = reportCardTargetOf(card, props.clientRef, useContext(SeesMoneyContext));
   const actions = card.actions?.filter((action) => (!action.command || runRow) && (!action.open || action.open.route === 'quote-embed' || openService)) ?? [];
   return (
     <CardCommandContext.Provider value={runRow}>

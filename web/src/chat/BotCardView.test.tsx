@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BotCardView } from './BotCardView';
-import { CardCommandContext, OpenServiceContext, OrderCardContext } from './botBlocks/cardCommand';
+import { CardCommandContext, OpenServiceContext, OrderCardContext, SeesMoneyContext } from './botBlocks/cardCommand';
 import { VisitActionContext } from '../spaces/visits/visitActionContext';
 
 afterEach(() => {
@@ -296,11 +296,17 @@ describe('an «INFORME» card of a client channel', () => {
   it('«Abrir informe» opens that report on its service', () => {
     // Arrange
     const open = vi.fn();
-    render(<OpenServiceContext.Provider value={open}><BotCardView card={card} chatId="c1" seq={3} jwt="jwt" clientRef={clientRef} /></OpenServiceContext.Provider>);
+    render(<SeesMoneyContext.Provider value><OpenServiceContext.Provider value={open}><BotCardView card={card} chatId="c1" seq={3} jwt="jwt" clientRef={clientRef} /></OpenServiceContext.Provider></SeesMoneyContext.Provider>);
     // Act
     fireEvent.click(screen.getByTestId('tarjeta-abrir-informe'));
     // Assert
     expect(open).toHaveBeenCalledWith('srv1', 'rep1');
+  });
+  it('a money report has no button for a member who does not see money (José 25/11)', () => {
+    // Arrange / Act
+    render(<OpenServiceContext.Provider value={vi.fn()}><BotCardView card={card} chatId="c1" seq={3} jwt="jwt" clientRef={clientRef} /></OpenServiceContext.Provider>);
+    // Assert
+    expect(screen.queryByTestId('tarjeta-abrir-informe')).toBeNull();
   });
   it('has no button outside a client channel', () => {
     // Arrange / Act

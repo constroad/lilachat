@@ -82,5 +82,14 @@
     "lint": "eslint src App.tsx",
     "postinstall": "patch-package"
   },
-  "private": true
+  "private": true,
+  "expo": {
+    "autolinking": {
+      "android": {
+        "buildFromSource": [
+          "expo-camera"
+        ]
+      }
+    }
+  }
 }

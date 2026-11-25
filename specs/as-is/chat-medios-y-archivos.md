@@ -30,6 +30,9 @@ Los archivos viven en el disco propio de Lilachat (pendiente 82); los viejos sig
 - **La dirección del sello (18/11):** en el APK la pide primero el geocodificador del teléfono (`Location.reverseGeocodeAsync`, el mismo que usa Timemark), con un tope de 4 s. `devicePlaceOf` en `shared/src/devicePlace.ts` arma el texto: calle, lote, distrito y código postal, sin el país. Esa dirección viaja con la foto en el campo `place`. El server la limpia (`cleanPlace`, 120 caracteres como máximo) y la quema (`placeOfShot`). Sin ella, el server la busca en Nominatim como antes. La PWA siempre usa Nominatim: el navegador no tiene geocodificador, y OpenStreetMap no tiene muchas calles de los distritos de afuera de Lima. Por ejemplo, para la planta sale «Lurigancho, Lima, Lima Metropolitana» donde Timemark dice «Avenida Central Mz.126 - Lt.80».
 - Logo del espacio por chip (arriba a la derecha): `CameraChips.tsx`, `cameraLogoPref.ts`.
 - Zoom .6x / 1x / 2x y pellizco: `ZoomControls.tsx`, `zoom.ts`. Flash: `flash.ts`.
+  El zoom manda la razón en negativo; lo entiende el parche `app/patches/expo-camera+57.0.6.patch`.
+  Ese parche solo llega al APK con `expo.autolinking.android.buildFromSource: ["expo-camera"]` en
+  `app/package.json`: sin eso Gradle usa el AAR precompilado de `local-maven-repo` y lo ignora.
 - En horizontal, controles en columna a la derecha (13/11).
 - Entrada del chat: `CamaraDelChat.tsx` («Para:», recientes, disparador; diseño `f2-app-camara`). Host: `CameraHost.tsx`, pedidos `cameraRequests.ts`.
 - Formularios: `FormCamera.tsx` con «Repetir» y «Usar foto».
@@ -151,6 +154,8 @@ Los archivos viven en el disco propio de Lilachat (pendiente 82); los viejos sig
 - **02/11 (plan 1, F2):** la foto crece desde su burbuja.
 - **04/11:** audios seguidos. Una foto vertical sale entera en la web.
 - **12/11:** la cámara del chat con el sello tipo Timemark, foto y video. También en la web del celular.
+- **25/11:** el zoom nunca funcionó en un APK (0.1.183–0.1.191). El AAR precompilado de expo-camera
+  ignoraba el parche y todo valor negativo caía en 1x. Se compila desde el código fuente desde la 0.1.192.
 - **13/11:** una sola cámara en el APK. Logo arriba a la derecha. Zoom en columna, pellizco y .6x. Miniaturas en espera dentro del campo.
 - **13/11:** el visor pregunta antes de borrar para todos. La raíz del hilo muestra su foto.
 - **14/11:** el tipo de imagen sale de los bytes. Una tarjeta con enlace a PDF, foto o video abre el visor.

@@ -17,6 +17,16 @@ const MAX_VERSIONS_SHOWN = 3;
 
 export const RELEASE_NOTES: readonly ReleaseNote[] = [
   {
+    version: '0.1.192',
+    audience: 'all',
+    items: [
+      'El zoom de la cámara ya funciona: .6x, 1x, 2x y al pellizcar la pantalla.',
+      'Los PDF y las fotos se abren a pantalla completa, como en WhatsApp.',
+      'Las tarjetas de informe traen «Abrir informe»; los de plata solo los abren los administradores.',
+      'Cada vista de Dali dice cuántos prospectos tienen mensajes sin leer.',
+    ],
+  },
+  {
     version: '0.1.191',
     audience: 'all',
     items: [

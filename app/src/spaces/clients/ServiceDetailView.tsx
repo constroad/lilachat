@@ -54,7 +54,7 @@ const orderLinkAction = (links: ChannelLinks | undefined, top: OpenSheet | undef
 function pdfActionOf(sheet: ReturnType<typeof detailSheet>, reportPdf: ReturnType<typeof useReportPdf>) {
   const asked = sheet?.pdfOnDemand;
   if (!sheet || !asked) return undefined;
-  return { asking: reportPdf.asking, message: reportPdf.message, onAsk: () => void reportPdf.ask(asked, `${sheet.title} · PDF`) };
+  return { asking: reportPdf.asking, message: reportPdf.message, onAsk: () => void reportPdf.ask(asked, `${sheet.title} · PDF`, Boolean(sheet.pdfPreview)) };
 }
 
 type ListProps = { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; tab: DetailTabKey; links?: ChannelLinks; seesMoney: boolean; admin: boolean; startOrderId?: string; startReportId?: string; onOpenFile: OpenFile; onReported: () => void; onContinueReport: (draft: { type: string; reportId: string }) => void };

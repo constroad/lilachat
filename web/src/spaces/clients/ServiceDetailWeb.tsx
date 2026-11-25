@@ -80,7 +80,7 @@ function ServiceLists(props: ListProps) {
       {tab === 'reports' && props.seesMoney ? <ReportAction target={props.target} serviceId={props.serviceId} onAnswered={props.onReported} /> : null}
       <ServiceListWeb detail={detail} tab={tab} onOpen={openRow} onOpenDispatch={(id) => setOpened([{ tab: 'dispatches', id }])} onOpenFile={viewer.open} />
       {viewer.viewer}
-      {sheet ? <RecordSheetWeb sheet={sheet} onClose={close} onOpenFile={viewer.open} pdf={sheet.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, readyUrl: reportPdf.readyUrl, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!) } : undefined} onOpenRelated={openDispatch} action={orderLinkAction(props.links, top, props.target)} /> : null}
+      {sheet ? <RecordSheetWeb sheet={sheet} onClose={close} onOpenFile={viewer.open} pdf={sheet.pdfOnDemand ? { asking: reportPdf.asking, message: reportPdf.message, readyUrl: reportPdf.readyUrl, onAsk: () => void reportPdf.ask(sheet.pdfOnDemand!, Boolean(sheet.pdfPreview)) } : undefined} onOpenRelated={openDispatch} action={orderLinkAction(props.links, top, props.target)} /> : null}
       {more ? <p className="text-center text-[12px] text-on-surface-variant">{`${more} · el resto está en el Portal`}</p> : null}
     </>
   );

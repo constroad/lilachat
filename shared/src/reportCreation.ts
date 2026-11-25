@@ -23,7 +23,7 @@ import { isObservationType, OBSERVATIONS_OPEN_HERE, observationDocumentOf, type 
 import type { ObservationLiftRequest, ObservationRegisterRequest } from './observationWrite.js';
 import { AREA_TYPE, AREAS_OPEN_HERE, areaDocumentOf, type AreaCreateRequest, type AreaDocument, type AreaEditRequest, type AreaRemoveRequest } from './additionalArea.js';
 import { locationMapLink } from './sharedLocation.js';
-import type { DetailTone } from './serviceDetail.js';
+import { isDraftStatus, type DetailTone } from './serviceDetail.js';
 import { isFieldReport } from './clientAccess.js';
 
 /**
@@ -98,12 +98,10 @@ export const needsMoneyToCreate = (code: string): boolean => {
   return !option || !offersReportType(option, false);
 };
 
-const DRAFT_LABEL = 'borrador';
-
 /** A draft of a type filled here reopens its document; its row used to offer only the PDF (José 06/11). Anything else keeps its sheet. */
 export function draftToContinue(detail: Pick<ServiceDetail, 'reports'>, id: string): { type: string; reportId: string } | null {
   const report = detail.reports.find((one) => one.id === id);
-  if (report?.status.label.toLowerCase() !== DRAFT_LABEL) return null;
+  if (!report || !isDraftStatus(report.status)) return null;
   const option = REPORT_TYPE_OPTIONS.find((one) => one.opensHere && (report.typeLabel === one.label || report.title.startsWith(one.label)));
   return option ? { type: option.code, reportId: report.id } : null;
 }

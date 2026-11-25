@@ -94,6 +94,17 @@ describe('detailSheet', () => {
     expect(detailSheet(detail, 'reports', 'r2')?.note).toBeUndefined();
   });
 
+  it('a draft asks for Portal\'s preview: its final PDF does not exist yet (José 25/11, a draft liquidation)', () => {
+    // Arrange
+    const draft = { ...detail, reports: [{ id: 'r9', title: 'Liquidación final del servicio', status: { label: 'Borrador', tone: 'neutral' as const } }, { id: 'r8', title: 'Producción de planta', status: { label: 'Completado', tone: 'ok' as const } }] };
+    // Act
+    const sheet = detailSheet(draft, 'reports', 'r9');
+    const published = detailSheet(draft, 'reports', 'r8');
+    // Assert
+    expect(sheet).toMatchObject({ pdfOnDemand: 'r9', pdfPreview: true });
+    expect(published?.pdfPreview).toBeUndefined();
+  });
+
   it('a quote: total, day and its line items when they come', () => {
     const sheet = quoteSheet(detail.quotes![0]!);
     expect(sheet.facts).toEqual([{ label: 'Total', value: 'S/ 142,416.02' }, { label: 'Fecha', value: '28 ago 2026' }]);

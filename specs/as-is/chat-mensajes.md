@@ -170,6 +170,7 @@ Lo demás (editar, borrar, reenviar, fijar, destacar, info, reacciones, mencione
   vienen. La reusa, sin cambios de UI propios, el bot post de una ubicación forwardeada de WhatsApp
   (ver `bots-api-y-tarjetas.md`).
 - **25/11:** una tarjeta «INFORME» de un canal de cliente lleva «Abrir informe» (web y APK, `BotCardView`); el mensaje le pasa su `clientRef`. Detalle en `obra-canal-cliente-y-tutoriales.md`.
+- **25/11:** el visor de fotos y videos (`VisorDeFotos.tsx`) tiene fondo negro sólido, como WhatsApp (antes `bg-black/95` dejaba ver el chat).
 - **25/10:** tocar un aviso abre el espacio, el mensaje y el hilo. Aviso de menciones fuera del canal.
 - **28/10:** saltar a un mensaje lo mantiene en vista. En la web, el campo es de cada chat y guarda su borrador.
 - **30/10:** atajos «:hug», confirmaciones de lectura apagables, temporales (24 h, 7 d, 90 d) y exportar chat (R31/10).

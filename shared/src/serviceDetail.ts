@@ -81,6 +81,8 @@ const instant = (value: unknown) => (typeof value === 'string' && !Number.isNaN(
 /** Drops the keys whose value did not validate, so the wire shape stays tight. */
 const defined = <T extends object>(value: T): T => Object.fromEntries(Object.entries(value).filter(([, one]) => one !== undefined)) as T;
 
+/** A report Portal still has as a draft: no final PDF yet, only its preview. */
+export const isDraftStatus = (status: DetailStatus): boolean => status.label.trim().toLowerCase() === 'borrador';
 export const statusOf = (raw: Raw): DetailStatus => ({ label: text(raw.status_label) ?? '—', tone: DETAIL_TONES.includes(raw.tone as DetailTone) ? (raw.tone as DetailTone) : 'neutral' });
 
 const guideOf = (one: unknown): OrderGuide[] => {

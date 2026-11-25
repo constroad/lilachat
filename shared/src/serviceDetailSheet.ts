@@ -1,5 +1,5 @@
 import { moneyOf } from './serviceBilling.js';
-import { amount, dayAndTimeOf, dayOf, dispatchRow, longDayOf, type DetailRow, type DetailStatus, type DetailTabKey, type QuoteItem, type ServiceDetail, type ServiceDispatch, type ServiceOrder, type ServiceQuote, type ServiceReport } from './serviceDetail.js';
+import { amount, dayAndTimeOf, dayOf, dispatchRow, isDraftStatus, longDayOf, type DetailRow, type DetailStatus, type DetailTabKey, type QuoteItem, type ServiceDetail, type ServiceDispatch, type ServiceOrder, type ServiceQuote, type ServiceReport } from './serviceDetail.js';
 /**
  * One order, dispatch, report or quote opened inside Lilachat (José 30/10:
  * sending him to Portal for an order's detail was not useful). Built from
@@ -14,7 +14,7 @@ export type SheetFile = { url: string; label: string };
 export type SheetMedia = { url: string; thumbUrl?: string; mime: string; name: string; /** The dispatch's departure, so the viewer does not date the photo «Hoy». */ when?: string };
 /** A block of facts with its own title, like a dispatch's «Cubicaje»; `folded` opens behind a button that shows `summary` (José 31/10). */
 export type SheetGroup = { title: string; facts: SheetFact[]; summary?: string; folded?: boolean };
-export type DetailSheet = { title: string; status: DetailStatus; facts: SheetFact[]; related: DetailRow[]; items: SheetItem[]; files: SheetFile[]; media: SheetMedia[]; groups: SheetGroup[]; url?: string; note?: string; pdfOnDemand?: string };
+export type DetailSheet = { title: string; status: DetailStatus; facts: SheetFact[]; related: DetailRow[]; items: SheetItem[]; files: SheetFile[]; media: SheetMedia[]; groups: SheetGroup[]; url?: string; note?: string; pdfOnDemand?: string; /** A draft: Portal's preview, since its final PDF does not exist yet (José 25/11). */ pdfPreview?: boolean };
 
 
 /** The facts that came, in reading order; a missing one is not a «—». */
@@ -68,7 +68,7 @@ function dispatchSheet(dispatch: ServiceDispatch, detail: ServiceDetail): Detail
 
 function reportSheet(report: ServiceReport): DetailSheet {
   const sheet = { ...base(report.title, report.status, report.url), facts: facts([['Tipo', report.typeLabel], ['Fecha', report.date && dayOf(report.date)]]) };
-  return report.pdfUrl ? { ...sheet, files: [{ url: report.pdfUrl, label: 'PDF' }] } : { ...sheet, pdfOnDemand: report.id };
+  return report.pdfUrl ? { ...sheet, files: [{ url: report.pdfUrl, label: 'PDF' }] } : { ...sheet, pdfOnDemand: report.id, ...(isDraftStatus(report.status) ? { pdfPreview: true } : {}) };
 }
 
 const itemLine = (item: QuoteItem) => [amount(item.quantity, item.unit), item.unitPrice === undefined ? undefined : `${moneyOf(item.unitPrice)} c/u`].filter(Boolean).join(' · ');

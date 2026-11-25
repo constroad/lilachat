@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { daliChatSections, daliTabUnread, funnelOf, followUpsOf, inboxOf, inboxSectionOf, isSalesProspect, lacksNextAction, levelOf, missingLabelsOf, originOf, overdueOf, shownStageOf, unreadFirst, type ProspectView } from './prospectBoard.js';
+import { daliChatSections, daliTabUnread, funnelOf, followUpsOf, inboxOf, inboxUnreadByView, inboxSectionOf, isSalesProspect, lacksNextAction, levelOf, missingLabelsOf, originOf, overdueOf, shownStageOf, unreadFirst, type ProspectView } from './prospectBoard.js';
 
 /** Dali's inbox and funnel (dl-01, dl-08, BOTS-API «Fase 2: contrato»): every rule is code, never data. */
 const now = new Date('2026-11-17T15:00:00.000Z'); // 10:00 in Lima
@@ -105,6 +105,17 @@ describe('inboxOf', () => {
     prospect({ score: 22, service: services.base }),
     prospect({ score: 90, result: { outcome: 'won', at: minutesAgo(30) }, assignee: { id: ME, name: 'José' } }),
   ];
+
+  it('says which view holds the unread chats (José 25/11: a dot on Bandeja and nothing in «Míos»)', () => {
+    // Arrange
+    const withChats = board.map((one, index) => ({ ...one, chatId: `c${index}` }));
+    const unread = new Map([['c0', 3], ['c1', 0], ['c3', 2]]);
+    // Act
+    const byView = inboxUnreadByView(withChats, (chatId) => unread.get(chatId) ?? 0, { me: ME });
+    // Assert
+    // c0 is open and nobody's; c3 is closed (won), so it counts nowhere.
+    expect(byView).toEqual({ mine: 0, unassigned: 1, all: 1 });
+  });
 
   it('counts open prospects for each view and leaves the closed ones out', () => {
     const inbox = inboxOf(board, { me: ME, view: 'all' }, now);

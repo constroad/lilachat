@@ -51,6 +51,14 @@ describe('DaliInbox (dl-01 v3)', () => {
     expect(screen.queryByTestId('chats-del-equipo')).toBeNull();
   });
 
+  it('says which view holds the unread chat while «Míos» has none (José 25/11)', () => {
+    // Arrange / Act
+    renderInbox();
+    // Assert
+    expect(screen.queryByTestId('vista-bandeja-mine-sin-leer')).toBeNull();
+    expect(screen.getByTestId('vista-bandeja-all-sin-leer').textContent).toBe('1');
+  });
+
   it('keeps the only-asked folded, and a prospect without a name shows a phone, not «·»', () => {
     renderInbox({ phone: true });
     fireEvent.click(screen.getByTestId('vista-bandeja-all'));

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, Text, View, type ListRenderItemInfo } from 'react-native';
 import { CalendarClock, Check, ChevronDown, ChevronRight, ChevronUp, FolderOpen, MessagesSquare } from 'lucide-react-native';
-import { arrivedThisMonth, followUpsLineOf, followUpsOf, inboxRowsOf, nombreDeContacto, shownInboxOf, type FoldPlace, type InboxFold, type InboxRow, type InboxView, type ProspectInbox, type ProspectView } from '@lilachat/shared';
+import { arrivedThisMonth, followUpsLineOf, followUpsOf, inboxRowsOf, inboxUnreadByView, nombreDeContacto, shownInboxOf, type FoldPlace, type InboxFold, type InboxRow, type InboxView, type ProspectInbox, type ProspectView } from '@lilachat/shared';
 import type { ChatSummary } from '../../api/client';
 import { FilaDeChat } from '../../chat/FilaDeChat';
 import { agendaPorTelefono } from '../../contacts/agendaEnMemoria';
@@ -84,7 +84,8 @@ export function DaliInbox(props: Props) {
   const context = useRowContext(props, me, onToggle);
   const renderRow = useCallback(({ item: row }: ListRenderItemInfo<Row>) => <InboxRowView row={row} context={context} />, [context]);
   const refresh = usePullToRefresh(list, props.failed, props.onRefresh);
-  const header = <InboxHeader list={list} prospects={prospects} me={me} now={now} view={view} inbox={inbox} onView={setChosen} service={props.service} onService={props.onService} onFollowUps={props.onFollowUps} />;
+  const unreadByView = useMemo(() => inboxUnreadByView(prospects, (chatId) => context.unreadOf.get(chatId) ?? 0, { me, service: props.service }), [prospects, context.unreadOf, me, props.service]);
+  const header = <InboxHeader list={list} prospects={prospects} me={me} now={now} view={view} inbox={inbox} unreadByView={unreadByView} onView={setChosen} service={props.service} onService={props.onService} onFollowUps={props.onFollowUps} />;
   return (
     <FlatList
       testID="bandeja-dali"
@@ -126,13 +127,13 @@ function usePullToRefresh(list: ProspectList | null, failed: boolean, onRefresh:
   return { refreshing, start };
 }
 
-type HeaderProps = { list: ProspectList | null; prospects: readonly ProspectView[]; me: string; now: Date; view: InboxView; inbox: ProspectInbox; onView: (view: InboxView) => void; service?: string; onService: (key: string | undefined) => void; onFollowUps: () => void };
+type HeaderProps = { list: ProspectList | null; prospects: readonly ProspectView[]; me: string; now: Date; view: InboxView; inbox: ProspectInbox; unreadByView: Record<InboxView, number>; onView: (view: InboxView) => void; service?: string; onService: (key: string | undefined) => void; onFollowUps: () => void };
 
 /** Over the rows: the month's arrivals (the shell's header has no subtitle), the views, the filter and today's follow-ups. */
 function InboxHeader(props: HeaderProps) {
   const { list, inbox, now } = props;
   const followUps = useMemo(() => followUpsOf(props.prospects, props.me, now), [props.prospects, props.me, now]);
-  const views = VIEWS.map((one) => ({ ...one, testID: `vista-bandeja-${one.key}`, cuenta: inbox.counts[one.key] }));
+  const views = VIEWS.map((one) => ({ ...one, testID: `vista-bandeja-${one.key}`, cuenta: inbox.counts[one.key], sinLeer: props.unreadByView[one.key] }));
   return (
     <View className="gap-3 pt-3">
       {list ? <Text testID="llegados-mes" className="text-[13px] text-on-surface-variant">{`${arrivedThisMonth(list.prospects, now)} este mes · Dali contesta primero y te pasa los listos`}</Text> : null}

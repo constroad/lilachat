@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { CalendarClock, ChevronDown, ChevronRight, FolderOpen } from 'lucide-react';
-import { arrivedThisMonth, followUpsOf, inboxOf, type InboxView, type ProspectView } from '@lilachat/shared';
+import { arrivedThisMonth, followUpsOf, inboxOf, inboxUnreadByView, type InboxView, type ProspectView } from '@lilachat/shared';
 import type { ChatAction } from '../../chat/menuDelChat';
 import type { ChatSummary } from '../../chat/types';
 import { EmptyNote, Kicker, Segmented, SkeletonRows, TextButton } from './daliParts';
@@ -39,6 +39,7 @@ export function DaliInbox(props: Props) {
   const inbox = useMemo(() => inboxOf(prospects, { me, view, service: props.service }, now), [prospects, me, view, props.service, now]);
   const followUps = useMemo(() => followUpsOf(prospects, me, now), [prospects, me, now]);
   const unreadOf = useMemo(() => new Map((props.chats ?? []).map((chat) => [chat.id, chat.unread])), [props.chats]);
+  const unreadByView = useMemo(() => inboxUnreadByView(prospects, (chatId) => unreadOf.get(chatId) ?? 0, { me, service: props.service }), [prospects, unreadOf, me, props.service]);
   const row = (prospect: ProspectView) => <ProspectRow key={prospect.id} prospect={prospect} unread={unreadOf.get(prospect.chatId)} selected={prospect.chatId === props.selectedChatId} phone={props.phone} now={now} onOpen={() => props.onOpenProspect(prospect)} />;
 
   return (
@@ -49,9 +50,9 @@ export function DaliInbox(props: Props) {
         value={view}
         onChange={setChosen}
         segments={[
-          { key: 'mine', label: 'Míos', count: inbox.counts.mine },
-          { key: 'unassigned', label: 'Sin asignar', count: inbox.counts.unassigned },
-          { key: 'all', label: 'Todos', count: inbox.counts.all },
+          { key: 'mine', label: 'Míos', count: inbox.counts.mine, unread: unreadByView.mine },
+          { key: 'unassigned', label: 'Sin asignar', count: inbox.counts.unassigned, unread: unreadByView.unassigned },
+          { key: 'all', label: 'Todos', count: inbox.counts.all, unread: unreadByView.all },
         ]}
       />
       <ServiceFilter services={inbox.services} value={props.service} onChange={props.onService} />

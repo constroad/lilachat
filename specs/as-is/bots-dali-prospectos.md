@@ -171,6 +171,8 @@ remitentes posibles, así que cada mensaje trae el suyo.
 
 ## 4. Historia reciente
 
+- **25/11** · José: «dice que hay algo sin leer pero no sé cuál». La «Bandeja» tenía el punto y el espacio un 1, pero la vista abría en «Míos» y el no leído (Walter A, atendido por Dali) estaba en «Sin asignar». Ahora cada filtro (Míos · Sin asignar · Todos) lleva un contador lleno con cuántos prospectos tienen mensajes sin leer (`inboxUnreadByView` en `shared/src/prospectBoard.ts`; `Segmented` web y `Segmentado` APK).
+
 - **16/11** Contrato fase 1 y fake (`PUT prospects`, `as_contact`). Canal por prospecto, el nombre del
   prospecto con la pastilla «WhatsApp», `prospect_id` hacia agentes.
 - **16/11** Análisis fase 2 con datos de agentes (Baileys 7 en el 949, Haiku 5.5, sin Meta). Diseños `dl-*`,

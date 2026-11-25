@@ -9,6 +9,8 @@ export type OpcionSegmentada<K extends string> = {
   Icono?: LucideIcon;
   /** Un contador al lado (fotos, docs); con 0 no se muestra. */
   cuenta?: number;
+  /** How many of its items have something unread (José 25/11): a filled badge, so the dot on a tab leads somewhere. */
+  sinLeer?: number;
 };
 
 /**
@@ -25,7 +27,7 @@ export function Segmentado<K extends string>(props: {
   const colores = useColores();
   return (
     <View className="flex-row rounded-2xl border border-outline/10 bg-surface p-1">
-      {props.opciones.map(({ key, etiqueta, testID, Icono, cuenta }) => {
+      {props.opciones.map(({ key, etiqueta, testID, Icono, cuenta, sinLeer }) => {
         const activo = props.valor === key;
         const tinta = activo ? colores.primary : colores['on-surface-variant'];
         return (
@@ -43,6 +45,11 @@ export function Segmentado<K extends string>(props: {
               {etiqueta}
             </Text>
             {cuenta ? <Text className={`text-[12px] ${activo ? 'text-primary' : 'text-on-surface-variant'}`}>{cuenta}</Text> : null}
+            {sinLeer ? (
+              <View testID={`${testID}-sin-leer`} accessibilityLabel={`${sinLeer} con mensajes sin leer`} className="h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1">
+                <Text className="text-[11px] font-bold text-on-primary">{sinLeer}</Text>
+              </View>
+            ) : null}
           </Pressable>
         );
       })}

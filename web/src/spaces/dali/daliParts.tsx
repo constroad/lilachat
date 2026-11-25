@@ -89,7 +89,8 @@ export function Initials({ name, size = 28 }: { name: string; size?: number }) {
   );
 }
 
-export type Segment<K extends string> = { key: K; label: string; count?: number };
+/** `unread`: how many of its chats have something unread (José 25/11), drawn as a badge. */
+export type Segment<K extends string> = { key: K; label: string; count?: number; unread?: number };
 
 /** «Míos 7 · Sin asignar 3 · Todos 148» (dl-01) and the funnel's periods: one choice, the active one filled. */
 export function Segmented<K extends string>({ segments, value, onChange, testId }: { segments: Segment<K>[]; value: K; onChange: (key: K) => void; testId?: string }) {
@@ -107,6 +108,7 @@ export function Segmented<K extends string>({ segments, value, onChange, testId 
         >
           {segment.label}
           {segment.count !== undefined ? <span className="ml-1.5 tabular-nums">{segment.count}</span> : null}
+          {segment.unread ? <span data-testid={`${testId ?? 'segmento'}-${segment.key}-sin-leer`} aria-label={`${segment.unread} con mensajes sin leer`} className="ml-1.5 inline-grid h-[18px] min-w-[18px] place-items-center rounded-full bg-primary px-1 align-middle text-[11px] font-bold text-on-primary">{segment.unread}</span> : null}
         </button>
       ))}
     </div>

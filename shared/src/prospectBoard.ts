@@ -233,6 +233,16 @@ export function inboxOf(prospects: readonly ProspectView[], params: { me: string
   return { counts, sections: sections.filter((section) => section.items.length > 0), consults, services: servicesOf(open) };
 }
 
+/**
+ * How many open prospects of each view have something unread (José 25/11: Bandeja showed a dot while
+ * «Míos» had nothing unread; the message was under «Sin asignar»). Same prospects as `inboxOf`'s counts.
+ */
+export function inboxUnreadByView(prospects: readonly ProspectView[], unreadOf: (chatId: string) => number, params: { me: string; service?: string }): Record<InboxView, number> {
+  const open = prospects.filter(isSalesProspect).filter(isOpen).filter((one) => !params.service || one.service?.key === params.service);
+  const unread = open.filter((one) => unreadOf(one.chatId) > 0);
+  return { mine: unread.filter((one) => inView(one, 'mine', params.me)).length, unassigned: unread.filter((one) => inView(one, 'unassigned', params.me)).length, all: unread.length };
+}
+
 /** The last instant of today in Lima. */
 function endOfLimaDay(now: Date): number {
   const limaClock = now.getTime() + LIMA_OFFSET_MS;

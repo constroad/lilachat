@@ -33,7 +33,7 @@ export function PhotoViewer(props: { fotos: MensajeEnPantalla[]; indice: number;
   if (!foto?.media?.url) return null;
   const boton = 'grid h-11 w-11 place-items-center rounded-full text-white hover:bg-white/10';
   return (
-    <div data-testid="visor-fotos" role="dialog" aria-label="Foto" className="fixed inset-0 z-40 flex flex-col bg-black/95">
+    <div data-testid="visor-fotos" role="dialog" aria-label="Foto" className="fixed inset-0 z-40 flex flex-col bg-black">
       <header className="flex items-center gap-2 px-4 py-3 text-white">
         <p className="min-w-0 flex-1 truncate text-sm">{`${formatDayLabel(foto.at)}, ${formatClock(foto.at)}`}</p>
         {props.onRemove ? (

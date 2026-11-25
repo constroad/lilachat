@@ -27,7 +27,7 @@ export function FullscreenFileViewer(props: {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
   return createPortal(
-    <div data-testid="visor-archivo" role="dialog" aria-label={props.title} className="fixed inset-0 z-50 flex flex-col bg-black/95">
+    <div data-testid="visor-archivo" role="dialog" aria-label={props.title} className="fixed inset-0 z-50 flex flex-col bg-black">
       <header className="flex items-center gap-2 px-4 py-3 text-white">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{props.title}</p>

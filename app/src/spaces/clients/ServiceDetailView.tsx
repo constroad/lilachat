@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { ExternalLink, FilePlus, FileText } from 'lucide-react-native';
 import { AREA_TYPE, draftToContinue, isObservationType, CLIENT_SERVICE_STATUS_LABELS, SERVICE_REPORT_ACTION, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, portalMapTabUrl, type ChannelLinks, type DetailTabKey, type ServiceAskResult, type ServiceTabItem, type ServiceTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
@@ -57,7 +57,7 @@ function pdfActionOf(sheet: ReturnType<typeof detailSheet>, reportPdf: ReturnTyp
   return { asking: reportPdf.asking, message: reportPdf.message, onAsk: () => void reportPdf.ask(asked, `${sheet.title} · PDF`) };
 }
 
-type ListProps = { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; tab: DetailTabKey; links?: ChannelLinks; seesMoney: boolean; admin: boolean; startOrderId?: string; onOpenFile: OpenFile; onReported: () => void; onContinueReport: (draft: { type: string; reportId: string }) => void };
+type ListProps = { detail: ServiceDetail; target: ServiceAskTarget; serviceId: string; tab: DetailTabKey; links?: ChannelLinks; seesMoney: boolean; admin: boolean; startOrderId?: string; startReportId?: string; onOpenFile: OpenFile; onReported: () => void; onContinueReport: (draft: { type: string; reportId: string }) => void };
 
 /** Pedidos or Informes: the list, its sheets on top and what Portal has beyond the 100 it sent. */
 function ServiceLists(props: ListProps) {
@@ -72,6 +72,13 @@ function ServiceLists(props: ListProps) {
     if (draft) props.onContinueReport(draft);
     else setOpened([{ tab, id }]);
   };
+  // An «INFORME» card (José 25/11) opens its report once, as a tap on its row would.
+  const startedReport = useRef(false);
+  useEffect(() => {
+    if (startedReport.current || !props.startReportId || tab !== 'reports') return;
+    startedReport.current = true;
+    if (detail.reports.some((one) => one.id === props.startReportId)) openRow(props.startReportId);
+  });
   const openDispatch = (id: string) => setOpened((before) => [...before, { tab: 'dispatches', id }]);
   const close = () => {
     reportPdf.stop();
@@ -89,7 +96,7 @@ function ServiceLists(props: ListProps) {
   );
 }
 
-type ServiceDetailProps = { /** Who can be a report's responsible. */ people?: readonly string[]; target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; /** The client's name, the head's kicker (design cc-02). */ clientName?: string; /** A phone: the back arrow and the compact head (design cc-02 mobile). */ compact?: boolean; /** A space admin: the stages, which read money (José 07/11). */ admin?: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string; /** Its Drive joins the tabs (José 06/11). */ seesDrive?: boolean; /** A member an admin gave only the Drive. */ driveOnly?: boolean };
+type ServiceDetailProps = { /** Who can be a report's responsible. */ people?: readonly string[]; target: ServiceAskTarget; chatId: string; service: SpaceClientService; seesMoney: boolean; /** The client's name, the head's kicker (design cc-02). */ clientName?: string; /** A phone: the back arrow and the compact head (design cc-02 mobile). */ compact?: boolean; /** A space admin: the stages, which read money (José 07/11). */ admin?: boolean; onBack: () => void; links?: ChannelLinks; /** Opens on that order's sheet: an order's card in the chat sent here. */ startOrderId?: string; /** Opens on Informes with that report: an «INFORME» card sent here (José 25/11). */ startReportId?: string; /** Its Drive joins the tabs (José 06/11). */ seesDrive?: boolean; /** A member an admin gave only the Drive. */ driveOnly?: boolean };
 
 /**
  * «Enlace del servicio» in the head (José 31/10): only where the channel's app offers it. José 20/11:
@@ -174,7 +181,7 @@ function ServiceBody(props: BodyProps) {
   if (tab === 'drive') return <ServiceDrive target={target} service={service} chatId={props.chatId} onBack={props.onBack} marks={detail.photoMarks} />;
   if (tab === 'map' && props.links) return <ServiceMapPanel jwt={target.jwt} links={doorMapLinks(props.links, target, props.chatId, serviceId)} target={{ kind: 'service', clientId: target.clientId, serviceId }} title={service.name} badge={<Text className={`rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase ${STATUS_TONE[service.status]}`}>{CLIENT_SERVICE_STATUS_LABELS[service.status]}</Text>} drawUrl={portalMapTabUrl(detail.service.url)} discharges={detail.discharges} mapPhotos={detail.mapPhotos} start={detail.service.location} send={workProgressSender(target, props.chatId, serviceId)} drawStreet={workStreetSender(target, props.chatId, serviceId)} deleteStreet={workStreetDeleteSender(target, props.chatId, serviceId)} editMap={mapEditSender(target, props.chatId, serviceId)} admin={props.seesMoney} uploadPhoto={mapPhotoUploader(target, props.chatId, serviceId)} uploadTrace={mapTraceUploader(target, props.chatId, serviceId)} mapInReport={detail.service.mapInReport} />;
   if (tab !== 'orders' && tab !== 'reports') return null;
-  return <ServiceLists detail={detail} target={target} serviceId={serviceId} tab={tab} links={props.links} seesMoney={props.seesMoney} admin={Boolean(props.admin)} startOrderId={tab === 'orders' && props.startTab === 'orders' ? props.startOrderId : undefined} onOpenFile={props.onOpenFile} onReported={props.onReported} onContinueReport={props.onContinueReport} />;
+  return <ServiceLists detail={detail} target={target} serviceId={serviceId} tab={tab} links={props.links} seesMoney={props.seesMoney} admin={Boolean(props.admin)} startOrderId={tab === 'orders' && props.startTab === 'orders' ? props.startOrderId : undefined} startReportId={tab === 'reports' ? props.startReportId : undefined} onOpenFile={props.onOpenFile} onReported={props.onReported} onContinueReport={props.onContinueReport} />;
 }
 
 function ServiceRecordsDetail(props: ServiceDetailProps) {
@@ -189,11 +196,13 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   const [picker, setPicker] = useState(false);
   const [report, setReport] = useState<{ type: string; reportId?: string; responsible?: string } | null>(null);
   // Back from the report, the detail opens on Informes, where it was.
-  const [startTab, setStartTab] = useState<DetailTabKey>('orders');
-  const [tab, setTab] = useState<ServiceTabKey>('orders');
+  const [startTab, setStartTab] = useState<DetailTabKey>(props.startReportId ? 'reports' : 'orders');
+  const [tab, setTab] = useState<ServiceTabKey>(props.startReportId ? 'reports' : 'orders');
+  const [startReportId, setStartReportId] = useState(props.startReportId);
   const portalUrl = answer?.ok ? answer.value.service.url : undefined;
   const closeReport = useCallback((changed: boolean) => {
     setReport(null);
+    setStartReportId(undefined);
     setStartTab('reports');
     setTab('reports');
     if (changed) askAgain();
@@ -205,7 +214,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   const tabs = answer?.ok ? serviceTabs(answer.value, Boolean(props.seesDrive), Boolean(props.links)) : [];
   // José 20/11 (design mapa-v2): the map takes the rest of the screen and moves, outside the scroll.
   const mapOpen = tab === 'map' && Boolean(props.links) && Boolean(answer?.ok);
-  const body = <ServiceBody {...props} answer={answer} tab={tab} startTab={startTab} onOpenFile={files.open} onReported={askAgain} onCreate={() => setPicker(true)} onContinueReport={setReport} />;
+  const body = <ServiceBody {...props} answer={answer} tab={tab} startTab={startTab} startReportId={startReportId} onOpenFile={files.open} onReported={askAgain} onCreate={() => setPicker(true)} onContinueReport={setReport} />;
   const extras = (
     <>
       <CreateReportSheet visible={picker} portalUrl={portalUrl} seesMoney={props.seesMoney} people={props.people ?? []} onPick={(code, responsible) => { setPicker(false); setReport({ type: code, responsible }); }} onClose={() => setPicker(false)} />

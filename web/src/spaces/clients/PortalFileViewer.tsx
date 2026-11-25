@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Download, ExternalLink, FileText, Film, Image as ImageIcon, Play } from 'lucide-react';
+import { FileText, Film, Image as ImageIcon, Play } from 'lucide-react';
 import { galleryIndexOf, galleryOf, mimeOf, openingOf, PDF_READINESS_TEXT, untilPdfReady, type PdfReadiness, type ViewableFile } from '@lilachat/shared';
 import { PhotoViewer } from '../../chat/VisorDeFotos';
 import type { MensajeEnPantalla } from '../../chat/types';
-import { Overlay } from '../../ui/Overlay';
+import { FullscreenFileViewer, FULLSCREEN_FRAME_CLASS, FULLSCREEN_NOTE_CLASS } from '../../media/FullscreenFileViewer';
 
 type Session = { files: ViewableFile[]; url: string; /** Position in the gallery: several files may share an address. */ at: number; action?: ViewerAction; removal?: ViewerRemoval; footerOf?: ViewerFooter };
 /** What goes under the photo on screen, by its url: «Antes / Después» in a service's Drive (José 08/11). */
@@ -65,29 +65,19 @@ function usePdfFromMemory(url: string): PdfView {
 
 function PdfFrame(props: { file: ViewableFile; view: PdfView }) {
   const { view } = props;
-  if (view.state === 'ready') return <iframe data-testid="pdf-visor" title={props.file.name} src={view.src} className="h-[70vh] w-full rounded-lg border border-outline/15 bg-white" />;
-  if (view.state === 'checking') return <div data-testid="pdf-preparando" className="grid h-[70vh] w-full animate-pulse place-items-center rounded-lg bg-background text-sm text-on-surface-variant">Preparando el PDF…</div>;
-  return <p data-testid="pdf-no-disponible" className="grid h-40 place-items-center px-6 text-center text-sm text-on-surface-variant">{view.state === 'failed' ? FAILED_TEXT : PDF_READINESS_TEXT[view.state]}</p>;
+  if (view.state === 'ready') return <iframe data-testid="pdf-visor" title={props.file.name} src={view.src} className={FULLSCREEN_FRAME_CLASS} />;
+  if (view.state === 'checking') return <div data-testid="pdf-preparando" className="grid h-full w-full animate-pulse place-items-center rounded-md bg-white/10 text-sm text-white/80">Preparando el PDF…</div>;
+  return <p data-testid="pdf-no-disponible" className={FULLSCREEN_NOTE_CLASS}>{view.state === 'failed' ? FAILED_TEXT : PDF_READINESS_TEXT[view.state]}</p>;
 }
 
-/** Portal's PDF inside Lilachat: the browser's own viewer in a frame, with its download at the foot (from memory: `download` is ignored across origins). */
+/** Portal's PDF inside Lilachat, at full screen like WhatsApp (25/11): the browser's own viewer in a frame (from memory: `download` is ignored across origins). */
 function PortalPdf(props: { file: ViewableFile; onClose: () => void }) {
   const view = usePdfFromMemory(props.file.url);
   const saved = view.state === 'ready' ? view.src : props.file.url;
   return (
-    <Overlay
-      title={props.file.name}
-      onClose={props.onClose}
-      wide
-      footer={
-        <div className="flex gap-2">
-          <a href={saved} download={props.file.name} target="_blank" rel="noreferrer" data-testid="pdf-descargar" className="inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm font-semibold text-primary hover:bg-background"><Download size={16} /> Descargar</a>
-          <a href={props.file.url} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center gap-2 rounded-full px-4 text-sm text-on-surface-variant hover:bg-background"><ExternalLink size={16} /> Abrir en otra pestaña</a>
-        </div>
-      }
-    >
+    <FullscreenFileViewer title={props.file.name} downloadUrl={saved} downloadName={props.file.name} externalUrl={props.file.url} onClose={props.onClose}>
       <PdfFrame file={props.file} view={view} />
-    </Overlay>
+    </FullscreenFileViewer>
   );
 }
 

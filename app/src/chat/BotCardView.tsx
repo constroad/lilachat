@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { Linking, Pressable, Text, useWindowDimensions, View } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { Check, ChevronRight, Copy, ExternalLink } from 'lucide-react-native';
-import { cardActionLayout, cardContextOf, formatClock, isOrderCard, viewableLinkOf, visitBlocksOf, visitCardActionOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
+import { Check, ChevronRight, Copy, ExternalLink, FileText } from 'lucide-react-native';
+import { cardActionLayout, cardContextOf, formatClock, isOrderCard, reportCardTargetOf, viewableLinkOf, visitBlocksOf, visitCardActionOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone } from '@lilachat/shared';
 import { BASE_URL } from '../api/client';
 import { useFileViewer } from '../spaces/clients/useFileViewer';
 import { InVisitCardContext } from '../spaces/visits/visitCardContext';
@@ -176,48 +176,13 @@ function CardBody(props: { url?: string; children: ReactNode }) {
   return <Pressable testID="tarjeta-cuerpo" accessibilityRole="link" onPress={() => void Linking.openURL(url)} className="gap-2 px-3.5 py-3">{props.children}</Pressable>;
 }
 
-/**
- * A bot's card in the chat (`specs/BOTS-API.spec.md` §b; design `e-21`), like
- * the web's: kicker, title, status, fields, link and up to three actions. A
- * tap reaches the bot as `button.click`; the bot closes the card, so after the
- * tap the buttons only say it was sent.
- */
-/** `visitId`: a technical visit's card (lv01, agentes 14/11): its `visita_*` buttons open Lilachat's visit screen. */
-export function BotCardView(props: { card: BotCard; chatId: string; seq: number; jwt: string; visitId?: string }) {
-  const { card } = props;
+/** Between the head and the link: the fields, the blocks, «Ver detalle» and an order's «Ver despachos y fotos». */
+function CardMiddle(props: { card: BotCard; visit: boolean; seq: number; onShowDetail: () => void }) {
+  const { card, visit } = props;
   const colors = useColores();
-  const [sent, setSent] = useState<SentAction>(null);
-  const [error, setError] = useState('');
-  // The kit (§118.4): the detail opens in a sheet with the data that came with the message.
-  const [detailOpen, setDetailOpen] = useState(false);
-  const actions = useAccionesDeTarjeta();
-  const { runLine, openOrderCard, openVisit, openService } = actions;
-  const runRow = runLine ? (line: string) => runLine(line, props.seq, cardContextOf(card) ?? undefined) : undefined;
-  const tap = async (actionId: string) => {
-    setSent({ id: actionId, state: 'sending' });
-    setError('');
-    const response = await fetch(`${BASE_URL}/api/chats/${props.chatId}/card-actions`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${props.jwt}` }, body: JSON.stringify({ seq: props.seq, action_id: actionId }) }).catch(() => null);
-    if (response?.ok) return setSent({ id: actionId, state: 'sent' });
-    const data = response ? ((await response.json().catch(() => ({}))) as { message?: string }) : {};
-    setSent(null);
-    setError(data.message ?? 'No se pudo enviar. Revisa tu conexión.');
-  };
-  // A button with a `command` runs its line and the card stays open: its form can be closed.
-  const press = (action: CardAction) => {
-    if (action.open?.route === 'service') return openService?.(action.open.serviceId);
-    const visitAction = props.visitId && openVisit ? visitCardActionOf(action.id) : null;
-    if (visitAction) return openVisit!(props.visitId!, visitAction);
-    return action.command ? runRow?.(action.command) : void tap(action.id);
-  };
-  const buttons = card.actions?.filter((action) => (!action.command || runRow) && (!action.open || openService)) ?? [];
-  const width = cardWidthOf(useWindowDimensions().width);
-  const visit = Boolean(props.visitId);
+  const { openOrderCard } = useAccionesDeTarjeta();
   return (
-    <AccionesDeTarjetaContext.Provider value={{ ...actions, runLine: runRow }}>
-    <View testID="tarjeta-bot" className={`m-1 overflow-hidden ${visit ? 'rounded-[10px]' : 'rounded-xl'} border border-outline/15 bg-surface`} style={{ minWidth: Math.min(CARD_MIN_FILL, width), maxWidth: card.blocks ? width : Math.min(CARD_TEXT_WIDTH, width), width: card.blocks ? width : undefined }}>
-      {card.accent ? <View testID="tarjeta-acento" style={{ height: ACCENT_HEIGHT, backgroundColor: colors[ACCENT_COLOR(card.accent)] }} /> : null}
-      <CardBody url={card.url}>
-        {visit ? <VisitCardHead card={card} /> : <CardHead card={card} />}
+    <>
         {card.fields.length ? (
           <View className="flex-row flex-wrap">
             {card.fields.map((field) => (
@@ -230,7 +195,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
         ) : null}
         {card.blocks ? <InVisitCardContext.Provider value={visit}><BotBlocksView blocks={visit ? visitBlocksOf(card.blocks).body : card.blocks} /></InVisitCardContext.Provider> : null}
         {card.detail ? (
-          <Pressable testID="tarjeta-ver-detalle" onPress={() => setDetailOpen(true)} className="min-h-[36px] flex-row items-center gap-1 self-start rounded-full border border-outline/20 px-3">
+          <Pressable testID="tarjeta-ver-detalle" onPress={props.onShowDetail} className="min-h-[36px] flex-row items-center gap-1 self-start rounded-full border border-outline/20 px-3">
             <Text className="text-[13px] font-semibold text-on-surface">Ver detalle</Text>
             <ChevronRight size={14} color={colors['on-surface-variant']} />
           </Pressable>
@@ -241,10 +206,88 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
             <ChevronRight size={14} color={colors['on-surface-variant']} />
           </Pressable>
         ) : null}
+    </>
+  );
+}
+
+/** The card's buttons: a visit's grid or the row, and «Abrir informe» of a report card. */
+function CardFoot(props: { buttons: CardAction[]; visit: boolean; sent: SentAction; onPress: (action: CardAction) => void; openReport: (() => void) | null }) {
+  const { buttons, visit, sent, onPress } = props;
+  return (
+    <>
+      {buttons.length && visit ? <VisitCardButtons actions={buttons} sent={sent} onPress={onPress} /> : null}
+      {buttons.length && !visit ? <CardButtons buttons={buttons} sent={sent} onPress={onPress} /> : null}
+      {props.openReport ? <OpenReportButton onPress={props.openReport} /> : null}
+    </>
+  );
+}
+
+/** What one tap on a card's row answers (`button.click`): the card only says it was sent. */
+function useCardActionTap(chatId: string, jwt: string, seq: number) {
+  const [sent, setSent] = useState<SentAction>(null);
+  const [error, setError] = useState('');
+  const tap = async (actionId: string) => {
+    setSent({ id: actionId, state: 'sending' });
+    setError('');
+    const response = await fetch(`${BASE_URL}/api/chats/${chatId}/card-actions`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` }, body: JSON.stringify({ seq, action_id: actionId }) }).catch(() => null);
+    if (response?.ok) return setSent({ id: actionId, state: 'sent' });
+    const data = response ? ((await response.json().catch(() => ({}))) as { message?: string }) : {};
+    setSent(null);
+    setError(data.message ?? 'No se pudo enviar. Revisa tu conexión.');
+  };
+  return { sent, error, tap };
+}
+
+/** «Abrir informe» under an «INFORME» card: the report itself, over the service's Informes (José 25/11). */
+function OpenReportButton({ onPress }: { onPress: () => void }) {
+  const colors = useColores();
+  return (
+    <View className="border-t border-outline/10 p-2">
+      <Pressable testID="tarjeta-abrir-informe" accessibilityRole="button" onPress={onPress} className="h-11 flex-row items-center justify-center gap-2 rounded-lg bg-primary">
+        <FileText size={16} color={colors['on-primary']} />
+        <Text className="text-[14px] font-semibold text-on-primary">Abrir informe</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+/**
+ * A bot's card in the chat (`specs/BOTS-API.spec.md` §b; design `e-21`), like
+ * the web's: kicker, title, status, fields, link and up to three actions. A
+ * tap reaches the bot as `button.click`; the bot closes the card, so after the
+ * tap the buttons only say it was sent.
+ */
+/** `visitId`: a technical visit's card (lv01, agentes 14/11): its `visita_*` buttons open Lilachat's visit screen. */
+export function BotCardView(props: { card: BotCard; chatId: string; seq: number; jwt: string; visitId?: string; /** The message's Portal refs: an «INFORME» card opens its report (José 25/11). */ clientRef?: { kind?: string; serviceId?: string; recordId?: string } }) {
+  const { card } = props;
+  const colors = useColores();
+  // The kit (§118.4): the detail opens in a sheet with the data that came with the message.
+  const [detailOpen, setDetailOpen] = useState(false);
+  const actions = useAccionesDeTarjeta();
+  const { runLine, openVisit, openService } = actions;
+  const runRow = runLine ? (line: string) => runLine(line, props.seq, cardContextOf(card) ?? undefined) : undefined;
+  const { sent, error, tap } = useCardActionTap(props.chatId, props.jwt, props.seq);
+  // A button with a `command` runs its line and the card stays open: its form can be closed.
+  const press = (action: CardAction) => {
+    if (action.open?.route === 'service') return openService?.(action.open.serviceId);
+    const visitAction = props.visitId && openVisit ? visitCardActionOf(action.id) : null;
+    if (visitAction) return openVisit!(props.visitId!, visitAction);
+    return action.command ? runRow?.(action.command) : void tap(action.id);
+  };
+  const reportTarget = reportCardTargetOf(card, props.clientRef);
+  const buttons = card.actions?.filter((action) => (!action.command || runRow) && (!action.open || openService)) ?? [];
+  const width = cardWidthOf(useWindowDimensions().width);
+  const visit = Boolean(props.visitId);
+  return (
+    <AccionesDeTarjetaContext.Provider value={{ ...actions, runLine: runRow }}>
+    <View testID="tarjeta-bot" className={`m-1 overflow-hidden ${visit ? 'rounded-[10px]' : 'rounded-xl'} border border-outline/15 bg-surface`} style={{ minWidth: Math.min(CARD_MIN_FILL, width), maxWidth: card.blocks ? width : Math.min(CARD_TEXT_WIDTH, width), width: card.blocks ? width : undefined }}>
+      {card.accent ? <View testID="tarjeta-acento" style={{ height: ACCENT_HEIGHT, backgroundColor: colors[ACCENT_COLOR(card.accent)] }} /> : null}
+      <CardBody url={card.url}>
+        {visit ? <VisitCardHead card={card} /> : <CardHead card={card} />}
+        <CardMiddle card={card} visit={visit} seq={props.seq} onShowDetail={() => setDetailOpen(true)} />
         <CardLink card={visit ? withUpdateInFooter(card) : card} />
       </CardBody>
-      {buttons.length && visit ? <VisitCardButtons actions={buttons} sent={sent} onPress={press} /> : null}
-      {buttons.length && !visit ? <CardButtons buttons={buttons} sent={sent} onPress={press} /> : null}
+      <CardFoot buttons={buttons} visit={visit} sent={sent} onPress={press} openReport={reportTarget && openService ? () => openService(reportTarget.serviceId, reportTarget.reportId) : null} />
       {visit && card.blocks ? visitBlocksOf(card.blocks).missing.map((block, index) => <View key={`falta-${index}`} className="px-3.5 pb-3"><VisitText block={block} /></View>) : null}
       {error ? <Text className="border-t border-outline/10 px-3.5 py-2 text-[12px] text-error">{error}</Text> : null}
       <BotCardDetail card={card} visible={detailOpen} onClose={() => setDetailOpen(false)} />

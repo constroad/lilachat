@@ -154,7 +154,7 @@ function FlatRow(props: {
           {card || sticker ? null : deleted ? (
             <Text testID={`eliminado-${id}`} className="text-[15px] italic text-on-surface-variant">{TEXTO_ELIMINADO}</Text>
           ) : !isPending(item) && item.card && props.jwt ? (
-            <BotCardView card={item.card} chatId={item.chatId} seq={item.seq} jwt={props.jwt} visitId={item.clientRef?.visitId} />
+            <BotCardView card={item.card} chatId={item.chatId} seq={item.seq} jwt={props.jwt} visitId={item.clientRef?.visitId} clientRef={item.clientRef} />
           ) : !isPending(item) && item.files?.length ? (
             <BotFilesAlbum seq={item.seq} files={item.files} />
           ) : !isPending(item) && sharedLocationOf(item) ? (

@@ -223,3 +223,5 @@ Pregunta a la app por `link.status` y `link.revoke`. Lilachat no guarda nada.
 - Fake: `tools/bots-fake/lilachat-bots-fake.mjs` con `POST /__fake/command` y `GET /__fake/command-responses`.
 
 Las cifras entre paréntesis son casos `it(...)` contados el 17/11.
+
+**25/11:** `OpenServiceContext` (`web/src/chat/botBlocks/cardCommand.ts`) acepta un `reportId` opcional: la tarjeta «INFORME» abre ese informe en «Informes» (ver `obra-canal-cliente-y-tutoriales.md`).

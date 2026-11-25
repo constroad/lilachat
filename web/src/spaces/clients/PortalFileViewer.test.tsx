@@ -29,6 +29,22 @@ function Harness() {
 }
 
 describe('the Portal PDF viewer on the web', () => {
+  it('opens at full screen like WhatsApp, not in a modal, and Escape closes it (José 25/11)', async () => {
+    // Arrange
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(answer(200)));
+    render(<Harness />);
+    // Act
+    fireEvent.click(screen.getByText('abrir'));
+    await screen.findByTestId('pdf-visor');
+    const viewer = screen.getByTestId('visor-archivo');
+    const modal = screen.queryByTestId('overlay');
+    fireEvent.keyDown(window, { key: 'Escape' });
+    // Assert
+    expect(viewer.className).toContain('inset-0');
+    expect(modal).toBeNull();
+    expect(screen.queryByTestId('visor-archivo')).toBeNull();
+  });
+
   it('while Portal generates it says so, asks again as Retry-After says, and shows it from memory', async () => {
     // Arrange
     vi.useFakeTimers();

@@ -16,6 +16,7 @@ import { UserModel } from '../server/src/models.js';
 import { WorkspaceMemberModel, WorkspaceModel } from '../server/src/workspaceModels.js';
 import { createChannel, joinChannel } from '../server/src/workspaceChannels.js';
 import { addBotsToPublicChannel } from '../server/src/bots/botInstall.js';
+import { addMember } from '../server/src/miembrosDelChat.js';
 
 type Options = { space: string; by: string; join: string[]; channels: string[]; privates: string[]; apply: boolean };
 
@@ -28,7 +29,9 @@ function optionsOf(argv: string[]): Options {
 }
 
 /** The ACTIVE member of the space whose name starts with `name` (case-insensitive); exactly one, or it stops. */
-async function memberNamed(workspaceId: Types.ObjectId, name: string): Promise<{ id: Types.ObjectId; name: string; role: string }> {
+type Candidate = { id: Types.ObjectId; name: string; role: string };
+
+async function memberNamed(workspaceId: Types.ObjectId, name: string): Promise<Candidate> {
   const members = await WorkspaceMemberModel.find({ workspaceId, status: 'active', userId: { $exists: true } }).select('userId role').lean();
   const users = await UserModel.find({ _id: { $in: members.map((one) => one.userId) }, name: { $regex: `^${name}`, $options: 'i' } }).select('name').lean();
   if (users.length !== 1) throw new Error(`«${name}»: ${users.length} miembros activos coinciden (${users.map((one) => one.name).join(', ')}).`);
@@ -43,6 +46,23 @@ async function listMembers(workspaceId: Types.ObjectId): Promise<void> {
   for (const member of members) console.log(member.status, member.role, member.hidden ? 'oculto' : '', users.find((user) => String(user._id) === String(member.userId))?.name ?? '(sin cuenta)');
 }
 
+/**
+ * An existing channel is not recreated; the `--join` people who are not in it yet join it
+ * (José 25/11/2026: Nikole, Leopoldo Campos, Cielo and Pachas into Globofast's #oficina).
+ */
+async function joinExisting(spaceId: string, name: string, channel: { _id: Types.ObjectId; channel?: { visibility?: string }; members?: { userId?: Types.ObjectId }[] }, by: Candidate, joiners: Candidate[], apply: boolean): Promise<void> {
+  const inside = new Set((channel.members ?? []).map((member) => String(member.userId)));
+  const missing = joiners.filter((joiner) => !inside.has(String(joiner.id)));
+  console.log(`#${name}: ya existe (${channel._id}). Faltan: ${missing.map((one) => one.name).join(', ') || 'nadie'}.`);
+  if (!apply) return;
+  // A private channel takes people only from one of its members: the `--by` admin adds them.
+  for (const joiner of missing) {
+    const added = channel.channel?.visibility === 'private' ? await addMember({ chatId: String(channel._id), quien: by.id, aQuien: String(joiner.id) }) : await joinChannel(spaceId, joiner.id, String(channel._id));
+    if ('ok' in added && !added.ok) throw new Error(`${joiner.name}: ${added.motivo}`);
+  }
+  if (missing.length) console.log(`#${name}: se unieron ${missing.length}.`);
+}
+
 async function main(): Promise<void> {
   const options = optionsOf(process.argv.slice(2));
   await connectDb();
@@ -55,8 +75,8 @@ async function main(): Promise<void> {
   console.log(`Espacio ${space.name} (${space._id}). Crea: ${creator.name} (${creator.role}). Se unen: ${joiners.map((one) => `${one.name} (${one.role})`).join(', ') || 'nadie'}.`);
   for (const raw of options.channels) {
     const name = normalizeChannelName(raw);
-    const existing = await ChatModel.findOne({ workspaceId: space._id, 'channel.visibility': { $exists: true }, name }).select('_id').lean();
-    if (existing) { console.log(`#${name}: ya existe (${existing._id}), no se toca.`); continue; }
+    const existing = await ChatModel.findOne({ workspaceId: space._id, 'channel.visibility': { $exists: true }, name }).select('_id channel.visibility members.userId').lean();
+    if (existing) { await joinExisting(String(space._id), name, existing, creator, joiners, options.apply); continue; }
     if (!options.apply) { console.log(`#${name}: se crearía ${options.privates.includes(name) ? 'privado' : 'público'}.`); continue; }
     const secret = options.privates.includes(name);
     const channel = await createChannel(String(space._id), creator.id, { name, visibility: secret ? 'private' : 'public' });

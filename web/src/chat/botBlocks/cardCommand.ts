@@ -15,4 +15,5 @@ export const useCardCommand = () => useContext(CardCommandContext);
 export const OrderCardContext = createContext<((seq: number) => void) | null>(null);
 
 /** An action's `open: { route: 'service' }` (agentes, 20/11): opens that service in «Servicios», no round trip to the bot. `null` outside a client's channel. */
-export const OpenServiceContext = createContext<((serviceId: string) => void) | null>(null);
+/** `reportId`: an «INFORME» card (José 25/11) opens that report on the service's Informes. */
+export const OpenServiceContext = createContext<((serviceId: string, reportId?: string) => void) | null>(null);

@@ -155,6 +155,7 @@ Las reglas de permisos son las mismas: vienen de `shared` y el server las aplica
 - **19/11** · «Invitados» muestra la fecha de cada invitación por correo y permite «Reenviar».
 - **19/11** · Los canales compartidos de otro espacio forman su bloque entre divisores, con sangría y sin 🔗 por fila (web y APK; José eligió el divisor estilo Slack sobre la tarjeta de color).
 - **19/11** · El superadmin comparte un canal también con los espacios donde está incógnito (`shareTargets` + `GET /admin/incognito`, web y APK; José: «sistemas» de Inframaq con Globofast). El server ya lo aceptaba.
+- **25/11** · `scripts/space-channels.ts` suma los `--join` a un canal que ya existe (antes lo saltaba); en un canal privado los agrega `--by` con `addMember`. Usado para Nikole, Leopoldo Campos, Cielo y Pachas en #oficina de Globofast. `scripts/topic-channel.ts` mueve un tema de avisos de una app a un canal, por `setTopicChannels`: el tema `informes` de agentes (las visitas técnicas) pasó de #general a #admin en Constroad y a #oficina en Globofast.
 
 ## 5. Diseños de Stitch
 

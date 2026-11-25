@@ -1,6 +1,6 @@
 import { useContext, useState, type ReactNode } from 'react';
 import { Camera, Check, ChevronRight, CircleCheck, Copy, ExternalLink, FileText, ImagePlus, ListChecks, Map as MapIcon, MapPin, type LucideIcon } from 'lucide-react';
-import { cardActionLayout, cardContextOf, visitBlocksOf, visitCardActionOf, visitKickerParts, formatClock, isOrderCard, viewableLinkOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone, type VisitCardAction } from '@lilachat/shared';
+import { cardActionLayout, cardContextOf, visitBlocksOf, visitCardActionOf, visitKickerParts, formatClock, isOrderCard, reportCardTargetOf, viewableLinkOf, type BotCard, type CardAccent, type CardAction, type CardActionStyle, type CardTone, type VisitCardAction } from '@lilachat/shared';
 import { BotBlocksView } from './botBlocks/BotBlocksView';
 import { BotCardDetail } from './botBlocks/BotCardDetail';
 import { CardCommandContext, OpenServiceContext, OrderCardContext, useCardCommand } from './botBlocks/cardCommand';
@@ -265,7 +265,18 @@ function CardOverlays(props: { card: BotCard; visitId?: string; error: string; d
   );
 }
 
-export function BotCardView(props: { card: BotCard; chatId: string; seq: number; jwt: string; visitId?: string; /** `open: { route: 'quote-embed' }` (José via agentes 20/11): which space it asks the link to. */ workspaceId?: string }) {
+/** «Abrir informe» under an «INFORME» card: the report itself, over the service's Informes (José 25/11). */
+function OpenReportButton({ onPress }: { onPress: () => void }) {
+  return (
+    <div className="border-t border-outline/10 p-2">
+      <button type="button" data-testid="tarjeta-abrir-informe" onClick={(event) => { event.stopPropagation(); onPress(); }} className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-primary text-[14px] font-semibold text-on-primary hover:bg-primary/90">
+        <FileText size={16} /> Abrir informe
+      </button>
+    </div>
+  );
+}
+
+export function BotCardView(props: { card: BotCard; chatId: string; seq: number; jwt: string; visitId?: string; /** The message's Portal refs: an «INFORME» card opens its report (José 25/11). */ clientRef?: { kind?: string; serviceId?: string; recordId?: string }; /** `open: { route: 'quote-embed' }` (José via agentes 20/11): which space it asks the link to. */ workspaceId?: string }) {
   const { card } = props;
   const { sent, error, tap } = useCardActionTap(props.chatId, props.jwt, props.seq);
   const [quoteEmbedId, setQuoteEmbedId] = useState<string | null>(null);
@@ -277,6 +288,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
   const runRow = run ? (line: string) => run(line, props.seq, cardContextOf(card) ?? undefined) : null;
   const openVisit = useContext(VisitActionContext);
   const press = (action: CardAction) => pressOf(action, { openService, openQuoteEmbed: setQuoteEmbedId, openVisit, visitId: props.visitId, runRow, tap: (id) => void tap(id) });
+  const reportTarget = reportCardTargetOf(card, props.clientRef);
   const actions = card.actions?.filter((action) => (!action.command || runRow) && (!action.open || action.open.route === 'quote-embed' || openService)) ?? [];
   return (
     <CardCommandContext.Provider value={runRow}>
@@ -284,6 +296,7 @@ export function BotCardView(props: { card: BotCard; chatId: string; seq: number;
       {card.accent ? <div data-testid="tarjeta-acento" aria-hidden className={`h-[3px] ${ACCENT_BAR(card.accent)}`} /> : null}
       <CardBody card={card} seq={props.seq} visitId={props.visitId} openOrder={openOrder} onShowDetail={() => setDetailOpen(true)} />
       {actions.length ? <CardButtons actions={actions} sent={sent} onPress={press} grid={Boolean(props.visitId)} /> : null}
+      {reportTarget && openService ? <OpenReportButton onPress={() => openService(reportTarget.serviceId, reportTarget.reportId)} /> : null}
       <CardOverlays card={card} visitId={props.visitId} error={error} detailOpen={detailOpen} onCloseDetail={() => setDetailOpen(false)} quoteEmbedId={quoteEmbedId} onCloseQuoteEmbed={() => setQuoteEmbedId(null)} workspaceId={props.workspaceId} chatId={props.chatId} jwt={props.jwt} />
     </div>
     </CardCommandContext.Provider>

@@ -167,3 +167,5 @@ La cola de tarjetas y la línea de Pendientes están en `bots-asistente-rutinas-
 - **Web:** `agenda/CreatePanels`, `agenda/CrearRecordatorio`, `agenda/RepeatPickerWeb`, `agenda/LineaDePendientes`,
   `chat/tarjetas/TaskDialog`, `chat/tarjetas/TarjetaDelMensaje`, `chat/LineaDeSistema`.
 - **Maestro:** ninguno.
+
+**25/11:** `useServiceFocus` (`app/src/chat/workPlan/ChannelWorkTabs.tsx`) guarda también el `reportId` de una tarjeta «INFORME» y lo pasa a «Servicios» (ver `obra-canal-cliente-y-tutoriales.md`).

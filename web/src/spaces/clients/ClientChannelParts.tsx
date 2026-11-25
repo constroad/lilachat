@@ -90,12 +90,13 @@ const HEAD_BUTTON = 'inline-flex h-10 items-center gap-1.5 rounded-xl border bor
  * Completados · Todos», and a card per service; on a phone the open tasks go first. The service
  * opens under the channel's tabs (tablet, computer) or over the whole screen (phone).
  */
-export function ClientServices(props: { /** Who can be a report's responsible. */ people?: readonly string[]; /** The channel hides its chrome while a service is open on a phone. */ onServiceOpen?: (open: boolean) => void; client: SpaceClient; records: ClientRecord[] | null; target: ServiceAskTarget | null; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void; /** A card's `open: { route: 'service' }` (agentes, 20/11): the service to open directly, no order lookup. */ focusServiceId?: string | null; onServiceFocused?: () => void; pending?: ChannelPending }) {
+export function ClientServices(props: { /** Who can be a report's responsible. */ people?: readonly string[]; /** The channel hides its chrome while a service is open on a phone. */ onServiceOpen?: (open: boolean) => void; client: SpaceClient; records: ClientRecord[] | null; target: ServiceAskTarget | null; links?: ChannelLinks; /** The message of the order's card that sent here. */ focusSeq?: number | null; onFocused?: () => void; /** A card's `open: { route: 'service' }` (agentes, 20/11): the service to open directly, no order lookup. */ focusServiceId?: string | null; /** With it, an «INFORME» card's report opens on top of Informes (José 25/11). */ focusReportId?: string | null; onServiceFocused?: () => void; pending?: ChannelPending }) {
   const [query, setQuery] = useState('');
   const [opened, setOpened] = useState<SpaceClientService | null>(null);
   const [filter, setFilter] = useState<ServiceFilter>('all');
   const [startOrderId, setStartOrderId] = useState<string | undefined>();
-  const { focusSeq, records, onFocused, focusServiceId, onServiceFocused } = props;
+  const [startReportId, setStartReportId] = useState<string | undefined>();
+  const { focusSeq, records, onFocused, focusServiceId, focusReportId, onServiceFocused } = props;
   const clientServices = props.client.services;
   // The records say which order the card was: until they arrive, this waits.
   useEffect(() => {
@@ -108,9 +109,9 @@ export function ClientServices(props: { /** Who can be a report's responsible. *
   useEffect(() => {
     if (!focusServiceId) return;
     const service = clientServices.find((one) => one.id === focusServiceId);
-    if (service) setOpened(service);
+    if (service) { setStartReportId(focusReportId ?? undefined); setOpened(service); }
     onServiceFocused?.();
-  }, [focusServiceId, clientServices, onServiceFocused]);
+  }, [focusServiceId, focusReportId, clientServices, onServiceFocused]);
   const showsDetail = Boolean(opened && props.target);
   const { onServiceOpen } = props;
   useEffect(() => {
@@ -123,7 +124,7 @@ export function ClientServices(props: { /** Who can be a report's responsible. *
   if (opened && props.target) {
     return (
       <div data-testid="servicios-cliente" className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background">
-        <ServiceDetailWeb people={props.people ?? []} target={props.target} chatId={props.client.chat_id} clientName={props.client.name} service={opened} seesMoney={Boolean(props.client.access?.money)} admin={Boolean(props.client.access?.admin)} seesDrive={sees.drive} driveOnly={!sees.detail} onBack={() => setOpened(null)} links={props.links} startOrderId={startOrderId} />
+        <ServiceDetailWeb key={`${opened.id}:${startReportId ?? ''}`} people={props.people ?? []} target={props.target} chatId={props.client.chat_id} clientName={props.client.name} service={opened} seesMoney={Boolean(props.client.access?.money)} admin={Boolean(props.client.access?.admin)} seesDrive={sees.drive} driveOnly={!sees.detail} onBack={() => { setOpened(null); setStartReportId(undefined); }} links={props.links} startOrderId={startOrderId} startReportId={startReportId} />
       </div>
     );
   }

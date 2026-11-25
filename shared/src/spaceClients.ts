@@ -185,6 +185,20 @@ const ORDER_RECORD_PREFIX = 'order.';
 /** An order's card: in a client's channel it leads to that order's sheet, with its dispatches and their plant photos (José 06/11). */
 export const isOrderCard = (card: { kicker?: string }): boolean => card.kicker?.trim().toLowerCase() === ORDER_CARD_KICKER;
 
+const REPORT_CARD_KICKER = 'informe';
+const SERVICE_RECORD_KIND = 'service.record';
+
+/**
+ * The report a client channel's «INFORME» card stands for (José 25/11: the card had no button).
+ * Agentes sends it as `service.record` with the service and the report ids in `refs`; a report
+ * card that already carries its own link (the PDF's) keeps that one.
+ */
+export function reportCardTargetOf(card: { kicker?: string; link?: unknown }, ref: { kind?: string; serviceId?: string; recordId?: string } | undefined): { serviceId: string; reportId: string } | null {
+  if (!ref || ref.kind !== SERVICE_RECORD_KIND || !ref.serviceId || !ref.recordId || card.link) return null;
+  if (card.kicker?.trim().toLowerCase() !== REPORT_CARD_KICKER) return null;
+  return { serviceId: ref.serviceId, reportId: ref.recordId };
+}
+
 /** The service and the order a card's message stands for; null when it is no order, or its service is not listed. */
 export function orderFocusOf<Service extends { id: string }>(services: readonly Service[], records: readonly ClientRecord[], seq: number): { service: Service; orderId: string } | null {
   const record = records.find((one) => one.seq === seq);

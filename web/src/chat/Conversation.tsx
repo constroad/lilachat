@@ -138,9 +138,11 @@ export function Conversation(props: {
   }, []);
   // A card's `open: { route: 'service' }` (agentes, 20/11): same jump, by service id instead of a message.
   const [focusServiceId, setFocusServiceId] = useState<string | null>(null);
+  const [focusReportId, setFocusReportId] = useState<string | null>(null);
   const clearServiceFocus = useCallback(() => setFocusServiceId(null), []);
-  const openService = useCallback((serviceId: string) => {
+  const openService = useCallback((serviceId: string, reportId?: string) => {
     setFocusServiceId(serviceId);
+    setFocusReportId(reportId ?? null);
     setChannelTab('services');
   }, []);
   // Pending 21 (design f-03): a client's channel adds «Servicios» and, archived, its banner.
@@ -241,7 +243,7 @@ export function Conversation(props: {
       ) : isClientChannel && client && shownTab === 'account' && props.jwtParaEnlaces && chat.workspaceId ? (
         <ClientAccountWeb target={{ jwt: props.jwtParaEnlaces, spaceId: chat.workspaceId, clientId: client.id }} services={client.services} />
       ) : isClientChannel && client && shownTab === 'services' ? (
-        <ClientServicesPanel people={props.people ?? []} client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} links={links} focusSeq={focusSeq} onFocused={clearFocus} focusServiceId={focusServiceId} onServiceFocused={clearServiceFocus} onServiceOpen={setServiceOpen} pending={compact && hasStages ? { stages: workPlan.stages ?? [], label: holdsPending ? 'Ver en Checklist' : 'Ver pendientes', onOpen: () => setChannelTab(holdsPending ? 'checklist' : 'pending') } : undefined} />
+        <ClientServicesPanel people={props.people ?? []} client={client} jwt={props.jwtParaEnlaces} spaceId={chat.workspaceId} links={links} focusSeq={focusSeq} onFocused={clearFocus} focusServiceId={focusServiceId} focusReportId={focusReportId} onServiceFocused={clearServiceFocus} onServiceOpen={setServiceOpen} pending={compact && hasStages ? { stages: workPlan.stages ?? [], label: holdsPending ? 'Ver en Checklist' : 'Ver pendientes', onOpen: () => setChannelTab(holdsPending ? 'checklist' : 'pending') } : undefined} />
       ) : props.app && appTab === 'info' ? (
         <div data-testid="informacion-app" className="min-h-0 flex-1 overflow-y-auto bg-background p-4 md:p-8">
           <div className="mx-auto max-w-3xl">
@@ -432,13 +434,13 @@ function BannerWithSession() {
 }
 
 /** «Servicios» asks for its records only while it is open. */
-function ClientServicesPanel(props: { people: readonly string[]; client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; links: ChannelLinks; focusSeq: number | null; onFocused: () => void; focusServiceId: string | null; onServiceFocused: () => void; onServiceOpen: (open: boolean) => void; pending?: ChannelPending }) {
+function ClientServicesPanel(props: { people: readonly string[]; client: NonNullable<ReturnType<typeof useClientOfChat>>; jwt?: string; spaceId?: string; links: ChannelLinks; focusSeq: number | null; onFocused: () => void; focusServiceId: string | null; focusReportId: string | null; onServiceFocused: () => void; onServiceOpen: (open: boolean) => void; pending?: ChannelPending }) {
   const records = useClientRecords(props.jwt, props.spaceId, props.client.id);
   // One target per channel: the screens under it ask Portal again when it changes, not at every message.
   const { jwt, spaceId } = props;
   const clientId = props.client.id;
   const target = useMemo(() => (jwt && spaceId ? { jwt, spaceId, clientId } : null), [jwt, spaceId, clientId]);
-  return <ClientServices people={props.people} client={props.client} records={records} focusSeq={props.focusSeq} onFocused={props.onFocused} focusServiceId={props.focusServiceId} onServiceFocused={props.onServiceFocused} target={target} links={props.links} onServiceOpen={props.onServiceOpen} pending={props.pending} />;
+  return <ClientServices people={props.people} client={props.client} records={records} focusSeq={props.focusSeq} onFocused={props.onFocused} focusServiceId={props.focusServiceId} focusReportId={props.focusReportId} onServiceFocused={props.onServiceFocused} target={target} links={props.links} onServiceOpen={props.onServiceOpen} pending={props.pending} />;
 }
 
 /**

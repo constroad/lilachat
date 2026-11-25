@@ -81,7 +81,7 @@ Los archivos viven en el disco propio de Lilachat (pendiente 82); los viejos sig
 - Burbuja: `BurbujaDeMensaje.tsx`, estilo de foto `photoBubbleStyle.ts`; una foto vertical sale entera (04/11).
 - Álbum: `AlbumGridWeb.tsx`. Visor: `VisorDeFotos.tsx` (foto, video y PDF, sin negro).
 - PDF: tarjeta con la primera página `PdfCardWeb.tsx` («3 páginas · 255 KB · PDF», 17/11).
-- PDF dentro de la web: `PdfViewer.tsx`, con el visor propio del navegador, servido por `GET /api/chats/:id/files/:seq`.
+- PDF dentro de la web: `PdfViewer.tsx`, con el visor propio del navegador a pantalla completa (`media/FullscreenFileViewer.tsx`, 25/11), servido por `GET /api/chats/:id/files/:seq`.
 - Descargar con su nombre: enlace con `download` y `downloadUrlOf` (17/11).
 - Cámara del celular en la web (12–13/11): `camera/WebCamera.tsx`, `useWebCamera.ts`, `cameraControls.ts`, `shotStamp.ts`, `ComposerCameraButton.tsx`. Sello en vivo, zoom, flash, galería y revisión.
 - Notas de voz: `useGrabadoraDeVoz.ts`, `BarraDeGrabacion.tsx`, `nivelDeAudio.ts`, `NotaDeVoz.tsx`, `voicePlayer.ts`, `NowPlayingBar.tsx`, `useVoiceNoteQueue.ts`.
@@ -158,6 +158,7 @@ Los archivos viven en el disco propio de Lilachat (pendiente 82); los viejos sig
 - **17/11:** José mandó «Cotizacion-103.pdf» y solo salía el nombre: primera página en el chat, relleno de los viejos y zoom con dos dedos.
 - **18/11:** José tocó dos veces el PDF y no hizo zoom. Doble toque: 200 % sobre el punto, y otra vez a 100 %. Las mejoras del visor del 17/11 no le llegaban porque no se había publicado la OTA; salió el 18/11.
 - **20/11:** un video de ~50 MB se subía sin avisar nada —ni barra ni error—. La web no tenía ningún techo de tiempo en su `XMLHttpRequest`: una subida colgada se quedaba esperando para siempre. El techo de la app y del salto server→lila, 120 s, también se quedaba corto para un archivo grande en una red lenta. Ahora los tres comparten `UPLOAD_TIMEOUT_MS` (`shared/src/media.ts`, 300 s): una subida colgada avisa «La subida tardó demasiado» y se puede reintentar.
+- **25/11:** José: «el visor en la web no se abre como lo hace WhatsApp». La foto y el video ya ocupaban la pantalla; el PDF abría en un modal chico. Ahora el PDF del chat (`PdfViewer`) y el de Portal (`PortalPdf`) usan `media/FullscreenFileViewer.tsx`: fondo negro a pantalla completa, nombre y fecha arriba, «Abrir en otra pestaña», «Descargar» y cerrar (o Escape), y el documento con todo el alto. Test: `PortalFileViewer.test.tsx`.
 
 ## 5. Diseños de Stitch relacionados
 

@@ -288,3 +288,24 @@ describe('a technical visit card', () => {
     expect(screen.getByTestId('punto-ruta-1').textContent).toBe('1');
   });
 });
+
+/** José 25/11: the «INFORME» card in a client's channel had no button. */
+describe('an «INFORME» card of a client channel', () => {
+  const card = { kicker: 'INFORME', title: 'Liquidación final del servicio · 24 de noviembre', fields: [{ label: 'Servicio', value: 'Mejoramiento' }] };
+  const clientRef = { kind: 'service.record', serviceId: 'srv1', recordId: 'rep1' };
+  it('«Abrir informe» opens that report on its service', () => {
+    // Arrange
+    const open = vi.fn();
+    render(<OpenServiceContext.Provider value={open}><BotCardView card={card} chatId="c1" seq={3} jwt="jwt" clientRef={clientRef} /></OpenServiceContext.Provider>);
+    // Act
+    fireEvent.click(screen.getByTestId('tarjeta-abrir-informe'));
+    // Assert
+    expect(open).toHaveBeenCalledWith('srv1', 'rep1');
+  });
+  it('has no button outside a client channel', () => {
+    // Arrange / Act
+    render(<BotCardView card={card} chatId="c1" seq={3} jwt="jwt" clientRef={clientRef} />);
+    // Assert
+    expect(screen.queryByTestId('tarjeta-abrir-informe')).toBeNull();
+  });
+});

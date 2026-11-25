@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState, type ComponentProps, type Re
 import { PanelDeInfo } from './info/PanelDeInfo';
 import type { ChatAction } from './menuDelChat';
 import { BLOCKED_BY_ME_COMPOSER, fijadosVigentes, memberMay, memberPermissionDenied, puedeFijarEnElChat } from '@lilachat/shared';
-import { INCOGNITO_COMPOSER } from '@lilachat/shared';
+import { formatClock, formatDayLabel, INCOGNITO_COMPOSER } from '@lilachat/shared';
 import { DialogoFijar } from './DialogoFijar';
 import { FranjaDeFijados } from './FranjaDeFijados';
 import { ListaDeFijados, TarjetaDeFijados } from './fijados/ListaDeFijados';
@@ -384,7 +384,7 @@ export function ConversacionConAcciones(
       {archivos ? <SendFilesDialog archivos={archivos.files} initialCaption={archivos.typed?.text} onCerrar={() => setArchivos(null)} onEnviar={subir} /> : null}
       {fotoAbierta !== null ? <PhotoViewer fotos={viewerPhotos} indice={fotoAbierta} onCambiar={setFotoAbierta} onCerrar={() => setFotoAbierta(null)} onMakeSticker={chat.encrypted ? undefined : (foto) => void saveGif({ chatId: chat.id, seq: foto.seq }).then(onAviso)} /> : null}
       {personCard.element}
-      {pdfAbierto?.media?.url ? <PdfViewer jwt={props.jwt} chatId={chat.id} seq={pdfAbierto.seq} fileName={pdfAbierto.media.fileName ?? 'Documento PDF'} downloadUrl={pdfAbierto.media.url} onClose={() => setPdfAbierto(null)} /> : null}
+      {pdfAbierto?.media?.url ? <PdfViewer jwt={props.jwt} chatId={chat.id} seq={pdfAbierto.seq} fileName={pdfAbierto.media.fileName ?? 'Documento PDF'} downloadUrl={pdfAbierto.media.url} subtitle={`${formatDayLabel(pdfAbierto.at)}, ${formatClock(pdfAbierto.at)}`} onClose={() => setPdfAbierto(null)} /> : null}
       {chat.encrypted ? null : <BirthdayCardWeb chatId={chat.id} chatName={chat.name ?? ''} isGroup={chat.kind === 'group'} me={yo} messages={mensajes ?? []} names={nombres} photos={photos} onReact={(emoji) => void sync.enviarTexto(chat.id, emoji)} onGreet={insertIntoComposer} />}
       {acciones.viendoInfo ? <DialogoInfo chatId={chat.id} mensaje={acciones.viendoInfo} jwt={props.jwt} onCerrar={acciones.cerrarInfo} /> : null}
       </VisitActionContext.Provider>

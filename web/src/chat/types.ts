@@ -102,7 +102,7 @@ export type ChatMessage = {
   /** A bot's card (`specs/BOTS-API.spec.md` §b): `body` carries its summary. */
   card?: BotCard;
   /** What an app's message points to: a technical visit's card carries its id (lv01, agentes 14/11). */
-  clientRef?: { visitId?: string };
+  clientRef?: { kind?: string; serviceId?: string; recordId?: string; visitId?: string };
   /** A bot's photos and videos, drawn as an album (José via agentes 09/11). */
   files?: GalleryItem[];
   /** A Dali prospect wrote it on WhatsApp (§c-prospectos, 16/11): their name, not the bot's that delivered it. */

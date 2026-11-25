@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clientsOfEntry, spaceListReady, isOrderCard, orderFocusOf, serviceStageLine, archivedBanner, clientChatIds, clientHeaderSubtitle, clientRowSubtitle, dayLabel, filterArchivedClients, filterServices, pageLiveClients, splitClients, CLIENTS_PAGE, CLIENTS_PREVIEW, type SpaceClient } from './spaceClients.js';
+import { clientsOfEntry, spaceListReady, isOrderCard, orderFocusOf, reportCardTargetOf, serviceStageLine, archivedBanner, clientChatIds, clientHeaderSubtitle, clientRowSubtitle, dayLabel, filterArchivedClients, filterServices, pageLiveClients, splitClients, CLIENTS_PAGE, CLIENTS_PREVIEW, type SpaceClient } from './spaceClients.js';
 
 /** Pending 21 (§157): the client channels in the space list and «Archivados» (designs f-01, f-02, f-03). */
 const now = new Date('2026-10-29T15:00:00Z');
@@ -224,5 +224,26 @@ describe('serviceStageLine', () => {
     expect(serviceStageLine({ status: 'in_progress', stage_label: 'Ejecución' })).toBe('Etapa: Ejecución');
     expect(serviceStageLine({ status: 'pending', stage_label: 'Pendiente' })).toBe('Avance');
     expect(serviceStageLine({ status: 'pending', stage_label: '' })).toBe('Avance');
+  });
+});
+
+describe('reportCardTargetOf: the report an «INFORME» card opens (José 25/11)', () => {
+  const ref = { kind: 'service.record', serviceId: 'srv1', recordId: 'rep1' };
+  it('gives the service and the report of a report card', () => {
+    // Arrange
+    const card = { kicker: 'INFORME' };
+    // Act
+    const target = reportCardTargetOf(card, ref);
+    // Assert
+    expect(target).toEqual({ serviceId: 'srv1', reportId: 'rep1' });
+  });
+  it('is null for another record, a card with its own link, or missing refs', () => {
+    // Arrange
+    const photo = { kicker: 'FOTO' };
+    const withPdf = { kicker: 'INFORME', link: { label: 'Abrir informe', url: 'https://x' } };
+    // Act
+    const results = [reportCardTargetOf(photo, ref), reportCardTargetOf(withPdf, ref), reportCardTargetOf({ kicker: 'INFORME' }, { kind: 'service.record', serviceId: 'srv1' }), reportCardTargetOf({ kicker: 'INFORME' }, { kind: 'order.created', serviceId: 'srv1', recordId: 'r' }), reportCardTargetOf({ kicker: 'INFORME' }, undefined)];
+    // Assert
+    expect(results).toEqual([null, null, null, null, null]);
   });
 });

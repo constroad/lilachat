@@ -92,6 +92,8 @@ function ServiceLists(props: ListProps) {
       <ServiceList detail={detail} tab={tab} onOpen={openRow} onOpenDispatch={(id) => setOpened([{ tab: 'dispatches', id }])} onOpenFile={props.onOpenFile} />
       {more ? <Text className="text-center text-[12px] text-on-surface-variant">{`${more} · el resto está en el Portal`}</Text> : null}
       <RecordSheet sheet={sheet} onClose={close} onOpenFile={props.onOpenFile} pdf={pdfActionOf(sheet, reportPdf)} onOpenRelated={openDispatch} action={orderLinkAction(props.links, top, props.target)} />
+      {/* A draft's preview (José 25/11: «Ver el PDF» of a draft did nothing): over the sheet. */}
+      {reportPdf.viewer}
     </>
   );
 }

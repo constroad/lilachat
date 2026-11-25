@@ -262,6 +262,7 @@ en la cabecera del Drive y las acciones del mapa en su barra, justo bajo la barr
 
 - **25/11** · La tarjeta «INFORME» del canal (agentes `service.record`, sin enlace) trae «Abrir informe»: abre el servicio en «Informes» con ese informe encima, como un toque en su fila (en la web ancha, el lienzo 2.0; si no, su hoja o el borrador). Al cerrarlo se queda en «Informes». La tarjeta no cambió: Lilachat lee `clientRef` (`serviceId`, `recordId`) del mensaje con `reportCardTargetOf` (`shared/src/spaceClients.ts`), así que vale también para las tarjetas viejas. `OpenServiceContext` (web) y `openService` (APK) aceptan `reportId`; `ServiceDetailWeb`/`ServiceDetailView` reciben `startReportId`. Quien no ve montos no tiene la liquidación en su lista: el botón solo abre «Informes».
 - **25/11** · E2E de «Abrir informe» en el APK: la hoja de la liquidación en borrador decía «No se pudo traer el PDF del informe». Pedía el PDF final, que un borrador no tiene. Ahora la hoja de un borrador pide la vista previa de Portal (`pdfPreview`, `isDraftStatus` en `shared/src/serviceDetail.ts`), en web y APK, igual que «Ver PDF» del documento.
+  En el APK la vista previa llegaba pero no se mostraba: `ServiceLists` no pintaba `reportPdf.viewer`. Ahora la abre `ReportPreviewScreen` encima de la hoja.
 
 - **20/11:** José, de nuevo, nombre de obra cortado a una línea en la cabecera
   del Mapa de obra («cabecera-servicio-mapa», `ServiceShell.tsx` y

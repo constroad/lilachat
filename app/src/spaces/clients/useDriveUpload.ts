@@ -138,11 +138,14 @@ export function useDriveUpload(upload: UploadTarget) {
   const { serviceId } = upload;
   const onDone = useRef(upload.onDone);
   onDone.current = upload.onDone;
-  useEffect(() => onFieldJobDone((job) => {
-    if (job.kind !== 'drive_file' || job.scope.serviceId !== serviceId) return;
-    setState({ ...IDLE, message: DRIVE_UPLOAD_DONE });
-    onDone.current();
-  }), [serviceId]);
+  useEffect(() => {
+    const stop = onFieldJobDone((job) => {
+      if (job.kind !== 'drive_file' || job.scope.serviceId !== serviceId) return;
+      setState({ ...IDLE, message: DRIVE_UPLOAD_DONE });
+      onDone.current();
+    });
+    return () => void stop();
+  }, [serviceId]);
   const sendFile = async (ready: Promise<{ source: DriveFile; facts: DriveFileFacts }>) => {
     setState({ ...IDLE, sending: true });
     try {

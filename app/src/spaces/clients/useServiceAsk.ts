@@ -15,7 +15,11 @@ export function useServiceAsk<K extends ServiceAskKind>(kind: K, target: Service
   const [answer, setAnswer] = useState<ShownServiceAnswer<ServiceAskValue<K>> | null>(null);
   const [reconnects, setReconnects] = useState(0);
   const offline = Boolean(answer && 'offline' in answer && answer.offline);
-  useEffect(() => (offline ? alConectar(() => setReconnects((count) => count + 1)) : undefined), [offline]);
+  useEffect(() => {
+    if (!offline) return undefined;
+    const stop = alConectar(() => setReconnects((count) => count + 1));
+    return () => void stop();
+  }, [offline]);
   // Another service (or space, client, kind): nothing of the previous one may stay on screen.
   useEffect(() => {
     setAnswer(null);

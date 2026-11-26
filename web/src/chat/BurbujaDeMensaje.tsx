@@ -134,6 +134,7 @@ function FlatMessage(props: Props) {
   // «Tú» next to «Tú» says nothing: the pill only when it adds something.
   const fullBadge = prospect ? null : (badgeOf?.(mensaje.senderId) ?? null);
   const badge = fullBadge === name ? null : fullBadge;
+  const plainRow = !(mensaje.ref && !mensaje.deletedAt) && !(mensaje.kind === 'sticker' && mensaje.media?.url && !mensaje.deletedAt);
   return (
     <div data-testid={`mensaje-${mensaje.clientKey}`} className={`group relative flex items-start gap-3 rounded-lg px-1 hover:bg-background/60 ${agrupado ? 'mt-0.5' : 'mt-3'}`}>
       {agrupado ? (
@@ -144,25 +145,28 @@ function FlatMessage(props: Props) {
         </AuthorTap>
       )}
       <div className="min-w-0 flex-1">
-        {agrupado ? null : (
-          <p className="flex flex-wrap items-baseline gap-x-2">
-            <AuthorTap onTap={openCard} testId={`autor-${mensaje.clientKey}`} label={`Ver a ${name}`} className={`truncate text-[15px] font-bold ${mine ? 'text-primary' : ''}`}>{name}</AuthorTap>
-            {badge ? <span className={`rounded-md px-1.5 py-px text-[11px] font-semibold ${mine ? 'bg-primary/10 text-primary' : 'bg-background text-on-surface-variant'}`}>{badge}</span> : null}
-            {prospect ? <span data-testid={`prospecto-${mensaje.clientKey}`} className="rounded-md bg-en-linea/10 px-1.5 py-px text-[11px] font-semibold text-en-linea">{contactBadge}</span> : null}
-            <MessageFooter mensaje={mensaje} mio={mine} chat={props.chat} inline />
-          </p>
-        )}
-        {mensaje.ref && !mensaje.deletedAt ? (
-          <div className="w-[calc(100%-0.5rem)] max-w-sm"><TarjetaDelMensaje mensaje={mensaje} mio={false} conAutor={false} /></div>
-        ) : mensaje.kind === 'sticker' && mensaje.media?.url && !mensaje.deletedAt ? (
-          <StickerMessage message={mensaje} url={mensaje.media.url} author={null} quote={mensaje.replyToSeq ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={false} /> : null} />
-        ) : (
-          <div className={`max-w-2xl text-[length:var(--chat-font,14px)] leading-[var(--chat-line,20px)] ${mensaje.estado === 'fallido' ? 'opacity-70' : ''}`}>
-            {mensaje.hiloDe !== undefined && mensaje.enElChat && !mensaje.deletedAt ? <ThreadQuote root={mensaje.hiloDe} mine={false} compact /> : null}
-            {mensaje.replyToSeq && !mensaje.deletedAt ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={false} /> : null}
-            <MessageContent mensaje={mensaje} mio={false} />
-          </div>
-        )}
+        {/* José 25/11: the Slack rows get a bubble too (WhatsApp and Telegram in dark mode); a card or a sticker stays bare. */}
+        <div className={plainRow ? `w-fit max-w-full rounded-2xl px-3 py-1.5 shadow-sm sm:max-w-2xl ${mine ? 'bg-primary/15' : 'bg-burbuja-ajena text-on-burbuja-ajena'} ${agrupado ? '' : 'rounded-tl-md'}` : undefined}>
+          {agrupado ? null : (
+            <p className="flex flex-wrap items-baseline gap-x-2">
+              <AuthorTap onTap={openCard} testId={`autor-${mensaje.clientKey}`} label={`Ver a ${name}`} className={`truncate text-[15px] font-bold ${mine ? 'text-primary' : ''}`}>{name}</AuthorTap>
+              {badge ? <span className={`rounded-md px-1.5 py-px text-[11px] font-semibold ${mine ? 'bg-primary/10 text-primary' : 'bg-background text-on-surface-variant'}`}>{badge}</span> : null}
+              {prospect ? <span data-testid={`prospecto-${mensaje.clientKey}`} className="rounded-md bg-en-linea/10 px-1.5 py-px text-[11px] font-semibold text-en-linea">{contactBadge}</span> : null}
+              <MessageFooter mensaje={mensaje} mio={mine} chat={props.chat} inline />
+            </p>
+          )}
+          {mensaje.ref && !mensaje.deletedAt ? (
+            <div className="w-[calc(100%-0.5rem)] max-w-sm"><TarjetaDelMensaje mensaje={mensaje} mio={false} conAutor={false} /></div>
+          ) : mensaje.kind === 'sticker' && mensaje.media?.url && !mensaje.deletedAt ? (
+            <StickerMessage message={mensaje} url={mensaje.media.url} author={null} quote={mensaje.replyToSeq ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={false} /> : null} />
+          ) : (
+            <div className={`max-w-2xl text-[length:var(--chat-font,14px)] leading-[var(--chat-line,20px)] ${mensaje.estado === 'fallido' ? 'opacity-70' : ''}`}>
+              {mensaje.hiloDe !== undefined && mensaje.enElChat && !mensaje.deletedAt ? <ThreadQuote root={mensaje.hiloDe} mine={false} compact /> : null}
+              {mensaje.replyToSeq && !mensaje.deletedAt ? <CitaDelMensaje seq={mensaje.replyToSeq} mio={false} /> : null}
+              <MessageContent mensaje={mensaje} mio={false} />
+            </div>
+          )}
+        </div>
         {mensaje.reacciones?.length ? <PastillaDeReacciones mensaje={mensaje} mio={false} /> : null}
         {mensaje.hilo && mensaje.hilo.respuestas > 0 && !mensaje.deletedAt ? <ChipDeLaRaiz seq={mensaje.seq} hilo={mensaje.hilo} /> : null}
         {mensaje.estado === 'fallido' ? <FalloDelEnvio mensaje={mensaje} onReintentar={props.onReintentar} onDescartar={props.onDescartar} /> : null}

@@ -120,6 +120,8 @@ function FlatRow(props: {
           <Avatar nombre={name} foto={props.authorPhoto} tamano={FLAT_AVATAR} bot={props.authorIsApp} />
         )}
         <View className="min-w-0 flex-1">
+          {/* José 25/11: the Slack rows get a bubble too (WhatsApp and Telegram in dark mode); a card or a sticker stays bare. */}
+          <View className={card || sticker ? undefined : `max-w-full self-start rounded-2xl px-3 py-1.5 ${mine ? 'bg-primary/15' : 'bg-burbuja-ajena'} ${grouped ? '' : 'rounded-tl-md'}`}>
           {grouped ? null : (
             <View className="mb-0.5 flex-row flex-wrap items-center gap-x-2 gap-y-0.5">
               {showPerson ? (
@@ -175,6 +177,7 @@ function FlatRow(props: {
               <MetaDeMensaje {...meta} />
             </View>
           ) : null}
+          </View>
           {failed ? (
             <View testID={`fallo-${id}`} className="mt-1 min-h-[28px] flex-row items-center gap-1">
               <CircleAlert size={13} color={colors.error} />

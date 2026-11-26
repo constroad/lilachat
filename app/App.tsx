@@ -50,6 +50,7 @@ import { guardarMensajes, olvidarMensajes } from './src/chat/mensajesGuardados';
 import { hidratarTodo } from './src/chat/hidratador';
 import { resumeLiveSharing } from './src/chat/location/liveLocationTask';
 import { desregistrarTareaDeFondo, registrarTareaDeFondo } from './src/respaldo/tareaDeFondo';
+import { registerQueueDrain, unregisterQueueDrain } from './src/sync/drainInBackground';
 import { leerPassphrase, olvidarPassphrase } from './src/respaldo/passphraseDeRespaldo';
 import { olvidarLibro } from './src/respaldo/libroDeRespaldos';
 import { olvidarEstadoDeRespaldo } from './src/respaldo/estadoDeRespaldo';
@@ -90,6 +91,7 @@ async function forgetRevokedSession(): Promise<void> {
     olvidarLibro(),
     olvidarEstadoDeRespaldo(),
     desregistrarTareaDeFondo(),
+    unregisterQueueDrain(),
   ]);
 }
 
@@ -377,6 +379,11 @@ function Contenido() {
    * passphrase: sin ella la tarea no tendría qué hacer y despertaría el
    * teléfono cada hora para nada. Al crearla, la pantalla lo registra ella.
    */
+  // The queues leave with the app closed too (José 26/11): the system wakes the drain when there is network.
+  useEffect(() => {
+    if (haySesion) void registerQueueDrain();
+  }, [haySesion]);
+
   useEffect(() => {
     if (!haySesion) return;
     void leerPassphrase().then((passphrase) => {
@@ -481,6 +488,7 @@ function Contenido() {
             void olvidarLibro();
             void olvidarEstadoDeRespaldo();
             void desregistrarTareaDeFondo();
+            void unregisterQueueDrain();
             // La agenda también: otro teléfono, otra persona. Dejarla cargada
             // le mostraría a quien entre después los contactos del anterior.
             olvidarAgenda();

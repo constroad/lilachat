@@ -54,6 +54,8 @@ const wire: ReportWire = {
 };
 
 export const reportQueue = createReportQueue({ vault, wire });
+/** The saves on disk, before any pass read them (the background drain with the app closed). */
+export const reportSavesOnDisk = () => vault.load();
 
 /** Each time the socket connects: at start, and when the signal comes back. */
 alConectar(() => void reportQueue.kick());

@@ -152,6 +152,8 @@ export function subscribeFieldQueue(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 export const fieldQueueNow = (): readonly FieldJob[] => queue ?? [];
+/** The queue once read from disk: the background drain asks it with the app closed. */
+export const fieldQueueLoaded = (): Promise<readonly FieldJob[]> => loaded();
 
 export function onFieldJobDone(listener: (job: FieldJob) => void): () => void {
   doneListeners.add(listener);

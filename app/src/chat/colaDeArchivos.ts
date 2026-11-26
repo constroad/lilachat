@@ -112,6 +112,9 @@ async function limpiarHuerfanas(): Promise<void> {
   );
 }
 
+/** The queue read from disk once (the background drain counts it with the app closed). */
+export const hydrateFiles = (): Promise<void> => hidratar();
+
 function hidratar(): Promise<void> {
   if (!hidratando) {
     hidratando = (async () => {

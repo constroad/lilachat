@@ -40,6 +40,7 @@
 | Informes de campo (secciones y fotos) | Cola propia, ver `obra-informes.md` | `spaces/clients/reports/reportQueueStore.ts` |
 | **Fotos, videos y documentos al Drive del servicio** | **Cola de campo**: se guardan en el teléfono y suben solos | `spaces/clients/fieldQueueStore.ts`, `useDriveUpload.ts`, `shared/fieldQueue.ts` |
 | **Subir con la app atrás** | Con algo pendiente, el socket no se pausa y el servicio en primer plano lo sostiene hasta terminar | `chat/useUploadHold.ts`, `uploadHold.ts` |
+| **Subir con la app CERRADA** | El sistema despierta `lilachat-colas` con red (WorkManager, cada 15 min o más): si en el disco queda algo, conecta, todas las colas salen y se desconecta (8 min como mucho por vez) | `sync/drainInBackground.ts`, `backgroundDrainPlan.ts` |
 | Vuelta de la red | El socket reconecta en el acto (no espera hasta 30 s) y todas las colas salen | `App.tsx`, `chat/socketClient.ts` › `reconnectNow` |
 
 ### Detalle del servicio guardado (26/11)
@@ -129,7 +130,12 @@ y el IAA tienen sus propios documentos y no entran aquí.
   adelante** (Android no deja encenderlo desde atrás) y al ir atrás el socket no se pausa. Cuando no
   queda nada, el servicio se apaga y el socket se pausa como siempre.
 - Mientras sostiene, el server ve a la persona en línea y no manda push: es solo el rato de la subida.
-- Con la app cerrada del todo no sube nada; sale al volver a abrirla (`alConectar`).
+- Con la app cerrada (deslizada o matada por el sistema), desde el 26/11 la tarea `lilachat-colas`
+  (`expo-background-task`, ya en el APK por el respaldo) despierta con red cada 15 min o más: lee las cuatro
+  colas del disco (campo, informes, archivos y textos del chat, sin lo rechazado) y, solo si queda algo y la
+  app no está viva, conecta el socket; todo sale por `alConectar`; para con dos chequeos vacíos seguidos o a
+  los 8 min (`drainStep`) y desconecta, salvo que la app haya vuelto adelante. Se registra con la sesión y se
+  borra al cerrarla. «Forzar detención» desde Ajustes de Android sí la apaga hasta abrir la app.
 
 ### Subidas que se reintentan (26/11)
 
@@ -141,7 +147,6 @@ siempre. 400, 403, 413 y el resto siguen siendo «este archivo no va».
 
 | Qué | Por qué hoy falla | Lote |
 | --- | --- | --- |
-| Subir con la app CERRADA (deslizada o matada por el sistema) | Sale al volver a abrirla | — |
 | Chats secretos | La clave del otro no se guarda | aparte |
 | Editar y borrar mensajes | Sin señal no se mandan: lo dice al instante («Sin señal. Edita o borra el mensaje cuando vuelva la red.»); con señal esperan 8 s la respuesta (`chat/pedidosDeMensaje.ts`, 26/11). No van a la cola: el server tiene ventana de edición y un borrado tardío confundiría | queda así |
 | Publicar un informe, PDF, «Terminar unidad» | Los hace Portal en el momento: exigen red y lo dicen | queda así |

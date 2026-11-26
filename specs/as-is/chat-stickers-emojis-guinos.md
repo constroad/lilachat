@@ -34,6 +34,7 @@ Tono adulto: nada chibi ni infantil (decisión de José, §74).
 - La burbuja aparece al instante mientras el server guarda el GIF: `gifsInFlight.ts`.
 - GIF animado en la burbuja; en la lista dice «GIF», no «Foto».
 - Responder con un GIF a un mensaje citado (10/11). GIF nítidos con la versión de 200 px (10/11).
+- Web (26/11): el GIF llena su burbuja como una foto, 300 px de ancho con 3 px de borde; sin texto lleva la hora encima (ver `chat-mensajes.md`).
 
 **Guiños**
 - Pestaña «Guiños» con tarjetas del personaje: `WinkPanel.tsx` (diseño `m-02`).

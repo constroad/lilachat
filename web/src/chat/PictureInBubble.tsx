@@ -36,15 +36,22 @@ export function PictureInBubble(props: { testId: string; media: PictureMedia; al
       {video && !props.uploading ? (
         <span className="absolute inset-0 grid place-items-center"><span className="grid h-12 w-12 place-items-center rounded-full bg-black/50 text-white"><Play size={22} fill="currentColor" /></span></span>
       ) : null}
-      {video && media.durationMs && !props.overlay ? <MediaShade /> : null}
-      {video && media.durationMs ? (
-        <span data-testid={`duracion-${props.testId}`} className="absolute bottom-1.5 left-2 flex items-center gap-1 text-[11px] font-medium text-white">
-          <Video size={13} aria-hidden />
-          {duracionDeVoz(media.durationMs)}
-        </span>
-      ) : null}
+      {video && media.durationMs ? <VideoLength testId={props.testId} durationMs={media.durationMs} shaded={!props.overlay} /> : null}
       {props.overlay ? <MediaTimeOverlay>{props.overlay}</MediaTimeOverlay> : null}
     </button>
+  );
+}
+
+/** A video's length, bottom-left, like WhatsApp; its own shade when the time is not over the picture. */
+function VideoLength(props: { testId: string; durationMs: number; shaded: boolean }) {
+  return (
+    <>
+      {props.shaded ? <MediaShade /> : null}
+      <span data-testid={`duracion-${props.testId}`} className="absolute bottom-1.5 left-2 flex items-center gap-1 text-[11px] font-medium text-white">
+        <Video size={13} aria-hidden />
+        {duracionDeVoz(props.durationMs)}
+      </span>
+    </>
   );
 }
 

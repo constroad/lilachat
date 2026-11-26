@@ -278,12 +278,10 @@ function fillsBubble(message: MensajeEnPantalla, album?: readonly MensajeEnPanta
   return Boolean(media.mime?.startsWith('image/') || media.mime?.startsWith('video/') || media.thumbUrl);
 }
 
-function MessageContent({ mensaje, mio, album, edge = false, overlay }: { mensaje: MensajeEnPantalla; mio: boolean; album?: readonly MensajeEnPantalla[]; /** The picture fills the bubble: the text keeps its own inset. */ edge?: boolean; /** The time over a captionless picture. */ overlay?: ReactNode }) {
-  const { nombres, yo, jwt, chat, onVerFoto, onVerPdf } = useConversacion();
-  // José 18/11: a notes chat with its links sorted draws the card the server stored, not the generic preview.
-  const stored = storedLinkOf(mensaje, chat);
-  // La tarjeta del primer enlace; los chats secretos no la piden.
-  const vista = useVistaPrevia(chat.encrypted || mensaje.media || stored ? null : primerEnlace(mensaje.body), jwt);
+type ContentProps = { mensaje: MensajeEnPantalla; mio: boolean; album?: readonly MensajeEnPantalla[]; /** The picture fills the bubble: the text keeps its own inset. */ edge?: boolean; /** The time over a captionless picture. */ overlay?: ReactNode };
+
+function MessageContent({ mensaje, mio, album, edge = false, overlay }: ContentProps) {
+  const { nombres, jwt, chat } = useConversacion();
   if (mensaje.deletedAt) return <p className="italic opacity-80">Se eliminó este mensaje</p>;
   if (mensaje.envelope) {
     // Chat secreto: la web todavía no tiene un sobre propio (§54.4).
@@ -293,59 +291,79 @@ function MessageContent({ mensaje, mio, album, edge = false, overlay }: { mensaj
       </p>
     );
   }
+  const shared = <SharedLines mensaje={mensaje} edge={edge} />;
   // A bot's card (Lila): its summary in `body` is for the list and notices; here the card itself.
-  // José 13/11: a forwarded copy says so, like WhatsApp.
-  const forwarded = mensaje.forwarded ? <p data-testid={`reenviado-${mensaje.seq}`} className="mb-1 flex items-center gap-1 text-[12px] italic text-on-surface-variant"><Forward size={12} aria-hidden />Reenviado</p> : null;
-  const sharedLine = mensaje.sharedBy ? <p data-testid={`compartido-por-${mensaje.seq}`} className="mb-1 text-[12px] text-on-surface-variant">{sharedByLine(mensaje.sharedBy)}</p> : null;
-  const shared = forwarded || sharedLine ? <div className={edge ? 'px-1.5 pt-0.5' : undefined}>{forwarded}{sharedLine}</div> : null;
   if (mensaje.card) return <>{shared}<BotCardView card={mensaje.card} chatId={chat.id} seq={mensaje.seq} jwt={jwt} {...(mensaje.clientRef?.visitId ? { visitId: mensaje.clientRef.visitId } : {})} clientRef={mensaje.clientRef} {...(chat.workspaceId ? { workspaceId: chat.workspaceId } : {})} /></>;
   if (mensaje.files?.length) return <>{shared}<BotFilesAlbum seq={mensaje.seq} files={mensaje.files} /></>;
   const media = mensaje.media;
   if (media?.url && media.mime?.startsWith('audio/')) {
     return <NotaDeVoz id={`${chat.id}:${mensaje.seq}`} chatId={chat.id} authorName={mio ? 'Tú' : (nombres.get(mensaje.senderId) ?? chat.name ?? 'Nota de voz')} url={media.url} durationMs={media.durationMs} onda={media.onda} mio={mio} />;
   }
-  const pdf = Boolean(media && isPdfMedia(media));
-  const esImagen = Boolean(media?.url && !pdf && (media.mime?.startsWith('image/') || media.mime?.startsWith('video/') || media.thumbUrl));
-  const beside = edge ? '' : 'mb-1';
   return (
     <>
       {shared}
-      {album ? (
-        <div className={`relative ${beside}`}>
-          <AlbumGridWeb items={album} onOpen={onVerFoto} />
-          {overlay ? <MediaTimeOverlay>{overlay}</MediaTimeOverlay> : null}
-        </div>
-      ) : media?.url && isAnimatedImage(media.mime) && !mensaje.estado ? (
-        <div className={`relative ${beside}`}>
-          <GifInBubble testId={`gif-${mensaje.clientKey}`} url={media.url} alt={mensaje.body ?? 'GIF'} width={media.width} height={media.height} onOpen={() => onVerFoto(mensaje)} />
-          {overlay ? <MediaTimeOverlay>{overlay}</MediaTimeOverlay> : null}
-        </div>
-      ) : media?.url && esImagen ? (
-        <div className={beside}>
-          {/* A video looked like a photo (José, 21/10): the play over its frame; a video lila made no thumbnail for (22/10): a dark frame. */}
-          <PictureInBubble testId={`foto-${mensaje.clientKey}`} media={{ ...media, url: media.url }} alt={mensaje.body ?? 'Foto'} uploading={mensaje.estado === 'enviando'} progress={mensaje.progreso} onOpen={() => !mensaje.estado && onVerFoto(mensaje)} overlay={overlay} />
-        </div>
-      ) : media?.url && pdf ? (
-        <PdfCardWeb media={{ ...media, url: media.url }} testId={`pdf-${mensaje.clientKey}`} {...(onVerPdf && !mensaje.estado ? { onOpen: () => onVerPdf(mensaje) } : {})} />
-      ) : media?.url ? (
-        // José 17/11: a KML opened as text in another tab. `download` keeps it a download with its own name; a file on another host still opens in a new tab.
-        <a data-testid={`archivo-${mensaje.clientKey}`} href={downloadUrlOf(media.url, media.fileName)} download={readableFileName(media.fileName)} target="_blank" rel="noreferrer" className="mb-1 flex items-center gap-2 underline-offset-2 hover:underline">
-          <FileText size={18} /> <span className="truncate">{readableFileName(media.fileName)}</span> <Download size={16} className="shrink-0 opacity-70" />
-        </a>
-      ) : null}
-      <div className={edge && mensaje.body ? 'px-1.5 pt-1' : 'contents'}>
+      <MessageMedia mensaje={mensaje} album={album} edge={edge} overlay={overlay} />
+      <MessageTail mensaje={mensaje} mio={mio} edge={edge} />
+    </>
+  );
+}
+
+/** José 13/11: a forwarded copy says so, like WhatsApp; a shared one names who shared it. */
+function SharedLines({ mensaje, edge }: { mensaje: MensajeEnPantalla; edge: boolean }) {
+  if (!mensaje.forwarded && !mensaje.sharedBy) return null;
+  return (
+    <div className={edge ? 'px-1.5 pt-0.5' : undefined}>
+      {mensaje.forwarded ? <p data-testid={`reenviado-${mensaje.seq}`} className="mb-1 flex items-center gap-1 text-[12px] italic text-on-surface-variant"><Forward size={12} aria-hidden />Reenviado</p> : null}
+      {mensaje.sharedBy ? <p data-testid={`compartido-por-${mensaje.seq}`} className="mb-1 text-[12px] text-on-surface-variant">{sharedByLine(mensaje.sharedBy)}</p> : null}
+    </div>
+  );
+}
+
+/** The album, GIF, photo or video, PDF or file of a message. */
+function MessageMedia({ mensaje, album, edge = false, overlay }: Omit<ContentProps, 'mio'>) {
+  const { onVerFoto, onVerPdf } = useConversacion();
+  const media = mensaje.media;
+  const beside = edge ? '' : 'mb-1';
+  const time = overlay ? <MediaTimeOverlay>{overlay}</MediaTimeOverlay> : null;
+  if (album) return <div className={`relative ${beside}`}><AlbumGridWeb items={album} onOpen={onVerFoto} />{time}</div>;
+  if (!media?.url) return null;
+  const url = media.url;
+  if (isAnimatedImage(media.mime) && !mensaje.estado) {
+    return <div className={`relative ${beside}`}><GifInBubble testId={`gif-${mensaje.clientKey}`} url={url} alt={mensaje.body ?? 'GIF'} width={media.width} height={media.height} onOpen={() => onVerFoto(mensaje)} />{time}</div>;
+  }
+  if (isPdfMedia(media)) return <PdfCardWeb media={{ ...media, url }} testId={`pdf-${mensaje.clientKey}`} {...(onVerPdf && !mensaje.estado ? { onOpen: () => onVerPdf(mensaje) } : {})} />;
+  if (media.mime?.startsWith('image/') || media.mime?.startsWith('video/') || media.thumbUrl) {
+    // A video looked like a photo (José, 21/10): the play over its frame; a video lila made no thumbnail for (22/10): a dark frame.
+    return <div className={beside}><PictureInBubble testId={`foto-${mensaje.clientKey}`} media={{ ...media, url }} alt={mensaje.body ?? 'Foto'} uploading={mensaje.estado === 'enviando'} progress={mensaje.progreso} onOpen={() => !mensaje.estado && onVerFoto(mensaje)} overlay={overlay} /></div>;
+  }
+  // José 17/11: a KML opened as text in another tab. `download` keeps it a download with its own name; a file on another host still opens in a new tab.
+  return (
+    <a data-testid={`archivo-${mensaje.clientKey}`} href={downloadUrlOf(url, media.fileName)} download={readableFileName(media.fileName)} target="_blank" rel="noreferrer" className="mb-1 flex items-center gap-2 underline-offset-2 hover:underline">
+      <FileText size={18} /> <span className="truncate">{readableFileName(media.fileName)}</span> <Download size={16} className="shrink-0 opacity-70" />
+    </a>
+  );
+}
+
+/** The link card, a shared contact or location, or the text (a picture's caption keeps its inset). */
+function MessageTail({ mensaje, mio, edge }: { mensaje: MensajeEnPantalla; mio: boolean; edge: boolean }) {
+  const { nombres, yo, jwt, chat } = useConversacion();
+  // José 18/11: a notes chat with its links sorted draws the card the server stored, not the generic preview.
+  const stored = storedLinkOf(mensaje, chat);
+  // La tarjeta del primer enlace; los chats secretos no la piden.
+  const vista = useVistaPrevia(chat.encrypted || mensaje.media || stored ? null : primerEnlace(mensaje.body), jwt);
+  return (
+    <div className={edge && mensaje.body ? 'px-1.5 pt-1' : 'contents'}>
       {stored ? <StoredLinkInBubble jwt={jwt} chatId={chat.id} seq={mensaje.seq} at={mensaje.at} link={stored} /> : vista ? <TarjetaDeEnlace vista={vista} mio={mio} /> : null}
-      {mensaje.kind === 'contact' && mensaje.contact && !mensaje.deletedAt ? (
+      {mensaje.kind === 'contact' && mensaje.contact ? (
         // A shared contact (pending 9): the card; its `body` is only the summary for the list and the search.
         <ContactCardWeb contact={mensaje.contact} mio={mio} jwt={jwt} yo={yo} />
-      ) : mensaje.kind === 'location' && mensaje.location && !mensaje.deletedAt ? (
+      ) : mensaje.kind === 'location' && mensaje.location ? (
         // A shared location (pending 11): the map card; its `body` is only «Ubicación».
         <LocationCardWeb location={mensaje.location} mio={mio} live={{ jwt, chatId: chat.id, seq: mensaje.seq }} />
       ) : mensaje.body && !(stored && bodyIsOnlyLink(mensaje.body)) ? (
         <TextoDelMensaje clave={mensaje.clientKey} texto={mensaje.body} menciones={mensaje.menciones} nombres={nombres} yo={yo} mio={mio} />
       ) : null}
-      </div>
-    </>
+    </div>
   );
 }
 

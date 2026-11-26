@@ -40,6 +40,7 @@ la búsqueda y las tarjetas de enlace. Hilos, medios, agenda y stickers tienen s
 - Tarjeta del enlace mientras se escribe: `VistaPreviaAlEscribir.tsx`, `useVistaPrevia.ts`.
 - Pegar una imagen copiada: `useClipboardImage.ts`, `PasteImageChip.tsx`.
 - Cola de salida sin red: `outboxStore.ts` + motor `shared/src/outbox.ts`; reintento `useMensajeFallido.ts`.
+- Sin señal (26/11, `plataforma-sin-senal.md`): la lista pinta la copia del disco aunque la red falle antes que el disco (antes quedaba «Sin conversaciones»); `TabsShell` también la usa; la vuelta de la red reconecta el socket en el acto (`networkReturn.ts`, `reconnectNow`) y el hidratador corre otra vez al reconectar, como mucho cada 10 min.
 - Programar mensaje (mantener presionado «Enviar»): `ProgramarMensajeModal.tsx`, `useProgramados.ts`, `ProgramadosDelChat.tsx`, `programados.ts`.
 
 **Acciones sobre un mensaje**

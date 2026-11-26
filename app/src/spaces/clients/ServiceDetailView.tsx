@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { ExternalLink, FilePlus, FileText } from 'lucide-react-native';
-import { AREA_TYPE, draftToContinue, isObservationType, CLIENT_SERVICE_STATUS_LABELS, SERVICE_REPORT_ACTION, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, portalMapTabUrl, type ChannelLinks, type DetailTabKey, type ServiceAskResult, type ServiceTabItem, type ServiceTabKey, type ServiceDetail, type SpaceClientService } from '@lilachat/shared';
+import { AREA_TYPE, savedAnswerLine, draftToContinue, isObservationType, CLIENT_SERVICE_STATUS_LABELS, SERVICE_REPORT_ACTION, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, portalMapTabUrl, type ChannelLinks, type DetailTabKey, type ServiceAskResult, type ServiceTabItem, type ServiceTabKey, type ServiceDetail, type ShownServiceAnswer, type SpaceClientService } from '@lilachat/shared';
 import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
 import { RecordSheet } from './RecordSheet';
@@ -146,7 +146,7 @@ function ServiceDriveOnly(props: ServiceDetailProps) {
   );
 }
 
-type BodyProps = ServiceDetailProps & { answer: ServiceAskResult<ServiceDetail> | null; tab: ServiceTabKey; startTab: DetailTabKey; onOpenFile: OpenFile; onReported: () => void; onCreate: () => void; onContinueReport: (draft: { type: string; reportId: string }) => void };
+type BodyProps = ServiceDetailProps & { answer: ShownServiceAnswer<ServiceDetail> | null; onRetry: () => void; tab: ServiceTabKey; startTab: DetailTabKey; onOpenFile: OpenFile; onReported: () => void; onCreate: () => void; onContinueReport: (draft: { type: string; reportId: string }) => void };
 
 function PortalLink(props: { url: string; label: string; testID: string }) {
   const colors = useColores();
@@ -158,15 +158,33 @@ function PortalLink(props: { url: string; label: string; testID: string }) {
   );
 }
 
-/** The detail failed: why, Portal's link and, without signal, a report can still be made. */
-function DetailFailure({ answer, onCreate }: { answer: Extract<ServiceAskResult<ServiceDetail>, { ok: false }>; onCreate: () => void }) {
+/** The detail failed: why, Portal's link, «Reintentar» and, without signal, a report can still be made. */
+function DetailFailure({ answer, onCreate, onRetry }: { answer: Extract<ServiceAskResult<ServiceDetail>, { ok: false }>; onCreate: () => void; onRetry: () => void }) {
   return (
     <View testID="detalle-fallo" className="rounded-2xl border border-outline/15 bg-surface p-4">
       <Text className="text-[15px] font-semibold text-on-surface">{answer.message}</Text>
       {answer.portalUrl ? <PortalLink url={answer.portalUrl} label="Abrir el servicio en el Portal" testID="detalle-fallo-portal" /> : null}
+      <Pressable testID="detalle-reintentar" onPress={onRetry} className="mt-3 min-h-[44px] items-center justify-center rounded-xl border border-outline/20">
+        <Text className="text-[15px] font-semibold text-on-surface">Reintentar</Text>
+      </Pressable>
       {answer.offline ? (
         <Pressable testID="crear-informe-sin-senal" onPress={onCreate} className="mt-3 min-h-[48px] items-center justify-center rounded-xl border border-primary/30 bg-primary/10">
           <Text className="text-[15px] font-semibold text-primary">Crear informe</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+/** A saved copy on screen (José 26/11): when it is from and, without signal, «Reintentar». */
+function SavedCopyLine({ answer, onRetry }: { answer: ShownServiceAnswer<ServiceDetail> | null; onRetry: () => void }) {
+  if (!answer?.ok || !('savedAt' in answer)) return null;
+  return (
+    <View testID="detalle-guardado" className="flex-row items-center gap-2 rounded-xl bg-surface-variant px-3 py-2">
+      <Text className="flex-1 text-[13px] text-on-surface-variant">{savedAnswerLine(answer)}</Text>
+      {answer.offline ? (
+        <Pressable testID="detalle-guardado-reintentar" onPress={onRetry} className="min-h-[44px] justify-center px-2">
+          <Text className="text-[14px] font-semibold text-primary">Reintentar</Text>
         </Pressable>
       ) : null}
     </View>
@@ -177,7 +195,7 @@ function DetailFailure({ answer, onCreate }: { answer: Extract<ServiceAskResult<
 function ServiceBody(props: BodyProps) {
   const { answer, tab, target, service } = props;
   if (answer === null) return <View testID="detalle-cargando" className="h-40 rounded-2xl bg-surface-variant" />;
-  if (!answer.ok) return <DetailFailure answer={answer} onCreate={props.onCreate} />;
+  if (!answer.ok) return <DetailFailure answer={answer} onCreate={props.onCreate} onRetry={props.onRetry} />;
   const detail = answer.value;
   const serviceId = service.id;
   if (tab === 'drive') return <ServiceDrive target={target} service={service} chatId={props.chatId} onBack={props.onBack} marks={detail.photoMarks} />;
@@ -216,7 +234,7 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   const tabs = answer?.ok ? serviceTabs(answer.value, Boolean(props.seesDrive), Boolean(props.links)) : [];
   // José 20/11 (design mapa-v2): the map takes the rest of the screen and moves, outside the scroll.
   const mapOpen = tab === 'map' && Boolean(props.links) && Boolean(answer?.ok);
-  const body = <ServiceBody {...props} answer={answer} tab={tab} startTab={startTab} startReportId={startReportId} onOpenFile={files.open} onReported={askAgain} onCreate={() => setPicker(true)} onContinueReport={setReport} />;
+  const body = <ServiceBody {...props} answer={answer} onRetry={askAgain} tab={tab} startTab={startTab} startReportId={startReportId} onOpenFile={files.open} onReported={askAgain} onCreate={() => setPicker(true)} onContinueReport={setReport} />;
   const extras = (
     <>
       <CreateReportSheet visible={picker} portalUrl={portalUrl} seesMoney={props.seesMoney} people={props.people ?? []} onPick={(code, responsible) => { setPicker(false); setReport({ type: code, responsible }); }} onClose={() => setPicker(false)} />
@@ -226,8 +244,8 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   );
   return (
     <ServiceShell service={props.service} clientName={props.clientName} compact={props.compact ?? true} slim={mapOpen} tabs={tabs} tab={tab} onTab={setTab} onBack={props.onBack} onShare={share.onShare} portalUrl={portalUrl} actions={answer?.ok && tab === 'reports' ? <CreateReportButton onPress={() => setPicker(true)} /> : undefined}>
-      {mapOpen ? <View testID="detalle-cuerpo" className="flex-1">{body}{extras}</View> : (
-        <ScrollView testID="detalle-cuerpo" keyboardShouldPersistTaps="handled" contentContainerStyle={BODY}>{body}{extras}</ScrollView>
+      {mapOpen ? <View testID="detalle-cuerpo" className="flex-1"><SavedCopyLine answer={answer} onRetry={askAgain} />{body}{extras}</View> : (
+        <ScrollView testID="detalle-cuerpo" keyboardShouldPersistTaps="handled" contentContainerStyle={BODY}><SavedCopyLine answer={answer} onRetry={askAgain} />{body}{extras}</ScrollView>
       )}
       {share.sheet}
     </ServiceShell>

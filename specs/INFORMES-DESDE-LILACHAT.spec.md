@@ -530,8 +530,8 @@ error y una carrera entre ellos. «Publicar» no entra: exige red.
 - **Informe nuevo sin señal**: sale de los formularios del último documento de
   ese tipo en el espacio (`blankDocumentOf`). Si el dispositivo nunca abrió un
   informe de ese tipo, la pantalla dice que hay que abrirlo una vez con señal.
-- **Entrada sin señal**: el Detalle no se guarda (decisión de José, 30/10), así
-  que sin señal falla. Su tarjeta de error ofrece «Crear informe» solo si la
+- **Entrada sin señal**: desde el 26/11 el Detalle SÍ se guarda en el teléfono (José, obra en
+  Aucallama; reemplaza la decisión del 30/10, ver `as-is/plataforma-sin-senal.md`). Sin copia, falla. Su tarjeta de error ofrece «Crear informe» solo si la
   falla fue de red, no de permisos.
 - Cada guardado abre su propio run al salir: `reports/draft` deja el documento
   al día en el server, `reports/forms` abre el run, `…/files` sube la foto,

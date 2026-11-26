@@ -131,7 +131,12 @@ export function ChatListScreen({
     } else if (chatsRef.current === null) {
       // Sin red y sin caché: recién ahí se dice «no hay». Con caché se deja lo
       // que ya había, que es lo que hace que abrir sin señal siga sirviendo.
-      setChats([]);
+      // The disk read may still be on its way (a DNS failure answers first, José
+      // 26/11 at the site): wait for it, or the saved chats never paint.
+      const guardados = await leerChatsGuardados();
+      if (chatsRef.current !== null) return;
+      chatsRef.current = guardados ?? [];
+      setChats(chatsRef.current);
     }
   }, []);
 

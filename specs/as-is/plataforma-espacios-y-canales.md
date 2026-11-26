@@ -80,6 +80,7 @@ Carpeta `app/src/spaces/`:
   (e-03), `CreateSpaceScreen` (e-04), `YourSpacesScreen` (i-03).
 - Moverse: `SpaceSwitcherSheet` (e-06), `SpaceChatsScreen` (e-07, con secciones),
   `currentSpace.ts`, `seenSpaces.ts`, `spaceCache.ts`, `useSpaceChatsLive.ts`.
+- `spaceDiskKey` (26/11): toda copia de un espacio vive bajo `lilachat:space-cache:<spaceId>:`, también el detalle guardado de un servicio (`plataforma-sin-senal.md`).
 - Personas: `DirectoryScreen` (e-08), `MemberProfileScreen` (e-09), `MembersScreen`
   (e-10, pestaña Invitados), `MemberActionsSheet`, `memberUi.tsx`.
 - Invitar: `InviteToSpaceScreen` (e-05): correo primero, luego WhatsApp.

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { clientsOfEntry, type ClientRecord, type SpaceClient } from '@lilachat/shared';
 import { BASE_URL } from '../../api/client';
 import { jsonCall } from '../../api/jsonCall';
-import { clientsCache, dataOf, useCached } from '../spaceCache';
+import { clientsCache, dataOf, spaceDiskKey, useCached } from '../spaceCache';
 
 /**
  * The space's client channels (pending 21, §157): `GET
@@ -14,16 +15,59 @@ import { clientsCache, dataOf, useCached } from '../spaceCache';
 let byChat = new Map<string, SpaceClient>();
 const listeners = new Set<() => void>();
 
-function publish(clients: readonly SpaceClient[]) {
-  byChat = new Map(clients.map((client) => [client.chat_id, client]));
+/** Per space: opening one space no longer hides another's channels, and a space's new list replaces only its own. */
+let bySpace = new Map<string, readonly SpaceClient[]>();
+function publish(spaceId: string, clients: readonly SpaceClient[]) {
+  bySpace = new Map(bySpace).set(spaceId, clients);
+  byChat = new Map([...bySpace.values()].flat().map((client) => [client.chat_id, client]));
   listeners.forEach((listener) => listener());
 }
+
+/**
+ * A chat opened before its space's list (a push, a card, a cold start without
+ * signal) still finds its client: the spaces' saved lists are read once from
+ * disk (José 26/11). Nothing is read again if the list already published.
+ */
+let readFromDisk = false;
+async function hydrateClientsFromDisk(): Promise<void> {
+  if (readFromDisk) return;
+  readFromDisk = true;
+  const prefix = spaceDiskKey('');
+  const keys = (await AsyncStorage.getAllKeys().catch(() => [] as readonly string[])).filter((key) => key.startsWith(prefix) && key.endsWith(CLIENTS_SUFFIX));
+  const pairs = keys.length ? await AsyncStorage.multiGet(keys).catch(() => []) : [];
+  for (const [key, raw] of pairs) {
+    const spaceId = key.slice(prefix.length, -CLIENTS_SUFFIX.length);
+    // A list the server already sent in this process wins over the disk.
+    if (!bySpace.has(spaceId)) publish(spaceId, savedClientsOf(raw));
+  }
+}
+const CLIENTS_SUFFIX = ':clients';
+
+function savedClientsOf(raw: string | null): SpaceClient[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as { value?: unknown };
+    return Array.isArray(parsed.value) ? (parsed.value as SpaceClient[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 const subscribe = (listener: () => void) => {
   listeners.add(listener);
+  void hydrateClientsFromDisk();
   return () => {
     listeners.delete(listener);
   };
 };
+
+/** Logout: whoever signs in next does not inherit the channels. */
+export function forgetClientsOfChats(): void {
+  byChat = new Map();
+  bySpace = new Map();
+  readFromDisk = false;
+  listeners.forEach((listener) => listener());
+}
 
 export function useClientOfChat(chatId: string): SpaceClient | null {
   return useSyncExternalStore(subscribe, () => byChat.get(chatId) ?? null);
@@ -44,8 +88,8 @@ export function useSpaceClients(jwt: string, spaceId: string, chatsKey: string):
     refresh();
   }, [chatsKey, refresh]);
   useEffect(() => {
-    if (clients) publish(clients);
-  }, [clients]);
+    if (clients) publish(spaceId, clients);
+  }, [spaceId, clients]);
   return clients;
 }
 

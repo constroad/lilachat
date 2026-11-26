@@ -1,5 +1,5 @@
 import { messageTargetFields, type MessageTarget } from '@lilachat/shared';
-import { resolveMediaKind, stampFieldsOf, UPLOAD_TIMEOUT_MS, validateMedia, type Envelope, type TimemarkStampAsked } from '@lilachat/shared';
+import { isRetryableUploadStatus, resolveMediaKind, stampFieldsOf, UPLOAD_TIMEOUT_MS, validateMedia, type Envelope, type TimemarkStampAsked } from '@lilachat/shared';
 import { subirPorXhr } from './subidaXhr';
 import { mensajeSubido } from './mensajeSubido';
 import type { ServerMessage } from './socketClient';
@@ -110,11 +110,11 @@ function resultOf(respuesta: Awaited<ReturnType<typeof subirPorXhr>>): UploadRes
 
   const payload = respuesta.payload;
   if (respuesta.status < 200 || respuesta.status >= 300) {
-    // 503 = storage caído (se reintenta); 413/403/502 = este archivo no va.
+    // A cut or a busy server comes back later; 413/403/400 = this file will not go.
     return {
       ok: false,
       reason: typeof payload.message === 'string' ? payload.message : 'No se pudo enviar.',
-      retryable: respuesta.status === 503,
+      retryable: isRetryableUploadStatus(respuesta.status),
     };
   }
   const message = payload.message as { seq: number } | undefined;

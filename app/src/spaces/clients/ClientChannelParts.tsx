@@ -6,6 +6,7 @@ import { useColores } from '../../ui/tema';
 import { ClientAccessRow } from './ClientAccess';
 import { ServiceDetailView } from './ServiceDetailView';
 import { ServiceCard } from './ServiceCard';
+import { prefetchServiceDetails } from './savedServiceAnswers';
 import type { ServiceAskTarget } from './useServiceAsk';
 
 /** The parts of a client's channel (design f-03): the archived banner, the note over the composer and «Servicios». */
@@ -139,6 +140,13 @@ export function ClientServices(props: { /** The channel hides its chrome while a
     if (service) { setStartReportId(focusReportId ?? undefined); setOpened(service); }
     onServiceFocused?.();
   }, [focusServiceId, focusReportId, clientServices, onServiceFocused]);
+  // With signal, the open services' details stay on the phone for the next site without it (José 26/11).
+  const { target } = props;
+  useEffect(() => {
+    if (!target) return undefined;
+    const idle = requestIdleCallback(() => void prefetchServiceDetails(target, clientServices));
+    return () => cancelIdleCallback(idle);
+  }, [target, clientServices]);
   const showsDetail = Boolean(opened && props.target);
   const { onServiceOpen } = props;
   useEffect(() => {

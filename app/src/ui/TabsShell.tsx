@@ -10,6 +10,7 @@ import { avisarMensaje, prepararAvisos } from '../chat/avisoLocal';
 import { usePushRegistration } from '../chat/pushRegistration';
 import { iniciarServicio } from '../../modules/servicio-socket/src';
 import { ChatListScreen } from '../chat/ChatListScreen';
+import { leerChatsGuardados } from '../chat/chatsGuardados';
 import { CoverableSpaceChats } from '../spaces/SpaceChatsScreen';
 import { CoverableDaliSpace, DaliKnowledgeButton } from '../spaces/dali/DaliSpace';
 import { findSpaceChat } from '../spaces/spacesApi';
@@ -226,7 +227,15 @@ export function TabsShell({
   const lastLoad = useRef<number | null>(null);
   const loadChats = useCallback(async () => {
     const result = await listChats(jwtRef.current);
-    if (!result.ok) return;
+    if (!result.ok) {
+      // Without signal the pickers and the now-playing bar read the phone's copy (José 26/11).
+      const guardados = await leerChatsGuardados();
+      if (guardados && lastLoad.current === null) {
+        setChats(guardados);
+        setChatsLoaded(true);
+      }
+      return;
+    }
     lastLoad.current = Date.now();
     setChats(result.data.chats);
     setChatsLoaded(true);

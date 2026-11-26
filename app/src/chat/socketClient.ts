@@ -216,6 +216,18 @@ export function resumeSocket(): void {
   if (socket && !socket.connected) socket.connect();
 }
 
+/**
+ * The network came back with the app in front (José 26/11): connect now, not
+ * after socket.io's backoff (up to 30 s). `disconnect` + `connect` because a
+ * plain `connect` during the backoff waits for it. Never from the background:
+ * a paused socket stays paused.
+ */
+export function reconnectNow(): void {
+  if (!socket || socket.connected) return;
+  socket.disconnect();
+  socket.connect();
+}
+
 /** En plena llamada la pausa espera (FL11): por el socket llega que el otro colgó. */
 let pausa: PausaDelSocket = { enLlamada: false, pausaPendiente: false };
 

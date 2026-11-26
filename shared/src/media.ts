@@ -33,6 +33,15 @@ export const MAX_BYTES_BY_KIND: Record<MediaKind, number> = {
  */
 export const UPLOAD_TIMEOUT_MS = 300_000;
 
+/**
+ * An upload refused with one of these comes back later, it is not this file's fault: storage down
+ * (503), a proxy while the server restarts (502, 504), a slow link (408), a rate limit (429) or a
+ * session being renewed (401: a revoked one empties the queue anyway). José 26/11: a cut at the
+ * site turned files into «No se envió» for good. Anything else (413, 403, 400) is this file.
+ */
+const RETRYABLE_UPLOAD_STATUSES: ReadonlySet<number> = new Set([401, 408, 429, 502, 503, 504]);
+export const isRetryableUploadStatus = (status: number): boolean => RETRYABLE_UPLOAD_STATUSES.has(status);
+
 export function resolveMediaKind(mimeType: string): MediaKind {
   const mime = String(mimeType ?? '').toLowerCase();
   if (mime.startsWith('image/')) return 'image';

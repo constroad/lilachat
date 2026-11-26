@@ -37,6 +37,7 @@ técnica, el IAA con AR, el Drive de cada servicio, los gastos y las llamadas.
 - [Ajustes, tema y disposición](as-is/plataforma-ajustes-tema-disposicion.md): riel, celular, tablet, PWA.
 - [Fluidez y planes](as-is/plataforma-fluidez-y-planes.md): Diagnóstico, fases F0–F6, iPhone, PWA.
 - [Deploy](as-is/plataforma-deploy.md): mini, Torre, APK en LilaStore, OTA.
+- [Sin señal](as-is/plataforma-sin-senal.md): qué se ve y qué se encola sin red en el APK, y lo que todavía la necesita.
 
 ### Apps y bots (agentes)
 - [API de bots y tarjetas](as-is/bots-api-y-tarjetas.md): manifiesto, instalación, mensajes, tarjetas, archivos, eventos.

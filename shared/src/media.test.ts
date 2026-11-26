@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isRetryableUploadStatus,
   dimensionValida,
   tamanoDeBurbuja,
   bubbleCropAnchor,
@@ -165,5 +166,15 @@ describe('bubbleCropAnchor', () => {
   it('any other photo keeps its middle', () => {
     expect(bubbleCropAnchor({})).toBe('center');
     expect(bubbleCropAnchor({ stamped: false })).toBe('center');
+  });
+});
+
+describe('isRetryableUploadStatus', () => {
+  it.each([401, 408, 429, 502, 503, 504])('a cut or a busy server comes back later: %i', (status) => {
+    expect(isRetryableUploadStatus(status)).toBe(true);
+  });
+
+  it.each([400, 403, 404, 413, 415, 422, 500])('this file will not go: %i', (status) => {
+    expect(isRetryableUploadStatus(status)).toBe(false);
   });
 });

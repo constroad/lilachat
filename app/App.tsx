@@ -2,7 +2,7 @@
 import { CompleteProfileScreen } from './src/onboarding/CompleteProfileScreen';
 import { useProfileGate } from './src/onboarding/useProfileGate';
 import './src/crypto/polyfill';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, AppState, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -29,9 +29,12 @@ import { SignInFlow } from './src/onboarding/SignInFlow';
 import { NavegacionDeSesion } from './src/ui/NavegacionDeSesion';
 import { conCredencialNueva, entraSinEsperar, withRefreshedSession } from './src/auth/arranque';
 import { useSessionRenewal } from './src/auth/useSessionRenewal';
-import { connectSocket, disconnectSocket, pauseSocket, resumeSocket } from './src/chat/socketClient';
+import { alConectar, connectSocket, disconnectSocket, pauseSocket, reconnectNow, resumeSocket } from './src/chat/socketClient';
+import * as Network from 'expo-network';
+import { networkCameBack, shouldRehydrate } from './src/chat/networkReturn';
 import { leerChatsGuardados, olvidarChats } from './src/chat/chatsGuardados';
 import { forgetAllSpaces } from './src/spaces/spaceCache';
+import { forgetClientsOfChats } from './src/spaces/clients/useSpaceClients';
 import { forgetMySpaces } from './src/spaces/currentSpace';
 import { forgetPendingInChats } from './src/chat/pendingInChats';
 import { avisarMensaje } from './src/chat/avisoLocal';
@@ -70,6 +73,7 @@ async function forgetRevokedSession(): Promise<void> {
     forgetReportQueue(),
     olvidarChats(),
     forgetAllSpaces(),
+    Promise.resolve(forgetClientsOfChats()),
     forgetMySpaces(),
     Promise.resolve(forgetPendingInChats()),
     olvidarMensajes(),
@@ -154,6 +158,8 @@ function Contenido() {
   const { oscuro } = useTema();
   const colores = useColores();
   const [boot, setBoot] = useState<Boot>({ phase: 'loading' });
+  const bootRef = useRef(boot);
+  bootRef.current = boot;
 
   /**
    * El servicio en primer plano que sostiene el socket.
@@ -237,6 +243,18 @@ function Contenido() {
     else if (!permanente) pauseSocket();
     return () => sub.remove();
   }, [haySesion, segundoPlano]);
+
+  // The network came back in front: every queue drains now (José 26/11, a site with patches of signal).
+  useEffect(() => {
+    if (!haySesion) return;
+    let online: boolean | null = null;
+    const subscription = Network.addNetworkStateListener((reading) => {
+      const step = networkCameBack(online, reading);
+      online = step.online;
+      if (step.cameBack && AppState.currentState === 'active') reconnectNow();
+    });
+    return () => subscription.remove();
+  }, [haySesion]);
 
   useEffect(() => {
     if (segundoPlano === null) return;
@@ -329,17 +347,33 @@ function Contenido() {
   useEffect(() => {
     if (boot.phase !== 'home') return;
     let vigente = true;
-    const jwt = boot.credential.jwt;
+    // The current token: a rerun after a renewal must not use the old one.
+    const jwtNow = () => (bootRef.current.phase === 'home' ? bootRef.current.credential.jwt : null);
     // Un respiro para que la lista de chats cargue primero: la pantalla manda.
-    const timer = setTimeout(() => {
+    // A boot without signal left it empty: each reconnect runs it again, at most every 10 min.
+    let lastRun: number | null = null;
+    let running = false;
+    const hydrate = () => {
+      if (running || !shouldRehydrate(lastRun, Date.now())) return;
+      running = true;
+      lastRun = Date.now();
       void (async () => {
+        const jwt = jwtNow();
+        if (!jwt) return;
         const chats = await chatsParaHidratar(jwt);
         if (vigente) await hidratarTodo(chats, jwt, () => vigente);
-      })();
-    }, ESPERA_ANTES_DE_HIDRATAR_MS);
+      })().finally(() => {
+        running = false;
+      });
+    };
+    const timer = setTimeout(hydrate, ESPERA_ANTES_DE_HIDRATAR_MS);
+    const stopListening = alConectar(() => {
+      if (lastRun !== null) hydrate();
+    });
     return () => {
       vigente = false;
       clearTimeout(timer);
+      stopListening();
     };
     // Solo al ganar la sesión: cambiar de pantalla no relanza la hidratación.
   }, [haySesion]);
@@ -461,6 +495,7 @@ function Contenido() {
             void olvidarArchivos();
             void olvidarChats();
             void forgetAllSpaces();
+            forgetClientsOfChats();
             void forgetMySpaces();
             forgetPendingInChats();
             void olvidarMensajes();

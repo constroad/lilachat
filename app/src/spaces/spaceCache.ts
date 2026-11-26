@@ -17,6 +17,8 @@ import { appDirectory, spaceActivity, spaceChannels, spaceChats, spaceMembers } 
 const MAX_AGE_MS = 30_000;
 const DISK_PREFIX = 'lilachat:space-cache:';
 const SAVE_DELAY_MS = 800;
+/** Where a space's own copies live on disk; anything under it goes with `forgetSpace` and logout. */
+export const spaceDiskKey = (key: string): string => `${DISK_PREFIX}${key}`;
 
 export type ActivityPage = { items: ActivityItem[]; unread: { mentions: number; threads: number } };
 export type MemberLists = Record<'active' | 'pending' | 'invited' | 'deactivated', ClientWorkspaceMember[]>;

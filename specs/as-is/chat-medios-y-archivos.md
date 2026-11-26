@@ -19,6 +19,7 @@ Los archivos viven en el disco propio de Lilachat (pendiente 82); los viejos sig
 - Recortar y girar antes de enviar (01/11, como WhatsApp): `crop/CropEditor.tsx`, `CropFrame.tsx`, `cropMath.ts`, `cropPhoto.ts`.
 - Fotos elegidas esperan como miniaturas dentro del campo (13/11): `StagedStrip.tsx`.
 - Pegar una imagen copiada: `useClipboardImage.ts`, `PasteImageChip.tsx`.
+- Reintento (26/11): 401, 408, 429, 502, 503 y 504 vuelven a la cola (`isRetryableUploadStatus`); antes solo 503.
 - Subida con anillo de progreso: `mediaUpload.ts`, `subidaXhr.ts`, `AnilloDeSubida.tsx`, `progresoDeSubida.ts`, `colaDeArchivos.ts` + `colaDeArchivosMotor.ts`, `mensajeSubido.ts`.
 - La foto aparece al instante en la burbuja mientras sube (20/10).
 - Responder con foto o archivo a un mensaje citado (10/11): `useAdjuntosDelChat.ts` lleva `replyToSeq`.

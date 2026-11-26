@@ -230,7 +230,7 @@ export function WorkMapBoard(props: BoardProps) {
     else if (key === 'screen') setWide(true);
     else if (key === 'draw') props.onDraw?.();
     else if (key === 'stages' || key === 'works') setLayers(key);
-    else if (key === 'open') void Linking.openURL(pageUrl);
+    else if (key === 'open' && pageUrl) void Linking.openURL(pageUrl);
     else setSeeingDeleted(true);
   };
   const toggleSheet = () => {

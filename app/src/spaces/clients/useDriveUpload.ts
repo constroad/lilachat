@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as Crypto from 'expo-crypto';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { documentTypeOf, DRIVE_DOCUMENT_MIME_TYPES, DRIVE_PASTE_EMPTY, DRIVE_QUEUED, DRIVE_UPLOAD_DONE, driveJobLabel, newFieldJob, watchFieldRun, type FieldJob, type FieldRunWatch, DRIVE_VIDEO_SECONDS, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, OBSERVATION_VIDEO_SECONDS, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type EvidenceFile, type ManualPhotoUpload, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps, type AreaCreateRequest, type AreaEditRequest, type AreaRemoveRequest, stampFieldsOf, type GeoPoint, type ShotLabel, type TimemarkStampAsked } from '@lilachat/shared';
+import { documentTypeOf, DRIVE_DOCUMENT_MIME_TYPES, DRIVE_PASTE_EMPTY, DRIVE_QUEUED, DRIVE_UPLOAD_DONE, driveJobLabel, newFieldJob, watchFieldRun, type FieldJob, type FieldJobFile, type FieldRunWatch, DRIVE_VIDEO_SECONDS, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, OBSERVATION_VIDEO_SECONDS, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type EvidenceFile, type ManualPhotoUpload, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps, type AreaCreateRequest, type AreaEditRequest, type AreaRemoveRequest, stampFieldsOf, type GeoPoint, type ShotLabel, type TimemarkStampAsked } from '@lilachat/shared';
 import * as FileSystem from 'expo-file-system/legacy';
 import { submitAppForm } from '../../chat/commands/commandsApi';
 import { openCamera, type CapturedShot } from '../../chat/camara/cameraRequests';
@@ -115,16 +115,21 @@ function watched<F>(deps: DriveUploadDeps<F>, watch: FieldRunWatch): DriveUpload
   };
 }
 
+/** One kept file to the service's Drive with its own key as `clientUploadId` (Portal answers the same file on a resend). */
+export function uploadKeptFile(file: FieldJobFile, scope: FieldJob['scope'], jwt: string, watch: FieldRunWatch, clientUploadId: string = file.key) {
+  const { spaceId, clientId, serviceId, chatId } = scope;
+  const deps = watched(depsOf({ target: { jwt, spaceId, clientId }, chatId, serviceId }, () => undefined), watch);
+  const source: DriveFile = { uri: file.ref, name: file.name, mime: file.mime, ...(file.stamp ? { stamp: file.stamp } : {}) };
+  const facts: DriveFileFacts = { mime: file.mime, ...(file.sizeBytes ? { sizeBytes: file.sizeBytes } : {}), ...(file.seconds ? { seconds: file.seconds } : {}) };
+  return uploadToDrive(deps, { source, facts }, clientUploadId);
+}
+
 /** The queue's sender of a Drive file: the same ticket and send, the job's key as `clientUploadId` (Portal dedupes it). */
 export async function sendDriveJob(job: FieldJob, jwt: string) {
   const file = job.files[0];
   if (!file) return { outcome: 'refuse' as const, message: 'El archivo ya no está en el teléfono.' };
   const watch = watchFieldRun();
-  const { spaceId, clientId, serviceId, chatId } = job.scope;
-  const deps = watched(depsOf({ target: { jwt, spaceId, clientId }, chatId, serviceId }, () => undefined), watch);
-  const source: DriveFile = { uri: file.ref, name: file.name, mime: file.mime, ...(file.stamp ? { stamp: file.stamp } : {}) };
-  const facts: DriveFileFacts = { mime: file.mime, ...(file.sizeBytes ? { sizeBytes: file.sizeBytes } : {}), ...(file.seconds ? { seconds: file.seconds } : {}) };
-  return watch.verdictOf(await uploadToDrive(deps, { source, facts }, job.key));
+  return watch.verdictOf(await uploadKeptFile(file, job.scope, jwt, watch, job.key));
 }
 registerFieldHandler('drive_file', sendDriveJob);
 

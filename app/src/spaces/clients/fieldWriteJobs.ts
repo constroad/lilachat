@@ -1,10 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
-import { fieldWriteJobOf, fieldWriteKindOf, isUnreachable, noticeOf, watchFieldRun, writeWithFiles, type EvidenceFile, type FieldJob, type FieldJobVerdict, type FieldWriteName, type FieldWritePayload, type FormFilesWriteDeps } from '@lilachat/shared';
-import { submitAppForm } from '../../chat/commands/commandsApi';
-import { getSocket } from '../../chat/socketClient';
+import { fieldWriteJobOf, fieldWriteKindOf, isUnreachable, watchFieldRun, type ReportFormRequest, writeWithFiles, type EvidenceFile, type FieldJob, type FieldJobVerdict, type FieldWriteName, type FieldWritePayload, type FormFilesWriteDeps } from '@lilachat/shared';
 import { enqueueFieldWork, keepFieldFile, registerFieldHandler } from './fieldQueueStore';
-import { openReportForm } from './reports/reportsApi';
+import { watchedDoor } from './watchedDoor';
 import { sendToDrive, type CapturedEvidence, type DriveFile } from './useDriveUpload';
 import type { ServiceAskTarget } from './useServiceAsk';
 import { spaceDiskKey } from '../spaceCache';
@@ -16,25 +14,10 @@ export const FIELD_WRITE_QUEUED = 'Guardado en el teléfono. Sale solo apenas ha
 /** The queue's sender: the same write the screen did, every step told to the watch. */
 async function sendFieldWrite(job: FieldJob, jwt: string): Promise<FieldJobVerdict> {
   const payload = job.payload as unknown as FieldWritePayload;
-  const target = { jwt, spaceId: job.scope.spaceId, clientId: job.scope.clientId };
-  const { chatId, serviceId } = job.scope;
+  const { chatId } = job.scope;
   const watch = watchFieldRun();
   const deps: FormFilesWriteDeps<DriveFile> = {
-    open: async () => {
-      const opened = await openReportForm(target, serviceId, payload.request as Parameters<typeof openReportForm>[2]);
-      watch.open({ ok: opened.ok, status: (opened as { status?: number }).status });
-      return opened;
-    },
-    submit: async (commandId, values) => {
-      const reply = await submitAppForm(jwt, { chatId }, commandId, values);
-      watch.submit(reply);
-      return reply;
-    },
-    notice: async (commandId) => {
-      const heard = await noticeOf(getSocket(), commandId);
-      watch.notice(heard !== null);
-      return heard;
-    },
+    ...watchedDoor(job, jwt, watch, payload.request as ReportFormRequest),
     send: async (upload, file, clientUploadId) => {
       const sent = await sendToDrive(upload, file, clientUploadId, () => undefined, { jwt, chatId });
       watch.send(sent.status);

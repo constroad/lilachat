@@ -4,6 +4,8 @@
 > `specs/MAPA-OBRA.spec.md` (spec vivo, 1 383 líneas) y `design/stitch/INVENTARIO.md`.
 > Lo marcado «no verificado» no se confirmó en el código ni en un E2E.
 
+
+- **Sin señal (26/11):** el mapa se guarda en el teléfono y se ve sin red; «Registrar avance» con sus fotos sale por la cola de campo. Ver `plataforma-sin-senal.md`.
 ## 1. Qué es
 
 El mapa literal de la obra dentro del canal del cliente: calles con su eje, tramos

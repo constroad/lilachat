@@ -34,6 +34,8 @@
 | ⚡ de un chat | La última lista de acciones guardada | `chat/commands/useChatCommands.ts` |
 | **Pendientes y checklist del canal** | El plan guardado; marcar y subir evidencia van por la cola de campo | `chat/workPlan/useWorkPlan.ts`, `evidenceUpload.ts`, `shared/taskOffline.ts` |
 | **Observaciones (REG-OBS, LEV-OBS) e IAA** | El informe guardado; registrar, levantar y medir un área van por la cola de campo | `spaces/clients/fieldWriteJobs.ts`, `shared/fieldWrites.ts` |
+| **Mapa de la obra** | El último mapa que dibujó Portal (sin «Abrir en Portal» sin red) | `spaces/clients/ServiceMapPanel.tsx` |
+| **«Registrar avance»** | Avance y fotos en un trabajo de la cola; la foto sube al Drive primero, con su clave | `workMap/manualProgressJobs.ts` |
 | Informe nuevo de un tipo nunca abierto | Con señal, abrir «Servicios» deja listos los formularios de cada tipo | `reports/reportQueueStore.ts` › `prepareReportTypes` |
 | Informes de campo (secciones y fotos) | Cola propia, ver `obra-informes.md` | `spaces/clients/reports/reportQueueStore.ts` |
 | **Fotos, videos y documentos al Drive del servicio** | **Cola de campo**: se guardan en el teléfono y suben solos | `spaces/clients/fieldQueueStore.ts`, `useDriveUpload.ts`, `shared/fieldQueue.ts` |
@@ -97,6 +99,17 @@
   otra vez. La franja de la cola sale arriba de las dos pantallas.
 - Editar y quitar un área siguen directos (necesitan señal).
 
+### Mapa y «Registrar avance» sin señal (26/11)
+
+- El mapa que Portal dibujó se guarda (`lilachat:space-cache:work-map:<cliente>:<servicio>`) y se
+  muestra cuando la lectura falla; sin red no hay enlace a Portal.
+- «Registrar avance» dentro de un servicio (`ServiceScopeContext`) es un trabajo `map_progress`: las fotos
+  se guardan en el teléfono y, al salir, cada una sube al Drive con su clave (su `mediaId` queda guardado:
+  un reintento no la sube dos veces) y después el avance con esos ids; Portal responde un reenvío del
+  mismo `entry_id` como ya marcado. Sigue esperando la aprobación de un administrador.
+- Las demás ediciones del mapa (calles, tramos, etapas, trabajos, borrar, importar, croquis) siguen
+  necesitando señal.
+
 ### Formularios de cada tipo de informe (26/11)
 
 Con señal, al abrir «Servicios» se lee una vez por espacio y proceso cada tipo de informe que el
@@ -114,9 +127,7 @@ siempre. 400, 403, 413 y el resto siguen siendo «este archivo no va».
 
 | Qué | Por qué hoy falla | Lote |
 | --- | --- | --- |
-| «Registrar avance» del mapa | Formulario de la puerta del mapa en vivo; la foto se sube antes de enviar | 2 |
 | Editar o quitar un área (IAA) | Directo, sin cola | 2 |
-| Mapa de la obra | El enlace y la lectura del mapa no se guardan | 2 |
 | Subir con la app en segundo plano | El socket se pausa atrás y todo sale por `alConectar` | 4 |
 | Chats secretos | La clave del otro no se guarda | aparte |
 | Editar y borrar mensajes | Emit sin cola ni tope | aparte |

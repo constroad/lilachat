@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { ExternalLink, FilePlus, FileText } from 'lucide-react-native';
 import { AREA_TYPE, savedAnswerLine, draftToContinue, isObservationType, CLIENT_SERVICE_STATUS_LABELS, SERVICE_REPORT_ACTION, serviceValuesOf, detailRows, detailSheet, serviceTabs, openingSheets, moreInPortal, portalMapTabUrl, type ChannelLinks, type DetailTabKey, type ServiceAskResult, type ServiceTabItem, type ServiceTabKey, type ServiceDetail, type ShownServiceAnswer, type SpaceClientService } from '@lilachat/shared';
@@ -7,6 +7,7 @@ import type { ViewableFile } from '@lilachat/shared';
 import { RecordSheet } from './RecordSheet';
 import { ServiceDrive } from './ServiceDrive';
 import { FieldQueueStrip } from './FieldQueueStrip';
+import { ServiceScopeContext } from './serviceScope';
 import { ServiceList } from './ServiceLists';
 import { ServiceMapPanel } from './ServiceMapPanel';
 import { ServiceShell } from './ServiceShell';
@@ -211,6 +212,8 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   const [round, setRound] = useState(0);
   const askAgain = useCallback(() => setRound((count) => count + 1), []);
   const answer = useServiceAsk('detail', props.target, props.service.id, round);
+  // What writes by the field queue deep in the tabs (the map's «Registrar avance») finds its service here.
+  const scope = useMemo(() => ({ target: props.target, chatId: props.chatId, serviceId: props.service.id }), [props.target, props.chatId, props.service.id]);
   const files = useFileViewer();
   const share = useServiceLinkSheet(props);
   useBackToList(props.onBack);
@@ -245,11 +248,13 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
     </>
   );
   return (
-    <ServiceShell service={props.service} clientName={props.clientName} compact={props.compact ?? true} slim={mapOpen} tabs={tabs} tab={tab} onTab={setTab} onBack={props.onBack} onShare={share.onShare} portalUrl={portalUrl} actions={answer?.ok && tab === 'reports' ? <CreateReportButton onPress={() => setPicker(true)} /> : undefined}>
-      {mapOpen ? <View testID="detalle-cuerpo" className="flex-1"><SavedCopyLine answer={answer} onRetry={askAgain} /><FieldQueueStrip serviceId={props.service.id} />{body}{extras}</View> : (
-        <ScrollView testID="detalle-cuerpo" keyboardShouldPersistTaps="handled" contentContainerStyle={BODY}><SavedCopyLine answer={answer} onRetry={askAgain} /><FieldQueueStrip serviceId={props.service.id} />{body}{extras}</ScrollView>
-      )}
-      {share.sheet}
-    </ServiceShell>
+    <ServiceScopeContext.Provider value={scope}>
+      <ServiceShell service={props.service} clientName={props.clientName} compact={props.compact ?? true} slim={mapOpen} tabs={tabs} tab={tab} onTab={setTab} onBack={props.onBack} onShare={share.onShare} portalUrl={portalUrl} actions={answer?.ok && tab === 'reports' ? <CreateReportButton onPress={() => setPicker(true)} /> : undefined}>
+        {mapOpen ? <View testID="detalle-cuerpo" className="flex-1"><SavedCopyLine answer={answer} onRetry={askAgain} /><FieldQueueStrip serviceId={props.service.id} />{body}{extras}</View> : (
+          <ScrollView testID="detalle-cuerpo" keyboardShouldPersistTaps="handled" contentContainerStyle={BODY}><SavedCopyLine answer={answer} onRetry={askAgain} /><FieldQueueStrip serviceId={props.service.id} />{body}{extras}</ScrollView>
+        )}
+        {share.sheet}
+      </ServiceShell>
+    </ServiceScopeContext.Provider>
   );
 }

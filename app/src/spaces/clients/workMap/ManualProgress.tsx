@@ -1,12 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useContext, useMemo, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { randomUUID } from 'expo-crypto';
 import type { CapturedShot } from '../../../chat/camara/cameraRequests';
 import { Camera, Check, Crosshair, Minus, Plus, Send } from 'lucide-react-native';
-import { addManualPhoto, GPS_UNAVAILABLE, manualEndFromGps, MANUAL_NOTE_MAX, MANUAL_PHOTOS_MAX, MANUAL_STEP_M, manualDraftFor, manualFigures, nudgeManualEnd, pickManualWork, progressPreviewOf, manualStepOf, MANUAL_STEPS, runManualProgress, stationLabel, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkMap } from '@lilachat/shared';
+import { addManualPhoto, GPS_UNAVAILABLE, manualEndFromGps, MANUAL_NOTE_MAX, MANUAL_PHOTOS_MAX, MANUAL_STEP_M, manualDraftFor, manualFigures, nudgeManualEnd, pickManualWork, progressPreviewOf, manualStepOf, MANUAL_STEPS, runManualProgress, stationLabel, type ManualPhotoUpload, type ManualProgressDraft, type MapEditSend, type WorkManualProgressRequest, type WorkMap } from '@lilachat/shared';
 import { useColores } from '../../../ui/tema';
 import { takeFieldPhoto } from '../useDriveUpload';
 import { readGpsOnce } from './useGpsWalk';
+import { ServiceScopeContext } from '../serviceScope';
+import { enqueueManualProgress, MANUAL_QUEUED } from './manualProgressJobs';
 import { KICKER } from './WorkMapPanel';
 import { WorkMapSurface } from './WorkMapSurface';
 
@@ -45,7 +47,7 @@ export type PhotoAsset = CapturedShot;
 type Props = { map: WorkMap; streetId: string; lengthM: number; widthM?: number; send: MapEditSend; uploadPhoto?: ManualPhotoUpload<PhotoAsset>; initial?: ManualProgressDraft; onDone: () => void };
 
 /** Step 3: a photo taken in the field, to the service's Drive; Portal only takes those as evidence. */
-function Photos(props: { count: number; uploadPhoto?: ManualPhotoUpload<PhotoAsset>; onPhoto: (mediaId: string) => void }) {
+function Photos(props: { count: number; uploadPhoto?: ManualPhotoUpload<PhotoAsset>; onPhoto: (mediaId: string) => void; /** By the field queue (José 26/11): the shot stays on the phone and goes with the progress. */ onShot?: (shot: PhotoAsset) => void }) {
   const colors = useColores();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +57,7 @@ function Photos(props: { count: number; uploadPhoto?: ManualPhotoUpload<PhotoAss
     const taken = await takeFieldPhoto();
     if (!taken) return;
     if ('message' in taken) return setError(taken.message);
+    if (props.onShot) return props.onShot(taken.shot);
     setBusy(true);
     setError(null);
     const result = await upload(taken.shot);
@@ -120,6 +123,13 @@ export function ManualProgress(props: Props) {
   const start = useMemo(() => manualDraftFor(props.map, props.streetId), [props.map, props.streetId]);
   const [draft, setDraft] = useState<ManualProgressDraft>(props.initial ?? start.draft);
   const [entryId] = useState(() => randomUUID());
+  // In a service the progress and its photos go by the field queue, with signal or without it (José 26/11).
+  const scope = useContext(ServiceScopeContext);
+  const [shots, setShots] = useState<PhotoAsset[]>([]);
+  const queued: MapEditSend | null = scope ? async (request) => {
+    await enqueueManualProgress(scope, request as WorkManualProgressRequest, draft.note, shots);
+    return { ok: true, message: MANUAL_QUEUED };
+  } : null;
   const [answer, setAnswer] = useState<Answer>(null);
   const [sending, setSending] = useState(false);
   const [locating, setLocating] = useState(false);
@@ -135,7 +145,7 @@ export function ManualProgress(props: Props) {
   };
   const submit = async () => {
     setSending(true);
-    setAnswer(await runManualProgress({ map: props.map, streetId: props.streetId, lengthM: props.lengthM, draft, entryId, send: props.send, now: new Date() }));
+    setAnswer(await runManualProgress({ map: props.map, streetId: props.streetId, lengthM: props.lengthM, draft, entryId, send: queued ?? props.send, now: new Date() }));
     setSending(false);
   };
   if (answer?.ok) {
@@ -162,7 +172,7 @@ export function ManualProgress(props: Props) {
         </View>
       </View>
       <Reach draft={draft} lengthM={props.lengthM} widthM={props.widthM} locating={locating} onGps={() => void fromGps()} onChange={change} />
-      <Photos count={draft.photoIds.length} uploadPhoto={props.uploadPhoto} onPhoto={(mediaId) => change(addManualPhoto(draft, mediaId))} />
+      <Photos count={draft.photoIds.length + shots.length} uploadPhoto={props.uploadPhoto} onPhoto={(mediaId) => change(addManualPhoto(draft, mediaId))} {...(scope ? { onShot: (shot: PhotoAsset) => setShots((current) => (draft.photoIds.length + current.length >= MANUAL_PHOTOS_MAX ? current : [...current, shot])) } : {})} />
       <View className={CARD}>
         <Text className={LABEL}>4 · Enviar</Text>
         <TextInput testID="avance-manual-nota" value={draft.note} maxLength={MANUAL_NOTE_MAX} multiline placeholder="Nota (opcional)" onChangeText={(note) => change({ ...draft, note })} className="min-h-[56px] rounded-xl border border-outline/25 bg-background px-3 py-2 text-[15px] text-on-surface" />

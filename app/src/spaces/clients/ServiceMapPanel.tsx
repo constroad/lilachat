@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 import { afterQuietReload, reloadWorkMap, deleteThenReload, editThenReload, loadWorkMap, type ManualPhotoUpload, type MapEditSend, type TraceUpload, type ServiceMapInReport, serviceMapPage, type ChannelLinks, type UnitDischarge, type MapPhoto, type WorkMap, type WorkMapState } from '@lilachat/shared';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BASE_URL } from '../../api/client';
+import { spaceDiskKey } from '../spaceCache';
 import { jsonCall } from '../../api/jsonCall';
 import type { PhotoAsset } from './workMap/ManualProgress';
 import type { TraceFile } from './useDriveUpload';
@@ -37,7 +39,10 @@ function useServiceMap(jwt: string, links: ChannelLinks, target: ServiceTarget) 
     const read = (link: string) => jsonCall<{ map: WorkMap | null }>(`${BASE_URL}/api/service-work-map`, jwt, { method: 'POST', body: JSON.stringify({ link, serviceId }) });
     const link = () => latestLinks.current.map({ kind: 'service', clientId, serviceId });
     // After an edit the link on screen is read again: a new one is a new public link in Portal.
-    const next = quiet ? await reloadWorkMap(shown.current, link, read) : await loadWorkMap(link, read);
+    const fresh = quiet ? await reloadWorkMap(shown.current, link, read) : await loadWorkMap(link, read);
+    // The map Portal last drew stays on the phone (José 26/11): without signal it is shown, with no link to Portal.
+    if (fresh.kind === 'ready') keepWorkMap(clientId, serviceId, fresh.map);
+    const next = fresh.kind === 'failed' ? (await keptWorkMap(clientId, serviceId)) ?? fresh : fresh;
     if (asked === turn.current) setState((previous) => (quiet ? afterQuietReload(previous, next) : next));
   }, [jwt, clientId, serviceId]);
   useEffect(() => {
@@ -47,6 +52,19 @@ function useServiceMap(jwt: string, links: ChannelLinks, target: ServiceTarget) 
     };
   }, [ask]);
   return { state, ask };
+}
+
+const workMapKey = (clientId: string, serviceId: string) => spaceDiskKey(`work-map:${clientId}:${serviceId}`);
+function keepWorkMap(clientId: string, serviceId: string, map: WorkMap | null): void {
+  if (map) AsyncStorage.setItem(workMapKey(clientId, serviceId), JSON.stringify(map)).catch(() => undefined);
+}
+async function keptWorkMap(clientId: string, serviceId: string): Promise<WorkMapState | null> {
+  const raw = await AsyncStorage.getItem(workMapKey(clientId, serviceId)).catch(() => null);
+  try {
+    return raw ? { kind: 'ready', url: '', map: JSON.parse(raw) as WorkMap } : null;
+  } catch {
+    return null;
+  }
 }
 
 const PortalLink = (props: { url: string }) => (
@@ -86,5 +104,5 @@ export function ServiceMapPanel(props: { jwt: string; links: ChannelLinks; targe
   // Photos or units with a place and no street yet: the map still shows where they are (Portal via José 09/11).
   const media = Boolean(props.mapPhotos?.length || props.discharges?.length);
   if (!state.map && !media) return <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={BODY}>{editor}<WorkMapFirst drawUrl={props.drawUrl ?? null} onDraw={onDraw} trace={editMap ? <View className="gap-2">{props.uploadTrace ? <ImportTrace send={editMap} upload={props.uploadTrace} /> : null}<ServiceCroquisButton send={editMap} title={props.title} onDone={() => void ask(true)} /></View> : null} /></ScrollView>;
-  return <>{editor}<WorkMapBoard map={state.map ?? EMPTY_WORK_MAP} pageUrl={pageOf(state.url)} title={props.title} serviceId={props.target.serviceId} badge={props.badge} discharges={props.discharges} mapPhotos={props.mapPhotos} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} editMap={editMap} admin={props.admin} uploadPhoto={props.uploadPhoto} uploadTrace={props.uploadTrace} mapInReport={props.mapInReport} notice={notice} reload={() => void ask(true)} /></>;
+  return <>{editor}<WorkMapBoard map={state.map ?? EMPTY_WORK_MAP} pageUrl={state.url ? pageOf(state.url) : ''} title={props.title} serviceId={props.target.serviceId} badge={props.badge} discharges={props.discharges} mapPhotos={props.mapPhotos} send={props.send} onDraw={onDraw} deleteStreet={deleteStreet} editMap={editMap} admin={props.admin} uploadPhoto={props.uploadPhoto} uploadTrace={props.uploadTrace} mapInReport={props.mapInReport} notice={notice} reload={() => void ask(true)} /></>;
 }

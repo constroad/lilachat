@@ -165,7 +165,8 @@ remitentes posibles, así que cada mensaje trae el suyo.
 - En la web la ficha puede ir en una tercera columna. En el APK siempre va a pantalla completa.
 - Web v4 (José 26/11 aprobó `dl-01-bandeja-v4-escritorio`): la fila tiene alto fijo de 3 líneas (nombre, hora y no
   leídos · servicio y lo pedido en una línea · UNA pastilla de qué hacer —«Vencido · …», «Falta: …», «Solo consulta» o
-  la etapa— con el puntaje y su punto de color y quién atiende); el origen salió de la fila. La ficha compacta va:
+  la etapa— con el puntaje y su punto de color y quién atiende); el origen salió de la fila. El vencido va corto
+  («Vencido · Sin responder 46 min», `overdueShortLabelOf` en `shared/prospectPlan.ts`) y la frase entera al pasar el mouse. La ficha compacta va:
   cabecera con puntaje, etapa y origen → próxima acción con «Cambiar» y «Hecho» (`next_action: null`) → lo que
   entendió Dali → cotización → etapa en una fila → quién atiende → documentos → plegados «Por qué es caliente · N
   razones» y «Origen». «Llamar» vive en la cabecera de la conversación; la ficha solo lo trae abierta desde el

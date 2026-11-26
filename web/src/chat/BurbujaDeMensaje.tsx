@@ -349,7 +349,7 @@ function MessageTail({ mensaje, mio, edge }: { mensaje: MensajeEnPantalla; mio: 
   const { nombres, yo, jwt, chat } = useConversacion();
   // José 18/11: a notes chat with its links sorted draws the card the server stored, not the generic preview.
   const stored = storedLinkOf(mensaje, chat);
-  // La tarjeta del primer enlace; los chats secretos no la piden.
+  // The first link's card; secret chats do not ask for it.
   const vista = useVistaPrevia(chat.encrypted || mensaje.media || stored ? null : primerEnlace(mensaje.body), jwt);
   return (
     <div className={edge && mensaje.body ? 'px-1.5 pt-1' : 'contents'}>

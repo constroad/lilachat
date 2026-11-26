@@ -48,6 +48,8 @@ describe('ProspectChat (dl-02 header and strip)', () => {
     cleanup();
     show(CARMEN, { inColumn: true });
     expect(screen.queryByTestId('cabecera-ficha')).toBeNull();
+    // dl-01 v4: the call stays in the header; the ficha beside it does not repeat it.
+    expect(screen.getByTestId('cabecera-llamar')).toBeTruthy();
   });
 
   it('on a phone leaves the result to the ficha', () => {

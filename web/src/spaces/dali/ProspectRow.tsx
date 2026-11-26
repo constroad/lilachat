@@ -1,17 +1,22 @@
-import { Clock } from 'lucide-react';
-import { inboxSectionOf, overdueOf, prospectNameOf, overdueLabelOf, prospectTimeOf, type ProspectView } from '@lilachat/shared';
-import { Initials, OriginPill, Pill, ProspectAvatar, ScorePill, StagePill } from './daliParts';
+import { inboxSectionOf, prospectNameOf, prospectTimeOf, type ProspectLevel, type ProspectView } from '@lilachat/shared';
+import { Initials, Pill, ProspectAvatar } from './daliParts';
+import { rowAskLineOf, rowScoreOf, rowStatusOf } from './prospectRowStatus';
+
+const LEVEL_DOT: Record<ProspectLevel, string> = { hot: 'bg-error', warm: 'bg-warning', cold: 'bg-secondary' };
 
 /**
- * A prospect in the inbox (dl-01 v3): name and when, the service, what Dali understood, what is late, and the pills
- * (origin, score, stage) with who attends it. The company line Stitch drew has no field yet: the service goes there.
- * On a phone the initials go beside the name, as in the mobile design; below it every line takes the card's whole width.
+ * A prospect in the inbox (dl-01 v4, José 26/11: «todo muy desordenado… no deja llevar un buen control»): three lines of
+ * fixed height that never break mid-word — name, when and unread; the service and what was asked on one line; and ONE
+ * pill that says what to do (late, what is missing, or the stage), the score with its dot and who attends. The origin
+ * went to the ficha. On a phone the initials go beside the name.
  */
 export function ProspectRow(props: { prospect: ProspectView; unread?: number; selected: boolean; phone?: boolean; now: Date; onOpen: () => void }) {
   const { prospect, now } = props;
   const name = prospectNameOf(prospect);
-  const overdue = overdueOf(prospect, now);
   const unread = props.unread ?? 0;
+  const status = rowStatusOf(prospect, now);
+  const ask = rowAskLineOf(prospect);
+  const score = rowScoreOf(prospect.score);
   return (
     <button
       type="button"
@@ -26,23 +31,14 @@ export function ProspectRow(props: { prospect: ProspectView; unread?: number; se
         <span className={`shrink-0 text-[12px] ${unread > 0 || props.selected ? 'font-semibold text-primary' : 'text-on-surface-variant'}`}>{prospectTimeOf(prospect.lastActivityAt, now)}</span>
         {unread > 0 ? <span data-testid="sin-leer-prospecto" className="grid h-5 min-w-[20px] shrink-0 place-items-center rounded-full bg-primary px-1 text-[11px] font-bold text-on-primary">{unread}</span> : null}
       </div>
-      {prospect.service ? <p className="mt-0.5 truncate text-[13px] text-on-surface-variant">{prospect.service.name}</p> : null}
-      {prospect.summary ? <p className="mt-1 line-clamp-2 text-[14px] leading-5">{prospect.summary}</p> : null}
-      {overdue ? (
-        <p data-testid="vencido-prospecto" className="mt-1 flex items-center gap-1 text-[13px] font-medium text-warning">
-          <Clock size={14} className="shrink-0" />
-          <span className="truncate">{overdueLabelOf(overdue, now)}</span>
-        </p>
-      ) : null}
+      <p data-testid="pedido-prospecto" className="mt-0.5 h-5 truncate text-[13px] text-on-surface-variant">{ask ?? ''}</p>
       <div className="mt-2 flex items-center gap-2">
-        {/* One line of whole pills (José 17/11 saw «DIRE…» and «FALTA INFORMACI…»): when they do not fit, the origin
-            goes. Laid out right to left in reverse order, the origin is the LAST one placed, so it is the one that
-            wraps to a second line, which this one-pill-high box hides. Who attends never gives way. */}
-        <span data-testid="pastillas-prospecto" className="flex h-6 min-w-0 flex-1 flex-row-reverse flex-wrap justify-end gap-x-1 gap-y-2 overflow-hidden">
-          <StagePill prospect={prospect} />
-          <ScorePill score={prospect.score} />
-          <OriginPill prospect={prospect} />
-        </span>
+        <span data-testid="estado-prospecto" className="flex min-w-0 flex-1"><Pill shrink tone={status.tone}>{status.text}</Pill></span>
+        {score ? (
+          <span data-testid="puntaje-prospecto" aria-label={`${score.score} puntos`} className="flex shrink-0 items-center gap-1 text-[13px] font-bold tabular-nums">
+            <span className={`h-2 w-2 rounded-full ${LEVEL_DOT[score.level]}`} />{score.score}
+          </span>
+        ) : null}
         <WhoAttends prospect={prospect} now={now} />
       </div>
     </button>

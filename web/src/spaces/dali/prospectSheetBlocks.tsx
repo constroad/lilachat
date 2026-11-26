@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { Check, Phone } from 'lucide-react';
+import { Check, ChevronDown, Phone } from 'lucide-react';
 import { LEVEL_LABEL, LOSS_REASON_LABEL, NEXT_ACTION_LABEL, STAGE_LABEL, levelOf, missingLabelsOf, moneyOf, nextActionWhenOf, originLineOf, originOf, prospectNameOf, shownProspectPhone, shownStageOf, type ProspectStage, type ProspectView } from '@lilachat/shared';
-import { Initials, Kicker, Pill, ProspectAvatar, ScorePill } from './daliParts';
+import { Initials, Kicker, OriginPill, Pill, ProspectAvatar, ScorePill, StagePill } from './daliParts';
 import { DocumentFieldRow, type SettleField } from './DocumentFieldRow';
 
 /** The blocks of the ficha (dl-03), each one a card; the ficha decides the order and the actions around them. */
@@ -16,19 +16,23 @@ export function Card({ children, testId, accent }: { children: ReactNode; testId
   return <section data-testid={testId} className={`rounded-xl border border-outline/15 bg-surface px-4 py-3.5 ${accent ? 'shadow-[inset_0_3px_0_rgb(var(--c-primary))]' : ''}`}>{children}</section>;
 }
 
-export function ContactCard({ prospect }: { prospect: ProspectView }) {
+/**
+ * The ficha's head (dl-01 v4): who, the number and three pills — score, stage, origin. «Llamar» only where no
+ * conversation header is beside it (opened from the funnel, the panel or the review): one call button on screen.
+ */
+export function ProfileCard({ prospect, withCall }: { prospect: ProspectView; withCall?: boolean }) {
   const name = prospectNameOf(prospect);
   return (
     <Card testId="ficha-contacto">
-      <Kicker>Datos de contacto</Kicker>
-      <div className="mt-2 flex items-center gap-3">
-        <ProspectAvatar name={name} size="xl" />
+      <div className="flex items-center gap-3">
+        <ProspectAvatar name={name} size="lg" />
         <span className="min-w-0">
           <span className="block truncate text-base font-extrabold">{name}</span>
           <span className="block whitespace-nowrap font-mono text-[13px] text-on-surface-variant">{shownProspectPhone(prospect.phone)}</span>
         </span>
       </div>
-      {prospect.phone ? (
+      <div data-testid="ficha-pastillas" className="mt-2.5 flex flex-wrap gap-1.5"><ScorePill score={prospect.score} /><StagePill prospect={prospect} /><OriginPill prospect={prospect} /></div>
+      {withCall && prospect.phone ? (
         <a href={`tel:+${prospect.phone}`} data-testid="llamar-prospecto" className="mt-3 flex h-10 items-center justify-center gap-2 rounded-xl bg-primary text-[13px] font-semibold text-on-primary">
           <Phone size={16} /> Llamar
         </a>
@@ -37,34 +41,43 @@ export function ContactCard({ prospect }: { prospect: ProspectView }) {
   );
 }
 
-export function OriginCard({ prospect }: { prospect: ProspectView }) {
-  const arrived = prospect.firstContactAt ?? prospect.createdAt;
+/** A card folded to one line with its chevron: what is read only when asked for (the score's reasons, the origin). */
+function Folded({ testId, title, children }: { testId: string; title: string; children: ReactNode }) {
   return (
-    <Card testId="ficha-origen">
-      <Kicker>Origen</Kicker>
-      <div className="mt-2"><Pill>{originOf(prospect).label}</Pill></div>
-      <p className="mt-2 text-sm font-semibold">{originLineOf(prospect)}</p>
-      <p className="text-[13px] text-on-surface-variant">{`Llegó el ${ARRIVAL.format(new Date(arrived))}`}</p>
-    </Card>
+    <details data-testid={testId} className="group rounded-xl border border-outline/15 bg-surface">
+      <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 px-4 text-[12px] font-bold uppercase tracking-wide text-on-surface-variant [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0 flex-1 truncate">{title}</span>
+        <ChevronDown size={16} className="shrink-0 transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="px-4 pb-3.5">{children}</div>
+    </details>
   );
 }
 
+export function OriginCard({ prospect }: { prospect: ProspectView }) {
+  const arrived = prospect.firstContactAt ?? prospect.createdAt;
+  return (
+    <Folded testId="ficha-origen" title={`Origen · ${originOf(prospect).label}`}>
+      <p className="text-sm font-semibold [overflow-wrap:anywhere]">{originLineOf(prospect)}</p>
+      <p className="text-[13px] text-on-surface-variant">{`Llegó el ${ARRIVAL.format(new Date(arrived))}`}</p>
+    </Folded>
+  );
+}
+
+/** «Por qué es caliente · 4 razones»: the score's reasons, folded; the score itself is a pill of the head. */
 export function ScoreCard({ prospect }: { prospect: ProspectView }) {
   const level = levelOf(prospect.score);
-  if (prospect.score === undefined || !level) return null;
+  const reasons = prospect.scoreReasons ?? [];
+  if (prospect.score === undefined || !level || !reasons.length) return null;
   return (
-    <Card testId="ficha-calificacion">
-      <div className="flex items-center justify-between"><Kicker>Calificación Dali</Kicker><ScorePill score={prospect.score} /></div>
-      <p className="mt-1 text-4xl font-extrabold tabular-nums tracking-tight text-primary" aria-label={`${prospect.score} puntos, ${LEVEL_LABEL[level]}`}>{prospect.score}</p>
-      {prospect.scoreReasons?.length ? (
-        <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
-          {prospect.scoreReasons.map((reason) => (
-            <li key={reason} className="flex items-center gap-2 rounded-lg border border-outline/15 px-2.5 py-1.5 text-[13px]"><Check size={14} className="shrink-0 text-en-linea" />{reason}</li>
-          ))}
-        </ul>
-      ) : null}
+    <Folded testId="ficha-calificacion" title={`Por qué es ${LEVEL_LABEL[level].toLowerCase()} · ${reasons.length} ${reasons.length === 1 ? 'razón' : 'razones'}`}>
+      <ul className="flex flex-wrap gap-1.5">
+        {reasons.map((reason) => (
+          <li key={reason} className="flex items-center gap-1.5 rounded-lg border border-outline/15 px-2.5 py-1 text-[13px]"><Check size={14} className="shrink-0 text-en-linea" />{reason}</li>
+        ))}
+      </ul>
       <p className="mt-2 text-[12px] text-on-surface-variant">Puntaje por reglas con lo que entendió Dali</p>
-    </Card>
+    </Folded>
   );
 }
 
@@ -101,20 +114,24 @@ export function QuoteCard({ prospect }: { prospect: ProspectView }) {
   );
 }
 
-/** The funnel's stages, the current one marked; a lost prospect says so with its reason. */
+/** The funnel's stages in one row (dl-01 v4): done ones checked, the current one named; lost says so with its reason. */
 export function StageCard({ prospect }: { prospect: ProspectView }) {
   const stage = shownStageOf(prospect);
   const current = WALK.indexOf(stage);
   return (
     <Card testId="ficha-etapa">
-      <Kicker>Etapa del prospecto</Kicker>
+      <div className="flex items-center justify-between gap-2">
+        <Kicker>Etapa</Kicker>
+        {stage === 'lost' ? null : <Pill tone="primary" testId="etapa-actual">{STAGE_LABEL[stage]}</Pill>}
+      </div>
       {stage === 'lost' ? <p className="mt-2 text-sm font-semibold text-error">{`Perdido${prospect.result?.reason ? ` · ${LOSS_REASON_LABEL[prospect.result.reason]}` : ''}`}</p> : (
-        <ol className="mt-2 space-y-1">
+        <ol aria-label={`Etapa: ${STAGE_LABEL[stage]}`} className="mt-3 flex items-center">
           {WALK.map((one, index) => (
-            <li key={one} data-testid={index === current ? 'etapa-actual' : undefined} className={`flex h-9 items-center gap-2.5 rounded-lg px-2 text-[14px] ${index === current ? 'border border-primary/30 bg-primary/5 font-bold text-primary' : index < current ? '' : 'text-on-surface-variant'}`}>
-              <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-bold ${index < current ? 'bg-en-linea/15 text-en-linea' : index === current ? 'bg-primary text-on-primary' : 'bg-surface-variant/60'}`}>{index < current ? <Check size={12} /> : index + 1}</span>
-              <span className="min-w-0 flex-1 truncate">{STAGE_LABEL[one]}</span>
-              {index === current ? <Pill tone="primary">Actual</Pill> : null}
+            <li key={one} title={STAGE_LABEL[one]} className="flex flex-1 items-center last:flex-none">
+              <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full ${index < current ? 'bg-primary text-on-primary' : index === current ? 'bg-primary ring-4 ring-primary/20' : 'border-2 border-outline/30 bg-surface'}`}>
+                {index < current ? <Check size={12} /> : null}
+              </span>
+              {index < WALK.length - 1 ? <span className={`h-0.5 flex-1 ${index < current ? 'bg-primary' : 'bg-outline/20'}`} /> : null}
             </li>
           ))}
         </ol>
@@ -123,18 +140,24 @@ export function StageCard({ prospect }: { prospect: ProspectView }) {
   );
 }
 
-export function NextActionCard({ prospect, now, onPlan }: { prospect: ProspectView; now: Date; onPlan?: () => void }) {
+/** The next action on top of the ficha (dl-01 v4): «Cambiar» and «Hecho» (it clears it); without one, «Agendar». */
+export function NextActionCard({ prospect, now, onPlan, onDone }: { prospect: ProspectView; now: Date; onPlan?: () => void; onDone?: () => void }) {
   const action = prospect.nextAction;
   return (
     <Card testId="ficha-proxima" accent={Boolean(action)}>
-      <Kicker>Próxima acción</Kicker>
+      <Kicker className={action ? 'text-primary' : ''}>Próxima acción</Kicker>
       {action ? (
         <div className="mt-2">
           <p className="text-sm font-bold">{`${NEXT_ACTION_LABEL[action.kind]} · ${nextActionWhenOf(action.at, now)}`}</p>
           {action.note ? <p className="text-[13px] text-on-surface-variant">{action.note}</p> : null}
         </div>
       ) : <p className="mt-2 text-sm text-on-surface-variant">Sin próxima acción.</p>}
-      {onPlan ? <button type="button" data-testid="agendar-proxima" onClick={onPlan} className="mt-2 h-9 rounded-lg border border-dashed border-primary/40 px-3 text-[13px] font-semibold text-primary hover:bg-primary/5">{action ? 'Cambiar' : 'Agendar'}</button> : null}
+      {onPlan ? (
+        <div className="mt-3 flex gap-2">
+          <button type="button" data-testid="agendar-proxima" onClick={onPlan} className={`h-9 flex-1 rounded-lg border px-3 text-[13px] font-semibold hover:bg-primary/5 ${action ? 'border-outline/30' : 'border-dashed border-primary/40 text-primary'}`}>{action ? 'Cambiar' : 'Agendar próxima acción'}</button>
+          {action && onDone ? <button type="button" data-testid="proxima-hecha" onClick={onDone} className="h-9 flex-1 rounded-lg bg-primary px-3 text-[13px] font-semibold text-on-primary">Hecho</button> : null}
+        </div>
+      ) : null}
     </Card>
   );
 }

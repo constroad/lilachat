@@ -163,6 +163,13 @@ remitentes posibles, así que cada mensaje trae el suyo.
 
 - En la web «Marcar resultado» está en la cabecera de la conversación. En el teléfono vive en la ficha.
 - En la web la ficha puede ir en una tercera columna. En el APK siempre va a pantalla completa.
+- Web v4 (José 26/11 aprobó `dl-01-bandeja-v4-escritorio`): la fila tiene alto fijo de 3 líneas (nombre, hora y no
+  leídos · servicio y lo pedido en una línea · UNA pastilla de qué hacer —«Vencido · …», «Falta: …», «Solo consulta» o
+  la etapa— con el puntaje y su punto de color y quién atiende); el origen salió de la fila. La ficha compacta va:
+  cabecera con puntaje, etapa y origen → próxima acción con «Cambiar» y «Hecho» (`next_action: null`) → lo que
+  entendió Dali → cotización → etapa en una fila → quién atiende → documentos → plegados «Por qué es caliente · N
+  razones» y «Origen». «Llamar» vive en la cabecera de la conversación; la ficha solo lo trae abierta desde el
+  embudo, el panel o la revisión. Las etapas del paso a paso son las reales (Stitch inventó «NUEVO · CALIF.»).
 - Web (26/11): la lista y la ficha son `ResizableAside`: se ensanchan arrastrando el borde y se pliegan a
   un riel; ancho y plegado quedan por navegador. Arreglado el 26/11: soltar el borde justo después de
   moverlo tumbaba la web entera («Algo falló al mostrar Lilachat»), porque el ancho se leía de un arrastre
@@ -242,6 +249,7 @@ remitentes posibles, así que cada mensaje trae el suyo.
 | Diseño | Estado | Evidencia |
 | --- | --- | --- |
 | dl-01 bandeja (v3) | Implementado | `DaliInbox.tsx` web y APK; `DaliInbox.test.tsx` |
+| dl-01 bandeja v4 (escritorio) | Implementado en la web 26/11 (aprobado por José 26/11); APK con la v3 | `ProspectRow.tsx` + `prospectRowStatus.ts`, `ProspectSheet.tsx` + `prospectSheetBlocks.tsx`; tests `prospectRowStatus.test.ts`, `ProspectSheet.test.tsx` |
 | dl-02 conversación | Implementado | `ProspectChat.tsx`, `useProspectDoor.tsx`; `ProspectChat.test.tsx` |
 | dl-03 ficha | Implementado | `ProspectSheet.tsx`, `ProspectSheetScreen.tsx` |
 | dl-04 panel | Parcial | `DaliPanel.tsx`. Sin costos de Meta, «Exportar» ni asignación automática (comentario del archivo) |

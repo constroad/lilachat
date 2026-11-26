@@ -6,7 +6,7 @@ import { spaceMembers } from '../spacesApi';
 import { Kicker, OutlineButton, SolidButton, TextButton } from './daliParts';
 import { ClientDocumentsCard } from './ClientDocumentsCard';
 import { NextActionDialog } from './NextActionDialog';
-import { AttendsLine, Card, ContactCard, NextActionCard, OriginCard, QuoteCard, ScoreCard, StageCard, UnderstoodCard } from './prospectSheetBlocks';
+import { AttendsLine, Card, NextActionCard, OriginCard, ProfileCard, QuoteCard, ScoreCard, StageCard, UnderstoodCard } from './prospectSheetBlocks';
 import { ResultDialog } from './ResultDialog';
 import { sendChange, sendFieldConfirmation, sendHandBack, type ChangeOutcome, type SellerPatch } from './sellerDesk';
 
@@ -31,8 +31,8 @@ export type SheetProps = {
 };
 
 /**
- * The ficha of a prospect (dl-03): contact, origin, Dali's score with its reasons, what Dali understood, the quote,
- * the stage, who attends it, the next action and the result. The decisions are the seller's (version-checked PATCH);
+ * The ficha of a prospect (dl-03, compact since dl-01 v4): who with score, stage and origin; the next action; what Dali
+ * understood; the quote; the stage in one row; who attends it; documents; and folded, the score's reasons and the origin. The decisions are the seller's (version-checked PATCH);
  * what Dali knows is read only. Stitch's pencils on each field do not go: the fields are agentes'.
  */
 export function ProspectSheet(props: SheetProps) {
@@ -52,11 +52,10 @@ export function ProspectSheet(props: SheetProps) {
     <div data-testid="ficha-prospecto" className="flex h-full min-h-0 flex-col bg-background">
       {props.onClose ? <SheetHeader name={prospectNameOf(prospect)} phone={props.phone} onClose={props.onClose} /> : null}
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
-        <ContactCard prospect={prospect} />
-        <OriginCard prospect={prospect} />
-        <ScoreCard prospect={prospect} />
+        {/* dl-01 v4 (José 26/11): what decides goes on top; the reasons and the origin fold at the foot. */}
+        <ProfileCard prospect={prospect} withCall={Boolean(props.onOpenConversation)} />
+        {prospect.result ? null : <NextActionCard prospect={prospect} now={now} onPlan={() => setDialog('next')} onDone={() => void change({ next_action: null })} />}
         <UnderstoodCard prospect={prospect} onSettle={settleField} />
-        <ClientDocumentsCard jwt={props.jwt} spaceId={props.spaceId} prospect={prospect} />
         <QuoteCard prospect={prospect} />
         <StageCard prospect={prospect} />
         <Card testId="ficha-atiende">
@@ -72,7 +71,9 @@ export function ProspectSheet(props: SheetProps) {
             </div>
           ) : null}
         </Card>
-        {prospect.result ? null : <NextActionCard prospect={prospect} now={now} onPlan={() => setDialog('next')} />}
+        <ClientDocumentsCard jwt={props.jwt} spaceId={props.spaceId} prospect={prospect} />
+        <ScoreCard prospect={prospect} />
+        <OriginCard prospect={prospect} />
       </div>
       {props.resultInHeader && !prospect.result ? null : <SheetFooter prospect={prospect} onResult={() => setDialog('result')} onReopen={() => void change({ result: null })} onOpenConversation={props.onOpenConversation} />}
       {dialog === 'next' ? <NextActionDialog jwt={props.jwt} spaceId={props.spaceId} prospect={prospect} now={now} onDone={settle} onClose={() => setDialog(null)} /> : null}

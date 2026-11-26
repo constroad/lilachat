@@ -57,7 +57,9 @@ export function ResizableAside(props: ResizableAsideProps) {
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!drag.current) return;
     const delta = event.clientX - drag.current.x;
-    setState((current) => ({ ...current, width: clamp(drag.current!.width + (side === 'left' ? delta : -delta), minWidth, maxWidth) }));
+    // The width is read NOW: the update runs at render, after a quick release already cleared the drag (José 26/11).
+    const width = clamp(drag.current.width + (side === 'left' ? delta : -delta), minWidth, maxWidth);
+    setState((current) => ({ ...current, width }));
   };
   const onPointerUp = () => {
     if (!drag.current) return;

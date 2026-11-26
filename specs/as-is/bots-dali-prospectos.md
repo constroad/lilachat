@@ -163,6 +163,10 @@ remitentes posibles, así que cada mensaje trae el suyo.
 
 - En la web «Marcar resultado» está en la cabecera de la conversación. En el teléfono vive en la ficha.
 - En la web la ficha puede ir en una tercera columna. En el APK siempre va a pantalla completa.
+- Web (26/11): la lista y la ficha son `ResizableAside`: se ensanchan arrastrando el borde y se pliegan a
+  un riel; ancho y plegado quedan por navegador. Arreglado el 26/11: soltar el borde justo después de
+  moverlo tumbaba la web entera («Algo falló al mostrar Lilachat»), porque el ancho se leía de un arrastre
+  ya terminado; ahora se calcula en el movimiento (`ResizableAside.test.tsx`).
 - Web: diálogos y panel lateral bajo la barra. APK: hojas de abajo y pantallas con ←.
 - Documentos: la web descarga con su nombre (`?download=`). El APK ofrece Abrir · Descargar.
 - El segmentado y los círculos son los propios de cada plataforma (tonal y `Avatar` en el APK).

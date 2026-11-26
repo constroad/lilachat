@@ -25,6 +25,14 @@ export type DriveUploadDeps<F> = {
 export const DRIVE_UPLOAD_FAILED = 'No se pudo subir el archivo. Revisa tu señal y vuelve a intentarlo.';
 export const DRIVE_UPLOAD_DONE = 'Archivo subido al Drive.';
 export const DRIVE_UPLOADING = 'Subiendo…';
+/** José 26/11: at a site without signal the file waits on the phone and goes up by itself. */
+export const DRIVE_QUEUED = 'Guardado en el teléfono. Se sube al Drive solo, apenas haya señal.';
+/** The line of a waiting file in the service's queue. */
+export function driveJobLabel(mime: string): string {
+  if (mime.startsWith('video/')) return 'Video al Drive';
+  if (mime.startsWith('image/')) return 'Foto al Drive';
+  return 'Documento al Drive';
+}
 /** «Subiendo… 40 %»: a video can take minutes in the field. */
 export const driveUploadingLine = (ratio: number): string => (ratio > 0 ? `${DRIVE_UPLOADING} ${Math.round(ratio * 100)} %` : DRIVE_UPLOADING);
 /** What the phone's camera records at most: Portal says it again in each ticket. */

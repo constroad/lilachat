@@ -4,6 +4,8 @@
 > `specs/ARCHITECTURE.spec.md` (§169, §171, §175 y «Drive del servicio», 06/11 y 13/11) y
 > `design/stitch/INVENTARIO.md`.
 
+- **Sin señal (26/11):** toda subida al Drive pasa por la cola de campo y sale sola al volver la red; ver `plataforma-sin-senal.md`.
+
 ## 1. Qué es
 
 La pestaña «Drive» de cada servicio del canal del cliente. Muestra y sube los archivos

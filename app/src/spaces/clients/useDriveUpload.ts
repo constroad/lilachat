@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import * as Crypto from 'expo-crypto';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import { documentTypeOf, DRIVE_DOCUMENT_MIME_TYPES, DRIVE_PASTE_EMPTY, DRIVE_UPLOAD_DONE, DRIVE_VIDEO_SECONDS, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, OBSERVATION_VIDEO_SECONDS, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type EvidenceFile, type ManualPhotoUpload, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps, type AreaCreateRequest, type AreaEditRequest, type AreaRemoveRequest, stampFieldsOf, type GeoPoint, type ShotLabel, type TimemarkStampAsked } from '@lilachat/shared';
+import { documentTypeOf, DRIVE_DOCUMENT_MIME_TYPES, DRIVE_PASTE_EMPTY, DRIVE_QUEUED, DRIVE_UPLOAD_DONE, driveJobLabel, newFieldJob, watchFieldRun, type FieldJob, type FieldRunWatch, DRIVE_VIDEO_SECONDS, driveUploadRequest, IMPORT_NOT_A_TRACE, importFileType, manualPhotoOf, OBSERVATION_VIDEO_SECONDS, type TraceUpload, noticeOf, uploadToDrive, type DriveFileFacts, type DriveUpload, type DriveUploadDeps, type EvidenceFile, type ManualPhotoUpload, type ObservationLiftRequest, type ObservationRegisterRequest, type ObservationWriteDeps, type AreaCreateRequest, type AreaEditRequest, type AreaRemoveRequest, stampFieldsOf, type GeoPoint, type ShotLabel, type TimemarkStampAsked } from '@lilachat/shared';
 import * as FileSystem from 'expo-file-system/legacy';
 import { submitAppForm } from '../../chat/commands/commandsApi';
 import { openCamera, type CapturedShot } from '../../chat/camara/cameraRequests';
@@ -13,6 +13,7 @@ import { subirPorXhr } from '../../chat/subidaXhr';
 import { openReportForm } from './reports/reportsApi';
 import type { ServiceAskTarget } from './useServiceAsk';
 import { clipboardImage } from './drivePaste';
+import { enqueueFieldWork, keepFieldFile, onFieldJobDone, registerFieldHandler } from './fieldQueueStore';
 
 export type DriveFile = { uri: string; name: string; mime: string; /** A shot of the new camera: our server burns it and forwards it (José 12/11). */ stamp?: TimemarkStampAsked };
 type Sender = { jwt: string; chatId: string };
@@ -88,15 +89,72 @@ const depsOf = ({ target, chatId, serviceId }: Omit<UploadTarget, 'onDone'>, onP
   send: (upload, file, clientUploadId) => sendToDrive(upload, file, clientUploadId, onProgress, { jwt: target.jwt, chatId }),
 });
 
-/** A photo or a video to the service's Drive (José, 06/11). The list is asked again when it landed. */
+/** Each step tells the watch what it got, so the queue knows «no signal» from «Portal said no». */
+function watched<F>(deps: DriveUploadDeps<F>, watch: FieldRunWatch): DriveUploadDeps<F> {
+  return {
+    open: async () => {
+      const opened = await deps.open();
+      watch.open({ ok: opened.ok, status: (opened as { status?: number }).status });
+      return opened;
+    },
+    submit: async (commandId) => {
+      const reply = await deps.submit(commandId);
+      watch.submit(reply);
+      return reply;
+    },
+    notice: async (commandId) => {
+      const heard = await deps.notice(commandId);
+      watch.notice(heard !== null);
+      return heard;
+    },
+    send: async (ticket, file, clientUploadId) => {
+      const sent = await deps.send(ticket, file, clientUploadId);
+      watch.send(sent.status);
+      return sent;
+    },
+  };
+}
+
+/** The queue's sender of a Drive file: the same ticket and send, the job's key as `clientUploadId` (Portal dedupes it). */
+export async function sendDriveJob(job: FieldJob, jwt: string) {
+  const file = job.files[0];
+  if (!file) return { outcome: 'refuse' as const, message: 'El archivo ya no está en el teléfono.' };
+  const watch = watchFieldRun();
+  const { spaceId, clientId, serviceId, chatId } = job.scope;
+  const deps = watched(depsOf({ target: { jwt, spaceId, clientId }, chatId, serviceId }, () => undefined), watch);
+  const source: DriveFile = { uri: file.ref, name: file.name, mime: file.mime, ...(file.stamp ? { stamp: file.stamp } : {}) };
+  const facts: DriveFileFacts = { mime: file.mime, ...(file.sizeBytes ? { sizeBytes: file.sizeBytes } : {}), ...(file.seconds ? { seconds: file.seconds } : {}) };
+  return watch.verdictOf(await uploadToDrive(deps, { source, facts }, job.key));
+}
+registerFieldHandler('drive_file', sendDriveJob);
+
+/**
+ * A photo, video or document to the service's Drive (José, 06/11). Since 26/11 (José, a site
+ * without signal) it is kept on the phone and goes by the field queue, with or without signal: one
+ * way to write, one rule of error. The list is asked again when a file of this service landed.
+ */
 export function useDriveUpload(upload: UploadTarget) {
   const [state, setState] = useState<UploadState>(IDLE);
+  const { serviceId } = upload;
+  const onDone = useRef(upload.onDone);
+  onDone.current = upload.onDone;
+  useEffect(() => onFieldJobDone((job) => {
+    if (job.kind !== 'drive_file' || job.scope.serviceId !== serviceId) return;
+    setState({ ...IDLE, message: DRIVE_UPLOAD_DONE });
+    onDone.current();
+  }), [serviceId]);
   const sendFile = async (ready: Promise<{ source: DriveFile; facts: DriveFileFacts }>) => {
     setState({ ...IDLE, sending: true });
-    const showProgress = (progress: number) => setState((current) => ({ ...current, progress }));
-    const result = await uploadToDrive(depsOf(upload, showProgress), await ready, Crypto.randomUUID());
-    setState(result.ok ? { ...IDLE, message: DRIVE_UPLOAD_DONE } : { ...IDLE, message: result.message, failed: true });
-    if (result.ok) upload.onDone();
+    try {
+      const { source, facts } = await ready;
+      const kept = await keepFieldFile({ uri: source.uri, name: source.name, mime: source.mime, ...(facts.sizeBytes ? { sizeBytes: facts.sizeBytes } : {}), ...(facts.seconds ? { seconds: facts.seconds } : {}), ...(source.stamp ? { stamp: source.stamp } : {}) });
+      const scope = { spaceId: upload.target.spaceId, clientId: upload.target.clientId, serviceId, chatId: upload.chatId };
+      await enqueueFieldWork(newFieldJob({ key: Crypto.randomUUID(), kind: 'drive_file', scope, label: driveJobLabel(source.mime), payload: {}, files: [kept], now: Date.now() }));
+      setState({ ...IDLE, message: DRIVE_QUEUED });
+    } catch (error) {
+      console.warn('drive: keep file', error instanceof Error ? error.name : 'unknown');
+      setState({ ...IDLE, message: 'No se pudo guardar el archivo en el teléfono.', failed: true });
+    }
   };
   const fromGallery = async (picked: ImagePicker.ImagePickerResult) => {
     const asset = picked.canceled ? null : picked.assets[0];

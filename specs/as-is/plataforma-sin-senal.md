@@ -31,6 +31,7 @@
 | **Detalle de un servicio** (pedidos, informes, mapa, Drive) | **Copia del disco** con la línea «Sin señal · datos guardados el …» y «Reintentar» | `spaces/clients/useServiceAsk.ts`, `savedServiceAnswers.ts`, `shared/savedServiceAnswer.ts` |
 | Lista del Drive | Copia del disco | igual |
 | Informes de campo (secciones y fotos) | Cola propia, ver `obra-informes.md` | `spaces/clients/reports/reportQueueStore.ts` |
+| **Fotos, videos y documentos al Drive del servicio** | **Cola de campo**: se guardan en el teléfono y suben solos | `spaces/clients/fieldQueueStore.ts`, `useDriveUpload.ts`, `shared/fieldQueue.ts` |
 | Vuelta de la red | El socket reconecta en el acto (no espera hasta 30 s) y todas las colas salen | `App.tsx`, `chat/socketClient.ts` › `reconnectNow` |
 
 ### Detalle del servicio guardado (26/11)
@@ -48,6 +49,26 @@
   corta al primer «sin señal». Así el servicio de la obra ya está en el teléfono antes de salir.
 - El error sin copia ahora trae «Reintentar» (antes había que volver y abrir de nuevo).
 
+### Cola de campo (26/11)
+
+- Un trabajo = un hecho con su clave (`FieldJob.key`, que viaja como `clientUploadId`: Portal no
+  duplica un reenvío). Índice en AsyncStorage `lilachat:field-queue`; cada archivo copiado a
+  `documentDirectory/field-queue/`. Lo que un trabajo ya terminó (`done`, p. ej. un `mediaId`) se
+  guarda y no se repite.
+- Sale solo con el socket conectado: al conectar (`alConectar`), al encolar y en cada reintento que
+  vence. Sin red no hay temporizador corriendo. Un trabajo cada 1,5 s.
+- `watchFieldRun` lee cada paso (abrir, enviar, aviso, subida): sin respuesta → reintenta para siempre
+  con espera creciente hasta 60 s; server ocupado, 401, 408, 429 o un aviso que no llegó → reintenta,
+  y a los 8 se rinde con «No se pudo enviar después de varios intentos. Toca «Reintentar».»; cualquier
+  otra negativa (p. ej. 413) queda a la vista con las palabras de Portal.
+- **Drive:** foto, video (con su sello de hora y GPS), documento y pegar del portapapeles van siempre
+  por la cola, con señal o sin ella: «Guardado en el teléfono. Se sube al Drive solo, apenas haya
+  señal.». Al llegar, la lista del Drive se vuelve a pedir y dice «Archivo subido al Drive.».
+- **Franja del servicio** (`FieldQueueStrip`, sobre todas las pestañas y en el Drive solo): «N
+  pendientes en el teléfono · salen solos apenas haya señal» y cada rechazado con «Reintentar» y
+  «Descartar» (pregunta antes: borra la foto del teléfono).
+- Al cerrar sesión se borra todo (`forgetFieldQueue`).
+
 ### Subidas que se reintentan (26/11)
 
 `isRetryableUploadStatus` (`shared/media.ts`): 401, 408, 429, 502, 503 y 504 vuelven a la cola. Antes
@@ -58,7 +79,6 @@ siempre. 400, 403, 413 y el resto siguen siendo «este archivo no va».
 
 | Qué | Por qué hoy falla | Lote |
 | --- | --- | --- |
-| Subir al Drive del servicio | Subida directa, sin cola; clave nueva por toque | 2 |
 | Evidencia y marcar tareas de Pendientes | Subida directa, sin cola | 2 |
 | «Registrar avance» y observaciones del mapa | Formulario de la puerta del mapa en vivo; la foto se sube antes de enviar | 2 |
 | REG-OBS, LEV-OBS e IAA | Sin cola (`useObservations`, `useAreas`) | 2 |

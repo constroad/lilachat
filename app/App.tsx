@@ -29,12 +29,14 @@ import { SignInFlow } from './src/onboarding/SignInFlow';
 import { NavegacionDeSesion } from './src/ui/NavegacionDeSesion';
 import { conCredencialNueva, entraSinEsperar, withRefreshedSession } from './src/auth/arranque';
 import { useSessionRenewal } from './src/auth/useSessionRenewal';
-import { alConectar, connectSocket, disconnectSocket, pauseSocket, reconnectNow, resumeSocket } from './src/chat/socketClient';
-import * as Network from 'expo-network';
-import { networkCameBack, shouldRehydrate } from './src/chat/networkReturn';
+import { connectSocket, disconnectSocket, pauseSocket, resumeSocket } from './src/chat/socketClient';
+import { useReconnectWhenNetworkReturns, useRehydrateOnConnect } from './src/chat/useConnectionRecovery';
 import { leerChatsGuardados, olvidarChats } from './src/chat/chatsGuardados';
 import { forgetAllSpaces } from './src/spaces/spaceCache';
 import { forgetClientsOfChats } from './src/spaces/clients/useSpaceClients';
+import { forgetFieldQueue } from './src/spaces/clients/fieldQueueStore';
+// The field queue's senders register on import: a queue left from before the app closed needs them at the first connect.
+import './src/spaces/clients/useDriveUpload';
 import { forgetMySpaces } from './src/spaces/currentSpace';
 import { forgetPendingInChats } from './src/chat/pendingInChats';
 import { avisarMensaje } from './src/chat/avisoLocal';
@@ -74,6 +76,7 @@ async function forgetRevokedSession(): Promise<void> {
     olvidarChats(),
     forgetAllSpaces(),
     Promise.resolve(forgetClientsOfChats()),
+    forgetFieldQueue(),
     forgetMySpaces(),
     Promise.resolve(forgetPendingInChats()),
     olvidarMensajes(),
@@ -244,17 +247,7 @@ function Contenido() {
     return () => sub.remove();
   }, [haySesion, segundoPlano]);
 
-  // The network came back in front: every queue drains now (José 26/11, a site with patches of signal).
-  useEffect(() => {
-    if (!haySesion) return;
-    let online: boolean | null = null;
-    const subscription = Network.addNetworkStateListener((reading) => {
-      const step = networkCameBack(online, reading);
-      online = step.online;
-      if (step.cameBack && AppState.currentState === 'active') reconnectNow();
-    });
-    return () => subscription.remove();
-  }, [haySesion]);
+  useReconnectWhenNetworkReturns(haySesion);
 
   useEffect(() => {
     if (segundoPlano === null) return;
@@ -344,39 +337,15 @@ function Contenido() {
    * los `lastSeq` de la lista guardada. Corre una vez por sesión y de a un chat;
    * si el historial ya está entero, no gasta ni un pedido.
    */
-  useEffect(() => {
-    if (boot.phase !== 'home') return;
-    let vigente = true;
-    // The current token: a rerun after a renewal must not use the old one.
-    const jwtNow = () => (bootRef.current.phase === 'home' ? bootRef.current.credential.jwt : null);
-    // Un respiro para que la lista de chats cargue primero: la pantalla manda.
-    // A boot without signal left it empty: each reconnect runs it again, at most every 10 min.
-    let lastRun: number | null = null;
-    let running = false;
-    const hydrate = () => {
-      if (running || !shouldRehydrate(lastRun, Date.now())) return;
-      running = true;
-      lastRun = Date.now();
-      void (async () => {
-        const jwt = jwtNow();
-        if (!jwt) return;
-        const chats = await chatsParaHidratar(jwt);
-        if (vigente) await hidratarTodo(chats, jwt, () => vigente);
-      })().finally(() => {
-        running = false;
-      });
-    };
-    const timer = setTimeout(hydrate, ESPERA_ANTES_DE_HIDRATAR_MS);
-    const stopListening = alConectar(() => {
-      if (lastRun !== null) hydrate();
-    });
-    return () => {
-      vigente = false;
-      clearTimeout(timer);
-      stopListening();
-    };
-    // Solo al ganar la sesión: cambiar de pantalla no relanza la hidratación.
-  }, [haySesion]);
+  useRehydrateOnConnect(
+    haySesion,
+    () => (bootRef.current.phase === 'home' ? bootRef.current.credential.jwt : null),
+    async (jwt, alive) => {
+      const chats = await chatsParaHidratar(jwt);
+      if (alive()) await hidratarTodo(chats, jwt, alive);
+    },
+    ESPERA_ANTES_DE_HIDRATAR_MS,
+  );
 
   /**
    * Restaurar en un teléfono nuevo (F12.2): con sesión y el almacén vacío, se
@@ -496,6 +465,7 @@ function Contenido() {
             void olvidarChats();
             void forgetAllSpaces();
             forgetClientsOfChats();
+            void forgetFieldQueue();
             void forgetMySpaces();
             forgetPendingInChats();
             void olvidarMensajes();

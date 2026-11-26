@@ -6,6 +6,7 @@ import { useColores } from '../../ui/tema';
 import type { ViewableFile } from '@lilachat/shared';
 import { RecordSheet } from './RecordSheet';
 import { ServiceDrive } from './ServiceDrive';
+import { FieldQueueStrip } from './FieldQueueStrip';
 import { ServiceList } from './ServiceLists';
 import { ServiceMapPanel } from './ServiceMapPanel';
 import { ServiceShell } from './ServiceShell';
@@ -139,6 +140,7 @@ function ServiceDriveOnly(props: ServiceDetailProps) {
   return (
     <ServiceShell service={props.service} clientName={props.clientName} compact={props.compact ?? true} tabs={tabs} tab="drive" onTab={() => undefined} onBack={props.onBack} onShare={share.onShare}>
       <ScrollView testID="detalle-cuerpo" keyboardShouldPersistTaps="handled" contentContainerStyle={BODY}>
+        <FieldQueueStrip serviceId={props.service.id} />
         <ServiceDrive target={props.target} service={props.service} chatId={props.chatId} onBack={props.onBack} />
       </ScrollView>
       {share.sheet}
@@ -244,8 +246,8 @@ function ServiceRecordsDetail(props: ServiceDetailProps) {
   );
   return (
     <ServiceShell service={props.service} clientName={props.clientName} compact={props.compact ?? true} slim={mapOpen} tabs={tabs} tab={tab} onTab={setTab} onBack={props.onBack} onShare={share.onShare} portalUrl={portalUrl} actions={answer?.ok && tab === 'reports' ? <CreateReportButton onPress={() => setPicker(true)} /> : undefined}>
-      {mapOpen ? <View testID="detalle-cuerpo" className="flex-1"><SavedCopyLine answer={answer} onRetry={askAgain} />{body}{extras}</View> : (
-        <ScrollView testID="detalle-cuerpo" keyboardShouldPersistTaps="handled" contentContainerStyle={BODY}><SavedCopyLine answer={answer} onRetry={askAgain} />{body}{extras}</ScrollView>
+      {mapOpen ? <View testID="detalle-cuerpo" className="flex-1"><SavedCopyLine answer={answer} onRetry={askAgain} /><FieldQueueStrip serviceId={props.service.id} />{body}{extras}</View> : (
+        <ScrollView testID="detalle-cuerpo" keyboardShouldPersistTaps="handled" contentContainerStyle={BODY}><SavedCopyLine answer={answer} onRetry={askAgain} /><FieldQueueStrip serviceId={props.service.id} />{body}{extras}</ScrollView>
       )}
       {share.sheet}
     </ServiceShell>

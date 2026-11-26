@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { documentTypeOf, DRIVE_UPLOAD_FAILED, driveFileRefusal, driveUploadingLine, driveUploadOf, driveUploadRequest, uploadToDrive, type DriveUpload, type DriveUploadDeps } from './driveUpload';
+import { documentTypeOf, driveJobLabel, DRIVE_UPLOAD_FAILED, driveFileRefusal, driveUploadingLine, driveUploadOf, driveUploadRequest, uploadToDrive, type DriveUpload, type DriveUploadDeps } from './driveUpload';
 import { FORMS_LEVEL } from './appForms';
 import { validateCommandResponse } from './botCommands';
 
@@ -226,5 +226,11 @@ describe('documents in the service Drive', () => {
     expect(withDocs.mimeTypes).toEqual(['image/jpeg', 'application/pdf']);
     expect(refusedWith).toBeNull();
     expect(refusedWithout).toBe('Ese tipo de archivo no se puede subir al Drive.');
+  });
+});
+
+describe('driveJobLabel', () => {
+  it.each([['image/jpeg', 'Foto al Drive'], ['video/mp4', 'Video al Drive'], ['application/pdf', 'Documento al Drive'], ['', 'Documento al Drive']])('%s → %s', (mime, label) => {
+    expect(driveJobLabel(mime)).toBe(label);
   });
 });
